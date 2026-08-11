@@ -31,7 +31,13 @@ const auditFixture = {
   siblingRegionDepartment: randomUUID(),
   siblingRegionTeam: randomUUID(),
   inactiveTeam: randomUUID(),
+  inactiveDepartment: randomUUID(),
+  inactiveRegion: randomUUID(),
   deletedTeam: randomUUID(),
+  deletedDepartment: randomUUID(),
+  deletedRegion: randomUUID(),
+  foreignDepartment: randomUUID(),
+  foreignRegion: randomUUID(),
   siblingTeamActor: randomUUID(),
   siblingDepartmentActor: randomUUID(),
   siblingRegionActor: randomUUID(),
@@ -429,15 +435,24 @@ describe('JTF-P0-E07..E11 PostgreSQL scenarios', () => {
   it('applies the audit DataScope security matrix to list and find', async () => {
     const repo = new PostgresAuditRepository(db);
     await db.query(
+      "INSERT INTO organizations(id,owner_organization_id,parent_id,code,name,organization_type,active,deleted_at) VALUES($1,$2,NULL,'AUD-FOREIGN-R','Foreign region','REGION',true,NULL)",
+      [auditFixture.foreignRegion, otherCompany],
+    );
+    await db.query(
       `INSERT INTO organizations(id,owner_organization_id,parent_id,code,name,organization_type,active,deleted_at) VALUES
-       ($1,$9,$10,'AUD-TEAM-2','Audit team 2','TEAM',true,NULL),
-       ($2,$9,$11,'AUD-DEPT-2','Audit department 2','DEPARTMENT',true,NULL),
-       ($3,$9,$2,'AUD-DEPT-TEAM','Audit department team','TEAM',true,NULL),
-       ($4,$9,NULL,'AUD-REGION-2','Audit region 2','REGION',true,NULL),
-       ($5,$9,$4,'AUD-REGION-DEPT','Audit region department','DEPARTMENT',true,NULL),
-       ($6,$9,$5,'AUD-REGION-TEAM','Audit region team','TEAM',true,NULL),
-       ($7,$9,$10,'AUD-INACTIVE','Inactive team','TEAM',false,NULL),
-       ($8,$9,$10,'AUD-DELETED','Deleted team','TEAM',true,now())`,
+       ($1,$13,$14,'AUD-TEAM-2','Audit team 2','TEAM',true,NULL),
+       ($2,$13,$15,'AUD-DEPT-2','Audit department 2','DEPARTMENT',true,NULL),
+       ($3,$13,$2,'AUD-DEPT-TEAM','Audit department team','TEAM',true,NULL),
+       ($4,$13,NULL,'AUD-REGION-2','Audit region 2','REGION',true,NULL),
+       ($5,$13,$4,'AUD-REGION-DEPT','Audit region department','DEPARTMENT',true,NULL),
+       ($6,$13,$5,'AUD-REGION-TEAM','Audit region team','TEAM',true,NULL),
+       ($7,$13,$14,'AUD-INACTIVE-T','Inactive team','TEAM',false,NULL),
+       ($8,$13,$15,'AUD-INACTIVE-D','Inactive department','DEPARTMENT',false,NULL),
+       ($9,$13,NULL,'AUD-INACTIVE-R','Inactive region','REGION',false,NULL),
+       ($10,$13,$14,'AUD-DELETED-T','Deleted team','TEAM',true,now()),
+       ($11,$13,$15,'AUD-DELETED-D','Deleted department','DEPARTMENT',true,now()),
+       ($12,$13,NULL,'AUD-DELETED-R','Deleted region','REGION',true,now()),
+       ($16,$18,$17,'AUD-FOREIGN-D','Foreign department','DEPARTMENT',true,NULL)`,
       [
         auditFixture.siblingTeam,
         auditFixture.siblingDepartment,
@@ -446,10 +461,17 @@ describe('JTF-P0-E07..E11 PostgreSQL scenarios', () => {
         auditFixture.siblingRegionDepartment,
         auditFixture.siblingRegionTeam,
         auditFixture.inactiveTeam,
+        auditFixture.inactiveDepartment,
+        auditFixture.inactiveRegion,
         auditFixture.deletedTeam,
+        auditFixture.deletedDepartment,
+        auditFixture.deletedRegion,
         company,
         department,
         region,
+        auditFixture.foreignDepartment,
+        auditFixture.foreignRegion,
+        otherCompany,
       ],
     );
     await db.query(
@@ -534,56 +556,86 @@ describe('JTF-P0-E07..E11 PostgreSQL scenarios', () => {
       ).toEqual([]);
     }
 
-    for (const scope of ['TEAM', 'DEPARTMENT', 'REGION'] as const) {
-      expect((await repo.list(company, {}, [scope], requester, [])).items).toEqual([]);
-      expect(await repo.find(eventIds.self, company, [scope], requester, [])).toBeNull();
-    }
-
     const typedCases = [
       {
         scope: 'TEAM',
         anchor: organization,
         positive: eventIds.team,
         outside: eventIds.department,
+        wrongType: department,
+        inactive: auditFixture.inactiveTeam,
+        deleted: auditFixture.deletedTeam,
+        foreign: otherOrganization,
       },
       {
         scope: 'DEPARTMENT',
         anchor: department,
         positive: eventIds.department,
         outside: eventIds.region,
+        wrongType: organization,
+        inactive: auditFixture.inactiveDepartment,
+        deleted: auditFixture.deletedDepartment,
+        foreign: auditFixture.foreignDepartment,
       },
       {
         scope: 'REGION',
         anchor: region,
         positive: eventIds.region,
         outside: eventIds.company,
+        wrongType: department,
+        inactive: auditFixture.inactiveRegion,
+        deleted: auditFixture.deletedRegion,
+        foreign: auditFixture.foreignRegion,
       },
     ] as const;
     for (const testCase of typedCases) {
-      const anchors = [{ scope: testCase.scope, organizationId: testCase.anchor }];
-      const explicitIds = (
-        await repo.list(company, { limit: 100 }, [testCase.scope], requester, anchors)
-      ).items.map((event) => event.id);
-      expect(explicitIds).toContain(testCase.positive);
-      expect(explicitIds).not.toContain(testCase.outside);
-      expect(
-        await repo.find(testCase.positive, company, [testCase.scope], requester, anchors),
-      ).not.toBeNull();
-      expect(
-        await repo.find(testCase.outside, company, [testCase.scope], requester, anchors),
-      ).toBeNull();
-    }
+      const anchorCases = [
+        { condition: 'valid', organizationId: testCase.anchor, allowed: true },
+        { condition: 'missing', organizationId: undefined, allowed: false },
+        { condition: 'null', organizationId: null, allowed: false },
+        { condition: 'wrong-type', organizationId: testCase.wrongType, allowed: false },
+        { condition: 'inactive', organizationId: testCase.inactive, allowed: false },
+        { condition: 'deleted', organizationId: testCase.deleted, allowed: false },
+        { condition: 'foreign-tenant', organizationId: testCase.foreign, allowed: false },
+      ] as const;
+      for (const anchorCase of anchorCases) {
+        const anchors =
+          anchorCase.organizationId === undefined
+            ? []
+            : [{ scope: testCase.scope, organizationId: anchorCase.organizationId }];
+        const listed = await repo.list(
+          company,
+          { action: `scope.${testCase.scope.toLowerCase()}` },
+          [testCase.scope],
+          requester,
+          anchors,
+        );
+        const found = await repo.find(
+          testCase.positive,
+          company,
+          [testCase.scope],
+          requester,
+          anchors,
+        );
+        if (anchorCase.allowed) {
+          expect(
+            listed.items.map((event) => event.id),
+            `${testCase.scope} ${anchorCase.condition} list`,
+          ).toContain(testCase.positive);
+          expect(found, `${testCase.scope} ${anchorCase.condition} find`).not.toBeNull();
+        } else {
+          expect(
+            listed.items.map((event) => event.id),
+            `${testCase.scope} ${anchorCase.condition} list`,
+          ).not.toContain(testCase.positive);
+          expect(found, `${testCase.scope} ${anchorCase.condition} find`).toBeNull();
+        }
+      }
 
-    const invalidTeamAnchors = [
-      { scope: 'TEAM', organizationId: region },
-      { scope: 'TEAM', organizationId: otherOrganization },
-      { scope: 'TEAM', organizationId: auditFixture.inactiveTeam },
-      { scope: 'TEAM', organizationId: auditFixture.deletedTeam },
-      { scope: 'TEAM', organizationId: null },
-    ] as const;
-    for (const anchor of invalidTeamAnchors) {
-      expect((await repo.list(company, {}, ['TEAM'], requester, [anchor])).items).toEqual([]);
-      expect(await repo.find(eventIds.self, company, ['TEAM'], requester, [anchor])).toBeNull();
+      const validAnchor = [{ scope: testCase.scope, organizationId: testCase.anchor }];
+      expect(
+        await repo.find(testCase.outside, company, [testCase.scope], requester, validAnchor),
+      ).toBeNull();
     }
     expect(
       (
