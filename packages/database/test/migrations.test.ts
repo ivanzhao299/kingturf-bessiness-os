@@ -59,4 +59,36 @@ describe('identity and authorization migration', () => {
     );
     expect(sql).toContain('reject_audit_event_mutation');
   });
+  it('adds immutable tenant-scoped platform engines append-only', async () => {
+    const sql = await readFile(
+      join(process.cwd(), 'migrations/0005_business_platform_foundations.sql'),
+      'utf8',
+    );
+    for (const table of [
+      'master_categories',
+      'master_entry_versions',
+      'number_counters',
+      'issued_numbers',
+      'workflow_instances',
+      'workflow_decisions',
+      'rule_definition_versions',
+      'rule_evaluations',
+    ])
+      expect(sql).toContain(`CREATE TABLE ${table}`);
+    expect(sql).toContain('reject_immutable_row_mutation');
+    expect(sql).toContain('UNIQUE(tenant_id,rendered_value)');
+    expect(sql).not.toMatch(/\b(eval|Function|dynamic import)\s*\(/u);
+  });
+  it('hardens workflow integrity and published delete protection append-only', async () => {
+    const sql = await readFile(
+      join(process.cwd(), 'migrations/0006_platform_engine_integrity.sql'),
+      'utf8',
+    );
+    expect(sql).toContain('protect_number_published_delete');
+    expect(sql).toContain('protect_workflow_published_delete');
+    expect(sql).toContain('protect_rule_published_delete');
+    expect(sql).toContain('workflow separation of duties violation');
+    expect(sql).toContain('workflow tenant boundary violation');
+    expect(sql).toContain('CREATE INDEX workflow_task_queue_idx');
+  });
 });

@@ -3,7 +3,12 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
   "scripts": {
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
@@ -13,6 +18,12 @@
     "db:status": "node --experimental-strip-types src/cli.ts status",
     "db:test": "NODE_ENV=test node --experimental-strip-types src/cli.ts migrate"
   },
-  "dependencies": { "pg": "8.22.0" },
-  "devDependencies": { "@types/node": "24.12.0", "typescript": "catalog:", "vitest": "catalog:" }
+  "dependencies": {
+    "pg": "8.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "24.12.0",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
 }

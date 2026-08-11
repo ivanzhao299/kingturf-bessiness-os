@@ -1,76 +1,731 @@
-import type { AuditEvent, AuditSink, AuthorizationContext, AuthorizationRepository, EmployeeRepository, OrganizationRepository, PermissionRecord, RoleRecord, ScopeAnchor } from '@kingturf/domain';
+import type {
+  AuditEvent,
+  AuditSink,
+  AuthorizationContext,
+  AuthorizationRepository,
+  EmployeeRepository,
+  OrganizationRepository,
+  PermissionRecord,
+  RoleRecord,
+  ScopeAnchor,
+} from '@kingturf/domain';
 import { DomainError, normalizeEmail } from '@kingturf/domain';
 import type { Database, SqlClient } from '@kingturf/database';
 import type { DataScope, EmployeeDto, OrganizationDto, PermissionKey } from '@kingturf/types';
 import type { CredentialStore } from './security.ts';
 
-type OrganizationRow = { id: string; owner_organization_id: string; parent_id: string | null; code: string; name: string; locale: string; currency: string; active: boolean; version: number };
-type EmployeeRow = { id: string; company_id: string; organization_id: string; employee_number: string; display_name: string; normalized_email: string; active: boolean; version: number };
-type TransactionalDatabase=SqlClient&Pick<Database,'transaction'>;
-const organization = (row: OrganizationRow): OrganizationDto => ({ id: row.id, ownerOrganizationId: row.owner_organization_id, parentId: row.parent_id, code: row.code, name: row.name, locale: row.locale, currency: row.currency, active: row.active, version: row.version });
-const employee = (row: EmployeeRow): EmployeeDto => ({ id: row.id, companyId: row.company_id, organizationId: row.organization_id, employeeNumber: row.employee_number, displayName: row.display_name, email: row.normalized_email, active: row.active, version: row.version });
+type OrganizationRow = {
+  id: string;
+  owner_organization_id: string;
+  parent_id: string | null;
+  code: string;
+  name: string;
+  locale: string;
+  currency: string;
+  active: boolean;
+  version: number;
+};
+type EmployeeRow = {
+  id: string;
+  company_id: string;
+  organization_id: string;
+  employee_number: string;
+  display_name: string;
+  normalized_email: string;
+  active: boolean;
+  version: number;
+};
+type TransactionalDatabase = SqlClient & Pick<Database, 'transaction'>;
+const organization = (row: OrganizationRow): OrganizationDto => ({
+  id: row.id,
+  ownerOrganizationId: row.owner_organization_id,
+  parentId: row.parent_id,
+  code: row.code,
+  name: row.name,
+  locale: row.locale,
+  currency: row.currency,
+  active: row.active,
+  version: row.version,
+});
+const employee = (row: EmployeeRow): EmployeeDto => ({
+  id: row.id,
+  companyId: row.company_id,
+  organizationId: row.organization_id,
+  employeeNumber: row.employee_number,
+  displayName: row.display_name,
+  email: row.normalized_email,
+  active: row.active,
+  version: row.version,
+});
 
 export class PostgresOrganizationRepository implements OrganizationRepository {
   public constructor(private readonly db: TransactionalDatabase) {}
-  public async create(input: Omit<OrganizationDto, 'id' | 'version'>, actor: Readonly<{ employeeId: string; companyId: string }>, correlationId:string): Promise<OrganizationDto> {
-    if (input.ownerOrganizationId !== actor.companyId) throw new DomainError('forbidden', 'Organization ownership must match the actor company');
-    return this.db.transaction(async tx=>{const result = await tx.query<OrganizationRow>('INSERT INTO organizations(owner_organization_id,parent_id,code,name,organization_type,locale,currency,active,created_by,updated_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$9) RETURNING *', [input.ownerOrganizationId, input.parentId, input.code, input.name, input.parentId ? 'DEPARTMENT' : 'COMPANY', input.locale, input.currency, input.active, actor.employeeId]);const created=result.rows[0];if(!created)throw new DomainError('invalid_request','Organization could not be created');await auditTx(tx,'organization.create',actor,'organization',created.id,correlationId,{parentId:created.parent_id});return organization(created);});
+  public async create(
+    input: Omit<OrganizationDto, 'id' | 'version'>,
+    actor: Readonly<{ employeeId: string; companyId: string }>,
+    correlationId: string,
+  ): Promise<OrganizationDto> {
+    if (input.ownerOrganizationId !== actor.companyId)
+      throw new DomainError('forbidden', 'Organization ownership must match the actor company');
+    return this.db.transaction(async (tx) => {
+      const result = await tx.query<OrganizationRow>(
+        'INSERT INTO organizations(owner_organization_id,parent_id,code,name,organization_type,locale,currency,active,created_by,updated_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$9) RETURNING *',
+        [
+          input.ownerOrganizationId,
+          input.parentId,
+          input.code,
+          input.name,
+          input.parentId ? 'DEPARTMENT' : 'COMPANY',
+          input.locale,
+          input.currency,
+          input.active,
+          actor.employeeId,
+        ],
+      );
+      const created = result.rows[0];
+      if (!created) throw new DomainError('invalid_request', 'Organization could not be created');
+      await auditTx(tx, 'organization.create', actor, 'organization', created.id, correlationId, {
+        parentId: created.parent_id,
+      });
+      return organization(created);
+    });
   }
-  public async findById(id: string, companyId: string): Promise<OrganizationDto | null> { const result = await this.db.query<OrganizationRow>('SELECT * FROM organizations WHERE id=$1 AND owner_organization_id=$2 AND deleted_at IS NULL', [id, companyId]); return result.rows[0] ? organization(result.rows[0]) : null; }
-  public async list(companyId: string): Promise<readonly OrganizationDto[]> { return (await this.db.query<OrganizationRow>('SELECT * FROM organizations WHERE owner_organization_id=$1 AND deleted_at IS NULL ORDER BY code', [companyId])).rows.map(organization); }
-  public async update(id: string, companyId: string, patch: Partial<Pick<OrganizationDto, 'name' | 'parentId' | 'active' | 'locale' | 'currency'>>, version: number, actor: Readonly<{ employeeId: string;companyId:string }>,correlationId:string): Promise<OrganizationDto> {
+  public async findById(id: string, companyId: string): Promise<OrganizationDto | null> {
+    const result = await this.db.query<OrganizationRow>(
+      'SELECT * FROM organizations WHERE id=$1 AND owner_organization_id=$2 AND deleted_at IS NULL',
+      [id, companyId],
+    );
+    return result.rows[0] ? organization(result.rows[0]) : null;
+  }
+  public async list(companyId: string): Promise<readonly OrganizationDto[]> {
+    return (
+      await this.db.query<OrganizationRow>(
+        'SELECT * FROM organizations WHERE owner_organization_id=$1 AND deleted_at IS NULL ORDER BY code',
+        [companyId],
+      )
+    ).rows.map(organization);
+  }
+  public async update(
+    id: string,
+    companyId: string,
+    patch: Partial<Pick<OrganizationDto, 'name' | 'parentId' | 'active' | 'locale' | 'currency'>>,
+    version: number,
+    actor: Readonly<{ employeeId: string; companyId: string }>,
+    correlationId: string,
+  ): Promise<OrganizationDto> {
     if (companyId !== actor.companyId) throw new DomainError('forbidden', 'Company mismatch');
-    return this.db.transaction(async tx=>{const result = await tx.query<OrganizationRow>('UPDATE organizations SET name=COALESCE($3,name),parent_id=CASE WHEN $10 THEN $4 ELSE parent_id END,active=COALESCE($5,active),locale=COALESCE($6,locale),currency=COALESCE($7,currency),version=version+1,updated_at=now(),updated_by=$8 WHERE id=$1 AND owner_organization_id=$2 AND version=$9 AND deleted_at IS NULL RETURNING *', [id, companyId, patch.name ?? null, patch.parentId ?? null, patch.active ?? null, patch.locale ?? null, patch.currency ?? null, actor.employeeId, version,Object.hasOwn(patch,'parentId')]);const updated=result.rows[0];if(!updated)throw new DomainError('conflict','Organization version is stale or record is unavailable');await auditTx(tx,'organization.update',actor,'organization',id,correlationId,{fields:Object.keys(patch).sort()});return organization(updated);});
+    return this.db.transaction(async (tx) => {
+      const result = await tx.query<OrganizationRow>(
+        'UPDATE organizations SET name=COALESCE($3,name),parent_id=CASE WHEN $10 THEN $4 ELSE parent_id END,active=COALESCE($5,active),locale=COALESCE($6,locale),currency=COALESCE($7,currency),version=version+1,updated_at=now(),updated_by=$8 WHERE id=$1 AND owner_organization_id=$2 AND version=$9 AND deleted_at IS NULL RETURNING *',
+        [
+          id,
+          companyId,
+          patch.name ?? null,
+          patch.parentId ?? null,
+          patch.active ?? null,
+          patch.locale ?? null,
+          patch.currency ?? null,
+          actor.employeeId,
+          version,
+          Object.hasOwn(patch, 'parentId'),
+        ],
+      );
+      const updated = result.rows[0];
+      if (!updated)
+        throw new DomainError('conflict', 'Organization version is stale or record is unavailable');
+      await auditTx(tx, 'organization.update', actor, 'organization', id, correlationId, {
+        fields: Object.keys(patch).sort(),
+      });
+      return organization(updated);
+    });
   }
 }
 export class PostgresEmployeeRepository implements EmployeeRepository {
   public constructor(private readonly db: TransactionalDatabase) {}
-  public async create(input: Omit<EmployeeDto, 'id' | 'version'>, actor: Readonly<{ employeeId: string; companyId: string }>,correlationId:string): Promise<EmployeeDto> { if (input.companyId !== actor.companyId) throw new DomainError('forbidden', 'Company mismatch');return this.db.transaction(async tx=>{const result = await tx.query<EmployeeRow>('INSERT INTO employees(company_id,organization_id,employee_number,display_name,normalized_email,active,created_by,updated_by) SELECT $1,$2,$3,$4,$5,$6,$7,$7 WHERE EXISTS(SELECT 1 FROM organizations WHERE id=$2 AND owner_organization_id=$1 AND active AND deleted_at IS NULL) RETURNING *', [input.companyId,input.organizationId,input.employeeNumber,input.displayName,normalizeEmail(input.email),input.active,actor.employeeId]);const created=result.rows[0];if(!created)throw new DomainError('invalid_request','Organization is not an active member of the company');await auditTx(tx,'employee.create',actor,'employee',created.id,correlationId,{organizationId:created.organization_id});return employee(created);}); }
-  #scoped(scopes: readonly DataScope[], actorId: string, companyId:string, anchors:readonly ScopeAnchor[]=[], startParameter=3): { predicate: string; values: readonly unknown[] } {
-    const values:unknown[]=[];const parameter=(value:string):string=>{values.push(value);return `$${String(startParameter+values.length-1)}`;};const clauses:string[]=[];
-    if(scopes.includes('GROUP')||scopes.includes('COMPANY'))clauses.push('TRUE');
-    if(scopes.includes('SELF'))clauses.push(`e.id=${parameter(actorId)}`);
-    for(const typed of ['TEAM','DEPARTMENT','REGION'] as const){if(scopes.includes(typed)){const actorParameter=parameter(actorId);const companyParameter=parameter(companyId);const depth=typed==='TEAM'?' AND target_rel.depth<=1':'';clauses.push(`EXISTS (SELECT 1 FROM employees scope_actor JOIN organizations actor_org ON actor_org.id=scope_actor.organization_id AND actor_org.owner_organization_id=scope_actor.company_id AND actor_org.active AND actor_org.deleted_at IS NULL JOIN LATERAL (SELECT actor_rel.ancestor_id FROM organization_scope_relationships actor_rel JOIN organizations typed_anchor ON typed_anchor.id=actor_rel.ancestor_id AND typed_anchor.organization_type='${typed}' AND typed_anchor.active AND typed_anchor.deleted_at IS NULL AND typed_anchor.owner_organization_id=scope_actor.company_id WHERE actor_rel.descendant_id=scope_actor.organization_id ORDER BY actor_rel.depth LIMIT 1) nearest ON true JOIN organization_scope_relationships target_rel ON target_rel.ancestor_id=nearest.ancestor_id AND target_rel.descendant_id=e.organization_id${depth} WHERE scope_actor.id=${actorParameter} AND scope_actor.company_id=${companyParameter} AND scope_actor.active AND scope_actor.deleted_at IS NULL)`);}}
-    for(const anchor of anchors){
-      if(anchor.scope==='SELF'&&anchor.organizationId===null){clauses.push(`e.id = $${String(startParameter+values.length)}`);values.push(actorId);}
-      else if((anchor.scope==='COMPANY'||anchor.scope==='GROUP')&&anchor.organizationId===null){clauses.push(`e.company_id = $${String(startParameter+values.length)}`);values.push(companyId);}
-      else if((anchor.scope==='TEAM'||anchor.scope==='DEPARTMENT'||anchor.scope==='REGION')&&anchor.organizationId!==null){
-        const parameter=`$${String(startParameter+values.length)}`;const depth=anchor.scope==='TEAM'?' AND explicit_osr.depth <= 1':'';
-        clauses.push(`EXISTS (SELECT 1 FROM organizations explicit_anchor JOIN organization_scope_relationships explicit_osr ON explicit_osr.ancestor_id=explicit_anchor.id WHERE explicit_anchor.id=${parameter} AND explicit_anchor.owner_organization_id=e.company_id AND explicit_anchor.organization_type='${anchor.scope}' AND explicit_anchor.active AND explicit_anchor.deleted_at IS NULL AND explicit_osr.descendant_id=e.organization_id${depth})`);values.push(anchor.organizationId);
+  public async create(
+    input: Omit<EmployeeDto, 'id' | 'version'>,
+    actor: Readonly<{ employeeId: string; companyId: string }>,
+    correlationId: string,
+  ): Promise<EmployeeDto> {
+    if (input.companyId !== actor.companyId) throw new DomainError('forbidden', 'Company mismatch');
+    return this.db.transaction(async (tx) => {
+      const result = await tx.query<EmployeeRow>(
+        'INSERT INTO employees(company_id,organization_id,employee_number,display_name,normalized_email,active,created_by,updated_by) SELECT $1,$2,$3,$4,$5,$6,$7,$7 WHERE EXISTS(SELECT 1 FROM organizations WHERE id=$2 AND owner_organization_id=$1 AND active AND deleted_at IS NULL) RETURNING *',
+        [
+          input.companyId,
+          input.organizationId,
+          input.employeeNumber,
+          input.displayName,
+          normalizeEmail(input.email),
+          input.active,
+          actor.employeeId,
+        ],
+      );
+      const created = result.rows[0];
+      if (!created)
+        throw new DomainError(
+          'invalid_request',
+          'Organization is not an active member of the company',
+        );
+      await auditTx(tx, 'employee.create', actor, 'employee', created.id, correlationId, {
+        organizationId: created.organization_id,
+      });
+      return employee(created);
+    });
+  }
+  #scoped(
+    scopes: readonly DataScope[],
+    actorId: string,
+    companyId: string,
+    anchors: readonly ScopeAnchor[] = [],
+    startParameter = 3,
+  ): { predicate: string; values: readonly unknown[] } {
+    const values: unknown[] = [];
+    const parameter = (value: string): string => {
+      values.push(value);
+      return `$${String(startParameter + values.length - 1)}`;
+    };
+    const clauses: string[] = [];
+    if (scopes.includes('GROUP') || scopes.includes('COMPANY')) clauses.push('TRUE');
+    if (scopes.includes('SELF')) clauses.push(`e.id=${parameter(actorId)}`);
+    for (const typed of ['TEAM', 'DEPARTMENT', 'REGION'] as const) {
+      if (scopes.includes(typed)) {
+        const actorParameter = parameter(actorId);
+        const companyParameter = parameter(companyId);
+        const depth = typed === 'TEAM' ? ' AND target_rel.depth<=1' : '';
+        clauses.push(
+          `EXISTS (SELECT 1 FROM employees scope_actor JOIN organizations actor_org ON actor_org.id=scope_actor.organization_id AND actor_org.owner_organization_id=scope_actor.company_id AND actor_org.active AND actor_org.deleted_at IS NULL JOIN LATERAL (SELECT actor_rel.ancestor_id FROM organization_scope_relationships actor_rel JOIN organizations typed_anchor ON typed_anchor.id=actor_rel.ancestor_id AND typed_anchor.organization_type='${typed}' AND typed_anchor.active AND typed_anchor.deleted_at IS NULL AND typed_anchor.owner_organization_id=scope_actor.company_id WHERE actor_rel.descendant_id=scope_actor.organization_id ORDER BY actor_rel.depth LIMIT 1) nearest ON true JOIN organization_scope_relationships target_rel ON target_rel.ancestor_id=nearest.ancestor_id AND target_rel.descendant_id=e.organization_id${depth} WHERE scope_actor.id=${actorParameter} AND scope_actor.company_id=${companyParameter} AND scope_actor.active AND scope_actor.deleted_at IS NULL)`,
+        );
       }
     }
-    const actorParameter=parameter(actorId);const companyParameter=parameter(companyId);const actorExists=`EXISTS (SELECT 1 FROM employees authorized_actor JOIN organizations authorized_company ON authorized_company.id=authorized_actor.company_id AND authorized_company.organization_type='COMPANY' AND authorized_company.active AND authorized_company.deleted_at IS NULL JOIN organizations authorized_org ON authorized_org.id=authorized_actor.organization_id AND authorized_org.owner_organization_id=authorized_actor.company_id AND authorized_org.active AND authorized_org.deleted_at IS NULL WHERE authorized_actor.id=${actorParameter} AND authorized_actor.company_id=${companyParameter} AND authorized_actor.active AND authorized_actor.deleted_at IS NULL)`;
-    return{predicate:clauses.length===0?'FALSE':`(${actorExists} AND (${clauses.join(' OR ')}))`,values};
+    for (const anchor of anchors) {
+      if (anchor.scope === 'SELF' && anchor.organizationId === null) {
+        clauses.push(`e.id = $${String(startParameter + values.length)}`);
+        values.push(actorId);
+      } else if (
+        (anchor.scope === 'COMPANY' || anchor.scope === 'GROUP') &&
+        anchor.organizationId === null
+      ) {
+        clauses.push(`e.company_id = $${String(startParameter + values.length)}`);
+        values.push(companyId);
+      } else if (
+        (anchor.scope === 'TEAM' || anchor.scope === 'DEPARTMENT' || anchor.scope === 'REGION') &&
+        anchor.organizationId !== null
+      ) {
+        const parameter = `$${String(startParameter + values.length)}`;
+        const depth = anchor.scope === 'TEAM' ? ' AND explicit_osr.depth <= 1' : '';
+        clauses.push(
+          `EXISTS (SELECT 1 FROM organizations explicit_anchor JOIN organization_scope_relationships explicit_osr ON explicit_osr.ancestor_id=explicit_anchor.id WHERE explicit_anchor.id=${parameter} AND explicit_anchor.owner_organization_id=e.company_id AND explicit_anchor.organization_type='${anchor.scope}' AND explicit_anchor.active AND explicit_anchor.deleted_at IS NULL AND explicit_osr.descendant_id=e.organization_id${depth})`,
+        );
+        values.push(anchor.organizationId);
+      }
+    }
+    const actorParameter = parameter(actorId);
+    const companyParameter = parameter(companyId);
+    const actorExists = `EXISTS (SELECT 1 FROM employees authorized_actor JOIN organizations authorized_company ON authorized_company.id=authorized_actor.company_id AND authorized_company.organization_type='COMPANY' AND authorized_company.active AND authorized_company.deleted_at IS NULL JOIN organizations authorized_org ON authorized_org.id=authorized_actor.organization_id AND authorized_org.owner_organization_id=authorized_actor.company_id AND authorized_org.active AND authorized_org.deleted_at IS NULL WHERE authorized_actor.id=${actorParameter} AND authorized_actor.company_id=${companyParameter} AND authorized_actor.active AND authorized_actor.deleted_at IS NULL)`;
+    return {
+      predicate: clauses.length === 0 ? 'FALSE' : `(${actorExists} AND (${clauses.join(' OR ')}))`,
+      values,
+    };
   }
-  public async findById(id: string, companyId: string, scopes: readonly DataScope[], actorId: string,anchors:readonly ScopeAnchor[]=[]): Promise<EmployeeDto | null> { const scoped = this.#scoped(scopes,actorId,companyId,anchors);const result=await this.db.query<EmployeeRow>(`SELECT e.* FROM employees e WHERE e.id=$1 AND e.company_id=$2 AND e.deleted_at IS NULL AND ${scoped.predicate}`,[id,companyId,...scoped.values]);return result.rows[0]?employee(result.rows[0]):null; }
-  public async list(companyId: string, scopes: readonly DataScope[], actorId: string,anchors:readonly ScopeAnchor[]=[]): Promise<readonly EmployeeDto[]> { const scoped=this.#scoped(scopes,actorId,companyId,anchors);const shifted=scoped.predicate.replaceAll(/\$(\d+)/gu,(_,n:string)=>`$${String(Number(n)-1)}`);return(await this.db.query<EmployeeRow>(`SELECT e.* FROM employees e WHERE e.company_id=$1 AND e.deleted_at IS NULL AND ${shifted} ORDER BY e.employee_number`,[companyId,...scoped.values])).rows.map(employee); }
-  public async update(id:string,companyId:string,patch:Partial<Pick<EmployeeDto,'displayName'|'email'|'organizationId'|'active'>>,version:number,actor:Readonly<{employeeId:string;companyId:string}>,scopes:readonly DataScope[],anchors:readonly ScopeAnchor[]=[],correlationId:string):Promise<EmployeeDto>{const scoped=this.#scoped(scopes,actor.employeeId,companyId,anchors,9);return this.db.transaction(async tx=>{const result=await tx.query<EmployeeRow>(`UPDATE employees e SET display_name=COALESCE($3,e.display_name),normalized_email=COALESCE($4,e.normalized_email),organization_id=COALESCE($5,e.organization_id),active=COALESCE($6,e.active),version=e.version+1,updated_at=now(),updated_by=$7 WHERE e.id=$1 AND e.company_id=$2 AND e.version=$8 AND e.deleted_at IS NULL AND ${scoped.predicate} AND ($5::uuid IS NULL OR EXISTS(SELECT 1 FROM organizations o WHERE o.id=$5 AND o.owner_organization_id=$2 AND o.active AND o.deleted_at IS NULL)) RETURNING e.*`,[id,companyId,patch.displayName??null,patch.email?normalizeEmail(patch.email):null,patch.organizationId??null,patch.active??null,actor.employeeId,version,...scoped.values]);const updated=result.rows[0];if(!updated)throw new DomainError('conflict','Employee version is stale, outside the granted data scope, or record is unavailable');await auditTx(tx,'employee.update',actor,'employee',id,correlationId,{fields:Object.keys(patch).sort()});return employee(updated);});}
+  public async findById(
+    id: string,
+    companyId: string,
+    scopes: readonly DataScope[],
+    actorId: string,
+    anchors: readonly ScopeAnchor[] = [],
+  ): Promise<EmployeeDto | null> {
+    const scoped = this.#scoped(scopes, actorId, companyId, anchors);
+    const result = await this.db.query<EmployeeRow>(
+      `SELECT e.* FROM employees e WHERE e.id=$1 AND e.company_id=$2 AND e.deleted_at IS NULL AND ${scoped.predicate}`,
+      [id, companyId, ...scoped.values],
+    );
+    return result.rows[0] ? employee(result.rows[0]) : null;
+  }
+  public async list(
+    companyId: string,
+    scopes: readonly DataScope[],
+    actorId: string,
+    anchors: readonly ScopeAnchor[] = [],
+  ): Promise<readonly EmployeeDto[]> {
+    const scoped = this.#scoped(scopes, actorId, companyId, anchors);
+    const shifted = scoped.predicate.replaceAll(
+      /\$(\d+)/gu,
+      (_, n: string) => `$${String(Number(n) - 1)}`,
+    );
+    return (
+      await this.db.query<EmployeeRow>(
+        `SELECT e.* FROM employees e WHERE e.company_id=$1 AND e.deleted_at IS NULL AND ${shifted} ORDER BY e.employee_number`,
+        [companyId, ...scoped.values],
+      )
+    ).rows.map(employee);
+  }
+  public async update(
+    id: string,
+    companyId: string,
+    patch: Partial<Pick<EmployeeDto, 'displayName' | 'email' | 'organizationId' | 'active'>>,
+    version: number,
+    actor: Readonly<{ employeeId: string; companyId: string }>,
+    scopes: readonly DataScope[],
+    anchors: readonly ScopeAnchor[] = [],
+    correlationId: string,
+  ): Promise<EmployeeDto> {
+    const scoped = this.#scoped(scopes, actor.employeeId, companyId, anchors, 9);
+    return this.db.transaction(async (tx) => {
+      const result = await tx.query<EmployeeRow>(
+        `UPDATE employees e SET display_name=COALESCE($3,e.display_name),normalized_email=COALESCE($4,e.normalized_email),organization_id=COALESCE($5,e.organization_id),active=COALESCE($6,e.active),version=e.version+1,updated_at=now(),updated_by=$7 WHERE e.id=$1 AND e.company_id=$2 AND e.version=$8 AND e.deleted_at IS NULL AND ${scoped.predicate} AND ($5::uuid IS NULL OR EXISTS(SELECT 1 FROM organizations o WHERE o.id=$5 AND o.owner_organization_id=$2 AND o.active AND o.deleted_at IS NULL)) RETURNING e.*`,
+        [
+          id,
+          companyId,
+          patch.displayName ?? null,
+          patch.email ? normalizeEmail(patch.email) : null,
+          patch.organizationId ?? null,
+          patch.active ?? null,
+          actor.employeeId,
+          version,
+          ...scoped.values,
+        ],
+      );
+      const updated = result.rows[0];
+      if (!updated)
+        throw new DomainError(
+          'conflict',
+          'Employee version is stale, outside the granted data scope, or record is unavailable',
+        );
+      await auditTx(tx, 'employee.update', actor, 'employee', id, correlationId, {
+        fields: Object.keys(patch).sort(),
+      });
+      return employee(updated);
+    });
+  }
 }
 
 export class PostgresSecurityStore implements CredentialStore, AuditSink {
   public constructor(private readonly database: Database) {}
-  public async findForLogin(login: string) { const result=await this.database.query<{identity_id:string;employee_id:string;company_id:string;password_hash:string;identity_active:boolean;employee_active:boolean;member_active:boolean}>('SELECT i.id identity_id,e.id employee_id,e.company_id,pc.password_hash,i.active identity_active,e.active employee_active,COALESCE(bool_or(om.active),false) member_active FROM identities i JOIN password_credentials pc ON pc.identity_id=i.id JOIN employees e ON e.id=i.employee_id LEFT JOIN organization_memberships om ON om.employee_id=e.id WHERE i.login_name=$1 AND i.deleted_at IS NULL AND e.deleted_at IS NULL GROUP BY i.id,e.id,pc.password_hash',[login]); const r=result.rows[0]; return r?{identityId:r.identity_id,employeeId:r.employee_id,companyId:r.company_id,passwordHash:r.password_hash,identityActive:r.identity_active,employeeActive:r.employee_active,memberActive:r.member_active}:null; }
-  public async createSession(input: Readonly<{identityId:string;organizationId:string;tokenHash:string;expiresAt:Date}>): Promise<void> { await this.database.query('INSERT INTO sessions(identity_id,organization_id,token_hash,expires_at) VALUES($1,$2,$3,$4)',[input.identityId,input.organizationId,input.tokenHash,input.expiresAt]); }
-  public async revokeSession(hash:string):Promise<boolean>{return (await this.database.query('UPDATE sessions SET revoked_at=now() WHERE token_hash=$1 AND revoked_at IS NULL',[hash])).rowCount===1;}
-  public async resolveSession(hash:string,now:Date):Promise<AuthorizationContext|null>{return this.database.transaction(async tx=>{const base=await tx.query<{employee_id:string;company_id:string}>('SELECT e.id employee_id,e.company_id FROM sessions s JOIN identities i ON i.id=s.identity_id AND i.active AND i.deleted_at IS NULL JOIN employees e ON e.id=i.employee_id AND e.active AND e.deleted_at IS NULL JOIN organizations company ON company.id=e.company_id AND company.organization_type=\'COMPANY\' AND company.active AND company.deleted_at IS NULL JOIN organizations employee_org ON employee_org.id=e.organization_id AND employee_org.owner_organization_id=e.company_id AND employee_org.active AND employee_org.deleted_at IS NULL JOIN organization_memberships om ON om.employee_id=e.id AND om.organization_id=e.company_id AND om.active WHERE s.token_hash=$1 AND s.revoked_at IS NULL AND s.expires_at>$2 AND s.organization_id=e.company_id LIMIT 1',[hash,now]);const actor=base.rows[0];if(!actor)return null;const grants=await tx.query<{capability:PermissionKey;field_allowlist:string[]|null;data_scopes:DataScope[]}>('SELECT p.capability,g.field_allowlist,g.data_scopes FROM employee_role_assignments era JOIN roles r ON r.id=era.role_id AND r.deleted_at IS NULL JOIN role_permission_grants g ON g.role_id=r.id JOIN permissions p ON p.id=g.permission_id WHERE era.employee_id=$1 AND r.organization_id=$2',[actor.employee_id,actor.company_id]);const explicit=await tx.query<{capability:PermissionKey;scope:DataScope;scope_organization_id:string|null}>('SELECT p.capability,d.scope,d.scope_organization_id FROM data_scope_grants d JOIN employees e ON e.id=d.employee_id AND e.company_id=$2 AND e.active AND e.deleted_at IS NULL JOIN permissions p ON p.id=d.permission_id LEFT JOIN organizations o ON o.id=d.scope_organization_id WHERE d.employee_id=$1 AND ((d.scope IN (\'SELF\',\'COMPANY\',\'GROUP\') AND d.scope_organization_id IS NULL) OR (d.scope IN (\'TEAM\',\'DEPARTMENT\',\'REGION\') AND o.owner_organization_id=$2 AND o.organization_type=d.scope::text AND o.active AND o.deleted_at IS NULL)) ORDER BY p.capability,d.scope,d.scope_organization_id',[actor.employee_id,actor.company_id]);const permissions=new Map<PermissionKey,{fields:readonly string[]|null;scopes:readonly DataScope[]}>();for(const g of grants.rows){const previous=permissions.get(g.capability);const scopes=[...new Set([...(previous?.scopes??[]),...g.data_scopes])].sort();const fields=previous?.fields===null||g.field_allowlist===null?null:[...new Set([...(previous?.fields??[]),...g.field_allowlist])].sort();permissions.set(g.capability,{fields,scopes});}const scopeAnchors=new Map<PermissionKey,{scope:DataScope;organizationId:string|null}[]>();for(const g of explicit.rows){if(!permissions.has(g.capability))continue;scopeAnchors.set(g.capability,[...(scopeAnchors.get(g.capability)??[]),{scope:g.scope,organizationId:g.scope_organization_id}]);}return{actor:{employeeId:actor.employee_id,companyId:actor.company_id},permissions,scopeAnchors};});}
-  public async replacePasswordForEmployee(employeeId:string,passwordHash:string):Promise<void>{const result=await this.database.query('UPDATE password_credentials pc SET password_hash=$2,changed_at=now(),updated_by=$1 FROM identities i WHERE pc.identity_id=i.id AND i.employee_id=$1',[employeeId,passwordHash]);if(result.rowCount!==1)throw new DomainError('not_found','Credential not found');}
-  public async record(event:AuditEvent):Promise<void>{await this.database.query('INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata) VALUES($1,$2,$3,$4,$5,$6,$7,$8)',[event.action,event.outcome,event.actorId,event.organizationId,event.targetType,event.targetId,event.correlationId,event.metadata??{}]);}
+  public async findForLogin(login: string) {
+    const result = await this.database.query<{
+      identity_id: string;
+      employee_id: string;
+      company_id: string;
+      password_hash: string;
+      identity_active: boolean;
+      employee_active: boolean;
+      member_active: boolean;
+    }>(
+      'SELECT i.id identity_id,e.id employee_id,e.company_id,pc.password_hash,i.active identity_active,e.active employee_active,COALESCE(bool_or(om.active),false) member_active FROM identities i JOIN password_credentials pc ON pc.identity_id=i.id JOIN employees e ON e.id=i.employee_id LEFT JOIN organization_memberships om ON om.employee_id=e.id WHERE i.login_name=$1 AND i.deleted_at IS NULL AND e.deleted_at IS NULL GROUP BY i.id,e.id,pc.password_hash',
+      [login],
+    );
+    const r = result.rows[0];
+    return r
+      ? {
+          identityId: r.identity_id,
+          employeeId: r.employee_id,
+          companyId: r.company_id,
+          passwordHash: r.password_hash,
+          identityActive: r.identity_active,
+          employeeActive: r.employee_active,
+          memberActive: r.member_active,
+        }
+      : null;
+  }
+  public async createSession(
+    input: Readonly<{
+      identityId: string;
+      organizationId: string;
+      tokenHash: string;
+      expiresAt: Date;
+    }>,
+  ): Promise<void> {
+    await this.database.query(
+      'INSERT INTO sessions(identity_id,organization_id,token_hash,expires_at) VALUES($1,$2,$3,$4)',
+      [input.identityId, input.organizationId, input.tokenHash, input.expiresAt],
+    );
+  }
+  public async revokeSession(hash: string): Promise<boolean> {
+    return (
+      (
+        await this.database.query(
+          'UPDATE sessions SET revoked_at=now() WHERE token_hash=$1 AND revoked_at IS NULL',
+          [hash],
+        )
+      ).rowCount === 1
+    );
+  }
+  public async resolveSession(hash: string, now: Date): Promise<AuthorizationContext | null> {
+    return this.database.transaction(async (tx) => {
+      const base = await tx.query<{ employee_id: string; company_id: string }>(
+        "SELECT e.id employee_id,e.company_id FROM sessions s JOIN identities i ON i.id=s.identity_id AND i.active AND i.deleted_at IS NULL JOIN employees e ON e.id=i.employee_id AND e.active AND e.deleted_at IS NULL JOIN organizations company ON company.id=e.company_id AND company.organization_type='COMPANY' AND company.active AND company.deleted_at IS NULL JOIN organizations employee_org ON employee_org.id=e.organization_id AND employee_org.owner_organization_id=e.company_id AND employee_org.active AND employee_org.deleted_at IS NULL JOIN organization_memberships om ON om.employee_id=e.id AND om.organization_id=e.company_id AND om.active WHERE s.token_hash=$1 AND s.revoked_at IS NULL AND s.expires_at>$2 AND s.organization_id=e.company_id LIMIT 1",
+        [hash, now],
+      );
+      const actor = base.rows[0];
+      if (!actor) return null;
+      const grants = await tx.query<{
+        capability: PermissionKey;
+        field_allowlist: string[] | null;
+        data_scopes: DataScope[];
+      }>(
+        'SELECT p.capability,g.field_allowlist,g.data_scopes FROM employee_role_assignments era JOIN roles r ON r.id=era.role_id AND r.deleted_at IS NULL JOIN role_permission_grants g ON g.role_id=r.id JOIN permissions p ON p.id=g.permission_id WHERE era.employee_id=$1 AND r.organization_id=$2',
+        [actor.employee_id, actor.company_id],
+      );
+      const explicit = await tx.query<{
+        capability: PermissionKey;
+        scope: DataScope;
+        scope_organization_id: string | null;
+      }>(
+        "SELECT p.capability,d.scope,d.scope_organization_id FROM data_scope_grants d JOIN employees e ON e.id=d.employee_id AND e.company_id=$2 AND e.active AND e.deleted_at IS NULL JOIN permissions p ON p.id=d.permission_id LEFT JOIN organizations o ON o.id=d.scope_organization_id WHERE d.employee_id=$1 AND ((d.scope IN ('SELF','COMPANY','GROUP') AND d.scope_organization_id IS NULL) OR (d.scope IN ('TEAM','DEPARTMENT','REGION') AND o.owner_organization_id=$2 AND o.organization_type=d.scope::text AND o.active AND o.deleted_at IS NULL)) ORDER BY p.capability,d.scope,d.scope_organization_id",
+        [actor.employee_id, actor.company_id],
+      );
+      const permissions = new Map<
+        PermissionKey,
+        { fields: readonly string[] | null; scopes: readonly DataScope[] }
+      >();
+      for (const g of grants.rows) {
+        const previous = permissions.get(g.capability);
+        const scopes = [...new Set([...(previous?.scopes ?? []), ...g.data_scopes])].sort();
+        const fields =
+          previous?.fields === null || g.field_allowlist === null
+            ? null
+            : [...new Set([...(previous?.fields ?? []), ...g.field_allowlist])].sort();
+        permissions.set(g.capability, { fields, scopes });
+      }
+      const scopeAnchors = new Map<
+        PermissionKey,
+        { scope: DataScope; organizationId: string | null }[]
+      >();
+      for (const g of explicit.rows) {
+        if (!permissions.has(g.capability)) continue;
+        scopeAnchors.set(g.capability, [
+          ...(scopeAnchors.get(g.capability) ?? []),
+          { scope: g.scope, organizationId: g.scope_organization_id },
+        ]);
+      }
+      return {
+        actor: { employeeId: actor.employee_id, companyId: actor.company_id },
+        permissions,
+        scopeAnchors,
+      };
+    });
+  }
+  public async replacePasswordForEmployee(employeeId: string, passwordHash: string): Promise<void> {
+    const result = await this.database.query(
+      'UPDATE password_credentials pc SET password_hash=$2,changed_at=now(),updated_by=$1 FROM identities i WHERE pc.identity_id=i.id AND i.employee_id=$1',
+      [employeeId, passwordHash],
+    );
+    if (result.rowCount !== 1) throw new DomainError('not_found', 'Credential not found');
+  }
+  public async record(event: AuditEvent): Promise<void> {
+    await this.database.query(
+      'INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata) VALUES($1,$2,$3,$4,$5,$6,$7,$8)',
+      [
+        event.action,
+        event.outcome,
+        event.actorId,
+        event.organizationId,
+        event.targetType,
+        event.targetId,
+        event.correlationId,
+        event.metadata ?? {},
+      ],
+    );
+  }
 }
 
 export class PostgresAuthorizationRepository implements AuthorizationRepository {
-  public constructor(private readonly db:Database){}
-  public async listRoles(companyId:string):Promise<readonly RoleRecord[]>{return(await this.db.query<{id:string;organization_id:string;code:string;name:string;version:number}>('SELECT id,organization_id,code,name,version FROM roles WHERE organization_id=$1 AND deleted_at IS NULL ORDER BY code',[companyId])).rows.map(r=>({id:r.id,organizationId:r.organization_id,code:r.code,name:r.name,version:r.version}));}
-  public async createRole(input:{code:string;name:string},actor:{employeeId:string;companyId:string},correlationId:string):Promise<RoleRecord>{return this.db.transaction(async tx=>{const r=(await tx.query<{id:string;organization_id:string;code:string;name:string;version:number}>('INSERT INTO roles(organization_id,code,name,created_by,updated_by) VALUES($1,$2,$3,$4,$4) RETURNING id,organization_id,code,name,version',[actor.companyId,input.code,input.name,actor.employeeId])).rows[0];if(!r)throw new DomainError('conflict','Role already exists');await auditTx(tx,'authorization.role.create',actor,'role',r.id,correlationId,{code:r.code});return{id:r.id,organizationId:r.organization_id,code:r.code,name:r.name,version:r.version};});}
-  public async listPermissions():Promise<readonly PermissionRecord[]>{return(await this.db.query<{id:string;capability:PermissionKey;description:string}>('SELECT id,capability,description FROM permissions ORDER BY capability')).rows;}
-  public async createPermission(input:{capability:PermissionKey;description:string},actor:{employeeId:string;companyId:string},correlationId:string):Promise<PermissionRecord>{return this.db.transaction(async tx=>{const r=(await tx.query<{id:string;capability:PermissionKey;description:string}>('INSERT INTO permissions(capability,description,created_by) VALUES($1,$2,$3) RETURNING id,capability,description',[input.capability,input.description,actor.employeeId])).rows[0];if(!r)throw new DomainError('conflict','Permission already exists');await auditTx(tx,'authorization.permission.create',actor,'permission',r.id,correlationId,{capability:r.capability});return r;});}
-  public async listGrants(companyId:string){return(await this.db.query<{roleId:string;permissionId:string;fields:string[]|null;scopes:DataScope[]}>('SELECT g.role_id AS "roleId",g.permission_id AS "permissionId",g.field_allowlist AS fields,g.data_scopes AS scopes FROM role_permission_grants g JOIN roles r ON r.id=g.role_id WHERE r.organization_id=$1 AND r.deleted_at IS NULL ORDER BY g.role_id,g.permission_id',[companyId])).rows;}
-  public async grant(input:{roleId:string;permissionId:string;scopes:readonly DataScope[];fields:readonly string[]|null},actor:{employeeId:string;companyId:string},correlationId:string):Promise<void>{await this.db.transaction(async tx=>{const r=await tx.query('INSERT INTO role_permission_grants(role_id,permission_id,field_allowlist,data_scopes,created_by,updated_by) SELECT r.id,p.id,$3,$4::data_scope[],$5,$5 FROM roles r CROSS JOIN permissions p WHERE r.id=$1 AND r.organization_id=$6 AND r.deleted_at IS NULL AND p.id=$2 ON CONFLICT(role_id,permission_id) DO UPDATE SET field_allowlist=EXCLUDED.field_allowlist,data_scopes=EXCLUDED.data_scopes,updated_by=EXCLUDED.updated_by WHERE role_permission_grants.field_allowlist IS DISTINCT FROM EXCLUDED.field_allowlist OR role_permission_grants.data_scopes IS DISTINCT FROM EXCLUDED.data_scopes',[input.roleId,input.permissionId,input.fields,input.scopes,actor.employeeId,actor.companyId]);if(r.rowCount!==1)throw new DomainError('not_found','Role or permission not found, or grant is unchanged');await auditTx(tx,'authorization.grant',actor,'role',input.roleId,correlationId,{permissionId:input.permissionId,scopes:input.scopes,fields:input.fields});});}
-  public async revoke(roleId:string,permissionId:string,actor:{employeeId:string;companyId:string},correlationId:string):Promise<void>{await this.db.transaction(async tx=>{const r=await tx.query('DELETE FROM role_permission_grants g USING roles r WHERE g.role_id=r.id AND g.role_id=$1 AND g.permission_id=$2 AND r.organization_id=$3',[roleId,permissionId,actor.companyId]);if(r.rowCount!==1)throw new DomainError('not_found','Grant not found');await auditTx(tx,'authorization.revoke',actor,'role',roleId,correlationId,{permissionId});});}
-  public async listAssignments(companyId:string){return(await this.db.query<{employeeId:string;roleId:string}>('SELECT era.employee_id AS "employeeId",era.role_id AS "roleId" FROM employee_role_assignments era JOIN employees e ON e.id=era.employee_id JOIN roles r ON r.id=era.role_id WHERE e.company_id=$1 AND r.organization_id=$1 ORDER BY era.employee_id,era.role_id',[companyId])).rows;}
-  public async assign(employeeId:string,roleId:string,actor:{employeeId:string;companyId:string},correlationId:string):Promise<void>{await this.db.transaction(async tx=>{const r=await tx.query('INSERT INTO employee_role_assignments(employee_id,role_id,created_by) SELECT e.id,r.id,$3 FROM employees e JOIN roles r ON r.id=$2 AND r.organization_id=e.company_id WHERE e.id=$1 AND e.company_id=$4 AND e.deleted_at IS NULL AND r.deleted_at IS NULL ON CONFLICT DO NOTHING',[employeeId,roleId,actor.employeeId,actor.companyId]);if(r.rowCount!==1)throw new DomainError('conflict','Assignment exists or targets are unavailable');await auditTx(tx,'authorization.assign',actor,'employee',employeeId,correlationId,{roleId});});}
-  public async unassign(employeeId:string,roleId:string,actor:{employeeId:string;companyId:string},correlationId:string):Promise<void>{await this.db.transaction(async tx=>{const r=await tx.query('DELETE FROM employee_role_assignments era USING employees e,roles ro WHERE era.employee_id=e.id AND era.role_id=ro.id AND e.id=$1 AND ro.id=$2 AND e.company_id=$3 AND ro.organization_id=$3',[employeeId,roleId,actor.companyId]);if(r.rowCount!==1)throw new DomainError('not_found','Assignment not found');await auditTx(tx,'authorization.unassign',actor,'employee',employeeId,correlationId,{roleId});});}
-  public async listScopeGrants(companyId:string){return(await this.db.query<{id:string;employeeId:string;permissionId:string;scope:DataScope;organizationId:string|null}>('SELECT d.id,d.employee_id AS "employeeId",d.permission_id AS "permissionId",d.scope,d.scope_organization_id AS "organizationId" FROM data_scope_grants d JOIN employees e ON e.id=d.employee_id AND e.company_id=$1 AND e.deleted_at IS NULL LEFT JOIN organizations o ON o.id=d.scope_organization_id WHERE d.scope_organization_id IS NULL OR (o.owner_organization_id=$1 AND o.deleted_at IS NULL) ORDER BY d.employee_id,d.permission_id,d.scope,d.id',[companyId])).rows;}
-  public async grantScope(input:{employeeId:string;permissionId:string;scope:DataScope;organizationId:string|null},actor:{employeeId:string;companyId:string},correlationId:string){return this.db.transaction(async tx=>{const r=(await tx.query<{id:string;employeeId:string;permissionId:string;scope:DataScope;organizationId:string|null}>('INSERT INTO data_scope_grants(employee_id,permission_id,scope,scope_organization_id,created_by) SELECT e.id,p.id,$3::data_scope,$4,$5 FROM employees e CROSS JOIN permissions p WHERE e.id=$1 AND e.company_id=$6 AND e.active AND e.deleted_at IS NULL AND p.id=$2 RETURNING id,employee_id AS "employeeId",permission_id AS "permissionId",scope,scope_organization_id AS "organizationId"',[input.employeeId,input.permissionId,input.scope,input.organizationId,actor.employeeId,actor.companyId])).rows[0];if(!r)throw new DomainError('not_found','Employee or permission not found');await auditTx(tx,'authorization.scope-grant.create',actor,'employee',input.employeeId,correlationId,{grantId:r.id,permissionId:input.permissionId,scope:input.scope,organizationId:input.organizationId});return r;});}
-  public async revokeScope(id:string,actor:{employeeId:string;companyId:string},correlationId:string):Promise<void>{await this.db.transaction(async tx=>{const r=await tx.query<{employee_id:string;permission_id:string;scope:DataScope;scope_organization_id:string|null}>('DELETE FROM data_scope_grants d USING employees e WHERE d.id=$1 AND d.employee_id=e.id AND e.company_id=$2 RETURNING d.employee_id,d.permission_id,d.scope,d.scope_organization_id',[id,actor.companyId]);const removed=r.rows[0];if(!removed)throw new DomainError('not_found','Scope grant not found');await auditTx(tx,'authorization.scope-grant.revoke',actor,'employee',removed.employee_id,correlationId,{grantId:id,permissionId:removed.permission_id,scope:removed.scope,organizationId:removed.scope_organization_id});});}
+  public constructor(private readonly db: Database) {}
+  public async listRoles(companyId: string): Promise<readonly RoleRecord[]> {
+    return (
+      await this.db.query<{
+        id: string;
+        organization_id: string;
+        code: string;
+        name: string;
+        version: number;
+      }>(
+        'SELECT id,organization_id,code,name,version FROM roles WHERE organization_id=$1 AND deleted_at IS NULL ORDER BY code',
+        [companyId],
+      )
+    ).rows.map((r) => ({
+      id: r.id,
+      organizationId: r.organization_id,
+      code: r.code,
+      name: r.name,
+      version: r.version,
+    }));
+  }
+  public async createRole(
+    input: { code: string; name: string },
+    actor: { employeeId: string; companyId: string },
+    correlationId: string,
+  ): Promise<RoleRecord> {
+    return this.db.transaction(async (tx) => {
+      const r = (
+        await tx.query<{
+          id: string;
+          organization_id: string;
+          code: string;
+          name: string;
+          version: number;
+        }>(
+          'INSERT INTO roles(organization_id,code,name,created_by,updated_by) VALUES($1,$2,$3,$4,$4) RETURNING id,organization_id,code,name,version',
+          [actor.companyId, input.code, input.name, actor.employeeId],
+        )
+      ).rows[0];
+      if (!r) throw new DomainError('conflict', 'Role already exists');
+      await auditTx(tx, 'authorization.role.create', actor, 'role', r.id, correlationId, {
+        code: r.code,
+      });
+      return {
+        id: r.id,
+        organizationId: r.organization_id,
+        code: r.code,
+        name: r.name,
+        version: r.version,
+      };
+    });
+  }
+  public async listPermissions(): Promise<readonly PermissionRecord[]> {
+    return (
+      await this.db.query<{ id: string; capability: PermissionKey; description: string }>(
+        'SELECT id,capability,description FROM permissions ORDER BY capability',
+      )
+    ).rows;
+  }
+  public async createPermission(
+    input: { capability: PermissionKey; description: string },
+    actor: { employeeId: string; companyId: string },
+    correlationId: string,
+  ): Promise<PermissionRecord> {
+    return this.db.transaction(async (tx) => {
+      const r = (
+        await tx.query<{ id: string; capability: PermissionKey; description: string }>(
+          'INSERT INTO permissions(capability,description,created_by) VALUES($1,$2,$3) RETURNING id,capability,description',
+          [input.capability, input.description, actor.employeeId],
+        )
+      ).rows[0];
+      if (!r) throw new DomainError('conflict', 'Permission already exists');
+      await auditTx(
+        tx,
+        'authorization.permission.create',
+        actor,
+        'permission',
+        r.id,
+        correlationId,
+        { capability: r.capability },
+      );
+      return r;
+    });
+  }
+  public async listGrants(companyId: string) {
+    return (
+      await this.db.query<{
+        roleId: string;
+        permissionId: string;
+        fields: string[] | null;
+        scopes: DataScope[];
+      }>(
+        'SELECT g.role_id AS "roleId",g.permission_id AS "permissionId",g.field_allowlist AS fields,g.data_scopes AS scopes FROM role_permission_grants g JOIN roles r ON r.id=g.role_id WHERE r.organization_id=$1 AND r.deleted_at IS NULL ORDER BY g.role_id,g.permission_id',
+        [companyId],
+      )
+    ).rows;
+  }
+  public async grant(
+    input: {
+      roleId: string;
+      permissionId: string;
+      scopes: readonly DataScope[];
+      fields: readonly string[] | null;
+    },
+    actor: { employeeId: string; companyId: string },
+    correlationId: string,
+  ): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      const r = await tx.query(
+        'INSERT INTO role_permission_grants(role_id,permission_id,field_allowlist,data_scopes,created_by,updated_by) SELECT r.id,p.id,$3,$4::data_scope[],$5,$5 FROM roles r CROSS JOIN permissions p WHERE r.id=$1 AND r.organization_id=$6 AND r.deleted_at IS NULL AND p.id=$2 ON CONFLICT(role_id,permission_id) DO UPDATE SET field_allowlist=EXCLUDED.field_allowlist,data_scopes=EXCLUDED.data_scopes,updated_by=EXCLUDED.updated_by WHERE role_permission_grants.field_allowlist IS DISTINCT FROM EXCLUDED.field_allowlist OR role_permission_grants.data_scopes IS DISTINCT FROM EXCLUDED.data_scopes',
+        [
+          input.roleId,
+          input.permissionId,
+          input.fields,
+          input.scopes,
+          actor.employeeId,
+          actor.companyId,
+        ],
+      );
+      if (r.rowCount !== 1)
+        throw new DomainError('not_found', 'Role or permission not found, or grant is unchanged');
+      await auditTx(tx, 'authorization.grant', actor, 'role', input.roleId, correlationId, {
+        permissionId: input.permissionId,
+        scopes: input.scopes,
+        fields: input.fields,
+      });
+    });
+  }
+  public async revoke(
+    roleId: string,
+    permissionId: string,
+    actor: { employeeId: string; companyId: string },
+    correlationId: string,
+  ): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      const r = await tx.query(
+        'DELETE FROM role_permission_grants g USING roles r WHERE g.role_id=r.id AND g.role_id=$1 AND g.permission_id=$2 AND r.organization_id=$3',
+        [roleId, permissionId, actor.companyId],
+      );
+      if (r.rowCount !== 1) throw new DomainError('not_found', 'Grant not found');
+      await auditTx(tx, 'authorization.revoke', actor, 'role', roleId, correlationId, {
+        permissionId,
+      });
+    });
+  }
+  public async listAssignments(companyId: string) {
+    return (
+      await this.db.query<{ employeeId: string; roleId: string }>(
+        'SELECT era.employee_id AS "employeeId",era.role_id AS "roleId" FROM employee_role_assignments era JOIN employees e ON e.id=era.employee_id JOIN roles r ON r.id=era.role_id WHERE e.company_id=$1 AND r.organization_id=$1 ORDER BY era.employee_id,era.role_id',
+        [companyId],
+      )
+    ).rows;
+  }
+  public async assign(
+    employeeId: string,
+    roleId: string,
+    actor: { employeeId: string; companyId: string },
+    correlationId: string,
+  ): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      const r = await tx.query(
+        'INSERT INTO employee_role_assignments(employee_id,role_id,created_by) SELECT e.id,r.id,$3 FROM employees e JOIN roles r ON r.id=$2 AND r.organization_id=e.company_id WHERE e.id=$1 AND e.company_id=$4 AND e.deleted_at IS NULL AND r.deleted_at IS NULL ON CONFLICT DO NOTHING',
+        [employeeId, roleId, actor.employeeId, actor.companyId],
+      );
+      if (r.rowCount !== 1)
+        throw new DomainError('conflict', 'Assignment exists or targets are unavailable');
+      await auditTx(tx, 'authorization.assign', actor, 'employee', employeeId, correlationId, {
+        roleId,
+      });
+    });
+  }
+  public async unassign(
+    employeeId: string,
+    roleId: string,
+    actor: { employeeId: string; companyId: string },
+    correlationId: string,
+  ): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      const r = await tx.query(
+        'DELETE FROM employee_role_assignments era USING employees e,roles ro WHERE era.employee_id=e.id AND era.role_id=ro.id AND e.id=$1 AND ro.id=$2 AND e.company_id=$3 AND ro.organization_id=$3',
+        [employeeId, roleId, actor.companyId],
+      );
+      if (r.rowCount !== 1) throw new DomainError('not_found', 'Assignment not found');
+      await auditTx(tx, 'authorization.unassign', actor, 'employee', employeeId, correlationId, {
+        roleId,
+      });
+    });
+  }
+  public async listScopeGrants(companyId: string) {
+    return (
+      await this.db.query<{
+        id: string;
+        employeeId: string;
+        permissionId: string;
+        scope: DataScope;
+        organizationId: string | null;
+      }>(
+        'SELECT d.id,d.employee_id AS "employeeId",d.permission_id AS "permissionId",d.scope,d.scope_organization_id AS "organizationId" FROM data_scope_grants d JOIN employees e ON e.id=d.employee_id AND e.company_id=$1 AND e.deleted_at IS NULL LEFT JOIN organizations o ON o.id=d.scope_organization_id WHERE d.scope_organization_id IS NULL OR (o.owner_organization_id=$1 AND o.deleted_at IS NULL) ORDER BY d.employee_id,d.permission_id,d.scope,d.id',
+        [companyId],
+      )
+    ).rows;
+  }
+  public async grantScope(
+    input: {
+      employeeId: string;
+      permissionId: string;
+      scope: DataScope;
+      organizationId: string | null;
+    },
+    actor: { employeeId: string; companyId: string },
+    correlationId: string,
+  ) {
+    return this.db.transaction(async (tx) => {
+      const r = (
+        await tx.query<{
+          id: string;
+          employeeId: string;
+          permissionId: string;
+          scope: DataScope;
+          organizationId: string | null;
+        }>(
+          'INSERT INTO data_scope_grants(employee_id,permission_id,scope,scope_organization_id,created_by) SELECT e.id,p.id,$3::data_scope,$4,$5 FROM employees e CROSS JOIN permissions p WHERE e.id=$1 AND e.company_id=$6 AND e.active AND e.deleted_at IS NULL AND p.id=$2 RETURNING id,employee_id AS "employeeId",permission_id AS "permissionId",scope,scope_organization_id AS "organizationId"',
+          [
+            input.employeeId,
+            input.permissionId,
+            input.scope,
+            input.organizationId,
+            actor.employeeId,
+            actor.companyId,
+          ],
+        )
+      ).rows[0];
+      if (!r) throw new DomainError('not_found', 'Employee or permission not found');
+      await auditTx(
+        tx,
+        'authorization.scope-grant.create',
+        actor,
+        'employee',
+        input.employeeId,
+        correlationId,
+        {
+          grantId: r.id,
+          permissionId: input.permissionId,
+          scope: input.scope,
+          organizationId: input.organizationId,
+        },
+      );
+      return r;
+    });
+  }
+  public async revokeScope(
+    id: string,
+    actor: { employeeId: string; companyId: string },
+    correlationId: string,
+  ): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      const r = await tx.query<{
+        employee_id: string;
+        permission_id: string;
+        scope: DataScope;
+        scope_organization_id: string | null;
+      }>(
+        'DELETE FROM data_scope_grants d USING employees e WHERE d.id=$1 AND d.employee_id=e.id AND e.company_id=$2 RETURNING d.employee_id,d.permission_id,d.scope,d.scope_organization_id',
+        [id, actor.companyId],
+      );
+      const removed = r.rows[0];
+      if (!removed) throw new DomainError('not_found', 'Scope grant not found');
+      await auditTx(
+        tx,
+        'authorization.scope-grant.revoke',
+        actor,
+        'employee',
+        removed.employee_id,
+        correlationId,
+        {
+          grantId: id,
+          permissionId: removed.permission_id,
+          scope: removed.scope,
+          organizationId: removed.scope_organization_id,
+        },
+      );
+    });
+  }
 }
-async function auditTx(tx:SqlClient,action:string,actor:{employeeId:string;companyId:string},targetType:string,targetId:string,correlationId:string,metadata:Record<string,unknown>):Promise<void>{await tx.query('INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata) VALUES($1,\'SUCCESS\',$2,$3,$4,$5,$6,$7)',[action,actor.employeeId,actor.companyId,targetType,targetId,correlationId,metadata]);}
+async function auditTx(
+  tx: SqlClient,
+  action: string,
+  actor: { employeeId: string; companyId: string },
+  targetType: string,
+  targetId: string,
+  correlationId: string,
+  metadata: Record<string, unknown>,
+): Promise<void> {
+  await tx.query(
+    "INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata) VALUES($1,'SUCCESS',$2,$3,$4,$5,$6,$7)",
+    [action, actor.employeeId, actor.companyId, targetType, targetId, correlationId, metadata],
+  );
+}

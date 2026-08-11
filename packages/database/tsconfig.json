@@ -1,5 +1,10 @@
 {
   "extends": "../config/tsconfig/node.json",
-  "compilerOptions": { "composite": true, "noEmit": true, "allowImportingTsExtensions": true, "types": ["node", "vitest/globals"] },
+  "compilerOptions": {
+    "composite": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "types": ["node", "vitest/globals"]
+  },
   "include": ["src/**/*.ts", "test/**/*.ts"]
 }
