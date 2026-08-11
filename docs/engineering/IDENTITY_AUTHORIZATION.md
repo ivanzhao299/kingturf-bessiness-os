@@ -25,3 +25,12 @@ PATCH requests require a positive integer `version`; invalid or missing versions
 Troubleshooting: confirm PostgreSQL health, compare `pnpm db:status`, verify all required environment variables, then use the error correlation ID to locate an audit event. Raw tokens and passwords must never be logged.
 
 Production deployment, push/merge automation, sales features, manufacturing features, a full audit-trail product UI/API, and later P0 engines are out of scope.
+## Authorization administration and audit guarantees
+
+Authenticated administration is available at `/api/v1/roles`, `/api/v1/permissions`, `/api/v1/grants`, and `/api/v1/assignments`. `GET` requires `authorization:read`; `POST` and `DELETE` require `authorization:manage`. The default is deny. Repository lookups qualify tenant-owned roles and employees, and the database rejects cross-tenant assignments and scope anchors.
+
+Authorization create, grant, revoke, assign, and unassign operations insert an audit event in the same transaction as the business mutation. Events contain actor, tenant organization, action, target, correlation ID, server timestamp, outcome, and safe metadata. Database triggers reject updates and deletes of audit events.
+
+## Migration integrity recovery
+
+Migration files are SHA-256 checksummed before execution. The filename and checksum are committed atomically. `db:status` reports `pending`, `applied`, and `drifted`; migration fails closed if an applied file is missing or differs from its stored checksum. Pre-checksum installations receive a one-time backfill only for historical files present in the running release. Never edit an accepted migration. Restore the exact released file from source control, verify status, and add a new append-only migration for corrections.
