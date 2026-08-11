@@ -1,0 +1,17 @@
+:root {
+  color: #173a2a;
+  background: #f3f7f4;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  display: grid;
+  min-height: 100vh;
+  margin: 0;
+  place-items: center;
+}
+
+main {
+  padding: 3rem;
+  text-align: center;
+}
