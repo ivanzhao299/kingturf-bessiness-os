@@ -23,6 +23,19 @@ const company = randomUUID(),
 const requester = randomUUID(),
   approver = randomUUID(),
   outsider = randomUUID();
+const auditFixture = {
+  siblingTeam: randomUUID(),
+  siblingDepartment: randomUUID(),
+  siblingDepartmentTeam: randomUUID(),
+  siblingRegion: randomUUID(),
+  siblingRegionDepartment: randomUUID(),
+  siblingRegionTeam: randomUUID(),
+  inactiveTeam: randomUUID(),
+  deletedTeam: randomUUID(),
+  siblingTeamActor: randomUUID(),
+  siblingDepartmentActor: randomUUID(),
+  siblingRegionActor: randomUUID(),
+} as const;
 const actor = { companyId: company, employeeId: requester };
 const approverActor = { companyId: company, employeeId: approver };
 const spec = {
@@ -413,31 +426,163 @@ describe('JTF-P0-E07..E11 PostgreSQL scenarios', () => {
     ).rejects.toThrow(/immutable/u);
   });
 
-  it('applies audit DataScope and tenant isolation', async () => {
+  it('applies the audit DataScope security matrix to list and find', async () => {
     const repo = new PostgresAuditRepository(db);
-    const all = await repo.list(company, {}, ['COMPANY'], requester, []);
-    expect(all.items.length).toBeGreaterThan(0);
-    expect((await repo.list(company, {}, ['GROUP'], requester, [])).items).toEqual(all.items);
-    const self = await repo.list(company, {}, ['SELF'], requester, []);
-    expect(self.items.every((e) => e.actorId === requester)).toBe(true);
-    for (const scope of ['TEAM', 'DEPARTMENT', 'REGION'] as const) {
-      const implicit = await repo.list(company, {}, [scope], requester, []);
-      expect(implicit.items.some((event) => event.actorId === approver)).toBe(true);
-      const anchor = scope === 'TEAM' ? organization : scope === 'DEPARTMENT' ? department : region;
-      const explicit = await repo.list(company, {}, [scope], requester, [
-        { scope, organizationId: anchor },
-      ]);
-      expect(explicit.items.some((event) => event.actorId === approver)).toBe(true);
-      const event = explicit.items[0];
-      expect(event).toBeTruthy();
-      if (event)
-        expect(
-          await repo.find(event.id, company, [scope], requester, [
-            { scope, organizationId: anchor },
-          ]),
-        ).toEqual(event);
+    await db.query(
+      `INSERT INTO organizations(id,owner_organization_id,parent_id,code,name,organization_type,active,deleted_at) VALUES
+       ($1,$9,$10,'AUD-TEAM-2','Audit team 2','TEAM',true,NULL),
+       ($2,$9,$11,'AUD-DEPT-2','Audit department 2','DEPARTMENT',true,NULL),
+       ($3,$9,$2,'AUD-DEPT-TEAM','Audit department team','TEAM',true,NULL),
+       ($4,$9,NULL,'AUD-REGION-2','Audit region 2','REGION',true,NULL),
+       ($5,$9,$4,'AUD-REGION-DEPT','Audit region department','DEPARTMENT',true,NULL),
+       ($6,$9,$5,'AUD-REGION-TEAM','Audit region team','TEAM',true,NULL),
+       ($7,$9,$10,'AUD-INACTIVE','Inactive team','TEAM',false,NULL),
+       ($8,$9,$10,'AUD-DELETED','Deleted team','TEAM',true,now())`,
+      [
+        auditFixture.siblingTeam,
+        auditFixture.siblingDepartment,
+        auditFixture.siblingDepartmentTeam,
+        auditFixture.siblingRegion,
+        auditFixture.siblingRegionDepartment,
+        auditFixture.siblingRegionTeam,
+        auditFixture.inactiveTeam,
+        auditFixture.deletedTeam,
+        company,
+        department,
+        region,
+      ],
+    );
+    await db.query(
+      `INSERT INTO employees(id,company_id,organization_id,employee_number,display_name,normalized_email) VALUES
+       ($1,$7,$4,'AUD-T','Audit team actor','audit-team@example.test'),
+       ($2,$7,$5,'AUD-D','Audit department actor','audit-department@example.test'),
+       ($3,$7,$6,'AUD-R','Audit region actor','audit-region@example.test')`,
+      [
+        auditFixture.siblingTeamActor,
+        auditFixture.siblingDepartmentActor,
+        auditFixture.siblingRegionActor,
+        auditFixture.siblingTeam,
+        auditFixture.siblingDepartmentTeam,
+        auditFixture.siblingRegionTeam,
+        company,
+      ],
+    );
+    const eventIds = {
+      self: randomUUID(),
+      team: randomUUID(),
+      department: randomUUID(),
+      region: randomUUID(),
+      company: randomUUID(),
+      foreign: randomUUID(),
+    } as const;
+    await db.query(
+      `INSERT INTO audit_events(id,action,outcome,actor_id,organization_id,correlation_id,metadata) VALUES
+       ($1,'scope.self','SUCCESS',$7,$12,$13,'{}'),
+       ($2,'scope.team','SUCCESS',$8,$12,$13,'{}'),
+       ($3,'scope.department','SUCCESS',$9,$12,$13,'{}'),
+       ($4,'scope.region','SUCCESS',$10,$12,$13,'{}'),
+       ($5,'scope.company','SUCCESS',$11,$12,$13,'{}'),
+       ($6,'scope.foreign','SUCCESS',$7,$14,$13,'{}')`,
+      [
+        eventIds.self,
+        eventIds.team,
+        eventIds.department,
+        eventIds.region,
+        eventIds.company,
+        eventIds.foreign,
+        requester,
+        approver,
+        auditFixture.siblingTeamActor,
+        auditFixture.siblingDepartmentActor,
+        auditFixture.siblingRegionActor,
+        company,
+        randomUUID(),
+        otherCompany,
+      ],
+    );
+
+    const cases = [
+      { scope: 'SELF', action: 'scope.self', candidate: eventIds.self },
+      { scope: 'TEAM', action: 'scope.team', candidate: eventIds.team },
+      { scope: 'DEPARTMENT', action: 'scope.department', candidate: eventIds.department },
+      { scope: 'REGION', action: 'scope.region', candidate: eventIds.region },
+      { scope: 'COMPANY', action: 'scope.company', candidate: eventIds.company },
+      { scope: 'GROUP', action: 'scope.company', candidate: eventIds.company },
+    ] as const;
+    for (const testCase of cases) {
+      const listed = await repo.list(
+        company,
+        { action: testCase.action },
+        [testCase.scope],
+        requester,
+        [],
+      );
+      expect(listed.items.map((event) => event.id)).toContain(testCase.candidate);
+      expect(
+        await repo.find(testCase.candidate, company, [testCase.scope], requester, []),
+      ).not.toBeNull();
+      expect(
+        await repo.find(eventIds.foreign, otherCompany, [testCase.scope], requester, []),
+      ).toBeNull();
+      expect(
+        (
+          await repo.list(
+            otherCompany,
+            { action: 'scope.foreign' },
+            [testCase.scope],
+            requester,
+            [],
+          )
+        ).items,
+      ).toEqual([]);
     }
-    expect((await repo.list(company, {}, ['TEAM'], requester, [])).items.length).toBeGreaterThan(0);
+
+    const typedCases = [
+      {
+        scope: 'TEAM',
+        anchor: organization,
+        positive: eventIds.team,
+        outside: eventIds.department,
+      },
+      {
+        scope: 'DEPARTMENT',
+        anchor: department,
+        positive: eventIds.department,
+        outside: eventIds.region,
+      },
+      {
+        scope: 'REGION',
+        anchor: region,
+        positive: eventIds.region,
+        outside: eventIds.company,
+      },
+    ] as const;
+    for (const testCase of typedCases) {
+      const anchors = [{ scope: testCase.scope, organizationId: testCase.anchor }];
+      const explicitIds = (
+        await repo.list(company, { limit: 100 }, [testCase.scope], requester, anchors)
+      ).items.map((event) => event.id);
+      expect(explicitIds).toContain(testCase.positive);
+      expect(explicitIds).not.toContain(testCase.outside);
+      expect(
+        await repo.find(testCase.positive, company, [testCase.scope], requester, anchors),
+      ).not.toBeNull();
+      expect(
+        await repo.find(testCase.outside, company, [testCase.scope], requester, anchors),
+      ).toBeNull();
+    }
+
+    const invalidTeamAnchors = [
+      { scope: 'TEAM', organizationId: region },
+      { scope: 'TEAM', organizationId: otherOrganization },
+      { scope: 'TEAM', organizationId: auditFixture.inactiveTeam },
+      { scope: 'TEAM', organizationId: auditFixture.deletedTeam },
+      { scope: 'TEAM', organizationId: null },
+    ] as const;
+    for (const anchor of invalidTeamAnchors) {
+      expect((await repo.list(company, {}, ['TEAM'], requester, [anchor])).items).toEqual([]);
+      expect(await repo.find(eventIds.self, company, ['TEAM'], requester, [anchor])).toBeNull();
+    }
     expect(
       (
         await repo.list(company, {}, [], requester, [
@@ -447,18 +592,15 @@ describe('JTF-P0-E07..E11 PostgreSQL scenarios', () => {
     ).toEqual([]);
     expect(
       (
-        await repo.list(company, {}, ['TEAM'], requester, [
-          { scope: 'TEAM', organizationId: region },
-        ])
-      ).items.length,
-    ).toBeGreaterThan(0);
-    expect(
-      (
         await repo.list(company, {}, ['TEAM'], outsider, [
           { scope: 'TEAM', organizationId: organization },
         ])
       ).items,
     ).toEqual([]);
-    expect((await repo.list(otherCompany, {}, ['GROUP'], outsider, [])).items).toEqual([]);
+    expect(
+      await repo.find(eventIds.self, company, ['TEAM'], outsider, [
+        { scope: 'TEAM', organizationId: organization },
+      ]),
+    ).toBeNull();
   });
 });

@@ -83,35 +83,39 @@ export class PostgresAuditRepository {
     offset: number,
   ) {
     const granted = new Set(scopes);
-    if (granted.has('GROUP') || granted.has('COMPANY'))
-      return { sql: 'TRUE', values: [] as unknown[] };
     const clauses: string[] = [],
       values: unknown[] = [];
+    if (granted.has('GROUP') || granted.has('COMPANY')) {
+      values.push(actorId);
+      clauses.push(
+        `EXISTS(SELECT 1 FROM employees scope_actor WHERE scope_actor.id=$${String(offset + values.length)} AND scope_actor.company_id=a.organization_id AND scope_actor.active AND scope_actor.deleted_at IS NULL)`,
+      );
+    }
     if (granted.has('SELF')) {
       values.push(actorId);
-      clauses.push(`a.actor_id=$${String(offset + values.length)}`);
+      clauses.push(
+        `EXISTS(SELECT 1 FROM employees scope_actor WHERE scope_actor.id=$${String(offset + values.length)} AND scope_actor.company_id=a.organization_id AND scope_actor.active AND scope_actor.deleted_at IS NULL AND a.actor_id=scope_actor.id)`,
+      );
     }
     for (const typed of ['TEAM', 'DEPARTMENT', 'REGION'] as const) {
       if (!granted.has(typed)) continue;
-      values.push(actorId);
-      const actorParameter = `$${String(offset + values.length)}`;
-      clauses.push(
-        `EXISTS(SELECT 1 FROM employees scope_actor JOIN organizations actor_org ON actor_org.id=scope_actor.organization_id AND actor_org.owner_organization_id=scope_actor.company_id AND actor_org.active AND actor_org.deleted_at IS NULL JOIN LATERAL(SELECT actor_rel.ancestor_id FROM organization_scope_relationships actor_rel JOIN organizations typed_anchor ON typed_anchor.id=actor_rel.ancestor_id AND typed_anchor.organization_type='${typed}' AND typed_anchor.owner_organization_id=scope_actor.company_id AND typed_anchor.active AND typed_anchor.deleted_at IS NULL WHERE actor_rel.descendant_id=scope_actor.organization_id ORDER BY actor_rel.depth LIMIT 1) nearest ON true JOIN employees ae ON ae.id=a.actor_id AND ae.company_id=scope_actor.company_id AND ae.active AND ae.deleted_at IS NULL JOIN organization_scope_relationships target_rel ON target_rel.ancestor_id=nearest.ancestor_id AND target_rel.descendant_id=ae.organization_id${typed === 'TEAM' ? ' AND target_rel.depth<=1' : ''} WHERE scope_actor.id=${actorParameter} AND scope_actor.active AND scope_actor.deleted_at IS NULL)`,
-      );
-    }
-    for (const anchor of anchors) {
-      if (
-        !anchor.organizationId ||
-        !granted.has(anchor.scope) ||
-        !['TEAM', 'DEPARTMENT', 'REGION'].includes(anchor.scope)
-      )
+      const explicitAnchors = anchors.filter((anchor) => anchor.scope === typed);
+      if (explicitAnchors.length === 0) {
+        values.push(actorId);
+        const actorParameter = `$${String(offset + values.length)}`;
+        clauses.push(
+          `EXISTS(SELECT 1 FROM employees scope_actor JOIN organizations actor_org ON actor_org.id=scope_actor.organization_id AND actor_org.owner_organization_id=scope_actor.company_id AND actor_org.active AND actor_org.deleted_at IS NULL JOIN LATERAL(SELECT actor_rel.ancestor_id FROM organization_scope_relationships actor_rel JOIN organizations typed_anchor ON typed_anchor.id=actor_rel.ancestor_id AND typed_anchor.organization_type='${typed}' AND typed_anchor.owner_organization_id=scope_actor.company_id AND typed_anchor.active AND typed_anchor.deleted_at IS NULL WHERE actor_rel.descendant_id=scope_actor.organization_id ORDER BY actor_rel.depth LIMIT 1) nearest ON true JOIN employees ae ON ae.id=a.actor_id AND ae.company_id=scope_actor.company_id AND ae.active AND ae.deleted_at IS NULL JOIN organization_scope_relationships target_rel ON target_rel.ancestor_id=nearest.ancestor_id AND target_rel.descendant_id=ae.organization_id${typed === 'TEAM' ? ' AND target_rel.depth<=1' : ''} WHERE scope_actor.id=${actorParameter} AND scope_actor.company_id=a.organization_id AND scope_actor.active AND scope_actor.deleted_at IS NULL)`,
+        );
         continue;
-      values.push(actorId);
-      const actorParameter = `$${String(offset + values.length)}`;
-      values.push(anchor.organizationId);
-      clauses.push(
-        `EXISTS(SELECT 1 FROM organizations explicit_anchor JOIN employees scope_actor ON scope_actor.id=${actorParameter} AND scope_actor.company_id=explicit_anchor.owner_organization_id AND scope_actor.active AND scope_actor.deleted_at IS NULL JOIN organization_scope_relationships osr ON osr.ancestor_id=explicit_anchor.id JOIN employees ae ON ae.id=a.actor_id AND ae.company_id=explicit_anchor.owner_organization_id AND ae.active AND ae.deleted_at IS NULL WHERE explicit_anchor.id=$${String(offset + values.length)} AND explicit_anchor.organization_type='${anchor.scope}' AND explicit_anchor.active AND explicit_anchor.deleted_at IS NULL AND osr.descendant_id=ae.organization_id${anchor.scope === 'TEAM' ? ' AND osr.depth<=1' : ''})`,
-      );
+      }
+      for (const anchor of explicitAnchors) {
+        values.push(actorId);
+        const actorParameter = `$${String(offset + values.length)}`;
+        values.push(anchor.organizationId);
+        clauses.push(
+          `EXISTS(SELECT 1 FROM organizations explicit_anchor JOIN employees scope_actor ON scope_actor.id=${actorParameter} AND scope_actor.company_id=explicit_anchor.owner_organization_id AND scope_actor.active AND scope_actor.deleted_at IS NULL JOIN organization_scope_relationships osr ON osr.ancestor_id=explicit_anchor.id JOIN employees ae ON ae.id=a.actor_id AND ae.company_id=explicit_anchor.owner_organization_id AND ae.active AND ae.deleted_at IS NULL WHERE explicit_anchor.id=$${String(offset + values.length)} AND explicit_anchor.owner_organization_id=a.organization_id AND explicit_anchor.organization_type='${typed}' AND explicit_anchor.active AND explicit_anchor.deleted_at IS NULL AND osr.descendant_id=ae.organization_id${typed === 'TEAM' ? ' AND osr.depth<=1' : ''})`,
+        );
+      }
     }
     return { sql: clauses.length ? `(${clauses.join(' OR ')})` : 'FALSE', values };
   }

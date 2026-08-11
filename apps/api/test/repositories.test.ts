@@ -1,10 +1,48 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Database, SqlClient } from '@kingturf/database';
+import { PostgresAuditRepository } from '../src/platform-repositories.js';
 import {
   PostgresEmployeeRepository,
   PostgresOrganizationRepository,
   PostgresSecurityStore,
 } from '../src/repositories.js';
+
+describe('PostgreSQL audit scope predicates', () => {
+  it('uses explicit typed anchors instead of the actor-relative scope and keeps list parameters ordered', async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [], rowCount: 0 });
+    const repository = new PostgresAuditRepository({ query } as unknown as Database);
+
+    await repository.list(
+      'company',
+      { action: 'entry.create', limit: 7 },
+      ['SELF', 'TEAM'],
+      'actor',
+      [{ scope: 'TEAM', organizationId: 'anchor' }],
+    );
+
+    const [sql, values] = query.mock.calls[0] as [string, unknown[]];
+    expect(sql).not.toContain("organization_type='TEAM' AND typed_anchor");
+    expect(sql).toContain("explicit_anchor.organization_type='TEAM'");
+    expect(sql).toContain('explicit_anchor.owner_organization_id=a.organization_id');
+    expect(values).toEqual(['company', 'actor', 'actor', 'anchor', 'entry.create', 8]);
+  });
+
+  it('lets a null explicit typed anchor suppress implicit resolution and preserves find ordering', async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [], rowCount: 0 });
+    const repository = new PostgresAuditRepository({ query } as unknown as Database);
+
+    await expect(
+      repository.find('event', 'company', ['DEPARTMENT'], 'actor', [
+        { scope: 'DEPARTMENT', organizationId: null },
+      ]),
+    ).resolves.toBeNull();
+
+    const [sql, values] = query.mock.calls[0] as [string, unknown[]];
+    expect(sql).not.toContain("organization_type='DEPARTMENT' AND typed_anchor");
+    expect(sql).toContain("explicit_anchor.organization_type='DEPARTMENT'");
+    expect(values).toEqual(['event', 'company', 'actor', null]);
+  });
+});
 
 describe('PostgreSQL authorization repositories', () => {
   it('rejects cross-company organization updates before opening a transaction', async () => {
