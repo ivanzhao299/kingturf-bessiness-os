@@ -64,15 +64,21 @@ export type AuditSink = { record(event: AuditEvent): Promise<void> };
 
 export type RoleRecord = Readonly<{ id:Identifier; organizationId:Identifier; code:string; name:string; version:number }>;
 export type PermissionRecord = Readonly<{ id:Identifier; capability:PermissionKey; description:string }>;
+export type RolePermissionGrantRecord = Readonly<{ roleId:Identifier; permissionId:Identifier; fields:readonly string[]|null; scopes:readonly DataScope[] }>;
+export type RoleAssignmentRecord = Readonly<{ employeeId:Identifier; roleId:Identifier }>;
+export type DirectScopeGrantRecord = Readonly<{ id:Identifier; employeeId:Identifier; permissionId:Identifier; scope:DataScope; organizationId:Identifier|null }>;
 export type AuthorizationRepository = {
   listRoles(companyId:Identifier):Promise<readonly RoleRecord[]>;
   createRole(input:Readonly<{code:string;name:string}>,actor:Actor,correlationId:string):Promise<RoleRecord>;
   listPermissions():Promise<readonly PermissionRecord[]>;
   createPermission(input:Readonly<{capability:PermissionKey;description:string}>,actor:Actor,correlationId:string):Promise<PermissionRecord>;
-  listGrants(companyId:Identifier):Promise<readonly Readonly<Record<string,unknown>>[]>;
+  listGrants(companyId:Identifier):Promise<readonly RolePermissionGrantRecord[]>;
   grant(input:Readonly<{roleId:Identifier;permissionId:Identifier;scopes:readonly DataScope[];fields:readonly string[]|null}>,actor:Actor,correlationId:string):Promise<void>;
   revoke(roleId:Identifier,permissionId:Identifier,actor:Actor,correlationId:string):Promise<void>;
-  listAssignments(companyId:Identifier):Promise<readonly Readonly<Record<string,unknown>>[]>;
+  listAssignments(companyId:Identifier):Promise<readonly RoleAssignmentRecord[]>;
   assign(employeeId:Identifier,roleId:Identifier,actor:Actor,correlationId:string):Promise<void>;
   unassign(employeeId:Identifier,roleId:Identifier,actor:Actor,correlationId:string):Promise<void>;
+  listScopeGrants(companyId:Identifier):Promise<readonly DirectScopeGrantRecord[]>;
+  grantScope(input:Readonly<{employeeId:Identifier;permissionId:Identifier;scope:DataScope;organizationId:Identifier|null}>,actor:Actor,correlationId:string):Promise<DirectScopeGrantRecord>;
+  revokeScope(id:Identifier,actor:Actor,correlationId:string):Promise<void>;
 };

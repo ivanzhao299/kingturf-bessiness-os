@@ -12,3 +12,7 @@ Organization ancestry is materialized in `organization_scope_relationships`: eve
 Scope meanings are exact. `SELF` is the actor employee. `TEAM`, `DEPARTMENT`, and `REGION` select employees below the nearest ancestor of that organization type; if no such ancestor exists the scope contributes no access. `COMPANY` is the authenticated company. `GROUP` means all data admitted by the authenticated tenant boundary and never removes the mandatory company qualification. Explicit typed scope grants carry a same-tenant organization anchor of the matching type.
 
 Role grants compose by unioning scopes and field allowlists. A single unrestricted field grant makes the composed permission unrestricted. Persisted employee scope grants are validated against employee, permission, and organization ownership before being included.
+
+Persisted grants may widen a capability only when the employee already receives that capability from a tenant-owned role. Every anchor is checked when written and evaluated: employee, company, and anchor must be active and not deleted; typed anchors must belong to the tenant and match TEAM, DEPARTMENT, or REGION; TEAM stops at depth one. Missing actors and missing typed ancestors contribute no rows. The same predicates govern reads and updates.
+
+Administration covers roles, permissions, role grants, assignments, and direct scope grants. Reads require `authorization:read`; mutations require `authorization:manage`. Each mutation and immutable audit event commits in one transaction, with tenant qualification on every tenant-owned target.

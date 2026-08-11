@@ -4,16 +4,14 @@ import { PostgresEmployeeRepository, PostgresSecurityStore } from '../src/reposi
 
 describe('PostgreSQL authorization repositories',()=>{
   it('includes DataScope and destination organization ownership in employee updates',async()=>{
-    const query=vi.fn()
-      .mockResolvedValueOnce({rows:[{organization_id:'actor-org'}],rowCount:1})
-      .mockResolvedValueOnce({rows:[],rowCount:0});
+    const query=vi.fn().mockResolvedValueOnce({rows:[],rowCount:0});
     const transaction=vi.fn(async(work:(tx:SqlClient)=>Promise<unknown>)=>work({query} as SqlClient));
     const repository=new PostgresEmployeeRepository({query,transaction} as unknown as Database);
     await expect(repository.update('target','company',{organizationId:'destination'},1,{employeeId:'actor',companyId:'company'},['SELF'],[],'00000000-0000-4000-8000-000000000001')).rejects.toMatchObject({code:'conflict'});
-    const [sql,values]=query.mock.calls[1] as [string,unknown[]];
-    expect(sql).toContain('e.id = $9');
+    const [sql,values]=query.mock.calls[0] as [string,unknown[]];
+    expect(sql).toContain('e.id=$9');
     expect(sql).toContain('o.owner_organization_id=$2');
-    expect(values).toEqual(['target','company',null,null,'destination',null,'actor',1,'actor']);
+    expect(values).toEqual(['target','company',null,null,'destination',null,'actor',1,'actor','actor','company']);
   });
 
   it('deterministically unions scopes and field allowlists from multiple roles',async()=>{

@@ -6,7 +6,7 @@ All variables in `.env.example` are required by the API. Production rejects plac
 
 ## Database
 
-Start PostgreSQL with `docker compose --env-file .env -f infra/docker/compose.yaml up -d --wait postgres`. Run `pnpm db:status` and `pnpm db:migrate`. A destructive local reset is `docker compose --env-file .env -f infra/docker/compose.yaml down --volumes`, followed by startup and migration.
+Start PostgreSQL 17 with `docker compose --env-file .env -f infra/docker/compose.yaml up -d --wait postgres`. Export `DATABASE_URL` before `pnpm test`. Both integration suites fail immediately when it is absent; each creates and drops a unique schema, so there is no skip path. Run `pnpm db:status` and `pnpm db:migrate`. A destructive local reset is `docker compose --env-file .env -f infra/docker/compose.yaml down --volumes`, followed by startup and migration.
 
 Migrations are append-only and owned by `packages/database/migrations`. Tests use a disposable database. Failed migrations roll back; resolve the SQL and rerun rather than editing `schema_migrations`.
 
@@ -27,10 +27,10 @@ Troubleshooting: confirm PostgreSQL health, compare `pnpm db:status`, verify all
 Production deployment, push/merge automation, sales features, manufacturing features, a full audit-trail product UI/API, and later P0 engines are out of scope.
 ## Authorization administration and audit guarantees
 
-Authenticated administration is available at `/api/v1/roles`, `/api/v1/permissions`, `/api/v1/grants`, and `/api/v1/assignments`. `GET` requires `authorization:read`; `POST` and `DELETE` require `authorization:manage`. The default is deny. Repository lookups qualify tenant-owned roles and employees, and the database rejects cross-tenant assignments and scope anchors.
+Authenticated administration is available at `/api/v1/roles`, `/api/v1/permissions`, `/api/v1/grants`, `/api/v1/assignments`, and `/api/v1/scope-grants`. `GET` requires `authorization:read`; `POST` and `DELETE` require `authorization:manage`. The default is deny. UUIDs, capability syntax, DataScopes, typed anchors, and request fields are validated before repository calls. Repository lookups qualify tenant-owned roles and employees, and PostgreSQL rejects foreign, inactive, deleted, wrongly typed, or incorrectly null scope anchors.
 
 Authorization create, grant, revoke, assign, and unassign operations insert an audit event in the same transaction as the business mutation. Events contain actor, tenant organization, action, target, correlation ID, server timestamp, outcome, and safe metadata. Database triggers reject updates and deletes of audit events.
 
 ## Migration integrity recovery
 
-Migration files are SHA-256 checksummed before execution. The filename and checksum are committed atomically. `db:status` reports `pending`, `applied`, and `drifted`; migration fails closed if an applied file is missing or differs from its stored checksum. Pre-checksum installations receive a one-time backfill only for historical files present in the running release. Never edit an accepted migration. Restore the exact released file from source control, verify status, and add a new append-only migration for corrections.
+Migration files are SHA-256 checksummed before execution. The filename and checksum are committed atomically. `db:status` reports `pending`, `applied`, and `drifted`; migration fails closed if an applied file is missing or differs from its stored checksum. Pre-checksum installations receive a one-time backfill only when current bytes match an immutable release-pinned digest; current contents are never their own trust source. Missing files, unknown applied names, incorrect stored digests, changed bytes, and unpinned NULL checksums fail closed. Never edit an accepted migration. Restore the exact released file from source control, verify status, and add a new append-only migration for corrections.

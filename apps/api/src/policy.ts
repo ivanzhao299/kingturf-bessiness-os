@@ -1,5 +1,5 @@
 import { assertPermission, type AuthorizationContext } from '@kingturf/domain';
-import type { DataScope, PermissionKey } from '@kingturf/types';
+import { DATA_SCOPES, type DataScope, type PermissionKey } from '@kingturf/types';
 
 export type AuthorizedQuery = Readonly<{ context: AuthorizationContext; scopes: readonly DataScope[]; anchors: readonly Readonly<{scope:DataScope;organizationId:string|null}>[] }>;
 export function authorizeQuery(context: AuthorizationContext | null, capability: PermissionKey, fields: readonly string[] = []): AuthorizedQuery {
@@ -8,12 +8,13 @@ export function authorizeQuery(context: AuthorizationContext | null, capability:
 }
 
 export function dataScopeSql(scopes: readonly DataScope[], employeeAlias = 'e', startParameter = 1): Readonly<{ sql: string; values: readonly string[] }> {
-  if (scopes.length === 0) return { sql: 'FALSE', values: [] };
+  const validScopes=[...new Set(scopes.filter(scope=>DATA_SCOPES.includes(scope)))];
+  if (validScopes.length === 0) return { sql: 'FALSE', values: [] };
   // Repositories retain their mandatory company predicate; GROUP only removes narrower filters.
-  if (scopes.includes('GROUP')) return { sql: 'TRUE', values: [] };
+  if (validScopes.includes('GROUP')) return { sql: 'TRUE', values: [] };
   const clauses: string[] = [];
   const values: string[] = [];
-  const add = (scope: DataScope, expression: (parameter:string)=>string, value:string): void => { if (scopes.includes(scope)) { clauses.push(expression(`$${String(startParameter+values.length)}`)); values.push(value); } };
+  const add = (scope: DataScope, expression: (parameter:string)=>string, value:string): void => { if (validScopes.includes(scope)) { clauses.push(expression(`$${String(startParameter+values.length)}`)); values.push(value); } };
   add('COMPANY', parameter=>`${employeeAlias}.company_id = ${parameter}`, 'companyId');
   add('SELF', parameter=>`${employeeAlias}.id = ${parameter}`, 'actorId');
   add('TEAM', parameter=>`EXISTS (SELECT 1 FROM organization_scope_relationships osr WHERE osr.ancestor_id = ${parameter} AND osr.descendant_id = ${employeeAlias}.organization_id AND osr.depth <= 1)`, 'actorOrganizationId');
