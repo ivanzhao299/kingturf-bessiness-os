@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import type { Database, SqlClient } from '@kingturf/database';
 import {
+  assertEffectiveRange,
+  assertStableCode,
   DomainError,
   evaluateRule,
   sanitizeAuditMetadata,
@@ -80,20 +82,35 @@ export class PostgresAuditRepository {
     anchors: readonly ScopeAnchor[],
     offset: number,
   ) {
-    if (scopes.includes('GROUP') || scopes.includes('COMPANY'))
+    const granted = new Set(scopes);
+    if (granted.has('GROUP') || granted.has('COMPANY'))
       return { sql: 'TRUE', values: [] as unknown[] };
     const clauses: string[] = [],
       values: unknown[] = [];
-    if (scopes.includes('SELF')) {
+    if (granted.has('SELF')) {
       values.push(actorId);
       clauses.push(`a.actor_id=$${String(offset + values.length)}`);
     }
+    for (const typed of ['TEAM', 'DEPARTMENT', 'REGION'] as const) {
+      if (!granted.has(typed)) continue;
+      values.push(actorId);
+      const actorParameter = `$${String(offset + values.length)}`;
+      clauses.push(
+        `EXISTS(SELECT 1 FROM employees scope_actor JOIN organizations actor_org ON actor_org.id=scope_actor.organization_id AND actor_org.owner_organization_id=scope_actor.company_id AND actor_org.active AND actor_org.deleted_at IS NULL JOIN LATERAL(SELECT actor_rel.ancestor_id FROM organization_scope_relationships actor_rel JOIN organizations typed_anchor ON typed_anchor.id=actor_rel.ancestor_id AND typed_anchor.organization_type='${typed}' AND typed_anchor.owner_organization_id=scope_actor.company_id AND typed_anchor.active AND typed_anchor.deleted_at IS NULL WHERE actor_rel.descendant_id=scope_actor.organization_id ORDER BY actor_rel.depth LIMIT 1) nearest ON true JOIN employees ae ON ae.id=a.actor_id AND ae.company_id=scope_actor.company_id AND ae.active AND ae.deleted_at IS NULL JOIN organization_scope_relationships target_rel ON target_rel.ancestor_id=nearest.ancestor_id AND target_rel.descendant_id=ae.organization_id${typed === 'TEAM' ? ' AND target_rel.depth<=1' : ''} WHERE scope_actor.id=${actorParameter} AND scope_actor.active AND scope_actor.deleted_at IS NULL)`,
+      );
+    }
     for (const anchor of anchors) {
-      if (!anchor.organizationId || !['TEAM', 'DEPARTMENT', 'REGION'].includes(anchor.scope))
+      if (
+        !anchor.organizationId ||
+        !granted.has(anchor.scope) ||
+        !['TEAM', 'DEPARTMENT', 'REGION'].includes(anchor.scope)
+      )
         continue;
+      values.push(actorId);
+      const actorParameter = `$${String(offset + values.length)}`;
       values.push(anchor.organizationId);
       clauses.push(
-        `EXISTS(SELECT 1 FROM employees ae JOIN organization_scope_relationships osr ON osr.descendant_id=ae.organization_id WHERE ae.id=a.actor_id AND osr.ancestor_id=$${String(offset + values.length)}${anchor.scope === 'TEAM' ? ' AND osr.depth<=1' : ''})`,
+        `EXISTS(SELECT 1 FROM organizations explicit_anchor JOIN employees scope_actor ON scope_actor.id=${actorParameter} AND scope_actor.company_id=explicit_anchor.owner_organization_id AND scope_actor.active AND scope_actor.deleted_at IS NULL JOIN organization_scope_relationships osr ON osr.ancestor_id=explicit_anchor.id JOIN employees ae ON ae.id=a.actor_id AND ae.company_id=explicit_anchor.owner_organization_id AND ae.active AND ae.deleted_at IS NULL WHERE explicit_anchor.id=$${String(offset + values.length)} AND explicit_anchor.organization_type='${anchor.scope}' AND explicit_anchor.active AND explicit_anchor.deleted_at IS NULL AND osr.descendant_id=ae.organization_id${anchor.scope === 'TEAM' ? ' AND osr.depth<=1' : ''})`,
       );
     }
     return { sql: clauses.length ? `(${clauses.join(' OR ')})` : 'FALSE', values };
@@ -168,11 +185,13 @@ export class PostgresMasterDataRepository {
     actor: Actor,
     correlationId: string,
   ) {
+    const code = assertStableCode(input.code);
+    assertEffectiveRange(input.effectiveFrom, input.effectiveTo);
     return this.db.transaction(async (tx) => {
       const identity = (
         await tx.query<{ id: string }>(
           'INSERT INTO master_categories(tenant_id,code,created_by) VALUES($1,$2,$3) RETURNING id',
-          [actor.companyId, input.code, actor.employeeId],
+          [actor.companyId, code, actor.employeeId],
         )
       ).rows[0];
       if (!identity) throw new DomainError('conflict', 'Category exists');
@@ -196,7 +215,7 @@ export class PostgresMasterDataRepository {
         targetType: 'master-category',
         targetId: identity.id,
         correlationId,
-        metadata: { code: input.code, version: 1 },
+        metadata: { code, version: 1 },
         allowedMetadata: ['code', 'version'],
       });
       return row;
@@ -214,6 +233,7 @@ export class PostgresMasterDataRepository {
     actor: Actor,
     correlationId: string,
   ) {
+    assertEffectiveRange(input.effectiveFrom, input.effectiveTo);
     return this.db.transaction(async (tx) => {
       const bumped = (
         await tx.query<{ version: number }>(
@@ -291,11 +311,13 @@ export class PostgresMasterDataRepository {
     actor: Actor,
     correlationId: string,
   ) {
+    const code = assertStableCode(input.code);
+    assertEffectiveRange(input.effectiveFrom, input.effectiveTo);
     return this.db.transaction(async (tx) => {
       const identity = (
         await tx.query<{ id: string }>(
           'INSERT INTO master_entries(tenant_id,category_id,code,created_by) SELECT $1,id,$3,$4 FROM master_categories WHERE id=$2 AND tenant_id=$1 AND deleted_at IS NULL RETURNING id',
-          [actor.companyId, input.categoryId, input.code, actor.employeeId],
+          [actor.companyId, input.categoryId, code, actor.employeeId],
         )
       ).rows[0];
       if (!identity) throw new DomainError('not_found', 'Category unavailable');
@@ -319,7 +341,7 @@ export class PostgresMasterDataRepository {
         targetType: 'master-entry',
         targetId: identity.id,
         correlationId,
-        metadata: { categoryId: input.categoryId, code: input.code },
+        metadata: { categoryId: input.categoryId, code },
         allowedMetadata: ['categoryId', 'code'],
       });
       return row;
@@ -355,6 +377,7 @@ export class PostgresMasterDataRepository {
     actor: Actor,
     correlationId: string,
   ) {
+    assertEffectiveRange(input.effectiveFrom, input.effectiveTo);
     return this.db.transaction(async (tx) => {
       const bumped = (
         await tx.query<{ version: number }>(
@@ -467,11 +490,12 @@ export class PostgresNumberRepository {
     actor: Actor,
     correlationId: string,
   ) {
+    const code = assertStableCode(input.code);
     return this.db.transaction(async (tx) => {
       const d = (
         await tx.query<{ id: string }>(
           'INSERT INTO number_definitions(tenant_id,code,created_by) VALUES($1,$2,$3) RETURNING id',
-          [actor.companyId, input.code, actor.employeeId],
+          [actor.companyId, code, actor.employeeId],
         )
       ).rows[0];
       if (!d) throw new DomainError('conflict', 'Definition exists');
@@ -497,7 +521,7 @@ export class PostgresNumberRepository {
         targetType: 'number-definition',
         targetId: d.id,
         correlationId,
-        metadata: { code: input.code },
+        metadata: { code },
         allowedMetadata: ['code'],
       });
       return { id: d.id, version: v };
@@ -687,12 +711,13 @@ export class PostgresRuleRepository {
     actor: Actor,
     correlationId: string,
   ) {
+    const code = assertStableCode(input.code);
     const ast = validateRuleExpression(input.ast);
     return this.db.transaction(async (tx) => {
       const d = (
         await tx.query<{ id: string }>(
           'INSERT INTO rule_definitions(tenant_id,code,created_by) VALUES($1,$2,$3) RETURNING id',
-          [actor.companyId, input.code, actor.employeeId],
+          [actor.companyId, code, actor.employeeId],
         )
       ).rows[0];
       if (!d) throw new DomainError('conflict', 'Rule exists');
@@ -708,7 +733,7 @@ export class PostgresRuleRepository {
         targetType: 'rule-definition',
         targetId: d.id,
         correlationId,
-        metadata: { code: input.code },
+        metadata: { code },
         allowedMetadata: ['code'],
       });
       return { id: d.id, version: row };
@@ -775,6 +800,8 @@ export class PostgresRuleRepository {
     actor: Actor,
     correlationId: string,
   ): Promise<RuleEvaluationDto> {
+    if (!idempotencyKey || idempotencyKey.length > 200)
+      throw new DomainError('invalid_request', 'A bounded idempotency key is required');
     return this.db.transaction(async (tx) => {
       const version = (
         await tx.query<{ id: string; ast: unknown; required_inputs: string[] }>(
@@ -864,12 +891,13 @@ export class PostgresWorkflowRepository {
     actor: Actor,
     correlationId: string,
   ) {
+    const code = assertStableCode(input.code);
     const spec = validateWorkflowSpec(input.spec);
     return this.db.transaction(async (tx) => {
       const d = (
         await tx.query<{ id: string }>(
           'INSERT INTO workflow_definitions(tenant_id,code,created_by) VALUES($1,$2,$3) RETURNING id',
-          [actor.companyId, input.code, actor.employeeId],
+          [actor.companyId, code, actor.employeeId],
         )
       ).rows[0];
       if (!d) throw new DomainError('conflict', 'Workflow exists');
@@ -885,7 +913,7 @@ export class PostgresWorkflowRepository {
         targetType: 'workflow-definition',
         targetId: d.id,
         correlationId,
-        metadata: { code: input.code },
+        metadata: { code },
         allowedMetadata: ['code'],
       });
       return { id: d.id, version: row };
@@ -978,6 +1006,8 @@ export class PostgresWorkflowRepository {
     actor: Actor,
     correlationId: string,
   ) {
+    if (!idempotencyKey || idempotencyKey.length > 200)
+      throw new DomainError('invalid_request', 'A bounded idempotency key is required');
     return this.db.transaction(async (tx) => {
       const v = (
         await tx.query<{ id: string; spec: WorkflowSpec }>(
@@ -1053,6 +1083,8 @@ export class PostgresWorkflowRepository {
     actor: Actor,
     correlationId: string,
   ) {
+    if (!idempotencyKey || idempotencyKey.length > 200)
+      throw new DomainError('invalid_request', 'A bounded idempotency key is required');
     return this.db.transaction(async (tx) => {
       await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
         `workflow-decision:${actor.companyId}:${taskId}:${idempotencyKey}`,

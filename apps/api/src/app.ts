@@ -1,6 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import {
+  assertEffectiveRange,
+  assertStableCode,
   DomainError,
+  parseEffectiveTimestamp,
   type AuthorizationRepository,
   type EmployeeRepository,
   type OrganizationRepository,
@@ -89,6 +92,28 @@ const strings = (value: unknown, name: string): readonly string[] => {
   if (!Array.isArray(value) || value.some((v) => typeof v !== 'string' || !v.trim()))
     throw new DomainError('invalid_request', `${name} must be an array of non-empty strings`);
   return [...new Set(value as string[])].sort();
+};
+const integer = (value: unknown, name: string, minimum: number, maximum: number): number => {
+  if (
+    typeof value !== 'number' ||
+    !Number.isSafeInteger(value) ||
+    value < minimum ||
+    value > maximum
+  )
+    throw new DomainError(
+      'invalid_request',
+      `${name} must be an integer between ${String(minimum)} and ${String(maximum)}`,
+    );
+  return value;
+};
+const effectiveRange = (body: Record<string, unknown>) => {
+  const effectiveFrom = string(body.effectiveFrom, 'effectiveFrom');
+  const effectiveTo =
+    body.effectiveTo === null || body.effectiveTo === undefined
+      ? null
+      : string(body.effectiveTo, 'effectiveTo');
+  assertEffectiveRange(effectiveFrom, effectiveTo);
+  return { effectiveFrom, effectiveTo };
 };
 const scopes = (value: unknown): readonly DataScope[] => {
   const values = strings(value, 'scopes');
@@ -521,7 +546,7 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             statusCode: 200,
             body: await dependencies.masterData.listCategories(
               context.actor.companyId,
-              request.query?.at ? new Date(request.query.at) : new Date(),
+              request.query?.at ? parseEffectiveTimestamp(request.query.at) : new Date(),
             ),
           };
         }
@@ -536,21 +561,18 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             );
           const b = objectBody(request.body);
           allow(b, ['code', 'name', 'description', 'effectiveFrom', 'effectiveTo']);
+          const range = effectiveRange(b);
           return {
             statusCode: 201,
             body: await dependencies.masterData.createCategory(
               {
-                code: string(b.code, 'code'),
+                code: assertStableCode(string(b.code, 'code')),
                 name: string(b.name, 'name'),
                 description:
                   b.description === null || b.description === undefined
                     ? null
                     : string(b.description, 'description'),
-                effectiveFrom: string(b.effectiveFrom, 'effectiveFrom'),
-                effectiveTo:
-                  b.effectiveTo === null || b.effectiveTo === undefined
-                    ? null
-                    : string(b.effectiveTo, 'effectiveTo'),
+                ...range,
               },
               context.actor,
               correlationId,
@@ -571,6 +593,7 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             );
           const b = objectBody(request.body);
           allow(b, ['name', 'description', 'effectiveFrom', 'effectiveTo', 'version']);
+          const range = effectiveRange(b);
           return {
             statusCode: 200,
             body: await dependencies.masterData.updateCategory(
@@ -581,11 +604,7 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
                   b.description === null || b.description === undefined
                     ? null
                     : string(b.description, 'description'),
-                effectiveFrom: string(b.effectiveFrom, 'effectiveFrom'),
-                effectiveTo:
-                  b.effectiveTo === null || b.effectiveTo === undefined
-                    ? null
-                    : string(b.effectiveTo, 'effectiveTo'),
+                ...range,
                 version: version(b.version),
               },
               context.actor,
@@ -621,19 +640,16 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             );
           const b = objectBody(request.body);
           allow(b, ['categoryId', 'code', 'label', 'value', 'effectiveFrom', 'effectiveTo']);
+          const range = effectiveRange(b);
           return {
             statusCode: 201,
             body: await dependencies.masterData.createEntry(
               {
                 categoryId: uuid(b.categoryId, 'categoryId'),
-                code: string(b.code, 'code'),
+                code: assertStableCode(string(b.code, 'code')),
                 label: string(b.label, 'label'),
                 value: objectBody(b.value) as never,
-                effectiveFrom: string(b.effectiveFrom, 'effectiveFrom'),
-                effectiveTo:
-                  b.effectiveTo === null || b.effectiveTo === undefined
-                    ? null
-                    : string(b.effectiveTo, 'effectiveTo'),
+                ...range,
               },
               context.actor,
               correlationId,
@@ -658,12 +674,17 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             statusCode: 201,
             body: await dependencies.numbers.createDefinition(
               {
-                code: string(b.code, 'code'),
+                code: assertStableCode(string(b.code, 'code')),
                 prefix: typeof b.prefix === 'string' ? b.prefix : '',
                 suffix: typeof b.suffix === 'string' ? b.suffix : '',
-                padding: Number(b.padding),
-                startingValue: Number(b.startingValue),
-                increment: Number(b.increment),
+                padding: integer(b.padding, 'padding', 1, 32),
+                startingValue: integer(
+                  b.startingValue,
+                  'startingValue',
+                  0,
+                  Number.MAX_SAFE_INTEGER,
+                ),
+                increment: integer(b.increment, 'increment', 1, Number.MAX_SAFE_INTEGER),
                 resetPeriod: string(b.resetPeriod, 'resetPeriod') as never,
               },
               context.actor,
@@ -719,7 +740,7 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             statusCode: 201,
             body: await dependencies.rules.create(
               {
-                code: string(b.code, 'code'),
+                code: assertStableCode(string(b.code, 'code')),
                 ast: b.ast,
                 requiredInputs: strings(b.requiredInputs ?? [], 'requiredInputs'),
               },
@@ -779,7 +800,7 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             body: await dependencies.masterData.listEntries(
               context.actor.companyId,
               request.query?.categoryId ? uuid(request.query.categoryId, 'categoryId') : null,
-              request.query?.at ? new Date(request.query.at) : new Date(),
+              request.query?.at ? parseEffectiveTimestamp(request.query.at) : new Date(),
             ),
           };
         }
@@ -796,7 +817,7 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           const found = await dependencies.masterData.findEntry(
             uuid(entry[1], 'entryId'),
             context.actor.companyId,
-            request.query?.at ? new Date(request.query.at) : new Date(),
+            request.query?.at ? parseEffectiveTimestamp(request.query.at) : new Date(),
           );
           return found
             ? { statusCode: 200, body: found }
@@ -813,6 +834,7 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             );
           const b = objectBody(request.body);
           allow(b, ['label', 'value', 'effectiveFrom', 'effectiveTo', 'version']);
+          const range = effectiveRange(b);
           return {
             statusCode: 200,
             body: await dependencies.masterData.updateEntry(
@@ -820,8 +842,7 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               {
                 label: string(b.label, 'label'),
                 value: objectBody(b.value) as never,
-                effectiveFrom: string(b.effectiveFrom, 'effectiveFrom'),
-                effectiveTo: b.effectiveTo == null ? null : string(b.effectiveTo, 'effectiveTo'),
+                ...range,
                 version: version(b.version),
               },
               context.actor,
@@ -862,9 +883,14 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               {
                 prefix: typeof b.prefix === 'string' ? b.prefix : '',
                 suffix: typeof b.suffix === 'string' ? b.suffix : '',
-                padding: Number(b.padding),
-                startingValue: Number(b.startingValue),
-                increment: Number(b.increment),
+                padding: integer(b.padding, 'padding', 1, 32),
+                startingValue: integer(
+                  b.startingValue,
+                  'startingValue',
+                  0,
+                  Number.MAX_SAFE_INTEGER,
+                ),
+                increment: integer(b.increment, 'increment', 1, Number.MAX_SAFE_INTEGER),
                 resetPeriod: string(b.resetPeriod, 'resetPeriod') as never,
               },
               context.actor,
@@ -898,7 +924,7 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           return {
             statusCode: 201,
             body: await dependencies.workflows.create(
-              { code: string(b.code, 'code'), spec: objectBody(b.spec) as never },
+              { code: assertStableCode(string(b.code, 'code')), spec: objectBody(b.spec) as never },
               context.actor,
               correlationId,
             ),

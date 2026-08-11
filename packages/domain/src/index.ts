@@ -164,6 +164,12 @@ export function assertEffectiveRange(from: string, to: string | null): void {
   if (end !== null && end <= start)
     throw new DomainError('invalid_request', 'effectiveTo must be after effectiveFrom');
 }
+export function parseEffectiveTimestamp(value: string, name = 'at'): Date {
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp))
+    throw new DomainError('invalid_request', `${name} must be an ISO timestamp`);
+  return new Date(timestamp);
+}
 export function assertStableCode(value: string): string {
   const code = value.trim();
   if (!/^[A-Z][A-Z0-9_-]{0,63}$/u.test(code))
@@ -317,6 +323,8 @@ export type WorkflowSpec = Readonly<{
 export function validateWorkflowSpec(value: WorkflowSpec): WorkflowSpec {
   const states = new Set(value.states);
   if (
+    value.states.some((state) => !state.trim()) ||
+    value.terminalStates.some((state) => !state.trim()) ||
     states.size !== value.states.length ||
     states.size < 2 ||
     !states.has(value.initialState) ||
@@ -328,9 +336,16 @@ export function validateWorkflowSpec(value: WorkflowSpec): WorkflowSpec {
       'Workflow states or initial/terminal state are invalid',
     );
   if (
-    value.transitions.some((t) => !states.has(t.from) || !states.has(t.to) || t.from === t.to) ||
+    value.transitions.length < 1 ||
+    value.transitions.some(
+      (t) => !t.decision.trim() || !states.has(t.from) || !states.has(t.to) || t.from === t.to,
+    ) ||
+    value.steps.length < 1 ||
     value.steps.some(
       (s, i) =>
+        !s.key.trim() ||
+        s.eligibleActors.some((candidate) => !candidate.trim()) ||
+        s.eligibleRoles.some((candidate) => !candidate.trim()) ||
         s.order !== i + 1 ||
         s.quorum !== 1 ||
         s.eligibleActors.length + s.eligibleRoles.length === 0,
