@@ -503,9 +503,6 @@ describe('JTF-P0-E07..E11 PostgreSQL scenarios', () => {
 
     const cases = [
       { scope: 'SELF', action: 'scope.self', candidate: eventIds.self },
-      { scope: 'TEAM', action: 'scope.team', candidate: eventIds.team },
-      { scope: 'DEPARTMENT', action: 'scope.department', candidate: eventIds.department },
-      { scope: 'REGION', action: 'scope.region', candidate: eventIds.region },
       { scope: 'COMPANY', action: 'scope.company', candidate: eventIds.company },
       { scope: 'GROUP', action: 'scope.company', candidate: eventIds.company },
     ] as const;
@@ -535,6 +532,11 @@ describe('JTF-P0-E07..E11 PostgreSQL scenarios', () => {
           )
         ).items,
       ).toEqual([]);
+    }
+
+    for (const scope of ['TEAM', 'DEPARTMENT', 'REGION'] as const) {
+      expect((await repo.list(company, {}, [scope], requester, [])).items).toEqual([]);
+      expect(await repo.find(eventIds.self, company, [scope], requester, [])).toBeNull();
     }
 
     const typedCases = [

@@ -100,14 +100,6 @@ export class PostgresAuditRepository {
     for (const typed of ['TEAM', 'DEPARTMENT', 'REGION'] as const) {
       if (!granted.has(typed)) continue;
       const explicitAnchors = anchors.filter((anchor) => anchor.scope === typed);
-      if (explicitAnchors.length === 0) {
-        values.push(actorId);
-        const actorParameter = `$${String(offset + values.length)}`;
-        clauses.push(
-          `EXISTS(SELECT 1 FROM employees scope_actor JOIN organizations actor_org ON actor_org.id=scope_actor.organization_id AND actor_org.owner_organization_id=scope_actor.company_id AND actor_org.active AND actor_org.deleted_at IS NULL JOIN LATERAL(SELECT actor_rel.ancestor_id FROM organization_scope_relationships actor_rel JOIN organizations typed_anchor ON typed_anchor.id=actor_rel.ancestor_id AND typed_anchor.organization_type='${typed}' AND typed_anchor.owner_organization_id=scope_actor.company_id AND typed_anchor.active AND typed_anchor.deleted_at IS NULL WHERE actor_rel.descendant_id=scope_actor.organization_id ORDER BY actor_rel.depth LIMIT 1) nearest ON true JOIN employees ae ON ae.id=a.actor_id AND ae.company_id=scope_actor.company_id AND ae.active AND ae.deleted_at IS NULL JOIN organization_scope_relationships target_rel ON target_rel.ancestor_id=nearest.ancestor_id AND target_rel.descendant_id=ae.organization_id${typed === 'TEAM' ? ' AND target_rel.depth<=1' : ''} WHERE scope_actor.id=${actorParameter} AND scope_actor.company_id=a.organization_id AND scope_actor.active AND scope_actor.deleted_at IS NULL)`,
-        );
-        continue;
-      }
       for (const anchor of explicitAnchors) {
         values.push(actorId);
         const actorParameter = `$${String(offset + values.length)}`;

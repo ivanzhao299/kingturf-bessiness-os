@@ -42,6 +42,17 @@ describe('PostgreSQL audit scope predicates', () => {
     expect(sql).toContain("explicit_anchor.organization_type='DEPARTMENT'");
     expect(values).toEqual(['event', 'company', 'actor', null]);
   });
+
+  it('fails closed when a typed scope has no explicit anchor', async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [], rowCount: 0 });
+    const repository = new PostgresAuditRepository({ query } as unknown as Database);
+
+    await repository.list('company', {}, ['TEAM', 'DEPARTMENT', 'REGION'], 'actor', []);
+
+    const [sql, values] = query.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain('a.organization_id=$1 AND FALSE');
+    expect(values).toEqual(['company', 51]);
+  });
 });
 
 describe('PostgreSQL authorization repositories', () => {
