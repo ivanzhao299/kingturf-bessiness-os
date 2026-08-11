@@ -19,6 +19,8 @@
   },
   "dependencies": {
     "@kingturf/config": "workspace:*",
+    "@kingturf/database": "workspace:*",
+    "@kingturf/domain": "workspace:*",
     "@kingturf/types": "workspace:*"
   },
   "devDependencies": {

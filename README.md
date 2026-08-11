@@ -2,7 +2,7 @@
 
 金特夫（山东）人造草坪有限公司智能经营、生产与风险控制平台。
 
-This repository currently provides the production-grade TypeScript foundation only. It intentionally contains no CRM, MES, persistence schema, or business policy implementation.
+This repository provides the organization, employee, identity, opaque-session, RBAC, and DataScope foundation. It intentionally contains no CRM/sales or MES/manufacturing implementation.
 
 ## Prerequisites
 
@@ -20,6 +20,7 @@ cp .env.example .env
 ```
 
 The committed `.env.example` contains local-only placeholders. Keep real credentials in the ignored `.env` file and never commit them.
+Generate a non-placeholder session secret before starting the API: `openssl rand -base64 48`.
 
 ## Local PostgreSQL
 
@@ -29,6 +30,8 @@ Start the database and wait for its health check:
 docker compose --env-file .env -f infra/docker/compose.yaml up -d --wait postgres
 docker compose --env-file .env -f infra/docker/compose.yaml ps
 docker compose --env-file .env -f infra/docker/compose.yaml exec postgres pg_isready -U kingturf -d kingturf_dev
+pnpm db:status
+pnpm db:migrate
 ```
 
 Stop it while preserving data:
@@ -91,9 +94,10 @@ Formatting is available through `pnpm format`; check it without changing files u
 ## Workspace structure
 
 ```text
-apps/api             API service and /health integration test
+apps/api             versioned organization, employee, authentication and authorization API
 apps/web             Vite web application and bootstrap test
 packages/config      shared TypeScript configuration and neutral defaults
+packages/database    PostgreSQL driver, transactions, migration CLI and ordered SQL
 packages/domain      framework-independent domain boundary
 packages/testing     shared test helpers
 packages/types       framework-independent shared types
@@ -107,3 +111,11 @@ infra/docker         local PostgreSQL Compose configuration
 - [Engineering roadmap](docs/tasks/ROADMAP.md)
 - [Repository bootstrap task](docs/tasks/JTF-P0-E01-REPOSITORY-BOOTSTRAP.md)
 - [Stack ADR](docs/adr/0001-typescript-monorepo-stack.md)
+- [Database ADR](docs/adr/0002-postgresql-access-and-migrations.md)
+- [Session ADR](docs/adr/0003-opaque-session-authentication.md)
+- [Authorization ADR](docs/adr/0004-rbac-and-data-scope.md)
+- [Identity and authorization runbook](docs/engineering/IDENTITY_AUTHORIZATION.md)
+
+The API requires all environment variables shown in `.env.example`. Protected requests use `Authorization: Bearer <token>`; login is `POST /api/v1/auth/login`. No administrator or password is embedded. See the runbook for explicit provisioning and authorization semantics.
+
+Production deployment, automated push/merge, sales, manufacturing, full audit-trail product functionality, and later P0 engines remain out of scope.

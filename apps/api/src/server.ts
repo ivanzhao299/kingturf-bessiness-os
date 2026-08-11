@@ -1,29 +1,14 @@
-import { DEFAULT_API_PORT } from '@kingturf/config';
+/* eslint-disable @typescript-eslint/no-misused-promises, @typescript-eslint/no-unsafe-argument */
 import { createServer } from 'node:http';
+import { parseEnvironment } from '@kingturf/config';
+import { Database, migrate } from '@kingturf/database';
 import { buildApp } from './app.ts';
+import { PostgresEmployeeRepository, PostgresOrganizationRepository, PostgresSecurityStore } from './repositories.ts';
+import { AuthenticationService, PasswordHasher } from './security.ts';
 
-const parsedPort = Number.parseInt(process.env.API_PORT ?? String(DEFAULT_API_PORT), 10);
-const port = Number.isNaN(parsedPort) ? DEFAULT_API_PORT : parsedPort;
-const app = buildApp();
-const server = createServer((request, response) => {
-  const pathname = new URL(request.url ?? '/', 'http://localhost').pathname;
-  const result = app.dispatch(request.method ?? 'GET', pathname);
-  response.writeHead(result.statusCode, { 'content-type': 'application/json; charset=utf-8' });
-  response.end(JSON.stringify(result.body));
-});
-
-server.on('error', (error) => {
-  console.error(error);
-  process.exit(1);
-});
-
-const shutdown = (): void => {
-  server.close((error) => {
-    process.exit(error === undefined ? 0 : 1);
-  });
-};
-
-process.on('SIGINT', shutdown);
-process.on('SIGTERM', shutdown);
-
-server.listen(port, '0.0.0.0');
+const config=parseEnvironment(process.env);const database=new Database(config.databaseUrl);await migrate(database);
+const securityStore=new PostgresSecurityStore(database);const auth=new AuthenticationService(securityStore,new PasswordHasher(config.password),config.session,securityStore);
+const app=buildApp({auth,organizations:new PostgresOrganizationRepository(database),employees:new PostgresEmployeeRepository(database)});
+const server=createServer(async(request,response)=>{const url=new URL(request.url??'/','http://localhost');const chunks:Buffer[]=[];for await(const chunk of request)chunks.push(Buffer.from(chunk));let body:unknown;try{body=chunks.length?JSON.parse(Buffer.concat(chunks).toString('utf8')):undefined;}catch{body=undefined;}const result=await app.dispatch({method:request.method??'GET',pathname:url.pathname,headers:{authorization:request.headers.authorization,'x-correlation-id':request.headers['x-correlation-id'] as string|undefined},body});response.writeHead(result.statusCode,{'content-type':'application/json; charset=utf-8',...result.headers});response.end(JSON.stringify(result.body));});
+server.on('error',(failure)=>{console.error(failure);process.exit(1);});
+const shutdown=():void=>{server.close(async failure=>{await database.close();process.exit(failure?1:0);});};process.on('SIGINT',shutdown);process.on('SIGTERM',shutdown);server.listen(config.api.port,config.api.host);

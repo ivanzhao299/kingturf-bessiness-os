@@ -16,6 +16,7 @@
     "build": "tsc -p tsconfig.build.json"
   },
   "devDependencies": {
+    "@kingturf/types": "workspace:*",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }
