@@ -3,7 +3,20 @@
 -- PostgreSQL's default UNIQUE semantics treat NULL values as distinct. The
 -- historical constraint therefore permits duplicate SELF/COMPANY/GROUP grants,
 -- whose organization anchor is intentionally NULL. Keep the historical
--- migration immutable and close that gap with a partial unique index.
+-- migration immutable, deterministically retain the earliest grant, and close
+-- that gap with a partial unique index.
+WITH ranked_unanchored_grants AS (
+  SELECT id, row_number() OVER (
+    PARTITION BY employee_id, permission_id, scope
+    ORDER BY created_at, id
+  ) AS duplicate_rank
+  FROM data_scope_grants
+  WHERE scope_organization_id IS NULL
+)
+DELETE FROM data_scope_grants grants
+USING ranked_unanchored_grants ranked
+WHERE grants.id=ranked.id AND ranked.duplicate_rank > 1;
+
 CREATE UNIQUE INDEX data_scope_grants_unanchored_unique
 ON data_scope_grants(employee_id, permission_id, scope)
 WHERE scope_organization_id IS NULL;

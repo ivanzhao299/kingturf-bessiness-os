@@ -1,8 +1,17 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Database, SqlClient } from '@kingturf/database';
-import { PostgresEmployeeRepository, PostgresSecurityStore } from '../src/repositories.js';
+import { PostgresEmployeeRepository, PostgresOrganizationRepository, PostgresSecurityStore } from '../src/repositories.js';
 
 describe('PostgreSQL authorization repositories',()=>{
+  it('rejects cross-company organization updates before opening a transaction',async()=>{
+    const query=vi.fn();
+    const transaction=vi.fn();
+    const repository=new PostgresOrganizationRepository({query,transaction});
+    await expect(repository.update('target','company-b',{name:'Adversarial'},1,{employeeId:'actor',companyId:'company-a'},'00000000-0000-4000-8000-000000000001')).rejects.toMatchObject({code:'forbidden'});
+    expect(transaction).not.toHaveBeenCalled();
+    expect(query).not.toHaveBeenCalled();
+  });
+
   it('includes DataScope and destination organization ownership in employee updates',async()=>{
     const query=vi.fn().mockResolvedValueOnce({rows:[],rowCount:0});
     const transaction=vi.fn(async(work:(tx:SqlClient)=>Promise<unknown>)=>work({query} as SqlClient));

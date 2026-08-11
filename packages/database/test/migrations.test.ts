@@ -51,6 +51,12 @@ describe('identity and authorization migration', () => {
     expect(sql).toContain('scope organization must be active');
     expect(sql).toContain('data_scope_grants_unanchored_unique');
     expect(sql).toContain('WHERE scope_organization_id IS NULL');
+    expect(sql).toContain('PARTITION BY employee_id, permission_id, scope');
+    expect(sql).toContain('ORDER BY created_at, id');
+    expect(sql).toContain('ranked.duplicate_rank > 1');
+    expect(sql.indexOf('ranked.duplicate_rank > 1')).toBeLessThan(
+      sql.indexOf('CREATE UNIQUE INDEX data_scope_grants_unanchored_unique'),
+    );
     expect(sql).toContain('reject_audit_event_mutation');
   });
 });

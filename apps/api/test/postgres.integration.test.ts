@@ -177,6 +177,42 @@ describe('PostgreSQL identity and authorization behavior', () => {
     ]);
   });
 
+  it('rejects cross-tenant organization updates without mutation or audit', async () => {
+    const correlationId = randomUUID();
+    const before = (
+      await database.query<{ name: string; version: number }>(
+        'SELECT name,version FROM organizations WHERE id=$1',
+        [otherOrganization],
+      )
+    ).rows[0];
+    if (!before) throw new Error('Expected company-B organization fixture');
+    expect(before).toEqual({ name: 'Other department', version: 1 });
+
+    await expect(
+      organizations.update(
+        otherOrganization,
+        otherCompany,
+        { name: 'Company A adversarial update', parentId: null, active: false },
+        before.version,
+        actor,
+        correlationId,
+      ),
+    ).rejects.toMatchObject({ code: 'forbidden' });
+
+    expect(
+      (
+        await database.query<{ name: string; version: number }>(
+          'SELECT name,version FROM organizations WHERE id=$1',
+          [otherOrganization],
+        )
+      ).rows[0],
+    ).toEqual(before);
+    expect(
+      (await database.query('SELECT 1 FROM audit_events WHERE correlation_id=$1', [correlationId]))
+        .rowCount,
+    ).toBe(0);
+  });
+
   it('loads and enforces persisted grants for all six DataScopes', async () => {
     const permission = randomUUID();
     const role = randomUUID();

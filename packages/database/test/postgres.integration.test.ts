@@ -287,3 +287,92 @@ describe('PostgreSQL tenant integrity', () => {
     }
   });
 });
+
+describe('PostgreSQL 0004 upgrade compatibility', () => {
+  it('reconciles historical unanchored duplicates before enforcing uniqueness', async () => {
+    const upgradeSchema = `database_upgrade_${randomUUID().replaceAll('-', '')}`;
+    const directory = await mkdtemp(join(tmpdir(), 'kingturf-upgrade-migrations-'));
+    const upgradeAdmin = new Database(connectionString);
+    let upgradeDatabase: Database | undefined;
+    try {
+      for (const name of [
+        '0001_identity_authorization_foundation.sql',
+        '0002_tenant_integrity.sql',
+        '0003_identity_authorization_hardening.sql',
+      ])
+        await cp(join(migrationsDirectory, name), join(directory, name));
+
+      await upgradeAdmin.query(`CREATE SCHEMA ${upgradeSchema}`);
+      const scoped = new URL(connectionString);
+      scoped.searchParams.set('options', `-csearch_path=${upgradeSchema}`);
+      upgradeDatabase = new Database(scoped.toString());
+      await migrate(upgradeDatabase, directory);
+
+      const company = '10000000-0000-4000-8000-000000000001';
+      const employee = '20000000-0000-4000-8000-000000000001';
+      const permission = '30000000-0000-4000-8000-000000000001';
+      const earliestId = '40000000-0000-4000-8000-000000000003';
+      const canonicalId = '40000000-0000-4000-8000-000000000001';
+      const laterId = '40000000-0000-4000-8000-000000000002';
+      await upgradeDatabase.query(
+        "INSERT INTO organizations(id,owner_organization_id,code,name,organization_type) VALUES($1,$1,'UPGRADE','Upgrade','COMPANY')",
+        [company],
+      );
+      await upgradeDatabase.query(
+        "INSERT INTO employees(id,company_id,organization_id,employee_number,display_name,normalized_email) VALUES($1,$2,$2,'UP-1','Upgrade Employee','upgrade@example.test')",
+        [employee, company],
+      );
+      await upgradeDatabase.query(
+        "INSERT INTO permissions(id,capability,description) VALUES($1,'employee:read','Read')",
+        [permission],
+      );
+      await upgradeDatabase.query(
+        `INSERT INTO data_scope_grants(id,employee_id,permission_id,scope,scope_organization_id,created_at) VALUES
+         ($1,$4,$5,'SELF',NULL,'2025-01-01T00:00:00Z'),
+         ($2,$4,$5,'SELF',NULL,'2025-01-01T00:00:00Z'),
+         ($3,$4,$5,'SELF',NULL,'2025-01-02T00:00:00Z')`,
+        [earliestId, canonicalId, laterId, employee, permission],
+      );
+
+      await cp(
+        join(migrationsDirectory, '0004_authorization_integrity_completion.sql'),
+        join(directory, '0004_authorization_integrity_completion.sql'),
+      );
+      await migrate(upgradeDatabase, directory);
+
+      const remaining = await upgradeDatabase.query<{ id: string }>(
+        "SELECT id FROM data_scope_grants WHERE employee_id=$1 AND permission_id=$2 AND scope='SELF'",
+        [employee, permission],
+      );
+      expect(remaining.rows).toEqual([{ id: canonicalId }]);
+      expect(
+        (
+          await upgradeDatabase.query<{ name: string }>(
+            'SELECT name FROM schema_migrations WHERE name=$1',
+            ['0004_authorization_integrity_completion.sql'],
+          )
+        ).rows,
+      ).toEqual([{ name: '0004_authorization_integrity_completion.sql' }]);
+      await expect(
+        upgradeDatabase.query(
+          "INSERT INTO data_scope_grants(employee_id,permission_id,scope,scope_organization_id) VALUES($1,$2,'SELF',NULL)",
+          [employee, permission],
+        ),
+      ).rejects.toThrow(/duplicate key/u);
+    } finally {
+      try {
+        await upgradeDatabase?.close();
+      } finally {
+        try {
+          await upgradeAdmin.query(`DROP SCHEMA IF EXISTS ${upgradeSchema} CASCADE`);
+        } finally {
+          try {
+            await upgradeAdmin.close();
+          } finally {
+            await rm(directory, { recursive: true, force: true });
+          }
+        }
+      }
+    }
+  });
+});
