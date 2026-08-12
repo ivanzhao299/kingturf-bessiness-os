@@ -1,6 +1,24 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { assertTestDatabaseTarget } from '../src/index.js';
+
+describe('CI database target safety', () => {
+  it('accepts only explicit loopback test databases', () => {
+    expect(() => {
+      assertTestDatabaseTarget('postgresql://user:pass@localhost:5432/kingturf_test', 'test');
+    }).not.toThrow();
+    expect(() => {
+      assertTestDatabaseTarget('postgresql://user:pass@db.example.com/kingturf_test', 'test');
+    }).toThrow(/Refusing CI database target/u);
+    expect(() => {
+      assertTestDatabaseTarget('postgresql://user:pass@localhost/kingturf', 'test');
+    }).toThrow(/Refusing CI database target/u);
+    expect(() => {
+      assertTestDatabaseTarget('postgresql://user:pass@localhost/kingturf_test', 'production');
+    }).toThrow(/Refusing CI database target/u);
+  });
+});
 
 describe('identity and authorization migration', () => {
   it('contains every foundational boundary and no later-engine tables', async () => {
@@ -90,5 +108,62 @@ describe('identity and authorization migration', () => {
     expect(sql).toContain('workflow separation of duties violation');
     expect(sql).toContain('workflow tenant boundary violation');
     expect(sql).toContain('CREATE INDEX workflow_task_queue_idx');
+  });
+  it('adds E12-E15 tenant-safe append-only foundations', async () => {
+    const directory = join(process.cwd(), 'migrations');
+    const eventSql = await readFile(
+      join(directory, '0007_event_notification_foundations.sql'),
+      'utf8',
+    );
+    expect(eventSql).toContain('domain_event_claim_idx');
+    expect(eventSql).toContain('domain_event_outbox');
+    expect(eventSql).toContain('notification_recipients');
+    const attachmentSql = await readFile(join(directory, '0008_attachment_foundation.sql'), 'utf8');
+    expect(attachmentSql).toContain('opaque_key');
+    expect(attachmentSql).not.toContain('bytea');
+    const registrySql = await readFile(
+      join(directory, '0009_business_object_registry.sql'),
+      'utf8',
+    );
+    expect(registrySql).toContain('protect_business_object_published');
+    expect(registrySql).not.toMatch(/sales|manufacturing/iu);
+    const guards = await readFile(join(directory, '0010_foundation_tenant_guards.sql'), 'utf8');
+    expect(guards).toContain('FOREIGN KEY(actor_id,tenant_id)');
+    const hardening = await readFile(
+      join(directory, '0011_foundation_review_hardening.sql'),
+      'utf8',
+    );
+    expect(hardening).toContain("ALTER TYPE attachment_state ADD VALUE 'UPLOADING'");
+    expect(hardening).toContain('event_consumer_deliveries');
+    expect(hardening).toContain('consumer_name');
+    const lifecycleEnum = await readFile(
+      join(directory, '0012_foundation_operational_safety.sql'),
+      'utf8',
+    );
+    expect(lifecycleEnum).toContain("ALTER TYPE attachment_state ADD VALUE 'DELETE_PENDING'");
+    const operationalSafety = await readFile(
+      join(directory, '0013_foundation_operational_safety_columns.sql'),
+      'utf8',
+    );
+    expect(operationalSafety).toContain('upload_lease_until');
+    expect(operationalSafety).toContain('actual_storage_key');
+    expect(operationalSafety).toContain('attachments_delete_retry_idx');
+    expect(operationalSafety).not.toContain('bytea');
+    const eventFencing = await readFile(join(directory, '0014_event_claim_fencing.sql'), 'utf8');
+    expect(eventFencing).toContain('claim_token uuid');
+    expect(eventFencing).toContain('event_consumer_delivery_claim_consistent');
+    const relationshipImmutability = await readFile(
+      join(directory, '0015_published_relationship_immutability.sql'),
+      'utf8',
+    );
+    expect(relationshipImmutability).toContain('business_object_relationships_published_immutable');
+    expect(relationshipImmutability).toContain("status = 'PUBLISHED'");
+    const reviewerHardening = await readFile(
+      join(directory, '0016_notification_idempotency_and_registry_revision.sql'),
+      'utf8',
+    );
+    expect(reviewerHardening).toContain('normalized_recipients');
+    expect(reviewerHardening).toContain('semantic_payload');
+    expect(reviewerHardening).toContain('ALTER COLUMN normalized_recipients SET NOT NULL');
   });
 });

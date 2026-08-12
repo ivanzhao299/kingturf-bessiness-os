@@ -7,6 +7,8 @@ import type {
   OrganizationDto,
   PermissionKey,
   RuleExpression,
+  BusinessObjectSchema,
+  DomainEventEnvelope,
 } from '@kingturf/types';
 
 export const domainPackageVersion = 'identity-foundation' as const;
@@ -18,6 +20,142 @@ export class DomainError extends Error {
   ) {
     super(message);
   }
+}
+
+export type IdempotencyContext = Readonly<{ key: string; correlationId: string }>;
+export type EventTransaction = {
+  // The generic models the selected event outbox projection of a parameterized query.
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
+  query<T extends Record<string, unknown> = Record<string, unknown>>(
+    text: string,
+    values?: readonly unknown[],
+  ): Promise<Readonly<{ rows: T[]; rowCount: number | null }>>;
+};
+export type EventPublisher = {
+  enqueue(
+    transaction: EventTransaction,
+    event: Omit<DomainEventEnvelope, 'eventId'>,
+  ): Promise<string>;
+};
+export type ObjectStorage = {
+  put(key: string, bytes: Uint8Array): Promise<void>;
+  get(key: string): Promise<Uint8Array | null>;
+  delete(key: string): Promise<void>;
+};
+export type ObjectAccessAuthorizer = {
+  authorize(
+    objectType: string,
+    objectId: Identifier,
+    actor: Actor,
+    scopes: readonly DataScope[],
+    anchors?: readonly ScopeAnchor[],
+  ): Promise<boolean>;
+};
+/** Resolves and authorizes a concrete instance for one registered business-object type. */
+export type ObjectInstanceResolver = {
+  authorizeInstance(
+    objectId: Identifier,
+    actor: Actor,
+    scopes: readonly DataScope[],
+    anchors?: readonly ScopeAnchor[],
+  ): Promise<boolean>;
+};
+export type Telemetry = {
+  count(name: string, value?: number, labels?: Readonly<Record<string, string>>): void;
+  timing(name: string, milliseconds: number, labels?: Readonly<Record<string, string>>): void;
+};
+export type OperationalLogger = {
+  write(
+    entry: Readonly<{
+      level: 'info' | 'error';
+      event: string;
+      correlationId: string;
+      statusCode: number;
+      durationMs: number;
+    }>,
+  ): void;
+};
+export const NOOP_TELEMETRY: Telemetry = Object.freeze({
+  count() {
+    return undefined;
+  },
+  timing() {
+    return undefined;
+  },
+});
+
+const SAFE_FIELD_KEY = /^[a-z][a-zA-Z0-9_]{0,63}$/u;
+const BUSINESS_FIELD_TYPES = new Set([
+  'string',
+  'number',
+  'boolean',
+  'date',
+  'datetime',
+  'uuid',
+  'json',
+  'relationship',
+]);
+export function validateBusinessObjectSchema(value: unknown): BusinessObjectSchema {
+  if (typeof value !== 'object' || value === null || Array.isArray(value))
+    throw new DomainError('invalid_request', 'schema must be an object');
+  const record = value as Record<string, unknown>;
+  if (
+    Object.keys(record).some((key) => key !== 'fields') ||
+    !Array.isArray(record.fields) ||
+    record.fields.length > 100
+  )
+    throw new DomainError('invalid_request', 'schema requires at most 100 fields');
+  const seen = new Set<string>();
+  const fields = record.fields.map((candidate) => {
+    if (typeof candidate !== 'object' || candidate === null || Array.isArray(candidate))
+      throw new DomainError('invalid_request', 'field must be an object');
+    const field = candidate as Record<string, unknown>;
+    const allowed = ['key', 'label', 'type', 'required', 'targetDefinitionId', 'cardinality'];
+    if (
+      Object.keys(field).some((key) => !allowed.includes(key)) ||
+      typeof field.key !== 'string' ||
+      !SAFE_FIELD_KEY.test(field.key) ||
+      ['__proto__', 'prototype', 'constructor'].includes(field.key) ||
+      seen.has(field.key) ||
+      typeof field.label !== 'string' ||
+      !field.label.trim() ||
+      field.label.length > 128 ||
+      typeof field.type !== 'string' ||
+      !BUSINESS_FIELD_TYPES.has(field.type) ||
+      typeof field.required !== 'boolean'
+    )
+      throw new DomainError('invalid_request', 'invalid business object field');
+    seen.add(field.key);
+    const relationship = field.type === 'relationship';
+    if (
+      relationship !== (typeof field.targetDefinitionId === 'string') ||
+      (relationship && field.cardinality !== 'ONE' && field.cardinality !== 'MANY')
+    )
+      throw new DomainError(
+        'invalid_request',
+        'relationship target and cardinality are required only for relationship fields',
+      );
+    return {
+      key: field.key,
+      label: field.label.trim(),
+      type: field.type,
+      required: field.required,
+      ...(relationship
+        ? {
+            targetDefinitionId: field.targetDefinitionId as string,
+            cardinality: field.cardinality as 'ONE' | 'MANY',
+          }
+        : {}),
+    };
+  });
+  const schema = { fields } as BusinessObjectSchema;
+  let encodedLength = 0;
+  for (const character of JSON.stringify(schema)) {
+    const point = character.codePointAt(0) ?? 0;
+    encodedLength += point <= 0x7f ? 1 : point <= 0x7ff ? 2 : point <= 0xffff ? 3 : 4;
+  }
+  if (encodedLength > 32_768) throw new DomainError('invalid_request', 'schema exceeds 32 KiB');
+  return schema;
 }
 
 export type Actor = Readonly<{ employeeId: Identifier; companyId: Identifier }>;

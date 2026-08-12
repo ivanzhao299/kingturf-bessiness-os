@@ -13,6 +13,8 @@ const valid = {
   PASSWORD_SCRYPT_COST: '16384',
   PASSWORD_SCRYPT_BLOCK_SIZE: '8',
   PASSWORD_SCRYPT_PARALLELIZATION: '1',
+  ATTACHMENT_STORAGE_ADAPTER: 'local',
+  ATTACHMENT_LOCAL_DIRECTORY: '/tmp/kingturf-test-attachments',
 };
 describe('parseEnvironment', () => {
   it('returns an immutable typed configuration', () => {
@@ -34,5 +36,18 @@ describe('parseEnvironment', () => {
         DATABASE_URL: `${valid.DATABASE_URL}?sslmode=disable`,
       }),
     ).toThrow(ConfigurationError);
+  });
+  it('selects local storage explicitly and fails closed in production', () => {
+    expect(parseEnvironment(valid).attachmentStorage.adapter).toBe('local');
+    expect(() => parseEnvironment({ ...valid, ATTACHMENT_STORAGE_ADAPTER: 's3' })).toThrow(
+      /unsupported/u,
+    );
+    expect(() =>
+      parseEnvironment({
+        ...valid,
+        NODE_ENV: 'production',
+        SESSION_SECRET: 'a-production-secret-that-is-long-enough',
+      }),
+    ).toThrow(/attachment storage/u);
   });
 });

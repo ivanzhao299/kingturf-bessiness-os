@@ -17,6 +17,16 @@ import {
   PostgresRuleRepository,
   PostgresWorkflowRepository,
 } from './platform-repositories.ts';
+import {
+  EmployeeObjectInstanceResolver,
+  LocalAttachmentStorage,
+  PostgresAttachmentRepository,
+  PostgresBusinessObjectRepository,
+  PostgresEventRepository,
+  PostgresNotificationRepository,
+  PostgresRegistryObjectAccessAuthorizer,
+} from './foundation-repositories.ts';
+import { StructuredTelemetry } from './runtime-telemetry.ts';
 
 const config = parseEnvironment(process.env);
 const database = new Database(config.databaseUrl);
@@ -28,21 +38,72 @@ const auth = new AuthenticationService(
   config.session,
   securityStore,
 );
+const employees = new PostgresEmployeeRepository(database);
+const objectAccess = new PostgresRegistryObjectAccessAuthorizer(
+  database,
+  new Map([['employee', new EmployeeObjectInstanceResolver(employees)]]),
+);
 const app = buildApp({
   auth,
   organizations: new PostgresOrganizationRepository(database),
-  employees: new PostgresEmployeeRepository(database),
+  employees,
   authorization: new PostgresAuthorizationRepository(database),
   audit: new PostgresAuditRepository(database),
   masterData: new PostgresMasterDataRepository(database),
   numbers: new PostgresNumberRepository(database),
   rules: new PostgresRuleRepository(database),
   workflows: new PostgresWorkflowRepository(database),
+  notifications: new PostgresNotificationRepository(database),
+  attachments: new PostgresAttachmentRepository(
+    database,
+    new LocalAttachmentStorage(config.attachmentStorage.directory),
+    objectAccess,
+  ),
+  events: new PostgresEventRepository(database),
+  businessObjects: new PostgresBusinessObjectRepository(database),
+  readiness: async () => {
+    try {
+      await database.query('SELECT 1');
+      return true;
+    } catch {
+      return false;
+    }
+  },
+  logger: {
+    write(entry) {
+      process.stdout.write(`${JSON.stringify(entry)}\n`);
+    },
+  },
+  telemetry: new StructuredTelemetry((entry) => {
+    process.stdout.write(`${JSON.stringify(entry)}\n`);
+  }),
 });
 const server = createServer(async (request, response) => {
   const url = new URL(request.url ?? '/', 'http://localhost');
   const chunks: Buffer[] = [];
-  for await (const chunk of request) chunks.push(Buffer.from(chunk));
+  let received = 0;
+  const maximumBodyBytes = 35_000_000;
+  const declared = Number(request.headers['content-length'] ?? 0);
+  const rejectOversized = (): void => {
+    const result = app.rejectOversized(request.headers['x-correlation-id'] as string | undefined);
+    response.writeHead(result.statusCode, {
+      'content-type': 'application/json; charset=utf-8',
+      ...result.headers,
+    });
+    response.end(JSON.stringify(result.body));
+  };
+  if (Number.isFinite(declared) && declared > maximumBodyBytes) {
+    rejectOversized();
+    return;
+  }
+  for await (const chunk of request) {
+    received += Buffer.byteLength(chunk);
+    if (received > maximumBodyBytes) {
+      rejectOversized();
+      return;
+    }
+    chunks.push(Buffer.from(chunk));
+  }
   let body: unknown;
   try {
     body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString('utf8')) : undefined;

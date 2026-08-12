@@ -1,0 +1,7 @@
+# JTF-P0-E14 — Transactional Event Bus
+
+Implemented bounded versioned envelopes, transactional enqueue, tenant-qualified skip-locked leasing, exponential retry, terminal dead letters, immutable attempt history, idempotent consumer checkpoints, and state counters without a broker dependency. Every lease receives a new opaque UUID claim token; completion and failure require the unexpired current token, fencing stale handlers even when a worker name is reused. Claim tokens are never written to logs or audit metadata.
+
+Lease acquisition and reacquisition write `event.delivery.claim` audit events in the same database transaction as the `event_consumer_deliveries` mutation. The audit records the authenticated actor, tenant, event correlation ID, consumer, and worker, while deliberately excluding the claim token and event payload. Completion, retry, and dead-letter transitions retain their own transactional audit events.
+
+`PostgresTransactionalEventPublisher.enqueue(tx, envelope)` requires the caller's existing transaction, so aggregate state and its outbox event commit or roll back together. The `event:operate` API exposes tenant-derived counts plus claim, complete, retry, and explicit dead-letter operations under `/api/v1/operations/events`; callers can never supply a tenant ID. Authenticated delivery mutations pass the complete actor into the repository transaction, retaining tenant and actor attribution in audit rows. The local in-process dispatcher is the only supplied transport adapter.

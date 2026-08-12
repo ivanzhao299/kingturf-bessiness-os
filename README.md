@@ -2,7 +2,7 @@
 
 金特夫（山东）人造草坪有限公司智能经营、生产与风险控制平台。
 
-This repository provides the organization, employee, identity, opaque-session, RBAC, and DataScope foundation. It intentionally contains no CRM/sales or MES/manufacturing implementation.
+This repository provides identity/RBAC/DataScope plus generic notifications, attachments, transactional events, a versioned business-object registry, and correlation-aware operations. It intentionally contains no CRM/sales or MES/manufacturing policy.
 
 ## Prerequisites
 
@@ -66,6 +66,7 @@ The web app is at <http://localhost:5173>. Verify the database-independent API h
 ```bash
 curl --fail --silent http://localhost:3000/health
 # {"status":"ok"}
+curl --fail --silent http://localhost:3000/ready
 ```
 
 After `pnpm build`, production artifacts can be exercised with:
@@ -79,15 +80,17 @@ Stop foreground application processes with `Ctrl-C`. Shut down PostgreSQL with t
 
 ## Quality gates
 
-These are the exact commands run by CI:
+Run the exact ordered CI gate. In Studio it uses the existing injected loopback PostgreSQL test
+fixture; from another local shell, provide an equivalent ephemeral loopback test database through
+the process environment:
 
 ```bash
-pnpm install --frozen-lockfile
-pnpm lint
-pnpm typecheck
-pnpm test
-pnpm build
+pnpm ci:local
 ```
+
+`ci:local` sets `NODE_ENV=test` only for its child process. It does not read or write `.env` files,
+print the connection string, or persist credentials. The guard still refuses to migrate unless the
+ambient `DATABASE_URL` host is loopback and its database name contains a distinct `test` segment.
 
 Formatting is available through `pnpm format`; check it without changing files using `pnpm format:check`.
 

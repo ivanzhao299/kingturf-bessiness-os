@@ -110,6 +110,106 @@ export type ErrorEnvelope = Readonly<{
     details?: readonly string[];
   }>;
 }>;
+
+export const FOUNDATION_CAPABILITIES = [
+  'notification:read',
+  'notification:manage',
+  'attachment:read',
+  'attachment:manage',
+  'event:operate',
+  'business-object:read',
+  'business-object:manage',
+] as const satisfies readonly PermissionKey[];
+export type NotificationChannel = 'IN_APP' | 'EMAIL' | 'SMS' | 'PUSH';
+export type NotificationDto = Readonly<{
+  id: Identifier;
+  tenantId: Identifier;
+  kind: string;
+  title: string;
+  message: string;
+  subjectType: string | null;
+  subjectId: Identifier | null;
+  readAt: string | null;
+  createdAt: string;
+}>;
+export type NotificationPreferenceDto = Readonly<{
+  channel: NotificationChannel;
+  enabled: boolean;
+  version: number;
+}>;
+export type AttachmentState = 'PENDING' | 'AVAILABLE' | 'DELETED';
+export type AttachmentDto = Readonly<{
+  id: Identifier;
+  tenantId: Identifier;
+  originalName: string;
+  mimeType: string;
+  size: number | null;
+  checksum: string | null;
+  state: AttachmentState;
+  version: number;
+  createdAt: string;
+}>;
+export type DomainEventEnvelope = Readonly<{
+  eventId: Identifier;
+  eventType: string;
+  eventVersion: number;
+  tenantId: Identifier;
+  aggregateType: string;
+  aggregateId: Identifier;
+  aggregateVersion: number;
+  occurredAt: string;
+  actorId: Identifier | null;
+  correlationId: Identifier;
+  causationId: Identifier | null;
+  payload: JsonObject;
+}>;
+export type EventOutboxState = 'PENDING' | 'PROCESSING' | 'DELIVERED' | 'DEAD_LETTER';
+export type BusinessFieldType =
+  | 'string'
+  | 'number'
+  | 'boolean'
+  | 'date'
+  | 'datetime'
+  | 'uuid'
+  | 'json'
+  | 'relationship';
+export type BusinessObjectField = Readonly<{
+  key: string;
+  label: string;
+  type: BusinessFieldType;
+  required: boolean;
+  targetDefinitionId?: Identifier;
+  cardinality?: 'ONE' | 'MANY';
+}>;
+export type BusinessObjectSchema = Readonly<{ fields: readonly BusinessObjectField[] }>;
+export type BusinessObjectVersionDto = Readonly<{
+  id: Identifier;
+  definitionId: Identifier;
+  tenantId: Identifier;
+  version: number;
+  status: 'DRAFT' | 'PUBLISHED';
+  schema: BusinessObjectSchema;
+  createdAt: string;
+  publishedAt: string | null;
+}>;
+export type BusinessObjectDefinitionDto = Readonly<{
+  id: Identifier;
+  tenantId: Identifier;
+  code: string;
+  name: string;
+  version: number;
+  versions?: readonly BusinessObjectVersionDto[];
+}>;
+
+export const FOUNDATION_LIMITS = Object.freeze({
+  eventPayloadBytes: 16_384,
+  schemaBytes: 32_768,
+  attachmentBytes: 26_214_400,
+  attachmentName: 255,
+  notificationTitle: 200,
+  notificationMessage: 4_000,
+  idempotencyKey: 128,
+});
 export type OrganizationDto = Readonly<{
   id: Identifier;
   ownerOrganizationId: Identifier;

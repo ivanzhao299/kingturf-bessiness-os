@@ -12,6 +12,7 @@ export type AppConfig = Readonly<{
     blockSize: number;
     parallelization: number;
   }>;
+  attachmentStorage: Readonly<{ adapter: 'local'; directory: string }>;
 }>;
 
 export class ConfigurationError extends Error {}
@@ -61,6 +62,11 @@ export function parseEnvironment(env: EnvironmentRecord): AppConfig {
   if (nodeEnv === 'production' && /[?&]sslmode=disable(?:&|#|$)/iu.test(databaseUrl)) {
     throw new ConfigurationError('DATABASE_URL must not disable TLS in production');
   }
+  const attachmentAdapter = required(env, 'ATTACHMENT_STORAGE_ADAPTER');
+  if (attachmentAdapter !== 'local')
+    throw new ConfigurationError('ATTACHMENT_STORAGE_ADAPTER is unsupported');
+  if (nodeEnv === 'production')
+    throw new ConfigurationError('Local attachment storage is forbidden in production');
   const config: AppConfig = {
     nodeEnv: nodeEnv as AppConfig['nodeEnv'],
     databaseUrl,
@@ -73,11 +79,16 @@ export function parseEnvironment(env: EnvironmentRecord): AppConfig {
       blockSize: integer(env, 'PASSWORD_SCRYPT_BLOCK_SIZE', 8, 32),
       parallelization: integer(env, 'PASSWORD_SCRYPT_PARALLELIZATION', 1, 16),
     },
+    attachmentStorage: {
+      adapter: 'local',
+      directory: required(env, 'ATTACHMENT_LOCAL_DIRECTORY'),
+    },
   };
   return Object.freeze({
     ...config,
     api: Object.freeze(config.api),
     session: Object.freeze(config.session),
     password: Object.freeze(config.password),
+    attachmentStorage: Object.freeze(config.attachmentStorage),
   });
 }

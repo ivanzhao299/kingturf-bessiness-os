@@ -14,6 +14,19 @@ export type SqlClient = {
 };
 export type Transaction = SqlClient;
 
+export function assertTestDatabaseTarget(
+  connectionString: string,
+  nodeEnvironment: string | undefined,
+): void {
+  const target = new URL(connectionString);
+  const databaseName = target.pathname.slice(1);
+  const localHost = ['localhost', '127.0.0.1', '::1'].includes(target.hostname);
+  if (nodeEnvironment !== 'test' || !localHost || !/(?:^|[_-])test(?:$|[_-])/u.test(databaseName))
+    throw new Error(
+      'Refusing CI database target: require NODE_ENV=test, a loopback host, and a database name containing a test segment',
+    );
+}
+
 export class Database {
   readonly #pool: Pool;
   public constructor(connectionString: string) {
