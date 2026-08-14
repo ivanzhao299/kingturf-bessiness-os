@@ -1,0 +1,22 @@
+# JTF-P1-E05–E10: Commercial sales-to-cash decision chain
+
+| Episode                     | Schema and contract                                             | API/workspace                                                           | Evidence and security                                                                           |
+| --------------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| E05 Opportunity             | `opportunities`, lifecycle history, money/probability/ownership | tenant-scoped list/detail/create/update/transition; responsive pipeline | scoped lock before mutation, optimistic version, audit/outbox                                   |
+| E06 CTR                     | identities, append-only versions, approvals, attachment links   | draft, submit, approval, attachments                                    | submitted snapshot hash, idempotent commands, immutable trigger                                 |
+| E07 Technical Solution Lite | revisions pin exact submitted CTR version                       | structured specification/assumptions and history                        | tenant-composite FKs, final-revision guard                                                      |
+| E08 Cost Engine v1          | model versions, decision/line records, currency/unit catalogs   | evaluation and explanation panel                                        | canonical input/hash, exact numeric calculation, retained trace                                 |
+| E09 Sales Policy            | policy versions and evaluations                                 | pass/fail, bounds, approvals, reasons                                   | closed bounded AST; retained exact-version outcome; no dynamic evaluation                       |
+| E10 CPQ/Quote               | revisions/lines/approvals/issued snapshots                      | builder, revision, approval and issue views                             | exact Opportunity/CTR/solution/cost/policy pins, server totals/margin/validity, immutable issue |
+
+Capabilities are action-specific and field grants filter serialized responses. DataScope is anchored transactionally for known-ID mutations. All commercial tables carry tenant-composite identity/FKs, while command results, audit events, and outbox events share the business transaction.
+
+CTR attachment mutations use `ctr:update`, inherit the parent Opportunity DataScope, and write audit/outbox evidence in the same transaction. The attachment set closes at submission: the API and database both reject later inserts, updates, and deletes.
+
+Operational version endpoints are `POST /ctrs/{id}/versions`, `/technical-solutions/{id}/revisions`, `/cost-models/{id}/versions`, `/sales-policies/{id}/versions`, and `/quotes/{id}/revisions`. They retain the stable root, create an immutable child numbered under a transactional root lock, enforce the corresponding update/manage capability, and return the new identifier for navigation. The workspace selects these endpoints when a structured request supplies `rootId`; CTR submission takes the displayed version number rather than assuming version 1.
+
+The responsive commercial workspace uses `CommercialController` and authenticated API transport. Each form and quote action is rendered only for its exact capability; opportunity loading occurs only with `opportunity:read`. Loading, returned revision evidence, and issued read-only state are rendered. It is intentionally an operator-oriented structured-JSON workspace, not a finished field-by-field CPQ designer.
+
+Exact evidence is in `packages/domain/src/commercial.test.ts` (decimal boundaries, deterministic AST), `packages/database/test/migrations.test.ts` (append-only schema invariants), `apps/web/src/bootstrap.test.ts` (responsive/controller state), and `apps/api/test/commercial-postgres.integration.test.ts` (tenant isolation, Opportunity and CTR concurrency, actual v2/revision-2 creation, late-stage transaction rollback, cross-DataScope mutations, command collision/replay, issue-child immutability, and exact graph behavior). PostgreSQL suites are zero-skip: they fail closed when `DATABASE_URL` is absent, unsafe, or unreachable.
+
+This delivery stops at quote issue. Credit, contract, order, fulfillment, invoice, and collection (E11+) are explicitly deferred.

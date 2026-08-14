@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17.7-alpine3.23
+        env:
+          POSTGRES_DB: kingturf_test
+          POSTGRES_USER: kingturf_test
+          POSTGRES_PASSWORD: ephemeral-ci-only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U kingturf_test -d kingturf_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://kingturf_test:ephemeral-ci-only@localhost:5432/kingturf_test
+      API_HOST: 127.0.0.1
+      API_PORT: 3000
+      SESSION_SECRET: ephemeral-ci-session-secret
+      SESSION_TTL_SECONDS: 3600
+      PASSWORD_SALT_BYTES: 16
+      PASSWORD_KEY_LENGTH: 64
+      PASSWORD_SCRYPT_COST: 16384
+      PASSWORD_SCRYPT_BLOCK_SIZE: 8
+      PASSWORD_SCRYPT_PARALLELIZATION: 1
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v5
+        with:
+          version: 10.33.4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.13.0
+          cache: pnpm
+      - run: pnpm ci:local

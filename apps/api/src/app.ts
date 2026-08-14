@@ -1,0 +1,2873 @@
+import { randomUUID } from 'node:crypto';
+import {
+  assertEffectiveRange,
+  addDecimal,
+  assertStableCode,
+  DomainError,
+  normalizeContactEmail,
+  normalizeContactPhone,
+  normalizeDecimal,
+  assertCurrency,
+  parseEffectiveTimestamp,
+  type AuthorizationRepository,
+  type AuthorizationContext,
+  type EmployeeRepository,
+  type OrganizationRepository,
+  NOOP_TELEMETRY,
+  type OperationalLogger,
+  type Telemetry,
+} from '@kingturf/domain';
+import { DATA_SCOPES, type DataScope, type ErrorCode, type PermissionKey } from '@kingturf/types';
+import { authorizeQuery } from './policy.ts';
+import type { AuthenticationService } from './security.ts';
+import type {
+  PostgresAuditRepository,
+  PostgresMasterDataRepository,
+  PostgresNumberRepository,
+  PostgresRuleRepository,
+  PostgresWorkflowRepository,
+} from './platform-repositories.ts';
+import type {
+  PostgresAttachmentRepository,
+  PostgresBusinessObjectRepository,
+  PostgresEventRepository,
+  PostgresNotificationRepository,
+} from './foundation-repositories.ts';
+import type { PostgresCrmRepository } from './crm-repositories.ts';
+import type { PostgresCommercialRepository } from './commercial-repositories.ts';
+import type { PostgresQuoteToCashRepository } from './qtc-repositories.ts';
+
+type Json = unknown;
+const permittedDto = <T extends Record<string, unknown>>(
+  value: T,
+  fields: readonly string[] | null,
+): Partial<T> => {
+  if (fields === null) return value;
+  const visible = new Set(['id', ...fields]);
+  return Object.fromEntries(
+    Object.entries(value).filter(([key]) => visible.has(key)),
+  ) as Partial<T>;
+};
+const mutationDto = <T extends Record<string, unknown>>(
+  value: T,
+  context: AuthorizationContext,
+  readCapability: PermissionKey,
+): Partial<T> => {
+  const read = context.permissions.get(readCapability);
+  return read ? permittedDto(value, read.fields) : permittedDto(value, ['version']);
+};
+export type ApiRequest = Readonly<{
+  method: string;
+  pathname: string;
+  query?: Readonly<Record<string, string | undefined>>;
+  headers?: Readonly<Record<string, string | undefined>>;
+  body?: unknown;
+}>;
+export type ApiResponse = Readonly<{
+  body: Json;
+  statusCode: number;
+  headers?: Readonly<Record<string, string>>;
+}>;
+export type ApiDependencies = Readonly<{
+  auth: AuthenticationService;
+  organizations: OrganizationRepository;
+  employees: EmployeeRepository;
+  authorization?: AuthorizationRepository;
+  audit?: PostgresAuditRepository;
+  masterData?: PostgresMasterDataRepository;
+  numbers?: PostgresNumberRepository;
+  rules?: PostgresRuleRepository;
+  workflows?: PostgresWorkflowRepository;
+  notifications?: PostgresNotificationRepository;
+  attachments?: PostgresAttachmentRepository;
+  events?: PostgresEventRepository;
+  businessObjects?: PostgresBusinessObjectRepository;
+  crm?: PostgresCrmRepository;
+  commercial?: PostgresCommercialRepository;
+  quoteToCash?: PostgresQuoteToCashRepository;
+  readiness?: () => Promise<boolean>;
+  telemetry?: Telemetry;
+  logger?: OperationalLogger;
+}>;
+export type ApiApplication = Readonly<{
+  dispatch(request: ApiRequest): Promise<ApiResponse>;
+  rejectOversized(correlationId?: string): ApiResponse;
+}>;
+const error = (
+  statusCode: number,
+  code: ErrorCode,
+  message: string,
+  correlationId: string,
+  details?: readonly string[],
+): ApiResponse => ({
+  statusCode,
+  body: { error: { code, message, correlationId, ...(details ? { details } : {}) } },
+});
+const objectBody = (body: unknown): Record<string, unknown> => {
+  if (typeof body !== 'object' || body === null || Array.isArray(body))
+    throw new DomainError('invalid_request', 'A JSON object body is required');
+  return body as Record<string, unknown>;
+};
+const string = (value: unknown, name: string): string => {
+  if (typeof value !== 'string' || !value.trim())
+    throw new DomainError('invalid_request', `${name} is required`);
+  return value.trim();
+};
+const timestamp = (value: unknown, name: string): string => {
+  const result = string(value, name);
+  const parsed = new Date(result);
+  if (!Number.isFinite(parsed.getTime()))
+    throw new DomainError('invalid_request', `${name} must be a valid timestamp`);
+  return parsed.toISOString();
+};
+const bearer = (headers: Readonly<Record<string, string | undefined>>): string | null => {
+  const value = headers.authorization;
+  if (!value?.startsWith('Bearer ')) return null;
+  return value.slice(7);
+};
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+const CAPABILITY = /^[a-z][a-z0-9_.-]*:[a-z][a-z0-9_.-]*$/u;
+const correlation = (value: string | undefined): string =>
+  value && UUID.test(value) ? value : randomUUID();
+const uuid = (value: unknown, name: string): string => {
+  const result = string(value, name);
+  if (!UUID.test(result)) throw new DomainError('invalid_request', `${name} must be a UUID`);
+  return result;
+};
+const allow = (body: Record<string, unknown>, fields: readonly string[]): void => {
+  const unexpected = Object.keys(body).filter((key) => !fields.includes(key));
+  if (unexpected.length)
+    throw new DomainError('invalid_request', `Unsupported fields: ${unexpected.sort().join(', ')}`);
+};
+const version = (value: unknown): number => {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 1)
+    throw new DomainError('invalid_request', 'version must be a positive integer');
+  return value;
+};
+const expectedVersion = (value: unknown): number => {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0)
+    throw new DomainError('invalid_request', 'expectedVersion must be a non-negative integer');
+  return value;
+};
+const strings = (value: unknown, name: string): readonly string[] => {
+  if (!Array.isArray(value) || value.some((v) => typeof v !== 'string' || !v.trim()))
+    throw new DomainError('invalid_request', `${name} must be an array of non-empty strings`);
+  return [...new Set(value as string[])].sort();
+};
+const notificationChannel = (value: unknown): string => {
+  const channel = string(value, 'channel');
+  if (!['IN_APP', 'EMAIL', 'SMS', 'PUSH'].includes(channel))
+    throw new DomainError('invalid_request', 'channel is unsupported');
+  return channel;
+};
+const attachmentBytes = (value: unknown): Uint8Array => {
+  const encoded = string(value, 'contentBase64');
+  if (encoded.length > 34_952_536)
+    throw new DomainError('invalid_request', 'Attachment transport exceeds 25 MiB');
+  if (
+    encoded.length % 4 !== 0 ||
+    !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u.test(encoded)
+  )
+    throw new DomainError('invalid_request', 'contentBase64 must be canonical base64');
+  const bytes = Buffer.from(encoded, 'base64');
+  if (bytes.byteLength > 26_214_400)
+    throw new DomainError('invalid_request', 'Attachment transport exceeds 25 MiB');
+  return bytes;
+};
+const integer = (value: unknown, name: string, minimum: number, maximum: number): number => {
+  if (
+    typeof value !== 'number' ||
+    !Number.isSafeInteger(value) ||
+    value < minimum ||
+    value > maximum
+  )
+    throw new DomainError(
+      'invalid_request',
+      `${name} must be an integer between ${String(minimum)} and ${String(maximum)}`,
+    );
+  return value;
+};
+const jsonObject = (value: unknown, name: string): Record<string, never> => {
+  if (typeof value !== 'object' || value === null || Array.isArray(value))
+    throw new DomainError('invalid_request', `${name} must be a JSON object`);
+  return value as Record<string, never>;
+};
+const array = (value: unknown, name: string): readonly unknown[] => {
+  if (!Array.isArray(value)) throw new DomainError('invalid_request', `${name} must be an array`);
+  return value;
+};
+const decimal = (value: unknown, name: string, nonnegative = true): string => {
+  const result = normalizeDecimal(string(value, name));
+  if (nonnegative && result.startsWith('-'))
+    throw new DomainError('invalid_request', `${name} must be non-negative`);
+  return result;
+};
+const currency = (value: unknown): string => assertCurrency(string(value, 'currency'));
+const idempotency = (request: ApiRequest): string => {
+  const key = request.headers?.['idempotency-key'];
+  if (!key || key.length > 128)
+    throw new DomainError('invalid_request', 'Idempotency-Key is required');
+  return key;
+};
+const effectiveRange = (body: Record<string, unknown>) => {
+  const effectiveFrom = string(body.effectiveFrom, 'effectiveFrom');
+  const effectiveTo =
+    body.effectiveTo === null || body.effectiveTo === undefined
+      ? null
+      : string(body.effectiveTo, 'effectiveTo');
+  assertEffectiveRange(effectiveFrom, effectiveTo);
+  return { effectiveFrom, effectiveTo };
+};
+const scopes = (value: unknown): readonly DataScope[] => {
+  const values = strings(value, 'scopes');
+  if (values.length === 0 || values.some((v) => !DATA_SCOPES.includes(v as DataScope)))
+    throw new DomainError('invalid_request', 'scopes contains an unsupported DataScope');
+  return values as DataScope[];
+};
+
+export function buildApp(dependencies?: ApiDependencies): ApiApplication {
+  const telemetry = dependencies?.telemetry ?? NOOP_TELEMETRY;
+  const application: Pick<ApiApplication, 'dispatch'> = {
+    async dispatch(request) {
+      const correlationId = correlation(request.headers?.['x-correlation-id']);
+      try {
+        if (request.method === 'GET' && request.pathname === '/health')
+          return { statusCode: 200, body: { status: 'ok' } };
+        if (request.method === 'GET' && request.pathname === '/ready') {
+          const ready = dependencies?.readiness ? await dependencies.readiness() : false;
+          return ready
+            ? { statusCode: 200, body: { status: 'ready' } }
+            : error(503, 'internal_error', 'Dependency unavailable', correlationId);
+        }
+        if (!dependencies)
+          return error(
+            503,
+            'internal_error',
+            'Application dependencies are unavailable',
+            correlationId,
+          );
+        if (request.method === 'POST' && request.pathname === '/api/v1/auth/login') {
+          const body = objectBody(request.body);
+          const result = await dependencies.auth.login(
+            string(body.login, 'login'),
+            string(body.password, 'password'),
+            correlationId,
+          );
+          return result
+            ? { statusCode: 200, body: result }
+            : {
+                statusCode: 401,
+                body: {
+                  error: {
+                    code: 'authentication_required',
+                    message: 'Invalid credentials',
+                    correlationId,
+                  },
+                },
+              };
+        }
+        const token = bearer(request.headers ?? {});
+        const context = token ? await dependencies.auth.authenticate(token) : null;
+        if (context === null)
+          return error(
+            401,
+            'authentication_required',
+            'A valid session is required',
+            correlationId,
+          );
+        if (token === null)
+          return error(
+            401,
+            'authentication_required',
+            'A valid session is required',
+            correlationId,
+          );
+        if (request.method === 'POST' && request.pathname === '/api/v1/auth/logout') {
+          await dependencies.auth.logout(token, context, correlationId);
+          return { statusCode: 204, body: {} };
+        }
+        if (request.method === 'GET' && request.pathname === '/api/v1/auth/session')
+          return {
+            statusCode: 200,
+            body: {
+              employeeId: context.actor.employeeId,
+              companyId: context.actor.companyId,
+              permissions: [...context.permissions.keys()].sort(),
+            },
+          };
+        if (request.method === 'PUT' && request.pathname === '/api/v1/auth/credential') {
+          const body = objectBody(request.body);
+          await dependencies.auth.changePassword(
+            context,
+            string(body.password, 'password'),
+            correlationId,
+          );
+          return { statusCode: 204, body: {} };
+        }
+        const qtcReads = new Map<
+          string,
+          readonly [
+            `${string}:${string}`,
+            'credit' | 'contracts' | 'orders' | 'ar' | 'payments' | 'reconciliation',
+          ]
+        >([
+          ['/api/v1/credit-decisions', ['credit:read', 'credit']],
+          ['/api/v1/contracts', ['contract:read', 'contracts']],
+          ['/api/v1/sales-orders', ['sales-order:read', 'orders']],
+          ['/api/v1/ar-open-items', ['ar:read', 'ar']],
+          ['/api/v1/bank-payments', ['bank-payment:read', 'payments']],
+          ['/api/v1/reconciliation-runs', ['reconciliation:read', 'reconciliation']],
+        ]);
+        const qtcRead = qtcReads.get(request.pathname);
+        if (request.method === 'GET' && qtcRead && dependencies.quoteToCash) {
+          const grant = authorizeQuery(context, qtcRead[0]);
+          return {
+            statusCode: 200,
+            body: {
+              items: (
+                await dependencies.quoteToCash.list(qtcRead[1], {
+                  actor: context.actor,
+                  scopes: grant.scopes,
+                  anchors: grant.anchors,
+                })
+              ).map((item) =>
+                permittedDto(item, context.permissions.get(qtcRead[0])?.fields ?? null),
+              ),
+            },
+          };
+        }
+        if (request.method === 'POST' && dependencies.quoteToCash) {
+          const body = objectBody(request.body),
+            ctx = (capability: PermissionKey) => {
+              const grant = authorizeQuery(context, capability, Object.keys(body));
+              return { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors };
+            };
+          if (request.pathname === '/api/v1/credit-limits') {
+            allow(body, ['customerId', 'currency', 'amount', 'effectiveAt', 'expiresAt']);
+            const result = await dependencies.quoteToCash.setCreditLimit(
+              {
+                customerId: uuid(body.customerId, 'customerId'),
+                currency: currency(body.currency),
+                amount: decimal(body.amount, 'amount'),
+                effectiveAt: timestamp(body.effectiveAt, 'effectiveAt'),
+                expiresAt: timestamp(body.expiresAt, 'expiresAt'),
+              },
+              idempotency(request),
+              ctx('credit:approve'),
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'credit:read') };
+          }
+          if (request.pathname === '/api/v1/credit-decisions') {
+            allow(body, [
+              'customerId',
+              'quoteRevisionId',
+              'quoteSnapshotId',
+              'creditLimitId',
+              'validUntil',
+            ]);
+            const result = await dependencies.quoteToCash.evaluateCredit(
+              {
+                customerId: uuid(body.customerId, 'customerId'),
+                quoteRevisionId: uuid(body.quoteRevisionId, 'quoteRevisionId'),
+                quoteSnapshotId: uuid(body.quoteSnapshotId, 'quoteSnapshotId'),
+                creditLimitId: uuid(body.creditLimitId, 'creditLimitId'),
+                validUntil: timestamp(body.validUntil, 'validUntil'),
+              },
+              idempotency(request),
+              ctx('credit:evaluate'),
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'credit:read') };
+          }
+          const creditApproval = /^\/api\/v1\/credit-decisions\/([0-9a-f-]+)\/approve$/u.exec(
+            request.pathname,
+          );
+          if (creditApproval) {
+            allow(body, ['decision', 'reason']);
+            const d = string(body.decision, 'decision');
+            if (!['APPROVED', 'REJECTED'].includes(d))
+              throw new DomainError('invalid_request', 'decision is unsupported');
+            const result = await dependencies.quoteToCash.approveCredit(
+              uuid(creditApproval[1], 'creditDecisionId'),
+              d as 'APPROVED' | 'REJECTED',
+              string(body.reason, 'reason'),
+              idempotency(request),
+              ctx('credit:approve'),
+              correlationId,
+            );
+            return { statusCode: 200, body: mutationDto(result, context, 'credit:read') };
+          }
+          if (request.pathname === '/api/v1/contracts') {
+            allow(body, [
+              'customerId',
+              'opportunityId',
+              'contractNumber',
+              'quoteRevisionId',
+              'quoteSnapshotId',
+              'content',
+            ]);
+            const result = await dependencies.quoteToCash.createContract(
+              {
+                customerId: uuid(body.customerId, 'customerId'),
+                opportunityId: uuid(body.opportunityId, 'opportunityId'),
+                contractNumber: string(body.contractNumber, 'contractNumber'),
+                quoteRevisionId: uuid(body.quoteRevisionId, 'quoteRevisionId'),
+                quoteSnapshotId: uuid(body.quoteSnapshotId, 'quoteSnapshotId'),
+                content: jsonObject(body.content, 'content'),
+              },
+              idempotency(request),
+              ctx('contract:revise'),
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'contract:read') };
+          }
+          const signing = /^\/api\/v1\/contracts\/([0-9a-f-]+)\/sign$/u.exec(request.pathname);
+          if (signing) {
+            allow(body, ['provider', 'providerReceiptId', 'payload', 'signedAt']);
+            const result = await dependencies.quoteToCash.signContract(
+              uuid(signing[1], 'contractRevisionId'),
+              {
+                provider: string(body.provider, 'provider'),
+                providerReceiptId: string(body.providerReceiptId, 'providerReceiptId'),
+                payload: jsonObject(body.payload, 'payload'),
+                signedAt: timestamp(body.signedAt, 'signedAt'),
+              },
+              idempotency(request),
+              ctx('contract:sign'),
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'contract:read') };
+          }
+          if (request.pathname === '/api/v1/sales-orders') {
+            allow(body, [
+              'customerId',
+              'opportunityId',
+              'orderNumber',
+              'quoteRevisionId',
+              'quoteSnapshotId',
+              'creditDecisionId',
+              'contractRevisionId',
+              'signatureEvidenceId',
+              'currency',
+              'total',
+              'lines',
+            ]);
+            const lines = array(body.lines, 'lines').map((v, i) => {
+              const l = objectBody(v);
+              allow(l, ['description', 'quantity', 'unitPrice', 'total']);
+              return {
+                description: string(l.description, `lines[${String(i)}].description`),
+                quantity: decimal(l.quantity, 'quantity'),
+                unitPrice: decimal(l.unitPrice, 'unitPrice'),
+                total: decimal(l.total, 'total'),
+              };
+            });
+            if (!lines.length)
+              throw new DomainError('invalid_request', 'Sales order requires at least one line');
+            const declaredTotal = decimal(body.total, 'total');
+            const lineTotal = lines.reduce((sum, line) => addDecimal(sum, line.total), '0');
+            if (normalizeDecimal(declaredTotal) !== lineTotal)
+              throw new DomainError('invalid_request', 'Sales order lines must equal order total');
+            const result = await dependencies.quoteToCash.createOrder(
+              {
+                customerId: uuid(body.customerId, 'customerId'),
+                opportunityId: uuid(body.opportunityId, 'opportunityId'),
+                orderNumber: string(body.orderNumber, 'orderNumber'),
+                quoteRevisionId: uuid(body.quoteRevisionId, 'quoteRevisionId'),
+                quoteSnapshotId: uuid(body.quoteSnapshotId, 'quoteSnapshotId'),
+                creditDecisionId: uuid(body.creditDecisionId, 'creditDecisionId'),
+                contractRevisionId: uuid(body.contractRevisionId, 'contractRevisionId'),
+                signatureEvidenceId: uuid(body.signatureEvidenceId, 'signatureEvidenceId'),
+                currency: currency(body.currency),
+                total: declaredTotal,
+                lines,
+              },
+              idempotency(request),
+              ctx('sales-order:create'),
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'sales-order:read') };
+          }
+          if (request.pathname === '/api/v1/ar-open-items') {
+            allow(body, [
+              'customerId',
+              'salesOrderId',
+              'documentNumber',
+              'documentType',
+              'currency',
+              'amount',
+              'dueAt',
+            ]);
+            const dt = string(body.documentType, 'documentType');
+            if (!['INVOICE', 'CREDIT_NOTE'].includes(dt))
+              throw new DomainError('invalid_request', 'documentType is unsupported');
+            const result = await dependencies.quoteToCash.postAr(
+              {
+                customerId: uuid(body.customerId, 'customerId'),
+                salesOrderId:
+                  body.salesOrderId === null ? null : uuid(body.salesOrderId, 'salesOrderId'),
+                documentNumber: string(body.documentNumber, 'documentNumber'),
+                documentType: dt as 'INVOICE' | 'CREDIT_NOTE',
+                currency: currency(body.currency),
+                amount: decimal(body.amount, 'amount'),
+                dueAt: timestamp(body.dueAt, 'dueAt'),
+              },
+              idempotency(request),
+              ctx('ar:post'),
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'ar:read') };
+          }
+          if (request.pathname === '/api/v1/bank-payments') {
+            allow(body, [
+              'customerId',
+              'currency',
+              'amount',
+              'receivedAt',
+              'bankReference',
+              'rawPayload',
+            ]);
+            const result = await dependencies.quoteToCash.intakePayment(
+              {
+                customerId: uuid(body.customerId, 'customerId'),
+                currency: currency(body.currency),
+                amount: decimal(body.amount, 'amount'),
+                receivedAt: timestamp(body.receivedAt, 'receivedAt'),
+                bankReference: string(body.bankReference, 'bankReference'),
+                rawPayload: jsonObject(body.rawPayload, 'rawPayload'),
+              },
+              idempotency(request),
+              ctx('bank-payment:intake'),
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'bank-payment:read') };
+          }
+          if (request.pathname === '/api/v1/reconciliation-runs') {
+            allow(body, ['paymentId']);
+            const result = await dependencies.quoteToCash.reconcile(
+              { paymentId: uuid(body.paymentId, 'paymentId') },
+              idempotency(request),
+              ctx('reconciliation:run'),
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'reconciliation:read') };
+          }
+        }
+        const opportunityMatch = /^\/api\/v1\/opportunities(?:\/([0-9a-f-]+))?$/u.exec(
+          request.pathname,
+        );
+        if (opportunityMatch) {
+          if (!dependencies.commercial)
+            return error(503, 'internal_error', 'Commercial dependency unavailable', correlationId);
+          const id = opportunityMatch[1];
+          if (request.method === 'GET') {
+            const grant = authorizeQuery(context, 'opportunity:read');
+            if (!id)
+              return {
+                statusCode: 200,
+                body: {
+                  items: (
+                    await dependencies.commercial.listOpportunities(
+                      context.actor,
+                      grant.scopes,
+                      grant.anchors,
+                    )
+                  ).map((item) =>
+                    permittedDto(item, context.permissions.get('opportunity:read')?.fields ?? null),
+                  ),
+                },
+              };
+            const item = await dependencies.commercial.findOpportunity(
+              uuid(id, 'opportunityId'),
+              context.actor,
+              grant.scopes,
+              grant.anchors,
+            );
+            return item
+              ? {
+                  statusCode: 200,
+                  body: permittedDto(
+                    item,
+                    context.permissions.get('opportunity:read')?.fields ?? null,
+                  ),
+                }
+              : error(404, 'not_found', 'Opportunity not found', correlationId);
+          }
+          const body = objectBody(request.body);
+          if (request.method === 'POST' && !id) {
+            allow(body, [
+              'customerId',
+              'leadId',
+              'name',
+              'value',
+              'currency',
+              'probabilityBasisPoints',
+              'expectedCloseDate',
+            ]);
+            authorizeQuery(context, 'opportunity:create', Object.keys(body));
+            const result = await dependencies.commercial.createOpportunity(
+              {
+                customerId: body.customerId === null ? null : uuid(body.customerId, 'customerId'),
+                leadId: body.leadId === null ? null : uuid(body.leadId, 'leadId'),
+                name: string(body.name, 'name'),
+                value: decimal(body.value, 'value'),
+                currency: currency(body.currency),
+                probabilityBasisPoints: integer(
+                  body.probabilityBasisPoints,
+                  'probabilityBasisPoints',
+                  0,
+                  10000,
+                ),
+                expectedCloseDate: string(body.expectedCloseDate, 'expectedCloseDate'),
+              },
+              context.actor,
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'opportunity:read') };
+          }
+          if (request.method === 'PATCH' && id) {
+            const transition = body.status !== undefined;
+            allow(
+              body,
+              transition
+                ? ['status', 'reason', 'expectedVersion']
+                : [
+                    'name',
+                    'value',
+                    'currency',
+                    'probabilityBasisPoints',
+                    'expectedCloseDate',
+                    'expectedVersion',
+                  ],
+            );
+            const capability = transition ? 'opportunity:lifecycle' : 'opportunity:update';
+            const grant = authorizeQuery(
+              context,
+              capability,
+              Object.keys(body).filter((key) => key !== 'expectedVersion' && key !== 'reason'),
+            );
+            const result = transition
+              ? await dependencies.commercial.transitionOpportunity(
+                  uuid(id, 'opportunityId'),
+                  string(body.status, 'status') as never,
+                  string(body.reason, 'reason'),
+                  expectedVersion(body.expectedVersion),
+                  context.actor,
+                  grant.scopes,
+                  grant.anchors,
+                  correlationId,
+                )
+              : await dependencies.commercial.updateOpportunity(
+                  uuid(id, 'opportunityId'),
+                  {
+                    ...(body.name === undefined ? {} : { name: string(body.name, 'name') }),
+                    ...(body.value === undefined ? {} : { value: decimal(body.value, 'value') }),
+                    ...(body.currency === undefined ? {} : { currency: currency(body.currency) }),
+                    ...(body.probabilityBasisPoints === undefined
+                      ? {}
+                      : {
+                          probabilityBasisPoints: integer(
+                            body.probabilityBasisPoints,
+                            'probabilityBasisPoints',
+                            0,
+                            10000,
+                          ),
+                        }),
+                    ...(body.expectedCloseDate === undefined
+                      ? {}
+                      : { expectedCloseDate: string(body.expectedCloseDate, 'expectedCloseDate') }),
+                  },
+                  expectedVersion(body.expectedVersion),
+                  context.actor,
+                  grant.scopes,
+                  grant.anchors,
+                  correlationId,
+                );
+            return { statusCode: 200, body: mutationDto(result, context, 'opportunity:read') };
+          }
+        }
+        const opportunityCtrs = /^\/api\/v1\/opportunities\/([0-9a-f-]+)\/ctrs$/u.exec(
+          request.pathname,
+        );
+        if (request.method === 'GET' && opportunityCtrs && dependencies.commercial) {
+          const grant = authorizeQuery(context, 'ctr:read');
+          return {
+            statusCode: 200,
+            body: {
+              items: (
+                await dependencies.commercial.listCtrs(
+                  uuid(opportunityCtrs[1], 'opportunityId'),
+                  context.actor,
+                  grant.scopes,
+                  grant.anchors,
+                )
+              ).map((item) =>
+                permittedDto(item, context.permissions.get('ctr:read')?.fields ?? null),
+              ),
+            },
+          };
+        }
+        const commercialReadViews = new Map<
+          string,
+          readonly [`${string}:${string}`, 'ctrs' | 'solutions' | 'costs' | 'policies' | 'quotes']
+        >([
+          ['/api/v1/ctrs', ['ctr:read', 'ctrs']],
+          ['/api/v1/technical-solutions', ['technical-solution:read', 'solutions']],
+          ['/api/v1/cost-evaluations', ['cost:read', 'costs']],
+          ['/api/v1/sales-policy-evaluations', ['sales-policy:read', 'policies']],
+          ['/api/v1/quotes', ['quote:read', 'quotes']],
+        ] as const);
+        const commercialRead = commercialReadViews.get(request.pathname);
+        if (request.method === 'GET' && commercialRead && dependencies.commercial) {
+          const grant = authorizeQuery(context, commercialRead[0]);
+          return {
+            statusCode: 200,
+            body: {
+              items: (
+                await dependencies.commercial.listCommercialView(
+                  commercialRead[1],
+                  context.actor,
+                  grant.scopes,
+                  grant.anchors,
+                )
+              ).map((item) =>
+                permittedDto(item, context.permissions.get(commercialRead[0])?.fields ?? null),
+              ),
+            },
+          };
+        }
+        if (
+          request.method === 'POST' &&
+          request.pathname === '/api/v1/ctrs' &&
+          dependencies.commercial
+        ) {
+          const body = objectBody(request.body);
+          allow(body, ['opportunityId', 'code', 'title', 'requirements']);
+          const grant = authorizeQuery(context, 'ctr:create', Object.keys(body));
+          const result = await dependencies.commercial.createCtr(
+            {
+              opportunityId: uuid(body.opportunityId, 'opportunityId'),
+              code: string(body.code, 'code'),
+              title: string(body.title, 'title'),
+              requirements: jsonObject(body.requirements, 'requirements'),
+            },
+            context.actor,
+            grant.scopes,
+            grant.anchors,
+            correlationId,
+          );
+          return { statusCode: 201, body: mutationDto(result, context, 'ctr:read') };
+        }
+        const ctrRevision = /^\/api\/v1\/ctrs\/([0-9a-f-]+)\/versions$/u.exec(request.pathname);
+        if (request.method === 'POST' && ctrRevision && dependencies.commercial) {
+          const body = objectBody(request.body);
+          allow(body, ['title', 'requirements']);
+          const grant = authorizeQuery(context, 'ctr:update', Object.keys(body));
+          const result = await dependencies.commercial.createCtrVersion(
+            uuid(ctrRevision[1], 'ctrId'),
+            {
+              title: string(body.title, 'title'),
+              requirements: jsonObject(body.requirements, 'requirements'),
+            },
+            context.actor,
+            grant.scopes,
+            grant.anchors,
+            correlationId,
+          );
+          return { statusCode: 201, body: mutationDto(result, context, 'ctr:read') };
+        }
+        const ctrCommand = /^\/api\/v1\/ctr-versions\/([0-9a-f-]+)\/(submit|decision)$/u.exec(
+          request.pathname,
+        );
+        if (request.method === 'POST' && ctrCommand && dependencies.commercial) {
+          const body = objectBody(request.body),
+            versionId = uuid(ctrCommand[1], 'ctrVersionId');
+          if (ctrCommand[2] === 'submit') {
+            const grant = authorizeQuery(context, 'ctr:submit');
+            allow(body, ['expectedVersion']);
+            const result = await dependencies.commercial.submitCtr(
+              versionId,
+              version(body.expectedVersion),
+              idempotency(request),
+              context.actor,
+              grant.scopes,
+              grant.anchors,
+              correlationId,
+            );
+            return { statusCode: 200, body: mutationDto(result, context, 'ctr:read') };
+          }
+          allow(body, ['decision', 'reason']);
+          const grant = authorizeQuery(context, 'ctr:approve');
+          const decision = string(body.decision, 'decision');
+          if (!['APPROVED', 'REJECTED'].includes(decision))
+            throw new DomainError('invalid_request', 'decision is unsupported');
+          const result = await dependencies.commercial.approveCtr(
+            versionId,
+            decision as 'APPROVED' | 'REJECTED',
+            string(body.reason, 'reason'),
+            idempotency(request),
+            context.actor,
+            grant.scopes,
+            grant.anchors,
+            correlationId,
+          );
+          return { statusCode: 200, body: mutationDto(result, context, 'ctr:read') };
+        }
+        const ctrAttachment = /^\/api\/v1\/ctr-versions\/([0-9a-f-]+)\/attachments$/u.exec(
+          request.pathname,
+        );
+        if (request.method === 'POST' && ctrAttachment && dependencies.commercial) {
+          const body = objectBody(request.body);
+          allow(body, ['attachmentId']);
+          const grant = authorizeQuery(context, 'ctr:update', Object.keys(body));
+          const result = await dependencies.commercial.linkCtrAttachment(
+            uuid(ctrAttachment[1], 'ctrVersionId'),
+            uuid(body.attachmentId, 'attachmentId'),
+            context.actor,
+            grant.scopes,
+            grant.anchors,
+            correlationId,
+          );
+          return { statusCode: 201, body: mutationDto(result, context, 'ctr:read') };
+        }
+        if (
+          request.method === 'POST' &&
+          request.pathname === '/api/v1/technical-solutions' &&
+          dependencies.commercial
+        ) {
+          const body = objectBody(request.body);
+          allow(body, [
+            'opportunityId',
+            'code',
+            'ctrVersionId',
+            'specification',
+            'assumptions',
+            'final',
+          ]);
+          const grant = authorizeQuery(context, 'technical-solution:create', Object.keys(body));
+          const result = await dependencies.commercial.createTechnicalSolution(
+            {
+              opportunityId: uuid(body.opportunityId, 'opportunityId'),
+              code: string(body.code, 'code'),
+              ctrVersionId: uuid(body.ctrVersionId, 'ctrVersionId'),
+              specification: jsonObject(body.specification, 'specification'),
+              assumptions: strings(body.assumptions, 'assumptions'),
+              final: body.final === true,
+            },
+            context.actor,
+            grant.scopes,
+            grant.anchors,
+            correlationId,
+          );
+          return { statusCode: 201, body: mutationDto(result, context, 'technical-solution:read') };
+        }
+        const solutionRevision = /^\/api\/v1\/technical-solutions\/([0-9a-f-]+)\/revisions$/u.exec(
+          request.pathname,
+        );
+        if (request.method === 'POST' && solutionRevision && dependencies.commercial) {
+          const body = objectBody(request.body);
+          allow(body, ['ctrVersionId', 'specification', 'assumptions', 'final']);
+          const grant = authorizeQuery(context, 'technical-solution:update', Object.keys(body));
+          const result = await dependencies.commercial.createTechnicalSolutionRevision(
+            uuid(solutionRevision[1], 'technicalSolutionId'),
+            {
+              ctrVersionId: uuid(body.ctrVersionId, 'ctrVersionId'),
+              specification: jsonObject(body.specification, 'specification'),
+              assumptions: strings(body.assumptions, 'assumptions'),
+              final: body.final === true,
+            },
+            context.actor,
+            grant.scopes,
+            grant.anchors,
+            correlationId,
+          );
+          return { statusCode: 201, body: mutationDto(result, context, 'technical-solution:read') };
+        }
+        if (
+          request.method === 'POST' &&
+          (request.pathname === '/api/v1/cost-models' ||
+            request.pathname === '/api/v1/sales-policies') &&
+          dependencies.commercial
+        ) {
+          const body = objectBody(request.body),
+            cost = request.pathname.endsWith('cost-models');
+          allow(
+            body,
+            cost
+              ? ['code', 'name', 'currency', 'rules', 'publish']
+              : ['code', 'name', 'rules', 'publish'],
+          );
+          const grant = authorizeQuery(
+            context,
+            cost ? 'cost-model:manage' : 'sales-policy:manage',
+            Object.keys(body),
+          );
+          const result = await dependencies.commercial.createDefinition(
+            cost ? 'cost' : 'policy',
+            {
+              code: string(body.code, 'code'),
+              name: string(body.name, 'name'),
+              ...(cost ? { currency: currency(body.currency) } : {}),
+              rules: array(body.rules, 'rules'),
+              publish: body.publish === true,
+            },
+            context.actor,
+            grant.scopes,
+            correlationId,
+          );
+          return { statusCode: 201, body: result };
+        }
+        const definitionRevision =
+          /^\/api\/v1\/(cost-models|sales-policies)\/([0-9a-f-]+)\/versions$/u.exec(
+            request.pathname,
+          );
+        if (request.method === 'POST' && definitionRevision && dependencies.commercial) {
+          const body = objectBody(request.body),
+            cost = definitionRevision[1] === 'cost-models';
+          allow(body, cost ? ['currency', 'rules', 'publish'] : ['rules', 'publish']);
+          const grant = authorizeQuery(
+            context,
+            cost ? 'cost-model:manage' : 'sales-policy:manage',
+            Object.keys(body),
+          );
+          const result = await dependencies.commercial.createDefinitionVersion(
+            cost ? 'cost' : 'policy',
+            uuid(definitionRevision[2], 'definitionId'),
+            {
+              ...(cost ? { currency: currency(body.currency) } : {}),
+              rules: array(body.rules, 'rules'),
+              publish: body.publish === true,
+            },
+            context.actor,
+            grant.scopes,
+            correlationId,
+          );
+          return { statusCode: 201, body: result };
+        }
+        if (
+          request.method === 'POST' &&
+          request.pathname === '/api/v1/cost-evaluations' &&
+          dependencies.commercial
+        ) {
+          const body = objectBody(request.body);
+          allow(body, [
+            'modelVersionId',
+            'technicalSolutionRevisionId',
+            'currency',
+            'lines',
+            'context',
+          ]);
+          const grant = authorizeQuery(context, 'cost:evaluate', Object.keys(body));
+          const lines = array(body.lines, 'lines').map((candidate, index) => {
+            const line = jsonObject(candidate, `lines[${String(index)}]`) as Record<
+              string,
+              unknown
+            >;
+            return {
+              key: string(line.key, 'key'),
+              description: string(line.description, 'description'),
+              quantity: {
+                value: decimal(line.quantity, 'quantity'),
+                unit: string(line.unit, 'unit'),
+              },
+              unitCost: {
+                amount: decimal(line.unitCost, 'unitCost'),
+                currency: currency(line.currency),
+              },
+            };
+          });
+          const result = await dependencies.commercial.evaluateCost(
+            {
+              modelVersionId: uuid(body.modelVersionId, 'modelVersionId'),
+              technicalSolutionRevisionId: uuid(
+                body.technicalSolutionRevisionId,
+                'technicalSolutionRevisionId',
+              ),
+              currency: currency(body.currency),
+              lines,
+              context: jsonObject(body.context, 'context'),
+              idempotencyKey: idempotency(request),
+            },
+            context.actor,
+            grant.scopes,
+            grant.anchors,
+            correlationId,
+          );
+          return { statusCode: 201, body: mutationDto(result, context, 'cost:read') };
+        }
+        if (
+          request.method === 'POST' &&
+          request.pathname === '/api/v1/sales-policy-evaluations' &&
+          dependencies.commercial
+        ) {
+          const body = objectBody(request.body);
+          allow(body, ['policyVersionId', 'costDecisionId', 'context']);
+          const grant = authorizeQuery(context, 'sales-policy:evaluate', Object.keys(body));
+          const result = await dependencies.commercial.evaluatePolicy(
+            {
+              policyVersionId: uuid(body.policyVersionId, 'policyVersionId'),
+              costDecisionId: uuid(body.costDecisionId, 'costDecisionId'),
+              context: jsonObject(body.context, 'context'),
+              idempotencyKey: idempotency(request),
+            },
+            context.actor,
+            grant.scopes,
+            grant.anchors,
+            correlationId,
+          );
+          return { statusCode: 201, body: mutationDto(result, context, 'sales-policy:read') };
+        }
+        const quoteRevision = /^\/api\/v1\/quotes\/([0-9a-f-]+)\/revisions$/u.exec(
+          request.pathname,
+        );
+        if (
+          request.method === 'POST' &&
+          (request.pathname === '/api/v1/quotes' || quoteRevision) &&
+          dependencies.commercial
+        ) {
+          const body = objectBody(request.body);
+          allow(body, [
+            'quoteNumber',
+            'opportunityId',
+            'ctrVersionId',
+            'technicalSolutionRevisionId',
+            'costDecisionId',
+            'policyVersionId',
+            'policyEvaluationId',
+            'currency',
+            'subtotal',
+            'discount',
+            'total',
+            'costTotal',
+            'margin',
+            'marginBasisPoints',
+            'validUntil',
+            'lines',
+          ]);
+          const grant = authorizeQuery(
+            context,
+            quoteRevision ? 'quote:update' : 'quote:create',
+            Object.keys(body),
+          );
+          const lines = array(body.lines, 'lines').map((candidate, index) => {
+            const line = jsonObject(candidate, `lines[${String(index)}]`) as Record<
+              string,
+              unknown
+            >;
+            return {
+              description: string(line.description, 'description'),
+              quantity: decimal(line.quantity, 'quantity'),
+              unitCode: string(line.unitCode, 'unitCode'),
+              unitPrice: decimal(line.unitPrice, 'unitPrice'),
+              total: decimal(line.total, 'total'),
+            };
+          });
+          const result = await dependencies.commercial.createQuote(
+            {
+              ...(quoteRevision ? { quoteId: uuid(quoteRevision[1], 'quoteId') } : {}),
+              quoteNumber: string(body.quoteNumber, 'quoteNumber'),
+              opportunityId: uuid(body.opportunityId, 'opportunityId'),
+              ctrVersionId: uuid(body.ctrVersionId, 'ctrVersionId'),
+              technicalSolutionRevisionId: uuid(
+                body.technicalSolutionRevisionId,
+                'technicalSolutionRevisionId',
+              ),
+              costDecisionId: uuid(body.costDecisionId, 'costDecisionId'),
+              policyVersionId: uuid(body.policyVersionId, 'policyVersionId'),
+              policyEvaluationId: uuid(body.policyEvaluationId, 'policyEvaluationId'),
+              currency: currency(body.currency),
+              subtotal: decimal(body.subtotal, 'subtotal'),
+              discount: decimal(body.discount, 'discount'),
+              total: decimal(body.total, 'total'),
+              costTotal: decimal(body.costTotal, 'costTotal'),
+              margin: decimal(body.margin, 'margin', false),
+              marginBasisPoints: integer(
+                body.marginBasisPoints,
+                'marginBasisPoints',
+                -100000,
+                10000,
+              ),
+              validUntil: timestamp(body.validUntil, 'validUntil'),
+              lines,
+            },
+            context.actor,
+            grant.scopes,
+            grant.anchors,
+            correlationId,
+          );
+          return { statusCode: 201, body: mutationDto(result, context, 'quote:read') };
+        }
+        const quoteCommand = /^\/api\/v1\/quote-revisions\/([0-9a-f-]+)\/(approve|issue)$/u.exec(
+          request.pathname,
+        );
+        if (request.method === 'POST' && quoteCommand && dependencies.commercial) {
+          const id = uuid(quoteCommand[1], 'quoteRevisionId'),
+            body = objectBody(request.body);
+          if (quoteCommand[2] === 'issue') {
+            allow(body, []);
+            const grant = authorizeQuery(context, 'quote:issue');
+            return {
+              statusCode: 200,
+              body: mutationDto(
+                await dependencies.commercial.issueQuote(
+                  id,
+                  idempotency(request),
+                  context.actor,
+                  grant.scopes,
+                  grant.anchors,
+                  correlationId,
+                ),
+                context,
+                'quote:read',
+              ),
+            };
+          }
+          allow(body, ['decision', 'reason']);
+          const grant = authorizeQuery(context, 'quote:approve');
+          const decision = string(body.decision, 'decision');
+          if (!['APPROVED', 'REJECTED'].includes(decision))
+            throw new DomainError('invalid_request', 'decision is unsupported');
+          return {
+            statusCode: 200,
+            body: mutationDto(
+              await dependencies.commercial.approveQuote(
+                id,
+                decision as 'APPROVED' | 'REJECTED',
+                string(body.reason, 'reason'),
+                idempotency(request),
+                context.actor,
+                grant.scopes,
+                grant.anchors,
+                correlationId,
+              ),
+              context,
+              'quote:read',
+            ),
+          };
+        }
+        const customerMatch =
+          /^\/api\/v1\/customers(?:\/([0-9a-f-]+))?(?:\/(contacts|ownership|activities|360))?$/u.exec(
+            request.pathname,
+          );
+        if (customerMatch) {
+          if (!dependencies.crm)
+            return error(503, 'internal_error', 'CRM dependency unavailable', correlationId);
+          const id = customerMatch[1],
+            nested = customerMatch[2];
+          if (request.method === 'GET' && !id) {
+            const g = authorizeQuery(context, 'customer:read');
+            const fields = context.permissions.get('customer:read')?.fields ?? null;
+            return {
+              statusCode: 200,
+              body: {
+                items: (
+                  await dependencies.crm.listCustomers(context.actor, g.scopes, g.anchors)
+                ).map((item) => permittedDto(item, fields)),
+                nextCursor: null,
+              },
+            };
+          }
+          if (request.method === 'POST' && !id) {
+            authorizeQuery(context, 'customer:create', ['name', 'customerNumber', 'tags']);
+            const b = objectBody(request.body);
+            allow(b, ['name', 'customerNumber', 'tags']);
+            return {
+              statusCode: 201,
+              body: mutationDto(
+                await dependencies.crm.createCustomer(
+                  {
+                    name: string(b.name, 'name'),
+                    customerNumber: string(b.customerNumber, 'customerNumber'),
+                    tags: b.tags === undefined ? [] : strings(b.tags, 'tags'),
+                  },
+                  context.actor,
+                  correlationId,
+                ),
+                context,
+                'customer:read',
+              ),
+            };
+          }
+          if (request.method === 'POST' && id && nested === 'ownership') {
+            const capability =
+              objectBody(request.body).reassignment === true
+                ? 'customer-ownership:reassign'
+                : 'customer-ownership:assign';
+            const grant = authorizeQuery(context, capability);
+            const b = objectBody(request.body);
+            allow(b, ['assigneeId', 'expectedVersion', 'reason', 'reassignment']);
+            return {
+              statusCode: 200,
+              body: mutationDto(
+                await dependencies.crm.assign(
+                  'CUSTOMER',
+                  uuid(id, 'customerId'),
+                  uuid(b.assigneeId, 'assigneeId'),
+                  expectedVersion(b.expectedVersion),
+                  string(b.reason, 'reason'),
+                  context.actor,
+                  correlationId,
+                  b.reassignment === true,
+                  grant.scopes,
+                  grant.anchors,
+                ),
+                context,
+                'customer:read',
+              ),
+            };
+          }
+          if (request.method === 'POST' && id && nested === 'activities') {
+            const grant = authorizeQuery(context, 'customer-activity:create', [
+              'leadId',
+              'type',
+              'occurredAt',
+              'summary',
+              'details',
+            ]);
+            const key = request.headers?.['idempotency-key'];
+            if (!key || key.length > 128)
+              throw new DomainError(
+                'invalid_request',
+                'Idempotency-Key is required and must be at most 128 characters',
+              );
+            const b = objectBody(request.body);
+            allow(b, ['leadId', 'type', 'occurredAt', 'summary', 'details']);
+            const details = (
+              b.details === undefined ? {} : objectBody(b.details)
+            ) as import('@kingturf/types').JsonObject;
+            return {
+              statusCode: 201,
+              body: mutationDto(
+                await dependencies.crm.createActivity(
+                  uuid(id, 'customerId'),
+                  {
+                    leadId:
+                      b.leadId === null || b.leadId === undefined ? null : uuid(b.leadId, 'leadId'),
+                    type: string(b.type, 'type'),
+                    occurredAt: timestamp(b.occurredAt, 'occurredAt'),
+                    summary: string(b.summary, 'summary'),
+                    details,
+                  },
+                  context.actor,
+                  correlationId,
+                  key,
+                  grant.scopes,
+                  grant.anchors,
+                ),
+                context,
+                'customer-activity:read',
+              ),
+            };
+          }
+          if (request.method === 'PATCH' && id && !nested) {
+            const grant = authorizeQuery(context, 'customer:lifecycle', ['status', 'reason']);
+            const b = objectBody(request.body);
+            allow(b, ['status', 'reason', 'expectedVersion']);
+            return {
+              statusCode: 200,
+              body: mutationDto(
+                await dependencies.crm.transitionCustomer(
+                  uuid(id, 'customerId'),
+                  string(b.status, 'status') as import('@kingturf/types').CustomerStatus,
+                  expectedVersion(b.expectedVersion),
+                  string(b.reason, 'reason'),
+                  context.actor,
+                  correlationId,
+                  grant.scopes,
+                  grant.anchors,
+                ),
+                context,
+                'customer:read',
+              ),
+            };
+          }
+          if (request.method === 'GET' && id && nested === '360') {
+            const readGrant = authorizeQuery(context, 'customer:read');
+            const g = authorizeQuery(context, 'customer-360:read');
+            const customerId = uuid(id, 'customerId');
+            const readable = await dependencies.crm.findCustomer(
+              customerId,
+              context.actor,
+              readGrant.scopes,
+              readGrant.anchors,
+            );
+            if (!readable) return error(404, 'not_found', 'Customer not found', correlationId);
+            const fields = context.permissions.get('customer-360:read')?.fields;
+            const sectionGrant = (capability: PermissionKey) => {
+              if (!context.permissions.has(capability)) return undefined;
+              const grant = authorizeQuery(context, capability);
+              return { scopes: grant.scopes, anchors: grant.anchors };
+            };
+            const ownership = sectionGrant('customer-ownership:read');
+            const leads = sectionGrant('lead:read');
+            const activities = sectionGrant('customer-activity:read');
+            const found = await dependencies.crm.customer360(
+              customerId,
+              context.actor,
+              g.scopes,
+              g.anchors,
+              {
+                email: fields === null || fields?.includes('contacts.email') === true,
+                phone: fields === null || fields?.includes('contacts.phone') === true,
+              },
+              {
+                ...(ownership ? { ownership } : {}),
+                ...(leads ? { leads } : {}),
+                ...(activities ? { activities } : {}),
+              },
+            );
+            const project = <T extends Record<string, unknown>>(
+              prefix: string,
+              item: T,
+              sectionCapability?: PermissionKey,
+            ) => {
+              const viewFields =
+                fields === null
+                  ? null
+                  : (fields ?? [])
+                      .filter((field) => field.startsWith(`${prefix}.`))
+                      .map((field) => field.slice(prefix.length + 1));
+              const sectionFields = sectionCapability
+                ? (context.permissions.get(sectionCapability)?.fields ?? null)
+                : null;
+              const effectiveFields =
+                viewFields === null
+                  ? sectionFields
+                  : sectionFields === null
+                    ? viewFields
+                    : viewFields.filter((field) => sectionFields.includes(field));
+              return permittedDto(item, effectiveFields);
+            };
+            return found
+              ? {
+                  statusCode: 200,
+                  body: {
+                    customer: project('customer', found.customer, 'customer:read'),
+                    contacts: found.contacts.map((item) => project('contacts', item)),
+                    ownership: found.ownership.map((item) =>
+                      project('ownership', item, 'customer-ownership:read'),
+                    ),
+                    leads: found.leads.map((item) => project('leads', item, 'lead:read')),
+                    activities: found.activities.map((item) =>
+                      project('activities', item, 'customer-activity:read'),
+                    ),
+                    unavailableSections: found.unavailableSections,
+                  },
+                }
+              : error(404, 'not_found', 'Customer not found', correlationId);
+          }
+          if (request.method === 'POST' && id && nested === 'contacts') {
+            const grant = authorizeQuery(context, 'customer:update', ['contacts']);
+            const b = objectBody(request.body);
+            allow(b, ['name', 'title', 'email', 'phone', 'primary']);
+            if (b.email !== undefined && b.email !== null && typeof b.email !== 'string')
+              throw new DomainError('invalid_request', 'email must be a string');
+            if (b.phone !== undefined && b.phone !== null && typeof b.phone !== 'string')
+              throw new DomainError('invalid_request', 'phone must be a string');
+            const email = typeof b.email === 'string' ? normalizeContactEmail(b.email) : null;
+            const phone = typeof b.phone === 'string' ? normalizeContactPhone(b.phone) : null;
+            if (email === null && phone === null)
+              throw new DomainError('invalid_request', 'Contact email or phone is required');
+            return {
+              statusCode: 201,
+              body: mutationDto(
+                await dependencies.crm.createContact(
+                  uuid(id, 'customerId'),
+                  {
+                    name: string(b.name, 'name'),
+                    title: typeof b.title === 'string' ? b.title : null,
+                    email,
+                    phone,
+                    primary: b.primary === true,
+                  },
+                  context.actor,
+                  correlationId,
+                  grant.scopes,
+                  grant.anchors,
+                ),
+                context,
+                'customer-360:read',
+              ),
+            };
+          }
+          if (request.method === 'GET' && id && !nested) {
+            const g = authorizeQuery(context, 'customer:read');
+            const found = await dependencies.crm.findCustomer(
+              uuid(id, 'customerId'),
+              context.actor,
+              g.scopes,
+              g.anchors,
+            );
+            return found
+              ? {
+                  statusCode: 200,
+                  body: permittedDto(
+                    found,
+                    context.permissions.get('customer:read')?.fields ?? null,
+                  ),
+                }
+              : error(404, 'not_found', 'Customer not found', correlationId);
+          }
+        }
+        if (request.method === 'GET' && request.pathname === '/api/v1/leads') {
+          if (!dependencies.crm)
+            return error(503, 'internal_error', 'CRM dependency unavailable', correlationId);
+          const g = authorizeQuery(context, 'lead:read');
+          const fields = context.permissions.get('lead:read')?.fields ?? null;
+          return {
+            statusCode: 200,
+            body: {
+              items: (await dependencies.crm.listLeads(context.actor, g.scopes, g.anchors)).map(
+                (item) => permittedDto(item, fields),
+              ),
+              nextCursor: null,
+            },
+          };
+        }
+        if (request.method === 'POST' && request.pathname === '/api/v1/leads') {
+          if (!dependencies.crm)
+            return error(503, 'internal_error', 'CRM dependency unavailable', correlationId);
+          const grant = authorizeQuery(context, 'lead:create', [
+            'title',
+            'source',
+            'customerId',
+            'pool',
+          ]);
+          const b = objectBody(request.body);
+          allow(b, ['title', 'source', 'customerId', 'pool']);
+          return {
+            statusCode: 201,
+            body: mutationDto(
+              await dependencies.crm.createLead(
+                {
+                  title: string(b.title, 'title'),
+                  source: string(b.source, 'source'),
+                  customerId:
+                    b.customerId === null || b.customerId === undefined
+                      ? null
+                      : uuid(b.customerId, 'customerId'),
+                  pool: b.pool === true,
+                },
+                context.actor,
+                correlationId,
+                grant.scopes,
+                grant.anchors,
+              ),
+              context,
+              'lead:read',
+            ),
+          };
+        }
+        if (request.method === 'GET' && request.pathname === '/api/v1/leads/pool') {
+          if (!dependencies.crm)
+            return error(503, 'internal_error', 'CRM dependency unavailable', correlationId);
+          const g = authorizeQuery(context, 'lead-pool:read');
+          const fields = context.permissions.get('lead-pool:read')?.fields ?? null;
+          return {
+            statusCode: 200,
+            body: {
+              items: (
+                await dependencies.crm.listLeads(context.actor, g.scopes, g.anchors, true)
+              ).map((item) => permittedDto(item, fields)),
+              nextCursor: null,
+            },
+          };
+        }
+        const claimMatch = /^\/api\/v1\/leads\/([0-9a-f-]+)\/claim$/u.exec(request.pathname);
+        if (request.method === 'POST' && claimMatch) {
+          if (!dependencies.crm)
+            return error(503, 'internal_error', 'CRM dependency unavailable', correlationId);
+          const grant = authorizeQuery(context, 'lead-pool:claim');
+          const key = request.headers?.['idempotency-key'];
+          if (!key || key.length > 128)
+            throw new DomainError(
+              'invalid_request',
+              'Idempotency-Key is required and must be at most 128 characters',
+            );
+          const b = objectBody(request.body);
+          allow(b, ['expectedVersion']);
+          return {
+            statusCode: 200,
+            body: mutationDto(
+              await dependencies.crm.claimLead(
+                uuid(claimMatch[1], 'leadId'),
+                expectedVersion(b.expectedVersion),
+                context.actor,
+                correlationId,
+                key,
+                grant.scopes,
+                grant.anchors,
+              ),
+              context,
+              'lead:read',
+            ),
+          };
+        }
+        const leadActionMatch =
+          /^\/api\/v1\/leads\/([0-9a-f-]+)\/(transition|assign|reassign|release)$/u.exec(
+            request.pathname,
+          );
+        if (request.method === 'POST' && leadActionMatch) {
+          if (!dependencies.crm)
+            return error(503, 'internal_error', 'CRM dependency unavailable', correlationId);
+          const id = uuid(leadActionMatch[1], 'leadId'),
+            action = leadActionMatch[2],
+            b = objectBody(request.body);
+          if (action === 'assign' || action === 'reassign') {
+            const grant = authorizeQuery(
+              context,
+              action === 'assign' ? 'lead:assign' : 'lead:reassign',
+            );
+            allow(b, ['assigneeId', 'expectedVersion', 'reason']);
+            return {
+              statusCode: 200,
+              body: mutationDto(
+                await dependencies.crm.assign(
+                  'LEAD',
+                  id,
+                  uuid(b.assigneeId, 'assigneeId'),
+                  expectedVersion(b.expectedVersion),
+                  string(b.reason, 'reason'),
+                  context.actor,
+                  correlationId,
+                  action === 'reassign',
+                  grant.scopes,
+                  grant.anchors,
+                ),
+                context,
+                'lead:read',
+              ),
+            };
+          }
+          const grant = authorizeQuery(
+            context,
+            action === 'release' ? 'lead-pool:release' : 'lead:lifecycle',
+            ['status', 'reason'],
+          );
+          allow(
+            b,
+            action === 'release'
+              ? ['expectedVersion', 'reason']
+              : ['status', 'expectedVersion', 'reason'],
+          );
+          return {
+            statusCode: 200,
+            body: mutationDto(
+              await dependencies.crm.transitionLead(
+                id,
+                action === 'release'
+                  ? 'POOL'
+                  : (string(b.status, 'status') as import('@kingturf/types').LeadStatus),
+                expectedVersion(b.expectedVersion),
+                string(b.reason, 'reason'),
+                context.actor,
+                correlationId,
+                grant.scopes,
+                grant.anchors,
+                action === 'release' ? 'CLAIMED' : undefined,
+              ),
+              context,
+              'lead:read',
+            ),
+          };
+        }
+        const organizationMatch = /^\/api\/v1\/organizations(?:\/([0-9a-f-]+))?$/u.exec(
+          request.pathname,
+        );
+        if (organizationMatch) {
+          const id = organizationMatch[1];
+          if (request.method === 'GET' && !id) {
+            authorizeQuery(context, 'organization:read');
+            return {
+              statusCode: 200,
+              body: await dependencies.organizations.list(context.actor.companyId),
+            };
+          }
+          if (request.method === 'GET' && id) {
+            authorizeQuery(context, 'organization:read');
+            const found = await dependencies.organizations.findById(
+              uuid(id, 'organizationId'),
+              context.actor.companyId,
+            );
+            return found
+              ? { statusCode: 200, body: found }
+              : error(404, 'not_found', 'Organization not found', correlationId);
+          }
+          if (request.method === 'POST' && !id) {
+            authorizeQuery(context, 'organization:create');
+            const b = objectBody(request.body);
+            allow(b, ['parentId', 'code', 'name', 'locale', 'currency']);
+            const created = await dependencies.organizations.create(
+              {
+                ownerOrganizationId: context.actor.companyId,
+                parentId:
+                  b.parentId === null || b.parentId === undefined
+                    ? null
+                    : uuid(b.parentId, 'parentId'),
+                code: string(b.code, 'code'),
+                name: string(b.name, 'name'),
+                locale: typeof b.locale === 'string' ? b.locale : 'zh-CN',
+                currency: typeof b.currency === 'string' ? b.currency : 'CNY',
+                active: true,
+              },
+              context.actor,
+              correlationId,
+            );
+            return { statusCode: 201, body: created };
+          }
+          if (request.method === 'PATCH' && id) {
+            const b = objectBody(request.body);
+            allow(b, ['name', 'parentId', 'active', 'locale', 'currency', 'version']);
+            const fields = Object.keys(b).filter((k) => k !== 'version');
+            authorizeQuery(context, 'organization:update', fields);
+            const patch = {
+              ...(typeof b.name === 'string' ? { name: string(b.name, 'name') } : {}),
+              ...(Object.hasOwn(b, 'parentId')
+                ? { parentId: b.parentId === null ? null : uuid(b.parentId, 'parentId') }
+                : {}),
+              ...(typeof b.active === 'boolean' ? { active: b.active } : {}),
+              ...(typeof b.locale === 'string' ? { locale: string(b.locale, 'locale') } : {}),
+              ...(typeof b.currency === 'string'
+                ? { currency: string(b.currency, 'currency') }
+                : {}),
+            };
+            const updated = await dependencies.organizations.update(
+              uuid(id, 'organizationId'),
+              context.actor.companyId,
+              patch,
+              version(b.version),
+              context.actor,
+              correlationId,
+            );
+            return { statusCode: 200, body: updated };
+          }
+        }
+        const employeeMatch = /^\/api\/v1\/employees(?:\/([0-9a-f-]+))?$/u.exec(request.pathname);
+        if (employeeMatch) {
+          const id = employeeMatch[1];
+          if (request.method === 'GET' && !id) {
+            const grant = authorizeQuery(context, 'employee:read');
+            return {
+              statusCode: 200,
+              body: await dependencies.employees.list(
+                context.actor.companyId,
+                grant.scopes,
+                context.actor.employeeId,
+                grant.anchors,
+              ),
+            };
+          }
+          if (request.method === 'GET' && id) {
+            const grant = authorizeQuery(context, 'employee:read');
+            const found = await dependencies.employees.findById(
+              uuid(id, 'employeeId'),
+              context.actor.companyId,
+              grant.scopes,
+              context.actor.employeeId,
+              grant.anchors,
+            );
+            return found
+              ? { statusCode: 200, body: found }
+              : error(404, 'not_found', 'Employee not found', correlationId);
+          }
+          if (request.method === 'POST' && !id) {
+            authorizeQuery(context, 'employee:create');
+            const b = objectBody(request.body);
+            allow(b, ['organizationId', 'employeeNumber', 'displayName', 'email']);
+            const created = await dependencies.employees.create(
+              {
+                companyId: context.actor.companyId,
+                organizationId: uuid(b.organizationId, 'organizationId'),
+                employeeNumber: string(b.employeeNumber, 'employeeNumber'),
+                displayName: string(b.displayName, 'displayName'),
+                email: string(b.email, 'email'),
+                active: true,
+              },
+              context.actor,
+              correlationId,
+            );
+            return { statusCode: 201, body: created };
+          }
+          if (request.method === 'PATCH' && id) {
+            const b = objectBody(request.body);
+            allow(b, ['displayName', 'email', 'organizationId', 'active', 'version']);
+            const fields = Object.keys(b).filter((k) => k !== 'version');
+            const grant = authorizeQuery(context, 'employee:update', fields);
+            const patch = {
+              ...(typeof b.displayName === 'string'
+                ? { displayName: string(b.displayName, 'displayName') }
+                : {}),
+              ...(typeof b.email === 'string' ? { email: string(b.email, 'email') } : {}),
+              ...(typeof b.organizationId === 'string'
+                ? { organizationId: uuid(b.organizationId, 'organizationId') }
+                : {}),
+              ...(typeof b.active === 'boolean' ? { active: b.active } : {}),
+            };
+            const updated = await dependencies.employees.update(
+              uuid(id, 'employeeId'),
+              context.actor.companyId,
+              patch,
+              version(b.version),
+              context.actor,
+              grant.scopes,
+              grant.anchors,
+              correlationId,
+            );
+            return { statusCode: 200, body: updated };
+          }
+        }
+        const authorizationMatch =
+          /^\/api\/v1\/(roles|permissions|grants|assignments|scope-grants)(?:\/([0-9a-f-]+))?$/u.exec(
+            request.pathname,
+          );
+        if (authorizationMatch) {
+          const capability: PermissionKey = `authorization:${request.method === 'GET' ? 'read' : 'manage'}`;
+          authorizeQuery(context, capability);
+          const repository = dependencies.authorization;
+          if (!repository)
+            return error(
+              503,
+              'internal_error',
+              'Authorization repository is unavailable',
+              correlationId,
+            );
+          const resource = authorizationMatch[1];
+          const b =
+            request.method === 'GET' ||
+            (request.method === 'DELETE' && Boolean(authorizationMatch[2]))
+              ? {}
+              : objectBody(request.body);
+          const itemId = authorizationMatch[2];
+          if (resource === 'roles' && !itemId) {
+            if (request.method === 'GET')
+              return { statusCode: 200, body: await repository.listRoles(context.actor.companyId) };
+            if (request.method === 'POST') {
+              allow(b, ['code', 'name']);
+              return {
+                statusCode: 201,
+                body: await repository.createRole(
+                  { code: string(b.code, 'code'), name: string(b.name, 'name') },
+                  context.actor,
+                  correlationId,
+                ),
+              };
+            }
+          }
+          if (resource === 'permissions' && !itemId) {
+            if (request.method === 'GET')
+              return { statusCode: 200, body: await repository.listPermissions() };
+            if (request.method === 'POST') {
+              allow(b, ['capability', 'description']);
+              const value = string(b.capability, 'capability');
+              if (!CAPABILITY.test(value))
+                throw new DomainError(
+                  'invalid_request',
+                  'capability must use resource:action syntax',
+                );
+              return {
+                statusCode: 201,
+                body: await repository.createPermission(
+                  {
+                    capability: value as PermissionKey,
+                    description: string(b.description, 'description'),
+                  },
+                  context.actor,
+                  correlationId,
+                ),
+              };
+            }
+          }
+          if (resource === 'grants' && !itemId) {
+            if (request.method === 'GET')
+              return {
+                statusCode: 200,
+                body: await repository.listGrants(context.actor.companyId),
+              };
+            allow(b, ['roleId', 'permissionId', 'scopes', 'fields']);
+            const roleId = uuid(b.roleId, 'roleId'),
+              permissionId = uuid(b.permissionId, 'permissionId');
+            if (request.method === 'POST') {
+              const fields =
+                b.fields === null || b.fields === undefined ? null : strings(b.fields, 'fields');
+              if (fields?.some((field) => !/^[A-Za-z][A-Za-z0-9]*$/u.test(field)))
+                throw new DomainError(
+                  'invalid_request',
+                  'fields contains an unsupported field name',
+                );
+              await repository.grant(
+                { roleId, permissionId, scopes: scopes(b.scopes), fields },
+                context.actor,
+                correlationId,
+              );
+              return { statusCode: 204, body: {} };
+            }
+            if (request.method === 'DELETE') {
+              await repository.revoke(roleId, permissionId, context.actor, correlationId);
+              return { statusCode: 204, body: {} };
+            }
+          }
+          if (resource === 'assignments' && !itemId) {
+            if (request.method === 'GET')
+              return {
+                statusCode: 200,
+                body: await repository.listAssignments(context.actor.companyId),
+              };
+            allow(b, ['employeeId', 'roleId']);
+            const employeeId = uuid(b.employeeId, 'employeeId'),
+              roleId = uuid(b.roleId, 'roleId');
+            if (request.method === 'POST') {
+              await repository.assign(employeeId, roleId, context.actor, correlationId);
+              return { statusCode: 204, body: {} };
+            }
+            if (request.method === 'DELETE') {
+              await repository.unassign(employeeId, roleId, context.actor, correlationId);
+              return { statusCode: 204, body: {} };
+            }
+          }
+          if (resource === 'scope-grants') {
+            if (request.method === 'GET' && !itemId)
+              return {
+                statusCode: 200,
+                body: await repository.listScopeGrants(context.actor.companyId),
+              };
+            if (request.method === 'POST' && !itemId) {
+              allow(b, ['employeeId', 'permissionId', 'scope', 'organizationId']);
+              const selected = scopes([b.scope])[0];
+              if (!selected) throw new DomainError('invalid_request', 'scope is required');
+              const organizationId =
+                b.organizationId === null || b.organizationId === undefined
+                  ? null
+                  : uuid(b.organizationId, 'organizationId');
+              const typed =
+                selected === 'TEAM' || selected === 'DEPARTMENT' || selected === 'REGION';
+              if (typed !== Boolean(organizationId))
+                throw new DomainError(
+                  'invalid_request',
+                  typed
+                    ? 'Typed scopes require organizationId'
+                    : 'SELF, COMPANY, and GROUP do not accept organizationId',
+                );
+              return {
+                statusCode: 201,
+                body: await repository.grantScope(
+                  {
+                    employeeId: uuid(b.employeeId, 'employeeId'),
+                    permissionId: uuid(b.permissionId, 'permissionId'),
+                    scope: selected,
+                    organizationId,
+                  },
+                  context.actor,
+                  correlationId,
+                ),
+              };
+            }
+            if (request.method === 'DELETE' && itemId) {
+              allow(b, []);
+              await repository.revokeScope(
+                uuid(itemId, 'scopeGrantId'),
+                context.actor,
+                correlationId,
+              );
+              return { statusCode: 204, body: {} };
+            }
+          }
+        }
+        const auditMatch = /^\/api\/v1\/audit-events(?:\/([0-9a-f-]+))?$/u.exec(request.pathname);
+        if (auditMatch && request.method === 'GET') {
+          const auditGrant = authorizeQuery(context, 'audit:read');
+          if (!dependencies.audit)
+            return error(503, 'internal_error', 'Audit repository unavailable', correlationId);
+          const id = auditMatch[1];
+          if (id) {
+            const found = await dependencies.audit.find(
+              uuid(id, 'auditEventId'),
+              context.actor.companyId,
+              auditGrant.scopes,
+              context.actor.employeeId,
+              auditGrant.anchors,
+            );
+            return found
+              ? { statusCode: 200, body: found }
+              : error(404, 'not_found', 'Audit event not found', correlationId);
+          }
+          const q = request.query ?? {};
+          return {
+            statusCode: 200,
+            body: await dependencies.audit.list(
+              context.actor.companyId,
+              {
+                ...(q.actorId ? { actorId: uuid(q.actorId, 'actorId') } : {}),
+                ...(q.action ? { action: q.action } : {}),
+                ...(q.targetType ? { targetType: q.targetType } : {}),
+                ...(q.targetId ? { targetId: uuid(q.targetId, 'targetId') } : {}),
+                ...(q.correlationId
+                  ? { correlationId: uuid(q.correlationId, 'correlationId') }
+                  : {}),
+                ...(q.from ? { from: q.from } : {}),
+                ...(q.to ? { to: q.to } : {}),
+                ...(q.cursor ? { cursor: uuid(q.cursor, 'cursor') } : {}),
+                ...(q.limit ? { limit: Number(q.limit) } : {}),
+              },
+              auditGrant.scopes,
+              context.actor.employeeId,
+              auditGrant.anchors,
+            ),
+          };
+        }
+        if (request.pathname === '/api/v1/master-data/categories' && request.method === 'GET') {
+          authorizeQuery(context, 'master-data:read');
+          if (!dependencies.masterData)
+            return error(
+              503,
+              'internal_error',
+              'Master-data repository unavailable',
+              correlationId,
+            );
+          return {
+            statusCode: 200,
+            body: await dependencies.masterData.listCategories(
+              context.actor.companyId,
+              request.query?.at ? parseEffectiveTimestamp(request.query.at) : new Date(),
+            ),
+          };
+        }
+        if (request.pathname === '/api/v1/master-data/categories' && request.method === 'POST') {
+          authorizeQuery(context, 'master-data:create');
+          if (!dependencies.masterData)
+            return error(
+              503,
+              'internal_error',
+              'Master-data repository unavailable',
+              correlationId,
+            );
+          const b = objectBody(request.body);
+          allow(b, ['code', 'name', 'description', 'effectiveFrom', 'effectiveTo']);
+          const range = effectiveRange(b);
+          return {
+            statusCode: 201,
+            body: await dependencies.masterData.createCategory(
+              {
+                code: assertStableCode(string(b.code, 'code')),
+                name: string(b.name, 'name'),
+                description:
+                  b.description === null || b.description === undefined
+                    ? null
+                    : string(b.description, 'description'),
+                ...range,
+              },
+              context.actor,
+              correlationId,
+            ),
+          };
+        }
+        const category = /^\/api\/v1\/master-data\/categories\/([0-9a-f-]+)$/u.exec(
+          request.pathname,
+        );
+        if (category && request.method === 'PATCH') {
+          authorizeQuery(context, 'master-data:update');
+          if (!dependencies.masterData)
+            return error(
+              503,
+              'internal_error',
+              'Master-data repository unavailable',
+              correlationId,
+            );
+          const b = objectBody(request.body);
+          allow(b, ['name', 'description', 'effectiveFrom', 'effectiveTo', 'version']);
+          const range = effectiveRange(b);
+          return {
+            statusCode: 200,
+            body: await dependencies.masterData.updateCategory(
+              uuid(category[1], 'categoryId'),
+              {
+                name: string(b.name, 'name'),
+                description:
+                  b.description === null || b.description === undefined
+                    ? null
+                    : string(b.description, 'description'),
+                ...range,
+                version: version(b.version),
+              },
+              context.actor,
+              correlationId,
+            ),
+          };
+        }
+        if (category && request.method === 'DELETE') {
+          authorizeQuery(context, 'master-data:delete');
+          if (!dependencies.masterData)
+            return error(
+              503,
+              'internal_error',
+              'Master-data repository unavailable',
+              correlationId,
+            );
+          await dependencies.masterData.deleteCategory(
+            uuid(category[1], 'categoryId'),
+            version(Number(request.query?.version)),
+            context.actor,
+            correlationId,
+          );
+          return { statusCode: 204, body: {} };
+        }
+        if (request.pathname === '/api/v1/master-data/entries' && request.method === 'POST') {
+          authorizeQuery(context, 'master-data:create');
+          if (!dependencies.masterData)
+            return error(
+              503,
+              'internal_error',
+              'Master-data repository unavailable',
+              correlationId,
+            );
+          const b = objectBody(request.body);
+          allow(b, ['categoryId', 'code', 'label', 'value', 'effectiveFrom', 'effectiveTo']);
+          const range = effectiveRange(b);
+          return {
+            statusCode: 201,
+            body: await dependencies.masterData.createEntry(
+              {
+                categoryId: uuid(b.categoryId, 'categoryId'),
+                code: assertStableCode(string(b.code, 'code')),
+                label: string(b.label, 'label'),
+                value: objectBody(b.value) as never,
+                ...range,
+              },
+              context.actor,
+              correlationId,
+            ),
+          };
+        }
+        if (request.pathname === '/api/v1/number-definitions' && request.method === 'POST') {
+          authorizeQuery(context, 'number:create');
+          if (!dependencies.numbers)
+            return error(503, 'internal_error', 'Number repository unavailable', correlationId);
+          const b = objectBody(request.body);
+          allow(b, [
+            'code',
+            'prefix',
+            'suffix',
+            'padding',
+            'startingValue',
+            'increment',
+            'resetPeriod',
+          ]);
+          return {
+            statusCode: 201,
+            body: await dependencies.numbers.createDefinition(
+              {
+                code: assertStableCode(string(b.code, 'code')),
+                prefix: typeof b.prefix === 'string' ? b.prefix : '',
+                suffix: typeof b.suffix === 'string' ? b.suffix : '',
+                padding: integer(b.padding, 'padding', 1, 32),
+                startingValue: integer(
+                  b.startingValue,
+                  'startingValue',
+                  0,
+                  Number.MAX_SAFE_INTEGER,
+                ),
+                increment: integer(b.increment, 'increment', 1, Number.MAX_SAFE_INTEGER),
+                resetPeriod: string(b.resetPeriod, 'resetPeriod') as never,
+              },
+              context.actor,
+              correlationId,
+            ),
+          };
+        }
+        const publishNumber = /^\/api\/v1\/number-definitions\/([0-9a-f-]+)\/publish$/u.exec(
+          request.pathname,
+        );
+        if (publishNumber && request.method === 'POST') {
+          authorizeQuery(context, 'number:update');
+          if (!dependencies.numbers)
+            return error(503, 'internal_error', 'Number repository unavailable', correlationId);
+          const b = objectBody(request.body);
+          allow(b, ['version']);
+          return {
+            statusCode: 200,
+            body: await dependencies.numbers.publish(
+              uuid(publishNumber[1], 'definitionId'),
+              version(b.version),
+              context.actor,
+              correlationId,
+            ),
+          };
+        }
+        const allocate = /^\/api\/v1\/number-definitions\/([0-9a-f-]+)\/allocate$/u.exec(
+          request.pathname,
+        );
+        if (allocate && request.method === 'POST') {
+          authorizeQuery(context, 'number:allocate');
+          if (!dependencies.numbers)
+            return error(503, 'internal_error', 'Number repository unavailable', correlationId);
+          const key = request.headers?.['idempotency-key'];
+          if (!key) throw new DomainError('invalid_request', 'Idempotency-Key header is required');
+          return {
+            statusCode: 201,
+            body: await dependencies.numbers.allocate(
+              uuid(allocate[1], 'definitionId'),
+              key,
+              context.actor,
+              correlationId,
+            ),
+          };
+        }
+        if (request.pathname === '/api/v1/rules' && request.method === 'POST') {
+          authorizeQuery(context, 'rule:create');
+          if (!dependencies.rules)
+            return error(503, 'internal_error', 'Rule repository unavailable', correlationId);
+          const b = objectBody(request.body);
+          allow(b, ['code', 'ast', 'requiredInputs']);
+          return {
+            statusCode: 201,
+            body: await dependencies.rules.create(
+              {
+                code: assertStableCode(string(b.code, 'code')),
+                ast: b.ast,
+                requiredInputs: strings(b.requiredInputs ?? [], 'requiredInputs'),
+              },
+              context.actor,
+              correlationId,
+            ),
+          };
+        }
+        const publishRule = /^\/api\/v1\/rules\/([0-9a-f-]+)\/publish$/u.exec(request.pathname);
+        if (publishRule && request.method === 'POST') {
+          authorizeQuery(context, 'rule:update');
+          if (!dependencies.rules)
+            return error(503, 'internal_error', 'Rule repository unavailable', correlationId);
+          const b = objectBody(request.body);
+          allow(b, ['version']);
+          return {
+            statusCode: 200,
+            body: await dependencies.rules.publish(
+              uuid(publishRule[1], 'ruleId'),
+              version(b.version),
+              context.actor,
+              correlationId,
+            ),
+          };
+        }
+        const evaluateRule = /^\/api\/v1\/rules\/([0-9a-f-]+)\/evaluate$/u.exec(request.pathname);
+        if (evaluateRule && request.method === 'POST') {
+          authorizeQuery(context, 'rule:evaluate');
+          if (!dependencies.rules)
+            return error(503, 'internal_error', 'Rule repository unavailable', correlationId);
+          const key = request.headers?.['idempotency-key'];
+          if (!key) throw new DomainError('invalid_request', 'Idempotency-Key header is required');
+          const b = objectBody(request.body);
+          allow(b, ['input']);
+          return {
+            statusCode: 200,
+            body: await dependencies.rules.evaluate(
+              uuid(evaluateRule[1], 'ruleId'),
+              objectBody(b.input) as never,
+              key,
+              context.actor,
+              correlationId,
+            ),
+          };
+        }
+        if (request.pathname === '/api/v1/master-data/entries' && request.method === 'GET') {
+          authorizeQuery(context, 'master-data:read');
+          if (!dependencies.masterData)
+            return error(
+              503,
+              'internal_error',
+              'Master-data repository unavailable',
+              correlationId,
+            );
+          return {
+            statusCode: 200,
+            body: await dependencies.masterData.listEntries(
+              context.actor.companyId,
+              request.query?.categoryId ? uuid(request.query.categoryId, 'categoryId') : null,
+              request.query?.at ? parseEffectiveTimestamp(request.query.at) : new Date(),
+            ),
+          };
+        }
+        const entry = /^\/api\/v1\/master-data\/entries\/([0-9a-f-]+)$/u.exec(request.pathname);
+        if (entry && request.method === 'GET') {
+          authorizeQuery(context, 'master-data:read');
+          if (!dependencies.masterData)
+            return error(
+              503,
+              'internal_error',
+              'Master-data repository unavailable',
+              correlationId,
+            );
+          const found = await dependencies.masterData.findEntry(
+            uuid(entry[1], 'entryId'),
+            context.actor.companyId,
+            request.query?.at ? parseEffectiveTimestamp(request.query.at) : new Date(),
+          );
+          return found
+            ? { statusCode: 200, body: found }
+            : error(404, 'not_found', 'Master-data entry not found', correlationId);
+        }
+        if (entry && request.method === 'PATCH') {
+          authorizeQuery(context, 'master-data:update');
+          if (!dependencies.masterData)
+            return error(
+              503,
+              'internal_error',
+              'Master-data repository unavailable',
+              correlationId,
+            );
+          const b = objectBody(request.body);
+          allow(b, ['label', 'value', 'effectiveFrom', 'effectiveTo', 'version']);
+          const range = effectiveRange(b);
+          return {
+            statusCode: 200,
+            body: await dependencies.masterData.updateEntry(
+              uuid(entry[1], 'entryId'),
+              {
+                label: string(b.label, 'label'),
+                value: objectBody(b.value) as never,
+                ...range,
+                version: version(b.version),
+              },
+              context.actor,
+              correlationId,
+            ),
+          };
+        }
+        if (entry && request.method === 'DELETE') {
+          authorizeQuery(context, 'master-data:delete');
+          if (!dependencies.masterData)
+            return error(
+              503,
+              'internal_error',
+              'Master-data repository unavailable',
+              correlationId,
+            );
+          await dependencies.masterData.deleteEntry(
+            uuid(entry[1], 'entryId'),
+            version(Number(request.query?.version)),
+            context.actor,
+            correlationId,
+          );
+          return { statusCode: 204, body: {} };
+        }
+        const numberVersion = /^\/api\/v1\/number-definitions\/([0-9a-f-]+)\/versions$/u.exec(
+          request.pathname,
+        );
+        if (numberVersion && request.method === 'POST') {
+          authorizeQuery(context, 'number:update');
+          if (!dependencies.numbers)
+            return error(503, 'internal_error', 'Number repository unavailable', correlationId);
+          const b = objectBody(request.body);
+          allow(b, ['prefix', 'suffix', 'padding', 'startingValue', 'increment', 'resetPeriod']);
+          return {
+            statusCode: 201,
+            body: await dependencies.numbers.createVersion(
+              uuid(numberVersion[1], 'definitionId'),
+              {
+                prefix: typeof b.prefix === 'string' ? b.prefix : '',
+                suffix: typeof b.suffix === 'string' ? b.suffix : '',
+                padding: integer(b.padding, 'padding', 1, 32),
+                startingValue: integer(
+                  b.startingValue,
+                  'startingValue',
+                  0,
+                  Number.MAX_SAFE_INTEGER,
+                ),
+                increment: integer(b.increment, 'increment', 1, Number.MAX_SAFE_INTEGER),
+                resetPeriod: string(b.resetPeriod, 'resetPeriod') as never,
+              },
+              context.actor,
+              correlationId,
+            ),
+          };
+        }
+        const ruleVersion = /^\/api\/v1\/rules\/([0-9a-f-]+)\/versions$/u.exec(request.pathname);
+        if (ruleVersion && request.method === 'POST') {
+          authorizeQuery(context, 'rule:update');
+          if (!dependencies.rules)
+            return error(503, 'internal_error', 'Rule repository unavailable', correlationId);
+          const b = objectBody(request.body);
+          allow(b, ['ast', 'requiredInputs']);
+          return {
+            statusCode: 201,
+            body: await dependencies.rules.createVersion(
+              uuid(ruleVersion[1], 'ruleId'),
+              { ast: b.ast, requiredInputs: strings(b.requiredInputs ?? [], 'requiredInputs') },
+              context.actor,
+              correlationId,
+            ),
+          };
+        }
+        if (request.pathname === '/api/v1/workflows' && request.method === 'POST') {
+          authorizeQuery(context, 'workflow:create');
+          if (!dependencies.workflows)
+            return error(503, 'internal_error', 'Workflow repository unavailable', correlationId);
+          const b = objectBody(request.body);
+          allow(b, ['code', 'spec']);
+          return {
+            statusCode: 201,
+            body: await dependencies.workflows.create(
+              { code: assertStableCode(string(b.code, 'code')), spec: objectBody(b.spec) as never },
+              context.actor,
+              correlationId,
+            ),
+          };
+        }
+        const workflowVersion = /^\/api\/v1\/workflows\/([0-9a-f-]+)\/versions$/u.exec(
+          request.pathname,
+        );
+        if (workflowVersion && request.method === 'POST') {
+          authorizeQuery(context, 'workflow:update');
+          if (!dependencies.workflows)
+            return error(503, 'internal_error', 'Workflow repository unavailable', correlationId);
+          const b = objectBody(request.body);
+          allow(b, ['spec']);
+          return {
+            statusCode: 201,
+            body: await dependencies.workflows.createVersion(
+              uuid(workflowVersion[1], 'workflowId'),
+              objectBody(b.spec) as never,
+              context.actor,
+              correlationId,
+            ),
+          };
+        }
+        const workflowPublish = /^\/api\/v1\/workflows\/([0-9a-f-]+)\/publish$/u.exec(
+          request.pathname,
+        );
+        if (workflowPublish && request.method === 'POST') {
+          authorizeQuery(context, 'workflow:update');
+          if (!dependencies.workflows)
+            return error(503, 'internal_error', 'Workflow repository unavailable', correlationId);
+          const b = objectBody(request.body);
+          allow(b, ['version']);
+          return {
+            statusCode: 200,
+            body: await dependencies.workflows.publish(
+              uuid(workflowPublish[1], 'workflowId'),
+              version(b.version),
+              context.actor,
+              correlationId,
+            ),
+          };
+        }
+        const workflowStart = /^\/api\/v1\/workflows\/([0-9a-f-]+)\/instances$/u.exec(
+          request.pathname,
+        );
+        if (workflowStart && request.method === 'POST') {
+          authorizeQuery(context, 'workflow:start');
+          if (!dependencies.workflows)
+            return error(503, 'internal_error', 'Workflow repository unavailable', correlationId);
+          const key = request.headers?.['idempotency-key'];
+          if (!key) throw new DomainError('invalid_request', 'Idempotency-Key header is required');
+          const b = objectBody(request.body);
+          allow(b, ['subjectType', 'subjectId']);
+          return {
+            statusCode: 201,
+            body: await dependencies.workflows.start(
+              uuid(workflowStart[1], 'workflowId'),
+              string(b.subjectType, 'subjectType'),
+              uuid(b.subjectId, 'subjectId'),
+              key,
+              context.actor,
+              correlationId,
+            ),
+          };
+        }
+        if (request.pathname === '/api/v1/workflow-tasks' && request.method === 'GET') {
+          authorizeQuery(context, 'workflow:decide');
+          if (!dependencies.workflows)
+            return error(503, 'internal_error', 'Workflow repository unavailable', correlationId);
+          return { statusCode: 200, body: await dependencies.workflows.listTasks(context.actor) };
+        }
+        const decide = /^\/api\/v1\/workflow-tasks\/([0-9a-f-]+)\/decisions$/u.exec(
+          request.pathname,
+        );
+        if (decide && request.method === 'POST') {
+          authorizeQuery(context, 'workflow:decide');
+          if (!dependencies.workflows)
+            return error(503, 'internal_error', 'Workflow repository unavailable', correlationId);
+          const key = request.headers?.['idempotency-key'];
+          if (!key) throw new DomainError('invalid_request', 'Idempotency-Key header is required');
+          const b = objectBody(request.body);
+          allow(b, ['decision', 'comment', 'version']);
+          return {
+            statusCode: 200,
+            body: await dependencies.workflows.decide(
+              uuid(decide[1], 'taskId'),
+              string(b.decision, 'decision'),
+              b.comment == null ? null : string(b.comment, 'comment'),
+              key,
+              version(b.version),
+              context.actor,
+              correlationId,
+            ),
+          };
+        }
+        if (request.pathname === '/api/v1/notifications' && request.method === 'GET') {
+          authorizeQuery(context, 'notification:read');
+          if (!dependencies.notifications)
+            return error(
+              503,
+              'internal_error',
+              'Notification repository unavailable',
+              correlationId,
+            );
+          return {
+            statusCode: 200,
+            body: await dependencies.notifications.list(
+              context.actor,
+              request.query?.unread === 'true',
+            ),
+          };
+        }
+        if (request.pathname === '/api/v1/notifications/unread-count' && request.method === 'GET') {
+          authorizeQuery(context, 'notification:read');
+          if (!dependencies.notifications)
+            return error(
+              503,
+              'internal_error',
+              'Notification repository unavailable',
+              correlationId,
+            );
+          return {
+            statusCode: 200,
+            body: { count: await dependencies.notifications.unread(context.actor) },
+          };
+        }
+        const notification = /^\/api\/v1\/notifications\/([0-9a-f-]+)$/u.exec(request.pathname);
+        if (notification && request.method === 'GET') {
+          authorizeQuery(context, 'notification:read');
+          if (!dependencies.notifications)
+            return error(
+              503,
+              'internal_error',
+              'Notification repository unavailable',
+              correlationId,
+            );
+          const found = await dependencies.notifications.find(
+            uuid(notification[1], 'notificationId'),
+            context.actor,
+          );
+          return found
+            ? { statusCode: 200, body: found }
+            : error(404, 'not_found', 'Notification not found', correlationId);
+        }
+        const readState = /^\/api\/v1\/notifications\/([0-9a-f-]+)\/(read|unread)$/u.exec(
+          request.pathname,
+        );
+        if (readState && request.method === 'PUT') {
+          authorizeQuery(context, 'notification:read');
+          if (!dependencies.notifications)
+            return error(
+              503,
+              'internal_error',
+              'Notification repository unavailable',
+              correlationId,
+            );
+          await dependencies.notifications.setRead(
+            uuid(readState[1], 'notificationId'),
+            readState[2] === 'read',
+            context.actor,
+            correlationId,
+          );
+          return { statusCode: 204, body: {} };
+        }
+        if (request.pathname === '/api/v1/notification-preferences' && request.method === 'GET') {
+          authorizeQuery(context, 'notification:read');
+          if (!dependencies.notifications)
+            return error(
+              503,
+              'internal_error',
+              'Notification repository unavailable',
+              correlationId,
+            );
+          return {
+            statusCode: 200,
+            body: await dependencies.notifications.preferences(context.actor),
+          };
+        }
+        if (request.pathname === '/api/v1/notification-preferences' && request.method === 'PUT') {
+          authorizeQuery(context, 'notification:manage');
+          if (!dependencies.notifications)
+            return error(
+              503,
+              'internal_error',
+              'Notification repository unavailable',
+              correlationId,
+            );
+          const b = objectBody(request.body);
+          allow(b, ['channel', 'enabled', 'expectedVersion']);
+          if (typeof b.enabled !== 'boolean')
+            throw new DomainError('invalid_request', 'enabled must be boolean');
+          if (b.expectedVersion === undefined)
+            throw new DomainError('invalid_request', 'expectedVersion is required');
+          return {
+            statusCode: 200,
+            body: await dependencies.notifications.setPreference(
+              notificationChannel(b.channel),
+              b.enabled,
+              expectedVersion(b.expectedVersion),
+              context.actor,
+              correlationId,
+            ),
+          };
+        }
+        if (request.pathname === '/api/v1/internal/notifications' && request.method === 'POST') {
+          const authorized = authorizeQuery(context, 'notification:manage');
+          if (!dependencies.notifications)
+            return error(
+              503,
+              'internal_error',
+              'Notification repository unavailable',
+              correlationId,
+            );
+          const b = objectBody(request.body);
+          allow(b, ['kind', 'title', 'message', 'recipients', 'subjectType', 'subjectId']);
+          const key = request.headers?.['idempotency-key'];
+          if (!key) throw new DomainError('invalid_request', 'Idempotency-Key header is required');
+          return {
+            statusCode: 201,
+            body: await dependencies.notifications.create(
+              {
+                kind: string(b.kind, 'kind'),
+                title: string(b.title, 'title'),
+                message: string(b.message, 'message'),
+                recipients: strings(b.recipients, 'recipients').map((recipient) =>
+                  uuid(recipient, 'recipient'),
+                ),
+                ...(b.subjectType ? { subjectType: string(b.subjectType, 'subjectType') } : {}),
+                ...(b.subjectId ? { subjectId: uuid(b.subjectId, 'subjectId') } : {}),
+                idempotencyKey: key,
+              },
+              context.actor,
+              correlationId,
+              authorized.scopes,
+              authorized.anchors,
+            ),
+          };
+        }
+        if (request.pathname === '/api/v1/attachments' && request.method === 'POST') {
+          authorizeQuery(context, 'attachment:manage');
+          if (!dependencies.attachments)
+            return error(503, 'internal_error', 'Attachment repository unavailable', correlationId);
+          const b = objectBody(request.body);
+          allow(b, ['name', 'mimeType', 'size', 'checksum']);
+          return {
+            statusCode: 201,
+            body: await dependencies.attachments.create(
+              {
+                name: string(b.name, 'name'),
+                mimeType: string(b.mimeType, 'mimeType'),
+                size: integer(b.size, 'size', 1, 26_214_400),
+                checksum: string(b.checksum, 'checksum'),
+              },
+              context.actor,
+              correlationId,
+            ),
+          };
+        }
+        const attachmentUpload = /^\/api\/v1\/attachments\/([0-9a-f-]+)\/content$/u.exec(
+          request.pathname,
+        );
+        if (attachmentUpload && request.method === 'PUT') {
+          const grant = authorizeQuery(context, 'attachment:manage');
+          if (!dependencies.attachments)
+            return error(503, 'internal_error', 'Attachment repository unavailable', correlationId);
+          const b = objectBody(request.body);
+          allow(b, ['contentBase64']);
+          return {
+            statusCode: 200,
+            body: await dependencies.attachments.upload(
+              uuid(attachmentUpload[1], 'attachmentId'),
+              attachmentBytes(b.contentBase64),
+              context.actor,
+              grant.scopes,
+              grant.anchors,
+              correlationId,
+            ),
+          };
+        }
+        const attachmentBind = /^\/api\/v1\/attachments\/([0-9a-f-]+)\/bindings$/u.exec(
+          request.pathname,
+        );
+        if (attachmentBind && request.method === 'POST') {
+          const grant = authorizeQuery(context, 'attachment:manage');
+          if (!dependencies.attachments)
+            return error(503, 'internal_error', 'Attachment repository unavailable', correlationId);
+          const b = objectBody(request.body);
+          allow(b, ['objectType', 'objectId']);
+          await dependencies.attachments.bind(
+            uuid(attachmentBind[1], 'attachmentId'),
+            string(b.objectType, 'objectType'),
+            uuid(b.objectId, 'objectId'),
+            context.actor,
+            grant.scopes,
+            grant.anchors,
+            correlationId,
+          );
+          return { statusCode: 204, body: {} };
+        }
+        if (attachmentBind && request.method === 'DELETE') {
+          const grant = authorizeQuery(context, 'attachment:manage');
+          if (!dependencies.attachments)
+            return error(503, 'internal_error', 'Attachment repository unavailable', correlationId);
+          const b = objectBody(request.body);
+          allow(b, ['objectType', 'objectId']);
+          await dependencies.attachments.unbind(
+            uuid(attachmentBind[1], 'attachmentId'),
+            string(b.objectType, 'objectType'),
+            uuid(b.objectId, 'objectId'),
+            context.actor,
+            grant.scopes,
+            grant.anchors,
+            correlationId,
+          );
+          return { statusCode: 204, body: {} };
+        }
+        const attachment = /^\/api\/v1\/attachments\/([0-9a-f-]+)$/u.exec(request.pathname);
+        if (attachment && request.method === 'GET') {
+          const grant = authorizeQuery(context, 'attachment:read');
+          if (!dependencies.attachments)
+            return error(503, 'internal_error', 'Attachment repository unavailable', correlationId);
+          const found = await dependencies.attachments.download(
+            uuid(attachment[1], 'attachmentId'),
+            context.actor,
+            grant.scopes,
+            grant.anchors,
+          );
+          return found
+            ? {
+                statusCode: 200,
+                body: {
+                  metadata: found.metadata,
+                  contentBase64: Buffer.from(found.bytes).toString('base64'),
+                },
+              }
+            : error(404, 'not_found', 'Attachment not found', correlationId);
+        }
+        if (attachment && request.method === 'DELETE') {
+          const grant = authorizeQuery(context, 'attachment:manage');
+          if (!dependencies.attachments)
+            return error(503, 'internal_error', 'Attachment repository unavailable', correlationId);
+          const b = objectBody(request.body);
+          allow(b, ['version']);
+          await dependencies.attachments.remove(
+            uuid(attachment[1], 'attachmentId'),
+            version(b.version),
+            context.actor,
+            grant.scopes,
+            grant.anchors,
+            correlationId,
+          );
+          return { statusCode: 204, body: {} };
+        }
+        if (request.pathname === '/api/v1/business-objects' && request.method === 'GET') {
+          authorizeQuery(context, 'business-object:read');
+          if (!dependencies.businessObjects)
+            return error(503, 'internal_error', 'Registry unavailable', correlationId);
+          return {
+            statusCode: 200,
+            body: await dependencies.businessObjects.list(context.actor.companyId),
+          };
+        }
+        if (request.pathname === '/api/v1/business-objects' && request.method === 'POST') {
+          authorizeQuery(context, 'business-object:manage');
+          if (!dependencies.businessObjects)
+            return error(503, 'internal_error', 'Registry unavailable', correlationId);
+          const b = objectBody(request.body);
+          allow(b, ['code', 'name', 'schema']);
+          return {
+            statusCode: 201,
+            body: await dependencies.businessObjects.create(
+              string(b.code, 'code'),
+              string(b.name, 'name'),
+              b.schema,
+              context.actor,
+              correlationId,
+            ),
+          };
+        }
+        const objectVersion = /^\/api\/v1\/business-objects\/([0-9a-f-]+)\/versions$/u.exec(
+          request.pathname,
+        );
+        if (objectVersion && request.method === 'POST') {
+          authorizeQuery(context, 'business-object:manage');
+          if (!dependencies.businessObjects)
+            return error(503, 'internal_error', 'Registry unavailable', correlationId);
+          const b = objectBody(request.body);
+          allow(b, ['schema']);
+          return {
+            statusCode: 201,
+            body: await dependencies.businessObjects.addVersion(
+              uuid(objectVersion[1], 'definitionId'),
+              b.schema,
+              context.actor,
+              correlationId,
+            ),
+          };
+        }
+        const objectPublish =
+          /^\/api\/v1\/business-objects\/([0-9a-f-]+)\/versions\/(\d+)\/publish$/u.exec(
+            request.pathname,
+          );
+        if (objectPublish && request.method === 'POST') {
+          authorizeQuery(context, 'business-object:manage');
+          if (!dependencies.businessObjects)
+            return error(503, 'internal_error', 'Registry unavailable', correlationId);
+          return {
+            statusCode: 200,
+            body: await dependencies.businessObjects.publish(
+              uuid(objectPublish[1], 'definitionId'),
+              Number(objectPublish[2]),
+              context.actor,
+              correlationId,
+            ),
+          };
+        }
+        const object = /^\/api\/v1\/business-objects\/([0-9a-f-]+)$/u.exec(request.pathname);
+        if (object && request.method === 'GET') {
+          authorizeQuery(context, 'business-object:read');
+          if (!dependencies.businessObjects)
+            return error(503, 'internal_error', 'Registry unavailable', correlationId);
+          const found = await dependencies.businessObjects.find(
+            uuid(object[1], 'definitionId'),
+            context.actor.companyId,
+          );
+          return found
+            ? { statusCode: 200, body: found }
+            : error(404, 'not_found', 'Business object not found', correlationId);
+        }
+        if (request.pathname === '/api/v1/operations/events' && request.method === 'GET') {
+          authorizeQuery(context, 'event:operate');
+          if (!dependencies.events)
+            return error(503, 'internal_error', 'Event repository unavailable', correlationId);
+          return {
+            statusCode: 200,
+            body: await dependencies.events.counts(context.actor.companyId),
+          };
+        }
+        if (request.pathname === '/api/v1/operations/events/claims' && request.method === 'POST') {
+          authorizeQuery(context, 'event:operate');
+          if (!dependencies.events)
+            return error(503, 'internal_error', 'Event repository unavailable', correlationId);
+          const b = objectBody(request.body);
+          allow(b, ['consumer', 'worker', 'limit', 'leaseSeconds']);
+          return {
+            statusCode: 200,
+            body: await dependencies.events.claim(
+              context.actor,
+              string(b.consumer, 'consumer'),
+              string(b.worker, 'worker'),
+              b.limit === undefined ? undefined : integer(b.limit, 'limit', 1, 100),
+              b.leaseSeconds === undefined
+                ? undefined
+                : integer(b.leaseSeconds, 'leaseSeconds', 5, 300),
+            ),
+          };
+        }
+        const eventDelivery =
+          /^\/api\/v1\/operations\/events\/([0-9a-f-]+)\/(complete|retry|dead-letter)$/u.exec(
+            request.pathname,
+          );
+        if (eventDelivery && request.method === 'POST') {
+          authorizeQuery(context, 'event:operate');
+          if (!dependencies.events)
+            return error(503, 'internal_error', 'Event repository unavailable', correlationId);
+          const b = objectBody(request.body);
+          const action = eventDelivery[2];
+          allow(
+            b,
+            action === 'complete'
+              ? ['consumer', 'claimToken']
+              : ['consumer', 'claimToken', 'errorCode', 'maxAttempts'],
+          );
+          const eventId = uuid(eventDelivery[1], 'eventId');
+          const consumer = string(b.consumer, 'consumer');
+          const claimToken = uuid(b.claimToken, 'claimToken');
+          if (action === 'complete')
+            await dependencies.events.complete(eventId, context.actor, consumer, claimToken);
+          else
+            await dependencies.events.fail(
+              eventId,
+              context.actor,
+              consumer,
+              claimToken,
+              string(b.errorCode, 'errorCode'),
+              action === 'dead-letter'
+                ? 1
+                : b.maxAttempts === undefined
+                  ? undefined
+                  : integer(b.maxAttempts, 'maxAttempts', 2, 100),
+            );
+          return { statusCode: 204, body: {} };
+        }
+        return error(404, 'not_found', 'Route not found', correlationId);
+      } catch (cause) {
+        if (cause instanceof DomainError) {
+          const status =
+            cause.code === 'forbidden'
+              ? 403
+              : cause.code === 'not_found'
+                ? 404
+                : cause.code === 'conflict'
+                  ? 409
+                  : 400;
+          return error(status, cause.code, cause.message, correlationId);
+        }
+        return error(500, 'internal_error', 'Internal server error', correlationId);
+      }
+    },
+  };
+  const complete = (
+    request: ApiRequest,
+    correlationId: string,
+    response: ApiResponse,
+    started: number,
+  ) => {
+    const durationMs = Math.max(0, performance.now() - started);
+    const route = request.pathname.startsWith('/api/')
+      ? 'api'
+      : request.pathname === '/health'
+        ? 'health'
+        : request.pathname === '/ready'
+          ? 'ready'
+          : 'other';
+    const method = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)
+      ? request.method
+      : 'OTHER';
+    telemetry.count('http_requests_total', 1, {
+      method,
+      route,
+      status: String(response.statusCode),
+    });
+    telemetry.timing('http_request_duration_ms', durationMs, { method, route });
+    dependencies?.logger?.write({
+      level: response.statusCode >= 500 ? 'error' : 'info',
+      event: 'http.request.completed',
+      correlationId,
+      statusCode: response.statusCode,
+      durationMs,
+    });
+    return { ...response, headers: { ...response.headers, 'x-correlation-id': correlationId } };
+  };
+  return {
+    rejectOversized(incomingCorrelationId) {
+      const correlationId = correlation(incomingCorrelationId);
+      return complete(
+        { method: 'OTHER', pathname: '/transport/request-body' },
+        correlationId,
+        error(413, 'invalid_request', 'Request body too large', correlationId),
+        performance.now(),
+      );
+    },
+    async dispatch(request) {
+      const correlationId = correlation(request.headers?.['x-correlation-id']);
+      const started = performance.now();
+      const response = await application.dispatch({
+        ...request,
+        headers: { ...request.headers, 'x-correlation-id': correlationId },
+      });
+      return complete(request, correlationId, response, started);
+    },
+  };
+}

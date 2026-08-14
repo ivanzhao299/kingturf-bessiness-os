@@ -51,13 +51,13 @@ Each Epic is decomposed into implementation tasks covering, where applicable:
 - JTF-P1-E08 Cost Engine v1
 - JTF-P1-E09 Sales Policy Engine
 - JTF-P1-E10 CPQ / Quote
-- JTF-P1-E11 Credit Management
+- JTF-P1-E11 Credit Management — delivered in the immutable E11-E17 Quote-to-Cash boundary
 - JTF-P1-E12 Contract Center
 - JTF-P1-E13 E-Sign Integration
 - JTF-P1-E14 Sales Order
 - JTF-P1-E15 AR
 - JTF-P1-E16 Bank Payment
-- JTF-P1-E17 Reconciliation
+- JTF-P1-E17 Reconciliation — delivered with canonical ordering and retained replay results
 - JTF-P1-E18 Commission Engine
 - JTF-P1-E19 Order 360
 - JTF-P1-E20 Risk Engine v1
