@@ -212,7 +212,7 @@ test('shows supplier qualification, received purchase order, receipt, and derive
   await expect(workbench.getByText(/PO-KT-YARN-2026-001 · RECEIVED/u)).toBeVisible();
   await expect(workbench.getByText(/收货 GR-KT-YARN-2026-001/u)).toBeVisible();
   await expect(workbench.getByText(/批次 LOT-KT-YARN-20260920-A/u)).toBeVisible();
-  await expect(workbench.getByText(/RAW-A01 · 结存 3712.5/u)).toBeVisible();
+  await expect(workbench.getByText(/RAW-A01 · 结存 3704.5/u)).toBeVisible();
   await testInfo.attach('procurement-inventory-desktop', {
     body: await workbench.screenshot(),
     contentType: 'image/png',
@@ -252,6 +252,8 @@ test('shows closed production execution with routing, material, reports, and ser
   await expect(workbench.getByText(/WO-KT-2026-001 · FG-KT-PRO-50/u)).toBeVisible();
   await expect(workbench.locator('.production-operation.done')).toHaveCount(3);
   await expect(workbench.getByText(/ISSUE 1287.5/u)).toBeVisible();
+  await expect(workbench.getByText(/ISSUE 10/u)).toBeVisible();
+  await expect(workbench.getByText(/RETURN 2/u)).toBeVisible();
   await expect(workbench.getByText(/ROLL-KT-2026-001 · 1000.*QUARANTINE/u)).toBeVisible();
   await expect(
     workbench.getByText(/DRAFT → RELEASED → IN_PROGRESS → COMPLETED → CLOSED/u),

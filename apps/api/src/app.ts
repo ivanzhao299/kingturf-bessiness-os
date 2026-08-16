@@ -1039,10 +1039,9 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
                 orderNumber: assertStableCode(string(body.orderNumber, 'orderNumber')),
                 itemVersionId: uuid(body.itemVersionId, 'itemVersionId'),
                 routingVersionId: uuid(body.routingVersionId, 'routingVersionId'),
-                mrpProposalId:
-                  body.mrpProposalId === undefined
-                    ? undefined
-                    : uuid(body.mrpProposalId, 'mrpProposalId'),
+                ...(body.mrpProposalId === undefined
+                  ? {}
+                  : { mrpProposalId: uuid(body.mrpProposalId, 'mrpProposalId') }),
                 plannedQuantity: decimal(body.plannedQuantity, 'plannedQuantity'),
                 plannedStartAt: calendarDate(body.plannedStartAt, 'plannedStartAt'),
                 plannedDueAt: calendarDate(body.plannedDueAt, 'plannedDueAt'),

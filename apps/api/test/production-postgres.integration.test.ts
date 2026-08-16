@@ -145,6 +145,21 @@ describe('KT-L15 PostgreSQL production execution acceptance', () => {
       context,
       randomUUID(),
     );
+    await production.transactMaterial(
+      order.id as string,
+      {
+        transactionType: 'RETURN',
+        itemVersionId: materialVersion,
+        lotId: materialLot,
+        locationId: location,
+        quantity: '2',
+        reason: 'Unused return',
+        occurredAt: '2026-08-17T08:30:00Z',
+        idempotencyKey: 'WO-1-RETURN',
+      },
+      context,
+      randomUUID(),
+    );
     const listed = await production.list(context);
     const operation = (listed[0]?.operations as { id: string }[])[0];
     expect(operation).toBeDefined();
@@ -212,7 +227,7 @@ describe('KT-L15 PostgreSQL production execution acceptance', () => {
     );
     const result = (await production.list(context))[0];
     expect(result?.state).toBe('CLOSED');
-    expect(result?.materials).toHaveLength(1);
+    expect(result?.materials).toHaveLength(2);
     expect(result?.reports).toHaveLength(1);
     expect(result?.rolls).toHaveLength(1);
     await expect(
@@ -225,6 +240,6 @@ describe('KT-L15 PostgreSQL production execution acceptance', () => {
       'SELECT quantity FROM inventory_balances WHERE tenant_id=$1 AND lot_id=$2',
       [company, materialLot],
     );
-    expect(Number(balance.rows[0]?.quantity)).toBe(10);
+    expect(Number(balance.rows[0]?.quantity)).toBe(12);
   });
 });

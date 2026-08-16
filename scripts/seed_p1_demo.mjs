@@ -1063,6 +1063,73 @@ if (productionOrder.state === 'COMPLETED') {
   productionOrder = await reloadProductionOrder();
 }
 
+let returnDemoOrder = (await list('/api/v1/production-orders')).find(
+  (item) => (item.order_number ?? item.orderNumber) === 'WO-KT-2026-RETURN-DEMO',
+);
+returnDemoOrder ??= await request('/api/v1/production-orders', {
+  method: 'POST',
+  body: {
+    orderNumber: 'WO-KT-2026-RETURN-DEMO',
+    itemVersionId: finishedGood.id,
+    routingVersionId: routing.id,
+    plannedQuantity: '10',
+    plannedStartAt: '2026-08-20',
+    plannedDueAt: '2026-08-21',
+    sourceReference: 'PRODUCTION-RETURN-CONTROL-DEMO',
+  },
+});
+const reloadReturnDemo = async () =>
+  (await list('/api/v1/production-orders')).find((item) => item.id === returnDemoOrder.id);
+returnDemoOrder = await reloadReturnDemo();
+if (returnDemoOrder.state === 'DRAFT') {
+  await request(`/api/v1/production-orders/${returnDemoOrder.id}/release`, {
+    method: 'POST',
+    body: {
+      reason: '退料控制场景下达',
+      evidence: { purpose: 'RETURN-CONTROL' },
+      idempotencyKey: 'WO-KT-2026-RETURN-DEMO-RELEASE',
+    },
+  });
+  await request(`/api/v1/production-orders/${returnDemoOrder.id}/start`, {
+    method: 'POST',
+    body: {
+      reason: '退料控制场景开工',
+      evidence: { purpose: 'RETURN-CONTROL' },
+      idempotencyKey: 'WO-KT-2026-RETURN-DEMO-START',
+    },
+  });
+  returnDemoOrder = await reloadReturnDemo();
+}
+if (returnDemoOrder.materials.length === 0) {
+  await request(`/api/v1/production-orders/${returnDemoOrder.id}/materials`, {
+    method: 'POST',
+    body: {
+      transactionType: 'ISSUE',
+      itemVersionId: yarn.id,
+      lotId: yarnLot.lotId ?? yarnLot.lot_id,
+      locationId: location.id,
+      quantity: '10',
+      reason: '退料演示初始领料',
+      occurredAt: '2026-08-20T08:00:00.000Z',
+      idempotencyKey: 'WO-KT-2026-RETURN-DEMO-ISSUE',
+    },
+  });
+  await request(`/api/v1/production-orders/${returnDemoOrder.id}/materials`, {
+    method: 'POST',
+    body: {
+      transactionType: 'RETURN',
+      itemVersionId: yarn.id,
+      lotId: yarnLot.lotId ?? yarnLot.lot_id,
+      locationId: location.id,
+      quantity: '2',
+      reason: '班次结束退回未使用草纱',
+      occurredAt: '2026-08-20T18:00:00.000Z',
+      idempotencyKey: 'WO-KT-2026-RETURN-DEMO-RETURN',
+    },
+  });
+  returnDemoOrder = await reloadReturnDemo();
+}
+
 process.stdout.write(
-  `${JSON.stringify({ baseUrl, customerId: customer.id, opportunityId: opportunity.id, quoteRevisionId: quote.id, contractRevisionId: contract.id, orderId: order.id, commissionId: commission.id, riskEvaluationId: risk.id, manufacturing: { finishedGoodVersionId: finishedGood.id, bomVersionId: bom.id, routingVersionId: routing.id }, procurement: { supplierId: supplier.id, rfqId: rfq.id, supplierQuoteId: supplierQuote.id, purchaseOrderId: purchaseOrder.id, goodsReceiptId: goodsReceipt.id, locationId: location.id }, mrp: { runId: mrpRun.id, calculationCount: mrpRun.calculations.length, proposalCount: mrpRun.proposals.length }, production: { orderId: productionOrder.id, state: productionOrder.state, operationCount: productionOrder.operations.length, materialTransactionCount: productionOrder.materials.length, reportCount: productionOrder.reports.length, rollCount: productionOrder.rolls.length }, outcomes: ['APPROVED', 'REJECTED', 'EXPIRED'] }, null, 2)}\n`,
+  `${JSON.stringify({ baseUrl, customerId: customer.id, opportunityId: opportunity.id, quoteRevisionId: quote.id, contractRevisionId: contract.id, orderId: order.id, commissionId: commission.id, riskEvaluationId: risk.id, manufacturing: { finishedGoodVersionId: finishedGood.id, bomVersionId: bom.id, routingVersionId: routing.id }, procurement: { supplierId: supplier.id, rfqId: rfq.id, supplierQuoteId: supplierQuote.id, purchaseOrderId: purchaseOrder.id, goodsReceiptId: goodsReceipt.id, locationId: location.id }, mrp: { runId: mrpRun.id, calculationCount: mrpRun.calculations.length, proposalCount: mrpRun.proposals.length }, production: { orderId: productionOrder.id, state: productionOrder.state, operationCount: productionOrder.operations.length, materialTransactionCount: productionOrder.materials.length, reportCount: productionOrder.reports.length, rollCount: productionOrder.rolls.length, returnControlOrderId: returnDemoOrder.id, returnControlTransactions: returnDemoOrder.materials.length }, outcomes: ['APPROVED', 'REJECTED', 'EXPIRED'] }, null, 2)}\n`,
 );

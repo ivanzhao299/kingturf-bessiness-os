@@ -922,6 +922,55 @@ export function commercialWorkspaceStructure(
         });
         actions.append(material);
       }
+      if (permissions.has('production:report') && state === 'IN_PROGRESS' && reports.length) {
+        const locations = controller.views.get('/api/v1/inventory-locations') ?? [];
+        const output = el('button', 'secondary', '＋ 成品卷入库');
+        output.addEventListener('click', () => {
+          openForm(
+            workspace,
+            '登记成品卷与待检批次',
+            '卷号、成品批次和正向库存收货在同一事务内生成，初始质量状态为待检。',
+            [
+              {
+                name: 'operationReportId',
+                label: '末工序报工',
+                type: 'select',
+                required: true,
+                options: reports.map((item) => ({
+                  value: String(item.id),
+                  label: `${recordText(item, 'completedAt', 'completed_at')} · 良品 ${recordText(item, 'goodQuantity', 'good_quantity')}`,
+                })),
+              },
+              { name: 'rollNumber', label: '成品卷号', required: true },
+              { name: 'lotNumber', label: '成品批次号', required: true },
+              {
+                name: 'locationId',
+                label: '入库库位',
+                type: 'select',
+                required: true,
+                options: locations.map((item) => ({
+                  value: String(item.id),
+                  label: `${recordText(item, 'code', 'code')} · ${recordText(item, 'name', 'name')}`,
+                })),
+              },
+              { name: 'quantity', label: '卷数量', type: 'number', required: true },
+              { name: 'manufacturedAt', label: '生产日期', type: 'date', required: true },
+            ],
+            '生成卷号并入库',
+            async (values) => {
+              await controller.submit(
+                `/api/v1/production-orders/${String(order.id)}/finished-rolls`,
+                {
+                  ...values,
+                  itemVersionId: recordText(order, 'itemVersionId', 'item_version_id'),
+                },
+              );
+              await refresh();
+            },
+          );
+        });
+        actions.append(output);
+      }
       card.append(actions);
       grid.append(card);
     }

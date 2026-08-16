@@ -145,6 +145,18 @@ assert.deepEqual(
   productionOrder.events.map((event) => event.state),
   ['DRAFT', 'RELEASED', 'IN_PROGRESS', 'COMPLETED', 'CLOSED'],
 );
+const returnControlOrder = productionOrders.find(
+  (item) => (item.order_number ?? item.orderNumber) === 'WO-KT-2026-RETURN-DEMO',
+);
+assert.equal(returnControlOrder?.state, 'IN_PROGRESS');
+assert.deepEqual(
+  returnControlOrder.materials.map((item) => item.transaction_type),
+  ['ISSUE', 'RETURN'],
+);
+assert.deepEqual(
+  returnControlOrder.materials.map((item) => Number(item.quantity)),
+  [10, 2],
+);
 const supplier = suppliers.find(
   (item) => (item.supplier_number ?? item.supplierNumber) === 'SUP-KT-YARN-001',
 );
@@ -179,12 +191,12 @@ const yarnBalance = inventoryBalances.find(
 );
 assert.equal(
   Number(yarnBalance?.quantity),
-  3712.5,
+  3704.5,
   'receipt less governed production issue must derive the remaining lot balance',
 );
 assert.deepEqual(
   yarnBalance.movements.map((movement) => movement.movement_type),
-  ['RECEIPT', 'ISSUE'],
+  ['RECEIPT', 'ISSUE', 'ISSUE', 'RETURN'],
   'inventory balance must be derived from the immutable movement ledger',
 );
 const quote = quotes.find(
@@ -372,6 +384,7 @@ process.stdout.write(
         materialTransactions: productionOrder.materials.length,
         reports: productionOrder.reports.length,
         rolls: productionOrder.rolls.length,
+        returnControlTransactions: returnControlOrder.materials.length,
       },
     },
     null,

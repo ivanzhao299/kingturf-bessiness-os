@@ -61,7 +61,7 @@ export class PostgresProductionRepository {
       orderNumber: string;
       itemVersionId: string;
       routingVersionId: string;
-      mrpProposalId?: string | undefined;
+      mrpProposalId?: string;
       plannedQuantity: string;
       plannedStartAt: string;
       plannedDueAt: string;
