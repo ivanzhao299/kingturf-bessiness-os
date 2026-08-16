@@ -3,7 +3,7 @@ CREATE TYPE inventory_movement_type AS ENUM('RECEIPT','ISSUE','RETURN','TRANSFER
 
 CREATE TABLE suppliers(
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),tenant_id uuid NOT NULL REFERENCES organizations(id),supplier_number text NOT NULL,name text NOT NULL,
-  status text NOT NULL DEFAULT 'ACTIVE' CHECK(status IN('ACTIVE','ON_HOLD','INACTIVE')),currency char(3) NOT NULL REFERENCES currencies(code),
+  status text NOT NULL DEFAULT 'ACTIVE' CHECK(status IN('ACTIVE','ON_HOLD','INACTIVE')),currency char(3) NOT NULL REFERENCES commercial_currencies(code),
   payment_terms_days integer NOT NULL DEFAULT 30 CHECK(payment_terms_days>=0),quality_rating_basis_points integer CHECK(quality_rating_basis_points BETWEEN 0 AND 10000),
   contact jsonb NOT NULL DEFAULT '{}' CHECK(jsonb_typeof(contact)='object'),created_by uuid NOT NULL,created_at timestamptz NOT NULL DEFAULT now(),updated_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE(id,tenant_id),UNIQUE(tenant_id,supplier_number),FOREIGN KEY(created_by,tenant_id) REFERENCES employees(id,company_id)
@@ -18,7 +18,7 @@ CREATE TABLE supplier_item_qualifications(
 );
 CREATE TABLE procurement_rfqs(
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),tenant_id uuid NOT NULL,rfq_number text NOT NULL,status procurement_document_status NOT NULL DEFAULT 'DRAFT',
-  response_due_at timestamptz NOT NULL,currency char(3) NOT NULL REFERENCES currencies(code),created_by uuid NOT NULL,created_at timestamptz NOT NULL DEFAULT now(),issued_at timestamptz,
+  response_due_at timestamptz NOT NULL,currency char(3) NOT NULL REFERENCES commercial_currencies(code),created_by uuid NOT NULL,created_at timestamptz NOT NULL DEFAULT now(),issued_at timestamptz,
   UNIQUE(id,tenant_id),UNIQUE(tenant_id,rfq_number),FOREIGN KEY(created_by,tenant_id) REFERENCES employees(id,company_id)
 );
 CREATE TABLE procurement_rfq_lines(
@@ -40,7 +40,7 @@ CREATE TABLE supplier_quote_lines(
 );
 CREATE TABLE purchase_orders(
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),tenant_id uuid NOT NULL,po_number text NOT NULL,supplier_id uuid NOT NULL,supplier_quote_id uuid,
-  status procurement_document_status NOT NULL DEFAULT 'DRAFT',currency char(3) NOT NULL REFERENCES currencies(code),ordered_at timestamptz,canonical_hash char(64) NOT NULL,
+  status procurement_document_status NOT NULL DEFAULT 'DRAFT',currency char(3) NOT NULL REFERENCES commercial_currencies(code),ordered_at timestamptz,canonical_hash char(64) NOT NULL,
   created_by uuid NOT NULL,created_at timestamptz NOT NULL DEFAULT now(),UNIQUE(id,tenant_id),UNIQUE(tenant_id,po_number),
   FOREIGN KEY(supplier_id,tenant_id) REFERENCES suppliers(id,tenant_id),FOREIGN KEY(supplier_quote_id,tenant_id) REFERENCES supplier_quotes(id,tenant_id),
   FOREIGN KEY(created_by,tenant_id) REFERENCES employees(id,company_id),CHECK((status='DRAFT')=(ordered_at IS NULL))
