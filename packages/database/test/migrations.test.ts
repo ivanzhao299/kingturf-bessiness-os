@@ -24,7 +24,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0043_quality_wms_foundation.sql');
+    expect(ordered.at(-1)).toBe('0044_quality_inventory_integration.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
@@ -68,6 +68,15 @@ describe('identity and authorization migration', () => {
     expect(triggerRepair).toContain('JOIN quotes quote_root');
     expect(triggerRepair).toContain("IF TG_TABLE_NAME='sales_orders' THEN");
     expect(triggerRepair).not.toContain('JOIN quotes q ON');
+  });
+  it('uses effective quality disposition for planning, inventory, and production', async () => {
+    const sql = await readFile(
+      join(process.cwd(), 'migrations/0044_quality_inventory_integration.sql'),
+      'utf8',
+    );
+    expect(sql).toContain('inventory_lot_effective_quality');
+    expect(sql).toContain('inventory_lot_quality_base_immutable');
+    expect(sql).toContain('production issue requires released BOM material');
   });
   it('adds versioned inspection plans, typed results, disposition ledgers, and lot quality state', async () => {
     const sql = await readFile(

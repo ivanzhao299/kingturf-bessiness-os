@@ -44,6 +44,7 @@ import type { PostgresManufacturingRepository } from './manufacturing-repositori
 import type { PostgresProcurementRepository } from './procurement-repositories.ts';
 import type { PostgresMrpRepository } from './mrp-repositories.ts';
 import type { PostgresProductionRepository } from './production-repositories.ts';
+import type { PostgresQualityRepository } from './quality-repositories.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -101,6 +102,7 @@ export type ApiDependencies = Readonly<{
   procurement?: PostgresProcurementRepository;
   mrp?: PostgresMrpRepository;
   production?: PostgresProductionRepository;
+  quality?: PostgresQualityRepository;
   readiness?: () => Promise<boolean>;
   telemetry?: Telemetry;
   logger?: OperationalLogger;
@@ -1193,6 +1195,244 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               correlationId,
             );
             return { statusCode: 201, body: mutationDto(result, context, 'production:read') };
+          }
+        }
+        if (dependencies.quality) {
+          const qualityLists: Readonly<
+            Record<string, readonly ['plans' | 'inspections' | 'lots', PermissionKey] | undefined>
+          > = {
+            '/api/v1/quality-plans': ['plans', 'quality-plan:read'],
+            '/api/v1/quality-inspections': ['inspections', 'quality:read'],
+            '/api/v1/lot-traceability': ['lots', 'traceability:read'],
+          };
+          const qualityList = qualityLists[request.pathname];
+          if (request.method === 'GET' && qualityList) {
+            const [view, capability] = qualityList;
+            const grant = authorizeQuery(context, capability);
+            const items = await dependencies.quality.list(view, {
+              actor: context.actor,
+              scopes: grant.scopes,
+              anchors: grant.anchors,
+            });
+            return {
+              statusCode: 200,
+              body: {
+                items: items.map((item) =>
+                  permittedDto(item, context.permissions.get(capability)?.fields ?? null),
+                ),
+              },
+            };
+          }
+          if (request.method === 'POST' && request.pathname === '/api/v1/quality-plans') {
+            const body = objectBody(request.body);
+            allow(body, [
+              'code',
+              'name',
+              'itemVersionId',
+              'inspectionStage',
+              'samplingMethod',
+              'acceptanceRule',
+              'effectiveAt',
+              'characteristics',
+              'publish',
+            ]);
+            const grant = authorizeQuery(context, 'quality-plan:manage', Object.keys(body));
+            const stage = string(body.inspectionStage, 'inspectionStage');
+            if (!['INCOMING', 'IN_PROCESS', 'FINAL'].includes(stage))
+              throw new DomainError('invalid_request', 'inspectionStage is unsupported');
+            const characteristics = array(body.characteristics, 'characteristics').map(
+              (entry, index) => {
+                const item = objectBody(entry);
+                allow(item, [
+                  'code',
+                  'name',
+                  'dataType',
+                  'unitCode',
+                  'lowerLimit',
+                  'upperLimit',
+                  'required',
+                  'instructions',
+                ]);
+                const dataType = string(
+                  item.dataType,
+                  `characteristics[${String(index)}].dataType`,
+                );
+                if (!['NUMERIC', 'BOOLEAN', 'TEXT'].includes(dataType))
+                  throw new DomainError(
+                    'invalid_request',
+                    'characteristic dataType is unsupported',
+                  );
+                if (typeof item.required !== 'boolean')
+                  throw new DomainError(
+                    'invalid_request',
+                    'characteristic required must be boolean',
+                  );
+                return {
+                  code: assertStableCode(string(item.code, 'code')),
+                  name: string(item.name, 'name'),
+                  dataType: dataType as 'NUMERIC' | 'BOOLEAN' | 'TEXT',
+                  ...(item.unitCode === undefined
+                    ? {}
+                    : { unitCode: string(item.unitCode, 'unitCode') }),
+                  ...(item.lowerLimit === undefined
+                    ? {}
+                    : { lowerLimit: decimal(item.lowerLimit, 'lowerLimit', false) }),
+                  ...(item.upperLimit === undefined
+                    ? {}
+                    : { upperLimit: decimal(item.upperLimit, 'upperLimit', false) }),
+                  required: item.required,
+                  instructions: string(item.instructions, 'instructions'),
+                };
+              },
+            );
+            if (typeof body.publish !== 'boolean')
+              throw new DomainError('invalid_request', 'publish must be boolean');
+            const result = await dependencies.quality.createPlan(
+              {
+                code: assertStableCode(string(body.code, 'code')),
+                name: string(body.name, 'name'),
+                itemVersionId: uuid(body.itemVersionId, 'itemVersionId'),
+                inspectionStage: stage as 'INCOMING' | 'IN_PROCESS' | 'FINAL',
+                samplingMethod: string(body.samplingMethod, 'samplingMethod'),
+                acceptanceRule: jsonObject(body.acceptanceRule, 'acceptanceRule'),
+                effectiveAt: timestamp(body.effectiveAt, 'effectiveAt'),
+                characteristics,
+                publish: body.publish,
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'quality-plan:read') };
+          }
+          const planPublish = /^\/api\/v1\/quality-plans\/([0-9a-f-]+)\/publish$/u.exec(
+            request.pathname,
+          );
+          if (request.method === 'POST' && planPublish) {
+            const grant = authorizeQuery(context, 'quality-plan:manage');
+            const result = await dependencies.quality.publishPlan(
+              uuid(planPublish[1], 'planVersionId'),
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'quality-plan:read') };
+          }
+          if (request.method === 'POST' && request.pathname === '/api/v1/quality-inspections') {
+            const body = objectBody(request.body);
+            allow(body, [
+              'inspectionNumber',
+              'planVersionId',
+              'lotId',
+              'sourceType',
+              'sourceId',
+              'sampleSize',
+            ]);
+            const grant = authorizeQuery(context, 'quality:inspect', Object.keys(body));
+            const result = await dependencies.quality.openInspection(
+              {
+                inspectionNumber: assertStableCode(
+                  string(body.inspectionNumber, 'inspectionNumber'),
+                ),
+                planVersionId: uuid(body.planVersionId, 'planVersionId'),
+                lotId: uuid(body.lotId, 'lotId'),
+                sourceType: assertStableCode(string(body.sourceType, 'sourceType')),
+                sourceId: uuid(body.sourceId, 'sourceId'),
+                sampleSize: decimal(body.sampleSize, 'sampleSize'),
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'quality:read') };
+          }
+          const inspectionCommand =
+            /^\/api\/v1\/quality-inspections\/([0-9a-f-]+)\/(sample|complete|cancel)$/u.exec(
+              request.pathname,
+            );
+          if (request.method === 'POST' && inspectionCommand) {
+            const body = objectBody(request.body);
+            allow(body, ['reason', 'evidence', 'idempotencyKey']);
+            const grant = authorizeQuery(context, 'quality:inspect', Object.keys(body));
+            const states = {
+              sample: 'SAMPLED',
+              complete: 'COMPLETED',
+              cancel: 'CANCELLED',
+            } as const;
+            const action = inspectionCommand[2] as keyof typeof states;
+            const result = await dependencies.quality.transitionInspection(
+              uuid(inspectionCommand[1], 'inspectionId'),
+              states[action],
+              {
+                reason: string(body.reason, 'reason'),
+                evidence: jsonObject(body.evidence ?? {}, 'evidence'),
+                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'quality:read') };
+          }
+          const resultCommand = /^\/api\/v1\/quality-inspections\/([0-9a-f-]+)\/results$/u.exec(
+            request.pathname,
+          );
+          if (request.method === 'POST' && resultCommand) {
+            const body = objectBody(request.body);
+            allow(body, [
+              'characteristicId',
+              'measuredNumeric',
+              'measuredBoolean',
+              'measuredText',
+              'passed',
+              'notes',
+              'occurredAt',
+              'idempotencyKey',
+            ]);
+            if (typeof body.passed !== 'boolean')
+              throw new DomainError('invalid_request', 'passed must be boolean');
+            if (body.measuredBoolean !== undefined && typeof body.measuredBoolean !== 'boolean')
+              throw new DomainError('invalid_request', 'measuredBoolean must be boolean');
+            const grant = authorizeQuery(context, 'quality:inspect', Object.keys(body));
+            const result = await dependencies.quality.recordResult(
+              uuid(resultCommand[1], 'inspectionId'),
+              {
+                characteristicId: uuid(body.characteristicId, 'characteristicId'),
+                ...(body.measuredNumeric === undefined
+                  ? {}
+                  : { measuredNumeric: decimal(body.measuredNumeric, 'measuredNumeric', false) }),
+                ...(body.measuredBoolean === undefined
+                  ? {}
+                  : { measuredBoolean: body.measuredBoolean }),
+                ...(body.measuredText === undefined
+                  ? {}
+                  : { measuredText: string(body.measuredText, 'measuredText') }),
+                passed: body.passed,
+                notes: string(body.notes ?? '', 'notes'),
+                occurredAt: timestamp(body.occurredAt, 'occurredAt'),
+                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'quality:read') };
+          }
+          const dispositionCommand =
+            /^\/api\/v1\/quality-inspections\/([0-9a-f-]+)\/(release|reject)$/u.exec(
+              request.pathname,
+            );
+          if (request.method === 'POST' && dispositionCommand) {
+            const body = objectBody(request.body);
+            allow(body, ['reason', 'evidence', 'idempotencyKey']);
+            const grant = authorizeQuery(context, 'quality:disposition', Object.keys(body));
+            const result = await dependencies.quality.dispose(
+              uuid(dispositionCommand[1], 'inspectionId'),
+              dispositionCommand[2] === 'release' ? 'RELEASED' : 'REJECTED',
+              {
+                reason: string(body.reason, 'reason'),
+                evidence: jsonObject(body.evidence ?? {}, 'evidence'),
+                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'quality:read') };
           }
         }
         if (
