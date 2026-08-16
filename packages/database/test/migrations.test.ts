@@ -24,7 +24,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0042_production_execution_integrity.sql');
+    expect(ordered.at(-1)).toBe('0043_quality_wms_foundation.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
@@ -68,6 +68,27 @@ describe('identity and authorization migration', () => {
     expect(triggerRepair).toContain('JOIN quotes quote_root');
     expect(triggerRepair).toContain("IF TG_TABLE_NAME='sales_orders' THEN");
     expect(triggerRepair).not.toContain('JOIN quotes q ON');
+  });
+  it('adds versioned inspection plans, typed results, disposition ledgers, and lot quality state', async () => {
+    const sql = await readFile(
+      join(process.cwd(), 'migrations/0043_quality_wms_foundation.sql'),
+      'utf8',
+    );
+    for (const table of [
+      'quality_inspection_plans',
+      'quality_inspection_plan_versions',
+      'quality_plan_characteristics',
+      'quality_inspections',
+      'quality_inspection_events',
+      'quality_inspection_results',
+      'inventory_lot_quality_events',
+    ])
+      expect(sql).toContain(`CREATE TABLE ${table}`);
+    expect(sql).toContain('inspection completion requires all mandatory results');
+    expect(sql).toContain('numeric inspection pass result must match specification limits');
+    expect(sql).toContain('failed inspection cannot release lot');
+    expect(sql).toContain('quality evidence is immutable');
+    expect(sql).toContain("'traceability:read'");
   });
   it('adds immutable production orders, material movements, operation reports, and rolls', async () => {
     const sql = await readFile(
