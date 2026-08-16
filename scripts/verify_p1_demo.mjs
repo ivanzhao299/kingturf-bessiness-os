@@ -20,18 +20,29 @@ const get = async (path) => {
   return (await result.json()).items;
 };
 
-const [quotes, decisions, contracts, orders, receivables, payments, runs, policies, commissions] =
-  await Promise.all([
-    get('/api/v1/quotes'),
-    get('/api/v1/credit-decisions'),
-    get('/api/v1/contracts'),
-    get('/api/v1/sales-orders'),
-    get('/api/v1/ar-open-items'),
-    get('/api/v1/bank-payments'),
-    get('/api/v1/reconciliation-runs'),
-    get('/api/v1/commission-policies'),
-    get('/api/v1/commissions'),
-  ]);
+const [
+  quotes,
+  decisions,
+  contracts,
+  orders,
+  receivables,
+  payments,
+  runs,
+  policies,
+  commissions,
+  risks,
+] = await Promise.all([
+  get('/api/v1/quotes'),
+  get('/api/v1/credit-decisions'),
+  get('/api/v1/contracts'),
+  get('/api/v1/sales-orders'),
+  get('/api/v1/ar-open-items'),
+  get('/api/v1/bank-payments'),
+  get('/api/v1/reconciliation-runs'),
+  get('/api/v1/commission-policies'),
+  get('/api/v1/commissions'),
+  get('/api/v1/risk-evaluations'),
+]);
 const quote = quotes.find(
   (item) => item.quoteNumber === 'Q-KT-P1-DEMO' && item.status === 'ISSUED',
 );
@@ -127,6 +138,18 @@ for (const type of [
   'COMMISSION_CLAWED_BACK',
 ])
   assert(timelineTypes.has(type), `Order 360 timeline requires ${type}`);
+const risk = risks.find((item) => (item.sales_order_id ?? item.salesOrderId) === order.id);
+assert.equal(risk?.severity, 'HIGH');
+assert.equal(Number(risk.score), 45);
+assert.deepEqual(
+  risk.findings.map((item) => item.code),
+  ['LOW_MARGIN'],
+);
+assert.equal(risk.task.effective_state ?? risk.task.effectiveState, 'CLOSED');
+assert.deepEqual(
+  risk.taskEvents.map((item) => item.state),
+  ['OPEN', 'ACKNOWLEDGED', 'ESCALATED', 'CLOSED'],
+);
 
 process.stdout.write(
   `${JSON.stringify(
@@ -167,6 +190,7 @@ process.stdout.write(
         activeAnomalies: order360.anomalies.filter((item) => item.active).length,
         sections: ['quote', 'credit', 'contract', 'receivables', 'payments', 'commissions'],
       },
+      risk: { id: risk.id, severity: risk.severity, score: risk.score, taskState: 'CLOSED' },
     },
     null,
     2,

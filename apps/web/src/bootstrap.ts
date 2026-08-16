@@ -66,7 +66,12 @@ export type CommercialPermission =
   | 'commission:read'
   | 'commission:accrue'
   | 'commission:manage'
-  | 'commission:pay';
+  | 'commission:pay'
+  | 'risk-policy:read'
+  | 'risk-policy:manage'
+  | 'risk:read'
+  | 'risk:evaluate'
+  | 'risk:manage';
 export type Viewport = 'desktop' | 'tablet' | 'mobile';
 export function commercialRevisionPath(section: string, rootId: string): string | null {
   const definition = (
@@ -191,6 +196,7 @@ export function visibleCommercialSections(permissions: ReadonlySet<CommercialPer
     payments: permissions.has('bank-payment:read'),
     reconciliation: permissions.has('reconciliation:read'),
     commissions: permissions.has('commission:read') || permissions.has('commission-policy:read'),
+    risks: permissions.has('risk:read') || permissions.has('risk-policy:read'),
   } as const;
 }
 
@@ -389,6 +395,8 @@ export class CommercialController {
         ['reconciliation:read', '/api/v1/reconciliation-runs'],
         ['commission-policy:read', '/api/v1/commission-policies'],
         ['commission:read', '/api/v1/commissions'],
+        ['risk-policy:read', '/api/v1/risk-policies'],
+        ['risk:read', '/api/v1/risk-evaluations'],
       ] as const;
       for (const [permission, path] of readable)
         if (this.permissions.has(permission)) this.views.set(path, await this.api.list(path));
@@ -486,6 +494,8 @@ export function commercialWorkspaceStructure(
       ['/api/v1/reconciliation-runs', ['reconciliation:read', 'reconciliation:run']],
       ['/api/v1/commission-policies', ['commission-policy:read', 'commission-policy:manage']],
       ['/api/v1/commissions', ['commission:read', 'commission:accrue']],
+      ['/api/v1/risk-policies', ['risk-policy:read', 'risk-policy:manage']],
+      ['/api/v1/risk-evaluations', ['risk:read', 'risk:evaluate']],
     ]);
   if (controller && permissions.has('opportunity:read')) {
     const pipeline = document.createElement('section');
@@ -3020,6 +3030,68 @@ export function commercialWorkspaceStructure(
     panel.append(list);
     workspace.append(panel);
   }
+  if (controller && (permissions.has('risk:read') || permissions.has('risk-policy:read'))) {
+    const panel = el('section', 'qtc-workbench risk-workbench');
+    const heading = el('div', 'pipeline-heading');
+    const copy = el('div');
+    copy.append(
+      el('p', 'eyebrow', 'RISK ENGINE V1'),
+      el('h2', '', '风险评价与责任任务'),
+      el('p', '', '规则版本、规范输入、命中原因和处理事件均由服务器留痕。'),
+    );
+    heading.append(copy);
+    panel.append(heading);
+    const list = el('div', 'risk-list');
+    for (const evaluation of controller.views.get('/api/v1/risk-evaluations') ?? []) {
+      const task = recordValue(evaluation.task);
+      const findings = Array.isArray(evaluation.findings)
+        ? evaluation.findings.map(recordValue)
+        : [];
+      const events = Array.isArray(evaluation.taskEvents)
+        ? evaluation.taskEvents.map(recordValue)
+        : [];
+      const card = el('article', 'qtc-card risk-card');
+      card.append(
+        el('p', 'eyebrow', recordText(evaluation, 'orderNumber', 'orderNumber', 'ORDER')),
+        el(
+          'strong',
+          '',
+          `${recordText(evaluation, 'severity', 'severity')} 风险 · ${recordText(evaluation, 'score', 'score')} 分`,
+        ),
+        el(
+          'span',
+          `ctr-state state-${recordText(task, 'effective_state', 'effective_state', 'LOW').toLocaleLowerCase()}`,
+          recordText(task, 'effective_state', 'effective_state', '无需任务'),
+        ),
+        el(
+          'p',
+          'qtc-metrics',
+          findings.length
+            ? findings
+                .map(
+                  (finding) =>
+                    `${textValue(finding.code, '')}：实际 ${recordText(finding, 'actual', 'amount', '—')} / 门槛 ${recordText(finding, 'threshold', 'graceDays', '—')}`,
+                )
+                .join('；')
+            : '未命中风险规则',
+        ),
+      );
+      const timeline = el('ol', 'risk-task-timeline');
+      for (const event of events)
+        timeline.append(
+          el(
+            'li',
+            '',
+            `${recordText(event, 'sequence', 'sequence')} · ${recordText(event, 'state', 'state')} · ${recordText(event, 'reason', 'reason')}`,
+          ),
+        );
+      card.append(timeline);
+      list.append(card);
+    }
+    if (list.children.length === 0) list.append(el('p', 'pipeline-empty', '暂无风险评价。'));
+    panel.append(list);
+    workspace.append(panel);
+  }
   for (const [className, title, description, fields, action, path] of [
     [
       'opportunity-pipeline',
@@ -4436,7 +4508,9 @@ export async function bootstrap(root: HTMLElement): Promise<void> {
         item.startsWith('reconciliation:') ||
         item.startsWith('allocation:') ||
         item.startsWith('commission-policy:') ||
-        item.startsWith('commission:'),
+        item.startsWith('commission:') ||
+        item.startsWith('risk-policy:') ||
+        item.startsWith('risk:'),
     ) as CommercialPermission[],
   );
   if (Object.values(visibleCommercialSections(commercialPermissions)).some(Boolean)) {

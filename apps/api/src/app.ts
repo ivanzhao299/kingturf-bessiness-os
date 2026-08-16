@@ -38,6 +38,7 @@ import type { PostgresCommercialRepository } from './commercial-repositories.ts'
 import type { PostgresQuoteToCashRepository } from './qtc-repositories.ts';
 import type { PostgresCommissionRepository } from './commission-repositories.ts';
 import type { PostgresOrder360Repository } from './order-360-repositories.ts';
+import type { PostgresRiskRepository } from './risk-repositories.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -89,6 +90,7 @@ export type ApiDependencies = Readonly<{
   quoteToCash?: PostgresQuoteToCashRepository;
   commissions?: PostgresCommissionRepository;
   order360?: PostgresOrder360Repository;
+  risks?: PostgresRiskRepository;
   readiness?: () => Promise<boolean>;
   telemetry?: Telemetry;
   logger?: OperationalLogger;
@@ -299,6 +301,128 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               permissions: [...context.permissions.keys()].sort(),
             },
           };
+        if (dependencies.risks) {
+          if (request.method === 'GET' && request.pathname === '/api/v1/risk-policies') {
+            const grant = authorizeQuery(context, 'risk-policy:read');
+            return {
+              statusCode: 200,
+              body: {
+                items: (
+                  await dependencies.risks.listPolicies({
+                    actor: context.actor,
+                    scopes: grant.scopes,
+                    anchors: grant.anchors,
+                  })
+                ).map((item) =>
+                  permittedDto(item, context.permissions.get('risk-policy:read')?.fields ?? null),
+                ),
+              },
+            };
+          }
+          if (request.method === 'GET' && request.pathname === '/api/v1/risk-evaluations') {
+            const grant = authorizeQuery(context, 'risk:read');
+            return {
+              statusCode: 200,
+              body: {
+                items: (
+                  await dependencies.risks.listEvaluations({
+                    actor: context.actor,
+                    scopes: grant.scopes,
+                    anchors: grant.anchors,
+                  })
+                ).map((item) =>
+                  permittedDto(item, context.permissions.get('risk:read')?.fields ?? null),
+                ),
+              },
+            };
+          }
+          if (request.method === 'POST' && request.pathname === '/api/v1/risk-policies') {
+            const body = objectBody(request.body);
+            allow(body, [
+              'code',
+              'name',
+              'minimumMarginBasisPoints',
+              'overdueGraceDays',
+              'creditWarningDays',
+              'effectiveAt',
+              'rules',
+              'publish',
+            ]);
+            const grant = authorizeQuery(context, 'risk-policy:manage', Object.keys(body));
+            const result = await dependencies.risks.createPolicy(
+              {
+                code: string(body.code, 'code'),
+                name: string(body.name, 'name'),
+                minimumMarginBasisPoints: integer(
+                  body.minimumMarginBasisPoints,
+                  'minimumMarginBasisPoints',
+                  -100000,
+                  10000,
+                ),
+                overdueGraceDays: integer(body.overdueGraceDays, 'overdueGraceDays', 0, 3650),
+                creditWarningDays: integer(body.creditWarningDays, 'creditWarningDays', 0, 3650),
+                effectiveAt: timestamp(body.effectiveAt, 'effectiveAt'),
+                rules: array(body.rules, 'rules').map((rule, index) =>
+                  jsonObject(rule, `rules[${String(index)}]`),
+                ),
+                publish: body.publish === true,
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'risk-policy:read') };
+          }
+          if (request.method === 'POST' && request.pathname === '/api/v1/risk-evaluations') {
+            const body = objectBody(request.body);
+            allow(body, [
+              'salesOrderId',
+              'policyVersionId',
+              'assigneeEmployeeId',
+              'validUntil',
+              'dueAt',
+            ]);
+            const grant = authorizeQuery(context, 'risk:evaluate', Object.keys(body));
+            const result = await dependencies.risks.evaluate(
+              {
+                salesOrderId: uuid(body.salesOrderId, 'salesOrderId'),
+                policyVersionId: uuid(body.policyVersionId, 'policyVersionId'),
+                assigneeEmployeeId: uuid(body.assigneeEmployeeId, 'assigneeEmployeeId'),
+                validUntil: timestamp(body.validUntil, 'validUntil'),
+                dueAt: timestamp(body.dueAt, 'dueAt'),
+              },
+              idempotency(request),
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'risk:read') };
+          }
+          const riskTaskCommand =
+            /^\/api\/v1\/risk-tasks\/([0-9a-f-]+)\/(acknowledge|escalate|close)$/u.exec(
+              request.pathname,
+            );
+          if (request.method === 'POST' && riskTaskCommand) {
+            const body = objectBody(request.body);
+            allow(body, ['reason', 'evidence']);
+            const grant = authorizeQuery(context, 'risk:manage', Object.keys(body));
+            const state = (
+              { acknowledge: 'ACKNOWLEDGED', escalate: 'ESCALATED', close: 'CLOSED' } as const
+            )[riskTaskCommand[2] as 'acknowledge' | 'escalate' | 'close'];
+            const taskId = riskTaskCommand[1];
+            if (!taskId) throw new DomainError('invalid_request', 'riskTaskId is required');
+            const result = await dependencies.risks.transitionTask(
+              taskId,
+              {
+                state,
+                reason: string(body.reason, 'reason'),
+                evidence: jsonObject(body.evidence, 'evidence'),
+              },
+              idempotency(request),
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'risk:read') };
+          }
+        }
         const order360Match = /^\/api\/v1\/sales-orders\/([0-9a-f-]+)\/360$/u.exec(
           request.pathname,
         );

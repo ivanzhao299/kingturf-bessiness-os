@@ -546,9 +546,80 @@ if (commissionState === 'PAID')
     body: { reason: 'P1 演示退款追回场景', externalReference: 'CLAWBACK-COM-2026-08-001' },
   });
 
+const riskPolicyCode = 'RISK-KT-P1-2026';
+let riskPolicy = (await list('/api/v1/risk-policies')).find(
+  (item) => item.code === riskPolicyCode && item.status === 'PUBLISHED',
+);
+riskPolicy ??= await request('/api/v1/risk-policies', {
+  method: 'POST',
+  body: {
+    code: riskPolicyCode,
+    name: 'P1 经营风险基线',
+    minimumMarginBasisPoints: 2500,
+    overdueGraceDays: 0,
+    creditWarningDays: 30,
+    effectiveAt: '2026-01-01T00:00:00.000Z',
+    rules: [{ code: 'LOW_MARGIN' }, { code: 'OVERDUE_AR' }, { code: 'CREDIT_EXPIRY' }],
+    publish: true,
+  },
+});
+let risk = (await list('/api/v1/risk-evaluations')).find(
+  (item) => (item.sales_order_id ?? item.salesOrderId) === order.id,
+);
+risk ??= await request('/api/v1/risk-evaluations', {
+  method: 'POST',
+  key: 'kt-p1-risk-evaluate-v1',
+  body: {
+    salesOrderId: order.id,
+    policyVersionId: riskPolicy.id,
+    assigneeEmployeeId: adminEmployeeId,
+    validUntil: '2026-09-16T00:00:00.000Z',
+    dueAt: '2026-08-20T00:00:00.000Z',
+  },
+});
+if (risk.taskId)
+  risk = (await list('/api/v1/risk-evaluations')).find((item) => item.id === risk.id);
+const task = risk.task ?? {};
+let riskState = task.effective_state ?? task.effectiveState;
+const riskTaskId = task.id ?? risk.taskId;
+for (const [from, action, state, key, reason, evidence] of [
+  [
+    'OPEN',
+    'acknowledge',
+    'ACKNOWLEDGED',
+    'kt-p1-risk-ack-v1',
+    '销售负责人已确认毛利例外',
+    { ticket: 'RISK-KT-P1-001' },
+  ],
+  [
+    'ACKNOWLEDGED',
+    'escalate',
+    'ESCALATED',
+    'kt-p1-risk-escalate-v1',
+    '提交管理层复核',
+    { ticket: 'RISK-KT-P1-001', level: 'MANAGEMENT' },
+  ],
+  [
+    'ESCALATED',
+    'close',
+    'CLOSED',
+    'kt-p1-risk-close-v1',
+    '例外审批证据已归档',
+    { ticket: 'RISK-KT-P1-001', approval: 'APPROVED' },
+  ],
+])
+  if (riskState === from) {
+    await request(`/api/v1/risk-tasks/${riskTaskId}/${action}`, {
+      method: 'POST',
+      key,
+      body: { reason, evidence },
+    });
+    riskState = state;
+  }
+
 await ensureCredit('REJECTED', '2099-04-30T23:59:59.000Z', 'kt-p1-seed-credit-rejected-v1');
 await ensureCredit('EXPIRED', '2000-01-01T00:00:00.000Z', 'kt-p1-seed-credit-expired-v1');
 
 process.stdout.write(
-  `${JSON.stringify({ baseUrl, customerId: customer.id, opportunityId: opportunity.id, quoteRevisionId: quote.id, contractRevisionId: contract.id, orderId: order.id, commissionId: commission.id, outcomes: ['APPROVED', 'REJECTED', 'EXPIRED'] }, null, 2)}\n`,
+  `${JSON.stringify({ baseUrl, customerId: customer.id, opportunityId: opportunity.id, quoteRevisionId: quote.id, contractRevisionId: contract.id, orderId: order.id, commissionId: commission.id, riskEvaluationId: risk.id, outcomes: ['APPROVED', 'REJECTED', 'EXPIRED'] }, null, 2)}\n`,
 );

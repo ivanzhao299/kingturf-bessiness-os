@@ -72,6 +72,7 @@ test('keeps the P1 evidence usable on a mobile viewport', async ({ page }, testI
     '.payment-workbench',
     '.commission-workbench',
     '.order-360-workbench',
+    '.risk-workbench',
   ])
     await expect(page.locator(selector)).toBeVisible();
   await expect(page.locator('.commercial-workspace textarea[aria-label$="JSON 请求"]')).toHaveCount(
@@ -129,6 +130,24 @@ test('shows commission economics and the immutable control ledger', async ({ pag
   await expect(card.getByText(/4 · 已支付/)).toBeVisible();
   await expect(card.getByText(/5 · 已追回/)).toBeVisible();
   await testInfo.attach('commission-ledger-desktop', {
+    body: await workbench.screenshot(),
+    contentType: 'image/png',
+  });
+});
+
+test('shows explainable risk findings and the closed responsibility trail', async ({
+  page,
+}, testInfo) => {
+  await openAuthenticatedWorkspace(page);
+  const workbench = page.locator('.risk-workbench');
+  await expect(workbench).toBeVisible();
+  const card = workbench.locator('.risk-card', { hasText: 'SO-KT-P1-DEMO' });
+  await expect(card.getByText('HIGH 风险 · 45 分', { exact: true })).toBeVisible();
+  await expect(card.getByText('CLOSED', { exact: true })).toBeVisible();
+  await expect(card.getByText(/LOW_MARGIN：实际 2410 \/ 门槛 2500/u)).toBeVisible();
+  for (const state of ['OPEN', 'ACKNOWLEDGED', 'ESCALATED', 'CLOSED'])
+    await expect(card.getByText(new RegExp(`· ${state} ·`, 'u'))).toBeVisible();
+  await testInfo.attach('risk-task-evidence-desktop', {
     body: await workbench.screenshot(),
     contentType: 'image/png',
   });
