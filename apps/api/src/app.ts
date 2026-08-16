@@ -41,6 +41,7 @@ import type { PostgresOrder360Repository } from './order-360-repositories.ts';
 import type { PostgresRiskRepository } from './risk-repositories.ts';
 import type { PostgresDashboardRepository } from './dashboard-repositories.ts';
 import type { PostgresManufacturingRepository } from './manufacturing-repositories.ts';
+import type { PostgresProcurementRepository } from './procurement-repositories.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -95,6 +96,7 @@ export type ApiDependencies = Readonly<{
   risks?: PostgresRiskRepository;
   dashboard?: PostgresDashboardRepository;
   manufacturing?: PostgresManufacturingRepository;
+  procurement?: PostgresProcurementRepository;
   readiness?: () => Promise<boolean>;
   telemetry?: Telemetry;
   logger?: OperationalLogger;
@@ -130,6 +132,14 @@ const timestamp = (value: unknown, name: string): string => {
     throw new DomainError('invalid_request', `${name} must be a valid timestamp`);
   return parsed.toISOString();
 };
+const calendarDate = (value: unknown, name: string): string => {
+  const result = string(value, name);
+  if (!/^\d{4}-\d{2}-\d{2}$/u.test(result) || Number.isNaN(Date.parse(`${result}T00:00:00Z`)))
+    throw new DomainError('invalid_request', `${name} must be a valid YYYY-MM-DD date`);
+  return result;
+};
+const optionalCalendarDate = (value: unknown, name: string): string | null =>
+  value === null || value === undefined ? null : calendarDate(value, name);
 const bearer = (headers: Readonly<Record<string, string | undefined>>): string | null => {
   const value = headers.authorization;
   if (!value?.startsWith('Bearer ')) return null;
@@ -505,6 +515,353 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             const readCapability =
               `${kind === 'item' ? 'manufacturing-item' : kind}:read` as PermissionKey;
             return { statusCode: 201, body: mutationDto(result, context, readCapability) };
+          }
+        }
+        if (dependencies.procurement) {
+          const procurementLists: Readonly<
+            Record<
+              string,
+              | readonly [
+                  'suppliers' | 'rfqs' | 'quotes' | 'orders' | 'receipts' | 'inventory',
+                  PermissionKey,
+                ]
+              | undefined
+            >
+          > = {
+            '/api/v1/suppliers': ['suppliers', 'supplier:read'],
+            '/api/v1/procurement-rfqs': ['rfqs', 'procurement:read'],
+            '/api/v1/supplier-quotes': ['quotes', 'procurement:read'],
+            '/api/v1/purchase-orders': ['orders', 'procurement:read'],
+            '/api/v1/goods-receipts': ['receipts', 'procurement:read'],
+            '/api/v1/inventory-balances': ['inventory', 'inventory:read'],
+          };
+          const listDefinition = procurementLists[request.pathname];
+          if (request.method === 'GET' && listDefinition) {
+            const [view, capability] = listDefinition;
+            const grant = authorizeQuery(context, capability);
+            const items = await dependencies.procurement.list(view, {
+              actor: context.actor,
+              scopes: grant.scopes,
+              anchors: grant.anchors,
+            });
+            return {
+              statusCode: 200,
+              body: {
+                items: items.map((item) =>
+                  permittedDto(item, context.permissions.get(capability)?.fields ?? null),
+                ),
+              },
+            };
+          }
+          if (request.method === 'POST' && request.pathname === '/api/v1/suppliers') {
+            const body = objectBody(request.body);
+            allow(body, [
+              'supplierNumber',
+              'name',
+              'currency',
+              'paymentTermsDays',
+              'qualityRatingBasisPoints',
+              'contact',
+            ]);
+            const grant = authorizeQuery(context, 'supplier:manage', Object.keys(body));
+            const result = await dependencies.procurement.createSupplier(
+              {
+                supplierNumber: assertStableCode(string(body.supplierNumber, 'supplierNumber')),
+                name: string(body.name, 'name'),
+                currency: currency(body.currency),
+                paymentTermsDays: integer(body.paymentTermsDays, 'paymentTermsDays', 0, 3650),
+                qualityRatingBasisPoints:
+                  body.qualityRatingBasisPoints === null ||
+                  body.qualityRatingBasisPoints === undefined
+                    ? null
+                    : integer(body.qualityRatingBasisPoints, 'qualityRatingBasisPoints', 0, 10000),
+                contact: jsonObject(body.contact ?? {}, 'contact'),
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'supplier:read') };
+          }
+          const qualification = /^\/api\/v1\/suppliers\/([0-9a-f-]+)\/qualifications$/u.exec(
+            request.pathname,
+          );
+          if (request.method === 'POST' && qualification) {
+            const body = objectBody(request.body);
+            allow(body, [
+              'itemVersionId',
+              'status',
+              'validFrom',
+              'validTo',
+              'minimumOrderQuantity',
+              'leadTimeDays',
+              'evidence',
+            ]);
+            const grant = authorizeQuery(context, 'supplier:manage', Object.keys(body));
+            const status = string(body.status, 'status');
+            if (!['APPROVED', 'CONDITIONAL', 'REJECTED'].includes(status))
+              throw new DomainError('invalid_request', 'qualification status is unsupported');
+            const result = await dependencies.procurement.qualifySupplier(
+              uuid(qualification[1], 'supplierId'),
+              {
+                itemVersionId: uuid(body.itemVersionId, 'itemVersionId'),
+                status,
+                validFrom: calendarDate(body.validFrom, 'validFrom'),
+                validTo:
+                  body.validTo === null || body.validTo === undefined
+                    ? null
+                    : calendarDate(body.validTo, 'validTo'),
+                minimumOrderQuantity: decimal(body.minimumOrderQuantity, 'minimumOrderQuantity'),
+                leadTimeDays: integer(body.leadTimeDays, 'leadTimeDays', 0, 3650),
+                evidence: jsonObject(body.evidence ?? {}, 'evidence'),
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'supplier:read') };
+          }
+          if (request.method === 'POST' && request.pathname === '/api/v1/procurement-rfqs') {
+            const body = objectBody(request.body);
+            allow(body, ['rfqNumber', 'responseDueAt', 'currency', 'lines', 'issue']);
+            const grant = authorizeQuery(context, 'procurement:manage', Object.keys(body));
+            const lines = array(body.lines, 'lines').map((entry, index) => {
+              const line = jsonObject(entry, `lines[${String(index)}]`);
+              allow(line, ['itemVersionId', 'quantity', 'requiredAt']);
+              return {
+                itemVersionId: uuid(line.itemVersionId, 'itemVersionId'),
+                quantity: decimal(line.quantity, 'quantity'),
+                requiredAt: calendarDate(line.requiredAt, 'requiredAt'),
+              };
+            });
+            if (!lines.length) throw new DomainError('invalid_request', 'lines must not be empty');
+            const result = await dependencies.procurement.createRfq(
+              {
+                rfqNumber: assertStableCode(string(body.rfqNumber, 'rfqNumber')),
+                responseDueAt: timestamp(body.responseDueAt, 'responseDueAt'),
+                currency: currency(body.currency),
+                lines,
+                issue: body.issue === true,
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'procurement:read') };
+          }
+          if (request.method === 'POST' && request.pathname === '/api/v1/supplier-quotes') {
+            const body = objectBody(request.body);
+            allow(body, [
+              'rfqId',
+              'supplierId',
+              'quoteReference',
+              'receivedAt',
+              'validUntil',
+              'terms',
+              'lines',
+            ]);
+            const grant = authorizeQuery(context, 'procurement:manage', Object.keys(body));
+            const lines = array(body.lines, 'lines').map((entry, index) => {
+              const line = jsonObject(entry, `lines[${String(index)}]`);
+              allow(line, ['rfqLineId', 'unitPrice', 'promisedAt', 'minimumOrderQuantity']);
+              return {
+                rfqLineId: uuid(line.rfqLineId, 'rfqLineId'),
+                unitPrice: decimal(line.unitPrice, 'unitPrice'),
+                promisedAt: calendarDate(line.promisedAt, 'promisedAt'),
+                minimumOrderQuantity: decimal(line.minimumOrderQuantity, 'minimumOrderQuantity'),
+              };
+            });
+            if (!lines.length) throw new DomainError('invalid_request', 'lines must not be empty');
+            const result = await dependencies.procurement.createSupplierQuote(
+              {
+                rfqId: uuid(body.rfqId, 'rfqId'),
+                supplierId: uuid(body.supplierId, 'supplierId'),
+                quoteReference: string(body.quoteReference, 'quoteReference'),
+                receivedAt: timestamp(body.receivedAt, 'receivedAt'),
+                validUntil: calendarDate(body.validUntil, 'validUntil'),
+                terms: jsonObject(body.terms ?? {}, 'terms'),
+                lines,
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'procurement:read') };
+          }
+          if (request.method === 'POST' && request.pathname === '/api/v1/purchase-orders') {
+            const body = objectBody(request.body);
+            allow(body, [
+              'poNumber',
+              'supplierId',
+              'supplierQuoteId',
+              'currency',
+              'lines',
+              'issue',
+            ]);
+            const grant = authorizeQuery(context, 'procurement:manage', Object.keys(body));
+            const lines = array(body.lines, 'lines').map((entry, index) => {
+              const line = jsonObject(entry, `lines[${String(index)}]`);
+              allow(line, ['itemVersionId', 'quantity', 'unitPrice', 'requiredAt']);
+              return {
+                itemVersionId: uuid(line.itemVersionId, 'itemVersionId'),
+                quantity: decimal(line.quantity, 'quantity'),
+                unitPrice: decimal(line.unitPrice, 'unitPrice'),
+                requiredAt: calendarDate(line.requiredAt, 'requiredAt'),
+              };
+            });
+            if (!lines.length) throw new DomainError('invalid_request', 'lines must not be empty');
+            const result = await dependencies.procurement.createPurchaseOrder(
+              {
+                poNumber: assertStableCode(string(body.poNumber, 'poNumber')),
+                supplierId: uuid(body.supplierId, 'supplierId'),
+                supplierQuoteId:
+                  body.supplierQuoteId === null || body.supplierQuoteId === undefined
+                    ? null
+                    : uuid(body.supplierQuoteId, 'supplierQuoteId'),
+                currency: currency(body.currency),
+                lines,
+                issue: body.issue === true,
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'procurement:read') };
+          }
+          const procurementIssue =
+            /^\/api\/v1\/(procurement-rfqs|purchase-orders)\/([0-9a-f-]+)\/issue$/u.exec(
+              request.pathname,
+            );
+          if (request.method === 'POST' && procurementIssue) {
+            allow(objectBody(request.body ?? {}), []);
+            const grant = authorizeQuery(context, 'procurement:manage');
+            const id = uuid(procurementIssue[2], 'documentId');
+            const result =
+              procurementIssue[1] === 'procurement-rfqs'
+                ? await dependencies.procurement.issueRfq(
+                    id,
+                    { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+                    correlationId,
+                  )
+                : await dependencies.procurement.issuePurchaseOrder(
+                    id,
+                    { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+                    correlationId,
+                  );
+            return { statusCode: 201, body: mutationDto(result, context, 'procurement:read') };
+          }
+          if (request.method === 'POST' && request.pathname === '/api/v1/inventory-locations') {
+            const body = objectBody(request.body);
+            allow(body, ['code', 'name', 'locationType']);
+            const grant = authorizeQuery(context, 'inventory:move', Object.keys(body));
+            const locationType = string(body.locationType, 'locationType');
+            if (
+              !['RECEIVING', 'STORAGE', 'PRODUCTION', 'QUARANTINE', 'SHIPPING'].includes(
+                locationType,
+              )
+            )
+              throw new DomainError('invalid_request', 'locationType is unsupported');
+            const result = await dependencies.procurement.createLocation(
+              {
+                code: assertStableCode(string(body.code, 'code')),
+                name: string(body.name, 'name'),
+                locationType,
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'inventory:read') };
+          }
+          if (request.method === 'POST' && request.pathname === '/api/v1/goods-receipts') {
+            const body = objectBody(request.body);
+            allow(body, [
+              'receiptNumber',
+              'purchaseOrderId',
+              'receivedAt',
+              'sourceReference',
+              'lines',
+            ]);
+            const grant = authorizeQuery(context, 'procurement:manage', Object.keys(body));
+            const lines = array(body.lines, 'lines').map((entry, index) => {
+              const line = jsonObject(entry, `lines[${String(index)}]`);
+              allow(line, [
+                'purchaseOrderLineId',
+                'lotNumber',
+                'locationCode',
+                'quantity',
+                'manufacturedAt',
+                'expiresAt',
+              ]);
+              return {
+                purchaseOrderLineId: uuid(line.purchaseOrderLineId, 'purchaseOrderLineId'),
+                lotNumber: assertStableCode(string(line.lotNumber, 'lotNumber')),
+                locationCode: assertStableCode(string(line.locationCode, 'locationCode')),
+                quantity: decimal(line.quantity, 'quantity'),
+                manufacturedAt: optionalCalendarDate(
+                  Object.hasOwn(line, 'manufacturedAt') ? line.manufacturedAt : null,
+                  'manufacturedAt',
+                ),
+                expiresAt: optionalCalendarDate(
+                  Object.hasOwn(line, 'expiresAt') ? line.expiresAt : null,
+                  'expiresAt',
+                ),
+              };
+            });
+            if (!lines.length) throw new DomainError('invalid_request', 'lines must not be empty');
+            const result = await dependencies.procurement.receive(
+              {
+                receiptNumber: assertStableCode(string(body.receiptNumber, 'receiptNumber')),
+                purchaseOrderId: uuid(body.purchaseOrderId, 'purchaseOrderId'),
+                receivedAt: timestamp(body.receivedAt, 'receivedAt'),
+                sourceReference: string(body.sourceReference, 'sourceReference'),
+                lines,
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'procurement:read') };
+          }
+          if (request.method === 'POST' && request.pathname === '/api/v1/inventory-movements') {
+            const body = objectBody(request.body);
+            allow(body, [
+              'movementType',
+              'itemVersionId',
+              'lotId',
+              'locationId',
+              'quantity',
+              'occurredAt',
+              'sourceType',
+              'sourceId',
+            ]);
+            const grant = authorizeQuery(context, 'inventory:move', Object.keys(body));
+            const movementType = string(body.movementType, 'movementType');
+            if (
+              ![
+                'ISSUE',
+                'RETURN',
+                'TRANSFER_IN',
+                'TRANSFER_OUT',
+                'ADJUSTMENT_IN',
+                'ADJUSTMENT_OUT',
+              ].includes(movementType)
+            )
+              throw new DomainError('invalid_request', 'movementType is unsupported');
+            const result = await dependencies.procurement.move(
+              {
+                movementType: movementType as
+                  | 'ISSUE'
+                  | 'RETURN'
+                  | 'TRANSFER_IN'
+                  | 'TRANSFER_OUT'
+                  | 'ADJUSTMENT_IN'
+                  | 'ADJUSTMENT_OUT',
+                itemVersionId: uuid(body.itemVersionId, 'itemVersionId'),
+                lotId: uuid(body.lotId, 'lotId'),
+                locationId: uuid(body.locationId, 'locationId'),
+                quantity: decimal(body.quantity, 'quantity'),
+                occurredAt: timestamp(body.occurredAt, 'occurredAt'),
+                sourceType: assertStableCode(string(body.sourceType, 'sourceType')),
+                sourceId: uuid(body.sourceId, 'sourceId'),
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'inventory:read') };
           }
         }
         if (

@@ -20,6 +20,7 @@ import type { PostgresOrder360Repository } from '../src/order-360-repositories.j
 import type { PostgresRiskRepository } from '../src/risk-repositories.js';
 import type { PostgresDashboardRepository } from '../src/dashboard-repositories.js';
 import type { PostgresManufacturingRepository } from '../src/manufacturing-repositories.js';
+import type { PostgresProcurementRepository } from '../src/procurement-repositories.js';
 import type { AuthenticationService } from '../src/security.js';
 
 const employeeId = '10000000-0000-4000-8000-000000000001';
@@ -231,6 +232,31 @@ function dependencies(authContext: AuthorizationContext | null) {
     createRouting: manufacturingCreateRouting,
     publish: manufacturingPublish,
   } as unknown as PostgresManufacturingRepository;
+  const procurementList = vi.fn(() => Promise.resolve([{ id: targetId, supplierNumber: 'SUP-1' }]));
+  const procurementCreateSupplier = vi.fn(() =>
+    Promise.resolve({ id: targetId, status: 'ACTIVE' }),
+  );
+  const procurementQualify = vi.fn(() => Promise.resolve({ id: targetId, status: 'APPROVED' }));
+  const procurementCreateRfq = vi.fn(() => Promise.resolve({ id: targetId, status: 'ISSUED' }));
+  const procurementCreateQuote = vi.fn(() => Promise.resolve({ id: targetId }));
+  const procurementCreateOrder = vi.fn(() => Promise.resolve({ id: targetId, status: 'ISSUED' }));
+  const procurementIssue = vi.fn(() => Promise.resolve({ id: targetId, status: 'ISSUED' }));
+  const procurementReceive = vi.fn(() => Promise.resolve({ id: targetId, status: 'RECEIVED' }));
+  const procurementMove = vi.fn(() => Promise.resolve({ id: targetId, sequence: '1' }));
+  const procurementCreateLocation = vi.fn(() => Promise.resolve({ id: targetId, active: true }));
+  const procurement = {
+    list: procurementList,
+    createSupplier: procurementCreateSupplier,
+    qualifySupplier: procurementQualify,
+    createRfq: procurementCreateRfq,
+    createSupplierQuote: procurementCreateQuote,
+    createPurchaseOrder: procurementCreateOrder,
+    issueRfq: procurementIssue,
+    issuePurchaseOrder: procurementIssue,
+    receive: procurementReceive,
+    move: procurementMove,
+    createLocation: procurementCreateLocation,
+  } as unknown as PostgresProcurementRepository;
   return {
     auth,
     organizations,
@@ -247,6 +273,17 @@ function dependencies(authContext: AuthorizationContext | null) {
     manufacturingCreateBom,
     manufacturingCreateRouting,
     manufacturingPublish,
+    procurement,
+    procurementList,
+    procurementCreateSupplier,
+    procurementQualify,
+    procurementCreateRfq,
+    procurementCreateQuote,
+    procurementCreateOrder,
+    procurementIssue,
+    procurementReceive,
+    procurementMove,
+    procurementCreateLocation,
     dashboardGet,
     riskEvaluate,
     riskTransition,
@@ -1043,5 +1080,127 @@ describe('authorization management API', () => {
       expect.objectContaining({ scopes: ['COMPANY'] }),
       expect.any(String),
     );
+  });
+  it('governs supplier, procurement, receipt, and inventory movement contracts', async () => {
+    const permissions: AuthorizationContext['permissions'] = new Map(
+      [
+        'supplier:read',
+        'supplier:manage',
+        'procurement:read',
+        'procurement:manage',
+        'inventory:read',
+        'inventory:move',
+      ].map((capability) => [
+        capability as `${string}:${string}`,
+        { scopes: ['COMPANY'] as const, fields: null },
+      ]),
+    );
+    const deps = dependencies(context(permissions));
+    expect((await dispatch(deps, 'GET', '/api/v1/suppliers')).statusCode).toBe(200);
+    expect((await dispatch(deps, 'GET', '/api/v1/inventory-balances')).statusCode).toBe(200);
+    expect(
+      (
+        await dispatch(deps, 'POST', '/api/v1/suppliers', {
+          supplierNumber: 'SUP-YARN-001',
+          name: '草纱供应商',
+          currency: 'CNY',
+          paymentTermsDays: 30,
+          qualityRatingBasisPoints: 9200,
+          contact: { phone: '12345678' },
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(
+      (
+        await dispatch(deps, 'POST', `/api/v1/suppliers/${targetId}/qualifications`, {
+          itemVersionId: organizationId,
+          status: 'APPROVED',
+          validFrom: '2026-01-01',
+          validTo: null,
+          minimumOrderQuantity: '1000',
+          leadTimeDays: 14,
+          evidence: { audit: 'QA-1' },
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(
+      (
+        await dispatch(deps, 'POST', '/api/v1/procurement-rfqs', {
+          rfqNumber: 'RFQ-2026-001',
+          responseDueAt: '2026-09-01T00:00:00Z',
+          currency: 'CNY',
+          issue: true,
+          lines: [{ itemVersionId: organizationId, quantity: '5000', requiredAt: '2026-10-01' }],
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(
+      (
+        await dispatch(deps, 'POST', '/api/v1/purchase-orders', {
+          poNumber: 'PO-2026-001',
+          supplierId: targetId,
+          supplierQuoteId: null,
+          currency: 'CNY',
+          issue: true,
+          lines: [
+            {
+              itemVersionId: organizationId,
+              quantity: '5000',
+              unitPrice: '12.5',
+              requiredAt: '2026-10-01',
+            },
+          ],
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(
+      (
+        await dispatch(deps, 'POST', '/api/v1/goods-receipts', {
+          receiptNumber: 'GR-2026-001',
+          purchaseOrderId: targetId,
+          receivedAt: '2026-10-01T08:00:00Z',
+          sourceReference: 'DN-1',
+          lines: [
+            {
+              purchaseOrderLineId: organizationId,
+              lotNumber: 'LOT-YARN-001',
+              locationCode: 'RAW-A01',
+              quantity: '5000',
+              manufacturedAt: '2026-09-20',
+              expiresAt: null,
+            },
+          ],
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(
+      (
+        await dispatch(deps, 'POST', '/api/v1/inventory-movements', {
+          movementType: 'ISSUE',
+          itemVersionId: organizationId,
+          lotId: targetId,
+          locationId: employeeId,
+          quantity: '20',
+          occurredAt: '2026-10-02T08:00:00Z',
+          sourceType: 'WORK-ORDER',
+          sourceId: organizationId,
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(deps.procurementReceive).toHaveBeenCalledWith(
+      expect.objectContaining({ receiptNumber: 'GR-2026-001' }),
+      expect.objectContaining({ scopes: ['COMPANY'] }),
+      expect.any(String),
+    );
+    expect(
+      (
+        await dispatch(
+          dependencies(context(grant('procurement:read'))),
+          'POST',
+          '/api/v1/purchase-orders',
+          {},
+        )
+      ).statusCode,
+    ).toBe(403);
   });
 });

@@ -24,7 +24,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0037_procurement_inventory_ledger.sql');
+    expect(ordered.at(-1)).toBe('0038_procurement_inventory_integrity.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
@@ -438,5 +438,21 @@ describe('identity and authorization migration', () => {
     ])
       expect(sql).toContain(invariant);
     expect(sql).not.toMatch(/UPDATE inventory_movements|DELETE FROM inventory_movements/iu);
+  });
+  it('hardens document transitions, receipt pins, and non-negative lot balances', async () => {
+    const sql = await readFile(
+      join(process.cwd(), 'migrations/0038_procurement_inventory_integrity.sql'),
+      'utf8',
+    );
+    for (const invariant of [
+      'issued RFQ lines are immutable',
+      'purchase order content is immutable',
+      'closed purchase order is immutable',
+      'receipt line must match purchase order item, lot, and order',
+      'inventory movement item must match lot',
+      'inventory movement cannot create negative lot balance',
+      'inventory_movements_sequence_unique',
+    ])
+      expect(sql).toContain(invariant);
   });
 });
