@@ -225,6 +225,65 @@ describe('web bootstrap', () => {
     expect(controller.loading).toBe(false);
   });
 
+  it('renders the field-driven opportunity pipeline and CTR workbench', async () => {
+    const commercialApi = {
+      listOpportunities: vi.fn().mockResolvedValue([
+        {
+          id: 'op-1',
+          name: '国际学校足球场',
+          status: 'OPEN',
+          value: { amount: '500000.000000', currency: 'CNY' },
+          probabilityBasisPoints: 3000,
+          expectedCloseDate: '2026-10-01',
+          version: 1,
+        },
+      ]),
+      list: vi.fn().mockImplementation((path: string) =>
+        Promise.resolve(
+          path === '/api/v1/ctrs'
+            ? [
+                {
+                  id: 'ctr-version-1',
+                  ctrId: 'ctr-1',
+                  code: 'CTR-2026-001',
+                  title: '50mm 足球草需求',
+                  version: 1,
+                  status: 'DRAFT',
+                },
+              ]
+            : [],
+        ),
+      ),
+      submit: vi.fn().mockResolvedValue({ id: 'created' }),
+      command: vi.fn().mockResolvedValue({}),
+    };
+    const controller = new CommercialController(
+      commercialApi,
+      new Set([
+        'opportunity:read',
+        'opportunity:create',
+        'opportunity:lifecycle',
+        'ctr:read',
+        'ctr:create',
+        'ctr:submit',
+      ]),
+    );
+    await controller.load();
+    const workspace = commercialWorkspaceStructure(
+      'desktop',
+      false,
+      controller,
+    ) as unknown as RenderedElement;
+    expect(workspace.findByClass('pipeline-board')).toHaveLength(1);
+    expect(workspace.findByClass('pipeline-column')).toHaveLength(5);
+    expect(workspace.findByClass('opportunity-card')).toHaveLength(1);
+    expect(workspace.findByClass('ctr-workbench')).toHaveLength(1);
+    expect(workspace.findByClass('ctr-row')).toHaveLength(1);
+    expect(workspace.textContent).toContain('国际学校足球场');
+    expect(workspace.textContent).toContain('CTR-2026-001');
+    expect(workspace.textContent).not.toContain('JSON 请求');
+  });
+
   it('loads only authorized APIs and exposes testable E01-E04 event handlers', async () => {
     const { transport, spies } = api();
     const denied = new CrmController(new Set(), transport);

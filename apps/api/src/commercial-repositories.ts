@@ -194,7 +194,7 @@ export class PostgresCommercialRepository {
   ): Promise<readonly JsonObject[]> {
     const secured = scope(scopes, anchors, actor, 2);
     const definitions = {
-      ctrs: `SELECT v.id,c.opportunity_id AS "opportunityId",c.code,v.version,v.status,v.title,v.requirements,v.snapshot_hash AS "snapshotHash",v.submitted_at AS "submittedAt",v.created_at AS "createdAt",
+      ctrs: `SELECT v.id,c.id AS "ctrId",c.opportunity_id AS "opportunityId",c.code,v.version,v.status,v.title,v.requirements,v.snapshot_hash AS "snapshotHash",v.submitted_at AS "submittedAt",v.created_at AS "createdAt",
         (SELECT coalesce(jsonb_agg(to_jsonb(a) ORDER BY a.decided_at),'[]'::jsonb) FROM ctr_approvals a WHERE a.tenant_id=v.tenant_id AND a.ctr_version_id=v.id) approvals,
         (SELECT coalesce(jsonb_agg(to_jsonb(l) ORDER BY l.linked_at),'[]'::jsonb) FROM ctr_attachment_links l WHERE l.tenant_id=v.tenant_id AND l.ctr_version_id=v.id) attachments
         FROM ctr_versions v JOIN ctrs c ON c.id=v.ctr_id AND c.tenant_id=v.tenant_id JOIN opportunities o ON o.id=c.opportunity_id AND o.tenant_id=c.tenant_id`,

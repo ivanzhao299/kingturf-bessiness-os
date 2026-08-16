@@ -180,10 +180,26 @@ export function visibleCommercialSections(permissions: ReadonlySet<CommercialPer
   } as const;
 }
 
+export type Opportunity = Readonly<{
+  id: string;
+  customerId?: string | null;
+  leadId?: string | null;
+  name?: string;
+  status?: string;
+  value?: Readonly<{ amount: string; currency: string }>;
+  probabilityBasisPoints?: number;
+  expectedCloseDate?: string;
+  version?: number;
+}>;
+
 export type CommercialApi = Readonly<{
-  listOpportunities(): Promise<readonly Readonly<{ id: string; name?: string; status?: string }>[]>;
+  listOpportunities(): Promise<readonly Opportunity[]>;
   list(path: string): Promise<readonly Record<string, unknown>[]>;
-  submit(path: string, payload: Record<string, unknown>): Promise<Record<string, unknown>>;
+  submit(
+    path: string,
+    payload: Record<string, unknown>,
+    method?: 'POST' | 'PATCH',
+  ): Promise<Record<string, unknown>>;
   command(
     revisionId: string,
     action: 'approve' | 'issue',
@@ -192,7 +208,8 @@ export type CommercialApi = Readonly<{
 }>;
 
 export class CommercialController {
-  public opportunities: readonly Readonly<{ id: string; name?: string; status?: string }>[] = [];
+  public opportunities: readonly Opportunity[] = [];
+  public customers: readonly Customer[] = [];
   public loading = false;
   public message = '';
   public revisionState: Record<string, unknown> | null = null;
@@ -221,15 +238,32 @@ export class CommercialController {
       this.loading = false;
     }
   }
-  public async submit(path: string, payload: Record<string, unknown>): Promise<void> {
+  public async submit(
+    path: string,
+    payload: Record<string, unknown>,
+    method: 'POST' | 'PATCH' = 'POST',
+  ): Promise<void> {
     this.loading = true;
     try {
-      this.revisionState = await this.api.submit(path, payload);
+      this.revisionState = await this.api.submit(path, payload, method);
       this.message = '已保存；版本与决策引用已由服务器返回';
       if (path === '/api/v1/opportunities') await this.load();
     } finally {
       this.loading = false;
     }
+  }
+  public async transitionOpportunity(
+    opportunity: Opportunity,
+    status: string,
+    reason: string,
+  ): Promise<void> {
+    if (!Number.isInteger(opportunity.version)) throw new Error('商机版本信息不可用');
+    await this.submit(
+      `/api/v1/opportunities/${opportunity.id}`,
+      { status, reason, expectedVersion: opportunity.version },
+      'PATCH',
+    );
+    await this.load();
   }
   public async quoteCommand(
     revisionId: string,
@@ -274,6 +308,327 @@ export function commercialWorkspaceStructure(
       ['/api/v1/bank-payments', ['bank-payment:read', 'bank-payment:intake']],
       ['/api/v1/reconciliation-runs', ['reconciliation:read', 'reconciliation:run']],
     ]);
+  if (controller && permissions.has('opportunity:read')) {
+    const pipeline = document.createElement('section');
+    pipeline.className = 'pipeline-board';
+    const heading = document.createElement('div');
+    heading.className = 'pipeline-heading';
+    const headingCopy = document.createElement('div');
+    const title = document.createElement('h2');
+    title.textContent = '商机阶段看板';
+    const subtitle = document.createElement('p');
+    subtitle.textContent = '按阶段推进预计金额、赢率与成交日期';
+    headingCopy.append(title, subtitle);
+    if (permissions.has('opportunity:create')) {
+      const create = document.createElement('button');
+      create.className = 'primary';
+      create.textContent = '＋ 新建商机';
+      create.addEventListener('click', () => {
+        openForm(
+          workspace,
+          '新建商机',
+          '建立销售机会并设置初始金额、赢率与预计成交日期。',
+          [
+            {
+              name: 'customerId',
+              label: '关联客户',
+              type: 'select',
+              options: [
+                { value: 'none', label: '暂不关联客户' },
+                ...controller.customers.map((customer) => ({
+                  value: customer.id,
+                  label: customer.name ?? customer.id,
+                })),
+              ],
+            },
+            {
+              name: 'name',
+              label: '商机名称',
+              required: true,
+              placeholder: '例如：国际学校足球场项目',
+            },
+            {
+              name: 'value',
+              label: '预计金额',
+              type: 'number',
+              required: true,
+              placeholder: '500000',
+            },
+            {
+              name: 'currency',
+              label: '币种',
+              type: 'select',
+              required: true,
+              options: [
+                { value: 'CNY', label: '人民币 CNY' },
+                { value: 'USD', label: '美元 USD' },
+                { value: 'EUR', label: '欧元 EUR' },
+              ],
+            },
+            {
+              name: 'probability',
+              label: '成交概率（%）',
+              type: 'number',
+              required: true,
+              placeholder: '30',
+            },
+            { name: 'expectedCloseDate', label: '预计成交日期', type: 'date', required: true },
+          ],
+          '创建商机',
+          async (values) => {
+            await controller.submit('/api/v1/opportunities', {
+              customerId: values.customerId === 'none' ? null : (values.customerId ?? null),
+              leadId: null,
+              name: values.name ?? '',
+              value: values.value ?? '',
+              currency: values.currency ?? 'CNY',
+              probabilityBasisPoints: Math.round(Number(values.probability ?? 0) * 100),
+              expectedCloseDate: values.expectedCloseDate ?? '',
+            });
+            pipeline.replaceWith(
+              commercialWorkspaceStructure(viewport, immutable, controller).querySelector(
+                '.pipeline-board',
+              ) ?? pipeline,
+            );
+          },
+        );
+      });
+      heading.append(headingCopy, create);
+    } else heading.append(headingCopy);
+    pipeline.append(heading);
+    const columns = document.createElement('div');
+    columns.className = 'pipeline-columns';
+    const stages = [
+      ['OPEN', '初步接洽'],
+      ['QUALIFIED', '需求确认'],
+      ['PROPOSAL', '方案报价'],
+      ['WON', '赢单'],
+      ['LOST', '输单'],
+    ] as const;
+    for (const [stage, label] of stages) {
+      const column = document.createElement('section');
+      column.className = `pipeline-column stage-${stage.toLocaleLowerCase()}`;
+      const opportunities = controller.opportunities.filter((item) => item.status === stage);
+      const columnHeading = document.createElement('header');
+      columnHeading.textContent = `${label} · ${String(opportunities.length)}`;
+      column.append(columnHeading);
+      for (const opportunity of opportunities) {
+        const card = document.createElement('article');
+        card.className = 'opportunity-card';
+        const name = document.createElement('strong');
+        name.textContent = opportunity.name ?? opportunity.id;
+        const amount = document.createElement('span');
+        amount.textContent = opportunity.value
+          ? `${opportunity.value.currency} ${opportunity.value.amount}`
+          : '金额受限';
+        const meta = document.createElement('small');
+        meta.textContent = `${String((opportunity.probabilityBasisPoints ?? 0) / 100)}% · ${opportunity.expectedCloseDate ?? '日期未定'}`;
+        card.append(name, amount, meta);
+        const nextStage =
+          stage === 'OPEN'
+            ? 'QUALIFIED'
+            : stage === 'QUALIFIED'
+              ? 'PROPOSAL'
+              : stage === 'PROPOSAL'
+                ? 'WON'
+                : null;
+        if (nextStage && permissions.has('opportunity:lifecycle')) {
+          const advance = document.createElement('button');
+          advance.className = 'text-button';
+          advance.textContent = '推进 →';
+          advance.addEventListener('click', () => {
+            openForm(
+              workspace,
+              '推进商机阶段',
+              `从“${label}”推进至下一阶段。`,
+              [{ name: 'reason', label: '推进依据', type: 'textarea', required: true }],
+              '确认推进',
+              async (values) => {
+                await controller.transitionOpportunity(opportunity, nextStage, values.reason ?? '');
+                status.textContent = controller.message;
+              },
+            );
+          });
+          card.append(advance);
+        }
+        column.append(card);
+      }
+      if (opportunities.length === 0) {
+        const empty = document.createElement('p');
+        empty.className = 'pipeline-empty';
+        empty.textContent = '暂无商机';
+        column.append(empty);
+      }
+      columns.append(column);
+    }
+    pipeline.append(columns);
+    workspace.append(pipeline);
+  }
+  if (controller && permissions.has('ctr:read')) {
+    const ctrPanel = document.createElement('section');
+    ctrPanel.className = 'ctr-workbench';
+    const heading = document.createElement('div');
+    heading.className = 'pipeline-heading';
+    const copy = document.createElement('div');
+    const title = document.createElement('h2');
+    title.textContent = '技术需求 CTR';
+    const subtitle = document.createElement('p');
+    subtitle.textContent = '结构化记录场景、规格、数量和交付要求，提交后形成不可变快照';
+    copy.append(title, subtitle);
+    if (permissions.has('ctr:create')) {
+      const create = document.createElement('button');
+      create.className = 'primary';
+      create.textContent = '＋ 新建 CTR';
+      create.addEventListener('click', () => {
+        openForm(
+          workspace,
+          '新建技术需求',
+          'CTR 必须关联一个商机，提交前可以继续创建修订版本。',
+          [
+            {
+              name: 'opportunityId',
+              label: '关联商机',
+              type: 'select',
+              required: true,
+              options: controller.opportunities.map((item) => ({
+                value: item.id,
+                label: item.name ?? item.id,
+              })),
+            },
+            { name: 'code', label: 'CTR 编号', required: true, placeholder: 'CTR-2026-001' },
+            {
+              name: 'title',
+              label: '需求标题',
+              required: true,
+              placeholder: '学校足球场人造草坪技术需求',
+            },
+            {
+              name: 'application',
+              label: '应用场景',
+              type: 'select',
+              required: true,
+              options: [
+                { value: '足球场', label: '足球场' },
+                { value: '休闲景观', label: '休闲景观' },
+                { value: '多功能运动场', label: '多功能运动场' },
+              ],
+            },
+            {
+              name: 'pileHeight',
+              label: '草高（mm）',
+              type: 'number',
+              required: true,
+              placeholder: '50',
+            },
+            {
+              name: 'quantity',
+              label: '预计面积（㎡）',
+              type: 'number',
+              required: true,
+              placeholder: '8000',
+            },
+            { name: 'color', label: '颜色要求', required: true, placeholder: '双色翠绿' },
+            { name: 'delivery', label: '交付要求', type: 'textarea', required: true },
+          ],
+          '创建 CTR',
+          async (values) => {
+            await controller.submit('/api/v1/ctrs', {
+              opportunityId: values.opportunityId ?? '',
+              code: values.code ?? '',
+              title: values.title ?? '',
+              requirements: {
+                application: values.application ?? '',
+                pileHeightMm: Number(values.pileHeight ?? 0),
+                quantitySquareMeters: Number(values.quantity ?? 0),
+                color: values.color ?? '',
+                delivery: values.delivery ?? '',
+              },
+            });
+            await controller.load();
+            status.textContent = controller.message;
+          },
+        );
+      });
+      heading.append(copy, create);
+    } else heading.append(copy);
+    ctrPanel.append(heading);
+    const table = document.createElement('div');
+    table.className = 'ctr-table';
+    const ctrs = controller.views.get('/api/v1/ctrs') ?? [];
+    for (const ctr of ctrs) {
+      const ctrCode = typeof ctr.code === 'string' ? ctr.code : 'CTR';
+      const ctrTitle = typeof ctr.title === 'string' ? ctr.title : '未命名需求';
+      const ctrVersion = typeof ctr.version === 'number' ? ctr.version : 1;
+      const ctrStatus = typeof ctr.status === 'string' ? ctr.status : 'DRAFT';
+      const row = document.createElement('article');
+      row.className = 'ctr-row';
+      const identity = document.createElement('div');
+      const code = document.createElement('strong');
+      code.textContent = ctrCode;
+      const name = document.createElement('span');
+      name.textContent = ctrTitle;
+      identity.append(code, name);
+      const version = document.createElement('span');
+      version.textContent = `V${String(ctrVersion)}`;
+      const state = document.createElement('span');
+      state.className = `ctr-state state-${ctrStatus.toLocaleLowerCase()}`;
+      state.textContent = ctrStatus;
+      const actions = document.createElement('div');
+      actions.className = 'ctr-actions';
+      if (ctrStatus === 'DRAFT' && permissions.has('ctr:submit')) {
+        const submit = document.createElement('button');
+        submit.className = 'secondary';
+        submit.textContent = '提交评审';
+        submit.addEventListener('click', () => {
+          void controller
+            .submit(`/api/v1/ctr-versions/${String(ctr.id)}/submit`, {
+              expectedVersion: ctrVersion,
+            })
+            .then(() => {
+              status.textContent = 'CTR 已提交并生成不可变快照';
+            });
+        });
+        actions.append(submit);
+      }
+      if (ctrStatus === 'SUBMITTED' && permissions.has('ctr:approve')) {
+        for (const [decision, label] of [
+          ['APPROVED', '批准'],
+          ['REJECTED', '驳回'],
+        ] as const) {
+          const decide = document.createElement('button');
+          decide.className = decision === 'APPROVED' ? 'primary' : 'secondary';
+          decide.textContent = label;
+          decide.addEventListener('click', () => {
+            openForm(
+              workspace,
+              `${label} CTR`,
+              '审批决定和理由将永久保留。',
+              [{ name: 'reason', label: '审批意见', type: 'textarea', required: true }],
+              `确认${label}`,
+              async (values) => {
+                await controller.submit(`/api/v1/ctr-versions/${String(ctr.id)}/decision`, {
+                  decision,
+                  reason: values.reason ?? '',
+                });
+                status.textContent = `CTR 已${label}`;
+              },
+            );
+          });
+          actions.append(decide);
+        }
+      }
+      row.append(identity, version, state, actions);
+      table.append(row);
+    }
+    if (ctrs.length === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'pipeline-empty';
+      empty.textContent = '暂无 CTR，先从一个已确认需求的商机创建技术需求。';
+      table.append(empty);
+    }
+    ctrPanel.append(table);
+    workspace.append(ctrPanel);
+  }
   for (const [className, title, description, fields, action, path] of [
     [
       'opportunity-pipeline',
@@ -372,6 +727,7 @@ export function commercialWorkspaceStructure(
       '/api/v1/reconciliation-runs',
     ],
   ] as const) {
+    if (controller && (path === '/api/v1/opportunities' || path === '/api/v1/ctrs')) continue;
     const requiredPermission = permittedPaths.get(path),
       canRead = Boolean(requiredPermission && permissions.has(requiredPermission[0])),
       canAct =
@@ -499,17 +855,17 @@ export function commercialWorkspaceStructure(
 export const createFetchCommercialApi = (token: string): CommercialApi => ({
   async listOpportunities() {
     const response = await json<{
-      items: readonly { id: string; name?: string; status?: string }[];
+      items: readonly Opportunity[];
     }>('/api/v1/opportunities', token);
     return response.items;
   },
   async list(path) {
     return (await json<{ items: readonly Record<string, unknown>[] }>(path, token)).items;
   },
-  submit: (path, payload) =>
+  submit: (path, payload, method = 'POST') =>
     json<Record<string, unknown>>(path, token, {
-      method: 'POST',
-      headers: { 'idempotency-key': requestId() },
+      method,
+      ...(method === 'POST' ? { headers: { 'idempotency-key': requestId() } } : {}),
       body: JSON.stringify(payload),
     }),
   command: (revisionId, action, payload = {}) =>
@@ -748,7 +1104,7 @@ const el = <K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, t
 type FormField = Readonly<{
   name: string;
   label: string;
-  type?: 'text' | 'email' | 'tel' | 'select' | 'textarea';
+  type?: 'text' | 'email' | 'tel' | 'number' | 'date' | 'select' | 'textarea';
   required?: boolean;
   placeholder?: string;
   options?: readonly Readonly<{ value: string; label: string }>[];
@@ -784,7 +1140,9 @@ function openForm(
     if (field.required) control.setAttribute('required', '');
     if (field.placeholder) control.setAttribute('placeholder', field.placeholder);
     if (control instanceof HTMLInputElement)
-      control.type = field.type === 'email' || field.type === 'tel' ? field.type : 'text';
+      control.type = ['email', 'tel', 'number', 'date'].includes(field.type ?? '')
+        ? (field.type as 'email' | 'tel' | 'number' | 'date')
+        : 'text';
     if (control instanceof HTMLSelectElement)
       for (const option of field.options ?? []) {
         const item = el('option', '', option.label);
@@ -1570,6 +1928,7 @@ export async function bootstrap(root: HTMLElement): Promise<void> {
       createFetchCommercialApi(token),
       commercialPermissions,
     );
+    commercialController.customers = controller.customers;
     try {
       await commercialController.load();
     } catch (error) {
