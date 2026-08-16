@@ -841,6 +841,88 @@ goodsReceipt ??= await request('/api/v1/goods-receipts', {
   },
 });
 
+const mrpPolicies = await list('/api/v1/mrp-policies');
+async function ensureMrpPolicy(
+  itemVersionId,
+  makeOrBuy,
+  safetyStock,
+  minimumOrderQuantity,
+  orderMultiple,
+  leadTimeDays,
+) {
+  const existing = mrpPolicies.find(
+    (item) =>
+      (item.item_version_id ?? item.itemVersionId) === itemVersionId &&
+      (item.effective_at ?? item.effectiveAt)?.startsWith('2026-01-01'),
+  );
+  if (existing) return existing;
+  return request('/api/v1/mrp-policies', {
+    method: 'POST',
+    body: {
+      itemVersionId,
+      safetyStock,
+      minimumOrderQuantity,
+      orderMultiple,
+      leadTimeDays,
+      freezeWindowDays: 7,
+      makeOrBuy,
+      effectiveAt: '2026-01-01T00:00:00.000Z',
+    },
+  });
+}
+await ensureMrpPolicy(finishedGood.id, 'MAKE', '0', '1000', '500', 7);
+await ensureMrpPolicy(yarn.id, 'BUY', '500', '1000', '500', 14);
+await ensureMrpPolicy(backing.id, 'BUY', '1000', '1000', '1000', 10);
+const mrpDemands = await list('/api/v1/mrp-demands');
+async function ensureDemand(sourceType, sourceId, requiredAt, quantity, priority) {
+  const existing = mrpDemands.find(
+    (item) =>
+      (item.source_type ?? item.sourceType) === sourceType &&
+      (item.source_id ?? item.sourceId) === sourceId &&
+      (item.required_at ?? item.requiredAt) === requiredAt,
+  );
+  if (existing) return existing;
+  return request('/api/v1/mrp-demands', {
+    method: 'POST',
+    body: { itemVersionId: finishedGood.id, sourceType, sourceId, requiredAt, quantity, priority },
+  });
+}
+await ensureDemand('FROZEN-DEMO', customer.id, '2026-08-20', '100', 1);
+await ensureDemand('SALES-ORDER', order.id, '2026-11-15', '8000', 10);
+let mrpRun = (await list('/api/v1/mrp-runs')).find(
+  (item) => (item.run_number ?? item.runNumber) === 'MRP-KT-2026-001',
+);
+mrpRun ??= await request('/api/v1/mrp-runs', {
+  method: 'POST',
+  body: {
+    runNumber: 'MRP-KT-2026-001',
+    asOf: '2026-08-16T00:00:00.000Z',
+    horizonEnd: '2026-12-31',
+  },
+});
+mrpRun = (await list('/api/v1/mrp-runs')).find((item) => item.id === mrpRun.id);
+for (const proposal of mrpRun.proposals) {
+  let state = proposal.effectiveState;
+  if (state === 'PROPOSED') {
+    await request(`/api/v1/mrp-proposals/${proposal.id}/approve`, {
+      method: 'POST',
+      body: {
+        reason: proposal.frozen ? '冻结窗口内由计划经理批准' : '计划员审核计算解释后批准',
+        evidence: {
+          approval: `MRP-APPROVAL-${proposal.id}`,
+          ...(proposal.frozen ? { freezeOverrideApproval: 'FREEZE-OVERRIDE-KT-2026-001' } : {}),
+        },
+      },
+    });
+    state = 'APPROVED';
+  }
+  if (state === 'APPROVED')
+    await request(`/api/v1/mrp-proposals/${proposal.id}/release`, {
+      method: 'POST',
+      body: { reason: '释放到执行队列', evidence: { releaseBatch: 'MRP-KT-2026-001' } },
+    });
+}
+
 process.stdout.write(
-  `${JSON.stringify({ baseUrl, customerId: customer.id, opportunityId: opportunity.id, quoteRevisionId: quote.id, contractRevisionId: contract.id, orderId: order.id, commissionId: commission.id, riskEvaluationId: risk.id, manufacturing: { finishedGoodVersionId: finishedGood.id, bomVersionId: bom.id, routingVersionId: routing.id }, procurement: { supplierId: supplier.id, rfqId: rfq.id, supplierQuoteId: supplierQuote.id, purchaseOrderId: purchaseOrder.id, goodsReceiptId: goodsReceipt.id, locationId: location.id }, outcomes: ['APPROVED', 'REJECTED', 'EXPIRED'] }, null, 2)}\n`,
+  `${JSON.stringify({ baseUrl, customerId: customer.id, opportunityId: opportunity.id, quoteRevisionId: quote.id, contractRevisionId: contract.id, orderId: order.id, commissionId: commission.id, riskEvaluationId: risk.id, manufacturing: { finishedGoodVersionId: finishedGood.id, bomVersionId: bom.id, routingVersionId: routing.id }, procurement: { supplierId: supplier.id, rfqId: rfq.id, supplierQuoteId: supplierQuote.id, purchaseOrderId: purchaseOrder.id, goodsReceiptId: goodsReceipt.id, locationId: location.id }, mrp: { runId: mrpRun.id, calculationCount: mrpRun.calculations.length, proposalCount: mrpRun.proposals.length }, outcomes: ['APPROVED', 'REJECTED', 'EXPIRED'] }, null, 2)}\n`,
 );

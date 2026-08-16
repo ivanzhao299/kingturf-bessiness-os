@@ -40,6 +40,9 @@ const [
   purchaseOrders,
   goodsReceipts,
   inventoryBalances,
+  mrpPolicies,
+  mrpDemands,
+  mrpRuns,
 ] = await Promise.all([
   get('/api/v1/quotes'),
   get('/api/v1/credit-decisions'),
@@ -60,6 +63,9 @@ const [
   get('/api/v1/purchase-orders'),
   get('/api/v1/goods-receipts'),
   get('/api/v1/inventory-balances'),
+  get('/api/v1/mrp-policies'),
+  get('/api/v1/mrp-demands'),
+  get('/api/v1/mrp-runs'),
 ]);
 const finishedGood = manufacturingItems.find(
   (item) => item.sku === 'FG-KT-PRO-50' && item.status === 'PUBLISHED',
@@ -83,6 +89,40 @@ assert.deepEqual(
   ['TUFT', 'COAT', 'PACK'],
   'published routing operations must remain ordered and complete',
 );
+assert.equal(
+  mrpPolicies.length >= 3,
+  true,
+  'MRP policies for finished good, yarn, and backing are required',
+);
+assert.equal(mrpDemands.length >= 2, true, 'both frozen and order demand signals are required');
+const mrpRun = mrpRuns.find((item) => (item.run_number ?? item.runNumber) === 'MRP-KT-2026-001');
+assert.equal(mrpRun?.status, 'COMPUTED');
+assert.equal(mrpRun.calculations.length, 6, 'two demand dates must expand into six item buckets');
+assert.equal(mrpRun.proposals.length, 6, 'each positive net requirement must create a proposal');
+assert.equal(mrpRun.proposals.filter((proposal) => proposal.frozen).length, 3);
+assert(mrpRun.proposals.every((proposal) => proposal.effectiveState === 'RELEASED'));
+assert(
+  mrpRun.proposals.every(
+    (proposal) =>
+      proposal.events.map((event) => event.state).join(',') === 'PROPOSED,APPROVED,RELEASED',
+  ),
+);
+const longRangeYarn = mrpRun.calculations.find(
+  (item) => item.sku === 'RM-KT-YARN-12000' && item.required_at === '2026-11-15',
+);
+assert.equal(
+  Number(longRangeYarn?.gross_demand),
+  10300,
+  'BOM quantity and 3% scrap must yield 10300kg gross yarn demand',
+);
+assert.equal(Number(longRangeYarn?.safety_stock), 500);
+assert.equal(
+  Number(longRangeYarn?.planned_quantity),
+  10000,
+  'cumulative prior plan and 500kg multiple must be applied',
+);
+for (const calculation of mrpRun.calculations)
+  assert.match(calculation.canonical_hash, /^[0-9a-f]{64}$/u);
 const supplier = suppliers.find(
   (item) => (item.supplier_number ?? item.supplierNumber) === 'SUP-KT-YARN-001',
 );

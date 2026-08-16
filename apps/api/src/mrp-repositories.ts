@@ -10,6 +10,8 @@ type Context = Readonly<{
   anchors: readonly ScopeAnchor[];
 }>;
 const hash = (value: unknown) => createHash('sha256').update(canonicalize(value)).digest('hex');
+const hashSnapshot = (value: unknown) =>
+  createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const json = (value: unknown) => value as JsonObject;
 const company = (context: Context) => {
   if (!context.scopes.includes('COMPANY') && !context.scopes.includes('GROUP'))
@@ -200,14 +202,14 @@ export class PostgresMrpRepository {
       const run = (
         await tx.query<{ id: string; freeze_until: string }>(
           `INSERT INTO mrp_runs(tenant_id,run_number,as_of,horizon_end,freeze_until,input_hash,created_by)
-           VALUES($1,$2,$3,$4,$3::date+$5,$6,$7) RETURNING id,freeze_until::text`,
+           VALUES($1,$2,$3::timestamptz,$4::date,$3::timestamptz::date+$5::integer,$6,$7) RETURNING id,freeze_until::text`,
           [
             context.actor.companyId,
             input.runNumber,
             input.asOf,
             input.horizonEnd,
             freezeDays.rows[0]?.days ?? 0,
-            hash(inputs),
+            hashSnapshot(inputs),
             context.actor.employeeId,
           ],
         )
@@ -223,7 +225,7 @@ export class PostgresMrpRepository {
         `WITH RECURSIVE exploded(item_version_id,required_at,quantity,path,depth) AS (
           SELECT d.item_version_id,d.required_at,d.quantity,ARRAY[d.item_version_id],0 FROM mrp_demand_snapshots d WHERE d.tenant_id=$1 AND d.mrp_run_id=$2
           UNION ALL
-          SELECT l.component_item_version_id,e.required_at,(e.quantity*l.quantity*(1+l.scrap_basis_points::numeric/10000)),e.path||l.component_item_version_id,e.depth+1
+          SELECT l.component_item_version_id,e.required_at,(e.quantity*l.quantity*(1+l.scrap_basis_points::numeric/10000))::numeric(24,6),e.path||l.component_item_version_id,e.depth+1
           FROM exploded e JOIN LATERAL(SELECT v.id FROM manufacturing_bom_versions v WHERE v.tenant_id=$1 AND v.product_item_version_id=e.item_version_id AND v.status='PUBLISHED' AND v.effective_at<=$3 ORDER BY v.effective_at DESC,v.version DESC LIMIT 1)b ON true
           JOIN manufacturing_bom_lines l ON l.bom_version_id=b.id AND l.tenant_id=$1 WHERE e.depth<20 AND NOT l.component_item_version_id=ANY(e.path)
         ), gross AS (
@@ -279,7 +281,7 @@ export class PostgresMrpRepository {
         id: run.id,
         status: 'COMPUTED',
         freezeUntil: run.freeze_until,
-        inputHash: hash(inputs),
+        inputHash: hashSnapshot(inputs),
         calculationCount: calculations.rowCount,
         proposalCount: proposals.rowCount,
         ...input,
