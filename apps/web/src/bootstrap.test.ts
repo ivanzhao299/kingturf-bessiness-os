@@ -498,6 +498,7 @@ describe('web bootstrap', () => {
         'sales-policy:read',
         'quote:read',
         'quote:create',
+        'quote:update',
         'quote:approve',
       ]),
     );
@@ -515,6 +516,7 @@ describe('web bootstrap', () => {
     expect(workspace.textContent).toContain('人造草坪系统');
     expect(workspace.textContent).toContain('批准报价');
     expect(workspace.textContent).toContain('打印 / 保存 PDF');
+    expect(workspace.textContent).toContain('创建报价修订');
   });
 
   it('loads only authorized APIs and exposes testable E01-E04 event handlers', async () => {

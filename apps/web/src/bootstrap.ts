@@ -1845,6 +1845,14 @@ export function commercialWorkspaceStructure(
     } else quoteHeading.append(quoteCopy);
     quotePanel.append(quoteHeading);
     const quotes = controller.views.get('/api/v1/quotes') ?? [];
+    const latestQuoteVersions = new Map<string, number>();
+    for (const quote of quotes) {
+      const quoteId = textValue(quote.quoteId, '');
+      latestQuoteVersions.set(
+        quoteId,
+        Math.max(latestQuoteVersions.get(quoteId) ?? 0, Number(quote.revision ?? 0)),
+      );
+    }
     const quoteList = el('div', 'quote-list');
     for (const quote of quotes) {
       const card = el('article', 'quote-card');
@@ -1884,6 +1892,80 @@ export function commercialWorkspaceStructure(
       }
       card.append(lineTable);
       const actions = el('div', 'quote-actions');
+      if (
+        permissions.has('quote:update') &&
+        ['ISSUED', 'REJECTED'].includes(quoteStatus) &&
+        Number(quote.revision) === latestQuoteVersions.get(textValue(quote.quoteId, ''))
+      ) {
+        const revise = el('button', 'secondary', '创建报价修订');
+        revise.addEventListener('click', () => {
+          openForm(
+            workspace,
+            `修订 ${textValue(quote.quoteNumber, '报价')}`,
+            '基于当前签发版本调整整单折扣与有效期；原签发快照保持只读。',
+            [
+              {
+                name: 'discountPercent',
+                label: '新整单折扣（%）',
+                type: 'number',
+                required: true,
+                value: String((Number(quote.discount ?? 0) * 100) / Number(quote.subtotal ?? 1)),
+              },
+              { name: 'validUntil', label: '新有效期至', type: 'date', required: true },
+            ],
+            '校验并创建修订',
+            async (values) => {
+              const quoteLines = (Array.isArray(quote.lines) ? quote.lines : []).map((line) => {
+                const item = recordValue(line);
+                return {
+                  description: textValue(item.description, '报价行'),
+                  quantity: textValue(item.quantity, '0'),
+                  unitCode: textValue(item.unit_code, ''),
+                  unitPrice: textValue(item.unit_price, '0'),
+                  total: textValue(item.total, '0'),
+                };
+              });
+              const subtotal = quoteLines.reduce((sum, line) => sum + Number(line.total), 0);
+              const discount = subtotal * (Number(values.discountPercent ?? 0) / 100);
+              const total = subtotal - discount;
+              const costTotal = Number(quote.costTotal ?? 0);
+              const margin = total - costTotal;
+              if (total <= 0) throw new Error('折扣后报价金额必须大于零');
+              const marginBasisPoints = Math.trunc((margin * 10_000) / total);
+              const discountBasisPoints = Math.trunc((discount * 10_000) / subtotal);
+              await controller.submit('/api/v1/sales-policy-evaluations', {
+                policyVersionId: textValue(quote.policyVersionId, ''),
+                costDecisionId: textValue(quote.costDecisionId, ''),
+                context: { marginBasisPoints, discountBasisPoints },
+              });
+              const policyEvaluation = controller.revisionState;
+              if (policyEvaluation?.passed !== true || typeof policyEvaluation.id !== 'string')
+                throw new Error('修订后的报价未通过销售政策');
+              await controller.submit(`/api/v1/quotes/${textValue(quote.quoteId, '')}/revisions`, {
+                quoteNumber: textValue(quote.quoteNumber, ''),
+                opportunityId: textValue(quote.opportunityId, ''),
+                ctrVersionId: textValue(quote.ctrVersionId, ''),
+                technicalSolutionRevisionId: textValue(quote.technicalSolutionRevisionId, ''),
+                costDecisionId: textValue(quote.costDecisionId, ''),
+                policyVersionId: textValue(quote.policyVersionId, ''),
+                policyEvaluationId: policyEvaluation.id,
+                currency: textValue(quote.currency, 'CNY'),
+                subtotal: decimalValue(subtotal),
+                discount: decimalValue(discount),
+                total: decimalValue(total),
+                costTotal: decimalValue(costTotal),
+                margin: decimalValue(margin),
+                marginBasisPoints,
+                validUntil: new Date(`${values.validUntil ?? ''}T23:59:59.000Z`).toISOString(),
+                lines: quoteLines,
+              });
+              await controller.load();
+              status.textContent = controller.message;
+            },
+          );
+        });
+        actions.append(revise);
+      }
       if (quoteStatus === 'DRAFT' && permissions.has('quote:approve')) {
         const approve = el('button', 'primary', '批准报价');
         approve.addEventListener('click', () => {
