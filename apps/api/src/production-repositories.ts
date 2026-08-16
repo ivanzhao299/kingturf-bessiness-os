@@ -28,7 +28,9 @@ const evidence = async (
     [type, context.actor.employeeId, context.actor.companyId, id, correlationId, payload],
   );
   await tx.query(
-    "INSERT INTO domain_event_outbox(tenant_id,event_type,event_version,aggregate_type,aggregate_id,aggregate_version,occurred_at,actor_id,correlation_id,payload) VALUES($1,$2,1,'production-order',$3,1,now(),$4,$5,$6)",
+    `INSERT INTO domain_event_outbox(tenant_id,event_type,event_version,aggregate_type,aggregate_id,aggregate_version,occurred_at,actor_id,correlation_id,payload)
+     SELECT $1,$2,1,'production-order',$3,coalesce(max(aggregate_version),0)+1,now(),$4,$5,$6 FROM domain_event_outbox
+     WHERE tenant_id=$1 AND event_type=$2 AND aggregate_id=$3`,
     [context.actor.companyId, type, id, context.actor.employeeId, correlationId, payload],
   );
 };
@@ -97,7 +99,7 @@ export class PostgresProductionRepository {
         );
       const operations = await tx.query(
         `INSERT INTO production_order_operations(tenant_id,production_order_id,sequence,operation_code,name,work_center,setup_minutes,run_minutes_per_unit,routing_operation_id,canonical_hash)
-        SELECT $1,$2,x.sequence,x.operation_code,x.name,x.work_center,x.setup_minutes,x.run_minutes_per_unit,x.id,encode(sha256(convert_to(concat_ws('|',$2::text,x.id::text,x.sequence::text,x.operation_code,x.work_center),'UTF8')),'hex')
+        SELECT $1,$2::uuid,x.sequence,x.operation_code,x.name,x.work_center_code,x.setup_minutes,x.run_minutes_per_unit,x.id,encode(sha256(convert_to(concat_ws('|',$2::text,x.id::text,x.sequence::text,x.operation_code,x.work_center_code),'UTF8')),'hex')
         FROM manufacturing_routing_operations x WHERE x.tenant_id=$1 AND x.routing_version_id=$3 ORDER BY x.sequence`,
         [context.actor.companyId, order.id, input.routingVersionId],
       );

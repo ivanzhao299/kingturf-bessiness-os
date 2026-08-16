@@ -43,6 +43,7 @@ const [
   mrpPolicies,
   mrpDemands,
   mrpRuns,
+  productionOrders,
 ] = await Promise.all([
   get('/api/v1/quotes'),
   get('/api/v1/credit-decisions'),
@@ -66,6 +67,7 @@ const [
   get('/api/v1/mrp-policies'),
   get('/api/v1/mrp-demands'),
   get('/api/v1/mrp-runs'),
+  get('/api/v1/production-orders'),
 ]);
 const finishedGood = manufacturingItems.find(
   (item) => item.sku === 'FG-KT-PRO-50' && item.status === 'PUBLISHED',
@@ -123,6 +125,26 @@ assert.equal(
 );
 for (const calculation of mrpRun.calculations)
   assert.match(calculation.canonical_hash, /^[0-9a-f]{64}$/u);
+const productionOrder = productionOrders.find(
+  (item) => (item.order_number ?? item.orderNumber) === 'WO-KT-2026-001',
+);
+assert.equal(productionOrder?.state, 'CLOSED');
+assert.deepEqual(
+  productionOrder.operations.map((operation) => operation.operation_code),
+  ['TUFT', 'COAT', 'PACK'],
+);
+assert.equal(productionOrder.materials.length, 1);
+assert.equal(productionOrder.materials[0].transaction_type, 'ISSUE');
+assert.equal(Number(productionOrder.materials[0].quantity), 1287.5);
+assert.equal(productionOrder.reports.length, 3);
+assert(productionOrder.reports.every((report) => Number(report.good_quantity) === 1000));
+assert.equal(productionOrder.rolls.length, 1);
+assert.equal(productionOrder.rolls[0].roll_number, 'ROLL-KT-2026-001');
+assert.equal(Number(productionOrder.rolls[0].quantity), 1000);
+assert.deepEqual(
+  productionOrder.events.map((event) => event.state),
+  ['DRAFT', 'RELEASED', 'IN_PROGRESS', 'COMPLETED', 'CLOSED'],
+);
 const supplier = suppliers.find(
   (item) => (item.supplier_number ?? item.supplierNumber) === 'SUP-KT-YARN-001',
 );
@@ -155,10 +177,14 @@ assert.equal(goodsReceipt?.lines[0].lotNumber, 'LOT-KT-YARN-20260920-A');
 const yarnBalance = inventoryBalances.find(
   (item) => item.lotNumber === 'LOT-KT-YARN-20260920-A' && item.locationCode === 'RAW-A01',
 );
-assert.equal(Number(yarnBalance?.quantity), 5000, 'receipt must derive 5000 kg lot balance');
+assert.equal(
+  Number(yarnBalance?.quantity),
+  3712.5,
+  'receipt less governed production issue must derive the remaining lot balance',
+);
 assert.deepEqual(
   yarnBalance.movements.map((movement) => movement.movement_type),
-  ['RECEIPT'],
+  ['RECEIPT', 'ISSUE'],
   'inventory balance must be derived from the immutable movement ledger',
 );
 const quote = quotes.find(
@@ -338,6 +364,14 @@ process.stdout.write(
         cashCollected: dashboard.metrics.cashCollected.value,
         openReceivable: dashboard.metrics.openReceivable.value,
         releasedOrders: dashboard.metrics.releasedOrders.value,
+      },
+      production: {
+        id: productionOrder.id,
+        state: productionOrder.state,
+        operations: productionOrder.operations.length,
+        materialTransactions: productionOrder.materials.length,
+        reports: productionOrder.reports.length,
+        rolls: productionOrder.rolls.length,
       },
     },
     null,

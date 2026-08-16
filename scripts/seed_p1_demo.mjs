@@ -923,6 +923,146 @@ for (const proposal of mrpRun.proposals) {
     });
 }
 
+const productionProposal = mrpRun.proposals.find(
+  (proposal) => proposal.proposal_type === 'PRODUCTION' && Number(proposal.quantity) === 1000,
+);
+assert(productionProposal, 'released 1,000m² production proposal is required');
+const yarnLot = (await list('/api/v1/inventory-balances')).find(
+  (item) => (item.lot_number ?? item.lotNumber) === 'LOT-KT-YARN-20260920-A',
+);
+assert(yarnLot, 'received yarn lot is required');
+assert.equal(
+  yarnLot.quality_status ?? yarnLot.qualityStatus,
+  'RELEASED',
+  'production demo requires the yarn lot to be quality released',
+);
+let productionOrder = (await list('/api/v1/production-orders')).find(
+  (item) => (item.order_number ?? item.orderNumber) === 'WO-KT-2026-001',
+);
+productionOrder ??= await request('/api/v1/production-orders', {
+  method: 'POST',
+  body: {
+    orderNumber: 'WO-KT-2026-001',
+    itemVersionId: finishedGood.id,
+    routingVersionId: routing.id,
+    mrpProposalId: productionProposal.id,
+    plannedQuantity: '1000',
+    plannedStartAt: '2026-08-13',
+    plannedDueAt: '2026-08-20',
+    sourceReference: 'MRP-KT-2026-001-PRODUCTION-1000',
+  },
+});
+const reloadProductionOrder = async () =>
+  (await list('/api/v1/production-orders')).find((item) => item.id === productionOrder.id);
+productionOrder = await reloadProductionOrder();
+if (productionOrder.state === 'DRAFT') {
+  await request(`/api/v1/production-orders/${productionOrder.id}/release`, {
+    method: 'POST',
+    body: {
+      reason: '已核对下达的 MRP 建议与发布工艺',
+      evidence: { mrpProposalId: productionProposal.id, routingVersionId: routing.id },
+      idempotencyKey: 'WO-KT-2026-001-RELEASE',
+    },
+  });
+  productionOrder = await reloadProductionOrder();
+}
+if (productionOrder.state === 'RELEASED') {
+  await request(`/api/v1/production-orders/${productionOrder.id}/start`, {
+    method: 'POST',
+    body: {
+      reason: 'A 班开工，原料已备齐',
+      evidence: { shift: 'A', supervisor: adminEmployeeId },
+      idempotencyKey: 'WO-KT-2026-001-START',
+    },
+  });
+  productionOrder = await reloadProductionOrder();
+}
+if (productionOrder.materials.length === 0) {
+  await request(`/api/v1/production-orders/${productionOrder.id}/materials`, {
+    method: 'POST',
+    body: {
+      transactionType: 'ISSUE',
+      itemVersionId: yarn.id,
+      lotId: yarnLot.lotId ?? yarnLot.lot_id,
+      locationId: location.id,
+      quantity: '1287.5',
+      reason: '按 1,000m² BOM 含 3% 损耗领用草纱',
+      occurredAt: '2026-08-17T08:00:00.000Z',
+      idempotencyKey: 'WO-KT-2026-001-YARN-ISSUE',
+    },
+  });
+  productionOrder = await reloadProductionOrder();
+}
+for (const operation of productionOrder.operations) {
+  if (
+    !productionOrder.reports.some(
+      (report) =>
+        (report.production_order_operation_id ?? report.productionOrderOperationId) ===
+        operation.id,
+    )
+  )
+    await request(`/api/v1/production-orders/${productionOrder.id}/operation-reports`, {
+      method: 'POST',
+      body: {
+        operationId: operation.id,
+        goodQuantity: '1000',
+        scrapQuantity: operation.operation_code === 'TUFT' ? '12.5' : '0',
+        laborMinutes: operation.operation_code === 'TUFT' ? '860' : '540',
+        machineMinutes: operation.operation_code === 'PACK' ? '220' : '800',
+        startedAt: `2026-08-${operation.sequence === 10 ? '17' : operation.sequence === 20 ? '18' : '19'}T08:00:00.000Z`,
+        completedAt: `2026-08-${operation.sequence === 10 ? '17' : operation.sequence === 20 ? '18' : '19'}T20:00:00.000Z`,
+        notes: `${operation.name} 完成并由班组长确认`,
+        idempotencyKey: `WO-KT-2026-001-${operation.operation_code}-REPORT`,
+      },
+    });
+}
+productionOrder = await reloadProductionOrder();
+const finalReport = productionOrder.reports.find((report) => {
+  const operation = productionOrder.operations.find(
+    (item) =>
+      item.id === (report.production_order_operation_id ?? report.productionOrderOperationId),
+  );
+  return operation?.operation_code === 'PACK';
+});
+assert(finalReport, 'final packaging operation report is required');
+if (productionOrder.rolls.length === 0) {
+  await request(`/api/v1/production-orders/${productionOrder.id}/finished-rolls`, {
+    method: 'POST',
+    body: {
+      operationReportId: finalReport.id,
+      itemVersionId: finishedGood.id,
+      rollNumber: 'ROLL-KT-2026-001',
+      lotNumber: 'LOT-KT-FG-20260819-A',
+      locationId: location.id,
+      quantity: '1000',
+      manufacturedAt: '2026-08-19',
+    },
+  });
+  productionOrder = await reloadProductionOrder();
+}
+if (productionOrder.state === 'IN_PROGRESS') {
+  await request(`/api/v1/production-orders/${productionOrder.id}/complete`, {
+    method: 'POST',
+    body: {
+      reason: '全部工序已完成且成品卷已入库待检',
+      evidence: { finalReportId: finalReport.id, rollNumber: 'ROLL-KT-2026-001' },
+      idempotencyKey: 'WO-KT-2026-001-COMPLETE',
+    },
+  });
+  productionOrder = await reloadProductionOrder();
+}
+if (productionOrder.state === 'COMPLETED') {
+  await request(`/api/v1/production-orders/${productionOrder.id}/close`, {
+    method: 'POST',
+    body: {
+      reason: '计划数量、序列卷和库存收货已核对',
+      evidence: { outputQuantity: '1000', inventoryState: 'QUARANTINE' },
+      idempotencyKey: 'WO-KT-2026-001-CLOSE',
+    },
+  });
+  productionOrder = await reloadProductionOrder();
+}
+
 process.stdout.write(
-  `${JSON.stringify({ baseUrl, customerId: customer.id, opportunityId: opportunity.id, quoteRevisionId: quote.id, contractRevisionId: contract.id, orderId: order.id, commissionId: commission.id, riskEvaluationId: risk.id, manufacturing: { finishedGoodVersionId: finishedGood.id, bomVersionId: bom.id, routingVersionId: routing.id }, procurement: { supplierId: supplier.id, rfqId: rfq.id, supplierQuoteId: supplierQuote.id, purchaseOrderId: purchaseOrder.id, goodsReceiptId: goodsReceipt.id, locationId: location.id }, mrp: { runId: mrpRun.id, calculationCount: mrpRun.calculations.length, proposalCount: mrpRun.proposals.length }, outcomes: ['APPROVED', 'REJECTED', 'EXPIRED'] }, null, 2)}\n`,
+  `${JSON.stringify({ baseUrl, customerId: customer.id, opportunityId: opportunity.id, quoteRevisionId: quote.id, contractRevisionId: contract.id, orderId: order.id, commissionId: commission.id, riskEvaluationId: risk.id, manufacturing: { finishedGoodVersionId: finishedGood.id, bomVersionId: bom.id, routingVersionId: routing.id }, procurement: { supplierId: supplier.id, rfqId: rfq.id, supplierQuoteId: supplierQuote.id, purchaseOrderId: purchaseOrder.id, goodsReceiptId: goodsReceipt.id, locationId: location.id }, mrp: { runId: mrpRun.id, calculationCount: mrpRun.calculations.length, proposalCount: mrpRun.proposals.length }, production: { orderId: productionOrder.id, state: productionOrder.state, operationCount: productionOrder.operations.length, materialTransactionCount: productionOrder.materials.length, reportCount: productionOrder.reports.length, rollCount: productionOrder.rolls.length }, outcomes: ['APPROVED', 'REJECTED', 'EXPIRED'] }, null, 2)}\n`,
 );
