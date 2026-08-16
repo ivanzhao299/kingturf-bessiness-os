@@ -725,6 +725,122 @@ routing ??= await request('/api/v1/manufacturing-routings', {
   },
 });
 
+let supplier = (await list('/api/v1/suppliers')).find(
+  (item) => (item.supplier_number ?? item.supplierNumber) === 'SUP-KT-YARN-001',
+);
+supplier ??= await request('/api/v1/suppliers', {
+  method: 'POST',
+  body: {
+    supplierNumber: 'SUP-KT-YARN-001',
+    name: '青岛金特夫草纱战略供应商',
+    currency: 'CNY',
+    paymentTermsDays: 30,
+    qualityRatingBasisPoints: 9300,
+    contact: { name: '供应链窗口', phone: '0532-88886666' },
+  },
+});
+if (
+  !(supplier.qualifications ?? []).some(
+    (item) =>
+      (item.item_version_id ?? item.itemVersionId) === yarn.id && item.status === 'APPROVED',
+  )
+)
+  await request(`/api/v1/suppliers/${supplier.id}/qualifications`, {
+    method: 'POST',
+    body: {
+      itemVersionId: yarn.id,
+      status: 'APPROVED',
+      validFrom: '2026-01-01',
+      validTo: '2099-12-31',
+      minimumOrderQuantity: '1000',
+      leadTimeDays: 14,
+      evidence: { audit: 'SUP-AUDIT-KT-2026-001', sample: 'PASS' },
+    },
+  });
+let location = (await list('/api/v1/inventory-locations')).find((item) => item.code === 'RAW-A01');
+location ??= await request('/api/v1/inventory-locations', {
+  method: 'POST',
+  body: { code: 'RAW-A01', name: '原料仓 A01', locationType: 'STORAGE' },
+});
+let rfq = (await list('/api/v1/procurement-rfqs')).find(
+  (item) => (item.rfq_number ?? item.rfqNumber) === 'RFQ-KT-YARN-2026-001',
+);
+rfq ??= await request('/api/v1/procurement-rfqs', {
+  method: 'POST',
+  body: {
+    rfqNumber: 'RFQ-KT-YARN-2026-001',
+    responseDueAt: '2026-09-01T00:00:00.000Z',
+    currency: 'CNY',
+    issue: true,
+    lines: [{ itemVersionId: yarn.id, quantity: '5000', requiredAt: '2026-10-01' }],
+  },
+});
+rfq = (await list('/api/v1/procurement-rfqs')).find((item) => item.id === rfq.id);
+const rfqLine = rfq.lines[0];
+let supplierQuote = (await list('/api/v1/supplier-quotes')).find(
+  (item) => (item.quote_reference ?? item.quoteReference) === 'SQ-KT-YARN-2026-001',
+);
+supplierQuote ??= await request('/api/v1/supplier-quotes', {
+  method: 'POST',
+  body: {
+    rfqId: rfq.id,
+    supplierId: supplier.id,
+    quoteReference: 'SQ-KT-YARN-2026-001',
+    receivedAt: '2026-08-25T08:00:00.000Z',
+    validUntil: '2026-12-31',
+    terms: { incoterm: 'DAP', paymentTermsDays: 30 },
+    lines: [
+      {
+        rfqLineId: rfqLine.id,
+        unitPrice: '12.5',
+        promisedAt: '2026-10-01',
+        minimumOrderQuantity: '1000',
+      },
+    ],
+  },
+});
+let purchaseOrder = (await list('/api/v1/purchase-orders')).find(
+  (item) => (item.po_number ?? item.poNumber) === 'PO-KT-YARN-2026-001',
+);
+purchaseOrder ??= await request('/api/v1/purchase-orders', {
+  method: 'POST',
+  body: {
+    poNumber: 'PO-KT-YARN-2026-001',
+    supplierId: supplier.id,
+    supplierQuoteId: supplierQuote.id,
+    currency: 'CNY',
+    issue: true,
+    lines: [
+      { itemVersionId: yarn.id, quantity: '5000', unitPrice: '12.5', requiredAt: '2026-10-01' },
+    ],
+  },
+});
+purchaseOrder = (await list('/api/v1/purchase-orders')).find(
+  (item) => item.id === purchaseOrder.id,
+);
+let goodsReceipt = (await list('/api/v1/goods-receipts')).find(
+  (item) => (item.receipt_number ?? item.receiptNumber) === 'GR-KT-YARN-2026-001',
+);
+goodsReceipt ??= await request('/api/v1/goods-receipts', {
+  method: 'POST',
+  body: {
+    receiptNumber: 'GR-KT-YARN-2026-001',
+    purchaseOrderId: purchaseOrder.id,
+    receivedAt: '2026-10-01T08:00:00.000Z',
+    sourceReference: 'DN-KT-YARN-001',
+    lines: [
+      {
+        purchaseOrderLineId: purchaseOrder.lines[0].id,
+        lotNumber: 'LOT-KT-YARN-20260920-A',
+        locationCode: location.code,
+        quantity: '5000',
+        manufacturedAt: '2026-09-20',
+        expiresAt: null,
+      },
+    ],
+  },
+});
+
 process.stdout.write(
-  `${JSON.stringify({ baseUrl, customerId: customer.id, opportunityId: opportunity.id, quoteRevisionId: quote.id, contractRevisionId: contract.id, orderId: order.id, commissionId: commission.id, riskEvaluationId: risk.id, manufacturing: { finishedGoodVersionId: finishedGood.id, bomVersionId: bom.id, routingVersionId: routing.id }, outcomes: ['APPROVED', 'REJECTED', 'EXPIRED'] }, null, 2)}\n`,
+  `${JSON.stringify({ baseUrl, customerId: customer.id, opportunityId: opportunity.id, quoteRevisionId: quote.id, contractRevisionId: contract.id, orderId: order.id, commissionId: commission.id, riskEvaluationId: risk.id, manufacturing: { finishedGoodVersionId: finishedGood.id, bomVersionId: bom.id, routingVersionId: routing.id }, procurement: { supplierId: supplier.id, rfqId: rfq.id, supplierQuoteId: supplierQuote.id, purchaseOrderId: purchaseOrder.id, goodsReceiptId: goodsReceipt.id, locationId: location.id }, outcomes: ['APPROVED', 'REJECTED', 'EXPIRED'] }, null, 2)}\n`,
 );

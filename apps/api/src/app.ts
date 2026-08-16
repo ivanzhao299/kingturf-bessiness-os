@@ -522,7 +522,15 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             Record<
               string,
               | readonly [
-                  'suppliers' | 'rfqs' | 'quotes' | 'orders' | 'receipts' | 'inventory',
+                  (
+                    | 'suppliers'
+                    | 'rfqs'
+                    | 'quotes'
+                    | 'orders'
+                    | 'receipts'
+                    | 'locations'
+                    | 'inventory'
+                  ),
                   PermissionKey,
                 ]
               | undefined
@@ -533,6 +541,7 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             '/api/v1/supplier-quotes': ['quotes', 'procurement:read'],
             '/api/v1/purchase-orders': ['orders', 'procurement:read'],
             '/api/v1/goods-receipts': ['receipts', 'procurement:read'],
+            '/api/v1/inventory-locations': ['locations', 'inventory:read'],
             '/api/v1/inventory-balances': ['inventory', 'inventory:read'],
           };
           const listDefinition = procurementLists[request.pathname];

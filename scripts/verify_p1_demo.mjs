@@ -34,6 +34,12 @@ const [
   manufacturingItems,
   manufacturingBoms,
   manufacturingRoutings,
+  suppliers,
+  procurementRfqs,
+  supplierQuotes,
+  purchaseOrders,
+  goodsReceipts,
+  inventoryBalances,
 ] = await Promise.all([
   get('/api/v1/quotes'),
   get('/api/v1/credit-decisions'),
@@ -48,6 +54,12 @@ const [
   get('/api/v1/manufacturing-items'),
   get('/api/v1/manufacturing-boms'),
   get('/api/v1/manufacturing-routings'),
+  get('/api/v1/suppliers'),
+  get('/api/v1/procurement-rfqs'),
+  get('/api/v1/supplier-quotes'),
+  get('/api/v1/purchase-orders'),
+  get('/api/v1/goods-receipts'),
+  get('/api/v1/inventory-balances'),
 ]);
 const finishedGood = manufacturingItems.find(
   (item) => item.sku === 'FG-KT-PRO-50' && item.status === 'PUBLISHED',
@@ -70,6 +82,44 @@ assert.deepEqual(
   routing?.operations?.map((operation) => operation.operation_code),
   ['TUFT', 'COAT', 'PACK'],
   'published routing operations must remain ordered and complete',
+);
+const supplier = suppliers.find(
+  (item) => (item.supplier_number ?? item.supplierNumber) === 'SUP-KT-YARN-001',
+);
+assert.equal(supplier?.status, 'ACTIVE', 'active strategic yarn supplier is required');
+assert(
+  supplier.qualifications.some(
+    (item) => item.status === 'APPROVED' && (item.item_version_id ?? item.itemVersionId),
+  ),
+  'supplier must retain an approved published-item qualification',
+);
+const procurementRfq = procurementRfqs.find(
+  (item) => (item.rfq_number ?? item.rfqNumber) === 'RFQ-KT-YARN-2026-001',
+);
+assert.equal(procurementRfq?.status, 'ISSUED');
+assert.equal(procurementRfq.lines.length, 1);
+const supplierQuote = supplierQuotes.find(
+  (item) => (item.quote_reference ?? item.quoteReference) === 'SQ-KT-YARN-2026-001',
+);
+assert.match(supplierQuote?.canonical_hash ?? supplierQuote?.canonicalHash, /^[0-9a-f]{64}$/u);
+const purchaseOrder = purchaseOrders.find(
+  (item) => (item.po_number ?? item.poNumber) === 'PO-KT-YARN-2026-001',
+);
+assert.equal(purchaseOrder?.status, 'RECEIVED');
+assert.equal(Number(purchaseOrder.lines[0].quantity), 5000);
+assert.equal(Number(purchaseOrder.lines[0].receivedQuantity), 5000);
+const goodsReceipt = goodsReceipts.find(
+  (item) => (item.receipt_number ?? item.receiptNumber) === 'GR-KT-YARN-2026-001',
+);
+assert.equal(goodsReceipt?.lines[0].lotNumber, 'LOT-KT-YARN-20260920-A');
+const yarnBalance = inventoryBalances.find(
+  (item) => item.lotNumber === 'LOT-KT-YARN-20260920-A' && item.locationCode === 'RAW-A01',
+);
+assert.equal(Number(yarnBalance?.quantity), 5000, 'receipt must derive 5000 kg lot balance');
+assert.deepEqual(
+  yarnBalance.movements.map((movement) => movement.movement_type),
+  ['RECEIPT'],
+  'inventory balance must be derived from the immutable movement ledger',
 );
 const quote = quotes.find(
   (item) => item.quoteNumber === 'Q-KT-P1-DEMO' && item.status === 'ISSUED',
