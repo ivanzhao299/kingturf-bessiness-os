@@ -259,6 +259,30 @@ describe('web bootstrap', () => {
     expect(spies.releaseLead).toHaveBeenCalledWith({ ...lead, ownerId: 'employee-1' }, 'return');
   });
 
+  it('filters customer and lead work queues without losing the server-backed collection', async () => {
+    const { transport } = api();
+    const controller = new CrmController(
+      new Set(['customer:read', 'lead:read', 'lead-pool:read']),
+      transport,
+    );
+    await controller.load();
+
+    controller.customerQuery = 'acme';
+    expect(controller.visibleCustomers()).toEqual([customer]);
+    controller.customerStatus = 'ACTIVE';
+    expect(controller.visibleCustomers()).toEqual([]);
+    controller.customerStatus = 'PROSPECT';
+    controller.customerQuery = 'C-1';
+    expect(controller.visibleCustomers()).toEqual([customer]);
+
+    controller.leadQuery = 'school';
+    expect(controller.visibleLeads()).toEqual([lead]);
+    controller.leadQuery = 'website';
+    expect(controller.visibleLeads()).toEqual([]);
+    expect(controller.customers).toEqual([customer]);
+    expect(controller.pool).toEqual([lead]);
+  });
+
   it.each([
     [1280, 'desktop'],
     [800, 'tablet'],

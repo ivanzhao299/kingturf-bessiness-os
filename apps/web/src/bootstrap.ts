@@ -604,6 +604,9 @@ export class CrmController {
   public leads: readonly Lead[] = [];
   public selected: Customer360 | null = null;
   public error: string | null = null;
+  public customerQuery = '';
+  public customerStatus = 'ALL';
+  public leadQuery = '';
   public constructor(
     public readonly permissions: ReadonlySet<CrmPermission>,
     private readonly api: CrmApi,
@@ -618,6 +621,31 @@ export class CrmController {
     this.customers = customers;
     this.pool = pool;
     this.leads = leads;
+  }
+  public visibleCustomers(): readonly Customer[] {
+    const query = this.customerQuery.trim().toLocaleLowerCase('zh-CN');
+    return this.customers.filter(
+      (customer) =>
+        (this.customerStatus === 'ALL' || customer.status === this.customerStatus) &&
+        (query.length === 0 ||
+          [customer.name, customer.customerNumber, customer.ownerId].some((item) =>
+            item?.toLocaleLowerCase('zh-CN').includes(query),
+          )),
+    );
+  }
+  public visibleLeads(): readonly Lead[] {
+    const query = this.leadQuery.trim().toLocaleLowerCase('zh-CN');
+    return [...this.pool, ...this.leads]
+      .filter(
+        (lead, index, all) => all.findIndex((candidate) => candidate.id === lead.id) === index,
+      )
+      .filter(
+        (lead) =>
+          query.length === 0 ||
+          [lead.title, lead.source, lead.status].some((item) =>
+            item?.toLocaleLowerCase('zh-CN').includes(query),
+          ),
+      );
   }
   public async selectCustomer(id: string): Promise<void> {
     if (!visibleCrmSections(this.permissions).customer360) return;
@@ -694,7 +722,97 @@ const el = <K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, t
   if (text) node.textContent = text;
   return node;
 };
-const value = (message: string) => window.prompt(message)?.trim() ?? '';
+type FormField = Readonly<{
+  name: string;
+  label: string;
+  type?: 'text' | 'email' | 'tel' | 'select' | 'textarea';
+  required?: boolean;
+  placeholder?: string;
+  options?: readonly Readonly<{ value: string; label: string }>[];
+}>;
+function openForm(
+  host: HTMLElement,
+  title: string,
+  description: string,
+  fields: readonly FormField[],
+  submitLabel: string,
+  onSubmit: (values: Readonly<Record<string, string>>) => Promise<void>,
+): void {
+  const dialog = el('dialog', 'form-dialog');
+  const form = el('form', 'entity-form');
+  form.setAttribute('method', 'dialog');
+  const heading = el('div', 'dialog-heading');
+  heading.append(
+    el('p', 'eyebrow', 'KINGTURF WORKFLOW'),
+    el('h2', '', title),
+    el('p', 'muted', description),
+  );
+  form.append(heading);
+  for (const field of fields) {
+    const label = el('label', 'form-field');
+    label.append(el('span', '', field.label));
+    const control =
+      field.type === 'textarea'
+        ? el('textarea')
+        : field.type === 'select'
+          ? el('select')
+          : el('input');
+    control.setAttribute('name', field.name);
+    if (field.required) control.setAttribute('required', '');
+    if (field.placeholder) control.setAttribute('placeholder', field.placeholder);
+    if (control instanceof HTMLInputElement)
+      control.type = field.type === 'email' || field.type === 'tel' ? field.type : 'text';
+    if (control instanceof HTMLSelectElement)
+      for (const option of field.options ?? []) {
+        const item = el('option', '', option.label);
+        item.value = option.value;
+        control.append(item);
+      }
+    label.append(control);
+    form.append(label);
+  }
+  const error = el('p', 'form-error');
+  error.setAttribute('role', 'alert');
+  const actions = el('div', 'dialog-actions');
+  const cancel = el('button', 'secondary', '取消');
+  cancel.type = 'button';
+  cancel.addEventListener('click', () => {
+    dialog.close();
+  });
+  const submit = el('button', 'primary', submitLabel);
+  submit.type = 'submit';
+  actions.append(cancel, submit);
+  form.append(error, actions);
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    error.textContent = '';
+    submit.disabled = true;
+    submit.textContent = '处理中…';
+    const values = Object.fromEntries(
+      [...new FormData(form).entries()].map(([key, entry]) => [
+        key,
+        typeof entry === 'string' ? entry.trim() : '',
+      ]),
+    );
+    void onSubmit(values)
+      .then(() => {
+        dialog.close();
+      })
+      .catch((failure: unknown) => {
+        error.textContent = failure instanceof Error ? failure.message : '操作失败，请稍后重试';
+      })
+      .finally(() => {
+        submit.disabled = false;
+        submit.textContent = submitLabel;
+      });
+  });
+  dialog.append(form);
+  host.append(dialog);
+  dialog.addEventListener('close', () => {
+    dialog.remove();
+  });
+  dialog.showModal();
+}
 const displayTime = (timestamp: string | undefined) =>
   timestamp ? new Date(timestamp).toLocaleString('zh-CN') : '时间未知';
 
@@ -814,25 +932,62 @@ export function createCrmShell(controller: CrmController, width = window.innerWi
   const content = el('section', 'workspace');
   const utility = el('header', 'utility-bar');
   const search = el('div', 'global-search');
-  search.append(el('span', '', '⌕'), el('span', '', '搜索客户、订单或业务编号…'), el('kbd', '', '⌘ K'));
+  search.append(
+    el('span', '', '⌕'),
+    el('span', '', '搜索客户、订单或业务编号…'),
+    el('kbd', '', '⌘ K'),
+  );
   const profile = el('div', 'profile-chip');
-  profile.append(el('span', 'profile-avatar', '超'), el('span', '', '超级管理员'), el('span', 'chevron', '⌄'));
+  profile.append(
+    el('span', 'profile-avatar', '超'),
+    el('span', '', '超级管理员'),
+    el('span', 'chevron', '⌄'),
+  );
   utility.append(search, profile);
   content.append(utility);
   const header = el('header', 'topbar');
   const title = el('div');
-  title.append(el('p', 'eyebrow', '经营总览 · 2026 年 8 月 16 日'), el('h1', '', '早上好，超级管理员'));
+  title.append(
+    el('p', 'eyebrow', '经营总览 · 2026 年 8 月 16 日'),
+    el('h1', '', '早上好，超级管理员'),
+  );
   title.append(el('p', 'page-subtitle', '从客户机会到订单回款，关注今天最需要推进的事项。'));
   header.append(title);
   if (sections.customerCreate) {
     const create = el('button', 'primary', '＋ 新建客户');
     create.addEventListener('click', () => {
-      const name = value('客户名称');
-      const customerNumber = value('客户编号');
-      if (name && customerNumber)
-        void controller.createCustomer({ name, customerNumber, tags: [] }).then(() => {
+      openForm(
+        shell,
+        '新建客户',
+        '建立客户主档后，可继续补充联系人、商机和跟进活动。',
+        [
+          {
+            name: 'name',
+            label: '客户名称',
+            required: true,
+            placeholder: '例如：华东体育设施有限公司',
+          },
+          {
+            name: 'customerNumber',
+            label: '客户编号',
+            required: true,
+            placeholder: '例如：CUS-2026-001',
+          },
+          { name: 'tags', label: '客户标签', placeholder: '多个标签用逗号分隔' },
+        ],
+        '创建客户',
+        async (values) => {
+          await controller.createCustomer({
+            name: values.name ?? '',
+            customerNumber: values.customerNumber ?? '',
+            tags: (values.tags ?? '')
+              .split(/[,，]/u)
+              .map((tag) => tag.trim())
+              .filter(Boolean),
+          });
           bootstrapView(shell, controller);
-        });
+        },
+      );
     });
     header.append(create);
   }
@@ -855,7 +1010,16 @@ export function createCrmShell(controller: CrmController, width = window.innerWi
   flowHead.append(el('div', '', '销售到回款主链'), el('span', 'flow-caption', '端到端业务进度'));
   flow.append(flowHead);
   const flowRail = el('div', 'flow-rail');
-  for (const [index, label] of ['线索', '客户', '商机', 'CTR', '报价', '合同', '订单', '回款'].entries()) {
+  for (const [index, label] of [
+    '线索',
+    '客户',
+    '商机',
+    'CTR',
+    '报价',
+    '合同',
+    '订单',
+    '回款',
+  ].entries()) {
     const step = el('div', `flow-step${index === 0 ? ' current' : ''}`);
     step.append(el('span', 'flow-node', String(index + 1)), el('span', '', label));
     flowRail.append(step);
@@ -870,15 +1034,52 @@ export function createCrmShell(controller: CrmController, width = window.innerWi
     const list = el('article', 'panel customer-list');
     const listHead = el('div', 'panel-head');
     const listTitle = el('div');
-    listTitle.append(el('h2', '', '重点客户'), el('p', 'muted', `${String(controller.customers.length)} 个可见客户`));
+    listTitle.append(
+      el('h2', '', '重点客户'),
+      el('p', 'muted', `${String(controller.customers.length)} 个可见客户`),
+    );
     listHead.append(listTitle, el('button', 'text-button', '查看全部 →'));
-    list.append(listHead);
+    const filters = el('div', 'list-filters');
+    const customerSearch = el('input', 'filter-search');
+    customerSearch.type = 'search';
+    customerSearch.placeholder = '搜索客户名称或编号';
+    customerSearch.value = controller.customerQuery;
+    customerSearch.addEventListener('input', () => {
+      controller.customerQuery = customerSearch.value;
+      bootstrapView(shell, controller);
+    });
+    const statusFilter = el('select', 'filter-select');
+    for (const [status, label] of [
+      ['ALL', '全部状态'],
+      ['PROSPECT', '潜在客户'],
+      ['ACTIVE', '合作客户'],
+      ['INACTIVE', '暂停合作'],
+      ['ARCHIVED', '已归档'],
+    ] as const) {
+      const option = el('option', '', label);
+      option.value = status;
+      option.selected = controller.customerStatus === status;
+      statusFilter.append(option);
+    }
+    statusFilter.addEventListener('change', () => {
+      controller.customerStatus = statusFilter.value;
+      bootstrapView(shell, controller);
+    });
+    filters.append(customerSearch, statusFilter);
+    list.append(listHead, filters);
+    const visibleCustomers = controller.visibleCustomers();
     if (controller.customers.length === 0) {
       const empty = el('div', 'empty-state');
-      empty.append(el('span', 'empty-icon', '◇'), el('strong', '', '还没有客户数据'), el('p', '', '新建第一个客户，开始沉淀线索、商机与跟进记录。'));
+      empty.append(
+        el('span', 'empty-icon', '◇'),
+        el('strong', '', '还没有客户数据'),
+        el('p', '', '新建第一个客户，开始沉淀线索、商机与跟进记录。'),
+      );
       list.append(empty);
+    } else if (visibleCustomers.length === 0) {
+      list.append(el('p', 'empty filter-empty', '没有符合当前筛选条件的客户'));
     }
-    for (const customer of controller.customers) {
+    for (const customer of visibleCustomers) {
       const row = el('button', 'customer-row');
       row.append(
         el('span', 'avatar', customer.name?.slice(0, 1) ?? '?'),
@@ -916,29 +1117,16 @@ export function createCrmShell(controller: CrmController, width = window.innerWi
       controller.selected.customer.ownerId === null
         ? 'customer-ownership:assign'
         : 'customer-ownership:reassign';
-    const actions: readonly [CrmPermission, string, () => Promise<void>][] = [
-      [
-        'customer:update',
-        '添加联系人',
-        () => controller.mutateSelected('contact', value('联系人姓名'), value('联系人邮箱')),
-      ],
-      [
-        'customer-activity:create',
-        '记录活动',
-        () => controller.mutateSelected('activity', value('活动摘要')),
-      ],
-      [
-        'customer:lifecycle',
-        '变更状态',
-        () => controller.mutateSelected('lifecycle', value('目标状态'), value('变更原因')),
-      ],
+    const actions: readonly [CrmPermission, string][] = [
+      ['customer:update', '添加联系人'],
+      ['customer-activity:create', '记录活动'],
+      ['customer:lifecycle', '变更状态'],
       [
         ownershipPermission,
         ownershipPermission === 'customer-ownership:assign' ? '分配客户' : '重新分配客户',
-        () => controller.mutateSelected('ownership', value('负责人 ID'), value('分配原因')),
       ],
     ];
-    for (const [permission, label, handler] of actions)
+    for (const [permission, label] of actions)
       if (
         controller.permissions.has(permission) &&
         (permission !== 'customer:lifecycle' ||
@@ -949,9 +1137,73 @@ export function createCrmShell(controller: CrmController, width = window.innerWi
       ) {
         const button = el('button', 'secondary', label);
         button.addEventListener('click', () => {
-          void handler().then(() => {
-            bootstrapView(shell, controller);
-          });
+          const definitions: Record<string, { description: string; fields: readonly FormField[] }> =
+            {
+              添加联系人: {
+                description: '联系人至少需要填写邮箱；联系方式会受字段权限保护。',
+                fields: [
+                  { name: 'first', label: '联系人姓名', required: true },
+                  { name: 'second', label: '联系人邮箱', type: 'email', required: true },
+                ],
+              },
+              记录活动: {
+                description: '跟进记录会进入 Customer 360 活动时间线。',
+                fields: [{ name: 'first', label: '活动摘要', type: 'textarea', required: true }],
+              },
+              变更状态: {
+                description: '状态变更会保留原因、操作人和完整审计记录。',
+                fields: [
+                  {
+                    name: 'first',
+                    label: '目标状态',
+                    type: 'select',
+                    required: true,
+                    options: [
+                      { value: 'PROSPECT', label: '潜在客户' },
+                      { value: 'ACTIVE', label: '合作客户' },
+                      { value: 'INACTIVE', label: '暂停合作' },
+                      { value: 'ARCHIVED', label: '归档' },
+                    ],
+                  },
+                  { name: 'second', label: '变更原因', type: 'textarea', required: true },
+                ],
+              },
+              分配客户: {
+                description: '指定客户负责人并记录分配原因。',
+                fields: [
+                  { name: 'first', label: '负责人 ID', required: true },
+                  { name: 'second', label: '分配原因', required: true },
+                ],
+              },
+              重新分配客户: {
+                description: '改派操作会保留原负责人和新负责人记录。',
+                fields: [
+                  { name: 'first', label: '新负责人 ID', required: true },
+                  { name: 'second', label: '改派原因', required: true },
+                ],
+              },
+            };
+          const definition = definitions[label];
+          if (!definition) return;
+          openForm(
+            shell,
+            label,
+            definition.description,
+            definition.fields,
+            '确认提交',
+            async (values) => {
+              const action =
+                label === '添加联系人'
+                  ? 'contact'
+                  : label === '记录活动'
+                    ? 'activity'
+                    : label === '变更状态'
+                      ? 'lifecycle'
+                      : 'ownership';
+              await controller.mutateSelected(action, values.first ?? '', values.second ?? '');
+              bootstrapView(shell, controller);
+            },
+          );
         });
         detail.append(button);
       }
@@ -964,19 +1216,55 @@ export function createCrmShell(controller: CrmController, width = window.innerWi
     if (controller.permissions.has('lead:create')) {
       const createLead = el('button', 'secondary', '新建线索');
       createLead.addEventListener('click', () => {
-        const title = value('线索标题');
-        const source = value('线索来源');
-        if (title && source)
-          void controller.createLead({ title, source, customerId: null, pool: true }).then(() => {
+        openForm(
+          shell,
+          '新建线索',
+          '线索默认进入公海，具备权限的销售人员可以认领。',
+          [
+            {
+              name: 'title',
+              label: '线索标题',
+              required: true,
+              placeholder: '例如：学校运动场改造项目',
+            },
+            {
+              name: 'source',
+              label: '线索来源',
+              type: 'select',
+              required: true,
+              options: [
+                { value: '展会', label: '展会' },
+                { value: '网站', label: '网站' },
+                { value: '转介绍', label: '转介绍' },
+                { value: '主动开发', label: '主动开发' },
+              ],
+            },
+          ],
+          '创建线索',
+          async (values) => {
+            await controller.createLead({
+              title: values.title ?? '',
+              source: values.source ?? '',
+              customerId: null,
+              pool: true,
+            });
             bootstrapView(shell, controller);
-          });
+          },
+        );
       });
       leadHeader.append(createLead);
     }
     leads.append(leadHeader);
-    const visibleLeads = [...controller.pool, ...controller.leads].filter(
-      (lead, index, all) => all.findIndex((candidate) => candidate.id === lead.id) === index,
-    );
+    const leadSearch = el('input', 'filter-search lead-search');
+    leadSearch.type = 'search';
+    leadSearch.placeholder = '搜索线索标题、来源或状态';
+    leadSearch.value = controller.leadQuery;
+    leadSearch.addEventListener('input', () => {
+      controller.leadQuery = leadSearch.value;
+      bootstrapView(shell, controller);
+    });
+    leads.append(leadSearch);
+    const visibleLeads = controller.visibleLeads();
     for (const lead of visibleLeads) {
       const row = el('div', 'lead-row', `${lead.title ?? lead.id} · ${lead.source ?? '—'}`);
       if (sections.leadClaim && lead.status === 'POOL' && Number.isInteger(lead.version)) {
@@ -991,11 +1279,35 @@ export function createCrmShell(controller: CrmController, width = window.innerWi
       if (controller.permissions.has('lead:lifecycle') && Number.isInteger(lead.version)) {
         const transition = el('button', 'secondary', '变更状态');
         transition.addEventListener('click', () => {
-          void controller
-            .mutateLead(lead, 'lifecycle', value('目标状态'), value('变更原因'))
-            .then(() => {
+          openForm(
+            shell,
+            '变更线索状态',
+            '线索状态变更将写入审计记录。',
+            [
+              {
+                name: 'status',
+                label: '目标状态',
+                type: 'select',
+                required: true,
+                options: [
+                  { value: 'QUALIFIED', label: '已确认' },
+                  { value: 'DISQUALIFIED', label: '无效线索' },
+                  { value: 'CONVERTED', label: '已转化' },
+                ],
+              },
+              { name: 'reason', label: '变更原因', type: 'textarea', required: true },
+            ],
+            '确认变更',
+            async (values) => {
+              await controller.mutateLead(
+                lead,
+                'lifecycle',
+                values.status ?? '',
+                values.reason ?? '',
+              );
               bootstrapView(shell, controller);
-            });
+            },
+          );
         });
         row.append(transition);
       }
@@ -1008,11 +1320,25 @@ export function createCrmShell(controller: CrmController, width = window.innerWi
       ) {
         const assign = el('button', 'secondary', lead.ownerId === null ? '分配' : '改派');
         assign.addEventListener('click', () => {
-          void controller
-            .mutateLead(lead, 'assignment', value('负责人 ID'), value('分配原因'))
-            .then(() => {
+          openForm(
+            shell,
+            lead.ownerId === null ? '分配线索' : '改派线索',
+            '指定负责人并保留分配原因。',
+            [
+              { name: 'assigneeId', label: '负责人 ID', required: true },
+              { name: 'reason', label: '分配原因', type: 'textarea', required: true },
+            ],
+            '确认分配',
+            async (values) => {
+              await controller.mutateLead(
+                lead,
+                'assignment',
+                values.assigneeId ?? '',
+                values.reason ?? '',
+              );
               bootstrapView(shell, controller);
-            });
+            },
+          );
         });
         row.append(assign);
       }
@@ -1024,9 +1350,17 @@ export function createCrmShell(controller: CrmController, width = window.innerWi
       ) {
         const release = el('button', 'secondary', '释放公海');
         release.addEventListener('click', () => {
-          void controller.mutateLead(lead, 'release', '', value('释放原因')).then(() => {
-            bootstrapView(shell, controller);
-          });
+          openForm(
+            shell,
+            '释放至线索公海',
+            '释放后其他具备权限的销售人员可以认领。',
+            [{ name: 'reason', label: '释放原因', type: 'textarea', required: true }],
+            '确认释放',
+            async (values) => {
+              await controller.mutateLead(lead, 'release', '', values.reason ?? '');
+              bootstrapView(shell, controller);
+            },
+          );
         });
         row.append(release);
       }
