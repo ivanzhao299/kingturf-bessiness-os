@@ -2467,7 +2467,7 @@ export function commercialWorkspaceStructure(
     const orders = controller.views.get('/api/v1/sales-orders') ?? [];
     if (permissions.has('ar:post') && orders.length) {
       const post = el('button', 'primary', '＋ 过账应收');
-      post.addEventListener('click', () =>
+      post.addEventListener('click', () => {
         openForm(
           workspace,
           '过账应收发票',
@@ -2503,8 +2503,8 @@ export function commercialWorkspaceStructure(
             await controller.load();
             status.textContent = controller.message;
           },
-        ),
-      );
+        );
+      });
       heading.append(copy, post);
     } else heading.append(copy);
     panel.append(heading);
@@ -2542,7 +2542,7 @@ export function commercialWorkspaceStructure(
     );
     if (permissions.has('bank-payment:intake')) {
       const intake = el('button', 'primary', '＋ 登记银行收款');
-      intake.addEventListener('click', () =>
+      intake.addEventListener('click', () => {
         openForm(
           workspace,
           '登记银行收款',
@@ -2586,8 +2586,8 @@ export function commercialWorkspaceStructure(
             await controller.load();
             status.textContent = controller.message;
           },
-        ),
-      );
+        );
+      });
       heading.append(copy, intake);
     } else heading.append(copy);
     panel.append(heading);
@@ -2627,12 +2627,13 @@ export function commercialWorkspaceStructure(
     if (!list.childElementCount) list.append(el('p', 'pipeline-empty', '暂无银行收款。'));
     panel.append(list);
     const runs = controller.views.get('/api/v1/reconciliation-runs') ?? [];
-    if (runs.length)
+    const latestRun = runs[0];
+    if (latestRun)
       panel.append(
         el(
           'p',
           'version-pin',
-          `最近核销 ${recordText(runs[0]!, 'resultHash', 'result_hash').slice(0, 12)} · 共 ${String(runs.length)} 次可审计运行`,
+          `最近核销 ${recordText(latestRun, 'resultHash', 'result_hash').slice(0, 12)} · 共 ${String(runs.length)} 次可审计运行`,
         ),
       );
     workspace.append(panel);

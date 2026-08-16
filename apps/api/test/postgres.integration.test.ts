@@ -214,14 +214,16 @@ describe('PostgreSQL identity and authorization behavior', () => {
   });
 
   it('loads and enforces persisted grants for all six DataScopes', async () => {
-    const permission = randomUUID();
+    const permissionRow = (
+      await database.query<{ id: string }>(
+        "SELECT id FROM permissions WHERE capability='employee:read'",
+      )
+    ).rows[0];
+    if (!permissionRow) throw new Error('employee:read catalog permission is required');
+    const permission = permissionRow.id;
     const role = randomUUID();
     const identity = randomUUID();
     const tokenHash = 'a'.repeat(64);
-    await database.query(
-      "INSERT INTO permissions(id,capability,description) VALUES($1,'employee:read','Read')",
-      [permission],
-    );
     await database.query(
       "INSERT INTO roles(id,organization_id,code,name) VALUES($1,$2,'READER','Reader')",
       [role, company],
@@ -302,7 +304,7 @@ describe('PostgreSQL identity and authorization behavior', () => {
   it('secures tenant-owned grants and assignments and audits every mutation', async () => {
     const correlationId = randomUUID();
     const permission = await authorization.createPermission(
-      { capability: 'employee:update', description: 'Update' },
+      { capability: 'test-employee:update', description: 'Update test employee' },
       actor,
       correlationId,
     );
@@ -395,7 +397,7 @@ describe('PostgreSQL identity and authorization behavior', () => {
   it('administers direct scope grants transactionally within the tenant', async () => {
     const correlationId = randomUUID();
     const permission = await authorization.createPermission(
-      { capability: 'employee:create', description: 'Create' },
+      { capability: 'test-employee:create', description: 'Create test employee' },
       actor,
       correlationId,
     );

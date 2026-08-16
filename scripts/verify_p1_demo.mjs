@@ -20,25 +20,46 @@ const get = async (path) => {
   return (await result.json()).items;
 };
 
-const [decisions, orders, receivables, payments, runs] = await Promise.all([
+const [quotes, decisions, contracts, orders, receivables, payments, runs] = await Promise.all([
+  get('/api/v1/quotes'),
   get('/api/v1/credit-decisions'),
+  get('/api/v1/contracts'),
   get('/api/v1/sales-orders'),
   get('/api/v1/ar-open-items'),
   get('/api/v1/bank-payments'),
   get('/api/v1/reconciliation-runs'),
 ]);
-const statuses = new Set(decisions.map((item) => item.effective_status ?? item.effectiveStatus));
+const quote = quotes.find(
+  (item) => item.quoteNumber === 'Q-KT-P1-DEMO' && item.status === 'ISSUED',
+);
+assert(quote?.issuedSnapshotId, 'the seeded issued quote and snapshot are required');
+const quoteDecisions = decisions.filter(
+  (item) => (item.quote_revision_id ?? item.quoteRevisionId) === quote.id,
+);
+const statuses = new Set(
+  quoteDecisions.map((item) => item.effective_status ?? item.effectiveStatus),
+);
 for (const expected of ['APPROVED', 'REJECTED', 'EXPIRED'])
   assert(statuses.has(expected), `credit scenario ${expected} is required`);
 
-const orderNumber = process.env.KINGTURF_DEMO_ORDER ?? 'SO-KT-20260816-001';
+const orderNumber = process.env.KINGTURF_DEMO_ORDER ?? 'SO-KT-P1-DEMO';
 const order = orders.find((item) => (item.order_number ?? item.orderNumber) === orderNumber);
 assert(order, `released order ${orderNumber} is required`);
+assert.equal(order.quote_revision_id ?? order.quoteRevisionId, quote.id);
+const approvedDecision = quoteDecisions.find(
+  (item) => (item.effective_status ?? item.effectiveStatus) === 'APPROVED',
+);
+assert.equal(order.credit_decision_id ?? order.creditDecisionId, approvedDecision?.id);
+const contract = contracts.find(
+  (item) => item.contractNumber === 'CT-KT-P1-DEMO' && item.effectiveStatus === 'SIGNED',
+);
+assert(contract?.signatureEvidenceId, 'the seeded signed contract is required');
+assert.equal(order.contract_revision_id ?? order.contractRevisionId, contract.id);
 const openItem = receivables.find(
   (item) => (item.salesOrderId ?? item.sales_order_id) === order.id,
 );
 assert(openItem, 'the demo order must have an AR open item');
-const paymentReference = process.env.KINGTURF_DEMO_PAYMENT ?? 'BANK-KT-20260816-001';
+const paymentReference = process.env.KINGTURF_DEMO_PAYMENT ?? 'BANK-KT-P1-DEMO';
 const payment = payments.find(
   (item) => (item.bank_reference ?? item.bankReference) === paymentReference,
 );
@@ -52,6 +73,12 @@ process.stdout.write(
     {
       baseUrl,
       creditScenarios: [...statuses].sort(),
+      quote: { id: quote.id, number: quote.quoteNumber, snapshotId: quote.issuedSnapshotId },
+      contract: {
+        id: contract.id,
+        number: contract.contractNumber,
+        signatureEvidenceId: contract.signatureEvidenceId,
+      },
       order: { id: order.id, number: orderNumber, total: order.total },
       receivable: {
         id: openItem.id,

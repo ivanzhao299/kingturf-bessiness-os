@@ -137,7 +137,7 @@ describe('PostgreSQL tenant integrity', () => {
   });
   it('enforces persisted semantics and anchor rules for every DataScope', async () => {
     await getTestDatabase().query(
-      "INSERT INTO permissions(id,capability,description) VALUES($1,'employee:read','Read employees')",
+      "INSERT INTO permissions(id,capability,description) VALUES($1,'test-scope:read','Exercise scope persistence')",
       [permission],
     );
     const valid: [string, string | null][] = [

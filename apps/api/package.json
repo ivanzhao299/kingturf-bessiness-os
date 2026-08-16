@@ -14,7 +14,7 @@
     "start": "node dist/server.js",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --maxWorkers=1",
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {

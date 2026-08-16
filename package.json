@@ -20,11 +20,14 @@
     "format:check": "prettier --check .",
     "security:check": "pnpm audit --prod --audit-level high",
     "demo:verify": "node scripts/verify_p1_demo.mjs",
+    "demo:seed": "node scripts/seed_p1_demo.mjs",
+    "e2e:p1": "playwright test tests/e2e/p1-demo.spec.ts",
     "ci:database:guard": "NODE_ENV=test pnpm --filter @kingturf/database exec node --experimental-strip-types src/cli.ts guard-test-target",
     "ci:local": "NODE_ENV=test sh -c 'pnpm install --frozen-lockfile && pnpm format:check && pnpm ci:database:guard && pnpm db:migrate && pnpm db:status && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm security:check'"
   },
   "devDependencies": {
     "@eslint/js": "9.39.4",
+    "@playwright/test": "^1.62.1",
     "eslint": "9.39.4",
     "globals": "16.4.0",
     "prettier": "3.8.1",
