@@ -221,6 +221,18 @@ export class PostgresMrpRepository {
          FROM mrp_demand_signals d WHERE d.tenant_id=$1 AND d.required_at BETWEEN $3::date AND $4::date`,
         [context.actor.companyId, run.id, input.asOf, input.horizonEnd],
       );
+      const invalidBom = await tx.query(
+        `WITH RECURSIVE graph(item_version_id,path,depth,cycle) AS (
+          SELECT d.item_version_id,ARRAY[d.item_version_id],0,false FROM mrp_demand_snapshots d WHERE d.tenant_id=$1 AND d.mrp_run_id=$2
+          UNION ALL
+          SELECT l.component_item_version_id,g.path||l.component_item_version_id,g.depth+1,l.component_item_version_id=ANY(g.path)
+          FROM graph g JOIN LATERAL(SELECT v.id FROM manufacturing_bom_versions v WHERE v.tenant_id=$1 AND v.product_item_version_id=g.item_version_id AND v.status='PUBLISHED' AND v.effective_at<=$3 ORDER BY v.effective_at DESC,v.version DESC LIMIT 1)b ON true
+          JOIN manufacturing_bom_lines l ON l.bom_version_id=b.id AND l.tenant_id=$1 WHERE NOT g.cycle AND g.depth<21
+        ) SELECT 1 FROM graph g WHERE g.cycle OR (g.depth=21 AND EXISTS(SELECT 1 FROM manufacturing_bom_versions v JOIN manufacturing_bom_lines l ON l.bom_version_id=v.id AND l.tenant_id=v.tenant_id WHERE v.tenant_id=$1 AND v.product_item_version_id=g.item_version_id AND v.status='PUBLISHED')) LIMIT 1`,
+        [context.actor.companyId, run.id, input.asOf],
+      );
+      if (invalidBom.rowCount)
+        throw new DomainError('conflict', 'MRP rejected a cyclic or excessively deep BOM graph');
       const calculations = await tx.query<{ id: string }>(
         `WITH RECURSIVE exploded(item_version_id,required_at,quantity,path,depth) AS (
           SELECT d.item_version_id,d.required_at,d.quantity,ARRAY[d.item_version_id],0 FROM mrp_demand_snapshots d WHERE d.tenant_id=$1 AND d.mrp_run_id=$2
