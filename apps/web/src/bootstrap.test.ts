@@ -185,6 +185,7 @@ describe('web bootstrap', () => {
       manufacturing: false,
       procurement: false,
       mrp: false,
+      production: false,
     });
     const workspace = commercialWorkspaceStructure('mobile', true) as unknown as RenderedElement;
     expect(workspace.className).toContain('mobile');
@@ -418,6 +419,86 @@ describe('web bootstrap', () => {
     expect(workspace.textContent).toContain('冻结窗口内');
     expect(workspace.textContent).toContain('净需求 628.75');
     expect(workspace.textContent).toContain('按批量取整为 1000');
+  });
+
+  it('renders production routing progress, material evidence, reports, rolls, and state ledger', async () => {
+    const api = {
+      listOpportunities: vi.fn().mockResolvedValue([]),
+      list: vi.fn().mockImplementation((path: string) =>
+        Promise.resolve(
+          path === '/api/v1/production-orders'
+            ? [
+                {
+                  id: 'order-1',
+                  order_number: 'WO-KT-2026-001',
+                  sku: 'FG-KT-PRO-50',
+                  state: 'CLOSED',
+                  planned_quantity: '1000',
+                  planned_start_at: '2026-08-13',
+                  planned_due_at: '2026-08-20',
+                  operations: [
+                    {
+                      id: 'op-1',
+                      sequence: 10,
+                      operation_code: 'TUFT',
+                      name: '簇绒',
+                      work_center: 'WC-TUFT-01',
+                    },
+                    {
+                      id: 'op-2',
+                      sequence: 20,
+                      operation_code: 'COAT',
+                      name: '背胶',
+                      work_center: 'WC-COAT-01',
+                    },
+                    {
+                      id: 'op-3',
+                      sequence: 30,
+                      operation_code: 'PACK',
+                      name: '裁切包装',
+                      work_center: 'WC-PACK-01',
+                    },
+                  ],
+                  materials: [{ transaction_type: 'ISSUE', quantity: '1287.5' }],
+                  reports: [
+                    { production_order_operation_id: 'op-1', good_quantity: '1000' },
+                    { production_order_operation_id: 'op-2', good_quantity: '1000' },
+                    { production_order_operation_id: 'op-3', good_quantity: '1000' },
+                  ],
+                  rolls: [
+                    {
+                      roll_number: 'ROLL-KT-2026-001',
+                      quantity: '1000',
+                      status: 'QUARANTINE',
+                    },
+                  ],
+                  events: ['DRAFT', 'RELEASED', 'IN_PROGRESS', 'COMPLETED', 'CLOSED'].map(
+                    (state) => ({ state }),
+                  ),
+                },
+              ]
+            : [],
+        ),
+      ),
+      submit: vi.fn().mockResolvedValue({}),
+      uploadCtrAttachment: vi.fn().mockResolvedValue({}),
+      command: vi.fn().mockResolvedValue({}),
+    };
+    const controller = new CommercialController(api, new Set(['production:read']));
+    await controller.load();
+    const workspace = commercialWorkspaceStructure(
+      'desktop',
+      false,
+      controller,
+    ) as unknown as RenderedElement;
+    expect(workspace.findByClass('production-workbench')).toHaveLength(1);
+    expect(workspace.findByClass('production-operation')).toHaveLength(3);
+    expect(workspace.findByClass('production-operation done')).toHaveLength(0);
+    expect(workspace.findByClass('done')).toHaveLength(3);
+    expect(workspace.textContent).toContain('WO-KT-2026-001 · FG-KT-PRO-50');
+    expect(workspace.textContent).toContain('ISSUE 1287.5');
+    expect(workspace.textContent).toContain('ROLL-KT-2026-001 · 1000 · QUARANTINE');
+    expect(workspace.textContent).toContain('DRAFT → RELEASED → IN_PROGRESS → COMPLETED → CLOSED');
   });
 
   it('drives commercial loading, submission, revision approval, and issue state through APIs', async () => {

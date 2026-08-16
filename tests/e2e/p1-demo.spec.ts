@@ -77,6 +77,7 @@ test('keeps the P1 evidence usable on a mobile viewport', async ({ page }, testI
     '.manufacturing-workbench',
     '.procurement-workbench',
     '.mrp-workbench',
+    '.production-workbench',
   ])
     await expect(page.locator(selector)).toBeVisible();
   await expect(page.locator('.commercial-workspace textarea[aria-label$="JSON 请求"]')).toHaveCount(
@@ -211,7 +212,7 @@ test('shows supplier qualification, received purchase order, receipt, and derive
   await expect(workbench.getByText(/PO-KT-YARN-2026-001 · RECEIVED/u)).toBeVisible();
   await expect(workbench.getByText(/收货 GR-KT-YARN-2026-001/u)).toBeVisible();
   await expect(workbench.getByText(/批次 LOT-KT-YARN-20260920-A/u)).toBeVisible();
-  await expect(workbench.getByText(/RAW-A01 · 结存 5000/u)).toBeVisible();
+  await expect(workbench.getByText(/RAW-A01 · 结存 3712.5/u)).toBeVisible();
   await testInfo.attach('procurement-inventory-desktop', {
     body: await workbench.screenshot(),
     contentType: 'image/png',
@@ -237,6 +238,25 @@ test('shows recursive MRP explanations, frozen overrides, and released proposal 
   await expect(longRangeYarn).toContainText('按批量取整为 10000');
   await expect(workbench.getByText(/冻结窗口内：批准必须提供覆盖审批证据/u)).toHaveCount(3);
   await testInfo.attach('mrp-explainable-planning-desktop', {
+    body: await workbench.screenshot(),
+    contentType: 'image/png',
+  });
+});
+
+test('shows closed production execution with routing, material, reports, and serialized output', async ({
+  page,
+}, testInfo) => {
+  await openAuthenticatedWorkspace(page);
+  const workbench = page.locator('.production-workbench');
+  await expect(workbench).toBeVisible();
+  await expect(workbench.getByText(/WO-KT-2026-001 · FG-KT-PRO-50/u)).toBeVisible();
+  await expect(workbench.locator('.production-operation.done')).toHaveCount(3);
+  await expect(workbench.getByText(/ISSUE 1287.5/u)).toBeVisible();
+  await expect(workbench.getByText(/ROLL-KT-2026-001 · 1000.*QUARANTINE/u)).toBeVisible();
+  await expect(
+    workbench.getByText(/DRAFT → RELEASED → IN_PROGRESS → COMPLETED → CLOSED/u),
+  ).toBeVisible();
+  await testInfo.attach('production-execution-desktop', {
     body: await workbench.screenshot(),
     contentType: 'image/png',
   });

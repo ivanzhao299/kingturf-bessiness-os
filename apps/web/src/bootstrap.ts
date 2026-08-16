@@ -90,7 +90,12 @@ export type CommercialPermission =
   | 'mrp:read'
   | 'mrp:run'
   | 'mrp:approve'
-  | 'mrp:release';
+  | 'mrp:release'
+  | 'production:read'
+  | 'production:plan'
+  | 'production:material'
+  | 'production:report'
+  | 'production:close';
 export type Viewport = 'desktop' | 'tablet' | 'mobile';
 export function commercialRevisionPath(section: string, rootId: string): string | null {
   const definition = (
@@ -226,6 +231,7 @@ export function visibleCommercialSections(permissions: ReadonlySet<CommercialPer
       permissions.has('procurement:read') ||
       permissions.has('inventory:read'),
     mrp: permissions.has('mrp:read') || permissions.has('mrp-policy:read'),
+    production: permissions.has('production:read'),
   } as const;
 }
 
@@ -440,6 +446,7 @@ export class CommercialController {
         ['mrp-policy:read', '/api/v1/mrp-policies'],
         ['mrp:read', '/api/v1/mrp-demands'],
         ['mrp:read', '/api/v1/mrp-runs'],
+        ['production:read', '/api/v1/production-orders'],
       ] as const;
       for (const [permission, path] of readable)
         if (this.permissions.has(permission)) this.views.set(path, await this.api.list(path));
@@ -627,6 +634,298 @@ export function commercialWorkspaceStructure(
     if (!risks.length) riskList.append(el('p', 'success-note', '当前无风险评价。'));
     details.append(orderList, riskList);
     panel.append(details);
+    workspace.append(panel);
+  }
+  if (controller && permissions.has('production:read')) {
+    const panel = el('section', 'production-workbench');
+    panel.setAttribute('data-testid', 'production-workbench');
+    const orders = controller.views.get('/api/v1/production-orders') ?? [];
+    const refresh = async () => {
+      await controller.load();
+      status.textContent = controller.message;
+    };
+    panel.append(
+      el('p', 'eyebrow', 'SHOP-FLOOR EXECUTION'),
+      el('h2', '', '生产工单与车间执行'),
+      el(
+        'p',
+        'commercial-help',
+        '从已下达 MRP 建议建立工单，固定工艺快照，贯通领退料、工序报工、成品卷号和库存收货。',
+      ),
+    );
+    if (permissions.has('production:plan')) {
+      const create = el('button', 'primary', '＋ 新建生产工单');
+      create.addEventListener('click', () => {
+        const items = controller.views.get('/api/v1/manufacturing-items') ?? [];
+        const routings = controller.views.get('/api/v1/manufacturing-routings') ?? [];
+        openForm(
+          workspace,
+          '建立生产工单',
+          '工单引用已发布物料和工艺版本；保存时固定全部标准工序快照。',
+          [
+            { name: 'orderNumber', label: '工单编号', required: true },
+            {
+              name: 'itemVersionId',
+              label: '成品版本',
+              type: 'select',
+              required: true,
+              options: items
+                .filter((item) => recordText(item, 'status', 'status') === 'PUBLISHED')
+                .map((item) => ({
+                  value: String(item.id),
+                  label: `${recordText(item, 'sku', 'sku')} · ${recordText(item, 'name', 'name')}`,
+                })),
+            },
+            {
+              name: 'routingVersionId',
+              label: '已发布工艺版本',
+              type: 'select',
+              required: true,
+              options: routings.map((item) => ({
+                value: String(item.id),
+                label: `${recordText(item, 'code', 'code')} · ${recordText(item, 'name', 'name')}`,
+              })),
+            },
+            { name: 'mrpProposalId', label: 'MRP 建议 ID（可选）' },
+            { name: 'plannedQuantity', label: '计划数量', type: 'number', required: true },
+            { name: 'plannedStartAt', label: '计划开始', type: 'date', required: true },
+            { name: 'plannedDueAt', label: '计划完成', type: 'date', required: true },
+            { name: 'sourceReference', label: '来源唯一编号', required: true },
+          ],
+          '保存工单',
+          async (values) => {
+            await controller.submit('/api/v1/production-orders', {
+              ...values,
+              ...(values.mrpProposalId ? {} : { mrpProposalId: undefined }),
+            });
+            await refresh();
+          },
+        );
+      });
+      panel.append(create);
+    }
+    const summary = el('div', 'production-summary');
+    summary.append(
+      el('div', 'metric-card', `生产工单\n${String(orders.length)} 张`),
+      el(
+        'div',
+        'metric-card',
+        `执行中\n${String(orders.filter((order) => recordText(order, 'state', 'state') === 'IN_PROGRESS').length)} 张`,
+      ),
+      el(
+        'div',
+        'metric-card',
+        `累计报工\n${String(orders.reduce((sum, order) => sum + (Array.isArray(order.reports) ? order.reports.length : 0), 0))} 条`,
+      ),
+      el(
+        'div',
+        'metric-card',
+        `成品卷\n${String(orders.reduce((sum, order) => sum + (Array.isArray(order.rolls) ? order.rolls.length : 0), 0))} 卷`,
+      ),
+    );
+    panel.append(summary);
+    const grid = el('div', 'production-order-grid');
+    for (const order of orders) {
+      const state = recordText(order, 'state', 'state');
+      const operations = Array.isArray(order.operations) ? order.operations.map(recordValue) : [];
+      const materials = Array.isArray(order.materials) ? order.materials.map(recordValue) : [];
+      const reports = Array.isArray(order.reports) ? order.reports.map(recordValue) : [];
+      const rolls = Array.isArray(order.rolls) ? order.rolls.map(recordValue) : [];
+      const events = Array.isArray(order.events) ? order.events.map(recordValue) : [];
+      const card = el('article', 'production-order-card');
+      card.append(
+        el(
+          'h3',
+          '',
+          `${recordText(order, 'orderNumber', 'order_number')} · ${recordText(order, 'sku', 'sku')}`,
+        ),
+        el('span', `ctr-state state-${state.toLowerCase()}`, state),
+        el(
+          'p',
+          '',
+          `计划 ${recordText(order, 'plannedQuantity', 'planned_quantity')} · ${recordText(order, 'plannedStartAt', 'planned_start_at')} → ${recordText(order, 'plannedDueAt', 'planned_due_at')}`,
+        ),
+      );
+      const flow = el('div', 'production-flow');
+      for (const operation of operations) {
+        const operationReports = reports.filter(
+          (report) =>
+            recordText(report, 'productionOrderOperationId', 'production_order_operation_id') ===
+            String(operation.id),
+        );
+        flow.append(
+          el(
+            'div',
+            `production-operation ${operationReports.length ? 'done' : ''}`,
+            `${recordText(operation, 'sequence', 'sequence')} · ${recordText(operation, 'name', 'name')}\n${recordText(operation, 'workCenter', 'work_center')} · 良品 ${String(operationReports.reduce((sum, report) => sum + Number(recordText(report, 'goodQuantity', 'good_quantity') || 0), 0))}`,
+          ),
+        );
+      }
+      card.append(flow);
+      const evidenceGrid = el('div', 'production-evidence-grid');
+      evidenceGrid.append(
+        el(
+          'div',
+          'evidence-card',
+          `物料台账\n${materials.map((item) => `${recordText(item, 'transactionType', 'transaction_type')} ${recordText(item, 'quantity', 'quantity')}`).join('\n') || '尚未领料'}`,
+        ),
+        el(
+          'div',
+          'evidence-card',
+          `成品序列\n${rolls.map((item) => `${recordText(item, 'rollNumber', 'roll_number')} · ${recordText(item, 'quantity', 'quantity')} · ${recordText(item, 'status', 'status')}`).join('\n') || '尚未入库'}`,
+        ),
+        el(
+          'div',
+          'evidence-card',
+          `状态证据\n${events.map((item) => recordText(item, 'state', 'state')).join(' → ')}`,
+        ),
+      );
+      card.append(evidenceGrid);
+      const actions = el('div', 'production-actions');
+      const transitions: Record<string, readonly [string, string, CommercialPermission]> = {
+        DRAFT: ['release', '下达工单', 'production:plan'],
+        RELEASED: ['start', '开始生产', 'production:report'],
+        IN_PROGRESS: ['complete', '完工确认', 'production:close'],
+        COMPLETED: ['close', '关闭工单', 'production:close'],
+      };
+      const transition = transitions[state];
+      if (transition && permissions.has(transition[2])) {
+        const button = el('button', 'primary', transition[1]);
+        button.addEventListener('click', () => {
+          openForm(
+            workspace,
+            transition[1],
+            '状态决定会追加到不可变工单事件台账，并执行完整性门禁。',
+            [
+              { name: 'reason', label: '操作理由', type: 'textarea', required: true },
+              { name: 'evidenceReference', label: '证据编号', required: true },
+            ],
+            '确认执行',
+            async (values) => {
+              await controller.submit(
+                `/api/v1/production-orders/${String(order.id)}/${transition[0]}`,
+                {
+                  reason: values.reason,
+                  evidence: { reference: values.evidenceReference },
+                  idempotencyKey: `${recordText(order, 'orderNumber', 'order_number')}-${transition[0].toUpperCase()}-${String(values.evidenceReference)}`,
+                },
+              );
+              await refresh();
+            },
+          );
+        });
+        actions.append(button);
+      }
+      if (permissions.has('production:report') && state === 'IN_PROGRESS') {
+        const report = el('button', 'secondary', '＋ 工序报工');
+        report.addEventListener('click', () => {
+          openForm(
+            workspace,
+            '登记工序报工',
+            '每次报工使用唯一幂等键；累计良品不能超过工单计划数量。',
+            [
+              {
+                name: 'operationId',
+                label: '工序',
+                type: 'select',
+                required: true,
+                options: operations.map((item) => ({
+                  value: String(item.id),
+                  label: `${recordText(item, 'sequence', 'sequence')} · ${recordText(item, 'name', 'name')}`,
+                })),
+              },
+              { name: 'goodQuantity', label: '良品数量', type: 'number', required: true },
+              {
+                name: 'scrapQuantity',
+                label: '废品数量',
+                type: 'number',
+                required: true,
+                value: '0',
+              },
+              { name: 'laborMinutes', label: '人工分钟', type: 'number', required: true },
+              { name: 'machineMinutes', label: '设备分钟', type: 'number', required: true },
+              { name: 'startedAt', label: '开始时间', type: 'datetime-local', required: true },
+              { name: 'completedAt', label: '完成时间', type: 'datetime-local', required: true },
+              { name: 'notes', label: '班组记录', type: 'textarea' },
+              { name: 'idempotencyKey', label: '报工唯一键', required: true },
+            ],
+            '提交报工',
+            async (values) => {
+              await controller.submit(
+                `/api/v1/production-orders/${String(order.id)}/operation-reports`,
+                {
+                  ...values,
+                  startedAt: new Date(values.startedAt ?? '').toISOString(),
+                  completedAt: new Date(values.completedAt ?? '').toISOString(),
+                },
+              );
+              await refresh();
+            },
+          );
+        });
+        actions.append(report);
+      }
+      if (
+        permissions.has('production:material') &&
+        (state === 'RELEASED' || state === 'IN_PROGRESS')
+      ) {
+        const balances = controller.views.get('/api/v1/inventory-balances') ?? [];
+        const material = el('button', 'secondary', '＋ 领料/退料');
+        material.addEventListener('click', () => {
+          openForm(
+            workspace,
+            '登记生产物料',
+            '领料同步写入不可变库存移动；只能领用已放行且属于工单 BOM 的批次物料。',
+            [
+              {
+                name: 'transactionType',
+                label: '业务类型',
+                type: 'select',
+                required: true,
+                options: [
+                  { value: 'ISSUE', label: '领料' },
+                  { value: 'RETURN', label: '退料' },
+                ],
+              },
+              {
+                name: 'balance',
+                label: '批次库位',
+                type: 'select',
+                required: true,
+                options: balances.map((item, index) => ({
+                  value: String(index),
+                  label: `${recordText(item, 'sku', 'sku')} · ${recordText(item, 'lotNumber', 'lotNumber')} · ${recordText(item, 'locationCode', 'locationCode')} · 可用 ${recordText(item, 'quantity', 'quantity')}`,
+                })),
+              },
+              { name: 'quantity', label: '数量', type: 'number', required: true },
+              { name: 'reason', label: '领退料原因', type: 'textarea', required: true },
+              { name: 'occurredAt', label: '发生时间', type: 'datetime-local', required: true },
+              { name: 'idempotencyKey', label: '业务唯一键', required: true },
+            ],
+            '确认过账',
+            async (values) => {
+              const balance = balances[Number(values.balance)];
+              if (!balance) throw new Error('请选择有效批次库位');
+              await controller.submit(`/api/v1/production-orders/${String(order.id)}/materials`, {
+                transactionType: values.transactionType,
+                itemVersionId: balance.itemVersionId,
+                lotId: balance.lotId,
+                locationId: balance.locationId,
+                quantity: values.quantity,
+                reason: values.reason,
+                occurredAt: new Date(values.occurredAt ?? '').toISOString(),
+                idempotencyKey: values.idempotencyKey,
+              });
+              await refresh();
+            },
+          );
+        });
+        actions.append(material);
+      }
+      card.append(actions);
+      grid.append(card);
+    }
+    panel.append(grid);
     workspace.append(panel);
   }
   if (controller && permissions.has('opportunity:read')) {
@@ -5159,7 +5458,7 @@ const el = <K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, t
 type FormField = Readonly<{
   name: string;
   label: string;
-  type?: 'text' | 'email' | 'tel' | 'number' | 'date' | 'select' | 'textarea';
+  type?: 'text' | 'email' | 'tel' | 'number' | 'date' | 'datetime-local' | 'select' | 'textarea';
   required?: boolean;
   placeholder?: string;
   value?: string;
@@ -6061,7 +6360,8 @@ export async function bootstrap(root: HTMLElement): Promise<void> {
         item.startsWith('procurement:') ||
         item.startsWith('inventory:') ||
         item.startsWith('mrp-policy:') ||
-        item.startsWith('mrp:'),
+        item.startsWith('mrp:') ||
+        item.startsWith('production:'),
     ) as CommercialPermission[],
   );
   if (Object.values(visibleCommercialSections(commercialPermissions)).some(Boolean)) {

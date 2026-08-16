@@ -1460,6 +1460,86 @@ button {
   border: 1px solid #d6dfd5;
   background: linear-gradient(145deg, #f7faf4, #edf3ea);
 }
+
+.production-workbench {
+  margin-top: 1.25rem;
+  padding: 1.5rem;
+  border: 1px solid var(--line);
+  border-radius: 1.25rem;
+  background: linear-gradient(145deg, #f7fbf4, #fff);
+}
+
+.production-summary,
+.production-order-grid,
+.production-evidence-grid {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.production-summary {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 1rem 0;
+}
+
+.production-order-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.production-order-card {
+  padding: 1rem;
+  border: 1px solid #d9e4d3;
+  border-radius: 1rem;
+  background: #fff;
+  box-shadow: 0 10px 24px rgb(38 74 45 / 7%);
+}
+
+.production-flow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin: 0.8rem 0;
+}
+
+.production-operation,
+.evidence-card {
+  padding: 0.7rem;
+  border-radius: 0.7rem;
+  background: #f4f5f2;
+  white-space: pre-line;
+  font-size: 0.82rem;
+}
+
+.production-operation.done {
+  border-left: 4px solid #3e7a4b;
+  background: #eef8ef;
+}
+
+.production-evidence-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.production-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 0.8rem;
+}
+
+@media (max-width: 900px) {
+  .production-summary,
+  .production-order-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .production-summary,
+  .production-order-grid,
+  .production-flow,
+  .production-evidence-grid {
+    grid-template-columns: 1fr;
+  }
+}
 .mrp-summary,
 .mrp-policy-grid,
 .mrp-proposal-grid {
