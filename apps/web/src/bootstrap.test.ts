@@ -519,6 +519,83 @@ describe('web bootstrap', () => {
     expect(workspace.textContent).toContain('创建报价修订');
   });
 
+  it('renders field-driven credit and contract workbenches with approval evidence', async () => {
+    const views: Record<string, readonly Record<string, unknown>[]> = {
+      '/api/v1/quotes': [
+        {
+          id: 'quote-r1',
+          quoteNumber: 'Q-1',
+          revision: 1,
+          status: 'ISSUED',
+          issuedSnapshotId: 'snapshot-1',
+          opportunityId: 'op-1',
+          currency: 'CNY',
+          total: '1000000',
+        },
+      ],
+      '/api/v1/credit-limits': [
+        { id: 'limit-1', customer_id: 'customer-1', currency: 'CNY', amount: '1500000' },
+      ],
+      '/api/v1/credit-decisions': [
+        {
+          id: 'credit-1',
+          effective_status: 'PENDING_APPROVAL',
+          requested_amount: '1000000',
+          exposure_amount: '0',
+          currency: 'CNY',
+        },
+      ],
+      '/api/v1/contracts': [
+        {
+          id: 'contract-r1',
+          contractNumber: 'C-1',
+          revision: 1,
+          effectiveStatus: 'DRAFT',
+          content: { paymentTerms: '30% 预付款', deliveryTerms: '合同生效后 30 天' },
+          content_hash: 'contract-hash',
+        },
+      ],
+    };
+    const commercialApi = {
+      listOpportunities: vi
+        .fn()
+        .mockResolvedValue([{ id: 'op-1', customerId: 'customer-1', name: '学校球场' }]),
+      list: vi.fn().mockImplementation((path: string) => Promise.resolve(views[path] ?? [])),
+      submit: vi.fn().mockResolvedValue({ id: 'created' }),
+      uploadCtrAttachment: vi.fn().mockResolvedValue({}),
+      command: vi.fn().mockResolvedValue({}),
+    };
+    const controller = new CommercialController(
+      commercialApi,
+      new Set([
+        'opportunity:read',
+        'quote:read',
+        'credit:read',
+        'credit:evaluate',
+        'credit:approve',
+        'contract:read',
+        'contract:revise',
+        'contract:sign',
+      ]),
+    );
+    controller.customers = [{ id: 'customer-1', name: '国际学校' }];
+    await controller.load();
+    const workspace = commercialWorkspaceStructure(
+      'desktop',
+      false,
+      controller,
+    ) as unknown as RenderedElement;
+    expect(workspace.findByClass('credit-workbench')).toHaveLength(1);
+    expect(workspace.findByClass('contract-workbench')).toHaveLength(1);
+    expect(workspace.textContent).toContain('设置客户额度');
+    expect(workspace.textContent).toContain('发起信用评估');
+    expect(workspace.textContent).toContain('等待信用审批');
+    expect(workspace.textContent).toContain('批准信用');
+    expect(workspace.textContent).toContain('新建合同');
+    expect(workspace.textContent).toContain('合同待签署');
+    expect(workspace.textContent).toContain('记录签署回执');
+  });
+
   it('loads only authorized APIs and exposes testable E01-E04 event handlers', async () => {
     const { transport, spies } = api();
     const denied = new CrmController(new Set(), transport);

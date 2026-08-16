@@ -308,9 +308,10 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           string,
           readonly [
             `${string}:${string}`,
-            'credit' | 'contracts' | 'orders' | 'ar' | 'payments' | 'reconciliation',
+            'limits' | 'credit' | 'contracts' | 'orders' | 'ar' | 'payments' | 'reconciliation',
           ]
         >([
+          ['/api/v1/credit-limits', ['credit:read', 'limits']],
           ['/api/v1/credit-decisions', ['credit:read', 'credit']],
           ['/api/v1/contracts', ['contract:read', 'contracts']],
           ['/api/v1/sales-orders', ['sales-order:read', 'orders']],

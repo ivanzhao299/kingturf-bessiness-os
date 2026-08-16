@@ -1086,6 +1086,50 @@ button {
   justify-content: flex-end;
   gap: 8px;
 }
+.qtc-workbench {
+  grid-column: 1 / -1;
+  padding: 20px;
+  border: 1px solid #dfe7e2;
+  border-radius: 10px;
+  background: #fff;
+}
+.qtc-workbench > .primary {
+  margin-bottom: 14px;
+}
+.qtc-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 12px;
+}
+.qtc-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 12px;
+  padding: 16px;
+  border: 1px solid #e3eae6;
+  border-radius: 9px;
+  background: #fafcfb;
+}
+.qtc-card .eyebrow,
+.qtc-card .muted,
+.qtc-card .qtc-metrics,
+.qtc-card .version-pin,
+.qtc-card .input-hash,
+.qtc-card .qtc-actions,
+.qtc-card > .primary {
+  grid-column: 1 / -1;
+}
+.qtc-metrics {
+  margin: 0;
+  color: #375044;
+  font-size: 11px;
+  font-weight: 700;
+}
+.qtc-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
 .list-filters {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 124px;

@@ -226,6 +226,7 @@ export class PostgresCommercialRepository {
       quotes: `SELECT r.id,q.id AS "quoteId",q.opportunity_id AS "opportunityId",q.quote_number AS "quoteNumber",r.revision,r.status,r.opportunity_version AS "opportunityVersion",r.opportunity_snapshot_id AS "opportunitySnapshotId",r.ctr_version_id AS "ctrVersionId",r.technical_solution_revision_id AS "technicalSolutionRevisionId",r.cost_decision_id AS "costDecisionId",r.sales_policy_version_id AS "policyVersionId",r.sales_policy_evaluation_id AS "policyEvaluationId",r.currency,r.subtotal,r.discount,r.total,r.cost_total AS "costTotal",r.margin,r.margin_basis_points AS "marginBasisPoints",r.valid_until AS "validUntil",r.issued_at AS "issuedAt",
         (SELECT coalesce(jsonb_agg(to_jsonb(l) ORDER BY l.line_number),'[]'::jsonb) FROM quote_lines l WHERE l.tenant_id=r.tenant_id AND l.quote_revision_id=r.id) lines,
         (SELECT coalesce(jsonb_agg(to_jsonb(a) ORDER BY a.decided_at),'[]'::jsonb) FROM quote_approvals a WHERE a.tenant_id=r.tenant_id AND a.quote_revision_id=r.id) approvals,
+        (SELECT s.id FROM quote_issued_snapshots s WHERE s.tenant_id=r.tenant_id AND s.quote_revision_id=r.id) AS "issuedSnapshotId",
         (SELECT s.snapshot_hash FROM quote_issued_snapshots s WHERE s.tenant_id=r.tenant_id AND s.quote_revision_id=r.id) AS "issuedSnapshotHash"
         FROM quote_revisions r JOIN quotes q ON q.id=r.quote_id AND q.tenant_id=r.tenant_id JOIN opportunities o ON o.id=q.opportunity_id AND o.tenant_id=q.tenant_id`,
     } as const;

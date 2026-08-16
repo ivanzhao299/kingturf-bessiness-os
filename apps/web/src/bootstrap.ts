@@ -202,6 +202,12 @@ const formValue = (value: unknown): string =>
   typeof value === 'string' || typeof value === 'number' ? String(value) : '';
 const textValue = (value: unknown, fallback: string): string =>
   typeof value === 'string' || typeof value === 'number' ? String(value) : fallback;
+const recordText = (
+  record: Record<string, unknown>,
+  camel: string,
+  snake: string,
+  fallback = '',
+): string => textValue(record[camel] ?? record[snake], fallback);
 const decimalValue = (value: number): string =>
   String(Math.round((value + Number.EPSILON) * 1_000_000) / 1_000_000);
 
@@ -362,6 +368,13 @@ export class CommercialController {
         ['sales-policy:read', '/api/v1/sales-policies'],
         ['sales-policy:read', '/api/v1/sales-policy-evaluations'],
         ['quote:read', '/api/v1/quotes'],
+        ['credit:read', '/api/v1/credit-limits'],
+        ['credit:read', '/api/v1/credit-decisions'],
+        ['contract:read', '/api/v1/contracts'],
+        ['sales-order:read', '/api/v1/sales-orders'],
+        ['ar:read', '/api/v1/ar-open-items'],
+        ['bank-payment:read', '/api/v1/bank-payments'],
+        ['reconciliation:read', '/api/v1/reconciliation-runs'],
       ] as const;
       for (const [permission, path] of readable)
         if (this.permissions.has(permission)) this.views.set(path, await this.api.list(path));
@@ -2011,6 +2024,299 @@ export function commercialWorkspaceStructure(
     quotePanel.append(quoteList);
     workspace.append(quotePanel);
   }
+  if (controller && permissions.has('credit:read')) {
+    const creditPanel = el('section', 'qtc-workbench credit-workbench');
+    const heading = el('div', 'pipeline-heading');
+    const copy = el('div');
+    copy.append(
+      el('h2', '', '信用审查'),
+      el('p', '', '按客户额度、应收、未开票订单和未分配收款计算真实信用敞口。'),
+    );
+    if (permissions.has('credit:approve')) {
+      const setLimit = el('button', 'secondary', '设置客户额度');
+      setLimit.addEventListener('click', () => {
+        openForm(
+          workspace,
+          '设置客户信用额度',
+          '额度按客户、币种和有效期形成不可变版本记录。',
+          [
+            {
+              name: 'customerId',
+              label: '客户',
+              type: 'select',
+              required: true,
+              options: controller.customers.map((item) => ({
+                value: item.id,
+                label: item.name ?? item.id,
+              })),
+            },
+            { name: 'amount', label: '信用额度', type: 'number', required: true },
+            {
+              name: 'currency',
+              label: '币种',
+              type: 'select',
+              required: true,
+              options: [
+                { value: 'CNY', label: '人民币 CNY' },
+                { value: 'USD', label: '美元 USD' },
+              ],
+            },
+            { name: 'effectiveAt', label: '生效日期', type: 'date', required: true },
+            { name: 'expiresAt', label: '失效日期', type: 'date', required: true },
+          ],
+          '保存额度',
+          async (values) => {
+            await controller.submit('/api/v1/credit-limits', {
+              customerId: values.customerId ?? '',
+              currency: values.currency ?? 'CNY',
+              amount: values.amount ?? '',
+              effectiveAt: new Date(`${values.effectiveAt ?? ''}T00:00:00.000Z`).toISOString(),
+              expiresAt: new Date(`${values.expiresAt ?? ''}T23:59:59.000Z`).toISOString(),
+            });
+            await controller.load();
+            status.textContent = controller.message;
+          },
+        );
+      });
+      heading.append(copy, setLimit);
+    } else heading.append(copy);
+    creditPanel.append(heading);
+    const limits = controller.views.get('/api/v1/credit-limits') ?? [];
+    const issuedQuotes = (controller.views.get('/api/v1/quotes') ?? []).filter(
+      (item) => item.status === 'ISSUED' && typeof item.issuedSnapshotId === 'string',
+    );
+    if (permissions.has('credit:evaluate') && limits.length > 0 && issuedQuotes.length > 0) {
+      const evaluateCredit = el('button', 'primary', '＋ 发起信用评估');
+      evaluateCredit.addEventListener('click', () => {
+        openForm(
+          workspace,
+          '发起信用评估',
+          '服务器会锁定客户信用台账并重新计算敞口，不能由前端覆盖。',
+          [
+            {
+              name: 'quoteRevisionId',
+              label: '已签发报价',
+              type: 'select',
+              required: true,
+              options: issuedQuotes.map((item) => ({
+                value: textValue(item.id, ''),
+                label: `${textValue(item.quoteNumber, '报价')} · R${textValue(item.revision, '1')} · ${textValue(item.currency, '')} ${textValue(item.total, '—')}`,
+              })),
+            },
+            {
+              name: 'creditLimitId',
+              label: '信用额度版本',
+              type: 'select',
+              required: true,
+              options: limits.map((item) => ({
+                value: textValue(item.id, ''),
+                label: `${recordText(item, 'currency', 'currency', 'CNY')} ${recordText(item, 'amount', 'amount', '—')} · ${recordText(item, 'expiresAt', 'expires_at', '').slice(0, 10)}`,
+              })),
+            },
+            { name: 'validUntil', label: '信用决定有效期至', type: 'date', required: true },
+          ],
+          '执行信用评估',
+          async (values) => {
+            const quote = issuedQuotes.find((item) => item.id === values.quoteRevisionId);
+            const opportunity = controller.opportunities.find(
+              (item) => item.id === quote?.opportunityId,
+            );
+            if (!quote || typeof opportunity?.customerId !== 'string')
+              throw new Error('报价未关联有效客户');
+            await controller.submit('/api/v1/credit-decisions', {
+              customerId: opportunity.customerId,
+              quoteRevisionId: textValue(quote.id, ''),
+              quoteSnapshotId: textValue(quote.issuedSnapshotId, ''),
+              creditLimitId: values.creditLimitId ?? '',
+              validUntil: new Date(`${values.validUntil ?? ''}T23:59:59.000Z`).toISOString(),
+            });
+            await controller.load();
+            status.textContent = controller.message;
+          },
+        );
+      });
+      creditPanel.append(evaluateCredit);
+    }
+    const decisions = controller.views.get('/api/v1/credit-decisions') ?? [];
+    const list = el('div', 'qtc-list');
+    for (const decision of decisions) {
+      const state = recordText(decision, 'effectiveStatus', 'effective_status', 'PENDING_APPROVAL');
+      const card = el('article', 'qtc-card');
+      card.append(
+        el('p', 'eyebrow', 'CREDIT DECISION'),
+        el(
+          'strong',
+          '',
+          state === 'APPROVED'
+            ? '信用已批准'
+            : state === 'REJECTED'
+              ? '信用已拒绝'
+              : state === 'EXPIRED'
+                ? '信用已过期'
+                : '等待信用审批',
+        ),
+        el('span', `ctr-state state-${state.toLocaleLowerCase()}`, state),
+        el(
+          'p',
+          'qtc-metrics',
+          `申请 ${recordText(decision, 'requestedAmount', 'requested_amount', '—')} ${recordText(decision, 'currency', 'currency')} · 敞口 ${recordText(decision, 'exposureAmount', 'exposure_amount', '—')} · 额度 ${recordText(decision, 'creditLimit', 'limit_amount', '—')}`,
+        ),
+        el(
+          'p',
+          'version-pin',
+          `报价 ${recordText(decision, 'quoteRevisionId', 'quote_revision_id').slice(0, 8)} · 敞口快照 ${recordText(decision, 'exposureSnapshotId', 'exposure_snapshot_id').slice(0, 8)}`,
+        ),
+      );
+      if (state === 'PENDING_APPROVAL' && permissions.has('credit:approve')) {
+        const actions = el('div', 'qtc-actions');
+        for (const [result, label] of [
+          ['APPROVED', '批准信用'],
+          ['REJECTED', '拒绝信用'],
+        ] as const) {
+          const button = el('button', result === 'APPROVED' ? 'primary' : 'secondary', label);
+          button.addEventListener('click', () => {
+            openForm(
+              workspace,
+              label,
+              '审批决定将永久保留并影响订单释放资格。',
+              [{ name: 'reason', label: '审批理由', type: 'textarea', required: true }],
+              '确认决定',
+              async (values) => {
+                await controller.submit(
+                  `/api/v1/credit-decisions/${textValue(decision.id, '')}/approve`,
+                  { decision: result, reason: values.reason ?? '' },
+                );
+                await controller.load();
+                status.textContent = controller.message;
+              },
+            );
+          });
+          actions.append(button);
+        }
+        card.append(actions);
+      }
+      list.append(card);
+    }
+    if (decisions.length === 0) list.append(el('p', 'pipeline-empty', '暂无信用决定。'));
+    creditPanel.append(list);
+    workspace.append(creditPanel);
+  }
+  if (controller && permissions.has('contract:read')) {
+    const contractPanel = el('section', 'qtc-workbench contract-workbench');
+    const heading = el('div', 'pipeline-heading');
+    const copy = el('div');
+    copy.append(
+      el('h2', '', '合同与签署'),
+      el('p', '', '合同修订固定引用已签发报价快照，签署回执与载荷哈希只读保存。'),
+    );
+    const issuedQuotes = (controller.views.get('/api/v1/quotes') ?? []).filter(
+      (item) => item.status === 'ISSUED' && typeof item.issuedSnapshotId === 'string',
+    );
+    if (permissions.has('contract:revise') && issuedQuotes.length > 0) {
+      const createContract = el('button', 'primary', '＋ 新建合同');
+      createContract.addEventListener('click', () => {
+        openForm(
+          workspace,
+          '新建合同修订',
+          '合同正文使用结构化商务条款生成，并固定到所选报价快照。',
+          [
+            {
+              name: 'quoteRevisionId',
+              label: '已签发报价',
+              type: 'select',
+              required: true,
+              options: issuedQuotes.map((item) => ({
+                value: textValue(item.id, ''),
+                label: `${textValue(item.quoteNumber, '报价')} · R${textValue(item.revision, '1')}`,
+              })),
+            },
+            { name: 'contractNumber', label: '合同编号', required: true },
+            { name: 'paymentTerms', label: '付款条款', type: 'textarea', required: true },
+            { name: 'deliveryTerms', label: '交付条款', type: 'textarea', required: true },
+            { name: 'warranty', label: '质保条款', type: 'textarea', required: true },
+            { name: 'acceptance', label: '验收标准', type: 'textarea', required: true },
+          ],
+          '创建合同修订',
+          async (values) => {
+            const quote = issuedQuotes.find((item) => item.id === values.quoteRevisionId);
+            const opportunity = controller.opportunities.find(
+              (item) => item.id === quote?.opportunityId,
+            );
+            if (!quote || typeof opportunity?.customerId !== 'string')
+              throw new Error('报价未关联有效客户');
+            await controller.submit('/api/v1/contracts', {
+              customerId: opportunity.customerId,
+              opportunityId: textValue(quote.opportunityId, ''),
+              contractNumber: values.contractNumber ?? '',
+              quoteRevisionId: textValue(quote.id, ''),
+              quoteSnapshotId: textValue(quote.issuedSnapshotId, ''),
+              content: {
+                paymentTerms: values.paymentTerms ?? '',
+                deliveryTerms: values.deliveryTerms ?? '',
+                warranty: values.warranty ?? '',
+                acceptance: values.acceptance ?? '',
+              },
+            });
+            await controller.load();
+            status.textContent = controller.message;
+          },
+        );
+      });
+      heading.append(copy, createContract);
+    } else heading.append(copy);
+    contractPanel.append(heading);
+    const contracts = controller.views.get('/api/v1/contracts') ?? [];
+    const list = el('div', 'qtc-list');
+    for (const contract of contracts) {
+      const state = recordText(contract, 'effectiveStatus', 'effectiveStatus', 'DRAFT');
+      const content = recordValue(contract.content);
+      const card = el('article', 'qtc-card');
+      card.append(
+        el(
+          'p',
+          'eyebrow',
+          `${recordText(contract, 'contractNumber', 'contractNumber', '合同')} · R${recordText(contract, 'revision', 'revision', '1')}`,
+        ),
+        el('strong', '', state === 'SIGNED' ? '合同已签署' : '合同待签署'),
+        el('span', `ctr-state state-${state.toLocaleLowerCase()}`, state),
+        el('p', 'muted', `付款：${textValue(content.paymentTerms, '—')}`),
+        el('p', 'muted', `交付：${textValue(content.deliveryTerms, '—')}`),
+        el('code', 'input-hash', recordText(contract, 'contentHash', 'content_hash')),
+      );
+      if (state === 'DRAFT' && permissions.has('contract:sign')) {
+        const sign = el('button', 'primary', '记录签署回执');
+        sign.addEventListener('click', () => {
+          openForm(
+            workspace,
+            '记录合同签署',
+            '签署平台回执、签署时间和载荷哈希将作为不可变证据保存。',
+            [
+              { name: 'provider', label: '签署平台', required: true, value: '线下盖章' },
+              { name: 'providerReceiptId', label: '回执编号', required: true },
+              { name: 'signedAt', label: '签署日期', type: 'date', required: true },
+              { name: 'signer', label: '签署人 / 经办人', required: true },
+            ],
+            '确认签署',
+            async (values) => {
+              await controller.submit(`/api/v1/contracts/${textValue(contract.id, '')}/sign`, {
+                provider: values.provider ?? '',
+                providerReceiptId: values.providerReceiptId ?? '',
+                payload: { signer: values.signer ?? '', acknowledged: true },
+                signedAt: new Date(`${values.signedAt ?? ''}T12:00:00.000Z`).toISOString(),
+              });
+              await controller.load();
+              status.textContent = controller.message;
+            },
+          );
+        });
+        card.append(sign);
+      }
+      list.append(card);
+    }
+    if (contracts.length === 0) list.append(el('p', 'pipeline-empty', '暂无合同修订。'));
+    contractPanel.append(list);
+    workspace.append(contractPanel);
+  }
   for (const [className, title, description, fields, action, path] of [
     [
       'opportunity-pipeline',
@@ -2118,6 +2424,8 @@ export function commercialWorkspaceStructure(
         '/api/v1/cost-evaluations',
         '/api/v1/sales-policy-evaluations',
         '/api/v1/quotes',
+        '/api/v1/credit-decisions',
+        '/api/v1/contracts',
       ].includes(path)
     )
       continue;
@@ -3410,7 +3718,14 @@ export async function bootstrap(root: HTMLElement): Promise<void> {
         item.startsWith('cost-model:') ||
         item.startsWith('cost:') ||
         item.startsWith('sales-policy:') ||
-        item.startsWith('quote:'),
+        item.startsWith('quote:') ||
+        item.startsWith('credit:') ||
+        item.startsWith('contract:') ||
+        item.startsWith('sales-order:') ||
+        item.startsWith('ar:') ||
+        item.startsWith('bank-payment:') ||
+        item.startsWith('reconciliation:') ||
+        item.startsWith('allocation:'),
     ) as CommercialPermission[],
   );
   if (Object.values(visibleCommercialSections(commercialPermissions)).some(Boolean)) {
