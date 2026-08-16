@@ -114,6 +114,8 @@ infra/docker         local PostgreSQL Compose configuration
 
 - [Product blueprint](docs/engineering/PRODUCT_BLUEPRINT.md)
 - [Engineering roadmap](docs/tasks/ROADMAP.md)
+- [Long-term development plan and countdown](docs/engineering/MASTER_DEVELOPMENT_PLAN.md)
+- [P1 E18-E21 closure task](docs/tasks/JTF-P1-E18-E21-CLOSURE.md)
 - [Repository bootstrap task](docs/tasks/JTF-P0-E01-REPOSITORY-BOOTSTRAP.md)
 - [Stack ADR](docs/adr/0001-typescript-monorepo-stack.md)
 - [Database ADR](docs/adr/0002-postgresql-access-and-migrations.md)

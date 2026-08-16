@@ -1,5 +1,8 @@
 # KingTurf Business OS — Engineering Roadmap
 
+长期节点、倒计时、工时和统一验收门槛见
+[`MASTER_DEVELOPMENT_PLAN.md`](../engineering/MASTER_DEVELOPMENT_PLAN.md)。
+
 ## Execution Rule
 
 Development follows ordered phases. Do not start feature sprawl before the preceding foundation gates pass.
@@ -58,10 +61,10 @@ Each Epic is decomposed into implementation tasks covering, where applicable:
 - JTF-P1-E15 AR
 - JTF-P1-E16 Bank Payment
 - JTF-P1-E17 Reconciliation — delivered with canonical ordering and retained replay results
-- JTF-P1-E18 Commission Engine
-- JTF-P1-E19 Order 360
-- JTF-P1-E20 Risk Engine v1
-- JTF-P1-E21 Executive Cockpit
+- JTF-P1-E18 Commission Engine — planned in KT-L08
+- JTF-P1-E19 Order 360 — planned in KT-L09
+- JTF-P1-E20 Risk Engine v1 — planned in KT-L10
+- JTF-P1-E21 Executive Cockpit — planned in KT-L11
 
 ## P2 — Production & Cost
 
