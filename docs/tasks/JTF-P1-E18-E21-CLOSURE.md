@@ -1,6 +1,6 @@
 # JTF-P1-E18–E21：销售到回款经营闭环
 
-状态：IN PROGRESS（E18～E20/KT-L08～KT-L10 已完成，KT-L11 继续实施）
+状态：COMPLETED（E18～E21 / KT-L08～KT-L11 已完成并通过 204 验收）
 
 ## 目标
 

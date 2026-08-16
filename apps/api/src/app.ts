@@ -39,6 +39,7 @@ import type { PostgresQuoteToCashRepository } from './qtc-repositories.ts';
 import type { PostgresCommissionRepository } from './commission-repositories.ts';
 import type { PostgresOrder360Repository } from './order-360-repositories.ts';
 import type { PostgresRiskRepository } from './risk-repositories.ts';
+import type { PostgresDashboardRepository } from './dashboard-repositories.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -91,6 +92,7 @@ export type ApiDependencies = Readonly<{
   commissions?: PostgresCommissionRepository;
   order360?: PostgresOrder360Repository;
   risks?: PostgresRiskRepository;
+  dashboard?: PostgresDashboardRepository;
   readiness?: () => Promise<boolean>;
   telemetry?: Telemetry;
   logger?: OperationalLogger;
@@ -301,6 +303,55 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               permissions: [...context.permissions.keys()].sort(),
             },
           };
+        if (
+          request.method === 'GET' &&
+          request.pathname === '/api/v1/executive-dashboard' &&
+          dependencies.dashboard
+        ) {
+          const grant = authorizeQuery(context, 'executive-dashboard:read');
+          const from = timestamp(request.query?.from, 'from');
+          const to = timestamp(request.query?.to, 'to');
+          if (new Date(from).getTime() >= new Date(to).getTime())
+            throw new DomainError('invalid_request', 'from must be before to');
+          const aggregate = (await dependencies.dashboard.get(
+            { from, to, currency: currency(request.query?.currency) },
+            { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+          )) as Record<string, unknown>;
+          const metrics = aggregate.metrics as Record<string, unknown>;
+          const metricCapabilities = {
+            weightedForecast: 'opportunity:read',
+            bookedRevenue: 'sales-order:read',
+            grossMargin: 'quote:read',
+            cashCollected: 'reconciliation:read',
+            openReceivable: 'ar:read',
+            overdueReceivable: 'ar:read',
+            releasedOrders: 'sales-order:read',
+            activeRisks: 'risk:read',
+            criticalRisks: 'risk:read',
+            commissionAccrued: 'commission:read',
+          } as const satisfies Record<string, PermissionKey>;
+          const visibleMetrics = Object.fromEntries(
+            Object.entries(metricCapabilities)
+              .filter(([, capability]) => context.permissions.has(capability))
+              .map(([key]) => [key, metrics[key]]),
+          );
+          const drilldowns = aggregate.drilldowns as Record<string, unknown>;
+          return {
+            statusCode: 200,
+            body: {
+              filters: aggregate.filters,
+              refreshedAt: aggregate.refreshedAt,
+              metrics: visibleMetrics,
+              drilldowns: {
+                ...(context.permissions.has('sales-order:read')
+                  ? { orders: drilldowns.orders }
+                  : {}),
+                ...(context.permissions.has('ar:read') ? { overdue: drilldowns.overdue } : {}),
+                ...(context.permissions.has('risk:read') ? { risks: drilldowns.risks } : {}),
+              },
+            },
+          };
+        }
         if (dependencies.risks) {
           if (request.method === 'GET' && request.pathname === '/api/v1/risk-policies') {
             const grant = authorizeQuery(context, 'risk-policy:read');

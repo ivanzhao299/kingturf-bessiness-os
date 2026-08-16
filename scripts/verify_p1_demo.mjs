@@ -151,6 +151,20 @@ assert.deepEqual(
   risk.taskEvents.map((item) => item.state),
   ['OPEN', 'ACKNOWLEDGED', 'ESCALATED', 'CLOSED'],
 );
+const dashboardResponse = await fetch(
+  `${baseUrl}/api/v1/executive-dashboard?from=2026-01-01T00%3A00%3A00.000Z&to=2027-01-01T00%3A00%3A00.000Z&currency=CNY`,
+  { headers: { authorization: `Bearer ${token}` } },
+);
+assert.equal(dashboardResponse.status, 200, 'executive dashboard must be readable');
+const dashboard = await dashboardResponse.json();
+assert(Number(dashboard.metrics.bookedRevenue.value) >= Number(order.total));
+assert(Number(dashboard.metrics.grossMargin.value) >= 229000);
+assert(Number(dashboard.metrics.cashCollected.value) >= 950000);
+assert.equal(dashboard.metrics.bookedRevenue.source, 'sales_orders');
+assert.equal(dashboard.metrics.grossMargin.source, 'quote_revisions');
+assert.equal(dashboard.metrics.openReceivable.source, 'ar_open_item_balances');
+assert(dashboard.drilldowns.orders.some((item) => item.id === order.id));
+assert(dashboard.drilldowns.risks.some((item) => item.id === risk.id));
 
 process.stdout.write(
   `${JSON.stringify(
@@ -200,6 +214,13 @@ process.stdout.write(
         ],
       },
       risk: { id: risk.id, severity: risk.severity, score: risk.score, taskState: 'CLOSED' },
+      dashboard: {
+        bookedRevenue: dashboard.metrics.bookedRevenue.value,
+        grossMargin: dashboard.metrics.grossMargin.value,
+        cashCollected: dashboard.metrics.cashCollected.value,
+        openReceivable: dashboard.metrics.openReceivable.value,
+        releasedOrders: dashboard.metrics.releasedOrders.value,
+      },
     },
     null,
     2,

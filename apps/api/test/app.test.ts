@@ -18,6 +18,7 @@ import type { PostgresCrmRepository } from '../src/crm-repositories.js';
 import type { PostgresCommissionRepository } from '../src/commission-repositories.js';
 import type { PostgresOrder360Repository } from '../src/order-360-repositories.js';
 import type { PostgresRiskRepository } from '../src/risk-repositories.js';
+import type { PostgresDashboardRepository } from '../src/dashboard-repositories.js';
 import type { AuthenticationService } from '../src/security.js';
 
 const employeeId = '10000000-0000-4000-8000-000000000001';
@@ -198,6 +199,19 @@ function dependencies(authContext: AuthorizationContext | null) {
     evaluate: riskEvaluate,
     transitionTask: riskTransition,
   } as unknown as PostgresRiskRepository;
+  const dashboardGet = vi.fn(() =>
+    Promise.resolve({
+      filters: { from: '2026-01-01', to: '2027-01-01', currency: 'CNY' },
+      refreshedAt: '2026-08-16T00:00:00.000Z',
+      metrics: {
+        bookedRevenue: { value: '950000', source: 'sales_orders' },
+        openReceivable: { value: '0', source: 'ar_open_item_balances' },
+        activeRisks: { value: 1, source: 'risk_evaluations' },
+      },
+      drilldowns: { orders: [{ id: targetId }], overdue: [], risks: [{ id: organizationId }] },
+    }),
+  );
+  const dashboard = { get: dashboardGet } as unknown as PostgresDashboardRepository;
   return {
     auth,
     organizations,
@@ -207,6 +221,8 @@ function dependencies(authContext: AuthorizationContext | null) {
     commissions,
     order360,
     risks,
+    dashboard,
+    dashboardGet,
     riskEvaluate,
     riskTransition,
     order360Get,
@@ -875,5 +891,34 @@ describe('authorization management API', () => {
         )
       ).statusCode,
     ).toBe(403);
+  });
+  it('keeps executive metrics and drilldowns bounded by source permissions', async () => {
+    const permissions: AuthorizationContext['permissions'] = new Map([
+      ['executive-dashboard:read', { scopes: ['TEAM'] as const, fields: null }],
+      ['sales-order:read', { scopes: ['COMPANY'] as const, fields: null }],
+      ['risk:read', { scopes: ['COMPANY'] as const, fields: null }],
+    ]);
+    const deps = dependencies(context(permissions));
+    const response = await buildApp(deps).dispatch({
+      method: 'GET',
+      pathname: '/api/v1/executive-dashboard',
+      query: {
+        from: '2026-01-01T00:00:00.000Z',
+        to: '2027-01-01T00:00:00.000Z',
+        currency: 'CNY',
+      },
+      headers: { authorization: 'Bearer opaque' },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toMatchObject({
+      metrics: { bookedRevenue: { value: '950000' }, activeRisks: { value: 1 } },
+      drilldowns: { orders: [{ id: targetId }], risks: [{ id: organizationId }] },
+    });
+    expect(response.body).not.toHaveProperty('metrics.openReceivable');
+    expect(response.body).not.toHaveProperty('drilldowns.overdue');
+    expect(deps.dashboardGet).toHaveBeenCalledWith(
+      expect.objectContaining({ currency: 'CNY' }),
+      expect.objectContaining({ scopes: ['TEAM'] }),
+    );
   });
 });

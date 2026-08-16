@@ -181,6 +181,7 @@ describe('web bootstrap', () => {
       reconciliation: false,
       commissions: false,
       risks: false,
+      dashboard: false,
     });
     const workspace = commercialWorkspaceStructure('mobile', true) as unknown as RenderedElement;
     expect(workspace.className).toContain('mobile');

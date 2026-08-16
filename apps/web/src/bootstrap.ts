@@ -71,7 +71,8 @@ export type CommercialPermission =
   | 'risk-policy:manage'
   | 'risk:read'
   | 'risk:evaluate'
-  | 'risk:manage';
+  | 'risk:manage'
+  | 'executive-dashboard:read';
 export type Viewport = 'desktop' | 'tablet' | 'mobile';
 export function commercialRevisionPath(section: string, rootId: string): string | null {
   const definition = (
@@ -197,6 +198,7 @@ export function visibleCommercialSections(permissions: ReadonlySet<CommercialPer
     reconciliation: permissions.has('reconciliation:read'),
     commissions: permissions.has('commission:read') || permissions.has('commission-policy:read'),
     risks: permissions.has('risk:read') || permissions.has('risk-policy:read'),
+    dashboard: permissions.has('executive-dashboard:read'),
   } as const;
 }
 
@@ -368,6 +370,7 @@ export class CommercialController {
   public revisionState: Record<string, unknown> | null = null;
   public readonly views = new Map<string, readonly Record<string, unknown>[]>();
   public readonly order360 = new Map<string, Record<string, unknown>>();
+  public dashboard: Record<string, unknown> | null = null;
   public constructor(
     public readonly api: CommercialApi,
     public readonly permissions: ReadonlySet<CommercialPermission> = new Set(),
@@ -408,6 +411,15 @@ export class CommercialController {
         for (const order of this.views.get('/api/v1/sales-orders') ?? [])
           if (typeof order.id === 'string')
             this.order360.set(order.id, await this.api.get(`/api/v1/sales-orders/${order.id}/360`));
+      if (this.api.get && this.permissions.has('executive-dashboard:read')) {
+        const year = new Date().getUTCFullYear();
+        const query = new URLSearchParams({
+          from: `${String(year)}-01-01T00:00:00.000Z`,
+          to: `${String(year + 1)}-01-01T00:00:00.000Z`,
+          currency: 'CNY',
+        });
+        this.dashboard = await this.api.get(`/api/v1/executive-dashboard?${query.toString()}`);
+      }
       this.message = `已加载 ${String(this.opportunities.length)} 个商机`;
     } finally {
       this.loading = false;
@@ -498,6 +510,85 @@ export function commercialWorkspaceStructure(
       ['/api/v1/risk-policies', ['risk-policy:read', 'risk-policy:manage']],
       ['/api/v1/risk-evaluations', ['risk:read', 'risk:evaluate']],
     ]);
+  if (controller?.dashboard && permissions.has('executive-dashboard:read')) {
+    const dashboard = controller.dashboard,
+      metrics = recordValue(dashboard.metrics),
+      filters = recordValue(dashboard.filters),
+      drilldowns = recordValue(dashboard.drilldowns);
+    const panel = el('section', 'executive-dashboard');
+    const heading = el('div', 'pipeline-heading');
+    const copy = el('div');
+    copy.append(
+      el('p', 'eyebrow', 'EXECUTIVE COCKPIT'),
+      el('h2', '', '管理驾驶舱'),
+      el(
+        'p',
+        '',
+        `${recordText(filters, 'currency', 'currency', 'CNY')} · ${recordText(filters, 'from', 'from').slice(0, 10)} 至 ${recordText(filters, 'to', 'to').slice(0, 10)} · 刷新 ${recordText(dashboard, 'refreshedAt', 'refreshedAt').slice(0, 16).replace('T', ' ')}`,
+      ),
+    );
+    heading.append(copy);
+    panel.append(heading);
+    const labels: Record<string, string> = {
+      weightedForecast: '加权销售预测',
+      bookedRevenue: '已签订单',
+      grossMargin: '订单毛利',
+      cashCollected: '已核销现金',
+      openReceivable: '应收余额',
+      overdueReceivable: '逾期应收',
+      releasedOrders: '已释放订单',
+      activeRisks: '活动风险',
+      criticalRisks: '严重风险',
+      commissionAccrued: '佣金计提',
+    };
+    const grid = el('div', 'metric-grid executive-metrics');
+    for (const [key, raw] of Object.entries(metrics)) {
+      const metric = recordValue(raw),
+        card = el('article', `metric-card metric-${key}`);
+      card.append(
+        el('span', 'metric-label', labels[key] ?? key),
+        el(
+          'strong',
+          'metric-value',
+          `${recordText(metric, 'unit', 'unit')} ${recordText(metric, 'value', 'value', '0')}`,
+        ),
+        el(
+          'p',
+          'muted',
+          `${recordText(metric, 'basis', 'basis')} · 来源 ${recordText(metric, 'source', 'source')}`,
+        ),
+      );
+      grid.append(card);
+    }
+    panel.append(grid);
+    const orders = Array.isArray(drilldowns.orders) ? drilldowns.orders.map(recordValue) : [],
+      risks = Array.isArray(drilldowns.risks) ? drilldowns.risks.map(recordValue) : [];
+    const details = el('div', 'dashboard-drilldowns'),
+      orderList = el('article', 'dashboard-list'),
+      riskList = el('article', 'dashboard-list');
+    orderList.append(el('h3', '', '订单贡献下钻'));
+    for (const order of orders)
+      orderList.append(
+        el(
+          'p',
+          '',
+          `${recordText(order, 'orderNumber', 'orderNumber')} · ${recordText(filters, 'currency', 'currency')} ${recordText(order, 'total', 'total')} · 毛利 ${recordText(order, 'margin', 'margin')}`,
+        ),
+      );
+    riskList.append(el('h3', '', '风险责任下钻'));
+    for (const risk of risks)
+      riskList.append(
+        el(
+          'p',
+          '',
+          `${recordText(risk, 'severity', 'severity')} / ${recordText(risk, 'score', 'score')} 分 · ${recordText(risk, 'state', 'state')} · 订单 ${recordText(risk, 'salesOrderId', 'salesOrderId').slice(0, 8)}`,
+        ),
+      );
+    if (!risks.length) riskList.append(el('p', 'success-note', '当前无风险评价。'));
+    details.append(orderList, riskList);
+    panel.append(details);
+    workspace.append(panel);
+  }
   if (controller && permissions.has('opportunity:read')) {
     const pipeline = document.createElement('section');
     pipeline.className = 'pipeline-board';
@@ -4766,7 +4857,8 @@ export async function bootstrap(root: HTMLElement): Promise<void> {
         item.startsWith('commission-policy:') ||
         item.startsWith('commission:') ||
         item.startsWith('risk-policy:') ||
-        item.startsWith('risk:'),
+        item.startsWith('risk:') ||
+        item.startsWith('executive-dashboard:'),
     ) as CommercialPermission[],
   );
   if (Object.values(visibleCommercialSections(commercialPermissions)).some(Boolean)) {

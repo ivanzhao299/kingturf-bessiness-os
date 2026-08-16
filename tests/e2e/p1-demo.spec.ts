@@ -73,6 +73,7 @@ test('keeps the P1 evidence usable on a mobile viewport', async ({ page }, testI
     '.commission-workbench',
     '.order-360-workbench',
     '.risk-workbench',
+    '.executive-dashboard',
   ])
     await expect(page.locator(selector)).toBeVisible();
   await expect(page.locator('.commercial-workspace textarea[aria-label$="JSON 请求"]')).toHaveCount(
@@ -151,6 +152,29 @@ test('shows explainable risk findings and the closed responsibility trail', asyn
     await expect(card.getByText(new RegExp(`· ${state} ·`, 'u'))).toBeVisible();
   await testInfo.attach('risk-task-evidence-desktop', {
     body: await workbench.screenshot(),
+    contentType: 'image/png',
+  });
+});
+
+test('shows server-calculated executive KPIs with source and responsibility drilldowns', async ({
+  page,
+}, testInfo) => {
+  await openAuthenticatedWorkspace(page);
+  const dashboard = page.locator('.executive-dashboard');
+  await expect(dashboard).toBeVisible();
+  await expect(dashboard.getByRole('heading', { name: '管理驾驶舱' })).toBeVisible();
+  await expect(dashboard.locator('.metric-bookedRevenue')).toContainText('CNY 2058608');
+  await expect(dashboard.locator('.metric-grossMargin')).toContainText('CNY 585399');
+  await expect(dashboard.locator('.metric-cashCollected')).toContainText('CNY 1550000');
+  await expect(dashboard.locator('.metric-openReceivable')).toContainText('CNY 508608');
+  await expect(dashboard.locator('.metric-activeRisks')).toContainText('cases 0');
+  await expect(
+    dashboard.locator('.metric-bookedRevenue').getByText(/来源 sales_orders/u),
+  ).toBeVisible();
+  await expect(dashboard.getByText(/SO-KT-P1-DEMO/u)).toBeVisible();
+  await expect(dashboard.getByText(/HIGH \/ 45 分 · CLOSED/u)).toBeVisible();
+  await testInfo.attach('executive-dashboard-desktop', {
+    body: await dashboard.screenshot(),
     contentType: 'image/png',
   });
 });
