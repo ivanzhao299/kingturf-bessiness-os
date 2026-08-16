@@ -290,6 +290,56 @@ describe('web bootstrap', () => {
     expect(workspace.textContent).not.toContain('JSON 请求');
   });
 
+  it('renders structured technical solution specifications and revision actions', async () => {
+    const commercialApi = {
+      listOpportunities: vi.fn().mockResolvedValue([{ id: 'op-1', name: '学校球场' }]),
+      list: vi.fn().mockImplementation((path: string) =>
+        Promise.resolve(
+          path === '/api/v1/ctrs'
+            ? [{ id: 'ctr-v1', code: 'CTR-1', version: 1, status: 'APPROVED' }]
+            : path === '/api/v1/technical-solutions'
+              ? [
+                  {
+                    id: 'solution-v1',
+                    technicalSolutionId: 'solution-1',
+                    code: 'TS-1',
+                    revision: 1,
+                    status: 'FINAL',
+                    ctrVersionId: 'ctr-v1',
+                    specification: { productFamily: 'KingTurf Pro', pileHeightMm: 50 },
+                    assumptions: ['满足足球场日常训练'],
+                  },
+                ]
+              : [],
+        ),
+      ),
+      submit: vi.fn().mockResolvedValue({ id: 'created' }),
+      uploadCtrAttachment: vi.fn().mockResolvedValue({}),
+      command: vi.fn().mockResolvedValue({}),
+    };
+    const controller = new CommercialController(
+      commercialApi,
+      new Set([
+        'opportunity:read',
+        'ctr:read',
+        'technical-solution:read',
+        'technical-solution:create',
+        'technical-solution:update',
+      ]),
+    );
+    await controller.load();
+    const workspace = commercialWorkspaceStructure(
+      'desktop',
+      false,
+      controller,
+    ) as unknown as RenderedElement;
+    expect(workspace.findByClass('solution-workbench')).toHaveLength(1);
+    expect(workspace.findByClass('solution-card')).toHaveLength(1);
+    expect(workspace.textContent).toContain('KingTurf Pro');
+    expect(workspace.textContent).toContain('新建技术方案');
+    expect(workspace.textContent).toContain('创建方案修订');
+  });
+
   it('loads only authorized APIs and exposes testable E01-E04 event handlers', async () => {
     const { transport, spies } = api();
     const denied = new CrmController(new Set(), transport);

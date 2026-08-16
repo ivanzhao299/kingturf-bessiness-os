@@ -195,6 +195,10 @@ const ctrRequirementFields = [
 
 const displayRequirement = (value: unknown): string =>
   typeof value === 'string' || typeof value === 'number' ? String(value) : '—';
+const formValue = (value: unknown): string =>
+  typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+const textValue = (value: unknown, fallback: string): string =>
+  typeof value === 'string' || typeof value === 'number' ? String(value) : fallback;
 
 export type Opportunity = Readonly<{
   id: string;
@@ -772,6 +776,216 @@ export function commercialWorkspaceStructure(
     ctrPanel.append(table);
     workspace.append(ctrPanel);
   }
+  if (controller && permissions.has('technical-solution:read')) {
+    const solutionPanel = el('section', 'solution-workbench');
+    const solutionHeading = el('div', 'pipeline-heading');
+    const solutionCopy = el('div');
+    solutionCopy.append(
+      el('h2', '', '技术方案'),
+      el('p', '', '将产品规格和工程假设固定到明确的 CTR 版本，保留修订差异。'),
+    );
+    const solutions = controller.views.get('/api/v1/technical-solutions') ?? [];
+    const ctrs = controller.views.get('/api/v1/ctrs') ?? [];
+    const eligibleCtrs = ctrs.filter((item) => item.status === 'APPROVED');
+    const solutionFields = (
+      specification: Record<string, unknown> = {},
+      assumptions: readonly unknown[] = [],
+      ctrVersionId = '',
+      state = 'DRAFT',
+    ): readonly FormField[] => [
+      {
+        name: 'ctrVersionId',
+        label: '已批准 CTR 版本',
+        type: 'select',
+        required: true,
+        value: ctrVersionId,
+        options: eligibleCtrs.map((item) => ({
+          value: String(item.id),
+          label: `${textValue(item.code, 'CTR')} · V${textValue(item.version, '1')} · ${textValue(item.title, '')}`,
+        })),
+      },
+      {
+        name: 'productFamily',
+        label: '产品系列',
+        required: true,
+        value: formValue(specification.productFamily),
+      },
+      {
+        name: 'pileHeight',
+        label: '草高（mm）',
+        type: 'number',
+        required: true,
+        value: formValue(specification.pileHeightMm),
+      },
+      {
+        name: 'dtex',
+        label: '纤度（Dtex）',
+        type: 'number',
+        required: true,
+        value: formValue(specification.dtex),
+      },
+      {
+        name: 'stitchRate',
+        label: '簇密度（针/㎡）',
+        type: 'number',
+        required: true,
+        value: formValue(specification.stitchRate),
+      },
+      {
+        name: 'backing',
+        label: '底布系统',
+        required: true,
+        value: formValue(specification.backing),
+      },
+      {
+        name: 'infill',
+        label: '填充建议',
+        required: true,
+        value: formValue(specification.infill),
+      },
+      {
+        name: 'warrantyYears',
+        label: '质保年限',
+        type: 'number',
+        required: true,
+        value: formValue(specification.warrantyYears),
+      },
+      {
+        name: 'assumptions',
+        label: '工程假设（每行一项）',
+        type: 'textarea',
+        required: true,
+        value: assumptions.map(String).join('\n'),
+      },
+      {
+        name: 'state',
+        label: '方案状态',
+        type: 'select',
+        required: true,
+        value: state,
+        options: [
+          { value: 'DRAFT', label: '草稿' },
+          { value: 'FINAL', label: '定稿（可进入成本核算）' },
+        ],
+      },
+    ];
+    const solutionPayload = (values: Record<string, string>) => ({
+      ctrVersionId: values.ctrVersionId ?? '',
+      specification: {
+        productFamily: values.productFamily ?? '',
+        pileHeightMm: Number(values.pileHeight ?? 0),
+        dtex: Number(values.dtex ?? 0),
+        stitchRate: Number(values.stitchRate ?? 0),
+        backing: values.backing ?? '',
+        infill: values.infill ?? '',
+        warrantyYears: Number(values.warrantyYears ?? 0),
+      },
+      assumptions: (values.assumptions ?? '')
+        .split('\n')
+        .map((item) => item.trim())
+        .filter(Boolean),
+      final: values.state === 'FINAL',
+    });
+    if (permissions.has('technical-solution:create') && eligibleCtrs.length > 0) {
+      const createSolution = el('button', 'primary', '＋ 新建技术方案');
+      createSolution.addEventListener('click', () => {
+        openForm(
+          workspace,
+          '新建技术方案',
+          '方案的每项规格都将关联到选定的已批准 CTR 版本。',
+          [
+            {
+              name: 'opportunityId',
+              label: '关联商机',
+              type: 'select',
+              required: true,
+              options: controller.opportunities.map((item) => ({
+                value: item.id,
+                label: item.name ?? item.id,
+              })),
+            },
+            { name: 'code', label: '方案编号', required: true, placeholder: 'TS-2026-001' },
+            ...solutionFields(),
+          ],
+          '保存技术方案',
+          async (values) => {
+            await controller.submit('/api/v1/technical-solutions', {
+              opportunityId: values.opportunityId ?? '',
+              code: values.code ?? '',
+              ...solutionPayload(values),
+            });
+            await controller.load();
+            status.textContent = controller.message;
+          },
+        );
+      });
+      solutionHeading.append(solutionCopy, createSolution);
+    } else solutionHeading.append(solutionCopy);
+    solutionPanel.append(solutionHeading);
+    const solutionList = el('div', 'solution-list');
+    for (const solution of solutions) {
+      const card = el('article', 'solution-card');
+      const specification = recordValue(solution.specification);
+      card.append(
+        el(
+          'strong',
+          '',
+          `${textValue(solution.code, '方案')} · R${textValue(solution.revision, '1')}`,
+        ),
+        el(
+          'span',
+          `ctr-state state-${textValue(solution.status, 'DRAFT').toLocaleLowerCase()}`,
+          textValue(solution.status, 'DRAFT'),
+        ),
+        el('p', 'muted', `CTR 版本：${textValue(solution.ctrVersionId, '—')}`),
+      );
+      const specs = el('dl', 'ctr-specification');
+      for (const [key, label] of [
+        ['productFamily', '产品系列'],
+        ['pileHeightMm', '草高（mm）'],
+        ['dtex', '纤度（Dtex）'],
+        ['stitchRate', '簇密度'],
+        ['backing', '底布系统'],
+        ['infill', '填充建议'],
+        ['warrantyYears', '质保年限'],
+      ] as const)
+        specs.append(el('dt', '', label), el('dd', '', displayRequirement(specification[key])));
+      card.append(specs);
+      if (permissions.has('technical-solution:update')) {
+        const revise = el('button', 'secondary', '创建方案修订');
+        revise.addEventListener('click', () => {
+          openForm(
+            workspace,
+            `修订 ${textValue(solution.code, '技术方案')}`,
+            '新修订将保留旧版本及其 CTR 引用。',
+            solutionFields(
+              specification,
+              Array.isArray(solution.assumptions) ? solution.assumptions : [],
+              textValue(solution.ctrVersionId, ''),
+              textValue(solution.status, 'DRAFT'),
+            ),
+            '保存新修订',
+            async (values) => {
+              await controller.submit(
+                `/api/v1/technical-solutions/${textValue(solution.technicalSolutionId, '')}/revisions`,
+                solutionPayload(values),
+              );
+              await controller.load();
+              status.textContent = controller.message;
+            },
+          );
+        });
+        card.append(revise);
+      }
+      solutionList.append(card);
+    }
+    if (solutions.length === 0)
+      solutionList.append(
+        el('p', 'pipeline-empty', '暂无技术方案；先批准 CTR，再建立结构化方案。'),
+      );
+    solutionPanel.append(solutionList);
+    workspace.append(solutionPanel);
+  }
   for (const [className, title, description, fields, action, path] of [
     [
       'opportunity-pipeline',
@@ -870,7 +1084,11 @@ export function commercialWorkspaceStructure(
       '/api/v1/reconciliation-runs',
     ],
   ] as const) {
-    if (controller && (path === '/api/v1/opportunities' || path === '/api/v1/ctrs')) continue;
+    if (
+      controller &&
+      ['/api/v1/opportunities', '/api/v1/ctrs', '/api/v1/technical-solutions'].includes(path)
+    )
+      continue;
     const requiredPermission = permittedPaths.get(path),
       canRead = Boolean(requiredPermission && permissions.has(requiredPermission[0])),
       canAct =
@@ -1310,7 +1528,6 @@ function openForm(
     control.setAttribute('name', field.name);
     if (field.required) control.setAttribute('required', '');
     if (field.placeholder) control.setAttribute('placeholder', field.placeholder);
-    if (field.value !== undefined && 'value' in control) control.value = field.value;
     if (control instanceof HTMLInputElement)
       control.type = ['email', 'tel', 'number', 'date'].includes(field.type ?? '')
         ? (field.type as 'email' | 'tel' | 'number' | 'date')
@@ -1321,6 +1538,7 @@ function openForm(
         item.value = option.value;
         control.append(item);
       }
+    if (field.value !== undefined && 'value' in control) control.value = field.value;
     label.append(control);
     form.append(label);
   }
