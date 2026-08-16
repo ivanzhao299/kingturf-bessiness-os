@@ -775,16 +775,57 @@ export function createCrmShell(controller: CrmController, width = window.innerWi
   const sections = visibleCrmSections(controller.permissions);
   const shell = el('main', `app-shell ${viewportFor(width)}`);
   const aside = el('aside', 'sidebar');
-  aside.append(el('div', 'brand', 'KingTurf'), el('p', 'eyebrow', 'BUSINESS OS'));
+  const brand = el('div', 'brand-lockup');
+  brand.append(el('span', 'brand-mark', 'K'), el('div', 'brand', '金特夫'));
+  brand.append(el('p', 'brand-caption', 'Business OS'));
+  aside.append(brand);
   const nav = el('nav');
-  if (sections.customers) nav.append(el('button', 'nav-item active', '客户档案'));
-  if (sections.leads) nav.append(el('button', 'nav-item', '线索公海'));
+  const navGroup = (title: string, items: readonly [string, string, boolean][]) => {
+    const group = el('section', 'nav-group');
+    group.append(el('p', 'nav-label', title));
+    for (const [glyph, label, active] of items) {
+      const item = el('button', `nav-item${active ? ' active' : ''}`);
+      item.append(el('span', 'nav-glyph', glyph), el('span', 'nav-text', label));
+      group.append(item);
+    }
+    nav.append(group);
+  };
+  navGroup('工作空间', [
+    ['⌂', '经营总览', true],
+    ['◎', '销售工作台', false],
+    ['□', '运营工作台', false],
+  ]);
+  navGroup('销售到回款', [
+    ['◇', '线索与客户', false],
+    ['△', '商机与 CTR', false],
+    ['￥', '成本与报价', false],
+    ['✓', '合同与订单', false],
+    ['↔', '应收与回款', false],
+  ]);
+  navGroup('履约协同', [
+    ['▦', '计划与生产', false],
+    ['◈', '质量与仓储', false],
+    ['⌁', '交付与证据', false],
+  ]);
   aside.append(nav);
+  const sidebarFooter = el('div', 'sidebar-footer');
+  sidebarFooter.append(el('span', 'online-dot'), el('span', '', '204 预览环境'));
+  aside.append(sidebarFooter);
   const content = el('section', 'workspace');
+  const utility = el('header', 'utility-bar');
+  const search = el('div', 'global-search');
+  search.append(el('span', '', '⌕'), el('span', '', '搜索客户、订单或业务编号…'), el('kbd', '', '⌘ K'));
+  const profile = el('div', 'profile-chip');
+  profile.append(el('span', 'profile-avatar', '超'), el('span', '', '超级管理员'), el('span', 'chevron', '⌄'));
+  utility.append(search, profile);
+  content.append(utility);
   const header = el('header', 'topbar');
-  header.append(el('h1', '', '客户与线索工作台'));
+  const title = el('div');
+  title.append(el('p', 'eyebrow', '经营总览 · 2026 年 8 月 16 日'), el('h1', '', '早上好，超级管理员'));
+  title.append(el('p', 'page-subtitle', '从客户机会到订单回款，关注今天最需要推进的事项。'));
+  header.append(title);
   if (sections.customerCreate) {
-    const create = el('button', 'primary', '新建客户');
+    const create = el('button', 'primary', '＋ 新建客户');
     create.addEventListener('click', () => {
       const name = value('客户名称');
       const customerNumber = value('客户编号');
@@ -797,10 +838,46 @@ export function createCrmShell(controller: CrmController, width = window.innerWi
   }
   content.append(header);
   if (controller.error) content.append(el('p', 'error', controller.error));
+  const metrics = el('section', 'metrics');
+  for (const [label, metric, note, tone] of [
+    ['本月销售预测', '¥ 0', '等待商机数据', 'emerald'],
+    ['活跃商机', String(controller.leads.length), '需持续推进', 'blue'],
+    ['待审批事项', '0', '当前无阻塞', 'amber'],
+    ['应收余额', '¥ 0', '回款风险正常', 'violet'],
+  ] as const) {
+    const card = el('article', `metric ${tone}`);
+    card.append(el('span', 'metric-label', label), el('strong', '', metric), el('small', '', note));
+    metrics.append(card);
+  }
+  content.append(metrics);
+  const flow = el('section', 'panel business-flow');
+  const flowHead = el('div', 'panel-head');
+  flowHead.append(el('div', '', '销售到回款主链'), el('span', 'flow-caption', '端到端业务进度'));
+  flow.append(flowHead);
+  const flowRail = el('div', 'flow-rail');
+  for (const [index, label] of ['线索', '客户', '商机', 'CTR', '报价', '合同', '订单', '回款'].entries()) {
+    const step = el('div', `flow-step${index === 0 ? ' current' : ''}`);
+    step.append(el('span', 'flow-node', String(index + 1)), el('span', '', label));
+    flowRail.append(step);
+  }
+  flow.append(flowRail);
+  content.append(flow);
+  const sectionHeader = el('div', 'section-heading');
+  sectionHeader.append(el('div', '', '今日业务'), el('span', '', '数据实时来自业务台账'));
+  content.append(sectionHeader);
   const split = el('section', 'split');
   if (sections.customers) {
     const list = el('article', 'panel customer-list');
-    list.append(el('h2', '', '客户列表'));
+    const listHead = el('div', 'panel-head');
+    const listTitle = el('div');
+    listTitle.append(el('h2', '', '重点客户'), el('p', 'muted', `${String(controller.customers.length)} 个可见客户`));
+    listHead.append(listTitle, el('button', 'text-button', '查看全部 →'));
+    list.append(listHead);
+    if (controller.customers.length === 0) {
+      const empty = el('div', 'empty-state');
+      empty.append(el('span', 'empty-icon', '◇'), el('strong', '', '还没有客户数据'), el('p', '', '新建第一个客户，开始沉淀线索、商机与跟进记录。'));
+      list.append(empty);
+    }
     for (const customer of controller.customers) {
       const row = el('button', 'customer-row');
       row.append(
@@ -954,6 +1031,20 @@ export function createCrmShell(controller: CrmController, width = window.innerWi
         row.append(release);
       }
       leads.append(row);
+    }
+    if (visibleLeads.length === 0) {
+      const queue = el('div', 'queue-list');
+      for (const [title, detail, badge] of [
+        ['待跟进线索', '暂无逾期线索', '0'],
+        ['待提交 CTR', '技术需求等待确认', '0'],
+        ['待审批报价', '价格与利润率检查', '0'],
+      ]) {
+        const item = el('div', 'queue-item');
+        item.append(el('span', 'queue-status'), el('div', 'queue-copy', title));
+        item.append(el('small', '', detail), el('b', '', badge));
+        queue.append(item);
+      }
+      leads.append(queue);
     }
     split.append(leads);
   }
