@@ -75,6 +75,7 @@ test('keeps the P1 evidence usable on a mobile viewport', async ({ page }, testI
     '.risk-workbench',
     '.executive-dashboard',
     '.manufacturing-workbench',
+    '.procurement-workbench',
   ])
     await expect(page.locator(selector)).toBeVisible();
   await expect(page.locator('.commercial-workspace textarea[aria-label$="JSON 请求"]')).toHaveCount(
@@ -192,6 +193,25 @@ test('shows published manufacturing versions, BOM substitute evidence, and order
   await expect(workbench.getByText('PUBLISHED · V1')).toHaveCount(6);
   await expect(workbench.getByText('发布版本')).toHaveCount(0);
   await testInfo.attach('manufacturing-master-data-desktop', {
+    body: await workbench.screenshot(),
+    contentType: 'image/png',
+  });
+});
+
+test('shows supplier qualification, received purchase order, receipt, and derived lot balance', async ({
+  page,
+}, testInfo) => {
+  await openAuthenticatedWorkspace(page);
+  const workbench = page.locator('.procurement-workbench');
+  await expect(workbench).toBeVisible();
+  await expect(workbench.getByText(/SUP-KT-YARN-001 · 青岛金特夫草纱战略供应商/u)).toBeVisible();
+  await expect(workbench.getByText(/RFQ-KT-YARN-2026-001 · ISSUED/u)).toBeVisible();
+  await expect(workbench.getByText(/报价 SQ-KT-YARN-2026-001/u)).toBeVisible();
+  await expect(workbench.getByText(/PO-KT-YARN-2026-001 · RECEIVED/u)).toBeVisible();
+  await expect(workbench.getByText(/收货 GR-KT-YARN-2026-001/u)).toBeVisible();
+  await expect(workbench.getByText(/批次 LOT-KT-YARN-20260920-A/u)).toBeVisible();
+  await expect(workbench.getByText(/RAW-A01 · 结存 5000/u)).toBeVisible();
+  await testInfo.attach('procurement-inventory-desktop', {
     body: await workbench.screenshot(),
     contentType: 'image/png',
   });

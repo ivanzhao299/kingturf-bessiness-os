@@ -78,7 +78,13 @@ export type CommercialPermission =
   | 'bom:read'
   | 'bom:manage'
   | 'routing:read'
-  | 'routing:manage';
+  | 'routing:manage'
+  | 'supplier:read'
+  | 'supplier:manage'
+  | 'procurement:read'
+  | 'procurement:manage'
+  | 'inventory:read'
+  | 'inventory:move';
 export type Viewport = 'desktop' | 'tablet' | 'mobile';
 export function commercialRevisionPath(section: string, rootId: string): string | null {
   const definition = (
@@ -209,6 +215,10 @@ export function visibleCommercialSections(permissions: ReadonlySet<CommercialPer
       permissions.has('manufacturing-item:read') ||
       permissions.has('bom:read') ||
       permissions.has('routing:read'),
+    procurement:
+      permissions.has('supplier:read') ||
+      permissions.has('procurement:read') ||
+      permissions.has('inventory:read'),
   } as const;
 }
 
@@ -413,6 +423,13 @@ export class CommercialController {
         ['manufacturing-item:read', '/api/v1/manufacturing-items'],
         ['bom:read', '/api/v1/manufacturing-boms'],
         ['routing:read', '/api/v1/manufacturing-routings'],
+        ['supplier:read', '/api/v1/suppliers'],
+        ['procurement:read', '/api/v1/procurement-rfqs'],
+        ['procurement:read', '/api/v1/supplier-quotes'],
+        ['procurement:read', '/api/v1/purchase-orders'],
+        ['procurement:read', '/api/v1/goods-receipts'],
+        ['inventory:read', '/api/v1/inventory-locations'],
+        ['inventory:read', '/api/v1/inventory-balances'],
       ] as const;
       for (const [permission, path] of readable)
         if (this.permissions.has(permission)) this.views.set(path, await this.api.list(path));
@@ -3803,6 +3820,292 @@ export function commercialWorkspaceStructure(
     panel.append(grid);
     workspace.append(panel);
   }
+  if (
+    controller &&
+    (permissions.has('supplier:read') ||
+      permissions.has('procurement:read') ||
+      permissions.has('inventory:read'))
+  ) {
+    const panel = el('section', 'procurement-workbench');
+    panel.setAttribute('data-testid', 'procurement-workbench');
+    panel.append(
+      el('p', 'eyebrow', 'SOURCE TO STOCK'),
+      el('h2', '', '供应商、采购与批次库存'),
+      el(
+        'p',
+        'commercial-help',
+        '从供应商准入、询报价、采购签发到批次收货；库存只由不可变移动台账推导。',
+      ),
+    );
+    const suppliers = controller.views.get('/api/v1/suppliers') ?? [],
+      rfqs = controller.views.get('/api/v1/procurement-rfqs') ?? [],
+      supplierQuotes = controller.views.get('/api/v1/supplier-quotes') ?? [],
+      purchaseOrders = controller.views.get('/api/v1/purchase-orders') ?? [],
+      receipts = controller.views.get('/api/v1/goods-receipts') ?? [],
+      locations = controller.views.get('/api/v1/inventory-locations') ?? [],
+      balances = controller.views.get('/api/v1/inventory-balances') ?? [],
+      manufacturingItems = controller.views.get('/api/v1/manufacturing-items') ?? [];
+    const refresh = async () => {
+      await controller.load();
+      status.textContent = controller.message;
+    };
+    const grid = el('div', 'procurement-grid');
+    const supplierPanel = el('article', 'procurement-column supplier-register');
+    supplierPanel.append(el('h3', '', '供应商与准入'));
+    for (const supplier of suppliers) {
+      const qualifications = Array.isArray(supplier.qualifications)
+        ? supplier.qualifications.map(recordValue)
+        : [];
+      supplierPanel.append(
+        el(
+          'div',
+          'procurement-card',
+          `${recordText(supplier, 'supplierNumber', 'supplier_number')} · ${recordText(supplier, 'name', 'name')}\n${recordText(supplier, 'status', 'status')} · 账期 ${recordText(supplier, 'paymentTermsDays', 'payment_terms_days')} 天 · 已准入 ${String(qualifications.filter((item) => item.status === 'APPROVED').length)} 项`,
+        ),
+      );
+    }
+    if (permissions.has('supplier:manage')) {
+      const createSupplier = el('button', 'primary', '＋ 新建供应商');
+      createSupplier.addEventListener('click', () => {
+        openForm(
+          workspace,
+          '新建供应商',
+          '建立供应商编号、结算条件和质量评级。',
+          [
+            { name: 'supplierNumber', label: '供应商编号', required: true },
+            { name: 'name', label: '供应商名称', required: true },
+            {
+              name: 'paymentTermsDays',
+              label: '账期（天）',
+              type: 'number',
+              required: true,
+              value: '30',
+            },
+            {
+              name: 'qualityRating',
+              label: '质量评分（0-100）',
+              type: 'number',
+              required: true,
+              value: '90',
+            },
+            { name: 'contactName', label: '联系人', required: true },
+            { name: 'contactPhone', label: '联系电话', type: 'tel', required: true },
+          ],
+          '保存供应商',
+          async (values) => {
+            await controller.submit('/api/v1/suppliers', {
+              supplierNumber: values.supplierNumber,
+              name: values.name,
+              currency: 'CNY',
+              paymentTermsDays: Number(values.paymentTermsDays),
+              qualityRatingBasisPoints: Number(values.qualityRating) * 100,
+              contact: { name: values.contactName, phone: values.contactPhone },
+            });
+            await refresh();
+          },
+        );
+      });
+      supplierPanel.append(createSupplier);
+    }
+    const sourcingPanel = el('article', 'procurement-column sourcing-register');
+    sourcingPanel.append(el('h3', '', '询价与报价'));
+    for (const rfq of rfqs)
+      sourcingPanel.append(
+        el(
+          'div',
+          'procurement-card',
+          `${recordText(rfq, 'rfqNumber', 'rfq_number')} · ${recordText(rfq, 'status', 'status')} · ${String(Array.isArray(rfq.lines) ? rfq.lines.length : 0)} 项`,
+        ),
+      );
+    for (const quote of supplierQuotes)
+      sourcingPanel.append(
+        el(
+          'div',
+          'procurement-card quote-card',
+          `报价 ${recordText(quote, 'quoteReference', 'quote_reference')} · ${recordText(quote, 'supplierName', 'supplierName')} · 有效至 ${recordText(quote, 'validUntil', 'valid_until')}`,
+        ),
+      );
+    if (permissions.has('procurement:manage')) {
+      const publishedItemOptions = manufacturingItems
+        .filter((item) => recordText(item, 'status', 'status') === 'PUBLISHED')
+        .map((item) => ({
+          value: String(item.id),
+          label: `${recordText(item, 'sku', 'sku')} · ${recordText(item, 'name', 'name')}`,
+        }));
+      const createRfq = el('button', 'secondary', '＋ 新建并发出 RFQ');
+      createRfq.addEventListener('click', () => {
+        openForm(
+          workspace,
+          '创建采购询价',
+          '选择已发布物料版本并明确数量、交期和报价截止时间。',
+          [
+            { name: 'rfqNumber', label: 'RFQ 编号', required: true },
+            {
+              name: 'itemVersionId',
+              label: '采购物料',
+              type: 'select',
+              required: true,
+              options: publishedItemOptions,
+            },
+            { name: 'quantity', label: '询价数量', type: 'number', required: true },
+            { name: 'requiredAt', label: '要求到货日', type: 'date', required: true },
+            { name: 'responseDue', label: '报价截止日', type: 'date', required: true },
+          ],
+          '发出 RFQ',
+          async (values) => {
+            await controller.submit('/api/v1/procurement-rfqs', {
+              rfqNumber: values.rfqNumber,
+              responseDueAt: `${values.responseDue ?? ''}T23:59:59.000Z`,
+              currency: 'CNY',
+              issue: true,
+              lines: [
+                {
+                  itemVersionId: values.itemVersionId,
+                  quantity: values.quantity,
+                  requiredAt: values.requiredAt,
+                },
+              ],
+            });
+            await refresh();
+          },
+        );
+      });
+      sourcingPanel.append(createRfq);
+    }
+    const orderPanel = el('article', 'procurement-column purchase-register');
+    orderPanel.append(el('h3', '', '采购订单与收货'));
+    for (const order of purchaseOrders) {
+      const lines = Array.isArray(order.lines) ? order.lines.map(recordValue) : [];
+      const total = lines.reduce(
+        (sum, line) =>
+          sum + Number(line.quantity ?? 0) * Number(line.unit_price ?? line.unitPrice ?? 0),
+        0,
+      );
+      orderPanel.append(
+        el(
+          'div',
+          'procurement-card purchase-order-card',
+          `${recordText(order, 'poNumber', 'po_number')} · ${recordText(order, 'status', 'status')}\n${recordText(order, 'supplierName', 'supplierName')} · CNY ${decimalValue(total)} · ${String(lines.length)} 项`,
+        ),
+      );
+    }
+    for (const receipt of receipts)
+      orderPanel.append(
+        el(
+          'div',
+          'procurement-card receipt-card',
+          `收货 ${recordText(receipt, 'receiptNumber', 'receipt_number')} · ${recordText(receipt, 'poNumber', 'poNumber')} · ${String(Array.isArray(receipt.lines) ? receipt.lines.length : 0)} 批`,
+        ),
+      );
+    if (permissions.has('procurement:manage')) {
+      const supplierOptions = suppliers.map((item) => ({
+        value: String(item.id),
+        label: `${recordText(item, 'supplierNumber', 'supplier_number')} · ${recordText(item, 'name', 'name')}`,
+      }));
+      const itemOptions = manufacturingItems
+        .filter((item) => recordText(item, 'status', 'status') === 'PUBLISHED')
+        .map((item) => ({
+          value: String(item.id),
+          label: `${recordText(item, 'sku', 'sku')} · ${recordText(item, 'name', 'name')}`,
+        }));
+      const createOrder = el('button', 'primary', '＋ 创建并签发采购订单');
+      createOrder.addEventListener('click', () => {
+        openForm(
+          workspace,
+          '创建采购订单',
+          '订单只允许选择已准入供应商和已发布物料版本。',
+          [
+            { name: 'poNumber', label: '采购订单号', required: true },
+            {
+              name: 'supplierId',
+              label: '供应商',
+              type: 'select',
+              required: true,
+              options: supplierOptions,
+            },
+            {
+              name: 'itemVersionId',
+              label: '物料',
+              type: 'select',
+              required: true,
+              options: itemOptions,
+            },
+            { name: 'quantity', label: '数量', type: 'number', required: true },
+            { name: 'unitPrice', label: '含税单价', type: 'number', required: true },
+            { name: 'requiredAt', label: '要求到货日', type: 'date', required: true },
+          ],
+          '签发采购订单',
+          async (values) => {
+            await controller.submit('/api/v1/purchase-orders', {
+              poNumber: values.poNumber,
+              supplierId: values.supplierId,
+              supplierQuoteId: null,
+              currency: 'CNY',
+              issue: true,
+              lines: [
+                {
+                  itemVersionId: values.itemVersionId,
+                  quantity: values.quantity,
+                  unitPrice: values.unitPrice,
+                  requiredAt: values.requiredAt,
+                },
+              ],
+            });
+            await refresh();
+          },
+        );
+      });
+      orderPanel.append(createOrder);
+    }
+    const inventoryPanel = el('article', 'procurement-column inventory-register');
+    inventoryPanel.append(el('h3', '', '批次库存台账'));
+    for (const balance of balances) {
+      const movements = Array.isArray(balance.movements) ? balance.movements : [];
+      inventoryPanel.append(
+        el(
+          'div',
+          'procurement-card inventory-balance-card',
+          `${recordText(balance, 'sku', 'sku')} · 批次 ${recordText(balance, 'lotNumber', 'lotNumber')}\n${recordText(balance, 'locationCode', 'locationCode')} · 结存 ${recordText(balance, 'quantity', 'quantity')} · ${recordText(balance, 'qualityStatus', 'qualityStatus')} · ${String(movements.length)} 笔移动`,
+        ),
+      );
+    }
+    if (permissions.has('inventory:move') && !locations.length) {
+      const createLocation = el('button', 'secondary', '＋ 建立首个库位');
+      createLocation.addEventListener('click', () => {
+        openForm(
+          workspace,
+          '建立库存库位',
+          '库位用于批次收货和不可变库存移动。',
+          [
+            { name: 'code', label: '库位编码', required: true },
+            { name: 'name', label: '库位名称', required: true },
+            {
+              name: 'locationType',
+              label: '库位类型',
+              type: 'select',
+              required: true,
+              options: [
+                { value: 'RECEIVING', label: '收货区' },
+                { value: 'STORAGE', label: '存储区' },
+                { value: 'PRODUCTION', label: '生产区' },
+                { value: 'QUARANTINE', label: '隔离区' },
+                { value: 'SHIPPING', label: '发货区' },
+              ],
+            },
+          ],
+          '保存库位',
+          async (values) => {
+            await controller.submit('/api/v1/inventory-locations', values);
+            await refresh();
+          },
+        );
+      });
+      inventoryPanel.append(createLocation);
+    }
+    grid.append(supplierPanel, sourcingPanel, orderPanel, inventoryPanel);
+    panel.append(grid);
+    workspace.append(panel);
+  }
   for (const [className, title, description, fields, action, path] of [
     [
       'opportunity-pipeline',
@@ -5225,7 +5528,10 @@ export async function bootstrap(root: HTMLElement): Promise<void> {
         item.startsWith('executive-dashboard:') ||
         item.startsWith('manufacturing-item:') ||
         item.startsWith('bom:') ||
-        item.startsWith('routing:'),
+        item.startsWith('routing:') ||
+        item.startsWith('supplier:') ||
+        item.startsWith('procurement:') ||
+        item.startsWith('inventory:'),
     ) as CommercialPermission[],
   );
   if (Object.values(visibleCommercialSections(commercialPermissions)).some(Boolean)) {

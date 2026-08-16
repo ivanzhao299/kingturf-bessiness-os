@@ -183,6 +183,7 @@ describe('web bootstrap', () => {
       risks: false,
       dashboard: false,
       manufacturing: false,
+      procurement: false,
     });
     const workspace = commercialWorkspaceStructure('mobile', true) as unknown as RenderedElement;
     expect(workspace.className).toContain('mobile');
@@ -253,6 +254,87 @@ describe('web bootstrap', () => {
     expect(workspace.findByClass('manufacturing-card')).toHaveLength(3);
     expect(workspace.textContent).toContain('FG-KT-PRO-50');
     expect(workspace.textContent).toContain('发布版本');
+  });
+
+  it('renders supplier, sourcing, purchase, receipt, and immutable lot-balance evidence', async () => {
+    const api = {
+      listOpportunities: vi.fn().mockResolvedValue([]),
+      list: vi.fn().mockImplementation((path: string) => {
+        const values: Record<string, readonly Record<string, unknown>[]> = {
+          '/api/v1/suppliers': [
+            {
+              id: 'supplier-1',
+              supplier_number: 'SUP-1',
+              name: '草纱供应商',
+              status: 'ACTIVE',
+              payment_terms_days: 30,
+              qualifications: [{ status: 'APPROVED' }],
+            },
+          ],
+          '/api/v1/procurement-rfqs': [
+            { id: 'rfq-1', rfq_number: 'RFQ-1', status: 'ISSUED', lines: [{}] },
+          ],
+          '/api/v1/supplier-quotes': [
+            {
+              id: 'quote-1',
+              quote_reference: 'SQ-1',
+              supplierName: '草纱供应商',
+              valid_until: '2026-12-31',
+            },
+          ],
+          '/api/v1/purchase-orders': [
+            {
+              id: 'po-1',
+              po_number: 'PO-1',
+              status: 'RECEIVED',
+              supplierName: '草纱供应商',
+              lines: [{ quantity: '5000', unit_price: '12.5' }],
+            },
+          ],
+          '/api/v1/goods-receipts': [
+            { id: 'gr-1', receipt_number: 'GR-1', poNumber: 'PO-1', lines: [{}] },
+          ],
+          '/api/v1/inventory-locations': [{ id: 'loc-1', code: 'RAW-A01' }],
+          '/api/v1/inventory-balances': [
+            {
+              sku: 'RM-YARN',
+              lotNumber: 'LOT-1',
+              locationCode: 'RAW-A01',
+              quantity: '5000',
+              qualityStatus: 'QUARANTINE',
+              movements: [{}],
+            },
+          ],
+        };
+        return Promise.resolve(values[path] ?? []);
+      }),
+      submit: vi.fn().mockResolvedValue({}),
+      uploadCtrAttachment: vi.fn().mockResolvedValue({}),
+      command: vi.fn().mockResolvedValue({}),
+    };
+    const controller = new CommercialController(
+      api,
+      new Set([
+        'supplier:read',
+        'supplier:manage',
+        'procurement:read',
+        'procurement:manage',
+        'inventory:read',
+        'inventory:move',
+      ]),
+    );
+    await controller.load();
+    const workspace = commercialWorkspaceStructure(
+      'desktop',
+      false,
+      controller,
+    ) as unknown as RenderedElement;
+    expect(workspace.findByClass('procurement-workbench')).toHaveLength(1);
+    expect(workspace.findByClass('procurement-column')).toHaveLength(4);
+    expect(workspace.textContent).toContain('SUP-1');
+    expect(workspace.textContent).toContain('PO-1 · RECEIVED');
+    expect(workspace.textContent).toContain('LOT-1');
+    expect(workspace.textContent).toContain('结存 5000');
   });
 
   it('drives commercial loading, submission, revision approval, and issue state through APIs', async () => {
