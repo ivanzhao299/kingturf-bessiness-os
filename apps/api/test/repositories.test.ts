@@ -56,6 +56,22 @@ describe('PostgreSQL audit scope predicates', () => {
 });
 
 describe('PostgreSQL authorization repositories', () => {
+  it('casts custom DataScope arrays to driver-safe text arrays', async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: [{ employee_id: 'employee', company_id: 'company' }],
+        rowCount: 1,
+      })
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 });
+    const transaction = vi.fn(async (work: (tx: SqlClient) => Promise<unknown>) => work({ query }));
+    await new PostgresSecurityStore({ transaction } as unknown as Database).resolveSession(
+      'hash',
+      new Date(),
+    );
+    expect((query.mock.calls[1] as [string])[0]).toContain('g.data_scopes::text[] data_scopes');
+  });
   it('rejects cross-company organization updates before opening a transaction', async () => {
     const query = vi.fn();
     const transaction = vi.fn();

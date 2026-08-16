@@ -364,7 +364,7 @@ export class PostgresSecurityStore implements CredentialStore, AuditSink {
         field_allowlist: string[] | null;
         data_scopes: DataScope[];
       }>(
-        'SELECT p.capability,g.field_allowlist,g.data_scopes FROM employee_role_assignments era JOIN roles r ON r.id=era.role_id AND r.deleted_at IS NULL JOIN role_permission_grants g ON g.role_id=r.id JOIN permissions p ON p.id=g.permission_id WHERE era.employee_id=$1 AND r.organization_id=$2',
+        'SELECT p.capability,g.field_allowlist,g.data_scopes::text[] data_scopes FROM employee_role_assignments era JOIN roles r ON r.id=era.role_id AND r.deleted_at IS NULL JOIN role_permission_grants g ON g.role_id=r.id JOIN permissions p ON p.id=g.permission_id WHERE era.employee_id=$1 AND r.organization_id=$2',
         [actor.employee_id, actor.company_id],
       );
       const explicit = await tx.query<{
