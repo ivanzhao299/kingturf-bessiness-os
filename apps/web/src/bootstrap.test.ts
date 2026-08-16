@@ -205,6 +205,7 @@ describe('web bootstrap', () => {
       listOpportunities: vi.fn().mockResolvedValue([{ id: 'op-1', name: 'Arena' }]),
       list: vi.fn().mockResolvedValue([]),
       submit: vi.fn().mockResolvedValue({ id: 'revision-1', revision: 1, status: 'DRAFT' }),
+      uploadCtrAttachment: vi.fn().mockResolvedValue({}),
       command: vi.fn().mockResolvedValue({ id: 'revision-1', status: 'ISSUED' }),
     };
     const controller = new CommercialController(
@@ -255,6 +256,7 @@ describe('web bootstrap', () => {
         ),
       ),
       submit: vi.fn().mockResolvedValue({ id: 'created' }),
+      uploadCtrAttachment: vi.fn().mockResolvedValue({}),
       command: vi.fn().mockResolvedValue({}),
     };
     const controller = new CommercialController(
@@ -265,7 +267,9 @@ describe('web bootstrap', () => {
         'opportunity:lifecycle',
         'ctr:read',
         'ctr:create',
+        'ctr:update',
         'ctr:submit',
+        'attachment:manage',
       ]),
     );
     await controller.load();
@@ -278,6 +282,8 @@ describe('web bootstrap', () => {
     expect(workspace.findByClass('pipeline-column')).toHaveLength(5);
     expect(workspace.findByClass('opportunity-card')).toHaveLength(1);
     expect(workspace.findByClass('ctr-workbench')).toHaveLength(1);
+    expect(workspace.findByClass('ctr-evidence')).toHaveLength(1);
+    expect(workspace.textContent).toContain('上传附件');
     expect(workspace.findByClass('ctr-row')).toHaveLength(1);
     expect(workspace.textContent).toContain('国际学校足球场');
     expect(workspace.textContent).toContain('CTR-2026-001');

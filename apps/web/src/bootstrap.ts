@@ -28,6 +28,8 @@ export type CommercialPermission =
   | 'ctr:update'
   | 'ctr:submit'
   | 'ctr:approve'
+  | 'attachment:read'
+  | 'attachment:manage'
   | 'technical-solution:read'
   | 'technical-solution:create'
   | 'technical-solution:update'
@@ -180,6 +182,20 @@ export function visibleCommercialSections(permissions: ReadonlySet<CommercialPer
   } as const;
 }
 
+const recordValue = (value: unknown): Record<string, unknown> =>
+  typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
+
+const ctrRequirementFields = [
+  ['application', '应用场景'],
+  ['pileHeightMm', '草高（mm）'],
+  ['quantitySquareMeters', '预计面积（㎡）'],
+  ['color', '颜色要求'],
+  ['delivery', '交付要求'],
+] as const;
+
+const displayRequirement = (value: unknown): string =>
+  typeof value === 'string' || typeof value === 'number' ? String(value) : '—';
+
 export type Opportunity = Readonly<{
   id: string;
   customerId?: string | null;
@@ -200,6 +216,7 @@ export type CommercialApi = Readonly<{
     payload: Record<string, unknown>,
     method?: 'POST' | 'PATCH',
   ): Promise<Record<string, unknown>>;
+  uploadCtrAttachment(versionId: string, file: File): Promise<Record<string, unknown>>;
   command(
     revisionId: string,
     action: 'approve' | 'issue',
@@ -264,6 +281,16 @@ export class CommercialController {
       'PATCH',
     );
     await this.load();
+  }
+  public async uploadCtrAttachment(versionId: string, file: File): Promise<void> {
+    this.loading = true;
+    try {
+      this.revisionState = await this.api.uploadCtrAttachment(versionId, file);
+      this.message = `附件 ${file.name} 已上传并关联到 CTR 草稿`;
+      await this.load();
+    } finally {
+      this.loading = false;
+    }
   }
   public async quoteCommand(
     revisionId: string,
@@ -555,11 +582,20 @@ export function commercialWorkspaceStructure(
     const table = document.createElement('div');
     table.className = 'ctr-table';
     const ctrs = controller.views.get('/api/v1/ctrs') ?? [];
+    const latestVersionByCtr = new Map<string, number>();
+    for (const item of ctrs) {
+      const rootId = typeof item.ctrId === 'string' ? item.ctrId : '';
+      const revision = typeof item.version === 'number' ? item.version : 0;
+      latestVersionByCtr.set(rootId, Math.max(latestVersionByCtr.get(rootId) ?? 0, revision));
+    }
     for (const ctr of ctrs) {
       const ctrCode = typeof ctr.code === 'string' ? ctr.code : 'CTR';
       const ctrTitle = typeof ctr.title === 'string' ? ctr.title : '未命名需求';
       const ctrVersion = typeof ctr.version === 'number' ? ctr.version : 1;
       const ctrStatus = typeof ctr.status === 'string' ? ctr.status : 'DRAFT';
+      const ctrId = typeof ctr.ctrId === 'string' ? ctr.ctrId : '';
+      const requirements = recordValue(ctr.requirements);
+      const attachments = Array.isArray(ctr.attachments) ? ctr.attachments : [];
       const row = document.createElement('article');
       row.className = 'ctr-row';
       const identity = document.createElement('div');
@@ -575,6 +611,91 @@ export function commercialWorkspaceStructure(
       state.textContent = ctrStatus;
       const actions = document.createElement('div');
       actions.className = 'ctr-actions';
+      if (
+        ctrStatus === 'DRAFT' &&
+        permissions.has('ctr:update') &&
+        permissions.has('attachment:manage')
+      ) {
+        const upload = document.createElement('button');
+        upload.className = 'secondary';
+        upload.textContent = '上传附件';
+        upload.addEventListener('click', () => {
+          openFileForm(workspace, `为 ${ctrCode} V${String(ctrVersion)} 上传附件`, async (file) => {
+            await controller.uploadCtrAttachment(String(ctr.id), file);
+            status.textContent = controller.message;
+          });
+        });
+        actions.append(upload);
+      }
+      if (
+        ctrId !== '' &&
+        ctrVersion === latestVersionByCtr.get(ctrId) &&
+        ctrStatus !== 'DRAFT' &&
+        permissions.has('ctr:update')
+      ) {
+        const revise = document.createElement('button');
+        revise.className = 'secondary';
+        revise.textContent = '新建修订';
+        revise.addEventListener('click', () => {
+          openForm(
+            workspace,
+            `新建 ${ctrCode} 修订`,
+            `基于 V${String(ctrVersion)} 创建新的可编辑草稿，历史版本保持不变。`,
+            [
+              { name: 'title', label: '需求标题', required: true, value: ctrTitle },
+              {
+                name: 'application',
+                label: '应用场景',
+                required: true,
+                value: displayRequirement(requirements.application),
+              },
+              {
+                name: 'pileHeight',
+                label: '草高（mm）',
+                type: 'number',
+                required: true,
+                value: displayRequirement(requirements.pileHeightMm),
+              },
+              {
+                name: 'quantity',
+                label: '预计面积（㎡）',
+                type: 'number',
+                required: true,
+                value: displayRequirement(requirements.quantitySquareMeters),
+              },
+              {
+                name: 'color',
+                label: '颜色要求',
+                required: true,
+                value: displayRequirement(requirements.color),
+              },
+              {
+                name: 'delivery',
+                label: '交付要求',
+                type: 'textarea',
+                required: true,
+                value: displayRequirement(requirements.delivery),
+              },
+            ],
+            '创建修订草稿',
+            async (values) => {
+              await controller.submit(`/api/v1/ctrs/${ctrId}/versions`, {
+                title: values.title ?? '',
+                requirements: {
+                  application: values.application ?? '',
+                  pileHeightMm: Number(values.pileHeight ?? 0),
+                  quantitySquareMeters: Number(values.quantity ?? 0),
+                  color: values.color ?? '',
+                  delivery: values.delivery ?? '',
+                },
+              });
+              await controller.load();
+              status.textContent = controller.message;
+            },
+          );
+        });
+        actions.append(revise);
+      }
       if (ctrStatus === 'DRAFT' && permissions.has('ctr:submit')) {
         const submit = document.createElement('button');
         submit.className = 'secondary';
@@ -617,7 +738,29 @@ export function commercialWorkspaceStructure(
           actions.append(decide);
         }
       }
-      row.append(identity, version, state, actions);
+      const evidence = document.createElement('details');
+      evidence.className = 'ctr-evidence';
+      const summary = document.createElement('summary');
+      summary.textContent = `规格与证据 · ${String(attachments.length)} 个附件`;
+      const specification = document.createElement('dl');
+      specification.className = 'ctr-specification';
+      const previous = ctrs.find((item) => item.ctrId === ctrId && item.version === ctrVersion - 1);
+      const previousRequirements = recordValue(previous?.requirements);
+      for (const [key, label] of ctrRequirementFields) {
+        const term = document.createElement('dt');
+        term.textContent = label;
+        const definition = document.createElement('dd');
+        const currentValue = displayRequirement(requirements[key]);
+        const previousValue = displayRequirement(previousRequirements[key]);
+        definition.textContent =
+          previous && currentValue !== previousValue
+            ? `${currentValue}（上一版：${previousValue}）`
+            : currentValue;
+        if (previous && currentValue !== previousValue) definition.className = 'changed';
+        specification.append(term, definition);
+      }
+      evidence.append(summary, specification);
+      row.append(identity, version, state, actions, evidence);
       table.append(row);
     }
     if (ctrs.length === 0) {
@@ -868,6 +1011,33 @@ export const createFetchCommercialApi = (token: string): CommercialApi => ({
       ...(method === 'POST' ? { headers: { 'idempotency-key': requestId() } } : {}),
       body: JSON.stringify(payload),
     }),
+  async uploadCtrAttachment(versionId, file) {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+    const hex = [...digest].map((value) => value.toString(16).padStart(2, '0')).join('');
+    let binary = '';
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    const metadata = await json<Record<string, unknown>>('/api/v1/attachments', token, {
+      method: 'POST',
+      body: JSON.stringify({
+        name: file.name,
+        mimeType: file.type === '' ? 'application/octet-stream' : file.type,
+        size: file.size,
+        checksum: hex,
+      }),
+    });
+    if (typeof metadata.id !== 'string') throw new Error('附件元数据响应无效');
+    const uploaded = await json<Record<string, unknown>>(
+      `/api/v1/attachments/${metadata.id}/content`,
+      token,
+      { method: 'PUT', body: JSON.stringify({ contentBase64: btoa(binary) }) },
+    );
+    await json(`/api/v1/ctr-versions/${versionId}/attachments`, token, {
+      method: 'POST',
+      body: JSON.stringify({ attachmentId: metadata.id }),
+    });
+    return uploaded;
+  },
   command: (revisionId, action, payload = {}) =>
     json<Record<string, unknown>>(`/api/v1/quote-revisions/${revisionId}/${action}`, token, {
       method: 'POST',
@@ -1107,6 +1277,7 @@ type FormField = Readonly<{
   type?: 'text' | 'email' | 'tel' | 'number' | 'date' | 'select' | 'textarea';
   required?: boolean;
   placeholder?: string;
+  value?: string;
   options?: readonly Readonly<{ value: string; label: string }>[];
 }>;
 function openForm(
@@ -1139,6 +1310,7 @@ function openForm(
     control.setAttribute('name', field.name);
     if (field.required) control.setAttribute('required', '');
     if (field.placeholder) control.setAttribute('placeholder', field.placeholder);
+    if (field.value !== undefined && 'value' in control) control.value = field.value;
     if (control instanceof HTMLInputElement)
       control.type = ['email', 'tel', 'number', 'date'].includes(field.type ?? '')
         ? (field.type as 'email' | 'tel' | 'number' | 'date')
@@ -1185,6 +1357,67 @@ function openForm(
       .finally(() => {
         submit.disabled = false;
         submit.textContent = submitLabel;
+      });
+  });
+  dialog.append(form);
+  host.append(dialog);
+  dialog.addEventListener('close', () => {
+    dialog.remove();
+  });
+  dialog.showModal();
+}
+function openFileForm(
+  host: HTMLElement,
+  title: string,
+  onSubmit: (file: File) => Promise<void>,
+): void {
+  const dialog = el('dialog', 'form-dialog');
+  const form = el('form', 'entity-form');
+  const heading = el('div', 'dialog-heading');
+  heading.append(
+    el('p', 'eyebrow', 'CTR EVIDENCE'),
+    el('h2', '', title),
+    el('p', 'muted', '附件最大 25 MiB；提交 CTR 后附件集合将被冻结。'),
+  );
+  const label = el('label', 'form-field file-field');
+  label.append(el('span', '', '选择技术资料或客户需求文件'));
+  const input = el('input');
+  input.type = 'file';
+  input.required = true;
+  input.accept = '.pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.txt';
+  label.append(input);
+  const error = el('p', 'form-error');
+  error.setAttribute('role', 'alert');
+  const actions = el('div', 'dialog-actions');
+  const cancel = el('button', 'secondary', '取消');
+  cancel.type = 'button';
+  cancel.addEventListener('click', () => {
+    dialog.close();
+  });
+  const submit = el('button', 'primary', '上传并关联');
+  submit.type = 'submit';
+  actions.append(cancel, submit);
+  form.append(heading, label, error, actions);
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const file = input.files?.[0];
+    if (!file) return;
+    if (file.size > 26_214_400) {
+      error.textContent = '文件超过 25 MiB 限制';
+      return;
+    }
+    submit.disabled = true;
+    submit.textContent = '上传中…';
+    void onSubmit(file)
+      .then(() => {
+        dialog.close();
+      })
+      .catch((failure: unknown) => {
+        error.textContent = failure instanceof Error ? failure.message : '附件上传失败';
+      })
+      .finally(() => {
+        submit.disabled = false;
+        submit.textContent = '上传并关联';
       });
   });
   dialog.append(form);
@@ -1917,6 +2150,7 @@ export async function bootstrap(root: HTMLElement): Promise<void> {
       (item) =>
         item.startsWith('opportunity:') ||
         item.startsWith('ctr:') ||
+        item.startsWith('attachment:') ||
         item.startsWith('technical-solution:') ||
         item.startsWith('cost:') ||
         item.startsWith('sales-policy:') ||
