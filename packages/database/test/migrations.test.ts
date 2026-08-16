@@ -24,7 +24,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0036_manufacturing_master_data.sql');
+    expect(ordered.at(-1)).toBe('0037_procurement_inventory_ledger.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
@@ -416,5 +416,27 @@ describe('identity and authorization migration', () => {
     expect(sql).toContain("'cost-model:manage'");
     expect(sql).toContain("'sales-policy:manage'");
     expect(sql).not.toContain("'cost:evaluate'");
+  });
+  it('establishes procurement evidence and an append-only lot inventory ledger', async () => {
+    const sql = await readFile(
+      join(process.cwd(), 'migrations/0037_procurement_inventory_ledger.sql'),
+      'utf8',
+    );
+    for (const invariant of [
+      'CREATE TABLE suppliers',
+      'CREATE TABLE supplier_item_qualifications',
+      'CREATE TABLE procurement_rfqs',
+      'CREATE TABLE supplier_quotes',
+      'CREATE TABLE purchase_orders',
+      'CREATE TABLE goods_receipts',
+      'CREATE TABLE inventory_lots',
+      'CREATE TABLE inventory_movements',
+      'CREATE VIEW inventory_balances',
+      'procurement and inventory evidence is immutable',
+      'issued purchase order lines are immutable',
+      "'inventory:move'",
+    ])
+      expect(sql).toContain(invariant);
+    expect(sql).not.toMatch(/UPDATE inventory_movements|DELETE FROM inventory_movements/iu);
   });
 });
