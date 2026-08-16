@@ -24,7 +24,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0033_risk_engine_v1.sql');
+    expect(ordered.at(-1)).toBe('0034_risk_governance_repairs.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
@@ -86,6 +86,27 @@ describe('identity and authorization migration', () => {
     expect(sql).toContain('commission ledger sequence is not contiguous');
     expect(sql).toContain('commission evidence is immutable');
     expect(sql).toContain("'commission:pay'");
+  });
+  it('adds immutable versioned risk evaluations and responsibility task events', async () => {
+    const sql = await readFile(join(process.cwd(), 'migrations/0033_risk_engine_v1.sql'), 'utf8');
+    for (const table of [
+      'risk_policies',
+      'risk_policy_versions',
+      'risk_evaluations',
+      'risk_tasks',
+      'risk_task_events',
+    ])
+      expect(sql).toContain(`CREATE TABLE ${table}`);
+    for (const state of ['OPEN', 'ACKNOWLEDGED', 'ESCALATED', 'CLOSED'])
+      expect(sql).toContain(`'${state}'`);
+    expect(sql).toContain('risk task event sequence is not contiguous');
+    expect(sql).toContain('risk task closure requires evidence');
+    const repair = await readFile(
+      join(process.cwd(), 'migrations/0034_risk_governance_repairs.sql'),
+      'utf8',
+    );
+    expect(repair).toContain('risk policy versions only allow DRAFT to PUBLISHED transition');
+    expect(repair).toContain('risk_policy_one_published_effective_version');
   });
   it('contains every foundational boundary and no later-engine tables', async () => {
     const sql = await readFile(

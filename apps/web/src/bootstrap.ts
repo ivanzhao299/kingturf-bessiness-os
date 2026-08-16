@@ -478,6 +478,7 @@ export function commercialWorkspaceStructure(
   status.setAttribute('role', 'status');
   status.textContent = controller?.loading ? '加载中…' : (controller?.message ?? '等待服务器数据');
   workspace.append(status);
+  let riskPolicyControls: HTMLElement | null = null;
   const permissions = controller?.permissions ?? new Set<CommercialPermission>(),
     permittedPaths = new Map<string, readonly [CommercialPermission, CommercialPermission]>([
       ['/api/v1/opportunities', ['opportunity:read', 'opportunity:create']],
@@ -2499,8 +2500,221 @@ export function commercialWorkspaceStructure(
       el('h2', '', '订单全链路与证据时间线'),
       el('p', '', '从已释放订单下钻报价、成本、信用、合同、应收、回款、佣金与异常。'),
     );
-    heading.append(copy);
+    /* Risk policy controls are rendered in the dedicated risk workbench below. */
+    const riskPolicies = controller.views.get('/api/v1/risk-policies') ?? [];
+    const riskOrders = controller.views.get('/api/v1/sales-orders') ?? [];
+    riskPolicyControls = el('div', 'risk-policy-controls');
+    const riskPercent = (value: string) => String(Number(value) / 100);
+    if (permissions.has('risk-policy:manage')) {
+      const create = el('button', 'secondary', '＋ 新建风险政策');
+      create.addEventListener('click', () => {
+        openForm(
+          workspace,
+          '新建风险政策',
+          '政策发布后，评价会固定其版本、阈值和规则清单。',
+          [
+            { name: 'code', label: '政策代码', required: true },
+            { name: 'name', label: '政策名称', required: true },
+            {
+              name: 'minimumMarginBasisPoints',
+              label: '最低毛利率（bp）',
+              type: 'number',
+              required: true,
+              value: '2500',
+            },
+            {
+              name: 'overdueGraceDays',
+              label: '逾期宽限天数',
+              type: 'number',
+              required: true,
+              value: '0',
+            },
+            {
+              name: 'creditWarningDays',
+              label: '信用预警天数',
+              type: 'number',
+              required: true,
+              value: '30',
+            },
+            { name: 'effectiveAt', label: '生效日期', type: 'date', required: true },
+          ],
+          '发布风险政策',
+          async (values) => {
+            await controller.submit('/api/v1/risk-policies', {
+              code: values.code ?? '',
+              name: values.name ?? '',
+              minimumMarginBasisPoints: Number(values.minimumMarginBasisPoints),
+              overdueGraceDays: Number(values.overdueGraceDays),
+              creditWarningDays: Number(values.creditWarningDays),
+              effectiveAt: new Date(`${values.effectiveAt ?? ''}T00:00:00.000Z`).toISOString(),
+              rules: [
+                { code: 'LOW_MARGIN' },
+                { code: 'OVERDUE_AR' },
+                { code: 'CREDIT_EXPIRY' },
+                { code: 'CONTRACT_SIGNATURE' },
+                { code: 'ORDER_RELEASE_GATE' },
+              ],
+              publish: true,
+            });
+            await controller.load();
+            status.textContent = controller.message;
+          },
+        );
+      });
+      heading.append(copy);
+      riskPolicyControls.append(create);
+    } else heading.append(copy);
     panel.append(heading);
+    const policyStrip = el('div', 'version-strip risk-policy-strip');
+    for (const policy of riskPolicies) {
+      const policyCard = el('article', 'version-card');
+      policyCard.append(
+        el(
+          'strong',
+          '',
+          `${recordText(policy, 'code', 'code')} V${recordText(policy, 'version', 'version')}`,
+        ),
+        el('span', 'version-pin', recordText(policy, 'status', 'status')),
+        el(
+          'p',
+          'muted',
+          `毛利门槛 ${riskPercent(recordText(policy, 'minimumMarginBasisPoints', 'minimum_margin_basis_points', '0'))}% · 逾期宽限 ${recordText(policy, 'overdueGraceDays', 'overdue_grace_days', '0')} 天 · 信用预警 ${recordText(policy, 'creditWarningDays', 'credit_warning_days', '0')} 天`,
+        ),
+      );
+      if (permissions.has('risk-policy:manage') && policy.status === 'DRAFT') {
+        const publish = el('button', 'primary', '发布版本');
+        publish.addEventListener(
+          'click',
+          () =>
+            void controller
+              .submit(`/api/v1/risk-policy-versions/${textValue(policy.id, '')}/publish`, {})
+              .then(() => controller.load()),
+        );
+        policyCard.append(publish);
+      }
+      if (permissions.has('risk-policy:manage') && policy.status === 'PUBLISHED') {
+        const revise = el('button', 'secondary', '创建新版本');
+        revise.addEventListener('click', () => {
+          openForm(
+            workspace,
+            '创建风险政策版本',
+            '新版本先保存为草稿，发布后历史评价仍固定原版本。',
+            [
+              {
+                name: 'minimumMarginBasisPoints',
+                label: '最低毛利率（bp）',
+                type: 'number',
+                required: true,
+                value: recordText(
+                  policy,
+                  'minimumMarginBasisPoints',
+                  'minimum_margin_basis_points',
+                  '2500',
+                ),
+              },
+              {
+                name: 'overdueGraceDays',
+                label: '逾期宽限天数',
+                type: 'number',
+                required: true,
+                value: recordText(policy, 'overdueGraceDays', 'overdue_grace_days', '0'),
+              },
+              {
+                name: 'creditWarningDays',
+                label: '信用预警天数',
+                type: 'number',
+                required: true,
+                value: recordText(policy, 'creditWarningDays', 'credit_warning_days', '30'),
+              },
+              { name: 'effectiveAt', label: '生效日期', type: 'date', required: true },
+            ],
+            '保存草稿',
+            async (values) => {
+              await controller.submit(
+                `/api/v1/risk-policies/${recordText(policy, 'policyId', 'policy_id')}/versions`,
+                {
+                  minimumMarginBasisPoints: Number(values.minimumMarginBasisPoints),
+                  overdueGraceDays: Number(values.overdueGraceDays),
+                  creditWarningDays: Number(values.creditWarningDays),
+                  effectiveAt: new Date(`${values.effectiveAt ?? ''}T00:00:00.000Z`).toISOString(),
+                  rules: [
+                    { code: 'LOW_MARGIN' },
+                    { code: 'OVERDUE_AR' },
+                    { code: 'CREDIT_EXPIRY' },
+                    { code: 'CONTRACT_SIGNATURE' },
+                    { code: 'ORDER_RELEASE_GATE' },
+                  ],
+                },
+              );
+              await controller.load();
+              status.textContent = controller.message;
+            },
+          );
+        });
+        policyCard.append(revise);
+      }
+      policyStrip.append(policyCard);
+    }
+    riskPolicyControls.append(policyStrip);
+    if (permissions.has('risk:evaluate') && riskOrders.length && riskPolicies.length) {
+      const evaluate = el('button', 'primary', '运行订单风险评价');
+      evaluate.addEventListener('click', () => {
+        openForm(
+          workspace,
+          '运行订单风险评价',
+          '风险分数由订单利润、应收和信用事实推导。',
+          [
+            {
+              name: 'salesOrderId',
+              label: '销售订单',
+              type: 'select',
+              required: true,
+              options: riskOrders.map((order) => ({
+                value: textValue(order.id, ''),
+                label: recordText(order, 'orderNumber', 'order_number'),
+              })),
+            },
+            {
+              name: 'policyVersionId',
+              label: '已发布政策',
+              type: 'select',
+              required: true,
+              options: riskPolicies
+                .filter((policy) => policy.status === 'PUBLISHED')
+                .map((policy) => ({
+                  value: textValue(policy.id, ''),
+                  label: `${recordText(policy, 'code', 'code')} V${recordText(policy, 'version', 'version')}`,
+                })),
+            },
+            {
+              name: 'assigneeEmployeeId',
+              label: '责任人',
+              type: 'select',
+              required: true,
+              options: controller.employees.map((employee) => ({
+                value: employee.id,
+                label: employee.displayName ?? employee.id,
+              })),
+            },
+            { name: 'validUntil', label: '评价有效至', type: 'date', required: true },
+            { name: 'dueAt', label: '任务到期日', type: 'date', required: true },
+          ],
+          '计算风险',
+          async (values) => {
+            await controller.submit('/api/v1/risk-evaluations', {
+              salesOrderId: values.salesOrderId ?? '',
+              policyVersionId: values.policyVersionId ?? '',
+              assigneeEmployeeId: values.assigneeEmployeeId ?? '',
+              validUntil: new Date(`${values.validUntil ?? ''}T23:59:59.000Z`).toISOString(),
+              dueAt: new Date(`${values.dueAt ?? ''}T23:59:59.000Z`).toISOString(),
+            });
+            await controller.load();
+            status.textContent = controller.message;
+          },
+        );
+      });
+      riskPolicyControls.append(evaluate);
+    }
     const list = el('div', 'order-360-list');
     for (const aggregate of controller.order360.values()) {
       const order = recordValue(aggregate.order);
@@ -2510,6 +2724,7 @@ export function commercialWorkspaceStructure(
       const receivables = Array.isArray(aggregate.receivables) ? aggregate.receivables : [];
       const payments = Array.isArray(aggregate.payments) ? aggregate.payments : [];
       const commissions = Array.isArray(aggregate.commissions) ? aggregate.commissions : [];
+      const risks = Array.isArray(aggregate.risks) ? aggregate.risks : [];
       const anomalies = Array.isArray(aggregate.anomalies)
         ? aggregate.anomalies.map(recordValue).filter((item) => item.active === true)
         : [];
@@ -2537,7 +2752,7 @@ export function commercialWorkspaceStructure(
         el(
           'p',
           'muted',
-          `应收 ${String(receivables.length)} · 回款 ${String(payments.length)} · 佣金 ${String(commissions.length)} · 证据 ${String(timeline.length)}`,
+          `应收 ${String(receivables.length)} · 回款 ${String(payments.length)} · 佣金 ${String(commissions.length)} · 风险 ${String(risks.length)} · 证据 ${String(timeline.length)}`,
         ),
       );
       const evidence = el('ol', 'order-360-timeline');
@@ -3041,6 +3256,7 @@ export function commercialWorkspaceStructure(
     );
     heading.append(copy);
     panel.append(heading);
+    if (riskPolicyControls) panel.append(riskPolicyControls);
     const list = el('div', 'risk-list');
     for (const evaluation of controller.views.get('/api/v1/risk-evaluations') ?? []) {
       const task = recordValue(evaluation.task);
@@ -3086,6 +3302,46 @@ export function commercialWorkspaceStructure(
           ),
         );
       card.append(timeline);
+      const taskState = recordText(task, 'effective_state', 'effective_state');
+      if (permissions.has('risk:manage') && typeof task.id === 'string' && taskState !== 'CLOSED') {
+        const commands =
+          taskState === 'OPEN'
+            ? ([
+                ['acknowledge', '确认'],
+                ['escalate', '升级'],
+                ['close', '关闭'],
+              ] as const)
+            : taskState === 'ACKNOWLEDGED'
+              ? ([
+                  ['escalate', '升级'],
+                  ['close', '关闭'],
+                ] as const)
+              : ([['close', '关闭']] as const);
+        for (const [action, label] of commands) {
+          const command = el('button', 'secondary', label);
+          command.addEventListener('click', () => {
+            openForm(
+              workspace,
+              `${label}风险任务`,
+              '本操作只追加任务事件；关闭必须提供可追溯证据编号。',
+              [
+                { name: 'reason', label: '处理理由', type: 'textarea', required: true },
+                { name: 'evidence', label: '证据编号', required: true },
+              ],
+              '追加任务事件',
+              async (values) => {
+                await controller.submit(`/api/v1/risk-tasks/${task.id as string}/${action}`, {
+                  reason: values.reason ?? '',
+                  evidence: { reference: values.evidence ?? '' },
+                });
+                await controller.load();
+                status.textContent = controller.message;
+              },
+            );
+          });
+          card.append(command);
+        }
+      }
       list.append(card);
     }
     if (list.children.length === 0) list.append(el('p', 'pipeline-empty', '暂无风险评价。'));

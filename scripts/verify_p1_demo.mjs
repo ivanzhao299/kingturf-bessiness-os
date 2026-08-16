@@ -125,6 +125,7 @@ assert.equal(order360.contract.id, contract.id);
 assert.equal(order360.receivables.length, 1);
 assert.equal(order360.payments.length, 2);
 assert.equal(order360.commissions.length, 1);
+assert.equal(order360.risks.length, 1);
 assert.equal(order360.anomalies.filter((item) => item.active).length, 0);
 const timelineTypes = new Set(order360.timeline.map((item) => item.type));
 for (const type of [
@@ -188,7 +189,15 @@ process.stdout.write(
       order360: {
         timelineEvents: order360.timeline.length,
         activeAnomalies: order360.anomalies.filter((item) => item.active).length,
-        sections: ['quote', 'credit', 'contract', 'receivables', 'payments', 'commissions'],
+        sections: [
+          'quote',
+          'credit',
+          'contract',
+          'receivables',
+          'payments',
+          'commissions',
+          'risks',
+        ],
       },
       risk: { id: risk.id, severity: risk.severity, score: risk.score, taskState: 'CLOSED' },
     },

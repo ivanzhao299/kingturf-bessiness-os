@@ -114,6 +114,88 @@ export class PostgresRiskRepository {
       });
     });
   }
+  public createPolicyVersion(
+    policyId: string,
+    input: {
+      minimumMarginBasisPoints: number;
+      overdueGraceDays: number;
+      creditWarningDays: number;
+      effectiveAt: string;
+      rules: JsonObject[];
+    },
+    context: Context,
+    correlationId: string,
+  ) {
+    return this.db.transaction(async (tx) => {
+      if (!context.scopes.includes('COMPANY') && !context.scopes.includes('GROUP'))
+        throw new DomainError('forbidden', 'Risk policy management requires company scope');
+      const policy = (
+        await tx.query<{ code: string; name: string }>(
+          'SELECT code,name FROM risk_policies WHERE id=$1 AND tenant_id=$2 FOR UPDATE',
+          [policyId, context.actor.companyId],
+        )
+      ).rows[0];
+      if (!policy) throw new DomainError('not_found', 'Risk policy not found');
+      const canonical = { policyId, ...input };
+      const version = (
+        await tx.query<{ id: string; version: number }>(
+          `INSERT INTO risk_policy_versions(tenant_id,policy_id,version,minimum_margin_basis_points,overdue_grace_days,credit_warning_days,effective_at,rules,canonical_hash,created_by)
+           SELECT $1,$2,coalesce(max(version),0)+1,$3,$4,$5,$6,$7,$8,$9 FROM risk_policy_versions
+           WHERE tenant_id=$1 AND policy_id=$2 RETURNING id,version`,
+          [
+            context.actor.companyId,
+            policyId,
+            input.minimumMarginBasisPoints,
+            input.overdueGraceDays,
+            input.creditWarningDays,
+            input.effectiveAt,
+            JSON.stringify(input.rules),
+            hash(canonical),
+            context.actor.employeeId,
+          ],
+        )
+      ).rows[0];
+      if (!version) throw new Error('Risk policy version insert failed');
+      await tx.query(
+        "INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata) VALUES('risk-policy.revised','SUCCESS',$1,$2,'risk-policy',$3,$4,$5)",
+        [context.actor.employeeId, context.actor.companyId, policyId, correlationId, canonical],
+      );
+      return json({
+        id: version.id,
+        policyId,
+        code: policy.code,
+        name: policy.name,
+        version: version.version,
+        status: 'DRAFT',
+        ...input,
+        canonicalHash: hash(canonical),
+      });
+    });
+  }
+  public publishPolicyVersion(id: string, context: Context, correlationId: string) {
+    return this.db.transaction(async (tx) => {
+      if (!context.scopes.includes('COMPANY') && !context.scopes.includes('GROUP'))
+        throw new DomainError('forbidden', 'Risk policy management requires company scope');
+      const row = (
+        await tx.query<{ policy_id: string; version: number }>(
+          "UPDATE risk_policy_versions SET status='PUBLISHED',published_at=now() WHERE id=$1 AND tenant_id=$2 AND status='DRAFT' RETURNING policy_id,version",
+          [id, context.actor.companyId],
+        )
+      ).rows[0];
+      if (!row) throw new DomainError('not_found', 'Draft risk policy version not found');
+      const result = json({
+        id,
+        policyId: row.policy_id,
+        version: row.version,
+        status: 'PUBLISHED',
+      });
+      await tx.query(
+        "INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata) VALUES('risk-policy.published','SUCCESS',$1,$2,'risk-policy',$3,$4,$5)",
+        [context.actor.employeeId, context.actor.companyId, row.policy_id, correlationId, result],
+      );
+      return result;
+    });
+  }
   public evaluate(
     input: {
       salesOrderId: string;
@@ -208,7 +290,36 @@ export class PostgresRiskRepository {
         overdueAr: basis.overdue_ar,
         creditValidUntil: basis.credit_valid_until,
       };
-      const trace = findings.map((f) => json({ rule: f.code, matched: true, evidence: f }));
+      const trace = [
+        json({
+          rule: 'LOW_MARGIN',
+          matched: basis.margin_basis_points < basis.minimum_margin_basis_points,
+          actual: basis.margin_basis_points,
+          threshold: basis.minimum_margin_basis_points,
+        }),
+        json({
+          rule: 'OVERDUE_AR',
+          matched: Number(basis.overdue_ar) > 0,
+          amount: basis.overdue_ar,
+          graceDays: basis.overdue_grace_days,
+        }),
+        json({
+          rule: 'CREDIT_EXPIRY',
+          matched: new Date(basis.credit_valid_until).getTime() <= warningAt,
+          validUntil: basis.credit_valid_until,
+          warningDays: basis.credit_warning_days,
+        }),
+        json({
+          rule: 'CONTRACT_SIGNATURE',
+          matched: false,
+          evidence: 'released order pins an exact signed contract',
+        }),
+        json({
+          rule: 'ORDER_RELEASE_GATE',
+          matched: false,
+          evidence: 'order status and graph were validated at release',
+        }),
+      ];
       const actions = findings.map((f) =>
         json({
           finding: f.code,
@@ -293,6 +404,8 @@ export class PostgresRiskRepository {
     correlationId: string,
   ) {
     return this.db.transaction(async (tx) => {
+      if (input.state === 'CLOSED' && Object.keys(input.evidence).length === 0)
+        throw new DomainError('invalid_request', 'Risk task closure requires evidence');
       await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
         `${context.actor.companyId}:${id}:risk-task`,
       ]);

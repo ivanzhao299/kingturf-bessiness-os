@@ -17,6 +17,7 @@ import { buildApp } from '../src/app.js';
 import type { PostgresCrmRepository } from '../src/crm-repositories.js';
 import type { PostgresCommissionRepository } from '../src/commission-repositories.js';
 import type { PostgresOrder360Repository } from '../src/order-360-repositories.js';
+import type { PostgresRiskRepository } from '../src/risk-repositories.js';
 import type { AuthenticationService } from '../src/security.js';
 
 const employeeId = '10000000-0000-4000-8000-000000000001';
@@ -182,6 +183,21 @@ function dependencies(authContext: AuthorizationContext | null) {
     }),
   );
   const order360 = { get: order360Get } as unknown as PostgresOrder360Repository;
+  const riskEvaluate = vi.fn(() =>
+    Promise.resolve({ id: targetId, severity: 'HIGH', score: 45, taskId: organizationId }),
+  );
+  const riskTransition = vi.fn(() =>
+    Promise.resolve({ taskId: targetId, state: 'CLOSED', eventId: organizationId }),
+  );
+  const risks = {
+    listPolicies: vi.fn(() => Promise.resolve([])),
+    listEvaluations: vi.fn(() => Promise.resolve([])),
+    createPolicy: vi.fn(() => Promise.resolve({ id: targetId, status: 'PUBLISHED' })),
+    createPolicyVersion: vi.fn(() => Promise.resolve({ id: targetId, status: 'DRAFT' })),
+    publishPolicyVersion: vi.fn(() => Promise.resolve({ id: targetId, status: 'PUBLISHED' })),
+    evaluate: riskEvaluate,
+    transitionTask: riskTransition,
+  } as unknown as PostgresRiskRepository;
   return {
     auth,
     organizations,
@@ -190,6 +206,9 @@ function dependencies(authContext: AuthorizationContext | null) {
     crm,
     commissions,
     order360,
+    risks,
+    riskEvaluate,
+    riskTransition,
     order360Get,
     commissionAccrue,
     commissionTransition,
@@ -793,5 +812,68 @@ describe('authorization management API', () => {
       targetId,
       expect.objectContaining({ scopes: ['SELF'] }),
     );
+  });
+  it('authorizes server-derived risk evaluation and evidence-backed task closure', async () => {
+    const permissions: AuthorizationContext['permissions'] = new Map([
+      ['risk:evaluate', { scopes: ['TEAM'] as const, fields: null }],
+      ['risk:manage', { scopes: ['TEAM'] as const, fields: null }],
+      ['risk:read', { scopes: ['TEAM'] as const, fields: null }],
+    ]);
+    const deps = dependencies(context(permissions));
+    const evaluated = await dispatch(
+      deps,
+      'POST',
+      '/api/v1/risk-evaluations',
+      {
+        salesOrderId: targetId,
+        policyVersionId: organizationId,
+        assigneeEmployeeId: employeeId,
+        validUntil: '2026-09-16T00:00:00.000Z',
+        dueAt: '2026-08-20T00:00:00.000Z',
+      },
+      undefined,
+      'risk-evaluate',
+    );
+    expect(evaluated.statusCode).toBe(201);
+    expect(deps.riskEvaluate).toHaveBeenCalledWith(
+      expect.objectContaining({ salesOrderId: targetId, policyVersionId: organizationId }),
+      expect.any(String),
+      expect.objectContaining({ scopes: ['TEAM'] }),
+      expect.any(String),
+    );
+    const closed = await dispatch(
+      deps,
+      'POST',
+      `/api/v1/risk-tasks/${targetId}/close`,
+      { reason: 'Approved exception archived', evidence: { ticket: 'RISK-1' } },
+      undefined,
+      'risk-close',
+    );
+    expect(closed.statusCode).toBe(201);
+    expect(deps.riskTransition).toHaveBeenCalledWith(
+      targetId,
+      { state: 'CLOSED', reason: 'Approved exception archived', evidence: { ticket: 'RISK-1' } },
+      expect.any(String),
+      expect.objectContaining({ scopes: ['TEAM'] }),
+      expect.any(String),
+    );
+    expect(
+      (
+        await dispatch(
+          dependencies(context(grant('risk:read'))),
+          'POST',
+          '/api/v1/risk-evaluations',
+          {
+            salesOrderId: targetId,
+            policyVersionId: organizationId,
+            assigneeEmployeeId: employeeId,
+            validUntil: '2026-09-16T00:00:00.000Z',
+            dueAt: '2026-08-20T00:00:00.000Z',
+          },
+          undefined,
+          'risk-denied',
+        )
+      ).statusCode,
+    ).toBe(403);
   });
 });

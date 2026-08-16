@@ -372,6 +372,58 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             );
             return { statusCode: 201, body: mutationDto(result, context, 'risk-policy:read') };
           }
+          const riskPolicyRevision = /^\/api\/v1\/risk-policies\/([0-9a-f-]+)\/versions$/u.exec(
+            request.pathname,
+          );
+          if (request.method === 'POST' && riskPolicyRevision) {
+            const body = objectBody(request.body);
+            allow(body, [
+              'minimumMarginBasisPoints',
+              'overdueGraceDays',
+              'creditWarningDays',
+              'effectiveAt',
+              'rules',
+            ]);
+            const policyId = riskPolicyRevision[1];
+            if (!policyId) throw new DomainError('invalid_request', 'riskPolicyId is required');
+            const grant = authorizeQuery(context, 'risk-policy:manage', Object.keys(body));
+            const result = await dependencies.risks.createPolicyVersion(
+              policyId,
+              {
+                minimumMarginBasisPoints: integer(
+                  body.minimumMarginBasisPoints,
+                  'minimumMarginBasisPoints',
+                  -100000,
+                  10000,
+                ),
+                overdueGraceDays: integer(body.overdueGraceDays, 'overdueGraceDays', 0, 3650),
+                creditWarningDays: integer(body.creditWarningDays, 'creditWarningDays', 0, 3650),
+                effectiveAt: timestamp(body.effectiveAt, 'effectiveAt'),
+                rules: array(body.rules, 'rules').map((rule, index) =>
+                  jsonObject(rule, `rules[${String(index)}]`),
+                ),
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'risk-policy:read') };
+          }
+          const riskPolicyPublish =
+            /^\/api\/v1\/risk-policy-versions\/([0-9a-f-]+)\/publish$/u.exec(request.pathname);
+          if (request.method === 'POST' && riskPolicyPublish) {
+            const body = objectBody(request.body);
+            allow(body, []);
+            const versionId = riskPolicyPublish[1];
+            if (!versionId)
+              throw new DomainError('invalid_request', 'riskPolicyVersionId is required');
+            const grant = authorizeQuery(context, 'risk-policy:manage');
+            const result = await dependencies.risks.publishPolicyVersion(
+              versionId,
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 200, body: mutationDto(result, context, 'risk-policy:read') };
+          }
           if (request.method === 'POST' && request.pathname === '/api/v1/risk-evaluations') {
             const body = objectBody(request.body);
             allow(body, [
@@ -449,6 +501,7 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             payments: 'bank-payment:read',
             reconciliations: 'reconciliation:read',
             commissions: 'commission:read',
+            risks: 'risk:read',
           } as const satisfies Record<string, PermissionKey>;
           const body: Record<string, unknown> = {
             order: permittedDto(
@@ -472,6 +525,7 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             if (type.startsWith('AR_')) return 'ar:read';
             if (type.startsWith('PAYMENT_')) return 'bank-payment:read';
             if (type.startsWith('COMMISSION_')) return 'commission:read';
+            if (type.startsWith('RISK_')) return 'risk:read';
             if (type.startsWith('OPPORTUNITY_')) return 'opportunity:read';
             return 'sales-order:read';
           };

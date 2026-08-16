@@ -96,7 +96,7 @@ test('shows the permission-bounded Order 360 summary and evidence timeline', asy
     card.getByText(/报价 Q-KT-P1-DEMO · 信用 APPROVED · 合同 CT-KT-P1-DEMO/u),
   ).toBeVisible();
   await expect(card.getByText('当前未发现活动异常', { exact: true })).toBeVisible();
-  await expect(card.getByText(/应收 1 · 回款 2 · 佣金 1 · 证据 13/u)).toBeVisible();
+  await expect(card.getByText(/应收 1 · 回款 2 · 佣金 1 · 风险 1 · 证据 18/u)).toBeVisible();
   for (const event of [
     'OPPORTUNITY_CREATED',
     'QUOTE_ISSUED',
@@ -106,6 +106,8 @@ test('shows the permission-bounded Order 360 summary and evidence timeline', asy
     'AR_POSTED',
     'PAYMENT_RECEIVED',
     'COMMISSION_CLAWED_BACK',
+    'RISK_EVALUATED',
+    'RISK_TASK_CLOSED',
   ])
     await expect(card.getByText(new RegExp(event, 'u')).first()).toBeVisible();
   await testInfo.attach('order-360-evidence-desktop', {
