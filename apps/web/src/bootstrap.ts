@@ -202,6 +202,8 @@ const formValue = (value: unknown): string =>
   typeof value === 'string' || typeof value === 'number' ? String(value) : '';
 const textValue = (value: unknown, fallback: string): string =>
   typeof value === 'string' || typeof value === 'number' ? String(value) : fallback;
+const decimalValue = (value: number): string =>
+  String(Math.round((value + Number.EPSILON) * 1_000_000) / 1_000_000);
 
 export type Opportunity = Readonly<{
   id: string;
@@ -1573,6 +1575,249 @@ export function commercialWorkspaceStructure(
     policyPanel.append(evaluationList);
     workspace.append(policyPanel);
   }
+  if (controller && permissions.has('quote:read')) {
+    const quotePanel = el('section', 'quote-workbench');
+    const quoteHeading = el('div', 'pipeline-heading');
+    const quoteCopy = el('div');
+    quoteCopy.append(
+      el('h2', '', 'CPQ 报价设计器'),
+      el('p', '', '从成本决策生成行项目，实时计算折扣、毛利并执行销售政策。'),
+    );
+    const costs = controller.views.get('/api/v1/cost-evaluations') ?? [];
+    const policies = (controller.views.get('/api/v1/sales-policies') ?? []).filter(
+      (item) => item.status === 'PUBLISHED',
+    );
+    const solutions = controller.views.get('/api/v1/technical-solutions') ?? [];
+    const ctrs = controller.views.get('/api/v1/ctrs') ?? [];
+    if (permissions.has('quote:create') && costs.length > 0 && policies.length > 0) {
+      const createQuote = el('button', 'primary', '＋ 新建报价');
+      createQuote.addEventListener('click', () => {
+        openForm(
+          workspace,
+          '新建 CPQ 报价',
+          '系统先校验销售政策，再由服务器重算每一行、折扣与毛利。',
+          [
+            { name: 'quoteNumber', label: '报价编号', required: true, placeholder: 'Q-2026-001' },
+            {
+              name: 'costDecisionId',
+              label: '成本决策',
+              type: 'select',
+              required: true,
+              options: costs.map((item) => ({
+                value: textValue(item.id, ''),
+                label: `${textValue(item.currency, '')} ${textValue(item.total, '—')} · ${textValue(item.id, '').slice(0, 8)}`,
+              })),
+            },
+            {
+              name: 'policyVersionId',
+              label: '销售政策版本',
+              type: 'select',
+              required: true,
+              options: policies.map((item) => ({
+                value: textValue(item.id, ''),
+                label: `${textValue(item.code, '政策')} · V${textValue(item.version, '1')}`,
+              })),
+            },
+            {
+              name: 'turfQuantity',
+              label: '草坪数量（㎡）',
+              type: 'number',
+              required: true,
+              value: '8050',
+            },
+            {
+              name: 'turfPrice',
+              label: '草坪销售单价（元/㎡）',
+              type: 'number',
+              required: true,
+              value: '108',
+            },
+            {
+              name: 'installationQuantity',
+              label: '铺装数量（㎡）',
+              type: 'number',
+              required: true,
+              value: '8050',
+            },
+            {
+              name: 'installationPrice',
+              label: '铺装销售单价（元/㎡）',
+              type: 'number',
+              required: true,
+              value: '28',
+            },
+            {
+              name: 'serviceQuantity',
+              label: '项目服务项数量',
+              type: 'number',
+              required: true,
+              value: '1',
+            },
+            {
+              name: 'servicePrice',
+              label: '项目服务费（元）',
+              type: 'number',
+              required: true,
+              value: '60000',
+            },
+            {
+              name: 'discountPercent',
+              label: '整单折扣（%）',
+              type: 'number',
+              required: true,
+              value: '0',
+            },
+            { name: 'validUntil', label: '报价有效期至', type: 'date', required: true },
+          ],
+          '校验并创建报价',
+          async (values) => {
+            const cost = costs.find((item) => item.id === values.costDecisionId);
+            if (!cost) throw new Error('请选择有效成本决策');
+            const solutionId = textValue(cost.technicalSolutionRevisionId, '');
+            const solution = solutions.find((item) => item.id === solutionId);
+            if (!solution) throw new Error('成本决策对应的技术方案不可见');
+            const ctrVersionId = textValue(solution.ctrVersionId, '');
+            const ctr = ctrs.find((item) => item.id === ctrVersionId);
+            if (!ctr) throw new Error('技术方案对应的 CTR 版本不可见');
+            const currency = textValue(cost.currency, 'CNY');
+            const lineInputs = [
+              ['人造草坪系统', values.turfQuantity, 'M2', values.turfPrice],
+              ['铺装施工服务', values.installationQuantity, 'M2', values.installationPrice],
+              ['项目技术服务', values.serviceQuantity, 'EA', values.servicePrice],
+            ] as const;
+            const lines = lineInputs.map(([description, quantity, unitCode, unitPrice]) => ({
+              description,
+              quantity: decimalValue(Number(quantity ?? 0)),
+              unitCode,
+              unitPrice: decimalValue(Number(unitPrice ?? 0)),
+              total: decimalValue(Number(quantity ?? 0) * Number(unitPrice ?? 0)),
+            }));
+            const subtotal = lines.reduce((sum, line) => sum + Number(line.total), 0);
+            const discount = subtotal * (Number(values.discountPercent ?? 0) / 100);
+            const total = subtotal - discount;
+            const costTotal = Number(cost.total ?? 0);
+            const margin = total - costTotal;
+            if (total <= 0) throw new Error('折扣后报价金额必须大于零');
+            const marginBasisPoints = Math.trunc((margin * 10_000) / total);
+            const discountBasisPoints = Math.trunc((discount * 10_000) / subtotal);
+            await controller.submit('/api/v1/sales-policy-evaluations', {
+              policyVersionId: values.policyVersionId ?? '',
+              costDecisionId: values.costDecisionId ?? '',
+              context: { marginBasisPoints, discountBasisPoints },
+            });
+            const policyEvaluation = controller.revisionState;
+            if (policyEvaluation?.passed !== true || typeof policyEvaluation.id !== 'string') {
+              const reasons = Array.isArray(policyEvaluation?.reasons)
+                ? policyEvaluation.reasons.map((item) => textValue(item, '')).filter(Boolean)
+                : [];
+              throw new Error(
+                `销售政策未通过${reasons.length > 0 ? `：${reasons.join('；')}` : ''}`,
+              );
+            }
+            await controller.submit('/api/v1/quotes', {
+              quoteNumber: values.quoteNumber ?? '',
+              opportunityId: textValue(cost.opportunityId, ''),
+              ctrVersionId,
+              technicalSolutionRevisionId: solutionId,
+              costDecisionId: values.costDecisionId ?? '',
+              policyVersionId: values.policyVersionId ?? '',
+              policyEvaluationId: policyEvaluation.id,
+              currency,
+              subtotal: decimalValue(subtotal),
+              discount: decimalValue(discount),
+              total: decimalValue(total),
+              costTotal: decimalValue(costTotal),
+              margin: decimalValue(margin),
+              marginBasisPoints,
+              validUntil: new Date(`${values.validUntil ?? ''}T23:59:59.000Z`).toISOString(),
+              lines,
+            });
+            await controller.load();
+            status.textContent = controller.message;
+          },
+        );
+      });
+      quoteHeading.append(quoteCopy, createQuote);
+    } else quoteHeading.append(quoteCopy);
+    quotePanel.append(quoteHeading);
+    const quotes = controller.views.get('/api/v1/quotes') ?? [];
+    const quoteList = el('div', 'quote-list');
+    for (const quote of quotes) {
+      const card = el('article', 'quote-card');
+      const quoteStatus = textValue(quote.status, 'DRAFT');
+      card.append(
+        el(
+          'p',
+          'eyebrow',
+          `${textValue(quote.quoteNumber, '报价')} · R${textValue(quote.revision, '1')}`,
+        ),
+        el(
+          'strong',
+          'quote-total',
+          `${textValue(quote.currency, '')} ${textValue(quote.total, '—')}`,
+        ),
+        el('span', `ctr-state state-${quoteStatus.toLocaleLowerCase()}`, quoteStatus),
+        el(
+          'p',
+          'quote-economics',
+          `折扣 ${textValue(quote.discount, '0')} · 成本 ${textValue(quote.costTotal, '—')} · 毛利 ${textValue(quote.margin, '—')}（${String(Number(quote.marginBasisPoints ?? 0) / 100)}%）`,
+        ),
+        el(
+          'p',
+          'version-pin',
+          `CTR ${textValue(quote.ctrVersionId, '').slice(0, 8)} · 方案 ${textValue(quote.technicalSolutionRevisionId, '').slice(0, 8)} · 成本 ${textValue(quote.costDecisionId, '').slice(0, 8)} · 政策 ${textValue(quote.policyVersionId, '').slice(0, 8)}`,
+        ),
+      );
+      const lines = Array.isArray(quote.lines) ? quote.lines : [];
+      const lineTable = el('div', 'quote-lines');
+      for (const line of lines) {
+        const item = recordValue(line);
+        lineTable.append(
+          el('span', '', textValue(item.description, '报价行')),
+          el('span', '', `${textValue(item.quantity, '—')} ${textValue(item.unit_code, '')}`),
+          el('span', '', `${textValue(item.unit_price, '—')} / ${textValue(item.total, '—')}`),
+        );
+      }
+      card.append(lineTable);
+      const actions = el('div', 'quote-actions');
+      if (quoteStatus === 'DRAFT' && permissions.has('quote:approve')) {
+        const approve = el('button', 'primary', '批准报价');
+        approve.addEventListener('click', () => {
+          openForm(
+            workspace,
+            '批准报价',
+            '审批决定和理由将进入不可变证据链。',
+            [{ name: 'reason', label: '审批意见', type: 'textarea', required: true }],
+            '确认批准',
+            async (values) => {
+              await controller.quoteCommand(textValue(quote.id, ''), 'approve', {
+                decision: 'APPROVED',
+                reason: values.reason ?? '',
+              });
+              await controller.load();
+              status.textContent = controller.message;
+            },
+          );
+        });
+        actions.append(approve);
+      }
+      if (quoteStatus === 'APPROVED' && permissions.has('quote:issue')) {
+        const issue = el('button', 'primary', '签发报价');
+        issue.addEventListener('click', () => {
+          void controller.quoteCommand(textValue(quote.id, ''), 'issue').then(async () => {
+            await controller.load();
+            status.textContent = controller.message;
+          });
+        });
+        actions.append(issue);
+      }
+      card.append(actions);
+      quoteList.append(card);
+    }
+    if (quotes.length === 0) quoteList.append(el('p', 'pipeline-empty', '暂无报价。'));
+    quotePanel.append(quoteList);
+    workspace.append(quotePanel);
+  }
   for (const [className, title, description, fields, action, path] of [
     [
       'opportunity-pipeline',
@@ -1679,6 +1924,7 @@ export function commercialWorkspaceStructure(
         '/api/v1/technical-solutions',
         '/api/v1/cost-evaluations',
         '/api/v1/sales-policy-evaluations',
+        '/api/v1/quotes',
       ].includes(path)
     )
       continue;

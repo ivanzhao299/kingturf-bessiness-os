@@ -422,6 +422,89 @@ describe('web bootstrap', () => {
     expect(workspace.textContent).not.toContain('JSON 请求');
   });
 
+  it('renders the CPQ quote builder with economics, pins, approvals, and line items', async () => {
+    const views: Record<string, readonly Record<string, unknown>[]> = {
+      '/api/v1/ctrs': [{ id: 'ctr-v1', status: 'APPROVED' }],
+      '/api/v1/technical-solutions': [
+        { id: 'solution-v1', status: 'FINAL', ctrVersionId: 'ctr-v1' },
+      ],
+      '/api/v1/cost-evaluations': [
+        {
+          id: 'cost-1',
+          opportunityId: 'op-1',
+          technicalSolutionRevisionId: 'solution-v1',
+          currency: 'CNY',
+          total: '752209',
+        },
+      ],
+      '/api/v1/sales-policies': [
+        { id: 'policy-v1', code: 'SP-1', version: 1, status: 'PUBLISHED' },
+      ],
+      '/api/v1/sales-policy-evaluations': [],
+      '/api/v1/quotes': [
+        {
+          id: 'quote-r1',
+          quoteNumber: 'Q-2026-001',
+          revision: 1,
+          status: 'DRAFT',
+          currency: 'CNY',
+          total: '1000000',
+          discount: '0',
+          costTotal: '752209',
+          margin: '247791',
+          marginBasisPoints: 2477,
+          ctrVersionId: 'ctr-v1',
+          technicalSolutionRevisionId: 'solution-v1',
+          costDecisionId: 'cost-1',
+          policyVersionId: 'policy-v1',
+          lines: [
+            {
+              description: '人造草坪系统',
+              quantity: '8050',
+              unit_code: 'M2',
+              unit_price: '108',
+              total: '869400',
+            },
+          ],
+        },
+      ],
+    };
+    const commercialApi = {
+      listOpportunities: vi.fn().mockResolvedValue([{ id: 'op-1', name: '学校球场' }]),
+      list: vi.fn().mockImplementation((path: string) => Promise.resolve(views[path] ?? [])),
+      submit: vi.fn().mockResolvedValue({ id: 'created' }),
+      uploadCtrAttachment: vi.fn().mockResolvedValue({}),
+      command: vi.fn().mockResolvedValue({}),
+    };
+    const controller = new CommercialController(
+      commercialApi,
+      new Set([
+        'opportunity:read',
+        'ctr:read',
+        'technical-solution:read',
+        'cost-model:read',
+        'cost:read',
+        'sales-policy:read',
+        'quote:read',
+        'quote:create',
+        'quote:approve',
+      ]),
+    );
+    await controller.load();
+    const workspace = commercialWorkspaceStructure(
+      'desktop',
+      false,
+      controller,
+    ) as unknown as RenderedElement;
+    expect(workspace.findByClass('quote-workbench')).toHaveLength(1);
+    expect(workspace.findByClass('quote-card')).toHaveLength(1);
+    expect(workspace.textContent).toContain('新建报价');
+    expect(workspace.textContent).toContain('CNY 1000000');
+    expect(workspace.textContent).toContain('毛利 247791（24.77%）');
+    expect(workspace.textContent).toContain('人造草坪系统');
+    expect(workspace.textContent).toContain('批准报价');
+  });
+
   it('loads only authorized APIs and exposes testable E01-E04 event handlers', async () => {
     const { transport, spies } = api();
     const denied = new CrmController(new Set(), transport);

@@ -1033,6 +1033,59 @@ button {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.quote-workbench {
+  grid-column: 1 / -1;
+  padding: 20px;
+  border: 1px solid #dce5e0;
+  border-radius: 10px;
+  background: #fff;
+}
+.quote-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 12px;
+}
+.quote-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 12px;
+  padding: 17px;
+  border: 1px solid #dfe8e3;
+  border-radius: 9px;
+  background: linear-gradient(145deg, #fff, #f7faf8);
+}
+.quote-card .eyebrow,
+.quote-card .quote-economics,
+.quote-card .version-pin,
+.quote-card .quote-lines,
+.quote-card .quote-actions {
+  grid-column: 1 / -1;
+}
+.quote-total {
+  color: #176846;
+  font-size: 24px;
+}
+.quote-economics {
+  margin: 0;
+  color: #42594e;
+  font-size: 11px;
+  font-weight: 700;
+}
+.quote-lines {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 7px 14px;
+  padding: 11px 12px;
+  border-radius: 7px;
+  background: #f0f5f2;
+  color: #50645a;
+  font-size: 10px;
+}
+.quote-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
 .list-filters {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 124px;
