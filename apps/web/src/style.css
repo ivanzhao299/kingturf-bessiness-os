@@ -788,6 +788,30 @@ button {
   padding: 40px 10px;
   text-align: center;
 }
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #edf1ef;
+  color: #7b8982;
+  font-size: 10px;
+}
+.page-button {
+  min-height: 30px;
+  border: 1px solid #dce4df;
+  border-radius: 6px;
+  padding: 0 10px;
+  background: #fff;
+  color: #3e5d4e;
+  font-size: 10px;
+}
+.page-button:disabled {
+  cursor: default;
+  opacity: 0.42;
+}
 .form-dialog {
   width: min(520px, calc(100vw - 28px));
   max-height: calc(100vh - 36px);

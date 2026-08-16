@@ -71,6 +71,11 @@ const lead: Lead = {
 };
 const api = () => {
   const spies = {
+    listEmployees: vi.fn(() =>
+      Promise.resolve([
+        { id: 'employee-1', employeeNumber: 'E-001', displayName: '销售一号', active: true },
+      ]),
+    ),
     listCustomers: vi.fn(() => Promise.resolve([customer])),
     customer360: vi.fn(() =>
       Promise.resolve({
@@ -225,10 +230,12 @@ describe('web bootstrap', () => {
     const denied = new CrmController(new Set(), transport);
     await denied.load();
     expect(spies.listCustomers).not.toHaveBeenCalled();
+    expect(spies.listEmployees).not.toHaveBeenCalled();
     expect(spies.listPool).not.toHaveBeenCalled();
 
     const controller = new CrmController(
       new Set([
+        'employee:read',
         'customer:read',
         'customer:create',
         'customer:update',
@@ -251,6 +258,7 @@ describe('web bootstrap', () => {
     await controller.mutateLead(lead, 'assignment', 'employee-1', 'territory');
     await controller.mutateLead({ ...lead, ownerId: 'employee-1' }, 'release', '', 'return');
     expect(spies.customer360).toHaveBeenCalledWith(customer.id);
+    expect(spies.listEmployees).toHaveBeenCalled();
     expect(spies.createCustomer).toHaveBeenCalled();
     expect(spies.addContact).toHaveBeenCalledWith(customer.id, 'Buyer', 'buyer@example.test');
     expect(spies.claimLead).toHaveBeenCalledWith(lead);
@@ -281,6 +289,31 @@ describe('web bootstrap', () => {
     expect(controller.visibleLeads()).toEqual([]);
     expect(controller.customers).toEqual([customer]);
     expect(controller.pool).toEqual([lead]);
+  });
+
+  it('paginates CRM queues deterministically after filtering', async () => {
+    const { transport } = api();
+    transport.listCustomers = vi.fn(() =>
+      Promise.resolve(
+        Array.from({ length: 12 }, (_, index) => ({
+          ...customer,
+          id: `customer-${String(index + 1)}`,
+          customerNumber: `C-${String(index + 1).padStart(2, '0')}`,
+          name: `客户 ${String(index + 1)}`,
+        })),
+      ),
+    );
+    const controller = new CrmController(new Set(['customer:read']), transport);
+    await controller.load();
+    expect(controller.customerPageItems()).toHaveLength(10);
+    controller.customerPage = 2;
+    expect(controller.customerPageItems().map((item) => item.customerNumber)).toEqual([
+      'C-11',
+      'C-12',
+    ]);
+    controller.customerQuery = '客户 1';
+    controller.customerPage = 1;
+    expect(controller.customerPageItems()).toHaveLength(4);
   });
 
   it.each([

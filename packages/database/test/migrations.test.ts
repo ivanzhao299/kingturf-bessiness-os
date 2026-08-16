@@ -24,7 +24,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0027_quote_to_cash_governance_repairs.sql');
+    expect(ordered.at(-1)).toBe('0028_platform_permission_catalog.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
@@ -313,5 +313,25 @@ describe('identity and authorization migration', () => {
     );
     expect(sql).toContain('ctr_attachment_links_insert_guard');
     expect(sql).toContain("v.status='DRAFT'");
+  });
+  it('completes the platform permission catalog and extends super-admin grants', async () => {
+    const sql = await readFile(
+      join(process.cwd(), 'migrations/0028_platform_permission_catalog.sql'),
+      'utf8',
+    );
+    for (const capability of [
+      'organization:read',
+      'employee:read',
+      'authorization:manage',
+      'audit:read',
+      'master-data:read',
+      'number:allocate',
+      'rule:evaluate',
+      'workflow:decide',
+    ])
+      expect(sql).toContain(`'${capability}'`);
+    expect(sql).toContain("roles.code='SUPER_ADMIN'");
+    expect(sql).toContain("ARRAY['GROUP']::data_scope[]");
+    expect(sql).toContain('ON CONFLICT(role_id,permission_id) DO NOTHING');
   });
 });

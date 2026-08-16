@@ -1,6 +1,7 @@
 export const BOOTSTRAP_TITLE = 'KingTurf Business OS';
 
 export type CrmPermission =
+  | 'employee:read'
   | 'customer:read'
   | 'customer:create'
   | 'customer:update'
@@ -84,6 +85,12 @@ export type Lead = Readonly<{
   version?: number;
   createdAt?: string;
 }>;
+export type Employee = Readonly<{
+  id: string;
+  employeeNumber?: string;
+  displayName?: string;
+  active?: boolean;
+}>;
 export type Customer360 = Readonly<{
   customer: Customer;
   contacts: readonly Readonly<{
@@ -119,6 +126,7 @@ type LeadInput = Readonly<{
   pool: boolean;
 }>;
 export type CrmApi = {
+  listEmployees(): Promise<readonly Employee[]>;
   listCustomers(): Promise<readonly Customer[]>;
   customer360(id: string): Promise<Customer360>;
   createCustomer(input: CustomerInput): Promise<Customer>;
@@ -537,6 +545,7 @@ export function createFetchCrmApi(token: string): CrmApi {
       ...(headers === undefined ? {} : { headers }),
     });
   return {
+    listEmployees: () => json<readonly Employee[]>('/api/v1/employees', token),
     async listCustomers() {
       return (await json<{ items: Customer[] }>('/api/v1/customers', token)).items;
     },
@@ -599,6 +608,7 @@ export function createFetchCrmApi(token: string): CrmApi {
 }
 
 export class CrmController {
+  public employees: readonly Employee[] = [];
   public customers: readonly Customer[] = [];
   public pool: readonly Lead[] = [];
   public leads: readonly Lead[] = [];
@@ -607,20 +617,25 @@ export class CrmController {
   public customerQuery = '';
   public customerStatus = 'ALL';
   public leadQuery = '';
+  public customerPage = 1;
+  public leadPage = 1;
+  public readonly pageSize = 10;
   public constructor(
     public readonly permissions: ReadonlySet<CrmPermission>,
     private readonly api: CrmApi,
   ) {}
   public async load(): Promise<void> {
     const sections = visibleCrmSections(this.permissions);
-    const [customers, pool, leads] = await Promise.all([
+    const [customers, pool, leads, employees] = await Promise.all([
       sections.customers ? this.api.listCustomers() : Promise.resolve([]),
       this.permissions.has('lead-pool:read') ? this.api.listPool() : Promise.resolve([]),
       this.permissions.has('lead:read') ? this.api.listLeads() : Promise.resolve([]),
+      this.permissions.has('employee:read') ? this.api.listEmployees() : Promise.resolve([]),
     ]);
     this.customers = customers;
     this.pool = pool;
     this.leads = leads;
+    this.employees = employees.filter((employee) => employee.active !== false);
   }
   public visibleCustomers(): readonly Customer[] {
     const query = this.customerQuery.trim().toLocaleLowerCase('zh-CN');
@@ -646,6 +661,14 @@ export class CrmController {
             item?.toLocaleLowerCase('zh-CN').includes(query),
           ),
       );
+  }
+  public customerPageItems(): readonly Customer[] {
+    const start = (this.customerPage - 1) * this.pageSize;
+    return this.visibleCustomers().slice(start, start + this.pageSize);
+  }
+  public leadPageItems(): readonly Lead[] {
+    const start = (this.leadPage - 1) * this.pageSize;
+    return this.visibleLeads().slice(start, start + this.pageSize);
   }
   public async selectCustomer(id: string): Promise<void> {
     if (!visibleCrmSections(this.permissions).customer360) return;
@@ -891,6 +914,27 @@ function customer360Content(view: Customer360): HTMLElement {
 
 export function createCrmShell(controller: CrmController, width = window.innerWidth): HTMLElement {
   const sections = visibleCrmSections(controller.permissions);
+  const employeeChoices = controller.employees.map((employee) => ({
+    value: employee.id,
+    label: `${employee.displayName ?? employee.id}${employee.employeeNumber ? ` · ${employee.employeeNumber}` : ''}`,
+  }));
+  const pagination = (total: number, page: number, change: (page: number) => void) => {
+    const pages = Math.max(1, Math.ceil(total / controller.pageSize));
+    const footer = el('footer', 'pagination');
+    const previous = el('button', 'page-button', '← 上一页');
+    previous.disabled = page <= 1;
+    previous.addEventListener('click', () => {
+      change(page - 1);
+    });
+    const state = el('span', '', `${String(page)} / ${String(pages)} 页 · ${String(total)} 条`);
+    const next = el('button', 'page-button', '下一页 →');
+    next.disabled = page >= pages;
+    next.addEventListener('click', () => {
+      change(page + 1);
+    });
+    footer.append(previous, state, next);
+    return footer;
+  };
   const shell = el('main', `app-shell ${viewportFor(width)}`);
   const aside = el('aside', 'sidebar');
   const brand = el('div', 'brand-lockup');
@@ -1046,6 +1090,7 @@ export function createCrmShell(controller: CrmController, width = window.innerWi
     customerSearch.value = controller.customerQuery;
     customerSearch.addEventListener('input', () => {
       controller.customerQuery = customerSearch.value;
+      controller.customerPage = 1;
       bootstrapView(shell, controller);
     });
     const statusFilter = el('select', 'filter-select');
@@ -1063,6 +1108,7 @@ export function createCrmShell(controller: CrmController, width = window.innerWi
     }
     statusFilter.addEventListener('change', () => {
       controller.customerStatus = statusFilter.value;
+      controller.customerPage = 1;
       bootstrapView(shell, controller);
     });
     filters.append(customerSearch, statusFilter);
@@ -1079,7 +1125,7 @@ export function createCrmShell(controller: CrmController, width = window.innerWi
     } else if (visibleCustomers.length === 0) {
       list.append(el('p', 'empty filter-empty', '没有符合当前筛选条件的客户'));
     }
-    for (const customer of visibleCustomers) {
+    for (const customer of controller.customerPageItems()) {
       const row = el('button', 'customer-row');
       row.append(
         el('span', 'avatar', customer.name?.slice(0, 1) ?? '?'),
@@ -1094,6 +1140,13 @@ export function createCrmShell(controller: CrmController, width = window.innerWi
       });
       list.append(row);
     }
+    if (visibleCustomers.length > 0)
+      list.append(
+        pagination(visibleCustomers.length, controller.customerPage, (page) => {
+          controller.customerPage = page;
+          bootstrapView(shell, controller);
+        }),
+      );
     split.append(list);
   }
   if (sections.customer360 && controller.selected) {
@@ -1171,14 +1224,30 @@ export function createCrmShell(controller: CrmController, width = window.innerWi
               分配客户: {
                 description: '指定客户负责人并记录分配原因。',
                 fields: [
-                  { name: 'first', label: '负责人 ID', required: true },
+                  employeeChoices.length > 0
+                    ? {
+                        name: 'first',
+                        label: '负责人',
+                        type: 'select',
+                        required: true,
+                        options: employeeChoices,
+                      }
+                    : { name: 'first', label: '负责人 ID', required: true },
                   { name: 'second', label: '分配原因', required: true },
                 ],
               },
               重新分配客户: {
                 description: '改派操作会保留原负责人和新负责人记录。',
                 fields: [
-                  { name: 'first', label: '新负责人 ID', required: true },
+                  employeeChoices.length > 0
+                    ? {
+                        name: 'first',
+                        label: '新负责人',
+                        type: 'select',
+                        required: true,
+                        options: employeeChoices,
+                      }
+                    : { name: 'first', label: '新负责人 ID', required: true },
                   { name: 'second', label: '改派原因', required: true },
                 ],
               },
@@ -1261,11 +1330,12 @@ export function createCrmShell(controller: CrmController, width = window.innerWi
     leadSearch.value = controller.leadQuery;
     leadSearch.addEventListener('input', () => {
       controller.leadQuery = leadSearch.value;
+      controller.leadPage = 1;
       bootstrapView(shell, controller);
     });
     leads.append(leadSearch);
     const visibleLeads = controller.visibleLeads();
-    for (const lead of visibleLeads) {
+    for (const lead of controller.leadPageItems()) {
       const row = el('div', 'lead-row', `${lead.title ?? lead.id} · ${lead.source ?? '—'}`);
       if (sections.leadClaim && lead.status === 'POOL' && Number.isInteger(lead.version)) {
         const claim = el('button', 'primary', '认领');
@@ -1325,7 +1395,15 @@ export function createCrmShell(controller: CrmController, width = window.innerWi
             lead.ownerId === null ? '分配线索' : '改派线索',
             '指定负责人并保留分配原因。',
             [
-              { name: 'assigneeId', label: '负责人 ID', required: true },
+              employeeChoices.length > 0
+                ? {
+                    name: 'assigneeId',
+                    label: '负责人',
+                    type: 'select',
+                    required: true,
+                    options: employeeChoices,
+                  }
+                : { name: 'assigneeId', label: '负责人 ID', required: true },
               { name: 'reason', label: '分配原因', type: 'textarea', required: true },
             ],
             '确认分配',
@@ -1366,6 +1444,13 @@ export function createCrmShell(controller: CrmController, width = window.innerWi
       }
       leads.append(row);
     }
+    if (visibleLeads.length > 0)
+      leads.append(
+        pagination(visibleLeads.length, controller.leadPage, (page) => {
+          controller.leadPage = page;
+          bootstrapView(shell, controller);
+        }),
+      );
     if (visibleLeads.length === 0) {
       const queue = el('div', 'queue-list');
       for (const [title, detail, badge] of [
@@ -1428,6 +1513,7 @@ function loginView(root: HTMLElement): void {
 }
 export async function bootstrap(root: HTMLElement): Promise<void> {
   const allowed = new Set<CrmPermission>([
+    'employee:read',
     'customer:read',
     'customer:create',
     'customer:update',
