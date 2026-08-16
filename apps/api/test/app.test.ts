@@ -19,6 +19,7 @@ import type { PostgresCommissionRepository } from '../src/commission-repositorie
 import type { PostgresOrder360Repository } from '../src/order-360-repositories.js';
 import type { PostgresRiskRepository } from '../src/risk-repositories.js';
 import type { PostgresDashboardRepository } from '../src/dashboard-repositories.js';
+import type { PostgresManufacturingRepository } from '../src/manufacturing-repositories.js';
 import type { AuthenticationService } from '../src/security.js';
 
 const employeeId = '10000000-0000-4000-8000-000000000001';
@@ -212,6 +213,24 @@ function dependencies(authContext: AuthorizationContext | null) {
     }),
   );
   const dashboard = { get: dashboardGet } as unknown as PostgresDashboardRepository;
+  const manufacturingList = vi.fn(() => Promise.resolve([{ id: targetId, sku: 'FG-KT-50' }]));
+  const manufacturingCreateItem = vi.fn(() =>
+    Promise.resolve({ id: targetId, itemId: organizationId, status: 'PUBLISHED' }),
+  );
+  const manufacturingCreateBom = vi.fn(() =>
+    Promise.resolve({ id: targetId, bomId: organizationId, status: 'DRAFT' }),
+  );
+  const manufacturingCreateRouting = vi.fn(() =>
+    Promise.resolve({ id: targetId, routingId: organizationId, status: 'DRAFT' }),
+  );
+  const manufacturingPublish = vi.fn(() => Promise.resolve({ id: targetId, status: 'PUBLISHED' }));
+  const manufacturing = {
+    list: manufacturingList,
+    createItem: manufacturingCreateItem,
+    createBom: manufacturingCreateBom,
+    createRouting: manufacturingCreateRouting,
+    publish: manufacturingPublish,
+  } as unknown as PostgresManufacturingRepository;
   return {
     auth,
     organizations,
@@ -222,6 +241,12 @@ function dependencies(authContext: AuthorizationContext | null) {
     order360,
     risks,
     dashboard,
+    manufacturing,
+    manufacturingList,
+    manufacturingCreateItem,
+    manufacturingCreateBom,
+    manufacturingCreateRouting,
+    manufacturingPublish,
     dashboardGet,
     riskEvaluate,
     riskTransition,
@@ -919,6 +944,104 @@ describe('authorization management API', () => {
     expect(deps.dashboardGet).toHaveBeenCalledWith(
       expect.objectContaining({ currency: 'CNY' }),
       expect.objectContaining({ scopes: ['TEAM'] }),
+    );
+  });
+  it('validates and authorizes manufacturing item, BOM, routing, and publish contracts', async () => {
+    const permissions: AuthorizationContext['permissions'] = new Map(
+      [
+        'manufacturing-item:read',
+        'manufacturing-item:manage',
+        'bom:read',
+        'bom:manage',
+        'routing:read',
+        'routing:manage',
+      ].map((capability) => [
+        capability as `${string}:${string}`,
+        { scopes: ['COMPANY'] as const, fields: null },
+      ]),
+    );
+    const deps = dependencies(context(permissions));
+    expect((await dispatch(deps, 'GET', '/api/v1/manufacturing-items')).statusCode).toBe(200);
+    expect(deps.manufacturingList).toHaveBeenCalledWith(
+      'items',
+      expect.objectContaining({ scopes: ['COMPANY'] }),
+    );
+    expect(
+      (
+        await dispatch(deps, 'POST', '/api/v1/manufacturing-items', {
+          sku: 'FG-KT-50',
+          name: '50mm 景观草',
+          itemType: 'FINISHED_GOOD',
+          baseUnitCode: 'M2',
+          specification: { pileHeightMm: 50 },
+          effectiveAt: '2026-08-16T00:00:00Z',
+          publish: true,
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(deps.manufacturingCreateItem).toHaveBeenCalledWith(
+      expect.objectContaining({ sku: 'FG-KT-50', publish: true }),
+      expect.objectContaining({ scopes: ['COMPANY'] }),
+      expect.any(String),
+    );
+    expect(
+      (
+        await dispatch(deps, 'POST', '/api/v1/manufacturing-boms', {
+          code: 'BOM-KT-50',
+          name: '50mm 标准 BOM',
+          productItemId: organizationId,
+          productItemVersionId: targetId,
+          outputQuantity: '1',
+          effectiveAt: '2026-08-16T00:00:00Z',
+          lines: [
+            {
+              componentItemVersionId: employeeId,
+              quantity: '1.25',
+              scrapBasisPoints: 300,
+              substitutes: [{ itemVersionId: companyId, priority: 1, conversionFactor: '1.05' }],
+            },
+          ],
+          publish: false,
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(deps.manufacturingCreateBom).toHaveBeenCalledWith(
+      expect.objectContaining({ lines: [expect.objectContaining({ quantity: '1.25' })] }),
+      expect.anything(),
+      expect.any(String),
+    );
+    expect(
+      (
+        await dispatch(deps, 'POST', '/api/v1/manufacturing-routings', {
+          code: 'RT-KT-50',
+          name: '50mm 标准工艺',
+          productItemId: organizationId,
+          productItemVersionId: targetId,
+          effectiveAt: '2026-08-16T00:00:00Z',
+          operations: [
+            {
+              operationCode: 'TUFT',
+              name: '簇绒',
+              workCenterCode: 'WC-TUFT-01',
+              sequence: 10,
+              setupMinutes: '60',
+              runMinutesPerUnit: '0.8',
+              instructions: {},
+            },
+          ],
+          publish: false,
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(
+      (await dispatch(deps, 'POST', `/api/v1/manufacturing-bom-versions/${targetId}/publish`, {}))
+        .statusCode,
+    ).toBe(201);
+    expect(deps.manufacturingPublish).toHaveBeenCalledWith(
+      'bom',
+      targetId,
+      expect.objectContaining({ scopes: ['COMPANY'] }),
+      expect.any(String),
     );
   });
 });

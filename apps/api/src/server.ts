@@ -34,6 +34,7 @@ import { PostgresCommissionRepository } from './commission-repositories.ts';
 import { PostgresOrder360Repository } from './order-360-repositories.ts';
 import { PostgresRiskRepository } from './risk-repositories.ts';
 import { PostgresDashboardRepository } from './dashboard-repositories.ts';
+import { PostgresManufacturingRepository } from './manufacturing-repositories.ts';
 
 const config = parseEnvironment(process.env);
 const database = new Database(config.databaseUrl);
@@ -75,6 +76,7 @@ const app = buildApp({
   order360: new PostgresOrder360Repository(database),
   risks: new PostgresRiskRepository(database),
   dashboard: new PostgresDashboardRepository(database),
+  manufacturing: new PostgresManufacturingRepository(database),
   readiness: async () => {
     try {
       await database.query('SELECT 1');

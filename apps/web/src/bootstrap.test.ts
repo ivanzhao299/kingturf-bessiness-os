@@ -182,6 +182,7 @@ describe('web bootstrap', () => {
       commissions: false,
       risks: false,
       dashboard: false,
+      manufacturing: false,
     });
     const workspace = commercialWorkspaceStructure('mobile', true) as unknown as RenderedElement;
     expect(workspace.className).toContain('mobile');
@@ -189,6 +190,69 @@ describe('web bootstrap', () => {
     expect(workspace.findByClass('commercial-form')).toHaveLength(12);
     expect(workspace.findByClass('decision-evidence')).toHaveLength(12);
     expect(workspace.textContent).toContain('已签发（只读）');
+  });
+
+  it('renders versioned manufacturing items, BOMs, routings, and publish controls', async () => {
+    const api = {
+      listOpportunities: vi.fn().mockResolvedValue([]),
+      list: vi.fn().mockImplementation((path: string) =>
+        Promise.resolve(
+          path === '/api/v1/manufacturing-items'
+            ? [
+                {
+                  id: 'item-v1',
+                  sku: 'FG-KT-PRO-50',
+                  name: '50mm 景观草',
+                  version: 1,
+                  status: 'PUBLISHED',
+                },
+              ]
+            : path === '/api/v1/manufacturing-boms'
+              ? [
+                  {
+                    id: 'bom-v1',
+                    code: 'BOM-KT-PRO-50',
+                    name: '标准 BOM',
+                    version: 1,
+                    status: 'DRAFT',
+                  },
+                ]
+              : [
+                  {
+                    id: 'routing-v1',
+                    code: 'RT-KT-PRO-50',
+                    name: '标准工艺',
+                    version: 1,
+                    status: 'PUBLISHED',
+                  },
+                ],
+        ),
+      ),
+      submit: vi.fn().mockResolvedValue({ id: 'bom-v1', status: 'PUBLISHED' }),
+      uploadCtrAttachment: vi.fn().mockResolvedValue({}),
+      command: vi.fn().mockResolvedValue({}),
+    };
+    const controller = new CommercialController(
+      api,
+      new Set([
+        'manufacturing-item:read',
+        'manufacturing-item:manage',
+        'bom:read',
+        'bom:manage',
+        'routing:read',
+        'routing:manage',
+      ]),
+    );
+    await controller.load();
+    const workspace = commercialWorkspaceStructure(
+      'desktop',
+      false,
+      controller,
+    ) as unknown as RenderedElement;
+    expect(workspace.findByClass('manufacturing-workbench')).toHaveLength(1);
+    expect(workspace.findByClass('manufacturing-card')).toHaveLength(3);
+    expect(workspace.textContent).toContain('FG-KT-PRO-50');
+    expect(workspace.textContent).toContain('发布版本');
   });
 
   it('drives commercial loading, submission, revision approval, and issue state through APIs', async () => {

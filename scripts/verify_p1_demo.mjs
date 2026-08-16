@@ -31,6 +31,9 @@ const [
   policies,
   commissions,
   risks,
+  manufacturingItems,
+  manufacturingBoms,
+  manufacturingRoutings,
 ] = await Promise.all([
   get('/api/v1/quotes'),
   get('/api/v1/credit-decisions'),
@@ -42,7 +45,32 @@ const [
   get('/api/v1/commission-policies'),
   get('/api/v1/commissions'),
   get('/api/v1/risk-evaluations'),
+  get('/api/v1/manufacturing-items'),
+  get('/api/v1/manufacturing-boms'),
+  get('/api/v1/manufacturing-routings'),
 ]);
+const finishedGood = manufacturingItems.find(
+  (item) => item.sku === 'FG-KT-PRO-50' && item.status === 'PUBLISHED',
+);
+assert(finishedGood, 'published finished-good master version is required');
+assert.match(finishedGood.canonical_hash ?? finishedGood.canonicalHash, /^[0-9a-f]{64}$/u);
+const bom = manufacturingBoms.find(
+  (item) => item.code === 'BOM-KT-PRO-50' && item.status === 'PUBLISHED',
+);
+assert.equal(bom?.lines?.length, 2, 'published BOM must contain two governed component lines');
+assert.equal(
+  bom.lines[0].substitutes.length,
+  1,
+  'primary yarn must retain its approved substitute',
+);
+const routing = manufacturingRoutings.find(
+  (item) => item.code === 'RT-KT-PRO-50' && item.status === 'PUBLISHED',
+);
+assert.deepEqual(
+  routing?.operations?.map((operation) => operation.operation_code),
+  ['TUFT', 'COAT', 'PACK'],
+  'published routing operations must remain ordered and complete',
+);
 const quote = quotes.find(
   (item) => item.quoteNumber === 'Q-KT-P1-DEMO' && item.status === 'ISSUED',
 );

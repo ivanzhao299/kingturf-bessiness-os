@@ -72,7 +72,13 @@ export type CommercialPermission =
   | 'risk:read'
   | 'risk:evaluate'
   | 'risk:manage'
-  | 'executive-dashboard:read';
+  | 'executive-dashboard:read'
+  | 'manufacturing-item:read'
+  | 'manufacturing-item:manage'
+  | 'bom:read'
+  | 'bom:manage'
+  | 'routing:read'
+  | 'routing:manage';
 export type Viewport = 'desktop' | 'tablet' | 'mobile';
 export function commercialRevisionPath(section: string, rootId: string): string | null {
   const definition = (
@@ -199,6 +205,10 @@ export function visibleCommercialSections(permissions: ReadonlySet<CommercialPer
     commissions: permissions.has('commission:read') || permissions.has('commission-policy:read'),
     risks: permissions.has('risk:read') || permissions.has('risk-policy:read'),
     dashboard: permissions.has('executive-dashboard:read'),
+    manufacturing:
+      permissions.has('manufacturing-item:read') ||
+      permissions.has('bom:read') ||
+      permissions.has('routing:read'),
   } as const;
 }
 
@@ -400,6 +410,9 @@ export class CommercialController {
         ['commission:read', '/api/v1/commissions'],
         ['risk-policy:read', '/api/v1/risk-policies'],
         ['risk:read', '/api/v1/risk-evaluations'],
+        ['manufacturing-item:read', '/api/v1/manufacturing-items'],
+        ['bom:read', '/api/v1/manufacturing-boms'],
+        ['routing:read', '/api/v1/manufacturing-routings'],
       ] as const;
       for (const [permission, path] of readable)
         if (this.permissions.has(permission)) this.views.set(path, await this.api.list(path));
@@ -3439,6 +3452,163 @@ export function commercialWorkspaceStructure(
     panel.append(list);
     workspace.append(panel);
   }
+  if (
+    controller &&
+    (permissions.has('manufacturing-item:read') ||
+      permissions.has('bom:read') ||
+      permissions.has('routing:read'))
+  ) {
+    const panel = el('section', 'manufacturing-workbench');
+    panel.setAttribute('data-testid', 'manufacturing-workbench');
+    panel.append(
+      el('p', 'eyebrow', 'MANUFACTURING MASTER DATA'),
+      el('h2', '', '制造主数据工作台'),
+      el('p', 'commercial-help', '物料、BOM 与工艺路线按版本发布；已发布结构保持不可变。'),
+    );
+    const grid = el('div', 'manufacturing-grid');
+    const definitions = [
+      {
+        title: '物料与规格版本',
+        path: '/api/v1/manufacturing-items',
+        read: 'manufacturing-item:read',
+        manage: 'manufacturing-item:manage',
+        publish: 'manufacturing-item',
+        example: {
+          sku: 'FG-KT-PRO-50',
+          name: '金特夫 50mm 景观草',
+          itemType: 'FINISHED_GOOD',
+          baseUnitCode: 'M2',
+          specification: { pileHeightMm: 50 },
+          effectiveAt: new Date().toISOString(),
+          publish: false,
+        },
+      },
+      {
+        title: 'BOM 与替代料',
+        path: '/api/v1/manufacturing-boms',
+        read: 'bom:read',
+        manage: 'bom:manage',
+        publish: 'manufacturing-bom',
+        example: {
+          code: 'BOM-KT-PRO-50',
+          name: '50mm 标准 BOM',
+          productItemId: '产品根 ID',
+          productItemVersionId: '产品版本 ID',
+          outputQuantity: '1',
+          effectiveAt: new Date().toISOString(),
+          lines: [
+            {
+              componentItemVersionId: '组件版本 ID',
+              quantity: '1.25',
+              scrapBasisPoints: 300,
+              substitutes: [],
+            },
+          ],
+          publish: false,
+        },
+      },
+      {
+        title: '工艺路线与工序',
+        path: '/api/v1/manufacturing-routings',
+        read: 'routing:read',
+        manage: 'routing:manage',
+        publish: 'manufacturing-routing',
+        example: {
+          code: 'RT-KT-PRO-50',
+          name: '50mm 标准工艺',
+          productItemId: '产品根 ID',
+          productItemVersionId: '产品版本 ID',
+          effectiveAt: new Date().toISOString(),
+          operations: [
+            {
+              operationCode: 'TUFT',
+              name: '簇绒',
+              workCenterCode: 'WC-TUFT-01',
+              sequence: 10,
+              setupMinutes: '60',
+              runMinutesPerUnit: '0.8',
+              instructions: {},
+            },
+          ],
+          publish: false,
+        },
+      },
+    ] as const;
+    for (const definition of definitions) {
+      if (!permissions.has(definition.read)) continue;
+      const card = el('article', 'manufacturing-card');
+      card.append(el('h3', '', definition.title));
+      const items = controller.views.get(definition.path) ?? [];
+      for (const item of items) {
+        const row = el('div', 'manufacturing-version');
+        row.append(
+          el(
+            'strong',
+            '',
+            recordText(item, 'sku', 'code', recordText(item, 'name', 'name', '未命名')),
+          ),
+          el(
+            'span',
+            `ctr-state state-${recordText(item, 'status', 'status', 'DRAFT').toLowerCase()}`,
+            `${recordText(item, 'status', 'status', 'DRAFT')} · V${recordText(item, 'version', 'version', '1')}`,
+          ),
+          el(
+            'p',
+            'muted',
+            recordText(
+              item,
+              'name',
+              'name',
+              recordText(item, 'canonical_hash', 'canonical_hash').slice(0, 16),
+            ),
+          ),
+        );
+        if (
+          permissions.has(definition.manage) &&
+          recordText(item, 'status', 'status') === 'DRAFT' &&
+          typeof item.id === 'string'
+        ) {
+          const publish = el('button', 'secondary', '发布版本');
+          publish.addEventListener('click', () => {
+            void controller
+              .submit(`/api/v1/${definition.publish}-versions/${item.id as string}/publish`, {})
+              .then(async () => {
+                await controller.load();
+                status.textContent = controller.message;
+              });
+          });
+          row.append(publish);
+        }
+        card.append(row);
+      }
+      if (!items.length) card.append(el('p', 'pipeline-empty', '暂无版本。'));
+      if (permissions.has(definition.manage)) {
+        const form = el('form', 'manufacturing-form'),
+          editor = document.createElement('textarea');
+        editor.setAttribute('aria-label', `${definition.title} JSON`);
+        editor.value = JSON.stringify(definition.example, null, 2);
+        const submit = el('button', 'primary', '创建草稿');
+        submit.type = 'submit';
+        form.append(editor, submit);
+        form.addEventListener('submit', (event) => {
+          event.preventDefault();
+          try {
+            const payload = JSON.parse(editor.value) as Record<string, unknown>;
+            void controller.submit(definition.path, payload).then(async () => {
+              await controller.load();
+              status.textContent = controller.message;
+            });
+          } catch {
+            status.textContent = '制造主数据 JSON 格式无效';
+          }
+        });
+        card.append(form);
+      }
+      grid.append(card);
+    }
+    panel.append(grid);
+    workspace.append(panel);
+  }
   for (const [className, title, description, fields, action, path] of [
     [
       'opportunity-pipeline',
@@ -4858,7 +5028,10 @@ export async function bootstrap(root: HTMLElement): Promise<void> {
         item.startsWith('commission:') ||
         item.startsWith('risk-policy:') ||
         item.startsWith('risk:') ||
-        item.startsWith('executive-dashboard:'),
+        item.startsWith('executive-dashboard:') ||
+        item.startsWith('manufacturing-item:') ||
+        item.startsWith('bom:') ||
+        item.startsWith('routing:'),
     ) as CommercialPermission[],
   );
   if (Object.values(visibleCommercialSections(commercialPermissions)).some(Boolean)) {

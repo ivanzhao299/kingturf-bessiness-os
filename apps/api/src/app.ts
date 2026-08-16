@@ -40,6 +40,7 @@ import type { PostgresCommissionRepository } from './commission-repositories.ts'
 import type { PostgresOrder360Repository } from './order-360-repositories.ts';
 import type { PostgresRiskRepository } from './risk-repositories.ts';
 import type { PostgresDashboardRepository } from './dashboard-repositories.ts';
+import type { PostgresManufacturingRepository } from './manufacturing-repositories.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -93,6 +94,7 @@ export type ApiDependencies = Readonly<{
   order360?: PostgresOrder360Repository;
   risks?: PostgresRiskRepository;
   dashboard?: PostgresDashboardRepository;
+  manufacturing?: PostgresManufacturingRepository;
   readiness?: () => Promise<boolean>;
   telemetry?: Telemetry;
   logger?: OperationalLogger;
@@ -303,6 +305,208 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               permissions: [...context.permissions.keys()].sort(),
             },
           };
+        if (dependencies.manufacturing) {
+          const manufacturingLists: Readonly<
+            Record<string, readonly ['items' | 'boms' | 'routings', PermissionKey] | undefined>
+          > = {
+            '/api/v1/manufacturing-items': ['items', 'manufacturing-item:read'],
+            '/api/v1/manufacturing-boms': ['boms', 'bom:read'],
+            '/api/v1/manufacturing-routings': ['routings', 'routing:read'],
+          } as const;
+          const listDefinition = manufacturingLists[request.pathname];
+          if (request.method === 'GET' && listDefinition) {
+            const [view, capability] = listDefinition;
+            const grant = authorizeQuery(context, capability);
+            const items = await dependencies.manufacturing.list(view, {
+              actor: context.actor,
+              scopes: grant.scopes,
+              anchors: grant.anchors,
+            });
+            return {
+              statusCode: 200,
+              body: {
+                items: items.map((item) =>
+                  permittedDto(item, context.permissions.get(capability)?.fields ?? null),
+                ),
+              },
+            };
+          }
+          if (request.method === 'POST' && request.pathname === '/api/v1/manufacturing-items') {
+            const body = objectBody(request.body);
+            allow(body, [
+              'sku',
+              'name',
+              'itemType',
+              'baseUnitCode',
+              'specification',
+              'effectiveAt',
+              'publish',
+            ]);
+            const grant = authorizeQuery(context, 'manufacturing-item:manage', Object.keys(body));
+            const itemType = string(body.itemType, 'itemType');
+            if (!['RAW_MATERIAL', 'SEMI_FINISHED', 'FINISHED_GOOD', 'PACKAGING'].includes(itemType))
+              throw new DomainError('invalid_request', 'itemType is unsupported');
+            const result = await dependencies.manufacturing.createItem(
+              {
+                sku: assertStableCode(string(body.sku, 'sku')),
+                name: string(body.name, 'name'),
+                itemType,
+                baseUnitCode: assertStableCode(string(body.baseUnitCode, 'baseUnitCode')),
+                specification: jsonObject(body.specification ?? {}, 'specification'),
+                effectiveAt: timestamp(body.effectiveAt, 'effectiveAt'),
+                publish: body.publish === true,
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return {
+              statusCode: 201,
+              body: mutationDto(result, context, 'manufacturing-item:read'),
+            };
+          }
+          if (request.method === 'POST' && request.pathname === '/api/v1/manufacturing-boms') {
+            const body = objectBody(request.body);
+            allow(body, [
+              'code',
+              'name',
+              'productItemId',
+              'productItemVersionId',
+              'outputQuantity',
+              'effectiveAt',
+              'lines',
+              'publish',
+            ]);
+            const grant = authorizeQuery(context, 'bom:manage', Object.keys(body));
+            const lines = array(body.lines, 'lines').map((value, index) => {
+              const line = jsonObject(value, `lines[${String(index)}]`);
+              allow(line, [
+                'componentItemVersionId',
+                'quantity',
+                'scrapBasisPoints',
+                'substitutes',
+              ]);
+              return {
+                componentItemVersionId: uuid(
+                  line.componentItemVersionId,
+                  `lines[${String(index)}].componentItemVersionId`,
+                ),
+                quantity: decimal(line.quantity, `lines[${String(index)}].quantity`),
+                scrapBasisPoints: integer(
+                  Object.hasOwn(line, 'scrapBasisPoints') ? line.scrapBasisPoints : 0,
+                  `lines[${String(index)}].scrapBasisPoints`,
+                  0,
+                  10000,
+                ),
+                substitutes: array(
+                  Object.hasOwn(line, 'substitutes') ? line.substitutes : [],
+                  `lines[${String(index)}].substitutes`,
+                ).map((entry, substituteIndex) => {
+                  const substitute = jsonObject(
+                    entry,
+                    `lines[${String(index)}].substitutes[${String(substituteIndex)}]`,
+                  );
+                  allow(substitute, ['itemVersionId', 'priority', 'conversionFactor']);
+                  return {
+                    itemVersionId: uuid(substitute.itemVersionId, 'itemVersionId'),
+                    priority: integer(substitute.priority, 'priority', 1, 1000),
+                    conversionFactor: decimal(substitute.conversionFactor, 'conversionFactor'),
+                  };
+                }),
+              };
+            });
+            if (!lines.length) throw new DomainError('invalid_request', 'lines must not be empty');
+            const result = await dependencies.manufacturing.createBom(
+              {
+                code: assertStableCode(string(body.code, 'code')),
+                name: string(body.name, 'name'),
+                productItemId: uuid(body.productItemId, 'productItemId'),
+                productItemVersionId: uuid(body.productItemVersionId, 'productItemVersionId'),
+                outputQuantity: decimal(body.outputQuantity, 'outputQuantity'),
+                effectiveAt: timestamp(body.effectiveAt, 'effectiveAt'),
+                lines,
+                publish: body.publish === true,
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'bom:read') };
+          }
+          if (request.method === 'POST' && request.pathname === '/api/v1/manufacturing-routings') {
+            const body = objectBody(request.body);
+            allow(body, [
+              'code',
+              'name',
+              'productItemId',
+              'productItemVersionId',
+              'effectiveAt',
+              'operations',
+              'publish',
+            ]);
+            const grant = authorizeQuery(context, 'routing:manage', Object.keys(body));
+            const operations = array(body.operations, 'operations').map((value, index) => {
+              const operation = jsonObject(value, `operations[${String(index)}]`);
+              allow(operation, [
+                'operationCode',
+                'name',
+                'workCenterCode',
+                'sequence',
+                'setupMinutes',
+                'runMinutesPerUnit',
+                'instructions',
+              ]);
+              return {
+                operationCode: assertStableCode(string(operation.operationCode, 'operationCode')),
+                name: string(operation.name, 'name'),
+                workCenterCode: assertStableCode(
+                  string(operation.workCenterCode, 'workCenterCode'),
+                ),
+                sequence: integer(operation.sequence, 'sequence', 1, 100000),
+                setupMinutes: decimal(operation.setupMinutes, 'setupMinutes'),
+                runMinutesPerUnit: decimal(operation.runMinutesPerUnit, 'runMinutesPerUnit'),
+                instructions: jsonObject(
+                  Object.hasOwn(operation, 'instructions') ? operation.instructions : {},
+                  'instructions',
+                ),
+              };
+            });
+            if (!operations.length)
+              throw new DomainError('invalid_request', 'operations must not be empty');
+            const result = await dependencies.manufacturing.createRouting(
+              {
+                code: assertStableCode(string(body.code, 'code')),
+                name: string(body.name, 'name'),
+                productItemId: uuid(body.productItemId, 'productItemId'),
+                productItemVersionId: uuid(body.productItemVersionId, 'productItemVersionId'),
+                effectiveAt: timestamp(body.effectiveAt, 'effectiveAt'),
+                operations,
+                publish: body.publish === true,
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'routing:read') };
+          }
+          const manufacturingPublish =
+            /^\/api\/v1\/manufacturing-(item|bom|routing)-versions\/([0-9a-f-]+)\/publish$/u.exec(
+              request.pathname,
+            );
+          if (request.method === 'POST' && manufacturingPublish) {
+            allow(objectBody(request.body ?? {}), []);
+            const kind = manufacturingPublish[1] as 'item' | 'bom' | 'routing';
+            const capability =
+              `${kind === 'item' ? 'manufacturing-item' : kind}:manage` as PermissionKey;
+            const grant = authorizeQuery(context, capability);
+            const result = await dependencies.manufacturing.publish(
+              kind,
+              uuid(manufacturingPublish[2], 'versionId'),
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            const readCapability =
+              `${kind === 'item' ? 'manufacturing-item' : kind}:read` as PermissionKey;
+            return { statusCode: 201, body: mutationDto(result, context, readCapability) };
+          }
+        }
         if (
           request.method === 'GET' &&
           request.pathname === '/api/v1/executive-dashboard' &&

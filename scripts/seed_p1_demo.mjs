@@ -620,6 +620,111 @@ for (const [from, action, state, key, reason, evidence] of [
 await ensureCredit('REJECTED', '2099-04-30T23:59:59.000Z', 'kt-p1-seed-credit-rejected-v1');
 await ensureCredit('EXPIRED', '2000-01-01T00:00:00.000Z', 'kt-p1-seed-credit-expired-v1');
 
+const manufacturingItems = await list('/api/v1/manufacturing-items');
+async function ensureItem(sku, name, itemType, baseUnitCode, specification) {
+  const existing = manufacturingItems.find(
+    (item) => item.sku === sku && item.status === 'PUBLISHED',
+  );
+  if (existing) return existing;
+  return request('/api/v1/manufacturing-items', {
+    method: 'POST',
+    body: {
+      sku,
+      name,
+      itemType,
+      baseUnitCode,
+      specification,
+      effectiveAt: '2026-01-01T00:00:00.000Z',
+      publish: true,
+    },
+  });
+}
+const yarn = await ensureItem('RM-KT-YARN-12000', '12000D 直丝草纱', 'RAW_MATERIAL', 'KG', {
+  dtex: 12000,
+  color: '双色绿',
+});
+const substituteYarn = await ensureItem(
+  'RM-KT-YARN-11000',
+  '11000D 替代草纱',
+  'RAW_MATERIAL',
+  'KG',
+  { dtex: 11000, color: '双色绿' },
+);
+const backing = await ensureItem('RM-KT-BACKING-PP', 'PP 复合底布', 'RAW_MATERIAL', 'M2', {
+  layers: 2,
+});
+const finishedGood = await ensureItem('FG-KT-PRO-50', '金特夫 50mm 景观草', 'FINISHED_GOOD', 'M2', {
+  pileHeightMm: 50,
+  gauge: '3/8',
+});
+let bom = (await list('/api/v1/manufacturing-boms')).find(
+  (item) => item.code === 'BOM-KT-PRO-50' && item.status === 'PUBLISHED',
+);
+bom ??= await request('/api/v1/manufacturing-boms', {
+  method: 'POST',
+  body: {
+    code: 'BOM-KT-PRO-50',
+    name: '50mm 景观草标准 BOM',
+    productItemId: finishedGood.itemId,
+    productItemVersionId: finishedGood.id,
+    outputQuantity: '1',
+    effectiveAt: '2026-01-01T00:00:00.000Z',
+    lines: [
+      {
+        componentItemVersionId: yarn.id,
+        quantity: '1.25',
+        scrapBasisPoints: 300,
+        substitutes: [{ itemVersionId: substituteYarn.id, priority: 1, conversionFactor: '1.05' }],
+      },
+      { componentItemVersionId: backing.id, quantity: '1', scrapBasisPoints: 100, substitutes: [] },
+    ],
+    publish: true,
+  },
+});
+let routing = (await list('/api/v1/manufacturing-routings')).find(
+  (item) => item.code === 'RT-KT-PRO-50' && item.status === 'PUBLISHED',
+);
+routing ??= await request('/api/v1/manufacturing-routings', {
+  method: 'POST',
+  body: {
+    code: 'RT-KT-PRO-50',
+    name: '50mm 景观草标准工艺',
+    productItemId: finishedGood.itemId,
+    productItemVersionId: finishedGood.id,
+    effectiveAt: '2026-01-01T00:00:00.000Z',
+    publish: true,
+    operations: [
+      {
+        operationCode: 'TUFT',
+        name: '簇绒',
+        workCenterCode: 'WC-TUFT-01',
+        sequence: 10,
+        setupMinutes: '60',
+        runMinutesPerUnit: '0.8',
+        instructions: { qualityGate: 'pile-height' },
+      },
+      {
+        operationCode: 'COAT',
+        name: '背胶',
+        workCenterCode: 'WC-COAT-01',
+        sequence: 20,
+        setupMinutes: '45',
+        runMinutesPerUnit: '0.5',
+        instructions: { cureMinutes: 20 },
+      },
+      {
+        operationCode: 'PACK',
+        name: '裁切包装',
+        workCenterCode: 'WC-PACK-01',
+        sequence: 30,
+        setupMinutes: '20',
+        runMinutesPerUnit: '0.2',
+        instructions: { rollWidthM: 4 },
+      },
+    ],
+  },
+});
+
 process.stdout.write(
-  `${JSON.stringify({ baseUrl, customerId: customer.id, opportunityId: opportunity.id, quoteRevisionId: quote.id, contractRevisionId: contract.id, orderId: order.id, commissionId: commission.id, riskEvaluationId: risk.id, outcomes: ['APPROVED', 'REJECTED', 'EXPIRED'] }, null, 2)}\n`,
+  `${JSON.stringify({ baseUrl, customerId: customer.id, opportunityId: opportunity.id, quoteRevisionId: quote.id, contractRevisionId: contract.id, orderId: order.id, commissionId: commission.id, riskEvaluationId: risk.id, manufacturing: { finishedGoodVersionId: finishedGood.id, bomVersionId: bom.id, routingVersionId: routing.id }, outcomes: ['APPROVED', 'REJECTED', 'EXPIRED'] }, null, 2)}\n`,
 );
