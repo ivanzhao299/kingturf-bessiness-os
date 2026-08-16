@@ -24,7 +24,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0029_commercial_definition_company_scope.sql');
+    expect(ordered.at(-1)).toBe('0030_qtc_order_trigger_alias_repair.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
@@ -61,6 +61,13 @@ describe('identity and authorization migration', () => {
     );
     expect(repair).toContain('AR document is inconsistent with its sales order');
     expect(repair).toContain('sales order lines must exactly equal the pinned order total');
+    const triggerRepair = await readFile(
+      join(process.cwd(), 'migrations/0030_qtc_order_trigger_alias_repair.sql'),
+      'utf8',
+    );
+    expect(triggerRepair).toContain('JOIN quotes quote_root');
+    expect(triggerRepair).toContain("IF TG_TABLE_NAME='sales_orders' THEN");
+    expect(triggerRepair).not.toContain('JOIN quotes q ON');
   });
   it('contains every foundational boundary and no later-engine tables', async () => {
     const sql = await readFile(

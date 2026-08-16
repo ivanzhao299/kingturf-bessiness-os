@@ -2317,6 +2317,326 @@ export function commercialWorkspaceStructure(
     contractPanel.append(list);
     workspace.append(contractPanel);
   }
+  if (controller && permissions.has('sales-order:read')) {
+    const panel = el('section', 'qtc-workbench order-workbench');
+    const heading = el('div', 'pipeline-heading');
+    const copy = el('div');
+    copy.append(
+      el('h2', '', '订单释放'),
+      el('p', '', '订单同时锁定已签发报价、有效信用审批和已签合同，避免商务依据漂移。'),
+    );
+    const quotes = (controller.views.get('/api/v1/quotes') ?? []).filter(
+      (item) => item.status === 'ISSUED' && typeof item.issuedSnapshotId === 'string',
+    );
+    const decisions = (controller.views.get('/api/v1/credit-decisions') ?? []).filter(
+      (item) => recordText(item, 'effectiveStatus', 'effective_status') === 'APPROVED',
+    );
+    const contracts = (controller.views.get('/api/v1/contracts') ?? []).filter(
+      (item) =>
+        recordText(item, 'effectiveStatus', 'effectiveStatus') === 'SIGNED' &&
+        Boolean(recordText(item, 'signatureEvidenceId', 'signatureEvidenceId')),
+    );
+    if (
+      permissions.has('sales-order:create') &&
+      quotes.length &&
+      decisions.length &&
+      contracts.length
+    ) {
+      const create = el('button', 'primary', '＋ 释放销售订单');
+      create.addEventListener('click', () => {
+        openForm(
+          workspace,
+          '释放销售订单',
+          '请选择同一报价链上的信用和合同证据，服务器会再次验证全部引用。',
+          [
+            {
+              name: 'quoteRevisionId',
+              label: '已签发报价',
+              type: 'select',
+              required: true,
+              options: quotes.map((item) => ({
+                value: textValue(item.id, ''),
+                label: `${textValue(item.quoteNumber, '报价')} · ${recordText(item, 'currency', 'currency')} ${recordText(item, 'total', 'total')}`,
+              })),
+            },
+            {
+              name: 'creditDecisionId',
+              label: '已批准信用决定',
+              type: 'select',
+              required: true,
+              options: decisions.map((item) => ({
+                value: textValue(item.id, ''),
+                label: `${textValue(item.id, '').slice(0, 8)} · 有效至 ${recordText(item, 'validUntil', 'valid_until').slice(0, 10)}`,
+              })),
+            },
+            {
+              name: 'contractRevisionId',
+              label: '已签合同',
+              type: 'select',
+              required: true,
+              options: contracts.map((item) => ({
+                value: textValue(item.id, ''),
+                label: recordText(
+                  item,
+                  'contractNumber',
+                  'contractNumber',
+                  textValue(item.id, '').slice(0, 8),
+                ),
+              })),
+            },
+            { name: 'orderNumber', label: '订单编号', required: true },
+            { name: 'description', label: '订单行说明', required: true },
+            { name: 'quantity', label: '数量', type: 'number', required: true, value: '1' },
+            { name: 'unitPrice', label: '含税单价', type: 'number', required: true },
+          ],
+          '验证并释放',
+          async (values) => {
+            const quote = quotes.find((item) => item.id === values.quoteRevisionId);
+            const contract = contracts.find((item) => item.id === values.contractRevisionId);
+            const opportunity = controller.opportunities.find(
+              (item) => item.id === quote?.opportunityId,
+            );
+            if (!quote || !contract || typeof opportunity?.customerId !== 'string')
+              throw new Error('订单依据未形成完整客户链');
+            const quantity = Number(values.quantity ?? '0');
+            const unitPrice = Number(values.unitPrice ?? '0');
+            const total = decimalValue(quantity * unitPrice);
+            await controller.submit('/api/v1/sales-orders', {
+              customerId: opportunity.customerId,
+              opportunityId: textValue(quote.opportunityId, ''),
+              orderNumber: values.orderNumber ?? '',
+              quoteRevisionId: textValue(quote.id, ''),
+              quoteSnapshotId: textValue(quote.issuedSnapshotId, ''),
+              creditDecisionId: values.creditDecisionId ?? '',
+              contractRevisionId: textValue(contract.id, ''),
+              signatureEvidenceId: recordText(
+                contract,
+                'signatureEvidenceId',
+                'signatureEvidenceId',
+              ),
+              currency: recordText(quote, 'currency', 'currency', 'CNY'),
+              total,
+              lines: [
+                {
+                  description: values.description ?? '',
+                  quantity: decimalValue(quantity),
+                  unitPrice: decimalValue(unitPrice),
+                  total,
+                },
+              ],
+            });
+            await controller.load();
+            status.textContent = controller.message;
+          },
+        );
+      });
+      heading.append(copy, create);
+    } else heading.append(copy);
+    panel.append(heading);
+    const list = el('div', 'qtc-list');
+    for (const order of controller.views.get('/api/v1/sales-orders') ?? []) {
+      const card = el('article', 'qtc-card');
+      card.append(
+        el('p', 'eyebrow', recordText(order, 'orderNumber', 'order_number', 'SALES ORDER')),
+        el(
+          'strong',
+          '',
+          `${recordText(order, 'currency', 'currency')} ${recordText(order, 'total', 'total', '—')}`,
+        ),
+        el('span', 'ctr-state state-released', recordText(order, 'status', 'status', 'RELEASED')),
+        el(
+          'p',
+          'version-pin',
+          `报价 ${recordText(order, 'quoteRevisionId', 'quote_revision_id').slice(0, 8)} · 信用 ${recordText(order, 'creditDecisionId', 'credit_decision_id').slice(0, 8)} · 合同 ${recordText(order, 'contractRevisionId', 'contract_revision_id').slice(0, 8)}`,
+        ),
+      );
+      list.append(card);
+    }
+    if (!list.childElementCount) list.append(el('p', 'pipeline-empty', '暂无已释放订单。'));
+    panel.append(list);
+    workspace.append(panel);
+  }
+  if (controller && permissions.has('ar:read')) {
+    const panel = el('section', 'qtc-workbench ar-workbench');
+    const heading = el('div', 'pipeline-heading');
+    const copy = el('div');
+    copy.append(
+      el('h2', '', '应收与账龄'),
+      el('p', '', '应收余额由发票和核销分配实时推导，不允许人工改写。'),
+    );
+    const orders = controller.views.get('/api/v1/sales-orders') ?? [];
+    if (permissions.has('ar:post') && orders.length) {
+      const post = el('button', 'primary', '＋ 过账应收');
+      post.addEventListener('click', () =>
+        openForm(
+          workspace,
+          '过账应收发票',
+          '发票固定关联已释放订单，余额将进入信用敞口。',
+          [
+            {
+              name: 'salesOrderId',
+              label: '销售订单',
+              type: 'select',
+              required: true,
+              options: orders.map((item) => ({
+                value: textValue(item.id, ''),
+                label: `${recordText(item, 'orderNumber', 'order_number')} · ${recordText(item, 'currency', 'currency')} ${recordText(item, 'total', 'total')}`,
+              })),
+            },
+            { name: 'documentNumber', label: '发票号码', required: true },
+            { name: 'amount', label: '发票金额', type: 'number', required: true },
+            { name: 'dueAt', label: '到期日', type: 'date', required: true },
+          ],
+          '确认过账',
+          async (values) => {
+            const order = orders.find((item) => item.id === values.salesOrderId);
+            if (!order) throw new Error('请选择有效订单');
+            await controller.submit('/api/v1/ar-open-items', {
+              customerId: recordText(order, 'customerId', 'customer_id'),
+              salesOrderId: textValue(order.id, ''),
+              documentNumber: values.documentNumber ?? '',
+              documentType: 'INVOICE',
+              currency: recordText(order, 'currency', 'currency', 'CNY'),
+              amount: values.amount ?? '',
+              dueAt: new Date(`${values.dueAt ?? ''}T23:59:59.000Z`).toISOString(),
+            });
+            await controller.load();
+            status.textContent = controller.message;
+          },
+        ),
+      );
+      heading.append(copy, post);
+    } else heading.append(copy);
+    panel.append(heading);
+    const list = el('div', 'qtc-list');
+    for (const item of controller.views.get('/api/v1/ar-open-items') ?? []) {
+      const original = Number(recordText(item, 'originalAmount', 'original_amount', '0'));
+      const remaining = Number(recordText(item, 'remainingAmount', 'remaining_amount', '0'));
+      const card = el('article', 'qtc-card');
+      card.append(
+        el('p', 'eyebrow', recordText(item, 'documentNumber', 'document_number', 'AR')),
+        el(
+          'strong',
+          '',
+          `未核销 ${recordText(item, 'currency', 'currency')} ${decimalValue(remaining)}`,
+        ),
+        el(
+          'p',
+          'qtc-metrics',
+          `原始 ${decimalValue(original)} · 已核销 ${decimalValue(original - remaining)} · 到期 ${recordText(item, 'dueAt', 'due_at').slice(0, 10)}`,
+        ),
+      );
+      list.append(card);
+    }
+    if (!list.childElementCount) list.append(el('p', 'pipeline-empty', '暂无应收开放项。'));
+    panel.append(list);
+    workspace.append(panel);
+  }
+  if (controller && permissions.has('bank-payment:read')) {
+    const panel = el('section', 'qtc-workbench payment-workbench');
+    const heading = el('div', 'pipeline-heading');
+    const copy = el('div');
+    copy.append(
+      el('h2', '', '收款与核销'),
+      el('p', '', '银行原始载荷留痕；核销按稳定顺序匹配同客户、同币种开放项。'),
+    );
+    if (permissions.has('bank-payment:intake')) {
+      const intake = el('button', 'primary', '＋ 登记银行收款');
+      intake.addEventListener('click', () =>
+        openForm(
+          workspace,
+          '登记银行收款',
+          '银行引用和原始摘要将生成不可变哈希。',
+          [
+            {
+              name: 'customerId',
+              label: '客户',
+              type: 'select',
+              required: true,
+              options: controller.customers.map((item) => ({
+                value: item.id,
+                label: item.name ?? item.id,
+              })),
+            },
+            { name: 'bankReference', label: '银行流水号', required: true },
+            { name: 'amount', label: '到账金额', type: 'number', required: true },
+            {
+              name: 'currency',
+              label: '币种',
+              type: 'select',
+              required: true,
+              options: [
+                { value: 'CNY', label: '人民币 CNY' },
+                { value: 'USD', label: '美元 USD' },
+              ],
+            },
+            { name: 'receivedAt', label: '到账日期', type: 'date', required: true },
+            { name: 'payer', label: '付款方户名', required: true },
+          ],
+          '保存收款',
+          async (values) => {
+            await controller.submit('/api/v1/bank-payments', {
+              customerId: values.customerId ?? '',
+              currency: values.currency ?? 'CNY',
+              amount: values.amount ?? '',
+              receivedAt: new Date(`${values.receivedAt ?? ''}T12:00:00.000Z`).toISOString(),
+              bankReference: values.bankReference ?? '',
+              rawPayload: { payer: values.payer ?? '', source: 'MANUAL_BANK_RECEIPT' },
+            });
+            await controller.load();
+            status.textContent = controller.message;
+          },
+        ),
+      );
+      heading.append(copy, intake);
+    } else heading.append(copy);
+    panel.append(heading);
+    const list = el('div', 'qtc-list');
+    for (const payment of controller.views.get('/api/v1/bank-payments') ?? []) {
+      const card = el('article', 'qtc-card');
+      card.append(
+        el('p', 'eyebrow', recordText(payment, 'bankReference', 'bank_reference', 'BANK PAYMENT')),
+        el(
+          'strong',
+          '',
+          `${recordText(payment, 'currency', 'currency')} ${recordText(payment, 'amount', 'amount', '—')}`,
+        ),
+        el(
+          'p',
+          'qtc-metrics',
+          `待核销 ${recordText(payment, 'remainingAmount', 'remaining_amount', '—')} · 到账 ${recordText(payment, 'receivedAt', 'received_at').slice(0, 10)}`,
+        ),
+      );
+      if (
+        permissions.has('reconciliation:run') &&
+        Number(recordText(payment, 'remainingAmount', 'remaining_amount', '0')) > 0
+      ) {
+        const reconcile = el('button', 'primary', '运行自动核销');
+        reconcile.addEventListener('click', () => {
+          void controller
+            .submit('/api/v1/reconciliation-runs', { paymentId: textValue(payment.id, '') })
+            .then(async () => {
+              await controller.load();
+              status.textContent = controller.message;
+            });
+        });
+        card.append(reconcile);
+      }
+      list.append(card);
+    }
+    if (!list.childElementCount) list.append(el('p', 'pipeline-empty', '暂无银行收款。'));
+    panel.append(list);
+    const runs = controller.views.get('/api/v1/reconciliation-runs') ?? [];
+    if (runs.length)
+      panel.append(
+        el(
+          'p',
+          'version-pin',
+          `最近核销 ${recordText(runs[0]!, 'resultHash', 'result_hash').slice(0, 12)} · 共 ${String(runs.length)} 次可审计运行`,
+        ),
+      );
+    workspace.append(panel);
+  }
   for (const [className, title, description, fields, action, path] of [
     [
       'opportunity-pipeline',
@@ -2426,6 +2746,10 @@ export function commercialWorkspaceStructure(
         '/api/v1/quotes',
         '/api/v1/credit-decisions',
         '/api/v1/contracts',
+        '/api/v1/sales-orders',
+        '/api/v1/ar-open-items',
+        '/api/v1/bank-payments',
+        '/api/v1/reconciliation-runs',
       ].includes(path)
     )
       continue;

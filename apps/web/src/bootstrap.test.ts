@@ -743,4 +743,62 @@ describe('web bootstrap', () => {
     expect(shell.textContent).not.toContain('buyer@example.test');
     expect(shell.textContent).not.toContain('undefined');
   });
+
+  it('renders the governed order-to-cash workbenches as fields instead of JSON inputs', async () => {
+    const commercialApi = {
+      listOpportunities: vi.fn().mockResolvedValue([]),
+      list: vi.fn().mockImplementation((path: string) =>
+        Promise.resolve(
+          (
+            {
+              '/api/v1/sales-orders': [
+                { id: 'order-1', order_number: 'SO-001', currency: 'CNY', total: 1000 },
+              ],
+              '/api/v1/ar-open-items': [
+                {
+                  id: 'ar-1',
+                  documentNumber: 'INV-001',
+                  currency: 'CNY',
+                  original_amount: 1000,
+                  remaining_amount: 400,
+                  due_at: '2026-09-30T00:00:00Z',
+                },
+              ],
+              '/api/v1/bank-payments': [
+                {
+                  id: 'payment-1',
+                  bank_reference: 'BANK-001',
+                  currency: 'CNY',
+                  amount: 600,
+                  remaining_amount: 0,
+                },
+              ],
+              '/api/v1/reconciliation-runs': [{ id: 'run-1', result_hash: '1234567890abcdef' }],
+            } as Record<string, readonly Record<string, unknown>[]>
+          )[path] ?? [],
+        ),
+      ),
+      submit: vi.fn().mockResolvedValue({ id: 'created' }),
+      uploadCtrAttachment: vi.fn().mockResolvedValue({}),
+      command: vi.fn().mockResolvedValue({}),
+    };
+    const controller = new CommercialController(
+      commercialApi,
+      new Set(['sales-order:read', 'ar:read', 'bank-payment:read', 'reconciliation:read']),
+    );
+    await controller.load();
+    const workspace = commercialWorkspaceStructure(
+      'desktop',
+      false,
+      controller,
+    ) as unknown as RenderedElement;
+    expect(workspace.findByClass('order-workbench')).toHaveLength(1);
+    expect(workspace.findByClass('ar-workbench')).toHaveLength(1);
+    expect(workspace.findByClass('payment-workbench')).toHaveLength(1);
+    expect(workspace.textContent).toContain('SO-001');
+    expect(workspace.textContent).toContain('未核销 CNY 400');
+    expect(workspace.textContent).toContain('已核销 600');
+    expect(workspace.textContent).toContain('最近核销 1234567890ab');
+    expect(workspace.textContent).not.toContain('JSON 请求');
+  });
 });
