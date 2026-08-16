@@ -954,6 +954,31 @@ button {
 .decision-workbench > .primary {
   margin-bottom: 14px;
 }
+.definition-catalog {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 14px;
+  overflow-x: auto;
+}
+.definition-card {
+  display: grid;
+  flex: 0 0 250px;
+  gap: 7px;
+  padding: 12px;
+  border: 1px solid #e5ebe7;
+  border-radius: 8px;
+  background: #fafcfb;
+}
+.definition-card .secondary {
+  justify-self: start;
+}
+.version-pin {
+  margin: 0;
+  color: #71847a;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
 .decision-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));

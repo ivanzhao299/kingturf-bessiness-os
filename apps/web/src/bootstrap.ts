@@ -945,6 +945,12 @@ export function commercialWorkspaceStructure(
         el('p', 'muted', `CTR 版本：${textValue(solution.ctrVersionId, '—')}`),
       );
       const specs = el('dl', 'ctr-specification');
+      const previousSolution = solutions.find(
+        (item) =>
+          item.technicalSolutionId === solution.technicalSolutionId &&
+          Number(item.revision) === Number(solution.revision) - 1,
+      );
+      const previousSpecification = recordValue(previousSolution?.specification);
       for (const [key, label] of [
         ['productFamily', '产品系列'],
         ['pileHeightMm', '草高（mm）'],
@@ -953,8 +959,20 @@ export function commercialWorkspaceStructure(
         ['backing', '底布系统'],
         ['infill', '填充建议'],
         ['warrantyYears', '质保年限'],
-      ] as const)
-        specs.append(el('dt', '', label), el('dd', '', displayRequirement(specification[key])));
+      ] as const) {
+        const currentValue = displayRequirement(specification[key]);
+        const previousValue = displayRequirement(previousSpecification[key]);
+        specs.append(
+          el('dt', '', label),
+          el(
+            'dd',
+            previousSolution && currentValue !== previousValue ? 'changed' : '',
+            previousSolution && currentValue !== previousValue
+              ? `${currentValue}（上一版：${previousValue}）`
+              : currentValue,
+          ),
+        );
+      }
       card.append(specs);
       if (permissions.has('technical-solution:update')) {
         const revise = el('button', 'secondary', '创建方案修订');
@@ -1056,6 +1074,77 @@ export function commercialWorkspaceStructure(
       costHeading.append(costCopy, createModel);
     } else costHeading.append(costCopy);
     costPanel.append(costHeading);
+    const modelCatalog = el('div', 'definition-catalog');
+    const latestModelVersions = new Map<string, number>();
+    for (const model of models) {
+      const definitionId = textValue(model.definitionId, '');
+      latestModelVersions.set(
+        definitionId,
+        Math.max(latestModelVersions.get(definitionId) ?? 0, Number(model.version ?? 0)),
+      );
+    }
+    for (const model of models) {
+      const modelCard = el('article', 'definition-card');
+      const rules = Array.isArray(model.rules) ? model.rules : [];
+      modelCard.append(
+        el('strong', '', `${textValue(model.code, '模型')} · V${textValue(model.version, '1')}`),
+        el(
+          'span',
+          `ctr-state state-${textValue(model.status, 'DRAFT').toLocaleLowerCase()}`,
+          textValue(model.status, 'DRAFT'),
+        ),
+        el(
+          'p',
+          'muted',
+          `${textValue(model.name, '')} · ${textValue(model.currency, 'CNY')} · ${String(rules.length)} 条规则`,
+        ),
+      );
+      if (
+        permissions.has('cost-model:manage') &&
+        Number(model.version) === latestModelVersions.get(textValue(model.definitionId, ''))
+      ) {
+        const reviseModel = el('button', 'secondary', '新建模型版本');
+        reviseModel.addEventListener('click', () => {
+          openForm(
+            workspace,
+            `修订 ${textValue(model.code, '成本模型')}`,
+            '创建新的发布版本；历史成本决策继续引用原模型版本。',
+            [
+              {
+                name: 'overheadPercent',
+                label: '管理费率（%）',
+                type: 'number',
+                required: true,
+                value: '3',
+              },
+            ],
+            '发布新版本',
+            async (values) => {
+              const multiplier = 1 + Number(values.overheadPercent ?? 0) / 100;
+              await controller.submit(
+                `/api/v1/cost-models/${textValue(model.definitionId, '')}/versions`,
+                {
+                  currency: textValue(model.currency, 'CNY'),
+                  rules: [
+                    {
+                      when: { op: 'literal', value: true },
+                      adjustment: { kind: 'MULTIPLY', value: multiplier.toFixed(6) },
+                      reason: `管理费率 ${values.overheadPercent ?? '0'}%`,
+                    },
+                  ],
+                  publish: true,
+                },
+              );
+              await controller.load();
+              status.textContent = controller.message;
+            },
+          );
+        });
+        modelCard.append(reviseModel);
+      }
+      modelCatalog.append(modelCard);
+    }
+    costPanel.append(modelCatalog);
     if (permissions.has('cost:evaluate') && publishedModels.length > 0 && solutions.length > 0) {
       const evaluate = el('button', 'primary', '＋ 新建成本核算');
       evaluate.addEventListener('click', () => {
@@ -1175,6 +1264,11 @@ export function commercialWorkspaceStructure(
           'muted',
           `小计 ${textValue(decision.subtotal, '—')} · ${displayTime(textValue(decision.evaluatedAt, ''))}`,
         ),
+        el(
+          'p',
+          'version-pin',
+          `模型 ${textValue(decision.modelVersionId, '').slice(0, 8)} · 方案 ${textValue(decision.technicalSolutionRevisionId, '').slice(0, 8)}`,
+        ),
       );
       const lines = Array.isArray(decision.lines) ? decision.lines : [];
       const lineList = el('ul', 'decision-lines');
@@ -1283,6 +1377,100 @@ export function commercialWorkspaceStructure(
       policyHeading.append(policyCopy, createPolicy);
     } else policyHeading.append(policyCopy);
     policyPanel.append(policyHeading);
+    const policyCatalog = el('div', 'definition-catalog');
+    const latestPolicyVersions = new Map<string, number>();
+    for (const policy of policies) {
+      const definitionId = textValue(policy.definitionId, '');
+      latestPolicyVersions.set(
+        definitionId,
+        Math.max(latestPolicyVersions.get(definitionId) ?? 0, Number(policy.version ?? 0)),
+      );
+    }
+    for (const policy of policies) {
+      const policyCard = el('article', 'definition-card');
+      const rules = Array.isArray(policy.rules) ? policy.rules : [];
+      policyCard.append(
+        el('strong', '', `${textValue(policy.code, '政策')} · V${textValue(policy.version, '1')}`),
+        el(
+          'span',
+          `ctr-state state-${textValue(policy.status, 'DRAFT').toLocaleLowerCase()}`,
+          textValue(policy.status, 'DRAFT'),
+        ),
+        el('p', 'muted', `${textValue(policy.name, '')} · ${String(rules.length)} 条规则`),
+      );
+      if (
+        permissions.has('sales-policy:manage') &&
+        Number(policy.version) === latestPolicyVersions.get(textValue(policy.definitionId, ''))
+      ) {
+        const revisePolicy = el('button', 'secondary', '新建政策版本');
+        revisePolicy.addEventListener('click', () => {
+          openForm(
+            workspace,
+            `修订 ${textValue(policy.code, '销售政策')}`,
+            '新版本只影响后续评估，历史政策决策保持原版本引用。',
+            [
+              {
+                name: 'minimumMargin',
+                label: '最低毛利率（%）',
+                type: 'number',
+                required: true,
+                value: '20',
+              },
+              {
+                name: 'maximumDiscount',
+                label: '最大折扣（%）',
+                type: 'number',
+                required: true,
+                value: '10',
+              },
+            ],
+            '发布新版本',
+            async (values) => {
+              const minimumMargin = Math.round(Number(values.minimumMargin ?? 0) * 100);
+              const maximumDiscount = Math.round(Number(values.maximumDiscount ?? 0) * 100);
+              await controller.submit(
+                `/api/v1/sales-policies/${textValue(policy.definitionId, '')}/versions`,
+                {
+                  rules: [
+                    {
+                      when: {
+                        op: 'lt',
+                        left: { op: 'input', path: 'marginBasisPoints' },
+                        right: { op: 'literal', value: minimumMargin },
+                      },
+                      effect: {
+                        passed: false,
+                        approvalRequired: true,
+                        minimumMarginBasisPoints: minimumMargin,
+                      },
+                      reason: `毛利率低于 ${values.minimumMargin ?? '0'}% 红线`,
+                    },
+                    {
+                      when: {
+                        op: 'gt',
+                        left: { op: 'input', path: 'discountBasisPoints' },
+                        right: { op: 'literal', value: maximumDiscount },
+                      },
+                      effect: {
+                        approvalRequired: true,
+                        maximumDiscountBasisPoints: maximumDiscount,
+                      },
+                      reason: `折扣超过 ${values.maximumDiscount ?? '0'}% 上限`,
+                    },
+                  ],
+                  publish: true,
+                },
+              );
+              await controller.load();
+              status.textContent = controller.message;
+            },
+          );
+        });
+        policyCard.append(revisePolicy);
+      }
+      policyCatalog.append(policyCard);
+    }
+    policyPanel.append(policyCatalog);
     const costs = controller.views.get('/api/v1/cost-evaluations') ?? [];
     if (
       permissions.has('sales-policy:evaluate') &&
@@ -1362,6 +1550,11 @@ export function commercialWorkspaceStructure(
           passed ? '政策通过' : '政策未通过',
         ),
         el('p', 'muted', approval ? '需要人工审批' : '无需额外审批'),
+        el(
+          'p',
+          'version-pin',
+          `政策 ${textValue(evaluation.policyVersionId, '').slice(0, 8)} · 成本 ${textValue(evaluation.costDecisionId, '').slice(0, 8)}`,
+        ),
       );
       const reasons = Array.isArray(evaluation.reasons) ? evaluation.reasons : [];
       for (const reason of reasons) card.append(el('p', 'rule-hit', textValue(reason, '规则命中')));

@@ -415,8 +415,10 @@ describe('web bootstrap', () => {
     expect(workspace.findByClass('decision-card')).toHaveLength(2);
     expect(workspace.textContent).toContain('CNY 1030');
     expect(workspace.textContent).toContain('管理费率 3%');
+    expect(workspace.textContent).toContain('新建模型版本');
     expect(workspace.textContent).toContain('政策未通过');
     expect(workspace.textContent).toContain('毛利率低于 20% 红线');
+    expect(workspace.textContent).toContain('新建政策版本');
     expect(workspace.textContent).not.toContain('JSON 请求');
   });
 
