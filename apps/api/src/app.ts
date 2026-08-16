@@ -43,6 +43,7 @@ import type { PostgresDashboardRepository } from './dashboard-repositories.ts';
 import type { PostgresManufacturingRepository } from './manufacturing-repositories.ts';
 import type { PostgresProcurementRepository } from './procurement-repositories.ts';
 import type { PostgresMrpRepository } from './mrp-repositories.ts';
+import type { PostgresProductionRepository } from './production-repositories.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -99,6 +100,7 @@ export type ApiDependencies = Readonly<{
   manufacturing?: PostgresManufacturingRepository;
   procurement?: PostgresProcurementRepository;
   mrp?: PostgresMrpRepository;
+  production?: PostgresProductionRepository;
   readiness?: () => Promise<boolean>;
   telemetry?: Telemetry;
   logger?: OperationalLogger;
@@ -1000,6 +1002,168 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               correlationId,
             );
             return { statusCode: 201, body: mutationDto(result, context, 'mrp:read') };
+          }
+        }
+        if (dependencies.production) {
+          if (request.method === 'GET' && request.pathname === '/api/v1/production-orders') {
+            const grant = authorizeQuery(context, 'production:read');
+            const items = await dependencies.production.list({
+              actor: context.actor,
+              scopes: grant.scopes,
+              anchors: grant.anchors,
+            });
+            return {
+              statusCode: 200,
+              body: {
+                items: items.map((item) =>
+                  permittedDto(item, context.permissions.get('production:read')?.fields ?? null),
+                ),
+              },
+            };
+          }
+          if (request.method === 'POST' && request.pathname === '/api/v1/production-orders') {
+            const body = objectBody(request.body);
+            allow(body, [
+              'orderNumber',
+              'itemVersionId',
+              'routingVersionId',
+              'mrpProposalId',
+              'plannedQuantity',
+              'plannedStartAt',
+              'plannedDueAt',
+              'sourceReference',
+            ]);
+            const grant = authorizeQuery(context, 'production:plan', Object.keys(body));
+            const result = await dependencies.production.create(
+              {
+                orderNumber: assertStableCode(string(body.orderNumber, 'orderNumber')),
+                itemVersionId: uuid(body.itemVersionId, 'itemVersionId'),
+                routingVersionId: uuid(body.routingVersionId, 'routingVersionId'),
+                mrpProposalId:
+                  body.mrpProposalId === undefined
+                    ? undefined
+                    : uuid(body.mrpProposalId, 'mrpProposalId'),
+                plannedQuantity: decimal(body.plannedQuantity, 'plannedQuantity'),
+                plannedStartAt: calendarDate(body.plannedStartAt, 'plannedStartAt'),
+                plannedDueAt: calendarDate(body.plannedDueAt, 'plannedDueAt'),
+                sourceReference: assertStableCode(string(body.sourceReference, 'sourceReference')),
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'production:read') };
+          }
+          const productionCommand =
+            /^\/api\/v1\/production-orders\/([0-9a-f-]+)\/(release|start|complete|close|cancel)$/u.exec(
+              request.pathname,
+            );
+          if (request.method === 'POST' && productionCommand) {
+            const body = objectBody(request.body);
+            allow(body, ['reason', 'evidence', 'idempotencyKey']);
+            const action = productionCommand[2] as
+              | 'release'
+              | 'start'
+              | 'complete'
+              | 'close'
+              | 'cancel';
+            const capability: PermissionKey =
+              action === 'release'
+                ? 'production:plan'
+                : action === 'start'
+                  ? 'production:report'
+                  : 'production:close';
+            const grant = authorizeQuery(context, capability, Object.keys(body));
+            const states = {
+              release: 'RELEASED',
+              start: 'IN_PROGRESS',
+              complete: 'COMPLETED',
+              close: 'CLOSED',
+              cancel: 'CANCELLED',
+            } as const;
+            const result = await dependencies.production.transition(
+              uuid(productionCommand[1], 'productionOrderId'),
+              states[action],
+              {
+                reason: string(body.reason, 'reason'),
+                evidence: jsonObject(body.evidence ?? {}, 'evidence'),
+                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'production:read') };
+          }
+          const materialCommand = /^\/api\/v1\/production-orders\/([0-9a-f-]+)\/materials$/u.exec(
+            request.pathname,
+          );
+          if (request.method === 'POST' && materialCommand) {
+            const body = objectBody(request.body);
+            allow(body, [
+              'transactionType',
+              'itemVersionId',
+              'lotId',
+              'locationId',
+              'quantity',
+              'reason',
+              'occurredAt',
+              'idempotencyKey',
+            ]);
+            const grant = authorizeQuery(context, 'production:material', Object.keys(body));
+            const transactionType = string(body.transactionType, 'transactionType');
+            if (!['ISSUE', 'RETURN'].includes(transactionType))
+              throw new DomainError('invalid_request', 'transactionType is unsupported');
+            const result = await dependencies.production.transactMaterial(
+              uuid(materialCommand[1], 'productionOrderId'),
+              {
+                transactionType: transactionType as 'ISSUE' | 'RETURN',
+                itemVersionId: uuid(body.itemVersionId, 'itemVersionId'),
+                lotId: uuid(body.lotId, 'lotId'),
+                locationId: uuid(body.locationId, 'locationId'),
+                quantity: decimal(body.quantity, 'quantity'),
+                reason: string(body.reason, 'reason'),
+                occurredAt: timestamp(body.occurredAt, 'occurredAt'),
+                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'production:read') };
+          }
+          const reportCommand =
+            /^\/api\/v1\/production-orders\/([0-9a-f-]+)\/operation-reports$/u.exec(
+              request.pathname,
+            );
+          if (request.method === 'POST' && reportCommand) {
+            const body = objectBody(request.body);
+            allow(body, [
+              'operationId',
+              'goodQuantity',
+              'scrapQuantity',
+              'laborMinutes',
+              'machineMinutes',
+              'startedAt',
+              'completedAt',
+              'notes',
+              'idempotencyKey',
+            ]);
+            const grant = authorizeQuery(context, 'production:report', Object.keys(body));
+            const result = await dependencies.production.reportOperation(
+              uuid(reportCommand[1], 'productionOrderId'),
+              {
+                operationId: uuid(body.operationId, 'operationId'),
+                goodQuantity: decimal(body.goodQuantity, 'goodQuantity'),
+                scrapQuantity: decimal(body.scrapQuantity, 'scrapQuantity'),
+                laborMinutes: decimal(body.laborMinutes, 'laborMinutes'),
+                machineMinutes: decimal(body.machineMinutes, 'machineMinutes'),
+                startedAt: timestamp(body.startedAt, 'startedAt'),
+                completedAt: timestamp(body.completedAt, 'completedAt'),
+                notes: string(body.notes ?? '', 'notes'),
+                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'production:read') };
           }
         }
         if (
