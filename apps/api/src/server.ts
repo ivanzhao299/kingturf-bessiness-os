@@ -31,6 +31,7 @@ import { PostgresCrmRepository } from './crm-repositories.ts';
 import { PostgresCommercialRepository } from './commercial-repositories.ts';
 import { PostgresQuoteToCashRepository } from './qtc-repositories.ts';
 import { PostgresCommissionRepository } from './commission-repositories.ts';
+import { PostgresOrder360Repository } from './order-360-repositories.ts';
 
 const config = parseEnvironment(process.env);
 const database = new Database(config.databaseUrl);
@@ -69,6 +70,7 @@ const app = buildApp({
   commercial: new PostgresCommercialRepository(database),
   quoteToCash: new PostgresQuoteToCashRepository(database),
   commissions: new PostgresCommissionRepository(database),
+  order360: new PostgresOrder360Repository(database),
   readiness: async () => {
     try {
       await database.query('SELECT 1');

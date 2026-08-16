@@ -175,6 +175,7 @@ describe('web bootstrap', () => {
       credit: false,
       contracts: false,
       orders: false,
+      order360: false,
       ar: false,
       payments: false,
       reconciliation: false,

@@ -53,6 +53,7 @@ export type CommercialPermission =
   | 'contract:sign'
   | 'sales-order:read'
   | 'sales-order:create'
+  | 'order-360:read'
   | 'ar:read'
   | 'ar:post'
   | 'bank-payment:read'
@@ -185,6 +186,7 @@ export function visibleCommercialSections(permissions: ReadonlySet<CommercialPer
     credit: permissions.has('credit:read'),
     contracts: permissions.has('contract:read'),
     orders: permissions.has('sales-order:read'),
+    order360: permissions.has('sales-order:read') && permissions.has('order-360:read'),
     ar: permissions.has('ar:read'),
     payments: permissions.has('bank-payment:read'),
     reconciliation: permissions.has('reconciliation:read'),
@@ -337,6 +339,7 @@ export type Opportunity = Readonly<{
 export type CommercialApi = Readonly<{
   listOpportunities(): Promise<readonly Opportunity[]>;
   list(path: string): Promise<readonly Record<string, unknown>[]>;
+  get?(path: string): Promise<Record<string, unknown>>;
   submit(
     path: string,
     payload: Record<string, unknown>,
@@ -358,6 +361,7 @@ export class CommercialController {
   public message = '';
   public revisionState: Record<string, unknown> | null = null;
   public readonly views = new Map<string, readonly Record<string, unknown>[]>();
+  public readonly order360 = new Map<string, Record<string, unknown>>();
   public constructor(
     public readonly api: CommercialApi,
     public readonly permissions: ReadonlySet<CommercialPermission> = new Set(),
@@ -388,6 +392,14 @@ export class CommercialController {
       ] as const;
       for (const [permission, path] of readable)
         if (this.permissions.has(permission)) this.views.set(path, await this.api.list(path));
+      if (
+        this.api.get &&
+        this.permissions.has('order-360:read') &&
+        this.permissions.has('sales-order:read')
+      )
+        for (const order of this.views.get('/api/v1/sales-orders') ?? [])
+          if (typeof order.id === 'string')
+            this.order360.set(order.id, await this.api.get(`/api/v1/sales-orders/${order.id}/360`));
       this.message = `已加载 ${String(this.opportunities.length)} 个商机`;
     } finally {
       this.loading = false;
@@ -2468,6 +2480,72 @@ export function commercialWorkspaceStructure(
     panel.append(list);
     workspace.append(panel);
   }
+  if (controller && permissions.has('sales-order:read') && permissions.has('order-360:read')) {
+    const panel = el('section', 'qtc-workbench order-360-workbench');
+    const heading = el('div', 'pipeline-heading');
+    const copy = el('div');
+    copy.append(
+      el('p', 'eyebrow', 'ORDER 360'),
+      el('h2', '', '订单全链路与证据时间线'),
+      el('p', '', '从已释放订单下钻报价、成本、信用、合同、应收、回款、佣金与异常。'),
+    );
+    heading.append(copy);
+    panel.append(heading);
+    const list = el('div', 'order-360-list');
+    for (const aggregate of controller.order360.values()) {
+      const order = recordValue(aggregate.order);
+      const quote = recordValue(aggregate.quote);
+      const credit = recordValue(aggregate.credit);
+      const contract = recordValue(aggregate.contract);
+      const receivables = Array.isArray(aggregate.receivables) ? aggregate.receivables : [];
+      const payments = Array.isArray(aggregate.payments) ? aggregate.payments : [];
+      const commissions = Array.isArray(aggregate.commissions) ? aggregate.commissions : [];
+      const anomalies = Array.isArray(aggregate.anomalies)
+        ? aggregate.anomalies.map(recordValue).filter((item) => item.active === true)
+        : [];
+      const timeline = Array.isArray(aggregate.timeline) ? aggregate.timeline.map(recordValue) : [];
+      const card = el('article', 'order-360-card');
+      card.append(
+        el('p', 'eyebrow', recordText(order, 'orderNumber', 'order_number', 'SALES ORDER')),
+        el(
+          'h3',
+          '',
+          `${recordText(order, 'currency', 'currency')} ${recordText(order, 'total', 'total', '—')} · ${recordText(order, 'status', 'status')}`,
+        ),
+        el(
+          'p',
+          'qtc-metrics',
+          `报价 ${recordText(quote, 'quoteNumber', 'quoteNumber', '—')} · 信用 ${recordText(credit, 'effectiveStatus', 'effective_status', '—')} · 合同 ${recordText(contract, 'contractNumber', 'contractNumber', '—')}`,
+        ),
+        el(
+          'p',
+          anomalies.length ? 'risk-alert' : 'success-note',
+          anomalies.length
+            ? `当前异常 ${String(anomalies.length)} 项：${anomalies.map((item) => textValue(item.message, '')).join('；')}`
+            : '当前未发现活动异常',
+        ),
+        el(
+          'p',
+          'muted',
+          `应收 ${String(receivables.length)} · 回款 ${String(payments.length)} · 佣金 ${String(commissions.length)} · 证据 ${String(timeline.length)}`,
+        ),
+      );
+      const evidence = el('ol', 'order-360-timeline');
+      for (const event of timeline)
+        evidence.append(
+          el(
+            'li',
+            '',
+            `${recordText(event, 'occurredAt', 'occurredAt').slice(0, 16).replace('T', ' ')} · ${recordText(event, 'type', 'type')} · ${recordText(event, 'label', 'label')}`,
+          ),
+        );
+      card.append(evidence);
+      list.append(card);
+    }
+    if (list.children.length === 0) list.append(el('p', 'pipeline-empty', '暂无可见订单证据。'));
+    panel.append(list);
+    workspace.append(panel);
+  }
   if (controller && permissions.has('ar:read')) {
     const panel = el('section', 'qtc-workbench ar-workbench');
     const heading = el('div', 'pipeline-heading');
@@ -3192,6 +3270,7 @@ export const createFetchCommercialApi = (token: string): CommercialApi => ({
   async list(path) {
     return (await json<{ items: readonly Record<string, unknown>[] }>(path, token)).items;
   },
+  get: (path) => json<Record<string, unknown>>(path, token),
   submit: (path, payload, method = 'POST') =>
     json<Record<string, unknown>>(path, token, {
       method,
@@ -4351,6 +4430,7 @@ export async function bootstrap(root: HTMLElement): Promise<void> {
         item.startsWith('credit:') ||
         item.startsWith('contract:') ||
         item.startsWith('sales-order:') ||
+        item.startsWith('order-360:') ||
         item.startsWith('ar:') ||
         item.startsWith('bank-payment:') ||
         item.startsWith('reconciliation:') ||

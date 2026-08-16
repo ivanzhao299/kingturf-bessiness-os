@@ -37,6 +37,7 @@ import type { PostgresCrmRepository } from './crm-repositories.ts';
 import type { PostgresCommercialRepository } from './commercial-repositories.ts';
 import type { PostgresQuoteToCashRepository } from './qtc-repositories.ts';
 import type { PostgresCommissionRepository } from './commission-repositories.ts';
+import type { PostgresOrder360Repository } from './order-360-repositories.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -87,6 +88,7 @@ export type ApiDependencies = Readonly<{
   commercial?: PostgresCommercialRepository;
   quoteToCash?: PostgresQuoteToCashRepository;
   commissions?: PostgresCommissionRepository;
+  order360?: PostgresOrder360Repository;
   readiness?: () => Promise<boolean>;
   telemetry?: Telemetry;
   logger?: OperationalLogger;
@@ -297,6 +299,64 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               permissions: [...context.permissions.keys()].sort(),
             },
           };
+        const order360Match = /^\/api\/v1\/sales-orders\/([0-9a-f-]+)\/360$/u.exec(
+          request.pathname,
+        );
+        if (request.method === 'GET' && order360Match && dependencies.order360) {
+          const orderId = order360Match[1];
+          if (!orderId) throw new DomainError('invalid_request', 'salesOrderId is required');
+          authorizeQuery(context, 'order-360:read');
+          const orderGrant = authorizeQuery(context, 'sales-order:read');
+          const aggregate = (await dependencies.order360.get(orderId, {
+            actor: context.actor,
+            scopes: orderGrant.scopes,
+            anchors: orderGrant.anchors,
+          })) as Record<string, unknown>;
+          const sectionCapabilities = {
+            customer: 'customer:read',
+            opportunity: 'opportunity:read',
+            technical: 'technical-solution:read',
+            cost: 'cost:read',
+            policy: 'sales-policy:read',
+            quote: 'quote:read',
+            credit: 'credit:read',
+            contract: 'contract:read',
+            receivables: 'ar:read',
+            payments: 'bank-payment:read',
+            reconciliations: 'reconciliation:read',
+            commissions: 'commission:read',
+          } as const satisfies Record<string, PermissionKey>;
+          const body: Record<string, unknown> = {
+            order: permittedDto(
+              aggregate.order as Record<string, unknown>,
+              context.permissions.get('sales-order:read')?.fields ?? null,
+            ),
+            anomalies: aggregate.anomalies,
+          };
+          for (const [section, capability] of Object.entries(sectionCapabilities)) {
+            const grant = context.permissions.get(capability);
+            if (!grant) continue;
+            const value = aggregate[section];
+            body[section] = Array.isArray(value)
+              ? value.map((item) => permittedDto(item as Record<string, unknown>, grant.fields))
+              : permittedDto(value as Record<string, unknown>, grant.fields);
+          }
+          const timelineCapability = (type: string): PermissionKey => {
+            if (type.startsWith('QUOTE_')) return 'quote:read';
+            if (type.startsWith('CREDIT_')) return 'credit:read';
+            if (type.startsWith('CONTRACT_')) return 'contract:read';
+            if (type.startsWith('AR_')) return 'ar:read';
+            if (type.startsWith('PAYMENT_')) return 'bank-payment:read';
+            if (type.startsWith('COMMISSION_')) return 'commission:read';
+            if (type.startsWith('OPPORTUNITY_')) return 'opportunity:read';
+            return 'sales-order:read';
+          };
+          body.timeline = (aggregate.timeline as Record<string, unknown>[]).filter((event) => {
+            const type = typeof event.type === 'string' ? event.type : '';
+            return context.permissions.has(timelineCapability(type));
+          });
+          return { statusCode: 200, body };
+        }
         if (request.method === 'PUT' && request.pathname === '/api/v1/auth/credential') {
           const body = objectBody(request.body);
           await dependencies.auth.changePassword(

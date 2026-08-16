@@ -71,6 +71,7 @@ test('keeps the P1 evidence usable on a mobile viewport', async ({ page }, testI
     '.ar-workbench',
     '.payment-workbench',
     '.commission-workbench',
+    '.order-360-workbench',
   ])
     await expect(page.locator(selector)).toBeVisible();
   await expect(page.locator('.commercial-workspace textarea[aria-label$="JSON 请求"]')).toHaveCount(
@@ -78,6 +79,36 @@ test('keeps the P1 evidence usable on a mobile viewport', async ({ page }, testI
   );
   await testInfo.attach('order-to-cash-mobile', {
     body: await page.locator('.order-workbench').screenshot(),
+    contentType: 'image/png',
+  });
+});
+
+test('shows the permission-bounded Order 360 summary and evidence timeline', async ({
+  page,
+}, testInfo) => {
+  await openAuthenticatedWorkspace(page);
+  const workbench = page.locator('.order-360-workbench');
+  await expect(workbench).toBeVisible();
+  const card = workbench.locator('.order-360-card', { hasText: 'SO-KT-P1-DEMO' });
+  await expect(card.getByText('CNY 950000 · RELEASED', { exact: true })).toBeVisible();
+  await expect(
+    card.getByText(/报价 Q-KT-P1-DEMO · 信用 APPROVED · 合同 CT-KT-P1-DEMO/u),
+  ).toBeVisible();
+  await expect(card.getByText('当前未发现活动异常', { exact: true })).toBeVisible();
+  await expect(card.getByText(/应收 1 · 回款 2 · 佣金 1 · 证据 13/u)).toBeVisible();
+  for (const event of [
+    'OPPORTUNITY_CREATED',
+    'QUOTE_ISSUED',
+    'CREDIT_DECIDED',
+    'CONTRACT_SIGNED',
+    'ORDER_RELEASED',
+    'AR_POSTED',
+    'PAYMENT_RECEIVED',
+    'COMMISSION_CLAWED_BACK',
+  ])
+    await expect(card.getByText(new RegExp(event, 'u')).first()).toBeVisible();
+  await testInfo.attach('order-360-evidence-desktop', {
+    body: await workbench.screenshot(),
     contentType: 'image/png',
   });
 });

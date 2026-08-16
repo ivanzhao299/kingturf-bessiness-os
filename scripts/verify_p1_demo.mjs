@@ -102,6 +102,31 @@ for (const [index, entry] of commission.ledger.entries()) {
   assert.equal(Number(entry.sequence), index + 1, 'commission ledger sequence must be contiguous');
   assert.match(entry.canonical_hash ?? entry.canonicalHash, /^[0-9a-f]{64}$/u);
 }
+const aggregateResponse = await fetch(`${baseUrl}/api/v1/sales-orders/${order.id}/360`, {
+  headers: { authorization: `Bearer ${token}` },
+});
+assert.equal(aggregateResponse.status, 200, 'Order 360 must be readable');
+const order360 = await aggregateResponse.json();
+assert.equal(order360.order.id, order.id);
+assert.equal(order360.quote.id, quote.id);
+assert.equal(order360.credit.id, approvedDecision.id);
+assert.equal(order360.contract.id, contract.id);
+assert.equal(order360.receivables.length, 1);
+assert.equal(order360.payments.length, 2);
+assert.equal(order360.commissions.length, 1);
+assert.equal(order360.anomalies.filter((item) => item.active).length, 0);
+const timelineTypes = new Set(order360.timeline.map((item) => item.type));
+for (const type of [
+  'OPPORTUNITY_CREATED',
+  'QUOTE_ISSUED',
+  'CREDIT_DECIDED',
+  'CONTRACT_SIGNED',
+  'ORDER_RELEASED',
+  'AR_POSTED',
+  'PAYMENT_RECEIVED',
+  'COMMISSION_CLAWED_BACK',
+])
+  assert(timelineTypes.has(type), `Order 360 timeline requires ${type}`);
 
 process.stdout.write(
   `${JSON.stringify(
@@ -136,6 +161,11 @@ process.stdout.write(
         amount: commission.commission_amount ?? commission.commissionAmount,
         effectiveState: commission.effective_state ?? commission.effectiveState,
         ledgerStates,
+      },
+      order360: {
+        timelineEvents: order360.timeline.length,
+        activeAnomalies: order360.anomalies.filter((item) => item.active).length,
+        sections: ['quote', 'credit', 'contract', 'receivables', 'payments', 'commissions'],
       },
     },
     null,

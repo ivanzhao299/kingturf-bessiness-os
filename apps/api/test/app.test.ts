@@ -16,6 +16,7 @@ import type {
 import { buildApp } from '../src/app.js';
 import type { PostgresCrmRepository } from '../src/crm-repositories.js';
 import type { PostgresCommissionRepository } from '../src/commission-repositories.js';
+import type { PostgresOrder360Repository } from '../src/order-360-repositories.js';
 import type { AuthenticationService } from '../src/security.js';
 
 const employeeId = '10000000-0000-4000-8000-000000000001';
@@ -167,6 +168,20 @@ function dependencies(authContext: AuthorizationContext | null) {
     accrue: commissionAccrue,
     transition: commissionTransition,
   } as unknown as PostgresCommissionRepository;
+  const order360Get = vi.fn(() =>
+    Promise.resolve({
+      order: { id: targetId, order_number: 'SO-1', total: '950000', canonical_hash: 'secret' },
+      customer: { id: organizationId, name: 'Customer' },
+      quote: { id: employeeId, quoteNumber: 'Q-1' },
+      receivables: [{ id: targetId, remaining_amount: '0' }],
+      anomalies: [],
+      timeline: [
+        { type: 'ORDER_RELEASED', label: 'SO-1' },
+        { type: 'QUOTE_ISSUED', label: 'Q-1' },
+      ],
+    }),
+  );
+  const order360 = { get: order360Get } as unknown as PostgresOrder360Repository;
   return {
     auth,
     organizations,
@@ -174,6 +189,8 @@ function dependencies(authContext: AuthorizationContext | null) {
     authorization,
     crm,
     commissions,
+    order360,
+    order360Get,
     commissionAccrue,
     commissionTransition,
     crmAssign,
@@ -749,5 +766,32 @@ describe('authorization management API', () => {
         )
       ).statusCode,
     ).toBe(403);
+  });
+  it('keeps Order 360 sections and fields bounded by their source permissions', async () => {
+    const permissions: AuthorizationContext['permissions'] = new Map([
+      ['order-360:read', { scopes: ['COMPANY'] as const, fields: null }],
+      ['sales-order:read', { scopes: ['SELF'] as const, fields: ['order_number', 'total'] }],
+      ['quote:read', { scopes: ['COMPANY'] as const, fields: ['quoteNumber'] }],
+    ]);
+    const deps = dependencies(context(permissions));
+    const response = await dispatch(deps, 'GET', `/api/v1/sales-orders/${targetId}/360`, undefined);
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toMatchObject({
+      order: { id: targetId, order_number: 'SO-1', total: '950000' },
+      quote: { id: employeeId, quoteNumber: 'Q-1' },
+      timeline: [
+        { type: 'ORDER_RELEASED', label: 'SO-1' },
+        { type: 'QUOTE_ISSUED', label: 'Q-1' },
+      ],
+    });
+    expect(response.body).not.toHaveProperty('customer');
+    expect(response.body).not.toHaveProperty('receivables');
+    expect((response.body as { order: Record<string, unknown> }).order).not.toHaveProperty(
+      'canonical_hash',
+    );
+    expect(deps.order360Get).toHaveBeenCalledWith(
+      targetId,
+      expect.objectContaining({ scopes: ['SELF'] }),
+    );
   });
 });
