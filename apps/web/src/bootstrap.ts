@@ -1676,8 +1676,13 @@ async function json<T>(path: string, token: string, init?: RequestInit): Promise
     headers,
   });
   if (!response.ok) {
-    const body = (await response.json().catch(() => ({}))) as { message?: string };
-    throw new Error(body.message ?? `Request failed (${String(response.status)})`);
+    const body = (await response.json().catch(() => ({}))) as {
+      message?: string;
+      error?: { message?: string };
+    };
+    throw new Error(
+      body.error?.message ?? body.message ?? `Request failed (${String(response.status)})`,
+    );
   }
   return (response.status === 204 ? undefined : await response.json()) as T;
 }

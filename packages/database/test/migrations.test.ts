@@ -24,7 +24,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0028_platform_permission_catalog.sql');
+    expect(ordered.at(-1)).toBe('0029_commercial_definition_company_scope.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
@@ -333,5 +333,16 @@ describe('identity and authorization migration', () => {
     expect(sql).toContain("roles.code='SUPER_ADMIN'");
     expect(sql).toContain("ARRAY['GROUP']::data_scope[]");
     expect(sql).toContain('ON CONFLICT(role_id,permission_id) DO NOTHING');
+  });
+  it('adds company scope only to governed commercial catalogs for super administrators', async () => {
+    const sql = await readFile(
+      join(process.cwd(), 'migrations/0029_commercial_definition_company_scope.sql'),
+      'utf8',
+    );
+    expect(sql).toContain("array_append(grant_row.data_scopes,'COMPANY'::data_scope)");
+    expect(sql).toContain("roles.code='SUPER_ADMIN'");
+    expect(sql).toContain("'cost-model:manage'");
+    expect(sql).toContain("'sales-policy:manage'");
+    expect(sql).not.toContain("'cost:evaluate'");
   });
 });
