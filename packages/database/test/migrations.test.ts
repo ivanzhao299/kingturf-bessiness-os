@@ -24,7 +24,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0030_qtc_order_trigger_alias_repair.sql');
+    expect(ordered.at(-1)).toBe('0031_commission_engine_immutable_ledger.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
@@ -68,6 +68,24 @@ describe('identity and authorization migration', () => {
     expect(triggerRepair).toContain('JOIN quotes quote_root');
     expect(triggerRepair).toContain("IF TG_TABLE_NAME='sales_orders' THEN");
     expect(triggerRepair).not.toContain('JOIN quotes q ON');
+  });
+  it('adds a versioned commission policy and immutable state ledger', async () => {
+    const sql = await readFile(
+      join(process.cwd(), 'migrations/0031_commission_engine_immutable_ledger.sql'),
+      'utf8',
+    );
+    for (const table of [
+      'commission_policies',
+      'commission_policy_versions',
+      'commission_cases',
+      'commission_ledger_entries',
+    ])
+      expect(sql).toContain(`CREATE TABLE ${table}`);
+    for (const state of ['ACCRUED', 'FROZEN', 'RELEASED', 'PAID', 'CLAWED_BACK', 'CANCELLED'])
+      expect(sql).toContain(`'${state}'`);
+    expect(sql).toContain('commission ledger sequence is not contiguous');
+    expect(sql).toContain('commission evidence is immutable');
+    expect(sql).toContain("'commission:pay'");
   });
   it('contains every foundational boundary and no later-engine tables', async () => {
     const sql = await readFile(

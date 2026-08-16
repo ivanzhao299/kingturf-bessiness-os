@@ -36,6 +36,7 @@ import type {
 import type { PostgresCrmRepository } from './crm-repositories.ts';
 import type { PostgresCommercialRepository } from './commercial-repositories.ts';
 import type { PostgresQuoteToCashRepository } from './qtc-repositories.ts';
+import type { PostgresCommissionRepository } from './commission-repositories.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -85,6 +86,7 @@ export type ApiDependencies = Readonly<{
   crm?: PostgresCrmRepository;
   commercial?: PostgresCommercialRepository;
   quoteToCash?: PostgresQuoteToCashRepository;
+  commissions?: PostgresCommissionRepository;
   readiness?: () => Promise<boolean>;
   telemetry?: Telemetry;
   logger?: OperationalLogger;
@@ -553,6 +555,156 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               correlationId,
             );
             return { statusCode: 201, body: mutationDto(result, context, 'reconciliation:read') };
+          }
+        }
+        if (dependencies.commissions) {
+          if (request.method === 'GET' && request.pathname === '/api/v1/commission-policies') {
+            const grant = authorizeQuery(context, 'commission-policy:read');
+            return {
+              statusCode: 200,
+              body: {
+                items: (
+                  await dependencies.commissions.listPolicies({
+                    actor: context.actor,
+                    scopes: grant.scopes,
+                    anchors: grant.anchors,
+                  })
+                ).map((item) =>
+                  permittedDto(
+                    item,
+                    context.permissions.get('commission-policy:read')?.fields ?? null,
+                  ),
+                ),
+              },
+            };
+          }
+          if (request.method === 'GET' && request.pathname === '/api/v1/commissions') {
+            const grant = authorizeQuery(context, 'commission:read');
+            return {
+              statusCode: 200,
+              body: {
+                items: (
+                  await dependencies.commissions.listCases({
+                    actor: context.actor,
+                    scopes: grant.scopes,
+                    anchors: grant.anchors,
+                  })
+                ).map((item) =>
+                  permittedDto(item, context.permissions.get('commission:read')?.fields ?? null),
+                ),
+              },
+            };
+          }
+          if (request.method === 'POST' && request.pathname === '/api/v1/commission-policies') {
+            const body = objectBody(request.body);
+            allow(body, [
+              'code',
+              'name',
+              'applicability',
+              'baseRateBasisPoints',
+              'minimumMarginBasisPoints',
+              'releaseCollectionBasisPoints',
+              'effectiveAt',
+              'rules',
+              'publish',
+            ]);
+            const grant = authorizeQuery(context, 'commission-policy:manage', Object.keys(body));
+            const rules = array(body.rules, 'rules').map((rule, index) =>
+              jsonObject(rule, `rules[${String(index)}]`),
+            );
+            const result = await dependencies.commissions.createPolicy(
+              {
+                code: string(body.code, 'code'),
+                name: string(body.name, 'name'),
+                applicability: jsonObject(body.applicability, 'applicability'),
+                baseRateBasisPoints: integer(
+                  body.baseRateBasisPoints,
+                  'baseRateBasisPoints',
+                  0,
+                  10000,
+                ),
+                minimumMarginBasisPoints: integer(
+                  body.minimumMarginBasisPoints,
+                  'minimumMarginBasisPoints',
+                  -100000,
+                  10000,
+                ),
+                releaseCollectionBasisPoints: integer(
+                  body.releaseCollectionBasisPoints,
+                  'releaseCollectionBasisPoints',
+                  0,
+                  10000,
+                ),
+                effectiveAt: timestamp(body.effectiveAt, 'effectiveAt'),
+                rules,
+                publish: body.publish === true,
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return {
+              statusCode: 201,
+              body: mutationDto(result, context, 'commission-policy:read'),
+            };
+          }
+          if (request.method === 'POST' && request.pathname === '/api/v1/commissions/accrue') {
+            const body = objectBody(request.body);
+            allow(body, [
+              'salesOrderId',
+              'beneficiaryEmployeeId',
+              'policyVersionId',
+              'accountingPeriod',
+            ]);
+            const grant = authorizeQuery(context, 'commission:accrue', Object.keys(body));
+            const accountingPeriod = string(body.accountingPeriod, 'accountingPeriod');
+            if (!/^[0-9]{4}-(0[1-9]|1[0-2])$/u.test(accountingPeriod))
+              throw new DomainError('invalid_request', 'accountingPeriod must use YYYY-MM');
+            const result = await dependencies.commissions.accrue(
+              {
+                salesOrderId: uuid(body.salesOrderId, 'salesOrderId'),
+                beneficiaryEmployeeId: uuid(body.beneficiaryEmployeeId, 'beneficiaryEmployeeId'),
+                policyVersionId: uuid(body.policyVersionId, 'policyVersionId'),
+                accountingPeriod,
+              },
+              idempotency(request),
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'commission:read') };
+          }
+          const commissionCommand =
+            /^\/api\/v1\/commissions\/([0-9a-f-]+)\/(freeze|release|pay|clawback|cancel)$/u.exec(
+              request.pathname,
+            );
+          if (request.method === 'POST' && commissionCommand) {
+            const body = objectBody(request.body);
+            allow(body, ['reason', 'externalReference']);
+            const target = (
+              {
+                freeze: 'FROZEN',
+                release: 'RELEASED',
+                pay: 'PAID',
+                clawback: 'CLAWED_BACK',
+                cancel: 'CANCELLED',
+              } as const
+            )[commissionCommand[2] as 'freeze' | 'release' | 'pay' | 'clawback' | 'cancel'];
+            const capability = target === 'PAID' ? 'commission:pay' : 'commission:manage';
+            const grant = authorizeQuery(context, capability, Object.keys(body));
+            const result = await dependencies.commissions.transition(
+              uuid(commissionCommand[1], 'commissionId'),
+              {
+                state: target,
+                reason: string(body.reason, 'reason'),
+                externalReference:
+                  body.externalReference === null || body.externalReference === undefined
+                    ? null
+                    : string(body.externalReference, 'externalReference'),
+              },
+              idempotency(request),
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'commission:read') };
           }
         }
         const opportunityMatch = /^\/api\/v1\/opportunities(?:\/([0-9a-f-]+))?$/u.exec(

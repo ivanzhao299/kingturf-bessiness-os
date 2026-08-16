@@ -30,6 +30,7 @@ import { StructuredTelemetry } from './runtime-telemetry.ts';
 import { PostgresCrmRepository } from './crm-repositories.ts';
 import { PostgresCommercialRepository } from './commercial-repositories.ts';
 import { PostgresQuoteToCashRepository } from './qtc-repositories.ts';
+import { PostgresCommissionRepository } from './commission-repositories.ts';
 
 const config = parseEnvironment(process.env);
 const database = new Database(config.databaseUrl);
@@ -67,6 +68,7 @@ const app = buildApp({
   crm: new PostgresCrmRepository(database),
   commercial: new PostgresCommercialRepository(database),
   quoteToCash: new PostgresQuoteToCashRepository(database),
+  commissions: new PostgresCommissionRepository(database),
   readiness: async () => {
     try {
       await database.query('SELECT 1');
