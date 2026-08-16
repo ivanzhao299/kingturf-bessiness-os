@@ -467,6 +467,17 @@ describe('web bootstrap', () => {
             },
           ],
         },
+        {
+          id: 'quote-r2',
+          quoteNumber: 'Q-2026-002',
+          revision: 1,
+          status: 'ISSUED',
+          currency: 'CNY',
+          total: '1200000',
+          margin: '447791',
+          marginBasisPoints: 3731,
+          lines: [],
+        },
       ],
     };
     const commercialApi = {
@@ -497,12 +508,13 @@ describe('web bootstrap', () => {
       controller,
     ) as unknown as RenderedElement;
     expect(workspace.findByClass('quote-workbench')).toHaveLength(1);
-    expect(workspace.findByClass('quote-card')).toHaveLength(1);
+    expect(workspace.findByClass('quote-card')).toHaveLength(2);
     expect(workspace.textContent).toContain('新建报价');
     expect(workspace.textContent).toContain('CNY 1000000');
     expect(workspace.textContent).toContain('毛利 247791（24.77%）');
     expect(workspace.textContent).toContain('人造草坪系统');
     expect(workspace.textContent).toContain('批准报价');
+    expect(workspace.textContent).toContain('打印 / 保存 PDF');
   });
 
   it('loads only authorized APIs and exposes testable E01-E04 event handlers', async () => {
