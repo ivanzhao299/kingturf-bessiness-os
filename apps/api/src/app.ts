@@ -42,6 +42,7 @@ import type { PostgresRiskRepository } from './risk-repositories.ts';
 import type { PostgresDashboardRepository } from './dashboard-repositories.ts';
 import type { PostgresManufacturingRepository } from './manufacturing-repositories.ts';
 import type { PostgresProcurementRepository } from './procurement-repositories.ts';
+import type { PostgresMrpRepository } from './mrp-repositories.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -97,6 +98,7 @@ export type ApiDependencies = Readonly<{
   dashboard?: PostgresDashboardRepository;
   manufacturing?: PostgresManufacturingRepository;
   procurement?: PostgresProcurementRepository;
+  mrp?: PostgresMrpRepository;
   readiness?: () => Promise<boolean>;
   telemetry?: Telemetry;
   logger?: OperationalLogger;
@@ -871,6 +873,133 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               correlationId,
             );
             return { statusCode: 201, body: mutationDto(result, context, 'inventory:read') };
+          }
+        }
+        if (dependencies.mrp) {
+          const mrpLists: Readonly<
+            Record<string, readonly ['policies' | 'demands' | 'runs', PermissionKey] | undefined>
+          > = {
+            '/api/v1/mrp-policies': ['policies', 'mrp-policy:read'],
+            '/api/v1/mrp-demands': ['demands', 'mrp:read'],
+            '/api/v1/mrp-runs': ['runs', 'mrp:read'],
+          };
+          const listDefinition = mrpLists[request.pathname];
+          if (request.method === 'GET' && listDefinition) {
+            const [view, capability] = listDefinition;
+            const grant = authorizeQuery(context, capability);
+            const items = await dependencies.mrp.list(view, {
+              actor: context.actor,
+              scopes: grant.scopes,
+              anchors: grant.anchors,
+            });
+            return {
+              statusCode: 200,
+              body: {
+                items: items.map((item) =>
+                  permittedDto(item, context.permissions.get(capability)?.fields ?? null),
+                ),
+              },
+            };
+          }
+          if (request.method === 'POST' && request.pathname === '/api/v1/mrp-policies') {
+            const body = objectBody(request.body);
+            allow(body, [
+              'itemVersionId',
+              'safetyStock',
+              'minimumOrderQuantity',
+              'orderMultiple',
+              'leadTimeDays',
+              'freezeWindowDays',
+              'makeOrBuy',
+              'effectiveAt',
+            ]);
+            const grant = authorizeQuery(context, 'mrp-policy:manage', Object.keys(body));
+            const makeOrBuy = string(body.makeOrBuy, 'makeOrBuy');
+            if (!['MAKE', 'BUY'].includes(makeOrBuy))
+              throw new DomainError('invalid_request', 'makeOrBuy is unsupported');
+            const result = await dependencies.mrp.createPolicy(
+              {
+                itemVersionId: uuid(body.itemVersionId, 'itemVersionId'),
+                safetyStock: decimal(body.safetyStock, 'safetyStock'),
+                minimumOrderQuantity: decimal(body.minimumOrderQuantity, 'minimumOrderQuantity'),
+                orderMultiple: decimal(body.orderMultiple, 'orderMultiple'),
+                leadTimeDays: integer(body.leadTimeDays, 'leadTimeDays', 0, 3650),
+                freezeWindowDays: integer(body.freezeWindowDays, 'freezeWindowDays', 0, 3650),
+                makeOrBuy: makeOrBuy as 'MAKE' | 'BUY',
+                effectiveAt: timestamp(body.effectiveAt, 'effectiveAt'),
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'mrp-policy:read') };
+          }
+          if (request.method === 'POST' && request.pathname === '/api/v1/mrp-demands') {
+            const body = objectBody(request.body);
+            allow(body, [
+              'itemVersionId',
+              'sourceType',
+              'sourceId',
+              'requiredAt',
+              'quantity',
+              'priority',
+            ]);
+            const grant = authorizeQuery(context, 'mrp:run', Object.keys(body));
+            const result = await dependencies.mrp.createDemand(
+              {
+                itemVersionId: uuid(body.itemVersionId, 'itemVersionId'),
+                sourceType: assertStableCode(string(body.sourceType, 'sourceType')),
+                sourceId: uuid(body.sourceId, 'sourceId'),
+                requiredAt: calendarDate(body.requiredAt, 'requiredAt'),
+                quantity: decimal(body.quantity, 'quantity'),
+                priority: integer(body.priority ?? 100, 'priority', 1, 100000),
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'mrp:read') };
+          }
+          if (request.method === 'POST' && request.pathname === '/api/v1/mrp-runs') {
+            const body = objectBody(request.body);
+            allow(body, ['runNumber', 'asOf', 'horizonEnd']);
+            const grant = authorizeQuery(context, 'mrp:run', Object.keys(body));
+            const result = await dependencies.mrp.run(
+              {
+                runNumber: assertStableCode(string(body.runNumber, 'runNumber')),
+                asOf: timestamp(body.asOf, 'asOf'),
+                horizonEnd: calendarDate(body.horizonEnd, 'horizonEnd'),
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'mrp:read') };
+          }
+          const proposalCommand =
+            /^\/api\/v1\/mrp-proposals\/([0-9a-f-]+)\/(approve|reject|release|cancel)$/u.exec(
+              request.pathname,
+            );
+          if (request.method === 'POST' && proposalCommand) {
+            const body = objectBody(request.body);
+            allow(body, ['reason', 'evidence']);
+            const action = proposalCommand[2] as 'approve' | 'reject' | 'release' | 'cancel';
+            const capability = action === 'release' ? 'mrp:release' : 'mrp:approve';
+            const grant = authorizeQuery(context, capability, Object.keys(body));
+            const states = {
+              approve: 'APPROVED',
+              reject: 'REJECTED',
+              release: 'RELEASED',
+              cancel: 'CANCELLED',
+            } as const;
+            const result = await dependencies.mrp.transitionProposal(
+              uuid(proposalCommand[1], 'proposalId'),
+              states[action],
+              {
+                reason: string(body.reason, 'reason'),
+                evidence: jsonObject(body.evidence ?? {}, 'evidence'),
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'mrp:read') };
           }
         }
         if (

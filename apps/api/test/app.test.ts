@@ -21,6 +21,7 @@ import type { PostgresRiskRepository } from '../src/risk-repositories.js';
 import type { PostgresDashboardRepository } from '../src/dashboard-repositories.js';
 import type { PostgresManufacturingRepository } from '../src/manufacturing-repositories.js';
 import type { PostgresProcurementRepository } from '../src/procurement-repositories.js';
+import type { PostgresMrpRepository } from '../src/mrp-repositories.js';
 import type { AuthenticationService } from '../src/security.js';
 
 const employeeId = '10000000-0000-4000-8000-000000000001';
@@ -257,6 +258,22 @@ function dependencies(authContext: AuthorizationContext | null) {
     move: procurementMove,
     createLocation: procurementCreateLocation,
   } as unknown as PostgresProcurementRepository;
+  const mrpList = vi.fn(() => Promise.resolve([{ id: targetId, runNumber: 'MRP-1' }]));
+  const mrpCreatePolicy = vi.fn(() => Promise.resolve({ id: targetId, makeOrBuy: 'BUY' }));
+  const mrpCreateDemand = vi.fn(() => Promise.resolve({ id: targetId, quantity: '8000' }));
+  const mrpRun = vi.fn(() =>
+    Promise.resolve({ id: targetId, status: 'COMPUTED', proposalCount: 3 }),
+  );
+  const mrpTransition = vi.fn(() =>
+    Promise.resolve({ id: targetId, state: 'APPROVED', sequence: 2 }),
+  );
+  const mrp = {
+    list: mrpList,
+    createPolicy: mrpCreatePolicy,
+    createDemand: mrpCreateDemand,
+    run: mrpRun,
+    transitionProposal: mrpTransition,
+  } as unknown as PostgresMrpRepository;
   return {
     auth,
     organizations,
@@ -284,6 +301,12 @@ function dependencies(authContext: AuthorizationContext | null) {
     procurementReceive,
     procurementMove,
     procurementCreateLocation,
+    mrp,
+    mrpList,
+    mrpCreatePolicy,
+    mrpCreateDemand,
+    mrpRun,
+    mrpTransition,
     dashboardGet,
     riskEvaluate,
     riskTransition,
@@ -1201,6 +1224,82 @@ describe('authorization management API', () => {
           {},
         )
       ).statusCode,
+    ).toBe(403);
+  });
+  it('validates MRP policy, demand, deterministic run, and approval commands', async () => {
+    const permissions: AuthorizationContext['permissions'] = new Map(
+      [
+        'mrp-policy:read',
+        'mrp-policy:manage',
+        'mrp:read',
+        'mrp:run',
+        'mrp:approve',
+        'mrp:release',
+      ].map((capability) => [
+        capability as `${string}:${string}`,
+        { scopes: ['COMPANY'] as const, fields: null },
+      ]),
+    );
+    const deps = dependencies(context(permissions));
+    expect((await dispatch(deps, 'GET', '/api/v1/mrp-runs')).statusCode).toBe(200);
+    expect(
+      (
+        await dispatch(deps, 'POST', '/api/v1/mrp-policies', {
+          itemVersionId: organizationId,
+          safetyStock: '500',
+          minimumOrderQuantity: '1000',
+          orderMultiple: '500',
+          leadTimeDays: 14,
+          freezeWindowDays: 7,
+          makeOrBuy: 'BUY',
+          effectiveAt: '2026-01-01T00:00:00Z',
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(
+      (
+        await dispatch(deps, 'POST', '/api/v1/mrp-demands', {
+          itemVersionId: organizationId,
+          sourceType: 'SALES-FORECAST',
+          sourceId: targetId,
+          requiredAt: '2026-11-01',
+          quantity: '8000',
+          priority: 10,
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(
+      (
+        await dispatch(deps, 'POST', '/api/v1/mrp-runs', {
+          runNumber: 'MRP-2026-001',
+          asOf: '2026-08-16T00:00:00Z',
+          horizonEnd: '2026-12-31',
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(
+      (
+        await dispatch(deps, 'POST', `/api/v1/mrp-proposals/${targetId}/approve`, {
+          reason: 'Planner approved',
+          evidence: { approval: 'PLAN-1', freezeOverrideApproval: 'OVERRIDE-1' },
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(deps.mrpRun).toHaveBeenCalledWith(
+      expect.objectContaining({ runNumber: 'MRP-2026-001' }),
+      expect.objectContaining({ scopes: ['COMPANY'] }),
+      expect.any(String),
+    );
+    expect(deps.mrpTransition).toHaveBeenCalledWith(
+      targetId,
+      'APPROVED',
+      expect.objectContaining({ reason: 'Planner approved' }),
+      expect.objectContaining({ scopes: ['COMPANY'] }),
+      expect.any(String),
+    );
+    expect(
+      (await dispatch(dependencies(context(grant('mrp:read'))), 'POST', '/api/v1/mrp-runs', {}))
+        .statusCode,
     ).toBe(403);
   });
 });
