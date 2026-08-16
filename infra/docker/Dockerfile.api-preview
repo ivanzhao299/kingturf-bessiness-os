@@ -1,0 +1,25 @@
+FROM node:24-bookworm-slim
+
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+WORKDIR /app
+
+RUN corepack enable && corepack prepare pnpm@10.33.4 --activate
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json ./
+COPY eslint.config.mjs prettier.config.mjs ./
+COPY apps/api/package.json apps/api/package.json
+COPY apps/web/package.json apps/web/package.json
+COPY packages/config/package.json packages/config/package.json
+COPY packages/database/package.json packages/database/package.json
+COPY packages/domain/package.json packages/domain/package.json
+COPY packages/testing/package.json packages/testing/package.json
+COPY packages/types/package.json packages/types/package.json
+COPY packages/ui/package.json packages/ui/package.json
+RUN pnpm install --frozen-lockfile
+
+COPY apps/api apps/api
+COPY packages packages
+
+EXPOSE 3000
+CMD ["node", "--experimental-transform-types", "apps/api/src/server.ts"]
