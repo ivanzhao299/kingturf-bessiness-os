@@ -340,6 +340,86 @@ describe('web bootstrap', () => {
     expect(workspace.textContent).toContain('创建方案修订');
   });
 
+  it('renders explainable cost and sales policy decisions without JSON forms', async () => {
+    const commercialApi = {
+      listOpportunities: vi.fn().mockResolvedValue([]),
+      list: vi.fn().mockImplementation((path: string) => {
+        const views: Record<string, readonly Record<string, unknown>[]> = {
+          '/api/v1/cost-models': [
+            { id: 'model-v1', code: 'CM-1', version: 1, status: 'PUBLISHED', currency: 'CNY' },
+          ],
+          '/api/v1/technical-solutions': [
+            { id: 'solution-v1', code: 'TS-1', revision: 1, status: 'FINAL' },
+          ],
+          '/api/v1/cost-evaluations': [
+            {
+              id: 'cost-1',
+              currency: 'CNY',
+              subtotal: '1000',
+              total: '1030',
+              inputHash: 'cost-hash',
+              lines: [
+                {
+                  description: '草坪',
+                  quantity: '10',
+                  unit_code: 'M2',
+                  unit_cost: '100',
+                  total: '1000',
+                },
+              ],
+              trace: [{ matched: true, reason: '管理费率 3%' }],
+            },
+          ],
+          '/api/v1/sales-policies': [
+            { id: 'policy-v1', code: 'SP-1', version: 1, status: 'PUBLISHED' },
+          ],
+          '/api/v1/sales-policy-evaluations': [
+            {
+              id: 'policy-eval-1',
+              passed: false,
+              approvalRequired: true,
+              minimumMarginBasisPoints: 2000,
+              maximumDiscountBasisPoints: 1000,
+              reasons: ['毛利率低于 20% 红线'],
+              inputHash: 'policy-hash',
+            },
+          ],
+        };
+        return Promise.resolve(views[path] ?? []);
+      }),
+      submit: vi.fn().mockResolvedValue({ id: 'created' }),
+      uploadCtrAttachment: vi.fn().mockResolvedValue({}),
+      command: vi.fn().mockResolvedValue({}),
+    };
+    const controller = new CommercialController(
+      commercialApi,
+      new Set([
+        'technical-solution:read',
+        'cost-model:read',
+        'cost-model:manage',
+        'cost:read',
+        'cost:evaluate',
+        'sales-policy:read',
+        'sales-policy:manage',
+        'sales-policy:evaluate',
+      ]),
+    );
+    await controller.load();
+    const workspace = commercialWorkspaceStructure(
+      'desktop',
+      false,
+      controller,
+    ) as unknown as RenderedElement;
+    expect(workspace.findByClass('cost-workbench')).toHaveLength(1);
+    expect(workspace.findByClass('policy-workbench')).toHaveLength(1);
+    expect(workspace.findByClass('decision-card')).toHaveLength(2);
+    expect(workspace.textContent).toContain('CNY 1030');
+    expect(workspace.textContent).toContain('管理费率 3%');
+    expect(workspace.textContent).toContain('政策未通过');
+    expect(workspace.textContent).toContain('毛利率低于 20% 红线');
+    expect(workspace.textContent).not.toContain('JSON 请求');
+  });
+
   it('loads only authorized APIs and exposes testable E01-E04 event handlers', async () => {
     const { transport, spies } = api();
     const denied = new CrmController(new Set(), transport);

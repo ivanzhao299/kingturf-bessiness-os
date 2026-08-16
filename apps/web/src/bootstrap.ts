@@ -33,8 +33,11 @@ export type CommercialPermission =
   | 'technical-solution:read'
   | 'technical-solution:create'
   | 'technical-solution:update'
+  | 'cost-model:read'
+  | 'cost-model:manage'
   | 'cost:read'
   | 'cost:evaluate'
+  | 'sales-policy:manage'
   | 'sales-policy:read'
   | 'sales-policy:evaluate'
   | 'quote:read'
@@ -248,7 +251,9 @@ export class CommercialController {
       const readable = [
         ['ctr:read', '/api/v1/ctrs'],
         ['technical-solution:read', '/api/v1/technical-solutions'],
+        ['cost-model:read', '/api/v1/cost-models'],
         ['cost:read', '/api/v1/cost-evaluations'],
+        ['sales-policy:read', '/api/v1/sales-policies'],
         ['sales-policy:read', '/api/v1/sales-policy-evaluations'],
         ['quote:read', '/api/v1/quotes'],
       ] as const;
@@ -986,6 +991,395 @@ export function commercialWorkspaceStructure(
     solutionPanel.append(solutionList);
     workspace.append(solutionPanel);
   }
+  if (controller && permissions.has('cost:read')) {
+    const costPanel = el('section', 'decision-workbench cost-workbench');
+    const costHeading = el('div', 'pipeline-heading');
+    const costCopy = el('div');
+    costCopy.append(
+      el('h2', '', '成本核算'),
+      el('p', '', '固定模型、技术方案和成本行输入，输出可复核的规则轨迹与输入哈希。'),
+    );
+    const models = controller.views.get('/api/v1/cost-models') ?? [];
+    const publishedModels = models.filter((item) => item.status === 'PUBLISHED');
+    const solutions = (controller.views.get('/api/v1/technical-solutions') ?? []).filter(
+      (item) => item.status === 'FINAL',
+    );
+    if (permissions.has('cost-model:manage')) {
+      const createModel = el('button', 'secondary', '新建成本模型');
+      createModel.addEventListener('click', () => {
+        openForm(
+          workspace,
+          '新建成本模型',
+          '发布后该版本可用于成本核算；管理费按成本小计的比例追加。',
+          [
+            { name: 'code', label: '模型编号', required: true, placeholder: 'CM-2026-01' },
+            { name: 'name', label: '模型名称', required: true, placeholder: '标准项目成本模型' },
+            {
+              name: 'currency',
+              label: '币种',
+              type: 'select',
+              required: true,
+              options: [
+                { value: 'CNY', label: '人民币 CNY' },
+                { value: 'USD', label: '美元 USD' },
+              ],
+            },
+            {
+              name: 'overheadPercent',
+              label: '管理费率（%）',
+              type: 'number',
+              required: true,
+              value: '3',
+            },
+          ],
+          '发布模型',
+          async (values) => {
+            const multiplier = 1 + Number(values.overheadPercent ?? 0) / 100;
+            await controller.submit('/api/v1/cost-models', {
+              code: values.code ?? '',
+              name: values.name ?? '',
+              currency: values.currency ?? 'CNY',
+              rules: [
+                {
+                  when: { op: 'literal', value: true },
+                  adjustment: { kind: 'MULTIPLY', value: multiplier.toFixed(6) },
+                  reason: `管理费率 ${values.overheadPercent ?? '0'}%`,
+                },
+              ],
+              publish: true,
+            });
+            await controller.load();
+            status.textContent = controller.message;
+          },
+        );
+      });
+      costHeading.append(costCopy, createModel);
+    } else costHeading.append(costCopy);
+    costPanel.append(costHeading);
+    if (permissions.has('cost:evaluate') && publishedModels.length > 0 && solutions.length > 0) {
+      const evaluate = el('button', 'primary', '＋ 新建成本核算');
+      evaluate.addEventListener('click', () => {
+        openForm(
+          workspace,
+          '新建成本核算',
+          '每一行都保存数量、单位、单价和币种；服务器重新计算小计及模型调整。',
+          [
+            {
+              name: 'modelVersionId',
+              label: '已发布成本模型',
+              type: 'select',
+              required: true,
+              options: publishedModels.map((item) => ({
+                value: textValue(item.id, ''),
+                label: `${textValue(item.code, '模型')} · V${textValue(item.version, '1')} · ${textValue(item.currency, 'CNY')}`,
+              })),
+            },
+            {
+              name: 'technicalSolutionRevisionId',
+              label: '定稿技术方案',
+              type: 'select',
+              required: true,
+              options: solutions.map((item) => ({
+                value: textValue(item.id, ''),
+                label: `${textValue(item.code, '方案')} · R${textValue(item.revision, '1')}`,
+              })),
+            },
+            { name: 'materialQuantity', label: '草坪面积（㎡）', type: 'number', required: true },
+            {
+              name: 'materialUnitCost',
+              label: '草坪单位成本（元/㎡）',
+              type: 'number',
+              required: true,
+            },
+            {
+              name: 'installationQuantity',
+              label: '铺装面积（㎡）',
+              type: 'number',
+              required: true,
+            },
+            {
+              name: 'installationUnitCost',
+              label: '铺装单位成本（元/㎡）',
+              type: 'number',
+              required: true,
+            },
+            {
+              name: 'logisticsQuantity',
+              label: '物流批次',
+              type: 'number',
+              required: true,
+              value: '1',
+            },
+            {
+              name: 'logisticsUnitCost',
+              label: '单批物流成本（元）',
+              type: 'number',
+              required: true,
+            },
+            { name: 'region', label: '项目区域', required: true, value: 'CN' },
+          ],
+          '执行核算',
+          async (values) => {
+            const model = publishedModels.find((item) => item.id === values.modelVersionId);
+            const currency = textValue(model?.currency, 'CNY');
+            await controller.submit('/api/v1/cost-evaluations', {
+              modelVersionId: values.modelVersionId ?? '',
+              technicalSolutionRevisionId: values.technicalSolutionRevisionId ?? '',
+              currency,
+              lines: [
+                ['turf', '人造草坪材料', values.materialQuantity, 'M2', values.materialUnitCost],
+                [
+                  'installation',
+                  '铺装施工',
+                  values.installationQuantity,
+                  'M2',
+                  values.installationUnitCost,
+                ],
+                [
+                  'logistics',
+                  '运输与装卸',
+                  values.logisticsQuantity,
+                  'EA',
+                  values.logisticsUnitCost,
+                ],
+              ].map(([key, description, quantity, unit, unitCost]) => ({
+                key,
+                description,
+                quantity,
+                unit,
+                unitCost,
+                currency,
+              })),
+              context: { region: values.region ?? 'CN' },
+            });
+            await controller.load();
+            status.textContent = controller.message;
+          },
+        );
+      });
+      costPanel.append(evaluate);
+    }
+    const decisions = controller.views.get('/api/v1/cost-evaluations') ?? [];
+    const decisionList = el('div', 'decision-list');
+    for (const decision of decisions) {
+      const card = el('article', 'decision-card');
+      card.append(
+        el('p', 'eyebrow', `COST · ${textValue(decision.currency, '—')}`),
+        el(
+          'strong',
+          'decision-total',
+          `${textValue(decision.currency, '')} ${textValue(decision.total, '—')}`,
+        ),
+        el(
+          'p',
+          'muted',
+          `小计 ${textValue(decision.subtotal, '—')} · ${displayTime(textValue(decision.evaluatedAt, ''))}`,
+        ),
+      );
+      const lines = Array.isArray(decision.lines) ? decision.lines : [];
+      const lineList = el('ul', 'decision-lines');
+      for (const line of lines) {
+        const item = recordValue(line);
+        lineList.append(
+          el(
+            'li',
+            '',
+            `${textValue(item.description, '成本项')} · ${textValue(item.quantity, '—')} ${textValue(item.unit_code, '')} × ${textValue(item.unit_cost, '—')} = ${textValue(item.total, '—')}`,
+          ),
+        );
+      }
+      const trace = Array.isArray(decision.trace) ? decision.trace : [];
+      for (const entry of trace) {
+        const rule = recordValue(entry);
+        card.append(
+          el(
+            'p',
+            rule.matched === true ? 'rule-hit' : 'rule-miss',
+            `${rule.matched === true ? '已命中' : '未命中'} · ${textValue(rule.reason, '规则')}`,
+          ),
+        );
+      }
+      card.append(lineList, el('code', 'input-hash', textValue(decision.inputHash, '')));
+      decisionList.append(card);
+    }
+    if (decisions.length === 0)
+      decisionList.append(el('p', 'pipeline-empty', '暂无成本核算结果。'));
+    costPanel.append(decisionList);
+    workspace.append(costPanel);
+  }
+  if (controller && permissions.has('sales-policy:read')) {
+    const policyPanel = el('section', 'decision-workbench policy-workbench');
+    const policyHeading = el('div', 'pipeline-heading');
+    const policyCopy = el('div');
+    policyCopy.append(
+      el('h2', '', '销售政策评估'),
+      el('p', '', '用版本化利润率和折扣红线生成通过、审批要求与命中理由。'),
+    );
+    const policies = controller.views.get('/api/v1/sales-policies') ?? [];
+    const publishedPolicies = policies.filter((item) => item.status === 'PUBLISHED');
+    if (permissions.has('sales-policy:manage')) {
+      const createPolicy = el('button', 'secondary', '新建销售政策');
+      createPolicy.addEventListener('click', () => {
+        openForm(
+          workspace,
+          '新建销售政策',
+          '低于最低毛利率将阻止通过；超过折扣上限将要求人工审批。',
+          [
+            { name: 'code', label: '政策编号', required: true, placeholder: 'SP-2026-01' },
+            { name: 'name', label: '政策名称', required: true, placeholder: '标准销售政策' },
+            {
+              name: 'minimumMargin',
+              label: '最低毛利率（%）',
+              type: 'number',
+              required: true,
+              value: '20',
+            },
+            {
+              name: 'maximumDiscount',
+              label: '最大折扣（%）',
+              type: 'number',
+              required: true,
+              value: '10',
+            },
+          ],
+          '发布政策',
+          async (values) => {
+            const minimumMargin = Math.round(Number(values.minimumMargin ?? 0) * 100);
+            const maximumDiscount = Math.round(Number(values.maximumDiscount ?? 0) * 100);
+            await controller.submit('/api/v1/sales-policies', {
+              code: values.code ?? '',
+              name: values.name ?? '',
+              rules: [
+                {
+                  when: {
+                    op: 'lt',
+                    left: { op: 'input', path: 'marginBasisPoints' },
+                    right: { op: 'literal', value: minimumMargin },
+                  },
+                  effect: {
+                    passed: false,
+                    approvalRequired: true,
+                    minimumMarginBasisPoints: minimumMargin,
+                  },
+                  reason: `毛利率低于 ${values.minimumMargin ?? '0'}% 红线`,
+                },
+                {
+                  when: {
+                    op: 'gt',
+                    left: { op: 'input', path: 'discountBasisPoints' },
+                    right: { op: 'literal', value: maximumDiscount },
+                  },
+                  effect: { approvalRequired: true, maximumDiscountBasisPoints: maximumDiscount },
+                  reason: `折扣超过 ${values.maximumDiscount ?? '0'}% 上限`,
+                },
+              ],
+              publish: true,
+            });
+            await controller.load();
+            status.textContent = controller.message;
+          },
+        );
+      });
+      policyHeading.append(policyCopy, createPolicy);
+    } else policyHeading.append(policyCopy);
+    policyPanel.append(policyHeading);
+    const costs = controller.views.get('/api/v1/cost-evaluations') ?? [];
+    if (
+      permissions.has('sales-policy:evaluate') &&
+      publishedPolicies.length > 0 &&
+      costs.length > 0
+    ) {
+      const evaluatePolicy = el('button', 'primary', '＋ 评估报价政策');
+      evaluatePolicy.addEventListener('click', () => {
+        openForm(
+          workspace,
+          '评估销售政策',
+          '利润率和折扣以百分比输入；其他项目上下文由成本决策固定。',
+          [
+            {
+              name: 'policyVersionId',
+              label: '已发布政策',
+              type: 'select',
+              required: true,
+              options: publishedPolicies.map((item) => ({
+                value: textValue(item.id, ''),
+                label: `${textValue(item.code, '政策')} · V${textValue(item.version, '1')}`,
+              })),
+            },
+            {
+              name: 'costDecisionId',
+              label: '成本决策',
+              type: 'select',
+              required: true,
+              options: costs.map((item) => ({
+                value: textValue(item.id, ''),
+                label: `${textValue(item.currency, '')} ${textValue(item.total, '—')} · ${textValue(item.id, '').slice(0, 8)}`,
+              })),
+            },
+            {
+              name: 'margin',
+              label: '拟定毛利率（%）',
+              type: 'number',
+              required: true,
+              value: '30',
+            },
+            {
+              name: 'discount',
+              label: '拟定折扣（%）',
+              type: 'number',
+              required: true,
+              value: '0',
+            },
+          ],
+          '执行政策评估',
+          async (values) => {
+            await controller.submit('/api/v1/sales-policy-evaluations', {
+              policyVersionId: values.policyVersionId ?? '',
+              costDecisionId: values.costDecisionId ?? '',
+              context: {
+                marginBasisPoints: Math.round(Number(values.margin ?? 0) * 100),
+                discountBasisPoints: Math.round(Number(values.discount ?? 0) * 100),
+              },
+            });
+            await controller.load();
+            status.textContent = controller.message;
+          },
+        );
+      });
+      policyPanel.append(evaluatePolicy);
+    }
+    const evaluations = controller.views.get('/api/v1/sales-policy-evaluations') ?? [];
+    const evaluationList = el('div', 'decision-list');
+    for (const evaluation of evaluations) {
+      const card = el('article', 'decision-card');
+      const passed = evaluation.passed === true;
+      const approval = evaluation.approvalRequired === true;
+      card.append(
+        el('p', 'eyebrow', 'POLICY DECISION'),
+        el(
+          'strong',
+          passed ? 'decision-pass' : 'decision-fail',
+          passed ? '政策通过' : '政策未通过',
+        ),
+        el('p', 'muted', approval ? '需要人工审批' : '无需额外审批'),
+      );
+      const reasons = Array.isArray(evaluation.reasons) ? evaluation.reasons : [];
+      for (const reason of reasons) card.append(el('p', 'rule-hit', textValue(reason, '规则命中')));
+      card.append(
+        el(
+          'p',
+          'policy-boundary',
+          `最低毛利率 ${String(Number(evaluation.minimumMarginBasisPoints ?? 0) / 100)}% · 最大折扣 ${String(Number(evaluation.maximumDiscountBasisPoints ?? 0) / 100)}%`,
+        ),
+        el('code', 'input-hash', textValue(evaluation.inputHash, '')),
+      );
+      evaluationList.append(card);
+    }
+    if (evaluations.length === 0)
+      evaluationList.append(el('p', 'pipeline-empty', '暂无销售政策评估结果。'));
+    policyPanel.append(evaluationList);
+    workspace.append(policyPanel);
+  }
   for (const [className, title, description, fields, action, path] of [
     [
       'opportunity-pipeline',
@@ -1086,7 +1480,13 @@ export function commercialWorkspaceStructure(
   ] as const) {
     if (
       controller &&
-      ['/api/v1/opportunities', '/api/v1/ctrs', '/api/v1/technical-solutions'].includes(path)
+      [
+        '/api/v1/opportunities',
+        '/api/v1/ctrs',
+        '/api/v1/technical-solutions',
+        '/api/v1/cost-evaluations',
+        '/api/v1/sales-policy-evaluations',
+      ].includes(path)
     )
       continue;
     const requiredPermission = permittedPaths.get(path),
@@ -2370,6 +2770,7 @@ export async function bootstrap(root: HTMLElement): Promise<void> {
         item.startsWith('ctr:') ||
         item.startsWith('attachment:') ||
         item.startsWith('technical-solution:') ||
+        item.startsWith('cost-model:') ||
         item.startsWith('cost:') ||
         item.startsWith('sales-policy:') ||
         item.startsWith('quote:'),

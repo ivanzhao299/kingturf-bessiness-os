@@ -944,6 +944,70 @@ button {
 .solution-card .ctr-specification {
   grid-template-columns: 100px minmax(0, 1fr);
 }
+.decision-workbench {
+  grid-column: 1 / -1;
+  padding: 20px;
+  border: 1px solid #e0e6e2;
+  border-radius: 10px;
+  background: #fff;
+}
+.decision-workbench > .primary {
+  margin-bottom: 14px;
+}
+.decision-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  gap: 12px;
+}
+.decision-card {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  overflow: hidden;
+  border: 1px solid #e4ebe7;
+  border-radius: 9px;
+  background: linear-gradient(145deg, #fff, #f8faf9);
+}
+.decision-total {
+  color: #176846;
+  font-size: 23px;
+}
+.decision-lines {
+  display: grid;
+  gap: 6px;
+  margin: 4px 0;
+  padding: 10px 12px 10px 28px;
+  border-radius: 7px;
+  background: #f2f6f4;
+  color: #53675d;
+  font-size: 10px;
+}
+.rule-hit,
+.rule-miss,
+.policy-boundary {
+  margin: 0;
+  font-size: 10px;
+}
+.rule-hit {
+  color: #8a641b;
+  font-weight: 800;
+}
+.rule-miss {
+  color: #89968f;
+}
+.decision-pass {
+  color: #177049;
+}
+.decision-fail {
+  color: #a13d3d;
+}
+.input-hash {
+  overflow: hidden;
+  color: #96a29c;
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .list-filters {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 124px;

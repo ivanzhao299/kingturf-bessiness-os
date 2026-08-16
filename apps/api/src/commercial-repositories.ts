@@ -158,6 +158,24 @@ const retainCommand = (
 
 export class PostgresCommercialRepository {
   public constructor(private readonly db: Db) {}
+  public async listDefinitions(
+    kind: 'cost' | 'policy',
+    actor: Actor,
+    scopes: readonly DataScope[],
+  ): Promise<readonly JsonObject[]> {
+    if (!scopes.includes('COMPANY'))
+      throw new DomainError('forbidden', 'Commercial definitions require company scope');
+    const rootTable = kind === 'cost' ? 'cost_models' : 'sales_policies',
+      versionTable = kind === 'cost' ? 'cost_model_versions' : 'sales_policy_versions',
+      fk = kind === 'cost' ? 'cost_model_id' : 'sales_policy_id',
+      currency = kind === 'cost' ? ',v.currency' : '';
+    return (
+      await this.db.query<JsonObject>(
+        `SELECT v.id,d.id AS "definitionId",d.code,d.name,v.version,v.status${currency},v.rules,v.published_at AS "publishedAt",v.created_at AS "createdAt" FROM ${versionTable} v JOIN ${rootTable} d ON d.id=v.${fk} AND d.tenant_id=v.tenant_id WHERE v.tenant_id=$1 AND d.deleted_at IS NULL ORDER BY d.code,v.version DESC`,
+        [actor.companyId],
+      )
+    ).rows;
+  }
   public async listOpportunities(
     actor: Actor,
     scopes: readonly DataScope[],

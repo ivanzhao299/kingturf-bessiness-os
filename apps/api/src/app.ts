@@ -885,6 +885,25 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           return { statusCode: 201, body: mutationDto(result, context, 'technical-solution:read') };
         }
         if (
+          request.method === 'GET' &&
+          (request.pathname === '/api/v1/cost-models' ||
+            request.pathname === '/api/v1/sales-policies') &&
+          dependencies.commercial
+        ) {
+          const cost = request.pathname.endsWith('cost-models');
+          const grant = authorizeQuery(context, cost ? 'cost-model:read' : 'sales-policy:read');
+          return {
+            statusCode: 200,
+            body: {
+              items: await dependencies.commercial.listDefinitions(
+                cost ? 'cost' : 'policy',
+                context.actor,
+                grant.scopes,
+              ),
+            },
+          };
+        }
+        if (
           request.method === 'POST' &&
           (request.pathname === '/api/v1/cost-models' ||
             request.pathname === '/api/v1/sales-policies') &&
