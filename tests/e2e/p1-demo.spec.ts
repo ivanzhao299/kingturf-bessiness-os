@@ -76,6 +76,7 @@ test('keeps the P1 evidence usable on a mobile viewport', async ({ page }, testI
     '.executive-dashboard',
     '.manufacturing-workbench',
     '.procurement-workbench',
+    '.mrp-workbench',
   ])
     await expect(page.locator(selector)).toBeVisible();
   await expect(page.locator('.commercial-workspace textarea[aria-label$="JSON 请求"]')).toHaveCount(
@@ -212,6 +213,30 @@ test('shows supplier qualification, received purchase order, receipt, and derive
   await expect(workbench.getByText(/批次 LOT-KT-YARN-20260920-A/u)).toBeVisible();
   await expect(workbench.getByText(/RAW-A01 · 结存 5000/u)).toBeVisible();
   await testInfo.attach('procurement-inventory-desktop', {
+    body: await workbench.screenshot(),
+    contentType: 'image/png',
+  });
+});
+
+test('shows recursive MRP explanations, frozen overrides, and released proposal ledgers', async ({
+  page,
+}, testInfo) => {
+  await openAuthenticatedWorkspace(page);
+  const workbench = page.locator('.mrp-workbench');
+  await expect(workbench).toBeVisible();
+  await expect(workbench.getByText(/MRP-KT-2026-001 · COMPUTED/u)).toBeVisible();
+  await expect(workbench.locator('.mrp-proposal-card')).toHaveCount(6);
+  await expect(workbench.locator('.mrp-proposal-card.frozen')).toHaveCount(3);
+  await expect(workbench.getByText('RELEASED', { exact: true })).toHaveCount(6);
+  const longRangeYarn = workbench
+    .locator('.mrp-proposal-card', { hasText: 'RM-KT-YARN-12000' })
+    .filter({ hasText: '2026-11-15' });
+  await expect(longRangeYarn).toContainText('建议 10000');
+  await expect(longRangeYarn).toContainText('毛需求 10300');
+  await expect(longRangeYarn).toContainText('安全库存 500');
+  await expect(longRangeYarn).toContainText('按批量取整为 10000');
+  await expect(workbench.getByText(/冻结窗口内：批准必须提供覆盖审批证据/u)).toHaveCount(3);
+  await testInfo.attach('mrp-explainable-planning-desktop', {
     body: await workbench.screenshot(),
     contentType: 'image/png',
   });

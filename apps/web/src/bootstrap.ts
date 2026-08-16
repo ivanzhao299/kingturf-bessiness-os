@@ -84,7 +84,13 @@ export type CommercialPermission =
   | 'procurement:read'
   | 'procurement:manage'
   | 'inventory:read'
-  | 'inventory:move';
+  | 'inventory:move'
+  | 'mrp-policy:read'
+  | 'mrp-policy:manage'
+  | 'mrp:read'
+  | 'mrp:run'
+  | 'mrp:approve'
+  | 'mrp:release';
 export type Viewport = 'desktop' | 'tablet' | 'mobile';
 export function commercialRevisionPath(section: string, rootId: string): string | null {
   const definition = (
@@ -219,6 +225,7 @@ export function visibleCommercialSections(permissions: ReadonlySet<CommercialPer
       permissions.has('supplier:read') ||
       permissions.has('procurement:read') ||
       permissions.has('inventory:read'),
+    mrp: permissions.has('mrp:read') || permissions.has('mrp-policy:read'),
   } as const;
 }
 
@@ -430,6 +437,9 @@ export class CommercialController {
         ['procurement:read', '/api/v1/goods-receipts'],
         ['inventory:read', '/api/v1/inventory-locations'],
         ['inventory:read', '/api/v1/inventory-balances'],
+        ['mrp-policy:read', '/api/v1/mrp-policies'],
+        ['mrp:read', '/api/v1/mrp-demands'],
+        ['mrp:read', '/api/v1/mrp-runs'],
       ] as const;
       for (const [permission, path] of readable)
         if (this.permissions.has(permission)) this.views.set(path, await this.api.list(path));
@@ -4334,6 +4344,296 @@ export function commercialWorkspaceStructure(
     panel.append(grid);
     workspace.append(panel);
   }
+  if (controller && (permissions.has('mrp:read') || permissions.has('mrp-policy:read'))) {
+    const panel = el('section', 'mrp-workbench');
+    panel.setAttribute('data-testid', 'mrp-workbench');
+    panel.append(
+      el('p', 'eyebrow', 'EXPLAINABLE MATERIAL PLANNING'),
+      el('h2', '', 'MRP 净需求与建议审批'),
+      el(
+        'p',
+        'commercial-help',
+        '递归展开已发布 BOM，按时间抵扣合格库存和在途采购，并应用安全库存、批量、交期与冻结窗口。',
+      ),
+    );
+    const policies = controller.views.get('/api/v1/mrp-policies') ?? [],
+      demands = controller.views.get('/api/v1/mrp-demands') ?? [],
+      runs = controller.views.get('/api/v1/mrp-runs') ?? [],
+      items = controller.views.get('/api/v1/manufacturing-items') ?? [],
+      latestRun = runs[0];
+    const heading = el('div', 'mrp-summary');
+    heading.append(
+      el('div', 'metric-card', `计划政策\n${String(policies.length)} 项`),
+      el('div', 'metric-card', `需求信号\n${String(demands.length)} 项`),
+      el('div', 'metric-card', `计算批次\n${String(runs.length)} 次`),
+      el(
+        'div',
+        'metric-card',
+        `当前建议\n${String(Array.isArray(latestRun?.proposals) ? latestRun.proposals.length : 0)} 项`,
+      ),
+    );
+    panel.append(heading);
+    const actions = el('div', 'mrp-actions');
+    const publishedItemOptions = items
+      .filter((item) => recordText(item, 'status', 'status') === 'PUBLISHED')
+      .map((item) => ({
+        value: String(item.id),
+        label: `${recordText(item, 'sku', 'sku')} · ${recordText(item, 'name', 'name')}`,
+      }));
+    const refresh = async () => {
+      await controller.load();
+      status.textContent = controller.message;
+    };
+    if (permissions.has('mrp-policy:manage')) {
+      const policy = el('button', 'secondary', '＋ 计划政策');
+      policy.addEventListener('click', () => {
+        openForm(
+          workspace,
+          '新建物料计划政策',
+          '政策按生效时间追加，固定安全库存、批量、交期和制造/采购方式。',
+          [
+            {
+              name: 'itemVersionId',
+              label: '物料版本',
+              type: 'select',
+              required: true,
+              options: publishedItemOptions,
+            },
+            {
+              name: 'makeOrBuy',
+              label: '供应方式',
+              type: 'select',
+              required: true,
+              options: [
+                { value: 'MAKE', label: '自制' },
+                { value: 'BUY', label: '采购' },
+              ],
+            },
+            { name: 'safetyStock', label: '安全库存', type: 'number', required: true, value: '0' },
+            {
+              name: 'minimumOrderQuantity',
+              label: '最小批量',
+              type: 'number',
+              required: true,
+              value: '0',
+            },
+            {
+              name: 'orderMultiple',
+              label: '批量倍数',
+              type: 'number',
+              required: true,
+              value: '1',
+            },
+            {
+              name: 'leadTimeDays',
+              label: '提前期（天）',
+              type: 'number',
+              required: true,
+              value: '0',
+            },
+            {
+              name: 'freezeWindowDays',
+              label: '冻结窗口（天）',
+              type: 'number',
+              required: true,
+              value: '0',
+            },
+            { name: 'effectiveAt', label: '生效日期', type: 'date', required: true },
+          ],
+          '保存政策',
+          async (values) => {
+            await controller.submit('/api/v1/mrp-policies', {
+              itemVersionId: values.itemVersionId,
+              makeOrBuy: values.makeOrBuy,
+              safetyStock: values.safetyStock,
+              minimumOrderQuantity: values.minimumOrderQuantity,
+              orderMultiple: values.orderMultiple,
+              leadTimeDays: Number(values.leadTimeDays),
+              freezeWindowDays: Number(values.freezeWindowDays),
+              effectiveAt: `${values.effectiveAt ?? ''}T00:00:00.000Z`,
+            });
+            await refresh();
+          },
+        );
+      });
+      actions.append(policy);
+    }
+    if (permissions.has('mrp:run')) {
+      const demand = el('button', 'secondary', '＋ 需求信号');
+      demand.addEventListener('click', () => {
+        openForm(
+          workspace,
+          '登记独立需求',
+          '需求必须引用已发布物料和业务来源，运行时生成不可变快照。',
+          [
+            {
+              name: 'itemVersionId',
+              label: '需求物料',
+              type: 'select',
+              required: true,
+              options: publishedItemOptions,
+            },
+            { name: 'sourceType', label: '来源类型', required: true, value: 'SALES-FORECAST' },
+            { name: 'sourceId', label: '来源业务 ID', required: true },
+            { name: 'requiredAt', label: '需求日期', type: 'date', required: true },
+            { name: 'quantity', label: '需求数量', type: 'number', required: true },
+            { name: 'priority', label: '优先级', type: 'number', required: true, value: '100' },
+          ],
+          '保存需求',
+          async (values) => {
+            await controller.submit('/api/v1/mrp-demands', {
+              itemVersionId: values.itemVersionId,
+              sourceType: values.sourceType,
+              sourceId: values.sourceId,
+              requiredAt: values.requiredAt,
+              quantity: values.quantity,
+              priority: Number(values.priority),
+            });
+            await refresh();
+          },
+        );
+      });
+      const run = el('button', 'primary', '运行 MRP');
+      run.addEventListener('click', () => {
+        openForm(
+          workspace,
+          '运行 MRP',
+          '运行将固定需求、BOM、政策、合格库存和在途采购快照，并生成可解释建议。',
+          [
+            { name: 'runNumber', label: '运行编号', required: true },
+            { name: 'asOf', label: '计划基准日', type: 'date', required: true },
+            { name: 'horizonEnd', label: '计划截止日', type: 'date', required: true },
+          ],
+          '开始计算',
+          async (values) => {
+            await controller.submit('/api/v1/mrp-runs', {
+              runNumber: values.runNumber,
+              asOf: `${values.asOf ?? ''}T00:00:00.000Z`,
+              horizonEnd: values.horizonEnd,
+            });
+            await refresh();
+          },
+        );
+      });
+      actions.append(demand, run);
+    }
+    panel.append(actions);
+    const policyGrid = el('div', 'mrp-policy-grid');
+    for (const policy of policies)
+      policyGrid.append(
+        el(
+          'article',
+          'mrp-policy-card',
+          `${recordText(policy, 'sku', 'sku')} · ${recordText(policy, 'makeOrBuy', 'make_or_buy')}\n安全库存 ${recordText(policy, 'safetyStock', 'safety_stock')} · MOQ ${recordText(policy, 'minimumOrderQuantity', 'minimum_order_quantity')} · 倍数 ${recordText(policy, 'orderMultiple', 'order_multiple')} · 提前 ${recordText(policy, 'leadTimeDays', 'lead_time_days')} 天`,
+        ),
+      );
+    panel.append(policyGrid);
+    if (latestRun) {
+      const runPanel = el('article', 'mrp-run-card');
+      runPanel.append(
+        el(
+          'h3',
+          '',
+          `${recordText(latestRun, 'runNumber', 'run_number')} · ${recordText(latestRun, 'status', 'status')}`,
+        ),
+        el(
+          'p',
+          'muted',
+          `基准 ${recordText(latestRun, 'asOf', 'as_of').slice(0, 10)} · 冻结至 ${recordText(latestRun, 'freezeUntil', 'freeze_until')} · 输入哈希 ${recordText(latestRun, 'inputHash', 'input_hash').slice(0, 16)}…`,
+        ),
+      );
+      const proposals = Array.isArray(latestRun.proposals)
+        ? latestRun.proposals.map(recordValue)
+        : [];
+      const proposalGrid = el('div', 'mrp-proposal-grid');
+      for (const proposal of proposals) {
+        const explanation = recordValue(proposal.explanation),
+          state = recordText(proposal, 'effectiveState', 'effectiveState'),
+          card = el('article', `mrp-proposal-card ${proposal.frozen === true ? 'frozen' : ''}`);
+        card.append(
+          el(
+            'strong',
+            '',
+            `${recordText(proposal, 'sku', 'sku')} · ${recordText(proposal, 'proposalType', 'proposal_type')}`,
+          ),
+          el('span', `ctr-state state-${state.toLowerCase()}`, state),
+          el(
+            'p',
+            '',
+            `建议 ${recordText(proposal, 'quantity', 'quantity')} · ${recordText(proposal, 'startAt', 'start_at')} → ${recordText(proposal, 'dueAt', 'due_at')}`,
+          ),
+          el(
+            'p',
+            'mrp-formula',
+            `毛需求 ${recordText(explanation, 'grossDemand', 'grossDemand')} + 安全库存 ${recordText(explanation, 'safetyStock', 'safetyStock')} − 可用库存 ${recordText(explanation, 'onHand', 'onHand')} − 在途 ${recordText(explanation, 'scheduledReceipts', 'scheduledReceipts')} = 净需求 ${recordText(explanation, 'netRequirement', 'netRequirement')}；按批量取整为 ${recordText(explanation, 'plannedQuantity', 'plannedQuantity')}`,
+          ),
+        );
+        if (proposal.frozen === true)
+          card.append(el('p', 'warning-note', '冻结窗口内：批准必须提供覆盖审批证据'));
+        if (permissions.has('mrp:approve') && state === 'PROPOSED') {
+          for (const [action, label] of [
+            ['approve', '批准'],
+            ['reject', '拒绝'],
+          ] as const) {
+            const command = el('button', action === 'approve' ? 'primary' : 'secondary', label);
+            command.addEventListener('click', () => {
+              openForm(
+                workspace,
+                `${label} MRP 建议`,
+                '决定将追加到不可变事件台账。冻结建议必须提供覆盖审批编号。',
+                [
+                  { name: 'reason', label: '决定理由', type: 'textarea', required: true },
+                  { name: 'approval', label: '审批证据编号', required: true },
+                  ...(proposal.frozen === true
+                    ? [
+                        {
+                          name: 'freezeOverrideApproval',
+                          label: '冻结覆盖审批编号',
+                          required: true,
+                        },
+                      ]
+                    : []),
+                ],
+                `确认${label}`,
+                async (values) => {
+                  await controller.submit(
+                    `/api/v1/mrp-proposals/${String(proposal.id)}/${action}`,
+                    {
+                      reason: values.reason,
+                      evidence: {
+                        approval: values.approval,
+                        ...(values.freezeOverrideApproval
+                          ? { freezeOverrideApproval: values.freezeOverrideApproval }
+                          : {}),
+                      },
+                    },
+                  );
+                  await refresh();
+                },
+              );
+            });
+            card.append(command);
+          }
+        }
+        if (permissions.has('mrp:release') && state === 'APPROVED') {
+          const release = el('button', 'primary', '释放到执行');
+          release.addEventListener('click', () => {
+            void controller
+              .submit(`/api/v1/mrp-proposals/${String(proposal.id)}/release`, {
+                reason: '计划员从工作台释放',
+                evidence: { releasedAt: new Date().toISOString() },
+              })
+              .then(refresh);
+          });
+          card.append(release);
+        }
+        proposalGrid.append(card);
+      }
+      runPanel.append(proposalGrid);
+      panel.append(runPanel);
+    }
+    workspace.append(panel);
+  }
   for (const [className, title, description, fields, action, path] of [
     [
       'opportunity-pipeline',
@@ -5759,7 +6059,9 @@ export async function bootstrap(root: HTMLElement): Promise<void> {
         item.startsWith('routing:') ||
         item.startsWith('supplier:') ||
         item.startsWith('procurement:') ||
-        item.startsWith('inventory:'),
+        item.startsWith('inventory:') ||
+        item.startsWith('mrp-policy:') ||
+        item.startsWith('mrp:'),
     ) as CommercialPermission[],
   );
   if (Object.values(visibleCommercialSections(commercialPermissions)).some(Boolean)) {

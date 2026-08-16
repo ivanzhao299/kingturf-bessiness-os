@@ -184,6 +184,7 @@ describe('web bootstrap', () => {
       dashboard: false,
       manufacturing: false,
       procurement: false,
+      mrp: false,
     });
     const workspace = commercialWorkspaceStructure('mobile', true) as unknown as RenderedElement;
     expect(workspace.className).toContain('mobile');
@@ -335,6 +336,88 @@ describe('web bootstrap', () => {
     expect(workspace.textContent).toContain('PO-1 · RECEIVED');
     expect(workspace.textContent).toContain('LOT-1');
     expect(workspace.textContent).toContain('结存 5000');
+  });
+
+  it('renders explainable MRP calculations, frozen warnings, and approval history', async () => {
+    const api = {
+      listOpportunities: vi.fn().mockResolvedValue([]),
+      list: vi.fn().mockImplementation((path: string) => {
+        const values: Record<string, readonly Record<string, unknown>[]> = {
+          '/api/v1/mrp-policies': [
+            {
+              sku: 'RM-YARN',
+              make_or_buy: 'BUY',
+              safety_stock: '500',
+              minimum_order_quantity: '1000',
+              order_multiple: '500',
+              lead_time_days: 14,
+            },
+          ],
+          '/api/v1/mrp-demands': [{ id: 'demand-1', quantity: '8000' }],
+          '/api/v1/mrp-runs': [
+            {
+              id: 'run-1',
+              run_number: 'MRP-KT-2026-001',
+              status: 'COMPUTED',
+              as_of: '2026-08-16',
+              freeze_until: '2026-08-23',
+              input_hash: 'a'.repeat(64),
+              proposals: [
+                {
+                  id: 'proposal-1',
+                  sku: 'RM-YARN',
+                  proposal_type: 'PURCHASE',
+                  quantity: '1000',
+                  start_at: '2026-08-06',
+                  due_at: '2026-08-20',
+                  frozen: true,
+                  effectiveState: 'PROPOSED',
+                  explanation: {
+                    grossDemand: 128.75,
+                    safetyStock: 500,
+                    onHand: 0,
+                    scheduledReceipts: 0,
+                    netRequirement: 628.75,
+                    plannedQuantity: 1000,
+                  },
+                },
+              ],
+            },
+          ],
+          '/api/v1/manufacturing-items': [
+            { id: 'item-v1', sku: 'RM-YARN', name: '草纱', status: 'PUBLISHED' },
+          ],
+        };
+        return Promise.resolve(values[path] ?? []);
+      }),
+      submit: vi.fn().mockResolvedValue({}),
+      uploadCtrAttachment: vi.fn().mockResolvedValue({}),
+      command: vi.fn().mockResolvedValue({}),
+    };
+    const controller = new CommercialController(
+      api,
+      new Set([
+        'manufacturing-item:read',
+        'mrp-policy:read',
+        'mrp-policy:manage',
+        'mrp:read',
+        'mrp:run',
+        'mrp:approve',
+        'mrp:release',
+      ]),
+    );
+    await controller.load();
+    const workspace = commercialWorkspaceStructure(
+      'desktop',
+      false,
+      controller,
+    ) as unknown as RenderedElement;
+    expect(workspace.findByClass('mrp-workbench')).toHaveLength(1);
+    expect(workspace.findByClass('mrp-proposal-card')).toHaveLength(1);
+    expect(workspace.textContent).toContain('MRP-KT-2026-001 · COMPUTED');
+    expect(workspace.textContent).toContain('冻结窗口内');
+    expect(workspace.textContent).toContain('净需求 628.75');
+    expect(workspace.textContent).toContain('按批量取整为 1000');
   });
 
   it('drives commercial loading, submission, revision approval, and issue state through APIs', async () => {
