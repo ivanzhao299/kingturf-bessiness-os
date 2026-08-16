@@ -15,6 +15,7 @@ import type {
 } from '@kingturf/types';
 import { buildApp } from '../src/app.js';
 import type { PostgresCrmRepository } from '../src/crm-repositories.js';
+import type { PostgresCommissionRepository } from '../src/commission-repositories.js';
 import type { AuthenticationService } from '../src/security.js';
 
 const employeeId = '10000000-0000-4000-8000-000000000001';
@@ -151,12 +152,30 @@ function dependencies(authContext: AuthorizationContext | null) {
     createActivity: crmCreateActivity,
     customer360: crmCustomer360,
   } as unknown as PostgresCrmRepository;
+  const commissionAccrue = vi.fn(() =>
+    Promise.resolve({ id: targetId, effectiveState: 'FROZEN', commissionAmount: '300' }),
+  );
+  const commissionTransition = vi.fn(() =>
+    Promise.resolve({ id: targetId, state: 'RELEASED', amount: '0' }),
+  );
+  const commissions = {
+    listPolicies: vi.fn(() => Promise.resolve([])),
+    createPolicy: vi.fn(() => Promise.resolve({ id: targetId, status: 'PUBLISHED' })),
+    createPolicyVersion: vi.fn(() => Promise.resolve({ id: targetId, status: 'DRAFT' })),
+    publishPolicyVersion: vi.fn(() => Promise.resolve({ id: targetId, status: 'PUBLISHED' })),
+    listCases: vi.fn(() => Promise.resolve([])),
+    accrue: commissionAccrue,
+    transition: commissionTransition,
+  } as unknown as PostgresCommissionRepository;
   return {
     auth,
     organizations,
     employees,
     authorization,
     crm,
+    commissions,
+    commissionAccrue,
+    commissionTransition,
     crmAssign,
     crmCustomer360,
     crmClaimLead,
@@ -176,11 +195,16 @@ const dispatch = (
   pathname: string,
   body?: unknown,
   correlationId?: string,
+  idempotencyKey?: string,
 ) =>
   buildApp(deps).dispatch({
     method,
     pathname,
-    headers: { authorization: 'Bearer opaque', 'x-correlation-id': correlationId },
+    headers: {
+      authorization: 'Bearer opaque',
+      'x-correlation-id': correlationId,
+      'idempotency-key': idempotencyKey,
+    },
     body,
   });
 
@@ -659,5 +683,71 @@ describe('authorization management API', () => {
         })
       ).statusCode,
     ).toBe(400);
+  });
+  it('authorizes server-derived commission accrual and ledger transitions', async () => {
+    const permissions: AuthorizationContext['permissions'] = new Map([
+      ['commission:accrue', { scopes: ['COMPANY'] as const, fields: null }],
+      ['commission:read', { scopes: ['COMPANY'] as const, fields: null }],
+      ['commission:manage', { scopes: ['COMPANY'] as const, fields: null }],
+    ]);
+    const deps = dependencies(context(permissions));
+    const accrued = await dispatch(
+      deps,
+      'POST',
+      '/api/v1/commissions/accrue',
+      {
+        salesOrderId: targetId,
+        beneficiaryEmployeeId: employeeId,
+        policyVersionId: organizationId,
+        accountingPeriod: '2026-08',
+      },
+      undefined,
+      'commission-accrue',
+    );
+    expect(accrued.statusCode).toBe(201);
+    expect(deps.commissionAccrue).toHaveBeenCalledWith(
+      {
+        salesOrderId: targetId,
+        beneficiaryEmployeeId: employeeId,
+        policyVersionId: organizationId,
+        accountingPeriod: '2026-08',
+      },
+      expect.any(String),
+      expect.any(Object),
+      expect.any(String),
+    );
+    const released = await dispatch(
+      deps,
+      'POST',
+      `/api/v1/commissions/${targetId}/release`,
+      { reason: 'Collection threshold reached' },
+      undefined,
+      'commission-release',
+    );
+    expect(released.statusCode).toBe(201);
+    expect(deps.commissionTransition).toHaveBeenCalledWith(
+      targetId,
+      { state: 'RELEASED', reason: 'Collection threshold reached', externalReference: null },
+      expect.any(String),
+      expect.any(Object),
+      expect.any(String),
+    );
+    expect(
+      (
+        await dispatch(
+          dependencies(context(grant('commission:read'))),
+          'POST',
+          '/api/v1/commissions/accrue',
+          {
+            salesOrderId: targetId,
+            beneficiaryEmployeeId: employeeId,
+            policyVersionId: organizationId,
+            accountingPeriod: '2026-08',
+          },
+          undefined,
+          'commission-denied',
+        )
+      ).statusCode,
+    ).toBe(403);
   });
 });

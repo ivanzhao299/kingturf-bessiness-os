@@ -178,6 +178,7 @@ describe('web bootstrap', () => {
       ar: false,
       payments: false,
       reconciliation: false,
+      commissions: false,
     });
     const workspace = commercialWorkspaceStructure('mobile', true) as unknown as RenderedElement;
     expect(workspace.className).toContain('mobile');
@@ -799,6 +800,79 @@ describe('web bootstrap', () => {
     expect(workspace.textContent).toContain('未核销 CNY 400');
     expect(workspace.textContent).toContain('已核销 600');
     expect(workspace.textContent).toContain('最近核销 1234567890ab');
+    expect(workspace.textContent).not.toContain('JSON 请求');
+  });
+
+  it('renders commission policy economics and immutable ledger states', async () => {
+    const commercialApi = {
+      listOpportunities: vi.fn().mockResolvedValue([]),
+      list: vi.fn().mockImplementation((path: string) =>
+        Promise.resolve(
+          (
+            {
+              '/api/v1/commission-policies': [
+                {
+                  id: 'policy-v1',
+                  code: 'COM-1',
+                  version: 1,
+                  status: 'PUBLISHED',
+                  base_rate_basis_points: 300,
+                  minimum_margin_basis_points: 2000,
+                  release_collection_basis_points: 10000,
+                },
+              ],
+              '/api/v1/commissions': [
+                {
+                  id: 'commission-1',
+                  orderNumber: 'SO-001',
+                  accounting_period: '2026-08',
+                  currency: 'CNY',
+                  commission_amount: 28500,
+                  eligible_revenue: 950000,
+                  margin_basis_points: 2410,
+                  collection_basis_points: 5263,
+                  beneficiaryName: '销售甲',
+                  policyCode: 'COM-1',
+                  policyVersion: 1,
+                  effective_state: 'FROZEN',
+                  ledger: [
+                    { sequence: 1, state: 'ACCRUED', reason: '服务器计提' },
+                    { sequence: 2, state: 'FROZEN', reason: '回款未达门槛' },
+                  ],
+                },
+              ],
+            } as Record<string, readonly Record<string, unknown>[]>
+          )[path] ?? [],
+        ),
+      ),
+      submit: vi.fn().mockResolvedValue({ id: 'created' }),
+      uploadCtrAttachment: vi.fn().mockResolvedValue({}),
+      command: vi.fn().mockResolvedValue({}),
+    };
+    const controller = new CommercialController(
+      commercialApi,
+      new Set([
+        'commission-policy:read',
+        'commission-policy:manage',
+        'commission:read',
+        'commission:accrue',
+        'commission:manage',
+        'commission:pay',
+      ]),
+    );
+    controller.employees = [{ id: 'employee-1', displayName: '销售甲', active: true }];
+    await controller.load();
+    const workspace = commercialWorkspaceStructure(
+      'desktop',
+      false,
+      controller,
+    ) as unknown as RenderedElement;
+    expect(workspace.findByClass('commission-workbench')).toHaveLength(1);
+    expect(workspace.textContent).toContain('佣金引擎与不可变台账');
+    expect(workspace.textContent).toContain('CNY 28500');
+    expect(workspace.textContent).toContain('已冻结');
+    expect(workspace.textContent).toContain('1 · 已计提 · 服务器计提');
+    expect(workspace.textContent).toContain('复核并释放');
     expect(workspace.textContent).not.toContain('JSON 请求');
   });
 });

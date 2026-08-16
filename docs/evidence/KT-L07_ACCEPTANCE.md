@@ -62,3 +62,6 @@ Playwright 使用系统 Chrome，在真实 204 页面执行 3 个场景：
 - 204 隔离 `kingturf_test` 数据库测试：24 项通过；
 - 204 API 全量测试（含 PostgreSQL）：99 项通过；
 - Playwright 真实页面 E2E：3 项通过。
+
+> 后续 KT-L08 佣金验收在同一可重复场景中补录 CNY 450,000 尾款，使应收余额归零；本节保留
+> KT-L07 关闭时的历史快照，当前结果见 `KT-L08_ACCEPTANCE.md`。

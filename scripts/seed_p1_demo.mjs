@@ -40,6 +40,8 @@ async function request(path, { token = admin, method = 'GET', body, key } = {}) 
 }
 const list = async (path) => (await request(path)).items;
 const statusOf = (item) => item.effective_status ?? item.effectiveStatus ?? item.status;
+const session = await request('/api/v1/auth/session');
+const adminEmployeeId = session.employeeId;
 
 const customerNumber = 'KT-P1-DEMO-001';
 let customer = (await list('/api/v1/customers')).find(
@@ -455,9 +457,98 @@ if (Number(payment.remaining_amount ?? payment.remainingAmount ?? payment.amount
     body: { paymentId: payment.id },
   });
 
+const commissionPolicyCode = 'COM-KT-P1-2026';
+let commissionPolicy = (await list('/api/v1/commission-policies')).find(
+  (item) =>
+    item.code === commissionPolicyCode && item.status === 'PUBLISHED' && Number(item.version) === 1,
+);
+commissionPolicy ??= await request('/api/v1/commission-policies', {
+  method: 'POST',
+  body: {
+    code: commissionPolicyCode,
+    name: 'P1 演示标准佣金政策',
+    applicability: { currency: 'CNY', channel: 'DIRECT' },
+    baseRateBasisPoints: 300,
+    minimumMarginBasisPoints: 2000,
+    releaseCollectionBasisPoints: 10000,
+    effectiveAt: '2026-01-01T00:00:00.000Z',
+    rules: [{ rule: 'full-collection-before-release', enabled: true }],
+    publish: true,
+  },
+});
+
+let commission = (await list('/api/v1/commissions')).find(
+  (item) =>
+    (item.sales_order_id ?? item.salesOrderId) === order.id &&
+    (item.beneficiary_employee_id ?? item.beneficiaryEmployeeId) === adminEmployeeId &&
+    Number(item.policyVersion ?? item.policy_version ?? 1) === 1,
+);
+commission ??= await request('/api/v1/commissions/accrue', {
+  method: 'POST',
+  key: 'kt-p1-seed-commission-accrue-v1',
+  body: {
+    salesOrderId: order.id,
+    beneficiaryEmployeeId: adminEmployeeId,
+    policyVersionId: commissionPolicy.id,
+    accountingPeriod: '2026-08',
+  },
+});
+
+const finalBankReference = 'BANK-KT-P1-DEMO-FINAL';
+receivable = (await list('/api/v1/ar-open-items')).find(
+  (item) => (item.salesOrderId ?? item.sales_order_id) === order.id,
+);
+let finalPayment = (await list('/api/v1/bank-payments')).find(
+  (item) => (item.bank_reference ?? item.bankReference) === finalBankReference,
+);
+if (!finalPayment && Number(receivable.remaining_amount ?? receivable.remainingAmount) > 0)
+  finalPayment = await request('/api/v1/bank-payments', {
+    method: 'POST',
+    key: 'kt-p1-seed-payment-final-v1',
+    body: {
+      customerId: customer.id,
+      currency: 'CNY',
+      amount: String(receivable.remaining_amount ?? receivable.remainingAmount),
+      receivedAt: '2026-08-17T12:00:00.000Z',
+      bankReference: finalBankReference,
+      rawPayload: { payer: '金特夫 P1 全链路演示客户', source: 'DEMO_BANK_STATEMENT' },
+    },
+  });
+if (finalPayment && Number(finalPayment.remaining_amount ?? finalPayment.remainingAmount) > 0)
+  await request('/api/v1/reconciliation-runs', {
+    method: 'POST',
+    key: 'kt-p1-seed-reconciliation-final-v1',
+    body: { paymentId: finalPayment.id },
+  });
+
+commission = (await list('/api/v1/commissions')).find((item) => item.id === commission.id);
+let commissionState = statusOf(commission);
+if (commissionState === 'FROZEN') {
+  await request(`/api/v1/commissions/${commission.id}/release`, {
+    method: 'POST',
+    key: 'kt-p1-seed-commission-release-v1',
+    body: { reason: 'P1 演示订单已全额回款，释放佣金', externalReference: null },
+  });
+  commissionState = 'RELEASED';
+}
+if (commissionState === 'RELEASED') {
+  await request(`/api/v1/commissions/${commission.id}/pay`, {
+    method: 'POST',
+    key: 'kt-p1-seed-commission-pay-v1',
+    body: { reason: 'P1 演示佣金进入工资支付', externalReference: 'PAYROLL-COM-2026-08-001' },
+  });
+  commissionState = 'PAID';
+}
+if (commissionState === 'PAID')
+  await request(`/api/v1/commissions/${commission.id}/clawback`, {
+    method: 'POST',
+    key: 'kt-p1-seed-commission-clawback-v1',
+    body: { reason: 'P1 演示退款追回场景', externalReference: 'CLAWBACK-COM-2026-08-001' },
+  });
+
 await ensureCredit('REJECTED', '2099-04-30T23:59:59.000Z', 'kt-p1-seed-credit-rejected-v1');
 await ensureCredit('EXPIRED', '2000-01-01T00:00:00.000Z', 'kt-p1-seed-credit-expired-v1');
 
 process.stdout.write(
-  `${JSON.stringify({ baseUrl, customerId: customer.id, opportunityId: opportunity.id, quoteRevisionId: quote.id, contractRevisionId: contract.id, orderId: order.id, outcomes: ['APPROVED', 'REJECTED', 'EXPIRED'] }, null, 2)}\n`,
+  `${JSON.stringify({ baseUrl, customerId: customer.id, opportunityId: opportunity.id, quoteRevisionId: quote.id, contractRevisionId: contract.id, orderId: order.id, commissionId: commission.id, outcomes: ['APPROVED', 'REJECTED', 'EXPIRED'] }, null, 2)}\n`,
 );

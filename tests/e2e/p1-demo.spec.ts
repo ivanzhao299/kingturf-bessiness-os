@@ -43,8 +43,10 @@ test('shows the released order, partial AR, payment, and reconciliation evidence
   await expect(order.getByText('SO-KT-P1-DEMO', { exact: true })).toBeVisible();
   await expect(order.getByText('CNY 950000', { exact: true })).toBeVisible();
   await expect(ar.getByText('INV-KT-P1-DEMO', { exact: true })).toBeVisible();
-  await expect(ar.getByText('未核销 CNY 450000', { exact: true })).toBeVisible();
-  const seededPayment = payment.locator('.qtc-card', { hasText: 'BANK-KT-P1-DEMO' });
+  await expect(ar.getByText('未核销 CNY 0', { exact: true })).toBeVisible();
+  const seededPayment = payment
+    .locator('.qtc-card')
+    .filter({ hasText: /BANK-KT-P1-DEMO(?!-FINAL)/u });
   await expect(seededPayment).toBeVisible();
   await expect(seededPayment.getByText(/待核销 0/)).toBeVisible();
   await expect(payment.getByText(/最近核销 [0-9a-f]{12}/)).toBeVisible();
@@ -68,6 +70,7 @@ test('keeps the P1 evidence usable on a mobile viewport', async ({ page }, testI
     '.order-workbench',
     '.ar-workbench',
     '.payment-workbench',
+    '.commission-workbench',
   ])
     await expect(page.locator(selector)).toBeVisible();
   await expect(page.locator('.commercial-workspace textarea[aria-label$="JSON 请求"]')).toHaveCount(
@@ -75,6 +78,27 @@ test('keeps the P1 evidence usable on a mobile viewport', async ({ page }, testI
   );
   await testInfo.attach('order-to-cash-mobile', {
     body: await page.locator('.order-workbench').screenshot(),
+    contentType: 'image/png',
+  });
+});
+
+test('shows commission economics and the immutable control ledger', async ({ page }, testInfo) => {
+  await openAuthenticatedWorkspace(page);
+  const workbench = page.locator('.commission-workbench');
+  await expect(workbench).toBeVisible();
+  await expect(
+    workbench.locator('.version-pin').filter({ hasText: 'COM-KT-P1-2026 V1' }).first(),
+  ).toBeVisible();
+  const card = workbench.locator('.commission-card', { hasText: 'SO-KT-P1-DEMO' });
+  await expect(card.getByText('CNY 28500', { exact: true })).toBeVisible();
+  await expect(card.getByText('已追回', { exact: true })).toBeVisible();
+  await expect(card.getByText(/1 · 已计提/)).toBeVisible();
+  await expect(card.getByText(/2 · 已冻结/)).toBeVisible();
+  await expect(card.getByText(/3 · 已释放/)).toBeVisible();
+  await expect(card.getByText(/4 · 已支付/)).toBeVisible();
+  await expect(card.getByText(/5 · 已追回/)).toBeVisible();
+  await testInfo.attach('commission-ledger-desktop', {
+    body: await workbench.screenshot(),
     contentType: 'image/png',
   });
 });

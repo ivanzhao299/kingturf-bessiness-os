@@ -59,7 +59,13 @@ export type CommercialPermission =
   | 'bank-payment:intake'
   | 'reconciliation:read'
   | 'reconciliation:run'
-  | 'allocation:create';
+  | 'allocation:create'
+  | 'commission-policy:read'
+  | 'commission-policy:manage'
+  | 'commission:read'
+  | 'commission:accrue'
+  | 'commission:manage'
+  | 'commission:pay';
 export type Viewport = 'desktop' | 'tablet' | 'mobile';
 export function commercialRevisionPath(section: string, rootId: string): string | null {
   const definition = (
@@ -182,6 +188,7 @@ export function visibleCommercialSections(permissions: ReadonlySet<CommercialPer
     ar: permissions.has('ar:read'),
     payments: permissions.has('bank-payment:read'),
     reconciliation: permissions.has('reconciliation:read'),
+    commissions: permissions.has('commission:read') || permissions.has('commission-policy:read'),
   } as const;
 }
 
@@ -346,6 +353,7 @@ export type CommercialApi = Readonly<{
 export class CommercialController {
   public opportunities: readonly Opportunity[] = [];
   public customers: readonly Customer[] = [];
+  public employees: readonly Employee[] = [];
   public loading = false;
   public message = '';
   public revisionState: Record<string, unknown> | null = null;
@@ -375,6 +383,8 @@ export class CommercialController {
         ['ar:read', '/api/v1/ar-open-items'],
         ['bank-payment:read', '/api/v1/bank-payments'],
         ['reconciliation:read', '/api/v1/reconciliation-runs'],
+        ['commission-policy:read', '/api/v1/commission-policies'],
+        ['commission:read', '/api/v1/commissions'],
       ] as const;
       for (const [permission, path] of readable)
         if (this.permissions.has(permission)) this.views.set(path, await this.api.list(path));
@@ -462,6 +472,8 @@ export function commercialWorkspaceStructure(
       ['/api/v1/ar-open-items', ['ar:read', 'ar:post']],
       ['/api/v1/bank-payments', ['bank-payment:read', 'bank-payment:intake']],
       ['/api/v1/reconciliation-runs', ['reconciliation:read', 'reconciliation:run']],
+      ['/api/v1/commission-policies', ['commission-policy:read', 'commission-policy:manage']],
+      ['/api/v1/commissions', ['commission:read', 'commission:accrue']],
     ]);
   if (controller && permissions.has('opportunity:read')) {
     const pipeline = document.createElement('section');
@@ -2638,6 +2650,298 @@ export function commercialWorkspaceStructure(
       );
     workspace.append(panel);
   }
+  if (
+    controller &&
+    (permissions.has('commission:read') || permissions.has('commission-policy:read'))
+  ) {
+    const panel = el('section', 'qtc-workbench commission-workbench');
+    const percent = (value: string) => String(Number(value) / 100);
+    const heading = el('div', 'pipeline-heading');
+    const copy = el('div');
+    copy.append(
+      el('h2', '', '佣金引擎与不可变台账'),
+      el('p', '', '佣金由订单收入、报价毛利和实时回款推导；冻结、释放、支付与追回保留完整证据。'),
+    );
+    if (permissions.has('commission-policy:manage')) {
+      const createPolicy = el('button', 'secondary', '新建佣金政策');
+      createPolicy.addEventListener('click', () => {
+        openForm(
+          workspace,
+          '新建并发布佣金政策',
+          '政策发布后不可修改；后续调整必须创建新版本。比例使用百分数输入。',
+          [
+            { name: 'code', label: '政策编码', required: true },
+            { name: 'name', label: '政策名称', required: true },
+            { name: 'baseRate', label: '基础佣金率（%）', type: 'number', required: true },
+            { name: 'minimumMargin', label: '最低毛利率（%）', type: 'number', required: true },
+            {
+              name: 'releaseCollection',
+              label: '释放回款比例（%）',
+              type: 'number',
+              required: true,
+            },
+            { name: 'effectiveAt', label: '生效日期', type: 'date', required: true },
+          ],
+          '发布政策',
+          async (values) => {
+            const bps = (value: string | undefined) => Math.round(Number(value ?? '0') * 100);
+            await controller.submit('/api/v1/commission-policies', {
+              code: values.code ?? '',
+              name: values.name ?? '',
+              applicability: { business: 'ARTIFICIAL_TURF', region: 'ALL' },
+              baseRateBasisPoints: bps(values.baseRate),
+              minimumMarginBasisPoints: bps(values.minimumMargin),
+              releaseCollectionBasisPoints: bps(values.releaseCollection),
+              effectiveAt: new Date(`${values.effectiveAt ?? ''}T00:00:00.000Z`).toISOString(),
+              rules: [
+                { code: 'MIN_MARGIN', description: '实际毛利率达到政策门槛' },
+                { code: 'COLLECTION_RELEASE', description: '回款比例达到释放门槛' },
+              ],
+              publish: true,
+            });
+            await controller.load();
+            status.textContent = controller.message;
+          },
+        );
+      });
+      heading.append(copy, createPolicy);
+    } else heading.append(copy);
+    panel.append(heading);
+    const policies = controller.views.get('/api/v1/commission-policies') ?? [];
+    const publishedPolicies = policies.filter((item) => item.status === 'PUBLISHED');
+    if (permissions.has('commission:accrue') && publishedPolicies.length) {
+      const accrue = el('button', 'primary', '＋ 计算并计提佣金');
+      accrue.addEventListener('click', () => {
+        const orders = controller.views.get('/api/v1/sales-orders') ?? [];
+        openForm(
+          workspace,
+          '计算并计提佣金',
+          '服务器读取订单、报价毛利与核销台账，金额和状态不能由前端指定。',
+          [
+            {
+              name: 'salesOrderId',
+              label: '销售订单',
+              type: 'select',
+              required: true,
+              options: orders.map((item) => ({
+                value: textValue(item.id, ''),
+                label: `${recordText(item, 'orderNumber', 'order_number')} · ${recordText(item, 'currency', 'currency')} ${recordText(item, 'total', 'total')}`,
+              })),
+            },
+            {
+              name: 'beneficiaryEmployeeId',
+              label: '佣金受益人',
+              type: 'select',
+              required: true,
+              options: controller.employees
+                .filter((item) => item.active !== false)
+                .map((item) => ({ value: item.id, label: item.displayName ?? item.id })),
+            },
+            {
+              name: 'policyVersionId',
+              label: '已发布政策版本',
+              type: 'select',
+              required: true,
+              options: publishedPolicies.map((item) => ({
+                value: textValue(item.id, ''),
+                label: `${recordText(item, 'code', 'code')} · V${recordText(item, 'version', 'version', '1')} · ${percent(recordText(item, 'baseRateBasisPoints', 'base_rate_basis_points', '0'))}%`,
+              })),
+            },
+            { name: 'accountingPeriod', label: '会计期间（YYYY-MM）', required: true },
+          ],
+          '执行计提',
+          async (values) => {
+            await controller.submit('/api/v1/commissions/accrue', {
+              salesOrderId: values.salesOrderId ?? '',
+              beneficiaryEmployeeId: values.beneficiaryEmployeeId ?? '',
+              policyVersionId: values.policyVersionId ?? '',
+              accountingPeriod: values.accountingPeriod ?? '',
+            });
+            await controller.load();
+            status.textContent = controller.message;
+          },
+        );
+      });
+      panel.append(accrue);
+    }
+    if (policies.length) {
+      const policyStrip = el('div', 'commission-policy-strip');
+      for (const policy of policies.slice(0, 4)) {
+        const policyCard = el('div', 'commission-policy-card');
+        policyCard.append(
+          el(
+            'span',
+            'version-pin',
+            `${recordText(policy, 'code', 'code')} V${recordText(policy, 'version', 'version')} · ${recordText(policy, 'status', 'status')} · 佣金率 ${percent(recordText(policy, 'baseRateBasisPoints', 'base_rate_basis_points', '0'))}% · 毛利门槛 ${percent(recordText(policy, 'minimumMarginBasisPoints', 'minimum_margin_basis_points', '0'))}% · 回款门槛 ${percent(recordText(policy, 'releaseCollectionBasisPoints', 'release_collection_basis_points', '0'))}%`,
+          ),
+        );
+        if (permissions.has('commission-policy:manage') && policy.status === 'PUBLISHED') {
+          const revise = el('button', 'secondary', '创建新版本');
+          revise.addEventListener('click', () => {
+            openForm(
+              workspace,
+              '创建佣金政策新版本',
+              '历史版本保持不变；新版本先保存为草稿，复核后单独发布。',
+              [
+                { name: 'baseRate', label: '基础佣金率（%）', type: 'number', required: true },
+                {
+                  name: 'minimumMargin',
+                  label: '最低毛利率（%）',
+                  type: 'number',
+                  required: true,
+                },
+                {
+                  name: 'releaseCollection',
+                  label: '释放回款比例（%）',
+                  type: 'number',
+                  required: true,
+                },
+                { name: 'effectiveAt', label: '生效日期', type: 'date', required: true },
+              ],
+              '保存版本草稿',
+              async (values) => {
+                const bps = (value: string | undefined) => Math.round(Number(value ?? '0') * 100);
+                await controller.submit(
+                  `/api/v1/commission-policies/${recordText(policy, 'policyId', 'policyId')}/versions`,
+                  {
+                    baseRateBasisPoints: bps(values.baseRate),
+                    minimumMarginBasisPoints: bps(values.minimumMargin),
+                    releaseCollectionBasisPoints: bps(values.releaseCollection),
+                    effectiveAt: new Date(
+                      `${values.effectiveAt ?? ''}T00:00:00.000Z`,
+                    ).toISOString(),
+                    rules: [
+                      { code: 'MIN_MARGIN', description: '实际毛利率达到政策门槛' },
+                      { code: 'COLLECTION_RELEASE', description: '回款比例达到释放门槛' },
+                    ],
+                  },
+                );
+                await controller.load();
+                status.textContent = controller.message;
+              },
+            );
+          });
+          policyCard.append(revise);
+        }
+        if (permissions.has('commission-policy:manage') && policy.status === 'DRAFT') {
+          const publish = el('button', 'primary', '发布此版本');
+          publish.addEventListener('click', () => {
+            void controller
+              .submit(`/api/v1/commission-policy-versions/${textValue(policy.id, '')}/publish`, {})
+              .then(async () => {
+                await controller.load();
+                status.textContent = controller.message;
+              });
+          });
+          policyCard.append(publish);
+        }
+        policyStrip.append(policyCard);
+      }
+      panel.append(policyStrip);
+    }
+    const cases = controller.views.get('/api/v1/commissions') ?? [];
+    const list = el('div', 'qtc-list commission-list');
+    const labels: Record<string, string> = {
+      ACCRUED: '已计提',
+      FROZEN: '已冻结',
+      RELEASED: '已释放',
+      PAID: '已支付',
+      CLAWED_BACK: '已追回',
+      CANCELLED: '已取消',
+    };
+    for (const commission of cases) {
+      const state = recordText(commission, 'effectiveState', 'effective_state', 'ACCRUED');
+      const ledger = Array.isArray(commission.ledger)
+        ? commission.ledger.map((item) => recordValue(item))
+        : [];
+      const card = el('article', 'qtc-card commission-card');
+      card.append(
+        el(
+          'p',
+          'eyebrow',
+          `${recordText(commission, 'orderNumber', 'orderNumber', 'ORDER')} · ${recordText(commission, 'accountingPeriod', 'accounting_period')}`,
+        ),
+        el(
+          'strong',
+          '',
+          `${recordText(commission, 'currency', 'currency')} ${recordText(commission, 'commissionAmount', 'commission_amount', '—')}`,
+        ),
+        el('span', `ctr-state state-${state.toLocaleLowerCase()}`, labels[state] ?? state),
+        el(
+          'p',
+          'qtc-metrics',
+          `收入 ${recordText(commission, 'eligibleRevenue', 'eligible_revenue', '—')} · 毛利率 ${percent(recordText(commission, 'marginBasisPoints', 'margin_basis_points', '0'))}% · 计提时回款 ${percent(recordText(commission, 'collectionBasisPoints', 'collection_basis_points', '0'))}%`,
+        ),
+        el(
+          'p',
+          'muted',
+          `受益人 ${recordText(commission, 'beneficiaryName', 'beneficiaryName', '—')} · 政策 ${recordText(commission, 'policyCode', 'policyCode', '—')} V${recordText(commission, 'policyVersion', 'policyVersion', '—')}`,
+        ),
+      );
+      const timeline = el('ol', 'commission-ledger');
+      for (const entry of ledger)
+        timeline.append(
+          el(
+            'li',
+            '',
+            `${recordText(entry, 'sequence', 'sequence')} · ${labels[recordText(entry, 'state', 'state')] ?? recordText(entry, 'state', 'state')} · ${recordText(entry, 'reason', 'reason')} · ${recordText(entry, 'externalReference', 'external_reference', '无外部引用')}`,
+          ),
+        );
+      card.append(timeline);
+      const actions = el('div', 'qtc-actions');
+      const addCommand = (
+        action: 'freeze' | 'release' | 'pay' | 'clawback' | 'cancel',
+        label: string,
+        needsReference = false,
+      ) => {
+        const button = el(
+          'button',
+          action === 'pay' || action === 'release' ? 'primary' : 'secondary',
+          label,
+        );
+        button.addEventListener('click', () => {
+          openForm(
+            workspace,
+            label,
+            '该操作追加一条不可变佣金台账，不会覆盖任何历史记录。',
+            [
+              { name: 'reason', label: '操作理由', type: 'textarea', required: true },
+              ...(needsReference
+                ? [{ name: 'externalReference', label: '外部凭证号', required: true } as const]
+                : []),
+            ],
+            '确认追加台账',
+            async (values) => {
+              await controller.submit(
+                `/api/v1/commissions/${textValue(commission.id, '')}/${action}`,
+                {
+                  reason: values.reason ?? '',
+                  ...(needsReference ? { externalReference: values.externalReference ?? '' } : {}),
+                },
+              );
+              await controller.load();
+              status.textContent = controller.message;
+            },
+          );
+        });
+        actions.append(button);
+      };
+      if (permissions.has('commission:manage')) {
+        if (state === 'ACCRUED') addCommand('freeze', '冻结');
+        if (state === 'ACCRUED' || state === 'FROZEN') addCommand('release', '复核并释放');
+        if (['ACCRUED', 'FROZEN', 'RELEASED'].includes(state)) addCommand('cancel', '取消');
+        if (state === 'RELEASED') addCommand('freeze', '重新冻结');
+        if (state === 'PAID') addCommand('clawback', '追回', true);
+      }
+      if (state === 'RELEASED' && permissions.has('commission:pay'))
+        addCommand('pay', '记录支付', true);
+      if (actions.children.length > 0) card.append(actions);
+      list.append(card);
+    }
+    if (list.children.length === 0) list.append(el('p', 'pipeline-empty', '暂无佣金计提。'));
+    panel.append(list);
+    workspace.append(panel);
+  }
   for (const [className, title, description, fields, action, path] of [
     [
       'opportunity-pipeline',
@@ -4050,7 +4354,9 @@ export async function bootstrap(root: HTMLElement): Promise<void> {
         item.startsWith('ar:') ||
         item.startsWith('bank-payment:') ||
         item.startsWith('reconciliation:') ||
-        item.startsWith('allocation:'),
+        item.startsWith('allocation:') ||
+        item.startsWith('commission-policy:') ||
+        item.startsWith('commission:'),
     ) as CommercialPermission[],
   );
   if (Object.values(visibleCommercialSections(commercialPermissions)).some(Boolean)) {
@@ -4059,6 +4365,7 @@ export async function bootstrap(root: HTMLElement): Promise<void> {
       commercialPermissions,
     );
     commercialController.customers = controller.customers;
+    commercialController.employees = controller.employees;
     try {
       await commercialController.load();
     } catch (error) {

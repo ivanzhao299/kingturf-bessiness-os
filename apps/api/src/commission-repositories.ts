@@ -159,6 +159,103 @@ export class PostgresCommissionRepository {
     });
   }
 
+  public createPolicyVersion(
+    policyId: string,
+    input: {
+      baseRateBasisPoints: number;
+      minimumMarginBasisPoints: number;
+      releaseCollectionBasisPoints: number;
+      effectiveAt: string;
+      rules: JsonObject[];
+    },
+    context: Context,
+    correlationId: string,
+  ) {
+    return this.db.transaction(async (tx) => {
+      if (!context.scopes.includes('COMPANY') && !context.scopes.includes('GROUP'))
+        throw new DomainError('forbidden', 'Commission policy management requires company scope');
+      const policy = (
+        await tx.query<{ code: string; name: string }>(
+          'SELECT code,name FROM commission_policies WHERE id=$1 AND tenant_id=$2 FOR UPDATE',
+          [policyId, context.actor.companyId],
+        )
+      ).rows[0];
+      if (!policy) throw new DomainError('not_found', 'Commission policy not found');
+      const canonical = { policyId, ...input };
+      const row = (
+        await tx.query<{ id: string; version: number }>(
+          `INSERT INTO commission_policy_versions(tenant_id,policy_id,version,base_rate_basis_points,minimum_margin_basis_points,release_collection_basis_points,effective_at,rules,canonical_hash,created_by)
+           SELECT $1,$2,coalesce(max(version),0)+1,$3,$4,$5,$6,$7,$8,$9
+           FROM commission_policy_versions WHERE tenant_id=$1 AND policy_id=$2 RETURNING id,version`,
+          [
+            context.actor.companyId,
+            policyId,
+            input.baseRateBasisPoints,
+            input.minimumMarginBasisPoints,
+            input.releaseCollectionBasisPoints,
+            input.effectiveAt,
+            JSON.stringify(input.rules),
+            hash(canonical),
+            context.actor.employeeId,
+          ],
+        )
+      ).rows[0];
+      if (!row) throw new Error('Commission policy revision insert returned no row');
+      const result = json({
+        id: row.id,
+        policyId,
+        code: policy.code,
+        name: policy.name,
+        version: row.version,
+        status: 'DRAFT',
+        ...input,
+        canonicalHash: hash(canonical),
+      });
+      await recordEvidence(
+        tx,
+        'commission-policy.revised',
+        'commission-policy',
+        policyId,
+        row.version,
+        context.actor,
+        correlationId,
+        result,
+      );
+      return result;
+    });
+  }
+
+  public publishPolicyVersion(id: string, context: Context, correlationId: string) {
+    return this.db.transaction(async (tx) => {
+      if (!context.scopes.includes('COMPANY') && !context.scopes.includes('GROUP'))
+        throw new DomainError('forbidden', 'Commission policy management requires company scope');
+      const row = (
+        await tx.query<{ policy_id: string; version: number }>(
+          "UPDATE commission_policy_versions SET status='PUBLISHED',published_at=now() WHERE id=$1 AND tenant_id=$2 AND status='DRAFT' RETURNING policy_id,version",
+          [id, context.actor.companyId],
+        )
+      ).rows[0];
+      if (!row) throw new DomainError('not_found', 'Draft commission policy version not found');
+      const result = json({
+        id,
+        policyId: row.policy_id,
+        version: row.version,
+        status: 'PUBLISHED',
+      });
+      await recordEvidence(
+        tx,
+        'commission-policy.published',
+        'commission-policy',
+        row.policy_id,
+        row.version,
+        context.actor,
+        correlationId,
+        result,
+      );
+      return result;
+    });
+  }
+
   public async listCases(context: Context) {
     const secured = customerScope(context, 'cu', 2);
     return (

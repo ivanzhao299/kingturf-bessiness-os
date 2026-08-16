@@ -20,15 +20,18 @@ const get = async (path) => {
   return (await result.json()).items;
 };
 
-const [quotes, decisions, contracts, orders, receivables, payments, runs] = await Promise.all([
-  get('/api/v1/quotes'),
-  get('/api/v1/credit-decisions'),
-  get('/api/v1/contracts'),
-  get('/api/v1/sales-orders'),
-  get('/api/v1/ar-open-items'),
-  get('/api/v1/bank-payments'),
-  get('/api/v1/reconciliation-runs'),
-]);
+const [quotes, decisions, contracts, orders, receivables, payments, runs, policies, commissions] =
+  await Promise.all([
+    get('/api/v1/quotes'),
+    get('/api/v1/credit-decisions'),
+    get('/api/v1/contracts'),
+    get('/api/v1/sales-orders'),
+    get('/api/v1/ar-open-items'),
+    get('/api/v1/bank-payments'),
+    get('/api/v1/reconciliation-runs'),
+    get('/api/v1/commission-policies'),
+    get('/api/v1/commissions'),
+  ]);
 const quote = quotes.find(
   (item) => item.quoteNumber === 'Q-KT-P1-DEMO' && item.status === 'ISSUED',
 );
@@ -65,8 +68,40 @@ const payment = payments.find(
 );
 assert(payment, `bank payment ${paymentReference} is required`);
 assert.equal(Number(payment.remaining_amount ?? payment.remainingAmount), 0);
-assert(Number(openItem.remaining_amount ?? openItem.remainingAmount) > 0);
+const finalPayment = payments.find(
+  (item) => (item.bank_reference ?? item.bankReference) === 'BANK-KT-P1-DEMO-FINAL',
+);
+assert(finalPayment, 'the final collection payment is required');
+assert.equal(Number(finalPayment.remaining_amount ?? finalPayment.remainingAmount), 0);
+assert.equal(Number(openItem.remaining_amount ?? openItem.remainingAmount), 0);
+assert.equal(
+  Number(payment.amount) + Number(finalPayment.amount),
+  Number(openItem.original_amount),
+);
 assert(runs.some((item) => (item.input?.paymentId ?? item.input?.payment_id) === payment.id));
+assert(runs.some((item) => (item.input?.paymentId ?? item.input?.payment_id) === finalPayment.id));
+const commissionPolicy = policies.find(
+  (item) => item.code === 'COM-KT-P1-2026' && Number(item.version) === 1,
+);
+assert.equal(commissionPolicy?.status, 'PUBLISHED', 'published commission policy V1 is required');
+const commission = commissions.find(
+  (item) =>
+    (item.sales_order_id ?? item.salesOrderId) === order.id &&
+    (item.policy_version_id ?? item.policyVersionId) === commissionPolicy.id,
+);
+assert(commission, 'the pinned commission case is required');
+assert.equal(Number(commission.eligible_revenue ?? commission.eligibleRevenue), 950000);
+assert.equal(Number(commission.margin_amount ?? commission.marginAmount), 229000);
+assert.equal(Number(commission.margin_basis_points ?? commission.marginBasisPoints), 2410);
+assert.equal(Number(commission.collection_basis_points ?? commission.collectionBasisPoints), 5263);
+assert.equal(Number(commission.commission_amount ?? commission.commissionAmount), 28500);
+assert.equal(commission.effective_state ?? commission.effectiveState, 'CLAWED_BACK');
+const ledgerStates = commission.ledger.map((entry) => entry.state);
+assert.deepEqual(ledgerStates, ['ACCRUED', 'FROZEN', 'RELEASED', 'PAID', 'CLAWED_BACK']);
+for (const [index, entry] of commission.ledger.entries()) {
+  assert.equal(Number(entry.sequence), index + 1, 'commission ledger sequence must be contiguous');
+  assert.match(entry.canonical_hash ?? entry.canonicalHash, /^[0-9a-f]{64}$/u);
+}
 
 process.stdout.write(
   `${JSON.stringify(
@@ -85,8 +120,23 @@ process.stdout.write(
         original: openItem.original_amount ?? openItem.originalAmount,
         remaining: openItem.remaining_amount ?? openItem.remainingAmount,
       },
-      payment: { id: payment.id, reference: paymentReference, remaining: 0 },
+      payments: [
+        { id: payment.id, reference: paymentReference, amount: payment.amount, remaining: 0 },
+        {
+          id: finalPayment.id,
+          reference: 'BANK-KT-P1-DEMO-FINAL',
+          amount: finalPayment.amount,
+          remaining: 0,
+        },
+      ],
       reconciliationRuns: runs.length,
+      commission: {
+        id: commission.id,
+        policyVersionId: commissionPolicy.id,
+        amount: commission.commission_amount ?? commission.commissionAmount,
+        effectiveState: commission.effective_state ?? commission.effectiveState,
+        ledgerStates,
+      },
     },
     null,
     2,

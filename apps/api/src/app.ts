@@ -647,6 +647,70 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               body: mutationDto(result, context, 'commission-policy:read'),
             };
           }
+          const commissionPolicyRevision =
+            /^\/api\/v1\/commission-policies\/([0-9a-f-]+)\/versions$/u.exec(request.pathname);
+          if (request.method === 'POST' && commissionPolicyRevision) {
+            const body = objectBody(request.body);
+            allow(body, [
+              'baseRateBasisPoints',
+              'minimumMarginBasisPoints',
+              'releaseCollectionBasisPoints',
+              'effectiveAt',
+              'rules',
+            ]);
+            const grant = authorizeQuery(context, 'commission-policy:manage', Object.keys(body));
+            const result = await dependencies.commissions.createPolicyVersion(
+              uuid(commissionPolicyRevision[1], 'commissionPolicyId'),
+              {
+                baseRateBasisPoints: integer(
+                  body.baseRateBasisPoints,
+                  'baseRateBasisPoints',
+                  0,
+                  10000,
+                ),
+                minimumMarginBasisPoints: integer(
+                  body.minimumMarginBasisPoints,
+                  'minimumMarginBasisPoints',
+                  -100000,
+                  10000,
+                ),
+                releaseCollectionBasisPoints: integer(
+                  body.releaseCollectionBasisPoints,
+                  'releaseCollectionBasisPoints',
+                  0,
+                  10000,
+                ),
+                effectiveAt: timestamp(body.effectiveAt, 'effectiveAt'),
+                rules: array(body.rules, 'rules').map((rule, index) =>
+                  jsonObject(rule, `rules[${String(index)}]`),
+                ),
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return {
+              statusCode: 201,
+              body: mutationDto(result, context, 'commission-policy:read'),
+            };
+          }
+          const commissionPolicyPublish =
+            /^\/api\/v1\/commission-policy-versions\/([0-9a-f-]+)\/publish$/u.exec(
+              request.pathname,
+            );
+          if (request.method === 'POST' && commissionPolicyPublish) {
+            const body = objectBody(request.body);
+            allow(body, []);
+            const grant = authorizeQuery(context, 'commission-policy:manage');
+            const result = await dependencies.commissions.publishPolicyVersion(
+              uuid(commissionPolicyPublish[1], 'commissionPolicyVersionId'),
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return {
+              statusCode: 200,
+              body: mutationDto(result, context, 'commission-policy:read'),
+            };
+          }
           if (request.method === 'POST' && request.pathname === '/api/v1/commissions/accrue') {
             const body = objectBody(request.body);
             allow(body, [
