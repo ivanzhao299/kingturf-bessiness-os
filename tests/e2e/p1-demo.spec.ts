@@ -74,6 +74,7 @@ test('keeps the P1 evidence usable on a mobile viewport', async ({ page }, testI
     '.order-360-workbench',
     '.risk-workbench',
     '.executive-dashboard',
+    '.manufacturing-workbench',
   ])
     await expect(page.locator(selector)).toBeVisible();
   await expect(page.locator('.commercial-workspace textarea[aria-label$="JSON 请求"]')).toHaveCount(
@@ -175,6 +176,23 @@ test('shows server-calculated executive KPIs with source and responsibility dril
   await expect(dashboard.getByText(/HIGH \/ 45 分 · CLOSED/u)).toBeVisible();
   await testInfo.attach('executive-dashboard-desktop', {
     body: await dashboard.screenshot(),
+    contentType: 'image/png',
+  });
+});
+
+test('shows published manufacturing versions, BOM substitute evidence, and ordered operations', async ({
+  page,
+}, testInfo) => {
+  await openAuthenticatedWorkspace(page);
+  const workbench = page.locator('.manufacturing-workbench');
+  await expect(workbench).toBeVisible();
+  await expect(workbench.getByText('FG-KT-PRO-50', { exact: true })).toBeVisible();
+  await expect(workbench.getByText('BOM-KT-PRO-50', { exact: true })).toBeVisible();
+  await expect(workbench.getByText('RT-KT-PRO-50', { exact: true })).toBeVisible();
+  await expect(workbench.getByText('PUBLISHED · V1')).toHaveCount(6);
+  await expect(workbench.getByText('发布版本')).toHaveCount(0);
+  await testInfo.attach('manufacturing-master-data-desktop', {
+    body: await workbench.screenshot(),
     contentType: 'image/png',
   });
 });
