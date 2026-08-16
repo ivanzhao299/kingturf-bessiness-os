@@ -24,7 +24,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0035_executive_dashboard_permission.sql');
+    expect(ordered.at(-1)).toBe('0036_manufacturing_master_data.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
@@ -107,6 +107,32 @@ describe('identity and authorization migration', () => {
     );
     expect(repair).toContain('risk policy versions only allow DRAFT to PUBLISHED transition');
     expect(repair).toContain('risk_policy_one_published_effective_version');
+  });
+  it('adds versioned SKU, BOM, substitute, and routing master data', async () => {
+    const sql = await readFile(
+      join(process.cwd(), 'migrations/0036_manufacturing_master_data.sql'),
+      'utf8',
+    );
+    for (const table of [
+      'manufacturing_items',
+      'manufacturing_item_versions',
+      'manufacturing_boms',
+      'manufacturing_bom_versions',
+      'manufacturing_bom_lines',
+      'manufacturing_bom_substitutes',
+      'manufacturing_routings',
+      'manufacturing_routing_versions',
+      'manufacturing_routing_operations',
+    ])
+      expect(sql).toContain(`CREATE TABLE ${table}`);
+    expect(sql).toContain(
+      'BOM publication requires published product, component, and substitute versions',
+    );
+    expect(sql).toContain(
+      'routing publication requires a published product version and operations',
+    );
+    expect(sql).toContain('manufacturing publication cannot alter version content');
+    expect(sql).toContain('published manufacturing child rows are immutable');
   });
   it('contains every foundational boundary and no later-engine tables', async () => {
     const sql = await readFile(
