@@ -24,7 +24,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0038_procurement_inventory_integrity.sql');
+    expect(ordered.at(-1)).toBe('0039_mrp_planning_foundation.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
@@ -452,6 +452,25 @@ describe('identity and authorization migration', () => {
       'inventory movement item must match lot',
       'inventory movement cannot create negative lot balance',
       'inventory_movements_sequence_unique',
+    ])
+      expect(sql).toContain(invariant);
+  });
+  it('adds immutable explainable MRP calculations and approval ledgers', async () => {
+    const sql = await readFile(
+      join(process.cwd(), 'migrations/0039_mrp_planning_foundation.sql'),
+      'utf8',
+    );
+    for (const invariant of [
+      'CREATE TABLE mrp_planning_policies',
+      'CREATE TABLE mrp_demand_signals',
+      'CREATE TABLE mrp_runs',
+      'CREATE TABLE mrp_item_calculations',
+      'CREATE TABLE mrp_proposals',
+      'CREATE TABLE mrp_proposal_events',
+      'computed MRP evidence is immutable',
+      'proposal event sequence must be contiguous',
+      'frozen proposal approval requires override evidence',
+      "'mrp:approve'",
     ])
       expect(sql).toContain(invariant);
   });
