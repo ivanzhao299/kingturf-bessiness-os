@@ -24,7 +24,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0041_production_execution_foundation.sql');
+    expect(ordered.at(-1)).toBe('0042_production_execution_integrity.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
@@ -89,6 +89,19 @@ describe('identity and authorization migration', () => {
     expect(sql).toContain('pg_advisory_xact_lock');
     expect(sql).toContain('production execution evidence is immutable');
     expect(sql).toContain("'production:close'");
+  });
+  it('hardens operation completion and atomically received serialized output', async () => {
+    const sql = await readFile(
+      join(process.cwd(), 'migrations/0042_production_execution_integrity.sql'),
+      'utf8',
+    );
+    expect(sql).toContain('operation reporting requires an active order');
+    expect(sql).toContain('production issue requires released BOM material');
+    expect(sql).toContain(
+      'production completion requires planned good quantity at every operation',
+    );
+    expect(sql).toContain('production close requires serialized finished quantity');
+    expect(sql).toContain('finished roll must match its inventory receipt');
   });
   it('adds a versioned commission policy and immutable state ledger', async () => {
     const sql = await readFile(

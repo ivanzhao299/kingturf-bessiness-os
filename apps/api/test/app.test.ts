@@ -22,6 +22,7 @@ import type { PostgresDashboardRepository } from '../src/dashboard-repositories.
 import type { PostgresManufacturingRepository } from '../src/manufacturing-repositories.js';
 import type { PostgresProcurementRepository } from '../src/procurement-repositories.js';
 import type { PostgresMrpRepository } from '../src/mrp-repositories.js';
+import type { PostgresProductionRepository } from '../src/production-repositories.js';
 import type { AuthenticationService } from '../src/security.js';
 
 const employeeId = '10000000-0000-4000-8000-000000000001';
@@ -274,6 +275,24 @@ function dependencies(authContext: AuthorizationContext | null) {
     run: mrpRun,
     transitionProposal: mrpTransition,
   } as unknown as PostgresMrpRepository;
+  const productionList = vi.fn(() => Promise.resolve([{ id: targetId, state: 'DRAFT' }]));
+  const productionCreate = vi.fn(() => Promise.resolve({ id: targetId, state: 'DRAFT' }));
+  const productionTransition = vi.fn(() =>
+    Promise.resolve({ id: targetId, state: 'IN_PROGRESS', sequence: 3 }),
+  );
+  const productionMaterial = vi.fn(() =>
+    Promise.resolve({ id: targetId, transactionType: 'ISSUE' }),
+  );
+  const productionReport = vi.fn(() => Promise.resolve({ id: targetId, goodQuantity: '100' }));
+  const productionOutput = vi.fn(() => Promise.resolve({ id: targetId, rollNumber: 'ROLL-001' }));
+  const production = {
+    list: productionList,
+    create: productionCreate,
+    transition: productionTransition,
+    transactMaterial: productionMaterial,
+    reportOperation: productionReport,
+    createOutput: productionOutput,
+  } as unknown as PostgresProductionRepository;
   return {
     auth,
     organizations,
@@ -307,6 +326,13 @@ function dependencies(authContext: AuthorizationContext | null) {
     mrpCreateDemand,
     mrpRun,
     mrpTransition,
+    production,
+    productionList,
+    productionCreate,
+    productionTransition,
+    productionMaterial,
+    productionReport,
+    productionOutput,
     dashboardGet,
     riskEvaluate,
     riskTransition,
@@ -1300,6 +1326,108 @@ describe('authorization management API', () => {
     expect(
       (await dispatch(dependencies(context(grant('mrp:read'))), 'POST', '/api/v1/mrp-runs', {}))
         .statusCode,
+    ).toBe(403);
+  });
+  it('validates production order, state, material, and operation-report commands', async () => {
+    const permissions: AuthorizationContext['permissions'] = new Map(
+      [
+        'production:read',
+        'production:plan',
+        'production:material',
+        'production:report',
+        'production:close',
+      ].map((capability) => [
+        capability as `${string}:${string}`,
+        { scopes: ['COMPANY'] as const, fields: null },
+      ]),
+    );
+    const deps = dependencies(context(permissions));
+    expect((await dispatch(deps, 'GET', '/api/v1/production-orders')).statusCode).toBe(200);
+    expect(
+      (
+        await dispatch(deps, 'POST', '/api/v1/production-orders', {
+          orderNumber: 'WO-2026-001',
+          itemVersionId: organizationId,
+          routingVersionId: targetId,
+          plannedQuantity: '1000',
+          plannedStartAt: '2026-09-01',
+          plannedDueAt: '2026-09-03',
+          sourceReference: 'MRP-PROPOSAL-001',
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(
+      (
+        await dispatch(deps, 'POST', `/api/v1/production-orders/${targetId}/start`, {
+          reason: 'Materials staged',
+          evidence: { shift: 'A' },
+          idempotencyKey: 'WO-2026-001-START',
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(
+      (
+        await dispatch(deps, 'POST', `/api/v1/production-orders/${targetId}/materials`, {
+          transactionType: 'ISSUE',
+          itemVersionId: organizationId,
+          lotId: targetId,
+          locationId: employeeId,
+          quantity: '1200',
+          reason: 'First production issue',
+          occurredAt: '2026-09-01T08:00:00Z',
+          idempotencyKey: 'WO-2026-001-ISSUE-1',
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(
+      (
+        await dispatch(deps, 'POST', `/api/v1/production-orders/${targetId}/operation-reports`, {
+          operationId: organizationId,
+          goodQuantity: '1000',
+          scrapQuantity: '5',
+          laborMinutes: '240',
+          machineMinutes: '220',
+          startedAt: '2026-09-01T08:00:00Z',
+          completedAt: '2026-09-01T12:00:00Z',
+          notes: 'Shift A completed',
+          idempotencyKey: 'WO-2026-001-OP-1',
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(
+      (
+        await dispatch(deps, 'POST', `/api/v1/production-orders/${targetId}/finished-rolls`, {
+          operationReportId: organizationId,
+          itemVersionId: organizationId,
+          rollNumber: 'ROLL-2026-001',
+          lotNumber: 'LOT-FG-2026-001',
+          locationId: employeeId,
+          quantity: '1000',
+          manufacturedAt: '2026-09-01',
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(deps.productionCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ orderNumber: 'WO-2026-001' }),
+      expect.objectContaining({ scopes: ['COMPANY'] }),
+      expect.any(String),
+    );
+    expect(deps.productionTransition).toHaveBeenCalledWith(
+      targetId,
+      'IN_PROGRESS',
+      expect.objectContaining({ idempotencyKey: 'WO-2026-001-START' }),
+      expect.any(Object),
+      expect.any(String),
+    );
+    expect(
+      (
+        await dispatch(
+          dependencies(context(grant('production:read'))),
+          'POST',
+          '/api/v1/production-orders',
+          {},
+        )
+      ).statusCode,
     ).toBe(403);
   });
 });

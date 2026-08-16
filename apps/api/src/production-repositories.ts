@@ -286,4 +286,77 @@ export class PostgresProductionRepository {
       return result;
     });
   }
+
+  public createOutput(
+    id: string,
+    input: {
+      operationReportId: string;
+      itemVersionId: string;
+      rollNumber: string;
+      lotNumber: string;
+      locationId: string;
+      quantity: string;
+      manufacturedAt: string;
+    },
+    context: Context,
+    correlationId: string,
+  ) {
+    return this.db.transaction(async (tx) => {
+      company(context);
+      const rollId = (await tx.query<{ id: string }>('SELECT gen_random_uuid() id')).rows[0]?.id;
+      if (!rollId) throw new Error('Finished roll identifier generation failed');
+      const lot = (
+        await tx.query<{ id: string }>(
+          `INSERT INTO inventory_lots(tenant_id,lot_number,item_version_id,manufactured_at,quality_status)
+           VALUES($1,$2,$3,$4,'QUARANTINE') RETURNING id`,
+          [context.actor.companyId, input.lotNumber, input.itemVersionId, input.manufacturedAt],
+        )
+      ).rows[0];
+      if (!lot) throw new Error('Finished lot insert failed');
+      const movement = (
+        await tx.query<{ id: string }>(
+          `INSERT INTO inventory_movements(tenant_id,movement_type,item_version_id,lot_id,location_id,quantity_delta,occurred_at,source_type,source_id,canonical_hash,actor_id,correlation_id)
+           VALUES($1,'ADJUSTMENT_IN',$2,$3,$4,$5,now(),'PRODUCTION_ROLL',$6,$7,$8,$9) RETURNING id`,
+          [
+            context.actor.companyId,
+            input.itemVersionId,
+            lot.id,
+            input.locationId,
+            input.quantity,
+            rollId,
+            hash({ id, rollId, ...input }),
+            context.actor.employeeId,
+            correlationId,
+          ],
+        )
+      ).rows[0];
+      if (!movement) throw new Error('Finished inventory receipt failed');
+      await tx.query(
+        `INSERT INTO production_rolls(id,tenant_id,roll_number,production_order_id,operation_report_id,item_version_id,lot_id,quantity,inventory_movement_id,canonical_hash)
+         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+        [
+          rollId,
+          context.actor.companyId,
+          input.rollNumber,
+          id,
+          input.operationReportId,
+          input.itemVersionId,
+          lot.id,
+          input.quantity,
+          movement.id,
+          hash({ id, rollId, lotId: lot.id, movementId: movement.id, ...input }),
+        ],
+      );
+      const result = json({
+        id: rollId,
+        productionOrderId: id,
+        lotId: lot.id,
+        inventoryMovementId: movement.id,
+        qualityStatus: 'QUARANTINE',
+        ...input,
+      });
+      await evidence(tx, 'production-order.output-received', id, context, correlationId, result);
+      return result;
+    });
+  }
 }
