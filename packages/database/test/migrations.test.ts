@@ -24,7 +24,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0040_mrp_integrity_hardening.sql');
+    expect(ordered.at(-1)).toBe('0041_production_execution_foundation.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
@@ -68,6 +68,27 @@ describe('identity and authorization migration', () => {
     expect(triggerRepair).toContain('JOIN quotes quote_root');
     expect(triggerRepair).toContain("IF TG_TABLE_NAME='sales_orders' THEN");
     expect(triggerRepair).not.toContain('JOIN quotes q ON');
+  });
+  it('adds immutable production orders, material movements, operation reports, and rolls', async () => {
+    const sql = await readFile(
+      join(process.cwd(), 'migrations/0041_production_execution_foundation.sql'),
+      'utf8',
+    );
+    for (const table of [
+      'production_orders',
+      'production_order_operations',
+      'production_order_events',
+      'production_material_transactions',
+      'production_operation_reports',
+      'production_rolls',
+    ])
+      expect(sql).toContain(`CREATE TABLE ${table}`);
+    expect(sql).toContain('production order event sequence must be contiguous');
+    expect(sql).toContain('production material transaction must match its inventory movement');
+    expect(sql).toContain('reported good quantity exceeds planned production quantity');
+    expect(sql).toContain('pg_advisory_xact_lock');
+    expect(sql).toContain('production execution evidence is immutable');
+    expect(sql).toContain("'production:close'");
   });
   it('adds a versioned commission policy and immutable state ledger', async () => {
     const sql = await readFile(
