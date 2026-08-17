@@ -1,9 +1,12 @@
 # Project State
 
+- 2026-08-17 20:02 Asia/Shanghai, cron `b42ae80f-26ae-4893-b6b7-1bfb731cd25e`: L01 menu gate remains green at `4f4f432`; 23/23 web tests PASS and Studio diff check PASS. Existing 204 route was retried; SSH timed out and local tunnel was unavailable. This is reachability evidence, not a permission blocker; continue L02 while retrying the approved route when reachable.
+
 - 2026-08-17 19:00 Asia/Shanghai, cron `b42ae80f-26ae-4893-b6b7-1bfb731cd25e`, task `e921724e-d389-456b-91a1-98176be6cdd5`: L01 Gate 0 web navigation contract PASS 23/23 at SHA `a2666f9`; proceed to implementation/desktop-mobile validation while preserving WIP.
 
 - 2026-08-17 19:48 Asia/Shanghai: L01 implementation committed and pushed from the original `/Users/mac/Documents/kingturf-bessiness-os`, branch `main`; local and `origin/main` are both `4f4f432`. Web navigation, quality/WMS workbench, hash routing, active state, refresh recovery, and placeholder handling are included. Web test 23/23, lint, typecheck, and production build pass. Website source is explicitly out of scope and is not a blocker.
 - Deployment probe: SSH to `192.168.2.204` timed out and `127.0.0.1:14331` was not listening, so 204 deployment/health/UAT could not be executed in this session. This is an environment reachability blocker, not a request for new permissions. Next development milestone is L02 sales-to-cash; deployment retry is a parallel operational check when the existing 204 route is reachable.
+- 2026-08-17 20:06 retry: route table points `192.168.2.204` through `192.168.77.1`, but all expected service ports time out. Public jump host responds but rejects the available SSH key; domain is intercepted by local proxy DNS and TLS fails. Keep L02 development moving; deployment can resume only after the existing 204 route or approved jump-host SSH path is restored.
 
 - 2026-08-17 18:28 Asia/Shanghai audit, cron `b42ae80f-26ae-4893-b6b7-1bfb731cd25e`, runner `kingturf-business-os-runner`: original `/Users/mac/Documents/kingturf-bessiness-os`, branch `main`, local/remote `a2666f9c8fae9c33aa815b4fc7890d1a9c2b8be4`; heartbeat unavailable. WIP preserved; no stage transition. Blocker: fresh runner evidence unavailable. Next: revalidate heartbeat before L01.
 
@@ -25,3 +28,4 @@ This is an initial continuity snapshot. Subsequent agents append dated evidence 
 
 - Audit 2026-08-17 17:19 Asia/Shanghai, task `e921724e-d389-456b-91a1-98176be6cdd5`: local/remote SHA `a2666f9c8fae9c33aa815b4fc7890d1a9c2b8be4`; runner heartbeat not freshly callable in this shell. Existing WIP preserved; no commit/push/deploy.
 - 2026-08-17 18:33 Asia/Shanghai audit, cron `b42ae80f-26ae-4893-b6b7-1bfb731cd25e`, task `e921724e-d389-456b-91a1-98176be6cdd5`, runner `kingturf-business-os-runner`: original `/Users/mac/Documents/kingturf-bessiness-os`, branch `main`, local/remote `a2666f9c8fae9c33aa815b4fc7890d1a9c2b8be4`; heartbeat unavailable; WIP preserved; no tests/commit/push/deploy. Blocker: fresh runner evidence unavailable; next revalidate heartbeat before L01 transition.
+- 2026-08-17 19:47 Asia/Shanghai: menu/navigation contract revalidated PASS 23/23 at SHA `4f4f432`; working tree clean and local/remote aligned. Full PostgreSQL gate remains unproven because the prior run lacked `DATABASE_URL`; Validator/Reviewer and UAT remain pending. This is an environment/configuration prerequisite, not a permission blocker.
