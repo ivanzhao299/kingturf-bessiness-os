@@ -22,5 +22,7 @@ Each step requires tests, Validator/Reviewer evidence, commit SHA, UAT evidence,
 - Do not wait for or inspect `kingturf.cn` website source. It is outside the ERP task sequence.
 - L02 starts immediately: productize the sales-to-cash screens and run one seeded order through Lead → Customer → Opportunity → CTR → Solution → Cost → Quote → Credit → Contract → Order → AR → Payment → Commission, including permissions, rejection paths, and audit evidence.
 - 204 deployment and UAT must be retried through the existing route; the last probe timed out at SSH `192.168.2.204:22` and found no local tunnel on `127.0.0.1:14331`. Do not treat this as a code failure or reopen the website work.
+- Architecture/management/UI blueprint is now fixed in `docs/engineering/OPERATING_MODEL_AND_ROLE_CATALOG.md`. Every next task must pass the three reviews (architecture, enterprise management, frontend/product) and implement role ownership, server-side permission gates, business-object traceability, responsive work queues and evidence.
+- L02 execution order: CRM/Customer 360 → CTR/solution → cost/quote → credit/contract/order → AR/payment → one-order proving ground. The acceptance target is a complete seeded order with success, low-margin rejection, insufficient-credit rejection, missing-contract rejection and overdue-shipment rejection.
 
 Do not advance on a self-reported completion; require a repository SHA and evidence entry.
