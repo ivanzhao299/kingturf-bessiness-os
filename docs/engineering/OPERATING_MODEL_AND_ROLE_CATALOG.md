@@ -14,36 +14,36 @@ No package is complete until all three reviews have evidence in the project Memo
 
 ## 2. Industry pain points to solve
 
-| Pain point | System response | Business proof |
-|---|---|---|
-| Sales promises diverge from technical/manufacturing reality | CTR, versioned solution, BOM/routing and server-side cost snapshot | Order retains exact commercial and technical versions |
-| Quotation margin is unclear or manually altered | CPQ + policy + cost engine with explainable approval | Quote shows planned margin and blocked exceptions |
-| Credit and overdue risk appears after shipment | Credit exposure, AR aging and shipment hard gates | Unpaid/overdue orders cannot ship without exception approval |
-| Production, quality and warehouse use separate ledgers | Immutable material, work, lot, inspection and location events | Order/lot traceability reaches finished goods |
-| Management relies on Excel and verbal escalation | Exception queues, ownership, SLA, escalation and cockpit drill-down | Every alert opens a task tied to a business object |
-| Disputes lack evidence | Order 360 evidence timeline and immutable audit events | Debt/quality/legal evidence package is exportable |
+| Pain point                                                  | System response                                                     | Business proof                                               |
+| ----------------------------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Sales promises diverge from technical/manufacturing reality | CTR, versioned solution, BOM/routing and server-side cost snapshot  | Order retains exact commercial and technical versions        |
+| Quotation margin is unclear or manually altered             | CPQ + policy + cost engine with explainable approval                | Quote shows planned margin and blocked exceptions            |
+| Credit and overdue risk appears after shipment              | Credit exposure, AR aging and shipment hard gates                   | Unpaid/overdue orders cannot ship without exception approval |
+| Production, quality and warehouse use separate ledgers      | Immutable material, work, lot, inspection and location events       | Order/lot traceability reaches finished goods                |
+| Management relies on Excel and verbal escalation            | Exception queues, ownership, SLA, escalation and cockpit drill-down | Every alert opens a task tied to a business object           |
+| Disputes lack evidence                                      | Order 360 evidence timeline and immutable audit events              | Debt/quality/legal evidence package is exportable            |
 
 ## 3. Role taxonomy and responsibility
 
 Roles are job responsibilities, not UI menus. A user may hold several roles, but each action is checked by server-side RBAC, data scope, field permissions and action permissions.
 
-| Role | Owns | Can approve | Must not do |
-|---|---|---|---|
-| Sales owner | Lead, customer relationship, opportunity, visit, collection follow-up | Within delegated commercial policy | Override cost, credit or shipment gates |
-| Sales manager | Team pipeline, forecast, price exception, performance | Delegated quote/discount and team assignment | Edit immutable issued documents |
-| Sales operations | Master-data quality, CTR/quote/order completeness | Process acceptance and exception routing | Approve own commercial exception |
-| Technical engineer | CTR, solution, BOM/routing feasibility | Technical release | Change signed commercial terms |
-| Cost/pricing analyst | Cost sheet, standard/estimated cost, price explanation | Cost validation | Alter actual ledger or payment |
-| Credit/finance reviewer | Credit limit, exposure, AR, reconciliation | Credit terms and payment application | Approve unsupported shipment override |
-| Contract/legal reviewer | Contract clauses, signatures, legal hold, evidence | Legal terms and exceptions | Delete evidence or bypass audit |
-| Planner/procurement | Demand, MRP, supplier, purchasing and inventory | Plan release within policy | Manufacture without authorized demand |
-| Workshop supervisor | Work order, material issue/return, reporting, yield | Production completion within controls | Backdate or overwrite immutable events |
-| Quality inspector/manager | Inspection, NCR, disposition, release | Lot/finished-goods release | Release without required results |
-| Warehouse/logistics | Locations, lot movement, shipment preparation, receipt | Operational confirmation | Ship through a failed hard gate |
-| Collection specialist | Promise-to-pay, notices, escalation | Collection workflow actions | Alter official receipt totals |
-| Executive/GM | Cross-domain exceptions, targets, risk and cash | High-risk exception and policy | Operate as a hidden data editor |
-| System auditor | Evidence, audit export, control review | None by default | Modify business records |
-| Platform administrator | Users, role grants, integration and operations | Access requests under policy | Use technical access to approve business decisions |
+| Role                      | Owns                                                                  | Can approve                                  | Must not do                                        |
+| ------------------------- | --------------------------------------------------------------------- | -------------------------------------------- | -------------------------------------------------- |
+| Sales owner               | Lead, customer relationship, opportunity, visit, collection follow-up | Within delegated commercial policy           | Override cost, credit or shipment gates            |
+| Sales manager             | Team pipeline, forecast, price exception, performance                 | Delegated quote/discount and team assignment | Edit immutable issued documents                    |
+| Sales operations          | Master-data quality, CTR/quote/order completeness                     | Process acceptance and exception routing     | Approve own commercial exception                   |
+| Technical engineer        | CTR, solution, BOM/routing feasibility                                | Technical release                            | Change signed commercial terms                     |
+| Cost/pricing analyst      | Cost sheet, standard/estimated cost, price explanation                | Cost validation                              | Alter actual ledger or payment                     |
+| Credit/finance reviewer   | Credit limit, exposure, AR, reconciliation                            | Credit terms and payment application         | Approve unsupported shipment override              |
+| Contract/legal reviewer   | Contract clauses, signatures, legal hold, evidence                    | Legal terms and exceptions                   | Delete evidence or bypass audit                    |
+| Planner/procurement       | Demand, MRP, supplier, purchasing and inventory                       | Plan release within policy                   | Manufacture without authorized demand              |
+| Workshop supervisor       | Work order, material issue/return, reporting, yield                   | Production completion within controls        | Backdate or overwrite immutable events             |
+| Quality inspector/manager | Inspection, NCR, disposition, release                                 | Lot/finished-goods release                   | Release without required results                   |
+| Warehouse/logistics       | Locations, lot movement, shipment preparation, receipt                | Operational confirmation                     | Ship through a failed hard gate                    |
+| Collection specialist     | Promise-to-pay, notices, escalation                                   | Collection workflow actions                  | Alter official receipt totals                      |
+| Executive/GM              | Cross-domain exceptions, targets, risk and cash                       | High-risk exception and policy               | Operate as a hidden data editor                    |
+| System auditor            | Evidence, audit export, control review                                | None by default                              | Modify business records                            |
+| Platform administrator    | Users, role grants, integration and operations                        | Access requests under policy                 | Use technical access to approve business decisions |
 
 ## 4. Canonical business lifecycle
 
