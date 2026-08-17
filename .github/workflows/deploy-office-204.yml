@@ -1,0 +1,71 @@
+name: Deploy KingTurf ERP to Office 204
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: "Exact ERP commit to deploy (defaults to the workflow SHA)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kingturf-erp-office-204
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+
+  deploy:
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: production
+    if: ${{ vars.PRODUCTION_DEPLOY_ENABLED == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure Studio jump-host identity
+        env:
+          JUMP_SSH_KEY: ${{ secrets.STUDIO_DEPLOY_JUMP_SSH_KEY }}
+          JUMP_KNOWN_HOSTS: ${{ secrets.STUDIO_DEPLOY_JUMP_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d "$HOME/.ssh"
+          printf '%s\n' "$JUMP_SSH_KEY" > "$HOME/.ssh/kingturf-erp-jump"
+          printf '%s\n' "$JUMP_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/kingturf-erp-jump" "$HOME/.ssh/known_hosts"
+      - name: Request guarded ERP deployment through Studio route
+        env:
+          COMMIT_SHA: ${{ inputs.commit_sha || github.sha }}
+        run: |
+          test "${COMMIT_SHA}" != "" \
+            && printf '%s' "${COMMIT_SHA}" | grep -Eq '^[0-9a-f]{40}$'
+          ssh \
+            -i "$HOME/.ssh/kingturf-erp-jump" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o ServerAliveInterval=15 \
+            -o ServerAliveCountMax=4 \
+            root@123.57.220.65 \
+            "kingturf-erp deploy ${COMMIT_SHA}"
+      - name: Verify ERP public endpoint
+        run: |
+          curl --fail --silent --show-error --retry 12 --retry-delay 5 https://erp.kingturf.cn/health >/dev/null
+          curl --fail --silent --show-error https://erp.kingturf.cn/ready >/dev/null
