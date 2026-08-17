@@ -95,8 +95,48 @@ export type CommercialPermission =
   | 'production:plan'
   | 'production:material'
   | 'production:report'
-  | 'production:close';
+  | 'production:close'
+  | 'quality-plan:read'
+  | 'quality-plan:manage'
+  | 'quality:read'
+  | 'quality:inspect'
+  | 'quality:disposition'
+  | 'traceability:read';
 export type Viewport = 'desktop' | 'tablet' | 'mobile';
+
+export type AppRoute =
+  | 'overview'
+  | 'sales-workspace'
+  | 'operations-workspace'
+  | 'crm'
+  | 'opportunity-ctr'
+  | 'cost-quote'
+  | 'contract-order'
+  | 'ar-payment'
+  | 'planning-production'
+  | 'quality-warehouse'
+  | 'delivery-evidence';
+
+export const APP_ROUTE_LABELS: Readonly<Record<AppRoute, string>> = {
+  overview: '经营总览',
+  'sales-workspace': '销售工作台',
+  'operations-workspace': '运营工作台',
+  crm: '线索与客户',
+  'opportunity-ctr': '商机与 CTR',
+  'cost-quote': '成本与报价',
+  'contract-order': '合同与订单',
+  'ar-payment': '应收与回款',
+  'planning-production': '计划与生产',
+  'quality-warehouse': '质量与仓储',
+  'delivery-evidence': '交付与证据',
+};
+
+const APP_ROUTES = new Set<AppRoute>(Object.keys(APP_ROUTE_LABELS) as AppRoute[]);
+
+export function appRouteFromHash(hash: string): AppRoute {
+  const candidate = hash.replace(/^#\/?/u, '') as AppRoute;
+  return APP_ROUTES.has(candidate) ? candidate : 'overview';
+}
 export function commercialRevisionPath(section: string, rootId: string): string | null {
   const definition = (
     {
@@ -447,6 +487,9 @@ export class CommercialController {
         ['mrp:read', '/api/v1/mrp-demands'],
         ['mrp:read', '/api/v1/mrp-runs'],
         ['production:read', '/api/v1/production-orders'],
+        ['quality-plan:read', '/api/v1/quality-plans'],
+        ['quality:read', '/api/v1/quality-inspections'],
+        ['traceability:read', '/api/v1/lot-traceability'],
       ] as const;
       for (const [permission, path] of readable)
         if (this.permissions.has(permission)) this.views.set(path, await this.api.list(path));
@@ -4982,6 +5025,361 @@ export function commercialWorkspaceStructure(
     }
     workspace.append(panel);
   }
+  if (
+    controller &&
+    (permissions.has('quality-plan:read') ||
+      permissions.has('quality:read') ||
+      permissions.has('traceability:read'))
+  ) {
+    const panel = el('section', 'quality-workbench');
+    panel.setAttribute('data-testid', 'quality-workbench');
+    panel.append(
+      el('p', 'eyebrow', 'QUALITY & WAREHOUSE'),
+      el('h2', '', '质量检验与批次追溯'),
+      el(
+        'p',
+        'commercial-help',
+        '检验计划、抽检结果和批次放行均通过服务器状态机；质量状态直接约束库存与生产领料。',
+      ),
+    );
+    const plans = controller.views.get('/api/v1/quality-plans') ?? [];
+    const inspections = controller.views.get('/api/v1/quality-inspections') ?? [];
+    const lots = controller.views.get('/api/v1/lot-traceability') ?? [];
+    const refresh = async () => {
+      await controller.load();
+      status.textContent = controller.message;
+    };
+    const planPanel = el('article', 'quality-section quality-plans');
+    planPanel.append(el('h3', '', '检验计划'));
+    if (permissions.has('quality-plan:manage')) {
+      const createPlan = el('button', 'primary', '＋ 创建检验计划');
+      createPlan.addEventListener('click', () => {
+        openForm(
+          workspace,
+          '创建检验计划',
+          '计划版本发布后不可修改；每个特性必须有明确的数据类型和验收边界。',
+          [
+            { name: 'code', label: '计划编码', required: true },
+            { name: 'name', label: '计划名称', required: true },
+            { name: 'itemVersionId', label: '物料版本 ID', required: true },
+            {
+              name: 'inspectionStage',
+              label: '检验阶段',
+              type: 'select',
+              required: true,
+              options: [
+                { value: 'INCOMING', label: '来料' },
+                { value: 'IN_PROCESS', label: '过程' },
+                { value: 'FINAL', label: '终检' },
+              ],
+            },
+            { name: 'samplingMethod', label: '抽样方式', required: true, value: '全检' },
+            { name: 'acceptanceRule', label: '验收规则', required: true, value: '全部必检项通过' },
+            { name: 'effectiveAt', label: '生效时间', type: 'datetime-local', required: true },
+            { name: 'characteristicCode', label: '特性编码', required: true },
+            { name: 'characteristicName', label: '特性名称', required: true },
+            { name: 'lowerLimit', label: '下限（可选）', type: 'number' },
+            { name: 'upperLimit', label: '上限（可选）', type: 'number' },
+          ],
+          '保存并发布计划',
+          async (values) => {
+            await controller.submit('/api/v1/quality-plans', {
+              code: values.code,
+              name: values.name,
+              itemVersionId: values.itemVersionId,
+              inspectionStage: values.inspectionStage,
+              samplingMethod: values.samplingMethod,
+              acceptanceRule: { description: values.acceptanceRule },
+              effectiveAt: new Date(values.effectiveAt ?? '').toISOString(),
+              characteristics: [
+                {
+                  code: values.characteristicCode,
+                  name: values.characteristicName,
+                  dataType: 'NUMERIC',
+                  lowerLimit: values.lowerLimit ?? undefined,
+                  upperLimit: values.upperLimit ?? undefined,
+                  required: true,
+                  instructions: '',
+                },
+              ],
+              publish: true,
+            });
+            await refresh();
+          },
+        );
+      });
+      planPanel.append(createPlan);
+    }
+    for (const plan of plans) {
+      const row = el('article', 'quality-plan-card');
+      const characteristics = Array.isArray(plan.characteristics)
+        ? plan.characteristics.map(recordValue)
+        : [];
+      row.append(
+        el(
+          'strong',
+          '',
+          `${recordText(plan, 'code', 'code')} · ${recordText(plan, 'name', 'name')}`,
+        ),
+        el(
+          'span',
+          `ctr-state state-${recordText(plan, 'status', 'status', 'DRAFT').toLowerCase()}`,
+          `${recordText(plan, 'status', 'status', 'DRAFT')} · V${recordText(plan, 'version', 'version', '1')}`,
+        ),
+        el(
+          'p',
+          'muted',
+          `${recordText(plan, 'inspectionStage', 'inspection_stage')} · ${characteristics.map((item) => recordText(item, 'name', 'name')).join('、') || '暂无特性'}`,
+        ),
+      );
+      if (
+        permissions.has('quality-plan:manage') &&
+        recordText(plan, 'status', 'status') === 'DRAFT' &&
+        typeof plan.id === 'string'
+      ) {
+        const publish = el('button', 'secondary', '发布计划');
+        publish.addEventListener('click', () => {
+          void controller
+            .submit(`/api/v1/quality-plans/${plan.id as string}/publish`, {})
+            .then(refresh);
+        });
+        row.append(publish);
+      }
+      planPanel.append(row);
+    }
+    if (!plans.length) planPanel.append(el('p', 'pipeline-empty', '暂无检验计划。'));
+    panel.append(planPanel);
+
+    const inspectionPanel = el('article', 'quality-section quality-inspections');
+    const inspectionHeading = el('div', 'panel-head');
+    inspectionHeading.append(el('h3', '', '检验队列'));
+    if (permissions.has('quality:inspect')) {
+      const open = el('button', 'primary', '＋ 开立检验');
+      open.addEventListener('click', () => {
+        const publishedPlans = plans.filter(
+          (item) => recordText(item, 'status', 'status') === 'PUBLISHED',
+        );
+        openForm(
+          workspace,
+          '开立批次检验',
+          '开立会先将批次置于隔离状态；只有完成检验并通过放行门禁后才能进入可用库存。',
+          [
+            {
+              name: 'planVersionId',
+              label: '已发布计划',
+              type: 'select',
+              required: true,
+              options: publishedPlans.map((item) => ({
+                value: String(item.id),
+                label: `${recordText(item, 'code', 'code')} · ${recordText(item, 'name', 'name')}`,
+              })),
+            },
+            {
+              name: 'lotId',
+              label: '待检批次',
+              type: 'select',
+              required: true,
+              options: lots.map((item) => ({
+                value: String(item.lotId ?? item.id),
+                label: `${recordText(item, 'lotNumber', 'lotNumber')} · ${recordText(item, 'sku', 'sku')}`,
+              })),
+            },
+            { name: 'inspectionNumber', label: '检验单号', required: true },
+            { name: 'sourceId', label: '来源业务 ID', required: true },
+            { name: 'sampleSize', label: '抽样数量', type: 'number', required: true, value: '1' },
+          ],
+          '开立检验',
+          async (values) => {
+            await controller.submit('/api/v1/quality-inspections', {
+              inspectionNumber: values.inspectionNumber,
+              planVersionId: values.planVersionId,
+              lotId: values.lotId,
+              sourceType: 'PRODUCTION_ROLL',
+              sourceId: values.sourceId,
+              sampleSize: values.sampleSize,
+            });
+            await refresh();
+          },
+        );
+      });
+      inspectionHeading.append(open);
+    }
+    inspectionPanel.append(inspectionHeading);
+    for (const inspection of inspections) {
+      const state = recordText(inspection, 'state', 'state', 'OPEN');
+      const card = el('article', 'quality-inspection-card');
+      const results = Array.isArray(inspection.results) ? inspection.results.map(recordValue) : [];
+      const events = Array.isArray(inspection.events) ? inspection.events.map(recordValue) : [];
+      card.append(
+        el(
+          'strong',
+          '',
+          `${recordText(inspection, 'inspectionNumber', 'inspection_number')} · ${recordText(inspection, 'lotNumber', 'lot_number')}`,
+        ),
+        el('span', `ctr-state state-${state.toLowerCase()}`, state),
+        el(
+          'p',
+          'muted',
+          `${recordText(inspection, 'planCode', 'plan_code')} · ${String(results.length)} 项结果 · ${String(events.length)} 条状态证据`,
+        ),
+      );
+      const actions = el('div', 'quality-actions');
+      const command = (action: 'sample' | 'complete' | 'cancel', label: string) => {
+        const button = el('button', action === 'complete' ? 'primary' : 'secondary', label);
+        button.addEventListener('click', () => {
+          openForm(
+            workspace,
+            label,
+            '状态变化写入不可变检验事件；请提供操作理由和证据编号。',
+            [
+              { name: 'reason', label: '操作理由', type: 'textarea', required: true },
+              { name: 'evidence', label: '证据编号', required: true },
+              { name: 'idempotencyKey', label: '幂等键', required: true },
+            ],
+            `确认${label}`,
+            async (values) => {
+              await controller.submit(
+                `/api/v1/quality-inspections/${String(inspection.id)}/${action}`,
+                {
+                  reason: values.reason,
+                  evidence: { reference: values.evidence },
+                  idempotencyKey: values.idempotencyKey,
+                },
+              );
+              await refresh();
+            },
+          );
+        });
+        actions.append(button);
+      };
+      if (permissions.has('quality:inspect')) {
+        if (state === 'OPEN') command('sample', '开始抽样');
+        if (state === 'SAMPLED') command('complete', '完成检验');
+        if (state === 'OPEN' || state === 'SAMPLED') command('cancel', '取消检验');
+        if ((state === 'SAMPLED' || state === 'COMPLETED') && typeof inspection.id === 'string') {
+          const result = el('button', 'secondary', '＋ 记录结果');
+          result.addEventListener('click', () => {
+            openForm(
+              workspace,
+              '记录检验结果',
+              '结果按计划特性逐项保存；服务端会校验数据类型和必检项。',
+              [
+                { name: 'characteristicId', label: '特性 ID', required: true },
+                { name: 'measuredNumeric', label: '实测数值', type: 'number' },
+                { name: 'passed', label: '通过（true/false）', required: true, value: 'true' },
+                { name: 'notes', label: '备注', type: 'textarea' },
+                { name: 'idempotencyKey', label: '幂等键', required: true },
+              ],
+              '保存结果',
+              async (values) => {
+                await controller.submit(
+                  `/api/v1/quality-inspections/${inspection.id as string}/results`,
+                  {
+                    characteristicId: values.characteristicId,
+                    measuredNumeric: values.measuredNumeric ?? undefined,
+                    passed: values.passed === 'true',
+                    notes: values.notes ?? '',
+                    occurredAt: new Date().toISOString(),
+                    idempotencyKey: values.idempotencyKey,
+                  },
+                );
+                await refresh();
+              },
+            );
+          });
+          actions.append(result);
+        }
+      }
+      if (
+        permissions.has('quality:disposition') &&
+        (state === 'COMPLETED' || state === 'SAMPLED') &&
+        typeof inspection.id === 'string'
+      ) {
+        for (const [action, label] of [
+          ['release', '放行批次'],
+          ['reject', '拒收批次'],
+        ] as const) {
+          const button = el('button', action === 'release' ? 'primary' : 'secondary', label);
+          button.addEventListener('click', () => {
+            openForm(
+              workspace,
+              label,
+              '批次处置会同步更新质量状态和库存可用性，并追加追溯证据。',
+              [
+                { name: 'reason', label: '处置理由', type: 'textarea', required: true },
+                { name: 'evidence', label: '证据编号', required: true },
+                { name: 'idempotencyKey', label: '幂等键', required: true },
+              ],
+              `确认${label}`,
+              async (values) => {
+                await controller.submit(
+                  `/api/v1/quality-inspections/${inspection.id as string}/${action}`,
+                  {
+                    reason: values.reason,
+                    evidence: { reference: values.evidence },
+                    idempotencyKey: values.idempotencyKey,
+                  },
+                );
+                await refresh();
+              },
+            );
+          });
+          actions.append(button);
+        }
+      }
+      if (actions.children.length) card.append(actions);
+      inspectionPanel.append(card);
+    }
+    if (!inspections.length) inspectionPanel.append(el('p', 'pipeline-empty', '暂无检验单。'));
+    panel.append(inspectionPanel);
+
+    if (permissions.has('traceability:read')) {
+      const traceability = el('article', 'quality-section traceability-section');
+      traceability.append(el('h3', '', '批次追溯与库存状态'));
+      for (const lot of lots) {
+        const used = Array.isArray(lot.usedByOrders) ? lot.usedByOrders.length : 0;
+        const produced = Array.isArray(lot.producedRolls) ? lot.producedRolls.length : 0;
+        traceability.append(
+          el(
+            'article',
+            'traceability-card',
+            `${recordText(lot, 'lotNumber', 'lotNumber')} · ${recordText(lot, 'sku', 'sku')} · ${recordText(lot, 'qualityStatus', 'qualityStatus')}\n使用工单 ${String(used)} · 成品卷 ${String(produced)} · 移动 ${String(Array.isArray(lot.movements) ? lot.movements.length : 0)} 笔`,
+          ),
+        );
+      }
+      if (!lots.length) traceability.append(el('p', 'pipeline-empty', '暂无批次追溯记录。'));
+      panel.append(traceability);
+    }
+    workspace.append(panel);
+  }
+  const commercialRouteTokens: Readonly<Record<string, string>> = {
+    'executive-dashboard': 'overview',
+    'pipeline-board': 'sales-workspace opportunity-ctr',
+    'ctr-workbench': 'sales-workspace opportunity-ctr',
+    'solution-workbench': 'sales-workspace opportunity-ctr',
+    'cost-workbench': 'sales-workspace cost-quote',
+    'policy-workbench': 'sales-workspace cost-quote',
+    'quote-workbench': 'sales-workspace cost-quote',
+    'credit-workbench': 'sales-workspace contract-order',
+    'contract-workbench': 'sales-workspace contract-order',
+    'order-workbench': 'sales-workspace contract-order',
+    'order-360-workbench': 'sales-workspace contract-order',
+    'ar-workbench': 'sales-workspace ar-payment',
+    'payment-workbench': 'sales-workspace ar-payment',
+    'commission-workbench': 'sales-workspace ar-payment',
+    'risk-workbench': 'sales-workspace ar-payment',
+    'manufacturing-workbench': 'operations-workspace planning-production',
+    'procurement-workbench': 'operations-workspace planning-production',
+    'mrp-workbench': 'operations-workspace planning-production',
+    'production-workbench': 'operations-workspace planning-production',
+    'quality-workbench': 'operations-workspace quality-warehouse',
+  };
+  for (const child of Array.from(workspace.children)) {
+    const routeTokens = Object.entries(commercialRouteTokens).find(([className]) =>
+      child.className.split(' ').includes(className),
+    )?.[1];
+    if (routeTokens) child.setAttribute('data-route-view', routeTokens);
+  }
   for (const [className, title, description, fields, action, path] of [
     [
       'opportunity-pipeline',
@@ -5218,6 +5616,26 @@ export function commercialWorkspaceStructure(
     }
     panel.append(heading, help, form, evidence);
     workspace.append(panel);
+  }
+  const genericRouteTokens: Readonly<Record<string, string>> = {
+    'opportunity-pipeline': 'sales-workspace opportunity-ctr',
+    'ctr-revisions': 'sales-workspace opportunity-ctr',
+    'technical-solution-history': 'sales-workspace opportunity-ctr',
+    'cost-explanation': 'sales-workspace cost-quote',
+    'policy-explanation': 'sales-workspace cost-quote',
+    'quote-builder': 'sales-workspace cost-quote',
+    'credit-review': 'sales-workspace contract-order',
+    'contract-evidence': 'sales-workspace contract-order',
+    'order-release': 'sales-workspace contract-order',
+    'ar-aging': 'sales-workspace ar-payment',
+    'payment-intake': 'sales-workspace ar-payment',
+    reconciliation: 'sales-workspace ar-payment',
+  };
+  for (const child of Array.from(workspace.children)) {
+    const routeTokens = Object.entries(genericRouteTokens).find(([className]) =>
+      child.className.split(' ').includes(className),
+    )?.[1];
+    if (routeTokens) child.setAttribute('data-route-view', routeTokens);
   }
   return workspace;
 }
@@ -5736,6 +6154,46 @@ function customer360Content(view: Customer360): HTMLElement {
   return content;
 }
 
+function setAppRoute(route: AppRoute): void {
+  if (typeof globalThis.location === 'undefined') return;
+  const hash = `#/${route}`;
+  if (globalThis.location.hash !== hash) globalThis.location.hash = hash;
+}
+
+export function installAppNavigation(shell: HTMLElement): void {
+  const apply = (route: AppRoute) => {
+    for (const item of Array.from(shell.querySelectorAll<HTMLElement>('[data-app-route]'))) {
+      const active = item.dataset.appRoute === route;
+      item.classList.toggle('active', active);
+      item.setAttribute('aria-current', active ? 'page' : 'false');
+    }
+    for (const view of Array.from(shell.querySelectorAll<HTMLElement>('[data-route-view]'))) {
+      const routes = (view.dataset.routeView ?? '').split(/\s+/u);
+      view.hidden = !routes.includes(route);
+    }
+    const placeholder = shell.querySelector<HTMLElement>('[data-route-placeholder]');
+    if (!placeholder) return;
+    const hasView = Array.from(shell.querySelectorAll<HTMLElement>('[data-route-view]')).some(
+      (view) => !view.hidden && (view.dataset.routeView ?? '').split(/\s+/u).includes(route),
+    );
+    placeholder.hidden = hasView;
+    placeholder.textContent = `${APP_ROUTE_LABELS[route]}：该模块已纳入产品导航，当前版本尚未提供可操作工作台。API 与权限不会被前端绕过。`;
+  };
+  for (const item of Array.from(shell.querySelectorAll<HTMLElement>('[data-app-route]'))) {
+    item.addEventListener('click', () => {
+      setAppRoute(item.dataset.appRoute as AppRoute);
+    });
+  }
+  const initial =
+    typeof globalThis.location === 'undefined'
+      ? 'overview'
+      : appRouteFromHash(globalThis.location.hash);
+  apply(initial);
+  globalThis.addEventListener('hashchange', () => {
+    apply(appRouteFromHash(globalThis.location.hash));
+  });
+}
+
 export function createCrmShell(controller: CrmController, width = window.innerWidth): HTMLElement {
   const sections = visibleCrmSections(controller.permissions);
   const employeeChoices = controller.employees.map((employee) => ({
@@ -5766,32 +6224,41 @@ export function createCrmShell(controller: CrmController, width = window.innerWi
   brand.append(el('p', 'brand-caption', 'Business OS'));
   aside.append(brand);
   const nav = el('nav');
-  const navGroup = (title: string, items: readonly [string, string, boolean][]) => {
+  const currentRoute =
+    typeof globalThis.location === 'undefined'
+      ? 'overview'
+      : appRouteFromHash(globalThis.location.hash);
+  const navGroup = (title: string, items: readonly [string, string, AppRoute][]) => {
     const group = el('section', 'nav-group');
     group.append(el('p', 'nav-label', title));
-    for (const [glyph, label, active] of items) {
-      const item = el('button', `nav-item${active ? ' active' : ''}`);
+    for (const [glyph, label, route] of items) {
+      const item = el('button', `nav-item${currentRoute === route ? ' active' : ''}`);
+      item.setAttribute('data-app-route', route);
+      item.setAttribute('aria-current', currentRoute === route ? 'page' : 'false');
+      item.addEventListener('click', () => {
+        setAppRoute(route);
+      });
       item.append(el('span', 'nav-glyph', glyph), el('span', 'nav-text', label));
       group.append(item);
     }
     nav.append(group);
   };
   navGroup('工作空间', [
-    ['⌂', '经营总览', true],
-    ['◎', '销售工作台', false],
-    ['□', '运营工作台', false],
+    ['⌂', '经营总览', 'overview'],
+    ['◎', '销售工作台', 'sales-workspace'],
+    ['□', '运营工作台', 'operations-workspace'],
   ]);
   navGroup('销售到回款', [
-    ['◇', '线索与客户', false],
-    ['△', '商机与 CTR', false],
-    ['￥', '成本与报价', false],
-    ['✓', '合同与订单', false],
-    ['↔', '应收与回款', false],
+    ['◇', '线索与客户', 'crm'],
+    ['△', '商机与 CTR', 'opportunity-ctr'],
+    ['￥', '成本与报价', 'cost-quote'],
+    ['✓', '合同与订单', 'contract-order'],
+    ['↔', '应收与回款', 'ar-payment'],
   ]);
   navGroup('履约协同', [
-    ['▦', '计划与生产', false],
-    ['◈', '质量与仓储', false],
-    ['⌁', '交付与证据', false],
+    ['▦', '计划与生产', 'planning-production'],
+    ['◈', '质量与仓储', 'quality-warehouse'],
+    ['⌁', '交付与证据', 'delivery-evidence'],
   ]);
   aside.append(nav);
   const sidebarFooter = el('div', 'sidebar-footer');
@@ -6292,6 +6759,18 @@ export function createCrmShell(controller: CrmController, width = window.innerWi
     split.append(leads);
   }
   content.append(split);
+  for (const child of Array.from(content.children)) {
+    if (!child.className.split(' ').includes('utility-bar'))
+      child.setAttribute('data-route-view', 'overview sales-workspace crm');
+  }
+  const placeholder = el(
+    'p',
+    'route-placeholder',
+    '该模块已纳入产品导航，当前版本尚未提供可操作工作台。',
+  );
+  placeholder.setAttribute('data-route-placeholder', 'true');
+  placeholder.hidden = true;
+  content.append(placeholder);
   shell.append(aside, content);
   return shell;
 }
@@ -6410,7 +6889,10 @@ export async function bootstrap(root: HTMLElement): Promise<void> {
         item.startsWith('inventory:') ||
         item.startsWith('mrp-policy:') ||
         item.startsWith('mrp:') ||
-        item.startsWith('production:'),
+        item.startsWith('production:') ||
+        item.startsWith('quality-plan:') ||
+        item.startsWith('quality:') ||
+        item.startsWith('traceability:'),
     ) as CommercialPermission[],
   );
   if (Object.values(visibleCommercialSections(commercialPermissions)).some(Boolean)) {
@@ -6433,5 +6915,6 @@ export async function bootstrap(root: HTMLElement): Promise<void> {
       ),
     );
   }
+  installAppNavigation(shell);
   root.replaceChildren(shell);
 }

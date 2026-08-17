@@ -6,6 +6,7 @@ import {
   commercialWorkspaceStructure,
   commercialRevisionPath,
   createCrmShell,
+  appRouteFromHash,
   type CrmApi,
   type Customer,
   type Lead,
@@ -141,6 +142,13 @@ describe('web bootstrap', () => {
     expect(viewportFor(1280)).toBe('desktop');
     expect(viewportFor(800)).toBe('tablet');
     expect(viewportFor(390)).toBe('mobile');
+  });
+
+  it('normalizes hash navigation and defaults unknown modules to the overview', () => {
+    expect(appRouteFromHash('#/quality-warehouse')).toBe('quality-warehouse');
+    expect(appRouteFromHash('#/contract-order')).toBe('contract-order');
+    expect(appRouteFromHash('#/not-implemented')).toBe('overview');
+    expect(appRouteFromHash('')).toBe('overview');
   });
 
   it('default-denies customer and 360 rendering unless customer:read is present', () => {

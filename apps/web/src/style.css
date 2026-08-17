@@ -67,6 +67,18 @@ textarea {
   background: #28634d;
   color: white;
 }
+.nav-item:focus-visible {
+  outline: 3px solid #b7e3ca;
+  outline-offset: 2px;
+}
+.route-placeholder {
+  margin: 30px 0;
+  padding: 20px;
+  border: 1px dashed #b9cbc2;
+  border-radius: 14px;
+  background: #f8fbf9;
+  color: #60756c;
+}
 .workspace {
   min-width: 0;
   padding: 28px clamp(16px, 3vw, 44px);
@@ -132,6 +144,52 @@ textarea {
 }
 .panel {
   padding: 20px;
+}
+.quality-workbench {
+  display: grid;
+  gap: 18px;
+  margin-top: 24px;
+}
+.quality-workbench > h2,
+.quality-workbench > .commercial-help,
+.quality-workbench > .eyebrow {
+  margin-bottom: 0;
+}
+.quality-section {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid #dce6e0;
+  border-radius: 14px;
+  background: white;
+}
+.quality-section h3 {
+  margin: 0;
+}
+.quality-plan-card,
+.quality-inspection-card,
+.traceability-card {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid #edf1ef;
+  border-radius: 10px;
+  white-space: pre-line;
+}
+.quality-plan-card > span,
+.quality-inspection-card > span {
+  width: fit-content;
+}
+.quality-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.traceability-section {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+.traceability-section h3 {
+  grid-column: 1 / -1;
 }
 .panel h2 {
   margin: 4px 0 14px;
