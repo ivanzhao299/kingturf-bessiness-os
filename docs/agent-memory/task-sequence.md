@@ -16,4 +16,11 @@ Each step requires tests, Validator/Reviewer evidence, commit SHA, UAT evidence,
 - Gate 3: continue P1 Sales-to-Cash as one real order path, with RBAC/DataScope/audit and rejection paths.
 - Gate 4: close KT-L16 quality/WMS with inspection, disposition, locations, finished-goods receipt, and traceability.
 
+## Current handoff after L01
+
+- L01 is code-complete for the current scope and is committed as `4f4f432` on `main`; the original worktree is clean and synchronized with `origin/main`.
+- Do not wait for or inspect `kingturf.cn` website source. It is outside the ERP task sequence.
+- L02 starts immediately: productize the sales-to-cash screens and run one seeded order through Lead → Customer → Opportunity → CTR → Solution → Cost → Quote → Credit → Contract → Order → AR → Payment → Commission, including permissions, rejection paths, and audit evidence.
+- 204 deployment and UAT must be retried through the existing route; the last probe timed out at SSH `192.168.2.204:22` and found no local tunnel on `127.0.0.1:14331`. Do not treat this as a code failure or reopen the website work.
+
 Do not advance on a self-reported completion; require a repository SHA and evidence entry.
