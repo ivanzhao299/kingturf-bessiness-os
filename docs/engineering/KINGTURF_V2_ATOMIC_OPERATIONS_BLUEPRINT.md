@@ -56,6 +56,7 @@ The same principle applies to ORDER, SALES_POLICY, FIELD_WORK, PRODUCTION, QUALI
 ### 2.4 Atomic menu domains
 
 #### CRM / Acquisition
+
 MENU_CRM_DASHBOARD
 MENU_CRM_LEAD_INBOX
 MENU_CRM_LEAD_REVIEW
@@ -71,6 +72,7 @@ MENU_CRM_DUPLICATE_REVIEW
 MENU_CRM_CUSTOMER_TRANSFER
 
 #### Sales / CPQ / Contract
+
 MENU_SALES_DASHBOARD
 MENU_SALES_CTR
 MENU_SALES_SOLUTION
@@ -85,6 +87,7 @@ MENU_SALES_COMMISSION
 MENU_SALES_TARGET
 
 #### Order Hub
+
 MENU_ORDER_DASHBOARD
 MENU_ORDER_INBOX
 MENU_ORDER_MANUAL
@@ -99,6 +102,7 @@ MENU_ORDER_EXCEPTION
 MENU_ORDER_360
 
 #### Field Sales Workforce
+
 MENU_FIELD_TODAY
 MENU_FIELD_SCHEDULE
 MENU_FIELD_CHECKIN
@@ -116,6 +120,7 @@ MENU_FIELD_MANAGER
 MENU_FIELD_EXCEPTION
 
 #### Production
+
 MENU_MFG_DEMAND
 MENU_MFG_PLAN
 MENU_MFG_MRP
@@ -129,6 +134,7 @@ MENU_MFG_VARIANCE
 MENU_MFG_EQUIPMENT
 
 #### Quality / WMS / Delivery
+
 MENU_QA_IQC
 MENU_QA_IPQC
 MENU_QA_FQC
@@ -146,6 +152,7 @@ MENU_DELIVERY_RECEIPT
 MENU_DELIVERY_EXCEPTION
 
 #### Finance / Risk
+
 MENU_FIN_AR
 MENU_FIN_COLLECTION
 MENU_FIN_BANK_TXN
@@ -159,6 +166,7 @@ MENU_RISK_EVIDENCE
 MENU_RISK_LEGAL
 
 #### System / Organization
+
 MENU_SYS_ORG
 MENU_SYS_EMPLOYEE
 MENU_SYS_ROLE
@@ -228,6 +236,7 @@ Each user may hold multiple role templates, but effective permissions are materi
 Desktop-first full management platform for executives and functional managers.
 
 Characteristics:
+
 - left navigation is atomic and role-generated;
 - dashboards are exception-first;
 - supports large tables, configuration, approvals, analytics and 360 views.
@@ -239,6 +248,7 @@ Mobile-first PWA / enterprise WeCom-compatible client.
 Primary screen: Today.
 
 Shows:
+
 - today schedule;
 - required visits;
 - leads needing follow-up;
@@ -262,6 +272,7 @@ Simplified terminal/PDA UI for work order, reporting, scanning, QC, inbound/outb
 ### 4.5 Customer / Dealer Portal
 
 Later phase external portal for:
+
 - inquiry / technical requirements;
 - quotations;
 - contract/e-sign;
@@ -277,6 +288,7 @@ Later phase external portal for:
 All acquisition sources enter a standardized Lead Intake Gateway.
 
 Source types include:
+
 - company independent websites;
 - landing pages;
 - Google Ads/forms;
@@ -315,6 +327,7 @@ REJECTED / SPAM / INVALID / DUPLICATE / ARCHIVED.
 A raw lead cannot enter the public pool directly.
 
 Minimum review:
+
 - valid company/person identity;
 - contactability;
 - target market fit;
@@ -328,6 +341,7 @@ Minimum review:
 Qualified but unowned leads/customers enter the Public Pool.
 
 Allocation methods:
+
 - manual manager allocation;
 - round robin;
 - region;
@@ -345,6 +359,7 @@ Allocation creates an immutable Assignment record with assigner, assignee, reaso
 The company owns the customer. The salesperson receives operational ownership for a bounded period.
 
 Rules:
+
 - failure to accept within SLA -> reclaim;
 - no meaningful follow-up within threshold -> warning/reclaim;
 - employee transfer/leave -> batch transfer;
@@ -405,6 +420,7 @@ Exception state: ON_HOLD with structured hold reasons.
 ### 6.4 Channel adapters
 
 OrderChannelAdapter interface:
+
 - identify source;
 - map external customer/contact;
 - map product/technical requirements;
@@ -421,6 +437,7 @@ OrderChannelAdapter interface:
 Manage not only sales outcomes but daily execution evidence.
 
 The system must answer:
+
 - What was this employee expected to do today?
 - Where and when did the employee work?
 - Which customers were contacted/visited?
@@ -436,6 +453,7 @@ Target -> Weekly Plan -> Daily Schedule -> Task Dispatch -> Check-in -> Route/Vi
 ### 7.3 Scheduling
 
 Sources:
+
 - salesperson self-plan;
 - manager dispatch;
 - CRM follow-up SLA;
@@ -448,6 +466,7 @@ Every task has target object, expected output, due time, location requirement an
 ### 7.4 Attendance & field evidence
 
 Check-in can record:
+
 - time;
 - GPS;
 - device/session;
@@ -460,6 +479,7 @@ The product should avoid continuous invasive tracking by default. Use event-base
 ### 7.5 Anti-fraud checks
 
 Risk signals:
+
 - impossible travel speed;
 - repeated identical GPS points inconsistent with visits;
 - check-in outside task region;
@@ -476,6 +496,7 @@ Risk signals create Review Events; they do not automatically conclude employee m
 ### 7.6 Visit object
 
 A structured visit contains:
+
 - customer/contact;
 - purpose;
 - scheduled vs actual time;
@@ -491,6 +512,7 @@ A structured visit contains:
 ### 7.7 Daily report
 
 AI pre-fills from system activity:
+
 - customers contacted;
 - visits;
 - leads acquired;
@@ -500,6 +522,7 @@ AI pre-fills from system activity:
 - tasks completed/overdue.
 
 Employee adds only:
+
 - key findings;
 - risks;
 - competitor information;
@@ -509,6 +532,7 @@ Employee adds only:
 ### 7.8 Manager console
 
 Managers see:
+
 - team map/status where policy permits;
 - today's schedule completion;
 - missed check-ins;
