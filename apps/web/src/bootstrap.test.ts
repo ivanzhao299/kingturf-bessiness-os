@@ -100,6 +100,16 @@ const api = () => {
           },
         ],
         leads: [lead],
+        opportunities: [
+          {
+            id: 'opportunity-1',
+            name: '学校球场改造',
+            status: 'QUALIFIED',
+            value: { amount: '680000', currency: 'CNY' },
+            probabilityBasisPoints: 6500,
+            expectedCloseDate: '2026-09-30',
+          },
+        ],
         activities: [
           {
             id: 'activity-later',
@@ -1029,12 +1039,15 @@ describe('web bootstrap', () => {
       expect(shell.findByClass('contacts-section')).toHaveLength(1);
       expect(shell.findByClass('ownership-section')).toHaveLength(1);
       expect(shell.findByClass('related-leads-section')).toHaveLength(1);
+      expect(shell.findByClass('related-opportunities-section')).toHaveLength(1);
       expect(shell.findByClass('activity-timeline')).toHaveLength(1);
       expect(shell.textContent).toContain('Buyer Zhang');
       expect(shell.textContent).toContain('C-1 · PROSPECT · 未分配或负责人受限');
       expect(shell.textContent).toContain('buyer@example.test');
       expect(shell.textContent).toContain('华东区域');
       expect(shell.textContent).toContain('School pitch');
+      expect(shell.textContent).toContain('学校球场改造');
+      expect(shell.textContent).toContain('CNY 680000');
       expect(shell.textContent.indexOf('确认预算')).toBeLessThan(
         shell.textContent.indexOf('首次接洽'),
       );
@@ -1049,6 +1062,7 @@ describe('web bootstrap', () => {
         contacts: [{ id: 'restricted', name: 'Restricted Buyer', title: null }],
         ownership: [],
         leads: [],
+        opportunities: [],
         activities: [],
         unavailableSections: ['orders', 'finance'],
       }),

@@ -2958,6 +2958,7 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             };
             const ownership = sectionGrant('customer-ownership:read');
             const leads = sectionGrant('lead:read');
+            const opportunities = sectionGrant('opportunity:read');
             const activities = sectionGrant('customer-activity:read');
             const found = await dependencies.crm.customer360(
               customerId,
@@ -2971,6 +2972,7 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               {
                 ...(ownership ? { ownership } : {}),
                 ...(leads ? { leads } : {}),
+                ...(opportunities ? { opportunities } : {}),
                 ...(activities ? { activities } : {}),
               },
             );
@@ -3006,6 +3008,9 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
                       project('ownership', item, 'customer-ownership:read'),
                     ),
                     leads: found.leads.map((item) => project('leads', item, 'lead:read')),
+                    opportunities: found.opportunities.map((item) =>
+                      project('opportunities', item, 'opportunity:read'),
+                    ),
                     activities: found.activities.map((item) =>
                       project('activities', item, 'customer-activity:read'),
                     ),

@@ -337,6 +337,7 @@ export type Customer360Dto = Readonly<{
   contacts: readonly ContactDto[];
   ownership: readonly OwnershipHistoryDto[];
   leads: readonly LeadDto[];
+  opportunities: readonly OpportunityDto[];
   activities: readonly ActivityDto[];
   unavailableSections: readonly ['orders', 'finance'];
 }>;

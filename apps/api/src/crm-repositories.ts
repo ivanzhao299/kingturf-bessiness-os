@@ -18,6 +18,7 @@ import type {
   DataScope,
   JsonObject,
   LeadDto,
+  OpportunityDto,
 } from '@kingturf/types';
 
 type Db = SqlClient & Pick<Database, 'transaction'>;
@@ -80,6 +81,23 @@ type OwnershipRow = {
   started_at: string;
   ended_at: string | null;
 };
+type OpportunityRow = {
+  id: string;
+  tenant_id: string;
+  customer_id: string | null;
+  lead_id: string | null;
+  name: string;
+  status: OpportunityDto['status'];
+  owner_id: string;
+  owner_organization_id: string;
+  value: string;
+  currency: string;
+  probability_basis_points: number;
+  expected_close_date: string;
+  version: number;
+  created_at: string;
+  updated_at: string;
+};
 const required = <T>(value: T | undefined, message: string): T => {
   if (!value) throw new DomainError('conflict', message);
   return value;
@@ -118,6 +136,22 @@ const lead = (r: LeadRow): LeadDto => ({
   status: r.status,
   ownerId: r.owner_id,
   ownerOrganizationId: r.owner_organization_id,
+  version: r.version,
+  createdAt: timestamp(r.created_at),
+  updatedAt: timestamp(r.updated_at),
+});
+const opportunity = (r: OpportunityRow): OpportunityDto => ({
+  id: r.id,
+  tenantId: r.tenant_id,
+  customerId: r.customer_id,
+  leadId: r.lead_id,
+  name: r.name,
+  status: r.status,
+  ownerId: r.owner_id,
+  ownerOrganizationId: r.owner_organization_id,
+  value: { amount: r.value, currency: r.currency },
+  probabilityBasisPoints: r.probability_basis_points,
+  expectedCloseDate: r.expected_close_date,
   version: r.version,
   createdAt: timestamp(r.created_at),
   updatedAt: timestamp(r.updated_at),
@@ -776,6 +810,7 @@ export class PostgresCrmRepository {
     sections: Readonly<{
       ownership?: Readonly<{ scopes: readonly DataScope[]; anchors: readonly ScopeAnchor[] }>;
       leads?: Readonly<{ scopes: readonly DataScope[]; anchors: readonly ScopeAnchor[] }>;
+      opportunities?: Readonly<{ scopes: readonly DataScope[]; anchors: readonly ScopeAnchor[] }>;
       activities?: Readonly<{ scopes: readonly DataScope[]; anchors: readonly ScopeAnchor[] }>;
     }> = {},
   ): Promise<Customer360Dto | null> {
@@ -790,7 +825,10 @@ export class PostgresCrmRepository {
     const leadScope = sections.leads
       ? scope(sections.leads.scopes, sections.leads.anchors, actor, 'l', 3)
       : null;
-    const [contacts, ownership, leads, activities] = await Promise.all([
+    const opportunityScope = sections.opportunities
+      ? scope(sections.opportunities.scopes, sections.opportunities.anchors, actor, 'op', 3)
+      : null;
+    const [contacts, ownership, leads, opportunities, activities] = await Promise.all([
       this.db.query<ContactRow>(
         'SELECT * FROM customer_contacts WHERE tenant_id=$1 AND customer_id=$2 AND deleted_at IS NULL ORDER BY is_primary DESC,created_at',
         [actor.companyId, id],
@@ -807,6 +845,12 @@ export class PostgresCrmRepository {
             [actor.companyId, id, ...leadScope.values],
           )
         : Promise.resolve({ rows: [] as LeadRow[] }),
+      opportunityScope
+        ? this.db.query<OpportunityRow>(
+            `SELECT op.* FROM opportunities op WHERE op.tenant_id=$1 AND op.customer_id=$2 AND op.deleted_at IS NULL AND ${opportunityScope.sql} ORDER BY op.updated_at DESC,op.id`,
+            [actor.companyId, id, ...opportunityScope.values],
+          )
+        : Promise.resolve({ rows: [] as OpportunityRow[] }),
       activityVisible
         ? this.db.query<ActivityRow>(
             'SELECT * FROM customer_activities WHERE tenant_id=$1 AND customer_id=$2 ORDER BY occurred_at DESC,id LIMIT 100',
@@ -838,6 +882,7 @@ export class PostgresCrmRepository {
         endedAt: r.ended_at,
       })),
       leads: leads.rows.map(lead),
+      opportunities: opportunities.rows.map(opportunity),
       activities: activities.rows.map(
         (r) =>
           ({

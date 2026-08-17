@@ -134,6 +134,7 @@ function dependencies(authContext: AuthorizationContext | null) {
       contacts: [],
       ownership: [],
       leads: [],
+      opportunities: [],
       activities: [],
       unavailableSections: ['orders', 'finance'],
     }),
@@ -477,6 +478,7 @@ describe('CRM HTTP contracts', () => {
       ['customer-360:read', { scopes: ['COMPANY'], fields: null }],
       ['customer-ownership:read', { scopes: ['SELF'], fields: null }],
       ['lead:read', { scopes: ['TEAM'], fields: null }],
+      ['opportunity:read', { scopes: ['REGION'], fields: null }],
     ]);
     const deps = dependencies(context(permissions));
     expect((await dispatch(deps, 'GET', `/api/v1/customers/${targetId}/360`)).statusCode).toBe(200);
@@ -489,6 +491,7 @@ describe('CRM HTTP contracts', () => {
       {
         ownership: { scopes: ['SELF'], anchors: [] },
         leads: { scopes: ['TEAM'], anchors: [] },
+        opportunities: { scopes: ['REGION'], anchors: [] },
       },
     );
   });
@@ -517,6 +520,7 @@ describe('CRM HTTP contracts', () => {
       contacts: [],
       ownership: [],
       leads: [],
+      opportunities: [],
       activities: [],
       unavailableSections: ['orders', 'finance'],
     });

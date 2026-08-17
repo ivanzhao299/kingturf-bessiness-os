@@ -190,6 +190,14 @@ export type Customer360 = Readonly<{
     endedAt: string | null;
   }>[];
   leads: readonly Lead[];
+  opportunities: readonly Readonly<{
+    id: string;
+    name?: string;
+    status?: string;
+    value?: Readonly<{ amount?: string; currency?: string }>;
+    probabilityBasisPoints?: number;
+    expectedCloseDate?: string;
+  }>[];
   activities: readonly Readonly<{
     id: string;
     type: string;
@@ -6150,7 +6158,30 @@ function customer360Content(view: Customer360): HTMLElement {
     timeline.append(row);
   }
 
-  content.append(contacts, ownership, leads, timeline);
+  const opportunities = el('section', 'detail-section related-opportunities-section');
+  opportunities.append(el('h3', '', '关联商机'));
+  if (view.opportunities.length === 0) opportunities.append(el('p', 'empty', '暂无可见关联商机'));
+  for (const item of view.opportunities) {
+    const row = el('article', 'history-row related-opportunity');
+    const amount = item.value?.amount;
+    const currency = item.value?.currency;
+    const probability =
+      typeof item.probabilityBasisPoints === 'number'
+        ? `${(item.probabilityBasisPoints / 100).toFixed(0)}%`
+        : '概率受限';
+    row.append(
+      el('strong', '', item.name ?? item.id),
+      el(
+        'span',
+        '',
+        `${item.status ?? '状态受限'} · ${currency && amount ? `${currency} ${amount}` : '金额受限'} · ${probability}`,
+      ),
+      el('time', '', item.expectedCloseDate ?? '预计日期受限'),
+    );
+    opportunities.append(row);
+  }
+
+  content.append(contacts, ownership, leads, opportunities, timeline);
   return content;
 }
 
@@ -6453,7 +6484,7 @@ export function createCrmShell(controller: CrmController, width = window.innerWi
       el(
         'p',
         'muted',
-        `${String(controller.selected.contacts.length)} 联系人 · ${String(controller.selected.leads.length)} 线索 · ${String(controller.selected.activities.length)} 活动`,
+        `${String(controller.selected.contacts.length)} 联系人 · ${String(controller.selected.leads.length)} 线索 · ${String(controller.selected.opportunities.length)} 商机 · ${String(controller.selected.activities.length)} 活动`,
       ),
       customer360Content(controller.selected),
     );

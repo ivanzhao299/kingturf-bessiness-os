@@ -534,6 +534,11 @@ describe('JTF-P1-E01..E04 PostgreSQL acceptance', () => {
       ['COMPANY'],
       [],
     );
+    const opportunityId = randomUUID();
+    await db.query(
+      "INSERT INTO opportunities(id,tenant_id,customer_id,name,status,owner_id,owner_organization_id,value,currency,probability_basis_points,expected_close_date,created_by,updated_by) VALUES($1,$2,$3,'School stadium renewal','QUALIFIED',$4,$5,680000,'CNY',6500,'2026-09-30',$4,$4)",
+      [opportunityId, company, customer.id, actorId, team],
+    );
     const view = await crm.customer360(
       customer.id,
       actor,
@@ -543,6 +548,7 @@ describe('JTF-P1-E01..E04 PostgreSQL acceptance', () => {
       {
         ownership: { scopes: ['COMPANY'], anchors: [] },
         leads: { scopes: ['COMPANY'], anchors: [] },
+        opportunities: { scopes: ['SELF'], anchors: [] },
         activities: { scopes: ['COMPANY'], anchors: [] },
       },
     );
@@ -551,6 +557,16 @@ describe('JTF-P1-E01..E04 PostgreSQL acceptance', () => {
     expect(view?.ownership).toHaveLength(2);
     expect(view?.ownership.filter((row) => row.endedAt === null)).toHaveLength(1);
     expect(view?.ownership.filter((row) => row.endedAt !== null)).toHaveLength(1);
+    expect(view?.opportunities).toEqual([
+      expect.objectContaining({
+        id: opportunityId,
+        customerId: customer.id,
+        name: 'School stadium renewal',
+        status: 'QUALIFIED',
+        value: { amount: '680000.000000', currency: 'CNY' },
+        probabilityBasisPoints: 6500,
+      }),
+    ]);
     expect(view?.unavailableSections).toEqual(['orders', 'finance']);
   });
 
