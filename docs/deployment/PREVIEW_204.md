@@ -9,6 +9,8 @@ supports only local attachment storage, which the configuration layer intentiona
 - Host: `192.168.2.204`
 - Directory: `/opt/kingturf/preview`
 - URL: `http://192.168.2.204:4331/`
+- Planned public URL: `https://erp.kingturf.cn/` through the jump-host reverse proxy. DNS and
+  TLS activation are required before public use; do not expose preview credentials over HTTP.
 - Compose project: `kingturf-preview`
 - Persistent volumes: `kingturf-preview_postgres_data` and `kingturf-preview_attachments`
 - No host PostgreSQL port is published.
