@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       commit_sha:
-        description: "Exact ERP commit to deploy (defaults to the workflow SHA)"
+        description: 'Exact ERP commit to deploy (defaults to the workflow SHA)'
         required: false
         type: string
 
