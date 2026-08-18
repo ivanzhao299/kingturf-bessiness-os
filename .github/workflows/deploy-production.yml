@@ -14,6 +14,21 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: kingturf_ci
+          POSTGRES_USER: kingturf_ci
+          POSTGRES_PASSWORD: kingturf_ci_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U kingturf_ci -d kingturf_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL: postgresql://kingturf_ci:kingturf_ci_password@127.0.0.1:5432/kingturf_ci
+      NODE_ENV: test
     steps:
       - uses: actions/checkout@v4
         with:
