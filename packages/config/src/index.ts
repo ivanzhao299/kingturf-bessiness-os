@@ -65,8 +65,11 @@ export function parseEnvironment(env: EnvironmentRecord): AppConfig {
   const attachmentAdapter = required(env, 'ATTACHMENT_STORAGE_ADAPTER');
   if (attachmentAdapter !== 'local')
     throw new ConfigurationError('ATTACHMENT_STORAGE_ADAPTER is unsupported');
-  if (nodeEnv === 'production')
-    throw new ConfigurationError('Local attachment storage is forbidden in production');
+  if (
+    nodeEnv === 'production' &&
+    !required(env, 'ATTACHMENT_LOCAL_DIRECTORY').startsWith('/var/lib/kingturf/')
+  )
+    throw new ConfigurationError('Production local attachment storage must use /var/lib/kingturf/');
   const config: AppConfig = {
     nodeEnv: nodeEnv as AppConfig['nodeEnv'],
     databaseUrl,

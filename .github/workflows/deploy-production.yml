@@ -1,0 +1,57 @@
+name: Deploy KingTurf Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: 'Exact 40-character KingTurf commit to deploy'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit_sha }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+
+  deploy:
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit_sha }}
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+      - name: Trust production host
+        run: ssh-keyscan -p '${{ secrets.PROD_SSH_PORT }}' -H '${{ secrets.PROD_SSH_HOST }}' >> ~/.ssh/known_hosts
+      - name: Sync isolated KingTurf release
+        run: |
+          rsync -az --delete --exclude '.env.production' --exclude 'kingturf_postgres_data/' --exclude 'kingturf_attachments/' \
+            -e "ssh -p ${{ secrets.PROD_SSH_PORT }} -o ServerAliveInterval=30 -o ConnectTimeout=30" \
+            ./ '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/'
+      - name: Deploy and verify
+        run: |
+          ssh -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
+            "cd '${{ secrets.PROD_DEPLOY_PATH }}' && printf '%s' '${{ inputs.commit_sha }}' > .release-sha && docker compose --env-file .env.production -f infra/docker/compose.production.yaml up -d --build && docker compose --env-file .env.production -f infra/docker/compose.production.yaml ps"
+          curl --fail --silent --show-error --retry 12 --retry-delay 5 "https://erp.kingturf.cn/health"
+          curl --fail --silent --show-error "https://erp.kingturf.cn/ready"

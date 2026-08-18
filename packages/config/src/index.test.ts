@@ -37,7 +37,7 @@ describe('parseEnvironment', () => {
       }),
     ).toThrow(ConfigurationError);
   });
-  it('selects local storage explicitly and fails closed in production', () => {
+  it('selects local storage explicitly and requires a durable production path', () => {
     expect(parseEnvironment(valid).attachmentStorage.adapter).toBe('local');
     expect(() => parseEnvironment({ ...valid, ATTACHMENT_STORAGE_ADAPTER: 's3' })).toThrow(
       /unsupported/u,
@@ -49,5 +49,13 @@ describe('parseEnvironment', () => {
         SESSION_SECRET: 'a-production-secret-that-is-long-enough',
       }),
     ).toThrow(/attachment storage/u);
+    expect(
+      parseEnvironment({
+        ...valid,
+        NODE_ENV: 'production',
+        SESSION_SECRET: 'a-production-secret-that-is-long-enough',
+        ATTACHMENT_LOCAL_DIRECTORY: '/var/lib/kingturf/attachments',
+      }).attachmentStorage.directory,
+    ).toBe('/var/lib/kingturf/attachments');
   });
 });
