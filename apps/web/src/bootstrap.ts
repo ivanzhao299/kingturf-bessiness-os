@@ -6293,9 +6293,10 @@ export function createCrmShell(controller: CrmController, width = window.innerWi
   ]);
   aside.append(nav);
   const sidebarFooter = el('div', 'sidebar-footer');
-  sidebarFooter.append(el('span', 'online-dot'), el('span', '', '204 预览环境'));
+  sidebarFooter.append(el('span', 'online-dot'), el('span', '', '生产环境 · erp.kingturf.cn'));
   aside.append(sidebarFooter);
   const content = el('section', 'workspace');
+  content.setAttribute('data-route-view', 'crm');
   const utility = el('header', 'utility-bar');
   const search = el('div', 'global-search');
   search.append(
