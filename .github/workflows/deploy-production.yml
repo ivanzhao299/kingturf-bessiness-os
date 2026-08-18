@@ -68,5 +68,6 @@ jobs:
         run: |
           ssh -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
             "cd '${{ secrets.PROD_DEPLOY_PATH }}' && printf '%s' '${{ inputs.commit_sha }}' > .release-sha && docker compose --env-file .env.production -f infra/docker/compose.production.yaml up -d --build && docker compose --env-file .env.production -f infra/docker/compose.production.yaml ps"
-          curl --fail --silent --show-error --retry 12 --retry-delay 5 "https://erp.kingturf.cn/health"
-          curl --fail --silent --show-error "https://erp.kingturf.cn/ready"
+          sleep 15
+          curl --fail --silent --show-error --retry 12 --retry-all-errors --retry-delay 5 "https://erp.kingturf.cn/health"
+          curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 "https://erp.kingturf.cn/ready"
