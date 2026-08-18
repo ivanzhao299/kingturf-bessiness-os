@@ -16,9 +16,11 @@ import type { Database, SqlClient } from '@kingturf/database';
 import type {
   CostEngineInput,
   CostRule,
+  CtrVersionDto,
   DataScope,
   JsonObject,
   OpportunityDto,
+  TechnicalSolutionRevisionDto,
 } from '@kingturf/types';
 
 type Db = SqlClient & Pick<Database, 'transaction'>;
@@ -488,15 +490,34 @@ export class PostgresCommercialRepository {
     actor: Actor,
     scopes: readonly DataScope[],
     anchors: readonly ScopeAnchor[],
-  ) {
+  ): Promise<readonly CtrVersionDto[]> {
     return this.db.transaction(async (tx) => {
       await this.requireOpportunityScope(tx, opportunityId, actor, scopes, anchors);
       return (
-        await tx.query<JsonObject>(
-          `SELECT v.id,v.ctr_id AS "ctrId",v.version,v.status,v.title,v.requirements,v.submitted_at AS "submittedAt",v.snapshot_hash AS "snapshotHash",v.created_at AS "createdAt",
+        await tx.query<CtrVersionDto>(
+          `SELECT v.id,v.ctr_id AS "ctrId",c.opportunity_id AS "opportunityId",c.code,v.version,v.status,v.title,v.requirements,v.submitted_at AS "submittedAt",v.snapshot_hash AS "snapshotHash",v.created_at AS "createdAt",
            (SELECT coalesce(jsonb_agg(to_jsonb(a) ORDER BY a.decided_at),'[]'::jsonb) FROM ctr_approvals a WHERE a.tenant_id=v.tenant_id AND a.ctr_version_id=v.id) approvals,
            (SELECT coalesce(jsonb_agg(to_jsonb(l) ORDER BY l.linked_at),'[]'::jsonb) FROM ctr_attachment_links l WHERE l.tenant_id=v.tenant_id AND l.ctr_version_id=v.id) attachments
            FROM ctr_versions v JOIN ctrs c ON c.id=v.ctr_id AND c.tenant_id=v.tenant_id WHERE v.tenant_id=$1 AND c.opportunity_id=$2 ORDER BY v.version DESC`,
+          [actor.companyId, opportunityId],
+        )
+      ).rows;
+    });
+  }
+
+  public async listTechnicalSolutions(
+    opportunityId: string,
+    actor: Actor,
+    scopes: readonly DataScope[],
+    anchors: readonly ScopeAnchor[],
+  ): Promise<readonly TechnicalSolutionRevisionDto[]> {
+    return this.db.transaction(async (tx) => {
+      await this.requireOpportunityScope(tx, opportunityId, actor, scopes, anchors);
+      return (
+        await tx.query<TechnicalSolutionRevisionDto>(
+          `SELECT r.id,s.id AS "technicalSolutionId",s.opportunity_id AS "opportunityId",s.code,r.revision,r.status,r.ctr_version_id AS "ctrVersionId",r.specification,r.assumptions,r.created_at AS "createdAt"
+           FROM technical_solution_revisions r JOIN technical_solutions s ON s.id=r.technical_solution_id AND s.tenant_id=r.tenant_id
+           WHERE r.tenant_id=$1 AND s.opportunity_id=$2 AND s.deleted_at IS NULL ORDER BY s.code,r.revision DESC`,
           [actor.companyId, opportunityId],
         )
       ).rows;

@@ -26,3 +26,22 @@ Each step requires tests, Validator/Reviewer evidence, commit SHA, UAT evidence,
 - L02 execution order: CRM/Customer 360 → CTR/solution → cost/quote → credit/contract/order → AR/payment → one-order proving ground. The acceptance target is a complete seeded order with success, low-margin rejection, insufficient-credit rejection, missing-contract rejection and overdue-shipment rejection.
 
 Do not advance on a self-reported completion; require a repository SHA and evidence entry.
+
+## Two fixed long tasks (2026-08-17 22:35 Asia/Shanghai)
+
+### KT-T1 — Studio → Office 204 deployment recovery
+
+- Scope: ERP only; the website is permanently excluded.
+- Preserve: original repository, `main`, worktree, and all existing Memory/WIP.
+- Repair the server bootstrap/deployment gate, then rerun the existing Studio deployment route.
+- Required proof: CI green, deployment job actually executed, deployed SHA matches ERP SHA, `/health` and `/ready` green, public ERP smoke/UAT green.
+- A deployment is not successful if any gate is skipped, blocked, or only simulated.
+
+### KT-T2 — Business blueprint implementation continuation
+
+- Start only after KT-T1 is either green or has a recorded operational handoff that does not require code rollback.
+- Implement L02 CRM/Customer 360, then CTR/solution, cost/quote, credit/contract/order, AR/payment, and the seeded order proving ground.
+- Each slice requires architecture, management, frontend, RBAC, audit, API, tests, commit SHA, and UAT evidence.
+- Continue through KT-L16 quality/WMS and the remaining blueprint slices; do not stop after a single commit.
+
+Execution policy: one KingTurf Runner, one task ledger, sequential KT-T1 → KT-T2, heartbeat at least every 15 minutes, minimum continuation window 10 hours. Website messages, legacy Codex windows, and stale cron reports cannot change this sequence.

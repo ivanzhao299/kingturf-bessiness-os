@@ -425,6 +425,16 @@ export type Opportunity = Readonly<{
   version?: number;
 }>;
 
+export function technicalSolutionOpportunityId(
+  ctrs: readonly Record<string, unknown>[],
+  ctrVersionId: string,
+): string {
+  const ctr = ctrs.find((item) => item.id === ctrVersionId && item.status === 'APPROVED');
+  if (!ctr || typeof ctr.opportunityId !== 'string' || ctr.opportunityId.length === 0)
+    throw new Error('所选 CTR 不可用或缺少关联商机');
+  return ctr.opportunityId;
+}
+
 export type CommercialApi = Readonly<{
   listOpportunities(): Promise<readonly Opportunity[]>;
   list(path: string): Promise<readonly Record<string, unknown>[]>;
@@ -1583,23 +1593,13 @@ export function commercialWorkspaceStructure(
           '新建技术方案',
           '方案的每项规格都将关联到选定的已批准 CTR 版本。',
           [
-            {
-              name: 'opportunityId',
-              label: '关联商机',
-              type: 'select',
-              required: true,
-              options: controller.opportunities.map((item) => ({
-                value: item.id,
-                label: item.name ?? item.id,
-              })),
-            },
             { name: 'code', label: '方案编号', required: true, placeholder: 'TS-2026-001' },
             ...solutionFields(),
           ],
           '保存技术方案',
           async (values) => {
             await controller.submit('/api/v1/technical-solutions', {
-              opportunityId: values.opportunityId ?? '',
+              opportunityId: technicalSolutionOpportunityId(ctrs, values.ctrVersionId ?? ''),
               code: values.code ?? '',
               ...solutionPayload(values),
             });

@@ -13,6 +13,7 @@ import {
   viewportFor,
   visibleCrmSections,
   visibleCommercialSections,
+  technicalSolutionOpportunityId,
 } from './bootstrap';
 
 class RenderedElement {
@@ -628,7 +629,15 @@ describe('web bootstrap', () => {
       list: vi.fn().mockImplementation((path: string) =>
         Promise.resolve(
           path === '/api/v1/ctrs'
-            ? [{ id: 'ctr-v1', code: 'CTR-1', version: 1, status: 'APPROVED' }]
+            ? [
+                {
+                  id: 'ctr-v1',
+                  opportunityId: 'op-1',
+                  code: 'CTR-1',
+                  version: 1,
+                  status: 'APPROVED',
+                },
+              ]
             : path === '/api/v1/technical-solutions'
               ? [
                   {
@@ -670,6 +679,25 @@ describe('web bootstrap', () => {
     expect(workspace.textContent).toContain('KingTurf Pro');
     expect(workspace.textContent).toContain('新建技术方案');
     expect(workspace.textContent).toContain('创建方案修订');
+    const mobile = commercialWorkspaceStructure(
+      'mobile',
+      false,
+      controller,
+    ) as unknown as RenderedElement;
+    expect(mobile.className.split(' ')).toContain('mobile');
+    expect(mobile.findByClass('solution-workbench')).toHaveLength(1);
+    expect(mobile.textContent).toContain('KingTurf Pro');
+  });
+
+  it('derives the technical solution opportunity from its approved CTR handoff', () => {
+    const ctrs = [
+      { id: 'ctr-approved', opportunityId: 'op-visible', status: 'APPROVED' },
+      { id: 'ctr-draft', opportunityId: 'op-other', status: 'DRAFT' },
+    ];
+    expect(technicalSolutionOpportunityId(ctrs, 'ctr-approved')).toBe('op-visible');
+    expect(() => technicalSolutionOpportunityId(ctrs, 'ctr-draft')).toThrow(
+      '所选 CTR 不可用或缺少关联商机',
+    );
   });
 
   it('renders explainable cost and sales policy decisions without JSON forms', async () => {

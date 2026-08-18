@@ -1,5 +1,7 @@
 # Sessions
 
+- 2026-08-17 21:23 Asia/Shanghai, cron `b42ae80f-26ae-4893-b6b7-1bfb731cd25e`, runner heartbeat not callable from this shell; original `main` at `29f89cb`; WIP preserved. No stage transition or delivery action.
+
 - 2026-08-17 20:02 Asia/Shanghai, cron `b42ae80f-26ae-4893-b6b7-1bfb731cd25e`, runner `kingturf-business-os-runner`: menu 23/23 PASS; 204 SSH timeout and local tunnel unavailable; continue L02, no deployment claim.
 
 - 2026-08-17 18:28 Asia/Shanghai, cron `b42ae80f-26ae-4893-b6b7-1bfb731cd25e`: original `/Users/mac/Documents/kingturf-bessiness-os`, branch `main`, local/remote `a2666f9c8fae9c33aa815b4fc7890d1a9c2b8be4`; heartbeat unavailable; existing WIP preserved; no tests/commit/push/deploy.
@@ -20,3 +22,9 @@
 - 2026-08-17 19:21 Asia/Shanghai: cron `b42ae80f-26ae-4893-b6b7-1bfb731cd25e`, runner `kingturf-business-os-runner`, PID 59245 alive/IDLE; HEAD `a2666f9c`; existing WIP preserved; no tests/commit/push/deploy.
 - 2026-08-17 19:48 Asia/Shanghai: verified original worktree, ran `apps/web` test 23/23, lint, typecheck, and build; committed and pushed `4f4f432` to `origin/main`. SSH deployment probe to `192.168.2.204` timed out; local 204 tunnel `127.0.0.1:14331` unavailable. Website source excluded from scope; handoff moved to L02.
 - 2026-08-17 19:47 Asia/Shanghai, cron `b42ae80f-26ae-4893-b6b7-1bfb731cd25e`, task `KingTurf+Jinhu+Phoenix`: original `main` worktree preserved; local/remote `4f4f432c1b06215254f3030c4f0497c496f59c16`; web menu/navigation contract PASS 23/23; runner heartbeat unavailable from shell; no delivery action.
+
+- 2026-08-17 23:18 Asia/Shanghai, task `KT-T2/L02 CRM/Customer 360`, runner `Codex sole coding Worker`, original `/Users/mac/Documents/kingturf-bessiness-os` on `main` at pre-session SHA `a2b3fe7`: audited existing CRM/API/UI and preserved all deployment/memory WIP. Implemented separately authorized, DataScope-filtered opportunity links in the Customer 360 API projection and responsive workbench. Focused unit/UI tests, lint, typecheck, build and diff check passed; PostgreSQL integration execution remains unavailable because `DATABASE_URL` is unset and loopback PostgreSQL is not listening. Evidence: `docs/agent-memory/evidence.md` and commands recorded there.
+
+- 2026-08-18T02:02:16+08:00, task `KT-T2/L02 CTR and technical-solution foundation`, runner `Codex sole ERP Worker`, original `/Users/mac/Documents/kingturf-bessiness-os` on `main` at `8c5be3b`: reviewed and validated the existing CTR-to-solution handoff slice. Focused API 32/32 and web 24/24 tests plus lint, typecheck, build, format and diff checks passed; API non-PostgreSQL tests passed 69/69 and the seven mandatory PostgreSQL suites stopped because `DATABASE_URL` is unset. Exact-file staging/commit was blocked by the managed read-only `.git` directory (`index.lock` creation denied), leaving the index empty and all WIP preserved. No next slice or deployment work was started. Evidence: `docs/agent-memory/evidence.md` and `docs/agent-memory/2026-08-18-l02-ctr-solution-foundation.md`.
+
+- 2026-08-18T02:02:16+08:00, task `KT-T2/L02 completion notification`, runner `Codex sole ERP Worker`: attempted the explicitly requested Feishu reply through `openclaw message send`; delivery failed with `getaddrinfo ENOTFOUND open.feishu.cn` and is not claimed as sent.

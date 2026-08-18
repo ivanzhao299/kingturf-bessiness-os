@@ -34,6 +34,8 @@ jobs:
           --health-retries=20
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit_sha || github.sha }}
       - uses: pnpm/action-setup@v4
         with:
           version: 10.33.4
@@ -57,6 +59,9 @@ jobs:
     if: ${{ vars.PRODUCTION_DEPLOY_ENABLED == 'true' }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit_sha || github.sha }}
+          fetch-depth: 0
       - name: Configure Studio jump-host identity
         env:
           JUMP_SSH_KEY: ${{ secrets.STUDIO_DEPLOY_JUMP_SSH_KEY }}
@@ -72,6 +77,8 @@ jobs:
         run: |
           test "${COMMIT_SHA}" != "" \
             && printf '%s' "${COMMIT_SHA}" | grep -Eq '^[0-9a-f]{40}$'
+          test "$(git rev-parse HEAD)" = "${COMMIT_SHA}"
+          git bundle create /tmp/kingturf-erp.bundle "${COMMIT_SHA}"
           ssh \
             -i "$HOME/.ssh/kingturf-erp-jump" \
             -o BatchMode=yes \
@@ -80,7 +87,8 @@ jobs:
             -o ServerAliveInterval=15 \
             -o ServerAliveCountMax=4 \
             root@123.57.220.65 \
-            "kingturf-erp deploy ${COMMIT_SHA}"
+            "kingturf-erp deploy ${COMMIT_SHA}" \
+            < /tmp/kingturf-erp.bundle
       - name: Verify ERP public endpoint
         run: |
           curl --fail --silent --show-error --retry 12 --retry-delay 5 https://erp.kingturf.cn/health >/dev/null

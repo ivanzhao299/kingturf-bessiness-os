@@ -13,8 +13,9 @@ import type {
   EmployeeDto,
   OrganizationDto,
 } from '@kingturf/types';
-import { buildApp } from '../src/app.js';
+import { buildApp, type ApiDependencies } from '../src/app.js';
 import type { PostgresCrmRepository } from '../src/crm-repositories.js';
+import type { PostgresCommercialRepository } from '../src/commercial-repositories.js';
 import type { PostgresCommissionRepository } from '../src/commission-repositories.js';
 import type { PostgresOrder360Repository } from '../src/order-360-repositories.js';
 import type { PostgresRiskRepository } from '../src/risk-repositories.js';
@@ -354,7 +355,7 @@ function dependencies(authContext: AuthorizationContext | null) {
   };
 }
 const dispatch = (
-  deps: ReturnType<typeof dependencies>,
+  deps: ApiDependencies,
   method: string,
   pathname: string,
   body?: unknown,
@@ -373,6 +374,53 @@ const dispatch = (
   });
 
 describe('authentication and protected API contracts', () => {
+  it('default-denies and DataScope-filters opportunity technical solution reads', async () => {
+    const listTechnicalSolutions = vi.fn(() =>
+      Promise.resolve([
+        {
+          id: targetId,
+          technicalSolutionId: organizationId,
+          opportunityId: targetId,
+          code: 'TS-001',
+          revision: 1,
+          status: 'FINAL' as const,
+          ctrVersionId: employeeId,
+          specification: { productFamily: 'KingTurf Pro' },
+          assumptions: [],
+          createdAt: '2026-08-18T00:00:00.000Z',
+        },
+      ]),
+    );
+    const commercial = { listTechnicalSolutions } as unknown as PostgresCommercialRepository;
+    const denied = await dispatch(
+      { ...dependencies(context(new Map())), commercial },
+      'GET',
+      `/api/v1/opportunities/${targetId}/technical-solutions`,
+    );
+    expect(denied.statusCode).toBe(403);
+    expect(listTechnicalSolutions).not.toHaveBeenCalled();
+
+    const allowed = await dispatch(
+      {
+        ...dependencies(
+          context(grant('technical-solution:read', ['TEAM'], ['code', 'status', 'revision'])),
+        ),
+        commercial,
+      },
+      'GET',
+      `/api/v1/opportunities/${targetId}/technical-solutions`,
+    );
+    expect(allowed.statusCode).toBe(200);
+    expect(allowed.body).toEqual({
+      items: [{ id: targetId, code: 'TS-001', revision: 1, status: 'FINAL' }],
+    });
+    expect(listTechnicalSolutions).toHaveBeenCalledWith(
+      targetId,
+      expect.objectContaining({ employeeId, companyId }),
+      ['TEAM'],
+      [],
+    );
+  });
   it('supports login, session validation, and logout', async () => {
     const deps = dependencies(context(new Map()));
     expect(

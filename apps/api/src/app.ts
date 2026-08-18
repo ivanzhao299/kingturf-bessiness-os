@@ -2346,6 +2346,29 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             },
           };
         }
+        const opportunitySolutions =
+          /^\/api\/v1\/opportunities\/([0-9a-f-]+)\/technical-solutions$/u.exec(request.pathname);
+        if (request.method === 'GET' && opportunitySolutions && dependencies.commercial) {
+          const grant = authorizeQuery(context, 'technical-solution:read');
+          return {
+            statusCode: 200,
+            body: {
+              items: (
+                await dependencies.commercial.listTechnicalSolutions(
+                  uuid(opportunitySolutions[1], 'opportunityId'),
+                  context.actor,
+                  grant.scopes,
+                  grant.anchors,
+                )
+              ).map((item) =>
+                permittedDto(
+                  item,
+                  context.permissions.get('technical-solution:read')?.fields ?? null,
+                ),
+              ),
+            },
+          };
+        }
         const commercialReadViews = new Map<
           string,
           readonly [`${string}:${string}`, 'ctrs' | 'solutions' | 'costs' | 'policies' | 'quotes']

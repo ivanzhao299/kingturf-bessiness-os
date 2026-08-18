@@ -410,6 +410,8 @@ export type OpportunityDto = VersionReference &
 export type CtrVersionDto = Readonly<{
   id: Identifier;
   ctrId: Identifier;
+  opportunityId: Identifier;
+  code: string;
   version: number;
   status: CtrStatus;
   title: string;
@@ -421,9 +423,11 @@ export type CtrVersionDto = Readonly<{
 export type TechnicalSolutionRevisionDto = Readonly<{
   id: Identifier;
   technicalSolutionId: Identifier;
+  opportunityId: Identifier;
+  code: string;
   revision: number;
   status: TechnicalSolutionStatus;
-  ctrVersion: Readonly<{ ctrId: Identifier; versionId: Identifier; version: number }>;
+  ctrVersionId: Identifier;
   specification: JsonObject;
   assumptions: readonly string[];
   createdAt: string;

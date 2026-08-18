@@ -1,0 +1,70 @@
+#!/bin/sh
+set -eu
+
+ROOT=${KINGTURF_ROOT:-/opt/kingturf}
+RELEASES="$ROOT/releases"
+SHARED="$ROOT/shared"
+ACTIVE="$ROOT/preview"
+ENV_FILE="$SHARED/preview.env"
+COMPOSE_FILE=infra/docker/compose.preview.yaml
+
+die() { echo "$*" >&2; exit 1; }
+[ "${1:-}" = deploy ] || die "usage: kingturf-erp-office deploy <40-character-sha>"
+SHA=${2:-}
+printf '%s' "$SHA" | grep -Eq '^[0-9a-f]{40}$' || die "invalid commit SHA"
+
+umask 077
+mkdir -p "$RELEASES" "$SHARED"
+if [ ! -f "$ENV_FILE" ]; then
+  [ -f "$ACTIVE/.env" ] || die "missing $ENV_FILE and no legacy $ACTIVE/.env to preserve"
+  cp -p "$ACTIVE/.env" "$ENV_FILE"
+fi
+
+STAGING=$(mktemp -d "$RELEASES/.${SHA}.XXXXXX")
+cleanup() { rm -rf "$STAGING"; }
+trap cleanup EXIT HUP INT TERM
+BUNDLE="$STAGING/release.bundle"
+cat > "$BUNDLE"
+git bundle verify "$BUNDLE" >/dev/null
+git clone --quiet "$BUNDLE" "$STAGING/source"
+ACTUAL=$(git -C "$STAGING/source" rev-parse HEAD)
+[ "$ACTUAL" = "$SHA" ] || die "bundle SHA $ACTUAL does not match requested SHA $SHA"
+rm -f "$BUNDLE"
+
+RELEASE="$RELEASES/$SHA"
+if [ -e "$RELEASE" ]; then
+  rm -rf "$STAGING/source"
+else
+  mv "$STAGING/source" "$RELEASE"
+fi
+
+PREVIOUS=
+if [ -L "$ACTIVE" ]; then
+  PREVIOUS=$(readlink "$ACTIVE")
+elif [ -d "$ACTIVE" ]; then
+  die "$ACTIVE is a legacy directory; migrate it to a release symlink before first guarded deploy"
+fi
+
+rollback() {
+  if [ -n "$PREVIOUS" ] && [ -d "$PREVIOUS" ]; then
+    docker compose --project-name kingturf-preview --env-file "$ENV_FILE" \
+      -f "$PREVIOUS/$COMPOSE_FILE" up -d --build
+  fi
+}
+
+if ! docker compose --project-name kingturf-preview --env-file "$ENV_FILE" \
+  -f "$RELEASE/$COMPOSE_FILE" up -d --build; then
+  rollback
+  die "compose deployment failed; previous release restored"
+fi
+if ! curl --fail --silent --show-error --retry 20 --retry-delay 3 \
+  http://127.0.0.1:4331/health >/dev/null \
+  || ! curl --fail --silent --show-error http://127.0.0.1:4331/ready >/dev/null; then
+  rollback
+  die "health/readiness failed; previous release restored"
+fi
+
+ln -sfn "$RELEASE" "$ACTIVE.next"
+mv -Tf "$ACTIVE.next" "$ACTIVE"
+printf '%s\n' "$SHA" > "$SHARED/deployed-sha"
+echo "deployed KingTurf ERP $SHA"
