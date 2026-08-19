@@ -503,7 +503,10 @@ export class CommercialController {
         ['procurement:read', '/api/v1/supplier-quotes'],
         ['procurement:read', '/api/v1/purchase-orders'],
         ['procurement:read', '/api/v1/goods-receipts'],
-        ['inventory:read', '/api/v1/inventory-locations'],
+        [
+          this.permissions.has('inventory:read') ? 'inventory:read' : 'inventory:move',
+          '/api/v1/inventory-locations',
+        ],
         ['inventory:read', '/api/v1/inventory-balances'],
         ['mrp-policy:read', '/api/v1/mrp-policies'],
         ['mrp:read', '/api/v1/mrp-demands'],
@@ -4234,7 +4237,7 @@ export function commercialWorkspaceStructure(
     controller &&
     (permissions.has('supplier:read') ||
       permissions.has('procurement:read') ||
-      permissions.has('inventory:read'))
+      (permissions.has('inventory:read') || permissions.has('inventory:move')))
   ) {
     const panel = el('section', 'procurement-workbench');
     panel.setAttribute('data-testid', 'procurement-workbench');

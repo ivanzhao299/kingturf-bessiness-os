@@ -553,7 +553,13 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           const listDefinition = procurementLists[request.pathname];
           if (request.method === 'GET' && listDefinition) {
             const [view, capability] = listDefinition;
-            const grant = authorizeQuery(context, capability);
+            const effectiveCapability =
+              request.pathname === '/api/v1/inventory-locations' &&
+              !context.permissions.has('inventory:read') &&
+              context.permissions.has('inventory:move')
+                ? 'inventory:move'
+                : capability;
+            const grant = authorizeQuery(context, effectiveCapability);
             const items = await dependencies.procurement.list(view, {
               actor: context.actor,
               scopes: grant.scopes,
