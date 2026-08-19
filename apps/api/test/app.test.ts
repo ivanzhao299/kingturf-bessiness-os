@@ -236,7 +236,9 @@ function dependencies(authContext: AuthorizationContext | null) {
     createRouting: manufacturingCreateRouting,
     publish: manufacturingPublish,
   } as unknown as PostgresManufacturingRepository;
-  const procurementList = vi.fn(() => Promise.resolve([{ id: targetId, supplierNumber: 'SUP-1' }]));
+  const procurementList = vi.fn(() =>
+    Promise.resolve([{ id: targetId, supplierNumber: 'SUP-1', code: 'RAW-A01', name: '原料一区' }]),
+  );
   const procurementCreateSupplier = vi.fn(() =>
     Promise.resolve({ id: targetId, status: 'ACTIVE' }),
   );
@@ -1197,6 +1199,12 @@ describe('authorization management API', () => {
       ]),
     );
     const deps = dependencies(context(permissions));
+    const locationsResponse = await dispatch(deps, 'GET', '/api/v1/inventory-locations');
+    expect(locationsResponse.statusCode).toBe(200);
+    expect(deps.procurementList).toHaveBeenCalledWith(
+      'locations',
+      expect.objectContaining({ scopes: ['COMPANY'] }),
+    );
     expect((await dispatch(deps, 'GET', '/api/v1/suppliers')).statusCode).toBe(200);
     expect((await dispatch(deps, 'GET', '/api/v1/inventory-balances')).statusCode).toBe(200);
     expect(
@@ -1303,6 +1311,22 @@ describe('authorization management API', () => {
         )
       ).statusCode,
     ).toBe(403);
+  });
+
+  it('serves inventory locations to an operator with only inventory:move', async () => {
+    const permissions: AuthorizationContext['permissions'] = new Map([
+      ['inventory:move', { scopes: ['COMPANY'] as const, fields: ['code', 'name'] as const }],
+    ]);
+    const deps = dependencies(context(permissions));
+    const response = await dispatch(deps, 'GET', '/api/v1/inventory-locations');
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toEqual({
+      items: [{ id: targetId, code: 'RAW-A01', name: '原料一区' }],
+    });
+    expect(deps.procurementList).toHaveBeenCalledWith(
+      'locations',
+      expect.objectContaining({ scopes: ['COMPANY'] }),
+    );
   });
   it('validates MRP policy, demand, deterministic run, and approval commands', async () => {
     const permissions: AuthorizationContext['permissions'] = new Map(

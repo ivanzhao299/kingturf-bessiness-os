@@ -569,7 +569,7 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               statusCode: 200,
               body: {
                 items: items.map((item) =>
-                  permittedDto(item, context.permissions.get(capability)?.fields ?? null),
+                  permittedDto(item, context.permissions.get(effectiveCapability)?.fields ?? null),
                 ),
               },
             };
