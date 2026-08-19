@@ -163,6 +163,10 @@ describe('web bootstrap', () => {
     expect(appRouteFromHash('')).toBe('overview');
   });
 
+  it('exposes the procurement workspace for inventory operators', () => {
+    expect(visibleCommercialSections(new Set(['inventory:move'])).procurement).toBe(true);
+  });
+
   it('default-denies customer and 360 rendering unless customer:read is present', () => {
     expect(visibleCrmSections(new Set())).toEqual({
       customers: false,
