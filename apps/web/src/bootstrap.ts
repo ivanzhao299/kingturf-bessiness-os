@@ -277,7 +277,8 @@ export function visibleCommercialSections(permissions: ReadonlySet<CommercialPer
     procurement:
       permissions.has('supplier:read') ||
       permissions.has('procurement:read') ||
-      permissions.has('inventory:read'),
+      permissions.has('inventory:read') ||
+      permissions.has('inventory:move'),
     mrp: permissions.has('mrp:read') || permissions.has('mrp-policy:read'),
     production: permissions.has('production:read'),
   } as const;
