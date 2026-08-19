@@ -82,6 +82,8 @@ Every transition specifies: actor, preconditions, command idempotency key, optim
 
 Each package must include: specification, migration/rollback, API, permissions, frontend, tests, Validator/Reviewer review, UAT evidence, project-local Memory update, commit SHA and deployment result.
 
+For data-backed dropdowns, the release gate also requires the repository playbook in `docs/engineering/REGRESSION_PREVENTION.md`: source data, role-specific API loading, rendered options, submitted value semantics, and authenticated business UAT must all be evidenced separately. Unit formatting tests and health/readiness checks alone do not close the package.
+
 ## 7. Immediate implementation package
 
 Start L02 with CRM and Customer 360, then CTR and solution, then cost/quote, then credit/contract/order, then AR/payment. Do not build isolated CRUD screens: each slice must connect to the canonical Business Order ID and preserve the next downstream gate. The first executable acceptance is a seeded order with one successful path and explicit rejection paths for low margin, insufficient credit, missing contract and overdue shipment.

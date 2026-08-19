@@ -1,5 +1,7 @@
 # Evidence Index
 
+- 2026-08-19 09:40 Asia/Shanghai, incident `KT-INC-LOCATIONS-20260819`, runner `Codex`, branch `main`, worktree `/Users/mac/Documents/kingturf-bessiness-os`: reviewed the repeated inventory-location dropdown failure. Commits `08739d4`/`a6cbf96` proved only helper/UI formatting; `72c8a20`/`1a2e5d8` corrected the `inventory:move` load/authorization path. CI `32202606289` and deployment `32202792259` passed, but the incident exposed missing authenticated business UAT and missing role-combination regression coverage. Durable prevention rules were added to `docs/engineering/REGRESSION_PREVENTION.md` and the operating model; future reports must separate CI, deploy, health/readiness, and authenticated UAT evidence.
+
 - 2026-08-17 21:23 Asia/Shanghai, cron `b42ae80f-26ae-4893-b6b7-1bfb731cd25e`, task `KingTurf+Jinhu+Phoenix`: original `main` at `29f89cb`; existing documentation/agent-memory WIP preserved. Prior full `pnpm ci:local` PASS remains the latest full-gate evidence; menu 23/23 PASS. Validator/Reviewer and 204 UAT are not newly claimed; no secret access or production mutation.
 
 - 2026-08-17 20:02 Asia/Shanghai, cron `b42ae80f-26ae-4893-b6b7-1bfb731cd25e`, task/runner `KingTurf+Jinhu+Phoenix` / `kingturf-business-os-runner`: original `main` at `4f4f432c1b06215254f3030c4f0497c496f59c16`; `npm test -- --run src/bootstrap.test.ts` PASS (23/23), Studio RK3 `git diff --check` PASS. Existing deployment route retried: SSH `192.168.2.204:22` timed out; local `127.0.0.1:14331` health/ready refused. No secret access or production mutation.
