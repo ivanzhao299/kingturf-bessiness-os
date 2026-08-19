@@ -307,7 +307,7 @@ const recordText = (
   fallback = '',
 ): string => textValue(record[camel] ?? record[snake], fallback);
 export const inventoryLocationOption = (item: Record<string, unknown>) => ({
-  value: String(item.id ?? ''),
+  value: textValue(item.id, ''),
   label: `${recordText(item, 'code', 'code')} · ${recordText(item, 'name', 'name')}`,
 });
 const decimalValue = (value: number): string =>
