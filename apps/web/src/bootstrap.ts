@@ -306,6 +306,10 @@ const recordText = (
   snake: string,
   fallback = '',
 ): string => textValue(record[camel] ?? record[snake], fallback);
+export const inventoryLocationOption = (item: Record<string, unknown>) => ({
+  value: String(item.id ?? ''),
+  label: `${recordText(item, 'code', 'code')} · ${recordText(item, 'name', 'name')}`,
+});
 const decimalValue = (value: number): string =>
   String(Math.round((value + Number.EPSILON) * 1_000_000) / 1_000_000);
 
@@ -1009,10 +1013,7 @@ export function commercialWorkspaceStructure(
                 label: '入库库位',
                 type: 'select',
                 required: true,
-                options: locations.map((item) => ({
-                  value: String(item.id),
-                  label: `${recordText(item, 'code', 'code')} · ${recordText(item, 'name', 'name')}`,
-                })),
+                options: locations.map(inventoryLocationOption),
               },
               { name: 'quantity', label: '卷数量', type: 'number', required: true },
               { name: 'manufacturedAt', label: '生产日期', type: 'date', required: true },
@@ -4620,8 +4621,8 @@ export function commercialWorkspaceStructure(
                 type: 'select',
                 required: true,
                 options: locations.map((item) => ({
+                  ...inventoryLocationOption(item),
                   value: recordText(item, 'code', 'code'),
-                  label: `${recordText(item, 'code', 'code')} · ${recordText(item, 'name', 'name')}`,
                 })),
               },
               { name: 'quantity', label: '实收数量', type: 'number', required: true },

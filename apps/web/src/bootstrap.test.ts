@@ -13,6 +13,7 @@ import {
   viewportFor,
   visibleCrmSections,
   visibleCommercialSections,
+  inventoryLocationOption,
   technicalSolutionOpportunityId,
 } from './bootstrap';
 
@@ -315,7 +316,7 @@ describe('web bootstrap', () => {
           '/api/v1/goods-receipts': [
             { id: 'gr-1', receipt_number: 'GR-1', poNumber: 'PO-1', lines: [{}] },
           ],
-          '/api/v1/inventory-locations': [{ id: 'loc-1', code: 'RAW-A01' }],
+          '/api/v1/inventory-locations': [{ id: 'loc-1', code: 'RAW-A01', name: '原料一区' }],
           '/api/v1/inventory-balances': [
             {
               sku: 'RM-YARN',
@@ -356,6 +357,10 @@ describe('web bootstrap', () => {
     expect(workspace.textContent).toContain('PO-1 · RECEIVED');
     expect(workspace.textContent).toContain('LOT-1');
     expect(workspace.textContent).toContain('结存 5000');
+    expect(inventoryLocationOption({ id: 'loc-1', code: 'RAW-A01', name: '原料一区' })).toEqual({
+      value: 'loc-1',
+      label: 'RAW-A01 · 原料一区',
+    });
   });
 
   it('renders explainable MRP calculations, frozen warnings, and approval history', async () => {
