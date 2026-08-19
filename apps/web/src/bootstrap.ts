@@ -4237,7 +4237,8 @@ export function commercialWorkspaceStructure(
     controller &&
     (permissions.has('supplier:read') ||
       permissions.has('procurement:read') ||
-      (permissions.has('inventory:read') || permissions.has('inventory:move')))
+      permissions.has('inventory:read') ||
+      permissions.has('inventory:move'))
   ) {
     const panel = el('section', 'procurement-workbench');
     panel.setAttribute('data-testid', 'procurement-workbench');
