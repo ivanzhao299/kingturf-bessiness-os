@@ -10,14 +10,15 @@ This file is the single authoritative execution route. `MASTER_DEVELOPMENT_PLAN.
 - Branch: `main`
 - Production: Park isolated runtime at `erp.kingturf.cn`, Compose project `kingturf-erp-production`, web port `4332`.
 - Office 204 is a historical preview environment and is not the production acceptance target.
-- KT-L01 through KT-L15 remain capability-complete. Their production acceptance is rechecked by `KT-RG01`; this does not reopen them as duplicate development routes.
+- KT-L01 through KT-L16 are capability-complete and production-reaccepted through `KT-RG01` at release `452ced1` on 2026-08-22.
 
 ## Only valid execution order
 
 1. `KT-GOV-01`: close repository, ingress verification and Feishu delivery governance.
-2. `KT-RG01`: reaccept Sales-to-Cash and KT-L02 through KT-L15 against the current production release, including happy path and policy rejections.
-3. `KT-L16`: close quality/WMS with production evidence.
-4. `KT-L17` through `KT-L25`: continue the master roadmap in numeric order.
+2. `KT-RG01`: completed; Sales-to-Cash and KT-L02 through KT-L15 passed production data and authenticated UAT.
+3. `KT-L16`: completed; incoming inspection, quarantine/release, production consumption and batch traceability passed production evidence.
+4. `KT-L17`: next active long task—actual manufacturing cost and variance (64h).
+5. `KT-L18` through `KT-L25`: continue the master roadmap in numeric order.
 
 ## Completion gate
 
