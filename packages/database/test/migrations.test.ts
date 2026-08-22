@@ -24,7 +24,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0044_quality_inventory_integration.sql');
+    expect(ordered.at(-1)).toBe('0045_system_admin_commercial_company_scope.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
@@ -477,6 +477,17 @@ describe('identity and authorization migration', () => {
     );
     expect(sql).toContain("array_append(grant_row.data_scopes,'COMPANY'::data_scope)");
     expect(sql).toContain("roles.code='SUPER_ADMIN'");
+    expect(sql).toContain("'cost-model:manage'");
+    expect(sql).toContain("'sales-policy:manage'");
+    expect(sql).not.toContain("'cost:evaluate'");
+  });
+  it('repairs company scope for production system administrators', async () => {
+    const sql = await readFile(
+      join(process.cwd(), 'migrations/0045_system_admin_commercial_company_scope.sql'),
+      'utf8',
+    );
+    expect(sql).toContain("ARRAY['SUPER_ADMIN', 'SYSTEM_ADMIN']");
+    expect(sql).toContain("array_append(grant_row.data_scopes, 'COMPANY'::data_scope)");
     expect(sql).toContain("'cost-model:manage'");
     expect(sql).toContain("'sales-policy:manage'");
     expect(sql).not.toContain("'cost:evaluate'");
