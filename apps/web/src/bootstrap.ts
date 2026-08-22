@@ -288,6 +288,45 @@ export function visibleCommercialSections(permissions: ReadonlySet<CommercialPer
   } as const;
 }
 
+export function isCommercialPermission(item: string): item is CommercialPermission {
+  return [
+    'opportunity:',
+    'ctr:',
+    'attachment:',
+    'technical-solution:',
+    'cost-model:',
+    'cost:',
+    'sales-policy:',
+    'quote:',
+    'credit:',
+    'contract:',
+    'sales-order:',
+    'order-360:',
+    'ar:',
+    'bank-payment:',
+    'reconciliation:',
+    'allocation:',
+    'commission-policy:',
+    'commission:',
+    'risk-policy:',
+    'risk:',
+    'executive-dashboard:',
+    'manufacturing-item:',
+    'manufacturing-cost:',
+    'bom:',
+    'routing:',
+    'supplier:',
+    'procurement:',
+    'inventory:',
+    'mrp-policy:',
+    'mrp:',
+    'production:',
+    'quality-plan:',
+    'quality:',
+    'traceability:',
+  ].some((prefix) => item.startsWith(prefix));
+}
+
 const recordValue = (value: unknown): Record<string, unknown> =>
   typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
 
@@ -7006,44 +7045,7 @@ export async function bootstrap(root: HTMLElement): Promise<void> {
     controller.error = error instanceof Error ? error.message : 'CRM 加载失败';
   }
   const shell = createCrmShell(controller);
-  const commercialPermissions = new Set(
-    session.permissions.filter(
-      (item) =>
-        item.startsWith('opportunity:') ||
-        item.startsWith('ctr:') ||
-        item.startsWith('attachment:') ||
-        item.startsWith('technical-solution:') ||
-        item.startsWith('cost-model:') ||
-        item.startsWith('cost:') ||
-        item.startsWith('sales-policy:') ||
-        item.startsWith('quote:') ||
-        item.startsWith('credit:') ||
-        item.startsWith('contract:') ||
-        item.startsWith('sales-order:') ||
-        item.startsWith('order-360:') ||
-        item.startsWith('ar:') ||
-        item.startsWith('bank-payment:') ||
-        item.startsWith('reconciliation:') ||
-        item.startsWith('allocation:') ||
-        item.startsWith('commission-policy:') ||
-        item.startsWith('commission:') ||
-        item.startsWith('risk-policy:') ||
-        item.startsWith('risk:') ||
-        item.startsWith('executive-dashboard:') ||
-        item.startsWith('manufacturing-item:') ||
-        item.startsWith('bom:') ||
-        item.startsWith('routing:') ||
-        item.startsWith('supplier:') ||
-        item.startsWith('procurement:') ||
-        item.startsWith('inventory:') ||
-        item.startsWith('mrp-policy:') ||
-        item.startsWith('mrp:') ||
-        item.startsWith('production:') ||
-        item.startsWith('quality-plan:') ||
-        item.startsWith('quality:') ||
-        item.startsWith('traceability:'),
-    ) as CommercialPermission[],
-  );
+  const commercialPermissions = new Set(session.permissions.filter(isCommercialPermission));
   if (Object.values(visibleCommercialSections(commercialPermissions)).some(Boolean)) {
     const commercialController = new CommercialController(
       createFetchCommercialApi(token),
