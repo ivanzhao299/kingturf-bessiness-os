@@ -1190,7 +1190,7 @@ export function commercialWorkspaceStructure(
                 materialRates: materialItems.map((item) => ({
                   itemVersionId: String(item.id),
                   unitCost: values[`materialRate_${String(item.id)}`],
-                  sourceReference: `${values.sourceReference}-${recordText(item, 'sku', 'sku')}`,
+                  sourceReference: `${String(values.sourceReference)}-${recordText(item, 'sku', 'sku')}`,
                 })),
               });
               await controller.load();
