@@ -874,6 +874,10 @@ if ((receivedYarnLot.quality_status ?? receivedYarnLot.qualityStatus) !== 'RELEA
       publish: true,
     },
   });
+  incomingPlan = (await list('/api/v1/quality-plans')).find(
+    (item) => (item.code ?? item.plan_code) === 'QP-KT-YARN-INCOMING-V1',
+  );
+  assert(incomingPlan, 'published incoming yarn plan is required');
   const planCharacteristics = incomingPlan.characteristics ?? [];
   assert(planCharacteristics[0], 'incoming yarn plan characteristic is required');
   let inspection = (await list('/api/v1/quality-inspections')).find(
