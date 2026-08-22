@@ -39,7 +39,12 @@ async function request(path, { token = admin, method = 'GET', body, key } = {}) 
   return payload;
 }
 const list = async (path) => (await request(path)).items;
-const statusOf = (item) => item.effective_status ?? item.effectiveStatus ?? item.status;
+const statusOf = (item) =>
+  item.effective_status ??
+  item.effectiveStatus ??
+  item.effective_state ??
+  item.effectiveState ??
+  item.status;
 const session = await request('/api/v1/auth/session');
 const adminEmployeeId = session.employeeId;
 
