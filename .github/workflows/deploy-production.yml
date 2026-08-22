@@ -64,6 +64,14 @@ jobs:
           rsync -az --delete --exclude '.env.production' --exclude 'kingturf_postgres_data/' --exclude 'kingturf_attachments/' \
             -e "ssh -p ${{ secrets.PROD_SSH_PORT }} -o ServerAliveInterval=30 -o ConnectTimeout=30" \
             ./ '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/'
+      - name: Install and reload production Nginx ingress
+        run: |
+          scp -P '${{ secrets.PROD_SSH_PORT }}' \
+            -o ServerAliveInterval=30 -o ConnectTimeout=30 \
+            infra/nginx/erp.kingturf.cn.conf \
+            '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}:/tmp/kingturf-erp-nginx.conf'
+          ssh -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
+            "set -eu; sudo install -o root -g root -m 0644 /tmp/kingturf-erp-nginx.conf /etc/nginx/conf.d/erp.kingturf.cn.conf; rm -f /tmp/kingturf-erp-nginx.conf; sudo nginx -t; sudo systemctl reload nginx"
       - name: Deploy and verify
         run: |
           ssh -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
