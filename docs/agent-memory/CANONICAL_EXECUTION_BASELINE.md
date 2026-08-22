@@ -23,6 +23,8 @@ This file is the single authoritative execution route. `MASTER_DEVELOPMENT_PLAN.
 
 Every task requires one immutable commit SHA, supported tests, PostgreSQL evidence where applicable, permissions and rejection paths, production deployment SHA, `/health`, `/ready`, authenticated business UAT, rollback notes, and a Feishu receipt. CI, deployment and UAT are reported separately. No task advances on self-report alone.
 
+The GitHub-hosted runner's cross-border HTTPS probe is advisory because that route is reset upstream even when the same release passes local Nginx TLS and real China browser traffic. It must remain visible as a warning, but production acceptance uses verified Nginx HTTPS, certificate/SNI, health/ready, release SHA and real browser access; the advisory probe alone cannot overturn those controls.
+
 ## Feishu closure
 
 One canonical 30-minute KingTurf inspection job is responsible for status delivery. A successful cycle must record delivered status; a failed delivery alerts immediately. Duplicate KingTurf inspection jobs remain disabled.

@@ -1,6 +1,7 @@
 # Project State
 
 - 2026-08-22 governance reconciliation: `docs/agent-memory/CANONICAL_EXECUTION_BASELINE.md` is now the sole current execution route. KT-T2 is folded into production reacceptance `KT-RG01`; Office 204 is historical preview only. Park production and Feishu receipts are required for completion.
+- 2026-08-22 ingress root cause: Park containers, Nginx 443, certificate/SNI, server-local HTTPS and real China Chrome traffic are healthy. GitHub's hosted runner and the local Shadowrocket curl route receive a client/upstream reset before HTTP; this cross-border/advisory probe is no longer allowed to falsely fail a deployment that passes the authoritative production controls.
 
 - 2026-08-19 12:20 Asia/Shanghai, task `KT-T2`: verified repository `/Users/mac/Documents/kingturf-bessiness-os` on `main`, local HEAD `4f19b957fe3ea6ea5247526bf30b02a39ed192e3`, `origin/main` identical, worktree clean before plan update. Solidified the current KT-T2 Sales-to-Cash sequence and unified completion gate in `docs/agent-memory/task-sequence.md`; this documentation change is currently uncommitted and must be preserved. Baseline gates: Web 25/25 PASS, lint PASS, typecheck PASS, build PASS. API command was invoked with unsupported Vitest `--runInBand` and therefore is not evidence; rerun with the repository-supported command. PostgreSQL, browser E2E, Validator/Reviewer, deployment SHA, health/ready and UAT remain unproven and are next gates. No production action or external write performed.
 
