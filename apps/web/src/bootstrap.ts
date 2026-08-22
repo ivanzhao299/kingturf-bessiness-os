@@ -1209,18 +1209,15 @@ export function commercialWorkspaceStructure(
             (r) => recordText(r, 'production_order_id', 'productionOrderId') === String(x.id),
           ),
       )) {
-        const button = el(
-          'button',
-          'secondary',
-          `核算 ${recordText(order, 'orderNumber', 'order_number')}`,
-        );
+        const orderNumber = recordText(order, 'orderNumber', 'order_number');
+        const button = el('button', 'secondary', `核算 ${orderNumber}`);
         button.addEventListener('click', () => {
           void (async () => {
             await controller.submit('/api/v1/production-cost-runs', {
               productionOrderId: String(order.id),
               policyId: String(policies[0]?.id),
-              runNumber: `COST-${recordText(order, 'orderNumber', 'order_number')}`,
-              idempotencyKey: `COST-${String(order.id)}`,
+              runNumber: `COST-${orderNumber}`,
+              idempotencyKey: `COST-${orderNumber}`,
             });
             await controller.load();
             status.textContent = controller.message;
