@@ -894,7 +894,8 @@ if ((receivedYarnLot.quality_status ?? receivedYarnLot.qualityStatus) !== 'RELEA
       sampleSize: '5',
     },
   });
-  const inspectionState = () => inspection.effective_state ?? inspection.effectiveState;
+  const inspectionState = () =>
+    inspection.state ?? inspection.effective_state ?? inspection.effectiveState;
   if (inspectionState() === 'OPEN')
     inspection = await request(`/api/v1/quality-inspections/${inspection.id}/sample`, {
       method: 'POST',
@@ -904,6 +905,10 @@ if ((receivedYarnLot.quality_status ?? receivedYarnLot.qualityStatus) !== 'RELEA
         idempotencyKey: 'QI-KT-YARN-2026-001-SAMPLE',
       },
     });
+  inspection = (await list('/api/v1/quality-inspections')).find(
+    (item) => item.id === inspection.id,
+  );
+  assert(inspection, 'sampled incoming yarn inspection is required');
   const recordedResults = inspection.results ?? [];
   if (recordedResults.length === 0)
     await request(`/api/v1/quality-inspections/${inspection.id}/results`, {

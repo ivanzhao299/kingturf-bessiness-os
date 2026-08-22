@@ -6302,7 +6302,6 @@ export function createCrmShell(controller: CrmController, width = window.innerWi
   sidebarFooter.append(el('span', 'online-dot'), el('span', '', '生产环境 · erp.kingturf.cn'));
   aside.append(sidebarFooter);
   const content = el('section', 'workspace');
-  content.setAttribute('data-route-view', 'crm');
   const utility = el('header', 'utility-bar');
   const search = el('div', 'global-search');
   search.append(
@@ -6945,13 +6944,15 @@ export async function bootstrap(root: HTMLElement): Promise<void> {
     } catch (error) {
       commercialController.message = error instanceof Error ? error.message : '商业工作台加载失败';
     }
-    shell.append(
-      commercialWorkspaceStructure(
-        viewportFor(globalThis.innerWidth || 1280),
-        false,
-        commercialController,
-      ),
-    );
+    shell
+      .querySelector<HTMLElement>('.workspace')
+      ?.append(
+        commercialWorkspaceStructure(
+          viewportFor(globalThis.innerWidth || 1280),
+          false,
+          commercialController,
+        ),
+      );
   }
   installAppNavigation(shell);
   root.replaceChildren(shell);
