@@ -841,6 +841,101 @@ goodsReceipt ??= await request('/api/v1/goods-receipts', {
   },
 });
 
+const receivedYarnLot = (await list('/api/v1/inventory-balances')).find(
+  (item) => (item.lot_number ?? item.lotNumber) === 'LOT-KT-YARN-20260920-A',
+);
+assert(receivedYarnLot, 'received yarn lot is required');
+if ((receivedYarnLot.quality_status ?? receivedYarnLot.qualityStatus) !== 'RELEASED') {
+  let incomingPlan = (await list('/api/v1/quality-plans')).find(
+    (item) => (item.code ?? item.plan_code) === 'QP-KT-YARN-INCOMING-V1',
+  );
+  incomingPlan ??= await request('/api/v1/quality-plans', {
+    method: 'POST',
+    body: {
+      code: 'QP-KT-YARN-INCOMING-V1',
+      name: 'KT-RG01 草纱来料放行检验',
+      itemVersionId: yarn.id,
+      inspectionStage: 'INCOMING',
+      samplingMethod: '固定抽样 5kg',
+      acceptanceRule: { requiredPassRate: 1, task: 'KT-RG01' },
+      effectiveAt: '2026-01-01T00:00:00.000Z',
+      characteristics: [
+        {
+          code: 'YARN-TEX',
+          name: '纱线线密度',
+          dataType: 'NUMERIC',
+          unitCode: 'TEX',
+          lowerLimit: '11950',
+          upperLimit: '12050',
+          required: true,
+          instructions: '按来料检验规程测量线密度',
+        },
+      ],
+      publish: true,
+    },
+  });
+  const planCharacteristics = incomingPlan.characteristics ?? [];
+  assert(planCharacteristics[0], 'incoming yarn plan characteristic is required');
+  let inspection = (await list('/api/v1/quality-inspections')).find(
+    (item) => (item.inspection_number ?? item.inspectionNumber) === 'QI-KT-YARN-2026-001',
+  );
+  inspection ??= await request('/api/v1/quality-inspections', {
+    method: 'POST',
+    body: {
+      inspectionNumber: 'QI-KT-YARN-2026-001',
+      planVersionId: incomingPlan.id,
+      lotId: receivedYarnLot.lot_id ?? receivedYarnLot.lotId,
+      sourceType: 'GOODS-RECEIPT',
+      sourceId: goodsReceipt.id,
+      sampleSize: '5',
+    },
+  });
+  const inspectionState = () => inspection.effective_state ?? inspection.effectiveState;
+  if (inspectionState() === 'OPEN')
+    inspection = await request(`/api/v1/quality-inspections/${inspection.id}/sample`, {
+      method: 'POST',
+      body: {
+        reason: 'KT-RG01 来料抽样',
+        evidence: { sampleReference: 'SAMPLE-KT-YARN-2026-001' },
+        idempotencyKey: 'QI-KT-YARN-2026-001-SAMPLE',
+      },
+    });
+  const recordedResults = inspection.results ?? [];
+  if (recordedResults.length === 0)
+    await request(`/api/v1/quality-inspections/${inspection.id}/results`, {
+      method: 'POST',
+      body: {
+        characteristicId: planCharacteristics[0].id,
+        measuredNumeric: '12000',
+        passed: true,
+        notes: 'KT-RG01 标准来料验收结果',
+        occurredAt: '2026-10-01T09:00:00.000Z',
+        idempotencyKey: 'QI-KT-YARN-2026-001-YARN-TEX',
+      },
+    });
+  inspection = (await list('/api/v1/quality-inspections')).find(
+    (item) => item.id === inspection.id,
+  );
+  if (inspectionState() === 'SAMPLED')
+    inspection = await request(`/api/v1/quality-inspections/${inspection.id}/complete`, {
+      method: 'POST',
+      body: {
+        reason: '必检特性全部合格',
+        evidence: { reportReference: 'IR-KT-YARN-2026-001' },
+        idempotencyKey: 'QI-KT-YARN-2026-001-COMPLETE',
+      },
+    });
+  if (inspectionState() === 'COMPLETED')
+    await request(`/api/v1/quality-inspections/${inspection.id}/release`, {
+      method: 'POST',
+      body: {
+        reason: '来料检验合格，批准生产领用',
+        evidence: { dispositionReference: 'QD-KT-YARN-2026-001' },
+        idempotencyKey: 'QI-KT-YARN-2026-001-RELEASE',
+      },
+    });
+}
+
 const mrpPolicies = await list('/api/v1/mrp-policies');
 async function ensureMrpPolicy(
   itemVersionId,
