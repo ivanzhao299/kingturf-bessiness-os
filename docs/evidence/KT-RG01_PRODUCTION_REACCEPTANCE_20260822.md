@@ -15,6 +15,7 @@ KT-RG01 and the KT-L16 production evidence gate passed on the Park production ru
 - Quality/WMS evidence: published incoming plan, sampled inspection with recorded result, disposition evidence, yarn lot released before production consumption, and batch traceability visible in production.
 - Authenticated browser UAT passed at 390 px: route isolation shows only `quality-workbench`, page width equals viewport width, horizontal module navigation is visible, and the production environment label is correct.
 - Production `/health`, `/ready`, Nginx HTTPS/SNI and deployment checks passed. The hosted-runner public HTTPS probe remains advisory under the documented cross-border reset policy.
+- Feishu production handoff was delivered to the canonical KingTurf group with receipt `om_x100b67a5b68510a0b2bad0c7edfca34`.
 
 ## Repairs included
 
