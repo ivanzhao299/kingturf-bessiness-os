@@ -59,6 +59,26 @@ jobs:
           ssh-private-key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
       - name: Trust production host
         run: ssh-keyscan -p '${{ secrets.PROD_SSH_PORT }}' -H '${{ secrets.PROD_SSH_HOST }}' >> ~/.ssh/known_hosts
+      - name: Diagnose production public HTTPS ingress
+        run: |
+          ssh -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
+            'set +e
+             echo "== listeners =="
+             sudo ss -ltnp | grep -E ":(80|443|4332)\\b" || true
+             echo "== ufw =="
+             sudo ufw status verbose 2>&1 || true
+             echo "== nftables =="
+             sudo nft list ruleset 2>&1 | grep -E "(80|443|4332|drop|reject)" | head -80 || true
+             echo "== nginx syntax =="
+             sudo nginx -t 2>&1 || true
+             echo "== nginx ingress =="
+             sudo nginx -T 2>/dev/null | grep -E "(server_name erp\\.kingturf\\.cn|listen .*443|proxy_pass|ssl_certificate)" | head -80 || true
+             echo "== certificate =="
+             sudo openssl x509 -in /etc/letsencrypt/live/erp.kingturf.cn/fullchain.pem -noout -subject -issuer -dates 2>&1 || true
+             echo "== local HTTPS =="
+             curl -k -sS -D - --connect-timeout 8 --max-time 15 https://127.0.0.1/health -H "Host: erp.kingturf.cn" 2>&1 || true
+             echo "== local HTTP =="
+             curl -sS -D - --connect-timeout 8 --max-time 15 http://127.0.0.1/health -H "Host: erp.kingturf.cn" 2>&1 || true'
       - name: Sync isolated KingTurf release
         run: |
           rsync -az --delete --exclude '.env.production' --exclude 'kingturf_postgres_data/' --exclude 'kingturf_attachments/' \
