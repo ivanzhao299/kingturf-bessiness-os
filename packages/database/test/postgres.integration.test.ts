@@ -63,6 +63,9 @@ describe('PostgreSQL tenant integrity', () => {
     await getTestDatabase().query('DELETE FROM employees WHERE id=ANY($1::uuid[])', [
       [employee, scopedEmployee],
     ]);
+    await getTestDatabase().query('DELETE FROM roles WHERE organization_id=ANY($1::uuid[])', [
+      [companyA, companyB],
+    ]);
     await getTestDatabase().query(
       'DELETE FROM organization_scope_relationships WHERE ancestor_id=ANY($1::uuid[]) OR descendant_id=ANY($1::uuid[])',
       [
@@ -94,6 +97,29 @@ describe('PostgreSQL tenant integrity', () => {
         [companyA, departmentB],
       ),
     ).rejects.toThrow(/parent must share organization ownership/u);
+  });
+  it('provisions atomic roles for every company and keeps approval duties separated', async () => {
+    const roles = await getTestDatabase().query<{ code: string; capabilities: string[] }>(
+      `SELECT r.code,array_agg(p.capability ORDER BY p.capability) capabilities
+       FROM roles r JOIN role_permission_grants g ON g.role_id=r.id
+       JOIN permissions p ON p.id=g.permission_id WHERE r.organization_id=$1
+       GROUP BY r.id ORDER BY r.code`,
+      [companyA],
+    );
+    expect(roles.rows).toHaveLength(38);
+    const catalog = new Map(roles.rows.map((role) => [role.code, role.capabilities]));
+    expect(catalog.get('KT_QUOTE_EDITOR')).toContain('quote:create');
+    expect(catalog.get('KT_QUOTE_EDITOR')).not.toContain('quote:approve');
+    expect(catalog.get('KT_QUOTE_APPROVER')).toContain('quote:approve');
+    expect(catalog.get('KT_QUOTE_APPROVER')).not.toContain('quote:issue');
+    expect(catalog.get('KT_CREDIT_ANALYST')).toContain('credit:evaluate');
+    expect(catalog.get('KT_CREDIT_ANALYST')).not.toContain('credit:approve');
+    expect(catalog.get('KT_QUALITY_INSPECTOR')).toContain('quality:inspect');
+    expect(catalog.get('KT_QUALITY_INSPECTOR')).not.toContain('quality:disposition');
+    expect(
+      roles.rows.every((role) => role.capabilities.length > 0),
+      'every atomic role must have at least one capability',
+    ).toBe(true);
   });
   it('rejects moving an employee organization across companies', async () => {
     await expect(

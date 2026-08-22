@@ -24,7 +24,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0045_system_admin_commercial_company_scope.sql');
+    expect(ordered.at(-1)).toBe('0046_atomic_business_role_catalog.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
@@ -68,6 +68,35 @@ describe('identity and authorization migration', () => {
     expect(triggerRepair).toContain('JOIN quotes quote_root');
     expect(triggerRepair).toContain("IF TG_TABLE_NAME='sales_orders' THEN");
     expect(triggerRepair).not.toContain('JOIN quotes q ON');
+  });
+  it('adds atomic company roles with explicit segregation of critical duties', async () => {
+    const sql = await readFile(
+      join(process.cwd(), 'migrations/0046_atomic_business_role_catalog.sql'),
+      'utf8',
+    );
+    for (const role of [
+      'KT_QUOTE_EDITOR',
+      'KT_QUOTE_APPROVER',
+      'KT_QUOTE_ISSUER',
+      'KT_CREDIT_ANALYST',
+      'KT_CREDIT_APPROVER',
+      'KT_QUALITY_INSPECTOR',
+      'KT_QUALITY_MANAGER',
+      'KT_IAM_ADMIN',
+      'KT_SYSTEM_AUDITOR',
+    ])
+      expect(sql).toContain(`('${role}'`);
+    expect(sql).toContain("('KT_QUOTE_EDITOR','quote:create')");
+    expect(sql).not.toContain("('KT_QUOTE_EDITOR','quote:approve')");
+    expect(sql).not.toContain("('KT_QUOTE_APPROVER','quote:create')");
+    expect(sql).toContain("('KT_CREDIT_ANALYST','credit:evaluate')");
+    expect(sql).not.toContain("('KT_CREDIT_ANALYST','credit:approve')");
+    expect(sql).toContain("('KT_QUALITY_INSPECTOR','quality:inspect')");
+    expect(sql).not.toContain("('KT_QUALITY_INSPECTOR','quality:disposition')");
+    expect(sql).toContain("ARRAY['COMPANY']::data_scope[]");
+    expect(sql).not.toMatch(
+      /KT_(SYSTEM_AUDITOR|EXECUTIVE_VIEWER)'\s*,\s*'[^']+:(manage|create|update|approve|issue|sign|post|pay|move|inspect|disposition)'/u,
+    );
   });
   it('uses effective quality disposition for planning, inventory, and production', async () => {
     const sql = await readFile(
