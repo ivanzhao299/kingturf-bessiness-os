@@ -96,3 +96,7 @@ jobs:
         run: |
           ssh -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
             "cd '${{ secrets.PROD_DEPLOY_PATH }}' && printf '%s' '${{ inputs.commit_sha }}' > .release-sha && docker compose --env-file .env.production -f infra/docker/compose.production.yaml up -d --build && sleep 15 && docker compose --env-file .env.production -f infra/docker/compose.production.yaml ps && curl --fail --silent --show-error --retry 12 --retry-all-errors --retry-delay 5 http://127.0.0.1:4332/health && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 http://127.0.0.1:4332/ready && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 --resolve erp.kingturf.cn:443:127.0.0.1 https://erp.kingturf.cn/health && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 --resolve erp.kingturf.cn:443:127.0.0.1 https://erp.kingturf.cn/ready"
+      - name: Verify public HTTPS from GitHub runner
+        run: |
+          curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 5 https://erp.kingturf.cn/health
+          curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 5 https://erp.kingturf.cn/ready
