@@ -24,7 +24,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0048_actual_manufacturing_cost.sql');
+    expect(ordered.at(-1)).toBe('0049_manufacturing_cost_admin_grants.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
@@ -86,6 +86,13 @@ describe('identity and authorization migration', () => {
     expect(sql).toContain('KT_MANUFACTURING_COST_ACCOUNTANT');
     expect(sql).toContain('KT_MANUFACTURING_COST_APPROVER');
     expect(sql).toContain('manufacturing cost evidence is immutable');
+    const adminGrantRepair = await readFile(
+      join(process.cwd(), 'migrations/0049_manufacturing_cost_admin_grants.sql'),
+      'utf8',
+    );
+    expect(adminGrantRepair).toContain("ARRAY['SUPER_ADMIN','SYSTEM_ADMIN']");
+    expect(adminGrantRepair).toContain("'manufacturing-cost:approve'");
+    expect(adminGrantRepair).toContain("'COMPANY'::data_scope");
   });
   it('adds atomic company roles with explicit segregation of critical duties', async () => {
     const sql = await readFile(
