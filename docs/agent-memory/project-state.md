@@ -1,5 +1,9 @@
 # Project State
 
+- 2026-08-22 governance reconciliation: `docs/agent-memory/CANONICAL_EXECUTION_BASELINE.md` is now the sole current execution route. KT-T2 is folded into production reacceptance `KT-RG01`; Office 204 is historical preview only. Park production and Feishu receipts are required for completion.
+
+- 2026-08-19 12:20 Asia/Shanghai, task `KT-T2`: verified repository `/Users/mac/Documents/kingturf-bessiness-os` on `main`, local HEAD `4f19b957fe3ea6ea5247526bf30b02a39ed192e3`, `origin/main` identical, worktree clean before plan update. Solidified the current KT-T2 Sales-to-Cash sequence and unified completion gate in `docs/agent-memory/task-sequence.md`; this documentation change is currently uncommitted and must be preserved. Baseline gates: Web 25/25 PASS, lint PASS, typecheck PASS, build PASS. API command was invoked with unsupported Vitest `--runInBand` and therefore is not evidence; rerun with the repository-supported command. PostgreSQL, browser E2E, Validator/Reviewer, deployment SHA, health/ready and UAT remain unproven and are next gates. No production action or external write performed.
+
 - 2026-08-17 20:02 Asia/Shanghai, cron `b42ae80f-26ae-4893-b6b7-1bfb731cd25e`: L01 menu gate remains green at `4f4f432`; 23/23 web tests PASS and Studio diff check PASS. Existing 204 route was retried; SSH timed out and local tunnel was unavailable. This is reachability evidence, not a permission blocker; continue L02 while retrying the approved route when reachable.
 
 - 2026-08-17 19:00 Asia/Shanghai, cron `b42ae80f-26ae-4893-b6b7-1bfb731cd25e`, task `e921724e-d389-456b-91a1-98176be6cdd5`: L01 Gate 0 web navigation contract PASS 23/23 at SHA `a2666f9`; proceed to implementation/desktop-mobile validation while preserving WIP.
