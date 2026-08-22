@@ -96,6 +96,10 @@ export type CommercialPermission =
   | 'production:material'
   | 'production:report'
   | 'production:close'
+  | 'manufacturing-cost:read'
+  | 'manufacturing-cost:policy'
+  | 'manufacturing-cost:calculate'
+  | 'manufacturing-cost:approve'
   | 'quality-plan:read'
   | 'quality-plan:manage'
   | 'quality:read'
@@ -513,6 +517,8 @@ export class CommercialController {
         ['mrp:read', '/api/v1/mrp-demands'],
         ['mrp:read', '/api/v1/mrp-runs'],
         ['production:read', '/api/v1/production-orders'],
+        ['manufacturing-cost:read', '/api/v1/production-cost-policies'],
+        ['manufacturing-cost:read', '/api/v1/production-cost-runs'],
         ['quality-plan:read', '/api/v1/quality-plans'],
         ['quality:read', '/api/v1/quality-inspections'],
         ['traceability:read', '/api/v1/lot-traceability'],
@@ -1040,6 +1046,112 @@ export function commercialWorkspaceStructure(
       card.append(actions);
       grid.append(card);
     }
+    panel.append(grid);
+    workspace.append(panel);
+  }
+  if (controller && permissions.has('manufacturing-cost:read')) {
+    const panel = el('section', 'production-workbench');
+    panel.setAttribute('data-testid', 'manufacturing-cost-workbench');
+    const policies = controller.views.get('/api/v1/production-cost-policies') ?? [];
+    const runs = controller.views.get('/api/v1/production-cost-runs') ?? [];
+    const orders = controller.views.get('/api/v1/production-orders') ?? [];
+    panel.append(
+      el('p', 'eyebrow', 'ACTUAL COST & VARIANCE'),
+      el('h2', '', '实际制造成本与差异'),
+      el(
+        'p',
+        'commercial-help',
+        '冻结材料计价、人工和制造费用费率，按生产工单对比计划与实际成本；核算与审批职责强制分离。',
+      ),
+    );
+    const summary = el('div', 'production-summary');
+    summary.append(
+      el('div', 'metric-card', `成本政策\n${String(policies.length)} 个版本`),
+      el('div', 'metric-card', `已核算工单\n${String(runs.length)} 张`),
+      el(
+        'div',
+        'metric-card',
+        `待审批\n${String(runs.filter((x) => recordText(x, 'state', 'state') === 'CALCULATED').length)} 张`,
+      ),
+      el(
+        'div',
+        'metric-card',
+        `已批准\n${String(runs.filter((x) => recordText(x, 'state', 'state') === 'APPROVED').length)} 张`,
+      ),
+    );
+    panel.append(summary);
+    if (permissions.has('manufacturing-cost:calculate') && policies.length) {
+      for (const order of orders.filter(
+        (x) =>
+          recordText(x, 'state', 'state') === 'COMPLETED' &&
+          !runs.some(
+            (r) => recordText(r, 'production_order_id', 'productionOrderId') === String(x.id),
+          ),
+      )) {
+        const button = el(
+          'button',
+          'secondary',
+          `核算 ${recordText(order, 'orderNumber', 'order_number')}`,
+        );
+        button.addEventListener('click', () => {
+          void (async () => {
+            await controller.submit('/api/v1/production-cost-runs', {
+              productionOrderId: String(order.id),
+              policyId: String(policies[0]?.id),
+              runNumber: `COST-${recordText(order, 'orderNumber', 'order_number')}`,
+              idempotencyKey: `COST-${String(order.id)}`,
+            });
+            await controller.load();
+            status.textContent = controller.message;
+          })();
+        });
+        panel.append(button);
+      }
+    }
+    const grid = el('div', 'production-order-grid');
+    for (const run of runs) {
+      const card = el('article', 'production-order-card');
+      card.append(
+        el(
+          'h3',
+          '',
+          `${recordText(run, 'run_number', 'runNumber')} · ${recordText(run, 'state', 'state')}`,
+        ),
+        el(
+          'p',
+          '',
+          `工单 ${recordText(run, 'orderNumber', 'orderNumber')} · ${recordText(run, 'currency', 'currency')}`,
+        ),
+        el(
+          'p',
+          '',
+          `计划 ${recordText(run, 'planned_total', 'plannedTotal')} · 实际 ${recordText(run, 'actual_total', 'actualTotal')} · 差异 ${recordText(run, 'variance_total', 'varianceTotal')}`,
+        ),
+      );
+      if (
+        permissions.has('manufacturing-cost:approve') &&
+        recordText(run, 'state', 'state') === 'CALCULATED'
+      ) {
+        const approve = el('button', 'primary', '批准成本');
+        approve.addEventListener('click', () => {
+          void (async () => {
+            await controller.submit(`/api/v1/production-cost-runs/${String(run.id)}/approve`, {
+              reason: '成本差异复核通过',
+              evidence: { channel: 'WEB-UAT' },
+              idempotencyKey: `APPROVE-${String(run.id)}`,
+            });
+            await controller.load();
+            status.textContent = controller.message;
+          })();
+        });
+        card.append(approve);
+      }
+      grid.append(card);
+    }
+    if (!runs.length)
+      grid.append(
+        el('p', 'success-note', '暂无已核算工单；生产工单完工后由制造成本核算会计发起。'),
+      );
     panel.append(grid);
     workspace.append(panel);
   }

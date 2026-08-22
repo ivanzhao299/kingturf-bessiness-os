@@ -38,6 +38,7 @@ import { PostgresManufacturingRepository } from './manufacturing-repositories.ts
 import { PostgresProcurementRepository } from './procurement-repositories.ts';
 import { PostgresMrpRepository } from './mrp-repositories.ts';
 import { PostgresProductionRepository } from './production-repositories.ts';
+import { PostgresProductionCostRepository } from './production-cost-repositories.ts';
 import { PostgresQualityRepository } from './quality-repositories.ts';
 
 const config = parseEnvironment(process.env);
@@ -84,6 +85,7 @@ const app = buildApp({
   procurement: new PostgresProcurementRepository(database),
   mrp: new PostgresMrpRepository(database),
   production: new PostgresProductionRepository(database),
+  productionCosts: new PostgresProductionCostRepository(database),
   quality: new PostgresQualityRepository(database),
   readiness: async () => {
     try {

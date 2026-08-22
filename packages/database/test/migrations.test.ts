@@ -24,7 +24,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0047_atomic_role_segregation_guards.sql');
+    expect(ordered.at(-1)).toBe('0048_actual_manufacturing_cost.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
@@ -68,6 +68,24 @@ describe('identity and authorization migration', () => {
     expect(triggerRepair).toContain('JOIN quotes quote_root');
     expect(triggerRepair).toContain("IF TG_TABLE_NAME='sales_orders' THEN");
     expect(triggerRepair).not.toContain('JOIN quotes q ON');
+  });
+  it('adds immutable actual manufacturing cost, variance, approval, and close gates', async () => {
+    const sql = await readFile(
+      join(process.cwd(), 'migrations/0048_actual_manufacturing_cost.sql'),
+      'utf8',
+    );
+    for (const table of [
+      'production_cost_policies',
+      'production_cost_policy_material_rates',
+      'production_cost_runs',
+      'production_cost_run_events',
+    ])
+      expect(sql).toContain(`CREATE TABLE ${table}`);
+    expect(sql).toContain('cost run calculator cannot approve or reject own calculation');
+    expect(sql).toContain('production order close requires approved actual manufacturing cost');
+    expect(sql).toContain('KT_MANUFACTURING_COST_ACCOUNTANT');
+    expect(sql).toContain('KT_MANUFACTURING_COST_APPROVER');
+    expect(sql).toContain('manufacturing cost evidence is immutable');
   });
   it('adds atomic company roles with explicit segregation of critical duties', async () => {
     const sql = await readFile(

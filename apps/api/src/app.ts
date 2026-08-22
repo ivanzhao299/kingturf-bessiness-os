@@ -44,6 +44,7 @@ import type { PostgresManufacturingRepository } from './manufacturing-repositori
 import type { PostgresProcurementRepository } from './procurement-repositories.ts';
 import type { PostgresMrpRepository } from './mrp-repositories.ts';
 import type { PostgresProductionRepository } from './production-repositories.ts';
+import type { PostgresProductionCostRepository } from './production-cost-repositories.ts';
 import type { PostgresQualityRepository } from './quality-repositories.ts';
 
 type Json = unknown;
@@ -102,6 +103,7 @@ export type ApiDependencies = Readonly<{
   procurement?: PostgresProcurementRepository;
   mrp?: PostgresMrpRepository;
   production?: PostgresProductionRepository;
+  productionCosts?: PostgresProductionCostRepository;
   quality?: PostgresQualityRepository;
   readiness?: () => Promise<boolean>;
   telemetry?: Telemetry;
@@ -1201,6 +1203,136 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               correlationId,
             );
             return { statusCode: 201, body: mutationDto(result, context, 'production:read') };
+          }
+        }
+        if (dependencies.productionCosts) {
+          if (request.method === 'GET' && request.pathname === '/api/v1/production-cost-policies') {
+            const grant = authorizeQuery(context, 'manufacturing-cost:read');
+            const items = await dependencies.productionCosts.listPolicies({
+              actor: context.actor,
+              scopes: grant.scopes,
+              anchors: grant.anchors,
+            });
+            return { statusCode: 200, body: { items } };
+          }
+          if (request.method === 'GET' && request.pathname === '/api/v1/production-cost-runs') {
+            const grant = authorizeQuery(context, 'manufacturing-cost:read');
+            const items = await dependencies.productionCosts.list({
+              actor: context.actor,
+              scopes: grant.scopes,
+              anchors: grant.anchors,
+            });
+            return {
+              statusCode: 200,
+              body: {
+                items: items.map((item) =>
+                  permittedDto(
+                    item,
+                    context.permissions.get('manufacturing-cost:read')?.fields ?? null,
+                  ),
+                ),
+              },
+            };
+          }
+          if (
+            request.method === 'POST' &&
+            request.pathname === '/api/v1/production-cost-policies'
+          ) {
+            const body = objectBody(request.body);
+            allow(body, [
+              'version',
+              'currency',
+              'laborRatePerHour',
+              'machineRatePerHour',
+              'overheadRatePerMachineHour',
+              'effectiveFrom',
+              'effectiveTo',
+              'sourceReference',
+              'materialRates',
+            ]);
+            const grant = authorizeQuery(context, 'manufacturing-cost:policy', Object.keys(body));
+            if (!Array.isArray(body.materialRates) || !body.materialRates.length)
+              throw new DomainError('invalid_request', 'materialRates must be a non-empty array');
+            const materialRates = body.materialRates.map((raw) => {
+              const x = objectBody(raw);
+              allow(x, ['itemVersionId', 'unitCost', 'sourceReference']);
+              return {
+                itemVersionId: uuid(x.itemVersionId, 'itemVersionId'),
+                unitCost: decimal(x.unitCost, 'unitCost'),
+                sourceReference: assertStableCode(string(x.sourceReference, 'sourceReference')),
+              };
+            });
+            const result = await dependencies.productionCosts.createPolicy(
+              {
+                version: integer(body.version, 'version', 1, 1000000),
+                currency: assertCurrency(string(body.currency, 'currency')),
+                laborRatePerHour: decimal(body.laborRatePerHour, 'laborRatePerHour'),
+                machineRatePerHour: decimal(body.machineRatePerHour, 'machineRatePerHour'),
+                overheadRatePerMachineHour: decimal(
+                  body.overheadRatePerMachineHour,
+                  'overheadRatePerMachineHour',
+                ),
+                effectiveFrom: calendarDate(body.effectiveFrom, 'effectiveFrom'),
+                ...(body.effectiveTo === undefined
+                  ? {}
+                  : { effectiveTo: calendarDate(body.effectiveTo, 'effectiveTo') }),
+                sourceReference: assertStableCode(string(body.sourceReference, 'sourceReference')),
+                materialRates,
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return {
+              statusCode: 201,
+              body: mutationDto(result, context, 'manufacturing-cost:read'),
+            };
+          }
+          if (request.method === 'POST' && request.pathname === '/api/v1/production-cost-runs') {
+            const body = objectBody(request.body);
+            allow(body, ['productionOrderId', 'policyId', 'runNumber', 'idempotencyKey']);
+            const grant = authorizeQuery(
+              context,
+              'manufacturing-cost:calculate',
+              Object.keys(body),
+            );
+            const result = await dependencies.productionCosts.calculate(
+              {
+                productionOrderId: uuid(body.productionOrderId, 'productionOrderId'),
+                policyId: uuid(body.policyId, 'policyId'),
+                runNumber: assertStableCode(string(body.runNumber, 'runNumber')),
+                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return {
+              statusCode: 201,
+              body: mutationDto(result, context, 'manufacturing-cost:read'),
+            };
+          }
+          const costDecision =
+            /^\/api\/v1\/production-cost-runs\/([0-9a-f-]+)\/(approve|reject)$/u.exec(
+              request.pathname,
+            );
+          if (request.method === 'POST' && costDecision) {
+            const body = objectBody(request.body);
+            allow(body, ['reason', 'evidence', 'idempotencyKey']);
+            const grant = authorizeQuery(context, 'manufacturing-cost:approve', Object.keys(body));
+            const result = await dependencies.productionCosts.decide(
+              uuid(costDecision[1], 'costRunId'),
+              costDecision[2] === 'approve' ? 'APPROVED' : 'REJECTED',
+              {
+                reason: string(body.reason, 'reason'),
+                evidence: jsonObject(body.evidence ?? {}, 'evidence'),
+                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return {
+              statusCode: 201,
+              body: mutationDto(result, context, 'manufacturing-cost:read'),
+            };
           }
         }
         if (dependencies.quality) {

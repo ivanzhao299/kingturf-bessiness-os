@@ -106,7 +106,7 @@ describe('PostgreSQL tenant integrity', () => {
        GROUP BY r.id ORDER BY r.code`,
       [companyA],
     );
-    expect(roles.rows).toHaveLength(38);
+    expect(roles.rows).toHaveLength(40);
     const catalog = new Map(roles.rows.map((role) => [role.code, role.capabilities]));
     expect(catalog.get('KT_QUOTE_EDITOR')).toContain('quote:create');
     expect(catalog.get('KT_QUOTE_EDITOR')).not.toContain('quote:approve');

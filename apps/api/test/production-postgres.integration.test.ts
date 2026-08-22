@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Database, migrate } from '@kingturf/database';
 import { PostgresProductionRepository } from '../src/production-repositories.js';
+import { PostgresProductionCostRepository } from '../src/production-cost-repositories.js';
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString)
@@ -12,6 +13,7 @@ describe('KT-L15 PostgreSQL production execution acceptance', () => {
   const company = randomUUID(),
     team = randomUUID(),
     employee = randomUUID(),
+    approver = randomUUID(),
     finishedItem = randomUUID(),
     finishedVersion = randomUUID(),
     materialItem = randomUUID(),
@@ -28,7 +30,10 @@ describe('KT-L15 PostgreSQL production execution acceptance', () => {
     scopes: ['COMPANY'] as const,
     anchors: [],
   };
-  let admin: Database, db: Database, production: PostgresProductionRepository;
+  let admin: Database,
+    db: Database,
+    production: PostgresProductionRepository,
+    costs: PostgresProductionCostRepository;
 
   beforeAll(async () => {
     admin = new Database(connectionString);
@@ -48,6 +53,10 @@ describe('KT-L15 PostgreSQL production execution acceptance', () => {
     await db.query(
       "INSERT INTO employees(id,company_id,organization_id,employee_number,display_name,normalized_email) VALUES($1,$2,$3,'E1','Operator','operator@production.test')",
       [employee, company, team],
+    );
+    await db.query(
+      "INSERT INTO employees(id,company_id,organization_id,employee_number,display_name,normalized_email) VALUES($1,$2,$3,'E2','Cost Approver','approver@production.test')",
+      [approver, company, team],
     );
     await db.query(
       "INSERT INTO manufacturing_items(id,tenant_id,sku,name,item_type,base_unit_code,created_by) VALUES($1,$2,'FG-1','Finished','FINISHED_GOOD','M2',$3),($4,$2,'RM-1','Material','RAW_MATERIAL','KG',$3)",
@@ -94,6 +103,7 @@ describe('KT-L15 PostgreSQL production execution acceptance', () => {
       [company, materialVersion, materialLot, location, randomUUID(), employee, randomUUID()],
     );
     production = new PostgresProductionRepository(db);
+    costs = new PostgresProductionCostRepository(db);
   });
 
   afterAll(async () => {
@@ -216,6 +226,54 @@ describe('KT-L15 PostgreSQL production execution acceptance', () => {
       'COMPLETED',
       { reason: 'Done', evidence: {}, idempotencyKey: 'WO-1-COMPLETE' },
       context,
+      randomUUID(),
+    );
+    const policy = await costs.createPolicy(
+      {
+        version: 1,
+        currency: 'CNY',
+        laborRatePerHour: '60',
+        machineRatePerHour: '120',
+        overheadRatePerMachineHour: '30',
+        effectiveFrom: '2026-08-01',
+        sourceReference: 'COST-POLICY-1',
+        materialRates: [
+          { itemVersionId: materialVersion, unitCost: '5', sourceReference: 'RM-1-STANDARD' },
+        ],
+      },
+      context,
+      randomUUID(),
+    );
+    const costRun = await costs.calculate(
+      {
+        productionOrderId: order.id as string,
+        policyId: policy.id,
+        runNumber: 'COST-WO-1',
+        idempotencyKey: 'COST-WO-1-CALC',
+      },
+      context,
+      randomUUID(),
+    );
+    expect(costRun.plannedTotal).toBe('88.500000');
+    expect(costRun.actualTotal).toBe('237.500000');
+    await expect(
+      costs.decide(
+        costRun.id,
+        'APPROVED',
+        { reason: 'Self approval', evidence: {}, idempotencyKey: 'COST-WO-1-SELF' },
+        context,
+        randomUUID(),
+      ),
+    ).rejects.toThrow(/cannot approve/u);
+    await costs.decide(
+      costRun.id,
+      'APPROVED',
+      {
+        reason: 'Finance approved',
+        evidence: { review: 'OK' },
+        idempotencyKey: 'COST-WO-1-APPROVE',
+      },
+      { ...context, actor: { companyId: company, employeeId: approver } },
       randomUUID(),
     );
     await production.transition(
