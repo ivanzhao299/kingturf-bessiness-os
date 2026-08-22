@@ -591,6 +591,23 @@ export class PostgresAuthorizationRepository implements AuthorizationRepository 
     correlationId: string,
   ): Promise<void> {
     await this.db.transaction(async (tx) => {
+      const conflict = (
+        await tx.query<{ incomingCode: string; existingCode: string; reason: string }>(
+          `SELECT incoming.code AS "incomingCode",existing.code AS "existingCode",c.reason
+           FROM roles incoming
+           JOIN employee_role_assignments era ON era.employee_id=$1
+           JOIN roles existing ON existing.id=era.role_id
+           JOIN atomic_role_conflicts c ON c.left_role_code=least(incoming.code,existing.code)
+             AND c.right_role_code=greatest(incoming.code,existing.code)
+           WHERE incoming.id=$2 AND incoming.organization_id=$3 LIMIT 1`,
+          [employeeId, roleId, actor.companyId],
+        )
+      ).rows[0];
+      if (conflict)
+        throw new DomainError(
+          'conflict',
+          `Role assignment violates segregation of duties: ${conflict.incomingCode} conflicts with ${conflict.existingCode} (${conflict.reason})`,
+        );
       const r = await tx.query(
         'INSERT INTO employee_role_assignments(employee_id,role_id,created_by) SELECT e.id,r.id,$3 FROM employees e JOIN roles r ON r.id=$2 AND r.organization_id=e.company_id WHERE e.id=$1 AND e.company_id=$4 AND e.deleted_at IS NULL AND r.deleted_at IS NULL ON CONFLICT DO NOTHING',
         [employeeId, roleId, actor.employeeId, actor.companyId],

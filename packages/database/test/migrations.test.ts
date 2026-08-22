@@ -24,7 +24,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0046_atomic_business_role_catalog.sql');
+    expect(ordered.at(-1)).toBe('0047_atomic_role_segregation_guards.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
@@ -97,6 +97,22 @@ describe('identity and authorization migration', () => {
     expect(sql).not.toMatch(
       /KT_(SYSTEM_AUDITOR|EXECUTIVE_VIEWER)'\s*,\s*'[^']+:(manage|create|update|approve|issue|sign|post|pay|move|inspect|disposition)'/u,
     );
+  });
+  it('enforces critical atomic-role conflicts in PostgreSQL', async () => {
+    const sql = await readFile(
+      join(process.cwd(), 'migrations/0047_atomic_role_segregation_guards.sql'),
+      'utf8',
+    );
+    expect(sql).toContain('CREATE TABLE atomic_role_conflicts');
+    expect(sql).toContain('CREATE TRIGGER employee_role_assignments_segregation');
+    expect(sql).toContain('segregation of duties conflict');
+    for (const conflict of [
+      'KT_QUOTE_APPROVER',
+      'KT_CREDIT_ANALYST',
+      'KT_CASHIER',
+      'KT_QUALITY_INSPECTOR',
+    ])
+      expect(sql).toContain(conflict);
   });
   it('uses effective quality disposition for planning, inventory, and production', async () => {
     const sql = await readFile(

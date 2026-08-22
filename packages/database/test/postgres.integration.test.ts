@@ -121,6 +121,29 @@ describe('PostgreSQL tenant integrity', () => {
       'every atomic role must have at least one capability',
     ).toBe(true);
   });
+  it('rejects assignment of conflicting prepare and approve roles to one employee', async () => {
+    const conflicting = await getTestDatabase().query<{ id: string; code: string }>(
+      "SELECT id,code FROM roles WHERE organization_id=$1 AND code=ANY(ARRAY['KT_QUOTE_EDITOR','KT_QUOTE_APPROVER']::text[]) ORDER BY code",
+      [companyA],
+    );
+    const approver = conflicting.rows.find((role) => role.code === 'KT_QUOTE_APPROVER');
+    const editor = conflicting.rows.find((role) => role.code === 'KT_QUOTE_EDITOR');
+    expect(approver).toBeDefined();
+    expect(editor).toBeDefined();
+    await getTestDatabase().query(
+      'INSERT INTO employee_role_assignments(employee_id,role_id) VALUES($1,$2)',
+      [scopedEmployee, editor?.id],
+    );
+    await expect(
+      getTestDatabase().query(
+        'INSERT INTO employee_role_assignments(employee_id,role_id) VALUES($1,$2)',
+        [scopedEmployee, approver?.id],
+      ),
+    ).rejects.toThrow(/segregation of duties conflict/u);
+    await getTestDatabase().query('DELETE FROM employee_role_assignments WHERE employee_id=$1', [
+      scopedEmployee,
+    ]);
+  });
   it('rejects moving an employee organization across companies', async () => {
     await expect(
       getTestDatabase().query('UPDATE employees SET organization_id=$1 WHERE id=$2', [

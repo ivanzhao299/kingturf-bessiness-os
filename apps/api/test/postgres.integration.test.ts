@@ -360,6 +360,21 @@ describe('PostgreSQL identity and authorization behavior', () => {
     ).rejects.toThrow(/audit events are immutable/u);
   });
 
+  it('returns an actionable conflict before assigning incompatible atomic roles', async () => {
+    const roles = await database.query<{ id: string; code: string }>(
+      "SELECT id,code FROM roles WHERE organization_id=$1 AND code=ANY(ARRAY['KT_QUOTE_EDITOR','KT_QUOTE_APPROVER']::text[])",
+      [company],
+    );
+    const editor = roles.rows.find((role) => role.code === 'KT_QUOTE_EDITOR');
+    const approver = roles.rows.find((role) => role.code === 'KT_QUOTE_APPROVER');
+    if (!editor || !approver) throw new Error('Atomic quote roles are required');
+    await authorization.assign(looseId, editor.id, actor, randomUUID());
+    await expect(authorization.assign(looseId, approver.id, actor, randomUUID())).rejects.toThrow(
+      /segregation of duties/u,
+    );
+    await authorization.unassign(looseId, editor.id, actor, randomUUID());
+  });
+
   it('writes organization and employee audits atomically with target and correlation', async () => {
     const correlationId = randomUUID();
     const created = await employees.create(
