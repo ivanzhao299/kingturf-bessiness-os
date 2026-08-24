@@ -100,6 +100,12 @@ export type CommercialPermission =
   | 'manufacturing-cost:policy'
   | 'manufacturing-cost:calculate'
   | 'manufacturing-cost:approve'
+  | 'shipment:read'
+  | 'shipment:request'
+  | 'shipment:approve-exception'
+  | 'shipment:release'
+  | 'shipment:dispatch'
+  | 'shipment:track'
   | 'quality-plan:read'
   | 'quality-plan:manage'
   | 'quality:read'
@@ -324,6 +330,7 @@ export function isCommercialPermission(item: string): item is CommercialPermissi
     'quality-plan:',
     'quality:',
     'traceability:',
+    'shipment:',
   ].some((prefix) => item.startsWith(prefix));
 }
 
@@ -561,6 +568,7 @@ export class CommercialController {
         ['quality-plan:read', '/api/v1/quality-plans'],
         ['quality:read', '/api/v1/quality-inspections'],
         ['traceability:read', '/api/v1/lot-traceability'],
+        ['shipment:read', '/api/v1/shipment-releases'],
       ] as const;
       for (const [permission, path] of readable)
         if (this.permissions.has(permission)) this.views.set(path, await this.api.list(path));
@@ -1269,6 +1277,262 @@ export function commercialWorkspaceStructure(
     if (!runs.length)
       grid.append(
         el('p', 'success-note', '暂无已核算工单；生产工单完工后由制造成本核算会计发起。'),
+      );
+    panel.append(grid);
+    workspace.append(panel);
+  }
+  if (controller && permissions.has('shipment:read')) {
+    const panel = el('section', 'shipment-workbench');
+    panel.setAttribute('data-testid', 'shipment-workbench');
+    const releases = controller.views.get('/api/v1/shipment-releases') ?? [];
+    const orders = controller.views.get('/api/v1/sales-orders') ?? [];
+    const productionOrders = controller.views.get('/api/v1/production-orders') ?? [];
+    const lots = controller.views.get('/api/v1/lot-traceability') ?? [];
+    const shipmentRecords = (
+      release: Record<string, unknown>,
+    ): readonly Record<string, unknown>[] =>
+      Array.isArray(release.shipments)
+        ? release.shipments.filter(
+            (item): item is Record<string, unknown> => typeof item === 'object' && item !== null,
+          )
+        : [];
+    panel.append(
+      el('p', 'eyebrow', 'SHIPMENT RELEASE & PROOF OF DELIVERY'),
+      el('h2', '', '发货放行与物流签收'),
+      el(
+        'p',
+        'commercial-help',
+        '合同、信用、收款、逾期、订单来源、质量、生产、成本和库存九类门禁自动冻结；例外审批、仓库放行、承运轨迹与签收回单形成同一证据链。',
+      ),
+    );
+    const summary = el('div', 'production-summary');
+    summary.append(
+      el('div', 'metric-card', `放行申请\n${String(releases.length)} 张`),
+      el(
+        'div',
+        'metric-card',
+        `例外待审\n${String(releases.filter((x) => recordText(x, 'state', 'state') === 'EXCEPTION_PENDING').length)} 张`,
+      ),
+      el(
+        'div',
+        'metric-card',
+        `已放行\n${String(releases.filter((x) => recordText(x, 'state', 'state') === 'RELEASED').length)} 张`,
+      ),
+      el(
+        'div',
+        'metric-card',
+        `已签收\n${String(releases.flatMap((x) => shipmentRecords(x)).filter((x) => recordText(x, 'state', 'state') === 'DELIVERED').length)} 票`,
+      ),
+    );
+    panel.append(summary);
+    if (
+      permissions.has('shipment:request') &&
+      orders.length &&
+      productionOrders.length &&
+      lots.length
+    ) {
+      const button = el('button', 'primary', '＋ 发起发货门禁检查');
+      button.addEventListener('click', () => {
+        openForm(
+          workspace,
+          '发起发货放行申请',
+          '系统在提交瞬间冻结九类门禁结果；未通过项只能进入独立例外审批，不能由申请人自行绕过。',
+          [
+            { name: 'requestNumber', label: '放行申请号', required: true },
+            {
+              name: 'salesOrderId',
+              label: '销售订单',
+              type: 'select',
+              required: true,
+              options: orders.map((x) => ({
+                value: String(x.id),
+                label: recordText(x, 'orderNumber', 'order_number'),
+              })),
+            },
+            {
+              name: 'productionOrderId',
+              label: '生产工单',
+              type: 'select',
+              required: true,
+              options: productionOrders.map((x) => ({
+                value: String(x.id),
+                label: recordText(x, 'orderNumber', 'order_number'),
+              })),
+            },
+            {
+              name: 'finishedLotId',
+              label: '成品批次',
+              type: 'select',
+              required: true,
+              options: lots
+                .filter((x) => recordText(x, 'qualityStatus', 'qualityStatus') === 'RELEASED')
+                .map((x) => ({
+                  value: String(x.lotId ?? x.id),
+                  label: `${recordText(x, 'lotNumber', 'lotNumber')} · ${recordText(x, 'sku', 'sku')}`,
+                })),
+            },
+            { name: 'requestedQuantity', label: '发货数量', type: 'number', required: true },
+            {
+              name: 'requiredPaymentAmount',
+              label: '发货前应收款金额',
+              type: 'number',
+              required: true,
+            },
+            { name: 'reason', label: '发货事由', required: true },
+          ],
+          '执行门禁检查',
+          async (values) => {
+            const requestNumber = String(values.requestNumber);
+            await controller.submit('/api/v1/shipment-releases', {
+              ...values,
+              idempotencyKey: requestNumber,
+            });
+            await controller.load();
+            status.textContent = controller.message;
+          },
+        );
+      });
+      panel.append(button);
+    }
+    const grid = el('div', 'production-order-grid');
+    for (const release of releases) {
+      const state = recordText(release, 'state', 'state');
+      const snapshot = (release.gate_snapshot ?? release.gateSnapshot ?? {}) as Record<
+        string,
+        unknown
+      >;
+      const failures = Array.isArray(snapshot.failures) ? snapshot.failures.join('、') : '无';
+      const card = el('article', 'production-order-card');
+      card.append(
+        el('h3', '', `${recordText(release, 'request_number', 'requestNumber')} · ${state}`),
+        el(
+          'p',
+          '',
+          `销售订单 ${recordText(release, 'orderNumber', 'orderNumber')} · 工单 ${recordText(release, 'productionOrderNumber', 'productionOrderNumber')}`,
+        ),
+        el(
+          'p',
+          '',
+          `批次 ${recordText(release, 'lotNumber', 'lotNumber')} · 数量 ${recordText(release, 'requested_quantity', 'requestedQuantity')}`,
+        ),
+        el('p', failures === '无' ? 'success-note' : 'risk-note', `门禁未通过：${failures}`),
+      );
+      const action = async (
+        path: string,
+        reason: string,
+        evidence: Record<string, unknown>,
+        key: string,
+      ) => {
+        await controller.submit(path, { reason, evidence, idempotencyKey: key });
+        await controller.load();
+        status.textContent = controller.message;
+      };
+      if (state === 'EXCEPTION_PENDING' && permissions.has('shipment:approve-exception')) {
+        const approve = el('button', 'primary', '批准例外');
+        approve.addEventListener(
+          'click',
+          () =>
+            void action(
+              `/api/v1/shipment-releases/${String(release.id)}/approve-exception`,
+              '例外风险已复核',
+              { channel: 'WEB-UAT' },
+              `SHIP-EX-${String(release.id)}`,
+            ),
+        );
+        card.append(approve);
+      }
+      if ((state === 'READY' || state === 'APPROVED') && permissions.has('shipment:release')) {
+        const releaseButton = el('button', 'primary', '执行仓库放行');
+        releaseButton.addEventListener(
+          'click',
+          () =>
+            void action(
+              `/api/v1/shipment-releases/${String(release.id)}/release`,
+              '仓库复核后放行',
+              { channel: 'WEB-UAT' },
+              `SHIP-REL-${String(release.id)}`,
+            ),
+        );
+        card.append(releaseButton);
+      }
+      if (
+        state === 'RELEASED' &&
+        permissions.has('shipment:dispatch') &&
+        (!Array.isArray(release.shipments) || release.shipments.length === 0)
+      ) {
+        const dispatch = el('button', 'secondary', '登记承运发车');
+        dispatch.addEventListener('click', () => {
+          openForm(
+            workspace,
+            '登记承运发车',
+            '录入唯一运单与封车证据。',
+            [
+              { name: 'shipmentNumber', label: '发运单号', required: true },
+              { name: 'carrierName', label: '承运商', required: true },
+              { name: 'trackingNumber', label: '物流单号', required: true },
+              { name: 'dispatchedAt', label: '发车时间', required: true },
+              { name: 'location', label: '发车地点', required: true },
+            ],
+            '确认发车',
+            async (values) => {
+              await controller.submit(`/api/v1/shipment-releases/${String(release.id)}/dispatch`, {
+                ...values,
+                evidence: { channel: 'WEB-UAT' },
+                idempotencyKey: String(values.shipmentNumber),
+              });
+              await controller.load();
+              status.textContent = controller.message;
+            },
+          );
+        });
+        card.append(dispatch);
+      }
+      for (const shipment of shipmentRecords(release)) {
+        if (
+          recordText(shipment, 'state', 'state') !== 'DELIVERED' &&
+          permissions.has('shipment:track')
+        ) {
+          const pod = el(
+            'button',
+            'secondary',
+            `登记签收 ${recordText(shipment, 'tracking_number', 'trackingNumber')}`,
+          );
+          pod.addEventListener('click', () => {
+            openForm(
+              workspace,
+              '登记客户签收回单',
+              '签收人、签收时间和回单编号为强制证据。',
+              [
+                { name: 'receiverName', label: '签收人', required: true },
+                { name: 'receivedAt', label: '签收时间', required: true },
+                { name: 'proofReference', label: '回单/附件编号', required: true },
+                { name: 'location', label: '签收地点', required: true },
+              ],
+              '确认签收',
+              async (values) => {
+                await controller.submit(`/api/v1/shipments/${String(shipment.id)}/deliver`, {
+                  occurredAt: values.receivedAt,
+                  location: values.location,
+                  evidence: {
+                    receiverName: values.receiverName,
+                    receivedAt: values.receivedAt,
+                    proofReference: values.proofReference,
+                  },
+                  idempotencyKey: `POD-${String(shipment.id)}`,
+                });
+                await controller.load();
+                status.textContent = controller.message;
+              },
+            );
+          });
+          card.append(pod);
+        }
+      }
+      grid.append(card);
+    }
+    if (!releases.length)
+      grid.append(
+        el('p', 'success-note', '暂无发货放行申请；由发货申请员从已完工且质量放行的批次发起。'),
       );
     panel.append(grid);
     workspace.append(panel);
@@ -5617,6 +5881,7 @@ export function commercialWorkspaceStructure(
     'mrp-workbench': 'operations-workspace planning-production',
     'production-workbench': 'operations-workspace planning-production',
     'quality-workbench': 'operations-workspace quality-warehouse',
+    'shipment-workbench': 'operations-workspace delivery-evidence',
   };
   for (const child of Array.from(workspace.children)) {
     const routeTokens = Object.entries(commercialRouteTokens).find(([className]) =>

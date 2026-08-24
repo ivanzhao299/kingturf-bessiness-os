@@ -24,7 +24,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0049_manufacturing_cost_admin_grants.sql');
+    expect(ordered.at(-1)).toBe('0050_shipment_release_logistics_pod.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
@@ -68,6 +68,26 @@ describe('identity and authorization migration', () => {
     expect(triggerRepair).toContain('JOIN quotes quote_root');
     expect(triggerRepair).toContain("IF TG_TABLE_NAME='sales_orders' THEN");
     expect(triggerRepair).not.toContain('JOIN quotes q ON');
+  });
+  it('adds immutable shipment gates, separated exception approval, tracking, and proof of delivery', async () => {
+    const sql = await readFile(
+      join(process.cwd(), 'migrations/0050_shipment_release_logistics_pod.sql'),
+      'utf8',
+    );
+    for (const table of [
+      'shipment_release_requests',
+      'shipment_release_events',
+      'shipments',
+      'shipment_events',
+    ])
+      expect(sql).toContain(`CREATE TABLE ${table}`);
+    expect(sql).toContain('shipment requester cannot approve own exception');
+    expect(sql).toContain('shipment gate snapshot does not match server evidence');
+    expect(sql).toContain('release initial state must match gate failures');
+    expect(sql).toContain('shipment requires released gate');
+    expect(sql).toContain('delivery requires receiver, timestamp, and proof reference');
+    expect(sql).toContain('shipment evidence is immutable');
+    expect(sql).toContain('KT_SHIPMENT_EXCEPTION_APPROVER');
   });
   it('adds immutable actual manufacturing cost, variance, approval, and close gates', async () => {
     const sql = await readFile(

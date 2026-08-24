@@ -21,6 +21,7 @@ import {
 it('admits manufacturing cost capabilities into the commercial workspace', () => {
   expect(isCommercialPermission('manufacturing-cost:read')).toBe(true);
   expect(isCommercialPermission('manufacturing-cost:approve')).toBe(true);
+  expect(isCommercialPermission('shipment:request')).toBe(true);
   expect(isCommercialPermission('unrelated:read')).toBe(false);
 });
 

@@ -24,6 +24,7 @@ import type { PostgresManufacturingRepository } from '../src/manufacturing-repos
 import type { PostgresProcurementRepository } from '../src/procurement-repositories.js';
 import type { PostgresMrpRepository } from '../src/mrp-repositories.js';
 import type { PostgresProductionRepository } from '../src/production-repositories.js';
+import type { PostgresShipmentRepository } from '../src/shipment-repositories.js';
 import type { AuthenticationService } from '../src/security.js';
 
 const employeeId = '10000000-0000-4000-8000-000000000001';
@@ -299,6 +300,18 @@ function dependencies(authContext: AuthorizationContext | null) {
     reportOperation: productionReport,
     createOutput: productionOutput,
   } as unknown as PostgresProductionRepository;
+  const shipmentList = vi.fn(() => Promise.resolve([{ id: targetId, state: 'READY' }]));
+  const shipmentRequest = vi.fn(() => Promise.resolve({ id: targetId, state: 'READY' }));
+  const shipmentTransition = vi.fn(() => Promise.resolve({ id: targetId, state: 'RELEASED' }));
+  const shipmentDispatch = vi.fn(() => Promise.resolve({ id: targetId, state: 'DISPATCHED' }));
+  const shipmentTrack = vi.fn(() => Promise.resolve({ id: targetId, state: 'DELIVERED' }));
+  const shipments = {
+    list: shipmentList,
+    request: shipmentRequest,
+    transition: shipmentTransition,
+    dispatch: shipmentDispatch,
+    track: shipmentTrack,
+  } as unknown as PostgresShipmentRepository;
   return {
     auth,
     provisionIdentity,
@@ -340,6 +353,12 @@ function dependencies(authContext: AuthorizationContext | null) {
     productionMaterial,
     productionReport,
     productionOutput,
+    shipments,
+    shipmentList,
+    shipmentRequest,
+    shipmentTransition,
+    shipmentDispatch,
+    shipmentTrack,
     dashboardGet,
     riskEvaluate,
     riskTransition,
@@ -1528,6 +1547,104 @@ describe('authorization management API', () => {
           dependencies(context(grant('production:read'))),
           'POST',
           '/api/v1/production-orders',
+          {},
+        )
+      ).statusCode,
+    ).toBe(403);
+  });
+  it('routes governed shipment release, exception, dispatch, tracking, and POD commands', async () => {
+    const permissions: AuthorizationContext['permissions'] = new Map(
+      [
+        'shipment:read',
+        'shipment:request',
+        'shipment:approve-exception',
+        'shipment:release',
+        'shipment:dispatch',
+        'shipment:track',
+      ].map((capability) => [
+        capability as `${string}:${string}`,
+        { scopes: ['COMPANY'] as const, fields: null },
+      ]),
+    );
+    const deps = dependencies(context(permissions));
+    expect((await dispatch(deps, 'GET', '/api/v1/shipment-releases')).statusCode).toBe(200);
+    expect(
+      (
+        await dispatch(deps, 'POST', '/api/v1/shipment-releases', {
+          requestNumber: 'SR-1',
+          salesOrderId: targetId,
+          productionOrderId: organizationId,
+          finishedLotId: employeeId,
+          requestedQuantity: '100',
+          requiredPaymentAmount: '5000',
+          reason: 'Customer delivery',
+          idempotencyKey: 'SR-1',
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(
+      (
+        await dispatch(deps, 'POST', `/api/v1/shipment-releases/${targetId}/approve-exception`, {
+          reason: 'Approved exception',
+          evidence: { approval: 'AP-1' },
+          idempotencyKey: 'SR-1-APPROVE',
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(
+      (
+        await dispatch(deps, 'POST', `/api/v1/shipment-releases/${targetId}/release`, {
+          reason: 'Gate released',
+          evidence: { dock: 'D1' },
+          idempotencyKey: 'SR-1-RELEASE',
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(
+      (
+        await dispatch(deps, 'POST', `/api/v1/shipment-releases/${targetId}/dispatch`, {
+          shipmentNumber: 'SHIP-1',
+          carrierName: 'Test Carrier',
+          trackingNumber: 'TRACK-1',
+          dispatchedAt: '2026-08-24T08:00:00Z',
+          location: 'Factory',
+          evidence: { seal: 'S1' },
+          idempotencyKey: 'SHIP-1',
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(
+      (
+        await dispatch(deps, 'POST', `/api/v1/shipments/${targetId}/deliver`, {
+          occurredAt: '2026-08-25T08:00:00Z',
+          location: 'Customer',
+          evidence: {
+            receiverName: 'Buyer',
+            receivedAt: '2026-08-25T08:00:00Z',
+            proofReference: 'POD-1',
+          },
+          idempotencyKey: 'SHIP-1-POD',
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(deps.shipmentRequest).toHaveBeenCalledWith(
+      expect.objectContaining({ requestNumber: 'SR-1' }),
+      expect.objectContaining({ scopes: ['COMPANY'] }),
+      expect.any(String),
+    );
+    expect(deps.shipmentTrack).toHaveBeenCalledWith(
+      targetId,
+      'DELIVERED',
+      expect.objectContaining({ location: 'Customer' }),
+      expect.any(Object),
+      expect.any(String),
+    );
+    expect(
+      (
+        await dispatch(
+          dependencies(context(grant('shipment:read'))),
+          'POST',
+          '/api/v1/shipment-releases',
           {},
         )
       ).statusCode,

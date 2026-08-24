@@ -106,9 +106,11 @@ describe('PostgreSQL tenant integrity', () => {
        GROUP BY r.id ORDER BY r.code`,
       [companyA],
     );
-    expect(roles.rows).toHaveLength(40);
+    expect(roles.rows).toHaveLength(44);
     const catalog = new Map(roles.rows.map((role) => [role.code, role.capabilities]));
     expect(catalog.get('KT_QUOTE_EDITOR')).toContain('quote:create');
+    expect(catalog.get('KT_SHIPMENT_REQUESTER')).toContain('shipment:request');
+    expect(catalog.get('KT_SHIPMENT_EXCEPTION_APPROVER')).toContain('shipment:approve-exception');
     expect(catalog.get('KT_QUOTE_EDITOR')).not.toContain('quote:approve');
     expect(catalog.get('KT_QUOTE_APPROVER')).toContain('quote:approve');
     expect(catalog.get('KT_QUOTE_APPROVER')).not.toContain('quote:issue');
