@@ -119,6 +119,39 @@ describe('PostgreSQL identity and authorization behavior', () => {
     expect(await employees.list(company, ['REGION'], looseId)).toEqual([]);
   });
 
+  it('provisions a login only for an active employee in the actor tenant', async () => {
+    const identityId = await security.provisionIdentity({
+      employeeId: childId,
+      companyId: company,
+      login: 'kt-cost-approver',
+      passwordHash: 'scrypt$16384$8$1$c2FsdA$aGFzaA',
+      actorId,
+    });
+    expect(identityId).toMatch(/^[0-9a-f-]{36}$/u);
+    const stored = await database.query<{
+      login_name: string;
+      employee_id: string;
+      password_hash: string;
+    }>(
+      'SELECT i.login_name,i.employee_id,pc.password_hash FROM identities i JOIN password_credentials pc ON pc.identity_id=i.id WHERE i.id=$1',
+      [identityId],
+    );
+    expect(stored.rows[0]).toEqual({
+      login_name: 'kt-cost-approver',
+      employee_id: childId,
+      password_hash: 'scrypt$16384$8$1$c2FsdA$aGFzaA',
+    });
+    await expect(
+      security.provisionIdentity({
+        employeeId: otherId,
+        companyId: company,
+        login: 'cross-tenant-approver',
+        passwordHash: 'scrypt$16384$8$1$c2FsdA$aGFzaA',
+        actorId,
+      }),
+    ).rejects.toMatchObject({ code: 'not_found' });
+  });
+
   it('maintains closure on create/reparent/root moves and rejects multi-level cycles', async () => {
     const createCorrelation = randomUUID();
     const updateCorrelation = randomUUID();

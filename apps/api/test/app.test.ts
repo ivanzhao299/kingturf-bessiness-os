@@ -63,11 +63,13 @@ const employee: EmployeeDto = {
 
 function dependencies(authContext: AuthorizationContext | null) {
   const logout = vi.fn(() => Promise.resolve());
+  const provisionIdentity = vi.fn(() => Promise.resolve());
   const auth = {
     authenticate: vi.fn(() => Promise.resolve(authContext)),
     login: vi.fn(() => Promise.resolve({ token: 'opaque', expiresAt: new Date().toISOString() })),
     logout,
     changePassword: vi.fn(() => Promise.resolve()),
+    provisionIdentity,
   } as unknown as AuthenticationService;
   const organizations = {
     create: vi.fn(() => Promise.resolve(organization)),
@@ -299,6 +301,7 @@ function dependencies(authContext: AuthorizationContext | null) {
   } as unknown as PostgresProductionRepository;
   return {
     auth,
+    provisionIdentity,
     organizations,
     employees,
     authorization,
@@ -455,6 +458,30 @@ describe('authentication and protected API contracts', () => {
     const denied = dependencies(context(new Map()));
     expect((await dispatch(denied, 'GET', '/api/v1/employees')).statusCode).toBe(403);
     expect(denied.employees.list).not.toHaveBeenCalled();
+  });
+  it('requires authorization management before provisioning an employee identity', async () => {
+    const denied = dependencies(context(new Map()));
+    const deniedResponse = await dispatch(denied, 'PUT', `/api/v1/employees/${targetId}/identity`, {
+      login: 'kt-cost-approver',
+      password: 'correct horse battery',
+    });
+    expect(deniedResponse.statusCode).toBe(403);
+
+    const allowed = dependencies(context(grant('authorization:manage')));
+    const allowedResponse = await dispatch(
+      allowed,
+      'PUT',
+      `/api/v1/employees/${targetId}/identity`,
+      { login: 'kt-cost-approver', password: 'correct horse battery' },
+    );
+    expect(allowedResponse.statusCode).toBe(204);
+    expect(allowed.provisionIdentity).toHaveBeenCalledWith(
+      expect.objectContaining({ actor: { employeeId, companyId } }),
+      targetId,
+      'kt-cost-approver',
+      'correct horse battery',
+      expect.stringMatching(/^[0-9a-f-]{36}$/u),
+    );
   });
 });
 

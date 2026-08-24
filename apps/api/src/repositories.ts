@@ -413,6 +413,34 @@ export class PostgresSecurityStore implements CredentialStore, AuditSink {
     );
     if (result.rowCount !== 1) throw new DomainError('not_found', 'Credential not found');
   }
+  public async provisionIdentity(
+    input: Readonly<{
+      employeeId: string;
+      companyId: string;
+      login: string;
+      passwordHash: string;
+      actorId: string;
+    }>,
+  ): Promise<string> {
+    return this.database.transaction(async (tx) => {
+      const employee = await tx.query<{ id: string }>(
+        'SELECT id FROM employees WHERE id=$1 AND company_id=$2 AND active AND deleted_at IS NULL FOR UPDATE',
+        [input.employeeId, input.companyId],
+      );
+      if (!employee.rows[0]) throw new DomainError('not_found', 'Active employee not found');
+      const identity = await tx.query<{ id: string }>(
+        'INSERT INTO identities(employee_id,login_name,created_by,updated_by) VALUES($1,$2,$3,$3) RETURNING id',
+        [input.employeeId, input.login, input.actorId],
+      );
+      const identityId = identity.rows[0]?.id;
+      if (!identityId) throw new DomainError('conflict', 'Identity could not be provisioned');
+      await tx.query(
+        "INSERT INTO password_credentials(identity_id,algorithm,password_hash,created_by,updated_by) VALUES($1,'scrypt',$2,$3,$3)",
+        [identityId, input.passwordHash, input.actorId],
+      );
+      return identityId;
+    });
+  }
   public async record(event: AuditEvent): Promise<void> {
     await this.database.query(
       'INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata) VALUES($1,$2,$3,$4,$5,$6,$7,$8)',

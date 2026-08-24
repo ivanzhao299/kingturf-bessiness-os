@@ -1865,6 +1865,22 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           );
           return { statusCode: 204, body: {} };
         }
+        const identityProvisionMatch = /^\/api\/v1\/employees\/([0-9a-f-]+)\/identity$/u.exec(
+          request.pathname,
+        );
+        if (request.method === 'PUT' && identityProvisionMatch) {
+          authorizeQuery(context, 'authorization:manage');
+          const body = objectBody(request.body);
+          allow(body, ['login', 'password']);
+          await dependencies.auth.provisionIdentity(
+            context,
+            uuid(identityProvisionMatch[1], 'employeeId'),
+            string(body.login, 'login'),
+            string(body.password, 'password'),
+            correlationId,
+          );
+          return { statusCode: 204, body: {} };
+        }
         const qtcReads = new Map<
           string,
           readonly [

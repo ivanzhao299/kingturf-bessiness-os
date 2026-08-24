@@ -35,6 +35,15 @@ export type CredentialStore = {
   revokeSession(tokenHash: string): Promise<boolean>;
   resolveSession(tokenHash: string, now: Date): Promise<AuthorizationContext | null>;
   replacePasswordForEmployee(employeeId: string, passwordHash: string): Promise<void>;
+  provisionIdentity(
+    input: Readonly<{
+      employeeId: string;
+      companyId: string;
+      login: string;
+      passwordHash: string;
+      actorId: string;
+    }>,
+  ): Promise<string>;
 };
 export class PasswordHasher {
   public constructor(private readonly options: AppConfig['password']) {}
@@ -151,6 +160,35 @@ export class AuthenticationService {
       organizationId: context.actor.companyId,
       targetType: 'employee',
       targetId: context.actor.employeeId,
+      correlationId,
+    });
+  }
+  public async provisionIdentity(
+    context: AuthorizationContext,
+    employeeId: string,
+    login: string,
+    password: string,
+    correlationId: string,
+  ): Promise<void> {
+    const normalizedLogin = login.trim().toLocaleLowerCase('en-US');
+    if (!/^[a-z0-9][a-z0-9._-]{2,63}$/u.test(normalizedLogin))
+      throw new Error(
+        'Login must contain 3-64 lowercase letters, numbers, dots, underscores or hyphens',
+      );
+    const identityId = await this.store.provisionIdentity({
+      employeeId,
+      companyId: context.actor.companyId,
+      login: normalizedLogin,
+      passwordHash: await this.hasher.hash(password),
+      actorId: context.actor.employeeId,
+    });
+    await this.audit.record({
+      action: 'auth.identity_provision',
+      outcome: 'SUCCESS',
+      actorId: context.actor.employeeId,
+      organizationId: context.actor.companyId,
+      targetType: 'identity',
+      targetId: identityId,
       correlationId,
     });
   }
