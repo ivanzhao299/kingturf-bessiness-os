@@ -155,6 +155,24 @@ export type GovernanceSurface = Readonly<{
 
 export const GOVERNANCE_SURFACES: readonly GovernanceSurface[] = [
   {
+    id: 'organizations',
+    title: '组织架构',
+    description: '维护公司范围内的组织层级、区域、部门和团队。',
+    readPermission: 'organization:read',
+    managePermission: 'organization:create',
+    paths: ['/api/v1/organizations'],
+    disposition: 'USER_FACING',
+  },
+  {
+    id: 'employees',
+    title: '员工与身份基础',
+    description: '维护员工所属组织和有效状态；账号授权在独立身份权限模块完成。',
+    readPermission: 'employee:read',
+    managePermission: 'employee:create',
+    paths: ['/api/v1/employees'],
+    disposition: 'USER_FACING',
+  },
+  {
     id: 'identity-access',
     title: '身份、角色与授权',
     description: '角色、权限、授权、人员角色和数据范围的统一管理入口。',
@@ -6841,6 +6859,7 @@ export function createCrmShell(
   controller: CrmController,
   width = window.innerWidth,
   allPermissions: ReadonlySet<string> = controller.permissions,
+  profileLabel = '当前账号',
 ): HTMLElement {
   const sections = visibleCrmSections(controller.permissions);
   const employeeChoices = controller.employees.map((employee) => ({
@@ -6923,8 +6942,8 @@ export function createCrmShell(
   );
   const profile = el('div', 'profile-chip');
   profile.append(
-    el('span', 'profile-avatar', '超'),
-    el('span', '', '超级管理员'),
+    el('span', 'profile-avatar', profileLabel.slice(0, 1)),
+    el('span', '', profileLabel),
     el('span', 'chevron', '⌄'),
   );
   utility.append(search, profile);
@@ -7554,6 +7573,153 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
     );
     panel.append(heading, el('p', 'muted', surface.description));
     const actions = el('div', 'governance-actions');
+    if (surface.id === 'organizations' && permissions.has('organization:create')) {
+      const create = el('button', 'secondary', '新建组织');
+      create.addEventListener('click', () => {
+        openAction(
+          '新建组织',
+          '组织将自动绑定当前公司，父组织必须处于同一公司。',
+          [
+            { name: 'code', label: '组织编码', required: true },
+            { name: 'name', label: '组织名称', required: true },
+            {
+              name: 'parentId',
+              label: '父组织',
+              type: 'select',
+              options: [
+                { value: '', label: '无父组织' },
+                ...choices(
+                  '/api/v1/organizations',
+                  (item) => `${textValue(item.code, '')} · ${textValue(item.name, '')}`,
+                ),
+              ],
+            },
+          ],
+          (values) =>
+            controller.submit('/api/v1/organizations', {
+              parentId: values.parentId || null,
+              code: values.code,
+              name: values.name,
+              locale: 'zh-CN',
+              currency: 'CNY',
+            }),
+        );
+      });
+      actions.append(create);
+    }
+    if (surface.id === 'organizations' && permissions.has('organization:update')) {
+      const update = el('button', 'secondary', '更新组织');
+      update.addEventListener('click', () => {
+        openAction(
+          '更新组织',
+          '使用服务器当前版本执行乐观并发更新，避免覆盖其他管理员的修改。',
+          [
+            {
+              name: 'organizationId',
+              label: '组织',
+              type: 'select',
+              required: true,
+              options: choices(
+                '/api/v1/organizations',
+                (item) => `${textValue(item.code, '')} · ${textValue(item.name, '')}`,
+              ),
+            },
+            { name: 'name', label: '新名称', required: true },
+          ],
+          async (values) => {
+            const selected = records('/api/v1/organizations').find(
+              (item) => item.id === values.organizationId,
+            );
+            await controller.submit(
+              `/api/v1/organizations/${values.organizationId}`,
+              { name: values.name, version: Number(selected?.version) },
+              'PATCH',
+            );
+          },
+        );
+      });
+      actions.append(update);
+    }
+    if (surface.id === 'employees' && permissions.has('employee:create')) {
+      const create = el('button', 'secondary', '新建员工');
+      create.addEventListener('click', () => {
+        openAction(
+          '新建员工',
+          '员工必须归属当前公司下的有效组织；账号和角色在后续授权步骤配置。',
+          [
+            {
+              name: 'organizationId',
+              label: '所属组织',
+              type: 'select',
+              required: true,
+              options: choices(
+                '/api/v1/organizations',
+                (item) => `${textValue(item.code, '')} · ${textValue(item.name, '')}`,
+              ),
+            },
+            { name: 'employeeNumber', label: '员工编号', required: true },
+            { name: 'displayName', label: '员工姓名', required: true },
+            { name: 'email', label: '登录邮箱', type: 'email', required: true },
+          ],
+          (values) =>
+            controller.submit('/api/v1/employees', {
+              organizationId: values.organizationId,
+              employeeNumber: values.employeeNumber,
+              displayName: values.displayName,
+              email: values.email,
+            }),
+        );
+      });
+      actions.append(create);
+    }
+    if (surface.id === 'employees' && permissions.has('employee:update')) {
+      const update = el('button', 'secondary', '更新员工');
+      update.addEventListener('click', () => {
+        openAction(
+          '更新员工',
+          '更新显示名称或有效状态；字段权限和数据范围仍由服务器强制执行。',
+          [
+            {
+              name: 'employeeId',
+              label: '员工',
+              type: 'select',
+              required: true,
+              options: choices(
+                '/api/v1/employees',
+                (item) =>
+                  `${textValue(item.employeeNumber, '')} · ${textValue(item.displayName, '')}`,
+              ),
+            },
+            { name: 'displayName', label: '显示名称', required: true },
+            {
+              name: 'active',
+              label: '账号状态',
+              type: 'select',
+              required: true,
+              options: [
+                { value: 'true', label: '有效' },
+                { value: 'false', label: '停用' },
+              ],
+            },
+          ],
+          async (values) => {
+            const selected = records('/api/v1/employees').find(
+              (item) => item.id === values.employeeId,
+            );
+            await controller.submit(
+              `/api/v1/employees/${values.employeeId}`,
+              {
+                displayName: values.displayName,
+                active: values.active === 'true',
+                version: Number(selected?.version),
+              },
+              'PATCH',
+            );
+          },
+        );
+      });
+      actions.append(update);
+    }
     if (surface.id === 'identity-access' && permissions.has('authorization:manage')) {
       const role = el('button', 'secondary', '新建角色');
       role.addEventListener('click', () => {
@@ -7680,6 +7846,79 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
       });
       actions.append(category, entry);
     }
+    if (surface.id === 'master-data' && permissions.has('master-data:update')) {
+      const update = el('button', 'secondary', '更新主数据条目');
+      update.addEventListener('click', () => {
+        openAction(
+          '更新主数据条目',
+          '生成新的有效版本；服务器使用当前记录版本防止并发覆盖。',
+          [
+            {
+              name: 'entryId',
+              label: '条目',
+              type: 'select',
+              required: true,
+              options: choices(
+                '/api/v1/master-data/entries',
+                (item) => `${textValue(item.code, '')} · ${textValue(item.label, '')}`,
+              ),
+            },
+            { name: 'label', label: '显示名称', required: true },
+            { name: 'value', label: '结构化值（JSON）', type: 'textarea', required: true },
+            { name: 'effectiveFrom', label: '生效时间', required: true },
+          ],
+          async (values) => {
+            const selected = records('/api/v1/master-data/entries').find(
+              (item) => item.id === values.entryId,
+            );
+            await controller.submit(
+              `/api/v1/master-data/entries/${values.entryId}`,
+              {
+                label: values.label,
+                value: jsonField(values.value, '结构化值'),
+                effectiveFrom: values.effectiveFrom,
+                effectiveTo: null,
+                version: Number(selected?.version),
+              },
+              'PATCH',
+            );
+          },
+        );
+      });
+      actions.append(update);
+    }
+    if (surface.id === 'master-data' && permissions.has('master-data:delete')) {
+      const remove = el('button', 'secondary danger', '停用主数据条目');
+      remove.addEventListener('click', () => {
+        openAction(
+          '停用主数据条目',
+          '停用属于受控逻辑删除，历史版本和审计记录继续保留。',
+          [
+            {
+              name: 'entryId',
+              label: '条目',
+              type: 'select',
+              required: true,
+              options: choices(
+                '/api/v1/master-data/entries',
+                (item) => `${textValue(item.code, '')} · ${textValue(item.label, '')}`,
+              ),
+            },
+          ],
+          async (values) => {
+            const selected = records('/api/v1/master-data/entries').find(
+              (item) => item.id === values.entryId,
+            );
+            await controller.submit(
+              `/api/v1/master-data/entries/${values.entryId}?version=${String(Number(selected?.version))}`,
+              {},
+              'DELETE',
+            );
+          },
+        );
+      });
+      actions.append(remove);
+    }
     if (surface.id === 'numbering' && permissions.has('number:create')) {
       const number = el('button', 'secondary', '新建编号规则');
       number.addEventListener('click', () => {
@@ -7707,6 +7946,55 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
       });
       actions.append(number);
     }
+    if (surface.id === 'numbering' && permissions.has('number:update')) {
+      const publish = el('button', 'secondary', '发布编号版本');
+      publish.addEventListener('click', () => {
+        openAction(
+          '发布编号版本',
+          '发布后的编号格式不可修改；后续调整必须创建新版本。',
+          [
+            {
+              name: 'definitionId',
+              label: '编号规则',
+              type: 'select',
+              required: true,
+              options: choices('/api/v1/number-definitions', (item) =>
+                textValue(item.code, '编号规则'),
+              ),
+            },
+            { name: 'version', label: '待发布版本', type: 'number', required: true },
+          ],
+          (values) =>
+            controller.submit(`/api/v1/number-definitions/${values.definitionId}/publish`, {
+              version: Number(values.version),
+            }),
+        );
+      });
+      actions.append(publish);
+    }
+    if (surface.id === 'numbering' && permissions.has('number:allocate')) {
+      const allocate = el('button', 'secondary', '分配测试编号');
+      allocate.addEventListener('click', () => {
+        openAction(
+          '分配受控编号',
+          '每次提交使用独立幂等键，返回值由服务器序列化生成。',
+          [
+            {
+              name: 'definitionId',
+              label: '编号规则',
+              type: 'select',
+              required: true,
+              options: choices('/api/v1/number-definitions', (item) =>
+                textValue(item.code, '编号规则'),
+              ),
+            },
+          ],
+          (values) =>
+            controller.submit(`/api/v1/number-definitions/${values.definitionId}/allocate`, {}),
+        );
+      });
+      actions.append(allocate);
+    }
     if (surface.id === 'rules' && permissions.has('rule:create')) {
       const rule = el('button', 'secondary', '新建业务规则');
       rule.addEventListener('click', () => {
@@ -7731,6 +8019,54 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
       });
       actions.append(rule);
     }
+    if (surface.id === 'rules' && permissions.has('rule:update')) {
+      const publish = el('button', 'secondary', '发布规则版本');
+      publish.addEventListener('click', () => {
+        openAction(
+          '发布业务规则',
+          '已发布规则不可修改，试算和业务执行始终引用冻结版本。',
+          [
+            {
+              name: 'ruleId',
+              label: '业务规则',
+              type: 'select',
+              required: true,
+              options: choices('/api/v1/rules', (item) => textValue(item.code, '规则')),
+            },
+            { name: 'version', label: '待发布版本', type: 'number', required: true },
+          ],
+          (values) =>
+            controller.submit(`/api/v1/rules/${values.ruleId}/publish`, {
+              version: Number(values.version),
+            }),
+        );
+      });
+      actions.append(publish);
+    }
+    if (surface.id === 'rules' && permissions.has('rule:evaluate')) {
+      const evaluate = el('button', 'secondary', '试算规则');
+      evaluate.addEventListener('click', () => {
+        openAction(
+          '试算业务规则',
+          '试算返回决策、输入哈希和逐步计算轨迹。',
+          [
+            {
+              name: 'ruleId',
+              label: '业务规则',
+              type: 'select',
+              required: true,
+              options: choices('/api/v1/rules', (item) => textValue(item.code, '规则')),
+            },
+            { name: 'input', label: '输入数据（JSON）', type: 'textarea', required: true },
+          ],
+          (values) =>
+            controller.submit(`/api/v1/rules/${values.ruleId}/evaluate`, {
+              input: jsonField(values.input, '输入数据'),
+            }),
+        );
+      });
+      actions.append(evaluate);
+    }
     if (surface.id === 'workflow' && permissions.has('workflow:create')) {
       const workflow = el('button', 'secondary', '新建工作流');
       workflow.addEventListener('click', () => {
@@ -7749,6 +8085,145 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
         );
       });
       actions.append(workflow);
+    }
+    if (surface.id === 'workflow' && permissions.has('workflow:update')) {
+      const publish = el('button', 'secondary', '发布工作流');
+      publish.addEventListener('click', () => {
+        openAction(
+          '发布工作流',
+          '发布后启动的实例固定引用该流程版本。',
+          [
+            {
+              name: 'workflowId',
+              label: '工作流',
+              type: 'select',
+              required: true,
+              options: choices('/api/v1/workflows', (item) => textValue(item.code, '工作流')),
+            },
+            { name: 'version', label: '待发布版本', type: 'number', required: true },
+          ],
+          (values) =>
+            controller.submit(`/api/v1/workflows/${values.workflowId}/publish`, {
+              version: Number(values.version),
+            }),
+        );
+      });
+      actions.append(publish);
+    }
+    if (surface.id === 'workflow' && permissions.has('workflow:start')) {
+      const start = el('button', 'secondary', '启动工作流');
+      start.addEventListener('click', () => {
+        openAction(
+          '启动工作流实例',
+          '流程实例绑定业务对象类型和对象 ID，并使用幂等键防止重复启动。',
+          [
+            {
+              name: 'workflowId',
+              label: '工作流',
+              type: 'select',
+              required: true,
+              options: choices('/api/v1/workflows', (item) => textValue(item.code, '工作流')),
+            },
+            { name: 'subjectType', label: '业务对象类型', required: true },
+            { name: 'subjectId', label: '业务对象 ID', required: true },
+          ],
+          (values) =>
+            controller.submit(`/api/v1/workflows/${values.workflowId}/instances`, {
+              subjectType: values.subjectType,
+              subjectId: values.subjectId,
+            }),
+        );
+      });
+      actions.append(start);
+    }
+    if (surface.id === 'workflow' && permissions.has('workflow:decide')) {
+      const decide = el('button', 'secondary', '处理审批待办');
+      decide.addEventListener('click', () => {
+        openAction(
+          '处理工作流待办',
+          '审批人、法定人数和申请人隔离由服务器校验。',
+          [
+            {
+              name: 'taskId',
+              label: '待办任务',
+              type: 'select',
+              required: true,
+              options: choices(
+                '/api/v1/workflow-tasks',
+                (item) => `${textValue(item.stepKey, '待办')} · ${textValue(item.state, '')}`,
+              ),
+            },
+            {
+              name: 'decision',
+              label: '决定',
+              type: 'select',
+              required: true,
+              options: [
+                { value: 'approve', label: '批准' },
+                { value: 'reject', label: '拒绝' },
+              ],
+            },
+            { name: 'comment', label: '审批意见', type: 'textarea' },
+          ],
+          async (values) => {
+            const selected = records('/api/v1/workflow-tasks').find(
+              (item) => item.id === values.taskId,
+            );
+            await controller.submit(`/api/v1/workflow-tasks/${values.taskId}/decisions`, {
+              decision: values.decision,
+              comment: values.comment ?? null,
+              version: Number(selected?.version),
+            });
+          },
+        );
+      });
+      actions.append(decide);
+    }
+    if (surface.id === 'notifications' && permissions.has('notification:manage')) {
+      const preference = el('button', 'secondary', '通知偏好');
+      preference.addEventListener('click', () => {
+        openAction(
+          '更新通知偏好',
+          '仅调整当前账号的通知通道，使用版本号防止并发覆盖。',
+          [
+            {
+              name: 'channel',
+              label: '通知通道',
+              type: 'select',
+              required: true,
+              options: records('/api/v1/notification-preferences').map((item) => ({
+                value: textValue(item.channel, ''),
+                label: `${textValue(item.channel, '')} · ${item.enabled === false ? '关闭' : '开启'}`,
+              })),
+            },
+            {
+              name: 'enabled',
+              label: '状态',
+              type: 'select',
+              required: true,
+              options: [
+                { value: 'true', label: '开启' },
+                { value: 'false', label: '关闭' },
+              ],
+            },
+          ],
+          async (values) => {
+            const selected = records('/api/v1/notification-preferences').find(
+              (item) => item.channel === values.channel,
+            );
+            await controller.submit(
+              '/api/v1/notification-preferences',
+              {
+                channel: values.channel,
+                enabled: values.enabled === 'true',
+                expectedVersion: Number(selected?.version ?? 0),
+              },
+              'PUT',
+            );
+          },
+        );
+      });
+      actions.append(preference);
     }
     if (surface.id === 'registry' && permissions.has('business-object:manage')) {
       const object = el('button', 'secondary', '新建业务对象');
@@ -7812,8 +8287,34 @@ async function login(login: string, password: string): Promise<string> {
   return result.token;
 }
 function loginView(root: HTMLElement): void {
-  const form = el('form', 'login panel');
-  form.append(el('h1', '', BOOTSTRAP_TITLE));
+  const shell = el('main', 'login-shell');
+  const story = el('section', 'login-story');
+  story.append(
+    el('p', 'eyebrow', 'KINGTURF · BUSINESS OPERATING SYSTEM'),
+    el('h1', '', '让订单、生产与交付证据在一条业务链上闭环'),
+    el(
+      'p',
+      'login-intro',
+      '面向销售、财务、供应链、生产、质量与管理岗位的统一工作台。页面和操作会根据当前角色自动呈现。',
+    ),
+  );
+  const features = el('div', 'login-feature-grid');
+  for (const [number, title, detail] of [
+    ['01', '业务贯通', '从客户需求到回款、生产和签收证据'],
+    ['02', '权限清晰', '原子角色、字段权限和数据范围逐层生效'],
+    ['03', '证据可信', '审批、版本、哈希和时间线不可变留痕'],
+  ] as const) {
+    const item = el('article', 'login-feature');
+    item.append(el('span', '', number), el('strong', '', title), el('p', '', detail));
+    features.append(item);
+  }
+  story.append(features);
+  const form = el('form', 'login-card');
+  form.append(
+    el('p', 'eyebrow', 'SECURE ACCESS'),
+    el('h2', '', '登录金特夫'),
+    el('p', 'muted', '使用已分配的组织账号进入角色工作台。'),
+  );
   const identity = el('input');
   identity.name = 'login';
   identity.placeholder = '账号';
@@ -7837,7 +8338,8 @@ function loginView(root: HTMLElement): void {
         form.append(el('p', 'error', '登录失败'));
       });
   });
-  root.replaceChildren(form);
+  shell.append(story, form);
+  root.replaceChildren(shell);
 }
 export async function bootstrap(root: HTMLElement): Promise<void> {
   const allowed = new Set<CrmPermission>([
@@ -7882,7 +8384,12 @@ export async function bootstrap(root: HTMLElement): Promise<void> {
     controller.error = error instanceof Error ? error.message : 'CRM 加载失败';
   }
   const allPermissions = new Set(session.permissions);
-  const shell = createCrmShell(controller, globalThis.innerWidth || 1280, allPermissions);
+  const shell = createCrmShell(
+    controller,
+    globalThis.innerWidth || 1280,
+    allPermissions,
+    `用户 ${session.employeeId.slice(0, 8)}`,
+  );
   const commercialPermissions = new Set(session.permissions.filter(isCommercialPermission));
   if (Object.values(visibleCommercialSections(commercialPermissions)).some(Boolean)) {
     const commercialController = new CommercialController(

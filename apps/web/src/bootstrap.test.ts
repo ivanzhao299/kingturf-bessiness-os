@@ -3,6 +3,7 @@ import {
   BOOTSTRAP_TITLE,
   CommercialController,
   CrmController,
+  GovernanceController,
   commercialWorkspaceStructure,
   commercialRevisionPath,
   createCrmShell,
@@ -17,6 +18,7 @@ import {
   inventoryLocationOption,
   isCommercialPermission,
   technicalSolutionOpportunityId,
+  governanceWorkspace,
 } from './bootstrap';
 
 it('exposes governance navigation only from atomic session capabilities', () => {
@@ -33,6 +35,25 @@ it('exposes governance navigation only from atomic session capabilities', () => 
     ),
   ).toEqual(['numbering', 'rules', 'workflow']);
   expect(appRouteFromHash('#/governance')).toBe('governance');
+});
+
+it('renders only governance actions granted to the authenticated role', () => {
+  const controller = new GovernanceController(
+    new Set(['organization:read', 'organization:update', 'audit:read']),
+    'test-token',
+  );
+  controller.views = [
+    {
+      path: '/api/v1/organizations',
+      value: [{ id: 'organization-1', code: 'SALES', name: '销售部', version: 1 }],
+    },
+    { path: '/api/v1/audit-events', value: { items: [] } },
+  ];
+  const workspace = governanceWorkspace(controller) as unknown as RenderedElement;
+  expect(workspace.textContent).toContain('更新组织');
+  expect(workspace.textContent).not.toContain('新建组织');
+  expect(workspace.textContent).not.toContain('新建员工');
+  expect(workspace.textContent).toContain('审计中心');
 });
 
 it('admits manufacturing cost capabilities into the commercial workspace', () => {
