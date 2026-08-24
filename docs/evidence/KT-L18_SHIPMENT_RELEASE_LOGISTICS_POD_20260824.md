@@ -35,6 +35,7 @@ Failed gates enter `EXCEPTION_PENDING`. The requester cannot approve or reject t
 - Public runtime: `https://erp.kingturf.cn/health` returned `200 {"status":"ok"}` and `/ready` returned `200 {"status":"ready"}`.
 - Exception-success UAT release: `263d9352-0227-4b1d-9d2b-7ba738d69e9f`; real frozen failures were `quality` and `cost`. Dedicated employee `KT-UAT-COST-APPROVER-01`, additionally assigned only `KT_SHIPMENT_EXCEPTION_APPROVER`, independently approved the exception. Warehouse release, shipment `62182de5-df56-44af-86b6-7cc77eb5693b` and POD `POD-KT-L18-UAT-001` reached `DELIVERED`.
 - Segregation rejection UAT release: `7965fa0c-f50d-4a84-8413-f62c846de3b5`; requester self-approval returned `403 forbidden`, then the independent approver rejected the record to terminal `REJECTED`.
+- Feishu handoff: the completion report was delivered only to the designated private conversation, with receipt `om_x100b678978638cacb0398cf1540b883`; no group delivery was made.
 
 KT-L18 is capability-complete and production-accepted. The next queued long task is KT-L19 collections, legal handoff and debt evidence package.
 
