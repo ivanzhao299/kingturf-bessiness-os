@@ -1462,6 +1462,33 @@ button {
     min-width: 0;
     padding: 0 0 30px;
   }
+  .mobile .commercial-workspace > * {
+    width: auto;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .mobile .pipeline-heading {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .mobile .pipeline-heading > * {
+    min-width: 0;
+  }
+  .mobile .pipeline-columns {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .mobile .ctr-table {
+    min-width: 0;
+    overflow-x: auto;
+  }
+  .mobile .solution-list,
+  .mobile .decision-list,
+  .mobile .quote-list,
+  .mobile .qtc-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .ctr-row {
     grid-template-columns: minmax(0, 1fr) auto;
     padding-top: 12px;
