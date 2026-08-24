@@ -65,6 +65,13 @@ for (const viewport of [
       await page.locator(`[data-app-route="${route.route}"]`).click();
       await expect(page).toHaveURL(new RegExp(`#/${route.route}$`, 'u'));
       await expect(page.locator('[data-route-view]:visible').first()).toBeVisible();
+      await expect(page.locator('[data-route-placeholder]:visible')).toHaveCount(0);
+      const viewportWidth = await page.evaluate(() => document.documentElement.clientWidth);
+      const contentWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+      expect(
+        contentWidth,
+        `${route.label} must not overflow the ${viewport.name} viewport`,
+      ).toBeLessThanOrEqual(viewportWidth);
     }
 
     await testInfo.attach(`visible-routes-${viewport.name}`, {

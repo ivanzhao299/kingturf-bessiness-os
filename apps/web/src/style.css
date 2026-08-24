@@ -811,6 +811,26 @@ button {
   min-width: 0;
   padding: 0 0 40px;
 }
+.commercial-workspace > .production-workbench,
+.commercial-workspace > .shipment-workbench,
+.commercial-workspace > .manufacturing-workbench,
+.commercial-workspace > .procurement-workbench,
+.commercial-workspace > .mrp-workbench,
+.commercial-workspace > .quality-workbench {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+.production-order-card,
+.production-operation,
+.evidence-card,
+.procurement-column,
+.procurement-card,
+.mrp-run-card,
+.mrp-policy-card,
+.mrp-proposal-card {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .commercial-status {
   grid-column: 1 / -1;
 }
