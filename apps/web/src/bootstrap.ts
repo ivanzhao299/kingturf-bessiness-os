@@ -270,6 +270,100 @@ export const visibleGovernanceSurfaces = (permissions: ReadonlySet<string>) =>
       (surface.managePermission !== undefined && permissions.has(surface.managePermission)),
   );
 
+const hasPermissionPrefix = (permissions: ReadonlySet<string>, prefixes: readonly string[]) =>
+  [...permissions].some((permission) => prefixes.some((prefix) => permission.startsWith(prefix)));
+
+export function visibleAppRoutes(permissions: ReadonlySet<string>): ReadonlySet<AppRoute> {
+  const routes = new Set<AppRoute>();
+  if (permissions.has('executive-dashboard:read')) routes.add('overview');
+  if (
+    hasPermissionPrefix(permissions, [
+      'customer:',
+      'customer-',
+      'lead:',
+      'lead-',
+      'opportunity:',
+      'ctr:',
+      'technical-solution:',
+      'cost-model:',
+      'cost:',
+      'sales-policy:',
+      'quote:',
+      'credit:',
+      'contract:',
+      'sales-order:',
+      'order-360:',
+      'ar:',
+      'bank-payment:',
+      'reconciliation:',
+      'commission:',
+      'commission-policy:',
+      'risk:',
+      'risk-policy:',
+    ])
+  )
+    routes.add('sales-workspace');
+  if (
+    hasPermissionPrefix(permissions, [
+      'manufacturing-item:',
+      'bom:',
+      'routing:',
+      'supplier:',
+      'procurement:',
+      'inventory:',
+      'mrp:',
+      'mrp-policy:',
+      'production:',
+      'manufacturing-cost:',
+      'quality:',
+      'quality-plan:',
+      'traceability:',
+      'shipment:',
+    ])
+  )
+    routes.add('operations-workspace');
+  if (hasPermissionPrefix(permissions, ['customer:', 'customer-', 'lead:', 'lead-']))
+    routes.add('crm');
+  if (hasPermissionPrefix(permissions, ['opportunity:', 'ctr:', 'technical-solution:']))
+    routes.add('opportunity-ctr');
+  if (hasPermissionPrefix(permissions, ['cost-model:', 'cost:', 'sales-policy:', 'quote:']))
+    routes.add('cost-quote');
+  if (hasPermissionPrefix(permissions, ['credit:', 'contract:', 'sales-order:', 'order-360:']))
+    routes.add('contract-order');
+  if (
+    hasPermissionPrefix(permissions, [
+      'ar:',
+      'bank-payment:',
+      'reconciliation:',
+      'commission:',
+      'commission-policy:',
+      'risk:',
+      'risk-policy:',
+    ])
+  )
+    routes.add('ar-payment');
+  if (
+    hasPermissionPrefix(permissions, [
+      'manufacturing-item:',
+      'bom:',
+      'routing:',
+      'supplier:',
+      'procurement:',
+      'inventory:',
+      'mrp:',
+      'mrp-policy:',
+      'production:',
+      'manufacturing-cost:',
+    ])
+  )
+    routes.add('planning-production');
+  if (hasPermissionPrefix(permissions, ['quality:', 'quality-plan:', 'traceability:']))
+    routes.add('quality-warehouse');
+  if (hasPermissionPrefix(permissions, ['shipment:'])) routes.add('delivery-evidence');
+  if (visibleGovernanceSurfaces(permissions).length > 0) routes.add('governance');
+  return routes;
+}
+
 const APP_ROUTES = new Set<AppRoute>(Object.keys(APP_ROUTE_LABELS) as AppRoute[]);
 
 export function appRouteFromHash(hash: string): AppRoute {
@@ -6822,6 +6916,14 @@ function setAppRoute(route: AppRoute): void {
 }
 
 export function installAppNavigation(shell: HTMLElement): void {
+  const availableRoutes = new Set(
+    Array.from(shell.querySelectorAll<HTMLElement>('[data-app-route]')).map(
+      (item) => item.dataset.appRoute as AppRoute,
+    ),
+  );
+  const fallbackRoute = availableRoutes.values().next().value as AppRoute | undefined;
+  const allowedRoute = (requested: AppRoute): AppRoute | undefined =>
+    availableRoutes.has(requested) ? requested : fallbackRoute;
   const apply = (route: AppRoute) => {
     for (const item of Array.from(shell.querySelectorAll<HTMLElement>('[data-app-route]'))) {
       const active = item.dataset.appRoute === route;
@@ -6849,9 +6951,16 @@ export function installAppNavigation(shell: HTMLElement): void {
     typeof globalThis.location === 'undefined'
       ? 'overview'
       : appRouteFromHash(globalThis.location.hash);
-  apply(initial);
+  const initialAllowed = allowedRoute(initial);
+  if (initialAllowed === undefined) return;
+  apply(initialAllowed);
+  if (initialAllowed !== initial) setAppRoute(initialAllowed);
   globalThis.addEventListener('hashchange', () => {
-    apply(appRouteFromHash(globalThis.location.hash));
+    const requested = appRouteFromHash(globalThis.location.hash);
+    const allowed = allowedRoute(requested);
+    if (allowed === undefined) return;
+    apply(allowed);
+    if (allowed !== requested) setAppRoute(allowed);
   });
 }
 
@@ -6890,14 +6999,17 @@ export function createCrmShell(
   brand.append(el('p', 'brand-caption', 'Business OS'));
   aside.append(brand);
   const nav = el('nav');
+  const visibleRoutes = visibleAppRoutes(allPermissions);
   const currentRoute =
     typeof globalThis.location === 'undefined'
       ? 'overview'
       : appRouteFromHash(globalThis.location.hash);
   const navGroup = (title: string, items: readonly [string, string, AppRoute][]) => {
+    const visibleItems = items.filter(([, , route]) => visibleRoutes.has(route));
+    if (visibleItems.length === 0) return;
     const group = el('section', 'nav-group');
     group.append(el('p', 'nav-label', title));
-    for (const [glyph, label, route] of items) {
+    for (const [glyph, label, route] of visibleItems) {
       const item = el('button', `nav-item${currentRoute === route ? ' active' : ''}`);
       item.setAttribute('data-app-route', route);
       item.setAttribute('aria-current', currentRoute === route ? 'page' : 'false');
@@ -6926,8 +7038,7 @@ export function createCrmShell(
     ['◈', '质量与仓储', 'quality-warehouse'],
     ['⌁', '交付与证据', 'delivery-evidence'],
   ]);
-  if (visibleGovernanceSurfaces(allPermissions).length > 0)
-    navGroup('平台治理', [['⚙', '系统管理与治理', 'governance']]);
+  navGroup('平台治理', [['⚙', '系统管理与治理', 'governance']]);
   aside.append(nav);
   const sidebarFooter = el('div', 'sidebar-footer');
   sidebarFooter.append(el('span', 'online-dot'), el('span', '', '生产环境 · erp.kingturf.cn'));

@@ -15,11 +15,27 @@ import {
   visibleCrmSections,
   visibleCommercialSections,
   visibleGovernanceSurfaces,
+  visibleAppRoutes,
   inventoryLocationOption,
   isCommercialPermission,
   technicalSolutionOpportunityId,
   governanceWorkspace,
 } from './bootstrap';
+
+it('derives application navigation from atomic role capabilities', () => {
+  expect([...visibleAppRoutes(new Set(['shipment:read']))]).toEqual([
+    'operations-workspace',
+    'delivery-evidence',
+  ]);
+  expect([...visibleAppRoutes(new Set(['notification:read']))]).toEqual(['governance']);
+  expect([...visibleAppRoutes(new Set(['customer:read', 'lead:create']))]).toEqual([
+    'sales-workspace',
+    'crm',
+  ]);
+  expect(visibleAppRoutes(new Set(['executive-dashboard:read', 'authorization:read']))).toEqual(
+    new Set(['overview', 'governance']),
+  );
+});
 
 it('exposes governance navigation only from atomic session capabilities', () => {
   expect(visibleGovernanceSurfaces(new Set(['authorization:read'])).map((item) => item.id)).toEqual(
