@@ -24,7 +24,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0050_shipment_release_logistics_pod.sql');
+    expect(ordered.at(-1)).toBe('0051_shipment_sales_order_source_compatibility.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
@@ -88,6 +88,11 @@ describe('identity and authorization migration', () => {
     expect(sql).toContain('delivery requires receiver, timestamp, and proof reference');
     expect(sql).toContain('shipment evidence is immutable');
     expect(sql).toContain('KT_SHIPMENT_EXCEPTION_APPROVER');
+    const compatibility = await readFile(
+      join(process.cwd(), 'migrations/0051_shipment_sales_order_source_compatibility.sql'),
+      'utf8',
+    );
+    expect(compatibility).toContain("d.source_type IN('SALES_ORDER','SALES-ORDER')");
   });
   it('adds immutable actual manufacturing cost, variance, approval, and close gates', async () => {
     const sql = await readFile(
