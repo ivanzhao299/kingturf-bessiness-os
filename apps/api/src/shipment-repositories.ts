@@ -163,12 +163,17 @@ export class PostgresShipmentRepository {
     return this.db.transaction(async (tx) => {
       company(context);
       const current = (
-        await tx.query<{ sequence: number }>(
-          'SELECT sequence FROM shipment_release_effective_states WHERE tenant_id=$1 AND release_request_id=$2',
+        await tx.query<{ sequence: number; created_by: string }>(
+          'SELECT s.sequence,r.created_by FROM shipment_release_effective_states s JOIN shipment_release_requests r ON r.tenant_id=s.tenant_id AND r.id=s.release_request_id WHERE s.tenant_id=$1 AND s.release_request_id=$2',
           [context.actor.companyId, releaseRequestId],
         )
       ).rows[0];
       if (!current) throw new DomainError('not_found', 'Shipment release request not found');
+      if (
+        (state === 'APPROVED' || state === 'REJECTED') &&
+        current.created_by === context.actor.employeeId
+      )
+        throw new DomainError('forbidden', 'Shipment requester cannot approve own exception');
       const event = {
         releaseRequestId,
         sequence: current.sequence + 1,
