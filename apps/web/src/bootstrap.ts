@@ -405,6 +405,8 @@ export function roleTaskInsight(
   };
 }
 
+export const routeViewSelector = (route: AppRoute): string => `[data-route-view~="${route}"]`;
+
 export function roleWorkspaceProfile(permissions: ReadonlySet<string>): RoleWorkspaceProfile {
   const domains: string[] = [];
   if (permissions.has('executive-dashboard:read')) domains.push('经营管理');
@@ -7434,7 +7436,9 @@ function installRoleTaskInsights(shell: HTMLElement): void {
   for (const task of Array.from(shell.querySelectorAll<HTMLElement>('[data-role-task-route]'))) {
     const route = task.getAttribute('data-role-task-route');
     if (!route) continue;
-    const scopes = Array.from(shell.querySelectorAll<HTMLElement>(`[data-route-view="${route}"]`));
+    const scopes = Array.from(
+      shell.querySelectorAll<HTMLElement>(routeViewSelector(route as AppRoute)),
+    );
     const records = scopes.reduce(
       (total, scope) =>
         total +

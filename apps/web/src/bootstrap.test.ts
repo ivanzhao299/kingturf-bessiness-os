@@ -22,6 +22,7 @@ import {
   isCommercialPermission,
   roleWorkspaceProfile,
   roleTaskInsight,
+  routeViewSelector,
   technicalSolutionOpportunityId,
   governanceWorkspace,
 } from './bootstrap';
@@ -80,6 +81,10 @@ it('derives live role task counts and attention state from rendered business dat
     stateLabel: '当前无阻塞',
     attention: false,
   });
+});
+
+it('matches a route inside multi-workspace data-route-view tokens', () => {
+  expect(routeViewSelector('sales-workspace')).toBe('[data-route-view~="sales-workspace"]');
 });
 
 it.each([
