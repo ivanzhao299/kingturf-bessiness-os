@@ -4090,7 +4090,7 @@ export function commercialWorkspaceStructure(
         el(
           'p',
           'qtc-metrics',
-          `报价 ${recordText(quote, 'quoteNumber', 'quoteNumber', '—')} · 信用 ${recordText(credit, 'effectiveStatus', 'effective_status', '—')} · 合同 ${recordText(contract, 'contractNumber', 'contractNumber', '—')}`,
+          `报价 ${recordText(quote, 'quoteNumber', 'quoteNumber', '—')} · 信用 ${businessStateLabel(recordText(credit, 'effectiveStatus', 'effective_status', '—'), '—')} · 合同 ${recordText(contract, 'contractNumber', 'contractNumber', '—')}`,
         ),
         el(
           'p',
