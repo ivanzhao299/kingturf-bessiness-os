@@ -6921,7 +6921,7 @@ export function installAppNavigation(shell: HTMLElement): void {
       (item) => item.dataset.appRoute as AppRoute,
     ),
   );
-  const fallbackRoute = availableRoutes.values().next().value as AppRoute | undefined;
+  const fallbackRoute = availableRoutes.values().next().value;
   const allowedRoute = (requested: AppRoute): AppRoute | undefined =>
     availableRoutes.has(requested) ? requested : fallbackRoute;
   const apply = (route: AppRoute) => {
@@ -7670,6 +7670,11 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
       throw new Error(error instanceof Error ? error.message : `${label}格式无效`);
     }
   };
+  const requiredValue = (value: string | undefined, label: string): string => {
+    const normalized = value?.trim();
+    if (!normalized) throw new Error(`${label}不能为空`);
+    return normalized;
+  };
   const grid = el('section', 'governance-grid');
   for (const surface of visible) {
     const panel = el('article', 'governance-card');
@@ -7708,7 +7713,7 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
           ],
           (values) =>
             controller.submit('/api/v1/organizations', {
-              parentId: values.parentId || null,
+              parentId: values.parentId?.trim() ? values.parentId : null,
               code: values.code,
               name: values.name,
               locale: 'zh-CN',
@@ -7742,7 +7747,7 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
               (item) => item.id === values.organizationId,
             );
             await controller.submit(
-              `/api/v1/organizations/${values.organizationId}`,
+              `/api/v1/organizations/${requiredValue(values.organizationId, '组织')}`,
               { name: values.name, version: Number(selected?.version) },
               'PATCH',
             );
@@ -7818,7 +7823,7 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
               (item) => item.id === values.employeeId,
             );
             await controller.submit(
-              `/api/v1/employees/${values.employeeId}`,
+              `/api/v1/employees/${requiredValue(values.employeeId, '员工')}`,
               {
                 displayName: values.displayName,
                 active: values.active === 'true',
@@ -7983,7 +7988,7 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
               (item) => item.id === values.entryId,
             );
             await controller.submit(
-              `/api/v1/master-data/entries/${values.entryId}`,
+              `/api/v1/master-data/entries/${requiredValue(values.entryId, '主数据条目')}`,
               {
                 label: values.label,
                 value: jsonField(values.value, '结构化值'),
@@ -8021,7 +8026,7 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
               (item) => item.id === values.entryId,
             );
             await controller.submit(
-              `/api/v1/master-data/entries/${values.entryId}?version=${String(Number(selected?.version))}`,
+              `/api/v1/master-data/entries/${requiredValue(values.entryId, '主数据条目')}?version=${String(Number(selected?.version))}`,
               {},
               'DELETE',
             );
@@ -8076,9 +8081,12 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
             { name: 'version', label: '待发布版本', type: 'number', required: true },
           ],
           (values) =>
-            controller.submit(`/api/v1/number-definitions/${values.definitionId}/publish`, {
-              version: Number(values.version),
-            }),
+            controller.submit(
+              `/api/v1/number-definitions/${requiredValue(values.definitionId, '编号规则')}/publish`,
+              {
+                version: Number(values.version),
+              },
+            ),
         );
       });
       actions.append(publish);
@@ -8101,7 +8109,10 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
             },
           ],
           (values) =>
-            controller.submit(`/api/v1/number-definitions/${values.definitionId}/allocate`, {}),
+            controller.submit(
+              `/api/v1/number-definitions/${requiredValue(values.definitionId, '编号规则')}/allocate`,
+              {},
+            ),
         );
       });
       actions.append(allocate);
@@ -8147,7 +8158,7 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
             { name: 'version', label: '待发布版本', type: 'number', required: true },
           ],
           (values) =>
-            controller.submit(`/api/v1/rules/${values.ruleId}/publish`, {
+            controller.submit(`/api/v1/rules/${requiredValue(values.ruleId, '业务规则')}/publish`, {
               version: Number(values.version),
             }),
         );
@@ -8171,9 +8182,12 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
             { name: 'input', label: '输入数据（JSON）', type: 'textarea', required: true },
           ],
           (values) =>
-            controller.submit(`/api/v1/rules/${values.ruleId}/evaluate`, {
-              input: jsonField(values.input, '输入数据'),
-            }),
+            controller.submit(
+              `/api/v1/rules/${requiredValue(values.ruleId, '业务规则')}/evaluate`,
+              {
+                input: jsonField(values.input, '输入数据'),
+              },
+            ),
         );
       });
       actions.append(evaluate);
@@ -8214,9 +8228,12 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
             { name: 'version', label: '待发布版本', type: 'number', required: true },
           ],
           (values) =>
-            controller.submit(`/api/v1/workflows/${values.workflowId}/publish`, {
-              version: Number(values.version),
-            }),
+            controller.submit(
+              `/api/v1/workflows/${requiredValue(values.workflowId, '工作流')}/publish`,
+              {
+                version: Number(values.version),
+              },
+            ),
         );
       });
       actions.append(publish);
@@ -8239,10 +8256,13 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
             { name: 'subjectId', label: '业务对象 ID', required: true },
           ],
           (values) =>
-            controller.submit(`/api/v1/workflows/${values.workflowId}/instances`, {
-              subjectType: values.subjectType,
-              subjectId: values.subjectId,
-            }),
+            controller.submit(
+              `/api/v1/workflows/${requiredValue(values.workflowId, '工作流')}/instances`,
+              {
+                subjectType: values.subjectType,
+                subjectId: values.subjectId,
+              },
+            ),
         );
       });
       actions.append(start);
@@ -8280,11 +8300,14 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
             const selected = records('/api/v1/workflow-tasks').find(
               (item) => item.id === values.taskId,
             );
-            await controller.submit(`/api/v1/workflow-tasks/${values.taskId}/decisions`, {
-              decision: values.decision,
-              comment: values.comment ?? null,
-              version: Number(selected?.version),
-            });
+            await controller.submit(
+              `/api/v1/workflow-tasks/${requiredValue(values.taskId, '审批任务')}/decisions`,
+              {
+                decision: values.decision,
+                comment: values.comment ?? null,
+                version: Number(selected?.version),
+              },
+            );
           },
         );
       });
