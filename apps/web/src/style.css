@@ -538,6 +538,26 @@ button {
   color: #89968f;
   font-size: 12px;
 }
+.global-search {
+  cursor: pointer;
+  text-align: left;
+}
+.global-search:hover {
+  border-color: #b9cdc2;
+  background: #fff;
+}
+.global-search .search-action {
+  margin-left: auto;
+  color: #2e6a51;
+  font-weight: 700;
+}
+.profile-role {
+  border-left: 1px solid #dce5e0;
+  padding-left: 9px;
+  color: #74857c;
+  font-size: 11px;
+  font-weight: 600;
+}
 .global-search kbd {
   margin-left: auto;
   padding: 3px 7px;

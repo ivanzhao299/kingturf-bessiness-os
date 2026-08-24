@@ -586,6 +586,17 @@ export const inventoryLocationOption = (item: Record<string, unknown>) => ({
 });
 const decimalValue = (value: number): string =>
   String(Math.round((value + Number.EPSILON) * 1_000_000) / 1_000_000);
+const displayMoney = (currency: unknown, value: unknown): string => {
+  const code = textValue(currency, 'CNY');
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return `${code} —`;
+  return new Intl.NumberFormat('zh-CN', {
+    style: 'currency',
+    currency: code,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(amount);
+};
 
 function printIssuedQuote(quote: Record<string, unknown>): void {
   const popup = globalThis.open('', '_blank', 'noopener,noreferrer');
@@ -884,7 +895,8 @@ export function commercialWorkspaceStructure(
     'data-route-view',
     'sales-workspace operations-workspace opportunity-ctr cost-quote contract-order ar-payment planning-production quality-warehouse delivery-evidence',
   );
-  status.textContent = controller?.loading ? '加载中…' : (controller?.message ?? '等待服务器数据');
+  const statusMessage = controller?.loading ? '正在加载业务数据…' : (controller?.message ?? '');
+  status.textContent = statusMessage.startsWith('已加载') ? '' : statusMessage;
   workspace.append(status);
   let riskPolicyControls: HTMLElement | null = null;
   const permissions = controller?.permissions ?? new Set<CommercialPermission>(),
@@ -1875,10 +1887,10 @@ export function commercialWorkspaceStructure(
         name.textContent = opportunity.name ?? opportunity.id;
         const amount = document.createElement('span');
         amount.textContent = opportunity.value
-          ? `${opportunity.value.currency} ${opportunity.value.amount}`
+          ? displayMoney(opportunity.value.currency, opportunity.value.amount)
           : '金额受限';
         const meta = document.createElement('small');
-        meta.textContent = `${String((opportunity.probabilityBasisPoints ?? 0) / 100)}% · ${opportunity.expectedCloseDate ?? '日期未定'}`;
+        meta.textContent = `${String((opportunity.probabilityBasisPoints ?? 0) / 100)}% · ${opportunity.expectedCloseDate?.slice(0, 10) ?? '日期未定'}`;
         card.append(name, amount, meta);
         const nextStage =
           stage === 'OPEN'
@@ -3450,7 +3462,7 @@ export function commercialWorkspaceStructure(
         el(
           'p',
           'qtc-metrics',
-          `申请 ${recordText(decision, 'requestedAmount', 'requested_amount', '—')} ${recordText(decision, 'currency', 'currency')} · 敞口 ${recordText(decision, 'exposureAmount', 'exposure_amount', '—')} · 额度 ${recordText(decision, 'creditLimit', 'limit_amount', '—')}`,
+          `申请 ${displayMoney(decision.currency, decision.requestedAmount ?? decision.requested_amount)} · 敞口 ${displayMoney(decision.currency, decision.exposureAmount ?? decision.exposure_amount)} · 额度 ${displayMoney(decision.currency, decision.creditLimit ?? decision.limit_amount)}`,
         ),
         el(
           'p',
@@ -3572,7 +3584,11 @@ export function commercialWorkspaceStructure(
         el('span', `ctr-state state-${state.toLocaleLowerCase()}`, state),
         el('p', 'muted', `付款：${textValue(content.paymentTerms, '—')}`),
         el('p', 'muted', `交付：${textValue(content.deliveryTerms, '—')}`),
-        el('code', 'input-hash', recordText(contract, 'contentHash', 'content_hash')),
+        el(
+          'code',
+          'input-hash',
+          `签署存证 ${recordText(contract, 'contentHash', 'content_hash').slice(0, 16)}…`,
+        ),
       );
       if (state === 'DRAFT' && permissions.has('contract:sign')) {
         const sign = el('button', 'primary', '记录签署回执');
@@ -7018,6 +7034,66 @@ function navIcon(name: NavIconName): HTMLElement {
   return icon;
 }
 
+const ENTERPRISE_STATUS_LABELS: Readonly<Record<string, string>> = {
+  APPROVED: '已批准',
+  CANCELLED: '已取消',
+  CLAIMED: '已认领',
+  CLOSED: '已关闭',
+  COMPLETED: '已完成',
+  DRAFT: '草稿',
+  EXPIRED: '已过期',
+  FINAL: '已定稿',
+  IN_PROGRESS: '进行中',
+  ISSUED: '已签发',
+  OPEN: '待处理',
+  PARTIALLY_RECEIVED: '部分收货',
+  PENDING: '待处理',
+  PENDING_APPROVAL: '待审批',
+  POOL: '公海',
+  PUBLISHED: '已发布',
+  QUARANTINE: '待检隔离',
+  REJECTED: '已拒绝',
+  RELEASED: '已放行',
+  SIGNED: '已签署',
+  WON: '已赢单',
+  LOST: '已输单',
+};
+
+const ENTERPRISE_EYEBROW_LABELS: Readonly<Record<string, string>> = {
+  'EXECUTIVE COCKPIT': '经营驾驶舱',
+  'SHOP-FLOOR EXECUTION': '车间执行',
+  'ACTUAL COST & VARIANCE': '制造成本分析',
+  'SHIPMENT RELEASE & PROOF OF DELIVERY': '发货与签收',
+  'CTR EVIDENCE': '技术需求证据',
+  'POLICY DECISION': '销售政策判定',
+  'CREDIT DECISION': '信用审查结果',
+  'ORDER 360': '订单全景',
+  'RISK ENGINE V1': '风险评估',
+  'MANUFACTURING MASTER DATA': '制造主数据',
+  'SOURCE TO STOCK': '采购到入库',
+  'EXPLAINABLE MATERIAL PLANNING': '物料需求计划',
+  'QUALITY & WAREHOUSE': '质量与仓储',
+  'KINGTURF WORKFLOW': '业务流程',
+};
+
+function localizeEnterpriseCopy(root: HTMLElement): void {
+  for (const item of Array.from(
+    root.querySelectorAll<HTMLElement>('.ctr-state, .status-badge, .version-pin'),
+  )) {
+    const source = item.textContent.trim();
+    const label = ENTERPRISE_STATUS_LABELS[source];
+    if (label) {
+      item.textContent = label;
+      item.setAttribute('title', source);
+    }
+  }
+  for (const item of Array.from(root.querySelectorAll<HTMLElement>('.eyebrow'))) {
+    const source = item.textContent.trim();
+    const label = ENTERPRISE_EYEBROW_LABELS[source];
+    if (label) item.textContent = label;
+  }
+}
+
 export function createCrmShell(
   controller: CrmController,
   width = window.innerWidth,
@@ -7101,17 +7177,22 @@ export function createCrmShell(
   aside.append(sidebarFooter);
   const content = el('section', 'workspace');
   const utility = el('header', 'utility-bar');
-  const search = el('div', 'global-search');
+  const search = el('button', 'global-search');
+  search.type = 'button';
+  search.setAttribute('aria-label', '进入客户与业务查询');
   search.append(
-    el('span', '', '⌕'),
-    el('span', '', '搜索客户、订单或业务编号…'),
-    el('kbd', '', '⌘ K'),
+    el('span', 'search-symbol', '⌕'),
+    el('span', '', '搜索客户、订单或业务编号'),
+    el('span', 'search-action', '进入查询'),
   );
+  search.addEventListener('click', () => {
+    setAppRoute('crm');
+  });
   const profile = el('div', 'profile-chip');
   profile.append(
     el('span', 'profile-avatar', profileLabel.slice(0, 1)),
     el('span', '', profileLabel),
-    el('span', 'chevron', '⌄'),
+    el('span', 'profile-role', '管理员'),
   );
   utility.append(search, profile);
   content.append(utility);
@@ -8614,6 +8695,7 @@ export async function bootstrap(root: HTMLElement): Promise<void> {
       .querySelector<HTMLElement>('.workspace')
       ?.append(governanceWorkspace(governanceController));
   }
+  localizeEnterpriseCopy(shell);
   installAppNavigation(shell);
   root.replaceChildren(shell);
 }
