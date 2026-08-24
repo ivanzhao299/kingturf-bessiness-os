@@ -62,6 +62,8 @@ Execution window: 2026-08-24; planned engineering effort: 36 hours. This slice c
 
 Existing temporary production UAT identities are not reactivated merely to repeat already accepted API authorization evidence. Browser role projections are deterministic from the authenticated session permission set; any future creation of temporary production identities must use random short-lived credentials, preserve audit records, revoke sessions and deactivate identities after UAT.
 
+The reproducible runner is `pnpm e2e:production:roles`. With `KINGTURF_UAT_PROVISION=true`, `KINGTURF_BASE_URL`, `KINGTURF_ADMIN_LOGIN` and `KINGTURF_ADMIN_PASSWORD` supplied only through the execution environment, it provisions eight single-role identities, checks allowed and forbidden navigation at desktop and 390 px, logs out every role session, removes each role assignment and deactivates every temporary employee in `finally` cleanup. It never prints or persists generated passwords.
+
 ## Functional exposure rule
 
 Every authenticated backend endpoint is classified as one of:
