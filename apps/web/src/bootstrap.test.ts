@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
 import {
   BOOTSTRAP_TITLE,
   CommercialController,
@@ -35,6 +36,32 @@ it('derives application navigation from atomic role capabilities', () => {
   expect(visibleAppRoutes(new Set(['executive-dashboard:read', 'authorization:read']))).toEqual(
     new Set(['overview', 'governance']),
   );
+});
+
+it('gives every production atomic role at least one permission-visible application route', () => {
+  const migrationFiles = [
+    '../../../packages/database/migrations/0046_atomic_business_role_catalog.sql',
+    '../../../packages/database/migrations/0048_actual_manufacturing_cost.sql',
+    '../../../packages/database/migrations/0050_shipment_release_logistics_pod.sql',
+    '../../../packages/database/migrations/0052_platform_read_permissions.sql',
+  ];
+  const rolePermissions = new Map<string, Set<string>>();
+  for (const path of migrationFiles) {
+    const migration = readFileSync(new URL(path, import.meta.url), 'utf8');
+    for (const match of migration.matchAll(/\('(KT_[A-Z_]+)','([a-z][a-z0-9-]*:[a-z0-9-]+)'\)/gu)) {
+      const role = match[1];
+      const permission = match[2];
+      if (!role || !permission) continue;
+      const permissions = rolePermissions.get(role) ?? new Set<string>();
+      permissions.add(permission);
+      rolePermissions.set(role, permissions);
+    }
+  }
+  expect(rolePermissions.size).toBe(44);
+  const rolesWithoutRoutes = [...rolePermissions]
+    .filter(([, permissions]) => visibleAppRoutes(permissions).size === 0)
+    .map(([role]) => role);
+  expect(rolesWithoutRoutes).toEqual([]);
 });
 
 it('exposes governance navigation only from atomic session capabilities', () => {
