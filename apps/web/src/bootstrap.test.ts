@@ -170,6 +170,28 @@ it('renders only governance actions granted to the authenticated role', () => {
   expect(workspace.textContent).toContain('审计中心');
 });
 
+it('exposes governed identity provisioning, role assignment, and role removal together', () => {
+  const controller = new GovernanceController(
+    new Set(['authorization:read', 'authorization:manage', 'employee:read']),
+    'test-token',
+  );
+  controller.views = [
+    {
+      path: '/api/v1/employees',
+      value: [{ id: 'employee-1', employeeNumber: 'E-1', displayName: '测试员工' }],
+    },
+    { path: '/api/v1/roles', value: [{ id: 'role-1', code: 'KT_TEST', name: '测试角色' }] },
+    { path: '/api/v1/permissions', value: [] },
+    { path: '/api/v1/grants', value: [] },
+    { path: '/api/v1/assignments', value: [] },
+    { path: '/api/v1/scope-grants', value: [] },
+  ];
+  const workspace = governanceWorkspace(controller) as unknown as RenderedElement;
+  expect(workspace.textContent).toContain('配置登录账号');
+  expect(workspace.textContent).toContain('分配角色');
+  expect(workspace.textContent).toContain('撤销角色');
+});
+
 it('admits manufacturing cost capabilities into the commercial workspace', () => {
   expect(isCommercialPermission('manufacturing-cost:read')).toBe(true);
   expect(isCommercialPermission('manufacturing-cost:approve')).toBe(true);
