@@ -7,6 +7,7 @@ type RoleAccount = Readonly<{
   password: string;
   allowedRoutes: readonly string[];
   forbiddenRoutes: readonly string[];
+  forbiddenActionNames?: readonly string[];
 }>;
 type RoleTemplate = Omit<RoleAccount, 'login' | 'password'> & Readonly<{ roleCode: string }>;
 
@@ -51,10 +52,13 @@ const templates: readonly RoleTemplate[] = [
     forbiddenRoutes: ['cost-quote', 'governance'],
   },
   {
-    name: '经营驾驶舱查看者',
+    name: '经营管理驾驶舱查看者',
     roleCode: 'KT_EXECUTIVE_VIEWER',
-    allowedRoutes: [],
-    forbiddenRoutes: ['cost-quote', 'planning-production', 'governance'],
+    // The executive viewer is intentionally cross-domain read-only. It must be able to
+    // inspect commercial and manufacturing evidence while remaining outside governance.
+    allowedRoutes: ['cost-quote', 'planning-production', 'quality-warehouse'],
+    forbiddenRoutes: ['governance'],
+    forbiddenActionNames: ['＋ 新建报价', '＋ 新建生产工单'],
   },
   {
     name: '身份与权限管理员',
@@ -100,6 +104,14 @@ async function validateRoleAccount(
         for (const route of account.forbiddenRoutes) {
           await expect(page.locator(`[data-app-route="${route}"]`)).toHaveCount(0);
           await expect(page.locator(`[data-role-task-route="${route}"]`)).toHaveCount(0);
+        }
+        for (const route of account.allowedRoutes) {
+          await page.locator(`[data-app-route="${route}"]`).click();
+          for (const actionName of account.forbiddenActionNames ?? []) {
+            await expect(page.getByRole('button', { name: actionName, exact: true })).toHaveCount(
+              0,
+            );
+          }
         }
         const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
         expect(pageWidth).toBeLessThanOrEqual(viewport.width);
