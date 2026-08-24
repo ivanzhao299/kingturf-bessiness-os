@@ -187,19 +187,28 @@ export const GOVERNANCE_SURFACES: readonly GovernanceSurface[] = [
     disposition: 'USER_FACING',
   },
   {
-    id: 'numbering-rules',
-    title: '编号与业务规则',
-    description: '管理业务编号、规则版本、发布状态和规则试算。',
-    readPermission: 'master-data:read',
+    id: 'numbering',
+    title: '编号规则',
+    description: '管理业务编号、版本、发布状态和受控分配。',
+    readPermission: 'number:read',
     managePermission: 'number:create',
-    paths: ['/api/v1/number-definitions', '/api/v1/rules'],
+    paths: ['/api/v1/number-definitions'],
+    disposition: 'USER_FACING',
+  },
+  {
+    id: 'rules',
+    title: '业务规则',
+    description: '管理规则版本、发布状态和可解释规则试算。',
+    readPermission: 'rule:read',
+    managePermission: 'rule:create',
+    paths: ['/api/v1/rules'],
     disposition: 'USER_FACING',
   },
   {
     id: 'workflow',
     title: '工作流与待办',
     description: '维护流程定义并处理当前账号职责范围内的审批任务。',
-    readPermission: 'workflow:decide',
+    readPermission: 'workflow:read',
     managePermission: 'workflow:create',
     paths: ['/api/v1/workflows', '/api/v1/workflow-tasks'],
     disposition: 'USER_FACING',
@@ -7425,6 +7434,46 @@ type GovernanceView = Readonly<{
   error?: string;
 }>;
 
+export class GovernanceController {
+  public views: readonly GovernanceView[] = [];
+  public message = '';
+  public constructor(
+    public readonly permissions: ReadonlySet<string>,
+    private readonly token: string,
+  ) {}
+  public async load(): Promise<void> {
+    const paths = [
+      ...new Set(visibleGovernanceSurfaces(this.permissions).flatMap((surface) => surface.paths)),
+    ];
+    this.views = await Promise.all(
+      paths.map(async (path): Promise<GovernanceView> => {
+        try {
+          return { path, value: await json<unknown>(path, this.token) };
+        } catch (error) {
+          return {
+            path,
+            value: null,
+            error: error instanceof Error ? error.message : '数据源加载失败',
+          };
+        }
+      }),
+    );
+  }
+  public async submit(
+    path: string,
+    payload: Record<string, unknown>,
+    method: 'POST' | 'PUT' | 'PATCH' | 'DELETE' = 'POST',
+  ): Promise<void> {
+    await json<unknown>(path, this.token, {
+      method,
+      headers: { 'idempotency-key': requestId() },
+      body: JSON.stringify(payload),
+    });
+    this.message = '操作已完成并重新读取服务器状态';
+    await this.load();
+  }
+}
+
 const governanceItems = (value: unknown): readonly unknown[] => {
   if (Array.isArray(value)) return value;
   if (typeof value !== 'object' || value === null) return [];
@@ -7433,10 +7482,8 @@ const governanceItems = (value: unknown): readonly unknown[] => {
   return [value];
 };
 
-export function governanceWorkspace(
-  permissions: ReadonlySet<string>,
-  views: readonly GovernanceView[],
-): HTMLElement {
+export function governanceWorkspace(controller: GovernanceController): HTMLElement {
+  const { permissions, views } = controller;
   const workspace = el('section', 'governance-workspace');
   workspace.setAttribute('data-route-view', 'governance');
   const header = el('header', 'governance-hero');
@@ -7464,6 +7511,35 @@ export function governanceWorkspace(
     summary.append(metric);
   }
   workspace.append(summary);
+  const records = (path: string) => {
+    const view = views.find((item) => item.path === path);
+    return governanceItems(view?.value).map((item) => recordValue(item));
+  };
+  const choices = (path: string, label: (item: Record<string, unknown>) => string) =>
+    records(path)
+      .filter((item) => typeof item.id === 'string')
+      .map((item) => ({ value: String(item.id), label: label(item) }));
+  const openAction = (
+    title: string,
+    description: string,
+    fields: readonly FormField[],
+    submit: (values: Record<string, string>) => Promise<void>,
+  ) => {
+    openForm(workspace, title, description, fields, '确认提交', async (values) => {
+      await submit(values);
+      workspace.replaceWith(governanceWorkspace(controller));
+    });
+  };
+  const jsonField = (value: string | undefined, label: string): Record<string, unknown> => {
+    try {
+      const parsed = JSON.parse(value ?? '{}') as unknown;
+      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed))
+        throw new Error(`${label}必须是 JSON 对象`);
+      return parsed as Record<string, unknown>;
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : `${label}格式无效`);
+    }
+  };
   const grid = el('section', 'governance-grid');
   for (const surface of visible) {
     const panel = el('article', 'governance-card');
@@ -7477,6 +7553,225 @@ export function governanceWorkspace(
       ),
     );
     panel.append(heading, el('p', 'muted', surface.description));
+    const actions = el('div', 'governance-actions');
+    if (surface.id === 'identity-access' && permissions.has('authorization:manage')) {
+      const role = el('button', 'secondary', '新建角色');
+      role.addEventListener('click', () => {
+        openAction(
+          '新建原子角色',
+          '角色只承载一组职责；权限和数据范围通过独立授权配置。',
+          [
+            { name: 'code', label: '角色编码', required: true },
+            { name: 'name', label: '角色名称', required: true },
+          ],
+          (values) => controller.submit('/api/v1/roles', { code: values.code, name: values.name }),
+        );
+      });
+      const assignment = el('button', 'secondary', '分配角色');
+      assignment.addEventListener('click', () => {
+        openAction(
+          '为员工分配角色',
+          '分配前应确认职责分离规则；服务器会拒绝冲突组合。',
+          [
+            { name: 'employeeId', label: '员工 ID', required: true },
+            {
+              name: 'roleId',
+              label: '角色',
+              type: 'select',
+              required: true,
+              options: choices(
+                '/api/v1/roles',
+                (item) => `${textValue(item.code, '')} · ${textValue(item.name, '')}`,
+              ),
+            },
+          ],
+          (values) =>
+            controller.submit('/api/v1/assignments', {
+              employeeId: values.employeeId,
+              roleId: values.roleId,
+            }),
+        );
+      });
+      const grant = el('button', 'secondary', '授予能力');
+      grant.addEventListener('click', () => {
+        openAction(
+          '为角色授予能力',
+          '默认使用公司范围；字段白名单可在后续精细授权中继续收窄。',
+          [
+            {
+              name: 'roleId',
+              label: '角色',
+              type: 'select',
+              required: true,
+              options: choices('/api/v1/roles', (item) => textValue(item.code, '角色')),
+            },
+            {
+              name: 'permissionId',
+              label: '能力',
+              type: 'select',
+              required: true,
+              options: choices('/api/v1/permissions', (item) => textValue(item.capability, '能力')),
+            },
+          ],
+          (values) =>
+            controller.submit('/api/v1/grants', {
+              roleId: values.roleId,
+              permissionId: values.permissionId,
+              scopes: ['COMPANY'],
+              fields: null,
+            }),
+        );
+      });
+      actions.append(role, assignment, grant);
+    }
+    if (surface.id === 'master-data' && permissions.has('master-data:create')) {
+      const category = el('button', 'secondary', '新建分类');
+      category.addEventListener('click', () => {
+        openAction(
+          '新建主数据分类',
+          '分类编码保持稳定；名称和生效区间可以通过新版本调整。',
+          [
+            { name: 'code', label: '分类编码', required: true },
+            { name: 'name', label: '分类名称', required: true },
+            { name: 'description', label: '说明', type: 'textarea' },
+            { name: 'effectiveFrom', label: '生效时间', required: true },
+          ],
+          (values) =>
+            controller.submit('/api/v1/master-data/categories', {
+              code: values.code,
+              name: values.name,
+              description: values.description ?? null,
+              effectiveFrom: values.effectiveFrom,
+              effectiveTo: null,
+            }),
+        );
+      });
+      const entry = el('button', 'secondary', '新建条目');
+      entry.addEventListener('click', () => {
+        openAction(
+          '新建主数据条目',
+          '条目值使用结构化 JSON 保存，并继承分类的公司隔离。',
+          [
+            {
+              name: 'categoryId',
+              label: '分类',
+              type: 'select',
+              required: true,
+              options: choices(
+                '/api/v1/master-data/categories',
+                (item) => `${textValue(item.code, '')} · ${textValue(item.name, '')}`,
+              ),
+            },
+            { name: 'code', label: '条目编码', required: true },
+            { name: 'label', label: '显示名称', required: true },
+            { name: 'value', label: '结构化值（JSON）', type: 'textarea', required: true },
+            { name: 'effectiveFrom', label: '生效时间', required: true },
+          ],
+          (values) =>
+            controller.submit('/api/v1/master-data/entries', {
+              categoryId: values.categoryId,
+              code: values.code,
+              label: values.label,
+              value: jsonField(values.value, '结构化值'),
+              effectiveFrom: values.effectiveFrom,
+              effectiveTo: null,
+            }),
+        );
+      });
+      actions.append(category, entry);
+    }
+    if (surface.id === 'numbering' && permissions.has('number:create')) {
+      const number = el('button', 'secondary', '新建编号规则');
+      number.addEventListener('click', () => {
+        openAction(
+          '新建编号规则',
+          '规则发布后才能分配正式编号。',
+          [
+            { name: 'code', label: '规则编码', required: true },
+            { name: 'prefix', label: '前缀' },
+            { name: 'padding', label: '数字位数', type: 'number', required: true },
+            { name: 'startingValue', label: '起始值', type: 'number', required: true },
+            { name: 'increment', label: '步长', type: 'number', required: true },
+          ],
+          (values) =>
+            controller.submit('/api/v1/number-definitions', {
+              code: values.code,
+              prefix: values.prefix ?? '',
+              suffix: '',
+              padding: Number(values.padding),
+              startingValue: Number(values.startingValue),
+              increment: Number(values.increment),
+              resetPeriod: 'NEVER',
+            }),
+        );
+      });
+      actions.append(number);
+    }
+    if (surface.id === 'rules' && permissions.has('rule:create')) {
+      const rule = el('button', 'secondary', '新建业务规则');
+      rule.addEventListener('click', () => {
+        openAction(
+          '新建业务规则',
+          '规则表达式和必需输入由服务器校验；草稿发布后才能用于业务判断。',
+          [
+            { name: 'code', label: '规则编码', required: true },
+            { name: 'ast', label: '规则表达式（JSON）', type: 'textarea', required: true },
+            { name: 'requiredInputs', label: '必需输入（每行一个）', type: 'textarea' },
+          ],
+          (values) =>
+            controller.submit('/api/v1/rules', {
+              code: values.code,
+              ast: jsonField(values.ast, '规则表达式'),
+              requiredInputs: (values.requiredInputs ?? '')
+                .split(/\r?\n/u)
+                .map((item) => item.trim())
+                .filter(Boolean),
+            }),
+        );
+      });
+      actions.append(rule);
+    }
+    if (surface.id === 'workflow' && permissions.has('workflow:create')) {
+      const workflow = el('button', 'secondary', '新建工作流');
+      workflow.addEventListener('click', () => {
+        openAction(
+          '新建工作流',
+          '流程定义采用受校验的结构化规范；发布和启动由独立能力控制。',
+          [
+            { name: 'code', label: '工作流编码', required: true },
+            { name: 'spec', label: '流程规范（JSON）', type: 'textarea', required: true },
+          ],
+          (values) =>
+            controller.submit('/api/v1/workflows', {
+              code: values.code,
+              spec: jsonField(values.spec, '流程规范'),
+            }),
+        );
+      });
+      actions.append(workflow);
+    }
+    if (surface.id === 'registry' && permissions.has('business-object:manage')) {
+      const object = el('button', 'secondary', '新建业务对象');
+      object.addEventListener('click', () => {
+        openAction(
+          '新建业务对象',
+          '对象定义用于统一字段、关系和附件绑定语义。',
+          [
+            { name: 'code', label: '对象编码', required: true },
+            { name: 'name', label: '对象名称', required: true },
+            { name: 'schema', label: '对象结构（JSON）', type: 'textarea', required: true },
+          ],
+          (values) =>
+            controller.submit('/api/v1/business-objects', {
+              code: values.code,
+              name: values.name,
+              schema: jsonField(values.schema, '对象结构'),
+            }),
+        );
+      });
+      actions.append(object);
+    }
+    if (actions.children.length > 0) panel.append(actions);
     for (const path of surface.paths) {
       const view = views.find((item) => item.path === path);
       const row = el('details', 'governance-source');
@@ -7613,23 +7908,11 @@ export async function bootstrap(root: HTMLElement): Promise<void> {
   }
   const governanceSurfaces = visibleGovernanceSurfaces(allPermissions);
   if (governanceSurfaces.length > 0) {
-    const paths = [...new Set(governanceSurfaces.flatMap((surface) => surface.paths))];
-    const governanceViews = await Promise.all(
-      paths.map(async (path): Promise<GovernanceView> => {
-        try {
-          return { path, value: await json<unknown>(path, token) };
-        } catch (error) {
-          return {
-            path,
-            value: null,
-            error: error instanceof Error ? error.message : '数据源加载失败',
-          };
-        }
-      }),
-    );
+    const governanceController = new GovernanceController(allPermissions, token);
+    await governanceController.load();
     shell
       .querySelector<HTMLElement>('.workspace')
-      ?.append(governanceWorkspace(allPermissions, governanceViews));
+      ?.append(governanceWorkspace(governanceController));
   }
   installAppNavigation(shell);
   root.replaceChildren(shell);

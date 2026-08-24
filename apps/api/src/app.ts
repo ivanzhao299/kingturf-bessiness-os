@@ -4014,6 +4014,15 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             ),
           };
         }
+        if (request.pathname === '/api/v1/number-definitions' && request.method === 'GET') {
+          authorizeQuery(context, 'number:read');
+          if (!dependencies.numbers)
+            return error(503, 'internal_error', 'Number repository unavailable', correlationId);
+          return {
+            statusCode: 200,
+            body: { items: await dependencies.numbers.list(context.actor.companyId) },
+          };
+        }
         if (request.pathname === '/api/v1/number-definitions' && request.method === 'POST') {
           authorizeQuery(context, 'number:create');
           if (!dependencies.numbers)
@@ -4086,6 +4095,15 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               context.actor,
               correlationId,
             ),
+          };
+        }
+        if (request.pathname === '/api/v1/rules' && request.method === 'GET') {
+          authorizeQuery(context, 'rule:read');
+          if (!dependencies.rules)
+            return error(503, 'internal_error', 'Rule repository unavailable', correlationId);
+          return {
+            statusCode: 200,
+            body: { items: await dependencies.rules.list(context.actor.companyId) },
           };
         }
         if (request.pathname === '/api/v1/rules' && request.method === 'POST') {
@@ -4271,6 +4289,15 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               context.actor,
               correlationId,
             ),
+          };
+        }
+        if (request.pathname === '/api/v1/workflows' && request.method === 'GET') {
+          authorizeQuery(context, 'workflow:read');
+          if (!dependencies.workflows)
+            return error(503, 'internal_error', 'Workflow repository unavailable', correlationId);
+          return {
+            statusCode: 200,
+            body: { items: await dependencies.workflows.list(context.actor.companyId) },
           };
         }
         if (request.pathname === '/api/v1/workflows' && request.method === 'POST') {

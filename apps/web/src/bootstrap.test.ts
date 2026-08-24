@@ -27,6 +27,11 @@ it('exposes governance navigation only from atomic session capabilities', () => 
     'notifications',
   ]);
   expect(visibleGovernanceSurfaces(new Set(['customer:read']))).toEqual([]);
+  expect(
+    visibleGovernanceSurfaces(new Set(['number:read', 'rule:read', 'workflow:read'])).map(
+      (item) => item.id,
+    ),
+  ).toEqual(['numbering', 'rules', 'workflow']);
   expect(appRouteFromHash('#/governance')).toBe('governance');
 });
 

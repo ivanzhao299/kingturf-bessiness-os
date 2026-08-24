@@ -473,6 +473,21 @@ export class PostgresNumberRepository {
     private readonly db: Database,
     private readonly audit = new TransactionalAuditWriter(),
   ) {}
+  public async list(tenantId: string) {
+    return (
+      await this.db.query<{ item: Record<string, unknown> }>(
+        `SELECT jsonb_build_object(
+          'id',d.id,'code',d.code,'version',d.version,
+          'versions',coalesce(jsonb_agg(to_jsonb(v) ORDER BY v.version),'[]'::jsonb)
+        ) item
+        FROM number_definitions d
+        LEFT JOIN number_definition_versions v ON v.definition_id=d.id AND v.tenant_id=d.tenant_id
+        WHERE d.tenant_id=$1 AND d.deleted_at IS NULL
+        GROUP BY d.id,d.code,d.version ORDER BY d.code`,
+        [tenantId],
+      )
+    ).rows.map((row) => row.item);
+  }
   public async createDefinition(
     input: Readonly<{
       code: string;
@@ -702,6 +717,21 @@ export class PostgresRuleRepository {
     private readonly db: Database,
     private readonly audit = new TransactionalAuditWriter(),
   ) {}
+  public async list(tenantId: string) {
+    return (
+      await this.db.query<{ item: Record<string, unknown> }>(
+        `SELECT jsonb_build_object(
+          'id',d.id,'code',d.code,'version',d.version,
+          'versions',coalesce(jsonb_agg(to_jsonb(v) ORDER BY v.version),'[]'::jsonb)
+        ) item
+        FROM rule_definitions d
+        LEFT JOIN rule_definition_versions v ON v.definition_id=d.id AND v.tenant_id=d.tenant_id
+        WHERE d.tenant_id=$1 AND d.deleted_at IS NULL
+        GROUP BY d.id,d.code,d.version ORDER BY d.code`,
+        [tenantId],
+      )
+    ).rows.map((row) => row.item);
+  }
   public async create(
     input: Readonly<{ code: string; ast: unknown; requiredInputs: readonly string[] }>,
     actor: Actor,
@@ -882,6 +912,21 @@ export class PostgresWorkflowRepository {
     private readonly db: Database,
     private readonly audit = new TransactionalAuditWriter(),
   ) {}
+  public async list(tenantId: string) {
+    return (
+      await this.db.query<{ item: Record<string, unknown> }>(
+        `SELECT jsonb_build_object(
+          'id',d.id,'code',d.code,'version',d.version,
+          'versions',coalesce(jsonb_agg(to_jsonb(v) ORDER BY v.version),'[]'::jsonb)
+        ) item
+        FROM workflow_definitions d
+        LEFT JOIN workflow_definition_versions v ON v.definition_id=d.id AND v.tenant_id=d.tenant_id
+        WHERE d.tenant_id=$1 AND d.deleted_at IS NULL
+        GROUP BY d.id,d.code,d.version ORDER BY d.code`,
+        [tenantId],
+      )
+    ).rows.map((row) => row.item);
+  }
   public async create(
     input: Readonly<{ code: string; spec: WorkflowSpec }>,
     actor: Actor,

@@ -231,6 +231,10 @@ describe('JTF-P0-E07..E11 PostgreSQL scenarios', () => {
       randomUUID(),
     )) as { id: string };
     await repo.publish(definition.id, 1, actor, randomUUID());
+    expect(await repo.list(company)).toEqual([
+      expect.objectContaining({ id: definition.id, code: 'GENERIC' }),
+    ]);
+    expect(await repo.list(otherCompany)).toEqual([]);
     const values = await Promise.all(
       Array.from({ length: 12 }, (_, i) =>
         repo.allocate(definition.id, `key-${String(i)}`, actor, randomUUID()),
@@ -293,6 +297,10 @@ describe('JTF-P0-E07..E11 PostgreSQL scenarios', () => {
       randomUUID(),
     )) as { id: string };
     await repo.publish(definition.id, 1, actor, randomUUID());
+    expect(await repo.list(company)).toEqual([
+      expect.objectContaining({ id: definition.id, code: 'GENERIC_RULE' }),
+    ]);
+    expect(await repo.list(otherCompany)).toEqual([]);
     const first = await repo.evaluate(definition.id, { flag: true }, 'same', actor, randomUUID());
     const retry = await repo.evaluate(definition.id, { flag: false }, 'same', actor, randomUUID());
     expect(retry).toEqual(first);
@@ -328,6 +336,10 @@ describe('JTF-P0-E07..E11 PostgreSQL scenarios', () => {
       id: string;
     };
     await repo.publish(definition.id, 1, actor, randomUUID());
+    expect(await repo.list(company)).toEqual([
+      expect.objectContaining({ id: definition.id, code: 'GENERIC_FLOW' }),
+    ]);
+    expect(await repo.list(otherCompany)).toEqual([]);
     const subject = randomUUID(),
       started = (await repo.start(
         definition.id,
