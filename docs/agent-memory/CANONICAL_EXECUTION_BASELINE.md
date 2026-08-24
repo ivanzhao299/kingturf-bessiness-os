@@ -12,7 +12,7 @@ This file is the single authoritative execution route. `MASTER_DEVELOPMENT_PLAN.
 - Office 204 is a historical preview environment and is not the production acceptance target.
 - KT-L01 through KT-L16 are capability-complete and production-reaccepted through `KT-RG01` at release `452ced1` on 2026-08-22.
 - `KT-RBAC-UAT-01` is complete at release `0cbe8f203ad3285874a7ce2d9ef643ba50ba8520`: 38 atomic roles, 214 least-privilege grants, eight hard segregation-of-duties rules, and 38/38 production role UAT passes.
-- `KT-L17` is capability-complete and deployed at release `266ccdfdfe89d35e9a24f477d77ce6d3cb107403`: actual manufacturing cost policy, immutable calculation snapshots, variance, independent approval and close gate. Production UAT has proved calculation and same-actor rejection, but independent-approver approval remains open; the cost record is still `CALCULATED`.
+- `KT-L17` is complete and production-accepted at release `b4adf19c934d29c4ab508d9a6f838055001680a5`: actual manufacturing cost policy, immutable calculation snapshots, variance, independent approval and close gate. Production UAT proved calculation, same-actor rejection and approval by the dedicated least-privilege employee `KT-UAT-COST-APPROVER-01`; the cost record is `APPROVED`.
 
 ## Only valid execution order
 
@@ -20,8 +20,8 @@ This file is the single authoritative execution route. `MASTER_DEVELOPMENT_PLAN.
 2. `KT-RG01`: completed; Sales-to-Cash and KT-L02 through KT-L15 passed production data and authenticated UAT.
 3. `KT-L16`: completed; incoming inspection, quarantine/release, production consumption and batch traceability passed production evidence.
 4. `KT-RBAC-UAT-01`: completed; atomic role catalogue, segregation guards and production role UAT are recorded in `docs/evidence/KT_RBAC_ATOMIC_ROLE_UAT_20260822.md`.
-5. `KT-L17`: active closure gate; complete independent-approver production UAT and record the approved state.
-6. `KT-L18`: queued long task—shipment release and logistics proof of delivery (56h); do not dispatch until the KT-L17 closure gate passes.
+5. `KT-L17`: completed; independent-approver production UAT and approved-state evidence are recorded.
+6. `KT-L18`: next queued long task—shipment release and logistics proof of delivery (56h).
 7. `KT-L19` through `KT-L25`: continue the master roadmap in numeric order.
 
 ## Completion gate
