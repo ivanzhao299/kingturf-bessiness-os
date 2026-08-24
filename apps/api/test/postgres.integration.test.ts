@@ -141,6 +141,23 @@ describe('PostgreSQL identity and authorization behavior', () => {
       employee_id: childId,
       password_hash: 'scrypt$16384$8$1$c2FsdA$aGFzaA',
     });
+    expect(
+      (
+        await database.query(
+          'SELECT 1 FROM organization_memberships WHERE organization_id=$1 AND employee_id=$2 AND active',
+          [company, childId],
+        )
+      ).rowCount,
+    ).toBe(1);
+    await expect(
+      security.provisionIdentity({
+        employeeId: childId,
+        companyId: company,
+        login: 'kt-cost-approver',
+        passwordHash: 'scrypt$16384$8$1$bmV3c2FsdA$bmV3aGFzaA',
+        actorId,
+      }),
+    ).resolves.toBe(identityId);
     await expect(
       security.provisionIdentity({
         employeeId: otherId,
