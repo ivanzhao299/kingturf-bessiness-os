@@ -27,7 +27,7 @@ This slice makes the approved CTR version the authoritative source of `opportuni
 - `pnpm build` — PASS.
 - `pnpm format:check` — PASS.
 - `pnpm --filter @kingturf/api test -- --runInBand` — 69 unit tests PASS; seven PostgreSQL suites fail closed before collection because `DATABASE_URL` is unset. This environment prerequisite is recorded without blocking the code slice or claiming PostgreSQL UAT.
-- Deployment and Office 204 are out of scope for this slice and were not touched.
+- Deployment was out of scope for this slice and was not touched.
 
 ## Rollback
 

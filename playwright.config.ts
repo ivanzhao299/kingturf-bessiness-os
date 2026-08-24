@@ -11,7 +11,7 @@ export default defineConfig({
     ['html', { outputFolder: '.test-results/playwright-report', open: 'never' }],
   ],
   use: {
-    baseURL: process.env.KINGTURF_BASE_URL ?? 'http://127.0.0.1:14331',
+    baseURL: process.env.KINGTURF_BASE_URL ?? 'http://127.0.0.1:4173',
     channel: 'chrome',
     headless: true,
     trace: 'retain-on-failure',

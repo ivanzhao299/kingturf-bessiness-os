@@ -9,7 +9,7 @@ This file is the single authoritative execution route. `MASTER_DEVELOPMENT_PLAN.
 - Repository: `ivanzhao299/kingturf-bessiness-os`
 - Branch: `main`
 - Production: Park isolated runtime at `erp.kingturf.cn`, Compose project `kingturf-erp-production`, web port `4332`.
-- Office 204 is a historical preview environment and is not the production acceptance target.
+- The only deployment, runtime and authenticated acceptance target is `https://erp.kingturf.cn` through the production workflow.
 - KT-L01 through KT-L16 are capability-complete and production-reaccepted through `KT-RG01` at release `452ced1` on 2026-08-22.
 - `KT-RBAC-UAT-01` is complete at release `0cbe8f203ad3285874a7ce2d9ef643ba50ba8520`: 38 atomic roles, 214 least-privilege grants, eight hard segregation-of-duties rules, and 38/38 production role UAT passes.
 - `KT-L17` is complete and production-accepted at release `b4adf19c934d29c4ab508d9a6f838055001680a5`: actual manufacturing cost policy, immutable calculation snapshots, variance, independent approval and close gate. Production UAT proved calculation, same-actor rejection and approval by the dedicated least-privilege employee `KT-UAT-COST-APPROVER-01`; the cost record is `APPROVED`.
@@ -23,8 +23,9 @@ This file is the single authoritative execution route. `MASTER_DEVELOPMENT_PLAN.
 4. `KT-RBAC-UAT-01`: completed; atomic role catalogue, segregation guards and production role UAT are recorded in `docs/evidence/KT_RBAC_ATOMIC_ROLE_UAT_20260822.md`.
 5. `KT-L17`: completed; independent-approver production UAT and approved-state evidence are recorded.
 6. `KT-L18`: completed; release and logistics POD evidence is recorded in `docs/evidence/KT-L18_SHIPMENT_RELEASE_LOGISTICS_POD_20260824.md`.
-7. `KT-L19`: next queued long task—collections, legal handoff and debt evidence package (56h).
-8. `KT-L20` through `KT-L25`: continue the master roadmap in numeric order.
+7. `KT-UI-PROD-01`: active insertion task—production preview reliability, complete frontend capability exposure, atomic navigation and Studio-informed UI refinement (144h).
+8. `KT-L19`: paused until `KT-UI-PROD-01` passes its production acceptance gate; then resume collections, legal handoff and debt evidence package (56h).
+9. `KT-L20` through `KT-L25`: continue the master roadmap in numeric order.
 
 ## Completion gate
 

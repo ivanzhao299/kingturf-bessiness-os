@@ -1675,3 +1675,120 @@ button {
     grid-template-columns: 1fr;
   }
 }
+
+/* KT-UI-PROD-01: Studio-informed governance surface and shared semantic states. */
+.governance-workspace {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+.governance-hero {
+  padding: 8px 0 2px;
+}
+.governance-hero h1 {
+  margin: 0 0 8px;
+  color: #10271f;
+  font-size: clamp(25px, 3vw, 34px);
+  letter-spacing: -0.035em;
+}
+.governance-hero p {
+  max-width: 760px;
+  line-height: 1.65;
+}
+.governance-metrics,
+.governance-grid {
+  display: grid;
+  gap: 14px;
+}
+.governance-metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.governance-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.governance-card {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid rgb(16 39 31 / 10%);
+  border-radius: 18px;
+  background: rgb(255 255 255 / 92%);
+  box-shadow:
+    0 1px 2px rgb(16 39 31 / 3%),
+    0 12px 34px rgb(16 39 31 / 5%);
+}
+.governance-card .panel-head > div {
+  color: #10271f;
+  font-size: 17px;
+  font-weight: 780;
+}
+.status-badge,
+.permission-note {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 750;
+}
+.status-badge {
+  padding: 5px 9px;
+}
+.status-badge.success,
+.permission-note {
+  background: #e7f5ed;
+  color: #176842;
+}
+.status-badge.warning {
+  background: #fff3d9;
+  color: #8a5a00;
+}
+.permission-note {
+  margin: 14px 0 0;
+  padding: 6px 10px;
+}
+.governance-source {
+  margin-top: 10px;
+  overflow: hidden;
+  border: 1px solid #e6ece8;
+  border-radius: 12px;
+  background: #fafcfb;
+}
+.governance-source summary {
+  cursor: pointer;
+  padding: 11px 13px;
+  color: #40584e;
+  font-size: 12px;
+  font-weight: 700;
+}
+.governance-preview {
+  max-height: 260px;
+  margin: 0;
+  overflow: auto;
+  border-top: 1px solid #e6ece8;
+  padding: 13px;
+  background: #f4f8f6;
+  color: #29483b;
+  font:
+    11px/1.55 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+@media (max-width: 1000px) {
+  .governance-metrics,
+  .governance-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 640px) {
+  .governance-metrics,
+  .governance-grid {
+    grid-template-columns: 1fr;
+  }
+  .governance-card {
+    padding: 15px;
+    border-radius: 15px;
+  }
+}

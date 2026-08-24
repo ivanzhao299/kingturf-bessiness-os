@@ -13,10 +13,22 @@ import {
   viewportFor,
   visibleCrmSections,
   visibleCommercialSections,
+  visibleGovernanceSurfaces,
   inventoryLocationOption,
   isCommercialPermission,
   technicalSolutionOpportunityId,
 } from './bootstrap';
+
+it('exposes governance navigation only from atomic session capabilities', () => {
+  expect(visibleGovernanceSurfaces(new Set(['authorization:read'])).map((item) => item.id)).toEqual(
+    ['identity-access'],
+  );
+  expect(visibleGovernanceSurfaces(new Set(['notification:read'])).map((item) => item.id)).toEqual([
+    'notifications',
+  ]);
+  expect(visibleGovernanceSurfaces(new Set(['customer:read']))).toEqual([]);
+  expect(appRouteFromHash('#/governance')).toBe('governance');
+});
 
 it('admits manufacturing cost capabilities into the commercial workspace', () => {
   expect(isCommercialPermission('manufacturing-cost:read')).toBe(true);

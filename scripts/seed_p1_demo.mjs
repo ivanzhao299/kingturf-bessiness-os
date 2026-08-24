@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 
-const baseUrl = (process.env.KINGTURF_BASE_URL ?? 'http://127.0.0.1:14331').replace(/\/$/u, '');
+const configuredBaseUrl = process.env.KINGTURF_BASE_URL;
+if (!configuredBaseUrl) throw new Error('KINGTURF_BASE_URL is required');
+const baseUrl = configuredBaseUrl.replace(/\/$/u, '');
 const adminPassword = process.env.KINGTURF_ADMIN_PASSWORD;
 const approverPassword = process.env.KINGTURF_CREDIT_APPROVER_PASSWORD;
 if (!adminPassword || !approverPassword)

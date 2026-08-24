@@ -125,7 +125,8 @@ export type AppRoute =
   | 'ar-payment'
   | 'planning-production'
   | 'quality-warehouse'
-  | 'delivery-evidence';
+  | 'delivery-evidence'
+  | 'governance';
 
 export const APP_ROUTE_LABELS: Readonly<Record<AppRoute, string>> = {
   overview: '经营总览',
@@ -139,7 +140,108 @@ export const APP_ROUTE_LABELS: Readonly<Record<AppRoute, string>> = {
   'planning-production': '计划与生产',
   'quality-warehouse': '质量与仓储',
   'delivery-evidence': '交付与证据',
+  governance: '系统管理与治理',
 };
+
+export type GovernanceSurface = Readonly<{
+  id: string;
+  title: string;
+  description: string;
+  readPermission: string;
+  managePermission?: string;
+  paths: readonly string[];
+  disposition: 'USER_FACING' | 'SUPPORTING' | 'INTERNAL_ONLY';
+}>;
+
+export const GOVERNANCE_SURFACES: readonly GovernanceSurface[] = [
+  {
+    id: 'identity-access',
+    title: '身份、角色与授权',
+    description: '角色、权限、授权、人员角色和数据范围的统一管理入口。',
+    readPermission: 'authorization:read',
+    managePermission: 'authorization:manage',
+    paths: [
+      '/api/v1/roles',
+      '/api/v1/permissions',
+      '/api/v1/grants',
+      '/api/v1/assignments',
+      '/api/v1/scope-grants',
+    ],
+    disposition: 'USER_FACING',
+  },
+  {
+    id: 'audit',
+    title: '审计中心',
+    description: '按人员、动作、对象和关联编号查询不可变审计事件。',
+    readPermission: 'audit:read',
+    paths: ['/api/v1/audit-events'],
+    disposition: 'USER_FACING',
+  },
+  {
+    id: 'master-data',
+    title: '主数据',
+    description: '维护带生效区间的分类和条目，变更由审计记录保护。',
+    readPermission: 'master-data:read',
+    managePermission: 'master-data:create',
+    paths: ['/api/v1/master-data/categories', '/api/v1/master-data/entries'],
+    disposition: 'USER_FACING',
+  },
+  {
+    id: 'numbering-rules',
+    title: '编号与业务规则',
+    description: '管理业务编号、规则版本、发布状态和规则试算。',
+    readPermission: 'master-data:read',
+    managePermission: 'number:create',
+    paths: ['/api/v1/number-definitions', '/api/v1/rules'],
+    disposition: 'USER_FACING',
+  },
+  {
+    id: 'workflow',
+    title: '工作流与待办',
+    description: '维护流程定义并处理当前账号职责范围内的审批任务。',
+    readPermission: 'workflow:decide',
+    managePermission: 'workflow:create',
+    paths: ['/api/v1/workflows', '/api/v1/workflow-tasks'],
+    disposition: 'USER_FACING',
+  },
+  {
+    id: 'notifications',
+    title: '通知中心',
+    description: '查看未读通知并维护本人可用的通知偏好。',
+    readPermission: 'notification:read',
+    managePermission: 'notification:manage',
+    paths: [
+      '/api/v1/notifications',
+      '/api/v1/notifications/unread-count',
+      '/api/v1/notification-preferences',
+    ],
+    disposition: 'USER_FACING',
+  },
+  {
+    id: 'registry',
+    title: '业务对象与附件',
+    description: '查看业务对象定义；附件上传继续由具体业务单据入口承载。',
+    readPermission: 'business-object:read',
+    managePermission: 'business-object:manage',
+    paths: ['/api/v1/business-objects'],
+    disposition: 'USER_FACING',
+  },
+  {
+    id: 'event-operations',
+    title: '事件运行状态',
+    description: '查看事件积压与失败数量；认领、重试和死信操作仅供受控运行器使用。',
+    readPermission: 'event:operate',
+    paths: ['/api/v1/operations/events'],
+    disposition: 'SUPPORTING',
+  },
+] as const;
+
+export const visibleGovernanceSurfaces = (permissions: ReadonlySet<string>) =>
+  GOVERNANCE_SURFACES.filter(
+    (surface) =>
+      permissions.has(surface.readPermission) ||
+      (surface.managePermission !== undefined && permissions.has(surface.managePermission)),
+  );
 
 const APP_ROUTES = new Set<AppRoute>(Object.keys(APP_ROUTE_LABELS) as AppRoute[]);
 
@@ -6726,7 +6828,11 @@ export function installAppNavigation(shell: HTMLElement): void {
   });
 }
 
-export function createCrmShell(controller: CrmController, width = window.innerWidth): HTMLElement {
+export function createCrmShell(
+  controller: CrmController,
+  width = window.innerWidth,
+  allPermissions: ReadonlySet<string> = controller.permissions,
+): HTMLElement {
   const sections = visibleCrmSections(controller.permissions);
   const employeeChoices = controller.employees.map((employee) => ({
     value: employee.id,
@@ -6792,6 +6898,8 @@ export function createCrmShell(controller: CrmController, width = window.innerWi
     ['◈', '质量与仓储', 'quality-warehouse'],
     ['⌁', '交付与证据', 'delivery-evidence'],
   ]);
+  if (visibleGovernanceSurfaces(allPermissions).length > 0)
+    navGroup('平台治理', [['⚙', '系统管理与治理', 'governance']]);
   aside.append(nav);
   const sidebarFooter = el('div', 'sidebar-footer');
   sidebarFooter.append(el('span', 'online-dot'), el('span', '', '生产环境 · erp.kingturf.cn'));
@@ -7310,7 +7418,97 @@ export function createCrmShell(controller: CrmController, width = window.innerWi
 function bootstrapView(current: HTMLElement, controller: CrmController): void {
   current.replaceWith(createCrmShell(controller));
 }
-type SessionDto = Readonly<{ permissions: readonly string[] }>;
+
+type GovernanceView = Readonly<{
+  path: string;
+  value: unknown;
+  error?: string;
+}>;
+
+const governanceItems = (value: unknown): readonly unknown[] => {
+  if (Array.isArray(value)) return value;
+  if (typeof value !== 'object' || value === null) return [];
+  const record = value as Record<string, unknown>;
+  if (Array.isArray(record.items)) return record.items;
+  return [value];
+};
+
+export function governanceWorkspace(
+  permissions: ReadonlySet<string>,
+  views: readonly GovernanceView[],
+): HTMLElement {
+  const workspace = el('section', 'governance-workspace');
+  workspace.setAttribute('data-route-view', 'governance');
+  const header = el('header', 'governance-hero');
+  header.append(
+    el('p', 'eyebrow', 'PLATFORM GOVERNANCE'),
+    el('h1', '', '系统管理与治理'),
+    el(
+      'p',
+      'muted',
+      '页面、数据和操作均来自当前会话的原子授权；未授权模块不会出现在导航或工作台。',
+    ),
+  );
+  workspace.append(header);
+  const summary = el('section', 'governance-metrics');
+  const visible = visibleGovernanceSurfaces(permissions);
+  const failed = views.filter((view) => view.error !== undefined).length;
+  for (const [label, value] of [
+    ['可见治理模块', String(visible.length)],
+    ['已加载数据源', String(views.length - failed)],
+    ['加载异常', String(failed)],
+    ['当前会话能力', String(permissions.size)],
+  ] as const) {
+    const metric = el('article', 'metric');
+    metric.append(el('span', '', label), el('strong', '', value));
+    summary.append(metric);
+  }
+  workspace.append(summary);
+  const grid = el('section', 'governance-grid');
+  for (const surface of visible) {
+    const panel = el('article', 'governance-card');
+    const heading = el('header', 'panel-head');
+    heading.append(
+      el('div', '', surface.title),
+      el(
+        'span',
+        `status-badge ${surface.disposition === 'SUPPORTING' ? 'warning' : 'success'}`,
+        surface.disposition === 'SUPPORTING' ? '运行支撑' : '用户功能',
+      ),
+    );
+    panel.append(heading, el('p', 'muted', surface.description));
+    for (const path of surface.paths) {
+      const view = views.find((item) => item.path === path);
+      const row = el('details', 'governance-source');
+      const items = view ? governanceItems(view.value) : [];
+      const source = el(
+        'summary',
+        '',
+        `${path.replace('/api/v1/', '')} · ${view?.error ? '加载失败' : `${String(items.length)} 条`}`,
+      );
+      row.append(source);
+      if (view?.error) row.append(el('p', 'error', view.error));
+      else if (items.length === 0) row.append(el('p', 'empty', '当前没有可见记录'));
+      else {
+        const pre = el('pre', 'governance-preview');
+        pre.textContent = JSON.stringify(items.slice(0, 5), null, 2);
+        row.append(pre);
+      }
+      panel.append(row);
+    }
+    if (surface.managePermission && permissions.has(surface.managePermission))
+      panel.append(el('p', 'permission-note', `可管理 · ${surface.managePermission}`));
+    grid.append(panel);
+  }
+  workspace.append(grid);
+  return workspace;
+}
+
+type SessionDto = Readonly<{
+  employeeId: string;
+  companyId: string;
+  permissions: readonly string[];
+}>;
 async function login(login: string, password: string): Promise<string> {
   const result = await json<{ token: string }>('/api/v1/auth/login', '', {
     method: 'POST',
@@ -7388,7 +7586,8 @@ export async function bootstrap(root: HTMLElement): Promise<void> {
   } catch (error) {
     controller.error = error instanceof Error ? error.message : 'CRM 加载失败';
   }
-  const shell = createCrmShell(controller);
+  const allPermissions = new Set(session.permissions);
+  const shell = createCrmShell(controller, globalThis.innerWidth || 1280, allPermissions);
   const commercialPermissions = new Set(session.permissions.filter(isCommercialPermission));
   if (Object.values(visibleCommercialSections(commercialPermissions)).some(Boolean)) {
     const commercialController = new CommercialController(
@@ -7411,6 +7610,26 @@ export async function bootstrap(root: HTMLElement): Promise<void> {
           commercialController,
         ),
       );
+  }
+  const governanceSurfaces = visibleGovernanceSurfaces(allPermissions);
+  if (governanceSurfaces.length > 0) {
+    const paths = [...new Set(governanceSurfaces.flatMap((surface) => surface.paths))];
+    const governanceViews = await Promise.all(
+      paths.map(async (path): Promise<GovernanceView> => {
+        try {
+          return { path, value: await json<unknown>(path, token) };
+        } catch (error) {
+          return {
+            path,
+            value: null,
+            error: error instanceof Error ? error.message : '数据源加载失败',
+          };
+        }
+      }),
+    );
+    shell
+      .querySelector<HTMLElement>('.workspace')
+      ?.append(governanceWorkspace(allPermissions, governanceViews));
   }
   installAppNavigation(shell);
   root.replaceChildren(shell);
