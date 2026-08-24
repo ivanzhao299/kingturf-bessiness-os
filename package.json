@@ -22,6 +22,7 @@
     "demo:verify": "node scripts/verify_p1_demo.mjs",
     "demo:seed": "node scripts/seed_p1_demo.mjs",
     "e2e:p1": "playwright test tests/e2e/p1-demo.spec.ts",
+    "e2e:production:readonly": "playwright test tests/e2e/production-readonly.spec.ts",
     "verify:frontend-capabilities": "node scripts/verify_frontend_capability_manifest.mjs",
     "ci:database:guard": "NODE_ENV=test pnpm --filter @kingturf/database exec node --experimental-strip-types src/cli.ts guard-test-target",
     "ci:local": "NODE_ENV=test sh -c 'pnpm install --frozen-lockfile && pnpm format:check && pnpm verify:frontend-capabilities && pnpm ci:database:guard && pnpm db:migrate && pnpm db:status && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm security:check'"
