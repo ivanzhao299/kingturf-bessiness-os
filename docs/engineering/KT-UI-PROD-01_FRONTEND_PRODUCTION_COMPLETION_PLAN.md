@@ -48,6 +48,20 @@ Execution window: 2026-08-24; planned engineering effort: 32 hours. This slice c
 
 Role homepages are usability projections of session grants, not authorization decisions. Server RBAC, DataScope, state machines, segregation-of-duties checks, idempotency and audit remain authoritative.
 
+## Active long-task slice: Round 5 live work queues and representative-role browser UAT
+
+Execution window: 2026-08-24; planned engineering effort: 36 hours. This slice closes the remaining P6 browser-facing acceptance gap without retaining plaintext credentials or permanent test identities.
+
+| Node | Package                                  | Budget | Exit condition                                                                                                                                                |
+| ---- | ---------------------------------------- | -----: | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R5-1 | Production role and identity baseline    |     6h | Prior all-role authenticated API UAT is reconciled with the current 44-role catalogue; temporary identities remain inactive and audited                       |
+| R5-2 | Live role work queues                    |     8h | Role-home task cards summarize only current session-visible records and attention states from loaded production data, with no cross-role data aggregation     |
+| R5-3 | High-frequency form production hardening |     8h | Customer, lead and order workflows provide field constraints, inline invalid state, hints, safe retry and sensitive-operation acknowledgement                 |
+| R5-4 | Representative-role UI contract          |     7h | Sales, finance, production, quality, warehouse, logistics, management and IAM projections verify allowed routes, denied routes, work-queue text and mobile UI |
+| R5-5 | Exact release and production UAT         |     7h | Full PostgreSQL CI, exact-SHA deployment, production admin/browser traversal, safe form UAT, desktop/390px acceptance and zero browser errors pass            |
+
+Existing temporary production UAT identities are not reactivated merely to repeat already accepted API authorization evidence. Browser role projections are deterministic from the authenticated session permission set; any future creation of temporary production identities must use random short-lived credentials, preserve audit records, revoke sessions and deactivate identities after UAT.
+
 ## Functional exposure rule
 
 Every authenticated backend endpoint is classified as one of:

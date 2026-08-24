@@ -21,6 +21,7 @@ import {
   inventoryLocationOption,
   isCommercialPermission,
   roleWorkspaceProfile,
+  roleTaskInsight,
   technicalSolutionOpportunityId,
   governanceWorkspace,
 } from './bootstrap';
@@ -65,6 +66,19 @@ it('derives a role homepage from atomic permission domains', () => {
   ).toMatchObject({
     title: '经营管理综合岗位',
     domains: ['经营管理', '销售与商务', '仓储与物流'],
+  });
+});
+
+it('derives live role task counts and attention state from rendered business data', () => {
+  expect(roleTaskInsight(12, ['已批准', '待审批', '逾期'])).toEqual({
+    recordLabel: '12 条可见业务记录',
+    stateLabel: '2 项需关注',
+    attention: true,
+  });
+  expect(roleTaskInsight(0, ['已完成'])).toEqual({
+    recordLabel: '暂无可见业务记录',
+    stateLabel: '当前无阻塞',
+    attention: false,
   });
 });
 

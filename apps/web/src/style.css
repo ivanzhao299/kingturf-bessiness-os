@@ -1079,6 +1079,10 @@ button {
   font-size: 9px;
   font-weight: 750;
 }
+.role-task-state.attention {
+  background: #fff0dd;
+  color: #9a4f0d;
+}
 .role-task strong {
   font-size: 13px;
 }
@@ -1086,6 +1090,11 @@ button {
   min-height: 32px;
   color: #6b7d74;
   line-height: 1.45;
+}
+.role-task-count {
+  color: #536d61;
+  font-size: 10px;
+  font-weight: 700;
 }
 .role-task-action {
   color: #24704f;
@@ -1539,6 +1548,19 @@ button {
 .form-field textarea:focus {
   border-color: #4b876b;
   box-shadow: 0 0 0 3px rgba(38, 115, 79, 0.09);
+}
+.form-field.invalid input,
+.form-field.invalid select,
+.form-field.invalid textarea,
+.form-field [aria-invalid='true'] {
+  border-color: #bd3f3f;
+  box-shadow: 0 0 0 3px rgb(189 63 63 / 10%);
+}
+.field-hint {
+  color: #75877f;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.45;
 }
 .form-error {
   min-height: 18px;

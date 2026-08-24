@@ -386,6 +386,25 @@ export type RoleWorkspaceProfile = Readonly<{
   domains: readonly string[];
 }>;
 
+export type RoleTaskInsight = Readonly<{
+  recordLabel: string;
+  stateLabel: string;
+  attention: boolean;
+}>;
+
+export function roleTaskInsight(
+  recordCount: number,
+  statusLabels: readonly string[],
+): RoleTaskInsight {
+  const attentionPattern = /待|逾期|异常|失败|驳回|拒绝|未分配|冻结|草稿/u;
+  const attentionCount = statusLabels.filter((label) => attentionPattern.test(label)).length;
+  return {
+    recordLabel: recordCount > 0 ? `${String(recordCount)} 条可见业务记录` : '暂无可见业务记录',
+    stateLabel: attentionCount > 0 ? `${String(attentionCount)} 项需关注` : '当前无阻塞',
+    attention: attentionCount > 0,
+  };
+}
+
 export function roleWorkspaceProfile(permissions: ReadonlySet<string>): RoleWorkspaceProfile {
   const domains: string[] = [];
   if (permissions.has('executive-dashboard:read')) domains.push('经营管理');
@@ -3837,10 +3856,38 @@ export function commercialWorkspaceStructure(
                 ),
               })),
             },
-            { name: 'orderNumber', label: '订单编号', required: true },
-            { name: 'description', label: '订单行说明', required: true },
-            { name: 'quantity', label: '数量', type: 'number', required: true, value: '1' },
-            { name: 'unitPrice', label: '含税单价', type: 'number', required: true },
+            {
+              name: 'orderNumber',
+              label: '订单编号',
+              required: true,
+              minLength: 3,
+              maxLength: 64,
+              hint: '使用公司统一订单编号，避免与已有订单重复。',
+            },
+            {
+              name: 'description',
+              label: '订单行说明',
+              required: true,
+              minLength: 2,
+              maxLength: 500,
+            },
+            {
+              name: 'quantity',
+              label: '数量',
+              type: 'number',
+              required: true,
+              value: '1',
+              min: 0.000001,
+              step: 0.000001,
+            },
+            {
+              name: 'unitPrice',
+              label: '含税单价',
+              type: 'number',
+              required: true,
+              min: 0.000001,
+              step: 0.000001,
+            },
           ],
           '验证并释放',
           async (values) => {
@@ -6907,6 +6954,12 @@ type FormField = Readonly<{
   required?: boolean;
   placeholder?: string;
   value?: string;
+  hint?: string;
+  minLength?: number;
+  maxLength?: number;
+  min?: number;
+  max?: number;
+  step?: number;
   options?: readonly Readonly<{ value: string; label: string }>[];
 }>;
 function openForm(
@@ -6944,6 +6997,11 @@ function openForm(
       control.setAttribute('aria-required', 'true');
     }
     if (field.placeholder) control.setAttribute('placeholder', field.placeholder);
+    if (field.minLength !== undefined) control.setAttribute('minlength', String(field.minLength));
+    if (field.maxLength !== undefined) control.setAttribute('maxlength', String(field.maxLength));
+    if (field.min !== undefined) control.setAttribute('min', String(field.min));
+    if (field.max !== undefined) control.setAttribute('max', String(field.max));
+    if (field.step !== undefined) control.setAttribute('step', String(field.step));
     if (control instanceof HTMLInputElement)
       control.type = ['email', 'tel', 'number', 'date'].includes(field.type ?? '')
         ? (field.type as 'email' | 'tel' | 'number' | 'date')
@@ -6956,6 +7014,17 @@ function openForm(
       }
     if (field.value !== undefined && 'value' in control) control.value = field.value;
     label.append(control);
+    if (field.hint) label.append(el('small', 'field-hint', field.hint));
+    control.addEventListener('invalid', () => {
+      control.setAttribute('aria-invalid', 'true');
+      label.classList.add('invalid');
+    });
+    control.addEventListener('input', () => {
+      if (control.checkValidity()) {
+        control.removeAttribute('aria-invalid');
+        label.classList.remove('invalid');
+      }
+    });
     form.append(label);
   }
   const error = el('p', 'form-error');
@@ -6991,6 +7060,20 @@ function openForm(
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     error.textContent = '';
+    if (!form.checkValidity()) {
+      const invalid = Array.from(form.elements).filter(
+        (item) =>
+          (item instanceof HTMLInputElement ||
+            item instanceof HTMLSelectElement ||
+            item instanceof HTMLTextAreaElement) &&
+          !item.checkValidity(),
+      );
+      error.textContent = `请检查 ${String(invalid.length)} 个必填或格式不正确的字段`;
+      const firstInvalid = invalid[0];
+      if (firstInvalid instanceof HTMLElement) firstInvalid.focus();
+      form.reportValidity();
+      return;
+    }
     progress.textContent = '正在提交，请勿重复操作…';
     submit.disabled = true;
     submit.textContent = '处理中…';
@@ -7347,6 +7430,37 @@ function installWorkspaceListTools(shell: HTMLElement): void {
   }
 }
 
+function installRoleTaskInsights(shell: HTMLElement): void {
+  for (const task of Array.from(shell.querySelectorAll<HTMLElement>('[data-role-task-route]'))) {
+    const route = task.getAttribute('data-role-task-route');
+    if (!route) continue;
+    const scopes = Array.from(shell.querySelectorAll<HTMLElement>(`[data-route-view="${route}"]`));
+    const records = scopes.reduce(
+      (total, scope) =>
+        total +
+        scope.querySelectorAll(
+          '.solution-list > *, .decision-list > *, .quote-list > *, .qtc-list > *, .order-360-list > *, .risk-list > *, .production-order-grid > *, .mrp-proposal-grid > *, .shipment-grid > *, .queue-list > *, article',
+        ).length,
+      0,
+    );
+    const statusLabels = scopes.flatMap((scope) =>
+      Array.from(
+        scope.querySelectorAll<HTMLElement>(
+          '.status-badge, .ctr-state, .version-pin, .queue-status, .severity-badge',
+        ),
+      ).map((item) => item.textContent.trim()),
+    );
+    const insight = roleTaskInsight(records, statusLabels);
+    const state = task.querySelector<HTMLElement>('.role-task-state');
+    const count = task.querySelector<HTMLElement>('.role-task-count');
+    if (state) {
+      state.textContent = insight.stateLabel;
+      state.classList.toggle('attention', insight.attention);
+    }
+    if (count) count.textContent = insight.recordLabel;
+  }
+}
+
 type NavIconName =
   | 'overview'
   | 'sales'
@@ -7593,12 +7707,17 @@ export function createCrmShell(
             label: '客户名称',
             required: true,
             placeholder: '例如：华东体育设施有限公司',
+            minLength: 2,
+            maxLength: 120,
           },
           {
             name: 'customerNumber',
             label: '客户编号',
             required: true,
             placeholder: '例如：CUS-2026-001',
+            minLength: 3,
+            maxLength: 64,
+            hint: '建议使用公司统一的客户编码规则。',
           },
           { name: 'tags', label: '客户标签', placeholder: '多个标签用逗号分隔' },
         ],
@@ -7653,6 +7772,7 @@ export function createCrmShell(
     if (!copy) continue;
     const task = el('button', 'role-task');
     task.type = 'button';
+    task.setAttribute('data-role-task-route', route);
     task.addEventListener('click', () => {
       setAppRoute(route);
     });
@@ -7660,6 +7780,7 @@ export function createCrmShell(
       el('span', 'role-task-state', '可处理'),
       el('strong', '', copy[0]),
       el('small', '', copy[1]),
+      el('span', 'role-task-count', '正在汇总当前岗位数据…'),
       el('span', 'role-task-action', '进入工作台 →'),
     );
     roleTaskGrid.append(task);
@@ -7929,6 +8050,8 @@ export function createCrmShell(
               label: '线索标题',
               required: true,
               placeholder: '例如：学校运动场改造项目',
+              minLength: 2,
+              maxLength: 160,
             },
             {
               name: 'source',
@@ -9214,6 +9337,7 @@ export async function bootstrap(root: HTMLElement): Promise<void> {
   localizeEnterpriseCopy(shell);
   installRouteSectionNavigation(shell);
   installWorkspaceListTools(shell);
+  installRoleTaskInsights(shell);
   installAppNavigation(shell);
   root.replaceChildren(shell);
 }
