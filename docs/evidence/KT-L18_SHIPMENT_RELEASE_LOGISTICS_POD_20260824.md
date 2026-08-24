@@ -21,13 +21,22 @@ Failed gates enter `EXCEPTION_PENDING`. The requester cannot approve or reject t
 
 - Static migration suite: 32/32 passed.
 - PostgreSQL database suite: 42/42 passed.
-- API suite: 115/115 passed, including shipment route authorization and command validation.
+- API suite: 116/116 passed, including shipment route authorization, command validation and governed self-approval rejection.
 - Web suite: 26/26 passed.
 - Formatting, lint, typecheck and production build passed.
 
 ## Release acceptance
 
-Production deployment SHA, health/readiness, authenticated business UAT, dedicated role identities and Feishu private delivery receipt are recorded after the governed production release. Until those fields are present, KT-L18 is implementation-complete but not production-accepted.
+## Production acceptance
+
+- Release: `b6033d0872deb86a6c606b32359b3954d5baa38d`
+- CI: GitHub Actions run `32692442771`, passed.
+- Deployment: GitHub Actions run `32692461458`, verify and deploy passed.
+- Public runtime: `https://erp.kingturf.cn/health` returned `200 {"status":"ok"}` and `/ready` returned `200 {"status":"ready"}`.
+- Exception-success UAT release: `263d9352-0227-4b1d-9d2b-7ba738d69e9f`; real frozen failures were `quality` and `cost`. Dedicated employee `KT-UAT-COST-APPROVER-01`, additionally assigned only `KT_SHIPMENT_EXCEPTION_APPROVER`, independently approved the exception. Warehouse release, shipment `62182de5-df56-44af-86b6-7cc77eb5693b` and POD `POD-KT-L18-UAT-001` reached `DELIVERED`.
+- Segregation rejection UAT release: `7965fa0c-f50d-4a84-8413-f62c846de3b5`; requester self-approval returned `403 forbidden`, then the independent approver rejected the record to terminal `REJECTED`.
+
+KT-L18 is capability-complete and production-accepted. The next queued long task is KT-L19 collections, legal handoff and debt evidence package.
 
 ## Rollback
 
