@@ -880,6 +880,10 @@ export function commercialWorkspaceStructure(
   const status = document.createElement('p');
   status.className = 'commercial-status';
   status.setAttribute('role', 'status');
+  status.setAttribute(
+    'data-route-view',
+    'sales-workspace operations-workspace opportunity-ctr cost-quote contract-order ar-payment planning-production quality-warehouse delivery-evidence',
+  );
   status.textContent = controller?.loading ? '加载中…' : (controller?.message ?? '等待服务器数据');
   workspace.append(status);
   let riskPolicyControls: HTMLElement | null = null;
@@ -6964,6 +6968,56 @@ export function installAppNavigation(shell: HTMLElement): void {
   });
 }
 
+type NavIconName =
+  | 'overview'
+  | 'sales'
+  | 'operations'
+  | 'customers'
+  | 'opportunities'
+  | 'cost'
+  | 'contracts'
+  | 'receivables'
+  | 'production'
+  | 'quality'
+  | 'delivery'
+  | 'governance';
+
+const NAV_ICON_PATHS: Readonly<Record<NavIconName, readonly string[]>> = {
+  overview: ['M3 3v7h7V3H3Z', 'M14 3v4h7V3h-7Z', 'M14 11v10h7V11h-7Z', 'M3 14v7h7v-7H3Z'],
+  sales: ['M4 19V9', 'M10 19V5', 'M16 19v-7', 'M22 19H2'],
+  operations: ['M4 5h16v14H4z', 'M8 9h8', 'M8 13h5'],
+  customers: [
+    'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2',
+    'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z',
+    'M22 21v-2a4 4 0 0 0-3-3.87',
+    'M16 3.13a4 4 0 0 1 0 7.75',
+  ],
+  opportunities: ['M12 2v20', 'M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6'],
+  cost: ['M3 3v18h18', 'M7 16l4-4 3 3 5-7'],
+  contracts: ['M6 2h9l5 5v15H6z', 'M14 2v6h6', 'M9 13h6', 'M9 17h6'],
+  receivables: ['M2 7h20v10H2z', 'M6 12h4', 'M17 10v4'],
+  production: ['M3 21V9l6 4V9l6 4V3h6v18z', 'M7 17h2', 'M13 17h2'],
+  quality: ['M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z', 'm9 12 2 2 4-4'],
+  delivery: [
+    'M3 6h13v11H3z',
+    'M16 10h3l3 3v4h-6z',
+    'M7 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z',
+    'M18 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z',
+  ],
+  governance: [
+    'M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z',
+    'M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.12 3.67-.08-.03a1.7 1.7 0 0 0-1.84-.28l-.28.16a1.7 1.7 0 0 0-.84 1.48V22h-4.24v-.08a1.7 1.7 0 0 0-.84-1.48l-.28-.16a1.7 1.7 0 0 0-1.84.28l-.08.03-2.12-3.67.06-.06A1.7 1.7 0 0 0 4.6 15v-.32a1.7 1.7 0 0 0-.99-1.55L3.5 13.1V8.9l.11-.03a1.7 1.7 0 0 0 .99-1.55V7a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.12-3.67.08.03a1.7 1.7 0 0 0 1.84.28l.28-.16A1.7 1.7 0 0 0 9.36.06V0h4.24v.08a1.7 1.7 0 0 0 .84 1.48l.28.16a1.7 1.7 0 0 0 1.84-.28l.08-.03 2.12 3.67-.06.06A1.7 1.7 0 0 0 19.4 7v.32a1.7 1.7 0 0 0 .99 1.55l.11.03v4.2l-.11.03a1.7 1.7 0 0 0-.99 1.55V15Z',
+  ],
+};
+
+function navIcon(name: NavIconName): HTMLElement {
+  const icon = el('span', 'nav-icon');
+  icon.setAttribute('aria-hidden', 'true');
+  const paths = NAV_ICON_PATHS[name].map((data) => `<path d="${data}"></path>`).join('');
+  icon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
+  return icon;
+}
+
 export function createCrmShell(
   controller: CrmController,
   width = window.innerWidth,
@@ -7004,41 +7058,43 @@ export function createCrmShell(
     typeof globalThis.location === 'undefined'
       ? 'overview'
       : appRouteFromHash(globalThis.location.hash);
-  const navGroup = (title: string, items: readonly [string, string, AppRoute][]) => {
+  const navGroup = (title: string, items: readonly [NavIconName, string, AppRoute][]) => {
     const visibleItems = items.filter(([, , route]) => visibleRoutes.has(route));
     if (visibleItems.length === 0) return;
     const group = el('section', 'nav-group');
     group.append(el('p', 'nav-label', title));
-    for (const [glyph, label, route] of visibleItems) {
+    for (const [icon, label, route] of visibleItems) {
       const item = el('button', `nav-item${currentRoute === route ? ' active' : ''}`);
       item.setAttribute('data-app-route', route);
       item.setAttribute('aria-current', currentRoute === route ? 'page' : 'false');
       item.addEventListener('click', () => {
         setAppRoute(route);
       });
-      item.append(el('span', 'nav-glyph', glyph), el('span', 'nav-text', label));
+      const iconBox = el('span', 'nav-glyph');
+      iconBox.append(navIcon(icon));
+      item.append(iconBox, el('span', 'nav-text', label));
       group.append(item);
     }
     nav.append(group);
   };
   navGroup('工作空间', [
-    ['⌂', '经营总览', 'overview'],
-    ['◎', '销售工作台', 'sales-workspace'],
-    ['□', '运营工作台', 'operations-workspace'],
+    ['overview', '经营总览', 'overview'],
+    ['sales', '销售工作台', 'sales-workspace'],
+    ['operations', '运营工作台', 'operations-workspace'],
   ]);
   navGroup('销售到回款', [
-    ['◇', '线索与客户', 'crm'],
-    ['△', '商机与 CTR', 'opportunity-ctr'],
-    ['￥', '成本与报价', 'cost-quote'],
-    ['✓', '合同与订单', 'contract-order'],
-    ['↔', '应收与回款', 'ar-payment'],
+    ['customers', '线索与客户', 'crm'],
+    ['opportunities', '商机与 CTR', 'opportunity-ctr'],
+    ['cost', '成本与报价', 'cost-quote'],
+    ['contracts', '合同与订单', 'contract-order'],
+    ['receivables', '应收与回款', 'ar-payment'],
   ]);
   navGroup('履约协同', [
-    ['▦', '计划与生产', 'planning-production'],
-    ['◈', '质量与仓储', 'quality-warehouse'],
-    ['⌁', '交付与证据', 'delivery-evidence'],
+    ['production', '计划与生产', 'planning-production'],
+    ['quality', '质量与仓储', 'quality-warehouse'],
+    ['delivery', '交付与证据', 'delivery-evidence'],
   ]);
-  navGroup('平台治理', [['⚙', '系统管理与治理', 'governance']]);
+  navGroup('平台治理', [['governance', '系统管理与治理', 'governance']]);
   aside.append(nav);
   const sidebarFooter = el('div', 'sidebar-footer');
   sidebarFooter.append(el('span', 'online-dot'), el('span', '', '生产环境 · erp.kingturf.cn'));
@@ -7061,10 +7117,13 @@ export function createCrmShell(
   content.append(utility);
   const header = el('header', 'topbar');
   const title = el('div');
-  title.append(
-    el('p', 'eyebrow', '经营总览 · 2026 年 8 月 16 日'),
-    el('h1', '', '早上好，超级管理员'),
-  );
+  const today = new Intl.DateTimeFormat('zh-CN', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'short',
+  }).format(new Date());
+  title.append(el('p', 'eyebrow', `经营总览 · ${today}`), el('h1', '', '经营概览'));
   title.append(el('p', 'page-subtitle', '从客户机会到订单回款，关注今天最需要推进的事项。'));
   header.append(title);
   if (sections.customerCreate) {
@@ -7618,12 +7677,12 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
   workspace.setAttribute('data-route-view', 'governance');
   const header = el('header', 'governance-hero');
   header.append(
-    el('p', 'eyebrow', 'PLATFORM GOVERNANCE'),
+    el('p', 'eyebrow', '企业管理控制台'),
     el('h1', '', '系统管理与治理'),
     el(
       'p',
       'muted',
-      '页面、数据和操作均来自当前会话的原子授权；未授权模块不会出现在导航或工作台。',
+      '集中维护组织、员工、角色权限、审批流程和系统运行规则。页面只展示当前账号可管理的范围。',
     ),
   );
   workspace.append(header);
@@ -7631,10 +7690,10 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
   const visible = visibleGovernanceSurfaces(permissions);
   const failed = views.filter((view) => view.error !== undefined).length;
   for (const [label, value] of [
-    ['可见治理模块', String(visible.length)],
-    ['已加载数据源', String(views.length - failed)],
-    ['加载异常', String(failed)],
-    ['当前会话能力', String(permissions.size)],
+    ['可管理模块', String(visible.length)],
+    ['业务配置项', String(views.length - failed)],
+    ['待处理异常', String(failed)],
+    ['已授权操作', String(permissions.size)],
   ] as const) {
     const metric = el('article', 'metric');
     metric.append(el('span', '', label), el('strong', '', value));
@@ -7684,7 +7743,7 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
       el(
         'span',
         `status-badge ${surface.disposition === 'SUPPORTING' ? 'warning' : 'success'}`,
-        surface.disposition === 'SUPPORTING' ? '运行支撑' : '用户功能',
+        surface.disposition === 'SUPPORTING' ? '运行监控' : '配置管理',
       ),
     );
     panel.append(heading, el('p', 'muted', surface.description));
@@ -8388,7 +8447,7 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
       const source = el(
         'summary',
         '',
-        `${path.replace('/api/v1/', '')} · ${view?.error ? '加载失败' : `${String(items.length)} 条`}`,
+        view?.error ? '数据读取失败' : `查看数据明细 · ${String(items.length)} 条`,
       );
       row.append(source);
       if (view?.error) row.append(el('p', 'error', view.error));
@@ -8401,7 +8460,7 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
       panel.append(row);
     }
     if (surface.managePermission && permissions.has(surface.managePermission))
-      panel.append(el('p', 'permission-note', `可管理 · ${surface.managePermission}`));
+      panel.append(el('p', 'permission-note', '当前账号具备编辑权限'));
     grid.append(panel);
   }
   workspace.append(grid);

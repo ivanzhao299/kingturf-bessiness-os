@@ -487,6 +487,16 @@ button {
   font-size: 15px;
   text-align: center;
 }
+.nav-icon {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+.nav-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
 .nav-item.active .nav-glyph {
   color: #d5f365;
 }
@@ -1593,6 +1603,199 @@ button {
 @media (max-width: 640px) {
   .procurement-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* KT-UI-ENTERPRISE-01: denser, task-oriented product shell. */
+:root {
+  --kt-canvas: #f3f6f4;
+  --kt-surface: #ffffff;
+  --kt-ink: #13271f;
+  --kt-muted: #66776f;
+  --kt-border: #dce5e0;
+  --kt-primary: #146b49;
+  --kt-primary-strong: #0e563a;
+  --kt-primary-soft: #e9f4ee;
+}
+body {
+  color: var(--kt-ink);
+  background: var(--kt-canvas);
+}
+.app-shell.desktop {
+  grid-template-columns: 252px minmax(0, 1fr);
+}
+.sidebar {
+  padding: 24px 16px 18px;
+  background: linear-gradient(180deg, #123b2d 0%, #0d3024 100%);
+  box-shadow: 10px 0 28px rgb(8 39 28 / 8%);
+}
+.brand-lockup {
+  margin-bottom: 24px;
+}
+.brand-mark {
+  border-radius: 10px;
+  box-shadow: 0 8px 22px rgb(0 0 0 / 16%);
+}
+.nav-group {
+  margin-bottom: 14px;
+}
+.nav-label {
+  margin-bottom: 5px;
+  color: #8fa79c;
+  font-size: 10px;
+}
+.nav-item {
+  min-height: 42px;
+  border-radius: 9px;
+  color: #c6d5ce;
+  font-size: 13px;
+}
+.nav-item.active {
+  background: linear-gradient(90deg, rgb(53 111 84 / 90%), rgb(38 83 64 / 80%));
+  box-shadow:
+    inset 3px 0 #d5f365,
+    0 8px 18px rgb(4 30 20 / 14%);
+}
+.nav-glyph {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+}
+.workspace {
+  padding: 0 clamp(24px, 3.2vw, 52px) 52px;
+  background:
+    radial-gradient(circle at 100% 0, rgb(210 232 220 / 28%), transparent 360px), var(--kt-canvas);
+}
+.utility-bar {
+  min-height: 68px;
+  margin: 0 clamp(-52px, -3.2vw, -24px) 34px;
+  padding: 0 clamp(24px, 3.2vw, 52px);
+  border-bottom-color: #d8e2dc;
+  background: rgb(255 255 255 / 90%);
+}
+.global-search {
+  min-height: 38px;
+  border: 1px solid #dce5e0;
+  border-radius: 9px;
+  padding: 0 11px;
+  background: #f8faf9;
+}
+.topbar h1,
+.governance-hero h1 {
+  color: var(--kt-ink);
+  font-size: clamp(28px, 2.4vw, 36px);
+  font-weight: 780;
+  letter-spacing: -0.035em;
+}
+.eyebrow {
+  color: #547568;
+  letter-spacing: 0.08em;
+}
+.page-subtitle,
+.muted {
+  color: var(--kt-muted);
+}
+.metric,
+.panel,
+.governance-card,
+.commercial-panel,
+.quality-section {
+  border-color: var(--kt-border);
+  box-shadow:
+    0 1px 2px rgb(15 40 30 / 3%),
+    0 8px 24px rgb(15 40 30 / 4%);
+}
+.metric {
+  min-height: 104px;
+  padding: 16px 17px;
+}
+.metric strong {
+  margin: 8px 0 6px;
+}
+.primary,
+.secondary {
+  transition:
+    border-color 150ms ease,
+    background 150ms ease,
+    box-shadow 150ms ease,
+    transform 150ms ease;
+}
+.primary:hover:not(:disabled),
+.secondary:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+.governance-workspace {
+  gap: 16px;
+}
+.governance-hero {
+  padding-top: 2px;
+}
+.governance-hero .eyebrow {
+  margin-bottom: 8px;
+}
+.governance-metrics {
+  gap: 10px;
+}
+.governance-metrics .metric {
+  min-height: 88px;
+}
+.governance-grid {
+  gap: 12px;
+}
+.governance-card {
+  padding: 17px;
+  border-radius: 13px;
+}
+.governance-card .panel-head > div {
+  font-size: 16px;
+}
+.governance-card > .muted {
+  min-height: 40px;
+  margin: 9px 0;
+  line-height: 1.55;
+}
+.governance-actions {
+  margin-top: 10px;
+}
+.governance-source {
+  border-color: #e2e9e5;
+  background: #f7f9f8;
+}
+.governance-source summary {
+  color: #52675e;
+  font-weight: 650;
+}
+.permission-note {
+  background: #edf6f1;
+  color: #266148;
+}
+.commercial-status:empty {
+  display: none;
+}
+@media (min-width: 1180px) {
+  .governance-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 1020px) and (min-width: 640px) {
+  .app-shell.tablet {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+  .tablet .sidebar {
+    width: auto;
+    padding: 22px 14px;
+  }
+  .tablet .brand-caption,
+  .tablet .brand,
+  .tablet .nav-label,
+  .tablet .nav-text,
+  .tablet .sidebar-footer span:last-child {
+    display: initial;
+  }
+  .tablet .nav-item {
+    justify-content: flex-start;
+    padding: 0 11px;
   }
 }
 
