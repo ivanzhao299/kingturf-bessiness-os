@@ -89,6 +89,13 @@ const app = buildApp({
   productionCosts: new PostgresProductionCostRepository(database),
   quality: new PostgresQualityRepository(database),
   shipments: new PostgresShipmentRepository(database),
+  release: {
+    sha: process.env.KINGTURF_RELEASE_SHA ?? 'development',
+    environment: process.env.KINGTURF_RELEASE_ENVIRONMENT ?? config.nodeEnv,
+    ...(process.env.KINGTURF_RELEASE_BUILT_AT
+      ? { builtAt: process.env.KINGTURF_RELEASE_BUILT_AT }
+      : {}),
+  },
   readiness: async () => {
     try {
       await database.query('SELECT 1');

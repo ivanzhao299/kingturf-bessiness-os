@@ -10,3 +10,13 @@ describe('GET /health', () => {
     expect(response.body).toEqual({ status: 'ok' });
   });
 });
+
+describe('GET /version', () => {
+  it('reports an explicit development identity without runtime dependencies', async () => {
+    const app = buildApp();
+    const response = await app.dispatch({ method: 'GET', pathname: '/version' });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toEqual({ sha: 'development', environment: 'development' });
+  });
+});

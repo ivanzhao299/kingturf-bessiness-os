@@ -35,6 +35,9 @@ services:
       PASSWORD_SCRYPT_PARALLELIZATION: 1
       ATTACHMENT_STORAGE_ADAPTER: local
       ATTACHMENT_LOCAL_DIRECTORY: /var/lib/kingturf/attachments
+      KINGTURF_RELEASE_SHA: ${KINGTURF_RELEASE_SHA:?KINGTURF_RELEASE_SHA is required}
+      KINGTURF_RELEASE_ENVIRONMENT: production
+      KINGTURF_RELEASE_BUILT_AT: ${KINGTURF_RELEASE_BUILT_AT:?KINGTURF_RELEASE_BUILT_AT is required}
     volumes:
       - kingturf_attachments:/var/lib/kingturf/attachments
     depends_on:

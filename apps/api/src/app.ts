@@ -108,6 +108,7 @@ export type ApiDependencies = Readonly<{
   quality?: PostgresQualityRepository;
   shipments?: PostgresShipmentRepository;
   readiness?: () => Promise<boolean>;
+  release?: Readonly<{ sha: string; environment: string; builtAt?: string }>;
   telemetry?: Telemetry;
   logger?: OperationalLogger;
 }>;
@@ -263,6 +264,11 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
       try {
         if (request.method === 'GET' && request.pathname === '/health')
           return { statusCode: 200, body: { status: 'ok' } };
+        if (request.method === 'GET' && request.pathname === '/version')
+          return {
+            statusCode: 200,
+            body: dependencies?.release ?? { sha: 'development', environment: 'development' },
+          };
         if (request.method === 'GET' && request.pathname === '/ready') {
           const ready = dependencies?.readiness ? await dependencies.readiness() : false;
           return ready
