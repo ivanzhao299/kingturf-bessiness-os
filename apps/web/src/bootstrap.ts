@@ -612,6 +612,59 @@ const displayMoney = (currency: unknown, value: unknown): string => {
   }).format(amount);
 };
 
+const BUSINESS_EVENT_LABELS: Readonly<Record<string, string>> = {
+  CONTRACT_SIGNED: '合同已签署',
+  PAYMENT_RECEIVED: '收到回款',
+  OPPORTUNITY_CREATED: '商机已创建',
+  QUOTE_ISSUED: '报价已签发',
+  CREDIT_DECIDED: '信用审查已决策',
+  ORDER_RELEASED: '订单已放行',
+  AR_POSTED: '应收已过账',
+  COMMISSION_ACCRUED: '佣金已计提',
+  COMMISSION_FROZEN: '佣金已冻结',
+  COMMISSION_RELEASED: '佣金已释放',
+  COMMISSION_PAID: '佣金已支付',
+  COMMISSION_CLAWED_BACK: '佣金已追回',
+  RISK_EVALUATED: '风险评价已完成',
+  RISK_TASK_OPEN: '风险任务已创建',
+  RISK_TASK_ACKNOWLEDGED: '风险任务已确认',
+  RISK_TASK_ESCALATED: '风险任务已升级',
+  RISK_TASK_CLOSED: '风险任务已关闭',
+  SHIPMENT_RELEASE_EXCEPTION_PENDING: '发货例外待审批',
+  SHIPMENT_RELEASE_APPROVED: '发货例外已批准',
+  SHIPMENT_RELEASE_REJECTED: '发货例外已驳回',
+  SHIPMENT_RELEASE_RELEASED: '发货已放行',
+  SHIPMENT_DISPATCHED: '货物已发运',
+  SHIPMENT_DELIVERED: '货物已签收',
+};
+
+const BUSINESS_STATE_LABELS: Readonly<Record<string, string>> = {
+  DRAFT: '草稿',
+  OPEN: '待处理',
+  ACKNOWLEDGED: '已确认',
+  ESCALATED: '已升级',
+  CLOSED: '已关闭',
+  APPROVED: '已批准',
+  REJECTED: '已驳回',
+  RELEASED: '已放行',
+  SIGNED: '已签署',
+  EXPIRED: '已过期',
+  LOW: '低',
+  MEDIUM: '中',
+  HIGH: '高',
+  CRITICAL: '严重',
+};
+
+export const businessEventLabel = (value: unknown): string => {
+  const code = textValue(value, '业务事件');
+  return BUSINESS_EVENT_LABELS[code] ?? BUSINESS_STATE_LABELS[code] ?? code;
+};
+
+const businessStateLabel = (value: unknown, fallback = '状态受限'): string => {
+  const code = textValue(value, fallback);
+  return BUSINESS_STATE_LABELS[code] ?? code;
+};
+
 function printIssuedQuote(quote: Record<string, unknown>): void {
   const popup = globalThis.open('', '_blank', 'noopener,noreferrer');
   if (!popup) throw new Error('浏览器阻止了报价打印窗口，请允许本站弹出窗口');
@@ -3762,7 +3815,10 @@ export function commercialWorkspaceStructure(
         el(
           'strong',
           '',
-          `${recordText(order, 'currency', 'currency')} ${recordText(order, 'total', 'total', '—')}`,
+          displayMoney(
+            recordText(order, 'currency', 'currency'),
+            recordText(order, 'total', 'total', '—'),
+          ),
         ),
         el('span', 'ctr-state state-released', recordText(order, 'status', 'status', 'RELEASED')),
         el(
@@ -4014,14 +4070,22 @@ export function commercialWorkspaceStructure(
       const anomalies = Array.isArray(aggregate.anomalies)
         ? aggregate.anomalies.map(recordValue).filter((item) => item.active === true)
         : [];
-      const timeline = Array.isArray(aggregate.timeline) ? aggregate.timeline.map(recordValue) : [];
+      const timeline = Array.isArray(aggregate.timeline)
+        ? aggregate.timeline
+            .map(recordValue)
+            .sort(
+              (left, right) =>
+                Date.parse(recordText(right, 'occurredAt', 'occurredAt')) -
+                Date.parse(recordText(left, 'occurredAt', 'occurredAt')),
+            )
+        : [];
       const card = el('article', 'order-360-card');
       card.append(
         el('p', 'eyebrow', recordText(order, 'orderNumber', 'order_number', 'SALES ORDER')),
         el(
           'h3',
           '',
-          `${recordText(order, 'currency', 'currency')} ${recordText(order, 'total', 'total', '—')} · ${recordText(order, 'status', 'status')}`,
+          `${displayMoney(recordText(order, 'currency', 'currency'), recordText(order, 'total', 'total', '—'))} · ${businessStateLabel(recordText(order, 'status', 'status'))}`,
         ),
         el(
           'p',
@@ -4041,16 +4105,76 @@ export function commercialWorkspaceStructure(
           `应收 ${String(receivables.length)} · 回款 ${String(payments.length)} · 佣金 ${String(commissions.length)} · 风险 ${String(risks.length)} · 证据 ${String(timeline.length)}`,
         ),
       );
+      const evidenceTools = el('div', 'evidence-tools');
+      const eventFilter = el('select', 'filter-select');
+      eventFilter.setAttribute('aria-label', '筛选证据事件');
+      for (const [value, label] of [
+        ['ALL', '全部事件'],
+        ['COMMERCIAL', '商务与订单'],
+        ['FINANCE', '应收、回款与佣金'],
+        ['RISK', '风险与审批'],
+        ['DELIVERY', '发货与签收'],
+      ] as const) {
+        const option = el('option', '', label);
+        option.setAttribute('value', value);
+        eventFilter.append(option);
+      }
+      const sortEvidence = el('button', 'secondary compact-action', '时间：最新在前');
+      sortEvidence.type = 'button';
+      const copyEvidence = el('button', 'secondary compact-action', '复制当前证据');
+      copyEvidence.type = 'button';
+      evidenceTools.append(eventFilter, sortEvidence, copyEvidence);
       const evidence = el('ol', 'order-360-timeline');
-      for (const event of timeline)
-        evidence.append(
-          el(
-            'li',
-            '',
-            `${recordText(event, 'occurredAt', 'occurredAt').slice(0, 16).replace('T', ' ')} · ${recordText(event, 'type', 'type')} · ${recordText(event, 'label', 'label')}`,
-          ),
+      const eventCategory = (type: string): string => {
+        if (/PAYMENT|AR_|COMMISSION/iu.test(type)) return 'FINANCE';
+        if (/RISK|EXCEPTION|APPROV|REJECT/iu.test(type)) return 'RISK';
+        if (/SHIPMENT|DISPATCH|DELIVER/iu.test(type)) return 'DELIVERY';
+        return 'COMMERCIAL';
+      };
+      for (const event of timeline) {
+        const type = recordText(event, 'type', 'type');
+        const item = el(
+          'li',
+          '',
+          `${recordText(event, 'occurredAt', 'occurredAt').slice(0, 16).replace('T', ' ')} · ${businessEventLabel(type)} · ${recordText(event, 'label', 'label')}`,
         );
-      card.append(evidence);
+        item.setAttribute('data-event-category', eventCategory(type));
+        item.setAttribute('data-event-time', recordText(event, 'occurredAt', 'occurredAt'));
+        item.setAttribute('title', `事件编码：${type}`);
+        evidence.append(item);
+      }
+      const applyEvidenceFilter = () => {
+        const selected = eventFilter.value;
+        for (const item of Array.from(evidence.children) as HTMLElement[])
+          item.hidden = selected !== 'ALL' && item.dataset.eventCategory !== selected;
+      };
+      eventFilter.addEventListener('change', applyEvidenceFilter);
+      let newestFirst = true;
+      sortEvidence.addEventListener('click', () => {
+        newestFirst = !newestFirst;
+        const items = Array.from(evidence.children) as HTMLElement[];
+        items.sort((left, right) => {
+          const delta =
+            Date.parse(left.dataset.eventTime ?? '') - Date.parse(right.dataset.eventTime ?? '');
+          return newestFirst ? -delta : delta;
+        });
+        evidence.replaceChildren(...items);
+        sortEvidence.textContent = newestFirst ? '时间：最新在前' : '时间：最早在前';
+      });
+      copyEvidence.addEventListener('click', () => {
+        const lines = (Array.from(evidence.children) as HTMLElement[])
+          .filter((item) => !item.hidden)
+          .map((item) => item.textContent.trim());
+        void globalThis.navigator.clipboard
+          .writeText(lines.join('\n'))
+          .then(() => {
+            status.textContent = `已复制 ${String(lines.length)} 条订单证据`;
+          })
+          .catch(() => {
+            status.textContent = '复制失败，请检查浏览器剪贴板权限';
+          });
+      });
+      card.append(evidenceTools, evidence);
       list.append(card);
     }
     if (list.children.length === 0) list.append(el('p', 'pipeline-empty', '暂无可见订单证据。'));
@@ -4119,7 +4243,7 @@ export function commercialWorkspaceStructure(
         el(
           'strong',
           '',
-          `未核销 ${recordText(item, 'currency', 'currency')} ${decimalValue(remaining)}`,
+          `未核销 ${displayMoney(recordText(item, 'currency', 'currency'), remaining)}`,
         ),
         el(
           'p',
@@ -4200,7 +4324,10 @@ export function commercialWorkspaceStructure(
         el(
           'strong',
           '',
-          `${recordText(payment, 'currency', 'currency')} ${recordText(payment, 'amount', 'amount', '—')}`,
+          displayMoney(
+            recordText(payment, 'currency', 'currency'),
+            recordText(payment, 'amount', 'amount', '—'),
+          ),
         ),
         el(
           'p',
@@ -4453,7 +4580,10 @@ export function commercialWorkspaceStructure(
         el(
           'strong',
           '',
-          `${recordText(commission, 'currency', 'currency')} ${recordText(commission, 'commissionAmount', 'commission_amount', '—')}`,
+          displayMoney(
+            recordText(commission, 'currency', 'currency'),
+            recordText(commission, 'commissionAmount', 'commission_amount', '—'),
+          ),
         ),
         el('span', `ctr-state state-${state.toLocaleLowerCase()}`, labels[state] ?? state),
         el(
@@ -4558,12 +4688,15 @@ export function commercialWorkspaceStructure(
         el(
           'strong',
           '',
-          `${recordText(evaluation, 'severity', 'severity')} 风险 · ${recordText(evaluation, 'score', 'score')} 分`,
+          `${businessStateLabel(recordText(evaluation, 'severity', 'severity'))}风险 · ${recordText(evaluation, 'score', 'score')} 分`,
         ),
         el(
           'span',
           `ctr-state state-${recordText(task, 'effective_state', 'effective_state', 'LOW').toLocaleLowerCase()}`,
-          recordText(task, 'effective_state', 'effective_state', '无需任务'),
+          businessStateLabel(
+            recordText(task, 'effective_state', 'effective_state', '无需任务'),
+            '无需任务',
+          ),
         ),
         el(
           'p',
@@ -4584,7 +4717,7 @@ export function commercialWorkspaceStructure(
           el(
             'li',
             '',
-            `${recordText(event, 'sequence', 'sequence')} · ${recordText(event, 'state', 'state')} · ${recordText(event, 'reason', 'reason')}`,
+            `${recordText(event, 'sequence', 'sequence')} · ${businessStateLabel(recordText(event, 'state', 'state'))} · ${recordText(event, 'reason', 'reason')}`,
           ),
         );
       card.append(timeline);
@@ -6910,7 +7043,7 @@ function customer360Content(view: Customer360): HTMLElement {
     const row = el('article', 'timeline-item');
     row.append(
       el('time', '', displayTime(activity.occurredAt)),
-      el('strong', '', activity.type),
+      el('strong', '', businessEventLabel(activity.type)),
       el('p', '', activity.summary),
     );
     timeline.append(row);
@@ -6932,7 +7065,7 @@ function customer360Content(view: Customer360): HTMLElement {
       el(
         'span',
         '',
-        `${item.status ?? '状态受限'} · ${currency && amount ? `${currency} ${amount}` : '金额受限'} · ${probability}`,
+        `${businessStateLabel(item.status)} · ${currency && amount ? displayMoney(currency, amount) : '金额受限'} · ${probability}`,
       ),
       el('time', '', item.expectedCloseDate ?? '预计日期受限'),
     );

@@ -971,24 +971,46 @@ button {
 }
 .ctr-state {
   justify-self: start;
-  padding: 4px 8px;
-  border-radius: 10px;
-  background: #edf2ef;
+  border: 1px solid #dde6e1;
+  border-radius: 999px;
+  padding: 3px 7px;
+  background: #f7f9f8;
   color: #64766d;
-  font-size: 9px;
-  font-weight: 800;
+  font-size: 10px;
+  font-weight: 700;
 }
 .ctr-state.state-approved {
+  border-color: #cae4d5;
   background: #e0f2e7;
   color: #177049;
 }
 .ctr-state.state-submitted {
+  border-color: #ead9b6;
   background: #f4ead4;
   color: #8a681d;
 }
 .ctr-state.state-rejected {
+  border-color: #ebcaca;
   background: #f7e3e3;
   color: #9a3b3b;
+}
+.evidence-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 14px 0 8px;
+  padding-top: 12px;
+  border-top: 1px solid #e7ece9;
+}
+.evidence-tools .filter-select {
+  width: auto;
+  min-width: 150px;
+}
+.compact-action {
+  min-height: 36px;
+  padding: 0 11px;
+  font-size: 11px;
 }
 .ctr-actions {
   display: flex;

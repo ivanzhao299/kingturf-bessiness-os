@@ -21,6 +21,19 @@ Make `https://erp.kingturf.cn` the single reliable production preview and accept
 
 Total planned effort: 144 hours. Every package is at least five hours and is executed in order without advancing on self-report.
 
+## Active long-task slice: Round 3 production language and list operations
+
+Execution window: 2026-08-24; planned engineering effort: 24 hours. This slice remains part of P5 and does not create a parallel roadmap.
+
+| Node | Package                         | Budget | Exit condition                                                                                                                                                    |
+| ---- | ------------------------------- | -----: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R3-1 | Business-language normalization |     6h | Events, lifecycle states, risk levels and money use consistent Chinese business language; raw enums are retained only as accessible technical titles where useful |
+| R3-2 | Badge and density refinement    |     5h | Status markers communicate exception/decision/terminal state without dominating titles, identifiers or primary actions                                            |
+| R3-3 | List productivity               |     7h | The order evidence list supports category filtering, chronological sorting and safe batch copy without any authorization bypass or server mutation                |
+| R3-4 | Regression and exact release    |     6h | Formatting, lint, typecheck, tests, build, clean diff, exact-SHA deployment, desktop/390px authenticated UAT and browser-error review all pass                    |
+
+Round 3 deliberately excludes new backend bulk-write endpoints. Batch operations in this slice are read-only evidence handling; future bulk mutations require dedicated API authorization, idempotency, concurrency, audit and partial-failure design.
+
 ## Functional exposure rule
 
 Every authenticated backend endpoint is classified as one of:

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {
   BOOTSTRAP_TITLE,
+  businessEventLabel,
   CommercialController,
   CrmController,
   GovernanceController,
@@ -22,6 +23,13 @@ import {
   technicalSolutionOpportunityId,
   governanceWorkspace,
 } from './bootstrap';
+
+it('translates production evidence event codes into business language', () => {
+  expect(businessEventLabel('CONTRACT_SIGNED')).toBe('合同已签署');
+  expect(businessEventLabel('SHIPMENT_DELIVERED')).toBe('货物已签收');
+  expect(businessEventLabel('APPROVED')).toBe('已批准');
+  expect(businessEventLabel('CUSTOM_EVENT')).toBe('CUSTOM_EVENT');
+});
 
 it('derives application navigation from atomic role capabilities', () => {
   expect([...visibleAppRoutes(new Set(['shipment:read']))]).toEqual([
@@ -1173,7 +1181,7 @@ describe('web bootstrap', () => {
       expect(shell.textContent).toContain('华东区域');
       expect(shell.textContent).toContain('School pitch');
       expect(shell.textContent).toContain('学校球场改造');
-      expect(shell.textContent).toContain('CNY 680000');
+      expect(shell.textContent).toContain('¥680,000');
       expect(shell.textContent.indexOf('确认预算')).toBeLessThan(
         shell.textContent.indexOf('首次接洽'),
       );
@@ -1258,7 +1266,7 @@ describe('web bootstrap', () => {
     expect(workspace.findByClass('ar-workbench')).toHaveLength(1);
     expect(workspace.findByClass('payment-workbench')).toHaveLength(1);
     expect(workspace.textContent).toContain('SO-001');
-    expect(workspace.textContent).toContain('未核销 CNY 400');
+    expect(workspace.textContent).toContain('未核销 ¥400');
     expect(workspace.textContent).toContain('已核销 600');
     expect(workspace.textContent).toContain('最近核销 1234567890ab');
     expect(workspace.textContent).not.toContain('JSON 请求');
@@ -1330,7 +1338,7 @@ describe('web bootstrap', () => {
     ) as unknown as RenderedElement;
     expect(workspace.findByClass('commission-workbench')).toHaveLength(1);
     expect(workspace.textContent).toContain('佣金引擎与不可变台账');
-    expect(workspace.textContent).toContain('CNY 28500');
+    expect(workspace.textContent).toContain('¥28,500');
     expect(workspace.textContent).toContain('已冻结');
     expect(workspace.textContent).toContain('1 · 已计提 · 服务器计提');
     expect(workspace.textContent).toContain('复核并释放');
