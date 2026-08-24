@@ -1489,6 +1489,16 @@ button {
   .mobile .qtc-list {
     grid-template-columns: minmax(0, 1fr);
   }
+  .mobile .input-hash,
+  .mobile .order-360-list,
+  .mobile .order-360-card,
+  .mobile .order-360-timeline,
+  .mobile .order-360-timeline li {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
   .ctr-row {
     grid-template-columns: minmax(0, 1fr) auto;
     padding-top: 12px;
