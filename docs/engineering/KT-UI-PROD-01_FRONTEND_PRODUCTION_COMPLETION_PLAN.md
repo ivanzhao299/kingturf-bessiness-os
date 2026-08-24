@@ -34,6 +34,20 @@ Execution window: 2026-08-24; planned engineering effort: 24 hours. This slice r
 
 Round 3 deliberately excludes new backend bulk-write endpoints. Batch operations in this slice are read-only evidence handling; future bulk mutations require dedicated API authorization, idempotency, concurrency, audit and partial-failure design.
 
+## Active long-task slice: Round 4 role workspaces and operational lists
+
+Execution window: 2026-08-24; planned engineering effort: 32 hours. This slice completes the remaining P5 role-facing work and starts the P6 representative-role acceptance gate.
+
+| Node | Package                              | Budget | Exit condition                                                                                                                                              |
+| ---- | ------------------------------------ | -----: | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R4-1 | Atomic role and exposure review      |     6h | Every production role resolves to at least one intentional route; overview, route, section and action visibility remain grant-derived                       |
+| R4-2 | Role homepage and action queues      |     8h | Every authenticated business role receives an overview with its responsibility domains and direct links only to authorized workspaces                       |
+| R4-3 | Operational list productivity        |     8h | Dense commercial and operations lists provide consistent in-page search, deterministic sorting, reset, visible counts and responsive layouts                |
+| R4-4 | Form and state-change feedback       |     5h | Required fields, submitting state, success/failure feedback and sensitive state-change acknowledgement follow one accessible interaction contract           |
+| R4-5 | Release-chain and representative UAT |     5h | Current GitHub Actions runtimes, full PostgreSQL CI, exact-SHA deployment, representative permission tests and authenticated desktop/390px browser UAT pass |
+
+Role homepages are usability projections of session grants, not authorization decisions. Server RBAC, DataScope, state machines, segregation-of-duties checks, idempotency and audit remain authoritative.
+
 ## Functional exposure rule
 
 Every authenticated backend endpoint is classified as one of:

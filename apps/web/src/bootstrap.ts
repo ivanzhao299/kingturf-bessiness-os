@@ -307,6 +307,7 @@ export function visibleAppRoutes(permissions: ReadonlySet<string>): ReadonlySet<
       'contract:',
       'sales-order:',
       'order-360:',
+      'order-360:',
       'ar:',
       'bank-payment:',
       'reconciliation:',
@@ -375,7 +376,85 @@ export function visibleAppRoutes(permissions: ReadonlySet<string>): ReadonlySet<
     routes.add('quality-warehouse');
   if (hasPermissionPrefix(permissions, ['shipment:'])) routes.add('delivery-evidence');
   if (visibleGovernanceSurfaces(permissions).length > 0) routes.add('governance');
+  if (routes.size > 0) routes.add('overview');
   return routes;
+}
+
+export type RoleWorkspaceProfile = Readonly<{
+  title: string;
+  description: string;
+  domains: readonly string[];
+}>;
+
+export function roleWorkspaceProfile(permissions: ReadonlySet<string>): RoleWorkspaceProfile {
+  const domains: string[] = [];
+  if (permissions.has('executive-dashboard:read')) domains.push('经营管理');
+  if (
+    hasPermissionPrefix(permissions, [
+      'customer:',
+      'customer-',
+      'lead:',
+      'lead-',
+      'opportunity:',
+      'ctr:',
+      'technical-solution:',
+      'cost-model:',
+      'cost:',
+      'sales-policy:',
+      'quote:',
+      'credit:',
+      'contract:',
+      'sales-order:',
+      'order-360:',
+    ])
+  )
+    domains.push('销售与商务');
+  if (
+    hasPermissionPrefix(permissions, [
+      'ar:',
+      'bank-payment:',
+      'reconciliation:',
+      'commission:',
+      'commission-policy:',
+      'risk:',
+      'risk-policy:',
+    ])
+  )
+    domains.push('财务与风险');
+  if (
+    hasPermissionPrefix(permissions, [
+      'manufacturing-item:',
+      'bom:',
+      'routing:',
+      'supplier:',
+      'procurement:',
+      'inventory:',
+      'mrp:',
+      'mrp-policy:',
+      'production:',
+      'manufacturing-cost:',
+    ])
+  )
+    domains.push('供应链与生产');
+  if (hasPermissionPrefix(permissions, ['quality:', 'quality-plan:', 'traceability:']))
+    domains.push('质量与追溯');
+  if (hasPermissionPrefix(permissions, ['shipment:'])) domains.push('仓储与物流');
+  if (visibleGovernanceSurfaces(permissions).length > 0) domains.push('系统治理');
+  if (domains.length === 0)
+    return { title: '受限岗位', description: '当前账号尚未获得可用业务职责。', domains: [] };
+  if (domains.length === 1) {
+    const primaryDomain = domains[0] ?? '业务';
+    return {
+      title: `${primaryDomain}岗位`,
+      description: `聚焦${primaryDomain}职责、待办与业务证据。`,
+      domains,
+    };
+  }
+  return {
+    title: permissions.has('executive-dashboard:read') ? '经营管理综合岗位' : '综合业务岗位',
+    description: `当前账号覆盖 ${domains.join('、')}，首页仅呈现已授权职责。`,
+    domains,
+  };
 }
 
 const APP_ROUTES = new Set<AppRoute>(Object.keys(APP_ROUTE_LABELS) as AppRoute[]);
@@ -6850,7 +6929,9 @@ function openForm(
   form.append(heading);
   for (const field of fields) {
     const label = el('label', 'form-field');
-    label.append(el('span', '', field.label));
+    const fieldLabel = el('span', '', field.label);
+    if (field.required) fieldLabel.append(el('em', 'required-mark', '必填'));
+    label.append(fieldLabel);
     const control =
       field.type === 'textarea'
         ? el('textarea')
@@ -6858,7 +6939,10 @@ function openForm(
           ? el('select')
           : el('input');
     control.setAttribute('name', field.name);
-    if (field.required) control.setAttribute('required', '');
+    if (field.required) {
+      control.setAttribute('required', '');
+      control.setAttribute('aria-required', 'true');
+    }
     if (field.placeholder) control.setAttribute('placeholder', field.placeholder);
     if (control instanceof HTMLInputElement)
       control.type = ['email', 'tel', 'number', 'date'].includes(field.type ?? '')
@@ -6876,6 +6960,9 @@ function openForm(
   }
   const error = el('p', 'form-error');
   error.setAttribute('role', 'alert');
+  const progress = el('p', 'form-progress');
+  progress.setAttribute('role', 'status');
+  progress.setAttribute('aria-live', 'polite');
   const actions = el('div', 'dialog-actions');
   const cancel = el('button', 'secondary', '取消');
   cancel.type = 'button';
@@ -6884,11 +6971,27 @@ function openForm(
   });
   const submit = el('button', 'primary', submitLabel);
   submit.type = 'submit';
+  const sensitive = /删除|停用|取消|驳回|拒绝|追回|关闭|释放/u.test(submitLabel);
+  if (sensitive) {
+    const confirmation = el('label', 'operation-confirmation');
+    const checkbox = el('input');
+    checkbox.type = 'checkbox';
+    confirmation.append(checkbox, el('span', '', '我已核对当前单据、操作理由及其对后续流程的影响'));
+    submit.disabled = true;
+    checkbox.addEventListener('change', () => {
+      submit.disabled = !checkbox.checked;
+    });
+    form.append(
+      el('p', 'operation-warning', '此操作会改变业务状态并写入审计记录，请确认后继续。'),
+      confirmation,
+    );
+  }
   actions.append(cancel, submit);
-  form.append(error, actions);
+  form.append(error, progress, actions);
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     error.textContent = '';
+    progress.textContent = '正在提交，请勿重复操作…';
     submit.disabled = true;
     submit.textContent = '处理中…';
     const values = Object.fromEntries(
@@ -6899,10 +7002,12 @@ function openForm(
     );
     void onSubmit(values)
       .then(() => {
+        progress.textContent = '操作成功';
         dialog.close();
       })
       .catch((failure: unknown) => {
         error.textContent = failure instanceof Error ? failure.message : '操作失败，请稍后重试';
+        progress.textContent = '';
       })
       .finally(() => {
         submit.disabled = false;
@@ -7176,6 +7281,72 @@ function installRouteSectionNavigation(shell: HTMLElement): void {
   }
 }
 
+function installWorkspaceListTools(shell: HTMLElement): void {
+  const selectors = [
+    '.solution-list',
+    '.decision-list',
+    '.quote-list',
+    '.qtc-list',
+    '.order-360-list',
+    '.risk-list',
+    '.production-order-grid',
+    '.mrp-proposal-grid',
+    '.shipment-grid',
+  ].join(',');
+  for (const list of Array.from(shell.querySelectorAll<HTMLElement>(selectors))) {
+    const sourceItems = Array.from(list.children).filter(
+      (item): item is HTMLElement => item instanceof HTMLElement,
+    );
+    if (sourceItems.length < 2 || list.dataset.listTools === 'true' || !list.parentElement)
+      continue;
+    list.dataset.listTools = 'true';
+    const tools = el('div', 'workspace-list-tools');
+    const search = el('input', 'filter-search');
+    search.type = 'search';
+    search.placeholder = '在当前列表中搜索';
+    search.setAttribute('aria-label', '在当前业务列表中搜索');
+    const count = el('span', 'workspace-list-count', `共 ${String(sourceItems.length)} 条`);
+    const sort = el('button', 'secondary compact-action', '排序：业务顺序');
+    sort.type = 'button';
+    const reset = el('button', 'secondary compact-action', '重置');
+    reset.type = 'button';
+    const applySearch = () => {
+      const query = search.value.trim().toLocaleLowerCase('zh-CN');
+      let visible = 0;
+      for (const item of sourceItems) {
+        item.hidden =
+          query.length > 0 && !item.textContent.toLocaleLowerCase('zh-CN').includes(query);
+        if (!item.hidden) visible += 1;
+      }
+      count.textContent =
+        query.length > 0
+          ? `显示 ${String(visible)} / ${String(sourceItems.length)} 条`
+          : `共 ${String(sourceItems.length)} 条`;
+    };
+    search.addEventListener('input', applySearch);
+    let alphabetical = false;
+    sort.addEventListener('click', () => {
+      alphabetical = !alphabetical;
+      const ordered = alphabetical
+        ? [...sourceItems].sort((left, right) =>
+            left.textContent.localeCompare(right.textContent, 'zh-CN'),
+          )
+        : sourceItems;
+      list.replaceChildren(...ordered);
+      sort.textContent = alphabetical ? '排序：名称' : '排序：业务顺序';
+    });
+    reset.addEventListener('click', () => {
+      search.value = '';
+      alphabetical = false;
+      list.replaceChildren(...sourceItems);
+      sort.textContent = '排序：业务顺序';
+      applySearch();
+    });
+    tools.append(search, count, sort, reset);
+    list.parentElement.insertBefore(tools, list);
+  }
+}
+
 type NavIconName =
   | 'overview'
   | 'sales'
@@ -7322,6 +7493,7 @@ export function createCrmShell(
   aside.append(brand);
   const nav = el('nav');
   const visibleRoutes = visibleAppRoutes(allPermissions);
+  const roleProfile = roleWorkspaceProfile(allPermissions);
   const currentRoute =
     typeof globalThis.location === 'undefined'
       ? 'overview'
@@ -7384,7 +7556,7 @@ export function createCrmShell(
   profile.append(
     el('span', 'profile-avatar', profileLabel.slice(0, 1)),
     el('span', '', profileLabel),
-    el('span', 'profile-role', '管理员'),
+    el('span', 'profile-role', roleProfile.title),
   );
   utility.append(search, profile);
   content.append(utility);
@@ -7448,8 +7620,57 @@ export function createCrmShell(
   }
   content.append(header);
   header.setAttribute('data-route-view', 'overview');
+  const roleHome = el('section', 'role-home');
+  roleHome.setAttribute('data-route-view', 'overview');
+  const roleHomeHead = el('header', 'role-home-head');
+  const roleHomeCopy = el('div');
+  roleHomeCopy.append(
+    el('p', 'eyebrow', '我的岗位工作台'),
+    el('h2', '', roleProfile.title),
+    el('p', 'muted', roleProfile.description),
+  );
+  const domainList = el('div', 'role-domain-list');
+  for (const domain of roleProfile.domains) domainList.append(el('span', 'role-domain', domain));
+  roleHomeHead.append(roleHomeCopy, domainList);
+  roleHome.append(roleHomeHead);
+  const roleTaskGrid = el('div', 'role-task-grid');
+  const taskCopy: Readonly<Partial<Record<AppRoute, readonly [string, string]>>> = {
+    'sales-workspace': ['推进销售事项', '查看重点客户、商机、报价和回款风险'],
+    'operations-workspace': ['处理运营事项', '查看计划、生产、质量和交付异常'],
+    crm: ['维护客户与线索', '处理客户主档、跟进记录和分配事项'],
+    'opportunity-ctr': ['推进商机与技术需求', '处理商机阶段、CTR 与技术方案'],
+    'cost-quote': ['处理成本与报价', '完成测算、政策判定、审批或签发'],
+    'contract-order': ['处理合同与订单', '完成信用、合同、订单和证据复核'],
+    'ar-payment': ['处理应收与回款', '查看到账、核销、佣金和风险任务'],
+    'planning-production': ['处理计划与生产', '推进采购、MRP、工单和制造成本'],
+    'quality-warehouse': ['处理质量与库存', '完成检验、放行、批次和追溯事项'],
+    'delivery-evidence': ['处理交付任务', '完成发货放行、物流和签收证据'],
+    governance: ['处理系统治理', '维护身份、权限、流程和运行规则'],
+  };
+  for (const route of visibleRoutes) {
+    if (route === 'overview') continue;
+    const copy = taskCopy[route];
+    if (!copy) continue;
+    const task = el('button', 'role-task');
+    task.type = 'button';
+    task.addEventListener('click', () => {
+      setAppRoute(route);
+    });
+    task.append(
+      el('span', 'role-task-state', '可处理'),
+      el('strong', '', copy[0]),
+      el('small', '', copy[1]),
+      el('span', 'role-task-action', '进入工作台 →'),
+    );
+    roleTaskGrid.append(task);
+  }
+  if (roleTaskGrid.children.length === 0)
+    roleTaskGrid.append(el('p', 'empty', '当前岗位暂无可处理业务入口'));
+  roleHome.append(roleTaskGrid);
+  content.append(roleHome);
   if (controller.error) content.append(el('p', 'error', controller.error));
   const metrics = el('section', 'metrics');
+  metrics.setAttribute('data-route-view', 'overview');
   for (const [label, metric, note, tone] of [
     ['本月销售预测', '¥ 0', '等待商机数据', 'emerald'],
     ['活跃商机', String(controller.leads.length), '需持续推进', 'blue'],
@@ -7460,8 +7681,9 @@ export function createCrmShell(
     card.append(el('span', 'metric-label', label), el('strong', '', metric), el('small', '', note));
     metrics.append(card);
   }
-  content.append(metrics);
+  if (allPermissions.has('executive-dashboard:read')) content.append(metrics);
   const flow = el('section', 'panel business-flow');
+  flow.setAttribute('data-route-view', 'overview');
   const flowHead = el('div', 'panel-head');
   flowHead.append(el('div', '', '销售到回款主链'), el('span', 'flow-caption', '端到端业务进度'));
   flow.append(flowHead);
@@ -7481,7 +7703,7 @@ export function createCrmShell(
     flowRail.append(step);
   }
   flow.append(flowRail);
-  content.append(flow);
+  if (allPermissions.has('executive-dashboard:read')) content.append(flow);
   const sectionHeader = el('div', 'section-heading');
   sectionHeader.append(el('div', '', '今日业务'), el('span', '', '数据实时来自业务台账'));
   content.append(sectionHeader);
@@ -7884,7 +8106,10 @@ export function createCrmShell(
     if (
       !child.className.split(' ').includes('utility-bar') &&
       !child.className.split(' ').includes('route-context-header') &&
-      child !== header
+      child !== header &&
+      child !== roleHome &&
+      child !== metrics &&
+      child !== flow
     )
       child.setAttribute('data-route-view', 'overview sales-workspace crm');
   }
@@ -8988,6 +9213,7 @@ export async function bootstrap(root: HTMLElement): Promise<void> {
   }
   localizeEnterpriseCopy(shell);
   installRouteSectionNavigation(shell);
+  installWorkspaceListTools(shell);
   installAppNavigation(shell);
   root.replaceChildren(shell);
 }

@@ -20,6 +20,7 @@ import {
   visibleAppRoutes,
   inventoryLocationOption,
   isCommercialPermission,
+  roleWorkspaceProfile,
   technicalSolutionOpportunityId,
   governanceWorkspace,
 } from './bootstrap';
@@ -35,16 +36,59 @@ it('derives application navigation from atomic role capabilities', () => {
   expect([...visibleAppRoutes(new Set(['shipment:read']))]).toEqual([
     'operations-workspace',
     'delivery-evidence',
+    'overview',
   ]);
-  expect([...visibleAppRoutes(new Set(['notification:read']))]).toEqual(['governance']);
+  expect([...visibleAppRoutes(new Set(['notification:read']))]).toEqual(['governance', 'overview']);
   expect([...visibleAppRoutes(new Set(['customer:read', 'lead:create']))]).toEqual([
     'sales-workspace',
     'crm',
+    'overview',
   ]);
   expect(visibleAppRoutes(new Set(['executive-dashboard:read', 'authorization:read']))).toEqual(
     new Set(['overview', 'governance']),
   );
 });
+
+it('derives a role homepage from atomic permission domains', () => {
+  expect(roleWorkspaceProfile(new Set(['quote:prepare']))).toEqual({
+    title: '销售与商务岗位',
+    description: '聚焦销售与商务职责、待办与业务证据。',
+    domains: ['销售与商务'],
+  });
+  expect(roleWorkspaceProfile(new Set(['ar:read', 'risk:read']))).toEqual({
+    title: '财务与风险岗位',
+    description: '聚焦财务与风险职责、待办与业务证据。',
+    domains: ['财务与风险'],
+  });
+  expect(
+    roleWorkspaceProfile(new Set(['executive-dashboard:read', 'order-360:read', 'shipment:read'])),
+  ).toMatchObject({
+    title: '经营管理综合岗位',
+    domains: ['经营管理', '销售与商务', '仓储与物流'],
+  });
+});
+
+it.each([
+  ['销售报价员', ['quote:prepare'], ['overview', 'sales-workspace', 'cost-quote']],
+  ['应收会计', ['ar:read'], ['overview', 'sales-workspace', 'ar-payment']],
+  [
+    '生产报工员',
+    ['production:report'],
+    ['overview', 'operations-workspace', 'planning-production'],
+  ],
+  ['质量检验员', ['quality:inspect'], ['overview', 'operations-workspace', 'quality-warehouse']],
+  ['仓库调拨员', ['inventory:move'], ['overview', 'operations-workspace', 'planning-production']],
+  ['物流跟踪员', ['shipment:track'], ['overview', 'operations-workspace', 'delivery-evidence']],
+  ['权限管理员', ['authorization:manage'], ['overview', 'governance']],
+  ['经营看板用户', ['executive-dashboard:read'], ['overview']],
+] as const)(
+  'projects the %s representative role onto its minimum authorized workspace',
+  (_role, permissions, expectedRoutes) => {
+    const routes = visibleAppRoutes(new Set<string>(permissions));
+    expect([...expectedRoutes].every((route) => routes.has(route))).toBe(true);
+    expect(routes.has('contract-order')).toBe(false);
+  },
+);
 
 it('gives every production atomic role at least one permission-visible application route', () => {
   const migrationFiles = [
