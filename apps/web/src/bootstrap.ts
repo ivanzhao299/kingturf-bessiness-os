@@ -7008,6 +7008,41 @@ export function installAppNavigation(shell: HTMLElement): void {
   });
 }
 
+function installRouteSectionNavigation(shell: HTMLElement): void {
+  const routeContext = shell.querySelector<HTMLElement>('[data-route-context]');
+  if (!routeContext?.parentElement) return;
+  for (const route of APP_ROUTES) {
+    if (route === 'overview' || route === 'governance') continue;
+    const sections = Array.from(shell.querySelectorAll<HTMLElement>('[data-route-view]'))
+      .filter((view) => (view.dataset.routeView ?? '').split(/\s+/u).includes(route))
+      .map((view) => ({ view, heading: view.querySelector<HTMLElement>('h2, h3') }))
+      .filter(
+        (entry): entry is { view: HTMLElement; heading: HTMLElement } =>
+          entry.heading !== null && entry.heading.textContent.trim() !== APP_ROUTE_LABELS[route],
+      );
+    const unique = sections.filter(
+      (entry, index) =>
+        sections.findIndex(
+          (candidate) => candidate.heading.textContent === entry.heading.textContent,
+        ) === index,
+    );
+    if (unique.length < 2) continue;
+    const nav = el('nav', 'route-section-nav');
+    nav.setAttribute('data-route-view', route);
+    nav.setAttribute('aria-label', `${APP_ROUTE_LABELS[route]}页面分区`);
+    nav.append(el('span', 'route-section-label', '本页导航'));
+    for (const { view, heading } of unique.slice(0, 6)) {
+      const button = el('button', 'route-section-link', heading.textContent.trim());
+      button.type = 'button';
+      button.addEventListener('click', () => {
+        view.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+      nav.append(button);
+    }
+    routeContext.parentElement.insertBefore(nav, routeContext.nextSibling);
+  }
+}
+
 type NavIconName =
   | 'overview'
   | 'sales'
@@ -7790,6 +7825,88 @@ const governanceItems = (value: unknown): readonly unknown[] => {
   return [value];
 };
 
+const GOVERNANCE_FIELD_LABELS: Readonly<Record<string, string>> = {
+  code: '编码',
+  name: '名称',
+  displayName: '姓名',
+  employeeNumber: '员工编号',
+  title: '标题',
+  description: '说明',
+  status: '状态',
+  state: '状态',
+  active: '启用状态',
+  version: '版本',
+  email: '邮箱',
+  phone: '电话',
+  createdAt: '创建时间',
+  updatedAt: '更新时间',
+};
+
+const governanceFieldPriority = [
+  'displayName',
+  'name',
+  'title',
+  'employeeNumber',
+  'code',
+  'status',
+  'state',
+  'active',
+  'version',
+  'email',
+  'phone',
+  'createdAt',
+  'updatedAt',
+] as const;
+
+const governanceHiddenField = (key: string): boolean =>
+  /(^id$|Id$|password|token|secret|hash|schema|payload|permissions)/iu.test(key);
+
+const governanceCellText = (value: unknown): string => {
+  if (value === null || value === undefined || value === '') return '—';
+  if (typeof value === 'boolean') return value ? '已启用' : '已停用';
+  if (Array.isArray(value)) return `${String(value.length)} 项`;
+  if (typeof value === 'object') return '已配置';
+  if (typeof value !== 'string' && typeof value !== 'number' && typeof value !== 'bigint')
+    return '—';
+  const text = String(value);
+  return ENTERPRISE_STATUS_LABELS[text] ?? text;
+};
+
+const governanceTable = (items: readonly unknown[]): HTMLElement => {
+  const records = items.slice(0, 5).map(recordValue);
+  const availableFields = new Set(records.flatMap((record) => Object.keys(record)));
+  const fields = [
+    ...governanceFieldPriority.filter((field) => availableFields.has(field)),
+    ...Array.from(availableFields).filter(
+      (field) =>
+        !governanceFieldPriority.includes(field as (typeof governanceFieldPriority)[number]),
+    ),
+  ]
+    .filter((field) => !governanceHiddenField(field))
+    .slice(0, 5);
+  const wrap = el('div', 'governance-table-wrap');
+  if (fields.length === 0) {
+    wrap.append(el('p', 'empty', '记录已存在，详细配置受权限保护'));
+    return wrap;
+  }
+  const table = el('table', 'governance-table');
+  const head = el('thead');
+  const headRow = el('tr');
+  for (const field of fields) headRow.append(el('th', '', GOVERNANCE_FIELD_LABELS[field] ?? field));
+  head.append(headRow);
+  const body = el('tbody');
+  for (const record of records) {
+    const row = el('tr');
+    for (const field of fields) row.append(el('td', '', governanceCellText(record[field])));
+    body.append(row);
+  }
+  table.append(head, body);
+  wrap.append(table);
+  if (items.length > records.length)
+    wrap.append(el('p', 'table-footnote', `当前预览前 ${String(records.length)} 条记录`));
+  return wrap;
+};
+
 export function governanceWorkspace(controller: GovernanceController): HTMLElement {
   const { permissions, views } = controller;
   const workspace = el('section', 'governance-workspace');
@@ -8570,12 +8687,8 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
       );
       row.append(source);
       if (view?.error) row.append(el('p', 'error', view.error));
-      else if (items.length === 0) row.append(el('p', 'empty', '当前没有可见记录'));
-      else {
-        const pre = el('pre', 'governance-preview');
-        pre.textContent = JSON.stringify(items.slice(0, 5), null, 2);
-        row.append(pre);
-      }
+      else if (items.length === 0) row.append(el('p', 'empty', '当前范围内暂无记录'));
+      else row.append(governanceTable(items));
       panel.append(row);
     }
     if (surface.managePermission && permissions.has(surface.managePermission))
@@ -8696,11 +8809,18 @@ export async function bootstrap(root: HTMLElement): Promise<void> {
     controller.error = error instanceof Error ? error.message : 'CRM 加载失败';
   }
   const allPermissions = new Set(session.permissions);
+  const currentEmployee = controller.employees.find(
+    (employee) => employee.id === session.employeeId,
+  );
+  const profileLabel =
+    currentEmployee?.displayName ??
+    currentEmployee?.employeeNumber ??
+    `用户 ${session.employeeId.slice(0, 8)}`;
   const shell = createCrmShell(
     controller,
     globalThis.innerWidth || 1280,
     allPermissions,
-    `用户 ${session.employeeId.slice(0, 8)}`,
+    profileLabel,
   );
   const commercialPermissions = new Set(session.permissions.filter(isCommercialPermission));
   if (Object.values(visibleCommercialSections(commercialPermissions)).some(Boolean)) {
@@ -8734,6 +8854,7 @@ export async function bootstrap(root: HTMLElement): Promise<void> {
       ?.append(governanceWorkspace(governanceController));
   }
   localizeEnterpriseCopy(shell);
+  installRouteSectionNavigation(shell);
   installAppNavigation(shell);
   root.replaceChildren(shell);
 }
