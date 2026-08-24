@@ -142,6 +142,20 @@ export const APP_ROUTE_LABELS: Readonly<Record<AppRoute, string>> = {
   'delivery-evidence': '交付与证据',
   governance: '系统管理与治理',
 };
+const APP_ROUTE_DESCRIPTIONS: Readonly<Record<AppRoute, string>> = {
+  overview: '查看经营指标、关键客户、待办事项和端到端业务进度。',
+  'sales-workspace': '统筹销售预测、重点商机、客户推进和回款风险。',
+  'operations-workspace': '协调计划、生产、采购、成本、发货和履约异常。',
+  crm: '管理线索公海、客户主档、联系人、跟进记录和客户全景。',
+  'opportunity-ctr': '推进商机阶段，沉淀技术需求、证据和技术方案。',
+  'cost-quote': '完成成本测算、销售政策判定、报价审批和正式签发。',
+  'contract-order': '处理信用审查、合同签署、订单释放和全链路证据。',
+  'ar-payment': '管理应收、银行回款、核销运行、佣金和风险事项。',
+  'planning-production': '维护制造主数据，执行 MRP、采购收货和生产工单。',
+  'quality-warehouse': '管理质量计划、检验结果、库存批次和产品追溯。',
+  'delivery-evidence': '执行发货放行、物流交接、签收回执和交付证据归档。',
+  governance: '维护组织、员工、角色授权、审批流程和系统运行规则。',
+};
 
 export type GovernanceSurface = Readonly<{
   id: string;
@@ -6954,6 +6968,16 @@ export function installAppNavigation(shell: HTMLElement): void {
       const routes = (view.dataset.routeView ?? '').split(/\s+/u);
       view.hidden = !routes.includes(route);
     }
+    const routeContext = shell.querySelector<HTMLElement>('[data-route-context]');
+    if (routeContext) {
+      routeContext.hidden = route === 'overview';
+      const heading = routeContext.querySelector<HTMLElement>('h1');
+      const description = routeContext.querySelector<HTMLElement>('.page-subtitle');
+      const breadcrumb = routeContext.querySelector<HTMLElement>('.eyebrow');
+      if (heading) heading.textContent = APP_ROUTE_LABELS[route];
+      if (description) description.textContent = APP_ROUTE_DESCRIPTIONS[route];
+      if (breadcrumb) breadcrumb.textContent = `金特夫业务系统 · ${APP_ROUTE_LABELS[route]}`;
+    }
     const placeholder = shell.querySelector<HTMLElement>('[data-route-placeholder]');
     if (!placeholder) return;
     const hasView = Array.from(shell.querySelectorAll<HTMLElement>('[data-route-view]')).some(
@@ -7196,6 +7220,15 @@ export function createCrmShell(
   );
   utility.append(search, profile);
   content.append(utility);
+  const routeContext = el('header', 'route-context-header');
+  routeContext.setAttribute('data-route-context', 'true');
+  routeContext.hidden = currentRoute === 'overview';
+  routeContext.append(
+    el('p', 'eyebrow', `金特夫业务系统 · ${APP_ROUTE_LABELS[currentRoute]}`),
+    el('h1', '', APP_ROUTE_LABELS[currentRoute]),
+    el('p', 'page-subtitle', APP_ROUTE_DESCRIPTIONS[currentRoute]),
+  );
+  content.append(routeContext);
   const header = el('header', 'topbar');
   const title = el('div');
   const today = new Intl.DateTimeFormat('zh-CN', {
@@ -7246,6 +7279,7 @@ export function createCrmShell(
     header.append(create);
   }
   content.append(header);
+  header.setAttribute('data-route-view', 'overview');
   if (controller.error) content.append(el('p', 'error', controller.error));
   const metrics = el('section', 'metrics');
   for (const [label, metric, note, tone] of [
@@ -7679,7 +7713,11 @@ export function createCrmShell(
   }
   content.append(split);
   for (const child of Array.from(content.children)) {
-    if (!child.className.split(' ').includes('utility-bar'))
+    if (
+      !child.className.split(' ').includes('utility-bar') &&
+      !child.className.split(' ').includes('route-context-header') &&
+      child !== header
+    )
       child.setAttribute('data-route-view', 'overview sales-workspace crm');
   }
   const placeholder = el(

@@ -1702,11 +1702,26 @@ body {
   background: #f8faf9;
 }
 .topbar h1,
-.governance-hero h1 {
+.governance-hero h1,
+.route-context-header h1 {
   color: var(--kt-ink);
   font-size: clamp(28px, 2.4vw, 36px);
   font-weight: 780;
   letter-spacing: -0.035em;
+}
+.route-context-header {
+  margin: 0 0 22px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #dce5e0;
+}
+.route-context-header .eyebrow {
+  margin: 0 0 7px;
+}
+.route-context-header h1 {
+  margin: 0;
+}
+.route-context-header .page-subtitle {
+  margin-top: 7px;
 }
 .eyebrow {
   color: #547568;
