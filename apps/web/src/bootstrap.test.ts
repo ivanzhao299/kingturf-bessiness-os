@@ -27,10 +27,19 @@ import {
   roleTaskInsight,
   routeViewSelector,
   quoteWorkflowReadiness,
+  commissionNextAction,
+  riskRuleLabel,
   setOperationStatus,
   technicalSolutionOpportunityId,
   governanceWorkspace,
 } from './bootstrap';
+
+it('translates risk rules and derives the daily commission next action', () => {
+  expect(riskRuleLabel('LOW_MARGIN')).toBe('毛利率低于政策门槛');
+  expect(riskRuleLabel('OVERDUE_AR')).toBe('存在逾期应收');
+  expect(commissionNextAction('RELEASED')).toBe('待登记支付');
+  expect(commissionNextAction('FROZEN')).toBe('待满足条件后释放');
+});
 
 it('publishes durable operation state for loading, success and rejection feedback', () => {
   const attributes = new Map<string, string>();

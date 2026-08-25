@@ -831,6 +831,33 @@ export const businessEventLabel = (value: unknown): string => {
   return BUSINESS_EVENT_LABELS[code] ?? BUSINESS_STATE_LABELS[code] ?? code;
 };
 
+const RISK_RULE_LABELS: Readonly<Record<string, string>> = {
+  LOW_MARGIN: '毛利率低于政策门槛',
+  OVERDUE_AR: '存在逾期应收',
+  CREDIT_EXPIRY: '信用审批临近或已经过期',
+  CONTRACT_SIGNATURE: '合同签署证据不完整',
+  ORDER_RELEASE_GATE: '订单放行条件未满足',
+};
+
+export const riskRuleLabel = (value: unknown): string => {
+  const code = textValue(value, '风险规则');
+  return RISK_RULE_LABELS[code] ?? code;
+};
+
+export const commissionNextAction = (state: unknown): string => {
+  const code = textValue(state, 'ACCRUED');
+  return (
+    {
+      ACCRUED: '待复核释放或冻结',
+      FROZEN: '待满足条件后释放',
+      RELEASED: '待登记支付',
+      PAID: '已完成支付，可按凭证追回',
+      CLAWED_BACK: '已完成追回',
+      CANCELLED: '已取消，无后续操作',
+    }[code] ?? '请核对当前状态'
+  );
+};
+
 const businessStateLabel = (value: unknown, fallback = '状态受限'): string => {
   const code = textValue(value, fallback);
   return BUSINESS_STATE_LABELS[code] ?? code;
@@ -5400,7 +5427,34 @@ export function commercialWorkspaceStructure(
       }
       panel.append(policyStrip);
     }
-    const cases = controller.views.get('/api/v1/commissions') ?? [];
+    const commissionPriority: Readonly<Record<string, number>> = {
+      RELEASED: 0,
+      FROZEN: 1,
+      ACCRUED: 2,
+      PAID: 3,
+      CLAWED_BACK: 4,
+      CANCELLED: 5,
+    };
+    const cases = [...(controller.views.get('/api/v1/commissions') ?? [])].sort(
+      (left, right) =>
+        (commissionPriority[recordText(left, 'effectiveState', 'effective_state')] ?? 9) -
+        (commissionPriority[recordText(right, 'effectiveState', 'effective_state')] ?? 9),
+    );
+    if (cases.length) {
+      const summary = el('div', 'workbench-summary-grid');
+      const released = cases.filter(
+        (item) => recordText(item, 'effectiveState', 'effective_state') === 'RELEASED',
+      ).length;
+      const frozen = cases.filter(
+        (item) => recordText(item, 'effectiveState', 'effective_state') === 'FROZEN',
+      ).length;
+      summary.append(
+        el('div', 'summary-card', `待登记支付\n${String(released)} 笔`),
+        el('div', 'summary-card', `冻结待处理\n${String(frozen)} 笔`),
+        el('div', 'summary-card', `全部佣金\n${String(cases.length)} 笔`),
+      );
+      panel.append(summary);
+    }
     const list = el('div', 'qtc-list commission-list');
     const labels: Record<string, string> = {
       ACCRUED: '已计提',
@@ -5441,6 +5495,7 @@ export function commercialWorkspaceStructure(
           'muted',
           `受益人 ${recordText(commission, 'beneficiaryName', 'beneficiaryName', '—')} · 政策 ${recordText(commission, 'policyCode', 'policyCode', '—')} 第 ${recordText(commission, 'policyVersion', 'policyVersion', '—')} 版`,
         ),
+        el('p', 'next-action-note', `下一步：${commissionNextAction(state)}`),
       );
       const timeline = el('ol', 'commission-ledger');
       for (const entry of ledger)
@@ -5518,8 +5573,37 @@ export function commercialWorkspaceStructure(
     heading.append(copy);
     panel.append(heading);
     if (riskPolicyControls) panel.append(riskPolicyControls);
+    const riskPriority: Readonly<Record<string, number>> = {
+      CRITICAL: 0,
+      HIGH: 1,
+      MEDIUM: 2,
+      LOW: 3,
+    };
+    const evaluations = [...(controller.views.get('/api/v1/risk-evaluations') ?? [])].sort(
+      (left, right) =>
+        (riskPriority[recordText(left, 'severity', 'severity')] ?? 9) -
+        (riskPriority[recordText(right, 'severity', 'severity')] ?? 9),
+    );
+    if (evaluations.length) {
+      const openTasks = evaluations.filter((item) => {
+        const task = recordValue(item.task);
+        return (
+          Boolean(task.id) && recordText(task, 'effective_state', 'effective_state') !== 'CLOSED'
+        );
+      }).length;
+      const highRisk = evaluations.filter((item) =>
+        ['CRITICAL', 'HIGH'].includes(recordText(item, 'severity', 'severity')),
+      ).length;
+      const summary = el('div', 'workbench-summary-grid');
+      summary.append(
+        el('div', 'summary-card', `高风险评价\n${String(highRisk)} 项`),
+        el('div', 'summary-card', `未关闭责任任务\n${String(openTasks)} 项`),
+        el('div', 'summary-card', `全部评价\n${String(evaluations.length)} 项`),
+      );
+      panel.append(summary);
+    }
     const list = el('div', 'risk-list');
-    for (const evaluation of controller.views.get('/api/v1/risk-evaluations') ?? []) {
+    for (const evaluation of evaluations) {
       const task = recordValue(evaluation.task);
       const findings = Array.isArray(evaluation.findings)
         ? evaluation.findings.map(recordValue)
@@ -5550,7 +5634,7 @@ export function commercialWorkspaceStructure(
             ? findings
                 .map(
                   (finding) =>
-                    `${textValue(finding.code, '')}：实际 ${recordText(finding, 'actual', 'amount', '—')} / 门槛 ${recordText(finding, 'threshold', 'graceDays', '—')}`,
+                    `${riskRuleLabel(finding.code)}：实际 ${recordText(finding, 'actual', 'amount', '—')} / 门槛 ${recordText(finding, 'threshold', 'graceDays', '—')}`,
                 )
                 .join('；')
             : '未命中风险规则',

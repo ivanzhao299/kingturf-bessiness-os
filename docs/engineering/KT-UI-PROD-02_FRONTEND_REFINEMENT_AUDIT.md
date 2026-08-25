@@ -21,19 +21,19 @@ Date: 2026-08-25 Asia/Shanghai
 
 ## Execution checkpoints
 
-| Checkpoint | State       | Evidence                                                                                                    |
-| ---------- | ----------- | ----------------------------------------------------------------------------------------------------------- |
-| P1         | Complete    | Twelve-route ownership matrix, backend families, representative roles and priority gaps recorded below      |
-| P2-A       | Complete    | Shared color, surface, focus, button, responsive and reduced-motion tokens applied to the application shell |
-| P3-A       | Complete    | Dialog rejection remains visible; duplicate submission and cancellation are blocked while a command runs    |
-| P3-B       | Complete    | Legacy commercial actions now catch asynchronous rejection and publish loading, success or error state      |
-| P4-A       | Complete    | Contract-to-order readiness exposes the first blocked gate from live quote, credit, contract and order data |
-| P4-B       | Complete    | Permission-scoped commercial views and Order 360 records load concurrently instead of serially              |
-| P4-C       | Complete    | Opportunity exceptions and CTR-to-quote prerequisites are visible, prioritized and route-scoped             |
-| P4-D       | Complete    | CTR submission and quote issuance use durable confirmation, loading and rejection feedback                  |
-| P5-A       | Complete    | AR, payment, broken-promise and legal-intake queues are summarized and prioritized by urgency               |
-| P5-B       | Complete    | Receivables sort by due date and reconciliation uses durable confirmation and rejection feedback            |
-| P5-C       | In progress | Commission, risk, collection and legal case cards continue into evidence and next-action refinement         |
+| Checkpoint | State    | Evidence                                                                                                    |
+| ---------- | -------- | ----------------------------------------------------------------------------------------------------------- |
+| P1         | Complete | Twelve-route ownership matrix, backend families, representative roles and priority gaps recorded below      |
+| P2-A       | Complete | Shared color, surface, focus, button, responsive and reduced-motion tokens applied to the application shell |
+| P3-A       | Complete | Dialog rejection remains visible; duplicate submission and cancellation are blocked while a command runs    |
+| P3-B       | Complete | Legacy commercial actions now catch asynchronous rejection and publish loading, success or error state      |
+| P4-A       | Complete | Contract-to-order readiness exposes the first blocked gate from live quote, credit, contract and order data |
+| P4-B       | Complete | Permission-scoped commercial views and Order 360 records load concurrently instead of serially              |
+| P4-C       | Complete | Opportunity exceptions and CTR-to-quote prerequisites are visible, prioritized and route-scoped             |
+| P4-D       | Complete | CTR submission and quote issuance use durable confirmation, loading and rejection feedback                  |
+| P5-A       | Complete | AR, payment, broken-promise and legal-intake queues are summarized and prioritized by urgency               |
+| P5-B       | Complete | Receivables sort by due date and reconciliation uses durable confirmation and rejection feedback            |
+| P5-C       | Complete | Commission and risk queues prioritize actionable records, translate rule evidence and expose next actions   |
 
 P3-A was verified with a regression test for the shared operation-state contract plus the complete web lint,
 typecheck, 45-test and production-build gate. Authenticated production UAT remains a P9/P10 release condition;
@@ -51,6 +51,10 @@ feedback.
 P5-A/P5-B introduce route-scoped cash and debt queues, mark overdue open items, order them by earliest due
 date, and move automatic reconciliation behind the shared command lifecycle. Queue counts are derived from
 the same permission-filtered API records already available to the session.
+
+P5-C orders commission work by payment, frozen and accrued action priority; orders risk work by severity;
+translates internal risk-rule codes into operational Chinese; and adds permission-filtered summary counts and
+explicit next-action guidance without changing immutable ledger or policy evidence.
 
 ## 128-hour execution plan
 
