@@ -150,18 +150,18 @@ export const APP_ROUTE_LABELS: Readonly<Record<AppRoute, string>> = {
   governance: '系统管理与治理',
 };
 const APP_ROUTE_DESCRIPTIONS: Readonly<Record<AppRoute, string>> = {
-  overview: '查看经营指标、关键客户、待办事项和端到端业务进度。',
-  'sales-workspace': '统筹销售预测、重点商机、客户推进和回款风险。',
-  'operations-workspace': '协调计划、生产、采购、成本、发货和履约异常。',
-  crm: '管理线索公海、客户主档、联系人、跟进记录和客户全景。',
-  'opportunity-ctr': '推进商机阶段，沉淀技术需求、证据和技术方案。',
-  'cost-quote': '完成成本测算、销售政策判定、报价审批和正式签发。',
-  'contract-order': '处理信用审查、合同签署、订单释放和全链路证据。',
-  'ar-payment': '管理应收、银行回款、核销运行、佣金和风险事项。',
-  'planning-production': '维护制造主数据，执行 MRP、采购收货和生产工单。',
-  'quality-warehouse': '管理质量计划、检验结果、库存批次和产品追溯。',
-  'delivery-evidence': '执行发货放行、物流交接、签收回执和交付证据归档。',
-  governance: '维护组织、员工、角色授权、审批流程和系统运行规则。',
+  overview: '指标、待办与经营异常',
+  'sales-workspace': '商机、订单与回款风险',
+  'operations-workspace': '计划、生产与交付协同',
+  crm: '线索、客户与跟进记录',
+  'opportunity-ctr': '商机阶段与技术需求',
+  'cost-quote': '成本、政策与报价审批',
+  'contract-order': '信用、合同与订单履约',
+  'ar-payment': '应收、回款、催收与风险',
+  'planning-production': '主数据、MRP 与生产执行',
+  'quality-warehouse': '检验、库存与批次追溯',
+  'delivery-evidence': '放行、物流与签收证据',
+  governance: '组织、权限与平台配置',
 };
 
 export type GovernanceSurface = Readonly<{
@@ -4427,7 +4427,7 @@ export function commercialWorkspaceStructure(
     const copy = el('div');
     copy.append(
       el('h2', '', '催收与法务证据'),
-      el('p', '', '按逾期余额排序推进催收、付款承诺、独立法务受理和债权证据包。'),
+      el('p', '', '逾期案件、付款承诺、法务移交与债权证据。'),
     );
     const receivables = (controller.views.get('/api/v1/ar-open-items') ?? []).filter(
       (item) =>
@@ -6753,6 +6753,7 @@ export function commercialWorkspaceStructure(
     'payment-workbench': 'sales-workspace ar-payment',
     'commission-workbench': 'sales-workspace ar-payment',
     'risk-workbench': 'sales-workspace ar-payment',
+    'collection-workbench': 'sales-workspace ar-payment',
     'manufacturing-workbench': 'operations-workspace planning-production',
     'procurement-workbench': 'operations-workspace planning-production',
     'mrp-workbench': 'operations-workspace planning-production',
@@ -8768,11 +8769,7 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
   header.append(
     el('p', 'eyebrow', '企业管理控制台'),
     el('h1', '', '系统管理与治理'),
-    el(
-      'p',
-      'muted',
-      '集中维护组织、员工、角色权限、审批流程和系统运行规则。页面只展示当前账号可管理的范围。',
-    ),
+    el('p', 'muted', '组织、账号、权限和平台运行配置。'),
   );
   workspace.append(header);
   const summary = el('section', 'governance-metrics');
