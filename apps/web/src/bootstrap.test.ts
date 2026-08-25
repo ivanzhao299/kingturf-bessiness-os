@@ -119,7 +119,7 @@ it('exposes the first missing prerequisite in the CTR-to-quote chain', () => {
       [],
     ),
   ).toEqual([
-    { key: 'ctr', label: '已批准 CTR', count: 1, state: 'complete' },
+    { key: 'ctr', label: '已批准技术需求', count: 1, state: 'complete' },
     { key: 'solution', label: '定稿方案', count: 1, state: 'complete' },
     { key: 'cost', label: '成本决策', count: 0, state: 'current' },
     { key: 'policy', label: '已发布政策', count: 1, state: 'complete' },
@@ -462,7 +462,7 @@ const api = () => {
 
 describe('web bootstrap', () => {
   it('provides the neutral application shell title and responsive breakpoints', () => {
-    expect(BOOTSTRAP_TITLE).toBe('KingTurf Business OS');
+    expect(BOOTSTRAP_TITLE).toBe('金特夫企业经营管理系统');
     expect(viewportFor(1280)).toBe('desktop');
     expect(viewportFor(800)).toBe('tablet');
     expect(viewportFor(390)).toBe('mobile');
@@ -755,7 +755,7 @@ describe('web bootstrap', () => {
     ) as unknown as RenderedElement;
     expect(workspace.findByClass('mrp-workbench')).toHaveLength(1);
     expect(workspace.findByClass('mrp-proposal-card')).toHaveLength(1);
-    expect(workspace.textContent).toContain('MRP-KT-2026-001 · COMPUTED');
+    expect(workspace.textContent).toContain('MRP-KT-2026-001 · 已计算');
     expect(workspace.textContent).toContain('冻结窗口内');
     expect(workspace.textContent).toContain('净需求 628.75');
     expect(workspace.textContent).toContain('按批量取整为 1000');
@@ -836,9 +836,9 @@ describe('web bootstrap', () => {
     expect(workspace.findByClass('production-operation done')).toHaveLength(0);
     expect(workspace.findByClass('done')).toHaveLength(3);
     expect(workspace.textContent).toContain('WO-KT-2026-001 · FG-KT-PRO-50');
-    expect(workspace.textContent).toContain('ISSUE 1287.5');
-    expect(workspace.textContent).toContain('ROLL-KT-2026-001 · 1000 · QUARANTINE');
-    expect(workspace.textContent).toContain('DRAFT → RELEASED → IN_PROGRESS → COMPLETED → CLOSED');
+    expect(workspace.textContent).toContain('领料 1287.5');
+    expect(workspace.textContent).toContain('ROLL-KT-2026-001 · 1000 · 待检隔离');
+    expect(workspace.textContent).toContain('草稿 → 已放行 → 进行中 → 已完成 → 已关闭');
   });
 
   it('drives commercial loading, submission, revision approval, and issue state through APIs', async () => {
@@ -937,10 +937,12 @@ describe('web bootstrap', () => {
     expect(workspace.findByClass('opportunity-card')).toHaveLength(1);
     expect(workspace.findByClass('ctr-workbench')).toHaveLength(1);
     expect(workspace.findByClass('ctr-evidence')).toHaveLength(1);
+    expect(workspace.textContent).toContain('技术需求单');
     expect(workspace.textContent).toContain('上传附件');
     expect(workspace.findByClass('ctr-row')).toHaveLength(1);
     expect(workspace.textContent).toContain('国际学校足球场');
     expect(workspace.textContent).toContain('CTR-2026-001');
+    expect(workspace.textContent).not.toContain('商机与 CTR');
     expect(workspace.textContent).not.toContain('JSON 请求');
   });
 
@@ -1017,7 +1019,7 @@ describe('web bootstrap', () => {
     ];
     expect(technicalSolutionOpportunityId(ctrs, 'ctr-approved')).toBe('op-visible');
     expect(() => technicalSolutionOpportunityId(ctrs, 'ctr-draft')).toThrow(
-      '所选 CTR 不可用或缺少关联商机',
+      '所选技术需求单不可用或缺少关联商机',
     );
   });
 

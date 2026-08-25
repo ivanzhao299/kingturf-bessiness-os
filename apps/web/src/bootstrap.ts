@@ -1,4 +1,4 @@
-export const BOOTSTRAP_TITLE = 'KingTurf Business OS';
+export const BOOTSTRAP_TITLE = '金特夫企业经营管理系统';
 
 export type CrmPermission =
   | 'employee:read'
@@ -140,7 +140,7 @@ export const APP_ROUTE_LABELS: Readonly<Record<AppRoute, string>> = {
   'sales-workspace': '销售工作台',
   'operations-workspace': '运营工作台',
   crm: '线索与客户',
-  'opportunity-ctr': '商机与 CTR',
+  'opportunity-ctr': '商机与技术需求',
   'cost-quote': '成本与报价',
   'contract-order': '合同与订单',
   'ar-payment': '应收与回款',
@@ -158,7 +158,7 @@ const APP_ROUTE_DESCRIPTIONS: Readonly<Record<AppRoute, string>> = {
   'cost-quote': '成本、政策与报价审批',
   'contract-order': '信用、合同与订单履约',
   'ar-payment': '应收、回款、催收与风险',
-  'planning-production': '主数据、MRP 与生产执行',
+  'planning-production': '主数据、物料需求与生产执行',
   'quality-warehouse': '检验、库存与批次追溯',
   'delivery-evidence': '放行、物流与签收证据',
   governance: '组织、权限与平台配置',
@@ -767,15 +767,58 @@ const BUSINESS_EVENT_LABELS: Readonly<Record<string, string>> = {
 };
 
 const BUSINESS_STATE_LABELS: Readonly<Record<string, string>> = {
+  ACTIVE: '已启用',
+  ACCEPTED: '已受理',
+  ACCRUED: '已计提',
+  ARCHIVED: '已归档',
+  AWARDED: '已定标',
+  BLACKLISTED: '已禁用',
+  CALCULATED: '已核算',
   DRAFT: '草稿',
   OPEN: '待处理',
+  CLAIMED: '已认领',
+  COMPLETED: '已完成',
+  COMPUTED: '已计算',
+  CONVERTED: '已转化',
+  CONTACTING: '联系中',
   ACKNOWLEDGED: '已确认',
   ESCALATED: '已升级',
   CLOSED: '已关闭',
   APPROVED: '已批准',
+  CANCELLED: '已取消',
+  DELIVERED: '已签收',
+  DISPATCHED: '已发运',
+  DISQUALIFIED: '无效',
+  EXCEPTION_PENDING: '例外待审批',
+  FINAL: '已定稿',
+  FROZEN: '已冻结',
+  IN_PROGRESS: '进行中',
+  INACTIVE: '已停用',
+  ISSUE: '领料',
+  ISSUED: '已签发',
+  PAID: '已支付',
+  PARTIALLY_PAID: '部分支付',
+  PARTIALLY_RECEIVED: '部分收货',
+  PENDING: '待处理',
+  PENDING_APPROVAL: '待审批',
+  POOL: '公海',
+  PROMISE_BROKEN: '付款承诺已违约',
+  PROPOSED: '待审批',
+  PUBLISHED: '已发布',
+  QUARANTINE: '待检隔离',
+  QUALIFIED: '已确认',
+  READY: '待执行',
   REJECTED: '已驳回',
   RELEASED: '已放行',
+  REQUESTED: '待受理',
+  SAMPLED: '已抽样',
   SIGNED: '已签署',
+  SUBMITTED: '已提交',
+  SUSPENDED: '已暂停',
+  RETURN: '退料',
+  RETURNED: '已退回',
+  VOIDED: '已作废',
+  LEGAL_ACCEPTED: '法务已受理',
   EXPIRED: '已过期',
   LOW: '低',
   MEDIUM: '中',
@@ -796,7 +839,7 @@ const businessStateLabel = (value: unknown, fallback = '状态受限'): string =
 function printIssuedQuote(quote: Record<string, unknown>): void {
   const popup = globalThis.open('', '_blank', 'noopener,noreferrer');
   if (!popup) throw new Error('浏览器阻止了报价打印窗口，请允许本站弹出窗口');
-  popup.document.title = `${textValue(quote.quoteNumber, 'KingTurf-Quote')}-R${textValue(quote.revision, '1')}`;
+  popup.document.title = `${textValue(quote.quoteNumber, '金特夫报价')}-第${textValue(quote.revision, '1')}版`;
   const style = popup.document.createElement('style');
   style.textContent = `
     @page { size: A4; margin: 16mm 18mm; }
@@ -820,9 +863,9 @@ function printIssuedQuote(quote: Record<string, unknown>): void {
   const body = popup.document.body;
   const header = popup.document.createElement('header');
   const brand = popup.document.createElement('div');
-  brand.innerHTML = '<h1>KINGTURF</h1><small>BUSINESS OS</small>';
+  brand.innerHTML = '<h1>金特夫</h1><small>企业经营管理系统</small>';
   const title = popup.document.createElement('h2');
-  title.textContent = '正式报价单 / QUOTATION';
+  title.textContent = '正式报价单';
   header.append(brand, title);
   const metadata = popup.document.createElement('table');
   metadata.className = 'meta';
@@ -831,7 +874,7 @@ function printIssuedQuote(quote: Record<string, unknown>): void {
     '报价编号',
     textValue(quote.quoteNumber, '—'),
     '版本 / 状态',
-    `R${textValue(quote.revision, '1')} / ${textValue(quote.status, 'ISSUED')}`,
+    `第 ${textValue(quote.revision, '1')} 版 / ${businessStateLabel(textValue(quote.status, 'ISSUED'))}`,
   ]) {
     const cell = popup.document.createElement('td');
     cell.textContent = value;
@@ -889,7 +932,7 @@ function printIssuedQuote(quote: Record<string, unknown>): void {
   }
   const pins = popup.document.createElement('section');
   pins.className = 'pins';
-  pins.textContent = `版本证据：CTR ${textValue(quote.ctrVersionId, '')} · 技术方案 ${textValue(quote.technicalSolutionRevisionId, '')} · 成本 ${textValue(quote.costDecisionId, '')} · 政策 ${textValue(quote.policyVersionId, '')} · 签发快照 ${textValue(quote.issuedSnapshotHash, '')}`;
+  pins.textContent = `版本证据：技术需求 ${textValue(quote.ctrVersionId, '')} · 技术方案 ${textValue(quote.technicalSolutionRevisionId, '')} · 成本 ${textValue(quote.costDecisionId, '')} · 政策 ${textValue(quote.policyVersionId, '')} · 签发快照 ${textValue(quote.issuedSnapshotHash, '')}`;
   const footer = popup.document.createElement('footer');
   footer.textContent = '金特夫 KingTurf · 系统签发报价 · 签发版本只读';
   body.append(header, metadata, heading, table, totals, pins, footer);
@@ -915,7 +958,7 @@ export function technicalSolutionOpportunityId(
 ): string {
   const ctr = ctrs.find((item) => item.id === ctrVersionId && item.status === 'APPROVED');
   if (!ctr || typeof ctr.opportunityId !== 'string' || ctr.opportunityId.length === 0)
-    throw new Error('所选 CTR 不可用或缺少关联商机');
+    throw new Error('所选技术需求单不可用或缺少关联商机');
   return ctr.opportunityId;
 }
 
@@ -1066,7 +1109,7 @@ export class CommercialController {
     this.loading = true;
     try {
       this.revisionState = await this.api.uploadCtrAttachment(versionId, file);
-      this.message = `附件 ${file.name} 已上传并关联到 CTR 草稿`;
+      this.message = `附件 ${file.name} 已上传并关联到技术需求草稿`;
       await this.load();
     } finally {
       this.loading = false;
@@ -1182,7 +1225,7 @@ export function quoteWorkflowReadiness(
     const count = counts[index] ?? 0;
     return {
       key,
-      label: ['已批准 CTR', '定稿方案', '成本决策', '已发布政策', '报价版本'][index] ?? key,
+      label: ['已批准技术需求', '定稿方案', '成本决策', '已发布政策', '报价版本'][index] ?? key,
       count,
       state:
         count > 0
@@ -1370,7 +1413,7 @@ export function commercialWorkspaceStructure(
     const heading = el('div', 'pipeline-heading');
     const copy = el('div');
     copy.append(
-      el('p', 'eyebrow', 'EXECUTIVE COCKPIT'),
+      el('p', 'eyebrow', '经营驾驶舱'),
       el('h2', '', '管理驾驶舱'),
       el(
         'p',
@@ -1432,7 +1475,7 @@ export function commercialWorkspaceStructure(
         el(
           'p',
           '',
-          `${recordText(risk, 'severity', 'severity')} / ${recordText(risk, 'score', 'score')} 分 · ${recordText(risk, 'state', 'state')} · 订单 ${recordText(risk, 'salesOrderId', 'salesOrderId').slice(0, 8)}`,
+          `${businessStateLabel(recordText(risk, 'severity', 'severity'))} / ${recordText(risk, 'score', 'score')} 分 · ${businessStateLabel(recordText(risk, 'state', 'state'))} · 订单 ${recordText(risk, 'salesOrderId', 'salesOrderId').slice(0, 8)}`,
         ),
       );
     if (!risks.length) riskList.append(el('p', 'success-note', '当前无风险评价。'));
@@ -1449,12 +1492,12 @@ export function commercialWorkspaceStructure(
       status.textContent = controller.message;
     };
     panel.append(
-      el('p', 'eyebrow', 'SHOP-FLOOR EXECUTION'),
+      el('p', 'eyebrow', '车间执行'),
       el('h2', '', '生产工单与车间执行'),
       el(
         'p',
         'commercial-help',
-        '从已下达 MRP 建议建立工单，固定工艺快照，贯通领退料、工序报工、成品卷号和库存收货。',
+        '从已下达物料需求建议建立工单，固定工艺快照，贯通领退料、工序报工、成品卷号和库存收货。',
       ),
     );
     if (permissions.has('production:plan')) {
@@ -1490,7 +1533,7 @@ export function commercialWorkspaceStructure(
                 label: `${recordText(item, 'code', 'code')} · ${recordText(item, 'name', 'name')}`,
               })),
             },
-            { name: 'mrpProposalId', label: 'MRP 建议 ID（可选）' },
+            { name: 'mrpProposalId', label: '物料需求建议编号（可选）' },
             { name: 'plannedQuantity', label: '计划数量', type: 'number', required: true },
             { name: 'plannedStartAt', label: '计划开始', type: 'date', required: true },
             { name: 'plannedDueAt', label: '计划完成', type: 'date', required: true },
@@ -1571,17 +1614,17 @@ export function commercialWorkspaceStructure(
         el(
           'div',
           'evidence-card',
-          `物料台账\n${materials.map((item) => `${recordText(item, 'transactionType', 'transaction_type')} ${recordText(item, 'quantity', 'quantity')}`).join('\n') || '尚未领料'}`,
+          `物料台账\n${materials.map((item) => `${businessStateLabel(recordText(item, 'transactionType', 'transaction_type'))} ${recordText(item, 'quantity', 'quantity')}`).join('\n') || '尚未领料'}`,
         ),
         el(
           'div',
           'evidence-card',
-          `成品序列\n${rolls.map((item) => `${recordText(item, 'rollNumber', 'roll_number')} · ${recordText(item, 'quantity', 'quantity')} · ${recordText(item, 'status', 'status')}`).join('\n') || '尚未入库'}`,
+          `成品序列\n${rolls.map((item) => `${recordText(item, 'rollNumber', 'roll_number')} · ${recordText(item, 'quantity', 'quantity')} · ${businessStateLabel(recordText(item, 'status', 'status'))}`).join('\n') || '尚未入库'}`,
         ),
         el(
           'div',
           'evidence-card',
-          `状态证据\n${events.map((item) => recordText(item, 'state', 'state')).join(' → ')}`,
+          `状态证据\n${events.map((item) => businessStateLabel(recordText(item, 'state', 'state'))).join(' → ')}`,
         ),
       );
       card.append(evidenceGrid);
@@ -1785,7 +1828,7 @@ export function commercialWorkspaceStructure(
     const runs = controller.views.get('/api/v1/production-cost-runs') ?? [];
     const orders = controller.views.get('/api/v1/production-orders') ?? [];
     panel.append(
-      el('p', 'eyebrow', 'ACTUAL COST & VARIANCE'),
+      el('p', 'eyebrow', '制造成本分析'),
       el('h2', '', '实际制造成本与差异'),
       el(
         'p',
@@ -1923,7 +1966,7 @@ export function commercialWorkspaceStructure(
         el(
           'h3',
           '',
-          `${recordText(run, 'run_number', 'runNumber')} · ${recordText(run, 'state', 'state')}`,
+          `${recordText(run, 'run_number', 'runNumber')} · ${businessStateLabel(recordText(run, 'state', 'state'))}`,
         ),
         el(
           'p',
@@ -1979,7 +2022,7 @@ export function commercialWorkspaceStructure(
           )
         : [];
     panel.append(
-      el('p', 'eyebrow', 'SHIPMENT RELEASE & PROOF OF DELIVERY'),
+      el('p', 'eyebrow', '发货与签收'),
       el('h2', '', '发货放行与物流签收'),
       el(
         'p',
@@ -2406,19 +2449,19 @@ export function commercialWorkspaceStructure(
     heading.className = 'pipeline-heading';
     const copy = document.createElement('div');
     const title = document.createElement('h2');
-    title.textContent = '技术需求 CTR';
+    title.textContent = '技术需求单';
     const subtitle = document.createElement('p');
     subtitle.textContent = '结构化记录场景、规格、数量和交付要求，提交后形成不可变快照';
     copy.append(title, subtitle);
     if (permissions.has('ctr:create')) {
       const create = document.createElement('button');
       create.className = 'primary';
-      create.textContent = '＋ 新建 CTR';
+      create.textContent = '＋ 新建技术需求';
       create.addEventListener('click', () => {
         openForm(
           workspace,
           '新建技术需求',
-          'CTR 必须关联一个商机，提交前可以继续创建修订版本。',
+          '技术需求单必须关联一个商机，提交前可以继续创建修订版本。',
           [
             {
               name: 'opportunityId',
@@ -2430,7 +2473,12 @@ export function commercialWorkspaceStructure(
                 label: item.name ?? item.id,
               })),
             },
-            { name: 'code', label: 'CTR 编号', required: true, placeholder: 'CTR-2026-001' },
+            {
+              name: 'code',
+              label: '技术需求单编号',
+              required: true,
+              placeholder: 'JSXQ-2026-001',
+            },
             {
               name: 'title',
               label: '需求标题',
@@ -2465,7 +2513,7 @@ export function commercialWorkspaceStructure(
             { name: 'color', label: '颜色要求', required: true, placeholder: '双色翠绿' },
             { name: 'delivery', label: '交付要求', type: 'textarea', required: true },
           ],
-          '创建 CTR',
+          '创建技术需求',
           async (values) => {
             await controller.submit('/api/v1/ctrs', {
               opportunityId: values.opportunityId ?? '',
@@ -2497,7 +2545,7 @@ export function commercialWorkspaceStructure(
       latestVersionByCtr.set(rootId, Math.max(latestVersionByCtr.get(rootId) ?? 0, revision));
     }
     for (const ctr of ctrs) {
-      const ctrCode = typeof ctr.code === 'string' ? ctr.code : 'CTR';
+      const ctrCode = typeof ctr.code === 'string' ? ctr.code : '技术需求单';
       const ctrTitle = typeof ctr.title === 'string' ? ctr.title : '未命名需求';
       const ctrVersion = typeof ctr.version === 'number' ? ctr.version : 1;
       const ctrStatus = typeof ctr.status === 'string' ? ctr.status : 'DRAFT';
@@ -2513,7 +2561,7 @@ export function commercialWorkspaceStructure(
       name.textContent = ctrTitle;
       identity.append(code, name);
       const version = document.createElement('span');
-      version.textContent = `V${String(ctrVersion)}`;
+      version.textContent = `第 ${String(ctrVersion)} 版`;
       const state = document.createElement('span');
       state.className = `ctr-state state-${ctrStatus.toLocaleLowerCase()}`;
       state.textContent = ctrStatus;
@@ -2528,10 +2576,14 @@ export function commercialWorkspaceStructure(
         upload.className = 'secondary';
         upload.textContent = '上传附件';
         upload.addEventListener('click', () => {
-          openFileForm(workspace, `为 ${ctrCode} V${String(ctrVersion)} 上传附件`, async (file) => {
-            await controller.uploadCtrAttachment(String(ctr.id), file);
-            status.textContent = controller.message;
-          });
+          openFileForm(
+            workspace,
+            `为 ${ctrCode} 第 ${String(ctrVersion)} 版上传附件`,
+            async (file) => {
+              await controller.uploadCtrAttachment(String(ctr.id), file);
+              status.textContent = controller.message;
+            },
+          );
         });
         actions.append(upload);
       }
@@ -2548,7 +2600,7 @@ export function commercialWorkspaceStructure(
           openForm(
             workspace,
             `新建 ${ctrCode} 修订`,
-            `基于 V${String(ctrVersion)} 创建新的可编辑草稿，历史版本保持不变。`,
+            `基于第 ${String(ctrVersion)} 版创建新的可编辑草稿，历史版本保持不变。`,
             [
               { name: 'title', label: '需求标题', required: true, value: ctrTitle },
               {
@@ -2611,7 +2663,7 @@ export function commercialWorkspaceStructure(
         submit.addEventListener('click', () => {
           openForm(
             workspace,
-            '提交 CTR 评审',
+            '提交技术需求评审',
             '提交后当前版本将冻结，并生成不可变需求快照。',
             [],
             '确认提交评审',
@@ -2619,7 +2671,7 @@ export function commercialWorkspaceStructure(
               await controller.submit(`/api/v1/ctr-versions/${String(ctr.id)}/submit`, {
                 expectedVersion: ctrVersion,
               });
-              status.textContent = 'CTR 已提交并生成不可变快照';
+              status.textContent = '技术需求已提交并生成不可变快照';
             },
           );
         });
@@ -2636,7 +2688,7 @@ export function commercialWorkspaceStructure(
           decide.addEventListener('click', () => {
             openForm(
               workspace,
-              `${label} CTR`,
+              `${label}技术需求`,
               '审批决定和理由将永久保留。',
               [{ name: 'reason', label: '审批意见', type: 'textarea', required: true }],
               `确认${label}`,
@@ -2645,7 +2697,7 @@ export function commercialWorkspaceStructure(
                   decision,
                   reason: values.reason ?? '',
                 });
-                status.textContent = `CTR 已${label}`;
+                status.textContent = `技术需求已${label}`;
               },
             );
           });
@@ -2680,7 +2732,7 @@ export function commercialWorkspaceStructure(
     if (ctrs.length === 0) {
       const empty = document.createElement('p');
       empty.className = 'pipeline-empty';
-      empty.textContent = '暂无 CTR，先从一个已确认需求的商机创建技术需求。';
+      empty.textContent = '暂无技术需求单，请先从已确认需求的商机创建。';
       table.append(empty);
     }
     ctrPanel.append(table);
@@ -2692,7 +2744,7 @@ export function commercialWorkspaceStructure(
     const solutionCopy = el('div');
     solutionCopy.append(
       el('h2', '', '技术方案'),
-      el('p', '', '将产品规格和工程假设固定到明确的 CTR 版本，保留修订差异。'),
+      el('p', '', '将产品规格和工程假设固定到明确的技术需求版本，保留修订差异。'),
     );
     const solutions = controller.views.get('/api/v1/technical-solutions') ?? [];
     const ctrs = controller.views.get('/api/v1/ctrs') ?? [];
@@ -2705,13 +2757,13 @@ export function commercialWorkspaceStructure(
     ): readonly FormField[] => [
       {
         name: 'ctrVersionId',
-        label: '已批准 CTR 版本',
+        label: '已批准技术需求版本',
         type: 'select',
         required: true,
         value: ctrVersionId,
         options: eligibleCtrs.map((item) => ({
           value: String(item.id),
-          label: `${textValue(item.code, 'CTR')} · V${textValue(item.version, '1')} · ${textValue(item.title, '')}`,
+          label: `${textValue(item.code, '技术需求')} · 第 ${textValue(item.version, '1')} 版 · ${textValue(item.title, '')}`,
         })),
       },
       {
@@ -2802,7 +2854,7 @@ export function commercialWorkspaceStructure(
         openForm(
           workspace,
           '新建技术方案',
-          '方案的每项规格都将关联到选定的已批准 CTR 版本。',
+          '方案的每项规格都将关联到选定的已批准技术需求版本。',
           [
             { name: 'code', label: '方案编号', required: true, placeholder: 'TS-2026-001' },
             ...solutionFields(),
@@ -2830,14 +2882,14 @@ export function commercialWorkspaceStructure(
         el(
           'strong',
           '',
-          `${textValue(solution.code, '方案')} · R${textValue(solution.revision, '1')}`,
+          `${textValue(solution.code, '方案')} · 第 ${textValue(solution.revision, '1')} 版`,
         ),
         el(
           'span',
           `ctr-state state-${textValue(solution.status, 'DRAFT').toLocaleLowerCase()}`,
           textValue(solution.status, 'DRAFT'),
         ),
-        el('p', 'muted', `CTR 版本：${textValue(solution.ctrVersionId, '—')}`),
+        el('p', 'muted', `技术需求版本：${textValue(solution.ctrVersionId, '—')}`),
       );
       const specs = el('dl', 'ctr-specification');
       const previousSolution = solutions.find(
@@ -2875,7 +2927,7 @@ export function commercialWorkspaceStructure(
           openForm(
             workspace,
             `修订 ${textValue(solution.code, '技术方案')}`,
-            '新修订将保留旧版本及其 CTR 引用。',
+            '新修订将保留旧版本及其技术需求引用。',
             solutionFields(
               specification,
               Array.isArray(solution.assumptions) ? solution.assumptions : [],
@@ -2899,7 +2951,7 @@ export function commercialWorkspaceStructure(
     }
     if (solutions.length === 0)
       solutionList.append(
-        el('p', 'pipeline-empty', '暂无技术方案；先批准 CTR，再建立结构化方案。'),
+        el('p', 'pipeline-empty', '暂无技术方案；请先批准技术需求，再建立结构化方案。'),
       );
     solutionPanel.append(solutionList);
     workspace.append(solutionPanel);
@@ -2982,7 +3034,11 @@ export function commercialWorkspaceStructure(
       const modelCard = el('article', 'definition-card');
       const rules = Array.isArray(model.rules) ? model.rules : [];
       modelCard.append(
-        el('strong', '', `${textValue(model.code, '模型')} · V${textValue(model.version, '1')}`),
+        el(
+          'strong',
+          '',
+          `${textValue(model.code, '模型')} · 第 ${textValue(model.version, '1')} 版`,
+        ),
         el(
           'span',
           `ctr-state state-${textValue(model.status, 'DRAFT').toLocaleLowerCase()}`,
@@ -3055,7 +3111,7 @@ export function commercialWorkspaceStructure(
               required: true,
               options: publishedModels.map((item) => ({
                 value: textValue(item.id, ''),
-                label: `${textValue(item.code, '模型')} · V${textValue(item.version, '1')} · ${textValue(item.currency, 'CNY')}`,
+                label: `${textValue(item.code, '模型')} · 第 ${textValue(item.version, '1')} 版 · ${textValue(item.currency, '人民币')}`,
               })),
             },
             {
@@ -3065,7 +3121,7 @@ export function commercialWorkspaceStructure(
               required: true,
               options: solutions.map((item) => ({
                 value: textValue(item.id, ''),
-                label: `${textValue(item.code, '方案')} · R${textValue(item.revision, '1')}`,
+                label: `${textValue(item.code, '方案')} · 第 ${textValue(item.revision, '1')} 版`,
               })),
             },
             { name: 'materialQuantity', label: '草坪面积（㎡）', type: 'number', required: true },
@@ -3285,7 +3341,11 @@ export function commercialWorkspaceStructure(
       const policyCard = el('article', 'definition-card');
       const rules = Array.isArray(policy.rules) ? policy.rules : [];
       policyCard.append(
-        el('strong', '', `${textValue(policy.code, '政策')} · V${textValue(policy.version, '1')}`),
+        el(
+          'strong',
+          '',
+          `${textValue(policy.code, '政策')} · 第 ${textValue(policy.version, '1')} 版`,
+        ),
         el(
           'span',
           `ctr-state state-${textValue(policy.status, 'DRAFT').toLocaleLowerCase()}`,
@@ -3386,7 +3446,7 @@ export function commercialWorkspaceStructure(
               required: true,
               options: publishedPolicies.map((item) => ({
                 value: textValue(item.id, ''),
-                label: `${textValue(item.code, '政策')} · V${textValue(item.version, '1')}`,
+                label: `${textValue(item.code, '政策')} · 第 ${textValue(item.version, '1')} 版`,
               })),
             },
             {
@@ -3438,7 +3498,7 @@ export function commercialWorkspaceStructure(
       const passed = evaluation.passed === true;
       const approval = evaluation.approvalRequired === true;
       card.append(
-        el('p', 'eyebrow', 'POLICY DECISION'),
+        el('p', 'eyebrow', '销售政策判定'),
         el(
           'strong',
           passed ? 'decision-pass' : 'decision-fail',
@@ -3473,7 +3533,7 @@ export function commercialWorkspaceStructure(
     const quoteHeading = el('div', 'pipeline-heading');
     const quoteCopy = el('div');
     quoteCopy.append(
-      el('h2', '', 'CPQ 报价设计器'),
+      el('h2', '', '销售报价'),
       el('p', '', '从成本决策生成行项目，实时计算折扣、毛利并执行销售政策。'),
     );
     const costs = controller.views.get('/api/v1/cost-evaluations') ?? [];
@@ -3487,7 +3547,7 @@ export function commercialWorkspaceStructure(
       createQuote.addEventListener('click', () => {
         openForm(
           workspace,
-          '新建 CPQ 报价',
+          '新建销售报价',
           '系统先校验销售政策，再由服务器重算每一行、折扣与毛利。',
           [
             { name: 'quoteNumber', label: '报价编号', required: true, placeholder: 'Q-2026-001' },
@@ -3508,7 +3568,7 @@ export function commercialWorkspaceStructure(
               required: true,
               options: policies.map((item) => ({
                 value: textValue(item.id, ''),
-                label: `${textValue(item.code, '政策')} · V${textValue(item.version, '1')}`,
+                label: `${textValue(item.code, '政策')} · 第 ${textValue(item.version, '1')} 版`,
               })),
             },
             {
@@ -3571,7 +3631,7 @@ export function commercialWorkspaceStructure(
             if (!solution) throw new Error('成本决策对应的技术方案不可见');
             const ctrVersionId = textValue(solution.ctrVersionId, '');
             const ctr = ctrs.find((item) => item.id === ctrVersionId);
-            if (!ctr) throw new Error('技术方案对应的 CTR 版本不可见');
+            if (!ctr) throw new Error('技术方案对应的技术需求版本不可见');
             const currency = textValue(cost.currency, 'CNY');
             const lineInputs = [
               ['人造草坪系统', values.turfQuantity, 'M2', values.turfPrice],
@@ -3650,7 +3710,7 @@ export function commercialWorkspaceStructure(
         el(
           'p',
           'eyebrow',
-          `${textValue(quote.quoteNumber, '报价')} · R${textValue(quote.revision, '1')}`,
+          `${textValue(quote.quoteNumber, '报价')} · 第 ${textValue(quote.revision, '1')} 版`,
         ),
         el(
           'strong',
@@ -3666,7 +3726,7 @@ export function commercialWorkspaceStructure(
         el(
           'p',
           'version-pin',
-          `CTR ${textValue(quote.ctrVersionId, '').slice(0, 8)} · 方案 ${textValue(quote.technicalSolutionRevisionId, '').slice(0, 8)} · 成本 ${textValue(quote.costDecisionId, '').slice(0, 8)} · 政策 ${textValue(quote.policyVersionId, '').slice(0, 8)}`,
+          `技术需求 ${textValue(quote.ctrVersionId, '').slice(0, 8)} · 方案 ${textValue(quote.technicalSolutionRevisionId, '').slice(0, 8)} · 成本 ${textValue(quote.costDecisionId, '').slice(0, 8)} · 政策 ${textValue(quote.policyVersionId, '').slice(0, 8)}`,
         ),
       );
       const lines = Array.isArray(quote.lines) ? quote.lines : [];
@@ -3884,7 +3944,7 @@ export function commercialWorkspaceStructure(
               required: true,
               options: issuedQuotes.map((item) => ({
                 value: textValue(item.id, ''),
-                label: `${textValue(item.quoteNumber, '报价')} · R${textValue(item.revision, '1')} · ${textValue(item.currency, '')} ${textValue(item.total, '—')}`,
+                label: `${textValue(item.quoteNumber, '报价')} · 第 ${textValue(item.revision, '1')} 版 · ${textValue(item.currency, '')} ${textValue(item.total, '—')}`,
               })),
             },
             {
@@ -3927,7 +3987,7 @@ export function commercialWorkspaceStructure(
       const state = recordText(decision, 'effectiveStatus', 'effective_status', 'PENDING_APPROVAL');
       const card = el('article', 'qtc-card');
       card.append(
-        el('p', 'eyebrow', 'CREDIT DECISION'),
+        el('p', 'eyebrow', '信用审查结果'),
         el(
           'strong',
           '',
@@ -4011,7 +4071,7 @@ export function commercialWorkspaceStructure(
               required: true,
               options: issuedQuotes.map((item) => ({
                 value: textValue(item.id, ''),
-                label: `${textValue(item.quoteNumber, '报价')} · R${textValue(item.revision, '1')}`,
+                label: `${textValue(item.quoteNumber, '报价')} · 第 ${textValue(item.revision, '1')} 版`,
               })),
             },
             { name: 'contractNumber', label: '合同编号', required: true },
@@ -4059,7 +4119,7 @@ export function commercialWorkspaceStructure(
         el(
           'p',
           'eyebrow',
-          `${recordText(contract, 'contractNumber', 'contractNumber', '合同')} · R${recordText(contract, 'revision', 'revision', '1')}`,
+          `${recordText(contract, 'contractNumber', 'contractNumber', '合同')} · 第 ${recordText(contract, 'revision', 'revision', '1')} 版`,
         ),
         el('strong', '', state === 'SIGNED' ? '合同已签署' : '合同待签署'),
         el('span', `ctr-state state-${state.toLocaleLowerCase()}`, state),
@@ -4253,7 +4313,7 @@ export function commercialWorkspaceStructure(
     for (const order of controller.views.get('/api/v1/sales-orders') ?? []) {
       const card = el('article', 'qtc-card');
       card.append(
-        el('p', 'eyebrow', recordText(order, 'orderNumber', 'order_number', 'SALES ORDER')),
+        el('p', 'eyebrow', recordText(order, 'orderNumber', 'order_number', '销售订单')),
         el(
           'strong',
           '',
@@ -4280,7 +4340,7 @@ export function commercialWorkspaceStructure(
     const heading = el('div', 'pipeline-heading');
     const copy = el('div');
     copy.append(
-      el('p', 'eyebrow', 'ORDER 360'),
+      el('p', 'eyebrow', '订单全景'),
       el('h2', '', '订单全链路与证据时间线'),
       el('p', '', '从已释放订单下钻报价、成本、信用、合同、应收、回款、佣金与异常。'),
     );
@@ -4356,7 +4416,7 @@ export function commercialWorkspaceStructure(
         el(
           'strong',
           '',
-          `${recordText(policy, 'code', 'code')} V${recordText(policy, 'version', 'version')}`,
+          `${recordText(policy, 'code', 'code')} 第 ${recordText(policy, 'version', 'version')} 版`,
         ),
         el('span', 'version-pin', recordText(policy, 'status', 'status')),
         el(
@@ -4467,7 +4527,7 @@ export function commercialWorkspaceStructure(
                 .filter((policy) => policy.status === 'PUBLISHED')
                 .map((policy) => ({
                   value: textValue(policy.id, ''),
-                  label: `${recordText(policy, 'code', 'code')} V${recordText(policy, 'version', 'version')}`,
+                  label: `${recordText(policy, 'code', 'code')} 第 ${recordText(policy, 'version', 'version')} 版`,
                 })),
             },
             {
@@ -4524,7 +4584,7 @@ export function commercialWorkspaceStructure(
         : [];
       const card = el('article', 'order-360-card');
       card.append(
-        el('p', 'eyebrow', recordText(order, 'orderNumber', 'order_number', 'SALES ORDER')),
+        el('p', 'eyebrow', recordText(order, 'orderNumber', 'order_number', '销售订单')),
         el(
           'h3',
           '',
@@ -4807,7 +4867,7 @@ export function commercialWorkspaceStructure(
         el(
           'p',
           'qtc-metrics',
-          `${state} · 逾期 ${recordText(item, 'overdueDays', 'overdue_days', '0')} 天 · ${recordText(item, 'documentNumber', 'document_number', '应收单据')}`,
+          `${businessStateLabel(state)} · 逾期 ${recordText(item, 'overdueDays', 'overdue_days', '0')} 天 · ${recordText(item, 'documentNumber', 'document_number', '应收单据')}`,
         ),
       );
       const actions = el('div', 'inline-actions');
@@ -5023,7 +5083,7 @@ export function commercialWorkspaceStructure(
             el(
               'p',
               'version-pin',
-              `证据包 ${recordText(evidencePackage, 'packageNumber', 'package_number')} · ${recordText(evidencePackage, 'state', 'state')} · ${recordText(evidencePackage, 'packageHash', 'package_hash').slice(0, 12)}`,
+              `证据包 ${recordText(evidencePackage, 'packageNumber', 'package_number')} · ${businessStateLabel(recordText(evidencePackage, 'state', 'state'))} · ${recordText(evidencePackage, 'packageHash', 'package_hash').slice(0, 12)}`,
             ),
           );
       }
@@ -5097,7 +5157,7 @@ export function commercialWorkspaceStructure(
     for (const payment of controller.views.get('/api/v1/bank-payments') ?? []) {
       const card = el('article', 'qtc-card');
       card.append(
-        el('p', 'eyebrow', recordText(payment, 'bankReference', 'bank_reference', 'BANK PAYMENT')),
+        el('p', 'eyebrow', recordText(payment, 'bankReference', 'bank_reference', '银行收款')),
         el(
           'strong',
           '',
@@ -5245,7 +5305,7 @@ export function commercialWorkspaceStructure(
               required: true,
               options: publishedPolicies.map((item) => ({
                 value: textValue(item.id, ''),
-                label: `${recordText(item, 'code', 'code')} · V${recordText(item, 'version', 'version', '1')} · ${percent(recordText(item, 'baseRateBasisPoints', 'base_rate_basis_points', '0'))}%`,
+                label: `${recordText(item, 'code', 'code')} · 第 ${recordText(item, 'version', 'version', '1')} 版 · ${percent(recordText(item, 'baseRateBasisPoints', 'base_rate_basis_points', '0'))}%`,
               })),
             },
             { name: 'accountingPeriod', label: '会计期间（YYYY-MM）', required: true },
@@ -5273,7 +5333,7 @@ export function commercialWorkspaceStructure(
           el(
             'span',
             'version-pin',
-            `${recordText(policy, 'code', 'code')} V${recordText(policy, 'version', 'version')} · ${recordText(policy, 'status', 'status')} · 佣金率 ${percent(recordText(policy, 'baseRateBasisPoints', 'base_rate_basis_points', '0'))}% · 毛利门槛 ${percent(recordText(policy, 'minimumMarginBasisPoints', 'minimum_margin_basis_points', '0'))}% · 回款门槛 ${percent(recordText(policy, 'releaseCollectionBasisPoints', 'release_collection_basis_points', '0'))}%`,
+            `${recordText(policy, 'code', 'code')} 第 ${recordText(policy, 'version', 'version')} 版 · ${businessStateLabel(recordText(policy, 'status', 'status'))} · 佣金率 ${percent(recordText(policy, 'baseRateBasisPoints', 'base_rate_basis_points', '0'))}% · 毛利门槛 ${percent(recordText(policy, 'minimumMarginBasisPoints', 'minimum_margin_basis_points', '0'))}% · 回款门槛 ${percent(recordText(policy, 'releaseCollectionBasisPoints', 'release_collection_basis_points', '0'))}%`,
           ),
         );
         if (permissions.has('commission-policy:manage') && policy.status === 'PUBLISHED') {
@@ -5379,7 +5439,7 @@ export function commercialWorkspaceStructure(
         el(
           'p',
           'muted',
-          `受益人 ${recordText(commission, 'beneficiaryName', 'beneficiaryName', '—')} · 政策 ${recordText(commission, 'policyCode', 'policyCode', '—')} V${recordText(commission, 'policyVersion', 'policyVersion', '—')}`,
+          `受益人 ${recordText(commission, 'beneficiaryName', 'beneficiaryName', '—')} · 政策 ${recordText(commission, 'policyCode', 'policyCode', '—')} 第 ${recordText(commission, 'policyVersion', 'policyVersion', '—')} 版`,
         ),
       );
       const timeline = el('ol', 'commission-ledger');
@@ -5592,13 +5652,13 @@ export function commercialWorkspaceStructure(
         example: {
           code: 'BOM-KT-PRO-50',
           name: '50mm 标准 BOM',
-          productItemId: '产品根 ID',
-          productItemVersionId: '产品版本 ID',
+          productItemId: '产品主编号',
+          productItemVersionId: '产品版本编号',
           outputQuantity: '1',
           effectiveAt: new Date().toISOString(),
           lines: [
             {
-              componentItemVersionId: '组件版本 ID',
+              componentItemVersionId: '组件版本编号',
               quantity: '1.25',
               scrapBasisPoints: 300,
               substitutes: [],
@@ -5616,8 +5676,8 @@ export function commercialWorkspaceStructure(
         example: {
           code: 'RT-KT-PRO-50',
           name: '50mm 标准工艺',
-          productItemId: '产品根 ID',
-          productItemVersionId: '产品版本 ID',
+          productItemId: '产品主编号',
+          productItemVersionId: '产品版本编号',
           effectiveAt: new Date().toISOString(),
           operations: [
             {
@@ -5650,7 +5710,7 @@ export function commercialWorkspaceStructure(
           el(
             'span',
             `ctr-state state-${recordText(item, 'status', 'status', 'DRAFT').toLowerCase()}`,
-            `${recordText(item, 'status', 'status', 'DRAFT')} · V${recordText(item, 'version', 'version', '1')}`,
+            `${businessStateLabel(recordText(item, 'status', 'status', 'DRAFT'))} · 第 ${recordText(item, 'version', 'version', '1')} 版`,
           ),
           el(
             'p',
@@ -5944,7 +6004,7 @@ export function commercialWorkspaceStructure(
         el(
           'div',
           'procurement-card',
-          `${recordText(supplier, 'supplierNumber', 'supplier_number')} · ${recordText(supplier, 'name', 'name')}\n${recordText(supplier, 'status', 'status')} · 账期 ${recordText(supplier, 'paymentTermsDays', 'payment_terms_days')} 天 · 已准入 ${String(qualifications.filter((item) => item.status === 'APPROVED').length)} 项`,
+          `${recordText(supplier, 'supplierNumber', 'supplier_number')} · ${recordText(supplier, 'name', 'name')}\n${businessStateLabel(recordText(supplier, 'status', 'status'))} · 账期 ${recordText(supplier, 'paymentTermsDays', 'payment_terms_days')} 天 · 已准入 ${String(qualifications.filter((item) => item.status === 'APPROVED').length)} 项`,
         ),
       );
     }
@@ -6055,7 +6115,7 @@ export function commercialWorkspaceStructure(
         el(
           'div',
           'procurement-card',
-          `${recordText(rfq, 'rfqNumber', 'rfq_number')} · ${recordText(rfq, 'status', 'status')} · ${String(Array.isArray(rfq.lines) ? rfq.lines.length : 0)} 项`,
+          `${recordText(rfq, 'rfqNumber', 'rfq_number')} · ${businessStateLabel(recordText(rfq, 'status', 'status'))} · ${String(Array.isArray(rfq.lines) ? rfq.lines.length : 0)} 项`,
         ),
       );
     for (const quote of supplierQuotes)
@@ -6192,7 +6252,7 @@ export function commercialWorkspaceStructure(
         el(
           'div',
           'procurement-card purchase-order-card',
-          `${recordText(order, 'poNumber', 'po_number')} · ${recordText(order, 'status', 'status')}\n${recordText(order, 'supplierName', 'supplierName')} · CNY ${decimalValue(total)} · ${String(lines.length)} 项`,
+          `${recordText(order, 'poNumber', 'po_number')} · ${businessStateLabel(recordText(order, 'status', 'status'))}\n${recordText(order, 'supplierName', 'supplierName')} · 人民币 ${decimalValue(total)} · ${String(lines.length)} 项`,
         ),
       );
     }
@@ -6359,7 +6419,7 @@ export function commercialWorkspaceStructure(
               },
               { name: 'quantity', label: '数量', type: 'number', required: true },
               { name: 'sourceType', label: '业务来源类型', required: true, value: 'WORK-ORDER' },
-              { name: 'sourceId', label: '业务来源 ID', required: true },
+              { name: 'sourceId', label: '业务来源编号', required: true },
             ],
             '追加库存移动',
             async (values) => {
@@ -6423,7 +6483,7 @@ export function commercialWorkspaceStructure(
     panel.setAttribute('data-testid', 'mrp-workbench');
     panel.append(
       el('p', 'eyebrow', 'EXPLAINABLE MATERIAL PLANNING'),
-      el('h2', '', 'MRP 净需求与建议审批'),
+      el('h2', '', '物料需求与建议审批'),
       el(
         'p',
         'commercial-help',
@@ -6548,7 +6608,7 @@ export function commercialWorkspaceStructure(
               options: publishedItemOptions,
             },
             { name: 'sourceType', label: '来源类型', required: true, value: 'SALES-FORECAST' },
-            { name: 'sourceId', label: '来源业务 ID', required: true },
+            { name: 'sourceId', label: '来源业务编号', required: true },
             { name: 'requiredAt', label: '需求日期', type: 'date', required: true },
             { name: 'quantity', label: '需求数量', type: 'number', required: true },
             { name: 'priority', label: '优先级', type: 'number', required: true, value: '100' },
@@ -6567,11 +6627,11 @@ export function commercialWorkspaceStructure(
           },
         );
       });
-      const run = el('button', 'primary', '运行 MRP');
+      const run = el('button', 'primary', '运行物料需求计算');
       run.addEventListener('click', () => {
         openForm(
           workspace,
-          '运行 MRP',
+          '运行物料需求计算',
           '运行将固定需求、BOM、政策、合格库存和在途采购快照，并生成可解释建议。',
           [
             { name: 'runNumber', label: '运行编号', required: true },
@@ -6608,7 +6668,7 @@ export function commercialWorkspaceStructure(
         el(
           'h3',
           '',
-          `${recordText(latestRun, 'runNumber', 'run_number')} · ${recordText(latestRun, 'status', 'status')}`,
+          `${recordText(latestRun, 'runNumber', 'run_number')} · ${businessStateLabel(recordText(latestRun, 'status', 'status'))}`,
         ),
         el(
           'p',
@@ -6630,7 +6690,7 @@ export function commercialWorkspaceStructure(
             '',
             `${recordText(proposal, 'sku', 'sku')} · ${recordText(proposal, 'proposalType', 'proposal_type')}`,
           ),
-          el('span', `ctr-state state-${state.toLowerCase()}`, state),
+          el('span', `ctr-state state-${state.toLowerCase()}`, businessStateLabel(state)),
           el(
             'p',
             '',
@@ -6653,7 +6713,7 @@ export function commercialWorkspaceStructure(
             command.addEventListener('click', () => {
               openForm(
                 workspace,
-                `${label} MRP 建议`,
+                `${label}物料需求建议`,
                 '决定将追加到不可变事件台账。冻结建议必须提供覆盖审批编号。',
                 [
                   { name: 'reason', label: '决定理由', type: 'textarea', required: true },
@@ -6744,7 +6804,7 @@ export function commercialWorkspaceStructure(
           [
             { name: 'code', label: '计划编码', required: true },
             { name: 'name', label: '计划名称', required: true },
-            { name: 'itemVersionId', label: '物料版本 ID', required: true },
+            { name: 'itemVersionId', label: '物料版本编号', required: true },
             {
               name: 'inspectionStage',
               label: '检验阶段',
@@ -6807,7 +6867,7 @@ export function commercialWorkspaceStructure(
         el(
           'span',
           `ctr-state state-${recordText(plan, 'status', 'status', 'DRAFT').toLowerCase()}`,
-          `${recordText(plan, 'status', 'status', 'DRAFT')} · V${recordText(plan, 'version', 'version', '1')}`,
+          `${businessStateLabel(recordText(plan, 'status', 'status', 'DRAFT'))} · 第 ${recordText(plan, 'version', 'version', '1')} 版`,
         ),
         el(
           'p',
@@ -6868,7 +6928,7 @@ export function commercialWorkspaceStructure(
               })),
             },
             { name: 'inspectionNumber', label: '检验单号', required: true },
-            { name: 'sourceId', label: '来源业务 ID', required: true },
+            { name: 'sourceId', label: '来源业务编号', required: true },
             { name: 'sampleSize', label: '抽样数量', type: 'number', required: true, value: '1' },
           ],
           '开立检验',
@@ -6947,7 +7007,7 @@ export function commercialWorkspaceStructure(
               '记录检验结果',
               '结果按计划特性逐项保存；服务端会校验数据类型和必检项。',
               [
-                { name: 'characteristicId', label: '特性 ID', required: true },
+                { name: 'characteristicId', label: '特性编号', required: true },
                 { name: 'measuredNumeric', label: '实测数值', type: 'number' },
                 { name: 'passed', label: '通过（true/false）', required: true, value: 'true' },
                 { name: 'notes', label: '备注', type: 'textarea' },
@@ -7070,23 +7130,23 @@ export function commercialWorkspaceStructure(
       'opportunity-pipeline',
       '商机',
       '按负责人和阶段管理预计金额、赢率与成交日期',
-      ['商机名称', '客户 ID', '金额', '币种', '预计成交日'],
+      ['商机名称', '客户编号', '金额', '币种', '预计成交日'],
       '新建商机',
       '/api/v1/opportunities',
     ],
     [
       'ctr-revisions',
-      'CTR 版本',
+      '技术需求版本',
       '编辑需求草稿，提交后保留哈希、附件和审批证据',
-      ['商机 ID', 'CTR 编码', '标题', '结构化需求'],
-      '保存 CTR 草稿',
+      ['商机编号', '技术需求编号', '标题', '结构化需求'],
+      '保存技术需求草稿',
       '/api/v1/ctrs',
     ],
     [
       'technical-solution-history',
       '技术方案',
-      '方案修订精确引用已提交的 CTR 版本',
-      ['商机 ID', 'CTR 版本 ID', '方案编码', '规格与假设'],
+      '方案修订精确引用已提交的技术需求版本',
+      ['商机编号', '技术需求版本编号', '方案编码', '规格与假设'],
       '创建方案修订',
       '/api/v1/technical-solutions',
     ],
@@ -7094,7 +7154,7 @@ export function commercialWorkspaceStructure(
       'cost-explanation',
       '成本说明',
       '使用固定币种、单位和已发布模型生成可解释成本决策',
-      ['模型版本 ID', '方案修订 ID', '成本明细'],
+      ['模型版本编号', '方案修订编号', '成本明细'],
       '计算成本',
       '/api/v1/cost-evaluations',
     ],
@@ -7102,7 +7162,7 @@ export function commercialWorkspaceStructure(
       'policy-explanation',
       '销售政策',
       '显示命中规则、利润率边界、审批要求与原因',
-      ['政策版本 ID', '成本决策 ID', '报价上下文'],
+      ['政策版本编号', '成本决策编号', '报价上下文'],
       '评估政策',
       '/api/v1/sales-policy-evaluations',
     ],
@@ -7110,7 +7170,7 @@ export function commercialWorkspaceStructure(
       'quote-builder',
       '报价',
       '汇总行项目、折扣、成本、利润、有效期与全部版本引用',
-      ['商机 ID', 'CTR/方案/成本/政策引用', '报价明细', '有效期'],
+      ['商机编号', '技术需求/方案/成本/政策引用', '报价明细', '有效期'],
       immutable ? '已签发（只读）' : '创建报价修订',
       '/api/v1/quotes',
     ],
@@ -7134,7 +7194,7 @@ export function commercialWorkspaceStructure(
       'order-release',
       '订单释放',
       '仅使用已签发报价、有效信用决定与已签合同的精确引用',
-      ['报价/信用/合同/签名 ID', '订单行'],
+      ['报价/信用/合同/签名编号', '订单行'],
       '释放订单',
       '/api/v1/sales-orders',
     ],
@@ -7261,15 +7321,15 @@ export function commercialWorkspaceStructure(
     else if (controller && !canRead) evidence.hidden = true;
     if (className === 'ctr-revisions' && controller && !immutable) {
       const versionId = document.createElement('input');
-      versionId.setAttribute('aria-label', 'CTR 版本 ID');
+      versionId.setAttribute('aria-label', '技术需求版本编号');
       const expectedCtrVersion = document.createElement('input');
       expectedCtrVersion.type = 'number';
       expectedCtrVersion.min = '1';
       expectedCtrVersion.value = '1';
-      expectedCtrVersion.setAttribute('aria-label', 'CTR 预期版本号');
+      expectedCtrVersion.setAttribute('aria-label', '技术需求预期版本号');
       const submitCtr = document.createElement('button');
       submitCtr.type = 'button';
-      submitCtr.textContent = '提交 CTR';
+      submitCtr.textContent = '提交技术需求';
       submitCtr.hidden = !permissions.has('ctr:submit');
       submitCtr.addEventListener('click', () => {
         void controller.submit(`/api/v1/ctr-versions/${versionId.value}/submit`, {
@@ -7278,7 +7338,7 @@ export function commercialWorkspaceStructure(
       });
       const approveCtr = document.createElement('button');
       approveCtr.type = 'button';
-      approveCtr.textContent = '批准 CTR';
+      approveCtr.textContent = '批准技术需求';
       approveCtr.hidden = !permissions.has('ctr:approve');
       approveCtr.addEventListener('click', () => {
         void controller.submit(`/api/v1/ctr-versions/${versionId.value}/decision`, {
@@ -7290,7 +7350,7 @@ export function commercialWorkspaceStructure(
     }
     if (className === 'quote-builder' && controller && !immutable) {
       const revisionId = document.createElement('input');
-      revisionId.setAttribute('aria-label', '报价修订 ID');
+      revisionId.setAttribute('aria-label', '报价修订编号');
       const approve = document.createElement('button');
       approve.type = 'button';
       approve.textContent = '批准报价';
@@ -7671,7 +7731,7 @@ function openForm(
   form.setAttribute('method', 'dialog');
   const heading = el('div', 'dialog-heading');
   heading.append(
-    el('p', 'eyebrow', 'KINGTURF WORKFLOW'),
+    el('p', 'eyebrow', '业务流程'),
     el('h2', '', title),
     el('p', 'muted', description),
   );
@@ -7822,9 +7882,9 @@ function openFileForm(
   const form = el('form', 'entity-form');
   const heading = el('div', 'dialog-heading');
   heading.append(
-    el('p', 'eyebrow', 'CTR EVIDENCE'),
+    el('p', 'eyebrow', '技术需求证据'),
     el('h2', '', title),
-    el('p', 'muted', '附件最大 25 MiB；提交 CTR 后附件集合将被冻结。'),
+    el('p', 'muted', '附件最大 25 MB；提交技术需求后附件集合将被冻结。'),
   );
   const label = el('label', 'form-field file-field');
   label.append(el('span', '', '选择技术资料或客户需求文件'));
@@ -7850,7 +7910,7 @@ function openFileForm(
     const file = input.files?.[0];
     if (!file) return;
     if (file.size > 26_214_400) {
-      error.textContent = '文件超过 25 MiB 限制';
+      error.textContent = '文件超过 25 MB 限制';
       return;
     }
     submit.disabled = true;
@@ -8223,26 +8283,57 @@ function navIcon(name: NavIconName): HTMLElement {
 }
 
 const ENTERPRISE_STATUS_LABELS: Readonly<Record<string, string>> = {
+  ACTIVE: '已启用',
+  ACCEPTED: '已受理',
+  ACCRUED: '已计提',
   APPROVED: '已批准',
+  ARCHIVED: '已归档',
+  AWARDED: '已定标',
+  BLACKLISTED: '已禁用',
+  CALCULATED: '已核算',
   CANCELLED: '已取消',
   CLAIMED: '已认领',
   CLOSED: '已关闭',
   COMPLETED: '已完成',
+  COMPUTED: '已计算',
+  CONVERTED: '已转化',
+  CONTACTING: '联系中',
   DRAFT: '草稿',
+  DELIVERED: '已签收',
+  DISPATCHED: '已发运',
+  DISQUALIFIED: '无效',
   EXPIRED: '已过期',
+  EXCEPTION_PENDING: '例外待审批',
   FINAL: '已定稿',
+  FROZEN: '已冻结',
   IN_PROGRESS: '进行中',
+  INACTIVE: '已停用',
   ISSUED: '已签发',
+  ISSUE: '领料',
   OPEN: '待处理',
+  PAID: '已支付',
+  PARTIALLY_PAID: '部分支付',
   PARTIALLY_RECEIVED: '部分收货',
   PENDING: '待处理',
   PENDING_APPROVAL: '待审批',
   POOL: '公海',
   PUBLISHED: '已发布',
+  PROMISE_BROKEN: '付款承诺已违约',
+  PROPOSED: '待审批',
   QUARANTINE: '待检隔离',
+  QUALIFIED: '已确认',
   REJECTED: '已拒绝',
+  READY: '待执行',
   RELEASED: '已放行',
+  REQUESTED: '待受理',
+  SAMPLED: '已抽样',
   SIGNED: '已签署',
+  SUBMITTED: '已提交',
+  SUSPENDED: '已暂停',
+  RETURNED: '已退回',
+  RETURN: '退料',
+  VOIDED: '已作废',
+  LEGAL_ACCEPTED: '法务已受理',
   WON: '已赢单',
   LOST: '已输单',
 };
@@ -8314,7 +8405,7 @@ export function createCrmShell(
   const aside = el('aside', 'sidebar');
   const brand = el('div', 'brand-lockup');
   brand.append(el('span', 'brand-mark', 'K'), el('div', 'brand', '金特夫'));
-  brand.append(el('p', 'brand-caption', 'Business OS'));
+  brand.append(el('p', 'brand-caption', '企业经营管理系统'));
   aside.append(brand);
   const nav = el('nav');
   const visibleRoutes = visibleAppRoutes(allPermissions);
@@ -8349,7 +8440,7 @@ export function createCrmShell(
   ]);
   navGroup('销售到回款', [
     ['customers', '线索与客户', 'crm'],
-    ['opportunities', '商机与 CTR', 'opportunity-ctr'],
+    ['opportunities', '商机与技术需求', 'opportunity-ctr'],
     ['cost', '成本与报价', 'cost-quote'],
     ['contracts', '合同与订单', 'contract-order'],
     ['receivables', '应收与回款', 'ar-payment'],
@@ -8468,11 +8559,11 @@ export function createCrmShell(
     'sales-workspace': ['推进销售事项', '查看重点客户、商机、报价和回款风险'],
     'operations-workspace': ['处理运营事项', '查看计划、生产、质量和交付异常'],
     crm: ['维护客户与线索', '处理客户主档、跟进记录和分配事项'],
-    'opportunity-ctr': ['推进商机与技术需求', '处理商机阶段、CTR 与技术方案'],
+    'opportunity-ctr': ['推进商机与技术需求', '处理商机阶段、技术需求与技术方案'],
     'cost-quote': ['处理成本与报价', '完成测算、政策判定、审批或签发'],
     'contract-order': ['处理合同与订单', '完成信用、合同、订单和证据复核'],
     'ar-payment': ['处理应收与回款', '查看到账、核销、佣金和风险任务'],
-    'planning-production': ['处理计划与生产', '推进采购、MRP、工单和制造成本'],
+    'planning-production': ['处理计划与生产', '推进采购、物料需求、工单和制造成本'],
     'quality-warehouse': ['处理质量与库存', '完成检验、放行、批次和追溯事项'],
     'delivery-evidence': ['处理交付任务', '完成发货放行、物流和签收证据'],
     governance: ['处理系统治理', '维护身份、权限、流程和运行规则'],
@@ -8524,7 +8615,7 @@ export function createCrmShell(
     '线索',
     '客户',
     '商机',
-    'CTR',
+    '技术需求',
     '报价',
     '合同',
     '订单',
@@ -8618,7 +8709,7 @@ export function createCrmShell(
   if (sections.customer360 && controller.selected) {
     const detail = el('article', 'panel detail');
     detail.append(
-      el('p', 'eyebrow', 'CUSTOMER 360'),
+      el('p', 'eyebrow', '客户全景'),
       el('h2', '', controller.selected.customer.name),
       el(
         'p',
@@ -8698,7 +8789,7 @@ export function createCrmShell(
                         required: true,
                         options: employeeChoices,
                       }
-                    : { name: 'first', label: '负责人 ID', required: true },
+                    : { name: 'first', label: '负责人编号', required: true },
                   { name: 'second', label: '分配原因', required: true },
                 ],
               },
@@ -8713,7 +8804,7 @@ export function createCrmShell(
                         required: true,
                         options: employeeChoices,
                       }
-                    : { name: 'first', label: '新负责人 ID', required: true },
+                    : { name: 'first', label: '新负责人编号', required: true },
                   { name: 'second', label: '改派原因', required: true },
                 ],
               },
@@ -8871,7 +8962,7 @@ export function createCrmShell(
                     required: true,
                     options: employeeChoices,
                   }
-                : { name: 'assigneeId', label: '负责人 ID', required: true },
+                : { name: 'assigneeId', label: '负责人编号', required: true },
               { name: 'reason', label: '分配原因', type: 'textarea', required: true },
             ],
             '确认分配',
@@ -8923,7 +9014,7 @@ export function createCrmShell(
       const queue = el('div', 'queue-list');
       for (const [title, detail, badge] of [
         ['待跟进线索', '暂无逾期线索', '0'],
-        ['待提交 CTR', '技术需求等待确认', '0'],
+        ['待提交技术需求', '技术需求等待确认', '0'],
         ['待审批报价', '价格与利润率检查', '0'],
       ]) {
         const item = el('div', 'queue-item');
@@ -9807,7 +9898,7 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
       start.addEventListener('click', () => {
         openAction(
           '启动工作流实例',
-          '流程实例绑定业务对象类型和对象 ID，并使用幂等键防止重复启动。',
+          '流程实例绑定业务对象类型和对象编号，并使用防重键避免重复启动。',
           [
             {
               name: 'workflowId',
@@ -9817,7 +9908,7 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
               options: choices('/api/v1/workflows', (item) => textValue(item.code, '工作流')),
             },
             { name: 'subjectType', label: '业务对象类型', required: true },
-            { name: 'subjectId', label: '业务对象 ID', required: true },
+            { name: 'subjectId', label: '业务对象编号', required: true },
           ],
           (values) =>
             controller.submit(
@@ -9986,7 +10077,7 @@ function loginView(root: HTMLElement): void {
   const shell = el('main', 'login-shell');
   const story = el('section', 'login-story');
   story.append(
-    el('p', 'eyebrow', 'KINGTURF · BUSINESS OPERATING SYSTEM'),
+    el('p', 'eyebrow', '金特夫 · 企业经营管理系统'),
     el('h1', '', '让订单、生产与交付证据在一条业务链上闭环'),
     el(
       'p',
