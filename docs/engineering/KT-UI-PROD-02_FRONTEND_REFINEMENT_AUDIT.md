@@ -29,7 +29,9 @@ Date: 2026-08-25 Asia/Shanghai
 | P3-B       | Complete    | Legacy commercial actions now catch asynchronous rejection and publish loading, success or error state      |
 | P4-A       | Complete    | Contract-to-order readiness exposes the first blocked gate from live quote, credit, contract and order data |
 | P4-B       | Complete    | Permission-scoped commercial views and Order 360 records load concurrently instead of serially              |
-| P4-C       | In progress | CRM, opportunity, CTR, costing and quote action hierarchy continues on the shared interaction baseline      |
+| P4-C       | Complete    | Opportunity exceptions and CTR-to-quote prerequisites are visible, prioritized and route-scoped             |
+| P4-D       | Complete    | CTR submission and quote issuance use durable confirmation, loading and rejection feedback                  |
+| P5         | In progress | AR, payment, commission, risk, collection and legal queues follow the same exception-first pattern          |
 
 P3-A was verified with a regression test for the shared operation-state contract plus the complete web lint,
 typecheck, 45-test and production-build gate. Authenticated production UAT remains a P9/P10 release condition;
@@ -38,6 +40,11 @@ local test success is not treated as production acceptance.
 P4-A/P4-B were verified with deterministic readiness and concurrency regression tests plus the complete web
 gate. The readiness strip is route-scoped to `contract-order`; it does not disclose data outside the current
 session's existing API permissions.
+
+P4-C/P4-D add active, overdue, 30-day close and missing-customer opportunity signals; correct the overview's
+mislabelled lead metric; and expose the first missing approved CTR, final solution, cost decision, published
+policy or quote prerequisite. Direct CTR submission and quote issuance no longer bypass shared rejection
+feedback.
 
 ## 128-hour execution plan
 

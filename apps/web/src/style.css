@@ -887,6 +887,49 @@ button {
   color: #7d8b84;
   font-size: 11px;
 }
+.pipeline-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: -4px 0 14px;
+}
+.pipeline-metric {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--kt-border, #dce5e0);
+  border-radius: 9px;
+  background: #f8faf9;
+}
+.pipeline-metric span {
+  color: #65776f;
+  font-size: 10px;
+}
+.pipeline-metric strong {
+  color: #263a31;
+  font-size: 17px;
+}
+.pipeline-metric.danger {
+  border-color: rgb(178 57 57 / 20%);
+  background: #fff3f2;
+}
+.pipeline-metric.danger strong {
+  color: #9a302f;
+}
+.pipeline-metric.warning,
+.pipeline-metric.attention {
+  border-color: rgb(182 119 14 / 20%);
+  background: #fff9eb;
+}
+.pipeline-metric.warning strong,
+.pipeline-metric.attention strong {
+  color: #80550e;
+}
+.pipeline-metric.success strong {
+  color: #176842;
+}
 .pipeline-columns {
   display: grid;
   grid-template-columns: repeat(5, minmax(180px, 1fr));
@@ -916,6 +959,18 @@ button {
   background: #fff;
   box-shadow: 0 2px 5px rgba(23, 35, 29, 0.03);
 }
+.opportunity-card.overdue {
+  border-color: rgb(178 57 57 / 24%);
+  box-shadow: inset 3px 0 #b94a45;
+}
+.opportunity-card .opportunity-alert {
+  width: fit-content;
+  border-radius: 999px;
+  padding: 3px 7px;
+  background: #fff0ef;
+  color: #9a302f;
+  font-size: 9px;
+}
 .opportunity-card strong {
   color: #263a31;
   font-size: 12px;
@@ -932,6 +987,11 @@ button {
 .opportunity-card .text-button {
   justify-self: end;
   padding: 3px 0;
+}
+@media (max-width: 720px) {
+  .pipeline-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 .pipeline-empty {
   padding: 36px 5px;
@@ -1658,6 +1718,9 @@ button {
   padding: 0;
   list-style: none;
 }
+.readiness-steps.five-steps {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
 .readiness-step {
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr) auto;
@@ -1715,6 +1778,9 @@ button {
   .readiness-steps {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  .readiness-steps.five-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 @media (max-width: 420px) {
   .readiness-heading {
@@ -1722,6 +1788,9 @@ button {
     flex-direction: column;
   }
   .readiness-steps {
+    grid-template-columns: 1fr;
+  }
+  .readiness-steps.five-steps {
     grid-template-columns: 1fr;
   }
 }

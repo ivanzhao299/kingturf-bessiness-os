@@ -1129,6 +1129,71 @@ export function contractOrderReadiness(
   });
 }
 
+export type OpportunityPipelineSummary = Readonly<{
+  active: number;
+  overdue: number;
+  closingSoon: number;
+  customerMissing: number;
+}>;
+export function opportunityPipelineSummary(
+  opportunities: readonly Opportunity[],
+  today = new Date().toISOString().slice(0, 10),
+): OpportunityPipelineSummary {
+  const active = opportunities.filter((item) => !['WON', 'LOST'].includes(item.status ?? 'OPEN'));
+  const horizon = new Date(`${today}T00:00:00.000Z`);
+  horizon.setUTCDate(horizon.getUTCDate() + 30);
+  const horizonDate = horizon.toISOString().slice(0, 10);
+  return {
+    active: active.length,
+    overdue: active.filter(
+      (item) =>
+        Boolean(item.expectedCloseDate) && String(item.expectedCloseDate).slice(0, 10) < today,
+    ).length,
+    closingSoon: active.filter((item) => {
+      const date = item.expectedCloseDate?.slice(0, 10);
+      return Boolean(date && date >= today && date <= horizonDate);
+    }).length,
+    customerMissing: active.filter((item) => !item.customerId).length,
+  };
+}
+
+export type QuoteWorkflowReadinessStep = Readonly<{
+  key: 'ctr' | 'solution' | 'cost' | 'policy' | 'quote';
+  label: string;
+  count: number;
+  state: 'complete' | 'current' | 'blocked';
+}>;
+export function quoteWorkflowReadiness(
+  ctrs: readonly Record<string, unknown>[],
+  solutions: readonly Record<string, unknown>[],
+  costs: readonly Record<string, unknown>[],
+  policies: readonly Record<string, unknown>[],
+  quotes: readonly Record<string, unknown>[],
+): readonly QuoteWorkflowReadinessStep[] {
+  const counts = [
+    ctrs.filter((item) => item.status === 'APPROVED').length,
+    solutions.filter((item) => item.status === 'FINAL').length,
+    costs.length,
+    policies.filter((item) => item.status === 'PUBLISHED').length,
+    quotes.length,
+  ] as const;
+  const firstMissing = counts.findIndex((count) => count === 0);
+  return (['ctr', 'solution', 'cost', 'policy', 'quote'] as const).map((key, index) => {
+    const count = counts[index] ?? 0;
+    return {
+      key,
+      label: ['已批准 CTR', '定稿方案', '成本决策', '已发布政策', '报价版本'][index] ?? key,
+      count,
+      state:
+        count > 0
+          ? 'complete'
+          : index === (firstMissing === -1 ? counts.length - 1 : firstMissing)
+            ? 'current'
+            : 'blocked',
+    };
+  });
+}
+
 export function commercialWorkspaceStructure(
   viewport: Viewport,
   immutable = false,
@@ -1185,6 +1250,37 @@ export function commercialWorkspaceStructure(
       controller.views.get('/api/v1/credit-decisions') ?? [],
       controller.views.get('/api/v1/contracts') ?? [],
       controller.views.get('/api/v1/sales-orders') ?? [],
+    );
+    for (const [index, step] of readiness.entries()) {
+      const item = el('li', `readiness-step ${step.state}`);
+      item.append(
+        el('span', 'readiness-index', step.state === 'complete' ? '✓' : String(index + 1)),
+        el('span', 'readiness-label', step.label),
+        el('strong', 'readiness-count', String(step.count)),
+      );
+      steps.append(item);
+    }
+    flow.append(steps);
+    workspace.append(flow);
+  }
+  if (
+    controller &&
+    ['cost:read', 'sales-policy:read', 'quote:read'].some((permission) =>
+      permissions.has(permission as CommercialPermission),
+    )
+  ) {
+    const flow = el('section', 'contract-order-readiness quote-readiness');
+    flow.setAttribute('data-route-view', 'cost-quote');
+    const heading = el('div', 'readiness-heading');
+    heading.append(el('strong', '', '报价生成门禁'), el('span', '', '仅展示当前账号可见数据'));
+    flow.append(heading);
+    const steps = el('ol', 'readiness-steps five-steps');
+    const readiness = quoteWorkflowReadiness(
+      controller.views.get('/api/v1/ctrs') ?? [],
+      controller.views.get('/api/v1/technical-solutions') ?? [],
+      controller.views.get('/api/v1/cost-evaluations') ?? [],
+      controller.views.get('/api/v1/sales-policies') ?? [],
+      controller.views.get('/api/v1/quotes') ?? [],
     );
     for (const [index, step] of readiness.entries()) {
       const item = el('li', `readiness-step ${step.state}`);
@@ -2144,6 +2240,23 @@ export function commercialWorkspaceStructure(
       heading.append(headingCopy, create);
     } else heading.append(headingCopy);
     pipeline.append(heading);
+    const pipelineSummary = opportunityPipelineSummary(controller.opportunities);
+    const summary = el('div', 'pipeline-summary');
+    for (const [label, value, tone] of [
+      ['在途商机', pipelineSummary.active, 'neutral'],
+      ['已逾期', pipelineSummary.overdue, pipelineSummary.overdue > 0 ? 'danger' : 'success'],
+      ['30 天内预计成交', pipelineSummary.closingSoon, 'attention'],
+      [
+        '未关联客户',
+        pipelineSummary.customerMissing,
+        pipelineSummary.customerMissing > 0 ? 'warning' : 'success',
+      ],
+    ] as const) {
+      const metric = el('article', `pipeline-metric ${tone}`);
+      metric.append(el('span', '', label), el('strong', '', String(value)));
+      summary.append(metric);
+    }
+    pipeline.append(summary);
     const columns = document.createElement('div');
     columns.className = 'pipeline-columns';
     const stages = [
@@ -2163,6 +2276,12 @@ export function commercialWorkspaceStructure(
       for (const opportunity of opportunities) {
         const card = document.createElement('article');
         card.className = 'opportunity-card';
+        const expectedDate = opportunity.expectedCloseDate?.slice(0, 10);
+        const overdue =
+          !['WON', 'LOST'].includes(stage) &&
+          Boolean(expectedDate) &&
+          String(expectedDate) < new Date().toISOString().slice(0, 10);
+        if (overdue) card.classList.add('overdue');
         const name = document.createElement('strong');
         name.textContent = opportunity.name ?? opportunity.id;
         const amount = document.createElement('span');
@@ -2172,6 +2291,7 @@ export function commercialWorkspaceStructure(
         const meta = document.createElement('small');
         meta.textContent = `${String((opportunity.probabilityBasisPoints ?? 0) / 100)}% · ${opportunity.expectedCloseDate?.slice(0, 10) ?? '日期未定'}`;
         card.append(name, amount, meta);
+        if (overdue) card.append(el('span', 'opportunity-alert', '成交日期已逾期'));
         const nextStage =
           stage === 'OPEN'
             ? 'QUALIFIED'
@@ -2422,13 +2542,19 @@ export function commercialWorkspaceStructure(
         submit.className = 'secondary';
         submit.textContent = '提交评审';
         submit.addEventListener('click', () => {
-          void controller
-            .submit(`/api/v1/ctr-versions/${String(ctr.id)}/submit`, {
-              expectedVersion: ctrVersion,
-            })
-            .then(() => {
+          openForm(
+            workspace,
+            '提交 CTR 评审',
+            '提交后当前版本将冻结，并生成不可变需求快照。',
+            [],
+            '确认提交评审',
+            async () => {
+              await controller.submit(`/api/v1/ctr-versions/${String(ctr.id)}/submit`, {
+                expectedVersion: ctrVersion,
+              });
               status.textContent = 'CTR 已提交并生成不可变快照';
-            });
+            },
+          );
         });
         actions.append(submit);
       }
@@ -3586,10 +3712,18 @@ export function commercialWorkspaceStructure(
       if (quoteStatus === 'APPROVED' && permissions.has('quote:issue')) {
         const issue = el('button', 'primary', '签发报价');
         issue.addEventListener('click', () => {
-          void controller.quoteCommand(textValue(quote.id, ''), 'issue').then(async () => {
-            await controller.load();
-            status.textContent = controller.message;
-          });
+          openForm(
+            workspace,
+            '签发报价',
+            '签发后将生成只读快照，后续合同只能引用该快照。',
+            [],
+            '确认签发',
+            async () => {
+              await controller.quoteCommand(textValue(quote.id, ''), 'issue');
+              await controller.load();
+              status.textContent = controller.message;
+            },
+          );
         });
         actions.append(issue);
       }
@@ -8287,7 +8421,7 @@ export function createCrmShell(
   metrics.setAttribute('data-route-view', 'overview');
   for (const [label, metric, note, tone] of [
     ['本月销售预测', '¥ 0', '等待商机数据', 'emerald'],
-    ['活跃商机', String(controller.leads.length), '需持续推进', 'blue'],
+    ['活跃线索', String(controller.visibleLeads().length), '需持续推进', 'blue'],
     ['待审批事项', '0', '当前无阻塞', 'amber'],
     ['应收余额', '¥ 0', '回款风险正常', 'violet'],
   ] as const) {

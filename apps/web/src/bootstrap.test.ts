@@ -21,9 +21,11 @@ import {
   visibleAppRoutes,
   inventoryLocationOption,
   isCommercialPermission,
+  opportunityPipelineSummary,
   roleWorkspaceProfile,
   roleTaskInsight,
   routeViewSelector,
+  quoteWorkflowReadiness,
   setOperationStatus,
   technicalSolutionOpportunityId,
   governanceWorkspace,
@@ -86,6 +88,42 @@ it('loads the permission-scoped commercial views concurrently', async () => {
   await controller.load();
   expect(api.list).toHaveBeenCalledTimes(2);
   expect(peak).toBe(2);
+});
+
+it('prioritizes overdue and incomplete active opportunities', () => {
+  expect(
+    opportunityPipelineSummary(
+      [
+        { id: 'late', status: 'QUALIFIED', expectedCloseDate: '2026-08-01', customerId: null },
+        {
+          id: 'soon',
+          status: 'PROPOSAL',
+          expectedCloseDate: '2026-09-10',
+          customerId: 'customer-1',
+        },
+        { id: 'won', status: 'WON', expectedCloseDate: '2026-07-01', customerId: 'customer-2' },
+      ],
+      '2026-08-25',
+    ),
+  ).toEqual({ active: 2, overdue: 1, closingSoon: 1, customerMissing: 1 });
+});
+
+it('exposes the first missing prerequisite in the CTR-to-quote chain', () => {
+  expect(
+    quoteWorkflowReadiness(
+      [{ status: 'APPROVED' }],
+      [{ status: 'FINAL' }],
+      [],
+      [{ status: 'PUBLISHED' }],
+      [],
+    ),
+  ).toEqual([
+    { key: 'ctr', label: '已批准 CTR', count: 1, state: 'complete' },
+    { key: 'solution', label: '定稿方案', count: 1, state: 'complete' },
+    { key: 'cost', label: '成本决策', count: 0, state: 'current' },
+    { key: 'policy', label: '已发布政策', count: 1, state: 'complete' },
+    { key: 'quote', label: '报价版本', count: 0, state: 'blocked' },
+  ]);
 });
 
 it('translates production evidence event codes into business language', () => {
