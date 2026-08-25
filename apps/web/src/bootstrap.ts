@@ -1194,6 +1194,43 @@ export function quoteWorkflowReadiness(
   });
 }
 
+export type CashRiskSummary = Readonly<{
+  overdueReceivables: number;
+  unappliedPayments: number;
+  brokenPromises: number;
+  legalPending: number;
+}>;
+export function cashRiskSummary(
+  receivables: readonly Record<string, unknown>[],
+  payments: readonly Record<string, unknown>[],
+  collectionCases: readonly Record<string, unknown>[],
+  today = new Date().toISOString().slice(0, 10),
+): CashRiskSummary {
+  const handoffs = collectionCases.flatMap((item) =>
+    Array.isArray(item.legalHandoffs)
+      ? item.legalHandoffs.filter(
+          (handoff): handoff is Record<string, unknown> =>
+            typeof handoff === 'object' && handoff !== null,
+        )
+      : [],
+  );
+  return {
+    overdueReceivables: receivables.filter(
+      (item) =>
+        Number(recordText(item, 'remainingAmount', 'remaining_amount', '0')) > 0 &&
+        recordText(item, 'dueAt', 'due_at').slice(0, 10) < today,
+    ).length,
+    unappliedPayments: payments.filter(
+      (item) => Number(recordText(item, 'remainingAmount', 'remaining_amount', '0')) > 0,
+    ).length,
+    brokenPromises: collectionCases.filter(
+      (item) => recordText(item, 'state', 'state') === 'PROMISE_BROKEN',
+    ).length,
+    legalPending: handoffs.filter((item) => recordText(item, 'state', 'state') === 'REQUESTED')
+      .length,
+  };
+}
+
 export function commercialWorkspaceStructure(
   viewport: Viewport,
   immutable = false,
@@ -1293,6 +1330,36 @@ export function commercialWorkspaceStructure(
     }
     flow.append(steps);
     workspace.append(flow);
+  }
+  if (
+    controller &&
+    ['ar:read', 'bank-payment:read', 'collection:read', 'legal-case:read'].some((permission) =>
+      permissions.has(permission as CommercialPermission),
+    )
+  ) {
+    const queue = el('section', 'cash-risk-summary');
+    queue.setAttribute('data-route-view', 'ar-payment');
+    const heading = el('div', 'readiness-heading');
+    heading.append(el('strong', '', '今日资金与债权队列'), el('span', '', '异常优先'));
+    queue.append(heading);
+    const summary = cashRiskSummary(
+      controller.views.get('/api/v1/ar-open-items') ?? [],
+      controller.views.get('/api/v1/bank-payments') ?? [],
+      controller.views.get('/api/v1/collection-cases') ?? [],
+    );
+    const grid = el('div', 'cash-risk-grid');
+    for (const [label, value, tone] of [
+      ['逾期应收', summary.overdueReceivables, 'danger'],
+      ['待核销收款', summary.unappliedPayments, 'attention'],
+      ['承诺已违约', summary.brokenPromises, 'danger'],
+      ['法务待受理', summary.legalPending, 'warning'],
+    ] as const) {
+      const item = el('article', `pipeline-metric ${value > 0 ? tone : 'success'}`);
+      item.append(el('span', '', label), el('strong', '', String(value)));
+      grid.append(item);
+    }
+    queue.append(grid);
+    workspace.append(queue);
   }
   if (controller?.dashboard && permissions.has('executive-dashboard:read')) {
     const dashboard = controller.dashboard,
@@ -4612,10 +4679,18 @@ export function commercialWorkspaceStructure(
     } else heading.append(copy);
     panel.append(heading);
     const list = el('div', 'qtc-list');
-    for (const item of controller.views.get('/api/v1/ar-open-items') ?? []) {
+    const receivables = [...(controller.views.get('/api/v1/ar-open-items') ?? [])].sort(
+      (left, right) =>
+        Date.parse(recordText(left, 'dueAt', 'due_at')) -
+        Date.parse(recordText(right, 'dueAt', 'due_at')),
+    );
+    for (const item of receivables) {
       const original = Number(recordText(item, 'originalAmount', 'original_amount', '0'));
       const remaining = Number(recordText(item, 'remainingAmount', 'remaining_amount', '0'));
-      const card = el('article', 'qtc-card');
+      const overdue =
+        remaining > 0 &&
+        recordText(item, 'dueAt', 'due_at').slice(0, 10) < new Date().toISOString().slice(0, 10);
+      const card = el('article', `qtc-card${overdue ? ' overdue' : ''}`);
       card.append(
         el('p', 'eyebrow', recordText(item, 'documentNumber', 'document_number', 'AR')),
         el(
@@ -4629,6 +4704,7 @@ export function commercialWorkspaceStructure(
           `原始 ${decimalValue(original)} · 已核销 ${decimalValue(original - remaining)} · 到期 ${recordText(item, 'dueAt', 'due_at').slice(0, 10)}`,
         ),
       );
+      if (overdue) card.append(el('span', 'opportunity-alert', '已逾期'));
       list.append(card);
     }
     if (!list.childElementCount) list.append(el('p', 'pipeline-empty', '暂无应收开放项。'));
@@ -5042,12 +5118,20 @@ export function commercialWorkspaceStructure(
       ) {
         const reconcile = el('button', 'primary', '运行自动核销');
         reconcile.addEventListener('click', () => {
-          void controller
-            .submit('/api/v1/reconciliation-runs', { paymentId: textValue(payment.id, '') })
-            .then(async () => {
+          openForm(
+            workspace,
+            '运行自动核销',
+            '系统将按客户、币种和稳定账龄顺序分配到账金额，并保存结果哈希。',
+            [],
+            '确认运行核销',
+            async () => {
+              await controller.submit('/api/v1/reconciliation-runs', {
+                paymentId: textValue(payment.id, ''),
+              });
               await controller.load();
               status.textContent = controller.message;
-            });
+            },
+          );
         });
         card.append(reconcile);
       }

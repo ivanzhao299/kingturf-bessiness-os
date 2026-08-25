@@ -1696,6 +1696,33 @@ button {
   background: rgb(255 255 255 / 94%);
   box-shadow: var(--kt-shadow-sm, 0 8px 24px rgb(12 45 33 / 6%));
 }
+.cash-risk-summary {
+  grid-column: 1 / -1;
+  padding: 16px 18px;
+  border: 1px solid var(--kt-border, #dce5e0);
+  border-radius: 14px;
+  background: rgb(255 255 255 / 94%);
+  box-shadow: var(--kt-shadow-sm, 0 8px 24px rgb(12 45 33 / 6%));
+}
+.cash-risk-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.qtc-card.overdue {
+  border-color: rgb(178 57 57 / 24%);
+  box-shadow: inset 3px 0 #b94a45;
+}
+.qtc-card .opportunity-alert {
+  display: inline-flex;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 3px 7px;
+  background: #fff0ef;
+  color: #9a302f;
+  font-size: 9px;
+  font-weight: 760;
+}
 .readiness-heading {
   display: flex;
   align-items: baseline;
@@ -1781,6 +1808,9 @@ button {
   .readiness-steps.five-steps {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  .cash-risk-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 @media (max-width: 420px) {
   .readiness-heading {
@@ -1791,6 +1821,9 @@ button {
     grid-template-columns: 1fr;
   }
   .readiness-steps.five-steps {
+    grid-template-columns: 1fr;
+  }
+  .cash-risk-grid {
     grid-template-columns: 1fr;
   }
 }

@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import {
   BOOTSTRAP_TITLE,
   businessEventLabel,
+  cashRiskSummary,
   CommercialController,
   contractOrderReadiness,
   CrmController,
@@ -124,6 +125,30 @@ it('exposes the first missing prerequisite in the CTR-to-quote chain', () => {
     { key: 'policy', label: '已发布政策', count: 1, state: 'complete' },
     { key: 'quote', label: '报价版本', count: 0, state: 'blocked' },
   ]);
+});
+
+it('prioritizes cash application, overdue debt and legal intake queues', () => {
+  expect(
+    cashRiskSummary(
+      [
+        { remaining_amount: '500', due_at: '2026-08-01T00:00:00.000Z' },
+        { remaining_amount: '0', due_at: '2026-07-01T00:00:00.000Z' },
+      ],
+      [{ remaining_amount: '200' }, { remaining_amount: '0' }],
+      [
+        {
+          state: 'PROMISE_BROKEN',
+          legalHandoffs: [{ state: 'REQUESTED' }, { state: 'ACCEPTED' }],
+        },
+      ],
+      '2026-08-25',
+    ),
+  ).toEqual({
+    overdueReceivables: 1,
+    unappliedPayments: 1,
+    brokenPromises: 1,
+    legalPending: 1,
+  });
 });
 
 it('translates production evidence event codes into business language', () => {
