@@ -106,6 +106,13 @@ export type CommercialPermission =
   | 'shipment:release'
   | 'shipment:dispatch'
   | 'shipment:track'
+  | 'collection:read'
+  | 'collection:manage'
+  | 'collection:escalate'
+  | 'collection:close'
+  | 'legal-case:read'
+  | 'legal-case:decide'
+  | 'debt-evidence:generate'
   | 'quality-plan:read'
   | 'quality-plan:manage'
   | 'quality:read'
@@ -315,6 +322,9 @@ export function visibleAppRoutes(permissions: ReadonlySet<string>): ReadonlySet<
       'commission-policy:',
       'risk:',
       'risk-policy:',
+      'collection:',
+      'legal-case:',
+      'debt-evidence:',
     ])
   )
     routes.add('sales-workspace');
@@ -354,6 +364,9 @@ export function visibleAppRoutes(permissions: ReadonlySet<string>): ReadonlySet<
       'commission-policy:',
       'risk:',
       'risk-policy:',
+      'collection:',
+      'legal-case:',
+      'debt-evidence:',
     ])
   )
     routes.add('ar-payment');
@@ -668,6 +681,9 @@ export function isCommercialPermission(item: string): item is CommercialPermissi
     'quality:',
     'traceability:',
     'shipment:',
+    'collection:',
+    'legal-case:',
+    'debt-evidence:',
   ].some((prefix) => item.startsWith(prefix));
 }
 
@@ -736,6 +752,18 @@ const BUSINESS_EVENT_LABELS: Readonly<Record<string, string>> = {
   SHIPMENT_RELEASE_RELEASED: '发货已放行',
   SHIPMENT_DISPATCHED: '货物已发运',
   SHIPMENT_DELIVERED: '货物已签收',
+  COLLECTION_CASE_OPENED: '催收案件已建立',
+  COLLECTION_FOLLOWUP_RECORDED: '已记录催收跟进',
+  COLLECTION_PROMISE_CREATED: '已登记付款承诺',
+  COLLECTION_PROMISE_BROKEN: '付款承诺已违约',
+  COLLECTION_LEGAL_HANDOFF_REQUESTED: '已申请法务移交',
+  COLLECTION_LEGAL_HANDOFF_ACCEPTED: '法务已受理',
+  COLLECTION_LEGAL_HANDOFF_RETURNED: '法务已退回',
+  LEGAL_HANDOFF_REQUESTED: '法务移交待受理',
+  LEGAL_HANDOFF_ACCEPTED: '法务移交已受理',
+  LEGAL_HANDOFF_RETURNED: '法务移交已退回',
+  DEBT_EVIDENCE_READY: '债权证据包已就绪',
+  DEBT_EVIDENCE_INCOMPLETE: '债权证据包不完整',
 };
 
 const BUSINESS_STATE_LABELS: Readonly<Record<string, string>> = {
@@ -970,6 +998,10 @@ export class CommercialController {
         ['quality:read', '/api/v1/quality-inspections'],
         ['traceability:read', '/api/v1/lot-traceability'],
         ['shipment:read', '/api/v1/shipment-releases'],
+        [
+          this.permissions.has('collection:read') ? 'collection:read' : 'legal-case:read',
+          '/api/v1/collection-cases',
+        ],
       ] as const;
       for (const [permission, path] of readable)
         if (this.permissions.has(permission)) this.views.set(path, await this.api.list(path));
@@ -1084,6 +1116,7 @@ export function commercialWorkspaceStructure(
       ['/api/v1/commissions', ['commission:read', 'commission:accrue']],
       ['/api/v1/risk-policies', ['risk-policy:read', 'risk-policy:manage']],
       ['/api/v1/risk-evaluations', ['risk:read', 'risk:evaluate']],
+      ['/api/v1/collection-cases', ['collection:read', 'collection:manage']],
     ]);
   if (controller?.dashboard && permissions.has('executive-dashboard:read')) {
     const dashboard = controller.dashboard,
@@ -4195,6 +4228,7 @@ export function commercialWorkspaceStructure(
       const payments = Array.isArray(aggregate.payments) ? aggregate.payments : [];
       const commissions = Array.isArray(aggregate.commissions) ? aggregate.commissions : [];
       const risks = Array.isArray(aggregate.risks) ? aggregate.risks : [];
+      const collections = Array.isArray(aggregate.collections) ? aggregate.collections : [];
       const anomalies = Array.isArray(aggregate.anomalies)
         ? aggregate.anomalies.map(recordValue).filter((item) => item.active === true)
         : [];
@@ -4230,7 +4264,7 @@ export function commercialWorkspaceStructure(
         el(
           'p',
           'muted',
-          `应收 ${String(receivables.length)} · 回款 ${String(payments.length)} · 佣金 ${String(commissions.length)} · 风险 ${String(risks.length)} · 证据 ${String(timeline.length)}`,
+          `应收 ${String(receivables.length)} · 回款 ${String(payments.length)} · 催收 ${String(collections.length)} · 佣金 ${String(commissions.length)} · 风险 ${String(risks.length)} · 证据 ${String(timeline.length)}`,
         ),
       );
       const evidenceTools = el('div', 'evidence-tools');
@@ -4242,6 +4276,7 @@ export function commercialWorkspaceStructure(
         ['FINANCE', '应收、回款与佣金'],
         ['RISK', '风险与审批'],
         ['DELIVERY', '发货与签收'],
+        ['LEGAL', '催收与法务'],
       ] as const) {
         const option = el('option', '', label);
         option.setAttribute('value', value);
@@ -4254,6 +4289,7 @@ export function commercialWorkspaceStructure(
       evidenceTools.append(eventFilter, sortEvidence, copyEvidence);
       const evidence = el('ol', 'order-360-timeline');
       const eventCategory = (type: string): string => {
+        if (/COLLECTION|LEGAL_HANDOFF|DEBT_EVIDENCE/iu.test(type)) return 'LEGAL';
         if (/PAYMENT|AR_|COMMISSION/iu.test(type)) return 'FINANCE';
         if (/RISK|EXCEPTION|APPROV|REJECT/iu.test(type)) return 'RISK';
         if (/SHIPMENT|DISPATCH|DELIVER/iu.test(type)) return 'DELIVERY';
@@ -4382,6 +4418,329 @@ export function commercialWorkspaceStructure(
       list.append(card);
     }
     if (!list.childElementCount) list.append(el('p', 'pipeline-empty', '暂无应收开放项。'));
+    panel.append(list);
+    workspace.append(panel);
+  }
+  if (controller && (permissions.has('collection:read') || permissions.has('legal-case:read'))) {
+    const panel = el('section', 'qtc-workbench collection-workbench');
+    const heading = el('div', 'pipeline-heading');
+    const copy = el('div');
+    copy.append(
+      el('h2', '', '催收与法务证据'),
+      el('p', '', '按逾期余额排序推进催收、付款承诺、独立法务受理和债权证据包。'),
+    );
+    const receivables = (controller.views.get('/api/v1/ar-open-items') ?? []).filter(
+      (item) =>
+        Number(recordText(item, 'remainingAmount', 'remaining_amount', '0')) > 0 &&
+        Date.parse(recordText(item, 'dueAt', 'due_at')) < Date.now(),
+    );
+    if (permissions.has('collection:manage') && receivables.length && controller.employees.length) {
+      const create = el('button', 'primary', '＋ 建立催收案件');
+      create.addEventListener('click', () => {
+        openForm(
+          workspace,
+          '建立逾期催收案件',
+          '余额、币种和到期日由服务器重新核对；同一应收项目只能建立一个案件。',
+          [
+            { name: 'caseNumber', label: '案件编号', required: true },
+            {
+              name: 'arOpenItemId',
+              label: '逾期应收',
+              type: 'select',
+              required: true,
+              options: receivables.map((item) => ({
+                value: textValue(item.id, ''),
+                label: `${recordText(item, 'documentNumber', 'document_number')} · ${recordText(item, 'currency', 'currency')} ${recordText(item, 'remainingAmount', 'remaining_amount')}`,
+              })),
+            },
+            {
+              name: 'assignedTo',
+              label: '催收责任人',
+              type: 'select',
+              required: true,
+              options: controller.employees.map((item) => ({
+                value: item.id,
+                label: item.displayName ?? item.employeeNumber ?? item.id,
+              })),
+            },
+            {
+              name: 'priority',
+              label: '优先级',
+              type: 'select',
+              required: true,
+              options: [
+                { value: 'CRITICAL', label: '紧急' },
+                { value: 'HIGH', label: '高' },
+                { value: 'MEDIUM', label: '中' },
+                { value: 'LOW', label: '低' },
+              ],
+            },
+            { name: 'reason', label: '建案原因', type: 'textarea', required: true },
+          ],
+          '确认建案',
+          async (values) => {
+            await controller.submit('/api/v1/collection-cases', {
+              caseNumber: values.caseNumber ?? '',
+              arOpenItemId: values.arOpenItemId ?? '',
+              assignedTo: values.assignedTo ?? '',
+              priority: values.priority ?? 'HIGH',
+              reason: values.reason ?? '',
+              idempotencyKey: `COL-${Date.now().toString(36)}`,
+            });
+            await controller.load();
+            status.textContent = controller.message;
+          },
+        );
+      });
+      heading.append(copy, create);
+    } else heading.append(copy);
+    panel.append(heading);
+    const cases = controller.views.get('/api/v1/collection-cases') ?? [];
+    const list = el('div', 'qtc-list collection-case-list');
+    for (const item of cases) {
+      const caseId = textValue(item.id, '');
+      const state = recordText(item, 'state', 'state');
+      const promises = Array.isArray(item.promises)
+        ? (item.promises as readonly Record<string, unknown>[])
+        : [];
+      const handoffs = Array.isArray(item.legalHandoffs)
+        ? (item.legalHandoffs as readonly Record<string, unknown>[])
+        : [];
+      const card = el('article', 'qtc-card collection-case-card');
+      card.append(
+        el('p', 'eyebrow', recordText(item, 'caseNumber', 'case_number', 'COLLECTION')),
+        el(
+          'strong',
+          '',
+          `${recordText(item, 'customerName', 'customer_name', '客户')} · ${displayMoney(recordText(item, 'currency', 'currency'), recordText(item, 'remainingAmount', 'remaining_amount', '0'))}`,
+        ),
+        el(
+          'p',
+          'qtc-metrics',
+          `${state} · 逾期 ${recordText(item, 'overdueDays', 'overdue_days', '0')} 天 · ${recordText(item, 'documentNumber', 'document_number', '应收单据')}`,
+        ),
+      );
+      const actions = el('div', 'inline-actions');
+      if (permissions.has('collection:manage') && !['LEGAL_ACCEPTED', 'CLOSED'].includes(state)) {
+        const follow = el('button', 'secondary', '记录催收跟进');
+        follow.addEventListener('click', () => {
+          openForm(
+            workspace,
+            '记录催收跟进',
+            '联系结果和下一动作将形成不可变证据。',
+            [
+              {
+                name: 'channel',
+                label: '联系渠道',
+                type: 'select',
+                required: true,
+                options: [
+                  { value: 'PHONE', label: '电话' },
+                  { value: 'EMAIL', label: '邮件' },
+                  { value: 'LETTER', label: '函件' },
+                  { value: 'MEETING', label: '会议' },
+                  { value: 'VISIT', label: '上门' },
+                  { value: 'OTHER', label: '其他' },
+                ],
+              },
+              { name: 'occurredAt', label: '联系时间', type: 'datetime-local', required: true },
+              { name: 'contactPerson', label: '对方联系人', required: true },
+              { name: 'outcome', label: '联系结果', type: 'textarea', required: true },
+              { name: 'nextActionAt', label: '下一动作时间', type: 'datetime-local' },
+              { name: 'evidenceReference', label: '证据引用', required: true },
+            ],
+            '保存跟进',
+            async (values) => {
+              await controller.submit(`/api/v1/collection-cases/${caseId}/followups`, {
+                channel: values.channel ?? 'PHONE',
+                occurredAt: new Date(values.occurredAt ?? '').toISOString(),
+                contactPerson: values.contactPerson ?? '',
+                outcome: values.outcome ?? '',
+                ...(values.nextActionAt
+                  ? { nextActionAt: new Date(values.nextActionAt).toISOString() }
+                  : {}),
+                evidence: { reference: values.evidenceReference ?? '' },
+                idempotencyKey: `FOLLOW-${Date.now().toString(36)}`,
+              });
+              await controller.load();
+              status.textContent = controller.message;
+            },
+          );
+        });
+        actions.append(follow);
+        if (['OPEN', 'CONTACTING', 'PROMISE_BROKEN'].includes(state)) {
+          const promise = el('button', 'secondary', '登记付款承诺');
+          promise.addEventListener('click', () => {
+            openForm(
+              workspace,
+              '登记付款承诺',
+              '承诺金额不得超过实时应收余额；履约只能引用真实核销条目。',
+              [
+                { name: 'promisedAmount', label: '承诺金额', type: 'number', required: true },
+                {
+                  name: 'currency',
+                  label: '币种',
+                  type: 'select',
+                  required: true,
+                  options: [
+                    {
+                      value: recordText(item, 'currency', 'currency', 'CNY'),
+                      label: recordText(item, 'currency', 'currency', 'CNY'),
+                    },
+                  ],
+                },
+                { name: 'promisedAt', label: '承诺时间', type: 'datetime-local', required: true },
+                { name: 'dueAt', label: '承诺付款期限', type: 'datetime-local', required: true },
+                { name: 'debtorContact', label: '承诺人', required: true },
+                { name: 'evidenceReference', label: '承诺证据引用', required: true },
+              ],
+              '保存承诺',
+              async (values) => {
+                await controller.submit(`/api/v1/collection-cases/${caseId}/promises`, {
+                  promisedAmount: values.promisedAmount ?? '',
+                  currency: values.currency ?? 'CNY',
+                  promisedAt: new Date(values.promisedAt ?? '').toISOString(),
+                  dueAt: new Date(values.dueAt ?? '').toISOString(),
+                  debtorContact: values.debtorContact ?? '',
+                  evidence: { reference: values.evidenceReference ?? '' },
+                  idempotencyKey: `PROMISE-${Date.now().toString(36)}`,
+                });
+                await controller.load();
+                status.textContent = controller.message;
+              },
+            );
+          });
+          actions.append(promise);
+        }
+      }
+      if (permissions.has('collection:escalate')) {
+        for (const promise of promises.filter((candidate) => candidate.state === 'PENDING')) {
+          const broken = el('button', 'secondary', '确认承诺违约');
+          broken.addEventListener('click', () => {
+            openForm(
+              workspace,
+              '确认付款承诺违约',
+              '确认前应核对承诺期限和最新核销记录。',
+              [
+                { name: 'reason', label: '违约说明', type: 'textarea', required: true },
+                { name: 'evidenceReference', label: '复核证据引用', required: true },
+              ],
+              '确认违约',
+              async (values) => {
+                await controller.submit(
+                  `/api/v1/collection-promises/${textValue(promise.id, '')}/break`,
+                  {
+                    reason: values.reason ?? '',
+                    allocationEntryIds: [],
+                    evidence: { reference: values.evidenceReference ?? '' },
+                    idempotencyKey: `BROKEN-${Date.now().toString(36)}`,
+                  },
+                );
+                await controller.load();
+                status.textContent = controller.message;
+              },
+            );
+          });
+          actions.append(broken);
+        }
+        if (['CONTACTING', 'PROMISE_BROKEN'].includes(state)) {
+          const legal = el('button', 'primary', '申请法务移交');
+          legal.addEventListener('click', () => {
+            openForm(
+              workspace,
+              '申请法务移交',
+              '申请人不能受理自己的移交；索赔金额由实时应收余额冻结。',
+              [
+                { name: 'handoffNumber', label: '移交编号', required: true },
+                { name: 'reason', label: '移交原因', type: 'textarea', required: true },
+              ],
+              '提交法务',
+              async (values) => {
+                await controller.submit(`/api/v1/collection-cases/${caseId}/legal-handoffs`, {
+                  handoffNumber: values.handoffNumber ?? '',
+                  reason: values.reason ?? '',
+                  idempotencyKey: `LEGAL-${Date.now().toString(36)}`,
+                });
+                await controller.load();
+                status.textContent = controller.message;
+              },
+            );
+          });
+          actions.append(legal);
+        }
+      }
+      for (const handoff of handoffs) {
+        if (permissions.has('legal-case:decide') && handoff.state === 'REQUESTED') {
+          const accept = el('button', 'primary', '受理法务移交');
+          accept.addEventListener('click', () => {
+            openForm(
+              workspace,
+              '独立受理法务移交',
+              '服务器和数据库会拒绝申请人自受理。',
+              [
+                { name: 'reason', label: '受理意见', type: 'textarea', required: true },
+                { name: 'reviewReference', label: '审查记录引用', required: true },
+              ],
+              '确认受理',
+              async (values) => {
+                await controller.submit(
+                  `/api/v1/legal-handoffs/${textValue(handoff.id, '')}/accept`,
+                  {
+                    reason: values.reason ?? '',
+                    evidence: { reviewReference: values.reviewReference ?? '' },
+                    idempotencyKey: `LEGAL-ACCEPT-${Date.now().toString(36)}`,
+                  },
+                );
+                await controller.load();
+                status.textContent = controller.message;
+              },
+            );
+          });
+          actions.append(accept);
+        }
+        if (permissions.has('debt-evidence:generate') && handoff.state === 'ACCEPTED') {
+          const packageAction = el('button', 'primary', '生成债权证据包');
+          packageAction.addEventListener('click', () => {
+            openForm(
+              workspace,
+              '生成不可变债权证据包',
+              '系统会列出缺失项；不完整证据包不能用于法务结案。',
+              [{ name: 'packageNumber', label: '证据包编号', required: true }],
+              '冻结证据包',
+              async (values) => {
+                await controller.submit(
+                  `/api/v1/legal-handoffs/${textValue(handoff.id, '')}/evidence-packages`,
+                  {
+                    packageNumber: values.packageNumber ?? '',
+                    idempotencyKey: `DEBT-${Date.now().toString(36)}`,
+                  },
+                );
+                await controller.load();
+                status.textContent = controller.message;
+              },
+            );
+          });
+          actions.append(packageAction);
+        }
+      }
+      if (actions.childElementCount) card.append(actions);
+      for (const handoff of handoffs) {
+        const packages = Array.isArray(handoff.packages)
+          ? (handoff.packages as readonly Record<string, unknown>[])
+          : [];
+        for (const evidencePackage of packages)
+          card.append(
+            el(
+              'p',
+              'version-pin',
+              `证据包 ${recordText(evidencePackage, 'packageNumber', 'package_number')} · ${recordText(evidencePackage, 'state', 'state')} · ${recordText(evidencePackage, 'packageHash', 'package_hash').slice(0, 12)}`,
+            ),
+          );
+      }
+      list.append(card);
+    }
+    if (!list.childElementCount)
+      list.append(el('p', 'pipeline-empty', '暂无催收案件；逾期应收可从这里建立闭环。'));
     panel.append(list);
     workspace.append(panel);
   }

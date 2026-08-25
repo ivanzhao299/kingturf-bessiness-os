@@ -115,6 +115,7 @@ it('gives every production atomic role at least one permission-visible applicati
     '../../../packages/database/migrations/0048_actual_manufacturing_cost.sql',
     '../../../packages/database/migrations/0050_shipment_release_logistics_pod.sql',
     '../../../packages/database/migrations/0052_platform_read_permissions.sql',
+    '../../../packages/database/migrations/0053_collections_legal_evidence.sql',
   ];
   const rolePermissions = new Map<string, Set<string>>();
   for (const path of migrationFiles) {
@@ -128,7 +129,7 @@ it('gives every production atomic role at least one permission-visible applicati
       rolePermissions.set(role, permissions);
     }
   }
-  expect(rolePermissions.size).toBe(44);
+  expect(rolePermissions.size).toBe(47);
   const rolesWithoutRoutes = [...rolePermissions]
     .filter(([, permissions]) => visibleAppRoutes(permissions).size === 0)
     .map(([role]) => role);
@@ -196,6 +197,8 @@ it('admits manufacturing cost capabilities into the commercial workspace', () =>
   expect(isCommercialPermission('manufacturing-cost:read')).toBe(true);
   expect(isCommercialPermission('manufacturing-cost:approve')).toBe(true);
   expect(isCommercialPermission('shipment:request')).toBe(true);
+  expect(isCommercialPermission('collection:manage')).toBe(true);
+  expect(isCommercialPermission('legal-case:decide')).toBe(true);
   expect(isCommercialPermission('unrelated:read')).toBe(false);
 });
 
@@ -212,6 +215,9 @@ class RenderedElement {
   }
   public get textContent(): string {
     return `${this.privateText}${this.children.map((child) => child.textContent).join('')}`;
+  }
+  public get childElementCount(): number {
+    return this.children.length;
   }
   public append(...children: RenderedElement[]): void {
     this.children.push(...children);
@@ -1428,5 +1434,53 @@ describe('web bootstrap', () => {
     expect(workspace.textContent).toContain('1 · 已计提 · 服务器计提');
     expect(workspace.textContent).toContain('复核并释放');
     expect(workspace.textContent).not.toContain('JSON 请求');
+  });
+
+  it('renders a permission-scoped collections and legal evidence queue', async () => {
+    const commercialApi = {
+      listOpportunities: vi.fn().mockResolvedValue([]),
+      list: vi.fn().mockImplementation((path: string) =>
+        Promise.resolve(
+          path === '/api/v1/collection-cases'
+            ? [
+                {
+                  id: 'case-1',
+                  case_number: 'COL-001',
+                  state: 'PROMISE_BROKEN',
+                  customerName: '逾期客户',
+                  currency: 'CNY',
+                  remainingAmount: '500000',
+                  overdueDays: 45,
+                  documentNumber: 'AR-001',
+                  promises: [{ id: 'promise-1', state: 'PENDING' }],
+                  legalHandoffs: [],
+                },
+              ]
+            : [],
+        ),
+      ),
+      submit: vi.fn().mockResolvedValue({ id: 'created' }),
+      uploadCtrAttachment: vi.fn().mockResolvedValue({}),
+      command: vi.fn().mockResolvedValue({}),
+    };
+    const controller = new CommercialController(
+      commercialApi,
+      new Set(['collection:read', 'collection:manage', 'collection:escalate']),
+    );
+    controller.employees = [{ id: 'employee-1', displayName: '催收甲', active: true }];
+    await controller.load();
+    const workspace = commercialWorkspaceStructure(
+      'desktop',
+      false,
+      controller,
+    ) as unknown as RenderedElement;
+    expect(workspace.findByClass('collection-workbench')).toHaveLength(1);
+    expect(workspace.textContent).toContain('催收与法务证据');
+    expect(workspace.textContent).toContain('逾期客户');
+    expect(workspace.textContent).toContain('逾期 45 天');
+    expect(workspace.textContent).toContain('确认承诺违约');
+    expect(workspace.textContent).toContain('申请法务移交');
+    expect(workspace.textContent).not.toContain('受理法务移交');
+    expect(workspace.textContent).not.toContain('生成债权证据包');
   });
 });

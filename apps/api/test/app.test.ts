@@ -25,6 +25,7 @@ import type { PostgresProcurementRepository } from '../src/procurement-repositor
 import type { PostgresMrpRepository } from '../src/mrp-repositories.js';
 import type { PostgresProductionRepository } from '../src/production-repositories.js';
 import type { PostgresShipmentRepository } from '../src/shipment-repositories.js';
+import type { PostgresCollectionRepository } from '../src/collection-repositories.js';
 import type { AuthenticationService } from '../src/security.js';
 
 const employeeId = '10000000-0000-4000-8000-000000000001';
@@ -312,6 +313,30 @@ function dependencies(authContext: AuthorizationContext | null) {
     dispatch: shipmentDispatch,
     track: shipmentTrack,
   } as unknown as PostgresShipmentRepository;
+  const collectionList = vi.fn(() => Promise.resolve([{ id: targetId, state: 'OPEN' }]));
+  const collectionCreate = vi.fn(() => Promise.resolve({ id: targetId, state: 'OPEN' }));
+  const collectionFollowup = vi.fn(() => Promise.resolve({ id: targetId, state: 'CONTACTING' }));
+  const collectionPromise = vi.fn(() => Promise.resolve({ id: targetId, state: 'PENDING' }));
+  const collectionPromiseDecision = vi.fn(() =>
+    Promise.resolve({ promiseId: targetId, state: 'BROKEN', caseState: 'PROMISE_BROKEN' }),
+  );
+  const collectionLegalRequest = vi.fn(() => Promise.resolve({ id: targetId, state: 'REQUESTED' }));
+  const collectionLegalDecision = vi.fn(() =>
+    Promise.resolve({ legalHandoffId: targetId, state: 'ACCEPTED' }),
+  );
+  const collectionEvidencePackage = vi.fn(() => Promise.resolve({ id: targetId, state: 'READY' }));
+  const collectionTransition = vi.fn(() => Promise.resolve({ caseId: targetId, state: 'CLOSED' }));
+  const collections = {
+    list: collectionList,
+    createCase: collectionCreate,
+    addFollowup: collectionFollowup,
+    createPromise: collectionPromise,
+    decidePromise: collectionPromiseDecision,
+    requestLegal: collectionLegalRequest,
+    decideLegal: collectionLegalDecision,
+    generateEvidencePackage: collectionEvidencePackage,
+    transitionCase: collectionTransition,
+  } as unknown as PostgresCollectionRepository;
   return {
     auth,
     provisionIdentity,
@@ -354,11 +379,21 @@ function dependencies(authContext: AuthorizationContext | null) {
     productionReport,
     productionOutput,
     shipments,
+    collections,
     shipmentList,
     shipmentRequest,
     shipmentTransition,
     shipmentDispatch,
     shipmentTrack,
+    collectionList,
+    collectionCreate,
+    collectionFollowup,
+    collectionPromise,
+    collectionPromiseDecision,
+    collectionLegalRequest,
+    collectionLegalDecision,
+    collectionEvidencePackage,
+    collectionTransition,
     dashboardGet,
     riskEvaluate,
     riskTransition,
@@ -1645,6 +1680,119 @@ describe('authorization management API', () => {
           dependencies(context(grant('shipment:read'))),
           'POST',
           '/api/v1/shipment-releases',
+          {},
+        )
+      ).statusCode,
+    ).toBe(403);
+  });
+  it('routes collection, promise, independent legal handoff, and evidence package commands', async () => {
+    const permissions: AuthorizationContext['permissions'] = new Map(
+      [
+        'collection:read',
+        'collection:manage',
+        'collection:escalate',
+        'collection:close',
+        'legal-case:read',
+        'legal-case:decide',
+        'debt-evidence:generate',
+      ].map((capability) => [
+        capability as `${string}:${string}`,
+        { scopes: ['COMPANY'] as const, fields: null },
+      ]),
+    );
+    const deps = dependencies(context(permissions));
+    expect((await dispatch(deps, 'GET', '/api/v1/collection-cases')).statusCode).toBe(200);
+    expect(
+      (
+        await dispatch(deps, 'POST', '/api/v1/collection-cases', {
+          caseNumber: 'COL-1',
+          arOpenItemId: targetId,
+          assignedTo: employeeId,
+          priority: 'CRITICAL',
+          reason: 'Overdue balance',
+          idempotencyKey: 'COL-1',
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(
+      (
+        await dispatch(deps, 'POST', `/api/v1/collection-cases/${targetId}/followups`, {
+          channel: 'PHONE',
+          occurredAt: '2026-08-25T08:00:00Z',
+          contactPerson: 'Buyer Finance',
+          outcome: 'Payment date confirmed',
+          evidence: { callReference: 'CALL-1' },
+          idempotencyKey: 'COL-1-F1',
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(
+      (
+        await dispatch(deps, 'POST', `/api/v1/collection-cases/${targetId}/promises`, {
+          promisedAmount: '5000',
+          currency: 'CNY',
+          promisedAt: '2026-08-25T08:00:00Z',
+          dueAt: '2026-08-30T08:00:00Z',
+          debtorContact: 'Buyer Finance',
+          evidence: { emailReference: 'MAIL-1' },
+          idempotencyKey: 'COL-1-P1',
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(
+      (
+        await dispatch(deps, 'POST', `/api/v1/collection-promises/${targetId}/break`, {
+          reason: 'Promise expired without allocation',
+          allocationEntryIds: [],
+          evidence: { checkedAt: '2026-08-31T08:00:00Z' },
+          idempotencyKey: 'COL-1-P1-BROKEN',
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(
+      (
+        await dispatch(deps, 'POST', `/api/v1/collection-cases/${targetId}/legal-handoffs`, {
+          handoffNumber: 'LEGAL-1',
+          reason: 'Broken payment promise',
+          idempotencyKey: 'LEGAL-1',
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(
+      (
+        await dispatch(deps, 'POST', `/api/v1/legal-handoffs/${targetId}/accept`, {
+          reason: 'Evidence reviewed',
+          evidence: { reviewReference: 'REVIEW-1' },
+          idempotencyKey: 'LEGAL-1-ACCEPT',
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(
+      (
+        await dispatch(deps, 'POST', `/api/v1/legal-handoffs/${targetId}/evidence-packages`, {
+          packageNumber: 'DEBT-1',
+          idempotencyKey: 'DEBT-1',
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(deps.collectionCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ caseNumber: 'COL-1', priority: 'CRITICAL' }),
+      expect.objectContaining({ scopes: ['COMPANY'] }),
+      expect.any(String),
+    );
+    expect(deps.collectionLegalDecision).toHaveBeenCalledWith(
+      targetId,
+      'ACCEPTED',
+      expect.objectContaining({ idempotencyKey: 'LEGAL-1-ACCEPT' }),
+      expect.any(Object),
+      expect.any(String),
+    );
+    expect(
+      (
+        await dispatch(
+          dependencies(context(grant('collection:read'))),
+          'POST',
+          '/api/v1/collection-cases',
           {},
         )
       ).statusCode,

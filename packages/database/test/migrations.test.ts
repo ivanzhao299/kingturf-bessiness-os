@@ -24,7 +24,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0052_platform_read_permissions.sql');
+    expect(ordered.at(-1)).toBe('0053_collections_legal_evidence.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
@@ -656,5 +656,32 @@ describe('identity and authorization migration', () => {
       'proposal decisions require a computed active MRP run',
     ])
       expect(sql).toContain(invariant);
+  });
+  it('adds immutable collections, independent legal handoff, and debt evidence packages', async () => {
+    const sql = await readFile(
+      join(process.cwd(), 'migrations/0053_collections_legal_evidence.sql'),
+      'utf8',
+    );
+    for (const invariant of [
+      'CREATE TABLE collection_cases',
+      'CREATE TABLE collection_case_events',
+      'CREATE TABLE collection_followups',
+      'CREATE TABLE collection_promises',
+      'CREATE TABLE collection_promise_events',
+      'CREATE TABLE legal_handoffs',
+      'CREATE TABLE legal_handoff_events',
+      'CREATE TABLE debt_evidence_packages',
+      'CREATE TABLE debt_evidence_package_items',
+      'collection case ledger must begin at OPEN',
+      'fulfilled promise requires sufficient allocation evidence',
+      'legal handoff requester cannot decide own request',
+      'legal case closure requires ready debt evidence package',
+      'collection and legal evidence is immutable',
+      "'debt-evidence:generate'",
+      "('KT_COLLECTION_SPECIALIST','KT_LEGAL_CASE_MANAGER'",
+    ])
+      expect(sql).toContain(invariant);
+    expect(sql).toContain("('KT_EXECUTIVE_VIEWER','collection:read')");
+    expect(sql).not.toContain("('KT_EXECUTIVE_VIEWER','collection:manage')");
   });
 });

@@ -1,6 +1,6 @@
 # KingTurf Canonical Execution Baseline
 
-Updated: 2026-08-24 Asia/Shanghai
+Updated: 2026-08-25 Asia/Shanghai
 
 This file is the single authoritative execution route. `MASTER_DEVELOPMENT_PLAN.md` owns product milestones; this file owns current ordering and release evidence. Older cron reports and KT-T2 notes are historical evidence, not parallel roadmaps.
 
@@ -14,6 +14,8 @@ This file is the single authoritative execution route. `MASTER_DEVELOPMENT_PLAN.
 - `KT-RBAC-UAT-01` is complete at release `0cbe8f203ad3285874a7ce2d9ef643ba50ba8520`: 38 atomic roles, 214 least-privilege grants, eight hard segregation-of-duties rules, and 38/38 production role UAT passes.
 - `KT-L17` is complete and production-accepted at release `b4adf19c934d29c4ab508d9a6f838055001680a5`: actual manufacturing cost policy, immutable calculation snapshots, variance, independent approval and close gate. Production UAT proved calculation, same-actor rejection and approval by the dedicated least-privilege employee `KT-UAT-COST-APPROVER-01`; the cost record is `APPROVED`.
 - `KT-L18` is complete and production-accepted at release `b6033d0872deb86a6c606b32359b3954d5baa38d`: nine frozen shipment gates, independent exception approval, warehouse release, dispatch, tracking and POD. Production UAT proved a real quality/cost exception, independent approval, delivered POD, explicit `403 forbidden` self-approval rejection and a terminal rejected exception.
+- `KT-UI-PROD-01` is complete and production-accepted through release `df367806f6a9aaab924c39019edeb1b582294ecc`.
+- `KT-L19` is implementation-complete locally and has passed the clean-database repository gate. It is not complete until its immutable release SHA, production health/readiness and authenticated role UAT are recorded.
 
 ## Only valid execution order
 
@@ -23,8 +25,8 @@ This file is the single authoritative execution route. `MASTER_DEVELOPMENT_PLAN.
 4. `KT-RBAC-UAT-01`: completed; atomic role catalogue, segregation guards and production role UAT are recorded in `docs/evidence/KT_RBAC_ATOMIC_ROLE_UAT_20260822.md`.
 5. `KT-L17`: completed; independent-approver production UAT and approved-state evidence are recorded.
 6. `KT-L18`: completed; release and logistics POD evidence is recorded in `docs/evidence/KT-L18_SHIPMENT_RELEASE_LOGISTICS_POD_20260824.md`.
-7. `KT-UI-PROD-01`: active insertion task—production preview reliability, complete frontend capability exposure, atomic navigation and Studio-informed UI refinement (144h).
-8. `KT-L19`: paused until `KT-UI-PROD-01` passes its production acceptance gate; then resume collections, legal handoff and debt evidence package (56h).
+7. `KT-UI-PROD-01`: completed; production preview reliability, frontend capability exposure, atomic navigation and UI refinement passed production acceptance.
+8. `KT-L19`: active release candidate; collections, payment promises, independent legal handoff, immutable debt evidence packages, Order 360 integration and atomic permissions are implemented and locally accepted.
 9. `KT-L20` through `KT-L25`: continue the master roadmap in numeric order.
 
 ## Completion gate
