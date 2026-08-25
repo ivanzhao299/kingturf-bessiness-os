@@ -1628,6 +1628,103 @@ button {
 .commercial-status[data-state='loading'] {
   color: #365247;
 }
+.contract-order-readiness {
+  grid-column: 1 / -1;
+  padding: 16px 18px;
+  border: 1px solid var(--kt-border, #dce5e0);
+  border-radius: 14px;
+  background: rgb(255 255 255 / 94%);
+  box-shadow: var(--kt-shadow-sm, 0 8px 24px rgb(12 45 33 / 6%));
+}
+.readiness-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.readiness-heading strong {
+  font-size: 14px;
+}
+.readiness-heading span {
+  color: var(--kt-muted, #667a71);
+  font-size: 11px;
+}
+.readiness-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.readiness-step {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--kt-border, #dce5e0);
+  border-radius: 10px;
+  color: #51665c;
+  background: #f8faf9;
+}
+.readiness-index {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #e9eeeb;
+  font-size: 11px;
+  font-weight: 800;
+}
+.readiness-label {
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 680;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.readiness-count {
+  font-size: 14px;
+}
+.readiness-step.complete {
+  border-color: rgb(23 104 66 / 14%);
+  color: #176842;
+  background: #f0f8f3;
+}
+.readiness-step.complete .readiness-index {
+  color: #fff;
+  background: #238258;
+}
+.readiness-step.current {
+  border-color: rgb(182 119 14 / 26%);
+  color: #765112;
+  background: #fff9eb;
+}
+.readiness-step.current .readiness-index {
+  color: #fff;
+  background: #b9780e;
+}
+.readiness-step.blocked {
+  opacity: 0.58;
+}
+@media (max-width: 760px) {
+  .readiness-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 420px) {
+  .readiness-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .readiness-steps {
+    grid-template-columns: 1fr;
+  }
+}
 @keyframes kt-spin {
   to {
     transform: rotate(360deg);

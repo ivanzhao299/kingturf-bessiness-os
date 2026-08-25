@@ -4,6 +4,7 @@ import {
   BOOTSTRAP_TITLE,
   businessEventLabel,
   CommercialController,
+  contractOrderReadiness,
   CrmController,
   GovernanceController,
   commercialWorkspaceStructure,
@@ -46,6 +47,45 @@ it('publishes durable operation state for loading, success and rejection feedbac
   expect(target.textContent).toBe('订单已全额开票');
   expect(target.dataset.state).toBe('error');
   expect(attributes.has('aria-busy')).toBe(false);
+});
+
+it('identifies the next blocked contract-to-order gate from live records', () => {
+  const steps = contractOrderReadiness(
+    [{ status: 'ISSUED', issuedSnapshotId: 'snapshot-1' }],
+    [{ effective_status: 'PENDING_APPROVAL' }],
+    [],
+    [],
+  );
+  expect(steps).toEqual([
+    { key: 'quote', label: '已签发报价', count: 1, state: 'complete' },
+    { key: 'credit', label: '有效信用', count: 0, state: 'current' },
+    { key: 'contract', label: '已签合同', count: 0, state: 'blocked' },
+    { key: 'order', label: '已释放订单', count: 0, state: 'blocked' },
+  ]);
+});
+
+it('loads the permission-scoped commercial views concurrently', async () => {
+  let active = 0;
+  let peak = 0;
+  const api = {
+    listOpportunities: vi.fn().mockResolvedValue([]),
+    list: vi.fn().mockImplementation(async () => {
+      active += 1;
+      peak = Math.max(peak, active);
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, 1);
+      });
+      active -= 1;
+      return [];
+    }),
+    submit: vi.fn().mockResolvedValue({}),
+    uploadCtrAttachment: vi.fn().mockResolvedValue({}),
+    command: vi.fn().mockResolvedValue({}),
+  };
+  const controller = new CommercialController(api, new Set(['quote:read', 'contract:read']));
+  await controller.load();
+  expect(api.list).toHaveBeenCalledTimes(2);
+  expect(peak).toBe(2);
 });
 
 it('translates production evidence event codes into business language', () => {

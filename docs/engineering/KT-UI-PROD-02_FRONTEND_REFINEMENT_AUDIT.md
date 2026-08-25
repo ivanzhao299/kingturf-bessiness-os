@@ -27,11 +27,17 @@ Date: 2026-08-25 Asia/Shanghai
 | P2-A       | Complete    | Shared color, surface, focus, button, responsive and reduced-motion tokens applied to the application shell |
 | P3-A       | Complete    | Dialog rejection remains visible; duplicate submission and cancellation are blocked while a command runs    |
 | P3-B       | Complete    | Legacy commercial actions now catch asynchronous rejection and publish loading, success or error state      |
-| P4         | In progress | Commercial route copy and action hierarchy refinement follows this shared interaction baseline              |
+| P4-A       | Complete    | Contract-to-order readiness exposes the first blocked gate from live quote, credit, contract and order data |
+| P4-B       | Complete    | Permission-scoped commercial views and Order 360 records load concurrently instead of serially              |
+| P4-C       | In progress | CRM, opportunity, CTR, costing and quote action hierarchy continues on the shared interaction baseline      |
 
 P3-A was verified with a regression test for the shared operation-state contract plus the complete web lint,
 typecheck, 45-test and production-build gate. Authenticated production UAT remains a P9/P10 release condition;
 local test success is not treated as production acceptance.
+
+P4-A/P4-B were verified with deterministic readiness and concurrency regression tests plus the complete web
+gate. The readiness strip is route-scoped to `contract-order`; it does not disclose data outside the current
+session's existing API permissions.
 
 ## 128-hour execution plan
 

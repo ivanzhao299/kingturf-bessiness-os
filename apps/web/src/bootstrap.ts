@@ -1003,16 +1003,24 @@ export class CommercialController {
           '/api/v1/collection-cases',
         ],
       ] as const;
-      for (const [permission, path] of readable)
-        if (this.permissions.has(permission)) this.views.set(path, await this.api.list(path));
+      const readableViews = readable.filter(([permission]) => this.permissions.has(permission));
+      const loadedViews = await Promise.all(
+        readableViews.map(async ([, path]) => [path, await this.api.list(path)] as const),
+      );
+      for (const [path, value] of loadedViews) this.views.set(path, value);
       if (
         this.api.get &&
         this.permissions.has('order-360:read') &&
         this.permissions.has('sales-order:read')
-      )
-        for (const order of this.views.get('/api/v1/sales-orders') ?? [])
-          if (typeof order.id === 'string')
-            this.order360.set(order.id, await this.api.get(`/api/v1/sales-orders/${order.id}/360`));
+      ) {
+        const get = this.api.get;
+        await Promise.all(
+          (this.views.get('/api/v1/sales-orders') ?? []).map(async (order) => {
+            if (typeof order.id !== 'string') return;
+            this.order360.set(order.id, await get(`/api/v1/sales-orders/${order.id}/360`));
+          }),
+        );
+      }
       if (this.api.get && this.permissions.has('executive-dashboard:read')) {
         const year = new Date().getUTCFullYear();
         const query = new URLSearchParams({
@@ -1079,6 +1087,48 @@ export class CommercialController {
   }
 }
 
+export type ContractOrderReadinessStep = Readonly<{
+  key: 'quote' | 'credit' | 'contract' | 'order';
+  label: string;
+  count: number;
+  state: 'complete' | 'current' | 'blocked';
+}>;
+export function contractOrderReadiness(
+  quotes: readonly Record<string, unknown>[],
+  decisions: readonly Record<string, unknown>[],
+  contracts: readonly Record<string, unknown>[],
+  orders: readonly Record<string, unknown>[],
+): readonly ContractOrderReadinessStep[] {
+  const counts = [
+    quotes.filter((item) => item.status === 'ISSUED' && typeof item.issuedSnapshotId === 'string')
+      .length,
+    decisions.filter(
+      (item) => recordText(item, 'effectiveStatus', 'effective_status') === 'APPROVED',
+    ).length,
+    contracts.filter(
+      (item) =>
+        recordText(item, 'effectiveStatus', 'effectiveStatus') === 'SIGNED' &&
+        Boolean(recordText(item, 'signatureEvidenceId', 'signature_evidence_id')),
+    ).length,
+    orders.length,
+  ] as const;
+  const firstMissing = counts.findIndex((count) => count === 0);
+  return (['quote', 'credit', 'contract', 'order'] as const).map((key, index) => {
+    const count = counts[index] ?? 0;
+    return {
+      key,
+      label: ['已签发报价', '有效信用', '已签合同', '已释放订单'][index] ?? key,
+      count,
+      state:
+        count > 0
+          ? 'complete'
+          : index === (firstMissing === -1 ? counts.length - 1 : firstMissing)
+            ? 'current'
+            : 'blocked',
+    };
+  });
+}
+
 export function commercialWorkspaceStructure(
   viewport: Viewport,
   immutable = false,
@@ -1118,6 +1168,36 @@ export function commercialWorkspaceStructure(
       ['/api/v1/risk-evaluations', ['risk:read', 'risk:evaluate']],
       ['/api/v1/collection-cases', ['collection:read', 'collection:manage']],
     ]);
+  if (
+    controller &&
+    ['quote:read', 'credit:read', 'contract:read', 'sales-order:read'].some((permission) =>
+      permissions.has(permission as CommercialPermission),
+    )
+  ) {
+    const flow = el('section', 'contract-order-readiness');
+    flow.setAttribute('data-route-view', 'contract-order');
+    const heading = el('div', 'readiness-heading');
+    heading.append(el('strong', '', '订单释放门禁'), el('span', '', '按当前可见业务数据计算'));
+    flow.append(heading);
+    const steps = el('ol', 'readiness-steps');
+    const readiness = contractOrderReadiness(
+      controller.views.get('/api/v1/quotes') ?? [],
+      controller.views.get('/api/v1/credit-decisions') ?? [],
+      controller.views.get('/api/v1/contracts') ?? [],
+      controller.views.get('/api/v1/sales-orders') ?? [],
+    );
+    for (const [index, step] of readiness.entries()) {
+      const item = el('li', `readiness-step ${step.state}`);
+      item.append(
+        el('span', 'readiness-index', step.state === 'complete' ? '✓' : String(index + 1)),
+        el('span', 'readiness-label', step.label),
+        el('strong', 'readiness-count', String(step.count)),
+      );
+      steps.append(item);
+    }
+    flow.append(steps);
+    workspace.append(flow);
+  }
   if (controller?.dashboard && permissions.has('executive-dashboard:read')) {
     const dashboard = controller.dashboard,
       metrics = recordValue(dashboard.metrics),
