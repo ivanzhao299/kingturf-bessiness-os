@@ -6925,12 +6925,32 @@ export function commercialWorkspaceStructure(
         const rootId = typeof payload.rootId === 'string' ? payload.rootId : null;
         delete payload.rootId;
         const target = (rootId ? commercialRevisionPath(className, rootId) : null) ?? path;
-        void controller.submit(target, payload).then(() => {
-          status.textContent = controller.message;
-          evidence.textContent = JSON.stringify(controller.revisionState, null, 2);
-        });
+        setOperationStatus(status, 'loading', '正在提交，请勿重复操作…');
+        button.disabled = true;
+        button.textContent = '处理中…';
+        void controller
+          .submit(target, payload)
+          .then(() => {
+            setOperationStatus(status, 'success', controller.message);
+            evidence.textContent = JSON.stringify(controller.revisionState, null, 2);
+          })
+          .catch((error: unknown) => {
+            setOperationStatus(
+              status,
+              'error',
+              error instanceof Error ? error.message : '操作失败，请稍后重试',
+            );
+          })
+          .finally(() => {
+            button.disabled = false;
+            button.textContent = action;
+          });
       } catch (error) {
-        status.textContent = error instanceof Error ? error.message : '请求格式无效';
+        setOperationStatus(
+          status,
+          'error',
+          error instanceof Error ? error.message : '请求格式无效',
+        );
       }
     });
     const evidence = document.createElement('details');
@@ -7080,6 +7100,13 @@ export const createFetchCommercialApi = (token: string): CommercialApi => ({
 });
 
 const requestId = () => globalThis.crypto.randomUUID();
+export type OperationState = 'idle' | 'loading' | 'success' | 'error';
+export function setOperationStatus(target: HTMLElement, state: OperationState, message = ''): void {
+  target.textContent = message;
+  target.dataset.state = state;
+  if (state === 'loading') target.setAttribute('aria-busy', 'true');
+  else target.removeAttribute('aria-busy');
+}
 async function json<T>(path: string, token: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
   headers.set('content-type', 'application/json');
@@ -7400,6 +7427,7 @@ function openForm(
   }
   const error = el('p', 'form-error');
   error.setAttribute('role', 'alert');
+  error.tabIndex = -1;
   const progress = el('p', 'form-progress');
   progress.setAttribute('role', 'status');
   progress.setAttribute('aria-live', 'polite');
@@ -7411,11 +7439,13 @@ function openForm(
   });
   const submit = el('button', 'primary', submitLabel);
   submit.type = 'submit';
+  let confirmationCheckbox: HTMLInputElement | null = null;
   const sensitive = /删除|停用|取消|驳回|拒绝|追回|关闭|释放/u.test(submitLabel);
   if (sensitive) {
     const confirmation = el('label', 'operation-confirmation');
     const checkbox = el('input');
     checkbox.type = 'checkbox';
+    confirmationCheckbox = checkbox;
     confirmation.append(checkbox, el('span', '', '我已核对当前单据、操作理由及其对后续流程的影响'));
     submit.disabled = true;
     checkbox.addEventListener('change', () => {
@@ -7445,8 +7475,11 @@ function openForm(
       form.reportValidity();
       return;
     }
-    progress.textContent = '正在提交，请勿重复操作…';
+    setOperationStatus(error, 'idle');
+    setOperationStatus(progress, 'loading', '正在提交，请勿重复操作…');
+    form.setAttribute('aria-busy', 'true');
     submit.disabled = true;
+    cancel.disabled = true;
     submit.textContent = '处理中…';
     const values = Object.fromEntries(
       [...new FormData(form).entries()].map(([key, entry]) => [
@@ -7456,15 +7489,22 @@ function openForm(
     );
     void onSubmit(values)
       .then(() => {
-        progress.textContent = '操作成功';
+        setOperationStatus(progress, 'success', '操作成功');
         dialog.close();
       })
       .catch((failure: unknown) => {
-        error.textContent = failure instanceof Error ? failure.message : '操作失败，请稍后重试';
-        progress.textContent = '';
+        setOperationStatus(
+          error,
+          'error',
+          failure instanceof Error ? failure.message : '操作失败，请稍后重试',
+        );
+        setOperationStatus(progress, 'idle');
+        error.focus();
       })
       .finally(() => {
-        submit.disabled = false;
+        form.removeAttribute('aria-busy');
+        cancel.disabled = false;
+        submit.disabled = confirmationCheckbox?.checked === false;
         submit.textContent = submitLabel;
       });
   });

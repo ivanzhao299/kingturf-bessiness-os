@@ -19,6 +19,20 @@ Date: 2026-08-25 Asia/Shanghai
 4. Replace explanatory paragraphs with labels, tooltips or contextual help only where a decision needs explanation.
 5. Verify desktop, tablet and 390px layouts, keyboard focus, loading/empty/error states and forbidden actions.
 
+## Execution checkpoints
+
+| Checkpoint | State       | Evidence                                                                                                    |
+| ---------- | ----------- | ----------------------------------------------------------------------------------------------------------- |
+| P1         | Complete    | Twelve-route ownership matrix, backend families, representative roles and priority gaps recorded below      |
+| P2-A       | Complete    | Shared color, surface, focus, button, responsive and reduced-motion tokens applied to the application shell |
+| P3-A       | Complete    | Dialog rejection remains visible; duplicate submission and cancellation are blocked while a command runs    |
+| P3-B       | Complete    | Legacy commercial actions now catch asynchronous rejection and publish loading, success or error state      |
+| P4         | In progress | Commercial route copy and action hierarchy refinement follows this shared interaction baseline              |
+
+P3-A was verified with a regression test for the shared operation-state contract plus the complete web lint,
+typecheck, 45-test and production-build gate. Authenticated production UAT remains a P9/P10 release condition;
+local test success is not treated as production acceptance.
+
 ## 128-hour execution plan
 
 | Phase                        | Hours | Exit evidence                                                                                     |

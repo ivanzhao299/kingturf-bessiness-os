@@ -23,9 +23,30 @@ import {
   roleWorkspaceProfile,
   roleTaskInsight,
   routeViewSelector,
+  setOperationStatus,
   technicalSolutionOpportunityId,
   governanceWorkspace,
 } from './bootstrap';
+
+it('publishes durable operation state for loading, success and rejection feedback', () => {
+  const attributes = new Map<string, string>();
+  const target = {
+    textContent: '',
+    dataset: {} as Record<string, string>,
+    setAttribute: (name: string, value: string) => attributes.set(name, value),
+    removeAttribute: (name: string) => attributes.delete(name),
+  } as unknown as HTMLElement;
+
+  setOperationStatus(target, 'loading', '正在提交');
+  expect(target.textContent).toBe('正在提交');
+  expect(target.dataset.state).toBe('loading');
+  expect(attributes.get('aria-busy')).toBe('true');
+
+  setOperationStatus(target, 'error', '订单已全额开票');
+  expect(target.textContent).toBe('订单已全额开票');
+  expect(target.dataset.state).toBe('error');
+  expect(attributes.has('aria-busy')).toBe(false);
+});
 
 it('translates production evidence event codes into business language', () => {
   expect(businessEventLabel('CONTRACT_SIGNED')).toBe('合同已签署');

@@ -1568,6 +1568,82 @@ button {
   color: #a23232;
   font-size: 11px;
 }
+.form-error[data-state='error'] {
+  padding: 10px 12px;
+  border: 1px solid rgb(178 57 57 / 20%);
+  border-radius: 9px;
+  background: #fff3f2;
+  color: #922f2f;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.form-progress {
+  min-height: 18px;
+  margin: 0;
+  color: var(--kt-muted, #667a71);
+  font-size: 11px;
+}
+.form-progress[data-state='loading']::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 7px;
+  border: 2px solid rgb(23 107 75 / 24%);
+  border-top-color: var(--kt-primary, #176b4b);
+  border-radius: 50%;
+  animation: kt-spin 0.8s linear infinite;
+}
+.form-progress[data-state='success'] {
+  color: #176842;
+}
+.entity-form[aria-busy='true'] .form-field {
+  opacity: 0.72;
+}
+.commercial-status:not(:empty) {
+  position: sticky;
+  top: 70px;
+  z-index: 9;
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 11px 14px;
+  border: 1px solid var(--kt-border, #dce5e0);
+  border-radius: 10px;
+  background: rgb(255 255 255 / 96%);
+  color: #365247;
+  box-shadow: var(--kt-shadow-sm, 0 8px 24px rgb(12 45 33 / 6%));
+  font-size: 12px;
+  line-height: 1.5;
+}
+.commercial-status[data-state='error'] {
+  border-color: rgb(178 57 57 / 22%);
+  background: #fff3f2;
+  color: #922f2f;
+}
+.commercial-status[data-state='success'] {
+  border-color: rgb(23 104 66 / 18%);
+  background: #edf8f1;
+  color: #176842;
+}
+.commercial-status[data-state='loading'] {
+  color: #365247;
+}
+@keyframes kt-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  button,
+  input,
+  textarea,
+  select {
+    transition: none;
+  }
+  .form-progress[data-state='loading']::before {
+    animation: none;
+  }
+}
 .dialog-actions {
   display: flex;
   justify-content: flex-end;
