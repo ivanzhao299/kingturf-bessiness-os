@@ -9633,6 +9633,8 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
 type SessionDto = Readonly<{
   employeeId: string;
   companyId: string;
+  displayName: string | null;
+  employeeNumber: string | null;
   permissions: readonly string[];
 }>;
 async function login(login: string, password: string): Promise<string> {
@@ -9744,7 +9746,9 @@ export async function bootstrap(root: HTMLElement): Promise<void> {
     (employee) => employee.id === session.employeeId,
   );
   const profileLabel =
+    session.displayName ??
     currentEmployee?.displayName ??
+    session.employeeNumber ??
     currentEmployee?.employeeNumber ??
     `用户 ${session.employeeId.slice(0, 8)}`;
   const shell = createCrmShell(

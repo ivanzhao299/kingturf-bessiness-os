@@ -494,6 +494,8 @@ describe('authentication and protected API contracts', () => {
     expect((await dispatch(deps, 'GET', '/api/v1/auth/session')).body).toEqual({
       employeeId,
       companyId,
+      displayName: 'Employee',
+      employeeNumber: 'E-1',
       permissions: [],
     });
     expect((await dispatch(deps, 'POST', '/api/v1/auth/logout')).statusCode).toBe(204);

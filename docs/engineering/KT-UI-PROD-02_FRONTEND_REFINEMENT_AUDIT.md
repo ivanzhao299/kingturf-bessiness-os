@@ -18,3 +18,35 @@ Date: 2026-08-25 Asia/Shanghai
 3. Traverse every route against its backend capability family and atomic roles.
 4. Replace explanatory paragraphs with labels, tooltips or contextual help only where a decision needs explanation.
 5. Verify desktop, tablet and 390px layouts, keyboard focus, loading/empty/error states and forbidden actions.
+
+## 128-hour execution plan
+
+| Phase                        | Hours | Exit evidence                                                                                     |
+| ---------------------------- | ----: | ------------------------------------------------------------------------------------------------- |
+| P1 Route/capability audit    |     8 | Every route has owners, roles, API families, actions and known gaps                               |
+| P2 Shell and design system   |    16 | Navigation, title hierarchy, spacing, type, color, focus and responsive tokens are consistent     |
+| P3 Interaction feedback      |    16 | Loading, success, rejection, empty state, validation and confirmation patterns are shared         |
+| P4 Commercial refinement     |    20 | CRM through contract/order pages expose complete allowed actions without prose-heavy layouts      |
+| P5 Cash and legal refinement |    16 | AR, payment, collection, legal, commission and risk workbenches are operationally prioritized     |
+| P6 Operations refinement     |    20 | Planning through delivery pages use consistent queues, evidence and exception handling            |
+| P7 Governance refinement     |    12 | IAM, audit and platform pages prioritize actions and exceptions over capability descriptions      |
+| P8 Copy/capability closure   |     8 | Repeated instructional copy is removed and every backend family has an intentional UI disposition |
+| P9 Responsive/role UAT       |     8 | Desktop, tablet, 390px, keyboard and representative atomic roles pass                             |
+| P10 Release                  |     4 | Full gate, exact SHA deployment, health/readiness and authenticated production acceptance pass    |
+
+## Route and backend ownership matrix
+
+| Route                  | Primary work             | Backend families                                            | Representative roles             | Current priority                                           |
+| ---------------------- | ------------------------ | ----------------------------------------------------------- | -------------------------------- | ---------------------------------------------------------- |
+| `overview`             | KPIs, tasks, exceptions  | dashboard, risks, notifications                             | executive viewer                 | Replace generic cards with action-ranked exceptions        |
+| `sales-workspace`      | Commercial queue         | customers, opportunities, orders, AR                        | sales and finance roles          | Reduce duplicated subsection introductions                 |
+| `operations-workspace` | Operations queue         | MRP, production, quality, shipments                         | planning and operations roles    | Establish queue status and exception hierarchy             |
+| `crm`                  | Leads and Customer 360   | employees, customers, leads, activities                     | lead operator, customer steward  | Compact filters and persistent result state                |
+| `opportunity-ctr`      | Opportunity and CTR      | opportunities, CTR, attachments, solutions                  | opportunity owner, CTR reviewer  | Clarify revision and approval state                        |
+| `cost-quote`           | Cost, policy, quote      | cost, sales policy, quote                                   | cost analyst, quote roles        | Consolidate economics and approval actions                 |
+| `contract-order`       | Credit to order          | credit, contracts, sales orders, Order 360                  | credit, contract and order roles | Prioritize blockers and next valid action                  |
+| `ar-payment`           | Cash and debt            | AR, payment, allocation, commission, risk, collection/legal | finance, collection, legal       | Separate daily queues and expose rejection feedback        |
+| `planning-production`  | Supply and execution     | master data, procurement, inventory, MRP, production, cost  | planning and production roles    | Normalize dense cards into tables and timelines            |
+| `quality-warehouse`    | Quality and traceability | quality, inventory, traceability                            | quality and warehouse roles      | Emphasize disposition and blocked stock                    |
+| `delivery-evidence`    | Release to POD           | shipment, exception, POD                                    | logistics and release roles      | Show gate failures before historical evidence              |
+| `governance`           | IAM and platform         | organization, employee, authorization, audit, engines       | IAM, platform, auditor           | Remove repeated permission prose and prioritize exceptions |

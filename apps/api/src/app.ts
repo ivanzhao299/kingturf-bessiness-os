@@ -324,15 +324,24 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           await dependencies.auth.logout(token, context, correlationId);
           return { statusCode: 204, body: {} };
         }
-        if (request.method === 'GET' && request.pathname === '/api/v1/auth/session')
+        if (request.method === 'GET' && request.pathname === '/api/v1/auth/session') {
+          const profile = await dependencies.employees.findById(
+            context.actor.employeeId,
+            context.actor.companyId,
+            ['SELF'],
+            context.actor.employeeId,
+          );
           return {
             statusCode: 200,
             body: {
               employeeId: context.actor.employeeId,
               companyId: context.actor.companyId,
+              displayName: profile?.displayName ?? null,
+              employeeNumber: profile?.employeeNumber ?? null,
               permissions: [...context.permissions.keys()].sort(),
             },
           };
+        }
         if (dependencies.manufacturing) {
           const manufacturingLists: Readonly<
             Record<string, readonly ['items' | 'boms' | 'routings', PermissionKey] | undefined>
