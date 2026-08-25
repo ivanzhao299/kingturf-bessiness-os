@@ -8402,10 +8402,37 @@ export function createCrmShell(
     return footer;
   };
   const shell = el('main', `app-shell ${viewportFor(width)}`);
+  let sidebarCollapsed = false;
+  try {
+    sidebarCollapsed = globalThis.localStorage.getItem('kingturf.sidebar.collapsed') === 'true';
+  } catch {
+    sidebarCollapsed = false;
+  }
+  const renderSidebarState = () => {
+    shell.className = `app-shell ${viewportFor(width)}${sidebarCollapsed ? ' sidebar-collapsed' : ''}`;
+  };
+  renderSidebarState();
   const aside = el('aside', 'sidebar');
   const brand = el('div', 'brand-lockup');
   brand.append(el('span', 'brand-mark', 'K'), el('div', 'brand', '金特夫'));
   brand.append(el('p', 'brand-caption', '企业经营管理系统'));
+  const sidebarToggle = el('button', 'sidebar-toggle', sidebarCollapsed ? '展开' : '收起');
+  sidebarToggle.type = 'button';
+  sidebarToggle.setAttribute('aria-label', sidebarCollapsed ? '展开左侧导航' : '收起左侧导航');
+  sidebarToggle.setAttribute('aria-expanded', String(!sidebarCollapsed));
+  sidebarToggle.addEventListener('click', () => {
+    sidebarCollapsed = !sidebarCollapsed;
+    renderSidebarState();
+    sidebarToggle.textContent = sidebarCollapsed ? '展开' : '收起';
+    sidebarToggle.setAttribute('aria-label', sidebarCollapsed ? '展开左侧导航' : '收起左侧导航');
+    sidebarToggle.setAttribute('aria-expanded', String(!sidebarCollapsed));
+    try {
+      globalThis.localStorage.setItem('kingturf.sidebar.collapsed', String(sidebarCollapsed));
+    } catch {
+      // The visible state still works when storage is unavailable.
+    }
+  });
+  brand.append(sidebarToggle);
   aside.append(brand);
   const nav = el('nav');
   const visibleRoutes = visibleAppRoutes(allPermissions);
@@ -8421,6 +8448,7 @@ export function createCrmShell(
     group.append(el('p', 'nav-label', title));
     for (const [icon, label, route] of visibleItems) {
       const item = el('button', `nav-item${currentRoute === route ? ' active' : ''}`);
+      item.title = label;
       item.setAttribute('data-app-route', route);
       item.setAttribute('aria-current', currentRoute === route ? 'page' : 'false');
       item.addEventListener('click', () => {
