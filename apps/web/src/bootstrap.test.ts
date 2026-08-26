@@ -48,6 +48,8 @@ it('translates risk rules and derives the daily commission next action', () => {
 it('translates operations codes and derives accountable next actions', () => {
   expect(supplyModeLabel('MAKE')).toBe('自制');
   expect(supplyModeLabel('BUY')).toBe('采购');
+  expect(supplyModeLabel('PRODUCTION')).toBe('生产建议');
+  expect(supplyModeLabel('PURCHASE')).toBe('采购建议');
   expect(qualityStageLabel('IN_PROCESS')).toBe('过程检验');
   expect(shipmentGateLabel('orderLink')).toBe('订单来源');
   expect(shipmentGateLabel('inventory')).toBe('可用库存');
@@ -693,7 +695,7 @@ describe('web bootstrap', () => {
     expect(workspace.findByClass('procurement-workbench')).toHaveLength(1);
     expect(workspace.findByClass('procurement-column')).toHaveLength(4);
     expect(workspace.textContent).toContain('SUP-1');
-    expect(workspace.textContent).toContain('PO-1 · RECEIVED');
+    expect(workspace.textContent).toContain('PO-1 · 已收货');
     expect(workspace.textContent).toContain('LOT-1');
     expect(workspace.textContent).toContain('结存 5000');
     expect(inventoryLocationOption({ id: 'loc-1', code: 'RAW-A01', name: '原料一区' })).toEqual({

@@ -808,6 +808,7 @@ const BUSINESS_STATE_LABELS: Readonly<Record<string, string>> = {
   QUARANTINE: '待检隔离',
   QUALIFIED: '已确认',
   READY: '待执行',
+  RECEIVED: '已收货',
   REJECTED: '已驳回',
   RELEASED: '已放行',
   REQUESTED: '待受理',
@@ -861,6 +862,8 @@ export const commissionNextAction = (state: unknown): string => {
 const SUPPLY_MODE_LABELS: Readonly<Record<string, string>> = {
   MAKE: '自制',
   BUY: '采购',
+  PRODUCTION: '生产建议',
+  PURCHASE: '采购建议',
 };
 
 const QUALITY_STAGE_LABELS: Readonly<Record<string, string>> = {
@@ -6186,7 +6189,7 @@ export function commercialWorkspaceStructure(
     const panel = el('section', 'procurement-workbench');
     panel.setAttribute('data-testid', 'procurement-workbench');
     panel.append(
-      el('p', 'eyebrow', 'SOURCE TO STOCK'),
+      el('p', 'eyebrow', '采购到入库'),
       el('h2', '', '供应商、采购与批次库存'),
       el(
         'p',
@@ -6370,14 +6373,14 @@ export function commercialWorkspaceStructure(
           value: String(item.id),
           label: `${recordText(item, 'sku', 'sku')} · ${recordText(item, 'name', 'name')}`,
         }));
-      const createRfq = el('button', 'secondary', '＋ 新建并发出 RFQ');
+      const createRfq = el('button', 'secondary', '＋ 新建并发出询价单');
       createRfq.addEventListener('click', () => {
         openForm(
           workspace,
           '创建采购询价',
           '选择已发布物料版本并明确数量、交期和报价截止时间。',
           [
-            { name: 'rfqNumber', label: 'RFQ 编号', required: true },
+            { name: 'rfqNumber', label: '询价单编号', required: true },
             {
               name: 'itemVersionId',
               label: '采购物料',
@@ -6389,7 +6392,7 @@ export function commercialWorkspaceStructure(
             { name: 'requiredAt', label: '要求到货日', type: 'date', required: true },
             { name: 'responseDue', label: '报价截止日', type: 'date', required: true },
           ],
-          '发出 RFQ',
+          '发出询价单',
           async (values) => {
             await controller.submit('/api/v1/procurement-rfqs', {
               rfqNumber: values.rfqNumber,
@@ -6420,11 +6423,11 @@ export function commercialWorkspaceStructure(
         openForm(
           workspace,
           '登记供应商报价',
-          '报价必须引用已发出 RFQ、有效准入供应商和精确询价行。',
+          '报价必须引用已发出的询价单、有效准入供应商和精确询价明细。',
           [
             {
               name: 'rfqLine',
-              label: 'RFQ 行',
+              label: '询价单明细',
               type: 'select',
               required: true,
               options: rfqLineOptions,
