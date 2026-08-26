@@ -8,6 +8,11 @@ type RoleAccount = Readonly<{
   allowedRoutes: readonly string[];
   forbiddenRoutes: readonly string[];
   forbiddenActionNames?: readonly string[];
+  forbiddenApiProbes?: readonly Readonly<{
+    method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+    path: string;
+    data?: Readonly<Record<string, unknown>>;
+  }>[];
 }>;
 type RoleTemplate = Omit<RoleAccount, 'login' | 'password'> & Readonly<{ roleCode: string }>;
 
@@ -86,6 +91,54 @@ const templates: readonly RoleTemplate[] = [
     allowedRoutes: ['governance'],
     forbiddenRoutes: ['cost-quote', 'planning-production'],
   },
+  {
+    name: '客诉登记员',
+    roleCode: 'KT_COMPLAINT_REGISTRAR',
+    allowedRoutes: ['operations-workspace', 'quality-warehouse'],
+    forbiddenRoutes: ['ar-payment', 'governance'],
+    forbiddenActionNames: ['批量分派', '发布处理时限', '关闭投诉'],
+    forbiddenApiProbes: [{ method: 'POST', path: '/api/v1/complaints/batch-triage', data: {} }],
+  },
+  {
+    name: '客诉协调员',
+    roleCode: 'KT_COMPLAINT_COORDINATOR',
+    allowedRoutes: ['operations-workspace', 'quality-warehouse'],
+    forbiddenRoutes: ['ar-payment', 'governance'],
+    forbiddenActionNames: ['＋ 登记投诉', '发布处理时限', '关闭投诉'],
+    forbiddenApiProbes: [{ method: 'POST', path: '/api/v1/complaints', data: {} }],
+  },
+  {
+    name: '质量调查员',
+    roleCode: 'KT_QUALITY_INVESTIGATOR',
+    allowedRoutes: ['operations-workspace', 'quality-warehouse'],
+    forbiddenRoutes: ['ar-payment', 'governance'],
+    forbiddenActionNames: ['＋ 登记投诉', '批量分派', '关闭投诉'],
+    forbiddenApiProbes: [{ method: 'POST', path: '/api/v1/complaints/batch-triage', data: {} }],
+  },
+  {
+    name: '质量经理',
+    roleCode: 'KT_QUALITY_MANAGER',
+    allowedRoutes: ['operations-workspace', 'quality-warehouse'],
+    forbiddenRoutes: ['ar-payment', 'governance'],
+    forbiddenActionNames: ['＋ 登记投诉', '批量分派'],
+    forbiddenApiProbes: [{ method: 'POST', path: '/api/v1/complaints', data: {} }],
+  },
+  {
+    name: '整改措施责任人',
+    roleCode: 'KT_CAPA_OWNER',
+    allowedRoutes: ['operations-workspace', 'quality-warehouse'],
+    forbiddenRoutes: ['ar-payment', 'governance'],
+    forbiddenActionNames: ['＋ 登记投诉', '批量分派', '关闭投诉'],
+    forbiddenApiProbes: [{ method: 'POST', path: '/api/v1/complaint-sla-policies', data: {} }],
+  },
+  {
+    name: '整改效果验证员',
+    roleCode: 'KT_CAPA_VERIFIER',
+    allowedRoutes: ['operations-workspace', 'quality-warehouse'],
+    forbiddenRoutes: ['ar-payment', 'governance'],
+    forbiddenActionNames: ['＋ 登记投诉', '批量分派', '发布处理时限', '关闭投诉'],
+    forbiddenApiProbes: [{ method: 'POST', path: '/api/v1/complaint-sla-policies', data: {} }],
+  },
 ];
 const bearer = (token: string) => ({ authorization: `Bearer ${token}` });
 
@@ -104,6 +157,17 @@ async function validateRoleAccount(
 ) {
   const token = await login(request, account.login, account.password);
   try {
+    for (const probe of account.forbiddenApiProbes ?? []) {
+      const response = await request.fetch(probe.path, {
+        method: probe.method,
+        headers: bearer(token),
+        ...(probe.data ? { data: probe.data } : {}),
+      });
+      expect(
+        response.status(),
+        `${account.name} forged ${probe.method} ${probe.path} must be rejected by the server`,
+      ).toBe(403);
+    }
     for (const viewport of [
       { width: 1440, height: 1000 },
       { width: 390, height: 844 },

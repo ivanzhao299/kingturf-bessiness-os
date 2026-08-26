@@ -79,9 +79,22 @@ jobs:
              curl -k -sS -D - --connect-timeout 8 --max-time 15 https://127.0.0.1/health -H "Host: erp.kingturf.cn" 2>&1 || true
              echo "== local HTTP =="
              curl -sS -D - --connect-timeout 8 --max-time 15 http://127.0.0.1/health -H "Host: erp.kingturf.cn" 2>&1 || true'
+      - name: Create production recovery point
+        run: |
+          ssh -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
+            "set -eu
+             cd '${{ secrets.PROD_DEPLOY_PATH }}'
+             mkdir -p .release-backups
+             previous_sha=\$(cat .release-sha 2>/dev/null || printf unknown)
+             timestamp=\$(date -u +%Y%m%dT%H%M%SZ)
+             backup_prefix=.release-backups/\${timestamp}-before-${{ inputs.commit_sha }}
+             docker compose --env-file .env.production -f infra/docker/compose.production.yaml exec -T postgres sh -c 'pg_dump --format=custom --username=\"\$POSTGRES_USER\" \"\$POSTGRES_DB\"' > \"\${backup_prefix}.dump\"
+             test -s \"\${backup_prefix}.dump\"
+             printf 'previous_sha=%s\\ncandidate_sha=%s\\ncreated_at=%s\\n' \"\${previous_sha}\" '${{ inputs.commit_sha }}' \"\${timestamp}\" > \"\${backup_prefix}.metadata\"
+             find .release-backups -type f -mtime +14 -delete"
       - name: Sync isolated KingTurf release
         run: |
-          rsync -az --delete --exclude '.env.production' --exclude 'kingturf_postgres_data/' --exclude 'kingturf_attachments/' \
+          rsync -az --delete --exclude '.env.production' --exclude '.release-sha' --exclude '.release-backups/' --exclude 'kingturf_postgres_data/' --exclude 'kingturf_attachments/' \
             -e "ssh -p ${{ secrets.PROD_SSH_PORT }} -o ServerAliveInterval=30 -o ConnectTimeout=30" \
             ./ '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/'
       - name: Install and reload production Nginx ingress
@@ -96,8 +109,7 @@ jobs:
         run: |
           ssh -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
             "cd '${{ secrets.PROD_DEPLOY_PATH }}' && printf '%s' '${{ inputs.commit_sha }}' > .release-sha && export KINGTURF_RELEASE_SHA='${{ inputs.commit_sha }}' KINGTURF_RELEASE_BUILT_AT='${{ github.run_id }}' && docker compose --env-file .env.production -f infra/docker/compose.production.yaml up -d --build && sleep 15 && docker compose --env-file .env.production -f infra/docker/compose.production.yaml ps && curl --fail --silent --show-error --retry 12 --retry-all-errors --retry-delay 5 http://127.0.0.1:4332/health && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 http://127.0.0.1:4332/ready && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 http://127.0.0.1:4332/version | grep '${{ inputs.commit_sha }}' && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 --resolve erp.kingturf.cn:443:127.0.0.1 https://erp.kingturf.cn/health && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 --resolve erp.kingturf.cn:443:127.0.0.1 https://erp.kingturf.cn/ready && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 --resolve erp.kingturf.cn:443:127.0.0.1 https://erp.kingturf.cn/version | grep '${{ inputs.commit_sha }}'"
-      - name: Advisory public HTTPS probe from GitHub runner
-        continue-on-error: true
+      - name: Required public HTTPS probe from GitHub runner
         run: |
           python3 scripts/verify_public_https.py --host erp.kingturf.cn --path /health --expected '{"status":"ok"}'
           python3 scripts/verify_public_https.py --host erp.kingturf.cn --path /ready --expected '{"status":"ready"}'
