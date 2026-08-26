@@ -59,6 +59,24 @@ it('translates operations codes and derives accountable next actions', () => {
   expect(operationsNextAction('shipment', 'EXCEPTION_PENDING')).toBe('待独立审批人复核门禁例外');
 });
 
+it('captures artificial-turf project handoff fields without test-channel evidence markers', () => {
+  const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+  for (const field of [
+    'projectRegion',
+    'performanceStandard',
+    'baseCondition',
+    'drainageRequirement',
+    'fireRating',
+    'yarnMaterial',
+    'gauge',
+    'rollWidthMeters',
+    'drainageRate',
+  ])
+    expect(source).toContain(field);
+  expect(source).toContain('evidence: { sealReference: values.sealReference }');
+  expect(source).not.toContain('WEB-UAT');
+});
+
 it('publishes durable operation state for loading, success and rejection feedback', () => {
   const attributes = new Map<string, string>();
   const target = {

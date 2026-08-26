@@ -40,6 +40,9 @@ Date: 2026-08-25 Asia/Shanghai
 | P7-A       | Complete | Governance overview reports records, approval tasks, unread notifications and source failures               |
 | P7-B       | Complete | Governance modules prioritize failures and daily queues with explicit accountable next actions              |
 | P7-C       | Complete | Governance tables and source labels use Chinese operational terms and suppress redundant permission prose   |
+| P8-A       | Complete | All route copy is scanned for internal English codes, test markers and technical fallback language          |
+| P8-B       | Complete | Turf project demand and solution handoffs capture standards, site, drainage, yarn, gauge and roll details   |
+| P8-C       | Complete | Dispatch evidence captures an operator-supplied loading reference instead of a hard-coded test channel      |
 
 P3-A was verified with a regression test for the shared operation-state contract plus the complete web lint,
 typecheck, 45-test and production-build gate. Authenticated production UAT remains a P9/P10 release condition;
@@ -78,6 +81,35 @@ authorization and audit work; every module states the next accountable action wi
 P7-C replaces generic data-detail labels with named organization, employee, role, grant, audit, workflow,
 notification and event registers. Common governance fields and notification channels use daily Chinese terms,
 table previews cover eight rows, and repetitive edit-permission footnotes and module descriptions are removed.
+
+P8-A removes remaining user-visible test-channel, generic API fallback, English login/quality headings and AR
+abbreviations. The permission fallback now directs the employee to the permission administrator in daily
+business language instead of exposing implementation details.
+
+P8-B expands the artificial-turf demand handoff with project region, governing standard, base condition,
+drainage, fire rating and warranty. The technical solution handoff adds yarn material/form, gauge, roll width
+and drainage capacity so sales, engineering, costing, production and acceptance reference the same specification.
+
+P8-C requires the dispatcher to record the loading or seal evidence reference and passes only contracted fields
+to the API. Production evidence no longer contains a hard-coded web acceptance-test channel.
+
+## Fastest production-grade follow-up
+
+The next release gate should concentrate effort on observed operator journeys instead of adding more overview
+copy. The shortest path to enterprise-grade daily use is:
+
+1. Run role-specific UAT for sales, technical review, costing, finance, planning, quality, warehouse, logistics,
+   authorization administration and executive read-only access; verify both permitted actions and denied actions.
+2. Exercise four complete business chains with traceable records: opportunity to order, procurement to admitted
+   stock, material planning to finished production, and receivable to reconciled payment and collection closure.
+3. Verify every route at desktop, tablet and 390-pixel mobile widths, including sidebar expansion, keyboard focus,
+   long tables, dialogs, validation and empty/error states.
+4. Replace remaining administrator-only structured configuration text areas with constrained visual editors while
+   retaining the current raw editor only as an explicitly labelled advanced fallback.
+5. Add saved filters, export/print, bulk selection and object-level global search only where operators perform the
+   same lookup or action repeatedly; do not add decorative dashboard controls without a business owner.
+6. Release only after exact source, remote and runtime revisions match and authenticated production acceptance
+   proves health, readiness, role menus and the four end-to-end chains.
 
 ## 128-hour execution plan
 

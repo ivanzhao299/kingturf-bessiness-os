@@ -692,9 +692,15 @@ const recordValue = (value: unknown): Record<string, unknown> =>
 
 const ctrRequirementFields = [
   ['application', '应用场景'],
+  ['projectRegion', '项目地区'],
+  ['performanceStandard', '执行标准'],
   ['pileHeightMm', '草高（mm）'],
   ['quantitySquareMeters', '预计面积（㎡）'],
   ['color', '颜色要求'],
+  ['baseCondition', '场地基础'],
+  ['drainageRequirement', '排水要求'],
+  ['fireRating', '阻燃要求'],
+  ['warrantyYears', '质保年限'],
   ['delivery', '交付要求'],
 ] as const;
 
@@ -716,6 +722,18 @@ export const inventoryLocationOption = (item: Record<string, unknown>) => ({
 });
 const decimalValue = (value: number): string =>
   String(Math.round((value + Number.EPSILON) * 1_000_000) / 1_000_000);
+const currencyLabel = (value: unknown): string => {
+  const code = textValue(value, 'CNY');
+  return (
+    {
+      CNY: '人民币',
+      USD: '美元',
+      EUR: '欧元',
+      GBP: '英镑',
+      HKD: '港币',
+    }[code] ?? code
+  );
+};
 const displayMoney = (currency: unknown, value: unknown): string => {
   const code = textValue(currency, 'CNY');
   const amount = Number(value);
@@ -1528,7 +1546,7 @@ export function commercialWorkspaceStructure(
       el(
         'p',
         '',
-        `${recordText(filters, 'currency', 'currency', 'CNY')} · ${recordText(filters, 'from', 'from').slice(0, 10)} 至 ${recordText(filters, 'to', 'to').slice(0, 10)} · 刷新 ${recordText(dashboard, 'refreshedAt', 'refreshedAt').slice(0, 16).replace('T', ' ')}`,
+        `${currencyLabel(recordText(filters, 'currency', 'currency', 'CNY'))} · ${recordText(filters, 'from', 'from').slice(0, 10)} 至 ${recordText(filters, 'to', 'to').slice(0, 10)} · 刷新 ${recordText(dashboard, 'refreshedAt', 'refreshedAt').slice(0, 16).replace('T', ' ')}`,
       ),
     );
     heading.append(copy);
@@ -1999,7 +2017,14 @@ export function commercialWorkspaceStructure(
                 required: true,
                 value: String(latestVersion + 1),
               },
-              { name: 'currency', label: '币种', required: true, value: 'CNY' },
+              {
+                name: 'currency',
+                label: '币种',
+                type: 'select',
+                required: true,
+                value: 'CNY',
+                options: [{ value: 'CNY', label: '人民币' }],
+              },
               {
                 name: 'laborRatePerHour',
                 label: '人工小时费率',
@@ -2356,12 +2381,17 @@ export function commercialWorkspaceStructure(
               { name: 'trackingNumber', label: '物流单号', required: true },
               { name: 'dispatchedAt', label: '发车时间', required: true },
               { name: 'location', label: '发车地点', required: true },
+              { name: 'sealReference', label: '封车/装车凭证编号', required: true },
             ],
             '确认发车',
             async (values) => {
               await controller.submit(`/api/v1/shipment-releases/${String(release.id)}/dispatch`, {
-                ...values,
-                evidence: { channel: 'WEB-UAT' },
+                shipmentNumber: values.shipmentNumber,
+                carrierName: values.carrierName,
+                trackingNumber: values.trackingNumber,
+                dispatchedAt: values.dispatchedAt,
+                location: values.location,
+                evidence: { sealReference: values.sealReference },
                 idempotencyKey: String(values.shipmentNumber),
               });
               await controller.load();
@@ -2473,7 +2503,7 @@ export function commercialWorkspaceStructure(
               type: 'select',
               required: true,
               options: [
-                { value: 'CNY', label: '人民币 CNY' },
+                { value: 'CNY', label: '人民币' },
                 { value: 'USD', label: '美元 USD' },
                 { value: 'EUR', label: '欧元 EUR' },
               ],
@@ -2653,6 +2683,22 @@ export function commercialWorkspaceStructure(
                 { value: '足球场', label: '足球场' },
                 { value: '休闲景观', label: '休闲景观' },
                 { value: '多功能运动场', label: '多功能运动场' },
+                { value: '门球场', label: '门球场' },
+                { value: '幼儿园活动区', label: '幼儿园活动区' },
+                { value: '屋顶及露台', label: '屋顶及露台' },
+              ],
+            },
+            { name: 'projectRegion', label: '项目地区', required: true, placeholder: '山东青岛' },
+            {
+              name: 'performanceStandard',
+              label: '执行标准',
+              type: 'select',
+              required: true,
+              options: [
+                { value: '企业验收标准', label: '企业验收标准' },
+                { value: 'GB/T 20394', label: 'GB/T 20394 体育用人造草' },
+                { value: '国际足联场地质量标准', label: '国际足联场地质量标准' },
+                { value: '客户技术规范', label: '客户技术规范' },
               ],
             },
             {
@@ -2670,6 +2716,26 @@ export function commercialWorkspaceStructure(
               placeholder: '8000',
             },
             { name: 'color', label: '颜色要求', required: true, placeholder: '双色翠绿' },
+            {
+              name: 'baseCondition',
+              label: '场地基础条件',
+              required: true,
+              placeholder: '沥青基础已完工，平整度待复测',
+            },
+            {
+              name: 'drainageRequirement',
+              label: '排水要求',
+              required: true,
+              placeholder: '暴雨后 30 分钟内无明显积水',
+            },
+            { name: 'fireRating', label: '阻燃要求', required: true, placeholder: '按项目规范' },
+            {
+              name: 'warrantyYears',
+              label: '质保年限',
+              type: 'number',
+              required: true,
+              value: '8',
+            },
             { name: 'delivery', label: '交付要求', type: 'textarea', required: true },
           ],
           '创建技术需求',
@@ -2680,9 +2746,15 @@ export function commercialWorkspaceStructure(
               title: values.title ?? '',
               requirements: {
                 application: values.application ?? '',
+                projectRegion: values.projectRegion ?? '',
+                performanceStandard: values.performanceStandard ?? '',
                 pileHeightMm: Number(values.pileHeight ?? 0),
                 quantitySquareMeters: Number(values.quantity ?? 0),
                 color: values.color ?? '',
+                baseCondition: values.baseCondition ?? '',
+                drainageRequirement: values.drainageRequirement ?? '',
+                fireRating: values.fireRating ?? '',
+                warrantyYears: Number(values.warrantyYears ?? 0),
                 delivery: values.delivery ?? '',
               },
             });
@@ -2769,6 +2841,18 @@ export function commercialWorkspaceStructure(
                 value: displayRequirement(requirements.application),
               },
               {
+                name: 'projectRegion',
+                label: '项目地区',
+                required: true,
+                value: displayRequirement(requirements.projectRegion),
+              },
+              {
+                name: 'performanceStandard',
+                label: '执行标准',
+                required: true,
+                value: displayRequirement(requirements.performanceStandard),
+              },
+              {
                 name: 'pileHeight',
                 label: '草高（mm）',
                 type: 'number',
@@ -2789,6 +2873,31 @@ export function commercialWorkspaceStructure(
                 value: displayRequirement(requirements.color),
               },
               {
+                name: 'baseCondition',
+                label: '场地基础条件',
+                required: true,
+                value: displayRequirement(requirements.baseCondition),
+              },
+              {
+                name: 'drainageRequirement',
+                label: '排水要求',
+                required: true,
+                value: displayRequirement(requirements.drainageRequirement),
+              },
+              {
+                name: 'fireRating',
+                label: '阻燃要求',
+                required: true,
+                value: displayRequirement(requirements.fireRating),
+              },
+              {
+                name: 'warrantyYears',
+                label: '质保年限',
+                type: 'number',
+                required: true,
+                value: displayRequirement(requirements.warrantyYears),
+              },
+              {
                 name: 'delivery',
                 label: '交付要求',
                 type: 'textarea',
@@ -2802,9 +2911,15 @@ export function commercialWorkspaceStructure(
                 title: values.title ?? '',
                 requirements: {
                   application: values.application ?? '',
+                  projectRegion: values.projectRegion ?? '',
+                  performanceStandard: values.performanceStandard ?? '',
                   pileHeightMm: Number(values.pileHeight ?? 0),
                   quantitySquareMeters: Number(values.quantity ?? 0),
                   color: values.color ?? '',
+                  baseCondition: values.baseCondition ?? '',
+                  drainageRequirement: values.drainageRequirement ?? '',
+                  fireRating: values.fireRating ?? '',
+                  warrantyYears: Number(values.warrantyYears ?? 0),
                   delivery: values.delivery ?? '',
                 },
               });
@@ -2940,10 +3055,24 @@ export function commercialWorkspaceStructure(
       },
       {
         name: 'dtex',
-        label: '纤度（Dtex）',
+        label: '草丝纤度（分特）',
         type: 'number',
         required: true,
         value: formValue(specification.dtex),
+      },
+      {
+        name: 'yarnMaterial',
+        label: '草丝材质与形态',
+        required: true,
+        value: formValue(specification.yarnMaterial),
+        placeholder: '聚乙烯单丝 + 曲丝',
+      },
+      {
+        name: 'gauge',
+        label: '行距',
+        required: true,
+        value: formValue(specification.gauge),
+        placeholder: '3/4 英寸',
       },
       {
         name: 'stitchRate',
@@ -2957,6 +3086,20 @@ export function commercialWorkspaceStructure(
         label: '底布系统',
         required: true,
         value: formValue(specification.backing),
+      },
+      {
+        name: 'rollWidthMeters',
+        label: '卷宽（米）',
+        type: 'number',
+        required: true,
+        value: formValue(specification.rollWidthMeters),
+      },
+      {
+        name: 'drainageRate',
+        label: '排水能力（升/分钟/㎡）',
+        type: 'number',
+        required: true,
+        value: formValue(specification.drainageRate),
       },
       {
         name: 'infill',
@@ -2996,8 +3139,12 @@ export function commercialWorkspaceStructure(
         productFamily: values.productFamily ?? '',
         pileHeightMm: Number(values.pileHeight ?? 0),
         dtex: Number(values.dtex ?? 0),
+        yarnMaterial: values.yarnMaterial ?? '',
+        gauge: values.gauge ?? '',
         stitchRate: Number(values.stitchRate ?? 0),
         backing: values.backing ?? '',
+        rollWidthMeters: Number(values.rollWidthMeters ?? 0),
+        drainageRate: Number(values.drainageRate ?? 0),
         infill: values.infill ?? '',
         warrantyYears: Number(values.warrantyYears ?? 0),
       },
@@ -3060,9 +3207,13 @@ export function commercialWorkspaceStructure(
       for (const [key, label] of [
         ['productFamily', '产品系列'],
         ['pileHeightMm', '草高（mm）'],
-        ['dtex', '纤度（Dtex）'],
+        ['dtex', '草丝纤度（分特）'],
+        ['yarnMaterial', '草丝材质与形态'],
+        ['gauge', '行距'],
         ['stitchRate', '簇密度'],
         ['backing', '底布系统'],
+        ['rollWidthMeters', '卷宽（米）'],
+        ['drainageRate', '排水能力'],
         ['infill', '填充建议'],
         ['warrantyYears', '质保年限'],
       ] as const) {
@@ -3144,7 +3295,7 @@ export function commercialWorkspaceStructure(
               type: 'select',
               required: true,
               options: [
-                { value: 'CNY', label: '人民币 CNY' },
+                { value: 'CNY', label: '人民币' },
                 { value: 'USD', label: '美元 USD' },
               ],
             },
@@ -3206,7 +3357,7 @@ export function commercialWorkspaceStructure(
         el(
           'p',
           'muted',
-          `${textValue(model.name, '')} · ${textValue(model.currency, 'CNY')} · ${String(rules.length)} 条规则`,
+          `${textValue(model.name, '')} · ${currencyLabel(model.currency)} · ${String(rules.length)} 条规则`,
         ),
       );
       if (
@@ -4060,7 +4211,7 @@ export function commercialWorkspaceStructure(
               type: 'select',
               required: true,
               options: [
-                { value: 'CNY', label: '人民币 CNY' },
+                { value: 'CNY', label: '人民币' },
                 { value: 'USD', label: '美元 USD' },
               ],
             },
@@ -4113,7 +4264,7 @@ export function commercialWorkspaceStructure(
               required: true,
               options: limits.map((item) => ({
                 value: textValue(item.id, ''),
-                label: `${recordText(item, 'currency', 'currency', 'CNY')} ${recordText(item, 'amount', 'amount', '—')} · ${recordText(item, 'expiresAt', 'expires_at', '').slice(0, 10)}`,
+                label: `${currencyLabel(recordText(item, 'currency', 'currency', 'CNY'))} ${recordText(item, 'amount', 'amount', '—')} · ${recordText(item, 'expiresAt', 'expires_at', '').slice(0, 10)}`,
               })),
             },
             { name: 'validUntil', label: '信用决定有效期至', type: 'date', required: true },
@@ -4911,7 +5062,7 @@ export function commercialWorkspaceStructure(
         recordText(item, 'dueAt', 'due_at').slice(0, 10) < new Date().toISOString().slice(0, 10);
       const card = el('article', `qtc-card${overdue ? ' overdue' : ''}`);
       card.append(
-        el('p', 'eyebrow', recordText(item, 'documentNumber', 'document_number', 'AR')),
+        el('p', 'eyebrow', recordText(item, 'documentNumber', 'document_number', '应收单')),
         el(
           'strong',
           '',
@@ -5094,7 +5245,7 @@ export function commercialWorkspaceStructure(
                   options: [
                     {
                       value: recordText(item, 'currency', 'currency', 'CNY'),
-                      label: recordText(item, 'currency', 'currency', 'CNY'),
+                      label: currencyLabel(recordText(item, 'currency', 'currency', 'CNY')),
                     },
                   ],
                 },
@@ -5287,7 +5438,7 @@ export function commercialWorkspaceStructure(
               type: 'select',
               required: true,
               options: [
-                { value: 'CNY', label: '人民币 CNY' },
+                { value: 'CNY', label: '人民币' },
                 { value: 'USD', label: '美元 USD' },
               ],
             },
@@ -5698,7 +5849,7 @@ export function commercialWorkspaceStructure(
     const heading = el('div', 'pipeline-heading');
     const copy = el('div');
     copy.append(
-      el('p', 'eyebrow', 'RISK ENGINE V1'),
+      el('p', 'eyebrow', '风险评估'),
       el('h2', '', '风险评价与责任任务'),
       el('p', '', '规则版本、规范输入、命中原因和处理事件均由服务器留痕。'),
     );
@@ -5837,7 +5988,7 @@ export function commercialWorkspaceStructure(
     const panel = el('section', 'manufacturing-workbench');
     panel.setAttribute('data-testid', 'manufacturing-workbench');
     panel.append(
-      el('p', 'eyebrow', 'MANUFACTURING MASTER DATA'),
+      el('p', 'eyebrow', '制造主数据'),
       el('h2', '', '制造主数据工作台'),
       el('p', 'commercial-help', '物料、BOM 与工艺路线按版本发布；已发布结构保持不可变。'),
     );
@@ -6722,7 +6873,7 @@ export function commercialWorkspaceStructure(
     const panel = el('section', 'mrp-workbench');
     panel.setAttribute('data-testid', 'mrp-workbench');
     panel.append(
-      el('p', 'eyebrow', 'EXPLAINABLE MATERIAL PLANNING'),
+      el('p', 'eyebrow', '物料需求计划'),
       el('h2', '', '物料需求与建议审批'),
       el(
         'p',
@@ -7039,7 +7190,7 @@ export function commercialWorkspaceStructure(
     const panel = el('section', 'quality-workbench');
     panel.setAttribute('data-testid', 'quality-workbench');
     panel.append(
-      el('p', 'eyebrow', 'QUALITY & WAREHOUSE'),
+      el('p', 'eyebrow', '质量与仓储'),
       el('h2', '', '质量检验与批次追溯'),
       el(
         'p',
@@ -7484,7 +7635,7 @@ export function commercialWorkspaceStructure(
     [
       'credit-review',
       '信用审查',
-      '服务器从 AR 与未分配收款计算敞口，显示审批及到期状态',
+      '服务器从应收与未分配收款计算信用敞口，显示审批及到期状态',
       ['报价修订/快照', '敞口快照', '额度与有效期'],
       '评估信用',
       '/api/v1/credit-decisions',
@@ -7570,7 +7721,7 @@ export function commercialWorkspaceStructure(
     hint.className = 'field-hint';
     hint.textContent = fields.join(' · ');
     const request = document.createElement('textarea');
-    request.setAttribute('aria-label', `${title} JSON 请求`);
+    request.setAttribute('aria-label', `${title}高级配置请求`);
     request.placeholder = '{ }';
     request.disabled = immutable || Boolean(controller && !canAct);
     form.append(hint, request);
@@ -7585,7 +7736,7 @@ export function commercialWorkspaceStructure(
       try {
         const parsed = JSON.parse(request.value || '{}') as unknown;
         if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed))
-          throw new Error('请求必须是 JSON 对象');
+          throw new Error('请求必须是键值对象格式');
         const payload = { ...(parsed as Record<string, unknown>) };
         const rootId = typeof payload.rootId === 'string' ? payload.rootId : null;
         delete payload.rootId;
@@ -8381,7 +8532,7 @@ export function installAppNavigation(shell: HTMLElement): void {
       (view) => !view.hidden && (view.dataset.routeView ?? '').split(/\s+/u).includes(route),
     );
     placeholder.hidden = hasView;
-    placeholder.textContent = `${APP_ROUTE_LABELS[route]}：该模块已纳入产品导航，当前版本尚未提供可操作工作台。API 与权限不会被前端绕过。`;
+    placeholder.textContent = `${APP_ROUTE_LABELS[route]}：当前账号在本模块暂无可用功能，请联系权限管理员核对岗位职责。`;
   };
   for (const item of Array.from(shell.querySelectorAll<HTMLElement>('[data-app-route]'))) {
     item.addEventListener('click', () => {
@@ -9376,7 +9527,7 @@ export function createCrmShell(
   const placeholder = el(
     'p',
     'route-placeholder',
-    '该模块已纳入产品导航，当前版本尚未提供可操作工作台。',
+    '当前账号在本模块暂无可用功能，请联系权限管理员核对岗位职责。',
   );
   placeholder.setAttribute('data-route-placeholder', 'true');
   placeholder.hidden = true;
@@ -9667,7 +9818,7 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
     try {
       const parsed = JSON.parse(value ?? '{}') as unknown;
       if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed))
-        throw new Error(`${label}必须是 JSON 对象`);
+        throw new Error(`${label}必须是键值对象格式`);
       return parsed as Record<string, unknown>;
     } catch (error) {
       throw new Error(error instanceof Error ? error.message : `${label}格式无效`);
@@ -10051,7 +10202,7 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
       entry.addEventListener('click', () => {
         openAction(
           '新建主数据条目',
-          '条目值使用结构化 JSON 保存，并继承分类的公司隔离。',
+          '条目值使用结构化配置保存，并继承分类的公司隔离。',
           [
             {
               name: 'categoryId',
@@ -10065,7 +10216,7 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
             },
             { name: 'code', label: '条目编码', required: true },
             { name: 'label', label: '显示名称', required: true },
-            { name: 'value', label: '结构化值（JSON）', type: 'textarea', required: true },
+            { name: 'value', label: '结构化值（高级配置）', type: 'textarea', required: true },
             { name: 'effectiveFrom', label: '生效时间', required: true },
           ],
           (values) =>
@@ -10099,7 +10250,7 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
               ),
             },
             { name: 'label', label: '显示名称', required: true },
-            { name: 'value', label: '结构化值（JSON）', type: 'textarea', required: true },
+            { name: 'value', label: '结构化值（高级配置）', type: 'textarea', required: true },
             { name: 'effectiveFrom', label: '生效时间', required: true },
           ],
           async (values) => {
@@ -10244,7 +10395,7 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
           '规则表达式和必需输入由服务器校验；草稿发布后才能用于业务判断。',
           [
             { name: 'code', label: '规则编码', required: true },
-            { name: 'ast', label: '规则表达式（JSON）', type: 'textarea', required: true },
+            { name: 'ast', label: '规则表达式（高级配置）', type: 'textarea', required: true },
             { name: 'requiredInputs', label: '必需输入（每行一个）', type: 'textarea' },
           ],
           (values) =>
@@ -10298,7 +10449,7 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
               required: true,
               options: choices('/api/v1/rules', (item) => textValue(item.code, '规则')),
             },
-            { name: 'input', label: '输入数据（JSON）', type: 'textarea', required: true },
+            { name: 'input', label: '输入数据（高级配置）', type: 'textarea', required: true },
           ],
           (values) =>
             controller.submit(
@@ -10319,7 +10470,7 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
           '流程定义采用受校验的结构化规范；发布和启动由独立能力控制。',
           [
             { name: 'code', label: '工作流编码', required: true },
-            { name: 'spec', label: '流程规范（JSON）', type: 'textarea', required: true },
+            { name: 'spec', label: '流程规范（高级配置）', type: 'textarea', required: true },
           ],
           (values) =>
             controller.submit('/api/v1/workflows', {
@@ -10488,7 +10639,7 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
           [
             { name: 'code', label: '对象编码', required: true },
             { name: 'name', label: '对象名称', required: true },
-            { name: 'schema', label: '对象结构（JSON）', type: 'textarea', required: true },
+            { name: 'schema', label: '对象结构（高级配置）', type: 'textarea', required: true },
           ],
           (values) =>
             controller.submit('/api/v1/business-objects', {
@@ -10562,7 +10713,7 @@ function loginView(root: HTMLElement): void {
   story.append(features);
   const form = el('form', 'login-card');
   form.append(
-    el('p', 'eyebrow', 'SECURE ACCESS'),
+    el('p', 'eyebrow', '企业账号登录'),
     el('h2', '', '登录金特夫'),
     el('p', 'muted', '使用已分配的组织账号进入角色工作台。'),
   );
@@ -10632,7 +10783,7 @@ export async function bootstrap(root: HTMLElement): Promise<void> {
   try {
     await controller.load();
   } catch (error) {
-    controller.error = error instanceof Error ? error.message : 'CRM 加载失败';
+    controller.error = error instanceof Error ? error.message : '客户业务数据加载失败';
   }
   const allPermissions = new Set(session.permissions);
   const currentEmployee = controller.employees.find(
