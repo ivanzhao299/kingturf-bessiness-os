@@ -26,6 +26,7 @@ import type { PostgresMrpRepository } from '../src/mrp-repositories.js';
 import type { PostgresProductionRepository } from '../src/production-repositories.js';
 import type { PostgresShipmentRepository } from '../src/shipment-repositories.js';
 import type { PostgresCollectionRepository } from '../src/collection-repositories.js';
+import type { PostgresComplaintRepository } from '../src/complaint-repositories.js';
 import type { AuthenticationService } from '../src/security.js';
 
 const employeeId = '10000000-0000-4000-8000-000000000001';
@@ -337,6 +338,48 @@ function dependencies(authContext: AuthorizationContext | null) {
     generateEvidencePackage: collectionEvidencePackage,
     transitionCase: collectionTransition,
   } as unknown as PostgresCollectionRepository;
+  const complaintList = vi.fn(() =>
+    Promise.resolve({ items: [{ id: targetId, state: 'REPORTED' }], nextCursor: null }),
+  );
+  const complaintGet = vi.fn(() => Promise.resolve({ id: targetId, state: 'REPORTED' }));
+  const complaintCreate = vi.fn(() => Promise.resolve({ id: targetId, state: 'REPORTED' }));
+  const complaintSlaList = vi.fn(() =>
+    Promise.resolve([{ id: targetId, policyCode: 'KT-SLA', version: 1, severity: 'MAJOR' }]),
+  );
+  const complaintSlaCreate = vi.fn(() =>
+    Promise.resolve({ id: targetId, policyCode: 'KT-SLA', version: 1, severity: 'MAJOR' }),
+  );
+  const complaintTransition = vi.fn(() =>
+    Promise.resolve({ id: targetId, state: 'TRIAGED', version: 2 }),
+  );
+  const complaintBatchTriage = vi.fn(() =>
+    Promise.resolve({
+      requested: 1,
+      succeeded: 1,
+      rejected: 0,
+      failed: 0,
+      items: [{ id: targetId, status: 'SUCCEEDED' as const }],
+    }),
+  );
+  const complaintCloseCapa = vi.fn(() =>
+    Promise.resolve({ id: targetId, state: 'CLOSED', version: 6 }),
+  );
+  const complaints = {
+    list: complaintList,
+    getById: complaintGet,
+    createComplaint: complaintCreate,
+    listSlaPolicies: complaintSlaList,
+    createSlaPolicy: complaintSlaCreate,
+    transitionComplaint: complaintTransition,
+    createNcr: vi.fn(() => Promise.resolve({ id: targetId, state: 'OPEN' })),
+    transitionNcr: vi.fn(() => Promise.resolve({ id: targetId, state: 'CONTAINED' })),
+    createCapa: vi.fn(() => Promise.resolve({ id: targetId, state: 'OPEN' })),
+    addCapaAction: vi.fn(() => Promise.resolve({ id: targetId, state: 'OPEN' })),
+    completeCapaAction: vi.fn(() => Promise.resolve({ id: targetId })),
+    verifyCapa: vi.fn(() => Promise.resolve({ id: targetId, state: 'VERIFIED' })),
+    closeCapa: complaintCloseCapa,
+    batchTriage: complaintBatchTriage,
+  } as unknown as PostgresComplaintRepository;
   return {
     auth,
     provisionIdentity,
@@ -380,6 +423,7 @@ function dependencies(authContext: AuthorizationContext | null) {
     productionOutput,
     shipments,
     collections,
+    complaints,
     shipmentList,
     shipmentRequest,
     shipmentTransition,
@@ -394,6 +438,14 @@ function dependencies(authContext: AuthorizationContext | null) {
     collectionLegalDecision,
     collectionEvidencePackage,
     collectionTransition,
+    complaintList,
+    complaintGet,
+    complaintCreate,
+    complaintSlaList,
+    complaintSlaCreate,
+    complaintTransition,
+    complaintBatchTriage,
+    complaintCloseCapa,
     dashboardGet,
     riskEvaluate,
     riskTransition,
@@ -1796,6 +1848,109 @@ describe('authorization management API', () => {
           'POST',
           '/api/v1/collection-cases',
           {},
+        )
+      ).statusCode,
+    ).toBe(403);
+  });
+  it('routes complaint creation, governed paging, detail, and batch triage with dual capabilities', async () => {
+    const permissions: AuthorizationContext['permissions'] = new Map(
+      [
+        'complaint:read',
+        'complaint:create',
+        'complaint:triage',
+        'complaint:assign',
+        'complaint-sla:read',
+        'complaint-sla:manage',
+        'capa:manage',
+      ].map((capability) => [
+        capability as `${string}:${string}`,
+        { scopes: ['COMPANY'] as const, fields: null },
+      ]),
+    );
+    const deps = dependencies(context(permissions));
+    expect((await dispatch(deps, 'GET', '/api/v1/complaints')).statusCode).toBe(200);
+    expect((await dispatch(deps, 'GET', '/api/v1/complaint-sla-policies')).statusCode).toBe(200);
+    expect(
+      (
+        await dispatch(deps, 'POST', '/api/v1/complaint-sla-policies', {
+          policyCode: 'KT-SLA',
+          version: 1,
+          severity: 'MAJOR',
+          responseHours: 4,
+          containmentHours: 12,
+          rootCauseHours: 48,
+          closureHours: 120,
+          effectiveAt: '2026-08-26T00:00:00Z',
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect((await dispatch(deps, 'GET', `/api/v1/complaints/${targetId}`)).statusCode).toBe(200);
+    expect(
+      (
+        await dispatch(deps, 'POST', '/api/v1/complaints', {
+          complaintNumber: 'CMP-1',
+          customerId: targetId,
+          slaPolicyVersionId: organizationId,
+          channel: 'CUSTOMER_SERVICE',
+          defectCategory: 'COLOUR_DIFFERENCE',
+          severity: 'MAJOR',
+          occurredAt: '2026-08-25T08:00:00Z',
+          reportedAt: '2026-08-26T08:00:00Z',
+          description: '同一项目的两卷产品存在明显色差',
+          customerRequest: '调查并提出整改措施',
+          assignedTo: employeeId,
+          initialSnapshot: { customerReference: 'CASE-1' },
+          idempotencyKey: 'CMP-1',
+        })
+      ).statusCode,
+    ).toBe(201);
+    const batch = await dispatch(deps, 'POST', '/api/v1/complaints/batch-triage', {
+      batchKey: 'CMP-BATCH-1',
+      items: [
+        {
+          id: targetId,
+          expectedVersion: 1,
+          assignedTo: employeeId,
+          reason: '重大色差投诉转质量调查',
+        },
+      ],
+    });
+    expect(batch).toMatchObject({
+      statusCode: 200,
+      body: { requested: 1, succeeded: 1, rejected: 0, failed: 0 },
+    });
+    expect(deps.complaintList).toHaveBeenCalledWith(
+      expect.objectContaining({ limit: 50 }),
+      expect.objectContaining({ scopes: ['COMPANY'] }),
+    );
+    expect(deps.complaintBatchTriage).toHaveBeenCalledWith(
+      expect.objectContaining({ batchKey: 'CMP-BATCH-1' }),
+      expect.objectContaining({ scopes: ['COMPANY'] }),
+      expect.any(String),
+    );
+    expect(
+      (
+        await dispatch(deps, 'POST', `/api/v1/capas/${targetId}/close`, {
+          expectedVersion: 5,
+          reason: '整改验证通过后归档',
+          evidence: { verificationReference: 'CAPA-V-1' },
+          idempotencyKey: 'CAPA-CLOSE-1',
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(deps.complaintCloseCapa).toHaveBeenCalledWith(
+      targetId,
+      expect.objectContaining({ expectedVersion: 5, idempotencyKey: 'CAPA-CLOSE-1' }),
+      expect.objectContaining({ scopes: ['COMPANY'] }),
+      expect.any(String),
+    );
+    expect(
+      (
+        await dispatch(
+          dependencies(context(grant('complaint:triage'))),
+          'POST',
+          '/api/v1/complaints/batch-triage',
+          { batchKey: 'DENIED', items: [] },
         )
       ).statusCode,
     ).toBe(403);

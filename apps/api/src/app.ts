@@ -48,6 +48,7 @@ import type { PostgresProductionCostRepository } from './production-cost-reposit
 import type { PostgresQualityRepository } from './quality-repositories.ts';
 import type { PostgresShipmentRepository } from './shipment-repositories.ts';
 import type { PostgresCollectionRepository } from './collection-repositories.ts';
+import type { PostgresComplaintRepository } from './complaint-repositories.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -109,6 +110,7 @@ export type ApiDependencies = Readonly<{
   quality?: PostgresQualityRepository;
   shipments?: PostgresShipmentRepository;
   collections?: PostgresCollectionRepository;
+  complaints?: PostgresComplaintRepository;
   readiness?: () => Promise<boolean>;
   release?: Readonly<{ sha: string; environment: string; builtAt?: string }>;
   telemetry?: Telemetry;
@@ -1481,6 +1483,569 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               correlationId,
             );
             return { statusCode: 201, body: mutationDto(result, context, 'shipment:read') };
+          }
+        }
+        if (dependencies.complaints) {
+          if (request.method === 'GET' && request.pathname === '/api/v1/complaint-sla-policies') {
+            const grant = authorizeQuery(context, 'complaint-sla:read');
+            const items = await dependencies.complaints.listSlaPolicies({
+              actor: context.actor,
+              scopes: grant.scopes,
+              anchors: grant.anchors,
+            });
+            return {
+              statusCode: 200,
+              body: {
+                items: items.map((item) =>
+                  permittedDto(item, context.permissions.get('complaint-sla:read')?.fields ?? null),
+                ),
+              },
+            };
+          }
+          if (request.method === 'POST' && request.pathname === '/api/v1/complaint-sla-policies') {
+            const body = objectBody(request.body);
+            allow(body, [
+              'policyCode',
+              'version',
+              'severity',
+              'responseHours',
+              'containmentHours',
+              'rootCauseHours',
+              'closureHours',
+              'effectiveAt',
+            ]);
+            const grant = authorizeQuery(context, 'complaint-sla:manage', Object.keys(body));
+            const severity = string(body.severity, 'severity');
+            if (!['LOW', 'MEDIUM', 'MAJOR', 'CRITICAL'].includes(severity))
+              throw new DomainError('invalid_request', 'severity is unsupported');
+            const responseHours = integer(body.responseHours, 'responseHours', 1, 8760);
+            const containmentHours = integer(body.containmentHours, 'containmentHours', 1, 8760);
+            const rootCauseHours = integer(body.rootCauseHours, 'rootCauseHours', 1, 8760);
+            const closureHours = integer(body.closureHours, 'closureHours', 1, 8760);
+            if (
+              responseHours > containmentHours ||
+              containmentHours > rootCauseHours ||
+              rootCauseHours > closureHours
+            )
+              throw new DomainError(
+                'invalid_request',
+                'SLA hours must progress from response through closure',
+              );
+            const result = await dependencies.complaints.createSlaPolicy(
+              {
+                policyCode: assertStableCode(string(body.policyCode, 'policyCode')),
+                version: integer(body.version, 'version', 1, 10_000),
+                severity: severity as 'LOW' | 'MEDIUM' | 'MAJOR' | 'CRITICAL',
+                responseHours,
+                containmentHours,
+                rootCauseHours,
+                closureHours,
+                effectiveAt: timestamp(body.effectiveAt, 'effectiveAt'),
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return {
+              statusCode: 201,
+              body: mutationDto(result, context, 'complaint-sla:read'),
+            };
+          }
+          if (request.method === 'GET' && request.pathname === '/api/v1/complaints') {
+            const grant = authorizeQuery(context, 'complaint:read');
+            const query = request.query ?? {};
+            const state = query.state;
+            const severity = query.severity;
+            const allowedStates = [
+              'REPORTED',
+              'TRIAGED',
+              'INVESTIGATING',
+              'NCR_OPEN',
+              'CAPA_ACTIVE',
+              'VERIFIED',
+              'CLOSED',
+              'REJECTED',
+            ];
+            const allowedSeverities = ['LOW', 'MEDIUM', 'MAJOR', 'CRITICAL'];
+            if (state && !allowedStates.includes(state))
+              throw new DomainError('invalid_request', 'state is unsupported');
+            if (severity && !allowedSeverities.includes(severity))
+              throw new DomainError('invalid_request', 'severity is unsupported');
+            if (query.overdue && !['true', 'false'].includes(query.overdue))
+              throw new DomainError('invalid_request', 'overdue must be true or false');
+            const page = await dependencies.complaints.list(
+              {
+                limit: query.limit ? integer(Number(query.limit), 'limit', 1, 100) : 50,
+                ...(query.cursor ? { cursor: uuid(query.cursor, 'cursor') } : {}),
+                ...(query.query ? { query: string(query.query, 'query') } : {}),
+                ...(state
+                  ? {
+                      state: state as
+                        | 'REPORTED'
+                        | 'TRIAGED'
+                        | 'INVESTIGATING'
+                        | 'NCR_OPEN'
+                        | 'CAPA_ACTIVE'
+                        | 'VERIFIED'
+                        | 'CLOSED'
+                        | 'REJECTED',
+                    }
+                  : {}),
+                ...(severity
+                  ? { severity: severity as 'LOW' | 'MEDIUM' | 'MAJOR' | 'CRITICAL' }
+                  : {}),
+                ...(query.assignedTo ? { assignedTo: uuid(query.assignedTo, 'assignedTo') } : {}),
+                ...(query.customerId ? { customerId: uuid(query.customerId, 'customerId') } : {}),
+                ...(query.salesOrderId
+                  ? { salesOrderId: uuid(query.salesOrderId, 'salesOrderId') }
+                  : {}),
+                ...(query.inventoryLotId
+                  ? { inventoryLotId: uuid(query.inventoryLotId, 'inventoryLotId') }
+                  : {}),
+                ...(query.createdFrom
+                  ? { createdFrom: timestamp(query.createdFrom, 'createdFrom') }
+                  : {}),
+                ...(query.createdTo ? { createdTo: timestamp(query.createdTo, 'createdTo') } : {}),
+                ...(query.overdue ? { overdue: query.overdue === 'true' } : {}),
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+            );
+            return {
+              statusCode: 200,
+              body: {
+                items: page.items.map((item) =>
+                  permittedDto(item, context.permissions.get('complaint:read')?.fields ?? null),
+                ),
+                nextCursor: page.nextCursor,
+              },
+            };
+          }
+          const complaintDetail = /^\/api\/v1\/complaints\/([0-9a-f-]+)$/u.exec(request.pathname);
+          if (request.method === 'GET' && complaintDetail) {
+            const grant = authorizeQuery(context, 'complaint:read');
+            const item = await dependencies.complaints.getById(
+              uuid(complaintDetail[1], 'complaintId'),
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+            );
+            return {
+              statusCode: 200,
+              body: permittedDto(item, context.permissions.get('complaint:read')?.fields ?? null),
+            };
+          }
+          if (request.method === 'POST' && request.pathname === '/api/v1/complaints') {
+            const body = objectBody(request.body);
+            allow(body, [
+              'complaintNumber',
+              'customerId',
+              'salesOrderId',
+              'shipmentId',
+              'inventoryLotId',
+              'qualityInspectionId',
+              'slaPolicyVersionId',
+              'channel',
+              'defectCategory',
+              'severity',
+              'occurredAt',
+              'reportedAt',
+              'description',
+              'customerRequest',
+              'assignedTo',
+              'initialSnapshot',
+              'idempotencyKey',
+            ]);
+            const grant = authorizeQuery(context, 'complaint:create', Object.keys(body));
+            const channel = string(body.channel, 'channel');
+            const severity = string(body.severity, 'severity');
+            if (
+              !['CUSTOMER_SERVICE', 'SALES', 'EMAIL', 'PHONE', 'ONSITE', 'OTHER'].includes(channel)
+            )
+              throw new DomainError('invalid_request', 'channel is unsupported');
+            if (!['LOW', 'MEDIUM', 'MAJOR', 'CRITICAL'].includes(severity))
+              throw new DomainError('invalid_request', 'severity is unsupported');
+            const result = await dependencies.complaints.createComplaint(
+              {
+                complaintNumber: assertStableCode(string(body.complaintNumber, 'complaintNumber')),
+                customerId: uuid(body.customerId, 'customerId'),
+                ...(body.salesOrderId
+                  ? { salesOrderId: uuid(body.salesOrderId, 'salesOrderId') }
+                  : {}),
+                ...(body.shipmentId ? { shipmentId: uuid(body.shipmentId, 'shipmentId') } : {}),
+                ...(body.inventoryLotId
+                  ? { inventoryLotId: uuid(body.inventoryLotId, 'inventoryLotId') }
+                  : {}),
+                ...(body.qualityInspectionId
+                  ? { qualityInspectionId: uuid(body.qualityInspectionId, 'qualityInspectionId') }
+                  : {}),
+                slaPolicyVersionId: uuid(body.slaPolicyVersionId, 'slaPolicyVersionId'),
+                channel: channel as
+                  | 'CUSTOMER_SERVICE'
+                  | 'SALES'
+                  | 'EMAIL'
+                  | 'PHONE'
+                  | 'ONSITE'
+                  | 'OTHER',
+                defectCategory: string(body.defectCategory, 'defectCategory'),
+                severity: severity as 'LOW' | 'MEDIUM' | 'MAJOR' | 'CRITICAL',
+                occurredAt: timestamp(body.occurredAt, 'occurredAt'),
+                reportedAt: timestamp(body.reportedAt, 'reportedAt'),
+                description: string(body.description, 'description'),
+                customerRequest: string(body.customerRequest, 'customerRequest'),
+                ...(body.assignedTo ? { assignedTo: uuid(body.assignedTo, 'assignedTo') } : {}),
+                initialSnapshot: jsonObject(body.initialSnapshot, 'initialSnapshot'),
+                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'complaint:read') };
+          }
+          if (request.method === 'POST' && request.pathname === '/api/v1/complaints/batch-triage') {
+            const body = objectBody(request.body);
+            allow(body, ['batchKey', 'items']);
+            const triageGrant = authorizeQuery(context, 'complaint:triage', Object.keys(body));
+            const assignGrant = authorizeQuery(context, 'complaint:assign', Object.keys(body));
+            const rawItems = array(body.items, 'items');
+            if (rawItems.length < 1 || rawItems.length > 50)
+              throw new DomainError('invalid_request', 'items must contain between 1 and 50 rows');
+            const items = rawItems.map((value, index) => {
+              const item = objectBody(value);
+              allow(item, ['id', 'expectedVersion', 'assignedTo', 'reason']);
+              return {
+                id: uuid(item.id, `items[${String(index)}].id`),
+                expectedVersion: integer(
+                  item.expectedVersion,
+                  `items[${String(index)}].expectedVersion`,
+                  1,
+                  1_000_000,
+                ),
+                assignedTo: uuid(item.assignedTo, `items[${String(index)}].assignedTo`),
+                reason: string(item.reason, `items[${String(index)}].reason`),
+              };
+            });
+            if (new Set(items.map((item) => item.id)).size !== items.length)
+              throw new DomainError(
+                'invalid_request',
+                'items must not contain duplicate complaints',
+              );
+            const sharedScopes = triageGrant.scopes.filter((value) =>
+              assignGrant.scopes.includes(value),
+            );
+            const sharedAnchors = triageGrant.anchors.filter((left) =>
+              assignGrant.anchors.some(
+                (right) =>
+                  right.scope === left.scope && right.organizationId === left.organizationId,
+              ),
+            );
+            const result = await dependencies.complaints.batchTriage(
+              {
+                batchKey: assertStableCode(string(body.batchKey, 'batchKey')),
+                items,
+              },
+              { actor: context.actor, scopes: sharedScopes, anchors: sharedAnchors },
+              correlationId,
+            );
+            return { statusCode: 200, body: result };
+          }
+          const complaintTransition =
+            /^\/api\/v1\/complaints\/([0-9a-f-]+)\/(triage|investigate|reject|close)$/u.exec(
+              request.pathname,
+            );
+          if (request.method === 'POST' && complaintTransition) {
+            const body = objectBody(request.body);
+            allow(body, ['expectedVersion', 'reason', 'evidence', 'assignedTo', 'idempotencyKey']);
+            const action = complaintTransition[2] ?? '';
+            const capability = action === 'close' ? 'complaint:close' : 'complaint:triage';
+            const grant = authorizeQuery(context, capability, Object.keys(body));
+            const state =
+              action === 'triage'
+                ? 'TRIAGED'
+                : action === 'investigate'
+                  ? 'INVESTIGATING'
+                  : action === 'reject'
+                    ? 'REJECTED'
+                    : 'CLOSED';
+            const result = await dependencies.complaints.transitionComplaint(
+              uuid(complaintTransition[1], 'complaintId'),
+              {
+                state,
+                expectedVersion: integer(body.expectedVersion, 'expectedVersion', 1, 1_000_000),
+                reason: string(body.reason, 'reason'),
+                evidence: jsonObject(body.evidence ?? {}, 'evidence'),
+                ...(body.assignedTo ? { assignedTo: uuid(body.assignedTo, 'assignedTo') } : {}),
+                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'complaint:read') };
+          }
+          const ncrCreate = /^\/api\/v1\/complaints\/([0-9a-f-]+)\/ncrs$/u.exec(request.pathname);
+          if (request.method === 'POST' && ncrCreate) {
+            const body = objectBody(request.body);
+            allow(body, [
+              'ncrNumber',
+              'defectType',
+              'affectedScope',
+              'responsibleOrganizationId',
+              'investigatorId',
+              'quarantinedQuantity',
+              'temporaryContainment',
+              'complaintExpectedVersion',
+              'evidence',
+              'idempotencyKey',
+            ]);
+            const grant = authorizeQuery(context, 'ncr:manage', Object.keys(body));
+            const result = await dependencies.complaints.createNcr(
+              {
+                ncrNumber: assertStableCode(string(body.ncrNumber, 'ncrNumber')),
+                complaintId: uuid(ncrCreate[1], 'complaintId'),
+                defectType: string(body.defectType, 'defectType'),
+                affectedScope: string(body.affectedScope, 'affectedScope'),
+                responsibleOrganizationId: uuid(
+                  body.responsibleOrganizationId,
+                  'responsibleOrganizationId',
+                ),
+                investigatorId: uuid(body.investigatorId, 'investigatorId'),
+                quarantinedQuantity: decimal(body.quarantinedQuantity, 'quarantinedQuantity'),
+                temporaryContainment: string(body.temporaryContainment, 'temporaryContainment'),
+                complaintExpectedVersion: integer(
+                  body.complaintExpectedVersion,
+                  'complaintExpectedVersion',
+                  1,
+                  1_000_000,
+                ),
+                evidence: jsonObject(body.evidence ?? {}, 'evidence'),
+                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'ncr:read') };
+          }
+          const ncrTransition =
+            /^\/api\/v1\/ncrs\/([0-9a-f-]+)\/(contain|root-cause|disposition|close)$/u.exec(
+              request.pathname,
+            );
+          if (request.method === 'POST' && ncrTransition) {
+            const body = objectBody(request.body);
+            allow(body, [
+              'expectedVersion',
+              'reason',
+              'rootCauseMethod',
+              'rootCause',
+              'disposition',
+              'evidence',
+              'idempotencyKey',
+            ]);
+            const action = ncrTransition[2] ?? '';
+            const capability = action === 'disposition' ? 'ncr:disposition' : 'ncr:manage';
+            const grant = authorizeQuery(context, capability, Object.keys(body));
+            const state =
+              action === 'contain'
+                ? 'CONTAINED'
+                : action === 'root-cause'
+                  ? 'ROOT_CAUSE_CONFIRMED'
+                  : action === 'disposition'
+                    ? 'DISPOSITIONED'
+                    : 'CLOSED';
+            const method = body.rootCauseMethod
+              ? string(body.rootCauseMethod, 'rootCauseMethod')
+              : undefined;
+            const disposition = body.disposition
+              ? string(body.disposition, 'disposition')
+              : undefined;
+            if (method && !['FIVE_WHY', 'FISHBONE', 'FAULT_TREE', 'OTHER'].includes(method))
+              throw new DomainError('invalid_request', 'rootCauseMethod is unsupported');
+            if (
+              disposition &&
+              !['REWORK', 'REPAIR', 'CONCESSION', 'RETURN', 'SCRAP', 'SUPPLIER_CLAIM'].includes(
+                disposition,
+              )
+            )
+              throw new DomainError('invalid_request', 'disposition is unsupported');
+            const result = await dependencies.complaints.transitionNcr(
+              uuid(ncrTransition[1], 'ncrId'),
+              {
+                state,
+                expectedVersion: integer(body.expectedVersion, 'expectedVersion', 1, 1_000_000),
+                reason: string(body.reason, 'reason'),
+                ...(method
+                  ? {
+                      rootCauseMethod: method as 'FIVE_WHY' | 'FISHBONE' | 'FAULT_TREE' | 'OTHER',
+                    }
+                  : {}),
+                ...(body.rootCause ? { rootCause: jsonObject(body.rootCause, 'rootCause') } : {}),
+                ...(disposition
+                  ? {
+                      disposition: disposition as
+                        | 'REWORK'
+                        | 'REPAIR'
+                        | 'CONCESSION'
+                        | 'RETURN'
+                        | 'SCRAP'
+                        | 'SUPPLIER_CLAIM',
+                    }
+                  : {}),
+                ...(action === 'disposition' ? { approvedBy: context.actor.employeeId } : {}),
+                evidence: jsonObject(body.evidence ?? {}, 'evidence'),
+                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'ncr:read') };
+          }
+          const capaCreate = /^\/api\/v1\/ncrs\/([0-9a-f-]+)\/capas$/u.exec(request.pathname);
+          if (request.method === 'POST' && capaCreate) {
+            const body = objectBody(request.body);
+            allow(body, [
+              'capaNumber',
+              'ownerId',
+              'targetAt',
+              'riskLevel',
+              'rootCauseSnapshot',
+              'complaintExpectedVersion',
+              'evidence',
+              'idempotencyKey',
+            ]);
+            const grant = authorizeQuery(context, 'capa:manage', Object.keys(body));
+            const riskLevel = string(body.riskLevel, 'riskLevel');
+            if (!['LOW', 'MEDIUM', 'MAJOR', 'CRITICAL'].includes(riskLevel))
+              throw new DomainError('invalid_request', 'riskLevel is unsupported');
+            const result = await dependencies.complaints.createCapa(
+              {
+                capaNumber: assertStableCode(string(body.capaNumber, 'capaNumber')),
+                ncrId: uuid(capaCreate[1], 'ncrId'),
+                ownerId: uuid(body.ownerId, 'ownerId'),
+                targetAt: timestamp(body.targetAt, 'targetAt'),
+                riskLevel: riskLevel as 'LOW' | 'MEDIUM' | 'MAJOR' | 'CRITICAL',
+                rootCauseSnapshot: jsonObject(body.rootCauseSnapshot, 'rootCauseSnapshot'),
+                complaintExpectedVersion: integer(
+                  body.complaintExpectedVersion,
+                  'complaintExpectedVersion',
+                  1,
+                  1_000_000,
+                ),
+                evidence: jsonObject(body.evidence ?? {}, 'evidence'),
+                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'capa:read') };
+          }
+          const capaAction = /^\/api\/v1\/capas\/([0-9a-f-]+)\/actions$/u.exec(request.pathname);
+          if (request.method === 'POST' && capaAction) {
+            const body = objectBody(request.body);
+            allow(body, [
+              'actionType',
+              'description',
+              'ownerId',
+              'dueAt',
+              'expectedVersion',
+              'idempotencyKey',
+            ]);
+            const grant = authorizeQuery(context, 'capa:manage', Object.keys(body));
+            const actionType = string(body.actionType, 'actionType');
+            if (!['CORRECTIVE', 'PREVENTIVE'].includes(actionType))
+              throw new DomainError('invalid_request', 'actionType is unsupported');
+            const result = await dependencies.complaints.addCapaAction(
+              uuid(capaAction[1], 'capaId'),
+              {
+                actionType: actionType as 'CORRECTIVE' | 'PREVENTIVE',
+                description: string(body.description, 'description'),
+                ownerId: uuid(body.ownerId, 'ownerId'),
+                dueAt: timestamp(body.dueAt, 'dueAt'),
+                expectedVersion: integer(body.expectedVersion, 'expectedVersion', 1, 1_000_000),
+                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'capa:read') };
+          }
+          const capaActionComplete = /^\/api\/v1\/capa-actions\/([0-9a-f-]+)\/complete$/u.exec(
+            request.pathname,
+          );
+          if (request.method === 'POST' && capaActionComplete) {
+            const body = objectBody(request.body);
+            allow(body, ['completedAt', 'evidence', 'expectedCapaVersion', 'idempotencyKey']);
+            const grant = authorizeQuery(context, 'capa:manage', Object.keys(body));
+            const result = await dependencies.complaints.completeCapaAction(
+              uuid(capaActionComplete[1], 'capaActionId'),
+              {
+                completedAt: timestamp(body.completedAt, 'completedAt'),
+                evidence: jsonObject(body.evidence, 'evidence'),
+                expectedCapaVersion: integer(
+                  body.expectedCapaVersion,
+                  'expectedCapaVersion',
+                  1,
+                  1_000_000,
+                ),
+                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'capa:read') };
+          }
+          const capaClose = /^\/api\/v1\/capas\/([0-9a-f-]+)\/close$/u.exec(request.pathname);
+          if (request.method === 'POST' && capaClose) {
+            const body = objectBody(request.body);
+            allow(body, ['expectedVersion', 'reason', 'evidence', 'idempotencyKey']);
+            const grant = authorizeQuery(context, 'capa:manage', Object.keys(body));
+            const result = await dependencies.complaints.closeCapa(
+              uuid(capaClose[1], 'capaId'),
+              {
+                expectedVersion: integer(body.expectedVersion, 'expectedVersion', 1, 1_000_000),
+                reason: string(body.reason, 'reason'),
+                evidence: jsonObject(body.evidence, 'evidence'),
+                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'capa:read') };
+          }
+          const capaVerify = /^\/api\/v1\/capas\/([0-9a-f-]+)\/verify$/u.exec(request.pathname);
+          if (request.method === 'POST' && capaVerify) {
+            const body = objectBody(request.body);
+            allow(body, [
+              'verifiedAt',
+              'standard',
+              'sampleScope',
+              'observationUntil',
+              'result',
+              'evidence',
+              'expectedVersion',
+              'complaintExpectedVersion',
+              'idempotencyKey',
+            ]);
+            const grant = authorizeQuery(context, 'capa:verify', Object.keys(body));
+            const verificationResult = string(body.result, 'result');
+            if (!['PASSED', 'FAILED'].includes(verificationResult))
+              throw new DomainError('invalid_request', 'result is unsupported');
+            const result = await dependencies.complaints.verifyCapa(
+              uuid(capaVerify[1], 'capaId'),
+              {
+                verifiedAt: timestamp(body.verifiedAt, 'verifiedAt'),
+                standard: string(body.standard, 'standard'),
+                sampleScope: string(body.sampleScope, 'sampleScope'),
+                observationUntil: timestamp(body.observationUntil, 'observationUntil'),
+                result: verificationResult as 'PASSED' | 'FAILED',
+                evidence: jsonObject(body.evidence, 'evidence'),
+                expectedVersion: integer(body.expectedVersion, 'expectedVersion', 1, 1_000_000),
+                complaintExpectedVersion: integer(
+                  body.complaintExpectedVersion,
+                  'complaintExpectedVersion',
+                  1,
+                  1_000_000,
+                ),
+                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
+              },
+              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+              correlationId,
+            );
+            return { statusCode: 201, body: mutationDto(result, context, 'capa:read') };
           }
         }
         if (dependencies.collections) {

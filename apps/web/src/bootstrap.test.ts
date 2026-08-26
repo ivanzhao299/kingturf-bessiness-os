@@ -346,6 +346,7 @@ it.each([
     ['overview', 'operations-workspace', 'planning-production'],
   ],
   ['质量检验员', ['quality:inspect'], ['overview', 'operations-workspace', 'quality-warehouse']],
+  ['客诉协调员', ['complaint:triage'], ['overview', 'operations-workspace', 'quality-warehouse']],
   ['仓库调拨员', ['inventory:move'], ['overview', 'operations-workspace', 'planning-production']],
   ['物流跟踪员', ['shipment:track'], ['overview', 'operations-workspace', 'delivery-evidence']],
   ['权限管理员', ['authorization:manage'], ['overview', 'governance']],
@@ -366,6 +367,7 @@ it('gives every production atomic role at least one permission-visible applicati
     '../../../packages/database/migrations/0050_shipment_release_logistics_pod.sql',
     '../../../packages/database/migrations/0052_platform_read_permissions.sql',
     '../../../packages/database/migrations/0053_collections_legal_evidence.sql',
+    '../../../packages/database/migrations/0054_complaint_ncr_capa.sql',
   ];
   const rolePermissions = new Map<string, Set<string>>();
   for (const path of migrationFiles) {
@@ -379,7 +381,7 @@ it('gives every production atomic role at least one permission-visible applicati
       rolePermissions.set(role, permissions);
     }
   }
-  expect(rolePermissions.size).toBe(47);
+  expect(rolePermissions.size).toBe(52);
   const rolesWithoutRoutes = [...rolePermissions]
     .filter(([, permissions]) => visibleAppRoutes(permissions).size === 0)
     .map(([role]) => role);
@@ -1744,5 +1746,53 @@ describe('web bootstrap', () => {
     expect(workspace.textContent).toContain('申请法务移交');
     expect(workspace.textContent).not.toContain('受理法务移交');
     expect(workspace.textContent).not.toContain('生成债权证据包');
+  });
+
+  it('renders the complaint queue as a Chinese business ledger with governed batch triage', async () => {
+    const commercialApi = {
+      listOpportunities: vi.fn().mockResolvedValue([]),
+      list: vi.fn().mockImplementation((path: string) =>
+        Promise.resolve(
+          path === '/api/v1/complaints'
+            ? [
+                {
+                  id: 'complaint-1',
+                  complaint_number: 'CMP-2026-001',
+                  customerName: '华北体育工程',
+                  severity: 'MAJOR',
+                  state: 'REPORTED',
+                  version: 1,
+                  closure_due_at: '2026-09-01T08:00:00Z',
+                  overdue: false,
+                },
+              ]
+            : [],
+        ),
+      ),
+      submit: vi.fn().mockResolvedValue({ requested: 1, succeeded: 1 }),
+      uploadCtrAttachment: vi.fn().mockResolvedValue({}),
+      command: vi.fn().mockResolvedValue({}),
+    };
+    const controller = new CommercialController(
+      commercialApi,
+      new Set(['complaint:read', 'complaint:triage', 'complaint:assign']),
+    );
+    controller.employees = [
+      { id: 'employee-1', employeeNumber: 'Q-001', displayName: '质量调查员', active: true },
+    ];
+    await controller.load();
+    const workspace = commercialWorkspaceStructure(
+      'desktop',
+      false,
+      controller,
+    ) as unknown as RenderedElement;
+    expect(workspace.findByClass('complaint-ledger')).toHaveLength(1);
+    expect(workspace.textContent).toContain('客户投诉与整改闭环');
+    expect(workspace.textContent).toContain('CMP-2026-001');
+    expect(workspace.textContent).toContain('重大');
+    expect(workspace.textContent).toContain('待分诊');
+    expect(workspace.textContent).toContain('批量分派');
+    expect(workspace.textContent).not.toContain('MAJOR');
+    expect(workspace.textContent).not.toContain('REPORTED');
   });
 });

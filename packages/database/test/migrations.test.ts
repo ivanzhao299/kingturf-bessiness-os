@@ -24,7 +24,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0054_complaint_ncr_capa.sql');
+    expect(ordered.at(-1)).toBe('0056_complaint_sla_policy_permissions.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
@@ -685,10 +685,15 @@ describe('identity and authorization migration', () => {
     expect(sql).not.toContain("('KT_EXECUTIVE_VIEWER','collection:manage')");
   });
   it('adds complaint, NCR, CAPA, independent verification, and atomic quality roles', async () => {
-    const sql = await readFile(
+    const foundation = await readFile(
       join(process.cwd(), 'migrations/0054_complaint_ncr_capa.sql'),
       'utf8',
     );
+    const hardening = await readFile(
+      join(process.cwd(), 'migrations/0055_complaint_ncr_capa_hardening.sql'),
+      'utf8',
+    );
+    const sql = `${foundation}\n${hardening}`;
     for (const invariant of [
       'CREATE TABLE customer_complaints',
       'CREATE TABLE customer_complaint_events',
@@ -698,6 +703,14 @@ describe('identity and authorization migration', () => {
       'CREATE TABLE capa_actions',
       'CREATE TABLE capa_action_completions',
       'CREATE TABLE capa_verifications',
+      'CREATE TABLE complaint_batch_commands',
+      'CREATE FUNCTION validate_capa_event',
+      'complaint order must belong to customer',
+      'NCR requires investigating complaint',
+      "previous='TRIAGED' AND NEW.state NOT IN('INVESTIGATING','REJECTED')",
+      'CAPA requires dispositioned NCR and NCR_OPEN complaint',
+      'CAPA readiness requires completed actions',
+      'CAPA verification requires all actions complete and ready state',
       'major complaint closure requires verified CAPA',
       'major NCR investigator cannot approve own disposition',
       'CAPA action owner cannot verify own action',
@@ -710,5 +723,16 @@ describe('identity and authorization migration', () => {
     expect(sql).toContain("('KT_CAPA_OWNER','KT_CAPA_VERIFIER'");
     expect(sql).toContain("('KT_EXECUTIVE_VIEWER','complaint:read')");
     expect(sql).not.toContain("('KT_EXECUTIVE_VIEWER','complaint:close')");
+  });
+  it('adds atomic complaint SLA policy read and management capabilities', async () => {
+    const sql = await readFile(
+      join(process.cwd(), 'migrations/0056_complaint_sla_policy_permissions.sql'),
+      'utf8',
+    );
+    expect(sql).toContain("('complaint-sla:read'");
+    expect(sql).toContain("('complaint-sla:manage'");
+    expect(sql).toContain("('KT_COMPLAINT_REGISTRAR','complaint-sla:read')");
+    expect(sql).toContain("('KT_QUALITY_MANAGER','complaint-sla:manage')");
+    expect(sql).not.toContain("('KT_COMPLAINT_REGISTRAR','complaint-sla:manage')");
   });
 });

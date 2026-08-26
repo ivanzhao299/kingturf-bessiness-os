@@ -118,7 +118,20 @@ export type CommercialPermission =
   | 'quality:read'
   | 'quality:inspect'
   | 'quality:disposition'
-  | 'traceability:read';
+  | 'traceability:read'
+  | 'complaint:read'
+  | 'complaint:create'
+  | 'complaint:triage'
+  | 'complaint:assign'
+  | 'complaint:close'
+  | 'complaint-sla:read'
+  | 'complaint-sla:manage'
+  | 'ncr:read'
+  | 'ncr:manage'
+  | 'ncr:disposition'
+  | 'capa:read'
+  | 'capa:manage'
+  | 'capa:verify';
 export type Viewport = 'desktop' | 'tablet' | 'mobile';
 
 export type AppRoute =
@@ -344,6 +357,10 @@ export function visibleAppRoutes(permissions: ReadonlySet<string>): ReadonlySet<
       'quality-plan:',
       'traceability:',
       'shipment:',
+      'complaint:',
+      'complaint-sla:',
+      'ncr:',
+      'capa:',
     ])
   )
     routes.add('operations-workspace');
@@ -385,7 +402,17 @@ export function visibleAppRoutes(permissions: ReadonlySet<string>): ReadonlySet<
     ])
   )
     routes.add('planning-production');
-  if (hasPermissionPrefix(permissions, ['quality:', 'quality-plan:', 'traceability:']))
+  if (
+    hasPermissionPrefix(permissions, [
+      'quality:',
+      'quality-plan:',
+      'traceability:',
+      'complaint:',
+      'complaint-sla:',
+      'ncr:',
+      'capa:',
+    ])
+  )
     routes.add('quality-warehouse');
   if (hasPermissionPrefix(permissions, ['shipment:'])) routes.add('delivery-evidence');
   if (visibleGovernanceSurfaces(permissions).length > 0) routes.add('governance');
@@ -680,6 +707,10 @@ export function isCommercialPermission(item: string): item is CommercialPermissi
     'quality-plan:',
     'quality:',
     'traceability:',
+    'complaint:',
+    'complaint-sla:',
+    'ncr:',
+    'capa:',
     'shipment:',
     'collection:',
     'legal-case:',
@@ -888,6 +919,24 @@ const QUALITY_STAGE_LABELS: Readonly<Record<string, string>> = {
   INCOMING: '来料检验',
   IN_PROCESS: '过程检验',
   FINAL: '最终检验',
+};
+
+const COMPLAINT_STATE_LABELS: Readonly<Record<string, string>> = {
+  REPORTED: '待分诊',
+  TRIAGED: '已分诊',
+  INVESTIGATING: '调查中',
+  NCR_OPEN: '不合格处理中',
+  CAPA_ACTIVE: '整改中',
+  VERIFIED: '整改已验证',
+  CLOSED: '已关闭',
+  REJECTED: '已驳回',
+};
+
+const COMPLAINT_SEVERITY_LABELS: Readonly<Record<string, string>> = {
+  LOW: '一般',
+  MEDIUM: '较重',
+  MAJOR: '重大',
+  CRITICAL: '紧急',
 };
 
 const SHIPMENT_GATE_LABELS: Readonly<Record<string, string>> = {
@@ -1168,6 +1217,8 @@ export class CommercialController {
         ['quality-plan:read', '/api/v1/quality-plans'],
         ['quality:read', '/api/v1/quality-inspections'],
         ['traceability:read', '/api/v1/lot-traceability'],
+        ['complaint:read', '/api/v1/complaints'],
+        ['complaint-sla:read', '/api/v1/complaint-sla-policies'],
         ['shipment:read', '/api/v1/shipment-releases'],
         [
           this.permissions.has('collection:read') ? 'collection:read' : 'legal-case:read',
@@ -7185,7 +7236,8 @@ export function commercialWorkspaceStructure(
     controller &&
     (permissions.has('quality-plan:read') ||
       permissions.has('quality:read') ||
-      permissions.has('traceability:read'))
+      permissions.has('traceability:read') ||
+      permissions.has('complaint:read'))
   ) {
     const panel = el('section', 'quality-workbench');
     panel.setAttribute('data-testid', 'quality-workbench');
@@ -7229,6 +7281,293 @@ export function commercialWorkspaceStructure(
       ),
     );
     panel.append(qualitySummary);
+    if (permissions.has('complaint:read')) {
+      const complaints = controller.views.get('/api/v1/complaints') ?? [];
+      const slaPolicies = controller.views.get('/api/v1/complaint-sla-policies') ?? [];
+      const complaintPanel = el('article', 'quality-section complaint-ledger');
+      const complaintHead = el('div', 'panel-head');
+      complaintHead.append(el('h3', '', '客户投诉与整改闭环'));
+      const selected = new Map<string, Record<string, unknown>>();
+      if (
+        permissions.has('complaint:create') &&
+        slaPolicies.length &&
+        controller.customers.length
+      ) {
+        const createComplaint = el('button', 'primary', '＋ 登记投诉');
+        createComplaint.addEventListener('click', () => {
+          openForm(
+            workspace,
+            '登记客户投诉',
+            '选择已发布的服务时限策略后，系统自动计算响应、遏制、根因和关闭期限。',
+            [
+              { name: 'complaintNumber', label: '投诉单号', required: true },
+              {
+                name: 'customerId',
+                label: '客户',
+                type: 'select',
+                required: true,
+                options: controller.customers.map((customer) => ({
+                  value: customer.id,
+                  label: customer.name ?? customer.customerNumber ?? '未命名客户',
+                })),
+              },
+              {
+                name: 'slaPolicyVersionId',
+                label: '投诉等级与处理时限',
+                type: 'select',
+                required: true,
+                options: slaPolicies.map((policy) => ({
+                  value: String(policy.id),
+                  label: `${COMPLAINT_SEVERITY_LABELS[recordText(policy, 'severity', 'severity')] ?? '未分级'} · ${recordText(policy, 'policyCode', 'policy_code')} 第 ${recordText(policy, 'version', 'version')} 版`,
+                })),
+              },
+              {
+                name: 'channel',
+                label: '受理渠道',
+                type: 'select',
+                required: true,
+                options: [
+                  { value: 'CUSTOMER_SERVICE', label: '客户服务' },
+                  { value: 'SALES', label: '销售反馈' },
+                  { value: 'EMAIL', label: '电子邮件' },
+                  { value: 'PHONE', label: '电话' },
+                  { value: 'ONSITE', label: '现场' },
+                  { value: 'OTHER', label: '其他' },
+                ],
+              },
+              { name: 'defectCategory', label: '问题分类', required: true, value: 'OTHER' },
+              { name: 'occurredAt', label: '问题发生时间', type: 'datetime-local', required: true },
+              { name: 'reportedAt', label: '客户反馈时间', type: 'datetime-local', required: true },
+              { name: 'description', label: '问题描述', type: 'textarea', required: true },
+              { name: 'customerRequest', label: '客户诉求', type: 'textarea', required: true },
+              { name: 'customerReference', label: '客户凭证编号', required: true },
+            ],
+            '确认登记',
+            async (values) => {
+              const policy = slaPolicies.find(
+                (item) => String(item.id) === values.slaPolicyVersionId,
+              );
+              if (!policy) throw new Error('所选投诉处理时限策略不可用');
+              await controller.submit('/api/v1/complaints', {
+                complaintNumber: values.complaintNumber,
+                customerId: values.customerId,
+                slaPolicyVersionId: values.slaPolicyVersionId,
+                channel: values.channel,
+                defectCategory: values.defectCategory,
+                severity: recordText(policy, 'severity', 'severity'),
+                occurredAt: new Date(values.occurredAt ?? '').toISOString(),
+                reportedAt: new Date(values.reportedAt ?? '').toISOString(),
+                description: values.description,
+                customerRequest: values.customerRequest,
+                initialSnapshot: { customerReference: values.customerReference },
+                idempotencyKey: requestId(),
+              });
+              await refresh();
+            },
+          );
+        });
+        complaintHead.append(createComplaint);
+      }
+      if (permissions.has('complaint-sla:manage')) {
+        const publishPolicy = el('button', 'secondary', '发布处理时限');
+        publishPolicy.addEventListener('click', () => {
+          openForm(
+            workspace,
+            '发布投诉处理时限',
+            '时限按投诉等级独立发布；新版不会修改历史投诉使用的策略。',
+            [
+              { name: 'policyCode', label: '策略编码', required: true },
+              { name: 'version', label: '版本', type: 'number', required: true, value: '1' },
+              {
+                name: 'severity',
+                label: '投诉等级',
+                type: 'select',
+                required: true,
+                options: [
+                  { value: 'LOW', label: '一般' },
+                  { value: 'MEDIUM', label: '较重' },
+                  { value: 'MAJOR', label: '重大' },
+                  { value: 'CRITICAL', label: '紧急' },
+                ],
+              },
+              { name: 'responseHours', label: '首次响应（小时）', type: 'number', required: true },
+              {
+                name: 'containmentHours',
+                label: '遏制措施（小时）',
+                type: 'number',
+                required: true,
+              },
+              { name: 'rootCauseHours', label: '根因确认（小时）', type: 'number', required: true },
+              { name: 'closureHours', label: '闭环期限（小时）', type: 'number', required: true },
+              { name: 'effectiveAt', label: '生效时间', type: 'datetime-local', required: true },
+            ],
+            '确认发布',
+            async (values) => {
+              await controller.submit('/api/v1/complaint-sla-policies', {
+                policyCode: values.policyCode,
+                version: Number(values.version),
+                severity: values.severity,
+                responseHours: Number(values.responseHours),
+                containmentHours: Number(values.containmentHours),
+                rootCauseHours: Number(values.rootCauseHours),
+                closureHours: Number(values.closureHours),
+                effectiveAt: new Date(values.effectiveAt ?? '').toISOString(),
+              });
+              await refresh();
+            },
+          );
+        });
+        complaintHead.append(publishPolicy);
+      }
+      if (
+        permissions.has('complaint:triage') &&
+        permissions.has('complaint:assign') &&
+        controller.employees.length
+      ) {
+        const batch = el('button', 'primary', '批量分派');
+        batch.disabled = true;
+        batch.addEventListener('click', () => {
+          openForm(
+            workspace,
+            '批量分派投诉',
+            `已选择 ${String(selected.size)} 条待分诊投诉。系统会逐条校验权限和版本，失败项不会影响其他记录。`,
+            [
+              {
+                name: 'assignedTo',
+                label: '调查负责人',
+                type: 'select',
+                required: true,
+                options: controller.employees.map((employee) => ({
+                  value: employee.id,
+                  label: `${employee.displayName ?? '未命名员工'} · ${employee.employeeNumber ?? '无工号'}`,
+                })),
+              },
+              { name: 'reason', label: '分派说明', type: 'textarea', required: true },
+            ],
+            '确认分派',
+            async (values) => {
+              await controller.submit('/api/v1/complaints/batch-triage', {
+                batchKey: requestId(),
+                items: [...selected.values()].map((item) => ({
+                  id: item.id,
+                  expectedVersion: item.version,
+                  assignedTo: values.assignedTo,
+                  reason: values.reason,
+                })),
+              });
+              await refresh();
+            },
+          );
+        });
+        complaintHead.append(batch);
+        complaintPanel.addEventListener('change', () => {
+          batch.disabled = selected.size === 0;
+          batch.textContent = selected.size ? `批量分派（${String(selected.size)}）` : '批量分派';
+        });
+      }
+      complaintPanel.append(complaintHead);
+      const tableWrap = el('div', 'governance-table-wrap complaint-table-wrap');
+      const table = el('table', 'governance-table complaint-table');
+      const head = el('thead');
+      const headRow = el('tr');
+      for (const label of [
+        '选择',
+        '投诉单号',
+        '客户',
+        '等级',
+        '状态',
+        '负责人',
+        '关闭期限',
+        '操作',
+      ])
+        headRow.append(el('th', '', label));
+      head.append(headRow);
+      const body = el('tbody');
+      for (const complaint of complaints) {
+        const row = el('tr');
+        const id = recordText(complaint, 'id', 'id');
+        const state = recordText(complaint, 'state', 'state');
+        const selectCell = el('td');
+        if (
+          state === 'REPORTED' &&
+          permissions.has('complaint:triage') &&
+          permissions.has('complaint:assign')
+        ) {
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.className = 'record-select';
+          checkbox.setAttribute(
+            'aria-label',
+            `选择投诉 ${recordText(complaint, 'complaintNumber', 'complaint_number')}`,
+          );
+          checkbox.addEventListener('change', () => {
+            if (checkbox.checked) selected.set(id, complaint);
+            else selected.delete(id);
+            complaintPanel.dispatchEvent(new Event('change'));
+          });
+          selectCell.append(checkbox);
+        } else selectCell.textContent = '—';
+        const due = recordText(complaint, 'closureDueAt', 'closure_due_at');
+        const assigneeId = recordText(complaint, 'assignedTo', 'assigned_to');
+        const assignee = controller.employees.find((employee) => employee.id === assigneeId);
+        const actionCell = el('td');
+        const command = (action: 'investigate' | 'close', label: string, description: string) => {
+          const button = el('button', action === 'close' ? 'primary' : 'secondary', label);
+          button.addEventListener('click', () => {
+            openForm(
+              workspace,
+              label,
+              description,
+              [
+                { name: 'reason', label: '处理说明', type: 'textarea', required: true },
+                { name: 'evidenceReference', label: '证据编号', required: true },
+              ],
+              `确认${label}`,
+              async (values) => {
+                await controller.submit(`/api/v1/complaints/${id}/${action}`, {
+                  expectedVersion: complaint.version,
+                  reason: values.reason,
+                  evidence: { reference: values.evidenceReference },
+                  idempotencyKey: requestId(),
+                });
+                await refresh();
+              },
+            );
+          });
+          actionCell.append(button);
+        };
+        if (state === 'TRIAGED' && permissions.has('complaint:triage'))
+          command('investigate', '开始调查', '确认责任人已接单，并填写启动调查的依据。');
+        if (state === 'VERIFIED' && permissions.has('complaint:close'))
+          command('close', '关闭投诉', '关闭前请确认整改验证证据和客户反馈已完整归档。');
+        if (!actionCell.children.length) actionCell.textContent = '—';
+        row.append(
+          selectCell,
+          el('td', '', recordText(complaint, 'complaintNumber', 'complaint_number')),
+          el('td', '', recordText(complaint, 'customerName', 'customer_name')),
+          el(
+            'td',
+            '',
+            COMPLAINT_SEVERITY_LABELS[recordText(complaint, 'severity', 'severity')] ?? '未分级',
+          ),
+          el('td', '', COMPLAINT_STATE_LABELS[state] ?? '状态待确认'),
+          el('td', '', assignee?.displayName ?? '待分派'),
+          el(
+            'td',
+            recordText(complaint, 'overdue', 'overdue') === 'true' ? 'danger-note' : '',
+            due ? new Date(due).toLocaleDateString('zh-CN') : '—',
+          ),
+          actionCell,
+        );
+        body.append(row);
+      }
+      table.append(head, body);
+      tableWrap.append(table);
+      complaintPanel.append(tableWrap);
+      if (!complaints.length)
+        complaintPanel.append(el('p', 'pipeline-empty', '当前没有可见的客户投诉。'));
+      panel.append(complaintPanel);
+    }
     const planPanel = el('article', 'quality-section quality-plans');
     planPanel.append(el('h3', '', '检验计划'));
     if (permissions.has('quality-plan:manage')) {
@@ -7871,10 +8210,15 @@ export const createFetchCommercialApi = (token: string): CommercialApi => ({
     return response.items;
   },
   async list(path) {
-    if (path !== '/api/v1/ar-open-items' && path !== '/api/v1/bank-payments')
+    if (
+      path !== '/api/v1/ar-open-items' &&
+      path !== '/api/v1/bank-payments' &&
+      path !== '/api/v1/complaints'
+    )
       return (await json<{ items: readonly Record<string, unknown>[] }>(path, token)).items;
     const items: Record<string, unknown>[] = [];
     let cursor: string | null = null;
+    const visitedCursors = new Set<string>();
     do {
       const query = new URLSearchParams({ limit: '100' });
       if (cursor) query.set('cursor', cursor);
@@ -7883,7 +8227,10 @@ export const createFetchCommercialApi = (token: string): CommercialApi => ({
         nextCursor: string | null;
       }>(`${path}?${query.toString()}`, token);
       items.push(...page.items);
+      if (page.nextCursor && visitedCursors.has(page.nextCursor))
+        throw new Error('服务器返回了重复分页游标，已停止加载以避免重复数据');
       cursor = page.nextCursor;
+      if (cursor) visitedCursors.add(cursor);
     } while (cursor);
     return items;
   },
