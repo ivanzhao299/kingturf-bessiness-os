@@ -2479,13 +2479,31 @@ button {
 }
 
 /* KT-UI-PROD-09: persisted operational range filters and user-controlled field scope. */
+.workspace-list-tools {
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  min-width: 0;
+}
+
+.workspace-list-tools > * {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.workspace-list-tools > .filter-search:first-child {
+  grid-column: span 2;
+}
+
+.workspace-list-tools .workspace-list-count {
+  width: auto;
+}
+
 .register-range-filter {
-  width: 138px;
-  min-width: 126px;
+  width: 100%;
 }
 
 .register-range-filter[type='number'] {
-  width: 118px;
+  width: 100%;
 }
 
 .record-register.is-key-fields .register-optional-field {
