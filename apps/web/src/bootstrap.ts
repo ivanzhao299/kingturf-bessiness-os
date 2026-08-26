@@ -8651,7 +8651,7 @@ const registerProfile = (list: HTMLElement): RegisterProfile => {
       headers: ['风险事项', '风险等级与敞口', '责任人与期限', '操作'],
       detailLabels: ['风险事项', '等级与敞口', '责任与期限', '处置进展'],
     };
-  if (list.classList.contains('production-order-grid'))
+  if (list.classList.contains('production-order-grid') && !list.classList.contains('shipment-grid'))
     return {
       label: '生产工单台账',
       headers: ['工单与产品', '生产状态与数量', '计划与车间', '操作'],

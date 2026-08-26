@@ -129,6 +129,7 @@ it('uses module-specific register columns, structured detail fields and business
   expect(source).toContain("label: '生产工单台账'");
   expect(source).toContain("headers: ['工单与产品', '生产状态与数量', '计划与车间', '操作']");
   expect(source).toContain("label: '交付任务台账'");
+  expect(source).toContain("!list.classList.contains('shipment-grid')");
   expect(source).toContain("['status', '按状态排序']");
   expect(source).toContain("el('dl', 'record-detail-fields')");
   expect(source).toContain('sourceItems.length === 0');
