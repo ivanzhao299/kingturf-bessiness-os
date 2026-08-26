@@ -103,6 +103,8 @@ it('provides product-grade register controls for high-frequency business records
   expect(source).toContain("amountFrom.placeholder = '最低金额'");
   expect(source).toContain("['complete', '完整字段']");
   expect(source).toContain("['key', '重点字段']");
+  expect(source).toContain("new URLSearchParams({ limit: '100' })");
+  expect(source).toContain('cursor = page.nextCursor');
 });
 
 it('uses a smooth two-level sidebar with an icon-only collapse control', () => {

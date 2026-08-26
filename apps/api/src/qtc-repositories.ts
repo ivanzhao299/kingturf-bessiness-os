@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 /* eslint-disable @typescript-eslint/no-non-null-assertion -- INSERT/aggregate RETURNING rows are transaction invariants. */
 import { canonicalize, DomainError, type Actor, type ScopeAnchor } from '@kingturf/domain';
 import type { Database, SqlClient } from '@kingturf/database';
-import type { DataScope, JsonObject } from '@kingturf/types';
+import type { DataScope, JsonObject, OperationalListFilter, Page } from '@kingturf/types';
 
 type Db = SqlClient & Pick<Database, 'transaction'>;
 type Context = Readonly<{
@@ -183,6 +183,57 @@ export class PostgresQuoteToCashRepository {
         ...secured.values,
       ])
     ).rows.map((r) => r.item);
+  }
+
+  public async listOperationalPage(
+    view: 'ar' | 'payments',
+    filter: OperationalListFilter,
+    context: Context,
+  ): Promise<Page<JsonObject>> {
+    const secured = scope(context, 'c', 2);
+    const values: unknown[] = [context.actor.companyId, ...secured.values];
+    const add = (value: unknown): string => {
+      values.push(value);
+      return `$${String(values.length)}`;
+    };
+    const clauses = [`${view === 'ar' ? 'b' : 'p'}.tenant_id=$1`, secured.sql];
+    const dateColumn = view === 'ar' ? 'b.due_at' : 'p.received_at';
+    const amountColumn = view === 'ar' ? 'b.remaining_amount' : 'p.remaining_amount';
+    if (filter.query) {
+      const parameter = add(`%${filter.query}%`);
+      clauses.push(
+        view === 'ar'
+          ? `(d.document_number ILIKE ${parameter} OR c.name ILIKE ${parameter})`
+          : `(p.bank_reference ILIKE ${parameter} OR c.name ILIKE ${parameter})`,
+      );
+    }
+    if (filter.from) clauses.push(`${dateColumn}>=${add(filter.from)}::timestamptz`);
+    if (filter.to) clauses.push(`${dateColumn}<=${add(filter.to)}::timestamptz`);
+    if (filter.minAmount) clauses.push(`${amountColumn}>=${add(filter.minAmount)}::numeric`);
+    if (filter.maxAmount) clauses.push(`${amountColumn}<=${add(filter.maxAmount)}::numeric`);
+    if (filter.state === 'OPEN') clauses.push(`${amountColumn}>0`);
+    if (filter.state === 'CLEARED') clauses.push(`${amountColumn}=0`);
+    if (filter.state === 'OVERDUE')
+      clauses.push(view === 'ar' ? 'b.remaining_amount>0 AND b.due_at<now()' : 'FALSE');
+    if (filter.cursor) {
+      const parameter = add(filter.cursor);
+      clauses.push(
+        view === 'ar'
+          ? `(b.due_at,b.id)>(SELECT x.due_at,x.id FROM ar_open_item_balances x WHERE x.tenant_id=$1 AND x.id=${parameter}::uuid)`
+          : `(p.received_at,p.id)>(SELECT x.received_at,x.id FROM bank_payment_balances x WHERE x.tenant_id=$1 AND x.id=${parameter}::uuid)`,
+      );
+    }
+    const limit = Math.min(Math.max(filter.limit ?? 50, 1), 100);
+    values.push(limit + 1);
+    const select =
+      view === 'ar'
+        ? `SELECT b.id,to_jsonb(b)||jsonb_build_object('documentNumber',d.document_number,'documentType',d.document_type,'salesOrderId',d.sales_order_id) AS item FROM ar_open_item_balances b JOIN ar_documents d ON d.id=b.ar_document_id AND d.tenant_id=b.tenant_id JOIN customers c ON c.id=b.customer_id AND c.tenant_id=b.tenant_id WHERE ${clauses.join(' AND ')} ORDER BY b.due_at,b.id LIMIT $${String(values.length)}`
+        : `SELECT p.id,to_jsonb(p) AS item FROM bank_payment_balances p JOIN customers c ON c.id=p.customer_id AND c.tenant_id=p.tenant_id WHERE ${clauses.join(' AND ')} ORDER BY p.received_at,p.id LIMIT $${String(values.length)}`;
+    const rows = (await this.db.query<{ id: string; item: JsonObject }>(select, values)).rows;
+    return {
+      items: rows.slice(0, limit).map((row) => row.item),
+      nextCursor: rows.length > limit ? (rows[limit - 1]?.id ?? null) : null,
+    };
   }
 
   public evaluateCredit(

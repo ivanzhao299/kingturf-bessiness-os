@@ -173,5 +173,88 @@ describe('JTF-P1-E11..E17 PostgreSQL ledger acceptance', () => {
         ])
       ).rows[0],
     ).toEqual({ n: 4 });
+    const clearedPayments = await qtc.listOperationalPage(
+      'payments',
+      {
+        limit: 10,
+        query: 'BANK-1',
+        from: '2026-08-01T00:00:00.000Z',
+        to: '2026-08-31T23:59:59.999Z',
+        minAmount: '0',
+        maxAmount: '0',
+        state: 'CLEARED',
+      },
+      context,
+    );
+    expect(clearedPayments).toMatchObject({
+      items: [{ id: payment.id, bank_reference: 'BANK-1', remaining_amount: 0 }],
+      nextCursor: null,
+    });
+  });
+
+  it('pages and filters receivables with stable tenant-scoped cursors', async () => {
+    const correlation = randomUUID();
+    const first = await qtc.postAr(
+      {
+        customerId: customer,
+        salesOrderId: null,
+        documentNumber: 'INV-PAGE-1',
+        documentType: 'INVOICE',
+        currency: 'CNY',
+        amount: '200',
+        dueAt: '2026-10-01T00:00:00.000Z',
+      },
+      'ar-page-1',
+      context,
+      correlation,
+    );
+    const second = await qtc.postAr(
+      {
+        customerId: customer,
+        salesOrderId: null,
+        documentNumber: 'INV-PAGE-2',
+        documentType: 'INVOICE',
+        currency: 'CNY',
+        amount: '300',
+        dueAt: '2026-10-02T00:00:00.000Z',
+      },
+      'ar-page-2',
+      context,
+      correlation,
+    );
+    const pageOne = await qtc.listOperationalPage(
+      'ar',
+      {
+        limit: 1,
+        query: 'INV-PAGE',
+        from: '2026-10-01T00:00:00.000Z',
+        to: '2026-10-31T23:59:59.999Z',
+        minAmount: '150',
+        maxAmount: '350',
+        state: 'OPEN',
+      },
+      context,
+    );
+    expect(pageOne.items).toHaveLength(1);
+    expect(pageOne.items[0]).toMatchObject({ id: first.id, documentNumber: 'INV-PAGE-1' });
+    expect(pageOne.nextCursor).toBe(first.id);
+    if (!pageOne.nextCursor) throw new Error('Expected a stable cursor for the second page');
+    const pageTwo = await qtc.listOperationalPage(
+      'ar',
+      { limit: 1, query: 'INV-PAGE', cursor: pageOne.nextCursor },
+      context,
+    );
+    expect(pageTwo.items).toHaveLength(1);
+    expect(pageTwo.items[0]).toMatchObject({ id: second.id, documentNumber: 'INV-PAGE-2' });
+    expect(pageTwo.nextCursor).toBeNull();
+    const hidden = await qtc.listOperationalPage(
+      'ar',
+      { limit: 10 },
+      {
+        ...context,
+        actor: { companyId: otherCompany, employeeId: outsider },
+      },
+    );
+    expect(hidden.items).toEqual([]);
   });
 });

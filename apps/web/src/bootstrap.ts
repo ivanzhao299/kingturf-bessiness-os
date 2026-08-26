@@ -7871,7 +7871,21 @@ export const createFetchCommercialApi = (token: string): CommercialApi => ({
     return response.items;
   },
   async list(path) {
-    return (await json<{ items: readonly Record<string, unknown>[] }>(path, token)).items;
+    if (path !== '/api/v1/ar-open-items' && path !== '/api/v1/bank-payments')
+      return (await json<{ items: readonly Record<string, unknown>[] }>(path, token)).items;
+    const items: Record<string, unknown>[] = [];
+    let cursor: string | null = null;
+    do {
+      const query = new URLSearchParams({ limit: '100' });
+      if (cursor) query.set('cursor', cursor);
+      const page = await json<{
+        items: readonly Record<string, unknown>[];
+        nextCursor: string | null;
+      }>(`${path}?${query.toString()}`, token);
+      items.push(...page.items);
+      cursor = page.nextCursor;
+    } while (cursor);
+    return items;
   },
   get: (path) => json<Record<string, unknown>>(path, token),
   submit: (path, payload, method = 'POST') =>

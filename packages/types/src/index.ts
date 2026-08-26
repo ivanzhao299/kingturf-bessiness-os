@@ -8,6 +8,28 @@ export type JsonValue = JsonPrimitive | JsonObject | readonly JsonValue[];
 export type JsonObject = Readonly<{ [key: string]: JsonValue }>;
 export type PageRequest = Readonly<{ limit?: number; cursor?: string }>;
 export type Page<T> = Readonly<{ items: readonly T[]; nextCursor: string | null }>;
+export type OperationalListFilter = PageRequest &
+  Readonly<{
+    query?: string;
+    from?: string;
+    to?: string;
+    minAmount?: Decimal;
+    maxAmount?: Decimal;
+    state?: 'OPEN' | 'CLEARED' | 'OVERDUE';
+  }>;
+export type BatchCommandItemResult = Readonly<{
+  id: Identifier;
+  status: 'SUCCEEDED' | 'REJECTED' | 'FAILED';
+  code?: string;
+  message?: string;
+}>;
+export type BatchCommandResult = Readonly<{
+  requested: number;
+  succeeded: number;
+  rejected: number;
+  failed: number;
+  items: readonly BatchCommandItemResult[];
+}>;
 export type VersionReference = Readonly<{ id: Identifier; version: number }>;
 export type LifecycleStatus = 'DRAFT' | 'PUBLISHED' | 'DELETED';
 export type EffectiveRange = Readonly<{ effectiveFrom: string; effectiveTo: string | null }>;
