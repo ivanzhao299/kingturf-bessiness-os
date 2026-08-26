@@ -1829,6 +1829,167 @@ button {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* KT-UI-PROD-05: two-level operational navigation and smooth rail states. */
+.app-shell,
+.sidebar {
+  transition:
+    grid-template-columns 220ms ease,
+    width 220ms ease,
+    padding 220ms ease;
+}
+.sidebar {
+  overflow-x: hidden;
+}
+.brand-lockup {
+  position: relative;
+}
+.sidebar-toggle {
+  display: grid;
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  min-height: 32px;
+  place-items: center;
+  border-radius: 8px;
+  padding: 0;
+  transition:
+    color 160ms ease,
+    background 160ms ease,
+    border-color 160ms ease,
+    transform 220ms ease;
+}
+.sidebar-toggle svg {
+  display: block;
+  width: 17px;
+  height: 17px;
+}
+.sidebar-toggle:focus-visible,
+.nav-parent:focus-visible,
+.nav-item:focus-visible {
+  outline: 3px solid rgb(213 243 101 / 42%);
+  outline-offset: 2px;
+}
+.nav-group {
+  margin-bottom: 7px;
+}
+.nav-parent,
+.nav-item {
+  width: 100%;
+  border: 0;
+  text-align: left;
+}
+.nav-parent {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) 18px;
+  gap: 10px;
+  align-items: center;
+  min-height: 42px;
+  border-radius: 9px;
+  padding: 0 11px;
+  color: #d5e2dc;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 720;
+  transition:
+    color 160ms ease,
+    background 160ms ease;
+}
+.nav-parent:hover,
+.nav-group.active-domain > .nav-parent {
+  color: #fff;
+  background: rgb(255 255 255 / 7%);
+}
+.nav-parent-chevron {
+  color: #7e9c8e;
+  font-size: 19px;
+  text-align: center;
+  transform: rotate(0deg);
+  transition: transform 180ms ease;
+}
+.nav-group.open > .nav-parent .nav-parent-chevron {
+  transform: rotate(90deg);
+}
+.nav-children {
+  display: grid;
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition:
+    max-height 220ms ease,
+    opacity 160ms ease;
+}
+.nav-group.open > .nav-children {
+  max-height: 360px;
+  opacity: 1;
+}
+.nav-children > .nav-item {
+  min-height: 37px;
+  margin: 1px 0 1px 10px;
+  width: calc(100% - 10px);
+  padding-left: 18px;
+  color: #aec2b8;
+  font-size: 12px;
+}
+.nav-children > .nav-item .nav-glyph {
+  width: 17px;
+  opacity: 0.78;
+}
+.nav-children > .nav-item.active {
+  color: #fff;
+  background: linear-gradient(90deg, rgb(53 111 84 / 86%), rgb(38 83 64 / 58%));
+  box-shadow: inset 2px 0 #d5f365;
+}
+@media (min-width: 640px) {
+  .sidebar-collapsed .brand-lockup {
+    gap: 12px;
+  }
+  .sidebar-collapsed .sidebar-toggle {
+    width: 42px;
+    min-width: 42px;
+  }
+  .sidebar-collapsed .nav-parent {
+    display: flex;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0;
+  }
+  .sidebar-collapsed .nav-parent .nav-text,
+  .sidebar-collapsed .nav-parent-chevron,
+  .sidebar-collapsed .nav-children {
+    display: none;
+  }
+  .sidebar-collapsed .nav-group.active-domain > .nav-parent {
+    color: #d5f365;
+    background: rgb(255 255 255 / 8%);
+    box-shadow: inset 2px 0 #d5f365;
+  }
+}
+@media (max-width: 639px) {
+  .mobile .nav-parent {
+    display: none;
+  }
+  .mobile .nav-children,
+  .mobile .nav-group.open > .nav-children {
+    display: contents;
+    opacity: 1;
+  }
+  .mobile .nav-children > .nav-item {
+    width: auto;
+    margin: 0;
+    padding: 0 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-shell,
+  .sidebar,
+  .sidebar-toggle,
+  .nav-parent,
+  .nav-parent-chevron,
+  .nav-children {
+    transition: none;
+  }
+}
 @media (max-width: 420px) {
   .readiness-heading {
     align-items: flex-start;

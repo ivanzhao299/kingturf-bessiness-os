@@ -8512,6 +8512,17 @@ export function installAppNavigation(shell: HTMLElement): void {
       item.classList.toggle('active', active);
       item.setAttribute('aria-current', active ? 'page' : 'false');
     }
+    for (const parent of Array.from(shell.querySelectorAll<HTMLElement>('[data-nav-routes]'))) {
+      const routes = (parent.dataset.navRoutes ?? '').split(/\s+/u);
+      const active = routes.includes(route);
+      const group = parent.parentElement;
+      parent.classList.toggle('active', active);
+      group?.classList.toggle('active-domain', active);
+      if (active) {
+        group?.classList.add('open');
+        parent.setAttribute('aria-expanded', 'true');
+      }
+    }
     for (const view of Array.from(shell.querySelectorAll<HTMLElement>('[data-route-view]'))) {
       const routes = (view.dataset.routeView ?? '').split(/\s+/u);
       view.hidden = !routes.includes(route);
@@ -8979,16 +8990,19 @@ export function createCrmShell(
   const brand = el('div', 'brand-lockup');
   brand.append(el('span', 'brand-mark', 'K'), el('div', 'brand', '金特夫'));
   brand.append(el('p', 'brand-caption', '企业经营管理系统'));
-  const sidebarToggle = el('button', 'sidebar-toggle', sidebarCollapsed ? '展开' : '收起');
+  const sidebarToggle = el('button', 'sidebar-toggle');
   sidebarToggle.type = 'button';
-  sidebarToggle.setAttribute('aria-label', sidebarCollapsed ? '展开左侧导航' : '收起左侧导航');
-  sidebarToggle.setAttribute('aria-expanded', String(!sidebarCollapsed));
+  const renderSidebarToggle = () => {
+    sidebarToggle.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${sidebarCollapsed ? 'm9 18 6-6-6-6' : 'm15 18-6-6 6-6'}"></path></svg>`;
+    sidebarToggle.setAttribute('aria-label', sidebarCollapsed ? '展开左侧导航' : '收起左侧导航');
+    sidebarToggle.setAttribute('title', sidebarCollapsed ? '展开导航' : '收起导航');
+    sidebarToggle.setAttribute('aria-expanded', String(!sidebarCollapsed));
+  };
+  renderSidebarToggle();
   sidebarToggle.addEventListener('click', () => {
     sidebarCollapsed = !sidebarCollapsed;
     renderSidebarState();
-    sidebarToggle.textContent = sidebarCollapsed ? '展开' : '收起';
-    sidebarToggle.setAttribute('aria-label', sidebarCollapsed ? '展开左侧导航' : '收起左侧导航');
-    sidebarToggle.setAttribute('aria-expanded', String(!sidebarCollapsed));
+    renderSidebarToggle();
     try {
       globalThis.localStorage.setItem('kingturf.sidebar.collapsed', String(sidebarCollapsed));
     } catch {
@@ -9004,11 +9018,40 @@ export function createCrmShell(
     typeof globalThis.location === 'undefined'
       ? 'overview'
       : appRouteFromHash(globalThis.location.hash);
-  const navGroup = (title: string, items: readonly [NavIconName, string, AppRoute][]) => {
+  const navGroup = (
+    title: string,
+    domainIcon: NavIconName,
+    items: readonly [NavIconName, string, AppRoute][],
+  ) => {
     const visibleItems = items.filter(([, , route]) => visibleRoutes.has(route));
     if (visibleItems.length === 0) return;
-    const group = el('section', 'nav-group');
-    group.append(el('p', 'nav-label', title));
+    const routes = visibleItems.map(([, , route]) => route);
+    const group = el(
+      'section',
+      `nav-group${routes.includes(currentRoute) ? ' open active-domain' : ''}`,
+    );
+    const childrenId = `nav-domain-${routes[0] ?? 'available'}`;
+    const parent = el('button', 'nav-parent');
+    parent.type = 'button';
+    parent.title = title;
+    parent.setAttribute('data-nav-routes', routes.join(' '));
+    parent.setAttribute('aria-controls', childrenId);
+    parent.setAttribute('aria-expanded', String(routes.includes(currentRoute)));
+    const parentIcon = el('span', 'nav-glyph');
+    parentIcon.append(navIcon(domainIcon));
+    parent.append(parentIcon, el('span', 'nav-text', title), el('span', 'nav-parent-chevron', '›'));
+    const children = el('div', 'nav-children');
+    children.id = childrenId;
+    parent.addEventListener('click', () => {
+      if (sidebarCollapsed) {
+        sidebarCollapsed = false;
+        renderSidebarState();
+        renderSidebarToggle();
+      }
+      const open = !group.classList.contains('open');
+      group.classList.toggle('open', open);
+      parent.setAttribute('aria-expanded', String(open));
+    });
     for (const [icon, label, route] of visibleItems) {
       const item = el('button', `nav-item${currentRoute === route ? ' active' : ''}`);
       item.title = label;
@@ -9020,28 +9063,29 @@ export function createCrmShell(
       const iconBox = el('span', 'nav-glyph');
       iconBox.append(navIcon(icon));
       item.append(iconBox, el('span', 'nav-text', label));
-      group.append(item);
+      children.append(item);
     }
+    group.append(parent, children);
     nav.append(group);
   };
-  navGroup('工作空间', [
+  navGroup('工作台', 'overview', [
     ['overview', '经营总览', 'overview'],
     ['sales', '销售工作台', 'sales-workspace'],
     ['operations', '运营工作台', 'operations-workspace'],
   ]);
-  navGroup('销售到回款', [
+  navGroup('销售管理', 'sales', [
     ['customers', '线索与客户', 'crm'],
     ['opportunities', '商机与技术需求', 'opportunity-ctr'],
     ['cost', '成本与报价', 'cost-quote'],
     ['contracts', '合同与订单', 'contract-order'],
     ['receivables', '应收与回款', 'ar-payment'],
   ]);
-  navGroup('履约协同', [
+  navGroup('履约管理', 'operations', [
     ['production', '计划与生产', 'planning-production'],
     ['quality', '质量与仓储', 'quality-warehouse'],
     ['delivery', '交付与证据', 'delivery-evidence'],
   ]);
-  navGroup('平台治理', [['governance', '系统管理与治理', 'governance']]);
+  navGroup('系统管理', 'governance', [['governance', '组织、权限与配置', 'governance']]);
   aside.append(nav);
   const sidebarFooter = el('div', 'sidebar-footer');
   sidebarFooter.append(el('span', 'online-dot'), el('span', '', '生产环境 · erp.kingturf.cn'));

@@ -99,6 +99,18 @@ it('provides product-grade register controls for high-frequency business records
   expect(styles).toContain('.record-register.is-compact');
 });
 
+it('uses a smooth two-level sidebar with an icon-only collapse control', () => {
+  const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+  const styles = readFileSync(new URL('./style.css', import.meta.url), 'utf8');
+  expect(source).toContain("const sidebarToggle = el('button', 'sidebar-toggle')");
+  expect(source).toContain("parent.setAttribute('data-nav-routes'");
+  expect(source).toContain("navGroup('销售管理', 'sales'");
+  expect(source).toContain("navGroup('履约管理', 'operations'");
+  expect(styles).toContain('KT-UI-PROD-05: two-level operational navigation');
+  expect(styles).toContain('.nav-parent-chevron');
+  expect(styles).toContain('.sidebar-collapsed .nav-children');
+});
+
 it('publishes durable operation state for loading, success and rejection feedback', () => {
   const attributes = new Map<string, string>();
   const target = {
