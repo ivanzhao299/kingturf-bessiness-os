@@ -34,6 +34,9 @@ Date: 2026-08-25 Asia/Shanghai
 | P5-A       | Complete | AR, payment, broken-promise and legal-intake queues are summarized and prioritized by urgency               |
 | P5-B       | Complete | Receivables sort by due date and reconciliation uses durable confirmation and rejection feedback            |
 | P5-C       | Complete | Commission and risk queues prioritize actionable records, translate rule evidence and expose next actions   |
+| P6-A       | Complete | Production, cost and MRP queues prioritize actionable work and expose accountable next actions              |
+| P6-B       | Complete | Procurement, quality, inventory and shipment queues summarize exceptions and translate operational codes    |
+| P6-C       | Complete | Cost, MRP, quality-plan and shipment decisions require explicit confirmation and traceable evidence         |
 
 P3-A was verified with a regression test for the shared operation-state contract plus the complete web lint,
 typecheck, 45-test and production-build gate. Authenticated production UAT remains a P9/P10 release condition;
@@ -55,6 +58,15 @@ the same permission-filtered API records already available to the session.
 P5-C orders commission work by payment, frozen and accrued action priority; orders risk work by severity;
 translates internal risk-rule codes into operational Chinese; and adds permission-filtered summary counts and
 explicit next-action guidance without changing immutable ledger or policy evidence.
+
+P6-A/P6-B order production execution, manufacturing cost, MRP proposals, quality disposition and shipment
+release work by operational urgency. Procurement and quality summaries surface pending admission, receipts,
+inspection and quarantine work; supply modes, inspection stages, quality states and shipment gate failures use
+daily Chinese business language instead of internal codes.
+
+P6-C moves manufacturing-cost approval, MRP release, quality-plan publication, shipment exception approval and
+warehouse release behind the shared confirmation lifecycle. Operators must now provide a reason and evidence
+reference for governed decisions; no production decision relies on a hard-coded test-channel marker.
 
 ## 128-hour execution plan
 

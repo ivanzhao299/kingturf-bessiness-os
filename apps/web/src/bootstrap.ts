@@ -858,6 +858,86 @@ export const commissionNextAction = (state: unknown): string => {
   );
 };
 
+const SUPPLY_MODE_LABELS: Readonly<Record<string, string>> = {
+  MAKE: '自制',
+  BUY: '采购',
+};
+
+const QUALITY_STAGE_LABELS: Readonly<Record<string, string>> = {
+  INCOMING: '来料检验',
+  IN_PROCESS: '过程检验',
+  FINAL: '最终检验',
+};
+
+const SHIPMENT_GATE_LABELS: Readonly<Record<string, string>> = {
+  contract: '合同签署',
+  credit: '客户信用',
+  payment: '发货前收款',
+  overdue: '逾期应收',
+  orderLink: '订单来源',
+  quality: '质量放行',
+  production: '生产完工',
+  cost: '成本核算',
+  inventory: '可用库存',
+};
+
+export const supplyModeLabel = (value: unknown): string => {
+  const code = textValue(value, '供应方式未设置');
+  return SUPPLY_MODE_LABELS[code] ?? code;
+};
+
+export const qualityStageLabel = (value: unknown): string => {
+  const code = textValue(value, '检验阶段未设置');
+  return QUALITY_STAGE_LABELS[code] ?? code;
+};
+
+export const shipmentGateLabel = (value: unknown): string => {
+  const code = textValue(value, '未知门禁');
+  return SHIPMENT_GATE_LABELS[code] ?? code;
+};
+
+export const operationsNextAction = (
+  domain: 'production' | 'cost' | 'mrp' | 'quality' | 'shipment',
+  state: unknown,
+): string => {
+  const code = textValue(state, 'UNKNOWN');
+  const actions: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+    production: {
+      DRAFT: '待计划员下达工单',
+      RELEASED: '待班组开工并按需领料',
+      IN_PROGRESS: '待报工、成品入库并完工确认',
+      COMPLETED: '待复核后关闭工单',
+      CLOSED: '工单已闭环',
+    },
+    cost: {
+      CALCULATED: '待成本审批人复核差异',
+      APPROVED: '成本核算已闭环',
+    },
+    mrp: {
+      PROPOSED: '待计划审批人决定',
+      APPROVED: '待释放到采购或生产执行',
+      RELEASED: '已进入采购或生产执行',
+      REJECTED: '已驳回，需重新计算或调整需求',
+    },
+    quality: {
+      OPEN: '待抽样并记录检验结果',
+      SAMPLED: '待补齐结果并完成检验',
+      COMPLETED: '待质量处置放行或拒收',
+      RELEASED: '批次已放行',
+      REJECTED: '批次已拒收',
+      CANCELLED: '检验已取消',
+    },
+    shipment: {
+      EXCEPTION_PENDING: '待独立审批人复核门禁例外',
+      READY: '门禁已通过，待仓库放行',
+      APPROVED: '例外已批准，待仓库放行',
+      RELEASED: '待登记承运发车与签收',
+      REJECTED: '例外已驳回，不得发货',
+    },
+  };
+  return actions[domain]?.[code] ?? '请核对当前状态和业务证据';
+};
+
 const businessStateLabel = (value: unknown, fallback = '状态受限'): string => {
   const code = textValue(value, fallback);
   return BUSINESS_STATE_LABELS[code] ?? code;
@@ -1513,7 +1593,18 @@ export function commercialWorkspaceStructure(
   if (controller && permissions.has('production:read')) {
     const panel = el('section', 'production-workbench');
     panel.setAttribute('data-testid', 'production-workbench');
-    const orders = controller.views.get('/api/v1/production-orders') ?? [];
+    const productionPriority: Readonly<Record<string, number>> = {
+      IN_PROGRESS: 0,
+      RELEASED: 1,
+      COMPLETED: 2,
+      DRAFT: 3,
+      CLOSED: 4,
+    };
+    const orders = [...(controller.views.get('/api/v1/production-orders') ?? [])].sort(
+      (left, right) =>
+        (productionPriority[recordText(left, 'state', 'state')] ?? 9) -
+        (productionPriority[recordText(right, 'state', 'state')] ?? 9),
+    );
     const refresh = async () => {
       await controller.load();
       status.textContent = controller.message;
@@ -1613,12 +1704,13 @@ export function commercialWorkspaceStructure(
           '',
           `${recordText(order, 'orderNumber', 'order_number')} · ${recordText(order, 'sku', 'sku')}`,
         ),
-        el('span', `ctr-state state-${state.toLowerCase()}`, state),
+        el('span', `ctr-state state-${state.toLowerCase()}`, businessStateLabel(state)),
         el(
           'p',
           '',
-          `计划 ${recordText(order, 'plannedQuantity', 'planned_quantity')} · ${recordText(order, 'plannedStartAt', 'planned_start_at')} → ${recordText(order, 'plannedDueAt', 'planned_due_at')}`,
+          `计划 ${recordText(order, 'plannedQuantity', 'planned_quantity')} · ${recordText(order, 'plannedStartAt', 'planned_start_at').slice(0, 10)} → ${recordText(order, 'plannedDueAt', 'planned_due_at').slice(0, 10)}`,
         ),
+        el('p', 'next-action-note', `下一步：${operationsNextAction('production', state)}`),
       );
       const flow = el('div', 'production-flow');
       for (const operation of operations) {
@@ -1987,7 +2079,13 @@ export function commercialWorkspaceStructure(
       }
     }
     const grid = el('div', 'production-order-grid');
-    for (const run of runs) {
+    const costPriority: Readonly<Record<string, number>> = { CALCULATED: 0, APPROVED: 1 };
+    for (const run of [...runs].sort(
+      (left, right) =>
+        (costPriority[recordText(left, 'state', 'state')] ?? 9) -
+        (costPriority[recordText(right, 'state', 'state')] ?? 9),
+    )) {
+      const runState = recordText(run, 'state', 'state');
       const card = el('article', 'production-order-card');
       card.append(
         el(
@@ -2005,22 +2103,30 @@ export function commercialWorkspaceStructure(
           '',
           `计划 ${recordText(run, 'planned_total', 'plannedTotal')} · 实际 ${recordText(run, 'actual_total', 'actualTotal')} · 差异 ${recordText(run, 'variance_total', 'varianceTotal')}`,
         ),
+        el('p', 'next-action-note', `下一步：${operationsNextAction('cost', runState)}`),
       );
-      if (
-        permissions.has('manufacturing-cost:approve') &&
-        recordText(run, 'state', 'state') === 'CALCULATED'
-      ) {
+      if (permissions.has('manufacturing-cost:approve') && runState === 'CALCULATED') {
         const approve = el('button', 'primary', '批准成本');
         approve.addEventListener('click', () => {
-          void (async () => {
-            await controller.submit(`/api/v1/production-cost-runs/${String(run.id)}/approve`, {
-              reason: '成本差异复核通过',
-              evidence: { channel: 'WEB-UAT' },
-              idempotencyKey: `APPROVE-${String(run.id)}`,
-            });
-            await controller.load();
-            status.textContent = controller.message;
-          })();
+          openForm(
+            workspace,
+            '批准制造成本',
+            '请确认计划与实际差异，并留下可追溯的复核依据。',
+            [
+              { name: 'reason', label: '审批理由', type: 'textarea', required: true },
+              { name: 'evidenceReference', label: '复核凭证编号', required: true },
+            ],
+            '确认批准',
+            async (values) => {
+              await controller.submit(`/api/v1/production-cost-runs/${String(run.id)}/approve`, {
+                reason: values.reason,
+                evidence: { reference: values.evidenceReference },
+                idempotencyKey: `APPROVE-${String(run.id)}-${String(values.evidenceReference)}`,
+              });
+              await controller.load();
+              status.textContent = controller.message;
+            },
+          );
         });
         card.append(approve);
       }
@@ -2146,17 +2252,34 @@ export function commercialWorkspaceStructure(
       });
       panel.append(button);
     }
+    const shipmentPriority: Readonly<Record<string, number>> = {
+      EXCEPTION_PENDING: 0,
+      READY: 1,
+      APPROVED: 2,
+      RELEASED: 3,
+      REJECTED: 4,
+    };
     const grid = el('div', 'production-order-grid');
-    for (const release of releases) {
+    for (const release of [...releases].sort(
+      (left, right) =>
+        (shipmentPriority[recordText(left, 'state', 'state')] ?? 9) -
+        (shipmentPriority[recordText(right, 'state', 'state')] ?? 9),
+    )) {
       const state = recordText(release, 'state', 'state');
       const snapshot = (release.gate_snapshot ?? release.gateSnapshot ?? {}) as Record<
         string,
         unknown
       >;
-      const failures = Array.isArray(snapshot.failures) ? snapshot.failures.join('、') : '无';
+      const failures = Array.isArray(snapshot.failures)
+        ? snapshot.failures.map(shipmentGateLabel).join('、')
+        : '无';
       const card = el('article', 'production-order-card');
       card.append(
-        el('h3', '', `${recordText(release, 'request_number', 'requestNumber')} · ${state}`),
+        el(
+          'h3',
+          '',
+          `${recordText(release, 'request_number', 'requestNumber')} · ${businessStateLabel(state)}`,
+        ),
         el(
           'p',
           '',
@@ -2168,43 +2291,49 @@ export function commercialWorkspaceStructure(
           `批次 ${recordText(release, 'lotNumber', 'lotNumber')} · 数量 ${recordText(release, 'requested_quantity', 'requestedQuantity')}`,
         ),
         el('p', failures === '无' ? 'success-note' : 'risk-note', `门禁未通过：${failures}`),
+        el('p', 'next-action-note', `下一步：${operationsNextAction('shipment', state)}`),
       );
-      const action = async (
-        path: string,
-        reason: string,
-        evidence: Record<string, unknown>,
-        key: string,
-      ) => {
-        await controller.submit(path, { reason, evidence, idempotencyKey: key });
-        await controller.load();
-        status.textContent = controller.message;
+      const openShipmentDecision = (path: string, title: string, confirmLabel: string) => {
+        openForm(
+          workspace,
+          title,
+          '该决定将写入不可变发货证据链，请复核门禁结果并填写审批依据。',
+          [
+            { name: 'reason', label: '决定理由', type: 'textarea', required: true },
+            { name: 'evidenceReference', label: '审批凭证编号', required: true },
+          ],
+          confirmLabel,
+          async (values) => {
+            await controller.submit(path, {
+              reason: values.reason,
+              evidence: { reference: values.evidenceReference },
+              idempotencyKey: `${recordText(release, 'request_number', 'requestNumber')}-${String(values.evidenceReference)}`,
+            });
+            await controller.load();
+            status.textContent = controller.message;
+          },
+        );
       };
       if (state === 'EXCEPTION_PENDING' && permissions.has('shipment:approve-exception')) {
         const approve = el('button', 'primary', '批准例外');
-        approve.addEventListener(
-          'click',
-          () =>
-            void action(
-              `/api/v1/shipment-releases/${String(release.id)}/approve-exception`,
-              '例外风险已复核',
-              { channel: 'WEB-UAT' },
-              `SHIP-EX-${String(release.id)}`,
-            ),
-        );
+        approve.addEventListener('click', () => {
+          openShipmentDecision(
+            `/api/v1/shipment-releases/${String(release.id)}/approve-exception`,
+            '批准发货例外',
+            '确认批准例外',
+          );
+        });
         card.append(approve);
       }
       if ((state === 'READY' || state === 'APPROVED') && permissions.has('shipment:release')) {
         const releaseButton = el('button', 'primary', '执行仓库放行');
-        releaseButton.addEventListener(
-          'click',
-          () =>
-            void action(
-              `/api/v1/shipment-releases/${String(release.id)}/release`,
-              '仓库复核后放行',
-              { channel: 'WEB-UAT' },
-              `SHIP-REL-${String(release.id)}`,
-            ),
-        );
+        releaseButton.addEventListener('click', () => {
+          openShipmentDecision(
+            `/api/v1/shipment-releases/${String(release.id)}/release`,
+            '执行仓库放行',
+            '确认仓库放行',
+          );
+        });
         card.append(releaseButton);
       }
       if (
@@ -6077,6 +6206,30 @@ export function commercialWorkspaceStructure(
       await controller.load();
       status.textContent = controller.message;
     };
+    const procurementSummary = el('div', 'production-summary');
+    procurementSummary.append(
+      el(
+        'div',
+        'metric-card',
+        `待准入供应商\n${String(suppliers.filter((item) => recordText(item, 'status', 'status') !== 'APPROVED').length)} 家`,
+      ),
+      el(
+        'div',
+        'metric-card',
+        `询价进行中\n${String(rfqs.filter((item) => !['CLOSED', 'CANCELLED'].includes(recordText(item, 'status', 'status'))).length)} 单`,
+      ),
+      el(
+        'div',
+        'metric-card',
+        `待收采购单\n${String(purchaseOrders.filter((item) => ['ISSUED', 'PARTIALLY_RECEIVED'].includes(recordText(item, 'status', 'status'))).length)} 单`,
+      ),
+      el(
+        'div',
+        'metric-card',
+        `待检库存\n${String(balances.filter((item) => recordText(item, 'qualityStatus', 'qualityStatus') === 'QUARANTINE').length)} 批`,
+      ),
+    );
+    panel.append(procurementSummary);
     const grid = el('div', 'procurement-grid');
     const supplierPanel = el('article', 'procurement-column supplier-register');
     supplierPanel.append(el('h3', '', '供应商与准入'));
@@ -6479,7 +6632,7 @@ export function commercialWorkspaceStructure(
       const balanceCard = el(
         'div',
         'procurement-card inventory-balance-card',
-        `${recordText(balance, 'sku', 'sku')} · 批次 ${recordText(balance, 'lotNumber', 'lotNumber')}\n${recordText(balance, 'locationCode', 'locationCode')} · 结存 ${recordText(balance, 'quantity', 'quantity')} · ${recordText(balance, 'qualityStatus', 'qualityStatus')} · ${String(movements.length)} 笔移动`,
+        `${recordText(balance, 'sku', 'sku')} · 批次 ${recordText(balance, 'lotNumber', 'lotNumber')}\n${recordText(balance, 'locationCode', 'locationCode')} · 结存 ${recordText(balance, 'quantity', 'quantity')} · ${businessStateLabel(recordText(balance, 'qualityStatus', 'qualityStatus'))} · ${String(movements.length)} 笔移动`,
       );
       if (permissions.has('inventory:move')) {
         const move = el('button', 'secondary', '领用 / 调整');
@@ -6742,7 +6895,7 @@ export function commercialWorkspaceStructure(
         el(
           'article',
           'mrp-policy-card',
-          `${recordText(policy, 'sku', 'sku')} · ${recordText(policy, 'makeOrBuy', 'make_or_buy')}\n安全库存 ${recordText(policy, 'safetyStock', 'safety_stock')} · MOQ ${recordText(policy, 'minimumOrderQuantity', 'minimum_order_quantity')} · 倍数 ${recordText(policy, 'orderMultiple', 'order_multiple')} · 提前 ${recordText(policy, 'leadTimeDays', 'lead_time_days')} 天`,
+          `${recordText(policy, 'sku', 'sku')} · ${supplyModeLabel(recordText(policy, 'makeOrBuy', 'make_or_buy'))}\n安全库存 ${recordText(policy, 'safetyStock', 'safety_stock')} · 最小批量 ${recordText(policy, 'minimumOrderQuantity', 'minimum_order_quantity')} · 批量倍数 ${recordText(policy, 'orderMultiple', 'order_multiple')} · 提前期 ${recordText(policy, 'leadTimeDays', 'lead_time_days')} 天`,
         ),
       );
     panel.append(policyGrid);
@@ -6763,8 +6916,18 @@ export function commercialWorkspaceStructure(
       const proposals = Array.isArray(latestRun.proposals)
         ? latestRun.proposals.map(recordValue)
         : [];
+      const proposalPriority: Readonly<Record<string, number>> = {
+        PROPOSED: 0,
+        APPROVED: 1,
+        RELEASED: 2,
+        REJECTED: 3,
+      };
       const proposalGrid = el('div', 'mrp-proposal-grid');
-      for (const proposal of proposals) {
+      for (const proposal of [...proposals].sort((left, right) => {
+        const leftState = recordText(left, 'effectiveState', 'effectiveState');
+        const rightState = recordText(right, 'effectiveState', 'effectiveState');
+        return (proposalPriority[leftState] ?? 9) - (proposalPriority[rightState] ?? 9);
+      })) {
         const explanation = recordValue(proposal.explanation),
           state = recordText(proposal, 'effectiveState', 'effectiveState'),
           card = el('article', `mrp-proposal-card ${proposal.frozen === true ? 'frozen' : ''}`);
@@ -6772,7 +6935,7 @@ export function commercialWorkspaceStructure(
           el(
             'strong',
             '',
-            `${recordText(proposal, 'sku', 'sku')} · ${recordText(proposal, 'proposalType', 'proposal_type')}`,
+            `${recordText(proposal, 'sku', 'sku')} · ${supplyModeLabel(recordText(proposal, 'proposalType', 'proposal_type'))}`,
           ),
           el('span', `ctr-state state-${state.toLowerCase()}`, businessStateLabel(state)),
           el(
@@ -6785,6 +6948,7 @@ export function commercialWorkspaceStructure(
             'mrp-formula',
             `毛需求 ${recordText(explanation, 'grossDemand', 'grossDemand')} + 安全库存 ${recordText(explanation, 'safetyStock', 'safetyStock')} − 可用库存 ${recordText(explanation, 'onHand', 'onHand')} − 在途 ${recordText(explanation, 'scheduledReceipts', 'scheduledReceipts')} = 净需求 ${recordText(explanation, 'netRequirement', 'netRequirement')}；按批量取整为 ${recordText(explanation, 'plannedQuantity', 'plannedQuantity')}`,
           ),
+          el('p', 'next-action-note', `下一步：${operationsNextAction('mrp', state)}`),
         );
         if (proposal.frozen === true)
           card.append(el('p', 'warning-note', '冻结窗口内：批准必须提供覆盖审批证据'));
@@ -6836,12 +7000,23 @@ export function commercialWorkspaceStructure(
         if (permissions.has('mrp:release') && state === 'APPROVED') {
           const release = el('button', 'primary', '释放到执行');
           release.addEventListener('click', () => {
-            void controller
-              .submit(`/api/v1/mrp-proposals/${String(proposal.id)}/release`, {
-                reason: '计划员从工作台释放',
-                evidence: { releasedAt: new Date().toISOString() },
-              })
-              .then(refresh);
+            openForm(
+              workspace,
+              '释放物料需求建议',
+              '释放后将进入采购或生产执行，请核对数量、日期和供应方式。',
+              [
+                { name: 'reason', label: '释放理由', type: 'textarea', required: true },
+                { name: 'evidenceReference', label: '计划凭证编号', required: true },
+              ],
+              '确认释放',
+              async (values) => {
+                await controller.submit(`/api/v1/mrp-proposals/${String(proposal.id)}/release`, {
+                  reason: values.reason,
+                  evidence: { reference: values.evidenceReference },
+                });
+                await refresh();
+              },
+            );
           });
           card.append(release);
         }
@@ -6876,6 +7051,30 @@ export function commercialWorkspaceStructure(
       await controller.load();
       status.textContent = controller.message;
     };
+    const qualitySummary = el('div', 'production-summary');
+    qualitySummary.append(
+      el(
+        'div',
+        'metric-card',
+        `待抽样\n${String(inspections.filter((item) => recordText(item, 'state', 'state') === 'OPEN').length)} 单`,
+      ),
+      el(
+        'div',
+        'metric-card',
+        `检验进行中\n${String(inspections.filter((item) => recordText(item, 'state', 'state') === 'SAMPLED').length)} 单`,
+      ),
+      el(
+        'div',
+        'metric-card',
+        `待质量处置\n${String(inspections.filter((item) => recordText(item, 'state', 'state') === 'COMPLETED').length)} 单`,
+      ),
+      el(
+        'div',
+        'metric-card',
+        `隔离批次\n${String(lots.filter((item) => recordText(item, 'qualityStatus', 'qualityStatus') === 'QUARANTINE').length)} 批`,
+      ),
+    );
+    panel.append(qualitySummary);
     const planPanel = el('article', 'quality-section quality-plans');
     planPanel.append(el('h3', '', '检验计划'));
     if (permissions.has('quality-plan:manage')) {
@@ -6956,7 +7155,7 @@ export function commercialWorkspaceStructure(
         el(
           'p',
           'muted',
-          `${recordText(plan, 'inspectionStage', 'inspection_stage')} · ${characteristics.map((item) => recordText(item, 'name', 'name')).join('、') || '暂无特性'}`,
+          `${qualityStageLabel(recordText(plan, 'inspectionStage', 'inspection_stage'))} · ${characteristics.map((item) => recordText(item, 'name', 'name')).join('、') || '暂无特性'}`,
         ),
       );
       if (
@@ -6966,9 +7165,17 @@ export function commercialWorkspaceStructure(
       ) {
         const publish = el('button', 'secondary', '发布计划');
         publish.addEventListener('click', () => {
-          void controller
-            .submit(`/api/v1/quality-plans/${plan.id as string}/publish`, {})
-            .then(refresh);
+          openForm(
+            workspace,
+            '发布检验计划',
+            '发布后计划版本不可修改，请确认检验阶段、特性和验收边界。',
+            [{ name: 'confirmation', label: '发布确认说明', type: 'textarea', required: true }],
+            '确认发布',
+            async () => {
+              await controller.submit(`/api/v1/quality-plans/${plan.id as string}/publish`, {});
+              await refresh();
+            },
+          );
         });
         row.append(publish);
       }
@@ -7032,7 +7239,19 @@ export function commercialWorkspaceStructure(
       inspectionHeading.append(open);
     }
     inspectionPanel.append(inspectionHeading);
-    for (const inspection of inspections) {
+    const inspectionPriority: Readonly<Record<string, number>> = {
+      COMPLETED: 0,
+      SAMPLED: 1,
+      OPEN: 2,
+      RELEASED: 3,
+      REJECTED: 4,
+      CANCELLED: 5,
+    };
+    for (const inspection of [...inspections].sort(
+      (left, right) =>
+        (inspectionPriority[recordText(left, 'state', 'state')] ?? 9) -
+        (inspectionPriority[recordText(right, 'state', 'state')] ?? 9),
+    )) {
       const state = recordText(inspection, 'state', 'state', 'OPEN');
       const card = el('article', 'quality-inspection-card');
       const results = Array.isArray(inspection.results) ? inspection.results.map(recordValue) : [];
@@ -7043,12 +7262,13 @@ export function commercialWorkspaceStructure(
           '',
           `${recordText(inspection, 'inspectionNumber', 'inspection_number')} · ${recordText(inspection, 'lotNumber', 'lot_number')}`,
         ),
-        el('span', `ctr-state state-${state.toLowerCase()}`, state),
+        el('span', `ctr-state state-${state.toLowerCase()}`, businessStateLabel(state)),
         el(
           'p',
           'muted',
           `${recordText(inspection, 'planCode', 'plan_code')} · ${String(results.length)} 项结果 · ${String(events.length)} 条状态证据`,
         ),
+        el('p', 'next-action-note', `下一步：${operationsNextAction('quality', state)}`),
       );
       const actions = el('div', 'quality-actions');
       const command = (action: 'sample' | 'complete' | 'cancel', label: string) => {
@@ -7170,7 +7390,7 @@ export function commercialWorkspaceStructure(
           el(
             'article',
             'traceability-card',
-            `${recordText(lot, 'lotNumber', 'lotNumber')} · ${recordText(lot, 'sku', 'sku')} · ${recordText(lot, 'qualityStatus', 'qualityStatus')}\n使用工单 ${String(used)} · 成品卷 ${String(produced)} · 移动 ${String(Array.isArray(lot.movements) ? lot.movements.length : 0)} 笔`,
+            `${recordText(lot, 'lotNumber', 'lotNumber')} · ${recordText(lot, 'sku', 'sku')} · ${businessStateLabel(recordText(lot, 'qualityStatus', 'qualityStatus'))}\n使用工单 ${String(used)} · 成品卷 ${String(produced)} · 移动 ${String(Array.isArray(lot.movements) ? lot.movements.length : 0)} 笔`,
           ),
         );
       }

@@ -28,7 +28,11 @@ import {
   routeViewSelector,
   quoteWorkflowReadiness,
   commissionNextAction,
+  operationsNextAction,
+  qualityStageLabel,
   riskRuleLabel,
+  shipmentGateLabel,
+  supplyModeLabel,
   setOperationStatus,
   technicalSolutionOpportunityId,
   governanceWorkspace,
@@ -39,6 +43,16 @@ it('translates risk rules and derives the daily commission next action', () => {
   expect(riskRuleLabel('OVERDUE_AR')).toBe('存在逾期应收');
   expect(commissionNextAction('RELEASED')).toBe('待登记支付');
   expect(commissionNextAction('FROZEN')).toBe('待满足条件后释放');
+});
+
+it('translates operations codes and derives accountable next actions', () => {
+  expect(supplyModeLabel('MAKE')).toBe('自制');
+  expect(supplyModeLabel('BUY')).toBe('采购');
+  expect(qualityStageLabel('IN_PROCESS')).toBe('过程检验');
+  expect(shipmentGateLabel('orderLink')).toBe('订单来源');
+  expect(shipmentGateLabel('inventory')).toBe('可用库存');
+  expect(operationsNextAction('production', 'IN_PROGRESS')).toBe('待报工、成品入库并完工确认');
+  expect(operationsNextAction('shipment', 'EXCEPTION_PENDING')).toBe('待独立审批人复核门禁例外');
 });
 
 it('publishes durable operation state for loading, success and rejection feedback', () => {
