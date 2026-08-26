@@ -46,6 +46,12 @@ const templates: readonly RoleTemplate[] = [
     forbiddenRoutes: ['contract-order', 'governance'],
   },
   {
+    name: '采购专员',
+    roleCode: 'KT_PROCUREMENT_BUYER',
+    allowedRoutes: ['operations-workspace', 'planning-production'],
+    forbiddenRoutes: ['ar-payment', 'governance'],
+  },
+  {
     name: '物流履约员',
     roleCode: 'KT_LOGISTICS_COORDINATOR',
     allowedRoutes: ['operations-workspace', 'delivery-evidence'],
@@ -59,6 +65,20 @@ const templates: readonly RoleTemplate[] = [
     allowedRoutes: ['cost-quote', 'planning-production', 'quality-warehouse'],
     forbiddenRoutes: ['governance'],
     forbiddenActionNames: ['＋ 新建报价', '＋ 新建生产工单'],
+  },
+  {
+    name: '报价审批员',
+    roleCode: 'KT_QUOTE_APPROVER',
+    allowedRoutes: ['sales-workspace', 'cost-quote'],
+    forbiddenRoutes: ['planning-production', 'governance'],
+    forbiddenActionNames: ['＋ 新建报价'],
+  },
+  {
+    name: '系统审计员',
+    roleCode: 'KT_SYSTEM_AUDITOR',
+    allowedRoutes: ['contract-order', 'planning-production', 'quality-warehouse', 'governance'],
+    forbiddenRoutes: ['crm', 'ar-payment'],
+    forbiddenActionNames: ['＋ 新建生产工单'],
   },
   {
     name: '身份与权限管理员',
@@ -91,6 +111,11 @@ async function validateRoleAccount(
       const context = await browser.newContext({ viewport });
       try {
         const page = await context.newPage();
+        const browserErrors: string[] = [];
+        page.on('pageerror', (error) => browserErrors.push(error.message));
+        page.on('console', (message) => {
+          if (message.type() === 'error') browserErrors.push(message.text());
+        });
         await page.addInitScript(
           (sessionToken) => globalThis.sessionStorage.setItem('kingturf.session', sessionToken),
           token,
@@ -107,14 +132,26 @@ async function validateRoleAccount(
         }
         for (const route of account.allowedRoutes) {
           await page.locator(`[data-app-route="${route}"]`).click();
+          await expect(page).toHaveURL(new RegExp(`#/${route}$`, 'u'));
           for (const actionName of account.forbiddenActionNames ?? []) {
             await expect(page.getByRole('button', { name: actionName, exact: true })).toHaveCount(
               0,
             );
           }
+          const routePageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+          expect(
+            routePageWidth,
+            `${account.name} ${route} overflows at ${String(viewport.width)}px`,
+          ).toBeLessThanOrEqual(viewport.width);
+        }
+        for (const route of account.forbiddenRoutes) {
+          await page.goto(`/#/${route}`);
+          await expect(page).not.toHaveURL(new RegExp(`#/${route}$`, 'u'));
+          await expect(page.locator(`[data-app-route="${route}"]`)).toHaveCount(0);
         }
         const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
         expect(pageWidth).toBeLessThanOrEqual(viewport.width);
+        expect(browserErrors, `${account.name} emitted browser errors`).toEqual([]);
       } finally {
         await context.close();
       }
@@ -126,6 +163,8 @@ async function validateRoleAccount(
 }
 
 test.describe('production representative-role browser UAT', () => {
+  test.setTimeout(180_000);
+
   test('each configured role sees only authorized workspaces at desktop and mobile', async ({
     browser,
     request,

@@ -54,7 +54,7 @@ Execution window: 2026-08-24; planned engineering effort: 36 hours. This slice c
 
 | Node | Package                                  | Budget | Exit condition                                                                                                                                                |
 | ---- | ---------------------------------------- | -----: | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| R5-1 | Production role and identity baseline    |     6h | Prior all-role authenticated API UAT is reconciled with the current 44-role catalogue; temporary identities remain inactive and audited                       |
+| R5-1 | Production role and identity baseline    |     6h | Prior all-role authenticated API UAT is reconciled with the current 47-role catalogue; temporary identities remain inactive and audited                       |
 | R5-2 | Live role work queues                    |     8h | Role-home task cards summarize only current session-visible records and attention states from loaded production data, with no cross-role data aggregation     |
 | R5-3 | High-frequency form production hardening |     8h | Customer, lead and order workflows provide field constraints, inline invalid state, hints, safe retry and sensitive-operation acknowledgement                 |
 | R5-4 | Representative-role UI contract          |     7h | Sales, finance, production, quality, warehouse, logistics, management and IAM projections verify allowed routes, denied routes, work-queue text and mobile UI |
@@ -62,7 +62,7 @@ Execution window: 2026-08-24; planned engineering effort: 36 hours. This slice c
 
 Existing temporary production UAT identities are not reactivated merely to repeat already accepted API authorization evidence. Browser role projections are deterministic from the authenticated session permission set; any future creation of temporary production identities must use random short-lived credentials, preserve audit records, revoke sessions and deactivate identities after UAT.
 
-The reproducible runner is `pnpm e2e:production:roles`. With `KINGTURF_UAT_PROVISION=true`, `KINGTURF_BASE_URL`, `KINGTURF_ADMIN_LOGIN` and `KINGTURF_ADMIN_PASSWORD` supplied only through the execution environment, it provisions eight single-role identities, checks allowed and forbidden navigation at desktop and 390 px, logs out every role session, removes each role assignment and deactivates every temporary employee in `finally` cleanup. It never prints or persists generated passwords.
+The reproducible runner is `pnpm e2e:production:roles`. With `KINGTURF_UAT_PROVISION=true`, `KINGTURF_BASE_URL`, `KINGTURF_ADMIN_LOGIN` and `KINGTURF_ADMIN_PASSWORD` supplied only through the execution environment, it provisions eleven single-role identities covering sales, finance, procurement, production, quality, warehouse, logistics, approval, management, audit and IAM. It checks allowed navigation, forbidden direct addresses, forbidden actions, browser errors and horizontal overflow at desktop and 390 px, logs out every role session, removes each role assignment and deactivates every temporary employee in `finally` cleanup. It never prints or persists generated passwords.
 
 ## Functional exposure rule
 
