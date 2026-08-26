@@ -8602,9 +8602,83 @@ function installRouteSectionNavigation(shell: HTMLElement): void {
   }
 }
 
+type RegisterProfile = {
+  label: string;
+  headers: readonly [string, string, string, string];
+  detailLabels: readonly string[];
+};
+
+const registerProfile = (list: HTMLElement): RegisterProfile => {
+  if (list.classList.contains('solution-list'))
+    return {
+      label: '技术方案台账',
+      headers: ['方案与版本', '评审状态', '关联技术需求', '操作'],
+      detailLabels: ['方案信息', '评审状态', '关联技术需求', '规格与依据'],
+    };
+  if (list.classList.contains('quote-list'))
+    return {
+      label: '报价台账',
+      headers: ['报价与版本', '报价状态与金额', '客户与有效期', '操作'],
+      detailLabels: ['报价信息', '状态与金额', '客户与有效期', '核价依据'],
+    };
+  if (list.classList.contains('order-360-list'))
+    return {
+      label: '订单履约台账',
+      headers: ['订单与客户', '履约状态与金额', '交付与责任', '操作'],
+      detailLabels: ['订单信息', '履约状态', '金额与信用', '交付与责任'],
+    };
+  if (list.classList.contains('collection-case-list'))
+    return {
+      label: '催收案件台账',
+      headers: ['案件与客户', '催收状态与逾期', '责任人与节点', '操作'],
+      detailLabels: ['案件信息', '催收状态', '逾期与金额', '责任与下一节点'],
+    };
+  if (list.classList.contains('commission-list'))
+    return {
+      label: '佣金台账',
+      headers: ['佣金单与人员', '核算状态与金额', '归属与期间', '操作'],
+      detailLabels: ['佣金信息', '核算状态', '金额与期间', '归属依据'],
+    };
+  if (list.classList.contains('qtc-list'))
+    return {
+      label: '合同与应收台账',
+      headers: ['业务单据', '状态与金额', '客户与账期', '操作'],
+      detailLabels: ['单据信息', '业务状态', '金额与账期', '客户与责任'],
+    };
+  if (list.classList.contains('risk-list'))
+    return {
+      label: '经营风险台账',
+      headers: ['风险事项', '风险等级与敞口', '责任人与期限', '操作'],
+      detailLabels: ['风险事项', '等级与敞口', '责任与期限', '处置进展'],
+    };
+  if (list.classList.contains('production-order-grid'))
+    return {
+      label: '生产工单台账',
+      headers: ['工单与产品', '生产状态与数量', '计划与车间', '操作'],
+      detailLabels: ['工单信息', '生产状态', '计划数量与日期', '工序与物料证据'],
+    };
+  if (list.classList.contains('mrp-proposal-grid'))
+    return {
+      label: '物料建议台账',
+      headers: ['物料与建议类型', '建议状态与数量', '需求日期与依据', '操作'],
+      detailLabels: ['物料建议', '建议状态', '数量与日期', '净需求计算依据'],
+    };
+  if (list.classList.contains('shipment-grid'))
+    return {
+      label: '交付任务台账',
+      headers: ['发运单与客户', '交付状态与数量', '物流与签收节点', '操作'],
+      detailLabels: ['发运信息', '交付状态', '数量与物流', '签收与证据'],
+    };
+  return {
+    label: '业务决策台账',
+    headers: ['业务事项', '状态与结果', '依据与责任', '操作'],
+    detailLabels: ['业务事项', '当前状态', '结果与依据', '责任与下一步'],
+  };
+};
+
 function installWorkspaceListTools(shell: HTMLElement): void {
   let detailDrawer: HTMLElement | undefined;
-  const openDetailDrawer = (item: HTMLElement) => {
+  const openDetailDrawer = (item: HTMLElement, profile: RegisterProfile) => {
     if (!detailDrawer) {
       detailDrawer = el('aside', 'record-detail-drawer');
       detailDrawer.setAttribute('aria-label', '业务记录详情');
@@ -8626,7 +8700,7 @@ function installWorkspaceListTools(shell: HTMLElement): void {
     });
     const head = el('div', 'record-detail-head');
     const identity = el('div');
-    identity.append(el('p', 'eyebrow', '业务记录详情'), el('h2', '', name));
+    identity.append(el('p', 'eyebrow', profile.label), el('h2', '', name));
     head.append(identity, close);
     const status = el('div', 'record-detail-status');
     status.append(
@@ -8634,10 +8708,24 @@ function installWorkspaceListTools(shell: HTMLElement): void {
       el('strong', '', statuses.join('、') || '状态未标记'),
     );
     const summary = el('section', 'record-detail-summary');
-    summary.append(
-      el('h3', '', '业务摘要'),
-      el('p', '', item.textContent.replace(/\s+/gu, ' ').trim()),
-    );
+    summary.append(el('h3', '', '关键业务字段'));
+    const fields = el('dl', 'record-detail-fields');
+    const segments = Array.from(item.children)
+      .filter(
+        (entry): entry is HTMLElement =>
+          entry instanceof HTMLElement &&
+          !entry.matches('button, .quality-actions, .ctr-actions') &&
+          entry.textContent.trim().length > 0,
+      )
+      .map((entry) => entry.textContent.replace(/\s+/gu, ' ').trim());
+    const values = segments.length > 1 ? segments : [item.textContent.replace(/\s+/gu, ' ').trim()];
+    for (const [index, value] of values.slice(0, profile.detailLabels.length).entries()) {
+      fields.append(
+        el('dt', '', profile.detailLabels[index] ?? `业务字段 ${String(index + 1)}`),
+        el('dd', '', value),
+      );
+    }
+    summary.append(fields);
     const note = el(
       'p',
       'record-detail-note',
@@ -8665,9 +8753,11 @@ function installWorkspaceListTools(shell: HTMLElement): void {
     if (sourceItems.length < 2 || list.dataset.listTools === 'true' || !list.parentElement)
       continue;
     list.dataset.listTools = 'true';
+    const profile = registerProfile(list);
+    list.dataset.registerProfile = profile.label;
     list.classList.add('record-register');
     list.setAttribute('role', 'table');
-    list.setAttribute('aria-label', '业务记录表');
+    list.setAttribute('aria-label', profile.label);
     list.setAttribute('aria-rowcount', String(sourceItems.length));
     for (const item of sourceItems) {
       item.setAttribute('role', 'row');
@@ -8675,7 +8765,7 @@ function installWorkspaceListTools(shell: HTMLElement): void {
     }
     const header = el('div', 'record-register-head');
     header.setAttribute('role', 'row');
-    for (const label of ['业务记录', '状态与金额', '责任与时间', '操作']) {
+    for (const label of profile.headers) {
       const column = el('span', '', label);
       column.setAttribute('role', 'columnheader');
       header.append(column);
@@ -8705,8 +8795,17 @@ function installWorkspaceListTools(shell: HTMLElement): void {
       statusFilter.append(option);
     }
     const count = el('span', 'workspace-list-count', `共 ${String(sourceItems.length)} 条`);
-    const sort = el('button', 'secondary compact-action', '排序：业务顺序');
-    sort.type = 'button';
+    const sort = el('select', 'filter-select register-sort');
+    sort.setAttribute('aria-label', `设置${profile.label}排序方式`);
+    for (const [value, label] of [
+      ['business', '业务优先'],
+      ['name', '按名称排序'],
+      ['status', '按状态排序'],
+    ] as const) {
+      const option = el('option', '', label);
+      option.value = value;
+      sort.append(option);
+    }
     const density = el('button', 'secondary compact-action', '紧凑显示');
     density.type = 'button';
     const saveView = el('button', 'secondary compact-action', '保存视图');
@@ -8729,7 +8828,7 @@ function installWorkspaceListTools(shell: HTMLElement): void {
     const viewKey = `kingturf.register-view.${list.classList.item(0) ?? 'records'}`;
     let page = 1;
     let filteredItems = [...sourceItems];
-    let alphabetical = false;
+    let sortMode: 'business' | 'name' | 'status' = 'business';
     let compact = false;
     let selectedItem: HTMLElement | undefined;
     const renderItems = () => {
@@ -8753,10 +8852,17 @@ function installWorkspaceListTools(shell: HTMLElement): void {
               item.querySelectorAll<HTMLElement>('.status-badge, .ctr-state, .version-pin'),
             ).some((entry) => entry.textContent.trim() === statusFilter.value)),
       );
-      if (alphabetical)
+      if (sortMode === 'name')
         filteredItems.sort((left, right) =>
           left.textContent.localeCompare(right.textContent, 'zh-CN'),
         );
+      if (sortMode === 'status')
+        filteredItems.sort((left, right) => {
+          const statusOf = (entry: HTMLElement) =>
+            entry.querySelector<HTMLElement>('.status-badge, .ctr-state, .version-pin')
+              ?.textContent ?? '';
+          return statusOf(left).localeCompare(statusOf(right), 'zh-CN');
+        });
       page = 1;
       renderItems();
     };
@@ -8777,20 +8883,19 @@ function installWorkspaceListTools(shell: HTMLElement): void {
       });
       item.addEventListener('dblclick', () => {
         selectItem();
-        openDetailDrawer(item);
+        openDetailDrawer(item, profile);
       });
       item.addEventListener('keydown', (event) => {
         if (event.key !== 'Enter') return;
         selectItem();
-        openDetailDrawer(item);
+        openDetailDrawer(item, profile);
       });
     }
     inspect.addEventListener('click', () => {
-      if (selectedItem) openDetailDrawer(selectedItem);
+      if (selectedItem) openDetailDrawer(selectedItem, profile);
     });
-    sort.addEventListener('click', () => {
-      alphabetical = !alphabetical;
-      sort.textContent = alphabetical ? '排序：名称' : '排序：业务顺序';
+    sort.addEventListener('change', () => {
+      sortMode = sort.value === 'name' || sort.value === 'status' ? sort.value : 'business';
       applySearch();
     });
     density.addEventListener('click', () => {
@@ -8805,7 +8910,7 @@ function installWorkspaceListTools(shell: HTMLElement): void {
           JSON.stringify({
             query: search.value,
             status: statusFilter.value,
-            alphabetical,
+            sortMode,
             compact,
           }),
         );
@@ -8846,11 +8951,11 @@ function installWorkspaceListTools(shell: HTMLElement): void {
     reset.addEventListener('click', () => {
       search.value = '';
       statusFilter.value = '';
-      alphabetical = false;
+      sortMode = 'business';
+      sort.value = 'business';
       compact = false;
       list.classList.remove('is-compact');
       density.textContent = '紧凑显示';
-      sort.textContent = '排序：业务顺序';
       applySearch();
     });
     tools.append(search, statusFilter, count, sort, density, inspect, saveView, exportList, reset);
@@ -8862,17 +8967,18 @@ function installWorkspaceListTools(shell: HTMLElement): void {
         ? (JSON.parse(stored) as {
             query?: unknown;
             status?: unknown;
-            alphabetical?: unknown;
+            sortMode?: unknown;
             compact?: unknown;
           })
         : undefined;
       search.value = typeof view?.query === 'string' ? view.query : '';
       statusFilter.value =
         typeof view?.status === 'string' && statuses.includes(view.status) ? view.status : '';
-      alphabetical = view?.alphabetical === true;
+      sortMode =
+        view?.sortMode === 'name' || view?.sortMode === 'status' ? view.sortMode : 'business';
+      sort.value = sortMode;
       compact = view?.compact === true;
       list.classList.toggle('is-compact', compact);
-      sort.textContent = alphabetical ? '排序：名称' : '排序：业务顺序';
       density.textContent = compact ? '标准显示' : '紧凑显示';
     } catch {
       // A corrupt or unavailable local view must never block the operational register.

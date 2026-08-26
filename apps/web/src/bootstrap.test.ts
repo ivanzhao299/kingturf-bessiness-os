@@ -123,6 +123,18 @@ it('adds status filtering and a permission-scoped detail drawer to business regi
   expect(styles).toContain('.is-selected');
 });
 
+it('uses module-specific register columns, structured detail fields and business sorting', () => {
+  const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+  const styles = readFileSync(new URL('./style.css', import.meta.url), 'utf8');
+  expect(source).toContain("label: '生产工单台账'");
+  expect(source).toContain("headers: ['工单与产品', '生产状态与数量', '计划与车间', '操作']");
+  expect(source).toContain("label: '交付任务台账'");
+  expect(source).toContain("['status', '按状态排序']");
+  expect(source).toContain("el('dl', 'record-detail-fields')");
+  expect(styles).toContain('.record-detail-fields');
+  expect(styles).toContain('[data-register-profile]');
+});
+
 it('publishes durable operation state for loading, success and rejection feedback', () => {
   const attributes = new Map<string, string>();
   const target = {
