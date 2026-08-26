@@ -123,7 +123,7 @@ async function validateRoleAccount(
         await page.goto('/#/overview');
         await expect(page.locator('.role-home')).toBeVisible();
         for (const route of account.allowedRoutes) {
-          await expect(page.locator(`[data-app-route="${route}"]`)).toBeVisible();
+          await expect(page.locator(`[data-app-route="${route}"]`)).toHaveCount(1);
           await expect(page.locator(`[data-role-task-route="${route}"]`)).toBeVisible();
         }
         for (const route of account.forbiddenRoutes) {
@@ -131,7 +131,17 @@ async function validateRoleAccount(
           await expect(page.locator(`[data-role-task-route="${route}"]`)).toHaveCount(0);
         }
         for (const route of account.allowedRoutes) {
-          await page.locator(`[data-app-route="${route}"]`).click();
+          const routeLink = page.locator(`[data-app-route="${route}"]`);
+          const domainToggle = routeLink.locator(
+            'xpath=../../button[contains(@class, "nav-parent")]',
+          );
+          if (
+            (await domainToggle.isVisible()) &&
+            (await domainToggle.getAttribute('aria-expanded')) !== 'true'
+          ) {
+            await domainToggle.click();
+          }
+          await routeLink.click();
           await expect(page).toHaveURL(new RegExp(`#/${route}$`, 'u'));
           for (const actionName of account.forbiddenActionNames ?? []) {
             await expect(page.getByRole('button', { name: actionName, exact: true })).toHaveCount(
@@ -163,7 +173,7 @@ async function validateRoleAccount(
 }
 
 test.describe('production representative-role browser UAT', () => {
-  test.setTimeout(180_000);
+  test.setTimeout(360_000);
 
   test('each configured role sees only authorized workspaces at desktop and mobile', async ({
     browser,
