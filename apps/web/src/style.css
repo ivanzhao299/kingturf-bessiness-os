@@ -1193,6 +1193,57 @@ button {
     grid-template-columns: 1fr;
   }
 }
+
+/* KT-UI-PROD-08: safe bulk review and operational attention filtering. */
+.record-register-head,
+.record-register > [role='row']:not(.record-register-head) {
+  position: relative;
+  padding-left: 42px;
+}
+
+.record-select {
+  position: absolute;
+  top: 18px;
+  left: 14px;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--kt-primary);
+}
+
+.record-register-head .record-select {
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.record-register > [role='row'].is-bulk-selected:not(.record-register-head) {
+  background: #f3f9f6;
+  box-shadow: inset 3px 0 #6ea98c;
+}
+
+.bulk-summary {
+  display: grid;
+  gap: 14px;
+}
+
+.bulk-summary-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bulk-summary-list li {
+  display: grid;
+  gap: 4px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--kt-border);
+}
+
+.bulk-summary-list span {
+  color: var(--kt-muted);
+  font-size: 11px;
+}
 .workspace-list-tools {
   display: grid;
   grid-template-columns: minmax(180px, 1fr) auto auto auto;

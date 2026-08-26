@@ -8678,20 +8678,13 @@ const registerProfile = (list: HTMLElement): RegisterProfile => {
 
 function installWorkspaceListTools(shell: HTMLElement): void {
   let detailDrawer: HTMLElement | undefined;
-  const openDetailDrawer = (item: HTMLElement, profile: RegisterProfile) => {
+  const showDrawer = (profile: RegisterProfile, title: string, content: HTMLElement) => {
     if (!detailDrawer) {
       detailDrawer = el('aside', 'record-detail-drawer');
       detailDrawer.setAttribute('aria-label', '业务记录详情');
       detailDrawer.setAttribute('aria-live', 'polite');
       shell.append(detailDrawer);
     }
-    const name =
-      item.querySelector<HTMLElement>('strong, h3, h4')?.textContent.trim() ?? '业务记录';
-    const statuses = Array.from(
-      item.querySelectorAll<HTMLElement>('.status-badge, .ctr-state, .version-pin'),
-    )
-      .map((entry) => entry.textContent.trim())
-      .filter(Boolean);
     const close = el('button', 'record-detail-close', '关闭');
     close.type = 'button';
     close.setAttribute('aria-label', '关闭业务记录详情');
@@ -8700,8 +8693,20 @@ function installWorkspaceListTools(shell: HTMLElement): void {
     });
     const head = el('div', 'record-detail-head');
     const identity = el('div');
-    identity.append(el('p', 'eyebrow', profile.label), el('h2', '', name));
+    identity.append(el('p', 'eyebrow', profile.label), el('h2', '', title));
     head.append(identity, close);
+    detailDrawer.replaceChildren(head, content);
+    detailDrawer.hidden = false;
+    close.focus();
+  };
+  const openDetailDrawer = (item: HTMLElement, profile: RegisterProfile) => {
+    const name =
+      item.querySelector<HTMLElement>('strong, h3, h4')?.textContent.trim() ?? '业务记录';
+    const statuses = Array.from(
+      item.querySelectorAll<HTMLElement>('.status-badge, .ctr-state, .version-pin'),
+    )
+      .map((entry) => entry.textContent.trim())
+      .filter(Boolean);
     const status = el('div', 'record-detail-status');
     status.append(
       el('span', 'record-detail-label', '当前状态'),
@@ -8731,9 +8736,9 @@ function installWorkspaceListTools(shell: HTMLElement): void {
       'record-detail-note',
       '此处展示当前权限范围内的只读业务快照；业务操作仍在原记录行中执行。',
     );
-    detailDrawer.replaceChildren(head, status, summary, note);
-    detailDrawer.hidden = false;
-    close.focus();
+    const body = el('div', 'record-detail-body');
+    body.append(status, summary, note);
+    showDrawer(profile, name, body);
   };
   const selectors = [
     '.solution-list',
@@ -8794,6 +8799,17 @@ function installWorkspaceListTools(shell: HTMLElement): void {
       option.value = status;
       statusFilter.append(option);
     }
+    const attentionFilter = el('select', 'filter-select register-attention-filter');
+    attentionFilter.setAttribute('aria-label', `筛选${profile.label}关注程度`);
+    for (const [value, label] of [
+      ['', '全部记录'],
+      ['attention', '只看需关注'],
+      ['actionable', '只看可操作'],
+    ] as const) {
+      const option = el('option', '', label);
+      option.value = value;
+      attentionFilter.append(option);
+    }
     const count = el('span', 'workspace-list-count', `共 ${String(sourceItems.length)} 条`);
     const sort = el('select', 'filter-select register-sort');
     sort.setAttribute('aria-label', `设置${profile.label}排序方式`);
@@ -8815,6 +8831,13 @@ function installWorkspaceListTools(shell: HTMLElement): void {
     const inspect = el('button', 'secondary compact-action', '查看选中详情');
     inspect.type = 'button';
     inspect.disabled = true;
+    const selectedCount = el('span', 'workspace-list-count register-selection-count', '已选 0 条');
+    const bulkInspect = el('button', 'secondary compact-action', '查看批量摘要');
+    bulkInspect.type = 'button';
+    bulkInspect.disabled = true;
+    const exportSelected = el('button', 'secondary compact-action', '导出已选');
+    exportSelected.type = 'button';
+    exportSelected.disabled = true;
     const reset = el('button', 'secondary compact-action', '重置');
     reset.type = 'button';
     const pager = el('div', 'record-register-pager');
@@ -8831,6 +8854,28 @@ function installWorkspaceListTools(shell: HTMLElement): void {
     let sortMode: 'business' | 'name' | 'status' = 'business';
     let compact = false;
     let selectedItem: HTMLElement | undefined;
+    const selectedItems = new Set<HTMLElement>();
+    const selectAll = document.createElement('input');
+    selectAll.type = 'checkbox';
+    selectAll.className = 'record-select record-select-all';
+    selectAll.setAttribute('aria-label', `全选当前${profile.label}结果`);
+    header.prepend(selectAll);
+    const recordName = (item: HTMLElement) =>
+      item.querySelector<HTMLElement>('strong, h3, h4')?.textContent.trim() ?? '业务记录';
+    const recordStatus = (item: HTMLElement) =>
+      Array.from(item.querySelectorAll<HTMLElement>('.status-badge, .ctr-state, .version-pin'))
+        .map((entry) => entry.textContent.trim())
+        .filter(Boolean)
+        .join('、');
+    const updateSelection = () => {
+      selectedCount.textContent = `已选 ${String(selectedItems.size)} 条`;
+      bulkInspect.disabled = selectedItems.size === 0;
+      exportSelected.disabled = selectedItems.size === 0;
+      const visible = filteredItems.slice((page - 1) * pageSize, page * pageSize);
+      selectAll.checked = visible.length > 0 && visible.every((item) => selectedItems.has(item));
+      selectAll.indeterminate =
+        visible.some((item) => selectedItems.has(item)) && !selectAll.checked;
+    };
     const renderItems = () => {
       const pageCount = Math.max(1, Math.ceil(filteredItems.length / pageSize));
       page = Math.min(Math.max(page, 1), pageCount);
@@ -8841,6 +8886,7 @@ function installWorkspaceListTools(shell: HTMLElement): void {
       previous.disabled = page <= 1;
       next.disabled = page >= pageCount;
       pager.hidden = filteredItems.length <= pageSize;
+      updateSelection();
     };
     const applySearch = () => {
       const query = search.value.trim().toLocaleLowerCase('zh-CN');
@@ -8850,7 +8896,11 @@ function installWorkspaceListTools(shell: HTMLElement): void {
           (statusFilter.value.length === 0 ||
             Array.from(
               item.querySelectorAll<HTMLElement>('.status-badge, .ctr-state, .version-pin'),
-            ).some((entry) => entry.textContent.trim() === statusFilter.value)),
+            ).some((entry) => entry.textContent.trim() === statusFilter.value)) &&
+          (attentionFilter.value.length === 0 ||
+            (attentionFilter.value === 'attention'
+              ? /逾期|驳回|未通过|隔离|待审|异常|冻结|退回/u.test(item.textContent)
+              : item.querySelector('button:not(:disabled)') !== null)),
       );
       if (sortMode === 'name')
         filteredItems.sort((left, right) =>
@@ -8868,7 +8918,19 @@ function installWorkspaceListTools(shell: HTMLElement): void {
     };
     search.addEventListener('input', applySearch);
     statusFilter.addEventListener('change', applySearch);
+    attentionFilter.addEventListener('change', applySearch);
     for (const item of sourceItems) {
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.className = 'record-select';
+      checkbox.setAttribute('aria-label', `选择 ${recordName(item)}`);
+      checkbox.addEventListener('change', () => {
+        if (checkbox.checked) selectedItems.add(item);
+        else selectedItems.delete(item);
+        item.classList.toggle('is-bulk-selected', checkbox.checked);
+        updateSelection();
+      });
+      item.prepend(checkbox);
       const selectItem = () => {
         selectedItem?.classList.remove('is-selected');
         selectedItem = item;
@@ -8891,8 +8953,34 @@ function installWorkspaceListTools(shell: HTMLElement): void {
         openDetailDrawer(item, profile);
       });
     }
+    selectAll.addEventListener('change', () => {
+      const visible = filteredItems.slice((page - 1) * pageSize, page * pageSize);
+      for (const item of visible) {
+        const checkbox = item.querySelector<HTMLInputElement>('.record-select');
+        if (selectAll.checked) selectedItems.add(item);
+        else selectedItems.delete(item);
+        if (checkbox) checkbox.checked = selectAll.checked;
+        item.classList.toggle('is-bulk-selected', selectAll.checked);
+      }
+      updateSelection();
+    });
     inspect.addEventListener('click', () => {
       if (selectedItem) openDetailDrawer(selectedItem, profile);
+    });
+    bulkInspect.addEventListener('click', () => {
+      const body = el('div', 'bulk-summary');
+      body.append(el('p', 'record-detail-note', '批量摘要仅用于核对，不会执行任何业务写操作。'));
+      const listSummary = el('ul', 'bulk-summary-list');
+      for (const item of selectedItems) {
+        const row = el('li');
+        row.append(
+          el('strong', '', recordName(item)),
+          el('span', '', recordStatus(item) || '状态未标记'),
+        );
+        listSummary.append(row);
+      }
+      body.append(listSummary);
+      showDrawer(profile, `已选 ${String(selectedItems.size)} 条记录`, body);
     });
     sort.addEventListener('change', () => {
       sortMode = sort.value === 'name' || sort.value === 'status' ? sort.value : 'business';
@@ -8910,6 +8998,7 @@ function installWorkspaceListTools(shell: HTMLElement): void {
           JSON.stringify({
             query: search.value,
             status: statusFilter.value,
+            attention: attentionFilter.value,
             sortMode,
             compact,
           }),
@@ -8919,26 +9008,26 @@ function installWorkspaceListTools(shell: HTMLElement): void {
         saveView.textContent = '当前浏览器无法保存';
       }
     });
-    exportList.addEventListener('click', () => {
-      const rows = filteredItems.map((item) => {
-        const name =
-          item.querySelector<HTMLElement>('strong, h3, h4')?.textContent.trim() ?? '业务记录';
-        const status = Array.from(
-          item.querySelectorAll<HTMLElement>('.status-badge, .ctr-state, .version-pin'),
-        )
-          .map((entry) => entry.textContent.trim())
-          .filter(Boolean)
-          .join('、');
-        return [name, status, item.textContent.replace(/\s+/gu, ' ').trim()];
-      });
+    const exportRows = (items: readonly HTMLElement[], suffix: string) => {
+      const rows = items.map((item) => [
+        recordName(item),
+        recordStatus(item),
+        item.textContent.replace(/\s+/gu, ' ').trim(),
+      ]);
       const escapeCsv = (value: string) => `"${value.replace(/"/gu, '""')}"`;
       const csv = [['业务记录', '状态', '业务摘要'], ...rows]
         .map((row) => row.map(escapeCsv).join(','))
         .join('\n');
       const link = document.createElement('a');
       link.href = `data:text/csv;charset=utf-8,${encodeURIComponent(`\uFEFF${csv}`)}`;
-      link.download = `金特夫业务记录-${new Date().toISOString().slice(0, 10)}.csv`;
+      link.download = `金特夫${profile.label}-${suffix}-${new Date().toISOString().slice(0, 10)}.csv`;
       link.click();
+    };
+    exportList.addEventListener('click', () => {
+      exportRows(filteredItems, '当前结果');
+    });
+    exportSelected.addEventListener('click', () => {
+      exportRows([...selectedItems], '已选记录');
     });
     previous.addEventListener('click', () => {
       page -= 1;
@@ -8951,14 +9040,35 @@ function installWorkspaceListTools(shell: HTMLElement): void {
     reset.addEventListener('click', () => {
       search.value = '';
       statusFilter.value = '';
+      attentionFilter.value = '';
       sortMode = 'business';
       sort.value = 'business';
       compact = false;
+      selectedItems.clear();
+      for (const item of sourceItems) {
+        item.classList.remove('is-bulk-selected');
+        const checkbox = item.querySelector<HTMLInputElement>('.record-select');
+        if (checkbox) checkbox.checked = false;
+      }
       list.classList.remove('is-compact');
       density.textContent = '紧凑显示';
       applySearch();
     });
-    tools.append(search, statusFilter, count, sort, density, inspect, saveView, exportList, reset);
+    tools.append(
+      search,
+      statusFilter,
+      attentionFilter,
+      count,
+      selectedCount,
+      sort,
+      density,
+      inspect,
+      bulkInspect,
+      saveView,
+      exportList,
+      exportSelected,
+      reset,
+    );
     list.parentElement.insertBefore(tools, list);
     list.parentElement.insertBefore(pager, list.nextSibling);
     try {
@@ -8967,6 +9077,7 @@ function installWorkspaceListTools(shell: HTMLElement): void {
         ? (JSON.parse(stored) as {
             query?: unknown;
             status?: unknown;
+            attention?: unknown;
             sortMode?: unknown;
             compact?: unknown;
           })
@@ -8974,6 +9085,8 @@ function installWorkspaceListTools(shell: HTMLElement): void {
       search.value = typeof view?.query === 'string' ? view.query : '';
       statusFilter.value =
         typeof view?.status === 'string' && statuses.includes(view.status) ? view.status : '';
+      attentionFilter.value =
+        view?.attention === 'attention' || view?.attention === 'actionable' ? view.attention : '';
       sortMode =
         view?.sortMode === 'name' || view?.sortMode === 'status' ? view.sortMode : 'business';
       sort.value = sortMode;

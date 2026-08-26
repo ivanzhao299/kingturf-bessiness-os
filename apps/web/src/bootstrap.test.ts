@@ -138,6 +138,18 @@ it('uses module-specific register columns, structured detail fields and business
   expect(styles).toContain('[data-register-profile]');
 });
 
+it('supports safe bulk selection, attention filtering and selected-record export', () => {
+  const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+  const styles = readFileSync(new URL('./style.css', import.meta.url), 'utf8');
+  expect(source).toContain("['attention', '只看需关注']");
+  expect(source).toContain("['actionable', '只看可操作']");
+  expect(source).toContain('查看批量摘要');
+  expect(source).toContain('批量摘要仅用于核对，不会执行任何业务写操作');
+  expect(source).toContain('导出已选');
+  expect(styles).toContain('.record-select');
+  expect(styles).toContain('.bulk-summary-list');
+});
+
 it('publishes durable operation state for loading, success and rejection feedback', () => {
   const attributes = new Map<string, string>();
   const target = {
