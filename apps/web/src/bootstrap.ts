@@ -8609,6 +8609,12 @@ type RegisterProfile = {
 };
 
 const registerProfile = (list: HTMLElement): RegisterProfile => {
+  if (list.closest('.shipment-workbench'))
+    return {
+      label: '交付任务台账',
+      headers: ['发运单与客户', '交付状态与数量', '物流与签收节点', '操作'],
+      detailLabels: ['发运信息', '交付状态', '数量与物流', '签收与证据'],
+    };
   if (list.classList.contains('solution-list'))
     return {
       label: '技术方案台账',
@@ -8662,12 +8668,6 @@ const registerProfile = (list: HTMLElement): RegisterProfile => {
       label: '物料建议台账',
       headers: ['物料与建议类型', '建议状态与数量', '需求日期与依据', '操作'],
       detailLabels: ['物料建议', '建议状态', '数量与日期', '净需求计算依据'],
-    };
-  if (list.classList.contains('shipment-grid'))
-    return {
-      label: '交付任务台账',
-      headers: ['发运单与客户', '交付状态与数量', '物流与签收节点', '操作'],
-      detailLabels: ['发运信息', '交付状态', '数量与物流', '签收与证据'],
     };
   return {
     label: '业务决策台账',
