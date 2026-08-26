@@ -106,7 +106,7 @@ describe('PostgreSQL tenant integrity', () => {
        GROUP BY r.id ORDER BY r.code`,
       [companyA],
     );
-    expect(roles.rows).toHaveLength(47);
+    expect(roles.rows).toHaveLength(52);
     const catalog = new Map(roles.rows.map((role) => [role.code, role.capabilities]));
     expect(catalog.get('KT_QUOTE_EDITOR')).toContain('quote:create');
     expect(catalog.get('KT_SHIPMENT_REQUESTER')).toContain('shipment:request');
@@ -116,6 +116,14 @@ describe('PostgreSQL tenant integrity', () => {
     expect(catalog.get('KT_COLLECTION_MANAGER')).toContain('collection:close');
     expect(catalog.get('KT_LEGAL_CASE_MANAGER')).toContain('legal-case:decide');
     expect(catalog.get('KT_LEGAL_CASE_MANAGER')).not.toContain('collection:manage');
+    expect(catalog.get('KT_COMPLAINT_REGISTRAR')).toContain('complaint:create');
+    expect(catalog.get('KT_COMPLAINT_REGISTRAR')).not.toContain('complaint:close');
+    expect(catalog.get('KT_QUALITY_INVESTIGATOR')).toContain('ncr:manage');
+    expect(catalog.get('KT_QUALITY_INVESTIGATOR')).not.toContain('ncr:disposition');
+    expect(catalog.get('KT_CAPA_OWNER')).toContain('capa:manage');
+    expect(catalog.get('KT_CAPA_OWNER')).not.toContain('capa:verify');
+    expect(catalog.get('KT_CAPA_VERIFIER')).toContain('capa:verify');
+    expect(catalog.get('KT_CAPA_VERIFIER')).not.toContain('capa:manage');
     expect(catalog.get('KT_QUOTE_EDITOR')).not.toContain('quote:approve');
     expect(catalog.get('KT_QUOTE_APPROVER')).toContain('quote:approve');
     expect(catalog.get('KT_QUOTE_APPROVER')).not.toContain('quote:issue');

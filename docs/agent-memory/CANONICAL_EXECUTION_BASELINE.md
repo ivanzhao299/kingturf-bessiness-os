@@ -1,6 +1,6 @@
 # KingTurf Canonical Execution Baseline
 
-Updated: 2026-08-25 Asia/Shanghai
+Updated: 2026-08-26 Asia/Shanghai
 
 This file is the single authoritative execution route. `MASTER_DEVELOPMENT_PLAN.md` owns product milestones; this file owns current ordering and release evidence. Older cron reports and KT-T2 notes are historical evidence, not parallel roadmaps.
 
@@ -15,7 +15,8 @@ This file is the single authoritative execution route. `MASTER_DEVELOPMENT_PLAN.
 - `KT-L17` is complete and production-accepted at release `b4adf19c934d29c4ab508d9a6f838055001680a5`: actual manufacturing cost policy, immutable calculation snapshots, variance, independent approval and close gate. Production UAT proved calculation, same-actor rejection and approval by the dedicated least-privilege employee `KT-UAT-COST-APPROVER-01`; the cost record is `APPROVED`.
 - `KT-L18` is complete and production-accepted at release `b6033d0872deb86a6c606b32359b3954d5baa38d`: nine frozen shipment gates, independent exception approval, warehouse release, dispatch, tracking and POD. Production UAT proved a real quality/cost exception, independent approval, delivered POD, explicit `403 forbidden` self-approval rejection and a terminal rejected exception.
 - `KT-UI-PROD-01` is complete and production-accepted through release `df367806f6a9aaab924c39019edeb1b582294ecc`.
-- `KT-L19` is implementation-complete locally and has passed the clean-database repository gate. It is not complete until its immutable release SHA, production health/readiness and authenticated role UAT are recorded.
+- `KT-L19` is capability-complete and production-accepted. Collections, payment promises, independent legal handoff, immutable debt evidence packages, Order 360 integration and atomic permissions are present in production. The current cumulative production release is `d08a64ba8f9fd70d754a56121f02e8fc32c0a9fd`; canonical deployment run `32979800858` proved health, readiness and the same runtime SHA, and representative-role production UAT passed against that release.
+- `KT-L20` is the only active long task: customer complaint, NCR and CAPA quality closure. The governed query and batch-result contracts delivered at `d08a64b` are foundation capabilities for L20, not a parallel roadmap.
 
 ## Only valid execution order
 
@@ -26,8 +27,9 @@ This file is the single authoritative execution route. `MASTER_DEVELOPMENT_PLAN.
 5. `KT-L17`: completed; independent-approver production UAT and approved-state evidence are recorded.
 6. `KT-L18`: completed; release and logistics POD evidence is recorded in `docs/evidence/KT-L18_SHIPMENT_RELEASE_LOGISTICS_POD_20260824.md`.
 7. `KT-UI-PROD-01`: completed; production preview reliability, frontend capability exposure, atomic navigation and UI refinement passed production acceptance.
-8. `KT-L19`: active release candidate; collections, payment promises, independent legal handoff, immutable debt evidence packages, Order 360 integration and atomic permissions are implemented and locally accepted.
-9. `KT-L20` through `KT-L25`: continue the master roadmap in numeric order.
+8. `KT-L19`: completed and production-accepted through cumulative release `d08a64ba8f9fd70d754a56121f02e8fc32c0a9fd`.
+9. `KT-L20`: active; implement customer complaint, NCR, CAPA action and independent effectiveness-verification closure.
+10. `KT-L21` through `KT-L25`: continue the master roadmap in numeric order.
 
 ## Completion gate
 

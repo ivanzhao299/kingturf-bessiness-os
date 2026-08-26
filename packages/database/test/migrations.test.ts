@@ -24,7 +24,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0053_collections_legal_evidence.sql');
+    expect(ordered.at(-1)).toBe('0054_complaint_ncr_capa.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
@@ -683,5 +683,32 @@ describe('identity and authorization migration', () => {
       expect(sql).toContain(invariant);
     expect(sql).toContain("('KT_EXECUTIVE_VIEWER','collection:read')");
     expect(sql).not.toContain("('KT_EXECUTIVE_VIEWER','collection:manage')");
+  });
+  it('adds complaint, NCR, CAPA, independent verification, and atomic quality roles', async () => {
+    const sql = await readFile(
+      join(process.cwd(), 'migrations/0054_complaint_ncr_capa.sql'),
+      'utf8',
+    );
+    for (const invariant of [
+      'CREATE TABLE customer_complaints',
+      'CREATE TABLE customer_complaint_events',
+      'CREATE TABLE nonconformance_reports',
+      'CREATE TABLE ncr_events',
+      'CREATE TABLE capa_cases',
+      'CREATE TABLE capa_actions',
+      'CREATE TABLE capa_action_completions',
+      'CREATE TABLE capa_verifications',
+      'major complaint closure requires verified CAPA',
+      'major NCR investigator cannot approve own disposition',
+      'CAPA action owner cannot verify own action',
+      'complaint, NCR, and CAPA evidence is immutable',
+      "'complaint:triage'",
+      "'ncr:disposition'",
+      "'capa:verify'",
+    ])
+      expect(sql).toContain(invariant);
+    expect(sql).toContain("('KT_CAPA_OWNER','KT_CAPA_VERIFIER'");
+    expect(sql).toContain("('KT_EXECUTIVE_VIEWER','complaint:read')");
+    expect(sql).not.toContain("('KT_EXECUTIVE_VIEWER','complaint:close')");
   });
 });
