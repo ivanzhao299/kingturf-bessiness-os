@@ -8610,6 +8610,21 @@ function installWorkspaceListTools(shell: HTMLElement): void {
     if (sourceItems.length < 2 || list.dataset.listTools === 'true' || !list.parentElement)
       continue;
     list.dataset.listTools = 'true';
+    list.classList.add('record-register');
+    list.setAttribute('role', 'table');
+    list.setAttribute('aria-label', '业务记录表');
+    list.setAttribute('aria-rowcount', String(sourceItems.length));
+    for (const item of sourceItems) {
+      item.setAttribute('role', 'row');
+      item.tabIndex = 0;
+    }
+    const header = el('div', 'record-register-head');
+    header.setAttribute('role', 'row');
+    for (const label of ['业务记录', '状态与金额', '责任与时间', '操作']) {
+      const column = el('span', '', label);
+      column.setAttribute('role', 'columnheader');
+      header.append(column);
+    }
     const tools = el('div', 'workspace-list-tools');
     const search = el('input', 'filter-search');
     search.type = 'search';
@@ -8618,42 +8633,132 @@ function installWorkspaceListTools(shell: HTMLElement): void {
     const count = el('span', 'workspace-list-count', `共 ${String(sourceItems.length)} 条`);
     const sort = el('button', 'secondary compact-action', '排序：业务顺序');
     sort.type = 'button';
+    const density = el('button', 'secondary compact-action', '紧凑显示');
+    density.type = 'button';
+    const saveView = el('button', 'secondary compact-action', '保存视图');
+    saveView.type = 'button';
+    const exportList = el('button', 'secondary compact-action', '导出当前结果');
+    exportList.type = 'button';
     const reset = el('button', 'secondary compact-action', '重置');
     reset.type = 'button';
+    const pager = el('div', 'record-register-pager');
+    const previous = el('button', 'secondary compact-action', '上一页');
+    previous.type = 'button';
+    const pageState = el('span', 'workspace-list-count');
+    const next = el('button', 'secondary compact-action', '下一页');
+    next.type = 'button';
+    pager.append(previous, pageState, next);
+    const pageSize = 10;
+    const viewKey = `kingturf.register-view.${list.classList.item(0) ?? 'records'}`;
+    let page = 1;
+    let filteredItems = [...sourceItems];
+    let alphabetical = false;
+    let compact = false;
+    const renderItems = () => {
+      const pageCount = Math.max(1, Math.ceil(filteredItems.length / pageSize));
+      page = Math.min(Math.max(page, 1), pageCount);
+      const start = (page - 1) * pageSize;
+      list.replaceChildren(header, ...filteredItems.slice(start, start + pageSize));
+      count.textContent = `显示 ${String(filteredItems.length)} / ${String(sourceItems.length)} 条`;
+      pageState.textContent = `第 ${String(page)} / ${String(pageCount)} 页`;
+      previous.disabled = page <= 1;
+      next.disabled = page >= pageCount;
+      pager.hidden = filteredItems.length <= pageSize;
+    };
     const applySearch = () => {
       const query = search.value.trim().toLocaleLowerCase('zh-CN');
-      let visible = 0;
-      for (const item of sourceItems) {
-        item.hidden =
-          query.length > 0 && !item.textContent.toLocaleLowerCase('zh-CN').includes(query);
-        if (!item.hidden) visible += 1;
-      }
-      count.textContent =
-        query.length > 0
-          ? `显示 ${String(visible)} / ${String(sourceItems.length)} 条`
-          : `共 ${String(sourceItems.length)} 条`;
+      filteredItems = sourceItems.filter(
+        (item) => query.length === 0 || item.textContent.toLocaleLowerCase('zh-CN').includes(query),
+      );
+      if (alphabetical)
+        filteredItems.sort((left, right) =>
+          left.textContent.localeCompare(right.textContent, 'zh-CN'),
+        );
+      page = 1;
+      renderItems();
     };
     search.addEventListener('input', applySearch);
-    let alphabetical = false;
     sort.addEventListener('click', () => {
       alphabetical = !alphabetical;
-      const ordered = alphabetical
-        ? [...sourceItems].sort((left, right) =>
-            left.textContent.localeCompare(right.textContent, 'zh-CN'),
-          )
-        : sourceItems;
-      list.replaceChildren(...ordered);
       sort.textContent = alphabetical ? '排序：名称' : '排序：业务顺序';
+      applySearch();
+    });
+    density.addEventListener('click', () => {
+      compact = !compact;
+      list.classList.toggle('is-compact', compact);
+      density.textContent = compact ? '标准显示' : '紧凑显示';
+    });
+    saveView.addEventListener('click', () => {
+      try {
+        globalThis.localStorage.setItem(
+          viewKey,
+          JSON.stringify({ query: search.value, alphabetical, compact }),
+        );
+        saveView.textContent = '视图已保存';
+      } catch {
+        saveView.textContent = '当前浏览器无法保存';
+      }
+    });
+    exportList.addEventListener('click', () => {
+      const rows = filteredItems.map((item) => {
+        const name =
+          item.querySelector<HTMLElement>('strong, h3, h4')?.textContent.trim() ?? '业务记录';
+        const status = Array.from(
+          item.querySelectorAll<HTMLElement>('.status-badge, .ctr-state, .version-pin'),
+        )
+          .map((entry) => entry.textContent.trim())
+          .filter(Boolean)
+          .join('、');
+        return [name, status, item.textContent.replace(/\s+/gu, ' ').trim()];
+      });
+      const escapeCsv = (value: string) => `"${value.replace(/"/gu, '""')}"`;
+      const csv = [['业务记录', '状态', '业务摘要'], ...rows]
+        .map((row) => row.map(escapeCsv).join(','))
+        .join('\n');
+      const link = document.createElement('a');
+      link.href = `data:text/csv;charset=utf-8,${encodeURIComponent(`\uFEFF${csv}`)}`;
+      link.download = `金特夫业务记录-${new Date().toISOString().slice(0, 10)}.csv`;
+      link.click();
+    });
+    previous.addEventListener('click', () => {
+      page -= 1;
+      renderItems();
+    });
+    next.addEventListener('click', () => {
+      page += 1;
+      renderItems();
     });
     reset.addEventListener('click', () => {
       search.value = '';
       alphabetical = false;
-      list.replaceChildren(...sourceItems);
+      compact = false;
+      list.classList.remove('is-compact');
+      density.textContent = '紧凑显示';
       sort.textContent = '排序：业务顺序';
       applySearch();
     });
-    tools.append(search, count, sort, reset);
+    tools.append(search, count, sort, density, saveView, exportList, reset);
     list.parentElement.insertBefore(tools, list);
+    list.parentElement.insertBefore(pager, list.nextSibling);
+    try {
+      const stored = globalThis.localStorage.getItem(viewKey);
+      const view = stored
+        ? (JSON.parse(stored) as {
+            query?: unknown;
+            alphabetical?: unknown;
+            compact?: unknown;
+          })
+        : undefined;
+      search.value = typeof view?.query === 'string' ? view.query : '';
+      alphabetical = view?.alphabetical === true;
+      compact = view?.compact === true;
+      list.classList.toggle('is-compact', compact);
+      sort.textContent = alphabetical ? '排序：名称' : '排序：业务顺序';
+      density.textContent = compact ? '标准显示' : '紧凑显示';
+    } catch {
+      // A corrupt or unavailable local view must never block the operational register.
+    }
+    applySearch();
   }
 }
 

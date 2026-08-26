@@ -2037,6 +2037,87 @@ button {
   }
 }
 
+/* KT-UI-PROD-04: operational data registers. */
+.workspace-list-tools {
+  grid-template-columns: minmax(220px, 1fr) auto repeat(5, auto);
+  border-radius: 9px;
+  background: var(--kt-surface);
+}
+.record-register {
+  display: block;
+  overflow: hidden;
+  border: 1px solid var(--kt-border);
+  border-radius: 9px;
+  background: var(--kt-surface);
+}
+.record-register-head {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.5fr) minmax(150px, 0.8fr) minmax(160px, 0.8fr) 120px;
+  gap: 16px;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--kt-border);
+  background: #f4f7f5;
+  color: #60736a;
+  font-size: 11px;
+  font-weight: 750;
+}
+.record-register > [role='row']:not(.record-register-head) {
+  width: 100%;
+  min-width: 0;
+  border-bottom: 1px solid var(--kt-border);
+}
+.record-register > [role='row']:not(.record-register-head):last-child {
+  border-bottom: 0;
+}
+.record-register > [role='row']:not(.record-register-head):hover {
+  background: #f8fbf9;
+}
+.record-register > [role='row']:not(.record-register-head):focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 3px solid var(--kt-focus);
+  outline-offset: -3px;
+}
+.record-register.is-compact > [role='row']:not(.record-register-head) {
+  padding-top: 9px;
+  padding-bottom: 9px;
+}
+.record-register-pager {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+}
+@media (max-width: 1180px) {
+  .workspace-list-tools {
+    grid-template-columns: minmax(220px, 1fr) repeat(3, auto);
+  }
+  .workspace-list-tools .filter-search {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 760px) {
+  .workspace-list-tools {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .workspace-list-tools .filter-search,
+  .workspace-list-tools .workspace-list-count {
+    grid-column: 1 / -1;
+  }
+  .record-register-head {
+    display: none;
+  }
+  .record-register > [role='row']:not(.record-register-head) {
+    padding: 14px;
+  }
+  .record-register-pager {
+    justify-content: space-between;
+  }
+}
+
 @media (min-width: 640px) {
   .app-shell.sidebar-collapsed {
     grid-template-columns: 78px minmax(0, 1fr);

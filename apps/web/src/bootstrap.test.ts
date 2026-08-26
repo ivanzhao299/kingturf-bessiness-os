@@ -86,6 +86,19 @@ it('keeps product pages on one content rail and renders business records as dens
   expect(styles).toContain('grid-template-columns: minmax(0, 1fr);');
 });
 
+it('provides product-grade register controls for high-frequency business records', () => {
+  const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+  const styles = readFileSync(new URL('./style.css', import.meta.url), 'utf8');
+  expect(source).toContain("list.setAttribute('role', 'table')");
+  expect(source).toContain("column.setAttribute('role', 'columnheader')");
+  expect(source).toContain('导出当前结果');
+  expect(source).toContain('保存视图');
+  expect(source).toContain('const pageSize = 10');
+  expect(styles).toContain('KT-UI-PROD-04: operational data registers');
+  expect(styles).toContain('.record-register-head');
+  expect(styles).toContain('.record-register.is-compact');
+});
+
 it('publishes durable operation state for loading, success and rejection feedback', () => {
   const attributes = new Map<string, string>();
   const target = {
