@@ -8750,7 +8750,7 @@ function installWorkspaceListTools(shell: HTMLElement): void {
     const sourceItems = Array.from(list.children).filter(
       (item): item is HTMLElement => item instanceof HTMLElement,
     );
-    if (sourceItems.length < 2 || list.dataset.listTools === 'true' || !list.parentElement)
+    if (sourceItems.length === 0 || list.dataset.listTools === 'true' || !list.parentElement)
       continue;
     list.dataset.listTools = 'true';
     const profile = registerProfile(list);

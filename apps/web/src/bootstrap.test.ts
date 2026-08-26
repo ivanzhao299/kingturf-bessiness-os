@@ -131,6 +131,7 @@ it('uses module-specific register columns, structured detail fields and business
   expect(source).toContain("label: '交付任务台账'");
   expect(source).toContain("['status', '按状态排序']");
   expect(source).toContain("el('dl', 'record-detail-fields')");
+  expect(source).toContain('sourceItems.length === 0');
   expect(styles).toContain('.record-detail-fields');
   expect(styles).toContain('[data-register-profile]');
 });
