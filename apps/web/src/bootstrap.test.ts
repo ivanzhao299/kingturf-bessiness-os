@@ -97,6 +97,12 @@ it('provides product-grade register controls for high-frequency business records
   expect(styles).toContain('KT-UI-PROD-04: operational data registers');
   expect(styles).toContain('.record-register-head');
   expect(styles).toContain('.record-register.is-compact');
+  expect(styles).toContain('KT-UI-PROD-09: persisted operational range filters');
+  expect(styles).toContain('.record-register.is-key-fields .register-optional-field');
+  expect(source).toContain("dateFrom.type = 'date'");
+  expect(source).toContain("amountFrom.placeholder = '最低金额'");
+  expect(source).toContain("['complete', '完整字段']");
+  expect(source).toContain("['key', '重点字段']");
 });
 
 it('uses a smooth two-level sidebar with an icon-only collapse control', () => {

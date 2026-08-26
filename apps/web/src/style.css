@@ -2477,6 +2477,32 @@ button {
   padding-top: 9px;
   padding-bottom: 9px;
 }
+
+/* KT-UI-PROD-09: persisted operational range filters and user-controlled field scope. */
+.register-range-filter {
+  width: 138px;
+  min-width: 126px;
+}
+
+.register-range-filter[type='number'] {
+  width: 118px;
+}
+
+.record-register.is-key-fields .register-optional-field {
+  display: none;
+}
+
+.register-field-mode {
+  min-width: 108px;
+}
+
+@media (max-width: 639px) {
+  .register-range-filter,
+  .register-range-filter[type='number'],
+  .register-field-mode {
+    width: 100%;
+  }
+}
 .record-register-pager {
   display: flex;
   justify-content: flex-end;

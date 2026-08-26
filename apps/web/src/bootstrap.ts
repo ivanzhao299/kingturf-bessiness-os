@@ -8810,6 +8810,26 @@ function installWorkspaceListTools(shell: HTMLElement): void {
       option.value = value;
       attentionFilter.append(option);
     }
+    const dateFrom = el('input', 'filter-search register-range-filter');
+    dateFrom.type = 'date';
+    dateFrom.setAttribute('aria-label', `${profile.label}开始日期`);
+    dateFrom.title = '开始日期';
+    const dateTo = el('input', 'filter-search register-range-filter');
+    dateTo.type = 'date';
+    dateTo.setAttribute('aria-label', `${profile.label}结束日期`);
+    dateTo.title = '结束日期';
+    const amountFrom = el('input', 'filter-search register-range-filter');
+    amountFrom.type = 'number';
+    amountFrom.min = '0';
+    amountFrom.step = '0.01';
+    amountFrom.placeholder = '最低金额';
+    amountFrom.setAttribute('aria-label', `${profile.label}最低金额`);
+    const amountTo = el('input', 'filter-search register-range-filter');
+    amountTo.type = 'number';
+    amountTo.min = '0';
+    amountTo.step = '0.01';
+    amountTo.placeholder = '最高金额';
+    amountTo.setAttribute('aria-label', `${profile.label}最高金额`);
     const count = el('span', 'workspace-list-count', `共 ${String(sourceItems.length)} 条`);
     const sort = el('select', 'filter-select register-sort');
     sort.setAttribute('aria-label', `设置${profile.label}排序方式`);
@@ -8824,6 +8844,16 @@ function installWorkspaceListTools(shell: HTMLElement): void {
     }
     const density = el('button', 'secondary compact-action', '紧凑显示');
     density.type = 'button';
+    const fieldMode = el('select', 'filter-select register-field-mode');
+    fieldMode.setAttribute('aria-label', `设置${profile.label}字段显示范围`);
+    for (const [value, label] of [
+      ['complete', '完整字段'],
+      ['key', '重点字段'],
+    ] as const) {
+      const option = el('option', '', label);
+      option.value = value;
+      fieldMode.append(option);
+    }
     const saveView = el('button', 'secondary compact-action', '保存视图');
     saveView.type = 'button';
     const exportList = el('button', 'secondary compact-action', '导出当前结果');
@@ -8853,6 +8883,7 @@ function installWorkspaceListTools(shell: HTMLElement): void {
     let filteredItems = [...sourceItems];
     let sortMode: 'business' | 'name' | 'status' = 'business';
     let compact = false;
+    let fields: 'complete' | 'key' = 'complete';
     let selectedItem: HTMLElement | undefined;
     const selectedItems = new Set<HTMLElement>();
     const selectAll = document.createElement('input');
@@ -8867,6 +8898,41 @@ function installWorkspaceListTools(shell: HTMLElement): void {
         .map((entry) => entry.textContent.trim())
         .filter(Boolean)
         .join('、');
+    const recordDates = (item: HTMLElement) =>
+      Array.from(item.textContent.matchAll(/\b(20\d{2}-\d{2}-\d{2})\b/gu), (match) =>
+        Date.parse(`${match[1] ?? ''}T00:00:00Z`),
+      ).filter(Number.isFinite);
+    const recordAmounts = (item: HTMLElement) => {
+      const text = item.textContent.replace(/,/gu, '');
+      const values = [
+        ...Array.from(text.matchAll(/(?:CNY|RMB|人民币|¥|￥)\s*(-?\d+(?:\.\d+)?)/giu), (match) =>
+          Number(match[1]),
+        ),
+        ...Array.from(
+          text.matchAll(
+            /(?:金额|货值|应收|回款|到账|余额|成本|报价|合同额|差异)\s*[：:]?\s*(-?\d+(?:\.\d+)?)/gu,
+          ),
+          (match) => Number(match[1]),
+        ),
+      ];
+      return values.filter(Number.isFinite);
+    };
+    const updateFieldMode = () => {
+      list.classList.toggle('is-key-fields', fields === 'key');
+      for (const item of sourceItems) {
+        const details = Array.from(item.children).filter(
+          (child): child is HTMLElement =>
+            child instanceof HTMLElement &&
+            !child.matches(
+              '.record-select, button, .quality-actions, .ctr-actions, .status-badge, .ctr-state, .version-pin',
+            ),
+        );
+        details.forEach((child, index) => {
+          child.classList.toggle('register-optional-field', index >= 3);
+        });
+      }
+      fieldMode.value = fields;
+    };
     const updateSelection = () => {
       selectedCount.textContent = `已选 ${String(selectedItems.size)} 条`;
       bulkInspect.disabled = selectedItems.size === 0;
@@ -8890,8 +8956,30 @@ function installWorkspaceListTools(shell: HTMLElement): void {
     };
     const applySearch = () => {
       const query = search.value.trim().toLocaleLowerCase('zh-CN');
-      filteredItems = sourceItems.filter(
-        (item) =>
+      const fromDate = dateFrom.value ? Date.parse(`${dateFrom.value}T00:00:00Z`) : undefined;
+      const toDate = dateTo.value ? Date.parse(`${dateTo.value}T23:59:59Z`) : undefined;
+      const minimumAmount = amountFrom.value.length > 0 ? Number(amountFrom.value) : undefined;
+      const maximumAmount = amountTo.value.length > 0 ? Number(amountTo.value) : undefined;
+      filteredItems = sourceItems.filter((item) => {
+        const dates = recordDates(item);
+        const amounts = recordAmounts(item);
+        const dateMatches =
+          fromDate === undefined && toDate === undefined
+            ? true
+            : dates.some(
+                (date) =>
+                  (fromDate === undefined || date >= fromDate) &&
+                  (toDate === undefined || date <= toDate),
+              );
+        const amountMatches =
+          minimumAmount === undefined && maximumAmount === undefined
+            ? true
+            : amounts.some(
+                (amount) =>
+                  (minimumAmount === undefined || amount >= minimumAmount) &&
+                  (maximumAmount === undefined || amount <= maximumAmount),
+              );
+        return (
           (query.length === 0 || item.textContent.toLocaleLowerCase('zh-CN').includes(query)) &&
           (statusFilter.value.length === 0 ||
             Array.from(
@@ -8900,8 +8988,11 @@ function installWorkspaceListTools(shell: HTMLElement): void {
           (attentionFilter.value.length === 0 ||
             (attentionFilter.value === 'attention'
               ? /逾期|驳回|未通过|隔离|待审|异常|冻结|退回/u.test(item.textContent)
-              : item.querySelector('button:not(:disabled)') !== null)),
-      );
+              : item.querySelector('button:not(:disabled)') !== null)) &&
+          dateMatches &&
+          amountMatches
+        );
+      });
       if (sortMode === 'name')
         filteredItems.sort((left, right) =>
           left.textContent.localeCompare(right.textContent, 'zh-CN'),
@@ -8919,6 +9010,10 @@ function installWorkspaceListTools(shell: HTMLElement): void {
     search.addEventListener('input', applySearch);
     statusFilter.addEventListener('change', applySearch);
     attentionFilter.addEventListener('change', applySearch);
+    dateFrom.addEventListener('change', applySearch);
+    dateTo.addEventListener('change', applySearch);
+    amountFrom.addEventListener('input', applySearch);
+    amountTo.addEventListener('input', applySearch);
     for (const item of sourceItems) {
       const checkbox = document.createElement('input');
       checkbox.type = 'checkbox';
@@ -8991,6 +9086,10 @@ function installWorkspaceListTools(shell: HTMLElement): void {
       list.classList.toggle('is-compact', compact);
       density.textContent = compact ? '标准显示' : '紧凑显示';
     });
+    fieldMode.addEventListener('change', () => {
+      fields = fieldMode.value === 'key' ? 'key' : 'complete';
+      updateFieldMode();
+    });
     saveView.addEventListener('click', () => {
       try {
         globalThis.localStorage.setItem(
@@ -8999,8 +9098,13 @@ function installWorkspaceListTools(shell: HTMLElement): void {
             query: search.value,
             status: statusFilter.value,
             attention: attentionFilter.value,
+            dateFrom: dateFrom.value,
+            dateTo: dateTo.value,
+            amountFrom: amountFrom.value,
+            amountTo: amountTo.value,
             sortMode,
             compact,
+            fields,
           }),
         );
         saveView.textContent = '视图已保存';
@@ -9041,9 +9145,14 @@ function installWorkspaceListTools(shell: HTMLElement): void {
       search.value = '';
       statusFilter.value = '';
       attentionFilter.value = '';
+      dateFrom.value = '';
+      dateTo.value = '';
+      amountFrom.value = '';
+      amountTo.value = '';
       sortMode = 'business';
       sort.value = 'business';
       compact = false;
+      fields = 'complete';
       selectedItems.clear();
       for (const item of sourceItems) {
         item.classList.remove('is-bulk-selected');
@@ -9052,16 +9161,22 @@ function installWorkspaceListTools(shell: HTMLElement): void {
       }
       list.classList.remove('is-compact');
       density.textContent = '紧凑显示';
+      updateFieldMode();
       applySearch();
     });
     tools.append(
       search,
       statusFilter,
       attentionFilter,
+      dateFrom,
+      dateTo,
+      amountFrom,
+      amountTo,
       count,
       selectedCount,
       sort,
       density,
+      fieldMode,
       inspect,
       bulkInspect,
       saveView,
@@ -9078,8 +9193,13 @@ function installWorkspaceListTools(shell: HTMLElement): void {
             query?: unknown;
             status?: unknown;
             attention?: unknown;
+            dateFrom?: unknown;
+            dateTo?: unknown;
+            amountFrom?: unknown;
+            amountTo?: unknown;
             sortMode?: unknown;
             compact?: unknown;
+            fields?: unknown;
           })
         : undefined;
       search.value = typeof view?.query === 'string' ? view.query : '';
@@ -9087,15 +9207,21 @@ function installWorkspaceListTools(shell: HTMLElement): void {
         typeof view?.status === 'string' && statuses.includes(view.status) ? view.status : '';
       attentionFilter.value =
         view?.attention === 'attention' || view?.attention === 'actionable' ? view.attention : '';
+      dateFrom.value = typeof view?.dateFrom === 'string' ? view.dateFrom : '';
+      dateTo.value = typeof view?.dateTo === 'string' ? view.dateTo : '';
+      amountFrom.value = typeof view?.amountFrom === 'string' ? view.amountFrom : '';
+      amountTo.value = typeof view?.amountTo === 'string' ? view.amountTo : '';
       sortMode =
         view?.sortMode === 'name' || view?.sortMode === 'status' ? view.sortMode : 'business';
       sort.value = sortMode;
       compact = view?.compact === true;
+      fields = view?.fields === 'key' ? 'key' : 'complete';
       list.classList.toggle('is-compact', compact);
       density.textContent = compact ? '标准显示' : '紧凑显示';
     } catch {
       // A corrupt or unavailable local view must never block the operational register.
     }
+    updateFieldMode();
     applySearch();
   }
 }
