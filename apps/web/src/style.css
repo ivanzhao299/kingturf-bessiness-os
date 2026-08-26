@@ -3006,8 +3006,8 @@ button:not(:disabled):active {
 
 /* KT-UI-PROD-03: consistent page rail and record-register hierarchy. */
 .workspace {
-  width: 100%;
-  max-width: 1680px;
+  width: auto;
+  max-width: none;
   padding-right: clamp(20px, 2.4vw, 40px);
   padding-left: clamp(20px, 2.4vw, 40px);
 }
