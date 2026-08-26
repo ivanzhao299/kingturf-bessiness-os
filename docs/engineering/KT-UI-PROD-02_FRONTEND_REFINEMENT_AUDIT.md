@@ -37,6 +37,9 @@ Date: 2026-08-25 Asia/Shanghai
 | P6-A       | Complete | Production, cost and MRP queues prioritize actionable work and expose accountable next actions              |
 | P6-B       | Complete | Procurement, quality, inventory and shipment queues summarize exceptions and translate operational codes    |
 | P6-C       | Complete | Cost, MRP, quality-plan and shipment decisions require explicit confirmation and traceable evidence         |
+| P7-A       | Complete | Governance overview reports records, approval tasks, unread notifications and source failures               |
+| P7-B       | Complete | Governance modules prioritize failures and daily queues with explicit accountable next actions              |
+| P7-C       | Complete | Governance tables and source labels use Chinese operational terms and suppress redundant permission prose   |
 
 P3-A was verified with a regression test for the shared operation-state contract plus the complete web lint,
 typecheck, 45-test and production-build gate. Authenticated production UAT remains a P9/P10 release condition;
@@ -67,6 +70,14 @@ daily Chinese business language instead of internal codes.
 P6-C moves manufacturing-cost approval, MRP release, quality-plan publication, shipment exception approval and
 warehouse release behind the shared confirmation lifecycle. Operators must now provide a reason and evidence
 reference for governed decisions; no production decision relies on a hard-coded test-channel marker.
+
+P7-A/P7-B replace interface-count metrics with permission-filtered business records, pending workflow tasks,
+unread notifications and failed sources. Failed modules sort first, followed by approval, notification, event,
+authorization and audit work; every module states the next accountable action without expanding permissions.
+
+P7-C replaces generic data-detail labels with named organization, employee, role, grant, audit, workflow,
+notification and event registers. Common governance fields and notification channels use daily Chinese terms,
+table previews cover eight rows, and repetitive edit-permission footnotes and module descriptions are removed.
 
 ## 128-hour execution plan
 

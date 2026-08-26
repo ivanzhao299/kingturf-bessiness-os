@@ -9443,6 +9443,63 @@ const governanceItems = (value: unknown): readonly unknown[] => {
   return [value];
 };
 
+const GOVERNANCE_SOURCE_LABELS: Readonly<Record<string, string>> = {
+  '/api/v1/organizations': '组织清单',
+  '/api/v1/employees': '员工清单',
+  '/api/v1/roles': '角色清单',
+  '/api/v1/permissions': '权限清单',
+  '/api/v1/grants': '角色授权',
+  '/api/v1/assignments': '人员角色',
+  '/api/v1/scope-grants': '数据范围',
+  '/api/v1/audit-events': '审计事件',
+  '/api/v1/master-data/categories': '主数据分类',
+  '/api/v1/master-data/entries': '主数据条目',
+  '/api/v1/number-definitions': '编号规则',
+  '/api/v1/rules': '业务规则',
+  '/api/v1/workflows': '工作流定义',
+  '/api/v1/workflow-tasks': '审批待办',
+  '/api/v1/notifications': '通知消息',
+  '/api/v1/notifications/unread-count': '未读数量',
+  '/api/v1/notification-preferences': '通知偏好',
+  '/api/v1/business-objects': '业务对象',
+  '/api/v1/operations/events': '事件运行记录',
+};
+
+const GOVERNANCE_CHANNEL_LABELS: Readonly<Record<string, string>> = {
+  IN_APP: '系统内通知',
+  EMAIL: '电子邮件',
+  FEISHU: '飞书私聊',
+  SMS: '短信',
+};
+
+export const governanceNextAction = (
+  surfaceId: string,
+  recordCount: number,
+  failureCount: number,
+): string => {
+  if (failureCount > 0) return '先处理数据读取异常并核对权限或服务状态';
+  const actions: Readonly<Record<string, string>> = {
+    organizations: '核对组织层级和停用组织',
+    employees: '核对员工归属、账号状态和离职停用',
+    'identity-access': '优先处理人员角色、授权和数据范围',
+    audit: '按人员、动作和关联编号复核异常操作',
+    'master-data': '核对生效期、停用项和重复编码',
+    numbering: '检查草稿版本并发布合规编号规则',
+    rules: '检查草稿规则并完成试算后发布',
+    workflow: '优先处理当前账号的审批待办',
+    notifications: '处理未读通知并核对本人通知通道',
+    registry: '核对业务对象定义和版本状态',
+    'event-operations': '优先排查失败、重试和积压事件',
+  };
+  if (recordCount === 0) return '当前范围暂无记录，按职责创建或等待业务产生';
+  return actions[surfaceId] ?? '核对当前记录和待处理事项';
+};
+
+export const governanceChannelLabel = (value: unknown): string => {
+  const code = textValue(value, '通知通道');
+  return GOVERNANCE_CHANNEL_LABELS[code] ?? code;
+};
+
 const GOVERNANCE_FIELD_LABELS: Readonly<Record<string, string>> = {
   code: '编码',
   name: '名称',
@@ -9456,6 +9513,17 @@ const GOVERNANCE_FIELD_LABELS: Readonly<Record<string, string>> = {
   version: '版本',
   email: '邮箱',
   phone: '电话',
+  action: '操作',
+  outcome: '结果',
+  channel: '通知通道',
+  enabled: '启用状态',
+  stepKey: '审批环节',
+  subjectType: '业务对象',
+  eventType: '事件类型',
+  attemptCount: '尝试次数',
+  lastErrorCode: '最近错误',
+  unreadCount: '未读数量',
+  count: '数量',
   createdAt: '创建时间',
   updatedAt: '更新时间',
 };
@@ -9472,6 +9540,17 @@ const governanceFieldPriority = [
   'version',
   'email',
   'phone',
+  'action',
+  'outcome',
+  'channel',
+  'enabled',
+  'stepKey',
+  'subjectType',
+  'eventType',
+  'attemptCount',
+  'lastErrorCode',
+  'unreadCount',
+  'count',
   'createdAt',
   'updatedAt',
 ] as const;
@@ -9487,11 +9566,11 @@ const governanceCellText = (value: unknown): string => {
   if (typeof value !== 'string' && typeof value !== 'number' && typeof value !== 'bigint')
     return '—';
   const text = String(value);
-  return ENTERPRISE_STATUS_LABELS[text] ?? text;
+  return GOVERNANCE_CHANNEL_LABELS[text] ?? ENTERPRISE_STATUS_LABELS[text] ?? text;
 };
 
 const governanceTable = (items: readonly unknown[]): HTMLElement => {
-  const records = items.slice(0, 5).map(recordValue);
+  const records = items.slice(0, 8).map(recordValue);
   const availableFields = new Set(records.flatMap((record) => Object.keys(record)));
   const fields = [
     ...governanceFieldPriority.filter((field) => availableFields.has(field)),
@@ -9539,11 +9618,26 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
   const summary = el('section', 'governance-metrics');
   const visible = visibleGovernanceSurfaces(permissions);
   const failed = views.filter((view) => view.error !== undefined).length;
+  const totalRecords = views.reduce(
+    (sum, view) => sum + (view.error ? 0 : governanceItems(view.value).length),
+    0,
+  );
+  const pendingWorkflowTasks = governanceItems(
+    views.find((view) => view.path === '/api/v1/workflow-tasks')?.value,
+  ).filter((item) => {
+    const state = recordText(recordValue(item), 'state', 'status');
+    return !['APPROVED', 'REJECTED', 'COMPLETED', 'CANCELLED'].includes(state);
+  }).length;
+  const unreadView = views.find((view) => view.path === '/api/v1/notifications/unread-count');
+  const unreadRecord = recordValue(unreadView?.value);
+  const unreadNotifications = Number(
+    unreadRecord.unreadCount ?? unreadRecord.count ?? unreadRecord.unread ?? 0,
+  );
   for (const [label, value] of [
-    ['可管理模块', String(visible.length)],
-    ['业务配置项', String(views.length - failed)],
-    ['待处理异常', String(failed)],
-    ['已授权操作', String(permissions.size)],
+    ['治理模块', String(visible.length)],
+    ['业务记录', String(totalRecords)],
+    ['待审批任务', String(pendingWorkflowTasks)],
+    ['未读 / 异常', `${String(unreadNotifications)} / ${String(failed)}`],
   ] as const) {
     const metric = el('article', 'metric');
     metric.append(el('span', '', label), el('strong', '', value));
@@ -9585,7 +9679,30 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
     return normalized;
   };
   const grid = el('section', 'governance-grid');
-  for (const surface of visible) {
+  const surfacePriority: Readonly<Record<string, number>> = {
+    workflow: 0,
+    notifications: 1,
+    'event-operations': 2,
+    'identity-access': 3,
+    audit: 4,
+  };
+  const prioritizedSurfaces = [...visible].sort((left, right) => {
+    const leftFailures = views.filter(
+      (view) => left.paths.includes(view.path) && view.error !== undefined,
+    ).length;
+    const rightFailures = views.filter(
+      (view) => right.paths.includes(view.path) && view.error !== undefined,
+    ).length;
+    if (leftFailures !== rightFailures) return rightFailures - leftFailures;
+    return (surfacePriority[left.id] ?? 20) - (surfacePriority[right.id] ?? 20);
+  });
+  for (const surface of prioritizedSurfaces) {
+    const surfaceViews = views.filter((view) => surface.paths.includes(view.path));
+    const surfaceFailures = surfaceViews.filter((view) => view.error !== undefined).length;
+    const surfaceRecords = surfaceViews.reduce(
+      (sum, view) => sum + (view.error ? 0 : governanceItems(view.value).length),
+      0,
+    );
     const panel = el('article', 'governance-card');
     const heading = el('header', 'panel-head');
     heading.append(
@@ -9596,7 +9713,19 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
         surface.disposition === 'SUPPORTING' ? '运行监控' : '配置管理',
       ),
     );
-    panel.append(heading, el('p', 'muted', surface.description));
+    panel.append(
+      heading,
+      el(
+        'p',
+        surfaceFailures > 0 ? 'risk-note' : 'governance-card-summary',
+        `${String(surfaceRecords)} 条记录 · ${surfaceFailures > 0 ? `${String(surfaceFailures)} 个数据异常` : '数据读取正常'}`,
+      ),
+      el(
+        'p',
+        'next-action-note',
+        `下一步：${governanceNextAction(surface.id, surfaceRecords, surfaceFailures)}`,
+      ),
+    );
     const actions = el('div', 'governance-actions');
     if (surface.id === 'organizations' && permissions.has('organization:create')) {
       const create = el('button', 'secondary', '新建组织');
@@ -10271,7 +10400,8 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
               required: true,
               options: choices(
                 '/api/v1/workflow-tasks',
-                (item) => `${textValue(item.stepKey, '待办')} · ${textValue(item.state, '')}`,
+                (item) =>
+                  `${textValue(item.stepKey, '待办')} · ${businessStateLabel(item.state, '待处理')}`,
               ),
             },
             {
@@ -10317,7 +10447,7 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
               required: true,
               options: records('/api/v1/notification-preferences').map((item) => ({
                 value: textValue(item.channel, ''),
-                label: `${textValue(item.channel, '')} · ${item.enabled === false ? '关闭' : '开启'}`,
+                label: `${governanceChannelLabel(item.channel)} · ${item.enabled === false ? '关闭' : '开启'}`,
               })),
             },
             {
@@ -10375,10 +10505,11 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
       const view = views.find((item) => item.path === path);
       const row = el('details', 'governance-source');
       const items = view ? governanceItems(view.value) : [];
+      const sourceLabel = GOVERNANCE_SOURCE_LABELS[path] ?? '业务数据';
       const source = el(
         'summary',
         '',
-        view?.error ? '数据读取失败' : `查看数据明细 · ${String(items.length)} 条`,
+        view?.error ? `${sourceLabel} · 读取失败` : `${sourceLabel} · ${String(items.length)} 条`,
       );
       row.append(source);
       if (view?.error) row.append(el('p', 'error', view.error));
@@ -10386,8 +10517,6 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
       else row.append(governanceTable(items));
       panel.append(row);
     }
-    if (surface.managePermission && permissions.has(surface.managePermission))
-      panel.append(el('p', 'permission-note', '当前账号具备编辑权限'));
     grid.append(panel);
   }
   workspace.append(grid);

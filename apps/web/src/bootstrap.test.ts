@@ -36,6 +36,8 @@ import {
   setOperationStatus,
   technicalSolutionOpportunityId,
   governanceWorkspace,
+  governanceChannelLabel,
+  governanceNextAction,
 } from './bootstrap';
 
 it('translates risk rules and derives the daily commission next action', () => {
@@ -301,6 +303,14 @@ it('exposes governance navigation only from atomic session capabilities', () => 
   expect(appRouteFromHash('#/governance')).toBe('governance');
 });
 
+it('prioritizes governance exceptions and translates daily notification channels', () => {
+  expect(governanceNextAction('workflow', 3, 0)).toBe('优先处理当前账号的审批待办');
+  expect(governanceNextAction('audit', 2, 1)).toBe('先处理数据读取异常并核对权限或服务状态');
+  expect(governanceNextAction('rules', 0, 0)).toBe('当前范围暂无记录，按职责创建或等待业务产生');
+  expect(governanceChannelLabel('IN_APP')).toBe('系统内通知');
+  expect(governanceChannelLabel('FEISHU')).toBe('飞书私聊');
+});
+
 it('renders only governance actions granted to the authenticated role', () => {
   const controller = new GovernanceController(
     new Set(['organization:read', 'organization:update', 'audit:read']),
@@ -318,6 +328,8 @@ it('renders only governance actions granted to the authenticated role', () => {
   expect(workspace.textContent).not.toContain('新建组织');
   expect(workspace.textContent).not.toContain('新建员工');
   expect(workspace.textContent).toContain('审计中心');
+  expect(workspace.textContent).toContain('审计事件 · 0 条');
+  expect(workspace.textContent).toContain('下一步：');
 });
 
 it('exposes governed identity provisioning, role assignment, and role removal together', () => {
