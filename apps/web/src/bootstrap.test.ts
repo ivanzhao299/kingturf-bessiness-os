@@ -111,6 +111,18 @@ it('uses a smooth two-level sidebar with an icon-only collapse control', () => {
   expect(styles).toContain('.sidebar-collapsed .nav-children');
 });
 
+it('adds status filtering and a permission-scoped detail drawer to business registers', () => {
+  const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+  const styles = readFileSync(new URL('./style.css', import.meta.url), 'utf8');
+  expect(source).toContain("statusFilter.setAttribute('aria-label', '按业务状态筛选')");
+  expect(source).toContain('查看选中详情');
+  expect(source).toContain("detailDrawer.setAttribute('aria-label', '业务记录详情')");
+  expect(source).toContain('当前权限范围内的只读业务快照');
+  expect(styles).toContain('KT-UI-PROD-06: field filtering');
+  expect(styles).toContain('.record-detail-drawer');
+  expect(styles).toContain('.is-selected');
+});
+
 it('publishes durable operation state for loading, success and rejection feedback', () => {
   const attributes = new Map<string, string>();
   const target = {
