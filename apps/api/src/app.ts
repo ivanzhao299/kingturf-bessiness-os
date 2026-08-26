@@ -1800,10 +1800,14 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
                 complaintId: uuid(ncrCreate[1], 'complaintId'),
                 defectType: string(body.defectType, 'defectType'),
                 affectedScope: string(body.affectedScope, 'affectedScope'),
-                responsibleOrganizationId: uuid(
-                  body.responsibleOrganizationId,
-                  'responsibleOrganizationId',
-                ),
+                ...(body.responsibleOrganizationId
+                  ? {
+                      responsibleOrganizationId: uuid(
+                        body.responsibleOrganizationId,
+                        'responsibleOrganizationId',
+                      ),
+                    }
+                  : {}),
                 investigatorId: uuid(body.investigatorId, 'investigatorId'),
                 quarantinedQuantity: decimal(body.quarantinedQuantity, 'quarantinedQuantity'),
                 temporaryContainment: string(body.temporaryContainment, 'temporaryContainment'),

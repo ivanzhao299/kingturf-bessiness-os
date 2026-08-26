@@ -466,7 +466,7 @@ export class PostgresComplaintRepository {
       complaintId: string;
       defectType: string;
       affectedScope: string;
-      responsibleOrganizationId: string;
+      responsibleOrganizationId?: string;
       investigatorId: string;
       quarantinedQuantity: string;
       temporaryContainment: string;
@@ -491,6 +491,15 @@ export class PostgresComplaintRepository {
         assertReplay(replay.canonical_hash, canonical);
         return json({ id: replay.id, state: 'OPEN', replayed: true });
       }
+      const investigator = (
+        await tx.query<{ organization_id: string }>(
+          'SELECT organization_id FROM employees WHERE company_id=$1 AND id=$2 AND active=true',
+          [context.actor.companyId, input.investigatorId],
+        )
+      ).rows[0];
+      if (!investigator) throw new DomainError('not_found', 'Active NCR investigator not found');
+      const responsibleOrganizationId =
+        input.responsibleOrganizationId ?? investigator.organization_id;
       const row = (
         await tx.query<{ id: string }>(
           `INSERT INTO nonconformance_reports(tenant_id,ncr_number,complaint_id,defect_type,affected_scope,responsible_organization_id,investigator_id,quarantined_quantity,temporary_containment,created_by,correlation_id,idempotency_key,canonical_hash)
@@ -501,7 +510,7 @@ export class PostgresComplaintRepository {
             input.complaintId,
             input.defectType,
             input.affectedScope,
-            input.responsibleOrganizationId,
+            responsibleOrganizationId,
             input.investigatorId,
             input.quarantinedQuantity,
             input.temporaryContainment,
