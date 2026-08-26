@@ -3003,3 +3003,132 @@ button:not(:disabled):active {
     min-width: 0;
   }
 }
+
+/* KT-UI-PROD-03: consistent page rail and record-register hierarchy. */
+.workspace {
+  width: 100%;
+  max-width: 1680px;
+  padding-right: clamp(20px, 2.4vw, 40px);
+  padding-left: clamp(20px, 2.4vw, 40px);
+}
+.workspace > [data-route-view],
+.workspace > .commercial-workspace,
+.workspace > .governance-workspace,
+.commercial-workspace > [data-route-view] {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+}
+.commercial-workspace {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+}
+.route-context-header,
+.topbar,
+.governance-hero {
+  padding-right: 2px;
+  padding-left: 2px;
+}
+.route-context-header {
+  margin-bottom: 16px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--kt-border);
+}
+.route-context-header h1 {
+  font-size: clamp(25px, 2.2vw, 34px);
+}
+.governance-hero h2 {
+  margin: 0 0 6px;
+  color: var(--kt-ink);
+  font-size: 20px;
+  letter-spacing: -0.02em;
+}
+.commercial-panel,
+.solution-workbench,
+.decision-workbench,
+.quote-workbench,
+.qtc-workbench,
+.manufacturing-workbench,
+.procurement-workbench,
+.mrp-workbench,
+.production-workbench,
+.quality-workbench,
+.shipment-workbench {
+  width: 100%;
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgb(16 39 31 / 3%);
+}
+.solution-list,
+.decision-list,
+.quote-list,
+.qtc-list,
+.order-360-list,
+.production-order-grid,
+.mrp-proposal-grid,
+.risk-list {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--kt-border);
+  border-radius: 11px;
+  background: var(--kt-surface);
+}
+.solution-card,
+.decision-card,
+.quote-card,
+.qtc-card,
+.order-360-card,
+.production-order-card,
+.mrp-proposal-card,
+.risk-card {
+  margin: 0;
+  border: 0;
+  border-bottom: 1px solid var(--kt-border);
+  border-radius: 0;
+  background: var(--kt-surface);
+  box-shadow: none;
+}
+.solution-list > :last-child,
+.decision-list > :last-child,
+.quote-list > :last-child,
+.qtc-list > :last-child,
+.order-360-list > :last-child,
+.production-order-grid > :last-child,
+.mrp-proposal-grid > :last-child,
+.risk-list > :last-child {
+  border-bottom: 0;
+}
+.governance-grid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+.governance-card {
+  border-radius: 13px;
+  box-shadow: 0 1px 2px rgb(16 39 31 / 3%);
+}
+.metric,
+.pipeline-metric,
+.metric-card {
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgb(16 39 31 / 4%);
+}
+@media (max-width: 639px) {
+  .workspace {
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+  .route-context-header {
+    margin-bottom: 12px;
+    padding-bottom: 14px;
+  }
+  .solution-card,
+  .decision-card,
+  .quote-card,
+  .qtc-card,
+  .order-360-card,
+  .production-order-card,
+  .mrp-proposal-card,
+  .risk-card {
+    padding: 14px;
+  }
+}

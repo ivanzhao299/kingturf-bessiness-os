@@ -9762,8 +9762,8 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
   const header = el('header', 'governance-hero');
   header.append(
     el('p', 'eyebrow', '企业管理控制台'),
-    el('h1', '', '系统管理与治理'),
-    el('p', 'muted', '组织、账号、权限和平台运行配置。'),
+    el('h2', '', '治理工作台'),
+    el('p', 'muted', '集中处理组织、账号、权限和平台运行配置。'),
   );
   workspace.append(header);
   const summary = el('section', 'governance-metrics');

@@ -77,6 +77,15 @@ it('captures artificial-turf project handoff fields without test-channel evidenc
   expect(source).not.toContain('WEB-UAT');
 });
 
+it('keeps product pages on one content rail and renders business records as dense registers', () => {
+  const styles = readFileSync(new URL('./style.css', import.meta.url), 'utf8');
+  expect(styles).toContain('KT-UI-PROD-03: consistent page rail and record-register hierarchy');
+  expect(styles).toContain('.workspace > [data-route-view]');
+  expect(styles).toContain('.governance-grid');
+  expect(styles).toContain('.solution-list');
+  expect(styles).toContain('grid-template-columns: minmax(0, 1fr);');
+});
+
 it('publishes durable operation state for loading, success and rejection feedback', () => {
   const attributes = new Map<string, string>();
   const target = {
