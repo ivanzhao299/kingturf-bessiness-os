@@ -129,6 +129,7 @@ export type CommercialPermission =
   | 'ncr:read'
   | 'ncr:manage'
   | 'ncr:disposition'
+  | 'ncr:close'
   | 'capa:read'
   | 'capa:manage'
   | 'capa:verify';
@@ -7592,8 +7593,288 @@ export function commercialWorkspaceStructure(
           });
           actionCell.append(openNcr);
         }
-        if (state === 'VERIFIED' && permissions.has('complaint:close'))
-          command('close', '关闭投诉', '关闭前请确认整改验证证据和客户反馈已完整归档。');
+        if (['NCR_OPEN', 'CAPA_ACTIVE', 'VERIFIED'].includes(state) && controller.api.get) {
+          const workflow = el('button', 'primary', '处理质量闭环');
+          workflow.addEventListener('click', () => {
+            void (async () => {
+              const detail = await controller.api.get?.(`/api/v1/complaints/${id}`);
+              if (!detail) return;
+              const ncr = recordValue(detail.ncr);
+              const capa = recordValue(ncr.capa);
+              const ncrId = recordText(ncr, 'id', 'id');
+              const ncrState = recordText(ncr, 'state', 'state');
+              const ncrVersion = Number(ncr.version ?? 0);
+              const capaId = recordText(capa, 'id', 'id');
+              const capaState = recordText(capa, 'state', 'state');
+              const capaVersion = Number(capa.version ?? 0);
+              const evidenceFields = [
+                { name: 'reason', label: '处理说明', type: 'textarea' as const, required: true },
+                { name: 'evidenceReference', label: '证据编号', required: true },
+              ];
+              const transitionNcr = (
+                action: 'contain' | 'root-cause' | 'disposition' | 'close',
+                title: string,
+                extra: Parameters<typeof openForm>[3] = [],
+              ) => {
+                openForm(
+                  workspace,
+                  title,
+                  '填写业务结论和可追溯证据后提交。',
+                  [...extra, ...evidenceFields],
+                  `确认${title}`,
+                  async (values) => {
+                    await controller.submit(`/api/v1/ncrs/${ncrId}/${action}`, {
+                      expectedVersion: ncrVersion,
+                      reason: values.reason,
+                      evidence: { reference: values.evidenceReference },
+                      ...(action === 'root-cause'
+                        ? {
+                            rootCauseMethod: values.rootCauseMethod,
+                            rootCause: { conclusion: values.rootCause },
+                          }
+                        : {}),
+                      ...(action === 'disposition' ? { disposition: values.disposition } : {}),
+                      idempotencyKey: requestId(),
+                    });
+                    await refresh();
+                  },
+                );
+              };
+              if (ncrState === 'OPEN' && permissions.has('ncr:manage')) {
+                transitionNcr('contain', '确认临时遏制');
+                return;
+              }
+              if (ncrState === 'CONTAINED' && permissions.has('ncr:manage')) {
+                transitionNcr('root-cause', '确认根本原因', [
+                  {
+                    name: 'rootCauseMethod',
+                    label: '分析方法',
+                    type: 'select',
+                    required: true,
+                    options: [
+                      { value: 'FIVE_WHY', label: '五个为什么' },
+                      { value: 'FISHBONE', label: '鱼骨图' },
+                      { value: 'FAULT_TREE', label: '故障树' },
+                      { value: 'OTHER', label: '其他方法' },
+                    ],
+                  },
+                  { name: 'rootCause', label: '根本原因结论', type: 'textarea', required: true },
+                ]);
+                return;
+              }
+              if (ncrState === 'ROOT_CAUSE_CONFIRMED' && permissions.has('ncr:disposition')) {
+                transitionNcr('disposition', '批准处置方案', [
+                  {
+                    name: 'disposition',
+                    label: '处置方式',
+                    type: 'select',
+                    required: true,
+                    options: [
+                      { value: 'REWORK', label: '返工' },
+                      { value: 'REPAIR', label: '修复' },
+                      { value: 'CONCESSION', label: '让步接收' },
+                      { value: 'RETURN', label: '退货' },
+                      { value: 'SCRAP', label: '报废' },
+                      { value: 'SUPPLIER_CLAIM', label: '供应商索赔' },
+                    ],
+                  },
+                ]);
+                return;
+              }
+              if (ncrState === 'DISPOSITIONED' && !capaId && permissions.has('capa:manage')) {
+                openForm(
+                  workspace,
+                  '建立纠正预防措施',
+                  '指定整改责任人、目标日期和根因快照。',
+                  [
+                    { name: 'capaNumber', label: '整改单号', required: true },
+                    {
+                      name: 'ownerId',
+                      label: '整改责任人',
+                      type: 'select',
+                      required: true,
+                      options: controller.employees.map((employee) => ({
+                        value: employee.id,
+                        label: employee.displayName ?? employee.employeeNumber ?? '未命名员工',
+                      })),
+                    },
+                    {
+                      name: 'targetAt',
+                      label: '目标完成时间',
+                      type: 'datetime-local',
+                      required: true,
+                    },
+                    { name: 'rootCause', label: '根因摘要', type: 'textarea', required: true },
+                    { name: 'evidenceReference', label: '处置证据编号', required: true },
+                  ],
+                  '确认建立',
+                  async (values) => {
+                    await controller.submit(`/api/v1/ncrs/${ncrId}/capas`, {
+                      capaNumber: values.capaNumber,
+                      ownerId: values.ownerId,
+                      targetAt: values.targetAt,
+                      riskLevel: recordText(complaint, 'severity', 'severity'),
+                      rootCauseSnapshot: { conclusion: values.rootCause },
+                      complaintExpectedVersion: complaint.version,
+                      evidence: { reference: values.evidenceReference },
+                      idempotencyKey: requestId(),
+                    });
+                    await refresh();
+                  },
+                );
+                return;
+              }
+              const actions = Array.isArray(capa.actions) ? capa.actions.map(recordValue) : [];
+              const incomplete = actions.find((item) => !item.completion);
+              if (
+                capaId &&
+                ['OPEN', 'ACTIONS_IN_PROGRESS'].includes(capaState) &&
+                permissions.has('capa:manage') &&
+                !actions.length
+              ) {
+                openForm(
+                  workspace,
+                  '新增整改措施',
+                  '措施必须有明确责任人和完成期限。',
+                  [
+                    {
+                      name: 'actionType',
+                      label: '措施类型',
+                      type: 'select',
+                      required: true,
+                      options: [
+                        { value: 'CORRECTIVE', label: '纠正措施' },
+                        { value: 'PREVENTIVE', label: '预防措施' },
+                      ],
+                    },
+                    { name: 'description', label: '措施内容', type: 'textarea', required: true },
+                    {
+                      name: 'ownerId',
+                      label: '责任人',
+                      type: 'select',
+                      required: true,
+                      options: controller.employees.map((employee) => ({
+                        value: employee.id,
+                        label: employee.displayName ?? employee.employeeNumber ?? '未命名员工',
+                      })),
+                    },
+                    { name: 'dueAt', label: '完成期限', type: 'datetime-local', required: true },
+                  ],
+                  '确认新增',
+                  async (values) => {
+                    await controller.submit(`/api/v1/capas/${capaId}/actions`, {
+                      ...values,
+                      expectedVersion: capaVersion,
+                      idempotencyKey: requestId(),
+                    });
+                    await refresh();
+                  },
+                );
+                return;
+              }
+              if (incomplete && permissions.has('capa:manage')) {
+                openForm(
+                  workspace,
+                  '完成整改措施',
+                  recordText(incomplete, 'description', 'description'),
+                  [{ name: 'evidenceReference', label: '完成证据编号', required: true }],
+                  '确认完成',
+                  async (values) => {
+                    await controller.submit(
+                      `/api/v1/capa-actions/${recordText(incomplete, 'id', 'id')}/complete`,
+                      {
+                        completedAt: new Date().toISOString(),
+                        evidence: { reference: values.evidenceReference },
+                        expectedCapaVersion: capaVersion,
+                        idempotencyKey: requestId(),
+                      },
+                    );
+                    await refresh();
+                  },
+                );
+                return;
+              }
+              if (capaState === 'READY_FOR_VERIFICATION' && permissions.has('capa:verify')) {
+                openForm(
+                  workspace,
+                  '验证整改效果',
+                  '验证人必须独立于整改责任人。',
+                  [
+                    { name: 'standard', label: '验证标准', required: true },
+                    { name: 'sampleScope', label: '抽样范围', required: true },
+                    {
+                      name: 'observationUntil',
+                      label: '观察期截止',
+                      type: 'datetime-local',
+                      required: true,
+                    },
+                    {
+                      name: 'result',
+                      label: '验证结论',
+                      type: 'select',
+                      required: true,
+                      options: [
+                        { value: 'PASSED', label: '通过' },
+                        { value: 'FAILED', label: '未通过' },
+                      ],
+                    },
+                    { name: 'evidenceReference', label: '验证报告编号', required: true },
+                  ],
+                  '提交验证',
+                  async (values) => {
+                    await controller.submit(`/api/v1/capas/${capaId}/verify`, {
+                      verifiedAt: new Date().toISOString(),
+                      standard: values.standard,
+                      sampleScope: values.sampleScope,
+                      observationUntil: values.observationUntil,
+                      result: values.result,
+                      evidence: { reference: values.evidenceReference },
+                      expectedVersion: capaVersion,
+                      complaintExpectedVersion: complaint.version,
+                      idempotencyKey: requestId(),
+                    });
+                    await refresh();
+                  },
+                );
+                return;
+              }
+              if (capaState === 'VERIFIED' && permissions.has('capa:manage')) {
+                openForm(
+                  workspace,
+                  '关闭整改单',
+                  '整改验证通过后归档整改单。',
+                  evidenceFields,
+                  '确认关闭',
+                  async (values) => {
+                    await controller.submit(`/api/v1/capas/${capaId}/close`, {
+                      expectedVersion: capaVersion,
+                      reason: values.reason,
+                      evidence: { reference: values.evidenceReference },
+                      idempotencyKey: requestId(),
+                    });
+                    await refresh();
+                  },
+                );
+                return;
+              }
+              if (
+                capaState === 'CLOSED' &&
+                ncrState === 'DISPOSITIONED' &&
+                permissions.has('ncr:close')
+              ) {
+                transitionNcr('close', '关闭不合格报告');
+                return;
+              }
+              if (
+                ncrState === 'CLOSED' &&
+                capaState === 'CLOSED' &&
+                permissions.has('complaint:close')
+              )
+                command('close', '关闭投诉', '确认整改单和不合格报告均已归档。');
+            })();
+          });
+          actionCell.append(workflow);
+        }
         if (!actionCell.children.length) actionCell.textContent = '—';
         row.append(
           selectCell,

@@ -312,6 +312,19 @@ describe('KT-L20 PostgreSQL complaint, NCR, and CAPA integrity', () => {
     );
     await verify(verifier, 'verify-independent');
     await expect(verify(verifier, 'verify-independent')).rejects.toThrow(/unique|duplicate/iu);
+    await addCapaEvent(4, 'VERIFIED', 'capa-verified');
+    await addComplaintEvent(complaint, 5, 'CAPA_ACTIVE', approver, 'complaint-3-capa-active');
+    await addComplaintEvent(complaint, 6, 'VERIFIED', verifier, 'complaint-3-verified');
+    await expect(
+      addComplaintEvent(complaint, 7, 'CLOSED', approver, 'complaint-3-close-too-early'),
+    ).rejects.toThrow(/complaint closure requires closed NCR and CAPA/u);
+    await addCapaEvent(5, 'CLOSED', 'capa-closed');
+    await db.query(
+      `INSERT INTO ncr_events(tenant_id,ncr_id,sequence,state,reason,root_cause,evidence,actor_id,expected_version,correlation_id,idempotency_key,canonical_hash)
+       VALUES($1,$2,5,'CLOSED','Verified CAPA archived','{}','{"verification":"CAPA-VERIFY-1"}',$3,4,$4,'ncr-2-closed',$5)`,
+      [company, ncr, approver, randomUUID(), hash],
+    );
+    await addComplaintEvent(complaint, 7, 'CLOSED', approver, 'complaint-3-closed');
     await expect(
       db.query('UPDATE capa_actions SET description=$1 WHERE id=$2', ['Changed', action]),
     ).rejects.toThrow(/immutable/u);

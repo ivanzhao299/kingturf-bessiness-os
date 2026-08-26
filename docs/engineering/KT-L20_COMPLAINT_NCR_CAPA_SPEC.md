@@ -46,7 +46,7 @@ All actions must be complete before verification. The verifier must be independe
 Capabilities:
 
 - `complaint:read`, `complaint:create`, `complaint:triage`, `complaint:assign`, `complaint:close`
-- `ncr:read`, `ncr:manage`, `ncr:disposition`
+- `ncr:read`, `ncr:manage`, `ncr:disposition`, `ncr:close`
 - `capa:read`, `capa:manage`, `capa:verify`
 
 Roles:
@@ -54,7 +54,7 @@ Roles:
 - complaint registrar: create and read;
 - complaint coordinator: triage, assign and follow up;
 - quality investigator: open NCR, contain and record root cause;
-- quality manager: approve disposition and close quality records;
+- quality manager: approve disposition and close the independently verified nonconformance report;
 - CAPA owner: create and complete actions;
 - CAPA verifier: independently verify effectiveness;
 - sales viewer and executive viewer: scoped read only.
@@ -64,6 +64,7 @@ Hard controls:
 - complaint registrar and final closer must be different employees;
 - major NCR investigator and disposition approver must be different employees;
 - no CAPA action owner may verify the CAPA;
+- a complaint with an NCR may close only after both its CAPA and NCR are closed;
 - quality roles may propose returns, compensation or credits but L20 never posts accounting, payment, inventory reversal or refund entries.
 
 ## 5. Query and command contract

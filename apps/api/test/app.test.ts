@@ -1861,6 +1861,7 @@ describe('authorization management API', () => {
         'complaint:assign',
         'complaint-sla:read',
         'complaint-sla:manage',
+        'ncr:close',
         'capa:manage',
       ].map((capability) => [
         capability as `${string}:${string}`,
@@ -1944,6 +1945,31 @@ describe('authorization management API', () => {
       expect.objectContaining({ scopes: ['COMPANY'] }),
       expect.any(String),
     );
+    expect(
+      (
+        await dispatch(deps, 'POST', `/api/v1/ncrs/${targetId}/close`, {
+          expectedVersion: 4,
+          reason: '整改验证完成，关闭不合格报告',
+          evidence: { verificationReference: 'CAPA-V-1' },
+          idempotencyKey: 'NCR-CLOSE-1',
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(
+      (
+        await dispatch(
+          dependencies(context(grant('ncr:manage'))),
+          'POST',
+          `/api/v1/ncrs/${targetId}/close`,
+          {
+            expectedVersion: 4,
+            reason: '越权关闭',
+            evidence: { reference: 'DENIED' },
+            idempotencyKey: 'NCR-CLOSE-DENIED',
+          },
+        )
+      ).statusCode,
+    ).toBe(403);
     expect(
       (
         await dispatch(

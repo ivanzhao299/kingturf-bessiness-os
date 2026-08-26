@@ -1841,7 +1841,12 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               'idempotencyKey',
             ]);
             const action = ncrTransition[2] ?? '';
-            const capability = action === 'disposition' ? 'ncr:disposition' : 'ncr:manage';
+            const capability =
+              action === 'disposition'
+                ? 'ncr:disposition'
+                : action === 'close'
+                  ? 'ncr:close'
+                  : 'ncr:manage';
             const grant = authorizeQuery(context, capability, Object.keys(body));
             const state =
               action === 'contain'

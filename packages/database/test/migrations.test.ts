@@ -24,7 +24,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0056_complaint_sla_policy_permissions.sql');
+    expect(ordered.at(-1)).toBe('0058_ncr_close_permission.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
@@ -734,5 +734,24 @@ describe('identity and authorization migration', () => {
     expect(sql).toContain("('KT_COMPLAINT_REGISTRAR','complaint-sla:read')");
     expect(sql).toContain("('KT_QUALITY_MANAGER','complaint-sla:manage')");
     expect(sql).not.toContain("('KT_COMPLAINT_REGISTRAR','complaint-sla:manage')");
+  });
+  it('requires the NCR and CAPA records to close before their complaint', async () => {
+    const sql = await readFile(
+      join(process.cwd(), 'migrations/0057_complaint_closure_chain.sql'),
+      'utf8',
+    );
+    expect(sql).toContain('CREATE FUNCTION validate_complaint_closure_chain');
+    expect(sql).toContain("ns.state='CLOSED'");
+    expect(sql).toContain("cs.state='CLOSED'");
+    expect(sql).toContain('complaint closure requires closed NCR and CAPA');
+  });
+  it('separates NCR closure from investigation permissions', async () => {
+    const sql = await readFile(
+      join(process.cwd(), 'migrations/0058_ncr_close_permission.sql'),
+      'utf8',
+    );
+    expect(sql).toContain("('ncr:close'");
+    expect(sql).toContain("'KT_QUALITY_MANAGER'");
+    expect(sql).not.toContain("'KT_QUALITY_INVESTIGATOR'");
   });
 });
