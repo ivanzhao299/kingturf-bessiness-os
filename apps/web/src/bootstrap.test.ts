@@ -730,6 +730,7 @@ describe('web bootstrap', () => {
     expect(source).toContain('printOnlineBusinessDocument');
     expect(source).toContain('收起版本栏');
     expect(source).toContain('技术需求附件区回传并随版本冻结');
+    expect(source).toContain('buildBusinessDocumentTemplateHtml');
   });
 
   it('keeps the utility-bar title synchronized with route navigation', () => {

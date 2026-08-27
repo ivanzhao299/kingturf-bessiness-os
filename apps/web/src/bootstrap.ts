@@ -1,3 +1,5 @@
+import { buildBusinessDocumentTemplateHtml } from './business-document-content';
+
 export const BOOTSTRAP_TITLE = '金特夫企业经营管理系统';
 
 export type CrmPermission =
@@ -11252,7 +11254,13 @@ export function createCrmShell(
                 ? { subjectType: subjectConfig.type, subjectId: subjectSelect.value }
                 : {}),
               content: {
-                body: `${template.name}\n\n用途：${template.description}\n${businessDocumentPrefill(subjectRecords.get(subjectSelect.value))}\n\n项目名称：\n客户/供应商：\n业务编号：\n编制日期：${new Date().toLocaleDateString('zh-CN')}\n\n一、基本信息\n\n二、业务内容\n\n三、技术与质量要求\n\n四、价格、交期或执行安排\n\n五、审批与确认\n`,
+                html: buildBusinessDocumentTemplateHtml(
+                  template.file,
+                  template.name,
+                  template.description,
+                  businessDocumentPrefill(subjectRecords.get(subjectSelect.value)),
+                  new Date().toLocaleDateString('zh-CN'),
+                ),
               },
             }),
           })
