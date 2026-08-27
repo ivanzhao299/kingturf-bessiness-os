@@ -9105,6 +9105,45 @@ const renderBusinessDocumentComparison = (
   target.append(grid);
 };
 
+type BusinessDocumentPageSize = 'adaptive' | 'a4-portrait' | 'a4-landscape' | 'a3-portrait';
+
+const printOnlineBusinessDocument = (
+  title: string,
+  html: string,
+  pageSize: BusinessDocumentPageSize,
+): void => {
+  const popup = window.open('', '_blank');
+  if (!popup) throw new Error('浏览器阻止了打印窗口，请允许本站打开新窗口');
+  const page = pageSize === 'adaptive' ? 'A4 portrait' : pageSize.replace('-', ' ');
+  popup.document.title = title;
+  const style = popup.document.createElement('style');
+  style.textContent = `
+    @page { size: ${page}; margin: 18mm 17mm; }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: #111; background: #fff; font-family: "Songti SC", SimSun, serif; font-size: 11pt; line-height: 1.8; }
+    h1 { margin: 0 0 12mm; text-align: center; font: 700 20pt/1.35 "PingFang SC", sans-serif; }
+    h2 { margin: 8mm 0 3mm; font-size: 15pt; break-after: avoid; }
+    h3 { margin: 6mm 0 2mm; font-size: 12.5pt; break-after: avoid; }
+    p { margin: 0 0 3mm; orphans: 3; widows: 3; }
+    li { break-inside: avoid; }
+    .document-meta { margin-bottom: 8mm; padding-bottom: 4mm; border-bottom: 1px solid #bbb; color: #555; font-family: "PingFang SC", sans-serif; font-size: 9pt; }
+    @media screen { body { max-width: 210mm; margin: 20px auto; padding: 18mm 17mm; box-shadow: 0 8px 28px #0002; } }
+  `;
+  popup.document.head.append(style);
+  const meta = popup.document.createElement('div');
+  meta.className = 'document-meta';
+  meta.textContent = `金特夫企业经营管理系统 · 打印时间 ${new Date().toLocaleString('zh-CN')}`;
+  const heading = popup.document.createElement('h1');
+  heading.textContent = title;
+  const content = popup.document.createElement('main');
+  content.innerHTML = sanitizeBusinessDocumentHtml(html);
+  popup.document.body.append(meta, heading, content);
+  window.setTimeout(() => {
+    popup.focus();
+    popup.print();
+  }, 200);
+};
+
 const openOnlineDocumentEditor = (
   documentData: OnlineBusinessDocument,
   permissions: Readonly<{ manage: boolean; approve: boolean }>,
@@ -9133,6 +9172,9 @@ const openOnlineDocumentEditor = (
   const versions = [...(documentData.versions ?? [])].sort((a, b) => b.version - a.version);
   const current =
     versions.find((item) => item.version === documentData.currentVersion) ?? versions[0];
+  const workspace = el('div', 'business-document-workspace');
+  workspace.dataset.pageSize = 'a4-portrait';
+  workspace.dataset.viewMode = 'edit';
   const layout = el('div', 'business-document-layout');
   const editor = el('section', 'business-document-editor');
   const title = el('input');
@@ -9140,6 +9182,37 @@ const openOnlineDocumentEditor = (
   title.readOnly = true;
   title.setAttribute('aria-label', '文档标题');
   const toolbar = el('div', 'business-document-toolbar');
+  const commandBar = el('div', 'business-document-commandbar');
+  const viewGroup = el('div', 'business-document-command-group');
+  const editMode = el('button', 'secondary compact active', '编辑');
+  const previewMode = el('button', 'secondary compact', '预览');
+  editMode.type = previewMode.type = 'button';
+  editMode.setAttribute('aria-pressed', 'true');
+  previewMode.setAttribute('aria-pressed', 'false');
+  viewGroup.append(editMode, previewMode);
+  const pageSize = el('select', 'business-document-page-select');
+  pageSize.setAttribute('aria-label', '页面规格');
+  pageSize.append(
+    businessDocumentOption('A4 纵向', 'a4-portrait'),
+    businessDocumentOption('A4 横向', 'a4-landscape'),
+    businessDocumentOption('A3 纵向', 'a3-portrait'),
+    businessDocumentOption('自适应阅读', 'adaptive'),
+  );
+  const zoom = el('select', 'business-document-zoom-select');
+  zoom.setAttribute('aria-label', '文档缩放');
+  zoom.append(
+    businessDocumentOption('75%', '0.75'),
+    businessDocumentOption('90%', '0.9'),
+    businessDocumentOption('100%', '1'),
+    businessDocumentOption('110%', '1.1'),
+    businessDocumentOption('125%', '1.25'),
+  );
+  zoom.value = '0.9';
+  const toggleHistory = el('button', 'secondary compact', '收起版本栏');
+  toggleHistory.type = 'button';
+  const print = el('button', 'secondary compact', '打印');
+  print.type = 'button';
+  commandBar.append(viewGroup, pageSize, zoom, toggleHistory, print);
   const body = el('div');
   body.className = 'business-document-body';
   body.contentEditable = 'true';
@@ -9151,6 +9224,28 @@ const openOnlineDocumentEditor = (
   body.setAttribute('role', 'textbox');
   const editable = !documentData.state || ['DRAFT', 'REJECTED'].includes(documentData.state);
   body.contentEditable = String(editable && permissions.manage);
+  const setViewMode = (mode: 'edit' | 'preview'): void => {
+    workspace.dataset.viewMode = mode;
+    const canEdit = mode === 'edit' && editable && permissions.manage;
+    body.contentEditable = String(canEdit);
+    toolbar.hidden = !canEdit;
+    editMode.classList.toggle('active', mode === 'edit');
+    previewMode.classList.toggle('active', mode === 'preview');
+    editMode.setAttribute('aria-pressed', String(mode === 'edit'));
+    previewMode.setAttribute('aria-pressed', String(mode === 'preview'));
+  };
+  editMode.addEventListener('click', () => {
+    setViewMode('edit');
+  });
+  previewMode.addEventListener('click', () => {
+    setViewMode('preview');
+  });
+  pageSize.addEventListener('change', () => {
+    workspace.dataset.pageSize = pageSize.value;
+  });
+  zoom.addEventListener('change', () => {
+    workspace.style.setProperty('--document-zoom', zoom.value);
+  });
   for (const [label, command, value] of [
     ['正文', 'formatBlock', 'p'],
     ['一级标题', 'formatBlock', 'h2'],
@@ -9306,8 +9401,29 @@ const openOnlineDocumentEditor = (
     });
     history.append(versionItem);
   }
+  toggleHistory.addEventListener('click', () => {
+    const collapsed = workspace.classList.toggle('history-collapsed');
+    toggleHistory.textContent = collapsed ? '展开版本栏' : '收起版本栏';
+    toggleHistory.setAttribute('aria-expanded', String(!collapsed));
+  });
+  print.addEventListener('click', () => {
+    try {
+      printOnlineBusinessDocument(
+        documentData.title,
+        body.innerHTML,
+        pageSize.value as BusinessDocumentPageSize,
+      );
+    } catch (failure) {
+      setOperationStatus(
+        status,
+        'error',
+        failure instanceof Error ? failure.message : '无法打开打印预览',
+      );
+    }
+  });
   layout.append(editor, history);
-  dialog.append(heading, layout, comparison);
+  workspace.append(commandBar, layout, comparison);
+  dialog.append(heading, workspace);
   dialog.addEventListener('close', () => {
     dialog.remove();
   });

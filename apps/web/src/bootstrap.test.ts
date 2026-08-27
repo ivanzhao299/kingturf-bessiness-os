@@ -723,6 +723,12 @@ describe('web bootstrap', () => {
     expect(source).toContain('批准并锁版');
     expect(source).toContain('business-document:approve');
     expect(source).toContain('/submit');
+    expect(source).toContain('A4 纵向');
+    expect(source).toContain('A4 横向');
+    expect(source).toContain('A3 纵向');
+    expect(source).toContain('自适应阅读');
+    expect(source).toContain('printOnlineBusinessDocument');
+    expect(source).toContain('收起版本栏');
     expect(source).toContain('技术需求附件区回传并随版本冻结');
   });
 
