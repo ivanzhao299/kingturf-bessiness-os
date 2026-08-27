@@ -1,4 +1,7 @@
-import { buildBusinessDocumentTemplateHtml } from './business-document-content';
+import {
+  buildBusinessDocumentTemplateHtml,
+  isLegacyBusinessDocumentOutline,
+} from './business-document-content';
 
 export const BOOTSTRAP_TITLE = '金特夫企业经营管理系统';
 
@@ -9224,9 +9227,19 @@ const openOnlineDocumentEditor = (
   const body = el('div');
   body.className = 'business-document-body';
   body.contentEditable = 'true';
+  const storedBody = current?.content.body ?? businessDocumentText(current?.content ?? {});
+  const upgradedLegacyOutline = isLegacyBusinessDocumentOutline(storedBody);
   body.innerHTML = sanitizeBusinessDocumentHtml(
-    current?.content.html ??
-      `<p>${(current?.content.body ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('\n', '<br>')}</p>`,
+    upgradedLegacyOutline
+      ? buildBusinessDocumentTemplateHtml(
+          `${documentData.templateKey.slice(0, 2)}-历史在线文档.docx`,
+          documentData.title.split(' · ')[0] ?? documentData.title,
+          '',
+          '',
+          new Date().toLocaleDateString('zh-CN'),
+        )
+      : (current?.content.html ??
+          `<p>${storedBody.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('\n', '<br>')}</p>`),
   );
   body.setAttribute('aria-label', '文档正文');
   body.setAttribute('role', 'textbox');
@@ -9274,7 +9287,14 @@ const openOnlineDocumentEditor = (
   const summary = el('input');
   summary.placeholder = '本版修改说明，例如：调整数量、价格和交期';
   summary.setAttribute('aria-label', '本版修改说明');
-  const status = el('p', 'operation-status', '编辑完成后保存为新版本');
+  const status = el(
+    'p',
+    'operation-status',
+    upgradedLegacyOutline
+      ? '已将旧提纲升级为完整正文，请核对业务信息后保存为新版本'
+      : '编辑完成后保存为新版本',
+  );
+  if (upgradedLegacyOutline) status.dataset.state = 'warning';
   status.setAttribute('aria-live', 'polite');
   const save = el('button', 'primary', '保存为新版本');
   save.type = 'button';

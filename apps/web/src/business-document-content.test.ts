@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { buildBusinessDocumentTemplateHtml } from './business-document-content';
+import {
+  buildBusinessDocumentTemplateHtml,
+  isLegacyBusinessDocumentOutline,
+} from './business-document-content';
 
 describe('business document content blueprints', () => {
   const files = Array.from(
@@ -41,5 +44,18 @@ describe('business document content blueprints', () => {
     expect(() =>
       buildBusinessDocumentTemplateHtml('99-未知.docx', '未知模板', '说明', '', '2026/8/28'),
     ).toThrow('未配置在线正文模板');
+  });
+
+  it('recognizes only the former short generic outline for governed upgrade', () => {
+    expect(
+      isLegacyBusinessDocumentOutline(
+        '技术需求确认书\n一、基本信息\n二、业务内容\n三、技术与质量要求\n四、价格、交期或执行安排\n五、审批与确认',
+      ),
+    ).toBe(true);
+    expect(
+      isLegacyBusinessDocumentOutline(
+        `${'完整业务正文'.repeat(100)}\n一、基本信息\n二、业务内容\n三、技术与质量要求\n四、价格、交期或执行安排\n五、审批与确认`,
+      ),
+    ).toBe(false);
   });
 });
