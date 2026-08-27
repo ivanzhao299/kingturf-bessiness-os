@@ -97,10 +97,17 @@ it('uses daily business language instead of analytics jargon in visible workspac
   const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
   expect(source).toContain('订单贡献明细');
   expect(source).toContain('风险责任明细');
-  expect(source).toContain(
-    '查看已释放订单关联的报价、成本、信用、合同、应收、回款、佣金与异常记录。',
-  );
+  expect(source).toContain('订单关联业务与证据记录');
   expect(source).not.toContain('下钻');
+});
+
+it('keeps login and workspace introductions concise and task-oriented', () => {
+  const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+  expect(source).toContain("el('h1', '', '业务一体化管理')");
+  expect(source).toContain('销售、采购、生产、质量与财务协同');
+  expect(source).not.toContain('login-feature-grid');
+  expect(source).not.toContain('页面和操作会根据当前角色自动呈现');
+  expect(source).not.toContain('让订单、生产与交付证据在一条业务链上闭环');
 });
 
 it('keeps product pages on one content rail and renders business records as dense registers', () => {

@@ -192,7 +192,7 @@ export const GOVERNANCE_SURFACES: readonly GovernanceSurface[] = [
   {
     id: 'organizations',
     title: '组织架构',
-    description: '维护公司范围内的组织层级、区域、部门和团队。',
+    description: '公司、区域、部门与团队',
     readPermission: 'organization:read',
     managePermission: 'organization:create',
     paths: ['/api/v1/organizations'],
@@ -201,7 +201,7 @@ export const GOVERNANCE_SURFACES: readonly GovernanceSurface[] = [
   {
     id: 'employees',
     title: '员工与身份基础',
-    description: '维护员工所属组织和有效状态；账号授权在独立身份权限模块完成。',
+    description: '员工归属与任职状态',
     readPermission: 'employee:read',
     managePermission: 'employee:create',
     paths: ['/api/v1/employees'],
@@ -210,7 +210,7 @@ export const GOVERNANCE_SURFACES: readonly GovernanceSurface[] = [
   {
     id: 'identity-access',
     title: '身份、角色与授权',
-    description: '角色、权限、授权、人员角色和数据范围的统一管理入口。',
+    description: '角色、权限与数据范围',
     readPermission: 'authorization:read',
     managePermission: 'authorization:manage',
     paths: [
@@ -225,7 +225,7 @@ export const GOVERNANCE_SURFACES: readonly GovernanceSurface[] = [
   {
     id: 'audit',
     title: '审计中心',
-    description: '按人员、动作、对象和关联编号查询不可变审计事件。',
+    description: '人员、操作与业务审计记录',
     readPermission: 'audit:read',
     paths: ['/api/v1/audit-events'],
     disposition: 'USER_FACING',
@@ -233,7 +233,7 @@ export const GOVERNANCE_SURFACES: readonly GovernanceSurface[] = [
   {
     id: 'master-data',
     title: '主数据',
-    description: '维护带生效区间的分类和条目，变更由审计记录保护。',
+    description: '业务分类、条目与生效版本',
     readPermission: 'master-data:read',
     managePermission: 'master-data:create',
     paths: ['/api/v1/master-data/categories', '/api/v1/master-data/entries'],
@@ -242,7 +242,7 @@ export const GOVERNANCE_SURFACES: readonly GovernanceSurface[] = [
   {
     id: 'numbering',
     title: '编号规则',
-    description: '管理业务编号、版本、发布状态和受控分配。',
+    description: '业务编号、版本与分配规则',
     readPermission: 'number:read',
     managePermission: 'number:create',
     paths: ['/api/v1/number-definitions'],
@@ -251,7 +251,7 @@ export const GOVERNANCE_SURFACES: readonly GovernanceSurface[] = [
   {
     id: 'rules',
     title: '业务规则',
-    description: '管理规则版本、发布状态和可解释规则试算。',
+    description: '规则版本、发布与试算',
     readPermission: 'rule:read',
     managePermission: 'rule:create',
     paths: ['/api/v1/rules'],
@@ -260,7 +260,7 @@ export const GOVERNANCE_SURFACES: readonly GovernanceSurface[] = [
   {
     id: 'workflow',
     title: '工作流与待办',
-    description: '维护流程定义并处理当前账号职责范围内的审批任务。',
+    description: '流程定义与审批待办',
     readPermission: 'workflow:read',
     managePermission: 'workflow:create',
     paths: ['/api/v1/workflows', '/api/v1/workflow-tasks'],
@@ -269,7 +269,7 @@ export const GOVERNANCE_SURFACES: readonly GovernanceSurface[] = [
   {
     id: 'notifications',
     title: '通知中心',
-    description: '查看未读通知并维护本人可用的通知偏好。',
+    description: '消息通知与个人偏好',
     readPermission: 'notification:read',
     managePermission: 'notification:manage',
     paths: [
@@ -282,7 +282,7 @@ export const GOVERNANCE_SURFACES: readonly GovernanceSurface[] = [
   {
     id: 'registry',
     title: '业务对象与附件',
-    description: '查看业务对象定义；附件上传继续由具体业务单据入口承载。',
+    description: '业务对象定义与附件关联',
     readPermission: 'business-object:read',
     managePermission: 'business-object:manage',
     paths: ['/api/v1/business-objects'],
@@ -291,7 +291,7 @@ export const GOVERNANCE_SURFACES: readonly GovernanceSurface[] = [
   {
     id: 'event-operations',
     title: '事件运行状态',
-    description: '查看事件积压与失败数量；认领、重试和死信操作仅供受控运行器使用。',
+    description: '事件积压、失败与运行状态',
     readPermission: 'event:operate',
     paths: ['/api/v1/operations/events'],
     disposition: 'SUPPORTING',
@@ -1711,11 +1711,7 @@ export function commercialWorkspaceStructure(
     panel.append(
       el('p', 'eyebrow', '车间执行'),
       el('h2', '', '生产工单与车间执行'),
-      el(
-        'p',
-        'commercial-help',
-        '从已下达物料需求建议建立工单，固定工艺快照，贯通领退料、工序报工、成品卷号和库存收货。',
-      ),
+      el('p', 'commercial-help', '生产工单、报工、用料与成品入库'),
     );
     if (permissions.has('production:plan')) {
       const create = el('button', 'primary', '＋ 新建生产工单');
@@ -2048,11 +2044,7 @@ export function commercialWorkspaceStructure(
     panel.append(
       el('p', 'eyebrow', '制造成本分析'),
       el('h2', '', '实际制造成本与差异'),
-      el(
-        'p',
-        'commercial-help',
-        '冻结材料计价、人工和制造费用费率，按生产工单对比计划与实际成本；核算与审批职责强制分离。',
-      ),
+      el('p', 'commercial-help', '生产成本核算与差异分析'),
     );
     const summary = el('div', 'production-summary');
     summary.append(
@@ -2263,11 +2255,7 @@ export function commercialWorkspaceStructure(
     panel.append(
       el('p', 'eyebrow', '发货与签收'),
       el('h2', '', '发货放行与物流签收'),
-      el(
-        'p',
-        'commercial-help',
-        '合同、信用、收款、逾期、订单来源、质量、生产、成本和库存九类门禁自动冻结；例外审批、仓库放行、承运轨迹与签收回单形成同一证据链。',
-      ),
+      el('p', 'commercial-help', '发货门禁、例外审批与签收追踪'),
     );
     const summary = el('div', 'production-summary');
     summary.append(
@@ -3094,10 +3082,7 @@ export function commercialWorkspaceStructure(
     const solutionPanel = el('section', 'solution-workbench');
     const solutionHeading = el('div', 'pipeline-heading');
     const solutionCopy = el('div');
-    solutionCopy.append(
-      el('h2', '', '技术方案'),
-      el('p', '', '将产品规格和工程假设固定到明确的技术需求版本，保留修订差异。'),
-    );
+    solutionCopy.append(el('h2', '', '技术方案'), el('p', '', '产品规格、工程条件与版本修订'));
     const solutions = controller.views.get('/api/v1/technical-solutions') ?? [];
     const ctrs = controller.views.get('/api/v1/ctrs') ?? [];
     const eligibleCtrs = ctrs.filter((item) => item.status === 'APPROVED');
@@ -3348,10 +3333,7 @@ export function commercialWorkspaceStructure(
     const costPanel = el('section', 'decision-workbench cost-workbench');
     const costHeading = el('div', 'pipeline-heading');
     const costCopy = el('div');
-    costCopy.append(
-      el('h2', '', '成本核算'),
-      el('p', '', '固定模型、技术方案和成本行输入，输出可复核的规则轨迹与输入哈希。'),
-    );
+    costCopy.append(el('h2', '', '成本核算'), el('p', '', '成本模型、核算明细与版本依据'));
     const models = controller.views.get('/api/v1/cost-models') ?? [];
     const publishedModels = models.filter((item) => item.status === 'PUBLISHED');
     const solutions = (controller.views.get('/api/v1/technical-solutions') ?? []).filter(
@@ -3644,10 +3626,7 @@ export function commercialWorkspaceStructure(
     const policyPanel = el('section', 'decision-workbench policy-workbench');
     const policyHeading = el('div', 'pipeline-heading');
     const policyCopy = el('div');
-    policyCopy.append(
-      el('h2', '', '销售政策评估'),
-      el('p', '', '用版本化利润率和折扣红线生成通过、审批要求与命中理由。'),
-    );
+    policyCopy.append(el('h2', '', '销售政策评估'), el('p', '', '毛利、折扣与审批政策'));
     const policies = controller.views.get('/api/v1/sales-policies') ?? [];
     const publishedPolicies = policies.filter((item) => item.status === 'PUBLISHED');
     if (permissions.has('sales-policy:manage')) {
@@ -3920,10 +3899,7 @@ export function commercialWorkspaceStructure(
     const quotePanel = el('section', 'quote-workbench');
     const quoteHeading = el('div', 'pipeline-heading');
     const quoteCopy = el('div');
-    quoteCopy.append(
-      el('h2', '', '销售报价'),
-      el('p', '', '从成本决策生成行项目，实时计算折扣、毛利并执行销售政策。'),
-    );
+    quoteCopy.append(el('h2', '', '销售报价'), el('p', '', '报价明细、毛利与政策校验'));
     const costs = controller.views.get('/api/v1/cost-evaluations') ?? [];
     const policies = (controller.views.get('/api/v1/sales-policies') ?? []).filter(
       (item) => item.status === 'PUBLISHED',
@@ -4260,10 +4236,7 @@ export function commercialWorkspaceStructure(
     const creditPanel = el('section', 'qtc-workbench credit-workbench');
     const heading = el('div', 'pipeline-heading');
     const copy = el('div');
-    copy.append(
-      el('h2', '', '信用审查'),
-      el('p', '', '按客户额度、应收、未开票订单和未分配收款计算真实信用敞口。'),
-    );
+    copy.append(el('h2', '', '信用审查'), el('p', '', '客户额度、应收与信用敞口'));
     if (permissions.has('credit:approve')) {
       const setLimit = el('button', 'secondary', '设置客户额度');
       setLimit.addEventListener('click', () => {
@@ -4437,10 +4410,7 @@ export function commercialWorkspaceStructure(
     const contractPanel = el('section', 'qtc-workbench contract-workbench');
     const heading = el('div', 'pipeline-heading');
     const copy = el('div');
-    copy.append(
-      el('h2', '', '合同与签署'),
-      el('p', '', '合同修订固定引用已签发报价快照，签署回执与载荷哈希只读保存。'),
-    );
+    copy.append(el('h2', '', '合同与签署'), el('p', '', '合同版本、报价依据与签署记录'));
     const issuedQuotes = (controller.views.get('/api/v1/quotes') ?? []).filter(
       (item) => item.status === 'ISSUED' && typeof item.issuedSnapshotId === 'string',
     );
@@ -4557,10 +4527,7 @@ export function commercialWorkspaceStructure(
     const panel = el('section', 'qtc-workbench order-workbench');
     const heading = el('div', 'pipeline-heading');
     const copy = el('div');
-    copy.append(
-      el('h2', '', '订单释放'),
-      el('p', '', '订单同时锁定已签发报价、有效信用审批和已签合同，避免商务依据漂移。'),
-    );
+    copy.append(el('h2', '', '订单释放'), el('p', '', '报价、信用、合同与订单依据'));
     const quotes = (controller.views.get('/api/v1/quotes') ?? []).filter(
       (item) => item.status === 'ISSUED' && typeof item.issuedSnapshotId === 'string',
     );
@@ -4730,7 +4697,7 @@ export function commercialWorkspaceStructure(
     copy.append(
       el('p', 'eyebrow', '订单全景'),
       el('h2', '', '订单全链路与证据时间线'),
-      el('p', '', '查看已释放订单关联的报价、成本、信用、合同、应收、回款、佣金与异常记录。'),
+      el('p', '', '订单关联业务与证据记录'),
     );
     /* Risk policy controls are rendered in the dedicated risk workbench below. */
     const riskPolicies = controller.views.get('/api/v1/risk-policies') ?? [];
@@ -5078,10 +5045,7 @@ export function commercialWorkspaceStructure(
     const panel = el('section', 'qtc-workbench ar-workbench');
     const heading = el('div', 'pipeline-heading');
     const copy = el('div');
-    copy.append(
-      el('h2', '', '应收与账龄'),
-      el('p', '', '应收余额由发票和核销分配实时推导，不允许人工改写。'),
-    );
+    copy.append(el('h2', '', '应收与账龄'), el('p', '', '应收余额、到期日与核销进度'));
     const orders = controller.views.get('/api/v1/sales-orders') ?? [];
     if (permissions.has('ar:post') && orders.length) {
       const post = el('button', 'primary', '＋ 过账应收');
@@ -5163,10 +5127,7 @@ export function commercialWorkspaceStructure(
     const panel = el('section', 'qtc-workbench collection-workbench');
     const heading = el('div', 'pipeline-heading');
     const copy = el('div');
-    copy.append(
-      el('h2', '', '催收与法务证据'),
-      el('p', '', '逾期案件、付款承诺、法务移交与债权证据。'),
-    );
+    copy.append(el('h2', '', '催收与法务证据'), el('p', '', '逾期催收、付款承诺与法务移交'));
     const receivables = (controller.views.get('/api/v1/ar-open-items') ?? []).filter(
       (item) =>
         Number(recordText(item, 'remainingAmount', 'remaining_amount', '0')) > 0 &&
@@ -5486,10 +5447,7 @@ export function commercialWorkspaceStructure(
     const panel = el('section', 'qtc-workbench payment-workbench');
     const heading = el('div', 'pipeline-heading');
     const copy = el('div');
-    copy.append(
-      el('h2', '', '收款与核销'),
-      el('p', '', '银行原始载荷留痕；核销按稳定顺序匹配同客户、同币种开放项。'),
-    );
+    copy.append(el('h2', '', '收款与核销'), el('p', '', '银行收款、认领与应收核销'));
     if (permissions.has('bank-payment:intake')) {
       const intake = el('button', 'primary', '＋ 登记银行收款');
       intake.addEventListener('click', () => {
@@ -5607,10 +5565,7 @@ export function commercialWorkspaceStructure(
     const percent = (value: string) => String(Number(value) / 100);
     const heading = el('div', 'pipeline-heading');
     const copy = el('div');
-    copy.append(
-      el('h2', '', '佣金引擎与不可变台账'),
-      el('p', '', '佣金由订单收入、报价毛利和实时回款推导；冻结、释放、支付与追回保留完整证据。'),
-    );
+    copy.append(el('h2', '', '佣金引擎与不可变台账'), el('p', '', '佣金计提、释放、支付与追回'));
     if (permissions.has('commission-policy:manage')) {
       const createPolicy = el('button', 'secondary', '新建佣金政策');
       createPolicy.addEventListener('click', () => {
@@ -5929,7 +5884,7 @@ export function commercialWorkspaceStructure(
     copy.append(
       el('p', 'eyebrow', '风险评估'),
       el('h2', '', '风险评价与责任任务'),
-      el('p', '', '规则版本、规范输入、命中原因和处理事件均由服务器留痕。'),
+      el('p', '', '风险评价、责任任务与处置记录'),
     );
     heading.append(copy);
     panel.append(heading);
@@ -6068,7 +6023,7 @@ export function commercialWorkspaceStructure(
     panel.append(
       el('p', 'eyebrow', '制造主数据'),
       el('h2', '', '制造主数据工作台'),
-      el('p', 'commercial-help', '物料、BOM 与工艺路线按版本发布；已发布结构保持不可变。'),
+      el('p', 'commercial-help', '物料、BOM 与工艺路线版本'),
     );
     const grid = el('div', 'manufacturing-grid');
     const definitions = [
@@ -6420,11 +6375,7 @@ export function commercialWorkspaceStructure(
     panel.append(
       el('p', 'eyebrow', '采购到入库'),
       el('h2', '', '供应商、采购与批次库存'),
-      el(
-        'p',
-        'commercial-help',
-        '从供应商准入、询报价、采购签发到批次收货；库存只由不可变移动台账推导。',
-      ),
+      el('p', 'commercial-help', '供应商、询报价、采购与批次收货'),
     );
     const suppliers = controller.views.get('/api/v1/suppliers') ?? [],
       rfqs = controller.views.get('/api/v1/procurement-rfqs') ?? [],
@@ -6953,11 +6904,7 @@ export function commercialWorkspaceStructure(
     panel.append(
       el('p', 'eyebrow', '物料需求计划'),
       el('h2', '', '物料需求与建议审批'),
-      el(
-        'p',
-        'commercial-help',
-        '递归展开已发布 BOM，按时间抵扣合格库存和在途采购，并应用安全库存、批量、交期与冻结窗口。',
-      ),
+      el('p', 'commercial-help', '物料需求、库存抵扣与供需建议'),
     );
     const policies = controller.views.get('/api/v1/mrp-policies') ?? [],
       demands = controller.views.get('/api/v1/mrp-demands') ?? [],
@@ -7271,11 +7218,7 @@ export function commercialWorkspaceStructure(
     panel.append(
       el('p', 'eyebrow', '质量与仓储'),
       el('h2', '', '质量检验与批次追溯'),
-      el(
-        'p',
-        'commercial-help',
-        '检验计划、抽检结果和批次放行均通过服务器状态机；质量状态直接约束库存与生产领料。',
-      ),
+      el('p', 'commercial-help', '检验计划、质量处置与批次放行'),
     );
     const plans = controller.views.get('/api/v1/quality-plans') ?? [];
     const inspections = controller.views.get('/api/v1/quality-inspections') ?? [];
@@ -10322,7 +10265,7 @@ export function createCrmShell(
     weekday: 'short',
   }).format(new Date());
   title.append(el('p', 'eyebrow', `经营总览 · ${today}`), el('h1', '', '经营概览'));
-  title.append(el('p', 'page-subtitle', '从客户机会到订单回款，关注今天最需要推进的事项。'));
+  title.append(el('p', 'page-subtitle', '经营指标、重点待办与异常事项'));
   header.append(title);
   if (sections.customerCreate) {
     const create = el('button', 'primary', '＋ 新建客户');
@@ -11105,7 +11048,7 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
   header.append(
     el('p', 'eyebrow', '企业管理控制台'),
     el('h2', '', '治理工作台'),
-    el('p', 'muted', '集中处理组织、账号、权限和平台运行配置。'),
+    el('p', 'muted', '组织、账号、权限与平台配置'),
   );
   workspace.append(header);
   const summary = el('section', 'governance-metrics');
@@ -12045,30 +11988,15 @@ function loginView(root: HTMLElement): void {
   loginBrand.append(loginLogo, loginIdentity);
   story.append(
     loginBrand,
-    el('p', 'eyebrow', '金特夫 · 企业经营管理系统'),
-    el('h1', '', '让订单、生产与交付证据在一条业务链上闭环'),
-    el(
-      'p',
-      'login-intro',
-      '面向销售、财务、供应链、生产、质量与管理岗位的统一工作台。页面和操作会根据当前角色自动呈现。',
-    ),
+    el('p', 'eyebrow', '企业经营管理系统'),
+    el('h1', '', '业务一体化管理'),
+    el('p', 'login-intro', '销售、采购、生产、质量与财务协同'),
   );
-  const features = el('div', 'login-feature-grid');
-  for (const [number, title, detail] of [
-    ['01', '业务贯通', '从客户需求到回款、生产和签收证据'],
-    ['02', '权限清晰', '原子角色、字段权限和数据范围逐层生效'],
-    ['03', '证据可信', '审批、版本、哈希和时间线不可变留痕'],
-  ] as const) {
-    const item = el('article', 'login-feature');
-    item.append(el('span', '', number), el('strong', '', title), el('p', '', detail));
-    features.append(item);
-  }
-  story.append(features);
   const form = el('form', 'login-card');
   form.append(
     el('p', 'eyebrow', '企业账号登录'),
     el('h2', '', '登录金特夫'),
-    el('p', 'muted', '使用已分配的组织账号进入角色工作台。'),
+    el('p', 'muted', '请输入企业账号和密码'),
   );
   const identity = el('input');
   identity.name = 'login';
