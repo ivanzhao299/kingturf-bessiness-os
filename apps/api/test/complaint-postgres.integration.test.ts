@@ -86,9 +86,9 @@ describe('KT-L20 PostgreSQL complaint, NCR, and CAPA integrity', () => {
         id,tenant_id,complaint_number,customer_id,sla_policy_version_id,channel,defect_category,severity,
         occurred_at,reported_at,description,customer_request,initial_snapshot,response_due_at,
         containment_due_at,root_cause_due_at,closure_due_at,reported_by,correlation_id,idempotency_key,canonical_hash)
-       VALUES($1,$2,$3,$4,$5,'CUSTOMER_SERVICE','PILE_HEIGHT','MAJOR','2026-08-01','2026-08-02',
+       VALUES($1,$2,$3,$4,$5,'CUSTOMER_SERVICE','PILE_HEIGHT','MAJOR','2026-08-01 00:00Z','2026-08-02 00:00Z',
         'Customer reports pile height outside the approved specification','Investigate and replace',
-        '{"source":"customer"}','2026-08-02 04:00Z','2026-08-02 08:00Z','2026-08-05','2026-08-12',$6,$7,$8,$9)`,
+        '{"source":"customer"}','2026-08-02 04:00Z','2026-08-02 08:00Z','2026-08-05 00:00Z','2026-08-12 00:00Z',$6,$7,$8,$9)`,
       [id, company, number, customer, policy, reporter, randomUUID(), key, hash],
     );
     return id;

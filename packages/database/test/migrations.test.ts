@@ -24,7 +24,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0058_ncr_close_permission.sql');
+    expect(ordered.at(-1)).toBe('0059_business_document_versioning.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
@@ -753,5 +753,16 @@ describe('identity and authorization migration', () => {
     expect(sql).toContain("('ncr:close'");
     expect(sql).toContain("'KT_QUALITY_MANAGER'");
     expect(sql).not.toContain("'KT_QUALITY_INVESTIGATOR'");
+  });
+  it('stores online business documents as append-only versions', async () => {
+    const sql = await readFile(
+      join(process.cwd(), 'migrations/0059_business_document_versioning.sql'),
+      'utf8',
+    );
+    expect(sql).toContain('CREATE TABLE business_documents');
+    expect(sql).toContain('CREATE TABLE business_document_versions');
+    expect(sql).toContain('business_document_versions_immutable');
+    expect(sql).toContain("'business-document:read'");
+    expect(sql).toContain("'business-document:manage'");
   });
 });

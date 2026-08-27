@@ -49,6 +49,7 @@ import type { PostgresQualityRepository } from './quality-repositories.ts';
 import type { PostgresShipmentRepository } from './shipment-repositories.ts';
 import type { PostgresCollectionRepository } from './collection-repositories.ts';
 import type { PostgresComplaintRepository } from './complaint-repositories.ts';
+import type { PostgresBusinessDocumentRepository } from './business-document-repositories.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -111,6 +112,7 @@ export type ApiDependencies = Readonly<{
   shipments?: PostgresShipmentRepository;
   collections?: PostgresCollectionRepository;
   complaints?: PostgresComplaintRepository;
+  businessDocuments?: PostgresBusinessDocumentRepository;
   readiness?: () => Promise<boolean>;
   release?: Readonly<{ sha: string; environment: string; builtAt?: string }>;
   telemetry?: Telemetry;
@@ -5384,6 +5386,106 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               correlationId,
               authorized.scopes,
               authorized.anchors,
+            ),
+          };
+        }
+        if (request.pathname === '/api/v1/business-documents' && request.method === 'GET') {
+          const grant = authorizeQuery(context, 'business-document:read');
+          if (!dependencies.businessDocuments)
+            return error(
+              503,
+              'internal_error',
+              'Business document repository unavailable',
+              correlationId,
+            );
+          return {
+            statusCode: 200,
+            body: {
+              items: await dependencies.businessDocuments.list(request.query?.route, {
+                actor: context.actor,
+                scopes: grant.scopes,
+              }),
+            },
+          };
+        }
+        if (request.pathname === '/api/v1/business-documents' && request.method === 'POST') {
+          authorizeQuery(context, 'business-document:manage');
+          if (!dependencies.businessDocuments)
+            return error(
+              503,
+              'internal_error',
+              'Business document repository unavailable',
+              correlationId,
+            );
+          const b = objectBody(request.body);
+          allow(b, ['templateKey', 'title', 'route', 'subjectType', 'subjectId', 'content']);
+          return {
+            statusCode: 201,
+            body: await dependencies.businessDocuments.create(
+              {
+                templateKey: string(b.templateKey, 'templateKey'),
+                title: string(b.title, 'title'),
+                route: string(b.route, 'route'),
+                ...(b.subjectType
+                  ? {
+                      subjectType: string(b.subjectType, 'subjectType'),
+                      subjectId: uuid(b.subjectId, 'subjectId'),
+                    }
+                  : {}),
+                content: jsonObject(b.content, 'content'),
+              },
+              context.actor,
+              correlationId,
+            ),
+          };
+        }
+        const businessDocument = /^\/api\/v1\/business-documents\/([0-9a-f-]+)$/u.exec(
+          request.pathname,
+        );
+        if (businessDocument && request.method === 'GET') {
+          const grant = authorizeQuery(context, 'business-document:read');
+          if (!dependencies.businessDocuments)
+            return error(
+              503,
+              'internal_error',
+              'Business document repository unavailable',
+              correlationId,
+            );
+          return {
+            statusCode: 200,
+            body: await dependencies.businessDocuments.get(
+              uuid(businessDocument[1], 'documentId'),
+              {
+                actor: context.actor,
+                scopes: grant.scopes,
+              },
+            ),
+          };
+        }
+        const businessDocumentVersion =
+          /^\/api\/v1\/business-documents\/([0-9a-f-]+)\/versions$/u.exec(request.pathname);
+        if (businessDocumentVersion && request.method === 'POST') {
+          const grant = authorizeQuery(context, 'business-document:manage');
+          if (!dependencies.businessDocuments)
+            return error(
+              503,
+              'internal_error',
+              'Business document repository unavailable',
+              correlationId,
+            );
+          const b = objectBody(request.body);
+          allow(b, ['expectedVersion', 'content', 'changeSummary']);
+          return {
+            statusCode: 201,
+            body: await dependencies.businessDocuments.saveVersion(
+              uuid(businessDocumentVersion[1], 'documentId'),
+              {
+                expectedVersion: version(b.expectedVersion),
+                content: jsonObject(b.content, 'content'),
+                changeSummary: string(b.changeSummary, 'changeSummary'),
+              },
+              { actor: context.actor, scopes: grant.scopes },
+              correlationId,
             ),
           };
         }

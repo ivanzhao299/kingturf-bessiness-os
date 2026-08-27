@@ -8955,6 +8955,141 @@ const el = <K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, t
   if (text) node.textContent = text;
   return node;
 };
+
+type OnlineBusinessDocument = Readonly<{
+  id: string;
+  templateKey: string;
+  title: string;
+  route: string;
+  currentVersion: number;
+  versions?: readonly Readonly<{
+    version: number;
+    content: Readonly<{ body?: string }>;
+    changeSummary: string;
+    createdAt?: string;
+  }>[];
+}>;
+
+const onlineTemplateKey = (template: BusinessDocumentTemplate, route: AppRoute): string =>
+  `${template.file.slice(0, 2)}-${route}`;
+
+const onlineDocumentApi = <T>(path: string, init?: RequestInit): Promise<T> => {
+  const token = sessionStorage.getItem('kingturf.session');
+  if (!token) throw new Error('登录状态已失效，请重新登录');
+  return json<T>(path, token, init);
+};
+
+const openOnlineDocumentEditor = (
+  documentData: OnlineBusinessDocument,
+  onSaved?: () => void,
+): void => {
+  const dialog = document.createElement('dialog');
+  dialog.className = 'form-dialog business-document-dialog';
+  const heading = el('div', 'dialog-heading');
+  const headingCopy = el('div');
+  headingCopy.append(
+    el('p', 'eyebrow', '在线业务文档'),
+    el('h2', '', documentData.title),
+    el('p', 'muted', `当前版本 V${String(documentData.currentVersion)} · 保存不会覆盖历史版本`),
+  );
+  const close = el('button', 'icon-button', '×');
+  close.type = 'button';
+  close.setAttribute('aria-label', '关闭在线文档');
+  close.addEventListener('click', () => {
+    dialog.close();
+  });
+  heading.append(headingCopy, close);
+  const versions = [...(documentData.versions ?? [])].sort((a, b) => b.version - a.version);
+  const current =
+    versions.find((item) => item.version === documentData.currentVersion) ?? versions[0];
+  const layout = el('div', 'business-document-layout');
+  const editor = el('section', 'business-document-editor');
+  const title = el('input');
+  title.value = documentData.title;
+  title.readOnly = true;
+  title.setAttribute('aria-label', '文档标题');
+  const body = el('textarea');
+  body.className = 'business-document-body';
+  body.value = current?.content.body ?? '';
+  body.setAttribute('aria-label', '文档正文');
+  body.spellcheck = false;
+  const summary = el('input');
+  summary.placeholder = '本版修改说明，例如：调整数量、价格和交期';
+  summary.setAttribute('aria-label', '本版修改说明');
+  const status = el('p', 'operation-status', '编辑完成后保存为新版本');
+  status.setAttribute('aria-live', 'polite');
+  const save = el('button', 'primary', '保存为新版本');
+  save.type = 'button';
+  save.addEventListener('click', () => {
+    if (!body.value.trim()) {
+      setOperationStatus(status, 'error', '文档正文不能为空');
+      return;
+    }
+    if (!summary.value.trim()) {
+      setOperationStatus(status, 'error', '请填写本版修改说明');
+      return;
+    }
+    save.disabled = true;
+    setOperationStatus(status, 'loading', '正在保存新版本…');
+    void onlineDocumentApi<{ currentVersion: number }>(
+      `/api/v1/business-documents/${documentData.id}/versions`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          expectedVersion: documentData.currentVersion,
+          content: { body: body.value },
+          changeSummary: summary.value,
+        }),
+      },
+    )
+      .then((saved) => {
+        setOperationStatus(
+          status,
+          'success',
+          `已保存 V${String(saved.currentVersion)}，历史版本保持不变`,
+        );
+        save.textContent = '已保存';
+        onSaved?.();
+      })
+      .catch((failure: unknown) => {
+        save.disabled = false;
+        setOperationStatus(
+          status,
+          'error',
+          failure instanceof Error ? failure.message : '在线文档保存失败',
+        );
+      });
+  });
+  editor.append(title, body, summary, save, status);
+  const history = el('aside', 'business-document-history');
+  history.append(el('h3', '', '版本记录'));
+  if (versions.length === 0) history.append(el('p', 'empty', '暂无版本记录'));
+  for (const item of versions) {
+    const versionItem = el('button', 'business-document-version');
+    versionItem.type = 'button';
+    versionItem.append(
+      el('strong', '', `V${String(item.version)}`),
+      el('span', '', item.changeSummary),
+      el('small', '', item.createdAt ? new Date(item.createdAt).toLocaleString('zh-CN') : ''),
+    );
+    versionItem.addEventListener('click', () => {
+      body.value = item.content.body ?? '';
+      setOperationStatus(
+        status,
+        'idle',
+        `正在查看 V${String(item.version)}；继续保存将基于当前最新版生成新版本`,
+      );
+    });
+    history.append(versionItem);
+  }
+  layout.append(editor, history);
+  dialog.append(heading, layout);
+  dialog.addEventListener('close', () => {
+    dialog.remove();
+  });
+  document.body.append(dialog);
+  dialog.showModal();
+};
 type FormField = Readonly<{
   name: string;
   label: string;
@@ -10708,7 +10843,7 @@ export function createCrmShell(
         el('small', '', template.description),
       );
       const actions = el('div', 'contextual-document-actions');
-      const use = el('button', 'primary compact', '选用并下载');
+      const use = el('button', 'secondary compact', '下载 Word');
       use.type = 'button';
       const download = document.createElement('a');
       download.className = 'text-button';
@@ -10719,13 +10854,96 @@ export function createCrmShell(
         for (const sibling of Array.from(contextualGrid.querySelectorAll('article')))
           sibling.classList.remove('selected');
         card.classList.add('selected');
-        selectionStatus.textContent = `已选用“${template.name}”；下载完成后填写业务数据并回传附件`;
+        selectionStatus.textContent = `已下载“${template.name}”Word 交换文件`;
         selectionStatus.dataset.state = 'success';
         download.click();
       });
+      if (allPermissions.has('business-document:manage')) {
+        const online = el('button', 'primary compact', '新建在线文档');
+        online.type = 'button';
+        online.addEventListener('click', () => {
+          online.disabled = true;
+          setOperationStatus(selectionStatus, 'loading', `正在创建“${template.name}”…`);
+          void onlineDocumentApi<OnlineBusinessDocument>('/api/v1/business-documents', {
+            method: 'POST',
+            body: JSON.stringify({
+              templateKey: onlineTemplateKey(template, route),
+              title: `${template.name} · ${new Date().toLocaleDateString('zh-CN')}`,
+              route,
+              content: {
+                body: `${template.name}\n\n用途：${template.description}\n\n项目名称：\n客户/供应商：\n业务编号：\n编制日期：${new Date().toLocaleDateString('zh-CN')}\n\n一、基本信息\n\n二、业务内容\n\n三、技术与质量要求\n\n四、价格、交期或执行安排\n\n五、审批与确认\n`,
+              },
+            }),
+          })
+            .then((created) => {
+              setOperationStatus(selectionStatus, 'success', `已创建“${template.name}”在线文档 V1`);
+              openOnlineDocumentEditor(created, () => {
+                globalThis.location.reload();
+              });
+            })
+            .catch((failure: unknown) => {
+              online.disabled = false;
+              setOperationStatus(
+                selectionStatus,
+                'error',
+                failure instanceof Error ? failure.message : '在线文档创建失败',
+              );
+            });
+        });
+        actions.append(online);
+      }
       actions.append(use, download);
       card.append(actions);
       contextualGrid.append(card);
+    }
+    if (allPermissions.has('business-document:read')) {
+      const savedDocuments = el('div', 'business-document-register');
+      savedDocuments.append(el('strong', '', '已保存在线文档'), el('span', 'muted', '正在加载…'));
+      void onlineDocumentApi<{ items: readonly OnlineBusinessDocument[] }>(
+        `/api/v1/business-documents?route=${encodeURIComponent(route)}`,
+      )
+        .then((result) => {
+          savedDocuments.replaceChildren(el('strong', '', '已保存在线文档'));
+          if (result.items.length === 0) {
+            savedDocuments.append(el('span', 'muted', '暂无，选择上方模板新建'));
+            return;
+          }
+          for (const item of result.items.slice(0, 8)) {
+            const open = el(
+              'button',
+              'business-document-open',
+              `${item.title} · V${String(item.currentVersion)}`,
+            );
+            open.type = 'button';
+            open.addEventListener('click', () => {
+              open.disabled = true;
+              void onlineDocumentApi<OnlineBusinessDocument>(
+                `/api/v1/business-documents/${item.id}`,
+              )
+                .then((full) => {
+                  openOnlineDocumentEditor(full, () => {
+                    globalThis.location.reload();
+                  });
+                })
+                .catch((failure: unknown) => {
+                  open.disabled = false;
+                  setOperationStatus(
+                    selectionStatus,
+                    'error',
+                    failure instanceof Error ? failure.message : '在线文档读取失败',
+                  );
+                });
+            });
+            savedDocuments.append(open);
+          }
+        })
+        .catch((failure: unknown) => {
+          savedDocuments.replaceChildren(
+            el('strong', '', '已保存在线文档'),
+            el('span', 'error', failure instanceof Error ? failure.message : '读取失败'),
+          );
+        });
+      contextualDocuments.append(savedDocuments);
     }
     contextualDocuments.append(contextualGrid, selectionStatus);
     content.append(contextualDocuments);

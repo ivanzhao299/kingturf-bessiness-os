@@ -712,7 +712,9 @@ describe('web bootstrap', () => {
       '发货到货与签收确认单',
     );
     const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
-    expect(source).toContain('选用并下载');
+    expect(source).toContain('新建在线文档');
+    expect(source).toContain('保存为新版本');
+    expect(source).toContain('/api/v1/business-documents');
     expect(source).toContain('技术需求附件区回传并随版本冻结');
   });
 

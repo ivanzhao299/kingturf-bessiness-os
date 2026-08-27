@@ -43,6 +43,7 @@ import { PostgresQualityRepository } from './quality-repositories.ts';
 import { PostgresShipmentRepository } from './shipment-repositories.ts';
 import { PostgresCollectionRepository } from './collection-repositories.ts';
 import { PostgresComplaintRepository } from './complaint-repositories.ts';
+import { PostgresBusinessDocumentRepository } from './business-document-repositories.ts';
 
 const config = parseEnvironment(process.env);
 const database = new Database(config.databaseUrl);
@@ -93,6 +94,7 @@ const app = buildApp({
   shipments: new PostgresShipmentRepository(database),
   collections: new PostgresCollectionRepository(database),
   complaints: new PostgresComplaintRepository(database),
+  businessDocuments: new PostgresBusinessDocumentRepository(database),
   release: {
     sha: process.env.KINGTURF_RELEASE_SHA ?? 'development',
     environment: process.env.KINGTURF_RELEASE_ENVIRONMENT ?? config.nodeEnv,

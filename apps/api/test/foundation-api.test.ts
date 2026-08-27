@@ -15,6 +15,8 @@ const auth = {
         ['attachment:manage', { scopes: ['SELF'], fields: null }],
         ['notification:manage', { scopes: ['COMPANY'], fields: null }],
         ['business-object:manage', { scopes: ['COMPANY'], fields: null }],
+        ['business-document:read', { scopes: ['COMPANY'], fields: null }],
+        ['business-document:manage', { scopes: ['COMPANY'], fields: null }],
       ]),
       scopeAnchors: new Map([
         ['attachment:manage', [{ scope: 'TEAM', organizationId: attachmentAnchor }]],
@@ -267,6 +269,49 @@ describe('foundation secured API and telemetry', () => {
     });
     expect(registry.statusCode).toBe(201);
     expect(create.mock.calls[0]?.[3]).toEqual(actor);
+  });
+
+  it('creates and appends online business document versions', async () => {
+    const documentId = randomUUID();
+    const create = vi.fn((...arguments_: unknown[]) => {
+      void arguments_;
+      return Promise.resolve({ id: documentId, currentVersion: 1 });
+    });
+    const saveVersion = vi.fn((...arguments_: unknown[]) => {
+      void arguments_;
+      return Promise.resolve({ id: documentId, currentVersion: 2 });
+    });
+    const app = buildApp({
+      ...base,
+      businessDocuments: { create, saveVersion } as unknown as NonNullable<
+        ApiDependencies['businessDocuments']
+      >,
+    });
+    const created = await app.dispatch({
+      method: 'POST',
+      pathname: '/api/v1/business-documents',
+      headers: { authorization: 'Bearer token' },
+      body: {
+        templateKey: '13-project-quotation',
+        title: '华东校园项目报价单',
+        route: 'quotes',
+        content: { body: '第一版报价内容' },
+      },
+    });
+    const saved = await app.dispatch({
+      method: 'POST',
+      pathname: `/api/v1/business-documents/${documentId}/versions`,
+      headers: { authorization: 'Bearer token' },
+      body: {
+        expectedVersion: 1,
+        content: { body: '第二版报价内容' },
+        changeSummary: '调整数量和交期',
+      },
+    });
+    expect(created).toMatchObject({ statusCode: 201, body: { currentVersion: 1 } });
+    expect(saved).toMatchObject({ statusCode: 201, body: { currentVersion: 2 } });
+    expect(create.mock.calls[0]?.[0]).toMatchObject({ route: 'quotes' });
+    expect(saveVersion.mock.calls[0]?.[1]).toMatchObject({ expectedVersion: 1 });
   });
 
   it('tenant-qualifies event metrics', async () => {

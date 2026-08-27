@@ -138,6 +138,8 @@ export const FOUNDATION_CAPABILITIES = [
   'notification:manage',
   'attachment:read',
   'attachment:manage',
+  'business-document:read',
+  'business-document:manage',
   'event:operate',
   'business-object:read',
   'business-object:manage',
