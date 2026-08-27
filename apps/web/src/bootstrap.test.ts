@@ -7,6 +7,7 @@ import {
   cashRiskSummary,
   CommercialController,
   contractOrderReadiness,
+  customerStateLabel,
   CrmController,
   GovernanceController,
   commercialWorkspaceStructure,
@@ -52,6 +53,13 @@ it('translates production timeline details without leaking internal state codes'
   expect(businessEventDetailLabel('CREDIT_DECIDED', 'APPROVED')).toBe('已批准');
   expect(businessEventDetailLabel('RISK_EVALUATED', 'HIGH/45')).toBe('高风险 / 45分');
   expect(businessEventDetailLabel('PAYMENT_RECEIVED', 'BANK-KT-001')).toBe('BANK-KT-001');
+});
+
+it('uses customer-specific state language in customer records', () => {
+  expect(customerStateLabel('PROSPECT')).toBe('潜在客户');
+  expect(customerStateLabel('ACTIVE')).toBe('合作客户');
+  expect(customerStateLabel('INACTIVE')).toBe('暂停合作');
+  expect(customerStateLabel('ARCHIVED')).toBe('已归档');
 });
 
 it('translates operations codes and derives accountable next actions', () => {
@@ -1539,7 +1547,7 @@ describe('web bootstrap', () => {
       expect(shell.findByClass('related-opportunities-section')).toHaveLength(1);
       expect(shell.findByClass('activity-timeline')).toHaveLength(1);
       expect(shell.textContent).toContain('Buyer Zhang');
-      expect(shell.textContent).toContain('C-1 · PROSPECT · 未分配或负责人受限');
+      expect(shell.textContent).toContain('C-1 · 潜在客户 · 未分配或负责人受限');
       expect(shell.textContent).toContain('buyer@example.test');
       expect(shell.textContent).toContain('华东区域');
       expect(shell.textContent).toContain('School pitch');

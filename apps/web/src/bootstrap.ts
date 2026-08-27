@@ -1028,6 +1028,18 @@ const businessStateLabel = (value: unknown, fallback = '状态受限'): string =
   return BUSINESS_STATE_LABELS[code] ?? code;
 };
 
+const CUSTOMER_STATE_LABELS: Readonly<Record<string, string>> = {
+  PROSPECT: '潜在客户',
+  ACTIVE: '合作客户',
+  INACTIVE: '暂停合作',
+  ARCHIVED: '已归档',
+};
+
+export const customerStateLabel = (value: unknown, fallback = '状态受限'): string => {
+  const code = textValue(value, fallback);
+  return CUSTOMER_STATE_LABELS[code] ?? businessStateLabel(code, fallback);
+};
+
 function printIssuedQuote(quote: Record<string, unknown>): void {
   const popup = globalThis.open('', '_blank', 'noopener,noreferrer');
   if (!popup) throw new Error('浏览器阻止了报价打印窗口，请允许本站弹出窗口');
@@ -10486,7 +10498,7 @@ export function createCrmShell(
       row.append(
         el('span', 'avatar', customer.name?.slice(0, 1) ?? '?'),
         el('span', 'identity', customer.name ?? customer.id),
-        el('span', 'status', businessStateLabel(customer.status, '状态受限')),
+        el('span', 'status', customerStateLabel(customer.status)),
         el('span', 'owner', customer.ownerId ?? '未分配'),
       );
       row.addEventListener('click', () => {
@@ -10513,7 +10525,7 @@ export function createCrmShell(
       el(
         'p',
         'customer-identity',
-        `${controller.selected.customer.customerNumber ?? '编号受限'} · ${businessStateLabel(controller.selected.customer.status, '状态受限')} · ${controller.selected.customer.ownerId ?? '未分配或负责人受限'}`,
+        `${controller.selected.customer.customerNumber ?? '编号受限'} · ${customerStateLabel(controller.selected.customer.status)} · ${controller.selected.customer.ownerId ?? '未分配或负责人受限'}`,
       ),
       el(
         'p',
