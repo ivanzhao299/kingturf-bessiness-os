@@ -10215,10 +10215,7 @@ export function createCrmShell(
   const utilityLeading = el('div', 'utility-leading');
   const utilityContext = el('span', 'utility-context', APP_ROUTE_LABELS[currentRoute]);
   utilityContext.setAttribute('data-utility-context', 'true');
-  utilityLeading.append(
-    sidebarToggle,
-    utilityContext,
-  );
+  utilityLeading.append(sidebarToggle, utilityContext);
   const search = el('button', 'global-search');
   search.type = 'button';
   search.setAttribute('aria-label', '进入客户与业务查询');
