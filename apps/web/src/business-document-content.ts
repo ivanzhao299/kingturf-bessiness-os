@@ -658,3 +658,15 @@ export const buildBusinessDocumentTemplateHtml = (
     '<ul><li>本版修改说明：从受控模板创建，首次填写。</li><li>附件清单及编号：〔填写检测报告、照片、图纸、封样、审批或业务单据编号〕。</li><li>保存为新版本后，历史版本不得覆盖；批准锁版前须完成正文、附件和审批信息复核。</li></ul>',
   ].join('');
 };
+
+export const isLegacyBusinessDocumentOutline = (value: string): boolean => {
+  const normalized = value.replace(/\s+/gu, ' ').trim();
+  return (
+    normalized.length < 500 &&
+    normalized.includes('一、基本信息') &&
+    normalized.includes('二、业务内容') &&
+    normalized.includes('三、技术与质量要求') &&
+    normalized.includes('四、价格、交期或执行安排') &&
+    normalized.includes('五、审批与确认')
+  );
+};
