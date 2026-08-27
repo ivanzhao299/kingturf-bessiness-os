@@ -1666,7 +1666,7 @@ export function commercialWorkspaceStructure(
     const details = el('div', 'dashboard-drilldowns'),
       orderList = el('article', 'dashboard-list'),
       riskList = el('article', 'dashboard-list');
-    orderList.append(el('h3', '', '订单贡献下钻'));
+    orderList.append(el('h3', '', '订单贡献明细'));
     for (const order of orders)
       orderList.append(
         el(
@@ -1675,7 +1675,7 @@ export function commercialWorkspaceStructure(
           `${recordText(order, 'orderNumber', 'orderNumber')} · ${recordText(filters, 'currency', 'currency')} ${recordText(order, 'total', 'total')} · 毛利 ${recordText(order, 'margin', 'margin')}`,
         ),
       );
-    riskList.append(el('h3', '', '风险责任下钻'));
+    riskList.append(el('h3', '', '风险责任明细'));
     for (const risk of risks)
       riskList.append(
         el(
@@ -4730,7 +4730,7 @@ export function commercialWorkspaceStructure(
     copy.append(
       el('p', 'eyebrow', '订单全景'),
       el('h2', '', '订单全链路与证据时间线'),
-      el('p', '', '从已释放订单下钻报价、成本、信用、合同、应收、回款、佣金与异常。'),
+      el('p', '', '查看已释放订单关联的报价、成本、信用、合同、应收、回款、佣金与异常记录。'),
     );
     /* Risk policy controls are rendered in the dedicated risk workbench below. */
     const riskPolicies = controller.views.get('/api/v1/risk-policies') ?? [];

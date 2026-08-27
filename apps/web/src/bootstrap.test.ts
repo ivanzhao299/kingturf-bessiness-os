@@ -93,6 +93,14 @@ it('captures artificial-turf project handoff fields without test-channel evidenc
   expect(source).not.toContain('WEB-UAT');
 });
 
+it('uses daily business language instead of analytics jargon in visible workspace copy', () => {
+  const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+  expect(source).toContain('订单贡献明细');
+  expect(source).toContain('风险责任明细');
+  expect(source).toContain('查看已释放订单关联的报价、成本、信用、合同、应收、回款、佣金与异常记录。');
+  expect(source).not.toContain('下钻');
+});
+
 it('keeps product pages on one content rail and renders business records as dense registers', () => {
   const styles = readFileSync(new URL('./style.css', import.meta.url), 'utf8');
   expect(styles).toContain('KT-UI-PROD-03: consistent page rail and record-register hierarchy');
