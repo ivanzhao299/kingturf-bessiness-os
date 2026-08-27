@@ -138,6 +138,7 @@ it('uses a smooth two-level sidebar with an icon-only collapse control', () => {
   expect(styles).toContain('Jinhu-informed application chrome');
   expect(styles).toContain('grid-template-columns: 232px minmax(0, 1fr)');
   expect(styles).toContain('margin-left: calc(-1 * clamp(20px, 2.4vw, 40px))');
+  expect(styles).toContain('.workspace {\n  margin: 0;');
 });
 
 it('uses a dedicated transparent King Turf mark without cropping in compact navigation', () => {

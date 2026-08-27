@@ -3777,6 +3777,9 @@ button:not(:disabled):active {
   width: 0;
   height: 0;
 }
+.workspace {
+  margin: 0;
+}
 .brand-lockup {
   min-height: 44px;
   padding-bottom: 18px;
