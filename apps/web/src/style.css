@@ -497,6 +497,10 @@ button {
   border-radius: 14px;
 }
 .business-document-dialog > .dialog-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
   margin: 0;
   padding: 16px 20px;
   border-bottom: 1px solid #dbe4df;
@@ -505,6 +509,14 @@ button {
 .business-document-dialog > .dialog-heading h2 {
   margin: 2px 0;
   font-size: 20px;
+}
+.business-document-dialog > .dialog-heading .icon-button {
+  flex: 0 0 36px;
+  width: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-radius: 8px;
+  font-size: 22px;
 }
 .business-document-workspace {
   --document-zoom: 0.9;
@@ -523,6 +535,15 @@ button {
   border-bottom: 1px solid #d2dcd6;
   background: #f9fbfa;
   box-shadow: 0 2px 8px rgb(27 57 45 / 6%);
+}
+.business-document-commandbar > button,
+.business-document-command-group button {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 0;
+  min-height: 34px;
+  padding: 6px 12px;
+  white-space: nowrap;
 }
 .business-document-command-group {
   display: flex;
@@ -637,6 +658,14 @@ button {
   border-radius: 9px;
   background: #f7faf8;
 }
+.business-document-toolbar > button {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 0;
+  min-height: 34px;
+  padding: 6px 12px;
+  white-space: nowrap;
+}
 .business-document-review-actions {
   display: flex;
   flex-wrap: wrap;
@@ -716,6 +745,40 @@ button {
 .business-document-version small {
   color: #718078;
 }
+@media (max-width: 1199px) {
+  .business-document-workspace {
+    position: relative;
+  }
+  .business-document-layout,
+  .business-document-workspace.history-collapsed .business-document-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .business-document-history {
+    position: absolute;
+    z-index: 4;
+    top: 52px;
+    right: 0;
+    bottom: 0;
+    width: min(340px, calc(100vw - 48px));
+    border-left: 1px solid #ccd8d1;
+    box-shadow: -16px 0 36px rgb(14 43 31 / 16%);
+  }
+  .business-document-workspace.history-collapsed .business-document-history {
+    visibility: hidden;
+    width: 0;
+    pointer-events: none;
+  }
+  .business-document-commandbar {
+    gap: 7px;
+  }
+  .business-document-editor {
+    padding-inline: 12px;
+  }
+  .business-document-toolbar {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+}
 @media (max-width: 760px) {
   .business-document-dialog {
     width: 100vw;
@@ -728,6 +791,7 @@ button {
   }
   .business-document-commandbar {
     overflow-x: auto;
+    flex-wrap: nowrap;
     padding-inline: 10px;
   }
   .business-document-layout {
@@ -735,8 +799,9 @@ button {
     overflow: auto;
   }
   .business-document-history {
-    border-top: 1px solid #dce4df;
-    border-left: 0;
+    top: 52px;
+    border-top: 0;
+    border-left: 1px solid #dce4df;
   }
   .business-document-body {
     width: calc(100vw - 28px);

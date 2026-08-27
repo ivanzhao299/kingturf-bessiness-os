@@ -9175,6 +9175,7 @@ const openOnlineDocumentEditor = (
   const workspace = el('div', 'business-document-workspace');
   workspace.dataset.pageSize = 'a4-portrait';
   workspace.dataset.viewMode = 'edit';
+  if (window.innerWidth < 1200) workspace.classList.add('history-collapsed');
   const layout = el('div', 'business-document-layout');
   const editor = el('section', 'business-document-editor');
   const title = el('input');
@@ -9210,6 +9211,11 @@ const openOnlineDocumentEditor = (
   zoom.value = '0.9';
   const toggleHistory = el('button', 'secondary compact', '收起版本栏');
   toggleHistory.type = 'button';
+  if (workspace.classList.contains('history-collapsed')) toggleHistory.textContent = '版本记录';
+  toggleHistory.setAttribute(
+    'aria-expanded',
+    String(!workspace.classList.contains('history-collapsed')),
+  );
   const print = el('button', 'secondary compact', '打印');
   print.type = 'button';
   commandBar.append(viewGroup, pageSize, zoom, toggleHistory, print);
