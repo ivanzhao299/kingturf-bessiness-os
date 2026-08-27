@@ -3732,20 +3732,20 @@ button:not(:disabled):active {
 
 /* KingTurf brand system: a compact mark plus live type avoids cropped lockups. */
 .brand-lockup {
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   margin-bottom: 0;
 }
 @media (max-width: 1020px) and (min-width: 640px) {
   .tablet .brand-lockup {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
     padding: 0 6px 22px;
   }
 }
 @media (min-width: 640px) {
   .app-shell.desktop.sidebar-collapsed,
   .app-shell.tablet.sidebar-collapsed {
-    grid-template-columns: 78px minmax(0, 1fr);
+    grid-template-columns: 68px minmax(0, 1fr);
   }
   .sidebar-collapsed .brand-logo-frame {
     width: 42px;
@@ -3755,5 +3755,90 @@ button:not(:disabled):active {
   .sidebar-collapsed .brand-logo {
     width: 40px;
     height: 40px;
+  }
+}
+
+/* Jinhu-informed application chrome: navigation stays in the rail; controls stay in the header. */
+@media (min-width: 1021px) {
+  .app-shell.desktop {
+    grid-template-columns: 232px minmax(0, 1fr);
+    transition: grid-template-columns 180ms ease;
+  }
+  .app-shell.desktop.sidebar-collapsed {
+    grid-template-columns: 68px minmax(0, 1fr);
+  }
+}
+.sidebar {
+  overflow-x: clip;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.sidebar::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+.brand-lockup {
+  min-height: 44px;
+  padding-bottom: 18px;
+}
+.utility-bar {
+  display: grid;
+  grid-template-columns: auto minmax(280px, 520px) auto;
+  gap: 16px;
+  min-height: 64px;
+  margin-bottom: 26px;
+  background: rgb(250 251 250 / 94%);
+  box-shadow: 0 1px 0 rgb(16 39 31 / 4%);
+}
+.utility-leading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.utility-leading .sidebar-toggle {
+  display: inline-grid;
+  grid-column: auto;
+  width: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  place-items: center;
+  border: 1px solid var(--kt-border);
+  border-radius: 8px;
+  padding: 0;
+  color: #496157;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(16 39 31 / 4%);
+}
+.utility-leading .sidebar-toggle:hover {
+  color: var(--kt-primary);
+  background: #f1f6f3;
+}
+.utility-context {
+  max-width: 150px;
+  overflow: hidden;
+  color: #52675e;
+  font-size: 12px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.utility-bar .global-search {
+  justify-self: center;
+  width: 100%;
+}
+.utility-bar .profile-chip {
+  justify-self: end;
+}
+@media (max-width: 760px) {
+  .utility-bar {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+  .utility-context {
+    display: none;
+  }
+  .utility-bar .global-search {
+    min-width: 0;
   }
 }

@@ -10198,7 +10198,6 @@ export function createCrmShell(
       // The visible state still works when storage is unavailable.
     }
   });
-  brand.append(sidebarToggle);
   aside.append(brand);
   const nav = el('nav');
   const visibleRoutes = visibleAppRoutes(allPermissions);
@@ -10281,6 +10280,11 @@ export function createCrmShell(
   aside.append(sidebarFooter);
   const content = el('section', 'workspace');
   const utility = el('header', 'utility-bar');
+  const utilityLeading = el('div', 'utility-leading');
+  utilityLeading.append(
+    sidebarToggle,
+    el('span', 'utility-context', APP_ROUTE_LABELS[currentRoute]),
+  );
   const search = el('button', 'global-search');
   search.type = 'button';
   search.setAttribute('aria-label', '进入客户与业务查询');
@@ -10298,7 +10302,7 @@ export function createCrmShell(
     el('span', '', profileLabel),
     el('span', 'profile-role', roleProfile.title),
   );
-  utility.append(search, profile);
+  utility.append(utilityLeading, search, profile);
   content.append(utility);
   const routeContext = el('header', 'route-context-header');
   routeContext.setAttribute('data-route-context', 'true');

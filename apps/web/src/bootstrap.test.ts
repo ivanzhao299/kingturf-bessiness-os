@@ -133,6 +133,10 @@ it('uses a smooth two-level sidebar with an icon-only collapse control', () => {
   expect(styles).toContain('KT-UI-PROD-05: two-level operational navigation');
   expect(styles).toContain('.nav-parent-chevron');
   expect(styles).toContain('.sidebar-collapsed .nav-children');
+  expect(source).toContain("const utilityLeading = el('div', 'utility-leading')");
+  expect(source).toContain('utilityLeading.append(\n    sidebarToggle');
+  expect(styles).toContain('Jinhu-informed application chrome');
+  expect(styles).toContain('grid-template-columns: 232px minmax(0, 1fr)');
 });
 
 it('uses a dedicated transparent King Turf mark without cropping in compact navigation', () => {
