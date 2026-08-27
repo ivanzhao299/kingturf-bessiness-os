@@ -8964,7 +8964,7 @@ type OnlineBusinessDocument = Readonly<{
   currentVersion: number;
   versions?: readonly Readonly<{
     version: number;
-    content: Readonly<{ body?: string }>;
+    content: Readonly<{ body?: string; html?: string }>;
     changeSummary: string;
     createdAt?: string;
   }>[];
@@ -8977,6 +8977,63 @@ const onlineDocumentApi = <T>(path: string, init?: RequestInit): Promise<T> => {
   const token = sessionStorage.getItem('kingturf.session');
   if (!token) throw new Error('登录状态已失效，请重新登录');
   return json<T>(path, token, init);
+};
+
+const sanitizeBusinessDocumentHtml = (value: string): string => {
+  const parsed = new DOMParser().parseFromString(value, 'text/html');
+  const allowed = new Set([
+    'B',
+    'BR',
+    'DIV',
+    'EM',
+    'H2',
+    'H3',
+    'I',
+    'LI',
+    'OL',
+    'P',
+    'STRONG',
+    'U',
+    'UL',
+  ]);
+  for (const node of Array.from(parsed.body.querySelectorAll('*'))) {
+    if (!allowed.has(node.tagName)) {
+      node.replaceWith(document.createTextNode(node.textContent));
+      continue;
+    }
+    for (const attribute of Array.from(node.attributes)) node.removeAttribute(attribute.name);
+  }
+  return parsed.body.innerHTML;
+};
+
+const businessDocumentText = (content: Readonly<{ body?: string; html?: string }>): string => {
+  if (!content.html) return content.body ?? '';
+  const parsed = new DOMParser().parseFromString(content.html, 'text/html');
+  return parsed.body.textContent;
+};
+
+const renderBusinessDocumentComparison = (
+  target: HTMLElement,
+  earlier: string,
+  latest: string,
+  earlierVersion: number,
+  latestVersion: number,
+): void => {
+  const left = earlier.split('\n');
+  const right = latest.split('\n');
+  const rows = Math.max(left.length, right.length);
+  target.replaceChildren(
+    el('h3', '', `V${String(earlierVersion)} 与 V${String(latestVersion)} 对比`),
+  );
+  const grid = el('div', 'business-document-diff-grid');
+  for (let index = 0; index < rows; index += 1) {
+    const changed = (left[index] ?? '') !== (right[index] ?? '');
+    grid.append(
+      el('pre', changed ? 'changed' : '', left[index] ?? ''),
+      el('pre', changed ? 'changed' : '', right[index] ?? ''),
+    );
+  }
+  target.append(grid);
 };
 
 const openOnlineDocumentEditor = (
@@ -9008,11 +9065,33 @@ const openOnlineDocumentEditor = (
   title.value = documentData.title;
   title.readOnly = true;
   title.setAttribute('aria-label', '文档标题');
-  const body = el('textarea');
+  const toolbar = el('div', 'business-document-toolbar');
+  const body = el('div');
   body.className = 'business-document-body';
-  body.value = current?.content.body ?? '';
+  body.contentEditable = 'true';
+  body.innerHTML = sanitizeBusinessDocumentHtml(
+    current?.content.html ??
+      `<p>${(current?.content.body ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('\n', '<br>')}</p>`,
+  );
   body.setAttribute('aria-label', '文档正文');
-  body.spellcheck = false;
+  body.setAttribute('role', 'textbox');
+  for (const [label, command, value] of [
+    ['正文', 'formatBlock', 'p'],
+    ['一级标题', 'formatBlock', 'h2'],
+    ['二级标题', 'formatBlock', 'h3'],
+    ['加粗', 'bold', ''],
+    ['项目符号', 'insertUnorderedList', ''],
+    ['编号', 'insertOrderedList', ''],
+  ] as const) {
+    const action = el('button', 'secondary compact', label);
+    action.type = 'button';
+    action.addEventListener('click', () => {
+      body.focus();
+      // eslint-disable-next-line @typescript-eslint/no-deprecated -- execCommand preserves the active selection in contenteditable across supported enterprise browsers.
+      document.execCommand(command, false, value);
+    });
+    toolbar.append(action);
+  }
   const summary = el('input');
   summary.placeholder = '本版修改说明，例如：调整数量、价格和交期';
   summary.setAttribute('aria-label', '本版修改说明');
@@ -9021,7 +9100,9 @@ const openOnlineDocumentEditor = (
   const save = el('button', 'primary', '保存为新版本');
   save.type = 'button';
   save.addEventListener('click', () => {
-    if (!body.value.trim()) {
+    const cleanHtml = sanitizeBusinessDocumentHtml(body.innerHTML);
+    const plainText = businessDocumentText({ html: cleanHtml });
+    if (!plainText.trim()) {
       setOperationStatus(status, 'error', '文档正文不能为空');
       return;
     }
@@ -9037,7 +9118,7 @@ const openOnlineDocumentEditor = (
         method: 'POST',
         body: JSON.stringify({
           expectedVersion: documentData.currentVersion,
-          content: { body: body.value },
+          content: { body: plainText, html: cleanHtml },
           changeSummary: summary.value,
         }),
       },
@@ -9060,9 +9141,10 @@ const openOnlineDocumentEditor = (
         );
       });
   });
-  editor.append(title, body, summary, save, status);
+  editor.append(title, toolbar, body, summary, save, status);
   const history = el('aside', 'business-document-history');
   history.append(el('h3', '', '版本记录'));
+  const comparison = el('section', 'business-document-comparison');
   if (versions.length === 0) history.append(el('p', 'empty', '暂无版本记录'));
   for (const item of versions) {
     const versionItem = el('button', 'business-document-version');
@@ -9073,7 +9155,17 @@ const openOnlineDocumentEditor = (
       el('small', '', item.createdAt ? new Date(item.createdAt).toLocaleString('zh-CN') : ''),
     );
     versionItem.addEventListener('click', () => {
-      body.value = item.content.body ?? '';
+      body.innerHTML = sanitizeBusinessDocumentHtml(
+        item.content.html ??
+          `<p>${(item.content.body ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('\n', '<br>')}</p>`,
+      );
+      renderBusinessDocumentComparison(
+        comparison,
+        businessDocumentText(item.content),
+        businessDocumentText(current?.content ?? {}),
+        item.version,
+        documentData.currentVersion,
+      );
       setOperationStatus(
         status,
         'idle',
@@ -9083,7 +9175,7 @@ const openOnlineDocumentEditor = (
     history.append(versionItem);
   }
   layout.append(editor, history);
-  dialog.append(heading, layout);
+  dialog.append(heading, layout, comparison);
   dialog.addEventListener('close', () => {
     dialog.remove();
   });

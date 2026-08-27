@@ -495,14 +495,14 @@ button {
 }
 .business-document-editor {
   display: grid;
-  grid-template-rows: auto minmax(400px, 1fr) auto auto auto;
+  grid-template-rows: auto auto minmax(400px, 1fr) auto auto auto;
   gap: 12px;
 }
 .business-document-body {
   width: 100%;
   min-height: 440px;
+  overflow: auto;
   padding: 28px 36px;
-  resize: vertical;
   border: 1px solid #cdd8d2;
   border-radius: 8px;
   background: #fff;
@@ -511,6 +511,52 @@ button {
   font-size: 15px;
   line-height: 1.9;
   box-shadow: 0 8px 24px rgb(18 45 34 / 8%);
+  outline: none;
+}
+.business-document-body:focus {
+  border-color: var(--kt-primary);
+  box-shadow: 0 0 0 3px rgb(17 94 65 / 10%);
+}
+.business-document-body h2,
+.business-document-body h3 {
+  margin: 1.2em 0 0.55em;
+}
+.business-document-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 10px;
+  border: 1px solid #d9e2dc;
+  border-radius: 9px;
+  background: #f7faf8;
+}
+.business-document-comparison {
+  margin-top: 16px;
+  padding: 18px;
+  border: 1px solid #d9e2dc;
+  border-radius: 12px;
+  background: #f7faf8;
+}
+.business-document-comparison:empty {
+  display: none;
+}
+.business-document-diff-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px 14px;
+  margin-top: 12px;
+}
+.business-document-diff-grid pre {
+  min-height: 30px;
+  margin: 0;
+  padding: 6px 8px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  font: inherit;
+}
+.business-document-diff-grid pre.changed {
+  border-radius: 6px;
+  background: #fff1dd;
 }
 .business-document-history {
   display: grid;
@@ -543,6 +589,9 @@ button {
   }
   .business-document-body {
     padding: 20px;
+  }
+  .business-document-diff-grid {
+    grid-template-columns: 1fr;
   }
 }
 [hidden] {

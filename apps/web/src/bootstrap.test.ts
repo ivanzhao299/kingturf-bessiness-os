@@ -715,6 +715,10 @@ describe('web bootstrap', () => {
     expect(source).toContain('新建在线文档');
     expect(source).toContain('保存为新版本');
     expect(source).toContain('/api/v1/business-documents');
+    expect(source).toContain('sanitizeBusinessDocumentHtml');
+    expect(source).toContain('business-document-toolbar');
+    expect(source).toContain('business-document-diff-grid');
+    expect(source).toContain('与 V${String(latestVersion)} 对比');
     expect(source).toContain('技术需求附件区回传并随版本冻结');
   });
 
