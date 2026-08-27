@@ -10164,8 +10164,15 @@ export function createCrmShell(
   renderSidebarState();
   const aside = el('aside', 'sidebar');
   const brand = el('div', 'brand-lockup');
-  brand.append(el('span', 'brand-mark', 'K'), el('div', 'brand', '金特夫'));
-  brand.append(el('p', 'brand-caption', '企业经营管理系统'));
+  const brandLogoFrame = el('span', 'brand-logo-frame');
+  const brandLogo = document.createElement('img');
+  brandLogo.className = 'brand-logo';
+  brandLogo.src = '/kingturf-logo-transparent.png';
+  brandLogo.alt = '金特夫 King Turf';
+  brandLogo.width = 1200;
+  brandLogo.height = 525;
+  brandLogoFrame.append(brandLogo);
+  brand.append(brandLogoFrame);
   const sidebarToggle = el('button', 'sidebar-toggle');
   sidebarToggle.type = 'button';
   const renderSidebarToggle = () => {
@@ -12016,7 +12023,15 @@ async function login(login: string, password: string): Promise<string> {
 function loginView(root: HTMLElement): void {
   const shell = el('main', 'login-shell');
   const story = el('section', 'login-story');
+  const loginBrand = el('div', 'login-brand');
+  const loginLogo = document.createElement('img');
+  loginLogo.src = '/kingturf-logo-transparent.png';
+  loginLogo.alt = '金特夫 King Turf';
+  loginLogo.width = 1200;
+  loginLogo.height = 525;
+  loginBrand.append(loginLogo);
   story.append(
+    loginBrand,
     el('p', 'eyebrow', '金特夫 · 企业经营管理系统'),
     el('h1', '', '让订单、生产与交付证据在一条业务链上闭环'),
     el(

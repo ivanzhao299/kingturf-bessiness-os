@@ -423,15 +423,29 @@ button {
 }
 .brand-lockup {
   display: grid;
-  grid-template-columns: 36px minmax(0, 1fr) auto;
-  grid-template-rows: auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   column-gap: 10px;
   align-items: center;
   padding: 0 8px 22px;
 }
+.brand-logo-frame {
+  display: grid;
+  min-width: 0;
+  height: 58px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 12px;
+  background: rgb(255 255 255 / 94%);
+}
+.brand-logo {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}
 .sidebar-toggle {
-  grid-column: 3;
-  grid-row: 1 / 3;
+  grid-column: 2;
   align-self: center;
   min-width: 42px;
   min-height: 30px;
@@ -2031,6 +2045,7 @@ button {
     padding: 0 12px;
   }
 }
+
 @media (prefers-reduced-motion: reduce) {
   .app-shell,
   .sidebar,
@@ -2570,6 +2585,16 @@ button {
     padding-right: 0;
     padding-left: 0;
   }
+  .sidebar-collapsed .brand-logo-frame {
+    width: 48px;
+    height: 48px;
+    place-items: center start;
+    border-radius: 12px;
+  }
+  .sidebar-collapsed .brand-logo {
+    width: 118px;
+    max-width: none;
+  }
   .sidebar-collapsed .brand,
   .sidebar-collapsed .brand-caption,
   .sidebar-collapsed .nav-label,
@@ -3063,6 +3088,21 @@ button:not(:disabled):active {
   background:
     linear-gradient(145deg, rgb(11 55 39 / 90%), rgb(18 92 63 / 94%)),
     radial-gradient(circle at 100% 0, #73bc92, transparent 55%);
+}
+.login-brand {
+  width: min(360px, 78%);
+  margin-bottom: 22px;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 15px;
+  padding: 9px 12px;
+  background: rgb(255 255 255 / 94%);
+  box-shadow: 0 16px 40px rgb(0 0 0 / 12%);
+}
+.login-brand img {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 .login-story .eyebrow {
   color: #a9d7c0;
@@ -3654,5 +3694,29 @@ button:not(:disabled):active {
   .mrp-proposal-card,
   .risk-card {
     padding: 14px;
+  }
+}
+
+/* KingTurf brand asset: one responsive source for login, expanded rail and compact rail. */
+.brand-lockup {
+  grid-template-columns: minmax(0, 1fr) auto;
+  margin-bottom: 0;
+}
+@media (max-width: 1020px) and (min-width: 640px) {
+  .tablet .brand-lockup {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 0 6px 22px;
+  }
+}
+@media (min-width: 640px) {
+  .sidebar-collapsed .brand-logo-frame {
+    width: 48px;
+    height: 48px;
+    place-items: center start;
+  }
+  .sidebar-collapsed .brand-logo {
+    width: 118px;
+    max-width: none;
   }
 }

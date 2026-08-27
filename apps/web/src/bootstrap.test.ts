@@ -135,6 +135,13 @@ it('uses a smooth two-level sidebar with an icon-only collapse control', () => {
   expect(styles).toContain('.sidebar-collapsed .nav-children');
 });
 
+it('uses the transparent King Turf brand asset in the sidebar and login experience', () => {
+  const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+  expect(source).toContain('/kingturf-logo-transparent.png');
+  expect(source).toContain("brandLogo.alt = '金特夫 King Turf'");
+  expect(source).toContain("loginLogo.alt = '金特夫 King Turf'");
+});
+
 it('adds status filtering and a permission-scoped detail drawer to business registers', () => {
   const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
   const styles = readFileSync(new URL('./style.css', import.meta.url), 'utf8');
