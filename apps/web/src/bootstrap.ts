@@ -10172,7 +10172,10 @@ export function createCrmShell(
   brandLogo.width = 512;
   brandLogo.height = 512;
   const brandIdentity = el('span', 'brand-identity');
-  brandIdentity.append(el('strong', 'brand-name', '金特夫'), el('small', 'brand-english', 'KING TURF'));
+  brandIdentity.append(
+    el('strong', 'brand-name', '金特夫'),
+    el('small', 'brand-english', 'KING TURF'),
+  );
   brandLogoFrame.setAttribute('aria-label', '金特夫 King Turf');
   brandLogoFrame.append(brandLogo, brandIdentity);
   brand.append(brandLogoFrame);
