@@ -137,44 +137,83 @@ export type Viewport = 'desktop' | 'tablet' | 'mobile';
 
 export type AppRoute =
   | 'overview'
-  | 'sales-workspace'
-  | 'operations-workspace'
-  | 'crm'
-  | 'opportunity-ctr'
-  | 'cost-quote'
-  | 'contract-order'
-  | 'ar-payment'
-  | 'planning-production'
-  | 'quality-warehouse'
-  | 'delivery-evidence'
+  | 'leads'
+  | 'customers'
+  | 'opportunities'
+  | 'technical-requirements'
+  | 'technical-solutions'
+  | 'costing'
+  | 'sales-policies'
+  | 'quotes'
+  | 'credit-review'
+  | 'contracts'
+  | 'sales-orders'
+  | 'order-360'
+  | 'receivables'
+  | 'collections'
+  | 'payments'
+  | 'commissions'
+  | 'business-risks'
+  | 'manufacturing-master'
+  | 'procurement'
+  | 'material-planning'
+  | 'production-orders'
+  | 'quality-inspection'
+  | 'shipments'
   | 'governance';
 
 export const APP_ROUTE_LABELS: Readonly<Record<AppRoute, string>> = {
   overview: '经营总览',
-  'sales-workspace': '销售工作台',
-  'operations-workspace': '运营工作台',
-  crm: '线索与客户',
-  'opportunity-ctr': '商机与技术需求',
-  'cost-quote': '成本与报价',
-  'contract-order': '合同与订单',
-  'ar-payment': '应收与回款',
-  'planning-production': '计划与生产',
-  'quality-warehouse': '质量与仓储',
-  'delivery-evidence': '交付与证据',
+  leads: '销售线索',
+  customers: '客户管理',
+  opportunities: '销售商机',
+  'technical-requirements': '技术需求',
+  'technical-solutions': '技术方案',
+  costing: '成本核算',
+  'sales-policies': '销售政策',
+  quotes: '销售报价',
+  'credit-review': '信用审查',
+  contracts: '合同管理',
+  'sales-orders': '销售订单',
+  'order-360': '订单全景',
+  receivables: '应收账款',
+  collections: '催收与法务',
+  payments: '收款与核销',
+  commissions: '销售佣金',
+  'business-risks': '业务风险',
+  'manufacturing-master': '制造主数据',
+  procurement: '采购管理',
+  'material-planning': '物料计划',
+  'production-orders': '生产执行',
+  'quality-inspection': '质量检验',
+  shipments: '发货与签收',
   governance: '系统管理与治理',
 };
 const APP_ROUTE_DESCRIPTIONS: Readonly<Record<AppRoute, string>> = {
   overview: '指标、待办与经营异常',
-  'sales-workspace': '商机、订单与回款风险',
-  'operations-workspace': '计划、生产与交付协同',
-  crm: '线索、客户与跟进记录',
-  'opportunity-ctr': '商机阶段与技术需求',
-  'cost-quote': '成本、政策与报价审批',
-  'contract-order': '信用、合同与订单履约',
-  'ar-payment': '应收、回款、催收与风险',
-  'planning-production': '主数据、物料需求与生产执行',
-  'quality-warehouse': '检验、库存与批次追溯',
-  'delivery-evidence': '放行、物流与签收证据',
+  leads: '线索认领、分配与跟进',
+  customers: '客户档案、联系人与活动',
+  opportunities: '商机阶段、金额与赢率',
+  'technical-requirements': '产品规格与工程条件',
+  'technical-solutions': '方案版本与技术依据',
+  costing: '成本模型、明细与差异',
+  'sales-policies': '毛利、折扣与审批规则',
+  quotes: '报价版本、毛利与签发',
+  'credit-review': '客户额度与信用敞口',
+  contracts: '合同版本、条款与签署',
+  'sales-orders': '订单创建、释放与状态',
+  'order-360': '订单全链路与业务证据',
+  receivables: '应收余额、账龄与到期',
+  collections: '催收承诺、升级与法务移交',
+  payments: '银行收款、认领与核销',
+  commissions: '佣金计提、释放与支付',
+  'business-risks': '风险评价、责任与处置',
+  'manufacturing-master': '物料、BOM 与工艺路线',
+  procurement: '供应商、询价、采购与收货',
+  'material-planning': '需求运算、库存抵扣与建议',
+  'production-orders': '工单、用料、报工与入库',
+  'quality-inspection': '检验、处置与批次追溯',
+  shipments: '发货门禁、物流与签收',
   governance: '组织、权限与平台配置',
 };
 
@@ -311,111 +350,40 @@ const hasPermissionPrefix = (permissions: ReadonlySet<string>, prefixes: readonl
 export function visibleAppRoutes(permissions: ReadonlySet<string>): ReadonlySet<AppRoute> {
   const routes = new Set<AppRoute>();
   if (permissions.has('executive-dashboard:read')) routes.add('overview');
-  if (
-    hasPermissionPrefix(permissions, [
-      'customer:',
-      'customer-',
-      'lead:',
-      'lead-',
-      'opportunity:',
-      'ctr:',
-      'technical-solution:',
-      'cost-model:',
-      'cost:',
-      'sales-policy:',
-      'quote:',
-      'credit:',
-      'contract:',
-      'sales-order:',
-      'order-360:',
-      'order-360:',
-      'ar:',
-      'bank-payment:',
-      'reconciliation:',
-      'commission:',
-      'commission-policy:',
-      'risk:',
-      'risk-policy:',
-      'collection:',
-      'legal-case:',
-      'debt-evidence:',
-    ])
-  )
-    routes.add('sales-workspace');
-  if (
-    hasPermissionPrefix(permissions, [
-      'manufacturing-item:',
-      'bom:',
-      'routing:',
-      'supplier:',
-      'procurement:',
-      'inventory:',
-      'mrp:',
-      'mrp-policy:',
-      'production:',
-      'manufacturing-cost:',
-      'quality:',
-      'quality-plan:',
-      'traceability:',
-      'shipment:',
-      'complaint:',
-      'complaint-sla:',
-      'ncr:',
-      'capa:',
-    ])
-  )
-    routes.add('operations-workspace');
-  if (hasPermissionPrefix(permissions, ['customer:', 'customer-', 'lead:', 'lead-']))
-    routes.add('crm');
-  if (hasPermissionPrefix(permissions, ['opportunity:', 'ctr:', 'technical-solution:']))
-    routes.add('opportunity-ctr');
-  if (hasPermissionPrefix(permissions, ['cost-model:', 'cost:', 'sales-policy:', 'quote:']))
-    routes.add('cost-quote');
-  if (hasPermissionPrefix(permissions, ['credit:', 'contract:', 'sales-order:', 'order-360:']))
-    routes.add('contract-order');
-  if (
-    hasPermissionPrefix(permissions, [
-      'ar:',
-      'bank-payment:',
-      'reconciliation:',
-      'commission:',
-      'commission-policy:',
-      'risk:',
-      'risk-policy:',
-      'collection:',
-      'legal-case:',
-      'debt-evidence:',
-    ])
-  )
-    routes.add('ar-payment');
-  if (
-    hasPermissionPrefix(permissions, [
-      'manufacturing-item:',
-      'bom:',
-      'routing:',
-      'supplier:',
-      'procurement:',
-      'inventory:',
-      'mrp:',
-      'mrp-policy:',
-      'production:',
-      'manufacturing-cost:',
-    ])
-  )
-    routes.add('planning-production');
-  if (
-    hasPermissionPrefix(permissions, [
-      'quality:',
-      'quality-plan:',
-      'traceability:',
-      'complaint:',
-      'complaint-sla:',
-      'ncr:',
-      'capa:',
-    ])
-  )
-    routes.add('quality-warehouse');
-  if (hasPermissionPrefix(permissions, ['shipment:'])) routes.add('delivery-evidence');
+  const addWhen = (route: AppRoute, prefixes: readonly string[]) => {
+    if (hasPermissionPrefix(permissions, prefixes)) routes.add(route);
+  };
+  addWhen('leads', ['lead:', 'lead-']);
+  addWhen('customers', ['customer:', 'customer-']);
+  addWhen('opportunities', ['opportunity:']);
+  addWhen('technical-requirements', ['ctr:']);
+  addWhen('technical-solutions', ['technical-solution:']);
+  addWhen('costing', ['cost-model:', 'cost:']);
+  addWhen('sales-policies', ['sales-policy:']);
+  addWhen('quotes', ['quote:']);
+  addWhen('credit-review', ['credit:']);
+  addWhen('contracts', ['contract:']);
+  addWhen('sales-orders', ['sales-order:']);
+  addWhen('order-360', ['order-360:']);
+  addWhen('receivables', ['ar:']);
+  addWhen('collections', ['collection:', 'legal-case:', 'debt-evidence:']);
+  addWhen('payments', ['bank-payment:', 'reconciliation:']);
+  addWhen('commissions', ['commission:', 'commission-policy:']);
+  addWhen('business-risks', ['risk:', 'risk-policy:']);
+  addWhen('manufacturing-master', ['manufacturing-item:', 'bom:', 'routing:']);
+  addWhen('procurement', ['supplier:', 'procurement:', 'inventory:']);
+  addWhen('material-planning', ['mrp:', 'mrp-policy:']);
+  addWhen('production-orders', ['production:', 'manufacturing-cost:']);
+  addWhen('quality-inspection', [
+    'quality:',
+    'quality-plan:',
+    'traceability:',
+    'complaint:',
+    'complaint-sla:',
+    'ncr:',
+    'capa:',
+  ]);
+  addWhen('shipments', ['shipment:']);
   if (visibleGovernanceSurfaces(permissions).length > 0) routes.add('governance');
   if (routes.size > 0) routes.add('overview');
   return routes;
@@ -1493,7 +1461,7 @@ export function commercialWorkspaceStructure(
   status.setAttribute('role', 'status');
   status.setAttribute(
     'data-route-view',
-    'sales-workspace operations-workspace opportunity-ctr cost-quote contract-order ar-payment planning-production quality-warehouse delivery-evidence',
+    'opportunities technical-requirements technical-solutions costing sales-policies quotes credit-review contracts sales-orders order-360 receivables collections payments commissions business-risks manufacturing-master procurement material-planning production-orders quality-inspection shipments',
   );
   const statusMessage = controller?.loading ? '正在加载业务数据…' : (controller?.message ?? '');
   status.textContent = statusMessage.startsWith('已加载') ? '' : statusMessage;
@@ -1526,7 +1494,7 @@ export function commercialWorkspaceStructure(
     )
   ) {
     const flow = el('section', 'contract-order-readiness');
-    flow.setAttribute('data-route-view', 'contract-order');
+    flow.setAttribute('data-route-view', 'sales-orders');
     const heading = el('div', 'readiness-heading');
     heading.append(el('strong', '', '订单释放门禁'), el('span', '', '按当前可见业务数据计算'));
     flow.append(heading);
@@ -1556,7 +1524,7 @@ export function commercialWorkspaceStructure(
     )
   ) {
     const flow = el('section', 'contract-order-readiness quote-readiness');
-    flow.setAttribute('data-route-view', 'cost-quote');
+    flow.setAttribute('data-route-view', 'quotes');
     const heading = el('div', 'readiness-heading');
     heading.append(el('strong', '', '报价生成门禁'), el('span', '', '仅展示当前账号可见数据'));
     flow.append(heading);
@@ -1587,7 +1555,7 @@ export function commercialWorkspaceStructure(
     )
   ) {
     const queue = el('section', 'cash-risk-summary');
-    queue.setAttribute('data-route-view', 'ar-payment');
+    queue.setAttribute('data-route-view', 'receivables');
     const heading = el('div', 'readiness-heading');
     heading.append(el('strong', '', '今日资金与债权队列'), el('span', '', '异常优先'));
     queue.append(heading);
@@ -8199,27 +8167,27 @@ export function commercialWorkspaceStructure(
   }
   const commercialRouteTokens: Readonly<Record<string, string>> = {
     'executive-dashboard': 'overview',
-    'pipeline-board': 'sales-workspace opportunity-ctr',
-    'ctr-workbench': 'sales-workspace opportunity-ctr',
-    'solution-workbench': 'sales-workspace opportunity-ctr',
-    'cost-workbench': 'sales-workspace cost-quote',
-    'policy-workbench': 'sales-workspace cost-quote',
-    'quote-workbench': 'sales-workspace cost-quote',
-    'credit-workbench': 'sales-workspace contract-order',
-    'contract-workbench': 'sales-workspace contract-order',
-    'order-workbench': 'sales-workspace contract-order',
-    'order-360-workbench': 'sales-workspace contract-order',
-    'ar-workbench': 'sales-workspace ar-payment',
-    'payment-workbench': 'sales-workspace ar-payment',
-    'commission-workbench': 'sales-workspace ar-payment',
-    'risk-workbench': 'sales-workspace ar-payment',
-    'collection-workbench': 'sales-workspace ar-payment',
-    'manufacturing-workbench': 'operations-workspace planning-production',
-    'procurement-workbench': 'operations-workspace planning-production',
-    'mrp-workbench': 'operations-workspace planning-production',
-    'production-workbench': 'operations-workspace planning-production',
-    'quality-workbench': 'operations-workspace quality-warehouse',
-    'shipment-workbench': 'operations-workspace delivery-evidence',
+    'pipeline-board': 'opportunities',
+    'ctr-workbench': 'technical-requirements',
+    'solution-workbench': 'technical-solutions',
+    'cost-workbench': 'costing',
+    'policy-workbench': 'sales-policies',
+    'quote-workbench': 'quotes',
+    'credit-workbench': 'credit-review',
+    'contract-workbench': 'contracts',
+    'order-workbench': 'sales-orders',
+    'order-360-workbench': 'order-360',
+    'ar-workbench': 'receivables',
+    'collection-workbench': 'collections',
+    'payment-workbench': 'payments',
+    'commission-workbench': 'commissions',
+    'risk-workbench': 'business-risks',
+    'manufacturing-workbench': 'manufacturing-master',
+    'procurement-workbench': 'procurement',
+    'mrp-workbench': 'material-planning',
+    'production-workbench': 'production-orders',
+    'quality-workbench': 'quality-inspection',
+    'shipment-workbench': 'shipments',
   };
   for (const child of Array.from(workspace.children)) {
     const routeTokens = Object.entries(commercialRouteTokens).find(([className]) =>
@@ -8485,18 +8453,18 @@ export function commercialWorkspaceStructure(
     workspace.append(panel);
   }
   const genericRouteTokens: Readonly<Record<string, string>> = {
-    'opportunity-pipeline': 'sales-workspace opportunity-ctr',
-    'ctr-revisions': 'sales-workspace opportunity-ctr',
-    'technical-solution-history': 'sales-workspace opportunity-ctr',
-    'cost-explanation': 'sales-workspace cost-quote',
-    'policy-explanation': 'sales-workspace cost-quote',
-    'quote-builder': 'sales-workspace cost-quote',
-    'credit-review': 'sales-workspace contract-order',
-    'contract-evidence': 'sales-workspace contract-order',
-    'order-release': 'sales-workspace contract-order',
-    'ar-aging': 'sales-workspace ar-payment',
-    'payment-intake': 'sales-workspace ar-payment',
-    reconciliation: 'sales-workspace ar-payment',
+    'opportunity-pipeline': 'opportunities',
+    'ctr-revisions': 'technical-requirements',
+    'technical-solution-history': 'technical-solutions',
+    'cost-explanation': 'costing',
+    'policy-explanation': 'sales-policies',
+    'quote-builder': 'quotes',
+    'credit-review': 'credit-review',
+    'contract-evidence': 'contracts',
+    'order-release': 'sales-orders',
+    'ar-aging': 'receivables',
+    'payment-intake': 'payments',
+    reconciliation: 'payments',
   };
   for (const child of Array.from(workspace.children)) {
     const routeTokens = Object.entries(genericRouteTokens).find(([className]) =>
@@ -10199,22 +10167,41 @@ export function createCrmShell(
     group.append(parent, children);
     nav.append(group);
   };
-  navGroup('工作台', 'overview', [
-    ['overview', '经营总览', 'overview'],
-    ['sales', '销售工作台', 'sales-workspace'],
-    ['operations', '运营工作台', 'operations-workspace'],
+  navGroup('经营管理', 'overview', [['overview', '经营总览', 'overview']]);
+  navGroup('客户与商机', 'sales', [
+    ['opportunities', '销售线索', 'leads'],
+    ['customers', '客户管理', 'customers'],
+    ['opportunities', '销售商机', 'opportunities'],
   ]);
-  navGroup('销售管理', 'sales', [
-    ['customers', '线索与客户', 'crm'],
-    ['opportunities', '商机与技术需求', 'opportunity-ctr'],
-    ['cost', '成本与报价', 'cost-quote'],
-    ['contracts', '合同与订单', 'contract-order'],
-    ['receivables', '应收与回款', 'ar-payment'],
+  navGroup('技术与报价', 'cost', [
+    ['opportunities', '技术需求', 'technical-requirements'],
+    ['operations', '技术方案', 'technical-solutions'],
+    ['cost', '成本核算', 'costing'],
+    ['cost', '销售政策', 'sales-policies'],
+    ['contracts', '销售报价', 'quotes'],
   ]);
-  navGroup('履约管理', 'operations', [
-    ['production', '计划与生产', 'planning-production'],
-    ['quality', '质量与仓储', 'quality-warehouse'],
-    ['delivery', '交付与证据', 'delivery-evidence'],
+  navGroup('合同与订单', 'contracts', [
+    ['receivables', '信用审查', 'credit-review'],
+    ['contracts', '合同管理', 'contracts'],
+    ['contracts', '销售订单', 'sales-orders'],
+    ['overview', '订单全景', 'order-360'],
+  ]);
+  navGroup('财务与风控', 'receivables', [
+    ['receivables', '应收账款', 'receivables'],
+    ['receivables', '催收与法务', 'collections'],
+    ['receivables', '收款与核销', 'payments'],
+    ['cost', '销售佣金', 'commissions'],
+    ['quality', '业务风险', 'business-risks'],
+  ]);
+  navGroup('供应链与生产', 'production', [
+    ['operations', '制造主数据', 'manufacturing-master'],
+    ['delivery', '采购管理', 'procurement'],
+    ['production', '物料计划', 'material-planning'],
+    ['production', '生产执行', 'production-orders'],
+  ]);
+  navGroup('质量与交付', 'quality', [
+    ['quality', '质量检验', 'quality-inspection'],
+    ['delivery', '发货与签收', 'shipments'],
   ]);
   navGroup('系统管理', 'governance', [['governance', '组织、权限与配置', 'governance']]);
   aside.append(nav);
@@ -10237,7 +10224,7 @@ export function createCrmShell(
     el('span', 'search-action', '进入查询'),
   );
   search.addEventListener('click', () => {
-    setAppRoute('crm');
+    setAppRoute('customers');
   });
   const profile = el('div', 'profile-chip');
   profile.append(
@@ -10326,23 +10313,8 @@ export function createCrmShell(
   roleHomeHead.append(roleHomeCopy, domainList);
   roleHome.append(roleHomeHead);
   const roleTaskGrid = el('div', 'role-task-grid');
-  const taskCopy: Readonly<Partial<Record<AppRoute, readonly [string, string]>>> = {
-    'sales-workspace': ['推进销售事项', '查看重点客户、商机、报价和回款风险'],
-    'operations-workspace': ['处理运营事项', '查看计划、生产、质量和交付异常'],
-    crm: ['维护客户与线索', '处理客户主档、跟进记录和分配事项'],
-    'opportunity-ctr': ['推进商机与技术需求', '处理商机阶段、技术需求与技术方案'],
-    'cost-quote': ['处理成本与报价', '完成测算、政策判定、审批或签发'],
-    'contract-order': ['处理合同与订单', '完成信用、合同、订单和证据复核'],
-    'ar-payment': ['处理应收与回款', '查看到账、核销、佣金和风险任务'],
-    'planning-production': ['处理计划与生产', '推进采购、物料需求、工单和制造成本'],
-    'quality-warehouse': ['处理质量与库存', '完成检验、放行、批次和追溯事项'],
-    'delivery-evidence': ['处理交付任务', '完成发货放行、物流和签收证据'],
-    governance: ['处理系统治理', '维护身份、权限、流程和运行规则'],
-  };
   for (const route of visibleRoutes) {
     if (route === 'overview') continue;
-    const copy = taskCopy[route];
-    if (!copy) continue;
     const task = el('button', 'role-task');
     task.type = 'button';
     task.setAttribute('data-role-task-route', route);
@@ -10351,8 +10323,8 @@ export function createCrmShell(
     });
     task.append(
       el('span', 'role-task-state', '可处理'),
-      el('strong', '', copy[0]),
-      el('small', '', copy[1]),
+      el('strong', '', APP_ROUTE_LABELS[route]),
+      el('small', '', APP_ROUTE_DESCRIPTIONS[route]),
       el('span', 'role-task-count', '正在汇总当前岗位数据…'),
       el('span', 'role-task-action', '进入工作台 →'),
     );
@@ -10400,10 +10372,13 @@ export function createCrmShell(
   if (allPermissions.has('executive-dashboard:read')) content.append(flow);
   const sectionHeader = el('div', 'section-heading');
   sectionHeader.append(el('div', '', '今日业务'), el('span', '', '数据实时来自业务台账'));
+  sectionHeader.setAttribute('data-route-view', 'leads customers');
   content.append(sectionHeader);
   const split = el('section', 'split');
+  split.setAttribute('data-route-view', 'leads customers');
   if (sections.customers) {
     const list = el('article', 'panel customer-list');
+    list.setAttribute('data-route-view', 'customers');
     const listHead = el('div', 'panel-head');
     const listTitle = el('div');
     listTitle.append(
@@ -10479,6 +10454,7 @@ export function createCrmShell(
   }
   if (sections.customer360 && controller.selected) {
     const detail = el('article', 'panel detail');
+    detail.setAttribute('data-route-view', 'customers');
     detail.append(
       el('p', 'eyebrow', '客户全景'),
       el('h2', '', controller.selected.customer.name),
@@ -10608,6 +10584,7 @@ export function createCrmShell(
   }
   if (sections.leads) {
     const leads = el('article', 'panel lead-pool');
+    leads.setAttribute('data-route-view', 'leads');
     const leadHeader = el('div', 'panel-head');
     leadHeader.append(el('h2', '', '线索公海'));
     if (controller.permissions.has('lead:create')) {
@@ -10798,17 +10775,6 @@ export function createCrmShell(
     split.append(leads);
   }
   content.append(split);
-  for (const child of Array.from(content.children)) {
-    if (
-      !child.className.split(' ').includes('utility-bar') &&
-      !child.className.split(' ').includes('route-context-header') &&
-      child !== header &&
-      child !== roleHome &&
-      child !== metrics &&
-      child !== flow
-    )
-      child.setAttribute('data-route-view', 'overview sales-workspace crm');
-  }
   const placeholder = el(
     'p',
     'route-placeholder',

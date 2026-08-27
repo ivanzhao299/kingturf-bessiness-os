@@ -145,8 +145,9 @@ it('uses a smooth two-level sidebar with an icon-only collapse control', () => {
   const styles = readFileSync(new URL('./style.css', import.meta.url), 'utf8');
   expect(source).toContain("const sidebarToggle = el('button', 'sidebar-toggle')");
   expect(source).toContain("parent.setAttribute('data-nav-routes'");
-  expect(source).toContain("navGroup('销售管理', 'sales'");
-  expect(source).toContain("navGroup('履约管理', 'operations'");
+  expect(source).toContain("navGroup('客户与商机', 'sales'");
+  expect(source).toContain("navGroup('合同与订单', 'contracts'");
+  expect(source).toContain("navGroup('供应链与生产', 'production'");
   expect(styles).toContain('KT-UI-PROD-05: two-level operational navigation');
   expect(styles).toContain('.nav-parent-chevron');
   expect(styles).toContain('.sidebar-collapsed .nav-children');
@@ -335,15 +336,11 @@ it('translates production evidence event codes into business language', () => {
 });
 
 it('derives application navigation from atomic role capabilities', () => {
-  expect([...visibleAppRoutes(new Set(['shipment:read']))]).toEqual([
-    'operations-workspace',
-    'delivery-evidence',
-    'overview',
-  ]);
+  expect([...visibleAppRoutes(new Set(['shipment:read']))]).toEqual(['shipments', 'overview']);
   expect([...visibleAppRoutes(new Set(['notification:read']))]).toEqual(['governance', 'overview']);
   expect([...visibleAppRoutes(new Set(['customer:read', 'lead:create']))]).toEqual([
-    'sales-workspace',
-    'crm',
+    'leads',
+    'customers',
     'overview',
   ]);
   expect(visibleAppRoutes(new Set(['executive-dashboard:read', 'authorization:read']))).toEqual(
@@ -384,21 +381,38 @@ it('derives live role task counts and attention state from rendered business dat
 });
 
 it('matches a route inside multi-workspace data-route-view tokens', () => {
-  expect(routeViewSelector('sales-workspace')).toBe('[data-route-view~="sales-workspace"]');
+  expect(routeViewSelector('sales-orders')).toBe('[data-route-view~="sales-orders"]');
+});
+
+it('binds each major business workbench to one process-stage route', () => {
+  const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+  for (const [workbench, route] of [
+    ['pipeline-board', 'opportunities'],
+    ['ctr-workbench', 'technical-requirements'],
+    ['solution-workbench', 'technical-solutions'],
+    ['cost-workbench', 'costing'],
+    ['quote-workbench', 'quotes'],
+    ['contract-workbench', 'contracts'],
+    ['order-workbench', 'sales-orders'],
+    ['ar-workbench', 'receivables'],
+    ['payment-workbench', 'payments'],
+    ['production-workbench', 'production-orders'],
+    ['quality-workbench', 'quality-inspection'],
+    ['shipment-workbench', 'shipments'],
+  ] as const)
+    expect(source).toContain(`'${workbench}': '${route}'`);
+  expect(source).not.toContain("'pipeline-board': 'sales-workspace");
+  expect(source).not.toContain("'ar-workbench': 'sales-workspace ar-payment");
 });
 
 it.each([
-  ['销售报价员', ['quote:prepare'], ['overview', 'sales-workspace', 'cost-quote']],
-  ['应收会计', ['ar:read'], ['overview', 'sales-workspace', 'ar-payment']],
-  [
-    '生产报工员',
-    ['production:report'],
-    ['overview', 'operations-workspace', 'planning-production'],
-  ],
-  ['质量检验员', ['quality:inspect'], ['overview', 'operations-workspace', 'quality-warehouse']],
-  ['客诉协调员', ['complaint:triage'], ['overview', 'operations-workspace', 'quality-warehouse']],
-  ['仓库调拨员', ['inventory:move'], ['overview', 'operations-workspace', 'planning-production']],
-  ['物流跟踪员', ['shipment:track'], ['overview', 'operations-workspace', 'delivery-evidence']],
+  ['销售报价员', ['quote:prepare'], ['overview', 'quotes']],
+  ['应收会计', ['ar:read'], ['overview', 'receivables']],
+  ['生产报工员', ['production:report'], ['overview', 'production-orders']],
+  ['质量检验员', ['quality:inspect'], ['overview', 'quality-inspection']],
+  ['客诉协调员', ['complaint:triage'], ['overview', 'quality-inspection']],
+  ['仓库调拨员', ['inventory:move'], ['overview', 'procurement']],
+  ['物流跟踪员', ['shipment:track'], ['overview', 'shipments']],
   ['权限管理员', ['authorization:manage'], ['overview', 'governance']],
   ['经营看板用户', ['executive-dashboard:read'], ['overview']],
 ] as const)(
@@ -406,7 +420,7 @@ it.each([
   (_role, permissions, expectedRoutes) => {
     const routes = visibleAppRoutes(new Set<string>(permissions));
     expect([...expectedRoutes].every((route) => routes.has(route))).toBe(true);
-    expect(routes.has('contract-order')).toBe(false);
+    expect(routes.has('contracts')).toBe(false);
   },
 );
 
@@ -657,8 +671,8 @@ describe('web bootstrap', () => {
   });
 
   it('normalizes hash navigation and defaults unknown modules to the overview', () => {
-    expect(appRouteFromHash('#/quality-warehouse')).toBe('quality-warehouse');
-    expect(appRouteFromHash('#/contract-order')).toBe('contract-order');
+    expect(appRouteFromHash('#/quality-inspection')).toBe('quality-inspection');
+    expect(appRouteFromHash('#/sales-orders')).toBe('sales-orders');
     expect(appRouteFromHash('#/not-implemented')).toBe('overview');
     expect(appRouteFromHash('')).toBe('overview');
   });
