@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {
   BOOTSTRAP_TITLE,
+  businessEventDetailLabel,
   businessEventLabel,
   cashRiskSummary,
   CommercialController,
@@ -47,6 +48,12 @@ it('translates risk rules and derives the daily commission next action', () => {
   expect(commissionNextAction('FROZEN')).toBe('待满足条件后释放');
 });
 
+it('translates production timeline details without leaking internal state codes', () => {
+  expect(businessEventDetailLabel('CREDIT_DECIDED', 'APPROVED')).toBe('已批准');
+  expect(businessEventDetailLabel('RISK_EVALUATED', 'HIGH/45')).toBe('高风险 / 45分');
+  expect(businessEventDetailLabel('PAYMENT_RECEIVED', 'BANK-KT-001')).toBe('BANK-KT-001');
+});
+
 it('translates operations codes and derives accountable next actions', () => {
   expect(supplyModeLabel('MAKE')).toBe('自制');
   expect(supplyModeLabel('BUY')).toBe('采购');
@@ -56,6 +63,7 @@ it('translates operations codes and derives accountable next actions', () => {
   expect(shipmentGateLabel('orderLink')).toBe('订单来源');
   expect(shipmentGateLabel('inventory')).toBe('可用库存');
   expect(operationsNextAction('production', 'IN_PROGRESS')).toBe('待报工、成品入库并完工确认');
+  expect(operationsNextAction('quality', 'DISPOSITIONED')).toBe('检验已处置，请核对批次放行结果');
   expect(operationsNextAction('shipment', 'EXCEPTION_PENDING')).toBe('待独立审批人复核门禁例外');
 });
 

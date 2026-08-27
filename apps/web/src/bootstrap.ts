@@ -838,6 +838,7 @@ const BUSINESS_STATE_LABELS: Readonly<Record<string, string>> = {
   CANCELLED: '已取消',
   DELIVERED: '已签收',
   DISPATCHED: '已发运',
+  DISPOSITIONED: '已处置',
   DISQUALIFIED: '无效',
   EXCEPTION_PENDING: '例外待审批',
   FINAL: '已定稿',
@@ -880,6 +881,18 @@ const BUSINESS_STATE_LABELS: Readonly<Record<string, string>> = {
 export const businessEventLabel = (value: unknown): string => {
   const code = textValue(value, '业务事件');
   return BUSINESS_EVENT_LABELS[code] ?? BUSINESS_STATE_LABELS[code] ?? code;
+};
+
+export const businessEventDetailLabel = (eventType: unknown, value: unknown): string => {
+  const type = textValue(eventType, '');
+  const detail = textValue(value, '—');
+  if (type === 'CREDIT_DECIDED') return BUSINESS_STATE_LABELS[detail] ?? detail;
+  if (type === 'RISK_EVALUATED') {
+    const [level, score] = detail.split('/', 2);
+    const levelLabel = BUSINESS_STATE_LABELS[level ?? ''] ?? level ?? '未分级';
+    return score ? `${levelLabel}风险 / ${score}分` : `${levelLabel}风险`;
+  }
+  return detail;
 };
 
 const RISK_RULE_LABELS: Readonly<Record<string, string>> = {
@@ -994,6 +1007,7 @@ export const operationsNextAction = (
       OPEN: '待抽样并记录检验结果',
       SAMPLED: '待补齐结果并完成检验',
       COMPLETED: '待质量处置放行或拒收',
+      DISPOSITIONED: '检验已处置，请核对批次放行结果',
       RELEASED: '批次已放行',
       REJECTED: '批次已拒收',
       CANCELLED: '检验已取消',
@@ -1461,7 +1475,7 @@ export function commercialWorkspaceStructure(
 ): HTMLElement {
   const workspace = document.createElement('section');
   workspace.className = `commercial-workspace ${viewport}${immutable ? ' immutable' : ''}`;
-  workspace.setAttribute('aria-label', 'Commercial workspace');
+  workspace.setAttribute('aria-label', '业务工作区');
   const status = document.createElement('p');
   status.className = 'commercial-status';
   status.setAttribute('role', 'status');
@@ -5003,7 +5017,7 @@ export function commercialWorkspaceStructure(
         const item = el(
           'li',
           '',
-          `${recordText(event, 'occurredAt', 'occurredAt').slice(0, 16).replace('T', ' ')} · ${businessEventLabel(type)} · ${recordText(event, 'label', 'label')}`,
+          `${recordText(event, 'occurredAt', 'occurredAt').slice(0, 16).replace('T', ' ')} · ${businessEventLabel(type)} · ${businessEventDetailLabel(type, recordText(event, 'label', 'label'))}`,
         );
         item.setAttribute('data-event-category', eventCategory(type));
         item.setAttribute('data-event-time', recordText(event, 'occurredAt', 'occurredAt'));
@@ -8069,11 +8083,12 @@ export function commercialWorkspaceStructure(
     inspectionPanel.append(inspectionHeading);
     const inspectionPriority: Readonly<Record<string, number>> = {
       COMPLETED: 0,
-      SAMPLED: 1,
-      OPEN: 2,
-      RELEASED: 3,
-      REJECTED: 4,
-      CANCELLED: 5,
+      DISPOSITIONED: 1,
+      SAMPLED: 2,
+      OPEN: 3,
+      RELEASED: 4,
+      REJECTED: 5,
+      CANCELLED: 6,
     };
     for (const inspection of [...inspections].sort(
       (left, right) =>
@@ -10471,7 +10486,7 @@ export function createCrmShell(
       row.append(
         el('span', 'avatar', customer.name?.slice(0, 1) ?? '?'),
         el('span', 'identity', customer.name ?? customer.id),
-        el('span', 'status', customer.status ?? '—'),
+        el('span', 'status', businessStateLabel(customer.status, '状态受限')),
         el('span', 'owner', customer.ownerId ?? '未分配'),
       );
       row.addEventListener('click', () => {
@@ -10498,7 +10513,7 @@ export function createCrmShell(
       el(
         'p',
         'customer-identity',
-        `${controller.selected.customer.customerNumber ?? '编号受限'} · ${controller.selected.customer.status ?? '状态受限'} · ${controller.selected.customer.ownerId ?? '未分配或负责人受限'}`,
+        `${controller.selected.customer.customerNumber ?? '编号受限'} · ${businessStateLabel(controller.selected.customer.status, '状态受限')} · ${controller.selected.customer.ownerId ?? '未分配或负责人受限'}`,
       ),
       el(
         'p',
