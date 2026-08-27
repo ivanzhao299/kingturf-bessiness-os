@@ -88,6 +88,8 @@ jobs:
              previous_sha=\$(cat .release-sha 2>/dev/null || printf unknown)
              timestamp=\$(date -u +%Y%m%dT%H%M%SZ)
              backup_prefix=.release-backups/\${timestamp}-before-${{ inputs.commit_sha }}
+             export KINGTURF_RELEASE_SHA="\${previous_sha}"
+             export KINGTURF_RELEASE_BUILT_AT="recovery-point-\${timestamp}"
              docker compose --env-file .env.production -f infra/docker/compose.production.yaml exec -T postgres sh -c 'pg_dump --format=custom --username=\"\$POSTGRES_USER\" \"\$POSTGRES_DB\"' > \"\${backup_prefix}.dump\"
              test -s \"\${backup_prefix}.dump\"
              printf 'previous_sha=%s\\ncandidate_sha=%s\\ncreated_at=%s\\n' \"\${previous_sha}\" '${{ inputs.commit_sha }}' \"\${timestamp}\" > \"\${backup_prefix}.metadata\"
