@@ -10167,11 +10167,14 @@ export function createCrmShell(
   const brandLogoFrame = el('span', 'brand-logo-frame');
   const brandLogo = document.createElement('img');
   brandLogo.className = 'brand-logo';
-  brandLogo.src = '/kingturf-logo-transparent.png';
-  brandLogo.alt = '金特夫 King Turf';
-  brandLogo.width = 1200;
-  brandLogo.height = 525;
-  brandLogoFrame.append(brandLogo);
+  brandLogo.src = '/kingturf-mark-transparent.png';
+  brandLogo.alt = '';
+  brandLogo.width = 512;
+  brandLogo.height = 512;
+  const brandIdentity = el('span', 'brand-identity');
+  brandIdentity.append(el('strong', 'brand-name', '金特夫'), el('small', 'brand-english', 'KING TURF'));
+  brandLogoFrame.setAttribute('aria-label', '金特夫 King Turf');
+  brandLogoFrame.append(brandLogo, brandIdentity);
   brand.append(brandLogoFrame);
   const sidebarToggle = el('button', 'sidebar-toggle');
   sidebarToggle.type = 'button';
@@ -12025,11 +12028,14 @@ function loginView(root: HTMLElement): void {
   const story = el('section', 'login-story');
   const loginBrand = el('div', 'login-brand');
   const loginLogo = document.createElement('img');
-  loginLogo.src = '/kingturf-logo-transparent.png';
-  loginLogo.alt = '金特夫 King Turf';
-  loginLogo.width = 1200;
-  loginLogo.height = 525;
-  loginBrand.append(loginLogo);
+  loginLogo.src = '/kingturf-mark-transparent.png';
+  loginLogo.alt = '';
+  loginLogo.width = 512;
+  loginLogo.height = 512;
+  const loginIdentity = el('span', 'login-brand-identity');
+  loginIdentity.append(el('strong', '', '金特夫'), el('small', '', 'KING TURF'));
+  loginBrand.setAttribute('aria-label', '金特夫 King Turf');
+  loginBrand.append(loginLogo, loginIdentity);
   story.append(
     loginBrand,
     el('p', 'eyebrow', '金特夫 · 企业经营管理系统'),

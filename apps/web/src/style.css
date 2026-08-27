@@ -429,20 +429,36 @@ button {
   padding: 0 8px 22px;
 }
 .brand-logo-frame {
-  display: grid;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   min-width: 0;
-  height: 58px;
-  place-items: center;
-  overflow: hidden;
-  border: 1px solid rgb(255 255 255 / 10%);
-  border-radius: 12px;
-  background: rgb(255 255 255 / 94%);
+  height: 44px;
 }
 .brand-logo {
   display: block;
-  width: 100%;
-  height: auto;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
   object-fit: contain;
+}
+.brand-identity {
+  display: grid;
+  min-width: 0;
+  line-height: 1;
+}
+.brand-name {
+  color: #f5faf7;
+  font-size: 18px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+}
+.brand-english {
+  margin-top: 5px;
+  color: #94afa2;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
 }
 .sidebar-toggle {
   grid-column: 2;
@@ -2586,14 +2602,17 @@ button {
     padding-left: 0;
   }
   .sidebar-collapsed .brand-logo-frame {
-    width: 48px;
-    height: 48px;
-    place-items: center start;
-    border-radius: 12px;
+    width: 42px;
+    height: 42px;
+    justify-content: center;
   }
   .sidebar-collapsed .brand-logo {
-    width: 118px;
-    max-width: none;
+    width: 40px;
+    height: 40px;
+    flex-basis: 40px;
+  }
+  .sidebar-collapsed .brand-identity {
+    display: none;
   }
   .sidebar-collapsed .brand,
   .sidebar-collapsed .brand-caption,
@@ -3090,19 +3109,33 @@ button:not(:disabled):active {
     radial-gradient(circle at 100% 0, #73bc92, transparent 55%);
 }
 .login-brand {
-  width: min(360px, 78%);
-  margin-bottom: 22px;
-  overflow: hidden;
-  border: 1px solid rgb(255 255 255 / 18%);
-  border-radius: 15px;
-  padding: 9px 12px;
-  background: rgb(255 255 255 / 94%);
-  box-shadow: 0 16px 40px rgb(0 0 0 / 12%);
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  width: fit-content;
+  margin-bottom: 26px;
 }
 .login-brand img {
   display: block;
-  width: 100%;
-  height: auto;
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+}
+.login-brand-identity {
+  display: grid;
+  line-height: 1;
+}
+.login-brand-identity strong {
+  color: #fff;
+  font-size: 24px;
+  letter-spacing: 0.12em;
+}
+.login-brand-identity small {
+  margin-top: 7px;
+  color: #b8d3c6;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
 }
 .login-story .eyebrow {
   color: #a9d7c0;
@@ -3697,7 +3730,7 @@ button:not(:disabled):active {
   }
 }
 
-/* KingTurf brand asset: one responsive source for login, expanded rail and compact rail. */
+/* KingTurf brand system: a compact mark plus live type avoids cropped lockups. */
 .brand-lockup {
   grid-template-columns: minmax(0, 1fr) auto;
   margin-bottom: 0;
@@ -3711,12 +3744,12 @@ button:not(:disabled):active {
 }
 @media (min-width: 640px) {
   .sidebar-collapsed .brand-logo-frame {
-    width: 48px;
-    height: 48px;
-    place-items: center start;
+    width: 42px;
+    height: 42px;
+    justify-content: center;
   }
   .sidebar-collapsed .brand-logo {
-    width: 118px;
-    max-width: none;
+    width: 40px;
+    height: 40px;
   }
 }
