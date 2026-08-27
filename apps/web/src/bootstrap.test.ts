@@ -37,6 +37,7 @@ import {
   supplyModeLabel,
   setOperationStatus,
   technicalSolutionOpportunityId,
+  templatesForRoute,
   governanceWorkspace,
   governanceChannelLabel,
   governanceNextAction,
@@ -692,6 +693,27 @@ describe('web bootstrap', () => {
     expect(source).toContain("navGroup('业务文档', 'operations'");
     expect(source).toContain('25-客户投诉与不合格闭环单.docx');
     expect(source).toContain('V2.0 · 25份');
+  });
+
+  it('embeds controlled templates in the matching business workspaces', () => {
+    expect(templatesForRoute('quotes').map((template) => template.name)).toEqual([
+      '产品规格与选型总表',
+      '项目正式报价单',
+    ]);
+    expect(templatesForRoute('procurement').map((template) => template.name)).toEqual([
+      '采购询价及比价文件',
+      '采购合同',
+      '原辅材料来料检验单',
+    ]);
+    expect(templatesForRoute('production-orders').map((template) => template.name)).toContain(
+      '工艺流转卡',
+    );
+    expect(templatesForRoute('shipments').map((template) => template.name)).toContain(
+      '发货到货与签收确认单',
+    );
+    const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+    expect(source).toContain('选用并下载');
+    expect(source).toContain('技术需求附件区回传并随版本冻结');
   });
 
   it('keeps the utility-bar title synchronized with route navigation', () => {

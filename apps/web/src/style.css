@@ -405,6 +405,63 @@ body {
 button {
   cursor: pointer;
 }
+.contextual-documents {
+  display: grid;
+  gap: 16px;
+}
+.contextual-documents-head {
+  align-items: flex-start;
+}
+.contextual-document-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+.contextual-document-card {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-height: 156px;
+  padding: 16px;
+  border: 1px solid #d9e2dc;
+  border-radius: 12px;
+  background: #fff;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+.contextual-document-card:hover {
+  border-color: #8eaa9c;
+  transform: translateY(-1px);
+}
+.contextual-document-card.selected {
+  border-color: #176c4b;
+  box-shadow: 0 0 0 2px rgb(23 108 75 / 10%);
+}
+.contextual-document-card strong {
+  color: #173b2e;
+  font-size: 15px;
+}
+.contextual-document-card small {
+  min-height: 38px;
+  color: #61736a;
+  line-height: 1.55;
+}
+.contextual-document-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: auto;
+}
+.contextual-document-status {
+  margin: 0;
+}
+.primary.compact {
+  min-height: 34px;
+  padding: 7px 12px;
+  font-size: 13px;
+}
 [hidden] {
   display: none !important;
 }
