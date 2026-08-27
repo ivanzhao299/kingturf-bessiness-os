@@ -8961,7 +8961,13 @@ type OnlineBusinessDocument = Readonly<{
   templateKey: string;
   title: string;
   route: string;
+  state?: 'DRAFT' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED' | 'ARCHIVED';
   currentVersion: number;
+  reviewEvents?: readonly Readonly<{
+    action: 'SUBMITTED' | 'APPROVED' | 'REJECTED';
+    reason: string;
+    createdAt?: string;
+  }>[];
   versions?: readonly Readonly<{
     version: number;
     content: Readonly<{ body?: string; html?: string }>;
@@ -8977,6 +8983,69 @@ const onlineDocumentApi = <T>(path: string, init?: RequestInit): Promise<T> => {
   const token = sessionStorage.getItem('kingturf.session');
   if (!token) throw new Error('登录状态已失效，请重新登录');
   return json<T>(path, token, init);
+};
+
+const BUSINESS_DOCUMENT_SUBJECTS: Partial<
+  Record<AppRoute, Readonly<{ endpoint: string; type: string; numberKeys: readonly string[] }>>
+> = {
+  quotes: {
+    endpoint: '/api/v1/quotes',
+    type: 'quote',
+    numberKeys: ['quoteNumber', 'number', 'id'],
+  },
+  contracts: {
+    endpoint: '/api/v1/contracts',
+    type: 'contract',
+    numberKeys: ['contractNumber', 'number', 'id'],
+  },
+  'sales-orders': {
+    endpoint: '/api/v1/sales-orders',
+    type: 'sales-order',
+    numberKeys: ['orderNumber', 'number', 'id'],
+  },
+  'production-orders': {
+    endpoint: '/api/v1/production-orders',
+    type: 'production-order',
+    numberKeys: ['orderNumber', 'number', 'id'],
+  },
+  shipments: {
+    endpoint: '/api/v1/shipments',
+    type: 'shipment',
+    numberKeys: ['trackingNumber', 'shipmentNumber', 'id'],
+  },
+};
+
+const businessDocumentSubjectLabel = (
+  item: Record<string, unknown>,
+  keys: readonly string[],
+): string => {
+  for (const key of keys) if (typeof item[key] === 'string' && item[key]) return item[key];
+  return typeof item.id === 'string' ? item.id : '业务记录';
+};
+
+const businessDocumentPrefill = (item: Record<string, unknown> | undefined): string => {
+  if (!item) return '';
+  const labels: Readonly<Record<string, string>> = {
+    quoteNumber: '报价编号',
+    contractNumber: '合同编号',
+    orderNumber: '订单编号',
+    customerName: '客户名称',
+    totalAmount: '含税金额',
+    currency: '币种',
+    deliveryDate: '交付日期',
+    trackingNumber: '物流单号',
+  };
+  return Object.entries(labels)
+    .filter(([key]) => item[key] !== undefined && item[key] !== null)
+    .map(([key, label]) => `${label}：${String(item[key])}`)
+    .join('\n');
+};
+
+const businessDocumentOption = (label: string, value: string): HTMLOptionElement => {
+  const option = document.createElement('option');
+  option.textContent = label;
+  option.value = value;
+  return option;
 };
 
 const sanitizeBusinessDocumentHtml = (value: string): string => {
@@ -9038,6 +9107,7 @@ const renderBusinessDocumentComparison = (
 
 const openOnlineDocumentEditor = (
   documentData: OnlineBusinessDocument,
+  permissions: Readonly<{ manage: boolean; approve: boolean }>,
   onSaved?: () => void,
 ): void => {
   const dialog = document.createElement('dialog');
@@ -9047,7 +9117,11 @@ const openOnlineDocumentEditor = (
   headingCopy.append(
     el('p', 'eyebrow', '在线业务文档'),
     el('h2', '', documentData.title),
-    el('p', 'muted', `当前版本 V${String(documentData.currentVersion)} · 保存不会覆盖历史版本`),
+    el(
+      'p',
+      'muted',
+      `当前版本 V${String(documentData.currentVersion)} · ${documentData.state === 'APPROVED' ? '已批准锁版' : '保存不会覆盖历史版本'}`,
+    ),
   );
   const close = el('button', 'icon-button', '×');
   close.type = 'button';
@@ -9075,6 +9149,8 @@ const openOnlineDocumentEditor = (
   );
   body.setAttribute('aria-label', '文档正文');
   body.setAttribute('role', 'textbox');
+  const editable = !documentData.state || ['DRAFT', 'REJECTED'].includes(documentData.state);
+  body.contentEditable = String(editable && permissions.manage);
   for (const [label, command, value] of [
     ['正文', 'formatBlock', 'p'],
     ['一级标题', 'formatBlock', 'h2'],
@@ -9099,6 +9175,7 @@ const openOnlineDocumentEditor = (
   status.setAttribute('aria-live', 'polite');
   const save = el('button', 'primary', '保存为新版本');
   save.type = 'button';
+  save.hidden = !editable || !permissions.manage;
   save.addEventListener('click', () => {
     const cleanHtml = sanitizeBusinessDocumentHtml(body.innerHTML);
     const plainText = businessDocumentText({ html: cleanHtml });
@@ -9142,10 +9219,65 @@ const openOnlineDocumentEditor = (
       });
   });
   editor.append(title, toolbar, body, summary, save, status);
+  toolbar.hidden = !editable || !permissions.manage;
+  summary.hidden = !editable || !permissions.manage;
+  const reviewActions = el('div', 'business-document-review-actions');
+  const reviewReason = el('input');
+  reviewReason.placeholder = '填写提交说明或审批意见';
+  reviewReason.setAttribute('aria-label', '文档审核意见');
+  const addReviewAction = (
+    label: string,
+    action: 'submit' | 'approve' | 'reject',
+    primary: boolean,
+  ) => {
+    const button = el('button', primary ? 'primary' : 'secondary', label);
+    button.type = 'button';
+    button.addEventListener('click', () => {
+      if (reviewReason.value.trim().length < 2) {
+        setOperationStatus(status, 'error', '请填写至少 2 个字的审核意见');
+        return;
+      }
+      button.disabled = true;
+      void onlineDocumentApi(`/api/v1/business-documents/${documentData.id}/${action}`, {
+        method: 'POST',
+        body: JSON.stringify({
+          expectedVersion: documentData.currentVersion,
+          reason: reviewReason.value.trim(),
+        }),
+      })
+        .then(() => {
+          setOperationStatus(status, 'success', `${label}成功`);
+          onSaved?.();
+        })
+        .catch((failure: unknown) => {
+          button.disabled = false;
+          setOperationStatus(
+            status,
+            'error',
+            failure instanceof Error ? failure.message : `${label}失败`,
+          );
+        });
+    });
+    reviewActions.append(button);
+  };
+  if (editable && permissions.manage) addReviewAction('提交审核', 'submit', true);
+  if (documentData.state === 'IN_REVIEW' && permissions.approve) {
+    addReviewAction('批准并锁版', 'approve', true);
+    addReviewAction('驳回修改', 'reject', false);
+  }
+  if (reviewActions.childElementCount > 0) editor.append(reviewReason, reviewActions);
   const history = el('aside', 'business-document-history');
   history.append(el('h3', '', '版本记录'));
   const comparison = el('section', 'business-document-comparison');
   if (versions.length === 0) history.append(el('p', 'empty', '暂无版本记录'));
+  for (const event of documentData.reviewEvents ?? [])
+    history.append(
+      el(
+        'p',
+        'business-document-review-event',
+        `${event.action === 'SUBMITTED' ? '已提交' : event.action === 'APPROVED' ? '已批准' : '已驳回'} · ${event.reason}`,
+      ),
+    );
   for (const item of versions) {
     const versionItem = el('button', 'business-document-version');
     versionItem.type = 'button';
@@ -10920,6 +11052,38 @@ export function createCrmShell(
     libraryLink.textContent = '全部模板';
     contextualHead.append(contextualCopy, libraryLink);
     contextualDocuments.append(contextualHead);
+    const subjectConfig = BUSINESS_DOCUMENT_SUBJECTS[route];
+    const subjectSelect = el('select', 'business-document-subject-select');
+    const subjectRecords = new Map<string, Record<string, unknown>>();
+    subjectSelect.setAttribute('aria-label', '关联业务单据');
+    subjectSelect.append(businessDocumentOption('不关联具体业务单据', ''));
+    if (subjectConfig && allPermissions.has('business-document:manage')) {
+      subjectSelect.append(businessDocumentOption('正在加载可关联业务…', ''));
+      void onlineDocumentApi<
+        readonly Record<string, unknown>[] | { items?: readonly Record<string, unknown>[] }
+      >(subjectConfig.endpoint)
+        .then((result) => {
+          const items: readonly Record<string, unknown>[] = Array.isArray(result)
+            ? (result as readonly Record<string, unknown>[])
+            : ((result as { items?: readonly Record<string, unknown>[] }).items ?? []);
+          subjectSelect.replaceChildren(businessDocumentOption('不关联具体业务单据', ''));
+          for (const item of items.slice(0, 100)) {
+            const id = typeof item.id === 'string' ? item.id : '';
+            if (!id) continue;
+            subjectRecords.set(id, item);
+            subjectSelect.append(
+              businessDocumentOption(
+                businessDocumentSubjectLabel(item, subjectConfig.numberKeys),
+                id,
+              ),
+            );
+          }
+        })
+        .catch(() => {
+          subjectSelect.replaceChildren(businessDocumentOption('业务单据加载失败，可稍后重试', ''));
+        });
+      contextualDocuments.append(subjectSelect);
+    }
     const contextualGrid = el('div', 'contextual-document-grid');
     const selectionStatus = el(
       'p',
@@ -10962,16 +11126,26 @@ export function createCrmShell(
               templateKey: onlineTemplateKey(template, route),
               title: `${template.name} · ${new Date().toLocaleDateString('zh-CN')}`,
               route,
+              ...(subjectConfig && subjectSelect.value
+                ? { subjectType: subjectConfig.type, subjectId: subjectSelect.value }
+                : {}),
               content: {
-                body: `${template.name}\n\n用途：${template.description}\n\n项目名称：\n客户/供应商：\n业务编号：\n编制日期：${new Date().toLocaleDateString('zh-CN')}\n\n一、基本信息\n\n二、业务内容\n\n三、技术与质量要求\n\n四、价格、交期或执行安排\n\n五、审批与确认\n`,
+                body: `${template.name}\n\n用途：${template.description}\n${businessDocumentPrefill(subjectRecords.get(subjectSelect.value))}\n\n项目名称：\n客户/供应商：\n业务编号：\n编制日期：${new Date().toLocaleDateString('zh-CN')}\n\n一、基本信息\n\n二、业务内容\n\n三、技术与质量要求\n\n四、价格、交期或执行安排\n\n五、审批与确认\n`,
               },
             }),
           })
             .then((created) => {
               setOperationStatus(selectionStatus, 'success', `已创建“${template.name}”在线文档 V1`);
-              openOnlineDocumentEditor(created, () => {
-                globalThis.location.reload();
-              });
+              openOnlineDocumentEditor(
+                created,
+                {
+                  manage: allPermissions.has('business-document:manage'),
+                  approve: allPermissions.has('business-document:approve'),
+                },
+                () => {
+                  globalThis.location.reload();
+                },
+              );
             })
             .catch((failure: unknown) => {
               online.disabled = false;
@@ -11013,9 +11187,16 @@ export function createCrmShell(
                 `/api/v1/business-documents/${item.id}`,
               )
                 .then((full) => {
-                  openOnlineDocumentEditor(full, () => {
-                    globalThis.location.reload();
-                  });
+                  openOnlineDocumentEditor(
+                    full,
+                    {
+                      manage: allPermissions.has('business-document:manage'),
+                      approve: allPermissions.has('business-document:approve'),
+                    },
+                    () => {
+                      globalThis.location.reload();
+                    },
+                  );
                 })
                 .catch((failure: unknown) => {
                   open.disabled = false;

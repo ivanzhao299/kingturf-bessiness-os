@@ -5489,6 +5489,45 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             ),
           };
         }
+        const businessDocumentReview =
+          /^\/api\/v1\/business-documents\/([0-9a-f-]+)\/(submit|approve|reject)$/u.exec(
+            request.pathname,
+          );
+        if (businessDocumentReview && request.method === 'POST') {
+          const operation = businessDocumentReview[2];
+          const action =
+            operation === 'submit'
+              ? 'SUBMITTED'
+              : operation === 'approve'
+                ? 'APPROVED'
+                : 'REJECTED';
+          const grant = authorizeQuery(
+            context,
+            action === 'SUBMITTED' ? 'business-document:manage' : 'business-document:approve',
+          );
+          if (!dependencies.businessDocuments)
+            return error(
+              503,
+              'internal_error',
+              'Business document repository unavailable',
+              correlationId,
+            );
+          const b = objectBody(request.body);
+          allow(b, ['expectedVersion', 'reason']);
+          return {
+            statusCode: 201,
+            body: await dependencies.businessDocuments.transition(
+              uuid(businessDocumentReview[1], 'documentId'),
+              {
+                expectedVersion: version(b.expectedVersion),
+                action,
+                reason: string(b.reason, 'reason'),
+              },
+              { actor: context.actor, scopes: grant.scopes },
+              correlationId,
+            ),
+          };
+        }
         if (request.pathname === '/api/v1/attachments' && request.method === 'POST') {
           authorizeQuery(context, 'attachment:manage');
           if (!dependencies.attachments)

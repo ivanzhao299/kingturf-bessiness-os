@@ -140,6 +140,7 @@ export const FOUNDATION_CAPABILITIES = [
   'attachment:manage',
   'business-document:read',
   'business-document:manage',
+  'business-document:approve',
   'event:operate',
   'business-object:read',
   'business-object:manage',

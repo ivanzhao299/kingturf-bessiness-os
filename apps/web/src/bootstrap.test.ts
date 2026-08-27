@@ -719,6 +719,10 @@ describe('web bootstrap', () => {
     expect(source).toContain('business-document-toolbar');
     expect(source).toContain('business-document-diff-grid');
     expect(source).toContain('与 V${String(latestVersion)} 对比');
+    expect(source).toContain('关联业务单据');
+    expect(source).toContain('批准并锁版');
+    expect(source).toContain('business-document:approve');
+    expect(source).toContain('/submit');
     expect(source).toContain('技术需求附件区回传并随版本冻结');
   });
 

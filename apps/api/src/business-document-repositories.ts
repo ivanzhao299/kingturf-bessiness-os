@@ -44,6 +44,11 @@ export class PostgresBusinessDocumentRepository {
           'subjectType',d.subject_type,'subjectId',d.subject_id,'state',d.state,
           'currentVersion',d.current_version,'createdBy',d.created_by,
           'createdAt',d.created_at,'updatedAt',d.updated_at,
+          'reviewEvents',coalesce((SELECT jsonb_agg(jsonb_build_object(
+            'id',e.id,'version',e.version,'action',e.action,'reason',e.reason,
+            'actorId',e.actor_id,'createdAt',e.created_at) ORDER BY e.created_at DESC)
+            FROM business_document_review_events e
+            WHERE e.tenant_id=d.tenant_id AND e.document_id=d.id),'[]'::jsonb),
           'versions',coalesce((SELECT jsonb_agg(jsonb_build_object(
             'id',v.id,'version',v.version,'content',v.content,'changeSummary',v.change_summary,
             'canonicalHash',v.canonical_hash,'createdBy',v.created_by,'createdAt',v.created_at)
@@ -134,7 +139,7 @@ export class PostgresBusinessDocumentRepository {
       const updated = (
         await tx.query<{ current_version: number }>(
           `UPDATE business_documents SET current_version=$3,updated_at=now()
-           WHERE id=$1 AND tenant_id=$2 AND current_version=$4 AND state<>'ARCHIVED'
+           WHERE id=$1 AND tenant_id=$2 AND current_version=$4 AND state IN ('DRAFT','REJECTED')
              AND ($5::boolean OR created_by=$6)
            RETURNING current_version`,
           [
@@ -169,6 +174,76 @@ export class PostgresBusinessDocumentRepository {
         [actor.employeeId, actor.companyId, id, correlationId, { version: nextVersion }],
       );
       return { id, currentVersion: nextVersion };
+    });
+  }
+
+  public transition(
+    id: string,
+    input: {
+      expectedVersion: number;
+      action: 'SUBMITTED' | 'APPROVED' | 'REJECTED';
+      reason: string;
+    },
+    context: Context,
+    correlationId: string,
+  ) {
+    const { actor } = context;
+    return this.db.transaction(async (tx) => {
+      await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+        `${actor.companyId}:business-document:${id}`,
+      ]);
+      const document = (
+        await tx.query<{ state: string; current_version: number; created_by: string }>(
+          `SELECT state,current_version,created_by FROM business_documents
+           WHERE id=$1 AND tenant_id=$2 AND ($3::boolean OR created_by=$4) FOR UPDATE`,
+          [
+            id,
+            actor.companyId,
+            input.action !== 'SUBMITTED' || companyWide(context),
+            actor.employeeId,
+          ],
+        )
+      ).rows[0];
+      if (!document) throw new DomainError('not_found', 'Business document not found');
+      if (document.current_version !== input.expectedVersion)
+        throw new DomainError('conflict', 'Document version changed; reload first');
+      const expectedState = input.action === 'SUBMITTED' ? ['DRAFT', 'REJECTED'] : ['IN_REVIEW'];
+      if (!expectedState.includes(document.state))
+        throw new DomainError('conflict', 'Document is not in the required review state');
+      if (input.action !== 'SUBMITTED' && document.created_by === actor.employeeId)
+        throw new DomainError(
+          'forbidden',
+          'Document author cannot approve or reject their own document',
+        );
+      const nextState =
+        input.action === 'SUBMITTED'
+          ? 'IN_REVIEW'
+          : input.action === 'APPROVED'
+            ? 'APPROVED'
+            : 'REJECTED';
+      await tx.query(
+        'UPDATE business_documents SET state=$3,updated_at=now() WHERE id=$1 AND tenant_id=$2',
+        [id, actor.companyId, nextState],
+      );
+      await tx.query(
+        `INSERT INTO business_document_review_events(
+          tenant_id,document_id,version,action,reason,actor_id)
+         VALUES($1,$2,$3,$4,$5,$6)`,
+        [actor.companyId, id, input.expectedVersion, input.action, input.reason, actor.employeeId],
+      );
+      await tx.query(
+        `INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata)
+         VALUES($1,'SUCCESS',$2,$3,'business-document',$4,$5,$6)`,
+        [
+          `business-document.${input.action.toLowerCase()}`,
+          actor.employeeId,
+          actor.companyId,
+          id,
+          correlationId,
+          { version: input.expectedVersion, reason: input.reason },
+        ],
+      );
+      return { id, state: nextState, currentVersion: input.expectedVersion };
     });
   }
 }

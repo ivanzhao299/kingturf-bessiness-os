@@ -17,6 +17,7 @@ const auth = {
         ['business-object:manage', { scopes: ['COMPANY'], fields: null }],
         ['business-document:read', { scopes: ['COMPANY'], fields: null }],
         ['business-document:manage', { scopes: ['COMPANY'], fields: null }],
+        ['business-document:approve', { scopes: ['COMPANY'], fields: null }],
       ]),
       scopeAnchors: new Map([
         ['attachment:manage', [{ scope: 'TEAM', organizationId: attachmentAnchor }]],
@@ -281,9 +282,13 @@ describe('foundation secured API and telemetry', () => {
       void arguments_;
       return Promise.resolve({ id: documentId, currentVersion: 2 });
     });
+    const transition = vi.fn((...arguments_: unknown[]) => {
+      void arguments_;
+      return Promise.resolve({ id: documentId, state: 'IN_REVIEW', currentVersion: 2 });
+    });
     const app = buildApp({
       ...base,
-      businessDocuments: { create, saveVersion } as unknown as NonNullable<
+      businessDocuments: { create, saveVersion, transition } as unknown as NonNullable<
         ApiDependencies['businessDocuments']
       >,
     });
@@ -308,10 +313,21 @@ describe('foundation secured API and telemetry', () => {
         changeSummary: '调整数量和交期',
       },
     });
+    const submitted = await app.dispatch({
+      method: 'POST',
+      pathname: `/api/v1/business-documents/${documentId}/submit`,
+      headers: { authorization: 'Bearer token' },
+      body: { expectedVersion: 2, reason: '内容已完成，请审核' },
+    });
     expect(created).toMatchObject({ statusCode: 201, body: { currentVersion: 1 } });
     expect(saved).toMatchObject({ statusCode: 201, body: { currentVersion: 2 } });
+    expect(submitted).toMatchObject({ statusCode: 201, body: { state: 'IN_REVIEW' } });
     expect(create.mock.calls[0]?.[0]).toMatchObject({ route: 'quotes' });
     expect(saveVersion.mock.calls[0]?.[1]).toMatchObject({ expectedVersion: 1 });
+    expect(transition.mock.calls[0]?.[1]).toMatchObject({
+      expectedVersion: 2,
+      action: 'SUBMITTED',
+    });
   });
 
   it('tenant-qualifies event metrics', async () => {

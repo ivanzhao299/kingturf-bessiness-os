@@ -472,6 +472,10 @@ button {
   border-radius: 10px;
   background: #f7faf8;
 }
+.business-document-subject-select {
+  width: min(520px, 100%);
+  margin-bottom: 14px;
+}
 .business-document-open,
 .business-document-version {
   border: 1px solid #cfdbd4;
@@ -529,6 +533,19 @@ button {
   border: 1px solid #d9e2dc;
   border-radius: 9px;
   background: #f7faf8;
+}
+.business-document-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.business-document-review-event {
+  margin: 0;
+  padding: 8px;
+  border-radius: 7px;
+  background: #eef5f1;
+  color: #315647;
+  font-size: 12px;
 }
 .business-document-comparison {
   margin-top: 16px;

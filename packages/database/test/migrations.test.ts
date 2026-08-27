@@ -24,7 +24,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0059_business_document_versioning.sql');
+    expect(ordered.at(-1)).toBe('0060_business_document_approval.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
@@ -764,5 +764,16 @@ describe('identity and authorization migration', () => {
     expect(sql).toContain('business_document_versions_immutable');
     expect(sql).toContain("'business-document:read'");
     expect(sql).toContain("'business-document:manage'");
+  });
+
+  it('locks approved business documents behind independent append-only review events', async () => {
+    const sql = await readFile(
+      join(process.cwd(), 'migrations/0060_business_document_approval.sql'),
+      'utf8',
+    );
+    expect(sql).toContain('business-document:approve');
+    expect(sql).toContain('business_document_review_events');
+    expect(sql).toContain("'IN_REVIEW','APPROVED','REJECTED'");
+    expect(sql).toContain('business_document_review_events_immutable');
   });
 });
