@@ -9171,6 +9171,8 @@ export function installAppNavigation(shell: HTMLElement): void {
       if (description) description.textContent = APP_ROUTE_DESCRIPTIONS[route];
       if (breadcrumb) breadcrumb.textContent = `金特夫业务系统 · ${APP_ROUTE_LABELS[route]}`;
     }
+    const utilityContext = shell.querySelector<HTMLElement>('[data-utility-context]');
+    if (utilityContext) utilityContext.textContent = APP_ROUTE_LABELS[route];
     const placeholder = shell.querySelector<HTMLElement>('[data-route-placeholder]');
     if (!placeholder) return;
     const hasView = Array.from(shell.querySelectorAll<HTMLElement>('[data-route-view]')).some(
@@ -10211,9 +10213,11 @@ export function createCrmShell(
   const content = el('section', 'workspace');
   const utility = el('header', 'utility-bar');
   const utilityLeading = el('div', 'utility-leading');
+  const utilityContext = el('span', 'utility-context', APP_ROUTE_LABELS[currentRoute]);
+  utilityContext.setAttribute('data-utility-context', 'true');
   utilityLeading.append(
     sidebarToggle,
-    el('span', 'utility-context', APP_ROUTE_LABELS[currentRoute]),
+    utilityContext,
   );
   const search = el('button', 'global-search');
   search.type = 'button';

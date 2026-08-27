@@ -677,6 +677,12 @@ describe('web bootstrap', () => {
     expect(appRouteFromHash('')).toBe('overview');
   });
 
+  it('keeps the utility-bar title synchronized with route navigation', () => {
+    const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+    expect(source).toContain("utilityContext.setAttribute('data-utility-context', 'true')");
+    expect(source).toContain('utilityContext.textContent = APP_ROUTE_LABELS[route]');
+  });
+
   it('exposes the procurement workspace for inventory operators', () => {
     expect(visibleCommercialSections(new Set(['inventory:move'])).procurement).toBe(true);
   });
