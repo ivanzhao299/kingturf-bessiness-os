@@ -690,7 +690,8 @@ describe('web bootstrap', () => {
     const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
     expect(appRouteFromHash('#/document-templates')).toBe('document-templates');
     expect(source).toContain("navGroup('业务文档', 'operations'");
-    expect(source).toContain('07-发货到货与签收确认单.docx');
+    expect(source).toContain('25-客户投诉与不合格闭环单.docx');
+    expect(source).toContain('V2.0 · 25份');
   });
 
   it('keeps the utility-bar title synchronized with route navigation', () => {
