@@ -143,6 +143,7 @@ it('uses a dedicated transparent King Turf mark without cropping in compact navi
   expect(source).toContain("loginBrand.setAttribute('aria-label', '金特夫 King Turf')");
   expect(styles).toContain('.sidebar-collapsed .brand-identity');
   expect(styles).toContain('flex-basis: 40px');
+  expect(styles).toContain('.app-shell.desktop.sidebar-collapsed');
 });
 
 it('adds status filtering and a permission-scoped detail drawer to business registers', () => {

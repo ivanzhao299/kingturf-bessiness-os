@@ -3743,6 +3743,10 @@ button:not(:disabled):active {
   }
 }
 @media (min-width: 640px) {
+  .app-shell.desktop.sidebar-collapsed,
+  .app-shell.tablet.sidebar-collapsed {
+    grid-template-columns: 78px minmax(0, 1fr);
+  }
   .sidebar-collapsed .brand-logo-frame {
     width: 42px;
     height: 42px;
