@@ -336,15 +336,24 @@ it('translates production evidence event codes into business language', () => {
 });
 
 it('derives application navigation from atomic role capabilities', () => {
-  expect([...visibleAppRoutes(new Set(['shipment:read']))]).toEqual(['shipments', 'overview']);
-  expect([...visibleAppRoutes(new Set(['notification:read']))]).toEqual(['governance', 'overview']);
+  expect([...visibleAppRoutes(new Set(['shipment:read']))]).toEqual([
+    'shipments',
+    'overview',
+    'document-templates',
+  ]);
+  expect([...visibleAppRoutes(new Set(['notification:read']))]).toEqual([
+    'governance',
+    'overview',
+    'document-templates',
+  ]);
   expect([...visibleAppRoutes(new Set(['customer:read', 'lead:create']))]).toEqual([
     'leads',
     'customers',
     'overview',
+    'document-templates',
   ]);
   expect(visibleAppRoutes(new Set(['executive-dashboard:read', 'authorization:read']))).toEqual(
-    new Set(['overview', 'governance']),
+    new Set(['overview', 'governance', 'document-templates']),
   );
 });
 
@@ -675,6 +684,13 @@ describe('web bootstrap', () => {
     expect(appRouteFromHash('#/sales-orders')).toBe('sales-orders');
     expect(appRouteFromHash('#/not-implemented')).toBe('overview');
     expect(appRouteFromHash('')).toBe('overview');
+  });
+
+  it('exposes a downloadable controlled business-document library', () => {
+    const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+    expect(appRouteFromHash('#/document-templates')).toBe('document-templates');
+    expect(source).toContain("navGroup('业务文档', 'operations'");
+    expect(source).toContain('07-发货到货与签收确认单.docx');
   });
 
   it('keeps the utility-bar title synchronized with route navigation', () => {

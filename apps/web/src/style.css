@@ -1170,6 +1170,7 @@ button {
   color: #233e32;
   text-align: left;
   cursor: pointer;
+  text-decoration: none;
 }
 .role-task:hover,
 .role-task:focus-visible {

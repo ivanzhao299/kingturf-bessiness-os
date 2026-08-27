@@ -137,6 +137,7 @@ export type Viewport = 'desktop' | 'tablet' | 'mobile';
 
 export type AppRoute =
   | 'overview'
+  | 'document-templates'
   | 'leads'
   | 'customers'
   | 'opportunities'
@@ -164,6 +165,7 @@ export type AppRoute =
 
 export const APP_ROUTE_LABELS: Readonly<Record<AppRoute, string>> = {
   overview: '经营总览',
+  'document-templates': '业务文档库',
   leads: '销售线索',
   customers: '客户管理',
   opportunities: '销售商机',
@@ -191,6 +193,7 @@ export const APP_ROUTE_LABELS: Readonly<Record<AppRoute, string>> = {
 };
 const APP_ROUTE_DESCRIPTIONS: Readonly<Record<AppRoute, string>> = {
   overview: '指标、待办与经营异常',
+  'document-templates': '技术、采购、合同、质量与交付模板',
   leads: '线索认领、分配与跟进',
   customers: '客户档案、联系人与活动',
   opportunities: '商机阶段、金额与赢率',
@@ -385,7 +388,10 @@ export function visibleAppRoutes(permissions: ReadonlySet<string>): ReadonlySet<
   ]);
   addWhen('shipments', ['shipment:']);
   if (visibleGovernanceSurfaces(permissions).length > 0) routes.add('governance');
-  if (routes.size > 0) routes.add('overview');
+  if (routes.size > 0) {
+    routes.add('overview');
+    routes.add('document-templates');
+  }
   return routes;
 }
 
@@ -10170,6 +10176,7 @@ export function createCrmShell(
     nav.append(group);
   };
   navGroup('经营管理', 'overview', [['overview', '经营总览', 'overview']]);
+  navGroup('业务文档', 'operations', [['operations', '业务文档库', 'document-templates']]);
   navGroup('客户与商机', 'sales', [
     ['opportunities', '销售线索', 'leads'],
     ['customers', '客户管理', 'customers'],
@@ -10371,6 +10378,62 @@ export function createCrmShell(
   }
   flow.append(flowRail);
   if (allPermissions.has('executive-dashboard:read')) content.append(flow);
+  const documentLibrary = el('section', 'role-home');
+  documentLibrary.setAttribute('data-route-view', 'document-templates');
+  const documentLibraryHead = el('header', 'role-home-head');
+  const documentLibraryCopy = el('div');
+  documentLibraryCopy.append(
+    el('p', 'eyebrow', '受控业务模板'),
+    el('h2', '', '金特夫业务文档库'),
+    el('p', 'muted', '下载后可直接修改项目、客户、数量、价格、交期和签署信息'),
+  );
+  documentLibraryHead.append(documentLibraryCopy, el('span', 'role-domain', 'V1.0 · 7份'));
+  documentLibrary.append(documentLibraryHead);
+  const documentGrid = el('div', 'role-task-grid');
+  for (const [name, description, file] of [
+    [
+      '技术需求确认书',
+      '冻结场景、草高、Dtex、密度、底布、填充和验收标准',
+      '01-人造草坪项目技术需求确认书.docx',
+    ],
+    [
+      '产品技术规格书',
+      '标准足球草型号、结构、批次检验、储运和订单确认',
+      '02-体育用人造草产品技术规格书.docx',
+    ],
+    [
+      '采购询价及比价文件',
+      '采购清单、供应商响应、加权比价和定标记录',
+      '03-采购询价及比价文件.docx',
+    ],
+    ['采购合同', '原辅材料采购、质量追溯、交付验收、付款和违约条款', '04-采购合同模板.docx'],
+    ['销售合同', '产品销售、技术附件、价款、交付、质保和争议条款', '05-销售合同模板.docx'],
+    [
+      '成品检验与项目验收单',
+      '批次检验、验收判定、不合格处置和双方确认',
+      '06-成品检验与项目验收单.docx',
+    ],
+    [
+      '发货到货与签收确认单',
+      '卷号批次、承运信息、到货核验、异常证据和签收',
+      '07-发货到货与签收确认单.docx',
+    ],
+  ] as const) {
+    const link = document.createElement('a');
+    link.className = 'role-task';
+    link.href = `/business-templates/${file}`;
+    link.download = file;
+    link.append(
+      el('span', 'role-task-state', '正式模板'),
+      el('strong', '', name),
+      el('small', '', description),
+      el('span', 'role-task-count', 'Word 可编辑文件'),
+      el('span', 'role-task-action', '下载并填写 →'),
+    );
+    documentGrid.append(link);
+  }
+  documentLibrary.append(documentGrid);
+  content.append(documentLibrary);
   const sectionHeader = el('div', 'section-heading');
   sectionHeader.append(el('div', '', '今日业务'), el('span', '', '数据实时来自业务台账'));
   sectionHeader.setAttribute('data-route-view', 'leads customers');
