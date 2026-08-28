@@ -24,7 +24,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0062_atomic_iam_administration.sql');
+    expect(ordered.at(-1)).toBe('0063_business_document_role_permissions.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
@@ -811,5 +811,17 @@ describe('identity and authorization migration', () => {
     expect(sql).toContain('business_document_review_events');
     expect(sql).toContain("'IN_REVIEW','APPROVED','REJECTED'");
     expect(sql).toContain('business_document_review_events_immutable');
+  });
+
+  it('grants online-document work to owning roles and system administrators', async () => {
+    const sql = await readFile(
+      join(process.cwd(), 'migrations/0063_business_document_role_permissions.sql'),
+      'utf8',
+    );
+    expect(sql).toContain("('KT_SOLUTION_ENGINEER','business-document:manage')");
+    expect(sql).toContain("('KT_QUOTE_EDITOR','business-document:manage')");
+    expect(sql).toContain("('KT_PROCUREMENT_BUYER','business-document:manage')");
+    expect(sql).toContain("('KT_QUALITY_MANAGER','business-document:approve')");
+    expect(sql).toContain("roles.code=ANY(ARRAY['SUPER_ADMIN','SYSTEM_ADMIN'])");
   });
 });
