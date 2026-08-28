@@ -607,14 +607,22 @@ button {
   opacity: 0;
 }
 .business-document-editor {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
   min-width: 0;
   min-height: 0;
-  padding: 14px 18px 24px;
-  overflow: auto;
+  overflow: hidden;
 }
-.business-document-editor > input[aria-label='文档标题'] {
+.business-document-scroll {
+  min-width: 0;
+  min-height: 0;
+  padding: 14px 18px 32px;
+  overflow: auto;
+  scroll-behavior: auto;
+  scrollbar-gutter: stable;
+  outline: none;
+}
+.business-document-scroll > input[aria-label='文档标题'] {
   width: min(920px, 100%);
   margin: 0 auto 10px;
   border: 0;
@@ -696,14 +704,38 @@ button {
   flex-wrap: wrap;
   gap: 10px;
 }
-.business-document-editor > input[aria-label='本版修改说明'],
-.business-document-editor > input[aria-label='文档审核意见'],
-.business-document-editor > .business-document-review-actions,
-.business-document-editor > .operation-status,
-.business-document-editor > .primary {
-  width: min(920px, 100%);
-  margin-right: auto;
-  margin-left: auto;
+.business-document-action-panel {
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 8px 12px;
+  padding: 12px 18px;
+  border-top: 1px solid #ccd8d1;
+  background: #fff;
+  box-shadow: 0 -8px 24px rgb(18 45 34 / 8%);
+}
+.business-document-action-panel > input {
+  min-width: 0;
+  margin: 0;
+}
+.business-document-action-panel > .primary {
+  width: auto;
+  min-width: 150px;
+  margin: 0;
+}
+.business-document-action-panel > .operation-status {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #52665d;
+  font-size: 12px;
+}
+.business-document-action-panel > input[aria-label='文档审核意见'],
+.business-document-action-panel > .business-document-review-actions {
+  grid-column: 1 / -1;
+}
+.business-document-action-panel > .business-document-review-actions button {
+  width: auto;
+  min-width: 120px;
 }
 .business-document-workspace[data-view-mode='preview'] .business-document-body {
   border-color: #d7ddd9;
@@ -797,6 +829,9 @@ button {
     gap: 7px;
   }
   .business-document-editor {
+    min-width: 0;
+  }
+  .business-document-scroll {
     padding-inline: 12px;
   }
   .business-document-toolbar {
@@ -832,6 +867,16 @@ button {
     width: calc(100vw - 28px);
     min-height: 70vh;
     padding: 28px 22px;
+  }
+  .business-document-action-panel {
+    grid-template-columns: 1fr;
+    padding: 10px 12px;
+  }
+  .business-document-action-panel > .primary,
+  .business-document-action-panel > input[aria-label='文档审核意见'],
+  .business-document-action-panel > .business-document-review-actions,
+  .business-document-action-panel > .operation-status {
+    grid-column: 1;
   }
   .business-document-diff-grid {
     grid-template-columns: 1fr;
