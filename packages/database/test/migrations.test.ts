@@ -24,7 +24,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0065_cost_model_matrix.sql');
+    expect(ordered.at(-1)).toBe('0066_cost_model_presets.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
@@ -84,6 +84,35 @@ describe('identity and authorization migration', () => {
     expect(sql).toContain("source_type IN('MANUAL','PURCHASE_ORDER','SUPPLIER_QUOTE')");
     expect(sql).toContain("pricing_mode IN('TAX_INCLUSIVE','TAX_EXCLUSIVE')");
     expect(sql).toContain("'cost-matrix:calculate'");
+  });
+
+  it('seeds common artificial-turf specification cost presets', async () => {
+    const sql = await readFile(
+      join(process.cwd(), 'migrations/0066_cost_model_presets.sql'),
+      'utf8',
+    );
+    for (const preset of [
+      'PRESET-LANDSCAPE-20',
+      'PRESET-FOOTBALL-50',
+      'PRESET-FOOTBALL-NONINFILL-30',
+      'PRESET-HOCKEY-13',
+      'PRESET-TENNIS-12',
+      'PRESET-GOLF-10',
+      'PRESET-PLAYGROUND-25',
+      'PRESET-PET-30',
+    ])
+      expect(sql).toContain(preset);
+    for (const factor of [
+      'YARN',
+      'PRIMARY-BACKING',
+      'COATING',
+      'DIRECT-LABOR',
+      'DIRECT-ENERGY',
+      'FIXED-RESERVE',
+      'MARKETING-RESERVE',
+    ])
+      expect(sql).toContain(`'${factor}'`);
+    expect(sql).toContain("'costBasis','每平方米成品'");
   });
 
   it('adds purchase and sales contract upload OCR review and signing evidence', async () => {

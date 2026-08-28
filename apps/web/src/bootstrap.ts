@@ -3655,6 +3655,9 @@ export function commercialWorkspaceStructure(
       ) as Record<string, unknown> | null;
       card.append(
         el('strong', '', `${textValue(matrix.code, '规格')} · ${textValue(matrix.name, '')}`),
+        ...(matrix.isSystemPreset === true
+          ? [el('span', 'ctr-state state-approved', '系统预置')]
+          : []),
         el(
           'p',
           'muted',

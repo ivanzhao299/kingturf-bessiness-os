@@ -166,7 +166,7 @@ export class PostgresCommercialRepository {
     return (
       await this.db.query<JsonObject>(
         `
-      SELECT m.id,m.code,m.name,m.currency,m.default_tax_rate AS "defaultTaxRate",m.product_specification AS "productSpecification",
+      SELECT m.id,m.code,m.name,m.currency,m.default_tax_rate AS "defaultTaxRate",m.product_specification AS "productSpecification",m.is_system_preset AS "isSystemPreset",m.product_family AS "productFamily",
         m.product_item_version_id AS "productItemVersionId",i.sku AS "productSku",i.name AS "productName",m.active,
         coalesce((SELECT jsonb_agg(jsonb_build_object('id',f.id,'factorCode',f.factor_code,'factorName',f.factor_name,'category',f.category,
           'sourceType',f.source_type,'sourceItemVersionId',f.source_item_version_id,'sourceSku',si.sku,'sourceItemName',si.name,'quantity',f.quantity,
