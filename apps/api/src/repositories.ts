@@ -484,6 +484,72 @@ export class PostgresAuthorizationRepository implements AuthorizationRepository 
       version: r.version,
     }));
   }
+  public async listUserAccessProfiles(companyId: string) {
+    const rows = await this.db.query<{
+      employeeId: string;
+      employeeNumber: string;
+      displayName: string;
+      organizationId: string;
+      employeeActive: boolean;
+      identityId: string | null;
+      loginName: string | null;
+      identityActive: boolean | null;
+      passwordChangedAt: Date | null;
+      activeSessionCount: string;
+      roles: { id: string; code: string; name: string }[];
+      capabilities: PermissionKey[];
+      directScopes: {
+        permissionId: string;
+        capability: PermissionKey;
+        scope: DataScope;
+        organizationId: string | null;
+      }[];
+    }>(
+      `SELECT e.id AS "employeeId",e.employee_number AS "employeeNumber",e.display_name AS "displayName",e.organization_id AS "organizationId",e.active AS "employeeActive",
+      i.id AS "identityId",i.login_name AS "loginName",i.active AS "identityActive",pc.changed_at AS "passwordChangedAt",
+      (SELECT count(*) FROM sessions s WHERE s.identity_id=i.id AND s.revoked_at IS NULL AND s.expires_at>now())::text AS "activeSessionCount",
+      coalesce((SELECT jsonb_agg(jsonb_build_object('id',r.id,'code',r.code,'name',r.name) ORDER BY r.code) FROM employee_role_assignments era JOIN roles r ON r.id=era.role_id AND r.organization_id=e.company_id AND r.deleted_at IS NULL WHERE era.employee_id=e.id),'[]'::jsonb) AS roles,
+      coalesce((SELECT jsonb_agg(DISTINCT p.capability ORDER BY p.capability) FROM employee_role_assignments era JOIN roles r ON r.id=era.role_id AND r.organization_id=e.company_id AND r.deleted_at IS NULL JOIN role_permission_grants g ON g.role_id=r.id JOIN permissions p ON p.id=g.permission_id WHERE era.employee_id=e.id),'[]'::jsonb) AS capabilities,
+      coalesce((SELECT jsonb_agg(jsonb_build_object('permissionId',d.permission_id,'capability',p.capability,'scope',d.scope,'organizationId',d.scope_organization_id) ORDER BY p.capability,d.scope) FROM data_scope_grants d JOIN permissions p ON p.id=d.permission_id WHERE d.employee_id=e.id),'[]'::jsonb) AS "directScopes"
+      FROM employees e LEFT JOIN identities i ON i.employee_id=e.id AND i.deleted_at IS NULL LEFT JOIN password_credentials pc ON pc.identity_id=i.id
+      WHERE e.company_id=$1 AND e.deleted_at IS NULL ORDER BY e.employee_number`,
+      [companyId],
+    );
+    return rows.rows.map((row) => ({
+      ...row,
+      passwordChangedAt: row.passwordChangedAt?.toISOString() ?? null,
+      activeSessionCount: Number(row.activeSessionCount),
+    }));
+  }
+  public async setIdentityActive(
+    identityId: string,
+    active: boolean,
+    revokeSessions: boolean,
+    actor: { employeeId: string; companyId: string },
+    correlationId: string,
+  ): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      const result = await tx.query(
+        `UPDATE identities i SET active=$2,version=version+1,updated_at=now(),updated_by=$3 FROM employees e WHERE i.id=$1 AND e.id=i.employee_id AND e.company_id=$4 AND i.deleted_at IS NULL`,
+        [identityId, active, actor.employeeId, actor.companyId],
+      );
+      if (result.rowCount !== 1) throw new DomainError('not_found', 'Login identity not found');
+      if (revokeSessions || !active)
+        await tx.query(
+          'UPDATE sessions SET revoked_at=coalesce(revoked_at,now()) WHERE identity_id=$1 AND revoked_at IS NULL',
+          [identityId],
+        );
+      await auditTx(
+        tx,
+        active ? 'identity.enabled' : 'identity.disabled',
+        actor,
+        'identity',
+        identityId,
+        correlationId,
+        { active, sessionsRevoked: revokeSessions || !active },
+      );
+    });
+  }
   public async createRole(
     input: { code: string; name: string },
     actor: { employeeId: string; companyId: string },
