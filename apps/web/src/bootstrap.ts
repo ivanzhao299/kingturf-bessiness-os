@@ -9576,6 +9576,12 @@ const openOnlineDocumentEditor = (
   if (window.innerWidth < 1200) workspace.classList.add('history-collapsed');
   const layout = el('div', 'business-document-layout');
   const editor = el('section', 'business-document-editor');
+  const documentScroll = el('div', 'business-document-scroll');
+  documentScroll.setAttribute('data-document-scroll', 'true');
+  documentScroll.tabIndex = 0;
+  documentScroll.setAttribute('aria-label', '文档页面');
+  const actionPanel = el('section', 'business-document-action-panel');
+  actionPanel.setAttribute('aria-label', '版本保存与审核');
   const title = el('input');
   title.value = documentData.title;
   title.readOnly = true;
@@ -9661,8 +9667,9 @@ const openOnlineDocumentEditor = (
   const documentPageState = (): Readonly<{ current: number; total: number }> => {
     const pageHeight = Math.max(1, documentPageHeight());
     const total = Math.max(1, Math.ceil(body.scrollHeight / pageHeight));
-    const readingOffset = Math.max(0, editor.scrollTop - body.offsetTop + 24);
-    const atDocumentEnd = editor.scrollTop >= editor.scrollHeight - editor.clientHeight - 8;
+    const readingOffset = Math.max(0, documentScroll.scrollTop - body.offsetTop + 24);
+    const atDocumentEnd =
+      documentScroll.scrollTop >= documentScroll.scrollHeight - documentScroll.clientHeight - 8;
     const current = atDocumentEnd
       ? total
       : Math.min(total, Math.max(1, Math.floor(readingOffset / pageHeight) + 1));
@@ -9678,12 +9685,11 @@ const openOnlineDocumentEditor = (
   const goToDocumentPage = (direction: -1 | 1): void => {
     const { current, total } = documentPageState();
     const target = Math.min(total, Math.max(1, current + direction));
-    editor.scrollTo({
+    documentScroll.scrollTo({
       top: Math.max(0, body.offsetTop + (target - 1) * documentPageHeight() - 12),
-      behavior: 'smooth',
+      behavior: 'auto',
     });
-    window.setTimeout(updateDocumentPagination, 220);
-    window.setTimeout(updateDocumentPagination, 480);
+    window.requestAnimationFrame(updateDocumentPagination);
   };
   previousPage.addEventListener('click', () => {
     goToDocumentPage(-1);
@@ -9691,9 +9697,9 @@ const openOnlineDocumentEditor = (
   nextPage.addEventListener('click', () => {
     goToDocumentPage(1);
   });
-  editor.addEventListener('scroll', updateDocumentPagination, { passive: true });
+  documentScroll.addEventListener('scroll', updateDocumentPagination, { passive: true });
   body.addEventListener('input', updateDocumentPagination);
-  editor.addEventListener('keydown', (event) => {
+  documentScroll.addEventListener('keydown', (event) => {
     if (event.key !== 'PageUp' && event.key !== 'PageDown') return;
     event.preventDefault();
     goToDocumentPage(event.key === 'PageUp' ? -1 : 1);
@@ -9716,12 +9722,12 @@ const openOnlineDocumentEditor = (
   });
   pageSize.addEventListener('change', () => {
     workspace.dataset.pageSize = pageSize.value;
-    editor.scrollTop = 0;
+    documentScroll.scrollTop = 0;
     updateDocumentPagination();
   });
   zoom.addEventListener('change', () => {
     workspace.style.setProperty('--document-zoom', zoom.value);
-    editor.scrollTop = 0;
+    documentScroll.scrollTop = 0;
     updateDocumentPagination();
   });
   for (const [label, command, value] of [
@@ -9798,7 +9804,9 @@ const openOnlineDocumentEditor = (
         );
       });
   });
-  editor.append(title, toolbar, body, summary, save, status);
+  documentScroll.append(title, toolbar, body);
+  actionPanel.append(summary, save, status);
+  editor.append(documentScroll, actionPanel);
   toolbar.hidden = !editable || !permissions.manage;
   summary.hidden = !editable || !permissions.manage;
   const reviewActions = el('div', 'business-document-review-actions');
@@ -9845,7 +9853,7 @@ const openOnlineDocumentEditor = (
     addReviewAction('批准并锁版', 'approve', true);
     addReviewAction('驳回修改', 'reject', false);
   }
-  if (reviewActions.childElementCount > 0) editor.append(reviewReason, reviewActions);
+  if (reviewActions.childElementCount > 0) actionPanel.append(reviewReason, reviewActions);
   const history = el('aside', 'business-document-history');
   history.append(el('h3', '', '版本记录'));
   const comparison = el('section', 'business-document-comparison');

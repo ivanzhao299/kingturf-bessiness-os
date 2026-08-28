@@ -765,6 +765,8 @@ describe('web bootstrap', () => {
     expect(source).toContain('printOnlineBusinessDocument');
     expect(source).toContain('收起版本栏');
     expect(source).toContain('data-document-pagination');
+    expect(source).toContain('data-document-scroll');
+    expect(source).toContain('business-document-action-panel');
     expect(source).toContain('上一页');
     expect(source).toContain('下一页');
     expect(source).toContain('打印 / 导出 PDF');
