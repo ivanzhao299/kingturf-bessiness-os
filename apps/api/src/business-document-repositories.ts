@@ -27,9 +27,20 @@ export class PostgresBusinessDocumentRepository {
         `SELECT jsonb_build_object(
           'id',d.id,'templateKey',d.template_key,'title',d.title,'route',d.route,
           'subjectType',d.subject_type,'subjectId',d.subject_id,'state',d.state,
+          'customerId',d.customer_id,'customerName',c.name,
+          'salesOrderId',d.sales_order_id,'salesOrderNumber',o.order_number,
+          'operatorId',d.operator_id,'operatorName',op.display_name,
+          'salespersonId',d.salesperson_id,'salespersonName',sp.display_name,
+          'assignedTo',d.assigned_to,'assigneeName',assignee.display_name,
           'currentVersion',d.current_version,'createdBy',d.created_by,
           'createdAt',d.created_at,'updatedAt',d.updated_at) item
-         FROM business_documents d WHERE ${clauses.join(' AND ')}
+         FROM business_documents d
+         LEFT JOIN customers c ON c.id=d.customer_id AND c.tenant_id=d.tenant_id
+         LEFT JOIN sales_orders o ON o.id=d.sales_order_id AND o.tenant_id=d.tenant_id
+         LEFT JOIN employees op ON op.id=d.operator_id AND op.company_id=d.tenant_id
+         LEFT JOIN employees sp ON sp.id=d.salesperson_id AND sp.company_id=d.tenant_id
+         LEFT JOIN employees assignee ON assignee.id=d.assigned_to AND assignee.company_id=d.tenant_id
+         WHERE ${clauses.join(' AND ')}
          ORDER BY d.updated_at DESC,d.id DESC LIMIT 200`,
         values,
       )
@@ -42,6 +53,11 @@ export class PostgresBusinessDocumentRepository {
         `SELECT jsonb_build_object(
           'id',d.id,'templateKey',d.template_key,'title',d.title,'route',d.route,
           'subjectType',d.subject_type,'subjectId',d.subject_id,'state',d.state,
+          'customerId',d.customer_id,'customerName',c.name,
+          'salesOrderId',d.sales_order_id,'salesOrderNumber',o.order_number,
+          'operatorId',d.operator_id,'operatorName',op.display_name,
+          'salespersonId',d.salesperson_id,'salespersonName',sp.display_name,
+          'assignedTo',d.assigned_to,'assigneeName',assignee.display_name,
           'currentVersion',d.current_version,'createdBy',d.created_by,
           'createdAt',d.created_at,'updatedAt',d.updated_at,
           'reviewEvents',coalesce((SELECT jsonb_agg(jsonb_build_object(
@@ -55,6 +71,11 @@ export class PostgresBusinessDocumentRepository {
             ORDER BY v.version DESC) FROM business_document_versions v
             WHERE v.tenant_id=d.tenant_id AND v.document_id=d.id),'[]'::jsonb)) item
          FROM business_documents d
+         LEFT JOIN customers c ON c.id=d.customer_id AND c.tenant_id=d.tenant_id
+         LEFT JOIN sales_orders o ON o.id=d.sales_order_id AND o.tenant_id=d.tenant_id
+         LEFT JOIN employees op ON op.id=d.operator_id AND op.company_id=d.tenant_id
+         LEFT JOIN employees sp ON sp.id=d.salesperson_id AND sp.company_id=d.tenant_id
+         LEFT JOIN employees assignee ON assignee.id=d.assigned_to AND assignee.company_id=d.tenant_id
          WHERE d.id=$1 AND d.tenant_id=$2 AND ($3::boolean OR d.created_by=$4)`,
         [id, context.actor.companyId, companyWide(context), context.actor.employeeId],
       )
@@ -70,6 +91,11 @@ export class PostgresBusinessDocumentRepository {
       route: string;
       subjectType?: string;
       subjectId?: string;
+      customerId?: string;
+      salesOrderId?: string;
+      operatorId?: string;
+      salespersonId?: string;
+      assignedTo?: string;
       content: JsonObject;
     },
     actor: Actor,
@@ -79,8 +105,9 @@ export class PostgresBusinessDocumentRepository {
       const document = (
         await tx.query<{ id: string }>(
           `INSERT INTO business_documents(
-            tenant_id,template_key,title,route,subject_type,subject_id,created_by)
-           VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
+            tenant_id,template_key,title,route,subject_type,subject_id,customer_id,sales_order_id,
+            operator_id,salesperson_id,assigned_to,created_by)
+           VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
           [
             actor.companyId,
             input.templateKey,
@@ -88,6 +115,11 @@ export class PostgresBusinessDocumentRepository {
             input.route,
             input.subjectType ?? null,
             input.subjectId ?? null,
+            input.customerId ?? null,
+            input.salesOrderId ?? null,
+            input.operatorId ?? null,
+            input.salespersonId ?? null,
+            input.assignedTo ?? null,
             actor.employeeId,
           ],
         )
@@ -117,11 +149,78 @@ export class PostgresBusinessDocumentRepository {
         title: input.title,
         route: input.route,
         currentVersion: 1,
+        customerId: input.customerId,
+        salesOrderId: input.salesOrderId,
+        operatorId: input.operatorId,
+        salespersonId: input.salespersonId,
+        assignedTo: input.assignedTo,
         versions: [
           { version: 1, content: input.content, changeSummary: '从受控模板创建', canonicalHash },
         ],
       };
     });
+  }
+
+  public async referenceData(context: Context) {
+    const [customers, orders, employees] = await Promise.all([
+      this.db.query<{ id: string; name: string; number: string }>(
+        `SELECT id,name,customer_number number FROM customers
+         WHERE tenant_id=$1 AND deleted_at IS NULL ORDER BY updated_at DESC LIMIT 300`,
+        [context.actor.companyId],
+      ),
+      this.db.query<{ id: string; name: string; customerId: string }>(
+        `SELECT id,order_number name,customer_id "customerId" FROM sales_orders
+         WHERE tenant_id=$1 ORDER BY created_at DESC LIMIT 300`,
+        [context.actor.companyId],
+      ),
+      this.db.query<{ id: string; name: string; number: string }>(
+        `SELECT id,display_name name,employee_number number FROM employees
+         WHERE company_id=$1 AND active AND deleted_at IS NULL ORDER BY display_name LIMIT 300`,
+        [context.actor.companyId],
+      ),
+    ]);
+    return { customers: customers.rows, orders: orders.rows, employees: employees.rows };
+  }
+
+  public async updateBindings(
+    id: string,
+    input: {
+      customerId?: string | null | undefined;
+      salesOrderId?: string | null | undefined;
+      operatorId?: string | null | undefined;
+      salespersonId?: string | null | undefined;
+      assignedTo?: string | null | undefined;
+    },
+    context: Context,
+    correlationId: string,
+  ) {
+    const updated = (
+      await this.db.query<{ id: string }>(
+        `UPDATE business_documents SET customer_id=$3,sales_order_id=$4,operator_id=$5,
+           salesperson_id=$6,assigned_to=$7,updated_at=now()
+         WHERE id=$1 AND tenant_id=$2 AND state IN ('DRAFT','REJECTED')
+           AND ($8::boolean OR created_by=$9) RETURNING id`,
+        [
+          id,
+          context.actor.companyId,
+          input.customerId ?? null,
+          input.salesOrderId ?? null,
+          input.operatorId ?? null,
+          input.salespersonId ?? null,
+          input.assignedTo ?? null,
+          companyWide(context),
+          context.actor.employeeId,
+        ],
+      )
+    ).rows[0];
+    if (!updated)
+      throw new DomainError('conflict', 'Document bindings cannot be changed in the current state');
+    await this.db.query(
+      `INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata)
+       VALUES('business-document.bindings-updated','SUCCESS',$1,$2,'business-document',$3,$4,$5)`,
+      [context.actor.employeeId, context.actor.companyId, id, correlationId, input],
+    );
+    return { id, ...input };
   }
 
   public saveVersion(

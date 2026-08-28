@@ -24,7 +24,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0063_business_document_role_permissions.sql');
+    expect(ordered.at(-1)).toBe('0064_business_document_bindings.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
@@ -823,5 +823,22 @@ describe('identity and authorization migration', () => {
     expect(sql).toContain("('KT_PROCUREMENT_BUYER','business-document:manage')");
     expect(sql).toContain("('KT_QUALITY_MANAGER','business-document:approve')");
     expect(sql).toContain("roles.code=ANY(ARRAY['SUPER_ADMIN','SYSTEM_ADMIN'])");
+  });
+
+  it('adds structured customer order and employee bindings to online documents', async () => {
+    const sql = await readFile(
+      join(process.cwd(), 'migrations/0064_business_document_bindings.sql'),
+      'utf8',
+    );
+    for (const column of [
+      'customer_id',
+      'sales_order_id',
+      'operator_id',
+      'salesperson_id',
+      'assigned_to',
+    ])
+      expect(sql).toContain(`ADD COLUMN ${column}`);
+    expect(sql).toContain('business document order does not belong to selected customer');
+    expect(sql).toContain('business_documents_assignee_idx');
   });
 });
