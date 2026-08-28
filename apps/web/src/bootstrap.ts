@@ -1931,7 +1931,7 @@ export function commercialWorkspaceStructure(
             await controller.submit('/api/v1/production-orders', {
               ...values,
               ...(values.mrpProposalId ? {} : { mrpProposalId: undefined }),
-            })();
+            });
             await refresh();
           },
         );
