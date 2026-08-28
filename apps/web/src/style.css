@@ -3994,6 +3994,30 @@ button:not(:disabled):active {
   color: #74837c;
   font-size: 11px;
 }
+.audit-log-tools {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) 140px auto;
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid #e6ece8;
+  background: #fff;
+}
+.audit-log-tools input,
+.audit-log-tools select {
+  min-height: 36px;
+  border: 1px solid #d9e3de;
+  border-radius: 8px;
+  background: #fff;
+  color: #223b30;
+}
+.audit-log-results .governance-table-wrap {
+  border-top: 0;
+}
+@media (max-width: 720px) {
+  .audit-log-tools {
+    grid-template-columns: 1fr;
+  }
+}
 .route-section-nav {
   position: sticky;
   top: 0;

@@ -945,6 +945,26 @@ export type DirectScopeGrantRecord = Readonly<{
   scope: DataScope;
   organizationId: Identifier | null;
 }>;
+export type UserAccessProfileRecord = Readonly<{
+  employeeId: Identifier;
+  employeeNumber: string;
+  displayName: string;
+  organizationId: Identifier;
+  employeeActive: boolean;
+  identityId: Identifier | null;
+  loginName: string | null;
+  identityActive: boolean | null;
+  passwordChangedAt: string | null;
+  activeSessionCount: number;
+  roles: readonly Readonly<{ id: Identifier; code: string; name: string }>[];
+  capabilities: readonly PermissionKey[];
+  directScopes: readonly Readonly<{
+    permissionId: Identifier;
+    capability: PermissionKey;
+    scope: DataScope;
+    organizationId: Identifier | null;
+  }>[];
+}>;
 export type AuthorizationRepository = {
   listRoles(companyId: Identifier): Promise<readonly RoleRecord[]>;
   createRole(
@@ -1000,4 +1020,12 @@ export type AuthorizationRepository = {
     correlationId: string,
   ): Promise<DirectScopeGrantRecord>;
   revokeScope(id: Identifier, actor: Actor, correlationId: string): Promise<void>;
+  listUserAccessProfiles?(companyId: Identifier): Promise<readonly UserAccessProfileRecord[]>;
+  setIdentityActive?(
+    identityId: Identifier,
+    active: boolean,
+    revokeSessions: boolean,
+    actor: Actor,
+    correlationId: string,
+  ): Promise<void>;
 };

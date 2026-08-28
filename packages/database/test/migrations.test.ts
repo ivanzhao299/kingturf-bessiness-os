@@ -24,7 +24,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0061_contract_document_lifecycle.sql');
+    expect(ordered.at(-1)).toBe('0062_atomic_iam_administration.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
@@ -87,6 +87,23 @@ describe('identity and authorization migration', () => {
     expect(sql).toContain("'contract-ocr:review'");
     expect(sql).toContain("'contract-signature:confirm'");
     expect(sql).toContain('UNIQUE(tenant_id,provider_event_id)');
+  });
+
+  it('splits IAM administration into atomic duties and indexes audit review paths', async () => {
+    const sql = await readFile(
+      join(process.cwd(), 'migrations/0062_atomic_iam_administration.sql'),
+      'utf8',
+    );
+    for (const capability of [
+      'identity:manage',
+      'role:manage',
+      'permission:manage',
+      'role-assignment:manage',
+      'data-scope:manage',
+    ])
+      expect(sql).toContain(`'${capability}'`);
+    expect(sql).toContain('audit_events_tenant_time_desc_idx');
+    expect(sql).toContain("('KT_SYSTEM_AUDITOR','identity:read')");
   });
   it('adds immutable shipment gates, separated exception approval, tracking, and proof of delivery', async () => {
     const sql = await readFile(

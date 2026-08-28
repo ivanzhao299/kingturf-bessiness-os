@@ -430,6 +430,7 @@ export const GOVERNANCE_SURFACES: readonly GovernanceSurface[] = [
     readPermission: 'authorization:read',
     managePermission: 'authorization:manage',
     paths: [
+      '/api/v1/user-access-profiles',
       '/api/v1/roles',
       '/api/v1/permissions',
       '/api/v1/grants',
@@ -518,6 +519,14 @@ export const visibleGovernanceSurfaces = (permissions: ReadonlySet<string>) =>
   GOVERNANCE_SURFACES.filter(
     (surface) =>
       permissions.has(surface.readPermission) ||
+      (surface.id === 'identity-access' &&
+        hasPermissionPrefix(permissions, [
+          'identity:',
+          'role:',
+          'permission:',
+          'role-assignment:',
+          'data-scope:',
+        ])) ||
       (surface.managePermission !== undefined && permissions.has(surface.managePermission)),
   );
 
@@ -12296,6 +12305,7 @@ const governanceItems = (value: unknown): readonly unknown[] => {
 };
 
 const GOVERNANCE_SOURCE_LABELS: Readonly<Record<string, string>> = {
+  '/api/v1/user-access-profiles': '用户访问档案',
   '/api/v1/organizations': '组织清单',
   '/api/v1/employees': '员工清单',
   '/api/v1/roles': '角色清单',
@@ -12356,6 +12366,14 @@ const GOVERNANCE_FIELD_LABELS: Readonly<Record<string, string>> = {
   code: '编码',
   name: '名称',
   displayName: '姓名',
+  loginName: '登录名',
+  employeeActive: '员工状态',
+  identityActive: '账号状态',
+  activeSessionCount: '活动会话',
+  passwordChangedAt: '密码更新时间',
+  roles: '原子角色',
+  capabilities: '有效能力',
+  directScopes: '直接数据范围',
   employeeNumber: '员工编号',
   title: '标题',
   description: '说明',
@@ -12382,6 +12400,12 @@ const GOVERNANCE_FIELD_LABELS: Readonly<Record<string, string>> = {
 
 const governanceFieldPriority = [
   'displayName',
+  'loginName',
+  'employeeActive',
+  'identityActive',
+  'activeSessionCount',
+  'roles',
+  'capabilities',
   'name',
   'title',
   'employeeNumber',
@@ -12454,6 +12478,72 @@ const governanceTable = (items: readonly unknown[]): HTMLElement => {
   if (items.length > records.length)
     wrap.append(el('p', 'table-footnote', `当前预览前 ${String(records.length)} 条记录`));
   return wrap;
+};
+
+const auditLogWorkbench = (items: readonly unknown[]): HTMLElement => {
+  const container = el('div', 'audit-log-workbench');
+  const tools = el('div', 'audit-log-tools');
+  const query = document.createElement('input');
+  query.type = 'search';
+  query.placeholder = '搜索人员、操作、对象或关联编号';
+  query.setAttribute('aria-label', '搜索系统日志');
+  const outcome = document.createElement('select');
+  outcome.setAttribute('aria-label', '日志结果');
+  for (const [value, label] of [
+    ['', '全部结果'],
+    ['SUCCESS', '成功'],
+    ['FAILURE', '失败'],
+  ] as const) {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = label;
+    outcome.append(option);
+  }
+  const result = el('div', 'audit-log-results');
+  const render = () => {
+    const keyword = query.value.trim().toLocaleLowerCase();
+    const filtered = items.map(recordValue).filter((item) => {
+      if (outcome.value && textValue(item.outcome, '') !== outcome.value) return false;
+      if (!keyword) return true;
+      return [item.action, item.actorId, item.targetType, item.targetId, item.correlationId]
+        .map((value) => textValue(value, '').toLocaleLowerCase())
+        .some((value) => value.includes(keyword));
+    });
+    result.replaceChildren(governanceTable(filtered));
+    result.prepend(el('p', 'table-footnote', `筛选结果 ${String(filtered.length)} 条`));
+  };
+  query.addEventListener('input', render);
+  outcome.addEventListener('change', render);
+  const exportButton = el('button', 'secondary compact', '导出当前日志');
+  exportButton.addEventListener('click', () => {
+    const rows = items.map(recordValue);
+    const escape = (value: unknown) => `"${textValue(value, '').replaceAll('"', '""')}"`;
+    const csv = [
+      '时间,结果,操作,人员,对象类型,对象编号,关联编号',
+      ...rows.map((item) =>
+        [
+          item.occurredAt,
+          item.outcome,
+          item.action,
+          item.actorId,
+          item.targetType,
+          item.targetId,
+          item.correlationId,
+        ]
+          .map(escape)
+          .join(','),
+      ),
+    ].join('\n');
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }));
+    link.download = `系统审计日志-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  });
+  tools.append(query, outcome, exportButton);
+  container.append(tools, result);
+  render();
+  return container;
 };
 
 export function governanceWorkspace(controller: GovernanceController): HTMLElement {
@@ -12726,7 +12816,22 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
       });
       actions.append(update);
     }
-    if (surface.id === 'identity-access' && permissions.has('authorization:manage')) {
+    if (
+      surface.id === 'identity-access' &&
+      (permissions.has('authorization:manage') ||
+        hasPermissionPrefix(permissions, [
+          'identity:manage',
+          'role:manage',
+          'permission:manage',
+          'role-assignment:manage',
+          'data-scope:manage',
+        ]))
+    ) {
+      const legacyManage = permissions.has('authorization:manage');
+      const mayManageIdentity = legacyManage || permissions.has('identity:manage');
+      const mayManageRoles = legacyManage || permissions.has('role:manage');
+      const mayManageAssignments = legacyManage || permissions.has('role-assignment:manage');
+      const mayManageScopes = legacyManage || permissions.has('data-scope:manage');
       const role = el('button', 'secondary', '新建角色');
       role.addEventListener('click', () => {
         openAction(
@@ -12875,7 +12980,195 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
             }),
         );
       });
-      actions.append(role, identity, assignment, unassignment, grant);
+      if (mayManageRoles) actions.append(role, grant);
+      if (mayManageIdentity) actions.append(identity);
+      if (mayManageAssignments) actions.append(assignment, unassignment);
+
+      if (mayManageIdentity) {
+        const identityState = el('button', 'secondary', '账号启停与下线');
+        identityState.addEventListener('click', () => {
+          const profiles = records('/api/v1/user-access-profiles').filter(
+            (item) => typeof item.identityId === 'string',
+          );
+          openAction(
+            '账号启停与会话管理',
+            '停用账号会立即撤销全部活动会话；启用账号不会恢复旧会话。',
+            [
+              {
+                name: 'identityId',
+                label: '登录账号',
+                type: 'select',
+                required: true,
+                options: profiles.map((item) => ({
+                  value: String(item.identityId),
+                  label: `${textValue(item.employeeNumber, '')} · ${textValue(item.displayName, '')} · ${textValue(item.loginName, '')}`,
+                })),
+              },
+              {
+                name: 'active',
+                label: '账号状态',
+                type: 'select',
+                required: true,
+                options: [
+                  { value: 'true', label: '启用' },
+                  { value: 'false', label: '停用并强制下线' },
+                ],
+              },
+              {
+                name: 'revokeSessions',
+                label: '强制撤销活动会话',
+                type: 'select',
+                required: true,
+                options: [
+                  { value: 'true', label: '是' },
+                  { value: 'false', label: '否' },
+                ],
+              },
+            ],
+            (values) =>
+              controller.submit(
+                `/api/v1/identities/${requiredValue(values.identityId, '登录账号')}/state`,
+                {
+                  active: values.active === 'true',
+                  revokeSessions: values.revokeSessions === 'true',
+                },
+                'PATCH',
+              ),
+          );
+        });
+        actions.append(identityState);
+      }
+
+      if (mayManageRoles) {
+        const revokeGrant = el('button', 'secondary danger', '撤销角色能力');
+        revokeGrant.addEventListener('click', () => {
+          openAction(
+            '撤销角色能力',
+            '撤销后持有该角色的用户将立即失去对应操作能力。',
+            [
+              {
+                name: 'roleId',
+                label: '角色',
+                type: 'select',
+                required: true,
+                options: choices(
+                  '/api/v1/roles',
+                  (item) => `${textValue(item.code, '')} · ${textValue(item.name, '')}`,
+                ),
+              },
+              {
+                name: 'permissionId',
+                label: '能力',
+                type: 'select',
+                required: true,
+                options: choices('/api/v1/permissions', (item) =>
+                  textValue(item.capability, '能力'),
+                ),
+              },
+            ],
+            (values) =>
+              controller.submit(
+                '/api/v1/grants',
+                { roleId: values.roleId, permissionId: values.permissionId },
+                'DELETE',
+              ),
+          );
+        });
+        actions.append(revokeGrant);
+      }
+
+      if (mayManageScopes) {
+        const scopeGrant = el('button', 'secondary', '配置用户数据范围');
+        scopeGrant.addEventListener('click', () => {
+          openAction(
+            '配置用户直接数据范围',
+            '直接数据范围只用于岗位角色之外的必要例外，应遵循最小授权原则。',
+            [
+              {
+                name: 'employeeId',
+                label: '员工',
+                type: 'select',
+                required: true,
+                options: choices(
+                  '/api/v1/employees',
+                  (item) =>
+                    `${textValue(item.employeeNumber, '')} · ${textValue(item.displayName, '')}`,
+                ),
+              },
+              {
+                name: 'permissionId',
+                label: '能力',
+                type: 'select',
+                required: true,
+                options: choices('/api/v1/permissions', (item) =>
+                  textValue(item.capability, '能力'),
+                ),
+              },
+              {
+                name: 'scope',
+                label: '数据范围',
+                type: 'select',
+                required: true,
+                options: [
+                  { value: 'SELF', label: '本人' },
+                  { value: 'TEAM', label: '团队' },
+                  { value: 'DEPARTMENT', label: '部门' },
+                  { value: 'REGION', label: '区域' },
+                  { value: 'COMPANY', label: '公司' },
+                ],
+              },
+              {
+                name: 'organizationId',
+                label: '团队/部门/区域',
+                type: 'select',
+                options: [
+                  { value: '', label: '不适用' },
+                  ...choices(
+                    '/api/v1/organizations',
+                    (item) => `${textValue(item.code, '')} · ${textValue(item.name, '')}`,
+                  ),
+                ],
+              },
+            ],
+            (values) =>
+              controller.submit('/api/v1/scope-grants', {
+                employeeId: values.employeeId,
+                permissionId: values.permissionId,
+                scope: values.scope,
+                organizationId: ['TEAM', 'DEPARTMENT', 'REGION'].includes(values.scope ?? '')
+                  ? requiredValue(values.organizationId, '组织范围')
+                  : null,
+              }),
+          );
+        });
+        const revokeScope = el('button', 'secondary danger', '撤销用户数据范围');
+        revokeScope.addEventListener('click', () => {
+          openAction(
+            '撤销用户直接数据范围',
+            '撤销后用户只保留角色自带的数据范围。',
+            [
+              {
+                name: 'scopeGrantId',
+                label: '数据范围记录',
+                type: 'select',
+                required: true,
+                options: choices(
+                  '/api/v1/scope-grants',
+                  (item) =>
+                    `${textValue(item.scope, '')} · ${textValue(item.employeeId, '').slice(0, 8)}`,
+                ),
+              },
+            ],
+            (values) =>
+              controller.submit(
+                `/api/v1/scope-grants/${requiredValue(values.scopeGrantId, '数据范围记录')}`,
+                {},
+                'DELETE',
+              ),
+          );
+        });
+        actions.append(scopeGrant, revokeScope);
+      }
     }
     if (surface.id === 'master-data' && permissions.has('master-data:create')) {
       const category = el('button', 'secondary', '新建分类');
@@ -13366,7 +13659,10 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
       row.append(source);
       if (view?.error) row.append(el('p', 'error', view.error));
       else if (items.length === 0) row.append(el('p', 'empty', '当前范围内暂无记录'));
-      else row.append(governanceTable(items));
+      else
+        row.append(
+          path === '/api/v1/audit-events' ? auditLogWorkbench(items) : governanceTable(items),
+        );
       panel.append(row);
     }
     grid.append(panel);

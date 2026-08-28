@@ -529,6 +529,41 @@ it('exposes governed identity provisioning, role assignment, and role removal to
   expect(workspace.textContent).toContain('撤销角色');
 });
 
+it('renders atomic IAM administration without the legacy broad management capability', () => {
+  const controller = new GovernanceController(
+    new Set([
+      'identity:read',
+      'identity:manage',
+      'role:read',
+      'role:manage',
+      'permission:read',
+      'role-assignment:read',
+      'role-assignment:manage',
+      'data-scope:read',
+      'data-scope:manage',
+      'employee:read',
+      'organization:read',
+    ]),
+    'test-token',
+  );
+  controller.views = [
+    { path: '/api/v1/user-access-profiles', value: { items: [] } },
+    { path: '/api/v1/employees', value: [] },
+    { path: '/api/v1/organizations', value: [] },
+    { path: '/api/v1/roles', value: [] },
+    { path: '/api/v1/permissions', value: [] },
+    { path: '/api/v1/grants', value: [] },
+    { path: '/api/v1/assignments', value: [] },
+    { path: '/api/v1/scope-grants', value: [] },
+  ];
+  const workspace = governanceWorkspace(controller) as unknown as RenderedElement;
+  expect(workspace.textContent).toContain('用户访问档案 · 0 条');
+  expect(workspace.textContent).toContain('账号启停与下线');
+  expect(workspace.textContent).toContain('撤销角色能力');
+  expect(workspace.textContent).toContain('配置用户数据范围');
+  expect(workspace.textContent).toContain('撤销用户数据范围');
+});
+
 it('admits manufacturing cost capabilities into the commercial workspace', () => {
   expect(isCommercialPermission('manufacturing-cost:read')).toBe(true);
   expect(isCommercialPermission('manufacturing-cost:approve')).toBe(true);

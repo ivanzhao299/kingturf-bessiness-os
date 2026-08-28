@@ -71,6 +71,12 @@ const mutationDto = <T extends Record<string, unknown>>(
   const read = context.permissions.get(readCapability);
   return read ? permittedDto(value, read.fields) : permittedDto(value, ['version']);
 };
+const authorizeOneOf = (
+  context: AuthorizationContext,
+  preferred: PermissionKey,
+  fallback: PermissionKey,
+  fields?: readonly string[],
+) => authorizeQuery(context, context.permissions.has(preferred) ? preferred : fallback, fields);
 export type ApiRequest = Readonly<{
   method: string;
   pathname: string;
@@ -4681,8 +4687,22 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             request.pathname,
           );
         if (authorizationMatch) {
-          const capability: PermissionKey = `authorization:${request.method === 'GET' ? 'read' : 'manage'}`;
-          authorizeQuery(context, capability);
+          const resource = authorizationMatch[1];
+          const atomicCapability: PermissionKey =
+            resource === 'roles'
+              ? `role:${request.method === 'GET' ? 'read' : 'manage'}`
+              : resource === 'permissions'
+                ? `permission:${request.method === 'GET' ? 'read' : 'manage'}`
+                : resource === 'assignments'
+                  ? `role-assignment:${request.method === 'GET' ? 'read' : 'manage'}`
+                  : resource === 'scope-grants'
+                    ? `data-scope:${request.method === 'GET' ? 'read' : 'manage'}`
+                    : `role:${request.method === 'GET' ? 'read' : 'manage'}`;
+          authorizeOneOf(
+            context,
+            atomicCapability,
+            `authorization:${request.method === 'GET' ? 'read' : 'manage'}`,
+          );
           const repository = dependencies.authorization;
           if (!repository)
             return error(
@@ -4691,7 +4711,6 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               'Authorization repository is unavailable',
               correlationId,
             );
-          const resource = authorizationMatch[1];
           const b =
             request.method === 'GET' ||
             (request.method === 'DELETE' && Boolean(authorizationMatch[2]))
@@ -4831,6 +4850,52 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               return { statusCode: 204, body: {} };
             }
           }
+        }
+        if (request.method === 'GET' && request.pathname === '/api/v1/user-access-profiles') {
+          authorizeOneOf(context, 'identity:read', 'authorization:read');
+          if (!dependencies.authorization?.listUserAccessProfiles)
+            return error(
+              503,
+              'internal_error',
+              'User access profile repository is unavailable',
+              correlationId,
+            );
+          return {
+            statusCode: 200,
+            body: {
+              items: await dependencies.authorization.listUserAccessProfiles(
+                context.actor.companyId,
+              ),
+            },
+          };
+        }
+        const identityState = /^\/api\/v1\/identities\/([0-9a-f-]+)\/state$/u.exec(
+          request.pathname,
+        );
+        if (request.method === 'PATCH' && identityState) {
+          const body = objectBody(request.body);
+          allow(body, ['active', 'revokeSessions']);
+          authorizeOneOf(context, 'identity:manage', 'authorization:manage', Object.keys(body));
+          if (
+            typeof body.active !== 'boolean' ||
+            (body.revokeSessions !== undefined && typeof body.revokeSessions !== 'boolean')
+          )
+            throw new DomainError('invalid_request', 'active and revokeSessions must be boolean');
+          if (!dependencies.authorization?.setIdentityActive)
+            return error(
+              503,
+              'internal_error',
+              'Identity management repository is unavailable',
+              correlationId,
+            );
+          await dependencies.authorization.setIdentityActive(
+            uuid(identityState[1], 'identityId'),
+            body.active,
+            body.revokeSessions === true,
+            context.actor,
+            correlationId,
+          );
+          return { statusCode: 204, body: {} };
         }
         const auditMatch = /^\/api\/v1\/audit-events(?:\/([0-9a-f-]+))?$/u.exec(request.pathname);
         if (auditMatch && request.method === 'GET') {
