@@ -3827,6 +3827,120 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
         }
         if (
           request.method === 'GET' &&
+          request.pathname === '/api/v1/cost-matrices' &&
+          dependencies.commercial
+        ) {
+          const grant = authorizeQuery(context, 'cost-matrix:read');
+          return {
+            statusCode: 200,
+            body: {
+              items: await dependencies.commercial.listCostMatrices(context.actor, grant.scopes),
+            },
+          };
+        }
+        if (
+          request.method === 'POST' &&
+          request.pathname === '/api/v1/cost-matrices' &&
+          dependencies.commercial
+        ) {
+          const body = objectBody(request.body);
+          allow(body, [
+            'code',
+            'name',
+            'productItemVersionId',
+            'productSpecification',
+            'currency',
+            'defaultTaxRate',
+          ]);
+          const grant = authorizeQuery(context, 'cost-matrix:manage', Object.keys(body));
+          const result = await dependencies.commercial.createCostMatrix(
+            {
+              code: string(body.code, 'code'),
+              name: string(body.name, 'name'),
+              ...(body.productItemVersionId
+                ? { productItemVersionId: uuid(body.productItemVersionId, 'productItemVersionId') }
+                : {}),
+              productSpecification: jsonObject(
+                body.productSpecification ?? {},
+                'productSpecification',
+              ),
+              currency: currency(body.currency),
+              defaultTaxRate: decimal(body.defaultTaxRate, 'defaultTaxRate'),
+            },
+            context.actor,
+            grant.scopes,
+            correlationId,
+          );
+          return { statusCode: 201, body: result };
+        }
+        const costMatrixFactor = /^\/api\/v1\/cost-matrices\/([0-9a-f-]+)\/factors$/u.exec(
+          request.pathname,
+        );
+        if (request.method === 'POST' && costMatrixFactor && dependencies.commercial) {
+          const body = objectBody(request.body);
+          allow(body, [
+            'factorCode',
+            'factorName',
+            'category',
+            'sourceType',
+            'sourceItemVersionId',
+            'quantity',
+            'manualUnitPriceTaxInclusive',
+            'taxRate',
+            'adjustable',
+            'sortOrder',
+          ]);
+          const grant = authorizeQuery(context, 'cost-matrix:manage', Object.keys(body));
+          const result = await dependencies.commercial.addCostMatrixFactor(
+            uuid(costMatrixFactor[1], 'modelId'),
+            {
+              factorCode: string(body.factorCode, 'factorCode'),
+              factorName: string(body.factorName, 'factorName'),
+              category: string(body.category, 'category'),
+              sourceType: string(body.sourceType, 'sourceType'),
+              ...(body.sourceItemVersionId
+                ? { sourceItemVersionId: uuid(body.sourceItemVersionId, 'sourceItemVersionId') }
+                : {}),
+              quantity: decimal(body.quantity, 'quantity'),
+              manualUnitPriceTaxInclusive: decimal(
+                body.manualUnitPriceTaxInclusive,
+                'manualUnitPriceTaxInclusive',
+              ),
+              taxRate: decimal(body.taxRate, 'taxRate'),
+              adjustable: body.adjustable !== false,
+              sortOrder: integer(body.sortOrder ?? 0, 'sortOrder', 0, 10000),
+            },
+            context.actor,
+            grant.scopes,
+            correlationId,
+          );
+          return { statusCode: 201, body: result };
+        }
+        const costMatrixCalculate = /^\/api\/v1\/cost-matrices\/([0-9a-f-]+)\/calculate$/u.exec(
+          request.pathname,
+        );
+        if (request.method === 'POST' && costMatrixCalculate && dependencies.commercial) {
+          const body = objectBody(request.body);
+          allow(body, ['pricingMode']);
+          const grant = authorizeQuery(context, 'cost-matrix:calculate', Object.keys(body));
+          const mode = string(body.pricingMode, 'pricingMode');
+          if (mode !== 'TAX_INCLUSIVE' && mode !== 'TAX_EXCLUSIVE')
+            throw new DomainError(
+              'invalid_request',
+              'pricingMode must be TAX_INCLUSIVE or TAX_EXCLUSIVE',
+            );
+          const result = await dependencies.commercial.calculateCostMatrix(
+            uuid(costMatrixCalculate[1], 'modelId'),
+            mode,
+            idempotency(request),
+            context.actor,
+            grant.scopes,
+            correlationId,
+          );
+          return { statusCode: 201, body: result };
+        }
+        if (
+          request.method === 'GET' &&
           (request.pathname === '/api/v1/cost-models' ||
             request.pathname === '/api/v1/sales-policies') &&
           dependencies.commercial

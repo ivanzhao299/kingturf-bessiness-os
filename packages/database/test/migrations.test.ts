@@ -24,7 +24,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0064_business_document_bindings.sql');
+    expect(ordered.at(-1)).toBe('0065_cost_model_matrix.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
@@ -68,6 +68,22 @@ describe('identity and authorization migration', () => {
     expect(triggerRepair).toContain('JOIN quotes quote_root');
     expect(triggerRepair).toContain("IF TG_TABLE_NAME='sales_orders' THEN");
     expect(triggerRepair).not.toContain('JOIN quotes q ON');
+  });
+
+  it('adds specification cost matrices with adjustable sourced factors and immutable calculations', async () => {
+    const sql = await readFile(
+      join(process.cwd(), 'migrations/0065_cost_model_matrix.sql'),
+      'utf8',
+    );
+    for (const table of [
+      'cost_specification_models',
+      'cost_specification_factors',
+      'cost_matrix_calculations',
+    ])
+      expect(sql).toContain(`CREATE TABLE ${table}`);
+    expect(sql).toContain("source_type IN('MANUAL','PURCHASE_ORDER','SUPPLIER_QUOTE')");
+    expect(sql).toContain("pricing_mode IN('TAX_INCLUSIVE','TAX_EXCLUSIVE')");
+    expect(sql).toContain("'cost-matrix:calculate'");
   });
 
   it('adds purchase and sales contract upload OCR review and signing evidence', async () => {

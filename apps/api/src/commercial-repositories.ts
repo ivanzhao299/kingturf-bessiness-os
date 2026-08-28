@@ -160,6 +160,236 @@ const retainCommand = (
 
 export class PostgresCommercialRepository {
   public constructor(private readonly db: Db) {}
+  public async listCostMatrices(actor: Actor, scopes: readonly DataScope[]) {
+    if (!scopes.includes('COMPANY'))
+      throw new DomainError('forbidden', 'Cost matrices require company scope');
+    return (
+      await this.db.query<JsonObject>(
+        `
+      SELECT m.id,m.code,m.name,m.currency,m.default_tax_rate AS "defaultTaxRate",m.product_specification AS "productSpecification",
+        m.product_item_version_id AS "productItemVersionId",i.sku AS "productSku",i.name AS "productName",m.active,
+        coalesce((SELECT jsonb_agg(jsonb_build_object('id',f.id,'factorCode',f.factor_code,'factorName',f.factor_name,'category',f.category,
+          'sourceType',f.source_type,'sourceItemVersionId',f.source_item_version_id,'sourceSku',si.sku,'sourceItemName',si.name,'quantity',f.quantity,
+          'manualUnitPriceTaxInclusive',f.manual_unit_price_tax_inclusive,'taxRate',f.tax_rate,'adjustable',f.adjustable,'sortOrder',f.sort_order) ORDER BY f.sort_order,f.factor_code)
+          FROM cost_specification_factors f LEFT JOIN manufacturing_item_versions siv ON siv.id=f.source_item_version_id AND siv.tenant_id=f.tenant_id
+          LEFT JOIN manufacturing_items si ON si.id=siv.item_id AND si.tenant_id=siv.tenant_id WHERE f.tenant_id=m.tenant_id AND f.specification_model_id=m.id),'[]'::jsonb) factors,
+        (SELECT to_jsonb(c) FROM (SELECT id,pricing_mode AS "pricingMode",direct_production_cost AS "directProductionCost",reserved_expense_cost AS "reservedExpenseCost",
+          total_cost AS "totalCost",factor_trace AS "factorTrace",calculated_at AS "calculatedAt" FROM cost_matrix_calculations c
+          WHERE c.tenant_id=m.tenant_id AND c.specification_model_id=m.id ORDER BY c.calculated_at DESC LIMIT 1)c) AS "latestCalculation"
+      FROM cost_specification_models m LEFT JOIN manufacturing_item_versions iv ON iv.id=m.product_item_version_id AND iv.tenant_id=m.tenant_id
+      LEFT JOIN manufacturing_items i ON i.id=iv.item_id AND i.tenant_id=iv.tenant_id WHERE m.tenant_id=$1 ORDER BY m.code`,
+        [actor.companyId],
+      )
+    ).rows;
+  }
+
+  public async createCostMatrix(
+    input: {
+      code: string;
+      name: string;
+      productItemVersionId?: string;
+      productSpecification: JsonObject;
+      currency: string;
+      defaultTaxRate: string;
+    },
+    actor: Actor,
+    scopes: readonly DataScope[],
+    correlationId: string,
+  ) {
+    if (!scopes.includes('COMPANY'))
+      throw new DomainError('forbidden', 'Cost matrices require company scope');
+    const row = (
+      await this.db.query<JsonObject>(
+        'INSERT INTO cost_specification_models(tenant_id,code,name,product_item_version_id,product_specification,currency,default_tax_rate,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id,code,name,currency,default_tax_rate AS "defaultTaxRate"',
+        [
+          actor.companyId,
+          input.code,
+          input.name,
+          input.productItemVersionId ?? null,
+          input.productSpecification,
+          input.currency,
+          input.defaultTaxRate,
+          actor.employeeId,
+        ],
+      )
+    ).rows[0];
+    if (!row) throw new DomainError('conflict', 'Cost matrix could not be created');
+    if (typeof row.id !== 'string')
+      throw new DomainError('conflict', 'Cost matrix identifier missing');
+    await evidence(
+      this.db,
+      'cost-matrix.created',
+      actor,
+      row.id,
+      1,
+      correlationId,
+      row,
+      'cost-matrix',
+    );
+    return row;
+  }
+
+  public async addCostMatrixFactor(
+    modelId: string,
+    input: {
+      factorCode: string;
+      factorName: string;
+      category: string;
+      sourceType: string;
+      sourceItemVersionId?: string;
+      quantity: string;
+      manualUnitPriceTaxInclusive: string;
+      taxRate: string;
+      adjustable: boolean;
+      sortOrder: number;
+    },
+    actor: Actor,
+    scopes: readonly DataScope[],
+    correlationId: string,
+  ) {
+    if (!scopes.includes('COMPANY'))
+      throw new DomainError('forbidden', 'Cost matrices require company scope');
+    const row = (
+      await this.db.query<JsonObject>(
+        `INSERT INTO cost_specification_factors(tenant_id,specification_model_id,factor_code,factor_name,category,source_type,source_item_version_id,quantity,manual_unit_price_tax_inclusive,tax_rate,adjustable,sort_order,created_by)
+      SELECT $1,id,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13 FROM cost_specification_models WHERE id=$2 AND tenant_id=$1 RETURNING id,factor_code AS "factorCode",factor_name AS "factorName"`,
+        [
+          actor.companyId,
+          modelId,
+          input.factorCode,
+          input.factorName,
+          input.category,
+          input.sourceType,
+          input.sourceItemVersionId ?? null,
+          input.quantity,
+          input.manualUnitPriceTaxInclusive,
+          input.taxRate,
+          input.adjustable,
+          input.sortOrder,
+          actor.employeeId,
+        ],
+      )
+    ).rows[0];
+    if (!row) throw new DomainError('not_found', 'Cost specification model not found');
+    await evidence(
+      this.db,
+      'cost-matrix.factor-added',
+      actor,
+      modelId,
+      1,
+      correlationId,
+      row,
+      'cost-matrix',
+    );
+    return row;
+  }
+
+  public async calculateCostMatrix(
+    modelId: string,
+    pricingMode: 'TAX_INCLUSIVE' | 'TAX_EXCLUSIVE',
+    idempotencyKey: string,
+    actor: Actor,
+    scopes: readonly DataScope[],
+    correlationId: string,
+  ) {
+    if (!scopes.includes('COMPANY'))
+      throw new DomainError('forbidden', 'Cost matrices require company scope');
+    return this.db.transaction(async (tx) => {
+      const existing = (
+        await tx.query<JsonObject>(
+          'SELECT id,pricing_mode AS "pricingMode",direct_production_cost AS "directProductionCost",reserved_expense_cost AS "reservedExpenseCost",total_cost AS "totalCost",factor_trace AS "factorTrace",calculated_at AS "calculatedAt" FROM cost_matrix_calculations WHERE tenant_id=$1 AND idempotency_key=$2',
+          [actor.companyId, idempotencyKey],
+        )
+      ).rows[0];
+      if (existing) return existing;
+      const model = (
+        await tx.query<{ currency: string }>(
+          'SELECT currency FROM cost_specification_models WHERE id=$1 AND tenant_id=$2 AND active=true FOR UPDATE',
+          [modelId, actor.companyId],
+        )
+      ).rows[0];
+      if (!model) throw new DomainError('not_found', 'Active cost specification model not found');
+      const factors = (
+        await tx.query<{
+          id: string;
+          factor_name: string;
+          category: string;
+          source_type: string;
+          quantity: string;
+          tax_rate: string;
+          unit_price: string;
+          source_reference: string;
+        }>(
+          `
+        SELECT f.id,f.factor_name,f.category,f.source_type,f.quantity::text,f.tax_rate::text,
+          coalesce(CASE f.source_type WHEN 'PURCHASE_ORDER' THEN po.unit_price WHEN 'SUPPLIER_QUOTE' THEN sq.unit_price END,f.manual_unit_price_tax_inclusive)::text unit_price,
+          coalesce(CASE f.source_type WHEN 'PURCHASE_ORDER' THEN po.reference WHEN 'SUPPLIER_QUOTE' THEN sq.reference END,'手工录入') source_reference
+        FROM cost_specification_factors f
+        LEFT JOIN LATERAL (SELECT pol.unit_price,po.po_number reference FROM purchase_order_lines pol JOIN purchase_orders po ON po.id=pol.purchase_order_id AND po.tenant_id=pol.tenant_id WHERE pol.tenant_id=f.tenant_id AND pol.item_version_id=f.source_item_version_id AND po.status IN('ISSUED','PARTIALLY_RECEIVED','RECEIVED') ORDER BY po.ordered_at DESC NULLS LAST,po.created_at DESC LIMIT 1)po ON true
+        LEFT JOIN LATERAL (SELECT sql.unit_price,sq.quote_reference reference FROM supplier_quote_lines sql JOIN supplier_quotes sq ON sq.id=sql.supplier_quote_id AND sq.tenant_id=sql.tenant_id JOIN procurement_rfq_lines rl ON rl.id=sql.rfq_line_id AND rl.tenant_id=sql.tenant_id WHERE sql.tenant_id=f.tenant_id AND rl.item_version_id=f.source_item_version_id ORDER BY sq.received_at DESC LIMIT 1)sq ON true
+        WHERE f.tenant_id=$1 AND f.specification_model_id=$2 ORDER BY f.sort_order,f.factor_code`,
+          [actor.companyId, modelId],
+        )
+      ).rows;
+      const trace = factors.map((f) => {
+        const inclusive = Number(f.unit_price),
+          unit = pricingMode === 'TAX_INCLUSIVE' ? inclusive : inclusive / (1 + Number(f.tax_rate));
+        return {
+          factorId: f.id,
+          factorName: f.factor_name,
+          category: f.category,
+          sourceType: f.source_type,
+          sourceReference: f.source_reference,
+          quantity: f.quantity,
+          unitPrice: unit.toFixed(6),
+          amount: (Number(f.quantity) * unit).toFixed(6),
+        };
+      });
+      const directCategories = new Set([
+        'DIRECT_MATERIAL',
+        'DIRECT_LABOR',
+        'DIRECT_ENERGY',
+        'DIRECT_OVERHEAD',
+      ]);
+      const direct = trace
+        .filter((f) => directCategories.has(f.category))
+        .reduce((s, f) => s + Number(f.amount), 0);
+      const reserved = trace
+        .filter((f) => !directCategories.has(f.category))
+        .reduce((s, f) => s + Number(f.amount), 0);
+      const row = (
+        await tx.query<JsonObject>(
+          'INSERT INTO cost_matrix_calculations(tenant_id,specification_model_id,pricing_mode,currency,direct_production_cost,reserved_expense_cost,total_cost,factor_trace,calculated_by,idempotency_key) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id,pricing_mode AS "pricingMode",direct_production_cost AS "directProductionCost",reserved_expense_cost AS "reservedExpenseCost",total_cost AS "totalCost",factor_trace AS "factorTrace",calculated_at AS "calculatedAt"',
+          [
+            actor.companyId,
+            modelId,
+            pricingMode,
+            model.currency,
+            direct.toFixed(6),
+            reserved.toFixed(6),
+            (direct + reserved).toFixed(6),
+            JSON.stringify(trace),
+            actor.employeeId,
+            idempotencyKey,
+          ],
+        )
+      ).rows[0];
+      if (!row) throw new DomainError('conflict', 'Cost calculation failed');
+      if (typeof row.id !== 'string')
+        throw new DomainError('conflict', 'Cost calculation identifier missing');
+      await evidence(
+        tx,
+        'cost-matrix.calculated',
+        actor,
+        row.id,
+        1,
+        correlationId,
+        row,
+        'cost-matrix-calculation',
+      );
+      return row;
+    });
+  }
   public async listDefinitions(
     kind: 'cost' | 'policy',
     actor: Actor,

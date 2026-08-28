@@ -40,6 +40,9 @@ export type CommercialPermission =
   | 'technical-solution:update'
   | 'cost-model:read'
   | 'cost-model:manage'
+  | 'cost-matrix:read'
+  | 'cost-matrix:manage'
+  | 'cost-matrix:calculate'
   | 'cost:read'
   | 'cost:evaluate'
   | 'sales-policy:manage'
@@ -1376,6 +1379,7 @@ export class CommercialController {
         ['ctr:read', '/api/v1/ctrs'],
         ['technical-solution:read', '/api/v1/technical-solutions'],
         ['cost-model:read', '/api/v1/cost-models'],
+        ['cost-matrix:read', '/api/v1/cost-matrices'],
         ['cost:read', '/api/v1/cost-evaluations'],
         ['sales-policy:read', '/api/v1/sales-policies'],
         ['sales-policy:read', '/api/v1/sales-policy-evaluations'],
@@ -1927,7 +1931,7 @@ export function commercialWorkspaceStructure(
             await controller.submit('/api/v1/production-orders', {
               ...values,
               ...(values.mrpProposalId ? {} : { mrpProposalId: undefined }),
-            });
+            })();
             await refresh();
           },
         );
@@ -3561,6 +3565,253 @@ export function commercialWorkspaceStructure(
       costHeading.append(costCopy, createModel);
     } else costHeading.append(costCopy);
     costPanel.append(costHeading);
+    const matrices = controller.views.get('/api/v1/cost-matrices') ?? [];
+    const itemVersions = (controller.views.get('/api/v1/manufacturing-items') ?? []).flatMap(
+      (item) =>
+        (Array.isArray(item.versions) ? item.versions : []).map((candidate) => {
+          const version = candidate as Record<string, unknown>;
+          return {
+            value: textValue(version.id, ''),
+            label: `${textValue(item.sku, '物料')} · ${textValue(item.name, '')} · 第 ${textValue(version.version, '1')} 版`,
+          };
+        }),
+    );
+    const matrixSection = el('section', 'cost-matrix-section');
+    const matrixHeading = el('div', 'pipeline-heading');
+    matrixHeading.append(el('div', '', '规格成本模型矩阵'));
+    if (permissions.has('cost-matrix:manage')) {
+      const createMatrix = el('button', 'primary', '新建规格模型');
+      createMatrix.addEventListener('click', () => {
+        openForm(
+          workspace,
+          '新建规格成本模型',
+          '每种成品规格独立维护成本因子、税率和价格来源。',
+          [
+            { name: 'code', label: '规格模型编号', required: true, placeholder: 'KT-50-3/8' },
+            { name: 'name', label: '产品规格名称', required: true, placeholder: '50mm 单丝加密型' },
+            ...(itemVersions.length
+              ? [
+                  {
+                    name: 'productItemVersionId',
+                    label: '关联成品规格',
+                    type: 'select' as const,
+                    required: false,
+                    options: [{ value: '', label: '暂不关联' }, ...itemVersions],
+                  },
+                ]
+              : []),
+            {
+              name: 'currency',
+              label: '币种',
+              type: 'select',
+              required: true,
+              options: [{ value: 'CNY', label: '人民币' }],
+            },
+            {
+              name: 'defaultTaxRate',
+              label: '默认税率（小数）',
+              type: 'number',
+              required: true,
+              value: '0.13',
+            },
+          ],
+          '创建模型',
+          async (values) => {
+            await controller.submit('/api/v1/cost-matrices', {
+              code: values.code ?? '',
+              name: values.name ?? '',
+              ...(values.productItemVersionId
+                ? { productItemVersionId: values.productItemVersionId }
+                : {}),
+              productSpecification: { displayName: values.name ?? '' },
+              currency: values.currency ?? 'CNY',
+              defaultTaxRate: values.defaultTaxRate ?? '0.13',
+            });
+            await controller.load();
+            status.textContent = controller.message;
+          },
+        );
+      });
+      matrixHeading.append(createMatrix);
+    }
+    matrixSection.append(matrixHeading);
+    const categoryOptions = [
+      ['DIRECT_MATERIAL', '直接材料'],
+      ['DIRECT_LABOR', '直接人工'],
+      ['DIRECT_ENERGY', '直接能源'],
+      ['DIRECT_OVERHEAD', '直接制造费用'],
+      ['FIXED', '固定成本（预留）'],
+      ['PERSONNEL', '人员成本（预留）'],
+      ['FINANCE', '财务费用（预留）'],
+      ['MARKETING', '营销费用（预留）'],
+      ['OTHER', '其他费用'],
+    ].map(([value, label]) => ({ value: value ?? '', label: label ?? '' }));
+    for (const matrix of matrices) {
+      const card = el('article', 'cost-matrix-card');
+      const latest = (
+        matrix.latestCalculation && typeof matrix.latestCalculation === 'object'
+          ? matrix.latestCalculation
+          : null
+      ) as Record<string, unknown> | null;
+      card.append(
+        el('strong', '', `${textValue(matrix.code, '规格')} · ${textValue(matrix.name, '')}`),
+        el(
+          'p',
+          'muted',
+          `${currencyLabel(matrix.currency)} · 默认税率 ${(Number(matrix.defaultTaxRate ?? 0) * 100).toFixed(0)}% · ${String(Array.isArray(matrix.factors) ? matrix.factors.length : 0)} 个成本因子`,
+        ),
+      );
+      if (latest) {
+        const totals = el('div', 'cost-matrix-totals');
+        totals.append(
+          el('span', '', '直接生产成本'),
+          el('strong', '', `¥ ${Number(latest.directProductionCost ?? 0).toFixed(2)}`),
+          el('span', '', '预留费用'),
+          el('strong', '', `¥ ${Number(latest.reservedExpenseCost ?? 0).toFixed(2)}`),
+          el('span', '', '综合成本'),
+          el('strong', '', `¥ ${Number(latest.totalCost ?? 0).toFixed(2)}`),
+        );
+        card.append(totals);
+      }
+      const factors = Array.isArray(matrix.factors) ? matrix.factors : [];
+      const table = el('div', 'cost-factor-list');
+      for (const candidate of factors) {
+        const factor = candidate as Record<string, unknown>;
+        table.append(
+          el(
+            'div',
+            'cost-factor-row',
+            `${textValue(factor.factorName, '成本因子')} · ${categoryOptions.find((x) => x.value === factor.category)?.label ?? textValue(factor.category, '')} · 数量 ${textValue(factor.quantity, '0')} · ${textValue(factor.sourceType, 'MANUAL') === 'MANUAL' ? '手工价格' : textValue(factor.sourceType, '')}`,
+          ),
+        );
+      }
+      if (factors.length === 0)
+        table.append(
+          el(
+            'p',
+            'pipeline-empty',
+            '尚未配置成本因子。建议先录入草丝、底布、胶水、包装、人工和能源。',
+          ),
+        );
+      card.append(table);
+      const actions = el('div', 'inline-actions');
+      if (permissions.has('cost-matrix:manage')) {
+        const add = el('button', 'secondary', '添加成本因子');
+        add.addEventListener('click', () => {
+          openForm(
+            workspace,
+            `添加因子 · ${textValue(matrix.name, '')}`,
+            '采购订单或供应商报价来源将自动读取最新有效价格；费用类可先手工录入。',
+            [
+              { name: 'factorCode', label: '因子编号', required: true, placeholder: 'YARN-PE' },
+              { name: 'factorName', label: '因子名称', required: true, placeholder: 'PE 草丝' },
+              {
+                name: 'category',
+                label: '成本类别',
+                type: 'select',
+                required: true,
+                options: categoryOptions,
+              },
+              {
+                name: 'sourceType',
+                label: '价格来源',
+                type: 'select',
+                required: true,
+                options: [
+                  { value: 'MANUAL', label: '手工录入' },
+                  { value: 'PURCHASE_ORDER', label: '最新采购订单' },
+                  { value: 'SUPPLIER_QUOTE', label: '最新供应商报价' },
+                ],
+              },
+              ...(itemVersions.length
+                ? [
+                    {
+                      name: 'sourceItemVersionId',
+                      label: '关联采购物料',
+                      type: 'select' as const,
+                      required: false,
+                      options: [{ value: '', label: '手工因子无需关联' }, ...itemVersions],
+                    },
+                  ]
+                : []),
+              {
+                name: 'quantity',
+                label: '单位产品耗用量',
+                type: 'number',
+                required: true,
+                value: '1',
+              },
+              {
+                name: 'manualUnitPriceTaxInclusive',
+                label: '手工含税单价',
+                type: 'number',
+                required: true,
+                value: '0',
+              },
+              {
+                name: 'taxRate',
+                label: '税率（小数）',
+                type: 'number',
+                required: true,
+                value: textValue(matrix.defaultTaxRate, '0.13'),
+              },
+              {
+                name: 'sortOrder',
+                label: '显示顺序',
+                type: 'number',
+                required: true,
+                value: String(factors.length + 1),
+              },
+            ],
+            '保存因子',
+            async (values) => {
+              await controller.submit(`/api/v1/cost-matrices/${textValue(matrix.id, '')}/factors`, {
+                factorCode: values.factorCode ?? '',
+                factorName: values.factorName ?? '',
+                category: values.category ?? 'DIRECT_MATERIAL',
+                sourceType: values.sourceType ?? 'MANUAL',
+                ...(values.sourceItemVersionId
+                  ? { sourceItemVersionId: values.sourceItemVersionId }
+                  : {}),
+                quantity: values.quantity ?? '1',
+                manualUnitPriceTaxInclusive: values.manualUnitPriceTaxInclusive ?? '0',
+                taxRate: values.taxRate ?? '0.13',
+                adjustable: true,
+                sortOrder: Number(values.sortOrder ?? 0),
+              });
+              await controller.load();
+              status.textContent = controller.message;
+            },
+          );
+        });
+        actions.append(add);
+      }
+      if (permissions.has('cost-matrix:calculate'))
+        for (const [mode, label] of [
+          ['TAX_INCLUSIVE', '一键核算含税成本'],
+          ['TAX_EXCLUSIVE', '一键核算未税成本'],
+        ] as const) {
+          const calculate = el('button', mode === 'TAX_INCLUSIVE' ? 'primary' : 'secondary', label);
+          calculate.addEventListener('click', () => {
+            void (async () => {
+              await controller.submit(
+                `/api/v1/cost-matrices/${textValue(matrix.id, '')}/calculate`,
+                { pricingMode: mode },
+              );
+              await controller.load();
+              status.textContent = controller.message;
+            })();
+          });
+          actions.append(calculate);
+        }
+      card.append(actions);
+      matrixSection.append(card);
+    }
+    if (matrices.length === 0)
+      matrixSection.append(
+        el('p', 'pipeline-empty', '暂无规格成本模型。请先按常用产品规格建立模型矩阵。'),
+      );
+    costPanel.append(matrixSection);
     const modelCatalog = el('div', 'definition-catalog');
     const latestModelVersions = new Map<string, number>();
     for (const model of models) {

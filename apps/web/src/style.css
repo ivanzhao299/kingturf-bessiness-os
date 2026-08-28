@@ -1929,6 +1929,73 @@ button {
 .decision-workbench > .primary {
   margin-bottom: 14px;
 }
+.cost-matrix-section {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 20px;
+  padding: 16px;
+  border: 1px solid #dbe7e0;
+  border-radius: 10px;
+  background: #f7faf8;
+}
+.cost-matrix-section > .pipeline-heading {
+  margin: 0;
+  color: #203b2f;
+  font-size: 15px;
+  font-weight: 800;
+}
+.cost-matrix-card {
+  display: grid;
+  gap: 10px;
+  padding: 15px;
+  border: 1px solid #dce6e0;
+  border-radius: 9px;
+  background: #fff;
+}
+.cost-matrix-card > p {
+  margin: 0;
+}
+.cost-matrix-totals {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(100px, auto) minmax(90px, 1fr));
+  gap: 6px 12px;
+  align-items: baseline;
+  padding: 10px 12px;
+  border-radius: 7px;
+  background: #edf5f0;
+}
+.cost-matrix-totals span {
+  color: #64776d;
+  font-size: 10px;
+}
+.cost-matrix-totals strong {
+  color: #0d6844;
+  font-variant-numeric: tabular-nums;
+}
+.cost-factor-list {
+  display: grid;
+  gap: 4px;
+}
+.cost-factor-row {
+  padding: 8px 10px;
+  border-bottom: 1px solid #edf1ee;
+  color: #40564b;
+  font-size: 11px;
+}
+.cost-matrix-card .inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+@media (max-width: 800px) {
+  .cost-matrix-totals {
+    grid-template-columns: minmax(110px, 1fr) minmax(100px, 1fr);
+  }
+  .cost-matrix-section > .pipeline-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
 .definition-catalog {
   display: flex;
   gap: 8px;
