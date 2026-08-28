@@ -3135,6 +3135,36 @@ button {
   white-space: pre-line;
   line-height: 1.55;
 }
+
+.contract-document-panel {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 0.8rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--border-subtle, #dfe7e2);
+}
+
+.contract-document-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: 8px;
+  background: var(--surface-muted, #f5f8f6);
+  font-size: 0.86rem;
+  white-space: normal;
+}
+
+.contract-document-row > span:first-child {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+.compact {
+  min-height: 2rem;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.82rem;
+}
 .inventory-balance-card {
   border-left-color: #b17b2c;
 }
