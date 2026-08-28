@@ -5616,6 +5616,26 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             },
           };
         }
+        if (
+          request.pathname === '/api/v1/business-documents/reference-data' &&
+          request.method === 'GET'
+        ) {
+          const grant = authorizeQuery(context, 'business-document:manage');
+          if (!dependencies.businessDocuments)
+            return error(
+              503,
+              'internal_error',
+              'Business document repository unavailable',
+              correlationId,
+            );
+          return {
+            statusCode: 200,
+            body: await dependencies.businessDocuments.referenceData({
+              actor: context.actor,
+              scopes: grant.scopes,
+            }),
+          };
+        }
         if (request.pathname === '/api/v1/business-documents' && request.method === 'POST') {
           authorizeQuery(context, 'business-document:manage');
           if (!dependencies.businessDocuments)
@@ -5626,7 +5646,19 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               correlationId,
             );
           const b = objectBody(request.body);
-          allow(b, ['templateKey', 'title', 'route', 'subjectType', 'subjectId', 'content']);
+          allow(b, [
+            'templateKey',
+            'title',
+            'route',
+            'subjectType',
+            'subjectId',
+            'customerId',
+            'salesOrderId',
+            'operatorId',
+            'salespersonId',
+            'assignedTo',
+            'content',
+          ]);
           return {
             statusCode: 201,
             body: await dependencies.businessDocuments.create(
@@ -5640,6 +5672,13 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
                       subjectId: uuid(b.subjectId, 'subjectId'),
                     }
                   : {}),
+                ...(b.customerId ? { customerId: uuid(b.customerId, 'customerId') } : {}),
+                ...(b.salesOrderId ? { salesOrderId: uuid(b.salesOrderId, 'salesOrderId') } : {}),
+                ...(b.operatorId ? { operatorId: uuid(b.operatorId, 'operatorId') } : {}),
+                ...(b.salespersonId
+                  ? { salespersonId: uuid(b.salespersonId, 'salespersonId') }
+                  : {}),
+                ...(b.assignedTo ? { assignedTo: uuid(b.assignedTo, 'assignedTo') } : {}),
                 content: jsonObject(b.content, 'content'),
               },
               context.actor,
@@ -5691,6 +5730,41 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
                 expectedVersion: version(b.expectedVersion),
                 content: jsonObject(b.content, 'content'),
                 changeSummary: string(b.changeSummary, 'changeSummary'),
+              },
+              { actor: context.actor, scopes: grant.scopes },
+              correlationId,
+            ),
+          };
+        }
+        const businessDocumentBindings =
+          /^\/api\/v1\/business-documents\/([0-9a-f-]+)\/bindings$/u.exec(request.pathname);
+        if (businessDocumentBindings && request.method === 'PATCH') {
+          const grant = authorizeQuery(context, 'business-document:manage');
+          if (!dependencies.businessDocuments)
+            return error(
+              503,
+              'internal_error',
+              'Business document repository unavailable',
+              correlationId,
+            );
+          const b = objectBody(request.body);
+          allow(b, ['customerId', 'salesOrderId', 'operatorId', 'salespersonId', 'assignedTo']);
+          const nullableUuid = (value: unknown, field: string): string | null | undefined =>
+            value === undefined
+              ? undefined
+              : value === null || value === ''
+                ? null
+                : uuid(value, field);
+          return {
+            statusCode: 200,
+            body: await dependencies.businessDocuments.updateBindings(
+              businessDocumentBindings[1] ?? '',
+              {
+                customerId: nullableUuid(b.customerId, 'customerId'),
+                salesOrderId: nullableUuid(b.salesOrderId, 'salesOrderId'),
+                operatorId: nullableUuid(b.operatorId, 'operatorId'),
+                salespersonId: nullableUuid(b.salespersonId, 'salespersonId'),
+                assignedTo: nullableUuid(b.assignedTo, 'assignedTo'),
               },
               { actor: context.actor, scopes: grant.scopes },
               correlationId,

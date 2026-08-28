@@ -9361,6 +9361,16 @@ type OnlineBusinessDocument = Readonly<{
   route: string;
   state?: 'DRAFT' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED' | 'ARCHIVED';
   currentVersion: number;
+  customerId?: string;
+  customerName?: string;
+  salesOrderId?: string;
+  salesOrderNumber?: string;
+  operatorId?: string;
+  operatorName?: string;
+  salespersonId?: string;
+  salespersonName?: string;
+  assignedTo?: string;
+  assigneeName?: string;
   reviewEvents?: readonly Readonly<{
     action: 'SUBMITTED' | 'APPROVED' | 'REJECTED';
     reason: string;
@@ -9582,6 +9592,19 @@ const openOnlineDocumentEditor = (
   documentScroll.setAttribute('aria-label', '文档页面');
   const actionPanel = el('section', 'business-document-action-panel');
   actionPanel.setAttribute('aria-label', '版本保存与审核');
+  const bindingSummary = el(
+    'p',
+    'business-document-binding-summary',
+    [
+      documentData.customerName ? `客户：${documentData.customerName}` : '',
+      documentData.salesOrderNumber ? `订单：${documentData.salesOrderNumber}` : '',
+      documentData.operatorName ? `经办人：${documentData.operatorName}` : '',
+      documentData.salespersonName ? `业务员：${documentData.salespersonName}` : '',
+      documentData.assigneeName ? `下一处理人：${documentData.assigneeName}` : '',
+    ]
+      .filter(Boolean)
+      .join('　') || '尚未绑定客户、订单或处理人',
+  );
   const title = el('input');
   title.value = documentData.title;
   title.readOnly = true;
@@ -9804,7 +9827,7 @@ const openOnlineDocumentEditor = (
         );
       });
   });
-  documentScroll.append(title, toolbar, body);
+  documentScroll.append(title, bindingSummary, toolbar, body);
   actionPanel.append(summary, save, status);
   editor.append(documentScroll, actionPanel);
   toolbar.hidden = !editable || !permissions.manage;
@@ -11694,6 +11717,68 @@ export function createCrmShell(
         });
       contextualDocuments.append(subjectSelect);
     }
+    const bindingValues = {
+      customers: new Map<string, string>(),
+      orders: new Map<string, Readonly<{ name: string; customerId: string }>>(),
+      employees: new Map<string, string>(),
+    };
+    const bindingGrid = el('div', 'business-document-binding-grid');
+    const bindingSelect = (label: string): HTMLSelectElement => {
+      const select = el('select');
+      select.setAttribute('aria-label', label);
+      select.append(businessDocumentOption(`选择${label}`, ''));
+      return select;
+    };
+    const customerBinding = bindingSelect('客户');
+    const orderBinding = bindingSelect('销售订单');
+    const operatorBinding = bindingSelect('经办人');
+    const salespersonBinding = bindingSelect('业务员');
+    const assigneeBinding = bindingSelect('下一处理人');
+    if (allPermissions.has('business-document:manage')) {
+      for (const [label, select] of [
+        ['客户', customerBinding],
+        ['销售订单', orderBinding],
+        ['经办人', operatorBinding],
+        ['业务员', salespersonBinding],
+        ['下一处理人', assigneeBinding],
+      ] as const) {
+        const field = el('label', 'business-document-binding-field');
+        field.append(el('span', '', label), select);
+        bindingGrid.append(field);
+      }
+      contextualDocuments.append(bindingGrid);
+      void onlineDocumentApi<{
+        customers: readonly Readonly<{ id: string; name: string; number: string }>[];
+        orders: readonly Readonly<{ id: string; name: string; customerId: string }>[];
+        employees: readonly Readonly<{ id: string; name: string; number: string }>[];
+      }>('/api/v1/business-documents/reference-data')
+        .then((references) => {
+          for (const customer of references.customers) {
+            bindingValues.customers.set(customer.id, customer.name);
+            customerBinding.append(
+              businessDocumentOption(`${customer.number} · ${customer.name}`, customer.id),
+            );
+          }
+          for (const order of references.orders) {
+            bindingValues.orders.set(order.id, order);
+            orderBinding.append(businessDocumentOption(order.name, order.id));
+          }
+          for (const employee of references.employees) {
+            bindingValues.employees.set(employee.id, employee.name);
+            for (const select of [operatorBinding, salespersonBinding, assigneeBinding])
+              select.append(
+                businessDocumentOption(`${employee.number} · ${employee.name}`, employee.id),
+              );
+          }
+        })
+        .catch(() => {
+          bindingGrid.append(el('p', 'operation-status', '业务绑定数据加载失败，请刷新后重试'));
+        });
+      orderBinding.addEventListener('change', () => {
+        const order = bindingValues.orders.get(orderBinding.value);
+        if (order?.customerId) customerBinding.value = order.customerId;
+      });
+    }
     const contextualGrid = el('div', 'contextual-document-grid');
     const selectionStatus = el(
       'p',
@@ -11739,12 +11824,36 @@ export function createCrmShell(
               ...(subjectConfig && subjectSelect.value
                 ? { subjectType: subjectConfig.type, subjectId: subjectSelect.value }
                 : {}),
+              ...(customerBinding.value ? { customerId: customerBinding.value } : {}),
+              ...(orderBinding.value ? { salesOrderId: orderBinding.value } : {}),
+              ...(operatorBinding.value ? { operatorId: operatorBinding.value } : {}),
+              ...(salespersonBinding.value ? { salespersonId: salespersonBinding.value } : {}),
+              ...(assigneeBinding.value ? { assignedTo: assigneeBinding.value } : {}),
               content: {
                 html: buildBusinessDocumentTemplateHtml(
                   template.file,
                   template.name,
                   template.description,
-                  businessDocumentPrefill(subjectRecords.get(subjectSelect.value)),
+                  [
+                    businessDocumentPrefill(subjectRecords.get(subjectSelect.value)),
+                    customerBinding.value
+                      ? `客户：${bindingValues.customers.get(customerBinding.value) ?? customerBinding.value}`
+                      : '',
+                    orderBinding.value
+                      ? `销售订单：${bindingValues.orders.get(orderBinding.value)?.name ?? orderBinding.value}`
+                      : '',
+                    operatorBinding.value
+                      ? `经办人：${bindingValues.employees.get(operatorBinding.value) ?? operatorBinding.value}`
+                      : '',
+                    salespersonBinding.value
+                      ? `业务员：${bindingValues.employees.get(salespersonBinding.value) ?? salespersonBinding.value}`
+                      : '',
+                    assigneeBinding.value
+                      ? `下一处理人：${bindingValues.employees.get(assigneeBinding.value) ?? assigneeBinding.value}`
+                      : '',
+                  ]
+                    .filter(Boolean)
+                    .join('\n'),
                   new Date().toLocaleDateString('zh-CN'),
                 ),
               },
@@ -11794,7 +11903,7 @@ export function createCrmShell(
             const open = el(
               'button',
               'business-document-open',
-              `${item.title} · V${String(item.currentVersion)}`,
+              `${item.title} · V${String(item.currentVersion)}${item.assigneeName ? ` · 待办：${item.assigneeName}` : ''}`,
             );
             open.type = 'button';
             open.addEventListener('click', () => {

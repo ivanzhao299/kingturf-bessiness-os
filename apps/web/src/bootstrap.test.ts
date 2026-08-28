@@ -767,6 +767,10 @@ describe('web bootstrap', () => {
     expect(source).toContain('data-document-pagination');
     expect(source).toContain('data-document-scroll');
     expect(source).toContain('business-document-action-panel');
+    expect(source).toContain('business-document-binding-grid');
+    expect(source).toContain('/api/v1/business-documents/reference-data');
+    expect(source).toContain('business-document-binding-summary');
+    expect(source).toContain('下一处理人');
     expect(source).toContain('上一页');
     expect(source).toContain('下一页');
     expect(source).toContain('打印 / 导出 PDF');
