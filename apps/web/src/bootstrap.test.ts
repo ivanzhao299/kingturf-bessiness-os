@@ -111,6 +111,29 @@ it('keeps login and workspace introductions concise and task-oriented', () => {
   expect(source).not.toContain('让订单、生产与交付证据在一条业务链上闭环');
 });
 
+it('makes authentication and startup progress explicit, single-flight and recoverable', () => {
+  const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+  const loginFlow = readFileSync(new URL('./login-flow.ts', import.meta.url), 'utf8');
+  const styles = readFileSync(new URL('./style.css', import.meta.url), 'utf8');
+  expect(source).toContain("identity.autocomplete = 'username'");
+  expect(source).toContain("password.autocomplete = 'current-password'");
+  expect(source).toContain("form.setAttribute('aria-busy', String(busy))");
+  expect(source).toContain("startupView(root, '正在验证登录状态…')");
+  expect(source).toContain('startupFailureView(root)');
+  expect(loginFlow).toContain('if (this.pending) return this.pending');
+  expect(styles).toContain(".login-status[data-state='loading']::before");
+  expect(styles).toContain('.startup-shell');
+});
+
+it('uses the canonical shipment release source and caches repeated document reference reads', () => {
+  const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+  expect(source).toContain("endpoint: '/api/v1/shipment-releases'");
+  expect(source).not.toContain("endpoint: '/api/v1/shipments'");
+  expect(source).toContain('const onlineDocumentReadCache = new Map');
+  expect(source).toContain('void onlineDocumentRead<{');
+  expect(source).toContain('permittedRoutes.has(route)');
+});
+
 it('keeps product pages on one content rail and renders business records as dense registers', () => {
   const styles = readFileSync(new URL('./style.css', import.meta.url), 'utf8');
   expect(styles).toContain('KT-UI-PROD-03: consistent page rail and record-register hierarchy');
@@ -263,10 +286,33 @@ it('loads the permission-scoped commercial views concurrently', async () => {
     uploadCtrAttachment: vi.fn().mockResolvedValue({}),
     command: vi.fn().mockResolvedValue({}),
   };
-  const controller = new CommercialController(api, new Set(['quote:read', 'contract:read']));
+  const controller = new CommercialController(
+    api,
+    new Set(['opportunity:read', 'quote:read', 'contract:read']),
+  );
   await controller.load();
   expect(api.list).toHaveBeenCalledTimes(2);
   expect(peak).toBe(2);
+});
+
+it('keeps the commercial workspace usable when one secondary data source fails', async () => {
+  const api = {
+    listOpportunities: vi.fn().mockResolvedValue([{ id: 'opportunity-1' }]),
+    list: vi
+      .fn()
+      .mockResolvedValueOnce([])
+      .mockRejectedValueOnce(new Error('secondary source unavailable')),
+    submit: vi.fn().mockResolvedValue({}),
+    uploadCtrAttachment: vi.fn().mockResolvedValue({}),
+    command: vi.fn().mockResolvedValue({}),
+  };
+  const controller = new CommercialController(
+    api,
+    new Set(['opportunity:read', 'quote:read', 'contract:read']),
+  );
+  await expect(controller.load()).resolves.toBeUndefined();
+  expect(controller.opportunities).toEqual([{ id: 'opportunity-1' }]);
+  expect(controller.message).toContain('1 个数据源暂不可用');
 });
 
 it('prioritizes overdue and incomplete active opportunities', () => {

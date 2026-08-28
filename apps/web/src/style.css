@@ -3839,6 +3839,103 @@ button:not(:disabled):active {
   margin-top: 18px;
   border-radius: 11px;
 }
+.login-card[aria-busy='true'] input {
+  opacity: 0.72;
+}
+.login-status {
+  display: flex;
+  align-items: center;
+  min-height: 24px;
+  margin: 12px 0 0;
+  color: var(--kt-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.login-status:empty {
+  visibility: hidden;
+}
+.login-status[data-state='loading']::before {
+  width: 14px;
+  height: 14px;
+  margin-right: 8px;
+  border: 2px solid rgb(23 107 75 / 20%);
+  border-top-color: var(--kt-primary);
+  border-radius: 50%;
+  animation: kt-spin 0.8s linear infinite;
+  content: '';
+}
+.login-status[data-state='error'] {
+  color: #9d2929;
+}
+.startup-shell {
+  display: grid;
+  justify-items: center;
+  width: min(560px, calc(100% - 32px));
+  min-height: 360px;
+  margin: max(48px, 14vh) auto;
+  border: 1px solid var(--kt-border);
+  border-radius: 24px;
+  padding: clamp(36px, 7vw, 64px);
+  background: var(--kt-surface);
+  box-shadow: var(--kt-shadow-lg);
+  text-align: center;
+  align-content: center;
+}
+.startup-shell img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+}
+.startup-shell h1 {
+  margin: 10px 0 8px;
+  color: var(--kt-text);
+  font-size: clamp(26px, 5vw, 36px);
+  letter-spacing: -0.035em;
+}
+.startup-status {
+  max-width: 420px;
+  margin: 0;
+  color: var(--kt-muted);
+  line-height: 1.7;
+}
+.startup-progress {
+  width: min(280px, 80%);
+  height: 5px;
+  margin-top: 26px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--kt-primary-soft);
+}
+.startup-progress::after {
+  display: block;
+  width: 42%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--kt-primary);
+  animation: startup-progress 1.25s ease-in-out infinite alternate;
+  content: '';
+}
+.startup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 24px;
+}
+@keyframes startup-progress {
+  from {
+    transform: translateX(-15%);
+  }
+  to {
+    transform: translateX(155%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .login-status[data-state='loading']::before,
+  .startup-progress::after {
+    animation: none;
+  }
+}
 @media (max-width: 820px) {
   .login-shell {
     grid-template-columns: 1fr;
