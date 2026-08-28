@@ -24,7 +24,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0060_business_document_approval.sql');
+    expect(ordered.at(-1)).toBe('0061_contract_document_lifecycle.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
@@ -68,6 +68,25 @@ describe('identity and authorization migration', () => {
     expect(triggerRepair).toContain('JOIN quotes quote_root');
     expect(triggerRepair).toContain("IF TG_TABLE_NAME='sales_orders' THEN");
     expect(triggerRepair).not.toContain('JOIN quotes q ON');
+  });
+
+  it('adds purchase and sales contract upload OCR review and signing evidence', async () => {
+    const sql = await readFile(
+      join(process.cwd(), 'migrations/0061_contract_document_lifecycle.sql'),
+      'utf8',
+    );
+    for (const table of [
+      'contract_documents',
+      'contract_ocr_events',
+      'contract_signature_envelopes',
+      'contract_signature_signers',
+      'contract_signature_events',
+    ])
+      expect(sql).toContain(`CREATE TABLE ${table}`);
+    expect(sql).toContain('business_type contract_business_type');
+    expect(sql).toContain("'contract-ocr:review'");
+    expect(sql).toContain("'contract-signature:confirm'");
+    expect(sql).toContain('UNIQUE(tenant_id,provider_event_id)');
   });
   it('adds immutable shipment gates, separated exception approval, tracking, and proof of delivery', async () => {
     const sql = await readFile(
