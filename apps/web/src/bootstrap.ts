@@ -9191,7 +9191,7 @@ const openOnlineDocumentEditor = (
   const commandBar = el('div', 'business-document-commandbar');
   const viewGroup = el('div', 'business-document-command-group');
   const editMode = el('button', 'secondary compact active', '编辑');
-  const previewMode = el('button', 'secondary compact', '预览');
+  const previewMode = el('button', 'secondary compact', '阅读预览');
   editMode.type = previewMode.type = 'button';
   editMode.setAttribute('aria-pressed', 'true');
   previewMode.setAttribute('aria-pressed', 'false');
@@ -9221,9 +9221,20 @@ const openOnlineDocumentEditor = (
     'aria-expanded',
     String(!workspace.classList.contains('history-collapsed')),
   );
-  const print = el('button', 'secondary compact', '打印');
+  const pagination = el('div', 'business-document-pagination');
+  pagination.setAttribute('data-document-pagination', 'true');
+  const previousPage = el('button', 'secondary compact', '上一页');
+  const pageIndicator = el('span', 'business-document-page-indicator', '第 1 / 1 页');
+  const nextPage = el('button', 'secondary compact', '下一页');
+  previousPage.type = nextPage.type = 'button';
+  previousPage.setAttribute('aria-label', '上一页');
+  nextPage.setAttribute('aria-label', '下一页');
+  pageIndicator.setAttribute('aria-live', 'polite');
+  pagination.append(previousPage, pageIndicator, nextPage);
+  const print = el('button', 'secondary compact', '打印 / 导出 PDF');
   print.type = 'button';
-  commandBar.append(viewGroup, pageSize, zoom, toggleHistory, print);
+  print.setAttribute('aria-label', '打印或导出 PDF');
+  commandBar.append(viewGroup, pageSize, zoom, pagination, toggleHistory, print);
   const body = el('div');
   body.className = 'business-document-body';
   body.contentEditable = 'true';
@@ -9245,6 +9256,51 @@ const openOnlineDocumentEditor = (
   body.setAttribute('role', 'textbox');
   const editable = !documentData.state || ['DRAFT', 'REJECTED'].includes(documentData.state);
   body.contentEditable = String(editable && permissions.manage);
+  const documentPageHeight = (): number => {
+    const pageHeights: Readonly<Record<BusinessDocumentPageSize, number>> = {
+      'a4-portrait': 1123,
+      'a4-landscape': 794,
+      'a3-portrait': 1587,
+      adaptive: Math.max(680, editor.clientHeight),
+    };
+    return pageHeights[pageSize.value as BusinessDocumentPageSize] * Number(zoom.value);
+  };
+  const documentPageState = (): Readonly<{ current: number; total: number }> => {
+    const pageHeight = Math.max(1, documentPageHeight());
+    const total = Math.max(1, Math.ceil(body.scrollHeight / pageHeight));
+    const readingOffset = Math.max(0, editor.scrollTop - body.offsetTop + 24);
+    const current = Math.min(total, Math.max(1, Math.floor(readingOffset / pageHeight) + 1));
+    return { current, total };
+  };
+  const updateDocumentPagination = (): void => {
+    const { current, total } = documentPageState();
+    pageIndicator.textContent = `第 ${String(current)} / ${String(total)} 页`;
+    previousPage.disabled = current <= 1;
+    nextPage.disabled = current >= total;
+    pagination.hidden = pageSize.value === 'adaptive';
+  };
+  const goToDocumentPage = (direction: -1 | 1): void => {
+    const { current, total } = documentPageState();
+    const target = Math.min(total, Math.max(1, current + direction));
+    editor.scrollTo({
+      top: Math.max(0, body.offsetTop + (target - 1) * documentPageHeight() - 12),
+      behavior: 'smooth',
+    });
+    window.setTimeout(updateDocumentPagination, 220);
+  };
+  previousPage.addEventListener('click', () => {
+    goToDocumentPage(-1);
+  });
+  nextPage.addEventListener('click', () => {
+    goToDocumentPage(1);
+  });
+  editor.addEventListener('scroll', updateDocumentPagination, { passive: true });
+  body.addEventListener('input', updateDocumentPagination);
+  editor.addEventListener('keydown', (event) => {
+    if (event.key !== 'PageUp' && event.key !== 'PageDown') return;
+    event.preventDefault();
+    goToDocumentPage(event.key === 'PageUp' ? -1 : 1);
+  });
   const setViewMode = (mode: 'edit' | 'preview'): void => {
     workspace.dataset.viewMode = mode;
     const canEdit = mode === 'edit' && editable && permissions.manage;
@@ -9263,9 +9319,13 @@ const openOnlineDocumentEditor = (
   });
   pageSize.addEventListener('change', () => {
     workspace.dataset.pageSize = pageSize.value;
+    editor.scrollTop = 0;
+    updateDocumentPagination();
   });
   zoom.addEventListener('change', () => {
     workspace.style.setProperty('--document-zoom', zoom.value);
+    editor.scrollTop = 0;
+    updateDocumentPagination();
   });
   for (const [label, command, value] of [
     ['正文', 'formatBlock', 'p'],
@@ -9457,6 +9517,7 @@ const openOnlineDocumentEditor = (
   });
   document.body.append(dialog);
   dialog.showModal();
+  window.requestAnimationFrame(updateDocumentPagination);
 };
 type FormField = Readonly<{
   name: string;

@@ -560,6 +560,31 @@ button {
   background: var(--kt-primary);
   box-shadow: 0 2px 6px rgb(17 94 65 / 18%);
 }
+.business-document-pagination {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid #d7e0db;
+  border-radius: 8px;
+  background: #fff;
+}
+.business-document-pagination > button {
+  min-height: 28px;
+  padding: 4px 9px;
+  border: 0;
+  background: transparent;
+}
+.business-document-pagination > button:disabled {
+  opacity: 0.38;
+}
+.business-document-page-indicator {
+  min-width: 72px;
+  color: #40574c;
+  text-align: center;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
 .business-document-page-select,
 .business-document-zoom-select {
   width: auto;
@@ -609,7 +634,7 @@ button {
   background: #fff;
   color: #17231d;
   font-family: 'Songti SC', SimSun, serif;
-  font-size: 15px;
+  font-size: calc(15px * var(--document-zoom));
   line-height: 1.9;
   box-shadow: 0 10px 32px rgb(18 45 34 / 14%);
   outline: none;
@@ -3390,6 +3415,47 @@ body {
   --kt-focus: rgb(23 107 75 / 20%);
   --kt-shadow-sm: 0 1px 2px rgb(12 45 33 / 3%), 0 10px 28px rgb(12 45 33 / 4%);
   --kt-shadow-lg: 0 24px 72px rgb(12 45 33 / 12%);
+  --kt-control-height: 40px;
+  --kt-control-radius: 8px;
+  --kt-control-border: #cfdad4;
+  --kt-control-background: #fff;
+  --kt-control-placeholder: #89978f;
+}
+:where(
+  input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']),
+  select,
+  textarea
+) {
+  min-height: var(--kt-control-height);
+  border: 1px solid var(--kt-control-border);
+  border-radius: var(--kt-control-radius);
+  padding: 8px 11px;
+  outline: none;
+  background: var(--kt-control-background);
+  color: var(--kt-ink);
+  line-height: 1.4;
+}
+:where(input, textarea)::placeholder {
+  color: var(--kt-control-placeholder);
+  opacity: 1;
+}
+:where(input, textarea, select):disabled {
+  cursor: not-allowed;
+  border-color: #dce3df;
+  background: #f2f5f3;
+  color: #87938d;
+}
+:where(input, textarea)[readonly] {
+  background: #f7f9f8;
+  color: #5f7068;
+}
+:where(
+  input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']),
+  select,
+  textarea
+):focus {
+  border-color: var(--kt-primary);
+  box-shadow: 0 0 0 3px var(--kt-focus);
 }
 body {
   color: var(--kt-ink);
