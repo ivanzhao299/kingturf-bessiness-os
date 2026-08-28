@@ -8,7 +8,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     volumes:
-      - kingturf_postgres_data:/var/lib/postgresql/data
+      - ${KINGTURF_POSTGRES_DATA_PATH:-kingturf_postgres_data}:/var/lib/postgresql/data
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
       interval: 5s
@@ -39,7 +39,7 @@ services:
       KINGTURF_RELEASE_ENVIRONMENT: production
       KINGTURF_RELEASE_BUILT_AT: ${KINGTURF_RELEASE_BUILT_AT:?KINGTURF_RELEASE_BUILT_AT is required}
     volumes:
-      - kingturf_attachments:/var/lib/kingturf/attachments
+      - ${KINGTURF_ATTACHMENT_DATA_PATH:-kingturf_attachments}:/var/lib/kingturf/attachments
     depends_on:
       postgres:
         condition: service_healthy
