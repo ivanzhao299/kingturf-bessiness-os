@@ -9269,7 +9269,10 @@ const openOnlineDocumentEditor = (
     const pageHeight = Math.max(1, documentPageHeight());
     const total = Math.max(1, Math.ceil(body.scrollHeight / pageHeight));
     const readingOffset = Math.max(0, editor.scrollTop - body.offsetTop + 24);
-    const current = Math.min(total, Math.max(1, Math.floor(readingOffset / pageHeight) + 1));
+    const atDocumentEnd = editor.scrollTop >= editor.scrollHeight - editor.clientHeight - 8;
+    const current = atDocumentEnd
+      ? total
+      : Math.min(total, Math.max(1, Math.floor(readingOffset / pageHeight) + 1));
     return { current, total };
   };
   const updateDocumentPagination = (): void => {
@@ -9287,6 +9290,7 @@ const openOnlineDocumentEditor = (
       behavior: 'smooth',
     });
     window.setTimeout(updateDocumentPagination, 220);
+    window.setTimeout(updateDocumentPagination, 480);
   };
   previousPage.addEventListener('click', () => {
     goToDocumentPage(-1);
