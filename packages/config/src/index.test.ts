@@ -15,6 +15,7 @@ const valid = {
   PASSWORD_SCRYPT_PARALLELIZATION: '1',
   ATTACHMENT_STORAGE_ADAPTER: 'local',
   ATTACHMENT_LOCAL_DIRECTORY: '/tmp/kingturf-test-attachments',
+  WEBSITE_LEAD_INGEST_SECRET: 'test-website-lead-ingest-secret-at-least-32-characters',
 };
 describe('parseEnvironment', () => {
   it('returns an immutable typed configuration', () => {
@@ -36,6 +37,15 @@ describe('parseEnvironment', () => {
         DATABASE_URL: `${valid.DATABASE_URL}?sslmode=disable`,
       }),
     ).toThrow(ConfigurationError);
+    expect(() =>
+      parseEnvironment({
+        ...valid,
+        NODE_ENV: 'production',
+        SESSION_SECRET: 'a-production-secret-that-is-long-enough',
+        ATTACHMENT_LOCAL_DIRECTORY: '/var/lib/kingturf/attachments',
+        WEBSITE_LEAD_INGEST_SECRET: '',
+      }),
+    ).toThrow(/WEBSITE_LEAD_INGEST_SECRET/u);
   });
   it('selects local storage explicitly and requires a durable production path', () => {
     expect(parseEnvironment(valid).attachmentStorage.adapter).toBe('local');

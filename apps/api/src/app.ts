@@ -51,6 +51,7 @@ import type { PostgresCollectionRepository } from './collection-repositories.ts'
 import type { PostgresComplaintRepository } from './complaint-repositories.ts';
 import type { PostgresBusinessDocumentRepository } from './business-document-repositories.ts';
 import type { PostgresContractDocumentRepository } from './contract-document-repositories.ts';
+import type { PostgresWebsiteLeadIngestor } from './website-lead-ingest.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -121,6 +122,7 @@ export type ApiDependencies = Readonly<{
   complaints?: PostgresComplaintRepository;
   businessDocuments?: PostgresBusinessDocumentRepository;
   contractDocuments?: PostgresContractDocumentRepository;
+  websiteLeads?: PostgresWebsiteLeadIngestor;
   readiness?: () => Promise<boolean>;
   release?: Readonly<{ sha: string; environment: string; builtAt?: string }>;
   telemetry?: Telemetry;
@@ -315,6 +317,25 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
                   },
                 },
               };
+        }
+        if (
+          request.method === 'POST' &&
+          request.pathname === '/api/v1/integrations/website/leads'
+        ) {
+          if (!dependencies.websiteLeads)
+            return error(
+              503,
+              'internal_error',
+              'Website lead integration unavailable',
+              correlationId,
+            );
+          const result = await dependencies.websiteLeads.ingest(
+            request.body,
+            request.headers?.['x-kingturf-timestamp'],
+            request.headers?.['x-kingturf-signature'],
+            correlationId,
+          );
+          return { statusCode: result.duplicate ? 200 : 201, body: result };
         }
         const token = bearer(request.headers ?? {});
         const context = token ? await dependencies.auth.authenticate(token) : null;

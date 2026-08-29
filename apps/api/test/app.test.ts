@@ -28,6 +28,7 @@ import type { PostgresShipmentRepository } from '../src/shipment-repositories.js
 import type { PostgresCollectionRepository } from '../src/collection-repositories.js';
 import type { PostgresComplaintRepository } from '../src/complaint-repositories.js';
 import type { AuthenticationService } from '../src/security.js';
+import type { PostgresWebsiteLeadIngestor } from '../src/website-lead-ingest.js';
 
 const employeeId = '10000000-0000-4000-8000-000000000001';
 const companyId = '20000000-0000-4000-8000-000000000002';
@@ -485,6 +486,37 @@ const dispatch = (
   });
 
 describe('authentication and protected API contracts', () => {
+  it('accepts authenticated website lead ingestion without an employee session', async () => {
+    const ingest = vi.fn(() =>
+      Promise.resolve({
+        leadId: targetId,
+        externalRef: 'KT-TEST-001',
+        status: 'POOL' as const,
+        duplicate: false,
+      }),
+    );
+    const deps = {
+      ...dependencies(null),
+      websiteLeads: { ingest } as unknown as PostgresWebsiteLeadIngestor,
+    };
+    const response = await buildApp(deps).dispatch({
+      method: 'POST',
+      pathname: '/api/v1/integrations/website/leads',
+      headers: {
+        'x-kingturf-timestamp': '1787961600',
+        'x-kingturf-signature': `sha256=${'a'.repeat(64)}`,
+      },
+      body: { externalRef: 'KT-TEST-001' },
+    });
+    expect(response.statusCode).toBe(201);
+    expect(response.body).toMatchObject({ leadId: targetId, status: 'POOL' });
+    expect(ingest).toHaveBeenCalledWith(
+      { externalRef: 'KT-TEST-001' },
+      '1787961600',
+      `sha256=${'a'.repeat(64)}`,
+      expect.stringMatching(/^[0-9a-f-]{36}$/u),
+    );
+  });
   it('default-denies and DataScope-filters opportunity technical solution reads', async () => {
     const listTechnicalSolutions = vi.fn(() =>
       Promise.resolve([
