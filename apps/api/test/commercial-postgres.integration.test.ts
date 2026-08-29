@@ -239,6 +239,75 @@ describe('JTF-P1-E05..E10 PostgreSQL acceptance', () => {
       randomUUID(),
     );
     expect(model2).toMatchObject({ version: 2, status: 'PUBLISHED' });
+    const matrix = await commercial.createCostMatrix(
+      {
+        code: 'MATRIX-QUOTE-1',
+        name: 'Quote-linked specification matrix',
+        productSpecification: { costBasis: 'M2' },
+        currency: 'CNY',
+        defaultTaxRate: '0.13',
+      },
+      actor,
+      ['COMPANY'],
+      randomUUID(),
+    );
+    await commercial.addCostMatrixFactor(
+      identifier(matrix.id),
+      {
+        factorCode: 'YARN',
+        factorName: 'PE yarn resin',
+        category: 'DIRECT_MATERIAL',
+        sourceType: 'MARKET_REFERENCE',
+        quantity: '0.620000',
+        unitCode: 'KG',
+        manualUnitPriceTaxInclusive: '8.600000',
+        taxRate: '0.130000',
+        priceSourceName: 'Dated spot benchmark',
+        priceSourceReference: 'MARKET-2026-08-28',
+        priceEffectiveAt: '2026-08-28',
+        priceNote: 'Editable planning baseline',
+        adjustable: true,
+        sortOrder: 10,
+      },
+      actor,
+      ['COMPANY'],
+      randomUUID(),
+    );
+    const matrixCalculation = await commercial.calculateCostMatrix(
+      identifier(matrix.id),
+      'TAX_INCLUSIVE',
+      'matrix-calculate-1',
+      actor,
+      ['COMPANY'],
+      randomUUID(),
+    );
+    expect(matrixCalculation).toMatchObject({ totalCost: '5.332000' });
+    expect(matrixCalculation.factorTrace).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          resolvedSourceType: 'MARKET_REFERENCE',
+          sourceReference: 'MARKET-2026-08-28',
+          unitCode: 'KG',
+        }),
+      ]),
+    );
+    const quoteCost = await commercial.createQuoteCostDecisionFromMatrix(
+      identifier(matrixCalculation.id),
+      {
+        technicalSolutionRevisionId: identifier(solution.id),
+        modelVersionId: identifier(model.id),
+        idempotencyKey: 'matrix-quote-cost-1',
+      },
+      actor,
+      ['COMPANY'],
+      [],
+      randomUUID(),
+    );
+    expect(quoteCost).toMatchObject({ matrixCost: '5.332000', total: '5.332' });
+    const matrixCosts = await commercial.listCommercialView('costs', actor, ['COMPANY'], []);
+    const linkedCost = matrixCosts.find((candidate) => candidate.id === quoteCost.costDecisionId);
+    expect(linkedCost?.opportunityId).toBe(opportunity.id);
+    expect(linkedCost?.technicalSolutionRevisionId).toBe(solution.id);
     await expect(
       commercial.createDefinition(
         'cost',

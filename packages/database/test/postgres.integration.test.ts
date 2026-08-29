@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { appendFile, cp, mkdtemp, rm } from 'node:fs/promises';
+import { appendFile, cp, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -515,6 +515,85 @@ describe('PostgreSQL 0067 production-role upgrade compatibility', () => {
           )
         ).rows[0]?.count,
       ).toBe('3');
+    } finally {
+      try {
+        await upgradeDatabase?.close();
+      } finally {
+        try {
+          await upgradeAdmin.query(`DROP SCHEMA IF EXISTS ${upgradeSchema} CASCADE`);
+        } finally {
+          try {
+            await upgradeAdmin.close();
+          } finally {
+            await rm(directory, { recursive: true, force: true });
+          }
+        }
+      }
+    }
+  });
+});
+
+describe('PostgreSQL 0069 cost baseline upgrade compatibility', () => {
+  it('upgrades existing zero-price presets and creates a visible non-zero calculation', async () => {
+    const upgradeSchema = `cost_price_upgrade_${randomUUID().replaceAll('-', '')}`;
+    const directory = await mkdtemp(join(tmpdir(), 'kingturf-cost-price-upgrade-'));
+    const upgradeAdmin = new Database(connectionString);
+    let upgradeDatabase: Database | undefined;
+    try {
+      await cp(migrationsDirectory, directory, { recursive: true });
+      await rm(join(directory, '0069_cost_matrix_price_governance.sql'));
+      await upgradeAdmin.query(`CREATE SCHEMA ${upgradeSchema}`);
+      const scoped = new URL(connectionString);
+      scoped.searchParams.set('options', `-csearch_path=${upgradeSchema}`);
+      upgradeDatabase = new Database(scoped.toString());
+      await migrate(upgradeDatabase, directory);
+
+      const company = randomUUID();
+      const employee = randomUUID();
+      await upgradeDatabase.query(
+        "INSERT INTO organizations(id,owner_organization_id,code,name,organization_type) VALUES($1,$1,'COST-PRICE-UPGRADE','Cost Price Upgrade','COMPANY')",
+        [company],
+      );
+      await upgradeDatabase.query(
+        "INSERT INTO employees(id,company_id,organization_id,employee_number,display_name,normalized_email) VALUES($1,$2,$2,'COST-PRICE-01','Cost Price','cost-price@upgrade.test')",
+        [employee, company],
+      );
+      const presetSql = await readFile(
+        join(migrationsDirectory, '0066_cost_model_presets.sql'),
+        'utf8',
+      );
+      await upgradeDatabase.query(presetSql.slice(presetSql.indexOf('WITH companies AS')));
+      expect(
+        (
+          await upgradeDatabase.query<{ count: string }>(
+            'SELECT count(*)::text count FROM cost_specification_factors WHERE tenant_id=$1 AND manual_unit_price_tax_inclusive=0',
+            [company],
+          )
+        ).rows[0]?.count,
+      ).toBe('156');
+
+      await cp(
+        join(migrationsDirectory, '0069_cost_matrix_price_governance.sql'),
+        join(directory, '0069_cost_matrix_price_governance.sql'),
+      );
+      await migrate(upgradeDatabase, directory);
+
+      expect(
+        (
+          await upgradeDatabase.query<{ count: string }>(
+            'SELECT count(*)::text count FROM cost_specification_factors WHERE tenant_id=$1 AND manual_unit_price_tax_inclusive=0',
+            [company],
+          )
+        ).rows[0]?.count,
+      ).toBe('0');
+      const calculations = await upgradeDatabase.query<{ total_cost: string }>(
+        `SELECT c.total_cost::text FROM cost_matrix_calculations c
+         JOIN cost_specification_models m ON m.id=c.specification_model_id AND m.tenant_id=c.tenant_id
+         WHERE c.tenant_id=$1 AND m.is_system_preset=true AND c.idempotency_key LIKE 'system-baseline-%'`,
+        [company],
+      );
+      expect(calculations.rows).toHaveLength(12);
+      expect(calculations.rows.every((row) => Number(row.total_cost) > 0)).toBe(true);
     } finally {
       try {
         await upgradeDatabase?.close();

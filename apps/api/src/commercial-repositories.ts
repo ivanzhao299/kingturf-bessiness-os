@@ -170,11 +170,12 @@ export class PostgresCommercialRepository {
         m.product_item_version_id AS "productItemVersionId",i.sku AS "productSku",i.name AS "productName",m.active,
         coalesce((SELECT jsonb_agg(jsonb_build_object('id',f.id,'factorCode',f.factor_code,'factorName',f.factor_name,'category',f.category,
           'sourceType',f.source_type,'sourceItemVersionId',f.source_item_version_id,'sourceSku',si.sku,'sourceItemName',si.name,'quantity',f.quantity,
-          'manualUnitPriceTaxInclusive',f.manual_unit_price_tax_inclusive,'taxRate',f.tax_rate,'adjustable',f.adjustable,'sortOrder',f.sort_order) ORDER BY f.sort_order,f.factor_code)
+          'unitCode',f.unit_code,'manualUnitPriceTaxInclusive',f.manual_unit_price_tax_inclusive,'taxRate',f.tax_rate,'adjustable',f.adjustable,'sortOrder',f.sort_order,
+          'priceSourceName',f.price_source_name,'priceSourceReference',f.price_source_reference,'priceEffectiveAt',f.price_effective_at,'priceNote',f.price_note) ORDER BY f.sort_order,f.factor_code)
           FROM cost_specification_factors f LEFT JOIN manufacturing_item_versions siv ON siv.id=f.source_item_version_id AND siv.tenant_id=f.tenant_id
           LEFT JOIN manufacturing_items si ON si.id=siv.item_id AND si.tenant_id=siv.tenant_id WHERE f.tenant_id=m.tenant_id AND f.specification_model_id=m.id),'[]'::jsonb) factors,
         (SELECT to_jsonb(c) FROM (SELECT id,pricing_mode AS "pricingMode",direct_production_cost AS "directProductionCost",reserved_expense_cost AS "reservedExpenseCost",
-          total_cost AS "totalCost",factor_trace AS "factorTrace",calculated_at AS "calculatedAt" FROM cost_matrix_calculations c
+          total_cost AS "totalCost",factor_trace AS "factorTrace",technical_solution_revision_id AS "technicalSolutionRevisionId",cost_decision_id AS "costDecisionId",calculated_at AS "calculatedAt" FROM cost_matrix_calculations c
           WHERE c.tenant_id=m.tenant_id AND c.specification_model_id=m.id ORDER BY c.calculated_at DESC LIMIT 1)c) AS "latestCalculation"
       FROM cost_specification_models m LEFT JOIN manufacturing_item_versions iv ON iv.id=m.product_item_version_id AND iv.tenant_id=m.tenant_id
       LEFT JOIN manufacturing_items i ON i.id=iv.item_id AND i.tenant_id=iv.tenant_id WHERE m.tenant_id=$1 ORDER BY m.code`,
@@ -238,8 +239,13 @@ export class PostgresCommercialRepository {
       sourceType: string;
       sourceItemVersionId?: string;
       quantity: string;
+      unitCode: string;
       manualUnitPriceTaxInclusive: string;
       taxRate: string;
+      priceSourceName: string;
+      priceSourceReference?: string;
+      priceEffectiveAt?: string;
+      priceNote?: string;
       adjustable: boolean;
       sortOrder: number;
     },
@@ -251,8 +257,8 @@ export class PostgresCommercialRepository {
       throw new DomainError('forbidden', 'Cost matrices require company scope');
     const row = (
       await this.db.query<JsonObject>(
-        `INSERT INTO cost_specification_factors(tenant_id,specification_model_id,factor_code,factor_name,category,source_type,source_item_version_id,quantity,manual_unit_price_tax_inclusive,tax_rate,adjustable,sort_order,created_by)
-      SELECT $1,id,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13 FROM cost_specification_models WHERE id=$2 AND tenant_id=$1 RETURNING id,factor_code AS "factorCode",factor_name AS "factorName"`,
+        `INSERT INTO cost_specification_factors(tenant_id,specification_model_id,factor_code,factor_name,category,source_type,source_item_version_id,quantity,unit_code,manual_unit_price_tax_inclusive,tax_rate,price_source_name,price_source_reference,price_effective_at,price_note,adjustable,sort_order,created_by)
+      SELECT $1,id,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18 FROM cost_specification_models WHERE id=$2 AND tenant_id=$1 RETURNING id,factor_code AS "factorCode",factor_name AS "factorName"`,
         [
           actor.companyId,
           modelId,
@@ -262,8 +268,13 @@ export class PostgresCommercialRepository {
           input.sourceType,
           input.sourceItemVersionId ?? null,
           input.quantity,
+          input.unitCode,
           input.manualUnitPriceTaxInclusive,
           input.taxRate,
+          input.priceSourceName,
+          input.priceSourceReference ?? null,
+          input.priceEffectiveAt ?? null,
+          input.priceNote ?? null,
           input.adjustable,
           input.sortOrder,
           actor.employeeId,
@@ -274,6 +285,73 @@ export class PostgresCommercialRepository {
     await evidence(
       this.db,
       'cost-matrix.factor-added',
+      actor,
+      modelId,
+      1,
+      correlationId,
+      row,
+      'cost-matrix',
+    );
+    return row;
+  }
+
+  public async updateCostMatrixFactor(
+    modelId: string,
+    factorId: string,
+    input: {
+      factorName: string;
+      category: string;
+      sourceType: string;
+      sourceItemVersionId?: string;
+      quantity: string;
+      unitCode: string;
+      manualUnitPriceTaxInclusive: string;
+      taxRate: string;
+      priceSourceName: string;
+      priceSourceReference?: string;
+      priceEffectiveAt?: string;
+      priceNote?: string;
+      adjustable: boolean;
+      sortOrder: number;
+    },
+    actor: Actor,
+    scopes: readonly DataScope[],
+    correlationId: string,
+  ) {
+    if (!scopes.includes('COMPANY'))
+      throw new DomainError('forbidden', 'Cost matrices require company scope');
+    const row = (
+      await this.db.query<JsonObject>(
+        `UPDATE cost_specification_factors SET factor_name=$4,category=$5,source_type=$6,source_item_version_id=$7,quantity=$8,unit_code=$9,
+          manual_unit_price_tax_inclusive=$10,tax_rate=$11,price_source_name=$12,price_source_reference=$13,price_effective_at=$14,price_note=$15,
+          adjustable=$16,sort_order=$17,updated_at=now()
+         WHERE tenant_id=$1 AND specification_model_id=$2 AND id=$3 AND adjustable=true
+         RETURNING id,factor_code AS "factorCode",factor_name AS "factorName",source_type AS "sourceType",quantity,unit_code AS "unitCode",manual_unit_price_tax_inclusive AS "manualUnitPriceTaxInclusive",price_source_name AS "priceSourceName"`,
+        [
+          actor.companyId,
+          modelId,
+          factorId,
+          input.factorName,
+          input.category,
+          input.sourceType,
+          input.sourceItemVersionId ?? null,
+          input.quantity,
+          input.unitCode,
+          input.manualUnitPriceTaxInclusive,
+          input.taxRate,
+          input.priceSourceName,
+          input.priceSourceReference ?? null,
+          input.priceEffectiveAt ?? null,
+          input.priceNote ?? null,
+          input.adjustable,
+          input.sortOrder,
+        ],
+      )
+    ).rows[0];
+    if (!row) throw new DomainError('not_found', 'Adjustable cost factor not found');
+    await evidence(
+      this.db,
+      'cost-matrix.factor-updated',
       actor,
       modelId,
       1,
@@ -318,19 +396,40 @@ export class PostgresCommercialRepository {
           quantity: string;
           tax_rate: string;
           unit_price: string;
+          unit_code: string;
+          resolved_source_type: string;
           source_reference: string;
+          source_effective_at: string | null;
+          price_note: string | null;
         }>(
           `
-        SELECT f.id,f.factor_name,f.category,f.source_type,f.quantity::text,f.tax_rate::text,
+        SELECT f.id,f.factor_name,f.category,f.source_type,f.quantity::text,f.tax_rate::text,f.unit_code,
           coalesce(CASE f.source_type WHEN 'PURCHASE_ORDER' THEN po.unit_price WHEN 'SUPPLIER_QUOTE' THEN sq.unit_price END,f.manual_unit_price_tax_inclusive)::text unit_price,
-          coalesce(CASE f.source_type WHEN 'PURCHASE_ORDER' THEN po.reference WHEN 'SUPPLIER_QUOTE' THEN sq.reference END,'手工录入') source_reference
+          CASE WHEN f.source_type='PURCHASE_ORDER' AND po.unit_price IS NOT NULL THEN 'PURCHASE_ORDER'
+               WHEN f.source_type='SUPPLIER_QUOTE' AND sq.unit_price IS NOT NULL THEN 'SUPPLIER_QUOTE'
+               WHEN f.source_type IN('PURCHASE_ORDER','SUPPLIER_QUOTE') THEN 'MANUAL_FALLBACK'
+               ELSE f.source_type END resolved_source_type,
+          coalesce(CASE f.source_type WHEN 'PURCHASE_ORDER' THEN po.reference WHEN 'SUPPLIER_QUOTE' THEN sq.reference END,f.price_source_reference,f.price_source_name,'人工录入') source_reference,
+          coalesce(CASE f.source_type WHEN 'PURCHASE_ORDER' THEN po.effective_at WHEN 'SUPPLIER_QUOTE' THEN sq.effective_at END,f.price_effective_at)::text source_effective_at,
+          f.price_note
         FROM cost_specification_factors f
-        LEFT JOIN LATERAL (SELECT pol.unit_price,po.po_number reference FROM purchase_order_lines pol JOIN purchase_orders po ON po.id=pol.purchase_order_id AND po.tenant_id=pol.tenant_id WHERE pol.tenant_id=f.tenant_id AND pol.item_version_id=f.source_item_version_id AND po.status IN('ISSUED','PARTIALLY_RECEIVED','RECEIVED') ORDER BY po.ordered_at DESC NULLS LAST,po.created_at DESC LIMIT 1)po ON true
-        LEFT JOIN LATERAL (SELECT sql.unit_price,sq.quote_reference reference FROM supplier_quote_lines sql JOIN supplier_quotes sq ON sq.id=sql.supplier_quote_id AND sq.tenant_id=sql.tenant_id JOIN procurement_rfq_lines rl ON rl.id=sql.rfq_line_id AND rl.tenant_id=sql.tenant_id WHERE sql.tenant_id=f.tenant_id AND rl.item_version_id=f.source_item_version_id ORDER BY sq.received_at DESC LIMIT 1)sq ON true
+        JOIN cost_specification_models cm ON cm.id=f.specification_model_id AND cm.tenant_id=f.tenant_id
+        LEFT JOIN LATERAL (SELECT pol.unit_price,po.po_number reference,po.ordered_at::date effective_at FROM purchase_order_lines pol JOIN purchase_orders po ON po.id=pol.purchase_order_id AND po.tenant_id=pol.tenant_id WHERE pol.tenant_id=f.tenant_id AND pol.item_version_id=f.source_item_version_id AND po.currency=cm.currency AND po.status IN('ISSUED','PARTIALLY_RECEIVED','RECEIVED') ORDER BY po.ordered_at DESC NULLS LAST,po.created_at DESC LIMIT 1)po ON true
+        LEFT JOIN LATERAL (SELECT sql.unit_price,sq.quote_reference reference,sq.received_at::date effective_at FROM supplier_quote_lines sql JOIN supplier_quotes sq ON sq.id=sql.supplier_quote_id AND sq.tenant_id=sql.tenant_id JOIN procurement_rfqs rfq ON rfq.id=sq.rfq_id AND rfq.tenant_id=sq.tenant_id JOIN procurement_rfq_lines rl ON rl.id=sql.rfq_line_id AND rl.tenant_id=sql.tenant_id JOIN suppliers s ON s.id=sq.supplier_id AND s.tenant_id=sq.tenant_id WHERE sql.tenant_id=f.tenant_id AND rl.item_version_id=f.source_item_version_id AND rfq.currency=cm.currency AND sq.valid_until>=CURRENT_DATE AND s.status='ACTIVE' ORDER BY sq.received_at DESC LIMIT 1)sq ON true
         WHERE f.tenant_id=$1 AND f.specification_model_id=$2 ORDER BY f.sort_order,f.factor_code`,
           [actor.companyId, modelId],
         )
       ).rows;
+      if (factors.length === 0)
+        throw new DomainError('invalid_request', '成本模型没有成本因子，不能执行核算');
+      const missingPrices = factors.filter(
+        (factor) => Number(factor.quantity) > 0 && Number(factor.unit_price) <= 0,
+      );
+      if (missingPrices.length > 0)
+        throw new DomainError(
+          'invalid_request',
+          `以下成本因子缺少有效价格：${missingPrices.map((factor) => factor.factor_name).join('、')}`,
+        );
       const trace = factors.map((f) => {
         const inclusive = Number(f.unit_price),
           unit = pricingMode === 'TAX_INCLUSIVE' ? inclusive : inclusive / (1 + Number(f.tax_rate));
@@ -338,9 +437,13 @@ export class PostgresCommercialRepository {
           factorId: f.id,
           factorName: f.factor_name,
           category: f.category,
-          sourceType: f.source_type,
+          requestedSourceType: f.source_type,
+          resolvedSourceType: f.resolved_source_type,
           sourceReference: f.source_reference,
+          sourceEffectiveAt: f.source_effective_at,
+          priceNote: f.price_note,
           quantity: f.quantity,
+          unitCode: f.unit_code,
           unitPrice: unit.toFixed(6),
           amount: (Number(f.quantity) * unit).toFixed(6),
         };
@@ -388,6 +491,182 @@ export class PostgresCommercialRepository {
         'cost-matrix-calculation',
       );
       return row;
+    });
+  }
+
+  public async createQuoteCostDecisionFromMatrix(
+    calculationId: string,
+    input: {
+      technicalSolutionRevisionId: string;
+      modelVersionId: string;
+      idempotencyKey: string;
+    },
+    actor: Actor,
+    scopes: readonly DataScope[],
+    anchors: readonly ScopeAnchor[],
+    correlationId: string,
+  ) {
+    return this.db.transaction(async (tx) => {
+      const identity = commandIdentity('MATRIX_QUOTE_COST_DECISION', calculationId, actor, input);
+      const solution = (
+        await tx.query<{ opportunity_id: string }>(
+          "SELECT s.opportunity_id FROM technical_solution_revisions r JOIN technical_solutions s ON s.id=r.technical_solution_id AND s.tenant_id=r.tenant_id WHERE r.id=$1 AND r.tenant_id=$2 AND r.status='FINAL' FOR UPDATE OF r",
+          [input.technicalSolutionRevisionId, actor.companyId],
+        )
+      ).rows[0];
+      if (!solution) throw new DomainError('not_found', 'Final technical solution not found');
+      await this.requireOpportunityScope(tx, solution.opportunity_id, actor, scopes, anchors);
+      const retained = await replayCommand(tx, actor.companyId, input.idempotencyKey, identity);
+      if (retained) return retained;
+      const calculation = (
+        await tx.query<{
+          specification_model_id: string;
+          pricing_mode: string;
+          currency: string;
+          total_cost: string;
+          factor_trace: unknown;
+          cost_decision_id: string | null;
+        }>(
+          `SELECT specification_model_id,pricing_mode,currency,total_cost::text,factor_trace,cost_decision_id
+           FROM cost_matrix_calculations WHERE id=$1 AND tenant_id=$2 FOR UPDATE`,
+          [calculationId, actor.companyId],
+        )
+      ).rows[0];
+      if (!calculation) throw new DomainError('not_found', 'Cost matrix calculation not found');
+      if (calculation.cost_decision_id)
+        throw new DomainError(
+          'conflict',
+          'This cost calculation is already linked to a quote cost decision',
+        );
+      if (Number(calculation.total_cost) <= 0)
+        throw new DomainError(
+          'invalid_request',
+          'Zero-value cost calculation cannot enter quoting',
+        );
+      const model = (
+        await tx.query<{ rules: CostRule[]; currency: string }>(
+          "SELECT rules,currency FROM cost_model_versions WHERE id=$1 AND tenant_id=$2 AND status='PUBLISHED'",
+          [input.modelVersionId, actor.companyId],
+        )
+      ).rows[0];
+      if (!model) throw new DomainError('not_found', 'Published cost model not found');
+      if (model.currency !== calculation.currency)
+        throw new DomainError(
+          'invalid_request',
+          'Cost model currency does not match matrix currency',
+        );
+      const factorTrace = Array.isArray(calculation.factor_trace)
+        ? (calculation.factor_trace as JsonObject[])
+        : [];
+      if (factorTrace.length === 0)
+        throw new DomainError('invalid_request', 'Cost calculation has no auditable factor trace');
+      const lines = factorTrace.map((factor, index) => ({
+        key: typeof factor.factorId === 'string' ? factor.factorId : `factor-${String(index + 1)}`,
+        description:
+          typeof factor.factorName === 'string'
+            ? factor.factorName
+            : `成本因子 ${String(index + 1)}`,
+        quantity: {
+          value:
+            typeof factor.quantity === 'string' || typeof factor.quantity === 'number'
+              ? String(factor.quantity)
+              : '0',
+          unit: typeof factor.unitCode === 'string' ? factor.unitCode : 'EA',
+        },
+        unitCost: {
+          amount:
+            typeof factor.unitPrice === 'string' || typeof factor.unitPrice === 'number'
+              ? String(factor.unitPrice)
+              : '0',
+          currency: calculation.currency,
+        },
+      }));
+      const engineInput: CostEngineInput = {
+        modelVersionId: input.modelVersionId,
+        currency: calculation.currency,
+        lines,
+        context: {
+          sourceType: 'SPECIFICATION_MATRIX',
+          costMatrixCalculationId: calculationId,
+          specificationModelId: calculation.specification_model_id,
+          pricingMode: calculation.pricing_mode,
+          factorTrace,
+        },
+      };
+      const calculated = calculateCost(engineInput, model.rules);
+      const hash = createHash('sha256').update(canonicalize(engineInput)).digest('hex');
+      const decision = (
+        await tx.query<{ id: string; evaluated_at: string }>(
+          `INSERT INTO cost_sheet_decisions(tenant_id,cost_model_version_id,technical_solution_revision_id,input_hash,canonical_input,currency,subtotal,total,trace,evaluated_by,idempotency_key)
+           VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id,evaluated_at`,
+          [
+            actor.companyId,
+            input.modelVersionId,
+            input.technicalSolutionRevisionId,
+            hash,
+            engineInput,
+            calculation.currency,
+            calculated.subtotal,
+            calculated.total,
+            JSON.stringify(calculated.trace),
+            actor.employeeId,
+            input.idempotencyKey,
+          ],
+        )
+      ).rows[0];
+      if (!decision) throw new DomainError('conflict', 'Quote cost decision could not be created');
+      for (const [index, line] of lines.entries())
+        await tx.query(
+          `INSERT INTO cost_sheet_lines(tenant_id,decision_id,line_number,description,quantity,unit_code,unit_cost,total,applied_rule_versions)
+           VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+          [
+            actor.companyId,
+            decision.id,
+            index + 1,
+            line.description,
+            line.quantity.value,
+            line.quantity.unit,
+            line.unitCost.amount,
+            calculated.lines[index]?.total.amount ?? '0',
+            JSON.stringify(calculated.trace),
+          ],
+        );
+      await tx.query(
+        `UPDATE cost_matrix_calculations SET technical_solution_revision_id=$3,cost_model_version_id=$4,cost_decision_id=$5
+         WHERE id=$1 AND tenant_id=$2`,
+        [
+          calculationId,
+          actor.companyId,
+          input.technicalSolutionRevisionId,
+          input.modelVersionId,
+          decision.id,
+        ],
+      );
+      const result = {
+        id: decision.id,
+        costDecisionId: decision.id,
+        costMatrixCalculationId: calculationId,
+        technicalSolutionRevisionId: input.technicalSolutionRevisionId,
+        opportunityId: solution.opportunity_id,
+        matrixCost: calculation.total_cost,
+        subtotal: calculated.subtotal,
+        total: calculated.total,
+        currency: calculation.currency,
+        inputHash: hash,
+        evaluatedAt: isoTimestamp(decision.evaluated_at),
+      };
+      await retainCommand(tx, actor.companyId, input.idempotencyKey, identity, result);
+      await evidence(
+        tx,
+        'cost-matrix.quote-cost-created',
+        actor,
+        decision.id,
+        1,
+        correlationId,
+        result,
+        'cost-decision',
+      );
+      return result;
     });
   }
   public async listDefinitions(

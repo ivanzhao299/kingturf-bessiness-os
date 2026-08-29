@@ -913,6 +913,50 @@ describe('web bootstrap', () => {
     expect(workspace.textContent).toContain('系统预置');
   });
 
+  it('opens governed factor creation and refreshes the matrix after saving', async () => {
+    const api = {
+      listOpportunities: vi.fn().mockResolvedValue([]),
+      list: vi.fn().mockImplementation((path: string) =>
+        Promise.resolve(
+          path === '/api/v1/cost-matrices'
+            ? [
+                {
+                  id: '00000000-0000-4000-8000-000000000001',
+                  code: 'PRESET-LANDSCAPE-20',
+                  name: '景观休闲草 20mm',
+                  currency: 'CNY',
+                  defaultTaxRate: '0.13',
+                  factors: [],
+                },
+              ]
+            : [],
+        ),
+      ),
+      submit: vi.fn().mockResolvedValue({}),
+      uploadCtrAttachment: vi.fn().mockResolvedValue({}),
+      command: vi.fn().mockResolvedValue({}),
+    };
+    const controller = new CommercialController(
+      api,
+      new Set(['cost-matrix:read', 'cost-matrix:manage']),
+    );
+    await controller.load();
+    const workspace = commercialWorkspaceStructure(
+      'desktop',
+      false,
+      controller,
+    ) as unknown as RenderedElement;
+
+    expect(workspace.findByText('添加成本因子')).toHaveLength(1);
+    const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+    expect(source).toContain("name: 'priceSourceName'");
+    expect(source).toContain("name: 'priceEffectiveAt'");
+    expect(source).toContain("name: 'priceNote'");
+    expect(source).toContain(
+      "await refreshCostMatrices(`${values.factorName ?? '成本因子'}已添加并显示`)",
+    );
+  });
+
   it('shows immediate progress and a refreshed total after one-click cost calculation', async () => {
     let calculated = false;
     const api = {

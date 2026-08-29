@@ -24,7 +24,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0068_website_lead_ingest.sql');
+    expect(ordered.at(-1)).toBe('0069_cost_matrix_price_governance.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
@@ -139,6 +139,23 @@ describe('identity and authorization migration', () => {
     expect(sql).toContain('INSERT INTO atomic_role_template_permissions');
     expect(sql).toContain("ARRAY['COMPANY']::data_scope[]");
     expect(sql).toContain('ON CONFLICT(role_id,permission_id) DO UPDATE');
+  });
+
+  it('adds governed non-zero price baselines and quote linkage for cost matrices', async () => {
+    const sql = await readFile(
+      join(process.cwd(), 'migrations/0069_cost_matrix_price_governance.sql'),
+      'utf8',
+    );
+    expect(sql).toContain("'MARKET_REFERENCE','INTERNAL_BENCHMARK'");
+    expect(sql).toContain("WHEN 'YARN' THEN 8.60");
+    expect(sql).toContain("WHEN 'DIRECT-LABOR' THEN 40.37");
+    expect(sql).toContain("WHEN 'DIRECT-ENERGY' THEN 0.83");
+    expect(sql).toContain('price_source_reference');
+    expect(sql).toContain('cost_decision_id uuid');
+    expect(sql).toContain('cost_matrix_calculations_quote_link_check');
+    expect(sql).toContain('f.manual_unit_price_tax_inclusive=0');
+    expect(sql).toContain("'system-baseline-2026-08-28-'||specification_model_id::text");
+    expect(sql).toContain('HAVING sum(f.quantity*f.manual_unit_price_tax_inclusive)>0');
   });
 
   it('adds purchase and sales contract upload OCR review and signing evidence', async () => {

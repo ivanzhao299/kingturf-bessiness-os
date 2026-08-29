@@ -3599,6 +3599,19 @@ export function commercialWorkspaceStructure(
       costHeading.append(costCopy, createModel);
     } else costHeading.append(costCopy);
     costPanel.append(costHeading);
+    const costFlow = el('ol', 'cost-governance-flow');
+    for (const [role, action] of [
+      ['采购专员', '维护采购订单、合同价与有效供应商报价'],
+      ['成本测算专员', '维护因子、核验来源并冻结成本快照'],
+      ['报价编制专员', '按商机与技术方案引用成本生成报价'],
+      ['报价审批 / 签发', '校验毛利、折扣与销售政策后冻结版本'],
+      ['合同与订单岗位', '签署合同并由已签发报价创建销售订单'],
+    ]) {
+      const step = el('li');
+      step.append(el('strong', '', role ?? ''), el('span', '', action ?? ''));
+      costFlow.append(step);
+    }
+    costPanel.append(costFlow);
     const matrices = controller.views.get('/api/v1/cost-matrices') ?? [];
     const itemVersions = (controller.views.get('/api/v1/manufacturing-items') ?? []).flatMap(
       (item) =>
@@ -3716,6 +3729,40 @@ export function commercialWorkspaceStructure(
       ['MARKETING', '营销费用（预留）'],
       ['OTHER', '其他费用'],
     ].map(([value, label]) => ({ value: value ?? '', label: label ?? '' }));
+    const sourceOptions = [
+      { value: 'PURCHASE_ORDER', label: '已下达采购订单 / 合同价' },
+      { value: 'SUPPLIER_QUOTE', label: '有效供应商报价' },
+      { value: 'MARKET_REFERENCE', label: '市场公开参考价' },
+      { value: 'INTERNAL_BENCHMARK', label: '企业计划成本基准' },
+      { value: 'MANUAL', label: '临时手工录入' },
+    ];
+    const unitOptions = [
+      { value: 'KG', label: '千克 kg' },
+      { value: 'M2', label: '平方米 m²' },
+      { value: 'HOUR', label: '工时' },
+      { value: 'KWH', label: '千瓦时 kWh' },
+      { value: 'EA', label: '项 / 件' },
+    ];
+    const setCostStatus = (message: string) => {
+      const liveStatus =
+        typeof matrixSection.closest === 'function'
+          ? matrixSection
+              .closest('.commercial-workspace')
+              ?.querySelector<HTMLElement>('.commercial-status')
+          : null;
+      (liveStatus ?? status).textContent = message;
+    };
+    const refreshCostMatrices = async (message: string) => {
+      await controller.load();
+      controller.message = message;
+      setCostStatus(message);
+      const refreshedSection = commercialWorkspaceStructure(
+        viewport,
+        immutable,
+        controller,
+      ).querySelector<HTMLElement>('.cost-matrix-section');
+      if (refreshedSection) matrixSection.replaceWith(refreshedSection);
+    };
     for (const matrix of matrices) {
       const card = el('article', 'cost-matrix-card');
       const latest = (
@@ -3767,13 +3814,164 @@ export function commercialWorkspaceStructure(
       const table = el('div', 'cost-factor-list');
       for (const candidate of factors) {
         const factor = candidate as Record<string, unknown>;
-        table.append(
+        const factorRow = el('div', 'cost-factor-row');
+        const factorCopy = el('div', 'cost-factor-copy');
+        const sourceType = textValue(factor.sourceType, 'MANUAL');
+        factorCopy.append(
+          el('strong', '', textValue(factor.factorName, '成本因子')),
           el(
-            'div',
-            'cost-factor-row',
-            `${textValue(factor.factorName, '成本因子')} · ${categoryOptions.find((x) => x.value === factor.category)?.label ?? textValue(factor.category, '')} · 数量 ${textValue(factor.quantity, '0')} · ${textValue(factor.sourceType, 'MANUAL') === 'MANUAL' ? '手工价格' : textValue(factor.sourceType, '')}`,
+            'span',
+            '',
+            `${categoryOptions.find((x) => x.value === factor.category)?.label ?? textValue(factor.category, '')} · 耗用 ${textValue(factor.quantity, '0')} ${textValue(factor.unitCode, 'EA')}/㎡ · 含税单价 ¥ ${Number(factor.manualUnitPriceTaxInclusive ?? 0).toFixed(2)}`,
+          ),
+          el(
+            'small',
+            'cost-factor-source',
+            `来源：${sourceOptions.find((option) => option.value === sourceType)?.label ?? sourceType} · ${textValue(factor.priceSourceName, '未说明')} · ${textValue(factor.priceEffectiveAt, '未标日期')}`,
           ),
         );
+        factorRow.append(factorCopy);
+        if (permissions.has('cost-matrix:manage') && factor.adjustable !== false) {
+          const edit = el('button', 'ghost compact-action', '维护');
+          edit.setAttribute('aria-label', `维护${textValue(factor.factorName, '成本因子')}`);
+          edit.addEventListener('click', () => {
+            openForm(
+              workspace,
+              `维护因子 · ${textValue(factor.factorName, '')}`,
+              '采购来源需绑定物料；若暂未绑定，保留可追溯的市场或企业基准并注明生效日期。',
+              [
+                {
+                  name: 'factorName',
+                  label: '因子名称',
+                  required: true,
+                  value: textValue(factor.factorName, ''),
+                },
+                {
+                  name: 'category',
+                  label: '成本类别',
+                  type: 'select',
+                  required: true,
+                  value: textValue(factor.category, 'DIRECT_MATERIAL'),
+                  options: categoryOptions,
+                },
+                {
+                  name: 'sourceType',
+                  label: '价格来源',
+                  type: 'select',
+                  required: true,
+                  value: sourceType,
+                  options: sourceOptions,
+                },
+                ...(itemVersions.length
+                  ? [
+                      {
+                        name: 'sourceItemVersionId',
+                        label: '关联采购物料',
+                        type: 'select' as const,
+                        required: false,
+                        value: textValue(factor.sourceItemVersionId, ''),
+                        options: [{ value: '', label: '市场/计划因子无需关联' }, ...itemVersions],
+                      },
+                    ]
+                  : []),
+                {
+                  name: 'quantity',
+                  label: '每平方米耗用量',
+                  type: 'number',
+                  required: true,
+                  step: 0.000001,
+                  value: textValue(factor.quantity, '1'),
+                },
+                {
+                  name: 'unitCode',
+                  label: '耗用单位',
+                  type: 'select',
+                  required: true,
+                  value: textValue(factor.unitCode, 'EA'),
+                  options: unitOptions,
+                },
+                {
+                  name: 'manualUnitPriceTaxInclusive',
+                  label: '含税单价 / 回退价',
+                  type: 'number',
+                  required: true,
+                  step: 0.000001,
+                  value: textValue(factor.manualUnitPriceTaxInclusive, '0'),
+                },
+                {
+                  name: 'taxRate',
+                  label: '税率（小数）',
+                  type: 'number',
+                  required: true,
+                  step: 0.000001,
+                  value: textValue(factor.taxRate, '0.13'),
+                },
+                {
+                  name: 'priceSourceName',
+                  label: '来源名称',
+                  required: true,
+                  value: textValue(factor.priceSourceName, '人工录入'),
+                },
+                {
+                  name: 'priceSourceReference',
+                  label: '单号 / 合同号 / 来源链接',
+                  value: textValue(factor.priceSourceReference, ''),
+                },
+                {
+                  name: 'priceEffectiveAt',
+                  label: '价格生效日期',
+                  type: 'date',
+                  value: textValue(factor.priceEffectiveAt, ''),
+                },
+                {
+                  name: 'priceNote',
+                  label: '取数说明',
+                  type: 'textarea',
+                  value: textValue(factor.priceNote, ''),
+                },
+                {
+                  name: 'sortOrder',
+                  label: '显示顺序',
+                  type: 'number',
+                  required: true,
+                  value: textValue(factor.sortOrder, '0'),
+                },
+              ],
+              '保存并刷新',
+              async (values) => {
+                await controller.submit(
+                  `/api/v1/cost-matrices/${textValue(matrix.id, '')}/factors/${textValue(factor.id, '')}`,
+                  {
+                    factorName: values.factorName ?? '',
+                    category: values.category ?? 'DIRECT_MATERIAL',
+                    sourceType: values.sourceType ?? 'MANUAL',
+                    ...(values.sourceItemVersionId
+                      ? { sourceItemVersionId: values.sourceItemVersionId }
+                      : {}),
+                    quantity: values.quantity ?? '1',
+                    unitCode: values.unitCode ?? 'EA',
+                    manualUnitPriceTaxInclusive: values.manualUnitPriceTaxInclusive ?? '0',
+                    taxRate: values.taxRate ?? '0.13',
+                    priceSourceName: values.priceSourceName ?? '人工录入',
+                    ...(values.priceSourceReference
+                      ? { priceSourceReference: values.priceSourceReference }
+                      : {}),
+                    ...(values.priceEffectiveAt
+                      ? { priceEffectiveAt: values.priceEffectiveAt }
+                      : {}),
+                    ...(values.priceNote ? { priceNote: values.priceNote } : {}),
+                    adjustable: true,
+                    sortOrder: Number(values.sortOrder ?? 0),
+                  },
+                  'PATCH',
+                );
+                await refreshCostMatrices(`${textValue(factor.factorName, '成本因子')}已更新`);
+              },
+            );
+          });
+          factorRow.append(edit);
+        }
+        table.append(factorRow);
       }
       if (factors.length === 0)
         table.append(
@@ -3808,11 +4006,7 @@ export function commercialWorkspaceStructure(
                 label: '价格来源',
                 type: 'select',
                 required: true,
-                options: [
-                  { value: 'MANUAL', label: '手工录入' },
-                  { value: 'PURCHASE_ORDER', label: '最新采购订单' },
-                  { value: 'SUPPLIER_QUOTE', label: '最新供应商报价' },
-                ],
+                options: [...sourceOptions],
               },
               ...(itemVersions.length
                 ? [
@@ -3830,21 +4024,55 @@ export function commercialWorkspaceStructure(
                 label: '单位产品耗用量',
                 type: 'number',
                 required: true,
+                step: 0.000001,
                 value: '1',
               },
               {
+                name: 'unitCode',
+                label: '耗用单位',
+                type: 'select',
+                required: true,
+                options: unitOptions,
+                value: 'KG',
+              },
+              {
                 name: 'manualUnitPriceTaxInclusive',
-                label: '手工含税单价',
+                label: '含税单价 / 回退价',
                 type: 'number',
                 required: true,
-                value: '0',
+                step: 0.000001,
+                value: '1',
               },
               {
                 name: 'taxRate',
                 label: '税率（小数）',
                 type: 'number',
                 required: true,
+                step: 0.000001,
                 value: textValue(matrix.defaultTaxRate, '0.13'),
+              },
+              {
+                name: 'priceSourceName',
+                label: '来源名称',
+                required: true,
+                placeholder: '采购合同、供应商报价或市场数据平台',
+              },
+              {
+                name: 'priceSourceReference',
+                label: '单号 / 合同号 / 来源链接',
+                required: false,
+              },
+              {
+                name: 'priceEffectiveAt',
+                label: '价格生效日期',
+                type: 'date',
+                required: false,
+              },
+              {
+                name: 'priceNote',
+                label: '取数说明',
+                type: 'textarea',
+                required: false,
               },
               {
                 name: 'sortOrder',
@@ -3865,13 +4093,19 @@ export function commercialWorkspaceStructure(
                   ? { sourceItemVersionId: values.sourceItemVersionId }
                   : {}),
                 quantity: values.quantity ?? '1',
-                manualUnitPriceTaxInclusive: values.manualUnitPriceTaxInclusive ?? '0',
+                unitCode: values.unitCode ?? 'KG',
+                manualUnitPriceTaxInclusive: values.manualUnitPriceTaxInclusive ?? '1',
                 taxRate: values.taxRate ?? '0.13',
+                priceSourceName: values.priceSourceName ?? '人工录入',
+                ...(values.priceSourceReference
+                  ? { priceSourceReference: values.priceSourceReference }
+                  : {}),
+                ...(values.priceEffectiveAt ? { priceEffectiveAt: values.priceEffectiveAt } : {}),
+                ...(values.priceNote ? { priceNote: values.priceNote } : {}),
                 adjustable: true,
                 sortOrder: Number(values.sortOrder ?? 0),
               });
-              await controller.load();
-              status.textContent = controller.message;
+              await refreshCostMatrices(`${values.factorName ?? '成本因子'}已添加并显示`);
             },
           );
         });
@@ -3903,7 +4137,7 @@ export function commercialWorkspaceStructure(
               calculate.setAttribute('aria-busy', 'true');
               actionStatus.className = 'cost-matrix-action-status pending';
               actionStatus.textContent = `正在核算${mode === 'TAX_INCLUSIVE' ? '含税' : '未税'}成本，请稍候…`;
-              status.textContent = actionStatus.textContent;
+              setCostStatus(actionStatus.textContent);
               try {
                 await controller.submit(
                   `/api/v1/cost-matrices/${textValue(matrix.id, '')}/calculate`,
@@ -3916,7 +4150,7 @@ export function commercialWorkspaceStructure(
                   ? `${textValue(matrix.name, '成本模型')}核算完成：综合成本 ¥ ${total.toFixed(2)}`
                   : `${textValue(matrix.name, '成本模型')}核算完成，结果已刷新`;
                 controller.message = successMessage;
-                status.textContent = successMessage;
+                setCostStatus(successMessage);
                 const refreshedSection = commercialWorkspaceStructure(
                   viewport,
                   immutable,
@@ -3930,7 +4164,7 @@ export function commercialWorkspaceStructure(
                     : '服务器未返回有效核算结果';
                 actionStatus.className = 'cost-matrix-action-status error';
                 actionStatus.textContent = `核算失败：${errorMessage}`;
-                status.textContent = actionStatus.textContent;
+                setCostStatus(actionStatus.textContent);
               } finally {
                 for (const button of calculateButtons) button.disabled = false;
                 calculate.textContent = label;
@@ -3941,6 +4175,61 @@ export function commercialWorkspaceStructure(
           calculateButtons.push(calculate);
           actions.append(calculate);
         }
+      if (
+        latest &&
+        permissions.has('cost:evaluate') &&
+        publishedModels.length > 0 &&
+        solutions.length > 0
+      ) {
+        if (latest.costDecisionId) {
+          actions.append(el('span', 'ctr-state state-approved', '已进入报价成本池'));
+        } else {
+          const quoteCost = el('button', 'secondary', '用于报价');
+          quoteCost.addEventListener('click', () => {
+            openForm(
+              workspace,
+              `生成报价成本 · ${textValue(matrix.name, '')}`,
+              '选择最终技术方案和已发布企业成本规则。系统会冻结本次因子取数，生成报价可选用的成本决策；后续报价、审批、合同和订单均引用该快照。',
+              [
+                {
+                  name: 'technicalSolutionRevisionId',
+                  label: '最终技术方案 / 商机',
+                  type: 'select',
+                  required: true,
+                  options: solutions.map((solution) => ({
+                    value: textValue(solution.id, ''),
+                    label: `${textValue(solution.code, '技术方案')} · 商机 ${textValue(solution.opportunityId, '')}`,
+                  })),
+                },
+                {
+                  name: 'modelVersionId',
+                  label: '企业成本规则版本',
+                  type: 'select',
+                  required: true,
+                  options: publishedModels.map((model) => ({
+                    value: textValue(model.id, ''),
+                    label: `${textValue(model.code, '成本规则')} · v${textValue(model.version, '1')}`,
+                  })),
+                },
+              ],
+              '冻结并进入报价',
+              async (values) => {
+                await controller.submit(
+                  `/api/v1/cost-matrix-calculations/${textValue(latest.id, '')}/quote-cost-decision`,
+                  {
+                    technicalSolutionRevisionId: values.technicalSolutionRevisionId ?? '',
+                    modelVersionId: values.modelVersionId ?? '',
+                  },
+                );
+                await refreshCostMatrices(
+                  `${textValue(matrix.name, '成本模型')}已形成报价成本快照，可由报价编制专员继续报价`,
+                );
+              },
+            );
+          });
+          actions.append(quoteCost);
+        }
+      }
       card.append(actions, actionStatus);
       matrixCards.push({
         element: card,
