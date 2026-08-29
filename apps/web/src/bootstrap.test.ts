@@ -402,6 +402,9 @@ it('derives application navigation from atomic role capabilities', () => {
   expect(visibleAppRoutes(new Set(['executive-dashboard:read', 'authorization:read']))).toEqual(
     new Set(['overview', 'governance', 'document-templates']),
   );
+  expect(visibleAppRoutes(new Set(['cost-matrix:read']))).toEqual(
+    new Set(['costing', 'overview', 'document-templates']),
+  );
 });
 
 it('derives a role homepage from atomic permission domains', () => {
@@ -420,6 +423,10 @@ it('derives a role homepage from atomic permission domains', () => {
   ).toMatchObject({
     title: '经营管理综合岗位',
     domains: ['经营管理', '销售与商务', '仓储与物流'],
+  });
+  expect(roleWorkspaceProfile(new Set(['cost-matrix:read']))).toMatchObject({
+    title: '销售与商务岗位',
+    domains: ['销售与商务'],
   });
 });
 
@@ -613,6 +620,9 @@ it('renders atomic IAM administration without the legacy broad management capabi
 it('admits manufacturing cost capabilities into the commercial workspace', () => {
   expect(isCommercialPermission('manufacturing-cost:read')).toBe(true);
   expect(isCommercialPermission('manufacturing-cost:approve')).toBe(true);
+  expect(isCommercialPermission('cost-matrix:read')).toBe(true);
+  expect(isCommercialPermission('cost-matrix:manage')).toBe(true);
+  expect(isCommercialPermission('cost-matrix:calculate')).toBe(true);
   expect(isCommercialPermission('shipment:request')).toBe(true);
   expect(isCommercialPermission('collection:manage')).toBe(true);
   expect(isCommercialPermission('legal-case:decide')).toBe(true);
@@ -832,6 +842,55 @@ describe('web bootstrap', () => {
 
   it('exposes the procurement workspace for inventory operators', () => {
     expect(visibleCommercialSections(new Set(['inventory:move'])).procurement).toBe(true);
+  });
+
+  it('loads and renders preset cost matrices for a matrix-read-only role', async () => {
+    const api = {
+      listOpportunities: vi.fn().mockResolvedValue([]),
+      list: vi.fn().mockImplementation((path: string) =>
+        Promise.resolve(
+          path === '/api/v1/cost-matrices'
+            ? [
+                {
+                  id: 'matrix-1',
+                  code: 'PRESET-LANDSCAPE-20',
+                  name: '景观休闲草 20mm',
+                  currency: 'CNY',
+                  defaultTaxRate: '0.13',
+                  isSystemPreset: true,
+                  factors: [
+                    {
+                      factorCode: 'YARN-PE',
+                      factorName: 'PE 草丝',
+                      category: 'DIRECT_MATERIAL',
+                      quantity: '1',
+                      sourceType: 'MANUAL',
+                    },
+                  ],
+                },
+              ]
+            : [],
+        ),
+      ),
+      submit: vi.fn().mockResolvedValue({}),
+      uploadCtrAttachment: vi.fn().mockResolvedValue({}),
+      command: vi.fn().mockResolvedValue({}),
+    };
+    const controller = new CommercialController(api, new Set(['cost-matrix:read']));
+
+    await controller.load();
+
+    expect(api.list).toHaveBeenCalledWith('/api/v1/cost-matrices');
+    expect(visibleCommercialSections(new Set(['cost-matrix:read'])).costExplanation).toBe(true);
+    const workspace = commercialWorkspaceStructure(
+      'desktop',
+      false,
+      controller,
+    ) as unknown as RenderedElement;
+    expect(workspace.findByClass('cost-matrix-card')).toHaveLength(1);
+    expect(workspace.textContent).toContain('规格成本模型矩阵');
+    expect(workspace.textContent).toContain('PRESET-LANDSCAPE-20');
+    expect(workspace.textContent).toContain('系统预置');
   });
 
   it('default-denies customer and 360 rendering unless customer:read is present', () => {
