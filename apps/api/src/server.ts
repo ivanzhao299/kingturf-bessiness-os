@@ -45,6 +45,7 @@ import { PostgresCollectionRepository } from './collection-repositories.ts';
 import { PostgresComplaintRepository } from './complaint-repositories.ts';
 import { PostgresBusinessDocumentRepository } from './business-document-repositories.ts';
 import { PostgresContractDocumentRepository } from './contract-document-repositories.ts';
+import { PostgresWebsiteLeadIngestor } from './website-lead-ingest.ts';
 
 const config = parseEnvironment(process.env);
 const database = new Database(config.databaseUrl);
@@ -97,6 +98,9 @@ const app = buildApp({
   complaints: new PostgresComplaintRepository(database),
   businessDocuments: new PostgresBusinessDocumentRepository(database),
   contractDocuments: new PostgresContractDocumentRepository(database),
+  ...(config.websiteLeadIngestSecret
+    ? { websiteLeads: new PostgresWebsiteLeadIngestor(database, config.websiteLeadIngestSecret) }
+    : {}),
   release: {
     sha: process.env.KINGTURF_RELEASE_SHA ?? 'development',
     environment: process.env.KINGTURF_RELEASE_ENVIRONMENT ?? config.nodeEnv,
@@ -161,6 +165,8 @@ const server = createServer(async (request, response) => {
       authorization: request.headers.authorization,
       'x-correlation-id': request.headers['x-correlation-id'] as string | undefined,
       'idempotency-key': request.headers['idempotency-key'] as string | undefined,
+      'x-kingturf-timestamp': request.headers['x-kingturf-timestamp'] as string | undefined,
+      'x-kingturf-signature': request.headers['x-kingturf-signature'] as string | undefined,
     },
     body,
   });

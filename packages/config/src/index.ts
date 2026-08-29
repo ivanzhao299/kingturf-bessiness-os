@@ -13,6 +13,7 @@ export type AppConfig = Readonly<{
     parallelization: number;
   }>;
   attachmentStorage: Readonly<{ adapter: 'local'; directory: string }>;
+  websiteLeadIngestSecret: string | null;
 }>;
 
 export class ConfigurationError extends Error {}
@@ -86,7 +87,15 @@ export function parseEnvironment(env: EnvironmentRecord): AppConfig {
       adapter: 'local',
       directory: required(env, 'ATTACHMENT_LOCAL_DIRECTORY'),
     },
+    websiteLeadIngestSecret: env.WEBSITE_LEAD_INGEST_SECRET?.trim() ?? null,
   };
+  if (
+    nodeEnv === 'production' &&
+    (!config.websiteLeadIngestSecret || config.websiteLeadIngestSecret.length < 32)
+  )
+    throw new ConfigurationError(
+      'WEBSITE_LEAD_INGEST_SECRET must contain at least 32 characters in production',
+    );
   return Object.freeze({
     ...config,
     api: Object.freeze(config.api),

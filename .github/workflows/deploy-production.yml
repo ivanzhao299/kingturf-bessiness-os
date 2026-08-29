@@ -80,7 +80,12 @@ jobs:
              echo "== local HTTP =="
              curl -sS -D - --connect-timeout 8 --max-time 15 http://127.0.0.1/health -H "Host: erp.kingturf.cn" 2>&1 || true'
       - name: Create production recovery point
+        env:
+          WEBSITE_LEAD_INGEST_SECRET: ${{ secrets.WEBSITE_LEAD_INGEST_SECRET }}
         run: |
+          test -n "$WEBSITE_LEAD_INGEST_SECRET"
+          printf '%s' "$WEBSITE_LEAD_INGEST_SECRET" | ssh -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
+            "python3 -c 'import pathlib,sys; p=pathlib.Path(sys.argv[1]); key=\"WEBSITE_LEAD_INGEST_SECRET\"; value=sys.stdin.read(); lines=[line for line in p.read_text().splitlines() if not line.startswith(key+\"=\")]; p.write_text(\"\\n\".join(lines+[key+\"=\"+value])+\"\\n\")' '${{ secrets.PROD_DEPLOY_PATH }}/.env.production'"
           ssh -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
             "set -eu
              cd '${{ secrets.PROD_DEPLOY_PATH }}'

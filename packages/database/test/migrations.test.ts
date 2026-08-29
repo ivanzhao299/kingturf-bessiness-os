@@ -24,7 +24,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0067_cost_matrix_role_grants.sql');
+    expect(ordered.at(-1)).toBe('0068_website_lead_ingest.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
@@ -68,6 +68,18 @@ describe('identity and authorization migration', () => {
     expect(triggerRepair).toContain('JOIN quotes quote_root');
     expect(triggerRepair).toContain("IF TG_TABLE_NAME='sales_orders' THEN");
     expect(triggerRepair).not.toContain('JOIN quotes q ON');
+  });
+
+  it('adds an idempotent website inquiry intake linked to CRM leads', async () => {
+    const sql = await readFile(
+      join(process.cwd(), 'migrations/0068_website_lead_ingest.sql'),
+      'utf8',
+    );
+    expect(sql).toContain('CREATE TABLE website_lead_ingests');
+    expect(sql).toContain('FOREIGN KEY(lead_id,tenant_id) REFERENCES leads(id,tenant_id)');
+    expect(sql).toContain('UNIQUE(tenant_id,external_ref)');
+    expect(sql).toContain('UNIQUE(lead_id,tenant_id)');
+    expect(sql).toContain('project_brief text');
   });
 
   it('adds specification cost matrices with adjustable sourced factors and immutable calculations', async () => {
