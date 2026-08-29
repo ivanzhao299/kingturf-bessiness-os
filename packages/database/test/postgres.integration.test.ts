@@ -131,6 +131,9 @@ describe('PostgreSQL tenant integrity', () => {
     expect(catalog.get('KT_CREDIT_ANALYST')).not.toContain('credit:approve');
     expect(catalog.get('KT_QUALITY_INSPECTOR')).toContain('quality:inspect');
     expect(catalog.get('KT_QUALITY_INSPECTOR')).not.toContain('quality:disposition');
+    expect(catalog.get('KT_COST_ANALYST')).toEqual(
+      expect.arrayContaining(['cost-matrix:read', 'cost-matrix:manage', 'cost-matrix:calculate']),
+    );
     expect(
       roles.rows.every((role) => role.capabilities.length > 0),
       'every atomic role must have at least one capability',
@@ -423,6 +426,95 @@ describe('PostgreSQL 0004 upgrade compatibility', () => {
           [employee, permission],
         ),
       ).rejects.toThrow(/duplicate key/u);
+    } finally {
+      try {
+        await upgradeDatabase?.close();
+      } finally {
+        try {
+          await upgradeAdmin.query(`DROP SCHEMA IF EXISTS ${upgradeSchema} CASCADE`);
+        } finally {
+          try {
+            await upgradeAdmin.close();
+          } finally {
+            await rm(directory, { recursive: true, force: true });
+          }
+        }
+      }
+    }
+  });
+});
+
+describe('PostgreSQL 0067 production-role upgrade compatibility', () => {
+  it('repairs existing SYSTEM_ADMIN and KT_COST_ANALYST roles without reprovisioning them', async () => {
+    const upgradeSchema = `cost_matrix_upgrade_${randomUUID().replaceAll('-', '')}`;
+    const directory = await mkdtemp(join(tmpdir(), 'kingturf-cost-matrix-upgrade-'));
+    const upgradeAdmin = new Database(connectionString);
+    let upgradeDatabase: Database | undefined;
+    try {
+      await cp(migrationsDirectory, directory, { recursive: true });
+      await rm(join(directory, '0067_cost_matrix_role_grants.sql'));
+      await upgradeAdmin.query(`CREATE SCHEMA ${upgradeSchema}`);
+      const scoped = new URL(connectionString);
+      scoped.searchParams.set('options', `-csearch_path=${upgradeSchema}`);
+      upgradeDatabase = new Database(scoped.toString());
+      await migrate(upgradeDatabase, directory);
+
+      const company = randomUUID();
+      await upgradeDatabase.query(
+        "INSERT INTO organizations(id,owner_organization_id,code,name,organization_type) VALUES($1,$1,'COST-UPGRADE','Cost Upgrade','COMPANY')",
+        [company],
+      );
+      await upgradeDatabase.query(
+        "INSERT INTO roles(organization_id,code,name) VALUES($1,'SYSTEM_ADMIN','System administrator')",
+        [company],
+      );
+      expect(
+        (
+          await upgradeDatabase.query<{ count: string }>(
+            `SELECT count(*) FROM role_permission_grants grants
+             JOIN roles ON roles.id=grants.role_id
+             JOIN permissions ON permissions.id=grants.permission_id
+             WHERE roles.organization_id=$1
+               AND roles.code=ANY(ARRAY['SYSTEM_ADMIN','KT_COST_ANALYST']::text[])
+               AND permissions.capability LIKE 'cost-matrix:%'`,
+            [company],
+          )
+        ).rows[0]?.count,
+      ).toBe('0');
+
+      await cp(
+        join(migrationsDirectory, '0067_cost_matrix_role_grants.sql'),
+        join(directory, '0067_cost_matrix_role_grants.sql'),
+      );
+      await migrate(upgradeDatabase, directory);
+
+      const repaired = await upgradeDatabase.query<{
+        code: string;
+        capability: string;
+        scopes: string[];
+      }>(
+        `SELECT roles.code,permissions.capability,grants.data_scopes::text[] scopes
+         FROM role_permission_grants grants
+         JOIN roles ON roles.id=grants.role_id
+         JOIN permissions ON permissions.id=grants.permission_id
+         WHERE roles.organization_id=$1
+           AND roles.code=ANY(ARRAY['SYSTEM_ADMIN','KT_COST_ANALYST']::text[])
+           AND permissions.capability LIKE 'cost-matrix:%'
+         ORDER BY roles.code,permissions.capability`,
+        [company],
+      );
+      expect(repaired.rows).toHaveLength(6);
+      expect(repaired.rows.every((grant) => grant.scopes.includes('COMPANY'))).toBe(true);
+      expect(
+        (
+          await upgradeDatabase.query<{ count: string }>(
+            `SELECT count(*) FROM atomic_role_template_permissions templates
+             JOIN permissions ON permissions.id=templates.permission_id
+             WHERE templates.role_code='KT_COST_ANALYST'
+               AND permissions.capability LIKE 'cost-matrix:%'`,
+          )
+        ).rows[0]?.count,
+      ).toBe('3');
     } finally {
       try {
         await upgradeDatabase?.close();

@@ -24,7 +24,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0066_cost_model_presets.sql');
+    expect(ordered.at(-1)).toBe('0067_cost_matrix_role_grants.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
@@ -113,6 +113,20 @@ describe('identity and authorization migration', () => {
     ])
       expect(sql).toContain(`'${factor}'`);
     expect(sql).toContain("'costBasis','每平方米成品'");
+  });
+
+  it('repairs cost matrix permissions for production administrators and cost analysts', async () => {
+    const sql = await readFile(
+      join(process.cwd(), 'migrations/0067_cost_matrix_role_grants.sql'),
+      'utf8',
+    );
+    expect(sql).toContain("'KT_COST_ANALYST','cost-matrix:read'");
+    expect(sql).toContain("'KT_COST_ANALYST','cost-matrix:manage'");
+    expect(sql).toContain("'KT_COST_ANALYST','cost-matrix:calculate'");
+    expect(sql).toContain("ARRAY['SUPER_ADMIN','SYSTEM_ADMIN','KT_COST_ANALYST']");
+    expect(sql).toContain('INSERT INTO atomic_role_template_permissions');
+    expect(sql).toContain("ARRAY['COMPANY']::data_scope[]");
+    expect(sql).toContain('ON CONFLICT(role_id,permission_id) DO UPDATE');
   });
 
   it('adds purchase and sales contract upload OCR review and signing evidence', async () => {
