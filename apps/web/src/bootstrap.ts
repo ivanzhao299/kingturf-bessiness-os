@@ -548,7 +548,7 @@ export function visibleAppRoutes(permissions: ReadonlySet<string>): ReadonlySet<
   addWhen('opportunities', ['opportunity:']);
   addWhen('technical-requirements', ['ctr:']);
   addWhen('technical-solutions', ['technical-solution:']);
-  addWhen('costing', ['cost-model:', 'cost:']);
+  addWhen('costing', ['cost-model:', 'cost-matrix:', 'cost:']);
   addWhen('sales-policies', ['sales-policy:']);
   addWhen('quotes', ['quote:']);
   addWhen('credit-review', ['credit:']);
@@ -622,6 +622,7 @@ export function roleWorkspaceProfile(permissions: ReadonlySet<string>): RoleWork
       'ctr:',
       'technical-solution:',
       'cost-model:',
+      'cost-matrix:',
       'cost:',
       'sales-policy:',
       'quote:',
@@ -805,7 +806,10 @@ export function visibleCommercialSections(permissions: ReadonlySet<CommercialPer
     opportunityCreate: permissions.has('opportunity:create'),
     ctr: permissions.has('ctr:read'),
     technicalSolutions: permissions.has('technical-solution:read'),
-    costExplanation: permissions.has('cost:read'),
+    costExplanation:
+      permissions.has('cost:read') ||
+      permissions.has('cost-model:read') ||
+      permissions.has('cost-matrix:read'),
     policyExplanation: permissions.has('sales-policy:read'),
     quotes: permissions.has('quote:read'),
     quoteIssue: permissions.has('quote:read') && permissions.has('quote:issue'),
@@ -840,6 +844,7 @@ export function isCommercialPermission(item: string): item is CommercialPermissi
     'attachment:',
     'technical-solution:',
     'cost-model:',
+    'cost-matrix:',
     'cost:',
     'sales-policy:',
     'quote:',
@@ -3527,7 +3532,12 @@ export function commercialWorkspaceStructure(
     solutionPanel.append(solutionList);
     workspace.append(solutionPanel);
   }
-  if (controller && permissions.has('cost:read')) {
+  if (
+    controller &&
+    (permissions.has('cost:read') ||
+      permissions.has('cost-model:read') ||
+      permissions.has('cost-matrix:read'))
+  ) {
     const costPanel = el('section', 'decision-workbench cost-workbench');
     const costHeading = el('div', 'pipeline-heading');
     const costCopy = el('div');
