@@ -3612,7 +3612,12 @@ export function commercialWorkspaceStructure(
     );
     const matrixSection = el('section', 'cost-matrix-section');
     const matrixHeading = el('div', 'pipeline-heading');
-    matrixHeading.append(el('div', '', '规格成本模型矩阵'));
+    const matrixHeadingCopy = el('div');
+    matrixHeadingCopy.append(
+      el('h3', '', '规格成本模型矩阵'),
+      el('p', 'muted', '按产品规格选择模型，展开查看成本因子并执行即时核算。'),
+    );
+    matrixHeading.append(matrixHeadingCopy);
     if (permissions.has('cost-matrix:manage')) {
       const createMatrix = el('button', 'primary', '新建规格模型');
       createMatrix.addEventListener('click', () => {
@@ -3669,6 +3674,37 @@ export function commercialWorkspaceStructure(
       matrixHeading.append(createMatrix);
     }
     matrixSection.append(matrixHeading);
+    const matrixToolbar = el('div', 'cost-matrix-toolbar');
+    const matrixSearch = document.createElement('input');
+    matrixSearch.className = 'cost-matrix-search';
+    matrixSearch.type = 'search';
+    matrixSearch.placeholder = '搜索规格、名称或模型编号';
+    matrixSearch.setAttribute('aria-label', '搜索成本模型');
+    const matrixCount = el('span', 'cost-matrix-count', `共 ${String(matrices.length)} 个模型`);
+    matrixToolbar.append(matrixSearch, matrixCount);
+    matrixSection.append(matrixToolbar);
+    const matrixGrid = el('div', 'cost-matrix-grid');
+    matrixSection.append(matrixGrid);
+    const matrixCards: Readonly<{ element: HTMLElement; searchText: string }>[] = [];
+    const noMatchingMatrix = el(
+      'p',
+      'pipeline-empty cost-matrix-no-results',
+      '未找到匹配的成本模型。',
+    );
+    noMatchingMatrix.hidden = true;
+    matrixSearch.addEventListener('input', () => {
+      const query = matrixSearch.value.trim().toLocaleLowerCase('zh-CN');
+      let visible = 0;
+      for (const item of matrixCards) {
+        item.element.hidden = query.length > 0 && !item.searchText.includes(query);
+        if (!item.element.hidden) visible += 1;
+      }
+      matrixCount.textContent =
+        query.length > 0
+          ? `显示 ${String(visible)} / ${String(matrices.length)} 个模型`
+          : `共 ${String(matrices.length)} 个模型`;
+      noMatchingMatrix.hidden = visible > 0 || matrices.length === 0;
+    });
     const categoryOptions = [
       ['DIRECT_MATERIAL', '直接材料'],
       ['DIRECT_LABOR', '直接人工'],
@@ -3687,30 +3723,47 @@ export function commercialWorkspaceStructure(
           ? matrix.latestCalculation
           : null
       ) as Record<string, unknown> | null;
+      const cardHeading = el('div', 'cost-matrix-card-heading');
+      const cardTitle = el('div');
+      cardTitle.append(
+        el('strong', '', textValue(matrix.name, '未命名规格模型')),
+        el('span', 'cost-matrix-code', textValue(matrix.code, '规格')),
+      );
+      cardHeading.append(cardTitle);
+      if (matrix.isSystemPreset === true)
+        cardHeading.append(el('span', 'ctr-state state-approved', '系统预置'));
       card.append(
-        el('strong', '', `${textValue(matrix.code, '规格')} · ${textValue(matrix.name, '')}`),
-        ...(matrix.isSystemPreset === true
-          ? [el('span', 'ctr-state state-approved', '系统预置')]
-          : []),
+        cardHeading,
         el(
           'p',
-          'muted',
+          'cost-matrix-meta',
           `${currencyLabel(matrix.currency)} · 默认税率 ${(Number(matrix.defaultTaxRate ?? 0) * 100).toFixed(0)}% · ${String(Array.isArray(matrix.factors) ? matrix.factors.length : 0)} 个成本因子`,
         ),
       );
       if (latest) {
         const totals = el('div', 'cost-matrix-totals');
         totals.append(
-          el('span', '', '直接生产成本'),
-          el('strong', '', `¥ ${Number(latest.directProductionCost ?? 0).toFixed(2)}`),
-          el('span', '', '预留费用'),
-          el('strong', '', `¥ ${Number(latest.reservedExpenseCost ?? 0).toFixed(2)}`),
-          el('span', '', '综合成本'),
-          el('strong', '', `¥ ${Number(latest.totalCost ?? 0).toFixed(2)}`),
+          ...[
+            ['直接生产成本', latest.directProductionCost],
+            ['预留费用', latest.reservedExpenseCost],
+            ['综合成本', latest.totalCost],
+          ].map(([label, value]) => {
+            const metric = el('div');
+            metric.append(
+              el('span', '', String(label)),
+              el('strong', '', `¥ ${Number(value ?? 0).toFixed(2)}`),
+            );
+            return metric;
+          }),
         );
         card.append(totals);
       }
       const factors = Array.isArray(matrix.factors) ? matrix.factors : [];
+      const details = document.createElement('details');
+      details.className = 'cost-matrix-details';
+      const detailsSummary = document.createElement('summary');
+      detailsSummary.textContent = `查看 ${String(factors.length)} 个成本因子`;
+      details.append(detailsSummary);
       const table = el('div', 'cost-factor-list');
       for (const candidate of factors) {
         const factor = candidate as Record<string, unknown>;
@@ -3730,7 +3783,8 @@ export function commercialWorkspaceStructure(
             '尚未配置成本因子。建议先录入草丝、底布、胶水、包装、人工和能源。',
           ),
         );
-      card.append(table);
+      details.append(table);
+      card.append(details);
       const actions = el('div', 'inline-actions');
       if (permissions.has('cost-matrix:manage')) {
         const add = el('button', 'secondary', '添加成本因子');
@@ -3823,31 +3877,85 @@ export function commercialWorkspaceStructure(
         });
         actions.append(add);
       }
+      const calculatedAt =
+        latest && typeof latest.calculatedAt === 'string' ? latest.calculatedAt : '';
+      const actionStatus = el(
+        'p',
+        'cost-matrix-action-status',
+        latest
+          ? `最近核算：${textValue(latest.pricingMode, '') === 'TAX_EXCLUSIVE' ? '未税成本' : '含税成本'} · ${calculatedAt ? new Date(calculatedAt).toLocaleString('zh-CN') : '时间未知'}`
+          : '尚未核算；选择口径后将立即返回结果。',
+      );
+      actionStatus.setAttribute('role', 'status');
+      actionStatus.setAttribute('aria-live', 'polite');
+      const calculateButtons: HTMLButtonElement[] = [];
       if (permissions.has('cost-matrix:calculate'))
         for (const [mode, label] of [
           ['TAX_INCLUSIVE', '一键核算含税成本'],
           ['TAX_EXCLUSIVE', '一键核算未税成本'],
         ] as const) {
           const calculate = el('button', mode === 'TAX_INCLUSIVE' ? 'primary' : 'secondary', label);
+          calculate.setAttribute('data-cost-matrix-calculate', mode);
           calculate.addEventListener('click', () => {
             void (async () => {
-              await controller.submit(
-                `/api/v1/cost-matrices/${textValue(matrix.id, '')}/calculate`,
-                { pricingMode: mode },
-              );
-              await controller.load();
-              status.textContent = controller.message;
+              for (const button of calculateButtons) button.disabled = true;
+              calculate.textContent = '核算中…';
+              calculate.setAttribute('aria-busy', 'true');
+              actionStatus.className = 'cost-matrix-action-status pending';
+              actionStatus.textContent = `正在核算${mode === 'TAX_INCLUSIVE' ? '含税' : '未税'}成本，请稍候…`;
+              status.textContent = actionStatus.textContent;
+              try {
+                await controller.submit(
+                  `/api/v1/cost-matrices/${textValue(matrix.id, '')}/calculate`,
+                  { pricingMode: mode },
+                );
+                const result = controller.revisionState;
+                const total = Number(result?.totalCost);
+                await controller.load();
+                const successMessage = Number.isFinite(total)
+                  ? `${textValue(matrix.name, '成本模型')}核算完成：综合成本 ¥ ${total.toFixed(2)}`
+                  : `${textValue(matrix.name, '成本模型')}核算完成，结果已刷新`;
+                controller.message = successMessage;
+                status.textContent = successMessage;
+                const refreshedSection = commercialWorkspaceStructure(
+                  viewport,
+                  immutable,
+                  controller,
+                ).querySelector<HTMLElement>('.cost-matrix-section');
+                if (refreshedSection) matrixSection.replaceWith(refreshedSection);
+              } catch (error) {
+                const errorMessage =
+                  error instanceof Error && error.message.length > 0
+                    ? error.message
+                    : '服务器未返回有效核算结果';
+                actionStatus.className = 'cost-matrix-action-status error';
+                actionStatus.textContent = `核算失败：${errorMessage}`;
+                status.textContent = actionStatus.textContent;
+              } finally {
+                for (const button of calculateButtons) button.disabled = false;
+                calculate.textContent = label;
+                calculate.setAttribute('aria-busy', 'false');
+              }
             })();
           });
+          calculateButtons.push(calculate);
           actions.append(calculate);
         }
-      card.append(actions);
-      matrixSection.append(card);
+      card.append(actions, actionStatus);
+      matrixCards.push({
+        element: card,
+        searchText:
+          `${textValue(matrix.code, '')} ${textValue(matrix.name, '')} ${textValue(matrix.productSku, '')} ${textValue(matrix.productName, '')}`.toLocaleLowerCase(
+            'zh-CN',
+          ),
+      });
+      matrixGrid.append(card);
     }
     if (matrices.length === 0)
-      matrixSection.append(
+      matrixGrid.append(
         el('p', 'pipeline-empty', '暂无规格成本模型。请先按常用产品规格建立模型矩阵。'),
       );
+    matrixGrid.append(noMatchingMatrix);
     costPanel.append(matrixSection);
     const modelCatalog = el('div', 'definition-catalog');
     const latestModelVersions = new Map<string, number>();

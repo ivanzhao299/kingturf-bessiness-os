@@ -634,8 +634,12 @@ class RenderedElement {
   public children: RenderedElement[] = [];
   public privateText = '';
   public disabled = false;
+  public hidden = false;
+  public value = '';
   public placeholder = '';
   public type = '';
+  public readonly attributes = new Map<string, string>();
+  private readonly listeners = new Map<string, (() => void)[]>();
   public constructor(public readonly tagName: string) {}
   public set textContent(text: string) {
     this.privateText = text;
@@ -649,18 +653,28 @@ class RenderedElement {
   public append(...children: RenderedElement[]): void {
     this.children.push(...children);
   }
-  public addEventListener(): void {
-    return undefined;
+  public addEventListener(type: string, listener: () => void): void {
+    this.listeners.set(type, [...(this.listeners.get(type) ?? []), listener]);
   }
-  public setAttribute(): void {
-    return undefined;
+  public setAttribute(name: string, value: string): void {
+    this.attributes.set(name, value);
   }
   public replaceWith(): void {
     return undefined;
   }
+  public click(): void {
+    for (const listener of this.listeners.get('click') ?? []) listener();
+  }
+  public querySelector(selector: string): RenderedElement | null {
+    return selector.startsWith('.') ? (this.findByClass(selector.slice(1))[0] ?? null) : null;
+  }
   public findByClass(className: string): RenderedElement[] {
     const own = this.className.split(' ').includes(className) ? [this] : [];
     return [...own, ...this.children.flatMap((child) => child.findByClass(className))];
+  }
+  public findByText(text: string): RenderedElement[] {
+    const own = this.privateText === text ? [this] : [];
+    return [...own, ...this.children.flatMap((child) => child.findByText(text))];
   }
 }
 
@@ -888,9 +902,128 @@ describe('web bootstrap', () => {
       controller,
     ) as unknown as RenderedElement;
     expect(workspace.findByClass('cost-matrix-card')).toHaveLength(1);
+    expect(workspace.findByClass('cost-matrix-grid')).toHaveLength(1);
+    expect(workspace.findByClass('cost-matrix-search')).toHaveLength(1);
+    expect(workspace.findByClass('cost-matrix-details')).toHaveLength(1);
+    expect(workspace.findByClass('cost-matrix-action-status')[0]?.textContent).toContain(
+      '尚未核算',
+    );
     expect(workspace.textContent).toContain('规格成本模型矩阵');
     expect(workspace.textContent).toContain('PRESET-LANDSCAPE-20');
     expect(workspace.textContent).toContain('系统预置');
+  });
+
+  it('shows immediate progress and a refreshed total after one-click cost calculation', async () => {
+    let calculated = false;
+    const api = {
+      listOpportunities: vi.fn().mockResolvedValue([]),
+      list: vi.fn().mockImplementation((path: string) =>
+        Promise.resolve(
+          path === '/api/v1/cost-matrices'
+            ? [
+                {
+                  id: 'matrix-1',
+                  code: 'PRESET-LANDSCAPE-20',
+                  name: '景观休闲草 20mm',
+                  currency: 'CNY',
+                  defaultTaxRate: '0.13',
+                  isSystemPreset: true,
+                  factors: [],
+                  ...(calculated
+                    ? {
+                        latestCalculation: {
+                          pricingMode: 'TAX_INCLUSIVE',
+                          directProductionCost: '18.5',
+                          reservedExpenseCost: '1.5',
+                          totalCost: '20',
+                          calculatedAt: '2026-08-29T09:00:00.000Z',
+                        },
+                      }
+                    : {}),
+                },
+              ]
+            : [],
+        ),
+      ),
+      submit: vi.fn().mockImplementation(() => {
+        calculated = true;
+        return Promise.resolve({ totalCost: '20' });
+      }),
+      uploadCtrAttachment: vi.fn().mockResolvedValue({}),
+      command: vi.fn().mockResolvedValue({}),
+    };
+    const controller = new CommercialController(
+      api,
+      new Set(['cost-matrix:read', 'cost-matrix:calculate']),
+    );
+    await controller.load();
+    const workspace = commercialWorkspaceStructure(
+      'desktop',
+      false,
+      controller,
+    ) as unknown as RenderedElement;
+    const calculate = workspace.findByText('一键核算含税成本')[0];
+    const feedback = workspace.findByClass('cost-matrix-action-status')[0];
+    const globalStatus = workspace.findByClass('commercial-status')[0];
+
+    calculate?.click();
+
+    expect(calculate?.disabled).toBe(true);
+    expect(calculate?.textContent).toBe('核算中…');
+    expect(feedback?.textContent).toContain('正在核算含税成本');
+    await vi.waitFor(() => {
+      expect(api.submit).toHaveBeenCalledWith(
+        '/api/v1/cost-matrices/matrix-1/calculate',
+        {
+          pricingMode: 'TAX_INCLUSIVE',
+        },
+        'POST',
+      );
+      expect(controller.views.get('/api/v1/cost-matrices')?.[0]?.latestCalculation).toBeTruthy();
+      expect(globalStatus?.textContent).toContain('综合成本 ¥ 20.00');
+      expect(calculate?.disabled).toBe(false);
+      expect(calculate?.textContent).toBe('一键核算含税成本');
+    });
+  });
+
+  it('reports one-click cost calculation failures beside the selected card', async () => {
+    const api = {
+      listOpportunities: vi.fn().mockResolvedValue([]),
+      list: vi.fn().mockResolvedValue([
+        {
+          id: 'matrix-1',
+          code: 'PRESET-LANDSCAPE-20',
+          name: '景观休闲草 20mm',
+          currency: 'CNY',
+          defaultTaxRate: '0.13',
+          factors: [],
+        },
+      ]),
+      submit: vi.fn().mockRejectedValue(new Error('价格来源暂不可用')),
+      uploadCtrAttachment: vi.fn().mockResolvedValue({}),
+      command: vi.fn().mockResolvedValue({}),
+    };
+    const controller = new CommercialController(
+      api,
+      new Set(['cost-matrix:read', 'cost-matrix:calculate']),
+    );
+    await controller.load();
+    const workspace = commercialWorkspaceStructure(
+      'desktop',
+      false,
+      controller,
+    ) as unknown as RenderedElement;
+    const calculate = workspace.findByText('一键核算未税成本')[0];
+    const feedback = workspace.findByClass('cost-matrix-action-status')[0];
+
+    calculate?.click();
+
+    await vi.waitFor(() => {
+      expect(feedback?.textContent).toBe('核算失败：价格来源暂不可用');
+      expect(feedback?.className).toContain('error');
+      expect(calculate?.disabled).toBe(false);
+      expect(calculate?.textContent).toBe('一键核算未税成本');
+    });
   });
 
   it('default-denies customer and 360 rendering unless customer:read is present', () => {
