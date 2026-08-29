@@ -1938,6 +1938,33 @@ button {
   border-radius: 10px;
   background: #f7faf8;
 }
+.cost-governance-flow {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(150px, 1fr));
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 0;
+  overflow-x: auto;
+  list-style: none;
+}
+.cost-governance-flow li {
+  display: grid;
+  gap: 4px;
+  min-width: 150px;
+  padding: 10px;
+  border: 1px solid #dce6e0;
+  border-radius: 8px;
+  background: #fff;
+}
+.cost-governance-flow strong {
+  color: #176a48;
+  font-size: 11px;
+}
+.cost-governance-flow span {
+  color: #60746a;
+  font-size: 10px;
+  line-height: 1.45;
+}
 .cost-matrix-section > .pipeline-heading {
   margin: 0;
   color: #203b2f;
@@ -2070,10 +2097,33 @@ button {
   overflow: auto;
 }
 .cost-factor-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  justify-content: space-between;
   padding: 8px 10px;
   border-bottom: 1px solid #edf1ee;
   color: #40564b;
   font-size: 11px;
+}
+.cost-factor-copy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+.cost-factor-copy span,
+.cost-factor-source {
+  overflow-wrap: anywhere;
+}
+.cost-factor-source {
+  color: #6a7d73;
+  line-height: 1.45;
+}
+.compact-action {
+  flex: 0 0 auto;
+  min-height: 28px;
+  padding: 4px 8px;
+  font-size: 10px;
 }
 .cost-matrix-card .inline-actions {
   display: flex;
