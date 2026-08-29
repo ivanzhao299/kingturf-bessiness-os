@@ -2,6 +2,7 @@ import {
   buildBusinessDocumentTemplateHtml,
   isLegacyBusinessDocumentOutline,
 } from './business-document-content';
+import { LoginCoordinator, type LoginProgress } from './login-flow';
 
 export const BOOTSTRAP_TITLE = '金特夫企业经营管理系统';
 
@@ -1372,9 +1373,7 @@ export class CommercialController {
   public async load(): Promise<void> {
     this.loading = true;
     try {
-      this.opportunities = this.permissions.has('opportunity:read')
-        ? await this.api.listOpportunities()
-        : [];
+      const failures: string[] = [];
       const readable = [
         ['ctr:read', '/api/v1/ctrs'],
         ['technical-solution:read', '/api/v1/technical-solutions'],
@@ -1427,17 +1426,35 @@ export class CommercialController {
         ],
       ] as const;
       const readableViews = readable.filter(([permission]) => this.permissions.has(permission));
-      const loadedViews = await Promise.all(
+      const opportunityTask = this.permissions.has('opportunity:read')
+        ? this.api
+            .listOpportunities()
+            .then((value) => {
+              this.opportunities = value;
+            })
+            .catch(() => {
+              this.opportunities = [];
+              failures.push('商机');
+            })
+        : Promise.resolve();
+      const viewTask = Promise.allSettled(
         readableViews.map(async ([, path]) => [path, await this.api.list(path)] as const),
-      );
-      for (const [path, value] of loadedViews) this.views.set(path, value);
+      ).then((results) => {
+        results.forEach((result, index) => {
+          const source = readableViews[index];
+          if (!source) return;
+          if (result.status === 'fulfilled') this.views.set(result.value[0], result.value[1]);
+          else failures.push(source[1]);
+        });
+      });
+      await Promise.all([opportunityTask, viewTask]);
       if (
         this.api.get &&
         this.permissions.has('order-360:read') &&
         this.permissions.has('sales-order:read')
       ) {
         const get = this.api.get;
-        await Promise.all(
+        await Promise.allSettled(
           (this.views.get('/api/v1/sales-orders') ?? []).map(async (order) => {
             if (typeof order.id !== 'string') return;
             this.order360.set(order.id, await get(`/api/v1/sales-orders/${order.id}/360`));
@@ -1451,9 +1468,16 @@ export class CommercialController {
           to: `${String(year + 1)}-01-01T00:00:00.000Z`,
           currency: 'CNY',
         });
-        this.dashboard = await this.api.get(`/api/v1/executive-dashboard?${query.toString()}`);
+        try {
+          this.dashboard = await this.api.get(`/api/v1/executive-dashboard?${query.toString()}`);
+        } catch {
+          failures.push('经营看板');
+        }
       }
-      this.message = `已加载 ${String(this.opportunities.length)} 个商机`;
+      this.message =
+        failures.length === 0
+          ? `已加载 ${String(this.opportunities.length)} 个商机`
+          : `核心工作台已加载；${String(failures.length)} 个数据源暂不可用`;
     } finally {
       this.loading = false;
     }
@@ -9378,23 +9402,64 @@ export function setOperationStatus(target: HTMLElement, state: OperationState, m
   if (state === 'loading') target.setAttribute('aria-busy', 'true');
   else target.removeAttribute('aria-busy');
 }
+const REQUEST_TIMEOUT_MS = 15_000;
+
+export class RequestError extends Error {
+  public constructor(
+    message: string,
+    public readonly status: number,
+    public readonly correlationId?: string,
+  ) {
+    super(message);
+    this.name = 'RequestError';
+  }
+}
+
 async function json<T>(path: string, token: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
-  headers.set('content-type', 'application/json');
+  headers.set('accept', 'application/json');
+  if (init?.body !== undefined) headers.set('content-type', 'application/json');
   headers.set('x-correlation-id', requestId());
   if (token) headers.set('authorization', `Bearer ${token}`);
-  const response = await fetch(path, {
-    ...init,
-    credentials: 'same-origin',
-    headers,
-  });
+  const controller = new AbortController();
+  const timeoutError = new Error('请求超时，请检查网络后重试');
+  const timeout = globalThis.setTimeout(() => {
+    controller.abort(timeoutError);
+  }, REQUEST_TIMEOUT_MS);
+  if (init?.signal) {
+    if (init.signal.aborted) controller.abort();
+    else
+      init.signal.addEventListener(
+        'abort',
+        () => {
+          controller.abort();
+        },
+        { once: true },
+      );
+  }
+  let response: Response;
+  try {
+    response = await fetch(path, {
+      ...init,
+      credentials: 'same-origin',
+      headers,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (controller.signal.reason === timeoutError) throw timeoutError;
+    throw error;
+  } finally {
+    globalThis.clearTimeout(timeout);
+  }
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as {
       message?: string;
-      error?: { message?: string };
+      error?: { message?: string; correlationId?: string };
     };
-    throw new Error(
+    throw new RequestError(
       body.error?.message ?? body.message ?? `Request failed (${String(response.status)})`,
+      response.status,
+      body.error?.correlationId,
     );
   }
   return (response.status === 204 ? undefined : await response.json()) as T;
@@ -9647,6 +9712,21 @@ const onlineDocumentApi = <T>(path: string, init?: RequestInit): Promise<T> => {
   return json<T>(path, token, init);
 };
 
+const onlineDocumentReadCache = new Map<string, Promise<unknown>>();
+const clearSessionReadCache = (): void => {
+  onlineDocumentReadCache.clear();
+};
+const onlineDocumentRead = <T>(path: string): Promise<T> => {
+  const cached = onlineDocumentReadCache.get(path);
+  if (cached) return cached as Promise<T>;
+  const request = onlineDocumentApi<T>(path).catch((error: unknown) => {
+    onlineDocumentReadCache.delete(path);
+    throw error;
+  });
+  onlineDocumentReadCache.set(path, request);
+  return request;
+};
+
 const BUSINESS_DOCUMENT_SUBJECTS: Partial<
   Record<AppRoute, Readonly<{ endpoint: string; type: string; numberKeys: readonly string[] }>>
 > = {
@@ -9671,8 +9751,8 @@ const BUSINESS_DOCUMENT_SUBJECTS: Partial<
     numberKeys: ['orderNumber', 'number', 'id'],
   },
   shipments: {
-    endpoint: '/api/v1/shipments',
-    type: 'shipment',
+    endpoint: '/api/v1/shipment-releases',
+    type: 'shipment-release',
     numberKeys: ['trackingNumber', 'shipmentNumber', 'id'],
   },
 };
@@ -11913,9 +11993,10 @@ export function createCrmShell(
   }
   documentLibrary.append(documentGrid);
   content.append(documentLibrary);
+  const permittedRoutes = visibleAppRoutes(allPermissions);
   const templateRoutes = Array.from(
     new Set(BUSINESS_DOCUMENT_TEMPLATES.flatMap((template) => template.routes)),
-  );
+  ).filter((route) => permittedRoutes.has(route));
   for (const route of templateRoutes) {
     const routeTemplates = templatesForRoute(route);
     const contextualDocuments = el('section', 'panel contextual-documents');
@@ -11946,7 +12027,7 @@ export function createCrmShell(
     subjectSelect.append(businessDocumentOption('不关联具体业务单据', ''));
     if (subjectConfig && allPermissions.has('business-document:manage')) {
       subjectSelect.append(businessDocumentOption('正在加载可关联业务…', ''));
-      void onlineDocumentApi<
+      void onlineDocumentRead<
         readonly Record<string, unknown>[] | { items?: readonly Record<string, unknown>[] }
       >(subjectConfig.endpoint)
         .then((result) => {
@@ -12001,7 +12082,7 @@ export function createCrmShell(
         bindingGrid.append(field);
       }
       contextualDocuments.append(bindingGrid);
-      void onlineDocumentApi<{
+      void onlineDocumentRead<{
         customers: readonly Readonly<{ id: string; name: string; number: string }>[];
         orders: readonly Readonly<{ id: string; name: string; customerId: string }>[];
         employees: readonly Readonly<{ id: string; name: string; number: string }>[];
@@ -12144,7 +12225,7 @@ export function createCrmShell(
     if (allPermissions.has('business-document:read')) {
       const savedDocuments = el('div', 'business-document-register');
       savedDocuments.append(el('strong', '', '已保存在线文档'), el('span', 'muted', '正在加载…'));
-      void onlineDocumentApi<{ items: readonly OnlineBusinessDocument[] }>(
+      void onlineDocumentRead<{ items: readonly OnlineBusinessDocument[] }>(
         `/api/v1/business-documents?route=${encodeURIComponent(route)}`,
       )
         .then((result) => {
@@ -14056,7 +14137,67 @@ async function login(login: string, password: string): Promise<string> {
   });
   return result.token;
 }
-function loginView(root: HTMLElement): void {
+
+function startupView(root: HTMLElement, message: string): void {
+  const shell = el('main', 'startup-shell');
+  shell.setAttribute('aria-busy', 'true');
+  shell.setAttribute('aria-live', 'polite');
+  const mark = document.createElement('img');
+  mark.src = '/kingturf-mark-transparent.png';
+  mark.alt = '';
+  mark.width = 512;
+  mark.height = 512;
+  const progress = el('span', 'startup-progress');
+  progress.setAttribute('aria-hidden', 'true');
+  const status = el('p', 'startup-status', message);
+  shell.append(
+    mark,
+    el('p', 'eyebrow', '金特夫企业经营管理系统'),
+    el('h1', '', '正在准备工作台'),
+    status,
+    progress,
+  );
+  root.replaceChildren(shell);
+}
+
+function updateStartupStatus(root: HTMLElement, message: string): void {
+  const status = root.querySelector<HTMLElement>('.startup-status');
+  if (status) status.textContent = message;
+}
+
+function startupFailureView(root: HTMLElement): void {
+  const shell = el('main', 'startup-shell startup-failure');
+  const mark = document.createElement('img');
+  mark.src = '/kingturf-mark-transparent.png';
+  mark.alt = '';
+  mark.width = 512;
+  mark.height = 512;
+  const status = el(
+    'p',
+    'startup-status error',
+    '工作台暂时未能完整加载。登录状态仍已保留，可以安全重试。',
+  );
+  status.setAttribute('role', 'alert');
+  const actions = el('div', 'startup-actions');
+  const retry = el('button', 'primary', '重新加载工作台');
+  retry.type = 'button';
+  retry.addEventListener('click', () => {
+    retry.disabled = true;
+    void bootstrap(root);
+  });
+  const signOut = el('button', 'secondary', '返回登录');
+  signOut.type = 'button';
+  signOut.addEventListener('click', () => {
+    sessionStorage.removeItem('kingturf.session');
+    clearSessionReadCache();
+    loginView(root);
+  });
+  actions.append(retry, signOut);
+  shell.append(mark, el('h1', '', '加载遇到问题'), status, actions);
+  root.replaceChildren(shell);
+}
+
+function loginView(root: HTMLElement, initialMessage = ''): void {
   const shell = el('main', 'login-shell');
   const story = el('section', 'login-story');
   const loginBrand = el('div', 'login-brand');
@@ -14076,6 +14217,7 @@ function loginView(root: HTMLElement): void {
     el('p', 'login-intro', '销售、采购、生产、质量与财务协同'),
   );
   const form = el('form', 'login-card');
+  form.setAttribute('autocomplete', 'on');
   form.append(
     el('p', 'eyebrow', '企业账号登录'),
     el('h2', '', '登录金特夫'),
@@ -14085,29 +14227,59 @@ function loginView(root: HTMLElement): void {
   identity.name = 'login';
   identity.placeholder = '账号';
   identity.required = true;
+  identity.autocomplete = 'username';
+  identity.autocapitalize = 'none';
+  identity.spellcheck = false;
   const password = el('input');
   password.name = 'password';
   password.type = 'password';
   password.placeholder = '密码';
   password.required = true;
+  password.autocomplete = 'current-password';
   const submit = el('button', 'primary', '登录');
   submit.type = 'submit';
-  form.append(identity, password, submit);
+  const status = el('p', 'login-status', initialMessage);
+  status.setAttribute('aria-live', 'polite');
+  status.setAttribute('role', 'status');
+  if (initialMessage) status.dataset.state = 'error';
+  form.append(identity, password, submit, status);
+  const coordinator = new LoginCoordinator(login, async (token) => {
+    sessionStorage.setItem('kingturf.session', token);
+    clearSessionReadCache();
+    await bootstrap(root);
+  });
+  const renderProgress = (progress: LoginProgress): void => {
+    const busy = progress.phase !== 'error';
+    identity.disabled = busy;
+    password.disabled = busy;
+    submit.disabled = busy;
+    submit.textContent = progress.phase === 'authenticating' ? '正在登录…' : '登录';
+    form.setAttribute('aria-busy', String(busy));
+    setOperationStatus(status, progress.phase === 'error' ? 'error' : 'loading', progress.message);
+  };
   form.addEventListener('submit', (event) => {
     event.preventDefault();
-    void login(identity.value, password.value)
-      .then((token) => {
-        sessionStorage.setItem('kingturf.session', token);
-        void bootstrap(root);
-      })
-      .catch(() => {
-        form.append(el('p', 'error', '登录失败'));
+    if (coordinator.busy) return;
+    void coordinator
+      .submit(identity.value.trim(), password.value, renderProgress)
+      .then((success) => {
+        if (!success && root.contains(form)) {
+          identity.disabled = false;
+          password.disabled = false;
+          submit.disabled = false;
+          submit.textContent = '登录';
+          form.setAttribute('aria-busy', 'false');
+          password.value = '';
+          password.focus();
+        }
       });
   });
   shell.append(story, form);
   root.replaceChildren(shell);
+  if ((globalThis.innerWidth || 1280) > 820) identity.focus();
 }
-export async function bootstrap(root: HTMLElement): Promise<void> {
+
+async function bootstrapApplication(root: HTMLElement): Promise<void> {
   const allowed = new Set<CrmPermission>([
     'employee:read',
     'customer:read',
@@ -14132,24 +14304,45 @@ export async function bootstrap(root: HTMLElement): Promise<void> {
     loginView(root);
     return;
   }
+  startupView(root, '正在验证登录状态…');
   let session: SessionDto;
   try {
     session = await json<SessionDto>('/api/v1/auth/session', token);
-  } catch {
-    sessionStorage.removeItem('kingturf.session');
-    loginView(root);
-    return;
+  } catch (error) {
+    if (error instanceof RequestError && error.status === 401) {
+      sessionStorage.removeItem('kingturf.session');
+      clearSessionReadCache();
+      loginView(root, '登录状态已失效，请重新登录');
+      return;
+    }
+    throw error;
   }
+  updateStartupStatus(root, '登录成功，正在并行加载业务数据…');
   const permissions = new Set(
     session.permissions.filter((item): item is CrmPermission => allowed.has(item as CrmPermission)),
   );
-  const controller = new CrmController(permissions, createFetchCrmApi(token));
-  try {
-    await controller.load();
-  } catch (error) {
-    controller.error = error instanceof Error ? error.message : '客户业务数据加载失败';
-  }
   const allPermissions = new Set(session.permissions);
+  const controller = new CrmController(permissions, createFetchCrmApi(token));
+  const commercialPermissions = new Set(session.permissions.filter(isCommercialPermission));
+  const commercialController = Object.values(visibleCommercialSections(commercialPermissions)).some(
+    Boolean,
+  )
+    ? new CommercialController(createFetchCommercialApi(token), commercialPermissions)
+    : null;
+  const governanceController =
+    visibleGovernanceSurfaces(allPermissions).length > 0
+      ? new GovernanceController(allPermissions, token)
+      : null;
+  await Promise.all([
+    controller.load().catch((error: unknown) => {
+      controller.error = error instanceof Error ? error.message : '客户业务数据加载失败';
+    }),
+    commercialController?.load().catch((error: unknown) => {
+      commercialController.message = error instanceof Error ? error.message : '商业工作台加载失败';
+    }),
+    governanceController?.load(),
+  ]);
+  updateStartupStatus(root, '业务数据已就绪，正在构建工作台…');
   const currentEmployee = controller.employees.find(
     (employee) => employee.id === session.employeeId,
   );
@@ -14165,19 +14358,9 @@ export async function bootstrap(root: HTMLElement): Promise<void> {
     allPermissions,
     profileLabel,
   );
-  const commercialPermissions = new Set(session.permissions.filter(isCommercialPermission));
-  if (Object.values(visibleCommercialSections(commercialPermissions)).some(Boolean)) {
-    const commercialController = new CommercialController(
-      createFetchCommercialApi(token),
-      commercialPermissions,
-    );
+  if (commercialController) {
     commercialController.customers = controller.customers;
     commercialController.employees = controller.employees;
-    try {
-      await commercialController.load();
-    } catch (error) {
-      commercialController.message = error instanceof Error ? error.message : '商业工作台加载失败';
-    }
     shell
       .querySelector<HTMLElement>('.workspace')
       ?.append(
@@ -14188,10 +14371,7 @@ export async function bootstrap(root: HTMLElement): Promise<void> {
         ),
       );
   }
-  const governanceSurfaces = visibleGovernanceSurfaces(allPermissions);
-  if (governanceSurfaces.length > 0) {
-    const governanceController = new GovernanceController(allPermissions, token);
-    await governanceController.load();
+  if (governanceController) {
     shell
       .querySelector<HTMLElement>('.workspace')
       ?.append(governanceWorkspace(governanceController));
@@ -14202,4 +14382,12 @@ export async function bootstrap(root: HTMLElement): Promise<void> {
   installRoleTaskInsights(shell);
   installAppNavigation(shell);
   root.replaceChildren(shell);
+}
+
+export async function bootstrap(root: HTMLElement): Promise<void> {
+  try {
+    await bootstrapApplication(root);
+  } catch {
+    startupFailureView(root);
+  }
 }
