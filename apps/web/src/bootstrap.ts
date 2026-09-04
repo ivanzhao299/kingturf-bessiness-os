@@ -1368,6 +1368,7 @@ export class CommercialController {
   public loading = false;
   public message = '';
   public revisionState: Record<string, unknown> | null = null;
+  public preferredQuoteCostDecisionId = '';
   public readonly views = new Map<string, readonly Record<string, unknown>[]>();
   public readonly order360 = new Map<string, Record<string, unknown>>();
   public dashboard: Record<string, unknown> | null = null;
@@ -1483,6 +1484,25 @@ export class CommercialController {
         failures.length === 0
           ? `已加载 ${String(this.opportunities.length)} 个商机`
           : `核心工作台已加载；${String(failures.length)} 个数据源暂不可用`;
+    } finally {
+      this.loading = false;
+    }
+  }
+  public async refreshViews(paths: readonly string[]): Promise<void> {
+    this.loading = true;
+    try {
+      const results = await Promise.allSettled(
+        paths.map(async (path) => [path, await this.api.list(path)] as const),
+      );
+      const failed: string[] = [];
+      results.forEach((result, index) => {
+        const path = paths[index];
+        if (!path) return;
+        if (result.status === 'fulfilled') this.views.set(result.value[0], result.value[1]);
+        else failed.push(path);
+      });
+      if (failed.length > 0)
+        throw new Error(`数据已保存，但刷新失败：${failed.join('、')}，请重新进入本页面`);
     } finally {
       this.loading = false;
     }
@@ -3624,6 +3644,8 @@ export function commercialWorkspaceStructure(
         }),
     );
     const matrixSection = el('section', 'cost-matrix-section');
+    const costDialogHost = () =>
+      matrixSection.closest<HTMLElement>('.commercial-workspace') ?? workspace;
     const matrixHeading = el('div', 'pipeline-heading');
     const matrixHeadingCopy = el('div');
     matrixHeadingCopy.append(
@@ -3753,7 +3775,7 @@ export function commercialWorkspaceStructure(
       (liveStatus ?? status).textContent = message;
     };
     const refreshCostMatrices = async (message: string) => {
-      await controller.load();
+      await controller.refreshViews(['/api/v1/cost-matrices']);
       controller.message = message;
       setCostStatus(message);
       const refreshedSection = commercialWorkspaceStructure(
@@ -3836,7 +3858,7 @@ export function commercialWorkspaceStructure(
           edit.setAttribute('aria-label', `维护${textValue(factor.factorName, '成本因子')}`);
           edit.addEventListener('click', () => {
             openForm(
-              workspace,
+              costDialogHost(),
               `维护因子 · ${textValue(factor.factorName, '')}`,
               '采购来源需绑定物料；若暂未绑定，保留可追溯的市场或企业基准并注明生效日期。',
               [
@@ -3988,7 +4010,7 @@ export function commercialWorkspaceStructure(
         const add = el('button', 'secondary', '添加成本因子');
         add.addEventListener('click', () => {
           openForm(
-            workspace,
+            costDialogHost(),
             `添加因子 · ${textValue(matrix.name, '')}`,
             '采购订单或供应商报价来源将自动读取最新有效价格；费用类可先手工录入。',
             [
@@ -4145,7 +4167,7 @@ export function commercialWorkspaceStructure(
                 );
                 const result = controller.revisionState;
                 const total = Number(result?.totalCost);
-                await controller.load();
+                await controller.refreshViews(['/api/v1/cost-matrices']);
                 const successMessage = Number.isFinite(total)
                   ? `${textValue(matrix.name, '成本模型')}核算完成：综合成本 ¥ ${total.toFixed(2)}`
                   : `${textValue(matrix.name, '成本模型')}核算完成，结果已刷新`;
@@ -4183,11 +4205,22 @@ export function commercialWorkspaceStructure(
       ) {
         if (latest.costDecisionId) {
           actions.append(el('span', 'ctr-state state-approved', '已进入报价成本池'));
+          if (permissions.has('quote:read') && permissions.has('quote:create')) {
+            const continueQuote = el('button', 'primary', '继续销售报价');
+            continueQuote.addEventListener('click', () => {
+              controller.preferredQuoteCostDecisionId = textValue(latest.costDecisionId, '');
+              setAppRoute('quotes');
+              costDialogHost()
+                .querySelector<HTMLButtonElement>('.quote-workbench [data-create-quote]')
+                ?.click();
+            });
+            actions.append(continueQuote);
+          }
         } else {
           const quoteCost = el('button', 'secondary', '用于报价');
           quoteCost.addEventListener('click', () => {
             openForm(
-              workspace,
+              costDialogHost(),
               `生成报价成本 · ${textValue(matrix.name, '')}`,
               '选择最终技术方案和已发布企业成本规则。系统会冻结本次因子取数，生成报价可选用的成本决策；后续报价、审批、合同和订单均引用该快照。',
               [
@@ -4221,9 +4254,35 @@ export function commercialWorkspaceStructure(
                     modelVersionId: values.modelVersionId ?? '',
                   },
                 );
-                await refreshCostMatrices(
-                  `${textValue(matrix.name, '成本模型')}已形成报价成本快照，可由报价编制专员继续报价`,
+                const costDecisionId = textValue(controller.revisionState?.costDecisionId, '');
+                if (!costDecisionId) throw new Error('服务器未返回报价成本决策编号');
+                controller.preferredQuoteCostDecisionId = costDecisionId;
+                await controller.refreshViews([
+                  '/api/v1/cost-matrices',
+                  '/api/v1/cost-evaluations',
+                ]);
+                const canContinueQuote =
+                  permissions.has('quote:read') && permissions.has('quote:create');
+                controller.message = canContinueQuote
+                  ? `${textValue(matrix.name, '成本模型')}已形成报价成本快照，正在进入销售报价`
+                  : `${textValue(matrix.name, '成本模型')}已形成报价成本快照，已进入报价成本池，等待报价编制专员处理`;
+                setCostStatus(controller.message);
+                const refreshedStructure = commercialWorkspaceStructure(
+                  viewport,
+                  immutable,
+                  controller,
                 );
+                costDialogHost().replaceWith(refreshedStructure);
+                if (!canContinueQuote) return;
+                setAppRoute('quotes');
+                const continueToQuote = () => {
+                  refreshedStructure
+                    .querySelector<HTMLButtonElement>('[data-create-quote]')
+                    ?.click();
+                };
+                if (typeof globalThis.requestAnimationFrame === 'function')
+                  globalThis.requestAnimationFrame(continueToQuote);
+                else continueToQuote();
               },
             );
           });
@@ -4763,6 +4822,7 @@ export function commercialWorkspaceStructure(
     const ctrs = controller.views.get('/api/v1/ctrs') ?? [];
     if (permissions.has('quote:create') && costs.length > 0 && policies.length > 0) {
       const createQuote = el('button', 'primary', '＋ 新建报价');
+      createQuote.setAttribute('data-create-quote', 'true');
       createQuote.addEventListener('click', () => {
         openForm(
           workspace,
@@ -4775,6 +4835,9 @@ export function commercialWorkspaceStructure(
               label: '成本决策',
               type: 'select',
               required: true,
+              ...(controller.preferredQuoteCostDecisionId
+                ? { value: controller.preferredQuoteCostDecisionId }
+                : {}),
               options: costs.map((item) => ({
                 value: textValue(item.id, ''),
                 label: `${textValue(item.currency, '')} ${textValue(item.total, '—')} · ${textValue(item.id, '').slice(0, 8)}`,
@@ -4904,8 +4967,17 @@ export function commercialWorkspaceStructure(
               validUntil: new Date(`${values.validUntil ?? ''}T23:59:59.000Z`).toISOString(),
               lines,
             });
-            await controller.load();
+            controller.preferredQuoteCostDecisionId = '';
+            await controller.refreshViews(['/api/v1/sales-policy-evaluations', '/api/v1/quotes']);
+            controller.message = `报价 ${values.quoteNumber ?? ''} 已创建为草稿，等待报价审批`;
             status.textContent = controller.message;
+            const refreshedWorkspace = commercialWorkspaceStructure(
+              viewport,
+              immutable,
+              controller,
+            );
+            workspace.replaceWith(refreshedWorkspace);
+            setAppRoute('quotes');
           },
         );
       });

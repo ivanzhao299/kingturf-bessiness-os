@@ -27,6 +27,7 @@ test('presents compact matrix cards and gives one-click calculation feedback', a
 }, testInfo) => {
   let calculated = false;
   let addedFactor = false;
+  let updatedFactor = false;
   let calculationRequests = 0;
   await page.route('**/api/v1/auth/login', (route) =>
     route.fulfill({ status: 200, json: { token: 'cost-matrix-session' } }),
@@ -69,6 +70,17 @@ test('presents compact matrix cards and gives one-click calculation feedback', a
       });
       return;
     }
+    if (request.method() === 'PATCH' && request.url().includes('/factors/')) {
+      updatedFactor = true;
+      await route.fulfill({
+        status: 200,
+        json: {
+          id: '20000000-0000-4000-8000-000000000001',
+          factorCode: 'TEST-FACTOR',
+        },
+      });
+      return;
+    }
     await route.fulfill({
       status: 200,
       json: {
@@ -86,8 +98,8 @@ test('presents compact matrix cards and gives one-click calculation feedback', a
                     quantity: '1',
                     unitCode: 'EA',
                     sourceType: 'INTERNAL_BENCHMARK',
-                    manualUnitPriceTaxInclusive: '2.50',
-                    priceSourceName: '测试企业基准',
+                    manualUnitPriceTaxInclusive: updatedFactor ? '3.50' : '2.50',
+                    priceSourceName: updatedFactor ? '更新后企业基准' : '测试企业基准',
                     priceEffectiveAt: '2026-08-29',
                     adjustable: true,
                   },
@@ -172,6 +184,21 @@ test('presents compact matrix cards and gives one-click calculation feedback', a
     page.locator('.cost-matrix-card').first().getByText('来源：企业计划成本基准'),
   ).toBeVisible();
 
+  await page
+    .locator('.cost-matrix-card')
+    .first()
+    .getByRole('button', { name: '维护新增测试因子' })
+    .click();
+  const editDialog = page.locator('.form-dialog');
+  await editDialog.locator('[name="manualUnitPriceTaxInclusive"]').fill('3.50');
+  await editDialog.locator('[name="priceSourceName"]').fill('更新后企业基准');
+  await editDialog.getByRole('button', { name: '保存并刷新' }).click();
+  await expect(page.getByText('新增测试因子已更新')).toBeVisible();
+  await page.locator('.cost-matrix-details summary').first().click();
+  await expect(
+    page.locator('.cost-matrix-card').first().getByText('含税单价 ¥ 3.50'),
+  ).toBeVisible();
+
   const calculate = page
     .locator('.cost-matrix-card')
     .first()
@@ -187,4 +214,148 @@ test('presents compact matrix cards and gives one-click calculation feedback', a
     body: await page.screenshot({ fullPage: true }),
     contentType: 'image/png',
   });
+});
+
+test('hands an approved matrix cost directly into a preselected sales quote', async ({ page }) => {
+  const matrixId = '00000000-0000-4000-8000-000000000001';
+  const calculationId = '00000000-0000-4000-8000-000000000002';
+  const decisionId = '00000000-0000-4000-8000-000000000003';
+  const solutionId = '00000000-0000-4000-8000-000000000004';
+  const modelVersionId = '00000000-0000-4000-8000-000000000005';
+  const policyVersionId = '00000000-0000-4000-8000-000000000006';
+  let linkedToQuote = false;
+
+  await page.route('**/api/v1/auth/login', (route) =>
+    route.fulfill({ status: 200, json: { token: 'cost-to-quote-session' } }),
+  );
+  await page.route('**/api/v1/auth/session', (route) =>
+    route.fulfill({
+      status: 200,
+      json: {
+        employeeId: 'employee-commercial-admin',
+        companyId: 'company-1',
+        displayName: '商务管理员',
+        employeeNumber: 'KT-COMMERCIAL-01',
+        permissions: [
+          'cost-matrix:read',
+          'cost-matrix:calculate',
+          'cost-model:read',
+          'cost:read',
+          'cost:evaluate',
+          'technical-solution:read',
+          'ctr:read',
+          'sales-policy:read',
+          'quote:read',
+          'quote:create',
+        ],
+      },
+    }),
+  );
+  await page.route('**/api/v1/cost-matrix-calculations/*/quote-cost-decision', async (route) => {
+    linkedToQuote = true;
+    await route.fulfill({
+      status: 201,
+      json: {
+        id: decisionId,
+        costDecisionId: decisionId,
+        technicalSolutionRevisionId: solutionId,
+        opportunityId: 'opportunity-1',
+        currency: 'CNY',
+        total: '20',
+      },
+    });
+  });
+  await page.route('**/api/v1/**', async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname.startsWith('/api/v1/auth/') || url.pathname.includes('/quote-cost-decision')) {
+      await route.fallback();
+      return;
+    }
+    const itemsByPath: Record<string, unknown[]> = {
+      '/api/v1/cost-matrices': [
+        {
+          id: matrixId,
+          code: 'PRESET-01',
+          name: '景观草报价模型',
+          currency: 'CNY',
+          defaultTaxRate: '0.13',
+          factors: [],
+          latestCalculation: {
+            id: calculationId,
+            pricingMode: 'TAX_INCLUSIVE',
+            directProductionCost: '18',
+            reservedExpenseCost: '2',
+            totalCost: '20',
+            ...(linkedToQuote ? { costDecisionId: decisionId } : {}),
+          },
+        },
+      ],
+      '/api/v1/cost-models': [
+        {
+          id: modelVersionId,
+          code: 'COST-RULE',
+          name: '企业成本规则',
+          version: 1,
+          status: 'PUBLISHED',
+          currency: 'CNY',
+        },
+      ],
+      '/api/v1/cost-evaluations': linkedToQuote
+        ? [
+            {
+              id: decisionId,
+              technicalSolutionRevisionId: solutionId,
+              opportunityId: 'opportunity-1',
+              currency: 'CNY',
+              subtotal: '20',
+              total: '20',
+            },
+          ]
+        : [],
+      '/api/v1/technical-solutions': [
+        {
+          id: solutionId,
+          code: 'SOLUTION-01',
+          revision: 1,
+          status: 'FINAL',
+          ctrVersionId: 'ctr-version-1',
+          opportunityId: 'opportunity-1',
+        },
+      ],
+      '/api/v1/ctrs': [{ id: 'ctr-version-1', status: 'APPROVED', opportunityId: 'opportunity-1' }],
+      '/api/v1/sales-policies': [
+        {
+          id: policyVersionId,
+          code: 'POLICY-01',
+          version: 1,
+          status: 'PUBLISHED',
+        },
+      ],
+      '/api/v1/quotes': [],
+    };
+    await route.fulfill({ status: 200, json: { items: itemsByPath[url.pathname] ?? [] } });
+  });
+
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/');
+  await page.getByPlaceholder('账号').fill('KT-COMMERCIAL-01');
+  await page.getByPlaceholder('密码').fill('not-a-real-secret');
+  await page.getByRole('button', { name: '登录', exact: true }).click();
+  await page.evaluate(() => {
+    globalThis.location.hash = '#/costing';
+  });
+  await expect(page).toHaveURL(/#\/costing$/u);
+
+  await page.getByRole('button', { name: '用于报价' }).click();
+  const handoff = page.locator('.form-dialog');
+  await expect(
+    handoff.getByRole('heading', { name: '生成报价成本 · 景观草报价模型' }),
+  ).toBeVisible();
+  await handoff.getByRole('button', { name: '冻结并进入报价' }).click();
+
+  await expect(page).toHaveURL(/#\/quotes$/u);
+  const quoteDialog = page.locator('.form-dialog');
+  await expect(quoteDialog.getByRole('heading', { name: '新建销售报价' })).toBeVisible();
+  await expect(quoteDialog.locator('[name="costDecisionId"]')).toHaveValue(decisionId);
+  await expect(page.getByText('景观草报价模型已形成报价成本快照，正在进入销售报价')).toBeVisible();
 });
