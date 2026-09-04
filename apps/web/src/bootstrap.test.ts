@@ -844,6 +844,18 @@ describe('web bootstrap', () => {
     expect(source).toContain('上一页');
     expect(source).toContain('下一页');
     expect(source).toContain('打印 / 导出 PDF');
+    expect(source).toContain('下载 HTML');
+    expect(source).toContain("action: 'DOWNLOADED'");
+    expect(source).toContain('翻译文档');
+    expect(source).toContain('查看译文');
+    expect(source).toContain('发送给客户');
+    expect(source).toContain('/api/v1/document-connectors');
+    expect(source).toContain('/translations');
+    expect(source).toContain('/send');
+    expect(source).toContain('business-document:configure');
+    expect(source).toContain('business-document:audit');
+    expect(source).toContain('逐用户文档操作日志');
+    expect(source).toContain('密钥不写入业务数据库');
     expect(source).toContain('技术需求附件区回传并随版本冻结');
     expect(source).toContain('buildBusinessDocumentTemplateHtml');
   });

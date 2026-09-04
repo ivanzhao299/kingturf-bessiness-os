@@ -782,12 +782,26 @@ button {
   box-shadow: 0 12px 36px rgb(18 45 34 / 11%);
 }
 .business-document-review-event {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   margin: 0;
   padding: 8px;
   border-radius: 7px;
   background: #eef5f1;
   color: #315647;
   font-size: 12px;
+}
+.business-document-review-event button {
+  flex: 0 0 auto;
+}
+.translation-preview-dialog {
+  width: min(920px, calc(100vw - 32px));
+}
+.translation-preview {
+  min-height: 360px;
+  white-space: pre-wrap;
 }
 .business-document-comparison {
   margin-top: 16px;
@@ -841,6 +855,63 @@ button {
 }
 .business-document-version small {
   color: #718078;
+}
+.document-communication-admin {
+  display: grid;
+  gap: 14px;
+  margin-top: 20px;
+  padding: 20px;
+  border: 1px solid #d6e0da;
+  border-radius: 14px;
+  background: #f8fbf9;
+}
+.document-communication-admin > h2,
+.document-communication-admin > h3,
+.document-communication-admin > p {
+  margin: 0;
+}
+.document-connector-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+.document-connector-card {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-height: 146px;
+  padding: 14px;
+  border: 1px solid #d7e1db;
+  border-radius: 11px;
+  background: #fff;
+}
+.document-connector-card small {
+  min-height: 34px;
+  color: #63756c;
+  overflow-wrap: anywhere;
+}
+.document-connector-card button {
+  width: fit-content;
+  margin-top: auto;
+}
+.document-audit-list {
+  display: grid;
+  gap: 7px;
+}
+.document-audit-row {
+  display: grid;
+  grid-template-columns: minmax(110px, 0.8fr) minmax(150px, 1fr) minmax(180px, 1.5fr) auto;
+  gap: 8px 14px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid #e0e7e3;
+  border-radius: 9px;
+  background: #fff;
+  font-size: 12px;
+}
+.document-audit-row small {
+  grid-column: 1 / -1;
+  color: #76857e;
 }
 @media (max-width: 1199px) {
   .business-document-workspace {
@@ -920,6 +991,12 @@ button {
   }
   .business-document-diff-grid {
     grid-template-columns: 1fr;
+  }
+  .document-audit-row {
+    grid-template-columns: 1fr;
+  }
+  .document-audit-row small {
+    grid-column: 1;
   }
 }
 [hidden] {

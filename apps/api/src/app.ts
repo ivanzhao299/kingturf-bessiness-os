@@ -152,6 +152,12 @@ const string = (value: unknown, name: string): string => {
     throw new DomainError('invalid_request', `${name} is required`);
   return value.trim();
 };
+const boundedString = (value: unknown, name: string, maximum: number): string => {
+  const result = string(value, name);
+  if (result.length > maximum)
+    throw new DomainError('invalid_request', `${name} exceeds ${String(maximum)} characters`);
+  return result;
+};
 const timestamp = (value: unknown, name: string): string => {
   const result = string(value, name);
   const parsed = new Date(result);
@@ -226,6 +232,64 @@ const notificationChannel = (value: unknown): string => {
   if (!['IN_APP', 'EMAIL', 'SMS', 'PUSH'].includes(channel))
     throw new DomainError('invalid_request', 'channel is unsupported');
   return channel;
+};
+const documentConnector = (value: unknown, includeTranslation = false): string => {
+  const connector = string(value, 'connector');
+  const supported = [
+    'EMAIL',
+    'WECHAT_WORK',
+    'WHATSAPP_BUSINESS',
+    'MICROSOFT_TEAMS',
+    'TELEGRAM',
+    'LINE',
+    ...(includeTranslation ? ['TRANSLATION'] : []),
+  ];
+  if (!supported.includes(connector))
+    throw new DomainError('invalid_request', 'document connector is unsupported');
+  return connector;
+};
+const documentLocale = (value: unknown): string => {
+  const locale = string(value, 'targetLocale');
+  if (!/^[a-z]{2,3}(?:-[A-Z]{2})?$/u.test(locale))
+    throw new DomainError('invalid_request', 'targetLocale must use a supported locale code');
+  return locale;
+};
+const connectorProvider = (value: unknown): string => {
+  const provider = string(value, 'provider');
+  if (!/^[A-Z][A-Z0-9_]{1,63}$/u.test(provider))
+    throw new DomainError('invalid_request', 'provider must be an uppercase provider code');
+  return provider;
+};
+const connectorSecretReference = (value: unknown): string | null => {
+  if (value === undefined || value === null || value === '') return null;
+  const reference = string(value, 'secretReference');
+  if (!/^KINGTURF_CONNECTOR_[A-Z0-9_]{3,96}$/u.test(reference))
+    throw new DomainError(
+      'invalid_request',
+      'secretReference must name a KINGTURF_CONNECTOR_* managed secret',
+    );
+  return reference;
+};
+const safeConnectorConfiguration = (value: unknown): Record<string, never> => {
+  const configuration = jsonObject(value ?? {}, 'configuration');
+  const secretKeys: string[] = [];
+  const visit = (candidate: unknown, path = ''): void => {
+    if (typeof candidate !== 'object' || candidate === null) return;
+    for (const [key, nested] of Object.entries(candidate)) {
+      const current = path ? `${path}.${key}` : key;
+      if (/(secret|token|password|api.?key|credential)/iu.test(key)) secretKeys.push(current);
+      visit(nested, current);
+    }
+  };
+  visit(configuration);
+  if (secretKeys.length)
+    throw new DomainError(
+      'invalid_request',
+      'Connector secrets must be stored in the secret reference, not configuration',
+    );
+  if (JSON.stringify(configuration).length > 8192)
+    throw new DomainError('invalid_request', 'Connector configuration exceeds 8192 characters');
+  return configuration;
 };
 const attachmentBytes = (value: unknown): Uint8Array => {
   const encoded = string(value, 'contentBase64');
@@ -5854,6 +5918,111 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             ),
           };
         }
+        if (request.pathname === '/api/v1/document-connectors' && request.method === 'GET') {
+          const canConfigure = context.permissions.has('business-document:configure');
+          if (!canConfigure)
+            authorizeOneOf(context, 'business-document:send', 'business-document:translate');
+          if (!dependencies.businessDocuments)
+            return error(
+              503,
+              'internal_error',
+              'Business document repository unavailable',
+              correlationId,
+            );
+          return {
+            statusCode: 200,
+            body: {
+              items: await dependencies.businessDocuments.listConnectors(
+                context.actor,
+                canConfigure,
+              ),
+            },
+          };
+        }
+        const connectorConfiguration = /^\/api\/v1\/document-connectors\/([A-Z_]+)$/u.exec(
+          request.pathname,
+        );
+        if (connectorConfiguration && request.method === 'PUT') {
+          authorizeQuery(context, 'business-document:configure');
+          if (!dependencies.businessDocuments)
+            return error(
+              503,
+              'internal_error',
+              'Business document repository unavailable',
+              correlationId,
+            );
+          const b = objectBody(request.body);
+          allow(b, [
+            'provider',
+            'displayName',
+            'senderIdentity',
+            'secretReference',
+            'configuration',
+            'status',
+            'expectedVersion',
+          ]);
+          const status = string(b.status, 'status');
+          if (!['UNCONFIGURED', 'READY', 'DISABLED'].includes(status))
+            throw new DomainError('invalid_request', 'connector status is unsupported');
+          const nullableText = (value: unknown, name: string): string | null =>
+            value === undefined || value === null || value === '' ? null : string(value, name);
+          const secretReference = connectorSecretReference(b.secretReference);
+          const senderIdentity = nullableText(b.senderIdentity, 'senderIdentity');
+          if (senderIdentity !== null && (senderIdentity.length < 2 || senderIdentity.length > 200))
+            throw new DomainError(
+              'invalid_request',
+              'senderIdentity must contain 2 to 200 characters',
+            );
+          if (status === 'READY' && secretReference === null)
+            throw new DomainError(
+              'invalid_request',
+              'A managed secret reference is required before a connector can be enabled',
+            );
+          return {
+            statusCode: 200,
+            body: await dependencies.businessDocuments.configureConnector(
+              documentConnector(connectorConfiguration[1], true),
+              {
+                provider: connectorProvider(b.provider),
+                displayName: boundedString(b.displayName, 'displayName', 100),
+                senderIdentity,
+                secretReference,
+                configuration: safeConnectorConfiguration(b.configuration),
+                status: status as 'UNCONFIGURED' | 'READY' | 'DISABLED',
+                expectedVersion: expectedVersion(b.expectedVersion),
+              },
+              context.actor,
+              correlationId,
+            ),
+          };
+        }
+        if (request.pathname === '/api/v1/business-document-activity' && request.method === 'GET') {
+          authorizeQuery(context, 'business-document:audit');
+          if (!dependencies.businessDocuments)
+            return error(
+              503,
+              'internal_error',
+              'Business document repository unavailable',
+              correlationId,
+            );
+          const q = request.query ?? {};
+          const requestedLimit = q.limit === undefined ? undefined : Number(q.limit);
+          if (
+            requestedLimit !== undefined &&
+            (!Number.isInteger(requestedLimit) || requestedLimit < 1 || requestedLimit > 200)
+          )
+            throw new DomainError('invalid_request', 'limit must be an integer between 1 and 200');
+          return {
+            statusCode: 200,
+            body: {
+              items: await dependencies.businessDocuments.activityLog(context.actor, {
+                ...(q.documentId ? { documentId: uuid(q.documentId, 'documentId') } : {}),
+                ...(q.actorId ? { actorId: uuid(q.actorId, 'actorId') } : {}),
+                ...(requestedLimit === undefined ? {} : { limit: requestedLimit }),
+              }),
+            },
+          };
+        }
         if (request.pathname === '/api/v1/business-documents' && request.method === 'GET') {
           const grant = authorizeQuery(context, 'business-document:read');
           if (!dependencies.businessDocuments)
@@ -5962,6 +6131,7 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               {
                 actor: context.actor,
                 scopes: grant.scopes,
+                includeAudit: context.permissions.has('business-document:audit'),
               },
             ),
           };
@@ -6061,6 +6231,112 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
                 expectedVersion: version(b.expectedVersion),
                 action,
                 reason: string(b.reason, 'reason'),
+              },
+              { actor: context.actor, scopes: grant.scopes },
+              correlationId,
+            ),
+          };
+        }
+        const businessDocumentTranslation =
+          /^\/api\/v1\/business-documents\/([0-9a-f-]+)\/translations$/u.exec(request.pathname);
+        if (businessDocumentTranslation && request.method === 'POST') {
+          const grant = authorizeQuery(context, 'business-document:translate');
+          if (!dependencies.businessDocuments)
+            return error(
+              503,
+              'internal_error',
+              'Business document repository unavailable',
+              correlationId,
+            );
+          const b = objectBody(request.body);
+          allow(b, ['expectedVersion', 'targetLocale', 'content']);
+          return {
+            statusCode: 201,
+            body: await dependencies.businessDocuments.createTranslation(
+              uuid(businessDocumentTranslation[1], 'documentId'),
+              {
+                expectedVersion: version(b.expectedVersion),
+                targetLocale: documentLocale(b.targetLocale),
+                ...(b.content === undefined ? {} : { content: jsonObject(b.content, 'content') }),
+              },
+              { actor: context.actor, scopes: grant.scopes },
+              correlationId,
+            ),
+          };
+        }
+        const businessDocumentActivity =
+          /^\/api\/v1\/business-documents\/([0-9a-f-]+)\/activity$/u.exec(request.pathname);
+        if (businessDocumentActivity && request.method === 'POST') {
+          const grant = authorizeQuery(context, 'business-document:read');
+          if (!dependencies.businessDocuments)
+            return error(
+              503,
+              'internal_error',
+              'Business document repository unavailable',
+              correlationId,
+            );
+          const b = objectBody(request.body);
+          allow(b, ['action', 'version']);
+          const action = string(b.action, 'action');
+          if (!['PRINTED', 'DOWNLOADED'].includes(action))
+            throw new DomainError('invalid_request', 'document activity is unsupported');
+          return {
+            statusCode: 201,
+            body: await dependencies.businessDocuments.recordClientActivity(
+              uuid(businessDocumentActivity[1], 'documentId'),
+              action as 'PRINTED' | 'DOWNLOADED',
+              version(b.version),
+              { actor: context.actor, scopes: grant.scopes },
+              correlationId,
+            ),
+          };
+        }
+        const businessDocumentDispatch =
+          /^\/api\/v1\/business-documents\/([0-9a-f-]+)\/send$/u.exec(request.pathname);
+        if (businessDocumentDispatch && request.method === 'POST') {
+          const grant = authorizeQuery(context, 'business-document:send');
+          if (!dependencies.businessDocuments)
+            return error(
+              503,
+              'internal_error',
+              'Business document repository unavailable',
+              correlationId,
+            );
+          const key = request.headers?.['idempotency-key'];
+          if (!key || key.length < 8 || key.length > 128)
+            throw new DomainError(
+              'invalid_request',
+              'Idempotency-Key header must contain 8 to 128 characters',
+            );
+          const b = objectBody(request.body);
+          allow(b, [
+            'expectedVersion',
+            'channel',
+            'recipientName',
+            'recipientAddress',
+            'subject',
+            'message',
+            'translationId',
+          ]);
+          const channel = documentConnector(b.channel);
+          const rawAddress = boundedString(b.recipientAddress, 'recipientAddress', 320);
+          const recipientAddress =
+            channel === 'EMAIL' ? normalizeContactEmail(rawAddress) : rawAddress;
+          return {
+            statusCode: 202,
+            body: await dependencies.businessDocuments.dispatch(
+              uuid(businessDocumentDispatch[1], 'documentId'),
+              {
+                expectedVersion: version(b.expectedVersion),
+                channel,
+                recipientName: boundedString(b.recipientName, 'recipientName', 200),
+                recipientAddress,
+                subject: boundedString(b.subject, 'subject', 200),
+                message: boundedString(b.message, 'message', 4000),
+                ...(b.translationId
+                  ? { translationId: uuid(b.translationId, 'translationId') }
+                  : {}),
+                idempotencyKey: key,
               },
               { actor: context.actor, scopes: grant.scopes },
               correlationId,

@@ -24,7 +24,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0069_cost_matrix_price_governance.sql');
+    expect(ordered.at(-1)).toBe('0070_business_document_communications.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
@@ -156,6 +156,37 @@ describe('identity and authorization migration', () => {
     expect(sql).toContain('f.manual_unit_price_tax_inclusive=0');
     expect(sql).toContain("'system-baseline-2026-08-28-'||specification_model_id::text");
     expect(sql).toContain('HAVING sum(f.quantity*f.manual_unit_price_tax_inclusive)>0');
+  });
+
+  it('adds governed document translation, delivery connectors, and administrator-only audit', async () => {
+    const sql = await readFile(
+      join(process.cwd(), 'migrations/0070_business_document_communications.sql'),
+      'utf8',
+    );
+    for (const table of [
+      'business_document_connectors',
+      'business_document_translations',
+      'business_document_dispatches',
+      'business_document_dispatch_attempts',
+    ])
+      expect(sql).toContain(`CREATE TABLE ${table}`);
+    for (const channel of [
+      'EMAIL',
+      'WECHAT_WORK',
+      'WHATSAPP_BUSINESS',
+      'MICROSOFT_TEAMS',
+      'TELEGRAM',
+      'LINE',
+      'TRANSLATION',
+    ])
+      expect(sql).toContain(`'${channel}'`);
+    expect(sql).toContain("secret_reference ~ '^KINGTURF_CONNECTOR_");
+    expect(sql).toContain("'business-document:send'");
+    expect(sql).toContain("'business-document:translate'");
+    expect(sql).toContain("'business-document:configure'");
+    expect(sql).toContain("'business-document:audit'");
+    expect(sql).toContain("r.code=ANY(ARRAY['SUPER_ADMIN','SYSTEM_ADMIN'])");
+    expect(sql).not.toContain("('KT_SYSTEM_AUDITOR','business-document:audit')");
   });
 
   it('adds purchase and sales contract upload OCR review and signing evidence', async () => {

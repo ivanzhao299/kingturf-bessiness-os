@@ -10108,6 +10108,48 @@ type OnlineBusinessDocument = Readonly<{
     changeSummary: string;
     createdAt?: string;
   }>[];
+  translations?: readonly Readonly<{
+    id: string;
+    sourceVersion: number;
+    targetLocale: string;
+    provider: 'MANUAL' | 'CONNECTED_PROVIDER';
+    status: 'QUEUED' | 'READY';
+    content?: Readonly<{ body?: string; html?: string }>;
+    createdAt?: string;
+  }>[];
+  dispatches?: readonly Readonly<{
+    id: string;
+    documentVersion: number;
+    translationId?: string;
+    channel: DocumentConnectorKey;
+    recipientName: string;
+    recipientMasked: string;
+    subject: string;
+    status: 'QUEUED' | 'DELIVERED' | 'RETRY' | 'FAILED';
+    requestedAt?: string;
+    deliveredAt?: string;
+  }>[];
+}>;
+
+type DocumentConnectorKey =
+  | 'EMAIL'
+  | 'WECHAT_WORK'
+  | 'WHATSAPP_BUSINESS'
+  | 'MICROSOFT_TEAMS'
+  | 'TELEGRAM'
+  | 'LINE'
+  | 'TRANSLATION';
+type DocumentConnector = Readonly<{
+  connector: DocumentConnectorKey;
+  label: string;
+  provider: string;
+  displayName: string;
+  senderIdentity?: string;
+  secretReference?: string;
+  configuration?: Readonly<Record<string, unknown>>;
+  status: 'UNCONFIGURED' | 'READY' | 'DISABLED';
+  version: number;
+  configuredAt?: string;
 }>;
 
 const onlineTemplateKey = (template: BusinessDocumentTemplate, route: AppRoute): string =>
@@ -10295,7 +10337,12 @@ const printOnlineBusinessDocument = (
 
 const openOnlineDocumentEditor = (
   documentData: OnlineBusinessDocument,
-  permissions: Readonly<{ manage: boolean; approve: boolean }>,
+  permissions: Readonly<{
+    manage: boolean;
+    approve: boolean;
+    send: boolean;
+    translate: boolean;
+  }>,
   onSaved?: () => void,
 ): void => {
   const dialog = document.createElement('dialog');
@@ -10397,7 +10444,28 @@ const openOnlineDocumentEditor = (
   const print = el('button', 'secondary compact', '打印 / 导出 PDF');
   print.type = 'button';
   print.setAttribute('aria-label', '打印或导出 PDF');
-  commandBar.append(viewGroup, pageSize, zoom, pagination, toggleHistory, print);
+  const downloadOnline = el('button', 'secondary compact', '下载 HTML');
+  downloadOnline.type = 'button';
+  downloadOnline.setAttribute('aria-label', '下载当前文档内容');
+  const translate = el('button', 'secondary compact', '翻译文档');
+  translate.type = 'button';
+  translate.hidden = !permissions.translate;
+  const send = el('button', 'primary compact', '发送给客户');
+  send.type = 'button';
+  send.hidden = !permissions.send;
+  send.disabled = documentData.state !== 'APPROVED' || !documentData.customerId;
+  send.title = send.disabled ? '文档必须先绑定客户并完成审批锁版' : '选择客户沟通渠道';
+  commandBar.append(
+    viewGroup,
+    pageSize,
+    zoom,
+    pagination,
+    toggleHistory,
+    translate,
+    print,
+    downloadOnline,
+    send,
+  );
   const body = el('div');
   body.className = 'business-document-body';
   body.contentEditable = 'true';
@@ -10621,6 +10689,53 @@ const openOnlineDocumentEditor = (
   const history = el('aside', 'business-document-history');
   history.append(el('h3', '', '版本记录'));
   const comparison = el('section', 'business-document-comparison');
+  for (const item of documentData.dispatches ?? [])
+    history.append(
+      el(
+        'p',
+        'business-document-review-event',
+        `已发送 · ${item.channel} · ${item.recipientName}（${item.recipientMasked}）· ${item.status}`,
+      ),
+    );
+  for (const item of documentData.translations ?? []) {
+    const translationEntry = el('div', 'business-document-review-event');
+    translationEntry.append(
+      el(
+        'span',
+        '',
+        `译文 · ${item.targetLocale} · V${String(item.sourceVersion)} · ${item.status === 'READY' ? '可发送' : '处理中'}`,
+      ),
+    );
+    if (item.status === 'READY' && item.content) {
+      const preview = el('button', 'secondary compact', '查看译文');
+      preview.type = 'button';
+      preview.addEventListener('click', () => {
+        const previewDialog = document.createElement('dialog');
+        previewDialog.className = 'business-document-dialog translation-preview-dialog';
+        const closePreview = el('button', 'secondary compact', '关闭');
+        closePreview.type = 'button';
+        closePreview.addEventListener('click', () => {
+          previewDialog.close();
+        });
+        const translatedBody = el('article', 'business-document-body translation-preview');
+        if (item.content?.html)
+          translatedBody.innerHTML = sanitizeBusinessDocumentHtml(item.content.html);
+        else translatedBody.textContent = item.content?.body ?? '';
+        previewDialog.append(
+          el('h2', '', `${item.targetLocale} 译文 · 版本 ${String(item.sourceVersion)}`),
+          translatedBody,
+          closePreview,
+        );
+        previewDialog.addEventListener('close', () => {
+          previewDialog.remove();
+        });
+        document.body.append(previewDialog);
+        previewDialog.showModal();
+      });
+      translationEntry.append(preview);
+    }
+    history.append(translationEntry);
+  }
   if (versions.length === 0) history.append(el('p', 'empty', '暂无版本记录'));
   for (const event of documentData.reviewEvents ?? [])
     history.append(
@@ -10663,6 +10778,174 @@ const openOnlineDocumentEditor = (
     toggleHistory.textContent = collapsed ? '展开版本栏' : '收起版本栏';
     toggleHistory.setAttribute('aria-expanded', String(!collapsed));
   });
+  translate.addEventListener('click', () => {
+    openForm(
+      document.body,
+      '创建文档译文',
+      '译文固定关联当前版本。可使用已配置的自动翻译服务，也可人工录入并复核译文。',
+      [
+        {
+          name: 'targetLocale',
+          label: '目标语言',
+          type: 'select',
+          required: true,
+          options: [
+            { value: 'en-US', label: '英语（美国）' },
+            { value: 'en-GB', label: '英语（英国）' },
+            { value: 'es-ES', label: '西班牙语' },
+            { value: 'fr-FR', label: '法语' },
+            { value: 'de-DE', label: '德语' },
+            { value: 'ar-SA', label: '阿拉伯语' },
+            { value: 'ja-JP', label: '日语' },
+            { value: 'ko-KR', label: '韩语' },
+          ],
+        },
+        {
+          name: 'mode',
+          label: '翻译方式',
+          type: 'select',
+          required: true,
+          options: [
+            { value: 'AUTO', label: '自动翻译（需管理员配置服务）' },
+            { value: 'MANUAL', label: '人工录入并复核' },
+          ],
+        },
+        {
+          name: 'translatedContent',
+          label: '人工译文正文',
+          type: 'textarea',
+          placeholder: '选择人工录入时填写；自动翻译时保持为空',
+          hint: '人工译文会作为不可变版本保存，发送时可明确选择。',
+        },
+      ],
+      '创建译文',
+      async (values) => {
+        const manual = values.mode === 'MANUAL';
+        if (manual && !values.translatedContent?.trim())
+          throw new Error('人工翻译方式必须填写译文正文');
+        const translated = await onlineDocumentApi<{ status: 'QUEUED' | 'READY' }>(
+          `/api/v1/business-documents/${documentData.id}/translations`,
+          {
+            method: 'POST',
+            body: JSON.stringify({
+              expectedVersion: documentData.currentVersion,
+              targetLocale: values.targetLocale,
+              ...(manual
+                ? {
+                    content: {
+                      body: values.translatedContent?.trim(),
+                      html: `<p>${(values.translatedContent ?? '')
+                        .replaceAll('&', '&amp;')
+                        .replaceAll('<', '&lt;')
+                        .replaceAll('>', '&gt;')
+                        .replaceAll('\n', '<br>')}</p>`,
+                    },
+                  }
+                : {}),
+            }),
+          },
+        );
+        setOperationStatus(
+          status,
+          'success',
+          translated.status === 'READY' ? '人工译文已保存并可用于发送' : '自动翻译任务已进入队列',
+        );
+        onSaved?.();
+      },
+    );
+  });
+  send.addEventListener('click', () => {
+    send.disabled = true;
+    void onlineDocumentApi<{ items: readonly DocumentConnector[] }>('/api/v1/document-connectors')
+      .then(({ items }) => {
+        const channels = items.filter((item) => item.connector !== 'TRANSLATION');
+        openForm(
+          document.body,
+          '发送给客户',
+          '仅发送当前已批准锁版内容。收件地址会受控保存，审计日志只显示脱敏信息。',
+          [
+            {
+              name: 'channel',
+              label: '发送渠道',
+              type: 'select',
+              required: true,
+              options: channels.map((item) => ({
+                value: item.connector,
+                label: `${item.label} · ${item.status === 'READY' ? '已配置' : item.status === 'DISABLED' ? '已停用' : '待管理员配置'}`,
+              })),
+            },
+            { name: 'recipientName', label: '收件人姓名', required: true, maxLength: 200 },
+            {
+              name: 'recipientAddress',
+              label: '邮箱或平台客户标识',
+              required: true,
+              maxLength: 320,
+              hint: '邮件填写邮箱；其他平台填写经客户授权的平台标识。',
+            },
+            {
+              name: 'translationId',
+              label: '发送语言版本',
+              type: 'select',
+              options: [
+                { value: '', label: '原文' },
+                ...(documentData.translations ?? [])
+                  .filter(
+                    (item) =>
+                      item.status === 'READY' && item.sourceVersion === documentData.currentVersion,
+                  )
+                  .map((item) => ({ value: item.id, label: `${item.targetLocale} 译文` })),
+              ],
+            },
+            {
+              name: 'subject',
+              label: '主题',
+              required: true,
+              value: documentData.title,
+              maxLength: 200,
+            },
+            {
+              name: 'message',
+              label: '给客户的说明',
+              type: 'textarea',
+              required: true,
+              value: '您好，请查收并确认本次业务文档。如有问题，请直接联系对应业务人员。',
+              maxLength: 4000,
+            },
+          ],
+          '确认进入发送队列',
+          async (values) => {
+            const result = await onlineDocumentApi<{ status: string }>(
+              `/api/v1/business-documents/${documentData.id}/send`,
+              {
+                method: 'POST',
+                headers: { 'idempotency-key': requestId() },
+                body: JSON.stringify({
+                  expectedVersion: documentData.currentVersion,
+                  channel: values.channel,
+                  recipientName: values.recipientName,
+                  recipientAddress: values.recipientAddress,
+                  subject: values.subject,
+                  message: values.message,
+                  ...(values.translationId ? { translationId: values.translationId } : {}),
+                }),
+              },
+            );
+            setOperationStatus(status, 'success', `发送任务已建立：${result.status}`);
+            onSaved?.();
+          },
+        );
+      })
+      .catch((failure: unknown) => {
+        setOperationStatus(
+          status,
+          'error',
+          failure instanceof Error ? failure.message : '发送渠道加载失败',
+        );
+      })
+      .finally(() => {
+        send.disabled = documentData.state !== 'APPROVED' || !documentData.customerId;
+      });
+  });
   print.addEventListener('click', () => {
     try {
       printOnlineBusinessDocument(
@@ -10670,6 +10953,12 @@ const openOnlineDocumentEditor = (
         body.innerHTML,
         pageSize.value as BusinessDocumentPageSize,
       );
+      void onlineDocumentApi(`/api/v1/business-documents/${documentData.id}/activity`, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'PRINTED', version: documentData.currentVersion }),
+      }).catch(() => {
+        setOperationStatus(status, 'error', '打印已打开，但审计记录暂时写入失败');
+      });
     } catch (failure) {
       setOperationStatus(
         status,
@@ -10677,6 +10966,25 @@ const openOnlineDocumentEditor = (
         failure instanceof Error ? failure.message : '无法打开打印预览',
       );
     }
+  });
+  downloadOnline.addEventListener('click', () => {
+    const safeTitle = documentData.title
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;');
+    const html = `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>${safeTitle}</title></head><body><h1>${safeTitle}</h1>${sanitizeBusinessDocumentHtml(body.innerHTML)}</body></html>`;
+    const href = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = href;
+    link.download = `${documentData.title.replaceAll(/[\\/:*?"<>|]/gu, '-')}-V${String(documentData.currentVersion)}.html`;
+    link.click();
+    URL.revokeObjectURL(href);
+    void onlineDocumentApi(`/api/v1/business-documents/${documentData.id}/activity`, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'DOWNLOADED', version: documentData.currentVersion }),
+    }).catch(() => {
+      setOperationStatus(status, 'error', '文件已下载，但审计记录暂时写入失败');
+    });
   });
   layout.append(editor, history);
   workspace.append(commandBar, layout, comparison);
@@ -12399,6 +12707,176 @@ export function createCrmShell(
     documentGrid.append(link);
   }
   documentLibrary.append(documentGrid);
+  if (
+    allPermissions.has('business-document:configure') ||
+    allPermissions.has('business-document:audit')
+  ) {
+    const communicationAdmin = el('section', 'document-communication-admin');
+    communicationAdmin.append(
+      el('p', 'eyebrow', '管理员专属'),
+      el('h2', '', '文档发送配置与审计'),
+      el(
+        'p',
+        'muted',
+        '第三方密钥不写入业务数据库；这里只维护连接器状态、发送身份和安全密钥引用。',
+      ),
+    );
+    if (allPermissions.has('business-document:configure')) {
+      const connectorGrid = el('div', 'document-connector-grid');
+      connectorGrid.append(el('p', 'operation-status', '正在加载发送与翻译连接器…'));
+      void onlineDocumentApi<{ items: readonly DocumentConnector[] }>('/api/v1/document-connectors')
+        .then(({ items }) => {
+          connectorGrid.replaceChildren();
+          for (const connector of items) {
+            const card = el('article', 'document-connector-card');
+            card.append(
+              el(
+                'span',
+                `role-task-state ${connector.status === 'READY' ? 'success' : 'warning'}`,
+                connector.status === 'READY'
+                  ? '已配置'
+                  : connector.status === 'DISABLED'
+                    ? '已停用'
+                    : '待配置',
+              ),
+              el('strong', '', connector.label),
+              el(
+                'small',
+                '',
+                `${connector.provider} · ${connector.senderIdentity ?? '未设置发送身份'}`,
+              ),
+            );
+            const configure = el('button', 'secondary compact', '配置');
+            configure.type = 'button';
+            configure.addEventListener('click', () => {
+              openForm(
+                document.body,
+                `配置${connector.label}`,
+                '只填写非敏感元数据和密钥引用名称。真实密钥由运维放入受控密钥存储。',
+                [
+                  {
+                    name: 'provider',
+                    label: '服务提供方代码',
+                    required: true,
+                    value: connector.provider,
+                    placeholder: '例如 RESEND 或 META_CLOUD_API',
+                  },
+                  {
+                    name: 'displayName',
+                    label: '内部显示名称',
+                    required: true,
+                    value: connector.displayName,
+                  },
+                  {
+                    name: 'senderIdentity',
+                    label: '发送身份/账号',
+                    value: connector.senderIdentity ?? '',
+                  },
+                  {
+                    name: 'secretReference',
+                    label: '安全密钥引用',
+                    value: connector.secretReference ?? '',
+                    placeholder: 'KINGTURF_CONNECTOR_…',
+                    hint: '只填密钥名称，不得在此粘贴令牌、密码或 API Key。',
+                  },
+                  {
+                    name: 'configuration',
+                    label: '非敏感配置 JSON',
+                    type: 'textarea',
+                    value: JSON.stringify(connector.configuration ?? {}, undefined, 2),
+                  },
+                  {
+                    name: 'status',
+                    label: '状态',
+                    type: 'select',
+                    required: true,
+                    value: connector.status,
+                    options: [
+                      { value: 'UNCONFIGURED', label: '待配置' },
+                      { value: 'READY', label: '启用' },
+                      { value: 'DISABLED', label: '停用' },
+                    ],
+                  },
+                ],
+                '保存连接器配置',
+                async (values) => {
+                  const configurationText = values.configuration ?? '';
+                  const senderIdentity = values.senderIdentity?.trim() ?? '';
+                  const secretReference = values.secretReference?.trim() ?? '';
+                  let configuration: Record<string, unknown>;
+                  try {
+                    configuration = JSON.parse(
+                      configurationText.length > 0 ? configurationText : '{}',
+                    ) as Record<string, unknown>;
+                  } catch {
+                    throw new Error('非敏感配置必须是有效 JSON');
+                  }
+                  await onlineDocumentApi(`/api/v1/document-connectors/${connector.connector}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                      provider: values.provider,
+                      displayName: values.displayName,
+                      senderIdentity: senderIdentity.length > 0 ? senderIdentity : null,
+                      secretReference: secretReference.length > 0 ? secretReference : null,
+                      configuration,
+                      status: values.status,
+                      expectedVersion: connector.version,
+                    }),
+                  });
+                  globalThis.location.reload();
+                },
+              );
+            });
+            card.append(configure);
+            connectorGrid.append(card);
+          }
+        })
+        .catch((failure: unknown) => {
+          connectorGrid.replaceChildren(
+            el('p', 'error', failure instanceof Error ? failure.message : '连接器配置加载失败'),
+          );
+        });
+      communicationAdmin.append(el('h3', '', '发送与翻译连接器'), connectorGrid);
+    }
+    if (allPermissions.has('business-document:audit')) {
+      const auditList = el('div', 'document-audit-list');
+      auditList.append(el('p', 'operation-status', '正在加载逐用户文档日志…'));
+      void onlineDocumentApi<{
+        items: readonly Readonly<{
+          id: string;
+          occurredAt: string;
+          action: string;
+          outcome: string;
+          actorName?: string;
+          documentTitle?: string;
+          targetId?: string;
+          correlationId: string;
+        }>[];
+      }>('/api/v1/business-document-activity?limit=100')
+        .then(({ items }) => {
+          auditList.replaceChildren();
+          if (items.length === 0) auditList.append(el('p', 'empty', '暂无文档操作日志'));
+          for (const item of items) {
+            const row = el('article', 'document-audit-row');
+            row.append(
+              el('strong', '', item.actorName ?? '系统用户'),
+              el('span', '', item.action.replace('business-document.', '')),
+              el('span', '', item.documentTitle ?? item.targetId ?? '文档配置'),
+              el('time', '', new Date(item.occurredAt).toLocaleString('zh-CN')),
+              el('small', '', `关联号 ${item.correlationId}`),
+            );
+            auditList.append(row);
+          }
+        })
+        .catch((failure: unknown) => {
+          auditList.replaceChildren(
+            el('p', 'error', failure instanceof Error ? failure.message : '文档审计日志加载失败'),
+          );
+        });
+      communicationAdmin.append(el('h3', '', '逐用户文档操作日志'), auditList);
+    }
+    documentLibrary.append(communicationAdmin);
+  }
   content.append(documentLibrary);
   const permittedRoutes = visibleAppRoutes(allPermissions);
   const templateRoutes = Array.from(
@@ -12608,6 +13086,8 @@ export function createCrmShell(
                 {
                   manage: allPermissions.has('business-document:manage'),
                   approve: allPermissions.has('business-document:approve'),
+                  send: allPermissions.has('business-document:send'),
+                  translate: allPermissions.has('business-document:translate'),
                 },
                 () => {
                   globalThis.location.reload();
@@ -12659,6 +13139,8 @@ export function createCrmShell(
                     {
                       manage: allPermissions.has('business-document:manage'),
                       approve: allPermissions.has('business-document:approve'),
+                      send: allPermissions.has('business-document:send'),
+                      translate: allPermissions.has('business-document:translate'),
                     },
                     () => {
                       globalThis.location.reload();
