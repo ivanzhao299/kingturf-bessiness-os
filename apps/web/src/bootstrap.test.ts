@@ -860,6 +860,24 @@ describe('web bootstrap', () => {
     expect(source).toContain('buildBusinessDocumentTemplateHtml');
   });
 
+  it('keeps the document editor open and advances its active version after saving', () => {
+    const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+    const editorSource = source.slice(
+      source.indexOf('const openOnlineDocumentEditor'),
+      source.indexOf('type FormField'),
+    );
+    const contextualDocumentsSource = source.slice(
+      source.indexOf('for (const route of templateRoutes)'),
+      source.indexOf("const sectionHeader = el('div', 'section-heading')"),
+    );
+
+    expect(editorSource).toContain('activeVersion = saved.currentVersion');
+    expect(editorSource).toContain('继续保存为新版本');
+    expect(editorSource).toContain('编辑窗口保持打开，可继续修改');
+    expect(editorSource).not.toContain('globalThis.location.reload()');
+    expect(contextualDocumentsSource).not.toContain('globalThis.location.reload()');
+  });
+
   it('keeps the utility-bar title synchronized with route navigation', () => {
     const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
     expect(source).toContain("utilityContext.setAttribute('data-utility-context', 'true')");

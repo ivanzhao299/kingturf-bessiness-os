@@ -10343,20 +10343,24 @@ const openOnlineDocumentEditor = (
     send: boolean;
     translate: boolean;
   }>,
-  onSaved?: () => void,
+  onSaved?: (currentVersion: number) => void,
 ): void => {
+  let activeVersion = documentData.currentVersion;
+  let latestContent =
+    documentData.versions?.find((item) => item.version === activeVersion)?.content ?? {};
   const dialog = document.createElement('dialog');
   dialog.className = 'form-dialog business-document-dialog';
   const heading = el('div', 'dialog-heading');
   const headingCopy = el('div');
+  const versionStatus = el(
+    'p',
+    'muted',
+    `当前版本 V${String(activeVersion)} · ${documentData.state === 'APPROVED' ? '已批准锁版' : '保存不会覆盖历史版本'}`,
+  );
   headingCopy.append(
     el('p', 'eyebrow', '在线业务文档'),
     el('h2', '', documentData.title),
-    el(
-      'p',
-      'muted',
-      `当前版本 V${String(documentData.currentVersion)} · ${documentData.state === 'APPROVED' ? '已批准锁版' : '保存不会覆盖历史版本'}`,
-    ),
+    versionStatus,
   );
   const close = el('button', 'icon-button', '×');
   close.type = 'button';
@@ -10366,8 +10370,8 @@ const openOnlineDocumentEditor = (
   });
   heading.append(headingCopy, close);
   const versions = [...(documentData.versions ?? [])].sort((a, b) => b.version - a.version);
-  const current =
-    versions.find((item) => item.version === documentData.currentVersion) ?? versions[0];
+  const current = versions.find((item) => item.version === activeVersion) ?? versions[0];
+  latestContent = current?.content ?? latestContent;
   const workspace = el('div', 'business-document-workspace');
   workspace.dataset.pageSize = 'a4-portrait';
   workspace.dataset.viewMode = 'edit';
@@ -10380,6 +10384,8 @@ const openOnlineDocumentEditor = (
   documentScroll.setAttribute('aria-label', '文档页面');
   const actionPanel = el('section', 'business-document-action-panel');
   actionPanel.setAttribute('aria-label', '版本保存与审核');
+  const history = el('aside', 'business-document-history');
+  history.append(el('h3', '', '版本记录'));
   const bindingSummary = el(
     'p',
     'business-document-binding-summary',
@@ -10612,20 +10618,34 @@ const openOnlineDocumentEditor = (
       {
         method: 'POST',
         body: JSON.stringify({
-          expectedVersion: documentData.currentVersion,
+          expectedVersion: activeVersion,
           content: { body: plainText, html: cleanHtml },
           changeSummary: summary.value,
         }),
       },
     )
       .then((saved) => {
+        activeVersion = saved.currentVersion;
+        latestContent = { body: plainText, html: cleanHtml };
+        const savedVersion = {
+          version: activeVersion,
+          content: latestContent,
+          changeSummary: summary.value.trim(),
+          createdAt: new Date().toISOString(),
+        };
+        versions.unshift(savedVersion);
+        addVersionToHistory(savedVersion, true);
+        versionStatus.textContent = `当前版本 V${String(activeVersion)} · 保存不会覆盖历史版本`;
         setOperationStatus(
           status,
           'success',
-          `已保存 V${String(saved.currentVersion)}，历史版本保持不变`,
+          `已保存到当前业务页的“已保存在线文档”及右侧“版本记录”：V${String(activeVersion)}。编辑窗口保持打开，可继续修改。`,
         );
-        save.textContent = '已保存';
-        onSaved?.();
+        summary.value = '';
+        save.disabled = false;
+        save.textContent = '继续保存为新版本';
+        clearSessionReadCache();
+        onSaved?.(activeVersion);
       })
       .catch((failure: unknown) => {
         save.disabled = false;
@@ -10661,13 +10681,14 @@ const openOnlineDocumentEditor = (
       void onlineDocumentApi(`/api/v1/business-documents/${documentData.id}/${action}`, {
         method: 'POST',
         body: JSON.stringify({
-          expectedVersion: documentData.currentVersion,
+          expectedVersion: activeVersion,
           reason: reviewReason.value.trim(),
         }),
       })
         .then(() => {
           setOperationStatus(status, 'success', `${label}成功`);
-          onSaved?.();
+          clearSessionReadCache();
+          onSaved?.(activeVersion);
         })
         .catch((failure: unknown) => {
           button.disabled = false;
@@ -10686,8 +10707,6 @@ const openOnlineDocumentEditor = (
     addReviewAction('驳回修改', 'reject', false);
   }
   if (reviewActions.childElementCount > 0) actionPanel.append(reviewReason, reviewActions);
-  const history = el('aside', 'business-document-history');
-  history.append(el('h3', '', '版本记录'));
   const comparison = el('section', 'business-document-comparison');
   for (const item of documentData.dispatches ?? [])
     history.append(
@@ -10745,7 +10764,10 @@ const openOnlineDocumentEditor = (
         `${event.action === 'SUBMITTED' ? '已提交' : event.action === 'APPROVED' ? '已批准' : '已驳回'} · ${event.reason}`,
       ),
     );
-  for (const item of versions) {
+  const addVersionToHistory = (
+    item: NonNullable<OnlineBusinessDocument['versions']>[number],
+    newest = false,
+  ): void => {
     const versionItem = el('button', 'business-document-version');
     versionItem.type = 'button';
     versionItem.append(
@@ -10761,9 +10783,9 @@ const openOnlineDocumentEditor = (
       renderBusinessDocumentComparison(
         comparison,
         businessDocumentText(item.content),
-        businessDocumentText(current?.content ?? {}),
+        businessDocumentText(latestContent),
         item.version,
-        documentData.currentVersion,
+        activeVersion,
       );
       setOperationStatus(
         status,
@@ -10771,8 +10793,10 @@ const openOnlineDocumentEditor = (
         `正在查看 V${String(item.version)}；继续保存将基于当前最新版生成新版本`,
       );
     });
-    history.append(versionItem);
-  }
+    if (newest) history.insertBefore(versionItem, history.children[1] ?? null);
+    else history.append(versionItem);
+  };
+  for (const item of versions) addVersionToHistory(item);
   toggleHistory.addEventListener('click', () => {
     const collapsed = workspace.classList.toggle('history-collapsed');
     toggleHistory.textContent = collapsed ? '展开版本栏' : '收起版本栏';
@@ -10828,7 +10852,7 @@ const openOnlineDocumentEditor = (
           {
             method: 'POST',
             body: JSON.stringify({
-              expectedVersion: documentData.currentVersion,
+              expectedVersion: activeVersion,
               targetLocale: values.targetLocale,
               ...(manual
                 ? {
@@ -10850,7 +10874,8 @@ const openOnlineDocumentEditor = (
           'success',
           translated.status === 'READY' ? '人工译文已保存并可用于发送' : '自动翻译任务已进入队列',
         );
-        onSaved?.();
+        clearSessionReadCache();
+        onSaved?.(activeVersion);
       },
     );
   });
@@ -10889,10 +10914,7 @@ const openOnlineDocumentEditor = (
               options: [
                 { value: '', label: '原文' },
                 ...(documentData.translations ?? [])
-                  .filter(
-                    (item) =>
-                      item.status === 'READY' && item.sourceVersion === documentData.currentVersion,
-                  )
+                  .filter((item) => item.status === 'READY' && item.sourceVersion === activeVersion)
                   .map((item) => ({ value: item.id, label: `${item.targetLocale} 译文` })),
               ],
             },
@@ -10920,7 +10942,7 @@ const openOnlineDocumentEditor = (
                 method: 'POST',
                 headers: { 'idempotency-key': requestId() },
                 body: JSON.stringify({
-                  expectedVersion: documentData.currentVersion,
+                  expectedVersion: activeVersion,
                   channel: values.channel,
                   recipientName: values.recipientName,
                   recipientAddress: values.recipientAddress,
@@ -10931,7 +10953,8 @@ const openOnlineDocumentEditor = (
               },
             );
             setOperationStatus(status, 'success', `发送任务已建立：${result.status}`);
-            onSaved?.();
+            clearSessionReadCache();
+            onSaved?.(activeVersion);
           },
         );
       })
@@ -10955,7 +10978,7 @@ const openOnlineDocumentEditor = (
       );
       void onlineDocumentApi(`/api/v1/business-documents/${documentData.id}/activity`, {
         method: 'POST',
-        body: JSON.stringify({ action: 'PRINTED', version: documentData.currentVersion }),
+        body: JSON.stringify({ action: 'PRINTED', version: activeVersion }),
       }).catch(() => {
         setOperationStatus(status, 'error', '打印已打开，但审计记录暂时写入失败');
       });
@@ -10976,12 +10999,12 @@ const openOnlineDocumentEditor = (
     const href = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
     const link = document.createElement('a');
     link.href = href;
-    link.download = `${documentData.title.replaceAll(/[\\/:*?"<>|]/gu, '-')}-V${String(documentData.currentVersion)}.html`;
+    link.download = `${documentData.title.replaceAll(/[\\/:*?"<>|]/gu, '-')}-V${String(activeVersion)}.html`;
     link.click();
     URL.revokeObjectURL(href);
     void onlineDocumentApi(`/api/v1/business-documents/${documentData.id}/activity`, {
       method: 'POST',
-      body: JSON.stringify({ action: 'DOWNLOADED', version: documentData.currentVersion }),
+      body: JSON.stringify({ action: 'DOWNLOADED', version: activeVersion }),
     }).catch(() => {
       setOperationStatus(status, 'error', '文件已下载，但审计记录暂时写入失败');
     });
@@ -13089,10 +13112,16 @@ export function createCrmShell(
                   send: allPermissions.has('business-document:send'),
                   translate: allPermissions.has('business-document:translate'),
                 },
-                () => {
-                  globalThis.location.reload();
+                (currentVersion) => {
+                  online.disabled = false;
+                  setOperationStatus(
+                    selectionStatus,
+                    'success',
+                    `“${template.name}”已保存为 V${String(currentVersion)}；关闭编辑窗口后可在“已保存在线文档”中重新打开。`,
+                  );
                 },
               );
+              online.disabled = false;
             })
             .catch((failure: unknown) => {
               online.disabled = false;
@@ -13142,10 +13171,16 @@ export function createCrmShell(
                       send: allPermissions.has('business-document:send'),
                       translate: allPermissions.has('business-document:translate'),
                     },
-                    () => {
-                      globalThis.location.reload();
+                    (currentVersion) => {
+                      open.textContent = `${item.title} · V${String(currentVersion)}${item.assigneeName ? ` · 待办：${item.assigneeName}` : ''}`;
+                      setOperationStatus(
+                        selectionStatus,
+                        'success',
+                        `${item.title} 已保存为 V${String(currentVersion)}，仍保留在当前业务页的“已保存在线文档”。`,
+                      );
                     },
                   );
+                  open.disabled = false;
                 })
                 .catch((failure: unknown) => {
                   open.disabled = false;
