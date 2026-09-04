@@ -175,7 +175,7 @@ export class PostgresCommercialRepository {
           FROM cost_specification_factors f LEFT JOIN manufacturing_item_versions siv ON siv.id=f.source_item_version_id AND siv.tenant_id=f.tenant_id
           LEFT JOIN manufacturing_items si ON si.id=siv.item_id AND si.tenant_id=siv.tenant_id WHERE f.tenant_id=m.tenant_id AND f.specification_model_id=m.id),'[]'::jsonb) factors,
         (SELECT to_jsonb(c) FROM (SELECT id,pricing_mode AS "pricingMode",direct_production_cost AS "directProductionCost",reserved_expense_cost AS "reservedExpenseCost",
-          total_cost AS "totalCost",factor_trace AS "factorTrace",technical_solution_revision_id AS "technicalSolutionRevisionId",cost_decision_id AS "costDecisionId",calculated_at AS "calculatedAt" FROM cost_matrix_calculations c
+          total_cost AS "totalCost",technical_solution_revision_id AS "technicalSolutionRevisionId",cost_decision_id AS "costDecisionId",calculated_at AS "calculatedAt" FROM cost_matrix_calculations c
           WHERE c.tenant_id=m.tenant_id AND c.specification_model_id=m.id ORDER BY c.calculated_at DESC LIMIT 1)c) AS "latestCalculation"
       FROM cost_specification_models m LEFT JOIN manufacturing_item_versions iv ON iv.id=m.product_item_version_id AND iv.tenant_id=m.tenant_id
       LEFT JOIN manufacturing_items i ON i.id=iv.item_id AND i.tenant_id=iv.tenant_id WHERE m.tenant_id=$1 ORDER BY m.code`,

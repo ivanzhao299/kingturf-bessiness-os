@@ -943,6 +943,27 @@ describe('web bootstrap', () => {
     expect(workspace.textContent).toContain('系统预置');
   });
 
+  it('refreshes only the requested commercial views after a focused mutation', async () => {
+    const api = {
+      listOpportunities: vi.fn().mockResolvedValue([]),
+      list: vi.fn().mockImplementation((path: string) => Promise.resolve([{ path }])),
+      submit: vi.fn().mockResolvedValue({}),
+      uploadCtrAttachment: vi.fn().mockResolvedValue({}),
+      command: vi.fn().mockResolvedValue({}),
+    };
+    const controller = new CommercialController(api, new Set(['cost-matrix:read']));
+    controller.views.set('/api/v1/quotes', [{ id: 'preserved-quote' }]);
+
+    await controller.refreshViews(['/api/v1/cost-matrices']);
+
+    expect(api.list).toHaveBeenCalledTimes(1);
+    expect(api.list).toHaveBeenCalledWith('/api/v1/cost-matrices');
+    expect(controller.views.get('/api/v1/cost-matrices')).toEqual([
+      { path: '/api/v1/cost-matrices' },
+    ]);
+    expect(controller.views.get('/api/v1/quotes')).toEqual([{ id: 'preserved-quote' }]);
+  });
+
   it('opens governed factor creation and refreshes the matrix after saving', async () => {
     const api = {
       listOpportunities: vi.fn().mockResolvedValue([]),
