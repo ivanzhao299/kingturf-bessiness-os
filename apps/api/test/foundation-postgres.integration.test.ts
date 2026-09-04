@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Database, migrate } from '@kingturf/database';
 import type { ObjectAccessAuthorizer, ObjectStorage } from '@kingturf/domain';
 import { PostgresEmployeeRepository } from '../src/repositories.js';
+import { PostgresBusinessDocumentRepository } from '../src/business-document-repositories.js';
 import {
   InProcessEventDispatcher,
   EmployeeObjectInstanceResolver,
@@ -29,6 +30,7 @@ describe('JTF-P0-E12..E15 PostgreSQL acceptance', () => {
     recipient = randomUUID(),
     restrictedRecipient = randomUUID(),
     outsider = randomUUID();
+  const customer = randomUUID();
   const actor = { companyId: company, employeeId: employee } as const;
   let admin: Database, db: Database;
   let failStorageDelete = false;
@@ -86,6 +88,10 @@ describe('JTF-P0-E12..E15 PostgreSQL acceptance', () => {
         otherCompany,
         otherOrganization,
       ],
+    );
+    await db.query(
+      "INSERT INTO customers(id,tenant_id,customer_number,name,normalized_name,created_by,updated_by) VALUES($1,$2,'DOC-CUSTOMER','Document Customer','document customer',$3,$3)",
+      [customer, company, employee],
     );
   });
   afterAll(async () => {
@@ -176,6 +182,109 @@ describe('JTF-P0-E12..E15 PostgreSQL acceptance', () => {
         )
       ).tenantId,
     ).toBe(company);
+  });
+
+  it('pins translations and approved customer delivery while exposing only administrator audit data', async () => {
+    const repository = new PostgresBusinessDocumentRepository(db);
+    const context = { actor, scopes: ['COMPANY'] as const };
+    const created = await repository.create(
+      {
+        templateKey: '13-quotes',
+        title: 'International customer quotation',
+        route: 'quotes',
+        customerId: customer,
+        content: { body: '受控报价正文' },
+      },
+      actor,
+      randomUUID(),
+    );
+    await expect(
+      repository.createTranslation(
+        created.id,
+        { expectedVersion: 1, targetLocale: 'en-US' },
+        context,
+        randomUUID(),
+      ),
+    ).rejects.toThrow(/not configured/u);
+    const translation = await repository.createTranslation(
+      created.id,
+      {
+        expectedVersion: 1,
+        targetLocale: 'en-US',
+        content: { body: 'Controlled quotation content' },
+      },
+      context,
+      randomUUID(),
+    );
+    expect(translation).toMatchObject({ targetLocale: 'en-US', status: 'READY' });
+    await repository.configureConnector(
+      'EMAIL',
+      {
+        provider: 'RESEND',
+        displayName: 'International sales email',
+        senderIdentity: 'sales@example.test',
+        secretReference: 'KINGTURF_CONNECTOR_EMAIL_TOKEN',
+        configuration: { region: 'global' },
+        status: 'READY',
+        expectedVersion: 0,
+      },
+      actor,
+      randomUUID(),
+    );
+    if (typeof translation.id !== 'string') {
+      throw new Error('expected translation id');
+    }
+    const sendInput = {
+      expectedVersion: 1,
+      channel: 'EMAIL',
+      recipientName: 'Buyer',
+      recipientAddress: 'buyer@example.test',
+      subject: 'Quotation',
+      message: 'Please review.',
+      translationId: translation.id,
+      idempotencyKey: 'document-send-integration-1',
+    };
+    await expect(repository.dispatch(created.id, sendInput, context, randomUUID())).rejects.toThrow(
+      /approved version/u,
+    );
+    await repository.transition(
+      created.id,
+      { expectedVersion: 1, action: 'SUBMITTED', reason: 'ready for independent review' },
+      context,
+      randomUUID(),
+    );
+    await repository.transition(
+      created.id,
+      { expectedVersion: 1, action: 'APPROVED', reason: 'commercial content approved' },
+      { actor: { companyId: company, employeeId: recipient }, scopes: ['COMPANY'] },
+      randomUUID(),
+    );
+    const first = await repository.dispatch(created.id, sendInput, context, randomUUID());
+    expect(first).toMatchObject({ channel: 'EMAIL', status: 'QUEUED' });
+    expect(await repository.dispatch(created.id, sendInput, context, randomUUID())).toEqual(first);
+    await expect(
+      repository.dispatch(
+        created.id,
+        { ...sendInput, subject: 'Changed quotation' },
+        context,
+        randomUUID(),
+      ),
+    ).rejects.toThrow(/Idempotency key/u);
+    await repository.recordClientActivity(created.id, 'PRINTED', 1, context, randomUUID());
+    const full = await repository.get(created.id, { ...context, includeAudit: true });
+    expect(full.translations).toHaveLength(1);
+    expect(full.dispatches).toHaveLength(1);
+    expect(JSON.stringify(full.dispatches)).not.toContain('buyer@example.test');
+    const log = await repository.activityLog(actor, { documentId: created.id });
+    expect(log.map((item) => item.action)).toEqual(
+      expect.arrayContaining([
+        'business-document.create',
+        'business-document.translation-created',
+        'business-document.send-requested',
+        'business-document.printed',
+      ]),
+    );
+    expect(log.some((item) => item.actorName === 'Actor')).toBe(true);
   });
 
   it('requires compare-and-swap versions for notification preferences under concurrency', async () => {

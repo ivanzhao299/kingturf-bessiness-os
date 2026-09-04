@@ -18,6 +18,10 @@ const auth = {
         ['business-document:read', { scopes: ['COMPANY'], fields: null }],
         ['business-document:manage', { scopes: ['COMPANY'], fields: null }],
         ['business-document:approve', { scopes: ['COMPANY'], fields: null }],
+        ['business-document:send', { scopes: ['COMPANY'], fields: null }],
+        ['business-document:translate', { scopes: ['COMPANY'], fields: null }],
+        ['business-document:configure', { scopes: ['COMPANY'], fields: null }],
+        ['business-document:audit', { scopes: ['COMPANY'], fields: null }],
       ]),
       scopeAnchors: new Map([
         ['attachment:manage', [{ scope: 'TEAM', organizationId: attachmentAnchor }]],
@@ -328,6 +332,188 @@ describe('foundation secured API and telemetry', () => {
       expectedVersion: 2,
       action: 'SUBMITTED',
     });
+  });
+
+  it('governs document translation, customer delivery, connector configuration, and audit', async () => {
+    const documentId = randomUUID();
+    const translationId = randomUUID();
+    const listConnectors = vi.fn((...arguments_: unknown[]) => {
+      void arguments_;
+      return Promise.resolve([{ connector: 'EMAIL' }]);
+    });
+    const configureConnector = vi.fn((...arguments_: unknown[]) => {
+      void arguments_;
+      return Promise.resolve({ connector: 'EMAIL', status: 'READY', version: 1 });
+    });
+    const createTranslation = vi.fn((...arguments_: unknown[]) => {
+      void arguments_;
+      return Promise.resolve({ id: translationId, status: 'READY' });
+    });
+    const dispatch = vi.fn((...arguments_: unknown[]) => {
+      void arguments_;
+      return Promise.resolve({ id: randomUUID(), status: 'QUEUED' });
+    });
+    const recordClientActivity = vi.fn((...arguments_: unknown[]) => {
+      void arguments_;
+      return Promise.resolve({ id: documentId, action: 'PRINTED', version: 2 });
+    });
+    const activityLog = vi.fn((...arguments_: unknown[]) => {
+      void arguments_;
+      return Promise.resolve([{ action: 'business-document.create' }]);
+    });
+    const app = buildApp({
+      ...base,
+      businessDocuments: {
+        listConnectors,
+        configureConnector,
+        createTranslation,
+        dispatch,
+        recordClientActivity,
+        activityLog,
+      } as unknown as NonNullable<ApiDependencies['businessDocuments']>,
+    });
+    const connectors = await app.dispatch({
+      method: 'GET',
+      pathname: '/api/v1/document-connectors',
+      headers: { authorization: 'Bearer token' },
+    });
+    const configured = await app.dispatch({
+      method: 'PUT',
+      pathname: '/api/v1/document-connectors/EMAIL',
+      headers: { authorization: 'Bearer token' },
+      body: {
+        provider: 'RESEND',
+        displayName: '公司销售邮箱',
+        senderIdentity: 'sales@example.test',
+        secretReference: 'KINGTURF_CONNECTOR_EMAIL_TOKEN',
+        configuration: { region: 'global' },
+        status: 'READY',
+        expectedVersion: 0,
+      },
+    });
+    const translated = await app.dispatch({
+      method: 'POST',
+      pathname: `/api/v1/business-documents/${documentId}/translations`,
+      headers: { authorization: 'Bearer token' },
+      body: {
+        expectedVersion: 2,
+        targetLocale: 'en-US',
+        content: { body: 'Customer quotation' },
+      },
+    });
+    const sent = await app.dispatch({
+      method: 'POST',
+      pathname: `/api/v1/business-documents/${documentId}/send`,
+      headers: { authorization: 'Bearer token', 'idempotency-key': 'document-send-001' },
+      body: {
+        expectedVersion: 2,
+        channel: 'EMAIL',
+        recipientName: 'Customer',
+        recipientAddress: 'buyer@example.test',
+        subject: 'Quotation',
+        message: 'Please review the attached document.',
+        translationId,
+      },
+    });
+    const printed = await app.dispatch({
+      method: 'POST',
+      pathname: `/api/v1/business-documents/${documentId}/activity`,
+      headers: { authorization: 'Bearer token' },
+      body: { action: 'PRINTED', version: 2 },
+    });
+    const audit = await app.dispatch({
+      method: 'GET',
+      pathname: '/api/v1/business-document-activity',
+      headers: { authorization: 'Bearer token' },
+      query: { documentId },
+    });
+    expect(connectors.statusCode).toBe(200);
+    expect(configured.statusCode).toBe(200);
+    expect(translated.statusCode).toBe(201);
+    expect(sent.statusCode).toBe(202);
+    expect(printed.statusCode).toBe(201);
+    expect(audit.statusCode).toBe(200);
+    expect(listConnectors).toHaveBeenCalledWith(actor, true);
+    expect(configureConnector.mock.calls[0]?.[1]).toMatchObject({ status: 'READY' });
+    expect(createTranslation.mock.calls[0]?.[1]).toMatchObject({ targetLocale: 'en-US' });
+    expect(dispatch.mock.calls[0]?.[1]).toMatchObject({ idempotencyKey: 'document-send-001' });
+    expect(activityLog.mock.calls[0]?.[1]).toMatchObject({ documentId });
+  });
+
+  it('rejects secret material in document connector metadata', async () => {
+    const configureConnector = vi.fn();
+    const response = await buildApp({
+      ...base,
+      businessDocuments: { configureConnector } as unknown as NonNullable<
+        ApiDependencies['businessDocuments']
+      >,
+    }).dispatch({
+      method: 'PUT',
+      pathname: '/api/v1/document-connectors/EMAIL',
+      headers: { authorization: 'Bearer token' },
+      body: {
+        provider: 'RESEND',
+        displayName: '公司销售邮箱',
+        secretReference: 'KINGTURF_CONNECTOR_EMAIL_TOKEN',
+        configuration: { apiToken: 'must-not-be-stored' },
+        status: 'READY',
+        expectedVersion: 0,
+      },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(configureConnector).not.toHaveBeenCalled();
+  });
+
+  it('does not enable a document connector without a managed secret reference', async () => {
+    const configureConnector = vi.fn();
+    const response = await buildApp({
+      ...base,
+      businessDocuments: { configureConnector } as unknown as NonNullable<
+        ApiDependencies['businessDocuments']
+      >,
+    }).dispatch({
+      method: 'PUT',
+      pathname: '/api/v1/document-connectors/EMAIL',
+      headers: { authorization: 'Bearer token' },
+      body: {
+        provider: 'RESEND',
+        displayName: '公司销售邮箱',
+        configuration: {},
+        status: 'READY',
+        expectedVersion: 0,
+      },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(configureConnector).not.toHaveBeenCalled();
+  });
+
+  it('keeps company-wide document communication logs administrator-only', async () => {
+    const activityLog = vi.fn();
+    const senderAuth = {
+      ...auth,
+      authenticate: vi.fn(() =>
+        Promise.resolve({
+          actor,
+          permissions: new Map([
+            ['business-document:read', { scopes: ['COMPANY'], fields: null }],
+            ['business-document:send', { scopes: ['COMPANY'], fields: null }],
+          ]),
+        }),
+      ),
+    };
+    const response = await buildApp({
+      ...base,
+      auth: senderAuth as unknown as ApiDependencies['auth'],
+      businessDocuments: { activityLog } as unknown as NonNullable<
+        ApiDependencies['businessDocuments']
+      >,
+    }).dispatch({
+      method: 'GET',
+      pathname: '/api/v1/business-document-activity',
+      headers: { authorization: 'Bearer token' },
+    });
+    expect(response.statusCode).toBe(403);
+    expect(activityLog).not.toHaveBeenCalled();
   });
 
   it('tenant-qualifies event metrics', async () => {
