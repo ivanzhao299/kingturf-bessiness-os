@@ -160,6 +160,148 @@ const retainCommand = (
 
 export class PostgresCommercialRepository {
   public constructor(private readonly db: Db) {}
+  public async listCostMatrixSummaries(
+    input: {
+      page: number;
+      pageSize: number;
+      query: string;
+      productFamily: string;
+      attention: 'ALL' | 'NEEDS_INPUT' | 'NEEDS_CALCULATION' | 'READY_FOR_QUOTE' | 'IN_QUOTE';
+      sort: 'ATTENTION' | 'CODE' | 'UPDATED' | 'COST_DESC';
+    },
+    actor: Actor,
+    scopes: readonly DataScope[],
+  ): Promise<Readonly<{ items: readonly JsonObject[]; total: number }>> {
+    if (!scopes.includes('COMPANY'))
+      throw new DomainError('forbidden', 'Cost matrices require company scope');
+    const offset = (input.page - 1) * input.pageSize;
+    const rows = (
+      await this.db.query<JsonObject>(
+        `
+        WITH factor_stats AS (
+          SELECT tenant_id,specification_model_id,count(*)::int AS factor_count,
+            count(*) FILTER(WHERE quantity>0 AND manual_unit_price_tax_inclusive<=0 AND source_type NOT IN('PURCHASE_ORDER','SUPPLIER_QUOTE'))::int AS missing_price_count,
+            count(*) FILTER(WHERE source_type NOT IN('PURCHASE_ORDER','SUPPLIER_QUOTE') AND (trim(price_source_name)='' OR price_effective_at IS NULL))::int AS missing_source_count,
+            max(updated_at) AS factors_updated_at
+          FROM cost_specification_factors
+          WHERE tenant_id=$1
+          GROUP BY tenant_id,specification_model_id
+        ), latest AS (
+          SELECT DISTINCT ON(tenant_id,specification_model_id)
+            tenant_id,specification_model_id,id,pricing_mode,direct_production_cost,reserved_expense_cost,total_cost,
+            technical_solution_revision_id,cost_decision_id,calculated_at
+          FROM cost_matrix_calculations
+          WHERE tenant_id=$1
+          ORDER BY tenant_id,specification_model_id,calculated_at DESC,id DESC
+        ), summary AS (
+          SELECT m.id,m.code,m.name,m.currency,m.default_tax_rate AS "defaultTaxRate",
+            m.product_specification AS "productSpecification",m.is_system_preset AS "isSystemPreset",
+            coalesce(m.product_family,'') AS "productFamily",m.product_item_version_id AS "productItemVersionId",
+            i.sku AS "productSku",i.name AS "productName",m.active,
+            coalesce(fs.factor_count,0) AS "factorCount",
+            coalesce(fs.missing_price_count,0) AS "missingPriceCount",
+            coalesce(fs.missing_source_count,0) AS "missingSourceCount",
+            greatest(m.updated_at,coalesce(fs.factors_updated_at,m.updated_at)) AS "updatedAt",
+            (l.id IS NULL OR greatest(m.updated_at,coalesce(fs.factors_updated_at,m.updated_at))>l.calculated_at) AS "needsRecalculation",
+            CASE WHEN l.id IS NULL THEN NULL ELSE jsonb_build_object(
+              'id',l.id,'pricingMode',l.pricing_mode,'directProductionCost',l.direct_production_cost,
+              'reservedExpenseCost',l.reserved_expense_cost,'totalCost',l.total_cost,
+              'technicalSolutionRevisionId',l.technical_solution_revision_id,
+              'costDecisionId',l.cost_decision_id,'calculatedAt',l.calculated_at) END AS "latestCalculation"
+          FROM cost_specification_models m
+          LEFT JOIN manufacturing_item_versions iv ON iv.id=m.product_item_version_id AND iv.tenant_id=m.tenant_id
+          LEFT JOIN manufacturing_items i ON i.id=iv.item_id AND i.tenant_id=iv.tenant_id
+          LEFT JOIN factor_stats fs ON fs.tenant_id=m.tenant_id AND fs.specification_model_id=m.id
+          LEFT JOIN latest l ON l.tenant_id=m.tenant_id AND l.specification_model_id=m.id
+          WHERE m.tenant_id=$1
+        ), filtered AS (
+          SELECT * FROM summary s
+          WHERE ($2='' OR lower(concat_ws(' ',s.code,s.name,s."productSku",s."productName")) LIKE '%'||lower($2)||'%')
+            AND ($3='' OR s."productFamily"=$3)
+            AND ($4='ALL'
+              OR ($4='NEEDS_INPUT' AND (s."missingPriceCount">0 OR s."missingSourceCount">0 OR s."factorCount"=0))
+              OR ($4='NEEDS_CALCULATION' AND s."needsRecalculation")
+              OR ($4='READY_FOR_QUOTE' AND NOT s."needsRecalculation" AND s."missingPriceCount"=0 AND s."missingSourceCount"=0 AND s."factorCount">0 AND s."latestCalculation"->>'costDecisionId' IS NULL)
+              OR ($4='IN_QUOTE' AND s."latestCalculation"->>'costDecisionId' IS NOT NULL))
+        )
+        SELECT filtered.*,count(*) OVER()::int AS "totalCount"
+        FROM filtered
+        ORDER BY
+          CASE WHEN $5='ATTENTION' THEN ("missingPriceCount">0 OR "missingSourceCount">0 OR "factorCount"=0) END DESC,
+          CASE WHEN $5='ATTENTION' THEN "needsRecalculation" END DESC,
+          CASE WHEN $5='COST_DESC' THEN ("latestCalculation"->>'totalCost')::numeric END DESC NULLS LAST,
+          CASE WHEN $5='UPDATED' THEN "updatedAt" END DESC,
+          code ASC,id ASC
+        LIMIT $6 OFFSET $7`,
+        [
+          actor.companyId,
+          input.query,
+          input.productFamily,
+          input.attention,
+          input.sort,
+          input.pageSize,
+          offset,
+        ],
+      )
+    ).rows;
+    const total = Number(rows[0]?.totalCount ?? 0);
+    return {
+      total,
+      items: rows.map((row) =>
+        Object.fromEntries(Object.entries(row).filter(([key]) => key !== 'totalCount')),
+      ),
+    };
+  }
+
+  public async getCostMatrix(
+    modelId: string,
+    actor: Actor,
+    scopes: readonly DataScope[],
+  ): Promise<JsonObject> {
+    if (!scopes.includes('COMPANY'))
+      throw new DomainError('forbidden', 'Cost matrices require company scope');
+    const model = (
+      await this.db.query<JsonObject>(
+        `SELECT m.id,m.code,m.name,m.currency,m.default_tax_rate AS "defaultTaxRate",
+          m.product_specification AS "productSpecification",m.is_system_preset AS "isSystemPreset",m.product_family AS "productFamily",
+          m.product_item_version_id AS "productItemVersionId",i.sku AS "productSku",i.name AS "productName",m.active,m.updated_at AS "updatedAt",
+          coalesce((SELECT jsonb_agg(jsonb_build_object('id',f.id,'factorCode',f.factor_code,'factorName',f.factor_name,'category',f.category,
+            'sourceType',f.source_type,'sourceItemVersionId',f.source_item_version_id,'sourceSku',si.sku,'sourceItemName',si.name,'quantity',f.quantity,
+            'unitCode',f.unit_code,'manualUnitPriceTaxInclusive',f.manual_unit_price_tax_inclusive,'taxRate',f.tax_rate,'adjustable',f.adjustable,'sortOrder',f.sort_order,
+            'priceSourceName',f.price_source_name,'priceSourceReference',f.price_source_reference,'priceEffectiveAt',f.price_effective_at,'priceNote',f.price_note) ORDER BY f.sort_order,f.factor_code)
+            FROM cost_specification_factors f LEFT JOIN manufacturing_item_versions siv ON siv.id=f.source_item_version_id AND siv.tenant_id=f.tenant_id
+            LEFT JOIN manufacturing_items si ON si.id=siv.item_id AND si.tenant_id=siv.tenant_id
+            WHERE f.tenant_id=m.tenant_id AND f.specification_model_id=m.id),'[]'::jsonb) factors
+        FROM cost_specification_models m
+        LEFT JOIN manufacturing_item_versions iv ON iv.id=m.product_item_version_id AND iv.tenant_id=m.tenant_id
+        LEFT JOIN manufacturing_items i ON i.id=iv.item_id AND i.tenant_id=iv.tenant_id
+        WHERE m.tenant_id=$1 AND m.id=$2`,
+        [actor.companyId, modelId],
+      )
+    ).rows[0];
+    if (!model) throw new DomainError('not_found', 'Cost specification model not found');
+    const calculations = (
+      await this.db.query<JsonObject>(
+        `SELECT id,pricing_mode AS "pricingMode",direct_production_cost AS "directProductionCost",
+          reserved_expense_cost AS "reservedExpenseCost",total_cost AS "totalCost",
+          technical_solution_revision_id AS "technicalSolutionRevisionId",cost_decision_id AS "costDecisionId",calculated_at AS "calculatedAt"
+         FROM cost_matrix_calculations WHERE tenant_id=$1 AND specification_model_id=$2
+         ORDER BY calculated_at DESC,id DESC LIMIT 30`,
+        [actor.companyId, modelId],
+      )
+    ).rows;
+    const auditTrail = (
+      await this.db.query<JsonObject>(
+        `SELECT a.id,a.action,a.outcome,a.actor_id AS "actorId",e.display_name AS "actorName",a.occurred_at AS "occurredAt",a.correlation_id AS "correlationId"
+         FROM audit_events a LEFT JOIN employees e ON e.id=a.actor_id AND e.company_id=a.organization_id
+         WHERE a.organization_id=$1 AND a.target_type='cost-matrix' AND a.target_id=$2
+         ORDER BY a.occurred_at DESC,a.id DESC LIMIT 50`,
+        [actor.companyId, modelId],
+      )
+    ).rows;
+    return { ...model, calculations, latestCalculation: calculations[0] ?? null, auditTrail };
+  }
+
   public async listCostMatrices(actor: Actor, scopes: readonly DataScope[]) {
     if (!scopes.includes('COMPANY'))
       throw new DomainError('forbidden', 'Cost matrices require company scope');

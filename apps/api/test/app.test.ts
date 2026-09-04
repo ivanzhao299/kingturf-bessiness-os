@@ -564,6 +564,60 @@ describe('authentication and protected API contracts', () => {
       [],
     );
   });
+  it('serves paginated cost matrix summaries and permission-scoped details', async () => {
+    const listCostMatrixSummaries = vi.fn(() =>
+      Promise.resolve({
+        items: [{ id: targetId, code: 'KT-50', name: '50mm 标准模型', factorCount: 13 }],
+        total: 36,
+      }),
+    );
+    const getCostMatrix = vi.fn(() =>
+      Promise.resolve({ id: targetId, code: 'KT-50', factors: [], calculations: [] }),
+    );
+    const commercial = {
+      listCostMatrixSummaries,
+      getCostMatrix,
+    } as unknown as PostgresCommercialRepository;
+    const deps = {
+      ...dependencies(context(grant('cost-matrix:read'))),
+      commercial,
+    };
+
+    const summary = await buildApp(deps).dispatch({
+      method: 'GET',
+      pathname: '/api/v1/cost-matrix-summaries',
+      query: {
+        page: '2',
+        pageSize: '20',
+        q: '50mm',
+        attention: 'NEEDS_CALCULATION',
+        sort: 'UPDATED',
+      },
+      headers: { authorization: 'Bearer opaque' },
+    });
+
+    expect(summary.statusCode).toBe(200);
+    expect(summary.body).toMatchObject({ total: 36, page: 2, pageSize: 20 });
+    expect(listCostMatrixSummaries).toHaveBeenCalledWith(
+      expect.objectContaining({
+        page: 2,
+        pageSize: 20,
+        query: '50mm',
+        attention: 'NEEDS_CALCULATION',
+        sort: 'UPDATED',
+      }),
+      expect.objectContaining({ companyId, employeeId }),
+      ['COMPANY'],
+    );
+
+    const detail = await dispatch(deps, 'GET', `/api/v1/cost-matrices/${targetId}`);
+    expect(detail.statusCode).toBe(200);
+    expect(getCostMatrix).toHaveBeenCalledWith(
+      targetId,
+      expect.objectContaining({ companyId, employeeId }),
+      ['COMPANY'],
+    );
+  });
   it('supports login, session validation, and logout', async () => {
     const deps = dependencies(context(new Map()));
     expect(

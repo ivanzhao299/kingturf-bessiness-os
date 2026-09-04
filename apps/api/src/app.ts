@@ -3932,6 +3932,43 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
         }
         if (
           request.method === 'GET' &&
+          request.pathname === '/api/v1/cost-matrix-summaries' &&
+          dependencies.commercial
+        ) {
+          const grant = authorizeQuery(context, 'cost-matrix:read');
+          const page = integer(Number(request.query?.page ?? 1), 'page', 1, 100000);
+          const pageSize = integer(Number(request.query?.pageSize ?? 20), 'pageSize', 5, 100);
+          const attention = request.query?.attention ?? 'ALL';
+          if (
+            !['ALL', 'NEEDS_INPUT', 'NEEDS_CALCULATION', 'READY_FOR_QUOTE', 'IN_QUOTE'].includes(
+              attention,
+            )
+          )
+            throw new DomainError('invalid_request', 'Invalid cost matrix attention filter');
+          const sort = request.query?.sort ?? 'ATTENTION';
+          if (!['ATTENTION', 'CODE', 'UPDATED', 'COST_DESC'].includes(sort))
+            throw new DomainError('invalid_request', 'Invalid cost matrix sort');
+          const result = await dependencies.commercial.listCostMatrixSummaries(
+            {
+              page,
+              pageSize,
+              query: request.query?.q?.trim().slice(0, 120) ?? '',
+              productFamily: request.query?.productFamily?.trim().slice(0, 80) ?? '',
+              attention: attention as
+                | 'ALL'
+                | 'NEEDS_INPUT'
+                | 'NEEDS_CALCULATION'
+                | 'READY_FOR_QUOTE'
+                | 'IN_QUOTE',
+              sort: sort as 'ATTENTION' | 'CODE' | 'UPDATED' | 'COST_DESC',
+            },
+            context.actor,
+            grant.scopes,
+          );
+          return { statusCode: 200, body: { ...result, page, pageSize } };
+        }
+        if (
+          request.method === 'GET' &&
           request.pathname === '/api/v1/cost-matrices' &&
           dependencies.commercial
         ) {
@@ -3941,6 +3978,18 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             body: {
               items: await dependencies.commercial.listCostMatrices(context.actor, grant.scopes),
             },
+          };
+        }
+        const costMatrixDetail = /^\/api\/v1\/cost-matrices\/([0-9a-f-]+)$/u.exec(request.pathname);
+        if (request.method === 'GET' && costMatrixDetail && dependencies.commercial) {
+          const grant = authorizeQuery(context, 'cost-matrix:read');
+          return {
+            statusCode: 200,
+            body: await dependencies.commercial.getCostMatrix(
+              uuid(costMatrixDetail[1], 'modelId'),
+              context.actor,
+              grant.scopes,
+            ),
           };
         }
         if (

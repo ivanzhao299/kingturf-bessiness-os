@@ -638,6 +638,7 @@ class RenderedElement {
   public value = '';
   public placeholder = '';
   public type = '';
+  public readonly dataset: Record<string, string> = {};
   public readonly attributes = new Map<string, string>();
   private readonly listeners = new Map<string, (() => void)[]>();
   public constructor(public readonly tagName: string) {}
@@ -661,6 +662,9 @@ class RenderedElement {
   }
   public replaceWith(): void {
     return undefined;
+  }
+  public closest(): RenderedElement | null {
+    return null;
   }
   public click(): void {
     for (const listener of this.listeners.get('click') ?? []) listener();
@@ -931,14 +935,11 @@ describe('web bootstrap', () => {
       false,
       controller,
     ) as unknown as RenderedElement;
-    expect(workspace.findByClass('cost-matrix-card')).toHaveLength(1);
-    expect(workspace.findByClass('cost-matrix-grid')).toHaveLength(1);
+    expect(workspace.findByClass('cost-matrix-ledger')).toHaveLength(1);
+    expect(workspace.findByClass('cost-matrix-ledger-row')).toHaveLength(2);
     expect(workspace.findByClass('cost-matrix-search')).toHaveLength(1);
-    expect(workspace.findByClass('cost-matrix-details')).toHaveLength(1);
-    expect(workspace.findByClass('cost-matrix-action-status')[0]?.textContent).toContain(
-      '尚未核算',
-    );
-    expect(workspace.textContent).toContain('规格成本模型矩阵');
+    expect(workspace.findByClass('cost-matrix-card')).toHaveLength(0);
+    expect(workspace.textContent).toContain('规格成本模型台账');
     expect(workspace.textContent).toContain('PRESET-LANDSCAPE-20');
     expect(workspace.textContent).toContain('系统预置');
   });
@@ -992,6 +993,11 @@ describe('web bootstrap', () => {
       new Set(['cost-matrix:read', 'cost-matrix:manage']),
     );
     await controller.load();
+    controller.selectedCostMatrixId = '00000000-0000-4000-8000-000000000001';
+    controller.costMatrixDetails.set(
+      controller.selectedCostMatrixId,
+      controller.views.get('/api/v1/cost-matrices')?.[0] ?? {},
+    );
     const workspace = commercialWorkspaceStructure(
       'desktop',
       false,
@@ -1004,7 +1010,7 @@ describe('web bootstrap', () => {
     expect(source).toContain("name: 'priceEffectiveAt'");
     expect(source).toContain("name: 'priceNote'");
     expect(source).toContain(
-      "await refreshCostMatrices(`${values.factorName ?? '成本因子'}已添加并显示`)",
+      "await refreshCostWorkspace(`${values.factorName ?? '成本因子'}已添加并显示`)",
     );
   });
 
@@ -1052,12 +1058,17 @@ describe('web bootstrap', () => {
       new Set(['cost-matrix:read', 'cost-matrix:calculate']),
     );
     await controller.load();
+    controller.selectedCostMatrixId = 'matrix-1';
+    controller.costMatrixDetails.set(
+      controller.selectedCostMatrixId,
+      controller.views.get('/api/v1/cost-matrices')?.[0] ?? {},
+    );
     const workspace = commercialWorkspaceStructure(
       'desktop',
       false,
       controller,
     ) as unknown as RenderedElement;
-    const calculate = workspace.findByText('一键核算含税成本')[0];
+    const calculate = workspace.findByText('重新核算含税成本')[0];
     const feedback = workspace.findByClass('cost-matrix-action-status')[0];
     const globalStatus = workspace.findByClass('commercial-status')[0];
 
@@ -1077,7 +1088,7 @@ describe('web bootstrap', () => {
       expect(controller.views.get('/api/v1/cost-matrices')?.[0]?.latestCalculation).toBeTruthy();
       expect(globalStatus?.textContent).toContain('综合成本 ¥ 20.00');
       expect(calculate?.disabled).toBe(false);
-      expect(calculate?.textContent).toBe('一键核算含税成本');
+      expect(calculate?.textContent).toBe('重新核算含税成本');
     });
   });
 
@@ -1103,12 +1114,17 @@ describe('web bootstrap', () => {
       new Set(['cost-matrix:read', 'cost-matrix:calculate']),
     );
     await controller.load();
+    controller.selectedCostMatrixId = 'matrix-1';
+    controller.costMatrixDetails.set(
+      controller.selectedCostMatrixId,
+      controller.views.get('/api/v1/cost-matrices')?.[0] ?? {},
+    );
     const workspace = commercialWorkspaceStructure(
       'desktop',
       false,
       controller,
     ) as unknown as RenderedElement;
-    const calculate = workspace.findByText('一键核算未税成本')[0];
+    const calculate = workspace.findByText('重新核算未税成本')[0];
     const feedback = workspace.findByClass('cost-matrix-action-status')[0];
 
     calculate?.click();
@@ -1117,8 +1133,46 @@ describe('web bootstrap', () => {
       expect(feedback?.textContent).toBe('核算失败：价格来源暂不可用');
       expect(feedback?.className).toContain('error');
       expect(calculate?.disabled).toBe(false);
-      expect(calculate?.textContent).toBe('一键核算未税成本');
+      expect(calculate?.textContent).toBe('重新核算未税成本');
     });
+  });
+
+  it('loads cost matrix summaries separately from the selected model detail', async () => {
+    const api = {
+      listOpportunities: vi.fn().mockResolvedValue([]),
+      list: vi.fn().mockResolvedValue([]),
+      listCostMatrixSummaries: vi.fn().mockResolvedValue({
+        items: [{ id: 'matrix-1', code: 'M-1', name: '50mm 标准模型', factorCount: 13 }],
+        total: 36,
+        page: 1,
+        pageSize: 20,
+      }),
+      get: vi.fn().mockResolvedValue({
+        id: 'matrix-1',
+        code: 'M-1',
+        name: '50mm 标准模型',
+        factors: [{ id: 'factor-1', factorName: 'PE 草丝' }],
+        calculations: [],
+        auditTrail: [],
+      }),
+      submit: vi.fn().mockResolvedValue({}),
+      uploadCtrAttachment: vi.fn().mockResolvedValue({}),
+      command: vi.fn().mockResolvedValue({}),
+    };
+    const controller = new CommercialController(api, new Set(['cost-matrix:read']));
+
+    await controller.load();
+
+    expect(api.listCostMatrixSummaries).toHaveBeenCalledWith(
+      expect.objectContaining({ page: 1, pageSize: 20, attention: 'ALL' }),
+    );
+    expect(controller.costMatrixTotal).toBe(36);
+    expect(controller.views.get('/api/v1/cost-matrices')?.[0]).not.toHaveProperty('factors');
+
+    await controller.openCostMatrix('matrix-1');
+
+    expect(api.get).toHaveBeenCalledWith('/api/v1/cost-matrices/matrix-1');
+    expect(controller.costMatrixDetails.get('matrix-1')?.factors).toHaveLength(1);
   });
 
   it('default-denies customer and 360 rendering unless customer:read is present', () => {
