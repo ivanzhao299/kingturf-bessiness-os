@@ -291,6 +291,36 @@ describe('JTF-P1-E05..E10 PostgreSQL acceptance', () => {
         }),
       ]),
     );
+    const matrixSummaries = await commercial.listCostMatrixSummaries(
+      {
+        page: 1,
+        pageSize: 20,
+        query: 'MATRIX-QUOTE',
+        productFamily: '',
+        attention: 'READY_FOR_QUOTE',
+        sort: 'ATTENTION',
+      },
+      actor,
+      ['COMPANY'],
+    );
+    expect(matrixSummaries.total).toBe(1);
+    expect(matrixSummaries.items[0]).toMatchObject({
+      id: matrix.id,
+      factorCount: 1,
+      missingPriceCount: 0,
+      missingSourceCount: 0,
+      needsRecalculation: false,
+    });
+    expect(matrixSummaries.items[0]).not.toHaveProperty('factors');
+    const matrixDetail = await commercial.getCostMatrix(identifier(matrix.id), actor, ['COMPANY']);
+    const detailFactors = matrixDetail.factors as unknown as { factorName?: unknown }[];
+    const detailCalculations = matrixDetail.calculations as unknown as { id?: unknown }[];
+    const detailAudit = matrixDetail.auditTrail as unknown as { action?: unknown }[];
+    expect(detailFactors.some((factor) => factor.factorName === 'PE yarn resin')).toBe(true);
+    expect(detailCalculations.some((calculation) => calculation.id === matrixCalculation.id)).toBe(
+      true,
+    );
+    expect(detailAudit.some((audit) => audit.action === 'cost-matrix.factor-added')).toBe(true);
     const quoteCost = await commercial.createQuoteCostDecisionFromMatrix(
       identifier(matrixCalculation.id),
       {
