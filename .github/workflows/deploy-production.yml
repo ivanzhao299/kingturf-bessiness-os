@@ -98,7 +98,7 @@ jobs:
              docker compose --env-file .env.production -f infra/docker/compose.production.yaml exec -T postgres sh -c 'pg_dump --format=custom --username=\"\$POSTGRES_USER\" \"\$POSTGRES_DB\"' > \"\${backup_prefix}.dump\"
              test -s \"\${backup_prefix}.dump\"
              printf 'previous_sha=%s\\ncandidate_sha=%s\\ncreated_at=%s\\n' \"\${previous_sha}\" '${{ inputs.commit_sha }}' \"\${timestamp}\" > \"\${backup_prefix}.metadata\"
-             find .release-backups -type f -mtime +14 -delete"
+             # Retention runs only after the candidate passes every required probe."
       - name: Sync isolated KingTurf release
         run: |
           rsync -az --delete --exclude '.env.production' --exclude '.release-sha' --exclude '.release-backups/' --exclude 'kingturf_postgres_data/' --exclude 'kingturf_attachments/' \
@@ -120,6 +120,10 @@ jobs:
         run: |
           ssh -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
             "set -eu; curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 https://erp.kingturf.cn/health | grep '\"status\":\"ok\"'; curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 https://erp.kingturf.cn/ready | grep '\"status\":\"ready\"'; curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 https://erp.kingturf.cn/version | grep '${{ inputs.commit_sha }}'"
+      - name: Retain latest KingTurf recovery point and active images
+        run: |
+          ssh -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
+            "set -eu; sh '${{ secrets.PROD_DEPLOY_PATH }}/scripts/cleanup_kingturf_release_artifacts.sh' '${{ secrets.PROD_DEPLOY_PATH }}' kingturf-erp-production; curl --fail --silent --show-error http://127.0.0.1:4332/health | grep '\"status\":\"ok\"'; curl --fail --silent --show-error http://127.0.0.1:4332/ready | grep '\"status\":\"ready\"'; curl --fail --silent --show-error http://127.0.0.1:4332/version | grep '${{ inputs.commit_sha }}'"
       - name: Diagnostic cross-border HTTPS probe from GitHub runner
         continue-on-error: true
         run: |
