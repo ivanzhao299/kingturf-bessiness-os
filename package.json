@@ -18,7 +18,7 @@
     "db:test": "pnpm --filter @kingturf/database db:test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "security:check": "npm_config_fetch_timeout=30000 npm_config_fetch_retries=1 pnpm audit --prod --audit-level high --ignore-registry-errors",
+    "security:check": "npm_config_fetch_timeout=30000 npm_config_fetch_retries=1 pnpm audit --prod --audit-level high",
     "demo:verify": "node scripts/verify_p1_demo.mjs",
     "demo:seed": "node scripts/seed_p1_demo.mjs",
     "e2e:p1": "playwright test tests/e2e/p1-demo.spec.ts",

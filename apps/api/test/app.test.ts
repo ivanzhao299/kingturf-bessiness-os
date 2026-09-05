@@ -616,7 +616,26 @@ describe('authentication and protected API contracts', () => {
       targetId,
       expect.objectContaining({ companyId, employeeId }),
       ['COMPANY'],
+      false,
     );
+    for (const [scopes, allowed] of [
+      [['SELF'], false],
+      [['COMPANY'], true],
+    ] as const) {
+      const adminDeps = {
+        ...dependencies(
+          context(new Map([...grant('cost-matrix:read'), ...grant('audit:read', scopes)])),
+        ),
+        commercial,
+      };
+      await dispatch(adminDeps, 'GET', `/api/v1/cost-matrices/${targetId}`);
+      expect(getCostMatrix).toHaveBeenLastCalledWith(
+        targetId,
+        expect.objectContaining({ companyId }),
+        ['COMPANY'],
+        allowed,
+      );
+    }
   });
   it('supports login, session validation, and logout', async () => {
     const deps = dependencies(context(new Map()));

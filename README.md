@@ -4,7 +4,9 @@ The P1 commercial boundary covers Opportunity through immutable Quote-to-Cash (E
 
 金特夫（山东）人造草坪有限公司智能经营、生产与风险控制平台。
 
-This repository provides identity/RBAC/DataScope, platform foundations, CRM, and the P1 commercial decision chain through deterministic reconciliation. MES/manufacturing policy, FX allocation, fulfillment, and tax engines remain outside this boundary.
+This repository provides identity/RBAC/DataScope, CRM, technical specifications, cost-to-quote and quote-to-cash, procurement/MRP, production, quality, shipment and governed document workflows. These are implemented business capabilities, not a claim of complete statutory accounting, customs, tax or manufacturing certification.
+
+Production is served only at https://erp.kingturf.cn, on the Singapore host with project-isolated resources. See the [production runbook](docs/deployment/PRODUCTION_PARK_HOST.md) and [2026-09-05 product audit](docs/engineering/KT-UI-PROD-08_PRODUCT_AUDIT.md).
 
 ## Prerequisites
 

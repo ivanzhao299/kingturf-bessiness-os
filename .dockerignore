@@ -5,7 +5,14 @@ node_modules
 **/node_modules
 **/dist
 coverage
+.release-backups
+.test-results
+**/coverage
+**/.test-results
+outputs
+*.dump
+*.tar
+*.tar.gz
 .env
 .env.*
 !.env.example
-
