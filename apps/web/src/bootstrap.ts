@@ -2964,7 +2964,8 @@ export function commercialWorkspaceStructure(
               probabilityBasisPoints: Math.round(Number(values.probability ?? 0) * 100),
               expectedCloseDate: values.expectedCloseDate ?? '',
             });
-            pipeline.replaceWith(
+            replaceRouteView(
+              pipeline,
               commercialWorkspaceStructure(viewport, immutable, controller).querySelector(
                 '.pipeline-board',
               ) ?? pipeline,
@@ -3841,7 +3842,7 @@ export function commercialWorkspaceStructure(
       ).querySelector<HTMLElement>('.cost-matrix-section');
       const liveSection = host.querySelector<HTMLElement>('.cost-matrix-section');
       if (refreshedSection && liveSection) {
-        liveSection.replaceWith(refreshedSection);
+        replaceRouteView(liveSection, refreshedSection);
         if (input && label) {
           const replacement = Array.from(refreshedSection.querySelectorAll('input')).find(
             (item) => item.getAttribute('aria-label') === label,
@@ -4228,13 +4229,20 @@ export function commercialWorkspaceStructure(
                   immutable,
                   controller,
                 );
-                liveWorkspace.replaceWith(refreshedWorkspace);
-                if (!canContinueQuote) return;
+                replaceRouteView(liveWorkspace, refreshedWorkspace);
+                if (!canContinueQuote || appRouteFromHash(globalThis.location.hash) !== 'costing')
+                  return;
                 setAppRoute('quotes');
-                const continueToQuote = () =>
+                const continueToQuote = () => {
+                  if (
+                    !refreshedWorkspace.isConnected ||
+                    appRouteFromHash(globalThis.location.hash) !== 'quotes'
+                  )
+                    return;
                   refreshedWorkspace
                     .querySelector<HTMLButtonElement>('[data-create-quote]')
                     ?.click();
+                };
                 if (typeof globalThis.requestAnimationFrame === 'function')
                   globalThis.requestAnimationFrame(continueToQuote);
                 else continueToQuote();
@@ -5531,8 +5539,7 @@ export function commercialWorkspaceStructure(
               immutable,
               controller,
             );
-            workspace.replaceWith(refreshedWorkspace);
-            setAppRoute('quotes');
+            replaceRouteView(workspace, refreshedWorkspace);
           },
         );
       });
@@ -10567,6 +10574,7 @@ export class CrmController {
   public pool: readonly Lead[] = [];
   public leads: readonly Lead[] = [];
   public selected: Customer360 | null = null;
+  private customerSelectionSequence = 0;
   public error: string | null = null;
   public customerQuery = '';
   public customerStatus = 'ALL';
@@ -10626,7 +10634,16 @@ export class CrmController {
   }
   public async selectCustomer(id: string): Promise<void> {
     if (!visibleCrmSections(this.permissions).customer360) return;
-    this.selected = await this.api.customer360(id);
+    const sequence = ++this.customerSelectionSequence;
+    try {
+      const selected = await this.api.customer360(id);
+      if (sequence === this.customerSelectionSequence) {
+        this.selected = selected;
+        this.error = null;
+      }
+    } catch (failure) {
+      if (sequence === this.customerSelectionSequence) throw failure;
+    }
   }
   public async createCustomer(input: CustomerInput): Promise<void> {
     if (!this.permissions.has('customer:create')) return;
@@ -12247,6 +12264,35 @@ function customer360Content(view: Customer360): HTMLElement {
   return content;
 }
 
+function applyRouteVisibility(
+  root: HTMLElement,
+  route = appRouteFromHash(
+    typeof globalThis.location === 'undefined' ? '' : globalThis.location.hash,
+  ),
+): void {
+  const views = [root, ...Array.from(root.querySelectorAll<HTMLElement>('[data-route-view]'))];
+  for (const view of views) {
+    const routes = view.getAttribute('data-route-view');
+    if (routes) view.hidden = !routes.split(/\s+/u).includes(route);
+  }
+}
+
+function replaceRouteView(current: HTMLElement, replacement: HTMLElement): void {
+  if (!current.isConnected) return;
+  const shell = current.closest<HTMLElement>('.app-shell');
+  applyRouteVisibility(replacement);
+  current.replaceWith(replacement);
+  if (shell) {
+    localizeEnterpriseCopy(replacement);
+    installRouteSectionNavigation(shell);
+    installWorkspaceListTools(shell);
+    installRoleTaskInsights(shell);
+    applyRouteVisibility(shell);
+  }
+}
+
+const navigationDisposers = new WeakMap<HTMLElement, () => void>();
+
 function setAppRoute(route: AppRoute): void {
   if (typeof globalThis.location === 'undefined') return;
   const hash = `#/${route}`;
@@ -12254,6 +12300,8 @@ function setAppRoute(route: AppRoute): void {
 }
 
 export function installAppNavigation(shell: HTMLElement): void {
+  navigationDisposers.get(shell)?.();
+  const events = new AbortController();
   const availableRoutes = new Set(
     Array.from(shell.querySelectorAll<HTMLElement>('[data-app-route]')).map(
       (item) => item.dataset.appRoute as AppRoute,
@@ -12279,10 +12327,7 @@ export function installAppNavigation(shell: HTMLElement): void {
         parent.setAttribute('aria-expanded', 'true');
       }
     }
-    for (const view of Array.from(shell.querySelectorAll<HTMLElement>('[data-route-view]'))) {
-      const routes = (view.dataset.routeView ?? '').split(/\s+/u);
-      view.hidden = !routes.includes(route);
-    }
+    applyRouteVisibility(shell, route);
     const routeContext = shell.querySelector<HTMLElement>('[data-route-context]');
     if (routeContext) {
       routeContext.hidden = route === 'overview';
@@ -12304,9 +12349,13 @@ export function installAppNavigation(shell: HTMLElement): void {
     placeholder.textContent = `${APP_ROUTE_LABELS[route]}：当前账号在本模块暂无可用功能，请联系权限管理员核对岗位职责。`;
   };
   for (const item of Array.from(shell.querySelectorAll<HTMLElement>('[data-app-route]'))) {
-    item.addEventListener('click', () => {
-      setAppRoute(item.dataset.appRoute as AppRoute);
-    });
+    item.addEventListener(
+      'click',
+      () => {
+        setAppRoute(item.dataset.appRoute as AppRoute);
+      },
+      { signal: events.signal },
+    );
   }
   const initial =
     typeof globalThis.location === 'undefined'
@@ -12316,16 +12365,37 @@ export function installAppNavigation(shell: HTMLElement): void {
   if (initialAllowed === undefined) return;
   apply(initialAllowed);
   if (initialAllowed !== initial) setAppRoute(initialAllowed);
-  globalThis.addEventListener('hashchange', () => {
-    const requested = appRouteFromHash(globalThis.location.hash);
-    const allowed = allowedRoute(requested);
-    if (allowed === undefined) return;
-    apply(allowed);
-    if (allowed !== requested) setAppRoute(allowed);
+  const observer = new MutationObserver(() => {
+    if (!shell.isConnected) return;
+    const route = allowedRoute(appRouteFromHash(globalThis.location.hash));
+    if (route) applyRouteVisibility(shell, route);
   });
+  observer.observe(shell, { childList: true, subtree: true });
+  const dispose = () => {
+    events.abort();
+    observer.disconnect();
+    navigationDisposers.delete(shell);
+  };
+  navigationDisposers.set(shell, dispose);
+  globalThis.addEventListener(
+    'hashchange',
+    () => {
+      if (!shell.isConnected) {
+        dispose();
+        return;
+      }
+      const requested = appRouteFromHash(globalThis.location.hash);
+      const allowed = allowedRoute(requested);
+      if (allowed === undefined) return;
+      apply(allowed);
+      if (allowed !== requested) setAppRoute(allowed);
+    },
+    { signal: events.signal },
+  );
 }
 
 function installRouteSectionNavigation(shell: HTMLElement): void {
+  for (const previous of shell.querySelectorAll('.route-section-nav')) previous.remove();
   const routeContext = shell.querySelector<HTMLElement>('[data-route-context]');
   if (!routeContext?.parentElement) return;
   for (const route of APP_ROUTES) {
@@ -13183,27 +13253,6 @@ export function createCrmShell(
 ): HTMLElement {
   let viewportWidth = width;
   const sections = visibleCrmSections(controller.permissions);
-  const employeeChoices = controller.employees.map((employee) => ({
-    value: employee.id,
-    label: `${employee.displayName ?? employee.id}${employee.employeeNumber ? ` · ${employee.employeeNumber}` : ''}`,
-  }));
-  const pagination = (total: number, page: number, change: (page: number) => void) => {
-    const pages = Math.max(1, Math.ceil(total / controller.pageSize));
-    const footer = el('footer', 'pagination');
-    const previous = el('button', 'page-button', '← 上一页');
-    previous.disabled = page <= 1;
-    previous.addEventListener('click', () => {
-      change(page - 1);
-    });
-    const state = el('span', '', `${String(page)} / ${String(pages)} 页 · ${String(total)} 条`);
-    const next = el('button', 'page-button', '下一页 →');
-    next.disabled = page >= pages;
-    next.addEventListener('click', () => {
-      change(page + 1);
-    });
-    footer.append(previous, state, next);
-    return footer;
-  };
   const shell = el('main', `app-shell ${viewportFor(viewportWidth)}`);
   let sidebarCollapsed = false;
   try {
@@ -13494,7 +13543,6 @@ export function createCrmShell(
     roleTaskGrid.append(el('p', 'empty', '当前岗位暂无可处理业务入口'));
   roleHome.append(roleTaskGrid);
   content.append(roleHome);
-  if (controller.error) content.append(el('p', 'error', controller.error));
   const metrics = el('section', 'metrics');
   metrics.setAttribute('data-route-view', 'overview');
   for (const [label, metric, note, tone] of [
@@ -14020,6 +14068,49 @@ export function createCrmShell(
     contextualDocuments.append(contextualGrid, selectionStatus);
     content.append(contextualDocuments);
   }
+  content.append(createCrmRecords(shell, controller));
+  const placeholder = el(
+    'p',
+    'route-placeholder',
+    '当前账号在本模块暂无可用功能，请联系权限管理员核对岗位职责。',
+  );
+  placeholder.setAttribute('data-route-placeholder', 'true');
+  placeholder.hidden = true;
+  content.append(placeholder);
+  shell.append(aside, content);
+  return shell;
+}
+
+function createCrmRecords(shell: HTMLElement, controller: CrmController): HTMLElement {
+  const sections = visibleCrmSections(controller.permissions);
+  const content = el('section', 'crm-records');
+  content.setAttribute('data-route-view', 'customers leads');
+  if (controller.error) {
+    const notice = el('p', 'error', controller.error);
+    notice.setAttribute('role', 'alert');
+    content.append(notice);
+  }
+  const employeeChoices = controller.employees.map((employee) => ({
+    value: employee.id,
+    label: `${employee.displayName ?? employee.id}${employee.employeeNumber ? ` · ${employee.employeeNumber}` : ''}`,
+  }));
+  const pagination = (total: number, page: number, change: (page: number) => void) => {
+    const pages = Math.max(1, Math.ceil(total / controller.pageSize));
+    const footer = el('footer', 'pagination');
+    const previous = el('button', 'page-button', '← 上一页');
+    previous.disabled = page <= 1;
+    previous.addEventListener('click', () => {
+      change(page - 1);
+    });
+    const state = el('span', '', `${String(page)} / ${String(pages)} 页 · ${String(total)} 条`);
+    const next = el('button', 'page-button', '下一页 →');
+    next.disabled = page >= pages;
+    next.addEventListener('click', () => {
+      change(page + 1);
+    });
+    footer.append(previous, state, next);
+    return footer;
+  };
   const sectionHeader = el('div', 'section-heading');
   sectionHeader.append(el('div', '', '今日业务'), el('span', '', '数据实时来自业务台账'));
   sectionHeader.setAttribute('data-route-view', 'leads customers');
@@ -14087,9 +14178,16 @@ export function createCrmShell(
         el('span', 'owner', customer.ownerId ?? '未分配'),
       );
       row.addEventListener('click', () => {
-        void controller.selectCustomer(customer.id).then(() => {
-          bootstrapView(shell, controller);
-        });
+        void controller
+          .selectCustomer(customer.id)
+          .then(() => {
+            bootstrapView(shell, controller);
+          })
+          .catch((failure: unknown) => {
+            controller.error =
+              failure instanceof Error ? failure.message : '客户详情读取失败，请重试';
+            bootstrapView(shell, controller);
+          });
       });
       list.append(row);
     }
@@ -14425,20 +14523,25 @@ export function createCrmShell(
     split.append(leads);
   }
   content.append(split);
-  const placeholder = el(
-    'p',
-    'route-placeholder',
-    '当前账号在本模块暂无可用功能，请联系权限管理员核对岗位职责。',
-  );
-  placeholder.setAttribute('data-route-placeholder', 'true');
-  placeholder.hidden = true;
-  content.append(placeholder);
-  shell.append(aside, content);
-  return shell;
+  return content;
 }
 
 function bootstrapView(current: HTMLElement, controller: CrmController): void {
-  current.replaceWith(createCrmShell(controller));
+  if (!current.isConnected) return;
+  const records = current.querySelector<HTMLElement>('.crm-records');
+  if (!records) return;
+  const focused = document.activeElement;
+  const input = focused instanceof HTMLInputElement && records.contains(focused) ? focused : null;
+  const placeholder = input?.placeholder;
+  const selection = input ? ([input.selectionStart, input.selectionEnd] as const) : null;
+  replaceRouteView(records, createCrmRecords(current, controller));
+  if (input && placeholder) {
+    const replacement = Array.from(
+      current.querySelectorAll<HTMLInputElement>('.crm-records input'),
+    ).find((item) => item.placeholder === placeholder);
+    replacement?.focus();
+    if (replacement && selection) replacement.setSelectionRange(...selection);
+  }
 }
 
 type GovernanceView = Readonly<{
@@ -14793,7 +14896,7 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
   ) => {
     openForm(workspace, title, description, fields, '确认提交', async (values) => {
       await submit(values);
-      workspace.replaceWith(governanceWorkspace(controller));
+      replaceRouteView(workspace, governanceWorkspace(controller));
     });
   };
   const jsonField = (value: string | undefined, label: string): Record<string, unknown> => {
@@ -15953,5 +16056,7 @@ export async function mountWorkspace(
   installWorkspaceListTools(shell);
   installRoleTaskInsights(shell);
   installAppNavigation(shell);
+  const previousShell = root.querySelector<HTMLElement>('.app-shell');
+  if (previousShell) navigationDisposers.get(previousShell)?.();
   root.replaceChildren(shell);
 }
