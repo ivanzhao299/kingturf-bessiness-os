@@ -6,12 +6,14 @@ export function documentSendBlockReason(state: string | undefined, customerId?: 
   if (!customerId) missing.push('先在业务页选择客户并创建关联文档（当前文档尚未绑定客户）');
   if (state !== 'APPROVED') {
     missing.push(
-      state === 'IN_REVIEW' ? '等待审批人批准并锁版' : '保存当前内容并提交审核，由审批人批准并锁版',
+      state === 'IN_REVIEW'
+        ? '当前文档正在审核，请等待审批人批准并锁版'
+        : state === 'REJECTED'
+          ? '当前文档已被驳回，请按审核意见修改，保存当前内容并提交审核，由审批人批准并锁版'
+          : '当前文档为草稿，请保存当前内容并提交审核，由审批人批准并锁版',
     );
   }
-  return missing.length
-    ? `暂不能发送：请${missing.join('；然后')}。审批前不会向客户发送草稿。`
-    : '';
+  return missing.length ? `暂不能发送：${missing.join('；')}。审批前不会向客户发送草稿。` : '';
 }
 
 export function documentDispatchStatus(status: string): string {
@@ -30,6 +32,7 @@ export function documentDispatchStatus(status: string): string {
 export function documentSendNotice(message: string): {
   dialog: HTMLDialogElement;
   message: HTMLParagraphElement;
+  addAction: (label: string, action: () => void) => void;
 } {
   const dialog = el('dialog', 'form-dialog document-send-notice');
   dialog.setAttribute('aria-label', '发送给客户');
@@ -51,5 +54,14 @@ export function documentSendNotice(message: string): {
   document.body.append(dialog);
   dialog.showModal();
   text.focus();
-  return { dialog, message: text };
+  const addAction = (label: string, action: () => void): void => {
+    const button = el('button', 'primary', label);
+    button.type = 'button';
+    button.addEventListener('click', () => {
+      dialog.close();
+      action();
+    });
+    content.insertBefore(button, close);
+  };
+  return { dialog, message: text, addAction };
 }

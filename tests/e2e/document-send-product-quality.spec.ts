@@ -1,7 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
 
 // Isolated browser fixtures only: no real customer, provider or production writes.
-async function openDocument(page: Page, state = 'APPROVED', bound = true, canSend = true) {
+async function openDocument(
+  page: Page,
+  state = 'APPROVED',
+  bound = true,
+  canSend = true,
+  configure = false,
+) {
   const document = {
     id: '11111111-1111-4111-8111-111111111111',
     templateKey: '01-customers',
@@ -37,6 +43,7 @@ async function openDocument(page: Page, state = 'APPROVED', bound = true, canSen
             'business-document:manage',
             'business-document:approve',
             ...(canSend ? ['business-document:send'] : []),
+            ...(configure ? ['business-document:configure'] : []),
           ],
         },
       });
@@ -86,12 +93,15 @@ test('draft sends give immediate, actionable feedback without requests; approval
   await expect(editor(page).getByLabel('文档正文')).toHaveAttribute('contenteditable', 'false');
   await send(page).click();
   await expect(page.locator('.document-send-notice')).toContainText('等待审批人');
-  await page.getByRole('button', { name: '返回文档' }).click();
+  await page.getByRole('button', { name: '去审批', exact: true }).click();
+  await expect(editor(page).getByLabel('文档审核意见')).toBeFocused();
   await editor(page).getByLabel('文档审核意见').fill('审核通过');
   await editor(page).getByRole('button', { name: '批准并锁版' }).click();
   await expect(editor(page)).toContainText('已批准锁版');
   await send(page).click();
   await expect(page.locator('.document-send-notice')).toContainText('尚未配置可用发送渠道');
+  await expect(page.locator('.document-send-notice')).toContainText('您没有发送渠道配置权限');
+  await expect(page.getByRole('button', { name: '前往发送配置' })).toHaveCount(0);
   expect(connectorReads).toBe(1);
   await page.screenshot({ path: '.test-results/document-send-unconfigured.png' });
 });
@@ -169,4 +179,103 @@ test('queue submission retains idempotency on retry, blocks double submit and ne
 test('send controls remain hidden without sending permission', async ({ page }) => {
   await openDocument(page, 'APPROVED', true, false);
   await expect(send(page)).toBeHidden();
+});
+
+test('admin goes directly to configuration, saves without reloading, and returns with unsaved document intact', async ({
+  page,
+}) => {
+  await openDocument(page, 'DRAFT', true, true, true);
+  const connector = {
+    connector: 'EMAIL',
+    label: '企业邮箱',
+    status: 'UNCONFIGURED',
+    provider: 'TEST_ONLY',
+    displayName: '测试企业邮箱',
+    version: 0,
+  };
+  await page.route('**/api/v1/document-connectors', (route) =>
+    route.fulfill({ json: { items: [connector] } }),
+  );
+  let saves = 0;
+  await page.route('**/api/v1/document-connectors/EMAIL', (route) => {
+    expect(route.request().method()).toBe('PUT');
+    expect(route.request().postDataJSON().expectedVersion).toBe(0);
+    saves++;
+    connector.displayName = '已更新测试名称';
+    connector.version = 1;
+    return route.fulfill({ json: connector });
+  });
+  let navigations = 0;
+  page.on('framenavigated', (frame) => {
+    if (frame === page.mainFrame()) navigations++;
+  });
+  await editor(page).getByLabel('文档正文').fill('保留的未保存修改');
+  await editor(page).getByLabel('本版修改说明').fill('尚未保存的说明');
+  await send(page).click();
+  await page.getByRole('button', { name: '去保存 / 提交审核' }).click();
+  await expect(editor(page).getByLabel('本版修改说明')).toBeFocused();
+  await send(page).click();
+  await page.getByRole('button', { name: '发送渠道配置', exact: true }).click();
+  const settings = page.locator('.document-send-settings');
+  await expect(settings).toBeVisible();
+  await settings.getByRole('button', { name: '配置', exact: true }).click();
+  await page.getByLabel('内部显示名称').fill('已更新测试名称');
+  await page.getByRole('button', { name: '保存连接器配置' }).click();
+  await expect(settings).toContainText('配置已保存');
+  expect(saves).toBe(1);
+  await settings.getByRole('button', { name: '返回文档' }).click();
+  await expect(editor(page).getByLabel('文档正文')).toHaveText('保留的未保存修改');
+  await expect(editor(page).getByLabel('本版修改说明')).toHaveValue('尚未保存的说明');
+  expect(navigations).toBe(0);
+});
+
+test('approved document navigates to settings from unconfigured feedback and settings read errors can retry on mobile', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openDocument(page, 'APPROVED', true, true, true);
+  let reads = 0;
+  let currentStatus = 'UNCONFIGURED';
+  await page.route('**/api/v1/document-connectors', (route) => {
+    reads++;
+    if (reads === 2)
+      return route.fulfill({ status: 503, json: { error: { message: '配置网络暂不可用' } } });
+    return route.fulfill({
+      json: {
+        items: [
+          {
+            connector: 'EMAIL',
+            label: '企业邮箱',
+            status: currentStatus,
+            provider: 'TEST_ONLY',
+            displayName: '企业邮箱',
+            version: 0,
+          },
+        ],
+      },
+    });
+  });
+  await page.route('**/api/v1/document-connectors/EMAIL', (route) => {
+    currentStatus = 'READY';
+    return route.fulfill({ json: { status: currentStatus } });
+  });
+  await send(page).click();
+  await page.getByRole('button', { name: '前往发送配置' }).click();
+  const settings = page.locator('.document-send-settings');
+  await expect(settings).toContainText('配置网络暂不可用');
+  await settings.getByRole('button', { name: '重试加载配置' }).click();
+  await expect(settings.getByRole('button', { name: '配置', exact: true })).toBeVisible();
+  const box = await settings.boundingBox();
+  expect(box!.x).toBeGreaterThanOrEqual(0);
+  expect(box!.x + box!.width).toBeLessThanOrEqual(390);
+  await page.screenshot({ path: '.test-results/document-settings-mobile.png' });
+  await settings.getByRole('button', { name: '配置', exact: true }).click();
+  await page.getByRole('combobox', { name: /^状态/ }).selectOption('READY');
+  await page.getByLabel('安全密钥引用').fill('KINGTURF_CONNECTOR_EMAIL_TEST');
+  await page.getByRole('button', { name: '保存连接器配置' }).click();
+  await expect(settings).toContainText('配置已保存');
+  await settings.getByRole('button', { name: '返回文档' }).click();
+  await expect(send(page)).toBeFocused();
+  await send(page).click();
+  await expect(page.getByLabel('收件人姓名')).toBeVisible();
 });
