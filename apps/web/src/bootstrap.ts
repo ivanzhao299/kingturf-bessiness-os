@@ -3,6 +3,12 @@ import {
   isLegacyBusinessDocumentOutline,
 } from './business-document-content';
 import { el, setOperationStatus } from './dom';
+import { brandMark } from './brand';
+import {
+  documentSendBlockReason,
+  documentSendNotice,
+  documentDispatchStatus,
+} from './document-send';
 import { json, requestId } from './http';
 import type { SessionDto } from './session';
 export { setOperationStatus, type OperationState } from './dom';
@@ -10953,6 +10959,7 @@ const openOnlineDocumentEditor = (
   onSaved?: (currentVersion: number) => void,
 ): void => {
   let activeVersion = documentData.currentVersion;
+  let documentState = documentData.state;
   let latestContent =
     documentData.versions?.find((item) => item.version === activeVersion)?.content ?? {};
   const dialog = document.createElement('dialog');
@@ -11066,8 +11073,7 @@ const openOnlineDocumentEditor = (
   const send = el('button', 'primary compact', '发送给客户');
   send.type = 'button';
   send.hidden = !permissions.send;
-  send.disabled = documentData.state !== 'APPROVED' || !documentData.customerId;
-  send.title = send.disabled ? '文档必须先绑定客户并完成审批锁版' : '选择客户沟通渠道';
+  send.title = '查看发送条件并选择客户沟通渠道';
   commandBar.append(
     viewGroup,
     pageSize,
@@ -11098,7 +11104,8 @@ const openOnlineDocumentEditor = (
   );
   body.setAttribute('aria-label', '文档正文');
   body.setAttribute('role', 'textbox');
-  const editable = !documentData.state || ['DRAFT', 'REJECTED'].includes(documentData.state);
+  let editable = !documentState || ['DRAFT', 'REJECTED'].includes(documentState);
+  let savedEditorHtml = body.innerHTML;
   body.contentEditable = String(editable && permissions.manage);
   const documentPageHeight = (): number => {
     const pageHeights: Readonly<Record<BusinessDocumentPageSize, number>> = {
@@ -11208,6 +11215,8 @@ const openOnlineDocumentEditor = (
   save.type = 'button';
   save.hidden = !editable || !permissions.manage;
   save.addEventListener('click', () => {
+    if (save.disabled) return;
+    const editingSnapshot = body.innerHTML;
     const cleanHtml = sanitizeBusinessDocumentHtml(body.innerHTML);
     const plainText = businessDocumentText({ html: cleanHtml });
     if (!plainText.trim()) {
@@ -11234,6 +11243,8 @@ const openOnlineDocumentEditor = (
       .then((saved) => {
         activeVersion = saved.currentVersion;
         latestContent = { body: plainText, html: cleanHtml };
+        savedEditorHtml = cleanHtml;
+        if (body.innerHTML === editingSnapshot) body.innerHTML = cleanHtml;
         const savedVersion = {
           version: activeVersion,
           content: latestContent,
@@ -11280,6 +11291,11 @@ const openOnlineDocumentEditor = (
     const button = el('button', primary ? 'primary' : 'secondary', label);
     button.type = 'button';
     button.addEventListener('click', () => {
+      if (button.disabled) return;
+      if (action === 'submit' && body.innerHTML !== savedEditorHtml) {
+        setOperationStatus(status, 'error', '正文有未保存的修改，请先保存为新版本，再提交审核');
+        return;
+      }
       if (reviewReason.value.trim().length < 2) {
         setOperationStatus(status, 'error', '请填写至少 2 个字的审核意见');
         return;
@@ -11293,6 +11309,15 @@ const openOnlineDocumentEditor = (
         }),
       })
         .then(() => {
+          documentState =
+            action === 'approve' ? 'APPROVED' : action === 'reject' ? 'REJECTED' : 'IN_REVIEW';
+          editable = ['DRAFT', 'REJECTED'].includes(documentState);
+          setViewMode(editable ? 'edit' : 'preview');
+          save.hidden = !editable || !permissions.manage;
+          summary.hidden = !editable || !permissions.manage;
+          versionStatus.textContent = `当前版本 V${String(activeVersion)} · ${documentState === 'APPROVED' ? '已批准锁版' : documentState === 'IN_REVIEW' ? '等待审批' : '可修改后重新提审'}`;
+          renderReviewActions();
+          reviewReason.value = '';
           setOperationStatus(status, 'success', `${label}成功`);
           clearSessionReadCache();
           onSaved?.(activeVersion);
@@ -11308,19 +11333,25 @@ const openOnlineDocumentEditor = (
     });
     reviewActions.append(button);
   };
-  if (editable && permissions.manage) addReviewAction('提交审核', 'submit', true);
-  if (documentData.state === 'IN_REVIEW' && permissions.approve) {
-    addReviewAction('批准并锁版', 'approve', true);
-    addReviewAction('驳回修改', 'reject', false);
-  }
-  if (reviewActions.childElementCount > 0) actionPanel.append(reviewReason, reviewActions);
+  const renderReviewActions = (): void => {
+    reviewActions.replaceChildren();
+    if (editable && permissions.manage) addReviewAction('提交审核', 'submit', true);
+    if (documentState === 'IN_REVIEW' && permissions.approve) {
+      addReviewAction('批准并锁版', 'approve', true);
+      addReviewAction('驳回修改', 'reject', false);
+    }
+    reviewReason.hidden = reviewActions.childElementCount === 0;
+    reviewActions.hidden = reviewReason.hidden;
+  };
+  renderReviewActions();
+  actionPanel.append(reviewReason, reviewActions);
   const comparison = el('section', 'business-document-comparison');
   for (const item of documentData.dispatches ?? [])
     history.append(
       el(
         'p',
         'business-document-review-event',
-        `已发送 · ${item.channel} · ${item.recipientName}（${item.recipientMasked}）· ${item.status}`,
+        `${documentDispatchStatus(item.status)} · ${item.channel} · ${item.recipientName}（${item.recipientMasked}）`,
       ),
     );
   for (const item of documentData.translations ?? []) {
@@ -11487,14 +11518,42 @@ const openOnlineDocumentEditor = (
     );
   });
   send.addEventListener('click', () => {
+    if (send.disabled) return;
+    const blocked = documentSendBlockReason(documentState, documentData.customerId);
+    if (blocked) {
+      documentSendNotice(blocked);
+      return;
+    }
+    const notice = documentSendNotice('正在读取可用发送渠道，请稍候…');
+    const abort = new AbortController();
+    notice.dialog.addEventListener(
+      'close',
+      () => {
+        abort.abort();
+      },
+      { once: true },
+    );
     send.disabled = true;
-    void onlineDocumentApi<{ items: readonly DocumentConnector[] }>('/api/v1/document-connectors')
+    send.textContent = '正在读取渠道…';
+    void onlineDocumentApi<{ items: readonly DocumentConnector[] }>('/api/v1/document-connectors', {
+      signal: abort.signal,
+    })
       .then(({ items }) => {
-        const channels = items.filter((item) => item.connector !== 'TRANSLATION');
+        if (!notice.dialog.open) return;
+        const channels = items.filter(
+          (item) => item.connector !== 'TRANSLATION' && item.status === 'READY',
+        );
+        if (channels.length === 0) {
+          notice.message.textContent =
+            '尚未配置可用发送渠道。请管理员进入“业务文档库 → 发送与翻译连接器”完成企业账号和发送服务接入。当前文档已保留，尚未发送给客户。';
+          return;
+        }
+        notice.dialog.close();
+        const sendKeys = new Map<string, string>();
         openForm(
           document.body,
           '发送给客户',
-          '仅发送当前已批准锁版内容。收件地址会受控保存，审计日志只显示脱敏信息。',
+          '仅提交当前已批准锁版内容。进入队列不等于客户已收到，须以发送服务回执为准。收件地址受控保存，日志仅显示脱敏信息。',
           [
             {
               name: 'channel',
@@ -11543,37 +11602,43 @@ const openOnlineDocumentEditor = (
           ],
           '确认进入发送队列',
           async (values) => {
-            const result = await onlineDocumentApi<{ status: string }>(
+            const payload = JSON.stringify({
+              expectedVersion: activeVersion,
+              channel: values.channel,
+              recipientName: values.recipientName,
+              recipientAddress: values.recipientAddress,
+              subject: values.subject,
+              message: values.message,
+              ...(values.translationId ? { translationId: values.translationId } : {}),
+            });
+            if (!sendKeys.has(payload)) sendKeys.set(payload, requestId());
+            const result = await onlineDocumentApi<{ id: string; status: string }>(
               `/api/v1/business-documents/${documentData.id}/send`,
               {
                 method: 'POST',
-                headers: { 'idempotency-key': requestId() },
-                body: JSON.stringify({
-                  expectedVersion: activeVersion,
-                  channel: values.channel,
-                  recipientName: values.recipientName,
-                  recipientAddress: values.recipientAddress,
-                  subject: values.subject,
-                  message: values.message,
-                  ...(values.translationId ? { translationId: values.translationId } : {}),
-                }),
+                headers: { 'idempotency-key': sendKeys.get(payload) ?? requestId() },
+                body: payload,
               },
             );
-            setOperationStatus(status, 'success', `发送任务已建立：${result.status}`);
+            const receipt = `发送任务 ${result.id}：${documentDispatchStatus(result.status)}。可在文档版本栏查看发送记录。`;
+            setOperationStatus(status, 'success', receipt);
+            history.append(el('p', 'business-document-review-event', receipt));
             clearSessionReadCache();
             onSaved?.(activeVersion);
           },
         );
       })
       .catch((failure: unknown) => {
+        if (!notice.dialog.open) return;
         setOperationStatus(
-          status,
+          notice.message,
           'error',
-          failure instanceof Error ? failure.message : '发送渠道加载失败',
+          `发送渠道读取失败：${failure instanceof Error ? failure.message : '网络异常'}。请返回文档后重试；未发送任何文档。`,
         );
       })
       .finally(() => {
-        send.disabled = documentData.state !== 'APPROVED' || !documentData.customerId;
+        send.disabled = false;
+        send.textContent = '发送给客户';
       });
   });
   print.addEventListener('click', () => {
@@ -11762,6 +11827,7 @@ function openForm(
   form.append(error, progress, actions);
   form.addEventListener('submit', (event) => {
     event.preventDefault();
+    if (form.getAttribute('aria-busy') === 'true') return;
     error.textContent = '';
     if (!form.checkValidity()) {
       const invalid = Array.from(form.elements).filter(
@@ -12977,7 +13043,7 @@ export function createCrmShell(
   const brandLogoFrame = el('span', 'brand-logo-frame');
   const brandLogo = document.createElement('img');
   brandLogo.className = 'brand-logo';
-  brandLogo.src = '/kingturf-mark-transparent.png';
+  brandLogo.src = brandMark;
   brandLogo.alt = '';
   brandLogo.width = 512;
   brandLogo.height = 512;

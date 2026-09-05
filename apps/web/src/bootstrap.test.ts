@@ -186,7 +186,7 @@ it('uses a smooth two-level sidebar with an icon-only collapse control', () => {
 it('uses a dedicated transparent King Turf mark without cropping in compact navigation', () => {
   const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
   const styles = readFileSync(new URL('./style.css', import.meta.url), 'utf8');
-  expect(source).toContain('/kingturf-mark-transparent.png');
+  expect(source).toContain('brandLogo.src = brandMark');
   expect(source).toContain("brandLogoFrame.setAttribute('aria-label', '金特夫 King Turf')");
   expect(readFileSync(new URL('./entry.ts', import.meta.url), 'utf8')).toContain(
     "loginBrand.setAttribute('aria-label', '金特夫 King Turf')",

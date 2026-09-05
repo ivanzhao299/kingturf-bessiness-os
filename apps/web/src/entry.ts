@@ -1,4 +1,5 @@
 import { el, setOperationStatus } from './dom';
+import { brandMark } from './brand';
 import { json, RequestError } from './http';
 import { LoginCoordinator, type LoginProgress } from './login-flow';
 import type { SessionDto } from './session';
@@ -17,7 +18,7 @@ function startupView(root: HTMLElement, message: string): void {
   shell.setAttribute('aria-busy', 'true');
   shell.setAttribute('aria-live', 'polite');
   const mark = document.createElement('img');
-  mark.src = '/kingturf-mark-transparent.png';
+  mark.src = brandMark;
   mark.alt = '';
   mark.width = 512;
   mark.height = 512;
@@ -42,7 +43,7 @@ function updateStartupStatus(root: HTMLElement, message: string): void {
 function startupFailureView(root: HTMLElement): void {
   const shell = el('main', 'startup-shell startup-failure');
   const mark = document.createElement('img');
-  mark.src = '/kingturf-mark-transparent.png';
+  mark.src = brandMark;
   mark.alt = '';
   mark.width = 512;
   mark.height = 512;
@@ -80,8 +81,7 @@ function loginView(root: HTMLElement, initialMessage = ''): void {
   const story = el('section', 'login-story');
   const loginBrand = el('div', 'login-brand');
   const loginLogo = document.createElement('img');
-  loginLogo.src = '/kingturf-mark-transparent.png';
-  loginLogo.fetchPriority = 'low';
+  loginLogo.src = brandMark;
   loginLogo.decoding = 'async';
   loginLogo.alt = '';
   loginLogo.width = 512;
