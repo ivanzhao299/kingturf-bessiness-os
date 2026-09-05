@@ -103,7 +103,7 @@ it('uses daily business language instead of analytics jargon in visible workspac
 });
 
 it('keeps login and workspace introductions concise and task-oriented', () => {
-  const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+  const source = readFileSync(new URL('./entry.ts', import.meta.url), 'utf8');
   expect(source).toContain("el('h1', '', '业务一体化管理')");
   expect(source).toContain('销售、采购、生产、质量与财务协同');
   expect(source).not.toContain('login-feature-grid');
@@ -112,9 +112,9 @@ it('keeps login and workspace introductions concise and task-oriented', () => {
 });
 
 it('makes authentication and startup progress explicit, single-flight and recoverable', () => {
-  const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+  const source = readFileSync(new URL('./entry.ts', import.meta.url), 'utf8');
   const loginFlow = readFileSync(new URL('./login-flow.ts', import.meta.url), 'utf8');
-  const styles = readFileSync(new URL('./style.css', import.meta.url), 'utf8');
+  const styles = readFileSync(new URL('./startup.css', import.meta.url), 'utf8');
   expect(source).toContain("identity.autocomplete = 'username'");
   expect(source).toContain("password.autocomplete = 'current-password'");
   expect(source).toContain("form.setAttribute('aria-busy', String(busy))");
@@ -188,7 +188,9 @@ it('uses a dedicated transparent King Turf mark without cropping in compact navi
   const styles = readFileSync(new URL('./style.css', import.meta.url), 'utf8');
   expect(source).toContain('/kingturf-mark-transparent.png');
   expect(source).toContain("brandLogoFrame.setAttribute('aria-label', '金特夫 King Turf')");
-  expect(source).toContain("loginBrand.setAttribute('aria-label', '金特夫 King Turf')");
+  expect(readFileSync(new URL('./entry.ts', import.meta.url), 'utf8')).toContain(
+    "loginBrand.setAttribute('aria-label', '金特夫 King Turf')",
+  );
   expect(styles).toContain('.sidebar-collapsed .brand-identity');
   expect(styles).toContain('flex-basis: 40px');
   expect(styles).toContain('.app-shell.desktop.sidebar-collapsed');

@@ -2,7 +2,12 @@ import {
   buildBusinessDocumentTemplateHtml,
   isLegacyBusinessDocumentOutline,
 } from './business-document-content';
-import { LoginCoordinator, type LoginProgress } from './login-flow';
+import { el, setOperationStatus } from './dom';
+import { json, requestId } from './http';
+import type { SessionDto } from './session';
+export { setOperationStatus, type OperationState } from './dom';
+export { RequestError } from './http';
+import './style.css';
 
 export const BOOTSTRAP_TITLE = '金特夫企业经营管理系统';
 
@@ -10480,76 +10485,6 @@ export const createFetchCommercialApi = (token: string): CommercialApi => ({
     }),
 });
 
-const requestId = () => globalThis.crypto.randomUUID();
-export type OperationState = 'idle' | 'loading' | 'success' | 'error';
-export function setOperationStatus(target: HTMLElement, state: OperationState, message = ''): void {
-  target.textContent = message;
-  target.dataset.state = state;
-  if (state === 'loading') target.setAttribute('aria-busy', 'true');
-  else target.removeAttribute('aria-busy');
-}
-const REQUEST_TIMEOUT_MS = 15_000;
-
-export class RequestError extends Error {
-  public constructor(
-    message: string,
-    public readonly status: number,
-    public readonly correlationId?: string,
-  ) {
-    super(message);
-    this.name = 'RequestError';
-  }
-}
-
-async function json<T>(path: string, token: string, init?: RequestInit): Promise<T> {
-  const headers = new Headers(init?.headers);
-  headers.set('accept', 'application/json');
-  if (init?.body !== undefined) headers.set('content-type', 'application/json');
-  headers.set('x-correlation-id', requestId());
-  if (token) headers.set('authorization', `Bearer ${token}`);
-  const controller = new AbortController();
-  const timeoutError = new Error('请求超时，请检查网络后重试');
-  const timeout = globalThis.setTimeout(() => {
-    controller.abort(timeoutError);
-  }, REQUEST_TIMEOUT_MS);
-  if (init?.signal) {
-    if (init.signal.aborted) controller.abort();
-    else
-      init.signal.addEventListener(
-        'abort',
-        () => {
-          controller.abort();
-        },
-        { once: true },
-      );
-  }
-  let response: Response;
-  try {
-    response = await fetch(path, {
-      ...init,
-      credentials: 'same-origin',
-      headers,
-      signal: controller.signal,
-    });
-  } catch (error) {
-    if (controller.signal.reason === timeoutError) throw timeoutError;
-    throw error;
-  } finally {
-    globalThis.clearTimeout(timeout);
-  }
-  if (!response.ok) {
-    const body = (await response.json().catch(() => ({}))) as {
-      message?: string;
-      error?: { message?: string; correlationId?: string };
-    };
-    throw new RequestError(
-      body.error?.message ?? body.message ?? `Request failed (${String(response.status)})`,
-      response.status,
-      body.error?.correlationId,
-    );
-  }
-  return (response.status === 204 ? undefined : await response.json()) as T;
-}
 export function createFetchCrmApi(token: string): CrmApi {
   const post = <T>(path: string, body: unknown, headers?: HeadersInit) =>
     json<T>(path, token, {
@@ -10751,13 +10686,6 @@ export class CrmController {
     this.customers = await this.api.listCustomers();
   }
 }
-
-const el = <K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string) => {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text) node.textContent = text;
-  return node;
-};
 
 type OnlineBusinessDocument = Readonly<{
   id: string;
@@ -15783,163 +15711,14 @@ export function governanceWorkspace(controller: GovernanceController): HTMLEleme
   return workspace;
 }
 
-type SessionDto = Readonly<{
-  employeeId: string;
-  companyId: string;
-  displayName: string | null;
-  employeeNumber: string | null;
-  permissions: readonly string[];
-}>;
-async function login(login: string, password: string): Promise<string> {
-  const result = await json<{ token: string }>('/api/v1/auth/login', '', {
-    method: 'POST',
-    body: JSON.stringify({ login, password }),
-  });
-  return result.token;
-}
-
-function startupView(root: HTMLElement, message: string): void {
-  const shell = el('main', 'startup-shell');
-  shell.setAttribute('aria-busy', 'true');
-  shell.setAttribute('aria-live', 'polite');
-  const mark = document.createElement('img');
-  mark.src = '/kingturf-mark-transparent.png';
-  mark.alt = '';
-  mark.width = 512;
-  mark.height = 512;
-  const progress = el('span', 'startup-progress');
-  progress.setAttribute('aria-hidden', 'true');
-  const status = el('p', 'startup-status', message);
-  shell.append(
-    mark,
-    el('p', 'eyebrow', '金特夫企业经营管理系统'),
-    el('h1', '', '正在准备工作台'),
-    status,
-    progress,
-  );
-  root.replaceChildren(shell);
-}
-
-function updateStartupStatus(root: HTMLElement, message: string): void {
-  const status = root.querySelector<HTMLElement>('.startup-status');
-  if (status) status.textContent = message;
-}
-
-function startupFailureView(root: HTMLElement): void {
-  const shell = el('main', 'startup-shell startup-failure');
-  const mark = document.createElement('img');
-  mark.src = '/kingturf-mark-transparent.png';
-  mark.alt = '';
-  mark.width = 512;
-  mark.height = 512;
-  const status = el(
-    'p',
-    'startup-status error',
-    '工作台暂时未能完整加载。登录状态仍已保留，可以安全重试。',
-  );
-  status.setAttribute('role', 'alert');
-  const actions = el('div', 'startup-actions');
-  const retry = el('button', 'primary', '重新加载工作台');
-  retry.type = 'button';
-  retry.addEventListener('click', () => {
-    retry.disabled = true;
-    void bootstrap(root);
-  });
-  const signOut = el('button', 'secondary', '返回登录');
-  signOut.type = 'button';
-  signOut.addEventListener('click', () => {
-    sessionStorage.removeItem('kingturf.session');
-    clearSessionReadCache();
-    loginView(root);
-  });
-  actions.append(retry, signOut);
-  shell.append(mark, el('h1', '', '加载遇到问题'), status, actions);
-  root.replaceChildren(shell);
-}
-
-function loginView(root: HTMLElement, initialMessage = ''): void {
-  const shell = el('main', 'login-shell');
-  const story = el('section', 'login-story');
-  const loginBrand = el('div', 'login-brand');
-  const loginLogo = document.createElement('img');
-  loginLogo.src = '/kingturf-mark-transparent.png';
-  loginLogo.alt = '';
-  loginLogo.width = 512;
-  loginLogo.height = 512;
-  const loginIdentity = el('span', 'login-brand-identity');
-  loginIdentity.append(el('strong', '', '金特夫'), el('small', '', 'KING TURF'));
-  loginBrand.setAttribute('aria-label', '金特夫 King Turf');
-  loginBrand.append(loginLogo, loginIdentity);
-  story.append(
-    loginBrand,
-    el('p', 'eyebrow', '企业经营管理系统'),
-    el('h1', '', '业务一体化管理'),
-    el('p', 'login-intro', '销售、采购、生产、质量与财务协同'),
-  );
-  const form = el('form', 'login-card');
-  form.setAttribute('autocomplete', 'on');
-  form.append(
-    el('p', 'eyebrow', '企业账号登录'),
-    el('h2', '', '登录金特夫'),
-    el('p', 'muted', '请输入企业账号和密码'),
-  );
-  const identity = el('input');
-  identity.name = 'login';
-  identity.placeholder = '账号';
-  identity.required = true;
-  identity.autocomplete = 'username';
-  identity.autocapitalize = 'none';
-  identity.spellcheck = false;
-  const password = el('input');
-  password.name = 'password';
-  password.type = 'password';
-  password.placeholder = '密码';
-  password.required = true;
-  password.autocomplete = 'current-password';
-  const submit = el('button', 'primary', '登录');
-  submit.type = 'submit';
-  const status = el('p', 'login-status', initialMessage);
-  status.setAttribute('aria-live', 'polite');
-  status.setAttribute('role', 'status');
-  if (initialMessage) status.dataset.state = 'error';
-  form.append(identity, password, submit, status);
-  const coordinator = new LoginCoordinator(login, async (token) => {
-    sessionStorage.setItem('kingturf.session', token);
-    clearSessionReadCache();
-    await bootstrap(root);
-  });
-  const renderProgress = (progress: LoginProgress): void => {
-    const busy = progress.phase !== 'error';
-    identity.disabled = busy;
-    password.disabled = busy;
-    submit.disabled = busy;
-    submit.textContent = progress.phase === 'authenticating' ? '正在登录…' : '登录';
-    form.setAttribute('aria-busy', String(busy));
-    setOperationStatus(status, progress.phase === 'error' ? 'error' : 'loading', progress.message);
-  };
-  form.addEventListener('submit', (event) => {
-    event.preventDefault();
-    if (coordinator.busy) return;
-    void coordinator
-      .submit(identity.value.trim(), password.value, renderProgress)
-      .then((success) => {
-        if (!success && root.contains(form)) {
-          identity.disabled = false;
-          password.disabled = false;
-          submit.disabled = false;
-          submit.textContent = '登录';
-          form.setAttribute('aria-busy', 'false');
-          password.value = '';
-          password.focus();
-        }
-      });
-  });
-  shell.append(story, form);
-  root.replaceChildren(shell);
-  if ((globalThis.innerWidth || 1280) > 820) identity.focus();
-}
-
-async function bootstrapApplication(root: HTMLElement): Promise<void> {
+export async function mountWorkspace(
+  root: HTMLElement,
+  session: SessionDto,
+  token: string,
+  onProgress: (message: string) => void,
+): Promise<void> {
+  // Reset document reads when the authenticated identity changes.
+  clearSessionReadCache();
   const allowed = new Set<CrmPermission>([
     'employee:read',
     'customer:read',
@@ -15959,25 +15738,7 @@ async function bootstrapApplication(root: HTMLElement): Promise<void> {
     'lead:assign',
     'lead:reassign',
   ]);
-  const token = sessionStorage.getItem('kingturf.session');
-  if (!token) {
-    loginView(root);
-    return;
-  }
-  startupView(root, '正在验证登录状态…');
-  let session: SessionDto;
-  try {
-    session = await json<SessionDto>('/api/v1/auth/session', token);
-  } catch (error) {
-    if (error instanceof RequestError && error.status === 401) {
-      sessionStorage.removeItem('kingturf.session');
-      clearSessionReadCache();
-      loginView(root, '登录状态已失效，请重新登录');
-      return;
-    }
-    throw error;
-  }
-  updateStartupStatus(root, '登录成功，正在并行加载业务数据…');
+  onProgress('登录成功，正在并行加载业务数据…');
   const permissions = new Set(
     session.permissions.filter((item): item is CrmPermission => allowed.has(item as CrmPermission)),
   );
@@ -16002,7 +15763,7 @@ async function bootstrapApplication(root: HTMLElement): Promise<void> {
     }),
     governanceController?.load(),
   ]);
-  updateStartupStatus(root, '业务数据已就绪，正在构建工作台…');
+  onProgress('业务数据已就绪，正在构建工作台…');
   const currentEmployee = controller.employees.find(
     (employee) => employee.id === session.employeeId,
   );
@@ -16042,12 +15803,4 @@ async function bootstrapApplication(root: HTMLElement): Promise<void> {
   installRoleTaskInsights(shell);
   installAppNavigation(shell);
   root.replaceChildren(shell);
-}
-
-export async function bootstrap(root: HTMLElement): Promise<void> {
-  try {
-    await bootstrapApplication(root);
-  } catch {
-    startupFailureView(root);
-  }
 }

@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "build": "vite build"
+    "build": "vite build && node scripts/check-startup-budget.mjs"
   },
   "dependencies": {
     "@kingturf/ui": "workspace:*"

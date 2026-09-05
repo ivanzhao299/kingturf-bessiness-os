@@ -1,5 +1,5 @@
-import './style.css';
-import { bootstrap } from './bootstrap';
+import './startup.css';
+import { bootstrap } from './entry';
 
 const root = document.querySelector<HTMLElement>('#app');
 
