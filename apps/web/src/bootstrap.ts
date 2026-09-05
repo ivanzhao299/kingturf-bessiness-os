@@ -10765,6 +10765,144 @@ type DocumentConnector = Readonly<{
   configuredAt?: string;
 }>;
 
+const renderDocumentConnectors = (connectorGrid: HTMLElement, saved = false): void => {
+  const progress = el(
+    'p',
+    'operation-status',
+    saved ? '配置已保存，正在刷新渠道状态…' : '正在加载发送与翻译连接器…',
+  );
+  progress.setAttribute('role', 'status');
+  connectorGrid.replaceChildren(progress);
+  void onlineDocumentApi<{ items: readonly DocumentConnector[] }>('/api/v1/document-connectors')
+    .then(({ items }) => {
+      connectorGrid.replaceChildren();
+      if (saved) {
+        progress.textContent = '配置已保存。返回文档后可重新检查发送条件。';
+        connectorGrid.append(progress);
+      }
+      if (items.length === 0) throw new Error('未读取到连接器，请重试或联系管理员');
+      for (const connector of items) {
+        const card = el('article', 'document-connector-card');
+        card.append(
+          el(
+            'span',
+            `role-task-state ${connector.status === 'READY' ? 'success' : 'warning'}`,
+            connector.status === 'READY'
+              ? '已配置'
+              : connector.status === 'DISABLED'
+                ? '已停用'
+                : '待配置',
+          ),
+          el('strong', '', connector.label),
+          el(
+            'small',
+            '',
+            `${connector.provider} · ${connector.senderIdentity ?? '未设置发送身份'}`,
+          ),
+        );
+        const configure = el('button', 'secondary compact', '配置');
+        configure.type = 'button';
+        configure.addEventListener('click', () => {
+          openForm(
+            document.body,
+            `配置${connector.label}`,
+            '只填写非敏感元数据和密钥引用名称。真实密钥由运维放入受控密钥存储。',
+            [
+              {
+                name: 'provider',
+                label: '服务提供方代码',
+                required: true,
+                value: connector.provider,
+                placeholder: '例如 RESEND 或 META_CLOUD_API',
+              },
+              {
+                name: 'displayName',
+                label: '内部显示名称',
+                required: true,
+                value: connector.displayName,
+              },
+              {
+                name: 'senderIdentity',
+                label: '发送身份/账号',
+                value: connector.senderIdentity ?? '',
+              },
+              {
+                name: 'secretReference',
+                label: '安全密钥引用',
+                value: connector.secretReference ?? '',
+                placeholder: 'KINGTURF_CONNECTOR_…',
+                hint: '只填密钥名称，不得在此粘贴令牌、密码或 API Key。',
+              },
+              {
+                name: 'configuration',
+                label: '非敏感配置 JSON',
+                type: 'textarea',
+                value: JSON.stringify(connector.configuration ?? {}, undefined, 2),
+              },
+              {
+                name: 'status',
+                label: '状态',
+                type: 'select',
+                required: true,
+                value: connector.status,
+                options: [
+                  { value: 'UNCONFIGURED', label: '待配置' },
+                  { value: 'READY', label: '启用' },
+                  { value: 'DISABLED', label: '停用' },
+                ],
+              },
+            ],
+            '保存连接器配置',
+            async (values) => {
+              const configurationText = values.configuration ?? '';
+              const senderIdentity = values.senderIdentity?.trim() ?? '';
+              const secretReference = values.secretReference?.trim() ?? '';
+              let configuration: Record<string, unknown>;
+              try {
+                configuration = JSON.parse(
+                  configurationText.length > 0 ? configurationText : '{}',
+                ) as Record<string, unknown>;
+              } catch {
+                throw new Error('非敏感配置必须是有效 JSON');
+              }
+              await onlineDocumentApi(`/api/v1/document-connectors/${connector.connector}`, {
+                method: 'PUT',
+                body: JSON.stringify({
+                  provider: values.provider,
+                  displayName: values.displayName,
+                  senderIdentity: senderIdentity.length > 0 ? senderIdentity : null,
+                  secretReference: secretReference.length > 0 ? secretReference : null,
+                  configuration,
+                  status: values.status,
+                  expectedVersion: connector.version,
+                }),
+              });
+              renderDocumentConnectors(connectorGrid, true);
+            },
+          );
+        });
+        card.append(configure);
+        connectorGrid.append(card);
+      }
+    })
+    .catch((failure: unknown) => {
+      connectorGrid.replaceChildren(
+        el(
+          'p',
+          'error',
+          (saved ? '配置已保存，但刷新失败：' : '') +
+            (failure instanceof Error ? failure.message : '连接器配置加载失败'),
+        ),
+      );
+      const retry = el('button', 'secondary', '重试加载配置');
+      retry.type = 'button';
+      retry.addEventListener('click', () => {
+        renderDocumentConnectors(connectorGrid, saved);
+      });
+      connectorGrid.append(retry);
+    });
+};
+
 const onlineTemplateKey = (template: BusinessDocumentTemplate, route: AppRoute): string =>
   `${template.file.slice(0, 2)}-${route}`;
 
@@ -10955,6 +11093,7 @@ const openOnlineDocumentEditor = (
     approve: boolean;
     send: boolean;
     translate: boolean;
+    configure: boolean;
   }>,
   onSaved?: (currentVersion: number) => void,
 ): void => {
@@ -11519,9 +11658,54 @@ const openOnlineDocumentEditor = (
   });
   send.addEventListener('click', () => {
     if (send.disabled) return;
+    const openSettings = (): void => {
+      if (!permissions.configure) return;
+      const settings = el('dialog', 'form-dialog document-send-settings');
+      settings.setAttribute('aria-label', '发送与翻译连接器');
+      const content = el('div', 'entity-form');
+      const grid = el('div', 'document-connector-grid');
+      const back = el('button', 'secondary', '返回文档');
+      back.type = 'button';
+      back.addEventListener('click', () => {
+        settings.close();
+      });
+      content.append(
+        el('h2', '', '发送与翻译连接器'),
+        el(
+          'p',
+          'muted',
+          '当前文档和未保存内容会保留。配置元数据后仍需运维接入实际发送服务；入队不代表送达。保存后返回文档，重新点击发送以检查最新配置。',
+        ),
+        grid,
+        back,
+      );
+      settings.append(content);
+      settings.addEventListener('close', () => {
+        settings.remove();
+        send.focus();
+      });
+      document.body.append(settings);
+      settings.showModal();
+      renderDocumentConnectors(grid);
+    };
     const blocked = documentSendBlockReason(documentState, documentData.customerId);
     if (blocked) {
-      documentSendNotice(blocked);
+      const notice = documentSendNotice(
+        (editable && body.innerHTML !== savedEditorHtml ? '正文有未保存的修改。' : '') + blocked,
+      );
+      if (editable && permissions.manage) {
+        notice.addAction('去保存 / 提交审核', () => {
+          actionPanel.scrollIntoView({ block: 'nearest' });
+          if (body.innerHTML !== savedEditorHtml) summary.focus();
+          else reviewReason.focus();
+        });
+      } else if (documentState === 'IN_REVIEW' && permissions.approve) {
+        notice.addAction('去审批', () => {
+          actionPanel.scrollIntoView({ block: 'nearest' });
+          reviewReason.focus();
+        });
+      }
+      if (permissions.configure) notice.addAction('发送渠道配置', openSettings);
       return;
     }
     const notice = documentSendNotice('正在读取可用发送渠道，请稍候…');
@@ -11545,7 +11729,15 @@ const openOnlineDocumentEditor = (
         );
         if (channels.length === 0) {
           notice.message.textContent =
-            '尚未配置可用发送渠道。请管理员进入“业务文档库 → 发送与翻译连接器”完成企业账号和发送服务接入。当前文档已保留，尚未发送给客户。';
+            '尚未配置可用发送渠道。' +
+            (permissions.configure
+              ? '点击“前往发送配置”设置企业账号和密钥引用；实际发送服务需运维接入。'
+              : '您没有发送渠道配置权限，请联系管理员进入“业务文档库 → 发送与翻译连接器”完成企业账号和发送服务接入。') +
+            '当前文档已保留，尚未发送给客户。';
+          if (permissions.configure) notice.addAction('前往发送配置', openSettings);
+          notice.addAction('重新检查配置', () => {
+            send.click();
+          });
           return;
         }
         notice.dialog.close();
@@ -11635,6 +11827,9 @@ const openOnlineDocumentEditor = (
           'error',
           `发送渠道读取失败：${failure instanceof Error ? failure.message : '网络异常'}。请返回文档后重试；未发送任何文档。`,
         );
+        notice.addAction('重试读取渠道', () => {
+          send.click();
+        });
       })
       .finally(() => {
         send.disabled = false;
@@ -13476,119 +13671,7 @@ export function createCrmShell(
     );
     if (allPermissions.has('business-document:configure')) {
       const connectorGrid = el('div', 'document-connector-grid');
-      connectorGrid.append(el('p', 'operation-status', '正在加载发送与翻译连接器…'));
-      void onlineDocumentApi<{ items: readonly DocumentConnector[] }>('/api/v1/document-connectors')
-        .then(({ items }) => {
-          connectorGrid.replaceChildren();
-          for (const connector of items) {
-            const card = el('article', 'document-connector-card');
-            card.append(
-              el(
-                'span',
-                `role-task-state ${connector.status === 'READY' ? 'success' : 'warning'}`,
-                connector.status === 'READY'
-                  ? '已配置'
-                  : connector.status === 'DISABLED'
-                    ? '已停用'
-                    : '待配置',
-              ),
-              el('strong', '', connector.label),
-              el(
-                'small',
-                '',
-                `${connector.provider} · ${connector.senderIdentity ?? '未设置发送身份'}`,
-              ),
-            );
-            const configure = el('button', 'secondary compact', '配置');
-            configure.type = 'button';
-            configure.addEventListener('click', () => {
-              openForm(
-                document.body,
-                `配置${connector.label}`,
-                '只填写非敏感元数据和密钥引用名称。真实密钥由运维放入受控密钥存储。',
-                [
-                  {
-                    name: 'provider',
-                    label: '服务提供方代码',
-                    required: true,
-                    value: connector.provider,
-                    placeholder: '例如 RESEND 或 META_CLOUD_API',
-                  },
-                  {
-                    name: 'displayName',
-                    label: '内部显示名称',
-                    required: true,
-                    value: connector.displayName,
-                  },
-                  {
-                    name: 'senderIdentity',
-                    label: '发送身份/账号',
-                    value: connector.senderIdentity ?? '',
-                  },
-                  {
-                    name: 'secretReference',
-                    label: '安全密钥引用',
-                    value: connector.secretReference ?? '',
-                    placeholder: 'KINGTURF_CONNECTOR_…',
-                    hint: '只填密钥名称，不得在此粘贴令牌、密码或 API Key。',
-                  },
-                  {
-                    name: 'configuration',
-                    label: '非敏感配置 JSON',
-                    type: 'textarea',
-                    value: JSON.stringify(connector.configuration ?? {}, undefined, 2),
-                  },
-                  {
-                    name: 'status',
-                    label: '状态',
-                    type: 'select',
-                    required: true,
-                    value: connector.status,
-                    options: [
-                      { value: 'UNCONFIGURED', label: '待配置' },
-                      { value: 'READY', label: '启用' },
-                      { value: 'DISABLED', label: '停用' },
-                    ],
-                  },
-                ],
-                '保存连接器配置',
-                async (values) => {
-                  const configurationText = values.configuration ?? '';
-                  const senderIdentity = values.senderIdentity?.trim() ?? '';
-                  const secretReference = values.secretReference?.trim() ?? '';
-                  let configuration: Record<string, unknown>;
-                  try {
-                    configuration = JSON.parse(
-                      configurationText.length > 0 ? configurationText : '{}',
-                    ) as Record<string, unknown>;
-                  } catch {
-                    throw new Error('非敏感配置必须是有效 JSON');
-                  }
-                  await onlineDocumentApi(`/api/v1/document-connectors/${connector.connector}`, {
-                    method: 'PUT',
-                    body: JSON.stringify({
-                      provider: values.provider,
-                      displayName: values.displayName,
-                      senderIdentity: senderIdentity.length > 0 ? senderIdentity : null,
-                      secretReference: secretReference.length > 0 ? secretReference : null,
-                      configuration,
-                      status: values.status,
-                      expectedVersion: connector.version,
-                    }),
-                  });
-                  globalThis.location.reload();
-                },
-              );
-            });
-            card.append(configure);
-            connectorGrid.append(card);
-          }
-        })
-        .catch((failure: unknown) => {
-          connectorGrid.replaceChildren(
-            el('p', 'error', failure instanceof Error ? failure.message : '连接器配置加载失败'),
-          );
-        });
+      renderDocumentConnectors(connectorGrid);
       communicationAdmin.append(el('h3', '', '发送与翻译连接器'), connectorGrid);
     }
     if (allPermissions.has('business-document:audit')) {
@@ -13841,6 +13924,7 @@ export function createCrmShell(
                   approve: allPermissions.has('business-document:approve'),
                   send: allPermissions.has('business-document:send'),
                   translate: allPermissions.has('business-document:translate'),
+                  configure: allPermissions.has('business-document:configure'),
                 },
                 (currentVersion) => {
                   online.disabled = false;
@@ -13900,6 +13984,7 @@ export function createCrmShell(
                       approve: allPermissions.has('business-document:approve'),
                       send: allPermissions.has('business-document:send'),
                       translate: allPermissions.has('business-document:translate'),
+                      configure: allPermissions.has('business-document:configure'),
                     },
                     (currentVersion) => {
                       open.textContent = `${item.title} · V${String(currentVersion)}${item.assigneeName ? ` · 待办：${item.assigneeName}` : ''}`;

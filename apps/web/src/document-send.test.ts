@@ -8,6 +8,9 @@ describe('document sending feedback', () => {
       expect(documentSendBlockReason(state, 'customer')).not.toBe('');
     expect(documentSendBlockReason('APPROVED')).toContain('尚未绑定客户');
     expect(documentSendBlockReason('IN_REVIEW', 'customer')).toContain('等待审批人');
+    expect(documentSendBlockReason('DRAFT', 'customer')).toContain('当前文档为草稿');
+    expect(documentSendBlockReason('REJECTED', 'customer')).toContain('已被驳回');
+    expect(documentSendBlockReason('ARCHIVED', 'customer')).toContain('已归档');
   });
   it('never represents queued, retrying or unknown dispatches as delivered', () => {
     expect(documentDispatchStatus('DELIVERED')).toBe('已送达');
