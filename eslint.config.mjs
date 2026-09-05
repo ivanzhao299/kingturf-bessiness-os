@@ -18,6 +18,11 @@ export default tseslint.config(
     },
   },
   {
+    files: ['apps/web/scripts/*.mjs'],
+    ...tseslint.configs.disableTypeChecked,
+    languageOptions: { globals: globals.node },
+  },
+  {
     files: ['**/*.config.{js,mjs,ts}'],
     ...tseslint.configs.disableTypeChecked,
   },

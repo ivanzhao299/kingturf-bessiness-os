@@ -127,4 +127,4 @@ infra/docker         local PostgreSQL Compose configuration
 
 The API requires all environment variables shown in `.env.example`. Protected requests use `Authorization: Bearer <token>`; login is `POST /api/v1/auth/login`. No administrator or password is embedded. See the runbook for explicit provisioning and authorization semantics.
 
-Production deployment, automated push/merge, sales, manufacturing, full audit-trail product functionality, and later P0 engines remain out of scope.
+Production is served only at `https://erp.kingturf.cn` through the repository's production deployment workflow. Product acceptance is tracked in the [product audit](docs/engineering/KT-UI-PROD-08_PRODUCT_AUDIT.md) and [startup delivery plan](docs/engineering/KT-UI-PROD-09_STARTUP_DELIVERY.md); implemented business surfaces are not a substitute for role-specific end-to-end acceptance.
