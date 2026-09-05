@@ -14,10 +14,13 @@ test('cold login does not download business JS or CSS, including on a slow conne
   context,
 }) => {
   const businessRequests: string[] = [];
+  const logoRequests: string[] = [];
   await page.setViewportSize({ width: 1440, height: 1200 });
   page.on('request', (request) => {
     if (workspaceAsset.test(request.url())) businessRequests.push(request.url());
+    if (/kingturf-mark.*\.(png|webp)/.test(request.url())) logoRequests.push(request.url());
   });
+  await page.route('**/kingturf-mark-transparent.png', (route) => route.abort());
   const cdp = await context.newCDPSession(page);
   await cdp.send('Network.enable');
   await cdp.send('Network.emulateNetworkConditions', {
@@ -36,6 +39,16 @@ test('cold login does not download business JS or CSS, including on a slow conne
   expect(await page.evaluate(() => document.body.getBoundingClientRect().top)).toBe(0);
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(1200);
   expect(businessRequests).toEqual([]);
+  await expect(page.locator('.login-brand img')).toHaveAttribute(
+    'src',
+    /^data:image\/webp;base64,/,
+  );
+  expect(
+    await page
+      .locator('.login-brand img')
+      .evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth === 128),
+  ).toBe(true);
+  expect(logoRequests).toEqual([]);
   await page.screenshot({ path: '.test-results/startup-slow-login.png', fullPage: true });
   await cdp.detach();
 });

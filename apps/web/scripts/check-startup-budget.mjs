@@ -25,7 +25,10 @@ const total = (files) =>
   [...files].reduce((sum, file) => sum + gzipSync(readFileSync(new URL(file, dist))).byteLength, 0);
 const jsBytes = total(js);
 const cssBytes = total(css);
-assert.ok(jsBytes <= 8_000, `Login JavaScript gzip budget exceeded: ${jsBytes} > 8000 bytes`);
+assert.ok(
+  jsBytes <= 12_000,
+  `Login JavaScript including inline brand gzip budget exceeded: ${jsBytes} > 12000 bytes`,
+);
 assert.ok(cssBytes <= 4_000, `Login CSS gzip budget exceeded: ${cssBytes} > 4000 bytes`);
 // This guard runs in local CI, GitHub CI and the production Docker build.
 console.log(
