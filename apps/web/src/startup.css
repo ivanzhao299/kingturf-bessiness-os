@@ -23,7 +23,9 @@
   box-sizing: border-box;
 }
 body {
+  display: flow-root;
   margin: 0;
+  min-height: 100vh;
   min-width: 320px;
   color: var(--kt-ink);
   background:

@@ -14,6 +14,7 @@ test('cold login does not download business JS or CSS, including on a slow conne
   context,
 }) => {
   const businessRequests: string[] = [];
+  await page.setViewportSize({ width: 1440, height: 1200 });
   page.on('request', (request) => {
     if (workspaceAsset.test(request.url())) businessRequests.push(request.url());
   });
@@ -29,6 +30,11 @@ test('cold login does not download business JS or CSS, including on a slow conne
   await expect(page.getByRole('button', { name: '登录', exact: true })).toBeVisible();
   await page.getByRole('textbox', { name: '账号' }).fill('TEST');
   await expect(page.getByRole('textbox', { name: '账号' })).toHaveValue('TEST');
+  expect(
+    await page.evaluate(() => document.body.getBoundingClientRect().height),
+  ).toBeGreaterThanOrEqual(1200);
+  expect(await page.evaluate(() => document.body.getBoundingClientRect().top)).toBe(0);
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(1200);
   expect(businessRequests).toEqual([]);
   await page.screenshot({ path: '.test-results/startup-slow-login.png', fullPage: true });
   await cdp.detach();
