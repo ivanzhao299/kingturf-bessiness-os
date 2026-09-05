@@ -1002,6 +1002,9 @@ button {
 [hidden] {
   display: none !important;
 }
+.crm-records {
+  display: contents;
+}
 .app-shell {
   grid-template-columns: 248px minmax(0, 1fr);
 }
