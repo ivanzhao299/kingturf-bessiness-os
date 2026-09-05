@@ -223,8 +223,8 @@ export class PostgresCommercialRepository {
               OR ($4='NEEDS_CALCULATION' AND s."needsRecalculation")
               OR ($4='READY_FOR_QUOTE' AND NOT s."needsRecalculation" AND s."missingPriceCount"=0 AND s."missingSourceCount"=0 AND s."factorCount">0 AND s."latestCalculation"->>'costDecisionId' IS NULL)
               OR ($4='IN_QUOTE' AND s."latestCalculation"->>'costDecisionId' IS NOT NULL))
-        )
-        SELECT filtered.*,count(*) OVER()::int AS "totalCount"
+        ), paged AS (
+        SELECT filtered.*
         FROM filtered
         ORDER BY
           CASE WHEN $5='ATTENTION' THEN ("missingPriceCount">0 OR "missingSourceCount">0 OR "factorCount"=0) END DESC,
@@ -232,7 +232,9 @@ export class PostgresCommercialRepository {
           CASE WHEN $5='COST_DESC' THEN ("latestCalculation"->>'totalCost')::numeric END DESC NULLS LAST,
           CASE WHEN $5='UPDATED' THEN "updatedAt" END DESC,
           code ASC,id ASC
-        LIMIT $6 OFFSET $7`,
+        LIMIT $6 OFFSET $7)
+        SELECT (SELECT count(*)::int FROM filtered) AS total,
+          coalesce((SELECT jsonb_agg(paged) FROM paged),'[]'::jsonb) AS items`,
         [
           actor.companyId,
           input.query,
@@ -244,12 +246,10 @@ export class PostgresCommercialRepository {
         ],
       )
     ).rows;
-    const total = Number(rows[0]?.totalCount ?? 0);
+    const total = Number(rows[0]?.total ?? 0);
     return {
       total,
-      items: rows.map((row) =>
-        Object.fromEntries(Object.entries(row).filter(([key]) => key !== 'totalCount')),
-      ),
+      items: (rows[0]?.items ?? []) as JsonObject[],
     };
   }
 
@@ -257,6 +257,7 @@ export class PostgresCommercialRepository {
     modelId: string,
     actor: Actor,
     scopes: readonly DataScope[],
+    includeAudit = false,
   ): Promise<JsonObject> {
     if (!scopes.includes('COMPANY'))
       throw new DomainError('forbidden', 'Cost matrices require company scope');
@@ -290,16 +291,24 @@ export class PostgresCommercialRepository {
         [actor.companyId, modelId],
       )
     ).rows;
-    const auditTrail = (
-      await this.db.query<JsonObject>(
-        `SELECT a.id,a.action,a.outcome,a.actor_id AS "actorId",e.display_name AS "actorName",a.occurred_at AS "occurredAt",a.correlation_id AS "correlationId"
+    const auditTrail = includeAudit
+      ? (
+          await this.db.query<JsonObject>(
+            `SELECT a.id,a.action,a.outcome,a.actor_id AS "actorId",e.display_name AS "actorName",a.occurred_at AS "occurredAt",a.correlation_id AS "correlationId"
          FROM audit_events a LEFT JOIN employees e ON e.id=a.actor_id AND e.company_id=a.organization_id
          WHERE a.organization_id=$1 AND a.target_type='cost-matrix' AND a.target_id=$2
          ORDER BY a.occurred_at DESC,a.id DESC LIMIT 50`,
-        [actor.companyId, modelId],
-      )
-    ).rows;
-    return { ...model, calculations, latestCalculation: calculations[0] ?? null, auditTrail };
+            [actor.companyId, modelId],
+          )
+        ).rows
+      : [];
+    return {
+      ...model,
+      calculations,
+      latestCalculation: calculations[0] ?? null,
+      auditTrail,
+      auditTrailVisible: includeAudit,
+    };
   }
 
   public async listCostMatrices(actor: Actor, scopes: readonly DataScope[]) {

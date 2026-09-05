@@ -15,8 +15,8 @@ const matrices = Array.from({ length: 36 }, (_, index) => ({
     category: factorIndex < 8 ? 'DIRECT_MATERIAL' : 'OTHER',
     quantity: '1',
     unitCode: 'KG',
-    sourceType: 'MANUAL',
-    manualUnitPriceTaxInclusive: '8.60',
+    sourceType: factorIndex === 1 ? 'SUPPLIER_QUOTE' : 'MANUAL',
+    manualUnitPriceTaxInclusive: factorIndex === 1 ? '0' : '8.60',
     priceSourceName: '测试价格基准',
     priceEffectiveAt: '2026-08-28',
     adjustable: true,
@@ -204,6 +204,7 @@ test('presents a paginated matrix ledger and a full-width on-demand model worksp
 
   await page.locator('.cost-matrix-search').fill('PRESET-32');
   await expect(page.locator('.cost-matrix-ledger-row:not(.header)')).toHaveCount(1);
+  await expect(page.locator('.cost-matrix-search')).toBeFocused();
   await page.locator('.cost-matrix-search').clear();
   await expect(page.locator('.cost-matrix-ledger-row:not(.header)')).toHaveCount(20);
   await page.getByLabel('筛选成本模型产品族').fill('景观草');
@@ -214,7 +215,24 @@ test('presents a paginated matrix ledger and a full-width on-demand model worksp
   await page.getByRole('button', { name: '查看模型' }).first().click();
   await expect(page.getByRole('heading', { name: '系统预置成本模型 1' })).toBeVisible();
   await expect(page.locator('.cost-factor-ledger-row:not(.header)')).toHaveCount(13);
+  await expect(page.locator('.cost-factor-ledger-row:not(.header)').nth(1)).toContainText(
+    '核算时取有效采购价',
+  );
+  await expect(page.locator('.cost-factor-ledger-row:not(.header)').nth(1)).not.toContainText(
+    '¥ 0.0000',
+  );
   await expect(page.locator('.cost-matrix-detail-summary')).toBeVisible();
+
+  const factorTab = page.getByRole('tab', { name: '成本因子（13）' });
+  await factorTab.focus();
+  await factorTab.press('ArrowRight');
+  await expect(page.getByRole('tab', { name: '核算记录（0）' })).toBeFocused();
+  await expect(page.getByRole('tabpanel', { name: '核算记录（0）' })).toBeVisible();
+  await page.keyboard.press('End');
+  await expect(page.getByRole('tab', { name: '报价引用' })).toBeFocused();
+  await expect(page.getByRole('tab', { name: /变更日志/ })).toHaveCount(0);
+  await page.keyboard.press('Home');
+  await expect(factorTab).toBeFocused();
 
   await page.getByRole('button', { name: '添加成本因子' }).click();
   const factorDialog = page.locator('.cost-factor-dialog');
@@ -264,8 +282,21 @@ test('presents a paginated matrix ledger and a full-width on-demand model worksp
   expect(mobileDialogBox?.width).toBeLessThanOrEqual(390);
   await mobileDialog.getByRole('button', { name: '取消' }).click();
 
+  const firstFactor = page.locator('.cost-factor-ledger-row:not(.header)').first();
+  await firstFactor.scrollIntoViewIfNeeded();
+  const edit = firstFactor.getByRole('button', { name: '编辑成本因子 1' });
+  await expect(edit).toBeVisible();
+  const editBox = await edit.boundingBox();
+  expect(editBox?.x).toBeGreaterThanOrEqual(0);
+  expect((editBox?.x ?? 0) + (editBox?.width ?? 0)).toBeLessThanOrEqual(390);
+  await expect(firstFactor).toContainText('¥ 8.6000');
+  await edit.click();
+  await expect(page.locator('.cost-factor-dialog')).toBeVisible();
+  await page.locator('.cost-factor-dialog').getByRole('button', { name: '取消' }).click();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
+
   await testInfo.attach('cost-matrix-ledger-detail', {
-    body: await page.screenshot({ fullPage: true }),
+    body: await page.screenshot(),
     contentType: 'image/png',
   });
 });

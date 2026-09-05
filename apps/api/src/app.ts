@@ -3989,6 +3989,7 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               uuid(costMatrixDetail[1], 'modelId'),
               context.actor,
               grant.scopes,
+              context.permissions.get('audit:read')?.scopes.includes('COMPANY') === true,
             ),
           };
         }

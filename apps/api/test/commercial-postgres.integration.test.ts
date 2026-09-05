@@ -312,7 +312,42 @@ describe('JTF-P1-E05..E10 PostgreSQL acceptance', () => {
       needsRecalculation: false,
     });
     expect(matrixSummaries.items[0]).not.toHaveProperty('factors');
-    const matrixDetail = await commercial.getCostMatrix(identifier(matrix.id), actor, ['COMPANY']);
+    const emptyPage = await commercial.listCostMatrixSummaries(
+      {
+        page: 9,
+        pageSize: 20,
+        query: 'MATRIX-QUOTE',
+        productFamily: '',
+        attention: 'READY_FOR_QUOTE',
+        sort: 'ATTENTION',
+      },
+      actor,
+      ['COMPANY'],
+    );
+    expect(emptyPage).toEqual({ total: 1, items: [] });
+    const otherTenant = await commercial.listCostMatrixSummaries(
+      {
+        page: 1,
+        pageSize: 20,
+        query: 'MATRIX-QUOTE',
+        productFamily: '',
+        attention: 'ALL',
+        sort: 'CODE',
+      },
+      { ...actor, companyId: otherCompany },
+      ['COMPANY'],
+    );
+    expect(otherTenant).toEqual({ total: 0, items: [] });
+    const restrictedDetail = await commercial.getCostMatrix(identifier(matrix.id), actor, [
+      'COMPANY',
+    ]);
+    expect(restrictedDetail).toMatchObject({ auditTrail: [], auditTrailVisible: false });
+    const matrixDetail = await commercial.getCostMatrix(
+      identifier(matrix.id),
+      actor,
+      ['COMPANY'],
+      true,
+    );
     const detailFactors = matrixDetail.factors as unknown as { factorName?: unknown }[];
     const detailCalculations = matrixDetail.calculations as unknown as { id?: unknown }[];
     const detailAudit = matrixDetail.auditTrail as unknown as { action?: unknown }[];

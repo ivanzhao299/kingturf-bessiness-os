@@ -2437,7 +2437,7 @@ button {
 .cost-matrix-detail-actions {
   position: sticky;
   z-index: 3;
-  top: 0;
+  top: 124px;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -2575,6 +2575,60 @@ button {
   padding: 13px 26px;
   border-top: 1px solid #dce6e0;
   background: #fff;
+}
+@media (max-width: 800px) {
+  .cost-matrix-detail-actions {
+    position: static;
+  }
+  .cost-factor-ledger-row,
+  .cost-calculation-row,
+  .cost-matrix-ledger-row {
+    min-width: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    padding: 14px;
+    font-size: 13px;
+  }
+  .cost-factor-ledger-row.header,
+  .cost-calculation-row.header,
+  .cost-matrix-ledger-row.header {
+    display: none;
+  }
+  .cost-factor-ledger-row > *,
+  .cost-calculation-row > *,
+  .cost-matrix-ledger-row > * {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  [data-field-label]::before {
+    display: block;
+    margin-bottom: 4px;
+    color: #6d8076;
+    font-size: 11px;
+    font-weight: 400;
+    content: attr(data-field-label);
+  }
+  .cost-factor-ledger-name,
+  .cost-factor-ledger-source,
+  .cost-factor-ledger-actions,
+  .cost-matrix-ledger-identity,
+  .cost-matrix-ledger-actions {
+    grid-column: 1 / -1;
+  }
+  .cost-factor-ledger-actions,
+  .cost-matrix-ledger-actions {
+    display: block;
+  }
+  .cost-factor-ledger-actions button,
+  .cost-matrix-ledger-actions button {
+    width: 100%;
+    min-height: 44px;
+  }
+  .cost-matrix-ledger-link {
+    white-space: normal;
+    min-height: 44px;
+    font-size: 14px;
+  }
 }
 @media (max-width: 800px) {
   .cost-matrix-totals {
@@ -3773,6 +3827,25 @@ button {
 
 .register-field-mode {
   min-width: 108px;
+}
+.workspace-list-advanced {
+  grid-column: 1 / -1;
+}
+.workspace-list-advanced summary {
+  padding: 10px 4px;
+  cursor: pointer;
+  color: var(--kt-primary);
+  font-weight: 650;
+}
+.workspace-list-advanced-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: 8px;
+  padding-top: 8px;
+}
+.workspace-list-advanced-controls > * {
+  min-width: 0;
+  width: 100%;
 }
 
 @media (max-width: 639px) {
@@ -5063,6 +5136,14 @@ button:not(:disabled):active {
   border: 1px solid var(--kt-border);
   border-radius: 11px;
   background: var(--kt-surface);
+}
+.order-360-detail {
+  grid-column: 1 / -1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.order-360-detail > .order-360-card {
+  padding: 16px 0;
 }
 .solution-card,
 .decision-card,

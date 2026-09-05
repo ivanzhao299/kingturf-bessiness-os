@@ -1501,31 +1501,20 @@ export class CommercialController {
       const viewTask = Promise.allSettled(
         readableViews.map(async ([, path]) => {
           if (path !== '/api/v1/cost-matrices') return [path, await this.api.list(path)] as const;
-          const page = await this.fetchCostMatrixPage(this.costMatrixQuery);
-          return [path, page.items] as const;
+          await this.loadCostMatrixPage();
+          return [path, this.views.get(path) ?? []] as const;
         }),
       ).then((results) => {
         results.forEach((result, index) => {
           const source = readableViews[index];
           if (!source) return;
-          if (result.status === 'fulfilled') this.views.set(result.value[0], result.value[1]);
-          else failures.push(source[1]);
+          if (result.status === 'fulfilled') {
+            if (result.value[0] !== '/api/v1/cost-matrices')
+              this.views.set(result.value[0], result.value[1]);
+          } else failures.push(source[1]);
         });
       });
       await Promise.all([opportunityTask, viewTask]);
-      if (
-        this.api.get &&
-        this.permissions.has('order-360:read') &&
-        this.permissions.has('sales-order:read')
-      ) {
-        const get = this.api.get;
-        await Promise.allSettled(
-          (this.views.get('/api/v1/sales-orders') ?? []).map(async (order) => {
-            if (typeof order.id !== 'string') return;
-            this.order360.set(order.id, await get(`/api/v1/sales-orders/${order.id}/360`));
-          }),
-        );
-      }
       if (this.api.get && this.permissions.has('executive-dashboard:read')) {
         const year = new Date().getUTCFullYear();
         const query = new URLSearchParams({
@@ -1553,16 +1542,18 @@ export class CommercialController {
       const results = await Promise.allSettled(
         paths.map(async (path) => {
           if (path !== '/api/v1/cost-matrices') return [path, await this.api.list(path)] as const;
-          const page = await this.fetchCostMatrixPage(this.costMatrixQuery);
-          return [path, page.items] as const;
+          await this.loadCostMatrixPage();
+          return [path, this.views.get(path) ?? []] as const;
         }),
       );
       const failed: string[] = [];
       results.forEach((result, index) => {
         const path = paths[index];
         if (!path) return;
-        if (result.status === 'fulfilled') this.views.set(result.value[0], result.value[1]);
-        else failed.push(path);
+        if (result.status === 'fulfilled') {
+          if (result.value[0] !== '/api/v1/cost-matrices')
+            this.views.set(result.value[0], result.value[1]);
+        } else failed.push(path);
       });
       if (failed.length > 0)
         throw new Error(`数据已保存，但刷新失败：${failed.join('、')}，请重新进入本页面`);
@@ -1572,24 +1563,53 @@ export class CommercialController {
   }
   private async fetchCostMatrixPage(query: CostMatrixQuery): Promise<CostMatrixPage> {
     if (this.api.listCostMatrixSummaries) {
-      const page = await this.api.listCostMatrixSummaries(query);
-      this.costMatrixQuery = query;
-      this.costMatrixTotal = page.total;
-      return page;
+      return this.api.listCostMatrixSummaries(query);
     }
     const items = await this.api.list('/api/v1/cost-matrices');
-    this.costMatrixQuery = query;
-    this.costMatrixTotal = items.length;
     return { items, total: items.length, page: 1, pageSize: Math.max(items.length, 1) };
   }
-  public async loadCostMatrixPage(update: Partial<CostMatrixQuery> = {}): Promise<void> {
+  private costMatrixRequest = 0;
+  private pendingCostMatrixQuery: CostMatrixQuery | undefined;
+  public async loadCostMatrixPage(update: Partial<CostMatrixQuery> = {}): Promise<boolean> {
+    const request = ++this.costMatrixRequest;
+    const query = { ...(this.pendingCostMatrixQuery ?? this.costMatrixQuery), ...update };
+    this.pendingCostMatrixQuery = query;
     this.loading = true;
     try {
-      const query = { ...this.costMatrixQuery, ...update };
       const page = await this.fetchCostMatrixPage(query);
+      if (request !== this.costMatrixRequest) return false;
+      this.costMatrixQuery = query;
+      this.costMatrixTotal = page.total;
       this.views.set('/api/v1/cost-matrices', page.items);
+      return true;
+    } catch (failure) {
+      if (request !== this.costMatrixRequest) return false;
+      throw failure;
     } finally {
-      this.loading = false;
+      if (request === this.costMatrixRequest) {
+        this.pendingCostMatrixQuery = undefined;
+        this.loading = false;
+      }
+    }
+  }
+  private readonly order360Requests = new Map<string, Promise<Record<string, unknown>>>();
+  public async loadOrder360(orderId: string): Promise<Record<string, unknown>> {
+    if (
+      !this.api.get ||
+      !this.permissions.has('order-360:read') ||
+      !this.permissions.has('sales-order:read')
+    )
+      throw new Error('当前用户无权查看订单全景');
+    const pending = this.order360Requests.get(orderId);
+    if (pending) return pending;
+    const request = this.api.get(`/api/v1/sales-orders/${encodeURIComponent(orderId)}/360`);
+    this.order360Requests.set(orderId, request);
+    try {
+      const aggregate = await request;
+      this.order360.set(orderId, aggregate);
+      return aggregate;
+    } finally {
+      this.order360Requests.delete(orderId);
     }
   }
   public async openCostMatrix(modelId: string): Promise<void> {
@@ -1616,10 +1636,11 @@ export class CommercialController {
     this.selectedCostMatrixId = '';
   }
   public async refreshSelectedCostMatrix(): Promise<void> {
-    if (!this.selectedCostMatrixId || !this.api.get) return;
+    const modelId = this.selectedCostMatrixId;
+    if (!modelId || !this.api.get) return;
     this.costMatrixDetails.set(
-      this.selectedCostMatrixId,
-      await this.api.get(`/api/v1/cost-matrices/${encodeURIComponent(this.selectedCostMatrixId)}`),
+      modelId,
+      await this.api.get(`/api/v1/cost-matrices/${encodeURIComponent(modelId)}`),
     );
   }
   public async submit(
@@ -3790,15 +3811,37 @@ export function commercialWorkspaceStructure(
       const liveStatus = costDialogHost().querySelector<HTMLElement>('.commercial-status');
       (liveStatus ?? status).textContent = message;
     };
-    const replaceCostMatrixSection = () => {
+    const replaceCostMatrixSection = (accepted = true) => {
+      if (!accepted) return;
       const host = costDialogHost();
+      const focused = document.activeElement;
+      const input =
+        typeof HTMLInputElement !== 'undefined' &&
+        focused instanceof HTMLInputElement &&
+        matrixSection.contains(focused)
+          ? focused
+          : null;
+      const label = input?.getAttribute('aria-label');
+      const selection = input ? ([input.selectionStart, input.selectionEnd] as const) : null;
       const refreshedSection = commercialWorkspaceStructure(
         viewport,
         immutable,
         controller,
       ).querySelector<HTMLElement>('.cost-matrix-section');
       const liveSection = host.querySelector<HTMLElement>('.cost-matrix-section');
-      if (refreshedSection && liveSection) liveSection.replaceWith(refreshedSection);
+      if (refreshedSection && liveSection) {
+        liveSection.replaceWith(refreshedSection);
+        if (input && label) {
+          const replacement = Array.from(refreshedSection.querySelectorAll('input')).find(
+            (item) => item.getAttribute('aria-label') === label,
+          );
+          if (replacement) {
+            replacement.value = input.value;
+            replacement.focus();
+            if (selection) replacement.setSelectionRange(...selection);
+          }
+        }
+      }
     };
     const refreshCostWorkspace = async (message: string) => {
       await controller.loadCostMatrixPage();
@@ -3976,7 +4019,7 @@ export function commercialWorkspaceStructure(
           : [];
       const auditTrail = Array.isArray(selectedMatrix.auditTrail) ? selectedMatrix.auditTrail : [];
       const detailHeading = el('div', 'cost-matrix-detail-heading');
-      const back = el('button', 'ghost cost-matrix-back', '← 返回成本模型');
+      const back = el('button', 'secondary cost-matrix-back', '← 返回成本模型');
       back.addEventListener('click', () => {
         controller.closeCostMatrix();
         replaceCostMatrixSection();
@@ -4193,12 +4236,15 @@ export function commercialWorkspaceStructure(
       matrixSection.append(detailActions, actionStatus);
 
       const tabs = el('div', 'cost-matrix-tabs');
+      tabs.setAttribute('role', 'tablist');
+      tabs.setAttribute('aria-label', '成本模型详情');
       const tabPanels = new Map<string, HTMLElement>();
       const selectTab = (tabId: string) => {
         for (const button of Array.from(tabs.querySelectorAll<HTMLButtonElement>('button'))) {
           const selected = button.dataset.costMatrixTab === tabId;
           button.classList.toggle('active', selected);
           button.setAttribute('aria-selected', String(selected));
+          button.tabIndex = selected ? 0 : -1;
         }
         for (const [id, panel] of tabPanels) panel.hidden = id !== tabId;
       };
@@ -4208,11 +4254,34 @@ export function commercialWorkspaceStructure(
         ['quote', '报价引用'],
         ['audit', `变更日志（${String(auditTrail.length)}）`],
       ]) {
+        if (id === 'audit' && selectedMatrix.auditTrailVisible !== true) continue;
         const button = el('button', id === 'factors' ? 'active' : '', label ?? '');
         button.type = 'button';
         button.dataset.costMatrixTab = id;
         button.setAttribute('role', 'tab');
         button.setAttribute('aria-selected', String(id === 'factors'));
+        button.id = `cost-tab-${id ?? ''}`;
+        button.setAttribute('aria-controls', `cost-panel-${id ?? ''}`);
+        button.tabIndex = id === 'factors' ? 0 : -1;
+        button.addEventListener('keydown', (event) => {
+          const buttons = Array.from(tabs.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
+          const index = buttons.indexOf(button);
+          const nextIndex =
+            event.key === 'ArrowRight'
+              ? (index + 1) % buttons.length
+              : event.key === 'ArrowLeft'
+                ? (index + buttons.length - 1) % buttons.length
+                : event.key === 'Home'
+                  ? 0
+                  : event.key === 'End'
+                    ? buttons.length - 1
+                    : -1;
+          const next = buttons[nextIndex];
+          if (!next) return;
+          event.preventDefault();
+          selectTab(next.dataset.costMatrixTab ?? 'factors');
+          next.focus();
+        });
         button.addEventListener('click', () => {
           selectTab(id ?? 'factors');
         });
@@ -4236,6 +4305,8 @@ export function commercialWorkspaceStructure(
       factorsPanel.append(factorHeader);
       for (const candidate of factors) {
         const factor = recordValue(candidate);
+        const procurementPriced =
+          factor.sourceType === 'PURCHASE_ORDER' || factor.sourceType === 'SUPPLIER_QUOTE';
         const row = el('div', 'cost-factor-ledger-row');
         const identity = el('div', 'cost-factor-ledger-name');
         identity.append(
@@ -4272,18 +4343,26 @@ export function commercialWorkspaceStructure(
         );
         row.append(
           source,
-          el('span', 'numeric', `¥ ${Number(factor.manualUnitPriceTaxInclusive ?? 0).toFixed(4)}`),
+          el(
+            'span',
+            'numeric',
+            procurementPriced
+              ? '核算时取有效采购价'
+              : `¥ ${Number(factor.manualUnitPriceTaxInclusive ?? 0).toFixed(4)}`,
+          ),
           el(
             'strong',
             'numeric cost-factor-amount',
-            `¥ ${(
-              Number(factor.quantity ?? 0) * Number(factor.manualUnitPriceTaxInclusive ?? 0)
-            ).toFixed(4)}`,
+            procurementPriced
+              ? '以核算快照为准'
+              : `¥ ${(
+                  Number(factor.quantity ?? 0) * Number(factor.manualUnitPriceTaxInclusive ?? 0)
+                ).toFixed(4)}`,
           ),
         );
         const rowActions = el('div', 'cost-factor-ledger-actions');
         if (permissions.has('cost-matrix:manage') && factor.adjustable !== false) {
-          const edit = el('button', 'ghost compact-action', '编辑');
+          const edit = el('button', 'secondary compact-action', '编辑');
           edit.setAttribute('aria-label', `编辑${textValue(factor.factorName, '成本因子')}`);
           edit.addEventListener('click', () => {
             openForm(
@@ -4306,6 +4385,16 @@ export function commercialWorkspaceStructure(
           rowActions.append(edit);
         } else rowActions.append(el('span', 'muted', '只读'));
         row.append(rowActions);
+        for (const [index, label] of [
+          '成本因子',
+          '类别',
+          '耗用量',
+          '价格来源',
+          '含税单价',
+          '参考成本',
+          '操作',
+        ].entries())
+          row.children[index]?.setAttribute('data-field-label', label);
         factorsPanel.append(row);
       }
       if (factors.length === 0)
@@ -4346,6 +4435,15 @@ export function commercialWorkspaceStructure(
             calculation.costDecisionId ? '已进入报价' : '未引用',
           ),
         );
+        for (const [index, label] of [
+          '核算时间',
+          '口径',
+          '直接成本',
+          '预留费用',
+          '综合成本',
+          '报价状态',
+        ].entries())
+          row.children[index]?.setAttribute('data-field-label', label);
         calculationsPanel.append(row);
       }
       if (calculations.length === 0)
@@ -4386,7 +4484,13 @@ export function commercialWorkspaceStructure(
       if (auditTrail.length === 0)
         auditPanel.append(el('p', 'pipeline-empty', '暂无可见变更日志。'));
       tabPanels.set('audit', auditPanel);
-      matrixSection.append(auditPanel);
+      if (selectedMatrix.auditTrailVisible === true) matrixSection.append(auditPanel);
+      for (const [id, panel] of tabPanels) {
+        panel.id = `cost-panel-${id}`;
+        panel.setAttribute('role', 'tabpanel');
+        panel.setAttribute('aria-labelledby', `cost-tab-${id}`);
+        panel.tabIndex = 0;
+      }
     } else {
       const matrixHeading = el('div', 'pipeline-heading');
       const matrixHeadingCopy = el('div');
@@ -4584,6 +4688,7 @@ export function commercialWorkspaceStructure(
       ])
         header.append(el('span', '', label));
       ledger.append(header);
+      for (const cell of Array.from(header.children)) cell.setAttribute('role', 'columnheader');
       for (const matrix of matrices) {
         const latest = recordValue(matrix.latestCalculation);
         const factorCount = Number(
@@ -4662,6 +4767,17 @@ export function commercialWorkspaceStructure(
           el('span', '', updated ? new Date(updated).toLocaleDateString('zh-CN') : '—'),
           action,
         );
+        for (const [index, label] of [
+          '模型 / 产品规格',
+          '因子完整度',
+          '最近综合成本',
+          '处理状态',
+          '最近更新',
+          '操作',
+        ].entries()) {
+          row.children[index]?.setAttribute('data-field-label', label);
+          row.children[index]?.setAttribute('role', 'cell');
+        }
         ledger.append(row);
       }
       if (matrices.length === 0)
@@ -4686,16 +4802,40 @@ export function commercialWorkspaceStructure(
       const previous = el('button', 'secondary', '上一页');
       previous.disabled = controller.costMatrixQuery.page <= 1;
       previous.addEventListener('click', () => {
+        previous.disabled = true;
+        next.disabled = true;
+        setCostStatus('正在加载成本模型…');
         void controller
           .loadCostMatrixPage({ page: controller.costMatrixQuery.page - 1 })
-          .then(replaceCostMatrixSection);
+          .then((accepted) => {
+            if (accepted)
+              setCostStatus(`已加载第 ${String(controller.costMatrixQuery.page)} 页成本模型`);
+            replaceCostMatrixSection(accepted);
+          })
+          .catch((failure: unknown) => {
+            setCostStatus(failure instanceof Error ? failure.message : '分页加载失败，请重试');
+            previous.disabled = controller.costMatrixQuery.page <= 1;
+            next.disabled = controller.costMatrixQuery.page >= pageCount;
+          });
       });
       const next = el('button', 'secondary', '下一页');
       next.disabled = controller.costMatrixQuery.page >= pageCount;
       next.addEventListener('click', () => {
+        previous.disabled = true;
+        next.disabled = true;
+        setCostStatus('正在加载成本模型…');
         void controller
           .loadCostMatrixPage({ page: controller.costMatrixQuery.page + 1 })
-          .then(replaceCostMatrixSection);
+          .then((accepted) => {
+            if (accepted)
+              setCostStatus(`已加载第 ${String(controller.costMatrixQuery.page)} 页成本模型`);
+            replaceCostMatrixSection(accepted);
+          })
+          .catch((failure: unknown) => {
+            setCostStatus(failure instanceof Error ? failure.message : '分页加载失败，请重试');
+            previous.disabled = controller.costMatrixQuery.page <= 1;
+            next.disabled = controller.costMatrixQuery.page >= pageCount;
+          });
       });
       pagination.append(
         previous,
@@ -6420,7 +6560,7 @@ export function commercialWorkspaceStructure(
       riskPolicyControls.append(evaluate);
     }
     const list = el('div', 'order-360-list');
-    for (const aggregate of controller.order360.values()) {
+    const renderOrderEvidence = (aggregate: Record<string, unknown>) => {
       const order = recordValue(aggregate.order);
       const quote = recordValue(aggregate.quote);
       const credit = recordValue(aggregate.credit);
@@ -6540,6 +6680,58 @@ export function commercialWorkspaceStructure(
           });
       });
       card.append(evidenceTools, evidence);
+      return card;
+    };
+    for (const order of controller.views.get('/api/v1/sales-orders') ?? []) {
+      if (typeof order.id !== 'string') continue;
+      const orderId = order.id;
+      const card = el('article', 'order-360-card');
+      card.append(
+        el('h3', '', recordText(order, 'orderNumber', 'order_number', orderId)),
+        el(
+          'p',
+          '',
+          `${displayMoney(recordText(order, 'currency', 'currency'), recordText(order, 'total', 'total', '—'))} · ${businessStateLabel(recordText(order, 'status', 'status'))}`,
+        ),
+      );
+      const open = el('button', 'secondary compact-action', '查看全链路证据');
+      open.type = 'button';
+      open.setAttribute('aria-expanded', 'false');
+      const feedback = el('p', 'muted');
+      feedback.setAttribute('role', 'status');
+      const detail = el('div', 'order-360-detail');
+      detail.id = `order-evidence-${orderId}`;
+      detail.hidden = true;
+      open.setAttribute('aria-controls', detail.id);
+      open.addEventListener('click', () => {
+        if (!detail.hidden) {
+          detail.hidden = true;
+          open.setAttribute('aria-expanded', 'false');
+          open.textContent = '查看全链路证据';
+          return;
+        }
+        open.disabled = true;
+        open.setAttribute('aria-busy', 'true');
+        feedback.textContent = '正在加载该订单的合同、履约、回款与风险证据…';
+        void controller
+          .loadOrder360(orderId)
+          .then((aggregate) => {
+            detail.replaceChildren(renderOrderEvidence(aggregate));
+            detail.hidden = false;
+            open.setAttribute('aria-expanded', 'true');
+            open.textContent = '收起全链路证据';
+            feedback.textContent = '已读取最新订单证据；再次展开将刷新。';
+          })
+          .catch((failure: unknown) => {
+            feedback.textContent = failure instanceof Error ? failure.message : '订单证据加载失败';
+            open.textContent = '重试加载订单证据';
+          })
+          .finally(() => {
+            open.disabled = false;
+            open.removeAttribute('aria-busy');
+          });
+      });
+      card.append(open, feedback, detail);
       list.append(card);
     }
     if (list.children.length === 0) list.append(el('p', 'pipeline-empty', '暂无可见订单证据。'));
@@ -12132,7 +12324,12 @@ function installWorkspaceListTools(shell: HTMLElement): void {
     const sourceItems = Array.from(list.children).filter(
       (item): item is HTMLElement => item instanceof HTMLElement,
     );
-    if (sourceItems.length === 0 || list.dataset.listTools === 'true' || !list.parentElement)
+    if (
+      sourceItems.length === 0 ||
+      sourceItems.every((item) => item.classList.contains('pipeline-empty')) ||
+      list.dataset.listTools === 'true' ||
+      !list.parentElement
+    )
       continue;
     list.dataset.listTools = 'true';
     const profile = registerProfile(list);
@@ -12301,7 +12498,7 @@ function installWorkspaceListTools(shell: HTMLElement): void {
           (child): child is HTMLElement =>
             child instanceof HTMLElement &&
             !child.matches(
-              '.record-select, button, .quality-actions, .ctr-actions, .status-badge, .ctr-state, .version-pin',
+              '.record-select, button, .quality-actions, .ctr-actions, .status-badge, .ctr-state, .version-pin, .order-360-detail, [role="status"]',
             ),
         );
         details.forEach((child, index) => {
@@ -12420,7 +12617,7 @@ function installWorkspaceListTools(shell: HTMLElement): void {
         openDetailDrawer(item, profile);
       });
       item.addEventListener('keydown', (event) => {
-        if (event.key !== 'Enter') return;
+        if (event.key !== 'Enter' || event.target !== item) return;
         selectItem();
         openDetailDrawer(item, profile);
       });
@@ -12541,15 +12738,24 @@ function installWorkspaceListTools(shell: HTMLElement): void {
       updateFieldMode();
       applySearch();
     });
-    tools.append(
-      search,
-      statusFilter,
-      attentionFilter,
+    const advanced = document.createElement('details');
+    advanced.className = 'workspace-list-advanced';
+    const advancedSummary = el('summary', '', '更多筛选与列表操作');
+    const updateAdvancedSummary = () => {
+      advancedSummary.textContent =
+        dateFrom.value || dateTo.value || amountFrom.value || amountTo.value
+          ? '更多筛选与列表操作 · 已启用范围筛选'
+          : '更多筛选与列表操作';
+    };
+    advanced.addEventListener('input', updateAdvancedSummary);
+    advanced.addEventListener('toggle', updateAdvancedSummary);
+    advanced.append(advancedSummary);
+    const advancedControls = el('div', 'workspace-list-advanced-controls');
+    advancedControls.append(
       dateFrom,
       dateTo,
       amountFrom,
       amountTo,
-      count,
       selectedCount,
       sort,
       density,
@@ -12561,6 +12767,8 @@ function installWorkspaceListTools(shell: HTMLElement): void {
       exportSelected,
       reset,
     );
+    advanced.append(advancedControls);
+    tools.append(search, statusFilter, attentionFilter, count, advanced);
     list.parentElement.insertBefore(tools, list);
     list.parentElement.insertBefore(pager, list.nextSibling);
     try {
@@ -12588,6 +12796,7 @@ function installWorkspaceListTools(shell: HTMLElement): void {
       dateTo.value = typeof view?.dateTo === 'string' ? view.dateTo : '';
       amountFrom.value = typeof view?.amountFrom === 'string' ? view.amountFrom : '';
       amountTo.value = typeof view?.amountTo === 'string' ? view.amountTo : '';
+      advanced.open = Boolean(dateFrom.value || dateTo.value || amountFrom.value || amountTo.value);
       sortMode =
         view?.sortMode === 'name' || view?.sortMode === 'status' ? view.sortMode : 'business';
       sort.value = sortMode;
