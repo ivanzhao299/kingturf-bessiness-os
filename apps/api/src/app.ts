@@ -1,5 +1,6 @@
 import {
   ORDER360_SOURCE_CAPABILITIES,
+  companyReadAllowed,
   fieldReadable,
   projectCollectionLegal,
   type SourceReadGrant,
@@ -77,6 +78,23 @@ const mutationDto = <T extends Record<string, unknown>>(
 ): Partial<T> => {
   const read = context.permissions.get(readCapability);
   return read ? permittedDto(value, read.fields) : permittedDto(value, ['version']);
+};
+// A legal write capability does not widen the independent legal read scope of its response.
+const legalMutationDto = <T extends Record<string, unknown>>(
+  value: T,
+  context: AuthorizationContext,
+): Partial<T> => {
+  const read = context.permissions.get('legal-case:read');
+  const legalRead = read
+    ? {
+        scopes: read.scopes,
+        anchors: context.scopeAnchors?.get('legal-case:read') ?? [],
+        fields: read.fields,
+      }
+    : undefined;
+  return companyReadAllowed(legalRead)
+    ? permittedDto(value, read ? read.fields : [])
+    : permittedDto(value, ['version']);
 };
 const authorizeOneOf = (
   context: AuthorizationContext,
@@ -2343,7 +2361,7 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
               correlationId,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'legal-case:read') };
+            return { statusCode: 201, body: legalMutationDto(result, context) };
           }
           const legalDecision = /^\/api\/v1\/legal-handoffs\/([0-9a-f-]+)\/(accept|return)$/u.exec(
             request.pathname,
@@ -2363,7 +2381,7 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
               correlationId,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'legal-case:read') };
+            return { statusCode: 201, body: legalMutationDto(result, context) };
           }
           const evidencePackage =
             /^\/api\/v1\/legal-handoffs\/([0-9a-f-]+)\/evidence-packages$/u.exec(request.pathname);
@@ -2380,7 +2398,7 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
               correlationId,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'legal-case:read') };
+            return { statusCode: 201, body: legalMutationDto(result, context) };
           }
           const caseTransition =
             /^\/api\/v1\/collection-cases\/([0-9a-f-]+)\/(resolve|close)$/u.exec(request.pathname);

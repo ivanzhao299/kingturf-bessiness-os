@@ -551,6 +551,20 @@ describe('real HTTP source scopes and nested legal authorization', () => {
     const items = ((await direct.json()) as { items: Record<string, unknown>[] }).items;
     expect(Object.keys(items[0] ?? {})).toEqual(['id']);
   });
+  it('does not return generated legal evidence under a narrower independent read scope', async () => {
+    await grants(owner, { 'debt-evidence:generate': companyGrant, 'legal-case:read': selfGrant });
+    const generated = await response(
+      `/legal-handoffs/${graph.handoffId}/evidence-packages`,
+      owner.token,
+      { packageNumber: 'AUTH-LIMITED-READ', idempotencyKey: 'AUTH-LIMITED-GENERATE' },
+    );
+    expect(generated.status).toBe(201);
+    const result = (await generated.json()) as Record<string, unknown>;
+    expect(typeof result.id).toBe('string');
+    expect(Object.keys(result).every((key) => ['id', 'version'].includes(key))).toBe(true);
+    expect(JSON.stringify(result)).not.toContain('SENSITIVE-LEGAL');
+    expect(result).not.toHaveProperty('manifest');
+  });
   it('does not expose authentication material in actual API logs', () => {
     const raw = logs.join('');
     for (const value of [secret, owner.token, builder.token, reviewer.token, outsider.token])
