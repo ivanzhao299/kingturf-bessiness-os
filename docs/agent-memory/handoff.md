@@ -1,3 +1,7 @@
 # Handoff
 
 Read `project-state.md`, `task-sequence.md`, and current git status before acting. Preserve `apps/web/src/bootstrap.ts` WIP and report local/remote SHA.
+
+## 2026-10-08 Batch 1 integration / Batch 2 checkpoint
+
+Batch1 PR [#31](https://github.com/ivanzhao299/kingturf-bessiness-os/pull/31) OPEN at2d5a008; Hosted run37770650651 quality FAIL on the preserved historical Web test. No merge/deployment. Batch2 independently based on main9d89c7d, branch codex/batch2-auth-session-revocation, code e76cb1eee5b70f4328ca07a358aab65aab9bbf98: PostgreSQL session revocation and password/login audits atomic; real HTTP two-instance security87/87 targeted, Web10/10, old browser21/21 plus new2/2. Current full workspace350/352 retains the two historical failures; lint/typecheck/build/dependency audit pass. No migration, global logout, production SQL or settings changes. Batch2 not pushed/PR/Hosted. Follow [takeover-status](takeover-status.md), [Batch1 integration](../evidence/BATCH1_INTEGRATION_REPORT_20261008.md), [Batch2 report](../evidence/BATCH2_AUTH_SECURITY_REPORT_20261008.md) and [issue matrix](project-issue-matrix.md). Next: source/nested authorization, deterministic gates, then local/runtime/protection/restore/UAT. Historical accepted milestones above remain unchanged; this entry supersedes old statements only for the current scoped status, not production acceptance. The old bootstrap WIP warning is historical: the verified initial tree was clean, and Batch2 never modified bootstrap.ts.

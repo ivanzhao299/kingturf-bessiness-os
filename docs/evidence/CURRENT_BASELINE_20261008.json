@@ -1,0 +1,132 @@
+{
+  "recorded_at": "2026-10-08T15:26:29+08:00",
+  "timezone": "Asia/Singapore",
+  "repository": "ivanzhao299/kingturf-bessiness-os",
+  "code_sha": "9d89c7d6739454345b1397fe6b02c945fbe1cb99",
+  "initial_branch": "main",
+  "report_branch": "codex/project-takeover-baseline",
+  "initial_worktree_clean": true,
+  "runtime": {
+    "node": "24.19.0",
+    "pnpm": "10.33.4",
+    "postgres": "17.7-alpine3.23",
+    "database_fixture": "disposable_loopback_test_database_tmpfs"
+  },
+  "checks": {
+    "install": "PASS",
+    "format": "PASS",
+    "frontend_capability_manifest": "PASS",
+    "lint": "PASS",
+    "typecheck": "PASS",
+    "build": "PASS",
+    "production_dependency_audit": "PASS",
+    "ci_local": "FAIL",
+    "documented_api_dev": "FAIL",
+    "documented_api_start": "FAIL",
+    "vite_same_origin_api": "FAIL",
+    "original_chrome_e2e": "BLOCKED",
+    "chromium_mock_ui": {
+      "status": "PASS",
+      "passed": 21,
+      "failed": 0
+    },
+    "unit_dispatch": {
+      "status": "FAIL",
+      "passed": 262,
+      "failed": 1
+    },
+    "postgres_integration": {
+      "status": "FAIL",
+      "passed": 62,
+      "failed": 1
+    },
+    "local_api_smoke_transform_mode": {
+      "status": "PASS",
+      "checks": 4
+    },
+    "production_public_readonly": {
+      "status": "PASS",
+      "checks": 3
+    },
+    "real_multi_role_business_e2e": "NOT_RUN",
+    "docker_build": "NOT_RUN",
+    "production_database_inspection": "NOT_RUN",
+    "backup_restore": "NOT_RUN",
+    "production_deploy": "NOT_RUN"
+  },
+  "workspace_tests": {
+    "config": {
+      "passed": 4,
+      "failed": 0
+    },
+    "database": {
+      "passed": 61,
+      "failed": 0
+    },
+    "testing": {
+      "passed": 1,
+      "failed": 0
+    },
+    "types": {
+      "passed": 1,
+      "failed": 0
+    },
+    "ui": {
+      "passed": 1,
+      "failed": 0
+    },
+    "domain": {
+      "passed": 14,
+      "failed": 0
+    },
+    "web": {
+      "passed": 104,
+      "failed": 1
+    },
+    "api": {
+      "passed": 138,
+      "failed": 1
+    }
+  },
+  "totals": {
+    "tests": 326,
+    "passed": 324,
+    "failed": 2
+  },
+  "migrations": {
+    "applied": 70,
+    "missing_checksums": 0,
+    "second_apply": "PASS",
+    "production_status": "NOT_VERIFIED"
+  },
+  "failures": [
+    {
+      "id": "KT-009",
+      "file": "apps/web/src/bootstrap.test.ts",
+      "line": 1593,
+      "cause": "Fixed 2026-10-01 date enters overdue classList branch; fake DOM lacks classList."
+    },
+    {
+      "id": "KT-010",
+      "file": "apps/api/test/complaint-postgres.integration.test.ts",
+      "line": 264,
+      "cause": "Fixed 2026-09-30 target_at violates target_at > created_at."
+    }
+  ],
+  "github_governance": {
+    "main_protected": false,
+    "repository_rulesets": [],
+    "effective_main_rules": [],
+    "production_protection_rules": [],
+    "production_deployment_branch_policy": null
+  },
+  "production_version": {
+    "sha": "9d89c7d6739454345b1397fe6b02c945fbe1cb99",
+    "environment": "production",
+    "builtAt": "33996421402"
+  },
+  "source_changes": false,
+  "production_writes": false,
+  "ready_for_batch_1": true,
+  "ready_for_production_release": false
+}
