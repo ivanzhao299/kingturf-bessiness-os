@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {
   BOOTSTRAP_TITLE,
@@ -633,6 +633,24 @@ it('admits manufacturing cost capabilities into the commercial workspace', () =>
 
 class RenderedElement {
   public className = '';
+  public readonly classList = {
+    add: (...tokens: string[]): void => {
+      for (const token of tokens) {
+        if (!token || /[\t\n\f\r ]/u.test(token))
+          throw new DOMException('Invalid class token', 'SyntaxError');
+      }
+      this.className = [
+        ...new Set([...this.className.split(/\s+/u).filter(Boolean), ...tokens]),
+      ].join(' ');
+    },
+    contains: (token: string): boolean => this.className.split(/\s+/u).includes(token),
+    remove: (...tokens: string[]): void => {
+      this.className = this.className
+        .split(/\s+/u)
+        .filter((token) => token && !tokens.includes(token))
+        .join(' ');
+    },
+  };
   public children: RenderedElement[] = [];
   public privateText = '';
   public disabled = false;
@@ -683,6 +701,10 @@ class RenderedElement {
     return [...own, ...this.children.flatMap((child) => child.findByText(text))];
   }
 }
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 beforeEach(() => {
   vi.stubGlobal('document', {
@@ -1579,6 +1601,8 @@ describe('web bootstrap', () => {
   });
 
   it('renders the field-driven opportunity pipeline and CTR workbench', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-08T08:00:00Z'));
     const commercialApi = {
       listOpportunities: vi.fn().mockResolvedValue([
         {
@@ -1633,6 +1657,8 @@ describe('web bootstrap', () => {
     expect(workspace.findByClass('pipeline-board')).toHaveLength(1);
     expect(workspace.findByClass('pipeline-column')).toHaveLength(5);
     expect(workspace.findByClass('opportunity-card')).toHaveLength(1);
+    expect(workspace.findByClass('opportunity-card')[0]?.classList.contains('overdue')).toBe(true);
+    expect(workspace.textContent).toContain('成交日期已逾期');
     expect(workspace.findByClass('ctr-workbench')).toHaveLength(1);
     expect(workspace.findByClass('ctr-evidence')).toHaveLength(1);
     expect(workspace.textContent).toContain('技术需求单');
@@ -1643,6 +1669,42 @@ describe('web bootstrap', () => {
     expect(workspace.textContent).not.toContain('商机与 CTR');
     expect(workspace.textContent).not.toContain('JSON 请求');
   });
+
+  it.each([
+    ['2026-10-07', true],
+    ['2026-10-08', false],
+    ['2026-10-09', false],
+    [undefined, false],
+  ] as const)(
+    'marks only past-due open opportunities with overdue class (%s)',
+    async (expectedCloseDate, overdue) => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-10-08T23:59:59Z'));
+      const api = {
+        listOpportunities: vi
+          .fn()
+          .mockResolvedValue([
+            { id: 'boundary', name: 'Boundary', status: 'OPEN', expectedCloseDate },
+          ]),
+        list: vi.fn().mockResolvedValue([]),
+        submit: vi.fn().mockResolvedValue({}),
+        uploadCtrAttachment: vi.fn().mockResolvedValue({}),
+        command: vi.fn().mockResolvedValue({}),
+      };
+      const controller = new CommercialController(api, new Set(['opportunity:read']));
+      await controller.load();
+      const workspace = commercialWorkspaceStructure(
+        'desktop',
+        false,
+        controller,
+      ) as unknown as RenderedElement;
+      const cards = workspace.findByClass('opportunity-card');
+      expect(cards).toHaveLength(1);
+      expect(cards[0]?.classList.contains('opportunity-card')).toBe(true);
+      expect(cards[0]?.classList.contains('overdue')).toBe(overdue);
+      expect(cards[0]?.textContent.includes('成交日期已逾期')).toBe(overdue);
+    },
+  );
 
   it('renders structured technical solution specifications and revision actions', async () => {
     const commercialApi = {
@@ -2355,4 +2417,19 @@ describe('web bootstrap', () => {
     expect(workspace.textContent).not.toContain('MAJOR');
     expect(workspace.textContent).not.toContain('REPORTED');
   });
+});
+
+it('keeps the DOM token list synchronized with className, without losing or duplicating classes', () => {
+  const element = new RenderedElement('article');
+  element.className = 'opportunity-card';
+  element.classList.add('overdue', 'overdue');
+  expect(element.className).toBe('opportunity-card overdue');
+  element.className = 'replacement';
+  expect(element.classList.contains('overdue')).toBe(false);
+  element.classList.add('overdue');
+  element.classList.remove('replacement');
+  expect(element.className).toBe('overdue');
+  expect(() => {
+    element.classList.add('invalid token');
+  }).toThrow();
 });
