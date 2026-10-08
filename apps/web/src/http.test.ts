@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { json, RequestError } from './http';
+import { json, onSessionExpired, RequestError } from './http';
 
 afterEach(() => {
+  onSessionExpired(undefined);
   vi.useRealTimers();
   vi.unstubAllGlobals();
 });
@@ -92,5 +93,36 @@ describe('bounded JSON exchange', () => {
       'user cancelled',
     );
     expect(remove).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('session expiry notifications', () => {
+  it('notifies on protected 401, but not login rejection or permission denial', async () => {
+    const expired = vi.fn();
+    onSessionExpired(expired);
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(new Response('<html>unauthorized</html>', { status: 401 }))
+        .mockResolvedValueOnce(new Response('{}', { status: 401 }))
+        .mockResolvedValueOnce(new Response('{}', { status: 403 })),
+    );
+    await expect(json('/api/v1/auth/session', 'old-session')).rejects.toMatchObject({
+      status: 401,
+    });
+    await expect(json('/api/v1/auth/login', '')).rejects.toMatchObject({ status: 401 });
+    await expect(json('/api/v1/employees', 'current-session')).rejects.toMatchObject({
+      status: 403,
+    });
+    expect(expired.mock.calls).toEqual([['old-session']]);
+  });
+  it('notifies immediately after successful self password change, not an admin reset', async () => {
+    const expired = vi.fn();
+    onSessionExpired(expired);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 204 })));
+    await json('/api/v1/auth/credential', 'self', { method: 'PUT', body: '{}' });
+    await json('/api/v1/employees/target/identity', 'admin', { method: 'PUT', body: '{}' });
+    expect(expired.mock.calls).toEqual([['self']]);
   });
 });

@@ -126,6 +126,7 @@ describe('PostgreSQL identity and authorization behavior', () => {
       login: 'kt-cost-approver',
       passwordHash: 'scrypt$16384$8$1$c2FsdA$aGFzaA',
       actorId,
+      correlationId: randomUUID(),
     });
     expect(identityId).toMatch(/^[0-9a-f-]{36}$/u);
     const stored = await database.query<{
@@ -156,6 +157,7 @@ describe('PostgreSQL identity and authorization behavior', () => {
         login: 'kt-cost-approver',
         passwordHash: 'scrypt$16384$8$1$bmV3c2FsdA$bmV3aGFzaA',
         actorId,
+        correlationId: randomUUID(),
       }),
     ).resolves.toBe(identityId);
     await expect(
@@ -165,6 +167,7 @@ describe('PostgreSQL identity and authorization behavior', () => {
         login: 'cross-tenant-approver',
         passwordHash: 'scrypt$16384$8$1$c2FsdA$aGFzaA',
         actorId,
+        correlationId: randomUUID(),
       }),
     ).rejects.toMatchObject({ code: 'not_found' });
   });
