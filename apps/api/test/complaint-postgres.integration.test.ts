@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { Database, migrate } from '@kingturf/database';
+import { Database, migrate, type SqlClient } from '@kingturf/database';
 import { PostgresComplaintRepository } from '../src/complaint-repositories.js';
 
 const connectionString = process.env.DATABASE_URL;
@@ -261,9 +261,37 @@ describe('KT-L20 PostgreSQL complaint, NCR, and CAPA integrity', () => {
        VALUES($1,$2,4,'DISPOSITIONED','Disposition approved','{}','{"approval":"independent"}',$3,$3,'REWORK',3,$4,'ncr-2-disposition',$5)`,
       [company, ncr, approver, randomUUID(), hash],
     );
+    // Use the same valid dispositioned NCR to isolate the date CHECK from lifecycle guards.
+    const boundaryInsert = (client: SqlClient, microseconds: number) =>
+      client.query<{ valid: boolean; difference: string }>(
+        `INSERT INTO capa_cases(tenant_id,capa_number,ncr_id,owner_id,target_at,created_at,risk_level,root_cause_snapshot,created_by,correlation_id,idempotency_key,canonical_hash)
+       VALUES($1,$2,$3,$4,timestamptz '2030-01-01 00:00:00Z'+$7*interval '1 microsecond',timestamptz '2030-01-01 08:00:00+08','MAJOR','{"cause":"process control"}',$4,$5,$2,$6)
+       RETURNING target_at>created_at valid,extract(epoch FROM(target_at-created_at))::text difference`,
+        [
+          company,
+          `date-boundary-${String(microseconds)}`,
+          ncr,
+          owner,
+          randomUUID(),
+          hash,
+          microseconds,
+        ],
+      );
+    for (const microseconds of [-1, 0])
+      await expect(boundaryInsert(db, microseconds)).rejects.toMatchObject({
+        code: '23514',
+        constraint: 'capa_cases_target_check',
+      });
+    await db.transaction(async (tx) => {
+      await tx.query('SAVEPOINT date_boundary');
+      const result = await boundaryInsert(tx, 1);
+      expect(result.rows[0]?.valid).toBe(true);
+      expect(Number(result.rows[0]?.difference)).toBe(0.000001);
+      await tx.query('ROLLBACK TO SAVEPOINT date_boundary');
+    });
     await db.query(
       `INSERT INTO capa_cases(id,tenant_id,capa_number,ncr_id,owner_id,target_at,risk_level,root_cause_snapshot,created_by,correlation_id,idempotency_key,canonical_hash)
-       VALUES($1,$2,'CAPA-1',$3,$4,'2026-09-30','MAJOR','{"cause":"process control"}',$4,$5,'capa-1',$6)`,
+       VALUES($1,$2,'CAPA-1',$3,$4,statement_timestamp()+interval '30 days','MAJOR','{"cause":"process control"}',$4,$5,'capa-1',$6)`,
       [capa, company, ncr, owner, randomUUID(), hash],
     );
     const addCapaEvent = (sequence: number, state: string, key: string) =>
@@ -275,13 +303,13 @@ describe('KT-L20 PostgreSQL complaint, NCR, and CAPA integrity', () => {
     await addCapaEvent(1, 'OPEN', 'capa-open');
     await db.query(
       `INSERT INTO capa_actions(id,tenant_id,capa_id,action_type,description,owner_id,due_at,created_by,correlation_id,idempotency_key,canonical_hash)
-       VALUES($1,$2,$3,'CORRECTIVE','Reset tufting process controls',$4,'2026-09-15',$4,$5,'capa-action-1',$6)`,
+       VALUES($1,$2,$3,'CORRECTIVE','Reset tufting process controls',$4,statement_timestamp()+interval '15 days',$4,$5,'capa-action-1',$6)`,
       [action, company, capa, owner, randomUUID(), hash],
     );
     const verify = (actor: string, key: string) =>
       db.query(
         `INSERT INTO capa_verifications(tenant_id,capa_id,verifier_id,verified_at,standard,sample_scope,observation_until,result,evidence,correlation_id,idempotency_key,canonical_hash)
-         VALUES($1,$2,$3,'2026-09-27','Internal CAPA standard','Three production lots','2026-09-27','PASSED','{"report":"CAPA-VERIFY-1"}',$4,$5,$6)`,
+         VALUES($1,$2,$3,statement_timestamp(),'Internal CAPA standard','Three production lots',statement_timestamp(),'PASSED','{"report":"CAPA-VERIFY-1"}',$4,$5,$6)`,
         [company, capa, actor, randomUUID(), key, hash],
       );
     await expect(verify(verifier, 'verify-too-early')).rejects.toThrow(
