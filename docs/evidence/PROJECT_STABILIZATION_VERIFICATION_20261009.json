@@ -1,0 +1,131 @@
+{
+  "date": "2026-10-09",
+  "main": "9d89c7d6739454345b1397fe6b02c945fbe1cb99",
+  "prs": {
+    "31": {
+      "head": "f7489e77cd059d37e049c70685e4025de0187cb5",
+      "base": "9d89c7d6739454345b1397fe6b02c945fbe1cb99",
+      "mergeable": "MERGEABLE",
+      "mergeStateStatus": "CLEAN",
+      "reviews": 0,
+      "files": 17,
+      "unresolvedThreads": 0,
+      "checks": [["quality", "SUCCESS"]]
+    },
+    "32": {
+      "head": "8cbe6deb8efcd0d650007972c7b0516ea18cca87",
+      "base": "9d89c7d6739454345b1397fe6b02c945fbe1cb99",
+      "mergeable": "MERGEABLE",
+      "mergeStateStatus": "CLEAN",
+      "reviews": 0,
+      "files": 28,
+      "unresolvedThreads": 0,
+      "checks": [["quality", "SUCCESS"]]
+    },
+    "33": {
+      "head": "ab26c6ebff7a4524a205f3a1ec92959a35c97f94",
+      "base": "9d89c7d6739454345b1397fe6b02c945fbe1cb99",
+      "mergeable": "MERGEABLE",
+      "mergeStateStatus": "CLEAN",
+      "reviews": 0,
+      "files": 3,
+      "unresolvedThreads": 0,
+      "checks": [["quality", "SUCCESS"]]
+    },
+    "34": {
+      "baseRefName": "codex/batch25-ci-gate-recovery",
+      "headRefOid": "e33e414c1de805714af6641c274723e56ef53482",
+      "state": "OPEN",
+      "statusCheckRollup": [
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-08T22:45:30Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/ivanzhao299/kingturf-bessiness-os/actions/runs/37855253180/job/113577763369",
+          "name": "quality",
+          "startedAt": "2026-10-08T22:43:32Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        }
+      ],
+      "url": "https://github.com/ivanzhao299/kingturf-bessiness-os/pull/34"
+    }
+  },
+  "batch3": {
+    "originalCode": "7562baf83a0d5b65d12fdedade511607e88136db",
+    "originalDocuments": "23c276409fe47a04fe7f722a070d5d5094f311f8",
+    "base": "ab26c6ebff7a4524a205f3a1ec92959a35c97f94",
+    "head": "e33e414c1de805714af6641c274723e56ef53482",
+    "hostedRun": 37855253180,
+    "hosted": "PASS",
+    "tests": 350,
+    "realHttp": 19,
+    "browserResponseReplay": 3,
+    "humanUat": "NOT_VERIFIED"
+  },
+  "preview": {
+    "sha": "a83c93311ea2dca2e605eaf018f2c03991357675",
+    "baseMain": "9d89c7d6739454345b1397fe6b02c945fbe1cb99",
+    "order": [33, 31, 32, 34],
+    "sourceConflicts": 0,
+    "docsConflicts": "resolved from later checkpoints preserving historical reports",
+    "tests": 414,
+    "fullCi": "PASS_LOCAL",
+    "mergedToMain": false,
+    "hosted": "NOT_RUN"
+  },
+  "production": {
+    "health": "PASS_PUBLIC_GET",
+    "ready": "PASS_PUBLIC_GET",
+    "versionSha": "9d89c7d6739454345b1397fe6b02c945fbe1cb99",
+    "builtAt": "33996421402",
+    "backup": "NOT_VERIFIED",
+    "migrations": "NOT_VERIFIED",
+    "files": "NOT_VERIFIED",
+    "restore": "NOT_VERIFIED",
+    "rollback": "PLAN_ONLY_NOT_VERIFIED",
+    "mutated": false,
+    "deployed": false
+  },
+  "protection": {
+    "main": false,
+    "rulesets": [],
+    "effectiveRules": [],
+    "environmentRules": [],
+    "environmentBranchPolicy": null,
+    "actionsDefault": "NOT_VERIFIED_HTTP403",
+    "changed": false
+  },
+  "batch4": {
+    "branch": "codex/batch4-runtime-recovery",
+    "base": "7341f4f729878fb912c6f404d61b49f518455a2d",
+    "code": "be6f56bd5db8355e08c5b2d841759dcad92c2cd0",
+    "dependency": "LOCAL_UNMERGED_INTEGRATION_PREVIEW_PR33_31_32_34",
+    "fullCi": "PASS_LOCAL",
+    "tests": 414,
+    "release": 38,
+    "api": 180,
+    "web": 114,
+    "shared": 82,
+    "devApi": "PASS_REAL_LOCAL",
+    "builtApi": "PASS_LOCAL_NODE_ENV_PRODUCTION",
+    "proxy": "PASS_DEV_AND_PREVIEW_LOOPBACK_ONLY",
+    "realBrowserDev": 1,
+    "realBrowserBuilt": 1,
+    "browserRegression": 26,
+    "humanUat": "NOT_VERIFIED",
+    "migrationAdded": 0,
+    "productionImageChanged": false,
+    "hostedCi": "NOT_RUN",
+    "pushed": false,
+    "newRegressions": 0
+  },
+  "resourceCleanup": {
+    "authHttpSchemasRemaining": 0,
+    "authzHttpSchemasRemaining": 0,
+    "ownedRuntimeSchemaRemoved": true,
+    "ownedTmpfsContainerRemoved": true,
+    "privateCredentialsRemoved": true,
+    "localApiAndWebProcessesStopped": true
+  }
+}

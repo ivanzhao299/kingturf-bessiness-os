@@ -1,5 +1,84 @@
 # KingTurf Takeover Status
 
+Updated: 2026-10-09 Asia/Singapore. Current branch `codex/batch4-runtime-recovery`, source checkpoint be6f56bd5db8355e08c5b2d841759dcad92c2cd0. No new Discovery; continue from NEXT. The dated 2026-10-08 snapshot below remains historical, not current status.
+
+## CURRENT_STATUS
+
+main is still9d89c7d6739454345b1397fe6b02c945fbe1cb99. PR31/32/33/34 all OPEN/unmerged; each latest Hosted quality is PASS. Independent human reviews are absent and main/environment protections remain missing. Actual integration is not authorized; local preview validation cannot substitute for actual main quality.
+
+Batch3 original7562baf/23c2764 retained, normal CI-base merge9c79da1 and reviewed fixesae8e9f7/e33e414. PR34 head e33e414c1de805714af6641c274723e56ef53482 targets PR33 headab26c6e until its main integration; Hosted37855253180 PASS350/350. Parent collection lifecycle state is intentionally visible under collection permission; independent legal records/metadata remain protected. Unavailable legal queue counts now hide instead of misleading zero; field-masked currency renders safely.
+
+Final local integration previewa83c93311ea2dca2e605eaf018f2c03991357675 merged33→31→32→34 from unchangedmain; source conflicts0, documentation conflicts resolved from newer checkpoint preserving historical evidence; full414/414 PASS. Not pushed or mergedmain. Batch4 baseline7341f4f729878fb912c6f404d61b49f518455a2d contains that unmerged preview, explicitly disclosed; sourcebe6f56b only8 runtime/config/test/doc files. Batch4 not pushed/Hosted.
+
+Current evidence: [PR integration readiness](../evidence/PR_INTEGRATION_READINESS_REPORT_20261009.md), [Batch3 Hosted](../evidence/BATCH3_HOSTED_CI_REPORT_20261009.md), [Batch4 runtime](../evidence/BATCH4_RUNTIME_RECOVERY_REPORT_20261009.md), [business UAT](../evidence/CORE_BUSINESS_UAT_MATRIX_20261009.md), [production gaps](../evidence/PRODUCTION_READINESS_GAP_REPORT_20261009.md), [machine verification](../evidence/PROJECT_STABILIZATION_VERIFICATION_20261009.json), [issue matrix](project-issue-matrix.md). Original canonical roadmap and baseline reports preserved.
+
+## COMPLETED
+
+- Re-read existing reports/AGENTS context and verified clean initial tree/checkpoints, remote/main, latest PR heads/reviews/files/threads/mergeability/checks. PR31 f7489e7/run37790721061 PASS369; PR32 8cbe6de/run37795523187 PASS357; PR33 ab26c6e/run37795089674 PASS331; all unmerged.
+- Identical Web/CAPA patch stable-id verified on all3 branches; no source conflicts in actual local combined tree. Normal merges retained history, no force push/rebase/reset. Future main merge order33→31→32→34.
+- Independent Batch3 security review;19 real HTTP and59 targeted passed, final Web110/110/lint/type/build;3 permission-response replay browser cases passed. Hosted finalhead350/350, all quality checks passed. No new migration or privilege expansion.
+- Runtime dev/start transform-types, native root.env loading with injected environment precedence, DB local commands documented explicitly; dev/preview proxy+loopback binding and target guard. Current production Docker CMD and exports unchanged. Runtime test/config included in root lint without relaxing existing TS rules.
+- Actual browser login→customer create201→UIquery→PG tenant/PROSPECT and successaudit, anonymous401/noar403:1/1 dev and1/1 compiled preview. Compiled API ran NODE_ENV=production only on owned local synthetic DB. Final Batch4 complete pnpm ci:local PASS414/414 (release38,API180,Web114,shared82);26 legacy/auth/permission browser regression cases passed. Negative remote/DB/opt-in guards reject before HTTP. Real business human UAT remains NOT VERIFIED.
+- Public production GET health/ready/version freshly PASS at9d89c7d/builtAt33996421402. No production mutation/deployment/protection changes. Existing internal backup/schema/files/restore facts not available.
+
+## IN_PROGRESS
+
+Implementation/verification complete; owned test resources and private credentials cleaned, API/Web stopped after actual validation. Documentation checkpoint and final clean-tree verification. AllPRs need independent human review and protection/merge authorization. Batch4 source patch is independently reviewable against its disclosed unmerged baseline.
+
+## BLOCKERS
+
+- main protected=false, rulesets/effective rules empty; production approvals/source policy empty. Default Actions permissions403 NOT_VERIFIED. Administrator-approved configuration and independent review needed; current GitHub CLEAN is not sufficient.
+- No explicit main merge authorization. All security fixes feature-only; PR34 base is PR33 feature and must not be merged there. After33 main integration, retarget/update34 and run Hosted against exact newmain; every main merge requires fullquality recheck.
+- Backup metadata/checksums/off-host retention, actual migration state, mounted disk/files/attachments and DB+files restore/RPO/RTO NOT VERIFIED; publicready only SELECT1.
+- Actual multi-role UAT/external signature/bank/document provider acceptance NOT VERIFIED. Physical shipment lifecycle still not newly populated. Batch4 Hosted NOT_RUN, its local combined baseline not actualmain.
+
+## NEXT
+
+1. Obtain administrator approval/configuration for minimum main PR+quality+independent reviewer+no-force-delete, production independent main-only approvals, and read current Actions defaults; restrict historical/manual deployment writers.
+2. Independent human review and separate explicit merge authorization, sequential33→31→32→34. Record each actualmain SHA, completeCI, diff and remainingbranch updates; retarget34 to main only after approvedbase integration. Do not use preview414 as substitute.
+3. After base integration, prepare separate Batch4 PR from precise main (normal cherry-pick/update preserving sourcebe6f56b), disclose dependencies and run Hosted; no production deployment inferred.
+4. Freeze acceptedUAT SHA, arrange scoped role accounts/deidentified samples/isolated environment and execute coreUAT matrix; approve isolated DB+files restore/rollback drill plan. Record human acceptance separately before production approval.
+
+## TECH_DEBT
+
+KT-013 startup migration/status DDL/concurrency/checksum governance unchanged; investigate safely in next scoped engineering batch. Existing workspace sourceTS exports mean compiled API still needs transform-types; not pureJS distribution. Historical local UI environment badge still hardcodes production domain. Full shipment/UAT/provider and other dashboard field-derived statistics remain unverified. No modernization/broad rewriting.
+
+## PRODUCTION_RISKS
+
+Production remains oldSHA9d89c7d with release/auth/authorization gaps despite current feature successes. No P0 confirmed in scoped synthetic tests, no security certification. Batch2 multi-instance login/reset locks require every API version aligned; already authenticated in-flight requests may finish, post-commit guard queries reject revokedtokens; rollback oldcode restores gap, does not resurrectrevokedtokens. Before any production mutation separately confirmACTION/IMPACT/ROLLBACK/VERIFICATION, actualSHA, backup/migration/files/health/UAT. READY_FOR_PRODUCTION_RELEASE=NO.
+
+```text
+MAIN_HEAD=9d89c7d6739454345b1397fe6b02c945fbe1cb99
+PR31_STATUS=OPEN_HOSTED_PASS_UNMERGED_NO_HUMAN_REVIEW
+PR32_STATUS=OPEN_HOSTED_PASS_UNMERGED_NO_HUMAN_REVIEW
+PR33_STATUS=OPEN_HOSTED_PASS_UNMERGED_NO_HUMAN_REVIEW
+PR_INTEGRATION_ORDER=33_31_32_34
+MAIN_PROTECTION=MISSING
+HOSTED_CI=PASS_EACH_PR_31_32_33_34
+BATCH3_BASE_COMMIT=ab26c6ebff7a4524a205f3a1ec92959a35c97f94_PR33_UNMERGED
+BATCH3_PR=OPEN_34
+BATCH3_HOSTED_CI=PASS_37855253180_350/350
+BATCH3_SECURITY_REVIEW=INDEPENDENT_READONLY_PASS_HUMAN_REVIEW_PENDING
+BATCH3_NEW_REGRESSIONS=0
+BATCH4_STATUS=COMPLETE_LOCAL_CHECKPOINT_NOT_PUSHED
+API_DEV_START=PASS_REAL_LOCAL
+API_PRODUCTION_BUILD_START=PASS_LOCAL_NODE_ENV_PRODUCTION
+WEB_API_PROXY=PASS_DEV_PREVIEW_LOOPBACK
+REAL_WEB_API_LOGIN=PASS_REAL_BROWSER_DEV_AND_BUILD
+BUSINESS_UAT=AUTOMATED_SYNTHETIC_VERIFIED_HUMAN_NOT_VERIFIED
+BACKUP_RESTORE_VERIFIED=NO
+ROLLBACK_READY=PLAN_ONLY_NOT_VERIFIED
+PRODUCTION_MUTATION=NO
+PRODUCTION_DEPLOYMENT=NO
+READY_FOR_NEXT_BATCH=YES
+READY_FOR_PRODUCTION_RELEASE=NO
+NEXT=PROTECTION_AND_HUMAN_REVIEW_AUTHORIZED_SEQUENTIAL_INTEGRATION_THEN_BATCH4_PR_RESTORE_UAT
+```
+
+## Historical snapshot — 2026-10-08
+
+# KingTurf Takeover Status
+
 Updated: 2026-10-08 Asia/Singapore. Current task: Batch2 integration, Batch2.5 CI Gate Recovery, Batch3 Source and Nested Authorization. Worktree `/home/jinhuit/Kingturf/kingturf-bessiness-os`, branch `codex/batch3-source-nested-authorization`. Continue from NEXT; do not repeat Discovery.
 
 ## CURRENT_STATUS
