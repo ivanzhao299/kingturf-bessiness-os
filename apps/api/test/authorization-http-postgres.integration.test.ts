@@ -335,6 +335,10 @@ describe('real HTTP source scopes and nested legal authorization', () => {
     const direct = await response('/collection-cases', owner.token);
     expect(direct.status).toBe(200);
     const directPayload = (await direct.json()) as Record<string, unknown>;
+    // This is the parent collection lifecycle state, explicitly granted by collection:read.
+    // KT-L19 keeps the collector informed of a handoff without granting legal records/evidence.
+    expect((result.collections as { state: string }[])[0]?.state).toBe('LEGAL_ACCEPTED');
+    expect((directPayload.items as { state: string }[])[0]?.state).toBe('LEGAL_ACCEPTED');
     uiEvidence.denied = result;
     uiEvidence.deniedSession = await (await response('/auth/session', owner.token)).json();
     uiEvidence.deniedCollections = directPayload;
@@ -550,6 +554,9 @@ describe('real HTTP source scopes and nested legal authorization', () => {
     expect(direct.status).toBe(200);
     const items = ((await direct.json()) as { items: Record<string, unknown>[] }).items;
     expect(Object.keys(items[0] ?? {})).toEqual(['id']);
+    uiEvidence.masked = result;
+    uiEvidence.maskedCollections = { items };
+    uiEvidence.maskedSession = await (await response('/auth/session', owner.token)).json();
   });
   it('does not return generated legal evidence under a narrower independent read scope', async () => {
     await grants(owner, { 'debt-evidence:generate': companyGrant, 'legal-case:read': selfGrant });

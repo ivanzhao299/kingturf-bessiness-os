@@ -7,20 +7,20 @@ const samples = JSON.parse(readFileSync('.test-results/authz-ui-fixtures.json', 
   string,
   Record<string, unknown>
 >;
-for (const legal of [false, true]) {
-  test(`collection and order evidence reflect independent legal read (${String(legal)})`, async ({
+for (const mode of ['denied', 'authorized', 'masked'] as const) {
+  const legal = mode === 'authorized';
+  test(`collection and order evidence reflect independent legal read (${mode})`, async ({
     page,
   }) => {
-    const aggregate = samples[legal ? 'authorized' : 'denied'];
-    const collectionPayload = samples[legal ? 'authorizedCollections' : 'deniedCollections'];
+    const aggregate = samples[mode];
+    const collectionPayload = samples[`${mode}Collections`];
     if (!aggregate || !collectionPayload)
       throw new Error('Run real HTTP authorization fixture producer first');
     await page.route('**/api/v1/**', (route) => {
       const path = new URL(route.request().url()).pathname;
       if (path.endsWith('/auth/login'))
         return route.fulfill({ json: { token: 'browser-response-replay' } });
-      if (path.endsWith('/auth/session'))
-        return route.fulfill({ json: samples[legal ? 'authorizedSession' : 'deniedSession'] });
+      if (path.endsWith('/auth/session')) return route.fulfill({ json: samples[`${mode}Session`] });
       if (path.endsWith('/collection-cases')) return route.fulfill({ json: collectionPayload });
       if (path.endsWith('/sales-orders'))
         return route.fulfill({ json: { items: [aggregate.order] } });
@@ -32,6 +32,8 @@ for (const legal of [false, true]) {
     await page.getByPlaceholder('密码').fill('test-only');
     await page.getByRole('button', { name: '登录', exact: true }).click();
     await expect(page.locator('.app-shell')).toBeVisible();
+    if (legal) await expect(page.locator('.cash-risk-summary')).toContainText('法务待受理');
+    else await expect(page.locator('.cash-risk-summary')).not.toContainText('法务待受理');
     await page.evaluate(() => {
       location.hash = 'collections';
     });

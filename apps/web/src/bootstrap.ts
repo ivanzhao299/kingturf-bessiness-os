@@ -1958,10 +1958,20 @@ export function commercialWorkspaceStructure(
     const heading = el('div', 'readiness-heading');
     heading.append(el('strong', '', '今日资金与债权队列'), el('span', '', '异常优先'));
     queue.append(heading);
+    const collectionRows = controller.views.get('/api/v1/collection-cases') ?? [];
+    const legalQueueVisible =
+      collectionRows.length > 0 &&
+      collectionRows.every(
+        (item) =>
+          Array.isArray(item.legalHandoffs) &&
+          item.legalHandoffs.every((handoff: unknown) =>
+            ['REQUESTED', 'ACCEPTED', 'RETURNED'].includes(String(recordValue(handoff).state)),
+          ),
+      );
     const summary = cashRiskSummary(
       controller.views.get('/api/v1/ar-open-items') ?? [],
       controller.views.get('/api/v1/bank-payments') ?? [],
-      controller.views.get('/api/v1/collection-cases') ?? [],
+      collectionRows,
     );
     const grid = el('div', 'cash-risk-grid');
     for (const [label, value, tone] of [
@@ -1970,6 +1980,16 @@ export function commercialWorkspaceStructure(
       ['承诺已违约', summary.brokenPromises, 'danger'],
       ['法务待受理', summary.legalPending, 'warning'],
     ] as const) {
+      if (label === '逾期应收' && !permissions.has('ar:read')) continue;
+      if (label === '待核销收款' && !permissions.has('bank-payment:read')) continue;
+      if (label === '承诺已违约' && !permissions.has('collection:read')) continue;
+      if (
+        label === '法务待受理' &&
+        (!permissions.has('legal-case:read') ||
+          !permissions.has('collection:read') ||
+          !legalQueueVisible)
+      )
+        continue;
       const item = el('article', `pipeline-metric ${value > 0 ? tone : 'success'}`);
       item.append(el('span', '', label), el('strong', '', String(value)));
       grid.append(item);
