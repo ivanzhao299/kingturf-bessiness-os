@@ -64,3 +64,7 @@ READY_FOR_PR=YES
 READY_FOR_PRODUCTION_RELEASE=NO
 NEXT=BATCH3_SOURCE_AND_NESTED_AUTHORIZATION
 ```
+
+## 2026-10-08 Integration and gate recovery update
+
+Batch2 PR32 is now OPEN (previous no-push statements above are historical checkpoint01fe23b). Pre-push trueHTTP/security87/87 rechecked; initial Hosted37789585670 failed historical Web. Separate CI-only checkpoint58fe039 was normally cherry-picked to e609514; Hosted37790728699 PASS,357/357 workspace tests, complete quality. Batch1 PR31 independently PASS at f7489e7/run37790721061,369/369; CI recovery PR33 independently PASS at58fe039/run37790678497. No merges/force pushes/production writes/deploys/protection changes. New integration documentation requires latest-head CI verification. Batch3 independent work continues from CI-only58fe039; its authority/fields/tenant tests and checkpoint must remain separate. See [Batch2 PR integration](../evidence/BATCH2_PR_INTEGRATION_REPORT_20261008.md). Original historical status and reports remain valid for their recorded commits.
