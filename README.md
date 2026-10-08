@@ -24,7 +24,7 @@ cp .env.example .env
 ```
 
 The committed `.env.example` contains local-only placeholders. Keep real credentials in the ignored `.env` file and never commit them.
-Replace `SESSION_SECRET=change-me` with a generated local secret before starting the API: `openssl rand -base64 48`. API dev/start commands read the repository-root `.env` using Node 24; explicitly injected process variables take precedence. The CI entry remains process-environment-only. Do not use production credentials or a production database for local initialization.
+Replace `SESSION_SECRET=change-me` with a generated local secret before starting the API: `openssl rand -base64 48`. API dev/start commands read the repository-root `.env` using Node 24; explicitly injected process variables take precedence. The CI database gate still requires an explicitly injected test database; it does not invoke the API dev/start environment loader. Do not use production credentials or a production database for local initialization.
 
 ## Local PostgreSQL
 
@@ -108,9 +108,12 @@ the process environment:
 pnpm ci:local
 ```
 
-`ci:local` sets `NODE_ENV=test` only for its child process. It does not read or write `.env` files,
-print the connection string, or persist credentials. The guard still refuses to migrate unless the
-ambient `DATABASE_URL` host is loopback and its database name contains a distinct `test` segment.
+`ci:local` sets `NODE_ENV=test` only for its child process. Database commands use the ambient
+`DATABASE_URL`, do not load `.env` automatically, and refuse migration unless the host is loopback
+and the database name contains a distinct `test` segment. The gate does not print connection
+strings or persist credentials. Vite may read repository-root local proxy/port settings during
+Web testing/build; those non-`VITE_` settings are server-side and are not exposed to the browser.
+Hosted CI uses its explicit workflow environment and a checkout without a local `.env`.
 
 Formatting is available through `pnpm format`; check it without changing files using `pnpm format:check`.
 

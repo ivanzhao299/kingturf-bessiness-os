@@ -9,7 +9,7 @@
 ## ROOT_CAUSE / CHANGES
 
 1. API dev的strip-types不支持现有constructor parameter properties；dist/server.js普通Node又会经现有workspace exports加载TS源码。dev/start采用仓库生产镜像已用的transform-types；start入口仍是已编译dist/server.js。没有更改workspace exports、生产镜像、依赖/lockfile或重写构建体系；编译API当前仍依赖带TS的workspace，不宣称独立纯JS分发。
-2. README复制.env后pnpm命令没有环境加载；API dev/start用Node24 `--env-file-if-exists=../../.env`读取root文件，显式process env优先。DB/CI脚本不自动读文件，README本地迁移改为 `node --env-file=.env --run db:migrate`/db:status。CI继续受显式loopback test guard保护。
+2. README复制.env后pnpm命令没有环境加载；API dev/start用Node24 `--env-file-if-exists=../../.env`读取root文件，显式process env优先。DB命令不自动读文件（CI数据库只用显式进程DATABASE_URL；Vite testing/build会按配置读取root的proxy/port设置，不向浏览器公开非VITE前缀变量），README本地迁移改为 `node --env-file=.env --run db:migrate`/db:status。CI继续受显式loopback test guard保护。
 3. Vite没有同源API代理；dev/preview增加/api及health/ready/version代理。默认target127.0.0.1:3000，可按local API_PORT配置，拒绝远端/非HTTP/credentials/path/query/hash；Web默认loopback绑定，避免将本机API新增暴露到局域网。没有CORS bypass、生产地址或mock auth。生产Web容器的显式host参数和API CMD保持原样。
 4. 模板API_HOST127.0.0.1，SESSION_SECRET=change-me必须替换；WEB_PORT真正读取。新增显式opt-in真实浏览器验证、受限CRM合成账号、持久化/审计/401/403断言。root lint纳入新测试/config；plain JS使用既有非typed推荐规则，不降低原TS规则。新配置仅loopback Web origin，认证trace/screenshot关闭。
 
