@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       commit_sha:
-        description: 'Exact 40-character KingTurf commit to deploy'
+        description: 'Exact lowercase 40-character commit from main history (including rollback)'
         required: true
         type: string
 
@@ -12,8 +12,44 @@ permissions:
   contents: read
 
 jobs:
-  verify:
+  validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      commit_sha: ${{ steps.guard.outputs.commit_sha }}
+      control_sha: ${{ steps.guard.outputs.control_sha }}
+      main_sha: ${{ steps.guard.outputs.main_sha }}
+    env:
+      RELEASE_SHA: ${{ inputs.commit_sha }}
+      RELEASE_CONTROL_SHA: ${{ github.workflow_sha }}
+    steps:
+      - name: Reject untrusted dispatch context and malformed input
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = ivanzhao299/kingturf-bessiness-os
+          test "$GITHUB_REF" = refs/heads/main
+          [[ ${#RELEASE_SHA} -eq 40 && "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]
+      - name: Checkout immutable release control
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.workflow_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.13.0
+      - name: Verify canonical origin and main history
+        id: guard
+        run: node scripts/validate_release.mjs
+
+  verify:
+    needs: validate
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_SHA: ${{ needs.validate.outputs.commit_sha }}
+      DATABASE_URL: postgresql://kingturf_ci:kingturf_ci_password@127.0.0.1:5432/kingturf_ci
+      NODE_ENV: test
     services:
       postgres:
         image: postgres:17-alpine
@@ -26,13 +62,13 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U kingturf_ci -d kingturf_ci"
           --health-interval 5s --health-timeout 5s --health-retries 20
-    env:
-      DATABASE_URL: postgresql://kingturf_ci:kingturf_ci_password@127.0.0.1:5432/kingturf_ci
-      NODE_ENV: test
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ inputs.commit_sha }}
+          ref: ${{ needs.validate.outputs.commit_sha }}
+          persist-credentials: false
+      - name: Verify exact candidate checkout
+        run: test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
       - uses: pnpm/action-setup@v6
         with:
           version: 10.33.4
@@ -47,13 +83,36 @@ jobs:
       - run: pnpm build
 
   deploy:
-    needs: verify
+    needs: [validate, verify]
     runs-on: ubuntu-latest
     environment: production
+    # Every workflow that writes this production target must share this exact group.
+    concurrency:
+      group: kingturf-erp-production
+      cancel-in-progress: false
+    env:
+      RELEASE_SHA: ${{ needs.validate.outputs.commit_sha }}
+      RELEASE_CONTROL_SHA: ${{ needs.validate.outputs.control_sha }}
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ inputs.commit_sha }}
+          ref: ${{ needs.validate.outputs.commit_sha }}
+          persist-credentials: false
+      - name: Verify exact deployment checkout
+        run: test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
+      - name: Checkout immutable release control
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.validate.outputs.control_sha }}
+          path: .release-control
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.13.0
+      - name: Revalidate main history after acquiring production concurrency
+        working-directory: .release-control
+        run: node scripts/validate_release.mjs
       - uses: webfactory/ssh-agent@v0.10.0
         with:
           ssh-private-key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
@@ -80,28 +139,33 @@ jobs:
              echo "== local HTTP =="
              curl -sS -D - --connect-timeout 8 --max-time 15 http://127.0.0.1/health -H "Host: erp.kingturf.cn" 2>&1 || true'
       - name: Create production recovery point
+        run: |
+          ssh -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
+            "sh -s -- '${{ secrets.PROD_DEPLOY_PATH }}' '$RELEASE_SHA'" <<'REMOTE'
+          set -eu
+          cd "$1"
+          candidate_sha=$2
+          mkdir -p .release-backups
+          previous_sha=$(cat .release-sha 2>/dev/null || printf unknown)
+          timestamp=$(date -u +%Y%m%dT%H%M%SZ)
+          backup_prefix=".release-backups/${timestamp}-before-${candidate_sha}"
+          export KINGTURF_RELEASE_SHA="$previous_sha"
+          export KINGTURF_RELEASE_BUILT_AT="recovery-point-${timestamp}"
+          docker compose --env-file .env.production -f infra/docker/compose.production.yaml exec -T postgres sh -c 'pg_dump --format=custom --username="$POSTGRES_USER" "$POSTGRES_DB"' > "${backup_prefix}.dump"
+          test -s "${backup_prefix}.dump"
+          printf 'previous_sha=%s\ncandidate_sha=%s\ncreated_at=%s\n' "$previous_sha" "$candidate_sha" "$timestamp" > "${backup_prefix}.metadata"
+          # Retention runs only after the candidate passes every required probe.
+          REMOTE
+      - name: Synchronize configured website ingest secret
         env:
           WEBSITE_LEAD_INGEST_SECRET: ${{ secrets.WEBSITE_LEAD_INGEST_SECRET }}
         run: |
           test -n "$WEBSITE_LEAD_INGEST_SECRET"
           printf '%s' "$WEBSITE_LEAD_INGEST_SECRET" | ssh -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
             "python3 -c 'import pathlib,sys; p=pathlib.Path(sys.argv[1]); key=\"WEBSITE_LEAD_INGEST_SECRET\"; value=sys.stdin.read(); lines=[line for line in p.read_text().splitlines() if not line.startswith(key+\"=\")]; p.write_text(\"\\n\".join(lines+[key+\"=\"+value])+\"\\n\")' '${{ secrets.PROD_DEPLOY_PATH }}/.env.production'"
-          ssh -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
-            "set -eu
-             cd '${{ secrets.PROD_DEPLOY_PATH }}'
-             mkdir -p .release-backups
-             previous_sha=\$(cat .release-sha 2>/dev/null || printf unknown)
-             timestamp=\$(date -u +%Y%m%dT%H%M%SZ)
-             backup_prefix=.release-backups/\${timestamp}-before-${{ inputs.commit_sha }}
-             export KINGTURF_RELEASE_SHA="\${previous_sha}"
-             export KINGTURF_RELEASE_BUILT_AT="recovery-point-\${timestamp}"
-             docker compose --env-file .env.production -f infra/docker/compose.production.yaml exec -T postgres sh -c 'pg_dump --format=custom --username=\"\$POSTGRES_USER\" \"\$POSTGRES_DB\"' > \"\${backup_prefix}.dump\"
-             test -s \"\${backup_prefix}.dump\"
-             printf 'previous_sha=%s\\ncandidate_sha=%s\\ncreated_at=%s\\n' \"\${previous_sha}\" '${{ inputs.commit_sha }}' \"\${timestamp}\" > \"\${backup_prefix}.metadata\"
-             # Retention runs only after the candidate passes every required probe."
       - name: Sync isolated KingTurf release
         run: |
-          rsync -az --delete --exclude '.env.production' --exclude '.release-sha' --exclude '.release-backups/' --exclude 'kingturf_postgres_data/' --exclude 'kingturf_attachments/' \
+          rsync -az --delete --exclude '.git/' --exclude '.release-control/' --exclude '.env.production' --exclude '.release-sha' --exclude '.release-backups/' --exclude 'kingturf_postgres_data/' --exclude 'kingturf_attachments/' \
             -e "ssh -p ${{ secrets.PROD_SSH_PORT }} -o ServerAliveInterval=30 -o ConnectTimeout=30" \
             ./ '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/'
       - name: Install and reload production Nginx ingress
@@ -115,15 +179,41 @@ jobs:
       - name: Deploy and verify
         run: |
           ssh -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
-            "cd '${{ secrets.PROD_DEPLOY_PATH }}' && printf '%s' '${{ inputs.commit_sha }}' > .release-sha && export KINGTURF_RELEASE_SHA='${{ inputs.commit_sha }}' KINGTURF_RELEASE_BUILT_AT='${{ github.run_id }}' && (docker compose --env-file .env.production -f infra/docker/compose.production.yaml up -d --build || (docker compose --env-file .env.production -f infra/docker/compose.production.yaml ps -a; sleep 3; docker compose --env-file .env.production -f infra/docker/compose.production.yaml up -d --build)) && sleep 15 && docker compose --env-file .env.production -f infra/docker/compose.production.yaml ps && curl --fail --silent --show-error --retry 12 --retry-all-errors --retry-delay 5 http://127.0.0.1:4332/health && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 http://127.0.0.1:4332/ready && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 http://127.0.0.1:4332/version | grep '${{ inputs.commit_sha }}' && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 --resolve erp.kingturf.cn:443:127.0.0.1 https://erp.kingturf.cn/health && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 --resolve erp.kingturf.cn:443:127.0.0.1 https://erp.kingturf.cn/ready && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 --resolve erp.kingturf.cn:443:127.0.0.1 https://erp.kingturf.cn/version | grep '${{ inputs.commit_sha }}'"
+            "cd '${{ secrets.PROD_DEPLOY_PATH }}' && export KINGTURF_RELEASE_SHA='$RELEASE_SHA' KINGTURF_RELEASE_BUILT_AT='${{ github.run_id }}' && (docker compose --env-file .env.production -f infra/docker/compose.production.yaml up -d --build || (docker compose --env-file .env.production -f infra/docker/compose.production.yaml ps -a; sleep 3; docker compose --env-file .env.production -f infra/docker/compose.production.yaml up -d --build)) && sleep 15 && docker compose --env-file .env.production -f infra/docker/compose.production.yaml ps && curl --fail --silent --show-error --retry 12 --retry-all-errors --retry-delay 5 http://127.0.0.1:4332/health && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 http://127.0.0.1:4332/ready && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 http://127.0.0.1:4332/version | grep -F '$RELEASE_SHA' && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 --resolve erp.kingturf.cn:443:127.0.0.1 https://erp.kingturf.cn/health && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 --resolve erp.kingturf.cn:443:127.0.0.1 https://erp.kingturf.cn/ready && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 --resolve erp.kingturf.cn:443:127.0.0.1 https://erp.kingturf.cn/version | grep -F '$RELEASE_SHA'"
       - name: Required production hostname HTTPS probe
         run: |
           ssh -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
-            "set -eu; curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 https://erp.kingturf.cn/health | grep '\"status\":\"ok\"'; curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 https://erp.kingturf.cn/ready | grep '\"status\":\"ready\"'; curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 https://erp.kingturf.cn/version | grep '${{ inputs.commit_sha }}'"
-      - name: Retain latest KingTurf recovery point and active images
+            "set -eu; curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 https://erp.kingturf.cn/health | grep '\"status\":\"ok\"'; curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 https://erp.kingturf.cn/ready | grep '\"status\":\"ready\"'; curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 https://erp.kingturf.cn/version | grep -F '$RELEASE_SHA'"
+      - name: Record verified production release
         run: |
           ssh -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
-            "set -eu; sh '${{ secrets.PROD_DEPLOY_PATH }}/scripts/cleanup_kingturf_release_artifacts.sh' '${{ secrets.PROD_DEPLOY_PATH }}' kingturf-erp-production; curl --fail --silent --show-error http://127.0.0.1:4332/health | grep '\"status\":\"ok\"'; curl --fail --silent --show-error http://127.0.0.1:4332/ready | grep '\"status\":\"ready\"'; curl --fail --silent --show-error http://127.0.0.1:4332/version | grep '${{ inputs.commit_sha }}'"
+            "sh -s -- '${{ secrets.PROD_DEPLOY_PATH }}' '$RELEASE_SHA' '${{ github.run_id }}-${{ github.run_attempt }}'" <<'REMOTE'
+          set -eu
+          cd "$1"
+          candidate_sha=$2
+          marker=".release-sha.$3.tmp"
+          trap 'rm -f "$marker"' EXIT
+          curl --fail --silent --show-error http://127.0.0.1:4332/version |
+            python3 -c 'import json,sys; assert json.load(sys.stdin)["sha"] == sys.argv[1]' "$candidate_sha"
+          printf '%s' "$candidate_sha" > "$marker"
+          mv -- "$marker" .release-sha
+          REMOTE
+      - name: Retain latest KingTurf recovery point and active images
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f .release-control/scripts/cleanup_kingturf_release_artifacts.sh
+          test -r .release-control/scripts/cleanup_kingturf_release_artifacts.sh
+          {
+            cat .release-control/scripts/cleanup_kingturf_release_artifacts.sh || exit 1
+            cat <<'PROBES'
+          curl --fail --silent --show-error http://127.0.0.1:4332/health | grep '"status":"ok"'
+          curl --fail --silent --show-error http://127.0.0.1:4332/ready | grep '"status":"ready"'
+          curl --fail --silent --show-error http://127.0.0.1:4332/version |
+            python3 -c 'import json,sys; assert json.load(sys.stdin)["sha"] == sys.argv[1]' "$KINGTURF_RELEASE_SHA"
+          PROBES
+          } | ssh -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
+            "KINGTURF_RELEASE_SHA='$RELEASE_SHA' sh -se -- '${{ secrets.PROD_DEPLOY_PATH }}' kingturf-erp-production"
       - name: Diagnostic cross-border HTTPS probe from GitHub runner
         continue-on-error: true
         run: |
