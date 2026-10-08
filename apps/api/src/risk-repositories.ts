@@ -23,7 +23,7 @@ const scope = (context: Context, alias = 'c', offset = 3) => {
     if (anchor.organizationId && context.scopes.includes(anchor.scope)) {
       values.push(anchor.organizationId);
       clauses.push(
-        `EXISTS(SELECT 1 FROM organization_scope_relationships osr WHERE osr.tenant_id=${alias}.tenant_id AND osr.ancestor_id=$${String(offset + values.length - 1)} AND osr.descendant_id=${alias}.owner_organization_id AND osr.scope='${anchor.scope}')`,
+        `EXISTS(SELECT 1 FROM organizations anchor JOIN organization_scope_relationships osr ON osr.ancestor_id=anchor.id AND osr.descendant_id=${alias}.owner_organization_id${anchor.scope === 'TEAM' ? ' AND osr.depth<=1' : ''} WHERE anchor.id=$${String(offset + values.length - 1)} AND anchor.owner_organization_id=${alias}.tenant_id AND anchor.organization_type='${anchor.scope}' AND anchor.active AND anchor.deleted_at IS NULL)`,
       );
     }
   return { sql: clauses.length ? `(${clauses.join(' OR ')})` : 'FALSE', values };
@@ -41,7 +41,7 @@ export class PostgresRiskRepository {
     ).rows.map((r) => r.item);
   }
   public async listEvaluations(context: Context) {
-    const secured = scope(context);
+    const secured = scope(context, 'c', 2);
     return (
       await this.db.query<{ item: JsonObject }>(
         `SELECT to_jsonb(e)||jsonb_build_object('orderNumber',o.order_number,'policyCode',p.code,'policyVersion',v.version,'task',to_jsonb(t),'taskEvents',coalesce((SELECT jsonb_agg(to_jsonb(x) ORDER BY x.sequence) FROM risk_task_events x WHERE x.tenant_id=t.tenant_id AND x.risk_task_id=t.id),'[]'::jsonb)) item FROM risk_evaluations e JOIN sales_orders o ON o.id=e.sales_order_id AND o.tenant_id=e.tenant_id JOIN customers c ON c.id=o.customer_id AND c.tenant_id=o.tenant_id JOIN risk_policy_versions v ON v.id=e.policy_version_id AND v.tenant_id=e.tenant_id JOIN risk_policies p ON p.id=v.policy_id AND p.tenant_id=v.tenant_id LEFT JOIN effective_risk_tasks t ON t.risk_evaluation_id=e.id AND t.tenant_id=e.tenant_id WHERE e.tenant_id=$1 AND ${secured.sql} ORDER BY e.created_at DESC`,

@@ -1,15 +1,26 @@
 import { DomainError, type Actor, type ScopeAnchor } from '@kingturf/domain';
 import type { Database, SqlClient } from '@kingturf/database';
 import type { DataScope, JsonObject } from '@kingturf/types';
+import {
+  companyReadAllowed,
+  fieldReadable,
+  type Order360Source,
+  type SourceReadGrant,
+} from './aggregate-authorization.ts';
 
 type Db = SqlClient & Pick<Database, 'transaction'>;
 type Context = Readonly<{
   actor: Actor;
   scopes: readonly DataScope[];
   anchors: readonly ScopeAnchor[];
+  sources?: Readonly<Partial<Record<Order360Source, SourceReadGrant>>>;
 }>;
 
-const customerScope = (context: Context, alias = 'c', offset = 3) => {
+const customerScope = (
+  context: Pick<Context, 'actor' | 'scopes' | 'anchors'>,
+  alias = 'c',
+  offset = 3,
+) => {
   const clauses: string[] = [];
   const values: string[] = [];
   if (context.scopes.includes('COMPANY') || context.scopes.includes('GROUP')) clauses.push('TRUE');
@@ -20,8 +31,9 @@ const customerScope = (context: Context, alias = 'c', offset = 3) => {
   for (const anchor of context.anchors)
     if (anchor.organizationId && context.scopes.includes(anchor.scope)) {
       values.push(anchor.organizationId);
+      const parameter = `$${String(offset + values.length - 1)}`;
       clauses.push(
-        `EXISTS(SELECT 1 FROM organization_scope_relationships osr WHERE osr.tenant_id=${alias}.tenant_id AND osr.ancestor_id=$${String(offset + values.length - 1)} AND osr.descendant_id=${alias}.owner_organization_id AND osr.scope='${anchor.scope}')`,
+        `EXISTS(SELECT 1 FROM organizations anchor JOIN organization_scope_relationships osr ON osr.ancestor_id=anchor.id AND osr.descendant_id=${alias}.owner_organization_id${anchor.scope === 'TEAM' ? ' AND osr.depth<=1' : ''} WHERE anchor.id=${parameter} AND anchor.owner_organization_id=${alias}.tenant_id AND anchor.organization_type='${anchor.scope}' AND anchor.active AND anchor.deleted_at IS NULL)`,
       );
     }
   return { sql: clauses.length ? `(${clauses.join(' OR ')})` : 'FALSE', values };
@@ -32,29 +44,64 @@ export class PostgresOrder360Repository {
 
   public async get(id: string, context: Context): Promise<JsonObject> {
     const secured = customerScope(context);
+    const values: string[] = [...secured.values];
+    const source = (name: Order360Source): string => {
+      const grant = context.sources?.[name];
+      if (!grant) return 'FALSE';
+      // Preserve direct-read ownership: commercial sources follow the opportunity,
+      // QTC/commission/risk follow the customer, shipment/collection/legal are company-only.
+      if (['shipments', 'collections', 'legal'].includes(name))
+        return companyReadAllowed(grant) ? 'TRUE' : 'FALSE';
+      const commercial = ['opportunity', 'technical', 'cost', 'policy', 'quote'].includes(name);
+      const alias = commercial ? 'source_op' : 'source_c';
+      const scope = customerScope({ actor: context.actor, ...grant }, alias, 3 + values.length);
+      values.push(...scope.values);
+      return `EXISTS(SELECT 1 FROM ${commercial ? 'opportunities' : 'customers'} ${alias} WHERE ${alias}.id=o.${commercial ? 'opportunity_id' : 'customer_id'} AND ${alias}.tenant_id=o.tenant_id AND ${alias}.deleted_at IS NULL AND ${scope.sql})`;
+    };
+    const allowed = Object.fromEntries(
+      [
+        'customer',
+        'opportunity',
+        'technical',
+        'cost',
+        'policy',
+        'quote',
+        'credit',
+        'contract',
+        'receivables',
+        'payments',
+        'reconciliations',
+        'commissions',
+        'risks',
+        'shipments',
+        'collections',
+        'legal',
+      ].map((name) => [name, source(name as Order360Source)]),
+    ) as Record<Order360Source, string>;
+
     const row = (
       await this.db.query<{ item: JsonObject }>(
         `SELECT jsonb_build_object(
           'order',to_jsonb(o)||jsonb_build_object('lines',(SELECT coalesce(jsonb_agg(to_jsonb(l) ORDER BY l.line_number),'[]'::jsonb) FROM sales_order_lines l WHERE l.tenant_id=o.tenant_id AND l.sales_order_id=o.id)),
-          'customer',to_jsonb(c),
-          'opportunity',to_jsonb(op),
-          'quote',to_jsonb(qr)||jsonb_build_object('quoteNumber',q.quote_number,'snapshot',to_jsonb(qs)),
-          'technical',to_jsonb(tsr)||jsonb_build_object('code',ts.code),
-          'cost',to_jsonb(cd),
-          'policy',to_jsonb(pe),
-          'credit',to_jsonb(cr)||jsonb_build_object('effectiveStatus',cr.effective_status),
-          'contract',to_jsonb(ctrev)||jsonb_build_object('contractNumber',ct.contract_number,'signature',to_jsonb(sig)),
-          'receivables',coalesce((SELECT jsonb_agg(to_jsonb(b)||jsonb_build_object('documentNumber',d.document_number,'postedAt',d.posted_at) ORDER BY d.posted_at,b.id) FROM ar_open_item_balances b JOIN ar_documents d ON d.id=b.ar_document_id AND d.tenant_id=b.tenant_id WHERE b.tenant_id=o.tenant_id AND d.sales_order_id=o.id),'[]'::jsonb),
-          'payments',coalesce((SELECT jsonb_agg(DISTINCT to_jsonb(pb)) FROM allocation_entries a JOIN ar_open_items oi ON oi.id=a.ar_open_item_id AND oi.tenant_id=a.tenant_id JOIN ar_documents d ON d.id=oi.ar_document_id AND d.tenant_id=oi.tenant_id JOIN bank_payment_balances pb ON pb.id=a.bank_payment_id AND pb.tenant_id=a.tenant_id WHERE a.tenant_id=o.tenant_id AND d.sales_order_id=o.id),'[]'::jsonb),
-          'reconciliations',coalesce((SELECT jsonb_agg(DISTINCT to_jsonb(rr)) FROM allocation_entries a JOIN ar_open_items oi ON oi.id=a.ar_open_item_id AND oi.tenant_id=a.tenant_id JOIN ar_documents d ON d.id=oi.ar_document_id AND d.tenant_id=oi.tenant_id JOIN reconciliation_runs rr ON rr.id=a.reconciliation_run_id AND rr.tenant_id=a.tenant_id WHERE a.tenant_id=o.tenant_id AND d.sales_order_id=o.id),'[]'::jsonb),
-          'commissions',coalesce((SELECT jsonb_agg(to_jsonb(cc)||jsonb_build_object('ledger',(SELECT coalesce(jsonb_agg(to_jsonb(le) ORDER BY le.sequence),'[]'::jsonb) FROM commission_ledger_entries le WHERE le.tenant_id=cc.tenant_id AND le.commission_case_id=cc.id)) ORDER BY cc.created_at) FROM effective_commission_cases cc WHERE cc.tenant_id=o.tenant_id AND cc.sales_order_id=o.id),'[]'::jsonb),
-          'risks',coalesce((SELECT jsonb_agg(to_jsonb(re)||jsonb_build_object('task',to_jsonb(rt),'taskEvents',coalesce((SELECT jsonb_agg(to_jsonb(rx) ORDER BY rx.sequence) FROM risk_task_events rx WHERE rx.tenant_id=rt.tenant_id AND rx.risk_task_id=rt.id),'[]'::jsonb)) ORDER BY re.created_at) FROM risk_evaluations re LEFT JOIN effective_risk_tasks rt ON rt.risk_evaluation_id=re.id AND rt.tenant_id=re.tenant_id WHERE re.tenant_id=o.tenant_id AND re.sales_order_id=o.id),'[]'::jsonb),
-          'shipments',coalesce((SELECT jsonb_agg(to_jsonb(sr)||jsonb_build_object('state',rs.state,'releaseEvents',coalesce((SELECT jsonb_agg(to_jsonb(re) ORDER BY re.sequence) FROM shipment_release_events re WHERE re.tenant_id=sr.tenant_id AND re.release_request_id=sr.id),'[]'::jsonb),'loads',coalesce((SELECT jsonb_agg(to_jsonb(sh)||jsonb_build_object('state',ss.state,'events',coalesce((SELECT jsonb_agg(to_jsonb(se) ORDER BY se.sequence) FROM shipment_events se WHERE se.tenant_id=sh.tenant_id AND se.shipment_id=sh.id),'[]'::jsonb)) ORDER BY sh.created_at) FROM shipments sh JOIN shipment_effective_states ss ON ss.tenant_id=sh.tenant_id AND ss.shipment_id=sh.id WHERE sh.tenant_id=sr.tenant_id AND sh.release_request_id=sr.id),'[]'::jsonb)) ORDER BY sr.created_at) FROM shipment_release_requests sr JOIN shipment_release_effective_states rs ON rs.tenant_id=sr.tenant_id AND rs.release_request_id=sr.id WHERE sr.tenant_id=o.tenant_id AND sr.sales_order_id=o.id),'[]'::jsonb),
-          'collections',coalesce((SELECT jsonb_agg(to_jsonb(cc)||jsonb_build_object('state',cs.state,'events',coalesce((SELECT jsonb_agg(to_jsonb(ce) ORDER BY ce.sequence) FROM collection_case_events ce WHERE ce.tenant_id=cc.tenant_id AND ce.collection_case_id=cc.id),'[]'::jsonb),'followups',coalesce((SELECT jsonb_agg(to_jsonb(cf) ORDER BY cf.occurred_at,cf.id) FROM collection_followups cf WHERE cf.tenant_id=cc.tenant_id AND cf.collection_case_id=cc.id),'[]'::jsonb),'promises',coalesce((SELECT jsonb_agg(to_jsonb(cp)||jsonb_build_object('state',cps.state) ORDER BY cp.created_at) FROM collection_promises cp JOIN collection_promise_effective_states cps ON cps.tenant_id=cp.tenant_id AND cps.promise_id=cp.id WHERE cp.tenant_id=cc.tenant_id AND cp.collection_case_id=cc.id),'[]'::jsonb),'legalHandoffs',coalesce((SELECT jsonb_agg(to_jsonb(lh)||jsonb_build_object('state',lhs.state,'packages',coalesce((SELECT jsonb_agg(to_jsonb(dp) ORDER BY dp.version) FROM debt_evidence_packages dp WHERE dp.tenant_id=lh.tenant_id AND dp.legal_handoff_id=lh.id),'[]'::jsonb)) ORDER BY lh.created_at) FROM legal_handoffs lh JOIN legal_handoff_effective_states lhs ON lhs.tenant_id=lh.tenant_id AND lhs.legal_handoff_id=lh.id WHERE lh.tenant_id=cc.tenant_id AND lh.collection_case_id=cc.id),'[]'::jsonb)) ORDER BY cc.opened_at) FROM collection_cases cc JOIN collection_case_effective_states cs ON cs.tenant_id=cc.tenant_id AND cs.collection_case_id=cc.id JOIN ar_open_items coi ON coi.tenant_id=cc.tenant_id AND coi.id=cc.ar_open_item_id JOIN ar_documents cad ON cad.tenant_id=coi.tenant_id AND cad.id=coi.ar_document_id WHERE cc.tenant_id=o.tenant_id AND cad.sales_order_id=o.id),'[]'::jsonb),
+          'customer',CASE WHEN ${allowed.customer} THEN to_jsonb(c) ELSE NULL END,
+          'opportunity',CASE WHEN ${allowed.opportunity} THEN to_jsonb(op) ELSE NULL END,
+          'quote',CASE WHEN ${allowed.quote} THEN to_jsonb(qr)||jsonb_build_object('quoteNumber',q.quote_number,'snapshot',to_jsonb(qs)) ELSE NULL END,
+          'technical',CASE WHEN ${allowed.technical} THEN to_jsonb(tsr)||jsonb_build_object('code',ts.code) ELSE NULL END,
+          'cost',CASE WHEN ${allowed.cost} THEN to_jsonb(cd) ELSE NULL END,
+          'policy',CASE WHEN ${allowed.policy} THEN to_jsonb(pe) ELSE NULL END,
+          'credit',CASE WHEN ${allowed.credit} THEN to_jsonb(cr)||jsonb_build_object('effectiveStatus',cr.effective_status) ELSE NULL END,
+          'contract',CASE WHEN ${allowed.contract} THEN to_jsonb(ctrev)||jsonb_build_object('contractNumber',ct.contract_number,'signature',to_jsonb(sig)) ELSE NULL END,
+          'receivables',coalesce((SELECT jsonb_agg(to_jsonb(b)||jsonb_build_object('documentNumber',d.document_number,'postedAt',d.posted_at) ORDER BY d.posted_at,b.id) FROM ar_open_item_balances b JOIN ar_documents d ON d.id=b.ar_document_id AND d.tenant_id=b.tenant_id WHERE b.tenant_id=o.tenant_id AND d.sales_order_id=o.id AND ${allowed.receivables}),'[]'::jsonb),
+          'payments',coalesce((SELECT jsonb_agg(DISTINCT to_jsonb(pb)) FROM allocation_entries a JOIN ar_open_items oi ON oi.id=a.ar_open_item_id AND oi.tenant_id=a.tenant_id JOIN ar_documents d ON d.id=oi.ar_document_id AND d.tenant_id=oi.tenant_id JOIN bank_payment_balances pb ON pb.id=a.bank_payment_id AND pb.tenant_id=a.tenant_id WHERE a.tenant_id=o.tenant_id AND d.sales_order_id=o.id AND ${allowed.payments}),'[]'::jsonb),
+          'reconciliations',coalesce((SELECT jsonb_agg(DISTINCT to_jsonb(rr)) FROM allocation_entries a JOIN ar_open_items oi ON oi.id=a.ar_open_item_id AND oi.tenant_id=a.tenant_id JOIN ar_documents d ON d.id=oi.ar_document_id AND d.tenant_id=oi.tenant_id JOIN reconciliation_runs rr ON rr.id=a.reconciliation_run_id AND rr.tenant_id=a.tenant_id WHERE a.tenant_id=o.tenant_id AND d.sales_order_id=o.id AND ${allowed.reconciliations}),'[]'::jsonb),
+          'commissions',coalesce((SELECT jsonb_agg(to_jsonb(cc)||jsonb_build_object('ledger',(SELECT coalesce(jsonb_agg(to_jsonb(le) ORDER BY le.sequence),'[]'::jsonb) FROM commission_ledger_entries le WHERE le.tenant_id=cc.tenant_id AND le.commission_case_id=cc.id)) ORDER BY cc.created_at) FROM effective_commission_cases cc WHERE cc.tenant_id=o.tenant_id AND cc.sales_order_id=o.id AND ${allowed.commissions}),'[]'::jsonb),
+          'risks',coalesce((SELECT jsonb_agg(to_jsonb(re)||jsonb_build_object('task',to_jsonb(rt),'taskEvents',coalesce((SELECT jsonb_agg(to_jsonb(rx) ORDER BY rx.sequence) FROM risk_task_events rx WHERE rx.tenant_id=rt.tenant_id AND rx.risk_task_id=rt.id),'[]'::jsonb)) ORDER BY re.created_at) FROM risk_evaluations re LEFT JOIN effective_risk_tasks rt ON rt.risk_evaluation_id=re.id AND rt.tenant_id=re.tenant_id WHERE re.tenant_id=o.tenant_id AND re.sales_order_id=o.id AND ${allowed.risks}),'[]'::jsonb),
+          'shipments',coalesce((SELECT jsonb_agg(to_jsonb(sr)||jsonb_build_object('state',rs.state,'releaseEvents',coalesce((SELECT jsonb_agg(to_jsonb(re) ORDER BY re.sequence) FROM shipment_release_events re WHERE re.tenant_id=sr.tenant_id AND re.release_request_id=sr.id),'[]'::jsonb),'loads',coalesce((SELECT jsonb_agg(to_jsonb(sh)||jsonb_build_object('state',ss.state,'events',coalesce((SELECT jsonb_agg(to_jsonb(se) ORDER BY se.sequence) FROM shipment_events se WHERE se.tenant_id=sh.tenant_id AND se.shipment_id=sh.id),'[]'::jsonb)) ORDER BY sh.created_at) FROM shipments sh JOIN shipment_effective_states ss ON ss.tenant_id=sh.tenant_id AND ss.shipment_id=sh.id WHERE sh.tenant_id=sr.tenant_id AND sh.release_request_id=sr.id),'[]'::jsonb)) ORDER BY sr.created_at) FROM shipment_release_requests sr JOIN shipment_release_effective_states rs ON rs.tenant_id=sr.tenant_id AND rs.release_request_id=sr.id WHERE sr.tenant_id=o.tenant_id AND sr.sales_order_id=o.id AND ${allowed.shipments}),'[]'::jsonb),
+          'collections',coalesce((SELECT jsonb_agg(to_jsonb(cc)||jsonb_build_object('state',cs.state,'events',coalesce((SELECT jsonb_agg(to_jsonb(ce) ORDER BY ce.sequence) FROM collection_case_events ce WHERE ce.tenant_id=cc.tenant_id AND ce.collection_case_id=cc.id AND (${allowed.legal} OR ce.event_type NOT LIKE 'LEGAL_%')),'[]'::jsonb),'followups',coalesce((SELECT jsonb_agg(to_jsonb(cf) ORDER BY cf.occurred_at,cf.id) FROM collection_followups cf WHERE cf.tenant_id=cc.tenant_id AND cf.collection_case_id=cc.id),'[]'::jsonb),'promises',coalesce((SELECT jsonb_agg(to_jsonb(cp)||jsonb_build_object('state',cps.state) ORDER BY cp.created_at) FROM collection_promises cp JOIN collection_promise_effective_states cps ON cps.tenant_id=cp.tenant_id AND cps.promise_id=cp.id WHERE cp.tenant_id=cc.tenant_id AND cp.collection_case_id=cc.id),'[]'::jsonb),'legalHandoffs',coalesce((SELECT jsonb_agg(to_jsonb(lh)||jsonb_build_object('state',lhs.state,'packages',coalesce((SELECT jsonb_agg(to_jsonb(dp) ORDER BY dp.version) FROM debt_evidence_packages dp WHERE dp.tenant_id=lh.tenant_id AND dp.legal_handoff_id=lh.id),'[]'::jsonb)) ORDER BY lh.created_at) FROM legal_handoffs lh JOIN legal_handoff_effective_states lhs ON lhs.tenant_id=lh.tenant_id AND lhs.legal_handoff_id=lh.id WHERE lh.tenant_id=cc.tenant_id AND lh.collection_case_id=cc.id AND ${allowed.legal}),'[]'::jsonb)) ORDER BY cc.opened_at) FROM collection_cases cc JOIN collection_case_effective_states cs ON cs.tenant_id=cc.tenant_id AND cs.collection_case_id=cc.id JOIN ar_open_items coi ON coi.tenant_id=cc.tenant_id AND coi.id=cc.ar_open_item_id JOIN ar_documents cad ON cad.tenant_id=coi.tenant_id AND cad.id=coi.ar_document_id WHERE cc.tenant_id=o.tenant_id AND cad.sales_order_id=o.id AND ${allowed.collections}),'[]'::jsonb),
           'anomalies',jsonb_build_array(
-            jsonb_build_object('code','LOW_MARGIN','active',qr.margin_basis_points<2000,'severity','HIGH','message','报价毛利率低于 20%'),
-            jsonb_build_object('code','OPEN_AR','active',EXISTS(SELECT 1 FROM ar_open_item_balances ab JOIN ar_documents ad ON ad.id=ab.ar_document_id AND ad.tenant_id=ab.tenant_id WHERE ab.tenant_id=o.tenant_id AND ad.sales_order_id=o.id AND ab.remaining_amount>0),'severity','MEDIUM','message','订单仍有未核销应收'),
-            jsonb_build_object('code','CREDIT_EXPIRED','active',cr.valid_until<=now(),'severity','HIGH','message','订单引用的信用决定已过有效期')
+            CASE WHEN ${allowed.quote} AND ${fieldReadable(context.sources?.quote, 'margin_basis_points', 'marginBasisPoints') ? 'TRUE' : 'FALSE'} THEN jsonb_build_object('code','LOW_MARGIN','active',qr.margin_basis_points<2000,'severity','HIGH','message','报价毛利率低于 20%') ELSE NULL END,
+            CASE WHEN ${allowed.receivables} AND ${fieldReadable(context.sources?.receivables, 'remaining_amount', 'remainingAmount') ? 'TRUE' : 'FALSE'} THEN jsonb_build_object('code','OPEN_AR','active',EXISTS(SELECT 1 FROM ar_open_item_balances ab JOIN ar_documents ad ON ad.id=ab.ar_document_id AND ad.tenant_id=ab.tenant_id WHERE ab.tenant_id=o.tenant_id AND ad.sales_order_id=o.id AND ab.remaining_amount>0),'severity','MEDIUM','message','订单仍有未核销应收') ELSE NULL END,
+            CASE WHEN ${allowed.credit} AND ${fieldReadable(context.sources?.credit, 'valid_until', 'validUntil') ? 'TRUE' : 'FALSE'} THEN jsonb_build_object('code','CREDIT_EXPIRED','active',cr.valid_until<=now(),'severity','HIGH','message','订单引用的信用决定已过有效期') ELSE NULL END
           )
         ) AS item
         FROM sales_orders o
@@ -72,33 +119,56 @@ export class PostgresOrder360Repository {
         JOIN contracts ct ON ct.id=ctrev.contract_id AND ct.tenant_id=o.tenant_id
         JOIN contract_signature_evidence sig ON sig.id=o.signature_evidence_id AND sig.tenant_id=o.tenant_id
         WHERE o.id=$1 AND o.tenant_id=$2 AND c.deleted_at IS NULL AND ${secured.sql}`,
-        [id, context.actor.companyId, ...secured.values],
+        [id, context.actor.companyId, ...values],
       )
     ).rows[0];
     if (!row) throw new DomainError('not_found', 'Sales order not found');
+    // Each query owns only the parameters its source predicates use.
+    values.length = secured.values.length;
+    const timelineAllowed = { ...allowed };
+    for (const name of [
+      'opportunity',
+      'quote',
+      'credit',
+      'contract',
+      'receivables',
+      'payments',
+      'commissions',
+      'risks',
+      'shipments',
+      'collections',
+      'legal',
+    ] as const)
+      timelineAllowed[name] = source(name);
     const timeline = (
       await this.db.query<{ item: JsonObject }>(
         `WITH target AS(SELECT o.* FROM sales_orders o JOIN customers c ON c.id=o.customer_id AND c.tenant_id=o.tenant_id WHERE o.id=$1 AND o.tenant_id=$2 AND ${secured.sql}), events AS(
-          SELECT op.created_at occurred_at,'OPPORTUNITY_CREATED' event_type,op.id subject_id,op.name label FROM target o JOIN opportunities op ON op.id=o.opportunity_id AND op.tenant_id=o.tenant_id
-          UNION ALL SELECT qr.issued_at,'QUOTE_ISSUED',qr.id,q.quote_number FROM target o JOIN quote_revisions qr ON qr.id=o.quote_revision_id AND qr.tenant_id=o.tenant_id JOIN quotes q ON q.id=qr.quote_id AND q.tenant_id=qr.tenant_id
-          UNION ALL SELECT coalesce(cd.decided_at,cd.created_at),'CREDIT_DECIDED',cd.id,cd.effective_status::text FROM target o JOIN effective_credit_decisions cd ON cd.id=o.credit_decision_id AND cd.tenant_id=o.tenant_id
-          UNION ALL SELECT sig.signed_at,'CONTRACT_SIGNED',sig.id,ct.contract_number FROM target o JOIN contract_revisions cr ON cr.id=o.contract_revision_id AND cr.tenant_id=o.tenant_id JOIN contracts ct ON ct.id=cr.contract_id AND ct.tenant_id=cr.tenant_id JOIN contract_signature_evidence sig ON sig.id=o.signature_evidence_id AND sig.tenant_id=o.tenant_id
+          SELECT op.created_at occurred_at,'OPPORTUNITY_CREATED' event_type,op.id subject_id,op.name label FROM target o JOIN opportunities op ON op.id=o.opportunity_id AND op.tenant_id=o.tenant_id WHERE ${timelineAllowed.opportunity}
+          UNION ALL SELECT qr.issued_at,'QUOTE_ISSUED',qr.id,q.quote_number FROM target o JOIN quote_revisions qr ON qr.id=o.quote_revision_id AND qr.tenant_id=o.tenant_id JOIN quotes q ON q.id=qr.quote_id AND q.tenant_id=qr.tenant_id WHERE ${timelineAllowed.quote}
+          UNION ALL SELECT coalesce(cd.decided_at,cd.created_at),'CREDIT_DECIDED',cd.id,cd.effective_status::text FROM target o JOIN effective_credit_decisions cd ON cd.id=o.credit_decision_id AND cd.tenant_id=o.tenant_id WHERE ${timelineAllowed.credit}
+          UNION ALL SELECT sig.signed_at,'CONTRACT_SIGNED',sig.id,ct.contract_number FROM target o JOIN contract_revisions cr ON cr.id=o.contract_revision_id AND cr.tenant_id=o.tenant_id JOIN contracts ct ON ct.id=cr.contract_id AND ct.tenant_id=cr.tenant_id JOIN contract_signature_evidence sig ON sig.id=o.signature_evidence_id AND sig.tenant_id=o.tenant_id WHERE ${timelineAllowed.contract}
           UNION ALL SELECT o.created_at,'ORDER_RELEASED',o.id,o.order_number FROM target o
-          UNION ALL SELECT d.posted_at,'AR_POSTED',d.id,d.document_number FROM target o JOIN ar_documents d ON d.sales_order_id=o.id AND d.tenant_id=o.tenant_id
-          UNION ALL SELECT p.received_at,'PAYMENT_RECEIVED',p.id,p.bank_reference FROM target o JOIN ar_documents d ON d.sales_order_id=o.id AND d.tenant_id=o.tenant_id JOIN ar_open_items oi ON oi.ar_document_id=d.id AND oi.tenant_id=d.tenant_id JOIN allocation_entries a ON a.ar_open_item_id=oi.id AND a.tenant_id=oi.tenant_id JOIN bank_payments p ON p.id=a.bank_payment_id AND p.tenant_id=a.tenant_id
-          UNION ALL SELECT le.occurred_at,'COMMISSION_'||le.state::text,le.id,le.reason FROM target o JOIN commission_cases cc ON cc.sales_order_id=o.id AND cc.tenant_id=o.tenant_id JOIN commission_ledger_entries le ON le.commission_case_id=cc.id AND le.tenant_id=cc.tenant_id
-          UNION ALL SELECT re.created_at,'RISK_EVALUATED',re.id,re.severity::text||'/'||re.score::text FROM target o JOIN risk_evaluations re ON re.sales_order_id=o.id AND re.tenant_id=o.tenant_id
-          UNION ALL SELECT rx.occurred_at,'RISK_TASK_'||rx.state::text,rx.id,rx.reason FROM target o JOIN risk_evaluations re ON re.sales_order_id=o.id AND re.tenant_id=o.tenant_id JOIN risk_tasks rt ON rt.risk_evaluation_id=re.id AND rt.tenant_id=re.tenant_id JOIN risk_task_events rx ON rx.risk_task_id=rt.id AND rx.tenant_id=rt.tenant_id
-          UNION ALL SELECT re.created_at,'SHIPMENT_RELEASE_'||re.state::text,re.id,re.reason FROM target o JOIN shipment_release_requests sr ON sr.sales_order_id=o.id AND sr.tenant_id=o.tenant_id JOIN shipment_release_events re ON re.release_request_id=sr.id AND re.tenant_id=sr.tenant_id
-          UNION ALL SELECT se.occurred_at,'SHIPMENT_'||se.state::text,se.id,sh.tracking_number FROM target o JOIN shipment_release_requests sr ON sr.sales_order_id=o.id AND sr.tenant_id=o.tenant_id JOIN shipments sh ON sh.release_request_id=sr.id AND sh.tenant_id=sr.tenant_id JOIN shipment_events se ON se.shipment_id=sh.id AND se.tenant_id=sh.tenant_id
-          UNION ALL SELECT ce.created_at,'COLLECTION_'||ce.event_type,ce.id,ce.reason FROM target o JOIN ar_documents d ON d.sales_order_id=o.id AND d.tenant_id=o.tenant_id JOIN ar_open_items oi ON oi.ar_document_id=d.id AND oi.tenant_id=d.tenant_id JOIN collection_cases cc ON cc.ar_open_item_id=oi.id AND cc.tenant_id=oi.tenant_id JOIN collection_case_events ce ON ce.collection_case_id=cc.id AND ce.tenant_id=cc.tenant_id
-          UNION ALL SELECT f.occurred_at,'COLLECTION_FOLLOWUP',f.id,f.outcome FROM target o JOIN ar_documents d ON d.sales_order_id=o.id AND d.tenant_id=o.tenant_id JOIN ar_open_items oi ON oi.ar_document_id=d.id AND oi.tenant_id=d.tenant_id JOIN collection_cases cc ON cc.ar_open_item_id=oi.id AND cc.tenant_id=oi.tenant_id JOIN collection_followups f ON f.collection_case_id=cc.id AND f.tenant_id=cc.tenant_id
-          UNION ALL SELECT he.created_at,'LEGAL_HANDOFF_'||he.state::text,he.id,he.reason FROM target o JOIN ar_documents d ON d.sales_order_id=o.id AND d.tenant_id=o.tenant_id JOIN ar_open_items oi ON oi.ar_document_id=d.id AND oi.tenant_id=d.tenant_id JOIN collection_cases cc ON cc.ar_open_item_id=oi.id AND cc.tenant_id=oi.tenant_id JOIN legal_handoffs h ON h.collection_case_id=cc.id AND h.tenant_id=cc.tenant_id JOIN legal_handoff_events he ON he.legal_handoff_id=h.id AND he.tenant_id=h.tenant_id
-          UNION ALL SELECT p.generated_at,'DEBT_EVIDENCE_'||p.state::text,p.id,p.package_number FROM target o JOIN ar_documents d ON d.sales_order_id=o.id AND d.tenant_id=o.tenant_id JOIN ar_open_items oi ON oi.ar_document_id=d.id AND oi.tenant_id=d.tenant_id JOIN collection_cases cc ON cc.ar_open_item_id=oi.id AND cc.tenant_id=oi.tenant_id JOIN legal_handoffs h ON h.collection_case_id=cc.id AND h.tenant_id=cc.tenant_id JOIN debt_evidence_packages p ON p.legal_handoff_id=h.id AND p.tenant_id=h.tenant_id
+          UNION ALL SELECT d.posted_at,'AR_POSTED',d.id,d.document_number FROM target o JOIN ar_documents d ON d.sales_order_id=o.id AND d.tenant_id=o.tenant_id WHERE ${timelineAllowed.receivables}
+          UNION ALL SELECT p.received_at,'PAYMENT_RECEIVED',p.id,p.bank_reference FROM target o JOIN ar_documents d ON d.sales_order_id=o.id AND d.tenant_id=o.tenant_id JOIN ar_open_items oi ON oi.ar_document_id=d.id AND oi.tenant_id=d.tenant_id JOIN allocation_entries a ON a.ar_open_item_id=oi.id AND a.tenant_id=oi.tenant_id JOIN bank_payments p ON p.id=a.bank_payment_id AND p.tenant_id=a.tenant_id WHERE ${timelineAllowed.payments}
+          UNION ALL SELECT le.occurred_at,'COMMISSION_'||le.state::text,le.id,le.reason FROM target o JOIN commission_cases cc ON cc.sales_order_id=o.id AND cc.tenant_id=o.tenant_id JOIN commission_ledger_entries le ON le.commission_case_id=cc.id AND le.tenant_id=cc.tenant_id WHERE ${timelineAllowed.commissions}
+          UNION ALL SELECT re.created_at,'RISK_EVALUATED',re.id,re.severity::text||'/'||re.score::text FROM target o JOIN risk_evaluations re ON re.sales_order_id=o.id AND re.tenant_id=o.tenant_id WHERE ${timelineAllowed.risks}
+          UNION ALL SELECT rx.occurred_at,'RISK_TASK_'||rx.state::text,rx.id,rx.reason FROM target o JOIN risk_evaluations re ON re.sales_order_id=o.id AND re.tenant_id=o.tenant_id JOIN risk_tasks rt ON rt.risk_evaluation_id=re.id AND rt.tenant_id=re.tenant_id JOIN risk_task_events rx ON rx.risk_task_id=rt.id AND rx.tenant_id=rt.tenant_id WHERE ${timelineAllowed.risks}
+          UNION ALL SELECT re.created_at,'SHIPMENT_RELEASE_'||re.state::text,re.id,re.reason FROM target o JOIN shipment_release_requests sr ON sr.sales_order_id=o.id AND sr.tenant_id=o.tenant_id JOIN shipment_release_events re ON re.release_request_id=sr.id AND re.tenant_id=sr.tenant_id WHERE ${timelineAllowed.shipments}
+          UNION ALL SELECT se.occurred_at,'SHIPMENT_'||se.state::text,se.id,sh.tracking_number FROM target o JOIN shipment_release_requests sr ON sr.sales_order_id=o.id AND sr.tenant_id=o.tenant_id JOIN shipments sh ON sh.release_request_id=sr.id AND sh.tenant_id=sr.tenant_id JOIN shipment_events se ON se.shipment_id=sh.id AND se.tenant_id=sh.tenant_id WHERE ${timelineAllowed.shipments}
+          UNION ALL SELECT ce.created_at,'COLLECTION_'||ce.event_type,ce.id,ce.reason FROM target o JOIN ar_documents d ON d.sales_order_id=o.id AND d.tenant_id=o.tenant_id JOIN ar_open_items oi ON oi.ar_document_id=d.id AND oi.tenant_id=d.tenant_id JOIN collection_cases cc ON cc.ar_open_item_id=oi.id AND cc.tenant_id=oi.tenant_id JOIN collection_case_events ce ON ce.collection_case_id=cc.id AND ce.tenant_id=cc.tenant_id WHERE ${timelineAllowed.collections} AND (ce.event_type NOT LIKE 'LEGAL_%' OR ${timelineAllowed.legal})
+          UNION ALL SELECT f.occurred_at,'COLLECTION_FOLLOWUP',f.id,f.outcome FROM target o JOIN ar_documents d ON d.sales_order_id=o.id AND d.tenant_id=o.tenant_id JOIN ar_open_items oi ON oi.ar_document_id=d.id AND oi.tenant_id=d.tenant_id JOIN collection_cases cc ON cc.ar_open_item_id=oi.id AND cc.tenant_id=oi.tenant_id JOIN collection_followups f ON f.collection_case_id=cc.id AND f.tenant_id=cc.tenant_id WHERE ${timelineAllowed.collections}
+          UNION ALL SELECT he.created_at,'LEGAL_HANDOFF_'||he.state::text,he.id,he.reason FROM target o JOIN ar_documents d ON d.sales_order_id=o.id AND d.tenant_id=o.tenant_id JOIN ar_open_items oi ON oi.ar_document_id=d.id AND oi.tenant_id=d.tenant_id JOIN collection_cases cc ON cc.ar_open_item_id=oi.id AND cc.tenant_id=oi.tenant_id JOIN legal_handoffs h ON h.collection_case_id=cc.id AND h.tenant_id=cc.tenant_id JOIN legal_handoff_events he ON he.legal_handoff_id=h.id AND he.tenant_id=h.tenant_id WHERE ${timelineAllowed.legal} AND ${timelineAllowed.collections}
+          UNION ALL SELECT p.generated_at,'DEBT_EVIDENCE_'||p.state::text,p.id,p.package_number FROM target o JOIN ar_documents d ON d.sales_order_id=o.id AND d.tenant_id=o.tenant_id JOIN ar_open_items oi ON oi.ar_document_id=d.id AND oi.tenant_id=d.tenant_id JOIN collection_cases cc ON cc.ar_open_item_id=oi.id AND cc.tenant_id=oi.tenant_id JOIN legal_handoffs h ON h.collection_case_id=cc.id AND h.tenant_id=cc.tenant_id JOIN debt_evidence_packages p ON p.legal_handoff_id=h.id AND p.tenant_id=h.tenant_id WHERE ${timelineAllowed.legal} AND ${timelineAllowed.collections}
         ) SELECT jsonb_build_object('occurredAt',occurred_at,'type',event_type,'subjectId',subject_id,'label',label) item FROM events ORDER BY occurred_at,event_type,subject_id`,
-        [id, context.actor.companyId, ...secured.values],
+        [id, context.actor.companyId, ...values],
       )
     ).rows.map((entry) => entry.item);
-    return { ...row.item, timeline };
+    return {
+      ...row.item,
+      anomalies: Array.isArray(row.item.anomalies)
+        ? row.item.anomalies.filter((item) => item !== null)
+        : [],
+      timeline,
+    };
   }
 }

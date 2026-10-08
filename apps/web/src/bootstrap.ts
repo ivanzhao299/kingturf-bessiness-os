@@ -1492,10 +1492,7 @@ export class CommercialController {
         ['complaint:read', '/api/v1/complaints'],
         ['complaint-sla:read', '/api/v1/complaint-sla-policies'],
         ['shipment:read', '/api/v1/shipment-releases'],
-        [
-          this.permissions.has('collection:read') ? 'collection:read' : 'legal-case:read',
-          '/api/v1/collection-cases',
-        ],
+        ['collection:read', '/api/v1/collection-cases'],
       ] as const;
       const readableViews = readable.filter(([permission]) => this.permissions.has(permission));
       const opportunityTask = this.permissions.has('opportunity:read')
@@ -6838,7 +6835,7 @@ export function commercialWorkspaceStructure(
     panel.append(list);
     workspace.append(panel);
   }
-  if (controller && (permissions.has('collection:read') || permissions.has('legal-case:read'))) {
+  if (controller && permissions.has('collection:read')) {
     const panel = el('section', 'qtc-workbench collection-workbench');
     const heading = el('div', 'pipeline-heading');
     const copy = el('div');
@@ -6917,9 +6914,10 @@ export function commercialWorkspaceStructure(
       const promises = Array.isArray(item.promises)
         ? (item.promises as readonly Record<string, unknown>[])
         : [];
-      const handoffs = Array.isArray(item.legalHandoffs)
-        ? (item.legalHandoffs as readonly Record<string, unknown>[])
-        : [];
+      const handoffs =
+        permissions.has('legal-case:read') && Array.isArray(item.legalHandoffs)
+          ? (item.legalHandoffs as readonly Record<string, unknown>[])
+          : [];
       const card = el('article', 'qtc-card collection-case-card');
       card.append(
         el('p', 'eyebrow', recordText(item, 'caseNumber', 'case_number', 'COLLECTION')),
