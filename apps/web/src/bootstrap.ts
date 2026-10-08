@@ -1492,10 +1492,7 @@ export class CommercialController {
         ['complaint:read', '/api/v1/complaints'],
         ['complaint-sla:read', '/api/v1/complaint-sla-policies'],
         ['shipment:read', '/api/v1/shipment-releases'],
-        [
-          this.permissions.has('collection:read') ? 'collection:read' : 'legal-case:read',
-          '/api/v1/collection-cases',
-        ],
+        ['collection:read', '/api/v1/collection-cases'],
       ] as const;
       const readableViews = readable.filter(([permission]) => this.permissions.has(permission));
       const opportunityTask = this.permissions.has('opportunity:read')
@@ -1961,10 +1958,20 @@ export function commercialWorkspaceStructure(
     const heading = el('div', 'readiness-heading');
     heading.append(el('strong', '', '今日资金与债权队列'), el('span', '', '异常优先'));
     queue.append(heading);
+    const collectionRows = controller.views.get('/api/v1/collection-cases') ?? [];
+    const legalQueueVisible =
+      collectionRows.length > 0 &&
+      collectionRows.every(
+        (item) =>
+          Array.isArray(item.legalHandoffs) &&
+          item.legalHandoffs.every((handoff: unknown) =>
+            ['REQUESTED', 'ACCEPTED', 'RETURNED'].includes(String(recordValue(handoff).state)),
+          ),
+      );
     const summary = cashRiskSummary(
       controller.views.get('/api/v1/ar-open-items') ?? [],
       controller.views.get('/api/v1/bank-payments') ?? [],
-      controller.views.get('/api/v1/collection-cases') ?? [],
+      collectionRows,
     );
     const grid = el('div', 'cash-risk-grid');
     for (const [label, value, tone] of [
@@ -1973,6 +1980,16 @@ export function commercialWorkspaceStructure(
       ['承诺已违约', summary.brokenPromises, 'danger'],
       ['法务待受理', summary.legalPending, 'warning'],
     ] as const) {
+      if (label === '逾期应收' && !permissions.has('ar:read')) continue;
+      if (label === '待核销收款' && !permissions.has('bank-payment:read')) continue;
+      if (label === '承诺已违约' && !permissions.has('collection:read')) continue;
+      if (
+        label === '法务待受理' &&
+        (!permissions.has('legal-case:read') ||
+          !permissions.has('collection:read') ||
+          !legalQueueVisible)
+      )
+        continue;
       const item = el('article', `pipeline-metric ${value > 0 ? tone : 'success'}`);
       item.append(el('span', '', label), el('strong', '', String(value)));
       grid.append(item);
@@ -6838,7 +6855,7 @@ export function commercialWorkspaceStructure(
     panel.append(list);
     workspace.append(panel);
   }
-  if (controller && (permissions.has('collection:read') || permissions.has('legal-case:read'))) {
+  if (controller && permissions.has('collection:read')) {
     const panel = el('section', 'qtc-workbench collection-workbench');
     const heading = el('div', 'pipeline-heading');
     const copy = el('div');
@@ -6917,9 +6934,10 @@ export function commercialWorkspaceStructure(
       const promises = Array.isArray(item.promises)
         ? (item.promises as readonly Record<string, unknown>[])
         : [];
-      const handoffs = Array.isArray(item.legalHandoffs)
-        ? (item.legalHandoffs as readonly Record<string, unknown>[])
-        : [];
+      const handoffs =
+        permissions.has('legal-case:read') && Array.isArray(item.legalHandoffs)
+          ? (item.legalHandoffs as readonly Record<string, unknown>[])
+          : [];
       const card = el('article', 'qtc-card collection-case-card');
       card.append(
         el('p', 'eyebrow', recordText(item, 'caseNumber', 'case_number', 'COLLECTION')),

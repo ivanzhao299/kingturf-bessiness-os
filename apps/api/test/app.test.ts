@@ -1233,6 +1233,15 @@ describe('authorization management API', () => {
       targetId,
       expect.objectContaining({ scopes: ['SELF'] }),
     );
+    const call = deps.order360Get.mock.calls[0] as unknown as readonly [
+      string,
+      Parameters<PostgresOrder360Repository['get']>[1],
+    ];
+    expect(call[1].sources?.quote).toEqual({
+      scopes: ['COMPANY'],
+      anchors: [],
+      fields: ['quoteNumber'],
+    });
   });
   it('authorizes server-derived risk evaluation and evidence-backed task closure', async () => {
     const permissions: AuthorizationContext['permissions'] = new Map([

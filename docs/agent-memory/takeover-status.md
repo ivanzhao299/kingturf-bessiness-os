@@ -1,69 +1,85 @@
 # KingTurf Takeover Status
 
-Updated: 2026-10-08 Asia/Singapore. Current task: Batch 1 Hosted CI integration and Batch 2 Authentication Session Revocation & Atomic Audit. Worktree `/home/jinhuit/Kingturf/kingturf-bessiness-os`, branch `codex/batch2-auth-session-revocation`. Primary agent executes; independent agents review read-only.
+Updated: 2026-10-08 Asia/Singapore. Current task: Batch2 integration, Batch2.5 CI Gate Recovery, Batch3 Source and Nested Authorization. Worktree `/home/jinhuit/Kingturf/kingturf-bessiness-os`, branch `codex/batch3-source-nested-authorization`. Continue from NEXT; do not repeat Discovery.
 
 ## CURRENT_STATUS
 
-Batch 1 [PR #31](https://github.com/ivanzhao299/kingturf-bessiness-os/pull/31) OPEN at `2d5a00838496cbb6200d4189fcffe41b3123d77d`; Hosted [run 37770650651](https://github.com/ivanzhao299/kingturf-bessiness-os/actions/runs/37770650651) quality FAIL from the historical Web test. Release tests 38/38 pass in Hosted CI. Not merged or deployed.
+Batch1 [PR31](https://github.com/ivanzhao299/kingturf-bessiness-os/pull/31), Batch2 [PR32](https://github.com/ivanzhao299/kingturf-bessiness-os/pull/32), CI-only [PR33](https://github.com/ivanzhao299/kingturf-bessiness-os/pull/33) are OPEN, unmerged, independently green at their latest heads. main remains `9d89c7d6739454345b1397fe6b02c945fbe1cb99`; no production mutation/deployment. Batch3 final code `7562baf83a0d5b65d12fdedade511607e88136db` locally validated and independently reviewed, not pushed/Hosted tested.
 
-Batch 2 code checkpoint `e76cb1eee5b70f4328ca07a358aab65aab9bbf98` locally verified. Independent BASE_COMMIT/main `9d89c7d6739454345b1397fe6b02c945fbe1cb99`, not stacked on Batch 1; no dependency on its unmerged code/workflow. No Batch 2 push/PR/Hosted CI. Local review ready, production release NO.
+| Batch | Latest head / base                                                         | Current evidence                                                     |
+| ----- | -------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| 1     | f7489e77cd059d37e049c70685e4025de0187cb5                                   | Hosted37790721061 PASS369/369, release38/38                          |
+| 2     | 8cbe6deb8efcd0d650007972c7b0516ea18cca87; independent original base9d89c7d | Hosted37795523187 PASS357/357; initial historical failure retained   |
+| 2.5   | ab26c6ebff7a4524a205f3a1ec92959a35c97f94; code58fe039                      | Hosted37795089674 PASS331/331; CI fixtures only                      |
+| 3     | code7562baf; BASE58fe03930e47f4f24804db88518be3dabb093d6f                  | local full350/350, targeted59/59 including19 real HTTP, browser23/23 |
 
-Current evidence: [Batch 1 integration](../evidence/BATCH1_INTEGRATION_REPORT_20261008.md), [Batch 2 security](../evidence/BATCH2_AUTH_SECURITY_REPORT_20261008.md), [verification JSON](../evidence/BATCH2_VERIFICATION_20261008.json), [issue matrix](project-issue-matrix.md). Original accepted roadmap in [CANONICAL_EXECUTION_BASELINE](CANONICAL_EXECUTION_BASELINE.md) remains intact.
+Batch3 depends on the unmerged CI-only PR33 checkpoint, contains no Batch1/2 source. Review its authorization diff against58fe039; disclose and update baseline through normal integration before standalone Hosted acceptance. Historical reports retain their original commit-scoped results.
+
+Current evidence: [Batch2 PR integration](../evidence/BATCH2_PR_INTEGRATION_REPORT_20261008.md), [CI Gate Recovery](../evidence/BATCH25_CI_GATE_RECOVERY_REPORT_20261008.md), [Batch3 authorization](../evidence/BATCH3_AUTHORIZATION_REPORT_20261008.md), [machine verification](../evidence/BATCH3_VERIFICATION_20261008.json), [issue matrix](project-issue-matrix.md). [CANONICAL_EXECUTION_BASELINE](CANONICAL_EXECUTION_BASELINE.md) remains intact.
 
 ## COMPLETED
 
-- Historical takeover `c14101d`: original main `9d89c7d`, install/lint/typecheck/format/build/dependency audit PASS; workspace324/326,70 migrations repeated, mock Chromium21/21 and transform API smoke. Public health/readiness/version PASS at that time; not rechecked as current production evidence in Batch 2. [Original report](../evidence/PROJECT_TAKEOVER_REPORT_20261008.md)/[baseline](../evidence/CURRENT_BASELINE_20261008.json) unchanged.
-- Batch 1 code `61617c9608af59035117b050e24fd19f2aad8325`, docs `2d5a008`: release SHA/origin/main ancestry/controller pin, cross-job production lock, backup-before-sync, probe-gated marker/cleanup. Historical local362/364 and release38/38; no production changes. [Batch 1 report](../evidence/BATCH1_RELEASE_SAFETY_REPORT_20261008.md) retained as its historical snapshot.
-- This round safe PR precheck, push, separate PR and Hosted CI observed. 224/225 tests pass Hosted, Web1 historical FAIL; API/build/audit NOT_RUN in Hosted fail-fast. Feature push/PR triggered no production workflow. main remains9d89c7d.
-- Batch 2 existing PostgreSQL opaque sessions retained; self/admin password change revokes all target sessions; current-password verification, tenant/current-session/CAS checks; login/reset serialized with consistent row locks; password/revoke/audit and login/session audit atomic. No migration or global logout.
-- Current API security87/87 (HTTP19 across2 real instances,service13,PG/RBAC16,route39); Web10/10; browser original21/21 plus2/2 added expiry/403 UI cases, mocked API only.
-- Current all8-workspace lint/typecheck/build, frozen install/format/manifest/dependency audit PASS. Full combined workspace350/352, same2 historical FAIL,26 new tests pass; ci:local stops on Web, full API tested separately160/161. No assertion removal/skip/constraint weakening.
-- Two independent read-only security reviews; stale-login failure audit and bounded fixture cleanup suggestions addressed. Diff/credential/scope checks complete; no production/workflow/migration edits.
+- Historical takeover c14101d:324/326 tests,70 migrations/repeat,21 mock browser cases and public health/readiness/version PASS at that checkpoint. [Original report](../evidence/PROJECT_TAKEOVER_REPORT_20261008.md)/[baseline](../evidence/CURRENT_BASELINE_20261008.json) retained, not current production evidence.
+- Batch1 code61617c/docs2d5a008 retained: pinned trusted main-history release SHA, shared non-canceling deployment lock, backup-before-sync and probe-gated marker. Initial Hosted37770650651 historical Web failure retained; CI patch cherry-picked normally, latest independent quality PASS.
+- Batch2 codee76cb1e/docs01fe23b retained: existing opaque PostgreSQL sessions, self/admin password change revokes all target sessions, consistent login/reset locks, password/revoke/success-audit atomic. Pre-push security87/87 rechecked; true HTTP two-instance/transaction/concurrency coverage. No refresh flow (N/A), no migration/global logout.
+- Batch2.5 code58fe039 fixes the test DOMTokenList contract with meaningful overdue assertions and controlled clock; CAPA fixture uses database-relative chronology with +1/-1/0 microsecond and timezone assertions. Preserved checks/triggers/assertions. Web bootstrap87/87, CAPA4/4, complete local331/331 and final Hosted331/331.
+- Batch3 sources independently enforce capability/scope/anchors/fields and entry intersection; nested legal event/evidence/manifest and mutation response require independent read authorization; UI aligns with parent/child capability. Corrected nonexistent organization scope columns using existing CRM policy, no schema change.
+- Final Batch3 complete pnpm ci:local PASS: API158/Web110/shared82=350/350; all8 workspace lint/typecheck/build, format/frozen install/manifest/test DB guard/70 migrations/dependency audit. Targeted59/59 includes19 native-server HTTP cases with real PostgreSQL/RBAC; browser21 original+2 permission-response replay PASS. No skip or new regression.
+- Read-only independent security reviews and latest GitHub GET completed; feature pushes triggered no production workflow. No force push, merge, production SQL/config/secrets or protection changes.
 
 ## IN_PROGRESS
 
-Implementation and local verification complete; documentation checkpoint records evidence and final worktree check. Batch1 is awaiting review/quality recovery. Batch2 is ready for separate review, not integrated. Continue from NEXT; do not restart Discovery.
+Batch3 source checkpoint complete; evidence/documentation checkpoint and final clean-tree verification. All three PRs await independent human review. Batch3 PR/Hosted integration pending with explicit PR33 dependency.
 
 ## BLOCKERS
 
-- KT-009/010: historical Web date/DOM and CAPA date constraints still fail. Hosted Batch1 quality FAIL; cannot claim CI green.
-- KT-006/007: source DataScope and nested legal visibility confirmed code/dispatch gaps; real dual-tenant/business impact not production-tested.
-- KT-002/003: no main/environment protections found; default Actions permissions403 NOT_VERIFIED; historical workflow reruns/manual writers bypass future controls. Admin changes not authorized.
-- KT-005: locally repaired only; main/production still have old password/session/audit behavior. All instances must adopt the new lock protocol for the concurrency guarantee.
-- KT-011/012/013: existing dev/start/proxy and startup migration governance issues deferred; transform runtime is tested here, no claim of original dev/start repair.
-- Real role UAT, production schema/backup/attachments/restore and upstream login abuse protection still require evidence/accounts/approval. No production mutation or deployment authorized.
+- GitHub main protected=false, rulesets/effective rules empty; production protection_rules empty, deployment_branch_policy null. Default Actions permission GET403 remains NOT_VERIFIED. Administrator authorization/configuration required; code guards cannot replace repository/environment protection.
+- All release/auth/authorization fixes remain feature-only; main/production retain the previous behavior. Batch3 Hosted CI not run; do not borrow other branches' PASS.
+- Production schema/backup/restore/attachments, external integration and actual multi-role UAT not verified. Physical stock/production/shipment lifecycle not newly populated in Batch3 tests.
+- KT-011/012/013 runtime/proxy/startup migration governance deferred. No production P0 confirmed in scoped synthetic tests; no comprehensive certification.
 
 ## NEXT
 
-1. Batch3: fix Order360 per-source DataScope, legal nested and derived-field visibility with real HTTP/PG multi-role and dual-tenant negative cases.
-2. Separate deterministic test batch for KT-009/010 preserving assertions/constraints; restore quality for Batch1 and independent Batch2 review. Batch2 push/PR/Hosted CI remains future work.
-3. Admin approval for main reviewer/required quality/force-push/deletion rules and production main-only independent approval; restrict old run/manual deployment paths.
-4. Local API dev/start/env/proxy; backup/schema/restore/attachment acceptance; real business and integration UAT before production approval.
+1. Obtain independent review of PR33/31/32, then integrate only through separately authorized normal PR process; no bypass or force push. CI patches already exist on each feature and each latest head is green.
+2. Disclose/update Batch3 CI-only baseline, create its independent PR and execute Hosted quality at the actual new head; keep authorization separate from authentication/release code.
+3. Seek administrator approval for PR/quality/independent-review/no-force-delete main rules and independent main-only production approvals; verify default Actions policies and restrict old/manual deployment writers.
+4. Repair local API dev/start/env/proxy; review migration concurrency and schema/backup/restore/attachment acceptance; complete real business-role UAT before any production release authorization.
 
 ## TECH_DEBT
 
-Large app/bootstrap files and legacy test dates remain; improve incrementally after safety. No dependency modernization or broad rewrites. No refresh/forgot-password implementation; any future flow must reuse atomic reset/revocation, not add an inconsistent bypass. Existing sessions index performance under production volume not benchmarked.
+Large app/bootstrap modules remain; no broad rewrite or dependency upgrades. Legacy chronology fixtures repaired incrementally. No refresh/forgot-password flow; future flows must reuse atomic revocation. Production session lookup performance, other dashboard derived-field policy and full shipment UAT remain unverified.
 
 ## PRODUCTION_RISKS
 
-No deployment or production SQL/settings/secrets changes. main/production keep old release and auth code; P1 authorization, governance and operational blockers remain. Mixed old/new API versions violate new login/reset serialization, and reverting old code restores the safety gap; revoked tokens never resurrect. Already authenticated in-flight business requests can finish. Third-party bearer integrations must reauthenticate after their own password changes; actual inventory not verified. No production P0 confirmed in the scoped evidence, not a comprehensive security certification.
+No production mutation or deployment. All instances must adopt Batch2 login/reset locking for its concurrency guarantee. Authentication queries begun before revocation commit and already authorized in-flight business requests may finish; new guard queries after commit reject old tokens. Reverting old code restores the safety gap, revoked tokens do not resurrect. Third-party bearer users must reauthenticate after their own password changes. Batch3 restricted fields reduce timeline details intentionally, unlimited roles preserve their permitted evidence. Main is not production-ready until integration, governance and operational gates are satisfied.
 
 ```text
-BATCH1_PR_STATUS=OPEN_PR_31
-BATCH1_HOSTED_CI=FAIL_HISTORICAL_WEB_TEST
-BATCH1_MERGE_STATUS=NOT_MERGED
-BATCH2_STATUS=COMPLETE_LOCAL_VALIDATED
-BATCH2_BASE_COMMIT=9d89c7d6739454345b1397fe6b02c945fbe1cb99
-BATCH2_COMMIT=e76cb1eee5b70f4328ca07a358aab65aab9bbf98
-FULL_TEST_BASELINE=350/352_PASS_2_HISTORICAL_FAIL
+BATCH1_PR=OPEN_31
+BATCH1_HOSTED_CI=PASS_37790721061
+BATCH1_MERGED=NO
+BATCH2_PR=OPEN_32
+BATCH2_HOSTED_CI=PASS_37795523187
+BATCH2_MERGED=NO
+CI_GATE_RECOVERY=PASS_PR33_UNMERGED
+WEB_HISTORICAL_TEST=FIXED_VALIDATED
+CAPA_HISTORICAL_TEST=FIXED_VALIDATED
+FULL_CI=PASS_LOCAL_BATCH3_350/350
+BATCH3_STATUS=COMPLETE_LOCAL_CHECKPOINT_NOT_PUSHED
+ORDER360_SOURCE_SCOPE=PASS_TARGETED_HTTP
+LEGAL_NESTED_AUTHORIZATION=PASS_TARGETED_HTTP
+TENANT_ISOLATION=PASS_SYNTHETIC_HTTP
+AUTHORIZATION_TESTS=59/59_HTTP19_BROWSER2
 NEW_REGRESSIONS=0
-DATABASE_MIGRATION_REQUIRED=NO
+MAIN_BRANCH_PROTECTION=MISSING_ADMIN_ACTION_REQUIRED
+PRODUCTION_ENVIRONMENT_PROTECTION=MISSING_ADMIN_ACTION_REQUIRED
 PRODUCTION_MUTATION=NO
 PRODUCTION_DEPLOYMENT=NO
 READY_FOR_PR=YES
 READY_FOR_PRODUCTION_RELEASE=NO
-NEXT=BATCH3_SOURCE_AND_NESTED_AUTHORIZATION
+NEXT=INDEPENDENT_PR_REVIEW_BATCH3_HOSTED_THEN_RUNTIME_RESTORE_UAT
 ```
+
+## Historical integration update (superseded by current status above)
 
 ## 2026-10-08 Integration and gate recovery update
 

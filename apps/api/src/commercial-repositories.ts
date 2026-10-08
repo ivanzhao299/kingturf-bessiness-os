@@ -73,7 +73,7 @@ const scope = (
   for (const anchor of anchors)
     if (anchor.organizationId && scopes.includes(anchor.scope))
       clauses.push(
-        `EXISTS(SELECT 1 FROM organization_scope_relationships osr WHERE osr.tenant_id=o.tenant_id AND osr.ancestor_id=$${String(offset + values.push(anchor.organizationId) - 1)} AND osr.descendant_id=o.owner_organization_id AND osr.scope='${anchor.scope}')`,
+        `EXISTS(SELECT 1 FROM organizations anchor JOIN organization_scope_relationships osr ON osr.ancestor_id=anchor.id AND osr.descendant_id=o.owner_organization_id${anchor.scope === 'TEAM' ? ' AND osr.depth<=1' : ''} WHERE anchor.id=$${String(offset + values.push(anchor.organizationId) - 1)} AND anchor.owner_organization_id=o.tenant_id AND anchor.organization_type='${anchor.scope}' AND anchor.active AND anchor.deleted_at IS NULL)`,
       );
   return { sql: clauses.length ? `(${clauses.join(' OR ')})` : 'FALSE', values };
 };

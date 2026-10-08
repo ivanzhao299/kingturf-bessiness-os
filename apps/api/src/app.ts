@@ -1,3 +1,10 @@
+import {
+  ORDER360_SOURCE_CAPABILITIES,
+  companyReadAllowed,
+  fieldReadable,
+  projectCollectionLegal,
+  type SourceReadGrant,
+} from './aggregate-authorization.ts';
 import { randomUUID } from 'node:crypto';
 import {
   assertEffectiveRange,
@@ -71,6 +78,23 @@ const mutationDto = <T extends Record<string, unknown>>(
 ): Partial<T> => {
   const read = context.permissions.get(readCapability);
   return read ? permittedDto(value, read.fields) : permittedDto(value, ['version']);
+};
+// A legal write capability does not widen the independent legal read scope of its response.
+const legalMutationDto = <T extends Record<string, unknown>>(
+  value: T,
+  context: AuthorizationContext,
+): Partial<T> => {
+  const read = context.permissions.get('legal-case:read');
+  const legalRead = read
+    ? {
+        scopes: read.scopes,
+        anchors: context.scopeAnchors?.get('legal-case:read') ?? [],
+        fields: read.fields,
+      }
+    : undefined;
+  return companyReadAllowed(legalRead)
+    ? permittedDto(value, read ? read.fields : [])
+    : permittedDto(value, ['version']);
 };
 const authorizeOneOf = (
   context: AuthorizationContext,
@@ -2175,16 +2199,26 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
         if (dependencies.collections) {
           if (request.method === 'GET' && request.pathname === '/api/v1/collection-cases') {
             const grant = authorizeQuery(context, 'collection:read');
+            const legalRead = context.permissions.has('legal-case:read')
+              ? {
+                  ...authorizeQuery(context, 'legal-case:read'),
+                  fields: context.permissions.get('legal-case:read')?.fields ?? null,
+                }
+              : undefined;
             const items = await dependencies.collections.list({
               actor: context.actor,
               scopes: grant.scopes,
               anchors: grant.anchors,
+              legalRead,
             });
             return {
               statusCode: 200,
               body: {
                 items: items.map((item) =>
-                  permittedDto(item, context.permissions.get('collection:read')?.fields ?? null),
+                  permittedDto(
+                    projectCollectionLegal(item, legalRead),
+                    context.permissions.get('collection:read')?.fields ?? null,
+                  ),
                 ),
               },
             };
@@ -2327,7 +2361,7 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
               correlationId,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'legal-case:read') };
+            return { statusCode: 201, body: legalMutationDto(result, context) };
           }
           const legalDecision = /^\/api\/v1\/legal-handoffs\/([0-9a-f-]+)\/(accept|return)$/u.exec(
             request.pathname,
@@ -2347,7 +2381,7 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
               correlationId,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'legal-case:read') };
+            return { statusCode: 201, body: legalMutationDto(result, context) };
           }
           const evidencePackage =
             /^\/api\/v1\/legal-handoffs\/([0-9a-f-]+)\/evidence-packages$/u.exec(request.pathname);
@@ -2364,7 +2398,7 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
               correlationId,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'legal-case:read') };
+            return { statusCode: 201, body: legalMutationDto(result, context) };
           }
           const caseTransition =
             /^\/api\/v1\/collection-cases\/([0-9a-f-]+)\/(resolve|close)$/u.exec(request.pathname);
@@ -2853,30 +2887,31 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
         if (request.method === 'GET' && order360Match && dependencies.order360) {
           const orderId = order360Match[1];
           if (!orderId) throw new DomainError('invalid_request', 'salesOrderId is required');
-          authorizeQuery(context, 'order-360:read');
+          const entryGrant = authorizeQuery(context, 'order-360:read');
           const orderGrant = authorizeQuery(context, 'sales-order:read');
+          const sources: Partial<
+            Record<keyof typeof ORDER360_SOURCE_CAPABILITIES, SourceReadGrant>
+          > = {};
+          for (const [name, capability] of Object.entries(ORDER360_SOURCE_CAPABILITIES)) {
+            if (!context.permissions.has(capability)) continue;
+            const grant = authorizeQuery(context, capability);
+            sources[name as keyof typeof ORDER360_SOURCE_CAPABILITIES] = {
+              scopes: grant.scopes,
+              anchors: grant.anchors,
+              fields: context.permissions.get(capability)?.fields ?? null,
+            };
+          }
           const aggregate = (await dependencies.order360.get(orderId, {
             actor: context.actor,
             scopes: orderGrant.scopes,
             anchors: orderGrant.anchors,
+            sources,
+            entry: {
+              scopes: entryGrant.scopes,
+              anchors: entryGrant.anchors,
+              fields: context.permissions.get('order-360:read')?.fields ?? null,
+            },
           })) as Record<string, unknown>;
-          const sectionCapabilities = {
-            customer: 'customer:read',
-            opportunity: 'opportunity:read',
-            technical: 'technical-solution:read',
-            cost: 'cost:read',
-            policy: 'sales-policy:read',
-            quote: 'quote:read',
-            credit: 'credit:read',
-            contract: 'contract:read',
-            receivables: 'ar:read',
-            payments: 'bank-payment:read',
-            reconciliations: 'reconciliation:read',
-            commissions: 'commission:read',
-            risks: 'risk:read',
-            shipments: 'shipment:read',
-            collections: 'collection:read',
-          } as const satisfies Record<string, PermissionKey>;
           const body: Record<string, unknown> = {
             order: permittedDto(
               aggregate.order as Record<string, unknown>,
@@ -2884,15 +2919,24 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             ),
             anomalies: aggregate.anomalies,
           };
-          for (const [section, capability] of Object.entries(sectionCapabilities)) {
+          for (const [section, capability] of Object.entries(ORDER360_SOURCE_CAPABILITIES)) {
             const grant = context.permissions.get(capability);
-            if (!grant) continue;
+            if (!grant || section === 'legal') continue;
             const value = aggregate[section];
             body[section] = Array.isArray(value)
-              ? value.map((item) => permittedDto(item as Record<string, unknown>, grant.fields))
-              : permittedDto(value as Record<string, unknown>, grant.fields);
+              ? value.map((item) =>
+                  permittedDto(
+                    section === 'collections'
+                      ? projectCollectionLegal(item as Record<string, unknown>, sources.legal)
+                      : (item as Record<string, unknown>),
+                    grant.fields,
+                  ),
+                )
+              : value === null
+                ? null
+                : permittedDto(value as Record<string, unknown>, grant.fields);
           }
-          const timelineCapability = (type: string): PermissionKey => {
+          const timelineCapability = (type: string): PermissionKey | null => {
             if (type.startsWith('QUOTE_')) return 'quote:read';
             if (type.startsWith('CREDIT_')) return 'credit:read';
             if (type.startsWith('CONTRACT_')) return 'contract:read';
@@ -2901,17 +2945,74 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             if (type.startsWith('COMMISSION_')) return 'commission:read';
             if (type.startsWith('RISK_')) return 'risk:read';
             if (type.startsWith('SHIPMENT_')) return 'shipment:read';
+            if (type.startsWith('COLLECTION_LEGAL_')) return 'legal-case:read';
             if (type.startsWith('COLLECTION_')) return 'collection:read';
             if (type.startsWith('LEGAL_HANDOFF_') || type.startsWith('DEBT_EVIDENCE_'))
               return 'legal-case:read';
             if (type.startsWith('OPPORTUNITY_')) return 'opportunity:read';
-            return 'sales-order:read';
+            return type === 'ORDER_RELEASED' ? 'sales-order:read' : null;
           };
-          body.timeline = (aggregate.timeline as Record<string, unknown>[]).filter((event) => {
+          body.timeline = (aggregate.timeline as Record<string, unknown>[]).flatMap((event) => {
             const type = typeof event.type === 'string' ? event.type : '';
-            return context.permissions.has(timelineCapability(type));
+            const capability = timelineCapability(type);
+            if (capability === null) return [];
+            const read = context.permissions.get(capability);
+            if (!read) return [];
+            const legalNested =
+              type.startsWith('LEGAL_HANDOFF_') ||
+              type.startsWith('DEBT_EVIDENCE_') ||
+              type.startsWith('COLLECTION_LEGAL_');
+            if (
+              legalNested &&
+              !fieldReadable(
+                sources.collections,
+                type.startsWith('COLLECTION_LEGAL_') ? 'events' : 'legalHandoffs',
+              )
+            )
+              return [];
+            if (read.fields === null) return [event];
+            const stateFields = type.startsWith('COLLECTION_')
+              ? ['event_type', 'state']
+              : ['state'];
+            const carriesState = [
+              'LEGAL_HANDOFF_',
+              'DEBT_EVIDENCE_',
+              'COMMISSION_',
+              'RISK_TASK_',
+              'SHIPMENT_RELEASE_',
+              'SHIPMENT_',
+              'COLLECTION_',
+            ].some((prefix) => type.startsWith(prefix));
+            if (carriesState && !stateFields.some((name) => read.fields?.includes(name))) return [];
+            const labelFields: Record<string, readonly string[]> = {
+              OPPORTUNITY_CREATED: ['name'],
+              QUOTE_ISSUED: ['quoteNumber', 'quote_number'],
+              CREDIT_DECIDED: ['effectiveStatus', 'effective_status'],
+              CONTRACT_SIGNED: ['contractNumber', 'contract_number'],
+              ORDER_RELEASED: ['order_number', 'orderNumber'],
+              AR_POSTED: ['documentNumber', 'document_number'],
+              PAYMENT_RECEIVED: ['bank_reference', 'bankReference'],
+              COLLECTION_FOLLOWUP: ['outcome'],
+            };
+            const fields =
+              labelFields[type] ??
+              (type.startsWith('DEBT_EVIDENCE_')
+                ? ['package_number']
+                : type.startsWith('SHIPMENT_') && !type.startsWith('SHIPMENT_RELEASE_')
+                  ? ['tracking_number']
+                  : ['reason']);
+            const grant = { scopes: read.scopes, anchors: [], fields: read.fields };
+            const labelAllowed =
+              type === 'RISK_EVALUATED'
+                ? fieldReadable(grant, 'severity') && fieldReadable(grant, 'score')
+                : fieldReadable(grant, ...fields);
+            // Flat source allowlists cannot safely describe joined/coalesced event timestamps.
+            return [permittedDto(event, ['type', 'subjectId', ...(labelAllowed ? ['label'] : [])])];
           });
-          return { statusCode: 200, body };
+          return {
+            statusCode: 200,
+            body: permittedDto(body, context.permissions.get('order-360:read')?.fields ?? null),
+          };
         }
         if (request.method === 'PUT' && request.pathname === '/api/v1/auth/credential') {
           const body = objectBody(request.body);

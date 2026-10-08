@@ -11,3 +11,7 @@ CI fixture code58fe039 from separate PR33 was normally cherry-picked to `e609514
 RISKS/SAFETY SEMANTICS: authentication query snapshots taken before revocation commit may return the old context; business requests already authenticated may finish. Queries starting after commit reject old tokens. No cache delay or blanket in-flight cancellation claim. All API instances must use the new lock protocol; old instances can bypass serialization. Database/audit failures fail closed. Main remains9d89c7d, P1 auth still not deployed. Authorization/source fixes, branch/environment protection, restore/UAT and operational approval remain release blockers.
 
 RESULT: PR OPEN/unmerged, auth/security and Hosted CI PASS at e609514. This documentation checkpoint changes PR head and must have its own Hosted run checked. Governing auth contract is [ADR0003](../adr/0003-opaque-session-authentication.md); historical [Batch2 report](BATCH2_AUTH_SECURITY_REPORT_20261008.md) retained. Current continuing state is appended to takeover-status, preserving prior evidence.
+
+## Latest-head verification
+
+2026-10-08 final GET confirms PR32 OPEN at `8cbe6deb8efcd0d650007972c7b0516ea18cca87`, Hosted [37795523187](https://github.com/ivanzhao299/kingturf-bessiness-os/actions/runs/37795523187) quality SUCCESS, complete357/357. Documentation head independently verified; not merely carrying forward e609514's success. Still unmerged and undeployed. Current Batch3 report/status records subsequent independent source authorization work.
