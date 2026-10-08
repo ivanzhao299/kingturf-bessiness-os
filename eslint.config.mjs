@@ -18,7 +18,11 @@ export default tseslint.config(
     },
   },
   {
-    files: ['apps/web/scripts/*.mjs', 'scripts/validate_release*.mjs'],
+    files: [
+      'apps/web/scripts/*.mjs',
+      'scripts/validate_release*.mjs',
+      'tests/e2e/runtime-local.spec.mjs',
+    ],
     ...tseslint.configs.disableTypeChecked,
     languageOptions: { globals: globals.node },
   },
