@@ -1,0 +1,112 @@
+{
+  "recorded_at": "2026-10-08T17:39:38+08:00",
+  "batch": "Release Pipeline Safety Hardening",
+  "branch": "codex/batch1-release-guardrails",
+  "initial_head": "c14101d410cad1616e91d85a0c773c65c1e252a4",
+  "code_commit": "61617c9608af59035117b050e24fd19f2aad8325",
+  "remote_main": "9d89c7d6739454345b1397fe6b02c945fbe1cb99",
+  "checks": {
+    "install": "PASS",
+    "format": "PASS",
+    "frontend_manifest": "PASS",
+    "lint": "PASS",
+    "typecheck": "PASS",
+    "build": "PASS",
+    "dependency_audit": "PASS",
+    "ci_local": "FAIL_HISTORICAL_WEB_TEST",
+    "actionlint_shellcheck": "PASS",
+    "yaml_shell_structure": "PASS",
+    "release_guardrails": {
+      "passed": 38,
+      "failed": 0,
+      "skipped": 0
+    },
+    "workspace_tests": {
+      "passed": 324,
+      "failed": 2,
+      "total": 326
+    },
+    "total_unique_tests": {
+      "passed": 362,
+      "failed": 2,
+      "total": 364
+    },
+    "canonical_origin_cli": {
+      "passed": 2,
+      "candidate_shas": [
+        "9d89c7d6739454345b1397fe6b02c945fbe1cb99",
+        "e47aa9c647e27e1fe5cf64e6f3877bc184398500"
+      ]
+    },
+    "production_public_get": "PASS",
+    "hosted_release": "NOT_RUN",
+    "hosted_concurrent_dispatch": "NOT_RUN",
+    "production_restore": "NOT_RUN",
+    "chromium_ui": "HISTORICAL_NOT_RERUN"
+  },
+  "workspace_details": {
+    "config": {
+      "passed": 4,
+      "failed": 0
+    },
+    "database": {
+      "passed": 61,
+      "failed": 0
+    },
+    "testing": {
+      "passed": 1,
+      "failed": 0
+    },
+    "types": {
+      "passed": 1,
+      "failed": 0
+    },
+    "ui": {
+      "passed": 1,
+      "failed": 0
+    },
+    "domain": {
+      "passed": 14,
+      "failed": 0
+    },
+    "web": {
+      "passed": 104,
+      "failed": 1
+    },
+    "api": {
+      "passed": 138,
+      "failed": 1
+    }
+  },
+  "migrations": {
+    "fixture_applied": 70,
+    "production_status": "NOT_VERIFIED"
+  },
+  "risk_triage": {
+    "password_session": "CONFIRMED_P1_REAL_POSTGRES_API",
+    "order360_source_scope": "CONFIRMED_CODE_DISPATCH_P1_REAL_DATA_EFFECT_NOT_VERIFIED",
+    "nested_legal": "CONFIRMED_CAPABILITY_EXPOSURE_P1_SYNTHETIC_DISPATCH",
+    "cross_tenant_idor": "NOT_VERIFIED",
+    "p0_confirmed": false
+  },
+  "tools": {
+    "node": "24.19.0",
+    "pnpm": "10.33.4",
+    "actionlint": "1.7.12",
+    "shellcheck": "0.11.0",
+    "pyyaml": "6.0.3",
+    "postgres": "17.7-alpine3.23"
+  },
+  "production_public_version": {
+    "sha": "9d89c7d6739454345b1397fe6b02c945fbe1cb99",
+    "environment": "production",
+    "builtAt": "33996421402"
+  },
+  "github_settings_mutation": false,
+  "production_mutation": false,
+  "production_deployment": false,
+  "new_regressions": 0,
+  "ready_for_pr": true,
+  "ready_for_production_release": false,
+  "next_batch": "AUTH_SESSION_REVOCATION_AND_ATOMIC_AUDIT"
+}

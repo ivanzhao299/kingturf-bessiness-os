@@ -1,0 +1,113 @@
+{
+  "date": "2026-10-08",
+  "repository": "ivanzhao299/kingturf-bessiness-os",
+  "main": "9d89c7d6739454345b1397fe6b02c945fbe1cb99",
+  "prs": {
+    "31": {
+      "url": "https://github.com/ivanzhao299/kingturf-bessiness-os/pull/31",
+      "head": "f7489e77cd059d37e049c70685e4025de0187cb5",
+      "state": "OPEN",
+      "quality": "PASS",
+      "run": 37790721061
+    },
+    "32": {
+      "url": "https://github.com/ivanzhao299/kingturf-bessiness-os/pull/32",
+      "head": "8cbe6deb8efcd0d650007972c7b0516ea18cca87",
+      "state": "OPEN",
+      "quality": "PASS",
+      "run": 37795523187
+    },
+    "33": {
+      "url": "https://github.com/ivanzhao299/kingturf-bessiness-os/pull/33",
+      "head": "ab26c6ebff7a4524a205f3a1ec92959a35c97f94",
+      "state": "OPEN",
+      "quality": "PASS",
+      "run": 37795089674
+    }
+  },
+  "batch25": {
+    "code": "58fe03930e47f4f24804db88518be3dabb093d6f",
+    "documents": "ab26c6ebff7a4524a205f3a1ec92959a35c97f94",
+    "localFull": {
+      "total": 331,
+      "pass": 331
+    },
+    "webBootstrap": 87,
+    "capa": 4,
+    "constraintsUnchanged": true,
+    "merged": false
+  },
+  "batch3": {
+    "branch": "codex/batch3-source-nested-authorization",
+    "base": "58fe03930e47f4f24804db88518be3dabb093d6f",
+    "baseDependency": "CI_ONLY_CHECKPOINT_PR33_UNMERGED",
+    "code": "7562baf83a0d5b65d12fdedade511607e88136db",
+    "priorCodes": [
+      "35efaf0646123804c0e3cd9e4ab6336782abc152",
+      "66a348ab249cbcb210d2293b656d9de06242bc69"
+    ],
+    "fullCi": "PASS",
+    "workspace": {
+      "total": 350,
+      "pass": 350,
+      "fail": 0,
+      "web": 110,
+      "api": 158,
+      "shared": 82
+    },
+    "targeted": {
+      "total": 59,
+      "pass": 59,
+      "realHttp": 19,
+      "routing": 39,
+      "pgLegal": 1
+    },
+    "browser": {
+      "original": 21,
+      "added": 2,
+      "total": 23,
+      "pass": 23,
+      "api": "RESPONSE_REPLAY_AND_MOCK_ONLY_REAL_HTTP_ENFORCEMENT_SEPARATE"
+    },
+    "lint": "PASS",
+    "typecheck": "PASS",
+    "build": "PASS_STARTUP_BUDGET_INCLUDED",
+    "dependencyAudit": "PASS",
+    "migrations": {
+      "existingApplied": 70,
+      "new": 0,
+      "production": "NOT_RUN"
+    },
+    "hostedCi": "NOT_RUN",
+    "pushed": false,
+    "independentReview": "APPROVED_READ_ONLY",
+    "sourcePolicies": "CUSTOMER_VS_OPPORTUNITY_OWNERSHIP_COMPANY_ONLY_CHILDREN",
+    "legalPolicy": "INDEPENDENT_COMPANY_READ_AND_PARENT_FIELDS_MUTATION_RESPONSE_READ_SCOPE",
+    "entryPolicy": "INTERSECT_ENTRY_AND_ORDER_SCOPES_APPLY_ENTRY_FIELDS",
+    "newRegressions": 0,
+    "p0": "NOT_CONFIRMED_SCOPED_SYNTHETIC_TESTS",
+    "limits": [
+      "Physical shipment/stock lifecycle not newly populated",
+      "Browser replays synthetic HTTP responses, no real production UAT",
+      "No production backup/schema/restore/deployment verification",
+      "Main unchanged, all PRs unmerged"
+    ]
+  },
+  "protection": {
+    "main": {
+      "name": "main",
+      "protected": false,
+      "sha": "9d89c7d6739454345b1397fe6b02c945fbe1cb99"
+    },
+    "rulesets": [],
+    "effectiveRules": [],
+    "production": {
+      "deployment_branch_policy": null,
+      "protection_rules": []
+    },
+    "changed": false
+  },
+  "productionMutation": false,
+  "productionDeployment": false,
+  "releaseReady": false
+}
