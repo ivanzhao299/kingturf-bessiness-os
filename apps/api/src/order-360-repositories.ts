@@ -13,6 +13,7 @@ type Context = Readonly<{
   actor: Actor;
   scopes: readonly DataScope[];
   anchors: readonly ScopeAnchor[];
+  entry?: SourceReadGrant;
   sources?: Readonly<Partial<Record<Order360Source, SourceReadGrant>>>;
 }>;
 
@@ -43,7 +44,14 @@ export class PostgresOrder360Repository {
   public constructor(private readonly db: Db) {}
 
   public async get(id: string, context: Context): Promise<JsonObject> {
-    const secured = customerScope(context);
+    const orderScope = customerScope(context);
+    const entryScope = context.entry
+      ? customerScope({ actor: context.actor, ...context.entry }, 'c', 3 + orderScope.values.length)
+      : { sql: 'TRUE', values: [] };
+    const secured = {
+      sql: `(${orderScope.sql}) AND (${entryScope.sql})`,
+      values: [...orderScope.values, ...entryScope.values],
+    };
     const values: string[] = [...secured.values];
     const source = (name: Order360Source): string => {
       const grant = context.sources?.[name];

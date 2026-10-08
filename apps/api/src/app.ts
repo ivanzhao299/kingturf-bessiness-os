@@ -2887,7 +2887,7 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
         if (request.method === 'GET' && order360Match && dependencies.order360) {
           const orderId = order360Match[1];
           if (!orderId) throw new DomainError('invalid_request', 'salesOrderId is required');
-          authorizeQuery(context, 'order-360:read');
+          const entryGrant = authorizeQuery(context, 'order-360:read');
           const orderGrant = authorizeQuery(context, 'sales-order:read');
           const sources: Partial<
             Record<keyof typeof ORDER360_SOURCE_CAPABILITIES, SourceReadGrant>
@@ -2906,6 +2906,11 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             scopes: orderGrant.scopes,
             anchors: orderGrant.anchors,
             sources,
+            entry: {
+              scopes: entryGrant.scopes,
+              anchors: entryGrant.anchors,
+              fields: context.permissions.get('order-360:read')?.fields ?? null,
+            },
           })) as Record<string, unknown>;
           const body: Record<string, unknown> = {
             order: permittedDto(
@@ -3004,7 +3009,10 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             // Flat source allowlists cannot safely describe joined/coalesced event timestamps.
             return [permittedDto(event, ['type', 'subjectId', ...(labelAllowed ? ['label'] : [])])];
           });
-          return { statusCode: 200, body };
+          return {
+            statusCode: 200,
+            body: permittedDto(body, context.permissions.get('order-360:read')?.fields ?? null),
+          };
         }
         if (request.method === 'PUT' && request.pathname === '/api/v1/auth/credential') {
           const body = objectBody(request.body);

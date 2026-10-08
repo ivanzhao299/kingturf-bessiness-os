@@ -565,6 +565,29 @@ describe('real HTTP source scopes and nested legal authorization', () => {
     expect(JSON.stringify(result)).not.toContain('SENSITIVE-LEGAL');
     expect(result).not.toHaveProperty('manifest');
   });
+  it('intersects aggregate entry SELF with the independent sales-order grant', async () => {
+    await grants(builder, {
+      'order-360:read': selfGrant,
+      'sales-order:read': companyGrant,
+      'customer:read': companyGrant,
+    });
+    const result = await response(`/sales-orders/${graph.orderId}/360`, builder.token);
+    expect(result.status).toBe(404);
+    expect(JSON.stringify(await result.json())).not.toContain('AUTH-ORDER');
+    await grants(owner, { 'order-360:read': selfGrant, 'sales-order:read': companyGrant });
+    expect((await aggregate(owner)).order).toMatchObject({ order_number: 'AUTH-ORDER' });
+  });
+  it('applies aggregate entry field policy after independent source projections', async () => {
+    await grants(owner, {
+      'order-360:read': { scopes: ['COMPANY'], fields: ['order'] },
+      'sales-order:read': companyGrant,
+      'collection:read': companyGrant,
+      'legal-case:read': companyGrant,
+    });
+    const result = await aggregate(owner);
+    expect(Object.keys(result)).toEqual(['order']);
+    expect(JSON.stringify(result)).not.toContain('SENSITIVE-LEGAL');
+  });
   it('does not expose authentication material in actual API logs', () => {
     const raw = logs.join('');
     for (const value of [secret, owner.token, builder.token, reviewer.token, outsider.token])
