@@ -945,6 +945,7 @@ const currencyLabel = (value: unknown): string => {
 };
 const displayMoney = (currency: unknown, value: unknown): string => {
   const code = textValue(currency, 'CNY');
+  if (!/^[A-Z]{3}$/u.test(code)) return '金额不可见';
   const amount = Number(value);
   if (!Number.isFinite(amount)) return `${code} —`;
   return new Intl.NumberFormat('zh-CN', {
