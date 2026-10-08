@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { AuditEvent, AuthorizationContext } from '@kingturf/domain';
 import {
   AuthenticationService,
@@ -50,7 +50,16 @@ describe('password and session security', () => {
         }),
       createSession: (input) => {
         storedHash = input.tokenHash;
-        return Promise.resolve();
+        audits.push({
+          action: 'auth.login',
+          outcome: 'SUCCESS',
+          actorId: 'employee',
+          organizationId: input.organizationId,
+          targetType: 'identity',
+          targetId: input.identityId,
+          correlationId: input.correlationId,
+        });
+        return Promise.resolve(true);
       },
       resolveSession: (tokenHash) =>
         Promise.resolve(!revoked && tokenHash === storedHash ? authorization : null),
@@ -58,6 +67,7 @@ describe('password and session security', () => {
         revoked = tokenHash === storedHash;
         return Promise.resolve(revoked);
       },
+      findPasswordForEmployee: () => Promise.resolve(null),
       replacePasswordForEmployee: () => Promise.resolve(),
       provisionIdentity: () => Promise.resolve('identity-2'),
     };
@@ -91,12 +101,22 @@ describe('password and session security', () => {
     const audits: AuditEvent[] = [];
     const store: CredentialStore = {
       findForLogin: () => Promise.resolve(null),
-      createSession: () => Promise.resolve(),
+      createSession: () => Promise.resolve(true),
       resolveSession: () => Promise.resolve(null),
       revokeSession: () => Promise.resolve(false),
+      findPasswordForEmployee: () => Promise.resolve(null),
       replacePasswordForEmployee: () => Promise.resolve(),
       provisionIdentity: (input) => {
         provisioned = input;
+        audits.push({
+          action: 'auth.identity_provision',
+          outcome: 'SUCCESS',
+          actorId: input.actorId,
+          organizationId: input.companyId,
+          targetType: 'identity',
+          targetId: 'identity-2',
+          correlationId: input.correlationId,
+        });
         return Promise.resolve('identity-2');
       },
     };
@@ -143,5 +163,98 @@ describe('DataScope predicates', () => {
   it('defaults to deny and treats GROUP as unrestricted', () => {
     expect(dataScopeSql([]).sql).toBe('FALSE');
     expect(dataScopeSql(['GROUP']).sql).toBe('TRUE');
+  });
+});
+
+describe('password change and stale login contracts', () => {
+  async function fixture() {
+    const hasher = new PasswordHasher(options);
+    const passwordHash = await hasher.hash('correct horse battery');
+    const store = {
+      findForLogin: vi.fn(() =>
+        Promise.resolve({
+          identityId: 'identity',
+          employeeId: 'employee',
+          companyId: 'company',
+          passwordHash,
+          identityActive: true,
+          employeeActive: true,
+          memberActive: true,
+        }),
+      ),
+      createSession: vi.fn(() => Promise.resolve(true)),
+      findPasswordForEmployee: vi.fn(() => Promise.resolve(passwordHash)),
+      replacePasswordForEmployee: vi
+        .fn<CredentialStore['replacePasswordForEmployee']>()
+        .mockResolvedValue(undefined),
+      revokeSession: vi.fn(() => Promise.resolve(true)),
+      resolveSession: vi.fn(() => Promise.resolve(null)),
+      provisionIdentity: vi.fn(() => Promise.resolve('identity')),
+    } satisfies CredentialStore;
+    const audit = { record: vi.fn(() => Promise.resolve()) };
+    const context: AuthorizationContext = {
+      actor: { employeeId: 'employee', companyId: 'company' },
+      permissions: new Map(),
+    };
+    return {
+      store,
+      audit,
+      context,
+      passwordHash,
+      hasher,
+      service: new AuthenticationService(
+        store,
+        hasher,
+        { secret: 'test-server-secret', ttlSeconds: 3600 },
+        audit,
+      ),
+    };
+  }
+  it('verifies the current password and passes only hashed credentials and a scoped CAS to the transaction', async () => {
+    const { service, context, store, audit, passwordHash, hasher } = await fixture();
+    await service.changePassword(
+      context,
+      'correct horse battery',
+      'new correct horse battery',
+      'test-bearer',
+      'correlation',
+    );
+    expect(store.findPasswordForEmployee).toHaveBeenCalledWith('employee', 'company');
+    const input = store.replacePasswordForEmployee.mock.calls[0]?.[0] as unknown as Parameters<
+      CredentialStore['replacePasswordForEmployee']
+    >[0];
+    expect(input).toMatchObject({
+      employeeId: 'employee',
+      companyId: 'company',
+      expectedPasswordHash: passwordHash,
+      tokenHash: hashSessionToken('test-bearer', 'test-server-secret'),
+      correlationId: 'correlation',
+    });
+    expect(await hasher.verify('new correct horse battery', input.passwordHash)).toBe(true);
+    expect(audit.record).not.toHaveBeenCalled();
+  });
+  it('rejects a wrong current password before mutation or success audit', async () => {
+    const { service, context, store, audit } = await fixture();
+    await expect(
+      service.changePassword(
+        context,
+        'wrong old password',
+        'new correct horse battery',
+        'test-bearer',
+        'correlation',
+      ),
+    ).rejects.toMatchObject({ code: 'forbidden' });
+    expect(store.replacePasswordForEmployee).not.toHaveBeenCalled();
+    expect(audit.record).not.toHaveBeenCalled();
+  });
+  it('keeps a failure audit when credentials change during login', async () => {
+    const { service, store, audit } = await fixture();
+    store.createSession.mockResolvedValue(false);
+    await expect(
+      service.login('ADMIN', 'correct horse battery', 'correlation'),
+    ).resolves.toBeNull();
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'auth.login', outcome: 'FAILURE' }),
+    );
   });
 });

@@ -329,17 +329,36 @@ export class PostgresSecurityStore implements CredentialStore, AuditSink {
       : null;
   }
   public async createSession(
-    input: Readonly<{
-      identityId: string;
-      organizationId: string;
-      tokenHash: string;
-      expiresAt: Date;
-    }>,
-  ): Promise<void> {
-    await this.database.query(
-      'INSERT INTO sessions(identity_id,organization_id,token_hash,expires_at) VALUES($1,$2,$3,$4)',
-      [input.identityId, input.organizationId, input.tokenHash, input.expiresAt],
-    );
+    input: Parameters<CredentialStore['createSession']>[0],
+  ): Promise<boolean> {
+    return this.database.transaction(async (tx) => {
+      // Password reset and login serialize on the same employee, before locking credentials.
+      await tx.query('SELECT id FROM employees WHERE id=$1 FOR NO KEY UPDATE', [input.employeeId]);
+      const identity = await tx.query(
+        "SELECT i.id FROM identities i JOIN employees e ON e.id=i.employee_id AND e.active AND e.deleted_at IS NULL JOIN organizations company ON company.id=e.company_id AND company.organization_type='COMPANY' AND company.active AND company.deleted_at IS NULL JOIN organizations employee_org ON employee_org.id=e.organization_id AND employee_org.owner_organization_id=e.company_id AND employee_org.active AND employee_org.deleted_at IS NULL JOIN organization_memberships om ON om.employee_id=e.id AND om.organization_id=e.company_id AND om.active WHERE i.id=$1 AND e.id=$2 AND e.company_id=$3 AND i.active AND i.deleted_at IS NULL FOR UPDATE OF i",
+        [input.identityId, input.employeeId, input.organizationId],
+      );
+      if (!identity.rows[0]) return false;
+      const credential = await tx.query<{ password_hash: string }>(
+        'SELECT password_hash FROM password_credentials WHERE identity_id=$1 FOR UPDATE',
+        [input.identityId],
+      );
+      if (credential.rows[0]?.password_hash !== input.expectedPasswordHash) return false;
+      await tx.query(
+        'INSERT INTO sessions(identity_id,organization_id,token_hash,expires_at) VALUES($1,$2,$3,$4)',
+        [input.identityId, input.organizationId, input.tokenHash, input.expiresAt],
+      );
+      await auditTx(
+        tx,
+        'auth.login',
+        { employeeId: input.employeeId, companyId: input.organizationId },
+        'identity',
+        input.identityId,
+        input.correlationId,
+        {},
+      );
+      return true;
+    });
   }
   public async revokeSession(hash: string): Promise<boolean> {
     return (
@@ -406,12 +425,60 @@ export class PostgresSecurityStore implements CredentialStore, AuditSink {
       };
     });
   }
-  public async replacePasswordForEmployee(employeeId: string, passwordHash: string): Promise<void> {
-    const result = await this.database.query(
-      'UPDATE password_credentials pc SET password_hash=$2,changed_at=now(),updated_by=$1 FROM identities i WHERE pc.identity_id=i.id AND i.employee_id=$1',
-      [employeeId, passwordHash],
+  public async findPasswordForEmployee(
+    employeeId: string,
+    companyId: string,
+  ): Promise<string | null> {
+    const result = await this.database.query<{ password_hash: string }>(
+      'SELECT pc.password_hash FROM password_credentials pc JOIN identities i ON i.id=pc.identity_id AND i.active AND i.deleted_at IS NULL JOIN employees e ON e.id=i.employee_id AND e.active AND e.deleted_at IS NULL WHERE e.id=$1 AND e.company_id=$2',
+      [employeeId, companyId],
     );
-    if (result.rowCount !== 1) throw new DomainError('not_found', 'Credential not found');
+    return result.rows[0]?.password_hash ?? null;
+  }
+  public async replacePasswordForEmployee(
+    input: Parameters<CredentialStore['replacePasswordForEmployee']>[0],
+  ): Promise<void> {
+    await this.database.transaction(async (tx) => {
+      const employee = await tx.query(
+        'SELECT id FROM employees WHERE id=$1 AND company_id=$2 AND active AND deleted_at IS NULL FOR NO KEY UPDATE',
+        [input.employeeId, input.companyId],
+      );
+      if (!employee.rows[0]) throw new DomainError('not_found', 'Active employee not found');
+      const identity = await tx.query<{ identity_id: string }>(
+        'SELECT id identity_id FROM identities WHERE employee_id=$1 AND active AND deleted_at IS NULL FOR UPDATE',
+        [input.employeeId],
+      );
+      const identityId = identity.rows[0]?.identity_id;
+      if (!identityId) throw new DomainError('conflict', 'Credential changed; authenticate again');
+      const credential = await tx.query<{ password_hash: string }>(
+        'SELECT password_hash FROM password_credentials WHERE identity_id=$1 FOR UPDATE',
+        [identityId],
+      );
+      if (credential.rows[0]?.password_hash !== input.expectedPasswordHash)
+        throw new DomainError('conflict', 'Credential changed; authenticate again');
+      const session = await tx.query(
+        'SELECT 1 FROM sessions WHERE identity_id=$1 AND organization_id=$2 AND token_hash=$3 AND revoked_at IS NULL AND expires_at>clock_timestamp() FOR UPDATE',
+        [identityId, input.companyId, input.tokenHash],
+      );
+      if (!session.rows[0]) throw new DomainError('forbidden', 'Session is no longer active');
+      await tx.query(
+        'UPDATE password_credentials SET password_hash=$2,changed_at=clock_timestamp(),updated_by=$3 WHERE identity_id=$1',
+        [identityId, input.passwordHash, input.employeeId],
+      );
+      await tx.query(
+        'UPDATE sessions SET revoked_at=clock_timestamp() WHERE identity_id=$1 AND revoked_at IS NULL',
+        [identityId],
+      );
+      await auditTx(
+        tx,
+        'auth.password_change',
+        { employeeId: input.employeeId, companyId: input.companyId },
+        'employee',
+        input.employeeId,
+        input.correlationId,
+        {},
+      );
+    });
   }
   public async provisionIdentity(
     input: Readonly<{
@@ -420,11 +487,12 @@ export class PostgresSecurityStore implements CredentialStore, AuditSink {
       login: string;
       passwordHash: string;
       actorId: string;
+      correlationId: string;
     }>,
   ): Promise<string> {
     return this.database.transaction(async (tx) => {
       const employee = await tx.query<{ id: string }>(
-        'SELECT id FROM employees WHERE id=$1 AND company_id=$2 AND active AND deleted_at IS NULL FOR UPDATE',
+        'SELECT id FROM employees WHERE id=$1 AND company_id=$2 AND active AND deleted_at IS NULL FOR NO KEY UPDATE',
         [input.employeeId, input.companyId],
       );
       if (!employee.rows[0]) throw new DomainError('not_found', 'Active employee not found');
@@ -441,6 +509,19 @@ export class PostgresSecurityStore implements CredentialStore, AuditSink {
       await tx.query(
         "INSERT INTO password_credentials(identity_id,algorithm,password_hash,created_by,updated_by) VALUES($1,'scrypt',$2,$3,$3) ON CONFLICT(identity_id) DO UPDATE SET password_hash=excluded.password_hash,changed_at=now(),updated_by=$3",
         [identityId, input.passwordHash, input.actorId],
+      );
+      await tx.query(
+        'UPDATE sessions SET revoked_at=clock_timestamp() WHERE identity_id=$1 AND revoked_at IS NULL',
+        [identityId],
+      );
+      await auditTx(
+        tx,
+        'auth.identity_provision',
+        { employeeId: input.actorId, companyId: input.companyId },
+        'identity',
+        identityId,
+        input.correlationId,
+        {},
       );
       return identityId;
     });
