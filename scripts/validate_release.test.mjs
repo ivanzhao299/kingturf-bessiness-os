@@ -343,7 +343,7 @@ function deploymentFixture(t) {
   writeFileSync(join(release, '.release-sha'), previous);
   writeFileSync(join(release, '.env.production'), 'WEBSITE_LEAD_INGEST_SECRET=synthetic-old\n');
   const tools = {
-    ssh: 'for command do :; done\nexec bash -c "$command"',
+    ssh: 'for command do :; done\ncommand=$(printf "%s" "$command" | sed "s#/etc/nginx/conf.d/erp.kingturf.cn.conf#$SIMULATED_NGINX_CONF#g")\nexec bash -c "$command"',
     docker: `printf 'docker %s\\n' "$*" >> "$PROBE_LOG"
 case "$*" in
   *'exec -T postgres'*) [ "$MODE" != dump-failure ] || exit 1; printf 'synthetic dump';;
@@ -357,6 +357,9 @@ case "$*" in
   */ready*) [ "$MODE" != ready-failure ] || exit 22; printf '{"status":"ready"}';;
   */health*) printf '{"status":"ok"}';;
 esac`,
+    sha256sum: `printf '%064d  %s\\n' 1 "$*"`,
+    test: `case "$*" in *'/etc/nginx/conf.d/erp.kingturf.cn.conf'*) exit 0;; esac
+exec /usr/bin/test "$@"`,
     sleep: ':',
     rsync: ':',
     sudo: ':',
@@ -374,6 +377,8 @@ exec /usr/bin/cat "$@"`,
     join(cleanupDirectory, 'cleanup_kingturf_release_artifacts.sh'),
     'printf "cleanup\\n" >> "$PROBE_LOG"\n[ "$MODE" != cleanup-failure ]\n',
   );
+  const simulatedNginx = join(root, 'synthetic-nginx.conf');
+  writeFileSync(simulatedNginx, 'synthetic independently controlled ingress');
   const runId = `batch1-${root.split('/').at(-1)}`;
   const log = join(root, 'operations');
   const env = {
@@ -386,12 +391,13 @@ exec /usr/bin/cat "$@"`,
     GITHUB_RUN_ATTEMPT: '1',
     WEBSITE_LEAD_INGEST_SECRET: 'synthetic-new',
     SSH_KNOWN_HOSTS_FILE: join(root, 'synthetic-known-hosts'),
+    SIMULATED_NGINX_CONF: simulatedNginx,
   };
   const names = [
     'Create production recovery point',
     'Synchronize configured website ingest secret',
     'Sync isolated KingTurf release',
-    'Install and reload production Nginx ingress',
+    'Verify unchanged production Nginx ingress',
     'Deploy and verify',
     'Required production hostname HTTPS probe',
     'Record verified production release',
