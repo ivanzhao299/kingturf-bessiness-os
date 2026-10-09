@@ -548,24 +548,27 @@ function hostKeyFixture(t) {
   const key = join(root, 'test-key');
   execFileSync('ssh-keygen', ['-q', '-t', 'ed25519', '-N', '', '-f', key], { stdio: 'ignore' });
   const pub = readFileSync(`${key}.pub`, 'utf8').trim();
+  const asset = join(root, '.release-control', 'infra', 'ssh');
+  mkdirSync(asset, { recursive: true });
   const output = join(root, 'actions-env');
   writeFileSync(output, 'unchanged\n');
-  return { root, pub, output };
+  return { root, pub, output, asset };
 }
 
 test('an independently pinned valid host key authorizes transports without network discovery', (t) => {
   const f = hostKeyFixture(t);
+  writeFileSync(join(f.asset, 'production_known_hosts'), `deployment.invalid ${f.pub}`);
   const result = spawnSync(
     'bash',
     ['-e', '-o', 'pipefail', '-c', stepRun('Pin independently verified production SSH host key')],
     {
+      cwd: f.root,
       env: {
         ...process.env,
         RUNNER_TEMP: f.root,
         GITHUB_ENV: f.output,
         PROD_SSH_HOST: 'deployment.invalid',
         PROD_SSH_PORT: '22',
-        PINNED_KNOWN_HOSTS: `deployment.invalid ${f.pub}`,
       },
       encoding: 'utf8',
     },
@@ -582,17 +585,18 @@ for (const mode of ['missing', 'wrong-host', 'invalid-key']) {
         : mode === 'wrong-host'
           ? `other.invalid ${f.pub}`
           : 'deployment.invalid ssh-ed25519 not-a-key';
+    writeFileSync(join(f.asset, 'production_known_hosts'), pinned);
     const result = spawnSync(
       'bash',
       ['-e', '-o', 'pipefail', '-c', stepRun('Pin independently verified production SSH host key')],
       {
+        cwd: f.root,
         env: {
           ...process.env,
           RUNNER_TEMP: f.root,
           GITHUB_ENV: f.output,
           PROD_SSH_HOST: 'deployment.invalid',
           PROD_SSH_PORT: '22',
-          PINNED_KNOWN_HOSTS: pinned,
         },
         encoding: 'utf8',
       },

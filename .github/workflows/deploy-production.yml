@@ -111,11 +111,11 @@ jobs:
         run: node scripts/validate_release.mjs
       - name: Pin independently verified production SSH host key
         env:
-          PINNED_KNOWN_HOSTS: ${{ vars.PROD_SSH_KNOWN_HOSTS }}
           PROD_SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
           PROD_SSH_PORT: ${{ secrets.PROD_SSH_PORT }}
         run: |
           set -euo pipefail
+          PINNED_KNOWN_HOSTS=$(cat .release-control/infra/ssh/production_known_hosts)
           test -n "$PINNED_KNOWN_HOSTS"
           known_hosts_file="$RUNNER_TEMP/kingturf-production-known-hosts"
           printf '%s\n' "$PINNED_KNOWN_HOSTS" > "$known_hosts_file"
@@ -136,15 +136,15 @@ jobs:
           set -euo pipefail
           test "$PROD_DEPLOY_PATH" = /data/kingturf-erp
           expected_nginx=$(sha256sum infra/nginx/erp.kingturf.cn.conf | cut -d ' ' -f 1)
-          actual_nginx=$(ssh -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
+          actual_nginx=$(ssh -o KexAlgorithms=curve25519-sha256 -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
             'set -eu; test -r /etc/nginx/conf.d/erp.kingturf.cn.conf; sha256sum /etc/nginx/conf.d/erp.kingturf.cn.conf' | cut -d ' ' -f 1)
           test "$expected_nginx" = "$actual_nginx" || { echo 'Shared Nginx change requires separate approval' >&2; exit 1; }
           manifest=$(python3 .release-control/scripts/production_preflight.py --manifest packages/database/migrations)
-          cat .release-control/scripts/production_preflight.py | ssh -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
+          cat .release-control/scripts/production_preflight.py | ssh -o KexAlgorithms=curve25519-sha256 -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
             "python3 - '/data/kingturf-erp' '$manifest'"
       - name: Diagnose production public HTTPS ingress
         run: |
-          ssh -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
+          ssh -o KexAlgorithms=curve25519-sha256 -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
             'set +e
              echo "== listeners =="
              sudo ss -ltnp | grep -E ":(80|443|4332)\\b" || true
@@ -164,7 +164,7 @@ jobs:
              curl -sS -D - --connect-timeout 8 --max-time 15 http://127.0.0.1/health -H "Host: erp.kingturf.cn" 2>&1 || true'
       - name: Create production recovery point
         run: |
-          ssh -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
+          ssh -o KexAlgorithms=curve25519-sha256 -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
             "sh -s -- '${{ secrets.PROD_DEPLOY_PATH }}' '$RELEASE_SHA'" <<'REMOTE'
           set -eu
           cd "$1"
@@ -185,32 +185,32 @@ jobs:
           WEBSITE_LEAD_INGEST_SECRET: ${{ secrets.WEBSITE_LEAD_INGEST_SECRET }}
         run: |
           test -n "$WEBSITE_LEAD_INGEST_SECRET"
-          printf '%s' "$WEBSITE_LEAD_INGEST_SECRET" | ssh -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
+          printf '%s' "$WEBSITE_LEAD_INGEST_SECRET" | ssh -o KexAlgorithms=curve25519-sha256 -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
             "python3 -c 'import pathlib,sys; p=pathlib.Path(sys.argv[1]); key=\"WEBSITE_LEAD_INGEST_SECRET\"; value=sys.stdin.read(); lines=[line for line in p.read_text().splitlines() if not line.startswith(key+\"=\")]; p.write_text(\"\\n\".join(lines+[key+\"=\"+value])+\"\\n\")' '${{ secrets.PROD_DEPLOY_PATH }}/.env.production'"
       - name: Sync isolated KingTurf release
         run: |
           rsync -az --delete --exclude '.git/' --exclude '.release-control/' --exclude '.env.production' --exclude '.release-sha' --exclude '.release-backups/' --exclude 'kingturf_postgres_data/' --exclude 'kingturf_attachments/' \
-            -e "ssh -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -p ${{ secrets.PROD_SSH_PORT }} -o ServerAliveInterval=30 -o ConnectTimeout=30" \
+            -e "ssh -o KexAlgorithms=curve25519-sha256 -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -p ${{ secrets.PROD_SSH_PORT }} -o ServerAliveInterval=30 -o ConnectTimeout=30" \
             ./ '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/'
       - name: Verify unchanged production Nginx ingress
         shell: bash
         run: |
           set -euo pipefail
           expected=$(sha256sum infra/nginx/erp.kingturf.cn.conf | cut -d ' ' -f 1)
-          actual=$(ssh -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
+          actual=$(ssh -o KexAlgorithms=curve25519-sha256 -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
             'set -eu; test -r /etc/nginx/conf.d/erp.kingturf.cn.conf; sha256sum /etc/nginx/conf.d/erp.kingturf.cn.conf' | cut -d ' ' -f 1)
           test "$expected" = "$actual" || { echo 'Shared Nginx change requires separate approval; no install or reload performed' >&2; exit 1; }
       - name: Deploy and verify
         run: |
-          ssh -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
+          ssh -o KexAlgorithms=curve25519-sha256 -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
             "cd '${{ secrets.PROD_DEPLOY_PATH }}' && export KINGTURF_RELEASE_SHA='$RELEASE_SHA' KINGTURF_RELEASE_BUILT_AT='${{ github.run_id }}' && (docker compose --env-file .env.production -f infra/docker/compose.production.yaml up -d --build || (docker compose --env-file .env.production -f infra/docker/compose.production.yaml ps -a; sleep 3; docker compose --env-file .env.production -f infra/docker/compose.production.yaml up -d --build)) && sleep 15 && docker compose --env-file .env.production -f infra/docker/compose.production.yaml ps && curl --fail --silent --show-error --retry 12 --retry-all-errors --retry-delay 5 http://127.0.0.1:4332/health && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 http://127.0.0.1:4332/ready && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 http://127.0.0.1:4332/version | grep -F '$RELEASE_SHA' && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 --resolve erp.kingturf.cn:443:127.0.0.1 https://erp.kingturf.cn/health && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 --resolve erp.kingturf.cn:443:127.0.0.1 https://erp.kingturf.cn/ready && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 --resolve erp.kingturf.cn:443:127.0.0.1 https://erp.kingturf.cn/version | grep -F '$RELEASE_SHA'"
       - name: Required production hostname HTTPS probe
         run: |
-          ssh -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
+          ssh -o KexAlgorithms=curve25519-sha256 -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
             "set -eu; curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 https://erp.kingturf.cn/health | grep '\"status\":\"ok\"'; curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 https://erp.kingturf.cn/ready | grep '\"status\":\"ready\"'; curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 https://erp.kingturf.cn/version | grep -F '$RELEASE_SHA'"
       - name: Record verified production release
         run: |
-          ssh -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
+          ssh -o KexAlgorithms=curve25519-sha256 -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
             "sh -s -- '${{ secrets.PROD_DEPLOY_PATH }}' '$RELEASE_SHA' '${{ github.run_id }}-${{ github.run_attempt }}'" <<'REMOTE'
           set -eu
           cd "$1"
@@ -236,7 +236,7 @@ jobs:
           curl --fail --silent --show-error http://127.0.0.1:4332/version |
             python3 -c 'import json,sys; assert json.load(sys.stdin)["sha"] == sys.argv[1]' "$KINGTURF_RELEASE_SHA"
           PROBES
-          } | ssh -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
+          } | ssh -o KexAlgorithms=curve25519-sha256 -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
             "KINGTURF_RELEASE_SHA='$RELEASE_SHA' sh -se -- '${{ secrets.PROD_DEPLOY_PATH }}' kingturf-erp-production"
       - name: Diagnostic cross-border HTTPS probe from GitHub runner
         continue-on-error: true
