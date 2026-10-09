@@ -28,15 +28,11 @@ test -s "$latest_metadata"
 test -s "$latest_dump"
 
 backup_count_before=$(find "$backup_directory" -maxdepth 1 -type f \( -name '*.dump' -o -name '*.metadata' \) | wc -l | tr -d ' ')
-find "$backup_directory" -maxdepth 1 -type f \( -name '*.dump' -o -name '*.metadata' \) -print |
-  while IFS= read -r artifact; do
-    if [ "$artifact" != "$latest_metadata" ] && [ "$artifact" != "$latest_dump" ]; then
-      rm -- "$artifact"
-    fi
-  done
-
+# No recovery material retirement is authorized by an application deployment.
+# Preserve database backups and rollback images until independent restore acceptance
+# and a separately approved retention operation establish what can be retired.
 backup_count_after=$(find "$backup_directory" -maxdepth 1 -type f \( -name '*.dump' -o -name '*.metadata' \) | wc -l | tr -d ' ')
-test "$backup_count_after" -eq 2
+test "$backup_count_after" -eq "$backup_count_before"
 
 active_image_ids=$(
   docker container ls -aq --filter "label=com.docker.compose.project=${compose_project}" |
@@ -48,15 +44,7 @@ active_image_ids=$(
 test -n "$active_image_ids"
 
 removed_image_count=0
-candidate_image_ids=$(docker image ls --no-trunc --filter "label=com.docker.compose.project=${compose_project}" --format '{{.ID}}' | LC_ALL=C sort -u)
-for image_id in $candidate_image_ids; do
-  if ! printf '%s\n' "$active_image_ids" | grep -Fqx "$image_id"; then
-    docker image rm "$image_id"
-    removed_image_count=$((removed_image_count + 1))
-  fi
-done
-
-echo "Kingturf cleanup complete"
+echo "Kingturf recovery and rollback materials preserved"
 echo "backup_artifacts_before=${backup_count_before}"
 echo "backup_artifacts_after=${backup_count_after}"
 echo "retained_backup=$(basename "$latest_prefix")"
