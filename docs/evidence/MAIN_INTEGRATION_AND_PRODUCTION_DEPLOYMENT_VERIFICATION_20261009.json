@@ -1,0 +1,41 @@
+{
+  "date": "2026-10-09",
+  "final_main_sha": "3ec6d83c3e12a417dfe7087dd9a7d9fa6fc6d73f",
+  "main_protected": false,
+  "merged_prs": {
+    "33": "3d71fc690a66c4473bbdeb8c5c630580a598da71",
+    "31": "9364223d6ff8e13ae695e108555ad5f7a9347b94",
+    "32": "b9deb83806877d19c78a22c060769bd6b8491cc1",
+    "34": "7a58bb0d8203ae57b0847af972b983e56e2c7b65",
+    "35": "3ec6d83c3e12a417dfe7087dd9a7d9fa6fc6d73f"
+  },
+  "hosted_runs": {
+    "33_main": 37890633826,
+    "31_main": 37891216819,
+    "32_conflict_resolved": 37892144294,
+    "34_retargeted": 37894436894,
+    "35_pr": 37897245617,
+    "final_main": 37897784151
+  },
+  "final_main_tests": {
+    "api": 184,
+    "web": 114,
+    "database": 68,
+    "domain": 14,
+    "shared": 3,
+    "release_node": 46,
+    "operations_python": 10,
+    "total": 443,
+    "status": "PASS"
+  },
+  "browser_final_main": "NOT_RUN_HISTORICAL_CANDIDATE26_PLUS_REAL_RUNTIME2",
+  "integration_go": true,
+  "registry": "70/70_PREVIOUSLY_EXACT",
+  "backup_ready": false,
+  "restore_verified": false,
+  "rollback_ready": false,
+  "uat_ready": false,
+  "production_go": "NO_GO",
+  "deployment": "NOT_RUN",
+  "phoenix_impact": "NONE_OBSERVED"
+}
