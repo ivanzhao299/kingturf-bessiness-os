@@ -385,6 +385,7 @@ exec /usr/bin/cat "$@"`,
     GITHUB_RUN_ID: runId,
     GITHUB_RUN_ATTEMPT: '1',
     WEBSITE_LEAD_INGEST_SECRET: 'synthetic-new',
+    SSH_KNOWN_HOSTS_FILE: join(root, 'synthetic-known-hosts'),
   };
   const names = [
     'Create production recovery point',
@@ -506,4 +507,131 @@ test('a cleanup read failure cannot be masked by the probe tail or successful SS
     'Retain latest KingTurf recovery point and active images',
   );
   assert.doesNotMatch(readFileSync(f.log, 'utf8'), /cleanup/);
+});
+
+test('deployment verification uses the guarded disposable test target and full candidate quality gate', () => {
+  const verify = workflow.split('  verify:\n')[1].split('  deploy:\n')[0];
+  assert.match(verify, /POSTGRES_DB: kingturf_test/);
+  assert.match(verify, /DATABASE_URL: postgresql:\/\/kingturf_test:.*\/kingturf_test/);
+  assert.match(verify, /postgres:17\.7-alpine3\.23/);
+  assert.match(verify, /- run: pnpm ci:local/);
+  assert.doesNotMatch(verify, /kingturf_ci/);
+});
+
+test('all production transports pin host keys and run read-only inventory before backups or writes', () => {
+  const deploy = workflow.split('  deploy:\n')[1];
+  assert.doesNotMatch(deploy, /ssh-keyscan/);
+  assert.ok(deploy.indexOf('Pin independently verified') < deploy.indexOf('ssh-private-key:'));
+  assert.ok(
+    deploy.indexOf('Read-only production storage') <
+      deploy.indexOf('Create production recovery point'),
+  );
+  for (const line of deploy.split('\n').filter((line) => /\b(?:ssh|scp) -(?:p|P) /u.test(line)))
+    assert.fail(`Unpinned direct SSH transport: ${line}`);
+  assert.match(deploy, /StrictHostKeyChecking=yes/);
+  assert.match(deploy, /UserKnownHostsFile=/);
+  assert.match(
+    stepRun('Read-only production storage and candidate schema preflight'),
+    /--manifest packages\/database\/migrations/,
+  );
+});
+
+function hostKeyFixture(t) {
+  const root = mkdtempSync(join(tmpdir(), 'kingturf-pinned-host-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const key = join(root, 'test-key');
+  execFileSync('ssh-keygen', ['-q', '-t', 'ed25519', '-N', '', '-f', key], { stdio: 'ignore' });
+  const pub = readFileSync(`${key}.pub`, 'utf8').trim();
+  const output = join(root, 'actions-env');
+  writeFileSync(output, 'unchanged\n');
+  return { root, pub, output };
+}
+
+test('an independently pinned valid host key authorizes transports without network discovery', (t) => {
+  const f = hostKeyFixture(t);
+  const result = spawnSync(
+    'bash',
+    ['-e', '-o', 'pipefail', '-c', stepRun('Pin independently verified production SSH host key')],
+    {
+      env: {
+        ...process.env,
+        RUNNER_TEMP: f.root,
+        GITHUB_ENV: f.output,
+        PROD_SSH_HOST: 'deployment.invalid',
+        PROD_SSH_PORT: '22',
+        PINNED_KNOWN_HOSTS: `deployment.invalid ${f.pub}`,
+      },
+      encoding: 'utf8',
+    },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(readFileSync(f.output, 'utf8'), /SSH_KNOWN_HOSTS_FILE=/);
+});
+for (const mode of ['missing', 'wrong-host', 'invalid-key']) {
+  test(`host key ${mode} cannot authorize production SSH`, (t) => {
+    const f = hostKeyFixture(t);
+    const pinned =
+      mode === 'missing'
+        ? ''
+        : mode === 'wrong-host'
+          ? `other.invalid ${f.pub}`
+          : 'deployment.invalid ssh-ed25519 not-a-key';
+    const result = spawnSync(
+      'bash',
+      ['-e', '-o', 'pipefail', '-c', stepRun('Pin independently verified production SSH host key')],
+      {
+        env: {
+          ...process.env,
+          RUNNER_TEMP: f.root,
+          GITHUB_ENV: f.output,
+          PROD_SSH_HOST: 'deployment.invalid',
+          PROD_SSH_PORT: '22',
+          PINNED_KNOWN_HOSTS: pinned,
+        },
+        encoding: 'utf8',
+      },
+    );
+    assert.notEqual(result.status, 0);
+    assert.equal(readFileSync(f.output, 'utf8'), 'unchanged\n');
+  });
+}
+
+test('deployment retention preserves every recovery pair and never deletes rollback images', (t) => {
+  const root = mkdtempSync(join(tmpdir(), 'kingturf-preserve-recovery-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const backups = join(root, '.release-backups');
+  mkdirSync(backups);
+  for (const name of ['old', 'new']) {
+    writeFileSync(join(backups, `${name}.metadata`), `verified ${name}`);
+    writeFileSync(join(backups, `${name}.dump`), `recovery ${name}`);
+  }
+  const bin = join(root, 'bin');
+  mkdirSync(bin);
+  const log = join(root, 'docker-log');
+  writeFileSync(
+    join(bin, 'docker'),
+    '#!/bin/sh\nprintf "%s\\n" "$*" >> "$RETENTION_LOG"\ncase "$*" in "container ls"*) printf "existing-container\\n";; "inspect"*) printf "existing-image\\n";; *) exit 1;; esac\n',
+    { mode: 0o700 },
+  );
+  const script = fileURLToPath(new URL('./cleanup_kingturf_release_artifacts.sh', import.meta.url));
+  const result = spawnSync('sh', [script, root, 'kingturf-erp-production'], {
+    env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, RETENTION_LOG: log },
+    encoding: 'utf8',
+  });
+  assert.equal(result.status, 0, result.stderr);
+  for (const name of ['old', 'new']) {
+    assert.equal(readFileSync(join(backups, `${name}.metadata`), 'utf8'), `verified ${name}`);
+    assert.equal(readFileSync(join(backups, `${name}.dump`), 'utf8'), `recovery ${name}`);
+  }
+  assert.doesNotMatch(readFileSync(log, 'utf8'), /\brm\b/);
+});
+
+test('production persistence has no silent fallback to new named volumes', () => {
+  const compose = readFileSync(
+    new URL('../infra/docker/compose.production.yaml', import.meta.url),
+    'utf8',
+  );
+  assert.match(compose, /KINGTURF_POSTGRES_DATA_PATH:\?/);
+  assert.match(compose, /KINGTURF_ATTACHMENT_DATA_PATH:\?/);
+  assert.doesNotMatch(compose, /KINGTURF_(POSTGRES|ATTACHMENT)_DATA_PATH:-/);
 });
