@@ -1,0 +1,65 @@
+{
+  "date": "2026-10-09",
+  "main_sha": "9d89c7d6739454345b1397fe6b02c945fbe1cb99",
+  "candidate_sha": "20ded96e3e7176bb39f3ae036e1890b14e872392",
+  "batch4_sha": "444fdfa85992218fa5ebcab2976879c3774672bc",
+  "pr31_sha": "f2286f7806feb2cefdd1a1364cd7f7799840174d",
+  "local": {
+    "workspace": 387,
+    "node_release": 46,
+    "python_operations": 10,
+    "total": 443,
+    "audit_pass": true
+  },
+  "candidate_hosted": {
+    "run_id": 37869606128,
+    "conclusion": "success",
+    "workspace": 387,
+    "node_release": 46,
+    "python_operations": 10,
+    "total": 443,
+    "audit_pass": true
+  },
+  "pr31_hosted": {
+    "run_id": 37869370730,
+    "conclusion": "success",
+    "workspace": 331,
+    "node_release": 46,
+    "python_operations": 10,
+    "total": 387,
+    "audit_pass": true
+  },
+  "batch4_hosted": {
+    "run_id": 37869588268,
+    "conclusion": "success",
+    "workspace": 387,
+    "node_release": 38,
+    "python_operations": 0,
+    "total": 425,
+    "audit_pass": true
+  },
+  "authorization_targeted": "59/59",
+  "browser_replay": "26/26",
+  "real_runtime_browser_dev": "1/1",
+  "real_runtime_browser_built_production_mode": "1/1",
+  "production": {
+    "current_sha": "9d89c7d6739454345b1397fe6b02c945fbe1cb99",
+    "data_mount_verified": true,
+    "containers_healthy": 3,
+    "restarts": 0,
+    "phoenix_healthy": 3,
+    "schema_registry": "NOT_VERIFIED_SSH_TIMEOUT",
+    "backup_inventory": "ONE_READABLE_HISTORICAL_DB_DUMP_20260905_IN_RELEASE_PATH;INDEPENDENT_DIRECTORY_PERMISSION_DENIED",
+    "restore": "NOT_VERIFIED_TRANSFER_TIMEOUT",
+    "nginx_sha256": "2256630d8e1bdccb0d032a3a82d43e1c34ad28c09be6b9cf6fa05ad7fdbeb07a",
+    "mutation": false,
+    "deployment": false
+  },
+  "go_no_go": "NO_GO",
+  "merges": [],
+  "human_reviews": 0,
+  "protection_main": "MISSING",
+  "protection_environment": "MISSING",
+  "new_regressions": 0,
+  "final_main_verification": "NOT_RUN_BLOCKED_UNINTEGRATED"
+}

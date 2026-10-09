@@ -1,3 +1,26 @@
+# Current release preflight update — 2026-10-09
+
+[Final release evidence](../evidence/FINAL_INTEGRATION_AND_PRODUCTION_RELEASE_REPORT_20261009.md) supersedes earlier same-day status below. Conditional merge/deploy authorized; actual main unchanged, no merge/production mutation. Code review approvals are AI reviews only, independent personnel and protections missing. Source candidate20ded96 Hosted/local443/443; latestPR31f2286f7 Hosted37869370730 PASS387; Batch4444fdfa Hosted37869588268 PASS425. Read-only production/data/mounts/healthy Kingturf/Phoenix verified, current registry/backup restore/rollback not accepted. NO_GO.
+
+| ID                                        | Severity | Latest status                        | Evidence / next                                                                                                                        |
+| ----------------------------------------- | -------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| KT-001                                    | P1       | PR31_UPDATED_HOSTED_PASS_NOT_MERGED  | Exact source/immutable main guard preserved; latest f2286f7                                                                            |
+| KT-002                                    | P1       | RELEASE_BLOCKER_GOVERNANCE           | main/environment rules absent, admin=false, human reviews0                                                                             |
+| KT-003                                    | P1       | PREFLIGHT_IMPLEMENTED_HOSTED_PASS    | Live mount/config/schema gate, singleton health and shared concurrency; production registry query unverified                           |
+| KT-004                                    | P1       | RELEASE_BLOCKER_RESTORE              | Historical20260905 DBdump only; independent directory permission denied, transfer timeout, no current files/config restore             |
+| KT-005                                    | P1       | PR32_REVIEW_APPROVED_NOT_MERGED      | Native HTTP19/19 current candidate; old-main/mixed-version cutover and rollback risks                                                  |
+| KT-006 / KT-007                           | P1       | PR34_REVIEW_APPROVED_NOT_MERGED      | Source/nested grants intact; current targeted59/59 and realHTTP19; human/real-state UAT pending                                        |
+| KT-009 / KT-010                           | P1       | PR33_HOSTED_PASS_NOT_MERGED          | Web/CAPA assertions preserved; latest combined full CI clean                                                                           |
+| KT-011 / KT-012                           | P1       | BATCH4_PUBLISHED_HOSTED_PASS         | 425/425; realdev andbuilt browser1/1 each; puremainPR awaits protected integration                                                     |
+| KT-013                                    | P1       | READONLY_STARTUP_IMPLEMENTED         | No migration SQL change; restricted-role DB7/native startup4 pass; actual production registry/read compatibility still release blocker |
+| KT-014                                    | P2       | CURRENT_COMBINED_VERIFIED_NOT_MAIN   | Hosted/local443; UI replay26; real runtime2; final main not integrated                                                                 |
+| KT-021 / KT-022                           | P1 / P2  | MARKER_ORDER_PRESERVED_RECOVERY_OPEN | Backup failure blocks sync; marker after exact success, no auto app/config rollback                                                    |
+| KT-023 SSH trust                          | P1       | IMPLEMENTED_REVIEWED_HOSTED_PASS     | Public approved fingerprint, immutable pin before agent, strict transports andcurve25519; secret host/port match still verify          |
+| KT-024 persistent storage/shared services | P1       | IMPLEMENTED_REVIEWED_HOSTED_PASS     | No named fallback, no Nginx mutation, backups/images preserved; no shared/Phoenix changes                                              |
+| KT-025 rollback/cutover                   | P1       | RELEASE_BLOCKER                      | Approved schema/session-safe rollback and restore drill missing; oldmain startup DDL unsafe                                            |
+
+## Earlier issue matrix snapshot (historical)
+
 # KingTurf Project Issue Matrix
 
 Updated: 2026-10-09 Asia/Singapore. [Current stabilization evidence](../evidence/PR_INTEGRATION_READINESS_REPORT_20261009.md), [runtime](../evidence/BATCH4_RUNTIME_RECOVERY_REPORT_20261009.md). Original prior snapshot references retained. Current Batch3 code `7562baf83a0d5b65d12fdedade511607e88136db`; [authorization evidence](../evidence/BATCH3_AUTHORIZATION_REPORT_20261008.md). This live matrix supplements the immutable [takeover report](../evidence/PROJECT_TAKEOVER_REPORT_20261008.md). Current evidence: [Batch 1](../evidence/BATCH1_RELEASE_SAFETY_REPORT_20261008.md), code checkpoint `61617c9608af59035117b050e24fd19f2aad8325`; [integration](../evidence/BATCH1_INTEGRATION_REPORT_20261008.md), [Batch 2](../evidence/BATCH2_AUTH_SECURITY_REPORT_20261008.md) code `e76cb1eee5b70f4328ca07a358aab65aab9bbf98`.

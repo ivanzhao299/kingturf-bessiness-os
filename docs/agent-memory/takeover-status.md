@@ -1,3 +1,51 @@
+# KingTurf Takeover Status — Final release preflight
+
+Updated: 2026-10-09 Asia/Singapore. Current branch `codex/production-release-preflight`; validated source `20ded96e3e7176bb39f3ae036e1890b14e872392`. [Final integration/release report](../evidence/FINAL_INTEGRATION_AND_PRODUCTION_RELEASE_REPORT_20261009.md), [machine evidence](../evidence/FINAL_RELEASE_VERIFICATION_20261009.json). This snapshot supersedes the earlier same-day state below; preserve all historical facts.
+
+## CURRENT_STATUS
+
+Conditional main merge and application deployment are explicitly authorized. Execution is **NO_GO / BLOCKED_RELEASE_GATES**, not an authorization refusal. Actual main/production remain9d89c7d6739454345b1397fe6b02c945fbe1cb99. No PR merged, no production mutation/deployment or protection change. Three independent AI code reviews APPROVE after scoped P1 fixes; independent personnel approval absent. Main/environment protection still missing; connection admin=false.
+
+## COMPLETED
+
+- Read existing reports/status and current Git/GitHub state without Discovery. Original Batch1–4 checkpoints preserved, no user WIP overwritten, no force push/direct main push.
+- Release source fixes: test DB guard compatibility; pinned approved public SSH key and curve25519 exchange; read-only mounted-data/live-container/schema preflight; required bind paths; preserved all backups/images; shared Nginx hash checks only, no shared install/reload.
+- Production startup/status now SELECT-only and fail closed; explicit migration retained only for authorized dev/test/migration use. No migration SQL or schema added. Read-only DB7 and production-startup4 cases passed.
+- PR31 normal feature update to f2286f7806feb2cefdd1a1364cd7f7799840174d; latest Hosted37869370730 PASS387/387. PR32/33/34 unchanged latest heads with prior HostedPASS and reviews[]/threads unresolved0.
+- Batch4 branch published at444fdfa85992218fa5ebcab2976879c3774672bc; full local+Hosted37869588268 PASS425/425, original preview base7341f4f explicitly retained. A pure-main PR awaits base integration; preview ancestry was not presented as independent main diff.
+- Combined feature source20ded: fresh full `pnpm ci:local` and Hosted37869606128 PASS443/443, all lint/type/format/build/audit and70 isolated migrations. Browser mock/replay26/26, auth nativeHTTP19, authorization nativeHTTP19 and targeted59/59, real dev browser1/1 and production-mode compiled/preview browser1/1 passed. No new regressions or skips.
+- Approved SSH alias/fingerprint/hostname and mounted/data verified; Kingturf3 containers healthy/restarts0, actual bind paths and API secret presence only; Phoenix3 containers freshly healthy and untouched. Root~9.4GiB/data~91GiB free; ingress existing hash matches. Public old-version health/ready/version freshly200 at9d89, builtAt33996421402.
+- Accessible backup inventory only one historical20260905 DB dump; independent backup directory permission denied (not empty), current config unreadable to SSH account. Transfer and SELECT-only registry attempts timed out, never promoted to PASS. Owned local test services/schema/container/private fixtures/worktrees cleaned after verification; branch checkpoints retained.
+
+## IN_PROGRESS
+
+Concrete code/checkpoint and evidence ready for independent personnel review. Final documentation checkpoint; subsequent work resumes from external gates below. Quality-only Hosted runs completed; production workflow was not dispatched.
+
+## BLOCKERS
+
+- Main protected=false, rulesets/effective main rules empty; production approvals/source policy empty. All four PRs lack independent human approvals; Actions defaults403 NOT_VERIFIED. Administrator-approved minimum protections and qualified personnel reviews required; existing merge authorization does not waive gates.
+- Actual production migration/checksum compatibility NOT_VERIFIED (read-channel timeout). Current startup fails closed, so do not discover mismatch by replacing production containers.
+- Current DB+attachment+configuration backup/off-host retention, actual isolated restore/RPO/RTO not accepted. Historical dump alone insufficient; transfer failed. Do not bypass filesystem access with Docker privilege or modify Phoenix material.
+- Safe app rollback target/drill NOT_VERIFIED: old main runs startup DDL and old session-signing locks; no authorized migration or old-version security race permitted.
+- Real-role HUMAN_UAT/provider/closure acceptance pending. Canonical required receipt is not fabricated or sent. Batch4 pure-main PR blocked by unintegrated dependency baseline.
+
+## NEXT
+
+1. Qualified independent reviewer + administrator-reviewed main PR/quality/current-base/review/no-force-delete and production independent main-only approval rules; verify Actions defaults and historical/manual rerun restrictions. Do not ask again for already granted merge/deploy authorization.
+2. Sequential approved33→31→32→34, exact HEAD guard each merge, actual newmain SHA/fullCI and remainingbranch update. Retarget34 to main only after33 integration. Then prepare pure Batch4 main PR preserving be6f56b/58602af/444fdfa; rerun exact tree review/Hosted and merge only after gates.
+3. Use approved operations ownership/channel for current registry read and current DB/files/config backups. Strict isolated real-material restore, reconciliation, RPO/RTO and no-DDL/session-safe rollback drill. No production schema write or shared-service change authorized implicitly.
+4. Revalidate final actual main complete quality/browser/runtime, human UAT/receipt and production gates. Publish concrete GO/NO_GO; formal `Deploy KingTurf Production` only if GO, exact40-character main SHA. Stop risky operations while gates unresolved.
+
+## TECH_DEBT
+
+Legal-only collection UI workflow needs human-role UAT; typed distribution still needs existing transform-types, large app/bootstrap and other field-derived dashboards remain scoped debt. Historical test fixtures repaired, no standards lowered. Migration explicit-write concurrency and older candidate compatibility remain separate governance topics, not new migration authorization.
+
+## PRODUCTION_RISKS
+
+Old main9d89 remains live with previously identified security gaps. Post-change in-flight authentication may finish; post-commit fresh guard rejects revoked tokens. All instances must cut over to new locks together; old-code rollback can reopen login/reset race. No P0 confirmed in synthetic scope; actual production permission acceptance unverified. Backup/restore/rollback/human governance incomplete; READY_FOR_PRODUCTION_RELEASE=NO. Future stabilization observation is planned only, not elapsed/complete.
+
+## Earlier 2026-10-09 snapshot — before final release authorization
+
 # KingTurf Takeover Status
 
 Updated: 2026-10-09 Asia/Singapore. Current branch `codex/batch4-runtime-recovery`, source checkpoint be6f56bd5db8355e08c5b2d841759dcad92c2cd0. No new Discovery; continue from NEXT. The dated 2026-10-08 snapshot below remains historical, not current status.
