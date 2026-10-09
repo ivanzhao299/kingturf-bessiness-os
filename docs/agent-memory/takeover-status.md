@@ -1,3 +1,7 @@
+## 2026-10-09 Release Gate Closure Phase 2 — current
+
+Latest phase report: [RELEASE_GATE_CLOSURE_PHASE2_REPORT_20261009](../evidence/RELEASE_GATE_CLOSURE_PHASE2_REPORT_20261009.md), machine evidence [JSON](../evidence/RELEASE_GATE_CLOSURE_PHASE2_VERIFICATION_20261009.json). Main remains9d89c7d, NO_GO. User waived human technical/production approval and approved emvia backup acquisition; no GitHub human review fabricated. Admin protections remain absent and acting account non-admin. Registry70/70 exact remains prior verified. New bounded SSH probes locate a size-dependent output failure: fixed1KiB and file metadata/1KiB prefix pass; fixed8/32/128KiB fail/reset/timeout; no root/permission/Docker/Phoenix bypass. Complete current DB/files/config bundle unavailable, restore/rollback/UAT and main integration not run. Next: administrator readback, stable approved recovery bundle, isolated restore and safe rollback/UAT, then protected exact-head integration; do not repeat unchanged full CI or registry check.
+
 # KingTurf Takeover Status — Release gate closure
 
 Updated2026-10-09 Asia/Singapore; branch `codex/release-gate-closure`, preparation3adb38341f06bf63be966383cefc7af10c05e203. [Gate closure report](../evidence/RELEASE_GATE_CLOSURE_REPORT_20261009.md), [machine evidence](../evidence/RELEASE_GATE_CLOSURE_VERIFICATION_20261009.json). Continue NEXT; do not redo Discovery or unchanged full CI. Earlier snapshots preserved below.

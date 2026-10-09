@@ -1,0 +1,53 @@
+{
+  "date": "2026-10-09",
+  "main_sha": "9d89c7d6739454345b1397fe6b02c945fbe1cb99",
+  "checkpoint": "3151a3639d07373d3adb5f1e07cd2dd42f12657a",
+  "phase_checkpoint_pending": true,
+  "go_no_go": "NO_GO",
+  "governance": {
+    "main_protected": false,
+    "production_protection_rules": 0,
+    "actor": "emvia",
+    "actor_admin": false,
+    "user_waived_human_approval": true
+  },
+  "production_registry": {
+    "status": "PASS_PREVIOUSLY_VERIFIED",
+    "rows": 70,
+    "exact_match": true
+  },
+  "transport_probes": {
+    "fixed_1024": {
+      "exit": 0,
+      "received": 1025
+    },
+    "fixed_8192": {
+      "exit": 255,
+      "received": 0
+    },
+    "fixed_32768": {
+      "exit": 255,
+      "received": 0
+    },
+    "fixed_131072": {
+      "exit": 255,
+      "received": 0
+    },
+    "metadata": {
+      "exit": 0,
+      "bytes": 1372272,
+      "sha256": "c8219065119fedd58096f8b3cd85cb099b2792c26436cc31a64b7878c515eba4"
+    },
+    "prefix_1024": {
+      "exit": 0,
+      "decoded": 1024
+    }
+  },
+  "current_backup_complete": false,
+  "config_recovery": "NOT_READABLE",
+  "restore": "NOT_RUN",
+  "rollback": "NOT_RUN",
+  "business_uat": "PENDING",
+  "phoenix_impact": "NONE_OBSERVED",
+  "production_mutation": false
+}
