@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-misused-promises, @typescript-eslint/no-unsafe-argument */
 import { createServer } from 'node:http';
 import { parseEnvironment } from '@kingturf/config';
-import { Database, migrate } from '@kingturf/database';
+import { assertMigrationsCurrent, Database, migrate } from '@kingturf/database';
 import { buildApp } from './app.ts';
 import {
   PostgresAuthorizationRepository,
@@ -49,7 +49,8 @@ import { PostgresWebsiteLeadIngestor } from './website-lead-ingest.ts';
 
 const config = parseEnvironment(process.env);
 const database = new Database(config.databaseUrl);
-await migrate(database);
+if (config.nodeEnv === 'production') await assertMigrationsCurrent(database);
+else await migrate(database);
 const securityStore = new PostgresSecurityStore(database);
 const auth = new AuthenticationService(
   securityStore,
