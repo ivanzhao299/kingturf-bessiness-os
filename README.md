@@ -34,8 +34,8 @@ Start the database and wait for its health check:
 docker compose --env-file .env -f infra/docker/compose.yaml up -d --wait postgres
 docker compose --env-file .env -f infra/docker/compose.yaml ps
 docker compose --env-file .env -f infra/docker/compose.yaml exec postgres pg_isready -U kingturf -d kingturf_dev
-node --env-file=.env --run db:migrate
-node --env-file=.env --run db:status
+node --env-file=.env --experimental-strip-types packages/database/src/cli.ts migrate
+node --env-file=.env --experimental-strip-types packages/database/src/cli.ts status
 ```
 
 Stop it while preserving data:

@@ -1,0 +1,10 @@
+{
+  "format_version": 1,
+  "source_sha": "REPLACE_WITH_EXACT_PRODUCTION_SHA",
+  "snapshot_at": "REPLACE_WITH_APPROVED_UTC_BACKUP_TIME",
+  "artifacts": {
+    "database": { "path": "database.dump", "bytes": 0, "sha256": "REPLACE_WITH_SHA256" },
+    "attachments": { "path": "attachments.tar", "bytes": 0, "sha256": "REPLACE_WITH_SHA256" },
+    "configuration": { "path": "configuration.tar", "bytes": 0, "sha256": "REPLACE_WITH_SHA256" }
+  }
+}
