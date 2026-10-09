@@ -1,3 +1,21 @@
+# Latest gate closure — 2026-10-09
+
+[Current gate report](../evidence/RELEASE_GATE_CLOSURE_REPORT_20261009.md) supersedes previous remaining-human-technical-review claims: user expressly waives personnel technical/prod review; no GitHub human approvals fabricated. Other gates remain; actual main old9d89. Candidate443 remains historical exact20ded evidence.
+
+| ID                              | Updated actual status                      | Evidence / minimal next                                                                                                                                       |
+| ------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| KT-002                          | ADMIN_CONFIGURATION_BLOCKED                | emviawrite/adminfalse; protectionsabsent; two reviewed policyvariants prepared, actualownerconfiguration/readback needed                                      |
+| KT-004                          | BACKUP_TRANSFER_AND_ACCESS_BLOCKED         | current20,480bytepartialinvalid; olddumpchecksumverified; config/root750dir inaccessible, approvedstagingunwritable; approvedownerstablebundle/channel needed |
+| KT-013                          | REGISTRY70_EXACT_PASS_FULL_SCHEMA_PENDING  | Productionquery0.053s missing/extra/drift0, noDDL; restoredcatalog/businesscompatnotverified                                                                  |
+| KT-017                          | REAL_RESTORE_CONSTRAINT_ACCEPTANCE_PENDING | FrozenSQLschema70+17historicalNOTVALID baseline, checks/fks/countfailclosed synthetic7outcomesPASS; actualconstraint-expression/realdataunknown               |
+| KT-025                          | ROLLBACK_BLOCKED_BY_MATERIALS_TARGET       | No security/DDL downgrade; emergencybaseline preservingnewlocks/authz/startup designed, not implemented/drilled                                               |
+| KT-026 recovery admission tools | PREPARED_REVIEWED_TARGETED_PASS            | Pythonoperations25, SQL7, nofake restore/provenance/timePASS; partial/age/path/tar failures tested                                                            |
+| KT-027 runtime documentation    | FIXED_CHECKPOINT_NOT_MAIN                  | NativeenvfileCLI migrate/status verified, avoidsNode--run childenv issue; carryREADMEpatchintoBatch4mainPR                                                    |
+
+Source3adb383 normalfeaturepush, PRbodyreviewpacketsupdated, no main merge/productionmutation/Phoeniximpact. Originalissues/historicalscopepreserved below.
+
+## Previous issue snapshot (historical)
+
 # Current release preflight update — 2026-10-09
 
 [Final release evidence](../evidence/FINAL_INTEGRATION_AND_PRODUCTION_RELEASE_REPORT_20261009.md) supersedes earlier same-day status below. Conditional merge/deploy authorized; actual main unchanged, no merge/production mutation. Code review approvals are AI reviews only, independent personnel and protections missing. Source candidate20ded96 Hosted/local443/443; latestPR31f2286f7 Hosted37869370730 PASS387; Batch4444fdfa Hosted37869588268 PASS425. Read-only production/data/mounts/healthy Kingturf/Phoenix verified, current registry/backup restore/rollback not accepted. NO_GO.

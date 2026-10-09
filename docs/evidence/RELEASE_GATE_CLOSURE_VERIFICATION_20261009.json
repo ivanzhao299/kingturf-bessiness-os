@@ -1,0 +1,141 @@
+{
+  "date": "2026-10-09",
+  "source_checkpoint": "3adb38341f06bf63be966383cefc7af10c05e203",
+  "initial_checkpoint": "c35de23ae29e600bc5890e4ac19ddd6c9ab89eb4",
+  "main_sha": "9d89c7d6739454345b1397fe6b02c945fbe1cb99",
+  "pr_state": {
+    "33": {
+      "head": "ab26c6ebff7a4524a205f3a1ec92959a35c97f94",
+      "base": "9d89c7d6739454345b1397fe6b02c945fbe1cb99",
+      "base_ref": "main",
+      "state": "open",
+      "merged": false,
+      "reviews": [],
+      "checks": [
+        {
+          "name": "quality",
+          "conclusion": "success",
+          "status": "completed",
+          "url": "https://github.com/ivanzhao299/kingturf-bessiness-os/actions/runs/37795089674/job/113372343955",
+          "app_id": 15368
+        }
+      ]
+    },
+    "31": {
+      "head": "f2286f7806feb2cefdd1a1364cd7f7799840174d",
+      "base": "9d89c7d6739454345b1397fe6b02c945fbe1cb99",
+      "base_ref": "main",
+      "state": "open",
+      "merged": false,
+      "reviews": [],
+      "checks": [
+        {
+          "name": "quality",
+          "conclusion": "success",
+          "status": "completed",
+          "url": "https://github.com/ivanzhao299/kingturf-bessiness-os/actions/runs/37869370730/job/113623656677",
+          "app_id": 15368
+        }
+      ]
+    },
+    "32": {
+      "head": "8cbe6deb8efcd0d650007972c7b0516ea18cca87",
+      "base": "9d89c7d6739454345b1397fe6b02c945fbe1cb99",
+      "base_ref": "main",
+      "state": "open",
+      "merged": false,
+      "reviews": [],
+      "checks": [
+        {
+          "name": "quality",
+          "conclusion": "success",
+          "status": "completed",
+          "url": "https://github.com/ivanzhao299/kingturf-bessiness-os/actions/runs/37795523187/job/113373853473",
+          "app_id": 15368
+        }
+      ]
+    },
+    "34": {
+      "head": "e33e414c1de805714af6641c274723e56ef53482",
+      "base": "ab26c6ebff7a4524a205f3a1ec92959a35c97f94",
+      "base_ref": "codex/batch25-ci-gate-recovery",
+      "state": "open",
+      "merged": false,
+      "reviews": [],
+      "checks": [
+        {
+          "name": "quality",
+          "conclusion": "success",
+          "status": "completed",
+          "url": "https://github.com/ivanzhao299/kingturf-bessiness-os/actions/runs/37855253180/job/113577763369",
+          "app_id": 15368
+        }
+      ]
+    }
+  },
+  "human_technical_production_review": "USER_EXPLICITLY_WAIVED_NO_GITHUB_APPROVAL_FABRICATED",
+  "governance": {
+    "main_protected": false,
+    "rulesets": [],
+    "production_rules": [],
+    "branch_policy": null,
+    "actor": "emvia",
+    "admin": false,
+    "administrator": "ivanzhao299",
+    "configuration": "PREPARED_NOT_APPLIED"
+  },
+  "production_registry": {
+    "rows": 70,
+    "candidate_rows": 70,
+    "exact_match": true,
+    "missing": 0,
+    "extra": 0,
+    "mismatched": 0,
+    "query_seconds": 0.053,
+    "full_schema_equivalence": "NOT_VERIFIED"
+  },
+  "backup": {
+    "historical_bytes": 1372272,
+    "historical_sha256": "c8219065119fedd58096f8b3cd85cb099b2792c26436cc31a64b7878c515eba4",
+    "current_transfer_bytes": 20480,
+    "current_transfer": "FAILED_PARTIAL_INVALID",
+    "historical_chunk_transfer": "RESET_ZERO_BYTES",
+    "configuration_access": "DENIED_ROOT_600",
+    "independent_backup_directory_access": "DENIED_ROOT_750",
+    "approved_staging_directories_writable": false,
+    "active_dump_clients_after": 0,
+    "available_attachments": 0,
+    "attachment_directory_entries": 0,
+    "complete_current_bundle": false,
+    "restore_verified": false,
+    "independent_copy": "NOT_VERIFIED"
+  },
+  "new_verification": {
+    "python_tests": 25,
+    "python_result": "PASS",
+    "sql_fixture_outcomes": {
+      "valid": true,
+      "bad_check_rejected": true,
+      "full_null_and_missing_fk_rejected": true,
+      "wrong_digest_rejected": true,
+      "unexpected_unvalidated_rejected": true,
+      "recovered_fixture": true,
+      "internal_stop_without_caller_flag": true
+    },
+    "scope": "SYNTHETIC_PREPARATION_TOOL_ONLY_NOT_REAL_RESTORE",
+    "format": "PASS",
+    "tool_independent_review": "APPROVE",
+    "existing_full_ci": "NOT_REPEATED_UNCHANGED_APP",
+    "readme_database_cli": "MIGRATE_STATUS_ACTUALLY_VERIFIED_ON_GUARDED_OWNED_DB"
+  },
+  "real_restore": "NOT_RUN",
+  "rollback": "NOT_VERIFIED",
+  "human_business_uat": "PENDING",
+  "main_ci": "NOT_RUN_UNINTEGRATED",
+  "release_go_no_go": "NO_GO",
+  "deployment": "NOT_RUN",
+  "production_database_mutation": false,
+  "phoenix_impact": "NONE_OBSERVED_ALL_THREE_HEALTHY",
+  "pr_packets_updated": true,
+  "temporary_private_materials": "REMOVED_AFTER_VERIFICATION"
+}

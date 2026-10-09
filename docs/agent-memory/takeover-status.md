@@ -1,3 +1,52 @@
+# KingTurf Takeover Status — Release gate closure
+
+Updated2026-10-09 Asia/Singapore; branch `codex/release-gate-closure`, preparation3adb38341f06bf63be966383cefc7af10c05e203. [Gate closure report](../evidence/RELEASE_GATE_CLOSURE_REPORT_20261009.md), [machine evidence](../evidence/RELEASE_GATE_CLOSURE_VERIFICATION_20261009.json). Continue NEXT; do not redo Discovery or unchanged full CI. Earlier snapshots preserved below.
+
+## CURRENT_STATUS
+
+**NO_GO**, actual main/production9d89c7d6739454345b1397fe6b02c945fbe1cb99. Conditional merge/deploy authorization retained. Latest user explicitly assigns technical Review and production approval to Codex without humans; do not keep requesting personnel technical review or fabricate GitHub approvals. Codex technical approves unchanged Batch1–4; actual production approval remains NO_GO on nonwaived gates. emvia backup acquisition approval recorded; no filesystem privilege expansion inferred. Business-role signature not supplied.
+
+## COMPLETED
+
+- Current PR33/31/32/34 exact heads/checks remain unchanged and OPEN, qualityPASS; main/environment protections absent, actor emvia write/adminfalse. Exact quality provider App15368 verified. Administrator ivanzhao299 exists; no alternate admin credential used.
+- Three previous independent AI code approvals retained; new readonly preparation-tool review REQUEST_CHANGES findings corrected and finalAPPROVE. No human Review fabricated. Four PR descriptions now link immutable3adb383 packet with risk/test/recovery/user-waiver information. No source branch HEAD change or unnecessary CI rerun.
+- Production registry blocker **resolved**: actual70/candidate70 name+digest exact, missing/extra/drift0, read-only query0.053s. Minimal PGread-only query0.05s; actual catalog-expression/full restored-data proof stillpending. Same approved SSH identity/fingerprint/KEX/host.
+- Stage diagnosis: connect/auth/exec succeed, normal authorized Docker CLI succeeds with nonfatal config permissionwarning; large return/output/stream failures persist. Current custom read-only dump returned20,480 partialbytes thenSSHtimeout; boundedhistoricalchunk reset0bytes. Exact lower-layer causeunknown; never labelcompletebackup/restorePASS. Existinghistoricaldump1,372,272bytes checksumverified, notcurrentbundle.
+- Confirmed approved staging dirs notwritable; independentbackups root750 unreadable, configuration root600 unreadable. No Docker socket/hostbind/root/otheridentity bypass. Current availableattachments0 anddirectoryentries0 supportemptystate only. Activepg_dumpclients0 afterattempt.
+- Admin policy payload alternatives and exact operational review materials ready: original1person vs userAIwaiver0platformapprovals proposal, mainPR/strictquality/no-force/delete/bypass, productionmain-only. Actual admin config stillnotapplied.
+- Recovery artifact verifier25/25 Python operations and frozenSQL7positive/error outcomes passed on owned syntheticPG17.7/70migrations; explicitfalse restore/provenance/time flags, age/path/tar/checksum/partial guards, precise registry, failclosedCHECK/FK/business counts, internalONERRORSTOP. Known17historicalNOTVALID metadata retained; unknown additions rejected, no productionDDL.
+- CorrectedREADME directnativeCLI dotenv commands: old envfile--run failedchildDATABASE_URL propagation; guardedownDB migrate/status actuallypassed. Existingapps/workflows unchanged. Source/doccheckpoint3adb383 normallypushed. Format/diffPASS; no skips/lower standards. Originalcandidate20ded Hosted443 andBatch4444fdfa425 remain exact historicalevidence, notfinalmain.
+- Fresh old-version publichealth/ready/version200old9d89; Kingturf healthy, Phoenixall3healthy/untouched. Owned syntheticcontainer/privateinvalidfragments/env removed afterevidence. No prodDBmutation/deploy/sharedchanges.
+
+## IN_PROGRESS
+
+Gate preparation complete and reviewable; finaldocumentationcheckpoint. No technical full-review restart. Conditional execution ready to resume when realplatform/materialsgates resolve.
+
+## BLOCKERS
+
+1. GitHub actualprotectionmissing andconnectionnotadmin. Userwaiveracknowledged; protection mustactuallytakeeffect throughauthorizedadminconfiguration. No need to renew mergeauthorization.
+2. CompletecurrentDB+attachment+config bundle/provenance/independentcopy absent; approvedSSHread/exportstreamresets andexistingstorage/configaccesslimited. Needowner-exportedstablecontrolledmaterial andapprovedread channel, not generalprivilege/rootbypass.
+3. Actualreal-material restore/RPO/RTO, catalog/constraint/old-data compatibility and safe no-DDL/new-lock rollback target/drill notverified. Registrymatch aloneinsufficient.
+4. Actualintegratedmain/Batch4puremainPR andqualitystillnotrunbecauseprotectedbaseintegrationpending; no source securitychanges reachedproduction.
+5. Business-role UAT signaturepending. Technical/prod personnelapprovalwaived; businesssignature was notprovided orAI-signed.
+
+## NEXT
+
+1. Administrator applies andreadsbackconfirmedpolicyvariant/main+productionprotections, Actionsdefaults/historicalrerunoperators; currentemvia approvaldoesnotchangetechnicaladminrole. Never self-approve a personreviewevent or bypass configured rules.
+2. ProtectedexactHEAD33→31→32→34 merges with eachnewmainquality andremainingbranchupdates, retarget34after33 main. PureBatch4 runtime/startupPRfromactualmain, carryREADMEfix3adb383 scopedpatchwithoutpreviewancestry; review/Hosted/merge. Full finalmain verificationboundnewSHA.
+3. Owner-stage currentcompleteKingDB/files/config exports andtrustedmanifest/copy evidence viaapprovedidentity/channel; diagnoseoutputresetsusing scopedlogs. Realisolatedrestore with noexternalproviders/prodcredentials/mounts; preparedmaterial/SQL checkdoesnotprovefullrestore.
+4. Acceptedemergencybaseline preservesauth/audit/source/nested/read-onlystartup, realfailure/rollbackdrill, finalSHA businessUATrecord; CodexGO onlywhen nonwaivedgatespassed, formalGithubdeployexactSHA. No productionmigration orsharedinfra authorizationinferred.
+
+## TECH_DEBT
+
+17 intentionalhistoricalNOTVALID constraints from0055 retained; actualrows checked onlysyntheticallyuntilrealrestore. SQLdoesnotprove constraint-expression/domain/triggerbusiness equivalence. Legal-only workbench/historicalproviders/UX/largefilesremain scopeddebt, notrewritten. OperationalPython verifier requiresPython3.11+; current/Hostedruntime compatible.
+
+## PRODUCTION_RISKS
+
+Old9d89securitygapsstilllive; safeall-instancecutover andno-DDL/new-lockrollbackunknown. No completecurrentbackup/restoreresilience guarantee, no artificialSHA/source/timeprovenance. User AI approval decision changesreviewmodel only; no mandatoryplatform/data/rollbackgate waived. RELEASE_GO_NO_GO=NO_GO.
+
+## Previous final preflight snapshot (historical)
+
 # KingTurf Takeover Status — Final release preflight
 
 Updated: 2026-10-09 Asia/Singapore. Current branch `codex/production-release-preflight`; validated source `20ded96e3e7176bb39f3ae036e1890b14e872392`. [Final integration/release report](../evidence/FINAL_INTEGRATION_AND_PRODUCTION_RELEASE_REPORT_20261009.md), [machine evidence](../evidence/FINAL_RELEASE_VERIFICATION_20261009.json). This snapshot supersedes the earlier same-day state below; preserve all historical facts.
