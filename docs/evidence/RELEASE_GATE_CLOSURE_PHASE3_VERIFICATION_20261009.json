@@ -1,0 +1,41 @@
+{
+  "date": "2026-10-09",
+  "checkpoint": "489047409cf1c54e8ceefbccd48b53258e5d16b8",
+  "main_sha": "9d89c7d6739454345b1397fe6b02c945fbe1cb99",
+  "main_protected": false,
+  "production_rules": [],
+  "actor": "emvia",
+  "actor_admin": false,
+  "prs": {
+    "33": {
+      "head": "ab26c6ebff7a4524a205f3a1ec92959a35c97f94",
+      "base": "main",
+      "state": "OPEN"
+    },
+    "31": {
+      "head": "f2286f7806feb2cefdd1a1364cd7f7799840174d",
+      "base": "main",
+      "state": "OPEN"
+    },
+    "32": {
+      "head": "8cbe6deb8efcd0d650007972c7b0516ea18cca87",
+      "base": "main",
+      "state": "OPEN"
+    },
+    "34": {
+      "head": "e33e414c1de805714af6641c274723e56ef53482",
+      "base": "codex/batch25-ci-gate-recovery",
+      "state": "OPEN"
+    }
+  },
+  "registry": "70/70_PREVIOUSLY_VERIFIED",
+  "current_recovery_bundle": "EXTERNAL_MATERIALS_PENDING",
+  "ssh_transfer": "SSH_OUTPUT_TRANSFER_FAILURE_ROOT_CAUSE_UNCONFIRMED",
+  "restore": "NOT_RUN",
+  "rollback": "NOT_RUN",
+  "business_uat": "PENDING",
+  "release_go_no_go": "NO_GO",
+  "production_mutation": false,
+  "deployment": "NOT_RUN",
+  "phoenix_impact": "NONE_OBSERVED"
+}
