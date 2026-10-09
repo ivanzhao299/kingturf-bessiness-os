@@ -1,9 +1,18 @@
 import { el, setOperationStatus } from './dom';
 import { brandMark } from './brand';
-import { json, RequestError } from './http';
+import { json, onSessionExpired, RequestError } from './http';
 import { LoginCoordinator, type LoginProgress } from './login-flow';
-import type { SessionDto } from './session';
+import { expireSession, type SessionDto } from './session';
 import { loadWorkspace } from './workspace-loader';
+
+let workspaceRequestsActive = false;
+onSessionExpired((token) => {
+  // Initial session validation already has a login view handler and needs no page reload.
+  if (!workspaceRequestsActive) return;
+  expireSession(token, sessionStorage, () => {
+    globalThis.location.reload();
+  });
+});
 
 async function login(login: string, password: string): Promise<string> {
   const result = await json<{ token: string }>('/api/v1/auth/login', '', {
@@ -161,9 +170,12 @@ function loginView(root: HTMLElement, initialMessage = ''): void {
 }
 
 async function bootstrapApplication(root: HTMLElement): Promise<void> {
+  workspaceRequestsActive = false;
   const token = sessionStorage.getItem('kingturf.session');
   if (!token) {
-    loginView(root);
+    const expired = sessionStorage.getItem('kingturf.sessionExpired') === '1';
+    sessionStorage.removeItem('kingturf.sessionExpired');
+    loginView(root, expired ? '登录状态已失效，请重新登录' : '');
     return;
   }
   startupView(root, '正在验证登录状态…');
@@ -172,6 +184,7 @@ async function bootstrapApplication(root: HTMLElement): Promise<void> {
     session = await json<SessionDto>('/api/v1/auth/session', token);
   } catch (error) {
     if (error instanceof RequestError && error.status === 401) {
+      if (sessionStorage.getItem('kingturf.session') !== token) return;
       sessionStorage.removeItem('kingturf.session');
       loginView(root, '登录状态已失效，请重新登录');
       return;
@@ -180,6 +193,7 @@ async function bootstrapApplication(root: HTMLElement): Promise<void> {
   }
   updateStartupStatus(root, '登录成功，正在下载业务工作台…');
   const workspace = await loadWorkspace();
+  workspaceRequestsActive = true;
   await workspace.mountWorkspace(root, session, token, (message) => {
     updateStartupStatus(root, message);
   });

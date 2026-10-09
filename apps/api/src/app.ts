@@ -3016,9 +3016,12 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
         }
         if (request.method === 'PUT' && request.pathname === '/api/v1/auth/credential') {
           const body = objectBody(request.body);
+          allow(body, ['currentPassword', 'password']);
           await dependencies.auth.changePassword(
             context,
+            string(body.currentPassword, 'currentPassword'),
             string(body.password, 'password'),
+            token,
             correlationId,
           );
           return { statusCode: 204, body: {} };

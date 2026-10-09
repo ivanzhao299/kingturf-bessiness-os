@@ -32,7 +32,10 @@
 审批需求：仓库所有者/管理员需另行授权并选择 reviewer、bypass 与环境分支策略后执行。**本轮未申请或执行外部配置修改。** 此审计只提供具体可审阅建议。
 
 原始脱敏查询结果保存在忽略目录 `.local-acceptance/batch1/github-protection-audit.json`。相关代码与验证见 [Batch 1 report](BATCH1_RELEASE_SAFETY_REPORT_20261008.md)。
+<<<<<<< HEAD
 
 ## Latest Batch2.5 / Batch3 read-only re-audit
 
 The table above remains the historical Batch1 snapshot. Latest GET rechecked main at9d89c7d: protected=false; repository rulesets=[]; effective main rules=[]; production protection_rules=[] and deployment_branch_policy=null. No configuration writes. Prior default Actions permission403 remains NOT_VERIFIED. Latest quality checks are independently PASS on PR31 f7489e7/run37790721061, PR32 8cbe6de/run37795523187 and PR33 ab26c6e/run37795089674; the prior gate failures were fixed in separate CI-only changes, not weakened. No merge means main has not acquired these fixes. The proposed required-quality/reviewer/no-force-delete and production independent main-only approval configuration above still requires administrator authorization. Raw latest sanitized metadata is in ignored .local-acceptance/batch3-governance/\*-protection-final.json, rulesets-final.json and effective-rules-final.json; committed summary in [Batch3 verification](BATCH3_VERIFICATION_20261008.json).
+=======
+>>>>>>> origin/main

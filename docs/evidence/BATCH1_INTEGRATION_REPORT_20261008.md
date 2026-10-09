@@ -62,7 +62,3 @@ BATCH1_MERGE_STATUS=NOT_MERGED
 PRODUCTION_DEPLOYMENT=NO
 READY_FOR_PRODUCTION_RELEASE=NO
 ```
-
-## Subsequent CI gate recovery (2026-10-08)
-
-Original2d5a008/run37770650651 failure above remains historical evidence. Independent test-only checkpoint58fe039 was normally cherry-picked; PR31 final HEAD `f7489e77cd059d37e049c70685e4025de0187cb5`, [run37790721061](https://github.com/ivanzhao299/kingturf-bessiness-os/actions/runs/37790721061) quality SUCCESS, release38/38 and workspace331/331 (combined369). Complete build/audit executed. PR remains OPEN/unmerged; production not deployed. See Batch2.5/Batch3 reports for current integration and safety gates.
