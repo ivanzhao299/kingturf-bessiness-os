@@ -1,0 +1,27 @@
+{
+  "date": "2026-10-10",
+  "final_main_sha": "3ec6d83c3e12a417dfe7087dd9a7d9fa6fc6d73f",
+  "final_main_ci": {
+    "run_id": 37897784151,
+    "tests": 443,
+    "status": "PASS"
+  },
+  "browser": {
+    "build": "PASS",
+    "e2e": 26,
+    "status": "PASS",
+    "mode": "static_loopback_synthetic_replay"
+  },
+  "real_http": "PASS_FINAL_MAIN_HOSTED_NATIVE_SUITES",
+  "production_current_sha": "9d89c7d6739454345b1397fe6b02c945fbe1cb99",
+  "registry": "70/70_PREVIOUSLY_EXACT",
+  "backup_ready": false,
+  "restore_verified": false,
+  "emergency_rollback_sha": null,
+  "rollback_drill": false,
+  "business_uat": "HUMAN_PENDING",
+  "github_governance": "MAIN_AND_PRODUCTION_PROTECTION_MISSING",
+  "production_go": "NO_GO",
+  "deployment": "NOT_RUN",
+  "phoenix_impact": "NONE_OBSERVED"
+}
