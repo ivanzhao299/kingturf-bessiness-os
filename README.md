@@ -34,8 +34,8 @@ Start the database and wait for its health check:
 docker compose --env-file .env -f infra/docker/compose.yaml up -d --wait postgres
 docker compose --env-file .env -f infra/docker/compose.yaml ps
 docker compose --env-file .env -f infra/docker/compose.yaml exec postgres pg_isready -U kingturf -d kingturf_dev
-node --env-file=.env --run db:status
 node --env-file=.env --run db:migrate
+node --env-file=.env --run db:status
 ```
 
 Stop it while preserving data:
@@ -147,3 +147,5 @@ infra/docker         local PostgreSQL Compose configuration
 The API requires all environment variables shown in `.env.example`. Protected requests use `Authorization: Bearer <token>`; login is `POST /api/v1/auth/login`. No administrator or password is embedded. See the runbook for explicit provisioning and authorization semantics.
 
 Production is served only at `https://erp.kingturf.cn` through the repository's production deployment workflow. Product acceptance is tracked in the [product audit](docs/engineering/KT-UI-PROD-08_PRODUCT_AUDIT.md) and [startup delivery plan](docs/engineering/KT-UI-PROD-09_STARTUP_DELIVERY.md); implemented business surfaces are not a substitute for role-specific end-to-end acceptance.
+
+Production API startup and `db:status` are read-only checks of migration metadata. Missing, pending, drifted or unknown migrations prevent production startup; run explicit migrations only in an authorized environment. Development/test startup keeps the existing migration behavior.
