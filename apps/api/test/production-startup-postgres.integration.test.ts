@@ -46,7 +46,10 @@ describe('real production-mode HTTP startup without database mutation', () => {
     const address = socket.address();
     if (!address || typeof address === 'string') throw new Error('Test port unavailable');
     await new Promise<void>((resolve, reject) =>
-      socket.close((error) => (error ? reject(error) : resolve())),
+      socket.close((error) => {
+        if (error) reject(error);
+        else resolve();
+      }),
     );
     const logs: string[] = [];
     const child = spawn(
@@ -98,10 +101,9 @@ describe('real production-mode HTTP startup without database mutation', () => {
     if (child.exitCode !== null || child.signalCode !== null) return;
     await new Promise<void>((resolve, reject) => {
       const force = setTimeout(() => child.kill('SIGKILL'), 2000);
-      const deadline = setTimeout(
-        () => reject(new Error('Production startup test process cleanup deadline')),
-        5000,
-      );
+      const deadline = setTimeout(() => {
+        reject(new Error('Production startup test process cleanup deadline'));
+      }, 5000);
       child.once('exit', () => {
         clearTimeout(force);
         clearTimeout(deadline);
