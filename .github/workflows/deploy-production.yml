@@ -135,6 +135,10 @@ jobs:
         run: |
           set -euo pipefail
           test "$PROD_DEPLOY_PATH" = /data/kingturf-erp
+          expected_nginx=$(sha256sum infra/nginx/erp.kingturf.cn.conf | cut -d ' ' -f 1)
+          actual_nginx=$(ssh -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
+            'set -eu; test -r /etc/nginx/conf.d/erp.kingturf.cn.conf; sha256sum /etc/nginx/conf.d/erp.kingturf.cn.conf' | cut -d ' ' -f 1)
+          test "$expected_nginx" = "$actual_nginx" || { echo 'Shared Nginx change requires separate approval' >&2; exit 1; }
           manifest=$(python3 .release-control/scripts/production_preflight.py --manifest packages/database/migrations)
           cat .release-control/scripts/production_preflight.py | ssh -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
             "python3 - '/data/kingturf-erp' '$manifest'"
@@ -188,14 +192,14 @@ jobs:
           rsync -az --delete --exclude '.git/' --exclude '.release-control/' --exclude '.env.production' --exclude '.release-sha' --exclude '.release-backups/' --exclude 'kingturf_postgres_data/' --exclude 'kingturf_attachments/' \
             -e "ssh -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -p ${{ secrets.PROD_SSH_PORT }} -o ServerAliveInterval=30 -o ConnectTimeout=30" \
             ./ '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/'
-      - name: Install and reload production Nginx ingress
+      - name: Verify unchanged production Nginx ingress
+        shell: bash
         run: |
-          scp -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -P '${{ secrets.PROD_SSH_PORT }}' \
-            -o ServerAliveInterval=30 -o ConnectTimeout=30 \
-            infra/nginx/erp.kingturf.cn.conf \
-            '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}:/tmp/kingturf-erp-nginx.conf'
-          ssh -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
-            "set -eu; sudo install -o root -g root -m 0644 /tmp/kingturf-erp-nginx.conf /etc/nginx/conf.d/erp.kingturf.cn.conf; rm -f /tmp/kingturf-erp-nginx.conf; sudo nginx -t; sudo systemctl reload nginx"
+          set -euo pipefail
+          expected=$(sha256sum infra/nginx/erp.kingturf.cn.conf | cut -d ' ' -f 1)
+          actual=$(ssh -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
+            'set -eu; test -r /etc/nginx/conf.d/erp.kingturf.cn.conf; sha256sum /etc/nginx/conf.d/erp.kingturf.cn.conf' | cut -d ' ' -f 1)
+          test "$expected" = "$actual" || { echo 'Shared Nginx change requires separate approval; no install or reload performed' >&2; exit 1; }
       - name: Deploy and verify
         run: |
           ssh -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
