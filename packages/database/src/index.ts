@@ -98,10 +98,6 @@ export async function migrationStatus(
   database: SqlClient,
   directory = migrationsDirectory,
 ): Promise<readonly MigrationStatus[]> {
-  await database.query(
-    'CREATE TABLE IF NOT EXISTS schema_migrations (name text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())',
-  );
-  await database.query('ALTER TABLE schema_migrations ADD COLUMN IF NOT EXISTS checksum char(64)');
   const files = await migrationFiles(directory);
   const applied = await database.query<{ name: string; checksum: string | null }>(
     'SELECT name,checksum FROM schema_migrations ORDER BY name',
@@ -121,7 +117,25 @@ export async function migrationStatus(
     rows.push({ name, checksum: file.checksum, storedChecksum: null, state: 'pending' });
   return rows.sort((a, b) => a.name.localeCompare(b.name));
 }
+/** Never prepares, repairs or migrates the registry: production startup is read-only. */
+export async function assertMigrationsCurrent(
+  database: SqlClient,
+  directory = migrationsDirectory,
+): Promise<void> {
+  const status = await migrationStatus(database, directory);
+  if (status.length === 0) throw new Error('Migration registry is empty');
+  const incompatible = status.filter((item) => item.state !== 'applied');
+  if (incompatible.length)
+    throw new Error(
+      `Migration compatibility check failed: ${incompatible.map((item) => `${item.name}:${item.state}`).join(', ')}`,
+    );
+}
 export async function migrate(database: Database, directory = migrationsDirectory): Promise<void> {
+  // Registry preparation and legacy repair belong exclusively to explicit migration execution.
+  await database.query(
+    'CREATE TABLE IF NOT EXISTS schema_migrations (name text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())',
+  );
+  await database.query('ALTER TABLE schema_migrations ADD COLUMN IF NOT EXISTS checksum char(64)');
   let status = await migrationStatus(database, directory);
   // One-time upgrade of pre-checksum databases, using release-pinned digests.
   const legacy = status.filter(

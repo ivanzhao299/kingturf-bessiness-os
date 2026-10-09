@@ -24,7 +24,7 @@ cp .env.example .env
 ```
 
 The committed `.env.example` contains local-only placeholders. Keep real credentials in the ignored `.env` file and never commit them.
-Generate a non-placeholder session secret before starting the API: `openssl rand -base64 48`.
+Replace `SESSION_SECRET=change-me` with a generated local secret before starting the API: `openssl rand -base64 48`. API dev/start commands read the repository-root `.env` using Node 24; explicitly injected process variables take precedence. The CI database gate still requires an explicitly injected test database; it does not invoke the API dev/start environment loader. Do not use production credentials or a production database for local initialization.
 
 ## Local PostgreSQL
 
@@ -34,8 +34,8 @@ Start the database and wait for its health check:
 docker compose --env-file .env -f infra/docker/compose.yaml up -d --wait postgres
 docker compose --env-file .env -f infra/docker/compose.yaml ps
 docker compose --env-file .env -f infra/docker/compose.yaml exec postgres pg_isready -U kingturf -d kingturf_dev
-pnpm db:status
-pnpm db:migrate
+node --env-file=.env --experimental-strip-types packages/database/src/cli.ts migrate
+node --env-file=.env --experimental-strip-types packages/database/src/cli.ts status
 ```
 
 Stop it while preserving data:
@@ -65,7 +65,9 @@ pnpm --filter @kingturf/web dev
 pnpm --filter @kingturf/api dev
 ```
 
-The web app is at <http://localhost:5173>. Verify the database-independent API health endpoint:
+The web app is at <http://localhost:5173> (or `WEB_PORT`). Vite development and preview bind to loopback by default and proxy `/api`, `/health`, `/ready` and `/version` to the loopback `KINGTURF_API_PROXY_TARGET` (default `http://127.0.0.1:3000`). Set its port to match `API_PORT`. Proxy targets with a remote host, credentials or URL path are rejected. The browser uses the normal bearer authentication flow; no CORS bypass or production endpoint is involved.
+
+Verify the database-independent API health endpoint:
 
 ```bash
 curl --fail --silent http://localhost:3000/health
@@ -73,14 +75,28 @@ curl --fail --silent http://localhost:3000/health
 curl --fail --silent http://localhost:3000/ready
 ```
 
-After `pnpm build`, production artifacts can be exercised with:
+After `pnpm build`, compiled API artifacts can be exercised with:
 
 ```bash
 pnpm --filter @kingturf/api start
 pnpm --filter @kingturf/web preview
 ```
 
+The API `dev` command watches TypeScript and uses Node 24 transform-types because the current code has constructor parameter properties. `start` runs `dist/server.js` with the same transformation support for existing workspace exports that still point to TypeScript. This matches the current API container runtime; it is not a pure JavaScript standalone distribution and does not change the production image. Both commands perform the existing startup migration check, so use only the isolated local database here.
+
+There is no default administrator. Provision synthetic local identities only in an explicitly isolated database using the identity runbook; production provisioning requires its own approval.
+
 Stop foreground application processes with `Ctrl-C`. Shut down PostgreSQL with the non-destructive `docker compose ... down` command above.
+
+## Real local runtime acceptance
+
+After `pnpm build`, provision an ephemeral loopback test database with an owned `runtime_web_...` schema and a synthetic CRM identity (`customer:read` and `customer:create` COMPANY scope). Use the normal scrypt credential and login endpoint; no default password or bearer bypass is provided. Set `KINGTURF_RUNTIME_DATABASE_URL`, `KINGTURF_TEST_LOGIN`, `KINGTURF_TEST_PASSWORD` and `KINGTURF_TEST_COMPANY` only in the acceptance process environment. The API must point to that same owned schema. Set `KINGTURF_RUNTIME_WEB_ORIGIN` to the local Vite dev/preview origin if it differs from `http://127.0.0.1:5173`.
+
+```bash
+NODE_ENV=test KINGTURF_RUNTIME_ACCEPTANCE=1 pnpm exec playwright test --config playwright.runtime.config.ts
+```
+
+This explicit test uses actual browser → Vite proxy → API → PostgreSQL authentication, creates a synthetic customer, verifies its PROSPECT lifecycle and success audit, and checks 401/403 rejection. It refuses a remote Web origin, non-test database or missing opt-in; it never runs automatically against production. Authentication traces/screenshots are disabled. Use Chromium and its platform dependencies. Stop the local processes and remove only the owned test resources/private environment files after acceptance. This test is automated synthetic acceptance, not human business UAT.
 
 ## Quality gates
 
@@ -92,9 +108,12 @@ the process environment:
 pnpm ci:local
 ```
 
-`ci:local` sets `NODE_ENV=test` only for its child process. It does not read or write `.env` files,
-print the connection string, or persist credentials. The guard still refuses to migrate unless the
-ambient `DATABASE_URL` host is loopback and its database name contains a distinct `test` segment.
+`ci:local` sets `NODE_ENV=test` only for its child process. Database commands use the ambient
+`DATABASE_URL`, do not load `.env` automatically, and refuse migration unless the host is loopback
+and the database name contains a distinct `test` segment. The gate does not print connection
+strings or persist credentials. Vite may read repository-root local proxy/port settings during
+Web testing/build; those non-`VITE_` settings are server-side and are not exposed to the browser.
+Hosted CI uses its explicit workflow environment and a checkout without a local `.env`.
 
 Formatting is available through `pnpm format`; check it without changing files using `pnpm format:check`.
 
@@ -128,3 +147,5 @@ infra/docker         local PostgreSQL Compose configuration
 The API requires all environment variables shown in `.env.example`. Protected requests use `Authorization: Bearer <token>`; login is `POST /api/v1/auth/login`. No administrator or password is embedded. See the runbook for explicit provisioning and authorization semantics.
 
 Production is served only at `https://erp.kingturf.cn` through the repository's production deployment workflow. Product acceptance is tracked in the [product audit](docs/engineering/KT-UI-PROD-08_PRODUCT_AUDIT.md) and [startup delivery plan](docs/engineering/KT-UI-PROD-09_STARTUP_DELIVERY.md); implemented business surfaces are not a substitute for role-specific end-to-end acceptance.
+
+Production API startup and `db:status` are read-only checks of migration metadata. Missing, pending, drifted or unknown migrations prevent production startup; run explicit migrations only in an authorized environment. Development/test startup keeps the existing migration behavior.

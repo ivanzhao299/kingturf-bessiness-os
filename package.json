@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "pnpm --parallel --filter @kingturf/web --filter @kingturf/api dev",
-    "lint": "eslint scripts/validate_release*.mjs && pnpm -r lint",
+    "lint": "eslint scripts/validate_release*.mjs && pnpm exec eslint tests/e2e/runtime-local.spec.mjs playwright.runtime.config.ts && pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm test:release-guardrails && pnpm -r test",
     "test:release-guardrails": "node --test scripts/validate_release.test.mjs && PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests/operations -p \"*_test.py\"",
