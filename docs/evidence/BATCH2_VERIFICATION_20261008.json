@@ -1,0 +1,115 @@
+{
+  "date": "2026-10-08",
+  "timezone": "Asia/Singapore",
+  "baseCommit": "9d89c7d6739454345b1397fe6b02c945fbe1cb99",
+  "codeCommit": "e76cb1eee5b70f4328ca07a358aab65aab9bbf98",
+  "branch": "codex/batch2-auth-session-revocation",
+  "batch1": {
+    "pr": "https://github.com/ivanzhao299/kingturf-bessiness-os/pull/31",
+    "head": "2d5a00838496cbb6200d4189fcffe41b3123d77d",
+    "hostedRun": 37770650651,
+    "quality": "FAIL_HISTORICAL_WEB",
+    "actualTests": {
+      "pass": 224,
+      "fail": 1,
+      "total": 225
+    },
+    "apiTests": "NOT_RUN",
+    "build": "NOT_RUN",
+    "audit": "NOT_RUN",
+    "merged": false
+  },
+  "local": {
+    "install": "PASS_FROZEN",
+    "format": "PASS",
+    "manifest": "PASS",
+    "lint": "PASS_8_WORKSPACES",
+    "typecheck": "PASS_8_WORKSPACES",
+    "build": "PASS_8_WORKSPACES_AND_WEB_BUDGET",
+    "productionDependencyAudit": "PASS",
+    "migrations": {
+      "existing": 70,
+      "new": 0,
+      "target": "DISPOSABLE_LOOPBACK_TEST_DB",
+      "apiStartupRepeated": true
+    },
+    "apiTargeted": {
+      "pass": 87,
+      "total": 87,
+      "realHttp": 19,
+      "service": 13,
+      "postgresRbac": 16,
+      "apiRouting": 39
+    },
+    "webTargeted": {
+      "pass": 10,
+      "total": 10
+    },
+    "workspaceTests": {
+      "pass": 350,
+      "fail": 2,
+      "total": 352,
+      "newPass": 26,
+      "newFailures": 0,
+      "skipped": 0,
+      "components": {
+        "api": {
+          "pass": 160,
+          "fail": 1,
+          "total": 161
+        },
+        "web": {
+          "pass": 108,
+          "fail": 1,
+          "total": 109
+        },
+        "shared": {
+          "pass": 82,
+          "fail": 0,
+          "total": 82
+        }
+      },
+      "aggregation": "ci:local shared/Web plus separately executed full API suite"
+    },
+    "ciLocal": "FAIL_HISTORICAL_WEB_FAIL_FAST",
+    "ciLocalApiBuildAudit": "NOT_RUN_IN_CHAIN_SEPARATE_RESULTS_RECORDED",
+    "browser": {
+      "existingPass": 21,
+      "existingTotal": 21,
+      "addedPass": 2,
+      "addedTotal": 2,
+      "api": "MOCKED_UI_ONLY",
+      "channel": "Chromium",
+      "runner": "IGNORED_LOCAL_CONFIG",
+      "newCasesFinalRun": "browser-auth-targeted.log"
+    },
+    "historicalFailures": [
+      {
+        "test": "web opportunity pipeline and CTR",
+        "cause": "Fixed past date enters overdue branch; DOM fixture lacks classList",
+        "unchanged": true
+      },
+      {
+        "test": "CAPA independent verifier",
+        "cause": "Fixed target_at violates preserved target_check",
+        "unchanged": true
+      }
+    ]
+  },
+  "security": {
+    "revocation": "PASS_REAL_HTTP_TWO_INSTANCES",
+    "refresh": "NOT_APPLICABLE_NO_REFRESH_FLOW",
+    "atomicAudit": "PASS_DB_AUDIT_AND_REVOCATION_FAILURE_INJECTION",
+    "concurrency": "PASS_OBSERVABLE_PG_LOCK_BARRIERS",
+    "legacyTokens": "PASS_NO_GLOBAL_LOGOUT",
+    "tenantRbac": "PASS_TARGETED",
+    "independentReview": "TWO_READ_ONLY_REVIEWS_NO_CORRECTNESS_BLOCKER",
+    "inFlightBoundary": "Previously authenticated business requests may finish",
+    "mixedVersions": "All API instances must use new lock protocol"
+  },
+  "batch2HostedCi": "NOT_RUN",
+  "batch2Pr": "NOT_CREATED",
+  "productionMutation": false,
+  "productionDeployment": false,
+  "productionReleaseReady": false
+}

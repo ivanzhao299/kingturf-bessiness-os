@@ -1,6 +1,6 @@
 import { createHash, randomBytes, scrypt as nodeScrypt, timingSafeEqual } from 'node:crypto';
 import type { AppConfig } from '@kingturf/config';
-import type { AuditSink, AuthorizationContext } from '@kingturf/domain';
+import { DomainError, type AuditSink, type AuthorizationContext } from '@kingturf/domain';
 
 const scrypt = (
   password: string,
@@ -27,14 +27,27 @@ export type CredentialStore = {
   createSession(
     input: Readonly<{
       identityId: string;
+      employeeId: string;
+      expectedPasswordHash: string;
+      correlationId: string;
       organizationId: string;
       tokenHash: string;
       expiresAt: Date;
     }>,
-  ): Promise<void>;
+  ): Promise<boolean>;
   revokeSession(tokenHash: string): Promise<boolean>;
   resolveSession(tokenHash: string, now: Date): Promise<AuthorizationContext | null>;
-  replacePasswordForEmployee(employeeId: string, passwordHash: string): Promise<void>;
+  findPasswordForEmployee(employeeId: string, companyId: string): Promise<string | null>;
+  replacePasswordForEmployee(
+    input: Readonly<{
+      employeeId: string;
+      companyId: string;
+      expectedPasswordHash: string;
+      passwordHash: string;
+      tokenHash: string;
+      correlationId: string;
+    }>,
+  ): Promise<void>;
   provisionIdentity(
     input: Readonly<{
       employeeId: string;
@@ -42,13 +55,15 @@ export type CredentialStore = {
       login: string;
       passwordHash: string;
       actorId: string;
+      correlationId: string;
     }>,
   ): Promise<string>;
 };
 export class PasswordHasher {
   public constructor(private readonly options: AppConfig['password']) {}
   public async hash(password: string): Promise<string> {
-    if (password.length < 12) throw new Error('Password must contain at least 12 characters');
+    if (password.length < 12)
+      throw new DomainError('invalid_request', 'Password must contain at least 12 characters');
     const salt = randomBytes(this.options.saltBytes);
     const derived = await scrypt(password, salt, this.options.keyLength, {
       N: this.options.cost,
@@ -124,21 +139,27 @@ export class AuthenticationService {
     }
     const token = randomBytes(32).toString('base64url');
     const expiresAt = new Date(Date.now() + this.config.ttlSeconds * 1000);
-    await this.store.createSession({
+    const created = await this.store.createSession({
       identityId: credential.identityId,
+      employeeId: credential.employeeId,
+      expectedPasswordHash: credential.passwordHash,
+      correlationId,
       organizationId: credential.companyId,
       tokenHash: hashSessionToken(token, this.config.secret),
       expiresAt,
     });
-    await this.audit.record({
-      action: 'auth.login',
-      outcome: 'SUCCESS',
-      actorId: credential.employeeId,
-      organizationId: credential.companyId,
-      targetType: 'identity',
-      targetId: credential.identityId,
-      correlationId,
-    });
+    if (!created) {
+      await this.audit.record({
+        action: 'auth.login',
+        outcome: 'FAILURE',
+        actorId: null,
+        organizationId: credential.companyId,
+        targetType: 'identity',
+        targetId: credential.identityId,
+        correlationId,
+      });
+      return null;
+    }
     return { token, expiresAt: expiresAt.toISOString() };
   }
   public authenticate(token: string): Promise<AuthorizationContext | null> {
@@ -146,20 +167,23 @@ export class AuthenticationService {
   }
   public async changePassword(
     context: AuthorizationContext,
+    currentPassword: string,
     password: string,
+    token: string,
     correlationId: string,
   ): Promise<void> {
-    await this.store.replacePasswordForEmployee(
+    const expectedPasswordHash = await this.store.findPasswordForEmployee(
       context.actor.employeeId,
-      await this.hasher.hash(password),
+      context.actor.companyId,
     );
-    await this.audit.record({
-      action: 'auth.password_change',
-      outcome: 'SUCCESS',
-      actorId: context.actor.employeeId,
-      organizationId: context.actor.companyId,
-      targetType: 'employee',
-      targetId: context.actor.employeeId,
+    if (!expectedPasswordHash || !(await this.hasher.verify(currentPassword, expectedPasswordHash)))
+      throw new DomainError('forbidden', 'Current password is incorrect');
+    await this.store.replacePasswordForEmployee({
+      employeeId: context.actor.employeeId,
+      companyId: context.actor.companyId,
+      expectedPasswordHash,
+      passwordHash: await this.hasher.hash(password),
+      tokenHash: hashSessionToken(token, this.config.secret),
       correlationId,
     });
   }
@@ -175,20 +199,12 @@ export class AuthenticationService {
       throw new Error(
         'Login must contain 3-64 lowercase letters, numbers, dots, underscores or hyphens',
       );
-    const identityId = await this.store.provisionIdentity({
+    await this.store.provisionIdentity({
       employeeId,
       companyId: context.actor.companyId,
       login: normalizedLogin,
       passwordHash: await this.hasher.hash(password),
       actorId: context.actor.employeeId,
-    });
-    await this.audit.record({
-      action: 'auth.identity_provision',
-      outcome: 'SUCCESS',
-      actorId: context.actor.employeeId,
-      organizationId: context.actor.companyId,
-      targetType: 'identity',
-      targetId: identityId,
       correlationId,
     });
   }

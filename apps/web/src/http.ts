@@ -1,3 +1,10 @@
+let sessionExpiredHandler: ((token: string) => void) | undefined;
+
+/** Only the application owns session storage and navigation; requests report the affected token. */
+export function onSessionExpired(handler: ((token: string) => void) | undefined): void {
+  sessionExpiredHandler = handler;
+}
+
 export const requestId = () => globalThis.crypto.randomUUID();
 
 export class RequestError extends Error {
@@ -36,6 +43,7 @@ export async function json<T>(path: string, token: string, init?: RequestInit): 
       headers,
       signal: controller.signal,
     });
+    if (response.status === 401 && token) sessionExpiredHandler?.(token);
     if (!response.ok) {
       const body = (await response.json().catch(() => ({}))) as {
         message?: string;
@@ -48,6 +56,13 @@ export async function json<T>(path: string, token: string, init?: RequestInit): 
         body.error?.correlationId,
       );
     }
+    if (
+      response.status === 204 &&
+      init?.method === 'PUT' &&
+      path === '/api/v1/auth/credential' &&
+      token
+    )
+      sessionExpiredHandler?.(token);
     return (response.status === 204 ? undefined : await response.json()) as T;
   } catch (error) {
     if (controller.signal.reason === timeoutError) throw timeoutError;
