@@ -57,3 +57,7 @@ Batch 1 guards exist only in the local review branch; production/main retain the
 `READY_FOR_PR=YES`
 
 `READY_FOR_PRODUCTION_RELEASE=NO`
+
+## 2026-10-10 Final engineering archive verification
+
+Checkpoint `d6d515495a953d5675e829dc0672549fea36a5a7` is preserved and contains the final isolated development/test acceptance report plus direct and Compose HTTP evidence. The evidence files are tracked, non-empty, JSON-valid where applicable, and pass targeted formatting/diff checks. This archive records engineering-scope closure only; the formal production `NO_GO` decision and `PRODUCTION_GO_LIVE_BACKLOG` remain unchanged. No CI/E2E rerun, public-instance change, production database operation, deployment, Phoenix operation, or shared-service change was performed. The archive is submitted from an independent documentation branch for review.

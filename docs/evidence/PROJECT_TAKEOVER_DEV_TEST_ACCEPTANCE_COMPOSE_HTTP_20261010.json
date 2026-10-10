@@ -1,0 +1,14 @@
+{
+  "checks": {
+    "login": [200, 200, true],
+    "session": [200, 200, true],
+    "customer_create": [201, 201, true],
+    "customer_list": [200, 200, true],
+    "ar_403": [403, 403, true],
+    "anon_401": [401, 401, true],
+    "password_change": [204, 204, true],
+    "old_token_401": [401, 401, true],
+    "new_login": [200, 200, true]
+  },
+  "auditCustomerCreated": 3
+}

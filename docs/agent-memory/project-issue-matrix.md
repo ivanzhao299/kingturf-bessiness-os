@@ -30,3 +30,7 @@ Implemented and locally validated means available for review; it does not mean m
 | KT-022 backup/config order              | P2       | PARTIAL_IMPLEMENTED           | Dump failure now prevents secret sync; later failure may retain synchronized config; no automatic config rollback          |
 
 No production P0 was confirmed. Production release remains blocked by current gate failures and unresolved safety/operations acceptance. Next batch prioritizes KT-005, followed by KT-006/007 and deterministic gate restoration.
+
+## Documentation archive update — 2026-10-10
+
+The final isolated development/test acceptance evidence is archived at checkpoint `d6d515495a953d5675e829dc0672549fea36a5a7` and carried into the documentation archive PR. This closes the engineering documentation handoff for the verified isolated scope. Production recovery, human UAT, governance, and formal Go-Live gates remain deferred in the existing backlog; no issue is marked resolved by this archive alone.
