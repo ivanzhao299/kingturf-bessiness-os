@@ -1,0 +1,127 @@
+{
+  "checks": {
+    "login_old_password": {
+      "actual": 200,
+      "expected": 200,
+      "pass": true
+    },
+    "session_profile": {
+      "actual": 200,
+      "expected": 200,
+      "pass": true
+    },
+    "customer_create": {
+      "actual": 201,
+      "expected": 201,
+      "pass": true
+    },
+    "customer_list": {
+      "actual": 200,
+      "expected": 200,
+      "pass": true
+    },
+    "customer_update_status": {
+      "actual": 200,
+      "expected": 200,
+      "pass": true
+    },
+    "customer_360": {
+      "actual": 200,
+      "expected": 200,
+      "pass": true
+    },
+    "ar_forbidden_without_capability": {
+      "actual": 403,
+      "expected": 403,
+      "pass": true
+    },
+    "orders_forbidden_without_capability": {
+      "actual": 403,
+      "expected": 403,
+      "pass": true
+    },
+    "order_360_forbidden_without_capability": {
+      "actual": 403,
+      "expected": 403,
+      "pass": true
+    },
+    "legal_collection_forbidden_without_capability": {
+      "actual": 403,
+      "expected": 403,
+      "pass": true
+    },
+    "anonymous_customer_unauthorized": {
+      "actual": 401,
+      "expected": 401,
+      "pass": true
+    },
+    "wrong_old_password_rejected": {
+      "actual": 403,
+      "expected": 403,
+      "pass": true
+    },
+    "password_change": {
+      "actual": 204,
+      "expected": 204,
+      "pass": true
+    },
+    "old_token_rejected_after_password_change": {
+      "actual": 401,
+      "expected": 401,
+      "pass": true
+    },
+    "old_password_rejected_after_password_change": {
+      "actual": 401,
+      "expected": 401,
+      "pass": true
+    },
+    "new_password_login": {
+      "actual": 200,
+      "expected": 200,
+      "pass": true
+    },
+    "new_token_session": {
+      "actual": 200,
+      "expected": 200,
+      "pass": true
+    },
+    "logout": {
+      "actual": 204,
+      "expected": 204,
+      "pass": true
+    },
+    "logged_out_token_rejected": {
+      "actual": 401,
+      "expected": 401,
+      "pass": true
+    }
+  },
+  "createdCustomerId": "662c8db2-002a-4c19-9d49-7bc5cff35929",
+  "tenantIsolation": {
+    "status": 200,
+    "leakedOtherTenant": false
+  },
+  "audit": {
+    "customerEvents": [
+      {
+        "action": "customer.created",
+        "outcome": "SUCCESS"
+      },
+      {
+        "action": "customer.lifecycle-changed",
+        "outcome": "SUCCESS"
+      }
+    ],
+    "authEvents": [
+      {
+        "action": "auth.password_change",
+        "outcome": "SUCCESS"
+      }
+    ]
+  },
+  "persistence": {
+    "id": "662c8db2-002a-4c19-9d49-7bc5cff35929",
+    "tenant_id": "7ea07882-418c-4851-855d-8242e1d5ec34",
+    "status": "ACTIVE"
+  }
+}

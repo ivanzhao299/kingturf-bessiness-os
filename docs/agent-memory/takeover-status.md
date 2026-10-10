@@ -1,3 +1,30 @@
+## 2026-10-10 Final isolated test acceptance — engineering scope closed
+
+[Acceptance report](../evidence/PROJECT_TAKEOVER_DEV_TEST_ACCEPTANCE_REPORT_20261010.md), [HTTP evidence](../evidence/PROJECT_TAKEOVER_DEV_TEST_ACCEPTANCE_HTTP_20261010.json). Final main `3ec6d83c3e12a417dfe7087dd9a7d9fa6fc6d73f` was built and run in a new disposable internal Docker network with PostgreSQL17.7, an owned `runtime_web_final_20261010` schema and synthetic identities/data. API health/readiness/version returned 200 with the exact SHA; Web production preview returned 200; production-mode API startup passed the read-only migration check. Real browser runtime acceptance passed 1/1 before and 1/1 after restart; supplemental real HTTP smoke passed 19/19, including password/session revocation, customer lifecycle/audit, 401/403, Order360/legal denial and cross-tenant filtering. PostgreSQL and API restarts preserved test data. The public KingTurf instance remains old SHA `9d89c7d`; it and Phoenix/shared services were not changed. Test resources are removed after evidence capture. `ENGINEERING_ACCEPTANCE=PASS`; `DEV_TEST_ACCEPTANCE=PASS`; `PROJECT_TAKEOVER_CLOSED=YES_ENGINEERING_SCOPE`; formal production readiness remains deferred.
+
+## CURRENT_STATUS
+
+**ENGINEERING_SCOPE_CLOSED / PRODUCTION_GO_LIVE_DEFERRED**. Final main and an isolated runtime instance are accepted. No public or production deployment occurred.
+
+## COMPLETED
+
+- Exact final main worktree install/build and production-mode API startup verified.
+- Isolated PostgreSQL17.7 schema migrated to 70/70 and synthetic data provisioned without production connections.
+- Real Web proxy/browser path, HTTP business/security smoke, audit and tenant filtering verified.
+- PostgreSQL/API restart persistence and health recovery verified.
+
+## IN_PROGRESS
+
+No engineering-scope batch remains open. The formal go-live backlog is maintained separately.
+
+## BLOCKERS
+
+Production readiness remains deferred for the previously recorded complete off-host recovery bundle/config encryption, safe rollback drill, GitHub production governance and human business UAT. These are not reclassified as engineering acceptance failures.
+
+## NEXT
+
+Use `docs/deployment/release-gates/PRODUCTION_GO_LIVE_BACKLOG.md` for a separately approved go-live phase; do not update the public instance from this acceptance result.
+
 ## 2026-10-10 Phase 7 — frozen backup recheck; full recovery materials still blocked
 
 [Phase 7 report](../evidence/PRODUCTION_RECOVERY_PHASE7_REPORT_20261010.md), [machine evidence](../evidence/PRODUCTION_RECOVERY_PHASE7_REPORT_20261010.json). The Phase 6 frozen dump was rechecked on the production host: 1,399,180 bytes, SHA-256 `b95fb5a112a89c7016c2a6dbc5c880a72e6933a50098a709a24c78fdafc29491`, source SHA `9d89c7d6739454345b1397fe6b02c945fbe1cb99`, all three manifest entries 0600 and matching, zero `.partial` files. The staging directory remains mutable by the deployment account, so no immutability or independent-copy claim is made. `.env.production` remains root-only; no formal KingTurf config backup service, approved encryption recipient key, encrypted artifact, or independent receiver was found. No transfer or new dump was attempted. Phase 6 database-only restore evidence remains valid, but Phase 7 full restore was not run because the independent copy/configuration materials are absent. `ON_HOST_BACKUP=PASS`; `COMPLETE_RECOVERY_BUNDLE=NO`; `RESTORE_VERIFIED=NO`; production remains `NO_GO`.

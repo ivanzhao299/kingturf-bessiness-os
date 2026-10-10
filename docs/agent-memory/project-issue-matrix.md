@@ -1,3 +1,16 @@
+# Current engineering acceptance — 2026-10-10
+
+The final main `3ec6d83c3e12a417dfe7087dd9a7d9fa6fc6d73f` has passed isolated runtime deployment and real smoke. See [acceptance report](../evidence/PROJECT_TAKEOVER_DEV_TEST_ACCEPTANCE_REPORT_20261010.md) and [HTTP evidence](../evidence/PROJECT_TAKEOVER_DEV_TEST_ACCEPTANCE_HTTP_20261010.json). Historical production risks remain in the dated entries below.
+
+| ID | Severity | Updated status | Evidence / next action |
+| --- | --- | --- | --- |
+| KT-011 / KT-012 | P1 | ISOLATED_RUNTIME_PASS | API built/start and Web proxy run on the final main SHA; retain runtime acceptance commands and keep production target separate. |
+| KT-013 | P1 | ISOLATED_SCHEMA_70_PASS | Dedicated test schema applied 70 migrations; production migration state remains a separate go-live gate. |
+| KT-014 | P2 | FINAL_RUNTIME_SMOKE_PASS | Browser runtime 1/1 before and after restart; real HTTP 19/19; human UAT remains pending. |
+| KT-028 / KT-029 | P1 | PUBLIC_INSTANCE_UNCHANGED | Public DEV/TEST-like instance remains old SHA; no production-named workflow was dispatched. |
+| KT-030 | P1 | ENGINEERING_ACCEPTANCE_PASS | Main Hosted CI443/443, Chromium26/26, build/audit and isolated runtime evidence. |
+| KT-031 | P1 | PRODUCTION_GO_LIVE_DEFERRED | Follow `PRODUCTION_GO_LIVE_BACKLOG.md`; complete recovery, rollback, governance and human UAT are still required. |
+
 # Latest gate closure — 2026-10-10 Phase 7 recovery gate
 
 [Phase 7 report](../evidence/PRODUCTION_RECOVERY_PHASE7_REPORT_20261010.md), [machine evidence](../evidence/PRODUCTION_RECOVERY_PHASE7_REPORT_20261010.json). The Phase 6 frozen database artifact remains byte-for-byte valid and has no partial companion. No approved encrypted configuration export or independent receiver is available, so the complete-bundle and full-restore gates remain blocked.
