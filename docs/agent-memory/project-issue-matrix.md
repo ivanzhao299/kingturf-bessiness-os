@@ -102,3 +102,13 @@ No production P0 was confirmed in scoped synthetic tests. KT-009/010 are repaire
 ## 2026-10-09 stabilization status
 
 PR31/32/33/34 all OPEN/latest-head HostedPASS, independent humanapproval absent; main unchanged9d89c7d and rules missing. Current Batch3e33e414 locally/Hosted fixed KT006/007 and relevant derived fields, not production acceptance. Batch4be6f56b resolves KT011/012 in real isolateddev/compiled-runtime paths, complete local414/414; not pushed/Hosted. KT013/004/015 production migration/DB+attachments recovery/provider and actualUAT remain open; local environment badge is a P2 UX follow-up. [Current status](takeover-status.md) supersedes historical pending-push/gate observations without rewriting old checkpoint reports.
+## 2026-10-10 Final closure classification
+
+[Closure report](../evidence/PROJECT_TAKEOVER_FINAL_CLOSURE_REPORT_20261010.md), [go-live backlog](../deployment/release-gates/PRODUCTION_GO_LIVE_BACKLOG.md). Engineering scope is accepted; formal production gates are deferred. The current owner-classified development/test instance retains a production-like public endpoint, production workflow and non-empty records, so final-main deployment remains pending a safe test-data/external-traffic confirmation.
+
+| ID | Updated actual status | Evidence / minimal next |
+| --- | --- | --- |
+| KT-028 environment classification | DEVELOPMENT_TEST_OWNER_DECLARED_PRODUCTION_LIKE_SURFACE | Owner statement says DEV/TEST; public endpoint, production labels and non-empty records require sensitive handling and data-boundary confirmation |
+| KT-029 test deployment | PENDING_SAFE_TARGET_CONFIRMATION | Exact final main is ready; do not dispatch production-named workflow until synthetic/authorized data and no-external-write window are confirmed |
+| KT-030 engineering closure | PASS_AUTOMATED_ACCEPTANCE | Main `3ec6d83`, Hosted 443/443, Chromium 26/26, security/database/build evidence archived |
+| KT-031 production go-live | DEFERRED_BACKLOG | Independent recovery, encrypted config, rollback, UAT, governance and formal deployment remain in `PRODUCTION_GO_LIVE_BACKLOG.md` |

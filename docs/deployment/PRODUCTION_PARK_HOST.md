@@ -1,5 +1,7 @@
 # KingTurf production — Singapore runbook
 
+> **Current classification (2026-10-10):** the project owner identifies the currently reachable instance as a development/test acceptance environment. This historical production-named runbook remains the controlled deployment and go-live reference; it must not be interpreted as proof that the instance is a formally launched production business system. The public endpoint and production-like data/configuration still require production-grade handling until the data boundary is explicitly confirmed.
+
 The sole production entry is `https://erp.kingturf.cn`. The Singapore host is `47.236.122.224`, shared with Phoenix ERP and the independent KingTurf website. This file retains its historical filename for existing links; its authority is the current deployment below:
 
 - separate `PROD_DEPLOY_PATH=/data/kingturf-erp`;

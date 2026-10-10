@@ -1,0 +1,26 @@
+{
+  "environment_classification": "DEVELOPMENT_TEST_WITH_PRODUCTION_LIKE_SURFACE",
+  "final_main_sha": "3ec6d83c3e12a417dfe7087dd9a7d9fa6fc6d73f",
+  "final_main_ci": "PASS_443_OF_443",
+  "final_browser_e2e": "PASS_26_OF_26",
+  "database_restore": "PASS_PHASE6_ISOLATED_POSTGRESQL_ONLY",
+  "engineering_acceptance": "PASS",
+  "dev_test_deployment": "PENDING_TARGET_AND_DATA_SAFETY_CONFIRMATION",
+  "dev_test_deployed_sha": "9d89c7d6739454345b1397fe6b02c945fbe1cb99",
+  "dev_test_api_health": "PASS_OLD_RUNTIME",
+  "dev_test_web_health": "PASS_OLD_RUNTIME",
+  "dev_test_core_smoke": "FINAL_MAIN_AUTOMATED_ONLY",
+  "dev_test_acceptance": "PENDING",
+  "production_deployment": "NO",
+  "production_readiness": "DEFERRED_TO_GO_LIVE_BACKLOG",
+  "production_backlog": "docs/deployment/release-gates/PRODUCTION_GO_LIVE_BACKLOG.md",
+  "phoenix_impact": "NONE_OBSERVED",
+  "project_takeover_closed": "PARTIAL",
+  "remaining_engineering_blockers": [
+    "safe final-main deployment target and test-data boundary confirmation",
+    "actual final-main runtime smoke on the instance",
+    "human business UAT remains pending"
+  ],
+  "production_database_mutation": "NO",
+  "production_deployment": "NO"
+}

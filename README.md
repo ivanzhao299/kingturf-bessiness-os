@@ -6,6 +6,10 @@ The P1 commercial boundary covers Opportunity through immutable Quote-to-Cash (E
 
 This repository provides identity/RBAC/DataScope, CRM, technical specifications, cost-to-quote and quote-to-cash, procurement/MRP, production, quality, shipment and governed document workflows. These are implemented business capabilities, not a claim of complete statutory accounting, customs, tax or manufacturing certification.
 
+## Current environment classification
+
+As of 2026-10-10, the project owner classifies the currently reachable KingTurf instance as a **development/test acceptance environment**, not a formally launched production business system. It retains the historical `production` Compose/GitHub Environment names and public `erp.kingturf.cn` endpoint for operational compatibility; those names do not by themselves establish production use. The instance has a production-like public surface and non-empty test data, so treat its data and credentials as sensitive and do not send real external business traffic without an explicit approval. Engineering acceptance and automated verification are complete; formal go-live requirements are tracked in [`PRODUCTION_GO_LIVE_BACKLOG.md`](docs/deployment/release-gates/PRODUCTION_GO_LIVE_BACKLOG.md).
+
 Production is served only at https://erp.kingturf.cn, on the Singapore host with project-isolated resources. See the [production runbook](docs/deployment/PRODUCTION_PARK_HOST.md) and [2026-09-05 product audit](docs/engineering/KT-UI-PROD-08_PRODUCT_AUDIT.md).
 
 ## Prerequisites

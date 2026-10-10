@@ -355,3 +355,33 @@ NEXT=INDEPENDENT_PR_REVIEW_BATCH3_HOSTED_THEN_RUNTIME_RESTORE_UAT
 ## 2026-10-08 Integration and gate recovery update
 
 Batch2 PR32 is now OPEN (previous no-push statements above are historical checkpoint01fe23b). Pre-push trueHTTP/security87/87 rechecked; initial Hosted37789585670 failed historical Web. Separate CI-only checkpoint58fe039 was normally cherry-picked to e609514; Hosted37790728699 PASS,357/357 workspace tests, complete quality. Batch1 PR31 independently PASS at f7489e7/run37790721061,369/369; CI recovery PR33 independently PASS at58fe039/run37790678497. No merges/force pushes/production writes/deploys/protection changes. New integration documentation requires latest-head CI verification. Batch3 independent work continues from CI-only58fe039; its authority/fields/tenant tests and checkpoint must remain separate. See [Batch2 PR integration](../evidence/BATCH2_PR_INTEGRATION_REPORT_20261008.md). Original historical status and reports remain valid for their recorded commits.
+## 2026-10-10 Final engineering acceptance — environment reclassified as development/test
+
+[Final closure report](../evidence/PROJECT_TAKEOVER_FINAL_CLOSURE_REPORT_20261010.md), [machine evidence](../evidence/PROJECT_TAKEOVER_FINAL_CLOSURE_REPORT_20261010.json), [production go-live backlog](../deployment/release-gates/PRODUCTION_GO_LIVE_BACKLOG.md). The project owner has clarified that the reachable KingTurf instance is development/test, not formal production business use. Technical read-only checks confirm a production-like surface remains: `kingturf-erp-production` Compose labels, `NODE_ENV=production`, public `erp.kingturf.cn`, shared Phoenix host, 5 organizations, 205 employees (12 active), and non-empty CRM/order/AR/payment data. No payment/SMS/SMTP/cloud-storage environment names were observed; a website lead-ingest secret remains configured. The existing deployment workflow writes the KingTurf path, `.env.production` lead secret, containers and `.release-sha`, so no final-main update was dispatched while the synthetic-data/external-traffic boundary remained unconfirmed. Final engineering artifacts and automated verification are complete; current runtime is still old SHA `9d89c7d6739454345b1397fe6b02c945fbe1cb99`. `ENGINEERING_ACCEPTANCE=PASS`; `DEV_TEST_ACCEPTANCE=PENDING`; `PRODUCTION_READINESS=DEFERRED`; `PROJECT_TAKEOVER_CLOSED=PARTIAL`. Prior production `NO_GO` reports remain unchanged and valid for formal go-live.
+
+## CURRENT_STATUS
+
+**ENGINEERING_ACCEPTED / DEV_TEST_DEPLOYMENT_PENDING / PRODUCTION_DEFERRED**. Final main is `3ec6d83c3e12a417dfe7087dd9a7d9fa6fc6d73f`; the reachable instance remains on old SHA `9d89c7d6739454345b1397fe6b02c945fbe1cb99`.
+
+## COMPLETED
+
+- Batch 1–4 code changes are integrated in main; final Hosted CI 443/443 and Chromium 26/26 remain the recorded final-main results.
+- Security, authorization, migration, build and isolated database restore evidence is archived.
+- Environment classification and the separate production go-live backlog are documented without rewriting historical production reports.
+
+## IN_PROGRESS
+
+- Safe update of the owner-classified test instance to final main, pending data-owner confirmation and an explicitly approved no-external-write deployment window.
+- Actual final-main runtime smoke and business-owner UAT remain separate from automated engineering acceptance.
+
+## BLOCKERS
+
+1. Production-like public target and historical production workflow are not yet proven to be a safe test-only target for replacement; the database has non-empty records and 204 non-obvious employee email domains.
+2. No final-main runtime smoke has been executed on the reachable instance.
+3. Human business UAT, independent recovery retention, encrypted configuration recovery and formal go-live governance remain deferred backlog items.
+
+## NEXT
+
+1. Obtain data-owner confirmation that existing records are synthetic/authorized test data, no external lead traffic will be processed during deployment, and the production-named workflow is approved for this test instance.
+2. If confirmed, dispatch the exact final main SHA through the reviewed workflow, capture Run ID, and verify health/ready/version, containers, logs and non-destructive core smoke.
+3. Record actual test-instance acceptance; keep formal production gates in `PRODUCTION_GO_LIVE_BACKLOG.md`.
