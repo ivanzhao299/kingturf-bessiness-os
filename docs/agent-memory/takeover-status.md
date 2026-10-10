@@ -1,3 +1,35 @@
+## 2026-10-10 Phase 7 — frozen backup recheck; full recovery materials still blocked
+
+[Phase 7 report](../evidence/PRODUCTION_RECOVERY_PHASE7_REPORT_20261010.md), [machine evidence](../evidence/PRODUCTION_RECOVERY_PHASE7_REPORT_20261010.json). The Phase 6 frozen dump was rechecked on the production host: 1,399,180 bytes, SHA-256 `b95fb5a112a89c7016c2a6dbc5c880a72e6933a50098a709a24c78fdafc29491`, source SHA `9d89c7d6739454345b1397fe6b02c945fbe1cb99`, all three manifest entries 0600 and matching, zero `.partial` files. The staging directory remains mutable by the deployment account, so no immutability or independent-copy claim is made. `.env.production` remains root-only; no formal KingTurf config backup service, approved encryption recipient key, encrypted artifact, or independent receiver was found. No transfer or new dump was attempted. Phase 6 database-only restore evidence remains valid, but Phase 7 full restore was not run because the independent copy/configuration materials are absent. `ON_HOST_BACKUP=PASS`; `COMPLETE_RECOVERY_BUNDLE=NO`; `RESTORE_VERIFIED=NO`; production remains `NO_GO`.
+
+## CURRENT_STATUS
+
+**PRODUCTION_NO_GO**. Main remains `3ec6d83c3e12a417dfe7087dd9a7d9fa6fc6d73f`; production remains `9d89c7d6739454345b1397fe6b02c945fbe1cb99`. The database backup is preserved and revalidated. The remaining blockers are a named private independent receiver and an authorized encrypted configuration export/recovery path.
+
+## COMPLETED
+
+- Phase 6 database dump, attachment empty-state proof and manifest were rechecked against current host bytes; source SHA, sizes, SHA-256 values and modes match, with no partial artifacts.
+- No old backup was changed or removed, and no live dump or SSH large-output transfer was repeated.
+- Bounded inventory confirmed no approved KingTurf configuration backup service, recipient key ID/fingerprint or independent receiver is exposed to the current account. Plaintext configuration was not read.
+
+## IN_PROGRESS
+
+- Await the minimum authorized configuration-recipient/export material and private independent receiver details.
+- Preserve the host artifact until receiver-side checksum and manifest read-back are available.
+
+## BLOCKERS
+
+1. No approved encrypted configuration export/recovery recipient is available; the generic `gpg` executable alone is insufficient.
+2. No independent off-host receiver/retention policy is available; staging remains mutable by the deployment account.
+3. Full independent-copy restore, configuration reconstruction, rollback drill and business UAT remain unverified.
+
+## NEXT
+
+1. Obtain the named private receiver, access method, retention policy and checksum read-back procedure.
+2. Obtain the recipient public key/key ID and formal root-controlled encrypted configuration export entrypoint.
+3. Copy and verify the frozen artifacts, then execute the full restore runbook and security-preserving rollback drill.
+4. Keep production deployment `NO` until full recovery, rollback and UAT gates pass.
+
 ## 2026-10-10 Phase 6 — host backup and isolated database restore completed
 
 [Backup result](../evidence/PRODUCTION_OPERATIONS_TAKEOVER_PHASE6_BACKUP_RESULT_20261010.md), [machine evidence](../evidence/PRODUCTION_OPERATIONS_TAKEOVER_PHASE6_BACKUP_RESULT_20261010.json). Administrator ACL is effective on `/data/kingturf-erp-backups/staging` for `phoenix-codex-deploy`. A host-side KingTurf PostgreSQL custom-format dump was completed without SSH stdout transfer: 1,399,180 bytes, SHA-256 `b95fb5a112a89c7016c2a6dbc5c880a72e6933a50098a709a24c78fdafc29491`, `pg_restore --list` exit 0, frozen mode 0600. The attachment bind and `public.attachments` both contain zero records/files; an empty-state proof and manifest were created. The frozen dump restored successfully in temporary PostgreSQL17.7 containers with `--network none` and no production volume; 70 migrations, historical 17 NOT VALID constraints, CHECK/FK and business integrity checks passed. The first wrapper assertion used an invalid `migration_registry` table name; it was corrected to `public.schema_migrations` without regenerating or overwriting the dump. No production database/schema write, deployment, Phoenix/shared-service action or container restart occurred. `ON_HOST_BACKUP=PASS`; `ISOLATED_DATABASE_RESTORE=PASS`; `COMPLETE_RECOVERY_BUNDLE=NO`; `RESTORE_VERIFIED=NO` because no approved independent copy or encrypted configuration recovery artifact is available and the empty attachment observation is not an atomic files+DB snapshot.

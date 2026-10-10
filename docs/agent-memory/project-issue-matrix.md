@@ -1,3 +1,17 @@
+# Latest gate closure — 2026-10-10 Phase 7 recovery gate
+
+[Phase 7 report](../evidence/PRODUCTION_RECOVERY_PHASE7_REPORT_20261010.md), [machine evidence](../evidence/PRODUCTION_RECOVERY_PHASE7_REPORT_20261010.json). The Phase 6 frozen database artifact remains byte-for-byte valid and has no partial companion. No approved encrypted configuration export or independent receiver is available, so the complete-bundle and full-restore gates remain blocked.
+
+| ID                              | Updated actual status                       | Evidence / minimal next                                                                                                                        |
+| ------------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| KT-004                          | HOST_BACKUP_RECHECK_PASS_OFFHOST_BLOCKED    | Frozen DB size/SHA/mode/manifest rechecked; staging is mutable and no independent receiver or receiver-side checksum exists                    |
+| KT-013                          | RESTORED_DATABASE_EVIDENCE_RETAINED         | Phase 6 isolated DB restore remains valid; no new registry run because production version/materials are unchanged                               |
+| KT-017                          | FULL_RESTORE_MATERIALS_BLOCKED              | Database-only evidence exists; full independent files/config restore is not executable without the missing materials                           |
+| KT-022                          | CONFIG_ENCRYPTED_EXPORT_BLOCKED             | `.env.production` remains root-only; generic `gpg` is present but no approved recipient key or managed export entrypoint was found              |
+| KT-025                          | ROLLBACK_BLOCKED_BY_FULL_RESTORE            | No safe application rollback drill until independent recovery and configuration evidence are complete                                          |
+
+`ON_HOST_BACKUP=PASS`; `COMPLETE_RECOVERY_BUNDLE=NO`; `RESTORE_VERIFIED=NO`; `PRODUCTION_GO_NO_GO=NO_GO`. No production or Phoenix/shared-service mutation occurred.
+
 # Latest gate closure — 2026-10-10 Phase 6 backup execution
 
 [Phase 6 backup result](../evidence/PRODUCTION_OPERATIONS_TAKEOVER_PHASE6_BACKUP_RESULT_20261010.md), [machine evidence](../evidence/PRODUCTION_OPERATIONS_TAKEOVER_PHASE6_BACKUP_RESULT_20261010.json). Administrator ACL is now effective and a KingTurf-only host-side custom-format database backup was created and independently restored in a temporary no-network PostgreSQL 17.7 container. This advances recovery evidence without making a complete-bundle or release claim.
