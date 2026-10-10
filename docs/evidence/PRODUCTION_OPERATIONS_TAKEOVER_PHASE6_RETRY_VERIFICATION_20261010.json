@@ -1,0 +1,23 @@
+{
+  "date": "2026-10-10",
+  "ssh_small_commands": "PASS",
+  "uid": "phoenix-codex-deploy",
+  "data_mount": "/dev/nvme1n1 ext4",
+  "data_free_bytes": 96826036224,
+  "database_size_bytes": 31935635,
+  "registry_rows": 70,
+  "available_attachments": 0,
+  "kingturf_containers": "3_HEALTHY",
+  "release_backups": "ROOT755_NOT_WRITABLE",
+  "independent_backup_dir": "ROOT750_NOT_READABLE_OR_WRITABLE",
+  "attachments_dir": "ROOT755_NOT_WRITABLE",
+  "production_config": "ROOT600_NOT_READABLE",
+  "backup_started": false,
+  "complete_bundle": false,
+  "restore": false,
+  "rollback": false,
+  "mutation": false,
+  "deployment": false,
+  "phoenix": "NONE_OBSERVED",
+  "blocker": "NO_APPROVED_WRITABLE_BACKUP_DESTINATION"
+}
