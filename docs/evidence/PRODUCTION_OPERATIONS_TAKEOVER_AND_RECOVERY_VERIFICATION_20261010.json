@@ -1,0 +1,22 @@
+{
+  "date": "2026-10-10",
+  "main_sha": "3ec6d83c3e12a417dfe7087dd9a7d9fa6fc6d73f",
+  "current_production_sha": "9d89c7d6739454345b1397fe6b02c945fbe1cb99",
+  "operations_owner": "CODEX_KINGTURF_SCOPED",
+  "preflight": "SSH_RESET_BEFORE_REMOTE_OUTPUT",
+  "backup_started": false,
+  "database_backup": false,
+  "attachment_backup": false,
+  "config_backup": false,
+  "manifest_verified": false,
+  "secure_transfer": "NOT_STARTED",
+  "independent_copy": false,
+  "isolated_restore": false,
+  "rollback_drill": false,
+  "business_uat": "PENDING",
+  "production_mutation": false,
+  "production_deployment": false,
+  "phoenix_impact": "NONE_OBSERVED",
+  "release_go_no_go": "NO_GO",
+  "blocker": "EXTERNAL_BACKUP_ENTRYPOINT_PENDING"
+}
