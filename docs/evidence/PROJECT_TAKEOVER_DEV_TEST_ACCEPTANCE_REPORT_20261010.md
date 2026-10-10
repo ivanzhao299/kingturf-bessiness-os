@@ -51,6 +51,12 @@ The supplemental real HTTP test passed all 19 checks. Evidence is in [PROJECT_TA
 
 The Browser test also verified the Vite proxy, UI customer creation, database persistence, success audit, and 401/403 behavior. These are automated synthetic acceptance results; they are not human business UAT or external provider acceptance. Opportunity, order, AR/payment and legal positive records were not seeded; their unauthorized paths were verified and positive business approval remains in the go-live backlog.
 
+## D. Compose project replay
+
+To satisfy the isolated deployment boundary, the same final main build was also started as Compose project `kingturf-final-compose-20261010` with services `db`, `api` and `web`, a dedicated internal network `kingturf-final-compose-net-20261010`, and a dedicated test volume `kingturf-final-compose-pgdata-20261010`. The API and Web services used the loopback proxy inside the API network namespace; no host port or public ingress was published.
+
+The Compose schema applied all 70 migrations. Compose API health/readiness/version returned 200 with the final SHA after a database restart. The Compose real HTTP smoke passed login, session, customer create/list, AR 403, anonymous 401, password change, old-token 401 and new-login checks. The Compose browser test passed `1/1` through the Web proxy and PostgreSQL. Machine-readable HTTP evidence is in [PROJECT_TAKEOVER_DEV_TEST_ACCEPTANCE_COMPOSE_HTTP_20261010.json](PROJECT_TAKEOVER_DEV_TEST_ACCEPTANCE_COMPOSE_HTTP_20261010.json).
+
 ## D. Persistence and recovery checks
 
 The PostgreSQL container was restarted and the API remained healthy and ready. A post-restart database query found the previously created synthetic customers (`6` records from repeated controlled fixture runs), showing persistence through the container restart. The API container was restarted and the Web preview was recreated; health, readiness and Web HTTP 200 checks passed again. The test-only production-mode API startup also passed against the already migrated schema.
