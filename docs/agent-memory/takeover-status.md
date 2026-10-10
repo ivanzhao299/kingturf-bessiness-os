@@ -1,3 +1,38 @@
+## 2026-10-10 Phase 6 — host backup and isolated database restore completed
+
+[Backup result](../evidence/PRODUCTION_OPERATIONS_TAKEOVER_PHASE6_BACKUP_RESULT_20261010.md), [machine evidence](../evidence/PRODUCTION_OPERATIONS_TAKEOVER_PHASE6_BACKUP_RESULT_20261010.json). Administrator ACL is effective on `/data/kingturf-erp-backups/staging` for `phoenix-codex-deploy`. A host-side KingTurf PostgreSQL custom-format dump was completed without SSH stdout transfer: 1,399,180 bytes, SHA-256 `b95fb5a112a89c7016c2a6dbc5c880a72e6933a50098a709a24c78fdafc29491`, `pg_restore --list` exit 0, frozen mode 0600. The attachment bind and `public.attachments` both contain zero records/files; an empty-state proof and manifest were created. The frozen dump restored successfully in temporary PostgreSQL17.7 containers with `--network none` and no production volume; 70 migrations, historical 17 NOT VALID constraints, CHECK/FK and business integrity checks passed. The first wrapper assertion used an invalid `migration_registry` table name; it was corrected to `public.schema_migrations` without regenerating or overwriting the dump. No production database/schema write, deployment, Phoenix/shared-service action or container restart occurred. `ON_HOST_BACKUP=PASS`; `ISOLATED_DATABASE_RESTORE=PASS`; `COMPLETE_RECOVERY_BUNDLE=NO`; `RESTORE_VERIFIED=NO` because no approved independent copy or encrypted configuration recovery artifact is available and the empty attachment observation is not an atomic files+DB snapshot.
+
+## CURRENT_STATUS
+
+**PRODUCTION_NO_GO**. Code/main remains `3ec6d83c3e12a417dfe7087dd9a7d9fa6fc6d73f`; production remains old `9d89c7d6739454345b1397fe6b02c945fbe1cb99`. The host backup gate advanced, but complete disaster-recovery, rollback and business UAT gates are still open.
+
+## COMPLETED
+
+- Dedicated staging ACL and write/read/delete probe verified for the approved SSH account; no permission bypass was used.
+- Current KingTurf database custom-format backup frozen on host with size, `PGDMP` header, `pg_restore --list`, SHA-256 and manifest evidence.
+- Attachment empty-state proof generated from both filesystem and database metadata; no attachment file or symlink was found.
+- Real isolated database restore completed in a temporary no-network PostgreSQL17.7 container; the restored 70-row migration registry, 17 expected historical unvalidated constraints, and fail-closed CHECK/FK/business checks passed.
+- KingTurf and Phoenix containers remained healthy with zero observed restarts; temporary Phase6 restore containers were removed.
+
+## IN_PROGRESS
+
+- Preserve the frozen host artifacts and obtain an approved independent copy plus encrypted configuration recovery material through a formal receiver/backup service.
+- Complete full files/database/config restore acceptance, then perform the security-preserving application rollback drill and business UAT.
+
+## BLOCKERS
+
+1. No approved independent receiving/retention endpoint has been exposed to the current identity; the frozen dump is single-host only.
+2. No approved encrypted configuration recovery artifact/entrypoint is available; plaintext configuration was not read.
+3. Full atomic files+database restore and application rollback remain unverified; the isolated database result is partial evidence.
+4. Production deployment remains prohibited until recovery, rollback and business UAT gates are satisfied. Existing main/production protection gaps remain governance risk.
+
+## NEXT
+
+1. Provide the exact approved backup receiver or existing backup-service read-back path; transfer the frozen immutable artifacts and verify receiver-side size/SHA-256.
+2. Provide the encrypted configuration recovery artifact through its authorized path without exposing plaintext.
+3. Run `RESTORE_ROLLBACK_UAT_EXECUTION.md` from the independent copy, including application read-only startup and full business/permission checks; then drill the emergency application rollback.
+4. Keep `PRODUCTION_GO_NO_GO=NO_GO` and `PRODUCTION_DEPLOYMENT=NO` until all non-waived gates pass.
+
 ## 2026-10-10 Backup permission/deployment verification — staging ACL absent
 
 [Read-only verification](../evidence/PRODUCTION_BACKUP_PERMISSION_VERIFICATION_20261010.md), [machine evidence](../evidence/PRODUCTION_BACKUP_PERMISSION_VERIFICATION_20261010.json). SSH whitelist now permits small commands. Production remains old SHA9d89c7d; KingTurf3 containers healthy, PostgreSQL17.7 and attachment bind mounts verified, `/data` has~96.8GB free. `/data/kingturf-erp-backups/staging` is absent; backup dir root750 is not readable/writable/searchable by phoenix-codex-deploy, `.release-backups` root755 is read-only, config root600 unreadable. No KingTurf backup service found; only dpkg-db-backup.timer. No backup command started and no production/Phoenix mutation. Minimum next action is admin-created KingTurf-only staging ACL or existing backup-service read-back; then host-side dump/manifest/independent copy/restore.

@@ -1,0 +1,61 @@
+{
+  "report": "PRODUCTION_OPERATIONS_TAKEOVER_PHASE6_BACKUP_RESULT_20261010",
+  "source_production_sha": "9d89c7d6739454345b1397fe6b02c945fbe1cb99",
+  "approved_ssh_user": "phoenix-codex-deploy",
+  "staging_directory": "/data/kingturf-erp-backups/staging",
+  "staging_acl": "user:phoenix-codex-deploy:rwx; mask:rwx; other:---",
+  "backup_method": "host-side docker exec pg_dump custom format; no SSH stdout dump transfer",
+  "database_dump": {
+    "path": "/data/kingturf-erp-backups/staging/kingturf-20261010T010031Z-before-9d89c7d6739454345b1397fe6b02c945fbe1cb99.dump",
+    "bytes": 1399180,
+    "sha256": "b95fb5a112a89c7016c2a6dbc5c880a72e6933a50098a709a24c78fdafc29491",
+    "mode": "0600",
+    "pg_dump_exit": 0,
+    "pg_restore_list_exit": 0,
+    "format_header": "PGDMP"
+  },
+  "attachment_empty_state": {
+    "regular_files": 0,
+    "directories": 0,
+    "symlinks": 0,
+    "database_rows": 0,
+    "available_rows": 0,
+    "proof_sha256": "79ad9e34f628d2f749b96a31348b14fef02e822e8d39cf5cf54973cc54717a29",
+    "result": "PASS_EMPTY_STATE_ONLY"
+  },
+  "manifest_sha256": "b69257bf83737d0676f99e25723e46acde535c49ecf8e30ce5e36b5a92ed606c",
+  "configuration_encrypted_backup": "NOT_AVAILABLE",
+  "secure_transfer": "NOT_AVAILABLE",
+  "independent_copy": "NOT_AVAILABLE",
+  "isolated_database_restore": {
+    "result": "PASS",
+    "network": "none",
+    "production_volume_mounted": false,
+    "restore_seconds": 1,
+    "total_seconds": 2,
+    "schema_migrations": 70,
+    "attachments": 0,
+    "customers": 2,
+    "sales_orders": 1,
+    "ar_documents": 2,
+    "bank_payments": 2,
+    "collection_cases": 0,
+    "capa_cases": 0,
+    "unvalidated_constraints": 17,
+    "integrity_checks": {
+      "negative_ar_balances": 0,
+      "negative_payment_balances": 0,
+      "allocation_currency_mismatches": 0,
+      "order_line_total_mismatches": 0,
+      "invalid_available_attachments": 0,
+      "active_bindings_to_unavailable": 0
+    }
+  },
+  "on_host_backup": "PASS",
+  "complete_recovery_bundle": "NO",
+  "restore_verified": "NO",
+  "production_database_mutation": "NO",
+  "production_deployment": "NO",
+  "phoenix_impact": "NONE_OBSERVED",
+  "release_go_no_go": "NO_GO"
+}

@@ -1,3 +1,16 @@
+# Latest gate closure — 2026-10-10 Phase 6 backup execution
+
+[Phase 6 backup result](../evidence/PRODUCTION_OPERATIONS_TAKEOVER_PHASE6_BACKUP_RESULT_20261010.md), [machine evidence](../evidence/PRODUCTION_OPERATIONS_TAKEOVER_PHASE6_BACKUP_RESULT_20261010.json). Administrator ACL is now effective and a KingTurf-only host-side custom-format database backup was created and independently restored in a temporary no-network PostgreSQL 17.7 container. This advances recovery evidence without making a complete-bundle or release claim.
+
+| ID                              | Updated actual status                       | Evidence / minimal next                                                                                                                                    |
+| ------------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| KT-004                          | ON_HOST_DATABASE_BACKUP_AND_DB_RESTORE_PASS | Frozen 1,399,180-byte dump, SHA-256 recorded, `pg_restore --list` 0, real isolated DB restore/integrity 0; configuration, independent copy and atomic files+DB bundle remain absent |
+| KT-013                          | RESTORED_DATABASE_REGISTRY_AND_CATALOG_PASS | Isolated restore has 70 migrations; 17 expected historical NOT VALID constraints; CHECK/FK/business checks all 0 violations; full production compatibility remains scoped to restored material |
+| KT-017                          | REAL_RESTORE_PARTIAL_DATA_PASS              | Real restored-data checks passed; full recovery acceptance still requires config, independent copy and complete runbook evidence                                        |
+| KT-025                          | ROLLBACK_BLOCKED_BY_MATERIALS_TARGET        | No rollback drill performed; current dump is a recovery point, not a safe application rollback target                                                             |
+
+`ON_HOST_BACKUP=PASS`; `COMPLETE_RECOVERY_BUNDLE=NO`; `RESTORE_VERIFIED=NO`. No production database mutation, deployment, Phoenix action or shared-service change occurred. Next: approved encrypted configuration material and independent copy, then complete restore and rollback/UAT gates.
+
 # Latest gate closure — 2026-10-09
 
 [Current gate report](../evidence/RELEASE_GATE_CLOSURE_REPORT_20261009.md) supersedes previous remaining-human-technical-review claims: user expressly waives personnel technical/prod review; no GitHub human approvals fabricated. Other gates remain; actual main old9d89. Candidate443 remains historical exact20ded evidence.
