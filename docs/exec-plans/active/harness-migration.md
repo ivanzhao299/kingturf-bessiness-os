@@ -4,11 +4,19 @@
 
 - **项目 / 仓库**：kingturf-business-os（`/home/jinhuit/Kingturf/kingturf-bessiness-os`）
 - **分支**：`harnessing`（自 main 派生；按规则 §7.1 禁止直接在主干改造）
-- **计划版本 / 日期**：v1.0 / 2026-10-12
+- **计划版本 / 日期**：v1.1 / 2026-10-12（v1.0 经人工审核后修订：修复批次 3 阶段顺序矛盾、补扫描证据附录、补门禁阈值、批次拆子批、明确 D4 阻塞语义、执行契约）
 - **扫描基线**：commit `779dea3`（同步 origin/main 后）
 - **状态**：**待确认**（人工确认前禁止修改任何业务代码，契约 C1）
 - **规则文档**：`docs/HARNESS-RULES.md`（施工期常驻，竣工验收后按 §14 拆解归档）
-- **配套文件**：问题清单 `docs/exec-plans/tech-debt-tracker.md`（27 条）；CI 决策 `docs/CI.md`；度量脚本 `scripts/analysis/repo-metrics.mjs`
+- **配套文件**：问题清单 `docs/exec-plans/tech-debt-tracker.md`（30 条）；CI 决策 `docs/CI.md`；度量脚本 `scripts/analysis/repo-metrics.mjs`
+
+## 0.5 ZCode 执行契约（计划确认后对每次执行会话生效）
+
+1. **阶段串行**：每阶段产出验收证据并获人工确认后，才可进入下一阶段（规则 C2）。
+2. **D 项暂停语义**：任一待决策项（§6 的 D1–D5）未回答时，受其阻塞的任务**立即暂停**（阻塞范围见 §6「阻塞范围」列）；不受影响的其他任务可继续。
+3. **子批次纪律**：§4.1–4.3 的每个子批次独立提交、独立通过 `pnpm ci:local`，并在 §7 进度日志记录回滚点（提交号）。
+4. **禁止事项**：不 push 到远程、不部署、不触碰生产环境（`erp.kingturf.cn` 及其主机）、不新增/修改 `.github/workflows/`（确需修改时单独征求人工同意并在 `docs/CI.md` 记录）。
+5. **行为变更红线**：TD-SEC-001..004 四项行为变更未经 D1 批准不得实施；任何提交中禁止混合「重构」与「行为变更」（规则 R2）。
 
 ## 1. 项目概况
 
@@ -20,16 +28,16 @@
 - **部署方式**：手动 `workflow_dispatch`（指定 commit_sha）→ verify 全量门禁 → SSH 到新加坡主机 → rsync + nginx 配置校验（sha256 比对）→ `docker compose -f infra/docker/compose.production.yaml up -d --build` → 健康探针（version 必须等于 SHA）。**无 tag、无 GitHub Release、无自动发布。**
 - **顶层模块与入口点**：
 
-| 模块                               | 职责                                                                            | 入口                                                                                     |
-| ---------------------------------- | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `apps/api`                         | Node 原生 `node:http` API（组织/员工/认证/授权 + 20 个业务域仓储与路由）        | `src/server.ts`（组合根）→ `src/app.ts`（路由总装）                                      |
-| `apps/web`                         | Vite 构建的 vanilla TS SPA（原生 DOM，无框架）                                  | `index.html` → `src/main.ts` → `entry.ts`（登录流）→ 懒加载 `bootstrap.ts`（业务工作台） |
-| `packages/types`                   | 共享 DTO/枚举/ErrorEnvelope（538 行，纯类型）                                   | `src/index.ts`                                                                           |
-| `packages/domain`                  | 框架无关领域规则（DomainError/canonicalize/信贷评估/权限断言，1,032 行，无 IO） | `src/index.ts`                                                                           |
-| `packages/config`                  | `parseEnvironment` 环境解析 + 共享 tsconfig 模板                                | `src/index.ts`                                                                           |
-| `packages/database`                | pg 8.22.0 封装 + 迁移 CLI + **70 个有序 SQL 迁移**                              | `src/index.ts` / `src/cli.ts`                                                            |
-| `packages/ui` / `packages/testing` | 占位原语库 / 测试助手（近空壳，见 TD-HYG-001）                                  | `src/index.ts`                                                                           |
-| `tests/e2e`                        | 12 个 Playwright 规格（chrome 单 worker 串行）                                  | `playwright.config.ts`                                                                   |
+| 模块                               | 职责                                                                               | 入口                                                                                     |
+| ---------------------------------- | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `apps/api`                         | Node 原生 `node:http` API（组织/员工/认证/授权 + 20 个业务域仓储与路由）           | `src/server.ts`（组合根）→ `src/app.ts`（路由总装）                                      |
+| `apps/web`                         | Vite 构建的 vanilla TS SPA（原生 DOM，无框架）                                     | `index.html` → `src/main.ts` → `entry.ts`（登录流）→ 懒加载 `bootstrap.ts`（业务工作台） |
+| `packages/types`                   | 共享 DTO/枚举/ErrorEnvelope（约 537 行，纯类型）                                   | `src/index.ts`                                                                           |
+| `packages/domain`                  | 框架无关领域规则（DomainError/canonicalize/信贷评估/权限断言，约 1,031 行，无 IO） | `src/index.ts`                                                                           |
+| `packages/config`                  | `parseEnvironment` 环境解析 + 共享 tsconfig 模板                                   | `src/index.ts`                                                                           |
+| `packages/database`                | pg 8.22.0 封装 + 迁移 CLI + **70 个有序 SQL 迁移**                                 | `src/index.ts` / `src/cli.ts`                                                            |
+| `packages/ui` / `packages/testing` | 占位原语库 / 测试助手（近空壳，见 TD-HYG-001）                                     | `src/index.ts`                                                                           |
+| `tests/e2e`                        | 12 个 Playwright 规格（chrome 单 worker 串行）                                     | `playwright.config.ts`                                                                   |
 
 - **当前测试与 CI 现状**：53 个测试文件 / 约 17,265 行 / 约 350 用例（vitest 单测+mock 路由级、13 个 PG 集成、12 个 Playwright e2e）；CI = `pnpm ci:local` 完整有序链（format→capabilities→db guard→migrate→status→lint→typecheck→test→build→audit），PR/push main 触发，本地一条命令可复现。**无 git hooks、无覆盖率、无 commitlint**（详见台账 TD-GATE/TD-TEST 组）。
 - **既有工程亮点（改造时必须保持）**：包级依赖为干净 DAG 无循环；tsconfig/eslint 为超严格配置（strictTypeChecked + noUncheckedIndexedAccess 等）；SQL 全参数化；opaque token + scrypt；统一 http 封装（15s 超时 + correlation-id）；启动预算量化门禁；前端能力清单校验；文档纪律好（10 个 ADR、14 个验收证据文档、0 处 TODO）。
@@ -37,13 +45,17 @@
 ## 2. 框架判定与 CI 现状（详见 `docs/CI.md`）
 
 - **判定结果：其他类型（非 Tauri）**。三项机械证据全部不命中（无 `src-tauri/tauri.conf.json`、无 `src-tauri/Cargo.toml`、无 `@tauri-apps/*` 依赖；全仓零 `.rs` 文件）。
-- **现有 `.github/workflows/`**：`ci.yml`（pull_request + push main + workflow_dispatch → 单 job `quality`，ubuntu + postgres:17.7 service，跑 `pnpm ci:local`，15 分钟超时）；`deploy-production.yml`（仅 workflow_dispatch 指定 SHA → validate → verify → deploy 三段式，`environment: production`）。
+- **现有 `.github/workflows/`**：`ci.yml`（pull_request + push main + workflow_dispatch → 单 job `quality`，ubuntu + postgres:17.7 service，跑 `pnpm ci:local`，15 分钟超时）；`deploy-production.yml`（仅 workflow_dispatch 指定 SHA → validate → verify → deploy 三段式，`environment: production`，**无 tag 触发**）。
 - **已有发布链路现状**：手动 dispatch 部署到自有主机（Docker Compose），无 tag/Release/产物上传；发布标识 = `KINGTURF_RELEASE_SHA`（`/version` 端点回显 + 部署后探针强校验）。
 - **结论**：按规则 §3.4，跳过 Tauri 三问，不生成打包发布流水线；现有 CI 审计为"有效、未腐烂、本地可复现"，**保留不动**；阶段 3 在其上补强（hooks/覆盖率/结构测试）。
 
 ## 3. 现状诊断
 
+> **度量口径**：除特别标注外，行数均以 `node scripts/analysis/repo-metrics.mjs` 为准（按换行符切分，与 `wc -l` 相差 ≤1 行/文件）；两者差异不影响任何结论的量级。
+
 ### 3.1 架构现状（依赖图）
+
+方法：包级 = 8 个 `package.json` 的 workspace 依赖 + 全量 import grep 交叉核对；应用级 = `grep -n 'import type'`（app.ts:20-43 验证 type-only）+ api/src 与 web/src 的 import 链逐文件核对。
 
 **包级（干净 DAG，无循环依赖——亮点）**：
 
@@ -78,61 +90,117 @@ packages/{types, ui, config, testing} → 零依赖
 
 ### 3.4 文档缺口 → TD-DOC-001（无 AGENTS.md、无 exec-plans/design-docs 结构、85+ 文档无索引无新鲜度标注）
 
-### 3.5 测试缺口 → TD-TEST-001..004（business-document/production-cost 零测试；quality/order-360 近零；6 域无 SQL 路径集成测试；无覆盖率配置）
+### 3.5 测试缺口 → TD-TEST-001..005（business-document/production-cost 零测试；quality/order-360 近零；6 域无 SQL 路径集成测试；无覆盖率配置；types 占位测试）
 
-### 3.6 安全与性能风险 → TD-SEC-001..005（无 CSP、无限流、token 可被 XSS 读取、API 无安全头、SQL 拼装无结构约束）；可靠性现状良好（统一超时/中止/分页纪律/监听器自清理），无 P0 级性能问题。
+### 3.6 安全与性能风险 → TD-SEC-001..005（无 CSP、无限流、token 可被 XSS 读取、API 无安全头、SQL 拼装无结构约束）+ TD-PERF-001/002（无自动重试、13 处 N+1 候选）；扫描方法、命令与结果见 **§3.8**。
 
 ### 3.7 门禁现状 → TD-GATE-001/002（CI 链完整但无本地 hooks、无 commitlint、vitest 无配置）
 
+### 3.8 扫描方法与证据（安全 / 性能 / 可靠性审计，基线 779dea3）
+
+> 规则 §5 阶段 1 子任务 8/9 的落盘证据。**未发现问题的项同样记录命令与结果**；限制栏说明扫描能力边界。
+
+| 检查项        | 方法（命令，可直接复跑）                                                                                                                                                   | 范围                       | 结果                                                                                                                                                          | 限制                                                             |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| 硬编码密钥    | `grep -rniE "(api[_-]?key\|secret\|password\|passwd\|token)['\"]?\s*[:=]\s*['\"][^'\"]{6,}" apps packages scripts --include='*.ts' --include='*.mjs'` 排除测试与已知占位符 | 全部源码与脚本             | 排除后唯一命中为测试夹具业务字段名 `SENSITIVE-TECHNICAL`（非凭证）→ **0 真实密钥**                                                                            | 正则法无法覆盖混淆/间接构造的凭证                                |
+| env 文件入库  | `git ls-files \| grep -iE '(^\|/)\.env'`                                                                                                                                   | git 跟踪文件               | 仅 `.env.example`（占位符值）；`.env*` 均被 ignore                                                                                                            | —                                                                |
+| 敏感日志      | `grep -rn 'console\.' apps packages --include='*.ts' \| grep -v '\.test\.'`                                                                                                | 生产代码                   | 2 处（`server.ts:181` 启动失败堆栈、`database/src/cli.ts:15` 迁移状态 JSON），均不含用户数据/token                                                            | —                                                                |
+| 依赖已知漏洞  | `pnpm audit --prod --audit-level high`（即门禁 `security:check`）                                                                                                          | prod 依赖                  | **No known vulnerabilities found**                                                                                                                            | 运行时外部依赖仅 `pg@8.22.0`，审计面小                           |
+| 注入面        | `grep -rn 'innerHTML' apps --include='*.ts'`（非测试）；`grep -rnE 'eval\(\|new Function' …`                                                                               | 前端源码                   | `innerHTML` 17 处（均经 `sanitizeBusinessDocumentHtml` 白名单消毒或为内部常量）；eval/new Function **0 处**                                                   | 消毒正确性以现有 XSS 负向测试为准                                |
+| N+1 查询      | 语法级检测：for-of 循环块（花括号配对，80 行窗口）内含 `await`                                                                                                             | apps/api/src 全部仓储      | **13 个候选点**（如 `contract-document-repositories.ts:188`、`procurement-repositories.ts:436`、`foundation-repositories.ts:276`）→ 登记 TD-PERF-002 逐个判定 | 语法级判定，是否真 N+1 取决于调用频次与数据量，需人工+运行时验证 |
+| 无界并发      | `grep -rn 'Promise.all' apps packages --include='*.ts'`（非测试）                                                                                                          | 全部源码                   | 11 处（bootstrap 6、foundation 2、business-document/crm/database 各 1），均为固定小 arity 或受既有条目数约束 → **无 map-全并发模式**                          | —                                                                |
+| 超时          | `grep -n 'AbortController\|15_000\|45_000' apps/web/src/*.ts`                                                                                                              | 前端网络层                 | `http.ts` 15s 全交换超时（:28-32）+ `workspace-loader.ts` 45s（:14）→ **超时齐备**                                                                            | —                                                                |
+| 自动重试/退避 | `grep -rniE '\bretry\|backoff' apps packages --include='*.ts'`（非测试）                                                                                                   | 全部源码                   | 17 处命中均为**人工重试按钮**与幂等命令语义 → **无自动重试/断路**，登记 TD-PERF-001                                                                           | —                                                                |
+| 内存增长点    | `grep -rn 'setInterval' …`；addEventListener/removeEventListener 计数                                                                                                      | 全部源码 / bootstrap.ts    | setInterval **0 处**；bootstrap.ts addEventListener 247 / removeEventListener 2，其余依赖 `{signal}` 绑定与节点丢弃统一销毁（`navigationDisposers`）          | 逐条确认仅抽样，全量确认靠既有 rAF 泄漏探针 e2e                  |
+| SQL 参数化    | 抽查各仓储模板字符串插值（`${}` 内仅 `$N` 占位符与代码内枚举）                                                                                                             | apps/api/src 20 个仓储文件 | 未发现用户输入直拼 → 无现患；防回归约束登记 TD-SEC-005（阶段 3 结构测试）                                                                                     | 面广，人工抽查；机械化后消除该限制                               |
+
 ## 4. 改造批次划分（阶段 4 执行用；按业务域、风险递增排序）
 
-| 批次                               | 覆盖业务域                                             | 主要目标                                                                                                                | 依赖前置                                      | 回滚方案                                                                                 |
-| ---------------------------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| **基座**（阶段 2+3，非业务域重构） | 全仓文档 + 全仓门禁                                    | AGENTS.md/ARCHITECTURE.md/docs 结构；git hooks + commitlint + 文件大小/嵌套/SQL 拼装门禁 + vitest 配置                  | 计划确认                                      | 文档与门禁均为新增物：`git revert` 对应提交即可，零业务代码风险                          |
-| **批次 1**                         | API 仓储层共享基建（横切全部 20 域）                   | TD-DUP-001/002/003、TD-ARCH-001：scope 谓词、审计外发、幂等查询收敛为共享模块；foundation 拆 4 文件并消灭 28 处 any     | 阶段 3 门禁就位（C3：先护栏）                 | 单批次分支 + 小粒度提交；`git revert` 批次合并提交；13 个 PG 集成测试保证行为守恒        |
-| **批次 2**                         | API 路由与编排层（app.ts，全部 230 路由）              | TD-API-001/002、TD-BOUND-002：声明式路由表 + 分域 handler + 显式 Service 层；校验成为路由表结构约束                     | 批次 1（仓储共享模块先行）                    | 同上；`app.test.ts` 35 用例 + 13 个集成测试 + e2e 回归；每拆一组域提交一次，可逐提交回退 |
-| **批次 3**                         | 前端工作台（bootstrap.ts，22 个商业子域 + CRM + 治理） | TD-WEB-001/002/003、TD-ARCH-002、TD-BOUND-001、TD-DUP-004：按业务域拆分文件与 store；边界引入运行时校验；共享 formatter | 批次 2（API 边界稳定后）+ 阶段 5 部分测试前置 | 启动预算断言 + 70 用例 + 路由隔离/竞态 e2e 为护栏；按子域逐批拆分，每批独立提交独立回退  |
-| **批次 4**                         | 安全加固（登录/全 API）                                | TD-SEC-001..004：CSP（先 Report-Only）、登录限流、安全响应头、token 存储方案                                            | **人工决策 D1 通过**（全部为行为变更）        | 每项独立提交 + `nginx -s reload` 前后探针；CSP Report-Only 期天然可逆；限流可配置开关    |
-| **阶段 5**                         | 测试补全（跨全部域）                                   | TD-TEST-001..003：补零测试模块与 6 域集成测试；覆盖率门禁接入                                                           | 各批次落地后对新区补测                        | 纯新增测试文件，revert 即回滚                                                            |
+| 批次                 | 覆盖业务域                                             | 主要目标                                                                                                            | 依赖前置                                                                                                                                                                              | 回滚方案                                                                           |
+| -------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| **基座**（阶段 2+3） | 全仓文档 + 全仓门禁                                    | AGENTS.md/ARCHITECTURE.md/docs 结构；git hooks + commitlint + 文件大小/嵌套/SQL 拼装门禁 + vitest 配置              | 计划确认（其中文档归并子任务阻塞于 D4，见 §5 阶段 2）                                                                                                                                 | 文档与门禁均为新增物：`git revert` 对应提交即可，零业务代码风险                    |
+| **批次 1**           | API 仓储层共享基建（横切全部 20 域）                   | TD-DUP-001/002/003、TD-ARCH-001：scope 谓词、审计外发、幂等查询收敛为共享模块；foundation 拆 4 文件并清零 any       | 阶段 3 门禁就位（C3：先护栏）                                                                                                                                                         | 子批次各自独立提交（§4.1）；`git revert` 单子批提交；13 个 PG 集成测试保证行为守恒 |
+| **批次 2**           | API 路由与编排层（app.ts，230 个 method 分支）         | TD-API-001/002、TD-BOUND-002、TD-PERF-002 判定：声明式路由表 + 分域 handler + 显式 Service 层                       | 批次 1（仓储共享模块先行）                                                                                                                                                            | 子批次各自独立提交（§4.2）；app.test.ts 35 用例 + 13 个集成测试 + e2e 回归         |
+| **批次 3**           | 前端工作台（bootstrap.ts，21 个商业子域 + CRM + 治理） | TD-WEB-001/002/003、TD-ARCH-002、TD-BOUND-001、TD-DUP-004：按业务域拆分文件与 store；边界运行时校验；共享 formatter | 批次 2（API 边界稳定后）。护栏 = **阶段 3 门禁 + 既有测试**（70 用例、e2e、启动预算）；子批次内新增的特征化/对拍测试属**阶段 4 行为守恒护栏**，与迁移同批交付；补充性测试统一入阶段 5 | 子批次各自独立提交（§4.3）；启动预算断言 + 路由隔离/竞态 e2e 为护栏                |
+| **批次 4**           | 安全加固（登录/全 API）                                | TD-SEC-001..004：CSP（先 Report-Only）、登录限流、安全响应头、token 存储方案                                        | **人工决策 D1 通过**（全部为行为变更）                                                                                                                                                | 每项独立提交 + nginx reload 前后探针；CSP Report-Only 期天然可逆；限流带开关       |
+| **阶段 5**           | 测试补全（跨全部域）                                   | TD-TEST-001..003/005：补零测试模块与 6 域集成测试；覆盖率门禁接入（阈值见 §5 阶段 5）                               | 阶段 4 通过                                                                                                                                                                           | 纯新增测试文件，revert 即回滚                                                      |
 
 **排序依据**（§1.4.3 护栏优先级 = 改动频率 × 故障代价）：批次 1 风险最低（行为守恒有 13 个集成测试直接保护）且为后续批次扫清重复；批次 3 体量最大放最后，且依赖 API 边界先稳定。
 
+> 路由分布参考（批次 2 切分用）：230 个 method 分支中 96 处为 `pathname === '/api/v1/<前缀>'` 完整字面量匹配（top：master-data×4、auth×4、leads/complaints/business-documents 各×3、22 个前缀×2、35 个前缀×1），其余为参数化/组合条件匹配；1 处 `startsWith`。分布可用 `grep -oE "pathname === '/api/v1/[a-z0-9_-]+" apps/api/src/app.ts | sort | uniq -c | sort -rn` 复算。
+
+### 4.1 批次 1 子批次（仓储层共享基建）
+
+| 子批 | 内容（输入 → 输出）                                                                                                                                                 | 文件范围                                                       | 测试集                                                                                       | 回滚点      |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ----------- |
+| 1a   | 新建 scope-sql 共享模块（单一实现 + 各 scope 组合单测）；替换 `policy.ts`、`repositories.ts` 两个调用点                                                             | 新 `apps/api/src/scope-sql.ts`；`policy.ts`、`repositories.ts` | `repositories.test.ts`、`security.test.ts`、`postgres.integration.test.ts` + `pnpm ci:local` | 1a 完成提交 |
+| 1b   | scope 谓词替换其余 10 文件：有集成测试域优先（commercial→crm→qtc→complaint→collection→platform→foundation），后 mock-only（commission、dashboard、order-360、risk） | 10 个 `*-repositories.ts`                                      | 各域对应 `*-postgres.integration.test.ts` + `app.test.ts`                                    | 每域一提交  |
+| 1c   | 审计+outbox 共享助手（两连写一处实现）；先试点 3 域，再替换其余 17 文件                                                                                             | 20 个文件（31+13 处）                                          | 集成测试中审计/outbox 断言 + `ci:local`                                                      | 两段提交    |
+| 1d   | 幂等查询助手收敛（`*_command_results` 样板 23 处）                                                                                                                  | 9 个文件                                                       | 幂等行为集成测试                                                                             | 单提交      |
+| 1e   | foundation 拆 4 文件（Notification/Attachment/BusinessObject/Event）+ 28 处 any 清零 + 删文件级 eslint-disable                                                      | `foundation-repositories.ts` → 4 文件                          | `foundation-api.test.ts`、`foundation-postgres.integration.test.ts`                          | 单提交      |
+
+### 4.2 批次 2 子批次（app.ts 路由表化 + Service 层）
+
+| 子批 | 内容（输入 → 输出）                                                                                                                                                               | 文件范围                                     | 测试集                              | 回滚点            |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | ----------------------------------- | ----------------- |
+| 2a   | 路由表基建：声明式路由定义 + dispatcher + 结构测试（无校验路由必须拦截）；试点迁移 foundation 域                                                                                  | `app.ts`、新 `apps/api/src/routes/`          | 全量测试 + 新结构测试               | 单提交            |
+| 2b   | 有集成测试的 12 域逐域迁移（auth、authorization、collection、commercial、complaint、crm、platform、production、production-startup、qtc、website-lead-ingest；foundation 已在 2a） | 每域 1 个 handler 文件 + `app.ts` 删对应分支 | 每域对应集成测试（迁移前后对拍）    | 每域 1-2 提交     |
+| 2c   | mock-only 8 域迁移（commission、dashboard、manufacturing、mrp、procurement、risk、order-360、quality）；迁移前先固化 app.test.ts 对拍快照                                         | 同上                                         | `app.test.ts` 对应用例 + 新固化快照 | 每域 1-2 提交     |
+| 2d   | 零测试 2 域（business-document、production-cost）：**先写特征化测试**（阶段 4 行为守恒护栏，非阶段 5 补测），测试与迁移分开提交                                                   | 2 域 handler + 2 个新测试文件                | 新特征化测试 + `ci:local`           | 测试/迁移两段提交 |
+| 2e   | Service 层显式化：跨仓储编排从 handler 抽为 service 函数（依赖方向 Repo→Service→Runtime，结构测试校验）                                                                           | 新 `apps/api/src/services/`                  | 全量 + 依赖方向结构测试             | 按域小步提交      |
+| 2f   | TD-PERF-002 判定：13 个 N+1 候选点逐个判定，确证者登记修复子任务（不在此修，除非风险为零）                                                                                        | §3.8 清单                                    | 判定记录进台账                      | 无代码改动        |
+
+### 4.3 批次 3 子批次（bootstrap.ts 按域拆分）
+
+> 21 个商业子域实测清单（`bootstrap.ts:1866-1867` 的 `data-route-view` 属性）：opportunities、technical-requirements、technical-solutions、costing、sales-policies、quotes、credit-review、contracts、sales-orders、order-360、receivables、collections、payments、commissions、business-risks、manufacturing-master、procurement、material-planning、production-orders、quality-inspection、shipments。
+
+| 子批 | 内容（输入 → 输出）                                                                                                                                                                                                                                                                                                                                                                                             | 文件范围                                | 测试集                                               | 回滚点       |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- | ---------------------------------------------------- | ------------ |
+| 3a   | 公共层剥离（非业务）：form 引擎（`openForm`/`openFileForm`）、路由（`setAppRoute`/导航安装）、http 客户端工厂、本地化文案                                                                                                                                                                                                                                                                                       | `bootstrap.ts` → `apps/web/src/shared/` | `bootstrap.test.ts`（70 用例）+ 启动预算断言         | 每模块一提交 |
+| 3b   | CRM 域：`CrmController`（:10590）、`createCrmShell`、`createCrmRecords`（:13248-14528 区域）                                                                                                                                                                                                                                                                                                                    | `apps/web/src/crm/`                     | 70 用例 + `p1-demo` e2e                              | 单域提交     |
+| 3c   | commercial 21 子域分 6 组迁移：①线索方案（opportunities/technical-requirements/technical-solutions）②成本报价（costing/sales-policies/quotes）③信用合同（credit-review/contracts）④订单履约（sales-orders/order-360/production-orders/shipments）⑤资金风险（receivables/collections/payments/commissions/business-risks）⑥制造采购质量（manufacturing-master/procurement/material-planning/quality-inspection） | `apps/web/src/commercial/`              | 每组：70 用例 + 启动预算 + 相关 e2e                  | 每组一提交   |
+| 3d   | governance 域（`GovernanceController`:14572-15967）                                                                                                                                                                                                                                                                                                                                                             | `apps/web/src/governance/`              | 70 用例 + `production-role-uat` e2e                  | 单域提交     |
+| 3e   | `CommercialController`（:1427）God store 拆分与按视图惰性加载；日期 formatter 收敛（TD-DUP-004）                                                                                                                                                                                                                                                                                                                | `apps/web/src/commercial/store/`        | `workspace-route-isolation.spec.ts`（竞态/泄漏探针） | 分步提交     |
+| 3f   | 边界运行时校验（TD-BOUND-001）：http 封装与 sessionStorage/localStorage 读取处引入轻量解析器（畸形输入拒绝）                                                                                                                                                                                                                                                                                                    | `http.ts`、`entry.ts`、`bootstrap.ts`   | 解析器单测 + 70 用例回归                             | 单提交       |
+
 ## 5. 五阶段任务拆解
 
-> 负责人角色约定：**智能体**＝执行者（写代码/文档/门禁/测试），**人类**＝确认者（确认计划、答决策题、验收）。每阶段通过条件见 §5 尾部对照表。
+> 负责人角色约定：**智能体**＝执行者（写代码/文档/门禁/测试），**人类**＝确认者（确认计划、答决策题、验收）。
 
-### 阶段 1 · 全量扫描与问题清单 —— **本计划即产出物（本阶段已完成，待人工确认）**
+### 阶段 1 · 全量扫描与问题清单 —— **本计划即产出物（已完成，待人工确认）**
 
-| 子任务                                                                                                   | 负责人 | 产出物                                                                               | 可机械检查的验收标准                                                                                                                                                                                                   |
-| -------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 仓库地图 / 框架判定 / 架构与复杂度 / 重复 / 文档与测试缺口 / 安全与性能 / 门禁审计 / 风险分级 / 批次划分 | 智能体 | 本文件 + `tech-debt-tracker.md` + `docs/CI.md` + `scripts/analysis/repo-metrics.mjs` | ① 台账 27 条均含 ID/位置/类别/严重度/证据/修复建议/行为影响（本文档 lint 于阶段 3 建立）；② 框架判定证据落盘 `docs/CI.md`；③ 度量数字可由脚本复算（已验证）；④ `git diff main --stat` 仅新增文档与脚本、零业务代码改动 |
+| 子任务                                                                                                                  | 负责人 | 产出物                                                                               | 可机械检查的验收标准                                                                                                                                                                                |
+| ----------------------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 仓库地图 / 框架判定 / 架构与复杂度 / 重复 / 文档与测试缺口 / 安全与性能（§3.8）/ 门禁审计 / 风险分级 / 批次与子批次划分 | 智能体 | 本文件 + `tech-debt-tracker.md` + `docs/CI.md` + `scripts/analysis/repo-metrics.mjs` | ① 台账 30 条均含 ID/位置/类别/严重度/证据/修复建议/行为影响；② 框架判定证据落盘 `docs/CI.md`；③ 度量数字可由脚本/§3.8 命令复算（已验证）；④ `git diff main --stat` 仅新增文档与脚本、零业务代码改动 |
 
-### 阶段 2 · 文档对齐
+### 阶段 2 · 文档对齐（拆 2a/2b；D4 只阻塞 2b）
 
-| 子任务                               | 负责人                | 产出物                                                                      | 可机械检查的验收标准                                                                                         |
-| ------------------------------------ | --------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| 重写 AGENTS.md（≤100 行地图）        | 智能体                | `AGENTS.md`                                                                 | 行数 ≤200（脚本断言）；含一句话定位/常用命令/目录地图/硬约束/下一站指引五节（文档 lint）                     |
-| 编写 ARCHITECTURE.md                 | 智能体                | `ARCHITECTURE.md`                                                           | 依赖方向规则与代码一致（抽样 ≥3 处由结构测试验证，阶段 3 落地）                                              |
-| 建立 docs/ 目标结构 + 索引           | 智能体                | `docs/index.md`、`docs/design-docs/`、`docs/exec-plans/{active,completed}/` | index 中每个链接可解析（文档 lint 脚本 `node scripts/analysis/doc-lint.mjs`——阶段 3 前手工跑，阶段 3 进 CI） |
-| 沉淀 core-beliefs.md                 | 智能体                | `docs/design-docs/core-beliefs.md`                                          | 含规则附录 F 的 12 条 + 项目特有取舍（零框架/参数化 SQL/不透明会话援引 ADR-0001~0010）                       |
-| 现有 85+ 文档归并                    | 智能体（人类决策 D4） | 归并后的 docs 树                                                            | 每份保留文档进 index 且标注新鲜度；被归档文档移入对应 completed/ 或保留原位加标注（零死链）                  |
-| QUALITY_SCORE.md 建档                | 智能体                | `docs/QUALITY_SCORE.md`                                                     | 每业务域分数有可复算依据（引用 repo-metrics 输出与覆盖率报告）                                               |
-| 工程化说明补全（含发布链路 runbook） | 智能体                | `docs/RELIABILITY.md`（或并入既有 deployment/）                             | 部署链路文档与 `deploy-production.yml` 步骤逐条对应（抽查核对）                                              |
+| 子任务                                        | 负责人                | 产出物                                                                      | 可机械检查的验收标准                                                                                                                            |
+| --------------------------------------------- | --------------------- | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| **2a-1** 重写 AGENTS.md                       | 智能体                | `AGENTS.md`                                                                 | **目标 ≤100 行；机械上限 200 行**（脚本断言 200，超限即失败）；含一句话定位/常用命令/目录地图/硬约束/下一站指引五节                             |
+| **2a-2** 编写 ARCHITECTURE.md                 | 智能体                | `ARCHITECTURE.md`                                                           | 依赖方向规则与代码一致（抽样 ≥3 处由结构测试验证，阶段 3 落地）                                                                                 |
+| **2a-3** 建立 docs/ 目标结构 + 索引           | 智能体                | `docs/index.md`、`docs/design-docs/`、`docs/exec-plans/{active,completed}/` | index 收录现状全部文档并标注「归并待定（D4）」；每个链接可解析（文档 lint 脚本 `scripts/analysis/doc-lint.mjs`——阶段 3 前手工跑，阶段 3 进 CI） |
+| **2a-4** 沉淀 core-beliefs.md                 | 智能体                | `docs/design-docs/core-beliefs.md`                                          | 含规则附录 F 的 12 条 + 项目特有取舍（零框架/参数化 SQL/不透明会话援引 ADR-0001~0010）                                                          |
+| **2a-5** QUALITY_SCORE.md 建档                | 智能体                | `docs/QUALITY_SCORE.md`                                                     | 每业务域分数有可复算依据（引用 repo-metrics 输出与覆盖率报告）                                                                                  |
+| **2a-6** 工程化说明补全（含发布链路 runbook） | 智能体                | `docs/RELIABILITY.md`（或并入既有 deployment/）                             | runbook 与 `deploy-production.yml` 步骤逐条对应（**workflow_dispatch 指定 SHA，无 tag**；抽查核对）                                             |
+| **2b** 现有 85+ 文档归并（**阻塞于 D4**）     | 智能体（人类决策 D4） | 归并后的 docs 树                                                            | 每份保留文档进 index 且标注新鲜度；被归档文档移入对应 completed/ 或原位加标注（零死链）                                                         |
+
+**D4 停止条件**：D4 未回答时 2b 暂停（2a 全部照常）；**阶段 2 整体验收包含 2b**，故 D4 必须在阶段 2 验收前回答，否则阶段 3 不得启动（C2）。
 
 ### 阶段 3 · 门禁审计与自动化质量校验（非 Tauri：不生成打包发布流水线，§3.4）
 
-| 子任务                                          | 负责人 | 产出物                          | 可机械检查的验收标准                                                                                    |
-| ----------------------------------------------- | ------ | ------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| 接入 git hooks + commitlint + lint-staged       | 智能体 | hook 配置 + commitlint 配置     | 实测：非 conventional 提交信息、含 lint 错误的暂存文件被本地拦截（TD-GATE-001 验收）                    |
-| 文件大小/嵌套门禁（T1）                         | 智能体 | 结构测试/linter                 | 实测：新建 900 行文件、15 层嵌套文件必须失败；错误信息含修复指令                                        |
-| SQL 拼装约束（TD-SEC-005）                      | 智能体 | 结构测试                        | 实测：注入直拼用户输入的 SQL 模板必须失败                                                               |
-| 路由表结构约束（为批次 2 铺路）                 | 智能体 | 结构测试                        | 实测：注册无校验器的路由必须失败                                                                        |
-| 文档门禁（T9）                                  | 智能体 | `doc-lint` 脚本 + 进 `ci:local` | 实测：删 index.md 条目、留死链必须失败                                                                  |
-| vitest 统一配置 + 覆盖率接入准备（TD-GATE-002） | 智能体 | `vitest.config.*`               | 各包 test 行为与现状一致（全量测试绿）                                                                  |
-| 干净环境验证                                    | 智能体 | 验证记录（进本文件日志）        | `rm -rf node_modules && pnpm install --frozen-lockfile && pnpm ci:local` 一次通过                       |
-| CI 现状核对                                     | 智能体 | `docs/CI.md` 更新               | 不新增/不修改 `.github/workflows/`（本仓库 CI 已完备；如需接文档门禁等新步骤，单独提交并在 CI.md 记录） |
+| 子任务                                          | 负责人 | 产出物                          | 可机械检查的验收标准                                                                                  |
+| ----------------------------------------------- | ------ | ------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| 接入 git hooks + commitlint + lint-staged       | 智能体 | hook 配置 + commitlint 配置     | 实测：非 conventional 提交信息、含 lint 错误的暂存文件被本地拦截（TD-GATE-001 验收）                  |
+| 文件大小/嵌套门禁（T1，参数=D5 默认提案）       | 智能体 | 结构测试/linter                 | 实测：新建 900 行文件、15 层嵌套文件必须失败；错误信息含修复指令。**D5 未确认前仅报告不拦截**         |
+| SQL 拼装约束（TD-SEC-005）                      | 智能体 | 结构测试                        | 实测：注入直拼用户输入的 SQL 模板必须失败                                                             |
+| 路由表结构约束（为批次 2 铺路）                 | 智能体 | 结构测试                        | 实测：注册无校验器的路由必须失败                                                                      |
+| 文档门禁（T9）                                  | 智能体 | `doc-lint` 脚本 + 进 `ci:local` | 实测：删 index.md 条目、留死链必须失败                                                                |
+| vitest 统一配置 + 覆盖率接入准备（TD-GATE-002） | 智能体 | `vitest.config.*`               | 各包 test 行为与现状一致（全量测试绿）                                                                |
+| 干净环境验证                                    | 智能体 | 验证记录（进本文件日志）        | `rm -rf node_modules && pnpm install --frozen-lockfile && pnpm ci:local` 一次通过                     |
+| CI 现状核对                                     | 智能体 | `docs/CI.md` 更新               | 不新增/修改 `.github/workflows/`（本仓库 CI 已完备；如需接文档门禁等新步骤，单独提交并在 CI.md 记录） |
 
-### 阶段 4 · 问题修复与重构（按 §4 批次推进）
+### 阶段 4 · 问题修复与重构（按 §4 子批次推进）
 
 | 子任务                          | 负责人             | 产出物                        | 可机械检查的验收标准                                                                                                         |
 | ------------------------------- | ------------------ | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
@@ -140,36 +208,47 @@ packages/{types, ui, config, testing} → 零依赖
 | 批次 2：路由表化 + Service 层   | 智能体             | 路由表 + 分域 handler         | 全量测试绿 + 路由结构测试绿；`buildApp` 单函数跨度与 app.ts 行数显著下降（前后数值记录）                                     |
 | 批次 3：bootstrap 按域拆分      | 智能体             | 分域模块树                    | 启动预算断言绿 + 70 用例绿 + e2e 绿；单文件 ≤阈值；嵌套直方图下降                                                            |
 | 批次 4：安全加固（**前置 D1**） | 智能体（人类批准） | CSP/限流/安全头/存储方案      | 每项独立提交（`fix:`/`feat:` 前缀 + 台账 ID）；限流/头断言测试新增且实测拦截                                                 |
-| 行为守恒对拍                    | 智能体             | 对拍记录                      | 每批次：改动前后对相同输入产出相同结果（集成测试 + 关键 API 请求/响应快照对拍）                                              |
+| 行为守恒对拍                    | 智能体             | 对拍记录                      | 每子批次：改动前后对相同输入产出相同结果（集成测试 + 关键 API 请求/响应快照对拍）                                            |
 
-### 阶段 5 · 测试补全与门禁接入
+### 阶段 5 · 测试补全与门禁接入（阈值初始值如下，均为可执行数值）
 
-| 子任务                                                              | 负责人 | 产出物                     | 可机械检查的验收标准                                                                    |
-| ------------------------------------------------------------------- | ------ | -------------------------- | --------------------------------------------------------------------------------------- |
-| 补零测试模块（business-document/production-cost/quality/order-360） | 智能体 | 集成测试文件               | 注入缺陷实测 ≥3 处必须失败（防假测试）                                                  |
-| 补 6 域 SQL 路径集成测试                                            | 智能体 | 集成测试文件               | 6 域各有 `*-postgres.integration.test.ts` 且全绿                                        |
-| 覆盖率门禁（整体 + 关键模块下限）                                   | 智能体 | coverage 配置进 `ci:local` | 低于阈值实测失败；关键模块（apps/api 仓储层、packages/domain）单独达标                  |
-| P0 回归测试核对                                                     | 智能体 | 台账更新                   | 全部 P0 条目修复均有对应回归测试                                                        |
-| 全量测试稳定性                                                      | 智能体 | 运行记录                   | 全量测试连续 3 次运行无失败且在约定时长内（现状单跑约数分钟，上限定 15 分钟与 CI 一致） |
+| 子任务                                                              | 负责人 | 产出物                     | 可机械检查的验收标准                                     |
+| ------------------------------------------------------------------- | ------ | -------------------------- | -------------------------------------------------------- |
+| 补零测试模块（business-document/production-cost/quality/order-360） | 智能体 | 集成测试文件               | 注入缺陷实测 ≥3 处必须失败（防假测试）                   |
+| 补 6 域 SQL 路径集成测试                                            | 智能体 | 集成测试文件               | 6 域各有 `*-postgres.integration.test.ts` 且全绿         |
+| 覆盖率门禁接入                                                      | 智能体 | coverage 配置进 `ci:local` | 按下表阈值实测拦截                                       |
+| P0/P1 回归测试核对                                                  | 智能体 | 台账更新                   | 全部 P1 条目修复均有对应回归测试（本计划无 P0）          |
+| 全量测试稳定性                                                      | 智能体 | 运行记录                   | 全量测试连续 3 次运行无失败且 ≤15 分钟（与 CI 超时一致） |
+
+**覆盖率阈值（初始值，阶段 5 首测后回填基线 B 值）**：
+
+| 指标             | 初始基线                                                                                                                     | 目标值                                   | 启用与爬坡策略                                                                                                       |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| 整体行覆盖       | 首次测量值 B₀（记录进 §7 日志）                                                                                              | ≥75%                                     | 首次接入门槛 = B₀（不低于现状）；此后每个改造批次合并时下限 +5pct，直至目标                                          |
+| packages/domain  | 首测 B_d                                                                                                                     | ≥90%                                     | 同上（纯函数域，理应最高）                                                                                           |
+| apps/api 仓储层  | 首测 B_r                                                                                                                     | ≥70%                                     | 同上                                                                                                                 |
+| 豁免格式         | 台账条目状态改「已豁免」+ 代码处 `// coverage-exempt(reason, until-YYYY-MM-DD)` 行注释；**台账与注释双写一致**由结构测试校验 | —                                        | 到期日次日门禁自动恢复拦截；续期须人工重新确认并更新 until；豁免清单季度复查                                         |
+| 复杂度门禁（D5） | 现状基线 = repo-metrics 输出                                                                                                 | 文件 ≤800 行 / 函数 ≤200 行 / 嵌套 ≤5 层 | D5 未确认前**仅报告不拦截**；存量热点（bootstrap.ts、app.ts、超阈值仓储文件）白名单豁免，随批次 2/3 子批完成逐条移除 |
 
 ### 收官（阶段 5 通过后）：按规则 §14 拆解归档 `docs/HARNESS-RULES.md`，长效契约迁移进 AGENTS.md / core-beliefs.md / ARCHITECTURE.md / docs/CI.md，自检通过后单独一次提交。
 
 ## 6. 待人工决策清单
 
-| 编号 | 问题                                                                                                                                       | 为什么需要人判断                                                    | 影响范围                       |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------- | ------------------------------ |
-| D1   | 安全加固四项（CSP / 登录限流 / API 安全响应头 / token 存储）是否批准实施？限流阈值与 token 方案（短期 CSP 缓解 vs 迁移 HttpOnly cookie）？ | 全部为**行为变更**（红线 R2）；限流阈值与产品体验权衡不可从代码推断 | 批次 4（TD-SEC-001..004）      |
-| D2   | 版本策略：维持 commit SHA 发布标识（现状链路完整）还是引入语义化版本？                                                                     | 产品/发布决策；现状非缺陷                                           | TD-VER-001、规则 §6.1 是否适用 |
-| D3   | 近空壳包（packages/ui 7 行、packages/testing 3 行）与 `.local-acceptance/` 本地产物的处置（合并/长成/保留）？                              | 涉及包去留与工作区习惯，非技术可推断                                | TD-HYG-001、TD-TEST-004        |
-| D4   | 现有 docs/ 85+ 文档（adr/agent-memory/engineering/evidence/tasks）与目标结构的归并策略：哪些常驻、哪些归档、agent-memory 是否保留？        | 文档价值判断与团队使用习惯                                          | 阶段 2、TD-DOC-001             |
-| D5   | 文件大小/嵌套阈值定多少（建议：源文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层，存量热点在批次 2/3 拆完前以白名单豁免）？                         | 阈值松紧影响门禁误报率与改造节奏                                    | 阶段 3 门禁参数                |
+| 编号 | 问题                                                                                                                                       | 为什么需要人判断                                                    | 阻塞范围（未回答时暂停什么）                                                 |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| D1   | 安全加固四项（CSP / 登录限流 / API 安全响应头 / token 存储）是否批准实施？限流阈值与 token 方案（短期 CSP 缓解 vs 迁移 HttpOnly cookie）？ | 全部为**行为变更**（红线 R2）；限流阈值与产品体验权衡不可从代码推断 | 批次 4 全部（TD-SEC-001..004）；不影响批次 1-3                               |
+| D2   | 版本策略：维持 commit SHA 发布标识（现状链路完整）还是引入语义化版本？                                                                     | 产品/发布决策；现状非缺陷                                           | TD-VER-001 处置；不阻塞任何批次                                              |
+| D3   | 近空壳包（packages/ui 7 行、packages/testing 3 行）与 `.local-acceptance/` 本地产物的处置（合并/长成/保留）？                              | 涉及包去留与工作区习惯，非技术可推断                                | TD-HYG-001、TD-TEST-004；不阻塞批次（types 已拆出为 TD-TEST-005，不依赖 D3） |
+| D4   | 现有 docs/ 85+ 文档（adr/agent-memory/engineering/evidence/tasks）与目标结构的归并策略：哪些常驻、哪些归档、agent-memory 是否保留？        | 文档价值判断与团队使用习惯                                          | **阶段 2b 及阶段 2 验收**（进而阻塞阶段 3 启动）；2a 不受影响                |
+| D5   | 复杂度阈值确认（默认提案：源文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；存量热点白名单随批次移除）？                                           | 阈值松紧影响门禁误报率与改造节奏                                    | 阶段 3 复杂度门禁「拦截模式」；报告模式不阻塞                                |
 
 ## 7. 进度与决策日志
 
-| 日期       | 阶段 | 动作                                            | 关联 commit | 决策与理由                                                                      |
-| ---------- | ---- | ----------------------------------------------- | ----------- | ------------------------------------------------------------------------------- |
-| 2026-10-12 | 1    | 规则文档归位为 `docs/HARNESS-RULES.md`          | `5d6152d`   | §14.1 施工期常驻位置；原文件未跟踪，仅改名纳入版本管理                          |
-| 2026-10-12 | 1    | 基线确认：用户选择「先同步再扫描」              | —           | 本地 main 落后 origin 33 提交；`git pull --ff-only` 至 `779dea3` 后复核全部指标 |
-| 2026-10-12 | 1    | 框架判定落盘 `docs/CI.md`：其他类型（非 Tauri） | 见本分支    | §3.2 三项证据零命中；按 §3.4 跳过三问、不建打包发布流水线                       |
-| 2026-10-12 | 1    | 台账登记 27 条（P1×12 / P2×15 / P0×0）          | 见本分支    | 扫描未发现功能性 bug，故无 P0；安全四项为行为变更类，独立批次 4 + 前置 D1       |
-| 2026-10-12 | 1    | 改造计划 v1.0 输出，状态置「待确认」            | 见本分支    | 契约 C1：确认前不改业务代码                                                     |
+| 日期       | 阶段 | 动作                                            | 关联 commit | 决策与理由                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ---------- | ---- | ----------------------------------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-12 | 1    | 规则文档归位为 `docs/HARNESS-RULES.md`          | `5d6152d`   | §14.1 施工期常驻位置；原文件未跟踪，仅改名纳入版本管理                                                                                                                                                                                                                                                                                                                                                          |
+| 2026-10-12 | 1    | 基线确认：用户选择「先同步再扫描」              | —           | 本地 main 落后 origin 33 提交；`git pull --ff-only` 至 `779dea3` 后复核全部指标                                                                                                                                                                                                                                                                                                                                 |
+| 2026-10-12 | 1    | 框架判定落盘 `docs/CI.md`：其他类型（非 Tauri） | 见本分支    | §3.2 三项证据零命中；按 §3.4 跳过三问、不建打包发布流水线                                                                                                                                                                                                                                                                                                                                                       |
+| 2026-10-12 | 1    | 台账登记 27 条（P1×12 / P2×15 / P0×0）          | 见本分支    | 扫描未发现功能性 bug，故无 P0；安全四项为行为变更类，独立批次 4 + 前置 D1                                                                                                                                                                                                                                                                                                                                       |
+| 2026-10-12 | 1    | 改造计划 v1.0 输出，状态置「待确认」            | 见本分支    | 契约 C1：确认前不改业务代码                                                                                                                                                                                                                                                                                                                                                                                     |
+| 2026-10-12 | 1    | **v1.1 修订**：按人工审核意见修复 8 项          | 见本分支    | ①批次 3 依赖改为阶段 3 护栏（P0，原「阶段 5 前置」违反 C2）；②新增 §3.8 扫描证据（密钥/漏洞/日志/N+1/并发/超时重试/内存，含命令与限制）；③补覆盖率与复杂度阈值初始值、豁免格式与到期条件；④批次 1-3 拆 17 个子批次（含文件范围/测试集/回滚点）；⑤阶段 2 拆 2a/2b 并明确 D4 停止条件；⑥度量口径统一说明；⑦CI.md 修正「无 tag」表述；⑧TD-TEST-004 拆出 types 为 TD-TEST-005；另新增 TD-PERF-001/002（台账 30 条） |
