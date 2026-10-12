@@ -12,6 +12,9 @@ import {
   writeContractAudit,
   writeProductionCostPolicyAudit,
   writeShipmentReleaseAudit,
+  writeRiskPolicyCreatedAudit,
+  writeRiskPolicyRevisedAudit,
+  writeRiskPolicyPublishedAudit,
 } from '../src/audit-outbox.js';
 
 const actor: Actor = {
@@ -299,5 +302,25 @@ describe('writeAuditOutbox', () => {
       'corr-shipment',
       snapshot,
     ]);
+  });
+  it('preserves risk policy fixed actions and metadata', async () => {
+    for (const [run, action] of [
+      [writeRiskPolicyCreatedAudit, 'risk-policy.created'],
+      [writeRiskPolicyRevisedAudit, 'risk-policy.revised'],
+      [writeRiskPolicyPublishedAudit, 'risk-policy.published'],
+    ] as const) {
+      const query = vi.fn().mockResolvedValue({ rows: [], rowCount: 1 });
+      await run({ query }, actor, 'risk-1', 'corr-risk', { state: action });
+      expect(query.mock.calls[0]?.[1]).toEqual([
+        action,
+        'SUCCESS',
+        actor.employeeId,
+        actor.companyId,
+        'risk-policy',
+        'risk-1',
+        'corr-risk',
+        { state: action },
+      ]);
+    }
   });
 });

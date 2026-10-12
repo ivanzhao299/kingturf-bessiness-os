@@ -101,6 +101,61 @@ export const writeShipmentReleaseAudit = (
     snapshot,
   );
 
+export const writeRiskPolicyCreatedAudit = (
+  tx: SqlClient,
+  actor: Actor,
+  id: string,
+  correlationId: string,
+  metadata: JsonObject,
+) =>
+  writeAuditEvent(
+    tx,
+    'risk-policy.created',
+    'SUCCESS',
+    actor.employeeId,
+    actor.companyId,
+    'risk-policy',
+    id,
+    correlationId,
+    metadata,
+  );
+export const writeRiskPolicyRevisedAudit = (
+  tx: SqlClient,
+  actor: Actor,
+  id: string,
+  correlationId: string,
+  metadata: JsonObject,
+) =>
+  writeAuditEvent(
+    tx,
+    'risk-policy.revised',
+    'SUCCESS',
+    actor.employeeId,
+    actor.companyId,
+    'risk-policy',
+    id,
+    correlationId,
+    metadata,
+  );
+export const writeRiskPolicyPublishedAudit = (
+  tx: SqlClient,
+  actor: Actor,
+  id: string,
+  correlationId: string,
+  metadata: JsonObject,
+) =>
+  writeAuditEvent(
+    tx,
+    'risk-policy.published',
+    'SUCCESS',
+    actor.employeeId,
+    actor.companyId,
+    'risk-policy',
+    id,
+    correlationId,
+    metadata,
+  );
+
 const actorOf = (value: ActorContext): Actor => ('actor' in value ? value.actor : value);
 
 /** Writes the standard audit + outbox pair inside the caller's transaction. */

@@ -3,6 +3,11 @@ import { canonicalize, DomainError, type Actor, type ScopeAnchor } from '@kingtu
 import type { Database, SqlClient } from '@kingturf/database';
 import type { DataScope, JsonObject } from '@kingturf/types';
 import { recordScopeSql } from './scope-sql.ts';
+import {
+  writeRiskPolicyCreatedAudit,
+  writeRiskPolicyPublishedAudit,
+  writeRiskPolicyRevisedAudit,
+} from './audit-outbox.ts';
 
 type Db = SqlClient & Pick<Database, 'transaction'>;
 type Context = Readonly<{
@@ -84,10 +89,7 @@ export class PostgresRiskRepository {
         )
       ).rows[0];
       if (!v) throw new Error('Risk policy version insert failed');
-      await tx.query(
-        "INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata) VALUES('risk-policy.created','SUCCESS',$1,$2,'risk-policy',$3,$4,$5)",
-        [context.actor.employeeId, context.actor.companyId, p.id, correlationId, canonical],
-      );
+      await writeRiskPolicyCreatedAudit(tx, context.actor, p.id, correlationId, canonical);
       return json({
         id: v.id,
         policyId: p.id,
@@ -140,10 +142,7 @@ export class PostgresRiskRepository {
         )
       ).rows[0];
       if (!version) throw new Error('Risk policy version insert failed');
-      await tx.query(
-        "INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata) VALUES('risk-policy.revised','SUCCESS',$1,$2,'risk-policy',$3,$4,$5)",
-        [context.actor.employeeId, context.actor.companyId, policyId, correlationId, canonical],
-      );
+      await writeRiskPolicyRevisedAudit(tx, context.actor, policyId, correlationId, canonical);
       return json({
         id: version.id,
         policyId,
@@ -173,10 +172,7 @@ export class PostgresRiskRepository {
         version: row.version,
         status: 'PUBLISHED',
       });
-      await tx.query(
-        "INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata) VALUES('risk-policy.published','SUCCESS',$1,$2,'risk-policy',$3,$4,$5)",
-        [context.actor.employeeId, context.actor.companyId, row.policy_id, correlationId, result],
-      );
+      await writeRiskPolicyPublishedAudit(tx, context.actor, row.policy_id, correlationId, result);
       return result;
     });
   }
