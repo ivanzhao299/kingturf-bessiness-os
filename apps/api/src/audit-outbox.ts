@@ -386,6 +386,26 @@ export const writeFoundationEmptyAudit = (
     [action, actor.employeeId, actor.companyId, targetType, targetId, correlationId],
   );
 
+export const writeFoundationDomainEventAudit = (
+  tx: SqlClient,
+  action: string,
+  actor: Actor,
+  targetId: string,
+  correlationId: string,
+  metadata: JsonObject,
+) =>
+  writeAuditEvent(
+    tx,
+    action,
+    'SUCCESS',
+    actor.employeeId,
+    actor.companyId,
+    'domain-event',
+    targetId,
+    correlationId,
+    metadata,
+  );
+
 const actorOf = (value: ActorContext): Actor => ('actor' in value ? value.actor : value);
 
 /** Writes the standard audit + outbox pair inside the caller's transaction. */

@@ -25,6 +25,7 @@ import {
   writeBusinessDocumentReviewAudit,
   writeBusinessDocumentActivityAudit,
   writeFoundationEmptyAudit,
+  writeFoundationDomainEventAudit,
   writeAuthorizationAudit,
   writeTransactionalAudit,
 } from '../src/audit-outbox.js';
@@ -570,6 +571,29 @@ describe('writeAuditOutbox', () => {
       'notification',
       'n-1',
       'corr-foundation',
+    ]);
+  });
+  it('preserves foundation domain-event audit parameters', async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [], rowCount: 1 });
+    const metadata = { eventType: 'delivery.claimed', attempt: 2 };
+    await writeFoundationDomainEventAudit(
+      { query },
+      'event.delivery.claim',
+      actor,
+      'event-1',
+      'corr-event',
+      metadata,
+    );
+    expect(query).toHaveBeenCalledTimes(1);
+    expect(query.mock.calls[0]?.[1]).toEqual([
+      'event.delivery.claim',
+      'SUCCESS',
+      actor.employeeId,
+      actor.companyId,
+      'domain-event',
+      'event-1',
+      'corr-event',
+      metadata,
     ]);
   });
 });

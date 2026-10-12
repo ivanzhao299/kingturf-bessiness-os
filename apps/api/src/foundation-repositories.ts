@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import type { Database, Transaction } from '@kingturf/database';
 import { employeeScopedPredicate, type EmployeeScopeOptions } from './scope-sql.ts';
 import { writeFoundationEmptyAudit as audit } from './audit-outbox.ts';
+import { writeFoundationDomainEventAudit as operationalAudit } from './audit-outbox.ts';
 import {
   assertStableCode,
   DomainError,
@@ -28,19 +29,6 @@ import type {
   NotificationPreferenceDto,
 } from '@kingturf/types';
 
-const operationalAudit = async (
-  tx: Transaction,
-  action: string,
-  actor: Actor,
-  targetId: string,
-  correlationId: string,
-  metadata: JsonObject,
-): Promise<void> => {
-  await tx.query(
-    "INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata) VALUES($1,'SUCCESS',$2,$3,'domain-event',$4,$5,$6)",
-    [action, actor.employeeId, actor.companyId, targetId, correlationId, metadata],
-  );
-};
 const OPERATION_NAME = /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$/u;
 const ERROR_CODE = /^[a-z][a-z0-9_]{0,63}$/u;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
