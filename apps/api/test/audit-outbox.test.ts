@@ -15,6 +15,7 @@ import {
   writeRiskPolicyCreatedAudit,
   writeRiskPolicyRevisedAudit,
   writeRiskPolicyPublishedAudit,
+  writeWebsiteLeadAudit,
 } from '../src/audit-outbox.js';
 
 const actor: Actor = {
@@ -324,5 +325,28 @@ describe('writeAuditOutbox', () => {
         { state: action },
       ]);
     }
+  });
+  it('preserves website lead fixed audit metadata', async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [], rowCount: 1 });
+    await writeWebsiteLeadAudit(
+      { query },
+      actor.employeeId,
+      actor.companyId,
+      'lead-1',
+      'corr-web',
+      'external-1',
+    );
+    expect(query).toHaveBeenCalledTimes(1);
+    expect(query.mock.calls[0]?.[0]).toContain('INSERT INTO audit_events');
+    expect(query.mock.calls[0]?.[1]).toEqual([
+      'lead.website_ingested',
+      'SUCCESS',
+      actor.employeeId,
+      actor.companyId,
+      'lead',
+      'lead-1',
+      'corr-web',
+      { externalRef: 'external-1', source: 'WEBSITE' },
+    ]);
   });
 });

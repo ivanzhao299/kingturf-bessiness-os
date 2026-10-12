@@ -156,6 +156,26 @@ export const writeRiskPolicyPublishedAudit = (
     metadata,
   );
 
+export const writeWebsiteLeadAudit = (
+  tx: SqlClient,
+  actorId: string,
+  tenantId: string,
+  leadId: string,
+  correlationId: string,
+  externalRef: string,
+) =>
+  writeAuditEvent(
+    tx,
+    'lead.website_ingested',
+    'SUCCESS',
+    actorId,
+    tenantId,
+    'lead',
+    leadId,
+    correlationId,
+    { externalRef, source: 'WEBSITE' },
+  );
+
 const actorOf = (value: ActorContext): Actor => ('actor' in value ? value.actor : value);
 
 /** Writes the standard audit + outbox pair inside the caller's transaction. */
