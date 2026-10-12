@@ -14,7 +14,7 @@
     "start": "node --env-file-if-exists=../../.env --experimental-transform-types dist/server.js",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --maxWorkers=1",
+    "test": "vitest run",
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
