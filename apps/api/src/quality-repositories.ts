@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { canonicalize, DomainError, type Actor, type ScopeAnchor } from '@kingturf/domain';
 import type { Database, SqlClient } from '@kingturf/database';
 import type { DataScope, JsonObject } from '@kingturf/types';
+import { writeQualityNextVersionEvidence as evidence } from './audit-outbox.ts';
 
 type Db = SqlClient & Pick<Database, 'transaction'>;
 type Context = Readonly<{
@@ -14,24 +15,6 @@ const json = (value: unknown) => value as JsonObject;
 const company = (context: Context) => {
   if (!context.scopes.includes('COMPANY') && !context.scopes.includes('GROUP'))
     throw new DomainError('forbidden', 'Quality operations require company scope');
-};
-const evidence = async (
-  tx: SqlClient,
-  type: string,
-  id: string,
-  context: Context,
-  correlationId: string,
-  payload: JsonObject,
-) => {
-  await tx.query(
-    "INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata) VALUES($1,'SUCCESS',$2,$3,'quality-inspection',$4,$5,$6)",
-    [type, context.actor.employeeId, context.actor.companyId, id, correlationId, payload],
-  );
-  await tx.query(
-    `INSERT INTO domain_event_outbox(tenant_id,event_type,event_version,aggregate_type,aggregate_id,aggregate_version,occurred_at,actor_id,correlation_id,payload)
-    SELECT $1,$2,1,'quality-inspection',$3,coalesce(max(aggregate_version),0)+1,now(),$4,$5,$6 FROM domain_event_outbox WHERE tenant_id=$1 AND event_type=$2 AND aggregate_id=$3`,
-    [context.actor.companyId, type, id, context.actor.employeeId, correlationId, payload],
-  );
 };
 
 export class PostgresQualityRepository {

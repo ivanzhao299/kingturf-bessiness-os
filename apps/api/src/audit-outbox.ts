@@ -115,3 +115,42 @@ export const writeFixedVersionOneEvidence = (
     payload,
   );
 };
+
+export const writeNextVersionEvidence = async (
+  tx: SqlClient,
+  aggregateType: string,
+  action: string,
+  aggregateId: string,
+  context: Readonly<{ actor: Actor }>,
+  correlationId: string,
+  payload: JsonObject,
+) => {
+  const actor = context.actor;
+  await tx.query(
+    "INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata) VALUES($1,'SUCCESS',$2,$3,$4,$5,$6,$7)",
+    [action, actor.employeeId, actor.companyId, aggregateType, aggregateId, correlationId, payload],
+  );
+  await tx.query(
+    'INSERT INTO domain_event_outbox(tenant_id,event_type,event_version,aggregate_type,aggregate_id,aggregate_version,occurred_at,actor_id,correlation_id,payload) SELECT $1,$2,1,$3,$4,coalesce(max(aggregate_version),0)+1,now(),$5,$6,$7 FROM domain_event_outbox WHERE tenant_id=$1 AND event_type=$2 AND aggregate_id=$4',
+    [actor.companyId, action, aggregateType, aggregateId, actor.employeeId, correlationId, payload],
+  );
+};
+
+export const writeProductionNextVersionEvidence = (
+  tx: SqlClient,
+  action: string,
+  id: string,
+  context: Readonly<{ actor: Actor }>,
+  correlationId: string,
+  payload: JsonObject,
+) => writeNextVersionEvidence(tx, 'production-order', action, id, context, correlationId, payload);
+
+export const writeQualityNextVersionEvidence = (
+  tx: SqlClient,
+  action: string,
+  id: string,
+  context: Readonly<{ actor: Actor }>,
+  correlationId: string,
+  payload: JsonObject,
+) =>
+  writeNextVersionEvidence(tx, 'quality-inspection', action, id, context, correlationId, payload);
