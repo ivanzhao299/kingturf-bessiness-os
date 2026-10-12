@@ -4,6 +4,11 @@ import { canonicalize, DomainError, type Actor, type ScopeAnchor } from '@kingtu
 import type { Database, SqlClient } from '@kingturf/database';
 import { recordScopeSql } from './scope-sql.ts';
 import { writeAuditOutbox as evidence } from './audit-outbox.ts';
+import {
+  lockCommercialCommand,
+  replayCommercialCommandAfterLock,
+  retainCommercialCommand,
+} from './command-results.ts';
 import type { DataScope, JsonObject, OperationalListFilter, Page } from '@kingturf/types';
 
 type Db = SqlClient & Pick<Database, 'transaction'>;
@@ -35,38 +40,24 @@ const command = async <T extends JsonObject>(
   work: () => Promise<T>,
 ): Promise<T> => {
   const requestHash = hash(input);
-  await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
-    `${actor.companyId}:${key}`,
-  ]);
+  await lockCommercialCommand(tx, actor.companyId, key);
   // Authorization is deliberately re-evaluated before looking up a replay. A
   // previously valid idempotency result must not bypass a revoked DataScope.
   await authorize();
-  const prior = (
-    await tx.query<{
-      command_type: string;
-      subject_id: string;
-      actor_id: string;
-      request_hash: string;
-      payload: T;
-    }>(
-      'SELECT command_type,subject_id,actor_id,request_hash,payload FROM commercial_command_results WHERE tenant_id=$1 AND idempotency_key=$2',
-      [actor.companyId, key],
-    )
-  ).rows[0];
-  if (prior) {
-    if (
-      prior.command_type !== type ||
-      prior.subject_id !== subject ||
-      prior.actor_id !== actor.employeeId ||
-      prior.request_hash !== requestHash
-    )
-      throw new DomainError('conflict', 'Idempotency key is bound to another command');
-    return prior.payload;
-  }
+  const prior = await replayCommercialCommandAfterLock<T>(tx, actor.companyId, key, {
+    type,
+    subjectId: subject,
+    actorId: actor.employeeId,
+    requestHash,
+  });
+  if (prior) return prior;
   const result = await work();
-  await tx.query(
-    'INSERT INTO commercial_command_results(tenant_id,idempotency_key,command_type,subject_id,actor_id,request_hash,payload) VALUES($1,$2,$3,$4,$5,$6,$7)',
-    [actor.companyId, key, type, subject, actor.employeeId, requestHash, result],
+  await retainCommercialCommand(
+    tx,
+    actor.companyId,
+    key,
+    { type, subjectId: subject, actorId: actor.employeeId, requestHash },
+    result,
   );
   return result;
 };

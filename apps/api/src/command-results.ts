@@ -9,13 +9,15 @@ export type CommandResultIdentity = Readonly<{
   requestHash: string;
 }>;
 
-export async function replayCommercialCommand<T extends JsonObject>(
+export const lockCommercialCommand = (tx: SqlClient, tenantId: string, key: string) =>
+  tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [`${tenantId}:${key}`]);
+
+export async function replayCommercialCommandAfterLock<T extends JsonObject>(
   tx: SqlClient,
   tenantId: string,
   key: string,
   identity: CommandResultIdentity,
 ): Promise<T | null> {
-  await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [`${tenantId}:${key}`]);
   const retained = (
     await tx.query<{
       command_type: string;
@@ -37,6 +39,16 @@ export async function replayCommercialCommand<T extends JsonObject>(
   )
     throw new DomainError('conflict', 'Idempotency key is bound to another command');
   return retained.payload;
+}
+
+export async function replayCommercialCommand<T extends JsonObject>(
+  tx: SqlClient,
+  tenantId: string,
+  key: string,
+  identity: CommandResultIdentity,
+): Promise<T | null> {
+  await lockCommercialCommand(tx, tenantId, key);
+  return replayCommercialCommandAfterLock(tx, tenantId, key, identity);
 }
 
 export const retainCommercialCommand = (

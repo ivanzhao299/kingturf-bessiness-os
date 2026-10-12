@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { replayCommercialCommand, retainCommercialCommand } from '../src/command-results.js';
+import {
+  lockCommercialCommand,
+  replayCommercialCommand,
+  replayCommercialCommandAfterLock,
+  retainCommercialCommand,
+} from '../src/command-results.js';
 
 describe('command-results primitives', () => {
   const lockSql = 'SELECT pg_advisory_xact_lock(hashtextextended($1,0))';
@@ -7,6 +12,19 @@ describe('command-results primitives', () => {
     'SELECT command_type,subject_id,actor_id,request_hash,payload FROM commercial_command_results WHERE tenant_id=$1 AND idempotency_key=$2';
   const insertSql =
     'INSERT INTO commercial_command_results(tenant_id,idempotency_key,command_type,subject_id,actor_id,request_hash,payload) VALUES($1,$2,$3,$4,$5,$6,$7)';
+  it('exposes explicit lock and replay-after-lock stages', async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [] });
+    const identity = { type: 'X', subjectId: 's', actorId: 'a', requestHash: 'h' };
+    await lockCommercialCommand({ query }, 'tenant', 'key');
+    await expect(
+      replayCommercialCommandAfterLock({ query }, 'tenant', 'key', identity),
+    ).resolves.toBeNull();
+    expect(query).toHaveBeenCalledTimes(2);
+    expect(query.mock.calls[0]?.[0]).toBe(lockSql);
+    expect(query.mock.calls[0]?.[1]).toEqual(['tenant:key']);
+    expect(query.mock.calls[1]?.[0]).toBe(selectSql);
+    expect(query.mock.calls[1]?.[1]).toEqual(['tenant', 'key']);
+  });
   it('preserves lock, replay SQL, conflict identity and retain SQL', async () => {
     const query = vi
       .fn()
