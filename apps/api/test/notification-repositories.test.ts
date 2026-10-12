@@ -57,6 +57,7 @@ describe('notification repository SQL order', () => {
       ['COMPANY'],
     );
     expect(result.id).toBe(notificationId);
+    expect(result.readAt).toBeNull();
     const calls = query.mock.calls as unknown as readonly (readonly [
       string,
       readonly unknown[] | undefined,

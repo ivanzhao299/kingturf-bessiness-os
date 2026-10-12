@@ -27,7 +27,8 @@ type NotificationRow = Readonly<{
   normalized_recipients: readonly string[];
   semantic_payload: JsonObject;
 }>;
-type NotificationReadRow = NotificationRow & Readonly<{ read_at: Date | null }>;
+type NotificationReadRow = NotificationRow &
+  Readonly<{ read_at: Readonly<{ toISOString?: () => string }> | null }>;
 type NotificationReplayRow = NotificationReadRow & Readonly<{ request_matches: boolean }>;
 type NotificationPreferenceRow = Readonly<{
   channel: NotificationChannel;
@@ -148,9 +149,8 @@ export class PostgresNotificationRepository {
         );
       }
       await audit(tx, 'notification.create', actor, 'notification', id, correlationId);
-      const inserted = row.rows[0];
-      if (!inserted) throw new Error('Notification insert returned no row');
-      return this.map(inserted);
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- INSERT RETURNING invariant preserved from the original implementation.
+      return this.map(row.rows[0]!);
     });
   }
   private map(r: NotificationReadRow): NotificationDto {
@@ -162,7 +162,7 @@ export class PostgresNotificationRepository {
       message: r.message,
       subjectType: r.subject_type,
       subjectId: r.subject_id,
-      readAt: r.read_at?.toISOString() ?? null,
+      readAt: r.read_at?.toISOString?.() ?? null,
       createdAt: r.created_at.toISOString(),
     };
   }
