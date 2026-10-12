@@ -17,7 +17,7 @@
 | TD-API-001   | buildApp 单函数 ≈6,442 行、230 个顺序路由分支，吞掉 Service 层                          | P1     | 架构/复杂度   | 无                       | 批次 2              | 待处理 |
 | TD-API-002   | app.ts 深嵌套：≥7 层 3,202 行，最深 14 层                                               | P2     | 复杂度        | 无                       | 批次 2              | 待处理 |
 | TD-DUP-001   | 数据范围(DataScope) SQL 谓词在 12 个文件各复制一份                                      | P1     | 重复/安全     | 无                       | 批次 1              | 已完成 |
-| TD-DUP-002   | audit_events + domain_event_outbox 双写 44 处/20 文件                                   | P1     | 重复          | 无                       | 批次 1              | 待处理 |
+| TD-DUP-002   | audit_events + domain_event_outbox 双写 44 处/20 文件                                   | P1     | 重复          | 无                       | 批次 1              | 已完成 |
 | TD-DUP-003   | 幂等键查询样板 23 行重复                                                                | P2     | 重复          | 无                       | 批次 1              | 待处理 |
 | TD-DUP-004   | 前端日期格式化内联 12 处                                                                | P2     | 重复          | 无                       | 批次 3              | 待处理 |
 | TD-ARCH-001  | foundation-repositories.ts 一文件 4 仓储 + 全仓仅有的 28 处 any + 文件级 eslint-disable | P2     | 架构/类型     | 无                       | 批次 1              | 待处理 |
@@ -106,6 +106,7 @@
 - **类别**：重复 ｜ **严重度**：P1
 - **证据**：`INSERT INTO audit_events` 出现 31 处/20 文件；`INSERT INTO domain_event_outbox` 13 处；两连写模式逐 repository 复制，字段顺序略异。
 - **修复建议**：统一 `writeAuditWithOutbox` 共享助手（事务内两连写一处实现）。
+- **关闭证据（2026-10-13）**：生产 `INSERT INTO audit_events` 与 `INSERT INTO domain_event_outbox` 定义仅位于 `apps/api/src/audit-outbox.ts`；其余命中均为 outbox 读取/更新或业务 RETURNING。标准两连写、固定版本、next-version、显式 audit-only、business-document outbox 与 foundation enqueue 均已通过显式出口收敛。全量 API、database、web、domain、build、security audit 与 `pnpm ci:local` 通过；TD-DUP-003 不变，TD-SEC-006/007 保持待决。
 - **试点进展（2026-10-12）**：qtc、manufacturing、commission 三域已收敛至 `apps/api/src/audit-outbox.ts:writeAuditOutbox`，替换 13 个调用点；其余 17 个文件保持未修改，TD-DUP-002 继续处理中。试点提交 `d47d48c`，`audit-outbox` 单测、三域集成与 `pnpm ci:local` 全部通过。
 - **业务行为影响**：无 ｜ **关联批次**：批次 1 ｜ **验收方式**：集成测试中审计与 outbox 断言全绿 + grep 计数下降（前后数值入进度日志）
 
