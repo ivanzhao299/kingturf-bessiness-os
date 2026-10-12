@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { canonicalize, DomainError, type Actor } from '@kingturf/domain';
 import type { Database } from '@kingturf/database';
 import type { DataScope, JsonObject } from '@kingturf/types';
+import { writeBusinessDocumentCreateAudit } from './audit-outbox.ts';
 
 type Context = Readonly<{
   actor: Actor;
@@ -157,16 +158,12 @@ export class PostgresBusinessDocumentRepository {
          VALUES($1,$2,1,$3,'从受控模板创建',$4,$5)`,
         [actor.companyId, document.id, input.content, canonicalHash, actor.employeeId],
       );
-      await tx.query(
-        `INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata)
-         VALUES('business-document.create','SUCCESS',$1,$2,'business-document',$3,$4,$5)`,
-        [
-          actor.employeeId,
-          actor.companyId,
-          document.id,
-          correlationId,
-          { templateKey: input.templateKey },
-        ],
+      await writeBusinessDocumentCreateAudit(
+        tx,
+        actor,
+        document.id,
+        correlationId,
+        input.templateKey,
       );
       return {
         id: document.id,

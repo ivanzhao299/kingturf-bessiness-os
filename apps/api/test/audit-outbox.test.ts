@@ -16,6 +16,7 @@ import {
   writeRiskPolicyRevisedAudit,
   writeRiskPolicyPublishedAudit,
   writeWebsiteLeadAudit,
+  writeBusinessDocumentCreateAudit,
   writeAuthorizationAudit,
   writeTransactionalAudit,
 } from '../src/audit-outbox.js';
@@ -380,6 +381,21 @@ describe('writeAuditOutbox', () => {
       'i2',
       'c2',
       { ok: true },
+    ]);
+  });
+  it('preserves business-document.create metadata and parameters', async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [], rowCount: 1 });
+    await writeBusinessDocumentCreateAudit({ query }, actor, 'doc-1', 'corr-doc', 'TEMPLATE');
+    expect(query).toHaveBeenCalledTimes(1);
+    expect(query.mock.calls[0]?.[1]).toEqual([
+      'business-document.create',
+      'SUCCESS',
+      actor.employeeId,
+      actor.companyId,
+      'business-document',
+      'doc-1',
+      'corr-doc',
+      { templateKey: 'TEMPLATE' },
     ]);
   });
 });

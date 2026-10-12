@@ -223,6 +223,25 @@ export const writeTransactionalAudit = (
     metadata as JsonObject,
   );
 
+export const writeBusinessDocumentCreateAudit = (
+  tx: SqlClient,
+  actor: Actor,
+  documentId: string,
+  correlationId: string,
+  templateKey: string,
+) =>
+  writeAuditEvent(
+    tx,
+    'business-document.create',
+    'SUCCESS',
+    actor.employeeId,
+    actor.companyId,
+    'business-document',
+    documentId,
+    correlationId,
+    { templateKey },
+  );
+
 const actorOf = (value: ActorContext): Actor => ('actor' in value ? value.actor : value);
 
 /** Writes the standard audit + outbox pair inside the caller's transaction. */
