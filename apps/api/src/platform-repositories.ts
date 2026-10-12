@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { Database, SqlClient } from '@kingturf/database';
+import { auditScopePredicate } from './scope-sql.ts';
 import {
   assertEffectiveRange,
   assertStableCode,
@@ -76,41 +77,7 @@ const auditDto = (r: AuditRow): AuditEventDto => ({
 });
 export class PostgresAuditRepository {
   public constructor(private readonly db: Database) {}
-  private scopePredicate(
-    scopes: readonly DataScope[],
-    actorId: string,
-    anchors: readonly ScopeAnchor[],
-    offset: number,
-  ) {
-    const granted = new Set(scopes);
-    const clauses: string[] = [],
-      values: unknown[] = [];
-    if (granted.has('GROUP') || granted.has('COMPANY')) {
-      values.push(actorId);
-      clauses.push(
-        `EXISTS(SELECT 1 FROM employees scope_actor WHERE scope_actor.id=$${String(offset + values.length)} AND scope_actor.company_id=a.organization_id AND scope_actor.active AND scope_actor.deleted_at IS NULL)`,
-      );
-    }
-    if (granted.has('SELF')) {
-      values.push(actorId);
-      clauses.push(
-        `EXISTS(SELECT 1 FROM employees scope_actor WHERE scope_actor.id=$${String(offset + values.length)} AND scope_actor.company_id=a.organization_id AND scope_actor.active AND scope_actor.deleted_at IS NULL AND a.actor_id=scope_actor.id)`,
-      );
-    }
-    for (const typed of ['TEAM', 'DEPARTMENT', 'REGION'] as const) {
-      if (!granted.has(typed)) continue;
-      const explicitAnchors = anchors.filter((anchor) => anchor.scope === typed);
-      for (const anchor of explicitAnchors) {
-        values.push(actorId);
-        const actorParameter = `$${String(offset + values.length)}`;
-        values.push(anchor.organizationId);
-        clauses.push(
-          `EXISTS(SELECT 1 FROM organizations explicit_anchor JOIN employees scope_actor ON scope_actor.id=${actorParameter} AND scope_actor.company_id=explicit_anchor.owner_organization_id AND scope_actor.active AND scope_actor.deleted_at IS NULL JOIN organization_scope_relationships osr ON osr.ancestor_id=explicit_anchor.id JOIN employees ae ON ae.id=a.actor_id AND ae.company_id=explicit_anchor.owner_organization_id AND ae.active AND ae.deleted_at IS NULL WHERE explicit_anchor.id=$${String(offset + values.length)} AND explicit_anchor.owner_organization_id=a.organization_id AND explicit_anchor.organization_type='${typed}' AND explicit_anchor.active AND explicit_anchor.deleted_at IS NULL AND osr.descendant_id=ae.organization_id${typed === 'TEAM' ? ' AND osr.depth<=1' : ''})`,
-        );
-      }
-    }
-    return { sql: clauses.length ? `(${clauses.join(' OR ')})` : 'FALSE', values };
-  }
+  // 审计可见性谓词已收敛至 scope-sql.ts 的 auditScopePredicate（批次 1b，TD-DUP-001）；SQL 与迁移前逐字一致。
   public async find(
     id: string,
     tenantId: string,
@@ -118,7 +85,7 @@ export class PostgresAuditRepository {
     actorId: string,
     anchors: readonly ScopeAnchor[],
   ): Promise<AuditEventDto | null> {
-    const scope = this.scopePredicate(scopes, actorId, anchors, 2);
+    const scope = auditScopePredicate(scopes, actorId, anchors, 2);
     const r = (
       await this.db.query<AuditRow>(
         `SELECT a.* FROM audit_events a WHERE a.id=$1 AND a.organization_id=$2 AND ${scope.sql}`,
@@ -135,7 +102,7 @@ export class PostgresAuditRepository {
     anchors: readonly ScopeAnchor[],
   ): Promise<Readonly<{ items: readonly AuditEventDto[]; nextCursor: string | null }>> {
     const values: unknown[] = [tenantId];
-    const scope = this.scopePredicate(scopes, actorId, anchors, 1);
+    const scope = auditScopePredicate(scopes, actorId, anchors, 1);
     values.push(...scope.values);
     const clauses = ['a.organization_id=$1', scope.sql];
     const add = (sql: string, v: unknown): void => {

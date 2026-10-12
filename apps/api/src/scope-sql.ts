@@ -178,3 +178,48 @@ export function recordScopeSql(
   }
   return { sql: clauses.length ? `(${clauses.join(' OR ')})` : 'FALSE', values };
 }
+
+/**
+ * 审计可见性变体（原 platform-repositories.ts PostgresAuditRepository.scopePredicate）：
+ * 作用对象是 audit_events 行（别名固定 a）——按「事件所属租户组织内存在有效 actor」
+ * （GROUP/COMPANY）、「事件 actor 即本人」（SELF）或「显式锚点组织内的事件 actor 属
+ * 锚点谱系」（TEAM 含 depth<=1 / DEPARTMENT / REGION，要求锚点类型已授予且锚点存在）
+ * 判定可见性。与 recordScopeSql 家族（按记录 owner 判权）是不同谓词目标，故独立导出
+ * 而非选项。SQL 与迁移前逐字一致（对拍见 test/scope-sql-platform.test.ts）。
+ * 注意原语义：锚点 organizationId 为 null 时仍作为参数压入（值可为 null），原样保留。
+ */
+export function auditScopePredicate(
+  scopes: readonly DataScope[],
+  actorId: string,
+  anchors: readonly ScopeAnchor[],
+  offset: number,
+): { sql: string; values: readonly unknown[] } {
+  const granted = new Set(scopes);
+  const clauses: string[] = [],
+    values: unknown[] = [];
+  if (granted.has('GROUP') || granted.has('COMPANY')) {
+    values.push(actorId);
+    clauses.push(
+      `EXISTS(SELECT 1 FROM employees scope_actor WHERE scope_actor.id=$${String(offset + values.length)} AND scope_actor.company_id=a.organization_id AND scope_actor.active AND scope_actor.deleted_at IS NULL)`,
+    );
+  }
+  if (granted.has('SELF')) {
+    values.push(actorId);
+    clauses.push(
+      `EXISTS(SELECT 1 FROM employees scope_actor WHERE scope_actor.id=$${String(offset + values.length)} AND scope_actor.company_id=a.organization_id AND scope_actor.active AND scope_actor.deleted_at IS NULL AND a.actor_id=scope_actor.id)`,
+    );
+  }
+  for (const typed of ['TEAM', 'DEPARTMENT', 'REGION'] as const) {
+    if (!granted.has(typed)) continue;
+    const explicitAnchors = anchors.filter((anchor) => anchor.scope === typed);
+    for (const anchor of explicitAnchors) {
+      values.push(actorId);
+      const actorParameter = `$${String(offset + values.length)}`;
+      values.push(anchor.organizationId);
+      clauses.push(
+        `EXISTS(SELECT 1 FROM organizations explicit_anchor JOIN employees scope_actor ON scope_actor.id=${actorParameter} AND scope_actor.company_id=explicit_anchor.owner_organization_id AND scope_actor.active AND scope_actor.deleted_at IS NULL JOIN organization_scope_relationships osr ON osr.ancestor_id=explicit_anchor.id JOIN employees ae ON ae.id=a.actor_id AND ae.company_id=explicit_anchor.owner_organization_id AND ae.active AND ae.deleted_at IS NULL WHERE explicit_anchor.id=$${String(offset + values.length)} AND explicit_anchor.owner_organization_id=a.organization_id AND explicit_anchor.organization_type='${typed}' AND explicit_anchor.active AND explicit_anchor.deleted_at IS NULL AND osr.descendant_id=ae.organization_id${typed === 'TEAM' ? ' AND osr.depth<=1' : ''})`,
+      );
+    }
+  }
+  return { sql: clauses.length ? `(${clauses.join(' OR ')})` : 'FALSE', values };
+}
