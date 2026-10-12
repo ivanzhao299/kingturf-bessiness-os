@@ -20,7 +20,7 @@
 | TD-DUP-002   | audit_events + domain_event_outbox 双写 44 处/20 文件                                         | P1     | 重复          | 无                       | 批次 1              | 已完成 |
 | TD-DUP-003   | 幂等键查询样板 23 行重复                                                                      | P2     | 重复          | 无                       | 批次 1              | 已完成 |
 | TD-DUP-004   | 前端日期格式化内联 12 处                                                                      | P2     | 重复          | 无                       | 批次 3              | 待处理 |
-| TD-ARCH-001  | foundation-repositories.ts 一文件 4 仓储 + 全仓仅有的 29 处代码级 any + 文件级 eslint-disable | P2     | 架构/类型     | 无                       | 批次 1              | 待处理 |
+| TD-ARCH-001  | foundation-repositories.ts 一文件 4 仓储 + 全仓仅有的 29 处代码级 any + 文件级 eslint-disable | P2     | 架构/类型     | 无                       | 批次 1              | 已完成 |
 | TD-ARCH-002  | CommercialController God store：load() 一次拉取 30+ 端点                                      | P2     | 架构          | 无                       | 批次 3              | 待处理 |
 | TD-BOUND-001 | API 响应边界无运行时形状校验（`as T` 裸转）                                                   | P1     | 架构（T4/T5） | 无                       | 批次 3              | 待处理 |
 | TD-BOUND-002 | 入站请求体校验为逐路由手写调用，无声明式 schema                                               | P2     | 架构          | 无                       | 批次 2              | 待处理 |
@@ -130,12 +130,12 @@
 
 ## 架构与类型
 
-### TD-ARCH-001｜foundation-repositories.ts 混装 4 仓储 + 29 处代码级 any
+### TD-ARCH-001｜foundation-repositories.ts 混装 4 仓储 + 29 处代码级 any（已完成）
 
-- **位置**：`apps/api/src/foundation-repositories.ts`（1,029 行；文件头 eslint-disable；代码级 any 集中在 315-1,017 行的固定 SQL 投影与 JSONB 读写区）
+- **位置**：`apps/api/src/foundation-repositories.ts` facade（当前 14 行）；拆分目标为 `event-repositories.ts`（232 行）、`notification-repositories.ts`（255 行）、`attachment-repositories.ts`（341 行）、`business-object-repositories.ts`（242 行）、`foundation-object-access.ts`（67 行）。
 - **类别**：架构/类型 ｜ **严重度**：P2
-- **证据**：单文件装 Notification/Attachment/BusinessObject/Event 4 个 repository；`wc -l` 实测 1,029；`rg -n '\\bany\\b'` 总命中 30，其中第 1 行是 eslint 指令、其余 29 个为代码级 any，且 **100% 在本文件**；文件头实际禁用 6 条规则：`no-explicit-any`、`no-unsafe-assignment`、`no-unsafe-member-access`、`no-unsafe-call`、`no-unsafe-return`、`no-unsafe-argument`。
-- **修复建议**：拆为 4 个文件；先定义固定 SQL 投影类型，再逐步移除文件级 eslint-disable；JSONB 读写处使用窄类型与既有运行时校验，不把 29 个 any 误记为 28 个。
+- **关闭证据（2026-10-13）**：Event、Notification、Attachment、BusinessObject 四个仓储及对象访问 support 已拆出；`foundation-repositories.ts` 仅保留兼容性 re-export，app/server/既有测试 import 路径不变。机械命令 `rg -n '\\bany\\b|eslint-disable' apps/api/src --glob '*.ts' --glob '!*.test.ts'` 实测生产源码 any=0，`foundation-repositories.ts` 文件级 eslint-disable=0（目标文件中的局部 non-null invariant 注释不属于文件级禁用）。foundation API/PG、typecheck、lint、format、structure、doc-lint、build、security 与 `pnpm ci:local` 全部通过。
+- **修复结果**：已完成；原始 1,029 行基线不再作为现状，当前 facade 与五个拆分文件行数以本条位置证据为准。JSONB 使用固定 SQL 投影/BusinessObjectSchema，运行时校验边界保留。
 - **业务行为影响**：无 ｜ **关联批次**：批次 1 ｜ **验收方式**：文件级 eslint-disable 删除后 lint 全绿 + `foundation-postgres.integration.test.ts` 回归
 
 ### TD-ARCH-002｜CommercialController God store
