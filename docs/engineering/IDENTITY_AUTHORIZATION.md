@@ -28,9 +28,11 @@ Production deployment, push/merge automation, sales features, manufacturing feat
 
 ## Authorization administration and audit guarantees
 
-Authenticated administration is available at `/api/v1/roles`, `/api/v1/permissions`, `/api/v1/grants`, `/api/v1/assignments`, and `/api/v1/scope-grants`. `GET` requires `authorization:read`; `POST` and `DELETE` require `authorization:manage`. The default is deny. UUIDs, capability syntax, DataScopes, typed anchors, and request fields are validated before repository calls. Repository lookups qualify tenant-owned roles and employees, and PostgreSQL rejects foreign, inactive, deleted, wrongly typed, or incorrectly null scope anchors.
+Authenticated administration is aggregated at `GET /api/v1/user-access-profiles` (requires `identity:read` or `authorization:read`) and its `PATCH` path (requires `identity:manage` or `authorization:manage`; field allowlist is `active` and `revokeSessions`), implemented in `app.ts` with `apps/api/src/aggregate-authorization.ts`. Audit querying is available at `GET /api/v1/audit-events` (requires `audit:read`). The default is deny. Request fields are validated before repository calls. Repository lookups qualify tenant-owned roles and employees, and PostgreSQL rejects foreign, inactive, deleted, wrongly typed, or incorrectly null scope anchors.
 
-Authorization create, grant, revoke, assign, and unassign operations insert an audit event in the same transaction as the business mutation. Events contain actor, tenant organization, action, target, correlation ID, server timestamp, outcome, and safe metadata. Database triggers reject updates and deletes of audit events.
+Authorization mutations insert an audit event in the same transaction as the business mutation. Events contain actor, tenant organization, action, target, correlation ID, server timestamp, outcome, and safe metadata. Database triggers reject updates and deletes of audit events.
+
+> 2026-10-12 更正（阶段 2b 抽查）：本节原描述的五个管理端点 `/api/v1/roles`、`/permissions`、`/grants`、`/assignments`、`/scope-grants` 已不存在——授权管理面已收敛为 `user-access-profiles` 聚合端点 + `audit-events` 查询，本节按当前代码重写。
 
 ## Migration integrity recovery
 

@@ -38,7 +38,8 @@
 | TD-TEST-005  | packages/types 占位测试：纯类型包的测试策略未定                                         | P2     | 测试          | 无                       | 阶段 5             | 待处理 |
 | TD-GATE-001  | 无 git hooks / commitlint / lint-staged，脏提交仅靠 CI 兜底                             | P1     | 门禁          | 无                       | 阶段 3             | 待处理 |
 | TD-GATE-002  | vitest 无配置文件，参数散落各包 scripts                                                 | P2     | 门禁          | 无                       | 阶段 3             | 待处理 |
-| TD-DOC-001   | 无 AGENTS.md；docs/ 85+ 文档无统一索引与目标结构                                        | P1     | 文档          | 无                       | 阶段 2（前置 D4）  | 处理中 |
+| TD-DOC-001   | 无 AGENTS.md；docs/ 85+ 文档无统一索引与目标结构                                        | P1     | 文档          | 无                       | 阶段 2（前置 D4）  | 已完成 |
+| TD-DOC-002   | 常驻文档未全量与代码核对（抽查 3 份即发现 1 处端点漂移）                                | P2     | 文档          | 无                       | 阶段 3（文档园丁） | 待处理 |
 | TD-VER-001   | 版本号全部 0.0.0 占位，发布标识 = commit SHA                                            | P2     | 依赖/版本     | 无                       | 待决策（D2）       | 待处理 |
 | TD-HYG-001   | 本地验收产物滞留工作区；packages/ui、testing 近空壳                                     | P2     | 文档/工程卫生 | 无                       | 待决策（D3）       | 待处理 |
 
@@ -284,6 +285,15 @@
 - **证据**：规则要求的 `docs/exec-plans/`、`docs/design-docs/`、`AGENTS.md` 均不存在；现有 85+ 文档质量高但无 index、无新鲜度标注、无交叉链接校验，智能体无法判断哪份仍有效（B3/B5 违背）。
 - **修复建议**：阶段 2 按 §2.1 建目标结构 + AGENTS.md（目标 ≤100 行，机械上限 200 行）+ docs/index.md；现有文档归并策略属 D4 决策。
 - **处理中（2026-10-12，阶段 2a）**：AGENTS.md（53 行）、ARCHITECTURE.md、docs/index.md（101 文件全量索引 + doc-lint 链接校验实测通过）、core-beliefs/QUALITY_SCORE/RELIABILITY 已建立。剩余：2b 归并（阻塞 D4）+ 阶段 3 doc-lint 接入 `ci:local` 后关闭。
+- **已完成（2026-10-12，阶段 2b）**：D4 已决策（方案 A 轻触式 + agent-memory 保留常驻）；index 状态列全量归并（常驻 50 / 已归档-只读 55，零文件移动、零死链）；抽样 3 份旧文档比对代码，发现并修正 IDENTITY_AUTHORIZATION.md 授权管理端点漂移（旧的 5 端点已被 `user-access-profiles` 聚合端点取代）。doc-lint 持续绿；其接入 `ci:local` 的持续强制属阶段 3（TD-GATE 范畴），本条按验收方式（lint 通过 + AGENTS ≤200 行）关闭。
+
+### TD-DOC-002｜常驻文档未全量与代码核对
+
+- **位置**：docs/ 常驻文档 50 份（阶段 2 按验收要求仅抽查 3 份）
+- **类别**：文档 ｜ **严重度**：P2
+- **证据**：抽查 3 份即命中 1 处漂移——IDENTITY_AUTHORIZATION.md 声明的 roles/permissions/grants/assignments/scope-grants 五端点在代码中不存在，实际为 `GET/PATCH /api/v1/user-access-profiles`（`identity:read|authorization:read` / `identity:manage|authorization:manage`）+ `GET /api/v1/audit-events`（`audit:read`），已于阶段 2b 修正（app.ts:5329-5356、aggregate-authorization.ts）。其余 47 份常驻文档未逐份核对，存在同类漂移风险。
+- **修复建议**：阶段 3 建立文档园丁任务（规则 §2.4）：按目录分批核对常驻文档与代码一致性，被 README/AGENTS/ARCHITECTURE 引用者优先；发现漂移登记并修复。
+- **业务行为影响**：无 ｜ **关联批次**：阶段 3（文档园丁） ｜ **验收方式**：50 份常驻文档完成一轮核对并有记录；后续由定期园丁任务维持
 - **业务行为影响**：无 ｜ **关联批次**：阶段 2（前置 D4） ｜ **验收方式**：文档 lint（链接可解析、必填节）通过 + AGENTS.md ≤200 行
 
 ### TD-VER-001｜版本号全部 0.0.0 占位，发布标识 = commit SHA
@@ -311,3 +321,5 @@
 | 2026-10-12 | 全部 27 条 | 阶段 1 全量扫描登记（基线 779dea3）                                                                                                                                                                              | 本分支首次提交              |
 | 2026-10-12 | 30 条      | 审核修订：TD-TEST-004 拆出 types 为 TD-TEST-005（脱离 D3）；新增 TD-PERF-001/002（§3.8 性能扫描落盘）；修正度量口径表述（脚本 vs `wc -l`）、`.local-acceptance` 计数（10 目录）、innerHTML 17 处、商业子域 21 个 | 本分支修订提交              |
 | 2026-10-12 | TD-DOC-001 | 状态置「处理中」：阶段 2a 完成入口地图/架构总览/全量索引/doc-lint/核心信念/质量评分/runbook 六件                                                                                                                 | harnessing 分支 2a 系列提交 | 剩余 2b 归并（阻塞 D4）+ 阶段 3 doc-lint 进 ci:local 后关闭 |
+| 2026-10-12 | TD-DOC-001 | 已完成（阶段 2b：D4 决策执行 + 抽查修正 1 处漂移）                                                                                                                                                               | harnessing 分支 2b 提交     |
+| 2026-10-12 | TD-DOC-002 | 新登记：常驻文档未全量核对，抽查 3 份即发现 1 处端点漂移（已修）                                                                                                                                                 | 同上                        |
