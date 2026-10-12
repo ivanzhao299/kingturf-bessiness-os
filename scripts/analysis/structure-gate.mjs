@@ -93,26 +93,105 @@ export function nestingViolations(path, content) {
   return [{ rule: 'G2', path, maxIndent, whitelisted: wl, ...(NESTING_EXTRA.get(path) ?? {}) }];
 }
 
-// G3：SQL 模板字符串中的原始请求插值。合法形态：$N 占位符构造、代码内枚举、双字面量三元白名单。
-const RAW_REQUEST_RE = /^\s*(request|req|body|rawBody|ctx|user)\b/;
-const LITERAL_TERNARY_RE = /^\(?\s*[^?]+\?\s*'[^']*'\s*:\s*'[^']*'\s*\)?$/;
+// G3：SQL 模板字符串插值白名单（TD-SEC-005：只允许 $N 占位符构造与明确登记的白名单，其余一律失败）。
+// 白名单三类（依据 2026-10-12 对 apps/api/src 全部 74 种现存插值形态的枚举分类）：
+//   A. 结构模式（正则）：占位符序号构造、SQL 片段组合（.sql/.predicate/join）、双字面量分支三元
+//   B. 显式标识符（Set）：代码内枚举/别名/表名/占位符串——新增需在本 Set 登记，diff 可见
+//   C. 存量值插值（Map）：历史直插值，显式带原因与到期批次，批次 1 scope-sql 收敛时消除
+const SQL_TEMPLATE_RE = /`(?:[^`\\]|\\.)*`/gs;
+const SQL_KEYWORD_RE =
+  /\b(SELECT|INSERT INTO|UPDATE |DELETE FROM|EXISTS|JOIN | WHERE | AND | OR | ORDER BY | GROUP BY | RETURNING)\b/i;
+const PLACEHOLDER_CONSTRUCT_RE = /^String\([\w\s+\-().]*\)$/; // 如 String(offset + values.length - 1)
+const SQL_FRAGMENT_RE = /^[\w$.]+\.(sql|predicate)(\.[\w]+\('[^']*(?:'\s*,\s*'[^']*)*'\))?$/; // 如 secured.sql、secured.sql.replaceAll('c.', 'cu.')
+const SQL_CALL_FRAGMENT_RE = /^[\w$]+\([^()]*\)\.(sql|predicate)$/; // 如 scope(context, 'cu', 3).sql
+const CLAUSE_JOIN_RE = /^[\w$.]+\.join\(' AND '\)$/; // 如 clauses.join(' AND ')
+const LITERAL_TERNARY_RE = /^.*\?\s*('[^']*'|"[^"]*")\s*:\s*('[^]*'|"[^"]*")$/; // 两分支均为字符串字面量（条件可含 ?. 与函数调用，如 fieldReadable）
+const GATED_LIST_RE = /^(timelineAllowed|allowed)\.\w+$/; // 权限门控列清单（fieldReadable 系）
+const ENUM_INDEX_RE = /^[\w$]+\[[\w$]+\]$/; // 枚举表索引（如 definitions[view]，结果为预定义片段）
+const SQL_ENUM_NAMES = new Set([
+  'alias',
+  'anchor.scope',
+  'a.scope',
+  'typed',
+  'depth',
+  'fk',
+  'table',
+  'rootTable',
+  'subjectTable',
+  'versionTable',
+  'parameter',
+  'actorParameter',
+  'companyParameter',
+  'employeeAlias',
+  'currency',
+  'scope',
+  'columns',
+  'values',
+  'predicate',
+  'p',
+  'shifted',
+  'time',
+]);
+const GRANDFATHERED_VALUE_INTERPS = new Map([
+  ['anchorId', { reason: '存量 scope 谓词直插锚点 UUID', due: '批次 1（scope-sql 收敛为 $N）' }],
+  ['actorId', { reason: '存量 scope 谓词直插 actor UUID', due: '批次 1（scope-sql 收敛为 $N）' }],
+  ['companyId', { reason: '存量 scope 谓词直插租户 UUID', due: '批次 1（scope-sql 收敛为 $N）' }],
+]);
+
+function isAllowedSqlInterp(expr) {
+  const e = expr.trim();
+  return (
+    PLACEHOLDER_CONSTRUCT_RE.test(e) ||
+    SQL_FRAGMENT_RE.test(e) ||
+    SQL_CALL_FRAGMENT_RE.test(e) ||
+    CLAUSE_JOIN_RE.test(e) ||
+    LITERAL_TERNARY_RE.test(e) ||
+    GATED_LIST_RE.test(e) ||
+    ENUM_INDEX_RE.test(e) ||
+    SQL_ENUM_NAMES.has(e)
+  );
+}
 
 export function sqlRawInputViolations(path, content) {
   const out = [];
-  for (const m of content.matchAll(/\$\{([^}]*)\}/g)) {
-    const expr = m[1];
-    if (!RAW_REQUEST_RE.test(expr)) continue;
-    if (LITERAL_TERNARY_RE.test(expr)) continue;
-    out.push({ rule: 'G3', path, expr: expr.slice(0, 60) });
+  for (const tpl of content.matchAll(SQL_TEMPLATE_RE)) {
+    if (!SQL_KEYWORD_RE.test(tpl[0])) continue;
+    for (const m of tpl[0].matchAll(/\$\{([^}]*)\}/g)) {
+      const expr = m[1].trim();
+      if (isAllowedSqlInterp(expr)) continue;
+      const gf = GRANDFATHERED_VALUE_INTERPS.get(expr);
+      if (gf) {
+        out.push({ rule: 'G3', path, expr: expr.slice(0, 60), grandfathered: true, ...gf });
+        continue;
+      }
+      out.push({ rule: 'G3', path, expr: expr.slice(0, 60) });
+    }
   }
   return out;
 }
 
-// G4：routes/ 目录的路由定义必须声明 validate（批次 2 建立路由表后生效；目录不存在时待命）。
+// G4：routes/ 目录的每个 defineRoute(...) 必须各自声明 validate（逐路由校验，非文件级）。
 export function routeValidatorViolations(path, content) {
-  if (!content.includes('defineRoute')) return [];
-  const hasValidate = /\bvalidate\s*:/.test(content);
-  return hasValidate ? [] : [{ rule: 'G4', path }];
+  const out = [];
+  let idx = 0;
+  while ((idx = content.indexOf('defineRoute(', idx)) !== -1) {
+    let depth = 0;
+    let end = -1;
+    for (let i = idx + 'defineRoute'.length; i < Math.min(content.length, idx + 8000); i++) {
+      if (content[i] === '(') depth++;
+      else if (content[i] === ')') {
+        depth--;
+        if (depth === 0) {
+          end = i;
+          break;
+        }
+      }
+    }
+    const span = content.slice(idx, end === -1 ? Math.min(content.length, idx + 8000) : end + 1);
+    if (!/\bvalidate\s*:/.test(span)) out.push({ rule: 'G4', path, route: span.slice(0, 60) });
+    idx = end === -1 ? idx + 'defineRoute'.length : end;
+  }
+  return out;
 }
 
 function render(v) {
@@ -122,8 +201,10 @@ function render(v) {
   if (v.rule === 'G2')
     return `${head} ${v.whitelisted ? '【白名单豁免】随对应批次拆分消解' : `嵌套超过 ${MAX_NESTING} 层。修复：用早返回/卫语句压平，或将分支抽为函数。`}`;
   if (v.rule === 'G3')
-    return `${head} SQL 模板串禁止插值原始请求对象。修复：改用参数化占位符（pg 的 $N，经 values.push 传参）；代码内枚举请收敛为白名单三元或常量表。`;
-  return `${head} 路由定义缺少 validate 声明。修复：为 defineRoute 增加 validate 字段（复用 apps/api/src/app.ts 的校验器）；无请求体的路由显式写 validate: null 并注释原因。`;
+    return v.grandfathered
+      ? `${head} 【存量豁免】${v.reason}，到期：${v.due}`
+      : `${head} SQL 模板串出现白名单之外的插值。修复：请求值一律改用参数化占位符（pg 的 $N，经 values.push 传参）；确属代码内枚举/SQL 片段组合，将其加入 structure-gate.mjs 的 SQL_ENUM_NAMES/结构模式并在提交说明登记理由；禁止把请求值先赋给白名单变量再拼入。`;
+  return `${head} defineRoute 路由缺少 validate 声明（逐路由校验）。修复：为该 defineRoute 增加 validate 字段（复用 apps/api/src/app.ts 的校验器）；无请求体的路由显式写 validate: null 并注释原因。`;
 }
 
 export function runChecks({ reportOnly = false } = {}) {
@@ -146,7 +227,9 @@ export function runChecks({ reportOnly = false } = {}) {
     /* routes/ 不存在：G4 待命 */
   }
   const soft = violations.filter(
-    (v) => (v.rule === 'G1' || v.rule === 'G2') && (v.whitelisted || reportOnly),
+    (v) =>
+      ((v.rule === 'G1' || v.rule === 'G2') && (v.whitelisted || reportOnly)) ||
+      (v.rule === 'G3' && v.grandfathered),
   );
   const hard = violations.filter((v) => !soft.includes(v));
   return { violations, hard, soft };
@@ -155,9 +238,11 @@ export function runChecks({ reportOnly = false } = {}) {
 function main() {
   const reportOnly = process.argv.includes('--report');
   const { hard, soft } = runChecks({ reportOnly });
-  const exempt = soft.filter((v) => v.whitelisted).length;
+  const exempt = soft.filter((v) => v.whitelisted || v.grandfathered).length;
   for (const v of soft)
-    console.log(`[${v.whitelisted ? '白名单豁免' : '报告模式-D5未确认'}] ${render(v)}`);
+    console.log(
+      `[${v.rule === 'G3' ? '存量值插值豁免' : v.whitelisted ? '白名单豁免' : '报告模式-D5未确认'}] ${render(v)}`,
+    );
   if (hard.length > 0) {
     console.error(`structure-gate 失败：${hard.length} 个强制违规\n`);
     for (const v of hard) console.error(`  ${render(v)}\n`);
