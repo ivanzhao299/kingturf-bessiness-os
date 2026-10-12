@@ -406,6 +406,19 @@ export const writeFoundationDomainEventAudit = (
     metadata,
   );
 
+export const writeBusinessDocumentTranslationOutbox = (
+  tx: SqlClient,
+  tenantId: string,
+  translationId: string,
+  actorId: string,
+  correlationId: string,
+) =>
+  tx.query(
+    `INSERT INTO domain_event_outbox(tenant_id,event_type,event_version,aggregate_type,aggregate_id,aggregate_version,occurred_at,actor_id,correlation_id,payload)
+    VALUES($1,'business-document.translation.requested',1,'business-document-translation',$2,1,now(),$3,$4,jsonb_build_object('translationId',$2::uuid))`,
+    [tenantId, translationId, actorId, correlationId],
+  );
+
 const actorOf = (value: ActorContext): Actor => ('actor' in value ? value.actor : value);
 
 /** Writes the standard audit + outbox pair inside the caller's transaction. */

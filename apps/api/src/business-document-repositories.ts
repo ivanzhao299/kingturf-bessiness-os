@@ -11,6 +11,7 @@ import {
   writeBusinessDocumentReviewAudit,
   writeBusinessDocumentActivityAudit,
   writeBusinessDocumentTranslationAudit,
+  writeBusinessDocumentTranslationOutbox,
 } from './audit-outbox.ts';
 
 type Context = Readonly<{
@@ -529,13 +530,12 @@ export class PostgresBusinessDocumentRepository {
       ).rows[0];
       if (!translation) throw new Error('Business document translation insert failed');
       if (!manual) {
-        await tx.query(
-          `INSERT INTO domain_event_outbox(
-             tenant_id,event_type,event_version,aggregate_type,aggregate_id,aggregate_version,
-             occurred_at,actor_id,correlation_id,payload)
-           VALUES($1,'business-document.translation.requested',1,'business-document-translation',$2,1,
-             now(),$3,$4,jsonb_build_object('translationId',$2::uuid))`,
-          [context.actor.companyId, translation.item.id, context.actor.employeeId, correlationId],
+        await writeBusinessDocumentTranslationOutbox(
+          tx,
+          context.actor.companyId,
+          translation.item.id as string,
+          context.actor.employeeId,
+          correlationId,
         );
       }
       await writeBusinessDocumentTranslationAudit(tx, context.actor, id, correlationId, {
