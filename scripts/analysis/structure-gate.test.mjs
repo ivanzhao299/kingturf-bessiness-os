@@ -53,6 +53,39 @@ test('G3 拦截任意白名单外插值（防 input.* 与裸变量绕过）', ()
   assert.equal(sqlRawInputViolations('apps/api/src/x-repositories.ts', bareBypass).length, 1);
 });
 
+test('G3 拦截不可信根的形状匹配（第二轮评审绕过样本）', () => {
+  const untrustedRootBypasses = [
+    'const q = `SELECT * FROM t WHERE x = ${input.sql}`;',
+    'const q = `SELECT * FROM t WHERE x = ${input.predicate}`;',
+    "const q = `SELECT * FROM t WHERE x = ${input.join(' AND ')}`;",
+    'const q = `SELECT * FROM t WHERE x = ${String(input)}`;',
+    'const q = `SELECT * FROM t WHERE x = ${input[view]}`;',
+    'const q = `SELECT * FROM t WHERE x = ${foo[bar]}`;',
+    "const q = `SELECT * FROM t WHERE x = ${scope(input, 'cu', 3).sql}`;",
+    "const q = `SELECT * FROM t WHERE x = ${barclauses.join(' AND ')}`;",
+    "const q = `SELECT * FROM t WHERE x = ${evil.replaceAll('c.', 'cu.')}`;",
+  ];
+  for (const sample of untrustedRootBypasses) {
+    assert.equal(
+      sqlRawInputViolations('apps/api/src/x-repositories.ts', sample).length,
+      1,
+      `应拦截：${sample}`,
+    );
+  }
+});
+
+test('G3 放行可信根的同类形状（与绕过样本一一对照）', () => {
+  const ok = [
+    'const q = `SELECT * FROM t WHERE x = ${secured.sql}`;',
+    "const q = `SELECT * FROM t WHERE x = ${secured.sql.replaceAll('c.', 'cu.')}`;",
+    "const q = `SELECT * FROM t WHERE x = ${scope(context, 'cu', 3).sql}`;",
+    "const q = `SELECT * FROM t WHERE x = ${clauses.join(' AND ')}`;",
+    'const q = `SELECT * FROM t WHERE x = ${String(offset + values.length - 1)}`;',
+    'const q = `SELECT * FROM t WHERE x = ${definitions[view]}`;',
+  ].join('\n');
+  assert.equal(sqlRawInputViolations('apps/api/src/x-repositories.ts', ok).length, 0);
+});
+
 test('G3 放行白名单形态：占位符构造/片段组合/枚举/字面量三元/门控清单', () => {
   const ok = [
     'const sql = `SELECT * FROM t WHERE id = $${String(values.push(id) - 1)}`;',

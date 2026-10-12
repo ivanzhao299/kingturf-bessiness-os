@@ -94,20 +94,41 @@ export function nestingViolations(path, content) {
 }
 
 // G3：SQL 模板字符串插值白名单（TD-SEC-005：只允许 $N 占位符构造与明确登记的白名单，其余一律失败）。
-// 白名单三类（依据 2026-10-12 对 apps/api/src 全部 74 种现存插值形态的枚举分类）：
-//   A. 结构模式（正则）：占位符序号构造、SQL 片段组合（.sql/.predicate/join）、双字面量分支三元
-//   B. 显式标识符（Set）：代码内枚举/别名/表名/占位符串——新增需在本 Set 登记，diff 可见
-//   C. 存量值插值（Map）：历史直插值，显式带原因与到期批次，批次 1 scope-sql 收敛时消除
+// 设计原则（经两轮人工复核收紧）：**形状模式必须绑定可信根**——正则只限表达式形状不足以建立信任，
+// 每类模式的变量根/函数名/枚举表都在下方显式登记（枚举自 2026-10-12 对 apps/api/src
+// 全部 74 种现存插值形态的清点），新增任何根 = 修改这里的登记并说明理由。
 const SQL_TEMPLATE_RE = /`(?:[^`\\]|\\.)*`/gs;
 const SQL_KEYWORD_RE =
   /\b(SELECT|INSERT INTO|UPDATE |DELETE FROM|EXISTS|JOIN | WHERE | AND | OR | ORDER BY | GROUP BY | RETURNING)\b/i;
-const PLACEHOLDER_CONSTRUCT_RE = /^String\([\w\s+\-().]*\)$/; // 如 String(offset + values.length - 1)
-const SQL_FRAGMENT_RE = /^[\w$.]+\.(sql|predicate)(\.[\w]+\('[^']*(?:'\s*,\s*'[^']*)*'\))?$/; // 如 secured.sql、secured.sql.replaceAll('c.', 'cu.')
-const SQL_CALL_FRAGMENT_RE = /^[\w$]+\([^()]*\)\.(sql|predicate)$/; // 如 scope(context, 'cu', 3).sql
-const CLAUSE_JOIN_RE = /^[\w$.]+\.join\(' AND '\)$/; // 如 clauses.join(' AND ')
-const LITERAL_TERNARY_RE = /^.*\?\s*('[^']*'|"[^"]*")\s*:\s*('[^]*'|"[^"]*")$/; // 两分支均为字符串字面量（条件可含 ?. 与函数调用，如 fieldReadable）
-const GATED_LIST_RE = /^(timelineAllowed|allowed)\.\w+$/; // 权限门控列清单（fieldReadable 系）
-const ENUM_INDEX_RE = /^[\w$]+\[[\w$]+\]$/; // 枚举表索引（如 definitions[view]，结果为预定义片段）
+
+// ① 占位符序号构造：String(<offset/values 算式>)——操作数只允许 offset、values.length、values.push(<标识符链>) 与整数字面量
+const PLACEHOLDER_ARG_RE =
+  /^(?:offset|values\.(?:length|push\([A-Za-z_$][\w$.]*\))|\d+)(?:\s*[+-]\s*(?:offset|values\.(?:length|push\([A-Za-z_$][\w$.]*\))|\d+))*$/;
+// ② SQL 片段组合：根 ∈ 可信片段变量（secured/scope/s/scoped/authorized/leadScope/opportunityScope），
+//    属性限 .sql/.predicate，可选一个双字面量参数的方法后缀（replaceAll('c.', 'cu.')）
+const TRUSTED_FRAGMENT_ROOTS = new Set([
+  'secured',
+  'scope',
+  's',
+  'scoped',
+  'authorized',
+  'leadScope',
+  'opportunityScope',
+]);
+const SQL_FRAGMENT_RE = /^[\w$]+\.(sql|predicate)(?:\.[\w]+\('[^']*'(?:,\s*'[^']*')*\))?$/;
+// ③ 片段调用式：仅登记的安全函数与参数形态 scope(context, '<字面量>', <数字>).sql（首参钉死 context）
+const SQL_CALL_FRAGMENT_RE = /^scope\(context, '[^']*', \d+\)\.(sql|predicate)$/;
+// ④ 子句拼接：根 ∈ 已登记变量（clauses/where）
+const TRUSTED_JOIN_ROOTS = new Set(['clauses', 'where']);
+const CLAUSE_JOIN_RE = /^[\w$]+\.join\(' AND '\)$/;
+// ⑤ 双字面量分支三元：条件任意（可含 ?. 与函数调用）但整条表达式禁止反引号（防嵌套模板），
+//    两个分支必须是纯字符串字面量——SQL 文本只能取两个固定常量之一
+const LITERAL_TERNARY_RE = /^[^`]*\?\s*('[^'`]*'|"[^"`]*")\s*:\s*('[^'`]*'|"[^"`]*")$/;
+// ⑥ 权限门控列清单：根限 timelineAllowed/allowed 两个代码内对象
+const GATED_LIST_RE = /^(timelineAllowed|allowed)\.\w+$/;
+// ⑦ 枚举表索引：仅显式登记的「表[键]」对（definitions[view]）
+const TRUSTED_ENUM_INDEXES = new Set(['definitions[view]']);
+// ⑧ 代码内枚举/别名/表名/占位符串：精确字符串 Set
 const SQL_ENUM_NAMES = new Set([
   'alias',
   'anchor.scope',
@@ -132,24 +153,32 @@ const SQL_ENUM_NAMES = new Set([
   'shifted',
   'time',
 ]);
+// ⑨ 存量值插值（Map）：历史直插值，显式带原因与到期批次，批次 1 scope-sql 收敛时消除
 const GRANDFATHERED_VALUE_INTERPS = new Map([
   ['anchorId', { reason: '存量 scope 谓词直插锚点 UUID', due: '批次 1（scope-sql 收敛为 $N）' }],
   ['actorId', { reason: '存量 scope 谓词直插 actor UUID', due: '批次 1（scope-sql 收敛为 $N）' }],
   ['companyId', { reason: '存量 scope 谓词直插租户 UUID', due: '批次 1（scope-sql 收敛为 $N）' }],
 ]);
 
-function isAllowedSqlInterp(expr) {
+export function isAllowedSqlInterp(expr) {
   const e = expr.trim();
-  return (
-    PLACEHOLDER_CONSTRUCT_RE.test(e) ||
-    SQL_FRAGMENT_RE.test(e) ||
-    SQL_CALL_FRAGMENT_RE.test(e) ||
-    CLAUSE_JOIN_RE.test(e) ||
-    LITERAL_TERNARY_RE.test(e) ||
-    GATED_LIST_RE.test(e) ||
-    ENUM_INDEX_RE.test(e) ||
-    SQL_ENUM_NAMES.has(e)
-  );
+  // ① 占位符序号构造（参数 token 受限）
+  const str = e.match(/^String\((.*)\)$/);
+  if (str && PLACEHOLDER_ARG_RE.test(str[1].replace(/\s+/g, ' '))) return true;
+  // ② SQL 片段组合（根受限）
+  const frag = e.match(SQL_FRAGMENT_RE);
+  if (frag && TRUSTED_FRAGMENT_ROOTS.has(e.split('.')[0])) return true;
+  // ③ 片段调用式（函数名受限）
+  if (SQL_CALL_FRAGMENT_RE.test(e)) return true;
+  // ④ 子句拼接（根受限）
+  const join = e.match(CLAUSE_JOIN_RE);
+  if (join && TRUSTED_JOIN_ROOTS.has(e.split('.')[0])) return true;
+  // ⑤⑥ 双字面量三元 / 门控清单
+  if (LITERAL_TERNARY_RE.test(e) || GATED_LIST_RE.test(e)) return true;
+  // ⑦ 枚举表索引（精确对受限）
+  if (TRUSTED_ENUM_INDEXES.has(e)) return true;
+  // ⑧ 枚举标识符
+  return SQL_ENUM_NAMES.has(e);
 }
 
 export function sqlRawInputViolations(path, content) {
