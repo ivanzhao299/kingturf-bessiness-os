@@ -261,3 +261,4 @@ packages/{types, ui, config, testing} → 零依赖
 | 2026-10-12 | 2a-5 | 建立 `docs/QUALITY_SCORE.md`：后端 4 域组 + 前端 2 域 + 共享包，四维评分各附依据 | 本提交 | 每行分数给出复算命令/文件；行覆盖率维度标注「阶段 5 首测后回填」（当前无覆盖率配置 TD-TEST-002）；更新纪律=每子批次合并时同步 |
 | 2026-10-12 | 2a-6 | 编写 `docs/RELIABILITY.md`：发布 runbook 逐步对应 deploy-production.yml + 回滚手册 | 本提交 | 三 job 逐步表（validate/verify/deploy 13 步含 SSH 钉扎/恢复点/探针后保留清理）；/ready=SELECT 1、日志 10m×3、预算 12000/4000B 均实测核对 |
 | 2026-10-12 | 2a-1 | 重写 `AGENTS.md`：53 行地图（定位/开始/硬约束/常用命令/规范索引/工作方式） | 本提交 | 目标 ≤100 行、机械上限 200 行均满足（doc-lint 断言）；常用命令与根 package.json scripts 逐条核对（含 DATABASE_URL 前置条件） |
+| 2026-10-12 | 2a-3 | 建立 `docs/index.md`（101 个 docs 文件全量索引，状态标注 归并待定 D4）+ `scripts/analysis/doc-lint.mjs` | 本提交 | doc-lint 实测通过：索引完备性（含根入口反查）+ 相对链接全解析 + AGENTS 行数/必填节断言；失败信息附修复指令；TD-DOC-001 置「处理中」（2b 归并与阶段 3 接入 CI 后关闭） |
