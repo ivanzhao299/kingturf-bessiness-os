@@ -4,6 +4,7 @@ import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Database, Transaction } from '@kingturf/database';
 import { employeeScopedPredicate, type EmployeeScopeOptions } from './scope-sql.ts';
+import { writeFoundationEmptyAudit as audit } from './audit-outbox.ts';
 import {
   assertStableCode,
   DomainError,
@@ -27,19 +28,6 @@ import type {
   NotificationPreferenceDto,
 } from '@kingturf/types';
 
-const audit = async (
-  tx: Transaction,
-  action: string,
-  actor: Actor,
-  targetType: string,
-  targetId: string,
-  correlationId: string,
-): Promise<void> => {
-  await tx.query(
-    "INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata) VALUES($1,'SUCCESS',$2,$3,$4,$5,$6,'{}')",
-    [action, actor.employeeId, actor.companyId, targetType, targetId, correlationId],
-  );
-};
 const operationalAudit = async (
   tx: Transaction,
   action: string,

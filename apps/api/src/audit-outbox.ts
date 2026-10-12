@@ -373,6 +373,19 @@ export const writeBusinessDocumentActivityAudit = (
     { version },
   );
 
+export const writeFoundationEmptyAudit = (
+  tx: SqlClient,
+  action: string,
+  actor: Actor,
+  targetType: string,
+  targetId: string,
+  correlationId: string,
+) =>
+  tx.query(
+    "INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata) VALUES($1,'SUCCESS',$2,$3,$4,$5,$6,'{}')",
+    [action, actor.employeeId, actor.companyId, targetType, targetId, correlationId],
+  );
+
 const actorOf = (value: ActorContext): Actor => ('actor' in value ? value.actor : value);
 
 /** Writes the standard audit + outbox pair inside the caller's transaction. */

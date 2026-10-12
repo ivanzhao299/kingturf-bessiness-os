@@ -24,6 +24,7 @@ import {
   writeBusinessDocumentConnectorAudit,
   writeBusinessDocumentReviewAudit,
   writeBusinessDocumentActivityAudit,
+  writeFoundationEmptyAudit,
   writeAuthorizationAudit,
   writeTransactionalAudit,
 } from '../src/audit-outbox.js';
@@ -548,6 +549,27 @@ describe('writeAuditOutbox', () => {
       'doc-7',
       'corr-activity',
       { version: 5 },
+    ]);
+  });
+  it('preserves foundation empty metadata audit parameters', async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [], rowCount: 1 });
+    await writeFoundationEmptyAudit(
+      { query },
+      'notification.create',
+      actor,
+      'notification',
+      'n-1',
+      'corr-foundation',
+    );
+    expect(query).toHaveBeenCalledTimes(1);
+    expect(query.mock.calls[0]?.[0]).toContain("VALUES($1,'SUCCESS'");
+    expect(query.mock.calls[0]?.[1]).toEqual([
+      'notification.create',
+      actor.employeeId,
+      actor.companyId,
+      'notification',
+      'n-1',
+      'corr-foundation',
     ]);
   });
 });
