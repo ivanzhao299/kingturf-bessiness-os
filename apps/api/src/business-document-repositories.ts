@@ -9,6 +9,7 @@ import {
   writeBusinessDocumentVersionAudit,
   writeBusinessDocumentSendAudit,
   writeBusinessDocumentReviewAudit,
+  writeBusinessDocumentActivityAudit,
   writeBusinessDocumentTranslationAudit,
 } from './audit-outbox.ts';
 
@@ -562,17 +563,13 @@ export class PostgresBusinessDocumentRepository {
       )
     ).rows[0];
     if (!document) throw new DomainError('not_found', 'Business document not found');
-    await this.db.query(
-      `INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata)
-       VALUES($1,'SUCCESS',$2,$3,'business-document',$4,$5,$6)`,
-      [
-        `business-document.${action.toLowerCase()}`,
-        context.actor.employeeId,
-        context.actor.companyId,
-        id,
-        correlationId,
-        { version },
-      ],
+    await writeBusinessDocumentActivityAudit(
+      this.db,
+      context.actor,
+      id,
+      action,
+      correlationId,
+      version,
     );
     return { id, action, version };
   }

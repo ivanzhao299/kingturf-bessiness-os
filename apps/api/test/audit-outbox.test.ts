@@ -23,6 +23,7 @@ import {
   writeBusinessDocumentSendAudit,
   writeBusinessDocumentConnectorAudit,
   writeBusinessDocumentReviewAudit,
+  writeBusinessDocumentActivityAudit,
   writeAuthorizationAudit,
   writeTransactionalAudit,
 } from '../src/audit-outbox.js';
@@ -526,6 +527,27 @@ describe('writeAuditOutbox', () => {
       'doc-6',
       'corr-review',
       metadata,
+    ]);
+  });
+  it('preserves dynamic business-document activity action and version metadata', async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [], rowCount: 1 });
+    await writeBusinessDocumentActivityAudit(
+      { query },
+      actor,
+      'doc-7',
+      'PRINTED',
+      'corr-activity',
+      5,
+    );
+    expect(query.mock.calls[0]?.[1]).toEqual([
+      'business-document.printed',
+      'SUCCESS',
+      actor.employeeId,
+      actor.companyId,
+      'business-document',
+      'doc-7',
+      'corr-activity',
+      { version: 5 },
     ]);
   });
 });
