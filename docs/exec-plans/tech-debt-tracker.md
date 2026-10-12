@@ -9,41 +9,41 @@
 
 ## 索引
 
-| ID           | 标题                                                                                    | 严重度 | 类别          | 业务行为影响             | 关联批次            | 状态   |
-| ------------ | --------------------------------------------------------------------------------------- | ------ | ------------- | ------------------------ | ------------------- | ------ |
-| TD-WEB-001   | bootstrap.ts 16,082 行巨石文件，七种职责混合                                            | P1     | 复杂度        | 无                       | 批次 3              | 待处理 |
-| TD-WEB-002   | commercialWorkspaceStructure 单函数 ≈8,551 行                                           | P1     | 复杂度        | 无                       | 批次 3              | 待处理 |
-| TD-WEB-003   | bootstrap.ts 深嵌套：≥4 层 8,603 行，最深 14 层                                         | P2     | 复杂度        | 无                       | 批次 3              | 待处理 |
-| TD-API-001   | buildApp 单函数 ≈6,442 行、230 个顺序路由分支，吞掉 Service 层                          | P1     | 架构/复杂度   | 无                       | 批次 2              | 待处理 |
-| TD-API-002   | app.ts 深嵌套：≥7 层 3,202 行，最深 14 层                                               | P2     | 复杂度        | 无                       | 批次 2              | 待处理 |
-| TD-DUP-001   | 数据范围(DataScope) SQL 谓词在 12 个文件各复制一份                                      | P1     | 重复/安全     | 无                       | 批次 1              | 已完成 |
-| TD-DUP-002   | audit_events + domain_event_outbox 双写 44 处/20 文件                                   | P1     | 重复          | 无                       | 批次 1              | 已完成 |
-| TD-DUP-003   | 幂等键查询样板 23 行重复                                                                | P2     | 重复          | 无                       | 批次 1              | 已完成 |
-| TD-DUP-004   | 前端日期格式化内联 12 处                                                                | P2     | 重复          | 无                       | 批次 3              | 待处理 |
-| TD-ARCH-001  | foundation-repositories.ts 一文件 4 仓储 + 全仓仅有的 28 处 any + 文件级 eslint-disable | P2     | 架构/类型     | 无                       | 批次 1              | 待处理 |
-| TD-ARCH-002  | CommercialController God store：load() 一次拉取 30+ 端点                                | P2     | 架构          | 无                       | 批次 3              | 待处理 |
-| TD-BOUND-001 | API 响应边界无运行时形状校验（`as T` 裸转）                                             | P1     | 架构（T4/T5） | 无                       | 批次 3              | 待处理 |
-| TD-BOUND-002 | 入站请求体校验为逐路由手写调用，无声明式 schema                                         | P2     | 架构          | 无                       | 批次 2              | 待处理 |
-| TD-SEC-001   | 全链路无 Content-Security-Policy                                                        | P1     | 安全          | **变更行为**             | 批次 4（前置 D1）   | 待处理 |
-| TD-SEC-002   | API 无限流/429，登录爆破仅 scrypt 成本兜底                                              | P1     | 安全          | **变更行为**             | 批次 4（前置 D1）   | 待处理 |
-| TD-SEC-003   | 会话 token 存 sessionStorage，XSS 可读                                                  | P2     | 安全          | **变更行为**             | 批次 4（前置 D1）   | 待处理 |
-| TD-SEC-004   | API 自身不设安全响应头，仅依赖生产 nginx                                                | P2     | 安全          | **变更行为**             | 批次 4（前置 D1）   | 待处理 |
-| TD-SEC-005   | 动态 SQL 片段拼装面广，缺结构性约束防回归                                               | P2     | 安全/门禁     | 无                       | 阶段 3（结构测试）  | 已完成 |
-| TD-SEC-006   | complaint 锚点谓词语义弱于其他域（osr 单表、TEAM 无 depth、无组织有效性校验）           | P2     | 安全/一致性   | **变更行为**（若统一）   | 待决策（批次 1 后） | 待处理 |
-| TD-SEC-007   | foundation 通知收件人谓词缺省省略 actor_org/authorized_org 两处组织有效性 JOIN          | P2     | 安全/一致性   | **变更行为**（若统一）   | 待决策（批次 1 后） | 待处理 |
-| TD-PERF-001  | 前端无自动重试/断路，失败依赖人工重试按钮                                               | P2     | 性能          | **变更行为**（仅实施时） | 待排期              | 待处理 |
-| TD-PERF-002  | 13 处 N+1 查询候选点未判定                                                              | P2     | 性能          | 无                       | 批次 2（子批 2f）   | 待处理 |
-| TD-TEST-001  | 2 个仓储模块完全无测试，2 个近乎无覆盖                                                  | P1     | 测试          | 无                       | 阶段 5              | 待处理 |
-| TD-TEST-002  | 无任何覆盖率配置与阈值                                                                  | P1     | 测试/门禁     | 无                       | 阶段 5              | 待处理 |
-| TD-TEST-003  | 6 个仓储模块仅 mock 路由级测试，SQL 路径未验证                                          | P2     | 测试          | 无                       | 阶段 5              | 待处理 |
-| TD-TEST-004  | packages/ui、packages/testing 的占位测试                                                | P2     | 测试          | 无                       | 阶段 5（前置 D3）   | 待处理 |
-| TD-TEST-005  | packages/types 占位测试：纯类型包的测试策略未定                                         | P2     | 测试          | 无                       | 阶段 5              | 待处理 |
-| TD-GATE-001  | 无 git hooks / commitlint / lint-staged，脏提交仅靠 CI 兜底                             | P1     | 门禁          | 无                       | 阶段 3              | 已完成 |
-| TD-GATE-002  | vitest 无配置文件，参数散落各包 scripts                                                 | P2     | 门禁          | 无                       | 阶段 3              | 已完成 |
-| TD-DOC-001   | 无 AGENTS.md；docs/ 85+ 文档无统一索引与目标结构                                        | P1     | 文档          | 无                       | 阶段 2（前置 D4）   | 已完成 |
-| TD-DOC-002   | 常驻文档未全量与代码核对（抽查 3 份即发现 1 处端点漂移）                                | P2     | 文档          | 无                       | 阶段 3（文档园丁）  | 待处理 |
-| TD-VER-001   | 版本号全部 0.0.0 占位，发布标识 = commit SHA                                            | P2     | 依赖/版本     | 无                       | 待决策（D2）        | 待处理 |
-| TD-HYG-001   | 本地验收产物滞留工作区；packages/ui、testing 近空壳                                     | P2     | 文档/工程卫生 | 无                       | 待决策（D3）        | 待处理 |
+| ID           | 标题                                                                                          | 严重度 | 类别          | 业务行为影响             | 关联批次            | 状态   |
+| ------------ | --------------------------------------------------------------------------------------------- | ------ | ------------- | ------------------------ | ------------------- | ------ |
+| TD-WEB-001   | bootstrap.ts 16,082 行巨石文件，七种职责混合                                                  | P1     | 复杂度        | 无                       | 批次 3              | 待处理 |
+| TD-WEB-002   | commercialWorkspaceStructure 单函数 ≈8,551 行                                                 | P1     | 复杂度        | 无                       | 批次 3              | 待处理 |
+| TD-WEB-003   | bootstrap.ts 深嵌套：≥4 层 8,603 行，最深 14 层                                               | P2     | 复杂度        | 无                       | 批次 3              | 待处理 |
+| TD-API-001   | buildApp 单函数 ≈6,442 行、230 个顺序路由分支，吞掉 Service 层                                | P1     | 架构/复杂度   | 无                       | 批次 2              | 待处理 |
+| TD-API-002   | app.ts 深嵌套：≥7 层 3,202 行，最深 14 层                                                     | P2     | 复杂度        | 无                       | 批次 2              | 待处理 |
+| TD-DUP-001   | 数据范围(DataScope) SQL 谓词在 12 个文件各复制一份                                            | P1     | 重复/安全     | 无                       | 批次 1              | 已完成 |
+| TD-DUP-002   | audit_events + domain_event_outbox 双写 44 处/20 文件                                         | P1     | 重复          | 无                       | 批次 1              | 已完成 |
+| TD-DUP-003   | 幂等键查询样板 23 行重复                                                                      | P2     | 重复          | 无                       | 批次 1              | 已完成 |
+| TD-DUP-004   | 前端日期格式化内联 12 处                                                                      | P2     | 重复          | 无                       | 批次 3              | 待处理 |
+| TD-ARCH-001  | foundation-repositories.ts 一文件 4 仓储 + 全仓仅有的 29 处代码级 any + 文件级 eslint-disable | P2     | 架构/类型     | 无                       | 批次 1              | 待处理 |
+| TD-ARCH-002  | CommercialController God store：load() 一次拉取 30+ 端点                                      | P2     | 架构          | 无                       | 批次 3              | 待处理 |
+| TD-BOUND-001 | API 响应边界无运行时形状校验（`as T` 裸转）                                                   | P1     | 架构（T4/T5） | 无                       | 批次 3              | 待处理 |
+| TD-BOUND-002 | 入站请求体校验为逐路由手写调用，无声明式 schema                                               | P2     | 架构          | 无                       | 批次 2              | 待处理 |
+| TD-SEC-001   | 全链路无 Content-Security-Policy                                                              | P1     | 安全          | **变更行为**             | 批次 4（前置 D1）   | 待处理 |
+| TD-SEC-002   | API 无限流/429，登录爆破仅 scrypt 成本兜底                                                    | P1     | 安全          | **变更行为**             | 批次 4（前置 D1）   | 待处理 |
+| TD-SEC-003   | 会话 token 存 sessionStorage，XSS 可读                                                        | P2     | 安全          | **变更行为**             | 批次 4（前置 D1）   | 待处理 |
+| TD-SEC-004   | API 自身不设安全响应头，仅依赖生产 nginx                                                      | P2     | 安全          | **变更行为**             | 批次 4（前置 D1）   | 待处理 |
+| TD-SEC-005   | 动态 SQL 片段拼装面广，缺结构性约束防回归                                                     | P2     | 安全/门禁     | 无                       | 阶段 3（结构测试）  | 已完成 |
+| TD-SEC-006   | complaint 锚点谓词语义弱于其他域（osr 单表、TEAM 无 depth、无组织有效性校验）                 | P2     | 安全/一致性   | **变更行为**（若统一）   | 待决策（批次 1 后） | 待处理 |
+| TD-SEC-007   | foundation 通知收件人谓词缺省省略 actor_org/authorized_org 两处组织有效性 JOIN                | P2     | 安全/一致性   | **变更行为**（若统一）   | 待决策（批次 1 后） | 待处理 |
+| TD-PERF-001  | 前端无自动重试/断路，失败依赖人工重试按钮                                                     | P2     | 性能          | **变更行为**（仅实施时） | 待排期              | 待处理 |
+| TD-PERF-002  | 13 处 N+1 查询候选点未判定                                                                    | P2     | 性能          | 无                       | 批次 2（子批 2f）   | 待处理 |
+| TD-TEST-001  | 2 个仓储模块完全无测试，2 个近乎无覆盖                                                        | P1     | 测试          | 无                       | 阶段 5              | 待处理 |
+| TD-TEST-002  | 无任何覆盖率配置与阈值                                                                        | P1     | 测试/门禁     | 无                       | 阶段 5              | 待处理 |
+| TD-TEST-003  | 6 个仓储模块仅 mock 路由级测试，SQL 路径未验证                                                | P2     | 测试          | 无                       | 阶段 5              | 待处理 |
+| TD-TEST-004  | packages/ui、packages/testing 的占位测试                                                      | P2     | 测试          | 无                       | 阶段 5（前置 D3）   | 待处理 |
+| TD-TEST-005  | packages/types 占位测试：纯类型包的测试策略未定                                               | P2     | 测试          | 无                       | 阶段 5              | 待处理 |
+| TD-GATE-001  | 无 git hooks / commitlint / lint-staged，脏提交仅靠 CI 兜底                                   | P1     | 门禁          | 无                       | 阶段 3              | 已完成 |
+| TD-GATE-002  | vitest 无配置文件，参数散落各包 scripts                                                       | P2     | 门禁          | 无                       | 阶段 3              | 已完成 |
+| TD-DOC-001   | 无 AGENTS.md；docs/ 85+ 文档无统一索引与目标结构                                              | P1     | 文档          | 无                       | 阶段 2（前置 D4）   | 已完成 |
+| TD-DOC-002   | 常驻文档未全量与代码核对（抽查 3 份即发现 1 处端点漂移）                                      | P2     | 文档          | 无                       | 阶段 3（文档园丁）  | 待处理 |
+| TD-VER-001   | 版本号全部 0.0.0 占位，发布标识 = commit SHA                                                  | P2     | 依赖/版本     | 无                       | 待决策（D2）        | 待处理 |
+| TD-HYG-001   | 本地验收产物滞留工作区；packages/ui、testing 近空壳                                           | P2     | 文档/工程卫生 | 无                       | 待决策（D3）        | 待处理 |
 
 ---
 
@@ -130,12 +130,12 @@
 
 ## 架构与类型
 
-### TD-ARCH-001｜foundation-repositories.ts 混装 4 仓储 + 28 处 any
+### TD-ARCH-001｜foundation-repositories.ts 混装 4 仓储 + 29 处代码级 any
 
-- **位置**：`apps/api/src/foundation-repositories.ts`（1,106 行；文件头 eslint-disable；any 集中在 391-1093 行的 JSONB 读写区）
+- **位置**：`apps/api/src/foundation-repositories.ts`（1,029 行；文件头 eslint-disable；代码级 any 集中在 315-1,017 行的固定 SQL 投影与 JSONB 读写区）
 - **类别**：架构/类型 ｜ **严重度**：P2
-- **证据**：单文件装 Notification/Attachment/BusinessObject/Event 4 个 repository；文件第 1 行整文件 `eslint-disable` 7 条 unsafe 规则；全仓非测试源显式 `any` 共 28 处且 **100% 在本文件**。
-- **修复建议**：拆为 4 个文件；用边界解析（T4）替代 `any`（JSONB 读写处定义窄类型 + 运行时校验）。
+- **证据**：单文件装 Notification/Attachment/BusinessObject/Event 4 个 repository；`wc -l` 实测 1,029；`rg -n '\\bany\\b'` 总命中 30，其中第 1 行是 eslint 指令、其余 29 个为代码级 any，且 **100% 在本文件**；文件头实际禁用 6 条规则：`no-explicit-any`、`no-unsafe-assignment`、`no-unsafe-member-access`、`no-unsafe-call`、`no-unsafe-return`、`no-unsafe-argument`。
+- **修复建议**：拆为 4 个文件；先定义固定 SQL 投影类型，再逐步移除文件级 eslint-disable；JSONB 读写处使用窄类型与既有运行时校验，不把 29 个 any 误记为 28 个。
 - **业务行为影响**：无 ｜ **关联批次**：批次 1 ｜ **验收方式**：文件级 eslint-disable 删除后 lint 全绿 + `foundation-postgres.integration.test.ts` 回归
 
 ### TD-ARCH-002｜CommercialController God store
