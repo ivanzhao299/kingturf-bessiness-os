@@ -57,16 +57,26 @@ export function dataScopeSql(
 }
 
 /**
- * 员工域完整变体（原 repositories.ts EmployeeRepository.#scoped）：隐式类型锚点（LATERAL
- * 最近类型祖先）+ 显式锚点 + actor 有效性 EXISTS 包裹。SQL 与迁移前逐字一致。
+ * 员工域完整变体的域间差异（显式选项，禁隐式状态）：
+ * foundation（通知收件人）='skip'：隐式类型锚点 EXISTS 不 JOIN actor_org、actorExists
+ * 不 JOIN authorized_org（两处组织有效性校验省略），显式锚点子句沿用 foundation 原排布
+ * （ON 子句内含 descendant_id+depth、等值无空格）。缺省 'validate'（repositories 语义）
+ * 与迁移前 #scoped 逐字一致。'skip' 分支 SQL 与迁移前 foundation 实现逐字一致
+ * （零归一化对拍见 test/scope-sql-foundation.test.ts）；语义差异登记 TD-SEC-007。
  */
+export type EmployeeScopeOptions = Readonly<{
+  actorOrganizationValidation?: 'validate' | 'skip';
+}>;
+
 export function employeeScopedPredicate(
   scopes: readonly DataScope[],
   actorId: string,
   companyId: string,
   anchors: readonly ScopeAnchor[] = [],
   startParameter = 3,
+  options: EmployeeScopeOptions = {},
 ): { predicate: string; values: readonly unknown[] } {
+  const { actorOrganizationValidation = 'validate' } = options;
   const values: unknown[] = [];
   const parameter = (value: string): string => {
     values.push(value);
@@ -81,35 +91,57 @@ export function employeeScopedPredicate(
       const companyParameter = parameter(companyId);
       const depth = typed === 'TEAM' ? ' AND target_rel.depth<=1' : '';
       clauses.push(
-        `EXISTS (SELECT 1 FROM employees scope_actor JOIN organizations actor_org ON actor_org.id=scope_actor.organization_id AND actor_org.owner_organization_id=scope_actor.company_id AND actor_org.active AND actor_org.deleted_at IS NULL JOIN LATERAL (SELECT actor_rel.ancestor_id FROM organization_scope_relationships actor_rel JOIN organizations typed_anchor ON typed_anchor.id=actor_rel.ancestor_id AND typed_anchor.organization_type='${typed}' AND typed_anchor.active AND typed_anchor.deleted_at IS NULL AND typed_anchor.owner_organization_id=scope_actor.company_id WHERE actor_rel.descendant_id=scope_actor.organization_id ORDER BY actor_rel.depth LIMIT 1) nearest ON true JOIN organization_scope_relationships target_rel ON target_rel.ancestor_id=nearest.ancestor_id AND target_rel.descendant_id=e.organization_id${depth} WHERE scope_actor.id=${actorParameter} AND scope_actor.company_id=${companyParameter} AND scope_actor.active AND scope_actor.deleted_at IS NULL)`,
+        actorOrganizationValidation === 'skip'
+          ? `EXISTS (SELECT 1 FROM employees scope_actor JOIN LATERAL (SELECT actor_rel.ancestor_id FROM organization_scope_relationships actor_rel JOIN organizations typed_anchor ON typed_anchor.id=actor_rel.ancestor_id AND typed_anchor.organization_type='${typed}' AND typed_anchor.owner_organization_id=scope_actor.company_id AND typed_anchor.active AND typed_anchor.deleted_at IS NULL WHERE actor_rel.descendant_id=scope_actor.organization_id ORDER BY actor_rel.depth LIMIT 1) nearest ON true JOIN organization_scope_relationships target_rel ON target_rel.ancestor_id=nearest.ancestor_id AND target_rel.descendant_id=e.organization_id${depth} WHERE scope_actor.id=${actorParameter} AND scope_actor.company_id=${companyParameter} AND scope_actor.active AND scope_actor.deleted_at IS NULL)`
+          : `EXISTS (SELECT 1 FROM employees scope_actor JOIN organizations actor_org ON actor_org.id=scope_actor.organization_id AND actor_org.owner_organization_id=scope_actor.company_id AND actor_org.active AND actor_org.deleted_at IS NULL JOIN LATERAL (SELECT actor_rel.ancestor_id FROM organization_scope_relationships actor_rel JOIN organizations typed_anchor ON typed_anchor.id=actor_rel.ancestor_id AND typed_anchor.organization_type='${typed}' AND typed_anchor.active AND typed_anchor.deleted_at IS NULL AND typed_anchor.owner_organization_id=scope_actor.company_id WHERE actor_rel.descendant_id=scope_actor.organization_id ORDER BY actor_rel.depth LIMIT 1) nearest ON true JOIN organization_scope_relationships target_rel ON target_rel.ancestor_id=nearest.ancestor_id AND target_rel.descendant_id=e.organization_id${depth} WHERE scope_actor.id=${actorParameter} AND scope_actor.company_id=${companyParameter} AND scope_actor.active AND scope_actor.deleted_at IS NULL)`,
       );
     }
   }
   for (const anchor of anchors) {
     if (anchor.scope === 'SELF' && anchor.organizationId === null) {
-      clauses.push(`e.id = $${String(startParameter + values.length)}`);
-      values.push(actorId);
+      clauses.push(
+        actorOrganizationValidation === 'skip'
+          ? `e.id=${parameter(actorId)}`
+          : `e.id = $${String(startParameter + values.length)}`,
+      );
+      if (actorOrganizationValidation !== 'skip') values.push(actorId);
     } else if (
       (anchor.scope === 'COMPANY' || anchor.scope === 'GROUP') &&
       anchor.organizationId === null
     ) {
-      clauses.push(`e.company_id = $${String(startParameter + values.length)}`);
-      values.push(companyId);
+      clauses.push(
+        actorOrganizationValidation === 'skip'
+          ? `e.company_id=${parameter(companyId)}`
+          : `e.company_id = $${String(startParameter + values.length)}`,
+      );
+      if (actorOrganizationValidation !== 'skip') values.push(companyId);
     } else if (
       (anchor.scope === 'TEAM' || anchor.scope === 'DEPARTMENT' || anchor.scope === 'REGION') &&
       anchor.organizationId !== null
     ) {
-      const parameter = `$${String(startParameter + values.length)}`;
-      const depth = anchor.scope === 'TEAM' ? ' AND explicit_osr.depth <= 1' : '';
-      clauses.push(
-        `EXISTS (SELECT 1 FROM organizations explicit_anchor JOIN organization_scope_relationships explicit_osr ON explicit_osr.ancestor_id=explicit_anchor.id WHERE explicit_anchor.id=${parameter} AND explicit_anchor.owner_organization_id=e.company_id AND explicit_anchor.organization_type='${anchor.scope}' AND explicit_anchor.active AND explicit_anchor.deleted_at IS NULL AND explicit_osr.descendant_id=e.organization_id${depth})`,
-      );
-      values.push(anchor.organizationId);
+      if (actorOrganizationValidation === 'skip') {
+        // p = 已登记的占位符串变量名（structure-gate 白名单形态，crm 先例）
+        const p = parameter(anchor.organizationId);
+        const depth = anchor.scope === 'TEAM' ? ' AND explicit_osr.depth<=1' : '';
+        clauses.push(
+          `EXISTS (SELECT 1 FROM organizations explicit_anchor JOIN organization_scope_relationships explicit_osr ON explicit_osr.ancestor_id=explicit_anchor.id AND explicit_osr.descendant_id=e.organization_id${depth} WHERE explicit_anchor.id=${p} AND explicit_anchor.owner_organization_id=e.company_id AND explicit_anchor.organization_type='${anchor.scope}' AND explicit_anchor.active AND explicit_anchor.deleted_at IS NULL)`,
+        );
+      } else {
+        const parameter = `$${String(startParameter + values.length)}`;
+        const depth = anchor.scope === 'TEAM' ? ' AND explicit_osr.depth <= 1' : '';
+        clauses.push(
+          `EXISTS (SELECT 1 FROM organizations explicit_anchor JOIN organization_scope_relationships explicit_osr ON explicit_osr.ancestor_id=explicit_anchor.id WHERE explicit_anchor.id=${parameter} AND explicit_anchor.owner_organization_id=e.company_id AND explicit_anchor.organization_type='${anchor.scope}' AND explicit_anchor.active AND explicit_anchor.deleted_at IS NULL AND explicit_osr.descendant_id=e.organization_id${depth})`,
+        );
+        values.push(anchor.organizationId);
+      }
     }
   }
   const actorParameter = parameter(actorId);
   const companyParameter = parameter(companyId);
-  const actorExists = `EXISTS (SELECT 1 FROM employees authorized_actor JOIN organizations authorized_company ON authorized_company.id=authorized_actor.company_id AND authorized_company.organization_type='COMPANY' AND authorized_company.active AND authorized_company.deleted_at IS NULL JOIN organizations authorized_org ON authorized_org.id=authorized_actor.organization_id AND authorized_org.owner_organization_id=authorized_actor.company_id AND authorized_org.active AND authorized_org.deleted_at IS NULL WHERE authorized_actor.id=${actorParameter} AND authorized_actor.company_id=${companyParameter} AND authorized_actor.active AND authorized_actor.deleted_at IS NULL)`;
+  const actorExists =
+    actorOrganizationValidation === 'skip'
+      ? `EXISTS (SELECT 1 FROM employees authorized_actor JOIN organizations authorized_company ON authorized_company.id=authorized_actor.company_id AND authorized_company.organization_type='COMPANY' AND authorized_company.active AND authorized_company.deleted_at IS NULL WHERE authorized_actor.id=${actorParameter} AND authorized_actor.company_id=${companyParameter} AND authorized_actor.active AND authorized_actor.deleted_at IS NULL)`
+      : `EXISTS (SELECT 1 FROM employees authorized_actor JOIN organizations authorized_company ON authorized_company.id=authorized_actor.company_id AND authorized_company.organization_type='COMPANY' AND authorized_company.active AND authorized_company.deleted_at IS NULL JOIN organizations authorized_org ON authorized_org.id=authorized_actor.organization_id AND authorized_org.owner_organization_id=authorized_actor.company_id AND authorized_org.active AND authorized_org.deleted_at IS NULL WHERE authorized_actor.id=${actorParameter} AND authorized_actor.company_id=${companyParameter} AND authorized_actor.active AND authorized_actor.deleted_at IS NULL)`;
   return {
     predicate: clauses.length === 0 ? 'FALSE' : `(${actorExists} AND (${clauses.join(' OR ')}))`,
     values,

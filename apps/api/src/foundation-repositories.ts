@@ -3,6 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Database, Transaction } from '@kingturf/database';
+import { employeeScopedPredicate, type EmployeeScopeOptions } from './scope-sql.ts';
 import {
   assertStableCode,
   DomainError,
@@ -291,58 +292,13 @@ export class InProcessEventDispatcher {
   }
 }
 
+// foundation（通知收件人）员工域谓词选项：缺省省略 actor_org 与 authorized_org 两处
+// 组织有效性 JOIN（与 repositories 变体的语义差异登记 TD-SEC-007）；SQL 与迁移前逐字一致。
+const NOTIFICATION_SCOPE: EmployeeScopeOptions = { actorOrganizationValidation: 'skip' };
+
 export class PostgresNotificationRepository {
   public constructor(private readonly db: Database) {}
-  private recipientScope(
-    scopes: readonly DataScope[],
-    actor: Actor,
-    anchors: readonly ScopeAnchor[],
-    startParameter: number,
-  ): Readonly<{ predicate: string; values: readonly string[] }> {
-    const values: string[] = [];
-    const parameter = (value: string): string => {
-      values.push(value);
-      return `$${String(startParameter + values.length - 1)}`;
-    };
-    const clauses: string[] = [];
-    if (scopes.includes('GROUP') || scopes.includes('COMPANY')) clauses.push('TRUE');
-    if (scopes.includes('SELF')) clauses.push(`e.id=${parameter(actor.employeeId)}`);
-    for (const scope of ['TEAM', 'DEPARTMENT', 'REGION'] as const) {
-      if (!scopes.includes(scope)) continue;
-      const actorId = parameter(actor.employeeId);
-      const companyId = parameter(actor.companyId);
-      const depth = scope === 'TEAM' ? ' AND target_rel.depth<=1' : '';
-      clauses.push(
-        `EXISTS (SELECT 1 FROM employees scope_actor JOIN LATERAL (SELECT actor_rel.ancestor_id FROM organization_scope_relationships actor_rel JOIN organizations typed_anchor ON typed_anchor.id=actor_rel.ancestor_id AND typed_anchor.organization_type='${scope}' AND typed_anchor.owner_organization_id=scope_actor.company_id AND typed_anchor.active AND typed_anchor.deleted_at IS NULL WHERE actor_rel.descendant_id=scope_actor.organization_id ORDER BY actor_rel.depth LIMIT 1) nearest ON true JOIN organization_scope_relationships target_rel ON target_rel.ancestor_id=nearest.ancestor_id AND target_rel.descendant_id=e.organization_id${depth} WHERE scope_actor.id=${actorId} AND scope_actor.company_id=${companyId} AND scope_actor.active AND scope_actor.deleted_at IS NULL)`,
-      );
-    }
-    for (const anchor of anchors) {
-      if (anchor.scope === 'SELF' && anchor.organizationId === null)
-        clauses.push(`e.id=${parameter(actor.employeeId)}`);
-      else if (
-        (anchor.scope === 'COMPANY' || anchor.scope === 'GROUP') &&
-        anchor.organizationId === null
-      )
-        clauses.push(`e.company_id=${parameter(actor.companyId)}`);
-      else if (
-        (anchor.scope === 'TEAM' || anchor.scope === 'DEPARTMENT' || anchor.scope === 'REGION') &&
-        anchor.organizationId !== null
-      ) {
-        const anchorId = parameter(anchor.organizationId);
-        const depth = anchor.scope === 'TEAM' ? ' AND explicit_osr.depth<=1' : '';
-        clauses.push(
-          `EXISTS (SELECT 1 FROM organizations explicit_anchor JOIN organization_scope_relationships explicit_osr ON explicit_osr.ancestor_id=explicit_anchor.id AND explicit_osr.descendant_id=e.organization_id${depth} WHERE explicit_anchor.id=${anchorId} AND explicit_anchor.owner_organization_id=e.company_id AND explicit_anchor.organization_type='${anchor.scope}' AND explicit_anchor.active AND explicit_anchor.deleted_at IS NULL)`,
-        );
-      }
-    }
-    const actorId = parameter(actor.employeeId);
-    const companyId = parameter(actor.companyId);
-    const actorExists = `EXISTS (SELECT 1 FROM employees authorized_actor JOIN organizations authorized_company ON authorized_company.id=authorized_actor.company_id AND authorized_company.organization_type='COMPANY' AND authorized_company.active AND authorized_company.deleted_at IS NULL WHERE authorized_actor.id=${actorId} AND authorized_actor.company_id=${companyId} AND authorized_actor.active AND authorized_actor.deleted_at IS NULL)`;
-    return {
-      predicate: clauses.length ? `(${actorExists} AND (${clauses.join(' OR ')}))` : 'FALSE',
-      values,
-    };
-  }
+  // 收件人范围谓词已收敛至 scope-sql.ts 的 employeeScopedPredicate（批次 1b，TD-DUP-001）。
   public async create(
     input: {
       kind: string;
@@ -375,7 +331,14 @@ export class PostgresNotificationRepository {
         subjectType: input.subjectType ?? null,
         subjectId: input.subjectId ?? null,
       };
-      const scoped = this.recipientScope(scopes, actor, anchors, 3);
+      const scoped = employeeScopedPredicate(
+        scopes,
+        actor.employeeId,
+        actor.companyId,
+        anchors,
+        3,
+        NOTIFICATION_SCOPE,
+      );
       const authorized = await tx.query<{ count: string }>(
         `SELECT count(*)::text count FROM employees e WHERE e.company_id=$1 AND e.id=ANY($2::uuid[]) AND e.active AND e.deleted_at IS NULL AND ${scoped.predicate}`,
         [actor.companyId, recipients, ...scoped.values],
