@@ -6,6 +6,8 @@ import {
   writeComplaintEvidence,
   writeCrmAuditEvent,
   writeFixedVersionOneEvidence,
+  writeProductionNextVersionEvidence,
+  writeQualityNextVersionEvidence,
 } from '../src/audit-outbox.js';
 
 const actor: Actor = {
@@ -173,5 +175,46 @@ describe('writeAuditOutbox', () => {
       'corr-1',
       { ok: true },
     ]);
+  });
+  it('preserves next-version SELECT semantics for production and quality', async () => {
+    for (const [run, action, aggregateType, id] of [
+      [
+        writeProductionNextVersionEvidence,
+        'production-order.created',
+        'production-order',
+        'prod-1',
+      ],
+      [
+        writeQualityNextVersionEvidence,
+        'quality-inspection.opened',
+        'quality-inspection',
+        'quality-1',
+      ],
+    ] as const) {
+      const query = vi.fn().mockResolvedValue({ rows: [], rowCount: 1 });
+      await run({ query }, action, id, { actor }, 'corr-next', { ok: true });
+      expect(query).toHaveBeenCalledTimes(2);
+      expect(query.mock.calls[0]?.[0]).toContain('INSERT INTO audit_events');
+      expect(query.mock.calls[0]?.[1]).toEqual([
+        action,
+        actor.employeeId,
+        actor.companyId,
+        aggregateType,
+        id,
+        'corr-next',
+        { ok: true },
+      ]);
+      expect(query.mock.calls[1]?.[0]).toContain('SELECT');
+      expect(query.mock.calls[1]?.[0]).toContain('max(aggregate_version)');
+      expect(query.mock.calls[1]?.[1]).toEqual([
+        actor.companyId,
+        action,
+        aggregateType,
+        id,
+        actor.employeeId,
+        'corr-next',
+        { ok: true },
+      ]);
+    }
   });
 });
