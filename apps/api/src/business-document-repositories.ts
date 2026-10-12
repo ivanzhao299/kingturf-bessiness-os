@@ -6,6 +6,7 @@ import {
   writeBusinessDocumentBindingsAudit,
   writeBusinessDocumentCreateAudit,
   writeBusinessDocumentVersionAudit,
+  writeBusinessDocumentSendAudit,
   writeBusinessDocumentTranslationAudit,
 } from './audit-outbox.ts';
 
@@ -711,23 +712,13 @@ export class PostgresBusinessDocumentRepository {
           input.channel,
         ],
       );
-      await tx.query(
-        `INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata)
-         VALUES('business-document.send-requested','SUCCESS',$1,$2,'business-document',$3,$4,$5)`,
-        [
-          context.actor.employeeId,
-          context.actor.companyId,
-          id,
-          correlationId,
-          {
-            version: input.expectedVersion,
-            channel: input.channel,
-            recipientHash: digest(input.recipientAddress.trim().toLowerCase()),
-            dispatchId: dispatch.item.id,
-            translationId: input.translationId ?? null,
-          },
-        ],
-      );
+      await writeBusinessDocumentSendAudit(tx, context.actor, id, correlationId, {
+        version: input.expectedVersion,
+        channel: input.channel,
+        recipientHash: digest(input.recipientAddress.trim().toLowerCase()),
+        dispatchId: dispatch.item.id as string,
+        translationId: input.translationId ?? null,
+      });
       return dispatch.item;
     });
   }

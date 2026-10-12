@@ -20,6 +20,7 @@ import {
   writeBusinessDocumentBindingsAudit,
   writeBusinessDocumentVersionAudit,
   writeBusinessDocumentTranslationAudit,
+  writeBusinessDocumentSendAudit,
   writeAuthorizationAudit,
   writeTransactionalAudit,
 } from '../src/audit-outbox.js';
@@ -456,6 +457,28 @@ describe('writeAuditOutbox', () => {
       'business-document',
       'doc-4',
       'corr-translation',
+      metadata,
+    ]);
+  });
+  it('preserves business-document.send-requested metadata and parameters', async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [], rowCount: 1 });
+    const metadata = {
+      version: 2,
+      channel: 'EMAIL',
+      recipientHash: 'hash',
+      dispatchId: 'dispatch-1',
+      translationId: null,
+    };
+    await writeBusinessDocumentSendAudit({ query }, actor, 'doc-5', 'corr-send', metadata);
+    expect(query).toHaveBeenCalledTimes(1);
+    expect(query.mock.calls[0]?.[1]).toEqual([
+      'business-document.send-requested',
+      'SUCCESS',
+      actor.employeeId,
+      actor.companyId,
+      'business-document',
+      'doc-5',
+      'corr-send',
       metadata,
     ]);
   });
