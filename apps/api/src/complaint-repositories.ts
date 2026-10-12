@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { canonicalize, DomainError, type Actor, type ScopeAnchor } from '@kingturf/domain';
 import type { Database, SqlClient } from '@kingturf/database';
+import { recordScopeSql, type RecordScopeOptions } from './scope-sql.ts';
 import type { BatchCommandResult, DataScope, JsonObject, Page } from '@kingturf/types';
 
 type Db = SqlClient & Pick<Database, 'transaction'>;
@@ -39,23 +40,10 @@ export type ComplaintListFilter = Readonly<{
 
 const digest = (value: unknown) => createHash('sha256').update(canonicalize(value)).digest('hex');
 const json = (value: unknown) => value as JsonObject;
-const scope = (context: Context, alias = 'cu', offset = 2) => {
-  const clauses: string[] = [];
-  const values: string[] = [];
-  if (context.scopes.includes('COMPANY') || context.scopes.includes('GROUP')) clauses.push('TRUE');
-  if (context.scopes.includes('SELF')) {
-    values.push(context.actor.employeeId);
-    clauses.push(`${alias}.owner_id=$${String(offset + values.length - 1)}`);
-  }
-  for (const anchor of context.anchors)
-    if (anchor.organizationId && context.scopes.includes(anchor.scope)) {
-      values.push(anchor.organizationId);
-      clauses.push(
-        `EXISTS(SELECT 1 FROM organization_scope_relationships osr WHERE osr.tenant_id=${alias}.tenant_id AND osr.ancestor_id=$${String(offset + values.length - 1)} AND osr.descendant_id=${alias}.owner_organization_id AND osr.scope='${anchor.scope}')`,
-      );
-    }
-  return { sql: clauses.length ? `(${clauses.join(' OR ')})` : 'FALSE', values };
-};
+// 数据范围谓词已收敛至 scope-sql.ts 的 recordScopeSql（批次 1b，TD-DUP-001）。
+// complaint 的锚点谓词为 relationshipOnly 形态（只查 osr 单表、TEAM 无 depth、无组织有效性校验），
+// 与其他域的 organizationJoin 形态是**真实语义差异**，以显式选项表达并登记 TD-SEC-006。
+const COMPLAINT_SCOPE: RecordScopeOptions = { anchorPredicate: 'relationshipOnly' };
 
 const evidence = async (
   tx: SqlClient,
@@ -185,7 +173,14 @@ export class PostgresComplaintRepository {
   }
 
   public async list(filter: ComplaintListFilter, context: Context): Promise<Page<JsonObject>> {
-    const secured = scope(context, 'cu', 2);
+    const secured = recordScopeSql(
+      context.scopes,
+      context.anchors,
+      context.actor,
+      'cu',
+      2,
+      COMPLAINT_SCOPE,
+    );
     const values: unknown[] = [context.actor.companyId, ...secured.values];
     const where = [`c.tenant_id=$1`, secured.sql];
     const add = (sql: string, value: unknown) => {
@@ -247,7 +242,14 @@ export class PostgresComplaintRepository {
   }
 
   public async getById(id: string, context: Context): Promise<JsonObject> {
-    const secured = scope(context, 'cu', 3);
+    const secured = recordScopeSql(
+      context.scopes,
+      context.anchors,
+      context.actor,
+      'cu',
+      3,
+      COMPLAINT_SCOPE,
+    );
     const row = (
       await this.db.query<{ item: JsonObject }>(
         `SELECT to_jsonb(c)||jsonb_build_object(
@@ -306,7 +308,14 @@ export class PostgresComplaintRepository {
         assertReplay(replay.canonical_hash, canonical);
         return { id: replay.id, state: 'REPORTED' as const, replayed: true };
       }
-      const secured = scope(context, 'cu', 5);
+      const secured = recordScopeSql(
+        context.scopes,
+        context.anchors,
+        context.actor,
+        'cu',
+        5,
+        COMPLAINT_SCOPE,
+      );
       const basis = (
         await tx.query<{
           response_hours: number;
@@ -907,10 +916,18 @@ export class PostgresComplaintRepository {
         assertReplay(replay.canonical_hash, canonical);
         return json({ id: replay.id, capaId, replayed: true });
       }
+      const secured = recordScopeSql(
+        context.scopes,
+        context.anchors,
+        context.actor,
+        'cu',
+        3,
+        COMPLAINT_SCOPE,
+      );
       const complaint = (
         await tx.query<{ complaint_id: string }>(
-          `SELECT n.complaint_id FROM capa_cases c JOIN nonconformance_reports n ON n.tenant_id=c.tenant_id AND n.id=c.ncr_id JOIN customer_complaints cc ON cc.tenant_id=n.tenant_id AND cc.id=n.complaint_id JOIN customers cu ON cu.tenant_id=cc.tenant_id AND cu.id=cc.customer_id WHERE c.tenant_id=$1 AND c.id=$2 AND ${scope(context, 'cu', 3).sql}`,
-          [context.actor.companyId, capaId, ...scope(context, 'cu', 3).values],
+          `SELECT n.complaint_id FROM capa_cases c JOIN nonconformance_reports n ON n.tenant_id=c.tenant_id AND n.id=c.ncr_id JOIN customer_complaints cc ON cc.tenant_id=n.tenant_id AND cc.id=n.complaint_id JOIN customers cu ON cu.tenant_id=cc.tenant_id AND cu.id=cc.customer_id WHERE c.tenant_id=$1 AND c.id=$2 AND ${secured.sql}`,
+          [context.actor.companyId, capaId, ...secured.values],
         )
       ).rows[0];
       if (!complaint) throw new DomainError('not_found', 'CAPA not found');
@@ -1151,7 +1168,14 @@ export class PostgresComplaintRepository {
   }
 
   private async complaintCurrent(tx: SqlClient, id: string, context: Context) {
-    const secured = scope(context, 'cu', 3);
+    const secured = recordScopeSql(
+      context.scopes,
+      context.anchors,
+      context.actor,
+      'cu',
+      3,
+      COMPLAINT_SCOPE,
+    );
     const row = (
       await tx.query<{ state: ComplaintState; sequence: number; assigned_to: string | null }>(
         `SELECT s.state,s.sequence,s.assigned_to FROM customer_complaints c JOIN customer_complaint_effective_states s ON s.tenant_id=c.tenant_id AND s.complaint_id=c.id JOIN customers cu ON cu.tenant_id=c.tenant_id AND cu.id=c.customer_id WHERE c.tenant_id=$1 AND c.id=$2 AND ${secured.sql}`,
@@ -1162,7 +1186,14 @@ export class PostgresComplaintRepository {
     return row;
   }
   private async ncrCurrent(tx: SqlClient, id: string, context: Context) {
-    const secured = scope(context, 'cu', 3);
+    const secured = recordScopeSql(
+      context.scopes,
+      context.anchors,
+      context.actor,
+      'cu',
+      3,
+      COMPLAINT_SCOPE,
+    );
     const row = (
       await tx.query<{ state: NcrState; sequence: number; complaint_id: string }>(
         `SELECT s.state,s.sequence,n.complaint_id FROM nonconformance_reports n JOIN ncr_effective_states s ON s.tenant_id=n.tenant_id AND s.ncr_id=n.id JOIN customer_complaints c ON c.tenant_id=n.tenant_id AND c.id=n.complaint_id JOIN customers cu ON cu.tenant_id=c.tenant_id AND cu.id=c.customer_id WHERE n.tenant_id=$1 AND n.id=$2 AND ${secured.sql}`,
@@ -1173,7 +1204,14 @@ export class PostgresComplaintRepository {
     return row;
   }
   private async capaCurrent(tx: SqlClient, id: string, context: Context) {
-    const secured = scope(context, 'cu', 3);
+    const secured = recordScopeSql(
+      context.scopes,
+      context.anchors,
+      context.actor,
+      'cu',
+      3,
+      COMPLAINT_SCOPE,
+    );
     const row = (
       await tx.query<{ state: CapaState; sequence: number; owner_id: string }>(
         `SELECT s.state,s.sequence,cp.owner_id FROM capa_cases cp JOIN capa_effective_states s ON s.tenant_id=cp.tenant_id AND s.capa_id=cp.id JOIN nonconformance_reports n ON n.tenant_id=cp.tenant_id AND n.id=cp.ncr_id JOIN customer_complaints c ON c.tenant_id=n.tenant_id AND c.id=n.complaint_id JOIN customers cu ON cu.tenant_id=c.tenant_id AND cu.id=c.customer_id WHERE cp.tenant_id=$1 AND cp.id=$2 AND ${secured.sql}`,
@@ -1184,7 +1222,14 @@ export class PostgresComplaintRepository {
     return row;
   }
   private async actionCurrent(tx: SqlClient, id: string, context: Context) {
-    const secured = scope(context, 'cu', 3);
+    const secured = recordScopeSql(
+      context.scopes,
+      context.anchors,
+      context.actor,
+      'cu',
+      3,
+      COMPLAINT_SCOPE,
+    );
     const row = (
       await tx.query<{
         capa_id: string;

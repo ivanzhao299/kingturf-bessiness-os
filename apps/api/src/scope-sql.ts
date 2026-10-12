@@ -129,6 +129,14 @@ export type RecordScopeOptions = Readonly<{
   companyShortCircuit?: boolean;
   /** CRM='typed'：按 TEAM/DEPARTMENT/REGION 类型清单放行锚点（不依赖 scopes）；缺省 'granted'=锚点 scope 须已授予 */
   anchorGuard?: 'granted' | 'typed';
+  /**
+   * complaint='relationshipOnly'：锚点谓词只查 organization_scope_relationships 单表
+   * （osr.tenant_id 租户校验 + osr.scope=anchor.scope；无 organizations JOIN、无组织
+   * active/deleted 与 organization_type 校验、TEAM 无 depth 限制）。
+   * 缺省 'organizationJoin'：JOIN organizations 并校验类型/租户/有效性 + TEAM depth<=1。
+   * 两形态为**真实语义差异**（complaint 原样保留，见台账 TD-SEC-006）。
+   */
+  anchorPredicate?: 'organizationJoin' | 'relationshipOnly';
 }>;
 
 export function recordScopeSql(
@@ -143,6 +151,7 @@ export function recordScopeSql(
     includeUnownedPool = false,
     companyShortCircuit = false,
     anchorGuard = 'granted',
+    anchorPredicate = 'organizationJoin',
   } = options;
   if (companyShortCircuit && (scopes.includes('GROUP') || scopes.includes('COMPANY')))
     return { sql: 'TRUE', values: [] };
@@ -160,10 +169,12 @@ export function recordScopeSql(
       (anchorGuard === 'typed'
         ? ['TEAM', 'DEPARTMENT', 'REGION'].includes(anchor.scope)
         : scopes.includes(anchor.scope));
-    if (anchorAllowed)
-      clauses.push(
-        `EXISTS(SELECT 1 FROM organizations anchor JOIN organization_scope_relationships osr ON osr.ancestor_id=anchor.id AND osr.descendant_id=${alias}.owner_organization_id${anchor.scope === 'TEAM' ? ' AND osr.depth<=1' : ''} WHERE anchor.id=$${String(offset + values.push(anchor.organizationId) - 1)} AND anchor.owner_organization_id=${alias}.tenant_id AND anchor.organization_type='${anchor.scope}' AND anchor.active AND anchor.deleted_at IS NULL)`,
-      );
+    if (!anchorAllowed) continue;
+    clauses.push(
+      anchorPredicate === 'relationshipOnly'
+        ? `EXISTS(SELECT 1 FROM organization_scope_relationships osr WHERE osr.tenant_id=${alias}.tenant_id AND osr.ancestor_id=$${String(offset + values.push(anchor.organizationId) - 1)} AND osr.descendant_id=${alias}.owner_organization_id AND osr.scope='${anchor.scope}')`
+        : `EXISTS(SELECT 1 FROM organizations anchor JOIN organization_scope_relationships osr ON osr.ancestor_id=anchor.id AND osr.descendant_id=${alias}.owner_organization_id${anchor.scope === 'TEAM' ? ' AND osr.depth<=1' : ''} WHERE anchor.id=$${String(offset + values.push(anchor.organizationId) - 1)} AND anchor.owner_organization_id=${alias}.tenant_id AND anchor.organization_type='${anchor.scope}' AND anchor.active AND anchor.deleted_at IS NULL)`,
+    );
   }
   return { sql: clauses.length ? `(${clauses.join(' OR ')})` : 'FALSE', values };
 }
