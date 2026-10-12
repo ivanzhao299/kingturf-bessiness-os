@@ -17,6 +17,7 @@ import {
   writeRiskPolicyPublishedAudit,
   writeWebsiteLeadAudit,
   writeBusinessDocumentCreateAudit,
+  writeBusinessDocumentBindingsAudit,
   writeAuthorizationAudit,
   writeTransactionalAudit,
 } from '../src/audit-outbox.js';
@@ -396,6 +397,22 @@ describe('writeAuditOutbox', () => {
       'doc-1',
       'corr-doc',
       { templateKey: 'TEMPLATE' },
+    ]);
+  });
+  it('preserves business-document.bindings-updated metadata and parameters', async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [], rowCount: 1 });
+    const metadata = { customerId: 'customer-1', subjectId: 'subject-1' };
+    await writeBusinessDocumentBindingsAudit({ query }, actor, 'doc-2', 'corr-bind', metadata);
+    expect(query).toHaveBeenCalledTimes(1);
+    expect(query.mock.calls[0]?.[1]).toEqual([
+      'business-document.bindings-updated',
+      'SUCCESS',
+      actor.employeeId,
+      actor.companyId,
+      'business-document',
+      'doc-2',
+      'corr-bind',
+      metadata,
     ]);
   });
 });

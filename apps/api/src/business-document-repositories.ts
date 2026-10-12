@@ -2,7 +2,10 @@ import { createHash } from 'node:crypto';
 import { canonicalize, DomainError, type Actor } from '@kingturf/domain';
 import type { Database } from '@kingturf/database';
 import type { DataScope, JsonObject } from '@kingturf/types';
-import { writeBusinessDocumentCreateAudit } from './audit-outbox.ts';
+import {
+  writeBusinessDocumentBindingsAudit,
+  writeBusinessDocumentCreateAudit,
+} from './audit-outbox.ts';
 
 type Context = Readonly<{
   actor: Actor;
@@ -237,10 +240,12 @@ export class PostgresBusinessDocumentRepository {
     ).rows[0];
     if (!updated)
       throw new DomainError('conflict', 'Document bindings cannot be changed in the current state');
-    await this.db.query(
-      `INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata)
-       VALUES('business-document.bindings-updated','SUCCESS',$1,$2,'business-document',$3,$4,$5)`,
-      [context.actor.employeeId, context.actor.companyId, id, correlationId, input],
+    await writeBusinessDocumentBindingsAudit(
+      this.db,
+      context.actor,
+      id,
+      correlationId,
+      input as JsonObject,
     );
     return { id, ...input };
   }
