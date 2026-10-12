@@ -6,7 +6,7 @@ import {
   hashSessionToken,
   type CredentialStore,
 } from '../src/security.js';
-import { dataScopeSql } from '../src/policy.js';
+import { dataScopeSql } from '../src/scope-sql.js';
 const options = {
   saltBytes: 16,
   keyLength: 32,

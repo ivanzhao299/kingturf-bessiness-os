@@ -13,6 +13,7 @@ import { DomainError, normalizeEmail } from '@kingturf/domain';
 import type { Database, SqlClient } from '@kingturf/database';
 import type { DataScope, EmployeeDto, OrganizationDto, PermissionKey } from '@kingturf/types';
 import type { CredentialStore } from './security.ts';
+import { employeeScopedPredicate } from './scope-sql.ts';
 
 type OrganizationRow = {
   id: string;
@@ -180,53 +181,8 @@ export class PostgresEmployeeRepository implements EmployeeRepository {
     anchors: readonly ScopeAnchor[] = [],
     startParameter = 3,
   ): { predicate: string; values: readonly unknown[] } {
-    const values: unknown[] = [];
-    const parameter = (value: string): string => {
-      values.push(value);
-      return `$${String(startParameter + values.length - 1)}`;
-    };
-    const clauses: string[] = [];
-    if (scopes.includes('GROUP') || scopes.includes('COMPANY')) clauses.push('TRUE');
-    if (scopes.includes('SELF')) clauses.push(`e.id=${parameter(actorId)}`);
-    for (const typed of ['TEAM', 'DEPARTMENT', 'REGION'] as const) {
-      if (scopes.includes(typed)) {
-        const actorParameter = parameter(actorId);
-        const companyParameter = parameter(companyId);
-        const depth = typed === 'TEAM' ? ' AND target_rel.depth<=1' : '';
-        clauses.push(
-          `EXISTS (SELECT 1 FROM employees scope_actor JOIN organizations actor_org ON actor_org.id=scope_actor.organization_id AND actor_org.owner_organization_id=scope_actor.company_id AND actor_org.active AND actor_org.deleted_at IS NULL JOIN LATERAL (SELECT actor_rel.ancestor_id FROM organization_scope_relationships actor_rel JOIN organizations typed_anchor ON typed_anchor.id=actor_rel.ancestor_id AND typed_anchor.organization_type='${typed}' AND typed_anchor.active AND typed_anchor.deleted_at IS NULL AND typed_anchor.owner_organization_id=scope_actor.company_id WHERE actor_rel.descendant_id=scope_actor.organization_id ORDER BY actor_rel.depth LIMIT 1) nearest ON true JOIN organization_scope_relationships target_rel ON target_rel.ancestor_id=nearest.ancestor_id AND target_rel.descendant_id=e.organization_id${depth} WHERE scope_actor.id=${actorParameter} AND scope_actor.company_id=${companyParameter} AND scope_actor.active AND scope_actor.deleted_at IS NULL)`,
-        );
-      }
-    }
-    for (const anchor of anchors) {
-      if (anchor.scope === 'SELF' && anchor.organizationId === null) {
-        clauses.push(`e.id = $${String(startParameter + values.length)}`);
-        values.push(actorId);
-      } else if (
-        (anchor.scope === 'COMPANY' || anchor.scope === 'GROUP') &&
-        anchor.organizationId === null
-      ) {
-        clauses.push(`e.company_id = $${String(startParameter + values.length)}`);
-        values.push(companyId);
-      } else if (
-        (anchor.scope === 'TEAM' || anchor.scope === 'DEPARTMENT' || anchor.scope === 'REGION') &&
-        anchor.organizationId !== null
-      ) {
-        const parameter = `$${String(startParameter + values.length)}`;
-        const depth = anchor.scope === 'TEAM' ? ' AND explicit_osr.depth <= 1' : '';
-        clauses.push(
-          `EXISTS (SELECT 1 FROM organizations explicit_anchor JOIN organization_scope_relationships explicit_osr ON explicit_osr.ancestor_id=explicit_anchor.id WHERE explicit_anchor.id=${parameter} AND explicit_anchor.owner_organization_id=e.company_id AND explicit_anchor.organization_type='${anchor.scope}' AND explicit_anchor.active AND explicit_anchor.deleted_at IS NULL AND explicit_osr.descendant_id=e.organization_id${depth})`,
-        );
-        values.push(anchor.organizationId);
-      }
-    }
-    const actorParameter = parameter(actorId);
-    const companyParameter = parameter(companyId);
-    const actorExists = `EXISTS (SELECT 1 FROM employees authorized_actor JOIN organizations authorized_company ON authorized_company.id=authorized_actor.company_id AND authorized_company.organization_type='COMPANY' AND authorized_company.active AND authorized_company.deleted_at IS NULL JOIN organizations authorized_org ON authorized_org.id=authorized_actor.organization_id AND authorized_org.owner_organization_id=authorized_actor.company_id AND authorized_org.active AND authorized_org.deleted_at IS NULL WHERE authorized_actor.id=${actorParameter} AND authorized_actor.company_id=${companyParameter} AND authorized_actor.active AND authorized_actor.deleted_at IS NULL)`;
-    return {
-      predicate: clauses.length === 0 ? 'FALSE' : `(${actorExists} AND (${clauses.join(' OR ')}))`,
-      values,
-    };
+    // 谓词实现已收敛至 scope-sql.ts（批次 1a，TD-DUP-001）；SQL 与迁移前逐字一致。
+    return employeeScopedPredicate(scopes, actorId, companyId, anchors, startParameter);
   }
   public async findById(
     id: string,
