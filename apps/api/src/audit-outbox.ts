@@ -318,6 +318,21 @@ export const writeBusinessDocumentSendAudit = (
     metadata,
   );
 
+export const writeBusinessDocumentConnectorAudit = (
+  tx: SqlClient,
+  actor: Actor,
+  tenantId: string,
+  connector: string,
+  correlationId: string,
+  metadata: JsonObject,
+) =>
+  tx.query(
+    `INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata)
+    VALUES('business-document.connector-configured','SUCCESS',$1,$2,'business-document-connector',
+      (SELECT id FROM business_document_connectors WHERE tenant_id=$2 AND connector=$3),$4,$5)`,
+    [actor.employeeId, tenantId, connector, correlationId, metadata],
+  );
+
 const actorOf = (value: ActorContext): Actor => ('actor' in value ? value.actor : value);
 
 /** Writes the standard audit + outbox pair inside the caller's transaction. */

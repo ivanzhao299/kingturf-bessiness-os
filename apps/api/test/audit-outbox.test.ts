@@ -21,6 +21,7 @@ import {
   writeBusinessDocumentVersionAudit,
   writeBusinessDocumentTranslationAudit,
   writeBusinessDocumentSendAudit,
+  writeBusinessDocumentConnectorAudit,
   writeAuthorizationAudit,
   writeTransactionalAudit,
 } from '../src/audit-outbox.js';
@@ -479,6 +480,27 @@ describe('writeAuditOutbox', () => {
       'business-document',
       'doc-5',
       'corr-send',
+      metadata,
+    ]);
+  });
+  it('preserves connector targetId subquery and parameter order', async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [], rowCount: 1 });
+    const metadata = { connector: 'EMAIL', provider: 'RESEND', status: 'READY', version: 2 };
+    await writeBusinessDocumentConnectorAudit(
+      { query },
+      actor,
+      actor.companyId,
+      'EMAIL',
+      'corr-connector',
+      metadata,
+    );
+    expect(query).toHaveBeenCalledTimes(1);
+    expect(query.mock.calls[0]?.[0]).toContain('SELECT id FROM business_document_connectors');
+    expect(query.mock.calls[0]?.[1]).toEqual([
+      actor.employeeId,
+      actor.companyId,
+      'EMAIL',
+      'corr-connector',
       metadata,
     ]);
   });

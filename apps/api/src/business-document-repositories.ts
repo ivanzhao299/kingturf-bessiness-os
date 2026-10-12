@@ -5,6 +5,7 @@ import type { DataScope, JsonObject } from '@kingturf/types';
 import {
   writeBusinessDocumentBindingsAudit,
   writeBusinessDocumentCreateAudit,
+  writeBusinessDocumentConnectorAudit,
   writeBusinessDocumentVersionAudit,
   writeBusinessDocumentSendAudit,
   writeBusinessDocumentTranslationAudit,
@@ -449,17 +450,18 @@ export class PostgresBusinessDocumentRepository {
         )
       ).rows[0];
       if (!row) throw new DomainError('conflict', 'Connector configuration version is stale');
-      await tx.query(
-        `INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata)
-         VALUES('business-document.connector-configured','SUCCESS',$1,$2,'business-document-connector',
-           (SELECT id FROM business_document_connectors WHERE tenant_id=$2 AND connector=$3),$4,$5)`,
-        [
-          actor.employeeId,
-          actor.companyId,
+      await writeBusinessDocumentConnectorAudit(
+        tx,
+        actor,
+        actor.companyId,
+        connector,
+        correlationId,
+        {
           connector,
-          correlationId,
-          { connector, provider: input.provider, status: input.status, version: row.item.version },
-        ],
+          provider: input.provider,
+          status: input.status,
+          version: row.item.version as number,
+        },
       );
       return row.item;
     });
