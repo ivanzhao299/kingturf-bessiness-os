@@ -1,6 +1,7 @@
 import { DomainError, type Actor, type ScopeAnchor } from '@kingturf/domain';
 import type { Database, SqlClient } from '@kingturf/database';
 import type { DataScope, JsonObject } from '@kingturf/types';
+import { recordScopeSql } from './scope-sql.ts';
 import {
   companyReadAllowed,
   fieldReadable,
@@ -17,42 +18,25 @@ type Context = Readonly<{
   sources?: Readonly<Partial<Record<Order360Source, SourceReadGrant>>>;
 }>;
 
-const customerScope = (
-  context: Pick<Context, 'actor' | 'scopes' | 'anchors'>,
-  alias = 'c',
-  offset = 3,
-) => {
-  const clauses: string[] = [];
-  const values: string[] = [];
-  if (context.scopes.includes('COMPANY') || context.scopes.includes('GROUP')) clauses.push('TRUE');
-  if (context.scopes.includes('SELF')) {
-    values.push(context.actor.employeeId);
-    clauses.push(`${alias}.owner_id=$${String(offset + values.length - 1)}`);
-  }
-  for (const anchor of context.anchors)
-    if (anchor.organizationId && context.scopes.includes(anchor.scope)) {
-      values.push(anchor.organizationId);
-      const parameter = `$${String(offset + values.length - 1)}`;
-      clauses.push(
-        `EXISTS(SELECT 1 FROM organizations anchor JOIN organization_scope_relationships osr ON osr.ancestor_id=anchor.id AND osr.descendant_id=${alias}.owner_organization_id${anchor.scope === 'TEAM' ? ' AND osr.depth<=1' : ''} WHERE anchor.id=${parameter} AND anchor.owner_organization_id=${alias}.tenant_id AND anchor.organization_type='${anchor.scope}' AND anchor.active AND anchor.deleted_at IS NULL)`,
-      );
-    }
-  return { sql: clauses.length ? `(${clauses.join(' OR ')})` : 'FALSE', values };
-};
-
 export class PostgresOrder360Repository {
   public constructor(private readonly db: Db) {}
 
   public async get(id: string, context: Context): Promise<JsonObject> {
-    const orderScope = customerScope(context);
+    const orderScope = recordScopeSql(context.scopes, context.anchors, context.actor, 'c', 3);
     const entryScope = context.entry
-      ? customerScope({ actor: context.actor, ...context.entry }, 'c', 3 + orderScope.values.length)
+      ? recordScopeSql(
+          context.entry.scopes,
+          context.entry.anchors,
+          context.actor,
+          'c',
+          3 + orderScope.values.length,
+        )
       : { sql: 'TRUE', values: [] };
     const secured = {
       sql: `(${orderScope.sql}) AND (${entryScope.sql})`,
       values: [...orderScope.values, ...entryScope.values],
     };
-    const values: string[] = [...secured.values];
+    const values: unknown[] = [...secured.values];
     const source = (name: Order360Source): string => {
       const grant = context.sources?.[name];
       if (!grant) return 'FALSE';
@@ -62,7 +46,13 @@ export class PostgresOrder360Repository {
         return companyReadAllowed(grant) ? 'TRUE' : 'FALSE';
       const commercial = ['opportunity', 'technical', 'cost', 'policy', 'quote'].includes(name);
       const alias = commercial ? 'source_op' : 'source_c';
-      const scope = customerScope({ actor: context.actor, ...grant }, alias, 3 + values.length);
+      const scope = recordScopeSql(
+        grant.scopes,
+        grant.anchors,
+        context.actor,
+        alias,
+        3 + values.length,
+      );
       values.push(...scope.values);
       return `EXISTS(SELECT 1 FROM ${commercial ? 'opportunities' : 'customers'} ${alias} WHERE ${alias}.id=o.${commercial ? 'opportunity_id' : 'customer_id'} AND ${alias}.tenant_id=o.tenant_id AND ${alias}.deleted_at IS NULL AND ${scope.sql})`;
     };
