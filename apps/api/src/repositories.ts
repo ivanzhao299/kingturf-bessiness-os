@@ -11,9 +11,16 @@ import type {
 } from '@kingturf/domain';
 import { DomainError, normalizeEmail } from '@kingturf/domain';
 import type { Database, SqlClient } from '@kingturf/database';
-import type { DataScope, EmployeeDto, OrganizationDto, PermissionKey } from '@kingturf/types';
+import type {
+  DataScope,
+  EmployeeDto,
+  OrganizationDto,
+  PermissionKey,
+  JsonObject,
+} from '@kingturf/types';
 import type { CredentialStore } from './security.ts';
 import { employeeScopedPredicate } from './scope-sql.ts';
+import { writeAuthorizationAudit, writeTransactionalAudit } from './audit-outbox.ts';
 
 type OrganizationRow = {
   id: string;
@@ -483,19 +490,10 @@ export class PostgresSecurityStore implements CredentialStore, AuditSink {
     });
   }
   public async record(event: AuditEvent): Promise<void> {
-    await this.database.query(
-      'INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata) VALUES($1,$2,$3,$4,$5,$6,$7,$8)',
-      [
-        event.action,
-        event.outcome,
-        event.actorId,
-        event.organizationId,
-        event.targetType,
-        event.targetId,
-        event.correlationId,
-        event.metadata ?? {},
-      ],
-    );
+    await writeAuthorizationAudit(this.database, {
+      ...event,
+      metadata: (event.metadata ?? {}) as JsonObject,
+    });
   }
 }
 
@@ -867,17 +865,4 @@ export class PostgresAuthorizationRepository implements AuthorizationRepository 
     });
   }
 }
-async function auditTx(
-  tx: SqlClient,
-  action: string,
-  actor: { employeeId: string; companyId: string },
-  targetType: string,
-  targetId: string,
-  correlationId: string,
-  metadata: Record<string, unknown>,
-): Promise<void> {
-  await tx.query(
-    "INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata) VALUES($1,'SUCCESS',$2,$3,$4,$5,$6,$7)",
-    [action, actor.employeeId, actor.companyId, targetType, targetId, correlationId, metadata],
-  );
-}
+const auditTx = writeTransactionalAudit;

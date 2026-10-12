@@ -176,6 +176,53 @@ export const writeWebsiteLeadAudit = (
     { externalRef, source: 'WEBSITE' },
   );
 
+export const writeAuthorizationAudit = (
+  db: SqlClient,
+  event: Readonly<{
+    action: string;
+    outcome: string;
+    actorId: string | null;
+    organizationId: string | null;
+    targetType: string | null;
+    targetId: string | null;
+    correlationId: string;
+    metadata: JsonObject;
+  }>,
+) =>
+  db.query(
+    'INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata) VALUES($1,$2,$3,$4,$5,$6,$7,$8)',
+    [
+      event.action,
+      event.outcome,
+      event.actorId,
+      event.organizationId,
+      event.targetType,
+      event.targetId,
+      event.correlationId,
+      event.metadata,
+    ],
+  );
+export const writeTransactionalAudit = (
+  tx: SqlClient,
+  action: string,
+  actor: Actor,
+  targetType: string,
+  targetId: string,
+  correlationId: string,
+  metadata: Record<string, unknown>,
+) =>
+  writeAuditEvent(
+    tx,
+    action,
+    'SUCCESS',
+    actor.employeeId,
+    actor.companyId,
+    targetType,
+    targetId,
+    correlationId,
+    metadata as JsonObject,
+  );
+
 const actorOf = (value: ActorContext): Actor => ('actor' in value ? value.actor : value);
 
 /** Writes the standard audit + outbox pair inside the caller's transaction. */

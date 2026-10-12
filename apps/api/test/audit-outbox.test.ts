@@ -16,6 +16,8 @@ import {
   writeRiskPolicyRevisedAudit,
   writeRiskPolicyPublishedAudit,
   writeWebsiteLeadAudit,
+  writeAuthorizationAudit,
+  writeTransactionalAudit,
 } from '../src/audit-outbox.js';
 
 const actor: Actor = {
@@ -347,6 +349,37 @@ describe('writeAuditOutbox', () => {
       'lead-1',
       'corr-web',
       { externalRef: 'external-1', source: 'WEBSITE' },
+    ]);
+  });
+  it('preserves repositories dynamic-outcome and transactional audit shapes', async () => {
+    const db = vi.fn().mockResolvedValue({ rows: [], rowCount: 1 });
+    await writeAuthorizationAudit(
+      { query: db },
+      {
+        action: 'a',
+        outcome: 'FAILURE',
+        actorId: 'e',
+        organizationId: 'o',
+        targetType: 't',
+        targetId: 'i',
+        correlationId: 'c',
+        metadata: {},
+      },
+    );
+    expect(db).toHaveBeenCalledTimes(1);
+    expect(db.mock.calls[0]?.[1]).toEqual(['a', 'FAILURE', 'e', 'o', 't', 'i', 'c', {}]);
+    const tx = vi.fn().mockResolvedValue({ rows: [], rowCount: 1 });
+    await writeTransactionalAudit({ query: tx }, 'a2', actor, 't2', 'i2', 'c2', { ok: true });
+    expect(tx).toHaveBeenCalledTimes(1);
+    expect(tx.mock.calls[0]?.[1]).toEqual([
+      'a2',
+      'SUCCESS',
+      actor.employeeId,
+      actor.companyId,
+      't2',
+      'i2',
+      'c2',
+      { ok: true },
     ]);
   });
 });
