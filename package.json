@@ -8,17 +8,20 @@
     "pnpm": "10.33.4"
   },
   "scripts": {
+    "prepare": "git rev-parse --git-dir >/dev/null 2>&1 && git config core.hooksPath .githooks || true",
     "dev": "pnpm --parallel --filter @kingturf/web --filter @kingturf/api dev",
-    "lint": "eslint scripts/validate_release*.mjs && pnpm exec eslint tests/e2e/runtime-local.spec.mjs playwright.runtime.config.ts && pnpm -r lint",
+    "lint": "eslint scripts/validate_release*.mjs scripts/analysis/*.mjs && pnpm exec eslint tests/e2e/runtime-local.spec.mjs playwright.runtime.config.ts && pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm test:release-guardrails && pnpm -r test",
-    "test:release-guardrails": "node --test scripts/validate_release.test.mjs && PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests/operations -p \"*_test.py\"",
+    "test:release-guardrails": "node --test scripts/validate_release.test.mjs && node --test scripts/analysis/structure-gate.test.mjs && PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests/operations -p \"*_test.py\"",
     "build": "pnpm -r build",
     "db:migrate": "pnpm --filter @kingturf/database db:migrate",
     "db:status": "pnpm --filter @kingturf/database db:status",
     "db:test": "pnpm --filter @kingturf/database db:test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "doc:lint": "node scripts/analysis/doc-lint.mjs",
+    "structure:check": "node scripts/analysis/structure-gate.mjs --report",
     "security:check": "npm_config_fetch_timeout=30000 npm_config_fetch_retries=1 pnpm audit --prod --audit-level high",
     "demo:verify": "node scripts/verify_p1_demo.mjs",
     "demo:seed": "node scripts/seed_p1_demo.mjs",
@@ -27,7 +30,7 @@
     "e2e:production:roles": "playwright test tests/e2e/production-role-uat.spec.ts",
     "verify:frontend-capabilities": "node scripts/verify_frontend_capability_manifest.mjs",
     "ci:database:guard": "NODE_ENV=test pnpm --filter @kingturf/database exec node --experimental-strip-types src/cli.ts guard-test-target",
-    "ci:local": "NODE_ENV=test sh -c 'pnpm install --frozen-lockfile && pnpm format:check && pnpm verify:frontend-capabilities && pnpm ci:database:guard && pnpm db:migrate && pnpm db:status && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm security:check'"
+    "ci:local": "NODE_ENV=test sh -c 'pnpm install --frozen-lockfile && pnpm format:check && pnpm doc:lint && pnpm structure:check && pnpm verify:frontend-capabilities && pnpm ci:database:guard && pnpm db:migrate && pnpm db:status && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm security:check'"
   },
   "devDependencies": {
     "@eslint/js": "9.39.4",

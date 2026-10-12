@@ -1,0 +1,21 @@
+#!/bin/sh
+# 提交信息门禁（零依赖，等效 commitlint）：Conventional Commits 强制。
+# 放行形态：conventional 前缀 / Merge 提交 / Revert 提交。
+# 跳过（仅限紧急）：git commit --no-verify。
+set -eu
+MSG_FILE="$1"
+HEAD=$(head -n 1 "$MSG_FILE")
+
+if echo "$HEAD" | grep -qE '^(feat|fix|perf|refactor|test|docs|build|ci|chore|style|revert)(\([a-zA-Z0-9_/-]+\))?!?: .+'; then
+  exit 0
+fi
+if echo "$HEAD" | grep -qE '^(Merge |Revert )'; then
+  exit 0
+fi
+
+echo "✗ commit-msg：提交信息不符合 Conventional Commits：" >&2
+echo "  「$HEAD」" >&2
+echo "  修复：格式为 <类型>(<范围>)?: <一句话说明>，类型取值" >&2
+echo "        feat|fix|perf|refactor|test|docs|build|ci|chore|style|revert" >&2
+echo "  示例：fix(web): 修正登录画布在超高视口下的贴边" >&2
+exit 1

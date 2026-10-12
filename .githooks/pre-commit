@@ -1,0 +1,26 @@
+#!/bin/sh
+# 提交前门禁（零依赖，等效 lint-staged）：暂存文件必须过 prettier 与 eslint。
+# 跳过（仅限紧急）：git commit --no-verify，并在后续提交中补修复。
+set -eu
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ts|mjs|css|md|json)$' || true)
+if [ -z "$STAGED" ]; then
+  exit 0
+fi
+
+if ! echo "$STAGED" | xargs npx prettier --check >/dev/null 2>&1; then
+  echo "✗ pre-commit：暂存文件未通过 prettier。" >&2
+  echo "  修复：npx prettier --write <文件>  后重新 git add。" >&2
+  echo "  查看明细：echo \"<文件>\" | xargs npx prettier --check" >&2
+  exit 1
+fi
+
+TS_STAGED=$(echo "$STAGED" | grep -E '\.(ts|mjs)$' || true)
+if [ -n "$TS_STAGED" ]; then
+  if ! echo "$TS_STAGED" | xargs npx eslint --no-warn-ignored >/dev/null 2>&1; then
+    echo "✗ pre-commit：暂存的 TS/MJS 文件未通过 eslint。" >&2
+    echo "  修复：echo \"<文件>\" | xargs npx eslint --no-warn-ignored 查看明细，修正后重新 git add。" >&2
+    exit 1
+  fi
+fi
+exit 0
