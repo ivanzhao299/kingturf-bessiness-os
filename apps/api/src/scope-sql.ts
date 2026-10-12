@@ -117,27 +117,53 @@ export function employeeScopedPredicate(
 }
 
 /**
- * 业务记录域变体（原 commercial-repositories.ts 的 scope）：owner_id/owner_organization_id
- * 基础 + 锚点 EXISTS（TEAM 含 depth<=1）+ 租户校验（alias.tenant_id）。
- * alias 为表别名（commercial 传 'o'）；SQL 与迁移前逐字一致。
- * 锚点仅在「有 organizationId 且其 scope 已授予」时生效（沿用 commercial 原语义）。
+ * 业务记录域变体：owner_id/owner_organization_id 基础 + 锚点 EXISTS（TEAM 含 depth<=1）
+ * + 租户校验（alias.tenant_id）。alias 为表别名（commercial 'o' / crm 'c'|'l'|'op'）。
+ * 域间差异以显式选项 RecordScopeOptions 表达（见其注释）；缺省行为与 commercial 原
+ * 实现逐字一致（SQL 字节不变，由 scope-sql-commercial.test.ts 的快照对拍守护）。
  */
+export type RecordScopeOptions = Readonly<{
+  /** CRM：SELF 时附带无主池子句 (alias.status='POOL' AND alias.owner_id IS NULL) */
+  includeUnownedPool?: boolean;
+  /** CRM：GROUP/COMPANY 直接短路返回 TRUE；缺省并入 OR 子句（commercial） */
+  companyShortCircuit?: boolean;
+  /** CRM='typed'：按 TEAM/DEPARTMENT/REGION 类型清单放行锚点（不依赖 scopes）；缺省 'granted'=锚点 scope 须已授予 */
+  anchorGuard?: 'granted' | 'typed';
+}>;
+
 export function recordScopeSql(
   scopes: readonly DataScope[],
   anchors: readonly ScopeAnchor[],
   actor: Actor,
   alias: string,
   offset: number,
+  options: RecordScopeOptions = {},
 ): { sql: string; values: readonly unknown[] } {
+  const {
+    includeUnownedPool = false,
+    companyShortCircuit = false,
+    anchorGuard = 'granted',
+  } = options;
+  if (companyShortCircuit && (scopes.includes('GROUP') || scopes.includes('COMPANY')))
+    return { sql: 'TRUE', values: [] };
   const clauses: string[] = [];
   const values: unknown[] = [];
-  if (scopes.includes('COMPANY') || scopes.includes('GROUP')) clauses.push('TRUE');
+  if (!companyShortCircuit && (scopes.includes('COMPANY') || scopes.includes('GROUP')))
+    clauses.push('TRUE');
   if (scopes.includes('SELF'))
     clauses.push(`${alias}.owner_id=$${String(offset + values.push(actor.employeeId) - 1)}`);
-  for (const anchor of anchors)
-    if (anchor.organizationId && scopes.includes(anchor.scope))
+  if (includeUnownedPool && scopes.includes('SELF'))
+    clauses.push(`(${alias}.status='POOL' AND ${alias}.owner_id IS NULL)`);
+  for (const anchor of anchors) {
+    const anchorAllowed =
+      anchor.organizationId &&
+      (anchorGuard === 'typed'
+        ? ['TEAM', 'DEPARTMENT', 'REGION'].includes(anchor.scope)
+        : scopes.includes(anchor.scope));
+    if (anchorAllowed)
       clauses.push(
         `EXISTS(SELECT 1 FROM organizations anchor JOIN organization_scope_relationships osr ON osr.ancestor_id=anchor.id AND osr.descendant_id=${alias}.owner_organization_id${anchor.scope === 'TEAM' ? ' AND osr.depth<=1' : ''} WHERE anchor.id=$${String(offset + values.push(anchor.organizationId) - 1)} AND anchor.owner_organization_id=${alias}.tenant_id AND anchor.organization_type='${anchor.scope}' AND anchor.active AND anchor.deleted_at IS NULL)`,
       );
+  }
   return { sql: clauses.length ? `(${clauses.join(' OR ')})` : 'FALSE', values };
 }

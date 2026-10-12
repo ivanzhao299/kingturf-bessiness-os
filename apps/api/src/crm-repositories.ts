@@ -10,6 +10,7 @@ import {
   type ScopeAnchor,
 } from '@kingturf/domain';
 import type { Database, SqlClient } from '@kingturf/database';
+import { recordScopeSql, type RecordScopeOptions } from './scope-sql.ts';
 import type {
   ActivityDto,
   ContactDto,
@@ -156,34 +157,14 @@ const opportunity = (r: OpportunityRow): OpportunityDto => ({
   createdAt: timestamp(r.created_at),
   updatedAt: timestamp(r.updated_at),
 });
-const scope = (
-  scopes: readonly DataScope[],
-  anchors: readonly ScopeAnchor[],
-  actor: Actor,
-  alias: string,
-  start: number,
-  includeUnownedPool = false,
-) => {
-  if (scopes.includes('GROUP') || scopes.includes('COMPANY'))
-    return { sql: 'TRUE', values: [] as unknown[] };
-  const clauses: string[] = [];
-  const values: unknown[] = [];
-  const p = (v: unknown) => {
-    values.push(v);
-    return `$${String(start + values.length - 1)}`;
-  };
-  if (scopes.includes('SELF')) clauses.push(`${alias}.owner_id=${p(actor.employeeId)}`);
-  if (includeUnownedPool && scopes.includes('SELF'))
-    clauses.push(`(${alias}.status='POOL' AND ${alias}.owner_id IS NULL)`);
-  for (const a of anchors)
-    if (a.organizationId && ['TEAM', 'DEPARTMENT', 'REGION'].includes(a.scope)) {
-      const anchorId = p(a.organizationId);
-      const depth = a.scope === 'TEAM' ? ' AND scoped.depth<=1' : '';
-      clauses.push(
-        `EXISTS (SELECT 1 FROM organizations anchor JOIN organization_scope_relationships scoped ON scoped.ancestor_id=anchor.id AND scoped.descendant_id=${alias}.owner_organization_id${depth} WHERE anchor.id=${anchorId} AND anchor.owner_organization_id=${alias}.tenant_id AND anchor.organization_type='${a.scope}' AND anchor.active AND anchor.deleted_at IS NULL)`,
-      );
-    }
-  return { sql: clauses.length ? `(${clauses.join(' OR ')})` : 'FALSE', values };
+// 数据范围谓词已收敛至 scope-sql.ts 的 recordScopeSql（批次 1b，TD-DUP-001）。
+// CRM 语义差异以显式选项表达：GROUP/COMPANY 短路、锚点按类型清单放行、SELF 可附无主池子句。
+// 与迁移前的两处纯外观差异（EXISTS 后空格、关联别名 scoped→osr）不影响语义，见 scope-sql-crm.test.ts 对拍说明。
+const CRM_SCOPE: RecordScopeOptions = { companyShortCircuit: true, anchorGuard: 'typed' };
+const CRM_SCOPE_POOL: RecordScopeOptions = {
+  companyShortCircuit: true,
+  anchorGuard: 'typed',
+  includeUnownedPool: true,
 };
 async function auditEvent(
   tx: SqlClient,
@@ -230,7 +211,14 @@ export class PostgresCrmRepository {
     includeUnownedPool = false,
   ): Promise<CustomerRow | LeadRow> {
     const alias = table === 'customers' ? 'c' : 'l';
-    const authorized = scope(scopes, anchors, actor, alias, 3, includeUnownedPool);
+    const authorized = recordScopeSql(
+      scopes,
+      anchors,
+      actor,
+      alias,
+      3,
+      includeUnownedPool ? CRM_SCOPE_POOL : CRM_SCOPE,
+    );
     const row = (
       await tx.query<CustomerRow | LeadRow>(
         `SELECT ${alias}.* FROM ${table} ${alias} WHERE ${alias}.id=$1 AND ${alias}.tenant_id=$2 AND ${alias}.deleted_at IS NULL AND ${authorized.sql} FOR UPDATE`,
@@ -249,7 +237,7 @@ export class PostgresCrmRepository {
     scopes: readonly DataScope[],
     anchors: readonly ScopeAnchor[],
   ) {
-    const s = scope(scopes, anchors, actor, 'c', 2);
+    const s = recordScopeSql(scopes, anchors, actor, 'c', 2, CRM_SCOPE);
     return (
       await this.db.query<CustomerRow>(
         `SELECT c.* FROM customers c WHERE c.tenant_id=$1 AND c.deleted_at IS NULL AND ${s.sql} ORDER BY c.updated_at DESC,c.id LIMIT 100`,
@@ -263,7 +251,7 @@ export class PostgresCrmRepository {
     scopes: readonly DataScope[],
     anchors: readonly ScopeAnchor[],
   ) {
-    const s = scope(scopes, anchors, actor, 'c', 3);
+    const s = recordScopeSql(scopes, anchors, actor, 'c', 3, CRM_SCOPE);
     const r = (
       await this.db.query<CustomerRow>(
         `SELECT c.* FROM customers c WHERE c.id=$1 AND c.tenant_id=$2 AND c.deleted_at IS NULL AND ${s.sql}`,
@@ -422,7 +410,14 @@ export class PostgresCrmRepository {
     anchors: readonly ScopeAnchor[],
     pool = false,
   ) {
-    const authorized = scope(scopes, anchors, actor, 'l', 2, pool);
+    const authorized = recordScopeSql(
+      scopes,
+      anchors,
+      actor,
+      'l',
+      2,
+      pool ? CRM_SCOPE_POOL : CRM_SCOPE,
+    );
     const predicate = pool ? `(l.status='POOL' AND ${authorized.sql})` : authorized.sql;
     return (
       await this.db.query<LeadRow>(
@@ -823,10 +818,17 @@ export class PostgresCrmRepository {
       ? await this.findCustomer(id, actor, sections.activities.scopes, sections.activities.anchors)
       : null;
     const leadScope = sections.leads
-      ? scope(sections.leads.scopes, sections.leads.anchors, actor, 'l', 3)
+      ? recordScopeSql(sections.leads.scopes, sections.leads.anchors, actor, 'l', 3, CRM_SCOPE)
       : null;
     const opportunityScope = sections.opportunities
-      ? scope(sections.opportunities.scopes, sections.opportunities.anchors, actor, 'op', 3)
+      ? recordScopeSql(
+          sections.opportunities.scopes,
+          sections.opportunities.anchors,
+          actor,
+          'op',
+          3,
+          CRM_SCOPE,
+        )
       : null;
     const [contacts, ownership, leads, opportunities, activities] = await Promise.all([
       this.db.query<ContactRow>(
