@@ -28,6 +28,7 @@ import {
   writeBusinessDocumentDispatchOutbox,
   writeFoundationEmptyAudit,
   writeFoundationDomainEventAudit,
+  enqueueDomainEventOutbox,
   writeAuthorizationAudit,
   writeTransactionalAudit,
 } from '../src/audit-outbox.js';
@@ -634,6 +635,37 @@ describe('writeAuditOutbox', () => {
       actor.employeeId,
       'corr-dispatch',
       'EMAIL',
+    ]);
+  });
+  it('preserves foundation domain event outbox RETURNING and causation parameters', async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [{ id: 'event-1' }], rowCount: 1 });
+    const input = {
+      tenantId: actor.companyId,
+      eventType: 'x',
+      eventVersion: 2,
+      aggregateType: 'a',
+      aggregateId: 'a-1',
+      aggregateVersion: 3,
+      occurredAt: '2026-10-13T00:00:00Z',
+      actorId: actor.employeeId,
+      correlationId: 'corr-outbox',
+      causationId: 'cause-1',
+      payload: { ok: true },
+    };
+    await expect(enqueueDomainEventOutbox({ query }, input)).resolves.toBe('event-1');
+    expect(query.mock.calls[0]?.[0]).toContain('RETURNING id');
+    expect(query.mock.calls[0]?.[1]).toEqual([
+      input.tenantId,
+      input.eventType,
+      input.eventVersion,
+      input.aggregateType,
+      input.aggregateId,
+      input.aggregateVersion,
+      input.occurredAt,
+      input.actorId,
+      input.correlationId,
+      input.causationId,
+      input.payload,
     ]);
   });
 });

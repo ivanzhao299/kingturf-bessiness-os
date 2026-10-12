@@ -433,6 +433,43 @@ export const writeBusinessDocumentDispatchOutbox = (
     [tenantId, dispatchId, actorId, correlationId, channel],
   );
 
+export async function enqueueDomainEventOutbox(
+  tx: SqlClient,
+  input: Readonly<{
+    tenantId: string;
+    eventType: string;
+    eventVersion: number;
+    aggregateType: string;
+    aggregateId: string;
+    aggregateVersion: number;
+    occurredAt: string;
+    actorId: string | null;
+    correlationId: string;
+    causationId: string | null;
+    payload: JsonObject;
+  }>,
+): Promise<string> {
+  const result = await tx.query<{ id: string }>(
+    'INSERT INTO domain_event_outbox(tenant_id,event_type,event_version,aggregate_type,aggregate_id,aggregate_version,occurred_at,actor_id,correlation_id,causation_id,payload) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id',
+    [
+      input.tenantId,
+      input.eventType,
+      input.eventVersion,
+      input.aggregateType,
+      input.aggregateId,
+      input.aggregateVersion,
+      input.occurredAt,
+      input.actorId,
+      input.correlationId,
+      input.causationId,
+      input.payload,
+    ],
+  );
+  const row = result.rows[0];
+  if (!row) throw new Error('Domain event outbox insert returned no id');
+  return row.id;
+}
+
 const actorOf = (value: ActorContext): Actor => ('actor' in value ? value.actor : value);
 
 /** Writes the standard audit + outbox pair inside the caller's transaction. */

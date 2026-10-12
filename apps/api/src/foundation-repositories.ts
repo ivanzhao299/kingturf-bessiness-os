@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import type { Database, Transaction } from '@kingturf/database';
 import { employeeScopedPredicate, type EmployeeScopeOptions } from './scope-sql.ts';
 import { writeFoundationEmptyAudit as audit } from './audit-outbox.ts';
+import { enqueueDomainEventOutbox } from './audit-outbox.ts';
 import { writeFoundationDomainEventAudit as operationalAudit } from './audit-outbox.ts';
 import {
   assertStableCode,
@@ -44,23 +45,7 @@ export class PostgresTransactionalEventPublisher implements EventPublisher {
     tx: Transaction,
     input: Omit<DomainEventEnvelope, 'eventId'>,
   ): Promise<string> {
-    const result = await tx.query<{ id: string }>(
-      'INSERT INTO domain_event_outbox(tenant_id,event_type,event_version,aggregate_type,aggregate_id,aggregate_version,occurred_at,actor_id,correlation_id,causation_id,payload) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id',
-      [
-        input.tenantId,
-        input.eventType,
-        input.eventVersion,
-        input.aggregateType,
-        input.aggregateId,
-        input.aggregateVersion,
-        input.occurredAt,
-        input.actorId,
-        input.correlationId,
-        input.causationId,
-        input.payload,
-      ],
-    );
-    return result.rows[0]!.id;
+    return enqueueDomainEventOutbox(tx, input);
   }
 }
 
