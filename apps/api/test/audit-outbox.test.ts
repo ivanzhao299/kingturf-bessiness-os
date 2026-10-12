@@ -22,6 +22,7 @@ import {
   writeBusinessDocumentTranslationAudit,
   writeBusinessDocumentSendAudit,
   writeBusinessDocumentConnectorAudit,
+  writeBusinessDocumentReviewAudit,
   writeAuthorizationAudit,
   writeTransactionalAudit,
 } from '../src/audit-outbox.js';
@@ -501,6 +502,29 @@ describe('writeAuditOutbox', () => {
       actor.companyId,
       'EMAIL',
       'corr-connector',
+      metadata,
+    ]);
+  });
+  it('preserves dynamic business-document review action and reason metadata', async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [], rowCount: 1 });
+    const metadata = { version: 3, reason: 'approved by reviewer' };
+    await writeBusinessDocumentReviewAudit(
+      { query },
+      actor,
+      'doc-6',
+      'APPROVED',
+      'corr-review',
+      metadata,
+    );
+    expect(query).toHaveBeenCalledTimes(1);
+    expect(query.mock.calls[0]?.[1]).toEqual([
+      'business-document.approved',
+      'SUCCESS',
+      actor.employeeId,
+      actor.companyId,
+      'business-document',
+      'doc-6',
+      'corr-review',
       metadata,
     ]);
   });

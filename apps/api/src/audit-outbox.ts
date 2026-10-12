@@ -333,6 +333,26 @@ export const writeBusinessDocumentConnectorAudit = (
     [actor.employeeId, tenantId, connector, correlationId, metadata],
   );
 
+export const writeBusinessDocumentReviewAudit = (
+  tx: SqlClient,
+  actor: Actor,
+  documentId: string,
+  action: string,
+  correlationId: string,
+  metadata: JsonObject,
+) =>
+  writeAuditEvent(
+    tx,
+    `business-document.${action.toLowerCase()}`,
+    'SUCCESS',
+    actor.employeeId,
+    actor.companyId,
+    'business-document',
+    documentId,
+    correlationId,
+    metadata,
+  );
+
 const actorOf = (value: ActorContext): Actor => ('actor' in value ? value.actor : value);
 
 /** Writes the standard audit + outbox pair inside the caller's transaction. */

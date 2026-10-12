@@ -8,6 +8,7 @@ import {
   writeBusinessDocumentConnectorAudit,
   writeBusinessDocumentVersionAudit,
   writeBusinessDocumentSendAudit,
+  writeBusinessDocumentReviewAudit,
   writeBusinessDocumentTranslationAudit,
 } from './audit-outbox.ts';
 
@@ -357,18 +358,10 @@ export class PostgresBusinessDocumentRepository {
          VALUES($1,$2,$3,$4,$5,$6)`,
         [actor.companyId, id, input.expectedVersion, input.action, input.reason, actor.employeeId],
       );
-      await tx.query(
-        `INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata)
-         VALUES($1,'SUCCESS',$2,$3,'business-document',$4,$5,$6)`,
-        [
-          `business-document.${input.action.toLowerCase()}`,
-          actor.employeeId,
-          actor.companyId,
-          id,
-          correlationId,
-          { version: input.expectedVersion, reason: input.reason },
-        ],
-      );
+      await writeBusinessDocumentReviewAudit(tx, actor, id, input.action, correlationId, {
+        version: input.expectedVersion,
+        reason: input.reason,
+      });
       return { id, state: nextState, currentVersion: input.expectedVersion };
     });
   }
