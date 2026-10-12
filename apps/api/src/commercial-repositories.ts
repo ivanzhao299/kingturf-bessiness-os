@@ -14,6 +14,11 @@ import {
 } from '@kingturf/domain';
 import type { Database, SqlClient } from '@kingturf/database';
 import { recordScopeSql } from './scope-sql.ts';
+import {
+  replayCommercialCommand,
+  retainCommercialCommand,
+  type CommandResultIdentity,
+} from './command-results.ts';
 import { writeCommercialEvidence as evidence } from './audit-outbox.ts';
 import type {
   CostEngineInput,
@@ -63,12 +68,7 @@ const dto = (row: OpportunityRow): OpportunityDto => ({
 });
 // 数据范围谓词已收敛至 scope-sql.ts 的 recordScopeSql（批次 1b，TD-DUP-001）；SQL 与迁移前逐字一致（alias='o'）。
 
-type CommandIdentity = Readonly<{
-  type: string;
-  subjectId: string;
-  actorId: string;
-  requestHash: string;
-}>;
+type CommandIdentity = CommandResultIdentity;
 const commandIdentity = (type: string, subjectId: string, actor: Actor, request: unknown) => ({
   type,
   subjectId,
@@ -80,49 +80,14 @@ const replayCommand = async (
   tenantId: string,
   key: string,
   identity: CommandIdentity,
-): Promise<JsonObject | null> => {
-  await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [`${tenantId}:${key}`]);
-  const retained = (
-    await tx.query<{
-      command_type: string;
-      subject_id: string;
-      actor_id: string;
-      request_hash: string;
-      payload: JsonObject;
-    }>(
-      'SELECT command_type,subject_id,actor_id,request_hash,payload FROM commercial_command_results WHERE tenant_id=$1 AND idempotency_key=$2',
-      [tenantId, key],
-    )
-  ).rows[0];
-  if (!retained) return null;
-  if (
-    retained.command_type !== identity.type ||
-    retained.subject_id !== identity.subjectId ||
-    retained.actor_id !== identity.actorId ||
-    retained.request_hash !== identity.requestHash
-  )
-    throw new DomainError('conflict', 'Idempotency key is bound to another command');
-  return retained.payload;
-};
+): Promise<JsonObject | null> => replayCommercialCommand<JsonObject>(tx, tenantId, key, identity);
 const retainCommand = (
   tx: SqlClient,
   tenantId: string,
   key: string,
   identity: CommandIdentity,
   payload: JsonObject,
-) =>
-  tx.query(
-    'INSERT INTO commercial_command_results(tenant_id,idempotency_key,command_type,subject_id,actor_id,request_hash,payload) VALUES($1,$2,$3,$4,$5,$6,$7)',
-    [
-      tenantId,
-      key,
-      identity.type,
-      identity.subjectId,
-      identity.actorId,
-      identity.requestHash,
-      payload,
-    ],
-  );
+) => retainCommercialCommand(tx, tenantId, key, identity, payload);
 
 export class PostgresCommercialRepository {
   public constructor(private readonly db: Db) {}
