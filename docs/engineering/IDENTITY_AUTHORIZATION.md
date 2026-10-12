@@ -28,11 +28,11 @@ Production deployment, push/merge automation, sales features, manufacturing feat
 
 ## Authorization administration and audit guarantees
 
-Authenticated administration is aggregated at `GET /api/v1/user-access-profiles` (requires `identity:read` or `authorization:read`) and its `PATCH` path (requires `identity:manage` or `authorization:manage`; field allowlist is `active` and `revokeSessions`), implemented in `app.ts` with `apps/api/src/aggregate-authorization.ts`. Audit querying is available at `GET /api/v1/audit-events` (requires `audit:read`). The default is deny. Request fields are validated before repository calls. Repository lookups qualify tenant-owned roles and employees, and PostgreSQL rejects foreign, inactive, deleted, wrongly typed, or incorrectly null scope anchors.
+Authenticated administration consists of three endpoints (implemented in `app.ts` with `apps/api/src/aggregate-authorization.ts`): `GET /api/v1/user-access-profiles` (requires `identity:read` or `authorization:read`), `PATCH /api/v1/identities/{identityId}/state` (requires `identity:manage` or `authorization:manage`; field allowlist is `active` and `revokeSessions`), and `GET /api/v1/audit-events` (requires `audit:read`). The default is deny. Request fields are validated before repository calls. Repository lookups qualify tenant-owned roles and employees, and PostgreSQL rejects foreign, inactive, deleted, wrongly typed, or incorrectly null scope anchors.
 
 Authorization mutations insert an audit event in the same transaction as the business mutation. Events contain actor, tenant organization, action, target, correlation ID, server timestamp, outcome, and safe metadata. Database triggers reject updates and deletes of audit events.
 
-> 2026-10-12 更正（阶段 2b 抽查）：本节原描述的五个管理端点 `/api/v1/roles`、`/permissions`、`/grants`、`/assignments`、`/scope-grants` 已不存在——授权管理面已收敛为 `user-access-profiles` 聚合端点 + `audit-events` 查询，本节按当前代码重写。
+> 2026-10-12 更正（阶段 2b 抽查，含复核修订）：本节原描述的五个管理端点 `/api/v1/roles`、`/permissions`、`/grants`、`/assignments`、`/scope-grants` 已不存在——授权管理面现为 `GET /api/v1/user-access-profiles`、`PATCH /api/v1/identities/{identityId}/state`、`GET /api/v1/audit-events` 三个端点（app.ts:5329-5356），本节按当前代码重写。
 
 ## Migration integrity recovery
 

@@ -1,7 +1,7 @@
 # docs/index.md（全部文档索引）
 
 > **作用**：docs/ 下每个 Markdown 文件都在本索引中，且每个链接可解析（校验：`node scripts/analysis/doc-lint.mjs`）。
-> **状态标注**（D4 已裁决，2026-10-12，方案 A 轻触式）：`常驻`＝长期保留并随代码更新；`已归档-只读`＝完成记录/历史快照，原位保留、不再更新、勿删（R5）；物理归档（git mv 到 archive/）暂不执行，若未来出现检索痛点再升级。
+> **状态标注**（D4 已裁决，2026-10-12，方案 A 轻触式）：`常驻`＝长期保留并随代码更新（全库共 50 项）；`已归档-只读`＝完成记录/历史快照，原位保留、不再更新、勿删（R5，全库共 54 项）；物理归档（git mv 到 archive/）暂不执行，若未来出现检索痛点再升级。
 > **新鲜度**：常驻文档最近核验 2026-10-12（基线 `779dea3`）；归档文档标注原始日期。新增文档必须同步登记到本索引，否则 doc-lint 失败。
 
 ## 常驻入口（根与 docs 顶层）
@@ -16,7 +16,7 @@
 | [QUALITY_SCORE.md](QUALITY_SCORE.md)                                             | 按域质量评分（可复算依据）                                     | 常驻                    |
 | [design-docs/core-beliefs.md](design-docs/core-beliefs.md)                       | 核心信念（争议裁决依据）                                       | 常驻                    |
 | [exec-plans/active/harness-migration.md](exec-plans/active/harness-migration.md) | 进行中：harness 改造计划（含 §0.5 执行契约与进度日志）         | 常驻                    |
-| [exec-plans/tech-debt-tracker.md](exec-plans/tech-debt-tracker.md)               | 技术债台账（30 条）                                            | 常驻                    |
+| [exec-plans/tech-debt-tracker.md](exec-plans/tech-debt-tracker.md)               | 技术债台账（31 条）                                            | 常驻                    |
 | [HARNESS-RULES.md](HARNESS-RULES.md)                                             | 施工规则（竣工验收后按其 §14 归档）                            | 常驻（施工期）          |
 | [WORKSPACE_ROUTE_ISOLATION.md](WORKSPACE_ROUTE_ISOLATION.md)                     | 工作区路由隔离说明（2026-09-06）                               | 已归档-只读（事件复盘） |
 
@@ -39,7 +39,7 @@
 
 ## docs/agent-memory（智能体记忆库，13 篇）
 
-> D4 裁决：**保留为常驻**。Studio/Codex 工作流的活跃工作记忆（takeover-status 最近更新 2026-10-08），维持其只追加约定；与 exec-plans 体系并行。
+> D4 裁决：**保留为常驻**。Studio/Codex 工作流的活跃工作记忆（takeover-status 最近更新 2026-10-08），维持其只追加约定；与 exec-plans 体系并行。**历史记忆仅作过程记录——当前事实以 `AGENTS.md`、`ARCHITECTURE.md`、`docs/CI.md`、`docs/RELIABILITY.md` 与 `exec-plans/active/` 为准**，避免旧分支状态误导后续会话。
 
 | 文档                                                                                             | 状态 |
 | ------------------------------------------------------------------------------------------------ | ---- |
@@ -125,9 +125,9 @@
 | [PROJECT_TAKEOVER_DEV_TEST_ACCEPTANCE_REPORT_20261010](evidence/PROJECT_TAKEOVER_DEV_TEST_ACCEPTANCE_REPORT_20261010.md)   | 已归档-只读（验收快照） |
 | [PROJECT_TAKEOVER_REPORT_20261008](evidence/PROJECT_TAKEOVER_REPORT_20261008.md)                                           | 已归档-只读（验收快照） |
 
-## docs/tasks（历史任务档案，23 篇：常驻 1 + 已归档 22）
+## docs/tasks（历史任务档案，23 篇：常驻 2 + 已归档 21）
 
-> D4 裁决：ROADMAP 常驻（活跃规划，目标 2027-06-30）；JTF-P0/P1 任务档案与长任务计划已归档-只读。
+> D4 裁决：ROADMAP 与 KINGTURF_V2_LONG_TASK_PLAN 常驻（活跃规划，目标 2027-06-30）；JTF-P0/P1 任务档案已归档-只读。
 
 | 文档                                                                          | 状态                    |
 | ----------------------------------------------------------------------------- | ----------------------- |
@@ -152,7 +152,7 @@
 | [JTF-P1-E05-E10-SALES-TO-CASH](tasks/JTF-P1-E05-E10-SALES-TO-CASH.md)         | 已归档-只读（任务档案） |
 | [JTF-P1-E11-E17-QUOTE-TO-CASH](tasks/JTF-P1-E11-E17-QUOTE-TO-CASH.md)         | 已归档-只读（任务档案） |
 | [JTF-P1-E18-E21-CLOSURE](tasks/JTF-P1-E18-E21-CLOSURE.md)                     | 已归档-只读（任务档案） |
-| [KINGTURF_V2_LONG_TASK_PLAN](tasks/KINGTURF_V2_LONG_TASK_PLAN.md)             | 已归档-只读（任务档案） |
+| [KINGTURF_V2_LONG_TASK_PLAN](tasks/KINGTURF_V2_LONG_TASK_PLAN.md)             | 常驻                    |
 | [ROADMAP](tasks/ROADMAP.md)                                                   | 常驻                    |
 
 ## exec-plans/completed/
