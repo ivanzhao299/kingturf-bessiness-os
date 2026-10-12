@@ -22,6 +22,7 @@ import type {
   RuleEvaluationDto,
   DataScope,
 } from '@kingturf/types';
+import { writeAuditEvent } from './audit-outbox.ts';
 
 export class TransactionalAuditWriter {
   public async write(
@@ -37,17 +38,16 @@ export class TransactionalAuditWriter {
     }>,
   ): Promise<void> {
     const metadata = sanitizeAuditMetadata(input.metadata ?? {}, input.allowedMetadata ?? []);
-    await tx.query(
-      "INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata) VALUES($1,'SUCCESS',$2,$3,$4,$5,$6,$7)",
-      [
-        input.action,
-        input.actor.employeeId,
-        input.actor.companyId,
-        input.targetType,
-        input.targetId,
-        input.correlationId,
-        metadata,
-      ],
+    await writeAuditEvent(
+      tx,
+      input.action,
+      'SUCCESS',
+      input.actor.employeeId,
+      input.actor.companyId,
+      input.targetType,
+      input.targetId,
+      input.correlationId,
+      metadata as Record<string, unknown> as never,
     );
   }
 }
