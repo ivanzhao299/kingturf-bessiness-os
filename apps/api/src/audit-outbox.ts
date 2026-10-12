@@ -4,6 +4,65 @@ import type { SqlClient } from '@kingturf/database';
 
 type ActorContext = Actor | Readonly<{ actor: Actor }>;
 
+export async function writeAuditEvent(
+  tx: SqlClient,
+  action: string,
+  outcome: string,
+  actorId: string,
+  organizationId: string,
+  targetType: string,
+  targetId: string,
+  correlationId: string,
+  metadata: JsonObject,
+): Promise<void> {
+  await tx.query(
+    'INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata) VALUES($1,$2,$3,$4,$5,$6,$7,$8)',
+    [action, outcome, actorId, organizationId, targetType, targetId, correlationId, metadata],
+  );
+}
+
+export const writeCollectionAudit = (
+  tx: SqlClient,
+  action: string,
+  targetType: string,
+  targetId: string,
+  context: Readonly<{ actor: Actor }>,
+  correlationId: string,
+  metadata: JsonObject,
+) =>
+  writeAuditEvent(
+    tx,
+    action,
+    'SUCCESS',
+    context.actor.employeeId,
+    context.actor.companyId,
+    targetType,
+    targetId,
+    correlationId,
+    metadata,
+  );
+
+export const writeContractAudit = (
+  tx: SqlClient,
+  action: string,
+  actor: Actor,
+  targetType: string,
+  targetId: string,
+  correlationId: string,
+  metadata: JsonObject,
+) =>
+  writeAuditEvent(
+    tx,
+    action,
+    'SUCCESS',
+    actor.employeeId,
+    actor.companyId,
+    targetType,
+    targetId,
+    correlationId,
+    metadata,
+  );
+
 const actorOf = (value: ActorContext): Actor => ('actor' in value ? value.actor : value);
 
 /** Writes the standard audit + outbox pair inside the caller's transaction. */

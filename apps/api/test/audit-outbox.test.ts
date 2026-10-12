@@ -8,6 +8,8 @@ import {
   writeFixedVersionOneEvidence,
   writeProductionNextVersionEvidence,
   writeQualityNextVersionEvidence,
+  writeCollectionAudit,
+  writeContractAudit,
 } from '../src/audit-outbox.js';
 
 const actor: Actor = {
@@ -216,5 +218,51 @@ describe('writeAuditOutbox', () => {
         { ok: true },
       ]);
     }
+  });
+  it('preserves collection and contract audit-only parameters', async () => {
+    const collectionQuery = vi.fn().mockResolvedValue({ rows: [], rowCount: 1 });
+    await writeCollectionAudit(
+      { query: collectionQuery },
+      'collection.created',
+      'collection-case',
+      'c-1',
+      { actor },
+      'corr-c',
+      { ok: true },
+    );
+    expect(collectionQuery).toHaveBeenCalledTimes(1);
+    expect(collectionQuery.mock.calls[0]?.[0]).toContain('INSERT INTO audit_events');
+    expect(collectionQuery.mock.calls[0]?.[1]).toEqual([
+      'collection.created',
+      'SUCCESS',
+      actor.employeeId,
+      actor.companyId,
+      'collection-case',
+      'c-1',
+      'corr-c',
+      { ok: true },
+    ]);
+    const contractQuery = vi.fn().mockResolvedValue({ rows: [], rowCount: 1 });
+    await writeContractAudit(
+      { query: contractQuery },
+      'contract.created',
+      actor,
+      'contract',
+      'd-1',
+      'corr-d',
+      { ok: true },
+    );
+    expect(contractQuery).toHaveBeenCalledTimes(1);
+    expect(contractQuery.mock.calls[0]?.[0]).toContain('INSERT INTO audit_events');
+    expect(contractQuery.mock.calls[0]?.[1]).toEqual([
+      'contract.created',
+      'SUCCESS',
+      actor.employeeId,
+      actor.companyId,
+      'contract',
+      'd-1',
+      'corr-d',
+      { ok: true },
+    ]);
   });
 });
