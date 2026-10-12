@@ -12,6 +12,7 @@ import {
   writeBusinessDocumentActivityAudit,
   writeBusinessDocumentTranslationAudit,
   writeBusinessDocumentTranslationOutbox,
+  writeBusinessDocumentDispatchOutbox,
 } from './audit-outbox.ts';
 
 type Context = Readonly<{
@@ -690,19 +691,13 @@ export class PostgresBusinessDocumentRepository {
         )
       ).rows[0];
       if (!dispatch) throw new Error('Business document dispatch insert failed');
-      await tx.query(
-        `INSERT INTO domain_event_outbox(
-           tenant_id,event_type,event_version,aggregate_type,aggregate_id,aggregate_version,
-           occurred_at,actor_id,correlation_id,payload)
-         VALUES($1,'business-document.dispatch.requested',1,'business-document-dispatch',$2,1,
-           now(),$3,$4,jsonb_build_object('dispatchId',$2::uuid,'channel',$5::text))`,
-        [
-          context.actor.companyId,
-          dispatch.item.id,
-          context.actor.employeeId,
-          correlationId,
-          input.channel,
-        ],
+      await writeBusinessDocumentDispatchOutbox(
+        tx,
+        context.actor.companyId,
+        dispatch.item.id as string,
+        context.actor.employeeId,
+        correlationId,
+        input.channel,
       );
       await writeBusinessDocumentSendAudit(tx, context.actor, id, correlationId, {
         version: input.expectedVersion,

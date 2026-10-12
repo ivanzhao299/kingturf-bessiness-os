@@ -25,6 +25,7 @@ import {
   writeBusinessDocumentReviewAudit,
   writeBusinessDocumentActivityAudit,
   writeBusinessDocumentTranslationOutbox,
+  writeBusinessDocumentDispatchOutbox,
   writeFoundationEmptyAudit,
   writeFoundationDomainEventAudit,
   writeAuthorizationAudit,
@@ -613,6 +614,26 @@ describe('writeAuditOutbox', () => {
       'translation-1',
       actor.employeeId,
       'corr-outbox',
+    ]);
+  });
+  it('preserves business-document dispatch outbox payload and channel', async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [], rowCount: 1 });
+    await writeBusinessDocumentDispatchOutbox(
+      { query },
+      actor.companyId,
+      'dispatch-1',
+      actor.employeeId,
+      'corr-dispatch',
+      'EMAIL',
+    );
+    expect(query).toHaveBeenCalledTimes(1);
+    expect(query.mock.calls[0]?.[0]).toContain('jsonb_build_object');
+    expect(query.mock.calls[0]?.[1]).toEqual([
+      actor.companyId,
+      'dispatch-1',
+      actor.employeeId,
+      'corr-dispatch',
+      'EMAIL',
     ]);
   });
 });

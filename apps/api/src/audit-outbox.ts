@@ -419,6 +419,20 @@ export const writeBusinessDocumentTranslationOutbox = (
     [tenantId, translationId, actorId, correlationId],
   );
 
+export const writeBusinessDocumentDispatchOutbox = (
+  tx: SqlClient,
+  tenantId: string,
+  dispatchId: string,
+  actorId: string,
+  correlationId: string,
+  channel: string,
+) =>
+  tx.query(
+    `INSERT INTO domain_event_outbox(tenant_id,event_type,event_version,aggregate_type,aggregate_id,aggregate_version,occurred_at,actor_id,correlation_id,payload)
+    VALUES($1,'business-document.dispatch.requested',1,'business-document-dispatch',$2,1,now(),$3,$4,jsonb_build_object('dispatchId',$2::uuid,'channel',$5::text))`,
+    [tenantId, dispatchId, actorId, correlationId, channel],
+  );
+
 const actorOf = (value: ActorContext): Actor => ('actor' in value ? value.actor : value);
 
 /** Writes the standard audit + outbox pair inside the caller's transaction. */
