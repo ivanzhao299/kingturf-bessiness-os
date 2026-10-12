@@ -259,3 +259,4 @@ packages/{types, ui, config, testing} → 零依赖
 | 2026-10-12 | 2a-4 | 沉淀 `docs/design-docs/core-beliefs.md`：12 条通用原则 + 本项目特有取舍表 + 术语 | 本提交 | 阶段 2a 启动（计划 v1.3 已获人工确认，2b 暂停等待 D4）；内容依据规则附录 F + ADR-0001~0010 |
 | 2026-10-12 | 2a-2 | 编写 `ARCHITECTURE.md`：分层图 + 请求流 + 业务域地图 + 目标分层 + 验证点 4 处 | 本提交 | 验证点全部实测：app.ts 22 处 import type、包级 DAG、web 无反向引用（bootstrap 不 import 上游）、server.ts 唯一组合根；目标分层映射批次 2/3 |
 | 2026-10-12 | 2a-5 | 建立 `docs/QUALITY_SCORE.md`：后端 4 域组 + 前端 2 域 + 共享包，四维评分各附依据 | 本提交 | 每行分数给出复算命令/文件；行覆盖率维度标注「阶段 5 首测后回填」（当前无覆盖率配置 TD-TEST-002）；更新纪律=每子批次合并时同步 |
+| 2026-10-12 | 2a-6 | 编写 `docs/RELIABILITY.md`：发布 runbook 逐步对应 deploy-production.yml + 回滚手册 | 本提交 | 三 job 逐步表（validate/verify/deploy 13 步含 SSH 钉扎/恢复点/探针后保留清理）；/ready=SELECT 1、日志 10m×3、预算 12000/4000B 均实测核对 |
