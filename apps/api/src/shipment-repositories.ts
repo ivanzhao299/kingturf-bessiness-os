@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { canonicalize, DomainError, type Actor, type ScopeAnchor } from '@kingturf/domain';
 import type { Database, SqlClient } from '@kingturf/database';
 import type { DataScope, JsonObject } from '@kingturf/types';
+import { writeShipmentReleaseAudit } from './audit-outbox.ts';
 
 type Db = SqlClient & Pick<Database, 'transaction'>;
 type Context = Readonly<{
@@ -145,10 +146,7 @@ export class PostgresShipmentRepository {
           digest(event),
         ],
       );
-      await tx.query(
-        "INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata) VALUES('shipment.release-requested','SUCCESS',$1,$2,'shipment-release',$3,$4,$5)",
-        [context.actor.employeeId, context.actor.companyId, row.id, correlationId, snapshot],
-      );
+      await writeShipmentReleaseAudit(tx, context.actor, row.id, correlationId, snapshot);
       return { id: row.id, state, gateSnapshot: snapshot };
     });
   }

@@ -11,6 +11,7 @@ import {
   writeCollectionAudit,
   writeContractAudit,
   writeProductionCostPolicyAudit,
+  writeShipmentReleaseAudit,
 } from '../src/audit-outbox.js';
 
 const actor: Actor = {
@@ -280,6 +281,23 @@ describe('writeAuditOutbox', () => {
       'policy-1',
       'corr-cost',
       { amount: 1 },
+    ]);
+  });
+  it('preserves shipment release action, target type, and snapshot metadata', async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [], rowCount: 1 });
+    const snapshot = { failures: [{ code: 'MISSING_GATE' }], checkedAt: '2026-10-12T00:00:00Z' };
+    await writeShipmentReleaseAudit({ query }, actor, 'release-1', 'corr-shipment', snapshot);
+    expect(query).toHaveBeenCalledTimes(1);
+    expect(query.mock.calls[0]?.[0]).toContain('INSERT INTO audit_events');
+    expect(query.mock.calls[0]?.[1]).toEqual([
+      'shipment.release-requested',
+      'SUCCESS',
+      actor.employeeId,
+      actor.companyId,
+      'shipment-release',
+      'release-1',
+      'corr-shipment',
+      snapshot,
     ]);
   });
 });

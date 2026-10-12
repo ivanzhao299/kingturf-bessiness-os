@@ -82,6 +82,25 @@ export const writeProductionCostPolicyAudit = (
     metadata,
   );
 
+export const writeShipmentReleaseAudit = (
+  tx: SqlClient,
+  actor: Actor,
+  releaseRequestId: string,
+  correlationId: string,
+  snapshot: JsonObject,
+) =>
+  writeAuditEvent(
+    tx,
+    'shipment.release-requested',
+    'SUCCESS',
+    actor.employeeId,
+    actor.companyId,
+    'shipment-release',
+    releaseRequestId,
+    correlationId,
+    snapshot,
+  );
+
 const actorOf = (value: ActorContext): Actor => ('actor' in value ? value.actor : value);
 
 /** Writes the standard audit + outbox pair inside the caller's transaction. */
