@@ -12,3 +12,5 @@ coverage/
 tmp/
 .test-results/
 .local-acceptance/
+.zcode/
+prompt-history.txt
