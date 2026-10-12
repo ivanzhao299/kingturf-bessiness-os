@@ -19,6 +19,7 @@ import {
   writeBusinessDocumentCreateAudit,
   writeBusinessDocumentBindingsAudit,
   writeBusinessDocumentVersionAudit,
+  writeBusinessDocumentTranslationAudit,
   writeAuthorizationAudit,
   writeTransactionalAudit,
 } from '../src/audit-outbox.js';
@@ -429,6 +430,33 @@ describe('writeAuditOutbox', () => {
       'doc-3',
       'corr-version',
       { version: 4 },
+    ]);
+  });
+  it('preserves business-document.translation-created metadata and parameters', async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [], rowCount: 1 });
+    const metadata = {
+      version: 2,
+      targetLocale: 'en',
+      provider: 'MANUAL',
+      translationId: 'translation-1',
+    };
+    await writeBusinessDocumentTranslationAudit(
+      { query },
+      actor,
+      'doc-4',
+      'corr-translation',
+      metadata,
+    );
+    expect(query).toHaveBeenCalledTimes(1);
+    expect(query.mock.calls[0]?.[1]).toEqual([
+      'business-document.translation-created',
+      'SUCCESS',
+      actor.employeeId,
+      actor.companyId,
+      'business-document',
+      'doc-4',
+      'corr-translation',
+      metadata,
     ]);
   });
 });
