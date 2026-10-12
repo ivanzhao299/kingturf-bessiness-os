@@ -311,6 +311,8 @@ describe('writeAuditOutbox', () => {
     ] as const) {
       const query = vi.fn().mockResolvedValue({ rows: [], rowCount: 1 });
       await run({ query }, actor, 'risk-1', 'corr-risk', { state: action });
+      expect(query).toHaveBeenCalledTimes(1);
+      expect(query.mock.calls[0]?.[0]).toContain('INSERT INTO audit_events');
       expect(query.mock.calls[0]?.[1]).toEqual([
         action,
         'SUCCESS',
