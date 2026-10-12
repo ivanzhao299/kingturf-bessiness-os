@@ -3,6 +3,7 @@ import { canonicalize, DomainError, type Actor, type ScopeAnchor } from '@kingtu
 import type { Database, SqlClient } from '@kingturf/database';
 import type { DataScope, JsonObject } from '@kingturf/types';
 import { recordScopeSql } from './scope-sql.ts';
+import { writeAuditOutbox as recordEvidence } from './audit-outbox.ts';
 
 type Db = SqlClient & Pick<Database, 'transaction'>;
 type Context = Readonly<{
@@ -13,34 +14,6 @@ type Context = Readonly<{
 type CommissionState = 'ACCRUED' | 'FROZEN' | 'RELEASED' | 'PAID' | 'CLAWED_BACK' | 'CANCELLED';
 const hash = (value: unknown) => createHash('sha256').update(canonicalize(value)).digest('hex');
 const json = (value: unknown) => value as JsonObject;
-const recordEvidence = async (
-  tx: SqlClient,
-  action: string,
-  targetType: string,
-  targetId: string,
-  version: number,
-  actor: Actor,
-  correlationId: string,
-  payload: JsonObject,
-) => {
-  await tx.query(
-    "INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata) VALUES($1,'SUCCESS',$2,$3,$4,$5,$6,$7)",
-    [action, actor.employeeId, actor.companyId, targetType, targetId, correlationId, payload],
-  );
-  await tx.query(
-    'INSERT INTO domain_event_outbox(tenant_id,event_type,event_version,aggregate_type,aggregate_id,aggregate_version,occurred_at,actor_id,correlation_id,payload) VALUES($1,$2,1,$3,$4,$5,now(),$6,$7,$8)',
-    [
-      actor.companyId,
-      action,
-      targetType,
-      targetId,
-      version,
-      actor.employeeId,
-      correlationId,
-      payload,
-    ],
-  );
-};
 
 export class PostgresCommissionRepository {
   public constructor(private readonly db: Db) {}

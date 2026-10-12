@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { canonicalize, DomainError, type Actor, type ScopeAnchor } from '@kingturf/domain';
 import type { Database, SqlClient } from '@kingturf/database';
 import { recordScopeSql } from './scope-sql.ts';
+import { writeAuditOutbox as evidence } from './audit-outbox.ts';
 import type { DataScope, JsonObject, OperationalListFilter, Page } from '@kingturf/types';
 
 type Db = SqlClient & Pick<Database, 'transaction'>;
@@ -22,25 +23,6 @@ const requireCustomer = async (tx: SqlClient, customerId: string, context: Conte
     [customerId, context.actor.companyId, ...secured.values],
   );
   if (!found.rowCount) throw new DomainError('not_found', 'Customer not found');
-};
-const evidence = async (
-  tx: SqlClient,
-  action: string,
-  aggregate: string,
-  id: string,
-  version: number,
-  actor: Actor,
-  correlationId: string,
-  payload: JsonObject,
-) => {
-  await tx.query(
-    "INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata) VALUES($1,'SUCCESS',$2,$3,$4,$5,$6,$7)",
-    [action, actor.employeeId, actor.companyId, aggregate, id, correlationId, payload],
-  );
-  await tx.query(
-    'INSERT INTO domain_event_outbox(tenant_id,event_type,event_version,aggregate_type,aggregate_id,aggregate_version,occurred_at,actor_id,correlation_id,payload) VALUES($1,$2,1,$3,$4,$5,now(),$6,$7,$8)',
-    [actor.companyId, action, aggregate, id, version, actor.employeeId, correlationId, payload],
-  );
 };
 const command = async <T extends JsonObject>(
   tx: SqlClient,
