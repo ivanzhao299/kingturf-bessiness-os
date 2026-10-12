@@ -48,8 +48,8 @@
 ## 4. 落地说明
 
 - 阶段 1 **未生成、未修改**任何 `.github/workflows/` 文件（规则 §5 阶段 1 禁止事项）。
-- 现有 `ci.yml` / `deploy-production.yml` 保留不动；若后续阶段需要接入覆盖率上报、文档门禁等新步骤，将在对应阶段单独提交并更新本节。
-- 部署链路文档（**仅 `workflow_dispatch` 指定 commit_sha → validate → verify → SSH → Docker → 探针；无 tag 触发、无 GitHub Release、无产物上传**）在阶段 2 补全到 `docs/`（规则 §5 阶段 2 子任务 9）。
+- **阶段 3（2026-10-12）**：新门禁（`doc:lint`、`structure:check`、structure-gate 自测、scripts/analysis 的 eslint 覆盖）全部经根 `package.json` 的 `ci:local`/`test` 脚本接入——`ci.yml` 执行的正是 `pnpm ci:local`，因此**未改动任何 workflow 文件**即让 CI 自动获得新门禁。本地另有零依赖 git hooks（`.githooks/`，`prepare` 激活）。门禁全清单见 `docs/GATES.md`。
+- 部署链路文档（**仅 `workflow_dispatch` 指定 commit_sha → validate → verify → SSH → Docker → 探针；无 tag 触发、无 GitHub Release、无产物上传**）见 `docs/RELIABILITY.md`。
 
 ## 5. 变更历史
 
@@ -57,3 +57,4 @@
 | ---------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
 | 2026-10-12 | 建档：落盘框架判定（其他类型/非 Tauri）与现有 CI 审计结论           | Harness 改造阶段 1 产出物（规则 §5 阶段 1 / §3.4）                                    |
 | 2026-10-12 | 修正 §4 表述：「tag/dispatch」改为「仅 workflow_dispatch 指定 SHA」 | 人工审核 P2：实际 workflow 无 tag 触发，原表述会误导后续会话补出不存在的 tag 发布链路 |
+| 2026-10-12 | 阶段 3 门禁经 ci:local 脚本链接入（workflow 零改动）                | 规则 §5 阶段 3；门禁清单见 docs/GATES.md                                              |

@@ -36,10 +36,12 @@ KingTurf 业务操作系统：面向草坪行业外贸业务的 ERP（CRM→报�
 - E2E：`pnpm e2e:p1`（Playwright，chrome 单 worker）
 - 度量与扫描：`node scripts/analysis/repo-metrics.mjs`（复杂度/重复）｜ `node scripts/analysis/audit-scan.mjs`（安全/性能）
 - 文档链接校验：`node scripts/analysis/doc-lint.mjs`
+- 结构门禁（复杂度报告模式 + SQL 插值/路由校验强制）：`node scripts/analysis/structure-gate.mjs --report`
 
 ## 规范索引
 
 - 架构：`ARCHITECTURE.md`
+- 门禁清单（各项触发时机/失败含义/修复指引）：`docs/GATES.md`
 - 可靠性与发布链路 runbook：`docs/RELIABILITY.md`
 - 质量评分（按域，可复算）：`docs/QUALITY_SCORE.md`
 - 施工规则（竣工后归档）：`docs/HARNESS-RULES.md`
