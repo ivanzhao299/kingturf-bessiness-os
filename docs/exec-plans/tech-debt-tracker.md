@@ -18,7 +18,7 @@
 | TD-API-002   | app.ts 深嵌套：≥7 层 3,202 行，最深 14 层                                               | P2     | 复杂度        | 无                       | 批次 2              | 待处理 |
 | TD-DUP-001   | 数据范围(DataScope) SQL 谓词在 12 个文件各复制一份                                      | P1     | 重复/安全     | 无                       | 批次 1              | 已完成 |
 | TD-DUP-002   | audit_events + domain_event_outbox 双写 44 处/20 文件                                   | P1     | 重复          | 无                       | 批次 1              | 已完成 |
-| TD-DUP-003   | 幂等键查询样板 23 行重复                                                                | P2     | 重复          | 无                       | 批次 1              | 待处理 |
+| TD-DUP-003   | 幂等键查询样板 23 行重复                                                                | P2     | 重复          | 无                       | 批次 1              | 已完成 |
 | TD-DUP-004   | 前端日期格式化内联 12 处                                                                | P2     | 重复          | 无                       | 批次 3              | 待处理 |
 | TD-ARCH-001  | foundation-repositories.ts 一文件 4 仓储 + 全仓仅有的 28 处 any + 文件级 eslint-disable | P2     | 架构/类型     | 无                       | 批次 1              | 待处理 |
 | TD-ARCH-002  | CommercialController God store：load() 一次拉取 30+ 端点                                | P2     | 架构          | 无                       | 批次 3              | 待处理 |
@@ -112,11 +112,13 @@
 
 ### TD-DUP-003｜幂等键查询样板 23 行重复
 
-- **位置**：`apps/api/src/` 多文件；样例 `crm-repositories.ts:500` 一带、`commercial-repositories.ts:127` 一带
+- **位置**：`apps/api/src/command-results.ts:13,29,62`；commercial 接入点 `apps/api/src/commercial-repositories.ts:83-90`（7 个 replay + 7 个 retain 调用）；qtc 接入点 `apps/api/src/qtc-repositories.ts:43-61`（9 个 command 调用）。
 - **类别**：重复 ｜ **严重度**：P2
-- **证据**：含 `idempotency_key` 与 `SELECT` 的行 23 行命中（`*_command_results WHERE tenant_id=$1 AND idempotency_key=$2` 模式）。
-- **修复建议**：共享幂等查询/写入助手。
-- **业务行为影响**：无 ｜ **关联批次**：批次 1 ｜ **验收方式**：grep 计数下降 + 幂等性行为集成测试
+- **最终证据（2026-10-13）**：只读复核命令 `rg -n "pg_advisory_xact_lock|SELECT .*idempotency_key.*FROM|crm_command_results|commercial_command_results|commandLock|eventReplay" apps/api/src apps/api/test packages/database/migrations`；commercial/qtc 的同语义表为 `commercial_command_results(tenant_id,idempotency_key,command_type,subject_id,actor_id,request_hash,payload)`，统一冲突字段为 type/subject/actor/request hash，统一锁参数 `${tenantId}:${key}`，锁后 replay；`command-results.test.ts` 固定 SQL/参数、首写、payload 重放及四类冲突，commercial PostgreSQL 2/2、qtc PostgreSQL 2/2。
+- **安全豁免（明确语义差异）**：CRM 仅一个 `LEAD_CLAIM` 命令（`crm-repositories.ts:443,463,504`），表字段为 `command_type/subject_id/payload/request_fingerprint`，锁为双 hash，顺序为锁→DataScope subject→replay；customer activity 是普通业务表幂等。complaint 的 `commandLock` 在 `complaint-repositories.ts:53` 被 11 个不同 namespace 调用，`eventReplay`（`:1211`）由 complaint/ncr 两个动态表调用，依赖 `canonical_hash/evidence/expected_version/state`；foundation notifications（`foundation-repositories.ts:312-342`）先 recipients DataScope，再锁→replay，冲突字段为 `normalized_recipients/semantic_payload`。这些路径没有第二个同语义、可安全共用的固定接口，保留本地实现。
+- **其他域复核**：risk（2 个锁/replay）、commission（2）、business-document（2）、platform（3）、website-lead（1）及 qtc 内 4 个 customer credit-ledger 锁均是业务表/状态或资源串行化，不是 command-results 同语义；普通 `idempotency_key` 表路径不纳入共享原语。
+- **修复结果**：公共 commercial/qtc lock/replay/retain 原语已收敛；CRM、complaint、foundation 及其他语义不同路径明确豁免，不再强行抽象。
+- **业务行为影响**：无 ｜ **关联批次**：批次 1 ｜ **验收方式**：机械复核命令如上；`pnpm ci:local` 全绿（API 35 文件/260 用例、database 68、web 114、domain 14），另通过 typecheck/lint/format/structure/doc-lint/audit/build；回滚：`git revert 8dcc971`（代码）及对应计划/台账文档提交。
 
 ### TD-DUP-004｜前端日期格式化内联 12 处
 
