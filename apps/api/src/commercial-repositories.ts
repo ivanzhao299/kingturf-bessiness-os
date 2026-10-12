@@ -14,6 +14,7 @@ import {
 } from '@kingturf/domain';
 import type { Database, SqlClient } from '@kingturf/database';
 import { recordScopeSql } from './scope-sql.ts';
+import { writeCommercialEvidence as evidence } from './audit-outbox.ts';
 import type {
   CostEngineInput,
   CostRule,
@@ -61,25 +62,6 @@ const dto = (row: OpportunityRow): OpportunityDto => ({
   updatedAt: row.updated_at,
 });
 // 数据范围谓词已收敛至 scope-sql.ts 的 recordScopeSql（批次 1b，TD-DUP-001）；SQL 与迁移前逐字一致（alias='o'）。
-const evidence = async (
-  tx: SqlClient,
-  action: string,
-  actor: Actor,
-  id: string,
-  version: number,
-  correlationId: string,
-  payload: JsonObject,
-  aggregateType = 'opportunity',
-) => {
-  await tx.query(
-    "INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata) VALUES($1,'SUCCESS',$2,$3,$4,$5,$6,$7)",
-    [action, actor.employeeId, actor.companyId, aggregateType, id, correlationId, payload],
-  );
-  await tx.query(
-    'INSERT INTO domain_event_outbox(tenant_id,event_type,event_version,aggregate_type,aggregate_id,aggregate_version,occurred_at,actor_id,correlation_id,payload) VALUES($1,$2,1,$3,$4,$5,now(),$6,$7,$8)',
-    [actor.companyId, action, aggregateType, id, version, actor.employeeId, correlationId, payload],
-  );
-};
 
 type CommandIdentity = Readonly<{
   type: string;

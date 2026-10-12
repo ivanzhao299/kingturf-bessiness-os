@@ -16,11 +16,21 @@ export async function writeAuditOutbox(
   actorContext: ActorContext,
   correlationId: string,
   payload: JsonObject,
+  auditTargetType = aggregateType,
+  auditTargetId = aggregateId,
 ): Promise<void> {
   const actor = actorOf(actorContext);
   await tx.query(
     "INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata) VALUES($1,'SUCCESS',$2,$3,$4,$5,$6,$7)",
-    [action, actor.employeeId, actor.companyId, aggregateType, aggregateId, correlationId, payload],
+    [
+      action,
+      actor.employeeId,
+      actor.companyId,
+      auditTargetType,
+      auditTargetId,
+      correlationId,
+      payload,
+    ],
   );
   await tx.query(
     'INSERT INTO domain_event_outbox(tenant_id,event_type,event_version,aggregate_type,aggregate_id,aggregate_version,occurred_at,actor_id,correlation_id,payload) VALUES($1,$2,1,$3,$4,$5,now(),$6,$7,$8)',
@@ -36,3 +46,50 @@ export async function writeAuditOutbox(
     ],
   );
 }
+
+export const writeCommercialEvidence = (
+  tx: SqlClient,
+  action: string,
+  actor: Actor,
+  id: string,
+  version: number,
+  correlationId: string,
+  payload: JsonObject,
+  aggregateType = 'opportunity',
+) => writeAuditOutbox(tx, action, aggregateType, id, version, actor, correlationId, payload);
+
+export const writeCrmAuditEvent = async (
+  tx: SqlClient,
+  action: string,
+  actor: Actor,
+  type: string,
+  id: string,
+  correlationId: string,
+  version: number,
+  payload: Record<string, unknown>,
+  eventAggregate: Readonly<{ type: string; id: string; version: number }> = { type, id, version },
+) => {
+  return writeAuditOutbox(
+    tx,
+    action,
+    eventAggregate.type,
+    eventAggregate.id,
+    eventAggregate.version,
+    actor,
+    correlationId,
+    payload as JsonObject,
+    type,
+    id,
+  );
+};
+
+export const writeComplaintEvidence = (
+  tx: SqlClient,
+  action: string,
+  targetType: string,
+  targetId: string,
+  version: number,
+  payload: JsonObject,
+  context: Readonly<{ actor: Actor }>,
+  correlationId: string,
+) => writeAuditOutbox(tx, action, targetType, targetId, version, context, correlationId, payload);

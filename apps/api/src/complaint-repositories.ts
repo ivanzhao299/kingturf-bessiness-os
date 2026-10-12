@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { canonicalize, DomainError, type Actor, type ScopeAnchor } from '@kingturf/domain';
 import type { Database, SqlClient } from '@kingturf/database';
 import { recordScopeSql, type RecordScopeOptions } from './scope-sql.ts';
+import { writeComplaintEvidence as evidence } from './audit-outbox.ts';
 import type { BatchCommandResult, DataScope, JsonObject, Page } from '@kingturf/types';
 
 type Db = SqlClient & Pick<Database, 'transaction'>;
@@ -44,43 +45,6 @@ const json = (value: unknown) => value as JsonObject;
 // complaint 的锚点谓词为 relationshipOnly 形态（只查 osr 单表、TEAM 无 depth、无组织有效性校验），
 // 与其他域的 organizationJoin 形态是**真实语义差异**，以显式选项表达并登记 TD-SEC-006。
 const COMPLAINT_SCOPE: RecordScopeOptions = { anchorPredicate: 'relationshipOnly' };
-
-const evidence = async (
-  tx: SqlClient,
-  action: string,
-  targetType: string,
-  targetId: string,
-  version: number,
-  payload: JsonObject,
-  context: Context,
-  correlationId: string,
-) => {
-  await tx.query(
-    "INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata) VALUES($1,'SUCCESS',$2,$3,$4,$5,$6,$7)",
-    [
-      action,
-      context.actor.employeeId,
-      context.actor.companyId,
-      targetType,
-      targetId,
-      correlationId,
-      payload,
-    ],
-  );
-  await tx.query(
-    'INSERT INTO domain_event_outbox(tenant_id,event_type,event_version,aggregate_type,aggregate_id,aggregate_version,occurred_at,actor_id,correlation_id,payload) VALUES($1,$2,1,$3,$4,$5,now(),$6,$7,$8)',
-    [
-      context.actor.companyId,
-      action,
-      targetType,
-      targetId,
-      version,
-      context.actor.employeeId,
-      correlationId,
-      payload,
-    ],
-  );
-};
 
 const assertReplay = (storedHash: string, payload: unknown) => {
   if (storedHash !== digest(payload))

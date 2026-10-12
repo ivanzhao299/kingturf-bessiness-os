@@ -11,6 +11,7 @@ import {
 } from '@kingturf/domain';
 import type { Database, SqlClient } from '@kingturf/database';
 import { recordScopeSql, type RecordScopeOptions } from './scope-sql.ts';
+import { writeCrmAuditEvent as auditEvent } from './audit-outbox.ts';
 import type {
   ActivityDto,
   ContactDto,
@@ -166,39 +167,6 @@ const CRM_SCOPE_POOL: RecordScopeOptions = {
   anchorGuard: 'typed',
   includeUnownedPool: true,
 };
-async function auditEvent(
-  tx: SqlClient,
-  action: string,
-  actor: Actor,
-  type: string,
-  id: string,
-  correlationId: string,
-  version: number,
-  payload: Record<string, unknown>,
-  eventAggregate: Readonly<{ type: string; id: string; version: number }> = {
-    type,
-    id,
-    version,
-  },
-) {
-  await tx.query(
-    "INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata) VALUES($1,'SUCCESS',$2,$3,$4,$5,$6,$7)",
-    [action, actor.employeeId, actor.companyId, type, id, correlationId, payload],
-  );
-  await tx.query(
-    'INSERT INTO domain_event_outbox(tenant_id,event_type,event_version,aggregate_type,aggregate_id,aggregate_version,occurred_at,actor_id,correlation_id,payload) VALUES($1,$2,1,$3,$4,$5,now(),$6,$7,$8)',
-    [
-      actor.companyId,
-      action,
-      eventAggregate.type,
-      eventAggregate.id,
-      eventAggregate.version,
-      actor.employeeId,
-      correlationId,
-      payload,
-    ],
-  );
-}
 export class PostgresCrmRepository {
   public constructor(private readonly db: Db) {}
   private async requireScopedSubject(
