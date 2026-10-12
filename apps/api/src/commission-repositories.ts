@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { canonicalize, DomainError, type Actor, type ScopeAnchor } from '@kingturf/domain';
 import type { Database, SqlClient } from '@kingturf/database';
 import type { DataScope, JsonObject } from '@kingturf/types';
+import { recordScopeSql } from './scope-sql.ts';
 
 type Db = SqlClient & Pick<Database, 'transaction'>;
 type Context = Readonly<{
@@ -12,24 +13,6 @@ type Context = Readonly<{
 type CommissionState = 'ACCRUED' | 'FROZEN' | 'RELEASED' | 'PAID' | 'CLAWED_BACK' | 'CANCELLED';
 const hash = (value: unknown) => createHash('sha256').update(canonicalize(value)).digest('hex');
 const json = (value: unknown) => value as JsonObject;
-const customerScope = (context: Context, alias = 'cu', offset = 2) => {
-  const clauses: string[] = [];
-  const values: string[] = [];
-  if (context.scopes.includes('COMPANY') || context.scopes.includes('GROUP')) clauses.push('TRUE');
-  if (context.scopes.includes('SELF'))
-    clauses.push(
-      `${alias}.owner_id=$${String(offset + values.push(context.actor.employeeId) - 1)}`,
-    );
-  for (const anchor of context.anchors)
-    if (anchor.organizationId && context.scopes.includes(anchor.scope)) {
-      values.push(anchor.organizationId);
-      clauses.push(
-        `EXISTS(SELECT 1 FROM organizations anchor JOIN organization_scope_relationships osr ON osr.ancestor_id=anchor.id AND osr.descendant_id=${alias}.owner_organization_id${anchor.scope === 'TEAM' ? ' AND osr.depth<=1' : ''} WHERE anchor.id=$${String(offset + values.length - 1)} AND anchor.owner_organization_id=${alias}.tenant_id AND anchor.organization_type='${anchor.scope}' AND anchor.active AND anchor.deleted_at IS NULL)`,
-      );
-    }
-  return { sql: clauses.length ? `(${clauses.join(' OR ')})` : 'FALSE', values };
-};
-
 const recordEvidence = async (
   tx: SqlClient,
   action: string,
@@ -257,7 +240,7 @@ export class PostgresCommissionRepository {
   }
 
   public async listCases(context: Context) {
-    const secured = customerScope(context, 'cu', 2);
+    const secured = recordScopeSql(context.scopes, context.anchors, context.actor, 'cu', 2);
     return (
       await this.db.query<{ item: JsonObject }>(
         `SELECT to_jsonb(c)||jsonb_build_object(
@@ -298,7 +281,7 @@ export class PostgresCommissionRepository {
         )
       ).rows[0];
       if (replay) return replay.item;
-      const secured = customerScope(context, 'cu', 5);
+      const secured = recordScopeSql(context.scopes, context.anchors, context.actor, 'cu', 5);
       const basis = (
         await tx.query<{
           currency: string;
@@ -492,7 +475,7 @@ export class PostgresCommissionRepository {
         )
       ).rows[0];
       if (replay) return replay.evidence;
-      const secured = customerScope(context, 'cu', 3);
+      const secured = recordScopeSql(context.scopes, context.anchors, context.actor, 'cu', 3);
       const current = (
         await tx.query<{
           commission_amount: string;
