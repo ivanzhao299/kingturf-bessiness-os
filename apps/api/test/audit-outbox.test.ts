@@ -10,6 +10,7 @@ import {
   writeQualityNextVersionEvidence,
   writeCollectionAudit,
   writeContractAudit,
+  writeProductionCostPolicyAudit,
 } from '../src/audit-outbox.js';
 
 const actor: Actor = {
@@ -263,6 +264,22 @@ describe('writeAuditOutbox', () => {
       'd-1',
       'corr-d',
       { ok: true },
+    ]);
+  });
+  it('preserves production-cost fixed audit literals', async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [], rowCount: 1 });
+    await writeProductionCostPolicyAudit({ query }, actor, 'policy-1', 'corr-cost', { amount: 1 });
+    expect(query).toHaveBeenCalledTimes(1);
+    expect(query.mock.calls[0]?.[0]).toContain('INSERT INTO audit_events');
+    expect(query.mock.calls[0]?.[1]).toEqual([
+      'manufacturing-cost.policy-created',
+      'SUCCESS',
+      actor.employeeId,
+      actor.companyId,
+      'production-cost-policy',
+      'policy-1',
+      'corr-cost',
+      { amount: 1 },
     ]);
   });
 });

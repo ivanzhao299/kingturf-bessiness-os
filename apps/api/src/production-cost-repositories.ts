@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { canonicalize, DomainError, type Actor, type ScopeAnchor } from '@kingturf/domain';
 import type { Database, SqlClient } from '@kingturf/database';
 import type { DataScope, JsonObject } from '@kingturf/types';
+import { writeProductionCostPolicyAudit } from './audit-outbox.ts';
 
 type Db = SqlClient & Pick<Database, 'transaction'>;
 type Context = Readonly<{
@@ -94,10 +95,7 @@ export class PostgresProductionCostRepository {
           ],
         );
       const result = { id: policy.id, ...input };
-      await tx.query(
-        "INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata) VALUES('manufacturing-cost.policy-created','SUCCESS',$1,$2,'production-cost-policy',$3,$4,$5)",
-        [context.actor.employeeId, context.actor.companyId, policy.id, correlationId, result],
-      );
+      await writeProductionCostPolicyAudit(tx, context.actor, policy.id, correlationId, result);
       return result;
     });
   }
