@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { canonicalize, DomainError, type Actor, type ScopeAnchor } from '@kingturf/domain';
 import type { Database, SqlClient } from '@kingturf/database';
 import type { DataScope, JsonObject } from '@kingturf/types';
+import { recordScopeSql } from './scope-sql.ts';
 
 type Db = SqlClient & Pick<Database, 'transaction'>;
 type Context = Readonly<{
@@ -11,23 +12,6 @@ type Context = Readonly<{
 }>;
 const hash = (value: unknown) => createHash('sha256').update(canonicalize(value)).digest('hex');
 const json = (value: unknown) => value as JsonObject;
-const scope = (context: Context, alias = 'c', offset = 3) => {
-  const clauses: string[] = [],
-    values: string[] = [];
-  if (context.scopes.includes('COMPANY') || context.scopes.includes('GROUP')) clauses.push('TRUE');
-  if (context.scopes.includes('SELF')) {
-    values.push(context.actor.employeeId);
-    clauses.push(`${alias}.owner_id=$${String(offset + values.length - 1)}`);
-  }
-  for (const anchor of context.anchors)
-    if (anchor.organizationId && context.scopes.includes(anchor.scope)) {
-      values.push(anchor.organizationId);
-      clauses.push(
-        `EXISTS(SELECT 1 FROM organizations anchor JOIN organization_scope_relationships osr ON osr.ancestor_id=anchor.id AND osr.descendant_id=${alias}.owner_organization_id${anchor.scope === 'TEAM' ? ' AND osr.depth<=1' : ''} WHERE anchor.id=$${String(offset + values.length - 1)} AND anchor.owner_organization_id=${alias}.tenant_id AND anchor.organization_type='${anchor.scope}' AND anchor.active AND anchor.deleted_at IS NULL)`,
-      );
-    }
-  return { sql: clauses.length ? `(${clauses.join(' OR ')})` : 'FALSE', values };
-};
 
 export class PostgresRiskRepository {
   public constructor(private readonly db: Db) {}
@@ -41,7 +25,7 @@ export class PostgresRiskRepository {
     ).rows.map((r) => r.item);
   }
   public async listEvaluations(context: Context) {
-    const secured = scope(context, 'c', 2);
+    const secured = recordScopeSql(context.scopes, context.anchors, context.actor, 'c', 2);
     return (
       await this.db.query<{ item: JsonObject }>(
         `SELECT to_jsonb(e)||jsonb_build_object('orderNumber',o.order_number,'policyCode',p.code,'policyVersion',v.version,'task',to_jsonb(t),'taskEvents',coalesce((SELECT jsonb_agg(to_jsonb(x) ORDER BY x.sequence) FROM risk_task_events x WHERE x.tenant_id=t.tenant_id AND x.risk_task_id=t.id),'[]'::jsonb)) item FROM risk_evaluations e JOIN sales_orders o ON o.id=e.sales_order_id AND o.tenant_id=e.tenant_id JOIN customers c ON c.id=o.customer_id AND c.tenant_id=o.tenant_id JOIN risk_policy_versions v ON v.id=e.policy_version_id AND v.tenant_id=e.tenant_id JOIN risk_policies p ON p.id=v.policy_id AND p.tenant_id=v.tenant_id LEFT JOIN effective_risk_tasks t ON t.risk_evaluation_id=e.id AND t.tenant_id=e.tenant_id WHERE e.tenant_id=$1 AND ${secured.sql} ORDER BY e.created_at DESC`,
@@ -219,7 +203,7 @@ export class PostgresRiskRepository {
         )
       ).rows[0];
       if (replay) return replay.item;
-      const secured = scope(context);
+      const secured = recordScopeSql(context.scopes, context.anchors, context.actor, 'c', 3);
       const basis = (
         await tx.query<{
           order_number: string;
