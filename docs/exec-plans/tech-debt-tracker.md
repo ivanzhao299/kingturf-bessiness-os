@@ -3,40 +3,44 @@
 > 依据 `docs/HARNESS-RULES.md` 附录 B 字段定义维护。**本台账是长效文件**：结清的条目移除并记入对应提交，新发现的条目持续登记（§14.3）。
 >
 > - **度量基线**：commit `779dea3`（2026-10-12），全部数字可用 `node scripts/analysis/repo-metrics.mjs` 复算。
+> - **度量口径**：行数以度量脚本为准（内容按换行符切分，含末段空行），与 `wc -l` 相差 ≤1 行/文件（如 bootstrap.ts：脚本 16,082 / `wc -l` 16,081）；两者差异不影响任何结论的量级。函数跨度为起止行号差，两口径相同。
 > - **业务行为影响**取值：`无`（纯重构）／`修复 bug`（纠正错误行为）／`变更行为`（有意改变外部可观察行为，必须单独提交并前置人工决策）。
 > - **本轮扫描未发现明确的功能性 bug**；所有「变更行为」条目均为安全加固类，已归入独立批次 4 并前置人工决策 D1，与纯重构严格分离（红线 R2）。
 
 ## 索引
 
-| ID           | 标题                                                                                    | 严重度 | 类别          | 业务行为影响 | 关联批次           | 状态   |
-| ------------ | --------------------------------------------------------------------------------------- | ------ | ------------- | ------------ | ------------------ | ------ |
-| TD-WEB-001   | bootstrap.ts 16,082 行巨石文件，七种职责混合                                            | P1     | 复杂度        | 无           | 批次 3             | 待处理 |
-| TD-WEB-002   | commercialWorkspaceStructure 单函数 ≈8,551 行                                           | P1     | 复杂度        | 无           | 批次 3             | 待处理 |
-| TD-WEB-003   | bootstrap.ts 深嵌套：≥4 层 8,603 行，最深 14 层                                         | P2     | 复杂度        | 无           | 批次 3             | 待处理 |
-| TD-API-001   | buildApp 单函数 ≈6,442 行、230 个顺序路由分支，吞掉 Service 层                          | P1     | 架构/复杂度   | 无           | 批次 2             | 待处理 |
-| TD-API-002   | app.ts 深嵌套：≥7 层 3,202 行，最深 14 层                                               | P2     | 复杂度        | 无           | 批次 2             | 待处理 |
-| TD-DUP-001   | 数据范围(DataScope) SQL 谓词在 12 个文件各复制一份                                      | P1     | 重复/安全     | 无           | 批次 1             | 待处理 |
-| TD-DUP-002   | audit_events + domain_event_outbox 双写 44 处/20 文件                                   | P1     | 重复          | 无           | 批次 1             | 待处理 |
-| TD-DUP-003   | 幂等键查询样板 23 行重复                                                                | P2     | 重复          | 无           | 批次 1             | 待处理 |
-| TD-DUP-004   | 前端日期格式化内联 12 处                                                                | P2     | 重复          | 无           | 批次 3             | 待处理 |
-| TD-ARCH-001  | foundation-repositories.ts 一文件 4 仓储 + 全仓仅有的 28 处 any + 文件级 eslint-disable | P2     | 架构/类型     | 无           | 批次 1             | 待处理 |
-| TD-ARCH-002  | CommercialController God store：load() 一次拉取 30+ 端点                                | P2     | 架构          | 无           | 批次 3             | 待处理 |
-| TD-BOUND-001 | API 响应边界无运行时形状校验（`as T` 裸转）                                             | P1     | 架构（T4/T5） | 无           | 批次 3             | 待处理 |
-| TD-BOUND-002 | 入站请求体校验为逐路由手写调用，无声明式 schema                                         | P2     | 架构          | 无           | 批次 2             | 待处理 |
-| TD-SEC-001   | 全链路无 Content-Security-Policy                                                        | P1     | 安全          | **变更行为** | 批次 4（前置 D1）  | 待处理 |
-| TD-SEC-002   | API 无限流/429，登录爆破仅 scrypt 成本兜底                                              | P1     | 安全          | **变更行为** | 批次 4（前置 D1）  | 待处理 |
-| TD-SEC-003   | 会话 token 存 sessionStorage，XSS 可读                                                  | P2     | 安全          | **变更行为** | 批次 4（前置 D1）  | 待处理 |
-| TD-SEC-004   | API 自身不设安全响应头，仅依赖生产 nginx                                                | P2     | 安全          | **变更行为** | 批次 4（前置 D1）  | 待处理 |
-| TD-SEC-005   | 动态 SQL 片段拼装面广，缺结构性约束防回归                                               | P2     | 安全/门禁     | 无           | 阶段 3（结构测试） | 待处理 |
-| TD-TEST-001  | 2 个仓储模块完全无测试，2 个近乎无覆盖                                                  | P1     | 测试          | 无           | 阶段 5             | 待处理 |
-| TD-TEST-002  | 无任何覆盖率配置与阈值                                                                  | P1     | 测试/门禁     | 无           | 阶段 5             | 待处理 |
-| TD-TEST-003  | 6 个仓储模块仅 mock 路由级测试，SQL 路径未验证                                          | P2     | 测试          | 无           | 阶段 5             | 待处理 |
-| TD-TEST-004  | packages/ui、types、testing 的占位测试                                                  | P2     | 测试          | 无           | 阶段 5（前置 D3）  | 待处理 |
-| TD-GATE-001  | 无 git hooks / commitlint / lint-staged，脏提交仅靠 CI 兜底                             | P1     | 门禁          | 无           | 阶段 3             | 待处理 |
-| TD-GATE-002  | vitest 无配置文件，参数散落各包 scripts                                                 | P2     | 门禁          | 无           | 阶段 3             | 待处理 |
-| TD-DOC-001   | 无 AGENTS.md；docs/ 85+ 文档无统一索引与目标结构                                        | P1     | 文档          | 无           | 阶段 2（前置 D4）  | 待处理 |
-| TD-VER-001   | 版本号全部 0.0.0 占位，发布标识 = commit SHA                                            | P2     | 依赖/版本     | 无           | 待决策（D2）       | 待处理 |
-| TD-HYG-001   | 本地验收产物滞留工作区；packages/ui、testing 近空壳                                     | P2     | 文档/工程卫生 | 无           | 待决策（D3）       | 待处理 |
+| ID           | 标题                                                                                    | 严重度 | 类别          | 业务行为影响             | 关联批次           | 状态   |
+| ------------ | --------------------------------------------------------------------------------------- | ------ | ------------- | ------------------------ | ------------------ | ------ |
+| TD-WEB-001   | bootstrap.ts 16,082 行巨石文件，七种职责混合                                            | P1     | 复杂度        | 无                       | 批次 3             | 待处理 |
+| TD-WEB-002   | commercialWorkspaceStructure 单函数 ≈8,551 行                                           | P1     | 复杂度        | 无                       | 批次 3             | 待处理 |
+| TD-WEB-003   | bootstrap.ts 深嵌套：≥4 层 8,603 行，最深 14 层                                         | P2     | 复杂度        | 无                       | 批次 3             | 待处理 |
+| TD-API-001   | buildApp 单函数 ≈6,442 行、230 个顺序路由分支，吞掉 Service 层                          | P1     | 架构/复杂度   | 无                       | 批次 2             | 待处理 |
+| TD-API-002   | app.ts 深嵌套：≥7 层 3,202 行，最深 14 层                                               | P2     | 复杂度        | 无                       | 批次 2             | 待处理 |
+| TD-DUP-001   | 数据范围(DataScope) SQL 谓词在 12 个文件各复制一份                                      | P1     | 重复/安全     | 无                       | 批次 1             | 待处理 |
+| TD-DUP-002   | audit_events + domain_event_outbox 双写 44 处/20 文件                                   | P1     | 重复          | 无                       | 批次 1             | 待处理 |
+| TD-DUP-003   | 幂等键查询样板 23 行重复                                                                | P2     | 重复          | 无                       | 批次 1             | 待处理 |
+| TD-DUP-004   | 前端日期格式化内联 12 处                                                                | P2     | 重复          | 无                       | 批次 3             | 待处理 |
+| TD-ARCH-001  | foundation-repositories.ts 一文件 4 仓储 + 全仓仅有的 28 处 any + 文件级 eslint-disable | P2     | 架构/类型     | 无                       | 批次 1             | 待处理 |
+| TD-ARCH-002  | CommercialController God store：load() 一次拉取 30+ 端点                                | P2     | 架构          | 无                       | 批次 3             | 待处理 |
+| TD-BOUND-001 | API 响应边界无运行时形状校验（`as T` 裸转）                                             | P1     | 架构（T4/T5） | 无                       | 批次 3             | 待处理 |
+| TD-BOUND-002 | 入站请求体校验为逐路由手写调用，无声明式 schema                                         | P2     | 架构          | 无                       | 批次 2             | 待处理 |
+| TD-SEC-001   | 全链路无 Content-Security-Policy                                                        | P1     | 安全          | **变更行为**             | 批次 4（前置 D1）  | 待处理 |
+| TD-SEC-002   | API 无限流/429，登录爆破仅 scrypt 成本兜底                                              | P1     | 安全          | **变更行为**             | 批次 4（前置 D1）  | 待处理 |
+| TD-SEC-003   | 会话 token 存 sessionStorage，XSS 可读                                                  | P2     | 安全          | **变更行为**             | 批次 4（前置 D1）  | 待处理 |
+| TD-SEC-004   | API 自身不设安全响应头，仅依赖生产 nginx                                                | P2     | 安全          | **变更行为**             | 批次 4（前置 D1）  | 待处理 |
+| TD-SEC-005   | 动态 SQL 片段拼装面广，缺结构性约束防回归                                               | P2     | 安全/门禁     | 无                       | 阶段 3（结构测试） | 待处理 |
+| TD-PERF-001  | 前端无自动重试/断路，失败依赖人工重试按钮                                               | P2     | 性能          | **变更行为**（仅实施时） | 待排期             | 待处理 |
+| TD-PERF-002  | 13 处 N+1 查询候选点未判定                                                              | P2     | 性能          | 无                       | 批次 2（子批 2f）  | 待处理 |
+| TD-TEST-001  | 2 个仓储模块完全无测试，2 个近乎无覆盖                                                  | P1     | 测试          | 无                       | 阶段 5             | 待处理 |
+| TD-TEST-002  | 无任何覆盖率配置与阈值                                                                  | P1     | 测试/门禁     | 无                       | 阶段 5             | 待处理 |
+| TD-TEST-003  | 6 个仓储模块仅 mock 路由级测试，SQL 路径未验证                                          | P2     | 测试          | 无                       | 阶段 5             | 待处理 |
+| TD-TEST-004  | packages/ui、packages/testing 的占位测试                                                | P2     | 测试          | 无                       | 阶段 5（前置 D3）  | 待处理 |
+| TD-TEST-005  | packages/types 占位测试：纯类型包的测试策略未定                                         | P2     | 测试          | 无                       | 阶段 5             | 待处理 |
+| TD-GATE-001  | 无 git hooks / commitlint / lint-staged，脏提交仅靠 CI 兜底                             | P1     | 门禁          | 无                       | 阶段 3             | 待处理 |
+| TD-GATE-002  | vitest 无配置文件，参数散落各包 scripts                                                 | P2     | 门禁          | 无                       | 阶段 3             | 待处理 |
+| TD-DOC-001   | 无 AGENTS.md；docs/ 85+ 文档无统一索引与目标结构                                        | P1     | 文档          | 无                       | 阶段 2（前置 D4）  | 待处理 |
+| TD-VER-001   | 版本号全部 0.0.0 占位，发布标识 = commit SHA                                            | P2     | 依赖/版本     | 无                       | 待决策（D2）       | 待处理 |
+| TD-HYG-001   | 本地验收产物滞留工作区；packages/ui、testing 近空壳                                     | P2     | 文档/工程卫生 | 无                       | 待决策（D3）       | 待处理 |
 
 ---
 
@@ -46,7 +50,7 @@
 
 - **位置**：`apps/web/src/bootstrap.ts`（全文件）
 - **类别**：复杂度 ｜ **严重度**：P1
-- **证据**：`wc -l` = 16,082 行，占全部非测试源码（48 文件 / 41,451 行）的 **38.8%**。单文件同时承担：①33 个内联 type 定义 ②2 个 API 客户端工厂（`createFetchCommercialApi`/`createFetchCrmApi`）③3 个带可变状态的 Controller 类（`CommercialController`:1427、`CrmController`:10590、`GovernanceController`:14572）④全部 DOM 构建与表单引擎（`openForm`:11932 一带）⑤路由（`setAppRoute`:12296 一带）⑥localStorage 视图/侧栏持久化（4 处 `localStorage.` 访问）⑦打印与本地化文案。
+- **证据**：度量脚本计 16,082 行（`wc -l` 同文件为 16,081，口径差异见台账头部），占全部非测试源码（48 文件 / 41,451 行）的 **38.8%**。单文件同时承担：①33 个内联 type 定义 ②2 个 API 客户端工厂（`createFetchCommercialApi`/`createFetchCrmApi`）③3 个带可变状态的 Controller 类（`CommercialController`:1427、`CrmController`:10590、`GovernanceController`:14572）④全部 DOM 构建与表单引擎（`openForm`:11932 一带）⑤路由（`setAppRoute`:12296 一带）⑥localStorage 视图/侧栏持久化（4 处 `localStorage.` 访问）⑦打印与本地化文案。
 - **修复建议**：按业务域拆分为分域视图模块 + 公共 shell/form/http-client/routing 模块；配合阶段 3 的文件大小上限门禁（T1）防止回潮。
 - **业务行为影响**：无（纯重构）
 - **关联批次**：批次 3 ｜ **验收方式**：文件行数门禁全绿 + 启动预算断言（`check-startup-budget.mjs`）+ `bootstrap.test.ts` 70 用例全绿 + `git diff` 行为零变化抽查
@@ -55,7 +59,7 @@
 
 - **位置**：`apps/web/src/bootstrap.ts:1851-10401`
 - **类别**：复杂度 ｜ **严重度**：P1
-- **证据**：度量脚本函数跨度分析：起止行 1851→10401，跨度 ≈8,551 行；函数内一次性构建 22 个商业子域视图（线索→商机→报价→订单→生产→发货全链路）。
+- **证据**：度量脚本函数跨度分析：起止行 1851→10401，跨度 ≈8,551 行；函数内一次性构建 21 个商业子域视图（`data-route-view` 属性实测清单，线索→商机→报价→订单→生产→发货全链路）。
 - **修复建议**：按子域拆分为独立 view builder，每个 ≤800 行（阈值在阶段 3 定死并机械化）。
 - **业务行为影响**：无 ｜ **关联批次**：批次 3 ｜ **验收方式**：同 TD-WEB-001 + 新增结构测试断言"单函数 ≤ 阈值"
 
@@ -157,7 +161,7 @@
 
 - **位置**：`infra/nginx/erp.kingturf.cn.conf`（仅 X-Content-Type-Options/X-Frame-Options/Referrer-Policy，无 CSP）；`apps/api/src/app.ts`（无安全头）；`apps/web/index.html`（无 meta CSP）
 - **类别**：安全 ｜ **严重度**：P1 ｜ **业务行为影响**：**变更行为**
-- **证据**：三层 grep `Content-Security-Policy` = 0 命中；bootstrap.ts 存在 19 处 `innerHTML`（已过 `sanitizeBusinessDocumentHtml` 白名单消毒，但缺 CSP 纵深防御）。
+- **证据**：三层 grep `Content-Security-Policy` = 0 命中；bootstrap.ts 存在 17 处 `innerHTML`（已过 `sanitizeBusinessDocumentHtml` 白名单消毒，但缺 CSP 纵深防御；扫描方法见计划 §3.8）。
 - **修复建议**：先 `Content-Security-Policy-Report-Only` 观察一个发布周期，再启用严格 CSP；落地位置优先 nginx（一处生效）。
 - **关联批次**：批次 4 ｜ **验收方式**：e2e 断言 CSP 头存在 + Report-Only 期零违例报告 + 人工确认发布
 
@@ -219,13 +223,39 @@
 - **修复建议**：阶段 5 补 PG 集成测试（复用现有集成测试范式与 fixtures）。
 - **业务行为影响**：无 ｜ **关联批次**：阶段 5 ｜ **验收方式**：6 个域各有集成测试文件且全绿
 
-### TD-TEST-004｜packages/ui、types、testing 的占位测试
+### TD-TEST-004｜packages/ui、packages/testing 的占位测试
 
-- **位置**：`packages/ui/src/index.test.ts`、`packages/types/src/index.test.ts`、`packages/testing/src/index.test.ts`（各 1 用例）
+- **位置**：`packages/ui/src/index.test.ts`、`packages/testing/src/index.test.ts`（各 1 用例）
 - **类别**：测试 ｜ **严重度**：P2
-- **证据**：三包源码极小（ui 7 行、testing 3 行），测试为占位性质。
-- **修复建议**：视 D3 对空壳包的处置决策而定（若合并/删除则本条随之关闭）。
+- **证据**：两包源码极小（ui 7 行、testing 3 行），测试为占位性质。
+- **修复建议**：视 D3 对空壳包的处置决策而定（若合并/删除则本条随之关闭；若保留则补齐对现有导出的用例）。
 - **业务行为影响**：无 ｜ **关联批次**：阶段 5（前置 D3） ｜ **验收方式**：随 D3 决策落地
+
+### TD-TEST-005｜packages/types 占位测试：纯类型包的测试策略未定
+
+- **位置**：`packages/types/src/index.test.ts`（1 用例）；对照 `packages/types/src/index.ts`（约 537 行纯 DTO/枚举/ErrorEnvelope 类型）
+- **类别**：测试 ｜ **严重度**：P2
+- **证据**：纯类型包的运行时测试意义有限（无逻辑可断言）；现状为占位用例，策略未定。**本条不依赖 D3**（types 是被全部包引用的活跃共享包，无去留问题，与空壳包性质不同）。
+- **修复建议**：阶段 5 二选一并记录：①以类型级断言（`asserts`/`tsd` 风格或 `expectTypeOf`）替代运行时占位测试；②豁免并登记（豁免格式见计划 §5 阶段 5 阈值表）。
+- **业务行为影响**：无 ｜ **关联批次**：阶段 5 ｜ **验收方式**：策略落盘且占位测试被替换或豁免登记
+
+## 性能与可靠性
+
+### TD-PERF-001｜前端无自动重试/断路，失败依赖人工重试按钮
+
+- **位置**：`apps/web/src/http.ts`（封装内有 15s 超时与中止，无重试）；对照 `entry.ts:66-68`（"重新加载工作台"人工重试按钮）
+- **类别**：性能 ｜ **严重度**：P2 ｜ **业务行为影响**：**变更行为**（仅实施时——引入自动重试会改变失败路径的表现与请求次数）
+- **证据**：`grep -rniE '\bretry|backoff'`（非测试）17 处命中全部为人工重试按钮与幂等命令语义，自动重试/断路 0 处；网络失败目前靠登录页/启动失败视图的手动重试兜底（扫描方法见计划 §3.8）。
+- **修复建议**：**待排期**：若实施，仅对幂等 GET 加单次自动重试（指数退避可选），并在实施前按行为变更登记、单独提交。
+- **关联批次**：待排期（P2，登记不丢） ｜ **验收方式**：若实施：重试/放弃行为单测 + 请求次数断言
+
+### TD-PERF-002｜13 处 N+1 查询候选点未判定
+
+- **位置**：`contract-document-repositories.ts:188`、`foundation-repositories.ts:{142,276,434,995}`、`procurement-repositories.ts:{259,436}`、`manufacturing-repositories.ts:{207,295}`、`qtc-repositories.ts:{890,932}`、`complaint-repositories.ts:1063`、`production-cost-repositories.ts:85`
+- **类别**：性能 ｜ **严重度**：P2
+- **证据**：语法级检测（for-of 循环块内含 `await`，方法与限制见计划 §3.8）命中 13 处；是否构成真 N+1 取决于调用频次与数据量，**未判定**（当前无慢查询故障报告）。
+- **修复建议**：批次 2 子批 2f 迁移路由时逐个判定：确证者（循环次数受用户输入影响）登记修复子任务并单独处理；误报者在本条标注关闭。
+- **业务行为影响**：无（判定阶段零代码改动；确证修复另登记） ｜ **关联批次**：批次 2（子批 2f） ｜ **验收方式**：13 处全部有判定结论（确证/误报）记录于本条
 
 ## 门禁
 
@@ -252,7 +282,7 @@
 - **位置**：仓库根（无 AGENTS.md/CLAUDE.md）；`docs/`（adr 10、agent-memory 11、engineering 26+、evidence 14+、tasks 22+、deployment 2，另散文件）
 - **类别**：文档 ｜ **严重度**：P1
 - **证据**：规则要求的 `docs/exec-plans/`、`docs/design-docs/`、`AGENTS.md` 均不存在；现有 85+ 文档质量高但无 index、无新鲜度标注、无交叉链接校验，智能体无法判断哪份仍有效（B3/B5 违背）。
-- **修复建议**：阶段 2 按 §2.1 建目标结构 + AGENTS.md（≤100 行地图）+ docs/index.md；现有文档归并策略属 D4 决策。
+- **修复建议**：阶段 2 按 §2.1 建目标结构 + AGENTS.md（目标 ≤100 行，机械上限 200 行）+ docs/index.md；现有文档归并策略属 D4 决策。
 - **业务行为影响**：无 ｜ **关联批次**：阶段 2（前置 D4） ｜ **验收方式**：文档 lint（链接可解析、必填节）通过 + AGENTS.md ≤200 行
 
 ### TD-VER-001｜版本号全部 0.0.0 占位，发布标识 = commit SHA
@@ -265,7 +295,7 @@
 
 ### TD-HYG-001｜本地验收产物滞留；近空壳包
 
-- **位置**：`.local-acceptance/`（12 个验收批次目录，已被 .gitignore 忽略）、`.test-results/`；`packages/ui/src/index.ts`（7 行）、`packages/testing/src/index.ts`（3 行）
+- **位置**：`.local-acceptance/`（**10 个目录、36 个条目**，已被 .gitignore 忽略；复核命令 `find .local-acceptance -maxdepth 1 -type d | wc -l`）、`.test-results/`；`packages/ui/src/index.ts`（7 行）、`packages/testing/src/index.ts`（3 行）
 - **类别**：文档/工程卫生 ｜ **严重度**：P2
 - **证据**：验收期产物滞留工作区（不入库，仅本地噪音）；ui/testing 两包占位未长成，但被 apps/web 与各包 devDependencies 引用，不可贸然删（R5）。
 - **修复建议**：**待人工决策 D3**：空壳包合并/长成/保留的处置；.local-acceptance 加清理脚本或保留策略说明。
@@ -275,6 +305,7 @@
 
 ## 处置记录
 
-| 日期       | 条目       | 动作                                | 关联 commit    |
-| ---------- | ---------- | ----------------------------------- | -------------- |
-| 2026-10-12 | 全部 27 条 | 阶段 1 全量扫描登记（基线 779dea3） | 本分支首次提交 |
+| 日期       | 条目       | 动作                                                                                                                                                                                                             | 关联 commit    |
+| ---------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| 2026-10-12 | 全部 27 条 | 阶段 1 全量扫描登记（基线 779dea3）                                                                                                                                                                              | 本分支首次提交 |
+| 2026-10-12 | 30 条      | 审核修订：TD-TEST-004 拆出 types 为 TD-TEST-005（脱离 D3）；新增 TD-PERF-001/002（§3.8 性能扫描落盘）；修正度量口径表述（脚本 vs `wc -l`）、`.local-acceptance` 计数（10 目录）、innerHTML 17 处、商业子域 21 个 | 本分支修订提交 |
