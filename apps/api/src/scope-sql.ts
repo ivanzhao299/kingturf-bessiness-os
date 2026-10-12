@@ -1,4 +1,4 @@
-import type { ScopeAnchor } from '@kingturf/domain';
+import type { Actor, ScopeAnchor } from '@kingturf/domain';
 import { DATA_SCOPES, type DataScope } from '@kingturf/types';
 
 // 数据范围（DataScope）SQL 谓词的共享实现（批次 1 收敛，TD-DUP-001）。
@@ -114,4 +114,30 @@ export function employeeScopedPredicate(
     predicate: clauses.length === 0 ? 'FALSE' : `(${actorExists} AND (${clauses.join(' OR ')}))`,
     values,
   };
+}
+
+/**
+ * 业务记录域变体（原 commercial-repositories.ts 的 scope）：owner_id/owner_organization_id
+ * 基础 + 锚点 EXISTS（TEAM 含 depth<=1）+ 租户校验（alias.tenant_id）。
+ * alias 为表别名（commercial 传 'o'）；SQL 与迁移前逐字一致。
+ * 锚点仅在「有 organizationId 且其 scope 已授予」时生效（沿用 commercial 原语义）。
+ */
+export function recordScopeSql(
+  scopes: readonly DataScope[],
+  anchors: readonly ScopeAnchor[],
+  actor: Actor,
+  alias: string,
+  offset: number,
+): { sql: string; values: readonly unknown[] } {
+  const clauses: string[] = [];
+  const values: unknown[] = [];
+  if (scopes.includes('COMPANY') || scopes.includes('GROUP')) clauses.push('TRUE');
+  if (scopes.includes('SELF'))
+    clauses.push(`${alias}.owner_id=$${String(offset + values.push(actor.employeeId) - 1)}`);
+  for (const anchor of anchors)
+    if (anchor.organizationId && scopes.includes(anchor.scope))
+      clauses.push(
+        `EXISTS(SELECT 1 FROM organizations anchor JOIN organization_scope_relationships osr ON osr.ancestor_id=anchor.id AND osr.descendant_id=${alias}.owner_organization_id${anchor.scope === 'TEAM' ? ' AND osr.depth<=1' : ''} WHERE anchor.id=$${String(offset + values.push(anchor.organizationId) - 1)} AND anchor.owner_organization_id=${alias}.tenant_id AND anchor.organization_type='${anchor.scope}' AND anchor.active AND anchor.deleted_at IS NULL)`,
+      );
+  return { sql: clauses.length ? `(${clauses.join(' OR ')})` : 'FALSE', values };
 }
