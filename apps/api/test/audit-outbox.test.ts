@@ -5,6 +5,7 @@ import {
   writeCommercialEvidence,
   writeComplaintEvidence,
   writeCrmAuditEvent,
+  writeFixedVersionOneEvidence,
 } from '../src/audit-outbox.js';
 
 const actor: Actor = {
@@ -141,5 +142,36 @@ describe('writeAuditOutbox', () => {
       expect(query.mock.calls[1]?.[0]).toContain('INSERT INTO domain_event_outbox');
       expect(query.mock.calls[1]?.[1]).toEqual(outboxValues);
     }
+  });
+  it('preserves fixed aggregate_version=1 for MRP and procurement', async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [], rowCount: 1 });
+    await writeFixedVersionOneEvidence(
+      { query },
+      'mrp.computed',
+      'mrp-run',
+      'id-1',
+      { actor },
+      'corr-1',
+      { ok: true },
+    );
+    expect(query.mock.calls[0]?.[1]).toEqual([
+      'mrp.computed',
+      actor.employeeId,
+      actor.companyId,
+      'mrp-run',
+      'id-1',
+      'corr-1',
+      { ok: true },
+    ]);
+    expect(query.mock.calls[1]?.[1]).toEqual([
+      actor.companyId,
+      'mrp.computed',
+      'mrp-run',
+      'id-1',
+      1,
+      actor.employeeId,
+      'corr-1',
+      { ok: true },
+    ]);
   });
 });

@@ -93,3 +93,25 @@ export const writeComplaintEvidence = (
   context: Readonly<{ actor: Actor }>,
   correlationId: string,
 ) => writeAuditOutbox(tx, action, targetType, targetId, version, context, correlationId, payload);
+
+export const writeFixedVersionOneEvidence = (
+  tx: SqlClient,
+  eventType: string,
+  aggregateType: string,
+  aggregateId: string,
+  context: Readonly<{ actor: Actor }>,
+  correlationId: string,
+  payload: JsonObject,
+) => {
+  const actor = context.actor;
+  return writeAuditOutbox(
+    tx,
+    eventType,
+    aggregateType,
+    aggregateId,
+    1,
+    actor,
+    correlationId,
+    payload,
+  );
+};
