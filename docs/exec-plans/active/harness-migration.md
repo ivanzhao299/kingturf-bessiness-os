@@ -6,7 +6,7 @@
 - **分支**：`harnessing`（自 main 派生；按规则 §7.1 禁止直接在主干改造）
 - **计划版本 / 日期**：v1.3 / 2026-10-12（v1.2 经第三轮人工审核修订：修复 §3.8 S11 表格裸管道、覆盖率验收语义收紧为目标值硬条件、S11 表述改为启发式口径）
 - **扫描基线**：commit `779dea3`（同步 origin/main 后）
-- **状态**：**批次 1 与 2a 已获人工验收；2b 进行中：auth/identity provisioning/IAM/profiles/identity-state/collection及commercial已迁移并整体协调复核通过。商业最终14b841c完整CI通过（API1255），独立872用例/38method-path、39语义与12模块映射确认；不等于2b整批通过。complaint设计及①SLA/②reads/③create已整体协调确认（③独立1111、最终d17dbc9 API1494）；本轮仅④batch POST，56旧契约已通过尚未提取；其余14入口及crm/platform/production/production-startup/qtc/website-lead-ingest等后续待执行。2b 整批尚未获人类验收。**
+- **状态**：**批次 1 与 2a 已获人工验收；2b 进行中：auth/identity provisioning/IAM/profiles/identity-state/collection及commercial已迁移并整体协调复核通过。商业最终14b841c完整CI通过（API1255），独立872用例/38method-path、39语义与12模块映射确认；不等于2b整批通过。complaint设计及①SLA/②reads/③create已整体协调确认（③独立1111、最终d17dbc9 API1494）；本轮仅④batch POST已提取并本地验证通过（固定56、API1550），待协调小步复核；其余14入口及crm/platform/production/production-startup/qtc/website-lead-ingest等后续待执行。2b 整批尚未获人类验收。**
 - **规则文档**：`docs/HARNESS-RULES.md`（施工期常驻，竣工验收后按 §14 拆解归档）
 - **配套文件**：问题清单 `docs/exec-plans/tech-debt-tracker.md`（34 条）；CI 决策 `docs/CI.md`；度量脚本 `scripts/analysis/repo-metrics.mjs`
 
@@ -243,7 +243,9 @@ packages/{types, ui, config, testing} → 零依赖
 
 **当前边界与否定证据**：快照 `app.ts:3486` 机会dispatcher至 `:3692` quote-command接线、`:3693` CRM matcher；商业区现在仅工厂/共享dispatcher及parser/授权/DTO注入。全 `apps/api/src/app.ts` 执行 `rg -n 'dependencies\.commercial|commercial\.(list|find|create|update|transition|submit|approve|issue|evaluate|calculate|add|link|get)' apps/api/src/app.ts`，命中均为repository注入/存在性guard，未找到历史商业范围的旧内联仓储业务调用。共享解析/DTO helper不是残留成功分支；CRM之后的域外业务不在本结论范围。scout与独立reviewer只读核验，不运行DB/构建。本表不结清整批债务，不表示2b验收，**商业整体已协调复核通过：独立17文件872/872、最终14b841c完整CI退出码0及38/39映射核验；不等于2b整批验收**。
 
-#### 4.2.2 complaint 全域盘点与分步设计（基线 14b841c，①②③已协调确认，④batch进行中）
+#### 4.2.2 complaint 全域盘点与分步设计（基线 14b841c，①②③已协调确认，④batch待复核）
+
+**④实施当前快照**：旧testd0799b6固定56 HTTP契约，代码bfc1c06仅原一exact POST条件/一method-path/一语义/batchTriage一调用提取为complaint-batch-triage.ts一defineRoute（72）；app1691–1709仅create后/transition前上下文和dispatch，transition matcher现1710起，后续14入口原文不动。显式validate保留双顶层cap授权→array/1..50→逐行四字段完整解析→duplicate→保序重复scope/anchor双值交集→最后body batchKey，窄ValidatedBatch包装原input/R，handler原receiver/R/C→200原BatchCommandResult，无DTO/空交集提前403/隐藏read请求。app5196→5169、模块86行，validateBatch28–68共41、routes70–86共17，人工嵌套≤5，无any/共享可变状态；不宣称AST函数长度门禁已实现。56固定预期与旧295中其余239/商业全部零diff；前后相关23文件1173/1173、complaint PG各4/4（真实mixed/replay/单审计）、typecheck/lint与独立reviewer通过。完整ci:local退出码0，API63文件1550/1550；mock响应不冒充数据库replay。下方快照/批准保留原时点，历史14b841c盘点不改。④待协调复核，⑤及其余域未实施。
 
 **④当前批准/③整体确认**：2157786/日志d17dbc9已协调静态和独立reviewer复核通过，30946c4旧108契约冻结无diff；协调亲跑20文件1111/1111，最终d17dbc9完整CI退出码0（API62文件1494/1494、complaint PG4/4、结构0违规31豁免及其他门禁/audit全绿）。本轮只批准④exact POST batch-triage，旧d17dbc9内联56固定契约首跑通过，相关23文件1173/1173、guard/迁移状态/PG4/4/typecheck/lint通过；先独立test再提取，不改仓储逐项事务/replay/审计机制。交集保持triage顺序/重复与scope+org匹配，两grant有效但交集为空仍调用仓储，不加early403；mock raw响应与真实PG mixed/replay证据分开。下方各快照/批准/待复核只指历史时点，历史14b841c盘点行号不改；剩余14入口（⑤及NCR/CAPA）不实施。
 
@@ -413,6 +415,8 @@ packages/{types, ui, config, testing} → 零依赖
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+2026-10-13，2b-complaint④batch收尾：[已测试] 基线d17dbc9，旧test `d0799b6`，代码 `bfc1c06`。只exact POST batch-triage一个条件/一method-path/一语义与batchTriage一仓储调用迁入窄module一defineRoute，原guard/create后/transition前dispatch不匹配null继续，401/缺repo整skip404与后续14入口不动。validate完整保持body→顶层allow(batchKey,items)→triage bodykeys→assign bodykeys→array/1..50→每行原通用object/四allow/indexed UUID id→version integer1..1000000→required assigned UUID→reason string→完整map之后Set重复→scope triage.filter(assign.includes)/anchor scope+org some双值交集→最后stableCode(string(batchKey))；保triage顺序/重复、空交集仍调用、anchors不再按sharedScopes过滤，不加read或逐行field授权/headerkey。窄ValidatedBatch携原input/R，handler仅原receiver/input/R/correlation→200raw混合成功失败/元数据，不改仓储逐项事务/审计/requestHash/replay、未并发Promise.all。旧56首跑全通过并独立提交，迁移后预期零diff，旧SLA61/reads70/create108/商业冻结预期不改；前后相关23文件1173/1173、complaint PG各4/4、guard/迁移状态/typecheck/lint通过，真实PG旧mixed/replay/单审计与mock重复raw响应分别记录。冻结前Map类型推断失败及修正见护栏日志，迁移后无失败/偏差；独立reviewer旧oracle/实际新旧双cap交集优先级与raw返回无必要问题。完整ci:local退出码0（API63文件1550/1550、complaint PG4/4、auth/IAM HTTP PG各19、format/doc-lint103/structure强制0豁免31/release guardrails/typecheck/lint/build/security全绿）；最终日志HEAD须完整复验并在交接报告确认退出码。app5196→5169、新模块86/最大职责函数41/人工嵌套≤5，不宣称AST长度强制已实现。仓储/SQL/DB/scope-sql/①②③/dispatcher/types/门禁/packages/workflow零diff，TD-SEC-006/TD-BOUND-003保持，不修行为/不结清整批债务。④待协调小步复核，停止等待⑤transitions续派，不启动⑤/其余域/2c；未跑E2E、未push/部署/生产操作。回滚：`git revert bfc1c06`恢复旧batch内联；d0799b6旧契约/③协调确认与本日志独立revert。
 
 2026-10-13，③create整体协调确认/④batch旧护栏：2157786/d17dbc9新旧顺序/optional/上下文/DTO经协调静态和独立reviewer无阻塞，30946c4冻结108零diff；协调亲跑20文件1111/1111，最终d17dbc9完整CI退出码0（API62文件1494/1494、complaint PG4/4、结构强制0豁免31及其他门禁/audit全绿）。仅批准④exact POST batch-triage。旧56固定HTTP契约在d17dbc9内联首跑全通过，相关23文件1173/1173、guard/迁移状态/typecheck/lint与complaint PG4/4通过，独立reviewer无必要缺口；PG既有mixed/replay/单审计与mock重复raw响应明确分开，不以mock冒充数据库证据。覆盖双cap顶层fields/授权次序、array/1..50、逐行通用object错误与indexed四字段首错、全数组解析后trim-ID重复、UUID case原样、scope/anchor交集顺序/重复/双值匹配/空交集和独立anchor、不早403、晚body stable batchKey/header无关、raw混合成功失败额外元数据与401404邻接信封。冻结前typecheck首次Map推断TEAM tuple过窄，显式Map<PermissionKey, readonly ScopeAnchor[]>修正后通过；业务源码未改，预期未为新实现改写。旧test独立提交后冻结；实现/全CI/回滚另记。其余14入口不改，TD-SEC-006/TD-BOUND-003语义不修、不结清整批债务，无push/部署/生产/workflow操作。
 
