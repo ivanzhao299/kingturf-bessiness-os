@@ -18,6 +18,10 @@ export type RouteHandler<Input> = BivariantHandler<Input>;
 export type RouteDefinition<Input = unknown> = Readonly<{
   method: string;
   match: (pathname: string) => RouteMatch | null;
+  preflight?: (
+    request: ApiRequest,
+    match: RouteMatch,
+  ) => ApiResponse | null | Promise<ApiResponse | null>;
   validate: RouteValidator<Input> | null;
   handler: RouteHandler<Input>;
 }>;
@@ -34,6 +38,10 @@ export async function dispatchRoutes(
     if (route.method !== request.method) continue;
     const match = route.match(request.pathname);
     if (!match) continue;
+    if (route.preflight) {
+      const response = await route.preflight(request, match);
+      if (response !== null) return response;
+    }
     const input = route.validate ? route.validate(request, match) : undefined;
     return route.handler(request, match, input);
   }

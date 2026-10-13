@@ -62,6 +62,7 @@ import type { PostgresWebsiteLeadIngestor } from './website-lead-ingest.ts';
 import { dispatchFoundationRoutes, foundationRoutes } from './routes/foundation.ts';
 import { credentialRoutes, loginRoutes, sessionRoutes } from './routes/auth.ts';
 import { dispatchRoutes } from './routes/types.ts';
+import { identityProvisionRoutes } from './routes/identity-provision.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -3019,22 +3020,19 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           request,
         );
         if (credentialResponse) return credentialResponse;
-        const identityProvisionMatch = /^\/api\/v1\/employees\/([0-9a-f-]+)\/identity$/u.exec(
-          request.pathname,
-        );
-        if (request.method === 'PUT' && identityProvisionMatch) {
-          authorizeQuery(context, 'authorization:manage');
-          const body = objectBody(request.body);
-          allow(body, ['login', 'password']);
-          await dependencies.auth.provisionIdentity(
-            context,
-            uuid(identityProvisionMatch[1], 'employeeId'),
-            string(body.login, 'login'),
-            string(body.password, 'password'),
+        const identityProvisionResponse = await dispatchRoutes(
+          identityProvisionRoutes({
+            auth: dependencies.auth,
+            authorization: context,
             correlationId,
-          );
-          return { statusCode: 204, body: {} };
-        }
+            authorize: () => {
+              authorizeQuery(context, 'authorization:manage');
+            },
+            parsers: { objectBody, allow, uuid, string },
+          }),
+          request,
+        );
+        if (identityProvisionResponse) return identityProvisionResponse;
         if (dependencies.contractDocuments) {
           if (request.method === 'GET' && request.pathname === '/api/v1/contract-documents') {
             const grant = authorizeQuery(context, 'contract-document:read');
