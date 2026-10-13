@@ -27,6 +27,7 @@ import type { ErrorCode, PermissionKey } from '@kingturf/types';
 import { authorizeQuery } from './policy.ts';
 import { auditReadRoutes } from './routes/audit-reads.ts';
 import { numberAllocationRoutes } from './routes/number-allocation.ts';
+import { ruleEvaluationRoutes } from './routes/rule-evaluation.ts';
 import {
   ruleDefinitionListRoutes,
   ruleDefinitionCreateRoutes,
@@ -3946,20 +3947,21 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           authorizeQuery(context, 'rule:evaluate');
           if (!dependencies.rules)
             return error(503, 'internal_error', 'Rule repository unavailable', correlationId);
-          const key = request.headers?.['idempotency-key'];
-          if (!key) throw new DomainError('invalid_request', 'Idempotency-Key header is required');
-          const b = objectBody(request.body);
-          allow(b, ['input']);
-          return {
-            statusCode: 200,
-            body: await dependencies.rules.evaluate(
-              uuid(evaluateRule[1], 'ruleId'),
-              objectBody(b.input) as never,
-              key,
-              context.actor,
+          const response = await dispatchRoutes(
+            ruleEvaluationRoutes({
+              repository: dependencies.rules,
+              actor: context.actor,
               correlationId,
-            ),
-          };
+              objectBody,
+              allow,
+              uuid,
+              keyRequired: () => {
+                throw new DomainError('invalid_request', 'Idempotency-Key header is required');
+              },
+            }),
+            request,
+          );
+          if (response !== null) return response;
         }
         if (request.pathname === '/api/v1/master-data/entries' && request.method === 'GET') {
           authorizeQuery(context, 'master-data:read');
