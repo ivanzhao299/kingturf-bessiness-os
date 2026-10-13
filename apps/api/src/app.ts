@@ -91,6 +91,7 @@ import { capaLifecycleRoutes } from './routes/capa-lifecycle.ts';
 import { customerCollectionRoutes, customerDetailRoutes } from './routes/customer-base.ts';
 import { customerOwnershipRoutes } from './routes/customer-ownership.ts';
 import { customerActivityRoutes } from './routes/customer-activities.ts';
+import { customerLifecycleRoutes } from './routes/customer-lifecycle.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -3377,28 +3378,18 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             request,
           );
           if (customerActivityResponse) return customerActivityResponse;
-          if (request.method === 'PATCH' && id && !nested) {
-            const grant = authorizeQuery(context, 'customer:lifecycle', ['status', 'reason']);
-            const b = objectBody(request.body);
-            allow(b, ['status', 'reason', 'expectedVersion']);
-            return {
-              statusCode: 200,
-              body: mutationDto(
-                await dependencies.crm.transitionCustomer(
-                  uuid(id, 'customerId'),
-                  string(b.status, 'status') as import('@kingturf/types').CustomerStatus,
-                  expectedVersion(b.expectedVersion),
-                  string(b.reason, 'reason'),
-                  context.actor,
-                  correlationId,
-                  grant.scopes,
-                  grant.anchors,
-                ),
-                context,
-                'customer:read',
-              ),
-            };
-          }
+          const customerLifecycleResponse = await dispatchRoutes(
+            customerLifecycleRoutes({
+              repository: dependencies.crm,
+              authorization: context,
+              correlationId,
+              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
+              mutationDto: (value) => mutationDto(value, context, 'customer:read'),
+              parsers: { objectBody, allow, uuid, string, expectedVersion },
+            }),
+            request,
+          );
+          if (customerLifecycleResponse) return customerLifecycleResponse;
           if (request.method === 'GET' && id && nested === '360') {
             const readGrant = authorizeQuery(context, 'customer:read');
             const g = authorizeQuery(context, 'customer-360:read');
