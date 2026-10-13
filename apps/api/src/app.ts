@@ -78,6 +78,7 @@ import { commercialDefinitionRoutes } from './routes/commercial-definitions.ts';
 import { commercialEvaluationRoutes } from './routes/commercial-evaluations.ts';
 import { quoteWriteRoutes } from './routes/quote-writes.ts';
 import { quoteCommandRoutes } from './routes/quote-commands.ts';
+import { complaintSlaRoutes } from './routes/complaint-sla.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -1633,70 +1634,26 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           }
         }
         if (dependencies.complaints) {
-          if (request.method === 'GET' && request.pathname === '/api/v1/complaint-sla-policies') {
-            const grant = authorizeQuery(context, 'complaint-sla:read');
-            const items = await dependencies.complaints.listSlaPolicies({
-              actor: context.actor,
-              scopes: grant.scopes,
-              anchors: grant.anchors,
-            });
-            return {
-              statusCode: 200,
-              body: {
-                items: items.map((item) =>
-                  permittedDto(item, context.permissions.get('complaint-sla:read')?.fields ?? null),
-                ),
-              },
-            };
-          }
-          if (request.method === 'POST' && request.pathname === '/api/v1/complaint-sla-policies') {
-            const body = objectBody(request.body);
-            allow(body, [
-              'policyCode',
-              'version',
-              'severity',
-              'responseHours',
-              'containmentHours',
-              'rootCauseHours',
-              'closureHours',
-              'effectiveAt',
-            ]);
-            const grant = authorizeQuery(context, 'complaint-sla:manage', Object.keys(body));
-            const severity = string(body.severity, 'severity');
-            if (!['LOW', 'MEDIUM', 'MAJOR', 'CRITICAL'].includes(severity))
-              throw new DomainError('invalid_request', 'severity is unsupported');
-            const responseHours = integer(body.responseHours, 'responseHours', 1, 8760);
-            const containmentHours = integer(body.containmentHours, 'containmentHours', 1, 8760);
-            const rootCauseHours = integer(body.rootCauseHours, 'rootCauseHours', 1, 8760);
-            const closureHours = integer(body.closureHours, 'closureHours', 1, 8760);
-            if (
-              responseHours > containmentHours ||
-              containmentHours > rootCauseHours ||
-              rootCauseHours > closureHours
-            )
-              throw new DomainError(
-                'invalid_request',
-                'SLA hours must progress from response through closure',
-              );
-            const result = await dependencies.complaints.createSlaPolicy(
-              {
-                policyCode: assertStableCode(string(body.policyCode, 'policyCode')),
-                version: integer(body.version, 'version', 1, 10_000),
-                severity: severity as 'LOW' | 'MEDIUM' | 'MAJOR' | 'CRITICAL',
-                responseHours,
-                containmentHours,
-                rootCauseHours,
-                closureHours,
-                effectiveAt: timestamp(body.effectiveAt, 'effectiveAt'),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+          const slaResponse = await dispatchRoutes(
+            complaintSlaRoutes({
+              repository: dependencies.complaints,
+              authorization: context,
               correlationId,
-            );
-            return {
-              statusCode: 201,
-              body: mutationDto(result, context, 'complaint-sla:read'),
-            };
-          }
+              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
+              permittedDto,
+              mutationDto: (value) => mutationDto(value, context, 'complaint-sla:read'),
+              parsers: {
+                objectBody,
+                allow,
+                string,
+                stableCode: assertStableCode,
+                integer,
+                timestamp,
+              },
+            }),
+            request,
+          );
+          if (slaResponse) return slaResponse;
           if (request.method === 'GET' && request.pathname === '/api/v1/complaints') {
             const grant = authorizeQuery(context, 'complaint:read');
             const query = request.query ?? {};
