@@ -10,6 +10,11 @@ cleanup script manually:
 node scripts/analysis/clean-local-acceptance.mjs
 ```
 
-The script is never invoked automatically. It refuses to run unless the resolved target is exactly
-the repository's `.local-acceptance/` child, so it cannot be redirected to the repository root or
-another directory.
+The script is never invoked automatically. Use `--check` for a read-only target-path self-test:
+
+```sh
+node scripts/analysis/clean-local-acceptance.mjs --check
+```
+
+Without `--check`, it refuses to run unless the resolved target is exactly the repository's
+`.local-acceptance/` child, so it cannot be redirected to the repository root or another directory.
