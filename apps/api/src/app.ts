@@ -84,6 +84,7 @@ import { complaintCreateRoutes } from './routes/complaint-create.ts';
 import { complaintBatchTriageRoutes } from './routes/complaint-batch-triage.ts';
 import { complaintTransitionRoutes } from './routes/complaint-transitions.ts';
 import { ncrCreateRoutes } from './routes/ncr-create.ts';
+import { ncrTransitionRoutes } from './routes/ncr-transitions.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -1750,84 +1751,26 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             request,
           );
           if (ncrCreateResponse) return ncrCreateResponse;
-          const ncrTransition =
-            /^\/api\/v1\/ncrs\/([0-9a-f-]+)\/(contain|root-cause|disposition|close)$/u.exec(
-              request.pathname,
-            );
-          if (request.method === 'POST' && ncrTransition) {
-            const body = objectBody(request.body);
-            allow(body, [
-              'expectedVersion',
-              'reason',
-              'rootCauseMethod',
-              'rootCause',
-              'disposition',
-              'evidence',
-              'idempotencyKey',
-            ]);
-            const action = ncrTransition[2] ?? '';
-            const capability =
-              action === 'disposition'
-                ? 'ncr:disposition'
-                : action === 'close'
-                  ? 'ncr:close'
-                  : 'ncr:manage';
-            const grant = authorizeQuery(context, capability, Object.keys(body));
-            const state =
-              action === 'contain'
-                ? 'CONTAINED'
-                : action === 'root-cause'
-                  ? 'ROOT_CAUSE_CONFIRMED'
-                  : action === 'disposition'
-                    ? 'DISPOSITIONED'
-                    : 'CLOSED';
-            const method = body.rootCauseMethod
-              ? string(body.rootCauseMethod, 'rootCauseMethod')
-              : undefined;
-            const disposition = body.disposition
-              ? string(body.disposition, 'disposition')
-              : undefined;
-            if (method && !['FIVE_WHY', 'FISHBONE', 'FAULT_TREE', 'OTHER'].includes(method))
-              throw new DomainError('invalid_request', 'rootCauseMethod is unsupported');
-            if (
-              disposition &&
-              !['REWORK', 'REPAIR', 'CONCESSION', 'RETURN', 'SCRAP', 'SUPPLIER_CLAIM'].includes(
-                disposition,
-              )
-            )
-              throw new DomainError('invalid_request', 'disposition is unsupported');
-            const result = await dependencies.complaints.transitionNcr(
-              uuid(ncrTransition[1], 'ncrId'),
-              {
-                state,
-                expectedVersion: integer(body.expectedVersion, 'expectedVersion', 1, 1_000_000),
-                reason: string(body.reason, 'reason'),
-                ...(method
-                  ? {
-                      rootCauseMethod: method as 'FIVE_WHY' | 'FISHBONE' | 'FAULT_TREE' | 'OTHER',
-                    }
-                  : {}),
-                ...(body.rootCause ? { rootCause: jsonObject(body.rootCause, 'rootCause') } : {}),
-                ...(disposition
-                  ? {
-                      disposition: disposition as
-                        | 'REWORK'
-                        | 'REPAIR'
-                        | 'CONCESSION'
-                        | 'RETURN'
-                        | 'SCRAP'
-                        | 'SUPPLIER_CLAIM',
-                    }
-                  : {}),
-                ...(action === 'disposition' ? { approvedBy: context.actor.employeeId } : {}),
-                evidence: jsonObject(body.evidence ?? {}, 'evidence'),
-                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+          const ncrTransitionResponse = await dispatchRoutes(
+            ncrTransitionRoutes({
+              repository: dependencies.complaints,
+              authorization: context,
               correlationId,
-            );
-            return { statusCode: 201, body: mutationDto(result, context, 'ncr:read') };
-          }
+              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
+              mutationDto: (value) => mutationDto(value, context, 'ncr:read'),
+              parsers: {
+                objectBody,
+                allow,
+                string,
+                uuid,
+                integer,
+                jsonObject,
+                stableCode: assertStableCode,
+              },
+            }),
+            request,
+          );
+          if (ncrTransitionResponse) return ncrTransitionResponse;
           const capaCreate = /^\/api\/v1\/ncrs\/([0-9a-f-]+)\/capas$/u.exec(request.pathname);
           if (request.method === 'POST' && capaCreate) {
             const body = objectBody(request.body);
