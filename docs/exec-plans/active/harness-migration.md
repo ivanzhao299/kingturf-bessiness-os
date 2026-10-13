@@ -6,7 +6,7 @@
 - **分支**：`harnessing`（自 main 派生；按规则 §7.1 禁止直接在主干改造）
 - **计划版本 / 日期**：v1.3 / 2026-10-12（v1.2 经第三轮人工审核修订：修复 §3.8 S11 表格裸管道、覆盖率验收语义收紧为目标值硬条件、S11 表述改为启发式口径）
 - **扫描基线**：commit `779dea3`（同步 origin/main 后）
-- **状态**：**批次 1 与 2a 已获人工验收；2b 进行中：auth/identity provisioning/IAM/profiles/identity-state/collection及commercial已迁移并整体协调复核通过。商业最终14b841c完整CI通过（API1255），独立872用例/38method-path、39语义与12模块映射确认；不等于2b整批通过。complaint本轮仅全域只读设计与SLA两路由61旧契约，业务未迁移；crm/platform/production/production-startup/qtc/website-lead-ingest等后续待执行。2b 整批尚未获人类验收。**
+- **状态**：**批次 1 与 2a 已获人工验收；2b 进行中：auth/identity provisioning/IAM/profiles/identity-state/collection及commercial已迁移并整体协调复核通过。商业最终14b841c完整CI通过（API1255），独立872用例/38method-path、39语义与12模块映射确认；不等于2b整批通过。complaint全域设计及61旧SLA契约已协调确认；本轮仅①SLA GET/POST守恒提取，待小步协调复核；其余complaint入口及crm/platform/production/production-startup/qtc/website-lead-ingest等后续待执行。2b 整批尚未获人类验收。**
 - **规则文档**：`docs/HARNESS-RULES.md`（施工期常驻，竣工验收后按 §14 拆解归档）
 - **配套文件**：问题清单 `docs/exec-plans/tech-debt-tracker.md`（34 条）；CI 决策 `docs/CI.md`；度量脚本 `scripts/analysis/repo-metrics.mjs`
 
@@ -243,7 +243,11 @@ packages/{types, ui, config, testing} → 零依赖
 
 **当前边界与否定证据**：快照 `app.ts:3486` 机会dispatcher至 `:3692` quote-command接线、`:3693` CRM matcher；商业区现在仅工厂/共享dispatcher及parser/授权/DTO注入。全 `apps/api/src/app.ts` 执行 `rg -n 'dependencies\.commercial|commercial\.(list|find|create|update|transition|submit|approve|issue|evaluate|calculate|add|link|get)' apps/api/src/app.ts`，命中均为repository注入/存在性guard，未找到历史商业范围的旧内联仓储业务调用。共享解析/DTO helper不是残留成功分支；CRM之后的域外业务不在本结论范围。scout与独立reviewer只读核验，不运行DB/构建。本表不结清整批债务，不表示2b验收，**商业整体已协调复核通过：独立17文件872/872、最终14b841c完整CI退出码0及38/39映射核验；不等于2b整批验收**。
 
-#### 4.2.2 complaint 全域只读盘点与 SLA 首步设计（基线 14b841c，旧契约与本地门禁通过，待协调设计复核）
+#### 4.2.2 complaint 全域盘点与分步设计（基线 14b841c，设计已协调确认，①SLA实施待复核）
+
+**当前协调确认/实施范围**：设计提交6d134a6已协调复核通过：独立reviewer确认14method条件/20展开入口、十个候选子步合计20及各输入/权限顺序，无guard外业务入口；协调独立18文件933/933，最终6d134a6完整CI退出码0（API60文件1316/1316、complaint PG4/4、结构0违规31豁免）。本轮仅批准①SLA两exact GET/POST，窄complaint-sla.ts在efb8936接入原guard顶部，后续18入口原文不动，未匹配继续原分支；本地61固定契约/相关20文件939/complaint PG4与完整CI已通过，①待协调小步复核。下方范围、基线表和设计证据保留原设计时点，原“本轮不迁移/待确认/不得实施”只指该历史设计轮，不否定本段新批准；不得据此启动②及后续域。
+
+**①当前映射**：原SLA两条件/两method-path/两语义→`complaint-sla.ts`两defineRoute（GET行66、POST行89）；app1636–1656仅工厂/上下文/dispatch接线，complaint list现1657起，其他18入口仍内联。原两个仓储成功调用已从app移除，仅模块调用listSlaPolicies/createSlaPolicy各一次。app5354→5311、模块123行，最大职责函数complaintSlaRoutes行64–123共60行，slaInput行29–62共34行；人工核验控制流嵌套≤5，无any/新库/跨请求可变状态。阈值和人工证据不代表门禁已实现AST函数长度强制检查。旧61预期及其余冻结测试零diff；详情、偏差与回滚见§7。
 
 **范围/状态**：本轮不迁移任何业务源码。读取基线 `app.ts:1635–2206` 整个 `if(dependencies.complaints)`，前邻shipment track、后邻collections工厂；全app另普查complaints调用防guard外遗漏。14个method条件单元（5 exact、9 regex），complaint四action与NCR四action各展开额外3，合计20个method/path与20个入口语义；不把字段枚举值/批量每行/仓储内状态分支重复算路由。首步只冻结SLA GET/POST 61旧契约 `0ace817`，旧原实现相关18文件1073/1073、complaint PG4/4、typecheck/lint/guard/迁移状态通过。独立reviewer核验SLA与计数/非模板优先级无必要问题。本节为设计候选，SLA及其余入口尚未提取；商业整体已协调确认，不等于2b整批验收。相关规格：[KT-L20](../../engineering/KT-L20_COMPLAINT_NCR_CAPA_SPEC.md)；TD-SEC-006的relationshipOnly语义及TD-BOUND-003日期边界维持待决/待核实，不修行为。
 
@@ -401,6 +405,10 @@ packages/{types, ui, config, testing} → 零依赖
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+2026-10-13，2b-complaint①SLA收尾：[已测试] 代码 `efb8936`，旧护栏 `0ace817`，设计基线 `6d134a6`。仅原两exact GET/POST、两入口语义/两仓储成功调用提取为complaint-sla.ts两defineRoute；原if(complaints)顶部dispatch未匹配null继续，缺repo整guard skip404，全局401/邻接18入口不动。GET仅read无fields，原receiver/R与共享逐项permittedDto；POST显式objectBody→allow8→manage/bodykeys→severity→四原integer1..8760全部校验→非递减→code stable/string→version1..10000→原timestamp，显式SlaInput类型与等价四值双比较，无断言/强化日期/Number转换/header key，handler原receiver/input/R/correlation→201共享read mutationDto。旧61固定预期未改，迁移前61/61与complaint PG4/4、guard/迁移状态0；迁移后完整相关20文件939/939（含PG4/4）与typecheck/lint通过。首次相关命令误写八个文件名只跑12文件453/453，立即纠正重跑20文件939/939，以后者为证据，不改测试预期。独立reviewer核源码diff/guard/授权/输入优先级/参数/DTO/窄类型等价无必要问题。完整pnpm ci:local退出码0（API60文件1316/1316、complaint PG4/4、auth/IAM HTTP PG各19、format/doc-lint103/structure强制0豁免31/release guardrails/typecheck/lint/build/security全绿）；最终日志HEAD仍须完整复验并在交接报告确认退出码。app5354→5311，新模块123行/最大职责函数60行/人工控制流嵌套≤5；未宣称AST长度门禁已实现。仓储/SQL/DB/scope-sql/dispatcher/types/门禁/packages/workflow零diff；TD-SEC-006/TD-BOUND-003保持，不修行为、不结清整批债务；未跑E2E、未push/部署/生产操作。①待协调小步复核，停止等待②续派，不启动其余域/2c。回滚：`git revert efb8936`恢复两旧SLA分支，旧测试0ace817及本状态/日志独立revert。
+
+2026-10-13，complaint设计协调确认与①启动：6d134a6设计/0ace817旧61契约已协调复核通过；协调独立18文件933/933、最终6d134a6完整CI退出码0（API60文件1316/1316、complaint PG4/4、结构0违规31豁免），全域14条件/20入口与十子步已核。仅实施①SLA GET/POST；本地guard/迁移状态及旧SLA61/61、complaint PG4/4基线通过；原设计轮日志和14b841c行号保持，②及其余域不实施。当前实现独立reviewer无必要问题，完整门禁证据与回滚点待下方收尾记录，不预填结果。
 
 2026-10-13，2b-complaint设计/旧SLA护栏收尾：[已测试] 基线14b841c；全域只读盘点14method条件（5exact+9regex）、20method/path与20语义，命令组合逐路径展开，§4.2.2记录字段/授权/解析顺序、仓储receiver/R/correlation、DTO、batch交集及404/fallthrough边界。候选分步合计20入口，首步仅SLA GET/POST两入口，其他步骤待协调确认。旧SLA61固定契约独立提交 `0ace817`；相关18文件1073/1073、complaint PG4/4、guard/迁移状态、typecheck/lint通过；完整ci:local退出码0，API60文件1316/1316，format/doc-lint（103 docs）/structure（强制违规0、豁免31）/release guardrails/build/security全绿。独立reviewer确认旧契约与全域计数、输入顺序，唯一T状态映射顺序文档表述已按原源码修正并复核，无业务修复。app5354→5354，业务源码/packages/workflow对基线零diff；TD-SEC-006与TD-BOUND-003保持，未跑E2E、未push/部署/生产操作。当前停在协调设计复核，未新增complaint路由模块，不实施SLA，不启动其他域，不宣称2b整批验收。回滚：测试/状态确认 `git revert 0ace817`，本设计日志提交独立revert；无业务迁移回滚项。最终日志HEAD须完整ci:local复验，退出码在交接报告确认。
 
