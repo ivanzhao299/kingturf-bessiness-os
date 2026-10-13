@@ -28,6 +28,12 @@ import { authorizeQuery } from './policy.ts';
 import { auditReadRoutes } from './routes/audit-reads.ts';
 import { numberAllocationRoutes } from './routes/number-allocation.ts';
 import {
+  ruleDefinitionListRoutes,
+  ruleDefinitionCreateRoutes,
+  ruleDefinitionPublishRoutes,
+  ruleDefinitionVersionRoutes,
+} from './routes/rule-definitions.ts';
+import {
   numberDefinitionListRoutes,
   numberDefinitionCreateRoutes,
   numberDefinitionPublishRoutes,
@@ -3898,46 +3904,42 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           authorizeQuery(context, 'rule:read');
           if (!dependencies.rules)
             return error(503, 'internal_error', 'Rule repository unavailable', correlationId);
-          return {
-            statusCode: 200,
-            body: { items: await dependencies.rules.list(context.actor.companyId) },
-          };
+          const response = await dispatchRoutes(
+            ruleDefinitionListRoutes({ repository: dependencies.rules, actor: context.actor }),
+            request,
+          );
+          if (response !== null) return response;
         }
         if (request.pathname === '/api/v1/rules' && request.method === 'POST') {
           authorizeQuery(context, 'rule:create');
           if (!dependencies.rules)
             return error(503, 'internal_error', 'Rule repository unavailable', correlationId);
-          const b = objectBody(request.body);
-          allow(b, ['code', 'ast', 'requiredInputs']);
-          return {
-            statusCode: 201,
-            body: await dependencies.rules.create(
-              {
-                code: assertStableCode(string(b.code, 'code')),
-                ast: b.ast,
-                requiredInputs: strings(b.requiredInputs ?? [], 'requiredInputs'),
-              },
-              context.actor,
+          const response = await dispatchRoutes(
+            ruleDefinitionCreateRoutes({
+              repository: dependencies.rules,
+              actor: context.actor,
               correlationId,
-            ),
-          };
+              parsers: { objectBody, allow, string, strings, stableCode: assertStableCode },
+            }),
+            request,
+          );
+          if (response !== null) return response;
         }
         const publishRule = /^\/api\/v1\/rules\/([0-9a-f-]+)\/publish$/u.exec(request.pathname);
         if (publishRule && request.method === 'POST') {
           authorizeQuery(context, 'rule:update');
           if (!dependencies.rules)
             return error(503, 'internal_error', 'Rule repository unavailable', correlationId);
-          const b = objectBody(request.body);
-          allow(b, ['version']);
-          return {
-            statusCode: 200,
-            body: await dependencies.rules.publish(
-              uuid(publishRule[1], 'ruleId'),
-              version(b.version),
-              context.actor,
+          const response = await dispatchRoutes(
+            ruleDefinitionPublishRoutes({
+              repository: dependencies.rules,
+              actor: context.actor,
               correlationId,
-            ),
-          };
+              parsers: { objectBody, allow, uuid, version },
+            }),
+            request,
+          );
+          if (response !== null) return response;
         }
         const evaluateRule = /^\/api\/v1\/rules\/([0-9a-f-]+)\/evaluate$/u.exec(request.pathname);
         if (evaluateRule && request.method === 'POST') {
@@ -4065,17 +4067,16 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           authorizeQuery(context, 'rule:update');
           if (!dependencies.rules)
             return error(503, 'internal_error', 'Rule repository unavailable', correlationId);
-          const b = objectBody(request.body);
-          allow(b, ['ast', 'requiredInputs']);
-          return {
-            statusCode: 201,
-            body: await dependencies.rules.createVersion(
-              uuid(ruleVersion[1], 'ruleId'),
-              { ast: b.ast, requiredInputs: strings(b.requiredInputs ?? [], 'requiredInputs') },
-              context.actor,
+          const response = await dispatchRoutes(
+            ruleDefinitionVersionRoutes({
+              repository: dependencies.rules,
+              actor: context.actor,
               correlationId,
-            ),
-          };
+              parsers: { objectBody, allow, uuid, strings },
+            }),
+            request,
+          );
+          if (response !== null) return response;
         }
         if (request.pathname === '/api/v1/workflows' && request.method === 'GET') {
           authorizeQuery(context, 'workflow:read');
