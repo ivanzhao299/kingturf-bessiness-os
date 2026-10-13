@@ -25,6 +25,7 @@ import {
 } from '@kingturf/domain';
 import type { ErrorCode, PermissionKey } from '@kingturf/types';
 import { authorizeQuery } from './policy.ts';
+import { auditReadRoutes } from './routes/audit-reads.ts';
 import type { AuthenticationService } from './security.ts';
 import type {
   PostgresAuditRepository,
@@ -3687,42 +3688,17 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           const auditGrant = authorizeQuery(context, 'audit:read');
           if (!dependencies.audit)
             return error(503, 'internal_error', 'Audit repository unavailable', correlationId);
-          const id = auditMatch[1];
-          if (id) {
-            const found = await dependencies.audit.find(
-              uuid(id, 'auditEventId'),
-              context.actor.companyId,
-              auditGrant.scopes,
-              context.actor.employeeId,
-              auditGrant.anchors,
-            );
-            return found
-              ? { statusCode: 200, body: found }
-              : error(404, 'not_found', 'Audit event not found', correlationId);
-          }
-          const q = request.query ?? {};
-          return {
-            statusCode: 200,
-            body: await dependencies.audit.list(
-              context.actor.companyId,
-              {
-                ...(q.actorId ? { actorId: uuid(q.actorId, 'actorId') } : {}),
-                ...(q.action ? { action: q.action } : {}),
-                ...(q.targetType ? { targetType: q.targetType } : {}),
-                ...(q.targetId ? { targetId: uuid(q.targetId, 'targetId') } : {}),
-                ...(q.correlationId
-                  ? { correlationId: uuid(q.correlationId, 'correlationId') }
-                  : {}),
-                ...(q.from ? { from: q.from } : {}),
-                ...(q.to ? { to: q.to } : {}),
-                ...(q.cursor ? { cursor: uuid(q.cursor, 'cursor') } : {}),
-                ...(q.limit ? { limit: Number(q.limit) } : {}),
-              },
-              auditGrant.scopes,
-              context.actor.employeeId,
-              auditGrant.anchors,
-            ),
-          };
+          const auditResponse = await dispatchRoutes(
+            auditReadRoutes({
+              repository: dependencies.audit,
+              actor: context.actor,
+              grant: auditGrant,
+              uuid,
+              notFound: () => error(404, 'not_found', 'Audit event not found', correlationId),
+            }),
+            request,
+          );
+          if (auditResponse) return auditResponse;
         }
         if (request.pathname === '/api/v1/master-data/categories' && request.method === 'GET') {
           authorizeQuery(context, 'master-data:read');
