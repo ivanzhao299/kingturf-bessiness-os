@@ -71,6 +71,7 @@ import { commercialNestedReadRoutes } from './routes/commercial-nested-reads.ts'
 import { commercialViewRoutes } from './routes/commercial-views.ts';
 import { ctrRoutes } from './routes/ctr.ts';
 import { technicalSolutionRoutes } from './routes/technical-solutions.ts';
+import { costMatrixBaseRoutes } from './routes/cost-matrix-base.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -3557,103 +3558,18 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           );
           if (solutionResponse) return solutionResponse;
         }
-        if (
-          request.method === 'GET' &&
-          request.pathname === '/api/v1/cost-matrix-summaries' &&
-          dependencies.commercial
-        ) {
-          const grant = authorizeQuery(context, 'cost-matrix:read');
-          const page = integer(Number(request.query?.page ?? 1), 'page', 1, 100000);
-          const pageSize = integer(Number(request.query?.pageSize ?? 20), 'pageSize', 5, 100);
-          const attention = request.query?.attention ?? 'ALL';
-          if (
-            !['ALL', 'NEEDS_INPUT', 'NEEDS_CALCULATION', 'READY_FOR_QUOTE', 'IN_QUOTE'].includes(
-              attention,
-            )
-          )
-            throw new DomainError('invalid_request', 'Invalid cost matrix attention filter');
-          const sort = request.query?.sort ?? 'ATTENTION';
-          if (!['ATTENTION', 'CODE', 'UPDATED', 'COST_DESC'].includes(sort))
-            throw new DomainError('invalid_request', 'Invalid cost matrix sort');
-          const result = await dependencies.commercial.listCostMatrixSummaries(
-            {
-              page,
-              pageSize,
-              query: request.query?.q?.trim().slice(0, 120) ?? '',
-              productFamily: request.query?.productFamily?.trim().slice(0, 80) ?? '',
-              attention: attention as
-                | 'ALL'
-                | 'NEEDS_INPUT'
-                | 'NEEDS_CALCULATION'
-                | 'READY_FOR_QUOTE'
-                | 'IN_QUOTE',
-              sort: sort as 'ATTENTION' | 'CODE' | 'UPDATED' | 'COST_DESC',
-            },
-            context.actor,
-            grant.scopes,
+        if (dependencies.commercial) {
+          const matrixResponse = await dispatchRoutes(
+            costMatrixBaseRoutes({
+              repository: dependencies.commercial,
+              authorization: context,
+              correlationId,
+              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
+              parsers: { objectBody, allow, uuid, string, jsonObject, integer, currency, decimal },
+            }),
+            request,
           );
-          return { statusCode: 200, body: { ...result, page, pageSize } };
-        }
-        if (
-          request.method === 'GET' &&
-          request.pathname === '/api/v1/cost-matrices' &&
-          dependencies.commercial
-        ) {
-          const grant = authorizeQuery(context, 'cost-matrix:read');
-          return {
-            statusCode: 200,
-            body: {
-              items: await dependencies.commercial.listCostMatrices(context.actor, grant.scopes),
-            },
-          };
-        }
-        const costMatrixDetail = /^\/api\/v1\/cost-matrices\/([0-9a-f-]+)$/u.exec(request.pathname);
-        if (request.method === 'GET' && costMatrixDetail && dependencies.commercial) {
-          const grant = authorizeQuery(context, 'cost-matrix:read');
-          return {
-            statusCode: 200,
-            body: await dependencies.commercial.getCostMatrix(
-              uuid(costMatrixDetail[1], 'modelId'),
-              context.actor,
-              grant.scopes,
-              context.permissions.get('audit:read')?.scopes.includes('COMPANY') === true,
-            ),
-          };
-        }
-        if (
-          request.method === 'POST' &&
-          request.pathname === '/api/v1/cost-matrices' &&
-          dependencies.commercial
-        ) {
-          const body = objectBody(request.body);
-          allow(body, [
-            'code',
-            'name',
-            'productItemVersionId',
-            'productSpecification',
-            'currency',
-            'defaultTaxRate',
-          ]);
-          const grant = authorizeQuery(context, 'cost-matrix:manage', Object.keys(body));
-          const result = await dependencies.commercial.createCostMatrix(
-            {
-              code: string(body.code, 'code'),
-              name: string(body.name, 'name'),
-              ...(body.productItemVersionId
-                ? { productItemVersionId: uuid(body.productItemVersionId, 'productItemVersionId') }
-                : {}),
-              productSpecification: jsonObject(
-                body.productSpecification ?? {},
-                'productSpecification',
-              ),
-              currency: currency(body.currency),
-              defaultTaxRate: decimal(body.defaultTaxRate, 'defaultTaxRate'),
-            },
-            context.actor,
-            grant.scopes,
-            correlationId,
-          );
-          return { statusCode: 201, body: result };
+          if (matrixResponse) return matrixResponse;
         }
         const costMatrixFactor = /^\/api\/v1\/cost-matrices\/([0-9a-f-]+)\/factors$/u.exec(
           request.pathname,
