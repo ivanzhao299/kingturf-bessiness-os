@@ -27,6 +27,13 @@ import type { ErrorCode, PermissionKey } from '@kingturf/types';
 import { authorizeQuery } from './policy.ts';
 import { auditReadRoutes } from './routes/audit-reads.ts';
 import {
+  masterEntryCreateRoutes,
+  masterEntryListRoutes,
+  masterEntryDetailRoutes,
+  masterEntryUpdateRoutes,
+  masterEntryDeleteRoutes,
+} from './routes/master-data-entries.ts';
+import {
   masterCategoryReadRoutes,
   masterCategoryCreateRoutes,
   masterCategoryUpdateRoutes,
@@ -3798,23 +3805,23 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               'Master-data repository unavailable',
               correlationId,
             );
-          const b = objectBody(request.body);
-          allow(b, ['categoryId', 'code', 'label', 'value', 'effectiveFrom', 'effectiveTo']);
-          const range = effectiveRange(b);
-          return {
-            statusCode: 201,
-            body: await dependencies.masterData.createEntry(
-              {
-                categoryId: uuid(b.categoryId, 'categoryId'),
-                code: assertStableCode(string(b.code, 'code')),
-                label: string(b.label, 'label'),
-                value: objectBody(b.value) as never,
-                ...range,
-              },
-              context.actor,
+          const entryResponse = await dispatchRoutes(
+            masterEntryCreateRoutes({
+              repository: dependencies.masterData,
+              actor: context.actor,
               correlationId,
-            ),
-          };
+              parsers: {
+                objectBody,
+                allow,
+                effectiveRange,
+                uuid,
+                string,
+                stableCode: assertStableCode,
+              },
+            }),
+            request,
+          );
+          if (entryResponse) return entryResponse;
         }
         if (request.pathname === '/api/v1/number-definitions' && request.method === 'GET') {
           authorizeQuery(context, 'number:read');
@@ -3973,14 +3980,16 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               'Master-data repository unavailable',
               correlationId,
             );
-          return {
-            statusCode: 200,
-            body: await dependencies.masterData.listEntries(
-              context.actor.companyId,
-              request.query?.categoryId ? uuid(request.query.categoryId, 'categoryId') : null,
-              request.query?.at ? parseEffectiveTimestamp(request.query.at) : new Date(),
-            ),
-          };
+          const entryResponse = await dispatchRoutes(
+            masterEntryListRoutes({
+              repository: dependencies.masterData,
+              actor: context.actor,
+              uuid,
+              parseEffectiveTimestamp,
+            }),
+            request,
+          );
+          if (entryResponse) return entryResponse;
         }
         const entry = /^\/api\/v1\/master-data\/entries\/([0-9a-f-]+)$/u.exec(request.pathname);
         if (entry && request.method === 'GET') {
@@ -3992,14 +4001,17 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               'Master-data repository unavailable',
               correlationId,
             );
-          const found = await dependencies.masterData.findEntry(
-            uuid(entry[1], 'entryId'),
-            context.actor.companyId,
-            request.query?.at ? parseEffectiveTimestamp(request.query.at) : new Date(),
+          const entryResponse = await dispatchRoutes(
+            masterEntryDetailRoutes({
+              repository: dependencies.masterData,
+              actor: context.actor,
+              uuid,
+              parseEffectiveTimestamp,
+              notFound: () => error(404, 'not_found', 'Master-data entry not found', correlationId),
+            }),
+            request,
           );
-          return found
-            ? { statusCode: 200, body: found }
-            : error(404, 'not_found', 'Master-data entry not found', correlationId);
+          if (entryResponse) return entryResponse;
         }
         if (entry && request.method === 'PATCH') {
           authorizeQuery(context, 'master-data:update');
@@ -4010,23 +4022,16 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               'Master-data repository unavailable',
               correlationId,
             );
-          const b = objectBody(request.body);
-          allow(b, ['label', 'value', 'effectiveFrom', 'effectiveTo', 'version']);
-          const range = effectiveRange(b);
-          return {
-            statusCode: 200,
-            body: await dependencies.masterData.updateEntry(
-              uuid(entry[1], 'entryId'),
-              {
-                label: string(b.label, 'label'),
-                value: objectBody(b.value) as never,
-                ...range,
-                version: version(b.version),
-              },
-              context.actor,
+          const entryResponse = await dispatchRoutes(
+            masterEntryUpdateRoutes({
+              repository: dependencies.masterData,
+              actor: context.actor,
               correlationId,
-            ),
-          };
+              parsers: { objectBody, allow, effectiveRange, uuid, string, version },
+            }),
+            request,
+          );
+          if (entryResponse) return entryResponse;
         }
         if (entry && request.method === 'DELETE') {
           authorizeQuery(context, 'master-data:delete');
@@ -4037,13 +4042,17 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               'Master-data repository unavailable',
               correlationId,
             );
-          await dependencies.masterData.deleteEntry(
-            uuid(entry[1], 'entryId'),
-            version(Number(request.query?.version)),
-            context.actor,
-            correlationId,
+          const entryResponse = await dispatchRoutes(
+            masterEntryDeleteRoutes({
+              repository: dependencies.masterData,
+              actor: context.actor,
+              correlationId,
+              uuid,
+              version,
+            }),
+            request,
           );
-          return { statusCode: 204, body: {} };
+          if (entryResponse) return entryResponse;
         }
         const numberVersion = /^\/api\/v1\/number-definitions\/([0-9a-f-]+)\/versions$/u.exec(
           request.pathname,
