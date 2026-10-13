@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // 结构门禁（只读扫描，零依赖）。用法：
-//   node scripts/analysis/structure-gate.mjs [--report]   常规运行；--report 时 G1/G2 仅报告不拦截
+//   node scripts/analysis/structure-gate.mjs [--report]   常规运行拦截；--report 仅用于诊断
 //   node scripts/analysis/structure-gate.mjs --selftest   对内置违规样本断言各规则可拦截（供 node --test 之外的快速自检）
 // 规则（HARNESS-RULES §4.2 品味不变量）：
-//   G1 文件大小：非测试源 .ts ≤ MAX_FILE_LINES（D5 默认提案 800）——D5 未确认前 ci:local 以 --report 运行
-//   G2 嵌套深度：缩进层级 ≤ MAX_NESTING（D5 默认提案 5）——同上
+//   G1 文件大小：非测试源 .ts ≤ MAX_FILE_LINES（D5 已启用：800）
+//   G2 嵌套深度：缩进层级 ≤ MAX_NESTING（D5 已启用：5）
 //   G3 SQL 原始输入插值（TD-SEC-005，始终强制）：apps/api/src 模板字符串中禁止以原始请求对象开头的插值
 //   G4 路由表校验约束（始终强制，批次 2 前待命）：apps/api/src/routes/** 的路由定义必须声明 validate
 // 每条失败信息必须包含修复指令（§4.2 硬要求）。
@@ -24,17 +24,13 @@ export const SIZE_WHITELIST = new Map([
   ],
   ['apps/api/src/complaint-repositories.ts', { reason: '单域仓储超限', due: '批次 2' }],
   ['apps/api/src/platform-repositories.ts', { reason: '单域仓储超限', due: '批次 2' }],
-  [
-    'apps/api/src/foundation-repositories.ts',
-    { reason: 'TD-ARCH-001 一文件 4 仓储', due: '批次 1e（拆 4 文件）' },
-  ],
   ['packages/domain/src/index.ts', { reason: '共享域包单文件', due: '批次 4 后评估拆分' }],
   ['apps/api/src/qtc-repositories.ts', { reason: '单域仓储超限', due: '批次 2' }],
   ['apps/api/src/repositories.ts', { reason: '组织员工主数据仓储', due: '批次 2' }],
   ['apps/api/src/crm-repositories.ts', { reason: '单域仓储超限', due: '批次 2' }],
 ]);
 
-// G2 专用豁免：≤800 行但嵌套超限的存量仓储文件（D5 转拦截前必须显式登记，否则拦截模式无法启用）
+// G2 专用豁免：≤800 行但嵌套超限的存量仓储文件；按对应批次完成后移除。
 const NESTING_EXTRA = new Map(
   [
     'business-document-repositories.ts',
@@ -270,7 +266,7 @@ function main() {
   const exempt = soft.filter((v) => v.whitelisted || v.grandfathered).length;
   for (const v of soft)
     console.log(
-      `[${v.rule === 'G3' ? '存量值插值豁免' : v.whitelisted ? '白名单豁免' : '报告模式-D5未确认'}] ${render(v)}`,
+      `[${v.rule === 'G3' ? '存量值插值豁免' : v.whitelisted ? '白名单豁免' : '诊断模式'}] ${render(v)}`,
     );
   if (hard.length > 0) {
     console.error(`structure-gate 失败：${hard.length} 个强制违规\n`);
@@ -278,7 +274,7 @@ function main() {
     process.exit(1);
   }
   console.log(
-    `structure-gate 通过：强制违规 0；白名单豁免 ${exempt} 条（随批次移除）${reportOnly ? `；报告模式待决 ${soft.length - exempt} 条（D5 确认后转拦截）` : ''}`,
+    `structure-gate 通过：强制违规 0；白名单豁免 ${exempt} 条（随批次移除）${reportOnly ? `；诊断模式未拦截 ${soft.length - exempt} 条` : ''}`,
   );
 }
 

@@ -2,6 +2,9 @@
 // 由根 package.json 的 test:release-guardrails 调用（pnpm test 的第一段），防止门禁本身形同虚设。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
 import {
   MAX_FILE_LINES,
   MAX_NESTING,
@@ -139,4 +142,33 @@ test('G4 放行全部带 validate 的多路由文件', () => {
 test('嵌套阈值与文件阈值等于 D5 默认提案', () => {
   assert.equal(MAX_FILE_LINES, 800);
   assert.equal(MAX_NESTING, 5);
+});
+
+test('拦截模式：白名单信息放行，临时超限样本失败，清理后干净树通过', () => {
+  const gate = join(process.cwd(), 'scripts/analysis/structure-gate.mjs');
+  const clean = spawnSync(process.execPath, [gate], { encoding: 'utf8' });
+  assert.equal(clean.status, 0, clean.stderr);
+  assert.match(clean.stdout, /白名单豁免/);
+
+  const tempRoot = mkdtempSync(join(process.cwd(), 'apps/.structure-gate-selftest-'));
+  try {
+    const sourceRoot = join(tempRoot, 'src');
+    mkdirSync(sourceRoot);
+    writeFileSync(
+      join(sourceRoot, 'too-large.ts'),
+      `${'const x = 1;\n'.repeat(MAX_FILE_LINES + 100)}`,
+    );
+    writeFileSync(
+      join(sourceRoot, 'too-deep.ts'),
+      `${' '.repeat(2 * (MAX_NESTING + 10))}const x = 1;\n`,
+    );
+    const blocked = spawnSync(process.execPath, [gate], { encoding: 'utf8' });
+    assert.equal(blocked.status, 1, `${blocked.stdout}\n${blocked.stderr}`);
+    assert.match(`${blocked.stdout}\n${blocked.stderr}`, /超过上限 800 行/);
+    assert.match(`${blocked.stdout}\n${blocked.stderr}`, /嵌套超过 5 层/);
+  } finally {
+    rmSync(tempRoot, { recursive: true, force: true });
+  }
+  const restored = spawnSync(process.execPath, [gate], { encoding: 'utf8' });
+  assert.equal(restored.status, 0, restored.stderr);
 });
