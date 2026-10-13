@@ -6,7 +6,7 @@
 - **分支**：`harnessing`（自 main 派生；按规则 §7.1 禁止直接在主干改造）
 - **计划版本 / 日期**：v1.3 / 2026-10-12（v1.2 经第三轮人工审核修订：修复 §3.8 S11 表格裸管道、覆盖率验收语义收紧为目标值硬条件、S11 表述改为启发式口径）
 - **扫描基线**：commit `779dea3`（同步 origin/main 后）
-- **状态**：**批次 1 与 2a 已获人工验收；2b 进行中：auth/identity provisioning/IAM/profiles/identity-state/collection及commercial已迁移并整体协调复核通过。商业最终14b841c完整CI通过（API1255），独立872用例/38method-path、39语义与12模块映射确认；不等于2b整批通过。complaint设计及①②③已协调确认，④batch代码守恒协调复核通过（独立1167、最终fe4b76c API1550）；本轮仅TD-BOUND-004风险登记收尾待协调确认，业务/旧56预期不改；其余14入口及crm/platform/production/production-startup/qtc/website-lead-ingest等后续待执行。2b 整批尚未获人类验收。**
+- **状态**：**批次 1 与 2a 已获人工验收；2b 进行中：auth/identity provisioning/IAM/profiles/identity-state/collection及commercial已迁移并整体协调复核通过。商业最终14b841c完整CI通过（API1255），独立872用例/38method-path、39语义与12模块映射确认；不等于2b整批通过。complaint设计及①②③④/风险登记6777e69已整体协调确认（④独立1167、最终6777e69 API1550）；本轮仅⑤四状态POST，152旧契约已通过尚未提取；后续10入口及crm/platform/production/production-startup/qtc/website-lead-ingest等待执行。TD-BOUND-003/004继续待核实，不修行为。2b 整批尚未获人类验收。**
 - **规则文档**：`docs/HARNESS-RULES.md`（施工期常驻，竣工验收后按 §14 拆解归档）
 - **配套文件**：问题清单 `docs/exec-plans/tech-debt-tracker.md`（35 条）；CI 决策 `docs/CI.md`；度量脚本 `scripts/analysis/repo-metrics.mjs`
 
@@ -243,7 +243,9 @@ packages/{types, ui, config, testing} → 零依赖
 
 **当前边界与否定证据**：快照 `app.ts:3486` 机会dispatcher至 `:3692` quote-command接线、`:3693` CRM matcher；商业区现在仅工厂/共享dispatcher及parser/授权/DTO注入。全 `apps/api/src/app.ts` 执行 `rg -n 'dependencies\.commercial|commercial\.(list|find|create|update|transition|submit|approve|issue|evaluate|calculate|add|link|get)' apps/api/src/app.ts`，命中均为repository注入/存在性guard，未找到历史商业范围的旧内联仓储业务调用。共享解析/DTO helper不是残留成功分支；CRM之后的域外业务不在本结论范围。scout与独立reviewer只读核验，不运行DB/构建。本表不结清整批债务，不表示2b验收，**商业整体已协调复核通过：独立17文件872/872、最终14b841c完整CI退出码0及38/39映射核验；不等于2b整批验收**。
 
-#### 4.2.2 complaint 全域盘点与分步设计（基线 14b841c，④代码协调复核通过，风险登记待收尾）
+#### 4.2.2 complaint 全域盘点与分步设计（基线 14b841c，④及风险登记已协调确认，⑤进行中）
+
+**⑤当前批准/④登记闭环**：④bfc1c06/旧d0799b6协调独立21文件1167/1167与新旧静态核验已通过；风险登记6777e69仅四文档、业务/固定oracle零diff，35个索引/正文ID唯一且集合相同、原34条索引内容保持，doc-lint/最终6777e69完整CI退出码0（API63文件1550/1550、complaint PG4/4、结构0违规31豁免/audit全绿）。④及登记已整体协调确认，TD-BOUND-003/004仍待核实/独立行为决策，不修/规范化。仅批准⑤triage/investigate/reject/close四POST；152旧契约在6777e69原内联首跑通过，相关24文件1325/1325、PG4/4、guard/迁移状态/typecheck/lint通过，独立reviewer无必要缺口。先独立旧test再提取；下方各旧快照与待复核描述保留其历史时点，不否定本段批准，14b841c行号/旧计数保持。后续NCR/CAPA十入口不实施。
 
 **④独立复核/风险登记当前状态**：bfc1c06新旧dual grants/解析顺序/交集/参数/raw响应经协调静态与独立reviewer无阻塞，d0799b6旧56 oracle冻结零diff；协调亲跑21文件1167/1167（与执行端23文件1173/1173不同检查集，各按实际记录），最终fe4b76c完整CI退出码0（API63文件1550/1550、complaint PG前后4/4、结构强制0豁免31、audit零漏洞）。本轮只登记TD-BOUND-004 P2：旧/新字符串Set去重接受同一UUID大小写变体，HTTP/mock接受和协调本地PG只读身份相等已证，真实batch状态/版本/幂等/审计/replay副作用未核实。独立行为决策后方可收紧，不在当前2b或D1四项内，不阻塞守恒迁移；仍保持原helper/Set/repo/56 oracle。台账索引/正文机械计数35/35且唯一ID集合一致，历史数量与14b841c盘点保留。④代码复核通过，风险登记待协调收尾；本轮不启动⑤，后续14入口仍未迁移，TD-BOUND-003仍待核实。
 
@@ -417,6 +419,8 @@ packages/{types, ui, config, testing} → 零依赖
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+2026-10-13，④/TD-BOUND-004协调确认与⑤旧护栏：④bfc1c06/d0799b6协调独立21文件1167/1167与静态审查通过；登记6777e69仅四文档，业务/旧oracle零diff、35唯一index/body集合相同、原34内容保持、doc-lint及最终完整CI退出码0（API63文件1550/1550、complaint PG4/4、结构0违规31豁免/audit全绿），④及登记已整体协调闭环。只批准⑤四状态POST。旧152契约在6777e69内联首跑通过，相关24文件1325/1325、PG4/4、guard/迁移状态/typecheck/lint与独立reviewer通过；冻结四action→cap/state、负cap不可替代、5allow与body→授权→UUID→version→reason→nullish evidence→truthy assigned→bodykey顺序、falsey/缺字段授权/noassigncap、宽松regex边界/201与原receiver/R/C/readDTO/401404/邻接/envelope。业务未改，无失败/偏差；旧test先独立提交后预期不改。历史盘点/旧日志保留，后续10入口不迁移；台账35、TD-BOUND-003/004继续待核实，不修日期/UUID/Set，不结清整批债务，无push/部署/生产/workflow操作。
 
 2026-10-13，TD-BOUND-004登记本地验证：[已测试] 四文档登记/当前35条总数同步；独立reviewer核事实/未核实边界与35唯一ID集合匹配通过，当前④状态文案唯一修正已复核。可复跑mock大小写契约1/1（55跳过）通过；完整pnpm ci:local退出码0，API63文件1550/1550、complaint PG4/4、auth/IAM HTTP PG各19、format/doc-lint103/structure强制0豁免31/release guardrails/typecheck/lint/build/security全绿。业务/仓储/SQL/DB/门禁/冻结测试对fe4b76c零diff，未新增真实batch副作用实验或生产验证。最终登记HEAD全量复验退出码另在交接报告确认；登记文档提交独立revert，停止待协调收尾，不启动⑤。
 
