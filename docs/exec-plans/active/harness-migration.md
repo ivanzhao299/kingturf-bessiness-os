@@ -6,7 +6,7 @@
 - **分支**：`harnessing`（自 main 派生；按规则 §7.1 禁止直接在主干改造）
 - **计划版本 / 日期**：v1.3 / 2026-10-12（v1.2 经第三轮人工审核修订：修复 §3.8 S11 表格裸管道、覆盖率验收语义收紧为目标值硬条件、S11 表述改为启发式口径）
 - **扫描基线**：commit `779dea3`（同步 origin/main 后）
-- **状态**：**批次1与2a已获人工验收；2b进行中：auth/identity provisioning/IAM/profiles/identity-state/collection/commercial/complaint及CRM整体已协调确认。platform设计与①–⑦实施已协调确认；⑧旧112/设计已确认并授权6b0cc2f，四定义入口已提取f00eb07，112及全部oracle零diff、完整CI API86文件3965通过，⑧实施待协调复核。累计25/28、只余workflow runtime3未迁移，停⑨/平台整域收尾/production或2c。历史13/16/17与platform27/28/28/授权/失败时点保留，TD-BOUND-003/004仅待核实、35条台账，不修行为。platform及2b整批尚未人类验收。**
+- **状态**：**批次1与2a已获人工验收；2b进行中：auth/identity provisioning/IAM/profiles/identity-state/collection/commercial/complaint及CRM整体已协调确认。platform设计与①–⑧实施已协调确认（⑧f00eb07/5e5331a）；⑨runtime仅批准旧护栏和候选设计、未提取。累计25/28、只余runtime3，停⑨实施/平台整域收尾/production或2c。历史13/16/17与platform27/28/28/授权/失败时点保留，TD-BOUND-003/004仅待核实、35条台账，不修行为。platform及2b整批尚未人类验收。**
 - **规则文档**：`docs/HARNESS-RULES.md`（施工期常驻，竣工验收后按 §14 拆解归档）
 - **配套文件**：问题清单 `docs/exec-plans/tech-debt-tracker.md`（35 条）；CI 决策 `docs/CI.md`；度量脚本 `scripts/analysis/repo-metrics.mjs`
 
@@ -521,7 +521,9 @@ Context仅请求内Readonly：repository Pick原 `findCustomer | customer360` �
 
 **现有证据/搜索范围与限制**：app.test.ts:701–1000 CRM HTTP案例覆盖联系人规范化、ownership两cap、360分区/交集、activity时间、leadclaim/release/DTO/conflict等，非各validator完整oracle。crm-postgres.integration.test.ts实际10案例（103/140/218/239/265/363/439/573/597/846）覆盖租户/去重/atomic audit-outbox、claim并发replay、不可物理删除、pool状态/assign、联系人、360与scope；真实PG10/10不等于HTTP别名写入或所有错误优先级覆盖。全apps/api/src TS搜索 `rg -n 'dependencies\.crm|crm\.(listCustomers|findCustomer|createCustomer|transitionCustomer|createContact|listLeads|createLead|claimLead|transitionLead|assign|createActivity|customer360)' apps/api/src --glob '*.ts'` 命中生产HTTP调用仅上述区域；apps/packages TS另搜这些method的点调用，除app、repository内部customer360→findCustomer与测试，未发现packages中的CRM repository调用；server.ts:99仅组合根实例化，web bootstrap.ts:10520–10587经createFetchCrmApi消费canonical customers/leads URL，不是第二后端HTTP入口（未声称穷尽外部客户端）。否定结论限这些范围/搜索式；production website ingest自行职责不迁入CRM。全局session401与fallback404仍app:460/:4919，缺CRM与unsupported边界在原位置；仓储/SQL/业务对3a17d2f零diff。首步65旧契约含wrapper公共兼容性，不替代其余CRM分支护栏，待协调设计复核后才实施。
 
-#### 4.2.4 platform 当前实施与历史设计（精确设计基线3528fb4，①–⑦实施已确认，⑧实施待复核）
+#### 4.2.4 platform 当前实施与历史设计（精确设计基线3528fb4，①–⑧实施已确认，⑨旧护栏/候选设计进行中）
+
+**⑧实施当前协调确认／⑨本轮范围（2026-10-14，5e5331a）**：协调确认f00eb07/最终5e5331a，a985552..5e5331a全部旧test零diff、runtime原块逐字相同；协调只读reviewer四入口新旧Q0→503/匹配/spec浅原引用/UUID-code-V优先级/参数1-3-4-4/rawDTO无阻塞。协调亲跑44文件3582/3582（/tmp/kingturf-workflow-definition-extract-independent.log），核对最终5e5331a完整ci:local真实退出0（/tmp/kingturf-workflow-definition-extract-head-ci.log，API86文件3965/3965、platform PG5/5、web114/domain14、doclint103、结构0违规31豁免/build/audit及其他门禁全绿）。累计25/28，只余⑨runtime三入口；⑧PG未直接调用createVersion限制保留，历史授权6b0cc2f/旧行号/待复核/失败时点不覆盖，非platform或2b整体验收。本轮只批准⑨旧buildApp护栏与候选设计，不提取业务源码，不创建workflow-runtime.ts，确认后才实施；35台账/TD-BOUND-003/004待核实不修、D1不扩，停runtime实施/平台整体收尾/production/2c，禁止push/部署/生产/workflows。本确认文档独立revert。[已测试]
 
 **⑧提取当前快照（f00eb07，2026-10-14）**：旧f2016a3固定112/设计经协调确认先独立批准6b0cc2f，业务基线a985552/6b0cc2f相同。仅原GET/POST workflows、POST versions/publish四成功段迁为routes/workflow-definitions.ts四窄factory/各一显式defineRoute（59/73/97/126）。当前app GET4089/Q0:4090/503:4092/dispatch4093–4100，POST4102/4103/4105/4106–4115，versions raw matcher4117–4119/POST4120/Q0:4121/503:4123/dispatch4124–4133，publish matcher4135–4137/POST4138/Q0:4139/503:4141/dispatch4142–4151；四支持guard/Q0/503按原序保留，前ruleVersion结束4088、后workflowStart matcher4153/POST4156、task list4176/decisions4182与原a985552/941bc77原文相同，⑨三个runtime未迁。原941bc77 4083–4144、3528fb4历史行号与所有待复核/失败时点保留。累计21+4＝25/28，只余runtime3，⑧实施待协调复核，非platform或2b整体验收。
 
@@ -909,6 +911,8 @@ module48–51仅原raw [0-9a-f-]+/u matcher，collection exact match；匹配纯
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+2026-10-14：⑧f00eb07/5e5331a已协调确认，协调44文件3582/3582及最终完整CI退出0；全部旧test零diff/runtime逐字不变，PG未直接覆盖createVersion限制保留，详见§4.2.4当前确认。只启动⑨三runtime旧护栏/候选设计，不提取业务；累计25/28，非platform或2b验收。确认文档独立回滚，历史时点保留。[已测试]
 
 **2026-10-14 / 2b-platform ⑧四定义入口实施**：批准6b0cc2f后仅原GET/POST workflows与versions/publish四成功段提取f00eb07；四guard/Q0-503、spec浅引用、code/UUID/V顺序、receiver1-3-4-4/rawDTO/GET wrapper守恒，⑨三个runtime原文未动。旧f2016a3固定112及全部oracle零diff，前后相关50文件3772/3772、type/lint0、前后platform PG5/5、结构/格式/doclint/diff检查通过；独立只读reviewer新旧实现与容量无阻塞，首跑无失败/预期修正/行为偏差。完整ci:local命令退出0（/tmp/kingturf-workflow-definition-extract-code-ci.log，API86文件3965/3965、platform PG5/5、CRM PG10/10、auth/authorization HTTP PG各19/19及其余门禁全绿），末次文档HEAD另完整复验/tmp/kingturf-workflow-definition-extract-head-ci.log。app4692→4700/module149/四factory13/21/28/28/人工nest≤5，不称AST长度强制；当前接线与全部详细证据见§4.2.4，旧PG无createVersion直接覆盖/SoD矩阵限制保持。累计25/28、只余runtime3，⑧实施待协调复核、不是platform或2b验收；停⑨/整域收尾/production/2c，35台账/TD-BOUND-003/004待核实/D1范围不改，未E2E/push/部署/生产/workflows/prompt-history读取。回滚：git revert f00eb07恢复四原成功段/删除module；批准6b0cc2f与本次日志/index独立revert，旧test不改。[已测试]
 
