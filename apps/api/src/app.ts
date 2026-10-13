@@ -82,6 +82,7 @@ import { complaintSlaRoutes } from './routes/complaint-sla.ts';
 import { complaintReadRoutes } from './routes/complaint-reads.ts';
 import { complaintCreateRoutes } from './routes/complaint-create.ts';
 import { complaintBatchTriageRoutes } from './routes/complaint-batch-triage.ts';
+import { complaintTransitionRoutes } from './routes/complaint-transitions.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -1707,39 +1708,26 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             request,
           );
           if (complaintBatchResponse) return complaintBatchResponse;
-          const complaintTransition =
-            /^\/api\/v1\/complaints\/([0-9a-f-]+)\/(triage|investigate|reject|close)$/u.exec(
-              request.pathname,
-            );
-          if (request.method === 'POST' && complaintTransition) {
-            const body = objectBody(request.body);
-            allow(body, ['expectedVersion', 'reason', 'evidence', 'assignedTo', 'idempotencyKey']);
-            const action = complaintTransition[2] ?? '';
-            const capability = action === 'close' ? 'complaint:close' : 'complaint:triage';
-            const grant = authorizeQuery(context, capability, Object.keys(body));
-            const state =
-              action === 'triage'
-                ? 'TRIAGED'
-                : action === 'investigate'
-                  ? 'INVESTIGATING'
-                  : action === 'reject'
-                    ? 'REJECTED'
-                    : 'CLOSED';
-            const result = await dependencies.complaints.transitionComplaint(
-              uuid(complaintTransition[1], 'complaintId'),
-              {
-                state,
-                expectedVersion: integer(body.expectedVersion, 'expectedVersion', 1, 1_000_000),
-                reason: string(body.reason, 'reason'),
-                evidence: jsonObject(body.evidence ?? {}, 'evidence'),
-                ...(body.assignedTo ? { assignedTo: uuid(body.assignedTo, 'assignedTo') } : {}),
-                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+          const complaintTransitionResponse = await dispatchRoutes(
+            complaintTransitionRoutes({
+              repository: dependencies.complaints,
+              authorization: context,
               correlationId,
-            );
-            return { statusCode: 201, body: mutationDto(result, context, 'complaint:read') };
-          }
+              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
+              mutationDto: (value) => mutationDto(value, context, 'complaint:read'),
+              parsers: {
+                objectBody,
+                allow,
+                uuid,
+                integer,
+                string,
+                jsonObject,
+                stableCode: assertStableCode,
+              },
+            }),
+            request,
+          );
+          if (complaintTransitionResponse) return complaintTransitionResponse;
           const ncrCreate = /^\/api\/v1\/complaints\/([0-9a-f-]+)\/ncrs$/u.exec(request.pathname);
           if (request.method === 'POST' && ncrCreate) {
             const body = objectBody(request.body);
