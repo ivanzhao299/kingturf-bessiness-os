@@ -64,6 +64,7 @@ import { credentialRoutes, loginRoutes, sessionRoutes } from './routes/auth.ts';
 import { dispatchRoutes } from './routes/types.ts';
 import { identityProvisionRoutes } from './routes/identity-provision.ts';
 import { dispatchAuthorizationRoutes } from './routes/authorization.ts';
+import { identityAccessRoutes } from './routes/identity-access.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -5161,52 +5162,20 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           request,
         );
         if (authorizationResponse) return authorizationResponse;
-        if (request.method === 'GET' && request.pathname === '/api/v1/user-access-profiles') {
-          authorizeOneOf(context, 'identity:read', 'authorization:read');
-          if (!dependencies.authorization?.listUserAccessProfiles)
-            return error(
-              503,
-              'internal_error',
-              'User access profile repository is unavailable',
-              correlationId,
-            );
-          return {
-            statusCode: 200,
-            body: {
-              items: await dependencies.authorization.listUserAccessProfiles(
-                context.actor.companyId,
-              ),
-            },
-          };
-        }
-        const identityState = /^\/api\/v1\/identities\/([0-9a-f-]+)\/state$/u.exec(
-          request.pathname,
-        );
-        if (request.method === 'PATCH' && identityState) {
-          const body = objectBody(request.body);
-          allow(body, ['active', 'revokeSessions']);
-          authorizeOneOf(context, 'identity:manage', 'authorization:manage', Object.keys(body));
-          if (
-            typeof body.active !== 'boolean' ||
-            (body.revokeSessions !== undefined && typeof body.revokeSessions !== 'boolean')
-          )
-            throw new DomainError('invalid_request', 'active and revokeSessions must be boolean');
-          if (!dependencies.authorization?.setIdentityActive)
-            return error(
-              503,
-              'internal_error',
-              'Identity management repository is unavailable',
-              correlationId,
-            );
-          await dependencies.authorization.setIdentityActive(
-            uuid(identityState[1], 'identityId'),
-            body.active,
-            body.revokeSessions === true,
-            context.actor,
+        const identityAccessResponse = await dispatchRoutes(
+          identityAccessRoutes({
+            repository: dependencies.authorization,
+            authorization: context,
             correlationId,
-          );
-          return { statusCode: 204, body: {} };
-        }
+            authorizeOneOf: (preferred, fallback, fields) => {
+              authorizeOneOf(context, preferred, fallback, fields);
+            },
+            unavailable: (message) => error(503, 'internal_error', message, correlationId),
+            parsers: { objectBody, allow, uuid },
+          }),
+          request,
+        );
+        if (identityAccessResponse) return identityAccessResponse;
         const auditMatch = /^\/api\/v1\/audit-events(?:\/([0-9a-f-]+))?$/u.exec(request.pathname);
         if (auditMatch && request.method === 'GET') {
           const auditGrant = authorizeQuery(context, 'audit:read');
