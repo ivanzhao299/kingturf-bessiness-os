@@ -77,6 +77,7 @@ import { costMatrixCalculationRoutes } from './routes/cost-matrix-calculations.t
 import { commercialDefinitionRoutes } from './routes/commercial-definitions.ts';
 import { commercialEvaluationRoutes } from './routes/commercial-evaluations.ts';
 import { quoteWriteRoutes } from './routes/quote-writes.ts';
+import { quoteCommandRoutes } from './routes/quote-commands.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -3675,53 +3676,19 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           );
           if (quoteResponse) return quoteResponse;
         }
-        const quoteCommand = /^\/api\/v1\/quote-revisions\/([0-9a-f-]+)\/(approve|issue)$/u.exec(
-          request.pathname,
-        );
-        if (request.method === 'POST' && quoteCommand && dependencies.commercial) {
-          const id = uuid(quoteCommand[1], 'quoteRevisionId'),
-            body = objectBody(request.body);
-          if (quoteCommand[2] === 'issue') {
-            allow(body, []);
-            const grant = authorizeQuery(context, 'quote:issue');
-            return {
-              statusCode: 200,
-              body: mutationDto(
-                await dependencies.commercial.issueQuote(
-                  id,
-                  idempotency(request),
-                  context.actor,
-                  grant.scopes,
-                  grant.anchors,
-                  correlationId,
-                ),
-                context,
-                'quote:read',
-              ),
-            };
-          }
-          allow(body, ['decision', 'reason']);
-          const grant = authorizeQuery(context, 'quote:approve');
-          const decision = string(body.decision, 'decision');
-          if (!['APPROVED', 'REJECTED'].includes(decision))
-            throw new DomainError('invalid_request', 'decision is unsupported');
-          return {
-            statusCode: 200,
-            body: mutationDto(
-              await dependencies.commercial.approveQuote(
-                id,
-                decision as 'APPROVED' | 'REJECTED',
-                string(body.reason, 'reason'),
-                idempotency(request),
-                context.actor,
-                grant.scopes,
-                grant.anchors,
-                correlationId,
-              ),
-              context,
-              'quote:read',
-            ),
-          };
+        if (dependencies.commercial) {
+          const quoteCommandResponse = await dispatchRoutes(
+            quoteCommandRoutes({
+              repository: dependencies.commercial,
+              authorization: context,
+              correlationId,
+              authorize: (capability) => authorizeQuery(context, capability),
+              mutationDto: (value) => mutationDto(value, context, 'quote:read'),
+              parsers: { objectBody, allow, uuid, string, idempotency },
+            }),
+            request,
+          );
+          if (quoteCommandResponse) return quoteCommandResponse;
         }
         const customerMatch =
           /^\/api\/v1\/customers(?:\/([0-9a-f-]+))?(?:\/(contacts|ownership|activities|360))?$/u.exec(
