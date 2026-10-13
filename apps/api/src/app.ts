@@ -88,6 +88,7 @@ import { ncrTransitionRoutes } from './routes/ncr-transitions.ts';
 import { capaCreateRoutes } from './routes/capa-create.ts';
 import { capaActionRoutes } from './routes/capa-actions.ts';
 import { capaLifecycleRoutes } from './routes/capa-lifecycle.ts';
+import { customerCollectionRoutes, customerDetailRoutes } from './routes/customer-base.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -3333,40 +3334,23 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             return error(503, 'internal_error', 'CRM dependency unavailable', correlationId);
           const id = customerMatch[1],
             nested = customerMatch[2];
-          if (request.method === 'GET' && !id) {
-            const g = authorizeQuery(context, 'customer:read');
-            const fields = context.permissions.get('customer:read')?.fields ?? null;
-            return {
-              statusCode: 200,
-              body: {
-                items: (
-                  await dependencies.crm.listCustomers(context.actor, g.scopes, g.anchors)
-                ).map((item) => permittedDto(item, fields)),
-                nextCursor: null,
-              },
-            };
-          }
-          if (request.method === 'POST' && !id) {
-            authorizeQuery(context, 'customer:create', ['name', 'customerNumber', 'tags']);
-            const b = objectBody(request.body);
-            allow(b, ['name', 'customerNumber', 'tags']);
-            return {
-              statusCode: 201,
-              body: mutationDto(
-                await dependencies.crm.createCustomer(
-                  {
-                    name: string(b.name, 'name'),
-                    customerNumber: string(b.customerNumber, 'customerNumber'),
-                    tags: b.tags === undefined ? [] : strings(b.tags, 'tags'),
-                  },
-                  context.actor,
-                  correlationId,
-                ),
-                context,
-                'customer:read',
-              ),
-            };
-          }
+          const customerBaseContext = {
+            repository: dependencies.crm,
+            authorization: context,
+            correlationId,
+            authorize: (capability: PermissionKey, fields?: readonly string[]) =>
+              authorizeQuery(context, capability, fields),
+            permittedDto,
+            mutationDto: (value: Record<string, unknown>) =>
+              mutationDto(value, context, 'customer:read'),
+            notFound: () => error(404, 'not_found', 'Customer not found', correlationId),
+            parsers: { objectBody, allow, string, strings, uuid },
+          } as const;
+          const customerCollectionResponse = await dispatchRoutes(
+            customerCollectionRoutes(customerBaseContext),
+            request,
+          );
+          if (customerCollectionResponse) return customerCollectionResponse;
           if (request.method === 'POST' && id && nested === 'ownership') {
             const capability =
               objectBody(request.body).reassignment === true
@@ -3574,24 +3558,11 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               ),
             };
           }
-          if (request.method === 'GET' && id && !nested) {
-            const g = authorizeQuery(context, 'customer:read');
-            const found = await dependencies.crm.findCustomer(
-              uuid(id, 'customerId'),
-              context.actor,
-              g.scopes,
-              g.anchors,
-            );
-            return found
-              ? {
-                  statusCode: 200,
-                  body: permittedDto(
-                    found,
-                    context.permissions.get('customer:read')?.fields ?? null,
-                  ),
-                }
-              : error(404, 'not_found', 'Customer not found', correlationId);
-          }
+          const customerDetailResponse = await dispatchRoutes(
+            customerDetailRoutes(customerBaseContext),
+            request,
+          );
+          if (customerDetailResponse) return customerDetailResponse;
         }
         if (request.method === 'GET' && request.pathname === '/api/v1/leads') {
           if (!dependencies.crm)
