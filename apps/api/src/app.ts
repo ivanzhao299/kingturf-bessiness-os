@@ -79,6 +79,7 @@ import { commercialEvaluationRoutes } from './routes/commercial-evaluations.ts';
 import { quoteWriteRoutes } from './routes/quote-writes.ts';
 import { quoteCommandRoutes } from './routes/quote-commands.ts';
 import { complaintSlaRoutes } from './routes/complaint-sla.ts';
+import { complaintReadRoutes } from './routes/complaint-reads.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -1654,87 +1655,17 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             request,
           );
           if (slaResponse) return slaResponse;
-          if (request.method === 'GET' && request.pathname === '/api/v1/complaints') {
-            const grant = authorizeQuery(context, 'complaint:read');
-            const query = request.query ?? {};
-            const state = query.state;
-            const severity = query.severity;
-            const allowedStates = [
-              'REPORTED',
-              'TRIAGED',
-              'INVESTIGATING',
-              'NCR_OPEN',
-              'CAPA_ACTIVE',
-              'VERIFIED',
-              'CLOSED',
-              'REJECTED',
-            ];
-            const allowedSeverities = ['LOW', 'MEDIUM', 'MAJOR', 'CRITICAL'];
-            if (state && !allowedStates.includes(state))
-              throw new DomainError('invalid_request', 'state is unsupported');
-            if (severity && !allowedSeverities.includes(severity))
-              throw new DomainError('invalid_request', 'severity is unsupported');
-            if (query.overdue && !['true', 'false'].includes(query.overdue))
-              throw new DomainError('invalid_request', 'overdue must be true or false');
-            const page = await dependencies.complaints.list(
-              {
-                limit: query.limit ? integer(Number(query.limit), 'limit', 1, 100) : 50,
-                ...(query.cursor ? { cursor: uuid(query.cursor, 'cursor') } : {}),
-                ...(query.query ? { query: string(query.query, 'query') } : {}),
-                ...(state
-                  ? {
-                      state: state as
-                        | 'REPORTED'
-                        | 'TRIAGED'
-                        | 'INVESTIGATING'
-                        | 'NCR_OPEN'
-                        | 'CAPA_ACTIVE'
-                        | 'VERIFIED'
-                        | 'CLOSED'
-                        | 'REJECTED',
-                    }
-                  : {}),
-                ...(severity
-                  ? { severity: severity as 'LOW' | 'MEDIUM' | 'MAJOR' | 'CRITICAL' }
-                  : {}),
-                ...(query.assignedTo ? { assignedTo: uuid(query.assignedTo, 'assignedTo') } : {}),
-                ...(query.customerId ? { customerId: uuid(query.customerId, 'customerId') } : {}),
-                ...(query.salesOrderId
-                  ? { salesOrderId: uuid(query.salesOrderId, 'salesOrderId') }
-                  : {}),
-                ...(query.inventoryLotId
-                  ? { inventoryLotId: uuid(query.inventoryLotId, 'inventoryLotId') }
-                  : {}),
-                ...(query.createdFrom
-                  ? { createdFrom: timestamp(query.createdFrom, 'createdFrom') }
-                  : {}),
-                ...(query.createdTo ? { createdTo: timestamp(query.createdTo, 'createdTo') } : {}),
-                ...(query.overdue ? { overdue: query.overdue === 'true' } : {}),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-            );
-            return {
-              statusCode: 200,
-              body: {
-                items: page.items.map((item) =>
-                  permittedDto(item, context.permissions.get('complaint:read')?.fields ?? null),
-                ),
-                nextCursor: page.nextCursor,
-              },
-            };
-          }
-          const complaintDetail = /^\/api\/v1\/complaints\/([0-9a-f-]+)$/u.exec(request.pathname);
-          if (request.method === 'GET' && complaintDetail) {
-            const grant = authorizeQuery(context, 'complaint:read');
-            const item = await dependencies.complaints.getById(
-              uuid(complaintDetail[1], 'complaintId'),
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-            );
-            return {
-              statusCode: 200,
-              body: permittedDto(item, context.permissions.get('complaint:read')?.fields ?? null),
-            };
-          }
+          const complaintReadResponse = await dispatchRoutes(
+            complaintReadRoutes({
+              repository: dependencies.complaints,
+              authorization: context,
+              authorize: (capability) => authorizeQuery(context, capability),
+              permittedDto,
+              parsers: { string, uuid, integer, timestamp },
+            }),
+            request,
+          );
+          if (complaintReadResponse) return complaintReadResponse;
           if (request.method === 'POST' && request.pathname === '/api/v1/complaints') {
             const body = objectBody(request.body);
             allow(body, [
