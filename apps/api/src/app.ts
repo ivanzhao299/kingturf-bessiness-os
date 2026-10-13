@@ -85,6 +85,7 @@ import { complaintBatchTriageRoutes } from './routes/complaint-batch-triage.ts';
 import { complaintTransitionRoutes } from './routes/complaint-transitions.ts';
 import { ncrCreateRoutes } from './routes/ncr-create.ts';
 import { ncrTransitionRoutes } from './routes/ncr-transitions.ts';
+import { capaCreateRoutes } from './routes/capa-create.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -1771,45 +1772,27 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             request,
           );
           if (ncrTransitionResponse) return ncrTransitionResponse;
-          const capaCreate = /^\/api\/v1\/ncrs\/([0-9a-f-]+)\/capas$/u.exec(request.pathname);
-          if (request.method === 'POST' && capaCreate) {
-            const body = objectBody(request.body);
-            allow(body, [
-              'capaNumber',
-              'ownerId',
-              'targetAt',
-              'riskLevel',
-              'rootCauseSnapshot',
-              'complaintExpectedVersion',
-              'evidence',
-              'idempotencyKey',
-            ]);
-            const grant = authorizeQuery(context, 'capa:manage', Object.keys(body));
-            const riskLevel = string(body.riskLevel, 'riskLevel');
-            if (!['LOW', 'MEDIUM', 'MAJOR', 'CRITICAL'].includes(riskLevel))
-              throw new DomainError('invalid_request', 'riskLevel is unsupported');
-            const result = await dependencies.complaints.createCapa(
-              {
-                capaNumber: assertStableCode(string(body.capaNumber, 'capaNumber')),
-                ncrId: uuid(capaCreate[1], 'ncrId'),
-                ownerId: uuid(body.ownerId, 'ownerId'),
-                targetAt: timestamp(body.targetAt, 'targetAt'),
-                riskLevel: riskLevel as 'LOW' | 'MEDIUM' | 'MAJOR' | 'CRITICAL',
-                rootCauseSnapshot: jsonObject(body.rootCauseSnapshot, 'rootCauseSnapshot'),
-                complaintExpectedVersion: integer(
-                  body.complaintExpectedVersion,
-                  'complaintExpectedVersion',
-                  1,
-                  1_000_000,
-                ),
-                evidence: jsonObject(body.evidence ?? {}, 'evidence'),
-                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+          const capaCreateResponse = await dispatchRoutes(
+            capaCreateRoutes({
+              repository: dependencies.complaints,
+              authorization: context,
               correlationId,
-            );
-            return { statusCode: 201, body: mutationDto(result, context, 'capa:read') };
-          }
+              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
+              mutationDto: (value) => mutationDto(value, context, 'capa:read'),
+              parsers: {
+                objectBody,
+                allow,
+                string,
+                stableCode: assertStableCode,
+                uuid,
+                timestamp,
+                integer,
+                jsonObject,
+              },
+            }),
+            request,
+          );
+          if (capaCreateResponse) return capaCreateResponse;
           const capaAction = /^\/api\/v1\/capas\/([0-9a-f-]+)\/actions$/u.exec(request.pathname);
           if (request.method === 'POST' && capaAction) {
             const body = objectBody(request.body);
