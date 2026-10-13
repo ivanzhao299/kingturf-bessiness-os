@@ -6,7 +6,7 @@
 - **分支**：`harnessing`（自 main 派生；按规则 §7.1 禁止直接在主干改造）
 - **计划版本 / 日期**：v1.3 / 2026-10-12（v1.2 经第三轮人工审核修订：修复 §3.8 S11 表格裸管道、覆盖率验收语义收紧为目标值硬条件、S11 表述改为启发式口径）
 - **扫描基线**：commit `779dea3`（同步 origin/main 后）
-- **状态**：**批次1与2a已获人工验收；2b进行中：auth/identity provisioning/IAM/profiles/identity-state/collection/commercial及complaint①②③④⑤⑥a已整体协调确认。⑥b实现64c9588经协调静态与独立reviewer无阻塞，272冻结契约零diff、协调独立1658；修正类型后完整CI通过（API2041），本日志HEAD随后补验；其后CAPA5入口及crm/platform/production/production-startup/qtc/website-lead-ingest待执行。历史容量时点保留，TD-BOUND-003/004仅待核实、35条台账，不修行为。2b整批尚未人类验收。**
+- **状态**：**批次1与2a已获人工验收；2b进行中：auth/identity provisioning/IAM/profiles/identity-state/collection/commercial及complaint①②③④⑤⑥a⑥b已整体协调确认。⑥b代码64c9588、最终8c72ff4完整CI已过（API2041），协调独立1658；本轮仅⑦CAPA创建POST，61旧契约通过尚未提取；其后四CAPA入口及crm/platform/production/production-startup/qtc/website-lead-ingest待执行。历史容量时点保留，TD-BOUND-003/004仅待核实、35条台账，不修行为。2b整批尚未人类验收。**
 - **规则文档**：`docs/HARNESS-RULES.md`（施工期常驻，竣工验收后按 §14 拆解归档）
 - **配套文件**：问题清单 `docs/exec-plans/tech-debt-tracker.md`（35 条）；CI 决策 `docs/CI.md`；度量脚本 `scripts/analysis/repo-metrics.mjs`
 
@@ -243,9 +243,11 @@ packages/{types, ui, config, testing} → 零依赖
 
 **当前边界与否定证据**：快照 `app.ts:3486` 机会dispatcher至 `:3692` quote-command接线、`:3693` CRM matcher；商业区现在仅工厂/共享dispatcher及parser/授权/DTO注入。全 `apps/api/src/app.ts` 执行 `rg -n 'dependencies\.commercial|commercial\.(list|find|create|update|transition|submit|approve|issue|evaluate|calculate|add|link|get)' apps/api/src/app.ts`，命中均为repository注入/存在性guard，未找到历史商业范围的旧内联仓储业务调用。共享解析/DTO helper不是残留成功分支；CRM之后的域外业务不在本结论范围。scout与独立reviewer只读核验，不运行DB/构建。本表不结清整批债务，不表示2b验收，**商业整体已协调复核通过：独立17文件872/872、最终14b841c完整CI退出码0及38/39映射核验；不等于2b整批验收**。
 
-#### 4.2.2 complaint 全域盘点与分步设计（基线14b841c，⑥b代码已复核，CAPA待执行）
+#### 4.2.2 complaint 全域盘点与分步设计（基线14b841c，⑥b整体已确认，⑦进行中）
 
-**⑥b协调恢复收尾当前状态**：旧00884e1内联272固定契约先提交30bbc91，迁移后零diff；代码64c9588将原combined matcher展开4个互斥POST，app5132→5075、模块121行，factory32–121共90行。协调静态对照与独立reviewer确认权限/state、双truthy string先双enum先路径UUID、完整input顺序、仅disposition服务器approvedBy、原receiver/R/C与201 ncr:read投影保持；后续5条CAPA原文未改，SQL/仓储/dispatcher/门禁无diff。首次完整CI因optional enum spread类型推断失败；两处已校验枚举后的NonNullable窄断言仅修类型、与旧断言等价，重跑完整CI退出码0（API66文件2041/2041、结构0违规31豁免、audit零漏洞）。代码提交后执行会话模型容量失败，协调不重做提取，亲跑24文件1658/1658并只补本日志；最终日志HEAD完整CI随后补验，证据kingturf-ncr-transition-coordinator-head-ci.log。台账35、TD-BOUND-003/004不修，2b整批未人工验收；下方旧批准/快照及14b841c盘点保持历史时点。
+**⑦当前批准/⑥b最终确认**：30bbc91旧272无diff，64c9588新旧静态与独立reviewer无阻塞，协调亲跑24文件1658/1658、补日志8c72ff4并最终完整ci:local退出码0（API66文件2041/2041、complaint PG4/4、结构0违规31豁免、其他门禁/build/audit全绿），⑥b整体确认，不重做NCR提取；修正类型过程/容量恢复及旧待补验日志保留历史时点。只批准⑦CAPA create单POST，旧8c72ff4内联61契约首跑通过，相关27文件1725/1725、guard/迁移状态/PG4/4/typecheck/lint及独立reviewer通过，先独立旧test再迁移。全apps/packages TS createCapa普查只找到app生产调用与repo声明、两mock fixture；仓储状态/事务/replay/audit不改。riskLevel先编号/路径UUID、snapshot必需与evidence默认不同、独立capa:read投影守恒，后续四CAPA入口不动。台账35，日期/UUID风险不修，历史14b841c盘点/行号/时点保留。
+
+**⑥b协调恢复收尾当前状态**：旧00884e1内联272固定契约先提交30bbc91，迁移后零diff；代码64c9588将原combined matcher展开4个互斥POST，app5132→5075、模块121行，factory32–121共90行。协调静态对照与独立reviewer确认权限/state、双truthy string先双enum先路径UUID、完整input顺序、仅disposition服务器approvedBy、原receiver/R/C与201 ncr:read投影保持；后续5条CAPA原文未改，SQL/仓储/dispatcher/门禁无diff。首次完整CI因optional enum spread类型推断失败；两处已校验枚举后的NonNullable窄断言仅修类型、与旧断言等价，重跑完整CI退出码0（API66文件2041/2041、结构0违规31豁免、audit零漏洞）。代码提交后执行会话模型容量失败，协调不重做提取，亲跑24文件1658/1658并只补本日志；协调亲跑最终8c72ff4完整CI退出码0（API66文件2041/2041、complaint PG4/4与其他门禁/build/audit全绿），⑥b整体已协调确认；原随后补验记录保留历史时点，证据kingturf-ncr-transition-coordinator-head-ci.log。台账35、TD-BOUND-003/004不修，2b整批未人工验收；下方旧批准/快照及14b841c盘点保持历史时点。
 
 **⑥b当前批准/⑥a整体确认**：4a1b923/日志00884e1新旧顺序/参数/receiver/DTO与独立reviewer无阻塞，2b92813固定67零diff；协调亲跑23文件1386/1386（执行端25文件1392/1392不同检查集），最终00884e1完整ci:local退出码0（API65文件1769/1769、complaint PG前后4/4、结构0违规31豁免/audit全绿），⑥a整体确认，不重做前组。只批准⑥b NCR contain/root-cause/disposition/close四POST；旧00884e1内联272固定契约首跑通过，相关26文件1664/1664、PG4/4/guard/迁移状态/typecheck/lint及独立reviewer通过。双truthy string先双enum先路径UUID、仅disposition服务器approvedBy和全字段顺序保持，先独立旧test再迁移。台账35/日期UUID债务不修；下方历史盘点/各快照/旧待复核记录保留时点，后续CAPA五入口不实施。
 
@@ -427,6 +429,8 @@ packages/{types, ui, config, testing} → 零依赖
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+2026-10-13，⑥b最终协调确认/⑦CAPA创建旧护栏：旧30bbc91固定272无diff、代码64c9588静态与独立reviewer无阻塞，协调亲跑24文件1658/1658、容量失败后补日志8c72ff4并最终完整ci:local退出码0（API66文件2041/2041、complaint PG4/4、结构0违规31豁免及其余门禁/build/audit全绿），⑥b整体确认，不重做NCR。只批准⑦一个POST：旧61在8c72ff4内联首跑通过，相关27文件1725/1725、PG4/4、guard/迁移状态/typecheck/lint及独立reviewer通过；固定8allow/body→fieldauth→risk string/enum先number/path→owner/time→required snapshot→version→evidence??{}→body stablekey、header无fallback/receiver/R/C/201独立capa read/边界与信封。真实PG既有CAPA约束证据与mock参数契约分开，不称新HTTP case验证了真实仓储写入。全apps/packages TS createCapa调用普查仅app生产点、repo声明与两mock fixtures，源码零diff，无失败/偏差。旧test先提交后预期冻结；实施/完整CI/回滚另记。原容量/随后补验和14b841c盘点时点保留，四后续CAPA入口不改、台账35/TD-BOUND-003/004待核实不修、不结清整批债务，无push/部署/生产/workflow操作。
 
 2026-10-13，⑥a整体协调确认/⑥b旧护栏：4a1b923/00884e1静态及独立reviewer新旧顺序/params/receiver/DTO无阻塞，旧2b92813固定67无diff，协调23文件1386/1386与执行25文件1392/1392按各自检查集记录；最终00884e1完整CI退出码0（API65文件1769/1769、complaint PG前后4/4、结构0违规31豁免及其他门禁/audit全绿），⑥a整体通过。只⑥b NCR四状态POST：旧272契约在00884e1内联首跑通过、补充既有case内空{}授权后version断言后仍272/272，相关26文件1664/1664、PG4/4、guard/迁移状态/typecheck/lint及独立reviewer通过；固定四cap/state/不可替代、O→7allow→fieldauth→双truthy string→双enum→UUID→version/reason→truthy rootCause JSON→仅disposition服务器approvedBy→evidence??{}→body stablekey/R/C/201独立ncr read/guard邻接信封。不新增action必需检查或body approvedBy，optional falsey键仍授权/输入省略，根因不默认{}。无失败/偏差，源码零diff；旧test先独立提交后预期不改，实现/完整CI/回滚点另记。历史14b841c/容量及旧计数保留，后续CAPA5入口不动，35台账/TD-BOUND-003/004待核实不修行为，不结清整批债务，无push/部署/生产/workflow操作。
 
