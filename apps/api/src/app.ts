@@ -69,6 +69,7 @@ import { collectionRoutes } from './routes/collection.ts';
 import { dispatchOpportunityRoutes } from './routes/opportunities.ts';
 import { commercialNestedReadRoutes } from './routes/commercial-nested-reads.ts';
 import { commercialViewRoutes } from './routes/commercial-views.ts';
+import { ctrRoutes } from './routes/ctr.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -3527,99 +3528,19 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           );
           if (commercialViewResponse) return commercialViewResponse;
         }
-        if (
-          request.method === 'POST' &&
-          request.pathname === '/api/v1/ctrs' &&
-          dependencies.commercial
-        ) {
-          const body = objectBody(request.body);
-          allow(body, ['opportunityId', 'code', 'title', 'requirements']);
-          const grant = authorizeQuery(context, 'ctr:create', Object.keys(body));
-          const result = await dependencies.commercial.createCtr(
-            {
-              opportunityId: uuid(body.opportunityId, 'opportunityId'),
-              code: string(body.code, 'code'),
-              title: string(body.title, 'title'),
-              requirements: jsonObject(body.requirements, 'requirements'),
-            },
-            context.actor,
-            grant.scopes,
-            grant.anchors,
-            correlationId,
-          );
-          return { statusCode: 201, body: mutationDto(result, context, 'ctr:read') };
-        }
-        const ctrRevision = /^\/api\/v1\/ctrs\/([0-9a-f-]+)\/versions$/u.exec(request.pathname);
-        if (request.method === 'POST' && ctrRevision && dependencies.commercial) {
-          const body = objectBody(request.body);
-          allow(body, ['title', 'requirements']);
-          const grant = authorizeQuery(context, 'ctr:update', Object.keys(body));
-          const result = await dependencies.commercial.createCtrVersion(
-            uuid(ctrRevision[1], 'ctrId'),
-            {
-              title: string(body.title, 'title'),
-              requirements: jsonObject(body.requirements, 'requirements'),
-            },
-            context.actor,
-            grant.scopes,
-            grant.anchors,
-            correlationId,
-          );
-          return { statusCode: 201, body: mutationDto(result, context, 'ctr:read') };
-        }
-        const ctrCommand = /^\/api\/v1\/ctr-versions\/([0-9a-f-]+)\/(submit|decision)$/u.exec(
-          request.pathname,
-        );
-        if (request.method === 'POST' && ctrCommand && dependencies.commercial) {
-          const body = objectBody(request.body),
-            versionId = uuid(ctrCommand[1], 'ctrVersionId');
-          if (ctrCommand[2] === 'submit') {
-            const grant = authorizeQuery(context, 'ctr:submit');
-            allow(body, ['expectedVersion']);
-            const result = await dependencies.commercial.submitCtr(
-              versionId,
-              version(body.expectedVersion),
-              idempotency(request),
-              context.actor,
-              grant.scopes,
-              grant.anchors,
+        if (dependencies.commercial) {
+          const ctrResponse = await dispatchRoutes(
+            ctrRoutes({
+              repository: dependencies.commercial,
+              authorization: context,
               correlationId,
-            );
-            return { statusCode: 200, body: mutationDto(result, context, 'ctr:read') };
-          }
-          allow(body, ['decision', 'reason']);
-          const grant = authorizeQuery(context, 'ctr:approve');
-          const decision = string(body.decision, 'decision');
-          if (!['APPROVED', 'REJECTED'].includes(decision))
-            throw new DomainError('invalid_request', 'decision is unsupported');
-          const result = await dependencies.commercial.approveCtr(
-            versionId,
-            decision as 'APPROVED' | 'REJECTED',
-            string(body.reason, 'reason'),
-            idempotency(request),
-            context.actor,
-            grant.scopes,
-            grant.anchors,
-            correlationId,
+              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
+              mutationDto: (value) => mutationDto(value, context, 'ctr:read'),
+              parsers: { objectBody, allow, uuid, string, jsonObject, version, idempotency },
+            }),
+            request,
           );
-          return { statusCode: 200, body: mutationDto(result, context, 'ctr:read') };
-        }
-        const ctrAttachment = /^\/api\/v1\/ctr-versions\/([0-9a-f-]+)\/attachments$/u.exec(
-          request.pathname,
-        );
-        if (request.method === 'POST' && ctrAttachment && dependencies.commercial) {
-          const body = objectBody(request.body);
-          allow(body, ['attachmentId']);
-          const grant = authorizeQuery(context, 'ctr:update', Object.keys(body));
-          const result = await dependencies.commercial.linkCtrAttachment(
-            uuid(ctrAttachment[1], 'ctrVersionId'),
-            uuid(body.attachmentId, 'attachmentId'),
-            context.actor,
-            grant.scopes,
-            grant.anchors,
-            correlationId,
-          );
-          return { statusCode: 201, body: mutationDto(result, context, 'ctr:read') };
+          if (ctrResponse) return ctrResponse;
         }
         if (
           request.method === 'POST' &&
