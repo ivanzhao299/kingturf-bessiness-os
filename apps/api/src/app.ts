@@ -87,6 +87,7 @@ import { ncrCreateRoutes } from './routes/ncr-create.ts';
 import { ncrTransitionRoutes } from './routes/ncr-transitions.ts';
 import { capaCreateRoutes } from './routes/capa-create.ts';
 import { capaActionRoutes } from './routes/capa-actions.ts';
+import { capaLifecycleRoutes } from './routes/capa-lifecycle.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -1815,65 +1816,27 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             request,
           );
           if (capaActionResponse) return capaActionResponse;
-          const capaClose = /^\/api\/v1\/capas\/([0-9a-f-]+)\/close$/u.exec(request.pathname);
-          if (request.method === 'POST' && capaClose) {
-            const body = objectBody(request.body);
-            allow(body, ['expectedVersion', 'reason', 'evidence', 'idempotencyKey']);
-            const grant = authorizeQuery(context, 'capa:manage', Object.keys(body));
-            const result = await dependencies.complaints.closeCapa(
-              uuid(capaClose[1], 'capaId'),
-              {
-                expectedVersion: integer(body.expectedVersion, 'expectedVersion', 1, 1_000_000),
-                reason: string(body.reason, 'reason'),
-                evidence: jsonObject(body.evidence, 'evidence'),
-                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+          const capaLifecycleResponse = await dispatchRoutes(
+            capaLifecycleRoutes({
+              repository: dependencies.complaints,
+              authorization: context,
               correlationId,
-            );
-            return { statusCode: 201, body: mutationDto(result, context, 'capa:read') };
-          }
-          const capaVerify = /^\/api\/v1\/capas\/([0-9a-f-]+)\/verify$/u.exec(request.pathname);
-          if (request.method === 'POST' && capaVerify) {
-            const body = objectBody(request.body);
-            allow(body, [
-              'verifiedAt',
-              'standard',
-              'sampleScope',
-              'observationUntil',
-              'result',
-              'evidence',
-              'expectedVersion',
-              'complaintExpectedVersion',
-              'idempotencyKey',
-            ]);
-            const grant = authorizeQuery(context, 'capa:verify', Object.keys(body));
-            const verificationResult = string(body.result, 'result');
-            if (!['PASSED', 'FAILED'].includes(verificationResult))
-              throw new DomainError('invalid_request', 'result is unsupported');
-            const result = await dependencies.complaints.verifyCapa(
-              uuid(capaVerify[1], 'capaId'),
-              {
-                verifiedAt: timestamp(body.verifiedAt, 'verifiedAt'),
-                standard: string(body.standard, 'standard'),
-                sampleScope: string(body.sampleScope, 'sampleScope'),
-                observationUntil: timestamp(body.observationUntil, 'observationUntil'),
-                result: verificationResult as 'PASSED' | 'FAILED',
-                evidence: jsonObject(body.evidence, 'evidence'),
-                expectedVersion: integer(body.expectedVersion, 'expectedVersion', 1, 1_000_000),
-                complaintExpectedVersion: integer(
-                  body.complaintExpectedVersion,
-                  'complaintExpectedVersion',
-                  1,
-                  1_000_000,
-                ),
-                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
+              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
+              mutationDto: (value) => mutationDto(value, context, 'capa:read'),
+              parsers: {
+                objectBody,
+                allow,
+                string,
+                stableCode: assertStableCode,
+                uuid,
+                timestamp,
+                integer,
+                jsonObject,
               },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
-            );
-            return { statusCode: 201, body: mutationDto(result, context, 'capa:read') };
-          }
+            }),
+            request,
+          );
+          if (capaLifecycleResponse) return capaLifecycleResponse;
         }
         if (dependencies.collections) {
           const collectionResponse = await dispatchRoutes(
