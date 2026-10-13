@@ -65,6 +65,7 @@ import { dispatchRoutes } from './routes/types.ts';
 import { identityProvisionRoutes } from './routes/identity-provision.ts';
 import { dispatchAuthorizationRoutes } from './routes/authorization.ts';
 import { identityAccessRoutes } from './routes/identity-access.ts';
+import { collectionRoutes } from './routes/collection.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -2192,228 +2193,32 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           }
         }
         if (dependencies.collections) {
-          if (request.method === 'GET' && request.pathname === '/api/v1/collection-cases') {
-            const grant = authorizeQuery(context, 'collection:read');
-            const legalRead = context.permissions.has('legal-case:read')
-              ? {
-                  ...authorizeQuery(context, 'legal-case:read'),
-                  fields: context.permissions.get('legal-case:read')?.fields ?? null,
-                }
-              : undefined;
-            const items = await dependencies.collections.list({
-              actor: context.actor,
-              scopes: grant.scopes,
-              anchors: grant.anchors,
-              legalRead,
-            });
-            return {
-              statusCode: 200,
-              body: {
-                items: items.map((item) =>
-                  permittedDto(
-                    projectCollectionLegal(item, legalRead),
-                    context.permissions.get('collection:read')?.fields ?? null,
-                  ),
-                ),
-              },
-            };
-          }
-          if (request.method === 'POST' && request.pathname === '/api/v1/collection-cases') {
-            const body = objectBody(request.body);
-            allow(body, [
-              'caseNumber',
-              'arOpenItemId',
-              'assignedTo',
-              'priority',
-              'reason',
-              'idempotencyKey',
-            ]);
-            const grant = authorizeQuery(context, 'collection:manage', Object.keys(body));
-            const priority = string(body.priority, 'priority');
-            if (!['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].includes(priority))
-              throw new DomainError('invalid_request', 'priority is unsupported');
-            const result = await dependencies.collections.createCase(
-              {
-                caseNumber: assertStableCode(string(body.caseNumber, 'caseNumber')),
-                arOpenItemId: uuid(body.arOpenItemId, 'arOpenItemId'),
-                assignedTo: uuid(body.assignedTo, 'assignedTo'),
-                priority: priority as 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL',
-                reason: string(body.reason, 'reason'),
-                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+          const collectionResponse = await dispatchRoutes(
+            collectionRoutes({
+              repository: dependencies.collections,
+              authorization: context,
               correlationId,
-            );
-            return { statusCode: 201, body: mutationDto(result, context, 'collection:read') };
-          }
-          const followup = /^\/api\/v1\/collection-cases\/([0-9a-f-]+)\/followups$/u.exec(
-            request.pathname,
+              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
+              projectLegal: projectCollectionLegal,
+              permittedDto,
+              mutationDto: (value) => mutationDto(value, context, 'collection:read'),
+              legalMutationDto: (value) => legalMutationDto(value, context),
+              parsers: {
+                objectBody,
+                allow,
+                string,
+                uuid,
+                timestamp,
+                decimal,
+                currency,
+                strings,
+                jsonObject,
+                stableCode: assertStableCode,
+              },
+            }),
+            request,
           );
-          if (request.method === 'POST' && followup) {
-            const body = objectBody(request.body);
-            allow(body, [
-              'channel',
-              'occurredAt',
-              'contactPerson',
-              'outcome',
-              'nextActionAt',
-              'evidence',
-              'idempotencyKey',
-            ]);
-            const grant = authorizeQuery(context, 'collection:manage', Object.keys(body));
-            const channel = string(body.channel, 'channel');
-            if (!['PHONE', 'EMAIL', 'LETTER', 'MEETING', 'VISIT', 'OTHER'].includes(channel))
-              throw new DomainError('invalid_request', 'channel is unsupported');
-            const result = await dependencies.collections.addFollowup(
-              uuid(followup[1], 'collectionCaseId'),
-              {
-                channel: channel as 'PHONE' | 'EMAIL' | 'LETTER' | 'MEETING' | 'VISIT' | 'OTHER',
-                occurredAt: timestamp(body.occurredAt, 'occurredAt'),
-                contactPerson: string(body.contactPerson, 'contactPerson'),
-                outcome: string(body.outcome, 'outcome'),
-                ...(body.nextActionAt
-                  ? { nextActionAt: timestamp(body.nextActionAt, 'nextActionAt') }
-                  : {}),
-                evidence: jsonObject(body.evidence ?? {}, 'evidence'),
-                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
-            );
-            return { statusCode: 201, body: mutationDto(result, context, 'collection:read') };
-          }
-          const promiseCreate = /^\/api\/v1\/collection-cases\/([0-9a-f-]+)\/promises$/u.exec(
-            request.pathname,
-          );
-          if (request.method === 'POST' && promiseCreate) {
-            const body = objectBody(request.body);
-            allow(body, [
-              'promisedAmount',
-              'currency',
-              'promisedAt',
-              'dueAt',
-              'debtorContact',
-              'evidence',
-              'idempotencyKey',
-            ]);
-            const grant = authorizeQuery(context, 'collection:manage', Object.keys(body));
-            const result = await dependencies.collections.createPromise(
-              uuid(promiseCreate[1], 'collectionCaseId'),
-              {
-                promisedAmount: decimal(body.promisedAmount, 'promisedAmount'),
-                currency: currency(body.currency),
-                promisedAt: timestamp(body.promisedAt, 'promisedAt'),
-                dueAt: timestamp(body.dueAt, 'dueAt'),
-                debtorContact: string(body.debtorContact, 'debtorContact'),
-                evidence: jsonObject(body.evidence ?? {}, 'evidence'),
-                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
-            );
-            return { statusCode: 201, body: mutationDto(result, context, 'collection:read') };
-          }
-          const promiseDecision =
-            /^\/api\/v1\/collection-promises\/([0-9a-f-]+)\/(fulfill|break|cancel)$/u.exec(
-              request.pathname,
-            );
-          if (request.method === 'POST' && promiseDecision) {
-            const body = objectBody(request.body);
-            allow(body, ['reason', 'allocationEntryIds', 'evidence', 'idempotencyKey']);
-            const grant = authorizeQuery(context, 'collection:escalate', Object.keys(body));
-            const action = promiseDecision[2] ?? '';
-            const result = await dependencies.collections.decidePromise(
-              uuid(promiseDecision[1], 'promiseId'),
-              action === 'fulfill' ? 'FULFILLED' : action === 'break' ? 'BROKEN' : 'CANCELLED',
-              {
-                reason: string(body.reason, 'reason'),
-                allocationEntryIds: strings(
-                  body.allocationEntryIds ?? [],
-                  'allocationEntryIds',
-                ).map((id) => uuid(id, 'allocationEntryId')),
-                evidence: jsonObject(body.evidence ?? {}, 'evidence'),
-                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
-            );
-            return { statusCode: 201, body: mutationDto(result, context, 'collection:read') };
-          }
-          const legalRequest = /^\/api\/v1\/collection-cases\/([0-9a-f-]+)\/legal-handoffs$/u.exec(
-            request.pathname,
-          );
-          if (request.method === 'POST' && legalRequest) {
-            const body = objectBody(request.body);
-            allow(body, ['handoffNumber', 'reason', 'idempotencyKey']);
-            const grant = authorizeQuery(context, 'collection:escalate', Object.keys(body));
-            const result = await dependencies.collections.requestLegal(
-              uuid(legalRequest[1], 'collectionCaseId'),
-              {
-                handoffNumber: assertStableCode(string(body.handoffNumber, 'handoffNumber')),
-                reason: string(body.reason, 'reason'),
-                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
-            );
-            return { statusCode: 201, body: legalMutationDto(result, context) };
-          }
-          const legalDecision = /^\/api\/v1\/legal-handoffs\/([0-9a-f-]+)\/(accept|return)$/u.exec(
-            request.pathname,
-          );
-          if (request.method === 'POST' && legalDecision) {
-            const body = objectBody(request.body);
-            allow(body, ['reason', 'evidence', 'idempotencyKey']);
-            const grant = authorizeQuery(context, 'legal-case:decide', Object.keys(body));
-            const result = await dependencies.collections.decideLegal(
-              uuid(legalDecision[1], 'legalHandoffId'),
-              legalDecision[2] === 'accept' ? 'ACCEPTED' : 'RETURNED',
-              {
-                reason: string(body.reason, 'reason'),
-                evidence: jsonObject(body.evidence ?? {}, 'evidence'),
-                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
-            );
-            return { statusCode: 201, body: legalMutationDto(result, context) };
-          }
-          const evidencePackage =
-            /^\/api\/v1\/legal-handoffs\/([0-9a-f-]+)\/evidence-packages$/u.exec(request.pathname);
-          if (request.method === 'POST' && evidencePackage) {
-            const body = objectBody(request.body);
-            allow(body, ['packageNumber', 'idempotencyKey']);
-            const grant = authorizeQuery(context, 'debt-evidence:generate', Object.keys(body));
-            const result = await dependencies.collections.generateEvidencePackage(
-              uuid(evidencePackage[1], 'legalHandoffId'),
-              {
-                packageNumber: assertStableCode(string(body.packageNumber, 'packageNumber')),
-                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
-            );
-            return { statusCode: 201, body: legalMutationDto(result, context) };
-          }
-          const caseTransition =
-            /^\/api\/v1\/collection-cases\/([0-9a-f-]+)\/(resolve|close)$/u.exec(request.pathname);
-          if (request.method === 'POST' && caseTransition) {
-            const body = objectBody(request.body);
-            allow(body, ['reason', 'evidence', 'idempotencyKey']);
-            const grant = authorizeQuery(context, 'collection:close', Object.keys(body));
-            const result = await dependencies.collections.transitionCase(
-              uuid(caseTransition[1], 'collectionCaseId'),
-              caseTransition[2] === 'resolve' ? 'RESOLVED' : 'CLOSED',
-              {
-                reason: string(body.reason, 'reason'),
-                evidence: jsonObject(body.evidence ?? {}, 'evidence'),
-                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
-            );
-            return { statusCode: 201, body: mutationDto(result, context, 'collection:read') };
-          }
+          if (collectionResponse) return collectionResponse;
         }
         if (dependencies.quality) {
           const qualityLists: Readonly<
