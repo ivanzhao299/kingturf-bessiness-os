@@ -59,6 +59,7 @@ import type { PostgresComplaintRepository } from './complaint-repositories.ts';
 import type { PostgresBusinessDocumentRepository } from './business-document-repositories.ts';
 import type { PostgresContractDocumentRepository } from './contract-document-repositories.ts';
 import type { PostgresWebsiteLeadIngestor } from './website-lead-ingest.ts';
+import { dispatchFoundationRoutes, foundationRoutes } from './routes/foundation.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -461,6 +462,30 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             'A valid session is required',
             correlationId,
           );
+        const foundationResponse = await dispatchFoundationRoutes(
+          foundationRoutes({
+            dependencies,
+            authorization: context,
+            correlationId,
+            authorize: (capability) => authorizeQuery(context, capability),
+            unavailable: (message) => error(503, 'internal_error', message, correlationId),
+            error: (statusCode, code, message) => error(statusCode, code, message, correlationId),
+            parsers: {
+              objectBody,
+              string,
+              uuid,
+              version,
+              expectedVersion,
+              integer,
+              strings,
+              notificationChannel,
+              attachmentBytes,
+              allow,
+            },
+          }),
+          request,
+        );
+        if (foundationResponse) return foundationResponse;
         if (request.method === 'POST' && request.pathname === '/api/v1/auth/logout') {
           await dependencies.auth.logout(token, context, correlationId);
           return { statusCode: 204, body: {} };
@@ -5929,149 +5954,6 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             ),
           };
         }
-        if (request.pathname === '/api/v1/notifications' && request.method === 'GET') {
-          authorizeQuery(context, 'notification:read');
-          if (!dependencies.notifications)
-            return error(
-              503,
-              'internal_error',
-              'Notification repository unavailable',
-              correlationId,
-            );
-          return {
-            statusCode: 200,
-            body: await dependencies.notifications.list(
-              context.actor,
-              request.query?.unread === 'true',
-            ),
-          };
-        }
-        if (request.pathname === '/api/v1/notifications/unread-count' && request.method === 'GET') {
-          authorizeQuery(context, 'notification:read');
-          if (!dependencies.notifications)
-            return error(
-              503,
-              'internal_error',
-              'Notification repository unavailable',
-              correlationId,
-            );
-          return {
-            statusCode: 200,
-            body: { count: await dependencies.notifications.unread(context.actor) },
-          };
-        }
-        const notification = /^\/api\/v1\/notifications\/([0-9a-f-]+)$/u.exec(request.pathname);
-        if (notification && request.method === 'GET') {
-          authorizeQuery(context, 'notification:read');
-          if (!dependencies.notifications)
-            return error(
-              503,
-              'internal_error',
-              'Notification repository unavailable',
-              correlationId,
-            );
-          const found = await dependencies.notifications.find(
-            uuid(notification[1], 'notificationId'),
-            context.actor,
-          );
-          return found
-            ? { statusCode: 200, body: found }
-            : error(404, 'not_found', 'Notification not found', correlationId);
-        }
-        const readState = /^\/api\/v1\/notifications\/([0-9a-f-]+)\/(read|unread)$/u.exec(
-          request.pathname,
-        );
-        if (readState && request.method === 'PUT') {
-          authorizeQuery(context, 'notification:read');
-          if (!dependencies.notifications)
-            return error(
-              503,
-              'internal_error',
-              'Notification repository unavailable',
-              correlationId,
-            );
-          await dependencies.notifications.setRead(
-            uuid(readState[1], 'notificationId'),
-            readState[2] === 'read',
-            context.actor,
-            correlationId,
-          );
-          return { statusCode: 204, body: {} };
-        }
-        if (request.pathname === '/api/v1/notification-preferences' && request.method === 'GET') {
-          authorizeQuery(context, 'notification:read');
-          if (!dependencies.notifications)
-            return error(
-              503,
-              'internal_error',
-              'Notification repository unavailable',
-              correlationId,
-            );
-          return {
-            statusCode: 200,
-            body: await dependencies.notifications.preferences(context.actor),
-          };
-        }
-        if (request.pathname === '/api/v1/notification-preferences' && request.method === 'PUT') {
-          authorizeQuery(context, 'notification:manage');
-          if (!dependencies.notifications)
-            return error(
-              503,
-              'internal_error',
-              'Notification repository unavailable',
-              correlationId,
-            );
-          const b = objectBody(request.body);
-          allow(b, ['channel', 'enabled', 'expectedVersion']);
-          if (typeof b.enabled !== 'boolean')
-            throw new DomainError('invalid_request', 'enabled must be boolean');
-          if (b.expectedVersion === undefined)
-            throw new DomainError('invalid_request', 'expectedVersion is required');
-          return {
-            statusCode: 200,
-            body: await dependencies.notifications.setPreference(
-              notificationChannel(b.channel),
-              b.enabled,
-              expectedVersion(b.expectedVersion),
-              context.actor,
-              correlationId,
-            ),
-          };
-        }
-        if (request.pathname === '/api/v1/internal/notifications' && request.method === 'POST') {
-          const authorized = authorizeQuery(context, 'notification:manage');
-          if (!dependencies.notifications)
-            return error(
-              503,
-              'internal_error',
-              'Notification repository unavailable',
-              correlationId,
-            );
-          const b = objectBody(request.body);
-          allow(b, ['kind', 'title', 'message', 'recipients', 'subjectType', 'subjectId']);
-          const key = request.headers?.['idempotency-key'];
-          if (!key) throw new DomainError('invalid_request', 'Idempotency-Key header is required');
-          return {
-            statusCode: 201,
-            body: await dependencies.notifications.create(
-              {
-                kind: string(b.kind, 'kind'),
-                title: string(b.title, 'title'),
-                message: string(b.message, 'message'),
-                recipients: strings(b.recipients, 'recipients').map((recipient) =>
-                  uuid(recipient, 'recipient'),
-                ),
-                ...(b.subjectType ? { subjectType: string(b.subjectType, 'subjectType') } : {}),
-                ...(b.subjectId ? { subjectId: uuid(b.subjectId, 'subjectId') } : {}),
-                idempotencyKey: key,
-              },
-              context.actor,
-              correlationId,
-              authorized.scopes,
-              authorized.anchors,
-            ),
-          };
-        }
         if (request.pathname === '/api/v1/document-connectors' && request.method === 'GET') {
           const canConfigure = context.permissions.has('business-document:configure');
           if (!canConfigure)
@@ -6496,261 +6378,6 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               correlationId,
             ),
           };
-        }
-        if (request.pathname === '/api/v1/attachments' && request.method === 'POST') {
-          authorizeQuery(context, 'attachment:manage');
-          if (!dependencies.attachments)
-            return error(503, 'internal_error', 'Attachment repository unavailable', correlationId);
-          const b = objectBody(request.body);
-          allow(b, ['name', 'mimeType', 'size', 'checksum']);
-          return {
-            statusCode: 201,
-            body: await dependencies.attachments.create(
-              {
-                name: string(b.name, 'name'),
-                mimeType: string(b.mimeType, 'mimeType'),
-                size: integer(b.size, 'size', 1, 26_214_400),
-                checksum: string(b.checksum, 'checksum'),
-              },
-              context.actor,
-              correlationId,
-            ),
-          };
-        }
-        const attachmentUpload = /^\/api\/v1\/attachments\/([0-9a-f-]+)\/content$/u.exec(
-          request.pathname,
-        );
-        if (attachmentUpload && request.method === 'PUT') {
-          const grant = authorizeQuery(context, 'attachment:manage');
-          if (!dependencies.attachments)
-            return error(503, 'internal_error', 'Attachment repository unavailable', correlationId);
-          const b = objectBody(request.body);
-          allow(b, ['contentBase64']);
-          return {
-            statusCode: 200,
-            body: await dependencies.attachments.upload(
-              uuid(attachmentUpload[1], 'attachmentId'),
-              attachmentBytes(b.contentBase64),
-              context.actor,
-              grant.scopes,
-              grant.anchors,
-              correlationId,
-            ),
-          };
-        }
-        const attachmentBind = /^\/api\/v1\/attachments\/([0-9a-f-]+)\/bindings$/u.exec(
-          request.pathname,
-        );
-        if (attachmentBind && request.method === 'POST') {
-          const grant = authorizeQuery(context, 'attachment:manage');
-          if (!dependencies.attachments)
-            return error(503, 'internal_error', 'Attachment repository unavailable', correlationId);
-          const b = objectBody(request.body);
-          allow(b, ['objectType', 'objectId']);
-          await dependencies.attachments.bind(
-            uuid(attachmentBind[1], 'attachmentId'),
-            string(b.objectType, 'objectType'),
-            uuid(b.objectId, 'objectId'),
-            context.actor,
-            grant.scopes,
-            grant.anchors,
-            correlationId,
-          );
-          return { statusCode: 204, body: {} };
-        }
-        if (attachmentBind && request.method === 'DELETE') {
-          const grant = authorizeQuery(context, 'attachment:manage');
-          if (!dependencies.attachments)
-            return error(503, 'internal_error', 'Attachment repository unavailable', correlationId);
-          const b = objectBody(request.body);
-          allow(b, ['objectType', 'objectId']);
-          await dependencies.attachments.unbind(
-            uuid(attachmentBind[1], 'attachmentId'),
-            string(b.objectType, 'objectType'),
-            uuid(b.objectId, 'objectId'),
-            context.actor,
-            grant.scopes,
-            grant.anchors,
-            correlationId,
-          );
-          return { statusCode: 204, body: {} };
-        }
-        const attachment = /^\/api\/v1\/attachments\/([0-9a-f-]+)$/u.exec(request.pathname);
-        if (attachment && request.method === 'GET') {
-          const grant = authorizeQuery(context, 'attachment:read');
-          if (!dependencies.attachments)
-            return error(503, 'internal_error', 'Attachment repository unavailable', correlationId);
-          const found = await dependencies.attachments.download(
-            uuid(attachment[1], 'attachmentId'),
-            context.actor,
-            grant.scopes,
-            grant.anchors,
-          );
-          return found
-            ? {
-                statusCode: 200,
-                body: {
-                  metadata: found.metadata,
-                  contentBase64: Buffer.from(found.bytes).toString('base64'),
-                },
-              }
-            : error(404, 'not_found', 'Attachment not found', correlationId);
-        }
-        if (attachment && request.method === 'DELETE') {
-          const grant = authorizeQuery(context, 'attachment:manage');
-          if (!dependencies.attachments)
-            return error(503, 'internal_error', 'Attachment repository unavailable', correlationId);
-          const b = objectBody(request.body);
-          allow(b, ['version']);
-          await dependencies.attachments.remove(
-            uuid(attachment[1], 'attachmentId'),
-            version(b.version),
-            context.actor,
-            grant.scopes,
-            grant.anchors,
-            correlationId,
-          );
-          return { statusCode: 204, body: {} };
-        }
-        if (request.pathname === '/api/v1/business-objects' && request.method === 'GET') {
-          authorizeQuery(context, 'business-object:read');
-          if (!dependencies.businessObjects)
-            return error(503, 'internal_error', 'Registry unavailable', correlationId);
-          return {
-            statusCode: 200,
-            body: await dependencies.businessObjects.list(context.actor.companyId),
-          };
-        }
-        if (request.pathname === '/api/v1/business-objects' && request.method === 'POST') {
-          authorizeQuery(context, 'business-object:manage');
-          if (!dependencies.businessObjects)
-            return error(503, 'internal_error', 'Registry unavailable', correlationId);
-          const b = objectBody(request.body);
-          allow(b, ['code', 'name', 'schema']);
-          return {
-            statusCode: 201,
-            body: await dependencies.businessObjects.create(
-              string(b.code, 'code'),
-              string(b.name, 'name'),
-              b.schema,
-              context.actor,
-              correlationId,
-            ),
-          };
-        }
-        const objectVersion = /^\/api\/v1\/business-objects\/([0-9a-f-]+)\/versions$/u.exec(
-          request.pathname,
-        );
-        if (objectVersion && request.method === 'POST') {
-          authorizeQuery(context, 'business-object:manage');
-          if (!dependencies.businessObjects)
-            return error(503, 'internal_error', 'Registry unavailable', correlationId);
-          const b = objectBody(request.body);
-          allow(b, ['schema']);
-          return {
-            statusCode: 201,
-            body: await dependencies.businessObjects.addVersion(
-              uuid(objectVersion[1], 'definitionId'),
-              b.schema,
-              context.actor,
-              correlationId,
-            ),
-          };
-        }
-        const objectPublish =
-          /^\/api\/v1\/business-objects\/([0-9a-f-]+)\/versions\/(\d+)\/publish$/u.exec(
-            request.pathname,
-          );
-        if (objectPublish && request.method === 'POST') {
-          authorizeQuery(context, 'business-object:manage');
-          if (!dependencies.businessObjects)
-            return error(503, 'internal_error', 'Registry unavailable', correlationId);
-          return {
-            statusCode: 200,
-            body: await dependencies.businessObjects.publish(
-              uuid(objectPublish[1], 'definitionId'),
-              Number(objectPublish[2]),
-              context.actor,
-              correlationId,
-            ),
-          };
-        }
-        const object = /^\/api\/v1\/business-objects\/([0-9a-f-]+)$/u.exec(request.pathname);
-        if (object && request.method === 'GET') {
-          authorizeQuery(context, 'business-object:read');
-          if (!dependencies.businessObjects)
-            return error(503, 'internal_error', 'Registry unavailable', correlationId);
-          const found = await dependencies.businessObjects.find(
-            uuid(object[1], 'definitionId'),
-            context.actor.companyId,
-          );
-          return found
-            ? { statusCode: 200, body: found }
-            : error(404, 'not_found', 'Business object not found', correlationId);
-        }
-        if (request.pathname === '/api/v1/operations/events' && request.method === 'GET') {
-          authorizeQuery(context, 'event:operate');
-          if (!dependencies.events)
-            return error(503, 'internal_error', 'Event repository unavailable', correlationId);
-          return {
-            statusCode: 200,
-            body: await dependencies.events.counts(context.actor.companyId),
-          };
-        }
-        if (request.pathname === '/api/v1/operations/events/claims' && request.method === 'POST') {
-          authorizeQuery(context, 'event:operate');
-          if (!dependencies.events)
-            return error(503, 'internal_error', 'Event repository unavailable', correlationId);
-          const b = objectBody(request.body);
-          allow(b, ['consumer', 'worker', 'limit', 'leaseSeconds']);
-          return {
-            statusCode: 200,
-            body: await dependencies.events.claim(
-              context.actor,
-              string(b.consumer, 'consumer'),
-              string(b.worker, 'worker'),
-              b.limit === undefined ? undefined : integer(b.limit, 'limit', 1, 100),
-              b.leaseSeconds === undefined
-                ? undefined
-                : integer(b.leaseSeconds, 'leaseSeconds', 5, 300),
-            ),
-          };
-        }
-        const eventDelivery =
-          /^\/api\/v1\/operations\/events\/([0-9a-f-]+)\/(complete|retry|dead-letter)$/u.exec(
-            request.pathname,
-          );
-        if (eventDelivery && request.method === 'POST') {
-          authorizeQuery(context, 'event:operate');
-          if (!dependencies.events)
-            return error(503, 'internal_error', 'Event repository unavailable', correlationId);
-          const b = objectBody(request.body);
-          const action = eventDelivery[2];
-          allow(
-            b,
-            action === 'complete'
-              ? ['consumer', 'claimToken']
-              : ['consumer', 'claimToken', 'errorCode', 'maxAttempts'],
-          );
-          const eventId = uuid(eventDelivery[1], 'eventId');
-          const consumer = string(b.consumer, 'consumer');
-          const claimToken = uuid(b.claimToken, 'claimToken');
-          if (action === 'complete')
-            await dependencies.events.complete(eventId, context.actor, consumer, claimToken);
-          else
-            await dependencies.events.fail(
-              eventId,
-              context.actor,
-              consumer,
-              claimToken,
-              string(b.errorCode, 'errorCode'),
-              action === 'dead-letter'
-                ? 1
-                : b.maxAttempts === undefined
-                  ? undefined
-                  : integer(b.maxAttempts, 'maxAttempts', 2, 100),
-            );
-          return { statusCode: 204, body: {} };
         }
         return error(404, 'not_found', 'Route not found', correlationId);
       } catch (cause) {
