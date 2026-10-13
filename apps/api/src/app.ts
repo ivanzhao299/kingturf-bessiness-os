@@ -92,6 +92,7 @@ import { customerCollectionRoutes, customerDetailRoutes } from './routes/custome
 import { customerOwnershipRoutes } from './routes/customer-ownership.ts';
 import { customerActivityRoutes } from './routes/customer-activities.ts';
 import { customerLifecycleRoutes } from './routes/customer-lifecycle.ts';
+import { customer360Routes } from './routes/customer-360.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -3390,86 +3391,18 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             request,
           );
           if (customerLifecycleResponse) return customerLifecycleResponse;
-          if (request.method === 'GET' && id && nested === '360') {
-            const readGrant = authorizeQuery(context, 'customer:read');
-            const g = authorizeQuery(context, 'customer-360:read');
-            const customerId = uuid(id, 'customerId');
-            const readable = await dependencies.crm.findCustomer(
-              customerId,
-              context.actor,
-              readGrant.scopes,
-              readGrant.anchors,
-            );
-            if (!readable) return error(404, 'not_found', 'Customer not found', correlationId);
-            const fields = context.permissions.get('customer-360:read')?.fields;
-            const sectionGrant = (capability: PermissionKey) => {
-              if (!context.permissions.has(capability)) return undefined;
-              const grant = authorizeQuery(context, capability);
-              return { scopes: grant.scopes, anchors: grant.anchors };
-            };
-            const ownership = sectionGrant('customer-ownership:read');
-            const leads = sectionGrant('lead:read');
-            const opportunities = sectionGrant('opportunity:read');
-            const activities = sectionGrant('customer-activity:read');
-            const found = await dependencies.crm.customer360(
-              customerId,
-              context.actor,
-              g.scopes,
-              g.anchors,
-              {
-                email: fields === null || fields?.includes('contacts.email') === true,
-                phone: fields === null || fields?.includes('contacts.phone') === true,
-              },
-              {
-                ...(ownership ? { ownership } : {}),
-                ...(leads ? { leads } : {}),
-                ...(opportunities ? { opportunities } : {}),
-                ...(activities ? { activities } : {}),
-              },
-            );
-            const project = <T extends Record<string, unknown>>(
-              prefix: string,
-              item: T,
-              sectionCapability?: PermissionKey,
-            ) => {
-              const viewFields =
-                fields === null
-                  ? null
-                  : (fields ?? [])
-                      .filter((field) => field.startsWith(`${prefix}.`))
-                      .map((field) => field.slice(prefix.length + 1));
-              const sectionFields = sectionCapability
-                ? (context.permissions.get(sectionCapability)?.fields ?? null)
-                : null;
-              const effectiveFields =
-                viewFields === null
-                  ? sectionFields
-                  : sectionFields === null
-                    ? viewFields
-                    : viewFields.filter((field) => sectionFields.includes(field));
-              return permittedDto(item, effectiveFields);
-            };
-            return found
-              ? {
-                  statusCode: 200,
-                  body: {
-                    customer: project('customer', found.customer, 'customer:read'),
-                    contacts: found.contacts.map((item) => project('contacts', item)),
-                    ownership: found.ownership.map((item) =>
-                      project('ownership', item, 'customer-ownership:read'),
-                    ),
-                    leads: found.leads.map((item) => project('leads', item, 'lead:read')),
-                    opportunities: found.opportunities.map((item) =>
-                      project('opportunities', item, 'opportunity:read'),
-                    ),
-                    activities: found.activities.map((item) =>
-                      project('activities', item, 'customer-activity:read'),
-                    ),
-                    unavailableSections: found.unavailableSections,
-                  },
-                }
-              : error(404, 'not_found', 'Customer not found', correlationId);
-          }
+          const customer360Response = await dispatchRoutes(
+            customer360Routes({
+              repository: dependencies.crm,
+              authorization: context,
+              authorize: (capability) => authorizeQuery(context, capability),
+              uuid,
+              customerNotFound: () => error(404, 'not_found', 'Customer not found', correlationId),
+              permittedDto,
+            }),
+            request,
+          );
+          if (customer360Response) return customer360Response;
           if (request.method === 'POST' && id && nested === 'contacts') {
             const grant = authorizeQuery(context, 'customer:update', ['contacts']);
             const b = objectBody(request.body);
