@@ -93,6 +93,7 @@ import { customerActivityRoutes } from './routes/customer-activities.ts';
 import { customerLifecycleRoutes } from './routes/customer-lifecycle.ts';
 import { customer360Routes } from './routes/customer-360.ts';
 import { customerContactRoutes } from './routes/customer-contacts.ts';
+import { leadListRoutes, leadCreateRoutes, leadPoolRoutes } from './routes/lead-base.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -3422,66 +3423,46 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
         if (request.method === 'GET' && request.pathname === '/api/v1/leads') {
           if (!dependencies.crm)
             return error(503, 'internal_error', 'CRM dependency unavailable', correlationId);
-          const g = authorizeQuery(context, 'lead:read');
-          const fields = context.permissions.get('lead:read')?.fields ?? null;
-          return {
-            statusCode: 200,
-            body: {
-              items: (await dependencies.crm.listLeads(context.actor, g.scopes, g.anchors)).map(
-                (item) => permittedDto(item, fields),
-              ),
-              nextCursor: null,
-            },
-          };
+          const leadListResponse = await dispatchRoutes(
+            leadListRoutes({
+              repository: dependencies.crm,
+              authorization: context,
+              authorize: (capability) => authorizeQuery(context, capability),
+              permittedDto,
+            }),
+            request,
+          );
+          if (leadListResponse) return leadListResponse;
         }
         if (request.method === 'POST' && request.pathname === '/api/v1/leads') {
           if (!dependencies.crm)
             return error(503, 'internal_error', 'CRM dependency unavailable', correlationId);
-          const grant = authorizeQuery(context, 'lead:create', [
-            'title',
-            'source',
-            'customerId',
-            'pool',
-          ]);
-          const b = objectBody(request.body);
-          allow(b, ['title', 'source', 'customerId', 'pool']);
-          return {
-            statusCode: 201,
-            body: mutationDto(
-              await dependencies.crm.createLead(
-                {
-                  title: string(b.title, 'title'),
-                  source: string(b.source, 'source'),
-                  customerId:
-                    b.customerId === null || b.customerId === undefined
-                      ? null
-                      : uuid(b.customerId, 'customerId'),
-                  pool: b.pool === true,
-                },
-                context.actor,
-                correlationId,
-                grant.scopes,
-                grant.anchors,
-              ),
-              context,
-              'lead:read',
-            ),
-          };
+          const leadCreateResponse = await dispatchRoutes(
+            leadCreateRoutes({
+              repository: dependencies.crm,
+              authorization: context,
+              correlationId,
+              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
+              mutationDto: (value) => mutationDto(value, context, 'lead:read'),
+              parsers: { objectBody, allow, string, uuid },
+            }),
+            request,
+          );
+          if (leadCreateResponse) return leadCreateResponse;
         }
         if (request.method === 'GET' && request.pathname === '/api/v1/leads/pool') {
           if (!dependencies.crm)
             return error(503, 'internal_error', 'CRM dependency unavailable', correlationId);
-          const g = authorizeQuery(context, 'lead-pool:read');
-          const fields = context.permissions.get('lead-pool:read')?.fields ?? null;
-          return {
-            statusCode: 200,
-            body: {
-              items: (
-                await dependencies.crm.listLeads(context.actor, g.scopes, g.anchors, true)
-              ).map((item) => permittedDto(item, fields)),
-              nextCursor: null,
-            },
-          };
+          const leadPoolResponse = await dispatchRoutes(
+            leadPoolRoutes({
+              repository: dependencies.crm,
+              authorization: context,
+              authorize: (capability) => authorizeQuery(context, capability),
+              permittedDto,
+            }),
+            request,
+          );
+          if (leadPoolResponse) return leadPoolResponse;
         }
         const claimMatch = /^\/api\/v1\/leads\/([0-9a-f-]+)\/claim$/u.exec(request.pathname);
         if (request.method === 'POST' && claimMatch) {
