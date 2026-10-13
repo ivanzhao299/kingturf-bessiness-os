@@ -6,7 +6,7 @@
 - **分支**：`harnessing`（自 main 派生；按规则 §7.1 禁止直接在主干改造）
 - **计划版本 / 日期**：v1.3 / 2026-10-12（v1.2 经第三轮人工审核修订：修复 §3.8 S11 表格裸管道、覆盖率验收语义收紧为目标值硬条件、S11 表述改为启发式口径）
 - **扫描基线**：commit `779dea3`（同步 origin/main 后）
-- **状态**：**批次1与2a已获人工验收；2b进行中：auth/identity provisioning/IAM/profiles/identity-state/collection/commercial及complaint①②③④已整体协调确认。⑤四状态POST保留工件已由协调完成代码静态复核与完整工作区CI（API1702），实现1a0e0a3，当前日志HEAD最终门禁待协调补验；后续NCR/CAPA10入口及crm/platform/production/production-startup/qtc/website-lead-ingest待执行。TD-BOUND-003/004仅登记、35条台账，不修行为。2b整批尚未人类验收。**
+- **状态**：**批次1与2a已获人工验收；2b进行中：auth/identity provisioning/IAM/profiles/identity-state/collection/commercial及complaint①②③④⑤已整体协调确认。⑤恢复工件实现1a0e0a3、最终4437a32完整CI已通过（API1702），历史容量时点保留。本轮仅⑥a NCR create POST，67旧契约通过尚未提取；其后NCR/CAPA9入口及crm/platform/production/production-startup/qtc/website-lead-ingest待执行。TD-BOUND-003/004仅待核实、35条台账，不修行为。2b整批尚未人类验收。**
 - **规则文档**：`docs/HARNESS-RULES.md`（施工期常驻，竣工验收后按 §14 拆解归档）
 - **配套文件**：问题清单 `docs/exec-plans/tech-debt-tracker.md`（35 条）；CI 决策 `docs/CI.md`；度量脚本 `scripts/analysis/repo-metrics.mjs`
 
@@ -243,9 +243,11 @@ packages/{types, ui, config, testing} → 零依赖
 
 **当前边界与否定证据**：快照 `app.ts:3486` 机会dispatcher至 `:3692` quote-command接线、`:3693` CRM matcher；商业区现在仅工厂/共享dispatcher及parser/授权/DTO注入。全 `apps/api/src/app.ts` 执行 `rg -n 'dependencies\.commercial|commercial\.(list|find|create|update|transition|submit|approve|issue|evaluate|calculate|add|link|get)' apps/api/src/app.ts`，命中均为repository注入/存在性guard，未找到历史商业范围的旧内联仓储业务调用。共享解析/DTO helper不是残留成功分支；CRM之后的域外业务不在本结论范围。scout与独立reviewer只读核验，不运行DB/构建。本表不结清整批债务，不表示2b验收，**商业整体已协调复核通过：独立17文件872/872、最终14b841c完整CI退出码0及38/39映射核验；不等于2b整批验收**。
 
-#### 4.2.2 complaint 全域盘点与分步设计（基线14b841c，⑤代码复核通过，日志HEAD最终门禁待补验）
+#### 4.2.2 complaint 全域盘点与分步设计（基线14b841c，⑤整体已确认，⑥a进行中）
 
-**⑤当前状态/协调恢复收尾**：旧实现6777e69上的152固定契约先独立提交313da66；执行会话旧/新相关24文件1325/1325和PG4/4已通过，连续两次模型容量失败后保留app/module工件。协调接手原工件，不重做提取、不改冻结预期，独立reviewer与主协调新旧静态对照无阻塞，亲跑完整工作区ci:local退出0（API64文件1702/1702、web114/domain14、结构0违规31豁免/audit零漏洞）后提交实现1a0e0a3。当前仅补本日志与状态，日志HEAD最终CI随后完整补验。①②③④及风险登记6777e69已整体确认，当前台账35；TD-BOUND-003/004保持待核实，不修行为。历史14b841c盘点/旧日志时点原样，NCR/CAPA后续10入口不在本步，2b整批未人工验收。
+**⑥a当前批准/⑤最终确认**：协调复用313da66旧152契约和容量中断留下工件，完成代码1a0e0a3/日志4437a32并最终完整CI退出码0（API64文件1702/1702、complaint PG4/4、结构0违规31豁免及其他门禁/audit全绿，证据kingturf-transition-coordinator-head-ci.log），冻结152零diff、独立源码复核无阻塞，⑤整体已协调确认，不重复前组。只批准⑥a NCR创建一个POST；4437a32旧内联67固定契约首跑通过、相关25文件1392/1392、PG4/4/guard/迁移状态/typecheck/lint/独立reviewer通过。先独立旧test再提取，number先路径UUID和全字段顺序/非负decimal/独立ncr:read投影守恒。台账35，TD-BOUND-003/004仍待核实；下方历史盘点/恢复时点/旧待补验日志保持，不否定本段新确认，后续9入口不实施。
+
+**⑤当前状态/协调恢复收尾**：旧实现6777e69上的152固定契约先独立提交313da66；执行会话旧/新相关24文件1325/1325和PG4/4已通过，连续两次模型容量失败后保留app/module工件。协调接手原工件，不重做提取、不改冻结预期，独立reviewer与主协调新旧静态对照无阻塞，亲跑完整工作区ci:local退出0（API64文件1702/1702、web114/domain14、结构0违规31豁免/audit零漏洞）后提交实现1a0e0a3。协调再次亲跑最终4437a32完整ci:local退出码0（API64文件1702/1702、complaint PG4/4及其余门禁/audit全绿），⑤整体已协调确认；原容量恢复时点与旧日志待补验描述保留为历史记录。①②③④及风险登记6777e69已整体确认，当前台账35；TD-BOUND-003/004保持待核实，不修行为。历史14b841c盘点/旧日志时点原样，NCR/CAPA后续10入口不在本步，2b整批未人工验收。
 
 **④独立复核/风险登记当前状态**：bfc1c06新旧dual grants/解析顺序/交集/参数/raw响应经协调静态与独立reviewer无阻塞，d0799b6旧56 oracle冻结零diff；协调亲跑21文件1167/1167（与执行端23文件1173/1173不同检查集，各按实际记录），最终fe4b76c完整CI退出码0（API63文件1550/1550、complaint PG前后4/4、结构强制0豁免31、audit零漏洞）。本轮只登记TD-BOUND-004 P2：旧/新字符串Set去重接受同一UUID大小写变体，HTTP/mock接受和协调本地PG只读身份相等已证，真实batch状态/版本/幂等/审计/replay副作用未核实。独立行为决策后方可收紧，不在当前2b或D1四项内，不阻塞守恒迁移；仍保持原helper/Set/repo/56 oracle。台账索引/正文机械计数35/35且唯一ID集合一致，历史数量与14b841c盘点保留。④代码复核通过，风险登记待协调收尾；本轮不启动⑤，后续14入口仍未迁移，TD-BOUND-003仍待核实。
 
@@ -419,6 +421,8 @@ packages/{types, ui, config, testing} → 零依赖
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+2026-10-13，⑤最终协调确认/⑥a旧护栏：⑤两次容量失败工件由协调原样接手，旧313da66固定152零diff，独立新旧复核与完整工作区CI通过后实现1a0e0a3/日志4437a32；协调最终4437a32完整ci:local退出码0（API64文件1702/1702、complaint PG4/4、web114/domain14/database68/config4/types1、结构0违规31豁免、其他门禁/audit全绿），⑤整体已确认。原容量恢复与日志HEAD待补验描述保留历史时点，不重做⑤。仅⑥a NCR create POST：旧67固定契约在4437a32首跑通过，相关25文件1392/1392、PG4/4、guard/迁移状态/typecheck/lint及独立reviewer无必要缺口；冻结10字段/body→allow→manage→number stable先pathUUID→全字段orgtruthy/必需investigator/非负decimal含负零/version/evidence??{}/bodykey晚解析→receiver/R/C/201独立ncr:read投影/边界与信封。无测试失败/偏差，业务零diff；旧test先独立提交后不改预期，迁移/全CI/回滚点另记。历史14b841c盘点/行号和35条台账保持，TD-BOUND-003/004不修行为，后续9入口不动，无push/部署/生产/workflow操作。
 
 2026-10-13，④/TD-BOUND-004协调确认与⑤旧护栏：④bfc1c06/d0799b6协调独立21文件1167/1167与静态审查通过；登记6777e69仅四文档，业务/旧oracle零diff、35唯一index/body集合相同、原34内容保持、doc-lint及最终完整CI退出码0（API63文件1550/1550、complaint PG4/4、结构0违规31豁免/audit全绿），④及登记已整体协调闭环。只批准⑤四状态POST。旧152契约在6777e69内联首跑通过，相关24文件1325/1325、PG4/4、guard/迁移状态/typecheck/lint与独立reviewer通过；冻结四action→cap/state、负cap不可替代、5allow与body→授权→UUID→version→reason→nullish evidence→truthy assigned→bodykey顺序、falsey/缺字段授权/noassigncap、宽松regex边界/201与原receiver/R/C/readDTO/401404/邻接/envelope。业务未改，无失败/偏差；旧test先独立提交后预期不改。历史盘点/旧日志保留，后续10入口不迁移；台账35、TD-BOUND-003/004继续待核实，不修日期/UUID/Set，不结清整批债务，无push/部署/生产/workflow操作。
 
