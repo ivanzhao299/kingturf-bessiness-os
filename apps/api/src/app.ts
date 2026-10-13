@@ -26,6 +26,12 @@ import {
 import type { ErrorCode, PermissionKey } from '@kingturf/types';
 import { authorizeQuery } from './policy.ts';
 import { auditReadRoutes } from './routes/audit-reads.ts';
+import {
+  masterCategoryReadRoutes,
+  masterCategoryCreateRoutes,
+  masterCategoryUpdateRoutes,
+  masterCategoryDeleteRoutes,
+} from './routes/master-data-categories.ts';
 import type { AuthenticationService } from './security.ts';
 import type {
   PostgresAuditRepository,
@@ -3709,13 +3715,15 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               'Master-data repository unavailable',
               correlationId,
             );
-          return {
-            statusCode: 200,
-            body: await dependencies.masterData.listCategories(
-              context.actor.companyId,
-              request.query?.at ? parseEffectiveTimestamp(request.query.at) : new Date(),
-            ),
-          };
+          const categoryResponse = await dispatchRoutes(
+            masterCategoryReadRoutes({
+              repository: dependencies.masterData,
+              actor: context.actor,
+              parseEffectiveTimestamp,
+            }),
+            request,
+          );
+          if (categoryResponse) return categoryResponse;
         }
         if (request.pathname === '/api/v1/master-data/categories' && request.method === 'POST') {
           authorizeQuery(context, 'master-data:create');
@@ -3726,25 +3734,16 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               'Master-data repository unavailable',
               correlationId,
             );
-          const b = objectBody(request.body);
-          allow(b, ['code', 'name', 'description', 'effectiveFrom', 'effectiveTo']);
-          const range = effectiveRange(b);
-          return {
-            statusCode: 201,
-            body: await dependencies.masterData.createCategory(
-              {
-                code: assertStableCode(string(b.code, 'code')),
-                name: string(b.name, 'name'),
-                description:
-                  b.description === null || b.description === undefined
-                    ? null
-                    : string(b.description, 'description'),
-                ...range,
-              },
-              context.actor,
+          const categoryResponse = await dispatchRoutes(
+            masterCategoryCreateRoutes({
+              repository: dependencies.masterData,
+              actor: context.actor,
               correlationId,
-            ),
-          };
+              parsers: { objectBody, allow, effectiveRange, string, stableCode: assertStableCode },
+            }),
+            request,
+          );
+          if (categoryResponse) return categoryResponse;
         }
         const category = /^\/api\/v1\/master-data\/categories\/([0-9a-f-]+)$/u.exec(
           request.pathname,
@@ -3758,26 +3757,16 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               'Master-data repository unavailable',
               correlationId,
             );
-          const b = objectBody(request.body);
-          allow(b, ['name', 'description', 'effectiveFrom', 'effectiveTo', 'version']);
-          const range = effectiveRange(b);
-          return {
-            statusCode: 200,
-            body: await dependencies.masterData.updateCategory(
-              uuid(category[1], 'categoryId'),
-              {
-                name: string(b.name, 'name'),
-                description:
-                  b.description === null || b.description === undefined
-                    ? null
-                    : string(b.description, 'description'),
-                ...range,
-                version: version(b.version),
-              },
-              context.actor,
+          const categoryResponse = await dispatchRoutes(
+            masterCategoryUpdateRoutes({
+              repository: dependencies.masterData,
+              actor: context.actor,
               correlationId,
-            ),
-          };
+              parsers: { objectBody, allow, effectiveRange, uuid, string, version },
+            }),
+            request,
+          );
+          if (categoryResponse) return categoryResponse;
         }
         if (category && request.method === 'DELETE') {
           authorizeQuery(context, 'master-data:delete');
@@ -3788,13 +3777,17 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               'Master-data repository unavailable',
               correlationId,
             );
-          await dependencies.masterData.deleteCategory(
-            uuid(category[1], 'categoryId'),
-            version(Number(request.query?.version)),
-            context.actor,
-            correlationId,
+          const categoryResponse = await dispatchRoutes(
+            masterCategoryDeleteRoutes({
+              repository: dependencies.masterData,
+              actor: context.actor,
+              correlationId,
+              uuid,
+              version,
+            }),
+            request,
           );
-          return { statusCode: 204, body: {} };
+          if (categoryResponse) return categoryResponse;
         }
         if (request.pathname === '/api/v1/master-data/entries' && request.method === 'POST') {
           authorizeQuery(context, 'master-data:create');
