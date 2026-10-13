@@ -6,7 +6,7 @@
 - **分支**：`harnessing`（自 main 派生；按规则 §7.1 禁止直接在主干改造）
 - **计划版本 / 日期**：v1.3 / 2026-10-12（v1.2 经第三轮人工审核修订：修复 §3.8 S11 表格裸管道、覆盖率验收语义收紧为目标值硬条件、S11 表述改为启发式口径）
 - **扫描基线**：commit `779dea3`（同步 origin/main 后）
-- **状态**：**批次1与2a已获人工验收；2b进行中：auth/identity provisioning/IAM/profiles/identity-state/collection/commercial及complaint①②③④⑤⑥a⑥b⑦⑧已整体协调确认。⑧代码414e2ee、最终ae2bd86完整CI已过（API2183），协调独立26文件1800；本轮仅⑨CAPA close/verify两POST旧111契约已验证，业务尚未迁移；crm/platform/production/production-startup/qtc/website-lead-ingest待执行。历史容量/失败时点保留，TD-BOUND-003/004仅待核实、35条台账，不修行为。2b整批尚未人类验收。**
+- **状态**：**批次1与2a已获人工验收；2b进行中：auth/identity provisioning/IAM/profiles/identity-state/collection/commercial及complaint①②③④⑤⑥a⑥b⑦⑧已整体协调确认。⑧最终ae2bd86完整CI已过（API2183），协调独立1800；本轮⑨CAPA close/verify两POST已提取并本地全链通过（旧111冻结、API2294），complaint20入口/10模块映射收尾待协调整体复核；crm/platform/production/production-startup/qtc/website-lead-ingest待执行。历史容量/失败时点保留，TD-BOUND-003/004仅待核实、35条台账，不修行为。2b整批尚未人类验收。**
 - **规则文档**：`docs/HARNESS-RULES.md`（施工期常驻，竣工验收后按 §14 拆解归档）
 - **配套文件**：问题清单 `docs/exec-plans/tech-debt-tracker.md`（35 条）；CI 决策 `docs/CI.md`；度量脚本 `scripts/analysis/repo-metrics.mjs`
 
@@ -243,7 +243,36 @@ packages/{types, ui, config, testing} → 零依赖
 
 **当前边界与否定证据**：快照 `app.ts:3486` 机会dispatcher至 `:3692` quote-command接线、`:3693` CRM matcher；商业区现在仅工厂/共享dispatcher及parser/授权/DTO注入。全 `apps/api/src/app.ts` 执行 `rg -n 'dependencies\.commercial|commercial\.(list|find|create|update|transition|submit|approve|issue|evaluate|calculate|add|link|get)' apps/api/src/app.ts`，命中均为repository注入/存在性guard，未找到历史商业范围的旧内联仓储业务调用。共享解析/DTO helper不是残留成功分支；CRM之后的域外业务不在本结论范围。scout与独立reviewer只读核验，不运行DB/构建。本表不结清整批债务，不表示2b验收，**商业整体已协调复核通过：独立17文件872/872、最终14b841c完整CI退出码0及38/39映射核验；不等于2b整批验收**。
 
-#### 4.2.2 complaint 全域盘点与分步设计（基线14b841c，⑧整体已确认，⑨旧护栏）
+#### 4.2.2 complaint 全域盘点与分步设计（基线14b841c，⑨及全域映射待复核）
+
+**⑨实施当前快照**：旧test ce88538固定111契约，代码7840073只原close/verify两个POST条件/两method-path/两语义/两仓储成功调用提取为capa-lifecycle.ts两defineRoute（31/68）；app1819–1839是actions后/collections前工厂dispatch，紧邻collections整块不改。readonly上下文/Pick两方法/Parameters inputs，close O→4allow→manage bodykeys→UUID→version/reason/required evidence/body stablekey；verify O→9allow→verify bodykeys→result string/原includes enum先UUID→verifiedAt/standard/sampleScope/observationUntil/已校验result/required evidence/双原number version/body stablekey，原postvalidation断言改VerifyInput索引仅类型等价。各handler原receiver/id/input/R/C→201共享capa:read，无header/read授权/新owner/state/时间顺序强化。app5025→4988、module129/factory28–129共102，人工嵌套≤5、无any/跨请求状态，不声称AST长度强制已实现。旧111及全部旧oracle零diff；前后相关30文件2063/2063、complaint PG各4/4、typecheck/lint与独立reviewer通过，完整ci:local退出码0（API69文件2294/2294、结构0违规31豁免及其他门禁/build/audit全绿）。草稿邻接2失败及修正保留下方旧test日志；提取后无测试失败。真实PG既有独立验证约束与mock参数证据分开。⑨及complaint整体待协调复核，其他域不启动，台账35/边界风险不修。
+
+**complaint当前20入口映射（7840073源码快照）**：只补当前映射，不覆盖下方14b841c的14条件/20method-path/20语义与历史行号。路径省略/api/v1；表中两transition factory各按readonly action表生成四条互斥defineRoute，不将共享定义点误计为单入口。
+
+|   # | method/path                      | 当前定义位置（apps/api/src/routes/）     |
+| --: | -------------------------------- | ---------------------------------------- |
+|   1 | GET /complaint-sla-policies      | complaint-sla.ts:66                      |
+|   2 | POST /complaint-sla-policies     | complaint-sla.ts:89                      |
+|   3 | GET /complaints                  | complaint-reads.ts:64                    |
+|   4 | GET /complaints/:id              | complaint-reads.ts:91                    |
+|   5 | POST /complaints                 | complaint-create.ts:73                   |
+|   6 | POST /complaints/batch-triage    | complaint-batch-triage.ts:72             |
+|   7 | POST /complaints/:id/triage      | complaint-transitions.ts:34，action表:25 |
+|   8 | POST /complaints/:id/investigate | complaint-transitions.ts:34，action表:26 |
+|   9 | POST /complaints/:id/reject      | complaint-transitions.ts:34，action表:27 |
+|  10 | POST /complaints/:id/close       | complaint-transitions.ts:34，action表:28 |
+|  11 | POST /complaints/:id/ncrs        | ncr-create.ts:30                         |
+|  12 | POST /ncrs/:id/contain           | ncr-transitions.ts:35，action表:26       |
+|  13 | POST /ncrs/:id/root-cause        | ncr-transitions.ts:35，action表:27       |
+|  14 | POST /ncrs/:id/disposition       | ncr-transitions.ts:35，action表:28       |
+|  15 | POST /ncrs/:id/close             | ncr-transitions.ts:35，action表:29       |
+|  16 | POST /ncrs/:id/capas             | capa-create.ts:56                        |
+|  17 | POST /capas/:id/actions          | capa-actions.ts:34                       |
+|  18 | POST /capa-actions/:id/complete  | capa-actions.ts:83                       |
+|  19 | POST /capas/:id/close            | capa-lifecycle.ts:31                     |
+|  20 | POST /capas/:id/verify           | capa-lifecycle.ts:68                     |
+
+复算：SLA2/read2/create1/batch1/complaint transitions4/NCR create1/NCR transitions4/CAPA create1/actions2/lifecycle2＝20，恰10职责模块。readonly scout独立核对模块与20展开入口，主代理逐入口核对实际defineRoute/action表；reviewer新旧静态核验⑨，不运行DB/构建。当前app:1645投诉guard至:1839生命周期dispatch、:1840结束guard/:1841 collections，保留原顺序与逐组null继续。全apps/api/src TypeScript搜索式 `rg -n 'dependencies\.complaints|complaints\.(list|create|transition|getById|batchTriage|createNcr|transitionNcr|createCapa|addCapaAction|completeCapaAction|closeCapa|verifyCapa|listSlaPolicies|createSlaPolicy)' apps/api/src --glob '*.ts'` 只命中app一个guard和十次repository注入；另对原方法/route factory普查，未发现app中旧内联成功调用。类型/组合根装配和共享parser/DTO不是成功分支，原仓储业务仍在repository，仅HTTP成功入口入module。app:460全局401在本域之前；缺complaints跳过:1645整个域，无共同body/UUID/auth预检；types.ts:33–48方法/path无匹配返回null，app:4919最终404，未知/不支持方法仍经后续域再fallback。该否定结论限上述源码范围/搜索式及原20入口，不宣称所有业务域完成或TD整批关闭。complaint整体待协调复核，2b整批未人类验收，不启动CRM/2c。
 
 **⑨当前批准/⑧最终确认**：fcdf07c旧81冻结零diff，414e2ee最终新旧静态及独立reviewer无阻塞，原误删close声明已恢复、close/verify不变；协调独立26文件1800/1800，核对最终ae2bd86完整ci:local退出码0（API68文件2183/2183、complaint PG4/4、结构0违规31豁免/doclint103及其他门禁全绿），⑧整体确认，不重做actions，失败记录保持历史。只批准⑨两个POST：旧ae2bd86内联111契约通过，相关30文件2063/2063、guard/迁移状态/PG4/4/typecheck/lint与独立reviewer通过。草稿首次111中2邻接失败，原因不存在的/collections应为真实/collection-cases，冻结前只更正该路径，业务未动，旧重跑全绿。close manage后UUID→version/reason/required evidence/key，verify独立verify fields后result string/enum→UUID→两时间及字符串/evidence/双version/key，不统一顺序或能力，不加owner/state/read授权；真实PG既有独立验证约束与mock HTTP参数证据分开。全apps/packages TS closeCapa/verifyCapa普查仅app生产两点/repo声明及mock fixtures，仓储/SQL/状态/replay/audit不改。旧test先独立提交后冻结；只读20入口/10模块收尾在迁移后执行，其他域/2c不启动，35台账及边界风险不修，下方历史14b841c盘点/行号与各旧时点保留。
 
@@ -437,6 +466,8 @@ packages/{types, ui, config, testing} → 零依赖
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+2026-10-13，2b-complaint⑨CAPA lifecycle及只读映射收尾：[已测试] 原实现ae2bd86，旧test `ce88538`，代码 `7840073`。仅close/verify两POST成功块原位提取为capa-lifecycle.ts两显式defineRoute（31/68），接线app1819–1839；替换严格止于两分支，complaints guard与紧邻collections整个区域、其他已迁移模块不动。各自能力/allow/完整输入顺序守恒：close manage fields后pathUUID→version/reason/required evidence/bodykey；verify verify fields后result string/二enum→pathUUID→verifiedAt/standard/sampleScope/observationUntil/result/required evidence/expectedVersion/complaintExpectedVersion/bodykey，两number版本原integer1..1000000、不Number转换，两timestamp原string/Date/ISO、不强化先后或日期。header/query忽略，body stablekey无fallback，原receiver/id/input/R/correlation→201共享capa:read，不加read/owner/state/scope/replay/SQL检查。窄Pick/Parameters/readonlyctx，已校验result的原断言仅类型索引改写，无any/跨请求隐藏状态。111旧oracle在未改业务的ae2bd86先通过后独立提交，迁移后所有冻结测试零diff；前后相关30文件2063/2063、complaint PG各4/4、guard/迁移状态/typecheck/lint和独立reviewer新旧/collections边界无阻塞。草稿旧test两邻接失败与修正见上一日志，提取后无失败/偏差。真实PG既有独立验证约束与mock HTTP参数/响应证据分开，未新增仓储副作用实验。完整pnpm ci:local退出码0，API69文件2294/2294、complaint PG4/4、auth/IAM HTTP PG各19、web114/domain14/database68/config4/types1、format/doclint103/structure强制0豁免31/release guardrails/typecheck/lint/build/audit零漏洞；证据kingturf-capa-lifecycle-code-ci.log，最终日志HEAD须另完整复验并据实交接。app5025→4988、module129/factory28–129共102/人工嵌套≤5，不声称AST长度强制已实现。§4.2.2新增当前20 method/path逐项映射到10模块（2+2+1+1+4+1+4+1+2+2），保留历史14b841c 14method条件/20入口/行号；scout独立映射与全app原调用搜索、主代理逐项定义核对，通过搜索只余guard/注入无旧内联成功调用，global401/缺repo整skip404/null继续证据落盘。docs/index计划描述同步含complaint映射。仓储/SQL/DB/scope-sql/dispatcher/types/门禁/packages/workflow零diff；35台账与TD-BOUND-003/004待核实不修、不结清整批债务。⑨及complaint整体待协调复核，不宣称2b整批完成/验收，停止不启动CRM/其他域/2c。未跑E2E，未push/部署/生产操作。回滚：`git revert 7840073`恢复两旧内联入口；ce88538旧护栏/⑧确认、映射/本日志可独立revert。
 
 2026-10-13，⑧最终协调确认/⑨CAPA lifecycle旧护栏：⑧fcdf07c旧81零diff，414e2ee最终新旧与独立reviewer无阻塞、close误删声明恢复原文；协调独立26文件1800/1800，核对最终ae2bd86完整CI退出码0（API68文件2183/2183、complaint PG4/4、结构0违规31豁免、doclint103及其他门禁/build/audit全绿），⑧整体确认，首次失败记录保留历史。只批准⑨close/verify两个POST；旧ae2bd86内联111固定契约通过，相关30文件2063/2063、PG4/4、guard/迁移状态/typecheck/lint及独立reviewer通过。草稿首跑111中2失败/109通过、首个30相关集2失败/2061通过，都是邻接断言错用不存在的/collections（实际404）；读取collection.ts:68后改为真实/collection-cases并独立复核预期403，业务源码未改，旧单独111/111和30文件2063/2063重跑通过，冻结前更正不迁就新实现。固定O→各4/9allow→manage/verify bodykeys、close UUID-first与verify result-first、全部输入优先级、evidence必需/无默认、双version原number边界、两原timestamp与不新增时间顺序、body stablekey/header无fallback、原receiver/R/C/201独立capa:read、401/缺repo404/方法/宽regex/邻接/信封。真实PG既有CAPA独立验证约束与mock HTTP参数/响应分开，不声称新mock验证了真实事务副作用。旧test独立提交后预期冻结，实现/完整CI/回滚另记，之后只读20入口/10模块映射收尾，不启动其他域/2c、不宣称2b整批验收。历史14b841c计数/行号/容量/失败时点与35台账保留，TD-BOUND-003/004待核实不修、不结清整批债务。未跑E2E，未push/部署/生产/workflow操作。
 
