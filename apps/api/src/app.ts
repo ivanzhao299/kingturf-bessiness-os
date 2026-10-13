@@ -89,6 +89,7 @@ import { capaCreateRoutes } from './routes/capa-create.ts';
 import { capaActionRoutes } from './routes/capa-actions.ts';
 import { capaLifecycleRoutes } from './routes/capa-lifecycle.ts';
 import { customerCollectionRoutes, customerDetailRoutes } from './routes/customer-base.ts';
+import { customerOwnershipRoutes } from './routes/customer-ownership.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -3351,34 +3352,18 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             request,
           );
           if (customerCollectionResponse) return customerCollectionResponse;
-          if (request.method === 'POST' && id && nested === 'ownership') {
-            const capability =
-              objectBody(request.body).reassignment === true
-                ? 'customer-ownership:reassign'
-                : 'customer-ownership:assign';
-            const grant = authorizeQuery(context, capability);
-            const b = objectBody(request.body);
-            allow(b, ['assigneeId', 'expectedVersion', 'reason', 'reassignment']);
-            return {
-              statusCode: 200,
-              body: mutationDto(
-                await dependencies.crm.assign(
-                  'CUSTOMER',
-                  uuid(id, 'customerId'),
-                  uuid(b.assigneeId, 'assigneeId'),
-                  expectedVersion(b.expectedVersion),
-                  string(b.reason, 'reason'),
-                  context.actor,
-                  correlationId,
-                  b.reassignment === true,
-                  grant.scopes,
-                  grant.anchors,
-                ),
-                context,
-                'customer:read',
-              ),
-            };
-          }
+          const customerOwnershipResponse = await dispatchRoutes(
+            customerOwnershipRoutes({
+              repository: dependencies.crm,
+              authorization: context,
+              correlationId,
+              authorize: (capability) => authorizeQuery(context, capability),
+              mutationDto: (value) => mutationDto(value, context, 'customer:read'),
+              parsers: { objectBody, allow, uuid, expectedVersion, string },
+            }),
+            request,
+          );
+          if (customerOwnershipResponse) return customerOwnershipResponse;
           if (request.method === 'POST' && id && nested === 'activities') {
             const grant = authorizeQuery(context, 'customer-activity:create', [
               'leadId',
