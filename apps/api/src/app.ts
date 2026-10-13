@@ -76,6 +76,7 @@ import { costMatrixFactorRoutes } from './routes/cost-matrix-factors.ts';
 import { costMatrixCalculationRoutes } from './routes/cost-matrix-calculations.ts';
 import { commercialDefinitionRoutes } from './routes/commercial-definitions.ts';
 import { commercialEvaluationRoutes } from './routes/commercial-evaluations.ts';
+import { quoteWriteRoutes } from './routes/quote-writes.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -3649,85 +3650,30 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           );
           if (evaluationResponse) return evaluationResponse;
         }
-        const quoteRevision = /^\/api\/v1\/quotes\/([0-9a-f-]+)\/revisions$/u.exec(
-          request.pathname,
-        );
-        if (
-          request.method === 'POST' &&
-          (request.pathname === '/api/v1/quotes' || quoteRevision) &&
-          dependencies.commercial
-        ) {
-          const body = objectBody(request.body);
-          allow(body, [
-            'quoteNumber',
-            'opportunityId',
-            'ctrVersionId',
-            'technicalSolutionRevisionId',
-            'costDecisionId',
-            'policyVersionId',
-            'policyEvaluationId',
-            'currency',
-            'subtotal',
-            'discount',
-            'total',
-            'costTotal',
-            'margin',
-            'marginBasisPoints',
-            'validUntil',
-            'lines',
-          ]);
-          const grant = authorizeQuery(
-            context,
-            quoteRevision ? 'quote:update' : 'quote:create',
-            Object.keys(body),
+        if (dependencies.commercial) {
+          const quoteResponse = await dispatchRoutes(
+            quoteWriteRoutes({
+              repository: dependencies.commercial,
+              authorization: context,
+              correlationId,
+              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
+              mutationDto: (value) => mutationDto(value, context, 'quote:read'),
+              parsers: {
+                objectBody,
+                allow,
+                uuid,
+                string,
+                decimal,
+                currency,
+                integer,
+                timestamp,
+                array,
+                jsonObject,
+              },
+            }),
+            request,
           );
-          const lines = array(body.lines, 'lines').map((candidate, index) => {
-            const line = jsonObject(candidate, `lines[${String(index)}]`) as Record<
-              string,
-              unknown
-            >;
-            return {
-              description: string(line.description, 'description'),
-              quantity: decimal(line.quantity, 'quantity'),
-              unitCode: string(line.unitCode, 'unitCode'),
-              unitPrice: decimal(line.unitPrice, 'unitPrice'),
-              total: decimal(line.total, 'total'),
-            };
-          });
-          const result = await dependencies.commercial.createQuote(
-            {
-              ...(quoteRevision ? { quoteId: uuid(quoteRevision[1], 'quoteId') } : {}),
-              quoteNumber: string(body.quoteNumber, 'quoteNumber'),
-              opportunityId: uuid(body.opportunityId, 'opportunityId'),
-              ctrVersionId: uuid(body.ctrVersionId, 'ctrVersionId'),
-              technicalSolutionRevisionId: uuid(
-                body.technicalSolutionRevisionId,
-                'technicalSolutionRevisionId',
-              ),
-              costDecisionId: uuid(body.costDecisionId, 'costDecisionId'),
-              policyVersionId: uuid(body.policyVersionId, 'policyVersionId'),
-              policyEvaluationId: uuid(body.policyEvaluationId, 'policyEvaluationId'),
-              currency: currency(body.currency),
-              subtotal: decimal(body.subtotal, 'subtotal'),
-              discount: decimal(body.discount, 'discount'),
-              total: decimal(body.total, 'total'),
-              costTotal: decimal(body.costTotal, 'costTotal'),
-              margin: decimal(body.margin, 'margin', false),
-              marginBasisPoints: integer(
-                body.marginBasisPoints,
-                'marginBasisPoints',
-                -100000,
-                10000,
-              ),
-              validUntil: timestamp(body.validUntil, 'validUntil'),
-              lines,
-            },
-            context.actor,
-            grant.scopes,
-            grant.anchors,
-            correlationId,
-          );
-          return { statusCode: 201, body: mutationDto(result, context, 'quote:read') };
+          if (quoteResponse) return quoteResponse;
         }
         const quoteCommand = /^\/api\/v1\/quote-revisions\/([0-9a-f-]+)\/(approve|issue)$/u.exec(
           request.pathname,
