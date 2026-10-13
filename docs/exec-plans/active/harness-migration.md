@@ -8,7 +8,7 @@
 - **扫描基线**：commit `779dea3`（同步 origin/main 后）
 - **状态**：**批次 1 与 2a 已获人工验收；2b 进行中：auth/identity provisioning/IAM/profiles/identity-state/collection 已迁移并经协调复核；commercial 全域设计、基础机会、nested②、views③、CTR④与技术方案⑤整体已协调复核；成本矩阵⑥a基础四路由本步待协调复核，⑥b因子及其余商业子组/后续域尚未迁移。2b 整批尚未获人类验收。**
 - **规则文档**：`docs/HARNESS-RULES.md`（施工期常驻，竣工验收后按 §14 拆解归档）
-- **配套文件**：问题清单 `docs/exec-plans/tech-debt-tracker.md`（33 条）；CI 决策 `docs/CI.md`；度量脚本 `scripts/analysis/repo-metrics.mjs`
+- **配套文件**：问题清单 `docs/exec-plans/tech-debt-tracker.md`（34 条）；CI 决策 `docs/CI.md`；度量脚本 `scripts/analysis/repo-metrics.mjs`
 
 ## 0.5 ZCode 执行契约（计划确认后对每次执行会话生效）
 
@@ -217,7 +217,7 @@ packages/{types, ui, config, testing} → 零依赖
 
 | 子任务                                                                                                                  | 负责人 | 产出物                                                                                                                   | 可机械检查的验收标准                                                                                                                                                                                                                                                     |
 | ----------------------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 仓库地图 / 框架判定 / 架构与复杂度 / 重复 / 文档与测试缺口 / 安全与性能（§3.8）/ 门禁审计 / 风险分级 / 批次与子批次划分 | 智能体 | 本文件 + `tech-debt-tracker.md` + `docs/CI.md` + `scripts/analysis/repo-metrics.mjs` + `scripts/analysis/audit-scan.mjs` | ① 台账（阶段 1 时 30 条，现 33 条）均含 ID/位置/类别/严重度/证据/修复建议/行为影响；② 框架判定证据落盘 `docs/CI.md`；③ 度量与扫描数字可由 `repo-metrics.mjs` 与 `audit-scan.mjs` 复算（已验证输出与文档一致）；④ `git diff main --stat` 仅新增文档与脚本、零业务代码改动 |
+| 仓库地图 / 框架判定 / 架构与复杂度 / 重复 / 文档与测试缺口 / 安全与性能（§3.8）/ 门禁审计 / 风险分级 / 批次与子批次划分 | 智能体 | 本文件 + `tech-debt-tracker.md` + `docs/CI.md` + `scripts/analysis/repo-metrics.mjs` + `scripts/analysis/audit-scan.mjs` | ① 台账（阶段 1 时 30 条，现 34 条）均含 ID/位置/类别/严重度/证据/修复建议/行为影响；② 框架判定证据落盘 `docs/CI.md`；③ 度量与扫描数字可由 `repo-metrics.mjs` 与 `audit-scan.mjs` 复算（已验证输出与文档一致）；④ `git diff main --stat` 仅新增文档与脚本、零业务代码改动 |
 
 ### 阶段 2 · 文档对齐（拆 2a/2b；D4 只阻塞 2b）
 

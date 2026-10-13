@@ -17,7 +17,7 @@
 | [QUALITY_SCORE.md](QUALITY_SCORE.md)                                             | 按域质量评分（可复算依据）                                                 | 常驻                    |
 | [design-docs/core-beliefs.md](design-docs/core-beliefs.md)                       | 核心信念（争议裁决依据）                                                   | 常驻                    |
 | [exec-plans/active/harness-migration.md](exec-plans/active/harness-migration.md) | 进行中：harness 改造计划（含 §0.5 契约、§4.2.1 commercial 盘点与进度日志） | 常驻                    |
-| [exec-plans/tech-debt-tracker.md](exec-plans/tech-debt-tracker.md)               | 技术债台账（33 条）                                                        | 常驻                    |
+| [exec-plans/tech-debt-tracker.md](exec-plans/tech-debt-tracker.md)               | 技术债台账（34 条）                                                        | 常驻                    |
 | [local-acceptance-cleanup.md](local-acceptance-cleanup.md)                       | `.local-acceptance/` 本地产物清理边界与手动脚本说明                        | 常驻                    |
 | [HARNESS-RULES.md](HARNESS-RULES.md)                                             | 施工规则（竣工验收后按其 §14 归档）                                        | 常驻（施工期）          |
 | [WORKSPACE_ROUTE_ISOLATION.md](WORKSPACE_ROUTE_ISOLATION.md)                     | 工作区路由隔离说明（2026-09-06）                                           | 已归档-只读（事件复盘） |
