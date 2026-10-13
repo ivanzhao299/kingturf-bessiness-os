@@ -49,6 +49,7 @@
 
 - 阶段 1 **未生成、未修改**任何 `.github/workflows/` 文件（规则 §5 阶段 1 禁止事项）。
 - **阶段 3（2026-10-12）**：新门禁（`doc:lint`、`structure:check`、structure-gate 自测、scripts/analysis 的 eslint 覆盖）全部经根 `package.json` 的 `ci:local`/`test` 脚本接入——`ci.yml` 执行的正是 `pnpm ci:local`，因此**未改动任何 workflow 文件**即让 CI 自动获得新门禁。本地另有零依赖 git hooks（`.githooks/`，`prepare` 激活）。门禁全清单见 `docs/GATES.md`。
+- **D5（2026-10-13）**：`structure:check` 已切换为无 `--report` 的拦截模式；文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层，当前真实树强制违规 0、白名单信息性豁免 31 条（7 个 G1 文件、24 个 G2 嵌套热点），白名单外新增 G1/G2 会使门禁退出码为 1。
 - 部署链路文档（**仅 `workflow_dispatch` 指定 commit_sha → validate → verify → SSH → Docker → 探针；无 tag 触发、无 GitHub Release、无产物上传**）见 `docs/RELIABILITY.md`。
 
 ## 5. 变更历史
