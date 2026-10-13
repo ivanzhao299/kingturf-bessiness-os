@@ -6,7 +6,7 @@
 - **分支**：`harnessing`（自 main 派生；按规则 §7.1 禁止直接在主干改造）
 - **计划版本 / 日期**：v1.3 / 2026-10-12（v1.2 经第三轮人工审核修订：修复 §3.8 S11 表格裸管道、覆盖率验收语义收紧为目标值硬条件、S11 表述改为启发式口径）
 - **扫描基线**：commit `779dea3`（同步 origin/main 后）
-- **状态**：**批次1与2a已获人工验收；2b进行中：auth/identity provisioning/IAM/profiles/identity-state/collection/commercial及complaint整体已协调确认。CRM设计与①②③④已整体协调确认，④d518aea/46b2963（协调31文件2205、最终完整CI API2588）；本轮仅⑤customer360单GET旧73（ba7f403）及实施输入设计（bd72df4）本地全链通过（API2661），待协调设计复核；业务源码未改、尚不提取。其余9 canonical CRM操作及platform/production/production-startup/qtc/website-lead-ingest待执行。历史容量/失败时点保留，TD-BOUND-003/004仅待核实、35条台账，不修行为。2b整批尚未人类验收。**
+- **状态**：**批次1与2a已获人工验收；2b进行中：auth/identity provisioning/IAM/profiles/identity-state/collection/commercial及complaint整体已协调确认。CRM设计与①②③④已整体协调确认，⑤ba7f403旧73/bd72df4设计/dd40238日志已协调确认（协调32文件2278、最终完整CI API2661）；本轮只批准⑤customer360单GET守恒提取，待实施；其余9 canonical CRM操作及platform/production/production-startup/qtc/website-lead-ingest待执行。历史容量/失败时点保留，TD-BOUND-003/004仅待核实、35条台账，不修行为。2b整批尚未人类验收。**
 - **规则文档**：`docs/HARNESS-RULES.md`（施工期常驻，竣工验收后按 §14 拆解归档）
 - **配套文件**：问题清单 `docs/exec-plans/tech-debt-tracker.md`（35 条）；CI 决策 `docs/CI.md`；度量脚本 `scripts/analysis/repo-metrics.mjs`
 
@@ -373,7 +373,9 @@ packages/{types, ui, config, testing} → 零依赖
 
 本轮证据：SLA旧契约提交 `0ace817`（61/61），相关18文件1073/1073、complaint PG4/4；完整 `pnpm ci:local` 退出码0，API60文件1316/1316。独立reviewer确认14条件/20入口及契约，T状态映射顺序的唯一文档修正已复核；业务源码对14b841c零diff，app仍5354行。上述仅支持设计与旧护栏，实施须等待协调设计确认。
 
-#### 4.2.3 CRM 历史盘点与首步设计（历史基线3a17d2f，④已确认，⑤仅旧护栏/设计）
+#### 4.2.3 CRM 历史盘点与首步设计（历史基线3a17d2f，④已确认，⑤设计确认/仅此GET获提取批准）
+
+**⑤设计最终确认/当前实施批准（2026-10-14）**：ba7f403固定73及其他冻结oracle零diff，bd72df4设计/dd40238日志经协调与独立只读reviewer双查询/授权/投影时点及窄类型职责复核无阻塞；协调亲跑32文件2278/2278，核对最终dd40238完整ci:local退出码0与kingturf-customer-360-design-head-ci.log（API74文件2661/2661、CRM PG10/10、结构0违规31豁免/doclint103与其余门禁/build/audit全绿），旧护栏/输入设计整体确认，不重写73/不重做设计。本轮只批准此GET守恒提取，覆盖下方历史“禁止提取/未实施批准/待协调”的旧时点，不覆盖⑥contacts/leads/其他域/2c。迁移前dd40238工作区干净、无共享DB测试并发，guard/迁移状态/CRM PG10/10及原73在相关35文件2430/2430重跑通过；未来只新增customer-360.ts/原3393插槽，不变wrapper/接邻contacts，双top授权→UUID→find首可见性404→fields捕获→四section grants→六参第二query/第二404→每row后读取section.fields/shared DTO均依下方已批准设计，不提前授权/缓存字段/统一预检，不修边界债务。提取与全链/独立reviewer/代码日志回滚证据另记录。
 
 **⑤本轮收尾证据/停止点**：旧73 `ba7f403` 固定预期零diff，输入设计 `bd72df4` 已独立落盘并经只读reviewer逐序/类型职责/投影时点复核无阻塞。旧实现46b2963单GET73/73、相关35文件2430/2430、guard/迁移状态/CRM PG10/10/typecheck/lint通过，完整ci:local退出码0（API74文件2661/2661、CRM PG10/10、complaint PG4/4、auth/IAM HTTP PG各19、结构0违规31豁免/doclint103与其他门禁/build/audit全绿），证据kingturf-customer-360-design-ci.log；最终日志HEAD另全链复验后据实交接。仅新增test/计划/index，app仍4905行，所有业务src/SQL/packages/dispatcher/门禁/workflows对46b2963零diff。旧草稿4失败/lint1与修正保留下方，冻结后不调预期，无新行为问题或台账变更；历史13/16/17、35台账及TD-BOUND-003/004待核实不修。原查询/授权/helper职责详见下方设计，不新增安全判断，mock时点/人工字段投影与真实PG证据分开。本轮完成只支持旧护栏/输入设计，停等协调复核，未提取360、未启动⑥contacts/leads/其他域/2c、未跑E2E/未push/部署/生产；test/设计/本日志可各自独立revert，无业务回滚项。
 
