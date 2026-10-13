@@ -81,6 +81,7 @@ import { quoteCommandRoutes } from './routes/quote-commands.ts';
 import { complaintSlaRoutes } from './routes/complaint-sla.ts';
 import { complaintReadRoutes } from './routes/complaint-reads.ts';
 import { complaintCreateRoutes } from './routes/complaint-create.ts';
+import { complaintBatchTriageRoutes } from './routes/complaint-batch-triage.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -1687,53 +1688,25 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             request,
           );
           if (complaintCreateResponse) return complaintCreateResponse;
-          if (request.method === 'POST' && request.pathname === '/api/v1/complaints/batch-triage') {
-            const body = objectBody(request.body);
-            allow(body, ['batchKey', 'items']);
-            const triageGrant = authorizeQuery(context, 'complaint:triage', Object.keys(body));
-            const assignGrant = authorizeQuery(context, 'complaint:assign', Object.keys(body));
-            const rawItems = array(body.items, 'items');
-            if (rawItems.length < 1 || rawItems.length > 50)
-              throw new DomainError('invalid_request', 'items must contain between 1 and 50 rows');
-            const items = rawItems.map((value, index) => {
-              const item = objectBody(value);
-              allow(item, ['id', 'expectedVersion', 'assignedTo', 'reason']);
-              return {
-                id: uuid(item.id, `items[${String(index)}].id`),
-                expectedVersion: integer(
-                  item.expectedVersion,
-                  `items[${String(index)}].expectedVersion`,
-                  1,
-                  1_000_000,
-                ),
-                assignedTo: uuid(item.assignedTo, `items[${String(index)}].assignedTo`),
-                reason: string(item.reason, `items[${String(index)}].reason`),
-              };
-            });
-            if (new Set(items.map((item) => item.id)).size !== items.length)
-              throw new DomainError(
-                'invalid_request',
-                'items must not contain duplicate complaints',
-              );
-            const sharedScopes = triageGrant.scopes.filter((value) =>
-              assignGrant.scopes.includes(value),
-            );
-            const sharedAnchors = triageGrant.anchors.filter((left) =>
-              assignGrant.anchors.some(
-                (right) =>
-                  right.scope === left.scope && right.organizationId === left.organizationId,
-              ),
-            );
-            const result = await dependencies.complaints.batchTriage(
-              {
-                batchKey: assertStableCode(string(body.batchKey, 'batchKey')),
-                items,
-              },
-              { actor: context.actor, scopes: sharedScopes, anchors: sharedAnchors },
+          const complaintBatchResponse = await dispatchRoutes(
+            complaintBatchTriageRoutes({
+              repository: dependencies.complaints,
+              authorization: context,
               correlationId,
-            );
-            return { statusCode: 200, body: result };
-          }
+              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
+              parsers: {
+                objectBody,
+                allow,
+                array,
+                uuid,
+                integer,
+                string,
+                stableCode: assertStableCode,
+              },
+            }),
+            request,
+          );
+          if (complaintBatchResponse) return complaintBatchResponse;
           const complaintTransition =
             /^\/api\/v1\/complaints\/([0-9a-f-]+)\/(triage|investigate|reject|close)$/u.exec(
               request.pathname,
