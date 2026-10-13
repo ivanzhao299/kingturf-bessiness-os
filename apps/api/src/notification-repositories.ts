@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { Database } from '@kingturf/database';
+import type { Database, Transaction } from '@kingturf/database';
 import { employeeScopedPredicate, type EmployeeScopeOptions } from './scope-sql.ts';
 import { writeFoundationEmptyAudit as audit } from './audit-outbox.ts';
 import { eventPublisher, UUID_PATTERN } from './event-repositories.ts';
@@ -39,6 +39,10 @@ type NotificationPreferenceRow = Readonly<{
 // foundation（通知收件人）员工域谓词选项：缺省省略 actor_org 与 authorized_org 两处
 // 组织有效性 JOIN（与 repositories 变体的语义差异登记 TD-SEC-007）；SQL 与迁移前逐字一致。
 const NOTIFICATION_SCOPE: EmployeeScopeOptions = { actorOrganizationValidation: 'skip' };
+const INSERT_PREFERENCE_SQL =
+  'INSERT INTO notification_preferences(tenant_id,employee_id,channel,enabled) VALUES($1,$2,$3,$4) ON CONFLICT(tenant_id,employee_id,channel) DO NOTHING RETURNING channel,enabled,version';
+const UPDATE_PREFERENCE_SQL =
+  'UPDATE notification_preferences SET enabled=$4,version=version+1,updated_at=now() WHERE tenant_id=$1 AND employee_id=$2 AND channel=$3 AND version=$5 RETURNING channel,enabled,version';
 
 export class PostgresNotificationRepository {
   public constructor(private readonly db: Database) {}
@@ -66,92 +70,118 @@ export class PostgresNotificationRepository {
       input.idempotencyKey.length > 128
     )
       throw new DomainError('invalid_request', 'Invalid notification');
-    return this.db.transaction(async (tx) => {
-      const recipients = [...new Set(input.recipients)].sort();
-      const semanticPayload = {
-        kind: input.kind,
-        title: input.title,
-        message: input.message,
-        subjectType: input.subjectType ?? null,
-        subjectId: input.subjectId ?? null,
-      };
-      const scoped = employeeScopedPredicate(
-        scopes,
-        actor.employeeId,
-        actor.companyId,
-        anchors,
-        3,
-        NOTIFICATION_SCOPE,
+    return this.db.transaction((tx) =>
+      this.createInTransaction(tx, input, actor, correlationId, scopes, anchors),
+    );
+  }
+  private async createInTransaction(
+    tx: Transaction,
+    input: {
+      kind: string;
+      title: string;
+      message: string;
+      recipients: readonly string[];
+      subjectType?: string;
+      subjectId?: string;
+      idempotencyKey: string;
+    },
+    actor: Actor,
+    correlationId: string,
+    scopes: readonly DataScope[],
+    anchors: readonly ScopeAnchor[],
+  ): Promise<NotificationDto> {
+    const recipients = [...new Set(input.recipients)].sort();
+    const semanticPayload = {
+      kind: input.kind,
+      title: input.title,
+      message: input.message,
+      subjectType: input.subjectType ?? null,
+      subjectId: input.subjectId ?? null,
+    };
+    const scoped = employeeScopedPredicate(
+      scopes,
+      actor.employeeId,
+      actor.companyId,
+      anchors,
+      3,
+      NOTIFICATION_SCOPE,
+    );
+    const authorized = await tx.query<{ count: string }>(
+      `SELECT count(*)::text count FROM employees e WHERE e.company_id=$1 AND e.id=ANY($2::uuid[]) AND e.active AND e.deleted_at IS NULL AND ${scoped.predicate}`,
+      [actor.companyId, recipients, ...scoped.values],
+    );
+    if (Number(authorized.rows[0]?.count ?? 0) !== recipients.length)
+      throw new DomainError(
+        'forbidden',
+        'One or more notification recipients are outside the granted data scope',
       );
-      const authorized = await tx.query<{ count: string }>(
-        `SELECT count(*)::text count FROM employees e WHERE e.company_id=$1 AND e.id=ANY($2::uuid[]) AND e.active AND e.deleted_at IS NULL AND ${scoped.predicate}`,
-        [actor.companyId, recipients, ...scoped.values],
-      );
-      if (Number(authorized.rows[0]?.count ?? 0) !== recipients.length)
+    await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+      `${actor.companyId}:${input.idempotencyKey}`,
+    ]);
+    const prior = await tx.query<NotificationReplayRow>(
+      'SELECT n.*,NULL::timestamptz read_at,(n.normalized_recipients=$3::uuid[] AND n.semantic_payload=$4::jsonb) request_matches FROM notifications n WHERE tenant_id=$1 AND idempotency_key=$2',
+      [actor.companyId, input.idempotencyKey, recipients, semanticPayload],
+    );
+    if (prior.rows[0]) {
+      if (!prior.rows[0].request_matches)
         throw new DomainError(
-          'forbidden',
-          'One or more notification recipients are outside the granted data scope',
+          'conflict',
+          'Idempotency key was already used for a different notification',
         );
-      await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
-        `${actor.companyId}:${input.idempotencyKey}`,
-      ]);
-      const prior = await tx.query<NotificationReplayRow>(
-        'SELECT n.*,NULL::timestamptz read_at,(n.normalized_recipients=$3::uuid[] AND n.semantic_payload=$4::jsonb) request_matches FROM notifications n WHERE tenant_id=$1 AND idempotency_key=$2',
-        [actor.companyId, input.idempotencyKey, recipients, semanticPayload],
-      );
-      if (prior.rows[0]) {
-        if (!prior.rows[0].request_matches)
-          throw new DomainError(
-            'conflict',
-            'Idempotency key was already used for a different notification',
-          );
-        return this.map(prior.rows[0]);
-      }
-      const id = randomUUID();
-      const eventId = await eventPublisher.enqueue(tx, {
-        eventType: 'notification.created',
-        eventVersion: 1,
-        tenantId: actor.companyId,
-        aggregateType: 'notification',
-        aggregateId: id,
-        aggregateVersion: 1,
-        occurredAt: new Date().toISOString(),
-        actorId: actor.employeeId,
-        correlationId,
-        causationId: null,
-        payload: { kind: input.kind },
-      });
-      const row = await tx.query<NotificationReadRow>(
-        'INSERT INTO notifications(id,tenant_id,kind,title,message,subject_type,subject_id,idempotency_key,event_id,created_by,normalized_recipients,semantic_payload) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *,NULL::timestamptz read_at',
-        [
-          id,
-          actor.companyId,
-          input.kind,
-          input.title,
-          input.message,
-          input.subjectType ?? null,
-          input.subjectId ?? null,
-          input.idempotencyKey,
-          eventId,
-          actor.employeeId,
-          recipients,
-          semanticPayload,
-        ],
-      );
-      for (const recipient of recipients) {
-        await tx.query(
-          'INSERT INTO notification_recipients(tenant_id,notification_id,employee_id) VALUES($1,$2,$3)',
-          [actor.companyId, id, recipient],
-        );
-        await tx.query(
-          "INSERT INTO notification_delivery_attempts(tenant_id,notification_id,employee_id,channel,attempt,state) VALUES($1,$2,$3,'IN_APP',1,'DELIVERED')",
-          [actor.companyId, id, recipient],
-        );
-      }
-      await audit(tx, 'notification.create', actor, 'notification', id, correlationId);
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- INSERT RETURNING invariant preserved from the original implementation.
-      return this.map(row.rows[0]!);
+      return this.map(prior.rows[0]);
+    }
+    const id = randomUUID();
+    const eventId = await eventPublisher.enqueue(tx, {
+      eventType: 'notification.created',
+      eventVersion: 1,
+      tenantId: actor.companyId,
+      aggregateType: 'notification',
+      aggregateId: id,
+      aggregateVersion: 1,
+      occurredAt: new Date().toISOString(),
+      actorId: actor.employeeId,
+      correlationId,
+      causationId: null,
+      payload: { kind: input.kind },
     });
+    const row = await tx.query<NotificationReadRow>(
+      'INSERT INTO notifications(id,tenant_id,kind,title,message,subject_type,subject_id,idempotency_key,event_id,created_by,normalized_recipients,semantic_payload) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *,NULL::timestamptz read_at',
+      [
+        id,
+        actor.companyId,
+        input.kind,
+        input.title,
+        input.message,
+        input.subjectType ?? null,
+        input.subjectId ?? null,
+        input.idempotencyKey,
+        eventId,
+        actor.employeeId,
+        recipients,
+        semanticPayload,
+      ],
+    );
+    await this.insertRecipients(tx, actor.companyId, id, recipients);
+    await audit(tx, 'notification.create', actor, 'notification', id, correlationId);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- INSERT RETURNING invariant preserved from the original implementation.
+    return this.map(row.rows[0]!);
+  }
+  private async insertRecipients(
+    tx: Transaction,
+    tenantId: string,
+    notificationId: string,
+    recipients: readonly string[],
+  ): Promise<void> {
+    for (const recipient of recipients) {
+      await tx.query(
+        'INSERT INTO notification_recipients(tenant_id,notification_id,employee_id) VALUES($1,$2,$3)',
+        [tenantId, notificationId, recipient],
+      );
+      await tx.query(
+        "INSERT INTO notification_delivery_attempts(tenant_id,notification_id,employee_id,channel,attempt,state) VALUES($1,$2,$3,'IN_APP',1,'DELIVERED')",
+        [tenantId, notificationId, recipient],
+      );
+    }
   }
   private map(r: NotificationReadRow): NotificationDto {
     return {
@@ -229,27 +259,33 @@ export class PostgresNotificationRepository {
       throw new DomainError('invalid_request', 'Unsupported notification channel');
     if (!Number.isSafeInteger(expectedVersion) || expectedVersion < 0)
       throw new DomainError('invalid_request', 'expectedVersion must be a non-negative integer');
-    return this.db.transaction(async (tx) => {
-      const r =
-        expectedVersion === 0
-          ? await tx.query<NotificationPreferenceRow>(
-              'INSERT INTO notification_preferences(tenant_id,employee_id,channel,enabled) VALUES($1,$2,$3,$4) ON CONFLICT(tenant_id,employee_id,channel) DO NOTHING RETURNING channel,enabled,version',
-              [actor.companyId, actor.employeeId, channel, enabled],
-            )
-          : await tx.query<NotificationPreferenceRow>(
-              'UPDATE notification_preferences SET enabled=$4,version=version+1,updated_at=now() WHERE tenant_id=$1 AND employee_id=$2 AND channel=$3 AND version=$5 RETURNING channel,enabled,version',
-              [actor.companyId, actor.employeeId, channel, enabled, expectedVersion],
-            );
-      if (!r.rows[0]) throw new DomainError('conflict', 'Preference version conflict');
-      await audit(
-        tx,
-        'notification.preference.update',
-        actor,
-        'employee',
-        actor.employeeId,
-        correlationId,
-      );
-      return r.rows[0];
-    });
+    return this.db.transaction((tx) =>
+      this.setPreferenceInTransaction(tx, channel, enabled, expectedVersion, actor, correlationId),
+    );
+  }
+  private async setPreferenceInTransaction(
+    tx: Transaction,
+    channel: string,
+    enabled: boolean,
+    expectedVersion: number,
+    actor: Actor,
+    correlationId: string,
+  ): Promise<NotificationPreferenceDto> {
+    const insertParams = [actor.companyId, actor.employeeId, channel, enabled];
+    const updateParams = [actor.companyId, actor.employeeId, channel, enabled, expectedVersion];
+    const r =
+      expectedVersion === 0
+        ? await tx.query<NotificationPreferenceRow>(INSERT_PREFERENCE_SQL, insertParams)
+        : await tx.query<NotificationPreferenceRow>(UPDATE_PREFERENCE_SQL, updateParams);
+    if (!r.rows[0]) throw new DomainError('conflict', 'Preference version conflict');
+    await audit(
+      tx,
+      'notification.preference.update',
+      actor,
+      'employee',
+      actor.employeeId,
+      correlationId,
+    );
+    return r.rows[0];
   }
 }
