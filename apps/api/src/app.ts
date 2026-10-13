@@ -75,6 +75,7 @@ import { costMatrixBaseRoutes } from './routes/cost-matrix-base.ts';
 import { costMatrixFactorRoutes } from './routes/cost-matrix-factors.ts';
 import { costMatrixCalculationRoutes } from './routes/cost-matrix-calculations.ts';
 import { commercialDefinitionRoutes } from './routes/commercial-definitions.ts';
+import { commercialEvaluationRoutes } from './routes/commercial-evaluations.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -3624,78 +3625,29 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           );
           if (definitionResponse) return definitionResponse;
         }
-        if (
-          request.method === 'POST' &&
-          request.pathname === '/api/v1/cost-evaluations' &&
-          dependencies.commercial
-        ) {
-          const body = objectBody(request.body);
-          allow(body, [
-            'modelVersionId',
-            'technicalSolutionRevisionId',
-            'currency',
-            'lines',
-            'context',
-          ]);
-          const grant = authorizeQuery(context, 'cost:evaluate', Object.keys(body));
-          const lines = array(body.lines, 'lines').map((candidate, index) => {
-            const line = jsonObject(candidate, `lines[${String(index)}]`) as Record<
-              string,
-              unknown
-            >;
-            return {
-              key: string(line.key, 'key'),
-              description: string(line.description, 'description'),
-              quantity: {
-                value: decimal(line.quantity, 'quantity'),
-                unit: string(line.unit, 'unit'),
+        if (dependencies.commercial) {
+          const evaluationResponse = await dispatchRoutes(
+            commercialEvaluationRoutes({
+              repository: dependencies.commercial,
+              authorization: context,
+              correlationId,
+              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
+              mutationDto: (value, capability) => mutationDto(value, context, capability),
+              parsers: {
+                objectBody,
+                allow,
+                uuid,
+                string,
+                decimal,
+                currency,
+                array,
+                jsonObject,
+                idempotency,
               },
-              unitCost: {
-                amount: decimal(line.unitCost, 'unitCost'),
-                currency: currency(line.currency),
-              },
-            };
-          });
-          const result = await dependencies.commercial.evaluateCost(
-            {
-              modelVersionId: uuid(body.modelVersionId, 'modelVersionId'),
-              technicalSolutionRevisionId: uuid(
-                body.technicalSolutionRevisionId,
-                'technicalSolutionRevisionId',
-              ),
-              currency: currency(body.currency),
-              lines,
-              context: jsonObject(body.context, 'context'),
-              idempotencyKey: idempotency(request),
-            },
-            context.actor,
-            grant.scopes,
-            grant.anchors,
-            correlationId,
+            }),
+            request,
           );
-          return { statusCode: 201, body: mutationDto(result, context, 'cost:read') };
-        }
-        if (
-          request.method === 'POST' &&
-          request.pathname === '/api/v1/sales-policy-evaluations' &&
-          dependencies.commercial
-        ) {
-          const body = objectBody(request.body);
-          allow(body, ['policyVersionId', 'costDecisionId', 'context']);
-          const grant = authorizeQuery(context, 'sales-policy:evaluate', Object.keys(body));
-          const result = await dependencies.commercial.evaluatePolicy(
-            {
-              policyVersionId: uuid(body.policyVersionId, 'policyVersionId'),
-              costDecisionId: uuid(body.costDecisionId, 'costDecisionId'),
-              context: jsonObject(body.context, 'context'),
-              idempotencyKey: idempotency(request),
-            },
-            context.actor,
-            grant.scopes,
-            grant.anchors,
-            correlationId,
-          );
-          return { statusCode: 201, body: mutationDto(result, context, 'sales-policy:read') };
+          if (evaluationResponse) return evaluationResponse;
         }
         const quoteRevision = /^\/api\/v1\/quotes\/([0-9a-f-]+)\/revisions$/u.exec(
           request.pathname,
