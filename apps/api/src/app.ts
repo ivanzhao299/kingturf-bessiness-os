@@ -41,6 +41,11 @@ import {
   workflowDefinitionPublishRoutes,
 } from './routes/workflow-definitions.ts';
 import {
+  workflowRuntimeStartRoutes,
+  workflowRuntimeTaskListRoutes,
+  workflowRuntimeDecisionRoutes,
+} from './routes/workflow-runtime.ts';
+import {
   numberDefinitionListRoutes,
   numberDefinitionCreateRoutes,
   numberDefinitionPublishRoutes,
@@ -4157,27 +4162,32 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           authorizeQuery(context, 'workflow:start');
           if (!dependencies.workflows)
             return error(503, 'internal_error', 'Workflow repository unavailable', correlationId);
-          const key = request.headers?.['idempotency-key'];
-          if (!key) throw new DomainError('invalid_request', 'Idempotency-Key header is required');
-          const b = objectBody(request.body);
-          allow(b, ['subjectType', 'subjectId']);
-          return {
-            statusCode: 201,
-            body: await dependencies.workflows.start(
-              uuid(workflowStart[1], 'workflowId'),
-              string(b.subjectType, 'subjectType'),
-              uuid(b.subjectId, 'subjectId'),
-              key,
-              context.actor,
+          const response = await dispatchRoutes(
+            workflowRuntimeStartRoutes({
+              repository: dependencies.workflows,
+              actor: context.actor,
               correlationId,
-            ),
-          };
+              parsers: { objectBody, allow, uuid, string },
+              missingKey: (): never => {
+                throw new DomainError('invalid_request', 'Idempotency-Key header is required');
+              },
+            }),
+            request,
+          );
+          if (response !== null) return response;
         }
         if (request.pathname === '/api/v1/workflow-tasks' && request.method === 'GET') {
           authorizeQuery(context, 'workflow:decide');
           if (!dependencies.workflows)
             return error(503, 'internal_error', 'Workflow repository unavailable', correlationId);
-          return { statusCode: 200, body: await dependencies.workflows.listTasks(context.actor) };
+          const response = await dispatchRoutes(
+            workflowRuntimeTaskListRoutes({
+              repository: dependencies.workflows,
+              actor: context.actor,
+            }),
+            request,
+          );
+          if (response !== null) return response;
         }
         const decide = /^\/api\/v1\/workflow-tasks\/([0-9a-f-]+)\/decisions$/u.exec(
           request.pathname,
@@ -4186,22 +4196,19 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           authorizeQuery(context, 'workflow:decide');
           if (!dependencies.workflows)
             return error(503, 'internal_error', 'Workflow repository unavailable', correlationId);
-          const key = request.headers?.['idempotency-key'];
-          if (!key) throw new DomainError('invalid_request', 'Idempotency-Key header is required');
-          const b = objectBody(request.body);
-          allow(b, ['decision', 'comment', 'version']);
-          return {
-            statusCode: 200,
-            body: await dependencies.workflows.decide(
-              uuid(decide[1], 'taskId'),
-              string(b.decision, 'decision'),
-              b.comment == null ? null : string(b.comment, 'comment'),
-              key,
-              version(b.version),
-              context.actor,
+          const response = await dispatchRoutes(
+            workflowRuntimeDecisionRoutes({
+              repository: dependencies.workflows,
+              actor: context.actor,
               correlationId,
-            ),
-          };
+              parsers: { objectBody, allow, uuid, string, version },
+              missingKey: (): never => {
+                throw new DomainError('invalid_request', 'Idempotency-Key header is required');
+              },
+            }),
+            request,
+          );
+          if (response !== null) return response;
         }
         if (request.pathname === '/api/v1/document-connectors' && request.method === 'GET') {
           const canConfigure = context.permissions.has('business-document:configure');
