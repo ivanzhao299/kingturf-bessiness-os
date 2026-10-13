@@ -80,6 +80,7 @@ import { quoteWriteRoutes } from './routes/quote-writes.ts';
 import { quoteCommandRoutes } from './routes/quote-commands.ts';
 import { complaintSlaRoutes } from './routes/complaint-sla.ts';
 import { complaintReadRoutes } from './routes/complaint-reads.ts';
+import { complaintCreateRoutes } from './routes/complaint-create.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -1666,73 +1667,26 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             request,
           );
           if (complaintReadResponse) return complaintReadResponse;
-          if (request.method === 'POST' && request.pathname === '/api/v1/complaints') {
-            const body = objectBody(request.body);
-            allow(body, [
-              'complaintNumber',
-              'customerId',
-              'salesOrderId',
-              'shipmentId',
-              'inventoryLotId',
-              'qualityInspectionId',
-              'slaPolicyVersionId',
-              'channel',
-              'defectCategory',
-              'severity',
-              'occurredAt',
-              'reportedAt',
-              'description',
-              'customerRequest',
-              'assignedTo',
-              'initialSnapshot',
-              'idempotencyKey',
-            ]);
-            const grant = authorizeQuery(context, 'complaint:create', Object.keys(body));
-            const channel = string(body.channel, 'channel');
-            const severity = string(body.severity, 'severity');
-            if (
-              !['CUSTOMER_SERVICE', 'SALES', 'EMAIL', 'PHONE', 'ONSITE', 'OTHER'].includes(channel)
-            )
-              throw new DomainError('invalid_request', 'channel is unsupported');
-            if (!['LOW', 'MEDIUM', 'MAJOR', 'CRITICAL'].includes(severity))
-              throw new DomainError('invalid_request', 'severity is unsupported');
-            const result = await dependencies.complaints.createComplaint(
-              {
-                complaintNumber: assertStableCode(string(body.complaintNumber, 'complaintNumber')),
-                customerId: uuid(body.customerId, 'customerId'),
-                ...(body.salesOrderId
-                  ? { salesOrderId: uuid(body.salesOrderId, 'salesOrderId') }
-                  : {}),
-                ...(body.shipmentId ? { shipmentId: uuid(body.shipmentId, 'shipmentId') } : {}),
-                ...(body.inventoryLotId
-                  ? { inventoryLotId: uuid(body.inventoryLotId, 'inventoryLotId') }
-                  : {}),
-                ...(body.qualityInspectionId
-                  ? { qualityInspectionId: uuid(body.qualityInspectionId, 'qualityInspectionId') }
-                  : {}),
-                slaPolicyVersionId: uuid(body.slaPolicyVersionId, 'slaPolicyVersionId'),
-                channel: channel as
-                  | 'CUSTOMER_SERVICE'
-                  | 'SALES'
-                  | 'EMAIL'
-                  | 'PHONE'
-                  | 'ONSITE'
-                  | 'OTHER',
-                defectCategory: string(body.defectCategory, 'defectCategory'),
-                severity: severity as 'LOW' | 'MEDIUM' | 'MAJOR' | 'CRITICAL',
-                occurredAt: timestamp(body.occurredAt, 'occurredAt'),
-                reportedAt: timestamp(body.reportedAt, 'reportedAt'),
-                description: string(body.description, 'description'),
-                customerRequest: string(body.customerRequest, 'customerRequest'),
-                ...(body.assignedTo ? { assignedTo: uuid(body.assignedTo, 'assignedTo') } : {}),
-                initialSnapshot: jsonObject(body.initialSnapshot, 'initialSnapshot'),
-                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+          const complaintCreateResponse = await dispatchRoutes(
+            complaintCreateRoutes({
+              repository: dependencies.complaints,
+              authorization: context,
               correlationId,
-            );
-            return { statusCode: 201, body: mutationDto(result, context, 'complaint:read') };
-          }
+              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
+              mutationDto: (value) => mutationDto(value, context, 'complaint:read'),
+              parsers: {
+                objectBody,
+                allow,
+                string,
+                stableCode: assertStableCode,
+                uuid,
+                timestamp,
+                jsonObject,
+              },
+            }),
+            request,
+          );
+          if (complaintCreateResponse) return complaintCreateResponse;
           if (request.method === 'POST' && request.pathname === '/api/v1/complaints/batch-triage') {
             const body = objectBody(request.body);
             allow(body, ['batchKey', 'items']);
