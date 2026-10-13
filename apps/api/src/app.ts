@@ -26,6 +26,7 @@ import {
 import type { ErrorCode, PermissionKey } from '@kingturf/types';
 import { authorizeQuery } from './policy.ts';
 import { auditReadRoutes } from './routes/audit-reads.ts';
+import { numberAllocationRoutes } from './routes/number-allocation.ts';
 import {
   numberDefinitionListRoutes,
   numberDefinitionCreateRoutes,
@@ -3879,17 +3880,19 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           authorizeQuery(context, 'number:allocate');
           if (!dependencies.numbers)
             return error(503, 'internal_error', 'Number repository unavailable', correlationId);
-          const key = request.headers?.['idempotency-key'];
-          if (!key) throw new DomainError('invalid_request', 'Idempotency-Key header is required');
-          return {
-            statusCode: 201,
-            body: await dependencies.numbers.allocate(
-              uuid(allocate[1], 'definitionId'),
-              key,
-              context.actor,
+          const response = await dispatchRoutes(
+            numberAllocationRoutes({
+              repository: dependencies.numbers,
+              actor: context.actor,
               correlationId,
-            ),
-          };
+              uuid,
+              keyRequired: () => {
+                throw new DomainError('invalid_request', 'Idempotency-Key header is required');
+              },
+            }),
+            request,
+          );
+          if (response !== null) return response;
         }
         if (request.pathname === '/api/v1/rules' && request.method === 'GET') {
           authorizeQuery(context, 'rule:read');
