@@ -6,7 +6,7 @@
 - **分支**：`harnessing`（自 main 派生；按规则 §7.1 禁止直接在主干改造）
 - **计划版本 / 日期**：v1.3 / 2026-10-12（v1.2 经第三轮人工审核修订：修复 §3.8 S11 表格裸管道、覆盖率验收语义收紧为目标值硬条件、S11 表述改为启发式口径）
 - **扫描基线**：commit `779dea3`（同步 origin/main 后）
-- **状态**：**批次1与2a已获人工验收；2b进行中：auth/identity provisioning/IAM/profiles/identity-state/collection/commercial及complaint①②③④⑤已整体协调确认。⑤恢复工件实现1a0e0a3、最终4437a32完整CI已通过（API1702），历史容量时点保留。本轮仅⑥a NCR create POST已提取并本地验证通过（固定67、API1769），待协调小步复核；其后NCR/CAPA9入口及crm/platform/production/production-startup/qtc/website-lead-ingest待执行。TD-BOUND-003/004仅待核实、35条台账，不修行为。2b整批尚未人类验收。**
+- **状态**：**批次1与2a已获人工验收；2b进行中：auth/identity provisioning/IAM/profiles/identity-state/collection/commercial及complaint①②③④⑤⑥a已整体协调确认。⑥a最终00884e1完整CI通过（API1769），协调独立1386；本轮仅⑥b NCR四状态POST，272旧契约已通过尚未提取；其后CAPA5入口及crm/platform/production/production-startup/qtc/website-lead-ingest待执行。历史容量时点保留，TD-BOUND-003/004仅待核实、35条台账，不修行为。2b整批尚未人类验收。**
 - **规则文档**：`docs/HARNESS-RULES.md`（施工期常驻，竣工验收后按 §14 拆解归档）
 - **配套文件**：问题清单 `docs/exec-plans/tech-debt-tracker.md`（35 条）；CI 决策 `docs/CI.md`；度量脚本 `scripts/analysis/repo-metrics.mjs`
 
@@ -243,7 +243,9 @@ packages/{types, ui, config, testing} → 零依赖
 
 **当前边界与否定证据**：快照 `app.ts:3486` 机会dispatcher至 `:3692` quote-command接线、`:3693` CRM matcher；商业区现在仅工厂/共享dispatcher及parser/授权/DTO注入。全 `apps/api/src/app.ts` 执行 `rg -n 'dependencies\.commercial|commercial\.(list|find|create|update|transition|submit|approve|issue|evaluate|calculate|add|link|get)' apps/api/src/app.ts`，命中均为repository注入/存在性guard，未找到历史商业范围的旧内联仓储业务调用。共享解析/DTO helper不是残留成功分支；CRM之后的域外业务不在本结论范围。scout与独立reviewer只读核验，不运行DB/构建。本表不结清整批债务，不表示2b验收，**商业整体已协调复核通过：独立17文件872/872、最终14b841c完整CI退出码0及38/39映射核验；不等于2b整批验收**。
 
-#### 4.2.2 complaint 全域盘点与分步设计（基线14b841c，⑤整体已确认，⑥a待复核）
+#### 4.2.2 complaint 全域盘点与分步设计（基线14b841c，⑥a整体已确认，⑥b进行中）
+
+**⑥b当前批准/⑥a整体确认**：4a1b923/日志00884e1新旧顺序/参数/receiver/DTO与独立reviewer无阻塞，2b92813固定67零diff；协调亲跑23文件1386/1386（执行端25文件1392/1392不同检查集），最终00884e1完整ci:local退出码0（API65文件1769/1769、complaint PG前后4/4、结构0违规31豁免/audit全绿），⑥a整体确认，不重做前组。只批准⑥b NCR contain/root-cause/disposition/close四POST；旧00884e1内联272固定契约首跑通过，相关26文件1664/1664、PG4/4/guard/迁移状态/typecheck/lint及独立reviewer通过。双truthy string先双enum先路径UUID、仅disposition服务器approvedBy和全字段顺序保持，先独立旧test再迁移。台账35/日期UUID债务不修；下方历史盘点/各快照/旧待复核记录保留时点，后续CAPA五入口不实施。
 
 **⑥a实施当前快照**：旧test2b92813固定67契约，代码4a1b923仅原一POST条件/一method-path/一语义/createNcr一调用提取为ncr-create.ts一defineRoute（30）；app1732–1752为投诉transition后/NCR transition前工厂/dispatch，后续matcher现1753起，后续9入口原文不动。显式窄NcrInput/readonly上下文，validate O→allow10→manage/bodykeys→number stable先pathUUID→defect/affected→truthy org→required investigator→非负decimal→containment→原number version→evidence??{}→bodykey，handler原receiver/R/C→201共享ncr:read DTO，无read授权/header。app5157→5132、模块96行，factory27–96共70/validate36–79共44，人工嵌套≤5，无any/断言/跨请求可变状态，不宣称AST函数长度强制已实现。67固定预期与全部旧complaint/商业契约零diff，前后相关25文件1392/1392、complaint PG各4/4、typecheck/lint与独立reviewer通过；完整ci:local退出码0（API65文件1769/1769）。下方原批准/快照/容量时点与14b841c盘点保留；⑥a待协调复核，⑥b及后续域未实施，TD-BOUND-003/004不修。
 
@@ -423,6 +425,8 @@ packages/{types, ui, config, testing} → 零依赖
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+2026-10-13，⑥a整体协调确认/⑥b旧护栏：4a1b923/00884e1静态及独立reviewer新旧顺序/params/receiver/DTO无阻塞，旧2b92813固定67无diff，协调23文件1386/1386与执行25文件1392/1392按各自检查集记录；最终00884e1完整CI退出码0（API65文件1769/1769、complaint PG前后4/4、结构0违规31豁免及其他门禁/audit全绿），⑥a整体通过。只⑥b NCR四状态POST：旧272契约在00884e1内联首跑通过、补充既有case内空{}授权后version断言后仍272/272，相关26文件1664/1664、PG4/4、guard/迁移状态/typecheck/lint及独立reviewer通过；固定四cap/state/不可替代、O→7allow→fieldauth→双truthy string→双enum→UUID→version/reason→truthy rootCause JSON→仅disposition服务器approvedBy→evidence??{}→body stablekey/R/C/201独立ncr read/guard邻接信封。不新增action必需检查或body approvedBy，optional falsey键仍授权/输入省略，根因不默认{}。无失败/偏差，源码零diff；旧test先独立提交后预期不改，实现/完整CI/回滚点另记。历史14b841c/容量及旧计数保留，后续CAPA5入口不动，35台账/TD-BOUND-003/004待核实不修行为，不结清整批债务，无push/部署/生产/workflow操作。
 
 2026-10-13，2b-complaint⑥a NCR create收尾：[已测试] 原实现4437a32，旧test `2b92813`，代码 `4a1b923`。只POST complaints/:id/ncrs一个原宽松regex条件/一method-path/一语义/createNcr一调用迁为窄ncr-create.ts一显式defineRoute，投诉guard中四状态后/NCR transition前派发，未匹配null继续；401/缺repo整skip404与后续9入口不动。validate O→10allow→ncr:manage/Object.keys授权→ncrNumber stable/string先complaintId路径UUID→defectType/affectedScope→truthy org UUID→required investigator UUID→默认非负decimal原归一化/负零→temporaryContainment→complaintExpectedVersion原number integer1..1000000→evidence??{} JSON→body stablekey最后；不加枚举/关系/单位/状态/UUID规范化/headerkey。窄NcrInput原仓储参数类型/readonlyctx，无any/断言/隐藏状态；handler原receiver/input/R/correlation→201共享ncr:read，complaint:read不能替代、无新增read授权。旧67首跑通过独立提交，迁移后零预期diff，全部旧complaint/商业护栏不改；前后相关25文件1392/1392、complaint PG各4/4、guard/迁移状态/typecheck/lint与独立reviewer旧oracle/源码新旧无必要问题。首次文档patch因hunk顺序未应用，按实际行号重排后成功，源码/oracle未受影响；无测试失败/行为偏差。完整ci:local退出码0（API65文件1769/1769、complaint PG4/4、auth/IAM HTTP PG各19、format/doc-lint103/structure强制0豁免31/release guardrails/typecheck/lint/build/security全绿）；最终日志HEAD须完整复验并在交接报告确认退出码。app5157→5132，新模块96/最大职责函数70/人工嵌套≤5，不宣称AST长度强制机制已实现。仓储/SQL/DB/scope-sql/前组/dispatcher/types/门禁/packages/workflow零diff；台账35，TD-BOUND-003/004保持待核实，不修行为/不结清整批债务。⑥a待协调小步复核，停止等待⑥b续派，不启动⑥b/其余域/2c；未跑E2E、未push/部署/生产操作。回滚：`git revert 4a1b923`恢复原NCR create内联，2b92813旧护栏/⑤最终确认与本日志可独立revert。
 
