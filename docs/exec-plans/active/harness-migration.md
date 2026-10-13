@@ -6,7 +6,7 @@
 - **分支**：`harnessing`（自 main 派生；按规则 §7.1 禁止直接在主干改造）
 - **计划版本 / 日期**：v1.3 / 2026-10-12（v1.2 经第三轮人工审核修订：修复 §3.8 S11 表格裸管道、覆盖率验收语义收紧为目标值硬条件、S11 表述改为启发式口径）
 - **扫描基线**：commit `779dea3`（同步 origin/main 后）
-- **状态**：**批次1与2a已获人工验收；2b进行中：auth/identity provisioning/IAM/profiles/identity-state/collection/commercial及complaint①②③④⑤⑥a⑥b已整体协调确认。⑥b代码64c9588、最终8c72ff4完整CI已过（API2041），协调独立1658；本轮仅⑦CAPA创建POST，61旧契约通过尚未提取；其后四CAPA入口及crm/platform/production/production-startup/qtc/website-lead-ingest待执行。历史容量时点保留，TD-BOUND-003/004仅待核实、35条台账，不修行为。2b整批尚未人类验收。**
+- **状态**：**批次1与2a已获人工验收；2b进行中：auth/identity provisioning/IAM/profiles/identity-state/collection/commercial及complaint①②③④⑤⑥a⑥b已整体协调确认。⑥b代码64c9588、最终8c72ff4完整CI已过（API2041），协调独立1658；本轮仅⑦CAPA创建POST已提取并本地验证通过（固定61、API2102），待协调小步复核；其后四CAPA入口及crm/platform/production/production-startup/qtc/website-lead-ingest待执行。历史容量时点保留，TD-BOUND-003/004仅待核实、35条台账，不修行为。2b整批尚未人类验收。**
 - **规则文档**：`docs/HARNESS-RULES.md`（施工期常驻，竣工验收后按 §14 拆解归档）
 - **配套文件**：问题清单 `docs/exec-plans/tech-debt-tracker.md`（35 条）；CI 决策 `docs/CI.md`；度量脚本 `scripts/analysis/repo-metrics.mjs`
 
@@ -243,7 +243,9 @@ packages/{types, ui, config, testing} → 零依赖
 
 **当前边界与否定证据**：快照 `app.ts:3486` 机会dispatcher至 `:3692` quote-command接线、`:3693` CRM matcher；商业区现在仅工厂/共享dispatcher及parser/授权/DTO注入。全 `apps/api/src/app.ts` 执行 `rg -n 'dependencies\.commercial|commercial\.(list|find|create|update|transition|submit|approve|issue|evaluate|calculate|add|link|get)' apps/api/src/app.ts`，命中均为repository注入/存在性guard，未找到历史商业范围的旧内联仓储业务调用。共享解析/DTO helper不是残留成功分支；CRM之后的域外业务不在本结论范围。scout与独立reviewer只读核验，不运行DB/构建。本表不结清整批债务，不表示2b验收，**商业整体已协调复核通过：独立17文件872/872、最终14b841c完整CI退出码0及38/39映射核验；不等于2b整批验收**。
 
-#### 4.2.2 complaint 全域盘点与分步设计（基线14b841c，⑥b整体已确认，⑦进行中）
+#### 4.2.2 complaint 全域盘点与分步设计（基线14b841c，⑥b整体已确认，⑦待复核）
+
+**⑦实施当前快照**：旧test27f8686固定61契约，代码583becb仅原一POST条件/一method-path/一语义/createCapa一调用提取为capa-create.ts一defineRoute（56）；app1775–1795是NCR transition后/CAPA actions前工厂/dispatch，actions matcher现1796起，余四CAPA入口原文不动。validate O→8allow→capa:manage/bodykeys→risk string/原enum先number/path→owner/time→required snapshot→原number version→evidence??{}→body stablekey，已校验risk断言取CapaInput仓储参数类型仅静态等价；handler原receiver/input/R/C→201共享capa:read，不新增read/header/日期强化。app5075→5058、module93行，creationInput27–52共26/routes54–93共40，人工嵌套≤5，无any/跨请求状态，不宣称AST函数长度强制已实现。61冻结预期及全部旧契约零diff，前后相关27文件1725/1725、complaint PG各4/4、typecheck/lint与独立reviewer通过；完整ci:local退出码0（API67文件2102/2102）。mock参数与真实PG既有约束证据分开，下方历史盘点/容量/时点保持。⑦待协调复核，actions/lifecycle及其他域未实施，35台账/日期UUID风险不修。
 
 **⑦当前批准/⑥b最终确认**：30bbc91旧272无diff，64c9588新旧静态与独立reviewer无阻塞，协调亲跑24文件1658/1658、补日志8c72ff4并最终完整ci:local退出码0（API66文件2041/2041、complaint PG4/4、结构0违规31豁免、其他门禁/build/audit全绿），⑥b整体确认，不重做NCR提取；修正类型过程/容量恢复及旧待补验日志保留历史时点。只批准⑦CAPA create单POST，旧8c72ff4内联61契约首跑通过，相关27文件1725/1725、guard/迁移状态/PG4/4/typecheck/lint及独立reviewer通过，先独立旧test再迁移。全apps/packages TS createCapa普查只找到app生产调用与repo声明、两mock fixture；仓储状态/事务/replay/audit不改。riskLevel先编号/路径UUID、snapshot必需与evidence默认不同、独立capa:read投影守恒，后续四CAPA入口不动。台账35，日期/UUID风险不修，历史14b841c盘点/行号/时点保留。
 
@@ -429,6 +431,8 @@ packages/{types, ui, config, testing} → 零依赖
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+2026-10-13，2b-complaint⑦CAPA创建收尾：[已测试] 原实现8c72ff4，旧test `27f8686`，代码 `583becb`。仅POST ncrs/:id/capas一个宽松regex条件/一method-path/一语义/createCapa一调用迁入窄capa-create.ts一显式defineRoute，原投诉guard/NCR transition后/actions前dispatch不匹配null继续；401/缺repo整skip404与其余四CAPA入口不动。validate O→8allow→capa:manage/Object.keys→riskLevel原string trim/四enum先capaNumber stable/string→ncrId路径UUID→owner UUID→targetAt原timestamp→risk值→rootCauseSnapshot requiredJSON→complaintExpectedVersion原number integer1..1000000→evidence??{} JSON→body stablekey；原risk已校验后枚举断言仅改CapaInput索引类型，时间原Date/ISO语义不强化、snapshot不默认/header无fallback。handler原receiver/input/R/correlation→201共享capa:read，ncr/complaint read不可替代，不加read权限。旧61在8c72ff4先全绿独立提交，迁移后零预期diff、全部既有护栏不改；前后相关27文件1725/1725、complaint PG各4/4、guard/迁移状态/typecheck/lint及独立reviewer旧oracle/源码新旧无必要问题；mock请求参数与PG既有CAPA状态约束测试分开，不声称新mock证明真实create事务。无失败/偏差。完整ci:local退出码0（API67文件2102/2102、complaint PG4/4、auth/IAM HTTP PG各19、format/doc-lint103/structure强制0豁免31/release guardrails/typecheck/lint/build/security全绿）；最终日志HEAD须完整复验并在交接报告确认退出码。app5075→5058、module93/最大职责函数40/人工嵌套≤5，不宣称AST长度强制已实现。仓储/SQL/DB/scope-sql/前组/dispatcher/types/门禁/packages/workflow零diff，35台账/TD-BOUND-003/004仍待核实，不修行为/不结清整批债务。⑦待协调小步复核，停止等待actions/lifecycle续派，不启动后续/其他域/2c；未跑E2E、未push/部署/生产操作。回滚：`git revert 583becb`恢复旧CAPA create内联，27f8686旧护栏/⑥b最终确认与本日志独立revert。
 
 2026-10-13，⑥b最终协调确认/⑦CAPA创建旧护栏：旧30bbc91固定272无diff、代码64c9588静态与独立reviewer无阻塞，协调亲跑24文件1658/1658、容量失败后补日志8c72ff4并最终完整ci:local退出码0（API66文件2041/2041、complaint PG4/4、结构0违规31豁免及其余门禁/build/audit全绿），⑥b整体确认，不重做NCR。只批准⑦一个POST：旧61在8c72ff4内联首跑通过，相关27文件1725/1725、PG4/4、guard/迁移状态/typecheck/lint及独立reviewer通过；固定8allow/body→fieldauth→risk string/enum先number/path→owner/time→required snapshot→version→evidence??{}→body stablekey、header无fallback/receiver/R/C/201独立capa read/边界与信封。真实PG既有CAPA约束证据与mock参数契约分开，不称新HTTP case验证了真实仓储写入。全apps/packages TS createCapa调用普查仅app生产点、repo声明与两mock fixtures，源码零diff，无失败/偏差。旧test先提交后预期冻结；实施/完整CI/回滚另记。原容量/随后补验和14b841c盘点时点保留，四后续CAPA入口不改、台账35/TD-BOUND-003/004待核实不修、不结清整批债务，无push/部署/生产/workflow操作。
 
