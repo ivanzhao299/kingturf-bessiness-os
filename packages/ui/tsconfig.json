@@ -1,5 +1,0 @@
-{
-  "extends": "../config/tsconfig/browser.json",
-  "compilerOptions": { "composite": true, "noEmit": true },
-  "include": ["src/**/*.ts"]
-}
