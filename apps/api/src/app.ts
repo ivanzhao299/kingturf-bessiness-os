@@ -86,6 +86,7 @@ import { complaintTransitionRoutes } from './routes/complaint-transitions.ts';
 import { ncrCreateRoutes } from './routes/ncr-create.ts';
 import { ncrTransitionRoutes } from './routes/ncr-transitions.ts';
 import { capaCreateRoutes } from './routes/capa-create.ts';
+import { capaActionRoutes } from './routes/capa-actions.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -1793,61 +1794,27 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             request,
           );
           if (capaCreateResponse) return capaCreateResponse;
-          const capaAction = /^\/api\/v1\/capas\/([0-9a-f-]+)\/actions$/u.exec(request.pathname);
-          if (request.method === 'POST' && capaAction) {
-            const body = objectBody(request.body);
-            allow(body, [
-              'actionType',
-              'description',
-              'ownerId',
-              'dueAt',
-              'expectedVersion',
-              'idempotencyKey',
-            ]);
-            const grant = authorizeQuery(context, 'capa:manage', Object.keys(body));
-            const actionType = string(body.actionType, 'actionType');
-            if (!['CORRECTIVE', 'PREVENTIVE'].includes(actionType))
-              throw new DomainError('invalid_request', 'actionType is unsupported');
-            const result = await dependencies.complaints.addCapaAction(
-              uuid(capaAction[1], 'capaId'),
-              {
-                actionType: actionType as 'CORRECTIVE' | 'PREVENTIVE',
-                description: string(body.description, 'description'),
-                ownerId: uuid(body.ownerId, 'ownerId'),
-                dueAt: timestamp(body.dueAt, 'dueAt'),
-                expectedVersion: integer(body.expectedVersion, 'expectedVersion', 1, 1_000_000),
-                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+          const capaActionResponse = await dispatchRoutes(
+            capaActionRoutes({
+              repository: dependencies.complaints,
+              authorization: context,
               correlationId,
-            );
-            return { statusCode: 201, body: mutationDto(result, context, 'capa:read') };
-          }
-          const capaActionComplete = /^\/api\/v1\/capa-actions\/([0-9a-f-]+)\/complete$/u.exec(
-            request.pathname,
+              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
+              mutationDto: (value) => mutationDto(value, context, 'capa:read'),
+              parsers: {
+                objectBody,
+                allow,
+                string,
+                stableCode: assertStableCode,
+                uuid,
+                timestamp,
+                integer,
+                jsonObject,
+              },
+            }),
+            request,
           );
-          if (request.method === 'POST' && capaActionComplete) {
-            const body = objectBody(request.body);
-            allow(body, ['completedAt', 'evidence', 'expectedCapaVersion', 'idempotencyKey']);
-            const grant = authorizeQuery(context, 'capa:manage', Object.keys(body));
-            const result = await dependencies.complaints.completeCapaAction(
-              uuid(capaActionComplete[1], 'capaActionId'),
-              {
-                completedAt: timestamp(body.completedAt, 'completedAt'),
-                evidence: jsonObject(body.evidence, 'evidence'),
-                expectedCapaVersion: integer(
-                  body.expectedCapaVersion,
-                  'expectedCapaVersion',
-                  1,
-                  1_000_000,
-                ),
-                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
-            );
-            return { statusCode: 201, body: mutationDto(result, context, 'capa:read') };
-          }
+          if (capaActionResponse) return capaActionResponse;
           const capaClose = /^\/api\/v1\/capas\/([0-9a-f-]+)\/close$/u.exec(request.pathname);
           if (request.method === 'POST' && capaClose) {
             const body = objectBody(request.body);
