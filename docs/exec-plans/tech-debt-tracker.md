@@ -36,14 +36,14 @@
 | TD-TEST-001  | 2 个仓储模块完全无测试，2 个近乎无覆盖                                                        | P1     | 测试          | 无                       | 阶段 5                | 待处理 |
 | TD-TEST-002  | 无任何覆盖率配置与阈值                                                                        | P1     | 测试/门禁     | 无                       | 阶段 5                | 待处理 |
 | TD-TEST-003  | 6 个仓储模块仅 mock 路由级测试，SQL 路径未验证                                                | P2     | 测试          | 无                       | 阶段 5                | 待处理 |
-| TD-TEST-004  | packages/ui、packages/testing 的占位测试                                                      | P2     | 测试          | 无                       | 阶段 5（前置 D3）     | 处理中 |
+| TD-TEST-004  | packages/ui、packages/testing 的占位测试                                                      | P2     | 测试          | 无                       | 阶段 5（前置 D3）     | 已完成 |
 | TD-TEST-005  | packages/types 占位测试：纯类型包的测试策略未定                                               | P2     | 测试          | 无                       | 阶段 5                | 待处理 |
 | TD-GATE-001  | 无 git hooks / commitlint / lint-staged，脏提交仅靠 CI 兜底                                   | P1     | 门禁          | 无                       | 阶段 3                | 已完成 |
 | TD-GATE-002  | vitest 无配置文件，参数散落各包 scripts                                                       | P2     | 门禁          | 无                       | 阶段 3                | 已完成 |
 | TD-DOC-001   | 无 AGENTS.md；docs/ 85+ 文档无统一索引与目标结构                                              | P1     | 文档          | 无                       | 阶段 2（前置 D4）     | 已完成 |
 | TD-DOC-002   | 常驻文档未全量与代码核对（抽查 3 份即发现 1 处端点漂移）                                      | P2     | 文档          | 无                       | 阶段 3（文档园丁）    | 待处理 |
 | TD-VER-001   | 版本号全部 0.0.0 占位，发布标识 = commit SHA                                                  | P2     | 依赖/版本     | 无                       | D2 已决策（保留 SHA） | 已完成 |
-| TD-HYG-001   | 本地验收产物滞留工作区；packages/ui、testing 近空壳                                           | P2     | 文档/工程卫生 | 无                       | D3 执行中             | 处理中 |
+| TD-HYG-001   | 本地验收产物滞留工作区；packages/ui、testing 近空壳                                           | P2     | 文档/工程卫生 | 无                       | D3 已执行             | 已完成 |
 
 ---
 
@@ -234,13 +234,13 @@
 - **修复建议**：阶段 5 补 PG 集成测试（复用现有集成测试范式与 fixtures）。
 - **业务行为影响**：无 ｜ **关联批次**：阶段 5 ｜ **验收方式**：6 个域各有集成测试文件且全绿
 
-### TD-TEST-004｜packages/ui、packages/testing 的占位测试
+### TD-TEST-004｜packages/ui、packages/testing 的占位测试（已完成）
 
-- **位置**：`packages/ui/src/index.test.ts`、`packages/testing/src/index.test.ts`（各 1 用例）
+- **位置（历史）**：`packages/ui/src/index.test.ts`、`packages/testing/src/index.test.ts`（D3 执行前各 1 用例；现已删除）
 - **类别**：测试 ｜ **严重度**：P2
-- **证据**：两包源码极小（ui 7 行、testing 3 行），测试为占位性质。
-- **修复建议**：视 D3 对空壳包的处置决策而定（若合并/删除则本条随之关闭；若保留则补齐对现有导出的用例）。
-- **业务行为影响**：无 ｜ **关联批次**：阶段 5（前置 D3） ｜ **验收方式**：随 D3 决策落地
+- **关闭证据（2026-10-13）**：全仓 `rg` 确认 `createBootstrapView`、`parseJson`、`@kingturf/ui`、`@kingturf/testing` 无生产消费者；两个 workspace 包及占位测试已删除，web 依赖与 lockfile importer 已同步移除。
+- **修复结果**：D3 删除方案已执行，不再保留无消费者空壳测试。
+- **业务行为影响**：无 ｜ **关联批次**：D3 ｜ **验收方式**：依赖清理 + format/typecheck/lint/build/doc-lint/structure/`pnpm ci:local` 全绿
 
 ### TD-TEST-005｜packages/types 占位测试：纯类型包的测试策略未定
 
@@ -332,13 +332,13 @@
 - **修复建议**：**待人工决策 D2**：维持 SHA 标识（在 docs/CI.md 记录决定，规则 §6.1 标注不适用）或引入语义化版本（需一次 bump + guard）。
 - **业务行为影响**：无 ｜ **关联批次**：待决策 ｜ **验收方式**：决策落盘 docs/CI.md
 
-### TD-HYG-001｜本地验收产物滞留；近空壳包
+### TD-HYG-001｜本地验收产物滞留；近空壳包（已完成）
 
-- **位置**：`.local-acceptance/`（**10 个目录、36 个条目**，已被 .gitignore 忽略；复核命令 `find .local-acceptance -maxdepth 1 -type d | wc -l`）、`.test-results/`；`packages/ui/src/index.ts`（7 行）、`packages/testing/src/index.ts`（3 行）
+- **位置**：`.local-acceptance/`（**10 个目录、36 个条目**，已被 .gitignore 忽略；复核命令 `find .local-acceptance -maxdepth 1 -type d | wc -l`）、`.test-results/`；空壳包路径为 D3 执行前历史位置。
 - **类别**：文档/工程卫生 ｜ **严重度**：P2
-- **证据**：验收期产物滞留工作区（不入库，仅本地噪音）；ui/testing 两包占位未长成，但被 apps/web 与各包 devDependencies 引用，不可贸然删（R5）。
-- **修复建议**：**待人工决策 D3**：空壳包合并/长成/保留的处置；.local-acceptance 加清理脚本或保留策略说明。
-- **业务行为影响**：无 ｜ **关联批次**：待决策 ｜ **验收方式**：决策落盘并执行
+- **关闭证据（2026-10-13）**：D3 已批准并执行；两个空壳包已删除，web workspace 依赖及 lockfile importer 已清理；`.local-acceptance/` 继续被 `.gitignore` 忽略，新增 `docs/local-acceptance-cleanup.md` 与不自动执行、目标路径严格校验的 `scripts/analysis/clean-local-acceptance.mjs`（本轮未运行清理脚本）。
+- **修复结果**：空壳包已移除，本地验收目录保留为显式本地卫生边界。
+- **业务行为影响**：无 ｜ **关联批次**：D3 ｜ **验收方式**：依赖清理 + 门禁全绿
 
 ---
 

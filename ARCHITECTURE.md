@@ -5,11 +5,10 @@
 ## 1. 包分层与依赖方向（现状：干净 DAG，禁止破坏）
 
 ```text
-apps/web (UI) ────────────────→ packages/ui
 apps/api (Runtime+Repo) ──→ packages/{config, database, domain, types}
 packages/database ──→ pg（唯一外部运行时依赖）
 packages/domain ──→ packages/types
-packages/{types, ui, config, testing} ──→ 零依赖
+packages/{types, config} ──→ 零依赖
 ```
 
 **规则**：依赖只能沿上述方向；新增依赖边必须先在本文件登记理由。`packages/` 之间除 `domain→types` 外互不依赖；任何包不得反向依赖 `apps/*`。
