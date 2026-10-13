@@ -6,7 +6,7 @@
 - **分支**：`harnessing`（自 main 派生；按规则 §7.1 禁止直接在主干改造）
 - **计划版本 / 日期**：v1.3 / 2026-10-12（v1.2 经第三轮人工审核修订：修复 §3.8 S11 表格裸管道、覆盖率验收语义收紧为目标值硬条件、S11 表述改为启发式口径）
 - **扫描基线**：commit `779dea3`（同步 origin/main 后）
-- **状态**：**批次1与2a已获人工验收；2b进行中：auth/identity provisioning/IAM/profiles/identity-state/collection/commercial/complaint及CRM整体已协调确认。platform设计与①–⑨逐组实施已协调确认（⑨6b8aeac/5a05d13）；28/28仅迁移数量，本轮只读核查/文档整域收尾，platform整体产出待协调复核，不代表2b人类验收。停production/2c，不整体结清TD-API/TD-BOUND。历史13/16/17与platform27/28/28/授权/失败时点保留，TD-BOUND-003/004仅待核实、35条台账，不修行为，D1不扩。**
+- **状态**：**批次1与2a已获人工验收；2b进行中：此前auth/identity/IAM/collection/commercial/complaint/CRM与platform整体已协调确认（platform最终d0f06d9，28/28迁移非2b人类验收）。本轮production+productionCosts全域只读盘点与首组三GET旧护栏/候选设计，未迁源码，停读取实施/其他写组/startup/qtc/website/2c。历史13/16/17/platform27/28/28与授权/失败时点保留，TD-API-001/002不结清、35台账/TD-BOUND-003/004待核实不修、D1不扩。**
 - **规则文档**：`docs/HARNESS-RULES.md`（施工期常驻，竣工验收后按 §14 拆解归档）
 - **配套文件**：问题清单 `docs/exec-plans/tech-debt-tracker.md`（35 条）；CI 决策 `docs/CI.md`；度量脚本 `scripts/analysis/repo-metrics.mjs`
 
@@ -521,7 +521,9 @@ Context仅请求内Readonly：repository Pick原 `findCustomer | customer360` �
 
 **现有证据/搜索范围与限制**：app.test.ts:701–1000 CRM HTTP案例覆盖联系人规范化、ownership两cap、360分区/交集、activity时间、leadclaim/release/DTO/conflict等，非各validator完整oracle。crm-postgres.integration.test.ts实际10案例（103/140/218/239/265/363/439/573/597/846）覆盖租户/去重/atomic audit-outbox、claim并发replay、不可物理删除、pool状态/assign、联系人、360与scope；真实PG10/10不等于HTTP别名写入或所有错误优先级覆盖。全apps/api/src TS搜索 `rg -n 'dependencies\.crm|crm\.(listCustomers|findCustomer|createCustomer|transitionCustomer|createContact|listLeads|createLead|claimLead|transitionLead|assign|createActivity|customer360)' apps/api/src --glob '*.ts'` 命中生产HTTP调用仅上述区域；apps/packages TS另搜这些method的点调用，除app、repository内部customer360→findCustomer与测试，未发现packages中的CRM repository调用；server.ts:99仅组合根实例化，web bootstrap.ts:10520–10587经createFetchCrmApi消费canonical customers/leads URL，不是第二后端HTTP入口（未声称穷尽外部客户端）。否定结论限这些范围/搜索式；production website ingest自行职责不迁入CRM。全局session401与fallback404仍app:460/:4919，缺CRM与unsupported边界在原位置；仓储/SQL/业务对3a17d2f零diff。首步65旧契约含wrapper公共兼容性，不替代其余CRM分支护栏，待协调设计复核后才实施。
 
-#### 4.2.4 platform 当前整域快照与历史设计（精确设计基线3528fb4，①–⑨逐组已确认，整体产出待协调复核）
+#### 4.2.4 platform 当前整域快照与历史设计（精确设计基线3528fb4，①–⑨与整体已协调确认）
+
+**platform整体当前协调确认／production本轮范围（2026-10-14，d0f06d9）**：原27支持→28canonical/28语义、当前27factory/28defineRoute/28仓储成功调用，九模块1117行/最大183/最长audit factory60、app4736→4707净减29，协调只读reviewer全28映射/guard/能力/参数状态/容量与否定搜索无其他阻塞。当前搜索段inline code已修，协调复跑实际正确五根pattern与\*.ts全src扫描退出1/零命中；5a05d13..d0f06d9源码/tests/台账/门禁零diff，9冻结1091逐SHA零diff。生产零diff，协调沿用独立45文件3706/3706（/tmp/kingturf-workflow-runtime-extract-independent.log）不重复跑，并核对最终d0f06d9完整ci:local真实退出0（/tmp/kingturf-platform-wrap-head-ci.log，API87文件4089/4089、platform PG5/5、web114/domain14、doclint103/结构0违规31豁免/build/audit及其余门禁全绿）。platform整体已协调确认，非2b人类验收；3528fb4旧映射/待复核/失败/授权时点保留，PG覆盖限制/未强制AST200/TD-API未结清、35台账/TD-BOUND-003/004待核实/D1范围保持。本轮只批准production与productionCosts全域只读盘点及三个GET读取旧护栏/候选设计，不提取源码、不启动其他写组/startup/qtc/website/2c，startup测试属于production-mode启动基础设施不是名义业务仓储，职责另核。本确认文档独立revert，tests/design独立提交，无push/部署/生产/workflows/prompt-history读取。[已测试]
 
 **platform整域当前快照（只读核查基线5a05d13，2026-10-14；整体产出待协调复核）**：初始设计3528fb4与当前九模块已逐项交叉核对，原27支持method/path条件→28 canonical入口→28业务语义保持：audit原optional-id同一GET guard含list/detail两互斥语义，其余26条件各一条，当前仍27 app支持guard/Q0/缺repo分支，**27 factory、28 defineRoute、28仓储成功调用**，不是28 factory。分组2+4+5+4+1+4+1+4+3＝28；九模块名称/容量如下（number-allocation与rule-evaluation均单数）。①–⑨逐组实施已协调确认，⑨确认先独立落盘9ceb21f；本轮只整域映射文档产出，28/28迁移完成不代表platform整体验收或2b人类验收，platform整体产出待协调复核。历史3528fb4原表/行号/未迁时点与所有授权/失败记录均保留下方。
 
@@ -1001,6 +1003,8 @@ module48–51仅原raw [0-9a-f-]+/u matcher，collection exact match；匹配纯
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+2026-10-14：platform整体d0f06d9已协调确认，沿用45文件3706/3706及最终完整CI API87文件4089退出0，九冻结1091逐SHA零diff/27factory-28routes-28语义保持，搜索引用修复已复算；详见§4.2.4当前确认，历史时点不覆盖。只启动production两repo全域盘点与3GET旧护栏/设计，不迁业务/startup/其他写组，非2b验收；确认文档独立回滚。[已测试]
 
 **2026-10-14 / 2b-platform整域只读核查与文档收尾**：⑨确认9ceb21f先落盘后，以3528fb4与当前5a05d13核对原27支持条件→28canonical→28语义，九modules2/4/5/4/1/4/1/4/3路由、27factory/28defineRoute/28成功调用（audit一factory两route），完整当前28入口method/rawpath/app guard-Q0-repo503/module职责/参数与response见§4.2.4新整域快照；旧原表/行号/失败时点不覆盖。九module79/154/183/170/38/154/51/149/139共1117行，最大factory60/人工nest≤5；app4736→4707净-29，未消除巨石/未结清TD-API-001/002，不称AST长度强制。主代理与独立只读reviewer无行为阻塞，五根直接成功方法在app及src TS零命中（搜索式/退出1限制见快照）；baseline前platform/后document-connectors至EOF逐字不变，九冻结SHA至HEAD各文件zero diff、baseline旧tests只新增九契约。九固定9文件1091/1091、PG healthy/guard/70迁移/platform PG5/5通过，日志/tmp/kingturf-platform-wrap-{contracts,guard,status,pg,inventory,scan-final,boundaries,frozen}.log；最后文档HEAD完整CI另跑/tmp/kingturf-platform-wrap-head-ci.log。旧PG覆盖局限/⑧createVersion无直接PG、workflow单case非完整安全矩阵、mock成功不等于PG安全继续保留；旧真实fixture/type/lint/命令失败记录不改预期。当前仅计划/index文档，所有生产src/test/SQL/仓储/dispatcher/types/门禁/packages/web/台账/workflows零diff，35台账/TD-BOUND-003/004/D1不改，不凭迁移数量抬质量评分、未全仓评分/coverage/E2E/生产验证。platform整体产出待协调复核，28迁移不代表2b人类验收；停止后续域/production-startup/2c/安全改变，无push/部署/生产或prompt-history读取。本快照/日志/index与确认9ceb21f分别文档revert，无业务回滚。[已测试]
 
