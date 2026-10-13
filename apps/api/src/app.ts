@@ -83,6 +83,7 @@ import { complaintReadRoutes } from './routes/complaint-reads.ts';
 import { complaintCreateRoutes } from './routes/complaint-create.ts';
 import { complaintBatchTriageRoutes } from './routes/complaint-batch-triage.ts';
 import { complaintTransitionRoutes } from './routes/complaint-transitions.ts';
+import { ncrCreateRoutes } from './routes/ncr-create.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -1728,53 +1729,27 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             request,
           );
           if (complaintTransitionResponse) return complaintTransitionResponse;
-          const ncrCreate = /^\/api\/v1\/complaints\/([0-9a-f-]+)\/ncrs$/u.exec(request.pathname);
-          if (request.method === 'POST' && ncrCreate) {
-            const body = objectBody(request.body);
-            allow(body, [
-              'ncrNumber',
-              'defectType',
-              'affectedScope',
-              'responsibleOrganizationId',
-              'investigatorId',
-              'quarantinedQuantity',
-              'temporaryContainment',
-              'complaintExpectedVersion',
-              'evidence',
-              'idempotencyKey',
-            ]);
-            const grant = authorizeQuery(context, 'ncr:manage', Object.keys(body));
-            const result = await dependencies.complaints.createNcr(
-              {
-                ncrNumber: assertStableCode(string(body.ncrNumber, 'ncrNumber')),
-                complaintId: uuid(ncrCreate[1], 'complaintId'),
-                defectType: string(body.defectType, 'defectType'),
-                affectedScope: string(body.affectedScope, 'affectedScope'),
-                ...(body.responsibleOrganizationId
-                  ? {
-                      responsibleOrganizationId: uuid(
-                        body.responsibleOrganizationId,
-                        'responsibleOrganizationId',
-                      ),
-                    }
-                  : {}),
-                investigatorId: uuid(body.investigatorId, 'investigatorId'),
-                quarantinedQuantity: decimal(body.quarantinedQuantity, 'quarantinedQuantity'),
-                temporaryContainment: string(body.temporaryContainment, 'temporaryContainment'),
-                complaintExpectedVersion: integer(
-                  body.complaintExpectedVersion,
-                  'complaintExpectedVersion',
-                  1,
-                  1_000_000,
-                ),
-                evidence: jsonObject(body.evidence ?? {}, 'evidence'),
-                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+          const ncrCreateResponse = await dispatchRoutes(
+            ncrCreateRoutes({
+              repository: dependencies.complaints,
+              authorization: context,
               correlationId,
-            );
-            return { statusCode: 201, body: mutationDto(result, context, 'ncr:read') };
-          }
+              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
+              mutationDto: (value) => mutationDto(value, context, 'ncr:read'),
+              parsers: {
+                objectBody,
+                allow,
+                string,
+                stableCode: assertStableCode,
+                uuid,
+                decimal,
+                integer,
+                jsonObject,
+              },
+            }),
+            request,
+          );
+          if (ncrCreateResponse) return ncrCreateResponse;
           const ncrTransition =
             /^\/api\/v1\/ncrs\/([0-9a-f-]+)\/(contain|root-cause|disposition|close)$/u.exec(
               request.pathname,
