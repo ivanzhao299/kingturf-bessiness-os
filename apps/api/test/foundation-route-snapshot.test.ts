@@ -242,6 +242,62 @@ describe('foundation route migration snapshot', () => {
         })
       ).statusCode,
     ).toBe(500);
+    const invalidRequests = [
+      {
+        method: 'PUT',
+        pathname: '/api/v1/notification-preferences',
+        body: { channel: 'WEBHOOK', enabled: true, expectedVersion: 0 },
+      },
+      { method: 'POST', pathname: '/api/v1/internal/notifications', body: { kind: 'x' } },
+      {
+        method: 'POST',
+        pathname: '/api/v1/attachments',
+        body: { name: 'x', mimeType: 'x', size: 0, checksum: 'x' },
+      },
+      {
+        method: 'PUT',
+        pathname: `/api/v1/attachments/${attachmentId}/content`,
+        body: { contentBase64: '%%%' },
+      },
+      {
+        method: 'POST',
+        pathname: `/api/v1/attachments/${attachmentId}/bindings`,
+        body: { objectType: 'employee', objectId: 'bad' },
+      },
+      {
+        method: 'DELETE',
+        pathname: `/api/v1/attachments/${attachmentId}/bindings`,
+        body: { objectType: 'employee', objectId: 'bad' },
+      },
+      { method: 'DELETE', pathname: `/api/v1/attachments/${attachmentId}`, body: { version: 0 } },
+      { method: 'POST', pathname: '/api/v1/business-objects', body: { code: 'X' } },
+      {
+        method: 'POST',
+        pathname: `/api/v1/business-objects/${definitionId}/versions`,
+        body: { unexpected: true },
+      },
+      {
+        method: 'POST',
+        pathname: '/api/v1/operations/events/claims',
+        body: { consumer: 'c', worker: 'w', limit: 0 },
+      },
+      {
+        method: 'POST',
+        pathname: `/api/v1/operations/events/${eventId}/complete`,
+        body: { consumer: 'c', claimToken: 'bad' },
+      },
+    ];
+    for (const request of invalidRequests) {
+      const response = await app.dispatch({
+        ...request,
+        headers: { authorization: 'Bearer token', 'idempotency-key': 'invalid-key' },
+      });
+      expect(response.statusCode, `${request.method} ${request.pathname}`).toBe(400);
+      expect(response.body).toMatchObject({ error: { code: 'invalid_request' } });
+      expect(
+        (response.body as { error: { message: string } }).error.message.length,
+      ).toBeGreaterThan(0);
+    }
   });
 });
 

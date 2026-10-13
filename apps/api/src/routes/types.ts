@@ -2,11 +2,18 @@ import type { ApiRequest, ApiResponse } from '../app.ts';
 
 export type RouteMatch = Readonly<{ params: readonly string[] }>;
 export type RouteValidator<Input> = (request: ApiRequest, match: RouteMatch) => Input;
-export type RouteHandler<Input> = (
-  request: ApiRequest,
-  match: RouteMatch,
-  input: Input,
-) => Promise<ApiResponse> | ApiResponse;
+type BivariantHandler<Input> = {
+  bivarianceHack(
+    request: ApiRequest,
+    match: RouteMatch,
+    input: Input,
+  ): Promise<ApiResponse> | ApiResponse;
+}['bivarianceHack'];
+export type RouteHandler<Input> = BivariantHandler<Input>;
+/*
+ * Handler input is intentionally bivariant so a heterogeneous route table can
+ * be stored behind an unknown boundary without any or unsafe casts.
+ */
 
 export type RouteDefinition<Input = unknown> = Readonly<{
   method: string;
@@ -19,8 +26,8 @@ export function defineRoute<Input>(definition: RouteDefinition<Input>): RouteDef
   return definition;
 }
 
-export async function dispatchRoutes<Input>(
-  routes: readonly RouteDefinition<Input>[],
+export async function dispatchRoutes(
+  routes: readonly RouteDefinition[],
   request: ApiRequest,
 ): Promise<ApiResponse | null> {
   for (const route of routes) {
@@ -28,7 +35,7 @@ export async function dispatchRoutes<Input>(
     const match = route.match(request.pathname);
     if (!match) continue;
     const input = route.validate ? route.validate(request, match) : undefined;
-    return route.handler(request, match, input as Input);
+    return route.handler(request, match, input);
   }
   return null;
 }
