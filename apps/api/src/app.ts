@@ -94,6 +94,7 @@ import { customerLifecycleRoutes } from './routes/customer-lifecycle.ts';
 import { customer360Routes } from './routes/customer-360.ts';
 import { customerContactRoutes } from './routes/customer-contacts.ts';
 import { leadListRoutes, leadCreateRoutes, leadPoolRoutes } from './routes/lead-base.ts';
+import { leadClaimRoutes } from './routes/lead-claim.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -3468,31 +3469,18 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
         if (request.method === 'POST' && claimMatch) {
           if (!dependencies.crm)
             return error(503, 'internal_error', 'CRM dependency unavailable', correlationId);
-          const grant = authorizeQuery(context, 'lead-pool:claim');
-          const key = request.headers?.['idempotency-key'];
-          if (!key || key.length > 128)
-            throw new DomainError(
-              'invalid_request',
-              'Idempotency-Key is required and must be at most 128 characters',
-            );
-          const b = objectBody(request.body);
-          allow(b, ['expectedVersion']);
-          return {
-            statusCode: 200,
-            body: mutationDto(
-              await dependencies.crm.claimLead(
-                uuid(claimMatch[1], 'leadId'),
-                expectedVersion(b.expectedVersion),
-                context.actor,
-                correlationId,
-                key,
-                grant.scopes,
-                grant.anchors,
-              ),
-              context,
-              'lead:read',
-            ),
-          };
+          const leadClaimResponse = await dispatchRoutes(
+            leadClaimRoutes({
+              repository: dependencies.crm,
+              authorization: context,
+              correlationId,
+              authorize: (capability) => authorizeQuery(context, capability),
+              mutationDto: (value) => mutationDto(value, context, 'lead:read'),
+              parsers: { objectBody, allow, uuid, expectedVersion },
+            }),
+            request,
+          );
+          if (leadClaimResponse) return leadClaimResponse;
         }
         const leadActionMatch =
           /^\/api\/v1\/leads\/([0-9a-f-]+)\/(transition|assign|reassign|release)$/u.exec(
