@@ -35,6 +35,12 @@ import {
   ruleDefinitionVersionRoutes,
 } from './routes/rule-definitions.ts';
 import {
+  workflowDefinitionListRoutes,
+  workflowDefinitionCreateRoutes,
+  workflowDefinitionVersionRoutes,
+  workflowDefinitionPublishRoutes,
+} from './routes/workflow-definitions.ts';
+import {
   numberDefinitionListRoutes,
   numberDefinitionCreateRoutes,
   numberDefinitionPublishRoutes,
@@ -4084,25 +4090,29 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           authorizeQuery(context, 'workflow:read');
           if (!dependencies.workflows)
             return error(503, 'internal_error', 'Workflow repository unavailable', correlationId);
-          return {
-            statusCode: 200,
-            body: { items: await dependencies.workflows.list(context.actor.companyId) },
-          };
+          const response = await dispatchRoutes(
+            workflowDefinitionListRoutes({
+              repository: dependencies.workflows,
+              actor: context.actor,
+            }),
+            request,
+          );
+          if (response !== null) return response;
         }
         if (request.pathname === '/api/v1/workflows' && request.method === 'POST') {
           authorizeQuery(context, 'workflow:create');
           if (!dependencies.workflows)
             return error(503, 'internal_error', 'Workflow repository unavailable', correlationId);
-          const b = objectBody(request.body);
-          allow(b, ['code', 'spec']);
-          return {
-            statusCode: 201,
-            body: await dependencies.workflows.create(
-              { code: assertStableCode(string(b.code, 'code')), spec: objectBody(b.spec) as never },
-              context.actor,
+          const response = await dispatchRoutes(
+            workflowDefinitionCreateRoutes({
+              repository: dependencies.workflows,
+              actor: context.actor,
               correlationId,
-            ),
-          };
+              parsers: { objectBody, allow, string, stableCode: assertStableCode },
+            }),
+            request,
+          );
+          if (response !== null) return response;
         }
         const workflowVersion = /^\/api\/v1\/workflows\/([0-9a-f-]+)\/versions$/u.exec(
           request.pathname,
@@ -4111,17 +4121,16 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           authorizeQuery(context, 'workflow:update');
           if (!dependencies.workflows)
             return error(503, 'internal_error', 'Workflow repository unavailable', correlationId);
-          const b = objectBody(request.body);
-          allow(b, ['spec']);
-          return {
-            statusCode: 201,
-            body: await dependencies.workflows.createVersion(
-              uuid(workflowVersion[1], 'workflowId'),
-              objectBody(b.spec) as never,
-              context.actor,
+          const response = await dispatchRoutes(
+            workflowDefinitionVersionRoutes({
+              repository: dependencies.workflows,
+              actor: context.actor,
               correlationId,
-            ),
-          };
+              parsers: { objectBody, allow, uuid },
+            }),
+            request,
+          );
+          if (response !== null) return response;
         }
         const workflowPublish = /^\/api\/v1\/workflows\/([0-9a-f-]+)\/publish$/u.exec(
           request.pathname,
@@ -4130,17 +4139,16 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           authorizeQuery(context, 'workflow:update');
           if (!dependencies.workflows)
             return error(503, 'internal_error', 'Workflow repository unavailable', correlationId);
-          const b = objectBody(request.body);
-          allow(b, ['version']);
-          return {
-            statusCode: 200,
-            body: await dependencies.workflows.publish(
-              uuid(workflowPublish[1], 'workflowId'),
-              version(b.version),
-              context.actor,
+          const response = await dispatchRoutes(
+            workflowDefinitionPublishRoutes({
+              repository: dependencies.workflows,
+              actor: context.actor,
               correlationId,
-            ),
-          };
+              parsers: { objectBody, allow, uuid, version },
+            }),
+            request,
+          );
+          if (response !== null) return response;
         }
         const workflowStart = /^\/api\/v1\/workflows\/([0-9a-f-]+)\/instances$/u.exec(
           request.pathname,
