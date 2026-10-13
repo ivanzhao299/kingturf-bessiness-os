@@ -33,7 +33,7 @@
 
 - 现有 CI **有效且未腐烂**：`ci.yml` 执行的 `pnpm ci:local` 与根 `package.json:29` 的脚本一致，且可在本地一条命令复现（install → format:check → frontend-capabilities → database guard → migrate → status → lint → typecheck → test → build → security:check）。
 - `deploy-production.yml` 是事实上的发布链路：**无 tag 触发、无 GitHub Release、无产物上传**；发布标识 = commit SHA（`KINGTURF_RELEASE_SHA` 注入，`/version` 端点回显并部署后校验）。
-- 全部 package.json `version` 为 `0.0.0` 占位，无语义化版本管理（已登记 TD-VER-001，属待人工决策 D2）。
+- 全部 package.json `version` 为 `0.0.0` 占位；人工决策 D2（2026-10-13）确认继续使用 commit SHA 作为唯一发布标识，不引入语义化版本替代链路，规则 §6.1 版本声明一致性在本项目标记为不适用。
 
 ## 3. 交互确认记录（仅 Tauri 填写）
 
