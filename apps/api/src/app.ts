@@ -60,6 +60,8 @@ import type { PostgresBusinessDocumentRepository } from './business-document-rep
 import type { PostgresContractDocumentRepository } from './contract-document-repositories.ts';
 import type { PostgresWebsiteLeadIngestor } from './website-lead-ingest.ts';
 import { dispatchFoundationRoutes, foundationRoutes } from './routes/foundation.ts';
+import { credentialRoutes, loginRoutes, sessionRoutes } from './routes/auth.ts';
+import { dispatchRoutes } from './routes/types.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -407,26 +409,13 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             'Application dependencies are unavailable',
             correlationId,
           );
-        if (request.method === 'POST' && request.pathname === '/api/v1/auth/login') {
-          const body = objectBody(request.body);
-          const result = await dependencies.auth.login(
-            string(body.login, 'login'),
-            string(body.password, 'password'),
-            correlationId,
-          );
-          return result
-            ? { statusCode: 200, body: result }
-            : {
-                statusCode: 401,
-                body: {
-                  error: {
-                    code: 'authentication_required',
-                    message: 'Invalid credentials',
-                    correlationId,
-                  },
-                },
-              };
-        }
+        const authRouteContext = {
+          auth: dependencies.auth,
+          correlationId,
+          parsers: { objectBody, string, allow },
+        };
+        const loginResponse = await dispatchRoutes(loginRoutes(authRouteContext), request);
+        if (loginResponse) return loginResponse;
         if (
           request.method === 'POST' &&
           request.pathname === '/api/v1/integrations/website/leads'
@@ -486,28 +475,14 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           request,
         );
         if (foundationResponse) return foundationResponse;
-        if (request.method === 'POST' && request.pathname === '/api/v1/auth/logout') {
-          await dependencies.auth.logout(token, context, correlationId);
-          return { statusCode: 204, body: {} };
-        }
-        if (request.method === 'GET' && request.pathname === '/api/v1/auth/session') {
-          const profile = await dependencies.employees.findById(
-            context.actor.employeeId,
-            context.actor.companyId,
-            ['SELF'],
-            context.actor.employeeId,
-          );
-          return {
-            statusCode: 200,
-            body: {
-              employeeId: context.actor.employeeId,
-              companyId: context.actor.companyId,
-              displayName: profile?.displayName ?? null,
-              employeeNumber: profile?.employeeNumber ?? null,
-              permissions: [...context.permissions.keys()].sort(),
-            },
-          };
-        }
+        const securedAuthContext = {
+          ...authRouteContext,
+          token,
+          authorization: context,
+          employees: dependencies.employees,
+        };
+        const sessionResponse = await dispatchRoutes(sessionRoutes(securedAuthContext), request);
+        if (sessionResponse) return sessionResponse;
         if (dependencies.manufacturing) {
           const manufacturingLists: Readonly<
             Record<string, readonly ['items' | 'boms' | 'routings', PermissionKey] | undefined>
@@ -3039,18 +3014,11 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             body: permittedDto(body, context.permissions.get('order-360:read')?.fields ?? null),
           };
         }
-        if (request.method === 'PUT' && request.pathname === '/api/v1/auth/credential') {
-          const body = objectBody(request.body);
-          allow(body, ['currentPassword', 'password']);
-          await dependencies.auth.changePassword(
-            context,
-            string(body.currentPassword, 'currentPassword'),
-            string(body.password, 'password'),
-            token,
-            correlationId,
-          );
-          return { statusCode: 204, body: {} };
-        }
+        const credentialResponse = await dispatchRoutes(
+          credentialRoutes(securedAuthContext),
+          request,
+        );
+        if (credentialResponse) return credentialResponse;
         const identityProvisionMatch = /^\/api\/v1\/employees\/([0-9a-f-]+)\/identity$/u.exec(
           request.pathname,
         );
