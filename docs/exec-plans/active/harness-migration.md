@@ -6,7 +6,7 @@
 - **分支**：`harnessing`（自 main 派生；按规则 §7.1 禁止直接在主干改造）
 - **计划版本 / 日期**：v1.3 / 2026-10-12（v1.2 经第三轮人工审核修订：修复 §3.8 S11 表格裸管道、覆盖率验收语义收紧为目标值硬条件、S11 表述改为启发式口径）
 - **扫描基线**：commit `779dea3`（同步 origin/main 后）
-- **状态**：**批次 1 与 2a 已获人工验收；2b 进行中：auth/identity provisioning/IAM/profiles/identity-state/collection及commercial已迁移并整体协调复核通过。商业最终14b841c完整CI通过（API1255），独立872用例/38method-path、39语义与12模块映射确认；不等于2b整批通过。complaint设计及①SLA/②reads已整体协调确认（②独立1003、最终fa47d48 API1386）；本轮仅③create POST，108旧契约已通过、尚未提取；其余15入口及crm/platform/production/production-startup/qtc/website-lead-ingest等后续待执行。2b 整批尚未获人类验收。**
+- **状态**：**批次 1 与 2a 已获人工验收；2b 进行中：auth/identity provisioning/IAM/profiles/identity-state/collection及commercial已迁移并整体协调复核通过。商业最终14b841c完整CI通过（API1255），独立872用例/38method-path、39语义与12模块映射确认；不等于2b整批通过。complaint设计及①SLA/②reads已整体协调确认（②独立1003、最终fa47d48 API1386）；本轮仅③create POST已提取并本地验证通过（固定108、API1494），待协调小步复核；其余15入口及crm/platform/production/production-startup/qtc/website-lead-ingest等后续待执行。2b 整批尚未获人类验收。**
 - **规则文档**：`docs/HARNESS-RULES.md`（施工期常驻，竣工验收后按 §14 拆解归档）
 - **配套文件**：问题清单 `docs/exec-plans/tech-debt-tracker.md`（34 条）；CI 决策 `docs/CI.md`；度量脚本 `scripts/analysis/repo-metrics.mjs`
 
@@ -243,7 +243,9 @@ packages/{types, ui, config, testing} → 零依赖
 
 **当前边界与否定证据**：快照 `app.ts:3486` 机会dispatcher至 `:3692` quote-command接线、`:3693` CRM matcher；商业区现在仅工厂/共享dispatcher及parser/授权/DTO注入。全 `apps/api/src/app.ts` 执行 `rg -n 'dependencies\.commercial|commercial\.(list|find|create|update|transition|submit|approve|issue|evaluate|calculate|add|link|get)' apps/api/src/app.ts`，命中均为repository注入/存在性guard，未找到历史商业范围的旧内联仓储业务调用。共享解析/DTO helper不是残留成功分支；CRM之后的域外业务不在本结论范围。scout与独立reviewer只读核验，不运行DB/构建。本表不结清整批债务，不表示2b验收，**商业整体已协调复核通过：独立17文件872/872、最终14b841c完整CI退出码0及38/39映射核验；不等于2b整批验收**。
 
-#### 4.2.2 complaint 全域盘点与分步设计（基线 14b841c，①②已协调确认，③create进行中）
+#### 4.2.2 complaint 全域盘点与分步设计（基线 14b841c，①②已协调确认，③create待复核）
+
+**③实施当前快照**：旧test30946c4固定108契约，代码2157786只原一个exact POST条件/一method-path/一语义与createComplaint一调用提取为complaint-create.ts一defineRoute（73）；app1670–1689仅reads后/batch前上下文/dispatch，batch现1690起，剩余15入口原文不动。窄CreateInput与显式双string后双enum比较静态收窄，保持O→allow17→create/bodykeys授权→channel string→severity string→channel enum→severity enum→完整input顺序，五optional truthy省略、mandatory snapshot/body stable-key最后、header不参与，handler仅原receiver/R/C+201共享read mutationDto。app5242→5196、模块116行，creationInput26–69共44行/routes71–116共46行，人工控制流嵌套≤5；无any/多余断言/新库/请求间可变状态，不声称门禁已实现AST函数长度强制。108固定预期与旧SLA/reads/商业零diff，前后相关22文件1117/1117、complaint PG4/4，typecheck/lint及独立reviewer通过；完整ci:local退出码0，API62文件1494/1494。下方各历史批准/快照保留原时点；③待协调复核，④batch与其余域未实施。
 
 **③当前批准/②整体确认**：78230f4/日志fa47d48已协调新旧静态与独立reviewer复核通过，6d3fe94冻结70无diff；协调亲跑19文件1003/1003，最终fa47d48完整ci:local退出码0（API61文件1386/1386、complaint PG前后4/4、结构0违规31豁免及其余门禁/audit全绿）。本轮仅批准③exact POST create；fa47d48旧内联108契约、相关22文件1117/1117、PG4/4、guard/迁移状态/typecheck/lint已通过，旧test先独立提交，再守恒提取。下方①②映射、盘点和日志为各历史时点快照，旧“待复核/不实施③”不否定本段新批准；历史14b841c计数/行号不改。SLA/reads已迁移不重做，剩余15入口（含高风险④batch）不实施。
 
@@ -409,6 +411,8 @@ packages/{types, ui, config, testing} → 零依赖
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+2026-10-13，2b-complaint③create收尾：[已测试] 基线fa47d48，旧test `30946c4`，代码 `2157786`。仅exact POST /complaints一个条件/一method-path/一语义/createComplaint一调用迁入complaint-create.ts一显式defineRoute，原guard内reads后/batch前dispatch未匹配null继续；缺repo整skip404/global401/SLA/reads/后续15入口不变。validate保留objectBody→17allow→create/Object.keys授权→channel string→severity string→六值channel enum→四值severity enum，再input依number stable/customer UUID/四optional truthy UUID/SLA UUID/已解析channel/defect string/已解析severity/两timestamp/description/customerRequest/optional assigned UUID/mandatory snapshot/body stable key全序列。纯相等比较与原includes对已解析string等价，显式CreateInput返回无断言/any；falsey optional仍参与字段授权，输入省略而非null，snapshot不默认，header不读/无fallback，日期和长度/关系不加强。handler原receiver/input/R/correlation→201共享complaint:read mutationDto。旧108首跑已通过并独立提交，迁移后预期零diff，SLA61/reads70及商业全部冻结预期不改；前后相关22文件1117/1117、complaint PG各4/4、guard/迁移状态/typecheck/lint通过。独立reviewer旧护栏与源码对照无必要问题；本小步无失败/偏差。完整ci:local退出码0（API62文件1494/1494、complaint PG4/4、auth/IAM HTTP PG各19、format/doc-lint103/structure强制0豁免31/release guardrails/typecheck/lint/build/security全绿）；最终日志HEAD须完整复验并在交接报告确认退出码。app5242→5196、模块116行/最大职责函数46/人工嵌套≤5，不宣称AST长度强制已实现。仓储/SQL/DB/scope-sql/SLA/reads/dispatcher/types/门禁/packages/workflow零diff；TD-SEC-006/TD-BOUND-003保持，不修行为/不结清整批债务。③待协调小步复核，停等④batch高风险独立小步续派，不启动④/其余域/2c；未跑E2E、未push/部署/生产操作。回滚：`git revert 2157786`恢复旧create内联；30946c4旧契约/②协调确认与本日志可独立revert。
 
 2026-10-13，②reads整体协调确认/③create旧护栏：78230f4/fa47d48已协调复核通过，6d3fe94旧70冻结无diff，新旧解析/授权/参数/DTO/raw cursor经独立reviewer无阻塞；协调亲跑19文件1003/1003，最终fa47d48完整CI退出码0（API61文件1386/1386、complaint PG前后4/4、结构0违规31豁免及其他门禁/audit全绿）。本轮仅③exact POST /complaints。新固定旧108契约在fa47d48内联实现首跑全通过，相关22文件1117/1117、PG4/4、guard/迁移状态/typecheck/lint通过，独立reviewer无必要缺口。冻结body→allow17→fieldauth、双string先双enum与全input首错顺序、五optional falsey省略仍授权/缺键不请求字段、必需snapshot、最后body stable-key且header无fallback、原receiver/R/C/201独立readDTO、401404与邻接envelope。业务源码零diff，旧test独立提交后不改预期；后续实现/全CI/回滚点另记。旧盘点/日志时点保留，剩余15入口不动，不修TD-SEC-006/TD-BOUND-003、不结清整批债务，无push/部署/生产/workflow操作。
 
