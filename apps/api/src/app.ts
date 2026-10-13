@@ -90,6 +90,7 @@ import { capaActionRoutes } from './routes/capa-actions.ts';
 import { capaLifecycleRoutes } from './routes/capa-lifecycle.ts';
 import { customerCollectionRoutes, customerDetailRoutes } from './routes/customer-base.ts';
 import { customerOwnershipRoutes } from './routes/customer-ownership.ts';
+import { customerActivityRoutes } from './routes/customer-activities.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -3364,49 +3365,18 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             request,
           );
           if (customerOwnershipResponse) return customerOwnershipResponse;
-          if (request.method === 'POST' && id && nested === 'activities') {
-            const grant = authorizeQuery(context, 'customer-activity:create', [
-              'leadId',
-              'type',
-              'occurredAt',
-              'summary',
-              'details',
-            ]);
-            const key = request.headers?.['idempotency-key'];
-            if (!key || key.length > 128)
-              throw new DomainError(
-                'invalid_request',
-                'Idempotency-Key is required and must be at most 128 characters',
-              );
-            const b = objectBody(request.body);
-            allow(b, ['leadId', 'type', 'occurredAt', 'summary', 'details']);
-            const details = (
-              b.details === undefined ? {} : objectBody(b.details)
-            ) as import('@kingturf/types').JsonObject;
-            return {
-              statusCode: 201,
-              body: mutationDto(
-                await dependencies.crm.createActivity(
-                  uuid(id, 'customerId'),
-                  {
-                    leadId:
-                      b.leadId === null || b.leadId === undefined ? null : uuid(b.leadId, 'leadId'),
-                    type: string(b.type, 'type'),
-                    occurredAt: timestamp(b.occurredAt, 'occurredAt'),
-                    summary: string(b.summary, 'summary'),
-                    details,
-                  },
-                  context.actor,
-                  correlationId,
-                  key,
-                  grant.scopes,
-                  grant.anchors,
-                ),
-                context,
-                'customer-activity:read',
-              ),
-            };
-          }
+          const customerActivityResponse = await dispatchRoutes(
+            customerActivityRoutes({
+              repository: dependencies.crm,
+              authorization: context,
+              correlationId,
+              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
+              mutationDto: (value) => mutationDto(value, context, 'customer-activity:read'),
+              parsers: { objectBody, allow, uuid, string, timestamp },
+            }),
+            request,
+          );
+          if (customerActivityResponse) return customerActivityResponse;
           if (request.method === 'PATCH' && id && !nested) {
             const grant = authorizeQuery(context, 'customer:lifecycle', ['status', 'reason']);
             const b = objectBody(request.body);
