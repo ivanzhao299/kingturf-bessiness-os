@@ -70,6 +70,7 @@ import { dispatchOpportunityRoutes } from './routes/opportunities.ts';
 import { commercialNestedReadRoutes } from './routes/commercial-nested-reads.ts';
 import { commercialViewRoutes } from './routes/commercial-views.ts';
 import { ctrRoutes } from './routes/ctr.ts';
+import { technicalSolutionRoutes } from './routes/technical-solutions.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -3542,58 +3543,19 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           );
           if (ctrResponse) return ctrResponse;
         }
-        if (
-          request.method === 'POST' &&
-          request.pathname === '/api/v1/technical-solutions' &&
-          dependencies.commercial
-        ) {
-          const body = objectBody(request.body);
-          allow(body, [
-            'opportunityId',
-            'code',
-            'ctrVersionId',
-            'specification',
-            'assumptions',
-            'final',
-          ]);
-          const grant = authorizeQuery(context, 'technical-solution:create', Object.keys(body));
-          const result = await dependencies.commercial.createTechnicalSolution(
-            {
-              opportunityId: uuid(body.opportunityId, 'opportunityId'),
-              code: string(body.code, 'code'),
-              ctrVersionId: uuid(body.ctrVersionId, 'ctrVersionId'),
-              specification: jsonObject(body.specification, 'specification'),
-              assumptions: strings(body.assumptions, 'assumptions'),
-              final: body.final === true,
-            },
-            context.actor,
-            grant.scopes,
-            grant.anchors,
-            correlationId,
+        if (dependencies.commercial) {
+          const solutionResponse = await dispatchRoutes(
+            technicalSolutionRoutes({
+              repository: dependencies.commercial,
+              authorization: context,
+              correlationId,
+              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
+              mutationDto: (value) => mutationDto(value, context, 'technical-solution:read'),
+              parsers: { objectBody, allow, uuid, string, jsonObject, strings },
+            }),
+            request,
           );
-          return { statusCode: 201, body: mutationDto(result, context, 'technical-solution:read') };
-        }
-        const solutionRevision = /^\/api\/v1\/technical-solutions\/([0-9a-f-]+)\/revisions$/u.exec(
-          request.pathname,
-        );
-        if (request.method === 'POST' && solutionRevision && dependencies.commercial) {
-          const body = objectBody(request.body);
-          allow(body, ['ctrVersionId', 'specification', 'assumptions', 'final']);
-          const grant = authorizeQuery(context, 'technical-solution:update', Object.keys(body));
-          const result = await dependencies.commercial.createTechnicalSolutionRevision(
-            uuid(solutionRevision[1], 'technicalSolutionId'),
-            {
-              ctrVersionId: uuid(body.ctrVersionId, 'ctrVersionId'),
-              specification: jsonObject(body.specification, 'specification'),
-              assumptions: strings(body.assumptions, 'assumptions'),
-              final: body.final === true,
-            },
-            context.actor,
-            grant.scopes,
-            grant.anchors,
-            correlationId,
-          );
-          return { statusCode: 201, body: mutationDto(result, context, 'technical-solution:read') };
+          if (solutionResponse) return solutionResponse;
         }
         if (
           request.method === 'GET' &&
