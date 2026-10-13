@@ -66,6 +66,7 @@ import { identityProvisionRoutes } from './routes/identity-provision.ts';
 import { dispatchAuthorizationRoutes } from './routes/authorization.ts';
 import { identityAccessRoutes } from './routes/identity-access.ts';
 import { collectionRoutes } from './routes/collection.ts';
+import { dispatchOpportunityRoutes } from './routes/opportunities.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -3471,139 +3472,32 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             return { statusCode: 201, body: mutationDto(result, context, 'commission:read') };
           }
         }
-        const opportunityMatch = /^\/api\/v1\/opportunities(?:\/([0-9a-f-]+))?$/u.exec(
-          request.pathname,
+        const opportunityResponse = await dispatchOpportunityRoutes(
+          {
+            repository: dependencies.commercial,
+            authorization: context,
+            correlationId,
+            authorize: (capability, fields) => authorizeQuery(context, capability, fields),
+            unavailable: () =>
+              error(503, 'internal_error', 'Commercial dependency unavailable', correlationId),
+            notFound: () => error(404, 'not_found', 'Opportunity not found', correlationId),
+            permittedDto: (value) =>
+              permittedDto(value, context.permissions.get('opportunity:read')?.fields ?? null),
+            mutationDto: (value) => mutationDto(value, context, 'opportunity:read'),
+            parsers: {
+              objectBody,
+              allow,
+              string,
+              uuid,
+              decimal,
+              currency,
+              integer,
+              expectedVersion,
+            },
+          },
+          request,
         );
-        if (opportunityMatch) {
-          if (!dependencies.commercial)
-            return error(503, 'internal_error', 'Commercial dependency unavailable', correlationId);
-          const id = opportunityMatch[1];
-          if (request.method === 'GET') {
-            const grant = authorizeQuery(context, 'opportunity:read');
-            if (!id)
-              return {
-                statusCode: 200,
-                body: {
-                  items: (
-                    await dependencies.commercial.listOpportunities(
-                      context.actor,
-                      grant.scopes,
-                      grant.anchors,
-                    )
-                  ).map((item) =>
-                    permittedDto(item, context.permissions.get('opportunity:read')?.fields ?? null),
-                  ),
-                },
-              };
-            const item = await dependencies.commercial.findOpportunity(
-              uuid(id, 'opportunityId'),
-              context.actor,
-              grant.scopes,
-              grant.anchors,
-            );
-            return item
-              ? {
-                  statusCode: 200,
-                  body: permittedDto(
-                    item,
-                    context.permissions.get('opportunity:read')?.fields ?? null,
-                  ),
-                }
-              : error(404, 'not_found', 'Opportunity not found', correlationId);
-          }
-          const body = objectBody(request.body);
-          if (request.method === 'POST' && !id) {
-            allow(body, [
-              'customerId',
-              'leadId',
-              'name',
-              'value',
-              'currency',
-              'probabilityBasisPoints',
-              'expectedCloseDate',
-            ]);
-            authorizeQuery(context, 'opportunity:create', Object.keys(body));
-            const result = await dependencies.commercial.createOpportunity(
-              {
-                customerId: body.customerId === null ? null : uuid(body.customerId, 'customerId'),
-                leadId: body.leadId === null ? null : uuid(body.leadId, 'leadId'),
-                name: string(body.name, 'name'),
-                value: decimal(body.value, 'value'),
-                currency: currency(body.currency),
-                probabilityBasisPoints: integer(
-                  body.probabilityBasisPoints,
-                  'probabilityBasisPoints',
-                  0,
-                  10000,
-                ),
-                expectedCloseDate: string(body.expectedCloseDate, 'expectedCloseDate'),
-              },
-              context.actor,
-              correlationId,
-            );
-            return { statusCode: 201, body: mutationDto(result, context, 'opportunity:read') };
-          }
-          if (request.method === 'PATCH' && id) {
-            const transition = body.status !== undefined;
-            allow(
-              body,
-              transition
-                ? ['status', 'reason', 'expectedVersion']
-                : [
-                    'name',
-                    'value',
-                    'currency',
-                    'probabilityBasisPoints',
-                    'expectedCloseDate',
-                    'expectedVersion',
-                  ],
-            );
-            const capability = transition ? 'opportunity:lifecycle' : 'opportunity:update';
-            const grant = authorizeQuery(
-              context,
-              capability,
-              Object.keys(body).filter((key) => key !== 'expectedVersion' && key !== 'reason'),
-            );
-            const result = transition
-              ? await dependencies.commercial.transitionOpportunity(
-                  uuid(id, 'opportunityId'),
-                  string(body.status, 'status') as never,
-                  string(body.reason, 'reason'),
-                  expectedVersion(body.expectedVersion),
-                  context.actor,
-                  grant.scopes,
-                  grant.anchors,
-                  correlationId,
-                )
-              : await dependencies.commercial.updateOpportunity(
-                  uuid(id, 'opportunityId'),
-                  {
-                    ...(body.name === undefined ? {} : { name: string(body.name, 'name') }),
-                    ...(body.value === undefined ? {} : { value: decimal(body.value, 'value') }),
-                    ...(body.currency === undefined ? {} : { currency: currency(body.currency) }),
-                    ...(body.probabilityBasisPoints === undefined
-                      ? {}
-                      : {
-                          probabilityBasisPoints: integer(
-                            body.probabilityBasisPoints,
-                            'probabilityBasisPoints',
-                            0,
-                            10000,
-                          ),
-                        }),
-                    ...(body.expectedCloseDate === undefined
-                      ? {}
-                      : { expectedCloseDate: string(body.expectedCloseDate, 'expectedCloseDate') }),
-                  },
-                  expectedVersion(body.expectedVersion),
-                  context.actor,
-                  grant.scopes,
-                  grant.anchors,
-                  correlationId,
-                );
-            return { statusCode: 200, body: mutationDto(result, context, 'opportunity:read') };
-          }
-        }
+        if (opportunityResponse) return opportunityResponse;
         const opportunityCtrs = /^\/api\/v1\/opportunities\/([0-9a-f-]+)\/ctrs$/u.exec(
           request.pathname,
         );
