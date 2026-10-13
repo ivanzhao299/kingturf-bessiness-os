@@ -24,7 +24,7 @@ import {
   type OperationalLogger,
   type Telemetry,
 } from '@kingturf/domain';
-import { DATA_SCOPES, type DataScope, type ErrorCode, type PermissionKey } from '@kingturf/types';
+import type { ErrorCode, PermissionKey } from '@kingturf/types';
 import { authorizeQuery } from './policy.ts';
 import type { AuthenticationService } from './security.ts';
 import type {
@@ -63,6 +63,7 @@ import { dispatchFoundationRoutes, foundationRoutes } from './routes/foundation.
 import { credentialRoutes, loginRoutes, sessionRoutes } from './routes/auth.ts';
 import { dispatchRoutes } from './routes/types.ts';
 import { identityProvisionRoutes } from './routes/identity-provision.ts';
+import { dispatchAuthorizationRoutes } from './routes/authorization.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -227,7 +228,6 @@ const bearer = (headers: Readonly<Record<string, string | undefined>>): string |
   return value.slice(7);
 };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
-const CAPABILITY = /^[a-z][a-z0-9_.-]*:[a-z][a-z0-9_.-]*$/u;
 const correlation = (value: string | undefined): string =>
   value && UUID.test(value) ? value : randomUUID();
 const uuid = (value: unknown, name: string): string => {
@@ -377,13 +377,6 @@ const effectiveRange = (body: Record<string, unknown>) => {
   assertEffectiveRange(effectiveFrom, effectiveTo);
   return { effectiveFrom, effectiveTo };
 };
-const scopes = (value: unknown): readonly DataScope[] => {
-  const values = strings(value, 'scopes');
-  if (values.length === 0 || values.some((v) => !DATA_SCOPES.includes(v as DataScope)))
-    throw new DomainError('invalid_request', 'scopes contains an unsupported DataScope');
-  return values as DataScope[];
-};
-
 export function buildApp(dependencies?: ApiDependencies): ApiApplication {
   const telemetry = dependencies?.telemetry ?? NOOP_TELEMETRY;
   const application: Pick<ApiApplication, 'dispatch'> = {
@@ -5148,175 +5141,26 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             return { statusCode: 200, body: updated };
           }
         }
-        const authorizationMatch =
-          /^\/api\/v1\/(roles|permissions|grants|assignments|scope-grants)(?:\/([0-9a-f-]+))?$/u.exec(
-            request.pathname,
-          );
-        if (authorizationMatch) {
-          const resource = authorizationMatch[1];
-          const atomicCapability: PermissionKey =
-            resource === 'roles'
-              ? `role:${request.method === 'GET' ? 'read' : 'manage'}`
-              : resource === 'permissions'
-                ? `permission:${request.method === 'GET' ? 'read' : 'manage'}`
-                : resource === 'assignments'
-                  ? `role-assignment:${request.method === 'GET' ? 'read' : 'manage'}`
-                  : resource === 'scope-grants'
-                    ? `data-scope:${request.method === 'GET' ? 'read' : 'manage'}`
-                    : `role:${request.method === 'GET' ? 'read' : 'manage'}`;
-          authorizeOneOf(
-            context,
-            atomicCapability,
-            `authorization:${request.method === 'GET' ? 'read' : 'manage'}`,
-          );
-          const repository = dependencies.authorization;
-          if (!repository)
-            return error(
-              503,
-              'internal_error',
-              'Authorization repository is unavailable',
-              correlationId,
-            );
-          const b =
-            request.method === 'GET' ||
-            (request.method === 'DELETE' && Boolean(authorizationMatch[2]))
-              ? {}
-              : objectBody(request.body);
-          const itemId = authorizationMatch[2];
-          if (resource === 'roles' && !itemId) {
-            if (request.method === 'GET')
-              return { statusCode: 200, body: await repository.listRoles(context.actor.companyId) };
-            if (request.method === 'POST') {
-              allow(b, ['code', 'name']);
-              return {
-                statusCode: 201,
-                body: await repository.createRole(
-                  { code: string(b.code, 'code'), name: string(b.name, 'name') },
-                  context.actor,
-                  correlationId,
-                ),
-              };
-            }
-          }
-          if (resource === 'permissions' && !itemId) {
-            if (request.method === 'GET')
-              return { statusCode: 200, body: await repository.listPermissions() };
-            if (request.method === 'POST') {
-              allow(b, ['capability', 'description']);
-              const value = string(b.capability, 'capability');
-              if (!CAPABILITY.test(value))
-                throw new DomainError(
-                  'invalid_request',
-                  'capability must use resource:action syntax',
-                );
-              return {
-                statusCode: 201,
-                body: await repository.createPermission(
-                  {
-                    capability: value as PermissionKey,
-                    description: string(b.description, 'description'),
-                  },
-                  context.actor,
-                  correlationId,
-                ),
-              };
-            }
-          }
-          if (resource === 'grants' && !itemId) {
-            if (request.method === 'GET')
-              return {
-                statusCode: 200,
-                body: await repository.listGrants(context.actor.companyId),
-              };
-            allow(b, ['roleId', 'permissionId', 'scopes', 'fields']);
-            const roleId = uuid(b.roleId, 'roleId'),
-              permissionId = uuid(b.permissionId, 'permissionId');
-            if (request.method === 'POST') {
-              const fields =
-                b.fields === null || b.fields === undefined ? null : strings(b.fields, 'fields');
-              if (fields?.some((field) => !/^[A-Za-z][A-Za-z0-9]*$/u.test(field)))
-                throw new DomainError(
-                  'invalid_request',
-                  'fields contains an unsupported field name',
-                );
-              await repository.grant(
-                { roleId, permissionId, scopes: scopes(b.scopes), fields },
-                context.actor,
+        const authorizationResponse = await dispatchAuthorizationRoutes(
+          {
+            repository: dependencies.authorization,
+            authorization: context,
+            correlationId,
+            authorizeOneOf: (preferred, fallback) => {
+              authorizeOneOf(context, preferred, fallback);
+            },
+            unavailable: () =>
+              error(
+                503,
+                'internal_error',
+                'Authorization repository is unavailable',
                 correlationId,
-              );
-              return { statusCode: 204, body: {} };
-            }
-            if (request.method === 'DELETE') {
-              await repository.revoke(roleId, permissionId, context.actor, correlationId);
-              return { statusCode: 204, body: {} };
-            }
-          }
-          if (resource === 'assignments' && !itemId) {
-            if (request.method === 'GET')
-              return {
-                statusCode: 200,
-                body: await repository.listAssignments(context.actor.companyId),
-              };
-            allow(b, ['employeeId', 'roleId']);
-            const employeeId = uuid(b.employeeId, 'employeeId'),
-              roleId = uuid(b.roleId, 'roleId');
-            if (request.method === 'POST') {
-              await repository.assign(employeeId, roleId, context.actor, correlationId);
-              return { statusCode: 204, body: {} };
-            }
-            if (request.method === 'DELETE') {
-              await repository.unassign(employeeId, roleId, context.actor, correlationId);
-              return { statusCode: 204, body: {} };
-            }
-          }
-          if (resource === 'scope-grants') {
-            if (request.method === 'GET' && !itemId)
-              return {
-                statusCode: 200,
-                body: await repository.listScopeGrants(context.actor.companyId),
-              };
-            if (request.method === 'POST' && !itemId) {
-              allow(b, ['employeeId', 'permissionId', 'scope', 'organizationId']);
-              const selected = scopes([b.scope])[0];
-              if (!selected) throw new DomainError('invalid_request', 'scope is required');
-              const organizationId =
-                b.organizationId === null || b.organizationId === undefined
-                  ? null
-                  : uuid(b.organizationId, 'organizationId');
-              const typed =
-                selected === 'TEAM' || selected === 'DEPARTMENT' || selected === 'REGION';
-              if (typed !== Boolean(organizationId))
-                throw new DomainError(
-                  'invalid_request',
-                  typed
-                    ? 'Typed scopes require organizationId'
-                    : 'SELF, COMPANY, and GROUP do not accept organizationId',
-                );
-              return {
-                statusCode: 201,
-                body: await repository.grantScope(
-                  {
-                    employeeId: uuid(b.employeeId, 'employeeId'),
-                    permissionId: uuid(b.permissionId, 'permissionId'),
-                    scope: selected,
-                    organizationId,
-                  },
-                  context.actor,
-                  correlationId,
-                ),
-              };
-            }
-            if (request.method === 'DELETE' && itemId) {
-              allow(b, []);
-              await repository.revokeScope(
-                uuid(itemId, 'scopeGrantId'),
-                context.actor,
-                correlationId,
-              );
-              return { statusCode: 204, body: {} };
-            }
-          }
-        }
+              ),
+            parsers: { objectBody, allow, uuid, string, strings },
+          },
+          request,
+        );
+        if (authorizationResponse) return authorizationResponse;
         if (request.method === 'GET' && request.pathname === '/api/v1/user-access-profiles') {
           authorizeOneOf(context, 'identity:read', 'authorization:read');
           if (!dependencies.authorization?.listUserAccessProfiles)
