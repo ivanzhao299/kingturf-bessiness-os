@@ -73,6 +73,7 @@ import { ctrRoutes } from './routes/ctr.ts';
 import { technicalSolutionRoutes } from './routes/technical-solutions.ts';
 import { costMatrixBaseRoutes } from './routes/cost-matrix-base.ts';
 import { costMatrixFactorRoutes } from './routes/cost-matrix-factors.ts';
+import { costMatrixCalculationRoutes } from './routes/cost-matrix-calculations.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -3595,53 +3596,19 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           );
           if (factorResponse) return factorResponse;
         }
-        const costMatrixCalculate = /^\/api\/v1\/cost-matrices\/([0-9a-f-]+)\/calculate$/u.exec(
-          request.pathname,
-        );
-        if (request.method === 'POST' && costMatrixCalculate && dependencies.commercial) {
-          const body = objectBody(request.body);
-          allow(body, ['pricingMode']);
-          const grant = authorizeQuery(context, 'cost-matrix:calculate', Object.keys(body));
-          const mode = string(body.pricingMode, 'pricingMode');
-          if (mode !== 'TAX_INCLUSIVE' && mode !== 'TAX_EXCLUSIVE')
-            throw new DomainError(
-              'invalid_request',
-              'pricingMode must be TAX_INCLUSIVE or TAX_EXCLUSIVE',
-            );
-          const result = await dependencies.commercial.calculateCostMatrix(
-            uuid(costMatrixCalculate[1], 'modelId'),
-            mode,
-            idempotency(request),
-            context.actor,
-            grant.scopes,
-            correlationId,
+        if (dependencies.commercial) {
+          const calculationResponse = await dispatchRoutes(
+            costMatrixCalculationRoutes({
+              repository: dependencies.commercial,
+              authorization: context,
+              correlationId,
+              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
+              mutationDto: (value) => mutationDto(value, context, 'cost:read'),
+              parsers: { objectBody, allow, uuid, string, idempotency },
+            }),
+            request,
           );
-          return { statusCode: 201, body: result };
-        }
-        const matrixQuoteCost =
-          /^\/api\/v1\/cost-matrix-calculations\/([0-9a-f-]+)\/quote-cost-decision$/u.exec(
-            request.pathname,
-          );
-        if (request.method === 'POST' && matrixQuoteCost && dependencies.commercial) {
-          const body = objectBody(request.body);
-          allow(body, ['technicalSolutionRevisionId', 'modelVersionId']);
-          const grant = authorizeQuery(context, 'cost:evaluate', Object.keys(body));
-          const result = await dependencies.commercial.createQuoteCostDecisionFromMatrix(
-            uuid(matrixQuoteCost[1], 'calculationId'),
-            {
-              technicalSolutionRevisionId: uuid(
-                body.technicalSolutionRevisionId,
-                'technicalSolutionRevisionId',
-              ),
-              modelVersionId: uuid(body.modelVersionId, 'modelVersionId'),
-              idempotencyKey: idempotency(request),
-            },
-            context.actor,
-            grant.scopes,
-            grant.anchors,
-            correlationId,
-          );
-          return { statusCode: 201, body: mutationDto(result, context, 'cost:read') };
+          if (calculationResponse) return calculationResponse;
         }
         if (
           request.method === 'GET' &&
