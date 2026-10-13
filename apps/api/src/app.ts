@@ -67,6 +67,7 @@ import { dispatchAuthorizationRoutes } from './routes/authorization.ts';
 import { identityAccessRoutes } from './routes/identity-access.ts';
 import { collectionRoutes } from './routes/collection.ts';
 import { dispatchOpportunityRoutes } from './routes/opportunities.ts';
+import { commercialNestedReadRoutes } from './routes/commercial-nested-reads.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -3498,49 +3499,19 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           request,
         );
         if (opportunityResponse) return opportunityResponse;
-        const opportunityCtrs = /^\/api\/v1\/opportunities\/([0-9a-f-]+)\/ctrs$/u.exec(
-          request.pathname,
-        );
-        if (request.method === 'GET' && opportunityCtrs && dependencies.commercial) {
-          const grant = authorizeQuery(context, 'ctr:read');
-          return {
-            statusCode: 200,
-            body: {
-              items: (
-                await dependencies.commercial.listCtrs(
-                  uuid(opportunityCtrs[1], 'opportunityId'),
-                  context.actor,
-                  grant.scopes,
-                  grant.anchors,
-                )
-              ).map((item) =>
-                permittedDto(item, context.permissions.get('ctr:read')?.fields ?? null),
-              ),
-            },
-          };
-        }
-        const opportunitySolutions =
-          /^\/api\/v1\/opportunities\/([0-9a-f-]+)\/technical-solutions$/u.exec(request.pathname);
-        if (request.method === 'GET' && opportunitySolutions && dependencies.commercial) {
-          const grant = authorizeQuery(context, 'technical-solution:read');
-          return {
-            statusCode: 200,
-            body: {
-              items: (
-                await dependencies.commercial.listTechnicalSolutions(
-                  uuid(opportunitySolutions[1], 'opportunityId'),
-                  context.actor,
-                  grant.scopes,
-                  grant.anchors,
-                )
-              ).map((item) =>
-                permittedDto(
-                  item,
-                  context.permissions.get('technical-solution:read')?.fields ?? null,
-                ),
-              ),
-            },
-          };
+        if (dependencies.commercial) {
+          const commercialNestedResponse = await dispatchRoutes(
+            commercialNestedReadRoutes({
+              repository: dependencies.commercial,
+              authorization: context,
+              authorize: (capability) => authorizeQuery(context, capability),
+              permittedDto: (value, capability) =>
+                permittedDto(value, context.permissions.get(capability)?.fields ?? null),
+              uuid,
+            }),
+            request,
+          );
+          if (commercialNestedResponse) return commercialNestedResponse;
         }
         const commercialReadViews = new Map<
           string,
