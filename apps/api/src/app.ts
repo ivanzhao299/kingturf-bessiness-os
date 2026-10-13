@@ -74,6 +74,7 @@ import { technicalSolutionRoutes } from './routes/technical-solutions.ts';
 import { costMatrixBaseRoutes } from './routes/cost-matrix-base.ts';
 import { costMatrixFactorRoutes } from './routes/cost-matrix-factors.ts';
 import { costMatrixCalculationRoutes } from './routes/cost-matrix-calculations.ts';
+import { commercialDefinitionRoutes } from './routes/commercial-definitions.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -3610,85 +3611,18 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           );
           if (calculationResponse) return calculationResponse;
         }
-        if (
-          request.method === 'GET' &&
-          (request.pathname === '/api/v1/cost-models' ||
-            request.pathname === '/api/v1/sales-policies') &&
-          dependencies.commercial
-        ) {
-          const cost = request.pathname.endsWith('cost-models');
-          const grant = authorizeQuery(context, cost ? 'cost-model:read' : 'sales-policy:read');
-          return {
-            statusCode: 200,
-            body: {
-              items: await dependencies.commercial.listDefinitions(
-                cost ? 'cost' : 'policy',
-                context.actor,
-                grant.scopes,
-              ),
-            },
-          };
-        }
-        if (
-          request.method === 'POST' &&
-          (request.pathname === '/api/v1/cost-models' ||
-            request.pathname === '/api/v1/sales-policies') &&
-          dependencies.commercial
-        ) {
-          const body = objectBody(request.body),
-            cost = request.pathname.endsWith('cost-models');
-          allow(
-            body,
-            cost
-              ? ['code', 'name', 'currency', 'rules', 'publish']
-              : ['code', 'name', 'rules', 'publish'],
+        if (dependencies.commercial) {
+          const definitionResponse = await dispatchRoutes(
+            commercialDefinitionRoutes({
+              repository: dependencies.commercial,
+              authorization: context,
+              correlationId,
+              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
+              parsers: { objectBody, allow, uuid, string, currency, array },
+            }),
+            request,
           );
-          const grant = authorizeQuery(
-            context,
-            cost ? 'cost-model:manage' : 'sales-policy:manage',
-            Object.keys(body),
-          );
-          const result = await dependencies.commercial.createDefinition(
-            cost ? 'cost' : 'policy',
-            {
-              code: string(body.code, 'code'),
-              name: string(body.name, 'name'),
-              ...(cost ? { currency: currency(body.currency) } : {}),
-              rules: array(body.rules, 'rules'),
-              publish: body.publish === true,
-            },
-            context.actor,
-            grant.scopes,
-            correlationId,
-          );
-          return { statusCode: 201, body: result };
-        }
-        const definitionRevision =
-          /^\/api\/v1\/(cost-models|sales-policies)\/([0-9a-f-]+)\/versions$/u.exec(
-            request.pathname,
-          );
-        if (request.method === 'POST' && definitionRevision && dependencies.commercial) {
-          const body = objectBody(request.body),
-            cost = definitionRevision[1] === 'cost-models';
-          allow(body, cost ? ['currency', 'rules', 'publish'] : ['rules', 'publish']);
-          const grant = authorizeQuery(
-            context,
-            cost ? 'cost-model:manage' : 'sales-policy:manage',
-            Object.keys(body),
-          );
-          const result = await dependencies.commercial.createDefinitionVersion(
-            cost ? 'cost' : 'policy',
-            uuid(definitionRevision[2], 'definitionId'),
-            {
-              ...(cost ? { currency: currency(body.currency) } : {}),
-              rules: array(body.rules, 'rules'),
-              publish: body.publish === true,
-            },
-            context.actor,
-            grant.scopes,
-            correlationId,
-          );
-          return { statusCode: 201, body: result };
+          if (definitionResponse) return definitionResponse;
         }
         if (
           request.method === 'POST' &&
