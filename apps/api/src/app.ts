@@ -27,6 +27,12 @@ import type { ErrorCode, PermissionKey } from '@kingturf/types';
 import { authorizeQuery } from './policy.ts';
 import { auditReadRoutes } from './routes/audit-reads.ts';
 import {
+  numberDefinitionListRoutes,
+  numberDefinitionCreateRoutes,
+  numberDefinitionPublishRoutes,
+  numberDefinitionVersionRoutes,
+} from './routes/number-definitions.ts';
+import {
   masterEntryCreateRoutes,
   masterEntryListRoutes,
   masterEntryDetailRoutes,
@@ -3827,46 +3833,26 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           authorizeQuery(context, 'number:read');
           if (!dependencies.numbers)
             return error(503, 'internal_error', 'Number repository unavailable', correlationId);
-          return {
-            statusCode: 200,
-            body: { items: await dependencies.numbers.list(context.actor.companyId) },
-          };
+          const response = await dispatchRoutes(
+            numberDefinitionListRoutes({ repository: dependencies.numbers, actor: context.actor }),
+            request,
+          );
+          if (response !== null) return response;
         }
         if (request.pathname === '/api/v1/number-definitions' && request.method === 'POST') {
           authorizeQuery(context, 'number:create');
           if (!dependencies.numbers)
             return error(503, 'internal_error', 'Number repository unavailable', correlationId);
-          const b = objectBody(request.body);
-          allow(b, [
-            'code',
-            'prefix',
-            'suffix',
-            'padding',
-            'startingValue',
-            'increment',
-            'resetPeriod',
-          ]);
-          return {
-            statusCode: 201,
-            body: await dependencies.numbers.createDefinition(
-              {
-                code: assertStableCode(string(b.code, 'code')),
-                prefix: typeof b.prefix === 'string' ? b.prefix : '',
-                suffix: typeof b.suffix === 'string' ? b.suffix : '',
-                padding: integer(b.padding, 'padding', 1, 32),
-                startingValue: integer(
-                  b.startingValue,
-                  'startingValue',
-                  0,
-                  Number.MAX_SAFE_INTEGER,
-                ),
-                increment: integer(b.increment, 'increment', 1, Number.MAX_SAFE_INTEGER),
-                resetPeriod: string(b.resetPeriod, 'resetPeriod') as never,
-              },
-              context.actor,
+          const response = await dispatchRoutes(
+            numberDefinitionCreateRoutes({
+              repository: dependencies.numbers,
+              actor: context.actor,
               correlationId,
-            ),
-          };
+              parsers: { objectBody, allow, string, integer, stableCode: assertStableCode },
+            }),
+            request,
+          );
+          if (response !== null) return response;
         }
         const publishNumber = /^\/api\/v1\/number-definitions\/([0-9a-f-]+)\/publish$/u.exec(
           request.pathname,
@@ -3875,17 +3861,16 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           authorizeQuery(context, 'number:update');
           if (!dependencies.numbers)
             return error(503, 'internal_error', 'Number repository unavailable', correlationId);
-          const b = objectBody(request.body);
-          allow(b, ['version']);
-          return {
-            statusCode: 200,
-            body: await dependencies.numbers.publish(
-              uuid(publishNumber[1], 'definitionId'),
-              version(b.version),
-              context.actor,
+          const response = await dispatchRoutes(
+            numberDefinitionPublishRoutes({
+              repository: dependencies.numbers,
+              actor: context.actor,
               correlationId,
-            ),
-          };
+              parsers: { objectBody, allow, uuid, version },
+            }),
+            request,
+          );
+          if (response !== null) return response;
         }
         const allocate = /^\/api\/v1\/number-definitions\/([0-9a-f-]+)\/allocate$/u.exec(
           request.pathname,
@@ -4061,29 +4046,16 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           authorizeQuery(context, 'number:update');
           if (!dependencies.numbers)
             return error(503, 'internal_error', 'Number repository unavailable', correlationId);
-          const b = objectBody(request.body);
-          allow(b, ['prefix', 'suffix', 'padding', 'startingValue', 'increment', 'resetPeriod']);
-          return {
-            statusCode: 201,
-            body: await dependencies.numbers.createVersion(
-              uuid(numberVersion[1], 'definitionId'),
-              {
-                prefix: typeof b.prefix === 'string' ? b.prefix : '',
-                suffix: typeof b.suffix === 'string' ? b.suffix : '',
-                padding: integer(b.padding, 'padding', 1, 32),
-                startingValue: integer(
-                  b.startingValue,
-                  'startingValue',
-                  0,
-                  Number.MAX_SAFE_INTEGER,
-                ),
-                increment: integer(b.increment, 'increment', 1, Number.MAX_SAFE_INTEGER),
-                resetPeriod: string(b.resetPeriod, 'resetPeriod') as never,
-              },
-              context.actor,
+          const response = await dispatchRoutes(
+            numberDefinitionVersionRoutes({
+              repository: dependencies.numbers,
+              actor: context.actor,
               correlationId,
-            ),
-          };
+              parsers: { objectBody, allow, uuid, string, integer },
+            }),
+            request,
+          );
+          if (response !== null) return response;
         }
         const ruleVersion = /^\/api\/v1\/rules\/([0-9a-f-]+)\/versions$/u.exec(request.pathname);
         if (ruleVersion && request.method === 'POST') {
