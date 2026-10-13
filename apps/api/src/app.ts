@@ -68,6 +68,7 @@ import { identityAccessRoutes } from './routes/identity-access.ts';
 import { collectionRoutes } from './routes/collection.ts';
 import { dispatchOpportunityRoutes } from './routes/opportunities.ts';
 import { commercialNestedReadRoutes } from './routes/commercial-nested-reads.ts';
+import { commercialViewRoutes } from './routes/commercial-views.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -3513,34 +3514,18 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           );
           if (commercialNestedResponse) return commercialNestedResponse;
         }
-        const commercialReadViews = new Map<
-          string,
-          readonly [`${string}:${string}`, 'ctrs' | 'solutions' | 'costs' | 'policies' | 'quotes']
-        >([
-          ['/api/v1/ctrs', ['ctr:read', 'ctrs']],
-          ['/api/v1/technical-solutions', ['technical-solution:read', 'solutions']],
-          ['/api/v1/cost-evaluations', ['cost:read', 'costs']],
-          ['/api/v1/sales-policy-evaluations', ['sales-policy:read', 'policies']],
-          ['/api/v1/quotes', ['quote:read', 'quotes']],
-        ] as const);
-        const commercialRead = commercialReadViews.get(request.pathname);
-        if (request.method === 'GET' && commercialRead && dependencies.commercial) {
-          const grant = authorizeQuery(context, commercialRead[0]);
-          return {
-            statusCode: 200,
-            body: {
-              items: (
-                await dependencies.commercial.listCommercialView(
-                  commercialRead[1],
-                  context.actor,
-                  grant.scopes,
-                  grant.anchors,
-                )
-              ).map((item) =>
-                permittedDto(item, context.permissions.get(commercialRead[0])?.fields ?? null),
-              ),
-            },
-          };
+        if (dependencies.commercial) {
+          const commercialViewResponse = await dispatchRoutes(
+            commercialViewRoutes({
+              repository: dependencies.commercial,
+              authorization: context,
+              authorize: (capability) => authorizeQuery(context, capability),
+              permittedDto: (value, capability) =>
+                permittedDto(value, context.permissions.get(capability)?.fields ?? null),
+            }),
+            request,
+          );
+          if (commercialViewResponse) return commercialViewResponse;
         }
         if (
           request.method === 'POST' &&
