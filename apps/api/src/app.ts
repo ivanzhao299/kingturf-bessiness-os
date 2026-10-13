@@ -72,6 +72,7 @@ import { commercialViewRoutes } from './routes/commercial-views.ts';
 import { ctrRoutes } from './routes/ctr.ts';
 import { technicalSolutionRoutes } from './routes/technical-solutions.ts';
 import { costMatrixBaseRoutes } from './routes/cost-matrix-base.ts';
+import { costMatrixFactorRoutes } from './routes/cost-matrix-factors.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -3571,125 +3572,28 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           );
           if (matrixResponse) return matrixResponse;
         }
-        const costMatrixFactor = /^\/api\/v1\/cost-matrices\/([0-9a-f-]+)\/factors$/u.exec(
-          request.pathname,
-        );
-        if (request.method === 'POST' && costMatrixFactor && dependencies.commercial) {
-          const body = objectBody(request.body);
-          allow(body, [
-            'factorCode',
-            'factorName',
-            'category',
-            'sourceType',
-            'sourceItemVersionId',
-            'quantity',
-            'unitCode',
-            'manualUnitPriceTaxInclusive',
-            'taxRate',
-            'priceSourceName',
-            'priceSourceReference',
-            'priceEffectiveAt',
-            'priceNote',
-            'adjustable',
-            'sortOrder',
-          ]);
-          const grant = authorizeQuery(context, 'cost-matrix:manage', Object.keys(body));
-          const sourceType = costFactorSourceType(body.sourceType);
-          requireCostFactorItemSource(sourceType, body.sourceItemVersionId);
-          const result = await dependencies.commercial.addCostMatrixFactor(
-            uuid(costMatrixFactor[1], 'modelId'),
-            {
-              factorCode: string(body.factorCode, 'factorCode'),
-              factorName: string(body.factorName, 'factorName'),
-              category: string(body.category, 'category'),
-              sourceType,
-              ...(body.sourceItemVersionId
-                ? { sourceItemVersionId: uuid(body.sourceItemVersionId, 'sourceItemVersionId') }
-                : {}),
-              quantity: decimal(body.quantity, 'quantity'),
-              unitCode: string(body.unitCode, 'unitCode'),
-              manualUnitPriceTaxInclusive: decimal(
-                body.manualUnitPriceTaxInclusive,
-                'manualUnitPriceTaxInclusive',
-              ),
-              taxRate: decimal(body.taxRate, 'taxRate'),
-              priceSourceName: string(body.priceSourceName, 'priceSourceName'),
-              ...(body.priceSourceReference
-                ? {
-                    priceSourceReference: string(body.priceSourceReference, 'priceSourceReference'),
-                  }
-                : {}),
-              ...(body.priceEffectiveAt
-                ? { priceEffectiveAt: calendarDate(body.priceEffectiveAt, 'priceEffectiveAt') }
-                : {}),
-              ...(body.priceNote ? { priceNote: string(body.priceNote, 'priceNote') } : {}),
-              adjustable: body.adjustable !== false,
-              sortOrder: integer(body.sortOrder ?? 0, 'sortOrder', 0, 10000),
-            },
-            context.actor,
-            grant.scopes,
-            correlationId,
+        if (dependencies.commercial) {
+          const factorResponse = await dispatchRoutes(
+            costMatrixFactorRoutes({
+              repository: dependencies.commercial,
+              authorization: context,
+              correlationId,
+              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
+              parsers: {
+                objectBody,
+                allow,
+                uuid,
+                string,
+                decimal,
+                calendarDate,
+                integer,
+                costFactorSourceType,
+                requireCostFactorItemSource,
+              },
+            }),
+            request,
           );
-          return { statusCode: 201, body: result };
-        }
-        const costMatrixFactorUpdate =
-          /^\/api\/v1\/cost-matrices\/([0-9a-f-]+)\/factors\/([0-9a-f-]+)$/u.exec(request.pathname);
-        if (request.method === 'PATCH' && costMatrixFactorUpdate && dependencies.commercial) {
-          const body = objectBody(request.body);
-          allow(body, [
-            'factorName',
-            'category',
-            'sourceType',
-            'sourceItemVersionId',
-            'quantity',
-            'unitCode',
-            'manualUnitPriceTaxInclusive',
-            'taxRate',
-            'priceSourceName',
-            'priceSourceReference',
-            'priceEffectiveAt',
-            'priceNote',
-            'adjustable',
-            'sortOrder',
-          ]);
-          const grant = authorizeQuery(context, 'cost-matrix:manage', Object.keys(body));
-          const sourceType = costFactorSourceType(body.sourceType);
-          requireCostFactorItemSource(sourceType, body.sourceItemVersionId);
-          const result = await dependencies.commercial.updateCostMatrixFactor(
-            uuid(costMatrixFactorUpdate[1], 'modelId'),
-            uuid(costMatrixFactorUpdate[2], 'factorId'),
-            {
-              factorName: string(body.factorName, 'factorName'),
-              category: string(body.category, 'category'),
-              sourceType,
-              ...(body.sourceItemVersionId
-                ? { sourceItemVersionId: uuid(body.sourceItemVersionId, 'sourceItemVersionId') }
-                : {}),
-              quantity: decimal(body.quantity, 'quantity'),
-              unitCode: string(body.unitCode, 'unitCode'),
-              manualUnitPriceTaxInclusive: decimal(
-                body.manualUnitPriceTaxInclusive,
-                'manualUnitPriceTaxInclusive',
-              ),
-              taxRate: decimal(body.taxRate, 'taxRate'),
-              priceSourceName: string(body.priceSourceName, 'priceSourceName'),
-              ...(body.priceSourceReference
-                ? {
-                    priceSourceReference: string(body.priceSourceReference, 'priceSourceReference'),
-                  }
-                : {}),
-              ...(body.priceEffectiveAt
-                ? { priceEffectiveAt: calendarDate(body.priceEffectiveAt, 'priceEffectiveAt') }
-                : {}),
-              ...(body.priceNote ? { priceNote: string(body.priceNote, 'priceNote') } : {}),
-              adjustable: body.adjustable !== false,
-              sortOrder: integer(body.sortOrder ?? 0, 'sortOrder', 0, 10000),
-            },
-            context.actor,
-            grant.scopes,
-            correlationId,
-          );
-          return { statusCode: 200, body: result };
+          if (factorResponse) return factorResponse;
         }
         const costMatrixCalculate = /^\/api\/v1\/cost-matrices\/([0-9a-f-]+)\/calculate$/u.exec(
           request.pathname,
