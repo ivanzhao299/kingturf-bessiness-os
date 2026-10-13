@@ -95,6 +95,7 @@ import { customer360Routes } from './routes/customer-360.ts';
 import { customerContactRoutes } from './routes/customer-contacts.ts';
 import { leadListRoutes, leadCreateRoutes, leadPoolRoutes } from './routes/lead-base.ts';
 import { leadClaimRoutes } from './routes/lead-claim.ts';
+import { leadCommandRoutes } from './routes/lead-commands.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -3489,66 +3490,18 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
         if (request.method === 'POST' && leadActionMatch) {
           if (!dependencies.crm)
             return error(503, 'internal_error', 'CRM dependency unavailable', correlationId);
-          const id = uuid(leadActionMatch[1], 'leadId'),
-            action = leadActionMatch[2],
-            b = objectBody(request.body);
-          if (action === 'assign' || action === 'reassign') {
-            const grant = authorizeQuery(
-              context,
-              action === 'assign' ? 'lead:assign' : 'lead:reassign',
-            );
-            allow(b, ['assigneeId', 'expectedVersion', 'reason']);
-            return {
-              statusCode: 200,
-              body: mutationDto(
-                await dependencies.crm.assign(
-                  'LEAD',
-                  id,
-                  uuid(b.assigneeId, 'assigneeId'),
-                  expectedVersion(b.expectedVersion),
-                  string(b.reason, 'reason'),
-                  context.actor,
-                  correlationId,
-                  action === 'reassign',
-                  grant.scopes,
-                  grant.anchors,
-                ),
-                context,
-                'lead:read',
-              ),
-            };
-          }
-          const grant = authorizeQuery(
-            context,
-            action === 'release' ? 'lead-pool:release' : 'lead:lifecycle',
-            ['status', 'reason'],
+          const leadCommandResponse = await dispatchRoutes(
+            leadCommandRoutes({
+              repository: dependencies.crm,
+              authorization: context,
+              correlationId,
+              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
+              mutationDto: (value) => mutationDto(value, context, 'lead:read'),
+              parsers: { uuid, objectBody, allow, expectedVersion, string },
+            }),
+            request,
           );
-          allow(
-            b,
-            action === 'release'
-              ? ['expectedVersion', 'reason']
-              : ['status', 'expectedVersion', 'reason'],
-          );
-          return {
-            statusCode: 200,
-            body: mutationDto(
-              await dependencies.crm.transitionLead(
-                id,
-                action === 'release'
-                  ? 'POOL'
-                  : (string(b.status, 'status') as import('@kingturf/types').LeadStatus),
-                expectedVersion(b.expectedVersion),
-                string(b.reason, 'reason'),
-                context.actor,
-                correlationId,
-                grant.scopes,
-                grant.anchors,
-                action === 'release' ? 'CLAIMED' : undefined,
-              ),
-              context,
-              'lead:read',
-            ),
-          };
+          if (leadCommandResponse) return leadCommandResponse;
         }
         const organizationMatch = /^\/api\/v1\/organizations(?:\/([0-9a-f-]+))?$/u.exec(
           request.pathname,
