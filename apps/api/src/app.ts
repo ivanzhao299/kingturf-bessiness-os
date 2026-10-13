@@ -12,7 +12,6 @@ import {
   assertStableCode,
   DomainError,
   normalizeContactEmail,
-  normalizeContactPhone,
   normalizeDecimal,
   assertCurrency,
   parseEffectiveTimestamp,
@@ -93,6 +92,7 @@ import { customerOwnershipRoutes } from './routes/customer-ownership.ts';
 import { customerActivityRoutes } from './routes/customer-activities.ts';
 import { customerLifecycleRoutes } from './routes/customer-lifecycle.ts';
 import { customer360Routes } from './routes/customer-360.ts';
+import { customerContactRoutes } from './routes/customer-contacts.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -3336,8 +3336,6 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
         if (customerMatch) {
           if (!dependencies.crm)
             return error(503, 'internal_error', 'CRM dependency unavailable', correlationId);
-          const id = customerMatch[1],
-            nested = customerMatch[2];
           const customerBaseContext = {
             repository: dependencies.crm,
             authorization: context,
@@ -3403,40 +3401,18 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             request,
           );
           if (customer360Response) return customer360Response;
-          if (request.method === 'POST' && id && nested === 'contacts') {
-            const grant = authorizeQuery(context, 'customer:update', ['contacts']);
-            const b = objectBody(request.body);
-            allow(b, ['name', 'title', 'email', 'phone', 'primary']);
-            if (b.email !== undefined && b.email !== null && typeof b.email !== 'string')
-              throw new DomainError('invalid_request', 'email must be a string');
-            if (b.phone !== undefined && b.phone !== null && typeof b.phone !== 'string')
-              throw new DomainError('invalid_request', 'phone must be a string');
-            const email = typeof b.email === 'string' ? normalizeContactEmail(b.email) : null;
-            const phone = typeof b.phone === 'string' ? normalizeContactPhone(b.phone) : null;
-            if (email === null && phone === null)
-              throw new DomainError('invalid_request', 'Contact email or phone is required');
-            return {
-              statusCode: 201,
-              body: mutationDto(
-                await dependencies.crm.createContact(
-                  uuid(id, 'customerId'),
-                  {
-                    name: string(b.name, 'name'),
-                    title: typeof b.title === 'string' ? b.title : null,
-                    email,
-                    phone,
-                    primary: b.primary === true,
-                  },
-                  context.actor,
-                  correlationId,
-                  grant.scopes,
-                  grant.anchors,
-                ),
-                context,
-                'customer-360:read',
-              ),
-            };
-          }
+          const customerContactResponse = await dispatchRoutes(
+            customerContactRoutes({
+              repository: dependencies.crm,
+              authorization: context,
+              correlationId,
+              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
+              mutationDto: (value) => mutationDto(value, context, 'customer-360:read'),
+              parsers: { objectBody, allow, uuid, string },
+            }),
+            request,
+          );
+          if (customerContactResponse) return customerContactResponse;
           const customerDetailResponse = await dispatchRoutes(
             customerDetailRoutes(customerBaseContext),
             request,
