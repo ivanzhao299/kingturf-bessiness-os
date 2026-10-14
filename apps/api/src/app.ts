@@ -55,6 +55,7 @@ import { productionOrderCommandRoutes } from './routes/production-order-commands
 import { productionMaterialRoutes } from './routes/production-material.ts';
 import { productionReportRoutes } from './routes/production-report.ts';
 import { productionOutputRoutes } from './routes/production-output.ts';
+import { productionCostPolicyRoutes } from './routes/production-cost-policy.ts';
 import {
   numberDefinitionListRoutes,
   numberDefinitionCreateRoutes,
@@ -1413,54 +1414,28 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             request.method === 'POST' &&
             request.pathname === '/api/v1/production-cost-policies'
           ) {
-            const body = objectBody(request.body);
-            allow(body, [
-              'version',
-              'currency',
-              'laborRatePerHour',
-              'machineRatePerHour',
-              'overheadRatePerMachineHour',
-              'effectiveFrom',
-              'effectiveTo',
-              'sourceReference',
-              'materialRates',
-            ]);
-            const grant = authorizeQuery(context, 'manufacturing-cost:policy', Object.keys(body));
-            if (!Array.isArray(body.materialRates) || !body.materialRates.length)
-              throw new DomainError('invalid_request', 'materialRates must be a non-empty array');
-            const materialRates = body.materialRates.map((raw) => {
-              const x = objectBody(raw);
-              allow(x, ['itemVersionId', 'unitCost', 'sourceReference']);
-              return {
-                itemVersionId: uuid(x.itemVersionId, 'itemVersionId'),
-                unitCost: decimal(x.unitCost, 'unitCost'),
-                sourceReference: assertStableCode(string(x.sourceReference, 'sourceReference')),
-              };
-            });
-            const result = await dependencies.productionCosts.createPolicy(
-              {
-                version: integer(body.version, 'version', 1, 1000000),
-                currency: assertCurrency(string(body.currency, 'currency')),
-                laborRatePerHour: decimal(body.laborRatePerHour, 'laborRatePerHour'),
-                machineRatePerHour: decimal(body.machineRatePerHour, 'machineRatePerHour'),
-                overheadRatePerMachineHour: decimal(
-                  body.overheadRatePerMachineHour,
-                  'overheadRatePerMachineHour',
-                ),
-                effectiveFrom: calendarDate(body.effectiveFrom, 'effectiveFrom'),
-                ...(body.effectiveTo === undefined
-                  ? {}
-                  : { effectiveTo: calendarDate(body.effectiveTo, 'effectiveTo') }),
-                sourceReference: assertStableCode(string(body.sourceReference, 'sourceReference')),
-                materialRates,
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
+            const response = await dispatchRoutes(
+              productionCostPolicyRoutes({
+                repository: dependencies.productionCosts,
+                authorization: context,
+                authorizeQuery,
+                correlationId,
+                parsers: {
+                  objectBody,
+                  allow,
+                  uuid,
+                  decimal,
+                  string,
+                  stableCode: assertStableCode,
+                  integer,
+                  currency: assertCurrency,
+                  calendarDate,
+                },
+                mutationDto,
+              }),
+              request,
             );
-            return {
-              statusCode: 201,
-              body: mutationDto(result, context, 'manufacturing-cost:read'),
-            };
+            if (response !== null) return response;
           }
           if (request.method === 'POST' && request.pathname === '/api/v1/production-cost-runs') {
             const body = objectBody(request.body);
