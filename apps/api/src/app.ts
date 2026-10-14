@@ -52,6 +52,7 @@ import {
 } from './routes/production-reads.ts';
 import { productionOrderCreateRoutes } from './routes/production-order-create.ts';
 import { productionOrderCommandRoutes } from './routes/production-order-commands.ts';
+import { productionMaterialRoutes } from './routes/production-material.ts';
 import {
   numberDefinitionListRoutes,
   numberDefinitionCreateRoutes,
@@ -1310,37 +1311,26 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             request.pathname,
           );
           if (request.method === 'POST' && materialCommand) {
-            const body = objectBody(request.body);
-            allow(body, [
-              'transactionType',
-              'itemVersionId',
-              'lotId',
-              'locationId',
-              'quantity',
-              'reason',
-              'occurredAt',
-              'idempotencyKey',
-            ]);
-            const grant = authorizeQuery(context, 'production:material', Object.keys(body));
-            const transactionType = string(body.transactionType, 'transactionType');
-            if (!['ISSUE', 'RETURN'].includes(transactionType))
-              throw new DomainError('invalid_request', 'transactionType is unsupported');
-            const result = await dependencies.production.transactMaterial(
-              uuid(materialCommand[1], 'productionOrderId'),
-              {
-                transactionType: transactionType as 'ISSUE' | 'RETURN',
-                itemVersionId: uuid(body.itemVersionId, 'itemVersionId'),
-                lotId: uuid(body.lotId, 'lotId'),
-                locationId: uuid(body.locationId, 'locationId'),
-                quantity: decimal(body.quantity, 'quantity'),
-                reason: string(body.reason, 'reason'),
-                occurredAt: timestamp(body.occurredAt, 'occurredAt'),
-                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
+            const response = await dispatchRoutes(
+              productionMaterialRoutes({
+                repository: dependencies.production,
+                authorization: context,
+                authorizeQuery,
+                correlationId,
+                parsers: {
+                  objectBody,
+                  allow,
+                  string,
+                  uuid,
+                  decimal,
+                  timestamp,
+                  stableCode: assertStableCode,
+                },
+                mutationDto,
+              }),
+              request,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'production:read') };
+            if (response !== null) return response;
           }
           const reportCommand =
             /^\/api\/v1\/production-orders\/([0-9a-f-]+)\/operation-reports$/u.exec(
