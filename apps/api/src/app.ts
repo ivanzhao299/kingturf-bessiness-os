@@ -51,6 +51,7 @@ import {
   productionCostRunReadRoutes,
 } from './routes/production-reads.ts';
 import { productionOrderCreateRoutes } from './routes/production-order-create.ts';
+import { productionOrderCommandRoutes } from './routes/production-order-commands.ts';
 import {
   numberDefinitionListRoutes,
   numberDefinitionCreateRoutes,
@@ -1285,40 +1286,25 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               request.pathname,
             );
           if (request.method === 'POST' && productionCommand) {
-            const body = objectBody(request.body);
-            allow(body, ['reason', 'evidence', 'idempotencyKey']);
-            const action = productionCommand[2] as
-              | 'release'
-              | 'start'
-              | 'complete'
-              | 'close'
-              | 'cancel';
-            const capability: PermissionKey =
-              action === 'release'
-                ? 'production:plan'
-                : action === 'start'
-                  ? 'production:report'
-                  : 'production:close';
-            const grant = authorizeQuery(context, capability, Object.keys(body));
-            const states = {
-              release: 'RELEASED',
-              start: 'IN_PROGRESS',
-              complete: 'COMPLETED',
-              close: 'CLOSED',
-              cancel: 'CANCELLED',
-            } as const;
-            const result = await dependencies.production.transition(
-              uuid(productionCommand[1], 'productionOrderId'),
-              states[action],
-              {
-                reason: string(body.reason, 'reason'),
-                evidence: jsonObject(body.evidence ?? {}, 'evidence'),
-                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
+            const response = await dispatchRoutes(
+              productionOrderCommandRoutes({
+                repository: dependencies.production,
+                authorization: context,
+                authorizeQuery,
+                correlationId,
+                parsers: {
+                  objectBody,
+                  allow,
+                  uuid,
+                  string,
+                  jsonObject,
+                  stableCode: assertStableCode,
+                },
+                mutationDto,
+              }),
+              request,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'production:read') };
+            if (response !== null) return response;
           }
           const materialCommand = /^\/api\/v1\/production-orders\/([0-9a-f-]+)\/materials$/u.exec(
             request.pathname,
