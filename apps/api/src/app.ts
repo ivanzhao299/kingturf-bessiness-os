@@ -59,6 +59,7 @@ import { productionCostPolicyRoutes } from './routes/production-cost-policy.ts';
 import { productionCostCalculationRoutes } from './routes/production-cost-calculation.ts';
 import { productionCostDecisionRoutes } from './routes/production-cost-decisions.ts';
 import { qtcBaseReadRoutes } from './routes/qtc-base-reads.ts';
+import { qtcOperationalReadRoutes } from './routes/qtc-operational-reads.ts';
 import {
   numberDefinitionListRoutes,
   numberDefinitionCreateRoutes,
@@ -2604,38 +2605,17 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
         const qtcRead = qtcReads.get(request.pathname);
         if (request.method === 'GET' && qtcRead && dependencies.quoteToCash) {
           if (qtcRead[1] === 'ar' || qtcRead[1] === 'payments') {
-            const grant = authorizeQuery(context, qtcRead[0]);
-            const query = request.query ?? {};
-            const state = query.state;
-            if (state && !['OPEN', 'CLEARED', 'OVERDUE'].includes(state))
-              throw new DomainError('invalid_request', 'state is unsupported');
-            const minimum = query.minAmount ? decimal(query.minAmount, 'minAmount') : undefined;
-            const maximum = query.maxAmount ? decimal(query.maxAmount, 'maxAmount') : undefined;
-            if (minimum && maximum && Number(minimum) > Number(maximum))
-              throw new DomainError('invalid_request', 'minAmount must not exceed maxAmount');
-            const page = await dependencies.quoteToCash.listOperationalPage(
-              qtcRead[1],
-              {
-                limit: query.limit ? integer(Number(query.limit), 'limit', 1, 100) : 50,
-                ...(query.cursor ? { cursor: uuid(query.cursor, 'cursor') } : {}),
-                ...(query.query ? { query: string(query.query, 'query') } : {}),
-                ...(query.from ? { from: timestamp(query.from, 'from') } : {}),
-                ...(query.to ? { to: timestamp(query.to, 'to') } : {}),
-                ...(minimum ? { minAmount: minimum } : {}),
-                ...(maximum ? { maxAmount: maximum } : {}),
-                ...(state ? { state: state as 'OPEN' | 'CLEARED' | 'OVERDUE' } : {}),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
+            const response = await dispatchRoutes(
+              qtcOperationalReadRoutes({
+                repository: dependencies.quoteToCash,
+                authorization: context,
+                authorizeQuery,
+                permittedDto,
+                parsers: { decimal, integer, uuid, string, timestamp },
+              }),
+              request,
             );
-            return {
-              statusCode: 200,
-              body: {
-                items: page.items.map((item) =>
-                  permittedDto(item, context.permissions.get(qtcRead[0])?.fields ?? null),
-                ),
-                nextCursor: page.nextCursor,
-              },
-            };
+            if (response !== null) return response;
           }
           const response = await dispatchRoutes(
             qtcBaseReadRoutes({
