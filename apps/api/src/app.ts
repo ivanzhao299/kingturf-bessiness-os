@@ -62,6 +62,7 @@ import { qtcBaseReadRoutes } from './routes/qtc-base-reads.ts';
 import { qtcOperationalReadRoutes } from './routes/qtc-operational-reads.ts';
 import { qtcCreditLimitRoutes, qtcCreditEvaluationRoutes } from './routes/qtc-credit-writes.ts';
 import { qtcCreditApprovalRoutes } from './routes/qtc-credit-approval.ts';
+import { qtcContractCreateRoutes } from './routes/qtc-contract-create.ts';
 import {
   numberDefinitionListRoutes,
   numberDefinitionCreateRoutes,
@@ -2686,28 +2687,19 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             if (response !== null) return response;
           }
           if (request.pathname === '/api/v1/contracts') {
-            allow(body, [
-              'customerId',
-              'opportunityId',
-              'contractNumber',
-              'quoteRevisionId',
-              'quoteSnapshotId',
-              'content',
-            ]);
-            const result = await dependencies.quoteToCash.createContract(
-              {
-                customerId: uuid(body.customerId, 'customerId'),
-                opportunityId: uuid(body.opportunityId, 'opportunityId'),
-                contractNumber: string(body.contractNumber, 'contractNumber'),
-                quoteRevisionId: uuid(body.quoteRevisionId, 'quoteRevisionId'),
-                quoteSnapshotId: uuid(body.quoteSnapshotId, 'quoteSnapshotId'),
-                content: jsonObject(body.content, 'content'),
-              },
-              idempotency(request),
-              ctx('contract:revise'),
-              correlationId,
+            const response = await dispatchRoutes(
+              qtcContractCreateRoutes({
+                repository: dependencies.quoteToCash,
+                body,
+                authorization: context,
+                authorizeScope: ctx,
+                mutationDto,
+                correlationId,
+                parsers: { allow, uuid, string, jsonObject, idempotency },
+              }),
+              request,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'contract:read') };
+            if (response !== null) return response;
           }
           const signing = /^\/api\/v1\/contracts\/([0-9a-f-]+)\/sign$/u.exec(request.pathname);
           if (signing) {
