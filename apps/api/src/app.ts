@@ -60,6 +60,7 @@ import { productionCostCalculationRoutes } from './routes/production-cost-calcul
 import { productionCostDecisionRoutes } from './routes/production-cost-decisions.ts';
 import { qtcBaseReadRoutes } from './routes/qtc-base-reads.ts';
 import { qtcOperationalReadRoutes } from './routes/qtc-operational-reads.ts';
+import { qtcCreditLimitRoutes, qtcCreditEvaluationRoutes } from './routes/qtc-credit-writes.ts';
 import {
   numberDefinitionListRoutes,
   numberDefinitionCreateRoutes,
@@ -2635,42 +2636,34 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               return { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors };
             };
           if (request.pathname === '/api/v1/credit-limits') {
-            allow(body, ['customerId', 'currency', 'amount', 'effectiveAt', 'expiresAt']);
-            const result = await dependencies.quoteToCash.setCreditLimit(
-              {
-                customerId: uuid(body.customerId, 'customerId'),
-                currency: currency(body.currency),
-                amount: decimal(body.amount, 'amount'),
-                effectiveAt: timestamp(body.effectiveAt, 'effectiveAt'),
-                expiresAt: timestamp(body.expiresAt, 'expiresAt'),
-              },
-              idempotency(request),
-              ctx('credit:approve'),
-              correlationId,
+            const response = await dispatchRoutes(
+              qtcCreditLimitRoutes({
+                repository: dependencies.quoteToCash,
+                body,
+                authorization: context,
+                authorizeScope: ctx,
+                mutationDto,
+                correlationId,
+                parsers: { allow, uuid, currency, decimal, timestamp, idempotency },
+              }),
+              request,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'credit:read') };
+            if (response !== null) return response;
           }
           if (request.pathname === '/api/v1/credit-decisions') {
-            allow(body, [
-              'customerId',
-              'quoteRevisionId',
-              'quoteSnapshotId',
-              'creditLimitId',
-              'validUntil',
-            ]);
-            const result = await dependencies.quoteToCash.evaluateCredit(
-              {
-                customerId: uuid(body.customerId, 'customerId'),
-                quoteRevisionId: uuid(body.quoteRevisionId, 'quoteRevisionId'),
-                quoteSnapshotId: uuid(body.quoteSnapshotId, 'quoteSnapshotId'),
-                creditLimitId: uuid(body.creditLimitId, 'creditLimitId'),
-                validUntil: timestamp(body.validUntil, 'validUntil'),
-              },
-              idempotency(request),
-              ctx('credit:evaluate'),
-              correlationId,
+            const response = await dispatchRoutes(
+              qtcCreditEvaluationRoutes({
+                repository: dependencies.quoteToCash,
+                body,
+                authorization: context,
+                authorizeScope: ctx,
+                mutationDto,
+                correlationId,
+                parsers: { allow, uuid, currency, decimal, timestamp, idempotency },
+              }),
+              request,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'credit:read') };
+            if (response !== null) return response;
           }
           const creditApproval = /^\/api\/v1\/credit-decisions\/([0-9a-f-]+)\/approve$/u.exec(
             request.pathname,
