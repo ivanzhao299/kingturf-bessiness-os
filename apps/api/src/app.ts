@@ -46,6 +46,11 @@ import {
   workflowRuntimeDecisionRoutes,
 } from './routes/workflow-runtime.ts';
 import {
+  productionOrderReadRoutes,
+  productionCostPolicyReadRoutes,
+  productionCostRunReadRoutes,
+} from './routes/production-reads.ts';
+import {
   numberDefinitionListRoutes,
   numberDefinitionCreateRoutes,
   numberDefinitionPublishRoutes,
@@ -1241,20 +1246,16 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
         }
         if (dependencies.production) {
           if (request.method === 'GET' && request.pathname === '/api/v1/production-orders') {
-            const grant = authorizeQuery(context, 'production:read');
-            const items = await dependencies.production.list({
-              actor: context.actor,
-              scopes: grant.scopes,
-              anchors: grant.anchors,
-            });
-            return {
-              statusCode: 200,
-              body: {
-                items: items.map((item) =>
-                  permittedDto(item, context.permissions.get('production:read')?.fields ?? null),
-                ),
-              },
-            };
+            const response = await dispatchRoutes(
+              productionOrderReadRoutes({
+                repository: dependencies.production,
+                authorization: context,
+                authorizeQuery,
+                permittedDto,
+              }),
+              request,
+            );
+            if (response !== null) return response;
           }
           if (request.method === 'POST' && request.pathname === '/api/v1/production-orders') {
             const body = objectBody(request.body);
@@ -1432,32 +1433,27 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
         }
         if (dependencies.productionCosts) {
           if (request.method === 'GET' && request.pathname === '/api/v1/production-cost-policies') {
-            const grant = authorizeQuery(context, 'manufacturing-cost:read');
-            const items = await dependencies.productionCosts.listPolicies({
-              actor: context.actor,
-              scopes: grant.scopes,
-              anchors: grant.anchors,
-            });
-            return { statusCode: 200, body: { items } };
+            const response = await dispatchRoutes(
+              productionCostPolicyReadRoutes({
+                repository: dependencies.productionCosts,
+                authorization: context,
+                authorizeQuery,
+              }),
+              request,
+            );
+            if (response !== null) return response;
           }
           if (request.method === 'GET' && request.pathname === '/api/v1/production-cost-runs') {
-            const grant = authorizeQuery(context, 'manufacturing-cost:read');
-            const items = await dependencies.productionCosts.list({
-              actor: context.actor,
-              scopes: grant.scopes,
-              anchors: grant.anchors,
-            });
-            return {
-              statusCode: 200,
-              body: {
-                items: items.map((item) =>
-                  permittedDto(
-                    item,
-                    context.permissions.get('manufacturing-cost:read')?.fields ?? null,
-                  ),
-                ),
-              },
-            };
+            const response = await dispatchRoutes(
+              productionCostRunReadRoutes({
+                repository: dependencies.productionCosts,
+                authorization: context,
+                authorizeQuery,
+                permittedDto,
+              }),
+              request,
+            );
+            if (response !== null) return response;
           }
           if (
             request.method === 'POST' &&
