@@ -57,6 +57,7 @@ import { productionReportRoutes } from './routes/production-report.ts';
 import { productionOutputRoutes } from './routes/production-output.ts';
 import { productionCostPolicyRoutes } from './routes/production-cost-policy.ts';
 import { productionCostCalculationRoutes } from './routes/production-cost-calculation.ts';
+import { productionCostDecisionRoutes } from './routes/production-cost-decisions.ts';
 import {
   numberDefinitionListRoutes,
   numberDefinitionCreateRoutes,
@@ -1457,24 +1458,25 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               request.pathname,
             );
           if (request.method === 'POST' && costDecision) {
-            const body = objectBody(request.body);
-            allow(body, ['reason', 'evidence', 'idempotencyKey']);
-            const grant = authorizeQuery(context, 'manufacturing-cost:approve', Object.keys(body));
-            const result = await dependencies.productionCosts.decide(
-              uuid(costDecision[1], 'costRunId'),
-              costDecision[2] === 'approve' ? 'APPROVED' : 'REJECTED',
-              {
-                reason: string(body.reason, 'reason'),
-                evidence: jsonObject(body.evidence ?? {}, 'evidence'),
-                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
+            const response = await dispatchRoutes(
+              productionCostDecisionRoutes({
+                repository: dependencies.productionCosts,
+                authorization: context,
+                authorizeQuery,
+                correlationId,
+                parsers: {
+                  objectBody,
+                  allow,
+                  uuid,
+                  string,
+                  jsonObject,
+                  stableCode: assertStableCode,
+                },
+                mutationDto,
+              }),
+              request,
             );
-            return {
-              statusCode: 201,
-              body: mutationDto(result, context, 'manufacturing-cost:read'),
-            };
+            if (response !== null) return response;
           }
         }
         if (dependencies.shipments) {
