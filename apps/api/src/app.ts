@@ -63,6 +63,7 @@ import { qtcOperationalReadRoutes } from './routes/qtc-operational-reads.ts';
 import { qtcCreditLimitRoutes, qtcCreditEvaluationRoutes } from './routes/qtc-credit-writes.ts';
 import { qtcCreditApprovalRoutes } from './routes/qtc-credit-approval.ts';
 import { qtcContractCreateRoutes } from './routes/qtc-contract-create.ts';
+import { qtcContractSignRoutes } from './routes/qtc-contract-sign.ts';
 import {
   numberDefinitionListRoutes,
   numberDefinitionCreateRoutes,
@@ -2703,20 +2704,20 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           }
           const signing = /^\/api\/v1\/contracts\/([0-9a-f-]+)\/sign$/u.exec(request.pathname);
           if (signing) {
-            allow(body, ['provider', 'providerReceiptId', 'payload', 'signedAt']);
-            const result = await dependencies.quoteToCash.signContract(
-              uuid(signing[1], 'contractRevisionId'),
-              {
-                provider: string(body.provider, 'provider'),
-                providerReceiptId: string(body.providerReceiptId, 'providerReceiptId'),
-                payload: jsonObject(body.payload, 'payload'),
-                signedAt: timestamp(body.signedAt, 'signedAt'),
-              },
-              idempotency(request),
-              ctx('contract:sign'),
-              correlationId,
+            const response = await dispatchRoutes(
+              qtcContractSignRoutes({
+                repository: dependencies.quoteToCash,
+                rawId: signing[1],
+                body,
+                authorization: context,
+                authorizeScope: ctx,
+                mutationDto,
+                correlationId,
+                parsers: { allow, uuid, string, jsonObject, timestamp, idempotency },
+              }),
+              request,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'contract:read') };
+            if (response !== null) return response;
           }
           if (request.pathname === '/api/v1/sales-orders') {
             allow(body, [
