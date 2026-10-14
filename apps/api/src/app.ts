@@ -54,6 +54,7 @@ import { productionOrderCreateRoutes } from './routes/production-order-create.ts
 import { productionOrderCommandRoutes } from './routes/production-order-commands.ts';
 import { productionMaterialRoutes } from './routes/production-material.ts';
 import { productionReportRoutes } from './routes/production-report.ts';
+import { productionOutputRoutes } from './routes/production-output.ts';
 import {
   numberDefinitionListRoutes,
   numberDefinitionCreateRoutes,
@@ -1362,32 +1363,26 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           const outputCommand =
             /^\/api\/v1\/production-orders\/([0-9a-f-]+)\/finished-rolls$/u.exec(request.pathname);
           if (request.method === 'POST' && outputCommand) {
-            const body = objectBody(request.body);
-            allow(body, [
-              'operationReportId',
-              'itemVersionId',
-              'rollNumber',
-              'lotNumber',
-              'locationId',
-              'quantity',
-              'manufacturedAt',
-            ]);
-            const grant = authorizeQuery(context, 'production:report', Object.keys(body));
-            const result = await dependencies.production.createOutput(
-              uuid(outputCommand[1], 'productionOrderId'),
-              {
-                operationReportId: uuid(body.operationReportId, 'operationReportId'),
-                itemVersionId: uuid(body.itemVersionId, 'itemVersionId'),
-                rollNumber: assertStableCode(string(body.rollNumber, 'rollNumber')),
-                lotNumber: assertStableCode(string(body.lotNumber, 'lotNumber')),
-                locationId: uuid(body.locationId, 'locationId'),
-                quantity: decimal(body.quantity, 'quantity'),
-                manufacturedAt: calendarDate(body.manufacturedAt, 'manufacturedAt'),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
+            const response = await dispatchRoutes(
+              productionOutputRoutes({
+                repository: dependencies.production,
+                authorization: context,
+                authorizeQuery,
+                correlationId,
+                parsers: {
+                  objectBody,
+                  allow,
+                  uuid,
+                  string,
+                  stableCode: assertStableCode,
+                  decimal,
+                  calendarDate,
+                },
+                mutationDto,
+              }),
+              request,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'production:read') };
+            if (response !== null) return response;
           }
         }
         if (dependencies.productionCosts) {
