@@ -67,6 +67,7 @@ import { qtcContractSignRoutes } from './routes/qtc-contract-sign.ts';
 import { qtcSalesOrderCreateRoutes } from './routes/qtc-sales-order-create.ts';
 import { qtcArPostRoutes } from './routes/qtc-ar-post.ts';
 import { qtcBankPaymentIntakeRoutes } from './routes/qtc-bank-payment-intake.ts';
+import { qtcReconciliationRunRoutes } from './routes/qtc-reconciliation-run.ts';
 import {
   numberDefinitionListRoutes,
   numberDefinitionCreateRoutes,
@@ -2800,14 +2801,23 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             if (response !== null) return response;
           }
           if (request.pathname === '/api/v1/reconciliation-runs') {
-            allow(body, ['paymentId']);
-            const result = await dependencies.quoteToCash.reconcile(
-              { paymentId: uuid(body.paymentId, 'paymentId') },
-              idempotency(request),
-              ctx('reconciliation:run'),
-              correlationId,
+            const response = await dispatchRoutes(
+              qtcReconciliationRunRoutes({
+                repository: () =>
+                  dependencies.quoteToCash as Pick<
+                    NonNullable<ApiDependencies['quoteToCash']>,
+                    'reconcile'
+                  >,
+                body,
+                authorization: context,
+                authorizeScope: ctx,
+                mutationDto,
+                correlationId,
+                parsers: { allow, uuid, idempotency },
+              }),
+              request,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'reconciliation:read') };
+            if (response !== null) return response;
           }
         }
         if (dependencies.commissions) {
