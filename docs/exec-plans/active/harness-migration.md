@@ -6,9 +6,9 @@
 - **分支**：`harnessing`（自 main 派生；按规则 §7.1 禁止直接在主干改造）
 - **计划版本 / 日期**：v1.3 / 2026-10-12（v1.2 经第三轮人工审核修订：修复 §3.8 S11 表格裸管道、覆盖率验收语义收紧为目标值硬条件、S11 表述改为启发式口径）
 - **扫描基线**：commit `779dea3`（同步 origin/main 后）
-- **状态**：**批次1与2a已获人工验收；2b进行中：auth/identity/IAM/collection/commercial/complaint/CRM/platform/production16/startup已协调确认。QTC10成功条件→16canonical/仓储入口；①②③④⑤a⑤b⑥⑦a十四入口14/16确认（⑦a303e6cd/bd8e2e1、b3ea8c9本轮落盘），⑦b收款旧189契约64804b8/0138a96协调确认，⑦b收款a7657f5/b1e25ab已协调确认，⑧核销旧118契约cb3a0cb/89b5862协调确认，授权314c2c2后dcf6b9a已提取，当前16/16提取、⑧局部已协调，TD-REG-001前六module12入口旧根捕获已f8059a8恢复、待协调；登记acba392/护栏51182b7冻结，尚未进行QTC全域确认。全部旧oracle冻结；本恢复小步完成停协调，不全域确认及其余写/website/2c/2e，非全域或2b人验收。原§4.2历史表/行号/授权/诊断与fixture-type-lint失败/容量及builder恢复原时点保留，⑥草稿整根捕获/必要守恒修正及lint-CI失败不覆盖；TD-API-001/002不结清、台账36/TD-BOUND-003/004待核实不修、D1不扩、QUALITY_SCORE基线不改。**
+- **状态**：**批次1与2a已获人工验收；2b进行中：auth/identity/IAM/collection/commercial/complaint/CRM/platform/production16/startup/QTC源码、冻结护栏及全域清单已协调确认。QTC旧10选择条件→16canonical/仓储入口，当前10module922行/11factory/7GET+9POST；TD-REG-001旧根捕获回归已f8059a8恢复并协调解决，登记acba392/护栏51182b7/最终ab0f3d4证据落盘，原十组2389及新335冻结。当前仅QTC全域地图/证据文档收尾，完成停协调；计划website-lead-ingest后续范围仍需另派核验，不自行website/2c/2e或其他批次，整体2b未人工验收。原§4.2历史表、子步授权/待复核/失败/容量与builder恢复时点、曾因root回归阻塞全域的历史保持，不宣称从未差异。台账36含TD-REG-001已解决历史，原35行不改；TD-BOUND-003/004待核实不修/D1不扩/TD-API-001/002不结清/QUALITY_SCORE基线不改。**
 - **规则文档**：`docs/HARNESS-RULES.md`（施工期常驻，竣工验收后按 §14 拆解归档）
-- **配套文件**：问题清单 `docs/exec-plans/tech-debt-tracker.md`（35 条）；CI 决策 `docs/CI.md`；度量脚本 `scripts/analysis/repo-metrics.mjs`
+- **配套文件**：问题清单 `docs/exec-plans/tech-debt-tracker.md`（36 条，含已解决历史项）；CI 决策 `docs/CI.md`；度量脚本 `scripts/analysis/repo-metrics.mjs`
 
 ## 0.5 ZCode 执行契约（计划确认后对每次执行会话生效）
 
@@ -147,6 +147,12 @@ packages/{types, ui, config, testing} → 零依赖
 | 2d   | 零测试 2 域（business-document、production-cost）：**先写特征化测试**（阶段 4 行为守恒护栏，非阶段 5 补测），测试与迁移分开提交                                                   | 2 域 handler + 2 个新测试文件                | 新特征化测试 + `ci:local`           | 测试/迁移两段提交 |
 | 2e   | Service 层显式化：跨仓储编排从 handler 抽为 service 函数（依赖方向 Repo→Service→Runtime，结构测试校验）                                                                           | 新 `apps/api/src/services/`                  | 全量 + 依赖方向结构测试             | 按域小步提交      |
 | 2f   | TD-PERF-002 判定：13 个 N+1 候选点逐个判定，确证者登记修复子任务（不在此修，除非风险为零）                                                                                        | §3.8 清单                                    | 判定记录进台账                      | 无代码改动        |
+
+**2b当前确认补记（仅本轮QTC，原子批表的域清单/初始文件提交预期不改）**：当前委托与回滚另见§4.2.7，不把原每域一文件/1–2提交预期冒充实测；原表仍列website-lead-ingest，当前未核验该后续范围，不声明2b全部完成。
+
+| 原计划域 | 当前协调确认                                                                       | 当前路由委托                                                        | 回滚引用                                       |
+| -------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------- |
+| qtc      | 16入口源码/冻结护栏/全域清单已确认；TD-REG-001已解决；本收尾文档待协调，非2b人验收 | 10module / 11factory / 7GET+9POST，完整cap/view/方法/顺序表见§4.2.7 | 各原子提取SHA及f8059a8按依赖逆序；固定护栏保持 |
 
 #### 4.2.1 commercial 历史盘点与首步设计（基线 db7976f，设计已协调复核）
 
@@ -1331,7 +1337,55 @@ packages/database/src/index.ts84–119 `migrationFiles`读取迁移文件并SHA2
 
 **实际检查／边界／回滚**：PG容器healthy、回环test guard与70 applied通过（/tmp/kingturf-production-startup-scope-{guard,status}.log）；既有startup PG4/4真实退出0（/tmp/kingturf-production-startup-scope-pg.log），DB串行、不新增测试。必要API mock-only：health/app/auth-route-contract/routes-dispatcher/runtime-telemetry五文件52/52退出0（/tmp/kingturf-production-startup-scope-mock.log），config现有一文件4/4退出0（/tmp/kingturf-production-startup-scope-config.log）；structure0违规31豁免/format/doclint103/diff check通过。readonly独立reviewer源码/四case/app关系/候选分类与文档核验，不测试/DB/编辑。最终独立文档HEAD完整pnpm ci:local另复验到/tmp/kingturf-production-startup-scope-final-head-ci.log，实际退出后回报，不以调度代通过；完整API既有96文件6128、database68等实际数以该次日志为准，startup4单列、不加进业务PG1或production16。00d51fa后apps/packages/scripts/workflows全源码、全部已有tests/oracle与SQLschema/依赖/台账35/QUALITY_SCORE分数基线零diff；本轮仅确认与范围审计计划/index两文档。startup PG只隔离测试库/配置四种情形与基础HTTP/metadata，未验证生产主机、完整DB结构、业务写入/replay/真实REJECTED/未知future迁移或所有checksum边界。协调root运行时inventory曾strip-types错误1→transform-types0、⑨lint等价修正与冻结前214夹具212pass2fail及更早失败/授权原时点保持，非本轮新增业务测试失败。b2bc4f4文档HEAD完整ci:local真实退出0（/tmp/kingturf-production-startup-scope-head-ci.log，API96文件6128/6128、startup基础设施4/业务PG1/platform5另计、build/audit及其余绿）。历史字节对比诊断首轮execFileSync读取巨型计划因默认maxBuffer报ENOBUFS退出1，改8MiB后重跑退出0，original2bTable与production16Snapshot均true；这是只读诊断失败，不是PG/业务测试失败，源码/tests不改。新文档初插入标题层级/冗余加号及Markdown emphasis影响glob记法已原位校正，格式化后检索字面量/四行三列表/节位置核验均true。本轮发现式读取一次不存在的packages/config/test目录，rg报告路径错误后按rg --files定位真实src/index.test.ts；没有测试/行为修正。TD-BOUND-003/004待核实不修、D1不扩/TD-API不结清；不E2E/push/部署/生产/workflows/prompt-history读取，不回显运行时秘密/连接串。回滚本范围审计/§0/§7/index仅独立文档revert，c64418e全域确认独立revert，无业务回滚。production16/16整体已协调确认、本范围结论待协调、qtc/website/2c未启动，非2b人类验收。[已测试]
 
-#### 4.2.7 QTC 全域盘点与①②③④⑤a⑤b⑥⑦a⑦b⑧十六入口（旧源码基线c7833e7；当前16/16提取、⑧待协调）
+#### 4.2.7 QTC 全域当前委托与16入口协调确认（旧源码c7833e7；当前f8059a8/ab0f3d4，本轮文档收尾）
+
+**QTC全域当前委托与协调确认（2026-10-14，源码f8059a8/最终ab0f3d4；本轮仅文档收尾）**：⑧dcf6b9a及TD-REG-001恢复f8059a8/护栏51182b7/登记acba392已协调复核通过。安全read核固定源码CI124751ms/HEAD125573ms真实exit0，API107文件8852/8852、QTC PG2/doclint103/structure0违规31豁免/build/audit绿/干净树；协调亲跑65mock-only8469/8469（/tmp/kingturf-qtc-root-capture-independent.log），readonly reviewer深审七late inject/六module旧捕获点/capturedreceiver、probe348/test49/固定JSON无阻塞。before-contract154fail181pass→after335green真实记录保留，335＝OLD166+CURRENT166+3元断言，旧十组2389冻结全绿。此前十六提取数量虽完整但全域被新root回归阻塞，现该局部回归经固定护栏与修复核验后已解决；不能写成从未有差异。当前源码/冻结契约与全域清单已经协调确认，本收尾文档仍待最终HEAD门禁和协调复核；不等于2b人工验收。
+
+**计数／16入口当前映射**：旧c7833e7为一GET Map+guard七path、九POST成功选择（七exact＋approval/sign两rawregex）＝10条件→16canonical/16仓储入口；共同POST/Octx不是第17。新10module/11factory展开5baseGET+2opsGET+9POST＝7GET+9POST；APPROVED/REJECTED、INVOICE/CREDIT_NOTE/nullorder、COMPLETED/NO_MATCH均原参数/结果变体，不增canonical。下表path省略/api/v1，模块路径相对apps/api/src/routes；Q0＝原无fields查询授权，Q＝新actor/scopes/anchors对象与原refs，F＝原operational filters，K＝原header key，C＝原correlation，P/M/U/S/Cur/D/T/J沿下方历史符号定义。
+
+| 当前canonical                     | 当前module / factory                                    | 授权cap / view或独立read cap             | 仓储方法 / 业务实参数              | 原顺序及HTTP/投影                                                                                               |
+| --------------------------------- | ------------------------------------------------------- | ---------------------------------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| GET credit-limits                 | qtc-base-reads.ts / qtcBaseReadRoutes                   | credit:read / limits                     | list(view,Q) 2                     | Q0→root-method→view/Q；200逐row P                                                                               |
+| GET credit-decisions              | qtc-base-reads.ts / qtcBaseReadRoutes                   | credit:read / credit                     | list(view,Q) 2                     | 同基础GET                                                                                                       |
+| GET contracts                     | qtc-base-reads.ts / qtcBaseReadRoutes                   | contract:read / contracts                | list(view,Q) 2                     | 同基础GET                                                                                                       |
+| GET sales-orders                  | qtc-base-reads.ts / qtcBaseReadRoutes                   | sales-order:read / orders                | list(view,Q) 2                     | 同基础GET                                                                                                       |
+| GET reconciliation-runs           | qtc-base-reads.ts / qtcBaseReadRoutes                   | reconciliation:read / reconciliation     | list(view,Q) 2                     | 同基础GET                                                                                                       |
+| GET ar-open-items                 | qtc-operational-reads.ts / qtcOperationalReadRoutes     | ar:read / ar                             | listOperationalPage(view,F,Q) 3    | Q0→state/min/max/Number比较→root-method→F/Q；200逐row P及原nextCursor                                           |
+| GET bank-payments                 | qtc-operational-reads.ts / qtcOperationalReadRoutes     | bank-payment:read / payments             | listOperationalPage(view,F,Q) 3    | 同operational GET                                                                                               |
+| POST credit-limits                | qtc-credit-writes.ts / qtcCreditLimitRoutes             | credit:approve / credit:read             | setCreditLimit(input,K,Q,C) 4      | allow5→root-method→U/Cur/D/T/T→K/ctx；201晚M                                                                    |
+| POST credit-decisions             | qtc-credit-writes.ts / qtcCreditEvaluationRoutes        | credit:evaluate / credit:read            | evaluateCredit(input,K,Q,C) 4      | allow5→root-method→4U/T→K/ctx；201晚M                                                                           |
+| POST credit-decisions/:id/approve | qtc-credit-approval.ts / qtcCreditApprovalRoutes        | credit:approve / credit:read             | approveCredit(id,d,reason,K,Q,C) 6 | 原raw regex→allow2→Sdecision/enum→root-method→U/Sreason→K/ctx；200晚M                                           |
+| POST contracts                    | qtc-contract-create.ts / qtcContractCreateRoutes        | contract:revise / contract:read          | createContract(input,K,Q,C) 4      | allow6→root-method→U/U/S/U/U/J→K/ctx；201晚M                                                                    |
+| POST contracts/:id/sign           | qtc-contract-sign.ts / qtcContractSignRoutes            | contract:sign / contract:read            | signContract(id,input,K,Q,C) 5     | 原raw regex→allow4→root-method→Uid/S/S/J/T→K/ctx；201晚M                                                        |
+| POST sales-orders                 | qtc-sales-order-create.ts / qtcSalesOrderCreateRoutes   | sales-order:create / sales-order:read    | createOrder(input,K,Q,C) 4         | allow11→全部lines/非空/total sum校验→root-method→顶U/S/Cur及cached lines-total→K/ctx；201晚M                    |
+| POST ar-open-items                | qtc-ar-post.ts / qtcArPostRoutes                        | ar:post / ar:read                        | postAr(input,K,Q,C) 4              | allow7→SdocumentType/enum→root-method→Ucustomer/strict null或再次Uorder/Snumber/cached dt/Cur/D/T→K/ctx；201晚M |
+| POST bank-payments                | qtc-bank-payment-intake.ts / qtcBankPaymentIntakeRoutes | bank-payment:intake / bank-payment:read  | intakePayment(input,K,Q,C) 4       | allow6→root-method→U/Cur/D/T/S/J浅ref→K/ctx；201晚M                                                             |
+| POST reconciliation-runs          | qtc-reconciliation-run.ts / qtcReconciliationRunRoutes  | reconciliation:run / reconciliation:read | reconcile(input,K,Q,C) 4           | allow1→root-method→UpaymentId→K/ctx；201晚M                                                                     |
+
+**当前容量／原子回滚与旧护栏索引**：物理app从c7833e7的4626到4605净−21；structure末空段切分为4606，各历史阶段涨减保留。十module合922/最大138，11factory最大79、validate最大58、人工nest≤5，满足各新职责800/200/5；app仍超800且有白名单，AST函数200尚非强制，TD-API-001/002不结清、不凭迁移数量调整QUALITY_SCORE。前六module已有f8059a8恢复，表中原子提取提交是历史回滚引用，不意味着现在可无依赖直接revert；先按依赖逆序撤后续root恢复及相关子步，保留固定旧oracle。
+
+| 当前module                 | 物理行 / factory→路由 | factory / validate / handler最大行数 | 原提取代码 / 独立旧护栏SHA与case |
+| -------------------------- | --------------------- | ------------------------------------ | -------------------------------- |
+| qtc-base-reads.ts          | 76 / 1→5              | 38 / 12 / 18                         | bc61de4 / a169afe（270）         |
+| qtc-operational-reads.ts   | 102 / 1→2             | 62 / 34 / 20                         | 7a4aaa4 / 383b712（392）         |
+| qtc-credit-writes.ts       | 138 / 2→2             | 42 / 21 / 13（各）                   | 89e97f6 / 9ab039d（275）         |
+| qtc-credit-approval.ts     | 77 / 1→1              | 40 / 14 / 15                         | f7ee3b0 / edf6e20（260）         |
+| qtc-contract-create.ts     | 80 / 1→1              | 44 / 23 / 13                         | d918a46 / 7cd0b6f（172）         |
+| qtc-contract-sign.ts       | 85 / 1→1              | 46 / 23 / 14                         | 5d3e88b / 0078dec（162）         |
+| qtc-sales-order-create.ts  | 122 / 1→1             | 79 / 58 / 13                         | 4144526 / f7166b9（343）         |
+| qtc-ar-post.ts             | 91 / 1→1              | 52 / 31 / 13                         | 303e6cd / 9f69e3f（208）         |
+| qtc-bank-payment-intake.ts | 84 / 1→1              | 44 / 23 / 13                         | a7657f5 / 64804b8（189）         |
+| qtc-reconciliation-run.ts  | 67 / 1→1              | 32 / 11 / 13                         | dcf6b9a / cb3a0cb（118）         |
+
+**当前app边界／否定证据**：app2598–2612保留七GET Map、2614支持guard；两GET factory validate按原授权/前置query校验后才root-methodcapture；共同POST2647/O2648/ctx2649–2652原样，九POST原插槽至2848，两rawregex2691–2693/2733仍原匹配，commissions2851起接续。所有factory app只注入late resolver，handler绑定validated.repository；后四POST原lines/dt/allow捕获点与前六恢复后的auth/query/allow/decision边界均守恒。原getter次数/首错/输入键序/新input-Q/actor-scopes-anchors refs、GET每row晚P/write await晚M、原UUID-Date/decimal/浅J/key/未支持Octx400-404/global401/missingrepo404不收紧，不加HTTP scope/DB规则。当前仅在apps/api/src/app.ts执行 `rg -n 'quoteToCash\.(list|listOperationalPage|setCreditLimit|evaluateCredit|approveCredit|createContract|signContract|createOrder|postAr|intakePayment|reconcile)\s*\(' apps/api/src/app.ts` 无命中（预期rg退出1，/tmp/kingturf-qtc-full-call-scan.log）；本结论限11实际method字面语法，不排除所有别名/反射。静态原16选择逐项映射到表，createContract为真实方法，不误称reviseContract。
+
+**独立runtime与冻结／静态保留**：协调runtime /tmp/kingturf-qtc-full-inventory-independent.log真实0，只构造所有factory({})/table及matcher，从未validate-handler/SQL；10module11factory16唯一method-path、7GET9POST，每expected path恰一match/拒extra、validate-handler函数存在；Node experimental-transform-types警告非失败。主代理只读核日志/源码/容量、scout独立映射无遗漏，本轮不重复mock/PG或新增runtime业务调用。各十旧test按上表各冻结SHA至HEAD零diff、新335/probe/JSON对51182b7零diff；c7833e7以来qtc-repositories.ts/指定qtc PG/数据库migrations/routes/types.ts/structure-gate/workflows/QUALITY_SCORE零diff，dispatcher/G3G4/白名单不扩。当前appblob b049b4a9ee9e469b599958872c008c7f3b3410d4/JSON1e59585f4ec957b875f290cb0ecf94201aa8f5a6/test3df629642cd053cf9d4cfb614377b944ce1d1450/probe989c66d35b3afa469c1c072b7b4d1bd4233d0f6e与协调一致。
+
+**证据覆盖局限／历史／停点**：PG2仍仅部分AR INVOICE-null-order正额/跨tenant、intake同key异input碰撞/同tenant撤scope拒重放/immutable、两key并发reconcile两状态/allocation100、audit-outbox总4含AR/intake、付款余额过滤及AR分页；不是16个HTTP/SQL/全scope/DB pins完整矩阵，也不证明directmock可变根在生产发生。root335对approval UUID值/ops filter未完整记录，完整参数值依赖原2389；旧app固定c7833e7但imports当前未变依赖，非hermetic历史环境。原schema/Number/锁/算法/DTO/Date/TD-BOUND-003/004待核实/D1安全行为不修。新TD-REG-001经本协调证据标已解决，36项包含其历史，原35行不改，不关TD-API或其他安全项。此前所有真实fixture/type-lint/format-CI/探针strip-node-cap/补丁失败与builder容量事件按原时点保留，不拿本轮绿改写历史。计划2b仍列website-lead-ingest后续范围，当前未开展其核验；后续须另派，不声明整体2b已完成人验收，不自行website/2c/2e或其他批次。只AGENTS地图/计划§0/§4.2.7/§7/TDREG状态/index文档，业务src/全部tests/fixture/probe/SQL/helpers/packages/依赖/评分/门禁/workflows对ab0f3d4零diff；元信息配套台账35已纠正当前36，旧历史35不覆盖。
+
+**本轮验证／回滚**：独立readonly文档review/format/doclint/结构/静态diff及最终文档HEAD完整pnpm ci:local另到/tmp/kingturf-qtc-full-wrap-head-ci.log，取得真实退出后交接；DB仅最终门禁，回环guard/healthy/70applied串行，不补新PG业务、不开并发PG。没有重跑已完成65mock8469或护栏335等旧任务；完整CI按最后提交规则再执行，实际API数据该日志而非调度。回滚本次仅文档revert，前各原提取SHA和root acba392/51182b7/f8059a8/ab0f3d4回滚引用保持，revert f8059a8会重现固定335套件的154红灯，不改oracle消红。QTC全域源码/护栏/清单协调确认已落盘，本收尾产出完成停协调，整体2b未人验收。未E2E/push/部署/生产/workflows修改/读取prompt-history或回显秘密完整连接串。[已测试]
+
+**以下保留各提取／回归发现／待复核／失败时点的历史快照；当前状态以本全域表和§0为准。**
 
 **TD-REG-001旧根捕获恢复当前快照（f8059a8，2026-10-14；仅本回归待协调）**：登记acba392、固定护栏/候选51182b7均先独立落盘；旧基线c7833e7、起点7251b08。仅app七处factory注入与六module12canonical恢复旧第二次root求值，后createOrder/postAr/intake/reconcile四module不改。本修复不改变产品、DataScope/权限规则/SQL算法、不把directmock差异称生产安全漏洞；QTC全域确认尚未进行，16/16仍仅提取数量，TD-REG-001已恢复待协调/未结清，台账36和原35历史保持。
 
@@ -1799,6 +1853,10 @@ PG容器healthy/test guard/70 applied与旧QTC PG2/2通过（/tmp/kingturf-qtc-b
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+**QTC全域当前委托与协调确认（2026-10-14，源码f8059a8/最终ab0f3d4；本轮仅文档收尾）**：⑧dcf6b9a及TD-REG-001恢复f8059a8/护栏51182b7/登记acba392已协调复核通过。安全read核固定源码CI124751ms/HEAD125573ms真实exit0，API107文件8852/8852、QTC PG2/doclint103/structure0违规31豁免/build/audit绿/干净树；协调亲跑65mock-only8469/8469（/tmp/kingturf-qtc-root-capture-independent.log），readonly reviewer深审七late inject/六module旧捕获点/capturedreceiver、probe348/test49/固定JSON无阻塞。before-contract154fail181pass→after335green真实记录保留，335＝OLD166+CURRENT166+3元断言，旧十组2389冻结全绿。此前十六提取数量虽完整但全域被新root回归阻塞，现该局部回归经固定护栏与修复核验后已解决；不能写成从未有差异。当前源码/冻结契约与全域清单已经协调确认，本收尾文档仍待最终HEAD门禁和协调复核；不等于2b人工验收。
+
+QTC16当前委托/能力-view/真实方法与2-3-4-5-6实参/200-201/P-M、10module922/11factory、原子代码及十旧护栏SHA、旧10选择与16canonical口径见§4.2.7本轮全域表。原TD-REG-001阻塞及154fail181pass→335pass保留，本回归协调已解决、36历史项保留，不关TD-API/TD-BOUND/D1或调评分。主代理/scout静态映射无遗漏，11method直接调用限定检索预期rg1；各十冻结SHA及51182b7全部工件零diff、repoSQL/PG/schema/types/gate/workflows/评分对c7833e7零diff，源码/测试对ab0f3d4零diff。本轮只文档，不重复已完成mock或PG业务，独立文档review和最终HEAD完整CI另/tmp/kingturf-qtc-full-wrap-head-ci.log，取得实际0后交接。PG与directmock/非hermeticimports/部分参数值限制、各历史失败/回滚依赖见当前全域证据，rollback本次只文档revert；f8059a8回滚会重现335套件154红灯。计划仍列website-lead-ingest为后续待核范围，当前不开展；QTC源码/护栏/全域清单已协调确认，本收尾文档完成停协调，整体2b未人验收。未E2E/push/部署/生产/读取prompt-history或回显secret连接串。[已测试]
 
 **TD-REG-001旧根捕获恢复当前快照（f8059a8，2026-10-14；仅本回归待协调）**：登记acba392、固定护栏/候选51182b7均先独立落盘；旧基线c7833e7、起点7251b08。仅app七处factory注入与六module12canonical恢复旧第二次root求值，后createOrder/postAr/intake/reconcile四module不改。本修复不改变产品、DataScope/权限规则/SQL算法、不把directmock差异称生产安全漏洞；QTC全域确认尚未进行，16/16仍仅提取数量，TD-REG-001已恢复待协调/未结清，台账36和原35历史保持。
 
