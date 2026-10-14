@@ -6,7 +6,7 @@
 - **分支**：`harnessing`（自 main 派生；按规则 §7.1 禁止直接在主干改造）
 - **计划版本 / 日期**：v1.3 / 2026-10-12（v1.2 经第三轮人工审核修订：修复 §3.8 S11 表格裸管道、覆盖率验收语义收紧为目标值硬条件、S11 表述改为启发式口径）
 - **扫描基线**：commit `779dea3`（同步 origin/main 后）
-- **状态**：**批次1与2a已获人工验收；2b进行中：auth/identity/IAM/collection/commercial/complaint/CRM/platform整体与production①读取/②创建/③五命令/④材料已协调确认。⑤旧245/7003272与最终设计655724a经协调确认并获2089fcd授权，代码c9cb251仅提取报工单POST。production全域11支持→16入口，当前11/16，余finished-rolls/costpolicy/calculate/approve/reject五写入口未迁，⑤实施待协调复核；245/190/479/198/112与全部旧oracle冻结。停⑥output/成本/startup/qtc/website/2c。历史13/16/17/platform27/28/28及原盘点、授权、失败时点保留，非production全域/2b验收；TD-API-001/002不结清、35台账/TD-BOUND-003/004待核实不修、D1不扩。**
+- **状态**：**批次1与2a已获人工验收；2b进行中：auth/identity/IAM/collection/commercial/complaint/CRM/platform整体与production①读取/②创建/③五命令/④材料已协调确认。⑤旧245/7003272与最终设计655724a经协调确认并获2089fcd授权，代码c9cb251仅提取报工单POST。production全域11支持→16入口，当前11/16，余finished-rolls/costpolicy/calculate/approve/reject五写入口未迁，⑤c9cb251/75ea76f实施已协调确认，本轮只启动⑥finished-rolls旧护栏/候选设计不提取；245/190/479/198/112与全部旧oracle冻结。停⑥代码/成本/startup/qtc/website/2c。历史13/16/17/platform27/28/28及原盘点、授权、失败时点保留，非production全域/2b验收；TD-API-001/002不结清、35台账/TD-BOUND-003/004待核实不修、D1不扩。**
 - **规则文档**：`docs/HARNESS-RULES.md`（施工期常驻，竣工验收后按 §14 拆解归档）
 - **配套文件**：问题清单 `docs/exec-plans/tech-debt-tracker.md`（35 条）；CI 决策 `docs/CI.md`；度量脚本 `scripts/analysis/repo-metrics.mjs`
 
@@ -910,6 +910,8 @@ module48–51仅原raw [0-9a-f-]+/u matcher，collection exact match；匹配纯
 
 #### 4.2.5 production 当前11/16读取／创建／五命令／材料／报工映射与旧盘点设计历史
 
+**⑤报工实施协调确认（2026-10-14，授权2089fcd／实现c9cb251／最终75ea76f）**：协调安全读取已完成会话及最终HEAD完整pnpm ci:local真实退出0（/tmp/kingturf-production-report-extract-head-ci.log，API92文件5313/5313、业务PG1/startup基础设施4/platform5另计、web114/domain14/doclint103/结构0违规31豁免/build/audit及其余绿）；协调独立50个mock-only文件4930/4930（/tmp/kingturf-production-report-extract-independent.log）与readonly reviewer实际源码无阻塞。capture先UUID/九input/notes必填单读/四参原receiver/lateM守恒，output至EOF逐字一致、7003272..HEAD全部test零diff；最终app blob655083eb4735b7487c31663fc1543e33014e7d93/module blob7309ebc5661066fa51a86670cd6bc5b830d2e2dc同审查版本，工作区干净。当前11/16非production全域/2b验收，仅续⑥finished-rolls一个POST旧buildApp固定契约与候选设计，未批准⑥业务提取，停⑥代码/成本/startup/qtc/website/2c。历史失败与授权原时点保留、35台账/TD-BOUND/D1/TD-API不变，不E2E/push/部署/生产/workflows/prompt-history读取。本确认文档独立revert。[已测试]
+
 **⑤报工提取当前快照（2026-10-14，授权2089fcd，代码c9cb251）**：只迁移operation-reports一个POST，已确认①3GET/②create/③5commands/④material合10，⑤实施后当前11/16、余finished-rolls/costpolicy/calculate/approve/reject五写未迁，待⑤协调复核、非production全域或2b验收。production wrapper1251、raw matcher1336–1339/POSTguard1340–1361留app，内部成功体dispatch productionReportRoutes；原缺repo跳404/global401先/nullfallback/unsupported保持，无额外Q0/503/preflight。前已迁10内容逐字不变（import+1平移），后output matcher1362至EOF逐字不变。原raw `/^\/api\/v1\/production-orders\/([0-9a-f-]+)\/operation-reports$/u` 保留小写hex横线/u/尾锚，不strictUUID/alias。新production-report.ts103行，factory38–103共66/validate48–87共40/handler88–100共13、match42–47共6，人工nest≤5；app4671→4662净−9，不称AST200已强制。窄Pick仅reportOperation、Parameters四位/Readonly input/scope/requestctx/envelope `{reportOperation,id,input,scopeContext}`，原AuthorizationContext/authorizeQuery/helpers/generic M/C注入，无any/新依赖/跨请求state。
 
 | 当前已迁11/16职责                    | app当前slot                                      | module原行为保持                                                     |
@@ -1210,6 +1212,8 @@ production PG test导入两repo（4–5）、唯一it115–302真实订单create
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+2026-10-14：⑤2089fcd/c9cb251/75ea76f已协调确认，独立50mock文件4930/4930和最终完整CI0 API92/5313，旧245等oracle零diff/output邻界和blob一致。当前11/16非全域/2b验收，只启动⑥finished-rolls旧护栏/设计，不提取源码或进入成本/后续域；详见§4.2.5，确认文档独立回滚。[已测试]
 
 **2026-10-14 / 2b-production⑤报工提取（当前11/16，余5写入口未迁）**：先独立2089fcd落盘旧245/7003272与655724a设计协调确认及提取授权（协调50mock文件4930/4930、最终完整CI0 API92/5313），代码c9cb251仅app报工内部成功块+production-report.ts。原wrapper/raw/u/POSTguard留slot，O/allow9/report(Object.keys)后捕获方法→pathUUID→九input原序/notes一次??''仍必填→完整input后scope actor/S/An→captured.call原repo四业务参await201原独立late read M，不新增503/Q0/关系或SQL库存前查。前后相关56文件5120/业务PG1、post245+190+479+198+112共1224/type-lint0与readonly reviewer无阻塞；旧全部oracle零diff，beforeReport/afterReport byte true，前已迁10与紧后output至EOF/仓储SQLschema/helpers/services/platform/dispatcher/G3G4/门禁/packagesweb/依赖/台账/workflows不改。完整代码ci:local真实退出0（/tmp/kingturf-production-report-extract-code-ci.log，API92文件5313、业务PG1/platform5/startup基础设施4另计、doclint103/结构0违规31豁免/build/audit及其余绿），最终独立文档HEAD另完整复验/tmp/kingturf-production-report-extract-head-ci.log。module103/factory66/validate40/handler13/match6/人工nest≤5、app4671→4662净−9，不称AST200强制；实施无新失败/冻结预期修改，旧编排SyntaxError/计数澄清/历史失败与授权保留。PG仍只合法报工/超计划拒与reports1/immutable贯通，mock权限/0/倒序异常time/重复forward非完整PG矩阵，startup4仅基础设施。当前11/16待⑤协调非全域/2b验收，35台账/TD-BOUND/D1/TD-API不变，停⑥finished-rolls/成本/startup/qtc/website/2c，未E2E/push/部署/生产/workflows/prompt-history读取。回滚c9cb251恢复原成功体，2089fcd授权与本日志/index独立文档revert，7003272旧245及全部oracle冻结；详见§4.2.5。[已测试]
 
