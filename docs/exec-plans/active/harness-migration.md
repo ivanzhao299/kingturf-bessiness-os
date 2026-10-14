@@ -6,7 +6,7 @@
 - **分支**：`harnessing`（自 main 派生；按规则 §7.1 禁止直接在主干改造）
 - **计划版本 / 日期**：v1.3 / 2026-10-12（v1.2 经第三轮人工审核修订：修复 §3.8 S11 表格裸管道、覆盖率验收语义收紧为目标值硬条件、S11 表述改为启发式口径）
 - **扫描基线**：commit `779dea3`（同步 origin/main 后）
-- **状态**：**批次1与2a已获人工验收；2b进行中：auth/identity/IAM/collection/commercial/complaint/CRM/platform整体与production①–⑦已协调确认。⑧calculate旧125/970e216与候选9d38c96已协调确认，授权9c98e38后实现af5cbd7完成、待⑧协调复核；全域11支持→16入口，当前14/16，余approve/reject二写未迁。125/291/185/245/190/479/198/112及全部旧oracle冻结。停⑨/startup/qtc/website/2c，非production全域/2b验收。历史盘点、行号、授权和失败原时点保留；TD-API-001/002不结清、35台账/TD-BOUND-003/004待核实不修、D1不扩。**
+- **状态**：**批次1与2a已获人工验收；2b进行中：auth/identity/IAM/collection/commercial/complaint/CRM/platform整体与production①–⑧已协调确认（⑧af5cbd7/最终5323736）。全域11支持→16入口，当前14/16，余approve/reject二写未迁；本轮仅⑨旧契约与候选设计，未批准提取、不建module。125/291/185/245/190/479/198/112及全部旧oracle冻结。停⑨代码/startup/qtc/website/2c，非production全域/2b验收；历史盘点、行号、授权和失败原时点保留。TD-API-001/002不结清、35台账/TD-BOUND-003/004待核实不修、D1不扩。**
 - **规则文档**：`docs/HARNESS-RULES.md`（施工期常驻，竣工验收后按 §14 拆解归档）
 - **配套文件**：问题清单 `docs/exec-plans/tech-debt-tracker.md`（35 条）；CI 决策 `docs/CI.md`；度量脚本 `scripts/analysis/repo-metrics.mjs`
 
@@ -910,6 +910,8 @@ module48–51仅原raw [0-9a-f-]+/u matcher，collection exact match；匹配纯
 
 #### 4.2.5 production 当前14/16读取／创建／五命令／材料／报工／产出／成本政策／计算映射与旧盘点设计历史
 
+**⑧计算实施协调确认／⑨本轮范围（2026-10-14，授权9c98e38／实现af5cbd7／最终5323736）**：协调安全读取完成会话及最终HEAD完整pnpm ci:local真实退出0（/tmp/kingturf-production-cost-calculation-extract-head-ci.log，API95文件5914、业务PG1/startup基础设施4/platform5另计、build/audit及其余绿），亲跑53个mock-only文件5531/5531（/tmp/kingturf-production-cost-calculation-extract-independent.log），readonly reviewer源码无阻塞。四parser/capture/三参receiver/lateM及无version fallback守恒，costDecision至EOF逐字一致、全部旧oracle零diff；app blob8ca8e345ee912fb890032a4672376d99ee879a86/module bloba22d9f77bb26381a59c15917cc4e5619b51ed5a7同审查版本，工作区干净，⑧整体协调确认。当前14/16非production全域/2b验收；仅批准⑨approve/reject两个POST（原combined条件）旧buildApp固定契约与候选设计，不批准提取业务源码、不建module，停⑨代码/startup/qtc/website/2c。历史待复核/失败/授权原时点保留，35台账/TD-BOUND-003/004待核实不修、D1不扩、TD-API-001/002不结清；无E2E/push/部署/生产/workflows/prompt-history读取。本确认文档独立回滚。[已测试]
+
 **⑧calculate提取当前快照（2026-10-14，授权9c98e38，代码af5cbd7）**：仅exact POST /api/v1/production-cost-runs一入口，当前14/16，余approve/reject二写未迁，待⑧协调复核，非production全域/2b验收。app productionCosts wrapper1390与exact POST guard1441–1454留原slot，仅成功体dispatch productionCostCalculationRoutes；同path GET1402–1413保持独立reader，costDecision raw1455–1458/POST1459至EOF逐字不变，前已迁13内容逐字不变（import+1平移），不新增503/Q0/preflight。module85行/factory35–85共51/validate40–70共31/handler71–82共12，人工nest≤5；app4632→4624净−8，不声称AST200强制或TD-API已结清。窄Pick calculate/Parameters三位/Readonly input-scope-requestctx及envelope `{calculate,input,scopeContext}`，只注入原parser/authorizeQuery/generic M/C，无any/新依赖/跨请求可变state。
 
 **⑧实际执行与当前14入口映射**：validate O41→allow四键42–47→calculate字段授权48–52→capture method53先全部input getter→两UUID55–56→两body stableCode(string)57–62→全部input完成后actor/S/An64–68→69返回envelope；handler72–77原receiver三业务实参(input,Q,C)await，79–80返回201与独立late manufacturing-cost:read M。bodykey唯一，header/query忽略，无HTTP dedup/新版本状态/record-BOM-policy-company前查或公式精度变化；真实无version结果不fabricate，read缺权仍既有id fallback。
@@ -1332,6 +1334,8 @@ production PG test导入两repo（4–5）、唯一it115–302真实订单create
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+2026-10-14：⑧9c98e38/af5cbd7/5323736整体已协调确认；独立53mock文件5531/5531与最终完整CI真实0 API95/5914，源码/旧oracle/邻界保持、blob同审查版本。当前14/16非全域/2b验收，仅启动⑨approve/reject两POST旧护栏与候选设计，不批准提取/不建module，详见§4.2.5；本确认文档独立回滚。[已测试]
 
 **2026-10-14 / 2b-production⑧calculate提取（当前14/16，余二写未迁）**：独立授权9c98e38后实现af5cbd7仅app成功体+production-cost-calculation.ts，原wrapper/exactguard、同路径GET及costDecision邻界保持。O/allow4/calculatefields→capture先四getter→两UUID两bodycode→input后scope→原receiver三参await201late costread M，bodykey唯一，无version不fabricate，不改仓储/公式/SQL/审计。前后相关59文件5721与业务PG1通过，post八组冻结1825/type-lint0/readonly reviewer无阻塞、全部旧tests0/前后邻界byte true；代码全量CI真实退出0（API95/5914，业务PG1/startup基础设施4/platform5另计，doclint103/结构0违规31豁免及其他绿）。最终独立文档HEAD完整复验/tmp/kingturf-production-cost-calculation-extract-head-ci.log。module85/factory51/validate31/handler12，app4632→4624净−8，不称AST200强制；实施无新失败/预期修改，旧失败授权保留。PG仅一次既有计算及两totals，不证明全mock/replay/BOM政策精度矩阵，startup4仅基础设施。当前14/16待⑧协调，停⑨/后续域非全域/2b验收；35台账/TD-BOUND/D1/TD-API不变，未E2E/push/部署/生产/workflows/prompt-history读取。回滚af5cbd7恢复成功体，授权9c98e38与本日志/index独立文档revert，970e216旧125与全部oracle冻结；详见§4.2.5。[已测试]
 
