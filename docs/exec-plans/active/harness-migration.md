@@ -910,6 +910,8 @@ module48–51仅原raw [0-9a-f-]+/u matcher，collection exact match；匹配纯
 
 #### 4.2.5 production 当前①读取3/16映射与全域旧盘点／设计历史
 
+**①三读取协调确认（2026-10-14，最终3dd496a／代码02473d9）**：最终app与production-reads.ts blob同协调已读workingtree逐字一致；独立readonly reviewer核对原wrapper skip404、三exactGET、validate一次Q0、单context引用/receiver、await后逐row fields/P、policies raw数组及原13写块无阻塞。611b5d2旧112与全部oracle零diff，生产源码仅app与新module。协调亲跑46文件3818/3818（/tmp/kingturf-production-read-extract-independent.log），核对3dd496a最终完整ci:local真实退出0（/tmp/kingturf-production-read-extract-head-ci.log）：API88文件4201/4201、production业务PG1/1、startup基础设施PG4/4另计、web114/domain14/doclint103/结构0违规31豁免/build/audit与其余门禁全绿。module109/app4707→4703净−4；成本两GET无直接PG读取覆盖、mockscope非真实PG证明、6504e21特殊字面/11d39b1授权、source patch锚点与diagnostic marker失败未写source/test的历史均保留。①3/16已协调确认非production全域或2b验收，本轮只启动②POST orders旧护栏/候选设计，不生成新module、不提取业务/启动③或startup/qtc/website/2c；台账35/TD-BOUND-003/004待核实/D1不扩/TD-API不结清。确认文档独立revert。[已测试]
+
 **①读取实施当前快照（2026-10-14，授权11d39b1）**：仅三个GET已按原slot提取至production-reads.ts，当前3/16、余13写入口未迁，等待协调复核；不是production全域或2b人类验收。旧112护栏611b5d2及全部既有oracle零diff，两依赖wrapper/三exact method-path guard仍在app，validate仅一次原Q0无fields后新建actor/scopes/anchors单context、引用不变；缺对应repo仍跳过至404，global401先，存在repo缺cap/空scope403。policies新body wrapper但items与row原引用，不在await后读取fields；orders/runs await后逐row读取permissions.get(cap)?.fields??null并注入原generic permittedDto，保持null原row/有限fields Object.entries eager getter/特殊own key语义，不缓存/冻结grant或二次授权。不新增503、body/query/header parser或company-only HTTP前置。原13写入口、前MRP/后shipments字节核验一致，仓储/SQL/schema/事务/组合根/共享types/dispatcher/平台九模块/packages/web/依赖/台账/workflows零diff。app4707→4703（净−4），module109行、三factory30/21/30、最长handler14行、人工nest≤5；满足本模块≤800/函数≤200目标，未实施的AST200门禁不称强制。35台账/TD-BOUND-003/004待核实不修、D1不扩、TD-API-001/002不结清，停②创建/其他写组/startup/qtc/website/2c。[已测试]
 
 | ①读取当前映射（旧8c7e902行号保留） | 原支持块 → 当前app guard/dispatch    | module factory/validate/handler | 保持返回                                                                  |
@@ -1056,6 +1058,8 @@ production PG test导入两repo（4–5）、唯一it115–302真实订单create
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+2026-10-14：production①最终3dd496a/代码02473d9三GET已协调确认，46文件3818/3818及最终完整CI退出0（API88文件4201/4201），源码blob/冻结oracle/原13写块保持，详见§4.2.5。当前3/16，不是全域/2b验收；只启动②创建旧护栏/候选设计，不迁业务或后续域，独立确认文档回滚。[已测试]
 
 **2026-10-14 / 2b-production①三GET提取（当前3/16，余13未迁）**：字面6504e21/协调确认与授权11d39b1/代码02473d9分别独立提交。三窄factory保持原wrapper与guard、validate一次Q0、原receiver一context、policies原items/row与orders/runs await后逐row fields/P；无503/输入预检/公司scope前置。冻结112及全部旧oracle零diff、相邻13写与MRP/shipments字节核验true；源码仅app与新production-reads.ts，模块109/app4707→4703/factory30-21-30/handler最长14/人工nest≤5。前后112/相关52文件4008/production业务PG1与type/lint通过，独立readonly reviewer无阻塞；完整代码CI真实退出0（/tmp/kingturf-production-read-extract-code-ci.log，API88文件4201、startup基础设施PG4另计、doclint103/structure0违规31豁免/其余全绿），最终独立文档HEAD再完整复验/tmp/kingturf-production-read-extract-head-ci.log。首次source patch锚点失败原子未写；首次字节诊断cost单行marker不匹配跨行guard，仅修脚本复跑通过，实施测试/门禁无失败或预期调整；历史失败保留。cost两读无直接PG覆盖、mockscope非真实PG证明；35台账/TD-BOUND-003/004/D1不变、不结清TD-API或宣称全域/2b验收。停②/其余写/startup/qtc/website/2c，未E2E/push/部署/生产/workflows/prompt-history读取。回滚代码git revert 02473d9，字面/授权/本日志与index独立文档revert，旧112冻结不改；完整映射、时点与证据见§4.2.5。[已测试]
 
