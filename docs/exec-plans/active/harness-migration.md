@@ -6,7 +6,7 @@
 - **分支**：`harnessing`（自 main 派生；按规则 §7.1 禁止直接在主干改造）
 - **计划版本 / 日期**：v1.3 / 2026-10-12（v1.2 经第三轮人工审核修订：修复 §3.8 S11 表格裸管道、覆盖率验收语义收紧为目标值硬条件、S11 表述改为启发式口径）
 - **扫描基线**：commit `779dea3`（同步 origin/main 后）
-- **状态**：**批次1与2a已获人工验收；2b进行中：auth/identity/IAM/collection/commercial/complaint/CRM/platform整体与production①读取/②创建/③五命令已协调确认。④旧190/653aa50及设计61babdb经协调确认并获8eed76a授权，仅代码62e5e0e提取材料单POST。production全域11支持→16入口，当前10/16、余report/output/costpolicy/calculate/approve/reject六写入口未迁，④实施待协调复核；190/479/198/112与全部旧oracle冻结。停⑤及其余组/startup/qtc/website/2c。历史13/16/17/platform27/28/28和原盘点、授权、失败时点保留，非production全域/2b验收；TD-API-001/002不结清、35台账/TD-BOUND-003/004待核实不修、D1不扩。**
+- **状态**：**批次1与2a已获人工验收；2b进行中：auth/identity/IAM/collection/commercial/complaint/CRM/platform整体与production①读取/②创建/③五命令已协调确认。④旧190/653aa50及设计61babdb经协调确认并获8eed76a授权，仅代码62e5e0e提取材料单POST。production全域11支持→16入口，当前10/16、余report/output/costpolicy/calculate/approve/reject六写入口未迁，④62e5e0e/bc544f3实施已协调确认，本轮只启动⑤operation-reports旧护栏/候选设计不提取；190/479/198/112与全部旧oracle冻结。停⑤实施/⑥output/成本组/startup/qtc/website/2c。历史13/16/17/platform27/28/28和原盘点、授权、失败时点保留，非production全域/2b验收；TD-API-001/002不结清、35台账/TD-BOUND-003/004待核实不修、D1不扩。**
 - **规则文档**：`docs/HARNESS-RULES.md`（施工期常驻，竣工验收后按 §14 拆解归档）
 - **配套文件**：问题清单 `docs/exec-plans/tech-debt-tracker.md`（35 条）；CI 决策 `docs/CI.md`；度量脚本 `scripts/analysis/repo-metrics.mjs`
 
@@ -910,6 +910,8 @@ module48–51仅原raw [0-9a-f-]+/u matcher，collection exact match；匹配纯
 
 #### 4.2.5 production 当前10/16读取／创建／五命令／材料映射与旧盘点设计历史
 
+**④材料实施协调确认（2026-10-14，授权8eed76a／实现62e5e0e／最终bc544f3）**：协调安全读取已完成会话/日志核对最终HEAD完整pnpm ci:local真实退出0（/tmp/kingturf-production-material-extract-head-ci.log，API91文件5068/5068、业务PG1/startup基础设施4/platform5另计、web114/domain14/doclint103/结构0违规31豁免/build/audit及其余绿），协调独立49个mock-only文件4685/4685及readonly reviewer通过。新旧type string/原枚举→method capture→UUID/input→scope/原receiver四参/late M一致，report至EOF逐字一致/全部旧oracle零diff；最终app blob3ded25f8a54b545c8d1d5e7efb6d178f0d4b90b8/module blob0a28ae391b5f222a3744092b2aaad4cf4eb8d633同审查版本，工作区干净。当前10/16非production全域/2b验收，只续⑤报工单POST旧buildApp固定契约与候选设计，尚不批准⑤提取；停⑤业务/⑥output/成本组/startup/qtc/website/2c，不修TD-BOUND/D1/35台账/TD-API。历史失败/字面诊断/授权原时点保留，不push/部署/生产/workflows/E2E/prompt-history读取。本确认文档独立revert。[已测试]
+
 **④材料提取当前快照（2026-10-14，授权8eed76a，代码62e5e0e）**：只迁移一个POST材料入口，ISSUE/RETURN仍body两变体而非两route；已确认①3GET/②create/③5commands合9，④实施后当前10/16、余report/output/costpolicy/calculate/approve/reject六写入口未迁，待④协调复核，非production全域/2b验收。原production wrapper1250、raw matcher1310–1312/POSTguard1313–1334留app，仅内部成功体dispatch productionMaterialRoutes，原nullfallback/缺repo404/global401先保持，无额外Q0/503/preflight；前九入口内容与后report matcher1335至EOF逐字不变（import增加一行只平移前段行号）。原regex `/^\/api\/v1\/production-orders\/([0-9a-f-]+)\/materials$/u` 精确保留raw小写hex横线/u/尾锚，不strictUUID/alias。新production-material.ts102行，factory38–102共65/validate46–86共41/handler87–99共13、人工nest≤5；app4681→4671净−10，不称AST200已强制。窄Pick仅transactMaterial、Parameters四位/Readonly input/context/envelope `{transactMaterial,id,input,scopeContext}`，原helpers/authorizeQuery/M/C显式注入，无any/新依赖/共享可变请求状态。
 
 | 当前已迁10/16职责                    | 当前app插槽                                           | module保留行为                                                                                |
@@ -1169,6 +1171,8 @@ production PG test导入两repo（4–5）、唯一it115–302真实订单create
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+2026-10-14：④8eed76a/62e5e0e/bc544f3已协调确认，独立49个mock文件4685/4685与最终完整CI0 API91/5068，固定190与旧oracle零diff/邻界与blob不变，当前10/16非全域/2b验收。仅启动⑤operation-reports旧护栏/候选设计、不批准提取，详见§4.2.5；历史时点保留，确认文档独立回滚。[已测试]
 
 **2026-10-14 / 2b-production④材料提取（当前10/16、余6写入口未迁）**：先独立8eed76a落盘旧190/653aa50与设计61babdb协调确认及单入口提取授权（协调49文件4685/4685、最终完整CI0 API91/5068），代码62e5e0e仅app材料内部成功块+production-material.ts。原wrapper/raw/u/POSTguard留slot，validate O/allow8/material字段授权→type string单读/原ISSUE-RETURN includes→捕获方法→UUID→input8原序/type复用→actor/S/An，handlercaptured.call原repo四业务参await后201原独立read M；两getter替换时点与scope/DTO/headerquery边界保留，无503/Q0/SQL库存前查/新dedup。前后相关55文件4875/业务PG1、post190+479+198+112共979/type-lint0与readonly reviewer通过，旧全部oracle零diff、beforeMaterial/afterMaterial byte true；仅app/module源码变化，其余域/六写/仓储SQLschema/helpers/platform/dispatcher/G3G4/门禁/packagesweb/依赖/台账/workflows不改。完整代码ci:local真实退出0（/tmp/kingturf-production-material-extract-code-ci.log，API91文件5068、业务PG1/platform5/startup基础设施4另计、结构0违规31豁免/doclint103/build/audit及其余绿），最终独立文档HEAD另完整复验/tmp/kingturf-production-material-extract-head-ci.log。module102/factory65/validate41/handler13/人工nest≤5、app4681→4671净−10，不称AST200强制；实施无失败或预期修正，旧文档literal诊断与历史失败保留，PG贯通非全部190异常库存状态/幂等权限矩阵，mock只forward。当前10/16待④协调非全域/2b验收，35台账/TD-BOUND/D1/TD-API不变，停⑤及其余组/startup/qtc/website/2c，无E2E/push/部署/生产/workflows/prompt-history读取。回滚62e5e0e恢复原成功体，8eed76a授权和本日志/index独立文档revert，653aa50旧190及其余oracle冻结，详见§4.2.5。[已测试]
 
