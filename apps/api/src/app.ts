@@ -50,6 +50,7 @@ import {
   productionCostPolicyReadRoutes,
   productionCostRunReadRoutes,
 } from './routes/production-reads.ts';
+import { productionOrderCreateRoutes } from './routes/production-order-create.ts';
 import {
   numberDefinitionListRoutes,
   numberDefinitionCreateRoutes,
@@ -1258,35 +1259,26 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             if (response !== null) return response;
           }
           if (request.method === 'POST' && request.pathname === '/api/v1/production-orders') {
-            const body = objectBody(request.body);
-            allow(body, [
-              'orderNumber',
-              'itemVersionId',
-              'routingVersionId',
-              'mrpProposalId',
-              'plannedQuantity',
-              'plannedStartAt',
-              'plannedDueAt',
-              'sourceReference',
-            ]);
-            const grant = authorizeQuery(context, 'production:plan', Object.keys(body));
-            const result = await dependencies.production.create(
-              {
-                orderNumber: assertStableCode(string(body.orderNumber, 'orderNumber')),
-                itemVersionId: uuid(body.itemVersionId, 'itemVersionId'),
-                routingVersionId: uuid(body.routingVersionId, 'routingVersionId'),
-                ...(body.mrpProposalId === undefined
-                  ? {}
-                  : { mrpProposalId: uuid(body.mrpProposalId, 'mrpProposalId') }),
-                plannedQuantity: decimal(body.plannedQuantity, 'plannedQuantity'),
-                plannedStartAt: calendarDate(body.plannedStartAt, 'plannedStartAt'),
-                plannedDueAt: calendarDate(body.plannedDueAt, 'plannedDueAt'),
-                sourceReference: assertStableCode(string(body.sourceReference, 'sourceReference')),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
+            const response = await dispatchRoutes(
+              productionOrderCreateRoutes({
+                repository: dependencies.production,
+                authorization: context,
+                authorizeQuery,
+                correlationId,
+                parsers: {
+                  objectBody,
+                  allow,
+                  string,
+                  stableCode: assertStableCode,
+                  uuid,
+                  decimal,
+                  calendarDate,
+                },
+                mutationDto,
+              }),
+              request,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'production:read') };
+            if (response !== null) return response;
           }
           const productionCommand =
             /^\/api\/v1\/production-orders\/([0-9a-f-]+)\/(release|start|complete|close|cancel)$/u.exec(
