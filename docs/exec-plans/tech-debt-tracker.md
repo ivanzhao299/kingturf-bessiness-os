@@ -18,7 +18,7 @@
 | TD-WEB-003   | bootstrap.ts 深嵌套：≥4 层 8,603 行，最深 14 层                                               | P2     | 复杂度        | 无                       | 批次 3                             | 待处理       |
 | TD-API-001   | buildApp 单函数 ≈6,442 行、230 个顺序路由分支，吞掉 Service 层                                | P1     | 架构/复杂度   | 无                       | 批次 2                             | 待处理       |
 | TD-API-002   | app.ts 深嵌套：≥7 层 3,202 行，最深 14 层                                                     | P2     | 复杂度        | 无                       | 批次 2                             | 待处理       |
-| TD-REG-001   | QTC 前六模块提前读取仓储根，违反旧求值/receiver契约                                           | P1     | 重构回归      | 修复 bug（恢复旧契约）   | 2b独立回归恢复                     | 已确认待修复 |
+| TD-REG-001   | QTC 前六模块提前读取仓储根，违反旧求值/receiver契约                                           | P1     | 重构回归      | 修复 bug（恢复旧契约）   | 2b独立回归恢复                     | 已恢复待协调 |
 | TD-DUP-001   | 数据范围(DataScope) SQL 谓词在 12 个文件各复制一份                                            | P1     | 重复/安全     | 无                       | 批次 1                             | 已完成       |
 | TD-DUP-002   | audit_events + domain_event_outbox 双写 44 处/20 文件                                         | P1     | 重复          | 无                       | 批次 1                             | 已完成       |
 | TD-DUP-003   | 幂等键查询样板 23 行重复                                                                      | P2     | 重复          | 无                       | 批次 1                             | 已完成       |
@@ -57,7 +57,8 @@
 ### TD-REG-001｜QTC 前六模块提前读取仓储根，违反旧求值/receiver契约
 
 - **位置**：起点7251b08的app.ts:2618,2630,2648,2663,2681,2697,2713及qtc-base-reads、qtc-operational-reads、qtc-credit-writes、qtc-credit-approval、qtc-contract-create、qtc-contract-sign六模块，共12canonical。
-- **类别**：重构回归 ｜ **严重度**：P1 ｜ **状态**：已确认，待恢复旧行为/协调复核。
+- **类别**：重构回归 ｜ **严重度**：P1 ｜ **状态**：f8059a8已恢复旧行为，待协调复核（不凭此宣称QTC全域确认或2b验收，暂不结清）。
+- **恢复证据（2026-10-14）**：登记acba392、固定旧护栏51182b7、修复f8059a8单独提交。旧c7833e7/起点7251b08的12入口166场景、335契约在修复前154失败/181通过，恢复后335全绿，旧十组2389零diff；合计2724/2724、相关8659/8659、前后QTC PG2/2、独立review/byte还原/源码固定完整CI真实0（API107/8852）。范围仅七处注入/六模块repository-method捕获及receiver绑定，后四QTC/SQL/产品规则不动，directmock/非hermetic历史依赖及参数值限制见计划§4.2.7。最终状态文档HEAD另完整CI复验；回滚fix f8059a8会重现被冻结的红灯，登记/护栏/日志可独立revert，原35条及TD-BOUND/D1/TD-API/评分不扩。
 - **证据**：旧c7833e7:app.ts2588–2756在授权/前置query/allow/decision校验之后才取得root-method；迁移后factory context提前读取第二次根。directmock allow ownKeys替换整个依赖根：旧credit-limit201/second receiver，7251b08当前201/first receiver；第二根getter异常还能改变错误优先级。协调与独立只读源码核验已确认，主代理可复算探针及护栏另落盘；原2389契约不覆盖该边界，不能因其绿否定差异。
 - **影响边界**：仅已证directmock可变依赖注入的求值时序与接收者回归，未验证生产依赖动态替换，非已证生产权限漏洞；不改变产品、DataScope、SQL或业务算法，TD-BOUND-003/004/D1不扩。
 - **修复建议**：七处注入改晚resolver，六module在旧method点取root-method并保存validated.repository，handler绑定已捕获receiver；后四QTC模块不动。
