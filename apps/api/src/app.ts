@@ -65,6 +65,7 @@ import { qtcCreditApprovalRoutes } from './routes/qtc-credit-approval.ts';
 import { qtcContractCreateRoutes } from './routes/qtc-contract-create.ts';
 import { qtcContractSignRoutes } from './routes/qtc-contract-sign.ts';
 import { qtcSalesOrderCreateRoutes } from './routes/qtc-sales-order-create.ts';
+import { qtcArPostRoutes } from './routes/qtc-ar-post.ts';
 import {
   numberDefinitionListRoutes,
   numberDefinitionCreateRoutes,
@@ -2751,34 +2752,23 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             if (response !== null) return response;
           }
           if (request.pathname === '/api/v1/ar-open-items') {
-            allow(body, [
-              'customerId',
-              'salesOrderId',
-              'documentNumber',
-              'documentType',
-              'currency',
-              'amount',
-              'dueAt',
-            ]);
-            const dt = string(body.documentType, 'documentType');
-            if (!['INVOICE', 'CREDIT_NOTE'].includes(dt))
-              throw new DomainError('invalid_request', 'documentType is unsupported');
-            const result = await dependencies.quoteToCash.postAr(
-              {
-                customerId: uuid(body.customerId, 'customerId'),
-                salesOrderId:
-                  body.salesOrderId === null ? null : uuid(body.salesOrderId, 'salesOrderId'),
-                documentNumber: string(body.documentNumber, 'documentNumber'),
-                documentType: dt as 'INVOICE' | 'CREDIT_NOTE',
-                currency: currency(body.currency),
-                amount: decimal(body.amount, 'amount'),
-                dueAt: timestamp(body.dueAt, 'dueAt'),
-              },
-              idempotency(request),
-              ctx('ar:post'),
-              correlationId,
+            const response = await dispatchRoutes(
+              qtcArPostRoutes({
+                repository: () =>
+                  dependencies.quoteToCash as Pick<
+                    NonNullable<ApiDependencies['quoteToCash']>,
+                    'postAr'
+                  >,
+                body,
+                authorization: context,
+                authorizeScope: ctx,
+                mutationDto,
+                correlationId,
+                parsers: { allow, string, uuid, currency, decimal, timestamp, idempotency },
+              }),
+              request,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'ar:read') };
+            if (response !== null) return response;
           }
           if (request.pathname === '/api/v1/bank-payments') {
             allow(body, [
