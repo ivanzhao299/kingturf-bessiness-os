@@ -64,6 +64,7 @@ import { qtcCreditLimitRoutes, qtcCreditEvaluationRoutes } from './routes/qtc-cr
 import { qtcCreditApprovalRoutes } from './routes/qtc-credit-approval.ts';
 import { qtcContractCreateRoutes } from './routes/qtc-contract-create.ts';
 import { qtcContractSignRoutes } from './routes/qtc-contract-sign.ts';
+import { qtcSalesOrderCreateRoutes } from './routes/qtc-sales-order-create.ts';
 import {
   numberDefinitionListRoutes,
   numberDefinitionCreateRoutes,
@@ -2720,54 +2721,34 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             if (response !== null) return response;
           }
           if (request.pathname === '/api/v1/sales-orders') {
-            allow(body, [
-              'customerId',
-              'opportunityId',
-              'orderNumber',
-              'quoteRevisionId',
-              'quoteSnapshotId',
-              'creditDecisionId',
-              'contractRevisionId',
-              'signatureEvidenceId',
-              'currency',
-              'total',
-              'lines',
-            ]);
-            const lines = array(body.lines, 'lines').map((v, i) => {
-              const l = objectBody(v);
-              allow(l, ['description', 'quantity', 'unitPrice', 'total']);
-              return {
-                description: string(l.description, `lines[${String(i)}].description`),
-                quantity: decimal(l.quantity, 'quantity'),
-                unitPrice: decimal(l.unitPrice, 'unitPrice'),
-                total: decimal(l.total, 'total'),
-              };
-            });
-            if (!lines.length)
-              throw new DomainError('invalid_request', 'Sales order requires at least one line');
-            const declaredTotal = decimal(body.total, 'total');
-            const lineTotal = lines.reduce((sum, line) => addDecimal(sum, line.total), '0');
-            if (normalizeDecimal(declaredTotal) !== lineTotal)
-              throw new DomainError('invalid_request', 'Sales order lines must equal order total');
-            const result = await dependencies.quoteToCash.createOrder(
-              {
-                customerId: uuid(body.customerId, 'customerId'),
-                opportunityId: uuid(body.opportunityId, 'opportunityId'),
-                orderNumber: string(body.orderNumber, 'orderNumber'),
-                quoteRevisionId: uuid(body.quoteRevisionId, 'quoteRevisionId'),
-                quoteSnapshotId: uuid(body.quoteSnapshotId, 'quoteSnapshotId'),
-                creditDecisionId: uuid(body.creditDecisionId, 'creditDecisionId'),
-                contractRevisionId: uuid(body.contractRevisionId, 'contractRevisionId'),
-                signatureEvidenceId: uuid(body.signatureEvidenceId, 'signatureEvidenceId'),
-                currency: currency(body.currency),
-                total: declaredTotal,
-                lines,
-              },
-              idempotency(request),
-              ctx('sales-order:create'),
-              correlationId,
+            const response = await dispatchRoutes(
+              qtcSalesOrderCreateRoutes({
+                repository: () =>
+                  dependencies.quoteToCash as Pick<
+                    NonNullable<ApiDependencies['quoteToCash']>,
+                    'createOrder'
+                  >,
+                body,
+                authorization: context,
+                authorizeScope: ctx,
+                mutationDto,
+                correlationId,
+                parsers: {
+                  allow,
+                  array,
+                  objectBody,
+                  string,
+                  decimal,
+                  addDecimal,
+                  normalizeDecimal,
+                  uuid,
+                  currency,
+                  idempotency,
+                },
+              }),
+              request,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'sales-order:read') };
+            if (response !== null) return response;
           }
           if (request.pathname === '/api/v1/ar-open-items') {
             allow(body, [
