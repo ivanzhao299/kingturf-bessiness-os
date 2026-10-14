@@ -66,6 +66,7 @@ import { qtcContractCreateRoutes } from './routes/qtc-contract-create.ts';
 import { qtcContractSignRoutes } from './routes/qtc-contract-sign.ts';
 import { qtcSalesOrderCreateRoutes } from './routes/qtc-sales-order-create.ts';
 import { qtcArPostRoutes } from './routes/qtc-ar-post.ts';
+import { qtcBankPaymentIntakeRoutes } from './routes/qtc-bank-payment-intake.ts';
 import {
   numberDefinitionListRoutes,
   numberDefinitionCreateRoutes,
@@ -2771,28 +2772,32 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             if (response !== null) return response;
           }
           if (request.pathname === '/api/v1/bank-payments') {
-            allow(body, [
-              'customerId',
-              'currency',
-              'amount',
-              'receivedAt',
-              'bankReference',
-              'rawPayload',
-            ]);
-            const result = await dependencies.quoteToCash.intakePayment(
-              {
-                customerId: uuid(body.customerId, 'customerId'),
-                currency: currency(body.currency),
-                amount: decimal(body.amount, 'amount'),
-                receivedAt: timestamp(body.receivedAt, 'receivedAt'),
-                bankReference: string(body.bankReference, 'bankReference'),
-                rawPayload: jsonObject(body.rawPayload, 'rawPayload'),
-              },
-              idempotency(request),
-              ctx('bank-payment:intake'),
-              correlationId,
+            const response = await dispatchRoutes(
+              qtcBankPaymentIntakeRoutes({
+                repository: () =>
+                  dependencies.quoteToCash as Pick<
+                    NonNullable<ApiDependencies['quoteToCash']>,
+                    'intakePayment'
+                  >,
+                body,
+                authorization: context,
+                authorizeScope: ctx,
+                mutationDto,
+                correlationId,
+                parsers: {
+                  allow,
+                  uuid,
+                  currency,
+                  decimal,
+                  timestamp,
+                  string,
+                  jsonObject,
+                  idempotency,
+                },
+              }),
+              request,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'bank-payment:read') };
+            if (response !== null) return response;
           }
           if (request.pathname === '/api/v1/reconciliation-runs') {
             allow(body, ['paymentId']);
