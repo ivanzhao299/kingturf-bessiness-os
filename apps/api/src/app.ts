@@ -68,6 +68,7 @@ import { qtcSalesOrderCreateRoutes } from './routes/qtc-sales-order-create.ts';
 import { qtcArPostRoutes } from './routes/qtc-ar-post.ts';
 import { qtcBankPaymentIntakeRoutes } from './routes/qtc-bank-payment-intake.ts';
 import { qtcReconciliationRunRoutes } from './routes/qtc-reconciliation-run.ts';
+import { websiteLeadIngestRoutes } from './routes/website-lead-ingest.ts';
 import {
   numberDefinitionListRoutes,
   numberDefinitionCreateRoutes,
@@ -515,13 +516,18 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               'Website lead integration unavailable',
               correlationId,
             );
-          const result = await dependencies.websiteLeads.ingest(
-            request.body,
-            request.headers?.['x-kingturf-timestamp'],
-            request.headers?.['x-kingturf-signature'],
-            correlationId,
+          const response = await dispatchRoutes(
+            websiteLeadIngestRoutes({
+              repository: () =>
+                dependencies.websiteLeads as Pick<
+                  NonNullable<ApiDependencies['websiteLeads']>,
+                  'ingest'
+                >,
+              correlationId,
+            }),
+            request,
           );
-          return { statusCode: result.duplicate ? 200 : 201, body: result };
+          if (response) return response;
         }
         const token = bearer(request.headers ?? {});
         const context = token ? await dependencies.auth.authenticate(token) : null;
