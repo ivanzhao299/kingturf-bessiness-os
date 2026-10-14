@@ -58,6 +58,7 @@ import { productionOutputRoutes } from './routes/production-output.ts';
 import { productionCostPolicyRoutes } from './routes/production-cost-policy.ts';
 import { productionCostCalculationRoutes } from './routes/production-cost-calculation.ts';
 import { productionCostDecisionRoutes } from './routes/production-cost-decisions.ts';
+import { qtcBaseReadRoutes } from './routes/qtc-base-reads.ts';
 import {
   numberDefinitionListRoutes,
   numberDefinitionCreateRoutes,
@@ -2602,8 +2603,8 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
         ]);
         const qtcRead = qtcReads.get(request.pathname);
         if (request.method === 'GET' && qtcRead && dependencies.quoteToCash) {
-          const grant = authorizeQuery(context, qtcRead[0]);
           if (qtcRead[1] === 'ar' || qtcRead[1] === 'payments') {
+            const grant = authorizeQuery(context, qtcRead[0]);
             const query = request.query ?? {};
             const state = query.state;
             if (state && !['OPEN', 'CLEARED', 'OVERDUE'].includes(state))
@@ -2636,20 +2637,16 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               },
             };
           }
-          return {
-            statusCode: 200,
-            body: {
-              items: (
-                await dependencies.quoteToCash.list(qtcRead[1], {
-                  actor: context.actor,
-                  scopes: grant.scopes,
-                  anchors: grant.anchors,
-                })
-              ).map((item) =>
-                permittedDto(item, context.permissions.get(qtcRead[0])?.fields ?? null),
-              ),
-            },
-          };
+          const response = await dispatchRoutes(
+            qtcBaseReadRoutes({
+              repository: dependencies.quoteToCash,
+              authorization: context,
+              authorizeQuery,
+              permittedDto,
+            }),
+            request,
+          );
+          if (response !== null) return response;
         }
         if (request.method === 'POST' && dependencies.quoteToCash) {
           const body = objectBody(request.body),
