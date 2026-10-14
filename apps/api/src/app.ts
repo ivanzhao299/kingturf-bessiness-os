@@ -61,6 +61,7 @@ import { productionCostDecisionRoutes } from './routes/production-cost-decisions
 import { qtcBaseReadRoutes } from './routes/qtc-base-reads.ts';
 import { qtcOperationalReadRoutes } from './routes/qtc-operational-reads.ts';
 import { qtcCreditLimitRoutes, qtcCreditEvaluationRoutes } from './routes/qtc-credit-writes.ts';
+import { qtcCreditApprovalRoutes } from './routes/qtc-credit-approval.ts';
 import {
   numberDefinitionListRoutes,
   numberDefinitionCreateRoutes,
@@ -2669,19 +2670,20 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             request.pathname,
           );
           if (creditApproval) {
-            allow(body, ['decision', 'reason']);
-            const d = string(body.decision, 'decision');
-            if (!['APPROVED', 'REJECTED'].includes(d))
-              throw new DomainError('invalid_request', 'decision is unsupported');
-            const result = await dependencies.quoteToCash.approveCredit(
-              uuid(creditApproval[1], 'creditDecisionId'),
-              d as 'APPROVED' | 'REJECTED',
-              string(body.reason, 'reason'),
-              idempotency(request),
-              ctx('credit:approve'),
-              correlationId,
+            const response = await dispatchRoutes(
+              qtcCreditApprovalRoutes({
+                repository: dependencies.quoteToCash,
+                rawId: creditApproval[1],
+                body,
+                authorization: context,
+                authorizeScope: ctx,
+                mutationDto,
+                correlationId,
+                parsers: { allow, string, uuid, idempotency },
+              }),
+              request,
             );
-            return { statusCode: 200, body: mutationDto(result, context, 'credit:read') };
+            if (response !== null) return response;
           }
           if (request.pathname === '/api/v1/contracts') {
             allow(body, [
