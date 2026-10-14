@@ -8,6 +8,7 @@ type SignContract = Qtc['signContract'];
 type Input = Readonly<Parameters<SignContract>[1]>;
 type ScopeContext = Readonly<Parameters<SignContract>[3]>;
 type ValidatedSignature = Readonly<{
+  repository: Pick<Qtc, 'signContract'>;
   signContract: SignContract;
   id: Parameters<SignContract>[0];
   input: Input;
@@ -15,7 +16,7 @@ type ValidatedSignature = Readonly<{
   scopeContext: ScopeContext;
 }>;
 type Context = Readonly<{
-  repository: Pick<Qtc, 'signContract'>;
+  repository: () => Pick<Qtc, 'signContract'>;
   rawId: string | undefined;
   body: Readonly<Record<string, unknown>>;
   authorization: AuthorizationContext;
@@ -49,7 +50,8 @@ export function qtcContractSignRoutes(context: Context): readonly RouteDefinitio
           'payload',
           'signedAt',
         ]);
-        const signContract = context.repository.signContract;
+        const repository = context.repository();
+        const signContract = repository.signContract;
         const id = context.parsers.uuid(context.rawId, 'contractRevisionId');
         const input: Input = {
           provider: context.parsers.string(context.body.provider, 'provider'),
@@ -62,11 +64,11 @@ export function qtcContractSignRoutes(context: Context): readonly RouteDefinitio
         };
         const key = context.parsers.idempotency(request);
         const scopeContext = context.authorizeScope('contract:sign');
-        return { signContract, id, input, key, scopeContext };
+        return { repository, signContract, id, input, key, scopeContext };
       },
       handler: async (_request, _match, validated) => {
         const result = await validated.signContract.call(
-          context.repository,
+          validated.repository,
           validated.id,
           validated.input,
           validated.key,

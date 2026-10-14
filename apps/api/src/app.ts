@@ -2615,7 +2615,11 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           if (qtcRead[1] === 'ar' || qtcRead[1] === 'payments') {
             const response = await dispatchRoutes(
               qtcOperationalReadRoutes({
-                repository: dependencies.quoteToCash,
+                repository: () =>
+                  dependencies.quoteToCash as Pick<
+                    NonNullable<ApiDependencies['quoteToCash']>,
+                    'listOperationalPage'
+                  >,
                 authorization: context,
                 authorizeQuery,
                 permittedDto,
@@ -2627,7 +2631,11 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           }
           const response = await dispatchRoutes(
             qtcBaseReadRoutes({
-              repository: dependencies.quoteToCash,
+              repository: () =>
+                dependencies.quoteToCash as Pick<
+                  NonNullable<ApiDependencies['quoteToCash']>,
+                  'list'
+                >,
               authorization: context,
               authorizeQuery,
               permittedDto,
@@ -2645,7 +2653,11 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           if (request.pathname === '/api/v1/credit-limits') {
             const response = await dispatchRoutes(
               qtcCreditLimitRoutes({
-                repository: dependencies.quoteToCash,
+                repository: () =>
+                  dependencies.quoteToCash as Pick<
+                    NonNullable<ApiDependencies['quoteToCash']>,
+                    'setCreditLimit'
+                  >,
                 body,
                 authorization: context,
                 authorizeScope: ctx,
@@ -2660,7 +2672,11 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           if (request.pathname === '/api/v1/credit-decisions') {
             const response = await dispatchRoutes(
               qtcCreditEvaluationRoutes({
-                repository: dependencies.quoteToCash,
+                repository: () =>
+                  dependencies.quoteToCash as Pick<
+                    NonNullable<ApiDependencies['quoteToCash']>,
+                    'evaluateCredit'
+                  >,
                 body,
                 authorization: context,
                 authorizeScope: ctx,
@@ -2678,7 +2694,11 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           if (creditApproval) {
             const response = await dispatchRoutes(
               qtcCreditApprovalRoutes({
-                repository: dependencies.quoteToCash,
+                repository: () =>
+                  dependencies.quoteToCash as Pick<
+                    NonNullable<ApiDependencies['quoteToCash']>,
+                    'approveCredit'
+                  >,
                 rawId: creditApproval[1],
                 body,
                 authorization: context,
@@ -2694,7 +2714,11 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           if (request.pathname === '/api/v1/contracts') {
             const response = await dispatchRoutes(
               qtcContractCreateRoutes({
-                repository: dependencies.quoteToCash,
+                repository: () =>
+                  dependencies.quoteToCash as Pick<
+                    NonNullable<ApiDependencies['quoteToCash']>,
+                    'createContract'
+                  >,
                 body,
                 authorization: context,
                 authorizeScope: ctx,
@@ -2710,7 +2734,11 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           if (signing) {
             const response = await dispatchRoutes(
               qtcContractSignRoutes({
-                repository: dependencies.quoteToCash,
+                repository: () =>
+                  dependencies.quoteToCash as Pick<
+                    NonNullable<ApiDependencies['quoteToCash']>,
+                    'signContract'
+                  >,
                 rawId: signing[1],
                 body,
                 authorization: context,

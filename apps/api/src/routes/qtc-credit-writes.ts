@@ -9,12 +9,14 @@ type EvaluateCredit = Qtc['evaluateCredit'];
 type LimitInput = Readonly<Parameters<SetCreditLimit>[0]>;
 type EvaluationInput = Readonly<Parameters<EvaluateCredit>[0]>;
 type ValidatedLimit = Readonly<{
+  repository: Pick<Qtc, 'setCreditLimit'>;
   setCreditLimit: SetCreditLimit;
   input: LimitInput;
   key: Parameters<SetCreditLimit>[1];
   scopeContext: Readonly<Parameters<SetCreditLimit>[2]>;
 }>;
 type ValidatedEvaluation = Readonly<{
+  repository: Pick<Qtc, 'evaluateCredit'>;
   evaluateCredit: EvaluateCredit;
   input: EvaluationInput;
   key: Parameters<EvaluateCredit>[1];
@@ -40,12 +42,12 @@ type SharedContext = Readonly<{
 }>;
 type LimitContext = SharedContext &
   Readonly<{
-    repository: Pick<Qtc, 'setCreditLimit'>;
+    repository: () => Pick<Qtc, 'setCreditLimit'>;
     correlationId: Parameters<SetCreditLimit>[3];
   }>;
 type EvaluationContext = SharedContext &
   Readonly<{
-    repository: Pick<Qtc, 'evaluateCredit'>;
+    repository: () => Pick<Qtc, 'evaluateCredit'>;
     correlationId: Parameters<EvaluateCredit>[3];
   }>;
 
@@ -62,7 +64,8 @@ export function qtcCreditLimitRoutes(context: LimitContext): readonly RouteDefin
           'effectiveAt',
           'expiresAt',
         ]);
-        const setCreditLimit = context.repository.setCreditLimit;
+        const repository = context.repository();
+        const setCreditLimit = repository.setCreditLimit;
         const input: LimitInput = {
           customerId: context.parsers.uuid(context.body.customerId, 'customerId'),
           currency: context.parsers.currency(context.body.currency),
@@ -72,11 +75,11 @@ export function qtcCreditLimitRoutes(context: LimitContext): readonly RouteDefin
         };
         const key = context.parsers.idempotency(request);
         const scopeContext = context.authorizeScope('credit:approve');
-        return { setCreditLimit, input, key, scopeContext };
+        return { repository, setCreditLimit, input, key, scopeContext };
       },
       handler: async (_request, _match, validated) => {
         const result = await validated.setCreditLimit.call(
-          context.repository,
+          validated.repository,
           validated.input,
           validated.key,
           validated.scopeContext,
@@ -104,7 +107,8 @@ export function qtcCreditEvaluationRoutes(context: EvaluationContext): readonly 
           'creditLimitId',
           'validUntil',
         ]);
-        const evaluateCredit = context.repository.evaluateCredit;
+        const repository = context.repository();
+        const evaluateCredit = repository.evaluateCredit;
         const input: EvaluationInput = {
           customerId: context.parsers.uuid(context.body.customerId, 'customerId'),
           quoteRevisionId: context.parsers.uuid(context.body.quoteRevisionId, 'quoteRevisionId'),
@@ -114,11 +118,11 @@ export function qtcCreditEvaluationRoutes(context: EvaluationContext): readonly 
         };
         const key = context.parsers.idempotency(request);
         const scopeContext = context.authorizeScope('credit:evaluate');
-        return { evaluateCredit, input, key, scopeContext };
+        return { repository, evaluateCredit, input, key, scopeContext };
       },
       handler: async (_request, _match, validated) => {
         const result = await validated.evaluateCredit.call(
-          context.repository,
+          validated.repository,
           validated.input,
           validated.key,
           validated.scopeContext,

@@ -7,6 +7,7 @@ type Qtc = NonNullable<ApiDependencies['quoteToCash']>;
 type ApproveCredit = Qtc['approveCredit'];
 type ScopeContext = Readonly<Parameters<ApproveCredit>[4]>;
 type ValidatedApproval = Readonly<{
+  repository: Pick<Qtc, 'approveCredit'>;
   approveCredit: ApproveCredit;
   id: Parameters<ApproveCredit>[0];
   decision: Parameters<ApproveCredit>[1];
@@ -15,7 +16,7 @@ type ValidatedApproval = Readonly<{
   scopeContext: ScopeContext;
 }>;
 type Context = Readonly<{
-  repository: Pick<Qtc, 'approveCredit'>;
+  repository: () => Pick<Qtc, 'approveCredit'>;
   rawId: string | undefined;
   body: Readonly<Record<string, unknown>>;
   authorization: AuthorizationContext;
@@ -47,17 +48,18 @@ export function qtcCreditApprovalRoutes(context: Context): readonly RouteDefinit
         const d = context.parsers.string(context.body.decision, 'decision');
         if (!['APPROVED', 'REJECTED'].includes(d))
           throw new DomainError('invalid_request', 'decision is unsupported');
-        const approveCredit = context.repository.approveCredit;
+        const repository = context.repository();
+        const approveCredit = repository.approveCredit;
         const id = context.parsers.uuid(context.rawId, 'creditDecisionId');
         const decision = d as Parameters<ApproveCredit>[1];
         const reason = context.parsers.string(context.body.reason, 'reason');
         const key = context.parsers.idempotency(request);
         const scopeContext = context.authorizeScope('credit:approve');
-        return { approveCredit, id, decision, reason, key, scopeContext };
+        return { repository, approveCredit, id, decision, reason, key, scopeContext };
       },
       handler: async (_request, _match, validated) => {
         const result = await validated.approveCredit.call(
-          context.repository,
+          validated.repository,
           validated.id,
           validated.decision,
           validated.reason,

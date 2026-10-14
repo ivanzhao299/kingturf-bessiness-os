@@ -8,13 +8,14 @@ type CreateContract = Qtc['createContract'];
 type Input = Readonly<Parameters<CreateContract>[0]>;
 type ScopeContext = Readonly<Parameters<CreateContract>[2]>;
 type ValidatedContract = Readonly<{
+  repository: Pick<Qtc, 'createContract'>;
   createContract: CreateContract;
   input: Input;
   key: Parameters<CreateContract>[1];
   scopeContext: ScopeContext;
 }>;
 type Context = Readonly<{
-  repository: Pick<Qtc, 'createContract'>;
+  repository: () => Pick<Qtc, 'createContract'>;
   body: Readonly<Record<string, unknown>>;
   authorization: AuthorizationContext;
   authorizeScope: (capability: PermissionKey) => ScopeContext;
@@ -47,7 +48,8 @@ export function qtcContractCreateRoutes(context: Context): readonly RouteDefinit
           'quoteSnapshotId',
           'content',
         ]);
-        const createContract = context.repository.createContract;
+        const repository = context.repository();
+        const createContract = repository.createContract;
         const input: Input = {
           customerId: context.parsers.uuid(context.body.customerId, 'customerId'),
           opportunityId: context.parsers.uuid(context.body.opportunityId, 'opportunityId'),
@@ -58,11 +60,11 @@ export function qtcContractCreateRoutes(context: Context): readonly RouteDefinit
         };
         const key = context.parsers.idempotency(request);
         const scopeContext = context.authorizeScope('contract:revise');
-        return { createContract, input, key, scopeContext };
+        return { repository, createContract, input, key, scopeContext };
       },
       handler: async (_request, _match, validated) => {
         const result = await validated.createContract.call(
-          context.repository,
+          validated.repository,
           validated.input,
           validated.key,
           validated.scopeContext,

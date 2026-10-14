@@ -9,12 +9,13 @@ type List = Qtc['list'];
 type View = Parameters<List>[0];
 type ScopeContext = Readonly<Parameters<List>[1]>;
 type ValidatedRead = Readonly<{
+  repository: Pick<Qtc, 'list'>;
   list: List;
   view: View;
   scopeContext: ScopeContext;
 }>;
 type Context = Readonly<{
-  repository: Pick<Qtc, 'list'>;
+  repository: () => Pick<Qtc, 'list'>;
   authorization: AuthorizationContext;
   authorizeQuery: typeof authorizeQuery;
   permittedDto: <T extends Record<string, unknown>>(
@@ -42,18 +43,19 @@ export function qtcBaseReadRoutes(context: Context): readonly RouteDefinition[] 
       match: (pathname) => (pathname === read.path ? { params: [] } : null),
       validate: (): ValidatedRead => {
         const grant = context.authorizeQuery(context.authorization, read.capability);
-        const list = context.repository.list;
+        const repository = context.repository();
+        const list = repository.list;
         const view = read.view;
         const scopeContext: ScopeContext = {
           actor: context.authorization.actor,
           scopes: grant.scopes,
           anchors: grant.anchors,
         };
-        return { list, view, scopeContext };
+        return { repository, list, view, scopeContext };
       },
       handler: async (_request, _match, validated) => {
         const items = await validated.list.call(
-          context.repository,
+          validated.repository,
           validated.view,
           validated.scopeContext,
         );

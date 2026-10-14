@@ -10,13 +10,14 @@ type View = Parameters<ListOperationalPage>[0];
 type Filter = Readonly<Parameters<ListOperationalPage>[1]>;
 type ScopeContext = Readonly<Parameters<ListOperationalPage>[2]>;
 type ValidatedRead = Readonly<{
+  repository: Pick<Qtc, 'listOperationalPage'>;
   listOperationalPage: ListOperationalPage;
   view: View;
   filter: Filter;
   scopeContext: ScopeContext;
 }>;
 type Context = Readonly<{
-  repository: Pick<Qtc, 'listOperationalPage'>;
+  repository: () => Pick<Qtc, 'listOperationalPage'>;
   authorization: AuthorizationContext;
   authorizeQuery: typeof authorizeQuery;
   permittedDto: <T extends Record<string, unknown>>(
@@ -56,7 +57,8 @@ export function qtcOperationalReadRoutes(context: Context): readonly RouteDefini
           : undefined;
         if (minimum && maximum && Number(minimum) > Number(maximum))
           throw new DomainError('invalid_request', 'minAmount must not exceed maxAmount');
-        const listOperationalPage = context.repository.listOperationalPage;
+        const repository = context.repository();
+        const listOperationalPage = repository.listOperationalPage;
         const view = read.view;
         const filter: Filter = {
           limit: query.limit ? context.parsers.integer(Number(query.limit), 'limit', 1, 100) : 50,
@@ -73,11 +75,11 @@ export function qtcOperationalReadRoutes(context: Context): readonly RouteDefini
           scopes: grant.scopes,
           anchors: grant.anchors,
         };
-        return { listOperationalPage, view, filter, scopeContext };
+        return { repository, listOperationalPage, view, filter, scopeContext };
       },
       handler: async (_request, _match, validated) => {
         const page = await validated.listOperationalPage.call(
-          context.repository,
+          validated.repository,
           validated.view,
           validated.filter,
           validated.scopeContext,
