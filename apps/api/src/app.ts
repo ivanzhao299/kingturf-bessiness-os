@@ -53,6 +53,7 @@ import {
 import { productionOrderCreateRoutes } from './routes/production-order-create.ts';
 import { productionOrderCommandRoutes } from './routes/production-order-commands.ts';
 import { productionMaterialRoutes } from './routes/production-material.ts';
+import { productionReportRoutes } from './routes/production-report.ts';
 import {
   numberDefinitionListRoutes,
   numberDefinitionCreateRoutes,
@@ -1337,36 +1338,26 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               request.pathname,
             );
           if (request.method === 'POST' && reportCommand) {
-            const body = objectBody(request.body);
-            allow(body, [
-              'operationId',
-              'goodQuantity',
-              'scrapQuantity',
-              'laborMinutes',
-              'machineMinutes',
-              'startedAt',
-              'completedAt',
-              'notes',
-              'idempotencyKey',
-            ]);
-            const grant = authorizeQuery(context, 'production:report', Object.keys(body));
-            const result = await dependencies.production.reportOperation(
-              uuid(reportCommand[1], 'productionOrderId'),
-              {
-                operationId: uuid(body.operationId, 'operationId'),
-                goodQuantity: decimal(body.goodQuantity, 'goodQuantity'),
-                scrapQuantity: decimal(body.scrapQuantity, 'scrapQuantity'),
-                laborMinutes: decimal(body.laborMinutes, 'laborMinutes'),
-                machineMinutes: decimal(body.machineMinutes, 'machineMinutes'),
-                startedAt: timestamp(body.startedAt, 'startedAt'),
-                completedAt: timestamp(body.completedAt, 'completedAt'),
-                notes: string(body.notes ?? '', 'notes'),
-                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
+            const response = await dispatchRoutes(
+              productionReportRoutes({
+                repository: dependencies.production,
+                authorization: context,
+                authorizeQuery,
+                correlationId,
+                parsers: {
+                  objectBody,
+                  allow,
+                  uuid,
+                  decimal,
+                  timestamp,
+                  string,
+                  stableCode: assertStableCode,
+                },
+                mutationDto,
+              }),
+              request,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'production:read') };
+            if (response !== null) return response;
           }
           const outputCommand =
             /^\/api\/v1\/production-orders\/([0-9a-f-]+)\/finished-rolls$/u.exec(request.pathname);
