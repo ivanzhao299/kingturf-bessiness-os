@@ -6,7 +6,7 @@
 - **分支**：`harnessing`（自 main 派生；按规则 §7.1 禁止直接在主干改造）
 - **计划版本 / 日期**：v1.3 / 2026-10-12（v1.2 经第三轮人工审核修订：修复 §3.8 S11 表格裸管道、覆盖率验收语义收紧为目标值硬条件、S11 表述改为启发式口径）
 - **扫描基线**：commit `779dea3`（同步 origin/main 后）
-- **状态**：**批次1/2a/2b已人工验收（2b源码80c5b64、记录f230b22，2026-10-15）；用户最新正式授权后续，当前串行启动2c，commission549旧HTTP护栏a7440d9/8ed3e4b候选已协调通过，①两GET46df89b/73e7f3b已协调通过，②政策两POST31d426a/3d011c8已协调通过，③publish6aece9c/5ba0c58已协调通过，④accrue14ee85a/bae9186已协调通过6/11，⑤五commands已授权实施，见§4.2.10。完成停协调复核，由协调在已授权2c内续派，不要求用户重复授权；不自行2d/2e/批次3/安全行为变更。2d-2f及其余后续仍未启动；31豁免、台账36/TD-REG-001已解决历史、TD-API-001/002/TD-BOUND-003/004/D1已批准未实施/评分基线保持，不push/部署/改workflow。§4.2.9等原待验收/未授权句为历史，不改2b源码和固定护栏。**
+- **状态**：**批次1/2a/2b已人工验收（2b源码80c5b64、记录f230b22，2026-10-15）；用户最新正式授权后续，当前串行启动2c，commission549旧HTTP护栏a7440d9/8ed3e4b候选已协调通过，①两GET46df89b/73e7f3b已协调通过，②政策两POST31d426a/3d011c8已协调通过，③publish6aece9c/5ba0c58已协调通过，④accrue14ee85a/bae9186已协调通过，⑤commands源码9f0f278已提取，当前数量11/11、⑤及整域待协调（其他七域未迁），见§4.2.10。完成停协调复核，由协调在已授权2c内续派，不要求用户重复授权；不自行2d/2e/批次3/安全行为变更。2d-2f及其余后续仍未启动；31豁免、台账36/TD-REG-001已解决历史、TD-API-001/002/TD-BOUND-003/004/D1已批准未实施/评分基线保持，不push/部署/改workflow。§4.2.9等原待验收/未授权句为历史，不改2b源码和固定护栏。**
 - **规则文档**：`docs/HARNESS-RULES.md`（施工期常驻，竣工验收后按 §14 拆解归档）
 - **配套文件**：问题清单 `docs/exec-plans/tech-debt-tracker.md`（36 条，含已解决历史项）；CI 决策 `docs/CI.md`；度量脚本 `scripts/analysis/repo-metrics.mjs`
 
@@ -1857,7 +1857,51 @@ d70653a以来所有生产src/packages/scripts/workflows/台账36/评分零diff�
 
 本轮不重复各域历史PG；最终文档HEAD完整pnpm ci:local另/tmp/kingturf-2b-acceptance-head-ci.log真实退出0后交回，PG只在主代理串行guard回环test库/healthy/70 applied下按完整链执行，未在review中并行DB。format/doclint/structure/diff与原表/冻结字节核验记录同/tmp/kingturf-2b-acceptance-前缀；最终工作树干净才交接。未E2E、push/部署/生产/workflows/prompt-history/密钥签名fixture值/真实配置读取或完整连接串回显。当前“2b实施与独立复核完成，待人工验收”；本清单/doc HEAD仍待协调最终核验并向用户报告，完成停等待人工，不自行2c/2d/2e。[已测试]
 
-#### 4.2.10 2c首域commission④6/11协调通过，⑤五commands已授权（旧源码f230b22／固定549 a7440d9）
+#### 4.2.10 2c首域commission数量11/11已提取、⑤及整域待协调（旧源码f230b22／固定549 a7440d9）
+
+**⑤五commands／commission数量11/11当前快照（2026-10-15，授权f925ef8／源码9f0f278）**：④14ee85a/bae9186已协调独立通过，本步仅提取五commands成功体。当前commission数量11/11已提取，⑤及commission整域仍待协调独立复核，不表示整域已协调/2c完成或PG全覆盖；其他七2c域未迁，不自行dashboard/2d以后。下方6/11、5/11等和全部失败史均为原时点，旧2b人工验收与历史表不回写。
+
+新routes/commission-commands.ts104行，readonly action-state-cap配置43–49、单commissionCommandRoutes51–104=54行，validate62–87=26、handler88–101=14，人工nest≤5；800/200/5实测满足，函数200仍非AST强制。五route共用原combined rawregex/u56–59，但60按自身action筛选互斥，短hex仍先match后UUID，未知action/uppercase/尾斜线不吞；matcher单行按lint等价optional-chain，未动输入读取。窄Pick transition/Parameters[0..4]/AwaitedReturnType/Readonly context-envelope、原helpers/M显式注入，无any/runtime循环/新库/跨请求state。app wc/trimEnd4550→4539净−11，import72，原宽wrapper2865、command rawregex-method2976–2980留slot，成功体2981–2996 dispatch；wrapper闭合2998、opportunityResponse2999→EOF原文保持，前四模块及前缀扣本import零diff。
+
+validate63–67原O→allow reason/externalReference→path配置target/cap→authorizeQuery(cap,Object.keys)；五配置freeze FROZEN/manage、release RELEASED/manage、pay PAID/commission:pay、clawback CLAWED_BACK/manage、cancel CANCELLED/manage，不由body改state。68–70晚第二root/transition method及receiver捕获后原UUID(rawid,'commissionId')，71–78 input键顺序state/reason原string/externalReference原三元表达式原样；外ref null一次/undefined两次/非null路径三次且第三值才string解析，动态getter分支次数也不缓存成一次或??helper。79原idempotency在完整input后，80–85新Q按actor/scopes/anchors原ref顺序后C；method先坏UUID/reason/key、UUID先reason、reason先外ref、actor后key均守恒。handler89–96 captured.call(repo,id,input,key,Q,C)恰5业务参await，98–99原201/晚独立M commission:read，缺read id-version fallback/fieldsnull rawref/有限fields不补version/浅nested-specialkeys保持，write不提升read或新增read授权。
+
+原global401/缺dep404/unsupported宽guard根副作用/QTC共享POST O/global浅spread/errorC保持，无503/strictUUID/新alias/body state-amount-expectedVersion-idempotencyKey/新header-bodykey回退/HTTP支付追索证据回款门槛公司scope状态replay前查，nullable externalReference原HTTP接受面不修。原仓储540行尤其transition429–539的tenant-id advisorylock/ledger replay/cu scope offset3/current-nextsequence/回款释放阈值/pay-clawback外ref金额/append ledger/audit-outbox全部未动，不套QTC command-results或重排锁/replay。PAY/CLAWBACK真实约束仍repo处理，HTTP mock不当SQL状态安全全矩阵。
+
+**⑤实际验证／边界**：初549/549、相关6文件619/619、非PG96文件9390/9390/type/runtime/structure均通过；首lint一项prefer-optional-chain失败1后，等待非PG结束再仅修matcher等价单行，对固定源码重跑549/549、6-619、重新枚举96-9390、type/lint/runtime/byte/structure0强制违规31豁免/format/doclint103/diff全部实际0，未改测试或预期。独立readonly reviewer逐序/外ref取值/五参/晚M/类型容量及该optional-chain单行复核均无必要阻塞，未编辑/测试/DB。另readonly scout限定五模块/仓储签名/app盘点交叉核得五模块、六factory、11入口；其“reads Map”措辞在本证据按实际readonly数组reads.map记，不引入Map容器。runtime实际0（transform-types，延续现有启动方式）：单factory产生5POST，每canonical恰1match，五短hex路径均先match，8个未知action/uppercase/尾斜线/邻界拒绝，Proxy context构造+match读取0，未执行validate/handler/业务/SQL，不是HTTP-PG端到端。
+
+本步byte实际0：扣本单import后prefix含前四接线和原combined rawguard、opportunityResponse→EOF与wrapper闭合不变；仅还原command成功体后整个app与bae9186 byte全等。整域追加proof恢复诊断脚本后实际0：扣五模块imports并按原guard边界把全部七成功体替回，整个app与旧f230b22字节全等；原/当前都7个支持method条件、宽wrapper仍在，command一条件展开五canonical，body变体不增route。限定apps/api/src/app.ts搜索式 `rg -n 'dependencies\.commissions\.(listPolicies|listCases|createPolicy|createPolicyVersion|publishPolicyVersion|accrue|transition)' apps/api/src/app.ts` 当前0命中，原f230b22同模式7命中作为阳性核验；无匹配rg exit1被显式作为预期否定结果，整体proof exit0。结论仅此app旧内联成功调用已清空，不外推仓储/模块/全项目无佣金调用；剩余repository resolver/Pick/guard引用不算旧调用。
+
+549 blob `0e7fb3f468ecfd81bc741e79729d73402494f3c6`仍冻结，全部旧tests/2b/335/82/fixture/probe、前四modules/其他src/SQL-schema/shared dispatcher/G3G4/门禁白名单/依赖/packages/scripts/workflows/台账36状态/评分零diff。主代理串行guard回环test库healthy/70applied独占PG后固定源码完整pnpm ci:local真实exit0（code-ci.log，API109文件9483/9483、web114/domain14/database68/config4/types1、既有全链PG/doclint103/structure0违规31豁免/build/audit与其余绿）再源码独立提交9f0f278；证据doc独立commit，最后HEAD再完整CI到head-ci.log实际0/干净树后交回，不把启动当通过。无佣金PG新增/额外SQL测试，不把mock/432scope字符串/既有全链PG当佣金SQL真实全矩阵。日志全前缀/tmp/kingturf-commission-commands-：contract/related/all-mock/type/lint初阶段、lint-recovered、contract-final/related-final/all-mock-final/type-final/runtime-final/byte-final/structure-final/format-final、domain-byte初断言/domain-byte-recovered、guard/status/code-ci/head-ci。
+
+**commission全11入口当前映射（源码事实，非整域验收）**：下表路径均以/api/v1为前缀；Q是原actor/scopes/anchors新对象，C为correlationId，K为旧lowercase header idempotency结果，I为本入口原解析input；所有参数数量不含receiver this。P为permittedDto，M为mutationDto。GET各Q0不传fields、await后每row重新取当时对应readcap.fields??null再P；所有写仅await后独立M读取readcap，无read仍原id/version fallback，不新增read授权。
+
+| method/path（省略/api/v1）                   | 授权capability                     | 原仓储方法／业务参数顺序及个数               | HTTP状态 | await后投影                      |
+| -------------------------------------------- | ---------------------------------- | -------------------------------------------- | -------- | -------------------------------- |
+| GET /commission-policies                     | commission-policy:read             | listPolicies(Q)；1                           | 200      | 每row晚P(policy-read fields)     |
+| GET /commissions                             | commission:read                    | listCases(Q)；1                              | 200      | 每row晚P(commission-read fields) |
+| POST /commission-policies                    | commission-policy:manage           | createPolicy(I,Q,C)；3                       | 201      | 独立M commission-policy:read     |
+| POST /commission-policies/:id/versions       | commission-policy:manage           | createPolicyVersion(id,I,Q,C)；4             | 201      | 独立M commission-policy:read     |
+| POST /commission-policy-versions/:id/publish | commission-policy:manage，无fields | publishPolicyVersion(id,Q,C)；3              | 200      | 独立M commission-policy:read     |
+| POST /commissions/accrue                     | commission:accrue                  | accrue(I,K,Q,C)；4                           | 201      | 独立M commission:read            |
+| POST /commissions/:id/freeze                 | commission:manage                  | transition(id,I[state=FROZEN],K,Q,C)；5      | 201      | 独立M commission:read            |
+| POST /commissions/:id/release                | commission:manage                  | transition(id,I[state=RELEASED],K,Q,C)；5    | 201      | 独立M commission:read            |
+| POST /commissions/:id/pay                    | commission:pay                     | transition(id,I[state=PAID],K,Q,C)；5        | 201      | 独立M commission:read            |
+| POST /commissions/:id/clawback               | commission:manage                  | transition(id,I[state=CLAWED_BACK],K,Q,C)；5 | 201      | 独立M commission:read            |
+| POST /commissions/:id/cancel                 | commission:manage                  | transition(id,I[state=CANCELLED],K,Q,C)；5   | 201      | 独立M commission:read            |
+
+五模块合545行，六导出factory不等于11展开routes，也不同于app保留的7个成功体dispatch插槽：reads一个factory按两配置数组map出2routes，policy-writes两factory各1，publish/accrue各1，commands一个factory按五配置map出5；2+1+1+1+1+5=11。当前routes目录72TS=原2b历史67+本域五模块，2b原67不回写；app本域累计按wc/trimEnd从f230b22的4611→4539净−72，仍巨文件/31豁免，TD-API-001/002不结清，不借数量上调评分。
+
+| 子步／模块与行数                 | factory（定义行／职责行数）→展开入口数         | 源码提交／独立业务回滚                         |
+| -------------------------------- | ---------------------------------------------- | ---------------------------------------------- |
+| ①commission-reads.ts 71          | commissionReadRoutes 36–71／36行→2             | 46df89b；revert只恢复两GET/去模块              |
+| ②commission-policy-writes.ts 203 | create 53–129／77行、version 131–203／73行→各1 | 31d426a；revert只恢复两个政策POST/去模块       |
+| ③commission-policy-publish.ts 73 | publish 34–73／40行→1                          | 6aece9c；revert只恢复publish/去模块            |
+| ④commission-accrue.ts 94         | accrue 38–94／57行→1                           | 14ee85a；revert只恢复accrue/去模块             |
+| ⑤commission-commands.ts 104      | commands 51–104／54行→5                        | 9f0f278；revert只恢复五commands原成功体/去模块 |
+
+整域源码回滚建议按⑤→④→③→②→①逆序revert；各模块无相互业务依赖，接线依赖原app helpers/授权上下文/ApiDependencies类型，前序单独revert如遇邻接import文本冲突，应保留其余子步接线并重验，不重置或混撤其他批次。a7440d9固定旧549可独立保留，无需解冻；旧护栏/候选39c99a7、a7440d9、8ed3e4b及①授权d14bd2c/证据73e7f3b、②fdb1b04/3d011c8、③fcf7de8/5ba0c58、④2aa1d89/bae9186、⑤f925ef8/本证据文档均是独立文档/测试回滚点，须同步当前状态，不动80c5b64/f230b22的2b人验收、QTC f8059a8及固定335/82。
+
+**⑤失败历史／停止**：首lint1仅prefer-optional-chain，改match && match[2]===action为match?.[2]===action；regex exec仅null或array、action恒非undefined字串，真值等价，独立reviewer确认，不修改外ref三元或oracle。初测试群已结束后才修一行，固定源码全组选集及完整CI重跑全绿，未提交lint失败版本，不称全检查首跑绿。新增整域还原脚本首断言exit1系按字符串replace遇两GET相同dispatch体而替错第一个匹配，非实际源码回归；仅诊断脚本改按guard边界下标切片后还原f230b22全app字节相等，初失败domain-byte与恢复日志分别保留，未改业务/tests/预期。④strip-only参数属性装载错误与transform恢复、②32fail517pass恢复、①ReferenceError/协调缓存TypeError、旧类型lint/盘点误算/容量恢复/QTC回归等原时点保持。无新已确认存量业务问题需登记，台账36含TD-REG-001解决历史/TD-BOUND-003/004待核实/D1已批准未实施/评分基线不变。本步回滚git revert 9f0f278，f925ef8与本证据/AGENTS/状态/index独立文档回滚。数量11/11后停协调⑤及commission整域复核，不自行dashboard/其他七域/2d以后；已授权2c由协调通过后续派，无需重复问人。未E2E/push/部署/生产/workflows/prompt-history或秘密token/签名fixture/真实配置/完整连接串读取回显。[已测试]
 
 **④协调通过与⑤五commands提取授权（2026-10-15，当前HEADbae9186）**：协调主审亲读94行accrue module/旧diff/仓储签名，确认期间一次S+原regex先capture、第二root-method/receiver先三UUID、input→key→Q/C、4参await201晚M守恒，无阻塞。亲跑非PG96文件9390/9390实际0（/tmp/kingturf-commission-accrue-independent.log）；安全核sourceCI127205ms/最终HEAD133384ms均真实exit0/API109文件9483/9483/doclint103/structure0违规31豁免/build/audit绿，独立prefix/exactguard/command后缀/还原整app byte全true，runtime用transform-types单exact POST/8alternates拒绝/Proxy context0实际0。④源码14ee85a/证据bae9186及前三源码/固定549 a7440d9保持；原strip-only失败及恢复、②32fail等历史不改。当前6/11不是整域已协调或2c完成。
 
@@ -2099,6 +2143,8 @@ accrue先period string trim与精确四位年/01..12（无额外业务年界）�
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+**2c⑤commission五commands与数量11/11收尾（2026-10-15，授权f925ef8／源码9f0f278）**：④14ee85a/bae9186已协调通过，本轮仅五commands成功体dispatch单factory/readonly五配置，数量11/11已提取但⑤及commission整域仍待协调，其他七域未迁，不自行dashboard/2d以后。原combined rawhex/action guard、宽wrapper/前四module/opportunityResponse后缀保留；O→allow2→target/cap→Q ownkeys→晚第二root/transition receiver-method→UUID→input state/reason/原externalReference三元(null1/undefined2/非null3取第三值)→key→freshQ/C，5业务参await201晚独立M；无新read授权/支付追索/状态scope前查。module104/factory54/validate26/handler14/nest≤5，app wc4550→4539；整域五模块545行/六factory展开11routes，app仍7支持条件/7dispatch插槽，routes72=历史2b67+5，原app4611→4539仍巨文件不结清TD-API。首lint1 prefer-optional-chain修等价matcher单行，等首轮nonPG结束后固定源码重跑549/619/新枚举96-9390/type/lint/runtime/byte/structure0违规31豁免/format/doclint103/diff均0，未改外ref或tests/预期，独立readonly reviewer单行/整体无阻塞。runtime5POST互斥/8alternates拒绝/短hexmatch/Proxy context0且不执行业务；单步prefix/rawguard/opportunity→EOF及整app还原bae9186 true。新增整域还原脚本首断言因两GET相同成功体按字符串误替，改guard边界下标后扣五imports/还原七体全app与f230b22 byte true，原失败/恢复日志保留；限定app旧内联七方法调用搜索当前0/原7，不能外推全项目。readonly scout交叉核全11cap-method-参数-status-晚投影/五module六factory/计数，表及源码回滚依赖见§4.2.10。guard回环test库healthy/70applied且PG主代理独占串行，固定源码完整CI实际0/API109-9483与其余全绿（code-ci.log）后源码9f0f278独立提交；证据doc独立提交、最后HEAD完整CI另head-ci.log实际0/干净才交回。所有旧tests/549/2b/335/82/fixture-probe/前四module/其他src/仓储SQLschema/dispatcher/G3G4门禁/台账36状态/评分零diff，无佣金新PG/SQL矩阵冒称；本轮lint与诊断脚本失败、④strip-only恢复、②32fail恢复及所有旧失败史保留。源码整域建议⑤9f0f278→④14ee85a→③6aece9c→②31d426a→①46df89b逆序revert，各只恢复本入口成功体/去模块，前序单独revert如遇邻接import文本冲突保其他接线重验，冻结549/2b人验收不动；f925ef8与本证据/状态/index独立文档回滚。停协调⑤/整域复核，不据数量宣布2c完成、不重复索权；未E2E/push/部署/生产/workflows/prompt-history或秘密token/签名fixture/真实配置/完整连接串读取回显。[已测试]
 
 **④协调通过与⑤五commands提取授权（2026-10-15，当前HEADbae9186）**：协调主审亲读94行accrue module/旧diff/仓储签名，确认期间一次S+原regex先capture、第二root-method/receiver先三UUID、input→key→Q/C、4参await201晚M守恒，无阻塞。亲跑非PG96文件9390/9390实际0（/tmp/kingturf-commission-accrue-independent.log）；安全核sourceCI127205ms/最终HEAD133384ms均真实exit0/API109文件9483/9483/doclint103/structure0违规31豁免/build/audit绿，独立prefix/exactguard/command后缀/还原整app byte全true，runtime用transform-types单exact POST/8alternates拒绝/Proxy context0实际0。④源码14ee85a/证据bae9186及前三源码/固定549 a7440d9保持；原strip-only失败及恢复、②32fail等历史不改。当前6/11不是整域已协调或2c完成。
 
