@@ -191,6 +191,7 @@ import { leadCommandRoutes } from './routes/lead-commands.ts';
 import { riskPolicyReadRoutes, riskEvaluationReadRoutes } from './routes/risk-reads.ts';
 import { riskPolicyCreateRoutes } from './routes/risk-policy-create.ts';
 import { riskPolicyRevisionRoutes } from './routes/risk-policy-revision.ts';
+import { riskPolicyPublishRoutes } from './routes/risk-policy-publish.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -2048,18 +2049,22 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           const riskPolicyPublish =
             /^\/api\/v1\/risk-policy-versions\/([0-9a-f-]+)\/publish$/u.exec(request.pathname);
           if (request.method === 'POST' && riskPolicyPublish) {
-            const body = objectBody(request.body);
-            allow(body, []);
-            const versionId = riskPolicyPublish[1];
-            if (!versionId)
-              throw new DomainError('invalid_request', 'riskPolicyVersionId is required');
-            const grant = authorizeQuery(context, 'risk-policy:manage');
-            const result = await dependencies.risks.publishPolicyVersion(
-              versionId,
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
+            const response = await dispatchRoutes(
+              riskPolicyPublishRoutes({
+                repository: () =>
+                  dependencies.risks as Pick<
+                    NonNullable<ApiDependencies['risks']>,
+                    'publishPolicyVersion'
+                  >,
+                authorization: context,
+                authorizeQuery,
+                correlationId,
+                parsers: { objectBody, allow },
+                mutationDto,
+              }),
+              request,
             );
-            return { statusCode: 200, body: mutationDto(result, context, 'risk-policy:read') };
+            if (response !== null) return response;
           }
           if (request.method === 'POST' && request.pathname === '/api/v1/risk-evaluations') {
             const body = objectBody(request.body);
