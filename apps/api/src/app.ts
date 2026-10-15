@@ -78,6 +78,7 @@ import { manufacturingPublishRoutes } from './routes/manufacturing-publish.ts';
 import { mrpReadRoutes } from './routes/mrp-reads.ts';
 import { mrpPolicyCreateRoutes } from './routes/mrp-policy-create.ts';
 import { mrpDemandCreateRoutes } from './routes/mrp-demand-create.ts';
+import { mrpRunCreateRoutes } from './routes/mrp-run-create.ts';
 import { commissionCommandRoutes } from './routes/commission-commands.ts';
 import { commissionAccrueRoutes } from './routes/commission-accrue.ts';
 import { commissionPolicyPublishRoutes } from './routes/commission-policy-publish.ts';
@@ -1155,19 +1156,26 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             if (response !== null) return response;
           }
           if (request.method === 'POST' && request.pathname === '/api/v1/mrp-runs') {
-            const body = objectBody(request.body);
-            allow(body, ['runNumber', 'asOf', 'horizonEnd']);
-            const grant = authorizeQuery(context, 'mrp:run', Object.keys(body));
-            const result = await dependencies.mrp.run(
-              {
-                runNumber: assertStableCode(string(body.runNumber, 'runNumber')),
-                asOf: timestamp(body.asOf, 'asOf'),
-                horizonEnd: calendarDate(body.horizonEnd, 'horizonEnd'),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
+            const response = await dispatchRoutes(
+              mrpRunCreateRoutes({
+                repository: () =>
+                  dependencies.mrp as Pick<NonNullable<ApiDependencies['mrp']>, 'run'>,
+                authorization: context,
+                authorizeQuery,
+                correlationId,
+                parsers: {
+                  objectBody,
+                  allow,
+                  string,
+                  stableCode: assertStableCode,
+                  timestamp,
+                  calendarDate,
+                },
+                mutationDto,
+              }),
+              request,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'mrp:read') };
+            if (response !== null) return response;
           }
           const proposalCommand =
             /^\/api\/v1\/mrp-proposals\/([0-9a-f-]+)\/(approve|reject|release|cancel)$/u.exec(
