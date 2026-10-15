@@ -77,6 +77,7 @@ import { manufacturingRoutingCreateRoutes } from './routes/manufacturing-routing
 import { manufacturingPublishRoutes } from './routes/manufacturing-publish.ts';
 import { procurementReadRoutes } from './routes/procurement-reads.ts';
 import { procurementSupplierCreateRoutes } from './routes/procurement-supplier-create.ts';
+import { procurementSupplierQualificationRoutes } from './routes/procurement-supplier-qualification.ts';
 import { mrpReadRoutes } from './routes/mrp-reads.ts';
 import { mrpPolicyCreateRoutes } from './routes/mrp-policy-create.ts';
 import { mrpDemandCreateRoutes } from './routes/mrp-demand-create.ts';
@@ -815,38 +816,31 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             request.pathname,
           );
           if (request.method === 'POST' && qualification) {
-            const body = objectBody(request.body);
-            allow(body, [
-              'itemVersionId',
-              'status',
-              'validFrom',
-              'validTo',
-              'minimumOrderQuantity',
-              'leadTimeDays',
-              'evidence',
-            ]);
-            const grant = authorizeQuery(context, 'supplier:manage', Object.keys(body));
-            const status = string(body.status, 'status');
-            if (!['APPROVED', 'CONDITIONAL', 'REJECTED'].includes(status))
-              throw new DomainError('invalid_request', 'qualification status is unsupported');
-            const result = await dependencies.procurement.qualifySupplier(
-              uuid(qualification[1], 'supplierId'),
-              {
-                itemVersionId: uuid(body.itemVersionId, 'itemVersionId'),
-                status,
-                validFrom: calendarDate(body.validFrom, 'validFrom'),
-                validTo:
-                  body.validTo === null || body.validTo === undefined
-                    ? null
-                    : calendarDate(body.validTo, 'validTo'),
-                minimumOrderQuantity: decimal(body.minimumOrderQuantity, 'minimumOrderQuantity'),
-                leadTimeDays: integer(body.leadTimeDays, 'leadTimeDays', 0, 3650),
-                evidence: jsonObject(body.evidence ?? {}, 'evidence'),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
+            const response = await dispatchRoutes(
+              procurementSupplierQualificationRoutes({
+                repository: () =>
+                  dependencies.procurement as Pick<
+                    NonNullable<ApiDependencies['procurement']>,
+                    'qualifySupplier'
+                  >,
+                authorization: context,
+                authorizeQuery,
+                correlationId,
+                parsers: {
+                  objectBody,
+                  allow,
+                  string,
+                  uuid,
+                  calendarDate,
+                  decimal,
+                  integer,
+                  jsonObject,
+                },
+                mutationDto,
+              }),
+              request,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'supplier:read') };
+            if (response !== null) return response;
           }
           if (request.method === 'POST' && request.pathname === '/api/v1/procurement-rfqs') {
             const body = objectBody(request.body);
