@@ -69,6 +69,7 @@ import { qtcArPostRoutes } from './routes/qtc-ar-post.ts';
 import { qtcBankPaymentIntakeRoutes } from './routes/qtc-bank-payment-intake.ts';
 import { qtcReconciliationRunRoutes } from './routes/qtc-reconciliation-run.ts';
 import { commissionReadRoutes } from './routes/commission-reads.ts';
+import { commissionPolicyPublishRoutes } from './routes/commission-policy-publish.ts';
 import {
   commissionPolicyCreateRoutes,
   commissionPolicyVersionRoutes,
@@ -2935,18 +2936,22 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               request.pathname,
             );
           if (request.method === 'POST' && commissionPolicyPublish) {
-            const body = objectBody(request.body);
-            allow(body, []);
-            const grant = authorizeQuery(context, 'commission-policy:manage');
-            const result = await dependencies.commissions.publishPolicyVersion(
-              uuid(commissionPolicyPublish[1], 'commissionPolicyVersionId'),
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
+            const response = await dispatchRoutes(
+              commissionPolicyPublishRoutes({
+                repository: () =>
+                  dependencies.commissions as Pick<
+                    NonNullable<ApiDependencies['commissions']>,
+                    'publishPolicyVersion'
+                  >,
+                authorization: context,
+                authorizeQuery,
+                correlationId,
+                parsers: { objectBody, allow, uuid },
+                mutationDto,
+              }),
+              request,
             );
-            return {
-              statusCode: 200,
-              body: mutationDto(result, context, 'commission-policy:read'),
-            };
+            if (response !== null) return response;
           }
           if (request.method === 'POST' && request.pathname === '/api/v1/commissions/accrue') {
             const body = objectBody(request.body);
