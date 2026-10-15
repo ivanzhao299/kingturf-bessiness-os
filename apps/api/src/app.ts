@@ -193,6 +193,7 @@ import { riskPolicyCreateRoutes } from './routes/risk-policy-create.ts';
 import { riskPolicyRevisionRoutes } from './routes/risk-policy-revision.ts';
 import { riskPolicyPublishRoutes } from './routes/risk-policy-publish.ts';
 import { riskEvaluationCreateRoutes } from './routes/risk-evaluation-create.ts';
+import { riskTaskCommandRoutes } from './routes/risk-task-commands.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -2088,26 +2089,23 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               request.pathname,
             );
           if (request.method === 'POST' && riskTaskCommand) {
-            const body = objectBody(request.body);
-            allow(body, ['reason', 'evidence']);
-            const grant = authorizeQuery(context, 'risk:manage', Object.keys(body));
-            const state = (
-              { acknowledge: 'ACKNOWLEDGED', escalate: 'ESCALATED', close: 'CLOSED' } as const
-            )[riskTaskCommand[2] as 'acknowledge' | 'escalate' | 'close'];
-            const taskId = riskTaskCommand[1];
-            if (!taskId) throw new DomainError('invalid_request', 'riskTaskId is required');
-            const result = await dependencies.risks.transitionTask(
-              taskId,
-              {
-                state,
-                reason: string(body.reason, 'reason'),
-                evidence: jsonObject(body.evidence, 'evidence'),
-              },
-              idempotency(request),
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
+            const response = await dispatchRoutes(
+              riskTaskCommandRoutes({
+                repository: () =>
+                  dependencies.risks as Pick<
+                    NonNullable<ApiDependencies['risks']>,
+                    'transitionTask'
+                  >,
+                authorization: context,
+                authorizeQuery,
+                idempotency,
+                correlationId,
+                parsers: { objectBody, allow, string, jsonObject },
+                mutationDto,
+              }),
+              request,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'risk:read') };
+            if (response !== null) return response;
           }
         }
         const order360Match = /^\/api\/v1\/sales-orders\/([0-9a-f-]+)\/360$/u.exec(
