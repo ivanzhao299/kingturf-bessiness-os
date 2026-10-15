@@ -190,6 +190,7 @@ import { leadClaimRoutes } from './routes/lead-claim.ts';
 import { leadCommandRoutes } from './routes/lead-commands.ts';
 import { riskPolicyReadRoutes, riskEvaluationReadRoutes } from './routes/risk-reads.ts';
 import { riskPolicyCreateRoutes } from './routes/risk-policy-create.ts';
+import { riskPolicyRevisionRoutes } from './routes/risk-policy-revision.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -2027,37 +2028,22 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             request.pathname,
           );
           if (request.method === 'POST' && riskPolicyRevision) {
-            const body = objectBody(request.body);
-            allow(body, [
-              'minimumMarginBasisPoints',
-              'overdueGraceDays',
-              'creditWarningDays',
-              'effectiveAt',
-              'rules',
-            ]);
-            const policyId = riskPolicyRevision[1];
-            if (!policyId) throw new DomainError('invalid_request', 'riskPolicyId is required');
-            const grant = authorizeQuery(context, 'risk-policy:manage', Object.keys(body));
-            const result = await dependencies.risks.createPolicyVersion(
-              policyId,
-              {
-                minimumMarginBasisPoints: integer(
-                  body.minimumMarginBasisPoints,
-                  'minimumMarginBasisPoints',
-                  -100000,
-                  10000,
-                ),
-                overdueGraceDays: integer(body.overdueGraceDays, 'overdueGraceDays', 0, 3650),
-                creditWarningDays: integer(body.creditWarningDays, 'creditWarningDays', 0, 3650),
-                effectiveAt: timestamp(body.effectiveAt, 'effectiveAt'),
-                rules: array(body.rules, 'rules').map((rule, index) =>
-                  jsonObject(rule, `rules[${String(index)}]`),
-                ),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
+            const response = await dispatchRoutes(
+              riskPolicyRevisionRoutes({
+                repository: () =>
+                  dependencies.risks as Pick<
+                    NonNullable<ApiDependencies['risks']>,
+                    'createPolicyVersion'
+                  >,
+                authorization: context,
+                authorizeQuery,
+                correlationId,
+                parsers: { objectBody, allow, integer, timestamp, array, jsonObject },
+                mutationDto,
+              }),
+              request,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'risk-policy:read') };
+            if (response !== null) return response;
           }
           const riskPolicyPublish =
             /^\/api\/v1\/risk-policy-versions\/([0-9a-f-]+)\/publish$/u.exec(request.pathname);
