@@ -2737,16 +2737,16 @@ validate原O无??{}→allow reason,evidence→Q risk:manage ownkeys→原普通�
 
 六文件sum592/maxfile113；maxfactory75/validate54/handler17/matcher6/map callback6/input27/state3/nest≤3，逐文件实际800/200/5内。以上是wc/nl人工文本span，200非AST强制，factory不是validate长度；原预算不改成实测，旧GET callback≤5预算/实际6如实保留。scout与reviewer只读交叉核，未派其他写入/测试DB。
 
-**逐步真实SHA与CI日志elapsed索引**（每步code/head完整CI均真实exit0，前五步各head已交协调通过；第⑥最终实际索引HEAD须另跑完整CI，表不预填未发生的耗时。末证据SHA通过独立窄索引提交补真实值，避免自引用。）
+**逐步真实SHA与CI日志elapsed索引**（前五步code/head完整CI均真实exit0并已协调通过；第⑥源码完整CI真实exit0，最终实际索引HEAD须另跑完整CI，表不预填未发生的耗时。末步整域证据真实SHA f6a2e3b，已由本窄索引补入；索引自身不虚构未知自引用SHA。）
 
-| 步骤/累计canonical | 授权docs | 源码    | 证据docs                      | 源码完整CI秒 | 当步最终HEAD完整CI秒                                     | 主代理实施fresh非PG秒 | 协调独立fresh非PG秒          |
-| ------------------ | -------- | ------- | ----------------------------- | ------------ | -------------------------------------------------------- | --------------------- | ---------------------------- |
-| ①两GET／2          | ecdfca2  | ea7b123 | 27530cc                       | 139.686      | 141.088                                                  | 34.71                 | 32.15                        |
-| ②policy create／3  | e1491af  | 2f87db3 | 50eb2e3                       | 140.962      | 141.937                                                  | 33.66                 | 30.15                        |
-| ③revision／4       | 4cee338  | 4789b8d | d7b9627                       | 137.190      | 139.360                                                  | 31.36                 | 30.46                        |
-| ④publish／5        | 80d214d  | d5a11ed | b17dd12                       | 134.342      | 134.684                                                  | 31.57                 | 30.42                        |
-| ⑤evaluate／6       | f0b73fc  | 5b320af | d9651b4                       | 131.550      | 132.147                                                  | 31.18                 | 29.76                        |
-| ⑥task三动作／9     | 7b6c89a  | 92b3df4 | 本证据提交后由窄索引补真实SHA | 144.318      | 最终索引HEAD另risk-task-head-ci.log/交付实测结果，不预填 | 30.74                 | 尚未协调独立复核，不冒称已测 |
+| 步骤/累计canonical | 授权docs | 源码    | 证据docs | 源码完整CI秒 | 当步最终HEAD完整CI秒                                     | 主代理实施fresh非PG秒 | 协调独立fresh非PG秒          |
+| ------------------ | -------- | ------- | -------- | ------------ | -------------------------------------------------------- | --------------------- | ---------------------------- |
+| ①两GET／2          | ecdfca2  | ea7b123 | 27530cc  | 139.686      | 141.088                                                  | 34.71                 | 32.15                        |
+| ②policy create／3  | e1491af  | 2f87db3 | 50eb2e3  | 140.962      | 141.937                                                  | 33.66                 | 30.15                        |
+| ③revision／4       | 4cee338  | 4789b8d | d7b9627  | 137.190      | 139.360                                                  | 31.36                 | 30.46                        |
+| ④publish／5        | 80d214d  | d5a11ed | b17dd12  | 134.342      | 134.684                                                  | 31.57                 | 30.42                        |
+| ⑤evaluate／6       | f0b73fc  | 5b320af | d9651b4  | 131.550      | 132.147                                                  | 31.18                 | 29.76                        |
+| ⑥task三动作／9     | 7b6c89a  | 92b3df4 | f6a2e3b  | 144.318      | 最终索引HEAD另risk-task-head-ci.log/交付实测结果，不预填 | 30.74                 | 尚未协调独立复核，不冒称已测 |
 
 完整CI日志路径前缀/tmp/kingturf-risk-{reads,create,revision,publish,evaluate,task}-{code,head}-ci.log，表中elapsed来自各真实日志，不等同工具wall。前五步协调核工具wall code/head ms分别139552/140958、140828/141801、137067/139224、134217/134550、131417/132016，对应log数按表分列，不强制相等；duration0辅助读/轮询不是第三全链，也不当总wall。⑥尚无协调独立wall/非PG核验，不预填，主代理日志/exit与本轮fresh实际如表。
 旧oracle独立授权0bea878、测试f398137（仅新1225行1099文件/blob ea523e3e2ad19526fbde78ca613214173d81257f）、候选d1644cc，生产0eccaf6与候选app逐byte相等；oracle轮完整CI实际0/140.174s、候选最终HEAD0/140.399s，API114/14156；主代理fresh101非PG14063/35.69s、协调独立31.99s分开；协调核工具wall140039/140266ms非日志elapsed。不把旧oracle独立test提交当生产提取，也不把所有主代理fresh冒称独立协调。
@@ -3028,6 +3028,8 @@ risk-repositories.ts437行只读：listPolicies23–30限COMPANY/GROUP且tenant�
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+**risk整域证据SHA索引（2026-10-15，证据f6a2e3b／源码92b3df4）**：f6a2e3b已独立落盘9/9待协调整域复核、七定义九canonical/六module592容量与六步SHA-CI/双基线全app还原/runtime有限证明/全部历史及回滚。本窄提交仅补第⑥证据真实SHA及索引说明/本日志，不改源码/测试/授权或旧历史、不虚构自引用。最终实际索引HEAD将完整ci:local另跑risk-task-head-ci.log，真实exit0/干净才交回，不预填尚未发生的成功。窄索引复核指出总括“每步code/head均0”可能预宣⑥最终HEAD，已限定为前五步双CI与⑥仅源码CI0，末次仍待跑；这是文案纠正，非业务或CI失败，也不将未跑CI记成功。源码完整CI已0/144.318s/API114-14156/audit绿，scope/history/byte/runtime证明保持；本步无新业务/测试/类型/lint/证明失败，scout口径与重复短语修正非源码行为修正，旧③计数诊断/fixture2/lint4及更早史全保留。9/9非risk协调已通过/2c人工验收、2c仍5/8整域协调完成，不启动order360/quality/2d以后，不push部署workflow/读回显秘密；本窄SHA索引、f6a2e3b证据及7b6c89a授权各独立回滚。[已测试]
 
 **risk⑥task／整域9/9收尾（2026-10-15，授权7b6c89a／源码92b3df4）**：仅原task命中体新risk-task-commands.ts+唯一import，单definition三canonical，累计9/9待协调整域复核非2c或人工验收、不启动order360。原rawexec/guard/root/prefix/order360起suffix与前5module冻结；O-allow2-Qownkeys→普通state表lookup→rawID非空→晚root/transitionTask→state-reason-evidence必需→原key→freshQ/C5参await201晚M，不套revision先非空模板、不搬CLOSED SQL检查。module95/factory40–95=56/validate50–78=29/handler79–92=14/matcher44–49=6/state58–60=3/input65–69=5/nest≤2，800/200/5实测非AST200；app4332→4330本步减2，整域4372→4330减42/routes93→99，六新module592意味着非全仓LOC下降，七factory/七静态-runtime定义→9canonical(2GET7POST)、7pathname/5template/7旧支持条件分口径，不结巨app31豁免/TDAPI债。独立readonly source及整域review无必要修正/scout计量与SHA-CI交叉核；仅task还原全app等d9651b4，整域逐七成功体还原+移六唯一imports后全app同时byte等0eccaf6/d1644cc，old7direct语法点→0不外推别名，前5module/source全tests/1099和1762blobs冻结。候选以来恰10文件/生产以来恰11（仅多旧oracle），所有其他路径/protected/旧完整计划历史保留。runtime单步1def→3canon/12short48alt90methods/整域7def→9各1/20short99uniquealt160unsupported/context0仅construction-match/unmatched非HTTP404/PG算法安全。1099 before313ms/after353ms、related4-1163/1.82s、fresh101非PG14063/30.74s、whole type-lint-format-doclint103-structure0/31-diff/proofs首0，无本步新失败源码测试修正；旧计数4!==3/fixture2/lint4/探索及GET预算5实际6全保留，scout早期evaluate31.18误列协调后校正29.76与rules链3/callback1分口径。主代理无其他vitest/guard回环test库healthy70applied+checksum后源码完整CI真实0/144.318s/API114-14156/build-audit绿，再独立92b3df4仅app/module；整域证据docs另commit，再窄索引补真实末证据SHA免自引用，最终实际HEAD完整CI另head-ci.log实际0干净才交回不预填。单步revert92b3df4；整域源码逆序92b3df4→5b320af→d5a11ed→4789b8d→2f87db3→ea7b123需另授权逐个检查非盲执行，授权-证据-索引docs独立回滚，固定f398137/d1644cc/采购其他域/2b验收不动。既有13PG仅完整回归、不增risk专属SQLPG/算法矩阵/E2E/生产；9/9待协调不改2c5/8已完成统计、不自行order360/quality/2d以后、不push部署workflow/读回显秘密，完整metrics-SHA-CI/边界/失败史/回滚见§4.2.15。[已测试]
 
