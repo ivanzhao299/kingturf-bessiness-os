@@ -194,6 +194,7 @@ import {
   qualityInspectionReadRoutes,
   lotTraceabilityReadRoutes,
 } from './routes/quality-reads.ts';
+import { qualityPlanCreateRoutes } from './routes/quality-plan-create.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -1758,85 +1759,32 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             if (response !== null) return response;
           }
           if (request.method === 'POST' && request.pathname === '/api/v1/quality-plans') {
-            const body = objectBody(request.body);
-            allow(body, [
-              'code',
-              'name',
-              'itemVersionId',
-              'inspectionStage',
-              'samplingMethod',
-              'acceptanceRule',
-              'effectiveAt',
-              'characteristics',
-              'publish',
-            ]);
-            const grant = authorizeQuery(context, 'quality-plan:manage', Object.keys(body));
-            const stage = string(body.inspectionStage, 'inspectionStage');
-            if (!['INCOMING', 'IN_PROCESS', 'FINAL'].includes(stage))
-              throw new DomainError('invalid_request', 'inspectionStage is unsupported');
-            const characteristics = array(body.characteristics, 'characteristics').map(
-              (entry, index) => {
-                const item = objectBody(entry);
-                allow(item, [
-                  'code',
-                  'name',
-                  'dataType',
-                  'unitCode',
-                  'lowerLimit',
-                  'upperLimit',
-                  'required',
-                  'instructions',
-                ]);
-                const dataType = string(
-                  item.dataType,
-                  `characteristics[${String(index)}].dataType`,
-                );
-                if (!['NUMERIC', 'BOOLEAN', 'TEXT'].includes(dataType))
-                  throw new DomainError(
-                    'invalid_request',
-                    'characteristic dataType is unsupported',
-                  );
-                if (typeof item.required !== 'boolean')
-                  throw new DomainError(
-                    'invalid_request',
-                    'characteristic required must be boolean',
-                  );
-                return {
-                  code: assertStableCode(string(item.code, 'code')),
-                  name: string(item.name, 'name'),
-                  dataType: dataType as 'NUMERIC' | 'BOOLEAN' | 'TEXT',
-                  ...(item.unitCode === undefined
-                    ? {}
-                    : { unitCode: string(item.unitCode, 'unitCode') }),
-                  ...(item.lowerLimit === undefined
-                    ? {}
-                    : { lowerLimit: decimal(item.lowerLimit, 'lowerLimit', false) }),
-                  ...(item.upperLimit === undefined
-                    ? {}
-                    : { upperLimit: decimal(item.upperLimit, 'upperLimit', false) }),
-                  required: item.required,
-                  instructions: string(item.instructions, 'instructions'),
-                };
-              },
+            const response = await dispatchRoutes(
+              qualityPlanCreateRoutes({
+                repository: () =>
+                  dependencies.quality as Pick<
+                    NonNullable<ApiDependencies['quality']>,
+                    'createPlan'
+                  >,
+                authorization: context,
+                authorizeQuery,
+                correlationId,
+                parsers: {
+                  objectBody,
+                  allow,
+                  string,
+                  uuid,
+                  decimal,
+                  timestamp,
+                  array,
+                  jsonObject,
+                  stableCode: assertStableCode,
+                },
+                mutationDto,
+              }),
+              request,
             );
-            if (typeof body.publish !== 'boolean')
-              throw new DomainError('invalid_request', 'publish must be boolean');
-            const result = await dependencies.quality.createPlan(
-              {
-                code: assertStableCode(string(body.code, 'code')),
-                name: string(body.name, 'name'),
-                itemVersionId: uuid(body.itemVersionId, 'itemVersionId'),
-                inspectionStage: stage as 'INCOMING' | 'IN_PROCESS' | 'FINAL',
-                samplingMethod: string(body.samplingMethod, 'samplingMethod'),
-                acceptanceRule: jsonObject(body.acceptanceRule, 'acceptanceRule'),
-                effectiveAt: timestamp(body.effectiveAt, 'effectiveAt'),
-                characteristics,
-                publish: body.publish,
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
-            );
-            return { statusCode: 201, body: mutationDto(result, context, 'quality-plan:read') };
+            if (response !== null) return response;
           }
           const planPublish = /^\/api\/v1\/quality-plans\/([0-9a-f-]+)\/publish$/u.exec(
             request.pathname,
