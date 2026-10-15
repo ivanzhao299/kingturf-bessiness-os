@@ -74,6 +74,7 @@ import { manufacturingReadRoutes } from './routes/manufacturing-reads.ts';
 import { manufacturingItemCreateRoutes } from './routes/manufacturing-item-create.ts';
 import { manufacturingBomCreateRoutes } from './routes/manufacturing-bom-create.ts';
 import { manufacturingRoutingCreateRoutes } from './routes/manufacturing-routing-create.ts';
+import { manufacturingPublishRoutes } from './routes/manufacturing-publish.ts';
 import { commissionCommandRoutes } from './routes/commission-commands.ts';
 import { commissionAccrueRoutes } from './routes/commission-accrue.ts';
 import { commissionPolicyPublishRoutes } from './routes/commission-policy-publish.ts';
@@ -706,20 +707,22 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               request.pathname,
             );
           if (request.method === 'POST' && manufacturingPublish) {
-            allow(objectBody(request.body ?? {}), []);
-            const kind = manufacturingPublish[1] as 'item' | 'bom' | 'routing';
-            const capability =
-              `${kind === 'item' ? 'manufacturing-item' : kind}:manage` as PermissionKey;
-            const grant = authorizeQuery(context, capability);
-            const result = await dependencies.manufacturing.publish(
-              kind,
-              uuid(manufacturingPublish[2], 'versionId'),
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
+            const response = await dispatchRoutes(
+              manufacturingPublishRoutes({
+                repository: () =>
+                  dependencies.manufacturing as Pick<
+                    NonNullable<ApiDependencies['manufacturing']>,
+                    'publish'
+                  >,
+                authorization: context,
+                authorizeQuery,
+                correlationId,
+                parsers: { objectBody, allow, uuid },
+                mutationDto,
+              }),
+              request,
             );
-            const readCapability =
-              `${kind === 'item' ? 'manufacturing-item' : kind}:read` as PermissionKey;
-            return { statusCode: 201, body: mutationDto(result, context, readCapability) };
+            if (response !== null) return response;
           }
         }
         if (dependencies.procurement) {
