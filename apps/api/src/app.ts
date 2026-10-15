@@ -83,6 +83,7 @@ import { procurementSupplierQuoteCreateRoutes } from './routes/procurement-suppl
 import { procurementPurchaseOrderCreateRoutes } from './routes/procurement-purchase-order-create.ts';
 import { procurementIssueRoutes } from './routes/procurement-issue.ts';
 import { procurementLocationCreateRoutes } from './routes/procurement-location-create.ts';
+import { procurementReceiptCreateRoutes } from './routes/procurement-receipt-create.ts';
 import { mrpReadRoutes } from './routes/mrp-reads.ts';
 import { mrpPolicyCreateRoutes } from './routes/mrp-policy-create.ts';
 import { mrpDemandCreateRoutes } from './routes/mrp-demand-create.ts';
@@ -975,53 +976,33 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             if (response !== null) return response;
           }
           if (request.method === 'POST' && request.pathname === '/api/v1/goods-receipts') {
-            const body = objectBody(request.body);
-            allow(body, [
-              'receiptNumber',
-              'purchaseOrderId',
-              'receivedAt',
-              'sourceReference',
-              'lines',
-            ]);
-            const grant = authorizeQuery(context, 'procurement:manage', Object.keys(body));
-            const lines = array(body.lines, 'lines').map((entry, index) => {
-              const line = jsonObject(entry, `lines[${String(index)}]`);
-              allow(line, [
-                'purchaseOrderLineId',
-                'lotNumber',
-                'locationCode',
-                'quantity',
-                'manufacturedAt',
-                'expiresAt',
-              ]);
-              return {
-                purchaseOrderLineId: uuid(line.purchaseOrderLineId, 'purchaseOrderLineId'),
-                lotNumber: assertStableCode(string(line.lotNumber, 'lotNumber')),
-                locationCode: assertStableCode(string(line.locationCode, 'locationCode')),
-                quantity: decimal(line.quantity, 'quantity'),
-                manufacturedAt: optionalCalendarDate(
-                  Object.hasOwn(line, 'manufacturedAt') ? line.manufacturedAt : null,
-                  'manufacturedAt',
-                ),
-                expiresAt: optionalCalendarDate(
-                  Object.hasOwn(line, 'expiresAt') ? line.expiresAt : null,
-                  'expiresAt',
-                ),
-              };
-            });
-            if (!lines.length) throw new DomainError('invalid_request', 'lines must not be empty');
-            const result = await dependencies.procurement.receive(
-              {
-                receiptNumber: assertStableCode(string(body.receiptNumber, 'receiptNumber')),
-                purchaseOrderId: uuid(body.purchaseOrderId, 'purchaseOrderId'),
-                receivedAt: timestamp(body.receivedAt, 'receivedAt'),
-                sourceReference: string(body.sourceReference, 'sourceReference'),
-                lines,
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
+            const response = await dispatchRoutes(
+              procurementReceiptCreateRoutes({
+                repository: () =>
+                  dependencies.procurement as Pick<
+                    NonNullable<ApiDependencies['procurement']>,
+                    'receive'
+                  >,
+                authorization: context,
+                authorizeQuery,
+                correlationId,
+                parsers: {
+                  objectBody,
+                  allow,
+                  array,
+                  jsonObject,
+                  uuid,
+                  string,
+                  stableCode: assertStableCode,
+                  decimal,
+                  optionalCalendarDate,
+                  timestamp,
+                },
+                mutationDto,
+              }),
+              request,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'procurement:read') };
+            if (response !== null) return response;
           }
           if (request.method === 'POST' && request.pathname === '/api/v1/inventory-movements') {
             const body = objectBody(request.body);
