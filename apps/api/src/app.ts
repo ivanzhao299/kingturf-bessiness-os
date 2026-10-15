@@ -80,6 +80,7 @@ import { procurementSupplierCreateRoutes } from './routes/procurement-supplier-c
 import { procurementSupplierQualificationRoutes } from './routes/procurement-supplier-qualification.ts';
 import { procurementRfqCreateRoutes } from './routes/procurement-rfq-create.ts';
 import { procurementSupplierQuoteCreateRoutes } from './routes/procurement-supplier-quote-create.ts';
+import { procurementPurchaseOrderCreateRoutes } from './routes/procurement-purchase-order-create.ts';
 import { mrpReadRoutes } from './routes/mrp-reads.ts';
 import { mrpPolicyCreateRoutes } from './routes/mrp-policy-create.ts';
 import { mrpDemandCreateRoutes } from './routes/mrp-demand-create.ts';
@@ -903,43 +904,33 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             if (response !== null) return response;
           }
           if (request.method === 'POST' && request.pathname === '/api/v1/purchase-orders') {
-            const body = objectBody(request.body);
-            allow(body, [
-              'poNumber',
-              'supplierId',
-              'supplierQuoteId',
-              'currency',
-              'lines',
-              'issue',
-            ]);
-            const grant = authorizeQuery(context, 'procurement:manage', Object.keys(body));
-            const lines = array(body.lines, 'lines').map((entry, index) => {
-              const line = jsonObject(entry, `lines[${String(index)}]`);
-              allow(line, ['itemVersionId', 'quantity', 'unitPrice', 'requiredAt']);
-              return {
-                itemVersionId: uuid(line.itemVersionId, 'itemVersionId'),
-                quantity: decimal(line.quantity, 'quantity'),
-                unitPrice: decimal(line.unitPrice, 'unitPrice'),
-                requiredAt: calendarDate(line.requiredAt, 'requiredAt'),
-              };
-            });
-            if (!lines.length) throw new DomainError('invalid_request', 'lines must not be empty');
-            const result = await dependencies.procurement.createPurchaseOrder(
-              {
-                poNumber: assertStableCode(string(body.poNumber, 'poNumber')),
-                supplierId: uuid(body.supplierId, 'supplierId'),
-                supplierQuoteId:
-                  body.supplierQuoteId === null || body.supplierQuoteId === undefined
-                    ? null
-                    : uuid(body.supplierQuoteId, 'supplierQuoteId'),
-                currency: currency(body.currency),
-                lines,
-                issue: body.issue === true,
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
+            const response = await dispatchRoutes(
+              procurementPurchaseOrderCreateRoutes({
+                repository: () =>
+                  dependencies.procurement as Pick<
+                    NonNullable<ApiDependencies['procurement']>,
+                    'createPurchaseOrder'
+                  >,
+                authorization: context,
+                authorizeQuery,
+                correlationId,
+                parsers: {
+                  objectBody,
+                  allow,
+                  array,
+                  jsonObject,
+                  uuid,
+                  decimal,
+                  calendarDate,
+                  string,
+                  stableCode: assertStableCode,
+                  currency,
+                },
+                mutationDto,
+              }),
+              request,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'procurement:read') };
+            if (response !== null) return response;
           }
           const procurementIssue =
             /^\/api\/v1\/(procurement-rfqs|purchase-orders)\/([0-9a-f-]+)\/issue$/u.exec(
