@@ -6,7 +6,7 @@
 - **分支**：`harnessing`（自 main 派生；按规则 §7.1 禁止直接在主干改造）
 - **计划版本 / 日期**：v1.3 / 2026-10-12（v1.2 经第三轮人工审核修订：修复 §3.8 S11 表格裸管道、覆盖率验收语义收紧为目标值硬条件、S11 表述改为启发式口径）
 - **扫描基线**：commit `779dea3`（同步 origin/main 后）
-- **状态**：**批次1/2a/2b已人工验收（2b源码80c5b64、记录f230b22，2026-10-15）；用户最新正式授权后续，当前串行启动2c，commission549旧HTTP护栏a7440d9/8ed3e4b候选已协调通过，①两GET46df89b/73e7f3b已协调通过，②政策两POST31d426a/3d011c8已协调通过，③publish6aece9c/5ba0c58已协调通过，④accrue14ee85a/bae9186已协调通过，⑤commands源码9f0f278已提取，commission11/11已协调确认，当前dashboard旧护栏/候选已授权0/1未提取（其余六后续域未迁，见§4.2.11），见§4.2.10。完成停协调复核，由协调在已授权2c内续派，不要求用户重复授权；不自行2d/2e/批次3/安全行为变更。2d-2f及其余后续仍未启动；31豁免、台账36/TD-REG-001已解决历史、TD-API-001/002/TD-BOUND-003/004/D1已批准未实施/评分基线保持，不push/部署/改workflow。§4.2.9等原待验收/未授权句为历史，不改2b源码和固定护栏。**
+- **状态**：**批次1/2a/2b已人工验收（2b源码80c5b64、记录f230b22，2026-10-15）；用户最新正式授权后续，当前串行启动2c，commission549旧HTTP护栏a7440d9/8ed3e4b候选已协调通过，①两GET46df89b/73e7f3b已协调通过，②政策两POST31d426a/3d011c8已协调通过，③publish6aece9c/5ba0c58已协调通过，④accrue14ee85a/bae9186已协调通过，⑤commands源码9f0f278已提取，commission11/11已协调确认，dashboard311旧护栏0d2246d冻结/候选待协调，当前0/1未提取（其余六后续域未迁，见§4.2.11），见§4.2.10。完成停协调复核，由协调在已授权2c内续派，不要求用户重复授权；不自行2d/2e/批次3/安全行为变更。2d-2f及其余后续仍未启动；31豁免、台账36/TD-REG-001已解决历史、TD-API-001/002/TD-BOUND-003/004/D1已批准未实施/评分基线保持，不push/部署/改workflow。§4.2.9等原待验收/未授权句为历史，不改2b源码和固定护栏。**
 - **规则文档**：`docs/HARNESS-RULES.md`（施工期常驻，竣工验收后按 §14 拆解归档）
 - **配套文件**：问题清单 `docs/exec-plans/tech-debt-tracker.md`（36 条，含已解决历史项）；CI 决策 `docs/CI.md`；度量脚本 `scripts/analysis/repo-metrics.mjs`
 
@@ -2050,7 +2050,48 @@ accrue先period string trim与精确四位年/01..12（无额外业务年界）�
 
 源码/仓储/SQL/schema/所有既有tests/fixture/probe/sharedroutes/G3G4/门禁/依赖/packagesweb/workflows/台账36状态/评分对f230b22零diff；a7440d9后新549也冻结零diff。原2b验收清单/过去待验收与模型容量中断恢复/TD-REG-001失败到修复等历史保持；本轮只授权AGENTS/计划/index与新test。当前commission0/11未提取、其余七域只读盘点，不宣称2c已迁完/人验收；TD-API不结清、TD-BOUND-003/004待核实不修/D1不扩，未push/部署/生产/workflows/E2E/prompt-history/真实秘密配置或签名材料读取/回显。回滚 `git revert a7440d9`仅移除本新oracle；39c99a7授权/本设计与§0/§7/index可独立文档revert，f230b22用户验收和全部2b源码/护栏不动，无本轮业务源码回滚项。完成停协调独立复核，不自行提取或启动其余域/2d/2e/批次3/安全行为；协调可按已授权2c直接续派通过的小步，无需再问用户授权。[已测试]
 
-#### 4.2.11 2c第二域dashboard旧护栏／候选已授权（源码f7f71f2，当前0/1未提取）
+#### 4.2.11 2c第二域dashboard固定311旧护栏／候选待协调（源码f7f71f2，当前0/1未提取）
+
+**Dashboard旧护栏／候选当前快照（2026-10-15，授权6bb6a04／固定test 0d2246d）**：commission整域9f0f278/f7f71f2已协调确认；本轮仅新增旧HTTP oracle及候选文档，dashboard当前0/1未提取，生产app仍4539行、五commission module545行/六factory/11入口/路由目录72TS不变。其余六后续域未迁，不重做commission/2b或自行提取dashboard、启动manufacturing/2d以后。下方“已授权”是本轮开始时点；八域43条件70入口历史盘点/quality限定覆盖说明与全部旧失败史保留。
+
+**旧实现事实与输入捕获图**：app2097–2145单GET/exact /api/v1/executive-dashboard且第三项dependencies.dashboard的短路组合guard；matching有效session才读首root，unsupported method/path不读root，缺/假值dep404而非503，global401优先。2102 Q0 executive-dashboard:read无fields，2103/2104原timestamp先from后to，2105–2106 Date毫秒from>=to原invalid_request/'from must be before to'；2107第二root/get方法与原receiver先捕获，2108 input按from/to/currency原currency(query?.currency)，2109 freshQ按actor/scopes/anchors原ref顺序，get(input,Q)恰2业务参await，无correlationId参数。非法from先to、非法to/比较先第二root、root/method先currency、currency先actor；guard/授权getter或from/to getter换根影响晚capture，method getter换根/actor或currency getter改method不改变已捕获receiver/method。Q0已捕获grantrefs，actor改变Map不倒改Q；get缺失仍按旧JS先评估参数，非法currency400早于调用TypeError500，不加可用性预查。
+
+timestamp保持原string trim→Date→toISOString，Feb30归一、0000–9999与无最大窗口原接受面保留；currency仅原三大写字母regex，ZZZ/AAA等mock面不当真实币种业务接受面。body/query无新增白名单/对象解析/默认时间/日历真实性或同时间放行；query缺失/null/primitive由旧optional chain和from-required决定，继承query值可见，未知内部getter不读取。全局外层浅spread只复制request/header、inner body/query保持refs；外层request getter抛错可在inner HTTP catch前直接reject，不能改写成统一HTTP500，正常内部getter/仓储DomainError及普通异常仍原status/error-C。GET body不解析；unsupported POST可能继续命中位于dashboard之后的QTC共享O并400，不能误称QTC在dashboard GET之前。
+
+**await后完整时序（不做来源授权升级）**：aggregate.metrics一次读取2111→2112–2123原十key/cap对象按既定顺序→2124–2128 Object.entries.filter逐项permissions.has全部完成→map才读取每个选中metrics[key]→Object.fromEntries新metrics容器，但metric/nested为原ref；2129 aggregate.drilldowns一次，随后body2133 filters、2134 refreshedAt、2135 visibleMetrics、2136 drilldowns依次，2137–2142 sales-order:read/订单值、ar:read/overdue值、risk:read/risks值为各当时.has/读取，orders getter改Map可影响后面的overdue/risks。过滤十次含重复cap，不按七个独立cap去重缓存或边has边读metric；metrics/filters/refreshedAt getter、Map.has或context.permissions替换各按原时点生效，await后即使primarygrant删除也不再authorize。source仅.has，不读取source grant fields/scopes/值，连has(undefined grant)的mock面也冻结但不作安全许可结论。原cast非runtime schema，不增P/M/DTO裁剪/补字段；选中缺键生成own undefined，nullish metric/drill仅实际读取时抛错，非null primitive/继承值/特殊ownkeys和浅refs按旧行为。aggregate本身nullish先metrics访问失败，即使无来源cap也500。
+
+| metric原顺序      | 仅.has的来源capability |
+| ----------------- | ---------------------- |
+| weightedForecast  | opportunity:read       |
+| bookedRevenue     | sales-order:read       |
+| grossMargin       | quote:read             |
+| cashCollected     | reconciliation:read    |
+| openReceivable    | ar:read                |
+| overdueReceivable | ar:read                |
+| releasedOrders    | sales-order:read       |
+| activeRisks       | risk:read              |
+| criticalRisks     | risk:read              |
+| commissionAccrued | commission:read        |
+
+**固定旧oracle及覆盖边界**：apps/api/test/dashboard-route-contract.test.ts1103行/311case，直接HTTP入口只import当前旧buildApp（另domain错误类型/工具），不import未来route；147起128种七sourcecap存在掩码覆盖十metric和三drill、只.has不源fields-scopes、原Q两参数/receiver/refs；242起guard/授权/输入首错/root-getter/capture/Date-currency/global浅spread/邻界，602起await后完整getter事件序/Map动态/两阶段filter-map/原始浅refs/畸形输出与error-C，1009起最后12例缺query/继承值/首错与主授权字段-anchor getter补强。旧实现首229/229→自查补强299/299→最终311/311均测试绿，无失败用例；首type6、首lint7、次lint1与patch/路径诊断保持下方原史，不把前草稿结果当最终冻结。独立readonly reviewer完整读旧app/62行repo/1008行草稿并追加审末12例，无必要错误预期或覆盖缺口，未编辑/测试/DB。最终type/lint0、相关6文件381/381（dashboard/app/audit-outbox/scope-dashboard/dispatcher/runtime）、运行时重新枚举非PG97文件9701/9701；旧96/9390是commission完成时点，新增1/311后按实际更新，不调整任何旧预期。固定blob `59c5fff0807be2ebd0037f27ce0019bca4ee0e8c`，0d2246d独立仅test提交，冻结后不改预期。
+
+**仓储／验证局限**：dashboard-repositories.ts实际62行，get14–17两个实参input/Q；recordScopeSql18 alias c/offset5/relationshipOnly，CTE visible_orders/opportunities/ar/allocations/risks与tenant/currency/from-to条件、汇总/三drilldown、50行参数顺序及54–60空row fallback完全不动。app.test1309原单例只说明两source源显示/AR隐藏+TEAM传递，scope-sql-dashboard.test81行/2case含9scope×6anchor×3offset×2alias=324字符串/值组合与第二case的relationshipOnly参数断言，不是324SQL执行或全组合PG安全矩阵。本轮不新增dashboard PG/临时SQL测试，HTTP mock即使source scopes[]/fields[]/.has undefined值成功也不意味着PG或生产授权有效；已有全链PG不冒称多源dashboard端到端。ADR0004/0006/0010与台账/QUALITY_SCORE已读，所有生产src/仓储SQL/schema/commission五模块/旧tests/固定549/2b335-82/fixture-probe/packages/scripts/workflows/依赖/台账36状态/评分零diff，TD-BOUND-003/004待核实不修、D1不扩、TD-API-001/002不结清，不借311用例提高评分。
+
+format/doclint103/structure0强制违规31豁免/diff实际0，test新文件不引新生产豁免；主代理串行guard回环test库healthy/70applied独占既有PG后，固定test完整pnpm ci:local实际exit0（test-ci.log，API110文件9794/9794、web114/domain14/database68/config4/types1、既有PG/doclint103/structure0违规31豁免/build/audit其余绿）才独立0d2246d。本候选/证据另独立文档提交，最后HEAD完整CI另head-ci.log实际0/干净树后交回，不把启动当通过。日志全前缀/tmp/kingturf-dashboard-old-：contract-first229/contract-expanded299/contract-final311、type-first/type-expanded/type-final、lint-first/lint-expanded/lint-recovered/lint-final、related/all-mock、format-check/doclint/structure、guard/status/test-ci/head-ci。未E2E/真实多源SQL矩阵/生产验证。
+
+**候选单职责路由（仅设计，尚无业务文件）**：未来可用apps/api/src/routes/dashboard.ts，单executiveDashboardRoutes factory/单GET defineRoute；仍保原app三项短路guard及其原slot，仅成功体dispatch和import/新module，guard结束后的risk wrapper→EOF与前缀扣import字节守恒，严禁改成commission宽wrapper。Context readonly窄Pick<NonNullable<ApiDependencies['dashboard']>,'get'>晚resolver、同authorization/原authorizeQuery与timestamp/currency helper，get类型/Parameters[0]-[1]/AwaitedReturnType推导Input/Scope/Aggregate，Readonly envelope明确repository/get/input/scopeContext。无需body/parser白名单、source authorize函数、P/M、correlationId业务参、availability503或跨域helper/dispatcher/G3G4/白名单改造；app仅type-only依赖无runtime循环/any/新库/跨请求state。
+
+| 职责               | 未来必须逐序保持的动作                                                                                                                                                                |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| factory/match      | 构造不读取root/方法/actor/授权/query/body；GET exact match，仅原guard为true后dispatch                                                                                                 |
+| validate           | Q0无fields→timestamp from→timestamp to→原毫秒比较/原DomainError→晚resolver第二root→捕获get/receiver→input from/to/currency→freshQ actor/scopes/anchors→readonly envelope              |
+| handler await      | captured.get.call(receiver,input,Q)恰两业务参，不传C、不重复授权/解析/捕获                                                                                                            |
+| handler projection | await→metrics一次→原十cap对象（保原创建时点及顺序）→Object.entries.filter十个.has全部完→map选值→new fromEntries→drilldowns一次→filters/refreshedAt/visibleMetrics→三drill各当时has/值 |
+| response/异常      | 原200及rawrefs/特殊键/继承值/own undefined接受面；不runtime schema或DTO清理，原缺dep404/内部DomainError与500/global外层reject/error-C不变                                             |
+
+800/200/5留未来实施实际测量，不因设计先宣称通过，也不把测试1103行当新生产module容量。下一步实施前须协调审本固定311/候选；通过后按已授权2c续派，无需用户重复索权，本轮不创建route。未来验证应保持311 blob/全部旧oracle不变，跑runtime单GET/构造0/guard-prefix与risk后缀byteproof、相关mock/完整CI和独立review，另有源码回滚点后再记录。
+
+**失败历史／回滚／停止**：前置只读sed猜错ADR0004路径exit2后按rg实际路径读，无写入或测试；初229绿但首type6为scope参数表单元素数组被each解包成字串、exactOptional query/fixture root赋undefined/联合断言等，改正确readonly scopes数组/NonNullable断言/坏query{}及delete mock依赖；首lint7为DomainError/deferred两未使用占位（补强段实际使用）及五不必要JsonObject断言。一次apply_patch因formatter拆分currency断言导致校验失败，无文件改动，按当前新test精确重建后通过；补强299绿/type0但次lint1 no-invalid-void-type，deferred<void>改deferred<undefined>仅夹具类型。最后自查补12例→311绿/type-lint0/冻结，不改业务或用例预期掩盖差异；至今无失败测试用例。commission⑤lint/整域诊断断言恢复、④strip-only恢复、②32fail恢复及更早全部失败原文保持。无本轮需新登记的已确认存量业务问题，不顺手安全/边界修复。回滚git revert 0d2246d只移除新dashboard oracle，6bb6a04授权/commission确认与本候选/AGENTS/§0/§7/index独立文档回滚；生产src未改无需业务回滚，五commission源码/固定549/2b验收不动。dashboard0/1未提取，完成旧护栏候选停协调，不自行dashboard实施/manufacturing/2d以后；不push部署生产/workflows/读取prompt-history/secret-token/签名fixture/真实配置或完整连接串回显。[已测试]
 
 **启动范围与不变量（2026-10-15）**：commission整域11/11已协调确认后，按原八域顺序进入dashboard。本轮只读当前app2097–2145、dashboard-repositories.ts实际62行（不是假设83）、app.test1309旧单例、scope-sql-dashboard.test81行/2case及ADR0004/0006/0010、台账/评分；先新增仅import旧buildApp的固定HTTP oracle，旧实现先绿/独立test commit freeze，再候选设计/证据独立文档commit，最后HEAD完整CI真实0/[已测试]/干净树交回。dashboard当前0/1，唯一GET /api/v1/executive-dashboard，本轮不建业务route或改任何生产src/仓储SQLschema；不重做commission、不启动manufacturing/其余六后续域/2d以后，完成停协调复核，通过后协调可按已授权2c续派，无需重复向用户索权。
 
@@ -2155,6 +2196,8 @@ accrue先period string trim与精确四位年/01..12（无额外业务年界）�
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+**2c第二域dashboard311旧护栏／候选收尾（2026-10-15，授权6bb6a04／固定test0d2246d）**：commission9f0f278/f7f71f2整域已协调确认后进入dashboard，只新增1103行311case旧buildApp oracle和候选文档，当前0/1未提取，全部生产src/SQL/schema/五commission模块/旧tests/549/335-82/fixture-probe/packages/scripts/workflows/依赖/台账36状态/评分零diff。guard为GET+exact+dep短路，unsupported不读root，缺dep404/global401先；Q0无fields→from/to timestamp→原毫秒比较→第二root/get receiver-method→currency/input→freshQ→get(input,Q)2参await；输出metrics一次→十.has全filter完再map选值→drilldowns一次→filters/refreshedAt→三drill各当时has/值，source仅.has不升级授权/fields/scopes，不DTO/schema裁剪，浅refs/继承/specialkeys/异常及全局spread原样。repo实测62行（非假设83）、alias c offset5 relationshipOnly/CTE/tenant币种时间/fallback不改，scope SQL324字符串组合+case2非PG执行；无dashboard新PG/SQL全矩阵冒称。测试229绿→299绿→自查12例311绿，首type6/首lint7/次lint1与一次formatter patch校验失败、前置ADR错路径均仅夹具或诊断，修后type/lint/format/doclint103/structure0违规31豁免/diff全0，未改业务/预期，无失败测试用例；readonly reviewer完整读旧源码与299草稿+末12例无必要阻塞，不编辑测试DB。相关6文件381/381、新枚举非PG97文件9701/9701，固定test完整CI真实0（test-ci.log，API110-9794及其余全绿）后独立0d2246d，仅新增test，blob59c5fff0807be2ebd0037f27ce0019bca4ee0e8c；候选doc独立提交，最后HEAD完整CI另head-ci.log实际0/干净才交回。候选future routes/dashboard.ts单factory/GET/Readonly窄Pick get/Parameters/Awaited与晚resolver/原helpers，仍原短路guard，仅成功体dispatch，projection cap对象及filter-map/三drill原时点，不传C/P/M/新增预检；800/200/5未来实施实测，不创建route/不先称通过。回滚git revert 0d2246d只移新oracle，6bb6a04与本候选/状态/index独立文档回滚，无生产源码回滚项；commission/2b人验收/全部旧失败史保持。完成旧护栏候选停协调，不自行dashboard提取/manufacturing/2d以后，已授权2c由协调续派不重复索权；未E2E/push/部署/生产/workflows/prompt-history/secret-token/签名fixture/真实配置或完整连接串读取回显。[已测试]
 
 **Commission⑤及整域协调确认（2026-10-15，源码9f0f278／最终f7f71f2）**：协调主审与独立readonly reviewer亲核五cap/state、互斥raw/action、外ref1/2/3与第三值解析、晚第二root-method/receiver、5业务参/Q/C/201晚M无阻塞；亲跑全部非PG96文件9390/9390（/tmp/kingturf-commission-full-independent.log），安全核源码CI133754ms/最终HEAD129773ms均真实exit0/API109-9483/doclint103/structure0违规31豁免/build/audit绿。主审独立去五imports按七guard还原全app与f230b22 byte全等，限定app七method直接语法旧7→现0，不外推别名/其他文件；独立runtime（/tmp/kingturf-commission-full-inventory-independent.log）六factory展开11唯一match/2GET9POST/五短hexcommands匹配/8alternates拒绝/Proxy context0实际0。实测五模块545行、六导出factory/六静态defineRoute调用点展开11；七是旧支持条件，不混为静态模板。commission11/11已协调确认≠2c完成/PG安全全矩阵，所有旧失败与2b人验收保留原时点；下方原“待协调”均为历史，本段为最新确认。授权下一域dashboard只做旧护栏/候选，见§4.2.11，不重做commission。此确认/状态/index独立文档回滚，不动五源码与a7440d9固定549。[已测试]
 
