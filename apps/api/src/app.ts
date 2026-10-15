@@ -73,6 +73,7 @@ import { executiveDashboardRoutes } from './routes/dashboard.ts';
 import { manufacturingReadRoutes } from './routes/manufacturing-reads.ts';
 import { manufacturingItemCreateRoutes } from './routes/manufacturing-item-create.ts';
 import { manufacturingBomCreateRoutes } from './routes/manufacturing-bom-create.ts';
+import { manufacturingRoutingCreateRoutes } from './routes/manufacturing-routing-create.ts';
 import { commissionCommandRoutes } from './routes/commission-commands.ts';
 import { commissionAccrueRoutes } from './routes/commission-accrue.ts';
 import { commissionPolicyPublishRoutes } from './routes/commission-policy-publish.ts';
@@ -672,59 +673,33 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             if (response !== null) return response;
           }
           if (request.method === 'POST' && request.pathname === '/api/v1/manufacturing-routings') {
-            const body = objectBody(request.body);
-            allow(body, [
-              'code',
-              'name',
-              'productItemId',
-              'productItemVersionId',
-              'effectiveAt',
-              'operations',
-              'publish',
-            ]);
-            const grant = authorizeQuery(context, 'routing:manage', Object.keys(body));
-            const operations = array(body.operations, 'operations').map((value, index) => {
-              const operation = jsonObject(value, `operations[${String(index)}]`);
-              allow(operation, [
-                'operationCode',
-                'name',
-                'workCenterCode',
-                'sequence',
-                'setupMinutes',
-                'runMinutesPerUnit',
-                'instructions',
-              ]);
-              return {
-                operationCode: assertStableCode(string(operation.operationCode, 'operationCode')),
-                name: string(operation.name, 'name'),
-                workCenterCode: assertStableCode(
-                  string(operation.workCenterCode, 'workCenterCode'),
-                ),
-                sequence: integer(operation.sequence, 'sequence', 1, 100000),
-                setupMinutes: decimal(operation.setupMinutes, 'setupMinutes'),
-                runMinutesPerUnit: decimal(operation.runMinutesPerUnit, 'runMinutesPerUnit'),
-                instructions: jsonObject(
-                  Object.hasOwn(operation, 'instructions') ? operation.instructions : {},
-                  'instructions',
-                ),
-              };
-            });
-            if (!operations.length)
-              throw new DomainError('invalid_request', 'operations must not be empty');
-            const result = await dependencies.manufacturing.createRouting(
-              {
-                code: assertStableCode(string(body.code, 'code')),
-                name: string(body.name, 'name'),
-                productItemId: uuid(body.productItemId, 'productItemId'),
-                productItemVersionId: uuid(body.productItemVersionId, 'productItemVersionId'),
-                effectiveAt: timestamp(body.effectiveAt, 'effectiveAt'),
-                operations,
-                publish: body.publish === true,
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
+            const response = await dispatchRoutes(
+              manufacturingRoutingCreateRoutes({
+                repository: () =>
+                  dependencies.manufacturing as Pick<
+                    NonNullable<ApiDependencies['manufacturing']>,
+                    'createRouting'
+                  >,
+                authorization: context,
+                authorizeQuery,
+                correlationId,
+                parsers: {
+                  objectBody,
+                  allow,
+                  string,
+                  stableCode: assertStableCode,
+                  jsonObject,
+                  array,
+                  uuid,
+                  decimal,
+                  integer,
+                  timestamp,
+                },
+                mutationDto,
+              }),
+              request,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'routing:read') };
+            if (response !== null) return response;
           }
           const manufacturingPublish =
             /^\/api\/v1\/manufacturing-(item|bom|routing)-versions\/([0-9a-f-]+)\/publish$/u.exec(
