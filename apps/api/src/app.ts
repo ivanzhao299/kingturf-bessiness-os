@@ -75,6 +75,7 @@ import { manufacturingItemCreateRoutes } from './routes/manufacturing-item-creat
 import { manufacturingBomCreateRoutes } from './routes/manufacturing-bom-create.ts';
 import { manufacturingRoutingCreateRoutes } from './routes/manufacturing-routing-create.ts';
 import { manufacturingPublishRoutes } from './routes/manufacturing-publish.ts';
+import { mrpReadRoutes } from './routes/mrp-reads.ts';
 import { commissionCommandRoutes } from './routes/commission-commands.ts';
 import { commissionAccrueRoutes } from './routes/commission-accrue.ts';
 import { commissionPolicyPublishRoutes } from './routes/commission-policy-publish.ts';
@@ -1098,20 +1099,19 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           const listDefinition = mrpLists[request.pathname];
           if (request.method === 'GET' && listDefinition) {
             const [view, capability] = listDefinition;
-            const grant = authorizeQuery(context, capability);
-            const items = await dependencies.mrp.list(view, {
-              actor: context.actor,
-              scopes: grant.scopes,
-              anchors: grant.anchors,
-            });
-            return {
-              statusCode: 200,
-              body: {
-                items: items.map((item) =>
-                  permittedDto(item, context.permissions.get(capability)?.fields ?? null),
-                ),
-              },
-            };
+            const response = await dispatchRoutes(
+              mrpReadRoutes({
+                repository: () =>
+                  dependencies.mrp as Pick<NonNullable<ApiDependencies['mrp']>, 'list'>,
+                view,
+                capability,
+                authorization: context,
+                authorizeQuery,
+                permittedDto,
+              }),
+              request,
+            );
+            if (response !== null) return response;
           }
           if (request.method === 'POST' && request.pathname === '/api/v1/mrp-policies') {
             const body = objectBody(request.body);
