@@ -71,6 +71,7 @@ import { qtcReconciliationRunRoutes } from './routes/qtc-reconciliation-run.ts';
 import { commissionReadRoutes } from './routes/commission-reads.ts';
 import { executiveDashboardRoutes } from './routes/dashboard.ts';
 import { manufacturingReadRoutes } from './routes/manufacturing-reads.ts';
+import { manufacturingItemCreateRoutes } from './routes/manufacturing-item-create.ts';
 import { commissionCommandRoutes } from './routes/commission-commands.ts';
 import { commissionAccrueRoutes } from './routes/commission-accrue.ts';
 import { commissionPolicyPublishRoutes } from './routes/commission-policy-publish.ts';
@@ -616,37 +617,29 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             if (response !== null) return response;
           }
           if (request.method === 'POST' && request.pathname === '/api/v1/manufacturing-items') {
-            const body = objectBody(request.body);
-            allow(body, [
-              'sku',
-              'name',
-              'itemType',
-              'baseUnitCode',
-              'specification',
-              'effectiveAt',
-              'publish',
-            ]);
-            const grant = authorizeQuery(context, 'manufacturing-item:manage', Object.keys(body));
-            const itemType = string(body.itemType, 'itemType');
-            if (!['RAW_MATERIAL', 'SEMI_FINISHED', 'FINISHED_GOOD', 'PACKAGING'].includes(itemType))
-              throw new DomainError('invalid_request', 'itemType is unsupported');
-            const result = await dependencies.manufacturing.createItem(
-              {
-                sku: assertStableCode(string(body.sku, 'sku')),
-                name: string(body.name, 'name'),
-                itemType,
-                baseUnitCode: assertStableCode(string(body.baseUnitCode, 'baseUnitCode')),
-                specification: jsonObject(body.specification ?? {}, 'specification'),
-                effectiveAt: timestamp(body.effectiveAt, 'effectiveAt'),
-                publish: body.publish === true,
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
+            const response = await dispatchRoutes(
+              manufacturingItemCreateRoutes({
+                repository: () =>
+                  dependencies.manufacturing as Pick<
+                    NonNullable<ApiDependencies['manufacturing']>,
+                    'createItem'
+                  >,
+                authorization: context,
+                authorizeQuery,
+                correlationId,
+                parsers: {
+                  objectBody,
+                  allow,
+                  string,
+                  stableCode: assertStableCode,
+                  jsonObject,
+                  timestamp,
+                },
+                mutationDto,
+              }),
+              request,
             );
-            return {
-              statusCode: 201,
-              body: mutationDto(result, context, 'manufacturing-item:read'),
-            };
+            if (response !== null) return response;
           }
           if (request.method === 'POST' && request.pathname === '/api/v1/manufacturing-boms') {
             const body = objectBody(request.body);
