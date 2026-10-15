@@ -195,6 +195,7 @@ import {
   lotTraceabilityReadRoutes,
 } from './routes/quality-reads.ts';
 import { qualityPlanCreateRoutes } from './routes/quality-plan-create.ts';
+import { qualityPlanPublishRoutes } from './routes/quality-plan-publish.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -1790,13 +1791,22 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             request.pathname,
           );
           if (request.method === 'POST' && planPublish) {
-            const grant = authorizeQuery(context, 'quality-plan:manage');
-            const result = await dependencies.quality.publishPlan(
-              uuid(planPublish[1], 'planVersionId'),
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
+            const response = await dispatchRoutes(
+              qualityPlanPublishRoutes({
+                repository: () =>
+                  dependencies.quality as Pick<
+                    NonNullable<ApiDependencies['quality']>,
+                    'publishPlan'
+                  >,
+                authorization: context,
+                authorizeQuery,
+                correlationId,
+                uuid,
+                mutationDto,
+              }),
+              request,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'quality-plan:read') };
+            if (response !== null) return response;
           }
           if (request.method === 'POST' && request.pathname === '/api/v1/quality-inspections') {
             const body = objectBody(request.body);
