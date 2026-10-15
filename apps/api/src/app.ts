@@ -76,6 +76,7 @@ import { manufacturingBomCreateRoutes } from './routes/manufacturing-bom-create.
 import { manufacturingRoutingCreateRoutes } from './routes/manufacturing-routing-create.ts';
 import { manufacturingPublishRoutes } from './routes/manufacturing-publish.ts';
 import { procurementReadRoutes } from './routes/procurement-reads.ts';
+import { procurementSupplierCreateRoutes } from './routes/procurement-supplier-create.ts';
 import { mrpReadRoutes } from './routes/mrp-reads.ts';
 import { mrpPolicyCreateRoutes } from './routes/mrp-policy-create.ts';
 import { mrpDemandCreateRoutes } from './routes/mrp-demand-create.ts';
@@ -785,33 +786,30 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             if (response !== null) return response;
           }
           if (request.method === 'POST' && request.pathname === '/api/v1/suppliers') {
-            const body = objectBody(request.body);
-            allow(body, [
-              'supplierNumber',
-              'name',
-              'currency',
-              'paymentTermsDays',
-              'qualityRatingBasisPoints',
-              'contact',
-            ]);
-            const grant = authorizeQuery(context, 'supplier:manage', Object.keys(body));
-            const result = await dependencies.procurement.createSupplier(
-              {
-                supplierNumber: assertStableCode(string(body.supplierNumber, 'supplierNumber')),
-                name: string(body.name, 'name'),
-                currency: currency(body.currency),
-                paymentTermsDays: integer(body.paymentTermsDays, 'paymentTermsDays', 0, 3650),
-                qualityRatingBasisPoints:
-                  body.qualityRatingBasisPoints === null ||
-                  body.qualityRatingBasisPoints === undefined
-                    ? null
-                    : integer(body.qualityRatingBasisPoints, 'qualityRatingBasisPoints', 0, 10000),
-                contact: jsonObject(body.contact ?? {}, 'contact'),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
+            const response = await dispatchRoutes(
+              procurementSupplierCreateRoutes({
+                repository: () =>
+                  dependencies.procurement as Pick<
+                    NonNullable<ApiDependencies['procurement']>,
+                    'createSupplier'
+                  >,
+                authorization: context,
+                authorizeQuery,
+                correlationId,
+                parsers: {
+                  objectBody,
+                  allow,
+                  string,
+                  stableCode: assertStableCode,
+                  currency,
+                  integer,
+                  jsonObject,
+                },
+                mutationDto,
+              }),
+              request,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'supplier:read') };
+            if (response !== null) return response;
           }
           const qualification = /^\/api\/v1\/suppliers\/([0-9a-f-]+)\/qualifications$/u.exec(
             request.pathname,
