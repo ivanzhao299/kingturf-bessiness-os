@@ -84,6 +84,7 @@ import { procurementPurchaseOrderCreateRoutes } from './routes/procurement-purch
 import { procurementIssueRoutes } from './routes/procurement-issue.ts';
 import { procurementLocationCreateRoutes } from './routes/procurement-location-create.ts';
 import { procurementReceiptCreateRoutes } from './routes/procurement-receipt-create.ts';
+import { procurementMovementCreateRoutes } from './routes/procurement-movement-create.ts';
 import { mrpReadRoutes } from './routes/mrp-reads.ts';
 import { mrpPolicyCreateRoutes } from './routes/mrp-policy-create.ts';
 import { mrpDemandCreateRoutes } from './routes/mrp-demand-create.ts';
@@ -1005,51 +1006,30 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             if (response !== null) return response;
           }
           if (request.method === 'POST' && request.pathname === '/api/v1/inventory-movements') {
-            const body = objectBody(request.body);
-            allow(body, [
-              'movementType',
-              'itemVersionId',
-              'lotId',
-              'locationId',
-              'quantity',
-              'occurredAt',
-              'sourceType',
-              'sourceId',
-            ]);
-            const grant = authorizeQuery(context, 'inventory:move', Object.keys(body));
-            const movementType = string(body.movementType, 'movementType');
-            if (
-              ![
-                'ISSUE',
-                'RETURN',
-                'TRANSFER_IN',
-                'TRANSFER_OUT',
-                'ADJUSTMENT_IN',
-                'ADJUSTMENT_OUT',
-              ].includes(movementType)
-            )
-              throw new DomainError('invalid_request', 'movementType is unsupported');
-            const result = await dependencies.procurement.move(
-              {
-                movementType: movementType as
-                  | 'ISSUE'
-                  | 'RETURN'
-                  | 'TRANSFER_IN'
-                  | 'TRANSFER_OUT'
-                  | 'ADJUSTMENT_IN'
-                  | 'ADJUSTMENT_OUT',
-                itemVersionId: uuid(body.itemVersionId, 'itemVersionId'),
-                lotId: uuid(body.lotId, 'lotId'),
-                locationId: uuid(body.locationId, 'locationId'),
-                quantity: decimal(body.quantity, 'quantity'),
-                occurredAt: timestamp(body.occurredAt, 'occurredAt'),
-                sourceType: assertStableCode(string(body.sourceType, 'sourceType')),
-                sourceId: uuid(body.sourceId, 'sourceId'),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
+            const response = await dispatchRoutes(
+              procurementMovementCreateRoutes({
+                repository: () =>
+                  dependencies.procurement as Pick<
+                    NonNullable<ApiDependencies['procurement']>,
+                    'move'
+                  >,
+                authorization: context,
+                authorizeQuery,
+                correlationId,
+                parsers: {
+                  objectBody,
+                  allow,
+                  string,
+                  uuid,
+                  decimal,
+                  timestamp,
+                  stableCode: assertStableCode,
+                },
+                mutationDto,
+              }),
+              request,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'inventory:read') };
+            if (response !== null) return response;
           }
         }
         if (dependencies.mrp) {
