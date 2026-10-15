@@ -76,6 +76,7 @@ import { manufacturingBomCreateRoutes } from './routes/manufacturing-bom-create.
 import { manufacturingRoutingCreateRoutes } from './routes/manufacturing-routing-create.ts';
 import { manufacturingPublishRoutes } from './routes/manufacturing-publish.ts';
 import { mrpReadRoutes } from './routes/mrp-reads.ts';
+import { mrpPolicyCreateRoutes } from './routes/mrp-policy-create.ts';
 import { commissionCommandRoutes } from './routes/commission-commands.ts';
 import { commissionAccrueRoutes } from './routes/commission-accrue.ts';
 import { commissionPolicyPublishRoutes } from './routes/commission-policy-publish.ts';
@@ -1114,36 +1115,19 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             if (response !== null) return response;
           }
           if (request.method === 'POST' && request.pathname === '/api/v1/mrp-policies') {
-            const body = objectBody(request.body);
-            allow(body, [
-              'itemVersionId',
-              'safetyStock',
-              'minimumOrderQuantity',
-              'orderMultiple',
-              'leadTimeDays',
-              'freezeWindowDays',
-              'makeOrBuy',
-              'effectiveAt',
-            ]);
-            const grant = authorizeQuery(context, 'mrp-policy:manage', Object.keys(body));
-            const makeOrBuy = string(body.makeOrBuy, 'makeOrBuy');
-            if (!['MAKE', 'BUY'].includes(makeOrBuy))
-              throw new DomainError('invalid_request', 'makeOrBuy is unsupported');
-            const result = await dependencies.mrp.createPolicy(
-              {
-                itemVersionId: uuid(body.itemVersionId, 'itemVersionId'),
-                safetyStock: decimal(body.safetyStock, 'safetyStock'),
-                minimumOrderQuantity: decimal(body.minimumOrderQuantity, 'minimumOrderQuantity'),
-                orderMultiple: decimal(body.orderMultiple, 'orderMultiple'),
-                leadTimeDays: integer(body.leadTimeDays, 'leadTimeDays', 0, 3650),
-                freezeWindowDays: integer(body.freezeWindowDays, 'freezeWindowDays', 0, 3650),
-                makeOrBuy: makeOrBuy as 'MAKE' | 'BUY',
-                effectiveAt: timestamp(body.effectiveAt, 'effectiveAt'),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
+            const response = await dispatchRoutes(
+              mrpPolicyCreateRoutes({
+                repository: () =>
+                  dependencies.mrp as Pick<NonNullable<ApiDependencies['mrp']>, 'createPolicy'>,
+                authorization: context,
+                authorizeQuery,
+                correlationId,
+                parsers: { objectBody, allow, string, uuid, decimal, integer, timestamp },
+                mutationDto,
+              }),
+              request,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'mrp-policy:read') };
+            if (response !== null) return response;
           }
           if (request.method === 'POST' && request.pathname === '/api/v1/mrp-demands') {
             const body = objectBody(request.body);
