@@ -81,6 +81,7 @@ import { procurementSupplierQualificationRoutes } from './routes/procurement-sup
 import { procurementRfqCreateRoutes } from './routes/procurement-rfq-create.ts';
 import { procurementSupplierQuoteCreateRoutes } from './routes/procurement-supplier-quote-create.ts';
 import { procurementPurchaseOrderCreateRoutes } from './routes/procurement-purchase-order-create.ts';
+import { procurementIssueRoutes } from './routes/procurement-issue.ts';
 import { mrpReadRoutes } from './routes/mrp-reads.ts';
 import { mrpPolicyCreateRoutes } from './routes/mrp-policy-create.ts';
 import { mrpDemandCreateRoutes } from './routes/mrp-demand-create.ts';
@@ -937,22 +938,22 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               request.pathname,
             );
           if (request.method === 'POST' && procurementIssue) {
-            allow(objectBody(request.body ?? {}), []);
-            const grant = authorizeQuery(context, 'procurement:manage');
-            const id = uuid(procurementIssue[2], 'documentId');
-            const result =
-              procurementIssue[1] === 'procurement-rfqs'
-                ? await dependencies.procurement.issueRfq(
-                    id,
-                    { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-                    correlationId,
-                  )
-                : await dependencies.procurement.issuePurchaseOrder(
-                    id,
-                    { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-                    correlationId,
-                  );
-            return { statusCode: 201, body: mutationDto(result, context, 'procurement:read') };
+            const response = await dispatchRoutes(
+              procurementIssueRoutes({
+                repository: () =>
+                  dependencies.procurement as Pick<
+                    NonNullable<ApiDependencies['procurement']>,
+                    'issueRfq' | 'issuePurchaseOrder'
+                  >,
+                authorization: context,
+                authorizeQuery,
+                correlationId,
+                parsers: { objectBody, allow, uuid },
+                mutationDto,
+              }),
+              request,
+            );
+            if (response !== null) return response;
           }
           if (request.method === 'POST' && request.pathname === '/api/v1/inventory-locations') {
             const body = objectBody(request.body);
