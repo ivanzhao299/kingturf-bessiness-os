@@ -2522,20 +2522,20 @@ runtime本步1POST/12替代paths/6孤立非POST拒绝/context0；整域实测十
 
 原九module898＋movement109=1007；最大文件127/factory86/validate66/handler18/matcher6/输入rowcallback32/人工nest≤4，十module各自≤800/function≤200/nest≤5，不代表旧app/仓储已符合或31豁免结清。所有十步旧新只读review聚焦HTTP授权/求值顺序/refs/接收者/响应投影/原匹配与邻界；无代理测试DB写，无SQL算法/专属PG矩阵接受性外推。
 
-**十步授权／源码／证据与已执行CI索引**（源码CI与当步证据最终HEAD CI分列，协调fresh非PG与工具wall不混；⑩证据SHA在独立提交后由窄索引提交补齐）：
+**十步授权／源码／证据与已执行CI索引**（源码CI与当步证据最终HEAD CI分列，协调fresh非PG与工具wall不混；⑩整域证据4c9bc84已独立提交，本窄索引已补其真实SHA；末次HEAD完整CI仍待实际执行）：
 
-| 步             | canonical累计 | 授权    | 源码    | 证据提交                | 源码完整CI秒 / 最终证据HEAD完整CI秒                  |
-| -------------- | ------------: | ------- | ------- | ----------------------- | ---------------------------------------------------- |
-| ①七GET         |          7/17 | 7b1d271 | ac5e830 | 8340c8d                 | 129.026 / 135.178                                    |
-| ②supplier      |          8/17 | e1513c7 | 01721fa | e25bee5                 | 151.102 / 139.431                                    |
-| ③qualification |          9/17 | 29213c2 | ad13078 | bc42ce0                 | 135.070 / 136.380                                    |
-| ④RFQ           |         10/17 | db74b7e | b91ec58 | 551619a                 | 133.176 / 133.050                                    |
-| ⑤quote         |         11/17 | c9c5754 | 24102f2 | c54b496                 | 130.405 / 132.678                                    |
-| ⑥PO            |         12/17 | 43d0c9b | 316272b | 97e6a2f                 | 131.203 / 133.369                                    |
-| ⑦issue二入口   |         14/17 | 7333d63 | 73c4c78 | f3219f7                 | 130.564 / 132.450                                    |
-| ⑧location      |         15/17 | 7733606 | ed7067f | 3ed9dfd                 | 128.673 / 128.758                                    |
-| ⑨receipt       |         16/17 | fb388fb | 18f1641 | a2e9a15                 | 129.048 / 131.285                                    |
-| ⑩movement      |   17/17待协调 | 0960211 | 2734a12 | 证据SHA待窄索引提交补齐 | 141.677 / 末次HEAD另见movement-head-ci.log与交付报告 |
+| 步             | canonical累计 | 授权    | 源码    | 证据提交 | 源码完整CI秒 / 最终证据HEAD完整CI秒                  |
+| -------------- | ------------: | ------- | ------- | -------- | ---------------------------------------------------- |
+| ①七GET         |          7/17 | 7b1d271 | ac5e830 | 8340c8d  | 129.026 / 135.178                                    |
+| ②supplier      |          8/17 | e1513c7 | 01721fa | e25bee5  | 151.102 / 139.431                                    |
+| ③qualification |          9/17 | 29213c2 | ad13078 | bc42ce0  | 135.070 / 136.380                                    |
+| ④RFQ           |         10/17 | db74b7e | b91ec58 | 551619a  | 133.176 / 133.050                                    |
+| ⑤quote         |         11/17 | c9c5754 | 24102f2 | c54b496  | 130.405 / 132.678                                    |
+| ⑥PO            |         12/17 | 43d0c9b | 316272b | 97e6a2f  | 131.203 / 133.369                                    |
+| ⑦issue二入口   |         14/17 | 7333d63 | 73c4c78 | f3219f7  | 130.564 / 132.450                                    |
+| ⑧location      |         15/17 | 7733606 | ed7067f | 3ed9dfd  | 128.673 / 128.758                                    |
+| ⑨receipt       |         16/17 | fb388fb | 18f1641 | a2e9a15  | 129.048 / 131.285                                    |
+| ⑩movement      |   17/17待协调 | 0960211 | 2734a12 | 4c9bc84  | 141.677 / 末次HEAD另见movement-head-ci.log与交付报告 |
 
 主代理串行guard回环test库/Docker healthy/70applied+checksum后源码完整 **pnpm ci:local真实exit0／141.677s**（/tmp/kingturf-procurement-movement-code-ci.log），API113文件13057/allchain/build-audit绿，再独立2734a12仅app+109行module。app blob196fbae2776e38e032b0caf1986ccb42e9156380／movement8b8afc2bb85a5f28cdbb86112e18863e188ae6e1。整域证据docs独立commit，再仅补该commit SHA到索引（避免自引用虚构SHA）；最后索引HEAD完整CI另/tmp/kingturf-procurement-movement-head-ci.log真实0/[已测试]/树干净才交回，最终耗时/HEAD由交付报告给出，不预填成功。既有13PG仅全链，不扩新movement或全采购SQL仓储PG/算法/安全矩阵/E2E/生产。
 
@@ -2791,6 +2791,8 @@ issue原raw正则exec-before-method/POST guard留app；O(body??{})/allow[]→Q0�
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+**procurement整域证据SHA索引（2026-10-15，证据4c9bc84／源码2734a12）**：4c9bc84已独立落盘17/17待协调整域复核与十步容量/源码CI/还原/runtime有限证明/历史/回滚。本窄提交仅把该真实SHA补入§4.2.14第⑩行及索引说明，不改源码/测试/已有历史，不虚构自引用SHA；最终索引HEAD将完整ci:local另跑至movement-head-ci.log，实际0且树干净才交回，尚不预填成功。索引证明编排初次跨exec引用未持久extra变量报ReferenceError；预期索引patch已完成，无非预期写入，改用已持久证明片段后index/scope证明实际0，非业务或测试失败。源码完整CI已0/141.677s、API113-13057及所有保护区证明保持。17/17不等于2c或人工验收，不启动risk/后三域/2d以后，不push部署workflow/读回显秘密；本SHA索引与4c9bc84证据及0960211授权各独立回滚。[已测试]
 
 **procurement⑩movement／整域17/17收尾（2026-10-15，授权0960211／源码2734a12）**：仅最后move exactPOST成功体新module后17/17待协调整域复核，非2c或人工竣工，不启动risk/后三域/2d以后。O-allow8-inventorymove ownkeys→type一次string/原六枚举→晚root/move receiver→缓存原union类型/原序UUID-decimal-time-sourceStable-UUID→freshQ/C恰3参await201晚M，不HTTP生成quantityDelta。module109/factory39–109=71/validate44–94=51/handler95–106=12/matcher43=1/nest≤3，app4392→4372本步减20、整域4432→4372减60/routes83→93；十module1007行，十factory/staticdefine/runtime definitions覆盖17唯一canonical=7GET10POST，原10支持条件/旧11直接方法点→0不混入口。十module最大127/factory86/validate66/handler18/matcher6/row32/nest≤4，各800-200-5实测非AST200，不清巨app31豁免/TD-API债。readonly reviewer逐新旧/整域无必要修正，scout只读度量与SHA-CI索引交叉核；单步还原全app等a2e9a15/前缀-MRP起suffix全等，整域限定root还原十成功体/移十imports全app同时byte等bb114ff/7f085e0，前九module/source全tests-1762blob保护区冻结。runtime单步1POST-12alt-6methods及整域10definitions/17method-path各恰1/12短/141替代paths/132不支持method-path组合/context0，仅定义match非HTTP原型404/SQLPG算法安全证明，GET继承500与locationsfallback仍1762固定。1762首1446ms/related5-1830（2.91s）/fresh100非PG12964（29.33s）/whole type-lint-format-doclint103-structure0/31-diff与证明0，本步首测类型lint全绿无修正新失败诊断，RFQ TS2322及所有更早原史保持。主代理串行guard回环test库healthy/70applied+checksum后源码完整CI真实0/141.677s/API113-13057/build-audit绿，再独立2734a12仅app+109行module；十步整域证据docs另commit，再窄SHA索引补最后证据SHA，末次索引HEAD完整CI另head-ci.log真实0干净后交回，不预填成功。app196fbae2776e38e032b0caf1986ccb42e9156380/movement8b8afc2bb85a5f28cdbb86112e18863e188ae6e1；1762固定blob/全部原tests-fixtures-probes/其他已审src/仓储SQLschema/packages/scripts/.github/infra/依赖/台账36状态评分冻结。单步revert2734a12；整域源码逆序2734a12→18f1641→ed7067f→73c4c78→316272b→24102f2→b91ec58→ad13078→01721fa→ac5e830，授权-证据-本轮SHA索引docs独立回滚，不盲撤他人改动；旧62ae106/7f085e0/其他域确认与2b验收保持。既有13PG仅全链不扩采购SQL仓储PG/算法安全矩阵/E2E/生产，17/17停协调，不push部署workflow/读回显秘密，完整表及口径见§4.2.14。[已测试]
 
