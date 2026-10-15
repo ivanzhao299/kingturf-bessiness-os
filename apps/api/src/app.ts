@@ -72,6 +72,7 @@ import { commissionReadRoutes } from './routes/commission-reads.ts';
 import { executiveDashboardRoutes } from './routes/dashboard.ts';
 import { manufacturingReadRoutes } from './routes/manufacturing-reads.ts';
 import { manufacturingItemCreateRoutes } from './routes/manufacturing-item-create.ts';
+import { manufacturingBomCreateRoutes } from './routes/manufacturing-bom-create.ts';
 import { commissionCommandRoutes } from './routes/commission-commands.ts';
 import { commissionAccrueRoutes } from './routes/commission-accrue.ts';
 import { commissionPolicyPublishRoutes } from './routes/commission-policy-publish.ts';
@@ -642,71 +643,33 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             if (response !== null) return response;
           }
           if (request.method === 'POST' && request.pathname === '/api/v1/manufacturing-boms') {
-            const body = objectBody(request.body);
-            allow(body, [
-              'code',
-              'name',
-              'productItemId',
-              'productItemVersionId',
-              'outputQuantity',
-              'effectiveAt',
-              'lines',
-              'publish',
-            ]);
-            const grant = authorizeQuery(context, 'bom:manage', Object.keys(body));
-            const lines = array(body.lines, 'lines').map((value, index) => {
-              const line = jsonObject(value, `lines[${String(index)}]`);
-              allow(line, [
-                'componentItemVersionId',
-                'quantity',
-                'scrapBasisPoints',
-                'substitutes',
-              ]);
-              return {
-                componentItemVersionId: uuid(
-                  line.componentItemVersionId,
-                  `lines[${String(index)}].componentItemVersionId`,
-                ),
-                quantity: decimal(line.quantity, `lines[${String(index)}].quantity`),
-                scrapBasisPoints: integer(
-                  Object.hasOwn(line, 'scrapBasisPoints') ? line.scrapBasisPoints : 0,
-                  `lines[${String(index)}].scrapBasisPoints`,
-                  0,
-                  10000,
-                ),
-                substitutes: array(
-                  Object.hasOwn(line, 'substitutes') ? line.substitutes : [],
-                  `lines[${String(index)}].substitutes`,
-                ).map((entry, substituteIndex) => {
-                  const substitute = jsonObject(
-                    entry,
-                    `lines[${String(index)}].substitutes[${String(substituteIndex)}]`,
-                  );
-                  allow(substitute, ['itemVersionId', 'priority', 'conversionFactor']);
-                  return {
-                    itemVersionId: uuid(substitute.itemVersionId, 'itemVersionId'),
-                    priority: integer(substitute.priority, 'priority', 1, 1000),
-                    conversionFactor: decimal(substitute.conversionFactor, 'conversionFactor'),
-                  };
-                }),
-              };
-            });
-            if (!lines.length) throw new DomainError('invalid_request', 'lines must not be empty');
-            const result = await dependencies.manufacturing.createBom(
-              {
-                code: assertStableCode(string(body.code, 'code')),
-                name: string(body.name, 'name'),
-                productItemId: uuid(body.productItemId, 'productItemId'),
-                productItemVersionId: uuid(body.productItemVersionId, 'productItemVersionId'),
-                outputQuantity: decimal(body.outputQuantity, 'outputQuantity'),
-                effectiveAt: timestamp(body.effectiveAt, 'effectiveAt'),
-                lines,
-                publish: body.publish === true,
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
+            const response = await dispatchRoutes(
+              manufacturingBomCreateRoutes({
+                repository: () =>
+                  dependencies.manufacturing as Pick<
+                    NonNullable<ApiDependencies['manufacturing']>,
+                    'createBom'
+                  >,
+                authorization: context,
+                authorizeQuery,
+                correlationId,
+                parsers: {
+                  objectBody,
+                  allow,
+                  string,
+                  stableCode: assertStableCode,
+                  jsonObject,
+                  array,
+                  uuid,
+                  decimal,
+                  integer,
+                  timestamp,
+                },
+                mutationDto,
+              }),
+              request,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'bom:read') };
+            if (response !== null) return response;
           }
           if (request.method === 'POST' && request.pathname === '/api/v1/manufacturing-routings') {
             const body = objectBody(request.body);
