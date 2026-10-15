@@ -189,6 +189,11 @@ import { riskPolicyPublishRoutes } from './routes/risk-policy-publish.ts';
 import { riskEvaluationCreateRoutes } from './routes/risk-evaluation-create.ts';
 import { riskTaskCommandRoutes } from './routes/risk-task-commands.ts';
 import { order360Routes } from './routes/order-360.ts';
+import {
+  qualityPlanReadRoutes,
+  qualityInspectionReadRoutes,
+  lotTraceabilityReadRoutes,
+} from './routes/quality-reads.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -1733,20 +1738,24 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           const qualityList = qualityLists[request.pathname];
           if (request.method === 'GET' && qualityList) {
             const [view, capability] = qualityList;
-            const grant = authorizeQuery(context, capability);
-            const items = await dependencies.quality.list(view, {
-              actor: context.actor,
-              scopes: grant.scopes,
-              anchors: grant.anchors,
-            });
-            return {
-              statusCode: 200,
-              body: {
-                items: items.map((item) =>
-                  permittedDto(item, context.permissions.get(capability)?.fields ?? null),
-                ),
-              },
+            const readContext = {
+              repository: () =>
+                dependencies.quality as Pick<NonNullable<ApiDependencies['quality']>, 'list'>,
+              authorization: context,
+              authorizeQuery,
+              view,
+              capability,
+              permittedDto,
             };
+            const response = await dispatchRoutes(
+              [
+                ...qualityPlanReadRoutes(readContext),
+                ...qualityInspectionReadRoutes(readContext),
+                ...lotTraceabilityReadRoutes(readContext),
+              ],
+              request,
+            );
+            if (response !== null) return response;
           }
           if (request.method === 'POST' && request.pathname === '/api/v1/quality-plans') {
             const body = objectBody(request.body);
