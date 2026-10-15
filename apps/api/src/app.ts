@@ -79,6 +79,7 @@ import { mrpReadRoutes } from './routes/mrp-reads.ts';
 import { mrpPolicyCreateRoutes } from './routes/mrp-policy-create.ts';
 import { mrpDemandCreateRoutes } from './routes/mrp-demand-create.ts';
 import { mrpRunCreateRoutes } from './routes/mrp-run-create.ts';
+import { mrpProposalCommandRoutes } from './routes/mrp-proposal-commands.ts';
 import { commissionCommandRoutes } from './routes/commission-commands.ts';
 import { commissionAccrueRoutes } from './routes/commission-accrue.ts';
 import { commissionPolicyPublishRoutes } from './routes/commission-policy-publish.ts';
@@ -1182,28 +1183,22 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               request.pathname,
             );
           if (request.method === 'POST' && proposalCommand) {
-            const body = objectBody(request.body);
-            allow(body, ['reason', 'evidence']);
-            const action = proposalCommand[2] as 'approve' | 'reject' | 'release' | 'cancel';
-            const capability = action === 'release' ? 'mrp:release' : 'mrp:approve';
-            const grant = authorizeQuery(context, capability, Object.keys(body));
-            const states = {
-              approve: 'APPROVED',
-              reject: 'REJECTED',
-              release: 'RELEASED',
-              cancel: 'CANCELLED',
-            } as const;
-            const result = await dependencies.mrp.transitionProposal(
-              uuid(proposalCommand[1], 'proposalId'),
-              states[action],
-              {
-                reason: string(body.reason, 'reason'),
-                evidence: jsonObject(body.evidence ?? {}, 'evidence'),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
+            const response = await dispatchRoutes(
+              mrpProposalCommandRoutes({
+                repository: () =>
+                  dependencies.mrp as Pick<
+                    NonNullable<ApiDependencies['mrp']>,
+                    'transitionProposal'
+                  >,
+                authorization: context,
+                authorizeQuery,
+                correlationId,
+                parsers: { objectBody, allow, uuid, string, jsonObject },
+                mutationDto,
+              }),
+              request,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'mrp:read') };
+            if (response !== null) return response;
           }
         }
         if (dependencies.production) {
