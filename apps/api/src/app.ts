@@ -82,6 +82,7 @@ import { procurementRfqCreateRoutes } from './routes/procurement-rfq-create.ts';
 import { procurementSupplierQuoteCreateRoutes } from './routes/procurement-supplier-quote-create.ts';
 import { procurementPurchaseOrderCreateRoutes } from './routes/procurement-purchase-order-create.ts';
 import { procurementIssueRoutes } from './routes/procurement-issue.ts';
+import { procurementLocationCreateRoutes } from './routes/procurement-location-create.ts';
 import { mrpReadRoutes } from './routes/mrp-reads.ts';
 import { mrpPolicyCreateRoutes } from './routes/mrp-policy-create.ts';
 import { mrpDemandCreateRoutes } from './routes/mrp-demand-create.ts';
@@ -956,26 +957,22 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             if (response !== null) return response;
           }
           if (request.method === 'POST' && request.pathname === '/api/v1/inventory-locations') {
-            const body = objectBody(request.body);
-            allow(body, ['code', 'name', 'locationType']);
-            const grant = authorizeQuery(context, 'inventory:move', Object.keys(body));
-            const locationType = string(body.locationType, 'locationType');
-            if (
-              !['RECEIVING', 'STORAGE', 'PRODUCTION', 'QUARANTINE', 'SHIPPING'].includes(
-                locationType,
-              )
-            )
-              throw new DomainError('invalid_request', 'locationType is unsupported');
-            const result = await dependencies.procurement.createLocation(
-              {
-                code: assertStableCode(string(body.code, 'code')),
-                name: string(body.name, 'name'),
-                locationType,
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
+            const response = await dispatchRoutes(
+              procurementLocationCreateRoutes({
+                repository: () =>
+                  dependencies.procurement as Pick<
+                    NonNullable<ApiDependencies['procurement']>,
+                    'createLocation'
+                  >,
+                authorization: context,
+                authorizeQuery,
+                correlationId,
+                parsers: { objectBody, allow, string, stableCode: assertStableCode },
+                mutationDto,
+              }),
+              request,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'inventory:read') };
+            if (response !== null) return response;
           }
           if (request.method === 'POST' && request.pathname === '/api/v1/goods-receipts') {
             const body = objectBody(request.body);
