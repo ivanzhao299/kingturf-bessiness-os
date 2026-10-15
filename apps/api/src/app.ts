@@ -75,6 +75,7 @@ import { manufacturingItemCreateRoutes } from './routes/manufacturing-item-creat
 import { manufacturingBomCreateRoutes } from './routes/manufacturing-bom-create.ts';
 import { manufacturingRoutingCreateRoutes } from './routes/manufacturing-routing-create.ts';
 import { manufacturingPublishRoutes } from './routes/manufacturing-publish.ts';
+import { procurementReadRoutes } from './routes/procurement-reads.ts';
 import { mrpReadRoutes } from './routes/mrp-reads.ts';
 import { mrpPolicyCreateRoutes } from './routes/mrp-policy-create.ts';
 import { mrpDemandCreateRoutes } from './routes/mrp-demand-create.ts';
@@ -766,20 +767,22 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               context.permissions.has('inventory:move')
                 ? 'inventory:move'
                 : capability;
-            const grant = authorizeQuery(context, effectiveCapability);
-            const items = await dependencies.procurement.list(view, {
-              actor: context.actor,
-              scopes: grant.scopes,
-              anchors: grant.anchors,
-            });
-            return {
-              statusCode: 200,
-              body: {
-                items: items.map((item) =>
-                  permittedDto(item, context.permissions.get(effectiveCapability)?.fields ?? null),
-                ),
-              },
-            };
+            const response = await dispatchRoutes(
+              procurementReadRoutes({
+                repository: () =>
+                  dependencies.procurement as Pick<
+                    NonNullable<ApiDependencies['procurement']>,
+                    'list'
+                  >,
+                view,
+                capability: effectiveCapability,
+                authorization: context,
+                authorizeQuery,
+                permittedDto,
+              }),
+              request,
+            );
+            if (response !== null) return response;
           }
           if (request.method === 'POST' && request.pathname === '/api/v1/suppliers') {
             const body = objectBody(request.body);
