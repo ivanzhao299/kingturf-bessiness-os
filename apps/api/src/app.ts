@@ -78,6 +78,7 @@ import { manufacturingPublishRoutes } from './routes/manufacturing-publish.ts';
 import { procurementReadRoutes } from './routes/procurement-reads.ts';
 import { procurementSupplierCreateRoutes } from './routes/procurement-supplier-create.ts';
 import { procurementSupplierQualificationRoutes } from './routes/procurement-supplier-qualification.ts';
+import { procurementRfqCreateRoutes } from './routes/procurement-rfq-create.ts';
 import { mrpReadRoutes } from './routes/mrp-reads.ts';
 import { mrpPolicyCreateRoutes } from './routes/mrp-policy-create.ts';
 import { mrpDemandCreateRoutes } from './routes/mrp-demand-create.ts';
@@ -843,31 +844,34 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             if (response !== null) return response;
           }
           if (request.method === 'POST' && request.pathname === '/api/v1/procurement-rfqs') {
-            const body = objectBody(request.body);
-            allow(body, ['rfqNumber', 'responseDueAt', 'currency', 'lines', 'issue']);
-            const grant = authorizeQuery(context, 'procurement:manage', Object.keys(body));
-            const lines = array(body.lines, 'lines').map((entry, index) => {
-              const line = jsonObject(entry, `lines[${String(index)}]`);
-              allow(line, ['itemVersionId', 'quantity', 'requiredAt']);
-              return {
-                itemVersionId: uuid(line.itemVersionId, 'itemVersionId'),
-                quantity: decimal(line.quantity, 'quantity'),
-                requiredAt: calendarDate(line.requiredAt, 'requiredAt'),
-              };
-            });
-            if (!lines.length) throw new DomainError('invalid_request', 'lines must not be empty');
-            const result = await dependencies.procurement.createRfq(
-              {
-                rfqNumber: assertStableCode(string(body.rfqNumber, 'rfqNumber')),
-                responseDueAt: timestamp(body.responseDueAt, 'responseDueAt'),
-                currency: currency(body.currency),
-                lines,
-                issue: body.issue === true,
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
+            const response = await dispatchRoutes(
+              procurementRfqCreateRoutes({
+                repository: () =>
+                  dependencies.procurement as Pick<
+                    NonNullable<ApiDependencies['procurement']>,
+                    'createRfq'
+                  >,
+                authorization: context,
+                authorizeQuery,
+                correlationId,
+                parsers: {
+                  objectBody,
+                  allow,
+                  array,
+                  jsonObject,
+                  uuid,
+                  decimal,
+                  calendarDate,
+                  string,
+                  stableCode: assertStableCode,
+                  timestamp,
+                  currency,
+                },
+                mutationDto,
+              }),
+              request,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'procurement:read') };
+            if (response !== null) return response;
           }
           if (request.method === 'POST' && request.pathname === '/api/v1/supplier-quotes') {
             const body = objectBody(request.body);
