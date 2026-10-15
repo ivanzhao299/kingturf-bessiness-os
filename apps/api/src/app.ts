@@ -192,6 +192,7 @@ import { riskPolicyReadRoutes, riskEvaluationReadRoutes } from './routes/risk-re
 import { riskPolicyCreateRoutes } from './routes/risk-policy-create.ts';
 import { riskPolicyRevisionRoutes } from './routes/risk-policy-revision.ts';
 import { riskPolicyPublishRoutes } from './routes/risk-policy-publish.ts';
+import { riskEvaluationCreateRoutes } from './routes/risk-evaluation-create.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -2067,28 +2068,20 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             if (response !== null) return response;
           }
           if (request.method === 'POST' && request.pathname === '/api/v1/risk-evaluations') {
-            const body = objectBody(request.body);
-            allow(body, [
-              'salesOrderId',
-              'policyVersionId',
-              'assigneeEmployeeId',
-              'validUntil',
-              'dueAt',
-            ]);
-            const grant = authorizeQuery(context, 'risk:evaluate', Object.keys(body));
-            const result = await dependencies.risks.evaluate(
-              {
-                salesOrderId: uuid(body.salesOrderId, 'salesOrderId'),
-                policyVersionId: uuid(body.policyVersionId, 'policyVersionId'),
-                assigneeEmployeeId: uuid(body.assigneeEmployeeId, 'assigneeEmployeeId'),
-                validUntil: timestamp(body.validUntil, 'validUntil'),
-                dueAt: timestamp(body.dueAt, 'dueAt'),
-              },
-              idempotency(request),
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
+            const response = await dispatchRoutes(
+              riskEvaluationCreateRoutes({
+                repository: () =>
+                  dependencies.risks as Pick<NonNullable<ApiDependencies['risks']>, 'evaluate'>,
+                authorization: context,
+                authorizeQuery,
+                idempotency,
+                correlationId,
+                parsers: { objectBody, allow, uuid, timestamp },
+                mutationDto,
+              }),
+              request,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'risk:read') };
+            if (response !== null) return response;
           }
           const riskTaskCommand =
             /^\/api\/v1\/risk-tasks\/([0-9a-f-]+)\/(acknowledge|escalate|close)$/u.exec(
