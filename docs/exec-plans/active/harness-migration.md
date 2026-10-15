@@ -6,7 +6,7 @@
 - **分支**：`harnessing`（自 main 派生；按规则 §7.1 禁止直接在主干改造）
 - **计划版本 / 日期**：v1.3 / 2026-10-12（v1.2 经第三轮人工审核修订：修复 §3.8 S11 表格裸管道、覆盖率验收语义收紧为目标值硬条件、S11 表述改为启发式口径）
 - **扫描基线**：commit `779dea3`（同步 origin/main 后）
-- **状态**：**批次1/2a/2b已人工验收（2b源码80c5b64、记录f230b22，2026-10-15）；用户最新正式授权后续，当前串行启动2c，commission549旧HTTP护栏a7440d9/8ed3e4b候选已协调通过，当前①两GET提取获批、授权时0/11，见§4.2.10。完成停协调复核，由协调在已授权2c内续派，不要求用户重复授权；不自行2d/2e/批次3/安全行为变更。2d-2f及其余后续仍未启动；31豁免、台账36/TD-REG-001已解决历史、TD-API-001/002/TD-BOUND-003/004/D1已批准未实施/评分基线保持，不push/部署/改workflow。§4.2.9等原待验收/未授权句为历史，不改2b源码和固定护栏。**
+- **状态**：**批次1/2a/2b已人工验收（2b源码80c5b64、记录f230b22，2026-10-15）；用户最新正式授权后续，当前串行启动2c，commission549旧HTTP护栏a7440d9/8ed3e4b候选已协调通过，①两GET源码46df89b已完成2/11待协调，余9写未提取，见§4.2.10。完成停协调复核，由协调在已授权2c内续派，不要求用户重复授权；不自行2d/2e/批次3/安全行为变更。2d-2f及其余后续仍未启动；31豁免、台账36/TD-REG-001已解决历史、TD-API-001/002/TD-BOUND-003/004/D1已批准未实施/评分基线保持，不push/部署/改workflow。§4.2.9等原待验收/未授权句为历史，不改2b源码和固定护栏。**
 - **规则文档**：`docs/HARNESS-RULES.md`（施工期常驻，竣工验收后按 §14 拆解归档）
 - **配套文件**：问题清单 `docs/exec-plans/tech-debt-tracker.md`（36 条，含已解决历史项）；CI 决策 `docs/CI.md`；度量脚本 `scripts/analysis/repo-metrics.mjs`
 
@@ -1857,7 +1857,21 @@ d70653a以来所有生产src/packages/scripts/workflows/台账36/评分零diff�
 
 本轮不重复各域历史PG；最终文档HEAD完整pnpm ci:local另/tmp/kingturf-2b-acceptance-head-ci.log真实退出0后交回，PG只在主代理串行guard回环test库/healthy/70 applied下按完整链执行，未在review中并行DB。format/doclint/structure/diff与原表/冻结字节核验记录同/tmp/kingturf-2b-acceptance-前缀；最终工作树干净才交接。未E2E、push/部署/生产/workflows/prompt-history/密钥签名fixture值/真实配置读取或完整连接串回显。当前“2b实施与独立复核完成，待人工验收”；本清单/doc HEAD仍待协调最终核验并向用户报告，完成停等待人工，不自行2c/2d/2e。[已测试]
 
-#### 4.2.10 2c当前授权与首域commission旧契约设计（旧源码f230b22；0/11未提取）
+#### 4.2.10 2c首域commission当前2/11提取待协调（旧源码f230b22／固定549 a7440d9）
+
+**①两GET提取当前快照（2026-10-15，授权d14bd2c／源码46df89b）**：只迁移GET commission-policies与GET commissions两个成功体，commission当前2/11待协调，余9写及其余七2c域未提取，不宣称整域/2c完成。下方f230b22旧盘点/11表及“0/11、未创建module、待协调”均为此前设计时点，本段是当前源码事实，旧表/失败原文不改。
+
+当前app import71、宽guard2858、两exact GET条件2859/2875留原slot，成功体2860–2873/2876–2889 dispatch commissionReadRoutes；第三条件POST政策创建2891到EOF全部原文不变。新routes/commission-reads.ts readonly两配置27–34明确完整readcap→method，单factory36–71产生两互斥GET defineRoute。validate41–51为原Q0无fields42→late resolver第二root43→对应method/receiver捕获44→45–49才新Q actor/scopes/anchors原序引用→50 envelope；factory/app context不提前读仓储/actor/请求值。handler52–68 call(repository,Q)53–56仅一个业务参await，60–65原新map数组每row再get当时对应完整readcap.fields??null后P；无row不多查/Map删与fieldsnull原rowref/有限P eagerEntries浅nested与special ownkeys/不补version，不缓存字段或再authorize。
+
+原宽guard对unsupported仍读root一次，缺commissions跳404/global401先/前QTC共享POST O/全局浅spread和error-C保持，不加503/alias/strictUUID/请求parser或scope预查；grantgetter换根用第二根，methodgetter换根保旧receiver，actorgetter替method仍用capturedmethod，缺anchors每请求fresh[]。窄Pick两方法/Parameters[0]/AwaitedReturnType Items/Readonly context-envelope，app type-only引用无runtime循环/any/新库/共享请求state。module71行/factory36/validate11/handler17、人工nest≤5，满足此新module800/200/5，函数200非AST强制；app4611→4607净−4，仍巨文件，白名单31/TD-API-001/002不结清。 当前routes目录68个TS＝原2b验收源基线67＋本新commission-reads模块1；§4.2.9的67为当时验收口径，不回写原2b清单或把本新增模块计为2b补迁。
+
+**①实际验证／边界**：旧549对新接线首跑549/549，type/lint首跑0，无fixture/预期改写；独立readonly reviewer实际Q0/第二root-method/receiver/actor/单参/晚逐row投影/边界/类型/容量无必要阻塞，未编辑/测试/DB。相关6文件619/619、全部非PG96文件9390/9390实际0（两组选集顺序执行，重新按路径枚举不依赖跨轮缓存），含全部2b/335/82/549；a7440d9之后所有tests/fixture/probe零diff，549 blob `0e7fb3f468ecfd81bc741e79729d73402494f3c6` 不变。runtime实际0：2GET/1factory、每canonical唯一match、5个尾斜线/extra等alternate不匹配、validate-handler存在；构造root/authorize/actor/permissions读取各0。仅构造与match，未执行validate/handler/SQL，非HTTP-PG端到端。
+
+byte.log只扣import后prefix含宽guard/两exact条件、POST政策创建→EOF九写及其余域suffix均true；将两成功段替回后整个app与8ed3e4b字节全等。对8ed3e4b除app+新module外所有src/仓储540行/SQL/schema/scope-replay-audit/2b与其他七域/shared dispatcher-types/G3G4/门禁/依赖/packagesweb/scripts/workflows/台账36状态/QUALITY_SCORE零diff。structure0强制违规31豁免/format/doclint103/diff check0。guard回环test库/healthy/70applied后固定源码完整ci:local实际exit0（code-ci.log，API109文件9483/9483、web114/domain14/database68/config4/types1、既有PG按全链/doclint103/结构0违规31豁免/build/audit与其余绿）后独立46df89b；最终独立证据doc HEAD另完整CI到head-ci.log实际0/干净树后交回，不以启动作通过。本轮不单独新增/额外执行commission PG，不把mock/scope-sql两case的432字符串组合或本次全链PG当佣金SQL/全部scope矩阵。日志全前缀/tmp/kingturf-commission-reads-extract-：contract/related/all-mock/type/lint/byte/runtime/structure/format/doclint/guard/status/code-ci/head-ci分别定位。
+
+**①失败历史／停止／回滚**：提取源码无测试/type/lint/patch失败；一次证据草稿工具编排因未转义反引号触发ReferenceError，未调用文件或命令工具、未写文件，重建草稿成功，非业务测试失败。旧护栏type/lint/数组夹具/quality定位/risk-procurement误算、协调跨轮缓存TypeError未启动测试后路径枚举96/9390、2b容量中断恢复/QTC真回归历史全部保持。不改oracle掩盖差异；无本轮需新登记的已确认行为问题，台账36含TD-REG-001解决历史、TD-BOUND-003/004待核实不修/D1不扩/TD-API不结清/评分不改。
+
+回滚 `git revert 46df89b` 恢复原两GET成功体/移除commission-reads.ts；d14bd2c授权和本证据/AGENTS/§0/§7/index各独立文档revert，a7440d9固定549与80c5b64/f230b22人验收/全部2b护栏不动，不触及QTC f8059a8。当前2/11后停协调独立复核，余9写/其他七域未提取；通过后协调按已授权2c续派，无需再问用户，不自行②/dashboard/2d2e/批次3/安全行为。未E2E/push/部署/生产/workflows/prompt-history/秘密token/签名fixture/真实配置或完整连接串读取回显。[已测试]
 
 **Commission旧护栏/候选协调确认与①两GET提取授权（2026-10-15，最终8ed3e4b）**：协调主审核f230b22以来业务src/packages/scripts/workflows/台账评分及所有旧tests零diff，a7440d9固定549 blob `0e7fb3f468ecfd81bc741e79729d73402494f3c6` 仍冻结；亲跑全部非PG96文件9390/9390实际0（/tmp/kingturf-commission-old-independent.log）。安全读取执行会话核旧测试CI130441ms、最终HEAD CI129594ms均真实exit0（API109文件9483/9483、doclint103/structure0违规31豁免/build/audit绿），readonly reviewer完整旧app/仓储签名/1218行oracle/候选无阻塞。协调首次验证脚本跨轮缓存列表失效TypeError未启动任何测试，改路径枚举96非PG后实际全绿；此为协调诊断失败非业务失败，旧类型/lint/盘点失败保持。八域70只是限定inventory，quality覆盖限制保留。
 
@@ -2019,6 +2033,8 @@ accrue先period string trim与精确四位年/01..12（无额外业务年界）�
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+**2c①commission两GET提取收尾（2026-10-15，授权d14bd2c／源码46df89b）**：仅commission-policies/commissions两GET成功体dispatch单commissionReadRoutes/readonly2配置2defineRoute，当前2/11待协调，余9写及其余七域未提取。Q0无fields→晚第二root+method/receiver→freshQ原refs/actor后读，一参call await后逐row当时readcap.fields??null/P不缓存；原宽guard/两exact条件/global401/缺dep404/unsupported根副作用/前QTC O与后九写保留。module71/factory36/validate11/handler17/nest≤5，app4611→4607；byte prefix含guard及POST创建→EOF/还原整个app均true，runtime2GET互斥exact/5alternates不匹配/构造root-authorize-actor-permissions0且无业务执行。旧549首跑/相关6-619/全部非PG96-9390/type-lint/format/doclint103/structure0违规31豁免/diff全0，独立readonly reviewer无必要阻塞；549及全部2b/335/82/fixture-probe与其他src/仓储SQLschema/shared门禁/台账评分零diff。guard健康回环test库70applied后固定代码CI真实0（/tmp/kingturf-commission-reads-extract-code-ci.log，API109/9483与其他全绿），最后证据HEAD完整CI另head-ci.log实际0后交回。提取源码无测试/type/lint/patch失败；草稿工具反引号ReferenceError未调用文件/命令工具未写文件已恢复，协调缓存TypeError与旧失败历史全部保留。无新佣金PG，不把mock/scope字符串当SQL安全矩阵。回滚git revert 46df89b恢复原两GET/移除module，d14bd2c与本证据/AGENTS/状态/index独立文档revert，a7440d9冻结549与2b人验收不动。完成停协调，不自行②/dashboard/其余域/2d2e/批次3/安全行为；已授权2c由协调续派，不重复索权。未E2E/push/部署/生产/workflows/prompt-history或敏感配置签名材料读取回显。[已测试]
 
 **Commission旧护栏/候选协调确认与①两GET提取授权（2026-10-15，最终8ed3e4b）**：协调主审核f230b22以来业务src/packages/scripts/workflows/台账评分及所有旧tests零diff，a7440d9固定549 blob `0e7fb3f468ecfd81bc741e79729d73402494f3c6` 仍冻结；亲跑全部非PG96文件9390/9390实际0（/tmp/kingturf-commission-old-independent.log）。安全读取执行会话核旧测试CI130441ms、最终HEAD CI129594ms均真实exit0（API109文件9483/9483、doclint103/structure0违规31豁免/build/audit绿），readonly reviewer完整旧app/仓储签名/1218行oracle/候选无阻塞。协调首次验证脚本跨轮缓存列表失效TypeError未启动任何测试，改路径枚举96非PG后实际全绿；此为协调诊断失败非业务失败，旧类型/lint/盘点失败保持。八域70只是限定inventory，quality覆盖限制保留。
 
