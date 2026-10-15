@@ -68,6 +68,7 @@ import { qtcSalesOrderCreateRoutes } from './routes/qtc-sales-order-create.ts';
 import { qtcArPostRoutes } from './routes/qtc-ar-post.ts';
 import { qtcBankPaymentIntakeRoutes } from './routes/qtc-bank-payment-intake.ts';
 import { qtcReconciliationRunRoutes } from './routes/qtc-reconciliation-run.ts';
+import { commissionReadRoutes } from './routes/commission-reads.ts';
 import { websiteLeadIngestRoutes } from './routes/website-lead-ingest.ts';
 import {
   numberDefinitionListRoutes,
@@ -2856,41 +2857,36 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
         }
         if (dependencies.commissions) {
           if (request.method === 'GET' && request.pathname === '/api/v1/commission-policies') {
-            const grant = authorizeQuery(context, 'commission-policy:read');
-            return {
-              statusCode: 200,
-              body: {
-                items: (
-                  await dependencies.commissions.listPolicies({
-                    actor: context.actor,
-                    scopes: grant.scopes,
-                    anchors: grant.anchors,
-                  })
-                ).map((item) =>
-                  permittedDto(
-                    item,
-                    context.permissions.get('commission-policy:read')?.fields ?? null,
-                  ),
-                ),
-              },
-            };
+            const response = await dispatchRoutes(
+              commissionReadRoutes({
+                repository: () =>
+                  dependencies.commissions as Pick<
+                    NonNullable<ApiDependencies['commissions']>,
+                    'listPolicies' | 'listCases'
+                  >,
+                authorization: context,
+                authorizeQuery,
+                permittedDto,
+              }),
+              request,
+            );
+            if (response !== null) return response;
           }
           if (request.method === 'GET' && request.pathname === '/api/v1/commissions') {
-            const grant = authorizeQuery(context, 'commission:read');
-            return {
-              statusCode: 200,
-              body: {
-                items: (
-                  await dependencies.commissions.listCases({
-                    actor: context.actor,
-                    scopes: grant.scopes,
-                    anchors: grant.anchors,
-                  })
-                ).map((item) =>
-                  permittedDto(item, context.permissions.get('commission:read')?.fields ?? null),
-                ),
-              },
-            };
+            const response = await dispatchRoutes(
+              commissionReadRoutes({
+                repository: () =>
+                  dependencies.commissions as Pick<
+                    NonNullable<ApiDependencies['commissions']>,
+                    'listPolicies' | 'listCases'
+                  >,
+                authorization: context,
+                authorizeQuery,
+                permittedDto,
+              }),
+              request,
+            );
+            if (response !== null) return response;
           }
           if (request.method === 'POST' && request.pathname === '/api/v1/commission-policies') {
             const body = objectBody(request.body);
