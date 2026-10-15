@@ -70,6 +70,7 @@ import { qtcBankPaymentIntakeRoutes } from './routes/qtc-bank-payment-intake.ts'
 import { qtcReconciliationRunRoutes } from './routes/qtc-reconciliation-run.ts';
 import { commissionReadRoutes } from './routes/commission-reads.ts';
 import { executiveDashboardRoutes } from './routes/dashboard.ts';
+import { manufacturingReadRoutes } from './routes/manufacturing-reads.ts';
 import { commissionCommandRoutes } from './routes/commission-commands.ts';
 import { commissionAccrueRoutes } from './routes/commission-accrue.ts';
 import { commissionPolicyPublishRoutes } from './routes/commission-policy-publish.ts';
@@ -597,20 +598,22 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           const listDefinition = manufacturingLists[request.pathname];
           if (request.method === 'GET' && listDefinition) {
             const [view, capability] = listDefinition;
-            const grant = authorizeQuery(context, capability);
-            const items = await dependencies.manufacturing.list(view, {
-              actor: context.actor,
-              scopes: grant.scopes,
-              anchors: grant.anchors,
-            });
-            return {
-              statusCode: 200,
-              body: {
-                items: items.map((item) =>
-                  permittedDto(item, context.permissions.get(capability)?.fields ?? null),
-                ),
-              },
-            };
+            const response = await dispatchRoutes(
+              manufacturingReadRoutes({
+                repository: () =>
+                  dependencies.manufacturing as Pick<
+                    NonNullable<ApiDependencies['manufacturing']>,
+                    'list'
+                  >,
+                view,
+                capability,
+                authorization: context,
+                authorizeQuery,
+                permittedDto,
+              }),
+              request,
+            );
+            if (response !== null) return response;
           }
           if (request.method === 'POST' && request.pathname === '/api/v1/manufacturing-items') {
             const body = objectBody(request.body);
