@@ -6,7 +6,7 @@
 - **分支**：`harnessing`（自 main 派生；按规则 §7.1 禁止直接在主干改造）
 - **计划版本 / 日期**：v1.3 / 2026-10-12（v1.2 经第三轮人工审核修订：修复 §3.8 S11 表格裸管道、覆盖率验收语义收紧为目标值硬条件、S11 表述改为启发式口径）
 - **扫描基线**：commit `779dea3`（同步 origin/main 后）
-- **状态**：**批次1、2a、2b 均已验收（2b 于 2026-10-15 验收，见 §7 末行与 §4.2.9 验收结论）。批次 2 剩余 2c-2f、批次 3/4、阶段 5 未启动；31 条存量豁免、TD-API-001/002、TD-BOUND-003/004、TD-REG-001（已解决留历史）维持各自登记状态；D1 已批准未实施；QUALITY_SCORE 基线未上调；不 push、不部署、不改 workflow 的契约继续有效。**
+- **状态**：**批次1/2a/2b已人工验收（2b源码80c5b64、记录f230b22，2026-10-15）；用户最新正式授权后续，当前串行启动2c，仅commission旧HTTP护栏/候选及八域轻量只读盘点，0/11未提取，见§4.2.10。完成停协调复核，由协调在已授权2c内续派，不要求用户重复授权；不自行2d/2e/批次3/安全行为变更。2d-2f及其余后续仍未启动；31豁免、台账36/TD-REG-001已解决历史、TD-API-001/002/TD-BOUND-003/004/D1已批准未实施/评分基线保持，不push/部署/改workflow。§4.2.9等原待验收/未授权句为历史，不改2b源码和固定护栏。**
 - **规则文档**：`docs/HARNESS-RULES.md`（施工期常驻，竣工验收后按 §14 拆解归档）
 - **配套文件**：问题清单 `docs/exec-plans/tech-debt-tracker.md`（36 条，含已解决历史项）；CI 决策 `docs/CI.md`；度量脚本 `scripts/analysis/repo-metrics.mjs`
 
@@ -1857,6 +1857,14 @@ d70653a以来所有生产src/packages/scripts/workflows/台账36/评分零diff�
 
 本轮不重复各域历史PG；最终文档HEAD完整pnpm ci:local另/tmp/kingturf-2b-acceptance-head-ci.log真实退出0后交回，PG只在主代理串行guard回环test库/healthy/70 applied下按完整链执行，未在review中并行DB。format/doclint/structure/diff与原表/冻结字节核验记录同/tmp/kingturf-2b-acceptance-前缀；最终工作树干净才交接。未E2E、push/部署/生产/workflows/prompt-history/密钥签名fixture值/真实配置读取或完整连接串回显。当前“2b实施与独立复核完成，待人工验收”；本清单/doc HEAD仍待协调最终核验并向用户报告，完成停等待人工，不自行2c/2d/2e。[已测试]
 
+#### 4.2.10 2c当前授权与首域commission旧契约设计（旧源码f230b22；0/11未提取）
+
+**2b人工验收及2c启动授权（2026-10-15，验收源码80c5b64／记录f230b22）**：用户已明确验收阶段4批次2b，并以最新“后续批次现在正式授权你启动”授权后续；该最新授权覆盖f230b22中“验收本身不授权后续”的旧边界，不要求重复授权。按既定计划串行从2c开始，顺序commission→dashboard→manufacturing→mrp→procurement→risk→order-360→quality，不并发跨批次。主审确认harnessing/f230b22/干净，f230b22仅三行计划验收记录差异，2b源码/护栏冻结。旧§4.2.9和AGENTS的“待验收/后续未启动”等保持为其历史，当前2b已人验收，2c本轮已获启动授权，不等于2c已完成/2d2e或安全行为已批准实施。
+
+本轮先轻量只读盘点八域HTTP/仓储/mock与已完成重叠，只有commission进入完整旧buildApp固定HTTP oracle及候选分步设计；原app约2857–3071/commission-repositories.ts540行/相关类型与既有app/scope-sql-commission护栏及ADR0004/0006/0010和台账已读。原commission外wrapper不算支持条件，实际7个支持条件展开11canonical/11语义（2GET＋9POST，transition五动作展开）；缺repo仍跳过404/global401先，不新增503/授权或校验。createPolicy先O/allow/字段授权/rules数组逐项浅object才第二root-method捕获，version则在UUID和input前三整数/time之后才rules、但root-method先捕获；两者不可统一时点。原四/五参、scope引用/actor读取、header key、await后独立M或逐row fields/P保持；避免QTC TD-REG-001式提前root捕获。本轮不提取任何src、不给未来module通过预期、不改既有tests/335 fixture-probe/SQL/schema/事务audit/幂等/shared dispatcher/G3G4/白名单/依赖/台账状态/评分，不动其余七域或扩D1。新oracle只import旧buildApp，先旧实现绿/独立freeze，再候选/证据独立文档提交，末次HEAD完整CI真实0/[已测试]才交回协调。mock不是PG安全矩阵，不临时新增commission PG凑证据；全链PG仅主代理串行guard回环测试库/healthy/70applied，无并发。
+
+原2c“每域1文件/1–2提交”是历史预期非实测硬指标，候选按职责/800-200-5分小步，函数200不宣称AST已强制。已授权2c后续小步通过协调review即可由协调续派，无需再次向用户索权；本轮完成旧护栏/候选便停协调，不自行提取、2d/2e/批次3/安全行为实施。未push/部署/生产/workflows/prompt-history或秘密配置材料读取/回显；旧80c5b64 CI0只作历史，不替代本次新HEAD。此授权/AGENTS/§0/§7/index可独立文档revert，新增test/后续设计回滚点另记，无本轮业务源码回滚项。[已测试]
+
 ### 4.3 批次 3 子批次（bootstrap.ts 按域拆分）
 
 > 21 个商业子域实测清单（`bootstrap.ts:1866-1867` 的 `data-route-view` 属性）：opportunities、technical-requirements、technical-solutions、costing、sales-policies、quotes、credit-review、contracts、sales-orders、order-360、receivables、collections、payments、commissions、business-risks、manufacturing-master、procurement、material-planning、production-orders、quality-inspection、shipments。
@@ -1952,6 +1960,12 @@ d70653a以来所有生产src/packages/scripts/workflows/台账36/评分零diff�
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+**2b人工验收及2c启动授权（2026-10-15，验收源码80c5b64／记录f230b22）**：用户已明确验收阶段4批次2b，并以最新“后续批次现在正式授权你启动”授权后续；该最新授权覆盖f230b22中“验收本身不授权后续”的旧边界，不要求重复授权。按既定计划串行从2c开始，顺序commission→dashboard→manufacturing→mrp→procurement→risk→order-360→quality，不并发跨批次。主审确认harnessing/f230b22/干净，f230b22仅三行计划验收记录差异，2b源码/护栏冻结。旧§4.2.9和AGENTS的“待验收/后续未启动”等保持为其历史，当前2b已人验收，2c本轮已获启动授权，不等于2c已完成/2d2e或安全行为已批准实施。
+
+本轮先轻量只读盘点八域HTTP/仓储/mock与已完成重叠，只有commission进入完整旧buildApp固定HTTP oracle及候选分步设计；原app约2857–3071/commission-repositories.ts540行/相关类型与既有app/scope-sql-commission护栏及ADR0004/0006/0010和台账已读。原commission外wrapper不算支持条件，实际7个支持条件展开11canonical/11语义（2GET＋9POST，transition五动作展开）；缺repo仍跳过404/global401先，不新增503/授权或校验。createPolicy先O/allow/字段授权/rules数组逐项浅object才第二root-method捕获，version则在UUID和input前三整数/time之后才rules、但root-method先捕获；两者不可统一时点。原四/五参、scope引用/actor读取、header key、await后独立M或逐row fields/P保持；避免QTC TD-REG-001式提前root捕获。本轮不提取任何src、不给未来module通过预期、不改既有tests/335 fixture-probe/SQL/schema/事务audit/幂等/shared dispatcher/G3G4/白名单/依赖/台账状态/评分，不动其余七域或扩D1。新oracle只import旧buildApp，先旧实现绿/独立freeze，再候选/证据独立文档提交，末次HEAD完整CI真实0/[已测试]才交回协调。mock不是PG安全矩阵，不临时新增commission PG凑证据；全链PG仅主代理串行guard回环测试库/healthy/70applied，无并发。
+
+原2c“每域1文件/1–2提交”是历史预期非实测硬指标，候选按职责/800-200-5分小步，函数200不宣称AST已强制。已授权2c后续小步通过协调review即可由协调续派，无需再次向用户索权；本轮完成旧护栏/候选便停协调，不自行提取、2d/2e/批次3/安全行为实施。未push/部署/生产/workflows/prompt-history或秘密配置材料读取/回显；旧80c5b64 CI0只作历史，不替代本次新HEAD。此授权/AGENTS/§0/§7/index可独立文档revert，新增test/后续设计回滚点另记，无本轮业务源码回滚项。[已测试]
 
 **2b整体人工验收证据收尾（2026-10-14，源码基线/网站最终ec2522a，本轮仅文档）**：网站0f14565/ec2522a由协调主审/独立reviewer/66mock8551/runtime1/byte全true/固定82blob及源码CI122689ms、HEAD CI123586ms真实0确认；已在§4.2.8落盘，不重复源码提取。按原2b批准表foundation（先前2a已人验收）＋11列名逐项核，startup是已审基础设施PG4无需业务handler，其余10组HTTP65模块＋foundation/types共67文件；canonical/semantic、模块/factory与原条件展开、各固定test/源码/协调CI-PG边界及独立回滚详§4.2.9。auth/provision契约同实现提交、IAM b917c8c独立freeze及早期协调档案的记录粒度如实明确，不把§0声明代替实现/实测证据。全部批准2b项实施与独立复核完成，待人工验收，非2c/2d/2e开始/批次2或阶段4竣工。原表/各域授权待复核/失败/容量中断恢复原文及台账36/评分保持；本轮只有AGENTS/计划/index，src/tests/fixture/probe/SQL/schema/gates对ec2522a零diff。原子实现回滚按§4.2.9逐组索引及§7依赖；本收尾文档独立revert，无业务回滚执行。末次文档HEAD完整ci:local另/tmp/kingturf-2b-acceptance-head-ci.log取得实际0/干净树后交回协调核最终文档并向用户报告。PG只主代理串行guard回环test库/healthy/70 applied按全链执行，不重跑各域历史专测。未E2E/push/部署/生产/workflows/prompt-history或秘密配置材料读取；完成停待人工，不再派业务任务。[已测试]
 
