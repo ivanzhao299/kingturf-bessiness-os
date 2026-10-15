@@ -188,6 +188,7 @@ import { customerContactRoutes } from './routes/customer-contacts.ts';
 import { leadListRoutes, leadCreateRoutes, leadPoolRoutes } from './routes/lead-base.ts';
 import { leadClaimRoutes } from './routes/lead-claim.ts';
 import { leadCommandRoutes } from './routes/lead-commands.ts';
+import { riskPolicyReadRoutes, riskEvaluationReadRoutes } from './routes/risk-reads.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -1978,38 +1979,33 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
         }
         if (dependencies.risks) {
           if (request.method === 'GET' && request.pathname === '/api/v1/risk-policies') {
-            const grant = authorizeQuery(context, 'risk-policy:read');
-            return {
-              statusCode: 200,
-              body: {
-                items: (
-                  await dependencies.risks.listPolicies({
-                    actor: context.actor,
-                    scopes: grant.scopes,
-                    anchors: grant.anchors,
-                  })
-                ).map((item) =>
-                  permittedDto(item, context.permissions.get('risk-policy:read')?.fields ?? null),
-                ),
-              },
-            };
+            const response = await dispatchRoutes(
+              riskPolicyReadRoutes({
+                repository: () =>
+                  dependencies.risks as Pick<NonNullable<ApiDependencies['risks']>, 'listPolicies'>,
+                authorization: context,
+                authorizeQuery,
+                permittedDto,
+              }),
+              request,
+            );
+            if (response !== null) return response;
           }
           if (request.method === 'GET' && request.pathname === '/api/v1/risk-evaluations') {
-            const grant = authorizeQuery(context, 'risk:read');
-            return {
-              statusCode: 200,
-              body: {
-                items: (
-                  await dependencies.risks.listEvaluations({
-                    actor: context.actor,
-                    scopes: grant.scopes,
-                    anchors: grant.anchors,
-                  })
-                ).map((item) =>
-                  permittedDto(item, context.permissions.get('risk:read')?.fields ?? null),
-                ),
-              },
-            };
+            const response = await dispatchRoutes(
+              riskEvaluationReadRoutes({
+                repository: () =>
+                  dependencies.risks as Pick<
+                    NonNullable<ApiDependencies['risks']>,
+                    'listEvaluations'
+                  >,
+                authorization: context,
+                authorizeQuery,
+                permittedDto,
+              }),
+              request,
+            );
+            if (response !== null) return response;
           }
           if (request.method === 'POST' && request.pathname === '/api/v1/risk-policies') {
             const body = objectBody(request.body);
