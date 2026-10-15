@@ -198,6 +198,7 @@ import { qualityPlanCreateRoutes } from './routes/quality-plan-create.ts';
 import { qualityPlanPublishRoutes } from './routes/quality-plan-publish.ts';
 import { qualityInspectionOpenRoutes } from './routes/quality-inspection-open.ts';
 import { qualityInspectionTransitionRoutes } from './routes/quality-inspection-transitions.ts';
+import { qualityResultRecordRoutes } from './routes/quality-result-record.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -1868,44 +1869,30 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             request.pathname,
           );
           if (request.method === 'POST' && resultCommand) {
-            const body = objectBody(request.body);
-            allow(body, [
-              'characteristicId',
-              'measuredNumeric',
-              'measuredBoolean',
-              'measuredText',
-              'passed',
-              'notes',
-              'occurredAt',
-              'idempotencyKey',
-            ]);
-            if (typeof body.passed !== 'boolean')
-              throw new DomainError('invalid_request', 'passed must be boolean');
-            if (body.measuredBoolean !== undefined && typeof body.measuredBoolean !== 'boolean')
-              throw new DomainError('invalid_request', 'measuredBoolean must be boolean');
-            const grant = authorizeQuery(context, 'quality:inspect', Object.keys(body));
-            const result = await dependencies.quality.recordResult(
-              uuid(resultCommand[1], 'inspectionId'),
-              {
-                characteristicId: uuid(body.characteristicId, 'characteristicId'),
-                ...(body.measuredNumeric === undefined
-                  ? {}
-                  : { measuredNumeric: decimal(body.measuredNumeric, 'measuredNumeric', false) }),
-                ...(body.measuredBoolean === undefined
-                  ? {}
-                  : { measuredBoolean: body.measuredBoolean }),
-                ...(body.measuredText === undefined
-                  ? {}
-                  : { measuredText: string(body.measuredText, 'measuredText') }),
-                passed: body.passed,
-                notes: string(body.notes ?? '', 'notes'),
-                occurredAt: timestamp(body.occurredAt, 'occurredAt'),
-                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
+            const response = await dispatchRoutes(
+              qualityResultRecordRoutes({
+                repository: () =>
+                  dependencies.quality as Pick<
+                    NonNullable<ApiDependencies['quality']>,
+                    'recordResult'
+                  >,
+                authorization: context,
+                authorizeQuery,
+                correlationId,
+                parsers: {
+                  objectBody,
+                  allow,
+                  uuid,
+                  string,
+                  decimal,
+                  timestamp,
+                  stableCode: assertStableCode,
+                },
+                mutationDto,
+              }),
+              request,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'quality:read') };
+            if (response !== null) return response;
           }
           const dispositionCommand =
             /^\/api\/v1\/quality-inspections\/([0-9a-f-]+)\/(release|reject)$/u.exec(
