@@ -69,6 +69,7 @@ import { qtcArPostRoutes } from './routes/qtc-ar-post.ts';
 import { qtcBankPaymentIntakeRoutes } from './routes/qtc-bank-payment-intake.ts';
 import { qtcReconciliationRunRoutes } from './routes/qtc-reconciliation-run.ts';
 import { commissionReadRoutes } from './routes/commission-reads.ts';
+import { commissionCommandRoutes } from './routes/commission-commands.ts';
 import { commissionAccrueRoutes } from './routes/commission-accrue.ts';
 import { commissionPolicyPublishRoutes } from './routes/commission-policy-publish.ts';
 import {
@@ -2977,34 +2978,22 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               request.pathname,
             );
           if (request.method === 'POST' && commissionCommand) {
-            const body = objectBody(request.body);
-            allow(body, ['reason', 'externalReference']);
-            const target = (
-              {
-                freeze: 'FROZEN',
-                release: 'RELEASED',
-                pay: 'PAID',
-                clawback: 'CLAWED_BACK',
-                cancel: 'CANCELLED',
-              } as const
-            )[commissionCommand[2] as 'freeze' | 'release' | 'pay' | 'clawback' | 'cancel'];
-            const capability = target === 'PAID' ? 'commission:pay' : 'commission:manage';
-            const grant = authorizeQuery(context, capability, Object.keys(body));
-            const result = await dependencies.commissions.transition(
-              uuid(commissionCommand[1], 'commissionId'),
-              {
-                state: target,
-                reason: string(body.reason, 'reason'),
-                externalReference:
-                  body.externalReference === null || body.externalReference === undefined
-                    ? null
-                    : string(body.externalReference, 'externalReference'),
-              },
-              idempotency(request),
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
+            const response = await dispatchRoutes(
+              commissionCommandRoutes({
+                repository: () =>
+                  dependencies.commissions as Pick<
+                    NonNullable<ApiDependencies['commissions']>,
+                    'transition'
+                  >,
+                authorization: context,
+                authorizeQuery,
+                correlationId,
+                parsers: { objectBody, allow, uuid, string, idempotency },
+                mutationDto,
+              }),
+              request,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'commission:read') };
+            if (response !== null) return response;
           }
         }
         const opportunityResponse = await dispatchOpportunityRoutes(
