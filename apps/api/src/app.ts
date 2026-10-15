@@ -196,6 +196,7 @@ import {
 } from './routes/quality-reads.ts';
 import { qualityPlanCreateRoutes } from './routes/quality-plan-create.ts';
 import { qualityPlanPublishRoutes } from './routes/quality-plan-publish.ts';
+import { qualityInspectionOpenRoutes } from './routes/quality-inspection-open.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -1809,31 +1810,29 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             if (response !== null) return response;
           }
           if (request.method === 'POST' && request.pathname === '/api/v1/quality-inspections') {
-            const body = objectBody(request.body);
-            allow(body, [
-              'inspectionNumber',
-              'planVersionId',
-              'lotId',
-              'sourceType',
-              'sourceId',
-              'sampleSize',
-            ]);
-            const grant = authorizeQuery(context, 'quality:inspect', Object.keys(body));
-            const result = await dependencies.quality.openInspection(
-              {
-                inspectionNumber: assertStableCode(
-                  string(body.inspectionNumber, 'inspectionNumber'),
-                ),
-                planVersionId: uuid(body.planVersionId, 'planVersionId'),
-                lotId: uuid(body.lotId, 'lotId'),
-                sourceType: assertStableCode(string(body.sourceType, 'sourceType')),
-                sourceId: uuid(body.sourceId, 'sourceId'),
-                sampleSize: decimal(body.sampleSize, 'sampleSize'),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
+            const response = await dispatchRoutes(
+              qualityInspectionOpenRoutes({
+                repository: () =>
+                  dependencies.quality as Pick<
+                    NonNullable<ApiDependencies['quality']>,
+                    'openInspection'
+                  >,
+                authorization: context,
+                authorizeQuery,
+                correlationId,
+                parsers: {
+                  objectBody,
+                  allow,
+                  string,
+                  uuid,
+                  decimal,
+                  stableCode: assertStableCode,
+                },
+                mutationDto,
+              }),
+              request,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'quality:read') };
+            if (response !== null) return response;
           }
           const inspectionCommand =
             /^\/api\/v1\/quality-inspections\/([0-9a-f-]+)\/(sample|complete|cancel)$/u.exec(
