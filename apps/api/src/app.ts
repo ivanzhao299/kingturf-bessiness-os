@@ -69,6 +69,7 @@ import { qtcArPostRoutes } from './routes/qtc-ar-post.ts';
 import { qtcBankPaymentIntakeRoutes } from './routes/qtc-bank-payment-intake.ts';
 import { qtcReconciliationRunRoutes } from './routes/qtc-reconciliation-run.ts';
 import { commissionReadRoutes } from './routes/commission-reads.ts';
+import { executiveDashboardRoutes } from './routes/dashboard.ts';
 import { commissionCommandRoutes } from './routes/commission-commands.ts';
 import { commissionAccrueRoutes } from './routes/commission-accrue.ts';
 import { commissionPolicyPublishRoutes } from './routes/commission-policy-publish.ts';
@@ -2099,49 +2100,17 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           request.pathname === '/api/v1/executive-dashboard' &&
           dependencies.dashboard
         ) {
-          const grant = authorizeQuery(context, 'executive-dashboard:read');
-          const from = timestamp(request.query?.from, 'from');
-          const to = timestamp(request.query?.to, 'to');
-          if (new Date(from).getTime() >= new Date(to).getTime())
-            throw new DomainError('invalid_request', 'from must be before to');
-          const aggregate = (await dependencies.dashboard.get(
-            { from, to, currency: currency(request.query?.currency) },
-            { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-          )) as Record<string, unknown>;
-          const metrics = aggregate.metrics as Record<string, unknown>;
-          const metricCapabilities = {
-            weightedForecast: 'opportunity:read',
-            bookedRevenue: 'sales-order:read',
-            grossMargin: 'quote:read',
-            cashCollected: 'reconciliation:read',
-            openReceivable: 'ar:read',
-            overdueReceivable: 'ar:read',
-            releasedOrders: 'sales-order:read',
-            activeRisks: 'risk:read',
-            criticalRisks: 'risk:read',
-            commissionAccrued: 'commission:read',
-          } as const satisfies Record<string, PermissionKey>;
-          const visibleMetrics = Object.fromEntries(
-            Object.entries(metricCapabilities)
-              .filter(([, capability]) => context.permissions.has(capability))
-              .map(([key]) => [key, metrics[key]]),
+          const response = await dispatchRoutes(
+            executiveDashboardRoutes({
+              repository: () =>
+                dependencies.dashboard as Pick<NonNullable<ApiDependencies['dashboard']>, 'get'>,
+              authorization: context,
+              authorizeQuery,
+              parsers: { timestamp, currency },
+            }),
+            request,
           );
-          const drilldowns = aggregate.drilldowns as Record<string, unknown>;
-          return {
-            statusCode: 200,
-            body: {
-              filters: aggregate.filters,
-              refreshedAt: aggregate.refreshedAt,
-              metrics: visibleMetrics,
-              drilldowns: {
-                ...(context.permissions.has('sales-order:read')
-                  ? { orders: drilldowns.orders }
-                  : {}),
-                ...(context.permissions.has('ar:read') ? { overdue: drilldowns.overdue } : {}),
-                ...(context.permissions.has('risk:read') ? { risks: drilldowns.risks } : {}),
-              },
-            },
-          };
+          if (response !== null) return response;
         }
         if (dependencies.risks) {
           if (request.method === 'GET' && request.pathname === '/api/v1/risk-policies') {
