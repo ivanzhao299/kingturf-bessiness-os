@@ -69,6 +69,10 @@ import { qtcArPostRoutes } from './routes/qtc-ar-post.ts';
 import { qtcBankPaymentIntakeRoutes } from './routes/qtc-bank-payment-intake.ts';
 import { qtcReconciliationRunRoutes } from './routes/qtc-reconciliation-run.ts';
 import { commissionReadRoutes } from './routes/commission-reads.ts';
+import {
+  commissionPolicyCreateRoutes,
+  commissionPolicyVersionRoutes,
+} from './routes/commission-policy-writes.ts';
 import { websiteLeadIngestRoutes } from './routes/website-lead-ingest.ts';
 import {
   numberDefinitionListRoutes,
@@ -2889,102 +2893,42 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             if (response !== null) return response;
           }
           if (request.method === 'POST' && request.pathname === '/api/v1/commission-policies') {
-            const body = objectBody(request.body);
-            allow(body, [
-              'code',
-              'name',
-              'applicability',
-              'baseRateBasisPoints',
-              'minimumMarginBasisPoints',
-              'releaseCollectionBasisPoints',
-              'effectiveAt',
-              'rules',
-              'publish',
-            ]);
-            const grant = authorizeQuery(context, 'commission-policy:manage', Object.keys(body));
-            const rules = array(body.rules, 'rules').map((rule, index) =>
-              jsonObject(rule, `rules[${String(index)}]`),
+            const response = await dispatchRoutes(
+              commissionPolicyCreateRoutes({
+                repository: () =>
+                  dependencies.commissions as Pick<
+                    NonNullable<ApiDependencies['commissions']>,
+                    'createPolicy' | 'createPolicyVersion'
+                  >,
+                authorization: context,
+                authorizeQuery,
+                correlationId,
+                parsers: { objectBody, allow, string, uuid, integer, timestamp, jsonObject, array },
+                mutationDto,
+              }),
+              request,
             );
-            const result = await dependencies.commissions.createPolicy(
-              {
-                code: string(body.code, 'code'),
-                name: string(body.name, 'name'),
-                applicability: jsonObject(body.applicability, 'applicability'),
-                baseRateBasisPoints: integer(
-                  body.baseRateBasisPoints,
-                  'baseRateBasisPoints',
-                  0,
-                  10000,
-                ),
-                minimumMarginBasisPoints: integer(
-                  body.minimumMarginBasisPoints,
-                  'minimumMarginBasisPoints',
-                  -100000,
-                  10000,
-                ),
-                releaseCollectionBasisPoints: integer(
-                  body.releaseCollectionBasisPoints,
-                  'releaseCollectionBasisPoints',
-                  0,
-                  10000,
-                ),
-                effectiveAt: timestamp(body.effectiveAt, 'effectiveAt'),
-                rules,
-                publish: body.publish === true,
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
-            );
-            return {
-              statusCode: 201,
-              body: mutationDto(result, context, 'commission-policy:read'),
-            };
+            if (response !== null) return response;
           }
           const commissionPolicyRevision =
             /^\/api\/v1\/commission-policies\/([0-9a-f-]+)\/versions$/u.exec(request.pathname);
           if (request.method === 'POST' && commissionPolicyRevision) {
-            const body = objectBody(request.body);
-            allow(body, [
-              'baseRateBasisPoints',
-              'minimumMarginBasisPoints',
-              'releaseCollectionBasisPoints',
-              'effectiveAt',
-              'rules',
-            ]);
-            const grant = authorizeQuery(context, 'commission-policy:manage', Object.keys(body));
-            const result = await dependencies.commissions.createPolicyVersion(
-              uuid(commissionPolicyRevision[1], 'commissionPolicyId'),
-              {
-                baseRateBasisPoints: integer(
-                  body.baseRateBasisPoints,
-                  'baseRateBasisPoints',
-                  0,
-                  10000,
-                ),
-                minimumMarginBasisPoints: integer(
-                  body.minimumMarginBasisPoints,
-                  'minimumMarginBasisPoints',
-                  -100000,
-                  10000,
-                ),
-                releaseCollectionBasisPoints: integer(
-                  body.releaseCollectionBasisPoints,
-                  'releaseCollectionBasisPoints',
-                  0,
-                  10000,
-                ),
-                effectiveAt: timestamp(body.effectiveAt, 'effectiveAt'),
-                rules: array(body.rules, 'rules').map((rule, index) =>
-                  jsonObject(rule, `rules[${String(index)}]`),
-                ),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
+            const response = await dispatchRoutes(
+              commissionPolicyVersionRoutes({
+                repository: () =>
+                  dependencies.commissions as Pick<
+                    NonNullable<ApiDependencies['commissions']>,
+                    'createPolicy' | 'createPolicyVersion'
+                  >,
+                authorization: context,
+                authorizeQuery,
+                correlationId,
+                parsers: { objectBody, allow, string, uuid, integer, timestamp, jsonObject, array },
+                mutationDto,
+              }),
+              request,
             );
-            return {
-              statusCode: 201,
-              body: mutationDto(result, context, 'commission-policy:read'),
-            };
+            if (response !== null) return response;
           }
           const commissionPolicyPublish =
             /^\/api\/v1\/commission-policy-versions\/([0-9a-f-]+)\/publish$/u.exec(
