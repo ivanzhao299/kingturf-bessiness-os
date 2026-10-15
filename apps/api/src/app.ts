@@ -69,6 +69,7 @@ import { qtcArPostRoutes } from './routes/qtc-ar-post.ts';
 import { qtcBankPaymentIntakeRoutes } from './routes/qtc-bank-payment-intake.ts';
 import { qtcReconciliationRunRoutes } from './routes/qtc-reconciliation-run.ts';
 import { commissionReadRoutes } from './routes/commission-reads.ts';
+import { commissionAccrueRoutes } from './routes/commission-accrue.ts';
 import { commissionPolicyPublishRoutes } from './routes/commission-policy-publish.ts';
 import {
   commissionPolicyCreateRoutes,
@@ -2954,29 +2955,22 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             if (response !== null) return response;
           }
           if (request.method === 'POST' && request.pathname === '/api/v1/commissions/accrue') {
-            const body = objectBody(request.body);
-            allow(body, [
-              'salesOrderId',
-              'beneficiaryEmployeeId',
-              'policyVersionId',
-              'accountingPeriod',
-            ]);
-            const grant = authorizeQuery(context, 'commission:accrue', Object.keys(body));
-            const accountingPeriod = string(body.accountingPeriod, 'accountingPeriod');
-            if (!/^[0-9]{4}-(0[1-9]|1[0-2])$/u.test(accountingPeriod))
-              throw new DomainError('invalid_request', 'accountingPeriod must use YYYY-MM');
-            const result = await dependencies.commissions.accrue(
-              {
-                salesOrderId: uuid(body.salesOrderId, 'salesOrderId'),
-                beneficiaryEmployeeId: uuid(body.beneficiaryEmployeeId, 'beneficiaryEmployeeId'),
-                policyVersionId: uuid(body.policyVersionId, 'policyVersionId'),
-                accountingPeriod,
-              },
-              idempotency(request),
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
+            const response = await dispatchRoutes(
+              commissionAccrueRoutes({
+                repository: () =>
+                  dependencies.commissions as Pick<
+                    NonNullable<ApiDependencies['commissions']>,
+                    'accrue'
+                  >,
+                authorization: context,
+                authorizeQuery,
+                correlationId,
+                parsers: { objectBody, allow, string, uuid, idempotency },
+                mutationDto,
+              }),
+              request,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'commission:read') };
+            if (response !== null) return response;
           }
           const commissionCommand =
             /^\/api\/v1\/commissions\/([0-9a-f-]+)\/(freeze|release|pay|clawback|cancel)$/u.exec(
