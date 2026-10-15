@@ -77,6 +77,7 @@ import { manufacturingRoutingCreateRoutes } from './routes/manufacturing-routing
 import { manufacturingPublishRoutes } from './routes/manufacturing-publish.ts';
 import { mrpReadRoutes } from './routes/mrp-reads.ts';
 import { mrpPolicyCreateRoutes } from './routes/mrp-policy-create.ts';
+import { mrpDemandCreateRoutes } from './routes/mrp-demand-create.ts';
 import { commissionCommandRoutes } from './routes/commission-commands.ts';
 import { commissionAccrueRoutes } from './routes/commission-accrue.ts';
 import { commissionPolicyPublishRoutes } from './routes/commission-policy-publish.ts';
@@ -1130,29 +1131,28 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
             if (response !== null) return response;
           }
           if (request.method === 'POST' && request.pathname === '/api/v1/mrp-demands') {
-            const body = objectBody(request.body);
-            allow(body, [
-              'itemVersionId',
-              'sourceType',
-              'sourceId',
-              'requiredAt',
-              'quantity',
-              'priority',
-            ]);
-            const grant = authorizeQuery(context, 'mrp:run', Object.keys(body));
-            const result = await dependencies.mrp.createDemand(
-              {
-                itemVersionId: uuid(body.itemVersionId, 'itemVersionId'),
-                sourceType: assertStableCode(string(body.sourceType, 'sourceType')),
-                sourceId: uuid(body.sourceId, 'sourceId'),
-                requiredAt: calendarDate(body.requiredAt, 'requiredAt'),
-                quantity: decimal(body.quantity, 'quantity'),
-                priority: integer(body.priority ?? 100, 'priority', 1, 100000),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
+            const response = await dispatchRoutes(
+              mrpDemandCreateRoutes({
+                repository: () =>
+                  dependencies.mrp as Pick<NonNullable<ApiDependencies['mrp']>, 'createDemand'>,
+                authorization: context,
+                authorizeQuery,
+                correlationId,
+                parsers: {
+                  objectBody,
+                  allow,
+                  string,
+                  stableCode: assertStableCode,
+                  uuid,
+                  calendarDate,
+                  decimal,
+                  integer,
+                },
+                mutationDto,
+              }),
+              request,
             );
-            return { statusCode: 201, body: mutationDto(result, context, 'mrp:read') };
+            if (response !== null) return response;
           }
           if (request.method === 'POST' && request.pathname === '/api/v1/mrp-runs') {
             const body = objectBody(request.body);
