@@ -212,6 +212,8 @@
 
 ### TD-DUP-004｜前端日期格式化内联 12 处
 
+**3e③现时候选**：全runtime13处=原12 locale（5日期/7日期时间）+标题Intl，10消费者收敛到shared/business-date三原语，原日期构造/getter/默认时区/回退不变；完整文件逆展开AST和179契约/两真实红绿通过，浏览器及源码实际干净HEAD全CI待补后再结项。下列bootstrap历史位置与“grep为0”口径仅为原始基线，不将入口迁位误作全树收敛。台账仍45项，未实施3f边界行为；见[日期证据](../evidence/frontend-3e-date-2026-10-16.md)。
+
 - **位置**：`apps/web/src/bootstrap.ts`（4091、4440、4498、4786 等分散各处）
 - **类别**：重复 ｜ **严重度**：P2
 - **证据**：`toLocaleString('zh-CN')`/`toLocaleDateString('zh-CN')` 内联 12 处，无共享 formatter。

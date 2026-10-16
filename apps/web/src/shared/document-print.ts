@@ -1,4 +1,5 @@
 import type { BusinessDocumentPageSize } from './online-editor-types';
+import { formatBusinessDateTime } from './business-date';
 import { sanitizeBusinessDocumentHtml } from './document-html';
 export const printOnlineBusinessDocument = (
   title: string,
@@ -25,7 +26,7 @@ export const printOnlineBusinessDocument = (
   popup.document.head.append(style);
   const meta = popup.document.createElement('div');
   meta.className = 'document-meta';
-  meta.textContent = `金特夫企业经营管理系统 · 打印时间 ${new Date().toLocaleString('zh-CN')}`;
+  meta.textContent = `金特夫企业经营管理系统 · 打印时间 ${formatBusinessDateTime(new Date())}`;
   const heading = popup.document.createElement('h1');
   heading.textContent = title;
   const content = popup.document.createElement('main');

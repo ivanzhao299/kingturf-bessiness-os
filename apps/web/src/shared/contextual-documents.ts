@@ -1,4 +1,5 @@
 import { el, setOperationStatus } from '../dom';
+import { formatBusinessDate } from './business-date';
 import { buildBusinessDocumentTemplateHtml } from '../business-document-content';
 import { APP_ROUTE_LABELS, type AppRoute } from './navigation';
 import type { BusinessDocumentTemplate, OnlineBusinessDocument } from './shell-types';
@@ -210,7 +211,7 @@ function createOnlineDocumentAction(
       method: 'POST',
       body: JSON.stringify({
         templateKey: onlineTemplateKey(template, route),
-        title: `${template.name} · ${new Date().toLocaleDateString('zh-CN')}`,
+        title: `${template.name} · ${formatBusinessDate(new Date())}`,
         route,
         ...(subjectConfig && subjectSelect.value
           ? { subjectType: subjectConfig.type, subjectId: subjectSelect.value }
@@ -245,7 +246,7 @@ function createOnlineDocumentAction(
             ]
               .filter(Boolean)
               .join('\n'),
-            new Date().toLocaleDateString('zh-CN'),
+            formatBusinessDate(new Date()),
           ),
         },
       }),

@@ -1,3 +1,5 @@
+import { formatBusinessDateTime } from './business-date';
+
 export const recordValue = (value: unknown): Record<string, unknown> =>
   typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
 
@@ -52,4 +54,4 @@ export const displayMoney = (currency: unknown, value: unknown): string => {
 };
 
 export const displayTime = (timestamp: string | undefined) =>
-  timestamp ? new Date(timestamp).toLocaleString('zh-CN') : '时间未知';
+  timestamp ? formatBusinessDateTime(new Date(timestamp)) : '时间未知';

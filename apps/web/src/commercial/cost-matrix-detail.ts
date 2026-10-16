@@ -1,4 +1,5 @@
 import { el } from '../dom';
+import { formatBusinessDateTime } from '../shared/business-date';
 import { openForm } from '../shared/forms';
 import { factorPayload } from './cost-factor-form';
 import { setAppRoute, appRouteFromHash } from '../shared/navigation';
@@ -81,7 +82,7 @@ export function appendCostDetailActions(context: CostDetailContext): void {
     'p',
     'cost-matrix-action-status',
     latest.id
-      ? `最近核算：${textValue(latest.pricingMode, '') === 'TAX_EXCLUSIVE' ? '未税成本' : '含税成本'} · ${textValue(latest.calculatedAt, '') ? new Date(textValue(latest.calculatedAt, '')).toLocaleString('zh-CN') : '时间未知'}`
+      ? `最近核算：${textValue(latest.pricingMode, '') === 'TAX_EXCLUSIVE' ? '未税成本' : '含税成本'} · ${textValue(latest.calculatedAt, '') ? formatBusinessDateTime(new Date(textValue(latest.calculatedAt, ''))) : '时间未知'}`
       : '尚未核算；请先核验所有价格来源。',
   );
   actionStatus.setAttribute('role', 'status');
@@ -319,7 +320,7 @@ export function appendCostHistoryPanels(context: CostDetailPanelsContext): void 
         'span',
         '',
         textValue(calculation.calculatedAt, '')
-          ? new Date(textValue(calculation.calculatedAt, '')).toLocaleString('zh-CN')
+          ? formatBusinessDateTime(new Date(textValue(calculation.calculatedAt, '')))
           : '时间未知',
       ),
       el(
@@ -377,7 +378,7 @@ export function appendCostHistoryPanels(context: CostDetailPanelsContext): void 
       el(
         'span',
         '',
-        `${textValue(audit.actorName, textValue(audit.actorId, '系统'))} · ${textValue(audit.occurredAt, '') ? new Date(textValue(audit.occurredAt, '')).toLocaleString('zh-CN') : '时间未知'}`,
+        `${textValue(audit.actorName, textValue(audit.actorId, '系统'))} · ${textValue(audit.occurredAt, '') ? formatBusinessDateTime(new Date(textValue(audit.occurredAt, ''))) : '时间未知'}`,
       ),
     );
     auditPanel.append(row);

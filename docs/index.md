@@ -6,23 +6,25 @@
 
 ## 常驻入口（根与 docs 顶层）
 
-| 文档                                                                             | 职责                                                                                                                                      | 状态                    |
-| -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
-| [AGENTS.md](../AGENTS.md)                                                        | 智能体入口地图（≤100 行）                                                                                                                 | 常驻                    |
-| [ARCHITECTURE.md](../ARCHITECTURE.md)                                            | 领域与包分层、依赖方向规则与验证点                                                                                                        | 常驻                    |
-| [README.md](../README.md)                                                        | 项目简介与本地起步                                                                                                                        | 常驻                    |
-| [CI.md](CI.md)                                                                   | 框架判定（非 Tauri）与 CI 决策记录                                                                                                        | 常驻                    |
-| [GATES.md](GATES.md)                                                             | 门禁清单（11 项 CI 链 + 2 个本地 hook + 豁免机制）                                                                                        | 常驻                    |
-| [RELIABILITY.md](RELIABILITY.md)                                                 | 可靠性机制与发布链路 runbook（逐步对应 deploy-production.yml）                                                                            | 常驻                    |
-| [QUALITY_SCORE.md](QUALITY_SCORE.md)                                             | 按域质量评分（可复算依据）                                                                                                                | 常驻                    |
-| [design-docs/core-beliefs.md](design-docs/core-beliefs.md)                       | 核心信念（争议裁决依据）                                                                                                                  | 常驻                    |
-| [exec-plans/active/harness-migration.md](exec-plans/active/harness-migration.md) | 3c⑪源码32a277e实际HEAD全CI0；root2545/renderer-service与18声明逆证明/70公开457链/12红绿/新37及正常33/29齐，完成docs另全CI后续治理3d→3e→3f | 常驻                    |
-| [exec-plans/tech-debt-tracker.md](exec-plans/tech-debt-tracker.md)               | 技术债台账（现42项，新增TD-PERF-003旧失败删除新代缓存风险待核实仅登记；旧41及更早历史保持）                                               | 常驻                    |
-| [local-acceptance-cleanup.md](local-acceptance-cleanup.md)                       | `.local-acceptance/` 本地产物清理边界与手动脚本说明                                                                                       | 常驻                    |
-| [HARNESS-RULES.md](HARNESS-RULES.md)                                             | 施工规则（竣工验收后按其 §14 归档）                                                                                                       | 常驻（施工期）          |
-| [WORKSPACE_ROUTE_ISOLATION.md](WORKSPACE_ROUTE_ISOLATION.md)                     | 工作区路由隔离说明（2026-09-06）                                                                                                          | 已归档-只读（事件复盘） |
+| 文档                                                                             | 职责                                                                              | 状态                    |
+| -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | ----------------------- |
+| [AGENTS.md](../AGENTS.md)                                                        | 智能体入口地图（≤100 行）                                                         | 常驻                    |
+| [ARCHITECTURE.md](../ARCHITECTURE.md)                                            | 领域与包分层、依赖方向规则与验证点                                                | 常驻                    |
+| [README.md](../README.md)                                                        | 项目简介与本地起步                                                                | 常驻                    |
+| [CI.md](CI.md)                                                                   | 框架判定（非 Tauri）与 CI 决策记录                                                | 常驻                    |
+| [GATES.md](GATES.md)                                                             | 门禁清单（11 项 CI 链 + 2 个本地 hook + 豁免机制）                                | 常驻                    |
+| [RELIABILITY.md](RELIABILITY.md)                                                 | 可靠性机制与发布链路 runbook（逐步对应 deploy-production.yml）                    | 常驻                    |
+| [QUALITY_SCORE.md](QUALITY_SCORE.md)                                             | 按域质量评分（可复算依据）                                                        | 常驻                    |
+| [design-docs/core-beliefs.md](design-docs/core-beliefs.md)                       | 核心信念（争议裁决依据）                                                          | 常驻                    |
+| [exec-plans/active/harness-migration.md](exec-plans/active/harness-migration.md) | 当前3e③日期候选179/13逆AST/47及29齐；源码干净HEAD全CI后续解析3f，3f后整批人工验收 | 常驻                    |
+| [exec-plans/tech-debt-tracker.md](exec-plans/tech-debt-tracker.md)               | 技术债现45项，新增TD-WEB-008旧抽屉闭包候选仅登记；原历史保持                      | 常驻                    |
+| [local-acceptance-cleanup.md](local-acceptance-cleanup.md)                       | `.local-acceptance/` 本地产物清理边界与手动脚本说明                               | 常驻                    |
+| [HARNESS-RULES.md](HARNESS-RULES.md)                                             | 施工规则（竣工验收后按其 §14 归档）                                               | 常驻（施工期）          |
+| [WORKSPACE_ROUTE_ISOLATION.md](WORKSPACE_ROUTE_ISOLATION.md)                     | 工作区路由隔离说明（2026-09-06）                                                  | 已归档-只读（事件复盘） |
 
 ## docs/adr（架构决策记录，10 篇）
+
+[3e③日期统一证据](evidence/frontend-3e-date-2026-10-16.md)：全runtime13调用/10消费者收敛三原语；179测试、13逆展开完整AST/旧457链及两种真实红绿，浏览器/源码干净HEAD全CI待执行，随后解析3f。
 
 [3e②惰性读取证据](evidence/frontend-3e-lazy-2026-10-16.md)：首次缺失源/已访问复用；21闭包、163测试、8锚点红绿、默认逆AST/70公开457链、原29及新47真实0；overview仍全授权读取，源码580cc72实际干净HEAD完整CI0/179498.691ms，完成docs另全CI后继续，续日期3e→解析3f。
 

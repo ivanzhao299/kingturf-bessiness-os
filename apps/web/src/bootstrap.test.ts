@@ -97,6 +97,7 @@ const readOnlineEditorSources = (): string[] => [
 ];
 
 const readDocumentSupportSources = (): string[] => [
+  readBoundSource('./shared/business-date.ts', 'export const formatBusinessDate ='),
   readBoundSource('./shared/document-read-service.ts', 'export function createDocumentReadService'),
   readBoundSource(
     './shared/document-connector-configuration.ts',

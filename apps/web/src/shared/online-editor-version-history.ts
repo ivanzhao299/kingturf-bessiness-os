@@ -1,4 +1,5 @@
 import { el } from '../dom';
+import { formatBusinessDateTime } from './business-date';
 import { setOperationStatus } from '../dom';
 import type { OnlineBusinessDocument } from './shell-types';
 import type { OnlineEditorContext } from './online-editor-types';
@@ -35,7 +36,7 @@ export function createOnlineEditorVersionHistory(
     versionItem.append(
       el('strong', '', `V${String(item.version)}`),
       el('span', '', item.changeSummary),
-      el('small', '', item.createdAt ? new Date(item.createdAt).toLocaleString('zh-CN') : ''),
+      el('small', '', item.createdAt ? formatBusinessDateTime(new Date(item.createdAt)) : ''),
     );
     versionItem.addEventListener('click', () => {
       body.innerHTML = sanitizeBusinessDocumentHtml(

@@ -1,4 +1,5 @@
 import { el } from '../dom';
+import { formatBusinessDateTime } from './business-date';
 
 type DocumentLibraryPorts = Readonly<{
   renderDocumentConnectors: (connectorGrid: HTMLElement, saved?: boolean) => void;
@@ -179,7 +180,7 @@ export function appendDocumentLibrary(
               el('strong', '', item.actorName ?? '系统用户'),
               el('span', '', item.action.replace('business-document.', '')),
               el('span', '', item.documentTitle ?? item.targetId ?? '文档配置'),
-              el('time', '', new Date(item.occurredAt).toLocaleString('zh-CN')),
+              el('time', '', formatBusinessDateTime(new Date(item.occurredAt))),
               el('small', '', `关联号 ${item.correlationId}`),
             );
             auditList.append(row);

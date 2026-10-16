@@ -1,4 +1,5 @@
 import { el } from '../dom';
+import { formatBusinessDate } from '../shared/business-date';
 import { openForm } from '../shared/forms';
 import type { CostMatrixAttention, CostMatrixSort } from './types';
 import type { CostViewContext } from './pricing-view-ports';
@@ -279,7 +280,7 @@ export function appendCostLedgerRows(context: CostViewContext): void {
       completeness,
       cost,
       stateCell,
-      el('span', '', updated ? new Date(updated).toLocaleDateString('zh-CN') : '—'),
+      el('span', '', updated ? formatBusinessDate(new Date(updated)) : '—'),
       action,
     );
     for (const [index, label] of [

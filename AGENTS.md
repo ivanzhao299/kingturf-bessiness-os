@@ -8,14 +8,12 @@ KingTurf 业务操作系统：面向草坪行业外贸业务的 ERP（CRM→报�
 
 ## 如何开始（渐进式披露：先地图，再细节）
 
-现时3e②：按route首次缺失源读取/已访问复用候选已完成163测试、原29及新47浏览器护栏，公开70/457断言链及默认逆AST守恒；root749/完整158/AST3/格式5、8新runtime≤139/完整106/AST5，29豁免保持。现45台账，TD-WEB-008旧抽屉候选仅登记。源码580cc72稳定干净实际HEAD完整CI真实0/179498.691ms，结束HEAD不变/树空；完成docs另全CI后续日期3e→解析3f；日期统一3e及解析3f尚未完成，继续至3f后整批人工验收。下段3e①为前一检查点历史。
-
-3e①store守恒完成：源码fc14d50稳定干净实际HEAD全CI0/184438.376ms；root704/完整函数160/AST3，五runtime≤215/函数50/AST5，完整class逆展开/70公开457链/原114+六契约120/五红绿/新41及原fixture29齐；撤入口豁免31→29，44台账仅登记旧疑点。尚非真正lazy或3e完成；完成docs实际HEAD另全CI后续惰性加载/日期3e→解析3f，3f后整批人工验收。详见计划§7。
+现时3e③日期候选已通过179测试、13逆展开/10全文件AST、70公开457链和两种实际红绿、扩展47及原29浏览器；13调用收敛三原语，root749/完整158/AST3/格式5不变，45台账。3e②源码580cc72全CI0/179498.691ms与完成docs382d7f0全CI0/178385.802ms；日期源码实际干净HEAD全CI待执行，之后解析3f，3f后整批人工验收。当前唯一进度见计划§7与最新证据，历史检查点留计划。
 
 - 架构总览与依赖方向：见 `ARCHITECTURE.md`
 - 设计理念与操作原则（争议裁决依据）：见 `docs/design-docs/core-beliefs.md`
-- 当前执行计划与进度（3e①store守恒完成，续真正惰性加载/日期→解析3f，原Playwright补跑保持）：见 `docs/exec-plans/active/` §4.4及§7
-- 已知技术债（44 条台账，含已解决历史项及仅登记的TD-WEB-004/005/006/007、TD-TEST-007、待核实TD-PERF-003）：见 `docs/exec-plans/tech-debt-tracker.md`
+- 当前执行计划与进度（3e③日期候选验证完成，源码全CI后续解析3f；原Playwright补跑保持）：见 `docs/exec-plans/active/` §4.4及§7
+- 已知技术债（45 条台账，含历史解决项及仅登记的旧门控、顶层挂载、抽屉等候选）：见 `docs/exec-plans/tech-debt-tracker.md`
 - CI 与发布决策（非 Tauri，仅 workflow_dispatch 部署，无 tag/Release）：见 `docs/CI.md`
 - 全部文档索引：见 `docs/index.md`
 - 关键决策记录：见 `docs/adr/`（10 个 ADR）

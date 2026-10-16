@@ -1,4 +1,5 @@
 import { el } from '../dom';
+import { formatBusinessDate } from '../shared/business-date';
 import { openForm } from '../shared/forms';
 import type { OperationsViewContext } from './operations-view-ports';
 import { appendComplaintNcrAction } from './complaint-ncr';
@@ -91,7 +92,7 @@ export function createComplaintRow(
     el(
       'td',
       recordText(complaint, 'overdue', 'overdue') === 'true' ? 'danger-note' : '',
-      due ? new Date(due).toLocaleDateString('zh-CN') : '—',
+      due ? formatBusinessDate(new Date(due)) : '—',
     ),
     actionCell,
   );

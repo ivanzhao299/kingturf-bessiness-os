@@ -1,4 +1,5 @@
 import { el } from '../dom';
+import { businessHeadingDateFormatter } from '../shared/business-date';
 import { brandMark } from '../brand';
 import { openForm } from '../shared/forms';
 import {
@@ -241,12 +242,7 @@ export function createShellOverview(
   content.append(routeContext);
   const header = el('header', 'topbar');
   const title = el('div');
-  const today = new Intl.DateTimeFormat('zh-CN', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    weekday: 'short',
-  }).format(new Date());
+  const today = businessHeadingDateFormatter().format(new Date());
   title.append(el('p', 'eyebrow', `经营总览 · ${today}`), el('h1', '', '经营概览'));
   title.append(el('p', 'page-subtitle', '经营指标、重点待办与异常事项'));
   header.append(title);

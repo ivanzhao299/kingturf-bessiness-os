@@ -1,4 +1,5 @@
 import { el } from '../dom';
+import { formatBusinessDate } from './business-date';
 import { buildBusinessDocumentTemplateHtml } from '../business-document-content';
 import { isLegacyBusinessDocumentOutline } from '../business-document-content';
 import type { OnlineEditorPorts, OnlineEditorPermissions } from './online-editor-types';
@@ -134,7 +135,7 @@ export function createOnlineEditorWorkspace(
           documentData.title.split(' · ')[0] ?? documentData.title,
           '',
           '',
-          new Date().toLocaleDateString('zh-CN'),
+          formatBusinessDate(new Date()),
         )
       : (current?.content.html ??
           `<p>${storedBody.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('\n', '<br>')}</p>`),
