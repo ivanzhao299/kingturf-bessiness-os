@@ -460,6 +460,10 @@ export async function runProbes({ send, router, runId, report, expectDialog }) {
         throw error;
       }
     }
+    if (process.argv.includes('--governance-view')) {
+      const { runGovernanceProbes } = await import('./governance-probes.mjs');
+      await runGovernanceProbes({ page, send, router, check });
+    }
     const screenshot = await send('Page.captureScreenshot', { format: 'png' });
     writeFileSync(`/tmp/${runId}-probes.png`, Buffer.from(screenshot.data, 'base64'));
     return {

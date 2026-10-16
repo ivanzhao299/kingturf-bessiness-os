@@ -4,10 +4,61 @@ import { createStubRouter } from './fixtures.mjs';
 import { operationsPermissions, operationsRoutes } from './operations-fixtures.mjs';
 import { withRegisterTools } from './register-fixtures.mjs';
 import {
+  governancePermissions,
+  governancePaths,
+  governanceSurfaces,
+  withGovernanceView,
+} from './governance-fixtures.mjs';
+import {
   documentEditorId,
   documentEditorRoutes,
   withDocumentEditor,
 } from './document-editor-fixtures.mjs';
+
+test('governance overlay supplies exact read surfaces, coherent metrics and the employee array DTO', async () => {
+  const original = createStubRouter();
+  const overlay = withGovernanceView(createStubRouter());
+  const baseline = (await original.respond('/api/v1/auth/session', 'GET')).value;
+  const expanded = (await overlay.respond('/api/v1/auth/session', 'GET')).value;
+  assert.deepEqual(expanded.permissions, [
+    ...new Set([...baseline.permissions, ...governancePermissions]),
+  ]);
+  assert.deepEqual(
+    (await original.respond('/api/v1/auth/session', 'GET')).value.permissions,
+    baseline.permissions,
+  );
+  assert.equal(governanceSurfaces.length, 11);
+  assert.equal(new Set(governancePaths).size, 20);
+  let records = 0;
+  for (const path of governancePaths) {
+    const response = await overlay.respond(path, 'GET');
+    assert.equal(response.status, 200);
+    records += Array.isArray(response.value) ? response.value.length : 1;
+    assert.equal(overlay.counts()[`governance:${path}`], 1);
+  }
+  assert.equal(records, 49);
+  assert.equal(overlay.counts().organizations, 1);
+  assert.equal(Array.isArray((await overlay.respond('/api/v1/employees', 'GET')).value), true);
+  assert.equal(
+    (await overlay.respond('/api/v1/notifications/unread-count', 'GET')).value.unreadCount,
+    3,
+  );
+});
+
+test('governance overlay refuses writes, unknown paths and nonempty queries without changing defaults', async () => {
+  const original = createStubRouter();
+  const overlay = withGovernanceView(createStubRouter());
+  await assert.rejects(original.respond('/api/v1/audit-events', 'GET'), /unmapped/u);
+  for (const path of governancePaths) {
+    for (const method of ['POST', 'PUT', 'PATCH', 'DELETE'])
+      await assert.rejects(overlay.respond(path, method), /unmapped/u);
+    for (const query of ['q=unknown', 'limit=1'])
+      await assert.rejects(overlay.respond(path, 'GET', new URLSearchParams(query)), /unmapped/u);
+  }
+  for (const path of ['/api/v1/roles/unknown', '/api/v1/role', '/api/v1/unmapped-governance'])
+    await assert.rejects(overlay.respond(path, 'GET'), /unmapped/u);
+  assert.equal(Object.keys(overlay.counts()).length, 0);
+});
 
 test('document editor overlay adds one read grant and exact read-only route-bound fixtures', async () => {
   const original = createStubRouter({ salesViews: true });

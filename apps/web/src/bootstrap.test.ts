@@ -115,6 +115,84 @@ const readDocumentSupportSources = (): string[] => [
   readBoundSource('./shared/document-print.ts', 'export const printOnlineBusinessDocument'),
 ];
 
+const readGovernanceSources = (): string[] => [
+  readBoundSource('./shared/permission-prefix.ts', 'export const hasPermissionPrefix'),
+  readBoundSource('./governance/controller.ts', 'export class GovernanceController'),
+  readBoundSource('./governance/surfaces.ts', 'export const GOVERNANCE_SURFACES'),
+  readBoundSource('./governance/presentation.ts', 'export const governanceItems'),
+  readBoundSource('./governance/audit-workbench.ts', 'export const auditLogWorkbench'),
+  readBoundSource('./governance/workspace-heading.ts', 'export function createGovernanceHeading'),
+  readBoundSource(
+    './governance/workspace-actions.ts',
+    'export function createGovernanceFormActions',
+  ),
+  readBoundSource('./governance/workspace-ordering.ts', 'export function createGovernanceOrdering'),
+  readBoundSource('./governance/workspace-card.ts', 'export function createGovernanceCard'),
+  readBoundSource(
+    './governance/organization-actions.ts',
+    'export function appendGovernanceOrganizationActions',
+  ),
+  readBoundSource(
+    './governance/employee-actions.ts',
+    'export function appendGovernanceEmployeeActions',
+  ),
+  readBoundSource(
+    './governance/identity-role-buttons.ts',
+    'export function createGovernanceRoleButtons',
+  ),
+  readBoundSource(
+    './governance/identity-account-buttons.ts',
+    'export function createGovernanceAccountButtons',
+  ),
+  readBoundSource(
+    './governance/identity-grant-button.ts',
+    'export function createGovernanceGrantButton',
+  ),
+  readBoundSource(
+    './governance/identity-state.ts',
+    'export function appendGovernanceIdentityState',
+  ),
+  readBoundSource(
+    './governance/identity-revoke-grant.ts',
+    'export function appendGovernanceRevokeGrant',
+  ),
+  readBoundSource(
+    './governance/identity-scopes.ts',
+    'export function appendGovernanceIdentityScopes',
+  ),
+  readBoundSource(
+    './governance/identity-actions.ts',
+    'export function appendGovernanceIdentityActions',
+  ),
+  readBoundSource(
+    './governance/master-data-actions.ts',
+    'export function appendGovernanceMasterDataActions',
+  ),
+  readBoundSource(
+    './governance/numbering-actions.ts',
+    'export function appendGovernanceNumberingActions',
+  ),
+  readBoundSource('./governance/rule-actions.ts', 'export function appendGovernanceRuleActions'),
+  readBoundSource(
+    './governance/workflow-actions.ts',
+    'export function appendGovernanceWorkflowActions',
+  ),
+  readBoundSource(
+    './governance/workflow-task-actions.ts',
+    'export function appendGovernanceTaskActions',
+  ),
+  readBoundSource(
+    './governance/notification-actions.ts',
+    'export function appendGovernanceNotificationActions',
+  ),
+  readBoundSource(
+    './governance/registry-actions.ts',
+    'export function appendGovernanceRegistryActions',
+  ),
+  readBoundSource('./governance/workspace-sources.ts', 'export function appendGovernanceSources'),
+  readBoundSource('./governance/workspace.ts', 'export function createGovernanceWorkspace'),
+];
+
 it('translates risk rules and derives the daily commission next action', () => {
   expect(riskRuleLabel('LOW_MARGIN')).toBe('毛利率低于政策门槛');
   expect(riskRuleLabel('OVERDUE_AR')).toBe('存在逾期应收');
@@ -153,6 +231,7 @@ it('captures artificial-turf project handoff fields without test-channel evidenc
     readBoundSource('./bootstrap.ts', 'export function commercialWorkspaceStructure'),
     ...readOnlineEditorSources(),
     ...readDocumentSupportSources(),
+    ...readGovernanceSources(),
     readBoundSource('./crm/customer360-view.ts', 'export function customer360Content'),
     readBoundSource('./shared/shell-presentation.ts', 'export function navIcon'),
     readBoundSource('./shared/role-insights.ts', 'export function roleTaskInsight'),

@@ -422,6 +422,10 @@ try {
       const { withDocumentEditor } = await import('./document-editor-fixtures.mjs');
       suiteRouter = withDocumentEditor(suiteRouter);
     }
+    if (process.argv.includes('--governance-view')) {
+      const { withGovernanceView } = await import('./governance-fixtures.mjs');
+      suiteRouter = withGovernanceView(suiteRouter);
+    }
     if (process.argv.includes('--fault-unmapped-api')) {
       await cdp(
         'Runtime.evaluate',

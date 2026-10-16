@@ -24,6 +24,8 @@
 
 ## docs/adr（架构决策记录，10 篇）
 
+[3d治理证据](evidence/frontend-3d-governance-2026-10-16.md)：28新TS≤187/完整函数142/AST5/root997；完整1124行逆展开/70公开457链/27runtime真红还原114齐，旧新41及正常37/33真0，29与实际HEAD全CI待跑；全200不冒称错误排序/写入覆盖，启动EACCES失败史保留。
+
 [3c⑪剩余共享证据](evidence/frontend-3c11-remaining-shared-2026-10-16.md)：源码32a277e稳定干净实际HEAD全CI0/179131.066ms；12新TS≤101/完整函数95/AST4/root2545，renderer/service与18声明逆证明/70公开457链/12红绿/新37及正常33/29齐，TD-PERF-003仅登记待核实；完成docs另全CI后继续治理3d→3e→3f。
 
 [3c⑩在线文档证据](evidence/frontend-3c10-document-editor-2026-10-16.md)：源码78d726c稳定干净实际HEAD全CI0/181480.679ms；16TS≤172/完整函数165/AST5/root3066，完整800行14逆展开/70公开457链/15目标红绿、旧新37及正常33/29齐，三轮失败史与TD-WEB-005只登记保留；完成docs另全CI后续共享→3d–3f。
