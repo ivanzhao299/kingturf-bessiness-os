@@ -200,6 +200,13 @@ import { qualityInspectionOpenRoutes } from './routes/quality-inspection-open.ts
 import { qualityInspectionTransitionRoutes } from './routes/quality-inspection-transitions.ts';
 import { qualityResultRecordRoutes } from './routes/quality-result-record.ts';
 import { qualityDispositionRoutes } from './routes/quality-disposition.ts';
+import {
+  businessDocumentConnectorReadRoutes,
+  businessDocumentActivityLogReadRoutes,
+  businessDocumentListReadRoutes,
+  businessDocumentReferenceReadRoutes,
+  businessDocumentDetailReadRoutes,
+} from './routes/business-document-reads.ts';
 
 type Json = unknown;
 const permittedDto = <T extends Record<string, unknown>>(
@@ -3684,15 +3691,19 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               'Business document repository unavailable',
               correlationId,
             );
-          return {
-            statusCode: 200,
-            body: {
-              items: await dependencies.businessDocuments.listConnectors(
-                context.actor,
-                canConfigure,
-              ),
-            },
-          };
+          const response = await dispatchRoutes(
+            businessDocumentConnectorReadRoutes({
+              repository: () =>
+                dependencies.businessDocuments as Pick<
+                  NonNullable<ApiDependencies['businessDocuments']>,
+                  'listConnectors' | 'activityLog' | 'list' | 'referenceData' | 'get'
+                >,
+              authorization: context,
+              canConfigure,
+            }),
+            request,
+          );
+          if (response !== null) return response;
         }
         const connectorConfiguration = /^\/api\/v1\/document-connectors\/([A-Z_]+)$/u.exec(
           request.pathname,
@@ -3760,23 +3771,19 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               'Business document repository unavailable',
               correlationId,
             );
-          const q = request.query ?? {};
-          const requestedLimit = q.limit === undefined ? undefined : Number(q.limit);
-          if (
-            requestedLimit !== undefined &&
-            (!Number.isInteger(requestedLimit) || requestedLimit < 1 || requestedLimit > 200)
-          )
-            throw new DomainError('invalid_request', 'limit must be an integer between 1 and 200');
-          return {
-            statusCode: 200,
-            body: {
-              items: await dependencies.businessDocuments.activityLog(context.actor, {
-                ...(q.documentId ? { documentId: uuid(q.documentId, 'documentId') } : {}),
-                ...(q.actorId ? { actorId: uuid(q.actorId, 'actorId') } : {}),
-                ...(requestedLimit === undefined ? {} : { limit: requestedLimit }),
-              }),
-            },
-          };
+          const response = await dispatchRoutes(
+            businessDocumentActivityLogReadRoutes({
+              repository: () =>
+                dependencies.businessDocuments as Pick<
+                  NonNullable<ApiDependencies['businessDocuments']>,
+                  'listConnectors' | 'activityLog' | 'list' | 'referenceData' | 'get'
+                >,
+              authorization: context,
+              parsers: { uuid },
+            }),
+            request,
+          );
+          if (response !== null) return response;
         }
         if (request.pathname === '/api/v1/business-documents' && request.method === 'GET') {
           const grant = authorizeQuery(context, 'business-document:read');
@@ -3787,15 +3794,19 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               'Business document repository unavailable',
               correlationId,
             );
-          return {
-            statusCode: 200,
-            body: {
-              items: await dependencies.businessDocuments.list(request.query?.route, {
-                actor: context.actor,
-                scopes: grant.scopes,
-              }),
-            },
-          };
+          const response = await dispatchRoutes(
+            businessDocumentListReadRoutes({
+              repository: () =>
+                dependencies.businessDocuments as Pick<
+                  NonNullable<ApiDependencies['businessDocuments']>,
+                  'listConnectors' | 'activityLog' | 'list' | 'referenceData' | 'get'
+                >,
+              authorization: context,
+              grant,
+            }),
+            request,
+          );
+          if (response !== null) return response;
         }
         if (
           request.pathname === '/api/v1/business-documents/reference-data' &&
@@ -3809,13 +3820,19 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               'Business document repository unavailable',
               correlationId,
             );
-          return {
-            statusCode: 200,
-            body: await dependencies.businessDocuments.referenceData({
-              actor: context.actor,
-              scopes: grant.scopes,
+          const response = await dispatchRoutes(
+            businessDocumentReferenceReadRoutes({
+              repository: () =>
+                dependencies.businessDocuments as Pick<
+                  NonNullable<ApiDependencies['businessDocuments']>,
+                  'listConnectors' | 'activityLog' | 'list' | 'referenceData' | 'get'
+                >,
+              authorization: context,
+              grant,
             }),
-          };
+            request,
+          );
+          if (response !== null) return response;
         }
         if (request.pathname === '/api/v1/business-documents' && request.method === 'POST') {
           authorizeQuery(context, 'business-document:manage');
@@ -3879,17 +3896,20 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               'Business document repository unavailable',
               correlationId,
             );
-          return {
-            statusCode: 200,
-            body: await dependencies.businessDocuments.get(
-              uuid(businessDocument[1], 'documentId'),
-              {
-                actor: context.actor,
-                scopes: grant.scopes,
-                includeAudit: context.permissions.has('business-document:audit'),
-              },
-            ),
-          };
+          const response = await dispatchRoutes(
+            businessDocumentDetailReadRoutes({
+              repository: () =>
+                dependencies.businessDocuments as Pick<
+                  NonNullable<ApiDependencies['businessDocuments']>,
+                  'listConnectors' | 'activityLog' | 'list' | 'referenceData' | 'get'
+                >,
+              authorization: context,
+              grant,
+              parsers: { uuid },
+            }),
+            request,
+          );
+          if (response !== null) return response;
         }
         const businessDocumentVersion =
           /^\/api\/v1\/business-documents\/([0-9a-f-]+)\/versions$/u.exec(request.pathname);
