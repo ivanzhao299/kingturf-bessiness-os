@@ -1,3 +1,21 @@
+export type CrmPermission =
+  | 'employee:read'
+  | 'customer:read'
+  | 'customer:create'
+  | 'customer:update'
+  | 'customer:lifecycle'
+  | 'customer-ownership:assign'
+  | 'customer-ownership:reassign'
+  | 'customer-activity:create'
+  | 'customer-360:read'
+  | 'lead:read'
+  | 'lead:create'
+  | 'lead-pool:read'
+  | 'lead-pool:claim'
+  | 'lead-pool:release'
+  | 'lead:lifecycle'
+  | 'lead:assign'
+  | 'lead:reassign';
 export type Customer = Readonly<{
   id: string;
   customerNumber?: string;

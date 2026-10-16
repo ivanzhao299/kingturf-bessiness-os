@@ -43,6 +43,17 @@ import {
   governanceNextAction,
 } from './bootstrap';
 
+const readBoundSource = (path: string, anchor: string): string => {
+  const source = readFileSync(new URL(path, import.meta.url), 'utf8');
+  if (
+    !source.trim() ||
+    !source.includes(anchor) ||
+    source.indexOf(anchor) !== source.lastIndexOf(anchor)
+  )
+    throw new Error(`Source must remain bound to a unique implementation anchor: ${path}`);
+  return source;
+};
+
 it('translates risk rules and derives the daily commission next action', () => {
   expect(riskRuleLabel('LOW_MARGIN')).toBe('毛利率低于政策门槛');
   expect(riskRuleLabel('OVERDUE_AR')).toBe('存在逾期应收');
@@ -126,7 +137,13 @@ it('makes authentication and startup progress explicit, single-flight and recove
 });
 
 it('uses the canonical shipment release source and caches repeated document reference reads', () => {
-  const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+  const source = [
+    readBoundSource('./bootstrap.ts', 'const onlineDocumentReadCache'),
+    readBoundSource(
+      './shared/contextual-documents.ts',
+      'export function appendContextualDocuments',
+    ),
+  ].join('\n');
   expect(source).toContain("endpoint: '/api/v1/shipment-releases'");
   expect(source).not.toContain("endpoint: '/api/v1/shipments'");
   expect(source).toContain('const onlineDocumentReadCache = new Map');
@@ -179,7 +196,7 @@ it('provides product-grade register controls for high-frequency business records
 });
 
 it('uses a smooth two-level sidebar with an icon-only collapse control', () => {
-  const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+  const source = readBoundSource('./crm/shell-frame.ts', 'export function createShellSidebar');
   const styles = readFileSync(new URL('./style.css', import.meta.url), 'utf8');
   expect(source).toContain("const sidebarToggle = el('button', 'sidebar-toggle')");
   expect(source).toContain("parent.setAttribute('data-nav-routes'");
@@ -198,7 +215,7 @@ it('uses a smooth two-level sidebar with an icon-only collapse control', () => {
 });
 
 it('uses a dedicated transparent King Turf mark without cropping in compact navigation', () => {
-  const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+  const source = readBoundSource('./crm/shell-frame.ts', 'export function createShellSidebar');
   const styles = readFileSync(new URL('./style.css', import.meta.url), 'utf8');
   expect(source).toContain('brandLogo.src = brandMark');
   expect(source).toContain("brandLogoFrame.setAttribute('aria-label', '金特夫 King Turf')");
@@ -835,7 +852,10 @@ describe('web bootstrap', () => {
   });
 
   it('exposes a downloadable controlled business-document library', () => {
-    const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+    const source = [
+      readBoundSource('./crm/shell-frame.ts', 'export function createShellSidebar'),
+      readBoundSource('./shared/document-library.ts', 'export function appendDocumentLibrary'),
+    ].join('\n');
     expect(appRouteFromHash('#/document-templates')).toBe('document-templates');
     expect(source).toContain("navGroup('业务文档', 'operations'");
     expect(source).toContain('25-客户投诉与不合格闭环单.docx');
@@ -858,7 +878,14 @@ describe('web bootstrap', () => {
     expect(templatesForRoute('shipments').map((template) => template.name)).toContain(
       '发货到货与签收确认单',
     );
-    const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+    const source = [
+      readBoundSource('./bootstrap.ts', 'const openOnlineDocumentEditor'),
+      readBoundSource(
+        './shared/contextual-documents.ts',
+        'export function appendContextualDocuments',
+      ),
+      readBoundSource('./shared/document-library.ts', 'export function appendDocumentLibrary'),
+    ].join('\n');
     expect(source).toContain('新建在线文档');
     expect(source).toContain('保存为新版本');
     expect(source).toContain('/api/v1/business-documents');
@@ -916,10 +943,30 @@ describe('web bootstrap', () => {
     const editorSource = source.slice(editorStart, editorEnd);
     if (!editorSource.trim() || !editorSource.startsWith('const openOnlineDocumentEditor'))
       throw new Error('Document editor source slice must remain bound');
-    const contextualDocumentsSource = source.slice(
-      source.indexOf('for (const route of templateRoutes)'),
-      source.indexOf("const sectionHeader = el('div', 'section-heading')"),
+    const contextualSource = readBoundSource(
+      './shared/contextual-documents.ts',
+      'export function appendContextualDocuments',
     );
+    const recordsSource = readBoundSource('./crm/records.ts', 'export function createCrmRecords');
+    const shellTailStart = source.indexOf('  content.append(createCrmRecords(shell, controller));');
+    const shellTailEnd = source.indexOf('function bootstrapView(', shellTailStart);
+    const recordsStart = recordsSource.indexOf('export function createCrmRecords');
+    const recordsEnd = recordsSource.indexOf("const sectionHeader = el('div', 'section-heading')");
+    if (
+      shellTailStart < 0 ||
+      shellTailEnd <= shellTailStart ||
+      recordsEnd <= recordsStart ||
+      source.lastIndexOf('  content.append(createCrmRecords(shell, controller));') !==
+        shellTailStart ||
+      source.lastIndexOf('function bootstrapView(') !== shellTailEnd ||
+      recordsSource.lastIndexOf("const sectionHeader = el('div', 'section-heading')") !== recordsEnd
+    )
+      throw new Error('Contextual document tail and records prefix must remain uniquely ordered');
+    const shellTail = source.slice(shellTailStart, shellTailEnd);
+    const recordsPrefix = recordsSource.slice(recordsStart, recordsEnd);
+    if (!shellTail.trim() || !recordsPrefix.trim())
+      throw new Error('Contextual slices must not be empty');
+    const contextualDocumentsSource = [contextualSource, shellTail, recordsPrefix].join('\n');
 
     expect(editorSource).toContain('activeVersion = saved.currentVersion');
     expect(editorSource).toContain('继续保存为新版本');
@@ -929,7 +976,10 @@ describe('web bootstrap', () => {
   });
 
   it('keeps the utility-bar title synchronized with route navigation', () => {
-    const workspaceSource = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+    const workspaceSource = readBoundSource(
+      './crm/shell-frame.ts',
+      'export function createShellOverview',
+    );
     const navigationSource = readFileSync(
       new URL('./shared/navigation.ts', import.meta.url),
       'utf8',
