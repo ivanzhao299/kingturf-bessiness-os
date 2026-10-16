@@ -2,6 +2,8 @@
 
 ## 当前候选实测（覆盖下方实施前时态）
 
+**源码完成检查点**：`580cc72`（refactor(web): lazy-load authorized commercial route sources [已测试]）稳定干净实际HEAD完整`pnpm ci:local`真实退出0/179498.691ms；开始/结束HEAD相同、工作树均空，执行期间无编辑/其它测试/构建/浏览器并发。日志`/tmp/kingturf-3e-lazy-580cc72-head-ci-2026-10-16.log`。全链包含回环测试库guard/迁移/13个PG集成文件、lint/type/tests/build/审计，API维持原117文件17099、Web11文件163，登录预算11368/1898、无高危审计项；不把原Playwright写成已执行。下文“待执行源码CI”为候选时点历史；完成docs提交仍须自身实际干净HEAD全CI。回滚点580cc72，前置b210c77，需核后继冲突后独立revert，不自动回滚。
+
 首次缺失源按21route闭包读取，已加载共享源/DOM复用，不实现历史首提案的每次返回刷新或清选择。overview保全授权读取，因此默认overview不减少请求；CRM、治理和文档读取仍各自独立。仅网络data lazy，构造器仍创建全部视图，不声称DOM/JS懒构建。旧公开load/refreshViews与写后刷新范围保持；源lease、public读barrier及成本guard只约束新lazy，不修旧顶层挂载/文档缓存竞态。
 
 - 新增8runtime：store/{dashboard-query,read-owner,route-dependencies,route-read,route-state}、commercial/{workspace-frame,route-dom,route-navigation}。root749 split/完整函数158/AST3/格式5，8runtime最大139行/完整函数106/AST5。入口豁免保持撤销，structure-gate实际0/29豁免，不放宽阈值。

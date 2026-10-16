@@ -3666,6 +3666,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+2026-10-16，3e②源码完成：580cc72稳定干净实际HEAD完整pnpm ci:local真实0/179498.691ms，开始结束HEAD相同/树空，无并发编辑/测试/构建/浏览器。原API117/17099、Web11/163、工具32、PG/预算/审计齐；47最终NHQUkp采用有界hold/两响应body结束+350ms及两真实帧稳定窗口，原29 suWvy6真0，独立最终审无阻塞。完整证据/失败史及回滚580cc72←b210c77见[3e②证据](../../evidence/frontend-3e-lazy-2026-10-16.md)。完成docs另实际HEAD全CI后继续3e日期统一→独立畸形解析3f，不重复许可、3f后整批人工验收。
+
 2026-10-16，3e②候选实施与定向验证：首次缺失源按21route依赖读取；已加载共享snapshot/DOM复用，不实施首提案“每次返回GET/清选择”，overview全授权读取不减少默认请求，仅data lazy非DOM/JS。root749/完整158/AST3/格式5、8新runtime≤139/函数106/AST5，70公开/457完整链/旧其它测试字节及默认controller/装配/列表安装逆AST相等；原120+新43=163绿，8锚点真实逐个红/还原绿。原29 suWvy6及新47 b1wV1S真实0，后者原41+6lazy包含不同payload晚响应与503真实retry；原driver/网络硬闸不变。TD-WEB-008旧写后drawer闭包仅登记，现45项，旧默认不修；新lazy显式复用最近绑定。候选失败史/范围更正/浏览器计数均见[3e②证据](../../evidence/frontend-3e-lazy-2026-10-16.md)。源码提交及稳定干净HEAD全CI待真实执行；日期统一3e和解析3f尚未完成，继续至3f后整批人工验收。
 
 2026-10-16，3e②真实lazy实施前：3e①完成docs b210c77稳定干净实际HEAD完整CI真实0/181086.562ms，结束HEAD不变/树空（`/tmp/kingturf-3e-store-b210c77-head-ci-2026-10-16.log`）。TD-ARCH002追加可观察请求/状态变化登记，仍44顶层/旧历史保留，后续单独lazy提交不混fc14d50。两轮独立21route依赖闭包含三readiness/CRM引用/overview全域及跨order360风险订单；公开load全权限/refresh显式无权限过滤和写后范围不缩。设计审否决离线摘子树闭包失联，改稳定live workspace/status、保immutable/新child组/独立ready；source lease+public读barrier与成本波次接受guard/工作区epoch/会话销毁、自有visit busy/失败显式retry，未加载≠空且相同data不重绘。仅数据lazy非DOM/JS code split，不修旧TDWEB004/006/007或PERF003，不把原Playwright当已跑；实际实现/新负向/浏览器与CI结果待后补，见[3e②设计](../../evidence/frontend-3e-lazy-2026-10-16.md)。
