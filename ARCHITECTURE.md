@@ -39,7 +39,7 @@ packages/{types, config} ──→ 零依赖
 | 履约       | production、manufacturing、mrp、procurement、quality、shipment、complaint                                                                                                           |
 | 财务与治理 | collection、commission、risk、dashboard、order-360、production-cost                                                                                                                 |
 
-**前端（apps/web/src，批次3小步拆分中）**：登录流（entry/login-flow）→ 懒加载工作台（bootstrap.ts，仍含commercial 21子域视图/governance）；旧基线16,082 split行，3a完成15,243，3b未提交候选13,757，未结清巨石债务。运行依赖单向：`bootstrap→crm/{controller,records,shell-frame}`，records→customer/lead-records→shared/forms/dom；`bootstrap→shared/{forms,locale,navigation,crm-http,commercial-http,document-library,contextual-documents}`。类型经crm/types、commercial/types、shared/shell-types作type-only桥接；bootstrap保留70原公开绑定，shared/CRM不反向import入口，必要plain函数引用ports不提前读取权限/缓存/会话。3b尚待稳定HEAD全CI；能力读源已由用户授权47a8ee5、独立门禁36b1153改为按排除策略纳入的入口静态运行时TS图，不宣称完整动态调用可达性；各步证据/回滚见计划§4.3及§7。
+**前端（apps/web/src，批次3小步拆分中）**：登录流（entry/login-flow）→ 懒加载工作台（bootstrap.ts，仍含commercial 21子域视图/governance）；旧基线16,082 split行，3a完成15,243，3b完成13,757，未结清巨石债务。运行依赖单向：`bootstrap→crm/{controller,records,shell-frame}`，records→customer/lead-records→shared/forms/dom；`bootstrap→shared/{forms,locale,navigation,crm-http,commercial-http,document-library,contextual-documents}`。类型经crm/types、commercial/types、shared/shell-types作type-only桥接；bootstrap保留70原公开绑定，shared/CRM不反向import入口，必要plain函数引用ports不提前读取权限/缓存/会话。3b源码487d698已稳定干净HEAD完整CI0；能力读源已由用户授权47a8ee5、独立门禁36b1153改为按排除策略纳入的入口静态运行时TS图，不宣称完整动态调用可达性；各步证据/回滚见计划§4.3及§7。
 
 ## 4. 目标分层（改造方向，规则 §4.1 存量适配）
 

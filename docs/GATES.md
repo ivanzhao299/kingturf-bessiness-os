@@ -23,7 +23,7 @@
 
 3a唯一现时总表：[公共层检查点](evidence/frontend-3a-checkpoint-2026-10-16.md)。七个新TS模块全部实测≤800/AST≤4、62个有body函数最长175；原31不撤。各下段快照及各小步证据中的“待CI/尚未实施”为历史时点，以该总表及后补实测为准，不把局部114/CDP当稳定HEAD完整CI。
 
-3b收尾候选：[CRM域证据](evidence/frontend-3b-crm-2026-10-16.md)。新模块≤800/AST≤5/最长完整函数191，114与四目标变异/七场景CDP通过；能力读源阻塞经用户授权47a8ee5、独立修正36b1153解除，22自测/六真实权限与路径红绿/39-19规则守恒见[门禁证据](evidence/frontend-capability-runtime-graph-2026-10-16.md)。待3b独立源码提交及稳定干净HEAD完整CI，不以局部门禁绿代替，原31/其他规则保持。
+3b源码检查点：[CRM域完成证据](evidence/frontend-3b-crm-2026-10-16.md)。487d698稳定干净实际HEAD全CI0/177297.989ms，包含22读源自测/39-19、原114/全部PG链、0硬31软/预算；70绑定457完整断言链、四目标真实红绿和CDP7分开计数。授权47a8ee5/门禁36b1153独立，门禁当时局部绿未倒称独立HEAD全CI；当前完成证据归并的最终文档HEAD另完整复验。
 
 3a早期后补快照（历史）：form86e7026完整CI真实0/182105.292ms；locale两表/函数完整提取、web114/预算11369-1898/七场景CDP通过，独立HEAD完整CI随后。此前form“验证中”为原时点，后续以[locale证据](evidence/frontend-3a-locale-2026-10-16.md)与[form证据](evidence/frontend-3a-form-2026-10-16.md)为准；HTTP/navigation未迁移，不等于整批收尾。
 
