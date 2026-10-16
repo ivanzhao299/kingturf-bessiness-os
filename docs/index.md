@@ -24,6 +24,8 @@
 
 ## docs/adr（架构决策记录，10 篇）
 
+2e工程护栏说明：[Service边界护栏与库存](engineering/service-boundary-guard.md)（授权4aad50a；AST规则、零业务迁移候选、真实CLI注入及静态能力边界；业务提取前待协调复核）。
+
 > D4 裁决：常驻原位。架构改动前先读对应 ADR；与 ADR 冲突的改动须新开 ADR。
 
 | 文档                                                                                                | 状态 |
