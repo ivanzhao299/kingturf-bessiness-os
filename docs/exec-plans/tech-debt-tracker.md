@@ -11,7 +11,9 @@
 
 **TD-WEB-004存量投影登记（2026-10-16，现39项，原38历史保持）**：3c③旧实现CDP前发现，独立只读复核确认正常mount过滤遗漏三族合同文档权限，仅登记不修、不影响守恒迁移。9b52443 bootstrap:687–733前缀仅contract:，111–119类型却含contract-document:/contract-ocr:/contract-signature:；mount:10910–10914过滤后构造controller，load:1240等无法取文档，2990等由空views生成列表。779dea3/85affd3同缺口，实际函数擦类型VM执行日志 `/tmp/kingturf-contract-permission-projection-2026-10-16.log` 中三族六能力false、contract:read/sign true；旧Chrome doc row缺失仅作一致现象，不以缺行单独证明根因。影响限定前端已授予权限的投影/可达性，不推论后端越权、实际生产授予或contract:sign记录回执不可达；API对文档GET仍单独authorizeQuery。修复会改变前端可达行为，须独立授权、独立提交与真实mount回归，当前不得补前缀/改认证/绕过过滤器。详见3c③证据。
 
-**TD-TEST-006复开（2026-10-16，3c⑥）**：全28两次无trace稳定点击超时，既有trace-nav诊断28绿不覆盖首失败；新增四页probe只在失败后读取锁定节点，第三次CQwqNj在procurement desktop1440×1000记录connected实际按钮y1110/高37、中心在viewport外、hit=null、无剩余动画，资源均清理。故当前至少存在首次scroll后最终目标仍在屏外的工具可靠性问题；何时失效/布局或滚动因果待独立定位，不能称业务回归或生产UI故障。先复开登记，任何工具修正须独立最小提交、旧红新绿，不改业务/原3秒/真实节点命中与网络硬闸；条目仍39顶层项，不抹旧收口史。详细日志及边界见[⑥证据](../evidence/frontend-3c6-operations-2026-10-16.md)。
+**TD-TEST-006再次工具收口（2026-10-16，3c⑥）**：先复开登记于业务3f77a81，后独立工具830d1fb稳定干净实际HEAD完整CI0/177187.409ms，业务零diff。FbxNIM首次scroll前metrics1440但app-shell mobile/侧栏无纵向overflow，随后desktop侧栏1488>1000、目标y1071，已证该轮viewport指标先于resize handler；仅加强原同一次60×50ms等待，shell/已有commercial类按640/1024同步，不改click唯一scroll/3秒/命中/物理事件/网络/Playwright。延迟类别VM旧真红→原10不动＋新3/纯JS23绿，提交前myDiOW/提交后7FXldH两次无trace28真0、网络三零/资源清理全真；源码3f77a81独立完整CI0/170456.489ms。类别匹配不证明CSS全过渡结束，不将该因果追认前三轮，也保留诊断观测影响和有限竞态边界；39项不新增。详见[⑥证据](../evidence/frontend-3c6-operations-2026-10-16.md)。
+
+**TD-TEST-006复开（2026-10-16，3c⑥，历史时点）**：全28两次无trace稳定点击超时，既有trace-nav诊断28绿不覆盖首失败；新增四页probe只在失败后读取锁定节点，第三次CQwqNj在procurement desktop1440×1000记录connected实际按钮y1110/高37、中心在viewport外、hit=null、无剩余动画，资源均清理。故当时至少存在首次scroll后最终目标仍在屏外的工具可靠性问题；何时失效/布局或滚动因果待独立定位，不能称业务回归或生产UI故障。先复开登记，任何工具修正须独立最小提交、旧红新绿，不改业务/原3秒/真实节点命中与网络硬闸；条目仍39顶层项，不抹旧收口史。详细日志及边界见⑥证据。
 
 **TD-TEST-006工具收口（2026-10-16，历史时点）**：单责修正3f3aae7稳定干净实际HEAD全CI0/184806.065ms，旧driver移动目标用例真红→新10/纯JS总16绿，提交前/提交后两次无trace合并13绿且未知网络零/自有清理全真；源码9429a31独立全CI0、业务源码随工具零diff。本测试工具条目当时已修复，采样到派发仍有有限竞态，不由新绿反推旧两次失败根因全证；原37历史保持、当时38项，详细边界与完整失败史见3c②证据。
 
@@ -60,7 +62,7 @@
 | TD-TEST-003  | 6 个仓储模块仅 mock 路由级测试，SQL 路径未验证                                                | P2     | 测试          | 无                       | 阶段 5                             | 待处理           |
 | TD-TEST-004  | packages/ui、packages/testing 的占位测试                                                      | P2     | 测试          | 无                       | 阶段 5（前置 D3）                  | 已完成           |
 | TD-TEST-005  | packages/types 占位测试：纯类型包的测试策略未定                                               | P2     | 测试          | 无                       | 阶段 5                             | 待处理           |
-| TD-TEST-006  | 临时CDP导航稳定性：旧移动误点已修；⑥首次scroll后最终目标仍屏外超时待定位                      | P2     | 测试可靠性    | 无（仅测试工具）         | 批次3自有CDP验证                   | 复开（待定位）   |
+| TD-TEST-006  | 临时CDP导航稳定性：移动误点与⑥viewport先于响应布局问题，失败史及残余边界保留                  | P2     | 测试可靠性    | 无（仅测试工具）         | 批次3自有CDP验证                   | 已修复（工具）   |
 | TD-GATE-001  | 无 git hooks / commitlint / lint-staged，脏提交仅靠 CI 兜底                                   | P1     | 门禁          | 无                       | 阶段 3                             | 已完成           |
 | TD-GATE-002  | vitest 无配置文件，参数散落各包 scripts                                                       | P2     | 门禁          | 无                       | 阶段 3                             | 已完成           |
 | TD-GATE-003  | routes覆盖已修复；E1已撤，恢复31旧豁免                                                        | P1     | 工程门禁      | 无                       | 独立门禁任务／阶段5前复核          | 已验收           |

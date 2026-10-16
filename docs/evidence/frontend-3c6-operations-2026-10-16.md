@@ -1,10 +1,20 @@
-# 3c⑥ 制造、采购、MRP 与质量（2026-10-16，候选）
+# 3c⑥ 制造、采购、MRP 与质量（2026-10-16，实施与独立复核完成）
 
 ## 现时检查点
 
 业务候选源码**3f77a81**稳定干净实际HEAD完整`pnpm ci:local`真实exit0/**170456.489ms**，`/tmp/kingturf-3c6-3f77a81-head-ci-2026-10-16.log`；结束HEAD不变/树空。API117文件17099例、web9/114、PG链、读源22/CDP纯JS20、39权限19路径、structure0硬31旧软、预算11368/1898、audit零漏洞通过。36helper逆展开/70公开457链/27新runtime逐目标红→还原114、旧新同口径11与独立静态复核齐。
 
-⑥整体仍待TD-TEST-006工具问题收口，无trace全28失败与trace28绿分别留证；业务全CI绿不替代浏览器组合结果。后续工具修正独立提交、业务源码零diff；完成docs实际HEAD也须完整CI。下方“待实际HEAD CI”为提交前时点历史。
+独立工具修正**830d1fb**稳定干净实际HEAD完整CI真实exit0/**177187.409ms**（`/tmp/kingturf-3c6-tool-830d1fb-head-ci-2026-10-16.log`），结束HEAD不变/树空；业务源码相对3f77a81零diff、原driver10不动＋新3/纯JS23，API117/17099、web114/预算及其余全链/audit通过。提交后无trace7FXldH/28项真实exit0（`/tmp/kingturf-3c6-tool-830d1fb-cdp28-2026-10-16.log`），与提交前myDiOW正常28全部计数一致，DOM78/viewport45/route67/text134/overflow54、网络三零，preview3131854退出/root/profile清理全真。
+
+源码与工具各自真实HEAD全CI、旧新同口径11、两次无trace28、23不同route（21商业主页面+2CRM）只读卡及独立复核齐，⑥实施与独立复核完成，TD-TEST-006再次工具收口；完整失败史/诊断观测影响/不能追认过去全部因果和CSS过渡残余边界保留。只读卡不替代各商业域写矩阵/SQL/真实账号/Playwright。root5848仍含共享残留，3c未整批结清，接续共享职责及既定3d/3e/3f，3f后才整批人工验收。完成状态docs独立提交、实际干净HEAD完整CI后继续，不预填其结果；下方候选/待CI/复开为历史时点。
+
+回滚按依赖顺序：完成docs可独立撤；工具`git revert 830d1fb`只恢复旧viewport等待/撤新工具测试与布局诊断（可能恢复已证可靠性缺口），业务保持；源码`git revert 3f77a81`整体恢复693c42f四原分支/读源/opt-in并撤28新TS，不撤前组权限桥/3f3aae7旧driver修正。TD-WEB-004仍仅登记不修、39项保持。
+
+## 度量口径
+
+主代理实际运行当前`node scripts/analysis/repo-metrics.mjs`为exit0（`/tmp/kingturf-3c6-metrics-new-2026-10-16.log`）；输入693c42f的旧数为**事后只读git快照重放**，不是声称当时原CLI已经跑过。临时`/tmp/kingturf-git-metrics-replay.mjs`读取原版本脚本，除fs/path绑定为git ls-tree/show虚拟只读文件系统外脚本原文保持，不checkout/reset/写旧树，真实exit0（`/tmp/kingturf-3c6-metrics-old-replay-2026-10-16.log`）。范围均apps/packages/tests，.test.mjs不在原脚本测试计数内。
+
+非测试TS228→256、总split54515→55078；root8129→5848，原脚本商业函数跨度约3077→792（本组另有完整AST量取）；root缩进估算≥4层3667→1700、≥7层1764→588、最深14→12，这些是缩进而非AST指标。API app4129/约buildApp3598及其缩进计数不变，未动后端。脚本仅扫root的日期内联5→4是迁出一处的计数效应，**不**据此关闭TD-DUP-004；迁移后全运行图的日期收敛留3e。测试源146文件、65645行（旧65594，差为最小读源list）不等同全部测试文件或CDP计数。
 
 ## 独立工具定位与候选
 
