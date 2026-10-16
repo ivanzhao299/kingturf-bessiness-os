@@ -44,7 +44,14 @@ export function createStubRouter({
   fulfillmentViews = false,
   financeRiskViews = false,
   operationsViews = false,
+  dashboardView = false,
 } = {}) {
+  const dashboardYear = new Date().getUTCFullYear();
+  const dashboardQuery = new URLSearchParams({
+    from: `${String(dashboardYear)}-01-01T00:00:00.000Z`,
+    to: `${String(dashboardYear + 1)}-01-01T00:00:00.000Z`,
+    currency: 'CNY',
+  });
   const holds = new Map();
   const completions = new Map();
   const counts = new Map();
@@ -58,6 +65,7 @@ export function createStubRouter({
       ['/api/v1/organizations', 'organizations'],
       ['/api/v1/customers/cdp-customer-a/360', 'detail'],
       ...(operationsViews ? operationsRoutes : []),
+      ...(dashboardView ? [['/api/v1/executive-dashboard', 'dashboard']] : []),
       ...(financeRiskViews
         ? [
             ['/api/v1/ar-open-items', 'receivables'],
@@ -146,6 +154,8 @@ export function createStubRouter({
     async respond(pathname, method, parameters = new URLSearchParams()) {
       const key = keyFor(pathname);
       if (method !== 'GET' || !key) throw new Error('unmapped synthetic API request');
+      if (key === 'dashboard' && parameters.toString() !== dashboardQuery.toString())
+        throw new Error('unmapped synthetic API request query');
       if (key.startsWith('operations:')) {
         const expected = key === 'operations:complaints' ? 'limit=100' : '';
         if (parameters.toString() !== expected)
@@ -186,18 +196,44 @@ export function createStubRouter({
         };
       const value = {
         ...operationsValues,
+        dashboard: {
+          metrics: {
+            bookedRevenue: {
+              unit: 'CNY',
+              value: '25000',
+              basis: 'CDP合成订单口径',
+              source: 'CDP合成台账',
+            },
+            activeRisks: {
+              unit: '项',
+              value: '1',
+              basis: 'CDP合成风险口径',
+              source: 'CDP合成台账',
+            },
+          },
+          filters: Object.fromEntries(dashboardQuery),
+          refreshedAt: '2026-10-01T12:00:00.000Z',
+          drilldowns: {
+            orders: [{ orderNumber: 'CDP-DASH-SO-A', total: '25000', margin: '5000' }],
+            risks: [
+              { severity: 'HIGH', score: 45, state: 'OPEN', salesOrderId: 'cdp-dash-order-a' },
+            ],
+          },
+        },
         session:
           salesViews ||
           pricingViews ||
           creditContractViews ||
           fulfillmentViews ||
           financeRiskViews ||
-          operationsViews
+          operationsViews ||
+          dashboardView
             ? {
                 ...session,
                 permissions: [
                   ...session.permissions,
                   ...(operationsViews ? operationsPermissions : []),
+                  ...(dashboardView ? ['executive-dashboard:read'] : []),
                   ...(salesViews
                     ? ['opportunity:read', 'ctr:read', 'technical-solution:read']
                     : []),

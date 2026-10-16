@@ -16,7 +16,7 @@
 - **当前执行状态（2026-10-16，3c⑤完成、续⑥）**：00766d6稳定干净实际HEAD完整CI0/175184.510ms；17/21商业主视图已迁、9新TS≤232/完整函数116/AST5/root8129，15helper逆展开/70公开457链/八目标红绿齐，旧新组合16及全部24真0。合成只读/19不同route含CRM不替代写矩阵或Playwright，TD-WEB-004仅登记39项保持；完成docs另全CI后续⑥，不重复许可，3f后整批人工验收不变。上方各3c“当前”段为其时点历史。
 - **当前执行状态（2026-10-16，3c⑥实施与独立复核完成）**：源码3f77a81实际干净HEAD全CI0/170456.489ms、独立工具830d1fb同口径0/177187.409ms；28新TS≤221/完整函数143/AST5/root5848，36逆展开/70公开457链/27目标红绿/旧新11/两次无trace28齐、TD006再次工具收口。21商业主视图已迁不等于共享残留/巨石清零，完成docs实际HEAD全CI后继续3c共享→3d/3e/3f，不重复许可，3f后整批验收及Playwright补跑/冻结区/39项保持。
 - **规则文档**：`docs/HARNESS-RULES.md`（施工期常驻，竣工验收后按 §14 拆解归档）
-- **配套文件**：问题清单 `docs/exec-plans/tech-debt-tracker.md`（39 条，含已解决历史项、CDP工具TD-TEST-006及仅登记的TD-WEB-004）；CI 决策 `docs/CI.md`；度量脚本 `scripts/analysis/repo-metrics.mjs`
+- **配套文件**：问题清单 `docs/exec-plans/tech-debt-tracker.md`（40 条，含已解决历史项及仅登记的TD-WEB-004、TD-TEST-007）；CI 决策 `docs/CI.md`；度量脚本 `scripts/analysis/repo-metrics.mjs`
 
 ## 0.5 ZCode 执行契约（计划确认后对每次执行会话生效）
 
@@ -3660,6 +3660,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+2026-10-16，3c⑦共享装配候选：输入⑥完成docs eb86107稳定干净实际HEAD全CI0/183941.039ms。9新TS（8runtime/1type）≤300/完整函数148/AST5，root5848→5203、商业函数792→160/AST2；实际10helper逆展开整入口业务AST相等、独立21运行时导入边及剩余import顺序相等、70公开457链冻结。原未适配3fail111pass后只改读源组织，八真实runtime逐个真红→完全还原114绿；原editor广源submit实际依赖CTR的精度缺口先登记TD-TEST-007、现40项，本轮不修断言/文档业务。独立只读复核无阻塞，局部type/lint/0硬31旧软/39-19/build11369-1898/纯JS24绿；旧63eigD/新KaKJO2同口径全29真0，计数同为80/47/69/142/56、网络三零/自有资源全清理，29case不是29域（仍23不同route含CRM）或写矩阵/Playwright。源码提交后实际干净HEAD全CI待跑，不预填；首type缺type import/patch失败零应用史保留。回滚本组源码/读源/新opt-in整组revert，前组driver/权限桥不撤，docs独立。共享editor/listtools等继续，不提前3d/3e/3f或巨石清零；TD-WEB-004仅登记/Playwright补跑/3f后整批人工验收不变，见[⑦证据](../../evidence/frontend-3c7-commercial-assembly-2026-10-16.md)。
 
 2026-10-16，3c⑥实施与独立复核完成：源码3f77a81实际干净HEAD完整CI真实0/170456.489ms，独立工具830d1fb同口径0/177187.409ms，各结束HEAD不变/树空，API117/17099、web114/PG链/39-19/0硬31旧软/预算11368-1898/audit绿；36helper整入口逆展开/70公开457链/27实际runtime目标红→各还原114、旧新11齐。TD006先复开于3f77a81，FbxNIM首滚时metrics桌面但shell移动→失败时desktop侧栏溢出链实证，仅同原60×50 viewport等待增加shell/已有商业区宽度类别同步；延迟类别VM旧真红→原driver10不动＋新3/纯JS23绿，不改click唯一scroll/3秒/命中/物理事件。myDiOW提交前与7FXldH提交后两次无trace28真0、网络三零/自有清理全真，独立审无阻塞，TD006再次工具收口；旧失败/诊断绿/不追认前三轮因果及CSS过渡残余边界保留，39项不新增。root8129→5848、商业函数约3077→792；旧repo-metrics为事后只读git快照脚本重放非伪称当时CLI，日期root5→4是迁出效应不结清DUP004。21主视图已迁不等于3c共享残留/3d–3f完成，完成docs实际HEAD全CI后继续共享职责，不重复索许可；3f后整批人工验收/Playwright九spec补跑/其余冻结区保持。回滚docs独立→工具830d1fb→源码3f77a81，不撤前组权限桥/旧driver，不修TD-WEB-004；见[⑥完整证据](../../evidence/frontend-3c6-operations-2026-10-16.md)。
 

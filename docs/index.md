@@ -17,12 +17,14 @@
 | [QUALITY_SCORE.md](QUALITY_SCORE.md)                                             | 按域质量评分（可复算依据）                                                                                                                             | 常驻                    |
 | [design-docs/core-beliefs.md](design-docs/core-beliefs.md)                       | 核心信念（争议裁决依据）                                                                                                                               | 常驻                    |
 | [exec-plans/active/harness-migration.md](exec-plans/active/harness-migration.md) | 3c⑥源码3f77a81/工具830d1fb各实际HEAD全CI0；36逆展开/70公开457链/27红绿/旧新11/两次正常28齐、TD006工具收口；root5848共享未结清，docs全CI后续共享及3d–3f | 常驻                    |
-| [exec-plans/tech-debt-tracker.md](exec-plans/tech-debt-tracker.md)               | 技术债台账（现39项，含TD-TEST-006工具可靠性及TD-WEB-004仅登记；旧38/37历史保持）                                                                       | 常驻                    |
+| [exec-plans/tech-debt-tracker.md](exec-plans/tech-debt-tracker.md)               | 技术债台账（现40项，含TD-TEST-007断言精度及TD-WEB-004仅登记；旧39/38/37历史保持）                                                                      | 常驻                    |
 | [local-acceptance-cleanup.md](local-acceptance-cleanup.md)                       | `.local-acceptance/` 本地产物清理边界与手动脚本说明                                                                                                    | 常驻                    |
 | [HARNESS-RULES.md](HARNESS-RULES.md)                                             | 施工规则（竣工验收后按其 §14 归档）                                                                                                                    | 常驻（施工期）          |
 | [WORKSPACE_ROUTE_ISOLATION.md](WORKSPACE_ROUTE_ISOLATION.md)                     | 工作区路由隔离说明（2026-09-06）                                                                                                                       | 已归档-只读（事件复盘） |
 
 ## docs/adr（架构决策记录，10 篇）
+
+[3c⑦共享装配证据](evidence/frontend-3c7-commercial-assembly-2026-10-16.md)：9新TS/root5203/商业函数160、10逆展开/21导入边/70公开457链/八目标红绿/旧新29齐；提交后HEAD全CI待跑，TD-TEST-007仅登记、共享残留继续。
 
 [3c⑥制造采购质量完成证据](evidence/frontend-3c6-operations-2026-10-16.md)：源码3f77a81/工具830d1fb各实际干净HEAD全CI0，36逆展开/70公开457链/27红绿/旧新11/两次正常28齐；TD006独立收口/完整失败史/旧metrics事后只读重放口径保留，21主视图已迁但共享未结清。
 

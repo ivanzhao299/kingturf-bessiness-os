@@ -21,6 +21,8 @@
 
 ## 本地 git hooks（`.githooks/`，`pnpm install` 时经 `prepare` 自动激活）
 
+3c⑦共享装配候选：[共享装配证据](evidence/frontend-3c7-commercial-assembly-2026-10-16.md)。9新TS≤300/完整函数148/AST5、root5203/商业函数160；10逆展开/21导入边/70公开457链/八目标红绿/旧新29与纯JS24齐，提交后实际干净HEAD全CI待跑。TD-TEST-007仅登记不修，原31豁免/预算/114冻结，共享残留未结清。
+
 3c⑥完成检查点：[制造采购质量证据](evidence/frontend-3c6-operations-2026-10-16.md)。源码3f77a81/独立工具830d1fb各实际干净HEAD完整CI0；28新TS≤221/完整函数143/AST5、36逆展开/70公开457链/27目标红绿/旧新11/两次正常28及纯JS23齐。TD006先复开后独立旧红新绿工具修复，旧失败保留；只读卡不充作写矩阵/Playwright，原31豁免/预算/driver10/web114冻结，完成docs另全CI后续共享残留。
 
 3c⑤完成检查点：[资金风险证据](evidence/frontend-3c5-finance-risk-2026-10-16.md)。源码00766d6稳定干净实际HEAD完整CI0/175184.510ms；9新TS≤232/完整函数116/AST5、15helper逆展开/70公开457链、八实际runtime目标红→各还原114绿齐。旧新④⑤组合16与全部组合24/网络三零/自有清理全真，纯JS19另计；原114初绿不冒称新源负向覆盖，未真实写矩阵或Playwright，完成docs实际HEAD另全CI。

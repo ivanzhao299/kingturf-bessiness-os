@@ -3,6 +3,36 @@ import assert from 'node:assert/strict';
 import { createStubRouter } from './fixtures.mjs';
 import { operationsPermissions, operationsRoutes } from './operations-fixtures.mjs';
 
+test('dashboard opt-in binds its actual yearly query, one read grant and nonempty drilldowns', async () => {
+  const original = createStubRouter();
+  const dashboard = createStubRouter({ dashboardView: true });
+  const year = new Date().getUTCFullYear();
+  const query = new URLSearchParams({
+    from: `${String(year)}-01-01T00:00:00.000Z`,
+    to: `${String(year + 1)}-01-01T00:00:00.000Z`,
+    currency: 'CNY',
+  });
+  const path = '/api/v1/executive-dashboard';
+  await assert.rejects(original.respond(path, 'GET', query), /unmapped synthetic API request/u);
+  await assert.rejects(dashboard.respond(path, 'POST', query), /unmapped synthetic API request/u);
+  for (const wrong of [
+    new URLSearchParams(),
+    new URLSearchParams({ ...Object.fromEntries(query), currency: 'USD' }),
+    new URLSearchParams([...query, ['extra', '1']]),
+  ])
+    await assert.rejects(dashboard.respond(path, 'GET', wrong), /unmapped synthetic API request/u);
+  const result = await dashboard.respond(path, 'GET', query);
+  assert.equal(result.value.drilldowns.orders.length, 1);
+  assert.equal(result.value.drilldowns.risks.length, 1);
+  const baseline = (await original.respond('/api/v1/auth/session', 'GET')).value;
+  assert.deepEqual(
+    (await dashboard.respond('/api/v1/auth/session', 'GET')).value.permissions.slice(
+      baseline.permissions.length,
+    ),
+    ['executive-dashboard:read'],
+  );
+});
+
 test('operations opt-in binds seventeen exact read routes and twelve read permissions only', async () => {
   const original = createStubRouter();
   const operations = createStubRouter({ operationsViews: true });

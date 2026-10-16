@@ -412,6 +412,7 @@ try {
       fulfillmentViews: process.argv.includes('--fulfillment-views'),
       financeRiskViews: process.argv.includes('--finance-risk-views'),
       operationsViews: process.argv.includes('--operations-views'),
+      dashboardView: process.argv.includes('--dashboard-view'),
     });
     if (process.argv.includes('--fault-unmapped-api')) {
       await cdp(

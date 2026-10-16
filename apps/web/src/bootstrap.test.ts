@@ -126,6 +126,32 @@ it('captures artificial-turf project handoff fields without test-channel evidenc
     readBoundSource('./commercial/commission-ledger.ts', 'export function createCommissionCard'),
     readBoundSource('./commercial/risk-view.ts', 'export function appendRiskView'),
     readBoundSource(
+      './commercial/workspace-readiness.ts',
+      'export function appendWorkspaceReadiness',
+    ),
+    readBoundSource(
+      './commercial/workspace-dashboard.ts',
+      'export function appendWorkspaceDashboard',
+    ),
+    readBoundSource(
+      './commercial/workspace-fulfillment.ts',
+      'export function appendWorkspaceFulfillment',
+    ),
+    readBoundSource('./commercial/workspace-sales.ts', 'export function appendWorkspaceSales'),
+    readBoundSource('./commercial/workspace-finance.ts', 'export function appendWorkspaceFinance'),
+    readBoundSource(
+      './commercial/workspace-operations.ts',
+      'export function appendWorkspaceOperations',
+    ),
+    readBoundSource(
+      './commercial/workspace-routes.ts',
+      'export function assignCommercialRouteViews',
+    ),
+    readBoundSource(
+      './commercial/workspace-legacy-panels.ts',
+      'export function appendLegacyCommercialPanels',
+    ),
+    readBoundSource(
       './commercial/manufacturing-view.ts',
       'export function appendManufacturingView',
     ),
@@ -225,7 +251,13 @@ it('captures artificial-turf project handoff fields without test-channel evidenc
 });
 
 it('uses daily business language instead of analytics jargon in visible workspace copy', () => {
-  const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+  const source = [
+    readBoundSource('./bootstrap.ts', 'export function commercialWorkspaceStructure'),
+    readBoundSource(
+      './commercial/workspace-dashboard.ts',
+      'export function appendWorkspaceDashboard',
+    ),
+  ].join('\n');
   expect(source).toContain('订单贡献明细');
   expect(source).toContain('风险责任明细');
   expect(source).toContain('订单关联业务与证据记录');
@@ -600,7 +632,13 @@ it('matches a route inside multi-workspace data-route-view tokens', () => {
 });
 
 it('binds each major business workbench to one process-stage route', () => {
-  const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+  const source = [
+    readBoundSource('./bootstrap.ts', 'export function commercialWorkspaceStructure'),
+    readBoundSource(
+      './commercial/workspace-routes.ts',
+      'export function assignCommercialRouteViews',
+    ),
+  ].join('\n');
   for (const [workbench, route] of [
     ['pipeline-board', 'opportunities'],
     ['ctr-workbench', 'technical-requirements'],
@@ -999,6 +1037,10 @@ describe('web bootstrap', () => {
     );
     const source = [
       readBoundSource('./bootstrap.ts', 'const openOnlineDocumentEditor'),
+      readBoundSource(
+        './commercial/workspace-legacy-panels.ts',
+        'export function appendLegacyCommercialPanels',
+      ),
       readBoundSource(
         './shared/contextual-documents.ts',
         'export function appendContextualDocuments',

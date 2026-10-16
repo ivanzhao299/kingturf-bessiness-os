@@ -47,31 +47,18 @@ export type { Customer, Lead, Employee, Customer360, CrmApi, CrmPermission } fro
 import { createShellSidebar, createShellOverview } from './crm/shell-frame';
 import { appendDocumentLibrary } from './shared/document-library';
 import { appendContextualDocuments } from './shared/contextual-documents';
-import { appendOpportunityView } from './commercial/opportunity-view';
-import { appendCtrView } from './commercial/ctr-view';
-import { appendSolutionView } from './commercial/solution-view';
-import { appendCostView } from './commercial/cost-view';
-import { appendPolicyView } from './commercial/policy-view';
-import { appendQuoteView } from './commercial/quote-view';
-import { appendCreditView } from './commercial/credit-view';
-import { appendContractView } from './commercial/contract-view';
 import type { CommercialPermission } from './commercial/permissions';
 import { isCommercialPermission } from './commercial/permissions';
 export { isCommercialPermission } from './commercial/permissions';
-import { appendProductionOrdersView } from './commercial/production-orders-view';
-import { appendProductionCostView } from './commercial/production-cost-view';
-import { appendShipmentsView } from './commercial/shipments-view';
-import { appendSalesOrdersView } from './commercial/sales-orders-view';
 import { appendOrder360Content } from './commercial/order360-view';
-import { appendReceivablesView } from './commercial/receivables-view';
-import { appendCollectionsView } from './commercial/collections-view';
-import { appendPaymentsView } from './commercial/payments-view';
-import { appendCommissionView } from './commercial/commission-view';
-import { appendRiskView } from './commercial/risk-view';
-import { appendManufacturingView } from './commercial/manufacturing-view';
-import { appendProcurementView } from './commercial/procurement-view';
-import { appendMrpView } from './commercial/mrp-view';
-import { appendQualityView } from './commercial/quality-view';
+import { appendWorkspaceReadiness } from './commercial/workspace-readiness';
+import { appendWorkspaceDashboard } from './commercial/workspace-dashboard';
+import { appendWorkspaceFulfillment } from './commercial/workspace-fulfillment';
+import { appendWorkspaceSales } from './commercial/workspace-sales';
+import { appendWorkspaceFinance } from './commercial/workspace-finance';
+import { appendWorkspaceOperations } from './commercial/workspace-operations';
+import { assignCommercialRouteViews, assignLegacyRouteViews } from './commercial/workspace-routes';
+import { appendLegacyCommercialPanels } from './commercial/workspace-legacy-panels';
 import type {
   Viewport,
   RoleWorkspaceProfile,
@@ -1513,196 +1500,19 @@ export function commercialWorkspaceStructure(
       ['/api/v1/risk-evaluations', ['risk:read', 'risk:evaluate']],
       ['/api/v1/collection-cases', ['collection:read', 'collection:manage']],
     ]);
-  if (
-    controller &&
-    ['quote:read', 'credit:read', 'contract:read', 'sales-order:read'].some((permission) =>
-      permissions.has(permission as CommercialPermission),
-    )
-  ) {
-    const flow = el('section', 'contract-order-readiness');
-    flow.setAttribute('data-route-view', 'sales-orders');
-    const heading = el('div', 'readiness-heading');
-    heading.append(el('strong', '', '订单释放门禁'), el('span', '', '按当前可见业务数据计算'));
-    flow.append(heading);
-    const steps = el('ol', 'readiness-steps');
-    const readiness = contractOrderReadiness(
-      controller.views.get('/api/v1/quotes') ?? [],
-      controller.views.get('/api/v1/credit-decisions') ?? [],
-      controller.views.get('/api/v1/contracts') ?? [],
-      controller.views.get('/api/v1/sales-orders') ?? [],
-    );
-    for (const [index, step] of readiness.entries()) {
-      const item = el('li', `readiness-step ${step.state}`);
-      item.append(
-        el('span', 'readiness-index', step.state === 'complete' ? '✓' : String(index + 1)),
-        el('span', 'readiness-label', step.label),
-        el('strong', 'readiness-count', String(step.count)),
-      );
-      steps.append(item);
-    }
-    flow.append(steps);
-    workspace.append(flow);
-  }
-  if (
-    controller &&
-    ['cost:read', 'sales-policy:read', 'quote:read'].some((permission) =>
-      permissions.has(permission as CommercialPermission),
-    )
-  ) {
-    const flow = el('section', 'contract-order-readiness quote-readiness');
-    flow.setAttribute('data-route-view', 'quotes');
-    const heading = el('div', 'readiness-heading');
-    heading.append(el('strong', '', '报价生成门禁'), el('span', '', '仅展示当前账号可见数据'));
-    flow.append(heading);
-    const steps = el('ol', 'readiness-steps five-steps');
-    const readiness = quoteWorkflowReadiness(
-      controller.views.get('/api/v1/ctrs') ?? [],
-      controller.views.get('/api/v1/technical-solutions') ?? [],
-      controller.views.get('/api/v1/cost-evaluations') ?? [],
-      controller.views.get('/api/v1/sales-policies') ?? [],
-      controller.views.get('/api/v1/quotes') ?? [],
-    );
-    for (const [index, step] of readiness.entries()) {
-      const item = el('li', `readiness-step ${step.state}`);
-      item.append(
-        el('span', 'readiness-index', step.state === 'complete' ? '✓' : String(index + 1)),
-        el('span', 'readiness-label', step.label),
-        el('strong', 'readiness-count', String(step.count)),
-      );
-      steps.append(item);
-    }
-    flow.append(steps);
-    workspace.append(flow);
-  }
-  if (
-    controller &&
-    ['ar:read', 'bank-payment:read', 'collection:read', 'legal-case:read'].some((permission) =>
-      permissions.has(permission as CommercialPermission),
-    )
-  ) {
-    const queue = el('section', 'cash-risk-summary');
-    queue.setAttribute('data-route-view', 'receivables');
-    const heading = el('div', 'readiness-heading');
-    heading.append(el('strong', '', '今日资金与债权队列'), el('span', '', '异常优先'));
-    queue.append(heading);
-    const collectionRows = controller.views.get('/api/v1/collection-cases') ?? [];
-    const legalQueueVisible =
-      collectionRows.length > 0 &&
-      collectionRows.every(
-        (item) =>
-          Array.isArray(item.legalHandoffs) &&
-          item.legalHandoffs.every((handoff: unknown) =>
-            ['REQUESTED', 'ACCEPTED', 'RETURNED'].includes(String(recordValue(handoff).state)),
-          ),
-      );
-    const summary = cashRiskSummary(
-      controller.views.get('/api/v1/ar-open-items') ?? [],
-      controller.views.get('/api/v1/bank-payments') ?? [],
-      collectionRows,
-    );
-    const grid = el('div', 'cash-risk-grid');
-    for (const [label, value, tone] of [
-      ['逾期应收', summary.overdueReceivables, 'danger'],
-      ['待核销收款', summary.unappliedPayments, 'attention'],
-      ['承诺已违约', summary.brokenPromises, 'danger'],
-      ['法务待受理', summary.legalPending, 'warning'],
-    ] as const) {
-      if (label === '逾期应收' && !permissions.has('ar:read')) continue;
-      if (label === '待核销收款' && !permissions.has('bank-payment:read')) continue;
-      if (label === '承诺已违约' && !permissions.has('collection:read')) continue;
-      if (
-        label === '法务待受理' &&
-        (!permissions.has('legal-case:read') ||
-          !permissions.has('collection:read') ||
-          !legalQueueVisible)
-      )
-        continue;
-      const item = el('article', `pipeline-metric ${value > 0 ? tone : 'success'}`);
-      item.append(el('span', '', label), el('strong', '', String(value)));
-      grid.append(item);
-    }
-    queue.append(grid);
-    workspace.append(queue);
-  }
-  if (controller?.dashboard && permissions.has('executive-dashboard:read')) {
-    const dashboard = controller.dashboard,
-      metrics = recordValue(dashboard.metrics),
-      filters = recordValue(dashboard.filters),
-      drilldowns = recordValue(dashboard.drilldowns);
-    const panel = el('section', 'executive-dashboard');
-    const heading = el('div', 'pipeline-heading');
-    const copy = el('div');
-    copy.append(
-      el('p', 'eyebrow', '经营驾驶舱'),
-      el('h2', '', '管理驾驶舱'),
-      el(
-        'p',
-        '',
-        `${currencyLabel(recordText(filters, 'currency', 'currency', 'CNY'))} · ${recordText(filters, 'from', 'from').slice(0, 10)} 至 ${recordText(filters, 'to', 'to').slice(0, 10)} · 刷新 ${recordText(dashboard, 'refreshedAt', 'refreshedAt').slice(0, 16).replace('T', ' ')}`,
-      ),
-    );
-    heading.append(copy);
-    panel.append(heading);
-    const labels: Record<string, string> = {
-      weightedForecast: '加权销售预测',
-      bookedRevenue: '已签订单',
-      grossMargin: '订单毛利',
-      cashCollected: '已核销现金',
-      openReceivable: '应收余额',
-      overdueReceivable: '逾期应收',
-      releasedOrders: '已释放订单',
-      activeRisks: '活动风险',
-      criticalRisks: '严重风险',
-      commissionAccrued: '佣金计提',
-    };
-    const grid = el('div', 'metric-grid executive-metrics');
-    for (const [key, raw] of Object.entries(metrics)) {
-      const metric = recordValue(raw),
-        card = el('article', `metric-card metric-${key}`);
-      card.append(
-        el('span', 'metric-label', labels[key] ?? key),
-        el(
-          'strong',
-          'metric-value',
-          `${recordText(metric, 'unit', 'unit')} ${recordText(metric, 'value', 'value', '0')}`,
-        ),
-        el(
-          'p',
-          'muted',
-          `${recordText(metric, 'basis', 'basis')} · 来源 ${recordText(metric, 'source', 'source')}`,
-        ),
-      );
-      grid.append(card);
-    }
-    panel.append(grid);
-    const orders = Array.isArray(drilldowns.orders) ? drilldowns.orders.map(recordValue) : [],
-      risks = Array.isArray(drilldowns.risks) ? drilldowns.risks.map(recordValue) : [];
-    const details = el('div', 'dashboard-drilldowns'),
-      orderList = el('article', 'dashboard-list'),
-      riskList = el('article', 'dashboard-list');
-    orderList.append(el('h3', '', '订单贡献明细'));
-    for (const order of orders)
-      orderList.append(
-        el(
-          'p',
-          '',
-          `${recordText(order, 'orderNumber', 'orderNumber')} · ${recordText(filters, 'currency', 'currency')} ${recordText(order, 'total', 'total')} · 毛利 ${recordText(order, 'margin', 'margin')}`,
-        ),
-      );
-    riskList.append(el('h3', '', '风险责任明细'));
-    for (const risk of risks)
-      riskList.append(
-        el(
-          'p',
-          '',
-          `${businessStateLabel(recordText(risk, 'severity', 'severity'))} / ${recordText(risk, 'score', 'score')} 分 · ${businessStateLabel(recordText(risk, 'state', 'state'))} · 订单 ${recordText(risk, 'salesOrderId', 'salesOrderId').slice(0, 8)}`,
-        ),
-      );
-    if (!risks.length) riskList.append(el('p', 'success-note', '当前无风险评价。'));
-    details.append(orderList, riskList);
-    panel.append(details);
-    workspace.append(panel);
-  }
+  const assemblyContext = { workspace, status, controller, permissions };
+  appendWorkspaceReadiness(assemblyContext, {
+    recordValue,
+    contractOrderReadiness,
+    quoteWorkflowReadiness,
+    cashRiskSummary,
+  });
+  appendWorkspaceDashboard(assemblyContext, {
+    recordValue,
+    recordText,
+    currencyLabel,
+    businessStateLabel,
+  });
   const fulfillmentViewPorts = {
     recordValue,
     recordText,
@@ -1716,33 +1526,7 @@ export function commercialWorkspaceStructure(
     businessEventLabel,
     businessEventDetailLabel,
   };
-  if (controller && permissions.has('production:read')) {
-    appendProductionOrdersView({
-      workspace,
-      status,
-      controller,
-      permissions,
-      ports: fulfillmentViewPorts,
-    });
-  }
-  if (controller && permissions.has('manufacturing-cost:read')) {
-    appendProductionCostView({
-      workspace,
-      status,
-      controller,
-      permissions,
-      ports: fulfillmentViewPorts,
-    });
-  }
-  if (controller && permissions.has('shipment:read')) {
-    appendShipmentsView({
-      workspace,
-      status,
-      controller,
-      permissions,
-      ports: fulfillmentViewPorts,
-    });
-  }
+  appendWorkspaceFulfillment(assemblyContext, fulfillmentViewPorts);
   const creditContractViewPorts = {
     textValue,
     recordValue,
@@ -1775,56 +1559,13 @@ export function commercialWorkspaceStructure(
     replaceRouteView,
     rebuildWorkspace: () => commercialWorkspaceStructure(viewport, immutable, controller),
   };
-  if (controller && permissions.has('opportunity:read')) {
-    appendOpportunityView(workspace, status, controller, permissions, salesViewPorts);
-  }
-  if (controller && permissions.has('ctr:read')) {
-    appendCtrView(workspace, status, controller, permissions, salesViewPorts);
-  }
-  if (controller && permissions.has('technical-solution:read')) {
-    appendSolutionView(workspace, status, controller, permissions, salesViewPorts);
-  }
-  if (
-    controller &&
-    (permissions.has('cost:read') ||
-      permissions.has('cost-model:read') ||
-      permissions.has('cost-matrix:read'))
-  ) {
-    appendCostView({ workspace, status, controller, permissions, ports: pricingViewPorts });
-  }
-  if (controller && permissions.has('sales-policy:read')) {
-    appendPolicyView({ workspace, status, controller, permissions, ports: pricingViewPorts });
-  }
-  if (controller && permissions.has('quote:read')) {
-    appendQuoteView({ workspace, status, controller, permissions, ports: pricingViewPorts });
-  }
-  if (controller && permissions.has('credit:read')) {
-    appendCreditView({
-      workspace,
-      status,
-      controller,
-      permissions,
-      ports: creditContractViewPorts,
-    });
-  }
-  if (controller && permissions.has('contract:read')) {
-    appendContractView({
-      workspace,
-      status,
-      controller,
-      permissions,
-      ports: creditContractViewPorts,
-    });
-  }
-  if (controller && permissions.has('sales-order:read')) {
-    appendSalesOrdersView({
-      workspace,
-      status,
-      controller,
-      permissions,
-      ports: fulfillmentViewPorts,
-    });
-  }
+  appendWorkspaceSales(
+    assemblyContext,
+    salesViewPorts,
+    pricingViewPorts,
+    creditContractViewPorts,
+    fulfillmentViewPorts,
+  );
   if (controller && permissions.has('sales-order:read') && permissions.has('order-360:read')) {
     const panel = el('section', 'qtc-workbench order-360-workbench');
     const heading = el('div', 'pipeline-heading');
@@ -1859,45 +1600,7 @@ export function commercialWorkspaceStructure(
     commissionNextAction,
     riskRuleLabel,
   };
-  if (controller && permissions.has('ar:read')) {
-    appendReceivablesView({
-      workspace,
-      status,
-      controller,
-      permissions,
-      ports: financeRiskViewPorts,
-    });
-  }
-  if (controller && permissions.has('collection:read')) {
-    appendCollectionsView({
-      workspace,
-      status,
-      controller,
-      permissions,
-      ports: financeRiskViewPorts,
-    });
-  }
-  if (controller && permissions.has('bank-payment:read')) {
-    appendPaymentsView({ workspace, status, controller, permissions, ports: financeRiskViewPorts });
-  }
-  if (
-    controller &&
-    (permissions.has('commission:read') || permissions.has('commission-policy:read'))
-  ) {
-    appendCommissionView({
-      workspace,
-      status,
-      controller,
-      permissions,
-      ports: financeRiskViewPorts,
-    });
-  }
-  if (controller && (permissions.has('risk:read') || permissions.has('risk-policy:read'))) {
-    appendRiskView(
-      { workspace, status, controller, permissions, ports: financeRiskViewPorts },
-      riskPolicyControls,
-    );
-  }
+  appendWorkspaceFinance(assemblyContext, financeRiskViewPorts, riskPolicyControls);
   const operationsViewPorts = {
     recordValue,
     recordText,
@@ -1912,358 +1615,10 @@ export function commercialWorkspaceStructure(
     COMPLAINT_STATE_LABELS,
     requestId,
   };
-  if (
-    controller &&
-    (permissions.has('manufacturing-item:read') ||
-      permissions.has('bom:read') ||
-      permissions.has('routing:read'))
-  ) {
-    const panel = el('section', 'manufacturing-workbench');
-    appendManufacturingView(
-      {
-        workspace,
-        status,
-        controller,
-        permissions,
-        ports: operationsViewPorts,
-      },
-      panel,
-    );
-  }
-  if (
-    controller &&
-    (permissions.has('supplier:read') ||
-      permissions.has('procurement:read') ||
-      permissions.has('inventory:read') ||
-      permissions.has('inventory:move'))
-  ) {
-    appendProcurementView({
-      workspace,
-      status,
-      controller,
-      permissions,
-      ports: operationsViewPorts,
-    });
-  }
-  if (controller && (permissions.has('mrp:read') || permissions.has('mrp-policy:read'))) {
-    appendMrpView({ workspace, status, controller, permissions, ports: operationsViewPorts });
-  }
-  if (
-    controller &&
-    (permissions.has('quality-plan:read') ||
-      permissions.has('quality:read') ||
-      permissions.has('traceability:read') ||
-      permissions.has('complaint:read'))
-  ) {
-    appendQualityView({ workspace, status, controller, permissions, ports: operationsViewPorts });
-  }
-  const commercialRouteTokens: Readonly<Record<string, string>> = {
-    'executive-dashboard': 'overview',
-    'pipeline-board': 'opportunities',
-    'ctr-workbench': 'technical-requirements',
-    'solution-workbench': 'technical-solutions',
-    'cost-workbench': 'costing',
-    'policy-workbench': 'sales-policies',
-    'quote-workbench': 'quotes',
-    'credit-workbench': 'credit-review',
-    'contract-workbench': 'contracts',
-    'order-workbench': 'sales-orders',
-    'order-360-workbench': 'order-360',
-    'ar-workbench': 'receivables',
-    'collection-workbench': 'collections',
-    'payment-workbench': 'payments',
-    'commission-workbench': 'commissions',
-    'risk-workbench': 'business-risks',
-    'manufacturing-workbench': 'manufacturing-master',
-    'procurement-workbench': 'procurement',
-    'mrp-workbench': 'material-planning',
-    'production-workbench': 'production-orders',
-    'quality-workbench': 'quality-inspection',
-    'shipment-workbench': 'shipments',
-  };
-  for (const child of Array.from(workspace.children)) {
-    const routeTokens = Object.entries(commercialRouteTokens).find(([className]) =>
-      child.className.split(' ').includes(className),
-    )?.[1];
-    if (routeTokens) child.setAttribute('data-route-view', routeTokens);
-  }
-  for (const [className, title, description, fields, action, path] of [
-    [
-      'opportunity-pipeline',
-      '商机',
-      '按负责人和阶段管理预计金额、赢率与成交日期',
-      ['商机名称', '客户编号', '金额', '币种', '预计成交日'],
-      '新建商机',
-      '/api/v1/opportunities',
-    ],
-    [
-      'ctr-revisions',
-      '技术需求版本',
-      '编辑需求草稿，提交后保留哈希、附件和审批证据',
-      ['商机编号', '技术需求编号', '标题', '结构化需求'],
-      '保存技术需求草稿',
-      '/api/v1/ctrs',
-    ],
-    [
-      'technical-solution-history',
-      '技术方案',
-      '方案修订精确引用已提交的技术需求版本',
-      ['商机编号', '技术需求版本编号', '方案编码', '规格与假设'],
-      '创建方案修订',
-      '/api/v1/technical-solutions',
-    ],
-    [
-      'cost-explanation',
-      '成本说明',
-      '使用固定币种、单位和已发布模型生成可解释成本决策',
-      ['模型版本编号', '方案修订编号', '成本明细'],
-      '计算成本',
-      '/api/v1/cost-evaluations',
-    ],
-    [
-      'policy-explanation',
-      '销售政策',
-      '显示命中规则、利润率边界、审批要求与原因',
-      ['政策版本编号', '成本决策编号', '报价上下文'],
-      '评估政策',
-      '/api/v1/sales-policy-evaluations',
-    ],
-    [
-      'quote-builder',
-      '报价',
-      '汇总行项目、折扣、成本、利润、有效期与全部版本引用',
-      ['商机编号', '技术需求/方案/成本/政策引用', '报价明细', '有效期'],
-      immutable ? '已签发（只读）' : '创建报价修订',
-      '/api/v1/quotes',
-    ],
-    [
-      'credit-review',
-      '信用审查',
-      '服务器从应收与未分配收款计算信用敞口，显示审批及到期状态',
-      ['报价修订/快照', '敞口快照', '额度与有效期'],
-      '评估信用',
-      '/api/v1/credit-decisions',
-    ],
-    [
-      'contract-evidence',
-      '合同与签署证据',
-      '显示精确报价引用、合同修订、签名回执和不可变哈希',
-      ['报价快照', '合同内容', '签名回执'],
-      '创建合同修订',
-      '/api/v1/contracts',
-    ],
-    [
-      'order-release',
-      '订单释放',
-      '仅使用已签发报价、有效信用决定与已签合同的精确引用',
-      ['报价/信用/合同/签名编号', '订单行'],
-      '释放订单',
-      '/api/v1/sales-orders',
-    ],
-    [
-      'ar-aging',
-      '应收与账龄',
-      '余额由过账与分配推导，不提供人工覆盖',
-      ['客户', '原始金额', '到期日', '剩余余额'],
-      '过账应收',
-      '/api/v1/ar-open-items',
-    ],
-    [
-      'payment-intake',
-      '收款登记',
-      '原始银行载荷、引用与哈希只读且不可删除',
-      ['客户', '银行引用', '金额', '原始载荷'],
-      '登记收款',
-      '/api/v1/bank-payments',
-    ],
-    [
-      'reconciliation',
-      '核销',
-      '按稳定顺序展示匹配解释、分配次序与剩余余额',
-      ['收款余额', '开放项余额', '规范结果哈希'],
-      '运行核销',
-      '/api/v1/reconciliation-runs',
-    ],
-  ] as const) {
-    if (
-      controller &&
-      [
-        '/api/v1/opportunities',
-        '/api/v1/ctrs',
-        '/api/v1/technical-solutions',
-        '/api/v1/cost-evaluations',
-        '/api/v1/sales-policy-evaluations',
-        '/api/v1/quotes',
-        '/api/v1/credit-decisions',
-        '/api/v1/contracts',
-        '/api/v1/sales-orders',
-        '/api/v1/ar-open-items',
-        '/api/v1/bank-payments',
-        '/api/v1/reconciliation-runs',
-      ].includes(path)
-    )
-      continue;
-    const requiredPermission = permittedPaths.get(path),
-      canRead = Boolean(requiredPermission && permissions.has(requiredPermission[0])),
-      canAct =
-        (requiredPermission?.[1] !== undefined && permissions.has(requiredPermission[1])) ||
-        (path === '/api/v1/ctrs' &&
-          (permissions.has('ctr:submit') || permissions.has('ctr:approve'))) ||
-        (path === '/api/v1/quotes' &&
-          (permissions.has('quote:approve') || permissions.has('quote:issue')));
-    if (controller && !canRead && !canAct) continue;
-    const panel = document.createElement('section');
-    panel.className = `commercial-panel ${className}`;
-    const heading = document.createElement('h2');
-    heading.textContent = title;
-    const help = document.createElement('p');
-    help.className = 'commercial-help';
-    help.textContent = description;
-    const form = document.createElement('form');
-    form.className = 'commercial-form';
-    const hint = document.createElement('p');
-    hint.className = 'field-hint';
-    hint.textContent = fields.join(' · ');
-    const request = document.createElement('textarea');
-    request.setAttribute('aria-label', `${title}高级配置请求`);
-    request.placeholder = '{ }';
-    request.disabled = immutable || Boolean(controller && !canAct);
-    form.append(hint, request);
-    const button = document.createElement('button');
-    button.type = 'submit';
-    button.disabled = request.disabled;
-    button.textContent = action;
-    form.append(button);
-    form.addEventListener('submit', (event) => {
-      event.preventDefault();
-      if (!controller) return;
-      try {
-        const parsed = JSON.parse(request.value || '{}') as unknown;
-        if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed))
-          throw new Error('请求必须是键值对象格式');
-        const payload = { ...(parsed as Record<string, unknown>) };
-        const rootId = typeof payload.rootId === 'string' ? payload.rootId : null;
-        delete payload.rootId;
-        const target = (rootId ? commercialRevisionPath(className, rootId) : null) ?? path;
-        setOperationStatus(status, 'loading', '正在提交，请勿重复操作…');
-        button.disabled = true;
-        button.textContent = '处理中…';
-        void controller
-          .submit(target, payload)
-          .then(() => {
-            setOperationStatus(status, 'success', controller.message);
-            evidence.textContent = JSON.stringify(controller.revisionState, null, 2);
-          })
-          .catch((error: unknown) => {
-            setOperationStatus(
-              status,
-              'error',
-              error instanceof Error ? error.message : '操作失败，请稍后重试',
-            );
-          })
-          .finally(() => {
-            button.disabled = false;
-            button.textContent = action;
-          });
-      } catch (error) {
-        setOperationStatus(
-          status,
-          'error',
-          error instanceof Error ? error.message : '请求格式无效',
-        );
-      }
-    });
-    const evidence = document.createElement('details');
-    evidence.className = 'decision-evidence';
-    const summary = document.createElement('summary');
-    summary.textContent = '版本引用与决策证据';
-    evidence.append(summary);
-    const loaded = canRead ? controller?.views.get(path) : undefined;
-    if (loaded) evidence.append(document.createTextNode(JSON.stringify(loaded, null, 2)));
-    else if (controller && !canRead) evidence.hidden = true;
-    if (className === 'ctr-revisions' && controller && !immutable) {
-      const versionId = document.createElement('input');
-      versionId.setAttribute('aria-label', '技术需求版本编号');
-      const expectedCtrVersion = document.createElement('input');
-      expectedCtrVersion.type = 'number';
-      expectedCtrVersion.min = '1';
-      expectedCtrVersion.value = '1';
-      expectedCtrVersion.setAttribute('aria-label', '技术需求预期版本号');
-      const submitCtr = document.createElement('button');
-      submitCtr.type = 'button';
-      submitCtr.textContent = '提交技术需求';
-      submitCtr.hidden = !permissions.has('ctr:submit');
-      submitCtr.addEventListener('click', () => {
-        void controller.submit(`/api/v1/ctr-versions/${versionId.value}/submit`, {
-          expectedVersion: Number(expectedCtrVersion.value),
-        });
-      });
-      const approveCtr = document.createElement('button');
-      approveCtr.type = 'button';
-      approveCtr.textContent = '批准技术需求';
-      approveCtr.hidden = !permissions.has('ctr:approve');
-      approveCtr.addEventListener('click', () => {
-        void controller.submit(`/api/v1/ctr-versions/${versionId.value}/decision`, {
-          decision: 'APPROVED',
-          reason: 'UI approval',
-        });
-      });
-      panel.append(versionId, expectedCtrVersion, submitCtr, approveCtr);
-    }
-    if (className === 'quote-builder' && controller && !immutable) {
-      const revisionId = document.createElement('input');
-      revisionId.setAttribute('aria-label', '报价修订编号');
-      const approve = document.createElement('button');
-      approve.type = 'button';
-      approve.textContent = '批准报价';
-      approve.hidden = !permissions.has('quote:approve');
-      approve.addEventListener('click', () => {
-        void controller
-          .quoteCommand(revisionId.value, 'approve', {
-            decision: 'APPROVED',
-            reason: 'UI approval',
-          })
-          .then(() => {
-            status.textContent = controller.message;
-          });
-      });
-      const issue = document.createElement('button');
-      issue.type = 'button';
-      issue.textContent = '签发报价';
-      issue.hidden = !permissions.has('quote:issue');
-      issue.addEventListener('click', () => {
-        void controller.quoteCommand(revisionId.value, 'issue').then(() => {
-          workspace.classList.add('immutable');
-          request.disabled = true;
-          button.disabled = true;
-          status.textContent = controller.message;
-        });
-      });
-      panel.append(revisionId, approve, issue);
-    }
-    panel.append(heading, help, form, evidence);
-    workspace.append(panel);
-  }
-  const genericRouteTokens: Readonly<Record<string, string>> = {
-    'opportunity-pipeline': 'opportunities',
-    'ctr-revisions': 'technical-requirements',
-    'technical-solution-history': 'technical-solutions',
-    'cost-explanation': 'costing',
-    'policy-explanation': 'sales-policies',
-    'quote-builder': 'quotes',
-    'credit-review': 'credit-review',
-    'contract-evidence': 'contracts',
-    'order-release': 'sales-orders',
-    'ar-aging': 'receivables',
-    'payment-intake': 'payments',
-    reconciliation: 'payments',
-  };
-  for (const child of Array.from(workspace.children)) {
-    const routeTokens = Object.entries(genericRouteTokens).find(([className]) =>
-      child.className.split(' ').includes(className),
-    )?.[1];
-    if (routeTokens) child.setAttribute('data-route-view', routeTokens);
-  }
+  appendWorkspaceOperations(assemblyContext, operationsViewPorts);
+  assignCommercialRouteViews(workspace);
+  appendLegacyCommercialPanels(assemblyContext, immutable, permittedPaths, commercialRevisionPath);
+  assignLegacyRouteViews(workspace);
   return workspace;
 }
 

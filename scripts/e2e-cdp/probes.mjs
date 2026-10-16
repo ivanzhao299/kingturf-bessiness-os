@@ -426,6 +426,21 @@ export async function runProbes({ send, router, runId, report, expectDialog }) {
           }
         });
     }
+    if (process.argv.includes('--dashboard-view'))
+      await check('dashboard-read-view-desktop-mobile', async () => {
+        for (const metrics of [
+          [390, 844, true],
+          [1440, 1000, false],
+        ]) {
+          await page.viewport(...metrics);
+          await page.route('overview');
+          await page.text('.executive-dashboard h2', '管理驾驶舱');
+          await page.text('.executive-dashboard .metric-bookedRevenue', '25000');
+          await page.text('.executive-dashboard .dashboard-list:first-child', 'CDP-DASH-SO-A');
+          await page.text('.executive-dashboard .dashboard-list:last-child', '45 分');
+          await page.noOverflow();
+        }
+      });
     const screenshot = await send('Page.captureScreenshot', { format: 'png' });
     writeFileSync(`/tmp/${runId}-probes.png`, Buffer.from(screenshot.data, 'base64'));
     return {
