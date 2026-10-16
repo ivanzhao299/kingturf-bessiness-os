@@ -32,7 +32,7 @@ const session = {
     'organization:read',
   ],
 };
-export function createStubRouter() {
+export function createStubRouter({ salesViews = false } = {}) {
   const holds = new Map();
   const completions = new Map();
   const counts = new Map();
@@ -45,6 +45,13 @@ export function createStubRouter() {
       ['/api/v1/quotes', 'quotes'],
       ['/api/v1/organizations', 'organizations'],
       ['/api/v1/customers/cdp-customer-a/360', 'detail'],
+      ...(salesViews
+        ? [
+            ['/api/v1/opportunities', 'opportunities'],
+            ['/api/v1/ctrs', 'ctrs'],
+            ['/api/v1/technical-solutions', 'solutions'],
+          ]
+        : []),
     ]).get(pathname);
   return {
     hold(key, query) {
@@ -108,11 +115,67 @@ export function createStubRouter() {
           value: { error: { message: 'CDP合成服务暂不可用，请重试' } },
         };
       const value = {
-        session,
+        session: salesViews
+          ? {
+              ...session,
+              permissions: [
+                ...session.permissions,
+                'opportunity:read',
+                'ctr:read',
+                'technical-solution:read',
+              ],
+            }
+          : session,
         customers: { items: customers },
         cost: { items: [], total: 0, page: 1, pageSize: 20 },
         quotes: { items: [], nextCursor: null },
         organizations: [],
+        opportunities: {
+          items: [
+            {
+              id: 'cdp-opportunity-a',
+              name: 'CDP商机甲',
+              customerId: 'cdp-customer-a',
+              status: 'OPEN',
+              value: { currency: 'CNY', amount: '25000' },
+              probabilityBasisPoints: 3000,
+              expectedCloseDate: '2099-12-31',
+              version: 1,
+            },
+          ],
+          nextCursor: null,
+        },
+        ctrs: {
+          items: [
+            {
+              id: 'cdp-ctr-version-a',
+              ctrId: 'cdp-ctr-a',
+              code: 'CDP-CTR-A',
+              title: 'CDP技术需求甲',
+              opportunityId: 'cdp-opportunity-a',
+              status: 'APPROVED',
+              version: 1,
+              requirements: { application: '足球场', pileHeightMm: 50 },
+              attachments: [],
+            },
+          ],
+          nextCursor: null,
+        },
+        solutions: {
+          items: [
+            {
+              id: 'cdp-solution-version-a',
+              technicalSolutionId: 'cdp-solution-a',
+              code: 'CDP-TS-A',
+              ctrVersionId: 'cdp-ctr-version-a',
+              revision: 1,
+              status: 'FINAL',
+              specification: { productFamily: 'CDP足球草', pileHeightMm: 50, dtex: 12000 },
+              assumptions: ['CDP合成基础条件'],
+            },
+          ],
+          nextCursor: null,
+        },
         detail: {
           customer: customers[0],
           contacts: [],

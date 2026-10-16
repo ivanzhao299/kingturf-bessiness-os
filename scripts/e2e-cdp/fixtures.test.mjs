@@ -63,3 +63,34 @@ test('CDP holds must be explicitly released; detail failure is local synthetic d
   router.detailFailure(true);
   assert.equal((await router.respond('/api/v1/customers/cdp-customer-a/360', 'GET')).status, 503);
 });
+
+test('sales views opt-in adds only three exact GET routes and nonempty synthetic records', async () => {
+  const original = createStubRouter();
+  const sales = createStubRouter({ salesViews: true });
+  for (const path of ['/api/v1/opportunities', '/api/v1/ctrs', '/api/v1/technical-solutions']) {
+    await assert.rejects(original.respond(path, 'GET'), /unmapped synthetic API request/u);
+    await assert.rejects(sales.respond(path, 'POST'), /unmapped synthetic API request/u);
+    const response = await sales.respond(path, 'GET');
+    assert.equal(response.status, 200);
+    assert.equal(response.value.items.length, 1);
+    assert.equal(response.value.nextCursor, null);
+  }
+  assert.equal((await sales.respond('/api/v1/opportunities', 'GET')).value.items[0].status, 'OPEN');
+  assert.equal((await sales.respond('/api/v1/ctrs', 'GET')).value.items[0].status, 'APPROVED');
+  assert.equal(
+    (await sales.respond('/api/v1/technical-solutions', 'GET')).value.items[0].status,
+    'FINAL',
+  );
+  await assert.rejects(
+    sales.respond('/api/v1/technical-solutions/unknown', 'GET'),
+    /unmapped synthetic API request/u,
+  );
+  const originalSession = (await original.respond('/api/v1/auth/session', 'GET')).value;
+  const expandedSession = (await sales.respond('/api/v1/auth/session', 'GET')).value;
+  assert.equal(originalSession.permissions.includes('opportunity:read'), false);
+  assert.deepEqual(expandedSession.permissions.slice(originalSession.permissions.length), [
+    'opportunity:read',
+    'ctr:read',
+    'technical-solution:read',
+  ]);
+});

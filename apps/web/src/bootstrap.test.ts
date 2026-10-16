@@ -88,7 +88,12 @@ it('translates operations codes and derives accountable next actions', () => {
 });
 
 it('captures artificial-turf project handoff fields without test-channel evidence markers', () => {
-  const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+  const source = [
+    readBoundSource('./bootstrap.ts', 'export function commercialWorkspaceStructure'),
+    readBoundSource('./commercial/opportunity-view.ts', 'export function appendOpportunityView'),
+    readBoundSource('./commercial/ctr-view.ts', 'export function appendCtrView'),
+    readBoundSource('./commercial/solution-view.ts', 'export function appendSolutionView'),
+  ].join('\n');
   for (const field of [
     'projectRegion',
     'performanceStandard',

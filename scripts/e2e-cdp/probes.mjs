@@ -203,6 +203,25 @@ export async function runProbes({ send, router, runId, report, expectDialog }) {
       await page.route('costing');
       await page.onlyRoute('costing');
     });
+    if (process.argv.includes('--sales-views')) {
+      for (const [route, title, selector, record] of [
+        ['opportunities', '销售商机', '.pipeline-board .opportunity-card', 'CDP商机甲'],
+        ['technical-requirements', '技术需求', '.ctr-workbench .ctr-row', 'CDP-CTR-A'],
+        ['technical-solutions', '技术方案', '.solution-workbench .solution-card', 'CDP-TS-A'],
+      ])
+        await check(`sales-view-${route}-desktop-mobile`, async () => {
+          for (const metrics of [
+            [390, 844, true],
+            [1440, 1000, false],
+          ]) {
+            await page.viewport(...metrics);
+            await page.route(route);
+            await page.text('[data-route-context] h1', title);
+            await page.text(selector, record);
+            await page.noOverflow();
+          }
+        });
+    }
     const screenshot = await send('Page.captureScreenshot', { format: 'png' });
     writeFileSync(`/tmp/${runId}-probes.png`, Buffer.from(screenshot.data, 'base64'));
     return {
