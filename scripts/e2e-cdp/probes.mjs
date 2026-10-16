@@ -246,6 +246,34 @@ export async function runProbes({ send, router, runId, report, expectDialog }) {
           }
         });
     }
+    if (process.argv.includes('--credit-contract-views')) {
+      const agreementText = async (selector, expected) => {
+        try {
+          await page.text(selector, expected);
+        } catch (error) {
+          const state = await page.evaluate(
+            `(() => {const node=document.querySelector(${JSON.stringify(selector)});return {selector:${JSON.stringify(selector)},present:!!node,matches:!!node?.textContent.includes(${JSON.stringify(expected)}),visible:!!node?.getClientRects().length,hash:location.hash};})()`,
+          );
+          throw new Error(`${error.message}; agreement target ${JSON.stringify(state)}`);
+        }
+      };
+      for (const [route, title, selector, record] of [
+        ['credit-review', '信用审查', '.credit-workbench .qtc-card', '信用已批准'],
+        ['contracts', '合同管理', '.contract-workbench .qtc-card', 'CDP-C-A'],
+      ])
+        await check(`credit-contract-view-${route}-desktop-mobile`, async () => {
+          for (const metrics of [
+            [390, 844, true],
+            [1440, 1000, false],
+          ]) {
+            await page.viewport(...metrics);
+            await page.route(route);
+            await agreementText('[data-route-context] h1', title);
+            await agreementText(selector, record);
+            await page.noOverflow();
+          }
+        });
+    }
     const screenshot = await send('Page.captureScreenshot', { format: 'png' });
     writeFileSync(`/tmp/${runId}-probes.png`, Buffer.from(screenshot.data, 'base64'));
     return {

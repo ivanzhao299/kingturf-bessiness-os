@@ -113,6 +113,12 @@ it('captures artificial-turf project handoff fields without test-channel evidenc
     readBoundSource('./commercial/quote-view.ts', 'export function appendQuoteView'),
     readBoundSource('./commercial/quote-create.ts', 'export function appendQuoteHeading'),
     readBoundSource('./commercial/quote-cards.ts', 'export function appendQuoteCardActions'),
+    readBoundSource('./commercial/credit-view.ts', 'export function appendCreditView'),
+    readBoundSource('./commercial/contract-view.ts', 'export function appendContractView'),
+    readBoundSource(
+      './commercial/contract-documents.ts',
+      'export function createContractDocumentPanel',
+    ),
   ].join('\n');
   for (const field of [
     'projectRegion',

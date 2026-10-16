@@ -21,6 +21,8 @@
 
 ## 本地 git hooks（`.githooks/`，`pnpm install` 时经 `prepare` 自动激活）
 
+3c③局部候选检查点：[信用合同证据](evidence/frontend-3c3-agreements-2026-10-16.md)。四新TS≤196/完整函数147/AST5，7处逆展开/70绑定/457完整断言及三个目标真红→还原114绿；旧9卡片只读CDP绿，新增未冻结文档探头失败与收回均留证。TD-WEB-004仅登记不修、现39项，文档行/OCR/上传与Playwright未覆盖；提交后完整HEAD CI待实际执行。
+
 3c②完成检查点：[成本政策报价证据](evidence/frontend-3c2-pricing-2026-10-16.md)。源码9429a31全CI0/177525.943ms，独立driver3f3aae7全CI0/184806.065ms，均稳定干净实际HEAD；12新TS≤610/完整函数135/AST5，70绑定457断言/114及11目标红绿、真实完整逆展开齐。CDP纯JS16和两次无trace合并13（8不同路由）另计，旧两失败/诊断绿/有限竞态保留；TD-TEST-006工具边界已修复、台账现38原37历史不改。当前仅完成docs归并，文档HEAD另全CI，不混作Playwright/21域全矩阵。
 
 3c②现时后补：9429a31干净HEAD全CI0/177525.943ms；TD-TEST-006工具候选旧红→新driver10/纯JS总16绿、真实无trace合并13绿且网络/资源清理全真。原3秒/断言/onlyRoute/网络硬闸不放宽；工具HEAD全CI仍须真实核验，不由新绿反推旧失败根因全证，见3c②证据。

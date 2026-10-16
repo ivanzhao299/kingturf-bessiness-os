@@ -2,6 +2,46 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createStubRouter } from './fixtures.mjs';
 
+test('credit/contract opt-in binds only the three reachable read routes and nonempty cards', async () => {
+  const original = createStubRouter();
+  const agreements = createStubRouter({ creditContractViews: true });
+  for (const path of ['/api/v1/credit-limits', '/api/v1/credit-decisions', '/api/v1/contracts']) {
+    await assert.rejects(original.respond(path, 'GET'), /unmapped synthetic API request/u);
+    await assert.rejects(agreements.respond(path, 'POST'), /unmapped synthetic API request/u);
+    assert.equal((await agreements.respond(path, 'GET')).status, 200);
+  }
+  assert.equal(
+    (await agreements.respond('/api/v1/credit-decisions', 'GET')).value.items[0].effectiveStatus,
+    'APPROVED',
+  );
+  const contract = (await agreements.respond('/api/v1/contracts', 'GET')).value.items[0];
+  assert.equal(contract.effectiveStatus, 'DRAFT');
+  const baseline = (await original.respond('/api/v1/auth/session', 'GET')).value;
+  const session = (await agreements.respond('/api/v1/auth/session', 'GET')).value;
+  assert.deepEqual(session.permissions.slice(baseline.permissions.length), [
+    'credit:read',
+    'contract:read',
+  ]);
+  const combined = createStubRouter({
+    salesViews: true,
+    pricingViews: true,
+    creditContractViews: true,
+  });
+  assert.equal((await combined.respond('/api/v1/ctrs', 'GET')).value.items[0].code, 'CDP-CTR-A');
+  assert.equal(
+    (await combined.respond('/api/v1/quotes', 'GET')).value.items[0].quoteNumber,
+    'CDP-Q-A',
+  );
+  await assert.rejects(
+    agreements.respond('/api/v1/contract-documents', 'GET'),
+    /unmapped synthetic API request/u,
+  );
+  await assert.rejects(
+    agreements.respond('/api/v1/contract-documents/unmapped', 'GET'),
+    /unmapped synthetic API request/u,
+  );
+});
+
 test('pricing opt-in keeps the default empty ledger and adds only policy GET routes', async () => {
   const original = createStubRouter();
   const pricing = createStubRouter({ pricingViews: true });

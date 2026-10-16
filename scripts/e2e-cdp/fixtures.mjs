@@ -32,7 +32,11 @@ const session = {
     'organization:read',
   ],
 };
-export function createStubRouter({ salesViews = false, pricingViews = false } = {}) {
+export function createStubRouter({
+  salesViews = false,
+  pricingViews = false,
+  creditContractViews = false,
+} = {}) {
   const holds = new Map();
   const completions = new Map();
   const counts = new Map();
@@ -45,6 +49,13 @@ export function createStubRouter({ salesViews = false, pricingViews = false } = 
       ['/api/v1/quotes', 'quotes'],
       ['/api/v1/organizations', 'organizations'],
       ['/api/v1/customers/cdp-customer-a/360', 'detail'],
+      ...(creditContractViews
+        ? [
+            ['/api/v1/credit-limits', 'creditLimits'],
+            ['/api/v1/credit-decisions', 'creditDecisions'],
+            ['/api/v1/contracts', 'contracts'],
+          ]
+        : []),
       ...(pricingViews
         ? [
             ['/api/v1/sales-policies', 'policies'],
@@ -122,7 +133,7 @@ export function createStubRouter({ salesViews = false, pricingViews = false } = 
         };
       const value = {
         session:
-          salesViews || pricingViews
+          salesViews || pricingViews || creditContractViews
             ? {
                 ...session,
                 permissions: [
@@ -131,10 +142,40 @@ export function createStubRouter({ salesViews = false, pricingViews = false } = 
                     ? ['opportunity:read', 'ctr:read', 'technical-solution:read']
                     : []),
                   ...(pricingViews ? ['sales-policy:read'] : []),
+                  ...(creditContractViews ? ['credit:read', 'contract:read'] : []),
                 ],
               }
             : session,
         customers: { items: customers },
+        creditLimits: { items: [], nextCursor: null },
+        creditDecisions: {
+          items: [
+            {
+              id: 'cdp-credit-a',
+              effectiveStatus: 'APPROVED',
+              currency: 'CNY',
+              requestedAmount: '25000',
+              exposureAmount: '5000',
+              creditLimit: '50000',
+              quoteRevisionId: 'cdp-quote-version-a',
+              exposureSnapshotId: 'cdp-exposure-a',
+            },
+          ],
+          nextCursor: null,
+        },
+        contracts: {
+          items: [
+            {
+              id: 'cdp-contract-a',
+              contractNumber: 'CDP-C-A',
+              revision: 1,
+              effectiveStatus: 'DRAFT',
+              content: { paymentTerms: 'CDP合成预付款条款', deliveryTerms: 'CDP合成交付条款' },
+              contentHash: 'cdp-contract-hash',
+            },
+          ],
+          nextCursor: null,
+        },
         cost: {
           items: pricingViews
             ? [

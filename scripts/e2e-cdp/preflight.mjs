@@ -408,6 +408,7 @@ try {
     suiteRouter = suite.createStubRouter({
       salesViews: process.argv.includes('--sales-views'),
       pricingViews: process.argv.includes('--pricing-views'),
+      creditContractViews: process.argv.includes('--credit-contract-views'),
     });
     if (process.argv.includes('--fault-unmapped-api')) {
       await cdp(
