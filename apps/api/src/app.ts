@@ -200,6 +200,7 @@ import { qualityInspectionOpenRoutes } from './routes/quality-inspection-open.ts
 import { qualityInspectionTransitionRoutes } from './routes/quality-inspection-transitions.ts';
 import { qualityResultRecordRoutes } from './routes/quality-result-record.ts';
 import { qualityDispositionRoutes } from './routes/quality-disposition.ts';
+import { businessDocumentTranslationRoutes } from './routes/business-document-translation.ts';
 import { businessDocumentReviewRoutes } from './routes/business-document-review.ts';
 import { businessDocumentVersionRoutes } from './routes/business-document-version.ts';
 import { businessDocumentBindingRoutes } from './routes/business-document-bindings.ts';
@@ -3975,21 +3976,21 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               'Business document repository unavailable',
               correlationId,
             );
-          const b = objectBody(request.body);
-          allow(b, ['expectedVersion', 'targetLocale', 'content']);
-          return {
-            statusCode: 201,
-            body: await dependencies.businessDocuments.createTranslation(
-              uuid(businessDocumentTranslation[1], 'documentId'),
-              {
-                expectedVersion: version(b.expectedVersion),
-                targetLocale: documentLocale(b.targetLocale),
-                ...(b.content === undefined ? {} : { content: jsonObject(b.content, 'content') }),
-              },
-              { actor: context.actor, scopes: grant.scopes },
+          const response = await dispatchRoutes(
+            businessDocumentTranslationRoutes({
+              repository: () =>
+                dependencies.businessDocuments as Pick<
+                  NonNullable<ApiDependencies['businessDocuments']>,
+                  'createTranslation'
+                >,
+              authorization: context,
+              grant,
               correlationId,
-            ),
-          };
+              parsers: { objectBody, allow, uuid, version, jsonObject, documentLocale },
+            }),
+            request,
+          );
+          if (response !== null) return response;
         }
         const businessDocumentActivity =
           /^\/api\/v1\/business-documents\/([0-9a-f-]+)\/activity$/u.exec(request.pathname);
