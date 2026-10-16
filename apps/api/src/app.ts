@@ -200,6 +200,7 @@ import { qualityInspectionOpenRoutes } from './routes/quality-inspection-open.ts
 import { qualityInspectionTransitionRoutes } from './routes/quality-inspection-transitions.ts';
 import { qualityResultRecordRoutes } from './routes/quality-result-record.ts';
 import { qualityDispositionRoutes } from './routes/quality-disposition.ts';
+import { businessDocumentSendRoutes } from './routes/business-document-send.ts';
 import { businessDocumentActivityRoutes } from './routes/business-document-activity.ts';
 import { businessDocumentTranslationRoutes } from './routes/business-document-translation.ts';
 import { businessDocumentReviewRoutes } from './routes/business-document-review.ts';
@@ -4031,46 +4032,29 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               'Business document repository unavailable',
               correlationId,
             );
-          const key = request.headers?.['idempotency-key'];
-          if (!key || key.length < 8 || key.length > 128)
-            throw new DomainError(
-              'invalid_request',
-              'Idempotency-Key header must contain 8 to 128 characters',
-            );
-          const b = objectBody(request.body);
-          allow(b, [
-            'expectedVersion',
-            'channel',
-            'recipientName',
-            'recipientAddress',
-            'subject',
-            'message',
-            'translationId',
-          ]);
-          const channel = documentConnector(b.channel);
-          const rawAddress = boundedString(b.recipientAddress, 'recipientAddress', 320);
-          const recipientAddress =
-            channel === 'EMAIL' ? normalizeContactEmail(rawAddress) : rawAddress;
-          return {
-            statusCode: 202,
-            body: await dependencies.businessDocuments.dispatch(
-              uuid(businessDocumentDispatch[1], 'documentId'),
-              {
-                expectedVersion: version(b.expectedVersion),
-                channel,
-                recipientName: boundedString(b.recipientName, 'recipientName', 200),
-                recipientAddress,
-                subject: boundedString(b.subject, 'subject', 200),
-                message: boundedString(b.message, 'message', 4000),
-                ...(b.translationId
-                  ? { translationId: uuid(b.translationId, 'translationId') }
-                  : {}),
-                idempotencyKey: key,
-              },
-              { actor: context.actor, scopes: grant.scopes },
+          const response = await dispatchRoutes(
+            businessDocumentSendRoutes({
+              repository: () =>
+                dependencies.businessDocuments as Pick<
+                  NonNullable<ApiDependencies['businessDocuments']>,
+                  'dispatch'
+                >,
+              authorization: context,
+              grant,
               correlationId,
-            ),
-          };
+              parsers: {
+                objectBody,
+                allow,
+                uuid,
+                version,
+                boundedString,
+                documentConnector,
+                normalizeContactEmail,
+              },
+            }),
+            request,
+          );
+          if (response !== null) return response;
         }
         return error(404, 'not_found', 'Route not found', correlationId);
       } catch (cause) {
