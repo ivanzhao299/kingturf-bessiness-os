@@ -24,6 +24,8 @@
 
 ## docs/adr（架构决策记录，10 篇）
 
+E1先行固定证据：[authorization守恒候选/773例旧新探针](evidence/e1-authorization-conservation-2026-10-16.md)（授权310c1e2；先完成E1完整验证，再前端前置地图/冲突停报）。
+
 双线B原规则基线与AST候选：[routes结构扫描基线](evidence/routes-structure-baseline-2026-10-16.md)（授权c75dd7b；116文件原G1/G2/G3、31旧豁免及AST候选逐文件数据；实施前审查材料）。
 
 2e工程护栏说明：[Service边界护栏与库存](engineering/service-boundary-guard.md)（工程历史快照保留；2e已人工验收，源码基线c4ab493、验收5e94439＋924fca9，按护栏＋零迁移证据结案、不扩同仓；2f/3/4/5未授权；静态能力边界不扩大）。
