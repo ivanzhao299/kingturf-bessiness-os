@@ -16,7 +16,7 @@
 | [RELIABILITY.md](RELIABILITY.md)                                                 | 可靠性机制与发布链路 runbook（逐步对应 deploy-production.yml）                                                                                                    | 常驻                    |
 | [QUALITY_SCORE.md](QUALITY_SCORE.md)                                             | 按域质量评分（可复算依据）                                                                                                                                        | 常驻                    |
 | [design-docs/core-beliefs.md](design-docs/core-beliefs.md)                       | 核心信念（争议裁决依据）                                                                                                                                          | 常驻                    |
-| [exec-plans/active/harness-migration.md](exec-plans/active/harness-migration.md) | 3c③源码e401d27稳定干净全CI0/182693.526ms；70绑定457链/114/变异/旧新9和组合15齐，TD-WEB-004仅登记，完成状态docs另全CI后续④；Playwright补跑/保护区/3f后整批验收保持 | 常驻                    |
+| [exec-plans/active/harness-migration.md](exec-plans/active/harness-migration.md) | 3c④源码6ade731稳定干净全CI0/182166.585ms；12/21主视图已迁，原70/457/114、11目标红绿及旧新展开11/组合19齐，完成docs另全CI后续⑤；保护区/Playwright补跑/整批验收保持 | 常驻                    |
 | [exec-plans/tech-debt-tracker.md](exec-plans/tech-debt-tracker.md)               | 技术债台账（现39项，含TD-TEST-006工具可靠性及TD-WEB-004仅登记；旧38/37历史保持）                                                                                  | 常驻                    |
 | [local-acceptance-cleanup.md](local-acceptance-cleanup.md)                       | `.local-acceptance/` 本地产物清理边界与手动脚本说明                                                                                                               | 常驻                    |
 | [HARNESS-RULES.md](HARNESS-RULES.md)                                             | 施工规则（竣工验收后按其 §14 归档）                                                                                                                               | 常驻（施工期）          |
@@ -24,7 +24,7 @@
 
 ## docs/adr（架构决策记录，10 篇）
 
-[3c④订单履约候选证据](evidence/frontend-3c4-fulfillment-2026-10-16.md)：12新模块/21逆展开及原type-predicate/70绑定457链/11目标红绿；旧新展开11与组合19只读探针齐，双生产面板/风险槽同ref/原权限耦合不改。初能力缺一与改正史保留，实际提交后完整CI另跑。
+[3c④订单履约完成证据](evidence/frontend-3c4-fulfillment-2026-10-16.md)：源码6ade731稳定干净实际HEAD完整CI0/182166.585ms；12模块/21逆展开及原type-predicate/70绑定457链/11目标红绿、旧新展开11与组合19齐。双生产面板/风险槽/旧权限耦合不改，首红与补展开史保持，完成docs另全CI后续⑤。
 
 [3c③信用与合同完成证据](evidence/frontend-3c3-agreements-2026-10-16.md)：源码e401d27稳定干净实际HEAD完整CI0/182693.526ms；四新模块/完整逆展开/70绑定457断言/三目标红绿及旧新9、组合15只读探针齐。TD-WEB-004仅登记不修，文档操作与Playwright不计覆盖；完成状态docs检查点另全CI后续④。
 

@@ -21,7 +21,7 @@
 
 ## 本地 git hooks（`.githooks/`，`pnpm install` 时经 `prepare` 自动激活）
 
-3c④候选检查点：[订单履约证据](evidence/frontend-3c4-fulfillment-2026-10-16.md)。11runtime+1type≤231/完整函数165/AST5，21helper逆展开＋原type/predicate严格还原、70绑定457链、11目标真红→还原114绿及权限能力缺一红→39/19绿。旧11原口径与补展开overflow后的旧11分列，未以dirty TS候选冒充旧dist；实际新浏览器及提交后完整HEAD CI待实跑，其他冻结区保持。
+3c④完成检查点：[订单履约证据](evidence/frontend-3c4-fulfillment-2026-10-16.md)。源码6ade731稳定干净实际HEAD完整CI0/182166.585ms；11runtime+1type≤231/完整函数165/AST5、21helper＋原type/predicate逆展开/70绑定457链、11目标红绿和权限缺一红绿齐。旧新展开11及组合19/14不同route、纯JS18独立计数；首红与旧dist补展开史保持，不称全部21视图/真实授权矩阵或Playwright，完成docs实际HEAD另CI。
 
 3c③完成检查点：[信用合同证据](evidence/frontend-3c3-agreements-2026-10-16.md)。源码e401d27稳定干净实际HEAD完整CI0/182693.526ms；四新TS≤196/完整函数147/AST5，7处逆展开/70绑定/457完整断言、三个目标真红→还原114绿、旧新9及组合15只读CDP齐。新增未冻结文档探头失败与收回均留证，TD-WEB-004仅登记不修、现39项；文档行/OCR/上传与Playwright不计覆盖，完成状态docs实际HEAD另CI。
 
