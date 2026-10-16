@@ -24,6 +24,8 @@
 
 ## docs/adr（架构决策记录，10 篇）
 
+[能力门禁静态TS读源修正](evidence/frontend-capability-runtime-graph-2026-10-16.md)：用户授权47a8ee5；入口静态图/原39-19逐文件规则/边界自测及实际新源负向，独立于3b业务候选。
+
 [3a唯一现时检查点](evidence/frontend-3a-checkpoint-2026-10-16.md)：五公共模块/两必要纯类型的现时SHA-CI-回滚总表、全部读取映射/变异与CDP边界；历史小步措辞以本页为准。
 
 [3a navigation](evidence/frontend-3a-navigation-2026-10-16.md)：十声明/完整函数/同一卸载WeakMap及70公开绑定守恒、utility读源映射/真实红绿、七场景CDP。

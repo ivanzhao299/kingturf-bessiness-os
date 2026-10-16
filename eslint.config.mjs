@@ -21,6 +21,7 @@ export default tseslint.config(
     files: [
       'apps/web/scripts/*.mjs',
       'scripts/validate_release*.mjs',
+      'scripts/verify_frontend_capability_manifest.mjs',
       'scripts/analysis/*.mjs',
       'scripts/e2e-cdp/*.mjs',
       'tests/e2e/runtime-local.spec.mjs',
