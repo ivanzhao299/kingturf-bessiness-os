@@ -1,5 +1,7 @@
 # 前端3c⑨：共享列表工具职责拆分（2026-10-16）
 
+完成检查点：源码`8a3b00c`稳定干净实际HEAD完整`pnpm ci:local`真实exit0/177320.318ms（`/tmp/kingturf-3c9-8a3b00c-head-ci-2026-10-16.log`），结束HEAD仍8a3b00c/树空；API117/17099、web9/114、database68/domain14/config4/types1、PG链、读源自测22/CDP纯JS26、能力39/19、结构0硬31旧软、预算11369/1898及audit绿。完整逆展开/70/457/十新runtime红绿、旧新扩展33/另新正常29及独立实际候选审齐，最终attached-list纯type桥另经独立只读复核无阻塞，不掩盖原父节点脱离时插入异常。回滚本组`git revert 8a3b00c`（列表模块/root门面/读源/新opt-in同撤），不撤前组driver/权限桥，完成docs独立。下方“候选/待跑”为其时点记录；完成docs实际HEAD另全CI后继续editor及剩余共享→3d–3f，不重复许可，3f后整批人工验收保持。
+
 候选验证补充：新323TAj扩展全33真实exit0（`/tmp/kingturf-3c9-new-cdp33-2026-10-16.log`），与旧0blBTf全部case/计数/GET次数相同，网络三零；preview3312314退出/root/profile清理全真。另新ac6Gkh未启用register-tools、用原fixture正常29真实exit0（`/tmp/kingturf-3c9-new-normal-cdp29-2026-10-16.log`），DOM80/viewport47/route69/text142/overflow56、各list/session5/cost6/detail2/orderEvidence2，网络三零，preview/root/profile清理全真。两个口径分开，不用33扩展夹具替代原29。源码提交后实际干净HEAD全CI仍待跑，下方“运行结果待记”为此前时点。
 
 ## 范围与输入

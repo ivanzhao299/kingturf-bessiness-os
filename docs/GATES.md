@@ -21,7 +21,7 @@
 
 ## 本地 git hooks（`.githooks/`，`pnpm install` 时经 `prepare` 自动激活）
 
-3c⑨列表工具候选：[列表工具证据](evidence/frontend-3c9-register-tools-2026-10-16.md)。10runtime/1type≤144/完整函数138/AST5/root3880；8实际逆展开含七state与3JSON桥/profile/剩余入口顺序/70公开457链/十目标红绿齐。旧新扩展33与纯JS26绿，原夹具正常29也绿；首新探头假设失败/type与lint失败保留，提交后实际HEAD全CI待跑，31旧豁免不撤。
+3c⑨完成检查点：源码8a3b00c稳定干净实际HEAD全CI0/177320.318ms；[列表工具证据](evidence/frontend-3c9-register-tools-2026-10-16.md)。10runtime/1type≤144/完整函数138/AST5/root3880；8实际逆展开含七state与3JSON桥/profile/剩余入口顺序/70公开457链/十目标红绿齐。旧新扩展33与纯JS26绿，原夹具正常29也绿；首新探头假设失败/type与lint失败保留，完成docs实际HEAD另全CI，31旧豁免不撤。
 
 3c⑧完成检查点：源码541376f稳定干净实际HEAD全CI0/183823.324ms；[基础共享证据](evidence/frontend-3c8-shared-foundations-2026-10-16.md)。六runtime≤289/完整函数103/AST5，43完整声明及剩余入口AST/顺序全等、70公开457链冻结；六真实目标红绿/旧新29/预算11367-1898齐。完成docs实际HEAD另全CI，原31豁免不撤，不据迁出结清日期/巨石债务。
 

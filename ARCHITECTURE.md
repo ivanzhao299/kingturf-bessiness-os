@@ -43,7 +43,7 @@ packages/{types, config} ──→ 零依赖
 
 ## 4. 目标分层（改造方向，规则 §4.1 存量适配）
 
-3c⑨列表工具候选：bootstrap→shared/workspace-list-tools→profile/drawer/controls/readers/rendering/search/selection/actions/saved-view（register-types仅type）。每install唯一懒drawer、每list七字段plain state单权威，原DOM/Set/数组与函数ref不复制；原guard后纯type契约保两次parent即时读。11TS≤144/完整函数138/AST5/root3880，8helper与state/context逆展开原完整函数AST相等、profile与root剩余顺序/70公开457链/十目标红绿齐。旧新扩展33真0，正常原夹具29也真0；提交后HEAD全CI待跑，editor等共享及3d–3f继续，见[⑨证据](docs/evidence/frontend-3c9-register-tools-2026-10-16.md)。
+3c⑨列表工具完成：源码8a3b00c稳定干净实际HEAD全CI0/177320.318ms；bootstrap→shared/workspace-list-tools→profile/drawer/controls/readers/rendering/search/selection/actions/saved-view（register-types仅type）。每install唯一懒drawer、每list七字段plain state单权威，原DOM/Set/数组与函数ref不复制；原guard后纯type契约保两次parent即时读。11TS≤144/完整函数138/AST5/root3880，8helper与state/context逆展开原完整函数AST相等、profile与root剩余顺序/70公开457链/十目标红绿齐。旧新扩展33真0，正常原夹具29也真0；完成docs实际HEAD另全CI，editor等共享及3d–3f继续，见[⑨证据](docs/evidence/frontend-3c9-register-tools-2026-10-16.md)。
 
 3c⑧基础共享完成：源码541376f稳定干净实际HEAD全CI0/183823.324ms；root直接named import/re-export至shared/{document-templates,business-format,business-labels}与commercial/{ctr-fields,quote-print,readiness}；format无依赖、labels→format、print→format/labels、readiness→format，无共享barrel或反向入口。原43声明AST/剩余入口顺序/70公开457链全等，同数组/函数引用及每调用求值保持；六runtime≤289/完整函数103/AST5，root4520。六目标红绿/旧新29及预算11367/1898齐，完成docs实际HEAD另全CI，editor/listtools共享残留未结清，实际date收敛留3e，见[⑧证据](docs/evidence/frontend-3c8-shared-foundations-2026-10-16.md)。
 
