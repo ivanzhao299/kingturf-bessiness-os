@@ -63,6 +63,14 @@ test('lazy quote failure is an exact mapped 503 response and restores the origin
   }
 });
 
+test('customer 360 fixture includes the server-required unavailable section array', async () => {
+  const router = createStubRouter();
+  const response = await router.respond('/api/v1/customers/cdp-customer-a/360', 'GET');
+  assert.equal(response.status, 200);
+  assert.equal(Array.isArray(response.value.unavailableSections), true);
+  assert.deepEqual(response.value.unavailableSections, ['orders', 'finance']);
+});
+
 test('governance overlay supplies exact read surfaces, coherent metrics and the employee array DTO', async () => {
   const original = createStubRouter();
   const overlay = withGovernanceView(createStubRouter());

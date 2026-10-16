@@ -24,6 +24,8 @@
 
 ## docs/adr（架构决策记录，10 篇）
 
+[3f前置CDP夹具契约修正](evidence/frontend-3f-cdp-fixture-2026-10-16.md)：用户确认独立补客户360服务端固定unavailableSections，旧红→工具33绿；业务WIP隔离，原UI断言/网络硬闸不动，原29与实际干净HEAD全CI待补。
+
 [3e③日期统一证据](evidence/frontend-3e-date-2026-10-16.md)：全runtime13调用/10消费者收敛三原语；179测试、13逆展开完整AST/旧457链及两种真实红绿，扩展47及原29浏览器/源码c0a549f实际干净HEAD完整CI0/177552.922ms，完成docs另全CI，随后解析3f。
 
 [3e②惰性读取证据](evidence/frontend-3e-lazy-2026-10-16.md)：首次缺失源/已访问复用；21闭包、163测试、8锚点红绿、默认逆AST/70公开457链、原29及新47真实0；overview仍全授权读取，源码580cc72实际干净HEAD完整CI0/179498.691ms，完成docs另全CI后继续，续日期3e→解析3f。

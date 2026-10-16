@@ -8,12 +8,12 @@ KingTurf 业务操作系统：面向草坪行业外贸业务的 ERP（CRM→报�
 
 ## 如何开始（渐进式披露：先地图，再细节）
 
-现时3e已实施与独立复核完成：日期已通过179测试、13逆展开/10全文件AST、70公开457链和两种实际红绿、扩展47及原29浏览器；13调用收敛三原语，root749/完整158/AST3/格式5不变，45台账。3e②源码580cc72全CI0/179498.691ms与完成docs382d7f0全CI0/178385.802ms；日期源码c0a549f实际稳定干净HEAD完整CI0/177552.922ms，完成docs另全CI，之后解析3f，3f后整批人工验收。当前唯一进度见计划§7与最新证据，历史检查点留计划。
+现时3f前置工具修正：用户确认独立补CDP客户360缺失的服务端字段；旧红→工具33绿、原29浏览器真0，业务WIP可恢复隔离，工具源码干净HEAD全CI待执行。3e源码c0a549f及完成docs303d3d9已各实际完整CI0；179 Web/70公开457链/root749与原Playwright保持。现46台账；工具验证后恢复3f解析，3f后整批人工验收，唯一进度见计划§7。
 
 - 架构总览与依赖方向：见 `ARCHITECTURE.md`
 - 设计理念与操作原则（争议裁决依据）：见 `docs/design-docs/core-beliefs.md`
-- 当前执行计划与进度（3e已实施与独立复核完成，完成docs全CI后续解析3f；原Playwright补跑保持）：见 `docs/exec-plans/active/` §4.4及§7
-- 已知技术债（45 条台账，含历史解决项及仅登记的旧门控、顶层挂载、抽屉等候选）：见 `docs/exec-plans/tech-debt-tracker.md`
+- 当前执行计划与进度（3e完成；3f前置独立CDP契约修正验证中，随后继续解析；原Playwright补跑保持）：见 `docs/exec-plans/active/` §4.4及§7
+- 已知技术债（46 条台账，含历史解决项及仅登记的旧门控、顶层挂载、抽屉等候选）：见 `docs/exec-plans/tech-debt-tracker.md`
 - CI 与发布决策（非 Tauri，仅 workflow_dispatch 部署，无 tag/Release）：见 `docs/CI.md`
 - 全部文档索引：见 `docs/index.md`
 - 关键决策记录：见 `docs/adr/`（10 个 ADR）

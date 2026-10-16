@@ -3666,6 +3666,10 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+2026-10-16，3f工具夹具澄清后用户明确回复“允许独立修正该夹具（推荐）”；主代理已说明实际服务端固定orders/finance，采用真实值而非问题中初拟空数组，只此synthetic字段，原UI断言/网络硬闸不改。此确认不扩展原Web114/Playwright冻结区或生产权限。
+
+2026-10-16，3f前置独立工具契约修正：输入303d3d9实际稳定干净HEAD完整CI0/178202.497ms，树空。3f只读发现CDP customer360 detail漏unavailableSections，而服务端/共享类型固定orders/finance；TD-TEST008先登记，新Node契约旧fixture真实红。人类冻结是原Web114与Playwright，协调解释新增CDP合成工具维护在既有授权内，不另需裁定；主代理已纠正先前误设冻结，若用户后有明确保持选择则遵从。3f业务WIP按14明确路径存入本会话stash作可恢复隔离，只改合成字段/新增工具契约与相应docs，原UI断言/driver/网络硬闸不变。后续工具红绿/原29/独立源码实际干净HEAD全CI后恢复业务WIP，再3f，当前非3f完成。
+
 2026-10-16，3e全部实施与独立复核完成：日期源码c0a549f稳定干净实际HEAD完整CI真实0/177552.922ms，开始/结束HEAD相同/树空；承接store fc14d50与真正lazy580cc72，13日期调用/10完整文件逆AST、179测试/70公开457链/两真实负向和47及29浏览器齐，TD-DUP004实施完成。源352/57461、测试149/66599、root749/完整158/AST3/格式5、29豁免/预算11368/1898，API与保护区不变。仅归并完成docs并另实际HEAD全CI，再继续已授权HTTP/storage畸形解析3f，不重复许可；3f后停供整批人工验收，原Playwright补跑/旧45台账候选/不push部署保护区保持。回滚c0a549f←382d7f0见[日期证据](../../evidence/frontend-3e-date-2026-10-16.md)。
 
 2026-10-16，3e③日期候选：输入382d7f0完成docs实际干净HEAD全CI0/178385.802ms/结束树空；全runtime12内联locale+标题Intl共13调用、10消费者统一shared/business-date三原语，Date原位/重复getter/回退/默认时区/Intl先于Date均守恒、不缓存。163旧测试未适配先绿→新增16后179绿/type/lint/gate0/29/build；13逆展开后10全文件含imports AST同、root749字节同/70公开457链/旧其它11test字节同，behavior10红及binding2红各还原179绿。量度352/57461、测试149/66599，预算11368/1898。浏览器47/原29及最终源码实际HEAD全CI待真实执行，不预填完成；见[3e③证据](../../evidence/frontend-3e-date-2026-10-16.md)。随后3f，不重复许可、3f后整批人工验收。

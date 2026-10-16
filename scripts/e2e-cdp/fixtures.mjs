@@ -628,6 +628,7 @@ export function createStubRouter({
           activities: [],
           leads: [],
           opportunities: [],
+          unavailableSections: ['orders', 'finance'],
         },
       }[key];
       const response =
