@@ -1,5 +1,23 @@
 # 3c⑥ 制造、采购、MRP 与质量（2026-10-16，候选）
 
+## 现时检查点
+
+业务候选源码**3f77a81**稳定干净实际HEAD完整`pnpm ci:local`真实exit0/**170456.489ms**，`/tmp/kingturf-3c6-3f77a81-head-ci-2026-10-16.log`；结束HEAD不变/树空。API117文件17099例、web9/114、PG链、读源22/CDP纯JS20、39权限19路径、structure0硬31旧软、预算11368/1898、audit零漏洞通过。36helper逆展开/70公开457链/27新runtime逐目标红→还原114、旧新同口径11与独立静态复核齐。
+
+⑥整体仍待TD-TEST-006工具问题收口，无trace全28失败与trace28绿分别留证；业务全CI绿不替代浏览器组合结果。后续工具修正独立提交、业务源码零diff；完成docs实际HEAD也须完整CI。下方“待实际HEAD CI”为提交前时点历史。
+
+## 独立工具定位与候选
+
+工具候选首轮无trace全组合myDiOW/28项真实exit0（`/tmp/kingturf-3c6-tool-new-cdp28-2026-10-16.log`），DOM78/viewport45/route67/text134/overflow54，网络阻断/未知/失败0，preview3123110退出/root/profile清理全真。此正常运行未开任一trace；与旧有trace28计数一致，但不反推旧失败全是同因。只读独立复核工具diff无必要修正，原10测试逐字不动、阈值与业务一致、默认不执行观测，类别不代表CSS全稳定的限制保持；诊断读布局可能影响竞态，不能充作正常通过证据。独立工具实际提交HEAD全CI及提交后正常28另执行，未提前关闭复开条目。
+
+在3f77a81完整CI结束且确认树空后，才给driver增加可选`--trace-click-layout`只读观测（初滚前/后/失败读取bbox、滚动祖先尺寸/scrollTop及动画，不增加操作或成功判定）。FbxNIM针对性现场真实exit1（`/tmp/kingturf-3c6-tool-scroll-diagnostic-2026-10-16.log`），24项先绿、制造desktop导航失败，preview3122795退出/root/profile清理全真。首滚前`innerWidth=1440/height=1000`，但MAIN=`app-shell mobile`，侧栏width1425、clientHeight=scrollHeight=1000、scrollTop0、target x915.5/y113；滚后仅window scrollX23、侧栏仍scrollTop0。约3秒后壳切desktop，侧栏width232、clientHeight1000/scrollHeight1488、scrollTop0，target x26/y1071，动画空。
+
+该轮已证唯一滚动发生在旧移动布局，后resize改变滚动容器与目标位置；`crm/shell-frame.ts`原resize handler同步设置shell及已有commercial class，但事件执行晚于CDP metrics返回；driver旧viewport只等innerWidth/Height。不能将这份完整因果追认此前YgfqPn/a68rso/CQwqNj全部失败根因，也不修业务resize或延迟策略。
+
+TD-TEST-006已在3f77a81先复开登记。独立最小候选只加强viewport原**同一次60×50ms waitFor**：metrics相等且如shell存在，其类别按真实viewportFor宽度阈值640/1024匹配；如shell下commercial存在也匹配。无shell（首登录前设metrics）仍正常通过；类别不按CDP mobile布尔值推断。不增加新等待预算、不写DOM/权限/路由/hash、不改click唯一scroll/原3秒/双50ms几何/真实命中/press-release/网络/清理/Playwright。类别同步不证明所有CSS过渡结束，原点击几何保护保持；若仍复现须继续基于现场定位，不盲目再加等待或滚动。
+
+独立延迟布局VM在旧viewport真实红（`/tmp/kingturf-3c6-tool-viewport-old-red-2026-10-16.log`）：metrics即时变化，但shell/商业类别第3poll才同步，旧方法第1poll返回，`stale !== mobile`。修后原driver10断言原封不动＋新增3项、纯JS总23真实0（`/tmp/kingturf-3c6-tool-cdp-unit-2026-10-16.log`）：三宽度×shell/仅commercial延迟均等3poll、无shell1poll、永久stale恰60poll拒绝且无Input操作。业务/apps/packages/lock/workflows相对3f77a81零diff。新无trace28正在串行实际执行，独立工具提交后实际干净HEAD完整CI待跑，不预填修复/组合通过。
+
 ## 范围与输入
 
 输入源码00766d6、完成docs693c42f；后者稳定干净实际HEAD完整`pnpm ci:local`真实exit0/173041.324ms，日志`/tmp/kingturf-3c5-693c42f-head-ci-2026-10-16.log`，结束HEAD不变/树空。沿既有3a→3f连续授权，不重复索许可，3f后整批人工验收。主代理完整读取旧bootstrap制造1897–2247、采购2248–2941、MRP2942–3249、质量3250–4240；只读代理核对路径/边界并独立审查。原70公开绑定、9文件114用例、457完整expect链与Playwright九spec/config冻结。API/packages/SQL/依赖/lock/评分/workflows不动，31旧豁免/12000与4000预算不变；TD-WEB-004仅登记不修、39项台账保持。

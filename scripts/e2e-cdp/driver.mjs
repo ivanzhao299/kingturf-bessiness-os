@@ -2,6 +2,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 
 export function createDriver(send) {
   const traceNavClicks = process.argv.includes('--trace-nav-clicks');
+  const traceClickLayout = process.argv.includes('--trace-click-layout');
   const counts = { dom: 0, viewport: 0, route: 0, text: 0, overflow: 0 };
   const evaluate = async (expression) => {
     const result = await send('Runtime.evaluate', {
@@ -20,13 +21,21 @@ export function createDriver(send) {
     throw new Error(`DOM condition timed out: ${label}`);
   };
   const click = async (selector) => {
+    const layoutTrace = traceClickLayout && /data-app-route|nav-parent/u.test(selector);
     const trace = traceNavClicks && /data-app-route|nav-parent/u.test(selector);
     if (trace)
       await evaluate(
         `(() => {if(globalThis.__cdpNavTrace)return;globalThis.__cdpNavTrace=[];document.addEventListener('click',event=>{const n=event.target.closest?.('[data-app-route],.nav-parent');if(n)globalThis.__cdpNavTrace.push({route:n.dataset.appRoute??null,parent:n.dataset.navRoutes??null,hash:location.hash,at:performance.now()});},true);})()`,
       );
     await evaluate(
-      `(() => {const node=document.querySelector(${JSON.stringify(selector)});globalThis.__cdpClickTarget=node;node?.scrollIntoView({block:'center',inline:'center'});})()`,
+      `(() => {const node=document.querySelector(${JSON.stringify(selector)});globalThis.__cdpClickTarget=node;
+        if(${layoutTrace}){globalThis.__cdpClickLayout=[];globalThis.__cdpObserveClickLayout=phase=>{
+          const target=globalThis.__cdpClickTarget,ancestors=[];
+          for(let parent=target?.parentElement;parent;parent=parent.parentElement){const css=getComputedStyle(parent);if(parent.scrollHeight>parent.clientHeight||parent.scrollWidth>parent.clientWidth||parent.classList.contains('sidebar'))ancestors.push({tag:parent.tagName,className:parent.className,scrollTop:parent.scrollTop,scrollLeft:parent.scrollLeft,clientHeight:parent.clientHeight,scrollHeight:parent.scrollHeight,clientWidth:parent.clientWidth,scrollWidth:parent.scrollWidth,overflowX:css.overflowX,overflowY:css.overflowY,position:css.position,rect:parent.getBoundingClientRect().toJSON()});}
+          globalThis.__cdpClickLayout.push({phase,at:performance.now(),innerWidth,innerHeight,scrollX,scrollY,rect:target?.getBoundingClientRect().toJSON(),ancestors,animations:document.getAnimations().map(a=>({state:a.playState,pending:a.pending,transition:a.transitionProperty,target:a.effect?.target?.className}))});
+        };globalThis.__cdpObserveClickLayout('before-scroll');}
+        node?.scrollIntoView({block:'center',inline:'center'});
+        if(${layoutTrace})globalThis.__cdpObserveClickLayout('after-scroll');})()`,
     );
     // One shared original ~3s budget; never extend it with another animation wait.
     // Retain the actual node, sample its final hit/geometry, and do not scroll again.
@@ -53,7 +62,19 @@ export function createDriver(send) {
       previous = candidate;
       await delay(50);
     }
-    if (!rect) throw new Error('DOM condition timed out: stable unobscured click target');
+    if (!rect) {
+      if (layoutTrace)
+        console.log(
+          JSON.stringify({
+            kind: 'click-layout-failure',
+            selector,
+            observations: await evaluate(
+              "(() => {globalThis.__cdpObserveClickLayout('failed');return globalThis.__cdpClickLayout;})()",
+            ),
+          }),
+        );
+      throw new Error('DOM condition timed out: stable unobscured click target');
+    }
     if (trace) console.log(JSON.stringify({ kind: 'nav-click-before', ...rect.trace }));
     for (const type of ['mousePressed', 'mouseReleased'])
       await send('Input.dispatchMouseEvent', {
@@ -126,7 +147,11 @@ export function createDriver(send) {
         deviceScaleFactor: 1,
         mobile,
       });
-      await waitFor(`innerWidth===${width}&&innerHeight===${height}`, 'device metrics');
+      const viewportClass = width < 640 ? 'mobile' : width < 1024 ? 'tablet' : 'desktop';
+      await waitFor(
+        `(() => {const shell=document.querySelector('.app-shell');const commercial=shell?.querySelector('.commercial-workspace');return innerWidth===${width}&&innerHeight===${height}&&(!shell||shell.classList.contains(${JSON.stringify(viewportClass)}))&&(!commercial||commercial.classList.contains(${JSON.stringify(viewportClass)}));})()`,
+        'device metrics and responsive layout',
+      );
       counts.viewport++;
     },
     async text(selector, expected, { visible = true } = {}) {

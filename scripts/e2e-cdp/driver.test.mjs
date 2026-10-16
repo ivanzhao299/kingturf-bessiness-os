@@ -153,3 +153,74 @@ test('route mismatch still fails rather than rewriting hash or retrying the clic
   assert.equal(probe.inputs.length, 2);
   assert.equal(probe.scrolls(), 1);
 });
+
+function delayedViewport({
+  width = 1440,
+  height = 1000,
+  settleAt = 3,
+  shell = true,
+  delayCommercial = false,
+} = {}) {
+  let polls = 0;
+  const commands = [];
+  const expected = width < 640 ? 'mobile' : width < 1024 ? 'tablet' : 'desktop';
+  const current = () => (polls >= settleAt ? expected : 'stale');
+  const commercial = { classList: { contains: (value) => value === current() } };
+  const frame = {
+    classList: { contains: (value) => value === (delayCommercial ? expected : current()) },
+    querySelector: () => commercial,
+  };
+  const context = createContext({
+    innerWidth: width,
+    innerHeight: height,
+    document: { querySelector: () => (shell ? frame : null) },
+  });
+  const send = async (method, params) => {
+    commands.push(method);
+    if (method === 'Emulation.setDeviceMetricsOverride') return {};
+    assert.equal(method, 'Runtime.evaluate');
+    polls++;
+    return { result: { value: await runInContext(params.expression, context) } };
+  };
+  return { driver: createDriver(send), polls: () => polls, current, commands, expected };
+}
+
+test('viewport waits for delayed shell and commercial resize state rather than metrics alone', async () => {
+  for (const width of [390, 800, 1440]) {
+    for (const delayCommercial of [false, true]) {
+      const probe = delayedViewport({ width, delayCommercial });
+      await probe.driver.viewport(width, 1000, width < 640);
+      assert.equal(
+        probe.current(),
+        probe.expected,
+        'metrics must not resolve before actual layout state',
+      );
+      assert.equal(probe.polls(), 3);
+      assert.equal(
+        probe.commands.some((method) => method.startsWith('Input.')),
+        false,
+      );
+    }
+  }
+});
+
+test('viewport setup before mount accepts metrics without inventing a shell', async () => {
+  const probe = delayedViewport({ shell: false });
+  await probe.driver.viewport(1440, 1000, false);
+  assert.equal(probe.polls(), 1);
+  assert.equal(
+    probe.commands.some((method) => method.startsWith('Input.')),
+    false,
+  );
+});
+
+test('stale responsive state exhausts the original sixty polls without clicks or mutation', async () => {
+  const probe = delayedViewport({ settleAt: Infinity });
+  await assert.rejects(probe.driver.viewport(1440, 1000, false), /device metrics/u);
+  assert.equal(probe.polls(), 60);
+  assert.equal(probe.current(), 'stale');
+  assert.equal(
+    probe.commands.some((method) => method.startsWith('Input.')),
+    false,
+  );
+});
