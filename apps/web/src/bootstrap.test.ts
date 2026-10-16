@@ -54,6 +54,48 @@ const readBoundSource = (path: string, anchor: string): string => {
   return source;
 };
 
+const readOnlineEditorSources = (): string[] => [
+  readBoundSource('./shared/online-editor.ts', 'export function createOnlineDocumentEditor'),
+  readBoundSource('./shared/online-editor-heading.ts', 'export function createOnlineEditorHeading'),
+  readBoundSource(
+    './shared/online-editor-workspace.ts',
+    'export function createOnlineEditorWorkspace',
+  ),
+  readBoundSource(
+    './shared/online-editor-pagination.ts',
+    'export function bindOnlineEditorPagination',
+  ),
+  readBoundSource('./shared/online-editor-save.ts', 'export function createOnlineEditorSave'),
+  readBoundSource('./shared/online-editor-review.ts', 'export function createOnlineEditorReview'),
+  readBoundSource(
+    './shared/online-editor-review-completion.ts',
+    'export function completeOnlineEditorReview',
+  ),
+  readBoundSource('./shared/online-editor-history.ts', 'export function appendOnlineEditorHistory'),
+  readBoundSource(
+    './shared/online-editor-version-history.ts',
+    'export function createOnlineEditorVersionHistory',
+  ),
+  readBoundSource(
+    './shared/online-editor-translation.ts',
+    'export function bindOnlineEditorTranslation',
+  ),
+  readBoundSource(
+    './shared/online-editor-send-settings.ts',
+    'export function createOnlineEditorSendSettings',
+  ),
+  readBoundSource(
+    './shared/online-editor-send-form.ts',
+    'export function openOnlineEditorSendForm',
+  ),
+  readBoundSource(
+    './shared/online-editor-send-blocked.ts',
+    'export function showOnlineEditorBlockedNotice',
+  ),
+  readBoundSource('./shared/online-editor-send.ts', 'export function bindOnlineEditorSend'),
+  readBoundSource('./shared/online-editor-export.ts', 'export function bindOnlineEditorExport'),
+];
+
 it('translates risk rules and derives the daily commission next action', () => {
   expect(riskRuleLabel('LOW_MARGIN')).toBe('毛利率低于政策门槛');
   expect(riskRuleLabel('OVERDUE_AR')).toBe('存在逾期应收');
@@ -90,6 +132,7 @@ it('translates operations codes and derives accountable next actions', () => {
 it('captures artificial-turf project handoff fields without test-channel evidence markers', () => {
   const source = [
     readBoundSource('./bootstrap.ts', 'export function commercialWorkspaceStructure'),
+    ...readOnlineEditorSources(),
     readBoundSource('./shared/document-templates.ts', 'export const BUSINESS_DOCUMENT_TEMPLATES'),
     readBoundSource('./shared/business-format.ts', 'export const recordValue'),
     readBoundSource('./shared/business-labels.ts', 'export const businessEventLabel'),
@@ -1077,6 +1120,7 @@ describe('web bootstrap', () => {
     );
     const source = [
       readBoundSource('./bootstrap.ts', 'const openOnlineDocumentEditor'),
+      ...readOnlineEditorSources(),
       readBoundSource(
         './commercial/workspace-legacy-panels.ts',
         'export function appendLegacyCommercialPanels',
@@ -1132,18 +1176,7 @@ describe('web bootstrap', () => {
 
   it('keeps the document editor open and advances its active version after saving', () => {
     const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
-    const editorStart = source.indexOf('const openOnlineDocumentEditor');
-    const editorEnd = source.indexOf('const displayTime');
-    if (
-      editorStart < 0 ||
-      editorEnd <= editorStart ||
-      source.lastIndexOf('const openOnlineDocumentEditor') !== editorStart ||
-      source.lastIndexOf('const displayTime') !== editorEnd
-    )
-      throw new Error('Document editor source anchors must be unique and ordered');
-    const editorSource = source.slice(editorStart, editorEnd);
-    if (!editorSource.trim() || !editorSource.startsWith('const openOnlineDocumentEditor'))
-      throw new Error('Document editor source slice must remain bound');
+    const editorSource = readOnlineEditorSources().join('\n');
     const contextualSource = readBoundSource(
       './shared/contextual-documents.ts',
       'export function appendContextualDocuments',

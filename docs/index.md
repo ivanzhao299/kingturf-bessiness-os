@@ -17,12 +17,14 @@
 | [QUALITY_SCORE.md](QUALITY_SCORE.md)                                             | 按域质量评分（可复算依据）                                                                                                              | 常驻                    |
 | [design-docs/core-beliefs.md](design-docs/core-beliefs.md)                       | 核心信念（争议裁决依据）                                                                                                                | 常驻                    |
 | [exec-plans/active/harness-migration.md](exec-plans/active/harness-migration.md) | 3c⑨源码8a3b00c实际HEAD全CI0；root3880/8逆展开/七live state/70公开457链/十红绿/旧新扩展33与正常29齐，完成docs另全CI后续editor共享及3d–3f | 常驻                    |
-| [exec-plans/tech-debt-tracker.md](exec-plans/tech-debt-tracker.md)               | 技术债台账（现40项，含TD-TEST-007断言精度及TD-WEB-004仅登记；旧39/38/37历史保持）                                                       | 常驻                    |
+| [exec-plans/tech-debt-tracker.md](exec-plans/tech-debt-tracker.md)               | 技术债台账（现41项，新增TD-WEB-005旧编辑器比较后遮挡实测仅登记；旧40及更早历史保持）                                                    | 常驻                    |
 | [local-acceptance-cleanup.md](local-acceptance-cleanup.md)                       | `.local-acceptance/` 本地产物清理边界与手动脚本说明                                                                                     | 常驻                    |
 | [HARNESS-RULES.md](HARNESS-RULES.md)                                             | 施工规则（竣工验收后按其 §14 归档）                                                                                                     | 常驻（施工期）          |
 | [WORKSPACE_ROUTE_ISOLATION.md](WORKSPACE_ROUTE_ISOLATION.md)                     | 工作区路由隔离说明（2026-09-06）                                                                                                        | 已归档-只读（事件复盘） |
 
 ## docs/adr（架构决策记录，10 篇）
+
+[3c⑩在线文档证据](evidence/frontend-3c10-document-editor-2026-10-16.md)：候选16TS≤172/完整函数165/AST5/root3066，完整800行14逆展开/70公开457链/15目标红绿齐；旧新扩展37真0，正常33/29与实际HEAD全CI待跑，三轮失败史/TD-WEB-005仅登记。
 
 [3c⑨共享列表工具证据](evidence/frontend-3c9-register-tools-2026-10-16.md)：源码8a3b00c稳定干净实际HEAD全CI0/177320.318ms；11TS≤144/完整函数138/AST5/root3880，8逆展开/七live state/profile/70公开457链/十目标红绿/旧新扩展33齐；正常29也绿，完成docs实际HEAD另全CI，editor等共享→3d–3f继续。
 

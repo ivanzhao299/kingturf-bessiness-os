@@ -418,6 +418,10 @@ try {
       const { withRegisterTools } = await import('./register-fixtures.mjs');
       suiteRouter = withRegisterTools(suiteRouter);
     }
+    if (process.argv.includes('--document-editor')) {
+      const { withDocumentEditor } = await import('./document-editor-fixtures.mjs');
+      suiteRouter = withDocumentEditor(suiteRouter);
+    }
     if (process.argv.includes('--fault-unmapped-api')) {
       await cdp(
         'Runtime.evaluate',

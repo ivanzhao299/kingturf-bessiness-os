@@ -445,6 +445,21 @@ export async function runProbes({ send, router, runId, report, expectDialog }) {
       const { runRegisterProbes } = await import('./register-probes.mjs');
       await runRegisterProbes({ page, send, router, check });
     }
+    if (process.argv.includes('--document-editor')) {
+      const { runDocumentEditorProbes } = await import('./document-editor-probes.mjs');
+      try {
+        await runDocumentEditorProbes({ page, send, router, check });
+      } catch (error) {
+        report('document-editor-failure', {
+          state: await page.evaluate(`(() => {
+            const node=globalThis.__cdpClickTarget,rect=node?.getBoundingClientRect(),x=rect?rect.x+rect.width/2:0,y=rect?rect.y+rect.height/2:0,hit=document.elementFromPoint(x,y);
+            const describe=n=>n?{tag:n.tagName,className:n.className,version:n.dataset.cdpDocumentVersion??null,rect:n.getBoundingClientRect().toJSON(),display:getComputedStyle(n).display,visibility:getComputedStyle(n).visibility,scrollTop:n.scrollTop,scrollHeight:n.scrollHeight,clientHeight:n.clientHeight}:null;
+            return {innerWidth,innerHeight,target:describe(node),hit:describe(hit),workspace:describe(document.querySelector('.business-document-dialog[open] .business-document-workspace')),history:describe(document.querySelector('.business-document-dialog[open] .business-document-history')),ancestors:(()=>{const out=[];for(let parent=node?.parentElement;parent;parent=parent.parentElement)out.push(describe(parent));return out;})()};
+          })()`),
+        });
+        throw error;
+      }
+    }
     const screenshot = await send('Page.captureScreenshot', { format: 'png' });
     writeFileSync(`/tmp/${runId}-probes.png`, Buffer.from(screenshot.data, 'base64'));
     return {

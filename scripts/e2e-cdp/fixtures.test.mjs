@@ -3,6 +3,69 @@ import assert from 'node:assert/strict';
 import { createStubRouter } from './fixtures.mjs';
 import { operationsPermissions, operationsRoutes } from './operations-fixtures.mjs';
 import { withRegisterTools } from './register-fixtures.mjs';
+import {
+  documentEditorId,
+  documentEditorRoutes,
+  withDocumentEditor,
+} from './document-editor-fixtures.mjs';
+
+test('document editor overlay adds one read grant and exact read-only route-bound fixtures', async () => {
+  const original = createStubRouter({ salesViews: true });
+  const overlay = withDocumentEditor(createStubRouter({ salesViews: true }));
+  const baseline = (await original.respond('/api/v1/auth/session', 'GET')).value;
+  assert.deepEqual((await overlay.respond('/api/v1/auth/session', 'GET')).value.permissions, [
+    ...baseline.permissions,
+    'business-document:read',
+  ]);
+  for (const route of documentEditorRoutes) {
+    const result = await overlay.respond(
+      '/api/v1/business-documents',
+      'GET',
+      new URLSearchParams({ route }),
+    );
+    assert.equal(result.value.items.length, route === 'opportunities' ? 1 : 0);
+  }
+  const document = (await overlay.respond(`/api/v1/business-documents/${documentEditorId}`, 'GET'))
+    .value;
+  assert.equal(document.currentVersion, 2);
+  assert.deepEqual(
+    document.versions.map((version) => version.version),
+    [1, 2],
+  );
+  assert.equal(document.translations[0].status, 'READY');
+  assert.equal(overlay.counts().documentDetail, 1);
+});
+
+test('document editor overlay refuses writes, wrong IDs, queries and reference-data reads', async () => {
+  const overlay = withDocumentEditor(createStubRouter({ salesViews: true }));
+  for (const path of [
+    '/api/v1/business-documents',
+    `/api/v1/business-documents/${documentEditorId}`,
+    `/api/v1/business-documents/${documentEditorId}/versions`,
+    '/api/v1/business-documents/reference-data',
+  ])
+    await assert.rejects(overlay.respond(path, 'POST'), /unmapped/u);
+  for (const path of [
+    `/api/v1/business-documents/${documentEditorId}/versions`,
+    '/api/v1/business-documents/reference-data',
+    '/api/v1/business-documents/unknown',
+  ])
+    await assert.rejects(overlay.respond(path, 'GET'), /unmapped/u);
+  for (const query of [
+    new URLSearchParams(),
+    new URLSearchParams({ route: 'unknown' }),
+    new URLSearchParams({ route: 'opportunities', extra: '1' }),
+  ])
+    await assert.rejects(overlay.respond('/api/v1/business-documents', 'GET', query), /unmapped/u);
+  await assert.rejects(
+    overlay.respond(
+      `/api/v1/business-documents/${documentEditorId}`,
+      'GET',
+      new URLSearchParams({ extra: '1' }),
+    ),
+    /unmapped/u,
+  );
+});
 
 test('register overlay preserves default fixtures and grants while adding twelve unique local rows', async () => {
   const original = createStubRouter();
