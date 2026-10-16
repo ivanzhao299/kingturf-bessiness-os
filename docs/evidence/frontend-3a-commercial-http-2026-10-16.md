@@ -1,5 +1,7 @@
 # 3a 商业 HTTP 工厂（2026-10-16）
 
+历史小步快照；唯一现时总表见[3a检查点](frontend-3a-checkpoint-2026-10-16.md)，文中“待CI/下一未开始”保留原时点，由后补实测与总表覆盖。
+
 基线 `1a7c4a9` CRM工厂稳定干净HEAD完整CI真实0/174221.138ms后启动本步，不实施3b/3c控制器或视图迁移。
 
 ## 迁移与逐字守恒
@@ -22,6 +24,8 @@
 - apply_patch完整还原后指定用例exit0，随后全web114绿：`/tmp/kingturf-3a-commercial-http-mutation-restored-2026-10-16.log` 与 `...-web-2026-10-16.log`。旧oracle不为迁移改语义，临时变异未提交。
 
 ## 检查与回滚
+
+后补：独立源码/证据提交 `af97961` 稳定干净HEAD完整CI真实exit0，单调计时173798.915ms，`/tmp/kingturf-3a-commercial-http-head-ci-2026-10-16.log`。API117/17099、web114、原PG、database68/domain14、纯JS4、预算11368/1898、结构0硬/31旧豁免、audit无已知漏洞，完成后才启动navigation。
 
 提交门禁一次失败：pre-commit ESLint要求新增读取guard的 `indexOf(anchor)<0` 改为 `!includes(anchor)`（prefer-includes）。未绕过hook/未生成失败提交，改等价guard后重新跑指定测试/原web114及提交门禁；不涉及业务源码或expect改变。
 

@@ -21,6 +21,8 @@
 
 ## 本地 git hooks（`.githooks/`，`pnpm install` 时经 `prepare` 自动激活）
 
+3a唯一现时总表：[公共层检查点](evidence/frontend-3a-checkpoint-2026-10-16.md)。七个新TS模块全部实测≤800/AST≤4、62个有body函数最长175；原31不撤。各下段快照及各小步证据中的“待CI/尚未实施”为历史时点，以该总表及后补实测为准，不把局部114/CDP当稳定HEAD完整CI。
+
 3a后补现时：form86e7026完整CI真实0/182105.292ms；locale两表/函数完整提取、web114/预算11369-1898/七场景CDP通过，独立HEAD完整CI随后。此前form“验证中”为原时点，后续以[locale证据](evidence/frontend-3a-locale-2026-10-16.md)与[form证据](evidence/frontend-3a-form-2026-10-16.md)为准；HTTP/navigation未迁移，不等于整批收尾。
 
 批次3 C3现时：新增web四目录`apps/web/src/{shared,crm,commercial,governance}/`的G2复用原routes AST≤5，G1原全扫≤800；walk仅允许四prefix内部routes递归，不扩其他旧路径。原31/G3/G4/其他G2规则保持，函数200仍独立量完整函数。175be7d完整CI真实exit0，38自测/29 CLI及计时来源见[新web护栏](evidence/frontend-c3-guard-2026-10-16.md)。首[form小步](evidence/frontend-3a-form-2026-10-16.md)已提取并完成旧新正文/切片及变异证明，新源码完整门禁随后记录，不等于3a整批已完成。
