@@ -200,6 +200,7 @@ import { qualityInspectionOpenRoutes } from './routes/quality-inspection-open.ts
 import { qualityInspectionTransitionRoutes } from './routes/quality-inspection-transitions.ts';
 import { qualityResultRecordRoutes } from './routes/quality-result-record.ts';
 import { qualityDispositionRoutes } from './routes/quality-disposition.ts';
+import { businessDocumentConnectorRoutes } from './routes/business-document-connector.ts';
 import {
   businessDocumentConnectorReadRoutes,
   businessDocumentActivityLogReadRoutes,
@@ -3717,50 +3718,30 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               'Business document repository unavailable',
               correlationId,
             );
-          const b = objectBody(request.body);
-          allow(b, [
-            'provider',
-            'displayName',
-            'senderIdentity',
-            'secretReference',
-            'configuration',
-            'status',
-            'expectedVersion',
-          ]);
-          const status = string(b.status, 'status');
-          if (!['UNCONFIGURED', 'READY', 'DISABLED'].includes(status))
-            throw new DomainError('invalid_request', 'connector status is unsupported');
-          const nullableText = (value: unknown, name: string): string | null =>
-            value === undefined || value === null || value === '' ? null : string(value, name);
-          const secretReference = connectorSecretReference(b.secretReference);
-          const senderIdentity = nullableText(b.senderIdentity, 'senderIdentity');
-          if (senderIdentity !== null && (senderIdentity.length < 2 || senderIdentity.length > 200))
-            throw new DomainError(
-              'invalid_request',
-              'senderIdentity must contain 2 to 200 characters',
-            );
-          if (status === 'READY' && secretReference === null)
-            throw new DomainError(
-              'invalid_request',
-              'A managed secret reference is required before a connector can be enabled',
-            );
-          return {
-            statusCode: 200,
-            body: await dependencies.businessDocuments.configureConnector(
-              documentConnector(connectorConfiguration[1], true),
-              {
-                provider: connectorProvider(b.provider),
-                displayName: boundedString(b.displayName, 'displayName', 100),
-                senderIdentity,
-                secretReference,
-                configuration: safeConnectorConfiguration(b.configuration),
-                status: status as 'UNCONFIGURED' | 'READY' | 'DISABLED',
-                expectedVersion: expectedVersion(b.expectedVersion),
-              },
-              context.actor,
+          const response = await dispatchRoutes(
+            businessDocumentConnectorRoutes({
+              repository: () =>
+                dependencies.businessDocuments as Pick<
+                  NonNullable<ApiDependencies['businessDocuments']>,
+                  'configureConnector'
+                >,
+              authorization: context,
               correlationId,
-            ),
-          };
+              parsers: {
+                objectBody,
+                allow,
+                string,
+                expectedVersion,
+                boundedString,
+                connectorSecretReference,
+                connectorProvider,
+                safeConnectorConfiguration,
+                documentConnector,
+              },
+            }),
+            request,
+          );
+          if (response !== null) return response;
         }
         if (request.pathname === '/api/v1/business-document-activity' && request.method === 'GET') {
           authorizeQuery(context, 'business-document:audit');
