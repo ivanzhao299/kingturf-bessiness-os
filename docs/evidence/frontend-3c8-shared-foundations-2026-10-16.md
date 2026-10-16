@@ -1,5 +1,7 @@
 # 前端3c⑧：基础共享职责迁位（2026-10-16）
 
+完成检查点：源码`541376f`稳定干净实际HEAD完整`pnpm ci:local`真实exit0/183823.324ms（`/tmp/kingturf-3c8-541376f-head-ci-2026-10-16.log`），结束HEAD仍541376f/树空；API117/17099、web9/114、database68/domain14/config4/types1、PG链、读源自测22/CDP纯JS24、能力39/19、结构0硬31旧软、预算11367/1898及audit绿。回滚本组`git revert 541376f`（六模块/root门面/读源同撤），不撤前组driver/权限桥；完成docs独立。下方“候选/待跑”为原时点记录。完成docs实际HEAD另全CI后继续列表工具/editor等共享职责，再3d–3f，不重复许可，不提前宣布3c/巨石或日期债务结清。
+
 ## 范围与状态
 
 输入⑦完成docs `dc31247`稳定干净实际HEAD完整`pnpm ci:local`真实exit0/184843.213ms（`/tmp/kingturf-3c7-dc31247-head-ci-2026-10-16.log`），结束HEAD不变/树空。沿既定3a→3f连续授权，只迁模板/显示格式/状态标签/CTR字段与关联辅助函数/就绪汇总/报价打印，不合并日期formatters、不缓存默认日期、不触HTTP/storage形状，实际日期重复收敛留3e。editor/listtools共享残留继续，随后3d–3f；3f后停供整批人工验收，未称3c完成或巨石清零。
