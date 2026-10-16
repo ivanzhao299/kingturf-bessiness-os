@@ -200,6 +200,7 @@ import { qualityInspectionOpenRoutes } from './routes/quality-inspection-open.ts
 import { qualityInspectionTransitionRoutes } from './routes/quality-inspection-transitions.ts';
 import { qualityResultRecordRoutes } from './routes/quality-result-record.ts';
 import { qualityDispositionRoutes } from './routes/quality-disposition.ts';
+import { businessDocumentActivityRoutes } from './routes/business-document-activity.ts';
 import { businessDocumentTranslationRoutes } from './routes/business-document-translation.ts';
 import { businessDocumentReviewRoutes } from './routes/business-document-review.ts';
 import { businessDocumentVersionRoutes } from './routes/business-document-version.ts';
@@ -4003,21 +4004,21 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               'Business document repository unavailable',
               correlationId,
             );
-          const b = objectBody(request.body);
-          allow(b, ['action', 'version']);
-          const action = string(b.action, 'action');
-          if (!['PRINTED', 'DOWNLOADED'].includes(action))
-            throw new DomainError('invalid_request', 'document activity is unsupported');
-          return {
-            statusCode: 201,
-            body: await dependencies.businessDocuments.recordClientActivity(
-              uuid(businessDocumentActivity[1], 'documentId'),
-              action as 'PRINTED' | 'DOWNLOADED',
-              version(b.version),
-              { actor: context.actor, scopes: grant.scopes },
+          const response = await dispatchRoutes(
+            businessDocumentActivityRoutes({
+              repository: () =>
+                dependencies.businessDocuments as Pick<
+                  NonNullable<ApiDependencies['businessDocuments']>,
+                  'recordClientActivity'
+                >,
+              authorization: context,
+              grant,
               correlationId,
-            ),
-          };
+              parsers: { objectBody, allow, string, uuid, version },
+            }),
+            request,
+          );
+          if (response !== null) return response;
         }
         const businessDocumentDispatch =
           /^\/api\/v1\/business-documents\/([0-9a-f-]+)\/send$/u.exec(request.pathname);
