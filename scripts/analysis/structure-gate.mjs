@@ -4,7 +4,7 @@
 //   node scripts/analysis/structure-gate.mjs --selftest   对内置违规样本断言各规则可拦截（供 node --test 之外的快速自检）
 // 规则（HARNESS-RULES §4.2 品味不变量）：
 //   G1 文件大小：非测试源 .ts ≤ MAX_FILE_LINES（D5 已启用：800）
-//   G2 嵌套深度：API routes 为 AST 词法函数/控制流，其余为原格式缩进（上限5）
+//   G2 嵌套深度：API routes/批次3新web目录为AST词法函数/控制流，其余保留原格式缩进（上限5）
 //   G3 SQL 原始输入插值（TD-SEC-005，始终强制）：apps/api/src 模板字符串中禁止以原始请求对象开头的插值
 //   G4 路由表校验约束（始终强制，批次 2 前待命）：apps/api/src/routes/** 的路由定义必须声明 validate
 // 每条失败信息必须包含修复指令（§4.2 硬要求）。
@@ -53,6 +53,9 @@ const NESTING_EXTRA = new Map(
   ]),
 );
 
+export const isNewWebModule = (path) =>
+  /^apps\/web\/src\/(?:shared|crm|commercial|governance)\//u.test(path);
+
 export function walk(dir, out = []) {
   for (const entry of readdirSync(dir)) {
     const full = join(dir, entry);
@@ -61,7 +64,8 @@ export function walk(dir, out = []) {
       if (
         entry === 'routes' &&
         full !== 'apps/api/src/routes' &&
-        !full.startsWith('apps/api/src/routes/')
+        !full.startsWith('apps/api/src/routes/') &&
+        !isNewWebModule(full)
       )
         continue;
       walk(full, out);
@@ -296,7 +300,7 @@ export function runChecks({ reportOnly = false } = {}) {
     const lines = content.split('\n').length;
     violations.push(...sizeViolations(path, lines));
     violations.push(
-      ...(path.startsWith('apps/api/src/routes/')
+      ...(path.startsWith('apps/api/src/routes/') || isNewWebModule(path)
         ? routeNestingViolations(path, content)
         : nestingViolations(path, content)),
     );

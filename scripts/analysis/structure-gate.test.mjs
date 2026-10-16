@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
 import {
   MAX_FILE_LINES,
   MAX_NESTING,
@@ -14,7 +15,63 @@ import {
   sqlRawInputViolations,
   routeNestingMetrics,
   routeNestingViolations,
+  isNewWebModule,
 } from './structure-gate.mjs';
+
+test('批次3 AST最小范围精确到四个新web目录，不扩旧bootstrap/http或其他域', () => {
+  for (const scope of ['shared', 'crm', 'commercial', 'governance']) {
+    assert.equal(isNewWebModule(`apps/web/src/${scope}/module.ts`), true);
+    assert.equal(isNewWebModule(`apps/web/src/${scope}/routes/module.ts`), true);
+  }
+  for (const path of [
+    'apps/web/src/bootstrap.ts',
+    'apps/web/src/http.ts',
+    'apps/web/src/shared-other/module.ts',
+    'apps/web/src/other/module.ts',
+    'apps/api/src/routes/module.ts',
+    'packages/domain/src/shared/module.ts',
+  ])
+    assert.equal(isNewWebModule(path), false);
+});
+
+test('新web真实CLI在隔离临时仓库拒G1/AST6-7/残缺语法，放行800/AST5/深格式', () => {
+  const gate = join(process.cwd(), 'scripts/analysis/structure-gate.mjs');
+  const root = mkdtempSync(join(tmpdir(), 'kingturf-web-structure-'));
+  mkdirSync(join(root, 'packages'));
+  const run = () => spawnSync(process.execPath, [gate], { cwd: root, encoding: 'utf8' });
+  try {
+    for (const scope of ['shared', 'crm', 'commercial', 'governance']) {
+      // Include a routes-named descendant: generic walk's old routes skip must not escape C3.
+      const directory = join(root, 'apps/web/src', scope, 'routes');
+      mkdirSync(directory, { recursive: true });
+      const file = join(directory, 'fixture.ts');
+      for (const [content, expected, marker] of [
+        [Array(801).fill('// fixture').join('\n'), 1, /超过上限 800 行/u],
+        [Array(800).fill('// fixture').join('\n'), 0, null],
+        [`function outer(){${nestedIf(5)}}`, 1, /AST嵌套 6 层/u],
+        ['const f=()=>()=>()=>()=>()=>()=>()=>1;', 1, /AST嵌套 7 层/u],
+        ['function broken( {', 1, /AST解析失败/u],
+        [`function outer(){${nestedIf(4)}}`, 0, null],
+        [' '.repeat(50) + 'const f = () => ({nested:{value:1}});', 0, null],
+      ]) {
+        writeFileSync(file, content);
+        const result = run();
+        assert.equal(result.status, expected, `${scope}: ${result.stdout}\n${result.stderr}`);
+        if (marker) {
+          assert.match(result.stderr, marker);
+          assert.ok(result.stderr.includes(`${scope}/routes/fixture.ts`));
+        }
+      }
+    }
+    const legacy = join(root, 'apps/web/src/legacy.ts');
+    writeFileSync(legacy, ' '.repeat(50) + 'const legacy = 1;');
+    const oldFormat = run();
+    assert.equal(oldFormat.status, 1);
+    assert.match(oldFormat.stderr, /legacy.ts（格式缩进 25 层）/u);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 
 test('G1 拦截超限文件并附修复指令', () => {
   const v = sizeViolations('apps/api/src/new-hot.ts', MAX_FILE_LINES + 100);
