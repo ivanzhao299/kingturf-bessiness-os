@@ -200,6 +200,8 @@ import { qualityInspectionOpenRoutes } from './routes/quality-inspection-open.ts
 import { qualityInspectionTransitionRoutes } from './routes/quality-inspection-transitions.ts';
 import { qualityResultRecordRoutes } from './routes/quality-result-record.ts';
 import { qualityDispositionRoutes } from './routes/quality-disposition.ts';
+import { businessDocumentVersionRoutes } from './routes/business-document-version.ts';
+import { businessDocumentBindingRoutes } from './routes/business-document-bindings.ts';
 import { businessDocumentCreateRoutes } from './routes/business-document-create.ts';
 import { businessDocumentConnectorRoutes } from './routes/business-document-connector.ts';
 import {
@@ -3878,21 +3880,21 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               'Business document repository unavailable',
               correlationId,
             );
-          const b = objectBody(request.body);
-          allow(b, ['expectedVersion', 'content', 'changeSummary']);
-          return {
-            statusCode: 201,
-            body: await dependencies.businessDocuments.saveVersion(
-              uuid(businessDocumentVersion[1], 'documentId'),
-              {
-                expectedVersion: version(b.expectedVersion),
-                content: jsonObject(b.content, 'content'),
-                changeSummary: string(b.changeSummary, 'changeSummary'),
-              },
-              { actor: context.actor, scopes: grant.scopes },
+          const response = await dispatchRoutes(
+            businessDocumentVersionRoutes({
+              repository: () =>
+                dependencies.businessDocuments as Pick<
+                  NonNullable<ApiDependencies['businessDocuments']>,
+                  'saveVersion'
+                >,
+              authorization: context,
+              grant,
               correlationId,
-            ),
-          };
+              parsers: { objectBody, allow, string, uuid, version, jsonObject },
+            }),
+            request,
+          );
+          if (response !== null) return response;
         }
         const businessDocumentBindings =
           /^\/api\/v1\/business-documents\/([0-9a-f-]+)\/bindings$/u.exec(request.pathname);
@@ -3905,29 +3907,21 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               'Business document repository unavailable',
               correlationId,
             );
-          const b = objectBody(request.body);
-          allow(b, ['customerId', 'salesOrderId', 'operatorId', 'salespersonId', 'assignedTo']);
-          const nullableUuid = (value: unknown, field: string): string | null | undefined =>
-            value === undefined
-              ? undefined
-              : value === null || value === ''
-                ? null
-                : uuid(value, field);
-          return {
-            statusCode: 200,
-            body: await dependencies.businessDocuments.updateBindings(
-              businessDocumentBindings[1] ?? '',
-              {
-                customerId: nullableUuid(b.customerId, 'customerId'),
-                salesOrderId: nullableUuid(b.salesOrderId, 'salesOrderId'),
-                operatorId: nullableUuid(b.operatorId, 'operatorId'),
-                salespersonId: nullableUuid(b.salespersonId, 'salespersonId'),
-                assignedTo: nullableUuid(b.assignedTo, 'assignedTo'),
-              },
-              { actor: context.actor, scopes: grant.scopes },
+          const response = await dispatchRoutes(
+            businessDocumentBindingRoutes({
+              repository: () =>
+                dependencies.businessDocuments as Pick<
+                  NonNullable<ApiDependencies['businessDocuments']>,
+                  'updateBindings'
+                >,
+              authorization: context,
+              grant,
               correlationId,
-            ),
-          };
+              parsers: { objectBody, allow, uuid },
+            }),
+            request,
+          );
+          if (response !== null) return response;
         }
         const businessDocumentReview =
           /^\/api\/v1\/business-documents\/([0-9a-f-]+)\/(submit|approve|reject)$/u.exec(
