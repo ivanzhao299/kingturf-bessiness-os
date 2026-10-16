@@ -1,6 +1,12 @@
-# 3c② 成本、政策与报价（2026-10-16，源码候选验证中）
+# 3c② 成本、政策与报价（2026-10-16，实施与独立复核完成）
+
+现时收口：源码 `9429a31` 稳定干净实际HEAD完整CI真0/177525.943ms；独立工具修正 `3f3aae7` 稳定干净实际HEAD完整CI真0/184806.065ms（`/tmp/kingturf-cdp-3f3aae7-head-ci-2026-10-16.log`），结束HEAD均未变/工作树空。API117/17099、web9/114、database3/68、domain3/14、config1/4、types1/1、原PG链、读源22/CDP纯JS16、39-19、结构0硬31原豁免、预算11368/1898、build/audit全绿；结构与语义/driver独立只读复核均通过。本次仅归并文档，最终文档HEAD另完整CI后续已授权3c③，不声称整批3或Harness竣工。后文候选/待验证/待CI均保留为当时快照，以此收口及后补实测为准。
+
+工具提交后的干净实际HEAD再跑无trace合并13，u5cWLt真实exit0（`/tmp/kingturf-cdp-stable-click-head-real13-2026-10-16.log`），DOM44/viewport15/route37/text34/overflow22、十类GET各5/cost6/detail2、blocked/unknown/failed0，自有preview2902222/root/profile清理全真；截图 `/tmp/kingturf-cdp-preflight-u5cWLt-probes.png`。与提交前WbkqpO构成两次独立profile的无trace13绿，8个不同路由（overview/customers/costing/quotes/opportunities/technical-requirements/technical-solutions/sales-policies），不是13个域。旧pricing10、诊断13、两次旧合并失败分别记录，不以新绿反推旧失败根因全证；采样至派发的有限竞态仍明确保留。TD-TEST-006按这个测试工具边界关闭，原37历史保持、现台账38；无业务修复/其他债务改动。原Playwright九spec/config冻结未跑，阶段5前全补跑义务保持。
 
 ## 输入与边界
+
+最终回滚按依赖逆序：先本组最终docs检查点、再工具3f3aae7、再源码9429a31，保留3a/3b/R7；源码提交也含首次driver诊断接线，和工具修正有同文件相邻hunk，**不保证跳过工具直接revert源码无冲突**。若只撤业务提取而保留新driver，须人工核冲突与门禁，不能按“独立”二字推定无依赖。后文原回滚简写为当时粒度说明，以本条依赖顺序为准。完成归并时一次索引行严格定位因目标前缀不存在而中止，已应用的独立文档行保留，按真实位置补齐；未改源码。协调曾将CI终值0与随后已有docs改动的现时状态混称树干净，已纠正：本页干净状态仅指当时实际CI开始/结束，当前docs候选必须另提交验证。
 
 基线 `85affd3`，完整 CI 真实 exit 0 / 167711.351ms，结束 HEAD 未变且工作树干净，日志 `/tmp/kingturf-3c1-85affd3-head-ci-2026-10-16.log`。依既有批次3授权继续，无需重新许可。仅拆 costing / sales-policies / quotes 真实视图、最小结构类型端口及必要读源护栏与本地 CDP 探头。原9文件114测试、457完整断言、70公开绑定和预算阈值保持；后端、packages、SQL、lock、workflow、Playwright规格及配置冻结，不 push、不部署。
 

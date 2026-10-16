@@ -43,6 +43,8 @@ packages/{types, config} ──→ 零依赖
 
 ## 4. 目标分层（改造方向，规则 §4.1 存量适配）
 
+3c②完成快照：成本/政策/报价12模块沿 `bootstrap→commercial→shared/forms/dom`，pricing结构type只描述原controller/静态端口；root10972 split，新模块≤610/完整函数135/AST5，原引用/动态权限/局部重绘/提交顺序及整入口逆展开保持。源码9429a31、独立测试driver3f3aae7均稳定干净HEAD完整CI0；两次无trace合并13/8不同路由不代表全21域或Playwright，原失败史保持。商业其余15主视图及共享残留继续既定组；未结清root巨石或搬God store，见成本政策报价完成证据。
+
 3c②现时后补：源码9429a31稳定干净HEAD全CI真实0；自有CDP driver可靠性独立候选不增加业务依赖边，旧红→新driver10/总16及无trace合并13绿，工具HEAD全CI待核。业务源码不随工具修正改动；旧失败与有限竞态保留，详见成本政策报价证据。
 
 3c②候选已将成本/政策/报价沿同方向拆为commercial内12个真实职责/结构type模块，入口10972 split，新模块最大610/完整函数135/AST5；原controller/permissions/cache引用、矩阵局部替换与各提交顺序保留，实际37处逆展开旧入口AST/70绑定/457断言同。局部门禁绿，诊断CDP13绿但无诊断两次导航超时及driver稳定取点待单责闭环；不将候选称整批完成。现时证据：[成本政策报价](docs/evidence/frontend-3c2-pricing-2026-10-16.md)。

@@ -10,7 +10,7 @@ KingTurf 业务操作系统：面向草坪行业外贸业务的 ERP（CRM→报�
 
 - 架构总览与依赖方向：见 `ARCHITECTURE.md`
 - 设计理念与操作原则（争议裁决依据）：见 `docs/design-docs/core-beliefs.md`
-- 当前执行计划与进度（E1已验收；3b最终5a5c586、3c①最终85affd3均全CI0；3c②源码9429a31干净HEAD全CI0/177525.943ms，12模块/114/457/70/真实变异齐；TD-TEST-006工具候选纯JS16与无trace合并13绿，最终工具HEAD全CI待核，旧失败史保留；Playwright九spec冻结未执行/阶段5前全补跑，3f后整批验收）：见 `docs/exec-plans/active/` §4.4及§7
+- 当前执行计划与进度（E1已验收；3a/3b/3c①检查点均全CI0；3c②源码9429a31、独立工具3f3aae7均干净HEAD全CI0，12模块/114/457/70/真实变异及两次无trace合并13齐，旧失败史保留；现仅归并文档，文档HEAD全CI后续3c③；Playwright九spec冻结未执行/阶段5前全补跑，3f后整批验收）：见 `docs/exec-plans/active/` §4.4及§7
 - 已知技术债（38 条台账，含已解决历史项及本批CDP工具TD-TEST-006）：见 `docs/exec-plans/tech-debt-tracker.md`
 - CI 与发布决策（非 Tauri，仅 workflow_dispatch 部署，无 tag/Release）：见 `docs/CI.md`
 - 全部文档索引：见 `docs/index.md`
@@ -18,9 +18,7 @@ KingTurf 业务操作系统：面向草坪行业外贸业务的 ERP（CRM→报�
 
 ## 硬性约束（不可违反）
 
-现时后补：3c②源码9429a31稳定干净HEAD全CI0/177525.943ms；TD-TEST-006工具独立候选旧红→新driver10/纯JS总16绿、无trace合并13真绿，旧两次失败与有限竞态保留。最终工具HEAD全CI另跑，详情见3c②证据；3f后整批人工验收边界不变。
-
-3c②现时补充：成本/政策/报价12模块候选、入口10972 split，实际逆展开/114/457/70/11目标红绿已核，诊断CDP13绿但无诊断两次导航超时及driver稳定取点待单责闭环；提交后干净实际HEAD全CI另跑，见 `docs/evidence/frontend-3c2-pricing-2026-10-16.md`。3f后整批人工验收边界不变。
+3c②完成：源码9429a31与独立工具3f3aae7均稳定干净HEAD全CI0；12模块/入口10972 split、逆展开/114/457/70/11目标红绿及两次无trace合并13齐，旧失败史/有限竞态保留。现仅完成证据归并，文档HEAD全CI后续3c③，见 `docs/evidence/frontend-3c2-pricing-2026-10-16.md`；3f后整批人工验收边界不变。
 
 - 分层依赖只能单向（箭头＝"依赖于"，详见 `ARCHITECTURE.md` §1）：`apps/api → packages/{config, database, domain, types}`；`packages/domain → packages/types`；`packages/` 不得反向依赖 `apps/*`；横切逻辑必须走共享模块，禁止跨业务域复制（DataScope 谓词、审计外发、幂等查询已有收敛批次，见台账 TD-DUP 组）
 - 行为守恒：重构不得改变业务行为；行为变更/bug 修复必须先登记台账、单独提交（红线 R2）
