@@ -18,6 +18,8 @@ KingTurf 业务操作系统：面向草坪行业外贸业务的 ERP（CRM→报�
 
 ## 硬性约束（不可违反）
 
+3c②现时补充：成本/政策/报价12模块候选、入口10972 split，实际逆展开/114/457/70/11目标红绿已核，诊断CDP13绿但无诊断两次导航超时及driver稳定取点待单责闭环；提交后干净实际HEAD全CI另跑，见 `docs/evidence/frontend-3c2-pricing-2026-10-16.md`。3f后整批人工验收边界不变。
+
 - 分层依赖只能单向（箭头＝"依赖于"，详见 `ARCHITECTURE.md` §1）：`apps/api → packages/{config, database, domain, types}`；`packages/domain → packages/types`；`packages/` 不得反向依赖 `apps/*`；横切逻辑必须走共享模块，禁止跨业务域复制（DataScope 谓词、审计外发、幂等查询已有收敛批次，见台账 TD-DUP 组）
 - 行为守恒：重构不得改变业务行为；行为变更/bug 修复必须先登记台账、单独提交（红线 R2）
 - SQL 一律参数化（`$1..$n`），禁止拼接用户输入；前端写入 innerHTML 前必须过 `sanitizeBusinessDocumentHtml`

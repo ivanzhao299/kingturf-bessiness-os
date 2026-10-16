@@ -2,6 +2,36 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createStubRouter } from './fixtures.mjs';
 
+test('pricing opt-in keeps the default empty ledger and adds only policy GET routes', async () => {
+  const original = createStubRouter();
+  const pricing = createStubRouter({ pricingViews: true });
+  for (const path of ['/api/v1/sales-policies', '/api/v1/sales-policy-evaluations']) {
+    await assert.rejects(original.respond(path, 'GET'), /unmapped synthetic API request/u);
+    await assert.rejects(pricing.respond(path, 'POST'), /unmapped synthetic API request/u);
+    assert.equal((await pricing.respond(path, 'GET')).status, 200);
+  }
+  assert.equal((await original.respond('/api/v1/cost-matrix-summaries', 'GET')).value.total, 0);
+  assert.equal((await original.respond('/api/v1/quotes', 'GET')).value.items.length, 0);
+  const matrix = (await pricing.respond('/api/v1/cost-matrix-summaries', 'GET')).value;
+  assert.equal(matrix.total, 1);
+  assert.equal(matrix.items[0].name, 'CDP规格模型甲');
+  assert.equal(
+    (await pricing.respond('/api/v1/quotes', 'GET')).value.items[0].quoteNumber,
+    'CDP-Q-A',
+  );
+  assert.equal(
+    (await pricing.respond('/api/v1/sales-policies', 'GET')).value.items[0].status,
+    'PUBLISHED',
+  );
+  const baseline = (await original.respond('/api/v1/auth/session', 'GET')).value;
+  const expanded = (await pricing.respond('/api/v1/auth/session', 'GET')).value;
+  assert.deepEqual(expanded.permissions.slice(baseline.permissions.length), ['sales-policy:read']);
+  await assert.rejects(
+    pricing.respond('/api/v1/sales-policies/unknown', 'GET'),
+    /unmapped synthetic API request/u,
+  );
+});
+
 test('cost hold binds the exact search request, not initial cost fetch or its fulfillment', async () => {
   const router = createStubRouter();
   const hold = router.hold('cost', 'synthetic-search');

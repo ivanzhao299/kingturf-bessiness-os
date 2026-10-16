@@ -32,7 +32,7 @@ const session = {
     'organization:read',
   ],
 };
-export function createStubRouter({ salesViews = false } = {}) {
+export function createStubRouter({ salesViews = false, pricingViews = false } = {}) {
   const holds = new Map();
   const completions = new Map();
   const counts = new Map();
@@ -45,6 +45,12 @@ export function createStubRouter({ salesViews = false } = {}) {
       ['/api/v1/quotes', 'quotes'],
       ['/api/v1/organizations', 'organizations'],
       ['/api/v1/customers/cdp-customer-a/360', 'detail'],
+      ...(pricingViews
+        ? [
+            ['/api/v1/sales-policies', 'policies'],
+            ['/api/v1/sales-policy-evaluations', 'policyEvaluations'],
+          ]
+        : []),
       ...(salesViews
         ? [
             ['/api/v1/opportunities', 'opportunities'],
@@ -115,20 +121,84 @@ export function createStubRouter({ salesViews = false } = {}) {
           value: { error: { message: 'CDP合成服务暂不可用，请重试' } },
         };
       const value = {
-        session: salesViews
-          ? {
-              ...session,
-              permissions: [
-                ...session.permissions,
-                'opportunity:read',
-                'ctr:read',
-                'technical-solution:read',
-              ],
-            }
-          : session,
+        session:
+          salesViews || pricingViews
+            ? {
+                ...session,
+                permissions: [
+                  ...session.permissions,
+                  ...(salesViews
+                    ? ['opportunity:read', 'ctr:read', 'technical-solution:read']
+                    : []),
+                  ...(pricingViews ? ['sales-policy:read'] : []),
+                ],
+              }
+            : session,
         customers: { items: customers },
-        cost: { items: [], total: 0, page: 1, pageSize: 20 },
-        quotes: { items: [], nextCursor: null },
+        cost: {
+          items: pricingViews
+            ? [
+                {
+                  id: 'cdp-matrix-a',
+                  code: 'CDP-CM-A',
+                  name: 'CDP规格模型甲',
+                  productSku: 'CDP-SKU-A',
+                  factorCount: 2,
+                  missingPriceCount: 0,
+                  missingSourceCount: 0,
+                  needsRecalculation: false,
+                  latestCalculation: {},
+                },
+              ]
+            : [],
+          total: pricingViews ? 1 : 0,
+          page: 1,
+          pageSize: 20,
+        },
+        quotes: {
+          items: pricingViews
+            ? [
+                {
+                  id: 'cdp-quote-version-a',
+                  quoteId: 'cdp-quote-a',
+                  quoteNumber: 'CDP-Q-A',
+                  revision: 1,
+                  status: 'DRAFT',
+                  currency: 'CNY',
+                  total: '25000',
+                  discount: '0',
+                  costTotal: '20000',
+                  margin: '5000',
+                  marginBasisPoints: 2000,
+                  lines: [
+                    {
+                      description: 'CDP草坪甲',
+                      quantity: '100',
+                      unit_code: 'M2',
+                      unit_price: '250',
+                      total: '25000',
+                    },
+                  ],
+                },
+              ]
+            : [],
+          nextCursor: null,
+        },
+        policies: {
+          items: [
+            {
+              id: 'cdp-policy-version-a',
+              definitionId: 'cdp-policy-a',
+              code: 'CDP-SP-A',
+              name: 'CDP销售政策甲',
+              version: 1,
+              status: 'PUBLISHED',
+              rules: [],
+            },
+          ],
+          nextCursor: null,
+        },
+        policyEvaluations: { items: [], nextCursor: null },
         organizations: [],
         opportunities: {
           items: [

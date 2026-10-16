@@ -222,6 +222,30 @@ export async function runProbes({ send, router, runId, report, expectDialog }) {
           }
         });
     }
+    if (process.argv.includes('--pricing-views')) {
+      for (const [route, title, selector, record] of [
+        [
+          'costing',
+          '成本核算',
+          '.cost-matrix-ledger-row .cost-matrix-ledger-link',
+          'CDP规格模型甲',
+        ],
+        ['sales-policies', '销售政策', '.policy-workbench .definition-card', 'CDP-SP-A'],
+        ['quotes', '销售报价', '.quote-workbench .quote-card', 'CDP-Q-A'],
+      ])
+        await check(`pricing-view-${route}-desktop-mobile`, async () => {
+          for (const metrics of [
+            [390, 844, true],
+            [1440, 1000, false],
+          ]) {
+            await page.viewport(...metrics);
+            await page.route(route);
+            await page.text('[data-route-context] h1', title);
+            await page.text(selector, record);
+            await page.noOverflow();
+          }
+        });
+    }
     const screenshot = await send('Page.captureScreenshot', { format: 'png' });
     writeFileSync(`/tmp/${runId}-probes.png`, Buffer.from(screenshot.data, 'base64'));
     return {

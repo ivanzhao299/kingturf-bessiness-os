@@ -1,6 +1,7 @@
 import { setTimeout as delay } from 'node:timers/promises';
 
 export function createDriver(send) {
+  const traceNavClicks = process.argv.includes('--trace-nav-clicks');
   const counts = { dom: 0, viewport: 0, route: 0, text: 0, overflow: 0 };
   const evaluate = async (expression) => {
     const result = await send('Runtime.evaluate', {
@@ -19,6 +20,11 @@ export function createDriver(send) {
     throw new Error(`DOM condition timed out: ${label}`);
   };
   const click = async (selector) => {
+    const trace = traceNavClicks && /data-app-route|nav-parent/u.test(selector);
+    if (trace)
+      await evaluate(
+        `(() => {if(globalThis.__cdpNavTrace)return;globalThis.__cdpNavTrace=[];document.addEventListener('click',event=>{const n=event.target.closest?.('[data-app-route],.nav-parent');if(n)globalThis.__cdpNavTrace.push({route:n.dataset.appRoute??null,parent:n.dataset.navRoutes??null,hash:location.hash,at:performance.now()});},true);})()`,
+      );
     await evaluate(
       `document.querySelector(${JSON.stringify(selector)})?.scrollIntoView({block:'center',inline:'center'})`,
     );
@@ -27,10 +33,28 @@ export function createDriver(send) {
       'unobscured click target',
     );
     const rect = await evaluate(
-      `(() => {const node=document.querySelector(${JSON.stringify(selector)});if(!node||!node.getClientRects().length)throw Error('missing visible target');node.scrollIntoView({block:'center',inline:'center'});const r=node.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2};})()`,
+      `(() => {const node=document.querySelector(${JSON.stringify(selector)});if(!node||!node.getClientRects().length)throw Error('missing visible target');node.scrollIntoView({block:'center',inline:'center'});const r=node.getBoundingClientRect();const point={x:r.x+r.width/2,y:r.y+r.height/2};if(${trace}){const hit=document.elementFromPoint(point.x,point.y)?.closest('[data-app-route],.nav-parent');const parent=document.querySelector('.nav-parent[data-nav-routes~="'+(node.dataset.appRoute??'')+'"]');point.trace={at:performance.now(),hash:location.hash,selector:${JSON.stringify(selector)},target:node.dataset.appRoute??null,expanded:parent?.getAttribute('aria-expanded')??null,hit:hit?.dataset.appRoute??hit?.dataset.navRoutes??null,rect:{x:r.x,y:r.y,width:r.width,height:r.height},scrollY,animations:document.getAnimations().map(a=>({state:a.playState,time:a.currentTime,target:a.effect?.target?.className??null}))};}return point;})()`,
     );
+    if (trace) console.log(JSON.stringify({ kind: 'nav-click-before', ...rect.trace }));
     for (const type of ['mousePressed', 'mouseReleased'])
-      await send('Input.dispatchMouseEvent', { type, ...rect, button: 'left', clickCount: 1 });
+      await send('Input.dispatchMouseEvent', {
+        type,
+        x: rect.x,
+        y: rect.y,
+        button: 'left',
+        clickCount: 1,
+      });
+    if (trace)
+      console.log(
+        JSON.stringify({
+          kind: 'nav-click-after',
+          selector,
+          point: { x: rect.x, y: rect.y },
+          state: await evaluate(
+            `(() => {const n=document.querySelector(${JSON.stringify(selector)});const r=n?.getBoundingClientRect();const hit=document.elementFromPoint(${rect.x},${rect.y})?.closest('[data-app-route],.nav-parent');return {at:performance.now(),hash:location.hash,targetRect:r?{x:r.x,y:r.y,width:r.width,height:r.height}:null,hit:hit?.dataset.appRoute??hit?.dataset.navRoutes??null,events:globalThis.__cdpNavTrace.splice(0)};})()`,
+          ),
+        }),
+      );
     counts.dom++;
   };
   const fill = async (selector, text) => {

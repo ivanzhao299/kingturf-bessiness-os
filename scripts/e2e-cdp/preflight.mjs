@@ -405,7 +405,10 @@ try {
   });
   if (process.argv.includes('--probes')) {
     const suite = await import('./probes.mjs');
-    suiteRouter = suite.createStubRouter({ salesViews: process.argv.includes('--sales-views') });
+    suiteRouter = suite.createStubRouter({
+      salesViews: process.argv.includes('--sales-views'),
+      pricingViews: process.argv.includes('--pricing-views'),
+    });
     if (process.argv.includes('--fault-unmapped-api')) {
       await cdp(
         'Runtime.evaluate',

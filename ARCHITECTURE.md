@@ -43,6 +43,8 @@ packages/{types, config} ──→ 零依赖
 
 ## 4. 目标分层（改造方向，规则 §4.1 存量适配）
 
+3c②候选已将成本/政策/报价沿同方向拆为commercial内12个真实职责/结构type模块，入口10972 split，新模块最大610/完整函数135/AST5；原controller/permissions/cache引用、矩阵局部替换与各提交顺序保留，实际37处逆展开旧入口AST/70绑定/457断言同。局部门禁绿，诊断CDP13绿但无诊断两次导航超时及driver稳定取点待单责闭环；不将候选称整批完成。现时证据：[成本政策报价](docs/evidence/frontend-3c2-pricing-2026-10-16.md)。
+
 ```text
 Types → Config → Repo → Service → Runtime → UI
 ```

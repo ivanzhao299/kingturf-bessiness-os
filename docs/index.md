@@ -26,6 +26,8 @@
 
 [3c①线索方案完成证据](evidence/frontend-3c1-sales-2026-10-16.md)：a34df41稳定干净全CI0/167522.718ms，三视图守恒/70绑定457断言/114/真实变异/旧新CDP10与首失败史、共享残留归宿和回滚齐。
 
+[3c②成本政策报价证据](evidence/frontend-3c2-pricing-2026-10-16.md)：12模块候选与37处实际逆展开/70绑定457断言/11目标红绿/114/局部门禁已核；旧pricing10及诊断合并13绿、无诊断两次导航失败与driver稳定取点待闭环分别保留，提交后实际HEAD全CI另跑。
+
 [能力门禁静态TS读源修正](evidence/frontend-capability-runtime-graph-2026-10-16.md)：用户授权47a8ee5；入口静态图/原39-19逐文件规则/边界自测及实际新源负向，独立于3b业务候选。
 
 [3b CRM域完成证据](evidence/frontend-3b-crm-2026-10-16.md)：源码487d698干净HEAD完整CI0，controller/records/shell及必要共享模块守恒、70公开绑定/457断言/实际读源变异/CDP与回滚；失败史及旧候选时点保留。

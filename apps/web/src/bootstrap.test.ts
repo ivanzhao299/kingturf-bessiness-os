@@ -93,6 +93,26 @@ it('captures artificial-turf project handoff fields without test-channel evidenc
     readBoundSource('./commercial/opportunity-view.ts', 'export function appendOpportunityView'),
     readBoundSource('./commercial/ctr-view.ts', 'export function appendCtrView'),
     readBoundSource('./commercial/solution-view.ts', 'export function appendSolutionView'),
+    readBoundSource('./commercial/cost-view.ts', 'export function appendCostView'),
+    readBoundSource(
+      './commercial/cost-matrix-bindings.ts',
+      'export function createCostMatrixBindings',
+    ),
+    readBoundSource('./commercial/cost-factor-form.ts', 'export function createCostFactorFields'),
+    readBoundSource(
+      './commercial/cost-matrix-detail.ts',
+      'export function appendCostDetailActions',
+    ),
+    readBoundSource('./commercial/cost-matrix-ledger.ts', 'export function appendCostLedgerRows'),
+    readBoundSource('./commercial/cost-model-heading.ts', 'export function appendCostModelHeading'),
+    readBoundSource(
+      './commercial/cost-model-evaluations.ts',
+      'export function appendCostModelCatalog',
+    ),
+    readBoundSource('./commercial/policy-view.ts', 'export function appendPolicyView'),
+    readBoundSource('./commercial/quote-view.ts', 'export function appendQuoteView'),
+    readBoundSource('./commercial/quote-create.ts', 'export function appendQuoteHeading'),
+    readBoundSource('./commercial/quote-cards.ts', 'export function appendQuoteCardActions'),
   ].join('\n');
   for (const field of [
     'projectRegion',
@@ -1120,7 +1140,13 @@ describe('web bootstrap', () => {
     ) as unknown as RenderedElement;
 
     expect(workspace.findByText('添加成本因子')).toHaveLength(1);
-    const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+    const source = [
+      readBoundSource('./commercial/cost-factor-form.ts', 'export function createCostFactorFields'),
+      readBoundSource(
+        './commercial/cost-matrix-detail.ts',
+        'export function appendCostDetailActions',
+      ),
+    ].join('\n');
     expect(source).toContain("name: 'priceSourceName'");
     expect(source).toContain("name: 'priceEffectiveAt'");
     expect(source).toContain("name: 'priceNote'");
