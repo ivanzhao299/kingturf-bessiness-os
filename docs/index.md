@@ -24,6 +24,8 @@
 
 ## docs/adr（架构决策记录，10 篇）
 
+[Windows Chrome CDP通道预检](evidence/windows-chrome-cdp-preflight-2026-10-16.md)：ad0435e裁定/02d93f4续派，owned loopback、版本、WSL preview真实DOM/资源200及清理通过；五类harness/Playwright尚未执行，阶段5前真实补跑义务保持。
+
 前端批次3前置地图/历史阻断：[冻结源码断言与Chrome环境](evidence/frontend-batch3-preflight-blockers-2026-10-16.md)（保留历史；ad0435e新裁定允许Windows Chrome CDP临时通道，先连通预检，执行边界见计划§7；Playwright配置/九spec冻结，阶段5前真实补跑）。
 
 E1先行固定证据：[authorization守恒候选/773例旧新探针](evidence/e1-authorization-conservation-2026-10-16.md)（授权310c1e2；先完成E1完整验证，再前端前置地图/冲突停报）。

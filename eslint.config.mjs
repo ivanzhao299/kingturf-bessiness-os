@@ -22,6 +22,7 @@ export default tseslint.config(
       'apps/web/scripts/*.mjs',
       'scripts/validate_release*.mjs',
       'scripts/analysis/*.mjs',
+      'scripts/e2e-cdp/*.mjs',
       'tests/e2e/runtime-local.spec.mjs',
     ],
     ...tseslint.configs.disableTypeChecked,
