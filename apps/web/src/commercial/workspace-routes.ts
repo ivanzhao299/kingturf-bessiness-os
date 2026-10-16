@@ -1,4 +1,7 @@
-export function assignCommercialRouteViews(workspace: HTMLElement): void {
+export function assignCommercialRouteViews(
+  workspace: HTMLElement,
+  existingChildren?: ReadonlySet<Element>,
+): void {
   const commercialRouteTokens: Readonly<Record<string, string>> = {
     'executive-dashboard': 'overview',
     'pipeline-board': 'opportunities',
@@ -24,6 +27,7 @@ export function assignCommercialRouteViews(workspace: HTMLElement): void {
     'shipment-workbench': 'shipments',
   };
   for (const child of Array.from(workspace.children)) {
+    if (existingChildren?.has(child)) continue;
     const routeTokens = Object.entries(commercialRouteTokens).find(([className]) =>
       child.className.split(' ').includes(className),
     )?.[1];
@@ -31,7 +35,10 @@ export function assignCommercialRouteViews(workspace: HTMLElement): void {
   }
 }
 
-export function assignLegacyRouteViews(workspace: HTMLElement): void {
+export function assignLegacyRouteViews(
+  workspace: HTMLElement,
+  existingChildren?: ReadonlySet<Element>,
+): void {
   const genericRouteTokens: Readonly<Record<string, string>> = {
     'opportunity-pipeline': 'opportunities',
     'ctr-revisions': 'technical-requirements',
@@ -47,6 +54,7 @@ export function assignLegacyRouteViews(workspace: HTMLElement): void {
     reconciliation: 'payments',
   };
   for (const child of Array.from(workspace.children)) {
+    if (existingChildren?.has(child)) continue;
     const routeTokens = Object.entries(genericRouteTokens).find(([className]) =>
       child.className.split(' ').includes(className),
     )?.[1];

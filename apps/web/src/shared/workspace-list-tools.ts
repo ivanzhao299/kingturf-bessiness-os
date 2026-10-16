@@ -9,8 +9,15 @@ import { bindRegisterActions } from './register-actions';
 import { installSavedRegisterView } from './register-saved-view';
 import type { RegisterState } from './register-types';
 
-export function installWorkspaceListTools(shell: HTMLElement): void {
-  const drawer = createRegisterDrawer(shell);
+const installedDrawers = new WeakMap<HTMLElement, ReturnType<typeof createRegisterDrawer>>();
+
+export function installWorkspaceListTools(
+  shell: HTMLElement,
+  options?: { reuseDrawer: boolean },
+): void {
+  const drawer =
+    (options?.reuseDrawer ? installedDrawers.get(shell) : undefined) ?? createRegisterDrawer(shell);
+  installedDrawers.set(shell, drawer);
   const selectors = [
     '.solution-list',
     '.decision-list',

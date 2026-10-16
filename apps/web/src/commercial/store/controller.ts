@@ -5,6 +5,13 @@ import { initialCostMatrixQuery } from './cost-query';
 import { readableCommercialSources } from './readable-sources';
 import { startCommercialOpportunityLoad } from './load-opportunities';
 import { startCommercialViewLoad } from './load-views';
+import {
+  beginCommercialRead,
+  endCommercialRead,
+  beginCommercialCostRead,
+  noteCommercialSourceRead,
+} from './read-owner';
+import { commercialDashboardQuery } from './dashboard-query';
 export class CommercialController {
   public opportunities: readonly Opportunity[] = [];
   public customers: readonly Customer[] = [];
@@ -25,7 +32,7 @@ export class CommercialController {
     public readonly permissions: ReadonlySet<CommercialPermission> = new Set(),
   ) {}
   public async load(): Promise<void> {
-    this.loading = true;
+    const finish = beginCommercialRead(this);
     try {
       const failures: string[] = [];
       const readable = readableCommercialSources(this);
@@ -34,14 +41,10 @@ export class CommercialController {
       const viewTask = startCommercialViewLoad(this, readableViews, failures);
       await Promise.all([opportunityTask, viewTask]);
       if (this.api.get && this.permissions.has('executive-dashboard:read')) {
-        const year = new Date().getUTCFullYear();
-        const query = new URLSearchParams({
-          from: `${String(year)}-01-01T00:00:00.000Z`,
-          to: `${String(year + 1)}-01-01T00:00:00.000Z`,
-          currency: 'CNY',
-        });
+        const query = commercialDashboardQuery();
         try {
           this.dashboard = await this.api.get(`/api/v1/executive-dashboard?${query.toString()}`);
+          noteCommercialSourceRead(this, '/api/v1/executive-dashboard');
         } catch {
           failures.push('经营看板');
         }
@@ -51,11 +54,11 @@ export class CommercialController {
           ? `已加载 ${String(this.opportunities.length)} 个商机`
           : `核心工作台已加载；${String(failures.length)} 个数据源暂不可用`;
     } finally {
-      this.loading = false;
+      endCommercialRead(this, finish);
     }
   }
   public async refreshViews(paths: readonly string[]): Promise<void> {
-    this.loading = true;
+    const finish = beginCommercialRead(this, false);
     try {
       const results = await Promise.allSettled(
         paths.map(async (path) => {
@@ -69,14 +72,16 @@ export class CommercialController {
         const path = paths[index];
         if (!path) return;
         if (result.status === 'fulfilled') {
-          if (result.value[0] !== '/api/v1/cost-matrices')
+          if (result.value[0] !== '/api/v1/cost-matrices') {
             this.views.set(result.value[0], result.value[1]);
+            noteCommercialSourceRead(this, result.value[0]);
+          }
         } else failed.push(path);
       });
       if (failed.length > 0)
         throw new Error(`数据已保存，但刷新失败：${failed.join('、')}，请重新进入本页面`);
     } finally {
-      this.loading = false;
+      endCommercialRead(this, finish);
     }
   }
   private async fetchCostMatrixPage(query: CostMatrixQuery): Promise<CostMatrixPage> {
@@ -88,26 +93,35 @@ export class CommercialController {
   }
   private costMatrixRequest = 0;
   private pendingCostMatrixQuery: CostMatrixQuery | undefined;
-  public async loadCostMatrixPage(update: Partial<CostMatrixQuery> = {}): Promise<boolean> {
-    const request = ++this.costMatrixRequest;
-    const query = { ...(this.pendingCostMatrixQuery ?? this.costMatrixQuery), ...update };
-    this.pendingCostMatrixQuery = query;
-    this.loading = true;
+  public async loadCostMatrixPage(
+    update: Partial<CostMatrixQuery> = {},
+    acceptsWave?: () => boolean,
+  ): Promise<boolean> {
+    const finish = beginCommercialCostRead(this, acceptsWave === undefined);
     try {
-      const page = await this.fetchCostMatrixPage(query);
-      if (request !== this.costMatrixRequest) return false;
-      this.costMatrixQuery = query;
-      this.costMatrixTotal = page.total;
-      this.views.set('/api/v1/cost-matrices', page.items);
-      return true;
-    } catch (failure) {
-      if (request !== this.costMatrixRequest) return false;
-      throw failure;
-    } finally {
-      if (request === this.costMatrixRequest) {
-        this.pendingCostMatrixQuery = undefined;
-        this.loading = false;
+      const request = ++this.costMatrixRequest;
+      const query = { ...(this.pendingCostMatrixQuery ?? this.costMatrixQuery), ...update };
+      this.pendingCostMatrixQuery = query;
+      this.loading = true;
+      try {
+        const page = await this.fetchCostMatrixPage(query);
+        if (request !== this.costMatrixRequest || acceptsWave?.() === false) return false;
+        this.costMatrixQuery = query;
+        this.costMatrixTotal = page.total;
+        this.views.set('/api/v1/cost-matrices', page.items);
+        noteCommercialSourceRead(this, '/api/v1/cost-matrices');
+        return true;
+      } catch (failure) {
+        if (request !== this.costMatrixRequest || acceptsWave?.() === false) return false;
+        throw failure;
+      } finally {
+        if (request === this.costMatrixRequest) {
+          this.pendingCostMatrixQuery = undefined;
+          this.loading = false;
+        }
       }
+    } finally {
+      finish();
     }
   }
   private readonly order360Requests = new Map<string, Promise<Record<string, unknown>>>();

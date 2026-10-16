@@ -205,6 +205,26 @@ const readCommercialStoreSources = (): string[] => [
     'export function startCommercialOpportunityLoad',
   ),
   readBoundSource('./commercial/store/load-views.ts', 'export function startCommercialViewLoad'),
+  readBoundSource(
+    './commercial/store/dashboard-query.ts',
+    'export function commercialDashboardQuery',
+  ),
+  readBoundSource('./commercial/store/read-owner.ts', 'export class CommercialReadOwner'),
+  readBoundSource(
+    './commercial/store/route-dependencies.ts',
+    'export function commercialRoutePlan',
+  ),
+  readBoundSource('./commercial/store/route-read.ts', 'export async function readCommercialRoute'),
+  readBoundSource('./commercial/store/route-state.ts', 'export class CommercialRouteState'),
+  readBoundSource(
+    './commercial/workspace-frame.ts',
+    'export function createCommercialWorkspaceFrame',
+  ),
+  readBoundSource('./commercial/route-dom.ts', 'export function populateCommercialRoute'),
+  readBoundSource(
+    './commercial/route-navigation.ts',
+    'export function installCommercialRouteNavigation',
+  ),
 ];
 
 it('translates risk rules and derives the daily commission next action', () => {

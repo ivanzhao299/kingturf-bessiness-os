@@ -464,6 +464,10 @@ export async function runProbes({ send, router, runId, report, expectDialog }) {
       const { runGovernanceProbes } = await import('./governance-probes.mjs');
       await runGovernanceProbes({ page, send, router, check });
     }
+    if (process.argv.includes('--lazy-routes')) {
+      const { runLazyRouteProbes } = await import('./lazy-route-probes.mjs');
+      await runLazyRouteProbes({ page, send, router, check });
+    }
     const screenshot = await send('Page.captureScreenshot', { format: 'png' });
     writeFileSync(`/tmp/${runId}-probes.png`, Buffer.from(screenshot.data, 'base64'));
     return {

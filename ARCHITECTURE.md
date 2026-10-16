@@ -43,7 +43,9 @@ packages/{types, config} ──→ 零依赖
 
 ## 4. 目标分层（改造方向，规则 §4.1 存量适配）
 
-3e①store守恒完成：源码fc14d50稳定干净实际HEAD完整CI0/184438.376ms；bootstrap直接import/re-export commercial/store/controller同class，controller→{cost-query,readable-sources,load-opportunities,load-views}，后两同步启动原Promise链不新增await，type-only回指不形成运行时环。原279行class三helper逆展开完整AST相等，5runtime≤215/完整函数50/AST5、root704/函数160/AST3/格式5后才撤root豁免31→29；70公开457链/原114+六定向120/五实际红绿/新41及独立原fixture29齐。44台账仅新增两旧门控/顶层挂载待核实项不修；公开load全权限/refresh无权限过滤与原写后刷新范围保持，尚不结清TD-ARCH002或声称真正lazy，完成docs另实际HEAD全CI后继续，见[3e①证据](docs/evidence/frontend-3e-store-2026-10-16.md)。
+3e②现时候选：bootstrap→route-state/route-navigation/route-dom/workspace-frame；state→dependencies/read/owner，原controller→owner/query（类型回指不构成运行时环）。首次route缺失源按权限交集补齐，已加载source/DOM复用，overview全授权源保持；只做网络data lazy。live构建捕获实际workspace/status，canonical组原位替换，回访无新DOM不重装菜单，lazy列表显式复用最近drawer绑定，旧默认安装语义不变。root749/完整158/AST3/格式5，8新runtime≤139/完整106/AST5；163测试、默认逆AST/70公开457链、原29及新47真绿，稳定干净源码HEAD全CI待执行。45台账，旧门控/顶层挂载/抽屉候选不修；尚有日期3e与解析3f，见[3e②证据](docs/evidence/frontend-3e-lazy-2026-10-16.md)。
+
+3e①store守恒完成（历史检查点）：源码fc14d50稳定干净实际HEAD完整CI0/184438.376ms；bootstrap直接import/re-export commercial/store/controller同class，controller→{cost-query,readable-sources,load-opportunities,load-views}，后两同步启动原Promise链不新增await，type-only回指不形成运行时环。原279行class三helper逆展开完整AST相等，5runtime≤215/完整函数50/AST5、root704/函数160/AST3/格式5后才撤root豁免31→29；70公开457链/原114+六定向120/五实际红绿/新41及独立原fixture29齐。44台账仅新增两旧门控/顶层挂载待核实项不修；公开load全权限/refresh无权限过滤与原写后刷新范围保持，尚不结清TD-ARCH002或声称真正lazy，完成docs另实际HEAD全CI后继续，见[3e①证据](docs/evidence/frontend-3e-store-2026-10-16.md)。
 
 3d治理完成：源码041e771稳定干净实际HEAD全CI0/177598.590ms；bootstrap→governance/{controller,surfaces,presentation,audit-workbench,workspace→各自然动作/heading/forms/order/card/sources}，workspace-types仅type，prefix经shared/permission-prefix同原绑定共享，无反向入口。28新TS≤187/完整函数142/AST5/root997，完整1124行21helper逆展开/17声明/70公开457链/27runtime真红还原114与旧新41、独立正常37/33/29齐；原views快照、版本解析/receiver/提交后重建及身份五按钮先创建顺序保持。42台账不修，不冒称错误排序/治理写安全矩阵；完成docs实际HEAD另全CI后继续3e→3f，见[3d证据](docs/evidence/frontend-3d-governance-2026-10-16.md)。
 

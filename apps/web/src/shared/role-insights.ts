@@ -25,6 +25,16 @@ export function installRoleTaskInsights(shell: HTMLElement): void {
     const scopes = Array.from(
       shell.querySelectorAll<HTMLElement>(routeViewSelector(route as AppRoute)),
     );
+    if (scopes.some((scope) => scope.dataset.commercialDataState === 'unloaded')) {
+      const state = task.querySelector<HTMLElement>('.role-task-state');
+      const count = task.querySelector<HTMLElement>('.role-task-count');
+      if (state) {
+        state.textContent = '业务数据尚未加载';
+        state.classList.remove('attention');
+      }
+      if (count) count.textContent = '进入后加载';
+      continue;
+    }
     const records = scopes.reduce(
       (total, scope) =>
         total +

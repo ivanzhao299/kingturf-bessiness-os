@@ -15,6 +15,54 @@ import {
   withDocumentEditor,
 } from './document-editor-fixtures.mjs';
 
+test('lazy fixtures are opt-in and hold only the first mapped solutions response', async () => {
+  const originalArguments = [...process.argv];
+  const original = createStubRouter({ salesViews: true });
+  assert.throws(() => original.hold('solutions'), /invalid synthetic hold/u);
+  assert.throws(() => original.lazyQuoteFailure(true), /not enabled/u);
+  process.argv.push('--lazy-routes');
+  const router = createStubRouter({ salesViews: true });
+  try {
+    const held = router.hold('solutions');
+    const first = router.respond('/api/v1/technical-solutions', 'GET');
+    await held.started;
+    const second = await router.respond('/api/v1/technical-solutions', 'GET');
+    assert.equal(second.value.items[0].code, 'CDP-TS-A');
+    held.release();
+    const stale = await first;
+    assert.equal(stale.value.items[0].code, 'CDP-TS-OLD-LAZY');
+    assert.deepEqual(second, await original.respond('/api/v1/technical-solutions', 'GET'));
+    await assert.rejects(router.respond('/api/v1/technical-solutions', 'POST'), /unmapped/u);
+    await assert.rejects(router.respond('/api/v1/unknown-lazy', 'GET'), /unmapped/u);
+  } finally {
+    router.releaseAll();
+    process.argv.splice(0, process.argv.length, ...originalArguments);
+  }
+});
+
+test('lazy quote failure is an exact mapped 503 response and restores the original payload', async () => {
+  const originalArguments = [...process.argv];
+  const original = createStubRouter();
+  process.argv.push('--lazy-routes');
+  const router = createStubRouter();
+  try {
+    router.lazyQuoteFailure(true);
+    assert.equal((await router.respond('/api/v1/quotes', 'GET')).status, 503);
+    assert.deepEqual(
+      await router.respond('/api/v1/customers', 'GET'),
+      await original.respond('/api/v1/customers', 'GET'),
+    );
+    router.lazyQuoteFailure(false);
+    assert.deepEqual(
+      await router.respond('/api/v1/quotes', 'GET'),
+      await original.respond('/api/v1/quotes', 'GET'),
+    );
+    await assert.rejects(router.respond('/api/v1/quotes', 'POST'), /unmapped/u);
+  } finally {
+    process.argv.splice(0, process.argv.length, ...originalArguments);
+  }
+});
+
 test('governance overlay supplies exact read surfaces, coherent metrics and the employee array DTO', async () => {
   const original = createStubRouter();
   const overlay = withGovernanceView(createStubRouter());

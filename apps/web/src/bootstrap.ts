@@ -1,4 +1,15 @@
 import { CommercialController } from './commercial/store/controller';
+import { createCommercialRouteState } from './commercial/store/route-state';
+import {
+  initialCommercialRoute,
+  installCommercialRouteNavigation,
+  disposeCommercialRouteNavigation,
+} from './commercial/route-navigation';
+import { markCommercialDataVisibility } from './commercial/route-dom';
+import {
+  createCommercialWorkspaceFrame,
+  rememberCommercialWorkspace,
+} from './commercial/workspace-frame';
 export { CommercialController } from './commercial/store/controller';
 import { hasPermissionPrefix } from './shared/permission-prefix';
 import { visibleGovernanceSurfaces } from './governance/surfaces';
@@ -344,20 +355,17 @@ export function commercialWorkspaceStructure(
   viewport: Viewport,
   immutable = false,
   controller?: CommercialController,
+  existingWorkspace?: HTMLElement,
 ): HTMLElement {
-  const workspace = document.createElement('section');
-  workspace.className = `commercial-workspace ${viewport}${immutable ? ' immutable' : ''}`;
-  workspace.setAttribute('aria-label', '业务工作区');
-  const status = document.createElement('p');
-  status.className = 'commercial-status';
-  status.setAttribute('role', 'status');
-  status.setAttribute(
-    'data-route-view',
-    'opportunities technical-requirements technical-solutions costing sales-policies quotes credit-review contracts sales-orders order-360 receivables collections payments commissions business-risks manufacturing-master procurement material-planning production-orders quality-inspection shipments',
+  const existingChildren = existingWorkspace ? new Set(existingWorkspace.children) : undefined;
+  const { workspace, status } = createCommercialWorkspaceFrame(
+    viewport,
+    immutable,
+    existingWorkspace,
   );
   const statusMessage = controller?.loading ? '正在加载业务数据…' : (controller?.message ?? '');
   status.textContent = statusMessage.startsWith('已加载') ? '' : statusMessage;
-  workspace.append(status);
+  if (!existingWorkspace) workspace.append(status);
   let riskPolicyControls: HTMLElement | null = null;
   const permissions = controller?.permissions ?? new Set<CommercialPermission>(),
     permittedPaths = new Map<string, readonly [CommercialPermission, CommercialPermission]>([
@@ -495,9 +503,10 @@ export function commercialWorkspaceStructure(
     requestId,
   };
   appendWorkspaceOperations(assemblyContext, operationsViewPorts);
-  assignCommercialRouteViews(workspace);
+  assignCommercialRouteViews(workspace, existingChildren);
   appendLegacyCommercialPanels(assemblyContext, immutable, permittedPaths, commercialRevisionPath);
-  assignLegacyRouteViews(workspace);
+  assignLegacyRouteViews(workspace, existingChildren);
+  if (!existingWorkspace) rememberCommercialWorkspace(workspace, controller);
   return workspace;
 }
 
@@ -649,13 +658,24 @@ export async function mountWorkspace(
     visibleGovernanceSurfaces(allPermissions).length > 0
       ? new GovernanceController(allPermissions, token)
       : null;
+  const commercialData = commercialController
+    ? createCommercialRouteState(commercialController, token, sessionStorage)
+    : null;
+  const initialRoute = initialCommercialRoute(
+    visibleAppRoutes(allPermissions),
+    globalThis.location.hash,
+  );
   await Promise.all([
     controller.load().catch((error: unknown) => {
       controller.error = error instanceof Error ? error.message : '客户业务数据加载失败';
     }),
-    commercialController?.load().catch((error: unknown) => {
-      commercialController.message = error instanceof Error ? error.message : '商业工作台加载失败';
-    }),
+    commercialData
+      ?.load(initialRoute, () => true)
+      .catch((error: unknown) => {
+        if (!commercialController) return;
+        commercialController.message =
+          error instanceof Error ? error.message : '商业工作台加载失败';
+      }),
     governanceController?.load(),
   ]);
   onProgress('业务数据已就绪，正在构建工作台…');
@@ -693,11 +713,36 @@ export async function mountWorkspace(
       ?.append(governanceWorkspace(governanceController));
   }
   localizeEnterpriseCopy(shell);
+  const commercialWorkspace = shell.querySelector<HTMLElement>('.commercial-workspace');
+  if (commercialWorkspace && commercialData)
+    markCommercialDataVisibility(commercialWorkspace, commercialData.readyRoutes());
   installRouteSectionNavigation(shell);
   installWorkspaceListTools(shell);
   installRoleTaskInsights(shell);
   installAppNavigation(shell);
   const previousShell = root.querySelector<HTMLElement>('.app-shell');
-  if (previousShell) navigationDisposers.get(previousShell)?.();
+  if (previousShell) {
+    navigationDisposers.get(previousShell)?.();
+    disposeCommercialRouteNavigation(previousShell);
+  }
   root.replaceChildren(shell);
+  if (commercialData && commercialController)
+    installCommercialRouteNavigation(
+      shell,
+      commercialData,
+      (existing) =>
+        commercialWorkspaceStructure(
+          viewportFor(globalThis.innerWidth || 1280),
+          false,
+          commercialController,
+          existing,
+        ),
+      () => {
+        localizeEnterpriseCopy(shell);
+        installRouteSectionNavigation(shell);
+        installWorkspaceListTools(shell, { reuseDrawer: true });
+        installRoleTaskInsights(shell);
+        applyRouteVisibility(shell);
+      },
+    );
 }

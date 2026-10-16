@@ -56,6 +56,7 @@ export function createStubRouter({
   const completions = new Map();
   const counts = new Map();
   let customerError = false;
+  let lazyQuoteError = false;
   const keyFor = (pathname) =>
     new Map([
       ['/api/v1/auth/session', 'session'],
@@ -111,7 +112,14 @@ export function createStubRouter({
     ]).get(pathname);
   return {
     hold(key, query) {
-      if (!['cost', 'detail'].includes(key) || holds.has(key))
+      if (
+        ![
+          'cost',
+          'detail',
+          ...(process.argv.includes('--lazy-routes') ? ['solutions'] : []),
+        ].includes(key) ||
+        holds.has(key)
+      )
         throw new Error('invalid synthetic hold');
       if (key === 'cost' && typeof query !== 'string') throw new Error('cost hold must bind query');
       let release;
@@ -147,6 +155,10 @@ export function createStubRouter({
     },
     detailFailure(value) {
       customerError = value;
+    },
+    lazyQuoteFailure(value) {
+      if (!process.argv.includes('--lazy-routes')) throw new Error('lazy fixture is not enabled');
+      lazyQuoteError = value;
     },
     counts() {
       return Object.fromEntries(counts);
@@ -185,10 +197,11 @@ export function createStubRouter({
           ? candidate
           : undefined;
       if (hold) {
+        if (key === 'solutions') holds.delete(key);
         hold.requested();
         await hold.gate;
       }
-      if (key === 'detail' && customerError)
+      if ((key === 'detail' && customerError) || (key === 'quotes' && lazyQuoteError))
         return {
           completion: hold ? key : null,
           status: 503,
@@ -617,7 +630,11 @@ export function createStubRouter({
           opportunities: [],
         },
       }[key];
-      return { completion: hold ? key : null, status: 200, value };
+      const response =
+        hold && key === 'solutions'
+          ? { ...value, items: value.items.map((item) => ({ ...item, code: 'CDP-TS-OLD-LAZY' })) }
+          : value;
+      return { completion: hold ? key : null, status: 200, value: response };
     },
   };
 }

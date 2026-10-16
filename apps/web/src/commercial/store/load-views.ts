@@ -1,5 +1,6 @@
 import type { CommercialController } from './controller';
 import type { readableCommercialSources } from './readable-sources';
+import { noteCommercialSourceRead } from './read-owner';
 export function startCommercialViewLoad(
   controller: Pick<CommercialController, 'api' | 'views' | 'loadCostMatrixPage'>,
   readableViews: readonly ReturnType<typeof readableCommercialSources>[number][],
@@ -16,8 +17,10 @@ export function startCommercialViewLoad(
       const source = readableViews[index];
       if (!source) return;
       if (result.status === 'fulfilled') {
-        if (result.value[0] !== '/api/v1/cost-matrices')
+        if (result.value[0] !== '/api/v1/cost-matrices') {
           controller.views.set(result.value[0], result.value[1]);
+          noteCommercialSourceRead(controller, result.value[0]);
+        }
       } else failures.push(source[1]);
     });
   });
