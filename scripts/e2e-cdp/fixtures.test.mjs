@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createStubRouter } from './fixtures.mjs';
+import { withBoundaryParserFixtures } from './boundary-fixtures.mjs';
 import { operationsPermissions, operationsRoutes } from './operations-fixtures.mjs';
 import { withRegisterTools } from './register-fixtures.mjs';
 import {
@@ -69,6 +70,30 @@ test('customer 360 fixture includes the server-required unavailable section arra
   assert.equal(response.status, 200);
   assert.equal(Array.isArray(response.value.unavailableSections), true);
   assert.deepEqual(response.value.unavailableSections, ['orders', 'finance']);
+});
+
+test('boundary overlay changes only a mapped quote response and cannot authorize writes or unknown routes', async () => {
+  const original = createStubRouter();
+  const overlay = withBoundaryParserFixtures(createStubRouter());
+  assert.deepEqual(
+    await overlay.respond('/api/v1/quotes', 'GET'),
+    await original.respond('/api/v1/quotes', 'GET'),
+  );
+  overlay.boundaryQuoteFailure(true);
+  const malformed = await overlay.respond('/api/v1/quotes', 'GET');
+  assert.equal(malformed.status, 200);
+  assert.deepEqual(malformed.value, { items: 'malformed-synthetic-list' });
+  assert.deepEqual(
+    await overlay.respond('/api/v1/customers', 'GET'),
+    await original.respond('/api/v1/customers', 'GET'),
+  );
+  await assert.rejects(overlay.respond('/api/v1/quotes', 'POST'), /unmapped/u);
+  await assert.rejects(overlay.respond('/api/v1/unknown-boundary', 'GET'), /unmapped/u);
+  overlay.boundaryQuoteFailure(false);
+  assert.deepEqual(
+    await overlay.respond('/api/v1/quotes', 'GET'),
+    await original.respond('/api/v1/quotes', 'GET'),
+  );
 });
 
 test('governance overlay supplies exact read surfaces, coherent metrics and the employee array DTO', async () => {

@@ -249,6 +249,15 @@
 
 ### TD-BOUND-001｜API 响应边界无运行时形状校验
 
+**3f实施前行为登记（2026-10-16）**：原§4.4已授权自研轻量HTTP及sessionStorage/localStorage parser；畸形输入拒绝为可观察变化，后续独立behavior提交，不混其它提取/旧bug修复。输入303d3d9完成docs实际稳定干净HEAD完整CI0/178202.497ms，树空。
+
+- 通用`json<T>`继续允许合法JSON标量/null/array/object及204 undefined，不全局强制object/items；增可选同步decoder，只在非204成功body原await后执行。headers/credentials/15s全body预算/外部abort/401与credential204通知/原finally不改。错误body畸形null/非record/非string字段不再触TypeError或非string错误消息，而回退原HTTP status的RequestError；有效嵌套message优先/空字符串/correlationId保持。
+- 已知auth、CRM/commercial容器/分页/cost页及文档消费族挂最小wire-shape校验；返回原对象/数组引用，不规范化/删除未知字段、不加权限、不校验任意深层业务词汇。CRM等后端按capability返回Partial DTO（customer-360.ts的projectCustomer360Item），必须允许业务字段省略甚至空record，不能照web TS id:string一律强必填。治理unknown及未知动态路径合法JSON不扩大收紧；这是显式轻量已知schema族，不宣称所有未来泛型T/深层字段都得到运行时证明。
+- 文档读取同GET path固定schema，保每次真实请求前同步读原token/缺失原同步throw、原按path Promise身份及原失败cache删除；不修TD-PERF-003。已知list/reference/detail/version/send/translation/connector等schema只校验其实际固定容器与消费键；忽略返回体的活动/配置写操作不随意加业务字段必填。
+- sessionStorage是原始不透明token而非JSON会话对象；畸形空值/非字符串/不符实际base64url字符族拒绝（不强43位、不改token模型/不JWT/不trim或重写），原kingturf.session与sessionExpired='1' keys/有效读写顺序保持；无效存量token不再发HTTP，按原无token分支。localStorage sidebar仅字面'true'为真保持；register JSON须record/可选已知field原类型，畸形已知field整份视图不恢复而非旧逐字段部分恢复，未知field和合法空/可选值仍容忍，原控件fallback/保存keys顺序保持。无自动删除/写回/迁移，不动任何JSON textarea。
+
+正式实施/新定向负向/真实浏览器/预算/独立复核/实际干净HEAD全CI待随后记录，未预填完成。BOUND003/004、SEC、D1、N+1、后端/packages/依赖/workflow/评分等保护区不扩，45条台账及原历史保持。
+
 - **位置**：`apps/web/src/http.ts:66`（`return (…) as T`）；`apps/web/src/entry.ts:174-176`（sessionStorage 会话读取直接使用）
 - **类别**：架构（不变量 T4/T5） ｜ **严重度**：P1
 - **证据**：前端对 API 响应一律 `as T` 断言强转（`json<SessionDto>` 等），服务端字段变化在编译期不可见、运行时直接 YOLO 探字段；localStorage/sessionStorage 读取（视图缓存、侧栏状态）同样无形状校验。仓库无 zod/valibot/ajv 任何 schema 库。

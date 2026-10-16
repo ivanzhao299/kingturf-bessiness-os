@@ -1,5 +1,6 @@
 import { el } from '../dom';
 import { businessHeadingDateFormatter } from '../shared/business-date';
+import { parseSidebarCollapsed } from '../shared/register-view-parser';
 import { brandMark } from '../brand';
 import { openForm } from '../shared/forms';
 import {
@@ -32,7 +33,9 @@ export function createShellSidebar(
   const shell = el('main', `app-shell ${viewportFor(viewportWidth)}`);
   let sidebarCollapsed = false;
   try {
-    sidebarCollapsed = globalThis.localStorage.getItem('kingturf.sidebar.collapsed') === 'true';
+    sidebarCollapsed = parseSidebarCollapsed(
+      globalThis.localStorage.getItem('kingturf.sidebar.collapsed'),
+    );
   } catch {
     sidebarCollapsed = false;
   }

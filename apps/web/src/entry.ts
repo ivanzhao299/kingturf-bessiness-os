@@ -4,6 +4,12 @@ import { json, onSessionExpired, RequestError } from './http';
 import { LoginCoordinator, type LoginProgress } from './login-flow';
 import { expireSession, type SessionDto } from './session';
 import { loadWorkspace } from './workspace-loader';
+import {
+  parseLoginResponse,
+  parseSessionResponse,
+  parseStoredSessionToken,
+  parseSessionExpired,
+} from './shared/session-parser';
 
 let workspaceRequestsActive = false;
 onSessionExpired((token) => {
@@ -15,10 +21,15 @@ onSessionExpired((token) => {
 });
 
 async function login(login: string, password: string): Promise<string> {
-  const result = await json<{ token: string }>('/api/v1/auth/login', '', {
-    method: 'POST',
-    body: JSON.stringify({ login, password }),
-  });
+  const result = await json<{ token: string }>(
+    '/api/v1/auth/login',
+    '',
+    {
+      method: 'POST',
+      body: JSON.stringify({ login, password }),
+    },
+    parseLoginResponse,
+  );
   return result.token;
 }
 
@@ -171,9 +182,9 @@ function loginView(root: HTMLElement, initialMessage = ''): void {
 
 async function bootstrapApplication(root: HTMLElement): Promise<void> {
   workspaceRequestsActive = false;
-  const token = sessionStorage.getItem('kingturf.session');
+  const token = parseStoredSessionToken(sessionStorage.getItem('kingturf.session'));
   if (!token) {
-    const expired = sessionStorage.getItem('kingturf.sessionExpired') === '1';
+    const expired = parseSessionExpired(sessionStorage.getItem('kingturf.sessionExpired'));
     sessionStorage.removeItem('kingturf.sessionExpired');
     loginView(root, expired ? '登录状态已失效，请重新登录' : '');
     return;
@@ -181,7 +192,12 @@ async function bootstrapApplication(root: HTMLElement): Promise<void> {
   startupView(root, '正在验证登录状态…');
   let session: SessionDto;
   try {
-    session = await json<SessionDto>('/api/v1/auth/session', token);
+    session = await json<SessionDto>(
+      '/api/v1/auth/session',
+      token,
+      undefined,
+      parseSessionResponse,
+    );
   } catch (error) {
     if (error instanceof RequestError && error.status === 401) {
       if (sessionStorage.getItem('kingturf.session') !== token) return;

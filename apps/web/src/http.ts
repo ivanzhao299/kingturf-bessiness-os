@@ -1,3 +1,9 @@
+import {
+  responseErrorMessage,
+  responseErrorCorrelation,
+  type ResponseParser,
+} from './shared/response-parser';
+
 let sessionExpiredHandler: ((token: string) => void) | undefined;
 
 /** Only the application owns session storage and navigation; requests report the affected token. */
@@ -19,7 +25,12 @@ export class RequestError extends Error {
 }
 
 /** Bound the complete exchange, including a stalled response body, not just the headers. */
-export async function json<T>(path: string, token: string, init?: RequestInit): Promise<T> {
+export async function json<T>(
+  path: string,
+  token: string,
+  init?: RequestInit,
+  decode: ResponseParser<unknown> | null = null,
+): Promise<T> {
   const headers = new Headers(init?.headers);
   headers.set('accept', 'application/json');
   if (init?.body !== undefined) headers.set('content-type', 'application/json');
@@ -45,15 +56,12 @@ export async function json<T>(path: string, token: string, init?: RequestInit): 
     });
     if (response.status === 401 && token) sessionExpiredHandler?.(token);
     if (!response.ok) {
-      const body = (await response.json().catch(() => ({}))) as {
-        message?: string;
-        error?: { message?: string; correlationId?: string };
-      };
+      const body: unknown = await response.json().catch(() => ({}));
       controller.signal.throwIfAborted();
       throw new RequestError(
-        body.error?.message ?? body.message ?? `请求失败（${String(response.status)}）`,
+        responseErrorMessage(body, () => `请求失败（${String(response.status)}）`),
         response.status,
-        body.error?.correlationId,
+        responseErrorCorrelation(body),
       );
     }
     if (
@@ -63,7 +71,9 @@ export async function json<T>(path: string, token: string, init?: RequestInit): 
       token
     )
       sessionExpiredHandler?.(token);
-    return (response.status === 204 ? undefined : await response.json()) as T;
+    if (response.status === 204) return undefined as T;
+    const body: unknown = await response.json();
+    return (decode ? decode(body) : body) as T;
   } catch (error) {
     if (controller.signal.reason === timeoutError) throw timeoutError;
     throw error;

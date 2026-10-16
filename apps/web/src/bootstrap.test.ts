@@ -228,6 +228,17 @@ const readCommercialStoreSources = (): string[] => [
   ),
 ];
 
+const readBoundaryParserSources = (): string[] => [
+  readBoundSource('./shared/response-parser.ts', 'export function parseResponseRecord'),
+  readBoundSource('./shared/session-parser.ts', 'export function parseStoredSessionToken'),
+  readBoundSource('./shared/api-response-parser.ts', 'export function parseResponseArray'),
+  readBoundSource('./shared/register-view-parser.ts', 'export function parseStoredRegisterView'),
+  readBoundSource(
+    './shared/document-response-parser.ts',
+    'export function parseKnownDocumentResponse',
+  ),
+];
+
 it('translates risk rules and derives the daily commission next action', () => {
   expect(riskRuleLabel('LOW_MARGIN')).toBe('毛利率低于政策门槛');
   expect(riskRuleLabel('OVERDUE_AR')).toBe('存在逾期应收');
@@ -268,6 +279,7 @@ it('captures artificial-turf project handoff fields without test-channel evidenc
     ...readDocumentSupportSources(),
     ...readGovernanceSources(),
     ...readCommercialStoreSources(),
+    ...readBoundaryParserSources(),
     readBoundSource('./crm/customer360-view.ts', 'export function customer360Content'),
     readBoundSource('./shared/shell-presentation.ts', 'export function navIcon'),
     readBoundSource('./shared/role-insights.ts', 'export function roleTaskInsight'),

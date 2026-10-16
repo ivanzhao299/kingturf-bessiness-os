@@ -426,6 +426,10 @@ try {
       const { withGovernanceView } = await import('./governance-fixtures.mjs');
       suiteRouter = withGovernanceView(suiteRouter);
     }
+    if (process.argv.includes('--boundary-parsers')) {
+      const { withBoundaryParserFixtures } = await import('./boundary-fixtures.mjs');
+      suiteRouter = withBoundaryParserFixtures(suiteRouter);
+    }
     if (process.argv.includes('--fault-unmapped-api')) {
       await cdp(
         'Runtime.evaluate',

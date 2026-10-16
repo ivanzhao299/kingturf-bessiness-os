@@ -1,5 +1,6 @@
 import { el } from '../dom';
 import type { RegisterContext } from './register-types';
+import { parseStoredRegisterView } from './register-view-parser';
 
 export function installSavedRegisterView(context: RegisterContext) {
   const { list, viewKey, registerState } = context;
@@ -61,20 +62,7 @@ export function installSavedRegisterView(context: RegisterContext) {
   list.parentElement.insertBefore(pager, list.nextSibling);
   try {
     const stored = globalThis.localStorage.getItem(viewKey);
-    const view = stored
-      ? (JSON.parse(stored) as {
-          query?: unknown;
-          status?: unknown;
-          attention?: unknown;
-          dateFrom?: unknown;
-          dateTo?: unknown;
-          amountFrom?: unknown;
-          amountTo?: unknown;
-          sortMode?: unknown;
-          compact?: unknown;
-          fields?: unknown;
-        })
-      : undefined;
+    const view = parseStoredRegisterView(stored);
     search.value = typeof view?.query === 'string' ? view.query : '';
     statusFilter.value =
       typeof view?.status === 'string' && statuses.includes(view.status) ? view.status : '';
