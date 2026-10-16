@@ -24,7 +24,7 @@
 
 ## docs/adr（架构决策记录，10 篇）
 
-前端批次3前置地图/真实阻断：[冻结源码断言与Chrome环境](evidence/frontend-batch3-preflight-blockers-2026-10-16.md)（仅盘点；E1完整CI通过后停于3a前，不改冻结读取或channel，待人工裁定）。
+前端批次3前置地图/历史阻断：[冻结源码断言与Chrome环境](evidence/frontend-batch3-preflight-blockers-2026-10-16.md)（保留历史；ad0435e新裁定允许Windows Chrome CDP临时通道，先连通预检，执行边界见计划§7；Playwright配置/九spec冻结，阶段5前真实补跑）。
 
 E1先行固定证据：[authorization守恒候选/773例旧新探针](evidence/e1-authorization-conservation-2026-10-16.md)（授权310c1e2；先完成E1完整验证，再前端前置地图/冲突停报）。
 
