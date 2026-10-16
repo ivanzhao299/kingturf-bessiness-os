@@ -1,6 +1,49 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createStubRouter } from './fixtures.mjs';
+import { operationsPermissions, operationsRoutes } from './operations-fixtures.mjs';
+
+test('operations opt-in binds seventeen exact read routes and twelve read permissions only', async () => {
+  const original = createStubRouter();
+  const operations = createStubRouter({ operationsViews: true });
+  assert.equal(operationsRoutes.length, 17);
+  assert.equal(operationsPermissions.length, 12);
+  assert.equal(
+    operationsPermissions.every((permission) => permission.endsWith(':read')),
+    true,
+  );
+  for (const [path] of operationsRoutes) {
+    const query = new URLSearchParams(path.endsWith('/complaints') ? 'limit=100' : '');
+    await assert.rejects(original.respond(path, 'GET', query), /unmapped synthetic API request/u);
+    await assert.rejects(
+      operations.respond(path, 'POST', query),
+      /unmapped synthetic API request/u,
+    );
+    const response = await operations.respond(path, 'GET', query);
+    assert.equal(response.value.items.length, 1);
+    assert.equal(response.value.nextCursor, null);
+    await assert.rejects(
+      operations.respond(path, 'GET', new URLSearchParams('unknown=1')),
+      /unmapped synthetic API request/u,
+    );
+  }
+  for (const query of ['', 'limit=99', 'limit=100&cursor=unexpected', 'limit=100&unknown=1'])
+    await assert.rejects(
+      operations.respond('/api/v1/complaints', 'GET', new URLSearchParams(query)),
+      /unmapped synthetic API request/u,
+    );
+  const baseline = (await original.respond('/api/v1/auth/session', 'GET')).value;
+  const expanded = (await operations.respond('/api/v1/auth/session', 'GET')).value;
+  assert.deepEqual(expanded.permissions.slice(baseline.permissions.length), operationsPermissions);
+  const run = await operations.respond('/api/v1/mrp-runs', 'GET');
+  assert.equal(run.value.items[0].proposals.length, 1);
+  const plans = await operations.respond('/api/v1/quality-plans', 'GET');
+  assert.equal(plans.value.items[0].inspectionStage, 'FINAL');
+  await assert.rejects(
+    operations.respond('/api/v1/ncrs/unmapped', 'GET'),
+    /unmapped synthetic API request/u,
+  );
+});
 
 test('finance/risk opt-in binds eight read routes, exact pagination and no writes', async () => {
   const original = createStubRouter();

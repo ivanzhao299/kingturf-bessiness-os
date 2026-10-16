@@ -346,6 +346,86 @@ export async function runProbes({ send, router, runId, report, expectDialog }) {
           }
         });
     }
+    if (process.argv.includes('--operations-views')) {
+      for (const [route, title, cards] of [
+        [
+          'manufacturing-master',
+          '制造主数据',
+          [
+            ['.manufacturing-card:nth-child(1) .manufacturing-version', 'CDP-FG-A'],
+            ['.manufacturing-card:nth-child(2) .manufacturing-version', 'CDP-BOM-A'],
+            ['.manufacturing-card:nth-child(3) .manufacturing-version', 'CDP-RT-A'],
+          ],
+        ],
+        [
+          'procurement',
+          '采购管理',
+          [
+            ['.supplier-register .procurement-card', 'CDP-SUP-A'],
+            ['.sourcing-register .procurement-card:not(.quote-card)', 'CDP-RFQ-A'],
+            ['.sourcing-register .quote-card', 'CDP-SQ-A'],
+            ['.purchase-order-card', 'CDP-PO-A'],
+            ['.purchase-register', 'CDP-GR-A'],
+            ['.inventory-balance-card', 'CDP-LOT-A'],
+          ],
+        ],
+        [
+          'material-planning',
+          '物料计划',
+          [
+            ['.mrp-policy-card', 'CDP-FG-A'],
+            ['.mrp-run-card h3', 'CDP-MRP-A'],
+            ['.mrp-proposal-card', 'CDP-FG-A'],
+          ],
+        ],
+        [
+          'quality-inspection',
+          '质量检验',
+          [
+            ['.quality-plan-card', 'CDP-QP-A'],
+            ['.quality-plan-card', '最终检验'],
+            ['.quality-inspection-card', 'CDP-QI-A'],
+            ['.traceability-card', 'CDP-LOT-A'],
+            ['.complaint-ledger tbody tr', 'CDP-COMPLAINT-A'],
+          ],
+        ],
+      ])
+        await check(`operations-view-${route}-desktop-mobile`, async () => {
+          for (const metrics of [
+            [390, 844, true],
+            [1440, 1000, false],
+          ]) {
+            await page.viewport(...metrics);
+            try {
+              await page.route(route);
+            } catch (error) {
+              if (process.argv.includes('--trace-operations-failure'))
+                console.log(
+                  JSON.stringify({
+                    kind: 'operations-navigation-failure',
+                    route,
+                    metrics,
+                    state: await page.evaluate(`(() => {
+                    const node=globalThis.__cdpClickTarget;
+                    const rect=node?.getBoundingClientRect();
+                    const x=rect?rect.x+rect.width/2:0,y=rect?rect.y+rect.height/2:0;
+                    const hit=document.elementFromPoint(x,y);
+                    return {hash:location.hash,innerWidth,innerHeight,scrollX,scrollY,
+                      target:node?{tag:node.tagName,route:node.dataset.appRoute,parent:node.dataset.navRoutes,connected:node.isConnected,expanded:node.getAttribute('aria-expanded'),rect:rect?.toJSON()}:null,
+                      hit:hit?{tag:hit.tagName,className:hit.className,route:hit.closest('[data-app-route]')?.dataset.appRoute,parent:hit.closest('.nav-parent')?.dataset.navRoutes}:null,
+                      groups:[...document.querySelectorAll('.sidebar .nav-children')].map(group=>({routes:[...group.querySelectorAll('[data-app-route]')].map(n=>n.dataset.appRoute),rect:group.getBoundingClientRect().toJSON(),scrollTop:group.scrollTop,scrollHeight:group.scrollHeight,overflow:getComputedStyle(group).overflow,maxHeight:getComputedStyle(group).maxHeight})),
+                      animations:document.getAnimations().map(a=>({state:a.playState,pending:a.pending,transition:a.transitionProperty,target:a.effect?.target?.className}))};
+                  })()`),
+                  }),
+                );
+              throw error;
+            }
+            await page.text('[data-route-context] h1', title);
+            for (const [selector, record] of cards) await page.text(selector, record);
+            await page.noOverflow();
+          }
+        });
+    }
     const screenshot = await send('Page.captureScreenshot', { format: 'png' });
     writeFileSync(`/tmp/${runId}-probes.png`, Buffer.from(screenshot.data, 'base64'));
     return {

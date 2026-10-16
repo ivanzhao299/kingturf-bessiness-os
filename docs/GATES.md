@@ -21,6 +21,8 @@
 
 ## 本地 git hooks（`.githooks/`，`pnpm install` 时经 `prepare` 自动激活）
 
+3c⑥候选检查点：[制造采购质量证据](evidence/frontend-3c6-operations-2026-10-16.md)。28新TS≤221/完整函数143/AST5、36helper整入口逆展开/70公开457链/27目标实际红→各还原114绿齐；旧新11与纯JS20真实0，组合28有trace绿/无trace屏外点击超时，TD-TEST-006先复开，⑥未完成，提交后实际HEAD全CI待跑。12read/17GET/4主页面只读卡不充作NCR/CAPA/采购文档/写安全矩阵/Playwright覆盖；原预算/31豁免/driver/既有断言保持。
+
 3c⑤完成检查点：[资金风险证据](evidence/frontend-3c5-finance-risk-2026-10-16.md)。源码00766d6稳定干净实际HEAD完整CI0/175184.510ms；9新TS≤232/完整函数116/AST5、15helper逆展开/70公开457链、八实际runtime目标红→各还原114绿齐。旧新④⑤组合16与全部组合24/网络三零/自有清理全真，纯JS19另计；原114初绿不冒称新源负向覆盖，未真实写矩阵或Playwright，完成docs实际HEAD另全CI。
 
 3c④完成检查点：[订单履约证据](evidence/frontend-3c4-fulfillment-2026-10-16.md)。源码6ade731稳定干净实际HEAD完整CI0/182166.585ms；11runtime+1type≤231/完整函数165/AST5、21helper＋原type/predicate逆展开/70绑定457链、11目标红绿和权限缺一红绿齐。旧新展开11及组合19/14不同route、纯JS18独立计数；首红与旧dist补展开史保持，不称全部21视图/真实授权矩阵或Playwright，完成docs实际HEAD另CI。

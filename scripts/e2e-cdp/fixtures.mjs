@@ -1,4 +1,9 @@
 // Synthetic, local-only CDP data. Never log these records or mix with real API traffic.
+import {
+  operationsPermissions,
+  operationsRoutes,
+  operationsValues,
+} from './operations-fixtures.mjs';
 const customers = [
   {
     id: 'cdp-customer-a',
@@ -38,6 +43,7 @@ export function createStubRouter({
   creditContractViews = false,
   fulfillmentViews = false,
   financeRiskViews = false,
+  operationsViews = false,
 } = {}) {
   const holds = new Map();
   const completions = new Map();
@@ -51,6 +57,7 @@ export function createStubRouter({
       ['/api/v1/quotes', 'quotes'],
       ['/api/v1/organizations', 'organizations'],
       ['/api/v1/customers/cdp-customer-a/360', 'detail'],
+      ...(operationsViews ? operationsRoutes : []),
       ...(financeRiskViews
         ? [
             ['/api/v1/ar-open-items', 'receivables'],
@@ -139,6 +146,11 @@ export function createStubRouter({
     async respond(pathname, method, parameters = new URLSearchParams()) {
       const key = keyFor(pathname);
       if (method !== 'GET' || !key) throw new Error('unmapped synthetic API request');
+      if (key.startsWith('operations:')) {
+        const expected = key === 'operations:complaints' ? 'limit=100' : '';
+        if (parameters.toString() !== expected)
+          throw new Error('unmapped synthetic API request query');
+      }
       if (
         financeRiskViews &&
         [
@@ -173,12 +185,19 @@ export function createStubRouter({
           value: { error: { message: 'CDP合成服务暂不可用，请重试' } },
         };
       const value = {
+        ...operationsValues,
         session:
-          salesViews || pricingViews || creditContractViews || fulfillmentViews || financeRiskViews
+          salesViews ||
+          pricingViews ||
+          creditContractViews ||
+          fulfillmentViews ||
+          financeRiskViews ||
+          operationsViews
             ? {
                 ...session,
                 permissions: [
                   ...session.permissions,
+                  ...(operationsViews ? operationsPermissions : []),
                   ...(salesViews
                     ? ['opportunity:read', 'ctr:read', 'technical-solution:read']
                     : []),

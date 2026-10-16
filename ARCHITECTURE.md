@@ -43,6 +43,8 @@ packages/{types, config} ──→ 零依赖
 
 ## 4. 目标分层（改造方向，规则 §4.1 存量适配）
 
+3c⑥候选：制造/采购/MRP/质量四原guard原序装配到27runtime/1type，依赖仍`bootstrap→commercial→forms/dom`、ports纯type；28新TS最大221/完整函数143/AST5/root5848。21/21商业主视图已迁，仍有共享编辑器/列表工具/装配及3d治理/3e store/date/3f边界，不称入口巨石结清。36helper整入口逆展开、70公开457完整链、27目标红绿与旧新11齐；全28有trace绿、无trace屏外点击超时，TD-TEST-006先复开待独立工具定位/修正，⑥未完成，提交后实际HEAD全CI待跑。详见[⑥证据](docs/evidence/frontend-3c6-operations-2026-10-16.md)，下方⑤段保留其时点历史。
+
 3c⑤完成：源码00766d6稳定干净实际HEAD全CI0/175184.510ms，8runtime/1type≤232/完整函数116/AST5，入口8129 split，17/21商业主视图已迁，余四及共享残留续⑥。15helper逆展开/70公开457链/八目标红绿、旧新16与组合24齐；只读合成覆盖不替代真实写矩阵/Playwright，不修TD-WEB-004，详见资金风险证据；下方候选段保留时点历史。
 
 3c⑤候选：资金风险五原分支拆8runtime/1type，沿原`bootstrap→commercial→forms/dom`，root8129 split，file≤232/完整函数116/AST5。原cashRiskSummary早装配、两套逾期判定、渲染快照/点击live数据、佣金/风险政策不同发布链及风险槽同ref不改；实际15helper逆展开/70公开457链/八目标红绿/旧新组合16齐，完整提交后HEAD CI待实跑。见[资金风险证据](docs/evidence/frontend-3c5-finance-risk-2026-10-16.md)，未结清巨石或扩TD-WEB-004修复。
