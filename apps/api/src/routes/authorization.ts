@@ -234,15 +234,13 @@ export async function dispatchAuthorizationRoutes(
   if (!authorizationMatch) return null;
   const resource = authorizationMatch[1];
   const atomicCapability: PermissionKey =
-    resource === 'roles'
-      ? `role:${request.method === 'GET' ? 'read' : 'manage'}`
-      : resource === 'permissions'
-        ? `permission:${request.method === 'GET' ? 'read' : 'manage'}`
-        : resource === 'assignments'
-          ? `role-assignment:${request.method === 'GET' ? 'read' : 'manage'}`
-          : resource === 'scope-grants'
-            ? `data-scope:${request.method === 'GET' ? 'read' : 'manage'}`
-            : `role:${request.method === 'GET' ? 'read' : 'manage'}`;
+    resource === 'permissions'
+      ? `permission:${request.method === 'GET' ? 'read' : 'manage'}`
+      : resource === 'assignments'
+        ? `role-assignment:${request.method === 'GET' ? 'read' : 'manage'}`
+        : resource === 'scope-grants'
+          ? `data-scope:${request.method === 'GET' ? 'read' : 'manage'}`
+          : `role:${request.method === 'GET' ? 'read' : 'manage'}`;
   context.authorizeOneOf(
     atomicCapability,
     `authorization:${request.method === 'GET' ? 'read' : 'manage'}`,
