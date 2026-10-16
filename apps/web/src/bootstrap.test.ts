@@ -90,6 +90,12 @@ it('translates operations codes and derives accountable next actions', () => {
 it('captures artificial-turf project handoff fields without test-channel evidence markers', () => {
   const source = [
     readBoundSource('./bootstrap.ts', 'export function commercialWorkspaceStructure'),
+    readBoundSource('./shared/document-templates.ts', 'export const BUSINESS_DOCUMENT_TEMPLATES'),
+    readBoundSource('./shared/business-format.ts', 'export const recordValue'),
+    readBoundSource('./shared/business-labels.ts', 'export const businessEventLabel'),
+    readBoundSource('./commercial/ctr-fields.ts', 'export const ctrRequirementFields'),
+    readBoundSource('./commercial/quote-print.ts', 'export function printIssuedQuote'),
+    readBoundSource('./commercial/readiness.ts', 'export function contractOrderReadiness'),
     readBoundSource('./commercial/opportunity-view.ts', 'export function appendOpportunityView'),
     readBoundSource('./commercial/ctr-view.ts', 'export function appendCtrView'),
     readBoundSource('./commercial/solution-view.ts', 'export function appendSolutionView'),

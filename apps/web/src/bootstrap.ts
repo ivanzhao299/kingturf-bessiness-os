@@ -1,3 +1,39 @@
+import { BUSINESS_DOCUMENT_TEMPLATES, templatesForRoute } from './shared/document-templates';
+import {
+  recordValue,
+  displayRequirement,
+  formValue,
+  textValue,
+  recordText,
+  inventoryLocationOption,
+  decimalValue,
+  currencyLabel,
+  displayMoney,
+} from './shared/business-format';
+import {
+  businessEventLabel,
+  businessEventDetailLabel,
+  riskRuleLabel,
+  commissionNextAction,
+  COMPLAINT_STATE_LABELS,
+  COMPLAINT_SEVERITY_LABELS,
+  supplyModeLabel,
+  qualityStageLabel,
+  shipmentGateLabel,
+  operationsNextAction,
+  businessStateLabel,
+  customerStateLabel,
+  costMatrixRoleGuidance,
+  costMatrixAuditLabel,
+} from './shared/business-labels';
+import { ctrRequirementFields, technicalSolutionOpportunityId } from './commercial/ctr-fields';
+import { printIssuedQuote } from './commercial/quote-print';
+import {
+  contractOrderReadiness,
+  opportunityPipelineSummary,
+  quoteWorkflowReadiness,
+  cashRiskSummary,
+} from './commercial/readiness';
 import {
   buildBusinessDocumentTemplateHtml,
   isLegacyBusinessDocumentOutline,
@@ -83,161 +119,9 @@ export const BOOTSTRAP_TITLE = '金特夫企业经营管理系统';
 
 export type { CommercialPermission } from './commercial/permissions';
 
-export const BUSINESS_DOCUMENT_TEMPLATES: readonly BusinessDocumentTemplate[] = [
-  {
-    name: '技术需求确认书',
-    description: '冻结场景、产品参数、工程条件与验收标准',
-    file: '01-人造草坪项目技术需求确认书.docx',
-    routes: ['opportunities', 'technical-requirements'],
-  },
-  {
-    name: '产品技术规格书',
-    description: '产品结构、批次检验、储运与订单确认',
-    file: '02-体育用人造草产品技术规格书.docx',
-    routes: ['technical-requirements', 'technical-solutions'],
-  },
-  {
-    name: '采购询价及比价文件',
-    description: '采购清单、供应商响应、比价与定标',
-    file: '03-采购询价及比价文件.docx',
-    routes: ['procurement'],
-  },
-  {
-    name: '采购合同',
-    description: '质量追溯、交付验收、付款和违约条款',
-    file: '04-采购合同模板.docx',
-    routes: ['procurement'],
-  },
-  {
-    name: '销售合同',
-    description: '技术附件、价款、交付、质保和争议条款',
-    file: '05-销售合同模板.docx',
-    routes: ['contracts'],
-  },
-  {
-    name: '成品检验与项目验收单',
-    description: '批次检验、验收判定与不合格处置',
-    file: '06-成品检验与项目验收单.docx',
-    routes: ['quality-inspection', 'shipments'],
-  },
-  {
-    name: '发货到货与签收确认单',
-    description: '卷号批次、承运、到货异常和签收',
-    file: '07-发货到货与签收确认单.docx',
-    routes: ['shipments', 'order-360'],
-  },
-  {
-    name: '产品规格与选型总表',
-    description: '常用产品族、型号、参数与适用边界',
-    file: '08-常用产品规格与选型总表.docx',
-    routes: ['opportunities', 'technical-requirements', 'technical-solutions', 'quotes'],
-  },
-  {
-    name: '足球草系统规格书',
-    description: '足球系统、填充、减震垫与测试要求',
-    file: '09-足球用人造草系统规格书.docx',
-    routes: ['technical-requirements', 'technical-solutions'],
-  },
-  {
-    name: '中小学足球场规格书',
-    description: '校园材料、环保、运动性能与施工追溯',
-    file: '10-中小学足球场系统规格书.docx',
-    routes: ['technical-requirements', 'technical-solutions'],
-  },
-  {
-    name: '景观休闲草规格书',
-    description: '景观系列、排水、阻燃与场景确认',
-    file: '11-景观休闲人造草规格书.docx',
-    routes: ['technical-requirements', 'technical-solutions'],
-  },
-  {
-    name: '门球与多用途草规格书',
-    description: '短草密度、填砂、球速和平整度',
-    file: '12-门球及多用途短草规格书.docx',
-    routes: ['technical-requirements', 'technical-solutions'],
-  },
-  {
-    name: '项目正式报价单',
-    description: '产品、辅材、运输施工、税率与交期',
-    file: '13-项目正式报价单.docx',
-    routes: ['quotes'],
-  },
-  {
-    name: '合同评审记录',
-    description: '法务、技术、质量、财务、产能和风险会签',
-    file: '14-合同评审记录.docx',
-    routes: ['credit-review', 'contracts'],
-  },
-  {
-    name: '订单评审与交付启动单',
-    description: '合同信用、技术冻结、物料和交付启动',
-    file: '15-订单评审与交付启动单.docx',
-    routes: ['sales-orders', 'order-360'],
-  },
-  {
-    name: '标准BOM与用料核算表',
-    description: '物料、标准用量、损耗和订单需求',
-    file: '16-标准BOM与用料核算表.docx',
-    routes: ['manufacturing-master', 'material-planning', 'production-orders'],
-  },
-  {
-    name: '生产任务单',
-    description: '色批、工艺、包装与实际生产记录',
-    file: '17-生产任务单.docx',
-    routes: ['production-orders'],
-  },
-  {
-    name: '工艺流转卡',
-    description: '备料至包装全过程追溯',
-    file: '18-工艺流转卡.docx',
-    routes: ['production-orders'],
-  },
-  {
-    name: '原辅材料来料检验单',
-    description: '原辅料批次接收和不合格控制',
-    file: '19-原辅材料来料检验单.docx',
-    routes: ['procurement', 'quality-inspection'],
-  },
-  {
-    name: '生产首件检验单',
-    description: '换型、换色、换料后的首件批准',
-    file: '20-首件检验确认单.docx',
-    routes: ['production-orders', 'quality-inspection'],
-  },
-  {
-    name: '生产过程巡检记录',
-    description: '草高、密度、色差、背胶和异常趋势',
-    file: '21-过程巡检记录.docx',
-    routes: ['production-orders', 'quality-inspection'],
-  },
-  {
-    name: '成品入库与库位卡',
-    description: '卷号、色批、面积、质量状态和库位',
-    file: '22-成品入库与库位卡.docx',
-    routes: ['production-orders', 'quality-inspection'],
-  },
-  {
-    name: '装箱单与卷号清单',
-    description: '订单、卷号、卷长、面积和装车追溯',
-    file: '23-装箱单与卷号清单.docx',
-    routes: ['shipments'],
-  },
-  {
-    name: '铺装维护与质保手册',
-    description: '铺装、使用、维护、报修和质保边界',
-    file: '24-铺装维护与质保手册.docx',
-    routes: ['contracts', 'shipments', 'order-360'],
-  },
-  {
-    name: '投诉与不合格闭环单',
-    description: '投诉、NCR、根因、措施和效果验证',
-    file: '25-客户投诉与不合格闭环单.docx',
-    routes: ['quality-inspection', 'business-risks'],
-  },
-] as const;
+export { BUSINESS_DOCUMENT_TEMPLATES } from './shared/document-templates';
 
-export const templatesForRoute = (route: AppRoute): readonly BusinessDocumentTemplate[] =>
-  BUSINESS_DOCUMENT_TEMPLATES.filter((template) => template.routes.includes(route));
+export { templatesForRoute } from './shared/document-templates';
 
 export type GovernanceSurface = Readonly<{
   id: string;
@@ -567,466 +451,31 @@ export function visibleCommercialSections(permissions: ReadonlySet<CommercialPer
   } as const;
 }
 
-const recordValue = (value: unknown): Record<string, unknown> =>
-  typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
+export { inventoryLocationOption } from './shared/business-format';
 
-const ctrRequirementFields = [
-  ['application', '应用场景'],
-  ['projectRegion', '项目地区'],
-  ['performanceStandard', '执行标准'],
-  ['pileHeightMm', '草高（mm）'],
-  ['quantitySquareMeters', '预计面积（㎡）'],
-  ['color', '颜色要求'],
-  ['baseCondition', '场地基础'],
-  ['drainageRequirement', '排水要求'],
-  ['fireRating', '阻燃要求'],
-  ['warrantyYears', '质保年限'],
-  ['delivery', '交付要求'],
-] as const;
+export { businessEventLabel } from './shared/business-labels';
 
-const displayRequirement = (value: unknown): string =>
-  typeof value === 'string' || typeof value === 'number' ? String(value) : '—';
-const formValue = (value: unknown): string =>
-  typeof value === 'string' || typeof value === 'number' ? String(value) : '';
-const textValue = (value: unknown, fallback: string): string =>
-  typeof value === 'string' || typeof value === 'number' ? String(value) : fallback;
-const recordText = (
-  record: Record<string, unknown>,
-  camel: string,
-  snake: string,
-  fallback = '',
-): string => textValue(record[camel] ?? record[snake], fallback);
-export const inventoryLocationOption = (item: Record<string, unknown>) => ({
-  value: textValue(item.id, ''),
-  label: `${recordText(item, 'code', 'code')} · ${recordText(item, 'name', 'name')}`,
-});
-const decimalValue = (value: number): string =>
-  String(Math.round((value + Number.EPSILON) * 1_000_000) / 1_000_000);
-const currencyLabel = (value: unknown): string => {
-  const code = textValue(value, 'CNY');
-  return (
-    {
-      CNY: '人民币',
-      USD: '美元',
-      EUR: '欧元',
-      GBP: '英镑',
-      HKD: '港币',
-    }[code] ?? code
-  );
-};
-const displayMoney = (currency: unknown, value: unknown): string => {
-  const code = textValue(currency, 'CNY');
-  if (!/^[A-Z]{3}$/u.test(code)) return '金额不可见';
-  const amount = Number(value);
-  if (!Number.isFinite(amount)) return `${code} —`;
-  return new Intl.NumberFormat('zh-CN', {
-    style: 'currency',
-    currency: code,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(amount);
-};
+export { businessEventDetailLabel } from './shared/business-labels';
 
-const BUSINESS_EVENT_LABELS: Readonly<Record<string, string>> = {
-  CONTRACT_SIGNED: '合同已签署',
-  PAYMENT_RECEIVED: '收到回款',
-  OPPORTUNITY_CREATED: '商机已创建',
-  QUOTE_ISSUED: '报价已签发',
-  CREDIT_DECIDED: '信用审查已决策',
-  ORDER_RELEASED: '订单已放行',
-  AR_POSTED: '应收已过账',
-  COMMISSION_ACCRUED: '佣金已计提',
-  COMMISSION_FROZEN: '佣金已冻结',
-  COMMISSION_RELEASED: '佣金已释放',
-  COMMISSION_PAID: '佣金已支付',
-  COMMISSION_CLAWED_BACK: '佣金已追回',
-  RISK_EVALUATED: '风险评价已完成',
-  RISK_TASK_OPEN: '风险任务已创建',
-  RISK_TASK_ACKNOWLEDGED: '风险任务已确认',
-  RISK_TASK_ESCALATED: '风险任务已升级',
-  RISK_TASK_CLOSED: '风险任务已关闭',
-  SHIPMENT_RELEASE_EXCEPTION_PENDING: '发货例外待审批',
-  SHIPMENT_RELEASE_APPROVED: '发货例外已批准',
-  SHIPMENT_RELEASE_REJECTED: '发货例外已驳回',
-  SHIPMENT_RELEASE_RELEASED: '发货已放行',
-  SHIPMENT_DISPATCHED: '货物已发运',
-  SHIPMENT_DELIVERED: '货物已签收',
-  COLLECTION_CASE_OPENED: '催收案件已建立',
-  COLLECTION_FOLLOWUP_RECORDED: '已记录催收跟进',
-  COLLECTION_PROMISE_CREATED: '已登记付款承诺',
-  COLLECTION_PROMISE_BROKEN: '付款承诺已违约',
-  COLLECTION_LEGAL_HANDOFF_REQUESTED: '已申请法务移交',
-  COLLECTION_LEGAL_HANDOFF_ACCEPTED: '法务已受理',
-  COLLECTION_LEGAL_HANDOFF_RETURNED: '法务已退回',
-  LEGAL_HANDOFF_REQUESTED: '法务移交待受理',
-  LEGAL_HANDOFF_ACCEPTED: '法务移交已受理',
-  LEGAL_HANDOFF_RETURNED: '法务移交已退回',
-  DEBT_EVIDENCE_READY: '债权证据包已就绪',
-  DEBT_EVIDENCE_INCOMPLETE: '债权证据包不完整',
-};
+export { riskRuleLabel } from './shared/business-labels';
 
-const BUSINESS_STATE_LABELS: Readonly<Record<string, string>> = {
-  ACTIVE: '已启用',
-  ACCEPTED: '已受理',
-  ACCRUED: '已计提',
-  ARCHIVED: '已归档',
-  AWARDED: '已定标',
-  BLACKLISTED: '已禁用',
-  CALCULATED: '已核算',
-  DRAFT: '草稿',
-  OPEN: '待处理',
-  CLAIMED: '已认领',
-  COMPLETED: '已完成',
-  COMPUTED: '已计算',
-  CONVERTED: '已转化',
-  CONTACTING: '联系中',
-  ACKNOWLEDGED: '已确认',
-  ESCALATED: '已升级',
-  CLOSED: '已关闭',
-  APPROVED: '已批准',
-  CANCELLED: '已取消',
-  DELIVERED: '已签收',
-  DISPATCHED: '已发运',
-  DISPOSITIONED: '已处置',
-  DISQUALIFIED: '无效',
-  EXCEPTION_PENDING: '例外待审批',
-  FINAL: '已定稿',
-  FROZEN: '已冻结',
-  IN_PROGRESS: '进行中',
-  INACTIVE: '已停用',
-  ISSUE: '领料',
-  ISSUED: '已签发',
-  PAID: '已支付',
-  PARTIALLY_PAID: '部分支付',
-  PARTIALLY_RECEIVED: '部分收货',
-  PENDING: '待处理',
-  PENDING_APPROVAL: '待审批',
-  POOL: '公海',
-  PROMISE_BROKEN: '付款承诺已违约',
-  PROPOSED: '待审批',
-  PUBLISHED: '已发布',
-  QUARANTINE: '待检隔离',
-  QUALIFIED: '已确认',
-  READY: '待执行',
-  RECEIVED: '已收货',
-  REJECTED: '已驳回',
-  RELEASED: '已放行',
-  REQUESTED: '待受理',
-  SAMPLED: '已抽样',
-  SIGNED: '已签署',
-  UPLOADED: '已上传',
-  OCR_PROCESSING: '识别中',
-  OCR_REVIEW: '待人工复核',
-  READY_TO_SIGN: '待发起签署',
-  SIGNING: '签署中',
-  DECLINED: '已拒签',
-  SUBMITTED: '已提交',
-  SUSPENDED: '已暂停',
-  RETURN: '退料',
-  RETURNED: '已退回',
-  VOIDED: '已作废',
-  LEGAL_ACCEPTED: '法务已受理',
-  EXPIRED: '已过期',
-  LOW: '低',
-  MEDIUM: '中',
-  HIGH: '高',
-  CRITICAL: '严重',
-};
+export { commissionNextAction } from './shared/business-labels';
 
-export const businessEventLabel = (value: unknown): string => {
-  const code = textValue(value, '业务事件');
-  return BUSINESS_EVENT_LABELS[code] ?? BUSINESS_STATE_LABELS[code] ?? code;
-};
+export { supplyModeLabel } from './shared/business-labels';
 
-export const businessEventDetailLabel = (eventType: unknown, value: unknown): string => {
-  const type = textValue(eventType, '');
-  const detail = textValue(value, '—');
-  if (type === 'CREDIT_DECIDED') return BUSINESS_STATE_LABELS[detail] ?? detail;
-  if (type === 'RISK_EVALUATED') {
-    const [level, score] = detail.split('/', 2);
-    const levelLabel = BUSINESS_STATE_LABELS[level ?? ''] ?? level ?? '未分级';
-    return score ? `${levelLabel}风险 / ${score}分` : `${levelLabel}风险`;
-  }
-  return detail;
-};
+export { qualityStageLabel } from './shared/business-labels';
 
-const RISK_RULE_LABELS: Readonly<Record<string, string>> = {
-  LOW_MARGIN: '毛利率低于政策门槛',
-  OVERDUE_AR: '存在逾期应收',
-  CREDIT_EXPIRY: '信用审批临近或已经过期',
-  CONTRACT_SIGNATURE: '合同签署证据不完整',
-  ORDER_RELEASE_GATE: '订单放行条件未满足',
-};
+export { shipmentGateLabel } from './shared/business-labels';
 
-export const riskRuleLabel = (value: unknown): string => {
-  const code = textValue(value, '风险规则');
-  return RISK_RULE_LABELS[code] ?? code;
-};
+export { operationsNextAction } from './shared/business-labels';
 
-export const commissionNextAction = (state: unknown): string => {
-  const code = textValue(state, 'ACCRUED');
-  return (
-    {
-      ACCRUED: '待复核释放或冻结',
-      FROZEN: '待满足条件后释放',
-      RELEASED: '待登记支付',
-      PAID: '已完成支付，可按凭证追回',
-      CLAWED_BACK: '已完成追回',
-      CANCELLED: '已取消，无后续操作',
-    }[code] ?? '请核对当前状态'
-  );
-};
+export { customerStateLabel } from './shared/business-labels';
 
-const SUPPLY_MODE_LABELS: Readonly<Record<string, string>> = {
-  MAKE: '自制',
-  BUY: '采购',
-  PRODUCTION: '生产建议',
-  PURCHASE: '采购建议',
-};
+export { costMatrixRoleGuidance } from './shared/business-labels';
 
-const QUALITY_STAGE_LABELS: Readonly<Record<string, string>> = {
-  INCOMING: '来料检验',
-  IN_PROCESS: '过程检验',
-  FINAL: '最终检验',
-};
+export { costMatrixAuditLabel } from './shared/business-labels';
 
-const COMPLAINT_STATE_LABELS: Readonly<Record<string, string>> = {
-  REPORTED: '待分诊',
-  TRIAGED: '已分诊',
-  INVESTIGATING: '调查中',
-  NCR_OPEN: '不合格处理中',
-  CAPA_ACTIVE: '整改中',
-  VERIFIED: '整改已验证',
-  CLOSED: '已关闭',
-  REJECTED: '已驳回',
-};
-
-const COMPLAINT_SEVERITY_LABELS: Readonly<Record<string, string>> = {
-  LOW: '一般',
-  MEDIUM: '较重',
-  MAJOR: '重大',
-  CRITICAL: '紧急',
-};
-
-const SHIPMENT_GATE_LABELS: Readonly<Record<string, string>> = {
-  contract: '合同签署',
-  credit: '客户信用',
-  payment: '发货前收款',
-  overdue: '逾期应收',
-  orderLink: '订单来源',
-  quality: '质量放行',
-  production: '生产完工',
-  cost: '成本核算',
-  inventory: '可用库存',
-};
-
-export const supplyModeLabel = (value: unknown): string => {
-  const code = textValue(value, '供应方式未设置');
-  return SUPPLY_MODE_LABELS[code] ?? code;
-};
-
-export const qualityStageLabel = (value: unknown): string => {
-  const code = textValue(value, '检验阶段未设置');
-  return QUALITY_STAGE_LABELS[code] ?? code;
-};
-
-export const shipmentGateLabel = (value: unknown): string => {
-  const code = textValue(value, '未知门禁');
-  return SHIPMENT_GATE_LABELS[code] ?? code;
-};
-
-export const operationsNextAction = (
-  domain: 'production' | 'cost' | 'mrp' | 'quality' | 'shipment',
-  state: unknown,
-): string => {
-  const code = textValue(state, 'UNKNOWN');
-  const actions: Readonly<Record<string, Readonly<Record<string, string>>>> = {
-    production: {
-      DRAFT: '待计划员下达工单',
-      RELEASED: '待班组开工并按需领料',
-      IN_PROGRESS: '待报工、成品入库并完工确认',
-      COMPLETED: '待复核后关闭工单',
-      CLOSED: '工单已闭环',
-    },
-    cost: {
-      CALCULATED: '待成本审批人复核差异',
-      APPROVED: '成本核算已闭环',
-    },
-    mrp: {
-      PROPOSED: '待计划审批人决定',
-      APPROVED: '待释放到采购或生产执行',
-      RELEASED: '已进入采购或生产执行',
-      REJECTED: '已驳回，需重新计算或调整需求',
-    },
-    quality: {
-      OPEN: '待抽样并记录检验结果',
-      SAMPLED: '待补齐结果并完成检验',
-      COMPLETED: '待质量处置放行或拒收',
-      DISPOSITIONED: '检验已处置，请核对批次放行结果',
-      RELEASED: '批次已放行',
-      REJECTED: '批次已拒收',
-      CANCELLED: '检验已取消',
-    },
-    shipment: {
-      EXCEPTION_PENDING: '待独立审批人复核门禁例外',
-      READY: '门禁已通过，待仓库放行',
-      APPROVED: '例外已批准，待仓库放行',
-      RELEASED: '待登记承运发车与签收',
-      REJECTED: '例外已驳回，不得发货',
-    },
-  };
-  return actions[domain]?.[code] ?? '请核对当前状态和业务证据';
-};
-
-const businessStateLabel = (value: unknown, fallback = '状态受限'): string => {
-  const code = textValue(value, fallback);
-  return BUSINESS_STATE_LABELS[code] ?? code;
-};
-
-const CUSTOMER_STATE_LABELS: Readonly<Record<string, string>> = {
-  PROSPECT: '潜在客户',
-  ACTIVE: '合作客户',
-  INACTIVE: '暂停合作',
-  ARCHIVED: '已归档',
-};
-
-export const customerStateLabel = (value: unknown, fallback = '状态受限'): string => {
-  const code = textValue(value, fallback);
-  return CUSTOMER_STATE_LABELS[code] ?? businessStateLabel(code, fallback);
-};
-
-export const costMatrixRoleGuidance = (permissions: ReadonlySet<string>): string => {
-  if (permissions.has('cost-matrix:manage'))
-    return '成本测算岗位视图：异常模型优先，进入详情后维护因子、核验来源并重新核算。';
-  if (permissions.has('quote:create'))
-    return '报价编制岗位视图：优先选择已核算、已冻结且可追溯的成本决定。';
-  if (permissions.has('procurement:manage'))
-    return '采购岗位视图：重点核验采购合同、供应商报价和价格生效日期。';
-  return '只读岗位视图：查看模型完整度、最近成本、报价引用和变更证据。';
-};
-
-export const costMatrixAuditLabel = (action: string): string =>
-  ({
-    'cost-matrix.created': '创建成本模型',
-    'cost-matrix.factor-added': '添加成本因子',
-    'cost-matrix.factor-updated': '更新成本因子',
-    'cost-matrix.calculated': '执行成本核算',
-    'cost-matrix.quote-cost-created': '冻结并提交报价成本',
-  })[action] ?? action.replaceAll('-', ' ').replaceAll('.', ' · ');
-
-function printIssuedQuote(quote: Record<string, unknown>): void {
-  const popup = globalThis.open('', '_blank', 'noopener,noreferrer');
-  if (!popup) throw new Error('浏览器阻止了报价打印窗口，请允许本站弹出窗口');
-  popup.document.title = `${textValue(quote.quoteNumber, '金特夫报价')}-第${textValue(quote.revision, '1')}版`;
-  const style = popup.document.createElement('style');
-  style.textContent = `
-    @page { size: A4; margin: 16mm 18mm; }
-    * { box-sizing: border-box; }
-    body { margin: 0; color: #263a31; font: 13px/1.55 -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; }
-    header { display: flex; justify-content: space-between; align-items: flex-start; color: #176846; }
-    h1 { margin: 0; font-size: 28px; letter-spacing: .04em; }
-    h2 { margin: 0; font-size: 24px; font-weight: 500; }
-    .meta, table { width: 100%; border-collapse: collapse; margin-top: 22px; }
-    th, td { padding: 9px 10px; border: 1px solid #dce5e0; text-align: left; }
-    th { background: #176846; color: white; font-weight: 600; }
-    .meta td:nth-child(odd) { width: 15%; background: #f2f6f4; }
-    .money { text-align: right; }
-    .totals { width: 48%; margin: 18px 0 0 auto; }
-    .totals div { display: flex; justify-content: space-between; padding: 5px 0; }
-    .grand { border-top: 2px solid #176846; color: #176846; font-size: 18px; }
-    .pins { margin-top: 28px; padding: 14px; background: #f4f7f5; font-size: 10px; word-break: break-all; }
-    footer { position: fixed; bottom: 0; width: 100%; border-top: 1px solid #dce5e0; padding-top: 7px; color: #71847a; font-size: 9px; }
-  `;
-  popup.document.head.append(style);
-  const body = popup.document.body;
-  const header = popup.document.createElement('header');
-  const brand = popup.document.createElement('div');
-  brand.innerHTML = '<h1>金特夫</h1><small>企业经营管理系统</small>';
-  const title = popup.document.createElement('h2');
-  title.textContent = '正式报价单';
-  header.append(brand, title);
-  const metadata = popup.document.createElement('table');
-  metadata.className = 'meta';
-  const metadataRow = popup.document.createElement('tr');
-  for (const value of [
-    '报价编号',
-    textValue(quote.quoteNumber, '—'),
-    '版本 / 状态',
-    `第 ${textValue(quote.revision, '1')} 版 / ${businessStateLabel(textValue(quote.status, 'ISSUED'))}`,
-  ]) {
-    const cell = popup.document.createElement('td');
-    cell.textContent = value;
-    metadataRow.append(cell);
-  }
-  metadata.append(metadataRow);
-  const heading = popup.document.createElement('h3');
-  heading.textContent = '报价明细';
-  const table = popup.document.createElement('table');
-  const tableHead = popup.document.createElement('tr');
-  for (const label of ['序号', '产品 / 服务', '数量', '单位', '单价', '金额']) {
-    const cell = popup.document.createElement('th');
-    cell.textContent = label;
-    tableHead.append(cell);
-  }
-  table.append(tableHead);
-  const lines = Array.isArray(quote.lines) ? quote.lines : [];
-  lines.forEach((line, index) => {
-    const item = recordValue(line);
-    const row = popup.document.createElement('tr');
-    for (const value of [
-      String(index + 1),
-      textValue(item.description, '报价行'),
-      textValue(item.quantity, '—'),
-      textValue(item.unit_code, ''),
-      textValue(item.unit_price, '—'),
-      textValue(item.total, '—'),
-    ]) {
-      const cell = popup.document.createElement('td');
-      cell.textContent = value;
-      row.append(cell);
-    }
-    table.append(row);
-  });
-  const totals = popup.document.createElement('section');
-  totals.className = 'totals';
-  for (const [label, value, className] of [
-    ['报价小计', textValue(quote.subtotal, '—'), ''],
-    ['整单折扣', `- ${textValue(quote.discount, '0')}`, ''],
-    ['报价总额', textValue(quote.total, '—'), 'grand'],
-    [
-      '预计毛利',
-      `${textValue(quote.margin, '—')} (${String(Number(quote.marginBasisPoints ?? 0) / 100)}%)`,
-      '',
-    ],
-  ] as const) {
-    const row = popup.document.createElement('div');
-    row.className = className;
-    const labelNode = popup.document.createElement('span');
-    labelNode.textContent = label;
-    const valueNode = popup.document.createElement('strong');
-    valueNode.textContent = `${textValue(quote.currency, '')} ${value}`;
-    row.append(labelNode, valueNode);
-    totals.append(row);
-  }
-  const pins = popup.document.createElement('section');
-  pins.className = 'pins';
-  pins.textContent = `版本证据：技术需求 ${textValue(quote.ctrVersionId, '')} · 技术方案 ${textValue(quote.technicalSolutionRevisionId, '')} · 成本 ${textValue(quote.costDecisionId, '')} · 政策 ${textValue(quote.policyVersionId, '')} · 签发快照 ${textValue(quote.issuedSnapshotHash, '')}`;
-  const footer = popup.document.createElement('footer');
-  footer.textContent = '金特夫 KingTurf · 系统签发报价 · 签发版本只读';
-  body.append(header, metadata, heading, table, totals, pins, footer);
-  popup.focus();
-  popup.print();
-}
-
-export function technicalSolutionOpportunityId(
-  ctrs: readonly Record<string, unknown>[],
-  ctrVersionId: string,
-): string {
-  const ctr = ctrs.find((item) => item.id === ctrVersionId && item.status === 'APPROVED');
-  if (!ctr || typeof ctr.opportunityId !== 'string' || ctr.opportunityId.length === 0)
-    throw new Error('所选技术需求单不可用或缺少关联商机');
-  return ctr.opportunityId;
-}
+export { technicalSolutionOpportunityId } from './commercial/ctr-fields';
 
 const initialCostMatrixQuery = (): CostMatrixQuery => ({
   page: 1,
@@ -1317,149 +766,17 @@ export class CommercialController {
   }
 }
 
-export type ContractOrderReadinessStep = Readonly<{
-  key: 'quote' | 'credit' | 'contract' | 'order';
-  label: string;
-  count: number;
-  state: 'complete' | 'current' | 'blocked';
-}>;
-export function contractOrderReadiness(
-  quotes: readonly Record<string, unknown>[],
-  decisions: readonly Record<string, unknown>[],
-  contracts: readonly Record<string, unknown>[],
-  orders: readonly Record<string, unknown>[],
-): readonly ContractOrderReadinessStep[] {
-  const counts = [
-    quotes.filter((item) => item.status === 'ISSUED' && typeof item.issuedSnapshotId === 'string')
-      .length,
-    decisions.filter(
-      (item) => recordText(item, 'effectiveStatus', 'effective_status') === 'APPROVED',
-    ).length,
-    contracts.filter(
-      (item) =>
-        recordText(item, 'effectiveStatus', 'effectiveStatus') === 'SIGNED' &&
-        Boolean(recordText(item, 'signatureEvidenceId', 'signature_evidence_id')),
-    ).length,
-    orders.length,
-  ] as const;
-  const firstMissing = counts.findIndex((count) => count === 0);
-  return (['quote', 'credit', 'contract', 'order'] as const).map((key, index) => {
-    const count = counts[index] ?? 0;
-    return {
-      key,
-      label: ['已签发报价', '有效信用', '已签合同', '已释放订单'][index] ?? key,
-      count,
-      state:
-        count > 0
-          ? 'complete'
-          : index === (firstMissing === -1 ? counts.length - 1 : firstMissing)
-            ? 'current'
-            : 'blocked',
-    };
-  });
-}
+export type { ContractOrderReadinessStep } from './commercial/readiness';
+export { contractOrderReadiness } from './commercial/readiness';
 
-export type OpportunityPipelineSummary = Readonly<{
-  active: number;
-  overdue: number;
-  closingSoon: number;
-  customerMissing: number;
-}>;
-export function opportunityPipelineSummary(
-  opportunities: readonly Opportunity[],
-  today = new Date().toISOString().slice(0, 10),
-): OpportunityPipelineSummary {
-  const active = opportunities.filter((item) => !['WON', 'LOST'].includes(item.status ?? 'OPEN'));
-  const horizon = new Date(`${today}T00:00:00.000Z`);
-  horizon.setUTCDate(horizon.getUTCDate() + 30);
-  const horizonDate = horizon.toISOString().slice(0, 10);
-  return {
-    active: active.length,
-    overdue: active.filter(
-      (item) =>
-        Boolean(item.expectedCloseDate) && String(item.expectedCloseDate).slice(0, 10) < today,
-    ).length,
-    closingSoon: active.filter((item) => {
-      const date = item.expectedCloseDate?.slice(0, 10);
-      return Boolean(date && date >= today && date <= horizonDate);
-    }).length,
-    customerMissing: active.filter((item) => !item.customerId).length,
-  };
-}
+export type { OpportunityPipelineSummary } from './commercial/readiness';
+export { opportunityPipelineSummary } from './commercial/readiness';
 
-export type QuoteWorkflowReadinessStep = Readonly<{
-  key: 'ctr' | 'solution' | 'cost' | 'policy' | 'quote';
-  label: string;
-  count: number;
-  state: 'complete' | 'current' | 'blocked';
-}>;
-export function quoteWorkflowReadiness(
-  ctrs: readonly Record<string, unknown>[],
-  solutions: readonly Record<string, unknown>[],
-  costs: readonly Record<string, unknown>[],
-  policies: readonly Record<string, unknown>[],
-  quotes: readonly Record<string, unknown>[],
-): readonly QuoteWorkflowReadinessStep[] {
-  const counts = [
-    ctrs.filter((item) => item.status === 'APPROVED').length,
-    solutions.filter((item) => item.status === 'FINAL').length,
-    costs.length,
-    policies.filter((item) => item.status === 'PUBLISHED').length,
-    quotes.length,
-  ] as const;
-  const firstMissing = counts.findIndex((count) => count === 0);
-  return (['ctr', 'solution', 'cost', 'policy', 'quote'] as const).map((key, index) => {
-    const count = counts[index] ?? 0;
-    return {
-      key,
-      label: ['已批准技术需求', '定稿方案', '成本决策', '已发布政策', '报价版本'][index] ?? key,
-      count,
-      state:
-        count > 0
-          ? 'complete'
-          : index === (firstMissing === -1 ? counts.length - 1 : firstMissing)
-            ? 'current'
-            : 'blocked',
-    };
-  });
-}
+export type { QuoteWorkflowReadinessStep } from './commercial/readiness';
+export { quoteWorkflowReadiness } from './commercial/readiness';
 
-export type CashRiskSummary = Readonly<{
-  overdueReceivables: number;
-  unappliedPayments: number;
-  brokenPromises: number;
-  legalPending: number;
-}>;
-export function cashRiskSummary(
-  receivables: readonly Record<string, unknown>[],
-  payments: readonly Record<string, unknown>[],
-  collectionCases: readonly Record<string, unknown>[],
-  today = new Date().toISOString().slice(0, 10),
-): CashRiskSummary {
-  const handoffs = collectionCases.flatMap((item) =>
-    Array.isArray(item.legalHandoffs)
-      ? item.legalHandoffs.filter(
-          (handoff): handoff is Record<string, unknown> =>
-            typeof handoff === 'object' && handoff !== null,
-        )
-      : [],
-  );
-  return {
-    overdueReceivables: receivables.filter(
-      (item) =>
-        Number(recordText(item, 'remainingAmount', 'remaining_amount', '0')) > 0 &&
-        recordText(item, 'dueAt', 'due_at').slice(0, 10) < today,
-    ).length,
-    unappliedPayments: payments.filter(
-      (item) => Number(recordText(item, 'remainingAmount', 'remaining_amount', '0')) > 0,
-    ).length,
-    brokenPromises: collectionCases.filter(
-      (item) => recordText(item, 'state', 'state') === 'PROMISE_BROKEN',
-    ).length,
-    legalPending: handoffs.filter((item) => recordText(item, 'state', 'state') === 'REQUESTED')
-      .length,
-  };
-}
+export type { CashRiskSummary } from './commercial/readiness';
+export { cashRiskSummary } from './commercial/readiness';
 
 export function commercialWorkspaceStructure(
   viewport: Viewport,
