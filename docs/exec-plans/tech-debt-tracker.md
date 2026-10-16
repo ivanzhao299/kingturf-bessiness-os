@@ -356,13 +356,15 @@
 
 **确证关联修复子任务（仅登记，均未授权实施）**：
 
-- TD-PERF-002-R1（H04）：评估批量recipients及delivery INSERT；风险为授权集合、去重、审计、生成ID与错误顺序守恒。
-- TD-PERF-002-R2（H06）：评估集合式RFQ/qualification验证和批量INSERTSELECT；风险为无效行不得悄悄丢弃、首错/行映射/幂等。
-- TD-PERF-002-R3（H07）：评估批量读取PO/location和集合写入；风险为FOR UPDATE锁序/死锁、部分数量冲突、lot/receipt/movement引用与事务证据。
-- TD-PERF-002-R4（H08）：评估BOM lines/substitutes批量写入RETURNING映射；风险为line ID/priority唯一、顺序、首次冲突与整体回滚。
-- TD-PERF-002-R5（H10）：评估精确numeric集合计算/减少逐项算术往返；禁止直接用JS浮点替换PG numeric，需保持due_at/created_at/id顺序、锁、金额、trace/resultHash及幂等。
-- TD-PERF-002-R6（H11）：评估allocation_entries批量INSERT；风险为allocation_order、派生key/canonical_hash、审计与R5联动，不借本登记修改算法。
-- TD-PERF-002-R7（H13）：评估materialRates批量INSERT；风险为FK/重复项首错、策略版本、成本精度、审计/幂等。
+下列“风险评级”指未来实施修复时改变既有锁/错误顺序/授权/金额/幂等的变更风险，不是已实测事故严重度或生产性能评分。R1/R7属相对局部批量写入评为中；R2–R6涉及资格、库存/父子映射或财务账务一致性评为高，仍须独立方案与验证，不以评级替代授权。
+
+- TD-PERF-002-R1（H04）：未来修复变更风险评级＝中；评估批量recipients及delivery INSERT；风险为授权集合、去重、审计、生成ID与错误顺序守恒。
+- TD-PERF-002-R2（H06）：未来修复变更风险评级＝高；评估集合式RFQ/qualification验证和批量INSERTSELECT；风险为无效行不得悄悄丢弃、首错/行映射/幂等。
+- TD-PERF-002-R3（H07）：未来修复变更风险评级＝高；评估批量读取PO/location和集合写入；风险为FOR UPDATE锁序/死锁、部分数量冲突、lot/receipt/movement引用与事务证据。
+- TD-PERF-002-R4（H08）：未来修复变更风险评级＝高；评估BOM lines/substitutes批量写入RETURNING映射；风险为line ID/priority唯一、顺序、首次冲突与整体回滚。
+- TD-PERF-002-R5（H10）：未来修复变更风险评级＝高；评估精确numeric集合计算/减少逐项算术往返；禁止直接用JS浮点替换PG numeric，需保持due_at/created_at/id顺序、锁、金额、trace/resultHash及幂等。
+- TD-PERF-002-R6（H11）：未来修复变更风险评级＝高；评估allocation_entries批量INSERT；风险为allocation_order、派生key/canonical_hash、审计与R5联动，不借本登记修改算法。
+- TD-PERF-002-R7（H13）：未来修复变更风险评级＝中；评估materialRates批量INSERT；风险为FK/重复项首错、策略版本、成本精度、审计/幂等。
 - H09高上界风险：另行评估业务条目配额或集合式写入（改变接受域或SQL锁/错误顺序均须独立授权），本轮不降现有100000序号上界、不修代码。
 
 **覆盖与关闭口径**：6个误报仅关闭“该历史点属于无界N+1”候选，不关闭其他性能/安全债；7个确证仅源码级机制证实，不声称生产已有慢查询事故或已实测吞吐。13点由主代理与只读独立核验交叉确认；未新增PG/SQL判定探针、性能测试或E2E，既有13PG回归不替代上述性能基准。台账仍37顶层条，R1–R7与GATE003-E1为父项关联子任务，不冒算新顶层债。当前A判定完成、业务修复零；待本线稳定HEAD全CI及最终人工验收。
