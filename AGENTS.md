@@ -8,19 +8,17 @@ KingTurf 业务操作系统：面向草坪行业外贸业务的 ERP（CRM→报�
 
 ## 如何开始（渐进式披露：先地图，再细节）
 
-现时3f前置工具修正：用户确认独立补CDP客户360缺失的服务端字段；旧红→工具33绿、原29浏览器真0，业务WIP可恢复隔离，工具源码干净HEAD全CI待执行。3e源码c0a549f及完成docs303d3d9已各实际完整CI0；179 Web/70公开457链/root749与原Playwright保持。现46台账；工具验证后恢复3f解析，3f后整批人工验收，唯一进度见计划§7。
+现时3a–3f实施与独立复核完成，待整批人工验收：最后业务dc3697b实际稳定干净HEAD全CI0，Web266/13、工具34、扩展50及原29浏览器通过；root749/70公开/457完整链保持，三个AST证明工具缺陷已修且固定SHA重核。47台账，前端评分按实测更新；本独立工具/证据收尾提交后另全CI，原Playwright仍待补跑，不启动4/5。唯一验收入口见下方整批材料。
 
 - 架构总览与依赖方向：见 `ARCHITECTURE.md`
 - 设计理念与操作原则（争议裁决依据）：见 `docs/design-docs/core-beliefs.md`
-- 当前执行计划与进度（3e完成；3f前置独立CDP契约修正验证中，随后继续解析；原Playwright补跑保持）：见 `docs/exec-plans/active/` §4.4及§7
-- 已知技术债（46 条台账，含历史解决项及仅登记的旧门控、顶层挂载、抽屉等候选）：见 `docs/exec-plans/tech-debt-tracker.md`
+- 当前执行计划与进度：见 `docs/exec-plans/active/` §4.4及§7；整批验收材料见 `docs/evidence/frontend-batch3-acceptance-2026-10-17.md`
+- 已知技术债（47 条台账，含历史解决项及仅登记的旧门控、顶层挂载、抽屉等候选）：见 `docs/exec-plans/tech-debt-tracker.md`
 - CI 与发布决策（非 Tauri，仅 workflow_dispatch 部署，无 tag/Release）：见 `docs/CI.md`
 - 全部文档索引：见 `docs/index.md`
 - 关键决策记录：见 `docs/adr/`（10 个 ADR）
 
 ## 硬性约束（不可违反）
-
-3c②完成：源码9429a31与独立工具3f3aae7均稳定干净HEAD全CI0；12模块/入口10972 split、逆展开/114/457/70/11目标红绿及两次无trace合并13齐，旧失败史/有限竞态保留。现仅完成证据归并，文档HEAD全CI后续3c③，见 `docs/evidence/frontend-3c2-pricing-2026-10-16.md`；3f后整批人工验收边界不变。
 
 - 分层依赖只能单向（箭头＝"依赖于"，详见 `ARCHITECTURE.md` §1）：`apps/api → packages/{config, database, domain, types}`；`packages/domain → packages/types`；`packages/` 不得反向依赖 `apps/*`；横切逻辑必须走共享模块，禁止跨业务域复制（DataScope 谓词、审计外发、幂等查询已有收敛批次，见台账 TD-DUP 组）
 - 行为守恒：重构不得改变业务行为；行为变更/bug 修复必须先登记台账、单独提交（红线 R2）

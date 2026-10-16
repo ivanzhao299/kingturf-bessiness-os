@@ -1,5 +1,9 @@
 # ARCHITECTURE.md
 
+**唯一当前状态（2026-10-17）**：3a–3f实施与独立复核完成，最后业务dc3697b实际干净HEAD完整CI0/178446.705ms，待整批人工验收。bootstrap→CRM/commercial/governance/shared，store→source/read/route状态模块；已知HTTP/storage→五轻量parser，未知动态JSON不强record。root749/完整158/格式5，全web最大完整函数191/AST5，70公开与原457完整链保持。435条内部静态运行时相对导入边无环（不含动态/外部包）；原始“UI七层职责挤在一文件”已不代表当前。3e两证据工具曾漏遍历，已修并固定历史SHA完整重核；见[整批验收包](docs/evidence/frontend-batch3-acceptance-2026-10-17.md)。下方所有“当前/候选/未结清”均为历史时点，不能覆盖本段；本独立工具/文档收尾全CI提交后执行。
+
+当前3f候选：HTTP可选decoder→shared五parser；entry/CRM/commercial/document-service/saved-view在已知wire容器或原存储边界显式解析。unknown动态JSON不全局强record，不宣称泛型T深校验；原引用、缓存/请求顺序及204/abort通知保持，畸形行为已事前登记独立提交。root749/全web完整函数最大191/无静态内部运行时环；266测试/扩展50/原29及修正工具后的完整逆AST已过，源码实际HEAD全CI待补。[3f证据与历史证明更正](docs/evidence/frontend-3f-parsers-2026-10-17.md)。下列旧“现时候选/未结清”为各自历史时点，不覆盖本段。
+
 3e③日期实施验证完成：shared/business-date的date/dateTime/heading三无状态原语服务10消费者13调用，保原Date位置、默认时区、重复getter及Intl先于Date；无缓存/反向依赖。179测试、13逆展开全文件AST、公开70/457链、两红绿和扩展47/原29浏览器齐，源码c0a549f实际稳定干净HEAD完整CI0/177552.922ms，完成docs另全CI，续3f；[日期证据](docs/evidence/frontend-3e-date-2026-10-16.md)。下方3e②及更早为历史检查点。
 
 > 领域与包分层的顶层地图。依赖方向规则与代码现状一致（验证点见文末，可机械复核）。

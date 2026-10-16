@@ -3666,6 +3666,10 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+2026-10-17，3a–3f整批交付收尾：独立行为源码dc3697b实际稳定干净HEAD完整pnpm ci:local真实0/178446.705ms，开始/结束HEAD同且树空，无其它编辑/测试/构建并发；API117/17099/13 PG、Web13/266、工具34、能力39/19、结构0/29、预算11794/1898、audit零已知漏洞。随后固定FRONTEND_PROOF_REF=dc3697b完整3f逆AST0。历史proof缺陷登记TD-TEST009，台账47项；三份工具修复与旧3e证据顶部更正/整批验收材料、前端实测评分独立后继提交，不混业务行为。root16082→749、商业完整8551→158，全web源最大文件749/完整函数191/AST5；当前前端复杂度按既定阈值5、测试评分不升。TD-WEB001/002/003、ARCH002与轻量BOUND001已实施待人工验收，unknown/overview/public全量兼容边界保留。见[整批验收包及逐步回滚/读源映射](../../evidence/frontend-batch3-acceptance-2026-10-17.md)。本收尾实际干净HEAD完整CI提交后执行并由真实工具日志确认；不预填完成，不push/部署，不进4/5，原Playwright仍待用户环境后阶段5前补跑。其余“当前/待源码CI”为各自历史时点。
+
+2026-10-17，3f候选完成：事前登记的已知HTTP/storage轻量解析独立行为批，五parser不强任意泛型T/深层业务schema，合法JSON/Partial DTO/原引用与存储keys/有效时序保持。Web266/13、工具34、扩展50（10ahHx）及原29（IvFeK9）通过，网络三零/自有清理全真；第一次仅--probes实跑7不冒称29，随后补完整flags。前置工具2f9d316实际稳定干净HEAD全CI0/191524.069ms后恢复WIP，TD-TEST008已修验证。root749/158/格式5/70公开457链不变，预算11794/1898；源码实际HEAD全CI待提交后串行执行。协调发现三临时proof encoder truthy短路，修void遍历/三种负向自检并版本化；3f完整0，3e-lazy与date按580cc72/c0a549f固定源码完整重核0（首轮helper计数与单表达式if块差异如实分类，不删合法语义）。详见[3f证据及证明更正](../../evidence/frontend-3f-parsers-2026-10-17.md)。本批后停3a–3f人工验收，评分只在整批收尾更新，原Playwright补跑义务/不push部署/不进4或5保持。
+
 2026-10-16，3f工具夹具澄清后用户明确回复“允许独立修正该夹具（推荐）”；主代理已说明实际服务端固定orders/finance，采用真实值而非问题中初拟空数组，只此synthetic字段，原UI断言/网络硬闸不改。此确认不扩展原Web114/Playwright冻结区或生产权限。
 
 2026-10-16，3f前置独立工具契约修正：输入303d3d9实际稳定干净HEAD完整CI0/178202.497ms，树空。3f只读发现CDP customer360 detail漏unavailableSections，而服务端/共享类型固定orders/finance；TD-TEST008先登记，新Node契约旧fixture真实红。人类冻结是原Web114与Playwright，协调解释新增CDP合成工具维护在既有授权内，不另需裁定；主代理已纠正先前误设冻结，若用户后有明确保持选择则遵从。3f业务WIP按14明确路径存入本会话stash作可恢复隔离，只改合成字段/新增工具契约与相应docs，原UI断言/driver/网络硬闸不变。后续工具红绿/原29/独立源码实际干净HEAD全CI后恢复业务WIP，再3f，当前非3f完成。

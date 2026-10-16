@@ -1,5 +1,7 @@
 # 3f前置工具：客户360合成响应契约修正（2026-10-16）
 
+完成补记：独立工具源码`2f9d316`实际稳定干净HEAD完整`pnpm ci:local`真实0/191524.069ms，开始/结束HEAD相同且树空，期间无业务WIP或其它测试/构建并发，日志`/tmp/kingturf-3f-cdp-fixture-2f9d316-head-ci-2026-10-16.log`。随后恢复明确路径的3f WIP；台账TD-TEST-008工具修复已验证。下列待补文字保留原时点，不代表当前仍待工具CI。
+
 ## 范围与授权
 
 输入303d3d9实际稳定干净HEAD完整CI0/178202.497ms（`/tmp/kingturf-3e-date-303d3d9-head-ci-2026-10-16.log`）。开始3f已登记TD-BOUND001后，发现新增CDP harness的客户360 detail漏掉必需`unavailableSections`，故先做独立工具修正，不和解析业务混提交。

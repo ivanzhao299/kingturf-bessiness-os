@@ -1,5 +1,7 @@
 # 前端3e②：按路由数据惰性读取（2026-10-16）
 
+证明更正（2026-10-17）：原临时encoder返回push长度导致后续child未比较，旧AST内容证明不足。修void全遍历/三差异自检后，固定b210c77→580cc72完整重核；首红定位refreshViews移除新增note后留下单表达式if括号块，仅归一化该类块，不删条件/表达式/else/声明，多处完整逆比较通过。旧实际测试/CI不回写；版本化脚本及完整失败史见[3f更正](frontend-3f-parsers-2026-10-17.md)。
+
 ## 当前候选实测（覆盖下方实施前时态）
 
 **源码完成检查点**：`580cc72`（refactor(web): lazy-load authorized commercial route sources [已测试]）稳定干净实际HEAD完整`pnpm ci:local`真实退出0/179498.691ms；开始/结束HEAD相同、工作树均空，执行期间无编辑/其它测试/构建/浏览器并发。日志`/tmp/kingturf-3e-lazy-580cc72-head-ci-2026-10-16.log`。全链包含回环测试库guard/迁移/13个PG集成文件、lint/type/tests/build/审计，API维持原117文件17099、Web11文件163，登录预算11368/1898、无高危审计项；不把原Playwright写成已执行。下文“待执行源码CI”为候选时点历史；完成docs提交仍须自身实际干净HEAD全CI。回滚点580cc72，前置b210c77，需核后继冲突后独立revert，不自动回滚。
