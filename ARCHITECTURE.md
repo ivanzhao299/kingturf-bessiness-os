@@ -1,6 +1,6 @@
 # ARCHITECTURE.md
 
-3e③日期现时候选：shared/business-date的date/dateTime/heading三无状态原语服务10消费者13调用，保原Date位置、默认时区、重复getter及Intl先于Date；无缓存/反向依赖。179测试、13逆展开全文件AST、公开70/457链、两红绿和扩展47/原29浏览器齐，源码实际干净HEAD全CI待执行，续3f；[日期证据](docs/evidence/frontend-3e-date-2026-10-16.md)。下方3e②及更早为历史检查点。
+3e③日期实施验证完成：shared/business-date的date/dateTime/heading三无状态原语服务10消费者13调用，保原Date位置、默认时区、重复getter及Intl先于Date；无缓存/反向依赖。179测试、13逆展开全文件AST、公开70/457链、两红绿和扩展47/原29浏览器齐，源码c0a549f实际稳定干净HEAD完整CI0/177552.922ms，完成docs另全CI，续3f；[日期证据](docs/evidence/frontend-3e-date-2026-10-16.md)。下方3e②及更早为历史检查点。
 
 > 领域与包分层的顶层地图。依赖方向规则与代码现状一致（验证点见文末，可机械复核）。
 

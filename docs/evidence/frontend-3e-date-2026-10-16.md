@@ -1,5 +1,7 @@
 # 前端3e③：全runtime日期formatter收敛（2026-10-16）
 
+**源码完成检查点**：`c0a549f`稳定干净实际HEAD完整`pnpm ci:local`真实0/177552.922ms，开始/结束HEAD相同、树空，期间无编辑或其它测试/构建/浏览器并发；日志`/tmp/kingturf-3e-date-c0a549f-head-ci-2026-10-16.log`。Web12/179、API117/17099及13 PG文件、type/lint/格式/文档/结构/能力/预算/审计全链通过，预算11368/1898。日期TD-DUP-004实施验证完成，不将3e视为整批人工验收；完成docs须另实际干净HEAD全CI后继续3f。下方候选“待CI/源码SHA”文字为其时点历史。回滚源码c0a549f←382d7f0，核后继3f依赖再独立revert，不执行自动回滚。
+
 输入：3e②源码580cc72实际干净HEAD完整CI0/179498.691ms；完成docs382d7f0另实际干净HEAD完整CI0/178385.802ms（`/tmp/kingturf-3e-lazy-382d7f0-head-ci-2026-10-16.log`），结束HEAD不变/树空，之后才开始本子步。
 
 ## 范围与守恒
