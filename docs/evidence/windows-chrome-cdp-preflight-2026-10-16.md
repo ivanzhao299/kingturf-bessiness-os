@@ -2,6 +2,8 @@
 
 ## 范围与结论
 
+现时收口：通道初稿提交 `ea6b5e0` 后，根据协调/独立reviewer审查补齐异常、信号与精确profile归属，再正常实跑 GgOcEG 真实0；最终生命周期负向 **5/5**（受控失败均exit1且清理通过），匹配谓词 **1 test/7对照** 真实0。根 lint 现已显式扫描 scripts/e2e-cdp，不只配置解析范围。下面旧三跑保留为历史，不混作最终同一次运行。
+
 基线 `ad0435e`，续派授权 `02d93f4`（计划§7「3a前置裁定2」）。实际通道通过：WSL→Windows Chrome loopback CDP、Browser.getVersion、Chrome→WSL preview 导航及真实登录 DOM、文档/JS/CSS 200、owned 进程与独立 profile 清理。**这不是五类 harness 探头通过，更不是 Playwright 全套通过。** 尚无业务源码迁移、新 web 护栏或 DB 写入。
 
 版本化复跑入口：`node scripts/e2e-cdp/preflight.mjs > /tmp/kingturf-cdp-preflight.log 2>&1`（仓库根，Node24，先有 `pnpm --filter @kingturf/web build` 的 dist）。代码仅用 Node 原生 http/WebSocket/进程与文件 API，零新 npm 依赖；eslint 只将新目录纳入现有脚本 JS override，旧规则不放宽。它从 Windows 临时目录创建每跑独立 profile，不读取真实 Chrome profile/登录/密码；预检页未登录，不播种、不启 API/DB。所有页面请求先经 Fetch 拦截，API 和外域一律拒绝，不掉到 Vite 的 3000 proxy；预检不提供任何 API fixture。
@@ -39,6 +41,30 @@
 导航响应：`/` Document200、`/assets/index-BJzBC5Vq.js` Script200、`/assets/index-DwuoPpOZ.css` Stylesheet200；favicon404非阻塞，保留不修。未记录 headers、body、query 或原始 CDP 帧；仅无登录静态页面快照，blockedRequests=0。preview绑定127.0.0.1:4173，最终脚本先确认空闲，再以 ss 验证监听PID=本次子进程；不借用或终止已有服务。
 
 ## 核验、诊断史与回滚
+
+### 收紧后的正常与异常实测
+
+正常run `kingturf-cdp-preflight-GgOcEG`：Windows PID31944、127.0.0.1:62774、preview PID1965769/4173；ActivePort第二行browser path与HTTP返回WS endpoint的path/port/ws/no-userinfo校验成功，Browser.getVersion154.0.8037.99。文档/JS/CSS200、title/heading及formCount1/inputCount2/loginInput=true/passwordInput=true；最终输出已去掉bodyText原文，避免未来误记敏感内容。preview exited=true、rootGone=true、profileProcessCount0、profileGone=true后才pass；真实exit0，日志 `/tmp/kingturf-cdp-final-preflight-2026-10-16.log`，DOM `/tmp/kingturf-cdp-preflight-GgOcEG-dom.json`。
+
+额外中间正常run `84wrie`（PID47872/54270、preview1950096）真实0、同一版本/资源/DOM通过、清理全true，日志 `/tmp/kingturf-cdp-hardened-preflight-2026-10-16.log`；这是精确参数匹配最终收紧前的中间证据，不替代GgOcEG。
+
+手动串行复跑：`node --test scripts/e2e-cdp/ownership.test.mjs`（无Chrome/不查真实进程；合成命令行的JS与PowerShell .NET regex七个正反例）及 `node scripts/e2e-cdp/lifecycle.mjs`（真实隔离Chrome、五项预期失败）。脚本诊断参数 `--fault-after-profile`、`--fault-lost-pid`、`--fault-after-preview`、`--pause-after-preview` 只用于生命周期验证，不是Chrome flags或业务路径，不注入真实账户。
+
+| 最终负向case       | run后缀 | Chrome PID/随机端口                          | preview PID | 预期/实际退出及清理                                                                                             |
+| ------------------ | ------- | -------------------------------------------- | ----------- | --------------------------------------------------------------------------------------------------------------- |
+| profile-init-error | 3gqhYL  | 未启动/无端口                                | 未启动      | exit1；profileGone=true，初始化中断也受finally保护                                                              |
+| lost-launch-pid    | Sh28rc  | 启动实际23024，模拟丢返回后脚本未知/未查端口 | 未启动      | exit1；按唯一profile完整参数+exe回收，rootGone=null（未知PID不伪报true）、profileProcessCount0/profileGone=true |
+| preview-error      | oz1AgQ  | 58928/58731                                  | 1965180     | exit1；preview exited/rootGone/profileGone=true、profileProcessCount0                                           |
+| SIGTERM            | DplcQB  | 56308/54392                                  | 1965615     | signal被处理、最终exit1而非信号强退；全部owned资源回收                                                          |
+| SIGINT             | qHqeYv  | 65624/49513                                  | 1965664     | signal被处理、最终exit1而非信号强退；全部owned资源回收                                                          |
+
+最终负向汇总 `/tmp/kingturf-cdp-lifecycle-final-summary-2026-10-16.log`，逐跑完整日志 `/tmp/kingturf-cdp-lifecycle-1792128453707-<case>.log`，driver实际exit0/5通过，子进程均exit1/无stderr/无preflight-pass/无cleanup-failure。已知限制：信号在同步PowerShell或有界网络等待期间不会瞬时执行，最多等该步骤边界才清理，不称立即取消；无法回收则exit1并保留profile证据，不按全Chrome名kill。profile归属是完整参数边界正则+可执行路径+本跑随机目录，不是通用Windows argv解析器；七对照含相邻前缀/child/无关note，不触其他真实Chrome。
+
+前一轮负向同样5/5，后续因归属从Contains收紧到完整参数而重复验证，历史未覆盖删除：run后缀 ld0B32/4XWTDc/y6Okqp/oc29Dm/tVRcK3，各case见 `/tmp/kingturf-cdp-lifecycle-summary-2026-10-16.log` 与 `/tmp/kingturf-cdp-lifecycle-<case>.log`；它们不用于宣称最终精确谓词已测。
+
+最终静态独立reviewer已核对应新增归属谓词与cleanup调用点，无新的实质阻塞；协调亦复核异常/信号/endpoint路径。reviewer未执行浏览器或写操作，实际串行运行来自主代理。完整CI在稳定提交上另跑、实际结果随交接，不把预检/负向计入Vitest或Playwright。
+
+lint接线真实注入：临时 `scripts/e2e-cdp/lint-probe.mjs` 引用未定义 missingLintProbe，根 `pnpm lint` 实际exit1且明确命中该文件/no-undef（`/tmp/kingturf-cdp-lint-injection-2026-10-16.log`），随后完整删除该临时文件；最终全CI将验证还原后根lint绿，不提交坏样本。
 
 独立 reviewer 只读核验 uk9sG0 的实际通道/清理证据，提出握手无超时、preview误认已有服务、先报pass后清理三个复跑风险。Aoc7b8已实跑修后候选：8秒握手上限、4173空闲与owned PID校验、清理失败exit1且清理完成后pass。后续独立修后核验/提交HEAD完整CI结果交接另报，不用此局部预检冒充全CI。
 

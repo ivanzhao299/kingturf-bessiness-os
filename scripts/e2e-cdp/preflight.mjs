@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import net from 'node:net';
 import http from 'node:http';
 import { setTimeout as delay } from 'node:timers/promises';
+import { profileArgumentPattern } from './ownership.mjs';
 
 const psExe = '/mnt/c/WINDOWS/System32/WindowsPowerShell/v1.0/powershell.exe';
 const chrome = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
@@ -14,21 +15,10 @@ const ps = (script) =>
     timeout: 15000,
   }).trim();
 const quote = (s) => `'${s.replaceAll("'", "''")}'`;
-const winTemp = ps('[System.IO.Path]::GetTempPath()');
-const linuxTemp = execFileSync('wslpath', ['-u', winTemp], { encoding: 'utf8' }).trim();
-const profile = mkdtempSync(join(linuxTemp, 'kingturf-cdp-preflight-'));
-const winProfile = execFileSync('wslpath', ['-w', profile], { encoding: 'utf8' }).trim();
-const runId = profile.split('/').at(-1);
-const flags = [
-  '--headless=new',
-  '--remote-debugging-port=0',
-  '--remote-debugging-address=127.0.0.1',
-  `--user-data-dir=${winProfile}`,
-  '--no-first-run',
-  '--no-default-browser-check',
-  '--disable-background-networking',
-  'about:blank',
-];
+let linuxTemp;
+let profile;
+let winProfile;
+let runId = 'initializing';
 const report = (kind, data) => console.log(JSON.stringify({ kind, runId, ...data }));
 const getJson = (hostname, port) =>
   new Promise((resolve, reject) => {
@@ -54,24 +44,65 @@ let preview;
 let socket;
 let passed = false;
 let clean = true;
+let stopping = false;
+let closing = false;
 let nextId = 0;
 const pending = new Map();
 const cdp = (method, params = {}, sessionId) =>
   new Promise((resolve, reject) => {
+    if (stopping) {
+      reject(new Error('preflight interrupted'));
+      return;
+    }
     const id = ++nextId;
     const timer = setTimeout(() => {
       pending.delete(id);
       reject(new Error(`CDP timeout: ${method}`));
     }, 8000);
     pending.set(id, { resolve, reject, timer });
-    socket.send(JSON.stringify({ id, method, params, ...(sessionId ? { sessionId } : {}) }));
+    try {
+      socket.send(JSON.stringify({ id, method, params, ...(sessionId ? { sessionId } : {}) }));
+    } catch {
+      clearTimeout(timer);
+      pending.delete(id);
+      reject(new Error('CDP send failed'));
+    }
   });
+const stop = () => {
+  stopping = true;
+  process.exitCode = 1;
+  for (const wait of pending.values()) {
+    clearTimeout(wait.timer);
+    wait.reject(new Error('preflight interrupted'));
+  }
+  pending.clear();
+};
+process.on('SIGINT', stop);
+process.on('SIGTERM', stop);
 try {
+  const winTemp = ps('[System.IO.Path]::GetTempPath()');
+  linuxTemp = execFileSync('wslpath', ['-u', winTemp], { encoding: 'utf8' }).trim();
+  profile = mkdtempSync(join(linuxTemp, 'kingturf-cdp-preflight-'));
+  runId = profile.split('/').at(-1);
+  if (process.argv.includes('--fault-after-profile'))
+    throw new Error('injected profile initialization failure');
+  winProfile = execFileSync('wslpath', ['-w', profile], { encoding: 'utf8' }).trim();
+  const flags = [
+    '--headless=new',
+    '--remote-debugging-port=0',
+    '--remote-debugging-address=127.0.0.1',
+    `--user-data-dir=${winProfile}`,
+    '--no-first-run',
+    '--no-default-browser-check',
+    '--disable-background-networking',
+    'about:blank',
+  ];
   await new Promise((resolve, reject) => {
     const probe = net.createServer();
     probe.once('error', reject);
     probe.listen(4173, '127.0.0.1', () => probe.close(resolve));
   });
+  if (stopping) throw new Error('preflight interrupted');
   report('launch', {
     chrome,
     version: ps(`(Get-Item -LiteralPath ${quote(chrome)}).VersionInfo.ProductVersion`),
@@ -86,12 +117,19 @@ try {
   );
   if (!Number.isInteger(ownedPid) || ownedPid < 1) throw new Error('invalid owned pid');
   report('owned-process', { ownedPid });
+  if (process.argv.includes('--fault-lost-pid')) {
+    ownedPid = undefined;
+    throw new Error('injected lost Start-Process result');
+  }
   const activePath = join(profile, 'DevToolsActivePort');
   for (let attempt = 0; attempt < 40 && !existsSync(activePath); attempt++) await delay(250);
+  if (stopping) throw new Error('preflight interrupted');
   if (!existsSync(activePath)) throw new Error('DevToolsActivePort missing after 10 seconds');
-  const [portLine] = readFileSync(activePath, 'utf8').trim().split(/\r?\n/);
+  const [portLine, browserPath] = readFileSync(activePath, 'utf8').trim().split(/\r?\n/);
   const port = Number(portLine);
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('invalid CDP port');
+  if (!/^\/devtools\/browser\/[a-z0-9-]+$/i.test(browserPath))
+    throw new Error('invalid owned browser path');
   const listeners = JSON.parse(
     ps(
       `@(Get-NetTCPConnection -State Listen -LocalPort ${port} -ErrorAction SilentlyContinue | Select-Object LocalAddress,LocalPort,OwningProcess) | ConvertTo-Json -Compress`,
@@ -131,8 +169,26 @@ try {
       'WSL to owned Windows loopback CDP unreachable; stop before preview/navigation/harness',
     );
   const endpoint = new URL(versionMetadata.webSocketDebuggerUrl);
+  if (
+    endpoint.protocol !== 'ws:' ||
+    Number(endpoint.port) !== port ||
+    endpoint.pathname !== browserPath ||
+    endpoint.username ||
+    endpoint.password ||
+    endpoint.search ||
+    endpoint.hash ||
+    !['127.0.0.1', 'localhost', '[::1]'].includes(endpoint.hostname)
+  )
+    throw new Error('CDP endpoint does not match owned DevToolsActivePort');
+  report('endpoint-identity', { port, activePortPathMatches: true, noUserInfo: true });
   endpoint.hostname = reachable;
   socket = new WebSocket(endpoint);
+  socket.addEventListener('close', () => {
+    if (!closing) stop();
+  });
+  socket.addEventListener('error', () => {
+    if (!closing) stop();
+  });
   await new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('WebSocket handshake timeout')), 8000);
     socket.addEventListener(
@@ -156,35 +212,37 @@ try {
   let requestBlocks = 0;
   const responses = [];
   socket.addEventListener('message', ({ data }) => {
-    const msg = JSON.parse(data);
-    if (msg.id) {
-      const wait = pending.get(msg.id);
-      if (!wait) return;
-      clearTimeout(wait.timer);
-      pending.delete(msg.id);
-      if (msg.error) wait.reject(new Error(`CDP error ${msg.error.code}`));
-      else wait.resolve(msg.result);
-    } else if (msg.method === 'Fetch.requestPaused') {
-      const url = new URL(msg.params.request.url);
-      const allow = url.origin === 'http://127.0.0.1:4173' && !url.pathname.startsWith('/api/');
-      if (!allow) requestBlocks++;
-      cdp(
-        allow ? 'Fetch.continueRequest' : 'Fetch.failRequest',
-        allow
-          ? { requestId: msg.params.requestId }
-          : { requestId: msg.params.requestId, errorReason: 'BlockedByClient' },
-        msg.sessionId,
-      ).catch(() => {
-        process.exitCode = 1;
-      });
-    } else if (msg.method === 'Network.responseReceived') {
-      const url = new URL(msg.params.response.url);
-      if (url.origin === 'http://127.0.0.1:4173')
-        responses.push({
-          path: url.pathname,
-          status: msg.params.response.status,
-          type: msg.params.type,
-        });
+    try {
+      const msg = JSON.parse(data);
+      if (msg.id) {
+        const wait = pending.get(msg.id);
+        if (!wait) return;
+        clearTimeout(wait.timer);
+        pending.delete(msg.id);
+        if (msg.error) wait.reject(new Error(`CDP error ${msg.error.code}`));
+        else wait.resolve(msg.result);
+      } else if (msg.method === 'Fetch.requestPaused') {
+        const url = new URL(msg.params.request.url);
+        const allow = url.origin === 'http://127.0.0.1:4173' && !url.pathname.startsWith('/api/');
+        if (!allow) requestBlocks++;
+        cdp(
+          allow ? 'Fetch.continueRequest' : 'Fetch.failRequest',
+          allow
+            ? { requestId: msg.params.requestId }
+            : { requestId: msg.params.requestId, errorReason: 'BlockedByClient' },
+          msg.sessionId,
+        ).catch(stop);
+      } else if (msg.method === 'Network.responseReceived') {
+        const url = new URL(msg.params.response.url);
+        if (url.origin === 'http://127.0.0.1:4173')
+          responses.push({
+            path: url.pathname,
+            status: msg.params.response.status,
+            type: msg.params.type,
+          });
+      }
+    } catch {
+      stop();
     }
   });
   const browserVersion = await cdp('Browser.getVersion');
@@ -211,9 +269,11 @@ try {
     ],
     { cwd: fileURLToPath(new URL('../../apps/web/', import.meta.url)), stdio: 'ignore' },
   );
+  preview.on('error', stop);
   report('owned-preview', { pid: preview.pid, origin: 'http://127.0.0.1:4173' });
   let previewReady = false;
   for (let attempt = 0; attempt < 40; attempt++) {
+    if (stopping) throw new Error('preflight interrupted');
     if (preview.exitCode !== null) throw new Error(`owned preview exited ${preview.exitCode}`);
     try {
       const response = await fetch('http://127.0.0.1:4173', { signal: AbortSignal.timeout(500) });
@@ -231,6 +291,10 @@ try {
   if (!previewListener.includes(`pid=${preview.pid},`) || preview.exitCode !== null)
     throw new Error('4173 listener does not belong to owned preview');
   report('preview-owned-listener', { pid: preview.pid, port: 4173, owned: true });
+  if (process.argv.includes('--pause-after-preview')) await delay(1000);
+  if (stopping) throw new Error('preflight interrupted');
+  if (process.argv.includes('--fault-after-preview'))
+    throw new Error('injected failure after owned preview');
   const navigation = await cdp('Page.navigate', { url: 'http://127.0.0.1:4173' }, session);
   if (navigation.errorText) throw new Error(`preview navigation failed: ${navigation.errorText}`);
   let snapshot;
@@ -239,7 +303,7 @@ try {
       await cdp(
         'Runtime.evaluate',
         {
-          expression: `JSON.stringify({url:location.origin+location.pathname,title:document.title,readyState:document.readyState,heading:document.querySelector('h1')?.textContent,formCount:document.forms.length,inputCount:document.querySelectorAll('input').length,bodyText:document.body.innerText.slice(0,1200)})`,
+          expression: `JSON.stringify({url:location.origin+location.pathname,title:document.title,readyState:document.readyState,heading:document.querySelector('h1')?.textContent,formCount:document.forms.length,inputCount:document.querySelectorAll('input').length,loginInput:!!document.querySelector('input[name="login"]'),passwordInput:!!document.querySelector('input[name="password"]')})`,
           returnByValue: true,
         },
         session,
@@ -269,13 +333,25 @@ try {
     blockedRequests: requestBlocks,
     snapshot: `/tmp/${runId}-dom.json`,
   });
+  closing = true;
   await cdp('Browser.close');
   passed = true;
 } catch (e) {
   report('blocked', { error: e.message });
   process.exitCode = 1;
 } finally {
-  socket?.close();
+  closing = true;
+  for (const wait of pending.values()) {
+    clearTimeout(wait.timer);
+    wait.reject(new Error('preflight closing'));
+  }
+  pending.clear();
+  try {
+    socket?.close();
+  } catch {
+    clean = false;
+    process.exitCode = 1;
+  }
   if (preview) {
     preview.kill('SIGTERM');
     for (
@@ -298,18 +374,23 @@ try {
   }
   try {
     let chromeGone = true;
-    if (ownedPid) {
+    if (winProfile) {
       const cleanup = ps(
-        `$p = Get-CimInstance Win32_Process -Filter 'ProcessId = ${ownedPid}'; if ($p) { if ($p.ExecutablePath -ne ${quote(chrome)} -or -not $p.CommandLine.Contains(${quote(winProfile)})) { throw 'Owned process identity mismatch; refusing stop' }; Stop-Process -Id ${ownedPid} -ErrorAction Stop }; Start-Sleep -Milliseconds 750; $remaining = @(Get-CimInstance Win32_Process -Filter "name = 'chrome.exe'" | Where-Object { $_.CommandLine -and $_.CommandLine.Contains(${quote(winProfile)}) }); @{ rootGone = -not [bool](Get-Process -Id ${ownedPid} -ErrorAction SilentlyContinue); profileProcessCount = $remaining.Count } | ConvertTo-Json -Compress`,
+        `$pattern=${quote(profileArgumentPattern(winProfile))}; $owned = @(Get-CimInstance Win32_Process -Filter "name = 'chrome.exe'" | Where-Object { $_.CommandLine -and [regex]::IsMatch($_.CommandLine, $pattern, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase) }); foreach ($p in $owned) { if ($p.ExecutablePath -ne ${quote(chrome)}) { throw 'Owned process identity mismatch; refusing stop' }; Stop-Process -Id $p.ProcessId -ErrorAction SilentlyContinue }; Start-Sleep -Milliseconds 750; $remaining = @(Get-CimInstance Win32_Process -Filter "name = 'chrome.exe'" | Where-Object { $_.CommandLine -and [regex]::IsMatch($_.CommandLine, $pattern, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase) }); @{ rootGone = ${ownedPid ? `-not [bool](Get-Process -Id ${ownedPid} -ErrorAction SilentlyContinue)` : '$null'}; profileProcessCount = $remaining.Count } | ConvertTo-Json -Compress`,
       );
       report('process-cleanup', JSON.parse(cleanup));
       const cleanupState = JSON.parse(cleanup);
-      chromeGone = cleanupState.rootGone && cleanupState.profileProcessCount === 0;
+      chromeGone = cleanupState.rootGone !== false && cleanupState.profileProcessCount === 0;
     }
-    if (chromeGone && profile.startsWith(join(linuxTemp, 'kingturf-cdp-preflight-'))) {
+    if (profile && chromeGone && profile.startsWith(join(linuxTemp, 'kingturf-cdp-preflight-'))) {
       rmSync(profile, { recursive: true, force: false });
-      report('profile-cleanup', { profileGone: !existsSync(profile), previewStarted: !!preview });
-    } else {
+      const profileGone = !existsSync(profile);
+      report('profile-cleanup', { profileGone, previewStarted: !!preview });
+      if (!profileGone) {
+        clean = false;
+        process.exitCode = 1;
+      }
+    } else if (profile) {
       clean = false;
       process.exitCode = 1;
       report('cleanup-failure', { profileRetained: existsSync(profile), requiresInspection: true });
@@ -317,7 +398,10 @@ try {
   } catch {
     clean = false;
     process.exitCode = 1;
-    report('cleanup-failure', { profileRetained: existsSync(profile), requiresInspection: true });
+    report('cleanup-failure', {
+      profileRetained: profile ? existsSync(profile) : false,
+      requiresInspection: true,
+    });
   }
 }
 if (passed && clean && !process.exitCode)
