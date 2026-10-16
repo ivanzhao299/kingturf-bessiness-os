@@ -8,11 +8,11 @@ KingTurf 业务操作系统：面向草坪行业外贸业务的 ERP（CRM→报�
 
 ## 如何开始（渐进式披露：先地图，再细节）
 
-3c⑨共享列表完成：源码8a3b00c稳定干净实际HEAD全CI0/177320.318ms；root3880，11TS≤144/完整函数138/AST5，8逆展开/七live state/70公开457链/十红绿/旧新扩展33齐；正常29也绿，完成docs实际HEAD另全CI。editor等共享→3d–3f继续，3f后整批人工验收。详见计划§7。
+3c⑪剩余共享完成：源码32a277e稳定干净实际HEAD全CI0/179131.066ms；root2545，12新TS≤101/完整函数95/AST4，renderer/service/18声明逆证明、70公开457链/12目标红绿/新37及正常33/29齐；完成docs实际HEAD另全CI后继续治理3d→3e→3f，3f后整批人工验收。详见计划§7。
 
 - 架构总览与依赖方向：见 `ARCHITECTURE.md`
 - 设计理念与操作原则（争议裁决依据）：见 `docs/design-docs/core-beliefs.md`
-- 当前执行计划与进度（基础共享→editor/listtools→3d–3f，原Playwright补跑保持）：见 `docs/exec-plans/active/` §4.4及§7
+- 当前执行计划与进度（治理3d→store/惰性加载/日期3e→解析3f，原Playwright补跑保持）：见 `docs/exec-plans/active/` §4.4及§7
 - 已知技术债（42 条台账，含已解决历史项及仅登记的TD-WEB-004/005、TD-TEST-007、待核实TD-PERF-003）：见 `docs/exec-plans/tech-debt-tracker.md`
 - CI 与发布决策（非 Tauri，仅 workflow_dispatch 部署，无 tag/Release）：见 `docs/CI.md`
 - 全部文档索引：见 `docs/index.md`

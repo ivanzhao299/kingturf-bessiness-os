@@ -1,4 +1,6 @@
-# 前端3c⑪：剩余共享职责（2026-10-16，设计/实施中）
+# 前端3c⑪：剩余共享职责（2026-10-16，实施与独立复核完成）
+
+完成检查点：源码`32a277e`稳定干净实际HEAD完整`pnpm ci:local`真实exit0/179131.066ms（`/tmp/kingturf-3c11-32a277e-head-ci-2026-10-16.log`），结束HEAD仍32a277e/树空。API117/17099、web9/114、database68/domain14/config4/types1、PG链、读源22/CDP纯JS28/39能力19路径/结构0硬31旧软/预算11368-1898/audit齐。12新TS（11runtime/1type）≤101/完整函数95/AST4、原displayTime同绑定迁到既有formatter、root2545；renderer完整逆展开/service四原声明/18原声明/70公开457链/12目标红绿与独立实际审、明确复用旧37/33/29同源码基线及新37/正常33/原夹具29均齐。回滚`git revert 32a277e`整组新模块/原time迁位/root/读源，前editor/driver/register工具不撤；完成docs独立提交后实际HEAD另全CI。下方“待跑/尚未/候选”均其时点历史；TD-PERF-003只登记/42台账及既有问题不修。剩余治理3d→store/惰性加载/日期3e→独立解析3f按连续授权推进，3f后整批人工验收/Playwright补跑保持。
 
 输入⑩完成docs`9fdcaf0`稳定干净实际HEAD完整CI真实exit0/180514.504ms（`/tmp/kingturf-3c10-9fdcaf0-head-ci-2026-10-16.log`），结束HEAD仍9fdcaf0/树空。源码⑩78d726c也已实际干净HEAD全CI0/181480.679ms。按3a→3f连续授权继续，不重复许可；本组后治理3d、store/惰性加载/日期3e、独立解析收紧3f，3f后停供整批人工验收。
 
