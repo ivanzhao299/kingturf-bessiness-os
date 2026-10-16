@@ -200,6 +200,7 @@ import { qualityInspectionOpenRoutes } from './routes/quality-inspection-open.ts
 import { qualityInspectionTransitionRoutes } from './routes/quality-inspection-transitions.ts';
 import { qualityResultRecordRoutes } from './routes/quality-result-record.ts';
 import { qualityDispositionRoutes } from './routes/quality-disposition.ts';
+import { businessDocumentReviewRoutes } from './routes/business-document-review.ts';
 import { businessDocumentVersionRoutes } from './routes/business-document-version.ts';
 import { businessDocumentBindingRoutes } from './routes/business-document-bindings.ts';
 import { businessDocumentCreateRoutes } from './routes/business-document-create.ts';
@@ -3946,21 +3947,22 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               'Business document repository unavailable',
               correlationId,
             );
-          const b = objectBody(request.body);
-          allow(b, ['expectedVersion', 'reason']);
-          return {
-            statusCode: 201,
-            body: await dependencies.businessDocuments.transition(
-              uuid(businessDocumentReview[1], 'documentId'),
-              {
-                expectedVersion: version(b.expectedVersion),
-                action,
-                reason: string(b.reason, 'reason'),
-              },
-              { actor: context.actor, scopes: grant.scopes },
+          const response = await dispatchRoutes(
+            businessDocumentReviewRoutes({
+              repository: () =>
+                dependencies.businessDocuments as Pick<
+                  NonNullable<ApiDependencies['businessDocuments']>,
+                  'transition'
+                >,
+              authorization: context,
+              grant,
               correlationId,
-            ),
-          };
+              action,
+              parsers: { objectBody, allow, string, uuid, version },
+            }),
+            request,
+          );
+          if (response !== null) return response;
         }
         const businessDocumentTranslation =
           /^\/api\/v1\/business-documents\/([0-9a-f-]+)\/translations$/u.exec(request.pathname);
