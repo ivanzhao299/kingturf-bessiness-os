@@ -1,4 +1,4 @@
-# 前端3e①：商业store守恒拆分（2026-10-16，候选验证中）
+# 前端3e①：商业store守恒拆分（2026-10-16，实施与独立复核完成）
 
 输入3d源码041e771完整干净HEAD CI0/177598.590ms；完成docs b2e2a53另稳定干净实际HEAD完整CI真实0/176778.554ms（`/tmp/kingturf-3d-b2e2a53-head-ci-2026-10-16.log`），结束HEAD不变/树空。3d已独立协调确认，继续既有3a→3f授权，不重问。**本步仅守恒store职责迁位和撤已消解入口豁免，不是3e惰性加载/日期收敛完成，不结清TD-ARCH-002。** 后续lazy与日期各独立提交，3f后停整批人工验收。
 
@@ -37,3 +37,9 @@ R4仅登记TD-WEB-006/007，台账42→44、旧42字节原样。前者是商业r
 新b1kQOW41首跑真实exit0（`/tmp/kingturf-3e-store-new-cdp41-2026-10-16.log`），DOM150/viewport53/route80/text180/overflow68，与旧41全部请求计数相同（各list/session6、cost7/detail2/orderEvidence2/docDetail4/15docList各6、20治理GET除employees12外各6）。独立原fixture lZDGjb29首跑真实exit0（`/tmp/kingturf-3e-store-normal-cdp29-2026-10-16.log`），DOM80/viewport47/route69/text142/overflow56，各list/session5、cost6/detail2/orderEvidence2，与旧29相同。两组网络三零、preview3543765/3543913退出/root/profile清理全真。未改任何CDP工具/defaultfixture/driver/断言，未失败重试本步浏览器。
 
 源码及完成docs实际干净HEAD全CI仍待跑。原Playwright9spec/config冻结未运行，阶段5前补跑；不push/部署/生产/改后端SQL依赖工作流评分。回滚为本组5模块/root/读源与root豁免撤销配套恢复，不能只回root而留撤豁免造成旧巨石硬失败；六新契约/两登记/证据可分别回滚，须核后继冲突。
+
+## 实际源码HEAD完整CI与回滚点
+
+源码独立提交`fc14d50`（`refactor(web): extract commercial store loading responsibilities [已测试]`），稳定干净实际HEAD完整`pnpm ci:local`真实exit0/184438.376ms（`/tmp/kingturf-3e-store-fc14d50-head-ci-2026-10-16.log`），结束HEAD仍fc14d50/树空；API117/17099与原13PG链、web10文件120（原9/114+新6）、database68/domain14/config4/types1、读源22/CDP纯JS30、结构39自测/0硬29旧软、能力39-19/预算11368-1898及audit全部绿。期间仅只读准备，未并行编辑/测试/构建/浏览器。
+
+后端/packages/SQL/依赖lock/workflows/infra/评分/原Playwright与全部CDP工具相对b2e2a53零diff；原八test字节及bootstrap457完整断言冻结，TD旧42正文/索引无删除改写。回滚`git revert fc14d50`将本五模块/root读源/六新契约及入口豁免撤销配套恢复，两个仅登记项/证据在同组亦回滚；本完成docs独立revert，实际执行仍须核后继冲突，不在本轮执行。完成docs实际干净HEAD另完整CI后，在既有授权内继续真正lazy→全runtime日期→独立解析3f；不能以此次搬迁了结TD-ARCH002或3e/批次3，更不宣称人验收。3f后停整批人工验收与阶段5前原Playwright补跑保持。

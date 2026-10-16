@@ -21,7 +21,7 @@
 - **当前执行状态（2026-10-16，3c⑩实施与独立复核完成）**：源码78d726c稳定干净实际HEAD完整CI真实0/181480.679ms，结束HEAD不变/树空；16TS≤172/完整函数165/AST5/root3066，完整原800行14逆展开/五live accessor与成功点history getter/70公开457链/15目标红绿、旧新37与正常33/29齐。三轮失败史保留、TD-WEB-005只登记/41台账；完成docs实际HEAD另全CI后继续剩余共享→3d–3f，不重复许可，3f后停供整批人工验收。上方“候选/待跑”均其时点历史。
 - **当前执行状态（2026-10-16，3c⑪候选）**：输入⑩完成docs9fdcaf0实际干净HEAD全CI0/180514.504ms；12新TS=11runtime1type、另原displayTime迁到既有shared formatter，≤101/完整函数95/AST4/root2545。完整renderer二helper/late getter alias逆展开、service四原声明/18原声明/剩余入口与import边/70公开457链/12实际目标红绿/独立候选审齐；新37及正常33真0，正常29与提交后实际HEAD全CI待跑。TD-PERF-003仅登记旧catch代际候选，生产影响待核实、现42项；其余治理3d→3e→3f继续，3f后整批人工验收保持，上方“当前”均历史时点。
 - **配套文件**：问题清单 `docs/exec-plans/tech-debt-tracker.md`（42 条，含已解决历史项及仅登记的TD-WEB-004/005、TD-TEST-007、待核实TD-PERF-003）；CI 决策 `docs/CI.md`；度量脚本 `scripts/analysis/repo-metrics.mjs`
-- **当前执行状态（2026-10-16，3d治理实施与独立复核完成）**：源码041e771稳定干净实际HEAD完整CI真实0/177598.590ms，结束HEAD不变/树空。28新TS=27runtime/1type≤187/完整函数142/AST5/root997；完整1124行21helper逆展开/17声明/70公开457链/27实际目标红绿、旧新41及独立正常37/33/原fixture29齐，启动EACCES失败史保留。42台账/旧31豁免不修，尚未日期收敛或解析收紧；完成docs实际HEAD另全CI后继续store守恒拆分→真正按视图惰性/日期3e→独立解析3f，不重复许可，3f后整批人工验收/Playwright补跑保持；上方候选及3c历史原时点保留。
+- **当前执行状态（2026-10-16，3e①store守恒实施与独立复核完成）**：源码fc14d50稳定干净实际HEAD完整CI真实0/184438.376ms，结束HEAD不变/树空。五runtime≤215/完整函数50/AST5、root704/函数160/AST3/格式5后撤root豁免31→29；完整279行class三同步helper逆证明/70公开457链/原114+六契约120/五目标红绿/新41及独立原fixture29齐。44台账仅新增旧门控/顶层挂载待核实项、不修；尚非真正按视图lazy/日期收敛或3e完成。完成docs实际HEAD另全CI后续3e真正lazy→全runtime日期→独立解析3f，不重复许可，3f后整批人工验收/Playwright补跑保持；3d源码041e771/docs b2e2a53及前历史原时点保留。
 
 ## 0.5 ZCode 执行契约（计划确认后对每次执行会话生效）
 
@@ -3665,6 +3665,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+2026-10-16，3e①store守恒实施与独立复核完成：源码fc14d50稳定干净实际HEAD完整CI真实0/184438.376ms，结束仍fc14d50/树空（`/tmp/kingturf-3e-store-fc14d50-head-ci-2026-10-16.log`）。API117/17099/原13PG、web10文件120=原114+六定向、结构39自测/0硬29旧软、读源22/CDP纯JS30/39能力19路径/预算11368-1898/audit全部绿。五runtime≤215/函数50/AST5、root704/函数160/AST3/格式5，全类279行三同步helper逆展开/默认query/其余root顺序/import/70公开457链/原其它八test byte等、五实际红绿齐；新b1kQOW41和独立原fixture lZDGjb29首跑均真0、分类/计数与复用旧基线同、网络三零/owned清理全真，37/33未冒称重跑。原42仅新增两静态待核实项为44、不修门控/顶层会话或缓存旧候选；首type及撤豁免自测失败史保留，独立实际frontier/精度审无必要修正。回滚git revert fc14d50配套恢复五模块/root读源/六契约/入口豁免及登记，不能只回root留硬阈值；完成docs独立及实际HEAD另全CI后续真正lazy→日期3e→解析3f，不结清TD-ARCH002/3e，3f后整批人工验收/Playwright补跑/保护区保持，见[3e①完成证据](../../evidence/frontend-3e-store-2026-10-16.md)。
 
 2026-10-16，3e①store守恒候选：3d完成docs b2e2a53稳定干净实际HEAD完整CI真实0/176778.554ms，结束不变/树空，3d协调已确认后按连续授权进入3e。新增六定向契约在旧业务上120首绿/type0，原114/457不改；5runtime将原279行class三同步任务helper逆展开完整AST等/默认query/root其余AST顺序/import/70公开457链/原其它八test byte等，最大215/完整函数50/AST5，root997→704/函数160/AST3/格式5才撤root白名单、31旧软→29。五实际模块真红还原120，type首unused/tuple与门禁旧31预期/新regex失败史保留，39结构自测最终绿；独立实际frontier及登记/撤豁免精度审无必要修正。R4仅新增TD-WEB-006/007静态疑点待核实，42→44旧42原样、不修门控或旧顶层mount竞态。公开load全权限/refresh显式无权限过滤/各写reload范围不缩，CRM原ref与cost/order360时点保持；此为守恒第一步，不结清TD-ARCH002或3e，后续真正lazy/日期/独立解析3f后整批人工验收。源码/完成docs实际HEAD完整CI及本步浏览器待跑，保护区/Playwright补跑保持，见[3e①证据](../../evidence/frontend-3e-store-2026-10-16.md)。
 

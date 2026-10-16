@@ -24,7 +24,7 @@
 
 ## docs/adr（架构决策记录，10 篇）
 
-[3e①store守恒证据](evidence/frontend-3e-store-2026-10-16.md)：输入b2e2a53实际干净HEAD全CI0；六新定向契约旧实现120绿，5runtime全类逆证明/70公开457链/五红绿、root704/160/AST3且撤入口豁免31→29，旧门控/顶层会话疑点仅登记44项；尚非真正lazy/日期/3e完成。
+[3e①store守恒证据](evidence/frontend-3e-store-2026-10-16.md)：源码fc14d50稳定干净实际HEAD全CI0/184438.376ms；5runtime全类逆证明/70公开457链/五红绿/原114+六定向120/新41及独立原fixture29齐，root704/160/AST3且撤入口豁免31→29，旧门控/顶层会话疑点仅登记44项；完成docs另全CI后续真正lazy/日期，尚非3e完成。
 
 [3d治理证据](evidence/frontend-3d-governance-2026-10-16.md)：源码041e771稳定干净实际HEAD全CI0/177598.590ms；28新TS≤187/完整函数142/AST5/root997、完整1124行逆展开/70公开457链/27runtime真红还原114/旧新41及正常37/33/29齐；全200不冒称错误排序/写安全矩阵，启动EACCES失败史保留，完成docs另全CI后续3e→3f。
 

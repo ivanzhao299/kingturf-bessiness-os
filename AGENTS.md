@@ -8,11 +8,11 @@ KingTurf 业务操作系统：面向草坪行业外贸业务的 ERP（CRM→报�
 
 ## 如何开始（渐进式披露：先地图，再细节）
 
-3d治理完成：源码041e771稳定干净实际HEAD全CI0/177598.590ms；root997，28新TS≤187/完整函数142/AST5，完整1124行逆展开/17声明/70公开457链/27runtime红绿/旧新41及正常37/33/29齐；完成docs实际HEAD另全CI后继续store/惰性加载/日期3e→解析3f，3f后整批人工验收。详见计划§7。
+3e①store守恒完成：源码fc14d50稳定干净实际HEAD全CI0/184438.376ms；root704/完整函数160/AST3，五runtime≤215/函数50/AST5，完整class逆展开/70公开457链/原114+六契约120/五红绿/新41及原fixture29齐；撤入口豁免31→29，44台账仅登记旧疑点。尚非真正lazy或3e完成；完成docs实际HEAD另全CI后续惰性加载/日期3e→解析3f，3f后整批人工验收。详见计划§7。
 
 - 架构总览与依赖方向：见 `ARCHITECTURE.md`
 - 设计理念与操作原则（争议裁决依据）：见 `docs/design-docs/core-beliefs.md`
-- 当前执行计划与进度（治理3d完成，续store/惰性加载/日期3e→解析3f，原Playwright补跑保持）：见 `docs/exec-plans/active/` §4.4及§7
+- 当前执行计划与进度（3e①store守恒完成，续真正惰性加载/日期→解析3f，原Playwright补跑保持）：见 `docs/exec-plans/active/` §4.4及§7
 - 已知技术债（44 条台账，含已解决历史项及仅登记的TD-WEB-004/005/006/007、TD-TEST-007、待核实TD-PERF-003）：见 `docs/exec-plans/tech-debt-tracker.md`
 - CI 与发布决策（非 Tauri，仅 workflow_dispatch 部署，无 tag/Release）：见 `docs/CI.md`
 - 全部文档索引：见 `docs/index.md`
