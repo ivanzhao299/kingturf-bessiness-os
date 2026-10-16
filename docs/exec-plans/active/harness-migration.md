@@ -21,7 +21,7 @@
 - **当前执行状态（2026-10-16，3c⑩实施与独立复核完成）**：源码78d726c稳定干净实际HEAD完整CI真实0/181480.679ms，结束HEAD不变/树空；16TS≤172/完整函数165/AST5/root3066，完整原800行14逆展开/五live accessor与成功点history getter/70公开457链/15目标红绿、旧新37与正常33/29齐。三轮失败史保留、TD-WEB-005只登记/41台账；完成docs实际HEAD另全CI后继续剩余共享→3d–3f，不重复许可，3f后停供整批人工验收。上方“候选/待跑”均其时点历史。
 - **当前执行状态（2026-10-16，3c⑪候选）**：输入⑩完成docs9fdcaf0实际干净HEAD全CI0/180514.504ms；12新TS=11runtime1type、另原displayTime迁到既有shared formatter，≤101/完整函数95/AST4/root2545。完整renderer二helper/late getter alias逆展开、service四原声明/18原声明/剩余入口与import边/70公开457链/12实际目标红绿/独立候选审齐；新37及正常33真0，正常29与提交后实际HEAD全CI待跑。TD-PERF-003仅登记旧catch代际候选，生产影响待核实、现42项；其余治理3d→3e→3f继续，3f后整批人工验收保持，上方“当前”均历史时点。
 - **配套文件**：问题清单 `docs/exec-plans/tech-debt-tracker.md`（42 条，含已解决历史项及仅登记的TD-WEB-004/005、TD-TEST-007、待核实TD-PERF-003）；CI 决策 `docs/CI.md`；度量脚本 `scripts/analysis/repo-metrics.mjs`
-- **当前执行状态（2026-10-16，3c⑪实施与独立复核完成）**：源码32a277e稳定干净实际HEAD完整CI真实0/179131.066ms，结束HEAD不变/树空。12新TS（11runtime/1type）≤101/完整函数95/AST4、原displayTime迁位既有formatter同ref/root2545；renderer完整逆展开/service四原声明/18原声明/70公开457链/12实际红绿/新37与正常33/29/独立实际审齐。复用旧基线同业务源码/工具零diff已证，不伪称重跑；TD-PERF-003仅登记待核实、现42项，未修缓存/日期/解析。完成docs实际HEAD另全CI后继续治理3d→store/惰性加载/日期3e→独立解析3f，不重复许可，3f后整批人工验收/Playwright补跑保持；上方候选均其时点历史。
+- **当前执行状态（2026-10-16，3d治理实施与独立复核完成）**：源码041e771稳定干净实际HEAD完整CI真实0/177598.590ms，结束HEAD不变/树空。28新TS=27runtime/1type≤187/完整函数142/AST5/root997；完整1124行21helper逆展开/17声明/70公开457链/27实际目标红绿、旧新41及独立正常37/33/原fixture29齐，启动EACCES失败史保留。42台账/旧31豁免不修，尚未日期收敛或解析收紧；完成docs实际HEAD另全CI后继续store守恒拆分→真正按视图惰性/日期3e→独立解析3f，不重复许可，3f后整批人工验收/Playwright补跑保持；上方候选及3c历史原时点保留。
 
 ## 0.5 ZCode 执行契约（计划确认后对每次执行会话生效）
 
@@ -3665,6 +3665,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+2026-10-16，3d治理实施与独立复核完成：源码041e771稳定干净实际HEAD完整CI真实0/177598.590ms，结束HEAD仍041e771/树空（`/tmp/kingturf-3d-041e771-head-ci-2026-10-16.log`），API117/17099与原13PG链、web114/database68/domain14/config4/types1/读源22/CDP纯JS30/能力39-19/结构0硬31旧软/预算11368-1898/audit全部绿。28新TS≤187/完整函数142/AST5/root997，1124行21helper/26引用桥全逆展开、17原声明/root剩余AST顺序/82运行import边/70公开457链相等；27目标真红还原114、独立实际候选及证据审无阻塞。旧新41同分类/计数，正常N2w16R37/tZKvtB33/EQMpRR原fixture29各真实0、网络三零/自有资源全清；首TwaetN启动EACCES失败史与全200不覆盖错误/写安全矩阵限制保留。回滚git revert 041e771整组治理/prefix/root/读源/独立opt-in工具，前3c不撤；完成docs独立回滚及实际HEAD另全CI后继续3e→3f，不重复许可。42台账不修、root尚997不撤旧豁免，原Playwright补跑/保护区保持，3f后整批人工验收，见[3d完成证据](../../evidence/frontend-3d-governance-2026-10-16.md)。
 
 2026-10-16，3d治理候选：28新TS=27runtime/1type，最大187/完整函数142/AST5，root2545→997，尚不撤root豁免。完整旧1124行经21真实helper/26引用桥逆展开AST全等，17完整旧声明/root剩余AST顺序/import82边/70公开457链不变；原未适配114即全绿，纳入真实读源集合后27实际模块各真红→还原114，prefix12fail/surface2/identity-actions3/其余各1，不改原断言。首临时生成器引号/首type unused失败仅相应修正，独立实际候选三路静态审无必要修正；type/lint/proof/结构0硬31软/能力39-19/build预算11368-1898均0。旧3s3WFg及新poWKfN41同分类/计数，正常37首TwaetN启动owned DevToolsActivePort EACCES真实1且全清、原命令retry N2w16R37真0，正常tZKvtB33真0，各网络三零/资源全清；29及实际源码/完成docs干净HEAD全CI待跑，不混口径/不称全错误或写安全矩阵。回滚本组gov/prefix/root/读源，独立opt-in工具可另撤，前3c不撤；42台账不修，继续3e→3f后整批人工验收/Playwright补跑，见[3d证据](../../evidence/frontend-3d-governance-2026-10-16.md)。
 

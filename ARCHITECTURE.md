@@ -43,6 +43,8 @@ packages/{types, config} ──→ 零依赖
 
 ## 4. 目标分层（改造方向，规则 §4.1 存量适配）
 
+3d治理完成：源码041e771稳定干净实际HEAD全CI0/177598.590ms；bootstrap→governance/{controller,surfaces,presentation,audit-workbench,workspace→各自然动作/heading/forms/order/card/sources}，workspace-types仅type，prefix经shared/permission-prefix同原绑定共享，无反向入口。28新TS≤187/完整函数142/AST5/root997，完整1124行21helper逆展开/17声明/70公开457链/27runtime真红还原114与旧新41、独立正常37/33/29齐；原views快照、版本解析/receiver/提交后重建及身份五按钮先创建顺序保持。42台账不修，不冒称错误排序/治理写安全矩阵；完成docs实际HEAD另全CI后继续3e→3f，见[3d证据](docs/evidence/frontend-3d-governance-2026-10-16.md)。
+
 3c⑪剩余共享完成：源码32a277e稳定干净实际HEAD全CI0/179131.066ms；bootstrap→shared/{document-read-service,document-connectors→connector-card→configuration,document-bindings,document-html,document-print,shell-presentation,role-insights,route-sections}及crm/customer360-view→shared labels/format。读取factory原位恰一次单Map，renderer私有API getter只在原GET/PUT点取函数裸调；displayTime原体同绑定共享，没做日期收敛或解析收紧。12新TS≤101/完整函数95/AST4/root2545，原renderer完整逆展开/service四声明/18原声明/70公开457链/12目标红绿、新37及正常33/29齐。TD-PERF-003仅登记旧失败删新代缓存的待核实风险、不修，完成docs实际HEAD另全CI后继续治理3d→3e→3f，见[⑪证据](docs/evidence/frontend-3c11-remaining-shared-2026-10-16.md)。
 
 3c⑩编辑器完成：源码78d726c稳定干净实际HEAD全CI0/181480.679ms；bootstrap→shared/online-editor→heading/workspace/pagination/save/review/completion/history/version/translation/send-settings/form/blocked/send/export；online-editor-types仅type，无反向root或共享barrel。原八ports函数ref、五let accessor单权威和成功时才读history getter保持时点；四onSaved仍裸调用，整个原800行14次逆展开AST全等。16TS≤172/完整函数165/AST5/root3066，70公开457链/15目标红绿/旧新扩展37及正常33/29齐，旧长比较遮挡TD-WEB-005仅登记不修、不推论生产。完成docs另实际HEAD全CI后续剩余共享→3d–3f，见[⑩证据](docs/evidence/frontend-3c10-document-editor-2026-10-16.md)。

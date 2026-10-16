@@ -1,4 +1,4 @@
-# 前端3d：治理职责拆分（2026-10-16，源码待提交）
+# 前端3d：治理职责拆分（2026-10-16，实施与独立复核完成）
 
 输入3c⑪完成docs`8dde35d`稳定干净实际HEAD完整`pnpm ci:local`真实exit0/189147.195ms（`/tmp/kingturf-3c11-8dde35d-head-ci-2026-10-16.log`），结束HEAD仍8dde35d/树空；源码32a277e另实际干净HEAD全CI0/179131.066ms。一次重复查询已结束session返回Unknown process，仅轮询误用，随后直接核日志/HEAD/干净树，不作CI失败或重跑记录。按3a→3f连续授权进入3d，不重复许可；3e/3f仍后续，3f后停供整批人工验收。
 
@@ -43,3 +43,9 @@ permissions/views入口一次捕获，records/choices闭包保持本次views快�
 独立正常tZKvtB33真实exit0（`/tmp/kingturf-3d-normal-cdp33-2026-10-16.log`），DOM113/viewport48/route74/text150/overflow59，各list/session6、cost7/detail2/orderEvidence2；原fixture EQMpRR29真实exit0（`/tmp/kingturf-3d-normal-cdp29-2026-10-16.log`），DOM80/viewport47/route69/text142/overflow56，各list/session5、cost6/detail2/orderEvidence2。两者均网络三零、preview3513711/3515023退出/root/profile清理全真；不将29请求数写成扩展的6/7，不将33无editor夹具写作37覆盖。纯JS30最终串行重跑exit0（`/tmp/kingturf-3d-cdp-unit-final-2026-10-16.log`），独立证据审无源码/证据阻塞，仅要求将37重试已核的时态补齐，现已补齐。原Playwright9spec/config未改未执行，仍待阶段5前环境补足后跑，不冒称等效。
 
 源码/完成docs实际干净HEAD全CI仍待跑；先前旧护栏与设计段保留为当时时点，不把后来迁位回写成先验结果。回滚范围为本组治理模块/prefix/root迁位与实际读源适配，独立治理opt-in工具可另撤；前3c工具/业务不撤。3e守恒store先拆、再真正按域lazy/全runtime日期，3f独立解析行为提交后停整批人工验收，保护区/42台账保持。
+
+## 源码提交与实际HEAD完整门禁
+
+源码独立提交`041e771`（`refactor(web): split governance workspace responsibilities [已测试]`）；稳定干净实际HEAD上完整`pnpm ci:local`真实exit0/177598.590ms（`/tmp/kingturf-3d-041e771-head-ci-2026-10-16.log`），结束HEAD仍041e771/树空。API117文件17099、原13PG链、web9文件114、database68/domain14/config4/types1、读源22/CDP纯JS30、能力39/19、结构0硬31旧软、构建预算11368/1898及audit无已知漏洞全部通过。期间仅只读准备，没有并发修改/测试/构建/浏览器。
+
+保护区相对8dde35d零diff：后端/packages/SQL/依赖lock/infra/workflows/评分/42台账、原Playwright9spec及config、CDP原driver/network/defaultfixture/register/editor工具均不变；原114/457/70保持。回滚`git revert 041e771`为治理/prefix/root读源及独立opt-in工具整组，前3c不撤；本完成docs独立revert，执行任何实际回滚仍须核后继冲突，不在本轮执行。本完成docs提交后另跑实际干净HEAD完整CI，不沿用源码结果。然后在既有连续授权内续3e→3f，3f后停整批人工验收，尚非批次3/Harness竣工；Playwright补跑与不push/部署/生产边界不变。
