@@ -43,6 +43,8 @@ packages/{types, config} ──→ 零依赖
 
 ## 4. 目标分层（改造方向，规则 §4.1 存量适配）
 
+3c④候选：四订单履约主视图及相邻制造成本残留沿`bootstrap→commercial→forms/dom`分为12新TS（11runtime/1type），root9046 split、新file≤231/完整函数165/AST5；order360创建风险槽的root原位赋值与后风险面板消费同ref保持，双生产面板同route/独立权限不改。完整原权限union与isCommercialPermission同置permissions.ts，经root真实运行导入/原名type-value facade，不扩大静态图/前缀，不修TD-WEB-004；首pure-type图排除失败及修正史留证。21处逆展开＋两声明还原/70绑定457链、11目标红绿/旧展开11已绿，新浏览器/实际HEAD全CI待跑，见[订单履约证据](docs/evidence/frontend-3c4-fulfillment-2026-10-16.md)。
+
 3c③完成：信用/合同沿同单向依赖新增3runtime职责模块及type-only端口，root10535 split；新文件≤196/完整函数147/AST5，六原词法函数引用和原controller不复制，实际7处逆展开保持整入口AST。源码e401d27稳定干净实际HEAD全CI0/182693.526ms，旧新9及组合15只读卡片CDP绿，不算文档行/OCR/上传覆盖。TD-WEB-004仅登记，旧权限投影不修；commercial余13主视图及共享残留续④，未结清巨石或搬store，见[信用合同证据](docs/evidence/frontend-3c3-agreements-2026-10-16.md)。
 
 3c②完成快照：成本/政策/报价12模块沿 `bootstrap→commercial→shared/forms/dom`，pricing结构type只描述原controller/静态端口；root10972 split，新模块≤610/完整函数135/AST5，原引用/动态权限/局部重绘/提交顺序及整入口逆展开保持。源码9429a31、独立测试driver3f3aae7均稳定干净HEAD完整CI0；两次无trace合并13/8不同路由不代表全21域或Playwright，原失败史保持。商业其余15主视图及共享残留继续既定组；未结清root巨石或搬God store，见成本政策报价完成证据。

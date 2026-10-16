@@ -2,6 +2,56 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createStubRouter } from './fixtures.mjs';
 
+test('fulfillment opt-in adds only exact read routes and immutable synthetic evidence', async () => {
+  const original = createStubRouter();
+  const fulfillment = createStubRouter({ fulfillmentViews: true });
+  const routes = [
+    '/api/v1/sales-orders',
+    '/api/v1/sales-orders/cdp-order-a/360',
+    '/api/v1/production-orders',
+    '/api/v1/production-cost-policies',
+    '/api/v1/production-cost-runs',
+    '/api/v1/shipment-releases',
+  ];
+  for (const path of routes) {
+    await assert.rejects(original.respond(path, 'GET'), /unmapped synthetic API request/u);
+    await assert.rejects(fulfillment.respond(path, 'POST'), /unmapped synthetic API request/u);
+    assert.equal((await fulfillment.respond(path, 'GET')).status, 200);
+  }
+  const baseline = (await original.respond('/api/v1/auth/session', 'GET')).value;
+  const session = (await fulfillment.respond('/api/v1/auth/session', 'GET')).value;
+  assert.deepEqual(session.permissions.slice(baseline.permissions.length), [
+    'sales-order:read',
+    'order-360:read',
+    'production:read',
+    'manufacturing-cost:read',
+    'shipment:read',
+  ]);
+  assert.equal(
+    (await fulfillment.respond('/api/v1/production-orders', 'GET')).value.items[0].state,
+    'DRAFT',
+  );
+  assert.equal(
+    (await fulfillment.respond('/api/v1/sales-orders/cdp-order-a/360', 'GET')).value.timeline
+      .length,
+    1,
+  );
+  await assert.rejects(
+    fulfillment.respond('/api/v1/sales-orders/unknown/360', 'GET'),
+    /unmapped synthetic API request/u,
+  );
+  const combined = createStubRouter({
+    salesViews: true,
+    pricingViews: true,
+    creditContractViews: true,
+    fulfillmentViews: true,
+  });
+  assert.equal(
+    (await combined.respond('/api/v1/contracts', 'GET')).value.items[0].contractNumber,
+    'CDP-C-A',
+  );
+});
+
 test('credit/contract opt-in binds only the three reachable read routes and nonempty cards', async () => {
   const original = createStubRouter();
   const agreements = createStubRouter({ creditContractViews: true });

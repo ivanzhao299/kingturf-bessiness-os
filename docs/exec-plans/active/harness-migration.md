@@ -3658,6 +3658,10 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+2026-10-16，3c④候选验证：12新TS=11runtime/1type，file≤231/完整函数165/AST5，入口9046 split；21helper实际逆展开＋原type/predicate严格还原整入口AST、70绑定457链、11目标逐一真红→还原114、权限缺一能力红→39/19绿。type/lint/structure0硬31软/build57模块11367-1898/纯JS18局部绿，独立全组及权限桥增量review无阻塞；原pure-type移出使能力缺一真实首红、未适配首web红和生成边界预解析拒绝史留证，不改图/原规则/权限前缀。旧Yton6C11原口径不含展开溢出；在344b857不可变旧dist上增补STbtx3展开11绿，新QIQlKm同口径11与0ccjgr组合19真0/网络三零/自有清理全真，14不同route不算19域或Playwright。回滚本组源码/必要权限桥/最小读源/探头整体revert、docs独立；实际提交后干净HEAD完整CI另实跑，不预填通过。证据见[3c④](../../evidence/frontend-3c4-fulfillment-2026-10-16.md)，既有冻结/TD-WEB-004仅登记/整批验收保持。
+
+2026-10-16，3c④输入：3c③完成文档344b857稳定干净实际HEAD完整CI真实0/184486.286ms（`/tmp/kingturf-3c3-344b857-head-ci-2026-10-16.log`），结束HEAD不变/树空，依原连续授权续四订单履约主视图及相邻制造成本残留，不重复许可。双生产面板独立权限/同route、order360原位风险槽赋值/同ref后消费与原双权限耦合、晚再次读取销售订单及点击live employees守恒；先最小五read六GET旧只读CDP，不补写矩阵，不改TD-WEB-004/冻结区。候选与实跑结果见[3c④证据](../../evidence/frontend-3c4-fulfillment-2026-10-16.md)，3f后整批人工验收保持。
+
 2026-10-16，3c③实施与独立复核完成：源码e401d27稳定干净实际HEAD完整CI真实exit0/182693.526ms（`/tmp/kingturf-3c3-e401d27-head-ci-2026-10-16.log`），结束HEAD不变/工作树空。API117/17099、web114/PG链/读源22/CDP纯JS17/39-19/0硬31软/预算11367-1898/audit绿；四新模块≤196/完整函数147/AST5、7处逆展开/70绑定457链、三个目标红绿、旧新9与组合15/网络三零/自有清理全真及独立review齐。TD-WEB-004仅登记不修/现39项，文档探针初失败与收回历史保留，不称文档写覆盖。回滚git revert e401d27整组源码/最小读源/opt-in，不撤前组或driver，不把回滚迁移当投影问题消失；本状态docs独立回滚/实际HEAD全CI另实跑。按既有授权续④，不重复索许可；原Playwright补跑/冻结区/3f后整批人工验收保持，详见[3c③证据](../../evidence/frontend-3c3-agreements-2026-10-16.md)。
 
 2026-10-16，3c③候选：四新TS 191/147/196/25 split、AST≤5/完整函数≤147，bootstrap10535；实际七处逆展开恢复9b52443整入口AST/70绑定/457原链，三个实际新runtime目标逐一WEB-UAT真红→完全还原114绿，独立只读时点/receiver/文档作用域复核无阻塞。旧CDP9 x7vSLs、新同口径9 NSABVT、原13+本组2组合15 JHrzhj均真实0、网络三零/自有清理全真；文档行初增探针失败两次/收回未冻结项及TD-WEB-004仅登记历史保持，现39项。type/lint/structure0硬31软/39-19/build11367-1898/纯JS17局部绿；提交后实际干净HEAD完整CI另跑。回滚本组源码/最小读取/opt-in探头独立revert，不回滚已确认前组/driver，不将回滚当权限缺口消失；证据状态文档独立回滚。详见[3c③证据](../../evidence/frontend-3c3-agreements-2026-10-16.md)，其他冻结/Playwright补跑/3f后整批人工验收保持。

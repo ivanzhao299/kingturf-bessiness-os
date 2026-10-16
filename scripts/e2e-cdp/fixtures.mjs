@@ -36,6 +36,7 @@ export function createStubRouter({
   salesViews = false,
   pricingViews = false,
   creditContractViews = false,
+  fulfillmentViews = false,
 } = {}) {
   const holds = new Map();
   const completions = new Map();
@@ -49,6 +50,16 @@ export function createStubRouter({
       ['/api/v1/quotes', 'quotes'],
       ['/api/v1/organizations', 'organizations'],
       ['/api/v1/customers/cdp-customer-a/360', 'detail'],
+      ...(fulfillmentViews
+        ? [
+            ['/api/v1/sales-orders', 'salesOrders'],
+            ['/api/v1/sales-orders/cdp-order-a/360', 'orderEvidence'],
+            ['/api/v1/production-orders', 'productionOrders'],
+            ['/api/v1/production-cost-policies', 'productionCostPolicies'],
+            ['/api/v1/production-cost-runs', 'productionCostRuns'],
+            ['/api/v1/shipment-releases', 'shipmentReleases'],
+          ]
+        : []),
       ...(creditContractViews
         ? [
             ['/api/v1/credit-limits', 'creditLimits'],
@@ -133,7 +144,7 @@ export function createStubRouter({
         };
       const value = {
         session:
-          salesViews || pricingViews || creditContractViews
+          salesViews || pricingViews || creditContractViews || fulfillmentViews
             ? {
                 ...session,
                 permissions: [
@@ -143,10 +154,107 @@ export function createStubRouter({
                     : []),
                   ...(pricingViews ? ['sales-policy:read'] : []),
                   ...(creditContractViews ? ['credit:read', 'contract:read'] : []),
+                  ...(fulfillmentViews
+                    ? [
+                        'sales-order:read',
+                        'order-360:read',
+                        'production:read',
+                        'manufacturing-cost:read',
+                        'shipment:read',
+                      ]
+                    : []),
                 ],
               }
             : session,
         customers: { items: customers },
+        salesOrders: {
+          items: [
+            {
+              id: 'cdp-order-a',
+              orderNumber: 'CDP-SO-A',
+              status: 'RELEASED',
+              currency: 'CNY',
+              total: '25000',
+            },
+          ],
+          nextCursor: null,
+        },
+        orderEvidence: {
+          order: {
+            id: 'cdp-order-a',
+            orderNumber: 'CDP-SO-A',
+            status: 'RELEASED',
+            currency: 'CNY',
+            total: '25000',
+          },
+          quote: {},
+          credit: {},
+          contract: {},
+          receivables: [],
+          payments: [],
+          commissions: [],
+          risks: [],
+          collections: [],
+          anomalies: [],
+          timeline: [
+            {
+              occurredAt: '2026-10-16T08:00:00.000Z',
+              type: 'ORDER_RELEASED',
+              label: 'CDP合成订单证据',
+            },
+          ],
+        },
+        productionOrders: {
+          items: [
+            {
+              id: 'cdp-production-a',
+              orderNumber: 'CDP-PROD-A',
+              state: 'DRAFT',
+              sku: 'CDP-SKU-A',
+              plannedQuantity: '100',
+              plannedStartAt: '2026-10-16',
+              plannedDueAt: '2026-10-20',
+              operations: [],
+              materials: [],
+              reports: [],
+              rolls: [],
+              events: [],
+            },
+          ],
+          nextCursor: null,
+        },
+        productionCostPolicies: { items: [], nextCursor: null },
+        productionCostRuns: {
+          items: [
+            {
+              id: 'cdp-cost-run-a',
+              run_number: 'CDP-COST-A',
+              state: 'APPROVED',
+              orderNumber: 'CDP-PROD-A',
+              currency: 'CNY',
+              planned_total: '100',
+              actual_total: '105',
+              variance_total: '5',
+            },
+          ],
+          nextCursor: null,
+        },
+        shipmentReleases: {
+          items: [
+            {
+              id: 'cdp-release-a',
+              request_number: 'CDP-SHIP-A',
+              state: 'READY',
+              orderNumber: 'CDP-SO-A',
+              productionOrderNumber: 'CDP-PROD-A',
+              lotNumber: 'CDP-LOT-A',
+              requested_quantity: '100',
+              gate_snapshot: { failures: [] },
+              shipments: [],
+            },
+          ],
+          nextCursor: null,
+        },
         creditLimits: { items: [], nextCursor: null },
         creditDecisions: {
           items: [

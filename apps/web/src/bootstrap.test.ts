@@ -114,6 +114,32 @@ it('captures artificial-turf project handoff fields without test-channel evidenc
     readBoundSource('./commercial/quote-create.ts', 'export function appendQuoteHeading'),
     readBoundSource('./commercial/quote-cards.ts', 'export function appendQuoteCardActions'),
     readBoundSource('./commercial/credit-view.ts', 'export function appendCreditView'),
+    readBoundSource('./commercial/permissions.ts', 'export function isCommercialPermission'),
+    readBoundSource(
+      './commercial/production-orders-view.ts',
+      'export function appendProductionOrdersView',
+    ),
+    readBoundSource(
+      './commercial/production-actions.ts',
+      'export function appendProductionTransition',
+    ),
+    readBoundSource(
+      './commercial/production-cost-view.ts',
+      'export function appendProductionCostView',
+    ),
+    readBoundSource(
+      './commercial/production-cost-policy.ts',
+      'export function createProductionCostPolicyButton',
+    ),
+    readBoundSource('./commercial/shipments-view.ts', 'export function appendShipmentsView'),
+    readBoundSource('./commercial/shipment-actions.ts', 'export function appendShipmentDispatch'),
+    readBoundSource('./commercial/sales-orders-view.ts', 'export function appendSalesOrdersView'),
+    readBoundSource('./commercial/order360-view.ts', 'export function appendOrder360Content'),
+    readBoundSource(
+      './commercial/order360-risk-controls.ts',
+      'export function createRiskPolicyButton',
+    ),
+    readBoundSource('./commercial/order360-evidence.ts', 'export function createOrderEvidence'),
     readBoundSource('./commercial/contract-view.ts', 'export function appendContractView'),
     readBoundSource(
       './commercial/contract-documents.ts',

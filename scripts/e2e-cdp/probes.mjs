@@ -274,6 +274,43 @@ export async function runProbes({ send, router, runId, report, expectDialog }) {
           }
         });
     }
+    if (process.argv.includes('--fulfillment-views')) {
+      for (const [route, title, selector, record] of [
+        ['sales-orders', '销售订单', '.order-workbench .qtc-card', 'CDP-SO-A'],
+        ['order-360', '订单全景', '.order-360-list > .order-360-card', 'CDP-SO-A'],
+        [
+          'production-orders',
+          '生产执行',
+          '[data-testid="production-workbench"] .production-order-card',
+          'CDP-PROD-A',
+        ],
+        ['shipments', '发货与签收', '.shipment-workbench .production-order-card', 'CDP-SHIP-A'],
+      ])
+        await check(`fulfillment-view-${route}-desktop-mobile`, async () => {
+          for (const metrics of [
+            [390, 844, true],
+            [1440, 1000, false],
+          ]) {
+            await page.viewport(...metrics);
+            await page.route(route);
+            await page.text('[data-route-context] h1', title);
+            await page.text(selector, record);
+            if (route === 'production-orders')
+              await page.text(
+                '[data-testid="manufacturing-cost-workbench"] .production-order-card',
+                'CDP-COST-A',
+              );
+            if (route === 'order-360') {
+              const toggle = '.order-360-list > .order-360-card > button';
+              await page.click(toggle);
+              await page.text('.order-360-detail .order-360-timeline li', '2026-10-16');
+              await page.noOverflow();
+              await page.click(toggle);
+            }
+            await page.noOverflow();
+          }
+        });
+    }
     const screenshot = await send('Page.captureScreenshot', { format: 'png' });
     writeFileSync(`/tmp/${runId}-probes.png`, Buffer.from(screenshot.data, 'base64'));
     return {
