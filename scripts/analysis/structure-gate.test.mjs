@@ -14,7 +14,6 @@ import {
   sqlRawInputViolations,
   routeNestingMetrics,
   routeNestingViolations,
-  ROUTE_AST_EXEMPTION,
 } from './structure-gate.mjs';
 
 test('G1 拦截超限文件并附修复指令', () => {
@@ -261,22 +260,18 @@ test('routes AST语法残缺强制失败，不用部分AST放行', () => {
   assert.ok(routeNestingViolations(routePath, 'function broken( {')[0].parseErrors.length);
 });
 
-test('唯一AST存量豁免日期/hash/depth三重钉死；到期当天Singapore零时拦截', () => {
-  const frozen = ROUTE_AST_EXEMPTION;
-  const content = readFileSync(frozen.path, 'utf8');
-  const before = new Date('2026-10-22T23:59:59+08:00');
-  assert.equal(routeNestingViolations(frozen.path, content, before)[0].whitelisted, true);
-  assert.equal(
-    routeNestingViolations(frozen.path, content, new Date(frozen.expiresAt))[0].whitelisted,
-    false,
-  );
-  assert.equal(routeNestingViolations(frozen.path, content + '\n', before)[0].whitelisted, false);
-  assert.equal(routeNestingViolations(routePath, content, before)[0].whitelisted, false);
-  const deeper = `function outer() {${nestedIf(6)}}`;
-  assert.equal(routeNestingMetrics(deeper).parseErrors.length, 0);
-  assert.equal(routeNestingMetrics(deeper).maxDepth, 7);
-  assert.equal(routeNestingViolations(frozen.path, deeper, before)[0].whitelisted, false);
-  assert.match(frozen.due, /2026-10-23/u);
+test('E1已撤：authorization深度5无豁免，同路径任意合法6/7层强制失败', () => {
+  const path = 'apps/api/src/routes/authorization.ts';
+  const content = readFileSync(path, 'utf8');
+  assert.equal(routeNestingMetrics(content).parseErrors.length, 0);
+  assert.equal(routeNestingMetrics(content).maxDepth, 5);
+  assert.deepEqual(routeNestingViolations(path, content), []);
+  for (const depth of [6, 7]) {
+    const deeper = `function outer() {${nestedIf(depth - 1)}}`;
+    assert.equal(routeNestingMetrics(deeper).parseErrors.length, 0);
+    assert.equal(routeNestingMetrics(deeper).maxDepth, depth);
+    assert.equal(routeNestingViolations(path, deeper)[0].whitelisted, false);
+  }
 });
 
 test('真实CLI routes覆盖G1/G2/G3/G4，合法深格式通过，清理后全仓绿', () => {
@@ -309,5 +304,5 @@ test('真实CLI routes覆盖G1/G2/G3/G4，合法深格式通过，清理后全�
   }
   const clean = run();
   assert.equal(clean.status, 0, clean.stderr);
-  assert.match(clean.stdout, /白名单豁免 32 条/u);
+  assert.match(clean.stdout, /白名单豁免 31 条/u);
 });

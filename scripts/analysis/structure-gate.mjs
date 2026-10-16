@@ -10,7 +10,6 @@
 // 每条失败信息必须包含修复指令（§4.2 硬要求）。
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { createHash } from 'node:crypto';
 import ts from 'typescript';
 
 export const MAX_FILE_LINES = 800;
@@ -97,19 +96,6 @@ export function nestingViolations(path, content) {
   return [{ rule: 'G2', path, maxIndent, whitelisted: wl, ...(NESTING_EXTRA.get(path) ?? {}) }];
 }
 
-// Only this frozen existing point is exempt, not the directory or later edits.
-// Date expiry is automatic; earlier batch-2 acceptance must remove/adjudicate
-// this item explicitly. The gate does not infer human acceptance from plan text.
-export const ROUTE_AST_EXEMPTION = Object.freeze({
-  path: 'apps/api/src/routes/authorization.ts',
-  sha256: 'd380d23327db8d1751a793d2bdef0a2c62948cf17420a8da25723edc6103daf1',
-  maxDepth: 6,
-  reason:
-    'TD-GATE-003：既有atomicCapability四层fallback及叶子三元，词法函数合计6层；本批禁止改业务',
-  due: '2026-10-23 Asia/Singapore零时，或批次2最终验收前取先；须另行授权去嵌套/裁决',
-  expiresAt: '2026-10-23T00:00:00+08:00',
-});
-
 export function routeNestingMetrics(content) {
   const source = ts.createSourceFile(
     'route.ts',
@@ -152,25 +138,11 @@ export function routeNestingMetrics(content) {
   };
 }
 
-export function routeNestingViolations(path, content, now = new Date()) {
+export function routeNestingViolations(path, content) {
   const metrics = routeNestingMetrics(content);
   if (metrics.parseErrors.length) return [{ rule: 'G2', path, ...metrics, whitelisted: false }];
   if (metrics.maxDepth <= MAX_NESTING) return [];
-  const frozen = ROUTE_AST_EXEMPTION;
-  const whitelisted =
-    path === frozen.path &&
-    metrics.maxDepth === frozen.maxDepth &&
-    createHash('sha256').update(content).digest('hex') === frozen.sha256 &&
-    now.getTime() < Date.parse(frozen.expiresAt);
-  return [
-    {
-      rule: 'G2',
-      path,
-      ...metrics,
-      whitelisted,
-      ...(whitelisted ? { reason: frozen.reason, due: frozen.due } : {}),
-    },
-  ];
+  return [{ rule: 'G2', path, ...metrics, whitelisted: false }];
 }
 
 // G3：SQL 模板字符串插值白名单（TD-SEC-005：只允许 $N 占位符构造与明确登记的白名单，其余一律失败）。
