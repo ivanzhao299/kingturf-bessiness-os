@@ -2,7 +2,23 @@
 
 ## 范围与结论
 
-现时收口：通道初稿提交 `ea6b5e0` 后，根据协调/独立reviewer审查补齐异常、信号与精确profile归属，再正常实跑 GgOcEG 真实0；最终生命周期负向 **5/5**（受控失败均exit1且清理通过），匹配谓词 **1 test/7对照** 真实0。根 lint 现已显式扫描 scripts/e2e-cdp，不只配置解析范围。下面旧三跑保留为历史，不混作最终同一次运行。
+现时收口：通道初稿 `ea6b5e0`→安全收口 `2ef6f83` 后，协调终审发现无引号分支假阳性，已删除并加两条false对照。最新正常实跑 **IYIfOu真实0**、生命周期负向 **5/5**（子进程均预期exit1且清理通过）、谓词 **1 test/9对照** 真实0。根lint显式扫描 scripts/e2e-cdp；下面各旧跑/七对照为历史，不混作最终同一次运行。
+
+### 最终引号分支收紧（2ef6f83之后）
+
+协调以具体反例指出第三个无引号分支会接受含空格裸路径及quoted note内部的userdata文本；这是新通道候选匹配器问题，非业务行为修复。删除该分支，保留本launcher实际使用的双引号整参数及值引号形态；新增 `chrome.exe --user-data-dir=<含空格profile> --headless=new`、`chrome.exe "--note=x --user-data-dir=<profile> end"` 必须false，JS/.NET同一谓词九对照真实0。ownership.test明确为Windows/WSL手动测试，**不接默认CI**，避免非Windows环境依赖PowerShell；CI仅lint新目录。代码变更后的真实生命周期5/5再跑证明当前launcher可安全清理，未恢复宽匹配分支。
+
+最新正常 `kingturf-cdp-preflight-IYIfOu`：Chrome154.0.8037.99、Windows PID34688/127.0.0.1:55268、owned preview1972709/4173；HTTP版本、ActivePort端点身份、Browser.getVersion、WSL页面文档/JS/CSS200与公共DOM控件均通过。preview exited/rootGone/profileGone=true、profileProcessCount0后pass，真实exit0；日志 `/tmp/kingturf-cdp-quoted-normal-2026-10-16.log`，DOM `/tmp/kingturf-cdp-preflight-IYIfOu-dom.json`。全flags仍同下文、无安全放宽。
+
+| 当前最终负向case   | run后缀 | Chrome PID/端口               | preview PID | 清理与结果                                                   |
+| ------------------ | ------- | ----------------------------- | ----------- | ------------------------------------------------------------ |
+| profile-init-error | Rs6xLi  | 未启动                        | 未启动      | exit1、profileGone=true                                      |
+| lost-launch-pid    | F1R5rj  | 启动4688后模拟丢返回/端口未查 | 未启动      | exit1、rootGone=null、profileProcessCount0、profileGone=true |
+| preview-error      | V58S47  | 63540/54307                   | 1972151     | exit1，preview/root/profile回收                              |
+| SIGTERM            | qMW9zZ  | 44540/57326                   | 1972192     | 受控exit1而非信号强退，preview/root/profile回收              |
+| SIGINT             | Sa8foF  | 28004/63319                   | 1972243     | 受控exit1而非信号强退，preview/root/profile回收              |
+
+driver真实exit0/5通过，汇总 `/tmp/kingturf-cdp-quoted-lifecycle-summary-2026-10-16.log`，逐case `/tmp/kingturf-cdp-lifecycle-1792128670617-<case>.log`；每跑无stderr/无pass/无cleanup-failure。未触其他Chrome/profile，所删均为本次新建可再生目录。完整稳定提交CI结果另交接，不把负向或预检计入Vitest、五类harness或Playwright。
 
 基线 `ad0435e`，续派授权 `02d93f4`（计划§7「3a前置裁定2」）。实际通道通过：WSL→Windows Chrome loopback CDP、Browser.getVersion、Chrome→WSL preview 导航及真实登录 DOM、文档/JS/CSS 200、owned 进程与独立 profile 清理。**这不是五类 harness 探头通过，更不是 Playwright 全套通过。** 尚无业务源码迁移、新 web 护栏或 DB 写入。
 

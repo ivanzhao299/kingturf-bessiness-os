@@ -14,6 +14,8 @@ test('owned Chrome argument matches exact profile, not neighbors or unrelated ar
     [`chrome.exe "--user-data-dir=${profile}\\child"`, false],
     [`chrome.exe "--note=${profile}"`, false],
     [`chrome.exe "--user-data-dir=D:\\Other" "--note=${profile}"`, false],
+    [`chrome.exe --user-data-dir=${profile} --headless=new`, false],
+    [`chrome.exe "--note=x --user-data-dir=${profile} end"`, false],
   ];
   for (const [command, expected] of rows)
     assert.equal(new RegExp(pattern, 'i').test(command), expected);
