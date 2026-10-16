@@ -2,6 +2,37 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createStubRouter } from './fixtures.mjs';
 import { operationsPermissions, operationsRoutes } from './operations-fixtures.mjs';
+import { withRegisterTools } from './register-fixtures.mjs';
+
+test('register overlay preserves default fixtures and grants while adding twelve unique local rows', async () => {
+  const original = createStubRouter();
+  const overlay = withRegisterTools(createStubRouter());
+  assert.equal((await original.respond('/api/v1/quotes', 'GET')).value.items.length, 0);
+  const rows = (await overlay.respond('/api/v1/quotes', 'GET')).value.items;
+  assert.equal(rows.length, 12);
+  assert.equal(new Set(rows.map((row) => row.id)).size, 12);
+  assert.equal(new Set(rows.map((row) => row.total)).size, 12);
+  assert.deepEqual(
+    (await overlay.respond('/api/v1/auth/session', 'GET')).value,
+    (await original.respond('/api/v1/auth/session', 'GET')).value,
+  );
+  assert.equal(overlay.counts().quotes, 1);
+});
+
+test('register overlay delegates unknown/write rejection and binds an exact unpaged quote GET', async () => {
+  const overlay = withRegisterTools(createStubRouter({ pricingViews: true }));
+  const original = createStubRouter({ pricingViews: true });
+  await assert.rejects(overlay.respond('/api/v1/quotes', 'POST'), /unmapped/u);
+  await assert.rejects(overlay.respond('/api/v1/unknown', 'GET'), /unmapped/u);
+  await assert.rejects(
+    overlay.respond('/api/v1/quotes', 'GET', new URLSearchParams({ page: '2' })),
+    /unmapped/u,
+  );
+  assert.deepEqual(
+    (await overlay.respond('/api/v1/quotes', 'GET')).value.items[0],
+    (await original.respond('/api/v1/quotes', 'GET')).value.items[0],
+  );
+});
 
 test('dashboard opt-in binds its actual yearly query, one read grant and nonempty drilldowns', async () => {
   const original = createStubRouter();

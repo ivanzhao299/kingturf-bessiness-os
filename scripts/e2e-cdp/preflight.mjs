@@ -414,6 +414,10 @@ try {
       operationsViews: process.argv.includes('--operations-views'),
       dashboardView: process.argv.includes('--dashboard-view'),
     });
+    if (process.argv.includes('--register-tools')) {
+      const { withRegisterTools } = await import('./register-fixtures.mjs');
+      suiteRouter = withRegisterTools(suiteRouter);
+    }
     if (process.argv.includes('--fault-unmapped-api')) {
       await cdp(
         'Runtime.evaluate',

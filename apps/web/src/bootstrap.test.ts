@@ -96,6 +96,19 @@ it('captures artificial-turf project handoff fields without test-channel evidenc
     readBoundSource('./commercial/ctr-fields.ts', 'export const ctrRequirementFields'),
     readBoundSource('./commercial/quote-print.ts', 'export function printIssuedQuote'),
     readBoundSource('./commercial/readiness.ts', 'export function contractOrderReadiness'),
+    readBoundSource('./shared/register-profile.ts', 'export const registerProfile'),
+    readBoundSource('./shared/register-drawer.ts', 'export function createRegisterDrawer'),
+    readBoundSource('./shared/register-controls.ts', 'export function createRegisterControls'),
+    readBoundSource('./shared/register-readers.ts', 'export function createRegisterReaders'),
+    readBoundSource('./shared/register-rendering.ts', 'export function createRegisterRendering'),
+    readBoundSource('./shared/register-search.ts', 'export function createRegisterSearch'),
+    readBoundSource('./shared/register-selection.ts', 'export function bindRegisterSelection'),
+    readBoundSource('./shared/register-actions.ts', 'export function bindRegisterActions'),
+    readBoundSource('./shared/register-saved-view.ts', 'export function installSavedRegisterView'),
+    readBoundSource(
+      './shared/workspace-list-tools.ts',
+      'export function installWorkspaceListTools',
+    ),
     readBoundSource('./commercial/opportunity-view.ts', 'export function appendOpportunityView'),
     readBoundSource('./commercial/ctr-view.ts', 'export function appendCtrView'),
     readBoundSource('./commercial/solution-view.ts', 'export function appendSolutionView'),
@@ -318,7 +331,14 @@ it('keeps product pages on one content rail and renders business records as dens
 });
 
 it('provides product-grade register controls for high-frequency business records', () => {
-  const workspaceSource = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+  const workspaceSource = [
+    readBoundSource('./bootstrap.ts', 'export function commercialWorkspaceStructure'),
+    readBoundSource(
+      './shared/workspace-list-tools.ts',
+      'export function installWorkspaceListTools',
+    ),
+    readBoundSource('./shared/register-controls.ts', 'export function createRegisterControls'),
+  ].join('\n');
   const factorySource = readFileSync(
     new URL('./shared/commercial-http.ts', import.meta.url),
     'utf8',
@@ -385,7 +405,10 @@ it('uses a dedicated transparent King Turf mark without cropping in compact navi
 });
 
 it('adds status filtering and a permission-scoped detail drawer to business registers', () => {
-  const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+  const source = [
+    readBoundSource('./shared/register-controls.ts', 'export function createRegisterControls'),
+    readBoundSource('./shared/register-drawer.ts', 'export function createRegisterDrawer'),
+  ].join('\n');
   const styles = readFileSync(new URL('./style.css', import.meta.url), 'utf8');
   expect(source).toContain("statusFilter.setAttribute('aria-label', '按业务状态筛选')");
   expect(source).toContain('查看选中详情');
@@ -397,7 +420,15 @@ it('adds status filtering and a permission-scoped detail drawer to business regi
 });
 
 it('uses module-specific register columns, structured detail fields and business sorting', () => {
-  const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+  const source = [
+    readBoundSource('./shared/register-profile.ts', 'export const registerProfile'),
+    readBoundSource('./shared/register-controls.ts', 'export function createRegisterControls'),
+    readBoundSource('./shared/register-drawer.ts', 'export function createRegisterDrawer'),
+    readBoundSource(
+      './shared/workspace-list-tools.ts',
+      'export function installWorkspaceListTools',
+    ),
+  ].join('\n');
   const styles = readFileSync(new URL('./style.css', import.meta.url), 'utf8');
   expect(source).toContain("label: '生产工单台账'");
   expect(source).toContain("headers: ['工单与产品', '生产状态与数量', '计划与车间', '操作']");
@@ -412,7 +443,10 @@ it('uses module-specific register columns, structured detail fields and business
 });
 
 it('supports safe bulk selection, attention filtering and selected-record export', () => {
-  const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+  const source = [
+    readBoundSource('./shared/register-controls.ts', 'export function createRegisterControls'),
+    readBoundSource('./shared/register-selection.ts', 'export function bindRegisterSelection'),
+  ].join('\n');
   const styles = readFileSync(new URL('./style.css', import.meta.url), 'utf8');
   expect(source).toContain("['attention', '只看需关注']");
   expect(source).toContain("['actionable', '只看可操作']");

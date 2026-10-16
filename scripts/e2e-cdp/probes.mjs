@@ -441,6 +441,10 @@ export async function runProbes({ send, router, runId, report, expectDialog }) {
           await page.noOverflow();
         }
       });
+    if (process.argv.includes('--register-tools')) {
+      const { runRegisterProbes } = await import('./register-probes.mjs');
+      await runRegisterProbes({ page, send, router, check });
+    }
     const screenshot = await send('Page.captureScreenshot', { format: 'png' });
     writeFileSync(`/tmp/${runId}-probes.png`, Buffer.from(screenshot.data, 'base64'));
     return {
