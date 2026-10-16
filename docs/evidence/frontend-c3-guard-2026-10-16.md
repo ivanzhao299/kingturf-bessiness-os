@@ -39,6 +39,8 @@
 
 ## 下一步与回滚
 
+后补实测：独立提交 `175be7d` 已完整 `pnpm ci:local` 真实exit0，主代理performance.now单调计时169277.626ms（`/tmp/kingturf-web-c3-head-ci-2026-10-16.log`）；协调读取已完成原会话命令元数据175385ms，口径不同并列保留。稳定HEAD检查工作区干净；此前“待完整CI”为该候选时点历史，不再表示现时阻断。随后首个3a form小步证据见[公共form](frontend-3a-form-2026-10-16.md)。
+
 此护栏独立提交并完整CI0后，才3a首模块form候选/旧新守恒复核。现有openForm完整175行/AST4，openFileForm61/AST4，依赖仅既有dom.el/setOperationStatus与DOM全局；保持完整函数形状，不包成>200大factory，不让shared反向依赖bootstrap。具体提取/import/读源锚点/旧新正文对拍与每适配测试文件扰动红→还原，将在首模块证据独立登记；本轮尚未提取、未改变bootstrap.test读取或业务fixtures，不宣称变异已做。
 
 原31含bootstrap的豁免只在真实消解后撤，不因这次新范围就结清TD-WEB债务。回滚本护栏/自测/文档到6d467e4；将来若已有新模块，不能只撤护栏而继续声称这些模块受C3保护，需与相关模块回滚顺序协调。Playwright配置/九spec冻结未执行，阶段5终验前全部真实补跑义务仍保持；不提前3b，4/5及其他保护范围不动。

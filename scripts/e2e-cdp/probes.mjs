@@ -5,7 +5,7 @@ import { createDriver } from './driver.mjs';
 export { createStubRouter } from './fixtures.mjs';
 import { syntheticSessionInit } from './fixtures.mjs';
 
-export async function runProbes({ send, router, runId, report }) {
+export async function runProbes({ send, router, runId, report, expectDialog }) {
   const page = createDriver(send);
   const passed = [];
   const check = async (name, work) => {
@@ -36,6 +36,32 @@ export async function runProbes({ send, router, runId, report }) {
     }
     await check('synthetic-workspace-text', async () => {
       await page.text('.crm-records .customer-row .identity', 'CDP客户甲');
+      await page.noOverflow();
+    });
+    await check('form-open-fill-cancel-confirmation', async () => {
+      await page.route('overview');
+      await page.evaluate(
+        `(() => {const button=[...document.querySelectorAll('button')].find(n=>n.textContent==='＋ 新建客户');if(!button)throw Error('missing customer-create button');button.dataset.cdpCreate='true';})()`,
+      );
+      await page.click('[data-cdp-create="true"]');
+      await page.text('.form-dialog[open] h2', '新建客户');
+      await page.fill('.form-dialog[open] [name="name"]', 'CDP未保存客户');
+      await page.fill('.form-dialog[open] [name="customerNumber"]', 'CDP-UNSAVED');
+      const valuesRemain = `(() => {const form=document.querySelector('.form-dialog[open] form');return !!form&&form.elements.namedItem('name').value==='CDP未保存客户'&&form.elements.namedItem('customerNumber').value==='CDP-UNSAVED'&&form.elements.namedItem('name').required&&form.elements.namedItem('name').minLength===2&&form.elements.namedItem('customerNumber').required;})()`;
+      assert.equal(await page.evaluate(valuesRemain), true, 'real filled form must remain bound');
+      await Promise.all([
+        expectDialog(false),
+        page.click('.form-dialog[open] .dialog-actions .secondary'),
+      ]);
+      assert.equal(await page.evaluate(valuesRemain), true, 'declined cancel must preserve values');
+      await Promise.all([
+        expectDialog(true),
+        page.click('.form-dialog[open] .dialog-actions .secondary'),
+      ]);
+      await page.waitFor(`!document.querySelector('.form-dialog')`, 'accepted cancel removes form');
+      await page.onlyRoute('overview');
+      await page.route('customers');
+      await page.onlyRoute('customers');
       await page.noOverflow();
     });
     await check('CRM-filter-preserves-commercial-and-menu', async () => {

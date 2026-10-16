@@ -216,6 +216,16 @@ try {
   let unknownApiRequests = 0;
   let failedApiRequests = 0;
   const responses = [];
+  let expectedDialog;
+  const expectDialog = (accept) =>
+    new Promise((resolve, reject) => {
+      if (expectedDialog) throw new Error('dialog expectation already pending');
+      const timer = setTimeout(() => {
+        expectedDialog = undefined;
+        reject(new Error('expected dirty-form confirmation was not observed'));
+      }, 3500);
+      expectedDialog = { accept, resolve, reject, timer };
+    });
   socket.addEventListener('message', ({ data }) => {
     try {
       const msg = JSON.parse(data);
@@ -226,6 +236,27 @@ try {
         pending.delete(msg.id);
         if (msg.error) wait.reject(new Error(`CDP error ${msg.error.code}`));
         else wait.resolve(msg.result);
+      } else if (msg.method === 'Page.javascriptDialogOpening') {
+        const expected = expectedDialog;
+        expectedDialog = undefined;
+        if (
+          !expected ||
+          msg.sessionId !== session ||
+          msg.params.type !== 'confirm' ||
+          msg.params.message !== '当前修改尚未保存，确定关闭吗？'
+        ) {
+          if (expected) {
+            clearTimeout(expected.timer);
+            expected.reject(new Error('unexpected form dialog'));
+          }
+          stop();
+          return;
+        }
+        clearTimeout(expected.timer);
+        cdp('Page.handleJavaScriptDialog', { accept: expected.accept }, session).then(
+          expected.resolve,
+          expected.reject,
+        );
       } else if (msg.method === 'Fetch.requestPaused') {
         const url = new URL(msg.params.request.url);
         const requestClass = classifyRequest(msg.params.request.url, msg.params.request.method);
@@ -388,6 +419,7 @@ try {
       router: suiteRouter,
       runId,
       report,
+      expectDialog,
     });
     if (requestBlocks !== 0) throw new Error('harness had blocked unexpected non-static traffic');
     if (unknownApiRequests !== 0) throw new Error('harness had unmapped API traffic');

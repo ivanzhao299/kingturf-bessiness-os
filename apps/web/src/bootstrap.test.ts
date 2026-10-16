@@ -890,10 +890,18 @@ describe('web bootstrap', () => {
 
   it('keeps the document editor open and advances its active version after saving', () => {
     const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
-    const editorSource = source.slice(
-      source.indexOf('const openOnlineDocumentEditor'),
-      source.indexOf('type FormField'),
-    );
+    const editorStart = source.indexOf('const openOnlineDocumentEditor');
+    const editorEnd = source.indexOf('const displayTime');
+    if (
+      editorStart < 0 ||
+      editorEnd <= editorStart ||
+      source.lastIndexOf('const openOnlineDocumentEditor') !== editorStart ||
+      source.lastIndexOf('const displayTime') !== editorEnd
+    )
+      throw new Error('Document editor source anchors must be unique and ordered');
+    const editorSource = source.slice(editorStart, editorEnd);
+    if (!editorSource.trim() || !editorSource.startsWith('const openOnlineDocumentEditor'))
+      throw new Error('Document editor source slice must remain bound');
     const contextualDocumentsSource = source.slice(
       source.indexOf('for (const route of templateRoutes)'),
       source.indexOf("const sectionHeader = el('div', 'section-heading')"),

@@ -24,6 +24,7 @@ const session = {
   employeeNumber: null,
   permissions: [
     'customer:read',
+    'customer:create',
     'customer-360:read',
     'cost-matrix:read',
     'cost-matrix:manage',
