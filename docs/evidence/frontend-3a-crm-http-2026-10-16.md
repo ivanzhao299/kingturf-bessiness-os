@@ -14,6 +14,8 @@
 
 ## 诊断史与验证
 
+后补：独立源码/证据提交 `1a7c4a9` 稳定干净HEAD完整 `pnpm ci:local` 真实exit0/174221.138ms单调计时；日志 `/tmp/kingturf-3a-crm-http-head-ci-2026-10-16.log`。API117/17099、web114、原PG、database68/domain14、纯JS4、预算11368/1898、结构0硬/31旧豁免、audit无已知漏洞，完成后才启动商业工厂。下文“CI随后”保留此前时点。
+
 新产物CDP zq3TCZ真实exit0：Chrome154.0.8037.99/PID27136/127.0.0.1:59765、owned preview2182024，新profile隔离；七场景32 DOM/3 viewport/25 route/10 text/10 overflow，网络blocked/unknownAPI/failedAPI全部0，preview/process/profile清理成功。日志 `/tmp/kingturf-3a-crm-http-cdp-2026-10-16.log`；截图 `/tmp/kingturf-cdp-preflight-zq3TCZ-probes.png`。只有四route合成stub，覆盖真实新工厂的客户GET与360迟到/失败路径，不声称CRM写入、全部API方法、真实账户或Playwright覆盖；不并入web114计数。
 
 初稿工厂误放crm/http.ts，协调指出3a shared落点后通过apply_patch迁到shared/crm-http.ts，未提交错误路径。首次type整块byte证明真实exit1：直接给私有CustomerInput加export使Prettier将单行类型重排；改为保留原type定义、尾部独立type-only导出列表，再次证明全等，未放宽正文比较。首次证明的stderr保留在会话命令输出，stdout日志 `/tmp/kingturf-3a-crm-http-conservation-2026-10-16.log`为空，不伪称该文件含完整失败堆栈；先前局部web/build为旧路径诊断，最终路径另全部重跑。

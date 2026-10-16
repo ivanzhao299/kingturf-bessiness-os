@@ -6,6 +6,24 @@ import { el, setOperationStatus } from './dom';
 import { openForm, openFileForm, type FormField } from './shared/forms';
 import { ENTERPRISE_STATUS_LABELS, localizeEnterpriseCopy } from './shared/locale';
 import { createFetchCrmApi } from './shared/crm-http';
+import { createFetchCommercialApi } from './shared/commercial-http';
+export { createFetchCommercialApi } from './shared/commercial-http';
+import type {
+  Opportunity,
+  CommercialApi,
+  CostMatrixAttention,
+  CostMatrixSort,
+  CostMatrixQuery,
+  CostMatrixPage,
+} from './commercial/types';
+export type {
+  Opportunity,
+  CommercialApi,
+  CostMatrixAttention,
+  CostMatrixSort,
+  CostMatrixQuery,
+  CostMatrixPage,
+} from './commercial/types';
 export { createFetchCrmApi } from './shared/crm-http';
 import type {
   Customer,
@@ -1278,18 +1296,6 @@ function printIssuedQuote(quote: Record<string, unknown>): void {
   popup.print();
 }
 
-export type Opportunity = Readonly<{
-  id: string;
-  customerId?: string | null;
-  leadId?: string | null;
-  name?: string;
-  status?: string;
-  value?: Readonly<{ amount: string; currency: string }>;
-  probabilityBasisPoints?: number;
-  expectedCloseDate?: string;
-  version?: number;
-}>;
-
 export function technicalSolutionOpportunityId(
   ctrs: readonly Record<string, unknown>[],
   ctrVersionId: string,
@@ -1299,52 +1305,6 @@ export function technicalSolutionOpportunityId(
     throw new Error('所选技术需求单不可用或缺少关联商机');
   return ctr.opportunityId;
 }
-
-export type CommercialApi = Readonly<{
-  listOpportunities(): Promise<readonly Opportunity[]>;
-  list(path: string): Promise<readonly Record<string, unknown>[]>;
-  listCostMatrixSummaries?(query: CostMatrixQuery): Promise<CostMatrixPage>;
-  get?(path: string): Promise<Record<string, unknown>>;
-  submit(
-    path: string,
-    payload: Record<string, unknown>,
-    method?: 'POST' | 'PATCH',
-  ): Promise<Record<string, unknown>>;
-  uploadCtrAttachment(versionId: string, file: File): Promise<Record<string, unknown>>;
-  uploadContractDocument?(
-    businessType: 'SALES' | 'PURCHASE',
-    subjectType: 'contract-revision' | 'purchase-order',
-    subjectId: string,
-    file: File,
-  ): Promise<Record<string, unknown>>;
-  command(
-    revisionId: string,
-    action: 'approve' | 'issue',
-    payload?: Record<string, unknown>,
-  ): Promise<Record<string, unknown>>;
-}>;
-
-export type CostMatrixAttention =
-  | 'ALL'
-  | 'NEEDS_INPUT'
-  | 'NEEDS_CALCULATION'
-  | 'READY_FOR_QUOTE'
-  | 'IN_QUOTE';
-export type CostMatrixSort = 'ATTENTION' | 'CODE' | 'UPDATED' | 'COST_DESC';
-export type CostMatrixQuery = Readonly<{
-  page: number;
-  pageSize: number;
-  query: string;
-  productFamily: string;
-  attention: CostMatrixAttention;
-  sort: CostMatrixSort;
-}>;
-export type CostMatrixPage = Readonly<{
-  items: readonly Record<string, unknown>[];
-  total: number;
-  page: number;
-  pageSize: number;
-}>;
 
 const initialCostMatrixQuery = (): CostMatrixQuery => ({
   page: 1,
@@ -10330,123 +10290,6 @@ export function commercialWorkspaceStructure(
   }
   return workspace;
 }
-
-export const createFetchCommercialApi = (token: string): CommercialApi => ({
-  async listOpportunities() {
-    const response = await json<{
-      items: readonly Opportunity[];
-    }>('/api/v1/opportunities', token);
-    return response.items;
-  },
-  async list(path) {
-    if (
-      path !== '/api/v1/ar-open-items' &&
-      path !== '/api/v1/bank-payments' &&
-      path !== '/api/v1/complaints'
-    )
-      return (await json<{ items: readonly Record<string, unknown>[] }>(path, token)).items;
-    const items: Record<string, unknown>[] = [];
-    let cursor: string | null = null;
-    const visitedCursors = new Set<string>();
-    do {
-      const query = new URLSearchParams({ limit: '100' });
-      if (cursor) query.set('cursor', cursor);
-      const page = await json<{
-        items: readonly Record<string, unknown>[];
-        nextCursor: string | null;
-      }>(`${path}?${query.toString()}`, token);
-      items.push(...page.items);
-      if (page.nextCursor && visitedCursors.has(page.nextCursor))
-        throw new Error('服务器返回了重复分页游标，已停止加载以避免重复数据');
-      cursor = page.nextCursor;
-      if (cursor) visitedCursors.add(cursor);
-    } while (cursor);
-    return items;
-  },
-  async listCostMatrixSummaries(query) {
-    const parameters = new URLSearchParams({
-      page: String(query.page),
-      pageSize: String(query.pageSize),
-      attention: query.attention,
-      sort: query.sort,
-    });
-    if (query.query) parameters.set('q', query.query);
-    if (query.productFamily) parameters.set('productFamily', query.productFamily);
-    return json<CostMatrixPage>(`/api/v1/cost-matrix-summaries?${parameters.toString()}`, token);
-  },
-  get: (path) => json<Record<string, unknown>>(path, token),
-  submit: (path, payload, method = 'POST') =>
-    json<Record<string, unknown>>(path, token, {
-      method,
-      ...(method === 'POST' ? { headers: { 'idempotency-key': requestId() } } : {}),
-      body: JSON.stringify(payload),
-    }),
-  async uploadCtrAttachment(versionId, file) {
-    const bytes = new Uint8Array(await file.arrayBuffer());
-    const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
-    const hex = [...digest].map((value) => value.toString(16).padStart(2, '0')).join('');
-    let binary = '';
-    for (const byte of bytes) binary += String.fromCharCode(byte);
-    const metadata = await json<Record<string, unknown>>('/api/v1/attachments', token, {
-      method: 'POST',
-      body: JSON.stringify({
-        name: file.name,
-        mimeType: file.type === '' ? 'application/octet-stream' : file.type,
-        size: file.size,
-        checksum: hex,
-      }),
-    });
-    if (typeof metadata.id !== 'string') throw new Error('附件元数据响应无效');
-    const uploaded = await json<Record<string, unknown>>(
-      `/api/v1/attachments/${metadata.id}/content`,
-      token,
-      { method: 'PUT', body: JSON.stringify({ contentBase64: btoa(binary) }) },
-    );
-    await json(`/api/v1/ctr-versions/${versionId}/attachments`, token, {
-      method: 'POST',
-      body: JSON.stringify({ attachmentId: metadata.id }),
-    });
-    return uploaded;
-  },
-  async uploadContractDocument(businessType, subjectType, subjectId, file) {
-    const bytes = new Uint8Array(await file.arrayBuffer());
-    const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
-    const checksum = [...digest].map((value) => value.toString(16).padStart(2, '0')).join('');
-    let binary = '';
-    for (const byte of bytes) binary += String.fromCharCode(byte);
-    const metadata = await json<Record<string, unknown>>('/api/v1/attachments', token, {
-      method: 'POST',
-      body: JSON.stringify({
-        name: file.name,
-        mimeType: file.type || 'application/octet-stream',
-        size: file.size,
-        checksum,
-      }),
-    });
-    if (typeof metadata.id !== 'string') throw new Error('附件元数据响应无效');
-    await json(`/api/v1/attachments/${metadata.id}/content`, token, {
-      method: 'PUT',
-      body: JSON.stringify({ contentBase64: btoa(binary) }),
-    });
-    return json<Record<string, unknown>>('/api/v1/contract-documents', token, {
-      method: 'POST',
-      headers: { 'idempotency-key': requestId() },
-      body: JSON.stringify({
-        businessType,
-        subjectType,
-        subjectId,
-        attachmentId: metadata.id,
-        title: file.name,
-      }),
-    });
-  },
-  command: (revisionId, action, payload = {}) =>
-    json<Record<string, unknown>>(`/api/v1/quote-revisions/${revisionId}/${action}`, token, {
-      method: 'POST',
-      headers: { 'idempotency-key': requestId() },
-      body: JSON.stringify(payload),
-    }),
-});
 
 export class CrmController {
   public employees: readonly Employee[] = [];

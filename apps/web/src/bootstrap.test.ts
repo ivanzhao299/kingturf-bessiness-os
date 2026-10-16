@@ -144,7 +144,21 @@ it('keeps product pages on one content rail and renders business records as dens
 });
 
 it('provides product-grade register controls for high-frequency business records', () => {
-  const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+  const workspaceSource = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+  const factorySource = readFileSync(
+    new URL('./shared/commercial-http.ts', import.meta.url),
+    'utf8',
+  );
+  const factoryAnchor = 'export const createFetchCommercialApi';
+  if (
+    !workspaceSource.trim() ||
+    !workspaceSource.includes('function installWorkspaceListTools') ||
+    !factorySource.trim() ||
+    !factorySource.includes(factoryAnchor) ||
+    factorySource.indexOf(factoryAnchor) !== factorySource.lastIndexOf(factoryAnchor)
+  )
+    throw new Error('Register sources must remain bound to workspace and HTTP factory');
+  const source = `${workspaceSource}\n${factorySource}`;
   const styles = readFileSync(new URL('./style.css', import.meta.url), 'utf8');
   expect(source).toContain("list.setAttribute('role', 'table')");
   expect(source).toContain("column.setAttribute('role', 'columnheader')");
