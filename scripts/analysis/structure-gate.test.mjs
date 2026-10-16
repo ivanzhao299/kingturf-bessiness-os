@@ -2,7 +2,7 @@
 // 由根 package.json 的 test:release-guardrails 调用（pnpm test 的第一段），防止门禁本身形同虚设。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import {
@@ -12,6 +12,9 @@ import {
   routeValidatorViolations,
   sizeViolations,
   sqlRawInputViolations,
+  routeNestingMetrics,
+  routeNestingViolations,
+  ROUTE_AST_EXEMPTION,
 } from './structure-gate.mjs';
 
 test('G1 拦截超限文件并附修复指令', () => {
@@ -171,4 +174,140 @@ test('拦截模式：白名单信息放行，临时超限样本失败，清理�
   }
   const restored = spawnSync(process.execPath, [gate], { encoding: 'utf8' });
   assert.equal(restored.status, 0, restored.stderr);
+});
+
+const nestedIf = (depth) => 'if (ok) {'.repeat(depth) + 'work();' + '}'.repeat(depth);
+const routePath = 'apps/api/src/routes/fixture.ts';
+
+test('routes AST边界5放行/6拦截；非routes仍旧格式算法', () => {
+  const valid = `function outer() { ${nestedIf(4)} }`;
+  const invalid = `function outer() { ${nestedIf(5)} }`;
+  assert.equal(routeNestingMetrics(valid).maxDepth, 5);
+  assert.equal(routeNestingViolations(routePath, valid).length, 0);
+  assert.equal(routeNestingMetrics(invalid).maxDepth, 6);
+  assert.equal(routeNestingViolations(routePath, invalid)[0].whitelisted, false);
+  assert.equal(nestingViolations('apps/other.ts', ' '.repeat(30) + 'work();')[0].maxIndent, 15);
+});
+
+for (const [label, wrapper] of [
+  ['function declaration', (body) => `function f() {${body}}`],
+  ['function expression', (body) => `(function () {${body}});`],
+  ['arrow callback', (body) => `items.map(() => {${body}});`],
+  ['method', (body) => `const obj = { method() {${body}} };`],
+  ['constructor', (body) => `class C { constructor() {${body}} }`],
+  ['getter', (body) => `class C { get value() {${body}} }`],
+  ['setter', (body) => `class C { set value(v) {${body}} }`],
+  ['for', (body) => `for (;;) {${body}}`],
+  ['for of', (body) => `for (const v of items) {${body}}`],
+  ['for in', (body) => `for (const v in items) {${body}}`],
+  ['while', (body) => `while (ok) {${body}}`],
+  ['do while', (body) => `do {${body}} while (ok);`],
+  ['switch', (body) => `switch (key) {case 1: ${body} break; default: break;}`],
+  ['try catch finally', (body) => `try {${body}} catch (e) {work();} finally {work();}`],
+])
+  test(`routes AST ${label}不reset祖先深度`, () => {
+    const five = wrapper(nestedIf(4));
+    const six = wrapper(nestedIf(5));
+    assert.equal(routeNestingMetrics(five).maxDepth, 5);
+    assert.equal(routeNestingViolations(routePath, five).length, 0);
+    assert.equal(routeNestingMetrics(six).maxDepth, 6);
+    assert.equal(routeNestingViolations(routePath, six)[0].whitelisted, false);
+  });
+
+test('routes AST else-if同级，else块新if加层；三元逐层计数', () => {
+  assert.equal(routeNestingMetrics('if(a){} else if(b){} else if(c){} else {}').maxDepth, 1);
+  assert.equal(routeNestingMetrics('if(a){} else { if(b){} }').maxDepth, 2);
+  assert.equal(
+    routeNestingMetrics('const x = a ? b : c ? d : e ? f : g ? h : i ? j : k;').maxDepth,
+    5,
+  );
+  assert.equal(
+    routeNestingViolations(
+      routePath,
+      'const x = a ? b : c ? d : e ? f : g ? h : i ? j : k ? l : m;',
+    )[0].maxDepth,
+    6,
+  );
+});
+
+test('routes AST switch case/try各分支同级，不顺序叠加', () => {
+  assert.equal(
+    routeNestingMetrics('switch(x){case 1: work(); break; case 2: work(); break; default: work();}')
+      .maxDepth,
+    1,
+  );
+  assert.equal(
+    routeNestingMetrics('try {if(a){}} catch(e) {if(b){}} finally {if(c){}}').maxDepth,
+    2,
+  );
+});
+
+test('routes AST不漏默认参数/表达式箭头，不因对象包装或短路重置', () => {
+  assert.equal(routeNestingMetrics('function f(v = a ? b : c) {}').maxDepth, 2);
+  assert.equal(routeNestingMetrics('const f = () => a ? b : c;').maxDepth, 2);
+  assert.equal(
+    routeNestingMetrics('function f(){if(a){ items.map(() => b ? c : d); }}').maxDepth,
+    4,
+  );
+  assert.equal(
+    routeNestingMetrics('const f = () => ok && {wrap: () => ok || (() => ok ?? (() => 1))};')
+      .maxDepth,
+    4,
+  );
+  assert.equal(routeNestingMetrics('const x = {a: {b: [1, 2]}};').maxDepth, 0);
+});
+
+test('routes AST语法残缺强制失败，不用部分AST放行', () => {
+  assert.ok(routeNestingViolations(routePath, 'function broken( {')[0].parseErrors.length);
+});
+
+test('唯一AST存量豁免日期/hash/depth三重钉死；到期当天Singapore零时拦截', () => {
+  const frozen = ROUTE_AST_EXEMPTION;
+  const content = readFileSync(frozen.path, 'utf8');
+  const before = new Date('2026-10-22T23:59:59+08:00');
+  assert.equal(routeNestingViolations(frozen.path, content, before)[0].whitelisted, true);
+  assert.equal(
+    routeNestingViolations(frozen.path, content, new Date(frozen.expiresAt))[0].whitelisted,
+    false,
+  );
+  assert.equal(routeNestingViolations(frozen.path, content + '\n', before)[0].whitelisted, false);
+  assert.equal(routeNestingViolations(routePath, content, before)[0].whitelisted, false);
+  const deeper = `function outer() {${nestedIf(6)}}`;
+  assert.equal(routeNestingMetrics(deeper).parseErrors.length, 0);
+  assert.equal(routeNestingMetrics(deeper).maxDepth, 7);
+  assert.equal(routeNestingViolations(frozen.path, deeper, before)[0].whitelisted, false);
+  assert.match(frozen.due, /2026-10-23/u);
+});
+
+test('真实CLI routes覆盖G1/G2/G3/G4，合法深格式通过，清理后全仓绿', () => {
+  const gate = join(process.cwd(), 'scripts/analysis/structure-gate.mjs');
+  const root = mkdtempSync(join(process.cwd(), 'apps/api/src/routes/.structure-selftest-'));
+  const file = join(root, 'fixture.ts');
+  const run = () => spawnSync(process.execPath, [gate], { encoding: 'utf8' });
+  try {
+    for (const [label, content, marker] of [
+      ['G1', '// filler\n'.repeat(801), /超过上限 800 行/u],
+      ['G2', `function outer(){${nestedIf(5)}}`, /AST嵌套 6 层/u],
+      ['G3', 'const q = `SELECT * FROM t WHERE x = ${input.value}`;', /SQL 模板串出现白名单之外/u],
+      ['G4', 'defineRoute({ method: "POST", handler: () => 1 });', /缺少 validate/u],
+    ]) {
+      writeFileSync(file, content);
+      const result = run();
+      assert.equal(result.status, 1, `${label}: ${result.stdout}\n${result.stderr}`);
+      assert.match(result.stderr, marker);
+      assert.ok(result.stderr.includes('.structure-selftest-'));
+    }
+    writeFileSync(
+      file,
+      ' '.repeat(40) +
+        'const route = defineRoute({validate: null, handler: () => ({nested: {value: 1}})});',
+    );
+    const allowed = run();
+    assert.equal(allowed.status, 0, allowed.stderr);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+  const clean = run();
+  assert.equal(clean.status, 0, clean.stderr);
+  assert.match(clean.stdout, /白名单豁免 32 条/u);
 });

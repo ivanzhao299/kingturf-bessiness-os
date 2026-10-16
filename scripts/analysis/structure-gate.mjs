@@ -1,15 +1,17 @@
 #!/usr/bin/env node
-// 结构门禁（只读扫描，零依赖）。用法：
+// 结构门禁（只读扫描，复用既有 TypeScript 开发依赖）。用法：
 //   node scripts/analysis/structure-gate.mjs [--report]   常规运行拦截；--report 仅用于诊断
 //   node scripts/analysis/structure-gate.mjs --selftest   对内置违规样本断言各规则可拦截（供 node --test 之外的快速自检）
 // 规则（HARNESS-RULES §4.2 品味不变量）：
 //   G1 文件大小：非测试源 .ts ≤ MAX_FILE_LINES（D5 已启用：800）
-//   G2 嵌套深度：缩进层级 ≤ MAX_NESTING（D5 已启用：5）
+//   G2 嵌套深度：API routes 为 AST 词法函数/控制流，其余为原格式缩进（上限5）
 //   G3 SQL 原始输入插值（TD-SEC-005，始终强制）：apps/api/src 模板字符串中禁止以原始请求对象开头的插值
 //   G4 路由表校验约束（始终强制，批次 2 前待命）：apps/api/src/routes/** 的路由定义必须声明 validate
 // 每条失败信息必须包含修复指令（§4.2 硬要求）。
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { createHash } from 'node:crypto';
+import ts from 'typescript';
 
 export const MAX_FILE_LINES = 800;
 export const MAX_NESTING = 5;
@@ -56,7 +58,13 @@ export function walk(dir, out = []) {
   for (const entry of readdirSync(dir)) {
     const full = join(dir, entry);
     if (statSync(full).isDirectory()) {
-      if (entry === 'dist' || entry === 'node_modules' || entry === 'routes') continue;
+      if (entry === 'dist' || entry === 'node_modules') continue;
+      if (
+        entry === 'routes' &&
+        full !== 'apps/api/src/routes' &&
+        !full.startsWith('apps/api/src/routes/')
+      )
+        continue;
       walk(full, out);
     } else out.push(full);
   }
@@ -87,6 +95,82 @@ export function nestingViolations(path, content) {
   }
   if (maxIndent <= MAX_NESTING) return [];
   return [{ rule: 'G2', path, maxIndent, whitelisted: wl, ...(NESTING_EXTRA.get(path) ?? {}) }];
+}
+
+// Only this frozen existing point is exempt, not the directory or later edits.
+// Date expiry is automatic; earlier batch-2 acceptance must remove/adjudicate
+// this item explicitly. The gate does not infer human acceptance from plan text.
+export const ROUTE_AST_EXEMPTION = Object.freeze({
+  path: 'apps/api/src/routes/authorization.ts',
+  sha256: 'd380d23327db8d1751a793d2bdef0a2c62948cf17420a8da25723edc6103daf1',
+  maxDepth: 6,
+  reason:
+    'TD-GATE-003：既有atomicCapability四层fallback及叶子三元，词法函数合计6层；本批禁止改业务',
+  due: '2026-10-23 Asia/Singapore零时，或批次2最终验收前取先；须另行授权去嵌套/裁决',
+  expiresAt: '2026-10-23T00:00:00+08:00',
+});
+
+export function routeNestingMetrics(content) {
+  const source = ts.createSourceFile(
+    'route.ts',
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  let maxDepth = 0;
+  let line = 1;
+  function visit(node, depth) {
+    const fn = ts.isFunctionLike(node) && !!node.body;
+    const elseIf =
+      ts.isIfStatement(node) && ts.isIfStatement(node.parent) && node.parent.elseStatement === node;
+    const control =
+      (ts.isIfStatement(node) && !elseIf) ||
+      ts.isConditionalExpression(node) ||
+      ts.isForStatement(node) ||
+      ts.isForInStatement(node) ||
+      ts.isForOfStatement(node) ||
+      ts.isWhileStatement(node) ||
+      ts.isDoStatement(node) ||
+      ts.isSwitchStatement(node) ||
+      ts.isTryStatement(node);
+    const next = depth + (fn || control ? 1 : 0);
+    if (next > maxDepth) {
+      maxDepth = next;
+      line = source.getLineAndCharacterOfPosition(node.getStart()).line + 1;
+    }
+    // No function reset: default arguments and expression arrow bodies included.
+    node.forEachChild((child) => visit(child, next));
+  }
+  visit(source, 0);
+  return {
+    maxDepth,
+    line,
+    parseErrors: source.parseDiagnostics.map((error) =>
+      ts.flattenDiagnosticMessageText(error.messageText, ' '),
+    ),
+  };
+}
+
+export function routeNestingViolations(path, content, now = new Date()) {
+  const metrics = routeNestingMetrics(content);
+  if (metrics.parseErrors.length) return [{ rule: 'G2', path, ...metrics, whitelisted: false }];
+  if (metrics.maxDepth <= MAX_NESTING) return [];
+  const frozen = ROUTE_AST_EXEMPTION;
+  const whitelisted =
+    path === frozen.path &&
+    metrics.maxDepth === frozen.maxDepth &&
+    createHash('sha256').update(content).digest('hex') === frozen.sha256 &&
+    now.getTime() < Date.parse(frozen.expiresAt);
+  return [
+    {
+      rule: 'G2',
+      path,
+      ...metrics,
+      whitelisted,
+      ...(whitelisted ? { reason: frozen.reason, due: frozen.due } : {}),
+    },
+  ];
 }
 
 // G3：SQL 模板字符串插值白名单（TD-SEC-005：只允许 $N 占位符构造与明确登记的白名单，其余一律失败）。
@@ -220,11 +304,11 @@ export function routeValidatorViolations(path, content) {
 }
 
 function render(v) {
-  const head = `[${v.rule}] ${v.path}${v.lines !== undefined ? `（${v.lines} 行）` : ''}${v.maxIndent !== undefined ? `（嵌套 ${v.maxIndent} 层）` : ''}${v.expr !== undefined ? `（插值 \${${v.expr}}…）` : ''}`;
+  const head = `[${v.rule}] ${v.path}${v.lines !== undefined ? `（${v.lines} 行）` : ''}${v.maxIndent !== undefined ? `（格式缩进 ${v.maxIndent} 层）` : ''}${v.maxDepth !== undefined ? `:${v.line}（AST嵌套 ${v.maxDepth} 层）` : ''}${v.expr !== undefined ? `（插值 \${${v.expr}}…）` : ''}`;
   if (v.rule === 'G1')
     return `${head} ${v.whitelisted ? `【白名单豁免】${v.reason}，到期：${v.due}` : `超过上限 ${MAX_FILE_LINES} 行。修复：按职责拆分文件；确属存量热点则在 scripts/analysis/structure-gate.mjs 的 SIZE_WHITELIST 登记豁免（必须含原因与到期批次，并在台账 TD 记录），禁止无豁免超限。`}`;
   if (v.rule === 'G2')
-    return `${head} ${v.whitelisted ? '【白名单豁免】随对应批次拆分消解' : `嵌套超过 ${MAX_NESTING} 层。修复：用早返回/卫语句压平，或将分支抽为函数。`}`;
+    return `${head} ${v.whitelisted ? `【白名单豁免】${v.reason ?? '随对应批次拆分消解'}${v.due ? `，到期：${v.due}` : ''}` : v.parseErrors?.length ? `AST解析失败：${v.parseErrors.join('; ')}。修复：先修复语法，不以残缺AST放行。` : `嵌套超过 ${MAX_NESTING} 层。修复：用早返回/卫语句压平，或将分支抽为函数。`}`;
   if (v.rule === 'G3')
     return v.grandfathered
       ? `${head} 【存量豁免】${v.reason}，到期：${v.due}`
@@ -239,7 +323,11 @@ export function runChecks({ reportOnly = false } = {}) {
     const content = readFileSync(path, 'utf8');
     const lines = content.split('\n').length;
     violations.push(...sizeViolations(path, lines));
-    violations.push(...nestingViolations(path, content));
+    violations.push(
+      ...(path.startsWith('apps/api/src/routes/')
+        ? routeNestingViolations(path, content)
+        : nestingViolations(path, content)),
+    );
     if (path.startsWith('apps/api/src/')) violations.push(...sqlRawInputViolations(path, content));
   }
   // G4：routes/ 目录当前可能不存在（批次 2 待命），单独扫描

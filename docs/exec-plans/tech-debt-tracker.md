@@ -364,6 +364,10 @@
 
 ## 文档与工程卫生
 
+**TD-GATE-003本轮实现更新（2026-10-16，授权c75dd7b；旧登记原文保留）**：routes纳入G1/G2/G3同一sourceFiles扫描，G4仍单独逐定义一次。仅API routes的G2采用明确AST词法函数/控制流规则；非routes保留原缩进算法，G3实现/形状/可信根及G4校验函数相对7e94bbe逐字节不变。原116文件G1/G2格式/G3＝0/93/0、maxIndent10，AST分布2×1/3×93/4×20/5×1/6×1，完整逐file基线与定义见[evidence/routes-structure-baseline-2026-10-16.md](../evidence/routes-structure-baseline-2026-10-16.md)。36结构自测真实退出0，routes超800/AST超5/SQL直插/G4缺validate均真实CLI退出1，合法深格式退出0，清理后全仓0硬违规/32信息豁免。最终稳定HEAD全CI和独立复核尚待本线收口，不把局部成功当人工验收。
+
+**TD-GATE-003-E1（新增精确限期例外，不是目录豁免）**：authorization.ts:236–245既有atomicCapability fallback为1函数＋4层资源三元＋1叶三元＝6；本批禁止业务源码改动，故仅`apps/api/src/routes/authorization.ts`整内容SHA256 `d380d23327db8d1751a793d2bdef0a2c62948cf17420a8da25723edc6103daf1`、maxDepth恰为6可信息豁免。明确到期日2026-10-23 Asia/Singapore 00:00，或批次2最终验收前取先；只预留后续独立授权去嵌套/裁决，不授权本批改该源文件。日期到期、内容变化、深度增长或换文件任一条件均强制失败，确定性测试覆盖日期临界/内容变更/更深/异路径。阈值5没有改变，31旧条按rule/path完全保留、无移除（现时原构成9G1＋22G2，不回写旧7/24历史），仅新增此条：总32＝9G1＋23G2。残余例外未消除，函数200仍无新增AST强制，不能宣称复杂度债务清零。业务行为影响无；后续处置独立排期、不得静默续期。
+
 ### TD-DOC-001｜无 AGENTS.md；docs/ 85+ 文档无统一索引与目标结构
 
 - **位置**：仓库根（无 AGENTS.md/CLAUDE.md）；`docs/`（adr 10、agent-memory 11、engineering 26+、evidence 14+、tasks 22+、deployment 2，另散文件）
