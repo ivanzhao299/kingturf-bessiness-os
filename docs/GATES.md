@@ -21,6 +21,8 @@
 
 ## 本地 git hooks（`.githooks/`，`pnpm install` 时经 `prepare` 自动激活）
 
+CDP harness后补：`fixtures.test.mjs`及`network-policy.test.mjs`纯JS自测已接入根test:release-guardrails（当前4 tests，独立于Vitest）；真实Chrome六场景及定向负向仍手动串行，Windows ownership.NET/lifecycle不接默认跨平台CI。静态资源白名单/精确stub、目标view可见与真实DOM负向、成本q/ACK窗口等见[CDP基线](evidence/frontend-cdp-harness-2026-10-16.md)。下段“harness尚未实施”为原通道快照；新web AST C3及3a仍未实施，原31/G3/G4/D5不变。
+
 Windows CDP临时验证通道（ad0435e裁定）：根`pnpm lint`显式扫描`scripts/e2e-cdp/*.mjs`，沿用现有脚本JS lint规则，零新依赖/不改workflow；浏览器预检和生命周期负向为手动串行独立计数，不并入Vitest114或Playwright。真实通道、精确owned profile清理、异常/信号实测和阶段5补跑边界见[CDP预检证据](evidence/windows-chrome-cdp-preflight-2026-10-16.md)。五类harness尚未实施，不以启动成功冒称覆盖；既有31豁免/G3/G4/D5不变。
 
 2e新增独立门禁（2026-10-16）：`service:check`在structure:check后执行，因此当前ci:local共14步；上表第5步及以后顺延1步。AST/类型规则S1–S4及精确能力边界见[Service边界护栏](engineering/service-boundary-guard.md)。`node --test scripts/analysis/service-boundary-gate.test.mjs`经test:release-guardrails随pnpm test执行真实CLI注入/合法对照。此项不修TD-GATE-003，不更改G1/G2/G3/G4或D5/既有豁免。

@@ -6,6 +6,7 @@ import net from 'node:net';
 import http from 'node:http';
 import { setTimeout as delay } from 'node:timers/promises';
 import { profileArgumentPattern } from './ownership.mjs';
+import { classifyRequest } from './network-policy.mjs';
 
 const psExe = '/mnt/c/WINDOWS/System32/WindowsPowerShell/v1.0/powershell.exe';
 const chrome = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
@@ -46,6 +47,8 @@ let passed = false;
 let clean = true;
 let stopping = false;
 let closing = false;
+let suiteRouter;
+let suiteResult;
 let nextId = 0;
 const pending = new Map();
 const cdp = (method, params = {}, sessionId) =>
@@ -210,6 +213,8 @@ try {
   });
   let session;
   let requestBlocks = 0;
+  let unknownApiRequests = 0;
+  let failedApiRequests = 0;
   const responses = [];
   socket.addEventListener('message', ({ data }) => {
     try {
@@ -223,7 +228,41 @@ try {
         else wait.resolve(msg.result);
       } else if (msg.method === 'Fetch.requestPaused') {
         const url = new URL(msg.params.request.url);
-        const allow = url.origin === 'http://127.0.0.1:4173' && !url.pathname.startsWith('/api/');
+        const requestClass = classifyRequest(msg.params.request.url, msg.params.request.method);
+        if (requestClass === 'api' && suiteRouter) {
+          suiteRouter
+            .respond(url.pathname, msg.params.request.method, url.searchParams)
+            .then(({ completion, status, value }) =>
+              cdp(
+                'Fetch.fulfillRequest',
+                {
+                  requestId: msg.params.requestId,
+                  responseCode: status,
+                  responseHeaders: [{ name: 'content-type', value: 'application/json' }],
+                  body: Buffer.from(JSON.stringify(value)).toString('base64'),
+                },
+                msg.sessionId,
+              ).then(() => suiteRouter.didFulfill(completion)),
+            )
+            .catch((error) => {
+              if (error.message === 'unmapped synthetic API request') unknownApiRequests++;
+              else failedApiRequests++;
+              report('api-stub-rejected', {
+                rejected: true,
+                unknownApiRequests,
+                failedApiRequests,
+              });
+              cdp(
+                'Fetch.failRequest',
+                { requestId: msg.params.requestId, errorReason: 'BlockedByClient' },
+                msg.sessionId,
+              )
+                .catch(stop)
+                .finally(stop);
+            });
+          return;
+        }
+        const allow = requestClass === 'static';
         if (!allow) requestBlocks++;
         cdp(
           allow ? 'Fetch.continueRequest' : 'Fetch.failRequest',
@@ -333,6 +372,28 @@ try {
     blockedRequests: requestBlocks,
     snapshot: `/tmp/${runId}-dom.json`,
   });
+  if (process.argv.includes('--probes')) {
+    const suite = await import('./probes.mjs');
+    suiteRouter = suite.createStubRouter();
+    if (process.argv.includes('--fault-unmapped-api')) {
+      await cdp(
+        'Runtime.evaluate',
+        { expression: `fetch('/apix').catch(()=>false)`, awaitPromise: true, returnByValue: true },
+        session,
+      );
+      throw new Error('unmapped API injection did not interrupt CDP');
+    }
+    suiteResult = await suite.runProbes({
+      send: (method, params) => cdp(method, params, session),
+      router: suiteRouter,
+      runId,
+      report,
+    });
+    if (requestBlocks !== 0) throw new Error('harness had blocked unexpected non-static traffic');
+    if (unknownApiRequests !== 0) throw new Error('harness had unmapped API traffic');
+    if (failedApiRequests !== 0) throw new Error('harness had failed API fulfillment');
+    suiteResult.network = { blockedRequests: requestBlocks, unknownApiRequests, failedApiRequests };
+  }
   closing = true;
   await cdp('Browser.close');
   passed = true;
@@ -340,6 +401,7 @@ try {
   report('blocked', { error: e.message });
   process.exitCode = 1;
 } finally {
+  suiteRouter?.releaseAll();
   closing = true;
   for (const wait of pending.values()) {
     clearTimeout(wait.timer);
@@ -404,7 +466,7 @@ try {
     });
   }
 }
-if (passed && clean && !process.exitCode)
+if (passed && clean && !process.exitCode) {
   report('preflight-pass', {
     checks: [
       'owned-loopback',
@@ -416,5 +478,7 @@ if (passed && clean && !process.exitCode)
       'rendered-login-DOM',
       'owned-resource-cleanup',
     ],
-    notRun: 'five-class harness probes and Playwright',
+    notRun: suiteResult ? 'Playwright' : 'five-class harness probes and Playwright',
   });
+  if (suiteResult) report('harness-pass', suiteResult);
+}
