@@ -30,6 +30,8 @@
 
 ## 当前验证与回滚
 
+独立源码/证据提交 `86e7026` 稳定干净HEAD完整 `pnpm ci:local` 已真实exit0，单调计时182105.292ms，日志 `/tmp/kingturf-3a-form-head-ci-2026-10-16.log`：API117文件17099、web9文件114、database68/domain14、原PG、纯JS4、预算11367/1898、结构0硬/31豁免、audit无已知漏洞，未并发browser/共享注入。完成后才开始locale。该提交body概述过切片，但未逐字列旧→新锚点；协调指出后在下一独立locale证据提交body补写并关联86e7026，不amend已测历史。
+
 新产物重新build后，ck1Dbd（Chrome PID62652，127.0.0.1:55423，preview2130775）七场景真实exit0；32 DOM/3 viewport/25 route/10 text/10 overflow，与旧产物6eDNFm相同。网络blocked/unknownAPI/failedAPI皆0，owned preview/process/profile全部清理成功。日志 `/tmp/kingturf-3a-form-new-cdp-2026-10-16.log`；截图 `/tmp/kingturf-cdp-preflight-ck1Dbd-probes.png`，SHA256 `09c29344fb53686cf895efac7fe52fc65e1cc6adbc07b49532996baaa8ec4752`，主代理已查看。Chrome路径/版本/flags与旧通道相同，每跑新临时profile；旧6eDNFm PID6824/127.0.0.1:55462/preview2119594。截图仍是成本页结束状态，不冒充表单打开状态截图。
 
 原web9文件114/114真实通过（`/tmp/kingturf-3a-form-web-2026-10-16.log`），重建预算JS11367/CSS1898 gzip（`/tmp/kingturf-3a-form-build-2026-10-16.log`），阈值12000/4000未改；capabilities39 direct/19 governed families通过；metrics已跑（`/tmp/kingturf-3a-form-metrics-2026-10-16.log`），bootstrap split16082→15821净−261，新模块265，总源文件172/52675行。度量的启发式巨函数不代替完整TS AST函数跨度实测。`/tmp/kingturf-3a-form-conservation-2026-10-16.log`保留全bootstrap回填、整块/切片/原expect一致及结构0硬/31旧豁免。补日志时一次apply_patch空hunk校验失败、无文件写入，修正patch后正常追加；无业务行为修正。
