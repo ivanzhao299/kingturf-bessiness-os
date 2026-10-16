@@ -12,6 +12,8 @@
 
 ## 运行验证与边界
 
+后补：独立源码/证据提交 `66a2f2b` 稳定干净HEAD完整 `pnpm ci:local` 真实exit0，单调计时171878.057ms，日志 `/tmp/kingturf-3a-locale-head-ci-2026-10-16.log`；API117/17099、web114、原PG、database68/domain14、纯JS4、预算11369/1898、结构0硬/31旧豁免、audit无已知漏洞。完成后才启动CRM HTTP，未并发DB/浏览器/共享树注入。下文“随后CI”为此前提交时点历史。
+
 - `pnpm --filter @kingturf/web test`：9文件114/114真实exit0；`/tmp/kingturf-3a-locale-web-2026-10-16.log`。
 - capabilities：39 direct/19 governed families通过；metrics：173源文件/52676 split行、bootstrap15731（form后15821净−90），日志 `/tmp/kingturf-3a-locale-metrics-2026-10-16.log`。
 - build/预算：JS11369/CSS1898 gzip，原阈值12000/4000与lazy bootstrap约束未改，`/tmp/kingturf-3a-locale-build-2026-10-16.log`。

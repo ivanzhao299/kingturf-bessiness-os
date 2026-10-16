@@ -5,6 +5,18 @@ import {
 import { el, setOperationStatus } from './dom';
 import { openForm, openFileForm, type FormField } from './shared/forms';
 import { ENTERPRISE_STATUS_LABELS, localizeEnterpriseCopy } from './shared/locale';
+import { createFetchCrmApi } from './shared/crm-http';
+export { createFetchCrmApi } from './shared/crm-http';
+import type {
+  Customer,
+  Lead,
+  Employee,
+  Customer360,
+  CustomerInput,
+  LeadInput,
+  CrmApi,
+} from './crm/types';
+export type { Customer, Lead, Employee, Customer360, CrmApi } from './crm/types';
 import { brandMark } from './brand';
 import {
   documentSendBlockReason,
@@ -712,89 +724,6 @@ export function commercialRevisionPath(section: string, rootId: string): string 
   )[section];
   return definition ? `${definition[0]}/${encodeURIComponent(rootId)}/${definition[1]}` : null;
 }
-export type Customer = Readonly<{
-  id: string;
-  customerNumber?: string;
-  name?: string;
-  status?: string;
-  ownerId?: string | null;
-  version?: number;
-}>;
-export type Lead = Readonly<{
-  id: string;
-  title?: string;
-  source?: string;
-  status?: string;
-  ownerId?: string | null;
-  version?: number;
-  createdAt?: string;
-}>;
-export type Employee = Readonly<{
-  id: string;
-  employeeNumber?: string;
-  displayName?: string;
-  active?: boolean;
-}>;
-export type Customer360 = Readonly<{
-  customer: Customer;
-  contacts: readonly Readonly<{
-    id: string;
-    name: string;
-    title: string | null;
-    email?: string | null;
-    phone?: string | null;
-    primary?: boolean;
-  }>[];
-  ownership: readonly Readonly<{
-    id: string;
-    ownerId: string;
-    reason: string;
-    startedAt: string;
-    endedAt: string | null;
-  }>[];
-  leads: readonly Lead[];
-  opportunities: readonly Readonly<{
-    id: string;
-    name?: string;
-    status?: string;
-    value?: Readonly<{ amount?: string; currency?: string }>;
-    probabilityBasisPoints?: number;
-    expectedCloseDate?: string;
-  }>[];
-  activities: readonly Readonly<{
-    id: string;
-    type: string;
-    summary: string;
-    occurredAt: string;
-  }>[];
-  unavailableSections: readonly string[];
-}>;
-
-type CustomerInput = Readonly<{ name: string; customerNumber: string; tags: readonly string[] }>;
-type LeadInput = Readonly<{
-  title: string;
-  source: string;
-  customerId: string | null;
-  pool: boolean;
-}>;
-export type CrmApi = {
-  listEmployees(): Promise<readonly Employee[]>;
-  listCustomers(): Promise<readonly Customer[]>;
-  customer360(id: string): Promise<Customer360>;
-  createCustomer(input: CustomerInput): Promise<Customer>;
-  transitionCustomer(customer: Customer, status: string, reason: string): Promise<Customer>;
-  addContact(customerId: string, name: string, email: string): Promise<void>;
-  addActivity(customerId: string, summary: string): Promise<void>;
-  assignCustomer(customer: Customer, assigneeId: string, reason: string): Promise<Customer>;
-  listPool(): Promise<readonly Lead[]>;
-  listLeads(): Promise<readonly Lead[]>;
-  createLead(input: LeadInput): Promise<Lead>;
-  claimLead(lead: Lead): Promise<Lead>;
-  transitionLead(lead: Lead, status: string, reason: string): Promise<Lead>;
-  assignLead(lead: Lead, assigneeId: string, reason: string): Promise<Lead>;
-  releaseLead(lead: Lead, reason: string): Promise<Lead>;
-};
-
 export const viewportFor = (width: number): Viewport =>
   width < 640 ? 'mobile' : width < 1024 ? 'tablet' : 'desktop';
 
@@ -10518,76 +10447,6 @@ export const createFetchCommercialApi = (token: string): CommercialApi => ({
       body: JSON.stringify(payload),
     }),
 });
-
-export function createFetchCrmApi(token: string): CrmApi {
-  const post = <T>(path: string, body: unknown, headers?: HeadersInit) =>
-    json<T>(path, token, {
-      method: 'POST',
-      body: JSON.stringify(body),
-      ...(headers === undefined ? {} : { headers }),
-    });
-  return {
-    listEmployees: () => json<readonly Employee[]>('/api/v1/employees', token),
-    async listCustomers() {
-      return (await json<{ items: Customer[] }>('/api/v1/customers', token)).items;
-    },
-    customer360: (id) => json(`/api/v1/customers/${id}/360`, token),
-    createCustomer: (input) => post('/api/v1/customers', input),
-    transitionCustomer: (customer, status, reason) =>
-      json(`/api/v1/customers/${customer.id}`, token, {
-        method: 'PATCH',
-        body: JSON.stringify({ status, reason, expectedVersion: customer.version }),
-      }),
-    addContact: (id, name, email) =>
-      post(`/api/v1/customers/${id}/contacts`, {
-        name,
-        email,
-        title: null,
-        phone: null,
-        primary: false,
-      }),
-    addActivity: (id, summary) =>
-      post(
-        `/api/v1/customers/${id}/activities`,
-        { leadId: null, type: 'NOTE', occurredAt: new Date().toISOString(), summary, details: {} },
-        { 'idempotency-key': requestId() },
-      ),
-    assignCustomer: (customer, assigneeId, reason) =>
-      post(`/api/v1/customers/${customer.id}/ownership`, {
-        assigneeId,
-        reason,
-        expectedVersion: customer.version,
-        reassignment: customer.ownerId !== null,
-      }),
-    async listPool() {
-      return (await json<{ items: Lead[] }>('/api/v1/leads/pool', token)).items;
-    },
-    async listLeads() {
-      return (await json<{ items: Lead[] }>('/api/v1/leads', token)).items;
-    },
-    createLead: (input) => post('/api/v1/leads', input),
-    claimLead: (lead) =>
-      post(
-        `/api/v1/leads/${lead.id}/claim`,
-        { expectedVersion: lead.version },
-        { 'idempotency-key': requestId() },
-      ),
-    transitionLead: (lead, status, reason) =>
-      post(`/api/v1/leads/${lead.id}/transition`, {
-        status,
-        reason,
-        expectedVersion: lead.version,
-      }),
-    assignLead: (lead, assigneeId, reason) =>
-      post(`/api/v1/leads/${lead.id}/${lead.ownerId === null ? 'assign' : 'reassign'}`, {
-        assigneeId,
-        reason,
-        expectedVersion: lead.version,
-      }),
-    releaseLead: (lead, reason) =>
-      post(`/api/v1/leads/${lead.id}/release`, { reason, expectedVersion: lead.version }),
-  };
-}
 
 export class CrmController {
   public employees: readonly Employee[] = [];
