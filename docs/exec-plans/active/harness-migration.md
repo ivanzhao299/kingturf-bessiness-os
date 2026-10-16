@@ -3659,6 +3659,10 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+2026-10-16，3c⑤候选验证：9新TS（8runtime/1type）≤232/完整函数116/AST5，root8129 split；实际15helper逆展开整入口AST、70公开457链同；原114未适配首绿不当新源负向覆盖，八目标实际扰动红→逐次全还原114（collection/commission入口2失败、余六1失败），原期望/夹具不改。旧jORmfe/新TEqQr4④⑤组合16、pdcqJl全部组合24真0/网络三零/自有清理全真，19不同route含CRM不当全部21商业视图；八read/八GET及真实AR/bank limit100、附属政策/ledger/核销/风险控件边界如实，纯JS19另计。type/lint/structure0硬31软/39-19/build65模块11369-1898局部绿，独立全组复核无阻塞。提交后实际干净HEAD完整CI另实跑，不预填；回滚本组源码/最小读源/opt-in整体revert、完成docs独立，不撤原permissions/前组/driver。详见[3c⑤证据](../../evidence/frontend-3c5-finance-risk-2026-10-16.md)，冻结区/TD-WEB-004仅登记/3f后整批验收保持。
+
+2026-10-16，3c⑤输入：3c④完成docs643d6a0稳定干净实际HEAD完整CI真实exit0/191910.795ms（`/tmp/kingturf-3c4-643d6a0-head-ci-2026-10-16.log`），结束HEAD未变/树空，依原连续授权续资金风险五分支。早cashRiskSummary/两种逾期时间口径/原渲染快照与click-live/风险槽同ref旧双权限耦合守恒，先八read/八GET+真实分页旧CDP，不改写矩阵或TD-WEB-004；全部冻结和3f后整批验收保持。共享剩余职责及候选/验证见[3c⑤证据](../../evidence/frontend-3c5-finance-risk-2026-10-16.md)，不把旁路地图当实施或门禁绿。
+
 2026-10-16，3c④实施与独立复核完成：源码6ade731稳定干净实际HEAD完整CI真实exit0/182166.585ms（`/tmp/kingturf-3c4-6ade731-head-ci-2026-10-16.log`），结束HEAD不变/工作树空，API117/17099、web114/PG链/读源22/纯JS18/39-19/0硬31软/预算11367-1898/audit全绿。11runtime+1type≤231/完整函数165/AST5，root9046；21helper及原type/predicate实际整入口逆展开、70绑定457完整链、11目标红绿/权限能力红绿、独立全组+桥增量review齐。旧Yton6C11与旧增强STbtx3/新QIQlKm同口径展开11、0ccjgr组合19/14不同route/网络三零/自有清理全真分列，首pure-type能力红/读源首红/生成拒绝及旧bundle补展开史保持。回滚git revert 6ade731整组源码+权限桥/读源/探头，docs独立；不撤前组/driver，不修TD-WEB-004/不当全部21域或Playwright。完成docs检查点另稳定干净HEAD完整CI后续⑤，不重复许可，3f后整批人工验收/冻结区保持，见[订单履约证据](../../evidence/frontend-3c4-fulfillment-2026-10-16.md)。
 
 2026-10-16，3c④候选验证：12新TS=11runtime/1type，file≤231/完整函数165/AST5，入口9046 split；21helper实际逆展开＋原type/predicate严格还原整入口AST、70绑定457链、11目标逐一真红→还原114、权限缺一能力红→39/19绿。type/lint/structure0硬31软/build57模块11367-1898/纯JS18局部绿，独立全组及权限桥增量review无阻塞；原pure-type移出使能力缺一真实首红、未适配首web红和生成边界预解析拒绝史留证，不改图/原规则/权限前缀。旧Yton6C11原口径不含展开溢出；在344b857不可变旧dist上增补STbtx3展开11绿，新QIQlKm同口径11与0ccjgr组合19真0/网络三零/自有清理全真，14不同route不算19域或Playwright。回滚本组源码/必要权限桥/最小读源/探头整体revert、docs独立；实际提交后干净HEAD完整CI另实跑，不预填通过。证据见[3c④](../../evidence/frontend-3c4-fulfillment-2026-10-16.md)，既有冻结/TD-WEB-004仅登记/整批验收保持。

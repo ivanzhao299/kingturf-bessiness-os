@@ -311,6 +311,41 @@ export async function runProbes({ send, router, runId, report, expectDialog }) {
           }
         });
     }
+    if (process.argv.includes('--finance-risk-views')) {
+      for (const [route, title, selector, record] of [
+        ['receivables', '应收账款', '.ar-workbench .qtc-card', 'CDP-AR-A'],
+        ['collections', '催收与法务', '.collection-case-card', 'CDP-COL-A'],
+        ['payments', '收款与核销', '.payment-workbench .qtc-card', 'CDP-BANK-A'],
+        ['commissions', '销售佣金', '.commission-card', 'CDP-SO-A'],
+        ['business-risks', '业务风险', '.risk-card', 'CDP-SO-A'],
+      ])
+        await check(`finance-risk-view-${route}-desktop-mobile`, async () => {
+          for (const metrics of [
+            [390, 844, true],
+            [1440, 1000, false],
+          ]) {
+            await page.viewport(...metrics);
+            await page.route(route);
+            await page.text('[data-route-context] h1', title);
+            await page.text(selector, record);
+            if (route === 'payments')
+              await page.text('.payment-workbench > .version-pin', 'CDP-RECON-A');
+            if (route === 'commissions') {
+              await page.text('.commission-policy-card', 'CDP-COM-POLICY-A');
+              await page.text('.commission-ledger li', 'CDP计提证据');
+            }
+            if (route === 'business-risks') {
+              await page.text('.risk-task-timeline li', 'CDP风险证据');
+              if (process.argv.includes('--fulfillment-views'))
+                await page.text(
+                  '.risk-workbench .risk-policy-controls .version-card',
+                  'CDP-RISK-POLICY-A',
+                );
+            }
+            await page.noOverflow();
+          }
+        });
+    }
     const screenshot = await send('Page.captureScreenshot', { format: 'png' });
     writeFileSync(`/tmp/${runId}-probes.png`, Buffer.from(screenshot.data, 'base64'));
     return {

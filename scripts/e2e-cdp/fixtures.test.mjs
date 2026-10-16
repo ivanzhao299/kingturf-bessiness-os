@@ -2,6 +2,57 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createStubRouter } from './fixtures.mjs';
 
+test('finance/risk opt-in binds eight read routes, exact pagination and no writes', async () => {
+  const original = createStubRouter();
+  const finance = createStubRouter({ financeRiskViews: true });
+  const routes = [
+    '/api/v1/ar-open-items',
+    '/api/v1/collection-cases',
+    '/api/v1/bank-payments',
+    '/api/v1/reconciliation-runs',
+    '/api/v1/commission-policies',
+    '/api/v1/commissions',
+    '/api/v1/risk-policies',
+    '/api/v1/risk-evaluations',
+  ];
+  for (const path of routes) {
+    const query = new URLSearchParams(
+      ['/api/v1/ar-open-items', '/api/v1/bank-payments'].includes(path) ? 'limit=100' : '',
+    );
+    await assert.rejects(original.respond(path, 'GET', query), /unmapped synthetic API request/u);
+    await assert.rejects(finance.respond(path, 'POST', query), /unmapped synthetic API request/u);
+    const result = await finance.respond(path, 'GET', query);
+    assert.equal(result.status, 200);
+    assert.equal(result.value.items.length, 1);
+    assert.equal(result.value.nextCursor, null);
+  }
+  for (const query of ['', 'limit=99', 'limit=100&cursor=unexpected', 'limit=100&unknown=1'])
+    await assert.rejects(
+      finance.respond('/api/v1/ar-open-items', 'GET', new URLSearchParams(query)),
+      /unmapped synthetic API request/u,
+    );
+  const baseline = (await original.respond('/api/v1/auth/session', 'GET')).value;
+  assert.deepEqual(
+    (await finance.respond('/api/v1/auth/session', 'GET')).value.permissions.slice(
+      baseline.permissions.length,
+    ),
+    [
+      'ar:read',
+      'collection:read',
+      'bank-payment:read',
+      'reconciliation:read',
+      'commission-policy:read',
+      'commission:read',
+      'risk-policy:read',
+      'risk:read',
+    ],
+  );
+  await assert.rejects(
+    finance.respond('/api/v1/risk-tasks/unmapped', 'GET'),
+    /unmapped synthetic API request/u,
+  );
+});
+
 test('fulfillment opt-in adds only exact read routes and immutable synthetic evidence', async () => {
   const original = createStubRouter();
   const fulfillment = createStubRouter({ fulfillmentViews: true });

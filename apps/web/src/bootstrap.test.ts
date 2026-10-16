@@ -114,6 +114,17 @@ it('captures artificial-turf project handoff fields without test-channel evidenc
     readBoundSource('./commercial/quote-create.ts', 'export function appendQuoteHeading'),
     readBoundSource('./commercial/quote-cards.ts', 'export function appendQuoteCardActions'),
     readBoundSource('./commercial/credit-view.ts', 'export function appendCreditView'),
+    readBoundSource('./commercial/receivables-view.ts', 'export function appendReceivablesView'),
+    readBoundSource('./commercial/collections-view.ts', 'export function appendCollectionsView'),
+    readBoundSource(
+      './commercial/collection-actions.ts',
+      'export function appendCollectionFollowups',
+    ),
+    readBoundSource('./commercial/payments-view.ts', 'export function appendPaymentsView'),
+    readBoundSource('./commercial/commission-view.ts', 'export function appendCommissionView'),
+    readBoundSource('./commercial/commission-policy.ts', 'export function appendCommissionHeading'),
+    readBoundSource('./commercial/commission-ledger.ts', 'export function createCommissionCard'),
+    readBoundSource('./commercial/risk-view.ts', 'export function appendRiskView'),
     readBoundSource('./commercial/permissions.ts', 'export function isCommercialPermission'),
     readBoundSource(
       './commercial/production-orders-view.ts',

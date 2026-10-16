@@ -24,6 +24,8 @@
 
 ## docs/adr（架构决策记录，10 篇）
 
+[3c⑤资金风险候选证据](evidence/frontend-3c5-finance-risk-2026-10-16.md)：9新TS/15helper实际逆展开/70公开457链/八目标红绿及旧新16、组合24只读齐；早cashRiskSummary/快照与live读取/共享risk槽/原权限耦合保持，提交后实际干净HEAD全CI待跑。
+
 [3c④订单履约完成证据](evidence/frontend-3c4-fulfillment-2026-10-16.md)：源码6ade731稳定干净实际HEAD完整CI0/182166.585ms；12模块/21逆展开及原type-predicate/70绑定457链/11目标红绿、旧新展开11与组合19齐。双生产面板/风险槽/旧权限耦合不改，首红与补展开史保持，完成docs另全CI后续⑤。
 
 [3c③信用与合同完成证据](evidence/frontend-3c3-agreements-2026-10-16.md)：源码e401d27稳定干净实际HEAD完整CI0/182693.526ms；四新模块/完整逆展开/70绑定457断言/三目标红绿及旧新9、组合15只读探针齐。TD-WEB-004仅登记不修，文档操作与Playwright不计覆盖；完成状态docs检查点另全CI后续④。

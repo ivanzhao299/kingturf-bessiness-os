@@ -410,6 +410,7 @@ try {
       pricingViews: process.argv.includes('--pricing-views'),
       creditContractViews: process.argv.includes('--credit-contract-views'),
       fulfillmentViews: process.argv.includes('--fulfillment-views'),
+      financeRiskViews: process.argv.includes('--finance-risk-views'),
     });
     if (process.argv.includes('--fault-unmapped-api')) {
       await cdp(

@@ -37,6 +37,7 @@ export function createStubRouter({
   pricingViews = false,
   creditContractViews = false,
   fulfillmentViews = false,
+  financeRiskViews = false,
 } = {}) {
   const holds = new Map();
   const completions = new Map();
@@ -50,6 +51,18 @@ export function createStubRouter({
       ['/api/v1/quotes', 'quotes'],
       ['/api/v1/organizations', 'organizations'],
       ['/api/v1/customers/cdp-customer-a/360', 'detail'],
+      ...(financeRiskViews
+        ? [
+            ['/api/v1/ar-open-items', 'receivables'],
+            ['/api/v1/collection-cases', 'collections'],
+            ['/api/v1/bank-payments', 'bankPayments'],
+            ['/api/v1/reconciliation-runs', 'reconciliationRuns'],
+            ['/api/v1/commission-policies', 'commissionPolicies'],
+            ['/api/v1/commissions', 'commissions'],
+            ['/api/v1/risk-policies', 'riskPolicies'],
+            ['/api/v1/risk-evaluations', 'riskEvaluations'],
+          ]
+        : []),
       ...(fulfillmentViews
         ? [
             ['/api/v1/sales-orders', 'salesOrders'],
@@ -126,6 +139,23 @@ export function createStubRouter({
     async respond(pathname, method, parameters = new URLSearchParams()) {
       const key = keyFor(pathname);
       if (method !== 'GET' || !key) throw new Error('unmapped synthetic API request');
+      if (
+        financeRiskViews &&
+        [
+          'receivables',
+          'collections',
+          'bankPayments',
+          'reconciliationRuns',
+          'commissionPolicies',
+          'commissions',
+          'riskPolicies',
+          'riskEvaluations',
+        ].includes(key)
+      ) {
+        const expected = ['receivables', 'bankPayments'].includes(key) ? 'limit=100' : '';
+        if (parameters.toString() !== expected)
+          throw new Error('unmapped synthetic API request query');
+      }
       counts.set(key, (counts.get(key) ?? 0) + 1);
       const candidate = holds.get(key);
       const hold =
@@ -144,7 +174,7 @@ export function createStubRouter({
         };
       const value = {
         session:
-          salesViews || pricingViews || creditContractViews || fulfillmentViews
+          salesViews || pricingViews || creditContractViews || fulfillmentViews || financeRiskViews
             ? {
                 ...session,
                 permissions: [
@@ -154,6 +184,18 @@ export function createStubRouter({
                     : []),
                   ...(pricingViews ? ['sales-policy:read'] : []),
                   ...(creditContractViews ? ['credit:read', 'contract:read'] : []),
+                  ...(financeRiskViews
+                    ? [
+                        'ar:read',
+                        'collection:read',
+                        'bank-payment:read',
+                        'reconciliation:read',
+                        'commission-policy:read',
+                        'commission:read',
+                        'risk-policy:read',
+                        'risk:read',
+                      ]
+                    : []),
                   ...(fulfillmentViews
                     ? [
                         'sales-order:read',
@@ -167,6 +209,122 @@ export function createStubRouter({
               }
             : session,
         customers: { items: customers },
+        receivables: {
+          items: [
+            {
+              id: 'cdp-ar-a',
+              documentNumber: 'CDP-AR-A',
+              currency: 'CNY',
+              originalAmount: '1000',
+              remainingAmount: '500',
+              dueAt: '2020-01-01T23:59:59.000Z',
+            },
+          ],
+          nextCursor: null,
+        },
+        collections: {
+          items: [
+            {
+              id: 'cdp-collection-a',
+              caseNumber: 'CDP-COL-A',
+              state: 'OPEN',
+              customerName: 'CDP客户甲',
+              currency: 'CNY',
+              remainingAmount: '500',
+              overdueDays: 10,
+              documentNumber: 'CDP-AR-A',
+              promises: [],
+              legalHandoffs: [],
+            },
+          ],
+          nextCursor: null,
+        },
+        bankPayments: {
+          items: [
+            {
+              id: 'cdp-payment-a',
+              bankReference: 'CDP-BANK-A',
+              currency: 'CNY',
+              amount: '500',
+              remainingAmount: '500',
+              receivedAt: '2026-10-16T12:00:00.000Z',
+            },
+          ],
+          nextCursor: null,
+        },
+        reconciliationRuns: {
+          items: [{ id: 'cdp-reconcile-a', resultHash: 'CDP-RECON-A-HASH' }],
+          nextCursor: null,
+        },
+        commissionPolicies: {
+          items: [
+            {
+              id: 'cdp-commission-policy-a',
+              code: 'CDP-COM-POLICY-A',
+              version: 1,
+              status: 'PUBLISHED',
+              baseRateBasisPoints: 100,
+              minimumMarginBasisPoints: 2500,
+              releaseCollectionBasisPoints: 10000,
+            },
+          ],
+          nextCursor: null,
+        },
+        commissions: {
+          items: [
+            {
+              id: 'cdp-commission-a',
+              orderNumber: 'CDP-SO-A',
+              accountingPeriod: '2026-10',
+              effectiveState: 'RELEASED',
+              currency: 'CNY',
+              commissionAmount: '100',
+              eligibleRevenue: '10000',
+              marginBasisPoints: 3000,
+              collectionBasisPoints: 10000,
+              beneficiaryName: 'CDP合成受益人',
+              policyCode: 'CDP-COM-POLICY-A',
+              policyVersion: 1,
+              ledger: [
+                {
+                  sequence: 1,
+                  state: 'ACCRUED',
+                  reason: 'CDP计提证据',
+                  externalReference: 'CDP-REF-A',
+                },
+              ],
+            },
+          ],
+          nextCursor: null,
+        },
+        riskPolicies: {
+          items: [
+            {
+              id: 'cdp-risk-policy-a',
+              code: 'CDP-RISK-POLICY-A',
+              version: 1,
+              status: 'PUBLISHED',
+              minimumMarginBasisPoints: 2500,
+              overdueGraceDays: 0,
+              creditWarningDays: 30,
+            },
+          ],
+          nextCursor: null,
+        },
+        riskEvaluations: {
+          items: [
+            {
+              id: 'cdp-risk-a',
+              orderNumber: 'CDP-SO-A',
+              severity: 'HIGH',
+              score: 55,
+              task: { id: 'cdp-risk-task-a', effective_state: 'OPEN' },
+              findings: [{ code: 'LOW_MARGIN', actual: '10', threshold: '25' }],
+              taskEvents: [{ sequence: 1, state: 'OPEN', reason: 'CDP风险证据' }],
+            },
+          ],
+          nextCursor: null,
+        },
         salesOrders: {
           items: [
             {

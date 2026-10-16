@@ -43,6 +43,8 @@ packages/{types, config} ──→ 零依赖
 
 ## 4. 目标分层（改造方向，规则 §4.1 存量适配）
 
+3c⑤候选：资金风险五原分支拆8runtime/1type，沿原`bootstrap→commercial→forms/dom`，root8129 split，file≤232/完整函数116/AST5。原cashRiskSummary早装配、两套逾期判定、渲染快照/点击live数据、佣金/风险政策不同发布链及风险槽同ref不改；实际15helper逆展开/70公开457链/八目标红绿/旧新组合16齐，完整提交后HEAD CI待实跑。见[资金风险证据](docs/evidence/frontend-3c5-finance-risk-2026-10-16.md)，未结清巨石或扩TD-WEB-004修复。
+
 3c④完成：源码6ade731稳定干净实际HEAD全CI0/182166.585ms，11runtime/1type≤231/完整函数165/AST5、入口9046 split，12/21商业主视图已迁（另制造成本残留）、余9及共享残留续⑤。21helper＋原type/predicate逆展开/70公开457链/11目标红绿/旧新展开11与组合19齐，14不同route不泛化全部21视图或Playwright。原权限定界与共享risk槽同ref不改，详见订单履约证据；下方候选段保留历史。
 
 3c④候选：四订单履约主视图及相邻制造成本残留沿`bootstrap→commercial→forms/dom`分为12新TS（11runtime/1type），root9046 split、新file≤231/完整函数165/AST5；order360创建风险槽的root原位赋值与后风险面板消费同ref保持，双生产面板同route/独立权限不改。完整原权限union与isCommercialPermission同置permissions.ts，经root真实运行导入/原名type-value facade，不扩大静态图/前缀，不修TD-WEB-004；首pure-type图排除失败及修正史留证。21处逆展开＋两声明还原/70绑定457链、11目标红绿/旧展开11已绿，新浏览器/实际HEAD全CI待跑，见[订单履约证据](docs/evidence/frontend-3c4-fulfillment-2026-10-16.md)。
