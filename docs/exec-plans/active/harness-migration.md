@@ -6,9 +6,9 @@
 - **分支**：`harnessing`（自 main 派生；按规则 §7.1 禁止直接在主干改造）
 - **计划版本 / 日期**：v1.3 / 2026-10-12（v1.2 经第三轮人工审核修订：修复 §3.8 S11 表格裸管道、覆盖率验收语义收紧为目标值硬条件、S11 表述改为启发式口径）
 - **扫描基线**：commit `779dea3`（同步 origin/main 后）
-- **状态**：**批次1/2a/2b/2c均已人工验收（2c源码dae9253、验收6ba55c4）；2d八步源码15/15完成待协调最终复核与用户人工验收：business-document九modules779行/13静态模板→15runtime定义及canonical（十四unique paths），最后源码2761b0a、旧882冻结6f7f027；production-cost六入口仅既有2b验收重叠不重迁。app4170→4128（仍巨文件）、routes107→116，选定源码净+737非全仓下降。当前2d最后证据HEAD须完整CI真实0/干净后交回，并停待用户人工验收；2e/2f/前端3/D1安全4/阶段5不自启。台账37（TD-GATE-003已登记未修复）/TD-API/31豁免/函数200非AST与route G1/G2/G3漏扫已登记/TD-BOUND003-004待核实/D1批准未实施/评分保持，D5拦截与automationPAUSED不变；不push部署生产workflow。所有旧历史/失败与用户授权行保留，详§4.2.18及§7。**
+- **状态**：**批次1/2a/2b/2c均已人工验收（2c源码dae9253、验收6ba55c4）；2d八步实施与独立复核完成（15/15），最后实际HEAD全CI0/干净后交用户人工验收：business-document九modules779行/13静态模板→15runtime定义及canonical（十四unique paths），最后源码2761b0a、旧882冻结6f7f027；production-cost六入口仅既有2b验收重叠不重迁。app4170→4128（仍巨文件）、routes107→116，选定源码净+737非全仓下降。当前2d最后证据HEAD须完整CI真实0/干净后交回，并停待用户人工验收；2e/2f/前端3/D1安全4/阶段5不自启。台账37（TD-GATE-003已登记未修复）/TD-API/31豁免/函数200非AST与route G1/G2/G3漏扫已登记/TD-BOUND003-004待核实/D1批准未实施/评分保持，D5拦截与automationPAUSED不变；不push部署生产workflow。所有旧历史/失败与用户授权行保留，详§4.2.18及§7。**
 - **规则文档**：`docs/HARNESS-RULES.md`（施工期常驻，竣工验收后按 §14 拆解归档）
-- **配套文件**：问题清单 `docs/exec-plans/tech-debt-tracker.md`（36 条，含已解决历史项）；CI 决策 `docs/CI.md`；度量脚本 `scripts/analysis/repo-metrics.mjs`
+- **配套文件**：问题清单 `docs/exec-plans/tech-debt-tracker.md`（37 条，含已解决历史项）；CI 决策 `docs/CI.md`；度量脚本 `scripts/analysis/repo-metrics.mjs`
 
 ## 0.5 ZCode 执行契约（计划确认后对每次执行会话生效）
 
@@ -3537,6 +3537,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 **R4新发现独立登记／覆盖口径更正（2026-10-16，登记前HEAD2c7b174）**：协调与readonly reviewer亲核structure-gate walk55–63自7dd2ff7跳过routes，runChecks235–244共用sourceFiles同时执行G1/G2/G3，245–250只另扫G4；因此此前本2d所说G1/G2遗漏还不完整，现更正为G1/G2/G3遗漏。未找到登记前6ba55c4 GATES/台账/active历史中的人工批准例外或等效TD（仅该检索范围）；旧真实进程自测样本在apps/.structure-gate-selftest-\*/src而非routes。已按明确R4授权独立新增TD-GATE-003（P1工程门禁覆盖缺口，业务影响无，静态遗漏已证／未修复／真实routes注入逃逸和全量影响待核实），正文+索引+处置记录及GATES范围短注，当前37，旧36条与历史byte保留。门禁修复、全routes影响/新违规审计、真实进程routes三类样本及拦截测试仅后续独立候选，阶段5前复核；本轮不改walk/旧tests/白名单/G3可信根，不把手工AST控制流通过当现G2缩进算法已通过，也不认定生产漏洞或否定本2d守恒/既有人工验收。原“台账36/ledger零diff”仅登记前快照，本新增登记是明确授权例外，最终不能再称台账零diff。原三docs收尾d930824与搜索精度2c7b174均已独立提交不amend；2c7b174实际HEAD完整CI真实0/147.709s（/tmp/kingturf-bd-2c7b174-ci.log）等待自然结束后才写本登记，无新增CI中止。本TD/GATES/当前地图与口径另独立docs提交、逐项还原证明及review后，最后实际HEAD再次完整CI真实0/干净，结果/tmp/kingturf-bd-final-result.json与head-ci.log；不以2761b0a或2c7b174代最后HEAD。回滚三docs证据d930824/精度2c7b174/本TD登记各单独git revert须授权核冲突，源码八SHA/固定882/仓储SQL/scripts/.github/infra/依赖/评分仍冻；D5已扫描路径拦截/G4/31豁免/200非AST/D1/TD-BOUND及automationPAUSED保持。最终只交协调及用户2d人工验收，绝不自启2e或修门禁。
 
+**协调独立复核完成／最终现时地图（2026-10-16，源码2761b0a／证据d930824与精度2c7b174／TD登记34e4057）**：协调正式确认源码9/9、搜索精度修正、整域13静态/15runtime与字节/保护面、TD-GATE-003/GATES范围披露均已独立复核通过，无剩余必要业务或证据修正。现时状态为“2d实施与独立复核完成，最后实际HEAD完整CI真实0且干净后交用户人工验收”，不是等待再启动一轮协调确认，更不是用户已人工验收。三当前地图及§0状态据此同步，§0配套文件的当前台账数亦从36改37；旧待协调/36/零diff快照按原时点保留，TD正文及旧36全byte保护不变。34e4057实际HEAD完整CI自然结束真实exit0/150.183s（/tmp/kingturf-bd-34e4057-ci.log）后才做本元信息docs更新，无新增中止。本现时确认docs独立提交不amend历史，最后新实际HEAD另完整CI真实0/干净后直接交回，协调只核真实结果无需新增确认文档循环；最终SHA/exit/time落/tmp/kingturf-bd-final-result.json与head-ci.log，不以先前CI替代。回滚本确认docs与34e4057登记、d930824/2c7b174证据、八步源码分别需授权核后继冲突；不回滚既有用户验收。源码/固定882/TD正文/脚本/门禁/仓储SQL/评分/依赖冻结，TD-GATE-003未修复且真实routes注入未执行；D5已扫描范围拦截、G4及31豁免、automationPAUSED保持。最后停2d待用户人工验收，不自启2e或门禁修复。
+
 ## 5. 五阶段任务拆解
 
 > 负责人角色约定：**智能体**＝执行者（写代码/文档/门禁/测试），**人类**＝确认者（确认计划、答决策题、验收）。
@@ -3619,6 +3621,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+**协调独立复核完成／最终现时地图（2026-10-16，源码2761b0a／证据d930824与精度2c7b174／TD登记34e4057）**：协调正式确认源码9/9、搜索精度修正、整域13静态/15runtime与字节/保护面、TD-GATE-003/GATES范围披露均已独立复核通过，无剩余必要业务或证据修正。现时状态为“2d实施与独立复核完成，最后实际HEAD完整CI真实0且干净后交用户人工验收”，不是等待再启动一轮协调确认，更不是用户已人工验收。三当前地图及§0状态据此同步，§0配套文件的当前台账数亦从36改37；旧待协调/36/零diff快照按原时点保留，TD正文及旧36全byte保护不变。34e4057实际HEAD完整CI自然结束真实exit0/150.183s（/tmp/kingturf-bd-34e4057-ci.log）后才做本元信息docs更新，无新增中止。本现时确认docs独立提交不amend历史，最后新实际HEAD另完整CI真实0/干净后直接交回，协调只核真实结果无需新增确认文档循环；最终SHA/exit/time落/tmp/kingturf-bd-final-result.json与head-ci.log，不以先前CI替代。回滚本确认docs与34e4057登记、d930824/2c7b174证据、八步源码分别需授权核后继冲突；不回滚既有用户验收。源码/固定882/TD正文/脚本/门禁/仓储SQL/评分/依赖冻结，TD-GATE-003未修复且真实routes注入未执行；D5已扫描范围拦截、G4及31豁免、automationPAUSED保持。最后停2d待用户人工验收，不自启2e或门禁修复。 [已测试]
 
 **R4新发现独立登记／覆盖口径更正（2026-10-16，登记前HEAD2c7b174）**：协调与readonly reviewer亲核structure-gate walk55–63自7dd2ff7跳过routes，runChecks235–244共用sourceFiles同时执行G1/G2/G3，245–250只另扫G4；因此此前本2d所说G1/G2遗漏还不完整，现更正为G1/G2/G3遗漏。未找到登记前6ba55c4 GATES/台账/active历史中的人工批准例外或等效TD（仅该检索范围）；旧真实进程自测样本在apps/.structure-gate-selftest-\*/src而非routes。已按明确R4授权独立新增TD-GATE-003（P1工程门禁覆盖缺口，业务影响无，静态遗漏已证／未修复／真实routes注入逃逸和全量影响待核实），正文+索引+处置记录及GATES范围短注，当前37，旧36条与历史byte保留。门禁修复、全routes影响/新违规审计、真实进程routes三类样本及拦截测试仅后续独立候选，阶段5前复核；本轮不改walk/旧tests/白名单/G3可信根，不把手工AST控制流通过当现G2缩进算法已通过，也不认定生产漏洞或否定本2d守恒/既有人工验收。原“台账36/ledger零diff”仅登记前快照，本新增登记是明确授权例外，最终不能再称台账零diff。原三docs收尾d930824与搜索精度2c7b174均已独立提交不amend；2c7b174实际HEAD完整CI真实0/147.709s（/tmp/kingturf-bd-2c7b174-ci.log）等待自然结束后才写本登记，无新增CI中止。本TD/GATES/当前地图与口径另独立docs提交、逐项还原证明及review后，最后实际HEAD再次完整CI真实0/干净，结果/tmp/kingturf-bd-final-result.json与head-ci.log；不以2761b0a或2c7b174代最后HEAD。回滚三docs证据d930824/精度2c7b174/本TD登记各单独git revert须授权核冲突，源码八SHA/固定882/仓储SQL/scripts/.github/infra/依赖/评分仍冻；D5已扫描路径拦截/G4/31豁免/200非AST/D1/TD-BOUND及automationPAUSED保持。最终只交协调及用户2d人工验收，绝不自启2e或修门禁。 [已测试]
 
