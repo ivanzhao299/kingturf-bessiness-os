@@ -39,7 +39,7 @@ packages/{types, config} ──→ 零依赖
 | 履约       | production、manufacturing、mrp、procurement、quality、shipment、complaint                                                                                                           |
 | 财务与治理 | collection、commission、risk、dashboard、order-360、production-cost                                                                                                                 |
 
-**前端（apps/web/src，批次3小步拆分中）**：登录流（entry/login-flow）→ 懒加载工作台（bootstrap.ts，仍包含CRM/commercial 21子域视图/governance）；旧基线16,082 split行，3a公共层候选后15,243 split行，未结清巨石债务。`bootstrap→shared/forms→dom`、`bootstrap→shared/locale`、`bootstrap→shared/navigation`、`bootstrap→shared/{crm-http,commercial-http}→http`均单向运行依赖；`crm/types`/`commercial/types`只作type-only桥接，bootstrap保留原公开facade，不反向依赖入口，不新增包依赖。`data-route-view`清单及每步证据/回滚见计划§4.3及§7。
+**前端（apps/web/src，批次3小步拆分中）**：登录流（entry/login-flow）→ 懒加载工作台（bootstrap.ts，仍包含CRM/commercial 21子域视图/governance）；旧基线16,082 split行，3a公共层完成后15,243 split行，未结清巨石债务。`bootstrap→shared/forms→dom`、`bootstrap→shared/locale`、`bootstrap→shared/navigation`、`bootstrap→shared/{crm-http,commercial-http}→http`均单向运行依赖；`crm/types`/`commercial/types`只作type-only桥接，bootstrap保留原公开facade，不反向依赖入口，不新增包依赖。`data-route-view`清单及每步证据/回滚见计划§4.3及§7。
 
 ## 4. 目标分层（改造方向，规则 §4.1 存量适配）
 

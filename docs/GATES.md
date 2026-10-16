@@ -23,11 +23,11 @@
 
 3a唯一现时总表：[公共层检查点](evidence/frontend-3a-checkpoint-2026-10-16.md)。七个新TS模块全部实测≤800/AST≤4、62个有body函数最长175；原31不撤。各下段快照及各小步证据中的“待CI/尚未实施”为历史时点，以该总表及后补实测为准，不把局部114/CDP当稳定HEAD完整CI。
 
-3a后补现时：form86e7026完整CI真实0/182105.292ms；locale两表/函数完整提取、web114/预算11369-1898/七场景CDP通过，独立HEAD完整CI随后。此前form“验证中”为原时点，后续以[locale证据](evidence/frontend-3a-locale-2026-10-16.md)与[form证据](evidence/frontend-3a-form-2026-10-16.md)为准；HTTP/navigation未迁移，不等于整批收尾。
+3a早期后补快照（历史）：form86e7026完整CI真实0/182105.292ms；locale两表/函数完整提取、web114/预算11369-1898/七场景CDP通过，独立HEAD完整CI随后。此前form“验证中”为原时点，后续以[locale证据](evidence/frontend-3a-locale-2026-10-16.md)与[form证据](evidence/frontend-3a-form-2026-10-16.md)为准；HTTP/navigation未迁移，不等于整批收尾。
 
-批次3 C3现时：新增web四目录`apps/web/src/{shared,crm,commercial,governance}/`的G2复用原routes AST≤5，G1原全扫≤800；walk仅允许四prefix内部routes递归，不扩其他旧路径。原31/G3/G4/其他G2规则保持，函数200仍独立量完整函数。175be7d完整CI真实exit0，38自测/29 CLI及计时来源见[新web护栏](evidence/frontend-c3-guard-2026-10-16.md)。首[form小步](evidence/frontend-3a-form-2026-10-16.md)已提取并完成旧新正文/切片及变异证明，新源码完整门禁随后记录，不等于3a整批已完成。
+批次3 C3当时更新快照（历史）：新增web四目录`apps/web/src/{shared,crm,commercial,governance}/`的G2复用原routes AST≤5，G1原全扫≤800；walk仅允许四prefix内部routes递归，不扩其他旧路径。原31/G3/G4/其他G2规则保持，函数200仍独立量完整函数。175be7d完整CI真实exit0，38自测/29 CLI及计时来源见[新web护栏](evidence/frontend-c3-guard-2026-10-16.md)。首[form小步](evidence/frontend-3a-form-2026-10-16.md)已提取并完成旧新正文/切片及变异证明，新源码完整门禁随后记录，不等于3a整批已完成。
 
-CDP harness后补：`fixtures.test.mjs`及`network-policy.test.mjs`纯JS自测已接入根test:release-guardrails（当前4 tests，独立于Vitest）；真实Chrome六场景及定向负向仍手动串行，Windows ownership.NET/lifecycle不接默认跨平台CI。静态资源白名单/精确stub、目标view可见与真实DOM负向、成本q/ACK窗口等见[CDP基线](evidence/frontend-cdp-harness-2026-10-16.md)。该六场景段及下段“harness尚未实施”保留各原时点快照；现时C3已完整CI0、3a首form提取验证中，新增七场景/四路由范围见form证据，原31/G3/G4/D5不变。
+CDP harness后补快照（历史）：`fixtures.test.mjs`及`network-policy.test.mjs`纯JS自测已接入根test:release-guardrails（当前4 tests，独立于Vitest）；真实Chrome六场景及定向负向仍手动串行，Windows ownership.NET/lifecycle不接默认跨平台CI。静态资源白名单/精确stub、目标view可见与真实DOM负向、成本q/ACK窗口等见[CDP基线](evidence/frontend-cdp-harness-2026-10-16.md)。该六场景段及下段“harness尚未实施”保留各原时点快照；现时C3已完整CI0、3a首form提取验证中，新增七场景/四路由范围见form证据，原31/G3/G4/D5不变。
 
 Windows CDP临时验证通道（ad0435e裁定）：根`pnpm lint`显式扫描`scripts/e2e-cdp/*.mjs`，沿用现有脚本JS lint规则，零新依赖/不改workflow；浏览器预检和生命周期负向为手动串行独立计数，不并入Vitest114或Playwright。真实通道、精确owned profile清理、异常/信号实测和阶段5补跑边界见[CDP预检证据](evidence/windows-chrome-cdp-preflight-2026-10-16.md)。五类harness尚未实施，不以启动成功冒称覆盖；既有31豁免/G3/G4/D5不变。
 

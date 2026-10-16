@@ -20,6 +20,8 @@ WeakMap仅新模块创建一次，install与bootstrap旧shell卸载直接使用�
 
 ## 运行验证与回滚
 
+后补完整HEAD实测：源码/证据 `4406f3e` 稳定干净HEAD `pnpm ci:local` 真实exit0/172428.191ms单调计时，日志 `/tmp/kingturf-3a-navigation-head-ci-2026-10-16.log`；API117/17099、web114、原PG、database68/domain14、纯JS4、预算11368/1898、结构0硬/31旧豁免、audit无已知漏洞。3a五源码小步均已全链通过，下面“随后”明确属于该提交时点。再仅文档归并唯一现时检查点、文档HEAD独立CI；不是开始3b源码，也不提前整批验收。
+
 web114、typecheck、capabilities39/19、metrics通过；bootstrap15433→15243 split行，非测试源178文件52742行。构建预算11368/1898 gzip，12000/4000阈值与lazy约束不变。局部日志均 `/tmp/kingturf-3a-navigation-{web,metrics,build}-2026-10-16.log`。
 
 新产物CDP Hq7DtC真实exit0：Chrome154.0.8037.99/PID42216/127.0.0.1:55217，owned preview2226348；七场景32 DOM/3 viewport/25 route/10 text/10 overflow全部通过，网络blocked/unknownAPI/failedAPI皆0，preview/process/profile全部清理。`/tmp/kingturf-3a-navigation-cdp-2026-10-16.log`及截图 `/tmp/kingturf-cdp-preflight-Hq7DtC-probes.png`。仅四路由合成stub，不是21视图/真实权限矩阵/Playwright，也不单凭此证明所有卸载分支；单map身份与顺序另由逐字/导入证明和独立review核验。
