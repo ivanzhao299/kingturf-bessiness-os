@@ -1,4 +1,6 @@
-# 3c① 线索方案（2026-10-16，实施中）
+# 3c① 线索方案（2026-10-16，实施与独立复核完成）
+
+最终源码检查点 `a34df41` 稳定干净实际HEAD完整ci:local真实exit0/167522.718ms，日志 `/tmp/kingturf-3c1-a34df41-head-ci-2026-10-16.log`；结束核HEAD不变/工作树空，协调独立核验通过。API117/17099、web9/114、database3/68、domain3/14、config1/4、types1/1，原PG链/读源22/CDP纯JS5/39-19、format/doc-lint119/0硬31软/lint/typecheck/build/audit全绿；预算11368/1898，浏览器10另计且首次失败史保持。当前仅完成证据归并，最终文档HEAD另全CI后续已授权3c②；本页“候选/待验证/未提交/待CI”等后文为当时快照，不冒作现状，不声称整批3/Harness竣工。
 
 ## 输入与范围
 
