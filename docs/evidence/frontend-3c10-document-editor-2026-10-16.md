@@ -1,4 +1,6 @@
-# 前端3c⑩：在线文档编辑器（2026-10-16，候选验证中）
+# 前端3c⑩：在线文档编辑器（2026-10-16，实施与独立复核完成）
+
+完成检查点：源码`78d726c`稳定干净实际HEAD完整`pnpm ci:local`真实exit0/181480.679ms（`/tmp/kingturf-3c10-78d726c-head-ci-2026-10-16.log`），结束HEAD仍78d726c/树空。API117/17099、web9/114、database68/domain14/config4/types1、PG链、读源22/CDP纯JS28、39能力19路径、结构0硬31旧软、预算11369/1898与audit齐。15runtime/1type≤172/完整函数165/AST5/root3066、完整800行14逆展开/70公开457链/15实际负向与恢复、旧新扩展37/另新正常33与原夹具29、独立实际候选审均无阻塞；三轮旧失败史与TD-WEB-005只登记不修保持。回滚`git revert 78d726c`（本组模块/root/readsource/新editor opt-in同撤，不撤前driver/register工具），完成docs独立提交后实际HEAD另全CI。下方“待跑/候选”均此前时点记录，不作当前未完成断言；剩余共享→3d–3f连续授权继续，3f后整批人工验收及Playwright补跑保持。
 
 输入5ec8a65稳定干净实际HEAD完整CI真实0/179473.404ms（`/tmp/kingturf-3c9-5ec8a65-head-ci-2026-10-16.log`），结束HEAD不变/树空。沿既定3a→3f授权继续；本组业务迁移尚未开始，旧bootstrap3880/编辑器800行。仅主代理写入和串行执行，独立代理/协调只读复核。
 
