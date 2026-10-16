@@ -21,7 +21,7 @@
 
 ## 本地 git hooks（`.githooks/`，`pnpm install` 时经 `prepare` 自动激活）
 
-3c⑤候选检查点：[资金风险证据](evidence/frontend-3c5-finance-risk-2026-10-16.md)。9新TS≤232/完整函数116/AST5，15helper逆展开/70公开457链同，八实际runtime目标红→各还原114绿；原114初绿不冒称已有新源负向覆盖。旧新④⑤组合16/网络三零/自有清理全真，纯JS19另计，全部新24及实际提交后HEAD全CI待实跑；原保护区/门禁阈值不改。
+3c⑤完成检查点：[资金风险证据](evidence/frontend-3c5-finance-risk-2026-10-16.md)。源码00766d6稳定干净实际HEAD完整CI0/175184.510ms；9新TS≤232/完整函数116/AST5、15helper逆展开/70公开457链、八实际runtime目标红→各还原114绿齐。旧新④⑤组合16与全部组合24/网络三零/自有清理全真，纯JS19另计；原114初绿不冒称新源负向覆盖，未真实写矩阵或Playwright，完成docs实际HEAD另全CI。
 
 3c④完成检查点：[订单履约证据](evidence/frontend-3c4-fulfillment-2026-10-16.md)。源码6ade731稳定干净实际HEAD完整CI0/182166.585ms；11runtime+1type≤231/完整函数165/AST5、21helper＋原type/predicate逆展开/70绑定457链、11目标红绿和权限缺一红绿齐。旧新展开11及组合19/14不同route、纯JS18独立计数；首红与旧dist补展开史保持，不称全部21视图/真实授权矩阵或Playwright，完成docs实际HEAD另CI。
 

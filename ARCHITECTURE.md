@@ -43,6 +43,8 @@ packages/{types, config} ──→ 零依赖
 
 ## 4. 目标分层（改造方向，规则 §4.1 存量适配）
 
+3c⑤完成：源码00766d6稳定干净实际HEAD全CI0/175184.510ms，8runtime/1type≤232/完整函数116/AST5，入口8129 split，17/21商业主视图已迁，余四及共享残留续⑥。15helper逆展开/70公开457链/八目标红绿、旧新16与组合24齐；只读合成覆盖不替代真实写矩阵/Playwright，不修TD-WEB-004，详见资金风险证据；下方候选段保留时点历史。
+
 3c⑤候选：资金风险五原分支拆8runtime/1type，沿原`bootstrap→commercial→forms/dom`，root8129 split，file≤232/完整函数116/AST5。原cashRiskSummary早装配、两套逾期判定、渲染快照/点击live数据、佣金/风险政策不同发布链及风险槽同ref不改；实际15helper逆展开/70公开457链/八目标红绿/旧新组合16齐，完整提交后HEAD CI待实跑。见[资金风险证据](docs/evidence/frontend-3c5-finance-risk-2026-10-16.md)，未结清巨石或扩TD-WEB-004修复。
 
 3c④完成：源码6ade731稳定干净实际HEAD全CI0/182166.585ms，11runtime/1type≤231/完整函数165/AST5、入口9046 split，12/21商业主视图已迁（另制造成本残留）、余9及共享残留续⑤。21helper＋原type/predicate逆展开/70公开457链/11目标红绿/旧新展开11与组合19齐，14不同route不泛化全部21视图或Playwright。原权限定界与共享risk槽同ref不改，详见订单履约证据；下方候选段保留历史。
