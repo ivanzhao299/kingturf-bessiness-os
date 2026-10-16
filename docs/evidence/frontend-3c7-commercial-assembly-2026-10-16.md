@@ -1,5 +1,7 @@
 # 前端3c⑦：商业共享装配提取证据（2026-10-16）
 
+完成检查点：源码`944a175`稳定干净实际HEAD完整`pnpm ci:local`真实exit0/185605.700ms（`/tmp/kingturf-3c7-944a175-head-ci-2026-10-16.log`），结束HEAD仍944a175/树空；API117文件17099、web9/114、database68/domain14/config4/types1、PG链、读源自测22、CDP纯JS24、能力39/19、结构0硬31旧软、预算11369/1898及audit绿。回滚本组`git revert 944a175`，不撤前组driver/权限桥；完成docs独立。下方“候选/待跑”为原时点记录，完成docs实际HEAD另全CI后继续3c共享基础职责/editor/listtools，再3d–3f；未宣布3c整批或巨石债务结清。
+
 ## 状态、范围与回滚
 
 输入为3c⑥完成docs eb86107：稳定干净实际HEAD完整`pnpm ci:local`真实exit0/183941.039ms（`/tmp/kingturf-3c6-eb86107-head-ci-2026-10-16.log`），结束HEAD不变/树空。本组候选局部验证与独立只读复核完成，源码提交后实际干净HEAD完整CI待跑，不预填结果。继续既有3a→3f授权，3f后停供整批人工验收，不重复索许可。

@@ -24,7 +24,7 @@
 
 ## docs/adr（架构决策记录，10 篇）
 
-[3c⑦共享装配证据](evidence/frontend-3c7-commercial-assembly-2026-10-16.md)：9新TS/root5203/商业函数160、10逆展开/21导入边/70公开457链/八目标红绿/旧新29齐；提交后HEAD全CI待跑，TD-TEST-007仅登记、共享残留继续。
+[3c⑦共享装配证据](evidence/frontend-3c7-commercial-assembly-2026-10-16.md)：源码944a175稳定干净实际HEAD全CI0/185605.700ms，root5203/商业函数160、10逆展开/21导入边/70公开457链/八目标红绿/旧新29齐；TD-TEST-007仅登记40项，完成docs另全CI后续共享→3d–3f。
 
 [3c⑥制造采购质量完成证据](evidence/frontend-3c6-operations-2026-10-16.md)：源码3f77a81/工具830d1fb各实际干净HEAD全CI0，36逆展开/70公开457链/27红绿/旧新11/两次正常28齐；TD006独立收口/完整失败史/旧metrics事后只读重放口径保留，21主视图已迁但共享未结清。
 

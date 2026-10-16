@@ -43,7 +43,7 @@ packages/{types, config} ──→ 零依赖
 
 ## 4. 目标分层（改造方向，规则 §4.1 存量适配）
 
-3c⑦共享装配候选：`bootstrap→commercial/workspace-*→原各域view`，8runtime/1type以readiness/dashboard/分组guard/route标注/legacy panels真实职责拆分；root5203、商业函数160，最大新file300/完整函数148/AST5。保持root ports/rebuild箭头创建点、共享risk槽同ref、两次独立children读取与legacy listener时点；10逆展开/21导入边/70公开457链/八目标红绿及旧新29齐，提交后实际HEAD全CI待跑。editor/listtools等共享残留及3d–3f未结清，详见[⑦证据](docs/evidence/frontend-3c7-commercial-assembly-2026-10-16.md)。
+3c⑦共享装配完成：源码944a175稳定干净实际HEAD完整CI0/185605.700ms。运行依赖为 bootstrap→commercial/workspace-\*→原各域view，8runtime/1type最大300/完整函数148/AST5、root5203/商业函数160。root ports/rebuild创建点、共享risk槽、两次children读取及legacy listener时点保持；10逆展开/21导入边/70公开457链/八目标红绿与旧新29齐。editor/listtools等共享残留及3d–3f未结清，完成docs全CI后继续，详见[⑦证据](docs/evidence/frontend-3c7-commercial-assembly-2026-10-16.md)。
 
 3c⑥实施与独立复核完成：源码3f77a81实际干净HEAD全CI0/170456.489ms、独立工具830d1fb同口径0/177187.409ms；28新TS≤221/完整函数143/AST5/root5848，36逆展开/70公开457链/27红绿/旧新11/两次无trace28齐，TD006工具收口。21商业主视图已迁不等于共享editor/listtools/装配或3d/3e/3f完成，完成docs全CI后继续共享职责；只读卡不当写矩阵/Playwright，失败史/残余边界及回滚见[⑥证据](docs/evidence/frontend-3c6-operations-2026-10-16.md)，下方⑤段为其时点历史。
 
