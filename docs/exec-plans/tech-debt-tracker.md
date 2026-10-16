@@ -9,6 +9,8 @@
 
 ## 索引
 
+**现时44项（2026-10-16，3e前置只读盘点）**：新增TD-WEB-006商业controller创建与部分route读取门控差异、TD-WEB-007旧异步挂载缺会话代际复核，两者仅登记、实际触发/生产影响待核实，不实施旧行为修复。新lazy自身的路由/销毁隔离不能冒称已修旧entry/mount，原42及历史原文保留。
+
 **现时42项（2026-10-16，3c⑪只读复核）**：新增TD-PERF-003文档读缓存失败回调代际风险待核实，仅登记不修；原41及更早计数保留，不推论跨账号数据泄露。
 
 **现时41项（2026-10-16，3c⑩旧编辑器护栏）**：新增TD-WEB-005，仅登记旧构建合成文档历史比较后的布局遮挡实测，不修业务。旧40及更早计数保留；具体CSS成因、真实生产数据影响待核实。
@@ -44,6 +46,8 @@
 | TD-WEB-003   | bootstrap.ts 深嵌套：≥4 层 8,603 行，最深 14 层                                               | P2     | 复杂度        | 无                       | 批次 3                             | 待处理               |
 | TD-WEB-004   | 登录商业权限投影遗漏合同文档/OCR/电子签三族前缀                                               | P2     | 前端权限投影  | 修复 bug（若实施）       | 3c③仅登记，后续独立决策            | 待独立授权修复       |
 | TD-WEB-005   | 旧在线文档历史比较后版本按钮中心被命令栏遮挡（合成夹具实测）                                  | P2     | 前端布局      | 修复 bug（若实施）       | 3c⑩仅登记，后续独立决策            | 成因/生产影响待核实  |
+| TD-WEB-006   | 部分商业只读权限可见route但不满足controller创建条件                                           | P2     | 前端门控      | 修复 bug（若实施）       | 3e仅登记，后续独立决策             | 触发/生产影响待核实  |
+| TD-WEB-007   | 旧异步工作台挂载结束前未复核当前会话代际                                                      | P2     | 异步生命周期  | 修复 bug（若实施）       | 3e仅登记，后续独立决策             | 触发/生产影响待核实  |
 | TD-API-001   | buildApp 单函数 ≈6,442 行、230 个顺序路由分支，吞掉 Service 层                                | P1     | 架构/复杂度   | 无                       | 批次 2                             | 待处理               |
 | TD-API-002   | app.ts 深嵌套：≥7 层 3,202 行，最深 14 层                                                     | P2     | 复杂度        | 无                       | 批次 2                             | 待处理               |
 | TD-REG-001   | QTC 前六模块提前读取仓储根，违反旧求值/receiver契约                                           | P1     | 重构回归      | 修复 bug（恢复旧契约）   | 2b独立回归恢复                     | 已解决（留历史）     |
@@ -133,6 +137,22 @@
 - **边界与待核实**：静态CSS为两显式grid行、比较区在第三child，存在隐式行分配候选原因，但精确因果及生产真实文档影响待独立核实。只读独立复核确认不是桌面默认history-collapsed；不据此修CSS、改click预算或强制DOM点击。
 - **当前处置**：仅登记。新未提交护栏限定验证V1比较/当前V2状态与正文节点不变，随后真实关闭/重新打开恢复V2再验证译文；不再宣称覆盖同一次比较后点击V2返回。保留首失败与范围撤回记录，冻结原114/457、原CDP29及register四项不改。
 - **业务行为影响**：修复 bug（若实施） ｜ **关联批次**：3c⑩仅登记，后续独立授权/提交 ｜ **验收方式**：独立最小复现与真实可达UI回归，当前未修复。
+
+### TD-WEB-006｜部分商业读取route与controller创建门控不一致
+
+- **位置**：b2e2a53 `apps/web/src/bootstrap.ts:150–177`（visibleAppRoutes）、`:272–325`（visibleCommercialSections）及`:936–940`（controller创建）；`commercial/permissions.ts`保留相关权限族。
+- **类别**：前端门控 ｜ **严重度**：P2 ｜ **状态**：仅登记，触发/生产影响待核实。
+- **静态证据**：collection/quality-plan/quality/traceability/complaint/complaint-sla/shipment/manufacturing-cost读取权限可使相关route可见，load也有对应读取源，但visibleCommercialSections没有这些族的独立布尔项；只持这些权限时Object.values(...).some(Boolean)可能为false、不创建controller。主代理直接读取与独立scout复核一致，未做真实账号/DOM复现，不认定实际生产授予或所有权限组合均失效。另payments route可由reconciliation读取可见、panel却要求bank-payment读取，属于待核实的既有门控差异，不擅改为权限放宽。
+- **与旧债区别**：TD-WEB-004是合同文档三族被isCommercialPermission前缀过滤；本项相关族并未被该函数过滤，而是之后的controller创建或panel门控，不能当作同一前缀修复。
+- **当前处置/业务影响**：仅登记；若实施为修复bug，需独立授权/提交与真实mount权限组合回归。3e纯store迁位及lazy保留原controller创建条件，不新增读取权限/补前缀/更改后端认证。新lazy依赖表只与已有read权限取交集，不借此修本项。
+
+### TD-WEB-007｜旧异步工作台挂载缺会话代际复核
+
+- **位置**：b2e2a53 `apps/web/src/entry.ts:172–199`、`bootstrap.ts:945–995`、`session.ts:9–20`。
+- **类别**：异步生命周期 ｜ **严重度**：P2 ｜ **状态**：仅登记，实际触发/生产影响待核实。
+- **静态证据**：entry在session校验成功后await workspace模块再mount；mount等待三域加载后直接构建并replaceChildren，未再核token/root代际。session.expireSession的token比较只阻止旧401登出新会话，不是旧成功挂载的提交检查。主代理/独立scout核验同，原route-isolation只锁路由DOM隔离/搜索值，不能冒称覆盖此场景。没有跨会话浏览器复现或生产证据，不推论数据泄露或后端会话模型缺陷。
+- **当前处置/业务影响**：仅登记；若修旧entry/mount为独立行为修复，需授权/提交。3e新lazy产生的异步route任务必须自身绑定controller/shell并在销毁后不触碰其它shell；这不是修复既有顶层mount竞态，不变更token模型/storage key/登出语义，TD-SEC与D1不扩。
+- **验收方式**：后续独立最小合成复现旧会话慢完成/新会话先完成及失败边界，再决策修复；本轮不以静态缺少检查当已证动态覆写。
 
 ### TD-API-001｜buildApp 单函数 ≈6,442 行、230 个顺序路由分支
 

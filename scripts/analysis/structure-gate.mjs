@@ -17,7 +17,6 @@ export const MAX_NESTING = 5;
 
 // 显式豁免白名单：文件 → { 原因, 到期 }。到期批次完成后必须移除；新增豁免须登记台账。
 export const SIZE_WHITELIST = new Map([
-  ['apps/web/src/bootstrap.ts', { reason: 'TD-WEB-001 巨石文件', due: '批次 3（子批 3a-3e）' }],
   ['apps/api/src/app.ts', { reason: 'TD-API-001 buildApp 巨函数', due: '批次 2' }],
   [
     'apps/api/src/commercial-repositories.ts',

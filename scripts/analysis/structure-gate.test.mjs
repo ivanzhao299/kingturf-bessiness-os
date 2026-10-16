@@ -18,6 +18,31 @@ import {
   isNewWebModule,
 } from './structure-gate.mjs';
 
+test('已消解bootstrap白名单：真实CLI拒801行/六层缩进，放行800行', () => {
+  const gate = join(process.cwd(), 'scripts/analysis/structure-gate.mjs');
+  const root = mkdtempSync(join(tmpdir(), 'kingturf-retired-bootstrap-'));
+  const directory = join(root, 'apps/web/src');
+  mkdirSync(directory, { recursive: true });
+  mkdirSync(join(root, 'packages'));
+  const file = join(directory, 'bootstrap.ts');
+  const run = () => spawnSync(process.execPath, [gate], { cwd: root, encoding: 'utf8' });
+  try {
+    writeFileSync(file, Array(801).fill('// fixture').join('\n'));
+    const oversized = run();
+    assert.equal(oversized.status, 1, oversized.stdout + oversized.stderr);
+    assert.match(oversized.stdout + oversized.stderr, /超过上限 800 行/u);
+    writeFileSync(file, ' '.repeat(12) + 'const fixture = 1;');
+    const nested = run();
+    assert.equal(nested.status, 1, nested.stdout + nested.stderr);
+    assert.match(nested.stdout + nested.stderr, /嵌套超过 5 层/u);
+    writeFileSync(file, Array(800).fill('// fixture').join('\n'));
+    const legal = run();
+    assert.equal(legal.status, 0, legal.stdout + legal.stderr);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('批次3 AST最小范围精确到四个新web目录，不扩旧bootstrap/http或其他域', () => {
   for (const scope of ['shared', 'crm', 'commercial', 'governance']) {
     assert.equal(isNewWebModule(`apps/web/src/${scope}/module.ts`), true);
@@ -361,5 +386,5 @@ test('真实CLI routes覆盖G1/G2/G3/G4，合法深格式通过，清理后全�
   }
   const clean = run();
   assert.equal(clean.status, 0, clean.stderr);
-  assert.match(clean.stdout, /白名单豁免 31 条/u);
+  assert.match(clean.stdout, /白名单豁免 29 条/u);
 });

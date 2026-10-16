@@ -193,6 +193,20 @@ const readGovernanceSources = (): string[] => [
   readBoundSource('./governance/workspace.ts', 'export function createGovernanceWorkspace'),
 ];
 
+const readCommercialStoreSources = (): string[] => [
+  readBoundSource('./commercial/store/controller.ts', 'export class CommercialController'),
+  readBoundSource('./commercial/store/cost-query.ts', 'export const initialCostMatrixQuery'),
+  readBoundSource(
+    './commercial/store/readable-sources.ts',
+    'export function readableCommercialSources',
+  ),
+  readBoundSource(
+    './commercial/store/load-opportunities.ts',
+    'export function startCommercialOpportunityLoad',
+  ),
+  readBoundSource('./commercial/store/load-views.ts', 'export function startCommercialViewLoad'),
+];
+
 it('translates risk rules and derives the daily commission next action', () => {
   expect(riskRuleLabel('LOW_MARGIN')).toBe('毛利率低于政策门槛');
   expect(riskRuleLabel('OVERDUE_AR')).toBe('存在逾期应收');
@@ -232,6 +246,7 @@ it('captures artificial-turf project handoff fields without test-channel evidenc
     ...readOnlineEditorSources(),
     ...readDocumentSupportSources(),
     ...readGovernanceSources(),
+    ...readCommercialStoreSources(),
     readBoundSource('./crm/customer360-view.ts', 'export function customer360Content'),
     readBoundSource('./shared/shell-presentation.ts', 'export function navIcon'),
     readBoundSource('./shared/role-insights.ts', 'export function roleTaskInsight'),
