@@ -57,6 +57,18 @@
 
 ## 失败史与边界
 
+### 后补：9429a31源码全CI与TD-TEST-006工具候选
+
+源码检查点 `9429a31` 稳定干净实际HEAD完整CI真实exit0/177525.943ms（`/tmp/kingturf-3c2-9429a31-head-ci-2026-10-16.log`），结束HEAD不变/工作树空；API117/17099、web9/114、database3/68、domain3/14、config1/4、types1/1、原PG链、读源22/CDP纯JS6、39/19、结构0/31、预算11368/1898、build/audit均绿，协调独立通过。CI不替代浏览器闭环。
+
+先登记TD-TEST-006（台账现38项，原37历史不改），业务影响无，仅自有CDP工具；新增driver.test.mjs，对旧driver真实运行moving测试exit1，实际在x40派发而最终稳定中心是x65，日志 `/tmp/kingturf-cdp-stable-click-old-red-2026-10-16.log`。修正仅driver：初始scroll一次并锁同一真实DOM节点；同一原60×50ms/绝对3秒预算中，连续两次相隔50ms均connected/非零/中心在viewport/真实center hit、x/y/width/height各≤0.5px且scroll位置同；包含目标或DOM顺序在目标之前的sidebar nav-children当前running/pending max-height transition不可放行，不等待无关常驻/opacity动画。getAnimations不可用时回退几何/命中检查、trace标注API可用性。最终point直接真实press/release，不再scroll、不改hash、不静默retry；原waitFor/onlyRoute/业务/Playwright/网络/清理不变。
+
+新driver10项纯JS真绿，含moving、相关/前序布局transition、无关动画、换节点、隐藏/遮挡/越界/持续移动统一deadline无输入、错route仍失败且只点一次；deadline负向仅测试进程局部Date.now虚拟时钟，不改真实超时。连原fixture/network6共16绿，日志 `/tmp/kingturf-cdp-stable-click-{unit,all-unit}-2026-10-16.log`，不计web114。CI仅既有node测试命令精确增加driver.test路径，无依赖/lock变更。
+
+新driver无trace运行 `--probes --sales-views --pricing-views`，WbkqpO真实exit0/13case（原7+sales3+pricing3），日志 `/tmp/kingturf-cdp-stable-click-real13-2026-10-16.log`；DOM44/viewport15/route37/text34/overflow22，session/customers/opportunities/ctrs/solutions/policies/policyEvaluations/quotes/organizations各5、cost6/detail2，blocked/unknown/failed0。自有preview2886115与root/profile清理全真，截图 `/tmp/kingturf-cdp-preflight-WbkqpO-probes.png`。此非全21视图/Playwright覆盖。
+
+独立只读复核driver/10用例/最小CI接入无必要阻塞；采样到派发仍有有限竞态，**不声称彻底消除误点，不由新绿反推旧两次失败根因全证**。业务源码保持9429a31不变，工具单责提交后干净实际HEAD全CI仍待实跑。下文原待验证语句保留各自时点；一次本补充多文件patch因prettier表格空格与匹配行不同被原子拒绝，未应用半补丁，按实际行重做。
+
 生成脚本两次非唯一切片/一次parse预检定位失败，均在应用业务补丁前中止；首个整文件补丁输出过大截断导致JSON解析失败，亦未应用。初次类型检查exit2（入口遗留引用），改为同原闭包rebuild后通过；初次结构门禁4强制，继续按真实focus恢复、核算按钮、报价提交、纯状态/键盘表达式分解，途中类型检查再次拦住新增return换行导致的void（尚未运行该候选业务），改为括号表达式保持原值；第二/第三结构门禁分别拦tabs7层/核算消息6层，继续真实分解后0/31。原嵌套门禁/白名单未放宽。首计划证明误把SourceFile.text全格式当literal比较而红，修比较器排除SourceFile元文本而保留实际literal；逆展开1–3红因未剥quoteContext.ports类型桥，修证明器后第4与final绿，未为证明改业务条件。一次能力命令误用不存在的analysis路径，MODULE_NOT_FOUND，不计通过；改跑实际verify_frontend_capability_manifest.mjs后39/19绿。
 
 源码与本组最小探头单责提交后，稳定干净实际HEAD完整ci:local仍须真实跑；其后driver可靠性单责闭环与最终文档HEAD另验证，再续已授权3c③。回滚本组恢复85affd3，保留3a/3b/R7门禁；原Playwright九spec/config仍未执行且阶段5前全补跑。3f后停整批人工验收，4/5与其他保护区不启动。

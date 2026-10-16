@@ -17,12 +17,14 @@
 | [QUALITY_SCORE.md](QUALITY_SCORE.md)                                             | 按域质量评分（可复算依据）                                                                                                                                              | 常驻                    |
 | [design-docs/core-beliefs.md](design-docs/core-beliefs.md)                       | 核心信念（争议裁决依据）                                                                                                                                                | 常驻                    |
 | [exec-plans/active/harness-migration.md](exec-plans/active/harness-migration.md) | 3c①源码a34df41稳定干净全CI0/167522.718ms；70绑定457断言/114/变异/CDP10及首失败史齐，当前完成证据归并、文档HEAD全CI后续3c②；共享残留归宿/Playwright补跑/保护区保持（§7） | 常驻                    |
-| [exec-plans/tech-debt-tracker.md](exec-plans/tech-debt-tracker.md)               | 技术债台账（37 条，新增TD-GATE-003未修复，旧36条历史保持）                                                                                                              | 常驻                    |
+| [exec-plans/tech-debt-tracker.md](exec-plans/tech-debt-tracker.md)               | 技术债台账（现38项，含TD-TEST-006工具可靠性；旧37历史保持）                                                                                                             | 常驻                    |
 | [local-acceptance-cleanup.md](local-acceptance-cleanup.md)                       | `.local-acceptance/` 本地产物清理边界与手动脚本说明                                                                                                                     | 常驻                    |
 | [HARNESS-RULES.md](HARNESS-RULES.md)                                             | 施工规则（竣工验收后按其 §14 归档）                                                                                                                                     | 常驻（施工期）          |
 | [WORKSPACE_ROUTE_ISOLATION.md](WORKSPACE_ROUTE_ISOLATION.md)                     | 工作区路由隔离说明（2026-09-06）                                                                                                                                        | 已归档-只读（事件复盘） |
 
 ## docs/adr（架构决策记录，10 篇）
+
+3c②现时后补：源码9429a31干净HEAD全CI0；TD-TEST-006自有driver单责候选旧红→新10/纯JS总16及无trace合并13绿，原失败史/有限竞态保留。台账现38项（原37历史不改），最终工具HEAD全CI待核，详见下方3c②证据。
 
 [3c①线索方案完成证据](evidence/frontend-3c1-sales-2026-10-16.md)：a34df41稳定干净全CI0/167522.718ms，三视图守恒/70绑定457断言/114/真实变异/旧新CDP10与首失败史、共享残留归宿和回滚齐。
 

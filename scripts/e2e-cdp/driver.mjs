@@ -26,15 +26,34 @@ export function createDriver(send) {
         `(() => {if(globalThis.__cdpNavTrace)return;globalThis.__cdpNavTrace=[];document.addEventListener('click',event=>{const n=event.target.closest?.('[data-app-route],.nav-parent');if(n)globalThis.__cdpNavTrace.push({route:n.dataset.appRoute??null,parent:n.dataset.navRoutes??null,hash:location.hash,at:performance.now()});},true);})()`,
       );
     await evaluate(
-      `document.querySelector(${JSON.stringify(selector)})?.scrollIntoView({block:'center',inline:'center'})`,
+      `(() => {const node=document.querySelector(${JSON.stringify(selector)});globalThis.__cdpClickTarget=node;node?.scrollIntoView({block:'center',inline:'center'});})()`,
     );
-    await waitFor(
-      `(() => {const n=document.querySelector(${JSON.stringify(selector)});if(!n?.getClientRects().length)return false;const r=n.getBoundingClientRect();const hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return !!hit&&(n===hit||n.contains(hit));})()`,
-      'unobscured click target',
-    );
-    const rect = await evaluate(
-      `(() => {const node=document.querySelector(${JSON.stringify(selector)});if(!node||!node.getClientRects().length)throw Error('missing visible target');node.scrollIntoView({block:'center',inline:'center'});const r=node.getBoundingClientRect();const point={x:r.x+r.width/2,y:r.y+r.height/2};if(${trace}){const hit=document.elementFromPoint(point.x,point.y)?.closest('[data-app-route],.nav-parent');const parent=document.querySelector('.nav-parent[data-nav-routes~="'+(node.dataset.appRoute??'')+'"]');point.trace={at:performance.now(),hash:location.hash,selector:${JSON.stringify(selector)},target:node.dataset.appRoute??null,expanded:parent?.getAttribute('aria-expanded')??null,hit:hit?.dataset.appRoute??hit?.dataset.navRoutes??null,rect:{x:r.x,y:r.y,width:r.width,height:r.height},scrollY,animations:document.getAnimations().map(a=>({state:a.playState,time:a.currentTime,target:a.effect?.target?.className??null}))};}return point;})()`,
-    );
+    // One shared original ~3s budget; never extend it with another animation wait.
+    // Retain the actual node, sample its final hit/geometry, and do not scroll again.
+    const deadline = Date.now() + 3000;
+    let previous = null;
+    let rect;
+    for (let attempt = 0; attempt < 60 && Date.now() < deadline; attempt++) {
+      const candidate = await evaluate(
+        `(() => {const node=document.querySelector(${JSON.stringify(selector)});if(!node||node!==globalThis.__cdpClickTarget||!node.isConnected)throw Error('click target disappeared or changed');if(!node.getClientRects().length)return null;const r=node.getBoundingClientRect();const point={x:r.x+r.width/2,y:r.y+r.height/2,width:r.width,height:r.height,scrollX,scrollY};if(r.width<=0||r.height<=0||point.x<0||point.y<0||point.x>=innerWidth||point.y>=innerHeight)return null;const hit=document.elementFromPoint(point.x,point.y);if(!hit||!(node===hit||node.contains(hit)))return null;const sidebar=node.closest('.sidebar');const groups=[...(sidebar?.querySelectorAll('.nav-children')??[])].filter(group=>group.contains(node)||(group.compareDocumentPosition(node)&Node.DOCUMENT_POSITION_FOLLOWING)!==0);if(groups.some(group=>(group.getAnimations?.()??[]).some(animation=>animation.transitionProperty==='max-height'&&(animation.playState==='running'||animation.pending))))return null;if(${trace}){const routeHit=hit.closest('[data-app-route],.nav-parent');const parent=document.querySelector('.nav-parent[data-nav-routes~="'+(node.dataset.appRoute??'')+'"]');point.trace={at:performance.now(),hash:location.hash,selector:${JSON.stringify(selector)},target:node.dataset.appRoute??null,expanded:parent?.getAttribute('aria-expanded')??null,hit:routeHit?.dataset.appRoute??routeHit?.dataset.navRoutes??null,rect:{x:r.x,y:r.y,width:r.width,height:r.height},scrollY,layoutAnimationApi:groups.every(group=>typeof group.getAnimations==='function'),animations:document.getAnimations().map(a=>({state:a.playState,time:a.currentTime,target:a.effect?.target?.className??null}))};}return point;})()`,
+      );
+      if (
+        candidate &&
+        previous &&
+        ['x', 'y', 'width', 'height'].every(
+          (key) => Math.abs(candidate[key] - previous[key]) <= 0.5,
+        ) &&
+        candidate.scrollX === previous.scrollX &&
+        candidate.scrollY === previous.scrollY &&
+        Date.now() < deadline
+      ) {
+        rect = candidate;
+        break;
+      }
+      previous = candidate;
+      await delay(50);
+    }
+    if (!rect) throw new Error('DOM condition timed out: stable unobscured click target');
     if (trace) console.log(JSON.stringify({ kind: 'nav-click-before', ...rect.trace }));
     for (const type of ['mousePressed', 'mouseReleased'])
       await send('Input.dispatchMouseEvent', {
