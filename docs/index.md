@@ -17,12 +17,14 @@
 | [QUALITY_SCORE.md](QUALITY_SCORE.md)                                             | 按域质量评分（可复算依据）                                                                                                    | 常驻                    |
 | [design-docs/core-beliefs.md](design-docs/core-beliefs.md)                       | 核心信念（争议裁决依据）                                                                                                      | 常驻                    |
 | [exec-plans/active/harness-migration.md](exec-plans/active/harness-migration.md) | 3c⑩源码78d726c实际HEAD全CI0；root3066/完整800行14逆展开/70公开457链/15红绿/旧新37与正常33/29齐，完成docs另全CI后续共享及3d–3f | 常驻                    |
-| [exec-plans/tech-debt-tracker.md](exec-plans/tech-debt-tracker.md)               | 技术债台账（现41项，新增TD-WEB-005旧编辑器比较后遮挡实测仅登记；旧40及更早历史保持）                                          | 常驻                    |
+| [exec-plans/tech-debt-tracker.md](exec-plans/tech-debt-tracker.md)               | 技术债台账（现42项，新增TD-PERF-003旧失败删除新代缓存风险待核实仅登记；旧41及更早历史保持）                                   | 常驻                    |
 | [local-acceptance-cleanup.md](local-acceptance-cleanup.md)                       | `.local-acceptance/` 本地产物清理边界与手动脚本说明                                                                           | 常驻                    |
 | [HARNESS-RULES.md](HARNESS-RULES.md)                                             | 施工规则（竣工验收后按其 §14 归档）                                                                                           | 常驻（施工期）          |
 | [WORKSPACE_ROUTE_ISOLATION.md](WORKSPACE_ROUTE_ISOLATION.md)                     | 工作区路由隔离说明（2026-09-06）                                                                                              | 已归档-只读（事件复盘） |
 
 ## docs/adr（架构决策记录，10 篇）
+
+[3c⑪剩余共享证据](evidence/frontend-3c11-remaining-shared-2026-10-16.md)：候选12新TS≤101/完整函数95/AST4/root2545，renderer/service与18声明逆证明/70公开457链/12红绿/新37及正常33齐；正常29与实际HEAD全CI待跑，新增TD-PERF-003只登记待核实。
 
 [3c⑩在线文档证据](evidence/frontend-3c10-document-editor-2026-10-16.md)：源码78d726c稳定干净实际HEAD全CI0/181480.679ms；16TS≤172/完整函数165/AST5/root3066，完整800行14逆展开/70公开457链/15目标红绿、旧新37及正常33/29齐，三轮失败史与TD-WEB-005只登记保留；完成docs另全CI后续共享→3d–3f。
 

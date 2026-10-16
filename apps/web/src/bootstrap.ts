@@ -1,5 +1,25 @@
+import { createDocumentReadService } from './shared/document-read-service';
+import { createDocumentConnectorRenderer } from './shared/document-connectors';
+import {
+  onlineTemplateKey,
+  BUSINESS_DOCUMENT_SUBJECTS,
+  businessDocumentSubjectLabel,
+  businessDocumentPrefill,
+} from './shared/document-bindings';
+import {
+  businessDocumentOption,
+  sanitizeBusinessDocumentHtml,
+  businessDocumentText,
+  renderBusinessDocumentComparison,
+} from './shared/document-html';
+import { printOnlineBusinessDocument } from './shared/document-print';
+import { customer360Content } from './crm/customer360-view';
+import { navIcon, viewportFor } from './shared/shell-presentation';
+export { viewportFor } from './shared/shell-presentation';
+import { installRoleTaskInsights } from './shared/role-insights';
+export { roleTaskInsight, type RoleTaskInsight } from './shared/role-insights';
+import { installRouteSectionNavigation } from './shared/route-sections';
 import { createOnlineDocumentEditor } from './shared/online-editor';
-import type { BusinessDocumentPageSize, DocumentConnector } from './shared/online-editor-types';
 import { installWorkspaceListTools } from './shared/workspace-list-tools';
 import { BUSINESS_DOCUMENT_TEMPLATES, templatesForRoute } from './shared/document-templates';
 import {
@@ -12,6 +32,7 @@ import {
   decimalValue,
   currencyLabel,
   displayMoney,
+  displayTime,
 } from './shared/business-format';
 import {
   businessEventLabel,
@@ -47,9 +68,6 @@ export { CrmController, visibleCrmSections } from './crm/controller';
 import { createFetchCommercialApi } from './shared/commercial-http';
 export { createFetchCommercialApi } from './shared/commercial-http';
 import {
-  APP_ROUTE_LABELS,
-  routeViewSelector,
-  APP_ROUTES,
   applyRouteVisibility,
   navigationDisposers,
   installAppNavigation,
@@ -77,7 +95,7 @@ export type {
   CostMatrixPage,
 } from './commercial/types';
 export { createFetchCrmApi } from './shared/crm-http';
-import type { Customer, CrmPermission, Employee, Customer360 } from './crm/types';
+import type { Customer, CrmPermission, Employee } from './crm/types';
 export type { Customer, Lead, Employee, Customer360, CrmApi, CrmPermission } from './crm/types';
 import { createShellSidebar, createShellOverview } from './crm/shell-frame';
 import { appendDocumentLibrary } from './shared/document-library';
@@ -94,12 +112,7 @@ import { appendWorkspaceFinance } from './commercial/workspace-finance';
 import { appendWorkspaceOperations } from './commercial/workspace-operations';
 import { assignCommercialRouteViews, assignLegacyRouteViews } from './commercial/workspace-routes';
 import { appendLegacyCommercialPanels } from './commercial/workspace-legacy-panels';
-import type {
-  Viewport,
-  RoleWorkspaceProfile,
-  NavIconName,
-  BusinessDocumentTemplate,
-} from './shared/shell-types';
+import type { Viewport, RoleWorkspaceProfile } from './shared/shell-types';
 export type { Viewport, RoleWorkspaceProfile } from './shared/shell-types';
 import { json, requestId } from './http';
 import type { SessionDto } from './session';
@@ -299,25 +312,6 @@ export function visibleAppRoutes(permissions: ReadonlySet<string>): ReadonlySet<
   return routes;
 }
 
-export type RoleTaskInsight = Readonly<{
-  recordLabel: string;
-  stateLabel: string;
-  attention: boolean;
-}>;
-
-export function roleTaskInsight(
-  recordCount: number,
-  statusLabels: readonly string[],
-): RoleTaskInsight {
-  const attentionPattern = /待|逾期|异常|失败|驳回|拒绝|未分配|冻结|草稿/u;
-  const attentionCount = statusLabels.filter((label) => attentionPattern.test(label)).length;
-  return {
-    recordLabel: recordCount > 0 ? `${String(recordCount)} 条可见业务记录` : '暂无可见业务记录',
-    stateLabel: attentionCount > 0 ? `${String(attentionCount)} 项需关注` : '当前无阻塞',
-    attention: attentionCount > 0,
-  };
-}
-
 export function roleWorkspaceProfile(permissions: ReadonlySet<string>): RoleWorkspaceProfile {
   const domains: string[] = [];
   if (permissions.has('executive-dashboard:read')) domains.push('经营管理');
@@ -402,8 +396,6 @@ export function commercialRevisionPath(section: string, rootId: string): string 
   )[section];
   return definition ? `${definition[0]}/${encodeURIComponent(rootId)}/${definition[1]}` : null;
 }
-export const viewportFor = (width: number): Viewport =>
-  width < 640 ? 'mobile' : width < 1024 ? 'tablet' : 'desktop';
 
 /** Server grants drive workspace affordances; every action remains server-authorized. */
 export function visibleCommercialSections(permissions: ReadonlySet<CommercialPermission>) {
@@ -931,324 +923,14 @@ export function commercialWorkspaceStructure(
   return workspace;
 }
 
-const renderDocumentConnectors = (connectorGrid: HTMLElement, saved = false): void => {
-  const progress = el(
-    'p',
-    'operation-status',
-    saved ? '配置已保存，正在刷新渠道状态…' : '正在加载发送与翻译连接器…',
-  );
-  progress.setAttribute('role', 'status');
-  connectorGrid.replaceChildren(progress);
-  void onlineDocumentApi<{ items: readonly DocumentConnector[] }>('/api/v1/document-connectors')
-    .then(({ items }) => {
-      connectorGrid.replaceChildren();
-      if (saved) {
-        progress.textContent = '配置已保存。返回文档后可重新检查发送条件。';
-        connectorGrid.append(progress);
-      }
-      if (items.length === 0) throw new Error('未读取到连接器，请重试或联系管理员');
-      for (const connector of items) {
-        const card = el('article', 'document-connector-card');
-        card.append(
-          el(
-            'span',
-            `role-task-state ${connector.status === 'READY' ? 'success' : 'warning'}`,
-            connector.status === 'READY'
-              ? '已配置'
-              : connector.status === 'DISABLED'
-                ? '已停用'
-                : '待配置',
-          ),
-          el('strong', '', connector.label),
-          el(
-            'small',
-            '',
-            `${connector.provider} · ${connector.senderIdentity ?? '未设置发送身份'}`,
-          ),
-        );
-        const configure = el('button', 'secondary compact', '配置');
-        configure.type = 'button';
-        configure.addEventListener('click', () => {
-          openForm(
-            document.body,
-            `配置${connector.label}`,
-            '只填写非敏感元数据和密钥引用名称。真实密钥由运维放入受控密钥存储。',
-            [
-              {
-                name: 'provider',
-                label: '服务提供方代码',
-                required: true,
-                value: connector.provider,
-                placeholder: '例如 RESEND 或 META_CLOUD_API',
-              },
-              {
-                name: 'displayName',
-                label: '内部显示名称',
-                required: true,
-                value: connector.displayName,
-              },
-              {
-                name: 'senderIdentity',
-                label: '发送身份/账号',
-                value: connector.senderIdentity ?? '',
-              },
-              {
-                name: 'secretReference',
-                label: '安全密钥引用',
-                value: connector.secretReference ?? '',
-                placeholder: 'KINGTURF_CONNECTOR_…',
-                hint: '只填密钥名称，不得在此粘贴令牌、密码或 API Key。',
-              },
-              {
-                name: 'configuration',
-                label: '非敏感配置 JSON',
-                type: 'textarea',
-                value: JSON.stringify(connector.configuration ?? {}, undefined, 2),
-              },
-              {
-                name: 'status',
-                label: '状态',
-                type: 'select',
-                required: true,
-                value: connector.status,
-                options: [
-                  { value: 'UNCONFIGURED', label: '待配置' },
-                  { value: 'READY', label: '启用' },
-                  { value: 'DISABLED', label: '停用' },
-                ],
-              },
-            ],
-            '保存连接器配置',
-            async (values) => {
-              const configurationText = values.configuration ?? '';
-              const senderIdentity = values.senderIdentity?.trim() ?? '';
-              const secretReference = values.secretReference?.trim() ?? '';
-              let configuration: Record<string, unknown>;
-              try {
-                configuration = JSON.parse(
-                  configurationText.length > 0 ? configurationText : '{}',
-                ) as Record<string, unknown>;
-              } catch {
-                throw new Error('非敏感配置必须是有效 JSON');
-              }
-              await onlineDocumentApi(`/api/v1/document-connectors/${connector.connector}`, {
-                method: 'PUT',
-                body: JSON.stringify({
-                  provider: values.provider,
-                  displayName: values.displayName,
-                  senderIdentity: senderIdentity.length > 0 ? senderIdentity : null,
-                  secretReference: secretReference.length > 0 ? secretReference : null,
-                  configuration,
-                  status: values.status,
-                  expectedVersion: connector.version,
-                }),
-              });
-              renderDocumentConnectors(connectorGrid, true);
-            },
-          );
-        });
-        card.append(configure);
-        connectorGrid.append(card);
-      }
-    })
-    .catch((failure: unknown) => {
-      connectorGrid.replaceChildren(
-        el(
-          'p',
-          'error',
-          (saved ? '配置已保存，但刷新失败：' : '') +
-            (failure instanceof Error ? failure.message : '连接器配置加载失败'),
-        ),
-      );
-      const retry = el('button', 'secondary', '重试加载配置');
-      retry.type = 'button';
-      retry.addEventListener('click', () => {
-        renderDocumentConnectors(connectorGrid, saved);
-      });
-      connectorGrid.append(retry);
-    });
-};
-
-const onlineTemplateKey = (template: BusinessDocumentTemplate, route: AppRoute): string =>
-  `${template.file.slice(0, 2)}-${route}`;
-
-const onlineDocumentApi = <T>(path: string, init?: RequestInit): Promise<T> => {
-  const token = sessionStorage.getItem('kingturf.session');
-  if (!token) throw new Error('登录状态已失效，请重新登录');
-  return json<T>(path, token, init);
-};
-
-const onlineDocumentReadCache = new Map<string, Promise<unknown>>();
-const clearSessionReadCache = (): void => {
-  onlineDocumentReadCache.clear();
-};
-const onlineDocumentRead = <T>(path: string): Promise<T> => {
-  const cached = onlineDocumentReadCache.get(path);
-  if (cached) return cached as Promise<T>;
-  const request = onlineDocumentApi<T>(path).catch((error: unknown) => {
-    onlineDocumentReadCache.delete(path);
-    throw error;
-  });
-  onlineDocumentReadCache.set(path, request);
-  return request;
-};
-
-const BUSINESS_DOCUMENT_SUBJECTS: Partial<
-  Record<AppRoute, Readonly<{ endpoint: string; type: string; numberKeys: readonly string[] }>>
-> = {
-  quotes: {
-    endpoint: '/api/v1/quotes',
-    type: 'quote',
-    numberKeys: ['quoteNumber', 'number', 'id'],
+const renderDocumentConnectors = createDocumentConnectorRenderer({
+  get onlineDocumentApi() {
+    return onlineDocumentApi;
   },
-  contracts: {
-    endpoint: '/api/v1/contracts',
-    type: 'contract',
-    numberKeys: ['contractNumber', 'number', 'id'],
-  },
-  'sales-orders': {
-    endpoint: '/api/v1/sales-orders',
-    type: 'sales-order',
-    numberKeys: ['orderNumber', 'number', 'id'],
-  },
-  'production-orders': {
-    endpoint: '/api/v1/production-orders',
-    type: 'production-order',
-    numberKeys: ['orderNumber', 'number', 'id'],
-  },
-  shipments: {
-    endpoint: '/api/v1/shipment-releases',
-    type: 'shipment-release',
-    numberKeys: ['trackingNumber', 'shipmentNumber', 'id'],
-  },
-};
+});
 
-const businessDocumentSubjectLabel = (
-  item: Record<string, unknown>,
-  keys: readonly string[],
-): string => {
-  for (const key of keys) if (typeof item[key] === 'string' && item[key]) return item[key];
-  return typeof item.id === 'string' ? item.id : '业务记录';
-};
-
-const businessDocumentPrefill = (item: Record<string, unknown> | undefined): string => {
-  if (!item) return '';
-  const labels: Readonly<Record<string, string>> = {
-    quoteNumber: '报价编号',
-    contractNumber: '合同编号',
-    orderNumber: '订单编号',
-    customerName: '客户名称',
-    totalAmount: '含税金额',
-    currency: '币种',
-    deliveryDate: '交付日期',
-    trackingNumber: '物流单号',
-  };
-  return Object.entries(labels)
-    .filter(([key]) => item[key] !== undefined && item[key] !== null)
-    .map(([key, label]) => `${label}：${String(item[key])}`)
-    .join('\n');
-};
-
-const businessDocumentOption = (label: string, value: string): HTMLOptionElement => {
-  const option = document.createElement('option');
-  option.textContent = label;
-  option.value = value;
-  return option;
-};
-
-const sanitizeBusinessDocumentHtml = (value: string): string => {
-  const parsed = new DOMParser().parseFromString(value, 'text/html');
-  const allowed = new Set([
-    'B',
-    'BR',
-    'DIV',
-    'EM',
-    'H2',
-    'H3',
-    'I',
-    'LI',
-    'OL',
-    'P',
-    'STRONG',
-    'U',
-    'UL',
-  ]);
-  for (const node of Array.from(parsed.body.querySelectorAll('*'))) {
-    if (!allowed.has(node.tagName)) {
-      node.replaceWith(document.createTextNode(node.textContent));
-      continue;
-    }
-    for (const attribute of Array.from(node.attributes)) node.removeAttribute(attribute.name);
-  }
-  return parsed.body.innerHTML;
-};
-
-const businessDocumentText = (content: Readonly<{ body?: string; html?: string }>): string => {
-  if (!content.html) return content.body ?? '';
-  const parsed = new DOMParser().parseFromString(content.html, 'text/html');
-  return parsed.body.textContent;
-};
-
-const renderBusinessDocumentComparison = (
-  target: HTMLElement,
-  earlier: string,
-  latest: string,
-  earlierVersion: number,
-  latestVersion: number,
-): void => {
-  const left = earlier.split('\n');
-  const right = latest.split('\n');
-  const rows = Math.max(left.length, right.length);
-  target.replaceChildren(
-    el('h3', '', `V${String(earlierVersion)} 与 V${String(latestVersion)} 对比`),
-  );
-  const grid = el('div', 'business-document-diff-grid');
-  for (let index = 0; index < rows; index += 1) {
-    const changed = (left[index] ?? '') !== (right[index] ?? '');
-    grid.append(
-      el('pre', changed ? 'changed' : '', left[index] ?? ''),
-      el('pre', changed ? 'changed' : '', right[index] ?? ''),
-    );
-  }
-  target.append(grid);
-};
-
-const printOnlineBusinessDocument = (
-  title: string,
-  html: string,
-  pageSize: BusinessDocumentPageSize,
-): void => {
-  const popup = window.open('', '_blank');
-  if (!popup) throw new Error('浏览器阻止了打印窗口，请允许本站打开新窗口');
-  const page = pageSize === 'adaptive' ? 'A4 portrait' : pageSize.replace('-', ' ');
-  popup.document.title = title;
-  const style = popup.document.createElement('style');
-  style.textContent = `
-    @page { size: ${page}; margin: 18mm 17mm; }
-    * { box-sizing: border-box; }
-    body { margin: 0; color: #111; background: #fff; font-family: "Songti SC", SimSun, serif; font-size: 11pt; line-height: 1.8; }
-    h1 { margin: 0 0 12mm; text-align: center; font: 700 20pt/1.35 "PingFang SC", sans-serif; }
-    h2 { margin: 8mm 0 3mm; font-size: 15pt; break-after: avoid; }
-    h3 { margin: 6mm 0 2mm; font-size: 12.5pt; break-after: avoid; }
-    p { margin: 0 0 3mm; orphans: 3; widows: 3; }
-    li { break-inside: avoid; }
-    .document-meta { margin-bottom: 8mm; padding-bottom: 4mm; border-bottom: 1px solid #bbb; color: #555; font-family: "PingFang SC", sans-serif; font-size: 9pt; }
-    @media screen { body { max-width: 210mm; margin: 20px auto; padding: 18mm 17mm; box-shadow: 0 8px 28px #0002; } }
-  `;
-  popup.document.head.append(style);
-  const meta = popup.document.createElement('div');
-  meta.className = 'document-meta';
-  meta.textContent = `金特夫企业经营管理系统 · 打印时间 ${new Date().toLocaleString('zh-CN')}`;
-  const heading = popup.document.createElement('h1');
-  heading.textContent = title;
-  const content = popup.document.createElement('main');
-  content.innerHTML = sanitizeBusinessDocumentHtml(html);
-  popup.document.body.append(meta, heading, content);
-  window.setTimeout(() => {
-    popup.focus();
-    popup.print();
-  }, 200);
-};
+const { onlineDocumentApi, clearSessionReadCache, onlineDocumentRead } =
+  createDocumentReadService();
 
 const openOnlineDocumentEditor = createOnlineDocumentEditor({
   businessDocumentOption,
@@ -1260,104 +942,6 @@ const openOnlineDocumentEditor = createOnlineDocumentEditor({
   renderDocumentConnectors,
   printOnlineBusinessDocument,
 });
-const displayTime = (timestamp: string | undefined) =>
-  timestamp ? new Date(timestamp).toLocaleString('zh-CN') : '时间未知';
-
-function customer360Content(view: Customer360): HTMLElement {
-  const content = el('section', 'customer-360-content');
-
-  const contacts = el('section', 'detail-section contacts-section');
-  contacts.append(el('h3', '', '联系人'));
-  if (view.contacts.length === 0) contacts.append(el('p', 'empty', '暂无可见联系人'));
-  for (const contact of view.contacts) {
-    const card = el('article', 'info-card contact-card');
-    card.append(
-      el('strong', '', `${contact.name}${contact.primary === true ? ' · 主要联系人' : ''}`),
-    );
-    if (contact.title) card.append(el('span', 'contact-title', contact.title));
-    const details = el('p', 'contact-details');
-    const visibleDetails = [
-      Object.hasOwn(contact, 'email') ? contact.email : undefined,
-      Object.hasOwn(contact, 'phone') ? contact.phone : undefined,
-    ].filter((item): item is string => typeof item === 'string' && item.length > 0);
-    details.textContent =
-      visibleDetails.length > 0 ? visibleDetails.join(' · ') : '联系方式受限或未提供';
-    card.append(details);
-    contacts.append(card);
-  }
-
-  const ownership = el('section', 'detail-section ownership-section');
-  ownership.append(el('h3', '', '归属历史'));
-  if (view.ownership.length === 0) ownership.append(el('p', 'empty', '暂无可见归属记录'));
-  for (const item of view.ownership) {
-    const row = el('article', 'history-row');
-    row.append(
-      el('strong', '', item.ownerId),
-      el('span', '', item.reason),
-      el(
-        'time',
-        '',
-        `${displayTime(item.startedAt)}${item.endedAt ? ` — ${displayTime(item.endedAt)}` : ' — 当前'}`,
-      ),
-    );
-    ownership.append(row);
-  }
-
-  const leads = el('section', 'detail-section related-leads-section');
-  leads.append(el('h3', '', '关联线索'));
-  if (view.leads.length === 0) leads.append(el('p', 'empty', '暂无可见关联线索'));
-  for (const lead of view.leads) {
-    const row = el('article', 'history-row related-lead');
-    row.append(
-      el('strong', '', lead.title ?? lead.id),
-      el('span', '', `${lead.source ?? '来源未知'} · ${lead.status ?? '状态未知'}`),
-      el('time', '', displayTime(lead.createdAt)),
-    );
-    leads.append(row);
-  }
-
-  const timeline = el('section', 'detail-section activity-timeline');
-  timeline.append(el('h3', '', '活动时间线'));
-  const activities = [...view.activities].sort(
-    (left, right) => Date.parse(right.occurredAt) - Date.parse(left.occurredAt),
-  );
-  if (activities.length === 0) timeline.append(el('p', 'empty', '暂无可见活动'));
-  for (const activity of activities) {
-    const row = el('article', 'timeline-item');
-    row.append(
-      el('time', '', displayTime(activity.occurredAt)),
-      el('strong', '', businessEventLabel(activity.type)),
-      el('p', '', activity.summary),
-    );
-    timeline.append(row);
-  }
-
-  const opportunities = el('section', 'detail-section related-opportunities-section');
-  opportunities.append(el('h3', '', '关联商机'));
-  if (view.opportunities.length === 0) opportunities.append(el('p', 'empty', '暂无可见关联商机'));
-  for (const item of view.opportunities) {
-    const row = el('article', 'history-row related-opportunity');
-    const amount = item.value?.amount;
-    const currency = item.value?.currency;
-    const probability =
-      typeof item.probabilityBasisPoints === 'number'
-        ? `${(item.probabilityBasisPoints / 100).toFixed(0)}%`
-        : '概率受限';
-    row.append(
-      el('strong', '', item.name ?? item.id),
-      el(
-        'span',
-        '',
-        `${businessStateLabel(item.status)} · ${currency && amount ? displayMoney(currency, amount) : '金额受限'} · ${probability}`,
-      ),
-      el('time', '', item.expectedCloseDate ?? '预计日期受限'),
-    );
-    opportunities.append(row);
-  }
-
-  content.append(contacts, ownership, leads, opportunities, timeline);
-  return content;
-}
 
 function replaceRouteView(current: HTMLElement, replacement: HTMLElement): void {
   if (!current.isConnected) return;
@@ -1371,111 +955,6 @@ function replaceRouteView(current: HTMLElement, replacement: HTMLElement): void 
     installRoleTaskInsights(shell);
     applyRouteVisibility(shell);
   }
-}
-
-function installRouteSectionNavigation(shell: HTMLElement): void {
-  for (const previous of shell.querySelectorAll('.route-section-nav')) previous.remove();
-  const routeContext = shell.querySelector<HTMLElement>('[data-route-context]');
-  if (!routeContext?.parentElement) return;
-  for (const route of APP_ROUTES) {
-    if (route === 'overview' || route === 'governance') continue;
-    const sections = Array.from(shell.querySelectorAll<HTMLElement>('[data-route-view]'))
-      .filter((view) => (view.dataset.routeView ?? '').split(/\s+/u).includes(route))
-      .map((view) => ({ view, heading: view.querySelector<HTMLElement>('h2, h3') }))
-      .filter(
-        (entry): entry is { view: HTMLElement; heading: HTMLElement } =>
-          entry.heading !== null && entry.heading.textContent.trim() !== APP_ROUTE_LABELS[route],
-      );
-    const unique = sections.filter(
-      (entry, index) =>
-        sections.findIndex(
-          (candidate) => candidate.heading.textContent === entry.heading.textContent,
-        ) === index,
-    );
-    if (unique.length < 2) continue;
-    const nav = el('nav', 'route-section-nav');
-    nav.setAttribute('data-route-view', route);
-    nav.setAttribute('aria-label', `${APP_ROUTE_LABELS[route]}页面分区`);
-    nav.append(el('span', 'route-section-label', '本页导航'));
-    for (const { view, heading } of unique.slice(0, 6)) {
-      const button = el('button', 'route-section-link', heading.textContent.trim());
-      button.type = 'button';
-      button.addEventListener('click', () => {
-        view.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
-      nav.append(button);
-    }
-    routeContext.parentElement.insertBefore(nav, routeContext.nextSibling);
-  }
-}
-
-function installRoleTaskInsights(shell: HTMLElement): void {
-  for (const task of Array.from(shell.querySelectorAll<HTMLElement>('[data-role-task-route]'))) {
-    const route = task.getAttribute('data-role-task-route');
-    if (!route) continue;
-    const scopes = Array.from(
-      shell.querySelectorAll<HTMLElement>(routeViewSelector(route as AppRoute)),
-    );
-    const records = scopes.reduce(
-      (total, scope) =>
-        total +
-        scope.querySelectorAll(
-          '.solution-list > *, .decision-list > *, .quote-list > *, .qtc-list > *, .order-360-list > *, .risk-list > *, .production-order-grid > *, .mrp-proposal-grid > *, .shipment-grid > *, .queue-list > *, article',
-        ).length,
-      0,
-    );
-    const statusLabels = scopes.flatMap((scope) =>
-      Array.from(
-        scope.querySelectorAll<HTMLElement>(
-          '.status-badge, .ctr-state, .version-pin, .queue-status, .severity-badge',
-        ),
-      ).map((item) => item.textContent.trim()),
-    );
-    const insight = roleTaskInsight(records, statusLabels);
-    const state = task.querySelector<HTMLElement>('.role-task-state');
-    const count = task.querySelector<HTMLElement>('.role-task-count');
-    if (state) {
-      state.textContent = insight.stateLabel;
-      state.classList.toggle('attention', insight.attention);
-    }
-    if (count) count.textContent = insight.recordLabel;
-  }
-}
-
-const NAV_ICON_PATHS: Readonly<Record<NavIconName, readonly string[]>> = {
-  overview: ['M3 3v7h7V3H3Z', 'M14 3v4h7V3h-7Z', 'M14 11v10h7V11h-7Z', 'M3 14v7h7v-7H3Z'],
-  sales: ['M4 19V9', 'M10 19V5', 'M16 19v-7', 'M22 19H2'],
-  operations: ['M4 5h16v14H4z', 'M8 9h8', 'M8 13h5'],
-  customers: [
-    'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2',
-    'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z',
-    'M22 21v-2a4 4 0 0 0-3-3.87',
-    'M16 3.13a4 4 0 0 1 0 7.75',
-  ],
-  opportunities: ['M12 2v20', 'M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6'],
-  cost: ['M3 3v18h18', 'M7 16l4-4 3 3 5-7'],
-  contracts: ['M6 2h9l5 5v15H6z', 'M14 2v6h6', 'M9 13h6', 'M9 17h6'],
-  receivables: ['M2 7h20v10H2z', 'M6 12h4', 'M17 10v4'],
-  production: ['M3 21V9l6 4V9l6 4V3h6v18z', 'M7 17h2', 'M13 17h2'],
-  quality: ['M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z', 'm9 12 2 2 4-4'],
-  delivery: [
-    'M3 6h13v11H3z',
-    'M16 10h3l3 3v4h-6z',
-    'M7 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z',
-    'M18 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z',
-  ],
-  governance: [
-    'M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z',
-    'M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.12 3.67-.08-.03a1.7 1.7 0 0 0-1.84-.28l-.28.16a1.7 1.7 0 0 0-.84 1.48V22h-4.24v-.08a1.7 1.7 0 0 0-.84-1.48l-.28-.16a1.7 1.7 0 0 0-1.84.28l-.08.03-2.12-3.67.06-.06A1.7 1.7 0 0 0 4.6 15v-.32a1.7 1.7 0 0 0-.99-1.55L3.5 13.1V8.9l.11-.03a1.7 1.7 0 0 0 .99-1.55V7a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.12-3.67.08.03a1.7 1.7 0 0 0 1.84.28l.28-.16A1.7 1.7 0 0 0 9.36.06V0h4.24v.08a1.7 1.7 0 0 0 .84 1.48l.28.16a1.7 1.7 0 0 0 1.84-.28l.08-.03 2.12 3.67-.06.06A1.7 1.7 0 0 0 19.4 7v.32a1.7 1.7 0 0 0 .99 1.55l.11.03v4.2l-.11.03a1.7 1.7 0 0 0-.99 1.55V15Z',
-  ],
-};
-
-function navIcon(name: NavIconName): HTMLElement {
-  const icon = el('span', 'nav-icon');
-  icon.setAttribute('aria-hidden', 'true');
-  const paths = NAV_ICON_PATHS[name].map((data) => `<path d="${data}"></path>`).join('');
-  icon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
-  return icon;
 }
 
 export function createCrmShell(

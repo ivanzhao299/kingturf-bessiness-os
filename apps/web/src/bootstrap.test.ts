@@ -96,6 +96,25 @@ const readOnlineEditorSources = (): string[] => [
   readBoundSource('./shared/online-editor-export.ts', 'export function bindOnlineEditorExport'),
 ];
 
+const readDocumentSupportSources = (): string[] => [
+  readBoundSource('./shared/document-read-service.ts', 'export function createDocumentReadService'),
+  readBoundSource(
+    './shared/document-connector-configuration.ts',
+    'export function openDocumentConnectorConfiguration',
+  ),
+  readBoundSource(
+    './shared/document-connector-card.ts',
+    'export function appendDocumentConnectorCard',
+  ),
+  readBoundSource(
+    './shared/document-connectors.ts',
+    'export function createDocumentConnectorRenderer',
+  ),
+  readBoundSource('./shared/document-bindings.ts', 'export const BUSINESS_DOCUMENT_SUBJECTS'),
+  readBoundSource('./shared/document-html.ts', 'export const sanitizeBusinessDocumentHtml'),
+  readBoundSource('./shared/document-print.ts', 'export const printOnlineBusinessDocument'),
+];
+
 it('translates risk rules and derives the daily commission next action', () => {
   expect(riskRuleLabel('LOW_MARGIN')).toBe('毛利率低于政策门槛');
   expect(riskRuleLabel('OVERDUE_AR')).toBe('存在逾期应收');
@@ -133,6 +152,11 @@ it('captures artificial-turf project handoff fields without test-channel evidenc
   const source = [
     readBoundSource('./bootstrap.ts', 'export function commercialWorkspaceStructure'),
     ...readOnlineEditorSources(),
+    ...readDocumentSupportSources(),
+    readBoundSource('./crm/customer360-view.ts', 'export function customer360Content'),
+    readBoundSource('./shared/shell-presentation.ts', 'export function navIcon'),
+    readBoundSource('./shared/role-insights.ts', 'export function roleTaskInsight'),
+    readBoundSource('./shared/route-sections.ts', 'export function installRouteSectionNavigation'),
     readBoundSource('./shared/document-templates.ts', 'export const BUSINESS_DOCUMENT_TEMPLATES'),
     readBoundSource('./shared/business-format.ts', 'export const recordValue'),
     readBoundSource('./shared/business-labels.ts', 'export const businessEventLabel'),
@@ -351,7 +375,11 @@ it('makes authentication and startup progress explicit, single-flight and recove
 
 it('uses the canonical shipment release source and caches repeated document reference reads', () => {
   const source = [
-    readBoundSource('./bootstrap.ts', 'const onlineDocumentReadCache'),
+    readBoundSource(
+      './shared/document-read-service.ts',
+      'export function createDocumentReadService',
+    ),
+    readBoundSource('./shared/document-bindings.ts', 'export const BUSINESS_DOCUMENT_SUBJECTS'),
     readBoundSource(
       './shared/contextual-documents.ts',
       'export function appendContextualDocuments',
@@ -1121,6 +1149,7 @@ describe('web bootstrap', () => {
     const source = [
       readBoundSource('./bootstrap.ts', 'const openOnlineDocumentEditor'),
       ...readOnlineEditorSources(),
+      ...readDocumentSupportSources(),
       readBoundSource(
         './commercial/workspace-legacy-panels.ts',
         'export function appendLegacyCommercialPanels',

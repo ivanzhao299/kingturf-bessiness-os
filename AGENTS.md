@@ -13,7 +13,7 @@ KingTurf 业务操作系统：面向草坪行业外贸业务的 ERP（CRM→报�
 - 架构总览与依赖方向：见 `ARCHITECTURE.md`
 - 设计理念与操作原则（争议裁决依据）：见 `docs/design-docs/core-beliefs.md`
 - 当前执行计划与进度（基础共享→editor/listtools→3d–3f，原Playwright补跑保持）：见 `docs/exec-plans/active/` §4.4及§7
-- 已知技术债（40 条台账，含已解决历史项及仅登记的TD-WEB-004、TD-TEST-007）：见 `docs/exec-plans/tech-debt-tracker.md`
+- 已知技术债（42 条台账，含已解决历史项及仅登记的TD-WEB-004/005、TD-TEST-007、待核实TD-PERF-003）：见 `docs/exec-plans/tech-debt-tracker.md`
 - CI 与发布决策（非 Tauri，仅 workflow_dispatch 部署，无 tag/Release）：见 `docs/CI.md`
 - 全部文档索引：见 `docs/index.md`
 - 关键决策记录：见 `docs/adr/`（10 个 ADR）

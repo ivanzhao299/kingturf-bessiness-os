@@ -50,3 +50,6 @@ export const displayMoney = (currency: unknown, value: unknown): string => {
     maximumFractionDigits: 2,
   }).format(amount);
 };
+
+export const displayTime = (timestamp: string | undefined) =>
+  timestamp ? new Date(timestamp).toLocaleString('zh-CN') : '时间未知';

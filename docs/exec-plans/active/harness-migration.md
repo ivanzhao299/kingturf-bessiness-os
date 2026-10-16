@@ -19,7 +19,8 @@
 - **当前执行状态（2026-10-16，3c⑩候选验证中）**：⑨完成docs5ec8a65实际干净HEAD全CI0/179473.404ms；editor15runtime/1type≤172/完整函数165/AST5/root3066，完整800行14逆展开/五live accessor与延迟history getter/70公开457链/15目标红绿及独立实际审齐，旧NXK2Es/新6mdAvK扩展37真实0且计数同。另正常33/29与实际HEAD全CI待跑；三轮旧失败史保留、TD-WEB-005仅登记，现41项。其余shared→3d–3f及3f后整批人工验收保持，上方“当前”均历史时点。
 - **规则文档**：`docs/HARNESS-RULES.md`（施工期常驻，竣工验收后按 §14 拆解归档）
 - **当前执行状态（2026-10-16，3c⑩实施与独立复核完成）**：源码78d726c稳定干净实际HEAD完整CI真实0/181480.679ms，结束HEAD不变/树空；16TS≤172/完整函数165/AST5/root3066，完整原800行14逆展开/五live accessor与成功点history getter/70公开457链/15目标红绿、旧新37与正常33/29齐。三轮失败史保留、TD-WEB-005只登记/41台账；完成docs实际HEAD另全CI后继续剩余共享→3d–3f，不重复许可，3f后停供整批人工验收。上方“候选/待跑”均其时点历史。
-- **配套文件**：问题清单 `docs/exec-plans/tech-debt-tracker.md`（41 条，含已解决历史项及仅登记的TD-WEB-004/005、TD-TEST-007）；CI 决策 `docs/CI.md`；度量脚本 `scripts/analysis/repo-metrics.mjs`
+- **当前执行状态（2026-10-16，3c⑪候选）**：输入⑩完成docs9fdcaf0实际干净HEAD全CI0/180514.504ms；12新TS=11runtime1type、另原displayTime迁到既有shared formatter，≤101/完整函数95/AST4/root2545。完整renderer二helper/late getter alias逆展开、service四原声明/18原声明/剩余入口与import边/70公开457链/12实际目标红绿/独立候选审齐；新37及正常33真0，正常29与提交后实际HEAD全CI待跑。TD-PERF-003仅登记旧catch代际候选，生产影响待核实、现42项；其余治理3d→3e→3f继续，3f后整批人工验收保持，上方“当前”均历史时点。
+- **配套文件**：问题清单 `docs/exec-plans/tech-debt-tracker.md`（42 条，含已解决历史项及仅登记的TD-WEB-004/005、TD-TEST-007、待核实TD-PERF-003）；CI 决策 `docs/CI.md`；度量脚本 `scripts/analysis/repo-metrics.mjs`
 
 ## 0.5 ZCode 执行契约（计划确认后对每次执行会话生效）
 
@@ -3663,6 +3664,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+2026-10-16，3c⑪剩余共享候选：9fdcaf0稳定干净实际HEAD完整CI真实0/180514.504ms，结束HEAD不变/树空；仅doc服务/呈现、客户360、图标/viewport/洞察/分区导航。12新TS（11runtime/1type）≤101/完整函数95/AST4，另既有business-format仅新增原displayTime供root商业ports与CRM同ref，root3066→2545；renderer完整137行二helper/两个late API getter alias逆展开AST相等，service四原声明与18声明/root剩余AST顺序/import18边/70公开457链全等。原读源2fail112仅集合/cache实际锚适配恢复114，11新runtime+displayTime目标逐一真红→还原114，初type遗漏跨域displayTime/unused史保留，独立实际候选审无阻塞。78d726c→9fdcaf0业务/tools零diff/同bundle，明确复用此前6mdAvK37/dDT4Qq33/2cHNqS29旧基线，不伪称重跑；新lXBvrT扩展37、nBMYVk正常33已真0且原计数同，各网络三零/owned资源清理真，正常29与提交后实际干净HEAD全CI待跑。R4新增TD-PERF-003只登记旧请求失败可能删新代缓存风险，未复现实验/未修/不推论泄露，42台账/旧41历史保留。回滚本组模块/原time迁位/root/读源整组，前editor/driver/register工具不撤；继续治理3d→3e→3f、3f后整批人工验收/Playwright补跑/保护区保持，见[⑪证据](../../evidence/frontend-3c11-remaining-shared-2026-10-16.md)。
 
 2026-10-16，3c⑩实施与独立复核完成：源码78d726c稳定干净实际HEAD完整CI真实0/181480.679ms，结束HEAD仍78d726c/树空（`/tmp/kingturf-3c10-78d726c-head-ci-2026-10-16.log`）；API117/17099、web114/database68/domain14/config4/types1/PG链/读源22/CDP纯JS28/39能力19路径/0硬31旧软/预算11369-1898/audit齐。16TS≤172/完整函数165/AST5/root3066，14helper完整原800行AST逆展开、五live getter与成功点history callback getter、两私有type/root剩余AST顺序/import42边/70公开457链、15目标红绿与独立实际审无阻塞。旧NXK2Es/新6mdAvK扩展37同计数真0；另新dDT4Qq正常33和2cHNqS原夹具正常29真0，各网络三零及owned资源清理全真，不混覆盖口径；首35/35遮挡与36异步close/type循环/初AST6/proof尾逗号失败史完整保留。TD-WEB-005只登记不修，现41项；回滚git revert 78d726c整组模块/root/readsource/新editor opt-in，前driver/register工具不撤，完成docs独立。完成docs实际HEAD另全CI后继续剩余共享→3d–3f，不重复许可，3f后整批人工验收/Playwright补跑/保护区保持，见[⑩完成证据](../../evidence/frontend-3c10-document-editor-2026-10-16.md)。
 
