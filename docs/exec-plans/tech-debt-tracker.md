@@ -41,7 +41,7 @@
 | TD-SEC-006   | complaint 锚点谓词语义弱于其他域（osr 单表、TEAM 无 depth、无组织有效性校验）                 | P2     | 安全/一致性   | **变更行为**（若统一）   | 待决策（批次 1 后）                | 待处理           |
 | TD-SEC-007   | foundation 通知收件人谓词缺省省略 actor_org/authorized_org 两处组织有效性 JOIN                | P2     | 安全/一致性   | **变更行为**（若统一）   | 待决策（批次 1 后）                | 待处理           |
 | TD-PERF-001  | 前端无自动重试/断路，失败依赖人工重试按钮                                                     | P2     | 性能          | **变更行为**（仅实施时） | 待排期                             | 待处理           |
-| TD-PERF-002  | 13 处 N+1 查询候选点未判定                                                                    | P2     | 性能          | 无                       | 批次 2（子批 2f）                  | 待处理           |
+| TD-PERF-002  | 13 处 N+1 候选已判定；7项修复待排                                                             | P2     | 性能          | 无                       | 批次 2（子批 2f）                  | 已判定／待修复   |
 | TD-TEST-001  | 2 个仓储模块完全无测试，2 个近乎无覆盖                                                        | P1     | 测试          | 无                       | 阶段 5                             | 待处理           |
 | TD-TEST-002  | 无任何覆盖率配置与阈值                                                                        | P1     | 测试/门禁     | 无                       | 阶段 5                             | 待处理           |
 | TD-TEST-003  | 6 个仓储模块仅 mock 路由级测试，SQL 路径未验证                                                | P2     | 测试          | 无                       | 阶段 5                             | 待处理           |
@@ -331,6 +331,41 @@
 - **证据**：`node scripts/analysis/audit-scan.mjs` S6 节（for-of 循环块内含 `await` 的语法级检测，方法与限制见计划 §3.8）命中 13 处；是否构成真 N+1 取决于调用频次与数据量，**未判定**（当前无慢查询故障报告）。
 - **修复建议**：批次 2 子批 2f 迁移路由时逐个判定：确证者（循环次数受用户输入影响）登记修复子任务并单独处理；误报者在本条标注关闭。
 - **业务行为影响**：无（判定阶段零代码改动；确证修复另登记） ｜ **关联批次**：批次 2（子批 2f） ｜ **验收方式**：13 处全部有判定结论（确证/误报）记录于本条
+
+**原始登记快照说明**：上列位置/未判定是779dea3扫描时点的历史证据，保留不回写；该提交树中尚无本台账文件，历史13由后续台账固定清单及git show 779dea3的循环上下文重建，不冒称当时已有台账文件。以下为本轮2f判定，不替换为现时扫描新总数。
+
+**2f本轮判定（授权c75dd7b；业务源码基线7e94bbe）**：13/13完成，7个确证逐项SQL扇出、6个误报/有界点，判定任务完成、确证修复未实施/待独立授权，不等于性能风险清零。仓储文件相对7e94bbe零变动。按用户判准区分“每次循环”和“整请求累计”：事务不是集合上界；明确HTTP sequence范围＋立即UNIQUE失败中止可构成业务硬界，不能把routing的大界主观说成无界；普通SQL integer/UUID有限值域或服务器35MB请求体不是业务条目配额。所有频次是静态调用机制，生产QPS/行数分布/耗时未测，无新增判定SQL探针或性能基准。
+
+下表旧文件均位于779dea3的apps/api/src，当前文件均位于7e94bbe的apps/api/src；每条以循环集合及所在符号关联，不按相近行号猜测。q只计所述循环SQL（固定前置/审计/事务常数另计），n为集合长度，m为实际生成allocation数，t为访问候选次数。
+
+| ID  | 固定历史位置 → 当前位置/符号与每次触发机制                                                                        | 上界来源、SQL频次与判定证据                                                                                                                                                                                                                                                                      | 结论/后续                                                                               |
+| --- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| H01 | contract-document-repositories.ts:188 → 同文件:176 createEnvelope/input.signers；每签署请求一次                   | app.ts:2209强制sequence 1..20；DB0061:41–46立即UNIQUE(tenant_id,envelope_id,sequence)，串行无逐项catch，首次重复失败后事务退出；q≤min(n,21)，成功≤20。仅当前HTTP路径上界，不外推任意repo直调                                                                                                     | 误报，关闭无界N+1候选；保留20成功/21尝试的失败时点证据                                  |
+| H02 | foundation-repositories.ts:142 → event-repositories.ts:91 claimInTransaction/rows；每claim调用一次                | event-repositories.ts:47–64在repo校验limit默认20、1..100，CLAIM_SQL带LIMIT；n≤100，每行一次operationalAudit（共享helper固定SQL）；不是无界DB rows审计                                                                                                                                            | 误报，有界审计，关闭此候选；不是证明审计成本为零                                        |
+| H03 | foundation-repositories.ts:276 → event-repositories.ts:224 InProcessEventDispatcher.pollOnce/claimed；每轮poll    | 此调用省略limit，默认20（claim通用上限100）；每event调用handler并complete或fail；只证明本轮枚举≤20，用户注入handler内部工作不在本判定。限定检索apps/api/src的InProcessEventDispatcher及.pollOnce(，未找到生产调用，定义/测试不当实际生产频次                                                     | 误报，有限后台轮询，关闭此候选；不外推无限poll总运行期或handler无SQL                    |
+| H04 | foundation-repositories.ts:434 → notification-repositories.ts:175 insertRecipients/去重recipients；每通知创建一次 | app.ts:404–408 strings无条数配额；notification-repositories.ts:65–73、109–116只要求非空UUID及scope查询全部合法。每recipient两INSERT，q=2n；合格租户员工集合可增长，不是固定权限条目枚举；35MB不作业务上界                                                                                        | 确证，纯写型逐项扇出（非典型读N+1），修复R1                                             |
+| H05 | foundation-repositories.ts:995 → business-object-repositories.ts:132 relationships/schema.fields；每定义/版本一次 | domain/src/index.ts:103–112的validateBusinessObjectSchema限制fields≤100；关系字段为子集；每关系一INSERT、q≤100                                                                                                                                                                                   | 误报，有界schema步骤，关闭此候选                                                        |
+| H06 | procurement-repositories.ts:259 → 同文件:226 createSupplierQuote/input.lines；每报价创建一次                      | routes/procurement-supplier-quote-create.ts:62–80仅非空数组，无条数配额；每行一个INSERT…SELECT含RFQ/资格关联，q=n；已issued RFQ与qualification只限定每项有效性，RFQ行数无固定配额                                                                                                                | 确证，读写混合INSERTSELECT扇出，修复R2                                                  |
+| H07 | procurement-repositories.ts:436 → 同文件:403 receive/input.lines；每收货请求一次                                  | routes/procurement-receipt-create.ts:61–93非空但无条数配额；403–468每有效行查PO line/查location/插lot/插receipt-line/插movement，成功q=5n，出错可提前终止；PO/tenant/剩余数量校验非固定集合配额                                                                                                  | 确证，逐行读取型并伴写入，修复R3                                                        |
+| H08 | manufacturing-repositories.ts:207 → 同文件:180 createBom/line.substitutes（外层:165 input.lines.entries）         | priority在routes/manufacturing-bom-create.ts:101限定1..1000，DB0036 per-line UNIQUE priority；每line最多1000成功/第1001次失败。内层有界，但外层lines无业务条数配额（route:64–110，line_number=index+1）；整请求成功q=n+Σs_i≤1001n，没有固定n界。历史简单for-of正则未命中解构外层，不能漏掉上下文 | 确证，嵌套纯写扇出，修复R4；不把内层称严格无界                                          |
+| H09 | manufacturing-repositories.ts:295 → 同文件:268 createRouting/input.operations；每工艺创建一次                     | routes/manufacturing-routing-create.ts:84 sequence 1..100000；DB0036:56–61立即UNIQUE(tenant_id,routing_version_id,sequence)，串行无逐项catch、失败rollback/rethrow；q≤min(n,100001)，成功≤100000                                                                                                 | 误报，按明确硬界关闭无界候选；高上界写扇出风险保留，独立授权评估，不与低界20/50/100等价 |
+| H10 | qtc-repositories.ts:890 → 同文件:849 reconcile/items；每核销run一次                                               | :841–846查tenant/customer/currency下未结INVOICE，无LIMIT；逐访问item SELECT least，正额allocation再SELECT subtraction，余额耗尽后下一轮可break；q=t+m≤2n、t≤n，余额/金额不提供固定条数配额                                                                                                       | 确证，DB结果驱动读取/算术查询型，修复R5                                                 |
+| H11 | qtc-repositories.ts:932 → 同文件:891 reconcile/allocations；同一run第二循环                                       | m≤n但n来自H10无LIMIT集合；每allocation一个INSERT，q=m，不能把生成数组称固定事务步骤                                                                                                                                                                                                              | 确证，纯写型扇出，修复R6（与R5共享输入、分别核验）                                      |
+| H12 | complaint-repositories.ts:1063 → 同文件:1044 batchTriage/input.items；每batch请求一次                             | routes/complaint-batch-triage.ts:34–53 HTTP限制1..50且拒绝重复ID；每项transitionComplaint有意分项成功/失败，≤50次调用，内部SQL成本不在此逐行DB读取判定                                                                                                                                           | 误报，有界业务batch，关闭此候选；BOUND004大小写既有状态不动                             |
+| H13 | production-cost-repositories.ts:85 → 同文件:86 createPolicy/input.materialRates；每策略创建一次                   | routes/production-cost-policy.ts:64–76只要求非空数组，DB0048:11–14的policy/itemVersion唯一与tenant FK只限定合法性；item versions集合无业务条数配额；每rate INSERT，q=n                                                                                                                           | 确证，纯写型扇出，修复R7                                                                |
+
+**确证关联修复子任务（仅登记，均未授权实施）**：
+
+- TD-PERF-002-R1（H04）：评估批量recipients及delivery INSERT；风险为授权集合、去重、审计、生成ID与错误顺序守恒。
+- TD-PERF-002-R2（H06）：评估集合式RFQ/qualification验证和批量INSERTSELECT；风险为无效行不得悄悄丢弃、首错/行映射/幂等。
+- TD-PERF-002-R3（H07）：评估批量读取PO/location和集合写入；风险为FOR UPDATE锁序/死锁、部分数量冲突、lot/receipt/movement引用与事务证据。
+- TD-PERF-002-R4（H08）：评估BOM lines/substitutes批量写入RETURNING映射；风险为line ID/priority唯一、顺序、首次冲突与整体回滚。
+- TD-PERF-002-R5（H10）：评估精确numeric集合计算/减少逐项算术往返；禁止直接用JS浮点替换PG numeric，需保持due_at/created_at/id顺序、锁、金额、trace/resultHash及幂等。
+- TD-PERF-002-R6（H11）：评估allocation_entries批量INSERT；风险为allocation_order、派生key/canonical_hash、审计与R5联动，不借本登记修改算法。
+- TD-PERF-002-R7（H13）：评估materialRates批量INSERT；风险为FK/重复项首错、策略版本、成本精度、审计/幂等。
+- H09高上界风险：另行评估业务条目配额或集合式写入（改变接受域或SQL锁/错误顺序均须独立授权），本轮不降现有100000序号上界、不修代码。
+
+**覆盖与关闭口径**：6个误报仅关闭“该历史点属于无界N+1”候选，不关闭其他性能/安全债；7个确证仅源码级机制证实，不声称生产已有慢查询事故或已实测吞吐。13点由主代理与只读独立核验交叉确认；未新增PG/SQL判定探针、性能测试或E2E，既有13PG回归不替代上述性能基准。台账仍37顶层条，R1–R7与GATE003-E1为父项关联子任务，不冒算新顶层债。当前A判定完成、业务修复零；待本线稳定HEAD全CI及最终人工验收。
 
 ## 门禁
 
