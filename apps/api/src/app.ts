@@ -200,6 +200,7 @@ import { qualityInspectionOpenRoutes } from './routes/quality-inspection-open.ts
 import { qualityInspectionTransitionRoutes } from './routes/quality-inspection-transitions.ts';
 import { qualityResultRecordRoutes } from './routes/quality-result-record.ts';
 import { qualityDispositionRoutes } from './routes/quality-disposition.ts';
+import { businessDocumentCreateRoutes } from './routes/business-document-create.ts';
 import { businessDocumentConnectorRoutes } from './routes/business-document-connector.ts';
 import {
   businessDocumentConnectorReadRoutes,
@@ -3824,46 +3825,20 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
               'Business document repository unavailable',
               correlationId,
             );
-          const b = objectBody(request.body);
-          allow(b, [
-            'templateKey',
-            'title',
-            'route',
-            'subjectType',
-            'subjectId',
-            'customerId',
-            'salesOrderId',
-            'operatorId',
-            'salespersonId',
-            'assignedTo',
-            'content',
-          ]);
-          return {
-            statusCode: 201,
-            body: await dependencies.businessDocuments.create(
-              {
-                templateKey: string(b.templateKey, 'templateKey'),
-                title: string(b.title, 'title'),
-                route: string(b.route, 'route'),
-                ...(b.subjectType
-                  ? {
-                      subjectType: string(b.subjectType, 'subjectType'),
-                      subjectId: uuid(b.subjectId, 'subjectId'),
-                    }
-                  : {}),
-                ...(b.customerId ? { customerId: uuid(b.customerId, 'customerId') } : {}),
-                ...(b.salesOrderId ? { salesOrderId: uuid(b.salesOrderId, 'salesOrderId') } : {}),
-                ...(b.operatorId ? { operatorId: uuid(b.operatorId, 'operatorId') } : {}),
-                ...(b.salespersonId
-                  ? { salespersonId: uuid(b.salespersonId, 'salespersonId') }
-                  : {}),
-                ...(b.assignedTo ? { assignedTo: uuid(b.assignedTo, 'assignedTo') } : {}),
-                content: jsonObject(b.content, 'content'),
-              },
-              context.actor,
+          const response = await dispatchRoutes(
+            businessDocumentCreateRoutes({
+              repository: () =>
+                dependencies.businessDocuments as Pick<
+                  NonNullable<ApiDependencies['businessDocuments']>,
+                  'create'
+                >,
+              authorization: context,
               correlationId,
-            ),
-          };
+              parsers: { objectBody, allow, string, uuid, jsonObject },
+            }),
+            request,
+          );
+          if (response !== null) return response;
         }
         const businessDocument = /^\/api\/v1\/business-documents\/([0-9a-f-]+)$/u.exec(
           request.pathname,
