@@ -81,6 +81,30 @@ export async function runOwned(command, args, options) {
       aborted,
       processGroup: child.pid,
     };
+  } catch (error) {
+    // Even inspection failure must not cancel the only remaining group cleanup.
+    if (child.pid) {
+      signalGroup(child.pid, 'SIGTERM');
+      await delay(forceAfterMs);
+      signalGroup(child.pid, 'SIGKILL');
+      try {
+        const deadline = Date.now() + drainDeadlineMs;
+        let members = liveGroupMembers(child.pid);
+        while (members.length > 0 && Date.now() < deadline) {
+          await delay(25);
+          members = liveGroupMembers(child.pid);
+        }
+        assert.equal(members.length, 0, 'owned group still has live members');
+      } catch {
+        throw Error(
+          'owned coverage process group ' +
+            String(child.pid) +
+            ' received TERM/KILL but drain could not be verified; inspect it before any more PG work',
+          { cause: error },
+        );
+      }
+    }
+    throw error;
   } finally {
     signal.removeEventListener('abort', abort);
     clearTimeout(force);

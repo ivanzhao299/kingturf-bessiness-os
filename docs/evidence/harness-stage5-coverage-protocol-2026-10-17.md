@@ -10,6 +10,12 @@
 
 ## 首测前进程与输入快照加固
 
+### 首测后的独立复核与异常修复
+
+只读独立复核已逐一比对B记录与实际result/六包JSON的SHA、runId、执行和清理字段、377源码hash、25仓储及三个比例/缺口；全部一致。当前HEAD后续变化不冒充首测HEAD的完整CI证据。
+
+进程表异常已用真实反例复现：临时owned目录中的失败`ps`命令，让leader退出后检查抛错、同组真实后代留活；原实现2过1败，新增用例在“同组应为空”断言红（PID2603596）。用例finally独立KILL并验证排空，只移除其owned临时目录，未碰PG。修复为异常路径仍给已知owned PGID发送TERM、等待后KILL，再检查；若检查仍不可用明确失败、携带PGID要求人工核查，不报drained成功。修复后工具11/11、原ESLint/Prettier通过。同组取消用例还改为后代注册TERM handler后发READY，再触发取消，避免把spawn当作handler已就绪。未运行PG中断实验，不声称脱组后代或PG schema清理已证。
+
 在1068b94后接线owned Linux进程组：每次guard/Vitest独立进程组，SIGINT/SIGTERM传递整组，等待真实close并用仅PID/PGID/state的进程表确认无存活后代；必要强制清理会使测量失败，不能以leader退出充当整树结束。清单校验同时要求groupDrained=true、forcedCleanup=false、aborted=false。启动及完成均要求整个Git工作区干净且HEAD不变，防止只冻结生产源却换测试、配置、runner或依赖。
 
 覆盖工具实际10项通过（inventory8＋process2），后者包含可控Node父子进程拒绝TERM后取消、整组清理验证；原ESLint与Prettier通过。此为无PG的进程实验，不证明实际PG中断后的schema自动清理，也不是六包首测或B值。首测期间主代理不改文件、不并发PG或浏览器任务；失败保留后再处理。
