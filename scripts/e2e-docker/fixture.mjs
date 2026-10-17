@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { spawn, execFileSync } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
+import { createInterface } from 'node:readline';
 import { Database, assertTestDatabaseTarget, migrate } from '../../packages/database/src/index.ts';
 import { PasswordHasher } from '../../apps/api/src/security.ts';
 import { stopChild } from '../e2e-cdp/session-network-fixture.mjs';
@@ -96,12 +97,32 @@ export async function createFixture(connection) {
       onMigration = () => {
         /* Optional lifecycle injection. */
       },
+      onDatabaseFailure,
     ) => {
       assert.equal(users, undefined, 'fixture initialized once');
       signal.throwIfAborted();
       onMigration();
       await migrate(db);
       signal.throwIfAborted();
+      // Match the existing real HTTP fixture: migrate only into owned schema, then expose the
+      // already installed pgcrypto functions. Never create/alter the shared extension or data.
+      const extension = (
+        await db.query(
+          'SELECT n.nspname AS namespace FROM pg_extension e JOIN pg_namespace n ON n.oid=e.extnamespace WHERE e.extname=$1',
+          ['pgcrypto'],
+        )
+      ).rows;
+      assert.deepEqual(
+        extension,
+        [{ namespace: 'public' }],
+        'existing pgcrypto namespace required',
+      );
+      const apiTarget = new URL(scoped);
+      apiTarget.searchParams.set(
+        'options',
+        `-csearch_path=${schema},public -cstatement_timeout=10000 -clock_timeout=3000`,
+      );
+      assertTestDatabaseTarget(apiTarget.href, process.env.NODE_ENV);
       const companyId = randomUUID();
       await db.query(
         "INSERT INTO organizations(id,code,name,organization_type) VALUES($1,$2,'Docker synthetic company','COMPANY')",
@@ -172,12 +193,16 @@ export async function createFixture(connection) {
       signal.throwIfAborted();
       const child = spawn(
         process.execPath,
-        ['--experimental-transform-types', 'apps/api/src/server.ts'],
+        [
+          ...(onDatabaseFailure ? ['--import', './scripts/e2e-docker/database-audit.mjs'] : []),
+          '--experimental-transform-types',
+          'apps/api/src/server.ts',
+        ],
         {
           env: {
             ...process.env,
             NODE_ENV: 'test',
-            DATABASE_URL: scoped.href,
+            DATABASE_URL: apiTarget.href,
             SESSION_SECRET: randomBytes(32).toString('hex'),
             SESSION_TTL_SECONDS: '3600',
             TOKEN_LOGIN_ENABLED: 'true',
@@ -192,10 +217,21 @@ export async function createFixture(connection) {
             ATTACHMENT_LOCAL_DIRECTORY: `/tmp/${schema}`,
             WEBSITE_LEAD_INGEST_SECRET: '',
           },
-          stdio: 'ignore',
+          stdio: ['ignore', 'ignore', onDatabaseFailure ? 'pipe' : 'ignore'],
         },
       );
       children.push(child);
+      if (onDatabaseFailure) {
+        const diagnostics = createInterface({ input: child.stderr, crlfDelay: Infinity });
+        diagnostics.on('line', (line) => {
+          try {
+            const detail = JSON.parse(line);
+            if (detail.kind === 'owned-pg-failure') onDatabaseFailure(detail);
+          } catch {
+            /* Never forward raw API output. */
+          }
+        });
+      }
       let spawnFailed = false;
       child.on('error', () => {
         spawnFailed = true;

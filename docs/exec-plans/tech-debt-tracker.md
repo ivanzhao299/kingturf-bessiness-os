@@ -1,5 +1,7 @@
 # 技术债台账（tech-debt-tracker）
 
+**Docker前置环境新登记（2026-10-17，50顶层项）**：新增TD-TEST-010，本轮owned随机schema完整P1 seed信用POST500、认证已通过；初登记根因待核实，后继安全诊断SQLSTATE42883/credit snapshot插入锚点及owned schema看不到public已装pgcrypto已证，尚不认定产品bug。仅本环境前置候选，业务/SQL/冻结seed步骤不改；旧49/48等为历史。
+
 **批次4交验现时（2026-10-17，仍49顶层项）**：f114ee0稳定干净HEAD全CI实际0/192524.18ms、API17242/Web313与真实网络26/故障9已核。SEC001仅RO完成、强制开放；SEC002登录范围及SEC004按S1–S3人工验收核账实施完成；SEC003按固定六项及真实网络/最终源码CI关闭载体迁移实施项，整批人工验收待本次交付、九旧PW延期仍硬前置；TD-WEB-009窄修实施完成待整批验收。TD-TEST-006新CDP异步失败后继候选待核实，不回写旧解决历史、不新增顶层ID。WEB007/PERF003仅必要同文件代际适配，不整体关闭；其它债不扩修。[统一交验包](../evidence/security-batch4-acceptance-2026-10-17.md)。下方所有旧“现时/开放/未完成”保留原时点。
 
 **TD-WEB-009窄修检查点（仍49项）**：协调/frontier裁为S4内部实现缺陷已授窄修，http精确POST logout仅豁免本地pause、current/proof/服务端不动。新增9测试真实红绿/变异红绿、API17242/Web313全量及原失败DOM链复跑通过，工具完整矩阵/最终干净HEAD CI仍待执行，未整批验收或关闭SEC003。[窄修证据](../evidence/security-batch4-s4-paused-logout-2026-10-17.md)。下方仅登记为此前时点。
@@ -94,6 +96,7 @@
 | TD-TEST-007  | 在线文档广源 '/submit' 实际只命中CTR旧面板，不能单独保障文档提交                              | P2     | 测试精度      | 无                       | 阶段5／另行授权                    | 仅登记，待独立补护栏            |
 | TD-TEST-008  | 新增CDP客户360合成详情遗漏服务端必需字段                                                      | P2     | 测试夹具契约  | 无（工具修正）           | 3f前置独立工具                     | 已修复验证                      |
 | TD-TEST-009  | 三份临时AST证明encoder返回truthy而漏比后续子节点                                              | P1     | 证明工具      | 无（工具修正）           | 3f后独立工具/证据收尾              | 已修完整重核                    |
+| TD-TEST-010  | Docker owned schema信用种子缺已装public.pgcrypto可见性                                        | P2     | 测试环境      | 无（仅工具）             | Docker前置补跑                     | 环境已修/信用通过，整seed另阻断 |
 | TD-GATE-001  | 无 git hooks / commitlint / lint-staged，脏提交仅靠 CI 兜底                                   | P1     | 门禁          | 无                       | 阶段 3                             | 已完成                          |
 | TD-GATE-002  | vitest 无配置文件，参数散落各包 scripts                                                       | P2     | 门禁          | 无                       | 阶段 3                             | 已完成                          |
 | TD-GATE-003  | routes覆盖已修复；E1已撤，恢复31旧豁免                                                        | P1     | 工程门禁      | 无                       | 独立门禁任务／阶段5前复核          | 已验收                          |
@@ -401,6 +404,13 @@
 - **关联批次**：阶段 3 ｜ **验收方式**：故意注入直拼 SQL 的测试提交必须被门禁拦截（实测）✓（三轮样本共 11 个，全部退出码 1）
 
 ## 测试
+
+### TD-TEST-010｜Docker owned schema P1信用种子500
+
+- **初登记/范围**：已guard本地kingturf*test、随机runtime_web* schema、host marker→container READ ONLY同实例核证后，完整冻结seed只换机器认证URL，POST `/api/v1/credit-decisions`真实500；child1/680ms、host1/5050ms，schema/container/API全清。认证绑定两身份真实红绿已证，审批/后继及spec未到达，不写成产品bug。
+- **安全诊断补记**：仅owned API临时观察真实pg.Client.query失败且原SQL/结果不改，`/tmp/kingturf-docker-seed-safe-diagnostic-2026-10-17.log`得到SQLSTATE42883、qtc-repositories.ts:267信用exposure snapshot插入，未输出query/values/body/秘密；迁移0026:79触发器用未限定digest，原authz HTTP fixture:135–140在迁移后把API search_path扩为owned,public。宿主实际owned schema只读to_regprocedure核未限定digest不可见、public.digest可见、pgcrypto extnamespace为public。指向本轮环境少了已安装扩展可见性；后继还须环境修正后完整seed验证，不先称500根因闭环或全seed绿。
+- **候选/边界**：只在owned迁移完成且只读核pgcrypto确在public后，为本轮API运行连接加既有public函数可见性，owned schema仍第一/current_schema与marker同一；不改public数据/创建扩展/迁移/业务SQL/seed语义。由实测决定是否可继续既授补跑，不借500扩大业务修复。
+- **环境验证结果**：仅fixture迁移后只读核pgcrypto extnamespace=public，再为本轮API连接设置owned,public（owned仍第一）；原seed未改业务，信用创建及后继已通过，推进到更后的生产关单成本审批前置失败。`/tmp/kingturf-docker-seed-public-extension-2026-10-17.log`信用不再500，整体seed仍1，不能写成全seed绿。此项环境可见性已修/信用段通过，不改产品SQL/创建扩展；后继生产关单另行登记，不由本环境修正覆盖。前文“待验证”为初登记时点，保护边界见[回环通道证据](../evidence/playwright-docker-loopback-2026-10-17.md)。
 
 ### TD-TEST-006｜自有CDP后继未分类异步失败候选（旧解决历史保留）
 
