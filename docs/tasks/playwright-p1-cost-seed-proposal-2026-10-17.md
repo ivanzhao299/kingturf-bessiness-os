@@ -1,5 +1,7 @@
 # P1关单实际成本种子最小待裁方案（2026-10-17，仅文档）
 
+**后继人裁已批准**：[增量R7原话](playwright-p1-cost-seed-authorization-2026-10-17.md)明确批准本文费率/标识及最小本地步骤；下文“待裁/未获授权”为批准前方案时点。获准不等于实现或实跑，原保护/验收/冲突停报条件全部保持。
+
 ## 事实与授权边界
 
 TD-TEST-011：完整原seed完成生产后直接关单，实际500/P0001/require_approved_cost_before_close；0048迁移:62–67要求APPROVED cost run，50–57不许计算者自批。`apps/api/test/production-postgres.integration.test.ts:224–286`现有顺序为COMPLETED→createPolicy→calculate→异人approve→CLOSED。seed:1165–1174有关单却无policy/run/approve步骤，不能靠改认证URL或环境变量满足。

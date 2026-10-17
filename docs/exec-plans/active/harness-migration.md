@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **P1成本seed最小追加已授（2026-10-17）**：原始人类明确批准按7b1bc62已审方案仅本地关单前成本policy/核算/现有异人批准、原close/其它业务/断言/SQL保持。先等7b1bc6237eeafaa5da5a96ba3ee3c0116a102d6e完整CI真实0/206168.393ms、首尾同HEAD/树空，再独立[追加R7](../../tasks/playwright-p1-cost-seed-authorization-2026-10-17.md)。TD-TEST-011从待裁转已授未实施验证，台账51不提前关闭；新小步真实绑定变异/同schema重复后回既授fixture/A8→B2/第二轮，C2不跑，不重问旧三项，不扩一般阶段5。旧C7停点与失败史保留为批准前历史。
+
 - **Docker Playwright当前C7停点（2026-10-17）**：4e691e5三项R7→ce74386回环/自然Chrome Cookie/Origin与PG只读同一性工具（1流程/14负向）→e2c8ce6仅环境pgcrypto可见性→b13c15a仅seed机器URL/真实CLI绑定红绿。信用段通过但完整冻结seed生产关单500/P0001，trigger require_approved_cost_before_close，旧seed无实际成本政策/计算/独立批准步骤；TD-TEST-011新业务seed范围待人裁，TD-TEST-010环境修正已验，台账51。当前不改成本业务/SQL/seed步骤或spec/PW配置，A8/B2及两轮未执行，C不跑；[完整失败/回滚证据](../../evidence/playwright-docker-seed-auth-2026-10-17.md)。只收口/最后干净HEAD全CI再交协调，旧信用停报/三项pending保历史，不重复索已授许可，不扩一般阶段5。
 
 - **Docker Playwright三项裁定开工（2026-10-17）**：亲读原始人类三项reply，精确批准startup/session-revocation/runtime会话请求/oracle、owned容器真实回环HTTP/PG最小环境通道与seed仅机器token-login URL适配。[增量R7全文](../../tasks/playwright-docker-rulings-2026-10-17.md)独立docs先行；接手c2ff52b稳定干净HEAD完整CI0/190014.635ms。先通道/宿主guard与PG同实例schema宿主marker只读核证，现有GW PG不可达即停，禁止改监听/防火墙/增PG容器；再seed与fixture/oracle逐文件变异、A8→B2/全部绿后第二轮。旧pending为批准前历史，未执行不标绿；两配置/C两生产spec/非S4业务断言冻结，不扩一般阶段5。
@@ -3707,6 +3709,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+- **2026-10-17｜P1成本种子追加R7**：主代理亲读人类消息01a14883-4398-78e3-9698-10a60b02c072批准最小本地种子补齐，严格以已审费率/标识/幂等冲突方案为界。7b1bc62实际完整CI0/206168.393ms、clean/unchanged=true后才续R7，未打断CI。仅本R7 docs先行，父7b1bc62回滚点；独立实现/绑定变异/原close全字节/同schema完整重复与计数检查待执行，未关闭TD-TEST-011，不改产品SQL/业务源码/PW配置/其它assert，不一般阶段5。[未测试]（R7文档校验；后继实测与最终HEAD CI另跑）
 
 - **2026-10-17｜TD-TEST-011具体待裁方案（仅docs）**：协调只读确认0048关单成本/职责分离前置，要求补可审最小本地演示方案，不授权实施。已落[policy→calculate→原不同身份approve→原close](../../tasks/playwright-p1-cost-seed-proposal-2026-10-17.md)，两个BOM主组件费率、合成60/120/30与yarn12.5/backing5候选来源、KT-P1稳定标识/复用幂等/冲突停报/未实跑假设明确；不改业务seed/SQL/触发器/断言、A/B不启动。父cbeb303为此docs回滚点，最后同一稳定干净HEAD完整CI后交协调人裁。[已测试]（文档/独立只读；方案未实施）
 
