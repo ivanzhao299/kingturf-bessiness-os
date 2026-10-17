@@ -3753,6 +3753,7 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 ## 7. 进度与决策日志
 
 - **2026-10-17｜P1货币显示人类增量R7**：父7117c41，亲核原始人类call_dd0e2120495445669087b3dbae8dba45批准最小金额显示适配，[原话与边界](../../tasks/harness-stage5-p1-money-authorization-2026-10-17.md)。仅有main af0de8f/7e3e46c等明确依据的货币词面改独立固定本地化期待；原数值/币种/计数/状态/事件/seed保持，不用产品formatter造期待。其它业务失败/C7、成本提示/TD018/C与第二轮边界保持。本提交只有R7/index/日志，不改期待或产品，后继逐处映射/真变异/实际补跑另提交；回滚本授权docs独立revert须核依赖。[已测试]（授权文档静态，非P1通过）
+- **2026-10-17｜覆盖率首测生命周期检查点**：父1068b94，owned Linux进程组/取消整组清理与首尾全工作区干净快照约束；manifest拒绝未drain、强制清理或中断结果。工具10项实际通过、原lint/format通过；无PG进程实验不冒充PG中断清理或B首测。接线细节见[覆盖率协议](../../evidence/harness-stage5-coverage-protocol-2026-10-17.md)。尚未实测B、不称完整CI通过；回滚本工具/docs/package提交，不涉及产品或workflow。[已测试]（定向工具检查）
 
 - **2026-10-17｜覆盖率首测接线候选**：父e25ac38，唯一直接新dev依赖coverage-v8精确3.2.6，43新定义含必要parser/mapping传递42，无旧版本升级/删除；安装glob deprecated警告保留。[首测协议/来源完整性](../../evidence/harness-stage5-coverage-protocol-2026-10-17.md)。377/25源全集、纯类型空map限定、statement位置、run前UUID/HEAD/hash及exclusive新目录/六包真实close/报告hash时间/前后重枚举，8unit/原lint/format及structure0/29/service0；初动态delete lint1已改Reflect，不降规则。rootCI test换test:coverage，最终三target+B同时拦截；measure不验收。B首测/真实provider/全CI/豁免scanner尚待，不关闭TEST002/不抬分。此依赖+工具接线独立revert可回滚，基线记录后继另提交，产品源零diff。[已测试]（纯工具unit/静态，非真实覆盖率达标）
 

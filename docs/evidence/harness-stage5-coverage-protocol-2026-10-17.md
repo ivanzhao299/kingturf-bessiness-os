@@ -1,5 +1,11 @@
 # 阶段5覆盖率首测口径（测量前冻结）
 
+## 首测前进程与输入快照加固
+
+在1068b94后接线owned Linux进程组：每次guard/Vitest独立进程组，SIGINT/SIGTERM传递整组，等待真实close并用仅PID/PGID/state的进程表确认无存活后代；必要强制清理会使测量失败，不能以leader退出充当整树结束。清单校验同时要求groupDrained=true、forcedCleanup=false、aborted=false。启动及完成均要求整个Git工作区干净且HEAD不变，防止只冻结生产源却换测试、配置、runner或依赖。
+
+覆盖工具实际10项通过（inventory8＋process2），后者包含可控Node父子进程拒绝TERM后取消、整组清理验证；原ESLint与Prettier通过。此为无PG的进程实验，不证明实际PG中断后的schema自动清理，也不是六包首测或B值。首测期间主代理不改文件、不并发PG或浏览器任务；失败保留后再处理。
+
 ## 范围与版本
 
 基线授权28215b0，Vitest固定3.2.6；唯一新增直接依赖拟用@vitest/coverage-v8@3.2.6开发依赖，必要传递依赖变化另列。不升级Vitest、不引Istanbul或其它工具栈。参考[Vitest v3配置](https://v3.vitest.dev/config/#coverage)并核已装3.2.6 `dist/chunks/defaults.*`：enabled=false、all=true、allowExternal=false；v3网站当前patch不冒充精确已装版本。

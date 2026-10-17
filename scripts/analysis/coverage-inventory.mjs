@@ -235,6 +235,9 @@ export function validateRunManifest(manifest, expected, inventory, reportsDirect
     assert.equal(entry.runId, expected.runId, 'old package report');
     assert.equal(entry.exit, 0, 'coverage requires actual successful package completion');
     assert.equal(entry.signal, null, 'interrupted coverage is not a result');
+    assert.equal(entry.groupDrained, true, 'owned process group drain was not verified');
+    assert.equal(entry.forcedCleanup, false, 'successful leader left live descendants');
+    assert.equal(entry.aborted, false, 'cancelled coverage is not a result');
     assert(Number.isSafeInteger(entry.startedAtMs) && Number.isSafeInteger(entry.finishedAtMs));
     assert(entry.startedAtMs >= expected.startedAtMs);
     assert(entry.finishedAtMs >= entry.startedAtMs && entry.finishedAtMs <= manifest.finishedAtMs);

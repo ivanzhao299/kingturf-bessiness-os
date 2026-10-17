@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { spawn, execFileSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve, relative } from 'node:path';
@@ -12,32 +12,56 @@ import {
   summarizeReports,
   validateRunManifest,
 } from './coverage-inventory.mjs';
+import { runOwned } from './coverage-process.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 // Set only from the first real six-package measurement; never auto-update a baseline.
 const baselineDigest = '';
 const mode = process.argv[2];
 assert(['measure', 'check'].includes(mode), 'use coverage-run.mjs measure|check');
+const controller = new AbortController();
+const handlers = new Map(
+  ['SIGINT', 'SIGTERM'].map((signal) => [
+    signal,
+    () => controller.abort(Error('coverage interrupted')),
+  ]),
+);
+for (const [signal, handler] of handlers) process.on(signal, handler);
 const head = () =>
   execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
 const version = (name) =>
   JSON.parse(readFileSync(resolve(root, 'node_modules', name, 'package.json'), 'utf8')).version;
 
 async function run(args, cwd) {
-  const startedAtMs = Date.now();
-  const child = spawn('pnpm', args, {
+  controller.signal.throwIfAborted();
+  const result = await runOwned('pnpm', args, {
     cwd,
     env: { ...process.env, NODE_ENV: 'test' },
-    stdio: 'inherit',
+    signal: controller.signal,
+    onSpawn: (child) => {
+      console.log(
+        JSON.stringify({
+          event: 'coverage-child-owned',
+          group: child.pid,
+          owner: relative(root, cwd) || 'guard',
+        }),
+      );
+    },
   });
-  const result = await new Promise((accept, reject) => {
-    child.once('error', () => reject(Error('coverage child could not start')));
-    child.once('close', (exit, signal) => accept({ exit, signal }));
-  });
-  return { ...result, startedAtMs, finishedAtMs: Date.now() };
+  assert(
+    !result.forcedCleanup,
+    'coverage leader left live descendants; inspect retained PG fixtures',
+  );
+  controller.signal.throwIfAborted();
+  return result;
 }
 
 async function collect() {
+  assert.equal(
+    execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' }).trim(),
+    '',
+    'coverage must start from a committed clean test/config/runner/dependency snapshot',
+  );
   assert.equal(process.env.NODE_ENV, 'test', 'coverage requires NODE_ENV=test and guarded test DB');
   assert(process.env.DATABASE_URL, 'coverage requires DATABASE_URL for the existing test guard');
   const guard = await run(['ci:database:guard'], root);
@@ -96,7 +120,13 @@ async function collect() {
     reports[owner] = JSON.parse(bytes.toString('utf8'));
   }
   manifest.finishedAtMs = Date.now();
+  controller.signal.throwIfAborted();
   assert.equal(head(), expected.head, 'HEAD changed during coverage');
+  assert.equal(
+    execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' }).trim(),
+    '',
+    'test/config/runner/dependency worktree changed during coverage',
+  );
   assert.deepEqual(
     productionInventory(root),
     inventory,
@@ -158,4 +188,6 @@ try {
 } catch (error) {
   console.error('Coverage collection failed: ' + error.message);
   process.exitCode = 1;
+} finally {
+  for (const [signal, handler] of handlers) process.off(signal, handler);
 }
