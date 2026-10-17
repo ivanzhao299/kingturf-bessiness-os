@@ -2,6 +2,8 @@
 
 ## 当前状态与授权
 
+**后继三项已批准（2026-10-17）**：[增量R7原始人类裁定](../tasks/playwright-docker-rulings-2026-10-17.md)批准三份最小会话请求/oracle、owned真实回环HTTP/PG通道及seed机器URL；下文pending/仅提案为此前历史，不代表当前仍缺这三项许可。执行尚需自然Cookie/Origin与PG双侧同一性实证，现有网关PG不可达即停，配置/C/非S4业务保护保持，不预填spec或两轮通过。
+
 基线 `d801237548981d2caa02c22b77f3e774447392b1`，S4实施已收口且完整CI真实0/191602.5ms、首尾同HEAD/clean/unchanged；整批人工验收未预填通过。[R7完整授权](../tasks/playwright-docker-authorization-2026-10-17.md)独立提交 `8772284`。本页是先于A/B执行的逐行库存、环境准备与S4适配提案；本轮截至此处spec、两配置、业务源码均零改，未跑任何spec。只读独立复核覆盖全部12源/两配置，与主代理分类一致。
 
 ## 配置与发现范围

@@ -1,5 +1,7 @@
 # Docker Playwright B 类最小通道候选（2026-10-17，仅提案）
 
+**后继裁定（2026-10-17）**：[三项增量R7](playwright-docker-rulings-2026-10-17.md)已批准本文最小回环通道与seed机器URL；下文“待裁/未授权”为批准前原时点，保留方案与失败史。获准不代表已经实测：PG现有网关端口不可达必须停，不扩监听/防火墙；marker必须由宿主已guard连接先创建，容器只读核对，不能重建自证。两配置/安全旗标/非S4业务/C保护不变。
+
 ## 已证阻断与裁定边界
 
 基线d801237/S4新会话。网关IPv4 HTTP原定通道的preview静态页面已实测200，但Chrome155下isSecureContext=false、合成Secure Cookie不入Jar；实际API配置拒绝将该HTTP网关加入trustedOrigins，runtime配置也拒绝非loopback Web origin。详见[库存与实测](../evidence/playwright-docker-inventory-2026-10-17.md)。不改Secure/Origin、产品源码、PW配置、浏览器安全旗标，不以注入Cookie/伪造Origin代替自然认证。

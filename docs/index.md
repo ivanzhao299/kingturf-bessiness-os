@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[Docker Playwright三项增量裁定R7](tasks/playwright-docker-rulings-2026-10-17.md)：三份会话请求/oracle、真实容器回环HTTP/PG、seed机器URL最小适配已获原始人类批准；配置/业务断言/生产边界保持，先通道实证。
+
 [Docker Playwright B通道最小候选（仅提案）](tasks/playwright-docker-b-channel-proposal-2026-10-17.md)：原网关HTTP下S4阻断、owned真实回环字节转发/PG双侧guard候选及seed最小token-login适配；未执行，配置/业务源码不改，通道变更待裁。
 
 [Docker Playwright全量库存与通道准备](evidence/playwright-docker-inventory-2026-10-17.md)：12源/两配置、A8/B2/C2、逐处S4夹具与非fixture断言边界、网关真实Origin拒绝及本地镜像准备；未跑spec，C禁止。
