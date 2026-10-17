@@ -48,6 +48,8 @@
 
 ## 回滚与最终验证
 
+认证验证工具取消传播定向补记：实际CLI函数真实fetch启动后给host注入SIGTERM，`/tmp/kingturf-docker-seed-auth-abort-bounded-final-2026-10-17.log`非零退出并drain/owned-cleanup；随后`seed-auth-bounded-final`原样正向再次0。每fetch使用外部cancel＋5s deadline，主120s协作截止不冒称任意OS/PG挂起均有界。此负例只证明工具取消闭环，不改变原CLI登录函数/请求和任何业务seed步骤，不抵spec/实际成本审批。
+
 此源小步可独立回滚到ce74386：机器URL与绑定/审计模式/精确lint接线配套撤，业务数据只存在已清理随机schema，不会复活会话/清生产数据。通道ce74386可再独立退到4e691e5；R7再退c2ff52b，保S4实现与人类裁定史。未实际回滚，不push/部署/生产/workflow/新依赖。
 
 最终停点文档/台账/索引/计划收口后另在稳定干净HEAD实际完整ci:local；即使全CI绿，也只表示既有门禁通过，不抵本次完整seed 500、未执行spec/两轮和人类待决。

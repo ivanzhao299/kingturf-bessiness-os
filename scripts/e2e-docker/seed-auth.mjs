@@ -4,7 +4,13 @@ import vm from 'node:vm';
 import ts from 'typescript';
 
 // Extract the actual CLI binding, not a copy of its URL. All fetches below are real local HTTP.
-export async function verifySeedAuthentication(users, signal) {
+export async function verifySeedAuthentication(
+  users,
+  signal,
+  onRequest = () => {
+    /* Optional cancellation proof. */
+  },
+) {
   const source = await readFile(new URL('../seed_p1_demo.mjs', import.meta.url), 'utf8');
   const ast = ts.createSourceFile(
     'seed_p1_demo.mjs',
@@ -20,10 +26,12 @@ export async function verifySeedAuthentication(users, signal) {
   const requests = [];
   const realFetch = async (url, init) => {
     assert.equal(new URL(url).origin, 'http://127.0.0.1:3000');
-    const result = await fetch(url, {
+    const pending = fetch(url, {
       ...init,
       signal: AbortSignal.any([signal, AbortSignal.timeout(5000)]),
     });
+    onRequest();
+    const result = await pending;
     requests.push({
       path: new URL(url).pathname,
       noCookie: !new Headers(init?.headers).has('cookie'),

@@ -72,6 +72,7 @@ assert(
     'fail-preview-spawn',
     'browser-launch-sigterm',
     'seed-auth',
+    'seed-auth-abort',
     'seed-full',
     'seed-diagnose',
   ].includes(mode),
@@ -199,11 +200,25 @@ try {
             : undefined,
         );
         cancellation.signal.throwIfAborted();
-        if (mode === 'seed-auth' || mode === 'seed-full' || mode === 'seed-diagnose') {
+        if (
+          mode === 'seed-auth' ||
+          mode === 'seed-auth-abort' ||
+          mode === 'seed-full' ||
+          mode === 'seed-diagnose'
+        ) {
           phase = mode;
           fixture.assertApiOwned();
-          if (mode === 'seed-auth') {
-            await verifySeedAuthentication(users, cancellation.signal);
+          if (mode === 'seed-auth' || mode === 'seed-auth-abort') {
+            await verifySeedAuthentication(
+              users,
+              cancellation.signal,
+              mode === 'seed-auth-abort'
+                ? () => {
+                    report('seed-auth-inflight-cancel-injected');
+                    setImmediate(() => process.kill(process.pid, 'SIGTERM'));
+                  }
+                : undefined,
+            );
             report('seed-auth-binding', {
               actualCliFunction: true,
               twoSyntheticIdentities: true,
