@@ -133,7 +133,7 @@
 | TD-TEST-010  | Docker owned schema信用种子缺已装public.pgcrypto可见性                                        | P2     | 测试环境       | 无（仅工具）             | Docker前置补跑                     | 环境已修/信用通过，整seed另阻断 |
 | TD-TEST-011  | 冻结P1种子生产关单缺实际成本批准，HTTP500/P0001                                               | P1     | 种子业务前置   | 已修（人类另授最小本地） | Docker前置补跑                     | 本地前置已验证/补跑未完成       |
 | TD-TEST-012  | 冻结文档发送PW旧header索引在额外strict tsc下类型不匹配                                        | P2     | 测试静态类型   | 未修（仅额外诊断）       | 后继独立授权                       | 待核实原门禁/运行影响           |
-| TD-TEST-013  | 成本转报价原成功提示可见性PW失败，前跳转/预选成功                                             | P2     | UI/oracle边界  | 未修（非S4范围）         | Docker首轮发现/待独立裁定          | C7待裁/候选根因未干预实证       |
+| TD-TEST-013  | 成本转报价原成功提示可见性PW失败，前跳转/预选成功                                             | P2     | UI/oracle边界  | 未修（非S4范围）         | Docker首轮发现/待独立裁定          | 冷路径失配确证，产品C7待裁      |
 | TD-TEST-014  | Workspace旧PW夹具首次读取gate/360必填字段不兼容                                               | P2     | 合成测试夹具   | 等待点/字段已授验证关闭  | Docker首轮发现/5230625字段许可     | 真实变异红/还原原4例过          |
 | TD-TEST-015  | Source旧合成应收游标页缺nextCursor                                                            | P2     | 合成测试夹具   | 字段实施已验证关闭       | Docker首轮发现                     | 缺字段/auth真红绿，原3例过      |
 | TD-TEST-016  | P1原浏览器11例失败定位待核                                                                    | P2     | 本地浏览器回归 | C7可见性待裁             | Docker首轮发现                     | 前两例隐藏/其余不推定           |
@@ -496,6 +496,8 @@
 - **边界/裁定**：只读支持旧合成夹具失配，非产品已证；本会话人类call_2a13b5991a4b4354ae99d03ff621b2b7准仅等待q=慢请求、首次原payload返回、原切页/RAF/assert不动。360字段本轮另待裁，不套CDP旧授权；全文件真变异/还原绿未完成。[原话/事实](../tasks/playwright-workspace-fixture-rulings-2026-10-17.md)。
 
 ### TD-TEST-013｜成本转报价成功提示可见性失配
+
+**阶段5后继受控对比已完成**：同原合成case/7完整expect，旧lazy前b210c77原认证PW0/2253ms、当前冷（仅已授auth适配）PW1/7081ms、当前先真实quotes ready后PW0/2134ms；三臂路由/dialog/预选全达，当前冷文本节点曾写但312采样帧无布局/视口可见且末态空，旧/暖有可见帧/末态真。各独立owned身份/只读tmpfs/原forward硬闸及清理全证，未导auth/原DOM；host0只是采集完成，当前冷原assert仍红。[固定SHA/样本/日志/判据与混杂边界](../evidence/harness-stage5-browser-rulings-2026-10-17.md)。独立只读核无结果/保密阻断；不是唯一根因/完整历史环境/像素或全调度证明。已提产品C7选择，未批不改产品/期待、不以暖路径或节点曾存在代原冷可见合同；下方旧“未对比”保留历史，顶层仍61不另增同一问题。
 
 - **事实**：f3882a3干净HEAD全CI0/201874.74ms后，成本临时仅auth候选PW1/12294ms、host1/17663ms，1过1败；前quotes/dialog/decisionId过，原末提示element not found（候选486/还原原501）。原trace只读核201→报价GET200和after@call@305 commercial-status空文本，未输出auth元数据，owned全清、HTML/截图/trace保留。
 - **候选/待裁**：cost-matrix-detail:560–578赋提示→切route，route-navigation:64–79/load→route-read:81–84写已加载→bootstrap:366–368转空，支持lazy覆盖候选，不称干预根因/生产bug/不同store。需确定持续提示合同，另授产品窄修或旧非会话oracle变更，当前只登记不修/不删assert。

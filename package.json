@@ -16,7 +16,7 @@
     "test:coverage-tools": "node --test scripts/analysis/coverage-inventory.test.mjs scripts/analysis/coverage-process.test.mjs scripts/analysis/coverage-exemptions.test.mjs",
     "test:coverage": "pnpm test:release-guardrails && pnpm test:session-network-tools && pnpm test:coverage-tools && node scripts/analysis/coverage-run.mjs check",
     "coverage:measure": "node scripts/analysis/coverage-run.mjs measure",
-    "test:session-network-tools": "node --test scripts/e2e-cdp/session-network.test.mjs scripts/e2e-docker/private-contract.test.mjs scripts/e2e-docker/p1-diagnostics-contract.test.mjs",
+    "test:session-network-tools": "node --test scripts/e2e-cdp/session-network.test.mjs scripts/e2e-docker/private-contract.test.mjs scripts/e2e-docker/p1-diagnostics-contract.test.mjs scripts/e2e-docker/cost-comparison-source.test.mjs",
     "test:release-guardrails": "node --test scripts/validate_release.test.mjs && node --test scripts/analysis/structure-gate.test.mjs && node --test scripts/analysis/service-boundary-gate.test.mjs && node --test scripts/analysis/frontend-runtime-sources.test.mjs scripts/analysis/qtc-root-capture-source.test.mjs && node --test scripts/analysis/csp-nginx-client.test.mjs scripts/e2e-cdp/fixtures.test.mjs scripts/e2e-cdp/network-policy.test.mjs scripts/e2e-cdp/driver.test.mjs scripts/e2e-cdp/csp-observer.test.mjs scripts/e2e-cdp/csp-send.test.mjs scripts/e2e-cdp/cookie-http.test.mjs && PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests/operations -p \"*_test.py\"",
     "build": "pnpm -r build",
     "db:migrate": "pnpm --filter @kingturf/database db:migrate",

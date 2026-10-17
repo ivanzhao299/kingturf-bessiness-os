@@ -1,5 +1,29 @@
 # 阶段5浏览器裁断考古与适配提案（未实施P1期待）
 
+## 成本提示三臂受控对比完成：当前冷路径仍红，等待产品C7
+
+本项按已授P线继续，不因信用/驾驶舱数值待裁而停。新增独立诊断副本，不改原成本文件/7条完整expect链、业务样本、产品、两份config或forward。旧源码选择 `580cc721… refactor(web): lazy-load authorized commercial route sources` 的直接父 `b210c770434e8b9500322ca824cb2dea31e43e2b`（商业store守恒检查点，非最早107aac2环境）；其cost-matrix-detail:561仍赋原提示，用来对照lazy引入前后，不预定可见结论。old frontend由固定Git archive在owned `/dev/shm`构建，当前安装依赖不变；这是旧前端源码＋当前依赖，并非完整历史运行时复原。三臂使用同一当前backend/同Chrome镜像/原1440×1000 viewport与相同合成响应，各自独立owned schema/浏览器上下文；业务数据来自原合成拦截器，非同一DB对象。
+
+旧臂用原认证，新臂仅原已授auth-only补丁：源SHA `7290b42f60ae107770622ac4f685f97308a68b14ede29281648afbc69665c0ca`，补丁SHA `1f77630ed4b01e498a46b299ec3e2fba1c37fc80059231da6953a4f9e5dee2a1`，适配后SHA `8ce3d50454711e0b31008a2a39b47af1ccce5f9d528d35899281b47a9c91a788`，装载逐一校验、无模糊patch。冷臂保持原动作；暖臂只加真实菜单quotes→ready前置，再执行原costing动作，不替换正式冷用例。TypeScript AST实际核三副本原7完整expect链相同，含原最终提示可见断言；仅诊断副本，不能算原成本spec已适配/整文件通过。
+
+| 条件                      | 原单case PW exit/status | PW耗时 | 采样帧数 | 文本节点曾写入 | 采到布局/视口可见帧 | 末态布局/视口可见 | 可比较前置                      |
+| ------------------------- | ----------------------- | -----: | -------: | -------------- | ------------------- | ----------------- | ------------------------------- |
+| 旧冷 b210c77              | 0/passed                | 2253ms |       27 | true           | true/true           | true/true         | quotes/dialog/预选全true        |
+| 当前冷（0b78c94产品构建） | 1/failed                | 7081ms |      312 | true           | false/false         | false/false       | quotes/dialog/预选全true        |
+| 当前先访问quotes再转成本  | 0/passed                | 2134ms |       42 | true           | true/true           | true/true         | 前三项＋warmVisited/ready全true |
+
+每臂命令 `NODE_ENV=test DATABASE_URL=<private guarded loopback> node --experimental-transform-types scripts/e2e-docker/preflight.mjs cost-compare <old-cold|current-cold|current-warm> <fresh-label>`；固定安全日志 `/tmp/kingturf-stage5-cost-{old-cold,current-cold,current-warm}-first-2026-10-17.log`，labels依次stage5-cost-old-cold-1/current-cold-1/current-warm-1。host实际均exit0/null，外围9183/12534/7871ms；**host0只表示采集与清理完成，当前冷PW1没有变绿**。原成本spec、原config及forward实际git diff0；旧bundle SHA `194db52df6c9c3acc473531ebbb05ff6b7d6109cc7bc73ac5b980dcd0c3952dd`，当前bundle同算法SHA `545a13f6d1178aeaf56d0919050b13c41e1f4ec0f93857aa51201cccc849a92d`。
+
+隔离继承原host guard/PG五项同一性只读校验、owned API/preview listener及原4173/5432 relay/5秒超时失败闭环。容器根与repo只读，raw log driver禁用，浏览器临时目录/原trace/错误上下文/原始日志都仅owned tmpfs、不导出；诊断config只为副本指定位置/原line reporter并block service worker，原配置不改。页面原合成路由优先；context下层硬闸拒绝未处理API/外部流量，任何拒绝计数非0则无可比较结果，WebSocket同拒。父端仅重编码固定布尔/有界帧数/status/实际PW exit，错误对象/headers/认证/DOM文本均不导出。
+
+三日志均有pg-verified全true、只读/tmpfs校验true、schemaGone/containerGone/previewGone全true；旧臂RAM源码目录移除确认true。无relay-failure/preflight-failed/container-failed/cleanup-failed。旧构建先独立probe也成功/835ms并清理。未导PNG，不称像素/肉眼证据；旧临时源码/本三臂raw产物随owned资源移除，旧源码可从固定Git ref重建，不清理历史失败原产物。
+
+探针限制：MutationObserver只证固定文本节点曾写入；rAF布局判据为connected/非hidden、display/visibility/opacity、非零rect，视口另要求相交；不含遮挡/持续可读时长/人类肉眼。不能以未采到一帧断言任意调度绝无短帧，也不能单凭旧/新（含必要auth差异）证明唯一根因；本结果足以表明该样本当前冷前置下原可见性合同不满足，暖路径只是对照。独立只读代码/安全日志复核完成，结果和隔离/清理相符。
+
+工具原strict ESLint/format通过，三项自测及整组session-network-tools16项实际0；初版lint多余regex escape和测试误计原expect至少8（实际7）分别真实失败，仅新工具修为合法regex/精确7，再强化完整matcher链与扰动检测，原oracle不动。工具日志 `/tmp/kingturf-stage5-cost-comparison-{tools-first,tools-second,tools-chain-final,network-tools-final}-2026-10-17.log`。生成/afterEach如页面提前关闭则该臂fail-closed不可比，不用假false凑结果。
+
+已向人类提出C7：维持当前冷路径提示可见（另批最小产品修复，原assert保留），或明确接受冷加载覆盖并另审稳定成功合同/冻结期待适配；未答不算批准。不得把节点写过当可见、用暖路径替换冷或删除原失败断言。TD-TEST-013保持开放，原A/B全绿/第二轮仍未完成，C类两份不跑；信用450000与驾驶舱四值仍原期待等待各自裁定。下方“尚未执行”均为本对比前历史，不能覆盖本节实际结果。
+
 ## 数值C7因果考古：快照时序与环境基线（仍未改期待）
 
 31f694e显示回放后，独立只读考古加主执行者核当前源码，区分两类数据问题，不以显示许可覆盖它们：

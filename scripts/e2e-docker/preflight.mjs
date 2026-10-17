@@ -11,6 +11,8 @@ import { validateSpecCommand } from './spec-runner.mjs';
 import { safeLocalCases, safeLocalResult, validateLocalCommand } from './private-contract.mjs';
 import { relayFailureCodes } from './forward.mjs';
 import { safeDiagnostic, safeDiagnosticResult } from './p1-diagnostics-contract.mjs';
+import { prepareOldCostWeb } from './cost-comparison.mjs';
+import { safeCostObservation, validateCostComparison } from './cost-comparison-source.mjs';
 
 const image = 'kingturf-e2e:pw1.62.1-chrome';
 const imageId = 'sha256:1a0e14c3fd2351aab685106ad17d86b0bd38e6ed89cc0d0d2be809579f8dab3e';
@@ -44,9 +46,33 @@ const reportContainer = (value) => {
     'relay-failure': [],
     'p1-diagnostic': [],
     'diagnostics-result': [],
+    'cost-comparison': [],
   };
   assert(Object.hasOwn(schemas, value.event), 'unknown container event');
   const safe = {};
+  if (value.event === 'cost-comparison') {
+    assert.equal(mode, 'cost-compare');
+    validateCostComparison(value.condition, value.label);
+    assert.equal(value.condition, process.argv[3]);
+    assert.equal(value.label, process.argv[4]);
+    assert.equal(localResultSeen, false);
+    assert([0, 1].includes(value.exit));
+    assert(Number.isInteger(value.elapsedMs) && value.elapsedMs >= 0);
+    const observation = safeCostObservation(value);
+    Object.assign(safe, {
+      condition: value.condition,
+      label: value.label,
+      exit: value.exit,
+      elapsedMs: value.elapsedMs,
+      ...observation,
+      comparable:
+        observation.quotesRoute &&
+        observation.dialogVisible &&
+        observation.preselected &&
+        (value.condition !== 'current-warm' || observation.warmVisited),
+    });
+    localResultSeen = true;
+  }
   if (['p1-diagnostic', 'diagnostics-result'].includes(value.event)) {
     assert.equal(mode, 'local');
     assert.equal(process.argv[3], 'p1');
@@ -178,6 +204,7 @@ assert(
     'seed-diagnose',
     'spec',
     'local',
+    'cost-compare',
   ].includes(mode),
   'unknown preflight argument',
 );
@@ -185,9 +212,13 @@ if (mode === 'spec') {
   validateSpecCommand(process.argv[3], process.argv[4]);
   assert([undefined, 'interrupt'].includes(process.argv[5]), 'unknown spec fault');
 }
-const local = mode === 'local';
+const costComparison = mode === 'cost-compare';
+const local = mode === 'local' || costComparison;
 if (local) {
-  validateLocalCommand(process.argv[3], process.argv[4], process.argv[5]);
+  if (costComparison) {
+    validateCostComparison(process.argv[3], process.argv[4]);
+    assert.equal(process.argv[5], undefined);
+  } else validateLocalCommand(process.argv[3], process.argv[4], process.argv[5]);
   mkdirSync('.test-results/docker-local', { recursive: true, mode: 0o700 });
   const evidence = `.test-results/docker-local/${process.argv[4]}`;
   mkdirSync(evidence, { mode: 0o700 }); // Refuse replacement of any prior label.
@@ -201,11 +232,21 @@ assert.equal(
 );
 const fixture = await createFixture(process.env.DATABASE_URL);
 const name = `kt-pw-channel-${fixture.expected.schema.slice(-12)}`;
-let child, preview, processing, seedChild;
+let child, preview, processing, seedChild, oldWeb;
 let containerCreated = false;
 let phase = 'gateway';
 try {
   cancellation.signal.throwIfAborted();
+  if (costComparison && process.argv[3] === 'old-cold') {
+    phase = 'old-web-build';
+    oldWeb = prepareOldCostWeb();
+    report('historical-frontend-built', {
+      commit: oldWeb.commit,
+      artifactHash: oldWeb.artifactHash,
+      currentInstalledDependencies: true,
+    });
+    phase = 'gateway';
+  }
   for (const port of [3000, 4173]) {
     const check = net.createServer();
     await new Promise((resolve, reject) => {
@@ -455,6 +496,7 @@ try {
             '--strictPort',
             '--host',
             '0.0.0.0',
+            ...(oldWeb ? ['--outDir', oldWeb.dist] : []),
           ],
           {
             env: { ...process.env, KINGTURF_API_PROXY_TARGET: 'http://127.0.0.1:3000' },
@@ -486,18 +528,20 @@ try {
             : 'browser-probe';
         cancellation.signal.throwIfAborted();
         await send(
-          local
-            ? {
-                action: 'local',
-                kind: process.argv[3],
-                label: process.argv[4],
-                fault: process.argv[5],
-                user: process.argv[3] === 'p1' ? users.admin : users.runtime,
-                connection: fixture.containerConnection,
-              }
-            : mode === 'spec'
-              ? { action: 'spec', spec: process.argv[3], label: process.argv[4] }
-              : { action: 'preflight', user: users.runtime, fault: mode },
+          costComparison
+            ? { action: 'cost-comparison', condition: process.argv[3], label: process.argv[4] }
+            : local
+              ? {
+                  action: 'local',
+                  kind: process.argv[3],
+                  label: process.argv[4],
+                  fault: process.argv[5],
+                  user: process.argv[3] === 'p1' ? users.admin : users.runtime,
+                  connection: fixture.containerConnection,
+                }
+              : mode === 'spec'
+                ? { action: 'spec', spec: process.argv[3], label: process.argv[4] }
+                : { action: 'preflight', user: users.runtime, fault: mode },
         );
       }
       if (event.event === 'natural-cookie-origin') {
@@ -625,6 +669,15 @@ try {
         report('cleanup-failed');
       });
   else report('cleanup-failed', { schemaRetainedForInspection: true });
+  if (oldWeb) {
+    try {
+      oldWeb.cleanup();
+      report('historical-frontend-cleanup', { ownedRamDirectoryRemoved: true });
+    } catch {
+      process.exitCode = 1;
+      report('historical-frontend-cleanup', { ownedRamDirectoryRemoved: false });
+    }
+  }
   report('preflight-result', {
     exit: process.exitCode ?? 0,
     elapsedMs: Math.round(performance.now() - started),

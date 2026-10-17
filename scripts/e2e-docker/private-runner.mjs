@@ -5,7 +5,7 @@ import { performance } from 'node:perf_hooks';
 import { safeLocalCases, safeLocalResult, validateLocalCommand } from './private-contract.mjs';
 import { runP1Diagnostics } from './p1-diagnostics.mjs';
 
-async function verifyPrivateFilesystem(label) {
+export async function verifyPrivateFilesystem(label) {
   const mounts = await readFile('/proc/mounts', 'utf8');
   for (const path of ['/tmp', '/work/.test-results'])
     assert(

@@ -5,6 +5,7 @@ import { Database, assertTestDatabaseTarget } from '../../packages/database/dist
 import { startForwards } from './forward.mjs';
 import { runPreviewSpec } from './spec-runner.mjs';
 import { runPrivateSpec } from './private-runner.mjs';
+import { runCostComparison } from './cost-comparison.mjs';
 
 const report = (event, details = {}) => console.log(JSON.stringify({ event, ...details }));
 const inputLines = createInterface({ input: process.stdin, crlfDelay: Infinity });
@@ -79,6 +80,11 @@ async function verifyAndProbe(control) {
   });
   const command = await receive();
   if (command.action === 'verified-only') return;
+  if (command.action === 'cost-comparison') {
+    phase = 'private-local-browser';
+    await runCostComparison(command, cancellation.signal, report);
+    return;
+  }
   if (command.action === 'local') {
     phase = 'private-local-browser';
     const result = await runPrivateSpec(command, cancellation.signal, report);
