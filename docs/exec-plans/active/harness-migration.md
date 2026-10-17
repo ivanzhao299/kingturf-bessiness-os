@@ -3720,6 +3720,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+- **2026-10-17｜剩余非生产机械门禁一次库存**：e92bbe9后strict TS项目仅补P1本地include，不改PW配置/规则/C；一次只读内存lint bd7e80b A8+B2，7文件0，doc9（八处现已人裁修）、workspace2（旧storage5属S4替换、67非会话void未改/许可不泛化）、startup3皆旧storage属S4替换。[完整库存/界线](../../evidence/playwright-docker-spec-replay-2026-10-17.md)。P1/runtime原lint接线实际0，未执行B浏览器/生产，A-only runner不扩白名单。父e92bbe9为本工程接线回滚点，最后完整CI必跑。[已测试]（原strict静态库存，非PW通过）
+
 - **2026-10-17｜document-send适配/获准机械验证**：父ba294ae人类R7后，旧storage→合成Jar/新restore DTO，数据/route/原47expect参数保持；旧token真实红2败5过PW1/67583ms、host1/72963ms→完全清理还原7过host0/14807ms。曾过早启动restored-1端口拒1/85ms，未进浏览器、不充绿，后改严格drain。机械type投影/去6个!，唯一requestSubmit未用void块体，其余擦除JS全字节同；原lint8错→0，三类真实lint源变异1→还原0，独立只读无阻断；机械后原7case PW0/9790ms、host0/15054ms。[全部失败/附件/边界](../../evidence/playwright-docker-spec-replay-2026-10-17.md)。header额外tsc旧诊断仍2，TD-TEST-012不关闭，台账53；成本不修/第二轮禁，余5A/2B首轮续，最后HEAD完整CI必跑。[已测试]（真实spec/变异及机械；最终CI后跑）
 
 - **2026-10-17｜document-send机械兼容追加R7**：原7项会话夹具候选全过、旧token真红后还原7过，原strict ESLint仍1/8旧代码错误（baseline内存lint1/9）；主代理直接收到人类call_35cccddbc8024f6f890813be80e44491 reply批准仅本文件8处最小类型/语法修正，[原话/严格边界](../../tasks/playwright-document-lint-authorization-2026-10-17.md)。先本docs独立提交，父bd7e80b回滚点；不得改原expect/参数/运行值/数据/步骤/规则，类型擦除一致、void返回未用才块体。其它spec/成本提示不扩授，TD-TEST-012相关本文件未实现前不关闭；最终HEAD完整CI必跑。[未测试]（R7文档，后继实施验证另跑）

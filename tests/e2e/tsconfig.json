@@ -14,6 +14,7 @@
     "session-revocation.spec.ts",
     "startup-delivery.spec.ts",
     "source-nested-authorization.spec.ts",
+    "p1-demo.spec.ts",
     "fixtures/**/*.ts"
   ]
 }

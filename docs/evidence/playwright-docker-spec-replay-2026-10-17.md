@@ -83,3 +83,18 @@
 一次过早启动违反本轮严格串行约定，未隐去/充绿；立即恢复等待完整close后才再执行。红worker已载入的变异使两DRAFT case真实失败，未将提前改回源码冒称验证通过；后续restored-2和mechanical-final均在资源完全清理后独立全7过。每轮最终owned三清理均true，最终变异不入库。两红case原HTML/截图/trace在document-old-token-red-1独立目录实际核存在。
 
 本文件适配/获准机械单一职责提交，父ba294ae回滚点；成本不受其覆盖，完整A8尚未绿、第二轮未开始，C2仍禁。最后HEAD完整CI仍必跑，不把前f3882a3 CI作未来提交CI；后续独立首轮继续。
+
+## 本地非生产 spec 机械门禁库存
+
+e92bbe9后仅在已有strict TS工程补本地P1文件include，供未来获准内联认证适配使用原projectService/hook；不改两PW配置/规则/依赖，不把C两生产文件纳入此库存或执行。A-only runner白名单仍不扩B，B浏览器尚未执行。
+
+主代理一次只读ESLint内存lint bd7e80b的A8+B2原源码，规则与各原文件配置保持，不写源码/构建/PG/浏览器。基线结果：
+
+| 文件                                                                                          | 旧诊断/界线                                                                                                                                                     |
+| --------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| cost-matrix、login、order-evidence、session-revocation、source-nested、p1-demo、runtime-local | 各0；不是PW执行或认证适配已绿                                                                                                                                   |
+| document-send                                                                                 | 9：28旧storage void（S4 fixture替换消除）；118/119、269/270六个!、167 void arrow、202 JSON any；后八个已有独立人裁/已实施并原7绿，其余额外tsc诊断未修           |
+| workspace-route-isolation                                                                     | 5旧storage void随已授auth fixture迁移；67 await evaluate回调setAttribute void不属会话fixture，候选仅原一次调用改块体、结果未用，但本文件未获doc八处许可，不先改 |
+| startup-delivery                                                                              | 61/83/103均旧storage void，属于原已授S4 auth fixture替换范围；不借机改业务下载/失败/会话语义                                                                    |
+
+接线后P1/runtime原ESLint实际0。该库存不增加根全A tsc新门禁，不为旧keys诊断先改业务断言，也不泛化doc人裁；未知真实运行问题继续分事实/推断登记。父e92bbe9为本P1工程接线回滚点，最终HEAD全CI另必跑。
