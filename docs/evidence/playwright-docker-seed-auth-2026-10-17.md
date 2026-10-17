@@ -48,6 +48,27 @@
 
 ## 回滚与最终验证
 
+本轮独立提交链：增量R7 **4e691e5**（父c2ff52b）→回环/自然网络/清理工具 **ce74386** →仅pgcrypto环境修正 **e2c8ce6** →seed一行机器URL/真实绑定 **b13c15a** →认证在途取消验证 **bb04e8f**。逆序回滚取消验证→认证URL/绑定/精确lint→环境扩展可见性→回环环境工具→R7，保持S4实现及旧生产边界；每步先核相邻hunk/依赖，不保证跳步revert无冲突。本次没有实际revert。最后停点仅docs提交后完整CI日志 `/tmp/kingturf-docker-pw-current-stop-final-ci-2026-10-17.log`，此处不预填该未来HEAD/exit；最后实际结果由日志首尾同HEAD/clean/unchanged与交接报告核证。
+
+逐spec当前事实如下；没有任何spec执行命令/exit/耗时，不能填0或绿。没有本轮spec失败trace/截图；runtime仍原off，不用旧附件充本轮证据。
+
+| spec                                   | 本轮结果                                                  |
+| -------------------------------------- | --------------------------------------------------------- |
+| cost-matrix-product-quality.spec.ts    | A，未执行/未适配/未变异                                   |
+| document-send-product-quality.spec.ts  | A，未执行/未适配/未变异                                   |
+| login-product-quality.spec.ts          | A，未执行/未适配/未变异                                   |
+| order-evidence-product-quality.spec.ts | A，未执行/未适配/未变异                                   |
+| workspace-route-isolation.spec.ts      | A，未执行/未适配/未变异；旧非S4字段候选未顺手补           |
+| session-revocation.spec.ts             | A，最小oracle迁移已授但未执行                             |
+| startup-delivery.spec.ts               | A，最小oracle迁移已授但未执行                             |
+| source-nested-authorization.spec.ts    | A，回放/producer前置已登记，本轮未执行                    |
+| p1-demo.spec.ts                        | B，完整seed阻断，未执行/未适配/未变异                     |
+| runtime-local.spec.mjs                 | B，最小请求/oracle迁移已授但未执行，原guards/隐私配置保持 |
+| production-readonly.spec.ts            | C，本轮禁止执行/未改                                      |
+| production-role-uat.spec.ts            | C，本轮禁止执行/未改，临时账号开关不启用                  |
+
+故首轮A+B未形成，第二完整轮未开始；第三轮终验义务也未抵销。新的待决仅成本业务seed前置，不重开三项已授会话/通道/机器URL裁定。SOURCE/TEST/CONFIG/G3/生产保护如上，安全质量评分不抬分，不宣称Harness完成。
+
 认证验证工具取消传播定向补记：实际CLI函数真实fetch启动后给host注入SIGTERM，`/tmp/kingturf-docker-seed-auth-abort-bounded-final-2026-10-17.log`非零退出并drain/owned-cleanup；随后`seed-auth-bounded-final`原样正向再次0。每fetch使用外部cancel＋5s deadline，主120s协作截止不冒称任意OS/PG挂起均有界。此负例只证明工具取消闭环，不改变原CLI登录函数/请求和任何业务seed步骤，不抵spec/实际成本审批。
 
 此源小步可独立回滚到ce74386：机器URL与绑定/审计模式/精确lint接线配套撤，业务数据只存在已清理随机schema，不会复活会话/清生产数据。通道ce74386可再独立退到4e691e5；R7再退c2ff52b，保S4实现与人类裁定史。未实际回滚，不push/部署/生产/workflow/新依赖。

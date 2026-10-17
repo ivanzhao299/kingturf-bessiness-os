@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **Docker Playwright当前C7停点（2026-10-17）**：4e691e5三项R7→ce74386回环/自然Chrome Cookie/Origin与PG只读同一性工具（1流程/14负向）→e2c8ce6仅环境pgcrypto可见性→b13c15a仅seed机器URL/真实CLI绑定红绿。信用段通过但完整冻结seed生产关单500/P0001，trigger require_approved_cost_before_close，旧seed无实际成本政策/计算/独立批准步骤；TD-TEST-011新业务seed范围待人裁，TD-TEST-010环境修正已验，台账51。当前不改成本业务/SQL/seed步骤或spec/PW配置，A8/B2及两轮未执行，C不跑；[完整失败/回滚证据](../../evidence/playwright-docker-seed-auth-2026-10-17.md)。只收口/最后干净HEAD全CI再交协调，旧信用停报/三项pending保历史，不重复索已授许可，不扩一般阶段5。
+
 - **Docker Playwright三项裁定开工（2026-10-17）**：亲读原始人类三项reply，精确批准startup/session-revocation/runtime会话请求/oracle、owned容器真实回环HTTP/PG最小环境通道与seed仅机器token-login URL适配。[增量R7全文](../../tasks/playwright-docker-rulings-2026-10-17.md)独立docs先行；接手c2ff52b稳定干净HEAD完整CI0/190014.635ms。先通道/宿主guard与PG同实例schema宿主marker只读核证，现有GW PG不可达即停，禁止改监听/防火墙/增PG容器；再seed与fixture/oracle逐文件变异、A8→B2/全部绿后第二轮。旧pending为批准前历史，未执行不标绿；两配置/C两生产spec/非S4业务断言冻结，不扩一般阶段5。
 
 - **Docker Playwright库存/通道准备检查点（2026-10-17）**：R7独立8772284；[12源/两配置库存及逐处S4适配](../../evidence/playwright-docker-inventory-2026-10-17.md)先落盘，A8/B2/C2，C不跑。Chrome安装真实exit0后本地固化kingturf-e2e:pw1.62.1-chrome（1a0e14c3fd23、Chrome155.0.8059.84）；实测GW192.168.65.254入口200但非secure context/合成Secure Cookie不进Jar，API可信Origin与runtime配置均真实拒GW HTTP。owned preview/容器已清理、镜像保留；spec/配置/业务源码零改、A/B零执行。三份非fixture oracle范围待人裁；[B通道/seed最小候选](../../tasks/playwright-docker-b-channel-proposal-2026-10-17.md)仅docs未执行，改原GW baseURL需裁定。最后docs提交后稳定干净HEAD完整CI另实际执行，不降防护、不扩一般阶段5。
@@ -3705,6 +3707,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+- **2026-10-17｜Docker前置当前C7与收口**：安全诊断区分首信用500 SQLSTATE42883/0026 digest为本轮owned schema扩展可见性；e2c8ce6只核已装public.pgcrypto再API owned,public，信用通过，未改产品SQL。完整原seed继而在1165–1174关单500，最终安全日志P0001/require_approved_cost_before_close line3、production-repositories:130，0048:62–67需effective APPROVED成本，50–57不许自批；独立只读确认seed无policy/calculate/approve。TD-TEST-010环境项闭环、TD-TEST-011待新业务seed范围裁定，台账51；不把任一500笼统认产品bug或改业务迎合测试。b13c15a认证URL/绑定独立提交；工具真实fetch取消负向1后原样0并清理。后继spec适配/A8/B2首轮第二轮均未执行，C未触；[交接/失败史/逆序回滚](../../evidence/playwright-docker-seed-auth-2026-10-17.md)。最终停点提交后同一稳定干净HEAD完整CI实际跑，日志/tmp/kingturf-docker-pw-current-stop-final-ci-2026-10-17.log，未来结果不预填；退出后停协调人裁，不一般阶段5。[已测试]（定向证据；完整HEAD CI随后）
 
 - **2026-10-17｜P1种子认证独立小步/C7停点**：ce74386通道后，仅seed机器URL改token-login，其余全文件字节守恒；实际CLI唯一login函数真实HTTP/Bearer两身份，旧URL真实变异工具1/4629ms→还原0/4506ms。根plainJS门禁只补seed精确文件，无规则放宽；[认证/完整seed失败证据](../../evidence/playwright-docker-seed-auth-2026-10-17.md)。完整冻结业务seed实跑POST credit-decisions500，child1/680ms、host1/5050ms并清理；根因待核实，非该URL小步范围，R4登记/C7停止后继spec适配/A8/B2/两轮。父ce74386为认证小步回滚点，两配置/spec/业务源码/SQL零改，最后停点docs提交后另完整CI。[已测试]（认证真红绿，完整seed失败不隐去）
 

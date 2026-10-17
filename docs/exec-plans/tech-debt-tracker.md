@@ -1,5 +1,7 @@
 # 技术债台账（tech-debt-tracker）
 
+**Docker前置当前停点（2026-10-17，51顶层项）**：TD-TEST-010 owned pgcrypto可见性仅环境修正，信用段已通过；新增TD-TEST-011：冻结P1 seed缺实际成本批准，生产关单500/P0001/require_approved_cost_before_close已实证。补业务种子超仅认证URL/环境授权，C7停后继spec/两轮；不认定产品触发器有bug、不绕过约束，待人裁。源码/两PW配置/spec/原业务步骤保持，最终HEAD完整CI另实测。下方50/49及旧信用停点均保留历史。
+
 **Docker前置环境新登记（2026-10-17，50顶层项）**：新增TD-TEST-010，本轮owned随机schema完整P1 seed信用POST500、认证已通过；初登记根因待核实，后继安全诊断SQLSTATE42883/credit snapshot插入锚点及owned schema看不到public已装pgcrypto已证，尚不认定产品bug。仅本环境前置候选，业务/SQL/冻结seed步骤不改；旧49/48等为历史。
 
 **批次4交验现时（2026-10-17，仍49顶层项）**：f114ee0稳定干净HEAD全CI实际0/192524.18ms、API17242/Web313与真实网络26/故障9已核。SEC001仅RO完成、强制开放；SEC002登录范围及SEC004按S1–S3人工验收核账实施完成；SEC003按固定六项及真实网络/最终源码CI关闭载体迁移实施项，整批人工验收待本次交付、九旧PW延期仍硬前置；TD-WEB-009窄修实施完成待整批验收。TD-TEST-006新CDP异步失败后继候选待核实，不回写旧解决历史、不新增顶层ID。WEB007/PERF003仅必要同文件代际适配，不整体关闭；其它债不扩修。[统一交验包](../evidence/security-batch4-acceptance-2026-10-17.md)。下方所有旧“现时/开放/未完成”保留原时点。
@@ -97,6 +99,7 @@
 | TD-TEST-008  | 新增CDP客户360合成详情遗漏服务端必需字段                                                      | P2     | 测试夹具契约  | 无（工具修正）           | 3f前置独立工具                     | 已修复验证                      |
 | TD-TEST-009  | 三份临时AST证明encoder返回truthy而漏比后续子节点                                              | P1     | 证明工具      | 无（工具修正）           | 3f后独立工具/证据收尾              | 已修完整重核                    |
 | TD-TEST-010  | Docker owned schema信用种子缺已装public.pgcrypto可见性                                        | P2     | 测试环境      | 无（仅工具）             | Docker前置补跑                     | 环境已修/信用通过，整seed另阻断 |
+| TD-TEST-011  | 冻结P1种子生产关单缺实际成本批准，HTTP500/P0001                                               | P1     | 种子业务前置  | 未修（补业务seed需另授） | Docker前置补跑                     | 待人裁/C7停点                   |
 | TD-GATE-001  | 无 git hooks / commitlint / lint-staged，脏提交仅靠 CI 兜底                                   | P1     | 门禁          | 无                       | 阶段 3                             | 已完成                          |
 | TD-GATE-002  | vitest 无配置文件，参数散落各包 scripts                                                       | P2     | 门禁          | 无                       | 阶段 3                             | 已完成                          |
 | TD-GATE-003  | routes覆盖已修复；E1已撤，恢复31旧豁免                                                        | P1     | 工程门禁      | 无                       | 独立门禁任务／阶段5前复核          | 已验收                          |
@@ -404,6 +407,13 @@
 - **关联批次**：阶段 3 ｜ **验收方式**：故意注入直拼 SQL 的测试提交必须被门禁拦截（实测）✓（三轮样本共 11 个，全部退出码 1）
 
 ## 测试
+
+### TD-TEST-011｜冻结P1种子缺关单实际成本审批前置
+
+- **实证**：TD-TEST-010只修本轮API search_path后，完整原seed推进到`seed_p1_demo.mjs:1165–1174` POST `/api/v1/production-orders/:synthetic-id/close`→500；最后安全诊断日志`/tmp/kingturf-docker-seed-production-category-2026-10-17.log`，seed1/2526ms、host1/7117ms，SQLSTATE P0001、production-repositories.ts:130、trigger require_approved_cost_before_close line3，所有owned资源随后清理。无SQL/values/body/身份/秘密输出。
+- **独立静态依据**：0048_actual_manufacturing_cost.sql:62–67明确CLOSED需同tenant/order effective APPROVED cost run，50–57不许计算者自批；全seed搜索`actual-cost|actual_cost|production-cost|production_cost|cost.*approv|cost-close`无对应成本政策/计算/批准调用。production-repositories.ts:113–145在事务插事件，触发器拒绝与所观测链一致；不推断产品触发器应放宽或500所有根因已排除。
+- **边界/待决**：需新成本policy→calculate→独立身份approve业务种子步骤、权限/状态选择，超出本轮仅login URL/环境准备；禁止插SQL结果、绕触发器、删除关单、改P1断言/业务源码。具体补齐是否足够尚未实跑；需人类新范围裁定后再最小实施，当前仅登记不修。
+- **影响**：完整P1 seed未绿，A8/B2 spec适配/逐文件变异/首轮第二轮均未执行，原九旧PW硬前置未履行；C生产spec未跑。P1前置阻断不等于生产故障证据，不抬质量分或宣称Harness完成。详见[种子认证及完整失败史](../evidence/playwright-docker-seed-auth-2026-10-17.md)。
 
 ### TD-TEST-010｜Docker owned schema P1信用种子500
 

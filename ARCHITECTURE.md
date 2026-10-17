@@ -1,5 +1,7 @@
 # ARCHITECTURE.md
 
+**Docker前置当前边界（2026-10-17）**：仅本地环境scripts/e2e-docker真实回环byte forwarding/宿主guard与marker→容器READ ONLY同实例、Chrome自然Cookie/Origin，保原API/Web/SQL/两PW配置。seed只机器登录URL一行，环境只复用已装pgcrypto函数；完整seed生产关单缺已批准实际成本，TD-TEST-011/C7停后继spec，须新业务seed范围裁定，不扩业务源码。[实证与失败史](docs/evidence/playwright-docker-seed-auth-2026-10-17.md)。旧“Docker未启/49台账”为此前历史，现51含两个新测试前置项；不代表S4整批人工验收/一般阶段5完成。
+
 **批次4整体交验现时（2026-10-17）**：S1统一响应头→S2单实例登录失败双窗→S3 API/外层HTML RO（强制false/off）→S4 Cookie签名双提交/Origin及不可变浏览器上下文；保opaque/scrypt/SQL/依赖方向。f114ee0实际稳定干净HEAD全CI0/192524.18ms，真实网络Node4/SPA DOM8/受控Jar14与资源负向9分开，不当全量PW/生产验证。[唯一验收包](docs/evidence/security-batch4-acceptance-2026-10-17.md)含实现/期望/配置默认/回滚总索引；SEC003载体实施项关闭、整体人工验收待交付，SEC001强制/延期PW/TD-TEST-006后继候选开放。当前只文档收口，最终文档HEAD另全CI后停协调，不启Docker/阶段5。以下为历史。
 
 **S4网络工具检查点（2026-10-17）**：独立gateway真实代理API/同源SPA、随机schema双真实API、owned Chrome自然Jar；Node4/DOM8/受控Runtime14与故障9分层，未改旧合成/PW。bfdc4ff仅精确current POST logout豁免本地pause，保原proof/代际/服务端，未新增会话模型。源码/SQL/依赖保护及残余CDP/观察边界见[网络证据](docs/evidence/security-batch4-s4-network-2026-10-17.md)；工具最终干净HEAD全CI待执行，SEC003仍开放。下方为历史。

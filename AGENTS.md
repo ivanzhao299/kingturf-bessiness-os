@@ -8,6 +8,8 @@ KingTurf 业务操作系统：面向草坪行业外贸业务的 ERP（CRM→报�
 
 ## 如何开始（渐进式披露：先地图，再细节）
 
+Docker Playwright前置当前停点：三项人裁已落R7，回环/自然Cookie/PG同一性工具与seed机器URL真红绿完成；TD-TEST-010仅环境pgcrypto可见性已修，完整冻结seed推进到生产关单缺实际成本批准（TD-TEST-011）。台账51，具体业务seed步骤待新裁定，C7停止spec适配/A8/B2/两轮；C生产不跑、两配置/spec/业务源码不改。证据 `docs/evidence/playwright-docker-seed-auth-2026-10-17.md`；最后HEAD完整CI后交协调，非一般阶段5/覆盖率/收官。下方为历史时点。
+
 批次4当前交验：S1–S3已人工验收，S4实施与真实网络/CDP完成，源码f114ee0稳定干净HEAD完整CI0/192524.18ms（API17242/Web313）。唯一包 `docs/evidence/security-batch4-acceptance-2026-10-17.md` 汇总行为/适配/分层/回滚；本次只文档收口，最后文档HEAD完整CI后停协调，整体验收待交付。SEC003关闭载体实施项，SEC001只RO/强制开放；台账49，TD-TEST-006新异步失败候选待核实。评分不抬分，旧PW/Docker/阶段5未启动；下方为历史。
 
 当前批次1/2（含E1）/3已验收64757d4；批次4 S1–S3于2e22837人工验收，六项选型已决并正式授权S4实施。设计efae93d干净HEAD完整CI0/211588.694ms已协调复核；本步仅续自然HTTP Secure Cookie预检工具，后端/config/Web未改，工具最终CI后停协调再续已授后端→前端→网络级/CDP→整批收口。影响报告420f9ba“仅报告硬停”为批准前历史。ADR0003/SQL/签名/零新依赖保持，SEC003真实完成前不关闭。原Playwright补跑、不push/部署/workflow/阶段5边界保持；S3仍仅RO、不代表生产报告通道或强制兼容。
@@ -15,7 +17,7 @@ KingTurf 业务操作系统：面向草坪行业外贸业务的 ERP（CRM→报�
 - 架构总览与依赖方向：见 `ARCHITECTURE.md`
 - 设计理念与操作原则（争议裁决依据）：见 `docs/design-docs/core-beliefs.md`
 - 当前执行计划与进度：见 `docs/exec-plans/active/` §0及§7（2e22837六项已决）；S4开工R7见 `docs/tasks/harness-batch4-s4-authorization-2026-10-17.md`；原影响报告 `docs/tasks/harness-batch4-s4-session-impact-2026-10-17.md` 保留历史/库存/S1–S3证据索引
-- 已知技术债（49 条台账，含历史解决项及TD-WEB-009窄修）：见 `docs/exec-plans/tech-debt-tracker.md`
+- 已知技术债（51 条台账，含历史解决项及Docker前置TD-TEST-010/011）：见 `docs/exec-plans/tech-debt-tracker.md`
 - CI 与发布决策（非 Tauri，仅 workflow_dispatch 部署，无 tag/Release）：见 `docs/CI.md`
 - 全部文档索引：见 `docs/index.md`
 - 关键决策记录：见 `docs/adr/`（10 个 ADR）

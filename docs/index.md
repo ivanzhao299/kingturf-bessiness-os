@@ -1,12 +1,12 @@
 # docs/index.md（全部文档索引）
 
-[P1种子机器认证适配与C7停点](evidence/playwright-docker-seed-auth-2026-10-17.md)：一行URL/实际CLI绑定真红绿；完整原seed信用决策POST500，根因待核实、按C7不继续spec/两轮，非业务已修。
+[P1种子机器认证适配与当前C7停点](evidence/playwright-docker-seed-auth-2026-10-17.md)：一行URL/实际CLI绑定真红绿；信用pgcrypto环境项已修，后继生产关单500/P0001/缺实际成本批准待人裁（TD-TEST-011）；A/B/两轮未执行，非业务已修。
 
-[Docker真实回环通道验证](evidence/playwright-docker-loopback-2026-10-17.md)：宿主guard/marker→容器只读同实例→自然Secure Cookie与Origin/真实PG计数；1流程/11工具负向、失败史/清理与最小lint接线，不是spec补跑。
+[Docker真实回环通道验证](evidence/playwright-docker-loopback-2026-10-17.md)：宿主guard/marker→容器只读同实例→自然Secure Cookie与Origin/真实PG计数；1流程/14工具负向、失败史/清理与最小lint接线，不是spec补跑。
 
 [Docker Playwright三项增量裁定R7](tasks/playwright-docker-rulings-2026-10-17.md)：三份会话请求/oracle、真实容器回环HTTP/PG、seed机器URL最小适配已获原始人类批准；配置/业务断言/生产边界保持，先通道实证。
 
-[Docker Playwright B通道最小候选（仅提案）](tasks/playwright-docker-b-channel-proposal-2026-10-17.md)：原网关HTTP下S4阻断、owned真实回环字节转发/PG双侧guard候选及seed最小token-login适配；未执行，配置/业务源码不改，通道变更待裁。
+[Docker Playwright B通道原提案与后继裁定](tasks/playwright-docker-b-channel-proposal-2026-10-17.md)：原网关HTTP阻断历史；后继最小回环/PG同一性已获准并实测、seed仅token-login已适配；不改配置/业务源码。当前成本审批种子待决见上方C7，不重开已裁事项。
 
 [Docker Playwright全量库存与通道准备](evidence/playwright-docker-inventory-2026-10-17.md)：12源/两配置、A8/B2/C2、逐处S4夹具与非fixture断言边界、网关真实Origin拒绝及本地镜像准备；未跑spec，C禁止。
 
