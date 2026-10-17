@@ -1,3 +1,10 @@
+// Node 24 provides WHATWG URL; keep its required surface local without DOM/Node type dependencies.
+declare const URL: new (value: string) => Readonly<{
+  hostname: string;
+  origin: string;
+  protocol: string;
+}>;
+
 export type BrowserSessionConfig = Readonly<{
   sessionCookieName: string;
   csrfCookieName: string;

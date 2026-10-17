@@ -41,6 +41,10 @@
 
 ## 回滚
 
+URL ambient首提交钩子拦prefer-function-type一项，按现行规则改等价构造函数类型，不禁规则；生产构建及lint重新执行后提交。
+
+第二轮aaf182b实际干净HEAD完整CI退出2/192855.410ms（final-fixed-head-ci日志）：API126/17242、Web13/266、config71及其它测试全绿，构建config因两处URL的TS2552失败，audit未到达。config独立生产构建排除测试后失去vitest传递全局类型，原typecheck/test不能替代build。只为模块内Node24标准WHATWG URL添加不导出的最小ambient声明（hostname/origin/protocol），不生成运行代码、不加依赖/DOM库/any/ignore或自制解析；frontier只读复核可接受。config独立build0、全monorepo build0（config-build-restored/build-restored），config再次71绿（config-build-green）。source/dist/API app只读导入：首次strip-only因既有domain参数属性失败，改Node24 experimental-transform-types后退出0，无环境解析/监听器；不是新生产参数要求或改写domain。第三轮最终日志final-compiled-head-ci，不覆盖前两轮失败。
+
 getter修正首次提交钩子另拦2项no-unnecessary-condition：新增路径早返后两个旧session比较成为恒真。只移除已被守卫证明的重复比较，不改判定；格式化后risk+browserSession再次1132绿（getter-final-green），由提交钩子重新lint。独立只读复核早返保留三敏感入口/session no-store，无普通业务Cookie读取。
 
 首源码提交6c453e4实际干净HEAD完整CI退出1/192598.636ms（final-head-ci日志）：API126文件17242中4红/17238绿、Web13/266及config71绿；build/audit尚未到达，不标通过。四红均为未改旧risk-route-contract的headers getter必须3次、实际4次：新增缓存分类在非session路由也先读Cookie。只在browserAuthResponse的三个敏感入口早返后加非session路径早返，不改旧测试/业务断言；risk+browserSession定向2文件1132绿（getter-restored-green）。首CI失败不覆盖，后继最终HEAD另完整CI。
