@@ -6,7 +6,9 @@
 
 ## 常驻入口（根与 docs 顶层）
 
-[S4会话载体影响报告（ONLY）](tasks/harness-batch4-s4-session-impact-2026-10-17.md)：输入S3最终28197d2实际干净HEAD全CI0/206309.018ms、协调确认；重盘浏览器/API/HMAC执行顺序、124 API源/123测试及Web/CDP/Playwright/CLI候选，比较两种Cookie CSRF方案、跨tab/迟到Set-Cookie与机器兼容待决。仅文档、SEC003不关闭，报告最终HEAD另完整CI后硬停人工确认，不实施S4/阶段5。
+[S4正式实施开工R7引用](tasks/harness-batch4-s4-authorization-2026-10-17.md)：2e22837六项已决/原始人类授权亲核；先R7＋明确设计docs停协调只读复核，再直接续已授实施，不重问选型。人类另裁定九旧Playwright本轮不改，适配/逐文件变异/补跑一并为阶段5前硬前置，未执行不标绿/CDP不冲抵。
+
+[S4批准前会话影响报告（历史）](tasks/harness-batch4-s4-session-impact-2026-10-17.md)：420f9ba实际干净HEAD全CI0/207904.734ms，重盘124 API源/123测试及Web/CDP/Playwright/CLI候选、两Cookie CSRF方案、跨tab/迟到Set-Cookie边界；原“待确认/仅报告硬停”保留当时时点，2e22837已六项裁定正式放行实施，当前范围以上方R7为准，不进入阶段5。
 
 [S3 CSP验证与边界](evidence/security-batch4-s3-csp-2026-10-17.md)：行为762e393/oracle a4c2ca3/工具f693ee2实际稳定干净HEAD全CI0/219878.817ms，API17184/Web266/config29；原29/新CSP3/头矩阵20/工具65及失败史、源码/构建import与配套回滚。完成docs另实际HEAD全CI后停协调，非生产通道就绪/强制兼容声明。
 
@@ -38,7 +40,7 @@ S2门禁适配：新增登录限流固定源唯一真实类声明身份分类及
 | [RELIABILITY.md](RELIABILITY.md)                                                 | 可靠性机制与发布链路 runbook（逐步对应 deploy-production.yml）   | 常驻                    |
 | [QUALITY_SCORE.md](QUALITY_SCORE.md)                                             | 按域质量评分（可复算依据）                                       | 常驻                    |
 | [design-docs/core-beliefs.md](design-docs/core-beliefs.md)                       | 核心信念（争议裁决依据）                                         | 常驻                    |
-| [exec-plans/active/harness-migration.md](exec-plans/active/harness-migration.md) | 批次4 S1–S3协调确认；S4仅影响报告、最终HEAD全CI后硬停人工确认    | 常驻                    |
+| [exec-plans/active/harness-migration.md](exec-plans/active/harness-migration.md) | 批次4 S1–S3人工验收；S4已授权，先R7/设计docs停协调复核再编码     | 常驻                    |
 | [exec-plans/tech-debt-tracker.md](exec-plans/tech-debt-tracker.md)               | 技术债现48项含历史，新增TD-HYG-002旧preview Dockerfile引用仅登记 | 常驻                    |
 | [local-acceptance-cleanup.md](local-acceptance-cleanup.md)                       | `.local-acceptance/` 本地产物清理边界与手动脚本说明              | 常驻                    |
 | [HARNESS-RULES.md](HARNESS-RULES.md)                                             | 施工规则（竣工验收后按其 §14 归档）                              | 常驻（施工期）          |

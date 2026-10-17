@@ -8,11 +8,11 @@ KingTurf 业务操作系统：面向草坪行业外贸业务的 ERP（CRM→报�
 
 ## 如何开始（渐进式披露：先地图，再细节）
 
-当前批次1/2（含E1）/3已验收64757d4；批次4 S1–S3经协调独立确认，S3最终28197d2实际稳定干净HEAD完整CI0（API123/17184、Web13/266/config29）。真实HTML/合成发送CSP3与原29、本地头矩阵20、工具65通过；不是生产观察通道就绪或强制兼容证明。S4只产会话载体影响报告与未来测试提案，源码/测试/夹具不改，报告最终HEAD另全CI后硬停人工确认；SEC003未实施不关闭，禁止先改Cookie/CSRF/Origin/sessionStorage/Bearer。原Playwright补跑、不push/部署/workflow/阶段5边界保持。
+当前批次1/2（含E1）/3已验收64757d4；批次4 S1–S3于2e22837人工验收，六项选型已决并正式授权S4实施。影响报告420f9ba仅文档/完整CI0，旧“仅报告硬停”为批准前历史。本步先S4开工R7＋具体实现设计/行为表独立docs，完成后停协调只读复核，再续已授权后端→前端→网络级/CDP→整批收口；本步不提前编码/改夹具。ADR0003/SQL/签名/零新依赖保持，SEC003真实完成前不关闭。原Playwright补跑、不push/部署/workflow/阶段5边界保持；S3仍仅RO、不代表生产报告通道或强制兼容。
 
 - 架构总览与依赖方向：见 `ARCHITECTURE.md`
 - 设计理念与操作原则（争议裁决依据）：见 `docs/design-docs/core-beliefs.md`
-- 当前执行计划与进度：见 `docs/exec-plans/active/` §0及§7；批次4授权见 `docs/tasks/harness-batch4-authorization-2026-10-17.md`；S4报告/人工待决见 `docs/tasks/harness-batch4-s4-session-impact-2026-10-17.md`（内含S1–S3证据索引）
+- 当前执行计划与进度：见 `docs/exec-plans/active/` §0及§7（2e22837六项已决）；S4开工R7见 `docs/tasks/harness-batch4-s4-authorization-2026-10-17.md`；原影响报告 `docs/tasks/harness-batch4-s4-session-impact-2026-10-17.md` 保留历史/库存/S1–S3证据索引
 - 已知技术债（48 条台账，含历史解决项及仅登记的旧preview Dockerfile等候选）：见 `docs/exec-plans/tech-debt-tracker.md`
 - CI 与发布决策（非 Tauri，仅 workflow_dispatch 部署，无 tag/Release）：见 `docs/CI.md`
 - 全部文档索引：见 `docs/index.md`

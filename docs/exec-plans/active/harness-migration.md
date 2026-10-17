@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **S4开工现时（2026-10-17，已授权实施）**：接手2e22837/树空，主代理亲核原始人类授权及§7末“4-S1S3验收+S4选型”；S1–S3已人工验收，六项已决，旧“仅报告硬停”为批准前历史。先落[S4开工R7引用](../../tasks/harness-batch4-s4-authorization-2026-10-17.md)，本步仅R7＋明确实现设计/行为表独立docs，停协调只读复核后续已授后端→前端→网络级/CDP→整批收口，不重问六项。名字/path/寿命/Origin配置按授权给安全默认与理由；Secure真实HTTP预检先于后端，失败按C7停报、不预批HTTPS。九旧Playwright已获专项裁定“本轮不改，适配/各文件变异/补跑合并到阶段5前硬前置”，未执行不标绿、CDP不冲抵；原production/runtime/config静态分类边界保持。API/Web/CDP当前纪律不变。SEC003真实完成前开放，生产/push/workflow/SQL/模型/依赖/旁支债务/阶段5保护保持。
+
 - **S4最新检查点（2026-10-17，仅报告）**：S3最终28197d2实际稳定干净HEAD完整CI0/206309.018ms并经协调独立确认，沿R7续派唯一S4影响面报告。当前仅[会话载体影响报告/六项人工待决](../../tasks/harness-batch4-s4-session-impact-2026-10-17.md)及必要导航/台账文档，源码/测试/会话夹具相对接手HEAD零改动；重盘API124源=123测试+helper、13Web、12E2E spec源/两配置、27CDP/CLI候选，非全必改，不称Cookie测试绿。比较两种Cookie CSRF方案，强调跨tab代际/迟到Set-Cookie/非浏览器Bearer/精确website已解析body canonical HMAC，ADR0003与原改密全撤销不变。最终文档HEAD完整CI后**硬停人工确认，不实施S4/不关闭SEC003/不宣称批次4验收/不进入阶段5**；台账48、生产/push/workflow/Playwright边界保持，下方“最新”均历史时点。
 
 - **S3最新检查点（2026-10-17）**：输入S2最终74c78c3→设计10f841e→独立行为762e393→严格oracle a4c2ca3→工具f693ee2，实际稳定干净HEAD完整CI0/219878.817ms，API123/17184、Web13/266/config29、结构0/29、工具65。原29 Us0W3d/新CSP3提交后msqifE/本地头矩阵20及三个真实负向边界分开记录，122旧API AST守恒、源码/构建/API原生import0；默认强制false/off，无report接收端/生产观察就绪或打印强制兼容保证。完成docs本提交另实际干净HEAD全CI后停协调复核，S4仅影响报告后实施硬停人工确认，非批次4验收；台账48及原Playwright补跑/保护区保持。[S3证据/失败史/回滚](../../evidence/security-batch4-s3-csp-2026-10-17.md)，下方S2/S1“最新”均保留历史时点。
@@ -3666,6 +3668,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 6. 待人工决策清单
 
+2026-10-17 S4实施授权更新：2e22837的§7末“4-S1S3验收+S4选型”已六项逐条裁定，人类原始消息正式授权实施；[R7引用](../../tasks/harness-batch4-s4-authorization-2026-10-17.md)为当前范围。下段“当前S4只报告”及下表D1是各自历史时点，不覆盖此授权；不重问已决事项。九旧Playwright专项答复亦已亲核：“九份暂不改；适配、变异及补跑合并到阶段5前”；本轮不改九spec，三项合并为阶段5前硬前置、未执行不标绿/CDP不冲抵，API/Web/CDP本轮逐文件变异纪律保持，production/runtime/config静态分类边界不变。
+
 2026-10-17执行状态补注：下表D1为2026-10-13方案批准时点，正式实施范围已由R7 bed8b40落盘，S1–S3按独立证据经协调确认；当前S4只报告，细分待人工选择为[报告§9](../../tasks/harness-batch4-s4-session-impact-2026-10-17.md)，任何Cookie/CSRF/Origin、存储/Bearer或夹具实现仍硬停，不用历史“方案批准”推定实施授权。
 
 | 编号 | 问题                                                                                                                                                                                                                                          | 为什么需要人判断                             | 阻塞范围（未回答时暂停什么）                                |
@@ -3677,6 +3681,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+2026-10-17，S4正式实施开工R7引用：实际接手2e2283705aa30b30565c5a369b9777b5ab69f188/树空，亲核原始人类正式授权与本节末六项裁定，独立[S4开工R7文档](../../tasks/harness-batch4-s4-authorization-2026-10-17.md)先落盘。当前只文档、未实施载体/CSRF/Origin或改会话夹具；随后本小步明确设计/行为表后停协调只读复核，已授实施不重新索选型。九旧Playwright另获人类回复“九份暂不改；适配、变异及补跑合并到阶段5前”，原回复已亲核、ID见R7，本轮九spec不改，三项为阶段5前硬前置，未跑不标绿/CDP不冲抵；production/runtime/config仍静态分类，API/Web/CDP本轮变异纪律不变。原HARNESS/ADR/影响报告/RELIABILITY相对420f9ba无diff并已全文读取，GATES及当前SEC001–004/裁定已核；不读prompt-history或输出认证值。此授权docs先仅format/doc-lint/零非文档差异检查，设计最终HEAD另完整CI，不预填成功。回滚本docs先核后继可独立revert至2e22837，保S1–S3，不自动执行。
 
 2026-10-17，S3协调独立复核通过后续派S4影响报告ONLY：接手28197d22cc5166ad651f0b1e385df03b85034a4d/树空，S3最终CI0/206309.018ms；仅新增[S4完整影响报告](../../tasks/harness-batch4-s4-session-impact-2026-10-17.md)与必要导航/计划/台账。主代理亲读当前规则/ADR/entry/http/session/owner，三个只读库存核API链路/测试候选/广域Web，独立高风险候选审；原web/api鉴权/夹具/SQL/workflow不写。当前124API TS源=123测试+helper、13Web测试、11TS+runtime E2E/两配置、27CDP源和verify工具重新盘点，词面/AST计数不冒称执行数。初稿website rawBody误称原HTTP字节/错挂route行号，经亲读root canonical/数值timestamp纠正，Cookie未知名/GET Origin/同session CSRF复用及改密全目标撤销措辞澄清；不改签名fixtures或行为。最终本报告提交后实际稳定干净HEAD完整CI至`/tmp/kingturf-batch4-s4-report-final-head-ci-2026-10-17.log`，不预填成功；源码/测试相对接手HEAD零diff后硬停六项人工选择，SEC003开放、批次4未验收、阶段5不启动。此docs回滚可独立revert至28197d2、先核后继，保S1–S3回滚链；不自动执行。
 
