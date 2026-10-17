@@ -499,6 +499,8 @@
 
 ### TD-TEST-013｜成本转报价成功提示可见性失配
 
+**后继人类授权，尚未修复（2026-10-17）**：直接答复`call_ace6d79456ac4fb5856b8b990e414a0e`批准保持原冷路径成功提示可见，先本登记再独立最小产品修复提交；原冷路径断言不改，不以暖路径/节点瞬态代替可见，不顺修其它message合同。[R7窄例外](../tasks/harness-stage5-authorization-2026-10-17.md)。实施、真实红绿与当前HEAD完整CI尚待，不提前关闭；顶层仍61。
+
 **阶段5后继受控对比已完成**：同原合成case/7完整expect，旧lazy前b210c77原认证PW0/2253ms、当前冷（仅已授auth适配）PW1/7081ms、当前先真实quotes ready后PW0/2134ms；三臂路由/dialog/预选全达，当前冷文本节点曾写但312采样帧无布局/视口可见且末态空，旧/暖有可见帧/末态真。各独立owned身份/只读tmpfs/原forward硬闸及清理全证，未导auth/原DOM；host0只是采集完成，当前冷原assert仍红。[固定SHA/样本/日志/判据与混杂边界](../evidence/harness-stage5-browser-rulings-2026-10-17.md)。独立只读核无结果/保密阻断；不是唯一根因/完整历史环境/像素或全调度证明。已提产品C7选择，未批不改产品/期待、不以暖路径或节点曾存在代原冷可见合同；下方旧“未对比”保留历史，顶层仍61不另增同一问题。
 
 - **事实**：f3882a3干净HEAD全CI0/201874.74ms后，成本临时仅auth候选PW1/12294ms、host1/17663ms，1过1败；前quotes/dialog/decisionId过，原末提示element not found（候选486/还原原501）。原trace只读核201→报价GET200和after@call@305 commercial-status空文本，未输出auth元数据，owned全清、HTML/截图/trace保留。

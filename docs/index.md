@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[阶段5后继四项R7](tasks/harness-stage5-authorization-2026-10-17.md)：信用两处结清0已批；驾驶舱仅独立推导再审批；结构不扩、DoD4/5未完成；成本先登记后独立最小产品修复，原冷提示断言保留。下方待裁与D为历史状态，不宣称后继已验证或终验。
+
 [阶段5 D同状态三连](evidence/harness-stage5-coverage-protocol-2026-10-17.md)：4ca894f连续完整CI实际0，329429/330768/328574ms、首尾HEAD/树空，各<15分钟；分数/B/分母不变，非P全绿或人工终验，末次文档HEAD另验。
 
 [成本提示三条件实测](evidence/harness-stage5-browser-rulings-2026-10-17.md)：旧冷PW0／当前冷PW1／当前暖PW0，三handoff可比、当前冷仅DOM瞬态无采样可见帧/末态，原冷合同保持失败；隔离/原断言/SHA与清理核完，产品C7待裁，不用暖路径或host采集0充绿。
