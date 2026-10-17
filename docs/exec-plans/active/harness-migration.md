@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **B环境候选静态检查点（2026-10-17）**：独立local p1/runtime私有执行器，unit5/原lint/format/结构0，独立review所列清理/探针冒绿/路径输出及宿主异常均收紧；[静态与未测清单](../../evidence/playwright-local-private-runner-2026-10-17.md)。原config不改、P1仅命令traceoff、raw/tmpfs不导出、零PNG非视觉验收；隐私/取消/真实B尚未实测，不充绿。A现六绿/两份各一败待裁，第二轮/C禁，最后HEAD全CI必跑。
+
 - **A首轮库存收口（2026-10-17）**：source原PG19过，获准应收字段ea2a647独立真红绿后，auth旧token三红→还原3过PW0/3361ms、host0/8382ms，PG产物SHA前后同、owned全清，[证据](../../tasks/playwright-source-fixture-ruling-2026-10-17.md)。A8全首试，login2/doc7/order1/revocation2/startup5/source3六份全绿，cost/Workspace各仍一败待裁；TD-TEST-015仅合成字段实施关闭，55项不删。续独立B首轮，只有第二完整轮须A+B全绿，C禁，最后HEAD完整CI必跑。
 
 - **source首轮/分页R7（2026-10-17）**：原PG producer19过、仅auth候选两次PW2过1败，authorized催收卡hidden；旧应收cursor stub缺nextCursor/ready链支持，原样本/断言不改，候选已精确还原并封存。直接人类仅批应收stub补null，[原话/失败/补丁](../../tasks/playwright-source-fixture-ruling-2026-10-17.md)先独立落盘，TD-TEST-015/现55项，待实施/变异。A8均首试留证但成本/Workspace/source未全绿；可继续独立B首轮，第二完整轮禁/C禁，最后HEAD全CI必跑。
@@ -3731,6 +3733,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+- **2026-10-17｜B私有执行器候选静态提交**：父bd7e14d，local p1/runtime精确白名单、root/repo只读/two declared tmpfs/lognone/原reporter保持/安全summary双层重编码，600s有界。unit5/原lint/format/diff/结构0/29，独立review三阻断及异常输出建议已收紧；初no-unsafe-finally1以固定assert注入修正不降规则。[当前验证/边界](../../evidence/playwright-local-private-runner-2026-10-17.md)。只工具提交，不含P1/runtime会话候选；privacy/取消/真实B尚未实测、不称清理成功，零PNG未视觉验收。A失败/第二轮/C/最后HEAD全CI保护保持。[已测试]（仅静态/unit，动态B未执行）
 
 - **2026-10-17｜source会话变异/首轮收口**：ea2a647字段独立修正后，真源向session副本加固定旧token，三原shell断言红PW1/18222ms、host1/23778ms；完整清理apply_patch还原，原三mode全绿PW0/3361ms、host0/8382ms，owned全清。PG producer样本SHA前后同，原业务/权限/断言不动，变异无残留，[分层证据](../../tasks/playwright-source-fixture-ruling-2026-10-17.md)。TD-TEST-015只字段缺口实施关闭/55项；A8六份全绿、cost/Workspace各一败，不称总绿，可续独立B首轮，C/第二轮/最终HEAD全CI保护保持。[已测试]（三mode及两类真红绿）
 

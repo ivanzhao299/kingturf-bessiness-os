@@ -1,0 +1,91 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import test from 'node:test';
+import {
+  localCases,
+  safeLocalCases,
+  safeLocalResult,
+  validateLocalCommand,
+} from './private-contract.mjs';
+import PrivateReporter from './private-reporter.mjs';
+
+test('local inventory rejects discovery, production, unsafe labels and unknown faults', () => {
+  for (const kind of ['p1', 'runtime']) validateLocalCommand(kind, 'fixed-label');
+  for (const kind of ['production', 'all', '../p1', undefined])
+    assert.throws(() => validateLocalCommand(kind, 'fixed-label'));
+  for (const label of ['../raw', '', 'a/b', 'UPPER', 'x'.repeat(65)])
+    assert.throws(() => validateLocalCommand('p1', label));
+  assert.throws(() => validateLocalCommand('p1', 'fixed-label', 'raw-export'));
+});
+
+test('fixed private inventory matches both original local spec declarations', () => {
+  for (const [kind, file] of [
+    ['p1', 'p1-demo.spec.ts'],
+    ['runtime', 'runtime-local.spec.mjs'],
+  ]) {
+    const source = readFileSync(new URL(`../../tests/e2e/${file}`, import.meta.url), 'utf8');
+    const titles = [...source.matchAll(/\btest\('([^']+)'/gu)].map((match) => match[1]);
+    assert.deepEqual(titles, localCases[kind]);
+  }
+});
+
+test('result boundary re-encodes only bounded scalar fields', () => {
+  const value = {
+    index: 0,
+    status: 'failed',
+    durationMs: 1,
+    line: 20,
+    error: 'FIXED_NON_SECRET_ERROR_CANARY',
+    title: 'FIXED_NON_SECRET_TITLE_CANARY',
+    attachments: [{ body: 'FIXED_NON_SECRET_ATTACHMENT_CANARY' }],
+  };
+  assert.deepEqual(safeLocalCases('p1', [value]), [
+    { index: 0, status: 'failed', durationMs: 1, line: 20 },
+  ]);
+  assert.throws(() => safeLocalCases('p1', [value, value]));
+  for (const invalid of [
+    { index: localCases.p1.length },
+    { status: 'unknown' },
+    { durationMs: -1 },
+    { line: 'raw' },
+  ])
+    assert.throws(() => safeLocalCases('p1', [{ ...value, ...invalid }]));
+});
+
+test('reporter records inventory index without raw errors, titles or attachments', () => {
+  const previous = process.env.KINGTURF_PRIVATE_KIND;
+  process.env.KINGTURF_PRIVATE_KIND = 'runtime';
+  try {
+    const reporter = new PrivateReporter();
+    reporter.onTestEnd(
+      { title: localCases.runtime[0], location: { line: 13 } },
+      { status: 'failed', duration: 1.4, errors: ['FIXED_NON_SECRET_CANARY'], attachments: [] },
+    );
+    assert.deepEqual(reporter.cases, [{ index: 0, status: 'failed', durationMs: 1, line: 13 }]);
+    reporter.onTestEnd({ title: 'unknown' }, {});
+    assert.equal(reporter.invalid, true);
+  } finally {
+    if (previous === undefined) delete process.env.KINGTURF_PRIVATE_KIND;
+    else process.env.KINGTURF_PRIVATE_KIND = previous;
+  }
+});
+
+test('zero exit cannot hide missing discovery, completion, cases or failed outcomes', () => {
+  const valid = {
+    exit: 0,
+    elapsedMs: 1,
+    discovered: 1,
+    complete: true,
+    probe: false,
+    cases: [{ index: 0, status: 'passed', durationMs: 1, line: 13 }],
+  };
+  assert.deepEqual(safeLocalResult('runtime', valid), valid);
+  for (const invalid of [
+    { discovered: 0 },
+    { complete: false },
+    { cases: [] },
+    { cases: [{ ...valid.cases[0], status: 'failed' }] },
+    { probe: true },
+  ])
+    assert.throws(() => safeLocalResult('runtime', { ...valid, ...invalid }));
+});

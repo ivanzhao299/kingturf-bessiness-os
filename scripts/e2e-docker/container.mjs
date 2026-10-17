@@ -4,6 +4,7 @@ import { chromium } from '@playwright/test';
 import { Database, assertTestDatabaseTarget } from '../../packages/database/dist/index.js';
 import { startForwards } from './forward.mjs';
 import { runPreviewSpec } from './spec-runner.mjs';
+import { runPrivateSpec } from './private-runner.mjs';
 
 const report = (event, details = {}) => console.log(JSON.stringify({ event, ...details }));
 const inputLines = createInterface({ input: process.stdin, crlfDelay: Infinity });
@@ -78,6 +79,13 @@ async function verifyAndProbe(control) {
   });
   const command = await receive();
   if (command.action === 'verified-only') return;
+  if (command.action === 'local') {
+    phase = 'private-local-browser';
+    const result = await runPrivateSpec(command, cancellation.signal, report);
+    report('local-result', { kind: command.kind, label: command.label, ...result });
+    assert.equal(result.exit, 0, 'private local browser failed');
+    return;
+  }
   if (command.action === 'spec') {
     phase = 'playwright-spec';
     const result = await runPreviewSpec(command, cancellation.signal, () =>

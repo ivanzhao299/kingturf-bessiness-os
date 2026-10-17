@@ -1,6 +1,8 @@
 # docs/index.md（全部文档索引）
 
-[B本地产物隔离接线方案](tasks/playwright-local-private-runner-2026-10-17.md)：按已授P1例外接只读容器/tmpfs/无raw导出/安全case索引；首版零PNG导出，不能称截图证据已保留。尚未实施验证，原config/业务断言/PG同一性保持。
+[B私有执行器验证记录](evidence/playwright-local-private-runner-2026-10-17.md)：候选unit5/原lint/结构0，固定发现/完成及probe绑定、独立review收紧；隔离/取消/真实B尚未实测，不导PNG/未视觉验收，不提前称私密清理成功。
+
+[B本地产物隔离接线方案](tasks/playwright-local-private-runner-2026-10-17.md)：按已授P1例外接只读容器/tmpfs/无raw导出/安全case索引；首版零PNG导出，不能称截图证据已保留。候选静态通过、动态验证尚待，原config/业务断言/PG同一性保持。
 
 [Source分页合成夹具R7与验证](tasks/playwright-source-fixture-ruling-2026-10-17.md)：原PG生产器19过、两次原夹具2过1败；人裁只应收stub补nextCursor:null，缺字段/auth各真红→还原原3例绿，样本SHA/权限/断言保持。TD-TEST-015仅该缺口实施关闭，55顶层项；成本/Workspace仍待裁。
 

@@ -1,0 +1,77 @@
+import assert from 'node:assert/strict';
+
+export const localCases = Object.freeze({
+  p1: [
+    'shows approved, rejected, and expired credit evidence',
+    'shows the released order, partial AR, payment, and reconciliation evidence',
+    'keeps the P1 evidence usable on a mobile viewport',
+    'shows the permission-bounded Order 360 summary and evidence timeline',
+    'shows commission economics and the immutable control ledger',
+    'shows explainable risk findings and the closed responsibility trail',
+    'shows server-calculated executive KPIs with source and responsibility drilldowns',
+    'shows published manufacturing versions, BOM substitute evidence, and ordered operations',
+    'shows supplier qualification, received purchase order, receipt, and derived lot balance',
+    'shows recursive MRP explanations, frozen overrides, and released proposal ledgers',
+    'shows closed production execution with routing, material, reports, and serialized output',
+  ],
+  runtime: [
+    'real browser proxy login creates a customer with persistence, audit and denied access',
+  ],
+});
+
+export function validateLocalCommand(kind, label, fault) {
+  assert(Object.hasOwn(localCases, kind), 'only inventoried local browser targets allowed');
+  assert.match(label, /^[a-z0-9][a-z0-9-]{0,63}$/u);
+  assert(
+    [undefined, 'privacy', 'interrupt', 'interrupt-stop'].includes(fault),
+    'unknown local fault',
+  );
+}
+
+export function safeLocalCases(kind, values) {
+  assert(Object.hasOwn(localCases, kind));
+  assert(Array.isArray(values));
+  const indices = new Set();
+  return values.map((value) => {
+    assert(Number.isInteger(value.index) && value.index >= 0);
+    assert(value.index < localCases[kind].length && !indices.has(value.index));
+    indices.add(value.index);
+    assert(['passed', 'failed', 'timedOut', 'skipped', 'interrupted'].includes(value.status));
+    assert(Number.isInteger(value.durationMs) && value.durationMs >= 0);
+    assert(Number.isInteger(value.line) && value.line > 0);
+    // Re-encode known scalars; never forward a reporter/test/error/attachment object.
+    return {
+      index: value.index,
+      status: value.status,
+      durationMs: value.durationMs,
+      line: value.line,
+    };
+  });
+}
+
+export function safeLocalResult(kind, value) {
+  assert(Number.isInteger(value.exit) && value.exit >= 0);
+  assert(Number.isInteger(value.elapsedMs) && value.elapsedMs >= 0);
+  assert(Number.isInteger(value.discovered) && value.discovered >= 0);
+  assert.equal(typeof value.complete, 'boolean');
+  assert.equal(typeof value.probe, 'boolean');
+  const cases = safeLocalCases(kind, value.cases);
+  if (value.probe)
+    assert(value.exit === 0 && value.discovered === 0 && !value.complete && cases.length === 0);
+  else if (value.exit === 0)
+    assert(
+      value.complete &&
+        value.discovered === localCases[kind].length &&
+        cases.length === value.discovered &&
+        cases.every((item) => item.status === 'passed'),
+      'successful browser requires complete inventoried cases',
+    );
+  return {
+    exit: value.exit,
+    elapsedMs: value.elapsedMs,
+    discovered: value.discovered,
+    complete: value.complete,
+    probe: value.probe,
+    cases,
+  };
+}

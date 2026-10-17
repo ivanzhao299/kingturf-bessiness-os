@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawn, execFileSync } from 'node:child_process';
+import { appendFileSync, mkdirSync } from 'node:fs';
 import { createInterface } from 'node:readline';
 import { performance } from 'node:perf_hooks';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -7,10 +8,18 @@ import net from 'node:net';
 import { createFixture, stopChild, assertOwnedListener } from './fixture.mjs';
 import { verifySeedAuthentication } from './seed-auth.mjs';
 import { validateSpecCommand } from './spec-runner.mjs';
+import { safeLocalResult, validateLocalCommand } from './private-contract.mjs';
 
 const image = 'kingturf-e2e:pw1.62.1-chrome';
 const imageId = 'sha256:1a0e14c3fd2351aab685106ad17d86b0bd38e6ed89cc0d0d2be809579f8dab3e';
-const report = (event, details = {}) => console.log(JSON.stringify({ event, ...details }));
+let localEventFile;
+let localChildClose;
+let localResultSeen = false;
+const report = (event, details = {}) => {
+  const line = JSON.stringify({ event, ...details });
+  if (localEventFile) appendFileSync(localEventFile, `${line}\n`, { mode: 0o600 });
+  console.log(line);
+};
 const reportContainer = (value) => {
   const schemas = {
     'pg-verified': ['readOnly', 'sameDatabase', 'sameSchema', 'sameInstance', 'sameHostMarker'],
@@ -25,6 +34,9 @@ const reportContainer = (value) => {
     'container-failed': [],
     'spec-result': [],
     'spec-started': [],
+    'local-started': [],
+    'local-closed': [],
+    'local-result': [],
   };
   assert(Object.hasOwn(schemas, value.event), 'unknown container event');
   const safe = {};
@@ -48,9 +60,34 @@ const reportContainer = (value) => {
         'missing-null-foreign-origin',
         'natural-signed-write',
         'playwright-spec',
+        'private-local-browser',
       ].includes(value.phase),
     );
     safe.phase = value.phase;
+  }
+  if (['local-started', 'local-closed', 'local-result'].includes(value.event)) {
+    assert.equal(mode, 'local');
+    validateLocalCommand(value.kind, value.label);
+    assert.equal(value.kind, process.argv[3]);
+    assert.equal(value.label, process.argv[4]);
+    Object.assign(safe, { kind: value.kind, label: value.label });
+    if (value.event === 'local-closed') {
+      assert.equal(localChildClose, undefined, 'duplicate private browser close');
+      assert(value.exit === null || (Number.isInteger(value.exit) && value.exit >= 0));
+      assert(value.terminationSignal === null || /^SIG[A-Z0-9]+$/u.test(value.terminationSignal));
+      Object.assign(safe, { exit: value.exit, terminationSignal: value.terminationSignal });
+      localChildClose = { exit: value.exit, terminationSignal: value.terminationSignal };
+    }
+    if (value.event === 'local-result') {
+      assert.equal(localResultSeen, false, 'duplicate private result');
+      assert.equal(value.probe, process.argv[5] === 'privacy', 'probe must match explicit command');
+      if (!value.probe) {
+        assert.equal(localChildClose?.exit, value.exit, 'result requires observed browser close');
+        assert.equal(localChildClose.terminationSignal, null);
+      } else assert.equal(localChildClose, undefined);
+      Object.assign(safe, safeLocalResult(value.kind, value));
+      localResultSeen = true;
+    }
   }
   if (value.event === 'spec-result' || value.event === 'spec-started') {
     validateSpecCommand(value.spec, value.label);
@@ -93,12 +130,21 @@ assert(
     'seed-repeat',
     'seed-diagnose',
     'spec',
+    'local',
   ].includes(mode),
   'unknown preflight argument',
 );
 if (mode === 'spec') {
   validateSpecCommand(process.argv[3], process.argv[4]);
   assert([undefined, 'interrupt'].includes(process.argv[5]), 'unknown spec fault');
+}
+const local = mode === 'local';
+if (local) {
+  validateLocalCommand(process.argv[3], process.argv[4], process.argv[5]);
+  mkdirSync('.test-results/docker-local', { recursive: true, mode: 0o700 });
+  const evidence = `.test-results/docker-local/${process.argv[4]}`;
+  mkdirSync(evidence, { mode: 0o700 }); // Refuse replacement of any prior label.
+  localEventFile = `${evidence}/safe-events.jsonl`;
 }
 assert.equal(
   execFileSync('docker', ['image', 'inspect', image, '--format', '{{.Id}}'], {
@@ -152,8 +198,18 @@ try {
       '--label',
       'kingturf.task=docker-pw-channel',
       '--add-host=kt-e2e-host:host-gateway',
+      ...(local
+        ? [
+            '--read-only',
+            '--log-driver=none',
+            '--tmpfs',
+            '/tmp:rw,nosuid,nodev,size=1073741824,mode=1777',
+            '--tmpfs',
+            '/work/.test-results:rw,nosuid,nodev,size=1073741824,mode=1777',
+          ]
+        : []),
       '--mount',
-      `type=bind,source=${process.cwd()},target=/work`,
+      `type=bind,source=${process.cwd()},target=/work${local ? ',readonly' : ''}`,
       '--workdir',
       '/work',
       '-e',
@@ -169,6 +225,30 @@ try {
     { stdio: 'ignore' },
   );
   containerCreated = true;
+  if (local) {
+    const inspection = JSON.parse(
+      execFileSync('docker', ['inspect', name], { encoding: 'utf8' }),
+    )[0];
+    assert.equal(inspection.HostConfig.ReadonlyRootfs, true);
+    assert.equal(inspection.HostConfig.LogConfig.Type, 'none');
+    assert.deepEqual(Object.keys(inspection.HostConfig.Tmpfs).sort(), [
+      '/tmp',
+      '/work/.test-results',
+    ]);
+    assert(
+      inspection.Mounts.every(
+        (mount) =>
+          (mount.Destination === '/work' && mount.Type === 'bind' && !mount.RW) ||
+          (['/tmp', '/work/.test-results'].includes(mount.Destination) && mount.Type === 'tmpfs'),
+      ),
+      'no extra writable host mounts allowed',
+    );
+    report('local-container-isolation', {
+      rootAndRepositoryReadOnly: true,
+      rawLogDriverDisabled: true,
+      declaredTmpfsVerified: true,
+    });
+  }
   child = spawn('docker', ['start', '--attach', '--interactive', name], {
     stdio: ['pipe', 'pipe', 'ignore'],
   });
@@ -196,6 +276,11 @@ try {
       const event = JSON.parse(line);
       reportContainer(event);
       if (event.event === 'spec-started' && process.argv[5] === 'interrupt')
+        process.kill(process.pid, 'SIGTERM');
+      if (
+        event.event === 'local-started' &&
+        ['interrupt', 'interrupt-stop'].includes(process.argv[5])
+      )
         process.kill(process.pid, 'SIGTERM');
       if (event.event === 'pg-verified') {
         cancellation.signal.throwIfAborted();
@@ -229,7 +314,8 @@ try {
           mode === 'seed-auth-abort' ||
           mode === 'seed-full' ||
           mode === 'seed-repeat' ||
-          mode === 'seed-diagnose'
+          mode === 'seed-diagnose' ||
+          (local && process.argv[3] === 'p1' && process.argv[5] !== 'privacy')
         ) {
           phase = mode;
           fixture.assertApiOwned();
@@ -278,11 +364,12 @@ try {
                     /^\/api\/v1\/[a-zA-Z0-9_/-]+$/u.test(detail.path) &&
                     Number.isInteger(detail.status)
                   )
-                    report('seed-http-failure', {
-                      method: detail.method,
-                      path: detail.path,
-                      status: detail.status,
-                    });
+                    report(
+                      'seed-http-failure',
+                      local
+                        ? { stage: 'p1-seed', status: detail.status }
+                        : { method: detail.method, path: detail.path, status: detail.status },
+                    );
                 } catch {
                   /* Do not relay raw stderr or identity-bearing assertion text. */
                 }
@@ -303,8 +390,10 @@ try {
             }
           }
           cancellation.signal.throwIfAborted();
-          await send({ action: 'verified-only' });
-          continue;
+          if (!local) {
+            await send({ action: 'verified-only' });
+            continue;
+          }
         }
         preview = spawn(
           mode === 'fail-preview-spawn' ? '/__kingturf_missing_preview__' : 'pnpm',
@@ -343,12 +432,25 @@ try {
         assert(ready, 'preview readiness deadline');
         fixture.assertApiOwned();
         assertOwnedListener(4173, preview, true);
-        phase = mode === 'spec' ? 'playwright-spec' : 'browser-probe';
+        phase = local
+          ? 'private-local-browser'
+          : mode === 'spec'
+            ? 'playwright-spec'
+            : 'browser-probe';
         cancellation.signal.throwIfAborted();
         await send(
-          mode === 'spec'
-            ? { action: 'spec', spec: process.argv[3], label: process.argv[4] }
-            : { action: 'preflight', user: users.runtime, fault: mode },
+          local
+            ? {
+                action: 'local',
+                kind: process.argv[3],
+                label: process.argv[4],
+                fault: process.argv[5],
+                user: process.argv[3] === 'p1' ? users.admin : users.runtime,
+                connection: fixture.containerConnection,
+              }
+            : mode === 'spec'
+              ? { action: 'spec', spec: process.argv[3], label: process.argv[4] }
+              : { action: 'preflight', user: users.runtime, fault: mode },
         );
       }
       if (event.event === 'natural-cookie-origin') {
@@ -376,7 +478,7 @@ try {
             cancellation.abort(Error('preflight deadline'));
             reject(cancellation.signal.reason);
           },
-          mode === 'spec' ? 600_000 : 120_000,
+          mode === 'spec' || local ? 600_000 : 120_000,
         );
       }),
     ]);
@@ -391,14 +493,20 @@ try {
   } else {
     assert(verified);
     assert.equal(code, 0);
+    if (local) assert(localResultSeen, 'local browser result is required');
   }
 } catch (error) {
-  report('preflight-failed', {
-    phase,
-    errorType: error.name,
-    databaseCode: error.code,
-    constraint: error.constraint,
-  });
+  report(
+    'preflight-failed',
+    local
+      ? { phase }
+      : {
+          phase,
+          errorType: error.name,
+          databaseCode: error.code,
+          constraint: error.constraint,
+        },
+  );
   process.exitCode = 1;
 } finally {
   let stopped = true;
@@ -409,13 +517,33 @@ try {
     });
   if (containerCreated) {
     try {
-      const status = execFileSync('docker', ['inspect', name, '--format', '{{.State.Status}}'], {
-        encoding: 'utf8',
-      }).trim();
-      if (status === 'running')
-        execFileSync('docker', ['stop', '--time', '5', name], { stdio: 'ignore' });
-      // Atomic force-removal also handles a start/closed-stdin race; target is our exact created name.
-      execFileSync('docker', ['rm', '--force', name], { stdio: 'ignore' });
+      if (local) {
+        try {
+          assert.notEqual(process.argv[5], 'interrupt-stop', 'fixed stop failure injection');
+          execFileSync('docker', ['stop', '--time', '5', name], {
+            stdio: 'ignore',
+            timeout: 10_000,
+          });
+        } catch {
+          report('local-stop-error', { injected: process.argv[5] === 'interrupt-stop' });
+        }
+        // Always attempt our exact owned removal, even after failed stop/inspection.
+        execFileSync('docker', ['rm', '--force', name], { stdio: 'ignore', timeout: 10_000 });
+        const remaining = execFileSync(
+          'docker',
+          ['ps', '--all', '--filter', `name=^/${name}$`, '--format', '{{.Names}}'],
+          { encoding: 'utf8', timeout: 10_000 },
+        ).trim();
+        assert.equal(remaining, '', 'owned private container removal unconfirmed');
+      } else {
+        const status = execFileSync('docker', ['inspect', name, '--format', '{{.State.Status}}'], {
+          encoding: 'utf8',
+        }).trim();
+        if (status === 'running')
+          execFileSync('docker', ['stop', '--time', '5', name], { stdio: 'ignore' });
+        // Atomic force-removal also handles a start/closed-stdin race; exact owned name only.
+        execFileSync('docker', ['rm', '--force', name], { stdio: 'ignore' });
+      }
     } catch {
       stopped = false;
       process.exitCode = 1;
