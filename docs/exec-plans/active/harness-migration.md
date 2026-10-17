@@ -3752,6 +3752,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+- **2026-10-17｜采购/库存专项真实PG及R4新发现**：父e1174d3，独立8项实际PG0/21242ms，原lint/tsc/format0；每例owned新schema，真实发布料/资格/RFQ/报价/PO/收货/库存账，固定数量/签向/COMPANY或GROUP租户/失败回滚及audit/outbox绑定，[全过程/非全矩阵边界](../../evidence/harness-stage5-test-map-2026-10-17.md)。独立review无必要阻断，错company-only标题已修并补GROUP正写；乱序start/result实证。新增TD-PROC-001（总59=原58+1）：重复部分收货状态机冲突，真实首4/次2失败且四表/证据回滚/最后6成功，只登记不修，不以负向刻画绿当缺陷关闭。TEST003仅3/6，B达标/最终CI待；回滚本新test/docs独立revert，不改产品/旧oracle/seed。一次doc patch锚点不精确原子未写后重施，历史保留。[已测试]（实际PG专项，非完整CI）
+
 - **2026-10-17｜MRP专项真实PG**：父31f694e，独立8项实际PG过，原lint/tsc/format0；复用owned helper、每例独立随机schema迁移/收尾，真实BOM固定10→21→26→30及提案日期、COMPANY/GROUP租户/拒绝、版本/唯一、固定hash非幂等、冻结/连续事件/闭态/不可变、outbox后置冲突与cycle/empty回滚。[真实历史及覆盖边界](../../evidence/harness-stage5-test-map-2026-10-17.md)。首collision seed漏必填列导致6过1败，补后8过；共享图顺序依赖改每例隔离后乱序8过/exit0/null/21729ms，独立review无必要阻断。明确合成算法需求、库存/收货0及单桶，不称商业链/全矩阵；TEST003仅2/6，B最终目标/D三连未完成。回滚本新test/docs独立revert，不含产品/旧断言/seed/配置改动。[已测试]（实际PG专项，非完整CI）
 
 - **2026-10-17｜P1货币显示人类增量R7**：父7117c41，亲核原始人类call_dd0e2120495445669087b3dbae8dba45批准最小金额显示适配，[原话与边界](../../tasks/harness-stage5-p1-money-authorization-2026-10-17.md)。仅有main af0de8f/7e3e46c等明确依据的货币词面改独立固定本地化期待；原数值/币种/计数/状态/事件/seed保持，不用产品formatter造期待。其它业务失败/C7、成本提示/TD018/C与第二轮边界保持。本提交只有R7/index/日志，不改期待或产品，后继逐处映射/真变异/实际补跑另提交；回滚本授权docs独立revert须核依赖。[已测试]（授权文档静态，非P1通过）

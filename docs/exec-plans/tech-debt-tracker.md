@@ -1,5 +1,7 @@
 # 技术债台账（tech-debt-tracker）
 
+**阶段5采购专项新发现（2026-10-17，59项）**：新增TD-PROC-001，只登记不修产品：receive允许PARTIALLY_RECEIVED继续收货，但0038不允许状态仍为PARTIALLY_RECEIVED。独立静态复核一致，真实PG首收4/再收2确实P0001且收货/库存/证据整体回滚；最后余量6仍可收齐。[专项8项及日志](../evidence/harness-stage5-test-map-2026-10-17.md)，不把现状回滚测试绿当该缺陷已修。原阶段5基线58项不回写，F后继须纳入新第59项。
+
 **阶段5 Workspace实施收口（2026-10-17，仍58项）**：按5230625新字段许可仅补真实orders/finance tuple，原4过；缺字段真红3过1败→还原4过，旧session DTO真红4败→还原4过。TD-TEST-014仅旧夹具/文件适配实施验证关闭，不认定产品问题；A七份绿/成本一败，P1待逐页期待裁定、第二轮未开。[全部实际结果](../tasks/playwright-workspace-fixture-rulings-2026-10-17.md)。批次4已人工验收，SEC003载体项按5230625关闭；下方旧待裁/未验收均历史，阶段5其它义务未完成。
 
 **首轮部分交付（2026-10-17，58项）**：新增TD-TEST-018，P1两次安全定位出现active upstream4173 CONNECT_TIMEOUT，最新仅3例完成、前两例原看板断言/overview隐藏，第三原因未知；TD-TEST-016转C7，候选封存还原。A六文件全绿/两份各一败，B runtime真红绿/P1未完成，不开第二轮、不改产品/网络失败条件。[事实与封存](../tasks/playwright-p1-replay-blocker-2026-10-17.md)。最后稳定干净HEAD完整CI另实测；下方均历史时点。
@@ -89,6 +91,7 @@
 | TD-API-001   | buildApp 单函数 ≈6,442 行、230 个顺序路由分支，吞掉 Service 层                                | P1     | 架构/复杂度    | 无                       | 批次 2                             | 待处理                          |
 | TD-API-002   | app.ts 深嵌套：≥7 层 3,202 行，最深 14 层                                                     | P2     | 复杂度         | 无                       | 批次 2                             | 待处理                          |
 | TD-REG-001   | QTC 前六模块提前读取仓储根，违反旧求值/receiver契约                                           | P1     | 重构回归       | 修复 bug（恢复旧契约）   | 2b独立回归恢复                     | 已解决（留历史）                |
+| TD-PROC-001  | 重复部分收货与采购单状态触发器冲突                                                            | P2     | 采购状态机     | 修复bug需单独批准        | 阶段5只登记                        | 真实PG确证/未修复               |
 | TD-DUP-001   | 数据范围(DataScope) SQL 谓词在 12 个文件各复制一份                                            | P1     | 重复/安全      | 无                       | 批次 1                             | 已完成                          |
 | TD-DUP-002   | audit_events + domain_event_outbox 双写 44 处/20 文件                                         | P1     | 重复           | 无                       | 批次 1                             | 已完成                          |
 | TD-DUP-003   | 幂等键查询样板 23 行重复                                                                      | P2     | 重复           | 无                       | 批次 1                             | 已完成                          |
@@ -544,9 +547,16 @@
 - **修复建议**：阶段 5 接入 `@vitest/coverage-v8`，整体下限 + 关键模块（apps/api 仓储层、packages/domain）单独下限，进 `ci:local`。
 - **业务行为影响**：无 ｜ **关联批次**：阶段 5 ｜ **验收方式**：覆盖率报告产出 + 低于阈值实测拦截
 
+### TD-PROC-001｜重复部分收货与采购单状态触发器冲突
+
+- **位置**：`apps/api/src/procurement-repositories.ts` receive:386–483；`packages/database/migrations/0038_procurement_inventory_integrity.sql`:22–33。
+- **证据**：仓储接受ISSUED/PARTIALLY_RECEIVED，收货后还有余量就无条件UPDATE为PARTIALLY_RECEIVED；触发器却只允许旧PARTIALLY_RECEIVED转RECEIVED/CANCELLED。独立只读复核一致，真实专项先收4/再收2确实P0001 `partially received purchase order has invalid transition`，失败四表计数/库存不变、audit/outbox0，最后6可收齐；全8项乱序实际0/21242ms。不能据此声称生产环境已观测或已修复。
+- **状态/范围**：仅登记、未修复；该次状态更新前已插receipt/lot/line/movement，专项已核失败原子回滚。允许部分→最终收完的正例不抵销本项；不绕过仓储、不直接改PO状态或触发器求绿。现状负向刻画不当作期望产品语义。
+- **后继**：产品语义和修复需R2/C7独立批准，再独立修复提交和正常多次部分收货回归。阶段5本轮仅测试/证据，不并入生产变更。
+
 ### TD-TEST-003｜6 个仓储模块仅 mock 路由级测试，SQL 路径未验证
 
-- **阶段5实际进展，未关闭**：制造专项6项真实PG0、租户SQL实现真注入1败4过→还原5绿→补强最终6绿；MRP专项8项真实PG0（每例独立schema、固定展开净额、状态/租户/失败回滚，乱序21729ms），首漏outbox必填字段及共享图顺序依赖修正史完整保留。源码恢复SHA/diff0及事件回滚证据见[测试地图](../evidence/harness-stage5-test-map-2026-10-17.md)。两域公司/GROUP限定并非recordScopeSql接口，也无幂等命令；其余四域专项未完成，MRP非零库存/采购和多桶矩阵仍欠。原“六个无专项”保留为发现时点，佣金/风险旧HTTP间接证据不漏记。
+- **阶段5实际进展，未关闭**：制造专项6项真实PG0、租户SQL实现真注入1败4过→还原5绿→补强最终6绿；MRP专项8项真实PG0，首漏outbox必填字段及共享图顺序依赖修正史完整保留；采购专项8项真实PG0/21242ms、每例独立schema/真实链/状态及事务回滚，新增TD-PROC-001只登记未修。源码恢复SHA/diff0及事件证据见[测试地图](../evidence/harness-stage5-test-map-2026-10-17.md)。这三域公司/GROUP限定并非recordScopeSql接口，也无幂等命令；其余三域专项未完成，MRP非零库存/采购和多桶矩阵仍欠。原“六个无专项”保留为发现时点，佣金/风险旧HTTP间接证据不漏记。
 
 - **位置**：`commission`/`dashboard`/`manufacturing`/`mrp`/`procurement`/`risk` 六个 `*-repositories.ts`
 - **类别**：测试 ｜ **严重度**：P2

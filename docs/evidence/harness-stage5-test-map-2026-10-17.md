@@ -1,5 +1,15 @@
 # 阶段5现状测试地图与补齐清单
 
+## 后继实际补测：采购/库存专项PG及新发现
+
+父e1174d3后新增独立`procurement-postgres.integration.test.ts`，每例复用owned helper新schema、真实迁移/两租户/制造发布料→供应商→有效资格→RFQ发行→报价→采购单发行→收货地点，不mock数据库、不改生产实现。8项覆盖固定10件/2.5单价、收货及QUARANTINE lot/库存账四表、全部七list实际DTO、所有命令COMPANY/GROUP前置拒绝与租户隔离、资格版本/有效期/空发行单/唯一冲突、超收/未知行/地点及后续重复lot造成的整体回滚、六类库存移动正负方向及负余额/错物料/来源唯一/不可变、部分4→最终6收完、发行outbox后置唯一冲突回滚DRAFT/audit，以及TD-PROC-001现状缺陷与原子性刻画。创建/发行/报价/收货的事件类型、aggregate_type/id/version与audit精确绑定；无幂等参数，唯一冲突不充幂等成功。
+
+真实guard0；首7项全绿/exit0/null/23057ms（测试20543ms），新增缺陷原子性第8项及move scope拒绝后全8绿/exit0/null/20743ms（测试19500ms）。日志`/tmp/kingturf-stage5-procurement-pg-first-2026-10-17.log`、`/tmp/kingturf-stage5-procurement-pg-final-2026-10-17.log`。均显式shuffle.tests/seed20261017，后次只读reporter逐例start/result证明实际执行乱序，不改原Vitest配置。原lint/tsc/format0。独立只读review无必要阻断，指出原company-only标题过窄，已修为COMPANY或GROUP并补同tenant GROUP写入成功/另一tenant仍不可见与成对证据；最终8/8、exit0/null/21242ms（测试20070ms），日志`/tmp/kingturf-stage5-procurement-pg-scopes-final-2026-10-17.log`。
+
+新TD-PROC-001：首笔4后再收2仍有余额，receive会无条件写PARTIALLY_RECEIVED，而0038禁止该同态更新，真实P0001 `partially received purchase order has invalid transition`。该例明确注释为缺陷现状/回滚刻画，不是期望产品语义；失败后receipt/line/lot/movement各仍1、库存仍4、PO仍partial且该correlation audit/outbox0；最后余量6仍可收齐。仅登记，不顺修SQL/触发器/产品或绕过仓储。台账原58项基线另增第59项，F必须纳入；测试绿不关闭该债。
+
+边界：此处通用move在QUARANTINE lot验证台账方向/余额，不等于生产ISSUE已通过质量放行；生产交易0044另要求RELEASED+BOM，质量检查闭环未纳入本专项。采购quote关联未扩成全RFQ/PO匹配校验、资格有效期不冒称lot日期边界，多并发收货等仍非穷举。TEST003目前制造/MRP/采购3/6，佣金/风险/驾驶舱专项、覆盖率三目标与最终CI仍欠。一次doc patch因表格旧行不精确而原子未写，定位实际行后重施，无源码改动。
+
 ## 后继实际补测：MRP专项PG
 
 父31f694e后新增独立`apps/api/test/mrp-postgres.integration.test.ts`，复用guarded owned helper，真实迁移和仓储，不改生产实现。每例beforeEach新随机schema、完整重建两租户/发布BOM/策略/需求/初始run，afterEach逆序close/drop，不依赖it顺序或前例遗留数据。8项覆盖：固定BOM需求10×2×1.05=21、原料安全库存5使净需求26/倍量取整30，成品10；两提案/日期/初始流水和policy/demand/run的audit+outbox精确聚合绑定；公司/GROUP租户隔离、SELF/TEAM-only拒绝；未发布/外租户版本与唯一约束；同输入hash但独立run（不冒称幂等）；冻结批准证据/连续事件/闭态/已取消run拒新决策；computed子证据不可变；outbox冲突发生在audit后，事件与audit一并回滚；真实循环图及空horizon失败时run/snapshot/calculation/proposal/event计数不变。
@@ -80,7 +90,7 @@ C安全注入实做于`packages/domain/src/index.ts`字段权限分支，临时d
 | 风险                                      | risk-route-contract、scope-sql-risk                                                                                | released-order-http:209真实评估、授权PG:456/507字段/范围；缺专项重放/任务状态SQL                              | 共享；财务风险CDP历史                                                  |
 | 经营看板                                  | dashboard-route-contract、scope-sql-dashboard                                                                      | 13 PG文件中未找到dashboard实际查询；补专项                                                                    | 共享；财务风险CDP历史                                                  |
 | 制造主数据                                | manufacturing-route-contract                                                                                       | 新manufacturing-postgres专项6项真实通过（详见本文后继证据）；production PG旧直接种子仍另计                    | 共享；运营CDP历史                                                      |
-| 采购/库存                                 | procurement-route-contract                                                                                         | 13 PG文件中按suppliers/rfqs/purchase-orders/goods-receipts/inventory未找到；补专项                            | 共享；运营CDP历史                                                      |
+| 采购/库存                                 | procurement-route-contract                                                                                         | 新procurement-postgres专项8项真实通过，真实资格/收货/台账/回滚；TD-PROC-001只登记不修（详见本文）             | 共享；运营CDP历史                                                      |
 | MRP                                       | mrp-route-contract                                                                                                 | 新mrp-postgres专项8项真实通过；每例独立schema/固定展开净额/状态与失败回滚，非零库存采购及多桶仍欠（详见本文） | 共享；运营CDP历史                                                      |
 | 生产执行/实际成本                         | production-_、production-cost-_                                                                                    | production-postgres已在，production-startup PG只验证启动只读；成本政策/计算等专项SQL缺口需补，不再称“零测试”  | 共享；运营CDP历史/P1种子真实路径不抵自动PG                             |
 | 质量/不合格/CAPA                          | quality/ncr/capa各route-contract                                                                                   | 质量HTTP合同大量已补，但生产种子或下游查询不等于质量仓储专项；需补核心SQL/事务                                | 共享；运营CDP历史                                                      |
