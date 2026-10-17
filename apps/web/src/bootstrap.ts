@@ -1,5 +1,5 @@
 import { CommercialController } from './commercial/store/controller';
-import { createCommercialRouteState } from './commercial/store/route-state';
+import { createCommercialRouteState, commercialRouteStateOf } from './commercial/store/route-state';
 import {
   initialCommercialRoute,
   installCommercialRouteNavigation,
@@ -433,6 +433,20 @@ export function commercialWorkspaceStructure(
     costMatrixRoleGuidance,
     replaceRouteView,
     rebuildWorkspace: () => commercialWorkspaceStructure(viewport, immutable, controller),
+    prepareQuoteRoute: async (
+      isCurrent: () => boolean,
+    ): Promise<'ready' | 'unavailable' | 'cancelled'> => {
+      const state = controller && commercialRouteStateOf(controller);
+      if (!state) return 'cancelled';
+      try {
+        const result = await state.load('quotes', isCurrent);
+        if (!state.owner.isAlive() || !isCurrent() || result.state === 'cancelled')
+          return 'cancelled';
+        return result.state === 'ready' ? 'ready' : 'unavailable';
+      } catch {
+        return state.owner.isAlive() && isCurrent() ? 'unavailable' : 'cancelled';
+      }
+    },
   };
   const salesViewPorts = {
     recordValue,

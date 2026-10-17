@@ -35,6 +35,7 @@ export type PricingViewPorts = Readonly<{
   costMatrixRoleGuidance: (permissions: ReadonlySet<string>) => string;
   replaceRouteView: (current: HTMLElement, replacement: HTMLElement) => void;
   rebuildWorkspace: () => HTMLElement;
+  prepareQuoteRoute: (isCurrent: () => boolean) => Promise<'ready' | 'unavailable' | 'cancelled'>;
 }>;
 export type PricingViewContext = Readonly<{
   workspace: HTMLElement;

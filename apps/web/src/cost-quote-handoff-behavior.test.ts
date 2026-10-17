@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { openForm } from './shared/forms';
 import { createCostQuoteButton } from './commercial/cost-matrix-detail';
-import type { CostDetailContext } from './commercial/pricing-view-ports';
+import type { CostDetailContext, PricingViewPorts } from './commercial/pricing-view-ports';
 import { createBehaviorElement, htmlElement } from '../test/fixtures/behavior-dom';
 
 vi.mock('./shared/forms', () => ({ openForm: vi.fn() }));
@@ -13,6 +13,9 @@ function setup(permissions = ['quote:read', 'quote:create']) {
   const workspace = htmlElement(createBehaviorElement('main'));
   Object.defineProperty(workspace, 'isConnected', { value: true, writable: true });
   const refreshed = htmlElement(createBehaviorElement('main'));
+  const matrixSection = htmlElement(createBehaviorElement('section'));
+  Object.defineProperty(matrixSection, 'isConnected', { value: true, writable: true });
+  Object.defineProperty(matrixSection, 'closest', { value: () => workspace });
   Object.defineProperty(refreshed, 'isConnected', { value: true });
   const create = vi.fn();
   Object.defineProperty(refreshed, 'querySelector', {
@@ -30,8 +33,8 @@ function setup(permissions = ['quote:read', 'quote:create']) {
     context.controller.revisionState = { costDecisionId: 'decision-1' };
     return Promise.resolve();
   });
-  const prepareQuoteRoute = vi.fn<(isCurrent: () => boolean) => Promise<boolean>>((isCurrent) =>
-    Promise.resolve(isCurrent()),
+  const prepareQuoteRoute = vi.fn<PricingViewPorts['prepareQuoteRoute']>((isCurrent) =>
+    Promise.resolve(isCurrent() ? 'ready' : 'cancelled'),
   );
   const rebuildWorkspace = vi.fn(() => refreshed);
   const replaceRouteView = vi.fn();
@@ -88,7 +91,7 @@ function setup(permissions = ['quote:read', 'quote:create']) {
     publishedModels: [{ id: 'model-1' }],
     solutions: [{ id: 'solution-1' }],
     matrices: [],
-    matrixSection: workspace,
+    matrixSection,
     costDialogHost: () => workspace,
     setCostStatus: unused,
     replaceCostMatrixSection: unused,
@@ -111,6 +114,7 @@ function setup(permissions = ['quote:read', 'quote:create']) {
   return {
     context,
     workspace,
+    matrixSection,
     submit,
     prepareQuoteRoute,
     rebuildWorkspace,
@@ -129,10 +133,10 @@ afterEach(() => vi.unstubAllGlobals());
 
 it('waits for cold quote dependencies before publishing success and opening the preselected dialog', async () => {
   const f = setup();
-  let finish: (ready: boolean) => void = unused;
+  let finish: (ready: 'ready') => void = unused;
   f.prepareQuoteRoute.mockImplementationOnce(
     () =>
-      new Promise<boolean>((resolve) => {
+      new Promise<'ready'>((resolve) => {
         finish = resolve;
       }),
   );
@@ -153,7 +157,7 @@ it('waits for cold quote dependencies before publishing success and opening the 
   expect(globalThis.location.hash).toBe('#/costing');
   // A real route read used to overwrite the cue. Publish it only after that read finishes.
   f.context.controller.message = '已加载 0 个商机';
-  finish(true);
+  finish('ready');
   await pending;
   expect(f.context.controller.message).toBe('模型甲已形成报价成本快照，正在进入销售报价');
   expect(f.replaceRouteView).toHaveBeenCalledOnce();
@@ -163,7 +167,7 @@ it('waits for cold quote dependencies before publishing success and opening the 
   expect(f.create).toHaveBeenCalledOnce();
 });
 
-it.each(['route', 'workspace'] as const)(
+it.each(['route', 'workspace', 'section', 'session'] as const)(
   'does not publish or navigate a cancelled %s handoff',
   async (reason) => {
     const f = setup();
@@ -171,7 +175,9 @@ it.each(['route', 'workspace'] as const)(
       if (reason === 'route') globalThis.location.hash = '#/contracts';
       if (reason === 'workspace')
         Object.defineProperty(f.workspace, 'isConnected', { value: false });
-      return Promise.resolve(true);
+      if (reason === 'section')
+        Object.defineProperty(f.matrixSection, 'isConnected', { value: false });
+      return Promise.resolve(reason === 'session' ? 'cancelled' : 'ready');
     });
     await f.run();
     expect(f.prepareQuoteRoute).toHaveBeenCalledOnce();
@@ -201,7 +207,7 @@ it.each(['error', 'throw'] as const)(
     const f = setup();
     f.prepareQuoteRoute.mockImplementationOnce(() => {
       if (failure === 'throw') return Promise.reject(new Error('offline'));
-      return Promise.resolve(false);
+      return Promise.resolve('unavailable');
     });
     await expect(f.run()).resolves.toBeUndefined();
     expect(f.submit).toHaveBeenCalledOnce();

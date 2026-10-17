@@ -3758,6 +3758,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+- **2026-10-17｜成本原冷提示人裁窄修**：842eb0c先R7/TD013、5decf50先原实现真实回调红；仅bootstrap/type-port/成本handoff等待原quote route ready再写原成功提示。session/区块取消不写旧UI，后提交预读失败保成本池事实且不重POST；53项回调/原路由、web type/lint/build/structure0/29及实际diff独立复核通过。最终原冷7expect PW0/2062ms（34帧/末态可见、无暖访问），暖PW0/2230ms，三handoff全true、owned全清。[结果/失败史](../../evidence/harness-stage5-browser-rulings-2026-10-17.md)。原整spec/auth变异/第二轮及新状态完整CI/三连另计，不沿旧D；源码独立提交可核依赖后revert，不撤原assert/人裁或强行竣工。[已测试]（定向及冷/暖诊断，完整CI待后继）
+
 - **2026-10-17｜四项后继人裁R7先行**：直接收到信用两处结清0精确核验、驾驶舱隔离口径先推导再审批、结构不扩/DoD4和5未完成、成本原冷提示最小产品修复四项裁定；[原call及边界](../../tasks/harness-stage5-authorization-2026-10-17.md)。TD-TEST-013先登记，当前尚未修改产品/测试/种子/门禁；历史8e207cb完整CI0与4ca894f三连不冒充后继验证。独立docs回滚不撤人类裁定；后继实现/实际HEAD全CI另记，不执行§14。[未测试]（授权落盘，检查后另记）
 
 - **2026-10-17｜D当前授权产物三连真实完成**：4ca894f34caabea27ee56cdcdca271e287039690冻结树空后串行三次完整pnpm ci:local，各实际0/null、329429/330768/328574ms，均<15分钟；每轮spawn前/close后同HEAD/clean，无中途编辑/并发PG浏览器/失败重跑。API134/17293、Web26/426/其余71/68/20/5，原工具/build/audit绿；三run18包child真实0/drained、三覆盖37389/48566、629/671、9787/11512与固定B/分母不变。[完整run/SHA/日志](../../evidence/harness-stage5-coverage-protocol-2026-10-17.md)。P成本冷原assert仍红、两数值C7与F结构期限未裁，不能宣布阶段5终验或归档；人裁新变更不能沿用本次D。最后仅文档收口HEAD另完整CI，未跑不预写。回滚本事实文档不撤核心测试或批准边界。[已测试]（冻结4ca894f连续完整CI；后继文档HEAD另验）

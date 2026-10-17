@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[成本后继窄修实测](evidence/harness-stage5-browser-rulings-2026-10-17.md)：先人裁登记/旧实现护栏红，10回调＋43路由绿；原冷7expect PW0、34帧及末态可见，暖PW0，三handoff/owned清理全真。原整spec/auth变异与最终新HEAD全CI另计，旧失败史保留。
+
 [阶段5后继四项R7](tasks/harness-stage5-authorization-2026-10-17.md)：信用两处结清0已批；驾驶舱仅独立推导再审批；结构不扩、DoD4/5未完成；成本先登记后独立最小产品修复，原冷提示断言保留。下方待裁与D为历史状态，不宣称后继已验证或终验。
 
 [阶段5 D同状态三连](evidence/harness-stage5-coverage-protocol-2026-10-17.md)：4ca894f连续完整CI实际0，329429/330768/328574ms、首尾HEAD/树空，各<15分钟；分数/B/分母不变，非P全绿或人工终验，末次文档HEAD另验。

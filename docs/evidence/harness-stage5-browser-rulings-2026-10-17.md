@@ -1,5 +1,15 @@
 # 阶段5浏览器裁断考古与适配提案（未实施P1期待）
 
+## 后继人裁成本窄修：原冷断言已转绿
+
+直接人裁/R7先于产品修改提交842eb0c，TD-TEST-013先登记；新真实回调护栏独立5decf50先冻结（旧实现5败3过）。只改bootstrap同controller报价路由就绪端口、pricing type-only声明与成本冻结成功交接；不改通用route-read/全部message合同，不引全量load。报价预读ready后才赋原成功提示、原重建/切页/RAF预选；活态加载失败保留已冻结成本池事实，不把后提交的预读失败抛回表单形成重复POST。取消/原workspace或matrixSection失效不写旧UI、不跳转，双报价权限之外保持原分支。独立reviewer查出同workspace区块替换与session取消/错误混同两点，已补section身份及ready/unavailable/cancelled三态，终审无必要阻断；不是“任何离开再返回必取消”的visit-epoch合同。
+
+最终源码状态主执行者串行实跑：回调10项＋原route-data43项共53过（`/tmp/kingturf-stage5-cost-callback-final-green-2026-10-17.log`），web type/lint/build/structure强制0与旧29不变。首次测试each空数组展开问题与11个strict lint诊断均修测试接线/类型语法；补section守卫时一次apply锚点误中旧函数导致重复声明、两个suite未收集，已修精确位置，原失败日志保留，不计通过。中间回调8/9项绿及浏览器成功也是中间态，不代最终态。
+
+最终冷/暖日志`/tmp/kingturf-stage5-cost-final-cold-warm-2026-10-17.log`：冷`stage5-cost-final-cold-1`原7完整expect、PW0/passed/2062ms，34帧、warmVisited=false、textNode/renderedFrame/viewportFrame/finalRendered/finalViewport全true；quotes/dialog/preselected全true。暖`stage5-cost-final-warm-1`PW0/passed/2230ms，42帧、warmVisited=true，其余同样全true。host各0/null/7680与7865ms、guard/同PG实例和marker/只读tmpfs隔离/owned schema-container-preview清理全true；未导出auth、DOM文本或原始产物，不作像素/所有调度证明。此前旧冷PW0/当前冷PW1/当前暖PW0失败史保留，暖不替代原冷；本次原成本spec/两config/seed/forward原字节不改，仅私有诊断副本应用既授auth patch。
+
+本窄修不是原成本整文件两个case适配/认证真变异完成，也不是P全绿/第二轮/阶段5终验。最终提交HEAD完整CI及新覆盖率真实分母待另跑；固定B与门禁算法/三目标不改，不能继续声称后继生产源码hash/可执行分母与旧态恒等。
+
 ## 成本提示三臂受控对比完成：当前冷路径仍红，等待产品C7
 
 本项按已授P线继续，不因信用/驾驶舱数值待裁而停。新增独立诊断副本，不改原成本文件/7条完整expect链、业务样本、产品、两份config或forward。旧源码选择 `580cc721… refactor(web): lazy-load authorized commercial route sources` 的直接父 `b210c770434e8b9500322ca824cb2dea31e43e2b`（商业store守恒检查点，非最早107aac2环境）；其cost-matrix-detail:561仍赋原提示，用来对照lazy引入前后，不预定可见结论。old frontend由固定Git archive在owned `/dev/shm`构建，当前安装依赖不变；这是旧前端源码＋当前依赖，并非完整历史运行时复原。三臂使用同一当前backend/同Chrome镜像/原1440×1000 viewport与相同合成响应，各自独立owned schema/浏览器上下文；业务数据来自原合成拦截器，非同一DB对象。

@@ -512,8 +512,9 @@ export function createCostQuoteButton(context: CostDetailContext): HTMLButtonEle
     costDialogHost,
     selectedMatrix,
     latest,
+    matrixSection,
   } = context;
-  const { textValue, replaceRouteView, rebuildWorkspace } = context.ports;
+  const { textValue, replaceRouteView, rebuildWorkspace, prepareQuoteRoute } = context.ports;
   const quoteCost = el('button', 'primary', '冻结并用于报价');
   quoteCost.addEventListener('click', () => {
     openForm(
@@ -558,10 +559,32 @@ export function createCostQuoteButton(context: CostDetailContext): HTMLButtonEle
         await controller.loadCostMatrixPage();
         await controller.refreshSelectedCostMatrix();
         const canContinueQuote = permissions.has('quote:read') && permissions.has('quote:create');
+        const liveWorkspace = costDialogHost();
+        const isCurrent = () =>
+          liveWorkspace.isConnected &&
+          matrixSection.isConnected &&
+          matrixSection.closest('.commercial-workspace') === liveWorkspace &&
+          costDialogHost() === liveWorkspace &&
+          appRouteFromHash(globalThis.location.hash) === 'costing';
+        if (canContinueQuote) {
+          if (!isCurrent()) return;
+          // Finish lazy route reads before publishing the cost handoff's success message.
+          let quoteState: 'ready' | 'unavailable' | 'cancelled' = 'unavailable';
+          try {
+            quoteState = await prepareQuoteRoute(isCurrent);
+          } catch {
+            // The decision is already saved: do not reopen a retryable submission form.
+          }
+          if (!isCurrent() || quoteState === 'cancelled') return;
+          if (quoteState !== 'ready') {
+            controller.message = `${textValue(selectedMatrix.name, '成本模型')}已进入报价成本池，销售报价暂不可用，请稍后重试`;
+            replaceRouteView(liveWorkspace, rebuildWorkspace());
+            return;
+          }
+        }
         controller.message = canContinueQuote
           ? `${textValue(selectedMatrix.name, '成本模型')}已形成报价成本快照，正在进入销售报价`
           : `${textValue(selectedMatrix.name, '成本模型')}已进入报价成本池，等待报价编制专员处理`;
-        const liveWorkspace = costDialogHost();
         const refreshedWorkspace = rebuildWorkspace();
         replaceRouteView(liveWorkspace, refreshedWorkspace);
         if (!canContinueQuote || appRouteFromHash(globalThis.location.hash) !== 'costing') return;

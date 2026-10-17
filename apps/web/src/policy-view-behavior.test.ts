@@ -81,6 +81,7 @@ const setup = (
       costMatrixRoleGuidance: unused,
       replaceRouteView: unused,
       rebuildWorkspace: unused,
+      prepareQuoteRoute: unused,
     },
   };
   const mount = () => {
