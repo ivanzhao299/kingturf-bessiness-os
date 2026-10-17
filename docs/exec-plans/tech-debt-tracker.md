@@ -173,6 +173,8 @@
 
 ### TD-WEB-009｜挂载冲突恢复页“返回登录”被暂停写门禁拦截
 
+**窄修实施bfdc4ff／待整批验收**：新增9单测真红绿/实现变异、API17242/Web313及真实Chrome原失败链退出204→重登通过；后继完整DOM8/网络协议14/Node4与清理9完成，最后工具提交后完整CI仍待执行。不代表SEC003关闭；下方“尚未实施”为登记时点。
+
 **后继裁定**：协调/frontier确认是既授S4退出契约内部实现矛盾，可独立窄修精确当前上下文POST logout的本地暂停检查，原current/generation/CSRF/服务端及响应归属不动，不resume/restore/replay、不放开其它unsafe。见[修复映射](../evidence/security-batch4-s4-paused-logout-2026-10-17.md)，尚未实施/验证。
 
 - **位置**：`apps/web/src/entry.ts:243`、`startup-failure.ts:40`、`http.ts:30`。

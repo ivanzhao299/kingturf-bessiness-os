@@ -1,5 +1,7 @@
 # ARCHITECTURE.md
 
+**S4网络工具检查点（2026-10-17）**：独立gateway真实代理API/同源SPA、随机schema双真实API、owned Chrome自然Jar；Node4/DOM8/受控Runtime14与故障9分层，未改旧合成/PW。bfdc4ff仅精确current POST logout豁免本地pause，保原proof/代际/服务端，未新增会话模型。源码/SQL/依赖保护及残余CDP/观察边界见[网络证据](docs/evidence/security-batch4-s4-network-2026-10-17.md)；工具最终干净HEAD全CI待执行，SEC003仍开放。下方为历史。
+
 **S4前端当前候选（2026-10-17）**：首次Cookie restore→静态http-core单一交换/严格DTO；受保护http policy、SessionContext owner/generation/epoch、postlogin watch与workspace按真实阶段加载，entry不再持raw token或认证storage。三域client/文档服务捕获同一上下文，旧闭包不活读新Cookie；仅必要WEB007挂载复核/PERF003缓存同Promise耦合。API/SQL/包依赖/infra不改，Web304及预算11992/1898定向通过，最终提交后另实际稳定干净HEAD全CI再停协调；不是Chrome网络证据/整批完成，SEC003开放。[前端证据](docs/evidence/security-batch4-s4-frontend-2026-10-17.md)，下方为历史检查点。
 
 **批次4 S3现时（2026-10-17）**：共享config纯policy/严格默认false的CSP_ENFORCE→server独立buildApp安全选项→统一complete/rejectOversized新增RO，保S1三头/S2/业务响应。外层nginx独立off开关、隐藏上游两CSP头后统一RO；内层未改，API env不是公网强制开关。行为762e393/oracle a4c2ca3/工具f693ee2实际稳定干净HEAD完整CI0（API123/17184、Web13/266/config29）；无新包/SQL/反向依赖/业务端口。test-only HTML collector及精确合成发送仅本地，无report接收端、不称生产就绪或强制兼容；完成docs另全CI后停协调，S4未实施。[S3证据与回滚](docs/evidence/security-batch4-s3-csp-2026-10-17.md)，下方S2/S1状态为历史。

@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **S4网络工具最终候选（2026-10-17）**：bfdc4ff窄修独立；真实API/PG/自然Chrome最终strict26（Node4/DOM8/受控协议14）与9实际故障清理、gateway/真实reload变异红绿完成。旧CDP/PW不动，工具Node2接CI且无dist通过；[分层/全部失败史/有限窗口与清理边界](../../evidence/security-batch4-s4-network-2026-10-17.md)。工具提交后同一稳定干净HEAD完整CI再停协调，SEC003/49项/评分不提前验收，Docker/旧PW/阶段5未跑。
+
 - **S4退出窄修当前检查点（2026-10-17）**：TD-WEB-009由协调/frontier确认属于已授S4内部实现矛盾，已窄修精确POST logout本地pause例外；原current/CSRF/代际/服务端校验保持，新增9真红绿/变异、API17242/Web313及真实DOM退出重登通过。工具仍WIP，不称fix HEAD干净或最终CI完成；[独立窄修证据](../../evidence/security-batch4-s4-paused-logout-2026-10-17.md)。继续原网络矩阵/最终CI，不触PW/Docker/阶段5。
 
 - **S4网络实测恢复阻断（2026-10-17）**：真实DOM登录及Cookie属性、Node Origin4项通过；挂载冲突恢复页“返回登录”两次真实失败，诊断logout请求0，独立源码核为paused owner在fetch前拦POST。登记TD-WEB-009/现49项，未修改业务/未提交候选，待独立修复方向；[失败史/清理/未测清单](../../evidence/security-batch4-s4-network-2026-10-17.md)。当前不是网络矩阵完成或全CI通过，不关闭SEC003，不绕过断言。
@@ -3695,6 +3697,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+- **2026-10-17｜S4网络/CDP独立工具**：真实双API/guard随机schema，fixed4173同源、真头barrier与新profile自然Cookie，Node4/SPA DOM8/受控Runtime14最终26绿；故障9全部exit1且精确资源清理。TD-WEB-009真实发现→协调/frontier窄修授权→bfdc4ff（http精确POST logout本地pause例外、原current/proof/服务端不动），9新增测试/真实变异、API17242/Web313及Chrome原失败链通过，独立于工具提交。原29/CSP3未改未重跑、PW9未改未跑；无业务SQL/依赖/workflow/push/部署/Docker。回滚逆序工具→bfdc4ff至b38c75c；最终工具HEAD全CI仍在提交后实际执行，不用WIP/此前CI充数。完整日志与未穷尽的时窗/间歇CDP异常见[证据](../../evidence/security-batch4-s4-network-2026-10-17.md)。[已测试]（完整最终HEAD CI随后）
 
 2026-10-17，S4前端候选沿已授范围实施；五旧Web测试真实实现变异红→还原绿，额外core received两文件3红→95绿、decoded1红→35绿；Web14/304、类型/lint/结构0/29及原预算11992/1898绿。预算多轮红真实保留，协调明确首次restore/解析/revision静态，不挪统计/品牌/阈值；单一交换core与真实用户交互/postlogin/失败UI按需边界解决，内部新cause不向UI显示，冻结原业务/界面不借机改。三域adapter去仅carrier差异结构AST全部相等，bootstrap原断言仅声明必要S4差异逆撤后AST相等。完整源码/保护区/回滚及失败史见[前端证据](../../evidence/security-batch4-s4-frontend-2026-10-17.md)。最终提交后另同一干净HEAD全CI，未进入Chrome/PW/Docker/阶段5，SEC003不关闭。
 

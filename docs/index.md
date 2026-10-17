@@ -1,8 +1,8 @@
 # docs/index.md（全部文档索引）
 
-[S4暂停状态显式退出窄修](evidence/security-batch4-s4-paused-logout-2026-10-17.md)：TD-WEB-009协调裁定/旧→新/独立修复纪律，验证待执行。
+[S4暂停状态显式退出窄修](evidence/security-batch4-s4-paused-logout-2026-10-17.md)：bfdc4ff、9新增真红绿/实现变异、API17242/Web313及真实DOM原失败链重跑通过；最终工具HEAD全CI另跑。
 
-[S4真实网络与应用CDP](evidence/security-batch4-s4-network-2026-10-17.md)：输入b38c75c全CI0；隔离真实API/PG、头barrier、自然Cookie及DOM策略先行，实测待执行，SEC003开放。
+[S4真实网络与应用CDP](evidence/security-batch4-s4-network-2026-10-17.md)：Node4/SPA DOM8/Chrome Jar受控协议14=26、故障清理9与真实变异通过；分层/失败史/有限窗口/资源清理边界，最终工具提交后干净HEAD全CI待实际执行，SEC003开放。
 
 [S4前端会话上下文切换](evidence/security-batch4-s4-frontend-2026-10-17.md)：后端25526c8全CI0后Web小步；五旧测试文件真红绿、core回调真变异、Web304及原预算11992/1898绿，最终提交后干净HEAD全CI待实际执行。不跑浏览器/PW，SEC003开放。
 

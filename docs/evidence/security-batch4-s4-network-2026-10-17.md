@@ -1,5 +1,50 @@
 # S4 真实网络与应用 CDP 验证
 
+## 最终工具候选检查点（提交后完整CI待执行）
+
+窄修独立bfdc4ff；本步工具严格失败门最终新profile26项exit0，资源故障9项通过。完整CI将仅在工具/文档独立提交后的同一稳定干净HEAD执行，日志 `/tmp/kingturf-s4-network-final-head-ci-2026-10-17.log`，不预填结果。SEC003/评分开放、台账49项，不进入Docker/PW/阶段5。下方“待执行/阻断/未修”保留各次历史时点，以本节为当前工具口径。
+
+### 文件职责、旧→新与边界
+
+| 文件（scripts/e2e-cdp/）                            | 新增职责/映射                                                                                                                                                      |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| session-network-fixture.mjs                         | 复用既有PG20随机schema/两API/seed纪律，真实生产server/仓储；临时两账户+COMPANY最小员工/商机/文档权限和一条DRAFT/V1，无生产SQL/schema修改                           |
+| session-network-gateway.mjs                         | 固定4173真实同源SPA/API；精确原始URL/method白名单；仅文档列表允许字面`?route=opportunities`，详情只允许本轮精确document ID；上游头到达后、下游任何头flush前barrier |
+| session-network-browser.mjs                         | 独立owned Windows Chrome生命周期，复用原ownership matcher；原flags/ActivePort/监听PID/loopback/endpoint身份，CDP异常与未知请求严格失败，无Cookie注入/Fetch.fulfill |
+| session-network-node.mjs                            | 明确Node手工Cookie/Origin负例，不冒充Chrome                                                                                                                        |
+| session-network-probes.mjs                          | SPA DOM登录/恢复页显式登出/重登，与受控Runtime.fetch网络矩阵分开；协议client显式no-store，DOM不改fetch策略                                                         |
+| session-network-dom.mjs                             | 真第二tab实际表单登录广播、自然focus/visibility、真实PG文档编辑器/翻译/设置modal、实际frame导航与旧请求释放                                                        |
+| session-network.mjs / session-network-lifecycle.mjs | 串行编排/分类计数、信号和故障清理；主套26与9负向不相加当用例总量                                                                                                   |
+| session-network.test.mjs / package.json             | 2纯JS工具测试接`test:session-network-tools`，在CI build前运行；无dist仍2通过，真实runner独立assertBuiltWeb拒绝缺构建                                               |
+
+旧preflight/driver/network-policy/fixtures/29合成/CSP3全部零diff，未作旧CDP会话适配，故不冒称旧29/CSP3这轮重跑；九旧PW/config未改未跑。真实DOM继续调用原driver Input物理点击/填写。只有http.ts适配，已单独9新增测试真红绿/真实实现变异及API/Web全量，详窄修证据。root package只增工具测试脚本，无依赖/lock变化。
+
+### 实际正向分类与证明范围
+
+最终 `/tmp/kingturf-s4-network-final-strict-chrome-2026-10-17.log` **exit0 / 26项**：Chrome154.0.8037.99/CDP1.3、原安全flags、新owned profile，自然HTTP Secure Cookie。gateway blocked0、CDP asynchronousFailure=false、全部listener/root/profile/两API/schema清理true。
+
+| 分类                             | 数量 | 已证事实                                                                                                                                                                                                                                                                                                                                               |
+| -------------------------------- | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Node instrumented Origin         | 4    | 缺/null/foreign Origin403+员工行数零增；GET无Origin/CSRF200但无认证401；真实raw两Set-Cookie/noDomain/属性/no-store/JSON无token只算Node证据                                                                                                                                                                                                             |
+| 真实SPA DOM                      | 8    | 自身新增响应范围的两Cookie/JSON无token/no-store及真实Cookie回传、HttpOnly不可读、DOM登录workspace→故障恢复页真实logout204→重登；旧storage存在一次清键强制重登、下次Cookie恢复；真双tab自然focus同代保shell/textarea节点/值/activeElement/选区；另一tab实际DOM登录广播引发主frame换代导航、清真实body editor/翻译/settings；旧detail/旧mount释放不覆盖B |
+| Chrome自然Jar＋受控Runtime.fetch | 14   | 同/不同账户两种头顺序4；旧401/logout头后到、晚login跨logout3；同/不同账户旧proof/旧generation拒绝且零员工写2（另旧A logout拒绝/B仍活）；仅迟到CSRF Cookie导致B proof403/零写，显式restore后新动作201一项；改密同目标旧B撤销/事务后新B存活、旧login头跨改密已撤、异账户B不受旧改密头影响3；两真实API实例下真实PG过期拒绝1                               |
+
+DOM focus在该tab精确session URL/requestId的Network.loadingFinished、无在途restore、两RAF后才断言，不拿gateway上游头/200ms当复验完成。此为传输/事件循环有限观察，不是任意未来任务证明。初始401只在200ms窗口计一次导航/一次session请求；旧结果释放后250ms检查，无长期穷尽声称。旧detail/mount的真实整页导航销毁旧realm是本设计清理策略，不冒充不导航的同realm owner guard证明（后者由Web测试另证）。settings还等真实connectors200，正文断seed文本/contentEditable=true，未注入假modal/实际发送或提交译文/连接器配置。
+
+协议`__s4`私有测试client绝非真实entry/http owner；它只证明Jar/API/PG/头顺序。Cache no-store是该受控client为避免未到达头的同URL GET串行缓存锁而显式设置；前两次协议旧401 case出现CDP deadline、8项后退出，不能当业务缺陷或已证明浏览器缓存根因。最后无该deadline。过期是fixture参数化将本轮session expires_at设过去，证明服务器/跨实例拒绝真实过期行，不是等完整TTL的wall-clock测试。两Cookie不假定原子，错配案例明确403再显式修复、无自动重放。
+
+### 负向清理、变异与失败史
+
+`/tmp/kingturf-s4-network-lifecycle-summary-2026-10-17.log` **9/9实际通过**，各子日志同前缀加listener-fault/profile-fault/deadline-during-setup/spawn-error/server-error/fixture-sigterm/browser-sigint/unknown-write/cleanup-sigterm。每例实际exit1、无network-pass，按资源到达阶段核API/schema、gateway、profile/root清理；spawn失败只登记1个child且无实际pid，未误杀外来进程。unknown-write的Chrome blocked=1，未放宽硬闸。
+
+中断立即置exit1，setup各关键await后/用例边界核标记，不race未settle工作与teardown。临时连接仅工具内connect_timeout5秒/statement_timeout5秒/lock_timeout3秒，不改packages/database；35秒cleanup计时只发requiresInspection并禁止pass，**不是强制kill、不是任意DB/OS挂起可有界退出保证**。driver120秒同为超时检测/发信号；本9个具体故障已实际清理，不泛化任意故障。
+
+真变异：gateway去掉`await barrier.released`使纯JS1fail/1pass（`/tmp/kingturf-s4-network-gateway-mutation-red-2026-10-17.log`），还原2pass（restored-green同前缀）；真实session-watch changed分支删reload并重build，Chrome8pass后精准新身份profile超时（`/tmp/kingturf-s4-network-dom-reload-mutation-red-2026-10-17.log`），还原原文件git diff0/rebuild后26绿。没有改测试造红，未提交临时业务变异。
+
+其余失败保留：首两次退出缺陷和诊断见下；首次工具测试lint空arrow2条已修、runner清理补丁一处额外括号导致prettier/eslint语法失败（执行前，无资源作用）已修；文档patch还曾因冗余尾锚点原子失败，未落部分内容。收紧DOM自身响应绑定后的`final-bound-chrome`在第9项发生未分类CDP异步失败，全部清理，具体原因**待核实**；曾试加仅限观察到取消的窄分类，bound2绿但cancelledResumes=0，未证根因，最终撤回分类保持任何resume异常严格失败。最终strict26绿，不宣称间歇CDP风险已消失。未读取/输出真实秘密、token/proof/Cookie值、DSN或CDP cookie数组。
+
+执行命令：先`pnpm --filter @kingturf/web build`，仅guard回环test DATABASE_URL环境下`NODE_ENV=test node --experimental-transform-types scripts/e2e-cdp/session-network.mjs`；负向同环境运行`session-network-lifecycle.mjs`。真实suite手动opt-in，不进入普通CI/Playwright。无dist验证曾临时移开本轮自建ignored dist，纯JS2通过且assertBuiltWeb负向拒绝，随后已还原，不移动外来目录。最终提交仅工具/脚本/证据/导航，业务只bfdc4ff窄修；逆序回滚先本工具、再bfdc4ff回b38c75c，保后端/S1–S3，已撤session不复活，不自动清Cookie。
+
 后继检查点：[暂停状态显式退出窄修](security-batch4-s4-paused-logout-2026-10-17.md)经协调/frontier判为已授S4内部实现矛盾，非C7新选型；已局部修复且真实失败链重跑成功。下方“仅登记/未修”为失败时点。网络完整DOM/生命周期/变异及最终CI仍待执行。
 
 ## 输入与范围
