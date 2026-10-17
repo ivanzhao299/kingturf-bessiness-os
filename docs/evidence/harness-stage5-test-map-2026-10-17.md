@@ -1,5 +1,15 @@
 # 阶段5现状测试地图与补齐清单
 
+## 制造／CAPA／成本因子表单固定payload护栏
+
+新增制造表单5项、CAPA5项、成本因子4项及生产src外typed operations-context fixture，未加依赖/改产品/扩大覆盖排除。真实工厂与回调，openForm和finish/controller是受控端口：物料草高有/无、发布false、BOM根ID≠版本ID/固定decimal字符串/500bp/替代料有无；三工序固定code/工作中心/10/20/30次序/不同setup与节拍。只证明入参映射，制造日期为文本拼接，不证明未知product/日期合法性/权限/发布仓储约束。制造finish失败只显式覆盖item/routing，不称BOM全失败矩阵。
+
+CAPA五路独立完整载荷：创建投诉版本7、动作CAPA8、完成CAPA9、验证投诉10/CAPA11、关闭CAPA12，冻结时间2026-10-17T12:34:56Z、证据/责任人/根因/验证内容与requestId端口固定key。每路pending submit时refresh0、完成后1；submit reject无新增refresh、refresh reject向上传播。员工显示名/编号/无名fallback、关闭原evidenceFields引用。这里固定key证调用requestId与载荷接线，不证明实际key生成唯一性或后端幂等，factory本身也不是权限检查。
+
+成本因子新建/编辑选项引用、关联采购可空、编辑不含code/无物料不含selector、税率/step/预填；完整独立payload保持1.234567/12.345678为字符串、sortOrder 4转number、可选空key省略及现有默认值。字符串精度保持不等于财务算法正确/非法数字验证。
+
+原eslint/tsc0，制造5/5实际0/296ms，CAPA+factor9/9实际0/343ms，独立只读复核无必要阻断；日志`/tmp/kingturf-stage5-manufacturing-forms-first-2026-10-17.log`、`/tmp/kingturf-stage5-capa-cost-factor-first-2026-10-17.log`。单包V8 Web25/413实际0/2.28s，`coverage/web-form-payloads-167e1fd-first/coverage-final.json`原算法11286/20592（制造216/216、CAPA202/202、factor145/145）；政策补强后原eslint/tsc0、Web25/414实际0/1.99s，日志`/tmp/kingturf-stage5-web-form-payloads-final-2026-10-17.log`。以上不是六包check/最终CI，也未更新B/TEST002；全量覆盖是否过75%仍由干净HEAD真实门禁确认。
+
 ## 政策新断言独立反例复核与真实筛选变异
 
 167e1fd后的第二路指出风险mixed政策样本DRAFT/PUBLISHED同id/code/version，错误筛DRAFT也会假绿。已只改新样本草稿为draft-version-99/DRAFT-ONLY/v99，PUBLISHED预言仍version-1/RISK-1/v2。新7项原实现实际0，随后仅真实实现`order360-risk-controls.ts`选项`.filter`临从PUBLISHED改DRAFT；原期待不动，具名`pins only published options and employee, uses UTC end-of-date and waits for current load message`实际红（1败6过/exit1/313ms），diff显示收到草稿身份而非发布身份。等close后完整还原，原/恢复SHA256均`36b4a56e26fd6109d8a4bb4c49889eb3c7ab987bb752c8849eb8066146b380cd`、源码diff0，再7/7实际0。日志`/tmp/kingturf-stage5-risk-options-{distinct-green,filter-mutant-red,restored-green}-2026-10-17.log`。这是新断言有效性取证，不替代已记C最低三类或最终CI。

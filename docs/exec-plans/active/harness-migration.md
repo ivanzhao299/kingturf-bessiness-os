@@ -3752,6 +3752,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+- **2026-10-17｜制造/CAPA/成本因子表单payload护栏**：新增5+5+4项与src外typed operations-context，独立根/版本/Decimal/BOM替代/工序/并发版本/证据/时间/key映射，CAPA各路pending/reject与refresh reject；[独立复核及精确边界](../../evidence/harness-stage5-test-map-2026-10-17.md)。原eslint/tsc0、Web25/414实际0/1.99s；单包V8 11286/20592同分母，六包整体目标仍待干净HEAD真实check，不更新B/提前关TEST002。factory/finish/form端口非权限/后端/原生日期验证，产品/原测试/seed不动。回滚三新test/helper/docs独立revert。[已测试]（Web全包，非六包覆盖门禁/完整CI）
+
 - **2026-10-17｜政策新断言反例与真实变异复核**：父167e1fd，第二路发现DRAFT/PUBLISHED同身份可假绿，仅改新草稿身份与销售最新版双输入序；风险真实filter PUBLISHED→DRAFT临变异，具名新例实际1败6过/313ms，close后完整还原SHA/diff0，再7绿。[详细diff/失败证据](../../evidence/harness-stage5-test-map-2026-10-17.md)。生产终态不变、原断言/B不动；仅新增测试补强，非浏览器/完整CI。回滚两测试补强/docs独立revert。[已测试]（真实变异红→恢复绿）
 
 - **2026-10-17｜Web销售/风险政策控制护栏**：父dfd063e新增6+7项，独立完整规则/基点oracle、UTC日始日末/固定版本与责任人、权限与选项、失败状态、deferred load当前message；CTR补v2在v1前反例和拒绝status。原eslint/tsc0、Web22/399实际0，单包V8 10742/20592同分母。[独立复核/精确限制](../../evidence/harness-stage5-test-map-2026-10-17.md)：risk发布只成功pending；factory非权限guard；政策数组非空不等于已发布存在；mock表单/控制器非浏览器/后端。产品/seed/P1原数值/B不动；回滚新tests与CTR断言/docs独立revert。[已测试]（Web全包，非六包覆盖门禁/完整CI）
