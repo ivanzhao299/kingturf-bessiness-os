@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[信用结清0与驾驶舱推导](tasks/harness-stage5-p1-money-authorization-2026-10-17.md)：只改两条完整指标等值断言，信用实际通过；原P1仅9完成8过1败后TD018中断，不称11绿。四KPI独立候选950000/229000/950000/0 CNY已提交审批，期待尚未修改。
+
 [成本后继窄修实测](evidence/harness-stage5-browser-rulings-2026-10-17.md)：先人裁登记/旧实现护栏红，10回调＋43路由绿；原冷7expect PW0、34帧及末态可见，暖PW0，三handoff/owned清理全真。原整spec/auth变异与最终新HEAD全CI另计，旧失败史保留。
 
 [阶段5后继四项R7](tasks/harness-stage5-authorization-2026-10-17.md)：信用两处结清0已批；驾驶舱仅独立推导再审批；结构不扩、DoD4/5未完成；成本先登记后独立最小产品修复，原冷提示断言保留。下方待裁与D为历史状态，不宣称后继已验证或终验。

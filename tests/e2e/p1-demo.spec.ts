@@ -45,8 +45,12 @@ test('shows approved, rejected, and expired credit evidence', async ({ page }, t
   const seeded = workbench.locator('.qtc-card', { hasText: '申请 ¥950,000' });
   await expect(seeded).toHaveCount(3);
   await expect(seeded.filter({ hasText: '信用已批准' })).toContainText('敞口 ¥0');
-  await expect(seeded.filter({ hasText: '信用已拒绝' })).toContainText('敞口 ¥450,000');
-  await expect(seeded.filter({ hasText: '信用已过期' })).toContainText('敞口 ¥450,000');
+  await expect(seeded.filter({ hasText: '信用已拒绝' }).locator('.qtc-metrics')).toHaveText(
+    '申请 ¥950,000 · 敞口 ¥0 · 额度 ¥5,000,000',
+  );
+  await expect(seeded.filter({ hasText: '信用已过期' }).locator('.qtc-metrics')).toHaveText(
+    '申请 ¥950,000 · 敞口 ¥0 · 额度 ¥5,000,000',
+  );
   await expect(seeded).toContainText(['额度 ¥5,000,000', '额度 ¥5,000,000', '额度 ¥5,000,000']);
   await testInfo.attach('credit-outcomes-desktop', {
     body: await workbench.screenshot(),

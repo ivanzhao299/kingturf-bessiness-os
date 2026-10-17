@@ -2,6 +2,21 @@
 
 ## 后继信用与驾驶舱裁定（2026-10-17）
 
+信用最小实施实际结果：只改拒绝/过期两条，定位原卡`.qtc-metrics`并`toHaveText('申请 ¥950,000 · 敞口 ¥0 · 额度 ¥5,000,000')`，非前缀包含匹配；批准卡/三卡计数/三额度数组/seed/其它业务断言不动。strict eslint/format实际0。`stage5-p1-credit-zero-1`使用原完整11例集合、原两config、仅已授trace=off与只读tmpfs：信用case index0实际passed/1545ms；共9例完成8过1败，驾驶舱原bookedRevenue期待仍在line230失败，随后原TD018的4173 upstream CONNECT_TIMEOUT导致PW null/SIGTERM，MRP/生产两例未完成。host1/null/35460ms、种子0/2823ms、owned schema/container/preview清理全true；日志`/tmp/kingturf-stage5-p1-credit-zero-1-2026-10-17.log`。不是完整11绿/信用全spec认证变异/第二轮，也不以重跑隐去连接故障。驾驶舱四值审批前原样保留。
+
+### 驾驶舱独立固定值推导（待审批，未改四期待）
+
+主代理与只读commercial_inventory分别从业务源码推导，不读取DOM实值反推：
+
+| 指标           | 原期待  | 隔离P1候选（CNY） | 独立计算/来源                                                                                                                                              |
+| -------------- | ------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| bookedRevenue  | 2058608 | 950000            | seed_p1_demo.mjs:402–424只有SO-KT-P1-DEMO，总额950000；dashboard-repositories.ts:24/34求订单total和                                                        |
+| grossMargin    | 585399  | 229000            | seed:141–195成本(8000×62.5＋8000×18.75＋50000)×1.03＝721000；232–238毛利950000−721000；domain/index.ts:549–588固定小数算法，dashboard:35求已发报价margin和 |
+| cashCollected  | 1550000 | 950000            | seed:426–465应收950000/首收500000并核销，504–529余450000收齐并核销；dashboard:27/36求allocation_entries.amount和                                           |
+| openReceivable | 508608  | 0                 | 同一应收950000减两次核销950000；dashboard:26/37求ar_open_item_balances.remaining_amount和                                                                  |
+
+适用条件：fixture.mjs:31–39/71–80新建随机隔离schema，仅运行当前P1种子；dashboard-query.ts:1–7默认UTC当前年（本次2026）、CNY；SQL仍按tenant/DataScope/币种/时间筛选聚合，不改为只查演示订单。共享脏库/其它年份不能直接复用本期待。原四期待位于p1-demo.spec.ts:222–229附近；审批前全部保留。后继审批只涉及四固定值，不动来源/责任钻取断言、产品、seed或网络硬闸。
+
 人类直接答复`call_0976b8f5d525481a96ee9a4ec2450a84`：第0项批准保留当前种子，只把拒绝/过期两处敞口期待改为结清后0并精确核验；采用完整指标文本等值断言，避免0前缀误绿。其它卡/申请额/额度/业务参数不动。第1项选择隔离P1驾驶舱口径，但仅批准独立推导固定四值并再提交审批，尚未批准改四个期待。本节覆盖下方旧“450000待裁”当前状态，失败史保留；见[正式R7](harness-stage5-authorization-2026-10-17.md)。
 
 主执行者亲读协调会话01a12db5-380f-79c2-9329-8bcc500a27c8中人类消息01a1490e-d723-7723-a534-0951f0ad7d34。questionItemId：`["request_user_input_async","call_dd0e2120495445669087b3dbae8dba45",0]`；原答复：“批准最小金额显示适配（推荐）”。不是把只读review当人类授权。
