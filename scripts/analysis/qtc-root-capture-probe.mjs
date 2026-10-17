@@ -1,6 +1,6 @@
-import { execFileSync } from 'node:child_process';
 import { stripTypeScriptTypes, createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
+import { readBaselineApp } from './qtc-root-capture-source.mjs';
 
 const appUrl = new URL('../../apps/api/src/app.ts', import.meta.url);
 const requireAtApp = createRequire(appUrl);
@@ -124,10 +124,7 @@ const modesFor = (spec) => [
 ];
 export const cases = specs.flatMap((spec) => modesFor(spec).map((mode) => ({ spec, mode })));
 export async function loadOldBuildApp() {
-  const source = execFileSync('git', ['show', baseline + ':apps/api/src/app.ts'], {
-    encoding: 'utf8',
-    maxBuffer: 8 * 1024 * 1024,
-  });
+  const source = readBaselineApp();
   let js = stripTypeScriptTypes(source, { mode: 'transform', sourceUrl: appUrl.href });
   js = js.replace(/from\s+(['"])([^'"]+)\1/g, (_all, _quote, specifier) => {
     const resolved = specifier.startsWith('node:')

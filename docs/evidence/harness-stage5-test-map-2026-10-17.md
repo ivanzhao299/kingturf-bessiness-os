@@ -1,5 +1,15 @@
 # 阶段5现状测试地图与补齐清单
 
+## E旧QTC装载可移植修复（独立测试工具，不改产品）
+
+父7fb4324登记后，完整旧源码复制为`apps/api/test/fixtures/qtc-root-capture-app-c7833e74.ts.fixture`（纯文本202118字节），与完整历史commit的原blob逐字节SHA相同，未删剪/改写代码。`qtc-root-capture-source.mjs`装载前校原Buffer字节数+固定SHA，缺文件/截断/等长篡改固定fail-closed，无fallback/运行时Git查找。probe仅替换读取渠道，原appUrl/TS transform/import重写及所有166+166场景/golden/335断言零diff；原golden另pin SHA。来源和摘要见TD-TEST-019及helper固定metadata，旧源码仍配当前依赖，**不是完整历史依赖复原**。
+
+工具4/4实际0（缺失、截断、同长篡改、golden摘要）；原335正常Git实际0/723ms。以新独立空对象目录、空alternates、GIT_NO_LAZY_FETCH=1运行**完整原335**实际0/689ms，和修前原old探针缺对象exit1成对。不是拿missing fixture单测冒充缺Git实测；日志`/tmp/kingturf-stage5-qtc-source-{tools-first,335-first,335-missing-object-green}-2026-10-17.log`。原工具ESLint/Prettier0；原frontend-runtime-sources同Node--test组仅追加新source.test，完整test:release-guardrails实际0（含原Python10），日志`/tmp/kingturf-stage5-e-regression-guardrails-2026-10-17.log`。独立只读复核hash/来源/最小diff/失败关闭无必要阻断，产品/SQL/原期待/依赖/workflow不改。新完整CI仍待后继固定HEAD执行。
+
+E机械P1补验：当前git core.hooksPath=.githooks，直接执行真实commit-msg hook读owned临时固定消息，非法非Conventional实际exit1、合法test(gates)实际exit0；日志`/tmp/kingturf-stage5-commit-hook-{red,green}-2026-10-17.log`。这是独立hook实测，不冒称ci:local自动模拟git提交。
+
+E链内运行时事实以3f03e62完整CI日志为准：REG001原335；S2 login-rate-limit18/login-rate-limit-http7/client-address35；S4 browser-session-api33/session-proof11/auth-http-postgres20、Web browser-session35/http17/config browser-session42实际执行。S4 SEC003历史优先级P2不改成P1；真实Chrome网络矩阵不在默认CI。DUP001共享scope-sql分域合同与真实PG路径、DUP002各仓审计/outbox回滚及新六域实际执行；Web/BOUND当前bootstrap/边界87/控制器路径实际执行。API001复杂度/TEST001剩余PG缺口/SEC001强制仍开放，不冒充运行时已修复。TEST009旧证明脚本仅lint入口不称默认回归；TEST011完整seed/demo:seed/Dockerseed不在默认CI，P线前置实测与浏览器义务另列。后继最终E新HEAD完整CI需再核这些入口真实运行。
+
 ## E旧回归探针缺对象真实红（TD-TEST-019，仅登记）
 
 原QTC old装载在隔离空Git对象目录/禁lazy-fetch实际exit1，缺c7833e7；repo正常对象和配置未改，既有335护栏在3f03e62完整CI仍绿。此是测试装载可移植性问题，不是旧业务回归复发。已先登记[TD-TEST-019](../exec-plans/tech-debt-tracker.md)，原58+PROC/RISK+本项=61，F不能漏新项；下方60等均历史。完整旧app文本fixture+固定commit/blob/字节SHA、保原166+166/335及当前依赖映射的候选已独立只读核，无必要阻断；尚未实施/未有空对象绿，不改产品/原oracle/workflow。

@@ -137,7 +137,7 @@
 | TD-TEST-016  | P1原浏览器11例失败定位待核                                                                    | P2     | 本地浏览器回归 | C7可见性待裁             | Docker首轮发现                     | 前两例隐藏/其余不推定           |
 | TD-TEST-017  | 私有reporter构造options兼容缺口                                                               | P2     | 本地回放工具   | 兼容实施验证关闭         | 原生调用形状回归发现               | unit6/PW接线实证                |
 | TD-TEST-018  | 私有浏览器preview上游连接超时                                                                 | P2     | 本地回放环境   | 只登记/待核实            | 安全relay事件                      | active CONNECT_TIMEOUT          |
-| TD-TEST-019  | QTC旧回归探针运行依赖历史Git对象，缺对象时无法启动old校准                                     | P2     | 测试可移植性   | 无（拟仅冻结旧源码载入） | 阶段5 E                            | 已证实/待独立实施               |
+| TD-TEST-019  | QTC旧回归探针运行依赖历史Git对象，缺对象时无法启动old校准                                     | P2     | 测试可移植性   | 无（仅冻结旧源码载入）   | 阶段5 E                            | 已实施待完整CI                  |
 | TD-GATE-001  | 无 git hooks / commitlint / lint-staged，脏提交仅靠 CI 兜底                                   | P1     | 门禁           | 无                       | 阶段 3                             | 已完成                          |
 | TD-GATE-002  | vitest 无配置文件，参数散落各包 scripts                                                       | P2     | 门禁           | 无                       | 阶段 3                             | 已完成                          |
 | TD-GATE-003  | routes覆盖已修复；E1已撤，恢复31旧豁免                                                        | P1     | 工程门禁       | 无                       | 独立门禁任务／阶段5前复核          | 已验收                          |
@@ -558,6 +558,8 @@
 - **业务行为影响**：无 ｜ **关联批次**：阶段 5 ｜ **验收方式**：覆盖率报告产出 + 低于阈值实测拦截
 
 ### TD-TEST-019｜QTC旧基准探针依赖历史Git对象
+
+- **后继实施**：完整旧源码纯文本fixture与原202118字节/SHA一致；新loader先校Buffer字节与digest，缺失/截断/同长篡改fail-closed、无运行时Git依赖；原probe只替读取/335与golden零diff。工具4绿、正常原335绿、独立空Git对象/禁lazy-fetch下完整原335实际0/689ms，release-guardrails全0；[实际日志/独立复核/边界](../evidence/harness-stage5-test-map-2026-10-17.md)。已实施待完整CI，不以当前依赖映射冒称全历史环境或业务行为变更。下方尚未实施为登记时点。
 
 - **位置/事实**：`scripts/analysis/qtc-root-capture-probe.mjs:126–141`每次old目标执行git show短SHA；`qtc-root-capture-route-contract.test.ts`模块加载即运行old/current。主在独立空对象目录以GIT_OBJECT_DIRECTORY、空alternates、GIT_NO_LAZY_FETCH=1运行原old探针，实际exit1，`fatal: invalid object name 'c7833e7'`（日志`/tmp/kingturf-stage5-reg001-missing-object-red-2026-10-17.log`）；这是受控缺对象实证，不冒称已观察生产CI浅克隆失败。repo对象/HEAD/配置未改，亦无PG/浏览器。
 - **类别/优先级/影响**：测试可移植性/P2/无业务行为变化；TD-REG-001原业务回归仍已解决。先登记、再阶段5 E独立测试工具修复，不改产品/旧golden/原335期待或workflow。
