@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[P1最小产物例外R7](tasks/playwright-p1-artifact-authorization-2026-10-17.md)：直接人类批准仅P1命令traceoff/只读容器及owned tmpfs原始产物不导出，只固定结果/核过业务截图；尚未接线执行，不承诺RAM/swap物理零落盘，不扩runtime/C或业务断言。
+
 [Workspace旧夹具失败/增量裁定](tasks/playwright-workspace-fixture-rulings-2026-10-17.md)：原2过2败、首次成本GET被gate挂起及360缺字段；等待点已人裁批准，字段独立待裁，原16expect/合成隔离冻结，台账54，非整文件已绿。
 
 [Workspace单void语法R7](tasks/playwright-workspace-void-authorization-2026-10-17.md)：本会话原始人类仅批67行setAttribute未用void块体，原属性值/调用/全部节点和路由断言不变；不扩360字段或成本提示，先独立落盘再改。

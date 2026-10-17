@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **P1产物最小例外已授（2026-10-17）**：本会话直接人类call_5b46d68608d34eccb6dbaaae626c4776批准P1-only命令traceoff、原配置/断言不改；只读容器、owned tmpfs原raw不导出，仅固定结果/核过业务截图，清理容器，不承诺RAM/swap物理零落盘。[原话/执行界线](../../tasks/playwright-p1-artifact-authorization-2026-10-17.md)先独立落盘，尚未接线/P1执行；A首轮先续，成本/Workspace未绿及B/第二轮/最终CI边界不变。
+
 - **revocation首轮（2026-10-17）**：依已授三文件oracle，旧storage改合成Jar/实际恢复响应，401客户端失效不要求清HttpOnly，403同Jar恢复；原即时业务UI断言保持。真实撤销条件/403删Cookie各红后还原2过PW0/3577ms、host0/9211ms；一次SIGTERM中断明确不算绿，owned全清，[证据](../../evidence/playwright-docker-spec-replay-2026-10-17.md)。login2/doc7/order1/revocation2过，Workspace3过1败缺字段待裁、cost1过1败；startup/source/B未跑，第二轮禁/C禁，最后HEAD全CI必跑。
 
 - **order首轮候选（2026-10-17）**：仅合成会话fixture迁移，原15expect及viewport后全部操作/业务mock守恒；旧token真实红host1/11745ms→完整清理后还原原1case host0/8694ms，eslint0，[证据](../../evidence/playwright-docker-spec-replay-2026-10-17.md)。当前login2/doc7/order1过，cost1过1败待裁，余4A/2B未跑、C禁/未第二轮；人类已另批workspace单void语法，须独立落R7再改，未扩其它行为。最终最后HEAD全CI仍待执行。
@@ -3723,6 +3725,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+- **2026-10-17｜P1最小产物例外R7**：直接人类call_5b46d68608d34eccb6dbaaae626c4776明确批P1命令traceoff/两配置与业务断言不变，独立只读容器及owned tmpfs不导出raw，仅固定结果和逐张核过业务截图，清理后不承诺RAM/swap物理零落盘。[原始reply/保护边界](../../tasks/playwright-p1-artifact-authorization-2026-10-17.md)。父796eba0，仅docs提交，不包含startup候选；未实施/未运行B，原A0644策略不得扩真实B。具体接线/复核/负向清理另验，不扩成本/字段许可、C/第二轮/一般阶段5，最后HEAD实际全CI必跑。[未测试]（人裁文档，非执行成功）
 
 - **2026-10-17｜session-revocation会话oracle迁移**：父5ef45bc，仅既授旧storage setup/oracle→合成Cookie、401即时UI失效/受控撤销reload401、403原Jar保留/reload200，原业务拒绝和UI断言保持。两真源变异分别401错误恢复200红、403清Jar布尔false红；各完整清理后还原，最终原2例PW0/3577ms、host0/9211ms，实际response观察非预定status。中间一次还原运行leader SIGTERM/host1/8242ms源未证，不算绿/不隐去；全部owned清理true。原lint/format0，只读review无阻断，[完整映射/失败史](../../evidence/playwright-docker-spec-replay-2026-10-17.md)。不声称实际API安全或401清Cookie，未跑B/第二轮/C，最后HEAD完整CI仍必跑。[已测试]（本spec2过，非全A/B通过）
 
