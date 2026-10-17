@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **阶段5首步证据（2026-10-17）**：R7 28215b0稳定干净HEAD完整CI实际0/209252ms；[现状地图](../../evidence/harness-stage5-test-map-2026-10-17.md)、[覆盖率首测口径](../../evidence/harness-stage5-coverage-protocol-2026-10-17.md)、[浏览器考古/逐例提案](../../evidence/harness-stage5-browser-rulings-2026-10-17.md)已独立只读复核。生产TS377/API仓储25，实测B尚无，三目标不放宽；P1有main单页产品意图但逐页期待未获后继许可，成本旧新尚待受控对比。Workspace已授最小字段正在逐次变异/还原验证，未完成不关闭；不阻其它独立线。
+
 - **阶段5正式授权（2026-10-17）**：亲核人类原始消息，接手5230625/树空、批次1–4已验收；[R7任务线与硬边界](../../tasks/harness-stage5-authorization-2026-10-17.md)。先P裁断证据，现状地图→六域PG/唯一coverage-v8及三目标→≥3真实注入/三连CI/P1核账/DoD与58项去向/收官准备。浏览器上报不阻塞其它线；C生产禁/仅准备§14不执行归档，产品仅线C临时注入后完全还原，最终HEAD全CI0/树空后等人工终验。旧未验收/阶段5未启/字段待裁按各历史时点保留。
 
 - **Docker回放部分交付停点（2026-10-17）**：A8/B2独立首轮已覆盖；A六文件全绿、成本1过1败/Workspace3过1败各待裁，runtime原1例真实Cookie变异红还原绿，P1原完整11败保留。最新P1仅3完成/complete=false，前两例原helper断言19/overview看板隐藏、第三unclassified；上游4173 CONNECT_TIMEOUT使PWnull/SIGTERM、host1/27929ms、owned全清。候选已封存/精确还原原文件，[事实/C7方案](../../tasks/playwright-p1-replay-blocker-2026-10-17.md)。TD-TEST-018连接故障单列待核/58项，不改产品/原可见性oracle/网络失败条件；第二轮未开/C生产禁/无视觉验收。最终文档提交后在稳定干净HEAD实际完整CI，期间不改文件；结果交付另报。
@@ -3743,6 +3745,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+- **2026-10-17｜阶段5可审地图/首测协议/P线考古**：父28215b0 R7完整CI实际0/209252ms（首尾同HEAD/树空，日志/tmp/kingturf-stage5-r7-28215b0-ci-2026-10-17.log）；独立只读盘点核当前13PG与Web14/313、六域真实机制，不抄旧零测试清单。[地图](../../evidence/harness-stage5-test-map-2026-10-17.md)/[首测协议](../../evidence/harness-stage5-coverage-protocol-2026-10-17.md)/[P线证据及逐case提案](../../evidence/harness-stage5-browser-rulings-2026-10-17.md)，377生产TS/25仓储、B尚未测；P1明确main单页意图仅支持申请，成本尚待真实对比。文档静态校验0/独立review无必要阻断，不将未测覆盖率或待裁提案写成完成。此证据docs独立回滚，不含Workspace spec候选/产品修改。[已测试]（文档静态及R7实际CI，非阶段5完成）
 
 - **2026-10-17｜阶段5正式开工R7**：父5230625，主执行者亲核协调会话人类消息01a148f3-68d4-7582-bb6d-fc126c31caf9，先独立[授权全文范围](../../tasks/harness-stage5-authorization-2026-10-17.md)及当前地图/index落盘，不仅凭代理转述扩权。P先启动、上报不冻结A–F；覆盖率三目标/唯一coverage-v8/≥3注入/最终同状态三连CI/收官只准备均保留，测试/浏览器/PG尚未执行不预报绿。回滚本次授权docs可独立revert须核后继依赖，已验收源码零diff。[未测试]（授权记录，提交前仅文档静态校验）
 
