@@ -3718,6 +3718,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+- **2026-10-17｜成本临时auth候选精确归档**：fe107eb后只归档已试auth-only diff与候选文件SHA256，f3882a3/fe107eb成本基线字节同；重建后立即apply_patch还原，git diff0、git apply --check0，[归档/未交付边界](../../tasks/playwright-cost-handoff-blocker-2026-10-17.md)。原业务末assert/产品零改，不将此patch算适配/变异完成；TD-TEST-013仍待裁，独立首轮沿既授范围可继续、第二轮禁止。父fe107eb为本归档回滚点，最终最后提交完整CI仍必跑。[已测试]（精确字节/补丁可应用只读检查，非PW全绿）
+
 - **2026-10-17｜成本提示C7事实收口**：f3882a36664a6c0226a53d297787cd265539ff96干净HEAD全CI0/201874.74ms后，成本仅auth候选PW1/12294ms、host1/17663ms，1过1败；原末提示not found，前quotes/dialog/decisionId过。独立只读源码及原trace脱敏核201→GET200、状态文本空，lazy覆盖message为候选不称干预因果；TD-TEST-013/53项，[事实/附件/待裁](../../tasks/playwright-cost-handoff-blocker-2026-10-17.md)。未改业务/期望，临时auth精确还原未提交/未完成变异；login2过、其它6A/2B未跑、C禁/无第二轮。父f3882a3为本docs回滚点，最后文档HEAD完整CI另实跑后交人裁，不用CI0掩PW1、不扩大永久阻塞。[已测试]（真实失败/只读，非PW全绿）
 
 - **2026-10-17｜login-product-quality独立夹具适配**：只替旧auth stubs和补cold restore401/login-context，共享helper纯合成新DTO/Cookie形状；原9expect完整表达式及page.goto后操作/断言实际完全相同，原180ms两阶段/计数保留。初次Cookie字段失败保历史/附件；helper代际43→42真实红host1/13117ms→还原0/8123ms，spec加入旧token真实红1/13086ms→立即还原0/7673ms、原2测试通过。全部owned清理，[完整映射/原命令/证据](../../evidence/playwright-docker-spec-replay-2026-10-17.md)。父60ab881独立回滚点；其它7A/2B未跑，C未动，API/Web全量与最终干净HEAD CI提交后另执行，不抬评分/称阶段5完成。[已测试]（真实逐文件红绿；最终CI随后）

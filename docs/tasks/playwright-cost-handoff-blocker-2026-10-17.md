@@ -24,4 +24,6 @@ TD-TEST-013仅登记，台账53项。人类需确定转报价后原成功提示�
 
 成本候选尚无逐文件红→还原全绿，故未提交/不算适配完成；已精确apply_patch还原，实际 `git diff --exit-code -- tests/e2e/cost-matrix-product-quality.spec.ts` 为0，与f3882a3全字节相同。映射/原日志/附件保留，可恢复本次尝试；不是把失败改跳过。login已单独适配2通过且两文件真变异完成，其余6A/2B未执行，A8第一完整轮未形成，全部绿前第二轮禁止，C2一字未改/未跑。
 
+精确可复现[auth-only候选diff](../evidence/playwright-cost-auth-candidate-2026-10-17.patch)另行版本化：基于f3882a3成本原文件，工作树fe107eb同文件字节未变；应用后成本文件SHA256=`8ce3d50454711e0b31008a2a39b47af1ccce5f9d528d35899281b47a9c91a788`。重建后用apply_patch立即还原，再实际git diff exit0及 `git apply --check` exit0。只归档，不将diff自动应用/写成已完成适配，原业务断言全部保留。其它独立首轮可沿原授权继续，不跑第二轮；后续记录分别更新，不把本项失败叫跳过。
+
 本C7阻塞成本绿/全绿/第二轮，不据此永久冻结其它独立首轮原授权；本次先交具体待裁事实。仅docs/索引/台账/§7，父f3882a3回滚点；最后文档提交后稳定干净HEAD完整CI另实跑、首尾核HEAD/clean，不预填结果。不push/部署/dispatch/workflow/生产，不扩一般阶段5/覆盖率/收官。
