@@ -532,6 +532,8 @@
 
 ### TD-TEST-002｜无覆盖率配置与阈值
 
+- **阶段5实际进展，未关闭**：真实六包B已冻结、278f22a实际check三目标未达exit1；后继domain单包629/671≥90，不能代整体/仓储达标或最终CI。双写scanner/其余真实缺口仍待，[固定B和失败证据](../evidence/harness-stage5-coverage-protocol-2026-10-17.md)。下方“无配置”等为原发现时点。
+
 - **位置**：全仓（package.json 无 coverage 脚本；无 vitest coverage 配置；lockfile 无 `@vitest/coverage-*`）
 - **类别**：测试/门禁 ｜ **严重度**：P1
 - **证据**：`.gitignore:4` 有 `coverage/` 条目但目录从未生成过；现状无法回答"覆盖率多少"。
@@ -539,6 +541,8 @@
 - **业务行为影响**：无 ｜ **关联批次**：阶段 5 ｜ **验收方式**：覆盖率报告产出 + 低于阈值实测拦截
 
 ### TD-TEST-003｜6 个仓储模块仅 mock 路由级测试，SQL 路径未验证
+
+- **阶段5实际进展，未关闭**：制造专项6项真实PG0、租户SQL实现真注入1败4过→还原5绿→补强最终6绿；源码恢复SHA/diff0及事件回滚证据见[测试地图](../evidence/harness-stage5-test-map-2026-10-17.md)。该域公司/GROUP限定并非recordScopeSql接口，也无幂等命令；其余五域专项未完成。原“六个无专项”保留为发现时点，佣金/风险旧HTTP间接证据不漏记。
 
 - **位置**：`commission`/`dashboard`/`manufacturing`/`mrp`/`procurement`/`risk` 六个 `*-repositories.ts`
 - **类别**：测试 ｜ **严重度**：P2
