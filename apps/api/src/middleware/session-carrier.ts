@@ -116,20 +116,17 @@ export function browserAuthResponse(request: ApiRequest, config: BrowserSessionC
   if (request.pathname === '/api/v1/auth/login' && request.method === 'POST') return true;
   if (request.pathname === '/api/v1/auth/token-login' && request.method === 'POST') return true;
   if (request.pathname === '/api/v1/auth/login-context' && request.method === 'GET') return true;
+  if (request.pathname !== '/api/v1/auth/session') return false;
   if (
-    request.pathname === '/api/v1/auth/session' &&
-    (request.headers?.['x-kingturf-session-intent'] !== undefined ||
-      request.headersDistinct?.['x-kingturf-session-intent'] !== undefined)
+    request.headers?.['x-kingturf-session-intent'] !== undefined ||
+    request.headersDistinct?.['x-kingturf-session-intent'] !== undefined
   )
     return true;
   const raw = request.headersDistinct?.cookie ?? [request.headers?.cookie ?? ''];
-  return (
-    request.pathname === '/api/v1/auth/session' &&
-    raw.some((value) =>
-      value.split(';').some((part) => {
-        const name = part.split('=')[0]?.trim();
-        return name === config.sessionCookieName || name === config.csrfCookieName;
-      }),
-    )
+  return raw.some((value) =>
+    value.split(';').some((part) => {
+      const name = part.split('=')[0]?.trim();
+      return name === config.sessionCookieName || name === config.csrfCookieName;
+    }),
   );
 }

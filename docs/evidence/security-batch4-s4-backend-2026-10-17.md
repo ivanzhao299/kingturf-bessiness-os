@@ -41,6 +41,12 @@
 
 ## 回滚
 
+getter修正首次提交钩子另拦2项no-unnecessary-condition：新增路径早返后两个旧session比较成为恒真。只移除已被守卫证明的重复比较，不改判定；格式化后risk+browserSession再次1132绿（getter-final-green），由提交钩子重新lint。独立只读复核早返保留三敏感入口/session no-store，无普通业务Cookie读取。
+
+首源码提交6c453e4实际干净HEAD完整CI退出1/192598.636ms（final-head-ci日志）：API126文件17242中4红/17238绿、Web13/266及config71绿；build/audit尚未到达，不标通过。四红均为未改旧risk-route-contract的headers getter必须3次、实际4次：新增缓存分类在非session路由也先读Cookie。只在browserAuthResponse的三个敏感入口早返后加非session路径早返，不改旧测试/业务断言；risk+browserSession定向2文件1132绿（getter-restored-green）。首CI失败不覆盖，后继最终HEAD另完整CI。
+
+CLI JS规则真实负例：临时加入一个未使用常量，ESLint以@typescript-eslint/no-unused-vars实际退出1（cli-lint-negative）；立即还原文件与6c453e4字节相同，lint实际退出0（cli-lint-restored），未执行CLI。独立只读核验精确配置路径无更广放宽。后继完整CI日志使用final-fixed-head-ci，保首失败日志。
+
 提交钩子首次退出1：机器CLI原未进入现有JS工具的ESLint类型检查分类，规则await-thenable因缺类型信息崩溃；定向API lint不覆盖它，故此前API绿不代表该文件已lint。必要接线只在eslint.config.mjs既有Node JS工具集合增加精确scripts/verify_p1_demo.mjs路径，保留推荐JS检查、不扩通配符/G3/阈值；单文件eslint实际退出0（cli-lint日志）。不绕过钩子。此配置须与机器CLI配套回滚。
 
 核后继后配套逆撤本后端/config/机器接口与适配测试，返回fead2d1，保S1–S3/已确认设计/自然预检/他人3144562文档；无SQL迁移/secret轮换，不恢复已撤销会话或旧storage，不自动revert/部署。
