@@ -3730,6 +3730,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+- **2026-10-17｜source获准应收cursor独立修正**：8e4666b R7→f646958精确恢复封存auth候选（2过1败，不充绿），只原应收空stub新增nextCursor:null；原PG producer/样本/权限不动，首goto起业务动作/断言字节同。初3过PW0/3394ms、host0/8656ms；真实删该字段红PW1/8847ms、host1/14305ms/2过1败；完整清理还原3过PW0/3355ms、host0/8457ms，owned全清/红附件留存。[实施/回滚边界](../../tasks/playwright-source-fixture-ruling-2026-10-17.md)。原lint/format0，TD-TEST-015只字段实施验证完成、auth真变异待完成，台账55；成本/Workspace失败不消除，B首轮独立可续/C禁/第二轮禁/最后HEAD全CI必跑。[已测试]（字段真红绿，整文件适配待auth变异）
+
 - **2026-10-17｜B产物隔离接线设计**：按直接P1 R7/dc32ffa，仅设计精确local p1/runtime、PG同一性复用、只读root/repo及owned tmpfs、无Docker raw日志、安全reporter双层字段重编码，[方案/验证计划](../../tasks/playwright-local-private-runner-2026-10-17.md)。首版零PNG导出，原业务截图代码保持但证据不保留/未视觉验收；不把未经核图经base64或cp送出，后继预览若需要另明确边界。只读review支持此允许集合子集；尚未实施/运行B，不扩原配置/业务/第二轮/C，最后HEAD全CI必跑。[未测试]（接线设计）
 
 - **2026-10-17｜source旧分页夹具C7/R7**：41bf26a后原PG producer实际19过/5.87s，仅auth候选PW1/8907ms、host1/14281ms及重复PW1/8937ms、host1/14318ms均2过1败，authorized原卡存在hidden，owned全清。静态ar:read→collections应收依赖→旧stub无nextCursor→strict parser/未ready隐藏支持候选，不改产品/断言；候选apply_patch精确还原并封存patch/SHA。人类call_7652a1df412c4d42b66e572bb09ebeb7只授该应收合成endpoint补null，[原话/事实](../../tasks/playwright-source-fixture-ruling-2026-10-17.md)独立docs先行，新增TD-TEST-015/55，尚未实施/变异不充绿。B独立首轮可续，C/第二轮/最终HEAD全CI边界保持。[未测试]（新增R7，原失败已实测）

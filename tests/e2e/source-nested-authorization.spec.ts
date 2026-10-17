@@ -24,6 +24,8 @@ for (const mode of ['denied', 'authorized', 'masked'] as const) {
       if (path.endsWith('/sales-orders'))
         return route.fulfill({ json: { items: [aggregate.order] } });
       if (path.endsWith('/360')) return route.fulfill({ json: aggregate });
+      if (path === '/api/v1/ar-open-items')
+        return route.fulfill({ json: { items: [], nextCursor: null } });
       return route.fulfill({ json: { items: [] } });
     });
     await installSyntheticLogin(page, replaySession);

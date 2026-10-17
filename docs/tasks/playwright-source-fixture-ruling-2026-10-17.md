@@ -21,3 +21,11 @@
 </send_user_message_question_reply>
 
 仅该一个合成应收endpoint补nextCursor:null，不改items/生产器/权限/其它响应/原UI assert；先本R7独立docs，后恢复同一auth候选并独立字段修正，缺字段真实源变异红→还原绿、会话fixture真变异，独立提交/回滚。TD-TEST-015新增/55顶层项：当前已授待实施，不提前关闭。Workspace字段与成本提示仍另待裁，不套本授权；B首轮在A首轮留证后独立继续，第二完整轮须A+B全绿，C禁，最后稳定干净HEAD实际全CI必跑。不push/部署/workflow/依赖/SQL/产品变更，不扩一般阶段5。
+
+## 后继：获准应收字段独立修正
+
+R7 8e4666b后，f646958精确恢复封存auth候选（内存git diff与patch trimEnd全同），该提交只保已实测2过1败，不冒充全绿。后只新增path严格等于/api/v1/ar-open-items的合成空页分支，原items=[]加nextCursor:null，未给所有未知API泛加字段。
+
+`source-cursor-positive-1` 原3例通过，PW0/3394ms、host0/8656ms；真源仅该分支删nextCursor，`source-cursor-missing-red-1` PW1/8847ms、host1/14305ms，原authorized卡又hidden、2过1败。完整close/owned清理后立即还原，`source-cursor-restored-1`原3例通过，PW0/3355ms、host0/8457ms。每次owned三清理true，红原截图/trace/HTML独立保留。此干预支持本失败来自旧夹具游标缺字段，不归责产品/S4认证。
+
+原从首goto至文件末全业务动作/条件/断言字节同；PG producer/样本没有再生成或修改，员工/权限/三种payload保持。原ESLint/format实际0，父f646958为字段独立回滚点（中间c629569仅B接线设计docs）；TD-TEST-015字段实施验证完成，整文件auth真实变异尚待完成，不提前标适配全交付。Workspace/成本失败不扩大许可，B可独立首轮、第二轮仍禁，最后HEAD全CI必跑。
