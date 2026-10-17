@@ -1,5 +1,13 @@
 # 阶段5现状测试地图与补齐清单
 
+## Web共享表单与文件表单编排护栏
+
+父d11e9b9新增`forms-behavior.test.ts`24项，调用原openForm/openFileForm。明确将native validity与FormData作为受控外部输入，验证字段metadata/选项/初值/分组/提示、现有datetime-local映射为text、无效控件计数/焦点/aria修复、entries trim及非字符串转空、busy重复submit拒绝、成功close/remove/finally恢复、Error/非Error失败保留并重试、dirty取消/Escape确认与无confirm分支。敏感操作只证明**勾选后按钮启用及失败恢复当前勾选状态**；submit listener本身不校checkbox，不把该UI提示写成后端/程序submit安全门禁，不顺改产品。文件例注入实际File的size元数据，验证25MiB+1拒绝/恰好边界接受、传原File引用、失败重试/取消/按钮恢复，不分配大buffer、不充真实上传。
+
+首原eslint/tsc0，target23过1败/exit1/317ms：Vitest节点深matcher格式化要求partial double未支持的getAttributeNames，未扩伪DOM API，只改FormData spy次数+首参toBe同form引用；第二24过/exit0/324ms。独立只读复核无必要阻断并收窄敏感按钮措辞。日志`/tmp/kingturf-stage5-forms-{first,second}-2026-10-17.log`。
+
+后继原eslint/tsc0，同冻结include/exclude单包V8 Web18文件366项实际exit0/2.13s；`coverage/web-forms-d11e9b9-first/coverage-final.json`按原算法9835/20592（相比最后六包8937增898），forms235/235、production-actions224/224、shipment-actions97/97。日志`/tmp/kingturf-stage5-web-forms-coverage-2026-10-17.log`。此工作区单包测量非六包门禁、不更新B/不关TEST002、非完整CI。固定microtask与DOM/native端口限制同上，不声称穷尽所有分支/原生校验/真实浏览器提交。
+
 ## Web生产／发运动作回调护栏
 
 父c14884e新增`fulfillment-actions-behavior.test.ts`15项，复用部分DOM；只mock表单入口以捕获原生产回调，不mock生产/发运动作模块。固定四工单状态→权限/action/reason/evidence/key，终态无按钮；报工固定decimal/key与ISO日期、无效日期先拒绝；领退料按append时balances引用（换Map值不偷换批次），固定库存IDs/日期/无效索引；成品按固定report/location选项和order itemVersion提交（locations同样在append捕获）。不把选项端口当真实库存/质量门禁。
