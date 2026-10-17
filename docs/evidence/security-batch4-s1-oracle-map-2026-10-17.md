@@ -1,5 +1,7 @@
 # S1 严格响应头期望逐处变更清单（2026-10-17）
 
+完成补记：独立test提交59f9dfa业务源码不变，实际干净HEAD完整CI真实0/180503.567ms（API118/17114、Web13/266）；首失败及下段“待重跑”为历史时点。源码/证据/部署边界及回滚见[S1完成证据](security-batch4-s1-headers-2026-10-17.md)。
+
 依据：人工批次4测试纪律及D1 S1（TD-SEC-004）授权，旧API无安全三头→统一追加三头。严格整响应比较原本只期望`x-correlation-id`，现在仍严格`toEqual`，但期望另外包含`x-content-type-options: nosniff`、`x-frame-options: SAMEORIGIN`、`referrer-policy: strict-origin-when-cross-origin`。状态、正文、错误顺序、权限、repository调用及请求/会话/签名夹具不改。每行均采用此“旧→新→D1 S1依据”，行号为修改前固定业务提交`b02ad55`的原位置。
 
 第一次完整源码HEAD CI真实退出1/182202.688ms：API65失败文件/6994失败、53通过文件/10120通过，共118/17114；Web266绿。不是业务算法退化或被忽略的失败，失败原因是获批新增响应头与旧严格oracle冲突。日志`/tmp/kingturf-batch4-s1-b02ad55-head-ci-2026-10-17.log`保留，后继独立test提交只同步这些已消失的“仅关联ID头”旧期望，不退回实现/弱化断言。

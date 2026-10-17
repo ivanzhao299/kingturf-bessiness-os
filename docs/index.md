@@ -6,6 +6,8 @@
 
 ## 常驻入口（根与 docs 顶层）
 
+[批次4 S1安全响应头证据](evidence/security-batch4-s1-headers-2026-10-17.md)：R7 bed8b40→业务b02ad55真实全量红→独立期望59f9dfa全CI0，API17114/Web266，逐处映射/保护区/风险及回滚；证据提交后另实际HEAD全CI，停协调续派S2，非批次4人工验收。
+
 [S1响应头严格期望逐处清单](evidence/security-batch4-s1-oracle-map-2026-10-17.md)：76处/65文件仅追加获批三头，保留严格相等、请求夹具及其余断言；保留源码HEAD首次全量红，后继test提交重新全链。
 
 当前批次1/2含E1/3已人工验收64757d4，正式授权批次4 D1；[R7实施授权与S4硬停止边界](tasks/harness-batch4-authorization-2026-10-17.md)。本执行步先S1，其它步骤按顺序另派，旧候选/待验收描述保留历史。

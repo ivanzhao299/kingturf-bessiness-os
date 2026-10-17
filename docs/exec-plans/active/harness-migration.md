@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **S1最新检查点（2026-10-17）**：R7 bed8b40、业务b02ad55、独立响应头期望59f9dfa；首源码全CI1的65文件6994严格oracle失败如实保留，后继59f9dfa源码不变、仅76处三头期望同步后实际稳定干净HEAD完整CI0/180503.567ms，API118/17114、Web13/266、结构0/29。S1实施及只读复核完成、证据提交后另全CI，停协调审查/续派；S2/S3/S4尚未实施，不是批次4人工验收。[S1证据及逐处变更/回滚](../../evidence/security-batch4-s1-headers-2026-10-17.md)。下方R7及旧“当前”保留时点。
+
 - **唯一当前状态（2026-10-17，批次4授权）**：人工已验收批次1/2（含E1）/3，基线64757d4、干净树；正式授权D1实施S1→S2→S3及S4影响报告，S4实施前必须硬停人工确认。先独立R7 docs提交，当前执行步仅S1统一API安全三头，独立行为/测试/源码及证据实际HEAD完整CI后交协调审查再续派；不push/部署/dispatch/workflow/阶段5。完整授权、后续配置许可与保护区见[批次4授权](../../tasks/harness-batch4-authorization-2026-10-17.md)，下方所有“批次4未启动/仅批准方案”为历史时点。
 
 - **项目 / 仓库**：kingturf-business-os（`/home/jinhuit/Kingturf/kingturf-bessiness-os`）
@@ -3667,6 +3669,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+2026-10-17，S1实施与独立复核完成：R7 bed8b40先行，业务b02ad55统一complete接纯三头helper，原状态/body/correlation/telemetry顺序不变，helper11/完整10/AST1。首干净源码HEAD全CI1/182202.688ms（API65文件6994红/10120绿，共118/17114）保留；独立test59f9dfa仅同步65文件76处获批响应头，24同形请求头及其它测试/fixture语义不动，完整AST回等、定向120绿。后继59f9dfa实际稳定干净HEAD完整pnpm ci:local0/180503.567ms，开始/结束HEAD同/树空/无其它编辑测试构建并发；API118/17114、Web13/266、原13 PG、工具/格式/39能力19路径/结构0违规29豁免/type/lint/build/audit零漏洞，预算11794/1898。reviewer对complete/server/76期望脚本/映射只读审无必要阻断；独立完成docs实际干净HEAD全CI提交后执行，不冒称b02ad55曾绿。SEC004已实施待批次4验收，Nginx重复头/未来混合大小写及dispatch前异常范围如实登记未修，未跑CDP/Playwright/生产代理；[S1完成证据](../../evidence/security-batch4-s1-headers-2026-10-17.md)。回滚核依赖后59f9dfa→b02ad55配对revert，R7/完成docs独立；未自动回滚。当前停协调独立确认后按原授权续派S2，不实施S2/S3/S4，不启动阶段5/生产/push/deploy/dispatch/workflow。
 
 2026-10-17，S1源码b02ad55首次全量真实红：R7已先独立bed8b40落盘；S1仅统一complete接纯security-header helper及12+3新增检查，目标54/2绿、原app39字节同，type/lint/结构0/29已过。完整干净源码HEAD CI退出1/182202.688ms，API65文件/6994用例失败、53文件/10120通过共118/17114，Web266绿；旧响应envelope严格toEqual只预期correlation头，与D1 S1获批三头冲突。不得声称b02ad55全CI绿。按本批明确授权独立test同步74响应envelope+2直接headers期望，65文件，仅增加安全三头，其它AST/请求头/状态正文/调用顺序不动，另24同形请求头不改。全文件完整AST去这三新增字段回等b02ad55；[逐处旧→新→D1映射](../../evidence/security-batch4-s1-oracle-map-2026-10-17.md)，测试后继实际HEAD全CI待执行，保留失败史，不弱化严格断言/跳过。S2–S4尚未实施。
 

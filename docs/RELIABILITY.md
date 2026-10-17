@@ -57,6 +57,8 @@
 
 ## 4. 已登记的可靠性债务
 
+**S1现时更新（2026-10-17）**：D1已正式授权实施，TD-SEC004的应用层三头已在统一complete接线，正常/错误及rejectOversized保持原状态/JSON/关联ID/telemetry；后继59f9dfa实际干净HEAD全CI0。Nginx自产响应/dispatch前异常不在该点保证内，代理重复头数量尚未实测，不代表生产生效；本批不部署/dispatch。SEC001/002/003后续按授权分步，S4硬停。旧下段为建档基线，当前细节见[S1验证及回滚](evidence/security-batch4-s1-headers-2026-10-17.md)。
+
 TD-PERF-001（无自动重试）、TD-PERF-002（13 处 N+1 候选）、TD-SEC-001..004（CSP/限流/头/token，前置 D1）——见 `docs/exec-plans/tech-debt-tracker.md`。
 
 ## 5. 变更历史
