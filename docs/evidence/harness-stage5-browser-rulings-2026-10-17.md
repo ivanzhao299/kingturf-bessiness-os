@@ -1,5 +1,25 @@
 # 阶段5浏览器裁断考古与适配提案（未实施P1期待）
 
+## 最新：已授固定布尔诊断实跑（数据差异不擅改期待）
+
+7f8ffb7的独立`stage5-p1-fixed-diagnostics-1`真实seed0/2774ms、七类固定观察完整，诊断browser.close成功后exit0/2222ms，host0/null/10470ms、schema/container/preview均gone=true。无relay失败事件；原P1 spec未运行/未修改，不计原11绿。日志`/tmp/kingturf-stage5-p1-fixed-diagnostics-1-2026-10-17.log`及`.test-results/docker-local/stage5-p1-fixed-diagnostics-1/safe-events.jsonl`。只有预定义bool/计数导出，未读raw/认证/DOM文本产物、零PNG/未视觉验收。
+
+| 类别          | 本次固定观察事实                                                                                                   | 结论边界                                                                          |
+| ------------- | ------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
+| credit        | 三卡各状态1、额度5000000匹配3；批准敞口0=true；拒绝/过期原450000=false、0=true                                     | **原数据期待有实质差异**；不把它当货币格式变化，不改450000或seed                  |
+| production    | 宽class匹配2、可见2；已有精确testid匹配1、可见1                                                                    | 原单locator存在歧义，不是实际工作台消失；尚未改原selector                         |
+| Order360      | 展开前卡1、原RELEASED文本0、本地化已放行1、自然查看按钮1；展开后detail1、timeline18、原10事件编码齐                | 原整段count词面false；有新增催收分段/显示本地化与懒读差异，不能据此改原计数或事件 |
+| commission    | 原政策pin0、本地化同code第1版pin1、原28500金额1                                                                    | 已确认版本显示变化；原五账链未在本诊断逐条验收                                    |
+| risk          | 原HIGH/45文本0、本地化高风险/45为1；原CLOSED0、本地化已关闭1；原LOW_MARGIN词面false、固定中文门槛/原2410/2500=true | 支持显示本地化，不推断其它未抵达原断言全通过                                      |
+| dashboard     | 原booked词面false、原四数值分别全部false；CNY单位true                                                              | **原数值期待实质不匹配**；未导出未知实际金额，不擅改原四数值/seed                 |
+| manufacturing | 原PUBLISHED/V1词面0、本地化已发布/第1版6、版本总6                                                                  | 支持版本显示变化，原6条数量保留                                                   |
+
+信用的0观察使用固定词面包含条件，不是完整实际数值读取；只据此说“0词面匹配”，不排除小数后缀或声称导出了实际金额。原450000未匹配的差异事实保持，不能因此改期待。Order360本次只确认timeline18与10事件编码，不推断其余summary计数全部正确。
+
+main 7ad7062（fix: localize enterprise interface terminology）明确修改原bootstrap与对应测试，政策Vn→第n版、风险/制造状态使用业务label；af0de8f/7e3e46c货币/状态演进仍同源。1e80f2e为main产品可用性改进引入“查看全链路证据”；02f4943生产工单已给精确data-testid，当前production-orders-view:145/production-cost-view:63共用class。main意图证据不等于新期待自动授权。
+
+最小后继显示适配提案（未实施）：仅状态/版本/事件本地化词面，生产工作台用已有精确testid，自然展开Order360后按独立字段仍核原五计数/18条时间线/原10编码事件可见；不对新增催收数设期待。原数值/币种/状态语义/事件/seed不变。credit450000和dashboard四数值保持停报并继续只读考古/建图核查，不包含在显示提案里；全11/每文件真变异/第二轮仍欠。C类生产不跑、TD018不放宽。
+
 ## 最新：已授金额候选仍有独立差异（非完整11例）
 
 人类money R7已独立1068b94落盘，候选逐处映射见[授权文档](../tasks/harness-stage5-p1-money-authorization-2026-10-17.md)。相对cbb5aa1仅9行货币词面改动，独立只读复核确认原数值/币种契约/状态/计数/事件/seed及两配置保持，payments待核销与dashboard指标未泛改；不调用formatter生成期待。原lint/format通过。

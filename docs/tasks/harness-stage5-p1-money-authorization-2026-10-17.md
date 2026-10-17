@@ -48,3 +48,5 @@
 新诊断context禁Service Worker；本地Playwright1.62.1类型文档确认route不能覆盖SW捕获请求，独立review后收紧。HTTP请求仅允许精确127.0.0.1:4173 origin的GET/HEAD/OPTIONS和自然login POST（无query/URL凭据），其余请求与全部WebSocket关闭并使诊断失败；没有改原relay失败规则/两配置。七类观察事件由宿主再次重编码并独立记集合，只有实际browser.close成功且集合完整才接收独立diagnostics-result。该complete只代表七类诊断完成，**不计原11P1成功**；中断只保留已验证的partial观察。
 
 新4项contract反例＋原private7项＋session网络2项实际13/13，原ESLint/Prettier通过；已接根test:session-network-tools（零新依赖）。独立只读review未见raw/auth导出路径，SW缺口已按建议收紧；还未实跑新诊断、不称网络写闸已浏览器负向实证或完整CI绿。原P1 spec/seed/两配置/forward当前零diff。
+
+后继真实诊断已完成：7f8ffb7七类观察2222ms、host0/10470ms、browser关闭/owned三清理true，无原P1执行。确认信用拒绝/过期敞口匹配0而非450000、dashboard原四数值均不匹配；这些保持数据C7，不借显示适配改期待。其余本地化/重复class/自然展开细节和待裁方案见[全部固定事实](../evidence/harness-stage5-browser-rulings-2026-10-17.md)。原“待实际浏览器”段保留接线时点，不覆盖本后继结果；没有原始DOM/auth或未知实际金额导出。
