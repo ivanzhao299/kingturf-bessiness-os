@@ -58,3 +58,11 @@
 实施须逐处查当前消费者与main有意显示演进，不能泛改未使用label的原raw文本。中文期待用独立字面量，不调用产品label函数生成。原十个事件编码身份保持，通过已有title定位相应事件行并仍要求行可见；不是把属性存在充作原raw编码字面在页面显示。原五计数仍独立验证，18条时间线另验，不对新增催收分段编造期待。生产仅原工单工作台用已存在精确testid，不删成本面板或改DOM/CSS。
 
 先独立R7 docs提交，再改spec/逐处映射/真实补跑及最终真变异；其它未覆盖数据差异仍C7，不将此批准扩为新数值许可、原11已绿或第二轮放行。
+
+### 显示候选逐处映射（实际7过2败后中断）
+
+相对6700fd8，仅原P1 spec按已授映射：order360-evidence:45/52的RELEASED/APPROVED→已放行/已批准、同文件自然详情及title编码保留；commission-policy:69原V1→第1版；risk-view:20–61的HIGH/CLOSED/LOW_MARGIN/四状态→固定高/已关闭/中文规则/待处理-已确认-已升级-已关闭；workspace-dashboard责任钻取:85只改HIGH/CLOSED显示，四指标数字原样；manufacturing-cards:25的PUBLISHED/V1→已发布/第1版（仍6）；sourcing-register:22和purchase-order-cards:21的ISSUED/RECEIVED→已签发/已收货；mrp-run:17/mrp-proposals:67的COMPUTED/RELEASED→已计算/已放行（原6/3/6及数量不变）；production-orders-view:119–129的ISSUE/RETURN/QUARANTINE/五状态链→独立中文词面（原领退数量/roll数量/三工序全保），两处原生产class限定到已有testid。
+
+Order360五计数拆为原应收/回款、原佣金/风险/证据两段，忽略新增催收段的未知计数但不放宽原五值，另固定时间线18；十个原事件编码原样title定位且对应行仍toBeVisible。未改credit450000/dashboard四数值、seed/产品/两配置/forward。原ESLint发现新状态tuple推断两处string|undefined，补as const后原lint/format及13工具项实际0；独立只读review无必要阻断，hasText订单前缀潜在多单歧义保留实际补跑判定，不先虚构seed多单或改原业务oracle。
+
+实际`stage5-p1-display-first-1`发现11/仅9完成：7过，credit原450000与dashboard原bookedRevenue两败后TD018中断；host1/39336ms/owned全清/HEAD与spec不变，MRP/production两例未完成。所有固定结果见[失败史](../evidence/harness-stage5-browser-rulings-2026-10-17.md)，不是原11全绿或每文件真变异收口。

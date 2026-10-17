@@ -117,7 +117,7 @@ test('keeps the P1 evidence usable on a mobile viewport', async ({ page }, testI
   await openRoute(page, 'material-planning');
   await expect(page.locator('.mrp-workbench')).toBeVisible();
   await openRoute(page, 'production-orders');
-  await expect(page.locator('.production-workbench')).toBeVisible();
+  await expect(page.getByTestId('production-workbench')).toBeVisible();
   await expect(page.locator('.commercial-workspace textarea[aria-label$="JSON 请求"]')).toHaveCount(
     0,
   );
@@ -135,13 +135,18 @@ test('shows the permission-bounded Order 360 summary and evidence timeline', asy
   await openRoute(page, 'order-360');
   const workbench = page.locator('.order-360-workbench');
   await expect(workbench).toBeVisible();
-  const card = workbench.locator('.order-360-card', { hasText: 'SO-KT-P1-DEMO' });
-  await expect(card.getByText('¥950,000 · RELEASED', { exact: true })).toBeVisible();
+  const summary = workbench.locator('.order-360-card', { hasText: 'SO-KT-P1-DEMO' });
+  await summary.getByRole('button', { name: '查看全链路证据', exact: true }).click();
+  const card = workbench.locator('.order-360-detail .order-360-card', { hasText: 'SO-KT-P1-DEMO' });
+  await expect(card).toBeVisible();
+  await expect(card.getByText('¥950,000 · 已放行', { exact: true })).toBeVisible();
   await expect(
-    card.getByText(/报价 Q-KT-P1-DEMO · 信用 APPROVED · 合同 CT-KT-P1-DEMO/u),
+    card.getByText(/报价 Q-KT-P1-DEMO · 信用 已批准 · 合同 CT-KT-P1-DEMO/u),
   ).toBeVisible();
   await expect(card.getByText('当前未发现活动异常', { exact: true })).toBeVisible();
-  await expect(card.getByText(/应收 1 · 回款 2 · 佣金 1 · 风险 1 · 证据 18/u)).toBeVisible();
+  await expect(card.getByText(/应收 1 · 回款 2 ·/u)).toBeVisible();
+  await expect(card.getByText(/佣金 1 · 风险 1 · 证据 18/u)).toBeVisible();
+  await expect(card.locator('.order-360-timeline > li')).toHaveCount(18);
   for (const event of [
     'OPPORTUNITY_CREATED',
     'QUOTE_ISSUED',
@@ -154,7 +159,7 @@ test('shows the permission-bounded Order 360 summary and evidence timeline', asy
     'RISK_EVALUATED',
     'RISK_TASK_CLOSED',
   ])
-    await expect(card.getByText(new RegExp(event, 'u')).first()).toBeVisible();
+    await expect(card.getByTitle(`事件编码：${event}`, { exact: true }).first()).toBeVisible();
   await testInfo.attach('order-360-evidence-desktop', {
     body: await workbench.screenshot(),
     contentType: 'image/png',
@@ -167,7 +172,7 @@ test('shows commission economics and the immutable control ledger', async ({ pag
   const workbench = page.locator('.commission-workbench');
   await expect(workbench).toBeVisible();
   await expect(
-    workbench.locator('.version-pin').filter({ hasText: 'COM-KT-P1-2026 V1' }).first(),
+    workbench.locator('.version-pin').filter({ hasText: 'COM-KT-P1-2026 第 1 版' }).first(),
   ).toBeVisible();
   const card = workbench.locator('.commission-card', { hasText: 'SO-KT-P1-DEMO' });
   await expect(card.getByText('¥28,500', { exact: true })).toBeVisible();
@@ -191,11 +196,19 @@ test('shows explainable risk findings and the closed responsibility trail', asyn
   const workbench = page.locator('.risk-workbench');
   await expect(workbench).toBeVisible();
   const card = workbench.locator('.risk-card', { hasText: 'SO-KT-P1-DEMO' });
-  await expect(card.getByText('HIGH 风险 · 45 分', { exact: true })).toBeVisible();
-  await expect(card.getByText('CLOSED', { exact: true })).toBeVisible();
-  await expect(card.getByText(/LOW_MARGIN：实际 2410 \/ 门槛 2500/u)).toBeVisible();
-  for (const state of ['OPEN', 'ACKNOWLEDGED', 'ESCALATED', 'CLOSED'])
-    await expect(card.getByText(new RegExp(`· ${state} ·`, 'u'))).toBeVisible();
+  await expect(card.getByText('高风险 · 45 分', { exact: true })).toBeVisible();
+  await expect(card.getByText('已关闭', { exact: true })).toBeVisible();
+  await expect(card.getByText(/毛利率低于政策门槛：实际 2410 \/ 门槛 2500/u)).toBeVisible();
+  for (const [state, label] of [
+    ['OPEN', '待处理'],
+    ['ACKNOWLEDGED', '已确认'],
+    ['ESCALATED', '已升级'],
+    ['CLOSED', '已关闭'],
+  ] as const)
+    await expect(
+      card.getByText(new RegExp(`· ${label} ·`, 'u')),
+      `risk state ${state}`,
+    ).toBeVisible();
   await testInfo.attach('risk-task-evidence-desktop', {
     body: await workbench.screenshot(),
     contentType: 'image/png',
@@ -219,7 +232,7 @@ test('shows server-calculated executive KPIs with source and responsibility dril
     dashboard.locator('.metric-bookedRevenue').getByText(/来源 sales_orders/u),
   ).toBeVisible();
   await expect(dashboard.getByText(/SO-KT-P1-DEMO/u)).toBeVisible();
-  await expect(dashboard.getByText(/HIGH \/ 45 分 · CLOSED/u)).toBeVisible();
+  await expect(dashboard.getByText(/高 \/ 45 分 · 已关闭/u)).toBeVisible();
   await testInfo.attach('executive-dashboard-desktop', {
     body: await dashboard.screenshot(),
     contentType: 'image/png',
@@ -236,7 +249,7 @@ test('shows published manufacturing versions, BOM substitute evidence, and order
   await expect(workbench.getByText('FG-KT-PRO-50', { exact: true })).toBeVisible();
   await expect(workbench.getByText('BOM-KT-PRO-50', { exact: true })).toBeVisible();
   await expect(workbench.getByText('RT-KT-PRO-50', { exact: true })).toBeVisible();
-  await expect(workbench.getByText('PUBLISHED · V1')).toHaveCount(6);
+  await expect(workbench.getByText('已发布 · 第 1 版')).toHaveCount(6);
   await expect(workbench.getByText('发布版本')).toHaveCount(0);
   await testInfo.attach('manufacturing-master-data-desktop', {
     body: await workbench.screenshot(),
@@ -252,9 +265,9 @@ test('shows supplier qualification, received purchase order, receipt, and derive
   const workbench = page.locator('.procurement-workbench');
   await expect(workbench).toBeVisible();
   await expect(workbench.getByText(/SUP-KT-YARN-001 · 青岛金特夫草纱战略供应商/u)).toBeVisible();
-  await expect(workbench.getByText(/RFQ-KT-YARN-2026-001 · ISSUED/u)).toBeVisible();
+  await expect(workbench.getByText(/RFQ-KT-YARN-2026-001 · 已签发/u)).toBeVisible();
   await expect(workbench.getByText(/报价 SQ-KT-YARN-2026-001/u)).toBeVisible();
-  await expect(workbench.getByText(/PO-KT-YARN-2026-001 · RECEIVED/u)).toBeVisible();
+  await expect(workbench.getByText(/PO-KT-YARN-2026-001 · 已收货/u)).toBeVisible();
   await expect(workbench.getByText(/收货 GR-KT-YARN-2026-001/u)).toBeVisible();
   await expect(workbench.getByText(/批次 LOT-KT-YARN-20260920-A/u)).toBeVisible();
   await expect(workbench.getByText(/RAW-A01 · 结存 3704.5/u)).toBeVisible();
@@ -271,10 +284,10 @@ test('shows recursive MRP explanations, frozen overrides, and released proposal 
   await openRoute(page, 'material-planning');
   const workbench = page.locator('.mrp-workbench');
   await expect(workbench).toBeVisible();
-  await expect(workbench.getByText(/MRP-KT-2026-001 · COMPUTED/u)).toBeVisible();
+  await expect(workbench.getByText(/MRP-KT-2026-001 · 已计算/u)).toBeVisible();
   await expect(workbench.locator('.mrp-proposal-card')).toHaveCount(6);
   await expect(workbench.locator('.mrp-proposal-card.frozen')).toHaveCount(3);
-  await expect(workbench.getByText('RELEASED', { exact: true })).toHaveCount(6);
+  await expect(workbench.getByText('已放行', { exact: true })).toHaveCount(6);
   const longRangeYarn = workbench
     .locator('.mrp-proposal-card', { hasText: 'RM-KT-YARN-12000' })
     .filter({ hasText: '2026-11-15' });
@@ -294,17 +307,15 @@ test('shows closed production execution with routing, material, reports, and ser
 }, testInfo) => {
   await openAuthenticatedWorkspace(page);
   await openRoute(page, 'production-orders');
-  const workbench = page.locator('.production-workbench');
+  const workbench = page.getByTestId('production-workbench');
   await expect(workbench).toBeVisible();
   await expect(workbench.getByText(/WO-KT-2026-001 · FG-KT-PRO-50/u)).toBeVisible();
   await expect(workbench.locator('.production-operation.done')).toHaveCount(3);
-  await expect(workbench.getByText(/ISSUE 1287.5/u)).toBeVisible();
-  await expect(workbench.getByText(/ISSUE 10/u)).toBeVisible();
-  await expect(workbench.getByText(/RETURN 2/u)).toBeVisible();
-  await expect(workbench.getByText(/ROLL-KT-2026-001 · 1000.*QUARANTINE/u)).toBeVisible();
-  await expect(
-    workbench.getByText(/DRAFT → RELEASED → IN_PROGRESS → COMPLETED → CLOSED/u),
-  ).toBeVisible();
+  await expect(workbench.getByText(/领料 1287.5/u)).toBeVisible();
+  await expect(workbench.getByText(/领料 10/u)).toBeVisible();
+  await expect(workbench.getByText(/退料 2/u)).toBeVisible();
+  await expect(workbench.getByText(/ROLL-KT-2026-001 · 1000.*待检隔离/u)).toBeVisible();
+  await expect(workbench.getByText(/草稿 → 已放行 → 进行中 → 已完成 → 已关闭/u)).toBeVisible();
   await testInfo.attach('production-execution-desktop', {
     body: await workbench.screenshot(),
     contentType: 'image/png',

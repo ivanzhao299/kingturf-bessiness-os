@@ -1,5 +1,13 @@
 # 阶段5浏览器裁断考古与适配提案（未实施P1期待）
 
+## 最新：显示已授候选真实7过2败后通道中断
+
+fb13ba3已独立落盘直接人类显示/定位批准，逐处映射与边界见[增量R7](../tasks/harness-stage5-p1-money-authorization-2026-10-17.md)。候选相对6700fd8仅原spec37增/26删：独立中文词面、精确生产testid两处、Order360真实展开/详情限定、原五计数两段＋18时间线、原10code title定位且对应行可见；不把属性存在当raw code文字显示。信用450000和dashboard四值不改，seed/产品/两配置/forward零diff。独立只读review无必要阻断，原lint/format和13工具项通过；新tuple两处string|undefined原lint报错后补as const，不降规则。
+
+`stage5-p1-display-first-1`真实seed0/2782ms，发现11但只9例完成：credit index0 failed/6452ms/line48原拒绝敞口，dashboard index6 failed/6306ms/line226原bookedRevenue；order/AR/payment1935ms、mobile2349ms、Order3601689ms、commission1659ms、risk1428ms、manufacturing1672ms、procurement1537ms分别passed。然后active upstream4173 CONNECT_TIMEOUT、PW null/SIGTERM、complete=false；MRP/production独立两例未完成，不能推断绿。host实际1/null/39336ms、HEAD/spec运行前后均未变，schema/container/preview三清理true。日志`/tmp/kingturf-stage5-p1-display-first-1-2026-10-17.log`与`.test-results/docker-local/stage5-p1-display-first-1/safe-events.jsonl`。
+
+没有为已知数值失败改期待/seed、没有放宽TD018或用partial充完整11。此为候选失败检查点，P1文件真变异闭环/第二轮未完成；原PNG/raw仅owned tmpfs已清理、零图导出/未视觉验收。后继继续数值C7只读因果核查及独立A–F，不重跑粉饰网络失败。
+
 ## 最新：已授固定布尔诊断实跑（数据差异不擅改期待）
 
 7f8ffb7的独立`stage5-p1-fixed-diagnostics-1`真实seed0/2774ms、七类固定观察完整，诊断browser.close成功后exit0/2222ms，host0/null/10470ms、schema/container/preview均gone=true。无relay失败事件；原P1 spec未运行/未修改，不计原11绿。日志`/tmp/kingturf-stage5-p1-fixed-diagnostics-1-2026-10-17.log`及`.test-results/docker-local/stage5-p1-fixed-diagnostics-1/safe-events.jsonl`。只有预定义bool/计数导出，未读raw/认证/DOM文本产物、零PNG/未视觉验收。

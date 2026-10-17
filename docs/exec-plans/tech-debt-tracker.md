@@ -451,6 +451,8 @@
 
 ### TD-TEST-016｜P1原浏览器11例失败定位待核
 
+- **显示许可后实际部分结果**：fb13ba3直接人类R7后，候选仅显示/定位与Order360自然展开，原五计数/18时间线/10事件身份行可见，所有原数值保持。真实发现11/9完成，7过（含mobile/Order360/commission/risk/制造/采购），credit450000和dashboard原bookedRevenue两败后TD018中断；host1/39336ms/owned全清，另两例未完成。非完整11/不关本条/不开第二轮，[完整失败史](../evidence/harness-stage5-browser-rulings-2026-10-17.md)。
+
 - **已授固定诊断真实后继**：七类bool/计数观察完整，host0/10470ms/owned全清，非原P1运行。拒绝/过期敞口450000不匹配而0匹配、dashboard四原数值全不匹配，保持数据C7/不改原数值或seed；其余本地化/生产class双匹配与Order360自然展开有固定事实，待另裁显示适配。[全部观察与保守提案](../evidence/harness-stage5-browser-rulings-2026-10-17.md)。TD018原失败史保留，通道本轮无relay失败不当作根因消除。
 
 - **金额许可后实际部分失败**：1068b94人类R7只改9行固定货币词面，原状态/值/计数/seed不变。新跑发现11/仅9完成：order/AR/payment1过，其余8败（credit原拒绝敞口、mobile生产块、Order360状态、佣金政策pin、风险、dashboard原指标、制造版本计数、采购菜单挂载），最后TD018两次CONNECT_TIMEOUT中断；原因未全部诊断，不泛改期待。host1/62186ms且owned全清；每文件变异/全11绿未完成。[固定行号与完整失败史](../evidence/harness-stage5-browser-rulings-2026-10-17.md)。只读诊断产物最小扩展已询问用户，不阻塞独立A–F；无新债务重复编号，仍58项。
