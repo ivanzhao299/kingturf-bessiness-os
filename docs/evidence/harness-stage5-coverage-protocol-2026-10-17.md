@@ -2,6 +2,8 @@
 
 ## 首测结果（其后各节“尚未”描述保留为测量前历史）
 
+后继domain边界补测单包报告629/671（20项全绿，原分母671不变）达到该单包90%；[实际补测与安全注入](harness-stage5-test-map-2026-10-17.md)。不更新冻结B、不据此推断新的六包整体/仓储比率；最终check与三连CI仍待。
+
 真实check已于278f22a干净固定HEAD执行：六包原测试全部通过、计数与B逐项相同（无基线下降），run `9bdede8a-0453-439a-96d2-79c268e97ebe`，最终明确列出三项target not met并实际exit1/signal=null/108680ms；首尾HEAD不变、工作区干净、各组无强制清理。日志`/tmp/kingturf-stage5-coverage-check-278f22a-2026-10-17.log`，结果`coverage/run-9bdede8a-0453-439a-96d2-79c268e97ebe/result.json`。因此三目标确在拦截，不是只打印缺口；不是完整ci:local执行或绿灯。后继仍须补真实路径、豁免双写校验及最终三连CI。
 
 5b3dd0ac249bdf8bc1c1d28995cb3deed77a17c2干净固定HEAD，真实`NODE_ENV=test pnpm coverage:measure`经原回环测试库guard执行，host实际exit0/signal=null/104178ms、首尾HEAD相同且工作区干净。六包真实close0、同PGID无存活成员、无强制清理/取消；API126文件/17242、Web14/313、config2/71、database3/68、domain3/14、types1/1全部通过。377文件/25仓储完整性与源码位置校验通过，未导入文件未排除，纯类型规则未放宽。

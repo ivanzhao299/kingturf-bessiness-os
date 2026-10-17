@@ -1,5 +1,22 @@
 # 阶段5现状测试地图与补齐清单
 
+## 后继实际补测：domain边界与C安全注入
+
+基线a25e4c4后新增`safety-boundaries.test.ts`，原三个文件14项不改，新6项真实调用生产实现，验证业务schema闭集/relationship版本/重复键与UTF-8上限、字段授权默认拒绝、精确版本锁定、有效期/稳定码，以及规则各操作符/缺输入默认拒绝/深度及trace上限。首次20/20绿但新测试原lint有4处机械错误（数字模板2、void表达式2），修为String与独立void调用后原eslint/tsc/20项均实际0，不降规则。
+
+单包原Vitest3.2.6/v8按冻结同一all/include/exclude运行，4文件20项/482ms/exit0，独立报告`coverage/domain-boundaries-a25e4c4-first/coverage-final.json`；复用同行max算法得到629/671（约93.74%，比冻结B_d多133覆盖行，分母不变）。这只是当前工作区单包定向测量，不是新六包B、不覆盖整体/仓储缺口或当前HEAD完整CI，固定B不更新。
+
+C安全注入实做于`packages/domain/src/index.ts`字段权限分支，临时diff如下（非测试数据或字典扰动）：
+
+```diff
+ if (grant.fields !== null && requestedFields.some((field) => !grant.fields?.includes(field))) {
+-  throw new DomainError('forbidden', 'Field permission denied');
++  return context;
+ }
+```
+
+指定`vitest run src/safety-boundaries.test.ts`真实exit1：具名`denies missing grants, empty scopes and forbidden fields, never widening a grant`报expected function to throw，1败5过；实际破坏的是未授权email字段被放行。日志`/tmp/kingturf-stage5-c-security-field-permission-red-2026-10-17.log`。等进程close后用apply_patch完整还原，再原包全20项真实exit0、eslint/tsc0，日志`/tmp/kingturf-stage5-c-security-field-permission-restored-2026-10-17.log`。恢复前后源码SHA256均`bae4a67463e8efa52b7e1e34c7b887f1503d2d4202579c435ce9206f997712c7`，`git diff --exit-code -- packages/domain/src/index.ts`真实0；无永久产品改动。本例只计C安全一项，PG/Web两项和最终三连CI仍欠，不把单例充≥3完成。
+
 ## 时点与口径
 
 盘点基线28215b0（授权docs，产品仍5230625/4259d96），主执行者加两路独立只读盘点；未以文件名/断言数量推断SQL覆盖率。28215b0完整ci:local真实0/209252ms、首尾HEAD相同/树空，日志 `/tmp/kingturf-stage5-r7-28215b0-ci-2026-10-17.log`。API126/17242、Web14/313为该执行链；后继新增测试另记。此不是线D最终状态三连跑之一。
