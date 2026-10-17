@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[P1货币显示适配R7](tasks/harness-stage5-p1-money-authorization-2026-10-17.md)：亲核新增人类原话；仅main有据货币格式用独立固定期待，原币种/数值/数量/状态/seed保持，其它差异仍上报。
+
 [P1逐路由适配R7](tasks/harness-stage5-p1-route-authorization-2026-10-17.md)：原始人类reply批准已版本化11例提案，真实菜单/逐页等待，原业务数值和seed保持，零产品改动。
 
 [阶段5现状测试地图](evidence/harness-stage5-test-map-2026-10-17.md)：逐域mock/PG/Web/CDP边界、六域实际机制与补齐队列；不是旧零测试清单。

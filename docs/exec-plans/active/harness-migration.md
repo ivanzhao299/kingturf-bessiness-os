@@ -3752,6 +3752,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+- **2026-10-17｜P1货币显示人类增量R7**：父7117c41，亲核原始人类call_dd0e2120495445669087b3dbae8dba45批准最小金额显示适配，[原话与边界](../../tasks/harness-stage5-p1-money-authorization-2026-10-17.md)。仅有main af0de8f/7e3e46c等明确依据的货币词面改独立固定本地化期待；原数值/币种/计数/状态/事件/seed保持，不用产品formatter造期待。其它业务失败/C7、成本提示/TD018/C与第二轮边界保持。本提交只有R7/index/日志，不改期待或产品，后继逐处映射/真变异/实际补跑另提交；回滚本授权docs独立revert须核依赖。[已测试]（授权文档静态，非P1通过）
+
 - **2026-10-17｜覆盖率首测接线候选**：父e25ac38，唯一直接新dev依赖coverage-v8精确3.2.6，43新定义含必要parser/mapping传递42，无旧版本升级/删除；安装glob deprecated警告保留。[首测协议/来源完整性](../../evidence/harness-stage5-coverage-protocol-2026-10-17.md)。377/25源全集、纯类型空map限定、statement位置、run前UUID/HEAD/hash及exclusive新目录/六包真实close/报告hash时间/前后重枚举，8unit/原lint/format及structure0/29/service0；初动态delete lint1已改Reflect，不降规则。rootCI test换test:coverage，最终三target+B同时拦截；measure不验收。B首测/真实provider/全CI/豁免scanner尚待，不关闭TEST002/不抬分。此依赖+工具接线独立revert可回滚，基线记录后继另提交，产品源零diff。[已测试]（纯工具unit/静态，非真实覆盖率达标）
 
 - **2026-10-17｜P1已授逐路由部分候选与真实失败保留**：父f4b54c2，只自然登录+真实菜单/加载等待，原11标题/数值/状态/事件/seed守恒，mobile13类同序逐页/各截图当前页。首候选PW1/310270ms、11失败（10timeout）/host1/321925ms/owned全清；独立review指出parent即时false竞态，完整退出后加attached等待，mobile展开固定行只为安全定位，原13检查不减。第二次仅2失败（原count3、CNY950000）后activeCONNECT_TIMEOUT、PWnull/SIGTERM、host1/28483ms、complete=false、owned全清。[main af0de8f本地化证据/全部边界](../../evidence/harness-stage5-browser-rulings-2026-10-17.md)。保持原金额文本期待不擅改/不放宽TD018，P1每文件真变异/全绿未完成，不开第二轮，A–F独立续。原lint/format0，独立候选review完成；此测试部分检查点独立revert回父P1，不含依赖/覆盖工具候选。[已测试]（明确真实失败/中断，非P1绿）
