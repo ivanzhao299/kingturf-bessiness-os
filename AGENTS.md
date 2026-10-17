@@ -17,6 +17,7 @@ KingTurf 业务操作系统：面向草坪行业外贸业务的 ERP（CRM→报�
 - CI 与发布决策（非 Tauri，仅 workflow_dispatch 部署，无 tag/Release）：见 `docs/CI.md`
 - 全部文档索引：见 `docs/index.md`
 - 关键决策记录：见 `docs/adr/`（10 个 ADR）
+- S4当前实现设计与行为表：见 `docs/tasks/harness-batch4-s4-design-2026-10-17.md`；仅设计，文档门禁后停协调复核，后端编码/真实Secure预检未执行。
 
 ## 硬性约束（不可违反）
 

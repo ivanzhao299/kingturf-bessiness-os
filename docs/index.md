@@ -8,6 +8,8 @@
 
 [S4正式实施开工R7引用](tasks/harness-batch4-s4-authorization-2026-10-17.md)：2e22837六项已决/原始人类授权亲核；先R7＋明确设计docs停协调只读复核，再直接续已授实施，不重问选型。人类另裁定九旧Playwright本轮不改，适配/逐文件变异/补跑一并为阶段5前硬前置，未执行不标绿/CDP不冲抵。
 
+[S4实现设计与行为表](tasks/harness-batch4-s4-design-2026-10-17.md)：公开配置、会话派生proof、入口/载体/多Cookie头、并发与清理网络证明、前端必要代际适配及Secure真实HTTP前置。仅设计，完成文档门禁后停协调复核，未实施/未预检。
+
 [S4批准前会话影响报告（历史）](tasks/harness-batch4-s4-session-impact-2026-10-17.md)：420f9ba实际干净HEAD全CI0/207904.734ms，重盘124 API源/123测试及Web/CDP/Playwright/CLI候选、两Cookie CSRF方案、跨tab/迟到Set-Cookie边界；原“待确认/仅报告硬停”保留当时时点，2e22837已六项裁定正式放行实施，当前范围以上方R7为准，不进入阶段5。
 
 [S3 CSP验证与边界](evidence/security-batch4-s3-csp-2026-10-17.md)：行为762e393/oracle a4c2ca3/工具f693ee2实际稳定干净HEAD全CI0/219878.817ms，API17184/Web266/config29；原29/新CSP3/头矩阵20/工具65及失败史、源码/构建import与配套回滚。完成docs另实际HEAD全CI后停协调，非生产通道就绪/强制兼容声明。
