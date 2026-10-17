@@ -3752,6 +3752,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+- **2026-10-17｜A剩余Quality真实PG核心**：新增六项真实plan/publish/inspection/result/disposition及typed/数值端点/失败放行/tenant/scope/后段冲突事务回滚，原strict lint/tsc0、guard0、实际PG0/null/15742ms，独立只读核无必要阻断。[固定预言/种子边界/日志](../../evidence/harness-stage5-test-map-2026-10-17.md)。lot仅真实FK合成待检seed，不充采购收货或HTTP权限；产品与旧断言不改。A Shipment核心仍施工，最终完整CI待；回滚本test/docs独立revert。[已测试]（目标PG，非最终CI）
+
 - **2026-10-17｜A文档专门动作护栏**：父c5000ac后新增真实save/review/send-form回调12项，固定版本/完整payload/裸receiver/等待与失败重试/后续编辑不覆盖/译文与发送key，原广源测试和产品零改。原strict lint/tsc与12项实际通过，独立只读核无必要阻断；[范围与失败史](../../evidence/harness-stage5-test-map-2026-10-17.md)。TEST007专门护栏已实施待最终门禁；A质量/发货PG核心仍本轮施工，不挪F后续。DOM及表单端口替身不充真实浏览器/HTTP/投递。回滚新test及本docs独立revert；最终完整CI待。[已测试]（目标合同，非最终CI）
 
 - **2026-10-17｜E旧QTC源码装载独立修复**：父7fb4324，完整旧fixture固定commit/blob/202118字节SHA，新loader转换前校hash/缺失篡改拒绝；probe只换读取，原335/golden/166+166零diff。工具4、正常335/723ms、空Git对象禁lazy-fetch完整335/689ms及release-guardrails实际0；独立只读复核无必要阻断。[最小diff/原对象红→空对象绿/机械hook红绿及运行时链映射](../../evidence/harness-stage5-test-map-2026-10-17.md)。TEST019已实施待完整CI、总61不变；旧imports仍当前依赖不充完整历史闭包。产品/原断言/workflow/依赖不变，原frontend工具同组只加source自测。回滚新fixture/source工具/probe读取与root脚本/docs独立revert；后继固定HEAD完整CI待。[已测试]（原335双环境/工具，非新完整CI）

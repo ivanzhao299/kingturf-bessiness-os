@@ -1,5 +1,11 @@
 # 阶段5现状测试地图与补齐清单
 
+## A剩余核心：Quality真实PG六项
+
+新增 `quality-postgres.integration.test.ts`：真实制造发布版本，参数化SQL只种同tenant/item FK的合成QUARANTINE lot；质量仓储实际createPlan→publish→open→sample→三类型result→complete→dispose。固定上下端点10/12与超界12.000001、发布后特征不可改/结果不可删、缺必填结果/类型错误/错误numeric verdict/重复观察拒绝，失败不得新增两ledger/results/audit/outbox，失败检验禁止release但可reject。GROUP仍tenant-bound，三列表及六写入口narrow scope拒绝，foreign发布/使用/transition/dispose拒绝。先占用后段inspection key，使dispose先lot写入后23505，再核counts和有效状态整体回滚、新key成功。最终release的审计/outbox精确配对，不外推全部中间命令均逐项配对。
+
+原strict ESLint/typecheck0；loopback test DB guard实际0/855ms，六项PG实际0/null/15742ms（Vitest14.83s），日志 `/tmp/kingturf-stage5-quality-pg-{guard,first}-2026-10-17.log`，owned随机schema正常close，期间无其它PG/浏览器。独立只读核验无必要阻断。单lot/固定INCOMING plan，不充真实采购收货、生产issue消费方、HTTP角色、并发或全characteristic矩阵；产品/SQL迁移/旧oracle/覆盖分母不改。doc-lint当前被尚未纳入index的F草稿阻断，需F独立收口，不伪报文档门禁绿。
+
 ## A文档真实动作合同补齐（TD-TEST-007）
 
 新增 `online-document-actions-behavior.test.ts` 12项，实际调用 save/review/send-form，不改原广源测试、旧expect或产品。固定文档ID/版本7，独立完整payload，API/history/onSaved的裸调用receiver，save/review等待与失败重试、后续本地编辑不覆盖、三审核动作状态，发送仅当前READY译文、失败同payload复用key/变更payload新key、QUEUED回执不输出收件地址。初次tsc拒绝测试夹具缺provider/错误DRAFT译文枚举及非UUID型mock key；仅新测试改为合法QUEUED/provider/固定UUID形状后，原strict ESLint/typecheck0，12/12实际0/415ms，日志 `/tmp/kingturf-stage5-online-document-actions-second-2026-10-17.log`。独立只读核验与实现一致、无必要阻断。
