@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[Docker真实回环通道验证](evidence/playwright-docker-loopback-2026-10-17.md)：宿主guard/marker→容器只读同实例→自然Secure Cookie与Origin/真实PG计数；1流程/11工具负向、失败史/清理与最小lint接线，不是spec补跑。
+
 [Docker Playwright三项增量裁定R7](tasks/playwright-docker-rulings-2026-10-17.md)：三份会话请求/oracle、真实容器回环HTTP/PG、seed机器URL最小适配已获原始人类批准；配置/业务断言/生产边界保持，先通道实证。
 
 [Docker Playwright B通道最小候选（仅提案）](tasks/playwright-docker-b-channel-proposal-2026-10-17.md)：原网关HTTP下S4阻断、owned真实回环字节转发/PG双侧guard候选及seed最小token-login适配；未执行，配置/业务源码不改，通道变更待裁。

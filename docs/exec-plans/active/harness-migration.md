@@ -3706,6 +3706,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+- **2026-10-17｜Docker owned真实回环通道**：4e691e5增量R7后仅环境工具＋最小rootplainJS/lint glob接线；host原guard/owned marker、container READ ONLY同db/schema/start/systemID/marker后才初始化。自然Chrome155 Cookie/Origin/3负例403、合法201及PG写0/1，实际exit0/6089ms；5同一性拒绝/2setup迁移中SIGTERM-INT/4relay负向均如实通过并清理。fixture外键/漏generation与lint失败史保留，[证据](../../evidence/playwright-docker-loopback-2026-10-17.md)。两配置/spec/seed/业务源码零改，A/B未跑，C不触；父4e691e5为独立回滚点，最后HEAD全CI另真实跑。[已测试]（环境定向＋文档/结构，非spec补跑）
+
 - **2026-10-17｜Docker三项增量裁定R7**：协调续派，主代理亲读人类原始三项reply全文并落[引用](../../tasks/playwright-docker-rulings-2026-10-17.md)；c2ff52bb410e3bf32fc3f0eda797583f2f8b6a09树空，完整CI真实0/190014.635ms。只最小会话请求/oracle迁移、真实回环环境转发/PG同一性、seed机器URL三项增量获准；两配置/其余业务断言/C生产/监听防火墙/依赖/workflow/一般阶段5仍保护。R7仅docs独立提交，父c2ff52b回滚点；先实证通道，受guard阻断必须停报，未预填补跑绿。[未测试]（R7文档校验，最终HEAD完整CI随后）
 
 - **2026-10-17｜Docker Playwright库存/本地环境准备**：主代理与只读独立复核覆盖12spec/两配置，A8（含PG producer回放1）/B2/C2；逐处内联fixture与三份非fixture请求/oracle明确区分，spec/config零diff。基镜像dcc5531e9784、PW1.62.1、容器root install chrome实际0，固化本地tag kingturf-e2e:pw1.62.1-chrome/ID1a0e14c3fd23/Chrome155.0.8059.84；原tag不存在、不覆盖、不push、无PG/会话入镜像。GW192.168.65.254、preview严格4173入口200、合成Secure Cookie探针false，API配置/runtimeloopback实际拒绝；不称真实auth/spec通过。owned容器与preview清理，原PG不动。[库存证据](../../evidence/playwright-docker-inventory-2026-10-17.md)与[B候选仅docs](../../tasks/playwright-docker-b-channel-proposal-2026-10-17.md)留待具体裁定；C不跑/首轮及第二轮均未执行。父8772284为文档回滚点；本提交只docs，最后稳定干净HEAD完整CI随后实际执行。[已测试]（环境预检/文档校验，非spec补跑）
