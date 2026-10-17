@@ -1,5 +1,7 @@
 # 技术债台账（tech-debt-tracker）
 
+**Workspace夹具现时（2026-10-17，54项）**：TD-TEST-014，已授auth/void候选2过2败，首次成本GET q空被gate挂住、360缺必填字段；只读trace/源码支持旧夹具候选，不归责产品/改原16assert。人类已批等待点最小修正，字段另待裁，[事实/原话](../tasks/playwright-workspace-fixture-rulings-2026-10-17.md)。成本TD-TEST-013不扩修、未第二轮，下方53为历史。
+
 **成本提示C7现时（2026-10-17，53项）**：新增TD-TEST-013，成本仅auth候选真实1通过1失败，原末提示不可见、前URL/dialog/decisionId过；trace报价commercial-status文本空、201→GET200。lazy覆盖message是候选未干预实证，不改业务/期望；临时auth精确还原未完成变异。[待裁事实](../tasks/playwright-cost-handoff-blocker-2026-10-17.md)。login已2过且f3882a3全CI0，其它6A/2B未跑、C禁/未第二轮，下方旧计数为历史。
 
 **A类接线静态发现（2026-10-17，52顶层项）**：TD-TEST-012仅登记冻结document-send spec:154在额外strict全A tsc下string|undefined诊断（exit2），非原CI/PW失败证据；不改旧断言或放宽规则，若实阻断原门禁/补跑再C7。成本种子前置已验证，下列51为前时点。
@@ -108,6 +110,7 @@
 | TD-TEST-011  | 冻结P1种子生产关单缺实际成本批准，HTTP500/P0001                                               | P1     | 种子业务前置  | 已修（人类另授最小本地） | Docker前置补跑                     | 本地前置已验证/补跑未完成       |
 | TD-TEST-012  | 冻结文档发送PW旧header索引在额外strict tsc下类型不匹配                                        | P2     | 测试静态类型  | 未修（仅额外诊断）       | 后继独立授权                       | 待核实原门禁/运行影响           |
 | TD-TEST-013  | 成本转报价原成功提示可见性PW失败，前跳转/预选成功                                             | P2     | UI/oracle边界 | 未修（非S4范围）         | Docker首轮发现/待独立裁定          | C7待裁/候选根因未干预实证       |
+| TD-TEST-014  | Workspace旧PW夹具首次读取gate/360必填字段不兼容                                               | P2     | 合成测试夹具  | 等待点另授/字段待裁      | Docker首轮发现                     | 原2过2败/未修完                 |
 | TD-GATE-001  | 无 git hooks / commitlint / lint-staged，脏提交仅靠 CI 兜底                                   | P1     | 门禁          | 无                       | 阶段 3                             | 已完成                          |
 | TD-GATE-002  | vitest 无配置文件，参数散落各包 scripts                                                       | P2     | 门禁          | 无                       | 阶段 3                             | 已完成                          |
 | TD-GATE-003  | routes覆盖已修复；E1已撤，恢复31旧豁免                                                        | P1     | 工程门禁      | 无                       | 独立门禁任务／阶段5前复核          | 已验收                          |
@@ -415,6 +418,11 @@
 - **关联批次**：阶段 3 ｜ **验收方式**：故意注入直拼 SQL 的测试提交必须被门禁拦截（实测）✓（三轮样本共 11 个，全部退出码 1）
 
 ## 测试
+
+### TD-TEST-014｜Workspace旧夹具gate与360字段
+
+- **实证**：原16expect同的auth/void候选PW1/38957ms、host1/44429ms，2过2败；第二input不可见30s、第三360 h2缺5s。原trace非auth初次cost GET q=null/status=-1，旧fixture全cost路径awaitgate；parser须string[]而mock缺，实际API有字段。owned全清、原HTML/截图/trace保留。
+- **边界/裁定**：只读支持旧合成夹具失配，非产品已证；本会话人类call_2a13b5991a4b4354ae99d03ff621b2b7准仅等待q=慢请求、首次原payload返回、原切页/RAF/assert不动。360字段本轮另待裁，不套CDP旧授权；全文件真变异/还原绿未完成。[原话/事实](../tasks/playwright-workspace-fixture-rulings-2026-10-17.md)。
 
 ### TD-TEST-013｜成本转报价成功提示可见性失配
 

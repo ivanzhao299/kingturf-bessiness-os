@@ -3722,6 +3722,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+- **2026-10-17｜Workspace旧夹具C7/等待点R7**：dc43e81后auth/void候选原16expect同，原4例2过2败PW1/38957ms、host1/44429ms，owned全清；原trace初cost GET q=null/status=-1，旧gate挂首次加载；360缺parser必需字段。TD-TEST-014/54项，直接人类call_2a13b5991a4b4354ae99d03ff621b2b7批仅等待q=慢请求、首次原payload照回，原切页RAF/assert不动，[原话/事实](../../tasks/playwright-workspace-fixture-rulings-2026-10-17.md)。本docs先行/父dc43e81回滚点，字段仍待独立许可，未改新等待点或字段；后继分别提交/真变异，成本/业务/配置/C/第二轮保护，最终HEAD全CI必跑。[未测试]（新增R7，原失败已实测）
+
 - **2026-10-17｜workspace单void追加R7**：本会话直接人类call_18640ce480e847d8885863c94508ca59 reply批准仅原67行setAttribute未用void改块体，[原话/边界](../../tasks/playwright-workspace-void-authorization-2026-10-17.md)；不泛化doc8许可/不改data-preserved值、原调用或任何节点/路由assert，不批360字段/成本提示。独立docs先行，父当前order适配提交回滚点；真实等价/变异/实跑尚待执行，C/第二轮/一般阶段5保护，最终HEAD全CI必跑。[未测试]（R7文档，非实施通过）
 
 - **2026-10-17｜order-evidence会话夹具独立适配**：父253b761，仅旧login/session分支替共享合成协议，原员工/权限及全部sales-order/证据payload/503重试/键盘/计数/移动断言冻结；AST15expect同，viewport起所有动作/断言字节同。初绿PW0/3048ms、host0/8262ms；真源加旧token红PW1/6450ms、host1/11745ms，完整close/清理后还原PW0/3058ms、host0/8694ms，原1例过，红附件保留、全owned清理。[逐处/原命令/边界](../../evidence/playwright-docker-spec-replay-2026-10-17.md)。原hook lint0，未跑B/C/第二轮；成本原失败不消除，最终HEAD完整CI仍必跑。[已测试]（逐文件真红绿，非全A/B绿）
