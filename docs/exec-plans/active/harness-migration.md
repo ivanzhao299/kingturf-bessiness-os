@@ -3718,6 +3718,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+- **2026-10-17｜document-send机械兼容追加R7**：原7项会话夹具候选全过、旧token真红后还原7过，原strict ESLint仍1/8旧代码错误（baseline内存lint1/9）；主代理直接收到人类call_35cccddbc8024f6f890813be80e44491 reply批准仅本文件8处最小类型/语法修正，[原话/严格边界](../../tasks/playwright-document-lint-authorization-2026-10-17.md)。先本docs独立提交，父bd7e80b回滚点；不得改原expect/参数/运行值/数据/步骤/规则，类型擦除一致、void返回未用才块体。其它spec/成本提示不扩授，TD-TEST-012相关本文件未实现前不关闭；最终HEAD完整CI必跑。[未测试]（R7文档，后继实施验证另跑）
+
 - **2026-10-17｜成本临时auth候选精确归档**：fe107eb后只归档已试auth-only diff与候选文件SHA256，f3882a3/fe107eb成本基线字节同；重建后立即apply_patch还原，git diff0、git apply --check0，[归档/未交付边界](../../tasks/playwright-cost-handoff-blocker-2026-10-17.md)。原业务末assert/产品零改，不将此patch算适配/变异完成；TD-TEST-013仍待裁，独立首轮沿既授范围可继续、第二轮禁止。父fe107eb为本归档回滚点，最终最后提交完整CI仍必跑。[已测试]（精确字节/补丁可应用只读检查，非PW全绿）
 
 - **2026-10-17｜成本提示C7事实收口**：f3882a36664a6c0226a53d297787cd265539ff96干净HEAD全CI0/201874.74ms后，成本仅auth候选PW1/12294ms、host1/17663ms，1过1败；原末提示not found，前quotes/dialog/decisionId过。独立只读源码及原trace脱敏核201→GET200、状态文本空，lazy覆盖message为候选不称干预因果；TD-TEST-013/53项，[事实/附件/待裁](../../tasks/playwright-cost-handoff-blocker-2026-10-17.md)。未改业务/期望，临时auth精确还原未提交/未完成变异；login2过、其它6A/2B未跑、C禁/无第二轮。父f3882a3为本docs回滚点，最后文档HEAD完整CI另实跑后交人裁，不用CI0掩PW1、不扩大永久阻塞。[已测试]（真实失败/只读，非PW全绿）
