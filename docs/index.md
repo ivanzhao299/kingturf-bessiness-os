@@ -1,10 +1,12 @@
 # docs/index.md（全部文档索引）
 
-[S4暂停状态显式退出窄修](evidence/security-batch4-s4-paused-logout-2026-10-17.md)：bfdc4ff、9新增真红绿/实现变异、API17242/Web313及真实DOM原失败链重跑通过；最终工具HEAD全CI另跑。
+[批次4唯一整体验收包](evidence/security-batch4-acceptance-2026-10-17.md)：S1–S4前后行为、全部必要期望/夹具适配与真实变异总索引、分层计数、配置/生产边界、提交/回滚及台账评分。f114ee0稳定干净HEAD全CI实际0/192524.18ms；本次仅文档收口，最后文档HEAD全CI另跑后交协调，整体人工验收未预填通过。SEC003关闭载体实施项，SEC001强制段/九旧PW义务/TD-TEST-006后继候选保持开放；下方为各小步历史导航。
 
-[S4真实网络与应用CDP](evidence/security-batch4-s4-network-2026-10-17.md)：Node4/SPA DOM8/Chrome Jar受控协议14=26、故障清理9与真实变异通过；分层/失败史/有限窗口/资源清理边界，最终工具提交后干净HEAD全CI待实际执行，SEC003开放。
+[S4暂停状态显式退出窄修](evidence/security-batch4-s4-paused-logout-2026-10-17.md)：bfdc4ff、9新增真红绿/实现变异、API17242/Web313及真实DOM原失败链重跑通过；已包含于f114ee0稳定干净HEAD全CI0，整批人工验收待交付。
 
-[S4前端会话上下文切换](evidence/security-batch4-s4-frontend-2026-10-17.md)：后端25526c8全CI0后Web小步；五旧测试文件真红绿、core回调真变异、Web304及原预算11992/1898绿，最终提交后干净HEAD全CI待实际执行。不跑浏览器/PW，SEC003开放。
+[S4真实网络与应用CDP](evidence/security-batch4-s4-network-2026-10-17.md)：Node4/SPA DOM8/Chrome Jar受控协议14=26、故障清理9与真实变异通过；f114ee0稳定干净HEAD全CI0/192524.18ms。SEC003载体实施项关闭，整批人工验收待交付；分层/失败史/有限窗口/资源清理边界保留。
+
+[S4前端会话上下文切换](evidence/security-batch4-s4-frontend-2026-10-17.md)：五旧测试文件真红绿、core回调真变异；b38c75c独立全CI0/192629.727ms（Web304、预算11992/1898），后继f114ee0累积全CI0。该小步当时不跑浏览器/PW；后继CDP与当前实施状态见唯一交验包，九旧PW仍未执行。
 
 > **作用**：docs/ 下每个 Markdown 文件都在本索引中，且每个链接可解析（校验：`node scripts/analysis/doc-lint.mjs`）。
 > **状态标注**（D4 已裁决，2026-10-12，方案 A 轻触式）：`常驻`＝长期保留并随代码更新（全库共 51 项）；`已归档-只读`＝完成记录/历史快照，原位保留、不再更新、勿删（R5，全库共 54 项）；物理归档（git mv 到 archive/）暂不执行，若未来出现检索痛点再升级。
@@ -12,13 +14,13 @@
 
 ## 常驻入口（根与 docs 顶层）
 
-[S4后端会话载体与逐文件期望映射](evidence/security-batch4-s4-backend-2026-10-17.md)：fead2d1预检放行后仅后端/config/机器接口小步；旧→新/六项依据/变异与分层验证，SEC003仍开放。Web/PW/SQL/事务冻结，完成后停协调。
+[S4后端会话载体与逐文件期望映射](evidence/security-batch4-s4-backend-2026-10-17.md)：后端/config/机器接口小步的旧→新、六项依据、变异与分层验证；25526c8独立全CI0/203058.579ms，后继f114ee0累积全CI0。原冻结/停协调为当时边界，当前状态见唯一交验包。
 
-[S4自然HTTP Secure Cookie预检](evidence/security-batch4-s4-cookie-http-2026-10-17.md)：隔离真实HTTP/真DOM/两Set-Cookie/浏览器Jar与回传，自有资源正常及4负向清理；只工具前置，不是S4后端或完整CSRF。最终CI后停协调，九旧Playwright不抵销。
+[S4自然HTTP Secure Cookie预检](evidence/security-batch4-s4-cookie-http-2026-10-17.md)：隔离真实HTTP/真DOM/两Set-Cookie/浏览器Jar与回传，自有资源正常及4负向清理；fead2d1独立全CI0/205231.486ms。此预检本身不是S4后端或完整CSRF，九旧Playwright不抵销；后继实现见唯一交验包。
 
 [S4正式实施开工R7引用](tasks/harness-batch4-s4-authorization-2026-10-17.md)：2e22837六项已决/原始人类授权亲核；先R7＋明确设计docs停协调只读复核，再直接续已授实施，不重问选型。人类另裁定九旧Playwright本轮不改，适配/逐文件变异/补跑一并为阶段5前硬前置，未执行不标绿/CDP不冲抵。
 
-[S4实现设计与行为表](tasks/harness-batch4-s4-design-2026-10-17.md)：固定设计efae93d已协调确认；后端当前小步见上方证据，原“仅设计/工具、未实施”是历史时点，尚非S4全部完成。
+[S4实现设计与行为表](tasks/harness-batch4-s4-design-2026-10-17.md)：固定设计efae93d已协调确认；原“仅设计/工具、未实施”为历史时点，后继源码实现与验证已完成，当前整批人工验收仍待交付，见唯一交验包。
 
 [S4批准前会话影响报告（历史）](tasks/harness-batch4-s4-session-impact-2026-10-17.md)：420f9ba实际干净HEAD全CI0/207904.734ms，重盘124 API源/123测试及Web/CDP/Playwright/CLI候选、两Cookie CSRF方案、跨tab/迟到Set-Cookie边界；原“待确认/仅报告硬停”保留当时时点，2e22837已六项裁定正式放行实施，当前范围以上方R7为准，不进入阶段5。
 

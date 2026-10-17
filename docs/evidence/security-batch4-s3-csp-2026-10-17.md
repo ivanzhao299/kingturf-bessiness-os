@@ -1,5 +1,7 @@
 # 批次4 S3：CSP Report-Only 验证与边界
 
+**批次4交验补记（2026-10-17）**：S3最终28197d2实际全CI0/206309.018ms。本轮累积源码f114ee0038e8ef4568c1521b51efa606cb52da66稳定干净HEAD完整CI实际exit0/192524.18ms，首尾同HEAD/clean=true；API126/17242、Web14/313、config71、结构0/29、预算11991/1898、audit0，日志 `/tmp/kingturf-s4-network-final-head-ci-2026-10-17.log`。这是后继累积检查点，不冒称重跑本页每个旧HEAD。SEC002/004核账已验收范围实施完成、SEC003载体迁移实施项关闭，SEC001强制段开放；本次整体人工验收仍待交付，九旧PW延期硬前置不抵销。[唯一批次4交验包](security-batch4-acceptance-2026-10-17.md)汇总分层/适配/回滚/残余候选；下方“待CI/未实施/开放/硬停”为各自原时点，不回写历史。最终本次文档HEAD完整CI另实际执行后交协调。
+
 ## 状态与授权
 
 输入 S2 最终 `74c78c3`（实际干净 HEAD 全 CI 0/203898.679ms）。沿 [R7](../tasks/harness-batch4-authorization-2026-10-17.md) 与 [S3 设计](../tasks/harness-batch4-s3-design-2026-10-17.md)，只实施 TD-SEC-001 Report-Only 与默认关闭的强制开关；不部署、不 push、不改 workflow、不访问生产。S4 仅影响报告、实施前硬停人工确认；本次没有 Cookie/CSRF/Origin/sessionStorage/Bearer 协议迁移、CRM 业务或旧 360 夹具修改。异步确认中的 CRM 状态恢复与 360 unavailableSections 是已完成批次3的历史授权，不算本次改动。

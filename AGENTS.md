@@ -8,7 +8,7 @@ KingTurf 业务操作系统：面向草坪行业外贸业务的 ERP（CRM→报�
 
 ## 如何开始（渐进式披露：先地图，再细节）
 
-S4当前网络检查点：b38c75c前端全CI0后，真实API/隔离PG/自然Chrome26项（Node4/DOM8/受控协议14）与9故障清理通过；发现TD-WEB-009并独立窄修bfdc4ff，API17242/Web313及真实退出重登通过。工具提交后同一干净HEAD完整CI再停协调，不关闭SEC003/评分，不跑旧PW/Docker/阶段5。证据 `docs/evidence/security-batch4-s4-network-2026-10-17.md`，含间歇CDP失败史/有限观察边界；下方为历史。
+批次4当前交验：S1–S3已人工验收，S4实施与真实网络/CDP完成，源码f114ee0稳定干净HEAD完整CI0/192524.18ms（API17242/Web313）。唯一包 `docs/evidence/security-batch4-acceptance-2026-10-17.md` 汇总行为/适配/分层/回滚；本次只文档收口，最后文档HEAD完整CI后停协调，整体验收待交付。SEC003关闭载体实施项，SEC001只RO/强制开放；台账49，TD-TEST-006新异步失败候选待核实。评分不抬分，旧PW/Docker/阶段5未启动；下方为历史。
 
 当前批次1/2（含E1）/3已验收64757d4；批次4 S1–S3于2e22837人工验收，六项选型已决并正式授权S4实施。设计efae93d干净HEAD完整CI0/211588.694ms已协调复核；本步仅续自然HTTP Secure Cookie预检工具，后端/config/Web未改，工具最终CI后停协调再续已授后端→前端→网络级/CDP→整批收口。影响报告420f9ba“仅报告硬停”为批准前历史。ADR0003/SQL/签名/零新依赖保持，SEC003真实完成前不关闭。原Playwright补跑、不push/部署/workflow/阶段5边界保持；S3仍仅RO、不代表生产报告通道或强制兼容。
 

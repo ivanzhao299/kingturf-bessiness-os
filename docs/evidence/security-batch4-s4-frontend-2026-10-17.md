@@ -1,5 +1,7 @@
 # 批次4 S4 前端会话上下文切换
 
+**批次4交验补记（2026-10-17）**：前端b38c75c实际全CI0/192629.727ms（此前端最终日志），Web14/304。本轮累积源码f114ee0038e8ef4568c1521b51efa606cb52da66稳定干净HEAD完整CI实际exit0/192524.18ms，首尾同HEAD/clean=true；API126/17242、Web14/313、config71、结构0/29、预算11991/1898、audit0，日志 `/tmp/kingturf-s4-network-final-head-ci-2026-10-17.log`。这是后继累积检查点，不冒称重跑本页每个旧HEAD。SEC002/004核账已验收范围实施完成、SEC003载体迁移实施项关闭，SEC001强制段开放；本次整体人工验收仍待交付，九旧PW延期硬前置不抵销。[唯一批次4交验包](security-batch4-acceptance-2026-10-17.md)汇总分层/适配/回滚/残余候选；下方“待CI/未实施/开放/硬停”为各自原时点，不回写历史。最终本次文档HEAD完整CI另实际执行后交协调。
+
 当前候选已解除预算阻断：最终build-final-candidate退出0，JS11992/CSS1898（原12000/4000阈值/品牌/资产/预算脚本全不改）。Web14/304、type-final及lint-final-candidate退出0，结构0/29；最终提交后稳定干净HEAD全CI仍待实际执行，不预填完成。下面预算“停报”是中途历史；协调后给出共享HTTP core真实职责边界，允许继续既授范围，已按之实现并复核，无新产品选型。
 
 收尾core：首次restore静态调用http-core.exchange，唯一交换引擎保15秒全body timeout/abort/204/错误与引用；受保护json按原公开签名包装prepare/received/decoded hooks，RequestError同一类reexport。失效处理在已认证watch初始化、首个业务之前注册；首次401只登录无reload循环。真实received hook不调用变异让旧http/boundary两文件3红92绿→还原95绿；decoded hook不调用使新迟到body归属1红34绿→还原35绿（core-received/core-decoded日志，红1/绿0）。之前五文件实际红绿仍保留，不用新增test替它们。

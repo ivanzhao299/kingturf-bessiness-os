@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **批次4整体验收材料收口（2026-10-17）**：协调亲核f114ee0038e8ef4568c1521b51efa606cb52da66稳定干净HEAD完整CI0/192524.18ms、API126/17242/Web14/313/config71/结构0/29/预算11991-1898；真实网络26和故障9已独立核证，源码冻结，仅文档。已落[唯一交验包](../../evidence/security-batch4-acceptance-2026-10-17.md)四项行为/适配真变异/分层/配置/提交逆序回滚；SEC002/004已验收范围实施完成，SEC003载体实施项关闭但本次整批人工验收待交付，SEC001只RO/强制开放，TD-WEB-009实施完成待整体验收。TD-TEST-006后继未分类CDP异常候选登记、不回写旧解决史，49项不新增；评分保原四维数值仅更新依据。最终文档独立提交并稳定干净HEAD完整CI0后停协调，不重复Chrome/PG、不启Docker/R7/PW/阶段5。
+
 - **S4网络工具最终候选（2026-10-17）**：bfdc4ff窄修独立；真实API/PG/自然Chrome最终strict26（Node4/DOM8/受控协议14）与9实际故障清理、gateway/真实reload变异红绿完成。旧CDP/PW不动，工具Node2接CI且无dist通过；[分层/全部失败史/有限窗口与清理边界](../../evidence/security-batch4-s4-network-2026-10-17.md)。工具提交后同一稳定干净HEAD完整CI再停协调，SEC003/49项/评分不提前验收，Docker/旧PW/阶段5未跑。
 
 - **S4退出窄修当前检查点（2026-10-17）**：TD-WEB-009由协调/frontier确认属于已授S4内部实现矛盾，已窄修精确POST logout本地pause例外；原current/CSRF/代际/服务端校验保持，新增9真红绿/变异、API17242/Web313及真实DOM退出重登通过。工具仍WIP，不称fix HEAD干净或最终CI完成；[独立窄修证据](../../evidence/security-batch4-s4-paused-logout-2026-10-17.md)。继续原网络矩阵/最终CI，不触PW/Docker/阶段5。
@@ -3697,6 +3699,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+- **2026-10-17｜批次4最终交验材料（仅docs）**：接手f114ee0/树空，协调独立亲核其完整CI0/192524.18ms及26正向/9负清理，直接续派本批已授权文档收口。建立[唯一交验包](../../evidence/security-batch4-acceptance-2026-10-17.md)，各小步补真实累积CI、不把后继绿冒称重跑旧HEAD；四项前后行为、65/76与68/81/122逆AST、S4 API6/CLI1/Web5实际适配及真实变异/分层、配置/未部署/强制另授/机器CLI未全执行/九PW延期硬前置/提交链回滚齐备。SEC001 RO/强制仍开放，SEC002/004核账已验收实施完成，SEC003关闭载体实施项、整体人工验收仍待本次交付，WEB009实施完成待整体验收，WEB007/PERF003只必要耦合。TEST006登记后继未分类异步失败待核实，49顶层不增删；安全评分沿原1–5四维不抬分，无覆盖率达标声称。此单责文档提交后实际稳定干净HEAD完整CI0再停协调；源码/测试/工具/infra/lock/workflow均不动，不启Docker/一般阶段5。[已测试]（源码CI已实测，最终文档HEAD随后）
 
 - **2026-10-17｜S4网络/CDP独立工具**：真实双API/guard随机schema，fixed4173同源、真头barrier与新profile自然Cookie，Node4/SPA DOM8/受控Runtime14最终26绿；故障9全部exit1且精确资源清理。TD-WEB-009真实发现→协调/frontier窄修授权→bfdc4ff（http精确POST logout本地pause例外、原current/proof/服务端不动），9新增测试/真实变异、API17242/Web313及Chrome原失败链通过，独立于工具提交。原29/CSP3未改未重跑、PW9未改未跑；无业务SQL/依赖/workflow/push/部署/Docker。回滚逆序工具→bfdc4ff至b38c75c；最终工具HEAD全CI仍在提交后实际执行，不用WIP/此前CI充数。完整日志与未穷尽的时窗/间歇CDP异常见[证据](../../evidence/security-batch4-s4-network-2026-10-17.md)。[已测试]（完整最终HEAD CI随后）
 

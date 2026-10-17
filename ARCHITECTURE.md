@@ -1,5 +1,7 @@
 # ARCHITECTURE.md
 
+**批次4整体交验现时（2026-10-17）**：S1统一响应头→S2单实例登录失败双窗→S3 API/外层HTML RO（强制false/off）→S4 Cookie签名双提交/Origin及不可变浏览器上下文；保opaque/scrypt/SQL/依赖方向。f114ee0实际稳定干净HEAD全CI0/192524.18ms，真实网络Node4/SPA DOM8/受控Jar14与资源负向9分开，不当全量PW/生产验证。[唯一验收包](docs/evidence/security-batch4-acceptance-2026-10-17.md)含实现/期望/配置默认/回滚总索引；SEC003载体实施项关闭、整体人工验收待交付，SEC001强制/延期PW/TD-TEST-006后继候选开放。当前只文档收口，最终文档HEAD另全CI后停协调，不启Docker/阶段5。以下为历史。
+
 **S4网络工具检查点（2026-10-17）**：独立gateway真实代理API/同源SPA、随机schema双真实API、owned Chrome自然Jar；Node4/DOM8/受控Runtime14与故障9分层，未改旧合成/PW。bfdc4ff仅精确current POST logout豁免本地pause，保原proof/代际/服务端，未新增会话模型。源码/SQL/依赖保护及残余CDP/观察边界见[网络证据](docs/evidence/security-batch4-s4-network-2026-10-17.md)；工具最终干净HEAD全CI待执行，SEC003仍开放。下方为历史。
 
 **S4前端当前候选（2026-10-17）**：首次Cookie restore→静态http-core单一交换/严格DTO；受保护http policy、SessionContext owner/generation/epoch、postlogin watch与workspace按真实阶段加载，entry不再持raw token或认证storage。三域client/文档服务捕获同一上下文，旧闭包不活读新Cookie；仅必要WEB007挂载复核/PERF003缓存同Promise耦合。API/SQL/包依赖/infra不改，Web304及预算11992/1898定向通过，最终提交后另实际稳定干净HEAD全CI再停协调；不是Chrome网络证据/整批完成，SEC003开放。[前端证据](docs/evidence/security-batch4-s4-frontend-2026-10-17.md)，下方为历史检查点。
