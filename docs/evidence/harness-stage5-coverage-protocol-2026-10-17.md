@@ -1,5 +1,21 @@
 # 阶段5覆盖率首测口径（测量前冻结）
 
+## D稳定状态三连实际通过（4ca894f，非阶段5人工终验）
+
+固定HEAD `4ca894f34caabea27ee56cdcdca271e287039690`，成本比较工具/证据已提交且树空之后，串行完整执行三次`pnpm ci:local`，不并发PG/浏览器、无中途编辑/提交/期待修改。每次spawn前与close后核HEAD相同/树空；三次均actual exit0/signal null/unchanged=true/clean=true，分别329429/330768/328574ms，均<900000ms。没有失败后重跑，不把此前checkpoint凑入本三次。driver `/tmp/kingturf-stage5-stability-4ca894f-driver-2026-10-17.log`，完整日志 `/tmp/kingturf-stage5-stability-4ca894f-d{1,2,3}-2026-10-17.log`。
+
+| 轮次 | 完整CI耗时 | 真实coverage runId                   | result.json SHA256                                               |
+| ---- | ---------: | ------------------------------------ | ---------------------------------------------------------------- |
+| D1   |   329429ms | ceacbaa4-b963-4a17-a8fb-f622c60a5b31 | 765dd850ab35a5489929560f9fba844a2a4ed9920478b2c233f82568e00a8388 |
+| D2   |   330768ms | 21e17843-86b4-4af0-8246-b568630ba8f9 | 706f95167e5a29941a096a81fdf6e70baa2ce5702e9a04f47269197c28cb67ee |
+| D3   |   328574ms | cb08def4-83c6-4fde-9b7c-2b89979c2696 | 51497e92c2a6a3489386412f9ccffaa3fbf9d44144b4952d5832c32edbcc9191 |
+
+三run都在`coverage/run-<runId>/result.json`，整体37389/48566、domain629/671、仓储9787/11512，deficits=[]，包分子API24683/Web11562/config298/database143/domain629/types74；全部分母、377生产源/25仓储/源hash和固定B不变。18个真实package child均0/null/drained=true，forcedCleanup=false/aborted=false；Vitest/provider3.2.6不变。每轮API134/17293、Web26/426、config2/71、database3/68、domain4/20、types2/5及原工具/build/audit全通过，成本比较工具三自测也在原追加组内实际执行。wrapper完整CI耗时不与manifest六包跨度混用。
+
+独立只读复核已完成：driver三actual close/耗时/同HEAD/clean与三result SHA吻合，18 raw报告SHA及statement.start同行最大命中重算全部一致；库存/记录的源hash与固定B同，三阈值/B非下降无阻断。本轮独立审查未重读全部业务源码，当前源未变化另由主执行者首尾Git与CI实际扫描证实。C指定护栏测试在每轮链内运行，不是每轮重新临改产品做变异。
+
+这是**当前授权产物状态**的D稳定性证据，不等于P冷成本/信用/驾驶舱已绿、结构例外获批或阶段5人工终验。人裁若另授实质产品/规则/fixture变更，必须在新稳定状态重做相应验证，不能沿用本次三连。最终仅文档收口提交后仍单独完整CI，未跑前不预写该新HEAD通过；HARNESS不归档。
+
 ## A核心/E/F检查点完整CI（0b78c94，仍非最终D三连）
 
 固定干净HEAD `0b78c94468f9872e1811b1e54be3620bf0192e1d` 完整ci:local实际exit0/null/340356ms；首尾HEAD不变/树空，运行中无文件修改、并发PG/浏览器。API134/17293（含Quality6/Shipment6）、Web26/426（含文档动作12）、config71/database68/domain20/types5，原工具含TEST019四项/原335、build/audit无已知漏洞全部通过。日志 `/tmp/kingturf-stage5-e-a-core-f-full-ci-2026-10-17.log`。E新装载与A新增核心已在完整链实际执行，F文档通过门禁；P成本对比/数值裁断/函数期限尚待，不计D最终三连或竣工。

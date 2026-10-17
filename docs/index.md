@@ -1,10 +1,12 @@
 # docs/index.md（全部文档索引）
 
+[阶段5 D同状态三连](evidence/harness-stage5-coverage-protocol-2026-10-17.md)：4ca894f连续完整CI实际0，329429/330768/328574ms、首尾HEAD/树空，各<15分钟；分数/B/分母不变，非P全绿或人工终验，末次文档HEAD另验。
+
 [成本提示三条件实测](evidence/harness-stage5-browser-rulings-2026-10-17.md)：旧冷PW0／当前冷PW1／当前暖PW0，三handoff可比、当前冷仅DOM瞬态无采样可见帧/末态，原冷合同保持失败；隔离/原断言/SHA与清理核完，产品C7待裁，不用暖路径或host采集0充绿。
 
 [阶段5最新完整检查点](evidence/harness-stage5-coverage-protocol-2026-10-17.md)：0b78c94实际完整CI0/340356ms，API17293/Web426，真实覆盖37389/48566、629/671、9787/11512；A核心/E/F在链内验证、分母/B不变，非D最终三连。
 
-[阶段5 F收官准备](evidence/harness-stage5-closeout-preparation-2026-10-17.md)：61项逐条去向、DoD10及§14映射/常驻diff草案；质量/发货与文档核心本轮已补、全CI待。四长函数/29旧豁免列具体待裁候选，不实施新例外、不归档或宣称竣工；[当前评分实测](QUALITY_SCORE.md)保历史并列真实覆盖分数。
+[阶段5 F收官准备](evidence/harness-stage5-closeout-preparation-2026-10-17.md)：61项逐条去向、DoD10及§14映射/常驻diff草案；核心与成本诊断工具已完整CI三连，末次文档HEAD另验。四长函数/29旧豁免列具体待裁候选，不实施新例外、不归档或宣称竣工；[当前评分实测](QUALITY_SCORE.md)保历史并列真实覆盖分数。
 
 [P1货币显示适配R7](tasks/harness-stage5-p1-money-authorization-2026-10-17.md)：亲核新增人类原话；仅main有据货币格式用独立固定期待，原币种/数值/数量/状态/seed保持，其它差异仍上报。
 

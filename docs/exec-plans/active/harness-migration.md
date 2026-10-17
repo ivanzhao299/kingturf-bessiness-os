@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **当前稳定性D已三连（2026-10-17）**：4ca894f同状态完整ci:local连续实际0/null、329429/330768/328574ms，首尾同HEAD/树空、均<15分钟，[三run及边界](../../evidence/harness-stage5-coverage-protocol-2026-10-17.md)。A/B/C/E与F准备在此产物状态验证，最后文档HEAD仍另全CI。P成本三臂旧冷/当前冷/当前暖PW0/1/0如实保留；成本合同、信用450000/驾驶舱四值、四长函数/29旧期限仍待人裁，未批不动产品/原断言/例外。后继若另授实质变更须按新状态验证，本三连不冒充最终人类终验/浏览器第二轮或收官归档。
+
 - **阶段5最新交接点（2026-10-17）**：A六域39＋Quality/Shipment12真实PG、文档动作12，B三覆盖、C真实注入、E旧335装载/F61准备在0b78c94完整CI真实0/340356ms，[结果与不变分母](../../evidence/harness-stage5-coverage-protocol-2026-10-17.md)。成本旧/当前冷/当前暖三臂已实跑：PW0/1/0，handoff均真、当前冷原提示仍红；[完整对比与安全边界](../../evidence/harness-stage5-browser-rulings-2026-10-17.md)。信用450000/驾驶舱四值、成本冷路径产品合同、四长函数/29旧期限均待人裁；未批不改产品/原assert/门禁例外。成本诊断工具与证据收口后，在当前稳定状态执行D同HEAD三连与最后文档HEAD全CI，不把checkpoint当D已完、不因待裁遗忘独立稳定性义务。P原第二轮/C两份/终验/归档仍未做；下方旧时点保留。
 
 - **阶段5 P1部分检查点/新增显示C7（2026-10-17）**：f4b54c2人类逐路由许可后，首候选11失败（10timeout）完整收齐；测试helper只补parent attached/原13移动检查固定站点后，第二次仅原credit count3与订单CNY950000断言失败，随TD018中断/complete=false/owned全清。[实际结果/main货币本地化证据](../../evidence/harness-stage5-browser-rulings-2026-10-17.md)。只停该spec，不改原金额/币种/seed/产品或放宽relay；新显示期待待C7，P1真变异未完成/第二轮未开，其它阶段5线继续。coverage-v83.2.6唯一直接新开发依赖已装、口径工具仍候选/未首测B。
@@ -3753,6 +3755,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+- **2026-10-17｜D当前授权产物三连真实完成**：4ca894f34caabea27ee56cdcdca271e287039690冻结树空后串行三次完整pnpm ci:local，各实际0/null、329429/330768/328574ms，均<15分钟；每轮spawn前/close后同HEAD/clean，无中途编辑/并发PG浏览器/失败重跑。API134/17293、Web26/426/其余71/68/20/5，原工具/build/audit绿；三run18包child真实0/drained、三覆盖37389/48566、629/671、9787/11512与固定B/分母不变。[完整run/SHA/日志](../../evidence/harness-stage5-coverage-protocol-2026-10-17.md)。P成本冷原assert仍红、两数值C7与F结构期限未裁，不能宣布阶段5终验或归档；人裁新变更不能沿用本次D。最后仅文档收口HEAD另完整CI，未跑不预写。回滚本事实文档不撤核心测试或批准边界。[已测试]（冻结4ca894f连续完整CI；后继文档HEAD另验）
 
 - **2026-10-17｜P成本同样本三臂实际闭环，冷case仍红**：诊断工具保原forward/PG身份/owned listener，新增明确cost-compare只读tmpfs、SW封堵/未知网络拒绝、固定SHA auth-only patch与三副本原7完整expect；旧Web b210c77在owned RAM以当前依赖构建（非全历史闭包）。旧冷PW0/2253ms、当前冷PW1/7081ms、当前暖PW0/2134ms，三前置全true；当前冷node曾有但312采样帧/末态不可见，暖先自然quotes ready才可见，不能替代原冷合同。[逐条固定结果/日志/判据/独立复核](../../evidence/harness-stage5-browser-rulings-2026-10-17.md)。三host0只采集完成/资源全清，无relay失败，原spec/两config/产品/seed/forward无diff。工具strict lint/format、自测3/整组16实际0；初lint和计数误估红史保留。已提产品C7，不把节点出现当可见/删expect；TEST013仍开放，总61，D最终稳定状态/最后HEAD全CI后继实跑。回滚新工具/入口/脚本组追加与docs独立revert，不撤原spec/旧失败史。[已测试]（工具及三诊断臂，非原成本全spec绿/新完整CI）
 

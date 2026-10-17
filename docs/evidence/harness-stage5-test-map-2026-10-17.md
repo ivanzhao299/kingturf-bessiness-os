@@ -1,5 +1,9 @@
 # 阶段5现状测试地图与补齐清单
 
+## D同状态三连已实证，P线待裁不隐藏
+
+冻结4ca894f，三次完整ci:local真实0/null，329429/330768/328574ms，每次首尾同HEAD/树空、均<15分钟，无中途编辑/并发PG浏览器或失败重跑。[三run/result摘要/原日志](harness-stage5-coverage-protocol-2026-10-17.md)。本轮A六域39+Quality/Shipment12、文档动作12、types策略与C/E护栏进入三轮原链；API17293/Web426/其余71/68/20/5，三覆盖分数不变且达标。最后仅文档HEAD仍另全CI，未执行不预报；P成本三臂当前冷原case仍PW1、信用/驾驶舱及四长函数/29旧期限待人裁，非阶段5全部完成。
+
 ## A核心/E/F固定检查点完整CI已过（非最终D三连）
 
 0b78c94468f9872e1811b1e54be3620bf0192e1d首尾相同/树空，完整ci:local实际0/null/340356ms，期间无编辑/并发PG或浏览器；API134/17293、Web26/426、config71/database68/domain20/types5，含下方Quality6/Shipment6/文档动作12、TEST019四工具及原335均实际执行，build/audit通过。真实run8e319e61…三覆盖整体37389/48566、domain629/671、仓储9787/11512，分母/生产377/仓储25/B不变，独立raw复算相符。[完整hash/口径](harness-stage5-coverage-protocol-2026-10-17.md)。后继成本对比工具/证据另需最终HEAD全CI，P线C7与D最终三连不由此抵销；下方“待全CI”为此前历史。
