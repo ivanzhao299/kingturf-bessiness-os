@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[P1实际成本种子最小待裁方案（未实施）](tasks/playwright-p1-cost-seed-proposal-2026-10-17.md)：既有API policy→calculate→异人approve→原close、两主BOM测试费率/稳定标识与幂等候选；仅owned演示，事实/假设分开，不绕trigger/改SQL/断言。
+
 [P1种子机器认证适配与当前C7停点](evidence/playwright-docker-seed-auth-2026-10-17.md)：一行URL/实际CLI绑定真红绿；信用pgcrypto环境项已修，后继生产关单500/P0001/缺实际成本批准待人裁（TD-TEST-011）；A/B/两轮未执行，非业务已修。
 
 [Docker真实回环通道验证](evidence/playwright-docker-loopback-2026-10-17.md)：宿主guard/marker→容器只读同实例→自然Secure Cookie与Origin/真实PG计数；1流程/14工具负向、失败史/清理与最小lint接线，不是spec补跑。

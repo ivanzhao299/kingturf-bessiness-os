@@ -2,6 +2,8 @@
 
 **当前停点**：信用500已证本轮owned schema未暴露已装public.pgcrypto，独立环境修正e2c8ce6后信用通过（TD-TEST-010）；原seed随即推进到生产关单500，安全诊断P0001/require_approved_cost_before_close。冻结seed缺实际成本批准业务步骤（TD-TEST-011待决），不属仅认证URL/环境授权，当前停止后继spec/两轮；下文信用C7为初次历史，完整失败史保留。两配置/spec/业务源码/迁移/SQL均未改。
 
+[具体最小待裁方案](../tasks/playwright-p1-cost-seed-proposal-2026-10-17.md)只准备本地owned演示policy/计算/异人批准后继续原close，费率/稳定标识及复用规则明确；未实施，不将增加业务seed假装成fixture环境修正。
+
 ## 独立小步范围
 
 基线 `ce74386`（已授回环环境工具），[人类增量裁定](../tasks/playwright-docker-rulings-2026-10-17.md)明确只允许 `scripts/seed_p1_demo.mjs:12` 机器认证URL从 `/api/v1/auth/login` → `/api/v1/auth/token-login`。静态字节不变量实际通过：用父提交源仅替换这一个URL后，与本步完整文件逐字节相同。凭据参数/两身份/Bearer/幂等/全部业务seed步骤与断言均保持；业务源码与两配置/spec均零改。
