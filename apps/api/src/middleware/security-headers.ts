@@ -1,9 +1,10 @@
 import { CONTENT_SECURITY_POLICY } from '@kingturf/config';
+import type { ApiResponse } from '../app.ts';
 
 export function securityResponseHeaders(
-  headers?: Readonly<Record<string, string>>,
+  headers?: ApiResponse['headers'],
   enforceCsp = false,
-): Readonly<Record<string, string>> {
+): NonNullable<ApiResponse['headers']> {
   const original = Object.fromEntries(
     Object.entries(headers ?? {}).filter(
       ([key]) =>

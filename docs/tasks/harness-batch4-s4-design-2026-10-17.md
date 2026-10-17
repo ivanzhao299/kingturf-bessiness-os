@@ -1,6 +1,6 @@
 # 批次4 S4：Cookie／CSRF 实现设计与行为表
 
-后继检查点：efae93d实际干净HEAD完整CI0/211588.694ms、协调只读复核通过，随后只续派[自然HTTP Secure Cookie预检工具](../evidence/security-batch4-s4-cookie-http-2026-10-17.md)。下文“本步只有设计/未预检”保留设计时点；后端业务仍未编码，不因工具通过宣称会话迁移完成。
+后继检查点：fead2d1自然Secure预检实际干净HEAD全CI0经协调确认后，仅后端/config/机器接口按本固定设计实施，见[后端证据](../evidence/security-batch4-s4-backend-2026-10-17.md)。定向绿、最终提交后另稳定干净HEAD全CI再停协调；Web/PW未改，SEC003开放。下文“未编码/仅设计/未预检”为当时时点。
 
 ## 0. 设计基线、已决与当前停点
 

@@ -7,7 +7,7 @@ const login = process.env.KINGTURF_ADMIN_LOGIN ?? 'admin';
 const password = process.env.KINGTURF_ADMIN_PASSWORD;
 if (!password) throw new Error('KINGTURF_ADMIN_PASSWORD is required');
 
-const response = await fetch(`${baseUrl}/api/v1/auth/login`, {
+const response = await fetch(`${baseUrl}/api/v1/auth/token-login`, {
   method: 'POST',
   headers: { 'content-type': 'application/json' },
   body: JSON.stringify({ login, password }),

@@ -715,7 +715,8 @@ describe('authentication and protected API contracts', () => {
       (
         await buildApp(deps).dispatch({
           method: 'POST',
-          pathname: '/api/v1/auth/login',
+          pathname: '/api/v1/auth/token-login',
+          headers: { 'content-type': 'application/json' },
           body: { login: 'admin', password: 'correct-password' },
         })
       ).statusCode,

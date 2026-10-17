@@ -18,7 +18,7 @@ KingTurf 业务操作系统：面向草坪行业外贸业务的 ERP（CRM→报�
 - 全部文档索引：见 `docs/index.md`
 - 关键决策记录：见 `docs/adr/`（10 个 ADR）
 - S4实现设计与行为表：见 `docs/tasks/harness-batch4-s4-design-2026-10-17.md`；设计已协调确认，后端业务未编码，工具前置见下项。
-- S4后继当前检查点：设计efae93d干净HEAD全CI0/211588.694ms经协调确认，仅续派 `docs/evidence/security-batch4-s4-cookie-http-2026-10-17.md` 自然Secure Cookie预检工具；后端未编码，工具最终CI后再停协调。上文“仅设计/未预检”为先前时点。
+- S4后继当前检查点：fead2d1自然预检最终干净HEAD全CI0后续派后端/config/机器接口，见 `docs/evidence/security-batch4-s4-backend-2026-10-17.md`。真实变异/定向API232/config71/PG20绿、独立静态复核无阻断；最终提交后另稳定干净HEAD全CI再停协调。Web/PW未改、SEC003开放。上文“后端未编码/仅工具”为历史。
 
 ## 硬性约束（不可违反）
 

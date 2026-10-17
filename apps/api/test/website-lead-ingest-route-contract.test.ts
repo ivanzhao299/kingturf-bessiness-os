@@ -82,10 +82,46 @@ function fixture(options: { available?: boolean; authenticated?: boolean } = {})
   };
 }
 describe('old one public signed website ingest POST', () => {
+  it.each([
+    { origin: 'http://127.0.0.1:4173' },
+    { origin: '' },
+    { origin: 'null' },
+    { origin: 'https://untrusted.invalid' },
+    { 'sec-fetch-site': 'same-origin' },
+    { 'sec-fetch-site': 'same-site' },
+    { 'sec-fetch-site': 'cross-site' },
+    { 'sec-fetch-site': 'none' },
+    { 'sec-fetch-site': '' },
+    { 'sec-fetch-site': 'invalid' },
+  ])(
+    'S4 exact HMAC endpoint rejects any browser Origin/site before ingest (case %#)',
+    async (extra) => {
+      const f = fixture();
+      expect((await f.dispatch({ headers: { ...f.headers, ...extra } })).statusCode).toBe(403);
+      expect(f.ingest).not.toHaveBeenCalled();
+      expect(f.authenticate).not.toHaveBeenCalled();
+    },
+  );
+  it.each([true, false])(
+    'S4 HMAC rejects mixed credentials before repository availability (available %s)',
+    async (available) => {
+      const f = fixture({ available });
+      for (const extra of [
+        { authorization: 'Bearer synthetic' },
+        { authorization: '' },
+        { cookie: '__Host-kingturf-session=' },
+        { cookie: '__Host-kingturf-csrf=' },
+      ]) {
+        expect((await f.dispatch({ headers: { ...f.headers, ...extra } })).statusCode).toBe(401);
+      }
+      expect(f.ingest).not.toHaveBeenCalled();
+      expect(f.authenticate).not.toHaveBeenCalled();
+    },
+  );
   it('four raw args/original receiver/201 raw result ref/no session/grant/DTO', async () => {
     const f = fixture({ authenticated: true });
     const result = await f.dispatch({
-      headers: { ...f.headers, authorization: 'Bearer mock-session' },
+      headers: f.headers,
     });
     expect(result).toEqual(response(201, returned));
     expect(result.body).toBe(returned);
@@ -117,7 +153,7 @@ describe('old one public signed website ingest POST', () => {
     expect(
       await f.dispatch({
         body: null,
-        headers: { ...f.headers, authorization: 'Bearer mock-session' },
+        headers: f.headers,
       }),
     ).toEqual(error(503, 'internal_error', 'Website lead integration unavailable'));
     expect(f.authenticate).not.toHaveBeenCalled();
@@ -498,9 +534,13 @@ describe('old one public signed website ingest POST', () => {
   });
   it('login neighbour runs first; health public; unsupported suffix can hit existing QTC sharedO', async () => {
     const f = fixture({ authenticated: true });
-    expect(await f.dispatch({ pathname: '/api/v1/auth/login', body: {} })).toEqual(
-      error(400, 'invalid_request', 'login is required'),
-    );
+    expect(await f.dispatch({ pathname: '/api/v1/auth/login', body: {} })).toEqual({
+      ...error(400, 'invalid_request', 'login is required'),
+      headers: {
+        ...error(400, 'invalid_request', 'login is required').headers,
+        'cache-control': 'no-store',
+      },
+    });
     expect(await f.dispatch({ method: 'GET', pathname: '/health', body: null })).toEqual(
       response(200, { status: 'ok' }),
     );

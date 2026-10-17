@@ -6,11 +6,13 @@
 
 ## 常驻入口（根与 docs 顶层）
 
+[S4后端会话载体与逐文件期望映射](evidence/security-batch4-s4-backend-2026-10-17.md)：fead2d1预检放行后仅后端/config/机器接口小步；旧→新/六项依据/变异与分层验证，SEC003仍开放。Web/PW/SQL/事务冻结，完成后停协调。
+
 [S4自然HTTP Secure Cookie预检](evidence/security-batch4-s4-cookie-http-2026-10-17.md)：隔离真实HTTP/真DOM/两Set-Cookie/浏览器Jar与回传，自有资源正常及4负向清理；只工具前置，不是S4后端或完整CSRF。最终CI后停协调，九旧Playwright不抵销。
 
 [S4正式实施开工R7引用](tasks/harness-batch4-s4-authorization-2026-10-17.md)：2e22837六项已决/原始人类授权亲核；先R7＋明确设计docs停协调只读复核，再直接续已授实施，不重问选型。人类另裁定九旧Playwright本轮不改，适配/逐文件变异/补跑一并为阶段5前硬前置，未执行不标绿/CDP不冲抵。
 
-[S4实现设计与行为表](tasks/harness-batch4-s4-design-2026-10-17.md)：公开配置、会话派生proof、入口/载体/多Cookie头、并发与清理网络证明、前端必要代际适配。efae93d实际全CI0后已协调确认；后继仅预检工具见上，未实施业务载体。
+[S4实现设计与行为表](tasks/harness-batch4-s4-design-2026-10-17.md)：固定设计efae93d已协调确认；后端当前小步见上方证据，原“仅设计/工具、未实施”是历史时点，尚非S4全部完成。
 
 [S4批准前会话影响报告（历史）](tasks/harness-batch4-s4-session-impact-2026-10-17.md)：420f9ba实际干净HEAD全CI0/207904.734ms，重盘124 API源/123测试及Web/CDP/Playwright/CLI候选、两Cookie CSRF方案、跨tab/迟到Set-Cookie边界；原“待确认/仅报告硬停”保留当时时点，2e22837已六项裁定正式放行实施，当前范围以上方R7为准，不进入阶段5。
 

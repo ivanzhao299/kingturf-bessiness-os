@@ -20,6 +20,14 @@ import {
 import type { ErrorCode, PermissionKey } from '@kingturf/types';
 import { securityResponseHeaders } from './middleware/security-headers.ts';
 import { LoginRateLimiter } from './middleware/login-rate-limit.ts';
+import { DEFAULT_BROWSER_SESSION, type BrowserSessionConfig } from '@kingturf/config';
+import {
+  authorizeCookieRequest,
+  browserAuthResponse,
+  parseSessionCarrier,
+  requireMachineContext,
+  SessionRequestError,
+} from './middleware/session-carrier.ts';
 import { authorizeQuery } from './policy.ts';
 import { auditReadRoutes } from './routes/audit-reads.ts';
 import { numberAllocationRoutes } from './routes/number-allocation.ts';
@@ -265,6 +273,8 @@ export type ApiRequest = Readonly<{
   pathname: string;
   query?: Readonly<Record<string, string | undefined>>;
   headers?: Readonly<Record<string, string | undefined>>;
+  headersDistinct?: Readonly<Record<string, readonly string[] | undefined>>;
+  hasQuery?: boolean;
   body?: unknown;
   peerAddress?: string | undefined;
   forwardedFor?: readonly string[] | undefined;
@@ -272,7 +282,7 @@ export type ApiRequest = Readonly<{
 export type ApiResponse = Readonly<{
   body: Json;
   statusCode: number;
-  headers?: Readonly<Record<string, string>>;
+  headers?: Readonly<Record<string, string | readonly string[]>>;
 }>;
 export type ApiDependencies = Readonly<{
   loginRateLimiter?: LoginRateLimiter;
@@ -377,11 +387,6 @@ const requireCostFactorItemSource = (sourceType: string, sourceItemVersionId: un
       'invalid_request',
       'Purchase order and supplier quote sources require a linked purchasing item',
     );
-};
-const bearer = (headers: Readonly<Record<string, string | undefined>>): string | null => {
-  const value = headers.authorization;
-  if (!value?.startsWith('Bearer ')) return null;
-  return value.slice(7);
 };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const correlation = (value: string | undefined): string =>
@@ -535,10 +540,11 @@ const effectiveRange = (body: Record<string, unknown>) => {
 };
 export function buildApp(
   dependencies?: ApiDependencies,
-  security: Readonly<{ enforceCsp?: boolean }> = {},
+  security: Readonly<{ enforceCsp?: boolean; browserSession?: BrowserSessionConfig }> = {},
 ): ApiApplication {
   const telemetry = dependencies?.telemetry ?? NOOP_TELEMETRY;
   const loginRateLimiter = dependencies?.loginRateLimiter ?? new LoginRateLimiter();
+  const browserSession = security.browserSession ?? DEFAULT_BROWSER_SESSION;
   const application: Pick<ApiApplication, 'dispatch'> = {
     async dispatch(request) {
       const correlationId = correlation(request.headers?.['x-correlation-id']);
@@ -566,15 +572,20 @@ export function buildApp(
         const authRouteContext = {
           auth: dependencies.auth,
           loginRateLimiter,
+          browserSession,
           correlationId,
           parsers: { objectBody, string, allow },
         };
         const loginResponse = await dispatchRoutes(loginRoutes(authRouteContext), request);
         if (loginResponse) return loginResponse;
+        const carrier = parseSessionCarrier(request, browserSession);
         if (
           request.method === 'POST' &&
           request.pathname === '/api/v1/integrations/website/leads'
         ) {
+          if (carrier.kind !== 'none' || carrier.csrf !== undefined)
+            throw new SessionRequestError(401, 'Ambiguous website authentication');
+          requireMachineContext(request);
           if (!dependencies.websiteLeads)
             return error(
               503,
@@ -595,7 +606,8 @@ export function buildApp(
           );
           if (response) return response;
         }
-        const token = bearer(request.headers ?? {});
+        if (carrier.kind === 'bearer') requireMachineContext(request);
+        const token = carrier.token;
         const context = token ? await dependencies.auth.authenticate(token) : null;
         if (context === null)
           return error(
@@ -611,6 +623,8 @@ export function buildApp(
             'A valid session is required',
             correlationId,
           );
+        if (carrier.kind === 'cookie')
+          authorizeCookieRequest(request, carrier, dependencies.auth, browserSession);
         const foundationResponse = await dispatchFoundationRoutes(
           foundationRoutes({
             dependencies,
@@ -638,6 +652,7 @@ export function buildApp(
         const securedAuthContext = {
           ...authRouteContext,
           token,
+          carrier,
           authorization: context,
           employees: dependencies.employees,
         };
@@ -4068,6 +4083,13 @@ export function buildApp(
         }
         return error(404, 'not_found', 'Route not found', correlationId);
       } catch (cause) {
+        if (cause instanceof SessionRequestError)
+          return error(
+            cause.statusCode,
+            cause.statusCode === 401 ? 'authentication_required' : 'forbidden',
+            cause.message,
+            correlationId,
+          );
         if (cause instanceof DomainError) {
           const status =
             cause.code === 'forbidden'
@@ -4117,6 +4139,7 @@ export function buildApp(
       ...response,
       headers: {
         ...securityResponseHeaders(response.headers, security.enforceCsp ?? false),
+        ...(browserAuthResponse(request, browserSession) ? { 'cache-control': 'no-store' } : {}),
         'x-correlation-id': correlationId,
       },
     };

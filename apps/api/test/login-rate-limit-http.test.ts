@@ -27,9 +27,9 @@ function fixture(options: { pending?: number; proxies?: readonly string[] } = {}
   const dispatch = (changes: Partial<ApiRequest> = {}) =>
     app.dispatch({
       method: 'POST',
-      pathname: '/api/v1/auth/login',
+      pathname: '/api/v1/auth/token-login',
       body: { login: 'account', password: 'synthetic-password' },
-      headers: { 'x-correlation-id': correlationId },
+      headers: { 'x-correlation-id': correlationId, 'content-type': 'application/json' },
       peerAddress: '198.51.100.1',
       ...changes,
     });
@@ -52,6 +52,7 @@ describe('D1 S2 application login middleware', () => {
     expect(limited).toEqual({
       statusCode: 429,
       headers: {
+        'cache-control': 'no-store',
         'retry-after': '900',
         'x-correlation-id': correlationId,
         'x-content-type-options': 'nosniff',

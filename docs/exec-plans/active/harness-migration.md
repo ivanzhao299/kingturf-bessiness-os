@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **S4后端当前检查点（2026-10-17）**：fead2d1自然预检干净HEAD完整CI0/205231.486ms经协调确认后，仅后端/config/机器接口/API测试实施，详见[逐文件真实变异/分层证据](../../evidence/security-batch4-s4-backend-2026-10-17.md)。定向API232/config71/真实PG20绿、独立静态复核无阻断，最终提交后另同一稳定干净HEAD全CI再停协调；Web/PW/SQL/事务/依赖/infra/workflow冻结，SEC003开放、48项不变，不进入前端/Docker/阶段5。下文“未编码/仅工具”等为历史。
+
 - **S4自然Secure Cookie工具前置（2026-10-17）**：设计efae93d实际干净HEAD全CI0/211588.694ms经协调亲核后，仅续派[隔离真实HTTP/CDP预检](../../evidence/security-batch4-s4-cookie-http-2026-10-17.md)。自然127.0.0.1:4173存储/回传成功，非S4后端；工具/4负向清理/逐文件变异证据见报告，旧浏览器回归与最终本步干净HEAD全CI执行后交付。后端仍未编码，完成后停协调，不自行阶段5；下方“仅设计/未预检”为前时点。
 
 - **S4开工现时（2026-10-17，已授权实施）**：接手2e22837/树空，主代理亲核原始人类授权及§7末“4-S1S3验收+S4选型”；S1–S3已人工验收，六项已决，旧“仅报告硬停”为批准前历史。先落[S4开工R7引用](../../tasks/harness-batch4-s4-authorization-2026-10-17.md)，本步仅R7＋明确实现设计/行为表独立docs，停协调只读复核后续已授后端→前端→网络级/CDP→整批收口，不重问六项。名字/path/寿命/Origin配置按授权给安全默认与理由；Secure真实HTTP预检先于后端，失败按C7停报、不预批HTTPS。九旧Playwright已获专项裁定“本轮不改，适配/各文件变异/补跑合并到阶段5前硬前置”，未执行不标绿、CDP不冲抵；原production/runtime/config静态分类边界保持。API/Web/CDP当前纪律不变。SEC003真实完成前开放，生产/push/workflow/SQL/模型/依赖/旁支债务/阶段5保护保持。
@@ -3683,6 +3685,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+2026-10-17，S4后端小步按固定设计实施；六API文件与CLI窄适配均真实红→还原绿。PG变异选1例红19跳过→还原全20绿，不称全20红；时间MAC双侧去时间3红8跳过→还原11绿，定向API232/config71、lint/type及结构/服务边界绿。独立静态复核原算法/SQL/事务/签名夹具不改。最终提交后稳定干净HEAD全CI结果交协调，不预填完成。Web/PW/Docker未启动，历史CRM/360回复不扩大当前授权；[证据/失败史/回滚](../../evidence/security-batch4-s4-backend-2026-10-17.md)，SEC003开放。
 
 2026-10-17，S4自然Secure Cookie工具前置：设计efae93d实际干净HEAD完整CI0/211588.694ms经协调确认后，独立续派仅工具小步。自然127.0.0.1:4173真DOM/真实HTTP两Set-Cookie/Jar属性/回传Origin与CSRF，首GuBdbf及最终jdNP1W均真实0；无降Secure/别名/安全旗标兜底。新工具10＋旧65=75绿，4真实负向均exit1/owned HTTP/Chrome/profile清理true，入口/白名单各真实变异红→还原绿；旧浏览器回归、两个lint初错、机械比较false及基础7不冒称29详[证据](../../evidence/security-batch4-s4-cookie-http-2026-10-17.md)。本步不auth/config/Web/SQL/infra/Playwright，SEC003不关闭；最终本步干净HEAD全CI执行后交付并停协调，后端不自行启动。回滚核后继后独立revert本工具及同责docs至efae93d，保S1–S3/设计/3144562。[已测试：工具/浏览器；最终HEAD完整CI待执行]
 

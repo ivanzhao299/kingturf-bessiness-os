@@ -1,5 +1,8 @@
 import { parseLoginRateLimitEnvironment, type LoginRateLimitConfig } from './login-rate-limit.ts';
 import { parseCspEnforce } from './csp.ts';
+import { parseBrowserSessionEnvironment, type BrowserSessionConfig } from './browser-session.ts';
+export { DEFAULT_BROWSER_SESSION, canonicalSessionOrigin } from './browser-session.ts';
+export type { BrowserSessionConfig } from './browser-session.ts';
 export { CONTENT_SECURITY_POLICY } from './csp.ts';
 export { DEFAULT_LOGIN_RATE_LIMIT } from './login-rate-limit.ts';
 export { canonicalIp } from './ip-address.ts';
@@ -23,6 +26,7 @@ export type AppConfig = Readonly<{
   websiteLeadIngestSecret: string | null;
   loginRateLimit: LoginRateLimitConfig;
   cspEnforce: boolean;
+  browserSession: BrowserSessionConfig;
 }>;
 
 export class ConfigurationError extends Error {}
@@ -80,7 +84,7 @@ export function parseEnvironment(env: EnvironmentRecord): AppConfig {
     !required(env, 'ATTACHMENT_LOCAL_DIRECTORY').startsWith('/var/lib/kingturf/')
   )
     throw new ConfigurationError('Production local attachment storage must use /var/lib/kingturf/');
-  const config: Omit<AppConfig, 'loginRateLimit' | 'cspEnforce'> = {
+  const config: Omit<AppConfig, 'loginRateLimit' | 'cspEnforce' | 'browserSession'> = {
     nodeEnv: nodeEnv as AppConfig['nodeEnv'],
     databaseUrl,
     api: { host: required(env, 'API_HOST'), port: integer(env, 'API_PORT', 1, 65_535) },
@@ -118,6 +122,14 @@ export function parseEnvironment(env: EnvironmentRecord): AppConfig {
     cspEnforce: parseCspEnforce(env, (message) => {
       throw new ConfigurationError(message);
     }),
+    browserSession: parseBrowserSessionEnvironment(
+      env,
+      config.nodeEnv,
+      config.session.ttlSeconds,
+      (message) => {
+        throw new ConfigurationError(message);
+      },
+    ),
     api: Object.freeze(config.api),
     session: Object.freeze(config.session),
     password: Object.freeze(config.password),

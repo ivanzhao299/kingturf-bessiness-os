@@ -31,6 +31,9 @@ function fixture() {
       headers: {
         authorization: 'Bearer fixture-token',
         'x-correlation-id': correlationId,
+        ...(request.method === 'POST' && request.pathname === '/api/v1/auth/token-login'
+          ? { authorization: undefined, 'content-type': 'application/json' }
+          : {}),
         ...request.headers,
       },
     });
@@ -50,19 +53,24 @@ const envelope = (statusCode: number, code: string, message: string) => ({
   },
 });
 
-describe('auth HTTP contracts frozen at 0fdd996', () => {
+const authEnvelope = (statusCode: number, code: string, message: string) => {
+  const result = envelope(statusCode, code, message);
+  return { ...result, headers: { ...result.headers, 'cache-control': 'no-store' } };
+};
+describe('auth HTTP contracts frozen at 0fdd996; S4 machine carrier mapping', () => {
   it('login is pre-auth, trims strings and accepts extra fields', async () => {
     const { auth, dispatch } = fixture();
     expect(
       await dispatch({
         method: 'POST',
-        pathname: '/api/v1/auth/login',
+        pathname: '/api/v1/auth/token-login',
         body: { login: ' user ', password: ' fixture-password ', extra: true },
       }),
     ).toEqual({
       statusCode: 200,
       body: { token: 'fixture-token', expiresAt: '2030-01-01' },
       headers: {
+        'cache-control': 'no-store',
         'x-correlation-id': correlationId,
         'x-content-type-options': 'nosniff',
         'x-frame-options': 'SAMEORIGIN',
@@ -78,27 +86,27 @@ describe('auth HTTP contracts frozen at 0fdd996', () => {
     expect(
       await dispatch({
         method: 'POST',
-        pathname: '/api/v1/auth/login',
+        pathname: '/api/v1/auth/token-login',
         body: { login: 'user', password: 'fixture-password' },
       }),
-    ).toEqual(envelope(401, 'authentication_required', 'Invalid credentials'));
+    ).toEqual(authEnvelope(401, 'authentication_required', 'Invalid credentials'));
   });
   it('global dependency failure precedes login validation; invalid bodies do not call login', async () => {
     expect(
       await buildApp().dispatch({
         method: 'POST',
-        pathname: '/api/v1/auth/login',
+        pathname: '/api/v1/auth/token-login',
         body: null,
         headers: { 'x-correlation-id': correlationId },
       }),
-    ).toEqual(envelope(503, 'internal_error', 'Application dependencies are unavailable'));
+    ).toEqual(authEnvelope(503, 'internal_error', 'Application dependencies are unavailable'));
     const { auth, dispatch } = fixture();
-    expect(await dispatch({ method: 'POST', pathname: '/api/v1/auth/login', body: null })).toEqual(
-      envelope(400, 'invalid_request', 'A JSON object body is required'),
-    );
-    expect(await dispatch({ method: 'POST', pathname: '/api/v1/auth/login', body: {} })).toEqual(
-      envelope(400, 'invalid_request', 'login is required'),
-    );
+    expect(
+      await dispatch({ method: 'POST', pathname: '/api/v1/auth/token-login', body: null }),
+    ).toEqual(authEnvelope(400, 'invalid_request', 'A JSON object body is required'));
+    expect(
+      await dispatch({ method: 'POST', pathname: '/api/v1/auth/token-login', body: {} }),
+    ).toEqual(authEnvelope(400, 'invalid_request', 'login is required'));
     expect(auth.login).not.toHaveBeenCalled();
   });
   it('logout/session authenticate once per request and preserve exact arguments and response', async () => {

@@ -642,8 +642,8 @@ describe('foundation secured API and telemetry', () => {
       logger: { write },
     }).dispatch({
       method: 'POST',
-      pathname: '/api/v1/auth/login',
-      headers: { 'x-correlation-id': randomUUID() },
+      pathname: '/api/v1/auth/token-login',
+      headers: { 'x-correlation-id': randomUUID(), 'content-type': 'application/json' },
       body: { login: 'user', password: secret },
     });
     expect(count).toHaveBeenCalledWith(

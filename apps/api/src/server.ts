@@ -4,6 +4,7 @@ import { parseEnvironment } from '@kingturf/config';
 import { assertMigrationsCurrent, Database, migrate } from '@kingturf/database';
 import { buildApp } from './app.ts';
 import { LoginRateLimiter } from './middleware/login-rate-limit.ts';
+import { incomingSessionHeaders, outgoingHttpHeaders } from './http-session-headers.ts';
 import {
   PostgresAuthorizationRepository,
   PostgresEmployeeRepository,
@@ -129,7 +130,7 @@ const app = buildApp(
       process.stdout.write(`${JSON.stringify(entry)}\n`);
     }),
   },
-  { enforceCsp: config.cspEnforce },
+  { enforceCsp: config.cspEnforce, browserSession: config.browserSession },
 );
 const server = createServer(async (request, response) => {
   const url = new URL(request.url ?? '/', 'http://localhost');
@@ -141,7 +142,7 @@ const server = createServer(async (request, response) => {
     const result = app.rejectOversized(request.headers['x-correlation-id'] as string | undefined);
     response.writeHead(result.statusCode, {
       'content-type': 'application/json; charset=utf-8',
-      ...result.headers,
+      ...outgoingHttpHeaders(result.headers),
     });
     response.end(JSON.stringify(result.body));
   };
@@ -163,13 +164,17 @@ const server = createServer(async (request, response) => {
   } catch {
     body = undefined;
   }
+  const sessionHeaders = incomingSessionHeaders(request);
   const result = await app.dispatch({
+    ...sessionHeaders,
     method: request.method ?? 'GET',
     peerAddress: request.socket.remoteAddress,
     forwardedFor: request.headersDistinct['x-forwarded-for'],
     pathname: url.pathname,
     query: Object.fromEntries(url.searchParams),
+    hasQuery: (request.url ?? '').includes('?'),
     headers: {
+      ...sessionHeaders.headers,
       authorization: request.headers.authorization,
       'x-correlation-id': request.headers['x-correlation-id'] as string | undefined,
       'idempotency-key': request.headers['idempotency-key'] as string | undefined,
@@ -180,7 +185,7 @@ const server = createServer(async (request, response) => {
   });
   response.writeHead(result.statusCode, {
     'content-type': 'application/json; charset=utf-8',
-    ...result.headers,
+    ...outgoingHttpHeaders(result.headers),
   });
   response.end(JSON.stringify(result.body));
 });
