@@ -28,15 +28,15 @@
 | 内层nginx     | 不改container nginx，不依赖其server级add_header继承（其assets/index/location各有Cache-Control）；inner直连无HTML CSP是明确边界。outer /覆盖内层Cache-Control不影响后置outer CSP；HTTP301/ACME不宣称HTML策略覆盖                      |
 | 本地CDP HTML  | opt-in test-only Vite preview配置用同一公共policy给真实built Document响应RO；常规preview不变，不用API JSON头冒充HTML。真实网络Document头断言＋首次导航前collector，并分离API/unit、本地nginx与浏览器证据                             |
 
-RELIABILITY现workflow不安装/reload host nginx，仓库修改不自动生产生效。已有本地nginx:1.28-alpine镜像可用；计划仅--pull never/--network none本地临时nginx配置验证与HTTP响应检查，不构建镜像/拉依赖/读生产证书。若无法运行则如实阻塞该证据，不替换成已验证声明。真实host TLS部署配置不执行。
+RELIABILITY现workflow不安装/reload host nginx，仓库修改不自动生产生效。API=false/true分别控制直连API无/有强制头；外层隐藏两上游CSP头，故API=true但outer=off仍只有RO，outer=on才给所有代理响应额外强制头。四组合均本地检查，不把API开关称为公网强制开关。已有本地nginx:1.28-alpine镜像可用；计划仅--pull never/--network none本地临时nginx配置验证与HTTP响应检查，不构建镜像/拉依赖/读生产证书。若无法运行则如实阻塞该证据，不替换成已验证声明。真实host TLS部署配置不执行。
 
 ## 浏览器与发送合成边界
 
 复用仓库自有CDP临时profile/随机回环debug端口/已安装Chrome/4173独占预览及自有进程清理；不Windows桌面UI、不sudo、不缓存Chromium/安全标志/防火墙。原网络未知/写默认拒绝不松。旧原29与其它探头不改断言，新增S3独立opt-in，不把旧草稿/只读夹具改为可发送。
 
 - collector在Page首次navigate前addScriptToEvaluateOnNewDocument安装。采有效directive/disposition及去query/hash/用户信息的URL，data/blob仅scheme、inline/eval只枚举；不存token、inline代码、sample、完整report/payload。有限记录/计数，跨导航通过受控binding或分段读取避免丢登录页。真实违例只是观察记录，不作正常链失败；故意inline script小哨兵须有report事件且RO不阻止执行，单独phase，不混正常统计。负向collector缺绑定/非RO或缺HTML头须被工具测试抓住。
-- 新发送session/doc完全合成，APPROVED+customerId，限定read/send权限。真实DOM登录表单（精确合成login POST）→工作台→打开在线文档→点击发送→GET精确connector→填表→POST精确合成UUID/send→看到202 receipt。不得直接fetch代替点击，也不真实API/PG/外发。
-- 新fixture仅opt-in允许合成login、精确GET connector、精确POST该doc/send；严格校验method/path/JSON精确字段值/幂等头、缺postData拒绝，不输出payload/身份头。原router只GET及原session fixtures不改。未知/变路径/其它POST/生产origin仍拒绝，真实负向证明。document-editor原探头断言send hidden，独立S3场景避免冲突。
+- 新发送session/doc完全合成，APPROVED+customerId，限定read/send权限。真实DOM登录表单（精确合成login POST）→工作台→打开在线文档→点击发送→GET精确connector→填表→POST精确合成UUID/send。网络独立断言202，DOM另断合成任务ID/排队文案，不声称UI显示HTTP码或客户送达。首导航后仅布尔核临时profile无kingturf.session，不预置storage/login bypass；必须由真实输入/点击完成login POST1→session GET→app-shell。不得直接fetch代替点击，也不真实API/PG/外发。
+- 新fixture仅opt-in允许合成login、精确GET connector、精确POST该doc/send；严格校验method/path/JSON精确字段值/幂等头、缺postData拒绝，不输出payload/身份头。幂等键沿真实requestId随机生成，只验证合法UUID并绑定首次值与精确payload，不能固定随机数或改业务。原router只GET及原session fixtures不改。未知/变路径/其它POST/生产origin仍拒绝，真实负向证明。document-editor原探头断言send hidden，独立S3场景避免冲突。
 - 原11 TS Playwright文件（原本地9命名＋production2）及runtime MJS/config一字不动，均未本批运行；阶段5前Linux Chrome可用后仍须补跑，不以CDP代替，不访问production补跑。
 
 ## 测试、期望纪律与停点

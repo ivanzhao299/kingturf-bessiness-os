@@ -533,7 +533,10 @@ const effectiveRange = (body: Record<string, unknown>) => {
   assertEffectiveRange(effectiveFrom, effectiveTo);
   return { effectiveFrom, effectiveTo };
 };
-export function buildApp(dependencies?: ApiDependencies): ApiApplication {
+export function buildApp(
+  dependencies?: ApiDependencies,
+  security: Readonly<{ enforceCsp?: boolean }> = {},
+): ApiApplication {
   const telemetry = dependencies?.telemetry ?? NOOP_TELEMETRY;
   const loginRateLimiter = dependencies?.loginRateLimiter ?? new LoginRateLimiter();
   const application: Pick<ApiApplication, 'dispatch'> = {
@@ -4112,7 +4115,10 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
     });
     return {
       ...response,
-      headers: { ...securityResponseHeaders(response.headers), 'x-correlation-id': correlationId },
+      headers: {
+        ...securityResponseHeaders(response.headers, security.enforceCsp ?? false),
+        'x-correlation-id': correlationId,
+      },
     };
   };
   return {

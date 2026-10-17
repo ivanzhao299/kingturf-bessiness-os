@@ -64,70 +64,73 @@ const objectAccess = new PostgresRegistryObjectAccessAuthorizer(
   database,
   new Map([['employee', new EmployeeObjectInstanceResolver(employees)]]),
 );
-const app = buildApp({
-  loginRateLimiter: new LoginRateLimiter(config.loginRateLimit),
-  auth,
-  organizations: new PostgresOrganizationRepository(database),
-  employees,
-  authorization: new PostgresAuthorizationRepository(database),
-  audit: new PostgresAuditRepository(database),
-  masterData: new PostgresMasterDataRepository(database),
-  numbers: new PostgresNumberRepository(database),
-  rules: new PostgresRuleRepository(database),
-  workflows: new PostgresWorkflowRepository(database),
-  notifications: new PostgresNotificationRepository(database),
-  attachments: new PostgresAttachmentRepository(
-    database,
-    new LocalAttachmentStorage(config.attachmentStorage.directory),
-    objectAccess,
-  ),
-  events: new PostgresEventRepository(database),
-  businessObjects: new PostgresBusinessObjectRepository(database),
-  crm: new PostgresCrmRepository(database),
-  commercial: new PostgresCommercialRepository(database),
-  quoteToCash: new PostgresQuoteToCashRepository(database),
-  commissions: new PostgresCommissionRepository(database),
-  order360: new PostgresOrder360Repository(database),
-  risks: new PostgresRiskRepository(database),
-  dashboard: new PostgresDashboardRepository(database),
-  manufacturing: new PostgresManufacturingRepository(database),
-  procurement: new PostgresProcurementRepository(database),
-  mrp: new PostgresMrpRepository(database),
-  production: new PostgresProductionRepository(database),
-  productionCosts: new PostgresProductionCostRepository(database),
-  quality: new PostgresQualityRepository(database),
-  shipments: new PostgresShipmentRepository(database),
-  collections: new PostgresCollectionRepository(database),
-  complaints: new PostgresComplaintRepository(database),
-  businessDocuments: new PostgresBusinessDocumentRepository(database),
-  contractDocuments: new PostgresContractDocumentRepository(database),
-  ...(config.websiteLeadIngestSecret
-    ? { websiteLeads: new PostgresWebsiteLeadIngestor(database, config.websiteLeadIngestSecret) }
-    : {}),
-  release: {
-    sha: process.env.KINGTURF_RELEASE_SHA ?? 'development',
-    environment: process.env.KINGTURF_RELEASE_ENVIRONMENT ?? config.nodeEnv,
-    ...(process.env.KINGTURF_RELEASE_BUILT_AT
-      ? { builtAt: process.env.KINGTURF_RELEASE_BUILT_AT }
+const app = buildApp(
+  {
+    loginRateLimiter: new LoginRateLimiter(config.loginRateLimit),
+    auth,
+    organizations: new PostgresOrganizationRepository(database),
+    employees,
+    authorization: new PostgresAuthorizationRepository(database),
+    audit: new PostgresAuditRepository(database),
+    masterData: new PostgresMasterDataRepository(database),
+    numbers: new PostgresNumberRepository(database),
+    rules: new PostgresRuleRepository(database),
+    workflows: new PostgresWorkflowRepository(database),
+    notifications: new PostgresNotificationRepository(database),
+    attachments: new PostgresAttachmentRepository(
+      database,
+      new LocalAttachmentStorage(config.attachmentStorage.directory),
+      objectAccess,
+    ),
+    events: new PostgresEventRepository(database),
+    businessObjects: new PostgresBusinessObjectRepository(database),
+    crm: new PostgresCrmRepository(database),
+    commercial: new PostgresCommercialRepository(database),
+    quoteToCash: new PostgresQuoteToCashRepository(database),
+    commissions: new PostgresCommissionRepository(database),
+    order360: new PostgresOrder360Repository(database),
+    risks: new PostgresRiskRepository(database),
+    dashboard: new PostgresDashboardRepository(database),
+    manufacturing: new PostgresManufacturingRepository(database),
+    procurement: new PostgresProcurementRepository(database),
+    mrp: new PostgresMrpRepository(database),
+    production: new PostgresProductionRepository(database),
+    productionCosts: new PostgresProductionCostRepository(database),
+    quality: new PostgresQualityRepository(database),
+    shipments: new PostgresShipmentRepository(database),
+    collections: new PostgresCollectionRepository(database),
+    complaints: new PostgresComplaintRepository(database),
+    businessDocuments: new PostgresBusinessDocumentRepository(database),
+    contractDocuments: new PostgresContractDocumentRepository(database),
+    ...(config.websiteLeadIngestSecret
+      ? { websiteLeads: new PostgresWebsiteLeadIngestor(database, config.websiteLeadIngestSecret) }
       : {}),
-  },
-  readiness: async () => {
-    try {
-      await database.query('SELECT 1');
-      return true;
-    } catch {
-      return false;
-    }
-  },
-  logger: {
-    write(entry) {
-      process.stdout.write(`${JSON.stringify(entry)}\n`);
+    release: {
+      sha: process.env.KINGTURF_RELEASE_SHA ?? 'development',
+      environment: process.env.KINGTURF_RELEASE_ENVIRONMENT ?? config.nodeEnv,
+      ...(process.env.KINGTURF_RELEASE_BUILT_AT
+        ? { builtAt: process.env.KINGTURF_RELEASE_BUILT_AT }
+        : {}),
     },
+    readiness: async () => {
+      try {
+        await database.query('SELECT 1');
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    logger: {
+      write(entry) {
+        process.stdout.write(`${JSON.stringify(entry)}\n`);
+      },
+    },
+    telemetry: new StructuredTelemetry((entry) => {
+      process.stdout.write(`${JSON.stringify(entry)}\n`);
+    }),
   },
-  telemetry: new StructuredTelemetry((entry) => {
-    process.stdout.write(`${JSON.stringify(entry)}\n`);
-  }),
-});
+  { enforceCsp: config.cspEnforce },
+);
 const server = createServer(async (request, response) => {
   const url = new URL(request.url ?? '/', 'http://localhost');
   const chunks: Buffer[] = [];

@@ -18,6 +18,23 @@ const valid = {
   WEBSITE_LEAD_INGEST_SECRET: 'test-website-lead-ingest-secret-at-least-32-characters',
 };
 describe('parseEnvironment', () => {
+  it('defaults CSP enforcement off and only enables it explicitly', () => {
+    expect(parseEnvironment(valid).cspEnforce).toBe(false);
+    expect(parseEnvironment({ ...valid, CSP_ENFORCE: 'false' }).cspEnforce).toBe(false);
+    expect(parseEnvironment({ ...valid, CSP_ENFORCE: 'true' }).cspEnforce).toBe(true);
+  });
+  it.each(['', '1', 'TRUE', ' false '])('rejects invalid CSP enforcement %s', (flag) => {
+    expect(() => parseEnvironment({ ...valid, CSP_ENFORCE: flag })).toThrow(ConfigurationError);
+    expect(() => parseEnvironment({ ...valid, CSP_ENFORCE: flag })).toThrow('CSP_ENFORCE');
+  });
+  it('retains pre-existing configuration error order before the new CSP option', () => {
+    expect(() =>
+      parseEnvironment({ ...valid, LOGIN_RATE_LIMIT_ENABLED: 'invalid', CSP_ENFORCE: 'invalid' }),
+    ).toThrow('LOGIN_RATE_LIMIT_ENABLED');
+    expect(() => parseEnvironment({ ...valid, DATABASE_URL: '', CSP_ENFORCE: 'invalid' })).toThrow(
+      'DATABASE_URL',
+    );
+  });
   it('defaults and freezes the independently configurable login limiter', () => {
     const settings = parseEnvironment(valid).loginRateLimit;
     expect(settings).toEqual({
