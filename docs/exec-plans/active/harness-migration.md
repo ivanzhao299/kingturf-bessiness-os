@@ -3752,6 +3752,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+- **2026-10-17｜P1数值C7因果核查**：独立只读+主核当前源码，信用450000来自早期部分款快照，main73f9ea4已在拒绝/过期决策前结清尾款；驾驶舱四值来自KT-L11历史两订单环境，当前owned P1仅一个演示订单。[来源/事实与推断/两个待决选项](../../evidence/harness-stage5-browser-rulings-2026-10-17.md)。不把固定0前缀观察称精确金额，不凭环境差异判聚合回归或猜新四值；已询问人类独立验收基准，未改原值/seed/产品/网络，无新PG或浏览器执行，A–F继续。本提交仅docs证据，独立revert不删除旧失败史。[已测试]（源码考古/文档静态，非P1通过）
+
 - **2026-10-17｜TEST005共享类型策略实施**：父7c50c30，保留运行时scope长度断言+独立六值/顺序，新增4项expectTypeOf合同与tsc负例，不引依赖/不改生产types/不作豁免。原lint/tsc/两文件5项/format0；首lint2机械写法问题修正不降规则，测试Money负例暂改合法字符串使真实tsc TS2578 exit2→还原原lint/tsc/5项绿，[策略/CI链绑定/边界](../../evidence/harness-stage5-test-map-2026-10-17.md)。普通Vitest转译绿不充类型证明；types实际5个runtime导出，旧纯类型描述不作排除理由。TEST005仅已实施待终验，B目标与最终CI待。回滚本两test/docs独立revert，原长度断言保持。[已测试]（类型/定向运行，非完整CI）
 
 - **2026-10-17｜采购/库存专项真实PG及R4新发现**：父e1174d3，独立8项实际PG0/21242ms，原lint/tsc/format0；每例owned新schema，真实发布料/资格/RFQ/报价/PO/收货/库存账，固定数量/签向/COMPANY或GROUP租户/失败回滚及audit/outbox绑定，[全过程/非全矩阵边界](../../evidence/harness-stage5-test-map-2026-10-17.md)。独立review无必要阻断，错company-only标题已修并补GROUP正写；乱序start/result实证。新增TD-PROC-001（总59=原58+1）：重复部分收货状态机冲突，真实首4/次2失败且四表/证据回滚/最后6成功，只登记不修，不以负向刻画绿当缺陷关闭。TEST003仅3/6，B达标/最终CI待；回滚本新test/docs独立revert，不改产品/旧oracle/seed。一次doc patch锚点不精确原子未写后重施，历史保留。[已测试]（实际PG专项，非完整CI）
