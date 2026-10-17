@@ -33,9 +33,10 @@ export function validateLocalCommand(kind, label, fault) {
   assert(Object.hasOwn(localCases, kind), 'only inventoried local browser targets allowed');
   assert.match(label, /^[a-z0-9][a-z0-9-]{0,63}$/u);
   assert(
-    [undefined, 'privacy', 'interrupt', 'interrupt-stop'].includes(fault),
+    [undefined, 'privacy', 'interrupt', 'interrupt-stop', 'diagnostics'].includes(fault),
     'unknown local fault',
   );
+  if (fault === 'diagnostics') assert.equal(kind, 'p1', 'diagnostics is only authorized for P1');
 }
 
 export function safeLocalCases(kind, values) {

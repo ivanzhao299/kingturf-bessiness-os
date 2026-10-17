@@ -82,7 +82,11 @@ async function verifyAndProbe(control) {
   if (command.action === 'local') {
     phase = 'private-local-browser';
     const result = await runPrivateSpec(command, cancellation.signal, report);
-    report('local-result', { kind: command.kind, label: command.label, ...result });
+    report(command.fault === 'diagnostics' ? 'diagnostics-result' : 'local-result', {
+      kind: command.kind,
+      label: command.label,
+      ...result,
+    });
     assert.equal(result.exit, 0, 'private local browser failed');
     return;
   }

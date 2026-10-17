@@ -10,12 +10,14 @@ import { verifySeedAuthentication } from './seed-auth.mjs';
 import { validateSpecCommand } from './spec-runner.mjs';
 import { safeLocalCases, safeLocalResult, validateLocalCommand } from './private-contract.mjs';
 import { relayFailureCodes } from './forward.mjs';
+import { safeDiagnostic, safeDiagnosticResult } from './p1-diagnostics-contract.mjs';
 
 const image = 'kingturf-e2e:pw1.62.1-chrome';
 const imageId = 'sha256:1a0e14c3fd2351aab685106ad17d86b0bd38e6ed89cc0d0d2be809579f8dab3e';
 let localEventFile;
 let localChildClose;
 let localResultSeen = false;
+const diagnosticObserved = new Set();
 const report = (event, details = {}) => {
   const line = JSON.stringify({ event, ...details });
   if (localEventFile) appendFileSync(localEventFile, `${line}\n`, { mode: 0o600 });
@@ -40,9 +42,30 @@ const reportContainer = (value) => {
     'local-result': [],
     'local-progress': [],
     'relay-failure': [],
+    'p1-diagnostic': [],
+    'diagnostics-result': [],
   };
   assert(Object.hasOwn(schemas, value.event), 'unknown container event');
   const safe = {};
+  if (['p1-diagnostic', 'diagnostics-result'].includes(value.event)) {
+    assert.equal(mode, 'local');
+    assert.equal(process.argv[3], 'p1');
+    assert.equal(process.argv[5], 'diagnostics');
+    validateLocalCommand(value.kind, value.label, 'diagnostics');
+    assert.equal(value.kind, process.argv[3]);
+    assert.equal(value.label, process.argv[4]);
+    Object.assign(safe, { kind: value.kind, label: value.label });
+    if (value.event === 'p1-diagnostic') {
+      assert(!diagnosticObserved.has(value.id), 'duplicate fixed diagnostic');
+      Object.assign(safe, { id: value.id, values: safeDiagnostic(value.id, value.values) });
+      diagnosticObserved.add(value.id);
+    } else {
+      assert.equal(localResultSeen, false, 'duplicate private result');
+      assert.equal(localChildClose, undefined, 'diagnostics does not run the original spec child');
+      Object.assign(safe, safeDiagnosticResult(value, diagnosticObserved));
+      localResultSeen = true;
+    }
+  }
   for (const key of schemas[value.event]) {
     assert.equal(typeof value[key], 'boolean');
     safe[key] = value[key];

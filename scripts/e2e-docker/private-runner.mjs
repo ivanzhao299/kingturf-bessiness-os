@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process';
 import { mkdir, open, readFile, unlink, writeFile } from 'node:fs/promises';
 import { performance } from 'node:perf_hooks';
 import { safeLocalCases, safeLocalResult, validateLocalCommand } from './private-contract.mjs';
+import { runP1Diagnostics } from './p1-diagnostics.mjs';
 
 async function verifyPrivateFilesystem(label) {
   const mounts = await readFile('/proc/mounts', 'utf8');
@@ -33,6 +34,7 @@ export async function runPrivateSpec(command, signal, report) {
   for (const name of ['cache', 'config', 'data', 'state', 'runtime'])
     await mkdir(`/tmp/${name}`, { mode: 0o700 });
   const started = performance.now();
+  if (command.fault === 'diagnostics') return runP1Diagnostics(command, signal, report);
   if (command.fault === 'privacy') {
     const canary = 'FIXED_NON_SECRET_PRIVATE_RAW_CANARY';
     await writeFile('/tmp/kingturf-private/raw.log', canary, { mode: 0o600 });

@@ -38,3 +38,13 @@
 用户直接回答questionItemId `["request_user_input_async","call_c6716c69e26a40909872123527728d67",0]`：“允许上述最小只读诊断（推荐）”。许可为独立只读诊断，仅导出**预定义业务条件的匹配布尔值/计数**，例如拒绝卡片原敞口匹配、原KPI匹配、版本/状态映射、工作台存在。不得导出DOM文本、认证材料或原始产物，不改产品/seed/原断言/网络硬闸；原tmpfs/readonly容器、trace off及owned清理纪律保持。不是新的期待适配、不是批准任意查询/数据外传，也不是对未完成两例的结果推定。
 
 后继先版本化固定键/条件和类型白名单，再真实串行执行并保留实际退出/失败史；原spec只读，诊断不算原11绿或真变异闭环。此R7先独立docs提交，A–F继续，不等待P线全绿。
+
+### 只读诊断接线（待实际浏览器）
+
+`preflight.mjs local p1 <独占label> diagnostics`沿原readonly仓库/root、log-driver=none、owned tmpfs、原seed和同一性/relay硬闸启动；不运行或修改原P1 spec。独立`p1-diagnostics.mjs`手动真Chrome、单context串行读七页，固定390×844，只自然登录/菜单及查看订单证据的GET动作；不启动trace/截图，不导出DOM/原始错误或认证材料，debug模式明确拒绝。
+
+条件在`p1-diagnostics-contract.mjs`预先钉死：credit原三卡/敞口/额度匹配；production宽class及精确testid的存在/可见数；Order360原/本地化状态、自然展开后原计数词面/事件编码数；commission原/本地化版本pin与原金额；risk原/本地化严重度/关闭/规则词面；dashboard原四数值/原词面/币种匹配；manufacturing原/本地化版本数。每键只允许boolean或0–1000整数，ID必须固定string，unknown/缺键/额外字段/字符串值拒绝；不输出实际差异文本或实际未知金额，不调用产品formatter造期待。
+
+新诊断context禁Service Worker；本地Playwright1.62.1类型文档确认route不能覆盖SW捕获请求，独立review后收紧。HTTP请求仅允许精确127.0.0.1:4173 origin的GET/HEAD/OPTIONS和自然login POST（无query/URL凭据），其余请求与全部WebSocket关闭并使诊断失败；没有改原relay失败规则/两配置。七类观察事件由宿主再次重编码并独立记集合，只有实际browser.close成功且集合完整才接收独立diagnostics-result。该complete只代表七类诊断完成，**不计原11P1成功**；中断只保留已验证的partial观察。
+
+新4项contract反例＋原private7项＋session网络2项实际13/13，原ESLint/Prettier通过；已接根test:session-network-tools（零新依赖）。独立只读review未见raw/auth导出路径，SW缺口已按建议收紧；还未实跑新诊断、不称网络写闸已浏览器负向实证或完整CI绿。原P1 spec/seed/两配置/forward当前零diff。
