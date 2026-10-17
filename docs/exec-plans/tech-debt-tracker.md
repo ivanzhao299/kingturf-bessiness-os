@@ -1,5 +1,7 @@
 # 技术债台账（tech-debt-tracker）
 
+**阶段5风险专项新发现（2026-10-17，60项）**：新增TD-RISK-001，真实PG确证evaluate固定四参数却从$3拼recordScopeSql，SELF或真实TEAM锚点追加值导致08P01；不把无锚TEAM的正常not_found混作SQL失败。只登记不修产品，读取范围SQL另有正例；阶段5原58项基线外新PROC/RISK两项须纳入F，不回写旧计数。
+
 **阶段5采购专项新发现（2026-10-17，59项）**：新增TD-PROC-001，只登记不修产品：receive允许PARTIALLY_RECEIVED继续收货，但0038不允许状态仍为PARTIALLY_RECEIVED。独立静态复核一致，真实PG首收4/再收2确实P0001且收货/库存/证据整体回滚；最后余量6仍可收齐。[专项8项及日志](../evidence/harness-stage5-test-map-2026-10-17.md)，不把现状回滚测试绿当该缺陷已修。原阶段5基线58项不回写，F后继须纳入新第59项。
 
 **阶段5 Workspace实施收口（2026-10-17，仍58项）**：按5230625新字段许可仅补真实orders/finance tuple，原4过；缺字段真红3过1败→还原4过，旧session DTO真红4败→还原4过。TD-TEST-014仅旧夹具/文件适配实施验证关闭，不认定产品问题；A七份绿/成本一败，P1待逐页期待裁定、第二轮未开。[全部实际结果](../tasks/playwright-workspace-fixture-rulings-2026-10-17.md)。批次4已人工验收，SEC003载体项按5230625关闭；下方旧待裁/未验收均历史，阶段5其它义务未完成。
@@ -92,6 +94,7 @@
 | TD-API-002   | app.ts 深嵌套：≥7 层 3,202 行，最深 14 层                                                     | P2     | 复杂度         | 无                       | 批次 2                             | 待处理                          |
 | TD-REG-001   | QTC 前六模块提前读取仓储根，违反旧求值/receiver契约                                           | P1     | 重构回归       | 修复 bug（恢复旧契约）   | 2b独立回归恢复                     | 已解决（留历史）                |
 | TD-PROC-001  | 重复部分收货与采购单状态触发器冲突                                                            | P2     | 采购状态机     | 修复bug需单独批准        | 阶段5只登记                        | 真实PG确证/未修复               |
+| TD-RISK-001  | 风险评价窄scope参数偏移与固定四参数冲突                                                       | P2     | 数据范围SQL    | 修复bug需单独批准        | 阶段5只登记                        | 真实PG确证/未修复               |
 | TD-DUP-001   | 数据范围(DataScope) SQL 谓词在 12 个文件各复制一份                                            | P1     | 重复/安全      | 无                       | 批次 1                             | 已完成                          |
 | TD-DUP-002   | audit_events + domain_event_outbox 双写 44 处/20 文件                                         | P1     | 重复           | 无                       | 批次 1                             | 已完成                          |
 | TD-DUP-003   | 幂等键查询样板 23 行重复                                                                      | P2     | 重复           | 无                       | 批次 1                             | 已完成                          |
@@ -547,6 +550,13 @@
 - **修复建议**：阶段 5 接入 `@vitest/coverage-v8`，整体下限 + 关键模块（apps/api 仓储层、packages/domain）单独下限，进 `ci:local`。
 - **业务行为影响**：无 ｜ **关联批次**：阶段 5 ｜ **验收方式**：覆盖率报告产出 + 低于阈值实测拦截
 
+### TD-RISK-001｜风险评价窄scope参数偏移与固定四参数冲突
+
+- **位置**：`apps/api/src/risk-repositories.ts` evaluate:202–221；对照listEvaluations:32–39和`scope-sql.ts` recordScopeSql:174–211。
+- **证据**：evaluate先固定order/tenant/policy/assignee四参数，却调用scope offset=3；SELF/有效TEAM anchor把scope值作为第5参追加，而SQL占位仍复用$3，真实PG抛08P01。最终专项六项实际0/20363ms，独立只读复核一致；无锚TEAM为FALSE/无附加参数，正常not_found，不泛化为所有TEAM都失败。
+- **影响/状态**：评价窄范围的可用性错误；无生产环境动态观察、不称越权泄露。新共享夹具用正常客户ownership接口分配真实owner，再分别验证list SELF/TEAM读取与evaluate错位失败；失败前后evaluation/task/event计数及相关audit/outbox不增。只登记、未修复，负向现状刻画不是期望授权语义。
+- **后继**：参数位次修复及正向SELF/TEAM评价须R2独立批准/单独提交，不在阶段5纯测试中顺修生产SQL；COMPANY/GROUP无额外scope参数通过不抵销本项。[真实执行历史/边界](../evidence/harness-stage5-test-map-2026-10-17.md)。
+
 ### TD-PROC-001｜重复部分收货与采购单状态触发器冲突
 
 - **位置**：`apps/api/src/procurement-repositories.ts` receive:386–483；`packages/database/migrations/0038_procurement_inventory_integrity.sql`:22–33。
@@ -555,6 +565,8 @@
 - **后继**：产品语义和修复需R2/C7独立批准，再独立修复提交和正常多次部分收货回归。阶段5本轮仅测试/证据，不并入生产变更。
 
 ### TD-TEST-003｜6 个仓储模块仅 mock 路由级测试，SQL 路径未验证
+
+- **风险后继当前，未关闭**：制造6/MRP8/采购8/风险6专项实际PG绿，现4/6域；风险用真实商业图+正常ownership，recordScopeSql读SELF/TEAM正负和evaluate窄scope实际08P01区分，新增TD-RISK-001只登记未修。共享图经进程内真实dispatch/PG建数非网络HTTP，固定评分/任务/重放/失败回滚及audit边界见[测试地图](../evidence/harness-stage5-test-map-2026-10-17.md)。佣金/驾驶舱独立专项及其余覆盖矩阵待；下段为先前3/6时点，不覆盖本后继。
 
 - **阶段5实际进展，未关闭**：制造专项6项真实PG0、租户SQL实现真注入1败4过→还原5绿→补强最终6绿；MRP专项8项真实PG0，首漏outbox必填字段及共享图顺序依赖修正史完整保留；采购专项8项真实PG0/21242ms、每例独立schema/真实链/状态及事务回滚，新增TD-PROC-001只登记未修。源码恢复SHA/diff0及事件证据见[测试地图](../evidence/harness-stage5-test-map-2026-10-17.md)。这三域公司/GROUP限定并非recordScopeSql接口，也无幂等命令；其余三域专项未完成，MRP非零库存/采购和多桶矩阵仍欠。原“六个无专项”保留为发现时点，佣金/风险旧HTTP间接证据不漏记。
 

@@ -1,5 +1,17 @@
 # 阶段5现状测试地图与补齐清单
 
+## 后继实际补测：风险专项PG/共享商业图及新发现
+
+父d51f074后新增独立`risk-postgres.integration.test.ts`与可复用`fixtures/owned-commercial-graph.ts`。每例owned helper先guard/随机schema-only迁移，再同schema,public新pool以用原扩展函数；真实AuthService/SecurityStore/PG grants及两同tenant合成身份，复用原releasedOrderFixture经生产buildApp.dispatch建图。认证材料仅内存，不返回/打印，不记录原始API响应，身份初始化错误固定化；新pool先关，再owned db/drop/admin，setup失败聚合清理。独立安全只读review无必要阻断。准确称“真实PG+进程内dispatch”，不是HTTP网络/浏览器/Cookie/代理验证；共享fixture名不充显式release路径或订单状态证据。
+
+图中有原风险/佣金等记录，专项用独立code/key/correlation及前后差量，不伪称空表。原图创建客户无owner，补建数在**新helper**图完成后按真实version经正常ownership授权路由分配builder，同时形成assignment/history，不直接SQL伪造owner；原fixture/seed/生产源码不改。真实TEAM来自owned组织，同tenant reviewer用于SELF不可见反例。
+
+六项：policy版本/发布/生效日唯一冲突/不可变及audit-only精确action/id；固定quote margin2631、AR950000−100000=850000，低毛利45+逾期60封顶100/CRITICAL、五trace与自动任务；宽限下LOW0无任务；既有key回放持久行并无新写（现有不同input先replay的语义保持，不虚构hash冲突）；无效refs/外租户原子无新增；任务assignee边界、ack/escalate/close序1–4、空关闭证据先于replay校验与闭态拒绝；窄scope评价现有绑定缺陷。policy只有audit、evaluate/task当前无audit/outbox写入口，不发明配对。
+
+实际历史：新helper初tsc object→Record不兼容，在非null/非array检查后窄类型桥修正，原lint/tsc0。首guard0/单例smoke1过4skip、exit0/5727ms，不充全文件绿。首次完整六项4过2败/exit1/null/20371ms：SELF list客户未分配owner、错误把无锚TEAM也断08P01。等close后上述正常ownership补建数，SELF/实际TEAM锚点断08P01，空TEAM独立not_found；第二轮6/6、exit0/null/20245ms。再补list真实TEAM正例/无scope与reviewer SELF不可见后，最终6/6、exit0/null/20363ms（测试18550ms），start/result证明实际乱序。日志`/tmp/kingturf-stage5-risk-pg-{smoke,first,second,final}-2026-10-17.log`。独立review已核两处测试准备修正准确且不绕授权。两次patch因prettier锚点不精确原子未写，定位实际行后重施；无生产改动。
+
+新TD-RISK-001真实确证：evaluate有四固定参数，但recordScopeSql从3拼scope，SELF/实际TEAM锚追加值与SQL占位错位，PG08P01；无锚TEAM正常not_found。该例明确现状缺陷/无写回滚，不称期望授权语义或功能正确，不顺修SQL。台账60=原58+PROC/RISK两项，F须纳入。list offset2正确、真实归属后SELF/TEAM可读，与evaluate故障区分。未覆盖每种风险severity/临期信用分支、并发与全部anchor矩阵；LOW0宽限用例适用于当前2026验收时点及固定既有图，不泛称跨任意时钟环境。TEST003此时制造/MRP/采购/风险4/6，佣金/驾驶舱及最终覆盖率/CI待。
+
 ## TEST005：共享类型策略实施（非最终验收）
 
 父7c50c30后保留原DATA_SCOPES长度6运行时断言，并补独立固定六值/顺序；新增`packages/types/src/contracts.test.ts`4项类型合同。选择已有Vitest expectTypeOf正向类型等价/包含及tsc检查的@ts-expect-error反例，不引tsd/其它依赖、不豁免包、不改生产types。覆盖闭合DataScope/error code、PermissionKey冒号形状、Page必填nextCursor及只读数组/字段、Customer360固定unavailable tuple、Money字符串金额、递归JSON排除函数/undefined、RuleExpression判别分支/必填左右操作数。故意无效代码放不调用的函数中，仅检查其类型，不执行无效值。
@@ -97,7 +109,7 @@ C安全注入实做于`packages/domain/src/index.ts`字段权限分支，临时d
 | QTC信用/合同/订单/应收/付款/核销          | qtc-\*与root-capture（335旧护栏）                                                                                  | qtc-postgres、授权PG、released-order-http fixture间接                                                         | 共享；履约/财务CDP历史，PW部分待裁                                     |
 | 催收/法务                                 | collection-route-contract                                                                                          | collection-postgres及授权PG                                                                                   | 共享；财务风险CDP历史                                                  |
 | 佣金                                      | commission-route-contract、scope-sql-commission                                                                    | released-order-http:192实际accrue、授权PG:507范围读取；缺专项PG重放/事务证据                                  | 共享；财务风险CDP历史                                                  |
-| 风险                                      | risk-route-contract、scope-sql-risk                                                                                | released-order-http:209真实评估、授权PG:456/507字段/范围；缺专项重放/任务状态SQL                              | 共享；财务风险CDP历史                                                  |
+| 风险                                      | risk-route-contract、scope-sql-risk                                                                                | 新risk-postgres专项6项真实PG绿，固定评分/状态/租户/回滚；TD-RISK-001只登记不修（详见本文）                    | 共享；财务风险CDP历史                                                  |
 | 经营看板                                  | dashboard-route-contract、scope-sql-dashboard                                                                      | 13 PG文件中未找到dashboard实际查询；补专项                                                                    | 共享；财务风险CDP历史                                                  |
 | 制造主数据                                | manufacturing-route-contract                                                                                       | 新manufacturing-postgres专项6项真实通过（详见本文后继证据）；production PG旧直接种子仍另计                    | 共享；运营CDP历史                                                      |
 | 采购/库存                                 | procurement-route-contract                                                                                         | 新procurement-postgres专项8项真实通过，真实资格/收货/台账/回滚；TD-PROC-001只登记不修（详见本文）             | 共享；运营CDP历史                                                      |
