@@ -260,11 +260,39 @@ export async function createFixture(connection) {
       );
       assert.deepEqual(result.rows[0], { denied: 0, accepted: 1 });
     };
+    const verifySeedCost = async () => {
+      const result = (
+        await db.query(
+          `SELECT
+        (SELECT count(*)::int FROM production_cost_policies WHERE source_reference=$1) policies,
+        (SELECT count(*)::int FROM production_cost_policy_material_rates x JOIN production_cost_policies p ON p.id=x.policy_id AND p.tenant_id=x.tenant_id WHERE p.source_reference=$1) rates,
+        (SELECT count(*)::int FROM production_cost_runs WHERE run_number=$2) runs,
+        (SELECT count(*)::int FROM production_cost_run_events e JOIN production_cost_runs r ON r.id=e.cost_run_id AND r.tenant_id=e.tenant_id WHERE r.run_number=$2) events,
+        (SELECT count(*)::int FROM production_cost_run_events e JOIN production_cost_runs r ON r.id=e.cost_run_id AND r.tenant_id=e.tenant_id WHERE r.run_number=$2 AND e.state='APPROVED') approved,
+        (SELECT count(*)::int FROM production_cost_run_events e JOIN production_cost_runs r ON r.id=e.cost_run_id AND r.tenant_id=e.tenant_id WHERE r.run_number=$2 AND e.state='CALCULATED') calculated,
+        (SELECT bool_and(e.actor_id<>r.created_by) FROM production_cost_run_events e JOIN production_cost_runs r ON r.id=e.cost_run_id AND r.tenant_id=e.tenant_id WHERE r.run_number=$2 AND e.state='APPROVED') separated,
+        (SELECT count(*)::int FROM production_orders o JOIN production_order_effective_states s ON s.production_order_id=o.id AND s.tenant_id=o.tenant_id WHERE o.order_number=$3 AND s.state='CLOSED') closed`,
+          ['KT-P1-ACTUAL-COST-V1', 'COST-WO-KT-2026-001', 'WO-KT-2026-001'],
+        )
+      ).rows[0];
+      assert.deepEqual(result, {
+        policies: 1,
+        rates: 2,
+        runs: 1,
+        events: 2,
+        approved: 1,
+        calculated: 1,
+        separated: true,
+        closed: 1,
+      });
+      return result;
+    };
     return {
       expected,
       containerConnection: containerTarget.href,
       initialize,
       verifyProbeWrites,
+      verifySeedCost,
       assertApiOwned: () => assertOwnedListener(3000, children[0]),
       close,
     };

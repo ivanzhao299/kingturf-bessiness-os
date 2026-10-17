@@ -1162,6 +1162,129 @@ if (productionOrder.state === 'IN_PROGRESS') {
   });
   productionOrder = await reloadProductionOrder();
 }
+// Local P1 preparation only: satisfy the existing cost approval contract before the original close.
+async function ensureP1ActualCost(order) {
+  const target = new URL(baseUrl);
+  assert(
+    target.protocol === 'http:' && ['127.0.0.1', 'localhost', '[::1]'].includes(target.hostname),
+  );
+  const sourceReference = 'KT-P1-ACTUAL-COST-V1';
+  const runNumber = 'COST-WO-KT-2026-001';
+  const calculationKey = 'WO-KT-2026-001-COST-CALC';
+  const approvalKey = 'WO-KT-2026-001-COST-APPROVE';
+  const materialRates = [
+    { itemVersionId: yarn.id, unitCost: '12.5', sourceReference: 'RM-KT-YARN-12000-P1-RATE-V1' },
+    { itemVersionId: backing.id, unitCost: '5', sourceReference: 'RM-KT-BACKING-PP-P1-RATE-V1' },
+  ];
+  const policies = await list('/api/v1/production-cost-policies');
+  const matches = policies.filter(
+    (item) => (item.source_reference ?? item.sourceReference) === sourceReference,
+  );
+  assert(matches.length <= 1, 'P1 cost policy identity must be unique');
+  let policy = matches[0];
+  if (!policy) {
+    assert.equal(order.state, 'COMPLETED', 'Never create a missing policy for a closed order');
+    assert(!policies.some((item) => item.version === 1), 'P1 policy version conflicts');
+    await request('/api/v1/production-cost-policies', {
+      method: 'POST',
+      body: {
+        version: 1,
+        currency: 'CNY',
+        laborRatePerHour: '60',
+        machineRatePerHour: '120',
+        overheadRatePerMachineHour: '30',
+        effectiveFrom: '2026-01-01',
+        sourceReference,
+        materialRates,
+      },
+    });
+    policy = (await list('/api/v1/production-cost-policies')).find(
+      (item) => (item.source_reference ?? item.sourceReference) === sourceReference,
+    );
+  }
+  assert(policy, 'P1 cost policy must be readable');
+  assert.equal(policy.version, 1);
+  assert.equal(policy.currency, 'CNY');
+  assert.equal(Number(policy.labor_rate_per_hour ?? policy.laborRatePerHour), 60);
+  assert.equal(Number(policy.machine_rate_per_hour ?? policy.machineRatePerHour), 120);
+  assert.equal(
+    Number(policy.overhead_rate_per_machine_hour ?? policy.overheadRatePerMachineHour),
+    30,
+  );
+  assert.equal(policy.effective_from ?? policy.effectiveFrom, '2026-01-01');
+  assert.equal(policy.effective_to ?? policy.effectiveTo ?? null, null);
+  const rates = (policy.materialRates ?? [])
+    .map((rate) => ({
+      itemVersionId: rate.item_version_id ?? rate.itemVersionId,
+      unitCost: Number(rate.unit_cost ?? rate.unitCost),
+      sourceReference: rate.source_reference ?? rate.sourceReference,
+    }))
+    .sort((a, b) => a.itemVersionId.localeCompare(b.itemVersionId));
+  assert.deepEqual(
+    rates,
+    materialRates
+      .map((rate) => ({ ...rate, unitCost: Number(rate.unitCost) }))
+      .sort((a, b) => a.itemVersionId.localeCompare(b.itemVersionId)),
+    'P1 cost material bindings must match exactly',
+  );
+  const findRun = async () => {
+    const all = await list('/api/v1/production-cost-runs');
+    const runs = all.filter(
+      (item) => (item.production_order_id ?? item.productionOrderId) === order.id,
+    );
+    assert(runs.length <= 1, 'P1 order cost run must be unique');
+    assert(
+      !all.some(
+        (item) =>
+          (item.run_number ?? item.runNumber) === runNumber &&
+          (item.production_order_id ?? item.productionOrderId) !== order.id,
+      ),
+      'P1 run number conflicts',
+    );
+    return runs[0];
+  };
+  let run = await findRun();
+  if (!run) {
+    assert.equal(order.state, 'COMPLETED', 'Cost calculation requires completed order');
+    await request('/api/v1/production-cost-runs', {
+      method: 'POST',
+      body: {
+        productionOrderId: order.id,
+        policyId: policy.id,
+        runNumber,
+        idempotencyKey: calculationKey,
+      },
+    });
+    run = await findRun();
+  }
+  assert(run, 'P1 cost run must be readable');
+  assert.equal(run.policy_id ?? run.policyId, policy.id);
+  assert.equal(run.run_number ?? run.runNumber, runNumber);
+  assert.equal(run.idempotency_key ?? run.idempotencyKey, calculationKey);
+  assert.equal(run.created_by ?? run.createdBy, adminEmployeeId);
+  assert(
+    ['CALCULATED', 'APPROVED'].includes(run.state),
+    'Unexpected P1 cost state must not be overwritten',
+  );
+  if (run.state === 'CALCULATED') {
+    await request(`/api/v1/production-cost-runs/${run.id}/approve`, {
+      token: approver,
+      method: 'POST',
+      body: {
+        reason: 'P1本地演示实际成本独立审核',
+        evidence: { source: 'KT-P1-ACTUAL-COST-V1' },
+        idempotencyKey: approvalKey,
+      },
+    });
+  }
+  assert.equal(
+    (await findRun()).state,
+    'APPROVED',
+    'P1 cost approval must be effective before closing',
+  );
+}
+if (['COMPLETED', 'CLOSED'].includes(productionOrder.state))
+  await ensureP1ActualCost(productionOrder);
 if (productionOrder.state === 'COMPLETED') {
   await request(`/api/v1/production-orders/${productionOrder.id}/close`, {
     method: 'POST',

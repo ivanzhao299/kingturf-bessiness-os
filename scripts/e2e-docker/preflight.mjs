@@ -74,6 +74,7 @@ assert(
     'seed-auth',
     'seed-auth-abort',
     'seed-full',
+    'seed-repeat',
     'seed-diagnose',
   ].includes(mode),
   'unknown preflight argument',
@@ -204,6 +205,7 @@ try {
           mode === 'seed-auth' ||
           mode === 'seed-auth-abort' ||
           mode === 'seed-full' ||
+          mode === 'seed-repeat' ||
           mode === 'seed-diagnose'
         ) {
           phase = mode;
@@ -226,50 +228,56 @@ try {
               noCookieMachineBearer: true,
             });
           } else {
-            const seedStart = performance.now();
-            seedChild = spawn(
-              process.execPath,
-              ['--import', './scripts/e2e-docker/seed-audit.mjs', 'scripts/seed_p1_demo.mjs'],
-              {
-                env: {
-                  ...process.env,
-                  KINGTURF_BASE_URL: 'http://127.0.0.1:3000',
-                  KINGTURF_ADMIN_LOGIN: users.admin.login,
-                  KINGTURF_ADMIN_PASSWORD: users.admin.password,
-                  KINGTURF_CREDIT_APPROVER_LOGIN: users.approver.login,
-                  KINGTURF_CREDIT_APPROVER_PASSWORD: users.approver.password,
+            for (let pass = 1; pass <= (mode === 'seed-repeat' ? 2 : 1); pass++) {
+              const seedStart = performance.now();
+              seedChild = spawn(
+                process.execPath,
+                ['--import', './scripts/e2e-docker/seed-audit.mjs', 'scripts/seed_p1_demo.mjs'],
+                {
+                  env: {
+                    ...process.env,
+                    KINGTURF_BASE_URL: 'http://127.0.0.1:3000',
+                    KINGTURF_ADMIN_LOGIN: users.admin.login,
+                    KINGTURF_ADMIN_PASSWORD: users.admin.password,
+                    KINGTURF_CREDIT_APPROVER_LOGIN: users.approver.login,
+                    KINGTURF_CREDIT_APPROVER_PASSWORD: users.approver.password,
+                  },
+                  stdio: ['ignore', 'ignore', 'pipe'],
                 },
-                stdio: ['ignore', 'ignore', 'pipe'],
-              },
-            );
-            const errors = createInterface({ input: seedChild.stderr, crlfDelay: Infinity });
-            errors.on('line', (line) => {
-              try {
-                const detail = JSON.parse(line);
-                if (
-                  detail.kind === 'seed-http-failure' &&
-                  /^[A-Z]+$/u.test(detail.method) &&
-                  /^\/api\/v1\/[a-zA-Z0-9_/-]+$/u.test(detail.path) &&
-                  Number.isInteger(detail.status)
-                )
-                  report('seed-http-failure', {
-                    method: detail.method,
-                    path: detail.path,
-                    status: detail.status,
-                  });
-              } catch {
-                /* Do not relay raw stderr or identity-bearing assertion text. */
-              }
-            });
-            const exit = await new Promise((resolve, reject) => {
-              seedChild.once('error', () => reject(Error('owned seed spawn failed')));
-              seedChild.once('exit', resolve);
-            });
-            report('seed-full-result', {
-              exit,
-              elapsedMs: Math.round(performance.now() - seedStart),
-            });
-            assert.equal(exit, 0, 'full frozen seed failed; do not repair business steps');
+              );
+              const errors = createInterface({ input: seedChild.stderr, crlfDelay: Infinity });
+              errors.on('line', (line) => {
+                try {
+                  const detail = JSON.parse(line);
+                  if (
+                    detail.kind === 'seed-http-failure' &&
+                    /^[A-Z]+$/u.test(detail.method) &&
+                    /^\/api\/v1\/[a-zA-Z0-9_/-]+$/u.test(detail.path) &&
+                    Number.isInteger(detail.status)
+                  )
+                    report('seed-http-failure', {
+                      method: detail.method,
+                      path: detail.path,
+                      status: detail.status,
+                    });
+                } catch {
+                  /* Do not relay raw stderr or identity-bearing assertion text. */
+                }
+              });
+              const exit = await new Promise((resolve, reject) => {
+                seedChild.once('error', () => reject(Error('owned seed spawn failed')));
+                seedChild.once('exit', resolve);
+              });
+              report('seed-full-result', {
+                pass,
+                exit,
+                elapsedMs: Math.round(performance.now() - seedStart),
+              });
+              assert.equal(exit, 0, 'full frozen seed failed; do not repair business steps');
+              const counts = await fixture.verifySeedCost();
+              report('cost-seed-same-schema-counts', { pass, ...counts });
+              cancellation.signal.throwIfAborted();
+            }
           }
           cancellation.signal.throwIfAborted();
           await send({ action: 'verified-only' });

@@ -1,5 +1,7 @@
 # Docker P1 种子机器认证适配与 C7 停点（2026-10-17）
 
+**后继批准与实测**：人类已另授成本最小增量R7，原close前政策/核算/异人批准已实施，真实缺料/自批变异红后立即还原，同schema完整seed连续两次0且计数不变，见[独立证据](playwright-p1-cost-seed-2026-10-17.md)。下列“当前停点/待裁/未实施”为原时点失败史，保留不抹除；A/B仍未执行，不抵spec义务。
+
 **当前停点**：信用500已证本轮owned schema未暴露已装public.pgcrypto，独立环境修正e2c8ce6后信用通过（TD-TEST-010）；原seed随即推进到生产关单500，安全诊断P0001/require_approved_cost_before_close。冻结seed缺实际成本批准业务步骤（TD-TEST-011待决），不属仅认证URL/环境授权，当前停止后继spec/两轮；下文信用C7为初次历史，完整失败史保留。两配置/spec/业务源码/迁移/SQL均未改。
 
 [具体最小待裁方案](../tasks/playwright-p1-cost-seed-proposal-2026-10-17.md)只准备本地owned演示policy/计算/异人批准后继续原close，费率/稳定标识及复用规则明确；未实施，不将增加业务seed假装成fixture环境修正。

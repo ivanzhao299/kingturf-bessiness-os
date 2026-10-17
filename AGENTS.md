@@ -8,7 +8,7 @@ KingTurf 业务操作系统：面向草坪行业外贸业务的 ERP（CRM→报�
 
 ## 如何开始（渐进式披露：先地图，再细节）
 
-P1成本seed最小追加已获人类批准，7b1bc62真实干净HEAD全CI0/206168.393ms后续独立R7（`docs/tasks/playwright-p1-cost-seed-authorization-2026-10-17.md`）；只本地policy→calculate→现有异人approve→原close，旧C7为前时点。真实变异/同schema重复/后继spec仍待做，台账51不提前关闭，其余业务/断言/SQL/PW配置/生产保护保持。
+P1成本seed最小追加已按人类R7实施：仅原close前policy→calculate→现有异人approve，原其它字节守恒；缺料/自批真实红→还原后同schema完整seed两次0、计数不变。证据 `docs/evidence/playwright-p1-cost-seed-2026-10-17.md`；TD-TEST-011本地前置已验证，台账51，旧C7为历史。提交后干净HEAD全CI再续既授fixture/A8→B2/第二轮；其余业务/断言/SQL/PW配置/生产保护保持。下方旧停点均为前时点。
 
 Docker Playwright前置当前停点：三项人裁已落R7，回环/自然Cookie/PG同一性工具与seed机器URL真红绿完成；TD-TEST-010仅环境pgcrypto可见性已修，完整冻结seed推进到生产关单缺实际成本批准（TD-TEST-011）。台账51，具体业务seed步骤待新裁定，C7停止spec适配/A8/B2/两轮；C生产不跑、两配置/spec/业务源码不改。证据 `docs/evidence/playwright-docker-seed-auth-2026-10-17.md`；最后HEAD完整CI后交协调，非一般阶段5/覆盖率/收官。下方为历史时点。
 

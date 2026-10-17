@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[P1本地成本种子验证](evidence/playwright-p1-cost-seed-2026-10-17.md)：最小原close前准备、其它字节不变；真实缺料/自批红、立即还原后同schema完整seed重复绿，计数1/2/1/2/异人/closed不变；独立只读复核，最终HEAD完整CI另实跑。下方旧待裁/未实施为前时点。
+
 [P1本地成本种子增量R7](tasks/playwright-p1-cost-seed-authorization-2026-10-17.md)：原始人类批准已审方案最小本地policy/核算/异人批准，7b1bc62实际干净HEAD全CI0先完成；原close/其它步骤/SQL/配置/断言保护，独立变异/重复验证待执行。
 
 [P1实际成本种子最小待裁方案（未实施）](tasks/playwright-p1-cost-seed-proposal-2026-10-17.md)：既有API policy→calculate→异人approve→原close、两主BOM测试费率/稳定标识与幂等候选；仅owned演示，事实/假设分开，不绕trigger/改SQL/断言。
