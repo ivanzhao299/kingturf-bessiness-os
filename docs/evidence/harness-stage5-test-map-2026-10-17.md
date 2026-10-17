@@ -1,5 +1,11 @@
 # 阶段5现状测试地图与补齐清单
 
+## Web线索列表渲染与命令接线护栏
+
+父4840b35新增`lead-records-behavior.test.ts`9项，真实appendLeadList/CrmController.visibleLeads与leadPageItems；12条pool加重复lead样本真实去重、第2页两行、search回1页并显示唯一匹配、分页回调/空队列。新增/生命周期/分配/改派/释放固定payload与原Lead引用、权限/整数版本/已知owner门槛；员工选项/无选项输入区别。create pending完成前不bootstrap、成功后原shell/controller引用；各form命令reject不bootstrap。claim只测原对象传入与成功等待，不称reject恢复（源码.then无catch），不制造未捕获拒绝。
+
+openForm与实例createLead/claim/mutateLead被mock/spy，故不证明真实API写入/控制器二次权限或浏览器原生表单。独立只读复核无必要阻断。新测试首lint一处void简写及tsc一处exactOptional显式undefined，分别改块体与实际缺省version样本，原规则不降；原eslint/tsc0，target9/9实际0/316ms，日志`/tmp/kingturf-stage5-lead-records-first-2026-10-17.log`，Web全19文件375项实际exit0，日志`/tmp/kingturf-stage5-lead-records-final-2026-10-17.log`。产品/原测试/网络/B不改，不充最终CI/六包覆盖门禁。
+
 ## Web共享表单与文件表单编排护栏
 
 父d11e9b9新增`forms-behavior.test.ts`24项，调用原openForm/openFileForm。明确将native validity与FormData作为受控外部输入，验证字段metadata/选项/初值/分组/提示、现有datetime-local映射为text、无效控件计数/焦点/aria修复、entries trim及非字符串转空、busy重复submit拒绝、成功close/remove/finally恢复、Error/非Error失败保留并重试、dirty取消/Escape确认与无confirm分支。敏感操作只证明**勾选后按钮启用及失败恢复当前勾选状态**；submit listener本身不校checkbox，不把该UI提示写成后端/程序submit安全门禁，不顺改产品。文件例注入实际File的size元数据，验证25MiB+1拒绝/恰好边界接受、传原File引用、失败重试/取消/按钮恢复，不分配大buffer、不充真实上传。

@@ -3752,6 +3752,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+- **2026-10-17｜Web线索列表护栏**：父4840b35新增9项，真实controller筛选/去重/分页、权限/版本/owner按钮门槛、固定命令/原Lead引用与成功后bootstrap；命令与表单仍端口spy，不充真实API。原eslint/tsc0、target9过/Web19/375实际0；[独立复核/精确范围](../../evidence/harness-stage5-test-map-2026-10-17.md)，claim仅成功pending，不冒称拒绝恢复。回滚本新test/docs独立revert，产品/原测试/B不变。[已测试]（Web全包，非完整CI）
+
 - **2026-10-17｜Web共享表单编排护栏**：父d11e9b9，新增24项，受控native validity/FormData输入，验证忙态/输入转换/错误焦点/失败重试/取消/敏感按钮启用及文件25MiB边界。首23过1败为partial DOM格式化matcher不支持，换次数+参数恒等，后24绿；原eslint/tsc0、Web18/366带V8实际0/2.13s。[独立复核/证据边界](../../evidence/harness-stage5-test-map-2026-10-17.md)。单包9835/20592同分母，非六包check/完整CI，敏感checkbox不冒称submit listener强制门禁。产品/原测试/B不变；回滚本新test/docs独立revert。[已测试]（Web全包及单包V8，非完整CI）
 
 - **2026-10-17｜Web生产/发运动作回调护栏**：父c14884e，新增15项状态/权限/固定payload与幂等键/日期/库存选项快照/失败不刷新/延迟load状态更新测试；只mock openForm入口，真实动作函数回调。[范围与独立复核](../../evidence/harness-stage5-test-map-2026-10-17.md)。原eslint/tsc0、Web17/342实际0；不改产品/种子/原断言，不充浏览器原生校验/后端事务/新六包覆盖check/最终CI。回滚本新test与docs独立revert。[已测试]（Web全包，非完整CI）
