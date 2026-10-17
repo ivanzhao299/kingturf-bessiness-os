@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **revocation首轮（2026-10-17）**：依已授三文件oracle，旧storage改合成Jar/实际恢复响应，401客户端失效不要求清HttpOnly，403同Jar恢复；原即时业务UI断言保持。真实撤销条件/403删Cookie各红后还原2过PW0/3577ms、host0/9211ms；一次SIGTERM中断明确不算绿，owned全清，[证据](../../evidence/playwright-docker-spec-replay-2026-10-17.md)。login2/doc7/order1/revocation2过，Workspace3过1败缺字段待裁、cost1过1败；startup/source/B未跑，第二轮禁/C禁，最后HEAD全CI必跑。
+
 - **order首轮候选（2026-10-17）**：仅合成会话fixture迁移，原15expect及viewport后全部操作/业务mock守恒；旧token真实红host1/11745ms→完整清理后还原原1case host0/8694ms，eslint0，[证据](../../evidence/playwright-docker-spec-replay-2026-10-17.md)。当前login2/doc7/order1过，cost1过1败待裁，余4A/2B未跑、C禁/未第二轮；人类已另批workspace单void语法，须独立落R7再改，未扩其它行为。最终最后HEAD全CI仍待执行。
 
 - **文档发送后继（2026-10-17）**：人类ba294ae仅授本spec旧8处机械兼容；会话适配真实旧token红2败5过、严格还原7过，机械后再7过，47expect调用/参数与除未使用void例外的擦除JS全同、原lint0。一次过早恢复被端口拒绝1/85ms保历史，后等全部close再串行验证；[全部命令/红绿/机械映射](../../evidence/playwright-docker-spec-replay-2026-10-17.md)。旧header额外tsc仍2，不关闭TD-TEST-012；成本TD-TEST-013仍待裁，余5A/2B未跑、第二轮禁/C禁，独立首轮续。
@@ -3721,6 +3723,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+- **2026-10-17｜session-revocation会话oracle迁移**：父5ef45bc，仅既授旧storage setup/oracle→合成Cookie、401即时UI失效/受控撤销reload401、403原Jar保留/reload200，原业务拒绝和UI断言保持。两真源变异分别401错误恢复200红、403清Jar布尔false红；各完整清理后还原，最终原2例PW0/3577ms、host0/9211ms，实际response观察非预定status。中间一次还原运行leader SIGTERM/host1/8242ms源未证，不算绿/不隐去；全部owned清理true。原lint/format0，只读review无阻断，[完整映射/失败史](../../evidence/playwright-docker-spec-replay-2026-10-17.md)。不声称实际API安全或401清Cookie，未跑B/第二轮/C，最后HEAD完整CI仍必跑。[已测试]（本spec2过，非全A/B通过）
 
 - **2026-10-17｜Workspace等待点独立修正**：父0c9a886，按bfdbcc4本会话人裁仅q=慢请求requested/await原gate、首次原JSON照回；原16expect/主切页RAF动作字节同，固定安全release日志实证一次hash=#/quotes。初修PW1/9435ms、host1/15210ms，3过1败；真实广路径条件变异PW1/39005ms、host1/44821ms、成本30s又红，完整清理后还原PW1/9562ms、host1/15129ms，目标成本case过/3过1败。字段仍未授权未改，原360失败及所有截图trace保留，owned全清，[分层证据](../../tasks/playwright-workspace-fixture-rulings-2026-10-17.md)。只等待点目标真红绿，不称全file已交付；TD-TEST-014/54仍开放，成本oracle/产品/C/第二轮不扩，最后HEAD全CI必跑。[已测试]（整file仍1败）
 

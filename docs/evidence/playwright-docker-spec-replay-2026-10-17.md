@@ -121,6 +121,25 @@ e92bbe9后仅在已有strict TS工程补本地P1文件include，供未来获准�
 
 每次host guard/容器READ ONLY同实例通过，owned三清理均true；红HTML及artifacts下test-failed-1.png/trace.zip实际存在，未覆盖/不跳过。最后无token变异，父253b761为独立回滚点。本文件绿不抵其它spec/成本失败/第二轮，不是API授权或真实Set-Cookie证据。最终最后提交完整CI必跑。
 
+## session-revocation：已授会话 oracle 最小迁移
+
+父5ef45bc，依4e691e5三项人裁，仅该文件旧storage setup/oracle迁移。先种合成Secure/HttpOnly Jar再导航，不再先发一次未拦截真实restore；原员工/权限、cost搜索/拒绝payload及即时401登录提示/撤shell、403错误/留shell断言均保持。401不要求JS删除HttpOnly Cookie：原storage-null改为原即时UI失效，加显式reload仍登录/无shell；403原storage值改为Jar前后相等布尔，不输出值，并reload证同Cookie可恢复。恢复mock只在实际Cookie存在且未由实际业务401标记revoked时200，不能无条件200伪造恢复；revoked只属受控mock契约，不冒充真实服务端撤销。
+
+新增deniedRequests>0避免未触发拒绝空过；最终restoreStatuses由浏览器response事件记录，显式reload后必须恰有[401]/[200]。初候选曾在handler记录预定status，首401变异使用该初版；恢复后改为实际响应观察，再完成403变异和最终绿。只读reviewer确认原目的保持；Jar比较只输出true/false，真实API/两实例安全另依原S4证据。
+
+实际命令同首节，文件=session-revocation.spec.ts，label/真实结果：
+
+| label                         | 实际PW；host                                                                                                                             |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| revocation-adapt-green-1      | 原2例通过，PW0/3765ms；host0/9702ms                                                                                                      |
+| revocation-restored-200-red-1 | 真源删除restore的revoked条件，401例刷新登录断言红、403过；PW1/8697ms；host1/14515ms。未到最后status断言，不声称由其抓红                  |
+| revocation-observed-green-1   | 还原且改实际response观察，2过，PW0/3637ms；host0/8959ms                                                                                  |
+| revocation-403-clear-red-1    | 真源仅403拒绝响应发过期auth Cookie，浏览器接受删除，Jar相等布尔false抓红；401过，PW1/3897ms；host1/9421ms                                |
+| revocation-restored-final-1   | 还原后执行被中断：401已过，PW leader close=null/SIGTERM，无完整spec-result；host1/8242ms。不算测试绿，确切中断源未证，不将其改称断言失败 |
+| revocation-restored-final-2   | 等完整清理后同源码重跑，原2过；PW0/3577ms；host0/9211ms                                                                                  |
+
+每轮owned schema/container/preview清理true；两变异截图/trace/HTML实际留各唯一目录，异常中断原日志亦保留。原ESLint/Prettier检查0，git diff --check0；未改产品/配置/业务断言，不清401 Jar、不修改网络防护。父5ef45bc为本文件回滚点；独立首轮继续，不抵cost/Workspace现存失败或B未跑，不启动第二轮。最终最后HEAD完整CI仍必跑。
+
 ## Workspace auth/单void部分通过检查点（未交付全文件）
 
 只旧storage→共享合成Jar，原auth/session DTO包sessionResponse，员工/权限/所有业务mock原样；另按dc43e81本会话人裁改原setAttribute回调块体，原调用/值/await未读返回不变。16个expect调用参数与原文件同，机械transpile局部对照只该void形态不同、原ESLint0。
