@@ -9,7 +9,8 @@ export default class PrivateReporter {
   discovered = 0;
   invalid = false;
 
-  constructor(writer = writeFileSync) {
+  constructor(options = {}, writer = writeFileSync) {
+    assert.equal(typeof options, 'object', 'native reporter options must be an object');
     this.writer = writer;
   }
 

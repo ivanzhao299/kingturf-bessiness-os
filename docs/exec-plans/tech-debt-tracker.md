@@ -432,6 +432,8 @@
 
 ### TD-TEST-017｜私有reporter构造options兼容缺口
 
+- **后继窄修候选**：ed614ba原生构造红例后，仅options首参和unit writer第二参分离，回归6/6/原lint/format0，原安全字段/完整性/网络失败规则保持；真实PW接线待实跑，不以unit提前关闭。[映射/结果](../evidence/playwright-local-private-runner-2026-10-17.md)。
+
 - **事实**：本轮43047ec新增同步partial writer构造参数误把PW传入options对象当函数；本地官方runner:4917/4926明确new reporterConstructor(options)，新直接调用形状unit实际1/5过1败。43047ec诊断partial0不证明没有执行case，旧f56365c完整11败有效，raw均按R7清理。
 - **范围/状态**：仅本轮已授B工具自身兼容回归，已登记待分离options与unit writer参数/独立修复，原配置/业务assert/网络失败规则不改；[真实故障/红例](../evidence/playwright-local-private-runner-2026-10-17.md)。不计B绿或扩大原待裁问题。
 

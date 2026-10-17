@@ -3738,6 +3738,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+- **2026-10-17｜reporter options最小兼容修正候选**：父ed614ba已先原生形状unit红1/5过1败/TD-TEST-017登记，现仅构造options首参核object不作writer、writer第二参默认fs，unit显式第二参注入；首未使用\_options候选lint1/pre-commit拒绝未提交，后核原生契约修正不降规则，最终6/6及原lint/format/diff0，其它安全字段/完整性/转发失败条件不改。[证据](../../evidence/playwright-local-private-runner-2026-10-17.md)。只本轮私有执行器兼容修正，真实PW接线待runtime/P1验证，57项不提前关闭；原P1完整11败/C/第二轮/最后HEAD全CI边界保持。[已测试]（unit红绿，真实B未验证）
+
 - **2026-10-17｜私有reporter原生构造回归红例**：43047ec后p1-safe-location-2记录upstream4173 CONNECT_TIMEOUT/closingfalse、PWnull/SIGTERM、partial不可用、host1/41330ms/owned全清；非RESET证据。亲核已装官方PW runner4917/4926传options对象，当前writer构造误收；新增原生`new PrivateReporter({})`回归unit1/5过1败，先TD-TEST-017登记/57，[证据/限制](../../evidence/playwright-local-private-runner-2026-10-17.md)。本提交只工具红例与记录，不改产品/业务/config/转发失败条件；下一步最小参数分离独立修复，原f56365c完整11败有效，不将0partial当真实0发现。C/第二轮/最后HEAD全CI保持。[已测试]（明确工具红例，非绿）
 
 - **2026-10-17｜B中断安全观测补齐**：32bb2b4后p1-safe-location-1同11例实际close=null/SIGTERM、host1/44424ms、owned全清、无完整result，不充绿/不猜relay原因。仅转发器固定port/side/errno枚举观测（原失败条件/字节转发不改），reporter同步逐例安全partial、onEnd才complete、取消local-progress固定complete=false，原成功完整性不降；unit5/原lint过，[事实/未核原因](../../tasks/playwright-p1-replay-blocker-2026-10-17.md)。不读raw/错误正文、原业务/config/P1候选保持，仍待实际诊断/独立复核；C/第二轮/最后HEAD全CI保护保持。[已测试]（中断/工具unit，非B绿）

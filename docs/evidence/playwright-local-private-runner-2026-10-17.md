@@ -52,3 +52,5 @@ P1首轮随后启动、同schema完整seed实际0/3030ms及成本计数检查通
 另从已安装Playwright1.62.1官方源码`lib/runner/index.js:4916–4917,4925–4926`亲核：框架会`new reporterConstructor(options)`。43047ec新增`PrivateReporter(writer=writeFileSync)`把此options对象当writer，实际持久化会非函数；旧无构造器的f56365c完整11例全败记录不受此新增缺口影响。故43047ec此次0项partial不是“已证没有执行case”，而是安全观测不可用，不能给真实发现数作假。
 
 先登记TD-TEST-017/57顶层项；新增直接用`new PrivateReporter({})`的原生调用形状回归，实际unit exit1/5过1败，日志`/tmp/kingturf-local-private-reporter-options-red-1-2026-10-17.log`。这属于本轮已授私有执行器自身兼容缺口，不借机修产品/业务期待；下一步仅分开options与unit writer参数、还原其它语义，独立提交/真实回归。当前未修、不充绿。
+
+ed614ba红例独立后，最小改为`constructor(options={},writer=writeFileSync)`：真实PW首参核为object但不作writer，默认真实fs writer；unit显式第二参注入，其它持久化/安全字段/完整性/失败规则不改。首 `_options` 未使用候选虽6unit过，原lint1/pre-commit拒绝、未提交；改显式核原生对象契约不降规则。原生形状回归由红转绿，最终实际6/6、原lint/format/diff0；真实PW接线验证仍待runtime/P1实际跑，不以unit替代。独立只读核调用兼容无阻断，不据其代替lint；仅TD-TEST-017修正候选，尚不提前关闭实际验证项。

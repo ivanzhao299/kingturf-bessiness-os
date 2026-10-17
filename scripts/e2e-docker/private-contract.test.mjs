@@ -59,7 +59,7 @@ test('reporter records inventory index without raw errors, titles or attachments
   process.env.KINGTURF_PRIVATE_KIND = 'runtime';
   try {
     const writes = [];
-    const reporter = new PrivateReporter((_path, data) => {
+    const reporter = new PrivateReporter({}, (_path, data) => {
       writes.push(JSON.parse(data));
     });
     reporter.onTestEnd(
@@ -77,7 +77,7 @@ test('reporter records inventory index without raw errors, titles or attachments
     ]);
     assert.equal(writes[0].complete, false);
     assert.equal(JSON.stringify(writes).includes('CANARY'), false);
-    const foreign = new PrivateReporter(() => {
+    const foreign = new PrivateReporter({}, () => {
       /* No filesystem writes in the unit test. */
     });
     foreign.onTestEnd(
