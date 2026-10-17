@@ -3752,6 +3752,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+- **2026-10-17｜六域后真实覆盖率门禁复测**：effdbcf干净固定HEAD六包原测试全绿（API132/17281含六域39、Web313/config71/db68/domain20/types5），实际check仍exit1/null/198482ms，唯一整体target未达。[完整计数/产物hash/清单](../../evidence/harness-stage5-coverage-protocol-2026-10-17.md)：整体34122/48566=70.26%尚差2303行，domain629/671=93.74%、API仓储9145/11512=79.44%已达各目标，B不下降/生产377/仓储25及分母/源hash不变。六组真close0/drained/无强制取消，首尾同HEAD/树空。不是完整CI或最终三连之一；继续Web真实交互补测，不改B/阈值/exclude，不提前关TEST002。回滚本docs只撤后继记录，不回滚固定B或删失败史。[已测试]（真实六包覆盖率门禁失败，非验收绿）
+
 - **2026-10-17｜驾驶舱专项真实PG/六域实施齐备**：父6081dfb，独立5项真实guard0/PG0/17740ms，原lint/tsc/format0；固定十指标、实际scope/钻取、时间起含终不含/现金posting边界、当前currency/from/commission状态不对称及无新增所列证据。[预言/独立review/精确边界](../../evidence/harness-stage5-test-map-2026-10-17.md)。单图5项不为旧算法正确性背书、不改SQL/P1四值；首次lint1字符串narrow问题已修不降规则。六域专项共39实际绿，TEST003仅已实施待终验，PROC/RISK新债60项保持，A其它缺口/覆盖率/最终CI未完成。回滚本新test/docs/index独立revert，不改产品/原fixture/seed/浏览器配置。[已测试]（实际PG专项，非完整CI）
 
 - **2026-10-17｜佣金专项真实PG**：父ec16d93，独立六项实际PG0/20429ms，原lint/tsc/format0；复用owned商业图，真实固定28500/1052、毛利/回款冻结、scope owner≠beneficiary、版本证据、重放/付款追索ledger/后置outbox回滚。[完整历史/边界](../../evidence/harness-stage5-test-map-2026-10-17.md)。首5过1败为新测试误取首次DTO不存在的canonicalHash，改重放前持久hash快照+固定金额不改产品；第二6绿、补独立受益人反例最终仍6绿，乱序实证。TEST003仅5/6，驾驶舱与B/最终CI待；回滚本新test/docs独立revert，生产/原fixture/seed/P1原数值不动。[已测试]（实际PG专项，非完整CI）

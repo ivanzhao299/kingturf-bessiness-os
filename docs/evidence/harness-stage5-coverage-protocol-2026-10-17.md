@@ -1,6 +1,22 @@
 # 阶段5覆盖率首测口径（测量前冻结）
 
+## 六域专项后同HEAD复测：两目标达标，整体仍红
+
+固定干净HEAD `effdbcf5807612793122718f88900c0fb75d0f4a`，真实`node scripts/analysis/coverage-run.mjs check`，run `9fd091d3-48a3-4a3d-8496-b3771a545a30`，最终host exit1/null/198482ms，唯一deficit=`overall: target not met`。六包各真实exit0/signal null/groupDrained=true/forcedCleanup=false/aborted=false；原API132文件17281项（含新六域39）、Web14/313、config2/71、database3/68、domain4/20、types2/5均通过。首尾Git HEAD相同、树空，运行中无编辑/提交；377生产文件/25仓储、清单hash和所有生产源hash与B不变。
+
+| 组      | 当前覆盖行/总行 | 当前比例 | 原固定B覆盖行 | 目标 | 同分母还需覆盖行 |
+| ------- | --------------: | -------: | ------------: | ---: | ---------------: |
+| 整体    |     34122/48566 |   70.26% |         31623 |  75% |             2303 |
+| domain  |         629/671 |   93.74% |           496 |  90% |                0 |
+| API仓储 |      9145/11512 |   79.44% |          6782 |  70% |                0 |
+
+所有B均不下降，新增整体覆盖2499行；没有重冻B或缩分母。包内计数：API24041/26752、Web仍8937/20592、config298/308、database143/169、domain629/671、types74/74。后继补Web真实行为，不用无断言调用/新exclude或type-only理由追阈值。当前双写scanner适用实际60台账（原58+PROC/RISK），没有新增豁免；下节58是该工具最初检查点。
+
+结果`coverage/run-9fd091d3-48a3-4a3d-8496-b3771a545a30/result.json`，SHA256 `0f3aa1c648e745e59b09efb11d2fdcdcd263fd16332a0edf1474933a95d39dda`；清单hash `b5f1a41de8f5391051ad23b2a80aea7f9e2b44013b3387e97891c8bcb2daebd5`，六新report hash在manifest中，源位置/完整性已过原runner。日志`/tmp/kingturf-stage5-coverage-check-effdbcf-2026-10-17.log`。这次是完整六包覆盖率check，不是完整ci:local，也不是D最终同状态三连CI之一；门禁应保持失败，不提前关闭TEST002或上调最终评分。
+
 ## 双写豁免结构校验接线（不新增豁免）
+
+上述六域后结果已独立只读按六原始报告的statement起始行同行max重新汇总，六report SHA/377源及25repo hash/固定B摘要逐项吻合，精确分数不下降和唯一overall deficit一致。manifest内部跨度196857ms，**不等于**外围host198482ms；两个时长口径分列，不以review声明替代真实运行。
 
 `coverage-exemptions.mjs`用TS parser的真实comment ranges识别`// coverage-exempt(reason, until-YYYY-MM-DD)`，字符串/template/regexp内容不算注释；源码语法错误、标记畸形、无效日期、缺理由均失败。以源码path:line为身份，与台账JSON记录的reason/until逐值匹配；台账对应顶层TD状态必须精确“已豁免”，源缺台账、台账缺源、状态缺记录、重复/畸形都拦截。当前全377源和58项台账扫描实际`active=0`，没有创建业务豁免，不改inventory/分母/固定B或三目标。
 
