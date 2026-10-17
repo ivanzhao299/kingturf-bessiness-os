@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { json, onSessionExpired, RequestError } from './http';
-import { sessionFixture } from './test-fixtures/session';
+import { sessionFixture, sessionResponse } from './test-fixtures/session';
+import { SessionState, expireSession } from './session';
 const context = sessionFixture();
 const oldContext = sessionFixture('b');
 const currentContext = sessionFixture('c');
@@ -132,5 +133,73 @@ describe('session expiry notifications', () => {
     await json('/api/v1/auth/credential', selfContext, { method: 'PUT', body: '{}' });
     await json('/api/v1/employees/target/identity', adminContext, { method: 'PUT', body: '{}' });
     expect(expired.mock.calls).toEqual([[selfContext]]);
+  });
+});
+
+describe('explicit logout while business writes are paused', () => {
+  it('sends only the exact current POST logout with captured proof and keeps the owner paused', async () => {
+    const paused = sessionFixture('p');
+    paused.owner.pause();
+    const fetcher = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    vi.stubGlobal('fetch', fetcher);
+    await expect(json('/api/v1/auth/logout', paused, { method: 'POST' })).resolves.toBeUndefined();
+    expect(fetcher).toHaveBeenCalledOnce();
+    const init = fetcher.mock.calls[0]?.[1] as RequestInit;
+    expect(init.credentials).toBe('same-origin');
+    expect(new Headers(init.headers).get('x-kingturf-csrf')).toBe(paused.csrfToken);
+    expect(new Headers(init.headers).get('x-kingturf-session-generation')).toBe(paused.generation);
+    expect(paused.owner.canWrite()).toBe(false);
+  });
+  for (const [path, method] of [
+    ['/api/v1/employees', 'POST'],
+    ['/api/v1/auth/credential', 'PUT'],
+    ['/api/v1/auth/logout?x=1', 'POST'],
+    ['/api/v1/auth/logout/', 'POST'],
+    ['/api/v1/auth/logout', 'PUT'],
+    ['/api/v1/auth/logout', 'post'],
+  ] as const)
+    it(`does not send paused ${method} ${path}`, async () => {
+      const paused = sessionFixture('p');
+      paused.owner.pause();
+      const fetcher = vi.fn();
+      vi.stubGlobal('fetch', fetcher);
+      await expect(json(path, paused, { method })).rejects.toMatchObject({ status: 403 });
+      expect(fetcher).not.toHaveBeenCalled();
+    });
+  it('never sends a disposed logout', async () => {
+    const disposed = sessionFixture('p');
+    disposed.owner.dispose();
+    const fetcher = vi.fn();
+    vi.stubGlobal('fetch', fetcher);
+    await expect(json('/api/v1/auth/logout', disposed, { method: 'POST' })).rejects.toMatchObject({
+      status: 401,
+    });
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+  it('does not let late A logout success clear or reload B', async () => {
+    const state = new SessionState();
+    const a = state.install(sessionResponse('a'), state.begin());
+    if (!a) throw new Error('Missing test context');
+    a.owner.pause();
+    let finish: ((value: Response) => void) | undefined;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        () =>
+          new Promise<Response>((resolve) => {
+            finish = resolve;
+          }),
+      ),
+    );
+    const reload = vi.fn();
+    const pending = json('/api/v1/auth/logout', a, { method: 'POST' }).then(() =>
+      expireSession(a, state, reload),
+    );
+    const b = state.install(sessionResponse('b'), state.begin());
+    finish?.(new Response(null, { status: 204 }));
+    await expect(pending).rejects.toMatchObject({ status: 401 });
+    expect(reload).not.toHaveBeenCalled();
+    expect(state.current).toBe(b);
+    expect(b?.owner.canWrite()).toBe(true);
   });
 });

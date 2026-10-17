@@ -18,6 +18,8 @@ export async function json<T>(
 ): Promise<T> {
   const session = context && 'owner' in context ? context : null;
   const unsafe = !['GET', 'HEAD'].includes((init?.method ?? 'GET').toUpperCase());
+  const revokingSession =
+    session !== null && path === '/api/v1/auth/logout' && init?.method === 'POST';
   const current = () => {
     if (session && !session.owner.isCurrent())
       throw new RequestError('登录上下文已变化，请重新操作', 401);
@@ -28,7 +30,7 @@ export async function json<T>(
       headers.delete('x-kingturf-csrf');
       headers.delete('x-kingturf-session-generation');
       current();
-      if (session && unsafe && !session.owner.canWrite())
+      if (session && unsafe && !session.owner.canWrite() && !revokingSession)
         throw new RequestError('正在核验登录状态，请稍后重新操作', 403);
       if (session) headers.set('x-kingturf-session-generation', session.generation);
       if (context && unsafe) headers.set('x-kingturf-csrf', context.csrfToken);

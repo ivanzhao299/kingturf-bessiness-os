@@ -2,6 +2,12 @@
 
 ## 0. 元信息
 
+- **S4退出窄修当前检查点（2026-10-17）**：TD-WEB-009由协调/frontier确认属于已授S4内部实现矛盾，已窄修精确POST logout本地pause例外；原current/CSRF/代际/服务端校验保持，新增9真红绿/变异、API17242/Web313及真实DOM退出重登通过。工具仍WIP，不称fix HEAD干净或最终CI完成；[独立窄修证据](../../evidence/security-batch4-s4-paused-logout-2026-10-17.md)。继续原网络矩阵/最终CI，不触PW/Docker/阶段5。
+
+- **S4网络实测恢复阻断（2026-10-17）**：真实DOM登录及Cookie属性、Node Origin4项通过；挂载冲突恢复页“返回登录”两次真实失败，诊断logout请求0，独立源码核为paused owner在fetch前拦POST。登记TD-WEB-009/现49项，未修改业务/未提交候选，待独立修复方向；[失败史/清理/未测清单](../../evidence/security-batch4-s4-network-2026-10-17.md)。当前不是网络矩阵完成或全CI通过，不关闭SEC003，不绕过断言。
+
+- **S4网络/CDP当前步（2026-10-17）**：b38c75c稳定干净HEAD全CI真实0/192629.727ms经协调确认，续固定设计§4/6/7；[真实API/隔离PG/自然Chrome数据策略与矩阵](../../evidence/security-batch4-s4-network-2026-10-17.md)已先落，工具/实测/最终HEAD全CI待执行。旧决定不重改，不跑PW/Docker/阶段5，不关闭SEC003。
+
 - **S4前端实现候选（2026-10-17）**：固定设计切换完成待最终提交后CI：首次Cookie restore静态单一http-core、不可变context、旧storage布尔清键、同代保表单/换代current失效原reload、通知revision/owner/cache必要耦合。Web14/304、type/lint/结构0/29与原预算JS11992/CSS1898定向绿，未跑Chrome/旧PW/Docker；[逐文件红绿/两类core回调真变异/预算失败史](../../evidence/security-batch4-s4-frontend-2026-10-17.md)。最终稳定干净HEAD完整CI后停协调，SEC003/48项/评分保持开放。
 
 - **S4前端当前小步（2026-10-17）**：后端25526c8稳定干净HEAD完整CI实际0/203058.579ms（API126/17242、Web13/266/config71），协调独立亲核放行。续已授固定设计§4–§6：不可变SessionContext/Cookie transport、旧storage一次布尔清除重登、恢复/登录再核验、跨tab非秘密通知、owner/文档缓存必要代际耦合。仅Web业务/对应测试/必要工具与文档，不改后端/SQL/旧PW，不跑浏览器；网络级Chrome下一步另续。逐文件映射/真变异及最终干净HEAD全CI后停协调，SEC003/48项/评分不提前关闭。

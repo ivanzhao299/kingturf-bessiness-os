@@ -1,5 +1,9 @@
 # 技术债台账（tech-debt-tracker）
 
+**TD-WEB-009窄修检查点（仍49项）**：协调/frontier裁为S4内部实现缺陷已授窄修，http精确POST logout仅豁免本地pause、current/proof/服务端不动。新增9测试真实红绿/变异红绿、API17242/Web313全量及原失败DOM链复跑通过，工具完整矩阵/最终干净HEAD CI仍待执行，未整批验收或关闭SEC003。[窄修证据](../evidence/security-batch4-s4-paused-logout-2026-10-17.md)。下方仅登记为此前时点。
+
+**S4网络实测新增登记（2026-10-17，现49项）**：TD-WEB-009：挂载信号冲突后paused owner让恢复页“返回登录”在fetch前本地403，真实Chrome重复失败且零logout请求；刷新仍可恢复。仅登记、未修改业务，不关闭SEC003。证据见[S4网络检查点](../evidence/security-batch4-s4-network-2026-10-17.md)。下方48项为历史时点。
+
 **S4前端现时候选（2026-10-17，仍48项）**：后端25526c8全CI0已协调确认；本步前端Cookie不可变上下文实施，WEB007仅挂载await归属耦合、PERF003仅文档generation/owner/cache同Promise耦合，两整项不全面关闭。Web304/预算11992与1898定向通过，最终提交后另干净HEAD全CI再停协调；Chrome网络级/旧PW未跑，SEC003/评分不提前关闭，无新增条目，不修其它债。[前端证据](../evidence/security-batch4-s4-frontend-2026-10-17.md)。
 
 **现时48项（S4后端小步，非整批完成）**：fead2d1预检最终CI0经协调确认后仅后端/config/机器接口实施，逐文件真实变异、定向API232/config71/PG20绿、独立静态复核无阻断；最终提交后另同一稳定干净HEAD全CI再停协调。[后端证据](../evidence/security-batch4-s4-backend-2026-10-17.md)。Web/PW/SQL/事务/依赖/infra冻结，SEC003保持开放，SEC001仍仅RO、SEC002/004整批核账待完成，评分不预填。九旧PW硬前置、TD-HYG-002仅登记等边界不变，无新增条目；下文“仅设计/未编码”等为历史。
@@ -55,6 +59,7 @@
 | TD-WEB-006   | 部分商业只读权限可见route但不满足controller创建条件                                           | P2     | 前端门控      | 修复 bug（若实施）       | 3e仅登记，后续独立决策             | 触发/生产影响待核实       |
 | TD-WEB-007   | 旧异步工作台挂载结束前未复核当前会话代际                                                      | P2     | 异步生命周期  | 修复 bug（若实施）       | 3e仅登记，后续独立决策             | 触发/生产影响待核实       |
 | TD-WEB-008   | 旧工作区替换后跨安装批次可能产生多个详情抽屉闭包                                              | P2     | 前端生命周期  | 修复 bug（若实施）       | 3e②仅登记，后续独立决策            | 动态触发/生产影响待核实   |
+| TD-WEB-009   | 挂载冲突恢复页“返回登录”被paused写门禁本地拦截                                                | P2     | 会话恢复      | 修复 bug（若实施）       | S4真实Chrome发现                   | 已复现/待独立修复         |
 | TD-API-001   | buildApp 单函数 ≈6,442 行、230 个顺序路由分支，吞掉 Service 层                                | P1     | 架构/复杂度   | 无                       | 批次 2                             | 待处理                    |
 | TD-API-002   | app.ts 深嵌套：≥7 层 3,202 行，最深 14 层                                                     | P2     | 复杂度        | 无                       | 批次 2                             | 待处理                    |
 | TD-REG-001   | QTC 前六模块提前读取仓储根，违反旧求值/receiver契约                                           | P1     | 重构回归      | 修复 bug（恢复旧契约）   | 2b独立回归恢复                     | 已解决（留历史）          |
@@ -165,6 +170,15 @@
 - **静态证据**：entry在session校验成功后await workspace模块再mount；mount等待三域加载后直接构建并replaceChildren，未再核token/root代际。session.expireSession的token比较只阻止旧401登出新会话，不是旧成功挂载的提交检查。主代理/独立scout核验同，原route-isolation只锁路由DOM隔离/搜索值，不能冒称覆盖此场景。没有跨会话浏览器复现或生产证据，不推论数据泄露或后端会话模型缺陷。
 - **当前处置/业务影响**：仅登记；若修旧entry/mount为独立行为修复，需授权/提交。3e新lazy产生的异步route任务必须自身绑定controller/shell并在销毁后不触碰其它shell；这不是修复既有顶层mount竞态，不变更token模型/storage key/登出语义，TD-SEC与D1不扩。
 - **验收方式**：后续独立最小合成复现旧会话慢完成/新会话先完成及失败边界，再决策修复；本轮不以静态缺少检查当已证动态覆写。
+
+### TD-WEB-009｜挂载冲突恢复页“返回登录”被暂停写门禁拦截
+
+**后继裁定**：协调/frontier确认是既授S4退出契约内部实现矛盾，可独立窄修精确当前上下文POST logout的本地暂停检查，原current/generation/CSRF/服务端及响应归属不动，不resume/restore/replay、不放开其它unsafe。见[修复映射](../evidence/security-batch4-s4-paused-logout-2026-10-17.md)，尚未实施/验证。
+
+- **位置**：`apps/web/src/entry.ts:243`、`startup-failure.ts:40`、`http.ts:30`。
+- **类别**：会话恢复 ｜ **严重度**：P2 ｜ **业务行为影响**：修复 bug（若实施）。
+- **证据**：真实隔离API/PG/自然Chrome DOM登录后，挂载employees头barrier期间invalidate触发同代复验；释放后挂载verify再次pause owner并进入失败页。点击返回登录后固定诊断logoutRequests=0、hasLoginForm=false、retryFailureVisible=true，两次同位置超时；独立只读源码因果复核一致。详情/日志/清理见[S4网络证据](../evidence/security-batch4-s4-network-2026-10-17.md)。刷新入口仍可用，不外推生产影响或会话泄露。
+- **处置**：仅登记，不顺手放宽全局unsafe门禁。后续独立修复须明确退出的captured context/当前代际/Origin/CSRF与无自动重放边界，保留失败证明并验证同场景真实logout204和重登；当前未实施、未全CI。
 
 ### TD-WEB-008｜旧工作区替换后跨批次列表可能保留多个详情抽屉闭包
 
