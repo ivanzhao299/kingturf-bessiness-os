@@ -1,5 +1,9 @@
 # docs/index.md（全部文档索引）
 
+[Docker Playwright B通道最小候选（仅提案）](tasks/playwright-docker-b-channel-proposal-2026-10-17.md)：原网关HTTP下S4阻断、owned真实回环字节转发/PG双侧guard候选及seed最小token-login适配；未执行，配置/业务源码不改，通道变更待裁。
+
+[Docker Playwright全量库存与通道准备](evidence/playwright-docker-inventory-2026-10-17.md)：12源/两配置、A8/B2/C2、逐处S4夹具与非fixture断言边界、网关真实Origin拒绝及本地镜像准备；未跑spec，C禁止。
+
 [Docker Playwright前置补跑R7授权](tasks/playwright-docker-authorization-2026-10-17.md)：完整人类授权、九旧spec延期裁定、d801237实施收口/真实CI前置及本轮库存/本地通道边界；不代表S4整批人工验收或A/B补跑已通过。
 
 [批次4唯一整体验收包](evidence/security-batch4-acceptance-2026-10-17.md)：S1–S4前后行为、全部必要期望/夹具适配与真实变异总索引、分层计数、配置/生产边界、提交/回滚及台账评分。f114ee0稳定干净HEAD全CI实际0/192524.18ms；本次仅文档收口，最后文档HEAD全CI另跑后交协调，整体人工验收未预填通过。SEC003关闭载体实施项，SEC001强制段/九旧PW义务/TD-TEST-006后继候选保持开放；下方为各小步历史导航。
