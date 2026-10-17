@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[驾驶舱四固定值后继R7](tasks/harness-stage5-p1-money-authorization-2026-10-17.md)：独立推导的950000/229000/950000/0 CNY已由人类批准，仅四字面量数字；先授权再实施，原其余断言/种子/产品/网络硬闸保持，新验证尚待。aa2d4ff完整CI0/331905ms，旧失败史保留，DoD4/5仍未完成。
+
 [信用结清0与驾驶舱推导](tasks/harness-stage5-p1-money-authorization-2026-10-17.md)：只改两条完整指标等值断言，信用实际通过；原P1仅9完成8过1败后TD018中断，不称11绿。四KPI独立候选950000/229000/950000/0 CNY已提交审批，期待尚未修改。
 
 [成本后继窄修实测](evidence/harness-stage5-browser-rulings-2026-10-17.md)：先人裁登记/旧实现护栏红，10回调＋43路由绿；原冷7expect PW0、34帧及末态可见，暖PW0，三handoff/owned清理全真。原整spec/auth变异与最终新HEAD全CI另计，旧失败史保留。

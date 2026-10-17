@@ -1,5 +1,13 @@
 # 阶段5 P1 最小货币显示期待 R7
 
+## 驾驶舱四固定值实施授权（2026-10-17）
+
+本会话直接收到人类答复`["request_user_input_async","call_ace2fa6a079c47759f8d36234361b00f",0]`：“批准四个固定值最小适配（推荐）”。批准范围严格为下方主代理/只读代理独立推导的隔离P1四值：bookedRevenue由2058608改950000、grossMargin由585399改229000、cashCollected由1550000改950000、openReceivable由508608改0，单位仍CNY。只替换四个固定文本中的数字，保留原定位/matcher及其余来源/责任钻取断言、原种子、产品、两配置、网络硬闸；不从实际页面值生成期待、不改其它业务数值。
+
+接续干净aa2d4ff23af79187b77c1055e2065c2b8c4e3116，该HEAD完整CI实际0/null/331905ms、首尾HEAD同/树空；实际覆盖37492/48601、domain629/671、仓储9787/11512，固定B未改。先本R7独立docs提交，再四字面量适配/真实串行补跑，保留历次失败与TD018连接条件。尚未实施/未11绿/未完成P1认证真变异或第二轮，不沿用旧CI冒称后继通过；新最终HEAD仍实际完整CI。DoD4/5未完成，不扩结构/豁免或执行§14。
+
+下方“待审批/审批前保留”均保留为推导与前次执行的历史时点，以本新增R7覆盖当前授权状态。
+
 ## 后继信用与驾驶舱裁定（2026-10-17）
 
 信用最小实施实际结果：只改拒绝/过期两条，定位原卡`.qtc-metrics`并`toHaveText('申请 ¥950,000 · 敞口 ¥0 · 额度 ¥5,000,000')`，非前缀包含匹配；批准卡/三卡计数/三额度数组/seed/其它业务断言不动。strict eslint/format实际0。`stage5-p1-credit-zero-1`使用原完整11例集合、原两config、仅已授trace=off与只读tmpfs：信用case index0实际passed/1545ms；共9例完成8过1败，驾驶舱原bookedRevenue期待仍在line230失败，随后原TD018的4173 upstream CONNECT_TIMEOUT导致PW null/SIGTERM，MRP/生产两例未完成。host1/null/35460ms、种子0/2823ms、owned schema/container/preview清理全true；日志`/tmp/kingturf-stage5-p1-credit-zero-1-2026-10-17.log`。不是完整11绿/信用全spec认证变异/第二轮，也不以重跑隐去连接故障。驾驶舱四值审批前原样保留。
