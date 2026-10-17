@@ -491,6 +491,9 @@ describe('uniform API security response headers (TD-SEC-004)', () => {
     'x-frame-options': 'SAMEORIGIN',
     'referrer-policy': 'strict-origin-when-cross-origin',
     'x-correlation-id': targetId,
+
+    'content-security-policy-report-only':
+      "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'",
   };
 
   it.each([

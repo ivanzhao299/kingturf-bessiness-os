@@ -54,6 +54,9 @@ const error = (statusCode: number, code: string, message: string) => ({
     'x-content-type-options': 'nosniff',
     'x-frame-options': 'SAMEORIGIN',
     'referrer-policy': 'strict-origin-when-cross-origin',
+
+    'content-security-policy-report-only':
+      "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'",
   },
 });
 const denied = error(403, 'forbidden', 'Permission denied');
@@ -84,6 +87,9 @@ describe('profiles inline contract', () => {
           'x-content-type-options': 'nosniff',
           'x-frame-options': 'SAMEORIGIN',
           'referrer-policy': 'strict-origin-when-cross-origin',
+
+          'content-security-policy-report-only':
+            "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'",
         },
       });
       expect(f.listUserAccessProfiles).toHaveBeenCalledExactlyOnceWith(actor.companyId);
@@ -184,6 +190,9 @@ describe('identity state inline validation and field permission contract', () =>
           'x-content-type-options': 'nosniff',
           'x-frame-options': 'SAMEORIGIN',
           'referrer-policy': 'strict-origin-when-cross-origin',
+
+          'content-security-policy-report-only':
+            "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'",
         },
       });
       expect(f.setIdentityActive).toHaveBeenCalledExactlyOnceWith(
@@ -233,6 +242,9 @@ describe('identity state successful calls and global boundaries', () => {
           'x-content-type-options': 'nosniff',
           'x-frame-options': 'SAMEORIGIN',
           'referrer-policy': 'strict-origin-when-cross-origin',
+
+          'content-security-policy-report-only':
+            "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'",
         },
       });
       expect(f.setIdentityActive).toHaveBeenCalledExactlyOnceWith(

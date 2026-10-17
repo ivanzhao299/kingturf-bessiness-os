@@ -6,6 +6,8 @@
 
 ## 常驻入口（根与 docs 顶层）
 
+[S3 CSP严格期望逐处清单](evidence/security-batch4-s3-oracle-map-2026-10-17.md)：74c78c3基线122旧API测试全AST守恒，68文件81头对象仅追加CSP字面量；S1固定历史证明保留，S3显式基线/目标，机械追加不输出fixture/补丁正文。
+
 [批次4 S3 CSP先行设计](tasks/harness-batch4-s3-design-2026-10-17.md)：S2协调确认74c78c3后续派，仅API/外层HTML Report-Only与默认off强制开关；真实Document头/首次导航前脱敏采集、独立精确合成发送DOM场景、旧oracle逐处映射及保护区，未实施完成。
 
 [批次4 S2登录限流完成证据](evidence/security-batch4-s2-login-limit-2026-10-17.md)：业务bdbda0e首次全CI未分类端口红，独立精确声明身份门禁b8c1212全CI0/194043.303ms；API17175/Web266/config23、49门禁自测、原生入口/并发/代理及资源边界/失败史/回滚。最终证据HEAD另全CI后停协调，不启动S3/S4/阶段5；台账48，新增TD-HYG-002仅登记旧preview Dockerfile遗留COPY。

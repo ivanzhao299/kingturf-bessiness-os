@@ -57,6 +57,9 @@ describe('D1 S2 application login middleware', () => {
         'x-content-type-options': 'nosniff',
         'x-frame-options': 'SAMEORIGIN',
         'referrer-policy': 'strict-origin-when-cross-origin',
+
+        'content-security-policy-report-only':
+          "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'",
       },
       body: {
         error: {
@@ -114,6 +117,9 @@ describe('D1 S2 application login middleware', () => {
         'x-content-type-options': 'nosniff',
         'x-frame-options': 'SAMEORIGIN',
         'referrer-policy': 'strict-origin-when-cross-origin',
+
+        'content-security-policy-report-only':
+          "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'",
       });
       expect(response.body).toEqual({
         error: { code: 'internal_error', message: 'Internal server error', correlationId },
@@ -162,6 +168,9 @@ describe('D1 S2 application login middleware', () => {
       'x-content-type-options': 'nosniff',
       'x-frame-options': 'SAMEORIGIN',
       'referrer-policy': 'strict-origin-when-cross-origin',
+
+      'content-security-policy-report-only':
+        "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'",
     });
     expect(rejected.headers?.['retry-after']).toBe('1');
     expect(f.login).toHaveBeenCalledOnce();

@@ -24,6 +24,9 @@ describe('securityResponseHeaders (TD-SEC-004)', () => {
       'x-content-type-options': 'nosniff',
       'x-frame-options': 'SAMEORIGIN',
       'referrer-policy': 'strict-origin-when-cross-origin',
+
+      'content-security-policy-report-only':
+        "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'",
     });
   });
 

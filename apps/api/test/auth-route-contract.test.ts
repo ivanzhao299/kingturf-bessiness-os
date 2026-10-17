@@ -44,6 +44,9 @@ const envelope = (statusCode: number, code: string, message: string) => ({
     'x-content-type-options': 'nosniff',
     'x-frame-options': 'SAMEORIGIN',
     'referrer-policy': 'strict-origin-when-cross-origin',
+
+    'content-security-policy-report-only':
+      "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'",
   },
 });
 
@@ -64,6 +67,9 @@ describe('auth HTTP contracts frozen at 0fdd996', () => {
         'x-content-type-options': 'nosniff',
         'x-frame-options': 'SAMEORIGIN',
         'referrer-policy': 'strict-origin-when-cross-origin',
+
+        'content-security-policy-report-only':
+          "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'",
       },
     });
     expect(auth.login).toHaveBeenCalledExactlyOnceWith('user', 'fixture-password', correlationId);
@@ -106,6 +112,9 @@ describe('auth HTTP contracts frozen at 0fdd996', () => {
           'x-content-type-options': 'nosniff',
           'x-frame-options': 'SAMEORIGIN',
           'referrer-policy': 'strict-origin-when-cross-origin',
+
+          'content-security-policy-report-only':
+            "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'",
         },
       },
     );
@@ -124,6 +133,9 @@ describe('auth HTTP contracts frozen at 0fdd996', () => {
         'x-content-type-options': 'nosniff',
         'x-frame-options': 'SAMEORIGIN',
         'referrer-policy': 'strict-origin-when-cross-origin',
+
+        'content-security-policy-report-only':
+          "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'",
       },
     });
     expect(findById).toHaveBeenCalledExactlyOnceWith('employee', 'company', ['SELF'], 'employee');
@@ -152,6 +164,9 @@ describe('auth HTTP contracts frozen at 0fdd996', () => {
         'x-content-type-options': 'nosniff',
         'x-frame-options': 'SAMEORIGIN',
         'referrer-policy': 'strict-origin-when-cross-origin',
+
+        'content-security-policy-report-only':
+          "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'",
       },
     });
     expect(auth.changePassword).toHaveBeenCalledExactlyOnceWith(

@@ -60,6 +60,9 @@ function assertError(
     'x-content-type-options': 'nosniff',
     'x-frame-options': 'SAMEORIGIN',
     'referrer-policy': 'strict-origin-when-cross-origin',
+
+    'content-security-policy-report-only':
+      "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'",
   });
   expect(result.body).toMatchObject({
     error: { code, correlationId, ...(message ? { message } : {}) },
@@ -118,6 +121,9 @@ describe('IAM inline permission and prerequisite contracts', () => {
             'x-content-type-options': 'nosniff',
             'x-frame-options': 'SAMEORIGIN',
             'referrer-policy': 'strict-origin-when-cross-origin',
+
+            'content-security-policy-report-only':
+              "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'",
           },
         });
         expect(repository[call]).toHaveBeenCalledExactlyOnceWith(
@@ -234,6 +240,9 @@ describe('IAM supported write contracts', () => {
             'x-content-type-options': 'nosniff',
             'x-frame-options': 'SAMEORIGIN',
             'referrer-policy': 'strict-origin-when-cross-origin',
+
+            'content-security-policy-report-only':
+              "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'",
           },
         });
         expect(repository[entry.call]).toHaveBeenCalledExactlyOnceWith(
