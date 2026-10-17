@@ -1,5 +1,21 @@
 # 阶段5覆盖率首测口径（测量前冻结）
 
+## 首次三目标同时达标与完整CI（非最终三连）
+
+干净固定HEAD `3f03e6278f30800a6166a233c7db59cbc7675d0e`，完整`pnpm ci:local`实际exit0/signal null/299126ms；首尾同HEAD、树空，期间无编辑/提交、无并发PG/浏览器。原format/doclint/structure/service/capability/DB guard/migrate/status/lint/tsc、工具回归、六包V8、build、prod audit全部实际通过（audit无已知漏洞）。日志`/tmp/kingturf-stage5-web-behavior-full-ci-2026-10-17.log`。这不是D最终同状态三连之一：后继E/F及P1业务待裁仍欠，不借此宣布阶段5或项目竣工。
+
+链内真实check run `5eb8eb3e-3323-4fd8-87f1-d7c8d4979be1`，六包exit0/null、groupDrained=true/forcedCleanup=false/aborted=false；API132/17281、Web25/414、config2/71、database3/68、domain4/20、types2/5。manifest内部跨度191940ms，与完整CI外围299126ms分列。生产377/仓储25、源hash及分母与B一致，inventoryHash仍`b5f1a41de8f5391051ad23b2a80aea7f9e2b44013b3387e97891c8bcb2daebd5`；Vitest/provider仍3.2.6，无新exclusion/重冻B/业务豁免。
+
+| 组      | 覆盖行/总行 |   比例 | 固定B覆盖行 | 目标 | 结果 |
+| ------- | ----------: | -----: | ----------: | ---: | ---- |
+| 整体    | 36471/48566 | 75.10% |       31623 |  75% | 通过 |
+| domain  |     629/671 | 93.74% |         496 |  90% | 通过 |
+| API仓储 |  9145/11512 | 79.44% |        6782 |  70% | 通过 |
+
+原整数/BigInt精确比较同时过三阈值+B不下降，deficits=[]；不是四舍五入擦线。整体比B多4848覆盖行，最后一次六域后70.26%失败到本次新增2349，分母未缩。包内API24041/26752、Web11286/20592、config298/308、database143/169、domain629/671、types74/74。Web新增有真实callback/固定payload/状态与失败断言及独立复核，[完整范围/失败史/模拟端口限制](harness-stage5-test-map-2026-10-17.md)；覆盖行命中不等于所有业务/浏览器/PG矩阵穷尽。
+
+结果`coverage/run-5eb8eb3e-3323-4fd8-87f1-d7c8d4979be1/result.json` SHA256 `c9d56167e75d3469323aeb8419d5abd606131fbd5ad346a113807000923646ad`。六原报告SHA256依次API `5ca3c811ec1f0c55c679021c3f4ee7a292fa3dff4175b46262ae2b6bd2f25f84`；Web `7f6ac0a3a2da52f20142175f6887ed7b6a3ecdf8bf3cf2988dacb7275ec7f3fc`；config `464a6515f023615cccecdb3f5cde97cb9b205b745d09f2be3f60101d1b21d93b`；database `65bfc3f171fc8974489ccc2d6ba4972d12370975050910d92fe569c835ea745d`；domain `d28f084e7be25444141ebbbd619bf52f022ff8f020b17a73ffea48e04ba21e0f`；types `3e23c4b73f77af4fe95115e360872e42a59baa8e675367b736379ed5814a5aad`。独立原始报告复算另追加实际结论，不以派发替代完成。TEST002仅实施待终验，最终HEAD/三连及P线不由本次替代。
+
 ## 六域专项后同HEAD复测：两目标达标，整体仍红
 
 固定干净HEAD `effdbcf5807612793122718f88900c0fb75d0f4a`，真实`node scripts/analysis/coverage-run.mjs check`，run `9fd091d3-48a3-4a3d-8496-b3771a545a30`，最终host exit1/null/198482ms，唯一deficit=`overall: target not met`。六包各真实exit0/signal null/groupDrained=true/forcedCleanup=false/aborted=false；原API132文件17281项（含新六域39）、Web14/313、config2/71、database3/68、domain4/20、types2/5均通过。首尾Git HEAD相同、树空，运行中无编辑/提交；377生产文件/25仓储、清单hash和所有生产源hash与B不变。

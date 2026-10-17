@@ -3752,6 +3752,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+- **2026-10-17｜首次三覆盖目标同时达标/完整CI0**：3f03e627干净固定HEAD完整ci:local实际exit0/null/299126ms，六包API132/17281、Web25/414/config71/db68/domain20/types5、build/audit均绿，首尾树空同HEAD；链内真实run5eb8eb3e…结果整体36471/48566=75.10%、domain629/671=93.74%、仓储9145/11512=79.44%，deficits=[]，B不降/377生产/25仓储/分母hash不变。[实际报告hash/完整口径](../../evidence/harness-stage5-coverage-protocol-2026-10-17.md)。非最终三连之一，不关P1两项C7/TEST002终验、E/F未完成，不声明竣工；本docs只记录事实可独立revert。[已测试]（固定源码HEAD完整CI，后继文档HEAD另验）
+
 - **2026-10-17｜BOM/CAPA新断言补强**：父46f6f7b，独立复核建议后新增BOM deferred finish等待/reject传播、CAPA前后不同key精确绑定第二payload；原eslint/tsc0，制造5+CAPA5实际10过/exit0，[日志与范围](../../evidence/harness-stage5-test-map-2026-10-17.md)。不改产品/原断言、不充后端随机性/幂等。下一步干净固定HEAD完整ci:local含六包check实际核总覆盖，而非把单包测量替代；回滚本两test/docs独立revert。[已测试]（目标测试，完整CI待执行）
 
 - **2026-10-17｜制造/CAPA/成本因子表单payload护栏**：新增5+5+4项与src外typed operations-context，独立根/版本/Decimal/BOM替代/工序/并发版本/证据/时间/key映射，CAPA各路pending/reject与refresh reject；[独立复核及精确边界](../../evidence/harness-stage5-test-map-2026-10-17.md)。原eslint/tsc0、Web25/414实际0/1.99s；单包V8 11286/20592同分母，六包整体目标仍待干净HEAD真实check，不更新B/提前关TEST002。factory/finish/form端口非权限/后端/原生日期验证，产品/原测试/seed不动。回滚三新test/helper/docs独立revert。[已测试]（Web全包，非六包覆盖门禁/完整CI）

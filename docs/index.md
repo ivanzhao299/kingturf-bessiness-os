@@ -6,7 +6,7 @@
 
 [阶段5现状测试地图](evidence/harness-stage5-test-map-2026-10-17.md)：六域新增39项PG专项、Web制造/CAPA/成本因子/政策/技术需求/线索/表单/文档/生产及发运动作回调与部分DOM护栏、types策略/实现注入及逐域mock/PG/Web/CDP边界；含PROC/RISK两新债/总60项，不充最终覆盖率或全CI验收。
 
-[阶段5覆盖率首测协议](evidence/harness-stage5-coverage-protocol-2026-10-17.md)：六域后真实六包复测整体70.26%仍红/domain93.74%/仓储79.44%，分母与[首测固定基线](evidence/harness-stage5-coverage-baseline-2026-10-17.json)不变；含报告完整性、B不下降及双写/到期豁免校验，不充最终CI。
+[阶段5覆盖率首测协议](evidence/harness-stage5-coverage-protocol-2026-10-17.md)：3f03e62完整CI0内真实六包整体75.10%/domain93.74%/仓储79.44%首次同时达标，生产清单/分母与[首测固定基线](evidence/harness-stage5-coverage-baseline-2026-10-17.json)不变；保留失败史/报告hash/B不下降及双写豁免，不充最终三连或P线完成。
 
 [阶段5浏览器考古与提案](evidence/harness-stage5-browser-rulings-2026-10-17.md)：main产品单页设计与P1逐例待裁方案，成本静态/实际证据及仍待受控对比，Workspace最小输入修正/TD018不放宽。
 
