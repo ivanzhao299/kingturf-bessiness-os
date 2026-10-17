@@ -3752,6 +3752,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+- **2026-10-17｜A剩余Shipment真实PG核心/360正向来源**：实际生产产出但不伪造质量/MRP/成本READY，固定九gate flags/五失败项、异人例外审批→放行→运输→签收，tenant/scope/POD/伪造gate/后段事件key冲突事务回滚六项；Order360用真实load与7事件、无grant/窄scope隐去。[独立预言/边界/日志](../../evidence/harness-stage5-test-map-2026-10-17.md)。原strict lint/tsc0、真实PG6/6 exit0/null/19561ms，独立只读复核待实结论。A核心与文档12项已补，不外推全矩阵；产品/旧断言不改。回滚新test及docs独立revert；后继固定HEAD完整CI待。[已测试]（目标PG，非最终CI）
+
 - **2026-10-17｜A剩余Quality真实PG核心**：新增六项真实plan/publish/inspection/result/disposition及typed/数值端点/失败放行/tenant/scope/后段冲突事务回滚，原strict lint/tsc0、guard0、实际PG0/null/15742ms，独立只读核无必要阻断。[固定预言/种子边界/日志](../../evidence/harness-stage5-test-map-2026-10-17.md)。lot仅真实FK合成待检seed，不充采购收货或HTTP权限；产品与旧断言不改。A Shipment核心仍施工，最终完整CI待；回滚本test/docs独立revert。[已测试]（目标PG，非最终CI）
 
 - **2026-10-17｜A文档专门动作护栏**：父c5000ac后新增真实save/review/send-form回调12项，固定版本/完整payload/裸receiver/等待与失败重试/后续编辑不覆盖/译文与发送key，原广源测试和产品零改。原strict lint/tsc与12项实际通过，独立只读核无必要阻断；[范围与失败史](../../evidence/harness-stage5-test-map-2026-10-17.md)。TEST007专门护栏已实施待最终门禁；A质量/发货PG核心仍本轮施工，不挪F后续。DOM及表单端口替身不充真实浏览器/HTTP/投递。回滚新test及本docs独立revert；最终完整CI待。[已测试]（目标合同，非最终CI）

@@ -1,5 +1,13 @@
 # 阶段5现状测试地图与补齐清单
 
+## A剩余核心：Shipment真实PG六项及Order360正向来源
+
+新增 `shipment-postgres.integration.test.ts`，复用已冻结真实销售图，实际制造发布/工艺/生产单release-start-report-output-complete、库存10的QUARANTINE产出。固定申请5/需款100001，独立断九门禁flags与失败清单payment/overdue/orderLink/quality/cost，明确不是九gate全绿READY。request精确audit-only一条/outbox0，snapshot哈希仅一致性校验而非独立业务oracle。未批拒放行/拒发、自批拒绝→异人approve→release→dispatch→in-transit→完整POD deliver，缺POD失败无残留；reject终态、重复request为23505不伪称幂等成功；COMPANY/GROUP tenant及narrow scope各入口；直接DB伪造quality_ok=true仍拒。dispatch先插shipment后初始事件key冲突，六类counts全不增、fresh key成功。
+
+真实发货复用于Order360：允许shipment COMPANY来源时releaseEvents/loads非空，固定ORDER_RELEASED+三种release+三种shipment共7事件；无grant/SELF/TEAM来源无shipment及事件泄漏。此是本轮新增正向shipment关联，不重复原HTTP+PG入口/SELF/tenant既有证据。原strict lint初报三处新测试any边界（expect.any与Array.isArray窄化），仅新测试改unknown显式窄化/时间字段单断类型后lint/tsc0；PG六项实际0/null/19561ms（Vitest18.73s），日志 `/tmp/kingturf-stage5-shipment-pg-first-2026-10-17.log`，owned正常close、无并发PG/浏览器。独立只读复核待实际结论，不能把派发当通过。产品/旧oracle/迁移/分母不改，未覆盖九门禁全绿组合、所有承运商/并发/真实交付服务。
+
+后继独立只读复核完成，无必要阻断，确认固定gate来源和晚冲突事务预言真实；timeline按类型集合核不证时序，DB伪造例只翻quality_ok不证所有snapshot字段/哈希抗篡改，也不充HTTP capability或九项单独翻转。下方队列按原承诺保留，现追加六域39+质量6+发货6及专门文档12的实际核心证据，不以覆盖阈值替代这些工作。
+
 ## A剩余核心：Quality真实PG六项
 
 新增 `quality-postgres.integration.test.ts`：真实制造发布版本，参数化SQL只种同tenant/item FK的合成QUARANTINE lot；质量仓储实际createPlan→publish→open→sample→三类型result→complete→dispose。固定上下端点10/12与超界12.000001、发布后特征不可改/结果不可删、缺必填结果/类型错误/错误numeric verdict/重复观察拒绝，失败不得新增两ledger/results/audit/outbox，失败检验禁止release但可reject。GROUP仍tenant-bound，三列表及六写入口narrow scope拒绝，foreign发布/使用/transition/dispose拒绝。先占用后段inspection key，使dispose先lot写入后23505，再核counts和有效状态整体回滚、新key成功。最终release的审计/outbox精确配对，不外推全部中间命令均逐项配对。
