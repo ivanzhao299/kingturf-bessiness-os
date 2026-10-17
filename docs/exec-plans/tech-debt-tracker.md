@@ -424,6 +424,8 @@
 
 ### TD-TEST-015｜Source授权旧合成应收页缺cursor字段
 
+- **实施验证收口**：ea2a647字段独立真红绿后，auth旧token真源变异三红→完整清理还原原3例全绿PW0/3361ms、host0/8382ms；PG样本SHA前后同，原动作/权限/断言不变。仅该旧合成字段缺口实施项关闭，整批/全部A+B仍未验收；55顶层ID含历史不删，以下待实施/待auth变异为历史。
+
 - **后继字段实施验证**：f646958恢复同一auth候选后，只/api/v1/ar-open-items空stub补nextCursor:null，原样本/权限/业务动作断言不动；原3例绿→实际删字段authorized隐藏红/2过1败→立即还原3绿，owned全清。[命令/真实耗时](../tasks/playwright-source-fixture-ruling-2026-10-17.md)。该字段缺口实施验证完成，整文件auth真变异待完成，不称全部A/B绿；下方待实施为历史。
 
 - **事实**：原真实PG producer19/19，auth-only浏览器候选两次均2过1败；authorized原催收卡存在但hidden，旧应收stub缺parseCursorPage必填nextCursor，authorized有ar:read且collections依赖应收ready。owned全清，失败附件保留，候选已精确还原/补丁封存。

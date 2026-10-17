@@ -2,7 +2,7 @@
 
 [B本地产物隔离接线方案](tasks/playwright-local-private-runner-2026-10-17.md)：按已授P1例外接只读容器/tmpfs/无raw导出/安全case索引；首版零PNG导出，不能称截图证据已保留。尚未实施验证，原config/业务断言/PG同一性保持。
 
-[Source分页合成夹具R7](tasks/playwright-source-fixture-ruling-2026-10-17.md)：原PG生产器19过、浏览器两次2过1败/authorized卡片hidden；人类只批准应收stub补nextCursor:null，原样本/权限/断言不动。auth候选已封存还原，尚未修正/真变异，TD-TEST-015/55项。
+[Source分页合成夹具R7与验证](tasks/playwright-source-fixture-ruling-2026-10-17.md)：原PG生产器19过、两次原夹具2过1败；人裁只应收stub补nextCursor:null，缺字段/auth各真红→还原原3例绿，样本SHA/权限/断言保持。TD-TEST-015仅该缺口实施关闭，55顶层项；成本/Workspace仍待裁。
 
 [P1最小产物例外R7](tasks/playwright-p1-artifact-authorization-2026-10-17.md)：直接人类批准仅P1命令traceoff/只读容器及owned tmpfs原始产物不导出，只固定结果/核过业务截图；尚未接线执行，不承诺RAM/swap物理零落盘，不扩runtime/C或业务断言。
 

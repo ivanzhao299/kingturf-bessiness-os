@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **A首轮库存收口（2026-10-17）**：source原PG19过，获准应收字段ea2a647独立真红绿后，auth旧token三红→还原3过PW0/3361ms、host0/8382ms，PG产物SHA前后同、owned全清，[证据](../../tasks/playwright-source-fixture-ruling-2026-10-17.md)。A8全首试，login2/doc7/order1/revocation2/startup5/source3六份全绿，cost/Workspace各仍一败待裁；TD-TEST-015仅合成字段实施关闭，55项不删。续独立B首轮，只有第二完整轮须A+B全绿，C禁，最后HEAD完整CI必跑。
+
 - **source首轮/分页R7（2026-10-17）**：原PG producer19过、仅auth候选两次PW2过1败，authorized催收卡hidden；旧应收cursor stub缺nextCursor/ready链支持，原样本/断言不改，候选已精确还原并封存。直接人类仅批应收stub补null，[原话/失败/补丁](../../tasks/playwright-source-fixture-ruling-2026-10-17.md)先独立落盘，TD-TEST-015/现55项，待实施/变异。A8均首试留证但成本/Workspace/source未全绿；可继续独立B首轮，第二完整轮禁/C禁，最后HEAD全CI必跑。
 
 - **startup首轮（2026-10-17）**：仅已授fixture/会话oracle，原cold/layout/logo/下载/资产失败刷新业务断言保持；503保Jar、401客户端回登录不要求清HttpOnly。资产删Cookie两红→还原5过、401变403一红→还原5过PW0/6241ms、host0/12660ms，owned全清，[映射/原时序边界](../../evidence/playwright-docker-spec-replay-2026-10-17.md)。现7份A已试中5份全绿、Workspace/成本各仍一败，source/B未跑、第二轮禁/C禁，最后HEAD全CI仍必跑。
@@ -3729,6 +3731,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+- **2026-10-17｜source会话变异/首轮收口**：ea2a647字段独立修正后，真源向session副本加固定旧token，三原shell断言红PW1/18222ms、host1/23778ms；完整清理apply_patch还原，原三mode全绿PW0/3361ms、host0/8382ms，owned全清。PG producer样本SHA前后同，原业务/权限/断言不动，变异无残留，[分层证据](../../tasks/playwright-source-fixture-ruling-2026-10-17.md)。TD-TEST-015只字段缺口实施关闭/55项；A8六份全绿、cost/Workspace各一败，不称总绿，可续独立B首轮，C/第二轮/最终HEAD全CI保护保持。[已测试]（三mode及两类真红绿）
 
 - **2026-10-17｜source获准应收cursor独立修正**：8e4666b R7→f646958精确恢复封存auth候选（2过1败，不充绿），只原应收空stub新增nextCursor:null；原PG producer/样本/权限不动，首goto起业务动作/断言字节同。初3过PW0/3394ms、host0/8656ms；真实删该字段红PW1/8847ms、host1/14305ms/2过1败；完整清理还原3过PW0/3355ms、host0/8457ms，owned全清/红附件留存。[实施/回滚边界](../../tasks/playwright-source-fixture-ruling-2026-10-17.md)。原lint/format0，TD-TEST-015只字段实施验证完成、auth真变异待完成，台账55；成本/Workspace失败不消除，B首轮独立可续/C禁/第二轮禁/最后HEAD全CI必跑。[已测试]（字段真红绿，整文件适配待auth变异）
 

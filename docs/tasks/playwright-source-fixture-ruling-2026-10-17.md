@@ -29,3 +29,9 @@ R7 8e4666b后，f646958精确恢复封存auth候选（内存git diff与patch tri
 `source-cursor-positive-1` 原3例通过，PW0/3394ms、host0/8656ms；真源仅该分支删nextCursor，`source-cursor-missing-red-1` PW1/8847ms、host1/14305ms，原authorized卡又hidden、2过1败。完整close/owned清理后立即还原，`source-cursor-restored-1`原3例通过，PW0/3355ms、host0/8457ms。每次owned三清理true，红原截图/trace/HTML独立保留。此干预支持本失败来自旧夹具游标缺字段，不归责产品/S4认证。
 
 原从首goto至文件末全业务动作/条件/断言字节同；PG producer/样本没有再生成或修改，员工/权限/三种payload保持。原ESLint/format实际0，父f646958为字段独立回滚点（中间c629569仅B接线设计docs）；TD-TEST-015字段实施验证完成，整文件auth真实变异尚待完成，不提前标适配全交付。Workspace/成本失败不扩大许可，B可独立首轮、第二轮仍禁，最后HEAD全CI必跑。
+
+## 后继：会话真实变异与首轮交付
+
+字段独立ea2a647后，只真实源向replaySession副本加固定旧token字段，`source-old-token-red-1`三例均在原shell可见断言红，PW1/18222ms、host1/23778ms。完整close/owned清理后apply_patch立即还原，`source-auth-restored-1`原三种mode全部过，PW0/3361ms、host0/8382ms。owned三清理true，三红原HTML/截图/trace独立保留。最终spec与ea2a647同，变异未提交。
+
+PG producer产物在字段/认证变异前后SHA256同为`98af404786319420cf03f655116df93667044371578e7892fe0df837fcd54eed`，未改原PG业务样本/权限/其它响应或goto后的业务断言。两类真红绿完成；TD-TEST-015只旧应收合成字段缺口关闭实施项，不称全部A/B/整体验收。B真实API/自然Cookie另跑，合成proof不是其安全证据。A8首轮全部试过，6份全绿、成本与Workspace各一败（字段仍待裁），第二完整轮禁、C禁；最后稳定干净HEAD完整CI仍实际必跑。
