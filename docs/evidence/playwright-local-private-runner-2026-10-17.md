@@ -15,3 +15,26 @@
 独立只读review初审三处必要收紧已实施：B stop失败不得跳过精确rm，后独立docker ps exact-name核空才报清理；探针不得冒充普通B成功；本地seed失败只固定stage/status不转动态path。额外建议已收紧local宿主异常只报固定phase，A原诊断保持。B`interrupt-stop`用于固定注入stop分支错误后验证实际强制移除；尚未执行，不声称已清理。外部Docker rm/确认失败会安全停报并保schema供检查，不伪报gone。
 
 父bd7e14d为本工具回滚点；P1/runtime会话候选另在工作树，不纳入本工具提交。下一步先固定非秘密privacy探针/只读失配真变异/取消故障，再真实B逐文件及会话真变异；C/第二轮/业务失败原边界保持。最后稳定干净HEAD实际完整CI仍必跑。
+
+## f56365c 动态隔离/故障探针
+
+命令：`NODE_ENV=test DATABASE_URL=<private guarded loopback> node --experimental-transform-types scripts/e2e-docker/preflight.mjs local <kind> <label> [fault]`。无真实.env读取，参数中无密码/DSN。每次guard→同实例/marker只读通过（只读失配变异在发送身份前拒绝，故无pg-verified/API初始化）；独立label防覆盖，宿主只保存safe-events。
+
+| kind / label / fault                              | 实际结果                                                                                                                          |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| p1 / local-privacy-positive-1 / privacy           | 固定非秘密raw+HTML canary只容器tmpfs，probe=true/complete=false/0case明确非spec绿；host0/5707ms                                   |
+| p1 / local-root-rw-red-1 / privacy                | 真源去Docker只读root选项，实际容器配置检查在gateway阶段拒绝，host1/741ms，无身份发送/API初始化                                    |
+| p1 / local-root-ro-restored-1 / privacy           | 完整清理后立即还原，probe0case再过，host0/5289ms                                                                                  |
+| runtime / local-interrupt-stop-1 / interrupt-stop | 实际PW子进程spawn后SIGTERM取消，固定stop错误注入，仍实际force rm并独立exact-name ps核空；host1/5310ms，不算完整spec/无case result |
+
+各次owned schema/container/preview最终三清理true。取消时未收到leader close事件，不能称观察到PW进程组自行drain；确认的是强制移除owned容器/namespace及其tmpfs成功。safe-events文件实测0600/目录0700，固定canary不在该安全文件，宿主对应`.test-results/private/canary.html`不存在；不泛称扫描全宿主或RAM/swap零材料。
+
+真实源把case输出改为展开原reporter对象，非秘密canary单测实际1/4过1败；完整结束后立即还原，5/5/exit0，原lint/diff0，工具源码与f56365c同。该变异只unit边界，不计浏览器case。日志`/tmp/kingturf-local-private-raw-red-1-2026-10-17.log`及各`/tmp/kingturf-docker-<label>-2026-10-17.log`保留安全输出，不保raw产物。
+
+P1首轮随后启动、同schema完整seed实际0/3030ms及成本计数检查通过；此时浏览器11例仍运行，尚不记绿/不记完成。runtime正常首轮尚未执行。各probe不是第二完整轮，成本/Workspace原待裁失败不消除。
+
+## P1 首轮后继与安全定位字段
+
+上述运行后继已完整结束：PW1/65088ms、close signal=null、discovered11/complete=true/11 failed，host1/73640ms，owned三清理true。[真实结果/未留raw限制](../tasks/playwright-p1-replay-blocker-2026-10-17.md)。TD-TEST-016/56项，不能以种子绿替代浏览器绿。
+
+为不导出raw而定位，安全reporter仅新增failureLine：错误location精确固定本spec路径才取正整数，否则0；契约再限0..10000，不读message/stack/snippet或外发路径。unit5含正确固定行/外路径0/越界拒绝实际通过，独立只读review无必要隐私阻断。只安全诊断字段提交，不改业务/原config，不声称该字段本身证明因果；同文件诊断重跑待执行。

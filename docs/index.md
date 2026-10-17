@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[P1首轮失败与安全定位](tasks/playwright-p1-replay-blocker-2026-10-17.md)：原seed0后完整11/11 failed/PW1、owned全清，raw按人裁不保留；新增仅固定spec整数failureLine定位，尚未证明根因，TD-TEST-016/56，不改业务期待。
+
 [B私有执行器验证记录](evidence/playwright-local-private-runner-2026-10-17.md)：候选unit5/原lint/结构0，固定发现/完成及probe绑定、独立review收紧；隔离/取消/真实B尚未实测，不导PNG/未视觉验收，不提前称私密清理成功。
 
 [B本地产物隔离接线方案](tasks/playwright-local-private-runner-2026-10-17.md)：按已授P1例外接只读容器/tmpfs/无raw导出/安全case索引；首版零PNG导出，不能称截图证据已保留。候选静态通过、动态验证尚待，原config/业务断言/PG同一性保持。

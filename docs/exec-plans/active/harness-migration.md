@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **P1首轮真实失败（2026-10-17）**：私有f56365c工具、同schema原seed0/3030ms及成本关单检查过；原11个test正文不变，P1自然DOM helper候选完整discovered11/complete=true/11 failed，PW1/65088ms、host1/73640ms，owned全清。raw/图按人裁未导出已清，根因尚未定位；只增安全固定spec整数failureLine工具诊断，[事实/边界](../../tasks/playwright-p1-replay-blocker-2026-10-17.md)，TD-TEST-016/56项。runtime正常首轮未跑可独立续，原cost/Workspace待裁，第二轮/C禁，最后HEAD全CI必跑。
+
 - **B环境候选静态检查点（2026-10-17）**：独立local p1/runtime私有执行器，unit5/原lint/format/结构0，独立review所列清理/探针冒绿/路径输出及宿主异常均收紧；[静态与未测清单](../../evidence/playwright-local-private-runner-2026-10-17.md)。原config不改、P1仅命令traceoff、raw/tmpfs不导出、零PNG非视觉验收；隐私/取消/真实B尚未实测，不充绿。A现六绿/两份各一败待裁，第二轮/C禁，最后HEAD全CI必跑。
 
 - **A首轮库存收口（2026-10-17）**：source原PG19过，获准应收字段ea2a647独立真红绿后，auth旧token三红→还原3过PW0/3361ms、host0/8382ms，PG产物SHA前后同、owned全清，[证据](../../tasks/playwright-source-fixture-ruling-2026-10-17.md)。A8全首试，login2/doc7/order1/revocation2/startup5/source3六份全绿，cost/Workspace各仍一败待裁；TD-TEST-015仅合成字段实施关闭，55项不删。续独立B首轮，只有第二完整轮须A+B全绿，C禁，最后HEAD完整CI必跑。
@@ -3733,6 +3735,10 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+- **2026-10-17｜P1完整首轮失败/安全定位候选**：f56365c私有工具，原seed0/3030ms及实际成本关单计数过，P1会话helper候选保11个test body字节同；PW真实1/65088ms/signalnull、discovered11/complete=true/11 failed，host1/73640ms/owned全清，raw按人裁仅tmpfs已清/未留图。TD-TEST-016新增/56，不猜根因/不改业务assert。只安全reporter加精确固定spec整数failureLine（未知0/范围0..10000），不读错误/stack/snippet/不外发路径，unit5/独立只读review无隐私阻断，[事实/待诊断](../../tasks/playwright-p1-replay-blocker-2026-10-17.md)。原P1/runtime spec候选未入本工具诊断提交；runtime可独立首轮、C/第二轮/最后HEAD全CI边界保持。[已测试]（完整PW失败明确保留，非绿）
+
+- **2026-10-17｜B隐私/取消探针实际结果**：f56365c候选固定privacy host0/5707ms/0case非spec绿；真源去root只读选项实际配置检查在身份/API前红host1/741ms→立即还原probe0/5289ms；runtime子进程spawn后取消且注入stop失败，仍actual force rm/exact ps核空，host1/5310ms、无完整case/leader close不充绿。全owned清理true，safe文件0600/目录0700、canary不在该输出/宿主对应HTML不存在，非全宿主物理零痕迹证明。raw对象展开unit真红1/4过1败→还原5过，源码还原同f56365c，[原命令/限制](../../evidence/playwright-local-private-runner-2026-10-17.md)。P1随后同schema seed0/3030ms，11例尚运行、runtime正常首轮未跑，C/第二轮/最后HEAD全CI保护保持。[已测试]（工具探针，非B全绿）
 
 - **2026-10-17｜B私有执行器候选静态提交**：父bd7e14d，local p1/runtime精确白名单、root/repo只读/two declared tmpfs/lognone/原reporter保持/安全summary双层重编码，600s有界。unit5/原lint/format/diff/结构0/29，独立review三阻断及异常输出建议已收紧；初no-unsafe-finally1以固定assert注入修正不降规则。[当前验证/边界](../../evidence/playwright-local-private-runner-2026-10-17.md)。只工具提交，不含P1/runtime会话候选；privacy/取消/真实B尚未实测、不称清理成功，零PNG未视觉验收。A失败/第二轮/C/最后HEAD全CI保护保持。[已测试]（仅静态/unit，动态B未执行）
 

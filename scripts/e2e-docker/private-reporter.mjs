@@ -25,11 +25,18 @@ export default class PrivateReporter {
       this.invalid = true;
       return;
     }
+    const expectedFile = `/work/tests/e2e/${kind === 'p1' ? 'p1-demo.spec.ts' : 'runtime-local.spec.mjs'}`;
+    const location = result.error?.location;
+    const failureLine =
+      location?.file === expectedFile && Number.isInteger(location.line) && location.line > 0
+        ? location.line
+        : 0;
     this.cases.push({
       index,
       status: result.status,
       durationMs: Math.round(result.duration),
       line: test.location.line,
+      failureLine,
     });
   }
 

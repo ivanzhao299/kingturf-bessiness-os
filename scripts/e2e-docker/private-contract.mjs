@@ -39,12 +39,15 @@ export function safeLocalCases(kind, values) {
     assert(['passed', 'failed', 'timedOut', 'skipped', 'interrupted'].includes(value.status));
     assert(Number.isInteger(value.durationMs) && value.durationMs >= 0);
     assert(Number.isInteger(value.line) && value.line > 0);
+    const failureLine = value.failureLine ?? 0;
+    assert(Number.isInteger(failureLine) && failureLine >= 0 && failureLine <= 10_000);
     // Re-encode known scalars; never forward a reporter/test/error/attachment object.
     return {
       index: value.index,
       status: value.status,
       durationMs: value.durationMs,
       line: value.line,
+      failureLine,
     };
   });
 }

@@ -40,7 +40,7 @@ test('result boundary re-encodes only bounded scalar fields', () => {
     attachments: [{ body: 'FIXED_NON_SECRET_ATTACHMENT_CANARY' }],
   };
   assert.deepEqual(safeLocalCases('p1', [value]), [
-    { index: 0, status: 'failed', durationMs: 1, line: 20 },
+    { index: 0, status: 'failed', durationMs: 1, line: 20, failureLine: 0 },
   ]);
   assert.throws(() => safeLocalCases('p1', [value, value]));
   for (const invalid of [
@@ -48,6 +48,8 @@ test('result boundary re-encodes only bounded scalar fields', () => {
     { status: 'unknown' },
     { durationMs: -1 },
     { line: 'raw' },
+    { failureLine: 'raw' },
+    { failureLine: 10_001 },
   ])
     assert.throws(() => safeLocalCases('p1', [{ ...value, ...invalid }]));
 });
@@ -59,9 +61,27 @@ test('reporter records inventory index without raw errors, titles or attachments
     const reporter = new PrivateReporter();
     reporter.onTestEnd(
       { title: localCases.runtime[0], location: { line: 13 } },
-      { status: 'failed', duration: 1.4, errors: ['FIXED_NON_SECRET_CANARY'], attachments: [] },
+      {
+        status: 'failed',
+        duration: 1.4,
+        errors: ['FIXED_NON_SECRET_CANARY'],
+        error: { location: { file: '/work/tests/e2e/runtime-local.spec.mjs', line: 61 } },
+        attachments: [],
+      },
     );
-    assert.deepEqual(reporter.cases, [{ index: 0, status: 'failed', durationMs: 1, line: 13 }]);
+    assert.deepEqual(reporter.cases, [
+      { index: 0, status: 'failed', durationMs: 1, line: 13, failureLine: 61 },
+    ]);
+    const foreign = new PrivateReporter();
+    foreign.onTestEnd(
+      { title: localCases.runtime[0], location: { line: 13 } },
+      {
+        status: 'failed',
+        duration: 1,
+        error: { location: { file: '/tmp/FIXED_NON_SECRET_CANARY', line: 61 } },
+      },
+    );
+    assert.equal(foreign.cases[0].failureLine, 0);
     reporter.onTestEnd({ title: 'unknown' }, {});
     assert.equal(reporter.invalid, true);
   } finally {
@@ -77,7 +97,7 @@ test('zero exit cannot hide missing discovery, completion, cases or failed outco
     discovered: 1,
     complete: true,
     probe: false,
-    cases: [{ index: 0, status: 'passed', durationMs: 1, line: 13 }],
+    cases: [{ index: 0, status: 'passed', durationMs: 1, line: 13, failureLine: 0 }],
   };
   assert.deepEqual(safeLocalResult('runtime', valid), valid);
   for (const invalid of [
