@@ -1,5 +1,7 @@
 # 批次4 S4：Cookie／CSRF 实现设计与行为表
 
+后继检查点：efae93d实际干净HEAD完整CI0/211588.694ms、协调只读复核通过，随后只续派[自然HTTP Secure Cookie预检工具](../evidence/security-batch4-s4-cookie-http-2026-10-17.md)。下文“本步只有设计/未预检”保留设计时点；后端业务仍未编码，不因工具通过宣称会话迁移完成。
+
 ## 0. 设计基线、已决与当前停点
 
 基线2e22837已人工验收S1–S3、裁定六项并正式授权S4；[开工R7](harness-batch4-s4-authorization-2026-10-17.md)独立提交a7d7833。主代理亲核人类原始实施授权及九旧Playwright专项回复：本轮九份不改，Cookie适配/逐文件真实变异/实际补跑合并为阶段5前硬前置，CDP不冲抵；production命名/runtime/config仍静态分类、不触生产。API/Web/CDP本轮被适配文件各自真实变异纪律不变，不重问已决选型。

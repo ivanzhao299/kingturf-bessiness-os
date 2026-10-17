@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **S4自然Secure Cookie工具前置（2026-10-17）**：设计efae93d实际干净HEAD全CI0/211588.694ms经协调亲核后，仅续派[隔离真实HTTP/CDP预检](../../evidence/security-batch4-s4-cookie-http-2026-10-17.md)。自然127.0.0.1:4173存储/回传成功，非S4后端；工具/4负向清理/逐文件变异证据见报告，旧浏览器回归与最终本步干净HEAD全CI执行后交付。后端仍未编码，完成后停协调，不自行阶段5；下方“仅设计/未预检”为前时点。
+
 - **S4开工现时（2026-10-17，已授权实施）**：接手2e22837/树空，主代理亲核原始人类授权及§7末“4-S1S3验收+S4选型”；S1–S3已人工验收，六项已决，旧“仅报告硬停”为批准前历史。先落[S4开工R7引用](../../tasks/harness-batch4-s4-authorization-2026-10-17.md)，本步仅R7＋明确实现设计/行为表独立docs，停协调只读复核后续已授后端→前端→网络级/CDP→整批收口，不重问六项。名字/path/寿命/Origin配置按授权给安全默认与理由；Secure真实HTTP预检先于后端，失败按C7停报、不预批HTTPS。九旧Playwright已获专项裁定“本轮不改，适配/各文件变异/补跑合并到阶段5前硬前置”，未执行不标绿、CDP不冲抵；原production/runtime/config静态分类边界保持。API/Web/CDP当前纪律不变。SEC003真实完成前开放，生产/push/workflow/SQL/模型/依赖/旁支债务/阶段5保护保持。
 
 - **S4最新检查点（2026-10-17，仅报告）**：S3最终28197d2实际稳定干净HEAD完整CI0/206309.018ms并经协调独立确认，沿R7续派唯一S4影响面报告。当前仅[会话载体影响报告/六项人工待决](../../tasks/harness-batch4-s4-session-impact-2026-10-17.md)及必要导航/台账文档，源码/测试/会话夹具相对接手HEAD零改动；重盘API124源=123测试+helper、13Web、12E2E spec源/两配置、27CDP/CLI候选，非全必改，不称Cookie测试绿。比较两种Cookie CSRF方案，强调跨tab代际/迟到Set-Cookie/非浏览器Bearer/精确website已解析body canonical HMAC，ADR0003与原改密全撤销不变。最终文档HEAD完整CI后**硬停人工确认，不实施S4/不关闭SEC003/不宣称批次4验收/不进入阶段5**；台账48、生产/push/workflow/Playwright边界保持，下方“最新”均历史时点。
@@ -3681,6 +3683,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+2026-10-17，S4自然Secure Cookie工具前置：设计efae93d实际干净HEAD完整CI0/211588.694ms经协调确认后，独立续派仅工具小步。自然127.0.0.1:4173真DOM/真实HTTP两Set-Cookie/Jar属性/回传Origin与CSRF，首GuBdbf及最终jdNP1W均真实0；无降Secure/别名/安全旗标兜底。新工具10＋旧65=75绿，4真实负向均exit1/owned HTTP/Chrome/profile清理true，入口/白名单各真实变异红→还原绿；旧浏览器回归、两个lint初错、机械比较false及基础7不冒称29详[证据](../../evidence/security-batch4-s4-cookie-http-2026-10-17.md)。本步不auth/config/Web/SQL/infra/Playwright，SEC003不关闭；最终本步干净HEAD全CI执行后交付并停协调，后端不自行启动。回滚核后继后独立revert本工具及同责docs至efae93d，保S1–S3/设计/3144562。[已测试：工具/浏览器；最终HEAD完整CI待执行]
 
 2026-10-17，S4明确实现设计完成、停协调复核：[设计与行为表](../../tasks/harness-batch4-s4-design-2026-10-17.md)明确配置默认/边界、会话派生签名、登录/恢复/机器入口、多Set-Cookie、无认证Cookie清理写、并发实际Cookie语义、网络证据及必要前端代际适配。三项独立只读复核无新架构阻塞，补明预登录MAC覆盖时间/nonce/绑定、认证响应no-store、隔离页面非旧SPA及host-only联合证明。仅docs，未编码/改fixture/运行Secure预检，最终实际干净HEAD完整CI执行后交付；完成后停协调，不自行续后端。外来WIP已由owner独立3144562收口，仅保留其文档提交，不将其算S4或据此启动浏览器。九旧Playwright裁定/保护边界保持；回滚核后继后独立revert本设计docs，保S1–S3及外来提交。[未测试：最终HEAD完整CI待执行]
 

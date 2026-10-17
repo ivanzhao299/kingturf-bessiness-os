@@ -7,7 +7,15 @@ import http from 'node:http';
 import { setTimeout as delay } from 'node:timers/promises';
 import { profileArgumentPattern } from './ownership.mjs';
 import { classifyRequest } from './network-policy.mjs';
+import {
+  cookieHttpMode,
+  cookieHttpReportData,
+  allowsCookieHttpRequest,
+  createCookieHttpFixture,
+  runCookieHttpProbe,
+} from './cookie-http.mjs';
 
+const cookieMode = cookieHttpMode(process.argv.slice(2));
 const cspMode = process.argv.includes('--csp-observe');
 if (cspMode && process.argv.includes('--probes'))
   throw new Error('CSP observation is a separate opt-in suite');
@@ -24,7 +32,10 @@ let linuxTemp;
 let profile;
 let winProfile;
 let runId = 'initializing';
-const report = (kind, data) => console.log(JSON.stringify({ kind, runId, ...data }));
+const report = (kind, data) =>
+  console.log(
+    JSON.stringify({ kind, runId, ...(cookieMode ? cookieHttpReportData(kind, data) : data) }),
+  );
 const getJson = (hostname, port) =>
   new Promise((resolve, reject) => {
     const req = http.get({ hostname, port, path: '/json/version', timeout: 2500 }, (res) => {
@@ -54,6 +65,8 @@ let closing = false;
 let suiteRouter;
 let suiteResult;
 let cspObserver;
+let cookieFixture;
+let cookieResult;
 let nextId = 0;
 const pending = new Map();
 const cdp = (method, params = {}, sessionId) =>
@@ -269,6 +282,25 @@ try {
       ) {
         cspObserver.receive(msg.params);
       } else if (msg.method === 'Fetch.requestPaused') {
+        if (cookieMode) {
+          const allow = allowsCookieHttpRequest(msg.params.request.url, msg.params.request.method);
+          if (!allow) {
+            requestBlocks++;
+            report('cookie-http-request-blocked', { blockedRequests: requestBlocks });
+          }
+          cdp(
+            allow ? 'Fetch.continueRequest' : 'Fetch.failRequest',
+            allow
+              ? { requestId: msg.params.requestId }
+              : { requestId: msg.params.requestId, errorReason: 'BlockedByClient' },
+            msg.sessionId,
+          )
+            .then(() => {
+              if (!allow) stop();
+            })
+            .catch(stop);
+          return;
+        }
         const url = new URL(msg.params.request.url);
         const requestClass = classifyRequest(msg.params.request.url, msg.params.request.method);
         if (requestClass === 'api' && suiteRouter) {
@@ -318,6 +350,12 @@ try {
             : { requestId: msg.params.requestId, errorReason: 'BlockedByClient' },
           msg.sessionId,
         ).catch(stop);
+      } else if (
+        msg.method === 'Network.responseReceivedExtraInfo' &&
+        cookieMode &&
+        msg.sessionId === session
+      ) {
+        cookieFixture?.observeResponseHeaders(msg.params.headersText);
       } else if (msg.method === 'Network.responseReceived') {
         cspObserver?.response(msg.params);
         const url = new URL(msg.params.response.url);
@@ -354,149 +392,172 @@ try {
     if (!process.argv.includes('--fault-csp-no-collector'))
       await cspObserver.install((method, params) => cdp(method, params, session));
   }
-  preview = spawn(
-    process.execPath,
-    [
-      'node_modules/vite/bin/vite.js',
-      'preview',
-      '--host',
-      '127.0.0.1',
-      '--port',
-      '4173',
-      '--strictPort',
-      ...(cspMode
-        ? ['--config', fileURLToPath(new URL('./csp-preview.config.mjs', import.meta.url))]
-        : []),
-    ],
-    { cwd: fileURLToPath(new URL('../../apps/web/', import.meta.url)), stdio: 'ignore' },
-  );
-  preview.on('error', stop);
-  report('owned-preview', { pid: preview.pid, origin: 'http://127.0.0.1:4173' });
-  let previewReady = false;
-  for (let attempt = 0; attempt < 40; attempt++) {
+  if (cookieMode) {
+    cookieFixture = createCookieHttpFixture(stop);
+    await cookieFixture.listen();
+    const listener = execFileSync('ss', ['-ltnp', 'sport = :4173'], { encoding: 'utf8' });
+    if (!listener.includes(`pid=${process.pid},`))
+      throw new Error('Cookie HTTP listener ownership mismatch');
+    report('cookie-http-owned-listener', { pid: process.pid, port: 4173, owned: true });
+    if (process.argv.includes('--pause-after-cookie-listener')) await delay(1000);
     if (stopping) throw new Error('preflight interrupted');
-    if (preview.exitCode !== null) throw new Error(`owned preview exited ${preview.exitCode}`);
-    try {
-      const response = await fetch('http://127.0.0.1:4173', { signal: AbortSignal.timeout(500) });
-      if (response.status === 200) {
-        previewReady = true;
-        break;
+    if (process.argv.includes('--fault-after-cookie-listener'))
+      throw new Error('injected Cookie listener failure');
+    cookieResult = await runCookieHttpProbe({
+      send: (method, params) => cdp(method, params, session),
+      fixture: cookieFixture,
+      unexpected: process.argv.includes('--fault-cookie-extra-write'),
+    });
+    if (requestBlocks !== 0) throw new Error('Cookie preflight had blocked unexpected traffic');
+  } else {
+    preview = spawn(
+      process.execPath,
+      [
+        'node_modules/vite/bin/vite.js',
+        'preview',
+        '--host',
+        '127.0.0.1',
+        '--port',
+        '4173',
+        '--strictPort',
+        ...(cspMode
+          ? ['--config', fileURLToPath(new URL('./csp-preview.config.mjs', import.meta.url))]
+          : []),
+      ],
+      { cwd: fileURLToPath(new URL('../../apps/web/', import.meta.url)), stdio: 'ignore' },
+    );
+    preview.on('error', stop);
+    report('owned-preview', { pid: preview.pid, origin: 'http://127.0.0.1:4173' });
+    let previewReady = false;
+    for (let attempt = 0; attempt < 40; attempt++) {
+      if (stopping) throw new Error('preflight interrupted');
+      if (preview.exitCode !== null) throw new Error(`owned preview exited ${preview.exitCode}`);
+      try {
+        const response = await fetch('http://127.0.0.1:4173', { signal: AbortSignal.timeout(500) });
+        if (response.status === 200) {
+          previewReady = true;
+          break;
+        }
+      } catch {
+        // Retry only this owned loopback preview while it starts.
       }
-    } catch {
-      // Retry only this owned loopback preview while it starts.
+      await delay(250);
     }
-    await delay(250);
-  }
-  if (!previewReady) throw new Error('preview not ready');
-  const previewListener = execFileSync('ss', ['-ltnp', 'sport = :4173'], { encoding: 'utf8' });
-  if (!previewListener.includes(`pid=${preview.pid},`) || preview.exitCode !== null)
-    throw new Error('4173 listener does not belong to owned preview');
-  report('preview-owned-listener', { pid: preview.pid, port: 4173, owned: true });
-  if (process.argv.includes('--pause-after-preview')) await delay(1000);
-  if (stopping) throw new Error('preflight interrupted');
-  if (process.argv.includes('--fault-after-preview'))
-    throw new Error('injected failure after owned preview');
-  const navigation = await cdp('Page.navigate', { url: 'http://127.0.0.1:4173' }, session);
-  if (navigation.errorText) throw new Error(`preview navigation failed: ${navigation.errorText}`);
-  let snapshot;
-  for (let attempt = 0; attempt < 40; attempt++) {
-    snapshot = (
-      await cdp(
-        'Runtime.evaluate',
-        {
-          expression: `JSON.stringify({url:location.origin+location.pathname,title:document.title,readyState:document.readyState,heading:document.querySelector('h1')?.textContent,formCount:document.forms.length,inputCount:document.querySelectorAll('input').length,loginInput:!!document.querySelector('input[name="login"]'),passwordInput:!!document.querySelector('input[name="password"]')})`,
-          returnByValue: true,
-        },
-        session,
-      )
-    ).result.value;
+    if (!previewReady) throw new Error('preview not ready');
+    const previewListener = execFileSync('ss', ['-ltnp', 'sport = :4173'], { encoding: 'utf8' });
+    if (!previewListener.includes(`pid=${preview.pid},`) || preview.exitCode !== null)
+      throw new Error('4173 listener does not belong to owned preview');
+    report('preview-owned-listener', { pid: preview.pid, port: 4173, owned: true });
+    if (process.argv.includes('--pause-after-preview')) await delay(1000);
+    if (stopping) throw new Error('preflight interrupted');
+    if (process.argv.includes('--fault-after-preview'))
+      throw new Error('injected failure after owned preview');
+    const navigation = await cdp('Page.navigate', { url: 'http://127.0.0.1:4173' }, session);
+    if (navigation.errorText) throw new Error(`preview navigation failed: ${navigation.errorText}`);
+    let snapshot;
+    for (let attempt = 0; attempt < 40; attempt++) {
+      snapshot = (
+        await cdp(
+          'Runtime.evaluate',
+          {
+            expression: `JSON.stringify({url:location.origin+location.pathname,title:document.title,readyState:document.readyState,heading:document.querySelector('h1')?.textContent,formCount:document.forms.length,inputCount:document.querySelectorAll('input').length,loginInput:!!document.querySelector('input[name="login"]'),passwordInput:!!document.querySelector('input[name="password"]')})`,
+            returnByValue: true,
+          },
+          session,
+        )
+      ).result.value;
+      const state = JSON.parse(snapshot);
+      if (state.readyState === 'complete' && state.inputCount > 0) break;
+      await delay(250);
+    }
     const state = JSON.parse(snapshot);
-    if (state.readyState === 'complete' && state.inputCount > 0) break;
-    await delay(250);
-  }
-  const state = JSON.parse(snapshot);
-  if (
-    state.url !== 'http://127.0.0.1:4173/' ||
-    state.readyState !== 'complete' ||
-    state.inputCount === 0
-  )
-    throw new Error('preview DOM did not render login inputs');
-  if (
-    !['Document', 'Script', 'Stylesheet'].every((type) =>
-      responses.some((x) => x.type === type && x.status === 200),
+    if (
+      state.url !== 'http://127.0.0.1:4173/' ||
+      state.readyState !== 'complete' ||
+      state.inputCount === 0
     )
-  )
-    throw new Error('missing document/script/stylesheet 200 evidence');
-  writeFileSync(`/tmp/${runId}-dom.json`, `${JSON.stringify(state, null, 2)}\n`);
-  report('preview-dom', {
-    ...state,
-    responses,
-    blockedRequests: requestBlocks,
-    snapshot: `/tmp/${runId}-dom.json`,
-  });
-  if (cspMode) {
-    if (process.argv.includes('--fault-csp-extra-write')) {
-      await cdp(
-        'Runtime.evaluate',
-        {
-          expression: `fetch('/api/v1/csp-unmapped-write',{method:'POST',body:'{}'}).catch(()=>false)`,
-          awaitPromise: true,
-          returnByValue: true,
-        },
-        session,
-      );
-      throw new Error('unmapped synthetic write did not interrupt CSP harness');
-    }
-    const { runCspSendProbes } = await import('./csp-send-probes.mjs');
-    suiteResult = await runCspSendProbes({
-      send: (method, params) => cdp(method, params, session),
-      router: suiteRouter,
-      observer: cspObserver,
-      report,
+      throw new Error('preview DOM did not render login inputs');
+    if (
+      !['Document', 'Script', 'Stylesheet'].every((type) =>
+        responses.some((x) => x.type === type && x.status === 200),
+      )
+    )
+      throw new Error('missing document/script/stylesheet 200 evidence');
+    writeFileSync(`/tmp/${runId}-dom.json`, `${JSON.stringify(state, null, 2)}\n`);
+    report('preview-dom', {
+      ...state,
+      responses,
+      blockedRequests: requestBlocks,
+      snapshot: `/tmp/${runId}-dom.json`,
     });
-  }
-  if (process.argv.includes('--probes')) {
-    const suite = await import('./probes.mjs');
-    suiteRouter = suite.createStubRouter({
-      salesViews: process.argv.includes('--sales-views'),
-      pricingViews: process.argv.includes('--pricing-views'),
-      creditContractViews: process.argv.includes('--credit-contract-views'),
-      fulfillmentViews: process.argv.includes('--fulfillment-views'),
-      financeRiskViews: process.argv.includes('--finance-risk-views'),
-      operationsViews: process.argv.includes('--operations-views'),
-      dashboardView: process.argv.includes('--dashboard-view'),
-    });
-    if (process.argv.includes('--register-tools')) {
-      const { withRegisterTools } = await import('./register-fixtures.mjs');
-      suiteRouter = withRegisterTools(suiteRouter);
+    if (cspMode) {
+      if (process.argv.includes('--fault-csp-extra-write')) {
+        await cdp(
+          'Runtime.evaluate',
+          {
+            expression: `fetch('/api/v1/csp-unmapped-write',{method:'POST',body:'{}'}).catch(()=>false)`,
+            awaitPromise: true,
+            returnByValue: true,
+          },
+          session,
+        );
+        throw new Error('unmapped synthetic write did not interrupt CSP harness');
+      }
+      const { runCspSendProbes } = await import('./csp-send-probes.mjs');
+      suiteResult = await runCspSendProbes({
+        send: (method, params) => cdp(method, params, session),
+        router: suiteRouter,
+        observer: cspObserver,
+        report,
+      });
     }
-    if (process.argv.includes('--document-editor')) {
-      const { withDocumentEditor } = await import('./document-editor-fixtures.mjs');
-      suiteRouter = withDocumentEditor(suiteRouter);
+    if (process.argv.includes('--probes')) {
+      const suite = await import('./probes.mjs');
+      suiteRouter = suite.createStubRouter({
+        salesViews: process.argv.includes('--sales-views'),
+        pricingViews: process.argv.includes('--pricing-views'),
+        creditContractViews: process.argv.includes('--credit-contract-views'),
+        fulfillmentViews: process.argv.includes('--fulfillment-views'),
+        financeRiskViews: process.argv.includes('--finance-risk-views'),
+        operationsViews: process.argv.includes('--operations-views'),
+        dashboardView: process.argv.includes('--dashboard-view'),
+      });
+      if (process.argv.includes('--register-tools')) {
+        const { withRegisterTools } = await import('./register-fixtures.mjs');
+        suiteRouter = withRegisterTools(suiteRouter);
+      }
+      if (process.argv.includes('--document-editor')) {
+        const { withDocumentEditor } = await import('./document-editor-fixtures.mjs');
+        suiteRouter = withDocumentEditor(suiteRouter);
+      }
+      if (process.argv.includes('--governance-view')) {
+        const { withGovernanceView } = await import('./governance-fixtures.mjs');
+        suiteRouter = withGovernanceView(suiteRouter);
+      }
+      if (process.argv.includes('--boundary-parsers')) {
+        const { withBoundaryParserFixtures } = await import('./boundary-fixtures.mjs');
+        suiteRouter = withBoundaryParserFixtures(suiteRouter);
+      }
+      if (process.argv.includes('--fault-unmapped-api')) {
+        await cdp(
+          'Runtime.evaluate',
+          {
+            expression: `fetch('/apix').catch(()=>false)`,
+            awaitPromise: true,
+            returnByValue: true,
+          },
+          session,
+        );
+        throw new Error('unmapped API injection did not interrupt CDP');
+      }
+      suiteResult = await suite.runProbes({
+        send: (method, params) => cdp(method, params, session),
+        router: suiteRouter,
+        runId,
+        report,
+        expectDialog,
+      });
     }
-    if (process.argv.includes('--governance-view')) {
-      const { withGovernanceView } = await import('./governance-fixtures.mjs');
-      suiteRouter = withGovernanceView(suiteRouter);
-    }
-    if (process.argv.includes('--boundary-parsers')) {
-      const { withBoundaryParserFixtures } = await import('./boundary-fixtures.mjs');
-      suiteRouter = withBoundaryParserFixtures(suiteRouter);
-    }
-    if (process.argv.includes('--fault-unmapped-api')) {
-      await cdp(
-        'Runtime.evaluate',
-        { expression: `fetch('/apix').catch(()=>false)`, awaitPromise: true, returnByValue: true },
-        session,
-      );
-      throw new Error('unmapped API injection did not interrupt CDP');
-    }
-    suiteResult = await suite.runProbes({
-      send: (method, params) => cdp(method, params, session),
-      router: suiteRouter,
-      runId,
-      report,
-      expectDialog,
-    });
   }
   if (suiteResult) {
     if (requestBlocks !== 0) throw new Error('harness had blocked unexpected non-static traffic');
@@ -518,6 +579,20 @@ try {
     wait.reject(new Error('preflight closing'));
   }
   pending.clear();
+  if (cookieFixture) {
+    try {
+      const listenerGone = await cookieFixture.close();
+      report('cookie-http-cleanup', { listenerGone });
+      if (!listenerGone) {
+        clean = false;
+        process.exitCode = 1;
+      }
+    } catch {
+      clean = false;
+      process.exitCode = 1;
+      report('cleanup-failure', { cookieHttpListenerRetained: true, requiresInspection: true });
+    }
+  }
   try {
     socket?.close();
   } catch {
@@ -578,17 +653,29 @@ try {
 }
 if (passed && clean && !process.exitCode) {
   report('preflight-pass', {
-    checks: [
-      'owned-loopback',
-      'http-version',
-      'Browser.getVersion',
-      'preview-owned-listener',
-      'preview-document-200',
-      'preview-assets-200',
-      'rendered-login-DOM',
-      'owned-resource-cleanup',
-    ],
-    notRun: suiteResult ? 'Playwright' : 'five-class harness probes and Playwright',
+    checks: cookieMode
+      ? [
+          'owned-loopback',
+          'real-http-two-cookie-transport',
+          'trusted-isolated-DOM',
+          'owned-resource-cleanup',
+        ]
+      : [
+          'owned-loopback',
+          'http-version',
+          'Browser.getVersion',
+          'preview-owned-listener',
+          'preview-document-200',
+          'preview-assets-200',
+          'rendered-login-DOM',
+          'owned-resource-cleanup',
+        ],
+    notRun: cookieMode
+      ? 'legacy harness probes, CSP suite and Playwright'
+      : suiteResult
+        ? 'Playwright'
+        : 'five-class harness probes and Playwright',
   });
   if (suiteResult) report('harness-pass', suiteResult);
+  if (cookieResult) report('cookie-http-pass', cookieResult);
 }

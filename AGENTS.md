@@ -8,7 +8,7 @@ KingTurf 业务操作系统：面向草坪行业外贸业务的 ERP（CRM→报�
 
 ## 如何开始（渐进式披露：先地图，再细节）
 
-当前批次1/2（含E1）/3已验收64757d4；批次4 S1–S3于2e22837人工验收，六项选型已决并正式授权S4实施。影响报告420f9ba仅文档/完整CI0，旧“仅报告硬停”为批准前历史。本步先S4开工R7＋具体实现设计/行为表独立docs，完成后停协调只读复核，再续已授权后端→前端→网络级/CDP→整批收口；本步不提前编码/改夹具。ADR0003/SQL/签名/零新依赖保持，SEC003真实完成前不关闭。原Playwright补跑、不push/部署/workflow/阶段5边界保持；S3仍仅RO、不代表生产报告通道或强制兼容。
+当前批次1/2（含E1）/3已验收64757d4；批次4 S1–S3于2e22837人工验收，六项选型已决并正式授权S4实施。设计efae93d干净HEAD完整CI0/211588.694ms已协调复核；本步仅续自然HTTP Secure Cookie预检工具，后端/config/Web未改，工具最终CI后停协调再续已授后端→前端→网络级/CDP→整批收口。影响报告420f9ba“仅报告硬停”为批准前历史。ADR0003/SQL/签名/零新依赖保持，SEC003真实完成前不关闭。原Playwright补跑、不push/部署/workflow/阶段5边界保持；S3仍仅RO、不代表生产报告通道或强制兼容。
 
 - 架构总览与依赖方向：见 `ARCHITECTURE.md`
 - 设计理念与操作原则（争议裁决依据）：见 `docs/design-docs/core-beliefs.md`
@@ -17,7 +17,8 @@ KingTurf 业务操作系统：面向草坪行业外贸业务的 ERP（CRM→报�
 - CI 与发布决策（非 Tauri，仅 workflow_dispatch 部署，无 tag/Release）：见 `docs/CI.md`
 - 全部文档索引：见 `docs/index.md`
 - 关键决策记录：见 `docs/adr/`（10 个 ADR）
-- S4当前实现设计与行为表：见 `docs/tasks/harness-batch4-s4-design-2026-10-17.md`；仅设计，文档门禁后停协调复核，后端编码/真实Secure预检未执行。
+- S4实现设计与行为表：见 `docs/tasks/harness-batch4-s4-design-2026-10-17.md`；设计已协调确认，后端业务未编码，工具前置见下项。
+- S4后继当前检查点：设计efae93d干净HEAD全CI0/211588.694ms经协调确认，仅续派 `docs/evidence/security-batch4-s4-cookie-http-2026-10-17.md` 自然Secure Cookie预检工具；后端未编码，工具最终CI后再停协调。上文“仅设计/未预检”为先前时点。
 
 ## 硬性约束（不可违反）
 

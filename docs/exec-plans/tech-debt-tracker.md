@@ -334,6 +334,8 @@
 
 ### TD-SEC-003｜会话 token 存 sessionStorage，XSS 可读
 
+**S4后继工具检查点（2026-10-17）**：设计efae93d干净HEAD全CI0/211588.694ms经协调确认后，仅续派[隔离自然Secure Cookie HTTP/CDP预检](../evidence/security-batch4-s4-cookie-http-2026-10-17.md)。自然传输正向/自有资源负向已证，不是业务认证/签名CSRF/撤销或Web迁移；后端/config/Web源码未改，SEC003保持开放，台账仍48。工具最终CI后停协调，再续已授权后端；下文“未预检”为历史时点。
+
 **S4开工授权现时（2026-10-17）**：2e22837六项已决、人类正式授权实施已亲核；[R7引用](../tasks/harness-batch4-s4-authorization-2026-10-17.md)先独立docs，当前仅授权/具体设计小步，协调只读复核后续后端，不重问选型，尚未改载体/夹具/代码或关闭本项。保opaque/hash/SQL/签名/事务/零依赖；WEB007/PERF003只同文件耦合必要适配且逐处登记，其他不并入。九旧Playwright专项人类回复已亲核，裁定本轮不改、适配/逐文件变异/补跑合并为阶段5前硬前置，未执行不标绿、CDP不冲抵；production/runtime/config静态分类保持。Secure预检尚未运行，不降Secure/不预批HTTPS。下列“仅报告硬停”为批准前历史；SEC001仅RO/强制另批，SEC002/004待S4最终核账，48台账不增闭。
 
 **S4现时仅影响报告（2026-10-17）**：S1–S3协调确认，接手28197d2实际干净HEAD完整CI0/206309.018ms；当前entry.ts:149写/:185读、http.ts:38 Bearer、session.ts:15 token相等保护均未改。已落[影响报告](../tasks/harness-batch4-s4-session-impact-2026-10-17.md)：Cookie＋严格Origin-only与Cookie＋session-bound签名双提交/Origin候选，跨tab/迟到Cookie/机器Bearer和精确website canonical HMAC边界、当前测试工具库存与未来矩阵。报告最终HEAD完整CI仅验证S1–S3现有载体，不是Cookie测试通过；**报告后硬停人工确认，未实施/不关闭SEC003**。S3只是RO（不阻止违规）、无生产receiver/观察周期，不能称XSS风险已消除。下列旧位置与“当前无CSP”为建档历史；ADR0003/token哈希/事务/SQL保持，TD-WEB-007/TD-PERF-003仅既有候选交互不修，台账仍48。
