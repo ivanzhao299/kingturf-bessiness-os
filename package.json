@@ -12,7 +12,10 @@
     "dev": "pnpm --parallel --filter @kingturf/web --filter @kingturf/api dev",
     "lint": "eslint scripts/verify_frontend_capability_manifest.mjs scripts/seed_p1_demo.mjs scripts/validate_release*.mjs scripts/analysis/*.mjs scripts/analysis/proofs/*.mjs scripts/e2e-cdp/*.mjs scripts/e2e-docker/*.mjs && pnpm exec eslint tests/e2e/runtime-local.spec.mjs playwright.runtime.config.ts && pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm test:release-guardrails && pnpm test:session-network-tools && pnpm -r test",
+    "test": "pnpm test:release-guardrails && pnpm test:session-network-tools && pnpm test:coverage-tools && pnpm -r test",
+    "test:coverage-tools": "node --test scripts/analysis/coverage-inventory.test.mjs",
+    "test:coverage": "pnpm test:release-guardrails && pnpm test:session-network-tools && pnpm test:coverage-tools && node scripts/analysis/coverage-run.mjs check",
+    "coverage:measure": "node scripts/analysis/coverage-run.mjs measure",
     "test:session-network-tools": "node --test scripts/e2e-cdp/session-network.test.mjs",
     "test:release-guardrails": "node --test scripts/validate_release.test.mjs && node --test scripts/analysis/structure-gate.test.mjs && node --test scripts/analysis/service-boundary-gate.test.mjs && node --test scripts/analysis/frontend-runtime-sources.test.mjs && node --test scripts/analysis/csp-nginx-client.test.mjs scripts/e2e-cdp/fixtures.test.mjs scripts/e2e-cdp/network-policy.test.mjs scripts/e2e-cdp/driver.test.mjs scripts/e2e-cdp/csp-observer.test.mjs scripts/e2e-cdp/csp-send.test.mjs scripts/e2e-cdp/cookie-http.test.mjs && PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests/operations -p \"*_test.py\"",
     "build": "pnpm -r build",
@@ -32,11 +35,12 @@
     "e2e:production:roles": "playwright test tests/e2e/production-role-uat.spec.ts",
     "verify:frontend-capabilities": "node scripts/verify_frontend_capability_manifest.mjs",
     "ci:database:guard": "NODE_ENV=test pnpm --filter @kingturf/database exec node --experimental-strip-types src/cli.ts guard-test-target",
-    "ci:local": "NODE_ENV=test sh -c 'pnpm install --frozen-lockfile && pnpm format:check && pnpm doc:lint && pnpm structure:check && pnpm service:check && pnpm verify:frontend-capabilities && pnpm ci:database:guard && pnpm db:migrate && pnpm db:status && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm security:check'"
+    "ci:local": "NODE_ENV=test sh -c 'pnpm install --frozen-lockfile && pnpm format:check && pnpm doc:lint && pnpm structure:check && pnpm service:check && pnpm verify:frontend-capabilities && pnpm ci:database:guard && pnpm db:migrate && pnpm db:status && pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm build && pnpm security:check'"
   },
   "devDependencies": {
     "@eslint/js": "9.39.4",
     "@playwright/test": "^1.62.1",
+    "@vitest/coverage-v8": "3.2.6",
     "eslint": "9.39.4",
     "globals": "16.4.0",
     "prettier": "3.8.1",
