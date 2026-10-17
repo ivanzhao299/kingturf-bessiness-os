@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **source首轮/分页R7（2026-10-17）**：原PG producer19过、仅auth候选两次PW2过1败，authorized催收卡hidden；旧应收cursor stub缺nextCursor/ready链支持，原样本/断言不改，候选已精确还原并封存。直接人类仅批应收stub补null，[原话/失败/补丁](../../tasks/playwright-source-fixture-ruling-2026-10-17.md)先独立落盘，TD-TEST-015/现55项，待实施/变异。A8均首试留证但成本/Workspace/source未全绿；可继续独立B首轮，第二完整轮禁/C禁，最后HEAD全CI必跑。
+
 - **startup首轮（2026-10-17）**：仅已授fixture/会话oracle，原cold/layout/logo/下载/资产失败刷新业务断言保持；503保Jar、401客户端回登录不要求清HttpOnly。资产删Cookie两红→还原5过、401变403一红→还原5过PW0/6241ms、host0/12660ms，owned全清，[映射/原时序边界](../../evidence/playwright-docker-spec-replay-2026-10-17.md)。现7份A已试中5份全绿、Workspace/成本各仍一败，source/B未跑、第二轮禁/C禁，最后HEAD全CI仍必跑。
 
 - **P1产物最小例外已授（2026-10-17）**：本会话直接人类call_5b46d68608d34eccb6dbaaae626c4776批准P1-only命令traceoff、原配置/断言不改；只读容器、owned tmpfs原raw不导出，仅固定结果/核过业务截图，清理容器，不承诺RAM/swap物理零落盘。[原话/执行界线](../../tasks/playwright-p1-artifact-authorization-2026-10-17.md)先独立落盘，尚未接线/P1执行；A首轮先续，成本/Workspace未绿及B/第二轮/最终CI边界不变。
@@ -3727,6 +3729,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+- **2026-10-17｜source旧分页夹具C7/R7**：41bf26a后原PG producer实际19过/5.87s，仅auth候选PW1/8907ms、host1/14281ms及重复PW1/8937ms、host1/14318ms均2过1败，authorized原卡存在hidden，owned全清。静态ar:read→collections应收依赖→旧stub无nextCursor→strict parser/未ready隐藏支持候选，不改产品/断言；候选apply_patch精确还原并封存patch/SHA。人类call_7652a1df412c4d42b66e572bb09ebeb7只授该应收合成endpoint补null，[原话/事实](../../tasks/playwright-source-fixture-ruling-2026-10-17.md)独立docs先行，新增TD-TEST-015/55，尚未实施/变异不充绿。B独立首轮可续，C/第二轮/最终HEAD全CI边界保持。[未测试]（新增R7，原失败已实测）
 
 - **2026-10-17｜P1后继范围精度纠正**：dc32ffa人类只批准具体产物例外，并未增加“全部A绿才B”条件；该R7尾部是主代理额外解释，已显式纠正为原A首轮→B首轮，仅第二完整轮须A+B全绿，不借既有失败冻结其它独立首轮。startup当前已试A数应7（5全绿+Workspace/成本各一败），旧6属计数笔误一并纠正；不改变真实用例/日志/失败结果。[未测试]（文档精度修正）
 

@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[Source分页合成夹具R7](tasks/playwright-source-fixture-ruling-2026-10-17.md)：原PG生产器19过、浏览器两次2过1败/authorized卡片hidden；人类只批准应收stub补nextCursor:null，原样本/权限/断言不动。auth候选已封存还原，尚未修正/真变异，TD-TEST-015/55项。
+
 [P1最小产物例外R7](tasks/playwright-p1-artifact-authorization-2026-10-17.md)：直接人类批准仅P1命令traceoff/只读容器及owned tmpfs原始产物不导出，只固定结果/核过业务截图；尚未接线执行，不承诺RAM/swap物理零落盘，不扩runtime/C或业务断言。
 
 [Workspace旧夹具失败/增量裁定](tasks/playwright-workspace-fixture-rulings-2026-10-17.md)：原2过2败、首次成本GET被gate挂起及360缺字段；等待点已人裁批准，字段独立待裁，原16expect/合成隔离冻结，台账54，非整文件已绿。
