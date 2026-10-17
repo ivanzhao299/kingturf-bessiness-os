@@ -57,6 +57,8 @@
 
 ## 4. 已登记的可靠性债务
 
+**S3现时（2026-10-17）**：CSP Report-Only业务762e393、严格oracle a4c2ca3与工具f693ee2实际稳定干净HEAD完整CI0/219878.817ms。API环境CSP_ENFORCE默认false；外层nginx独立off开关，隐藏上游两CSP头后统一RO，不能通过API变量开启公网强制；内层直连HTML无CSP。workflow不安装/reload host nginx，仓库变化不是生产生效，本次无部署。真实built HTML/合成发送、原29及本地合成upstream20矩阵分开证明，不等同真实TLS/inner/API全栈；打印未测、无report接收端、未来完整发布周期观察及强制另授权。源码/构建/API原生import通过，无启动/端口/DB操作。最终完成docs另实际HEAD全CI后停协调，SEC001只RO段待批次验收，S4仍硬停；[细节、失败史与配套回滚](evidence/security-batch4-s3-csp-2026-10-17.md)。下方SEC001未实施为历史。
+
 **S2现时（2026-10-17）**：登录端点已实施账户/IP独立失败滑窗与持锁退避，b8c1212实际干净HEAD全CI0，最终证据HEAD另复验后停协调。单进程状态、默认10000桶/64活动及等待请求；满容量/受信链非法503而非提前429，原auth未完成持续占名额，共享键排队可能超过前端15s，不是全HTTP堆/连接防DoS。默认trust-none，生产双代理上线前必须核实实际peer/追加链并显式配精确IP；仅新增compose S2透传，不运行/部署。TD-HYG-002登记旧preview Dockerfile仍COPY已删包，未构建/未证生产失败，不顺手修。细节/回滚见[S2证据](evidence/security-batch4-s2-login-limit-2026-10-17.md)，下方SEC002未实施为历史；SEC001/003仍未实施，S4硬停。
 
 **S1现时更新（2026-10-17）**：D1已正式授权实施，TD-SEC004的应用层三头已在统一complete接线，正常/错误及rejectOversized保持原状态/JSON/关联ID/telemetry；后继59f9dfa实际干净HEAD全CI0。Nginx自产响应/dispatch前异常不在该点保证内，代理重复头数量尚未实测，不代表生产生效；本批不部署/dispatch。SEC001/002/003后续按授权分步，S4硬停。旧下段为建档基线，当前细节见[S1验证及回滚](evidence/security-batch4-s1-headers-2026-10-17.md)。

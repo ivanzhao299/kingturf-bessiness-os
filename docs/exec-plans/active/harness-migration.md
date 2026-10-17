@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **S3最新检查点（2026-10-17）**：输入S2最终74c78c3→设计10f841e→独立行为762e393→严格oracle a4c2ca3→工具f693ee2，实际稳定干净HEAD完整CI0/219878.817ms，API123/17184、Web13/266/config29、结构0/29、工具65。原29 Us0W3d/新CSP3提交后msqifE/本地头矩阵20及三个真实负向边界分开记录，122旧API AST守恒、源码/构建/API原生import0；默认强制false/off，无report接收端/生产观察就绪或打印强制兼容保证。完成docs本提交另实际干净HEAD全CI后停协调复核，S4仅影响报告后实施硬停人工确认，非批次4验收；台账48及原Playwright补跑/保护区保持。[S3证据/失败史/回滚](../../evidence/security-batch4-s3-csp-2026-10-17.md)，下方S2/S1“最新”均保留历史时点。
+
 - **S2最新检查点（2026-10-17）**：S1最终00ed10d协调确认→设计2ce5dab→业务bdbda0e→声明身份门禁b8c1212，实际稳定干净HEAD完整CI0/194043.303ms，API122/17175、Web13/266/config23、结构0/29；首CI端口未分类失败与纯名字候选复核遗漏均保留。完成证据独立HEAD另完整CI后停S2协调，不提前S3/S4/阶段5。台账48，TD-HYG-002旧preview Dockerfile只登记不修。具体范围/配置/代理/资源限制及回滚见[S2证据](../../evidence/security-batch4-s2-login-limit-2026-10-17.md)；下方S1及其它“当前”均为历史时点。
 
 - **S1最新检查点（2026-10-17）**：R7 bed8b40、业务b02ad55、独立响应头期望59f9dfa；首源码全CI1的65文件6994严格oracle失败如实保留，后继59f9dfa源码不变、仅76处三头期望同步后实际稳定干净HEAD完整CI0/180503.567ms，API118/17114、Web13/266、结构0/29。S1实施及只读复核完成、证据提交后另全CI，停协调审查/续派；S2/S3/S4尚未实施，不是批次4人工验收。[S1证据及逐处变更/回滚](../../evidence/security-batch4-s1-headers-2026-10-17.md)。下方R7及旧“当前”保留时点。
@@ -3671,6 +3673,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+2026-10-17，S3源码与工具实施/独立复核完成：f693ee28322233a3f3a0d639cf678847d42fc120实际稳定干净HEAD完整CI0/219878.817ms，结束同HEAD/树空（`/tmp/kingturf-batch4-s3-f693ee2-head-ci-2026-10-17.log`），API123/17184、Web13/266/config29/database68/domain14/types1、结构0/29/工具65/audit零漏洞。真实提交后msqifE三场景0、网络三零/自有清理全真；头矩阵20明确每次CLI status0、四组owned清理真，未知启动回执故障实际1且容器/目录清理真。初次工具commit lint8红→改browser global/新测试写法→lint0/65绿；client只SIGTERM等close的静态阻断修成5秒独立settle/毁stdio，假kill=false无close证明等待有界，不冒称保证CLI退出；两名独立工具/证据只读审无必要阻塞。完成docs独立本提交后另实际干净HEAD完整CI（专用final-head日志）再交协调，未S4/部署/强制/阶段5。配套回滚按本docs→f693ee2→a4c2ca3→762e393→10f841e核依赖逆序，保S1/S2；[完整边界及失败史](../../evidence/security-batch4-s3-csp-2026-10-17.md)。下方工具候选为历史。
 
 2026-10-17，S3工具收尾候选：行为762e393/oracle a4c2ca3之后仅独立opt-in CDP/本地nginx验证工具与证据，Web/CRM/旧fixtures/Playwright/SQL/锁/workflow零改动；历史CRM状态恢复与360必填补齐异步确认不构成本轮新业务授权。65工具单测绿；原29 Us0W3d与CSP3 4Lyd6t真实0，collector缺失/未知写各实际1，有限观察仅哨兵事件，不称生产观察就绪。nginx四组合20本地检查及未知启动回执故障清理、HTTP client严格超时修正和客户端退出码断言最终重跑中；具体失败史/隐私边界见[S3证据](../../evidence/security-batch4-s3-csp-2026-10-17.md)。本候选尚未实际干净HEAD全CI，完成docs也须另全CI后停协调，S4实施硬停人类确认。
 

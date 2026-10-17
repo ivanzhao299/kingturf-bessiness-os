@@ -4,14 +4,16 @@
 
 输入 S2 最终 `74c78c3`（实际干净 HEAD 全 CI 0/203898.679ms）。沿 [R7](../tasks/harness-batch4-authorization-2026-10-17.md) 与 [S3 设计](../tasks/harness-batch4-s3-design-2026-10-17.md)，只实施 TD-SEC-001 Report-Only 与默认关闭的强制开关；不部署、不 push、不改 workflow、不访问生产。S4 仅影响报告、实施前硬停人工确认；本次没有 Cookie/CSRF/Origin/sessionStorage/Bearer 协议迁移、CRM 业务或旧 360 夹具修改。异步确认中的 CRM 状态恢复与 360 unavailableSections 是已完成批次3的历史授权，不算本次改动。
 
-| 提交      | 内容                                                  | 当时验证                                                         |
-| --------- | ----------------------------------------------------- | ---------------------------------------------------------------- |
-| `10f841e` | 先行设计/行为登记                                     | 文档校验                                                         |
-| `762e393` | 独立 API/config/外层 nginx 行为                       | 新 API 9/config 29，定向类型/lint/结构通过；未称该提交全 CI 通过 |
-| `a4c2ca3` | 独立旧 oracle 映射及证明                              | 68 文件81头对象只加 CSP；122旧 API 文件逆去 CSP 后完整 AST 相同  |
-| 工具候选  | opt-in 本地 HTML collector、合成发送及本地 nginx 验证 | 下述定向实测；源码实际干净 HEAD 全 CI 待执行                     |
+| 提交      | 内容                                                  | 当时验证                                                                 |
+| --------- | ----------------------------------------------------- | ------------------------------------------------------------------------ |
+| `10f841e` | 先行设计/行为登记                                     | 文档校验                                                                 |
+| `762e393` | 独立 API/config/外层 nginx 行为                       | 新 API 9/config 29，定向类型/lint/结构通过；未称该提交全 CI 通过         |
+| `a4c2ca3` | 独立旧 oracle 映射及证明                              | 68 文件81头对象只加 CSP；122旧 API 文件逆去 CSP 后完整 AST 相同          |
+| `f693ee2` | opt-in 本地 HTML collector、合成发送及本地 nginx 验证 | 实际稳定干净 HEAD 全 CI 0/219878.817ms；API123/17184、Web13/266/config29 |
 
-完成文档的独立提交及实际干净 HEAD 全 CI 也尚待执行；此处不预填成功。SEC-001 只完成 RO 段候选，不关闭未来强制生产段；台账仍48，TD-HYG-002只登记不修，评分不提前上调。
+源码及工具固定 `f693ee28322233a3f3a0d639cf678847d42fc120` 实际完整 `pnpm ci:local` 退出0/219878.817ms，开始及结束同SHA/树空，日志 `/tmp/kingturf-batch4-s3-f693ee2-head-ci-2026-10-17.log`：API123文件/17184，Web13/266，config29/database68/domain14/types1；format/doc-lint/结构0违规29豁免/guardrails/type/lint/build/audit零漏洞通过。登录启动预算JS11794/CSS1898 gzip保持。源码、构建config及built API原生import0（`native-final-2026-10-17.log`），不启动server/端口/真实环境解析。固定该SHA的122旧API文件逆AST证明0（`oracle-f693ee2-2026-10-17.json`）。
+
+完成文档为本次独立提交：提交后须在实际稳定干净HEAD串行完整CI，专用日志 `/tmp/kingturf-batch4-s3-final-head-ci-2026-10-17.log`，结束复核SHA/树空后才交协调；该结果只能执行后由最终交付报告，本文不预填。SEC-001仅RO段实施完成待批次验收，未来强制生产段开放；台账仍48，TD-HYG-002只登记不修，评分不提前上调。
 
 ## 行为与部署边界
 
@@ -47,7 +49,7 @@ collector 两端投影，directive/disposition/phase 有限枚举；URL 仅固�
 | 无 collector，`tG6nhE` | `cdp-no-collector-red-2026-10-17.log`   | 实际退出1，真实登录与发送先成功，但无真事件哨兵被拦；自有清理全真                                                           |
 | 多余写，`i9JQKA`       | `cdp-extra-write-red-2026-10-17.log`    | 实际退出1，unknownApiRequests=1，未知POST硬闸生效；自有清理全真                                                             |
 
-成功事件仅 `sentinel:script-src-elem:report=1`：故意插入 inline script 确实执行且浏览器真实事件确实采到；非伪造 dispatchEvent。有限正常阶段本次零事件，不推广为“全部业务零违例”。首正向 `6mvMIe` 在独立 Network202 计数补齐前，只算早期成功，不与最终证据混用。最后 UUIDv4 版本/variant 约束收紧后的实际提交后正向仍待记录。
+成功事件仅 `sentinel:script-src-elem:report=1`：故意插入 inline script 确实执行且浏览器真实事件确实采到；非伪造 dispatchEvent。有限正常阶段本次零事件，不推广为“全部业务零违例”。首正向 `6mvMIe` 在独立 Network202 计数补齐前，只算早期成功，不与最终证据混用。最后UUIDv4约束及lint写法修正后，固定f693ee2的提交后正向`msqifE`实际退出0：`/tmp/kingturf-batch4-s3-cdp-postcommit-2026-10-17.log`；三检查/计数与4Lyd6t相同、Document1/sendResponses1/total1/drop0/仅哨兵事件，网络三零、preview/process/profile自有清理全真。不是把旧结果代替新提交复跑。
 
 65 工具单测（原34+observer8+send20+nginx client3）已实际通过：`/tmp/kingturf-batch4-s3-tools-final-2026-10-17.log`；新精确 fixture 缺字段/错误key/未知写等负向，不改旧34断言。原29命令：
 
@@ -83,4 +85,4 @@ HTTP client 持续写开 stdin 防 BusyBox nc EOF 提前退出，stdout16KB/stde
 
 按最终后继文档→工具→`a4c2ca3` oracle→`762e393`行为→`10f841e`设计逆序配套 revert，先检查实际依赖与自有变更，不自动执行。保留S1/S2及各自历史回滚链；不能只撤行为而留严格新期望。API `CSP_ENFORCE=false` 与外层off只撤强制，不撤RO，也不能互相替代。无DB迁移/数据回滚/生产操作。
 
-源码候选提交和完成文档各实际稳定干净HEAD完整CI0后停止交协调复核，不以中途定向绿代替。S4报告另依协调步骤推进；任何S4实施仍硬停人工确认。
+源码f693ee2已实际稳定干净HEAD完整CI0；完成文档本提交也须实际稳定干净HEAD完整CI0后停止交协调复核，不以中途定向绿代替。工具/证据独立只读复核确认collector/send口径与超时修正无必要阻塞；不以静态复核冒称额外运行。S4报告另依协调步骤推进；任何S4实施仍硬停人工确认。

@@ -8,11 +8,11 @@ KingTurf 业务操作系统：面向草坪行业外贸业务的 ERP（CRM→报�
 
 ## 如何开始（渐进式披露：先地图，再细节）
 
-当前批次1/2（含E1）/3已验收64757d4；批次4已授权，S1最终00ed10d经协调确认。S2登录双维失败滑窗/持锁退避已实施：业务bdbda0e首次全CI因新端口未分类红，独立声明身份门禁b8c1212实际干净HEAD全CI0（API17175/Web266/config23）。完成证据HEAD另全CI后停协调复核，S3未实施；S4仅影响报告后硬停人类确认，禁止先改Cookie/CSRF/Origin或会话夹具。原Playwright补跑、不push/部署/workflow/阶段5边界保持。
+当前批次1/2（含E1）/3已验收64757d4；批次4 S1/S2经协调确认。S3 CSP Report-Only已实施：行为762e393、独立oracle a4c2ca3、工具f693ee2实际稳定干净HEAD完整CI0（API123/17184、Web13/266/config29）。真实HTML/合成发送CSP3与原29、本地头矩阵20、工具65通过；不是生产观察通道就绪或强制兼容证明。完成证据HEAD另全CI后停协调；S4仅影响报告后硬停人类确认，禁止先改Cookie/CSRF/Origin或会话夹具。原Playwright补跑、不push/部署/workflow/阶段5边界保持，详见S3证据。
 
 - 架构总览与依赖方向：见 `ARCHITECTURE.md`
 - 设计理念与操作原则（争议裁决依据）：见 `docs/design-docs/core-beliefs.md`
-- 当前执行计划与进度：见 `docs/exec-plans/active/` §0及§7；批次4授权见 `docs/tasks/harness-batch4-authorization-2026-10-17.md`；S2证据见 `docs/evidence/security-batch4-s2-login-limit-2026-10-17.md`
+- 当前执行计划与进度：见 `docs/exec-plans/active/` §0及§7；批次4授权见 `docs/tasks/harness-batch4-authorization-2026-10-17.md`；S3证据见 `docs/evidence/security-batch4-s3-csp-2026-10-17.md`
 - 已知技术债（48 条台账，含历史解决项及仅登记的旧preview Dockerfile等候选）：见 `docs/exec-plans/tech-debt-tracker.md`
 - CI 与发布决策（非 Tauri，仅 workflow_dispatch 部署，无 tag/Release）：见 `docs/CI.md`
 - 全部文档索引：见 `docs/index.md`

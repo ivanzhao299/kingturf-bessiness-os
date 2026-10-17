@@ -1,5 +1,7 @@
 # ARCHITECTURE.md
 
+**批次4 S3现时（2026-10-17）**：共享config纯policy/严格默认false的CSP_ENFORCE→server独立buildApp安全选项→统一complete/rejectOversized新增RO，保S1三头/S2/业务响应。外层nginx独立off开关、隐藏上游两CSP头后统一RO；内层未改，API env不是公网强制开关。行为762e393/oracle a4c2ca3/工具f693ee2实际稳定干净HEAD完整CI0（API123/17184、Web13/266/config29）；无新包/SQL/反向依赖/业务端口。test-only HTML collector及精确合成发送仅本地，无report接收端、不称生产就绪或强制兼容；完成docs另全CI后停协调，S4未实施。[S3证据与回滚](docs/evidence/security-batch4-s3-csp-2026-10-17.md)，下方S2/S1状态为历史。
+
 **批次4 S2现时（2026-10-17）**：server从config装配LoginRateLimiter→buildApp唯一实例→auth validate之后执行双维失败滑窗及持锁退避；真实socket peer/headersDistinct经client-address显式信任链，默认不信任。config共享纯IP规范化器无反向依赖/新增包。业务bdbda0e首次全CI在新端口未分类处失败，必要门禁b8c1212绑定固定源唯一类声明身份，31仓储端口/规则不扩免，实际干净HEAD全CI0（API17175/Web266/config23）。仅登录限流，不是全API防DoS；S1头保持，未改SQL/会话模型。配置、代理部署前核实、资源边界、失败史及回滚见[S2证据](docs/evidence/security-batch4-s2-login-limit-2026-10-17.md)。最终docs另全CI后停协调，S3/S4未实施；下方S1与前端现时段保留历史。
 
 **批次4 S1当前（2026-10-17）**：app.buildApp的统一complete→middleware/security-headers纯函数，所有经此收尾的dispatch及rejectOversized响应加nginx同值三头，原状态/body/关联ID/telemetry顺序保持；server原两处writeHead透传。无auth/SQL/nginx/依赖变化。源码b02ad55原严格头期望失败，独立同步65文件76处后59f9dfa实际干净HEAD全CI0，边界/部署重复头风险/独立回滚见[S1证据](docs/evidence/security-batch4-s1-headers-2026-10-17.md)。完成docs另全CI后停协调续派，不是批次4验收；下方前端“唯一当前”为已人工验收的历史快照。
