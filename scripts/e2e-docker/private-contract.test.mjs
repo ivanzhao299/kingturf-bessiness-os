@@ -58,7 +58,10 @@ test('reporter records inventory index without raw errors, titles or attachments
   const previous = process.env.KINGTURF_PRIVATE_KIND;
   process.env.KINGTURF_PRIVATE_KIND = 'runtime';
   try {
-    const reporter = new PrivateReporter();
+    const writes = [];
+    const reporter = new PrivateReporter((_path, data) => {
+      writes.push(JSON.parse(data));
+    });
     reporter.onTestEnd(
       { title: localCases.runtime[0], location: { line: 13 } },
       {
@@ -72,7 +75,11 @@ test('reporter records inventory index without raw errors, titles or attachments
     assert.deepEqual(reporter.cases, [
       { index: 0, status: 'failed', durationMs: 1, line: 13, failureLine: 61 },
     ]);
-    const foreign = new PrivateReporter();
+    assert.equal(writes[0].complete, false);
+    assert.equal(JSON.stringify(writes).includes('CANARY'), false);
+    const foreign = new PrivateReporter(() => {
+      /* No filesystem writes in the unit test. */
+    });
     foreign.onTestEnd(
       { title: localCases.runtime[0], location: { line: 13 } },
       {

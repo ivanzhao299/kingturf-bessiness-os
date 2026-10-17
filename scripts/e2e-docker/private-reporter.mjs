@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { writeFile } from 'node:fs/promises';
+import { writeFileSync } from 'node:fs';
 import { localCases, safeLocalCases } from './private-contract.mjs';
 
 // This reporter writes only inside the owned container tmpfs. Other original reporters stay raw
@@ -9,8 +9,13 @@ export default class PrivateReporter {
   discovered = 0;
   invalid = false;
 
+  constructor(writer = writeFileSync) {
+    this.writer = writer;
+  }
+
   onBegin(_config, suite) {
     this.discovered = suite.allTests().length;
+    this.persist(false);
   }
 
   onError() {
@@ -38,15 +43,20 @@ export default class PrivateReporter {
       line: test.location.line,
       failureLine,
     });
+    this.persist(false);
   }
 
-  async onEnd() {
+  onEnd() {
+    this.persist(!this.invalid && this.cases.length === this.discovered);
+  }
+
+  persist(complete) {
     const kind = process.env.KINGTURF_PRIVATE_KIND;
-    await writeFile(
+    this.writer(
       '/tmp/kingturf-private/cases.json',
       JSON.stringify({
         discovered: this.discovered,
-        complete: !this.invalid && this.cases.length === this.discovered,
+        complete,
         cases: safeLocalCases(kind, this.cases),
       }),
       { mode: 0o600 },

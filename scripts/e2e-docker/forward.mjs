@@ -2,8 +2,25 @@ import assert from 'node:assert/strict';
 import { lookup } from 'node:dns/promises';
 import net from 'node:net';
 
+export const relayFailureCodes = Object.freeze([
+  'ECONNRESET',
+  'EPIPE',
+  'ECONNREFUSED',
+  'ENETUNREACH',
+  'EHOSTUNREACH',
+  'ETIMEDOUT',
+  'CONNECT_TIMEOUT',
+  'LISTENER_ERROR',
+  'OTHER',
+]);
+
 // Only these two container-loopback listeners may reach the measured Docker host gateway.
-export async function startForwards(expectedGateway) {
+export async function startForwards(
+  expectedGateway,
+  observe = () => {
+    /* Optional fixed-category diagnostic; never receive raw messages or traffic. */
+  },
+) {
   const { address } = await lookup('kt-e2e-host', { family: 4 });
   assert.equal(net.isIP(expectedGateway), 4, 'numeric measured gateway required');
   assert.equal(address, expectedGateway, 'gateway identity changed');
@@ -32,10 +49,19 @@ export async function startForwards(expectedGateway) {
     for (const port of [4173, 5432]) {
       const server = net.createServer((downstream) => {
         const upstream = net.connect({ host: address, port });
-        for (const socket of [downstream, upstream]) {
+        for (const [side, socket] of [
+          ['downstream', downstream],
+          ['upstream', upstream],
+        ]) {
           sockets.add(socket);
           socket.once('close', () => sockets.delete(socket));
-          socket.once('error', () => {
+          socket.once('error', (error) => {
+            observe({
+              closing,
+              port,
+              side,
+              code: relayFailureCodes.includes(error.code) ? error.code : 'OTHER',
+            });
             upstream.destroy();
             downstream.destroy();
             fail();
@@ -50,6 +76,7 @@ export async function startForwards(expectedGateway) {
         downstream.once('close', () => upstream.destroy());
         upstream.once('close', () => downstream.destroy());
         upstream.setTimeout(5_000, () => {
+          observe({ port, side: 'upstream', code: 'CONNECT_TIMEOUT', closing });
           upstream.destroy();
           downstream.destroy();
           fail();
@@ -60,7 +87,10 @@ export async function startForwards(expectedGateway) {
         server.once('error', reject);
         server.listen(port, '127.0.0.1', resolve);
       });
-      server.on('error', fail);
+      server.on('error', () => {
+        observe({ port, side: 'listener', code: 'LISTENER_ERROR', closing });
+        fail();
+      });
     }
     return { close, failure };
   } catch (error) {

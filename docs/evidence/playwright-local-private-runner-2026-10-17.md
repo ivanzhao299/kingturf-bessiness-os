@@ -38,3 +38,9 @@ P1首轮随后启动、同schema完整seed实际0/3030ms及成本计数检查通
 上述运行后继已完整结束：PW1/65088ms、close signal=null、discovered11/complete=true/11 failed，host1/73640ms，owned三清理true。[真实结果/未留raw限制](../tasks/playwright-p1-replay-blocker-2026-10-17.md)。TD-TEST-016/56项，不能以种子绿替代浏览器绿。
 
 为不导出raw而定位，安全reporter仅新增failureLine：错误location精确固定本spec路径才取正整数，否则0；契约再限0..10000，不读message/stack/snippet或外发路径。unit5含正确固定行/外路径0/越界拒绝实际通过，独立只读review无必要隐私阻断。只安全诊断字段提交，不改业务/原config，不声称该字段本身证明因果；同文件诊断重跑待执行。
+
+32bb2b4后的`p1-safe-location-1`实际PW close=null/SIGTERM、host1/44424ms/owned全清，无完整local-result、不算完成/绿，中断源未知。原onEnd才落summary，取消时失去已结束case定位；后继仅同步逐例安全partial（writer可注入，unit不写宿主临时文件），onEnd才complete，取消/nullclose也可固定local-progress/complete=false；原成功完整性检查不降。
+
+另给forward加固定observer，原错误/timeout/listener全局失败条件和byte pipe保持，仅port4173/5432、side及固定errno枚举/OTHER传宿主白名单，不输出原error/message/地址或流量。该观测尚未实际复现原因，不把旧中断改写成已证ECONNRESET。原unit5/lint0，后继诊断另实际记；无产品/config/P1期待变化。
+
+首只读review因模型容量失败，不计已审；复用另一独立reviewer后窄diff无必要阻断。其指出主动closing期间也可能产生socket错误，事件不能单独证明先前中断来源；据此仅加closing布尔并在host校验，未改失败条件，诊断须区分清理期间事件。partial/取消守卫经只读复核不会充绿，后继实际运行再验证。

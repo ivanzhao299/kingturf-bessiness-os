@@ -8,7 +8,8 @@ import net from 'node:net';
 import { createFixture, stopChild, assertOwnedListener } from './fixture.mjs';
 import { verifySeedAuthentication } from './seed-auth.mjs';
 import { validateSpecCommand } from './spec-runner.mjs';
-import { safeLocalResult, validateLocalCommand } from './private-contract.mjs';
+import { safeLocalCases, safeLocalResult, validateLocalCommand } from './private-contract.mjs';
+import { relayFailureCodes } from './forward.mjs';
 
 const image = 'kingturf-e2e:pw1.62.1-chrome';
 const imageId = 'sha256:1a0e14c3fd2351aab685106ad17d86b0bd38e6ed89cc0d0d2be809579f8dab3e';
@@ -37,6 +38,8 @@ const reportContainer = (value) => {
     'local-started': [],
     'local-closed': [],
     'local-result': [],
+    'local-progress': [],
+    'relay-failure': [],
   };
   assert(Object.hasOwn(schemas, value.event), 'unknown container event');
   const safe = {};
@@ -65,7 +68,19 @@ const reportContainer = (value) => {
     );
     safe.phase = value.phase;
   }
-  if (['local-started', 'local-closed', 'local-result'].includes(value.event)) {
+  if (value.event === 'relay-failure') {
+    assert([4173, 5432].includes(value.port));
+    assert(['downstream', 'upstream', 'listener'].includes(value.side));
+    assert(relayFailureCodes.includes(value.code));
+    assert.equal(typeof value.closing, 'boolean');
+    Object.assign(safe, {
+      port: value.port,
+      side: value.side,
+      code: value.code,
+      closing: value.closing,
+    });
+  }
+  if (['local-started', 'local-closed', 'local-result', 'local-progress'].includes(value.event)) {
     assert.equal(mode, 'local');
     validateLocalCommand(value.kind, value.label);
     assert.equal(value.kind, process.argv[3]);
@@ -87,6 +102,15 @@ const reportContainer = (value) => {
       } else assert.equal(localChildClose, undefined);
       Object.assign(safe, safeLocalResult(value.kind, value));
       localResultSeen = true;
+    }
+    if (value.event === 'local-progress') {
+      assert(Number.isInteger(value.discovered) && value.discovered >= 0);
+      assert.equal(value.complete, false);
+      Object.assign(safe, {
+        discovered: value.discovered,
+        complete: false,
+        cases: safeLocalCases(value.kind, value.cases),
+      });
     }
   }
   if (value.event === 'spec-result' || value.event === 'spec-started') {

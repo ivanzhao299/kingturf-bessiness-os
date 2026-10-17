@@ -3736,6 +3736,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+- **2026-10-17｜B中断安全观测补齐**：32bb2b4后p1-safe-location-1同11例实际close=null/SIGTERM、host1/44424ms、owned全清、无完整result，不充绿/不猜relay原因。仅转发器固定port/side/errno枚举观测（原失败条件/字节转发不改），reporter同步逐例安全partial、onEnd才complete、取消local-progress固定complete=false，原成功完整性不降；unit5/原lint过，[事实/未核原因](../../tasks/playwright-p1-replay-blocker-2026-10-17.md)。不读raw/错误正文、原业务/config/P1候选保持，仍待实际诊断/独立复核；C/第二轮/最后HEAD全CI保护保持。[已测试]（中断/工具unit，非B绿）
+
 - **2026-10-17｜P1完整首轮失败/安全定位候选**：f56365c私有工具，原seed0/3030ms及实际成本关单计数过，P1会话helper候选保11个test body字节同；PW真实1/65088ms/signalnull、discovered11/complete=true/11 failed，host1/73640ms/owned全清，raw按人裁仅tmpfs已清/未留图。TD-TEST-016新增/56，不猜根因/不改业务assert。只安全reporter加精确固定spec整数failureLine（未知0/范围0..10000），不读错误/stack/snippet/不外发路径，unit5/独立只读review无隐私阻断，[事实/待诊断](../../tasks/playwright-p1-replay-blocker-2026-10-17.md)。原P1/runtime spec候选未入本工具诊断提交；runtime可独立首轮、C/第二轮/最后HEAD全CI边界保持。[已测试]（完整PW失败明确保留，非绿）
 
 - **2026-10-17｜B隐私/取消探针实际结果**：f56365c候选固定privacy host0/5707ms/0case非spec绿；真源去root只读选项实际配置检查在身份/API前红host1/741ms→立即还原probe0/5289ms；runtime子进程spawn后取消且注入stop失败，仍actual force rm/exact ps核空，host1/5310ms、无完整case/leader close不充绿。全owned清理true，safe文件0600/目录0700、canary不在该输出/宿主对应HTML不存在，非全宿主物理零痕迹证明。raw对象展开unit真红1/4过1败→还原5过，源码还原同f56365c，[原命令/限制](../../evidence/playwright-local-private-runner-2026-10-17.md)。P1随后同schema seed0/3030ms，11例尚运行、runtime正常首轮未跑，C/第二轮/最后HEAD全CI保护保持。[已测试]（工具探针，非B全绿）

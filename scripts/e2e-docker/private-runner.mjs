@@ -120,8 +120,6 @@ export async function runPrivateSpec(command, signal, report) {
       child.once('close', (exit, terminationSignal) => resolve({ exit, terminationSignal }));
     });
     report('local-closed', { kind, label: command.label, ...closed });
-    signal.throwIfAborted();
-    assert(Number.isInteger(closed.exit), 'private browser requires actual exit');
     let cases = [];
     let discovered = 0;
     let complete = false;
@@ -135,6 +133,10 @@ export async function runPrivateSpec(command, signal, report) {
     } catch {
       assert(closed.exit !== 0, 'successful browser must report complete cases');
     }
+    if (closed.exit === null || signal.aborted)
+      report('local-progress', { kind, label: command.label, discovered, complete: false, cases });
+    signal.throwIfAborted();
+    assert(Number.isInteger(closed.exit), 'private browser requires actual exit');
     return safeLocalResult(kind, {
       exit: closed.exit,
       elapsedMs: Math.round(performance.now() - started),

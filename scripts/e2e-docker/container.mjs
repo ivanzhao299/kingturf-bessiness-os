@@ -32,7 +32,7 @@ void aborted.catch(() => {
 });
 async function work() {
   const control = await receive();
-  relay = await startForwards(control.gateway);
+  relay = await startForwards(control.gateway, (detail) => report('relay-failure', detail));
   cancellation.signal.throwIfAborted();
   const pending = verifyAndProbe(control);
   try {

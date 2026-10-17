@@ -17,3 +17,9 @@ PW真实close exit1/signal=null，耗时65088ms；固定discovered=11/complete=t
 必要只读诊断工具增补failureLine：仅当Playwright `result.error.location.file`精确为固定P1/runtime spec路径时取整数行，否则0；契约再限0..10000，不读取message/stack/snippet、不导出path/raw。原case索引/状态与完成计数保持，0未知不能虚构定位。独立只读review无必要隐私阻断，unit含固定行61/foreign-file→0/越界拒绝；诊断重跑另记，非第二完整轮，不触原11业务断言。
 
 Workspace字段/成本提示仍另待裁，P1若显露其它非S4期待须具体C7，原11失败不跳过。runtime独立首轮可续；全部A+B绿后才第二完整轮，C/生产/push/部署/workflow/一般阶段5禁，最终最后稳定干净HEAD实际完整CI必跑。
+
+## 定位重跑中断（未完成，不充绿）
+
+`p1-safe-location-1`同一原11例/无业务改动，同schema原seed通过；PW实际close=null/SIGTERM，host1/44424ms，未有完整local-result。owned三清理true，raw仍按人裁仅tmpfs已清。该次不能计完成/绿，也未拿到安全失败行，**中断源尚未知**，不凭SIGTERM断言是用户取消或relay故障。
+
+仅增加无行为变更观测：转发器原socket错误/连接timeout/listener失败条件全部保留，只输出固定port/side/code枚举（其它OTHER，不读原message/流量）；安全reporter每例同步写临时partial，onEnd才complete，取消/nullclose仅报local-progress complete=false，不充当结果。5单测/原lint通过，待独立只读review/实际诊断；P1/rootcause与任何业务期待仍待核。
