@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **order首轮候选（2026-10-17）**：仅合成会话fixture迁移，原15expect及viewport后全部操作/业务mock守恒；旧token真实红host1/11745ms→完整清理后还原原1case host0/8694ms，eslint0，[证据](../../evidence/playwright-docker-spec-replay-2026-10-17.md)。当前login2/doc7/order1过，cost1过1败待裁，余4A/2B未跑、C禁/未第二轮；人类已另批workspace单void语法，须独立落R7再改，未扩其它行为。最终最后HEAD全CI仍待执行。
+
 - **文档发送后继（2026-10-17）**：人类ba294ae仅授本spec旧8处机械兼容；会话适配真实旧token红2败5过、严格还原7过，机械后再7过，47expect调用/参数与除未使用void例外的擦除JS全同、原lint0。一次过早恢复被端口拒绝1/85ms保历史，后等全部close再串行验证；[全部命令/红绿/机械映射](../../evidence/playwright-docker-spec-replay-2026-10-17.md)。旧header额外tsc仍2，不关闭TD-TEST-012；成本TD-TEST-013仍待裁，余5A/2B未跑、第二轮禁/C禁，独立首轮续。
 
 - **成本提示C7当前交接（2026-10-17）**：f3882a3干净HEAD完整CI实际0/201874.74ms后，成本仅auth候选1过1败，原末提示不可见、前URL/dialog/decisionId过。原trace脱敏核201→GET200及quotes状态文本空，lazy覆盖候选未干预实证；TD-TEST-013/现53项，[待裁事实](../../tasks/playwright-cost-handoff-blocker-2026-10-17.md)。不改业务/期望，临时cost auth精确还原未提交/未完成变异；login2过、其它6A/2B未跑、C禁/未第二轮。当前仅收口/最后文档HEAD全CI后交人裁，不永久冻结独立首轮原授权，不扩阶段5。
@@ -3719,6 +3721,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+- **2026-10-17｜order-evidence会话夹具独立适配**：父253b761，仅旧login/session分支替共享合成协议，原员工/权限及全部sales-order/证据payload/503重试/键盘/计数/移动断言冻结；AST15expect同，viewport起所有动作/断言字节同。初绿PW0/3048ms、host0/8262ms；真源加旧token红PW1/6450ms、host1/11745ms，完整close/清理后还原PW0/3058ms、host0/8694ms，原1例过，红附件保留、全owned清理。[逐处/原命令/边界](../../evidence/playwright-docker-spec-replay-2026-10-17.md)。原hook lint0，未跑B/C/第二轮；成本原失败不消除，最终HEAD完整CI仍必跑。[已测试]（逐文件真红绿，非全A/B绿）
 
 - **2026-10-17｜剩余非生产机械门禁一次库存**：e92bbe9后strict TS项目仅补P1本地include，不改PW配置/规则/C；一次只读内存lint bd7e80b A8+B2，7文件0，doc9（八处现已人裁修）、workspace2（旧storage5属S4替换、67非会话void未改/许可不泛化）、startup3皆旧storage属S4替换。[完整库存/界线](../../evidence/playwright-docker-spec-replay-2026-10-17.md)。P1/runtime原lint接线实际0，未执行B浏览器/生产，A-only runner不扩白名单。父e92bbe9为本工程接线回滚点，最后完整CI必跑。[已测试]（原strict静态库存，非PW通过）
 

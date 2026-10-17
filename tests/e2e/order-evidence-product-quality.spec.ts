@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { installSyntheticLogin } from './fixtures/browser-session';
 
 test('opens order evidence on demand with keyboard, retry and full-width mobile detail', async ({
   page,
@@ -6,18 +7,6 @@ test('opens order evidence on demand with keyboard, retry and full-width mobile 
   let evidenceRequests = 0;
   await page.route('**/api/v1/**', async (route) => {
     const path = new URL(route.request().url()).pathname;
-    if (path.endsWith('/auth/login'))
-      return route.fulfill({ json: { token: 'test-order-session' } });
-    if (path.endsWith('/auth/session'))
-      return route.fulfill({
-        json: {
-          employeeId: 'order-reviewer',
-          companyId: 'test-company',
-          displayName: '履约核对员',
-          employeeNumber: 'KT-ORDER-TEST',
-          permissions: ['sales-order:read', 'order-360:read'],
-        },
-      });
     if (path.endsWith('/sales-orders'))
       return route.fulfill({
         json: {
@@ -57,6 +46,13 @@ test('opens order evidence on demand with keyboard, retry and full-width mobile 
       });
     }
     return route.fulfill({ json: { items: [] } });
+  });
+  await installSyntheticLogin(page, {
+    employeeId: 'order-reviewer',
+    companyId: 'test-company',
+    displayName: '履约核对员',
+    employeeNumber: 'KT-ORDER-TEST',
+    permissions: ['sales-order:read', 'order-360:read'],
   });
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/');

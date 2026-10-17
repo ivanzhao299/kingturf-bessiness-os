@@ -1,5 +1,7 @@
 # Docker 单 spec 回放证据（2026-10-17）
 
+**订单证据后继**：order-evidence仅会话fixture替换，真实旧token红→清理后还原原1例过，15expect及从viewport起全部操作字节同。当前login2/doc7/order1过；成本1过1败待TD-TEST-013，余4A/2B未跑、C禁/未第二轮。下方“余5A”等为前时点；末节含原命令/退出/耗时，最终完整CI未预填。
+
 **文档发送后继**：原7项auth候选全过，真实旧token变异2败5过→完全清理后还原7过；原strict ESLint旧8错经本会话人类[独立R7](../tasks/playwright-document-lint-authorization-2026-10-17.md)仅最小机械修正，擦除类型除一个未使用void返回的块体外JS全字节同、47expect调用/参数同；机械后原7项再次通过。成本TD-TEST-013仍失败待裁不动，余5A/2B未执行，第二轮禁止；详情见末节。原全A额外tsc旧诊断仍2，不因lint修正写成全A类型绿。
 
 **后继现时**：f3882a3干净HEAD完整CI实际0/201874.74ms后，成本仅auth候选PW1/12294ms、host1/17663ms、1通过1失败。原最后提示不可见、前URL/dialog/decisionId过；[C7事实/trace脱敏/候选与待裁](../tasks/playwright-cost-handoff-blocker-2026-10-17.md)。成本候选已精确还原未提交/未算适配变异完成，失败附件保留。当前login2过、cost1过1败、其它6A/2B未跑、C禁、未第二轮；下方“其它未执行”为原时点。最后文档HEAD完整CI另实跑，不等于PW全绿。
@@ -98,3 +100,19 @@ e92bbe9后仅在已有strict TS工程补本地P1文件include，供未来获准�
 | startup-delivery                                                                              | 61/83/103均旧storage void，属于原已授S4 auth fixture替换范围；不借机改业务下载/失败/会话语义                                                                    |
 
 接线后P1/runtime原ESLint实际0。该库存不增加根全A tsc新门禁，不为旧keys诊断先改业务断言，也不泛化doc人裁；未知真实运行问题继续分事实/推断登记。父e92bbe9为本P1工程接线回滚点，最终HEAD全CI另必跑。
+
+## order-evidence-product-quality：独立会话夹具适配
+
+基线253b761。删除generic mock的旧token login/普通session分支，注册共享合成login fixture，原同员工/公司/两权限保持；初始restore401、用户真表单submit才login-context/新login/restore，generic业务API mock不改、不接真实API。原sales-order/360 payload、第一次503/200ms/retry、键盘/请求次数/字段设置/移动布局全部不动。
+
+实际AST对比15个expect完整表达式相同，原从首viewport开始的动作/断言/附件代码全字节相同，eslint0/format通过。没有机械额外改动/新业务assert。
+
+命令同首节，单文件=order-evidence-product-quality.spec.ts，各label日志/HTML/附件独立：
+
+| label                 | 实际PW；host                                                                             |
+| --------------------- | ---------------------------------------------------------------------------------------- |
+| order-adapt-green-1   | 1通过，PW0/3048ms；host0/8262ms                                                          |
+| order-old-token-red-1 | 真实spec session输入加旧token，严格restore拒绝、原shell断言红；PW1/6450ms；host1/11745ms |
+| order-restored-1      | 等完整close/owned清理后立即还原，1通过，PW0/3058ms；host0/8694ms                         |
+
+每次host guard/容器READ ONLY同实例通过，owned三清理均true；红HTML及artifacts下test-failed-1.png/trace.zip实际存在，未覆盖/不跳过。最后无token变异，父253b761为独立回滚点。本文件绿不抵其它spec/成本失败/第二轮，不是API授权或真实Set-Cookie证据。最终最后提交完整CI必跑。
