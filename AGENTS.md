@@ -8,6 +8,8 @@ KingTurf 业务操作系统：面向草坪行业外贸业务的 ERP（CRM→报�
 
 ## 如何开始（渐进式披露：先地图，再细节）
 
+阶段5已由人类正式授权，基线5230625/批次1–4已验收；授权范围/停止边界见 `docs/tasks/harness-stage5-authorization-2026-10-17.md`。先P浏览器裁断与A真实测试地图，再六域PG/覆盖率三目标/≥3注入/三连CI/P1核账/收官准备；只准备§14，不执行归档、不宣称竣工。浏览器上报不阻塞独立线；C生产不跑，源码仅线C临时注入后完整还原。下方所有旧待验收/阶段5未启均历史。
+
 Docker Playwright独立首轮已覆盖A8/B2：A六文件全绿、成本1过1败/Workspace3过1败仍待各自裁定；B runtime原1例真红还原绿，P1原完整11败、部分定位前两例overview看板隐藏，候选已封存还原，见 `docs/tasks/playwright-p1-replay-blocker-2026-10-17.md`。TD-TEST-016/018分别为可见性待裁/连接超时待核，台账58；第二轮未开/C生产禁，最后稳定干净HEAD全CI必跑。下方旧计数/停点均历史。
 
 Workspace已授auth/单void候选2过2败，仅可复现检查点、全文件变异/还原绿未完成；旧首次成本gate/360字段记TD-TEST-014/54项，等待点新批准未实施、字段另待裁。见 `docs/tasks/playwright-workspace-fixture-rulings-2026-10-17.md`；其它3A/2B未跑、成本TD-TEST-013待裁、第二轮/C禁，最终HEAD全CI仍必跑。下方旧计数/未执行为历史。

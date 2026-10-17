@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[阶段5正式授权R7](tasks/harness-stage5-authorization-2026-10-17.md)：亲核人类原始消息，P/A–F范围、三覆盖率硬目标、唯一新直接依赖、串行PG、产品只临时注入还原、终验前不归档。接手5230625/树空，批次1–4已验收，阶段5未验证项不预写绿。
+
 [P1首轮失败与安全定位](tasks/playwright-p1-replay-blocker-2026-10-17.md)：原完整11败保留；最新仅3完成/complete=false，前两例overview看板隐藏、第三未知，超时中断后owned全清。候选精确封存还原、TD-TEST-016可见性待裁/018连接待核，台账58，不改业务期待/网络失败条件。
 
 [B私有执行器验证记录](evidence/playwright-local-private-runner-2026-10-17.md)：runtime真实1例过、Cookie omit真红→还原绿；额外共享anonymous变异实过未检出如实保留。reporter兼容及实际PW接线已验证；P1原11败/部分诊断仍非绿，不导PNG/未视觉验收。独立首轮已覆盖A8/B2，不等于最终HEAD整套PW或第二轮完成。

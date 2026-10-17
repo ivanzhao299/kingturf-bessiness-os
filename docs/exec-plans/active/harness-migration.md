@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **阶段5正式授权（2026-10-17）**：亲核人类原始消息，接手5230625/树空、批次1–4已验收；[R7任务线与硬边界](../../tasks/harness-stage5-authorization-2026-10-17.md)。先P裁断证据，现状地图→六域PG/唯一coverage-v8及三目标→≥3真实注入/三连CI/P1核账/DoD与58项去向/收官准备。浏览器上报不阻塞其它线；C生产禁/仅准备§14不执行归档，产品仅线C临时注入后完全还原，最终HEAD全CI0/树空后等人工终验。旧未验收/阶段5未启/字段待裁按各历史时点保留。
+
 - **Docker回放部分交付停点（2026-10-17）**：A8/B2独立首轮已覆盖；A六文件全绿、成本1过1败/Workspace3过1败各待裁，runtime原1例真实Cookie变异红还原绿，P1原完整11败保留。最新P1仅3完成/complete=false，前两例原helper断言19/overview看板隐藏、第三unclassified；上游4173 CONNECT_TIMEOUT使PWnull/SIGTERM、host1/27929ms、owned全清。候选已封存/精确还原原文件，[事实/C7方案](../../tasks/playwright-p1-replay-blocker-2026-10-17.md)。TD-TEST-018连接故障单列待核/58项，不改产品/原可见性oracle/网络失败条件；第二轮未开/C生产禁/无视觉验收。最终文档提交后在稳定干净HEAD实际完整CI，期间不改文件；结果交付另报。
 
 - **runtime首轮/真红绿（2026-10-17）**：原真实登录/客户/持久化/audit字节保持，仅已授Cookie403与独立匿名401迁移，实际原1例过；Cookie omit在原403行54真红→完整清理还原过。额外共享page.request变异实际过/未检出，不计红，最终还原独立context再过PW0/1701ms、host0/8680ms，owned全清。[全部结果/边界](../../evidence/playwright-local-private-runner-2026-10-17.md)。reporter原生PW接线现已实证，TD-TEST-017仅兼容实施关闭/57项；A六绿两份各一败、B runtime绿/P1原11败，第二轮/C禁，最后HEAD全CI必跑。
@@ -3741,6 +3743,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+- **2026-10-17｜阶段5正式开工R7**：父5230625，主执行者亲核协调会话人类消息01a148f3-68d4-7582-bb6d-fc126c31caf9，先独立[授权全文范围](../../tasks/harness-stage5-authorization-2026-10-17.md)及当前地图/index落盘，不仅凭代理转述扩权。P先启动、上报不冻结A–F；覆盖率三目标/唯一coverage-v8/≥3注入/最终同状态三连CI/收官只准备均保留，测试/浏览器/PG尚未执行不预报绿。回滚本次授权docs可独立revert须核后继依赖，已验收源码零diff。[未测试]（授权记录，提交前仅文档静态校验）
 
 - **2026-10-17｜独立首轮部分收口/P1 C7**：父8b21715，P1安全分类实际3 failed/complete=false，仅前两例failureLine19/overview-board-hidden，第三unclassified不归因；active4173 CONNECT_TIMEOUT、PWnull/SIGTERM、host1/27929ms、owned全清。TD-TEST-016可见性待裁/018环境超时待核，58项，原完整11败有效。P1候选[精确补丁](../../evidence/playwright-p1-auth-diagnostic-candidate-2026-10-17.patch) SHA13564cbbf567eca47285cb44a5a8313aebe9869c51dba4f0d509ac75960b40b8，apply_patch恢复原spec且git diff空/apply-check通过；只提交封存/事实与地图，不含产品或P1业务期待变化。A六份绿/成本与Workspace各一败、B runtime真红绿；均逐文件历史结果，第二轮未开/C禁/零PNG未视觉验收，最终稳定干净HEAD实际全CI另跑。回滚本次文档/补丁用单独revert，不影响已适配源码。[已测试]（静态检查及已记录实际部分失败，非全部PW通过）
 
