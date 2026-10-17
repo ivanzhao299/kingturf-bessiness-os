@@ -1,5 +1,11 @@
 # 阶段5现状测试地图与补齐清单
 
+## Web技术需求单版本与动作护栏
+
+父874e4d6新增`ctr-view-behavior.test.ts`最终11项，真实appendCtrView与回调，独立写定输入50.5/8000.25/8→requirements数值字段，不从生产mapper生成期待。创建路径deferred load期间status不变，改变controller.message后resolve再观察新消息；创建/修订submit reject不load。最新非DRAFT根版本可修订，旧版本/无根/最新仍DRAFT均无修订按钮；旧新规格差异与附件计数、修订预填/固定根路径与payload。上传固定版本ID且原File引用、不额外load；提交评审固定expectedVersion，两审批固定decision/reason；各拒绝后不写成功status。严格等待load后读取当前message只在创建路径动态验证，未泛称所有回调均有延迟测试。
+
+原eslint/tsc0；首10项9过1败/exit1/334ms，新测试upload文本定位误取只有一个按钮文本的父actions，改精确BUTTON，不改产品或业务期待。随后带V8全Web20/385实际0/2.16s（`coverage/web-ctr-874e4d6-first/coverage-final.json`按原算法Web10349/20592、ctr473/473、lead218/218）；复核建议后增最新DRAFT负例，最终Web20/386实际0/1.85s。日志`/tmp/kingturf-stage5-ctr-view-first-2026-10-17.log`、`/tmp/kingturf-stage5-web-ctr-coverage-2026-10-17.log`、`/tmp/kingturf-stage5-ctr-view-final-2026-10-17.log`。openForm/openFileForm与控制器端口为mock，不充真实浏览器/上传/PG；单包覆盖不更新B、不充六包门禁或完整CI。独立只读复核无必要阻断，产品/原测试/seed保持。
+
 ## Web线索列表渲染与命令接线护栏
 
 父4840b35新增`lead-records-behavior.test.ts`9项，真实appendLeadList/CrmController.visibleLeads与leadPageItems；12条pool加重复lead样本真实去重、第2页两行、search回1页并显示唯一匹配、分页回调/空队列。新增/生命周期/分配/改派/释放固定payload与原Lead引用、权限/整数版本/已知owner门槛；员工选项/无选项输入区别。create pending完成前不bootstrap、成功后原shell/controller引用；各form命令reject不bootstrap。claim只测原对象传入与成功等待，不称reject恢复（源码.then无catch），不制造未捕获拒绝。

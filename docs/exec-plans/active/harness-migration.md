@@ -3752,6 +3752,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+- **2026-10-17｜Web技术需求单版本动作护栏**：父874e4d6新增最终11项，独立数值requirements/最新非草稿与最新DRAFT反例/原File版本绑定/评审expectedVersion/审批固定载荷及失败状态。原eslint/tsc0，最终Web20/386实际0/1.85s；首定位错父节点改精确BUTTON，失败史保留。[独立复核/单包覆盖/边界](../../evidence/harness-stage5-test-map-2026-10-17.md)：Web10349/20592测量不充六包门禁，表单/API端口mock不充浏览器或PG。产品/seed/原期待/B不改；回滚新test/docs独立revert。[已测试]（Web全包，非完整CI）
+
 - **2026-10-17｜Web线索列表护栏**：父4840b35新增9项，真实controller筛选/去重/分页、权限/版本/owner按钮门槛、固定命令/原Lead引用与成功后bootstrap；命令与表单仍端口spy，不充真实API。原eslint/tsc0、target9过/Web19/375实际0；[独立复核/精确范围](../../evidence/harness-stage5-test-map-2026-10-17.md)，claim仅成功pending，不冒称拒绝恢复。回滚本新test/docs独立revert，产品/原测试/B不变。[已测试]（Web全包，非完整CI）
 
 - **2026-10-17｜Web共享表单编排护栏**：父d11e9b9，新增24项，受控native validity/FormData输入，验证忙态/输入转换/错误焦点/失败重试/取消/敏感按钮启用及文件25MiB边界。首23过1败为partial DOM格式化matcher不支持，换次数+参数恒等，后24绿；原eslint/tsc0、Web18/366带V8实际0/2.13s。[独立复核/证据边界](../../evidence/harness-stage5-test-map-2026-10-17.md)。单包9835/20592同分母，非六包check/完整CI，敏感checkbox不冒称submit listener强制门禁。产品/原测试/B不变；回滚本新test/docs独立revert。[已测试]（Web全包及单包V8，非完整CI）
