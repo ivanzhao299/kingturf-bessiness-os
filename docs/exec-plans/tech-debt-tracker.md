@@ -1,5 +1,7 @@
 # 技术债台账（tech-debt-tracker）
 
+**成本提示C7现时（2026-10-17，53项）**：新增TD-TEST-013，成本仅auth候选真实1通过1失败，原末提示不可见、前URL/dialog/decisionId过；trace报价commercial-status文本空、201→GET200。lazy覆盖message是候选未干预实证，不改业务/期望；临时auth精确还原未完成变异。[待裁事实](../tasks/playwright-cost-handoff-blocker-2026-10-17.md)。login已2过且f3882a3全CI0，其它6A/2B未跑、C禁/未第二轮，下方旧计数为历史。
+
 **A类接线静态发现（2026-10-17，52顶层项）**：TD-TEST-012仅登记冻结document-send spec:154在额外strict全A tsc下string|undefined诊断（exit2），非原CI/PW失败证据；不改旧断言或放宽规则，若实阻断原门禁/补跑再C7。成本种子前置已验证，下列51为前时点。
 
 **成本种子现时（2026-10-17，仍51项）**：TD-TEST-011已获独立人类R7并完成最小本地policy→calculate→异人approve→原close；完整seed同schema重复计数稳定、缺料/自批真实红后还原绿。只关闭本地种子前置实施项，不等于A/B补跑或整批验收；[证据](../evidence/playwright-p1-cost-seed-2026-10-17.md)。下列待裁/未修均为历史，原500保留，不改产品SQL/其它业务或抬分。
@@ -105,6 +107,7 @@
 | TD-TEST-010  | Docker owned schema信用种子缺已装public.pgcrypto可见性                                        | P2     | 测试环境      | 无（仅工具）             | Docker前置补跑                     | 环境已修/信用通过，整seed另阻断 |
 | TD-TEST-011  | 冻结P1种子生产关单缺实际成本批准，HTTP500/P0001                                               | P1     | 种子业务前置  | 已修（人类另授最小本地） | Docker前置补跑                     | 本地前置已验证/补跑未完成       |
 | TD-TEST-012  | 冻结文档发送PW旧header索引在额外strict tsc下类型不匹配                                        | P2     | 测试静态类型  | 未修（仅额外诊断）       | 后继独立授权                       | 待核实原门禁/运行影响           |
+| TD-TEST-013  | 成本转报价原成功提示可见性PW失败，前跳转/预选成功                                             | P2     | UI/oracle边界 | 未修（非S4范围）         | Docker首轮发现/待独立裁定          | C7待裁/候选根因未干预实证       |
 | TD-GATE-001  | 无 git hooks / commitlint / lint-staged，脏提交仅靠 CI 兜底                                   | P1     | 门禁          | 无                       | 阶段 3                             | 已完成                          |
 | TD-GATE-002  | vitest 无配置文件，参数散落各包 scripts                                                       | P2     | 门禁          | 无                       | 阶段 3                             | 已完成                          |
 | TD-GATE-003  | routes覆盖已修复；E1已撤，恢复31旧豁免                                                        | P1     | 工程门禁      | 无                       | 独立门禁任务／阶段5前复核          | 已验收                          |
@@ -412,6 +415,12 @@
 - **关联批次**：阶段 3 ｜ **验收方式**：故意注入直拼 SQL 的测试提交必须被门禁拦截（实测）✓（三轮样本共 11 个，全部退出码 1）
 
 ## 测试
+
+### TD-TEST-013｜成本转报价成功提示可见性失配
+
+- **事实**：f3882a3干净HEAD全CI0/201874.74ms后，成本临时仅auth候选PW1/12294ms、host1/17663ms，1过1败；前quotes/dialog/decisionId过，原末提示element not found（候选486/还原原501）。原trace只读核201→报价GET200和after@call@305 commercial-status空文本，未输出auth元数据，owned全清、HTML/截图/trace保留。
+- **候选/待裁**：cost-matrix-detail:560–578赋提示→切route，route-navigation:64–79/load→route-read:81–84写已加载→bootstrap:366–368转空，支持lazy覆盖候选，不称干预根因/生产bug/不同store。需确定持续提示合同，另授产品窄修或旧非会话oracle变更，当前只登记不修/不删assert。
+- **边界**：临时成本auth已精确还原与f3882a3字节同，不算适配/变异完成；原失败不消除、不跳过。阻塞成本绿及第二轮，不永久冻结其它独立首轮。[完整事实/候选/待裁](../tasks/playwright-cost-handoff-blocker-2026-10-17.md)。
 
 ### TD-TEST-012｜冻结文档发送PW旧header索引严格类型诊断
 

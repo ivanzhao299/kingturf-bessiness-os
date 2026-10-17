@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **成本提示C7当前交接（2026-10-17）**：f3882a3干净HEAD完整CI实际0/201874.74ms后，成本仅auth候选1过1败，原末提示不可见、前URL/dialog/decisionId过。原trace脱敏核201→GET200及quotes状态文本空，lazy覆盖候选未干预实证；TD-TEST-013/现53项，[待裁事实](../../tasks/playwright-cost-handoff-blocker-2026-10-17.md)。不改业务/期望，临时cost auth精确还原未提交/未完成变异；login2过、其它6A/2B未跑、C禁/未第二轮。当前仅收口/最后文档HEAD全CI后交人裁，不永久冻结独立首轮原授权，不扩阶段5。
+
 - **PW首份夹具候选（2026-10-17）**：login-product-quality原9个expect/导航后全部操作字节守恒，新共享合成会话夹具/冷restore401/login-context/新login及restore DTO；helper代际与spec旧token各真实源变异红→立即还原2通过，失败附件独立保留，执行器真实取消已核。[逐处映射/命令/退出耗时](../../evidence/playwright-docker-spec-replay-2026-10-17.md)。其它7A/2B未跑，C2禁止、第二轮未开始；本适配提交后相关API/Web全量/干净HEAD完整CI另实际跑，不以额外tsc旧诊断改冻结断言，台账52。
 
 - **A接线现时（2026-10-17）**：成本1228531真实干净HEAD全CI0/202370.62ms后，增加A8精确白名单单spec环境入口与strict TS项目归属，不改PW配置。额外全A tsc暴露冻结document-send:154 header索引类型诊断exit2，TD-TEST-012仅登记、现52项；独立只读确认非原CI门禁/PW失败，不顺手改断言/放宽规则，真阻断原hook/补跑则C7。[证据](../../evidence/playwright-docker-spec-replay-2026-10-17.md)。
@@ -3715,6 +3717,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+- **2026-10-17｜成本提示C7事实收口**：f3882a36664a6c0226a53d297787cd265539ff96干净HEAD全CI0/201874.74ms后，成本仅auth候选PW1/12294ms、host1/17663ms，1过1败；原末提示not found，前quotes/dialog/decisionId过。独立只读源码及原trace脱敏核201→GET200、状态文本空，lazy覆盖message为候选不称干预因果；TD-TEST-013/53项，[事实/附件/待裁](../../tasks/playwright-cost-handoff-blocker-2026-10-17.md)。未改业务/期望，临时auth精确还原未提交/未完成变异；login2过、其它6A/2B未跑、C禁/无第二轮。父f3882a3为本docs回滚点，最后文档HEAD完整CI另实跑后交人裁，不用CI0掩PW1、不扩大永久阻塞。[已测试]（真实失败/只读，非PW全绿）
 
 - **2026-10-17｜login-product-quality独立夹具适配**：只替旧auth stubs和补cold restore401/login-context，共享helper纯合成新DTO/Cookie形状；原9expect完整表达式及page.goto后操作/断言实际完全相同，原180ms两阶段/计数保留。初次Cookie字段失败保历史/附件；helper代际43→42真实红host1/13117ms→还原0/8123ms，spec加入旧token真实红1/13086ms→立即还原0/7673ms、原2测试通过。全部owned清理，[完整映射/原命令/证据](../../evidence/playwright-docker-spec-replay-2026-10-17.md)。父60ab881独立回滚点；其它7A/2B未跑，C未动，API/Web全量与最终干净HEAD CI提交后另执行，不抬评分/称阶段5完成。[已测试]（真实逐文件红绿；最终CI随后）
 

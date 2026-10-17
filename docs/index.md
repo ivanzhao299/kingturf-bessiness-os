@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[成本转报价提示C7待裁](tasks/playwright-cost-handoff-blocker-2026-10-17.md)：真实PW1通过1失败，最后提示不可见而原URL/dialog/decisionId过；原trace只读核201→GET200及报价状态文本空。候选根因/产品或oracle范围待裁，临时auth适配精确还原未完成变异；台账53/未第二轮。
+
 [Docker逐spec回放证据](evidence/playwright-docker-spec-replay-2026-10-17.md)：1228531干净HEAD全CI0后续A8精确白名单执行入口/唯一附件目录/原配置；适配变异与A/B两轮逐项补记，未执行不称绿、C禁止。
 
 [P1本地成本种子验证](evidence/playwright-p1-cost-seed-2026-10-17.md)：最小原close前准备、其它字节不变；真实缺料/自批红、立即还原后同schema完整seed重复绿，计数1/2/1/2/异人/closed不变；独立只读复核，最终HEAD完整CI另实跑。下方旧待裁/未实施为前时点。

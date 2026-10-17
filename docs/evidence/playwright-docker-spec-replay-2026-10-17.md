@@ -1,5 +1,7 @@
 # Docker 单 spec 回放证据（2026-10-17）
 
+**后继现时**：f3882a3干净HEAD完整CI实际0/201874.74ms后，成本仅auth候选PW1/12294ms、host1/17663ms、1通过1失败。原最后提示不可见、前URL/dialog/decisionId过；[C7事实/trace脱敏/候选与待裁](../tasks/playwright-cost-handoff-blocker-2026-10-17.md)。成本候选已精确还原未提交/未算适配变异完成，失败附件保留。当前login2过、cost1过1败、其它6A/2B未跑、C禁、未第二轮；下方“其它未执行”为原时点。最后文档HEAD完整CI另实跑，不等于PW全绿。
+
 ## 基线和环境执行器
 
 成本小步 `12285318f7756b20d446d45523661eac150d1f6a` 已实际稳定干净HEAD完整CI0/202370.62ms，首尾同HEAD、unchanged/clean=true，日志 `/tmp/kingturf-docker-p1-cost-1228531-head-ci-2026-10-17.log`。API126/17242、Web14/313、无已知漏洞；此CI不是浏览器补跑。
