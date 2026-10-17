@@ -161,6 +161,11 @@ function repositoryOrigins({ program, sourceRoot, checker, name }) {
     );
   const dependencyType = checker.getTypeAtLocation(dependencies);
   const ports = [];
+  const limiterDeclaration = program
+    .getSourceFile(resolve(sourceRoot, 'middleware/login-rate-limit.ts'))
+    ?.statements.find(
+      (node) => ts.isClassDeclaration(node) && node.name?.text === 'LoginRateLimiter',
+    );
   // Concrete implementation of domain organization/employee/authorization ports.
   const modules = new Set(['apps/api/src/repositories.ts']);
   for (const property of dependencyType.getProperties()) {
@@ -168,8 +173,15 @@ function repositoryOrigins({ program, sourceRoot, checker, name }) {
     const type = checker.getNonNullableType(
       checker.getTypeOfSymbolAtLocation(property, dependencies),
     );
-    // Authentication/readiness/logging are infrastructure, not business repository ports.
+    // Authentication/readiness/logging/login throttling are infrastructure, not business ports.
     const declarations = type.symbol?.declarations ?? [];
+    if (property.name === 'loginRateLimiter') {
+      if (limiterDeclaration && declarations.length === 1 && declarations[0] === limiterDeclaration)
+        continue;
+      throw new Error(
+        'Invalid loginRateLimiter infrastructure port: use the LoginRateLimiter declaration from middleware/login-rate-limit.ts.',
+      );
+    }
     if (declarations.some((node) => service(name(node.getSourceFile().fileName)))) continue;
     if (
       !declarations.some((node) => repository(name(node.getSourceFile().fileName))) &&

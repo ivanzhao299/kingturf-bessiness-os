@@ -6,6 +6,8 @@
 
 ## 常驻入口（根与 docs 顶层）
 
+S2门禁适配：新增登录限流基础设施精确端口分类及同类型未知名拒绝对照，保持业务仓储归属规则；见[Service边界护栏](engineering/service-boundary-guard.md)。bdbda0e首次全CI未分类端口真实红，后继独立门禁提交后重跑，不覆盖失败史。
+
 [批次4 S2登录限流设计](tasks/harness-batch4-s2-design-2026-10-17.md)：账户/IP独立10失败/15分钟、持锁失败退避、429不续禁、503容量边界、真实peer/显式可信链及配置透传；S1协调通过后先设计，尚未实施S3/S4。
 
 [批次4 S1安全响应头证据](evidence/security-batch4-s1-headers-2026-10-17.md)：R7 bed8b40→业务b02ad55真实全量红→独立期望59f9dfa全CI0，API17114/Web266，逐处映射/保护区/风险及回滚；证据提交后另实际HEAD全CI，停协调续派S2，非批次4人工验收。

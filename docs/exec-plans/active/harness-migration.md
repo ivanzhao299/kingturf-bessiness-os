@@ -3670,6 +3670,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+2026-10-17，S2源码bdbda0e首次实际干净HEAD完整CI真实exit1/14024.039ms（/tmp/kingturf-batch4-s2-bdbda0e-head-ci-2026-10-17.log）：service边界护栏未分类新增ApiDependencies.loginRateLimiter，后续测试未运行。新正向CLI旧门禁真实红；纯名字skip候选虽41自测绿/独立初审漏报，协调发现仓储改名逃逸后未提交，改为固定文件真实唯一类声明身份分类，错类型/来源/union/intersection拒绝，原31业务端口与规则不扩。新增10条正反对照，临时纯名字skip时移除原B后改名跨仓反例真实红，恢复后全自测/真实树重验，实际后继HEAD完整CI另跑。R4新发现旧preview Dockerfile仍COPY已删除包，只登记不修或构建；两次早期多文件patch文档锚不匹配原子失败及一次后续格式锚失败均无写入，正确锚重试成功。
+
 2026-10-17，S1协调独立通过后续派S2：00ed10d实际干净最终HEAD完整CI0/178476.659ms、API118/17114/Web266，协调另只读运行65文件76期望逆核0。当前仅S2登录账户/IP双维滑窗与渐进退避，先落盘[具体设计/行为/并发容量/IP信任表](../../tasks/harness-batch4-s2-design-2026-10-17.md)再独立行为实施；10实际失败/15分钟，第10仍401、第11才429，不以inflight或容量冒称失败，503单列，成功不计也不清零，异常不计，429不续禁。packages/config/.env.example及必要compose S2环境透传已明确允许，默认trust-none、socket peer为根/显式可信链右向左，不猜生产代理。S1历史不回写，S3/S4未启动/会话迁移仍硬停，工具输出脱敏失误只记事件不复述值。实现/真实红绿/源码及证据实际HEAD全CI/回滚SHA待真实执行，不预填完成。
 
 2026-10-17，S1实施与独立复核完成：R7 bed8b40先行，业务b02ad55统一complete接纯三头helper，原状态/body/correlation/telemetry顺序不变，helper11/完整10/AST1。首干净源码HEAD全CI1/182202.688ms（API65文件6994红/10120绿，共118/17114）保留；独立test59f9dfa仅同步65文件76处获批响应头，24同形请求头及其它测试/fixture语义不动，完整AST回等、定向120绿。后继59f9dfa实际稳定干净HEAD完整pnpm ci:local0/180503.567ms，开始/结束HEAD同/树空/无其它编辑测试构建并发；API118/17114、Web13/266、原13 PG、工具/格式/39能力19路径/结构0违规29豁免/type/lint/build/audit零漏洞，预算11794/1898。reviewer对complete/server/76期望脚本/映射只读审无必要阻断；独立完成docs实际干净HEAD全CI提交后执行，不冒称b02ad55曾绿。SEC004已实施待批次4验收，Nginx重复头/未来混合大小写及dispatch前异常范围如实登记未修，未跑CDP/Playwright/生产代理；[S1完成证据](../../evidence/security-batch4-s1-headers-2026-10-17.md)。回滚核依赖后59f9dfa→b02ad55配对revert，R7/完成docs独立；未自动回滚。当前停协调独立确认后按原授权续派S2，不实施S2/S3/S4，不启动阶段5/生产/push/deploy/dispatch/workflow。

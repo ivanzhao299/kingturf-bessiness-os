@@ -321,3 +321,110 @@ test('real CLI: unresolved repository dependency fails closed', () => {
   assert.notEqual(output.status, 0);
   assert.match(output.stderr, /Unclassified ApiDependencies port/u);
 });
+
+for (const name of ['loginRateLimiter', 'unclassifiedLimiter'])
+  test(`real CLI: only explicit login limiter infrastructure is excluded (${name})`, () => {
+    const output = run({
+      'apps/api/src/app.ts':
+        base['apps/api/src/app.ts'].replace(
+          'b: BRepository',
+          `b: BRepository; ${name}?: LoginRateLimiter`,
+        ) + "\nimport type { LoginRateLimiter } from './middleware/login-rate-limit.ts';",
+      'apps/api/src/middleware/login-rate-limit.ts':
+        'export class LoginRateLimiter { async login() { return null; } }',
+      'apps/api/src/runtime.ts': route('return defineRoute({ handler: () => a.read() });'),
+    });
+    if (name !== 'loginRateLimiter') {
+      assert.notEqual(output.status, 0);
+      assert.match(output.stderr, /Unclassified ApiDependencies port: unclassifiedLimiter/u);
+      return;
+    }
+    assert.equal(output.status, 0, output.stderr);
+    assert.deepEqual(output.result.ports, ['a', 'b']);
+    assert.deepEqual(output.result.issues, []);
+  });
+
+const limiterSource = 'export class LoginRateLimiter { async login() { return null; } }';
+for (const [label, specifier, imported, declaration, source] of [
+  ['repository renamed', './a-repositories.ts', 'ARepository as Limiter', 'Limiter', limiterSource],
+  [
+    'same name elsewhere',
+    './counterfeit.ts',
+    'LoginRateLimiter as Limiter',
+    'Limiter',
+    limiterSource,
+  ],
+  [
+    'reexport from elsewhere',
+    './middleware/login-rate-limit.ts',
+    'LoginRateLimiter as Limiter',
+    'Limiter',
+    "export { LoginRateLimiter } from '../counterfeit.ts';",
+  ],
+  [
+    'wrong class in correct file',
+    './middleware/login-rate-limit.ts',
+    'OtherLimiter as Limiter',
+    'Limiter',
+    limiterSource + '\nexport class OtherLimiter {}',
+  ],
+  [
+    'union with repository',
+    './middleware/login-rate-limit.ts',
+    'LoginRateLimiter as Limiter',
+    'Limiter | ARepository',
+    limiterSource,
+  ],
+  [
+    'intersection with repository',
+    './middleware/login-rate-limit.ts',
+    'LoginRateLimiter as Limiter',
+    'Limiter & ARepository',
+    limiterSource,
+  ],
+  [
+    'legitimate type alias',
+    './middleware/login-rate-limit.ts',
+    'LoginRateLimiter as Actual',
+    'Limiter',
+    limiterSource,
+  ],
+])
+  test(`real CLI: limiter classification binds declaration identity (${label})`, () => {
+    const output = run({
+      'apps/api/src/app.ts':
+        base['apps/api/src/app.ts'].replace(
+          'b: BRepository',
+          `b: BRepository; loginRateLimiter?: ${declaration}`,
+        ) +
+        `\nimport type { ${imported} } from '${specifier}';` +
+        (label === 'legitimate type alias' ? '\ntype Limiter = Actual;' : ''),
+      'apps/api/src/middleware/login-rate-limit.ts': source,
+      'apps/api/src/counterfeit.ts': limiterSource,
+    });
+    if (label === 'legitimate type alias') {
+      assert.equal(output.status, 0, output.stderr);
+      assert.deepEqual(output.result.ports, ['a', 'b']);
+      assert.deepEqual(output.result.issues, []);
+      return;
+    }
+    assert.notEqual(output.status, 0);
+    assert.match(output.stderr, /Invalid loginRateLimiter infrastructure port/u);
+  });
+
+test('real CLI: renaming the only B port to limiter cannot hide cross-repository work', () => {
+  const output = run({
+    'apps/api/src/app.ts': base['apps/api/src/app.ts'].replace(
+      'b: BRepository',
+      'loginRateLimiter: BRepository',
+    ),
+    'apps/api/src/middleware/login-rate-limit.ts': limiterSource,
+    'apps/api/src/runtime.ts': `import type { ApiDependencies } from './app.ts';
+import { defineRoute } from './routes/types.ts';
+export function routes(deps: ApiDependencies) {
+  return defineRoute({handler: () => { deps.a.read(); deps.loginRateLimiter.write(); }});
+}`,
+  });
+  assert.notEqual(output.status, 0);
+  assert.match(output.stderr, /Invalid loginRateLimiter infrastructure port/u);
+});

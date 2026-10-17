@@ -38,6 +38,8 @@
 
 ## 已验证与能力边界
 
+2026-10-17，批次4 S2新增基础设施端口 `ApiDependencies.loginRateLimiter`：只有此属性的非空类型解析为固定 `apps/api/src/middleware/login-rate-limit.ts` 中唯一真实 `LoginRateLimiter` 类声明身份才不作为业务仓储来源；合法类型别名可用，错类型、同名他源、他源重导出、同文件错类、union/intersection均拒绝。原五个基础设施分类及S1–S4、未知端口fail-closed、31业务端口规则不变。新增10条真实CLI对照含移除原B、仅以限流名注入B并跨仓调用的反例；临时退回纯名字skip时该反例真实红。首次S2源码bdbda0e全CI在未分类端口处失败；最初纯名字候选虽自测通过、独立初审也漏报，但协调发现改名逃逸后未提交，改声明身份并重新核验，保留失败史。独立门禁提交后另实际HEAD全CI，不豁免middleware目录或任意未知类型。
+
 自测用一次性临时fixture启动**真实Node进程**，断言违规退出1且有对应规则；合法对照退出0；结束仅删除本次mkdtemp目录，不改生产源码。覆盖普通/结构重标注、跨闭包及跨文件helper、validate+handler、defineRoute别名、call/apply/bind及异仓receiver、分离bound路由放行、旧嵌套分支、API与packages反向转接、所有列明依赖语法、伪仓储文件及未解析端口。第一次原型曾因修改TypeScript共享signature数组触发栈溢出，已改为复制数组；真实树最终复跑成功，不能将原型失败覆盖为从未失败。
 
 这是静态结构护栏，**不是JavaScript任意执行流证明**：不证明eval/反射、require的别名或createRequire、函数变量重赋、任意高阶回调/参数传递、手工重建函数签名、嵌套对象容器擦除、显式结构参数/返回类型及所有间接赋值保留来源；不检查新建但未注入ApiDependencies的私有仓储实例。route继承全部词法外层factory/map回调的共享执行组（遇外层route停止），并不等于任意跨参数回调流已被证明。上述未支持写法必须独立审查并在新增真实形态前补规则与注入测试，不得以当前绿灯宣称不存在隐式编排。旧app选择器依赖直接request.method/pathname，别名predicate可能导致保守合并；未知语法需显式审查，不自动加白名单。
