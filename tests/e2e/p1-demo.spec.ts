@@ -42,12 +42,12 @@ test('shows approved, rejected, and expired credit evidence', async ({ page }, t
   await openRoute(page, 'credit-review');
   const workbench = page.locator('.credit-workbench');
   await expect(workbench).toBeVisible();
-  const seeded = workbench.locator('.qtc-card', { hasText: '申请 950000' });
+  const seeded = workbench.locator('.qtc-card', { hasText: '申请 ¥950,000' });
   await expect(seeded).toHaveCount(3);
-  await expect(seeded.filter({ hasText: '信用已批准' })).toContainText('敞口 0');
-  await expect(seeded.filter({ hasText: '信用已拒绝' })).toContainText('敞口 450000');
-  await expect(seeded.filter({ hasText: '信用已过期' })).toContainText('敞口 450000');
-  await expect(seeded).toContainText(['额度 5000000', '额度 5000000', '额度 5000000']);
+  await expect(seeded.filter({ hasText: '信用已批准' })).toContainText('敞口 ¥0');
+  await expect(seeded.filter({ hasText: '信用已拒绝' })).toContainText('敞口 ¥450,000');
+  await expect(seeded.filter({ hasText: '信用已过期' })).toContainText('敞口 ¥450,000');
+  await expect(seeded).toContainText(['额度 ¥5,000,000', '额度 ¥5,000,000', '额度 ¥5,000,000']);
   await testInfo.attach('credit-outcomes-desktop', {
     body: await workbench.screenshot(),
     contentType: 'image/png',
@@ -63,14 +63,14 @@ test('shows the released order, partial AR, payment, and reconciliation evidence
   const ar = page.locator('.ar-workbench');
   const payment = page.locator('.payment-workbench');
   await expect(order.getByText('SO-KT-P1-DEMO', { exact: true })).toBeVisible();
-  await expect(order.getByText('CNY 950000', { exact: true })).toBeVisible();
+  await expect(order.getByText('¥950,000', { exact: true })).toBeVisible();
   await testInfo.attach('order-desktop', {
     body: await order.screenshot(),
     contentType: 'image/png',
   });
   await openRoute(page, 'receivables');
   await expect(ar.getByText('INV-KT-P1-DEMO', { exact: true })).toBeVisible();
-  await expect(ar.getByText('未核销 CNY 0', { exact: true })).toBeVisible();
+  await expect(ar.getByText('未核销 ¥0', { exact: true })).toBeVisible();
   await testInfo.attach('receivable-desktop', {
     body: await ar.screenshot(),
     contentType: 'image/png',
@@ -136,7 +136,7 @@ test('shows the permission-bounded Order 360 summary and evidence timeline', asy
   const workbench = page.locator('.order-360-workbench');
   await expect(workbench).toBeVisible();
   const card = workbench.locator('.order-360-card', { hasText: 'SO-KT-P1-DEMO' });
-  await expect(card.getByText('CNY 950000 · RELEASED', { exact: true })).toBeVisible();
+  await expect(card.getByText('¥950,000 · RELEASED', { exact: true })).toBeVisible();
   await expect(
     card.getByText(/报价 Q-KT-P1-DEMO · 信用 APPROVED · 合同 CT-KT-P1-DEMO/u),
   ).toBeVisible();
@@ -170,7 +170,7 @@ test('shows commission economics and the immutable control ledger', async ({ pag
     workbench.locator('.version-pin').filter({ hasText: 'COM-KT-P1-2026 V1' }).first(),
   ).toBeVisible();
   const card = workbench.locator('.commission-card', { hasText: 'SO-KT-P1-DEMO' });
-  await expect(card.getByText('CNY 28500', { exact: true })).toBeVisible();
+  await expect(card.getByText('¥28,500', { exact: true })).toBeVisible();
   await expect(card.getByText('已追回', { exact: true })).toBeVisible();
   await expect(card.getByText(/1 · 已计提/)).toBeVisible();
   await expect(card.getByText(/2 · 已冻结/)).toBeVisible();

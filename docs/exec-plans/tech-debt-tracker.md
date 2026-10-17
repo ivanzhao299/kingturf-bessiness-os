@@ -451,6 +451,8 @@
 
 ### TD-TEST-016｜P1原浏览器11例失败定位待核
 
+- **金额许可后实际部分失败**：1068b94人类R7只改9行固定货币词面，原状态/值/计数/seed不变。新跑发现11/仅9完成：order/AR/payment1过，其余8败（credit原拒绝敞口、mobile生产块、Order360状态、佣金政策pin、风险、dashboard原指标、制造版本计数、采购菜单挂载），最后TD018两次CONNECT_TIMEOUT中断；原因未全部诊断，不泛改期待。host1/62186ms且owned全清；每文件变异/全11绿未完成。[固定行号与完整失败史](../evidence/harness-stage5-browser-rulings-2026-10-17.md)。只读诊断产物最小扩展已询问用户，不阻塞独立A–F；无新债务重复编号，仍58项。
+
 - **阶段5后继**：main单页设计d4e9dbd考古后，人类已批准逐路由（R7 f4b54c2）。首候选11失败/其中10timeout，独立review指出测试helper先即时isVisible竞态，完整结束后只补parent attached。第二候选仅原credit count3/订单CNY950000断言失败后TD018中断；非完整11。main af0de8f已明确货币本地化，当前固定formatter输入950000→¥950,000，与旧词面不符；币种/数值文案新C7未擅改，保原断言/产品/seed。逐路由候选部分检查点不算P1文件适配/真实红绿完成。[全部事实/建议](../evidence/harness-stage5-browser-rulings-2026-10-17.md)。以下待路由许可/未定位为前时点。
 
 - **最新C7**：只读phase部分诊断前两例failureLine19/overview-board-hidden，第三同断言但unclassified；随后通道超时使complete=false。仅前两例原helper可见性期待与非当前workspace隐藏冲突有实际快照支持，其余不归因。候选封存精确恢复原spec；路由访问/逐页可见性方案属非S4期待变化，未获授权不实施。以下未定位文字为此前时点。

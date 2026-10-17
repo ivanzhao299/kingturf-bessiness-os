@@ -1,5 +1,25 @@
 # 阶段5浏览器裁断考古与适配提案（未实施P1期待）
 
+## 最新：已授金额候选仍有独立差异（非完整11例）
+
+人类money R7已独立1068b94落盘，候选逐处映射见[授权文档](../tasks/harness-stage5-p1-money-authorization-2026-10-17.md)。相对cbb5aa1仅9行货币词面改动，独立只读复核确认原数值/币种契约/状态/计数/事件/seed及两配置保持，payments待核销与dashboard指标未泛改；不调用formatter生成期待。原lint/format通过。
+
+`stage5-p1-money-first-1`：真实seed0/3154ms；发现11，仅9例有完成结果（1过8败），随后两次active upstream4173 CONNECT_TIMEOUT、PW null/SIGTERM，complete=false；host实际1/null/62186ms，schema/container/preview三owned清理true。不是11例完整跑，更不是P1绿/第二轮。已完成的固定结果：
+
+| index              | 结果/durationMs | 原断言失败站点                                                                                        |
+| ------------------ | --------------- | ----------------------------------------------------------------------------------------------------- |
+| 0 credit           | failed/6447     | line48，拒绝卡片原敞口450000（只改本地化词面）；三卡计数及批准卡原敞口已先通过，失败具体值/原因未读取 |
+| 1 order/AR/payment | passed/1832     | 无；原订单/应收/付款与核销链本轮通过                                                                  |
+| 2 mobile           | failed/2339     | line120，production-workbench可见；不改类名/伪造DOM求绿                                               |
+| 3 Order360         | failed/6533     | line139，原RELEASED状态连同固定金额文本；不据源码猜全部原因                                           |
+| 4 commission       | failed/6655     | line171，原政策version-pin文案；金额断言尚未抵达                                                      |
+| 5 risk             | failed/6700     | line194，原HIGH/45文本；状态/规则后续尚未抵达                                                         |
+| 6 dashboard        | failed/6403     | line213，原bookedRevenue2058608文本；其余指标尚未抵达                                                 |
+| 7 manufacturing    | failed/6558     | line239，原PUBLISHED/V1数量6；三个编号先通过                                                          |
+| 8 procurement      | failed/5406     | line9，真实菜单parent挂载等待；与网络失败关系未定，不宣称业务失败                                     |
+
+MRP/production独立两例没有完成结果。日志`/tmp/kingturf-stage5-p1-money-first-1-2026-10-17.log`及`.test-results/docker-local/stage5-p1-money-first-1/safe-events.jsonl`。期间只从精确owned容器读取cases.json并经safeLocalCases重编码固定字段；不读取raw/DOM/auth，零PNG导出/未视觉验收。未改timeout/retry/relay规则，TD018仍登记。候选保留为失败检查点，不继续改这些非货币断言或产品；已向用户询问是否允许最小固定布尔/计数只读诊断产物扩展，其它A–F不等待此裁定。每文件真实变异红→全绿义务未完成。
+
 ## 最新：逐路由已授候选实跑，新增金额显示C7
 
 用户已在证据b1eab97后批准逐路由方案，[原话R7 f4b54c2](../tasks/harness-stage5-p1-route-authorization-2026-10-17.md)。本候选只自然DOM登录、真实菜单/ready等待及逐页截图；原11标题/金额/状态/事件/seed不改。旧下方“待裁/未实施P1逐路由”是批准前材料，不覆盖本段。
