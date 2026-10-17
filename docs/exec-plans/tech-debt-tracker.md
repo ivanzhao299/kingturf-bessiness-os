@@ -1,5 +1,7 @@
 # 技术债台账（tech-debt-tracker）
 
+**B工具新回归（2026-10-17，57项）**：新增TD-TEST-017，43047ec进度reporter把Playwright构造options误作writer；本地官方源码确认框架传对象，直接回归unit1/5过1败。仅已授B私有工具兼容缺口，先登记/红例后独立最小修复，不改产品/原断言。[证据](../evidence/playwright-local-private-runner-2026-10-17.md)。最新P1诊断还出现upstream4173 CONNECT_TIMEOUT/closing=false并清理，非RESET证据，不贸然放宽通道失败条件；下方56为历史。
+
 **P1首轮现时（2026-10-17，56项）**：新增TD-TEST-016，原种子0/成本关单通过后，完整11发现/完成、11 failed，PW1/65088ms/host1/73640ms，owned全清；raw按人裁清理/未留图，不凭其猜根因。仅安全failureLine定位候选，不改原业务期待/配置，[事实与未测](../tasks/playwright-p1-replay-blocker-2026-10-17.md)。runtime首轮可独立续，第二轮仍禁，下方55为历史。
 
 **A首轮现时（2026-10-17，55项）**：TD-TEST-015已按直接人裁只修应收合成nextCursor，缺字段与auth各真红→还原原3绿，样本SHA/权限/业务断言保持，仅该缺口实施关闭。A8六份全绿，Workspace/成本各仍一败待裁，B首轮接线后独立执行，第二轮禁；下方已授待实施等为历史。
@@ -119,6 +121,7 @@
 | TD-TEST-014  | Workspace旧PW夹具首次读取gate/360必填字段不兼容                                               | P2     | 合成测试夹具   | 等待点另授/字段待裁      | Docker首轮发现                     | 原2过2败/未修完                 |
 | TD-TEST-015  | Source旧合成应收游标页缺nextCursor                                                            | P2     | 合成测试夹具   | 字段实施已验证关闭       | Docker首轮发现                     | 缺字段/auth真红绿，原3例过      |
 | TD-TEST-016  | P1原浏览器11例失败定位待核                                                                    | P2     | 本地浏览器回归 | 只登记/诊断中            | Docker首轮发现                     | 原11全failed/未定位             |
+| TD-TEST-017  | 私有reporter构造options兼容缺口                                                               | P2     | 本地回放工具   | 已登记待窄修             | 原生调用形状回归发现               | unit5过1败/未修                 |
 | TD-GATE-001  | 无 git hooks / commitlint / lint-staged，脏提交仅靠 CI 兜底                                   | P1     | 门禁           | 无                       | 阶段 3                             | 已完成                          |
 | TD-GATE-002  | vitest 无配置文件，参数散落各包 scripts                                                       | P2     | 门禁           | 无                       | 阶段 3                             | 已完成                          |
 | TD-GATE-003  | routes覆盖已修复；E1已撤，恢复31旧豁免                                                        | P1     | 工程门禁       | 无                       | 独立门禁任务／阶段5前复核          | 已验收                          |
@@ -426,6 +429,11 @@
 - **关联批次**：阶段 3 ｜ **验收方式**：故意注入直拼 SQL 的测试提交必须被门禁拦截（实测）✓（三轮样本共 11 个，全部退出码 1）
 
 ## 测试
+
+### TD-TEST-017｜私有reporter构造options兼容缺口
+
+- **事实**：本轮43047ec新增同步partial writer构造参数误把PW传入options对象当函数；本地官方runner:4917/4926明确new reporterConstructor(options)，新直接调用形状unit实际1/5过1败。43047ec诊断partial0不证明没有执行case，旧f56365c完整11败有效，raw均按R7清理。
+- **范围/状态**：仅本轮已授B工具自身兼容回归，已登记待分离options与unit writer参数/独立修复，原配置/业务assert/网络失败规则不改；[真实故障/红例](../evidence/playwright-local-private-runner-2026-10-17.md)。不计B绿或扩大原待裁问题。
 
 ### TD-TEST-016｜P1原浏览器11例失败定位待核
 

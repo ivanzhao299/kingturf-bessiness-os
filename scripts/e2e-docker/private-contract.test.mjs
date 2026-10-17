@@ -97,6 +97,11 @@ test('reporter records inventory index without raw errors, titles or attachments
   }
 });
 
+test('Playwright options are not mistaken for the reporter filesystem writer', () => {
+  const reporter = new PrivateReporter({});
+  assert.equal(typeof reporter.writer, 'function');
+});
+
 test('zero exit cannot hide missing discovery, completion, cases or failed outcomes', () => {
   const valid = {
     exit: 0,

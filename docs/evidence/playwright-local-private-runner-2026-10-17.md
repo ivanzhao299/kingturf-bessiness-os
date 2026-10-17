@@ -44,3 +44,11 @@ P1首轮随后启动、同schema完整seed实际0/3030ms及成本计数检查通
 另给forward加固定observer，原错误/timeout/listener全局失败条件和byte pipe保持，仅port4173/5432、side及固定errno枚举/OTHER传宿主白名单，不输出原error/message/地址或流量。该观测尚未实际复现原因，不把旧中断改写成已证ECONNRESET。原unit5/lint0，后继诊断另实际记；无产品/config/P1期待变化。
 
 首只读review因模型容量失败，不计已审；复用另一独立reviewer后窄diff无必要阻断。其指出主动closing期间也可能产生socket错误，事件不能单独证明先前中断来源；据此仅加closing布尔并在host校验，未改失败条件，诊断须区分清理期间事件。partial/取消守卫经只读复核不会充绿，后继实际运行再验证。
+
+## 实际诊断与 reporter options 缺口（TD-TEST-017）
+
+43047ec后`p1-safe-location-2`原seed0/3158ms，实际安全事件为port4173/upstream/CONNECT_TIMEOUT/closing=false，随后PW close=null/SIGTERM、local-progress discovered0/complete=false/cases[]，host1/41330ms，owned全清。不算完整/绿；这不是RESET证据，不实施peer-reset容错候选，且不能回写旧SIGTERM来源已证。一次尝试只读当前安全partial时容器已不存在，目标存在断言拒绝，未读任何raw/fixture/认证数据；不算测试绿。
+
+另从已安装Playwright1.62.1官方源码`lib/runner/index.js:4916–4917,4925–4926`亲核：框架会`new reporterConstructor(options)`。43047ec新增`PrivateReporter(writer=writeFileSync)`把此options对象当writer，实际持久化会非函数；旧无构造器的f56365c完整11例全败记录不受此新增缺口影响。故43047ec此次0项partial不是“已证没有执行case”，而是安全观测不可用，不能给真实发现数作假。
+
+先登记TD-TEST-017/57顶层项；新增直接用`new PrivateReporter({})`的原生调用形状回归，实际unit exit1/5过1败，日志`/tmp/kingturf-local-private-reporter-options-red-1-2026-10-17.log`。这属于本轮已授私有执行器自身兼容缺口，不借机修产品/业务期待；下一步仅分开options与unit writer参数、还原其它语义，独立提交/真实回归。当前未修、不充绿。

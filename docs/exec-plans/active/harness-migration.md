@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **B安全观测新回归（2026-10-17）**：43047ec后P1诊断upstream4173 CONNECT_TIMEOUT/closing=false→PWnull/SIGTERM、host1/41330ms、owned全清，非RESET证据。reporter options对象被新writer构造误收，本地官方PW源码核证+直接原生调用unit红1/5过1败，新增TD-TEST-017/57，[事实/边界](../../evidence/playwright-local-private-runner-2026-10-17.md)。只登记本轮工具兼容缺口，下一步独立最小修正，不改产品/原业务期待/通道失败条件；原P1完整11败仍有效，runtime可独立首轮，C/第二轮/最后HEAD全CI保护保持。
+
 - **P1首轮真实失败（2026-10-17）**：私有f56365c工具、同schema原seed0/3030ms及成本关单检查过；原11个test正文不变，P1自然DOM helper候选完整discovered11/complete=true/11 failed，PW1/65088ms、host1/73640ms，owned全清。raw/图按人裁未导出已清，根因尚未定位；只增安全固定spec整数failureLine工具诊断，[事实/边界](../../tasks/playwright-p1-replay-blocker-2026-10-17.md)，TD-TEST-016/56项。runtime正常首轮未跑可独立续，原cost/Workspace待裁，第二轮/C禁，最后HEAD全CI必跑。
 
 - **B环境候选静态检查点（2026-10-17）**：独立local p1/runtime私有执行器，unit5/原lint/format/结构0，独立review所列清理/探针冒绿/路径输出及宿主异常均收紧；[静态与未测清单](../../evidence/playwright-local-private-runner-2026-10-17.md)。原config不改、P1仅命令traceoff、raw/tmpfs不导出、零PNG非视觉验收；隐私/取消/真实B尚未实测，不充绿。A现六绿/两份各一败待裁，第二轮/C禁，最后HEAD全CI必跑。
@@ -3735,6 +3737,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+- **2026-10-17｜私有reporter原生构造回归红例**：43047ec后p1-safe-location-2记录upstream4173 CONNECT_TIMEOUT/closingfalse、PWnull/SIGTERM、partial不可用、host1/41330ms/owned全清；非RESET证据。亲核已装官方PW runner4917/4926传options对象，当前writer构造误收；新增原生`new PrivateReporter({})`回归unit1/5过1败，先TD-TEST-017登记/57，[证据/限制](../../evidence/playwright-local-private-runner-2026-10-17.md)。本提交只工具红例与记录，不改产品/业务/config/转发失败条件；下一步最小参数分离独立修复，原f56365c完整11败有效，不将0partial当真实0发现。C/第二轮/最后HEAD全CI保持。[已测试]（明确工具红例，非绿）
 
 - **2026-10-17｜B中断安全观测补齐**：32bb2b4后p1-safe-location-1同11例实际close=null/SIGTERM、host1/44424ms、owned全清、无完整result，不充绿/不猜relay原因。仅转发器固定port/side/errno枚举观测（原失败条件/字节转发不改），reporter同步逐例安全partial、onEnd才complete、取消local-progress固定complete=false，原成功完整性不降；unit5/原lint过，[事实/未核原因](../../tasks/playwright-p1-replay-blocker-2026-10-17.md)。不读raw/错误正文、原业务/config/P1候选保持，仍待实际诊断/独立复核；C/第二轮/最后HEAD全CI保护保持。[已测试]（中断/工具unit，非B绿）
 
