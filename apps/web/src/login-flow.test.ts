@@ -3,10 +3,10 @@ import { LoginCoordinator, loginFailureMessage, type LoginProgress } from './log
 
 describe('LoginCoordinator', () => {
   it('authenticates and initializes once while repeated submissions share the same operation', async () => {
-    let resolveAuthentication: ((token: string) => void) | undefined;
+    let resolveAuthentication: (() => void) | undefined;
     const authenticate = vi.fn(
       () =>
-        new Promise<string>((resolve) => {
+        new Promise<void>((resolve) => {
           resolveAuthentication = resolve;
         }),
     );
@@ -20,10 +20,10 @@ describe('LoginCoordinator', () => {
     expect(coordinator.busy).toBe(true);
     expect(authenticate).toHaveBeenCalledTimes(1);
 
-    resolveAuthentication?.('session-token');
+    resolveAuthentication?.();
     await expect(first).resolves.toBe(true);
     expect(initialize).toHaveBeenCalledOnce();
-    expect(initialize).toHaveBeenCalledWith('session-token');
+    expect(initialize).toHaveBeenCalledWith();
     expect(progress).toEqual([
       { phase: 'authenticating', message: '正在验证账号…' },
       { phase: 'initializing', message: '登录成功，正在加载工作台…' },

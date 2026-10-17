@@ -1,5 +1,7 @@
 # 批次4 S4：Cookie／CSRF 实现设计与行为表
 
+前端后继检查点：后端25526c8实际干净HEAD全CI0/203058.579ms经协调确认后，按本固定设计实施前端切换。Cookie静态restore、不可变context、同代不重挂载、换代/current失效沿旧整页reload清旧视图，不扩editor叶子；共享交换core与后登录policy分层、预算不松。[前端映射/真实红绿/失败史](../evidence/security-batch4-s4-frontend-2026-10-17.md)。最终提交后完整CI待实际执行，网络级Chrome/旧PW/SEC003收口仍未完成，下方“仅后端/仅设计”为历史。
+
 后继检查点：fead2d1自然Secure预检实际干净HEAD全CI0经协调确认后，仅后端/config/机器接口按本固定设计实施，见[后端证据](../evidence/security-batch4-s4-backend-2026-10-17.md)。定向绿、最终提交后另稳定干净HEAD全CI再停协调；Web/PW未改，SEC003开放。下文“未编码/仅设计/未预检”为当时时点。
 
 ## 0. 设计基线、已决与当前停点

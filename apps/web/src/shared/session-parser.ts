@@ -1,20 +1,28 @@
-import type { SessionDto } from '../session';
+import type { SessionDto, SessionResponse } from '../session';
 import { parseResponseRecord } from './response-parser';
 
-export function parseStoredSessionToken(value: unknown): string | null {
-  return typeof value === 'string' && /^[A-Za-z0-9_-]+$/u.test(value) ? value : null;
+export function parseSessionProof(record: Record<string, unknown>): void {
+  if ('token' in record || 'tokenHash' in record) throw new Error('服务器返回的会话数据格式无效');
+  if (
+    typeof record.generation !== 'string' ||
+    !/^[A-Za-z0-9_-]{43}$/u.test(record.generation) ||
+    typeof record.csrfToken !== 'string' ||
+    !/^v1\.s\.[A-Za-z0-9_-]{43}\.[A-Za-z0-9_-]{43}$/u.test(record.csrfToken)
+  )
+    throw new Error('服务器返回的会话数据格式无效');
 }
 
-export const parseSessionExpired = (value: unknown): boolean => value === '1';
-
-export function parseLoginResponse(value: unknown): { token: string } {
-  const record = parseResponseRecord(value);
-  if (parseStoredSessionToken(record.token) === null)
-    throw new Error('服务器返回的登录数据格式无效');
-  return record as { token: string };
+export function parseSessionRestore(value: unknown): SessionResponse {
+  const record = sessionRecord(value);
+  parseSessionProof(record);
+  return record as SessionResponse;
 }
 
 export function parseSessionResponse(value: unknown): SessionDto {
+  return sessionRecord(value) as SessionDto;
+}
+
+function sessionRecord(value: unknown): Record<string, unknown> {
   const record = parseResponseRecord(value);
   if (
     typeof record.employeeId !== 'string' ||
@@ -28,5 +36,5 @@ export function parseSessionResponse(value: unknown): SessionDto {
     if (field !== undefined && field !== null && typeof field !== 'string')
       throw new Error('服务器返回的会话数据格式无效');
   }
-  return record as SessionDto;
+  return record;
 }

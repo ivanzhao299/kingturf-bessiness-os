@@ -1,3 +1,4 @@
+import { sessionFixture } from './test-fixtures/session';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {
@@ -230,7 +231,8 @@ const readCommercialStoreSources = (): string[] => [
 
 const readBoundaryParserSources = (): string[] => [
   readBoundSource('./shared/response-parser.ts', 'export function parseResponseRecord'),
-  readBoundSource('./shared/session-parser.ts', 'export function parseStoredSessionToken'),
+  readBoundSource('./shared/session-parser.ts', 'export function parseSessionRestore'),
+  readBoundSource('./shared/login-parser.ts', 'export function parseLoginProof'),
   readBoundSource('./shared/api-response-parser.ts', 'export function parseResponseArray'),
   readBoundSource('./shared/register-view-parser.ts', 'export function parseStoredRegisterView'),
   readBoundSource(
@@ -970,7 +972,7 @@ it('prioritizes governance exceptions and translates daily notification channels
 it('renders only governance actions granted to the authenticated role', () => {
   const controller = new GovernanceController(
     new Set(['organization:read', 'organization:update', 'audit:read']),
-    'test-token',
+    sessionFixture(),
   );
   controller.views = [
     {
@@ -988,10 +990,22 @@ it('renders only governance actions granted to the authenticated role', () => {
   expect(workspace.textContent).toContain('下一步：');
 });
 
+it('binds the governance request adapter to the captured session context', async () => {
+  const context = sessionFixture();
+  const fetcher = vi.fn().mockResolvedValue(new Response('[]'));
+  vi.stubGlobal('fetch', fetcher);
+  const controller = new GovernanceController(new Set(['organization:read']), context);
+  await controller.load();
+  expect(fetcher).toHaveBeenCalledOnce();
+  const headers = new Headers((fetcher.mock.calls[0]?.[1] as RequestInit).headers);
+  expect(headers.has('authorization')).toBe(false);
+  expect(headers.get('x-kingturf-session-generation')).toBe(context.generation);
+});
+
 it('exposes governed identity provisioning, role assignment, and role removal together', () => {
   const controller = new GovernanceController(
     new Set(['authorization:read', 'authorization:manage', 'employee:read']),
-    'test-token',
+    sessionFixture(),
   );
   controller.views = [
     {
@@ -1025,7 +1039,7 @@ it('renders atomic IAM administration without the legacy broad management capabi
       'employee:read',
       'organization:read',
     ]),
-    'test-token',
+    sessionFixture(),
   );
   controller.views = [
     { path: '/api/v1/user-access-profiles', value: { items: [] } },

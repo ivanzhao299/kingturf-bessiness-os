@@ -132,7 +132,7 @@ import { appendLegacyCommercialPanels } from './commercial/workspace-legacy-pane
 import type { Viewport, RoleWorkspaceProfile } from './shared/shell-types';
 export type { Viewport, RoleWorkspaceProfile } from './shared/shell-types';
 import { requestId } from './http';
-import type { SessionDto } from './session';
+import type { SessionDto, SessionContext } from './session';
 export { setOperationStatus, type OperationState } from './dom';
 export { RequestError } from './http';
 import './style.css';
@@ -510,25 +510,28 @@ export function commercialWorkspaceStructure(
   return workspace;
 }
 
-const renderDocumentConnectors = createDocumentConnectorRenderer({
-  get onlineDocumentApi() {
-    return onlineDocumentApi;
-  },
-});
-
-const { onlineDocumentApi, clearSessionReadCache, onlineDocumentRead } =
-  createDocumentReadService();
-
-const openOnlineDocumentEditor = createOnlineDocumentEditor({
-  businessDocumentOption,
-  sanitizeBusinessDocumentHtml,
-  businessDocumentText,
-  onlineDocumentApi,
-  clearSessionReadCache,
-  renderBusinessDocumentComparison,
-  renderDocumentConnectors,
-  printOnlineBusinessDocument,
-});
+function createWorkspaceDocuments(context: SessionContext | null = null) {
+  const { onlineDocumentApi, clearSessionReadCache, onlineDocumentRead } =
+    createDocumentReadService(context);
+  const renderDocumentConnectors = createDocumentConnectorRenderer({ onlineDocumentApi });
+  const openOnlineDocumentEditor = createOnlineDocumentEditor({
+    businessDocumentOption,
+    sanitizeBusinessDocumentHtml,
+    businessDocumentText,
+    onlineDocumentApi,
+    clearSessionReadCache,
+    renderBusinessDocumentComparison,
+    renderDocumentConnectors,
+    printOnlineBusinessDocument,
+  });
+  return {
+    onlineDocumentApi,
+    onlineDocumentRead,
+    renderDocumentConnectors,
+    openOnlineDocumentEditor,
+  };
+}
+const unavailableDocuments = createWorkspaceDocuments();
 
 function replaceRouteView(current: HTMLElement, replacement: HTMLElement): void {
   if (!current.isConnected) return;
@@ -549,7 +552,14 @@ export function createCrmShell(
   width = window.innerWidth,
   allPermissions: ReadonlySet<string> = controller.permissions,
   profileLabel = '当前账号',
+  documents = unavailableDocuments,
 ): HTMLElement {
+  const {
+    onlineDocumentApi,
+    onlineDocumentRead,
+    renderDocumentConnectors,
+    openOnlineDocumentEditor,
+  } = documents;
   const framePorts = {
     viewportFor,
     visibleAppRoutes,
@@ -618,11 +628,14 @@ export const governanceWorkspace = createGovernanceWorkspace({ replaceRouteView 
 export async function mountWorkspace(
   root: HTMLElement,
   session: SessionDto,
-  token: string,
+  context: SessionContext,
   onProgress: (message: string) => void,
+  isCurrent: () => boolean = () => context.owner.isCurrent(),
 ): Promise<void> {
   // Reset document reads when the authenticated identity changes.
-  clearSessionReadCache();
+  if (!isCurrent()) return;
+  if (session !== context.session) throw new Error('工作台与会话上下文不匹配');
+  const documents = createWorkspaceDocuments(context);
   const allowed = new Set<CrmPermission>([
     'employee:read',
     'customer:read',
@@ -647,24 +660,25 @@ export async function mountWorkspace(
     session.permissions.filter((item): item is CrmPermission => allowed.has(item as CrmPermission)),
   );
   const allPermissions = new Set(session.permissions);
-  const controller = new CrmController(permissions, createFetchCrmApi(token));
+  const controller = new CrmController(permissions, createFetchCrmApi(context));
   const commercialPermissions = new Set(session.permissions.filter(isCommercialPermission));
   const commercialController = Object.values(visibleCommercialSections(commercialPermissions)).some(
     Boolean,
   )
-    ? new CommercialController(createFetchCommercialApi(token), commercialPermissions)
+    ? new CommercialController(createFetchCommercialApi(context), commercialPermissions)
     : null;
   const governanceController =
     visibleGovernanceSurfaces(allPermissions).length > 0
-      ? new GovernanceController(allPermissions, token)
+      ? new GovernanceController(allPermissions, context)
       : null;
   const commercialData = commercialController
-    ? createCommercialRouteState(commercialController, token, sessionStorage)
+    ? createCommercialRouteState(commercialController, context)
     : null;
   const initialRoute = initialCommercialRoute(
     visibleAppRoutes(allPermissions),
     globalThis.location.hash,
   );
+  context.owner.onDispose(() => commercialData?.owner.dispose());
   await Promise.all([
     controller.load().catch((error: unknown) => {
       controller.error = error instanceof Error ? error.message : '客户业务数据加载失败';
@@ -678,6 +692,7 @@ export async function mountWorkspace(
       }),
     governanceController?.load(),
   ]);
+  if (!isCurrent()) return;
   onProgress('业务数据已就绪，正在构建工作台…');
   const currentEmployee = controller.employees.find(
     (employee) => employee.id === session.employeeId,
@@ -693,6 +708,7 @@ export async function mountWorkspace(
     globalThis.innerWidth || 1280,
     allPermissions,
     profileLabel,
+    documents,
   );
   if (commercialController) {
     commercialController.customers = controller.customers;
@@ -725,7 +741,13 @@ export async function mountWorkspace(
     navigationDisposers.get(previousShell)?.();
     disposeCommercialRouteNavigation(previousShell);
   }
+  if (!isCurrent()) return;
   root.replaceChildren(shell);
+  context.owner.onDispose(() => {
+    navigationDisposers.get(shell)?.();
+    disposeCommercialRouteNavigation(shell);
+    shell.remove();
+  });
   if (commercialData && commercialController)
     installCommercialRouteNavigation(
       shell,

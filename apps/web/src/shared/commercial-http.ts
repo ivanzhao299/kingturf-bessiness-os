@@ -1,13 +1,14 @@
+import type { SessionContext } from '../session';
 import { json, requestId } from '../http';
 import type { CommercialApi, Opportunity, CostMatrixPage } from '../commercial/types';
 import { parseResponseRecord } from './response-parser';
 import { parseResponseItems, parseCursorPage, parseCostMatrixPage } from './api-response-parser';
 
-export const createFetchCommercialApi = (token: string): CommercialApi => ({
+export const createFetchCommercialApi = (context: SessionContext): CommercialApi => ({
   async listOpportunities() {
     const response = await json<{
       items: readonly Opportunity[];
-    }>('/api/v1/opportunities', token, undefined, parseResponseItems);
+    }>('/api/v1/opportunities', context, undefined, parseResponseItems);
     return response.items;
   },
   async list(path) {
@@ -19,7 +20,7 @@ export const createFetchCommercialApi = (token: string): CommercialApi => ({
       return (
         await json<{ items: readonly Record<string, unknown>[] }>(
           path,
-          token,
+          context,
           undefined,
           parseResponseItems,
         )
@@ -33,7 +34,7 @@ export const createFetchCommercialApi = (token: string): CommercialApi => ({
       const page = await json<{
         items: readonly Record<string, unknown>[];
         nextCursor: string | null;
-      }>(`${path}?${query.toString()}`, token, undefined, parseCursorPage);
+      }>(`${path}?${query.toString()}`, context, undefined, parseCursorPage);
       items.push(...page.items);
       if (page.nextCursor && visitedCursors.has(page.nextCursor))
         throw new Error('服务器返回了重复分页游标，已停止加载以避免重复数据');
@@ -53,16 +54,16 @@ export const createFetchCommercialApi = (token: string): CommercialApi => ({
     if (query.productFamily) parameters.set('productFamily', query.productFamily);
     return json<CostMatrixPage>(
       `/api/v1/cost-matrix-summaries?${parameters.toString()}`,
-      token,
+      context,
       undefined,
       parseCostMatrixPage,
     );
   },
-  get: (path) => json<Record<string, unknown>>(path, token, undefined, parseResponseRecord),
+  get: (path) => json<Record<string, unknown>>(path, context, undefined, parseResponseRecord),
   submit: (path, payload, method = 'POST') =>
     json<Record<string, unknown>>(
       path,
-      token,
+      context,
       {
         method,
         ...(method === 'POST' ? { headers: { 'idempotency-key': requestId() } } : {}),
@@ -78,7 +79,7 @@ export const createFetchCommercialApi = (token: string): CommercialApi => ({
     for (const byte of bytes) binary += String.fromCharCode(byte);
     const metadata = await json<Record<string, unknown>>(
       '/api/v1/attachments',
-      token,
+      context,
       {
         method: 'POST',
         body: JSON.stringify({
@@ -93,11 +94,11 @@ export const createFetchCommercialApi = (token: string): CommercialApi => ({
     if (typeof metadata.id !== 'string') throw new Error('附件元数据响应无效');
     const uploaded = await json<Record<string, unknown>>(
       `/api/v1/attachments/${metadata.id}/content`,
-      token,
+      context,
       { method: 'PUT', body: JSON.stringify({ contentBase64: btoa(binary) }) },
       parseResponseRecord,
     );
-    await json(`/api/v1/ctr-versions/${versionId}/attachments`, token, {
+    await json(`/api/v1/ctr-versions/${versionId}/attachments`, context, {
       method: 'POST',
       body: JSON.stringify({ attachmentId: metadata.id }),
     });
@@ -111,7 +112,7 @@ export const createFetchCommercialApi = (token: string): CommercialApi => ({
     for (const byte of bytes) binary += String.fromCharCode(byte);
     const metadata = await json<Record<string, unknown>>(
       '/api/v1/attachments',
-      token,
+      context,
       {
         method: 'POST',
         body: JSON.stringify({
@@ -124,13 +125,13 @@ export const createFetchCommercialApi = (token: string): CommercialApi => ({
       parseResponseRecord,
     );
     if (typeof metadata.id !== 'string') throw new Error('附件元数据响应无效');
-    await json(`/api/v1/attachments/${metadata.id}/content`, token, {
+    await json(`/api/v1/attachments/${metadata.id}/content`, context, {
       method: 'PUT',
       body: JSON.stringify({ contentBase64: btoa(binary) }),
     });
     return json<Record<string, unknown>>(
       '/api/v1/contract-documents',
-      token,
+      context,
       {
         method: 'POST',
         headers: { 'idempotency-key': requestId() },
@@ -148,7 +149,7 @@ export const createFetchCommercialApi = (token: string): CommercialApi => ({
   command: (revisionId, action, payload = {}) =>
     json<Record<string, unknown>>(
       `/api/v1/quote-revisions/${revisionId}/${action}`,
-      token,
+      context,
       {
         method: 'POST',
         headers: { 'idempotency-key': requestId() },

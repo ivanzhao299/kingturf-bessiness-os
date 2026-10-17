@@ -1,3 +1,4 @@
+import type { SessionContext } from '../session';
 import { json, requestId } from '../http';
 import { visibleGovernanceSurfaces } from './surfaces';
 export type GovernanceView = Readonly<{
@@ -11,7 +12,7 @@ export class GovernanceController {
   public message = '';
   public constructor(
     public readonly permissions: ReadonlySet<string>,
-    private readonly token: string,
+    private readonly context: SessionContext,
   ) {}
   public async load(): Promise<void> {
     const paths = [
@@ -20,7 +21,7 @@ export class GovernanceController {
     this.views = await Promise.all(
       paths.map(async (path): Promise<GovernanceView> => {
         try {
-          return { path, value: await json<unknown>(path, this.token) };
+          return { path, value: await json<unknown>(path, this.context) };
         } catch (error) {
           return {
             path,
@@ -36,7 +37,7 @@ export class GovernanceController {
     payload: Record<string, unknown>,
     method: 'POST' | 'PUT' | 'PATCH' | 'DELETE' = 'POST',
   ): Promise<void> {
-    await json<unknown>(path, this.token, {
+    await json<unknown>(path, this.context, {
       method,
       headers: { 'idempotency-key': requestId() },
       body: JSON.stringify(payload),

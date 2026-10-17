@@ -1,4 +1,5 @@
 import type { AppRoute } from '../../shared/navigation';
+import type { SessionContext } from '../../session';
 import type { CommercialController } from './controller';
 import { attachCommercialReadOwner, type CommercialReadOwner } from './read-owner';
 import { commercialRoutePlan, commercialDataRoutes } from './route-dependencies';
@@ -12,12 +13,11 @@ export function commercialRouteStateOf(controller: CommercialController) {
 
 export function createCommercialRouteState(
   controller: CommercialController,
-  token: string,
-  storage: Pick<Storage, 'getItem'>,
+  context: SessionContext,
 ): CommercialRouteState {
   return new CommercialRouteState(
     controller,
-    attachCommercialReadOwner(controller, () => storage.getItem('kingturf.session') === token),
+    attachCommercialReadOwner(controller, () => context.owner.isCurrent()),
   );
 }
 

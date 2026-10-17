@@ -2,6 +2,10 @@
 
 ## 0. 元信息
 
+- **S4前端实现候选（2026-10-17）**：固定设计切换完成待最终提交后CI：首次Cookie restore静态单一http-core、不可变context、旧storage布尔清键、同代保表单/换代current失效原reload、通知revision/owner/cache必要耦合。Web14/304、type/lint/结构0/29与原预算JS11992/CSS1898定向绿，未跑Chrome/旧PW/Docker；[逐文件红绿/两类core回调真变异/预算失败史](../../evidence/security-batch4-s4-frontend-2026-10-17.md)。最终稳定干净HEAD完整CI后停协调，SEC003/48项/评分保持开放。
+
+- **S4前端当前小步（2026-10-17）**：后端25526c8稳定干净HEAD完整CI实际0/203058.579ms（API126/17242、Web13/266/config71），协调独立亲核放行。续已授固定设计§4–§6：不可变SessionContext/Cookie transport、旧storage一次布尔清除重登、恢复/登录再核验、跨tab非秘密通知、owner/文档缓存必要代际耦合。仅Web业务/对应测试/必要工具与文档，不改后端/SQL/旧PW，不跑浏览器；网络级Chrome下一步另续。逐文件映射/真变异及最终干净HEAD全CI后停协调，SEC003/48项/评分不提前关闭。
+
 - **S4后端当前检查点（2026-10-17）**：fead2d1自然预检干净HEAD完整CI0/205231.486ms经协调确认后，仅后端/config/机器接口/API测试实施，详见[逐文件真实变异/分层证据](../../evidence/security-batch4-s4-backend-2026-10-17.md)。定向API232/config71/真实PG20绿、独立静态复核无阻断，最终提交后另同一稳定干净HEAD全CI再停协调；Web/PW/SQL/事务/依赖/infra/workflow冻结，SEC003开放、48项不变，不进入前端/Docker/阶段5。下文“未编码/仅工具”等为历史。
 
 - **S4自然Secure Cookie工具前置（2026-10-17）**：设计efae93d实际干净HEAD全CI0/211588.694ms经协调亲核后，仅续派[隔离真实HTTP/CDP预检](../../evidence/security-batch4-s4-cookie-http-2026-10-17.md)。自然127.0.0.1:4173存储/回传成功，非S4后端；工具/4负向清理/逐文件变异证据见报告，旧浏览器回归与最终本步干净HEAD全CI执行后交付。后端仍未编码，完成后停协调，不自行阶段5；下方“仅设计/未预检”为前时点。
@@ -3685,6 +3689,10 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+2026-10-17，S4前端候选沿已授范围实施；五旧Web测试真实实现变异红→还原绿，额外core received两文件3红→95绿、decoded1红→35绿；Web14/304、类型/lint/结构0/29及原预算11992/1898绿。预算多轮红真实保留，协调明确首次restore/解析/revision静态，不挪统计/品牌/阈值；单一交换core与真实用户交互/postlogin/失败UI按需边界解决，内部新cause不向UI显示，冻结原业务/界面不借机改。三域adapter去仅carrier差异结构AST全部相等，bootstrap原断言仅声明必要S4差异逆撤后AST相等。完整源码/保护区/回滚及失败史见[前端证据](../../evidence/security-batch4-s4-frontend-2026-10-17.md)。最终提交后另同一干净HEAD全CI，未进入Chrome/PW/Docker/阶段5，SEC003不关闭。
+
+2026-10-17，后端25526c8实际稳定干净HEAD全CI0/203058.579ms经协调独立确认（API126/17242、Web13/266/config2/71、database68/domain14/types1/audit0），保护区零diff，放行前端小步。固定设计与六项不重选；先本结论落盘，再Web实现/逐文件适配真红绿/全量及最终HEAD CI，停协调。仅WEB007/PERF003同文件必要代际耦合，不修CRM语义，历史CRM/360回复不扩范围；不跑Chrome/旧PW/Docker/阶段5。[后端证据](../../evidence/security-batch4-s4-backend-2026-10-17.md)。
 
 2026-10-17，S4后端小步按固定设计实施；六API文件与CLI窄适配均真实红→还原绿。PG变异选1例红19跳过→还原全20绿，不称全20红；时间MAC双侧去时间3红8跳过→还原11绿，定向API232/config71、lint/type及结构/服务边界绿。独立静态复核原算法/SQL/事务/签名夹具不改。最终提交后稳定干净HEAD全CI结果交协调，不预填完成。Web/PW/Docker未启动，历史CRM/360回复不扩大当前授权；[证据/失败史/回滚](../../evidence/security-batch4-s4-backend-2026-10-17.md)，SEC003开放。
 

@@ -1,5 +1,7 @@
 # ARCHITECTURE.md
 
+**S4前端当前候选（2026-10-17）**：首次Cookie restore→静态http-core单一交换/严格DTO；受保护http policy、SessionContext owner/generation/epoch、postlogin watch与workspace按真实阶段加载，entry不再持raw token或认证storage。三域client/文档服务捕获同一上下文，旧闭包不活读新Cookie；仅必要WEB007挂载复核/PERF003缓存同Promise耦合。API/SQL/包依赖/infra不改，Web304及预算11992/1898定向通过，最终提交后另实际稳定干净HEAD全CI再停协调；不是Chrome网络证据/整批完成，SEC003开放。[前端证据](docs/evidence/security-batch4-s4-frontend-2026-10-17.md)，下方为历史检查点。
+
 **批次4 S3现时（2026-10-17）**：共享config纯policy/严格默认false的CSP_ENFORCE→server独立buildApp安全选项→统一complete/rejectOversized新增RO，保S1三头/S2/业务响应。外层nginx独立off开关、隐藏上游两CSP头后统一RO；内层未改，API env不是公网强制开关。行为762e393/oracle a4c2ca3/工具f693ee2实际稳定干净HEAD完整CI0（API123/17184、Web13/266/config29）；无新包/SQL/反向依赖/业务端口。test-only HTML collector及精确合成发送仅本地，无report接收端、不称生产就绪或强制兼容；完成docs另全CI后停协调，S4未实施。[S3证据与回滚](docs/evidence/security-batch4-s3-csp-2026-10-17.md)，下方S2/S1状态为历史。
 
 **批次4 S2现时（2026-10-17）**：server从config装配LoginRateLimiter→buildApp唯一实例→auth validate之后执行双维失败滑窗及持锁退避；真实socket peer/headersDistinct经client-address显式信任链，默认不信任。config共享纯IP规范化器无反向依赖/新增包。业务bdbda0e首次全CI在新端口未分类处失败，必要门禁b8c1212绑定固定源唯一类声明身份，31仓储端口/规则不扩免，实际干净HEAD全CI0（API17175/Web266/config23）。仅登录限流，不是全API防DoS；S1头保持，未改SQL/会话模型。配置、代理部署前核实、资源边界、失败史及回滚见[S2证据](docs/evidence/security-batch4-s2-login-limit-2026-10-17.md)。最终docs另全CI后停协调，S3/S4未实施；下方S1与前端现时段保留历史。

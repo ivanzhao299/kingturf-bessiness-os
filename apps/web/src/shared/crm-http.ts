@@ -1,3 +1,4 @@
+import type { SessionContext } from '../session';
 import { json, requestId } from '../http';
 import type { CrmApi, Customer, Employee, Lead } from '../crm/types';
 import { parseResponseRecord, type ResponseParser } from './response-parser';
@@ -7,7 +8,7 @@ import {
   parseCustomer360Response,
 } from './api-response-parser';
 
-export function createFetchCrmApi(token: string): CrmApi {
+export function createFetchCrmApi(context: SessionContext): CrmApi {
   const post = <T>(
     path: string,
     body: unknown,
@@ -16,7 +17,7 @@ export function createFetchCrmApi(token: string): CrmApi {
   ) =>
     json<T>(
       path,
-      token,
+      context,
       {
         method: 'POST',
         body: JSON.stringify(body),
@@ -26,19 +27,24 @@ export function createFetchCrmApi(token: string): CrmApi {
     );
   return {
     listEmployees: () =>
-      json<readonly Employee[]>('/api/v1/employees', token, undefined, parseResponseArray),
+      json<readonly Employee[]>('/api/v1/employees', context, undefined, parseResponseArray),
     async listCustomers() {
       return (
-        await json<{ items: Customer[] }>('/api/v1/customers', token, undefined, parseResponseItems)
+        await json<{ items: Customer[] }>(
+          '/api/v1/customers',
+          context,
+          undefined,
+          parseResponseItems,
+        )
       ).items;
     },
     customer360: (id) =>
-      json(`/api/v1/customers/${id}/360`, token, undefined, parseCustomer360Response),
+      json(`/api/v1/customers/${id}/360`, context, undefined, parseCustomer360Response),
     createCustomer: (input) => post('/api/v1/customers', input, undefined, parseResponseRecord),
     transitionCustomer: (customer, status, reason) =>
       json(
         `/api/v1/customers/${customer.id}`,
-        token,
+        context,
         {
           method: 'PATCH',
           body: JSON.stringify({ status, reason, expectedVersion: customer.version }),
@@ -73,12 +79,13 @@ export function createFetchCrmApi(token: string): CrmApi {
       ),
     async listPool() {
       return (
-        await json<{ items: Lead[] }>('/api/v1/leads/pool', token, undefined, parseResponseItems)
+        await json<{ items: Lead[] }>('/api/v1/leads/pool', context, undefined, parseResponseItems)
       ).items;
     },
     async listLeads() {
-      return (await json<{ items: Lead[] }>('/api/v1/leads', token, undefined, parseResponseItems))
-        .items;
+      return (
+        await json<{ items: Lead[] }>('/api/v1/leads', context, undefined, parseResponseItems)
+      ).items;
     },
     createLead: (input) => post('/api/v1/leads', input, undefined, parseResponseRecord),
     claimLead: (lead) =>

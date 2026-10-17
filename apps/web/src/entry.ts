@@ -1,36 +1,56 @@
 import { el, setOperationStatus } from './dom';
 import { brandMark } from './brand';
-import { json, onSessionExpired, RequestError } from './http';
-import { LoginCoordinator, type LoginProgress } from './login-flow';
-import { expireSession, type SessionDto } from './session';
-import { loadWorkspace } from './workspace-loader';
+import { RequestError } from './http-core';
+import type { LoginProgress } from './login-flow';
+import type { SessionState, SessionContext } from './session';
+import { clearLegacySession } from './legacy-session';
+import { loadWorkspace, loadModule } from './workspace-loader';
+import { restoreBrowserSession } from './browser-session';
 import {
-  parseLoginResponse,
-  parseSessionResponse,
-  parseStoredSessionToken,
-  parseSessionExpired,
-} from './shared/session-parser';
+  sessionInvalidationMessage,
+  SessionSignals,
+  restoreCurrentSession,
+} from './session-signals';
 
-let workspaceRequestsActive = false;
-onSessionExpired((token) => {
-  // Initial session validation already has a login view handler and needs no page reload.
-  if (!workspaceRequestsActive) return;
-  expireSession(token, sessionStorage, () => {
-    globalThis.location.reload();
+let sessions: SessionState | null = null;
+let startupEpoch = 0;
+let migrationChecked = false;
+let notifications: BroadcastChannel | null = null;
+let listenersInstalled = false;
+let watch: Readonly<{ check: () => Promise<void> }> | null = null;
+const signals = new SessionSignals();
+function notifySessionChange(): void {
+  signals.notify();
+  notifications?.postMessage('invalidate');
+}
+function reloadApplication(): void {
+  globalThis.location.reload();
+}
+function notifyAndReload(): void {
+  notifySessionChange();
+  reloadApplication();
+}
+
+function installSessionListeners(): void {
+  if (listenersInstalled) return;
+  listenersInstalled = true;
+  const check = () => {
+    signals.notify();
+    if (sessions?.current) {
+      sessions.current.owner.pause();
+      void watch?.check();
+    }
+  };
+  globalThis.addEventListener('focus', check);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') check();
   });
-});
-
-async function login(login: string, password: string): Promise<string> {
-  const result = await json<{ token: string }>(
-    '/api/v1/auth/login',
-    '',
-    {
-      method: 'POST',
-      body: JSON.stringify({ login, password }),
-    },
-    parseLoginResponse,
-  );
-  return result.token;
+  if (typeof BroadcastChannel !== 'undefined') {
+    notifications = new BroadcastChannel('kingturf.session');
+    notifications.addEventListener('message', (event: MessageEvent<unknown>) => {
+      if (sessionInvalidationMessage(event.data)) check();
+    });
+  }
 }
 
 function startupView(root: HTMLElement, message: string): void {
@@ -61,39 +81,32 @@ function updateStartupStatus(root: HTMLElement, message: string): void {
 }
 
 function startupFailureView(root: HTMLElement): void {
-  const shell = el('main', 'startup-shell startup-failure');
-  const mark = document.createElement('img');
-  mark.src = brandMark;
-  mark.alt = '';
-  mark.width = 512;
-  mark.height = 512;
-  const status = el(
-    'p',
-    'startup-status error',
-    '工作台暂时未能完整加载。登录状态仍已保留，可以安全重试。',
-  );
-  status.setAttribute('role', 'alert');
-  const actions = el('div', 'startup-actions');
+  const epoch = startupEpoch;
+  const captured = sessions?.current ?? null;
+  startupView(root, '工作台加载失败，请重新加载或返回登录。');
   const retry = el('button', 'primary', '重新加载工作台');
-  retry.type = 'button';
-  retry.addEventListener('click', () => {
-    retry.disabled = true;
-    void bootstrap(root);
-  });
-  const signOut = el('button', 'secondary', '返回登录');
-  signOut.type = 'button';
-  signOut.addEventListener('click', () => {
-    sessionStorage.removeItem('kingturf.session');
-    loginView(root);
-  });
-  const reload = el('button', 'secondary', '刷新页面获取最新版本');
-  reload.type = 'button';
-  reload.addEventListener('click', () => {
-    globalThis.location.reload();
-  });
-  actions.append(retry, reload, signOut);
-  shell.append(mark, el('h1', '', '加载遇到问题'), status, actions);
-  root.replaceChildren(shell);
+  retry.addEventListener('click', reloadApplication);
+  root.append(retry);
+  if (!captured) {
+    const signOut = el('button', 'secondary', '返回登录');
+    signOut.addEventListener('click', () => {
+      startupEpoch += 1;
+      loginView(root);
+    });
+    root.append(signOut);
+  }
+  void import('./session-actions')
+    .then((view) => {
+      if (startupEpoch !== epoch) return;
+      view.renderStartupFailure(root, captured, sessions, notifyAndReload, () => {
+        startupEpoch += 1;
+        sessions?.begin();
+        loginView(root);
+      });
+    })
+    .catch(() => {
+      /* The immediate fallback remains usable if the failure-only chunk is unavailable. */
+    });
 }
 
 function loginView(root: HTMLElement, initialMessage = ''): void {
@@ -145,10 +158,11 @@ function loginView(root: HTMLElement, initialMessage = ''): void {
   status.setAttribute('role', 'status');
   if (initialMessage) status.dataset.state = 'error';
   form.append(identity, password, submit, status);
-  const coordinator = new LoginCoordinator(login, async (token) => {
-    sessionStorage.setItem('kingturf.session', token);
-    await bootstrap(root);
-  });
+  let submitting = false;
+  const initialize = async () => {
+    if (root.contains(form)) await bootstrap(root);
+    else await watch?.check();
+  };
   const renderProgress = (progress: LoginProgress): void => {
     const busy = progress.phase !== 'error';
     identity.disabled = busy;
@@ -160,10 +174,21 @@ function loginView(root: HTMLElement, initialMessage = ''): void {
   };
   form.addEventListener('submit', (event) => {
     event.preventDefault();
-    if (coordinator.busy) return;
-    void coordinator
-      .submit(identity.value.trim(), password.value, renderProgress)
+    if (submitting) return;
+    submitting = true;
+    renderProgress({ phase: 'authenticating', message: '正在验证账号…' });
+    const login = identity.value.trim();
+    const credential = password.value;
+    void loadModule(() => import('./session-actions'))
+      .then((auth) =>
+        auth.submitBrowserLogin(login, credential, notifySessionChange, initialize, renderProgress),
+      )
+      .catch(() => {
+        renderProgress({ phase: 'error', message: '暂时无法登录，请检查网络后重试' });
+        return false;
+      })
       .then((success) => {
+        submitting = false;
         if (!success && root.contains(form)) {
           identity.disabled = false;
           password.disabled = false;
@@ -180,45 +205,70 @@ function loginView(root: HTMLElement, initialMessage = ''): void {
   if ((globalThis.innerWidth || 1280) > 820) identity.focus();
 }
 
-async function bootstrapApplication(root: HTMLElement): Promise<void> {
-  workspaceRequestsActive = false;
-  const token = parseStoredSessionToken(sessionStorage.getItem('kingturf.session'));
-  if (!token) {
-    const expired = parseSessionExpired(sessionStorage.getItem('kingturf.sessionExpired'));
-    sessionStorage.removeItem('kingturf.sessionExpired');
-    loginView(root, expired ? '登录状态已失效，请重新登录' : '');
-    return;
+async function bootstrapApplication(root: HTMLElement, epoch: number): Promise<void> {
+  if (!migrationChecked) {
+    migrationChecked = true;
+    if (clearLegacySession(sessionStorage)) {
+      loginView(root, '登录方式已更新，请重新登录');
+      return;
+    }
   }
+  if (startupEpoch !== epoch) return;
   startupView(root, '正在验证登录状态…');
-  let session: SessionDto;
+  let context: SessionContext | null;
+  let runtime: typeof import('./session-watch');
+  let restorationRevision: number;
   try {
-    session = await json<SessionDto>(
-      '/api/v1/auth/session',
-      token,
-      undefined,
-      parseSessionResponse,
-    );
+    const restored = await restoreCurrentSession(signals, restoreBrowserSession);
+    const value = restored.value;
+    restorationRevision = restored.revision;
+    runtime = await loadModule(() => import('./session-watch'));
+    if (startupEpoch !== epoch) return;
+    if (!(signals.revision === restored.revision)) throw new Error('Session changed');
+    sessions ??= new runtime.SessionState();
+    context = sessions.install(value, sessions.begin());
+    if (!context) return;
   } catch (error) {
+    if (startupEpoch !== epoch) return;
     if (error instanceof RequestError && error.status === 401) {
-      if (sessionStorage.getItem('kingturf.session') !== token) return;
-      sessionStorage.removeItem('kingturf.session');
       loginView(root, '登录状态已失效，请重新登录');
       return;
     }
     throw error;
   }
+  const captured = context;
+  const state = sessions;
+  const current = () =>
+    runtime.sessionMountIsCurrent(state, captured, signals, restorationRevision);
+  const verify = () => {
+    if (current()) return;
+    captured.owner.pause();
+    throw new Error('Session changed');
+  };
+  watch ??= runtime.createSessionWatch(root, sessions, signals, reloadApplication, notifyAndReload);
   updateStartupStatus(root, '登录成功，正在下载业务工作台…');
   const workspace = await loadWorkspace();
-  workspaceRequestsActive = true;
-  await workspace.mountWorkspace(root, session, token, (message) => {
-    updateStartupStatus(root, message);
-  });
+  if (!sessions.isCurrent(captured)) return;
+  verify();
+  await workspace.mountWorkspace(
+    root,
+    captured.session,
+    captured,
+    (message) => {
+      if (current()) updateStartupStatus(root, message);
+    },
+    current,
+  );
+  if (sessions.isCurrent(captured)) verify();
 }
 
 export async function bootstrap(root: HTMLElement): Promise<void> {
+  installSessionListeners();
+  sessions?.begin();
+  const epoch = ++startupEpoch;
   try {
-    await bootstrapApplication(root);
+    await bootstrapApplication(root, epoch);
   } catch {
-    startupFailureView(root);
+    if (startupEpoch === epoch) startupFailureView(root);
   }
 }

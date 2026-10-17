@@ -1,5 +1,7 @@
 # 技术债台账（tech-debt-tracker）
 
+**S4前端现时候选（2026-10-17，仍48项）**：后端25526c8全CI0已协调确认；本步前端Cookie不可变上下文实施，WEB007仅挂载await归属耦合、PERF003仅文档generation/owner/cache同Promise耦合，两整项不全面关闭。Web304/预算11992与1898定向通过，最终提交后另干净HEAD全CI再停协调；Chrome网络级/旧PW未跑，SEC003/评分不提前关闭，无新增条目，不修其它债。[前端证据](../evidence/security-batch4-s4-frontend-2026-10-17.md)。
+
 **现时48项（S4后端小步，非整批完成）**：fead2d1预检最终CI0经协调确认后仅后端/config/机器接口实施，逐文件真实变异、定向API232/config71/PG20绿、独立静态复核无阻断；最终提交后另同一稳定干净HEAD全CI再停协调。[后端证据](../evidence/security-batch4-s4-backend-2026-10-17.md)。Web/PW/SQL/事务/依赖/infra冻结，SEC003保持开放，SEC001仍仅RO、SEC002/004整批核账待完成，评分不预填。九旧PW硬前置、TD-HYG-002仅登记等边界不变，无新增条目；下文“仅设计/未编码”等为历史。
 
 **现时45项（3e②）**：新增TD-WEB-008旧列表抽屉闭包候选，仅登记；下列44项为前一检查点历史计数。

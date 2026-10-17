@@ -1,3 +1,4 @@
+import { sessionFixture, sessionResponse } from './test-fixtures/session';
 import { afterEach, expect, it, vi } from 'vitest';
 import { json, onSessionExpired, RequestError } from './http';
 import { createFetchCommercialApi } from './shared/commercial-http';
@@ -11,12 +12,8 @@ import {
   parseCostMatrixPage,
   parseCustomer360Response,
 } from './shared/api-response-parser';
-import {
-  parseStoredSessionToken,
-  parseSessionExpired,
-  parseLoginResponse,
-  parseSessionResponse,
-} from './shared/session-parser';
+import { parseSessionRestore, parseSessionResponse } from './shared/session-parser';
+import { parseLoginProof, parseLoginResponse } from './shared/login-parser';
 import { parseSidebarCollapsed, parseStoredRegisterView } from './shared/register-view-parser';
 import { parseKnownDocumentResponse } from './shared/document-response-parser';
 
@@ -34,7 +31,7 @@ it.each(
   [null, 'text', 13, true, [{ id: 'a' }], { any: ['value'] }].map((value) => [value] as const),
 )('keeps the generic transport compatible with legal JSON %#', async (value) => {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(value)));
-  await expect(json('/unknown-json', '')).resolves.toBe(value);
+  await expect(json('/unknown-json', null)).resolves.toBe(value);
 });
 
 it('decodes once after the response body, preserving references, receiver and public arity', async () => {
@@ -50,7 +47,7 @@ it('decodes once after the response body, preserving references, receiver and pu
     events.push('decode');
     return parseResponseItems(input);
   });
-  await expect(json('/known', '', undefined, decode)).resolves.toBe(value);
+  await expect(json('/known', null, undefined, decode)).resolves.toBe(value);
   expect(events).toEqual(['body', 'decode']);
   expect(reply.json.mock.contexts[0]).toBe(reply);
   expect(decode).toHaveBeenCalledExactlyOnceWith(value);
@@ -72,8 +69,8 @@ it('does not decode 204 or errors, and notifies 401 before reading its body', as
     vi.fn().mockResolvedValueOnce(response(undefined, 204)).mockResolvedValueOnce(denied),
   );
   const decode = vi.fn(parseResponseRecord);
-  await expect(json('/known', '', undefined, decode)).resolves.toBeUndefined();
-  await expect(json('/known', 'unit-token', undefined, decode)).rejects.toMatchObject({
+  await expect(json('/known', null, undefined, decode)).resolves.toBeUndefined();
+  await expect(json('/known', sessionFixture(), undefined, decode)).rejects.toMatchObject({
     status: 401,
   });
   expect(decode).not.toHaveBeenCalled();
@@ -86,8 +83,8 @@ it.each(
   ),
 )('keeps HTTP status for malformed error bodies %#', async (value) => {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(value, 403)));
-  await expect(json('/known', '')).rejects.toBeInstanceOf(RequestError);
-  await expect(json('/known', '')).rejects.toMatchObject({
+  await expect(json('/known', null)).rejects.toBeInstanceOf(RequestError);
+  await expect(json('/known', null)).rejects.toMatchObject({
     status: 403,
     message: '请求失败（403）',
     correlationId: undefined,
@@ -103,7 +100,7 @@ it('preserves nested error priority, empty strings and correlation IDs', async (
         response({ message: 'outer', error: { message: '', correlationId: '' } }, 409),
       ),
   );
-  await expect(json('/known', '')).rejects.toMatchObject({
+  await expect(json('/known', null)).rejects.toMatchObject({
     status: 409,
     message: '',
     correlationId: '',
@@ -115,7 +112,7 @@ it('cleans the exchange after decoder rejection without retaining abort listener
   const remove = vi.spyOn(external.signal, 'removeEventListener');
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(null)));
   await expect(
-    json('/known', '', { signal: external.signal }, parseResponseRecord),
+    json('/known', null, { signal: external.signal }, parseResponseRecord),
   ).rejects.toThrow('格式无效');
   expect(remove).toHaveBeenCalledExactlyOnceWith('abort', expect.any(Function));
 });
@@ -192,8 +189,8 @@ it('preserves projected customer 360 records but requires every fixed container'
 it('runs schema checks in real CRM and commercial HTTP adapters', async () => {
   const fetcher = vi.fn().mockResolvedValue(response({ items: [null] }));
   vi.stubGlobal('fetch', fetcher);
-  const crm = createFetchCrmApi('unit-token');
-  const commercial = createFetchCommercialApi('unit-token');
+  const crm = createFetchCrmApi(sessionFixture());
+  const commercial = createFetchCommercialApi(sessionFixture());
   await expect(crm.listCustomers()).rejects.toThrow();
   await expect(commercial.list('/api/v1/quotes')).rejects.toThrow();
   fetcher.mockResolvedValue(response([{}]));
@@ -205,19 +202,31 @@ it('runs schema checks in real CRM and commercial HTTP adapters', async () => {
 });
 
 it.each(
-  [null, '', {}, [], 42, 'bad token', 'bad\nvalue', '"json-token"', '{"token":"value"}'].map(
-    (value) => [value] as const,
-  ),
-)('rejects malformed stored tokens without decoding JSON %#', (value) => {
-  expect(parseStoredSessionToken(value)).toBeNull();
+  [
+    null,
+    '',
+    {},
+    [],
+    42,
+    { csrfToken: '' },
+    { csrfToken: 7 },
+    { csrfToken: null },
+    { csrfToken: [] },
+  ].map((value) => [value] as const),
+)('rejects malformed login proof without legacy token fallback %#', (value) => {
+  expect(() => parseLoginProof(value)).toThrow();
 });
 
-it('preserves opaque tokens, exact marker literals and valid session object identity', () => {
-  for (const token of ['old', 'a_b-9', 'cdp-isolated-synthetic-session']) {
-    expect(parseStoredSessionToken(token)).toBe(token);
-    const login = { token, extra: 1 };
-    expect(parseLoginResponse(login)).toBe(login);
-  }
+it('preserves valid non-secret login/restore objects and session object identity', () => {
+  const restored = sessionResponse();
+  const login = {
+    generation: restored.generation,
+    csrfToken: restored.csrfToken,
+    expiresAt: '2030-01-01T00:00:00.000Z',
+    extra: 1,
+  };
+  expect(parseLoginResponse(login)).toBe(login);
+  expect(parseSessionRestore(restored)).toBe(restored);
   const session = {
     employeeId: 'e',
     companyId: 'c',
@@ -228,7 +237,6 @@ it('preserves opaque tokens, exact marker literals and valid session object iden
   };
   expect(parseSessionResponse(session)).toBe(session);
   for (const value of [null, undefined, 1, true, 'true', 'false', '1']) {
-    expect(parseSessionExpired(value)).toBe(value === '1');
     expect(parseSidebarCollapsed(value)).toBe(value === 'true');
   }
 });
@@ -364,39 +372,36 @@ it('keeps valid empty content, absent or null optional arrays and null translate
   }
 });
 
-it('preserves document synchronous token checks and cached Promise identity', async () => {
-  let token: string | null = null;
-  const getItem = vi.fn(() => token);
-  vi.stubGlobal('sessionStorage', { getItem });
+it('preserves document synchronous owner checks and cached Promise identity', async () => {
   const page = { items: [] };
   const fetcher = vi.fn().mockResolvedValue(response(page));
   vi.stubGlobal('fetch', fetcher);
-  const service = createDocumentReadService();
-  expect(() => service.onlineDocumentApi('/api/v1/business-documents')).toThrow('登录状态已失效');
+  const absent = createDocumentReadService();
+  expect(() => absent.onlineDocumentApi('/api/v1/business-documents')).toThrow('登录状态已失效');
   expect(fetcher).not.toHaveBeenCalled();
-  token = 'unit-token';
+  const context = sessionFixture();
+  const service = createDocumentReadService(context);
   const first = service.onlineDocumentRead('/api/v1/business-documents');
   const second = service.onlineDocumentRead('/api/v1/business-documents');
   expect(first).toBe(second);
   await expect(first).resolves.toBe(page);
   expect(fetcher).toHaveBeenCalledTimes(1);
   service.clearSessionReadCache();
-  token = 'new-token';
   const third = service.onlineDocumentRead('/api/v1/business-documents');
   expect(third).not.toBe(first);
   await third;
-  expect(getItem).toHaveBeenCalledTimes(3);
+  context.owner.dispose();
+  expect(() => service.onlineDocumentRead('/api/v1/business-documents')).toThrow('登录状态已失效');
   expect(fetcher).toHaveBeenCalledTimes(2);
 });
 
 it('removes a malformed document read from the original cache so explicit retry can succeed', async () => {
-  vi.stubGlobal('sessionStorage', { getItem: () => 'unit-token' });
   const fetcher = vi
     .fn()
     .mockResolvedValueOnce(response({ items: null }))
     .mockResolvedValueOnce(response({ items: [] }));
   vi.stubGlobal('fetch', fetcher);
-  const service = createDocumentReadService();
+  const service = createDocumentReadService(sessionFixture());
   await expect(service.onlineDocumentRead('/api/v1/business-documents')).rejects.toThrow();
   await expect(service.onlineDocumentRead('/api/v1/business-documents')).resolves.toEqual({
     items: [],
