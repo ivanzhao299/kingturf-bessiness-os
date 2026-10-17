@@ -121,7 +121,7 @@
 | TD-TEST-014  | Workspace旧PW夹具首次读取gate/360必填字段不兼容                                               | P2     | 合成测试夹具   | 等待点另授/字段待裁      | Docker首轮发现                     | 原2过2败/未修完                 |
 | TD-TEST-015  | Source旧合成应收游标页缺nextCursor                                                            | P2     | 合成测试夹具   | 字段实施已验证关闭       | Docker首轮发现                     | 缺字段/auth真红绿，原3例过      |
 | TD-TEST-016  | P1原浏览器11例失败定位待核                                                                    | P2     | 本地浏览器回归 | 只登记/诊断中            | Docker首轮发现                     | 原11全failed/未定位             |
-| TD-TEST-017  | 私有reporter构造options兼容缺口                                                               | P2     | 本地回放工具   | 已登记待窄修             | 原生调用形状回归发现               | unit5过1败/未修                 |
+| TD-TEST-017  | 私有reporter构造options兼容缺口                                                               | P2     | 本地回放工具   | 兼容实施验证关闭         | 原生调用形状回归发现               | unit6/PW接线实证                |
 | TD-GATE-001  | 无 git hooks / commitlint / lint-staged，脏提交仅靠 CI 兜底                                   | P1     | 门禁           | 无                       | 阶段 3                             | 已完成                          |
 | TD-GATE-002  | vitest 无配置文件，参数散落各包 scripts                                                       | P2     | 门禁           | 无                       | 阶段 3                             | 已完成                          |
 | TD-GATE-003  | routes覆盖已修复；E1已撤，恢复31旧豁免                                                        | P1     | 工程门禁       | 无                       | 独立门禁任务／阶段5前复核          | 已验收                          |
@@ -431,6 +431,8 @@
 ## 测试
 
 ### TD-TEST-017｜私有reporter构造options兼容缺口
+
+- **实际接线验证收口**：6fe9ef5窄修后原runtime PW完整1例实际过、真实onBegin/安全summary/onEnd均已加载/落盘，Cookie omit真红→还原绿，最后独立匿名context原case再过；unit6/原门禁0。仅该reporter兼容缺口实施关闭，不表示P1/全部B绿；57顶层项保历史。[实际命令/结果](../evidence/playwright-local-private-runner-2026-10-17.md)。
 
 - **后继窄修候选**：ed614ba原生构造红例后，仅options首参和unit writer第二参分离，回归6/6/原lint/format0，原安全字段/完整性/网络失败规则保持；真实PW接线待实跑，不以unit提前关闭。[映射/结果](../evidence/playwright-local-private-runner-2026-10-17.md)。
 

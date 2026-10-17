@@ -2,7 +2,7 @@
 
 [P1首轮失败与安全定位](tasks/playwright-p1-replay-blocker-2026-10-17.md)：原seed0后完整11/11 failed/PW1、owned全清，raw按人裁不保留；新增仅固定spec整数failureLine定位，尚未证明根因，TD-TEST-016/56，不改业务期待。
 
-[B私有执行器验证记录](evidence/playwright-local-private-runner-2026-10-17.md)：隔离/取消清理已核；原P1完整11败，最新诊断active上游CONNECT_TIMEOUT非RESET证据。新增reporter options原生调用unit红/TD-TEST-017待窄修，57项；runtime待跑，不导PNG/未视觉验收，不改原业务期待。
+[B私有执行器验证记录](evidence/playwright-local-private-runner-2026-10-17.md)：runtime真实1例过、Cookie omit真红→还原绿；额外共享anonymous变异实过未检出如实保留。reporter兼容unit6及实际PW接线验证/TD-TEST-017仅实施关闭，57项；P1原11败/通道中断待核，不导PNG/未视觉验收。
 
 [B本地产物隔离接线方案](tasks/playwright-local-private-runner-2026-10-17.md)：按已授P1例外接只读容器/tmpfs/无raw导出/安全case索引；首版零PNG导出，不能称截图证据已保留。候选静态通过、动态验证尚待，原config/业务断言/PG同一性保持。
 

@@ -54,3 +54,21 @@ P1首轮随后启动、同schema完整seed实际0/3030ms及成本计数检查通
 先登记TD-TEST-017/57顶层项；新增直接用`new PrivateReporter({})`的原生调用形状回归，实际unit exit1/5过1败，日志`/tmp/kingturf-local-private-reporter-options-red-1-2026-10-17.log`。这属于本轮已授私有执行器自身兼容缺口，不借机修产品/业务期待；下一步仅分开options与unit writer参数、还原其它语义，独立提交/真实回归。当前未修、不充绿。
 
 ed614ba红例独立后，最小改为`constructor(options={},writer=writeFileSync)`：真实PW首参核为object但不作writer，默认真实fs writer；unit显式第二参注入，其它持久化/安全字段/完整性/失败规则不改。首 `_options` 未使用候选虽6unit过，原lint1/pre-commit拒绝、未提交；改显式核原生对象契约不降规则。原生形状回归由红转绿，最终实际6/6、原lint/format/diff0；真实PW接线验证仍待runtime/P1实际跑，不以unit替代。独立只读核调用兼容无阻断，不据其代替lint；仅TD-TEST-017修正候选，尚不提前关闭实际验证项。
+
+## runtime-local：真实首轮与已授会话 oracle 迁移
+
+6fe9ef5工具后，依4e691e5三文件人裁，仅原旧storage Bearer拒绝探针改浏览器自然同源Cookie fetch，仍403/无items；原匿名page.request改独立`request.newContext`，只baseURL/无storageState/无额外headers，finally dispose，仍401。原真实页面登录、客户创建/读取、DB持久化和audit尾部全字节同，guard/公司/两config/无mock/原trace-screenshot off不改；runtime仍原bundled Chromium配置，不把main Chrome版本冒充它的另采实测版本。独立只读review无必要阻断，原lint/format/diff0。
+
+命令同上，kind=runtime，各独立label：
+
+| label                          | 实际PW；host                                                                                                                                                                                                 |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| runtime-first-round-1          | 原1例通过，PW0/1965ms、case772ms；host0/8313ms                                                                                                                                                               |
+| runtime-cookie-omit-red-1      | 真源仅AR fetch加credentials:omit，原403断言红/failureLine54，PW1/1613ms；host1/6992ms；只留整数定位，不读raw Received值                                                                                      |
+| runtime-cookie-restored-1      | 完整close/清理后还原，原1例通过，PW0/1742ms；host0/7481ms                                                                                                                                                    |
+| runtime-shared-anonymous-red-1 | **额外变异未检出**：将独立anonymous改共享page.request，实际1例通过/PW0/1740ms、host0/8013ms，不因label叫red就计红；该通道浏览器与APIRequestContext对Secure回环HTTP的派送差异仅候选，未读Jar/头或证明具体原因 |
+| runtime-anonymous-restored-1   | 完整close/清理后还原独立context，原1例通过，PW0/1701ms；host0/8680ms                                                                                                                                         |
+
+各轮真实close signal=null、discovered1/complete=true，最后原case通过意味着原客户持久化/同公司/审计及Cookie403/独立匿名401断言均通过；owned三清理true，原raw/图仅tmpfs已清未导出，不称留有失败截图。无需为额外共享变异硬造红：原契约每文件至少一项真实红，已由Cookie omit满足；预告过的浏览器替换匿名额外变异未实施，不改其它assert。该未检出与分辨能力边界如实保留，不能称其验证了独立Jar隔离负例。
+
+原生PW实际加载/onBegin→cases.json→onEnd现已用正常完整1例实证，不仅unit；TD-TEST-017只reporter兼容实施项关闭，57顶层ID含历史保持。runtime会话迁移/每文件真红绿完成，父6fe9ef5为该spec独立回滚点。A六份全绿/成本与Workspace各一败，B runtime绿/P1原11败仍待安全诊断/裁定；第二完整轮禁/C禁，最后稳定干净HEAD完整CI仍必跑。
