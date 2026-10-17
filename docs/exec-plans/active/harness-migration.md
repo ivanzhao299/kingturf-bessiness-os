@@ -3672,6 +3672,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+2026-10-17，S3工具收尾候选：行为762e393/oracle a4c2ca3之后仅独立opt-in CDP/本地nginx验证工具与证据，Web/CRM/旧fixtures/Playwright/SQL/锁/workflow零改动；历史CRM状态恢复与360必填补齐异步确认不构成本轮新业务授权。65工具单测绿；原29 Us0W3d与CSP3 4Lyd6t真实0，collector缺失/未知写各实际1，有限观察仅哨兵事件，不称生产观察就绪。nginx四组合20本地检查及未知启动回执故障清理、HTTP client严格超时修正和客户端退出码断言最终重跑中；具体失败史/隐私边界见[S3证据](../../evidence/security-batch4-s3-csp-2026-10-17.md)。本候选尚未实际干净HEAD全CI，完成docs也须另全CI后停协调，S4实施硬停人类确认。
+
 2026-10-17，S3业务762e393：API完整收尾RO/独立安全选项、严格默认false配置/必要compose公开透传，外层nginx location统一RO与独立off开关并隐藏上游两CSP头，内层不改，尚未生产生效。新API9旧实现真9红→接线后7绿2新夹具误判（无依赖未知路由原503、corr须UUID），仅修夹具后9绿；config原23+新6=29、type/lint/结构0违规29豁免通过。旧oracle独立追加68文件81对象、122旧API tests完整逆AST0，不调用生产helper/不弱化toEqual，临时旧断言变异真红→恢复0，定向70绿；[逐处映射及工具脱敏失败史](../../evidence/security-batch4-s3-oracle-map-2026-10-17.md)。旧--patch一次误回显正文后禁用，改仅执行端机械追加/元数据，不复述fixture值或触秘密；.env显式format无parser exit2后仅改检查清单。业务/期望分离，NGINX实际四组合/CDP pre-nav采集与真DOM发送链/实际干净源码及最终docs全CI仍待实施验证，不预填完成。S4硬停与生产/会话/SQL/依赖/Playwright/workflow保护边界保持。
 
 2026-10-17，S2协调独立通过后续派S3：最终74c78c3实际干净HEAD完整CI0/203898.679ms，源码b8c1212同0/194043.303ms，API122/17175/Web13/266/config23/audit零，声明身份门禁真负向独立复核无阻断。沿正式R7先落[S3具体策略/行为/配置/浏览器/严格oracle设计](../../tasks/harness-batch4-s3-design-2026-10-17.md)，默认RO、强制off；仅外层proxy给HTML加政策，inner直连与本地Vite区别明确，默认无生产report接收通道。collector首次导航前/脱敏有界、合成login与精确send opt-in，原只读文档探头/默认硬闸不松；只读三子任务库存支持设计，不代跑/写入。尚未实施或验证完成，不预填SHA/CI；S4仅报告后硬停人类，生产/push部署/SQL/依赖/会话夹具/Playwright/阶段5保护边界保持。

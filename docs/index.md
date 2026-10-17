@@ -6,6 +6,8 @@
 
 ## 常驻入口（根与 docs 顶层）
 
+[S3 CSP验证与边界](evidence/security-batch4-s3-csp-2026-10-17.md)：行为762e393/oracle a4c2ca3，真实HTML RO与合成发送、原29、20头矩阵及故障清理；工具候选阶段，实际干净HEAD全CI待执行，非生产通道就绪/强制兼容声明。
+
 [S3 CSP严格期望逐处清单](evidence/security-batch4-s3-oracle-map-2026-10-17.md)：74c78c3基线122旧API测试全AST守恒，68文件81头对象仅追加CSP字面量；S1固定历史证明保留，S3显式基线/目标，机械追加不输出fixture/补丁正文。
 
 [批次4 S3 CSP先行设计](tasks/harness-batch4-s3-design-2026-10-17.md)：S2协调确认74c78c3后续派，仅API/外层HTML Report-Only与默认off强制开关；真实Document头/首次导航前脱敏采集、独立精确合成发送DOM场景、旧oracle逐处映射及保护区，未实施完成。

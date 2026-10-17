@@ -8,6 +8,10 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { profileArgumentPattern } from './ownership.mjs';
 import { classifyRequest } from './network-policy.mjs';
 
+const cspMode = process.argv.includes('--csp-observe');
+if (cspMode && process.argv.includes('--probes'))
+  throw new Error('CSP observation is a separate opt-in suite');
+
 const psExe = '/mnt/c/WINDOWS/System32/WindowsPowerShell/v1.0/powershell.exe';
 const chrome = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 const ps = (script) =>
@@ -49,6 +53,7 @@ let stopping = false;
 let closing = false;
 let suiteRouter;
 let suiteResult;
+let cspObserver;
 let nextId = 0;
 const pending = new Map();
 const cdp = (method, params = {}, sessionId) =>
@@ -257,12 +262,23 @@ try {
           expected.resolve,
           expected.reject,
         );
+      } else if (
+        msg.method === 'Runtime.bindingCalled' &&
+        cspObserver &&
+        msg.sessionId === session
+      ) {
+        cspObserver.receive(msg.params);
       } else if (msg.method === 'Fetch.requestPaused') {
         const url = new URL(msg.params.request.url);
         const requestClass = classifyRequest(msg.params.request.url, msg.params.request.method);
         if (requestClass === 'api' && suiteRouter) {
           suiteRouter
-            .respond(url.pathname, msg.params.request.method, url.searchParams)
+            .respond(
+              url.pathname,
+              msg.params.request.method,
+              url.searchParams,
+              ...(cspMode ? [msg.params.request] : []),
+            )
             .then(({ completion, status, value }) =>
               cdp(
                 'Fetch.fulfillRequest',
@@ -303,6 +319,7 @@ try {
           msg.sessionId,
         ).catch(stop);
       } else if (msg.method === 'Network.responseReceived') {
+        cspObserver?.response(msg.params);
         const url = new URL(msg.params.response.url);
         if (url.origin === 'http://127.0.0.1:4173')
           responses.push({
@@ -326,6 +343,17 @@ try {
   await cdp('Page.enable', {}, session);
   await cdp('Network.enable', {}, session);
   await cdp('Fetch.enable', { patterns: [{ urlPattern: '*' }] }, session);
+  if (cspMode) {
+    const { createCspObserver } = await import('./csp-observer.mjs');
+    const { createCspSendRouter, cspDocumentId } = await import('./csp-send-fixtures.mjs');
+    suiteRouter = createCspSendRouter();
+    cspObserver = createCspObserver({
+      report,
+      sendPath: `/api/v1/business-documents/${cspDocumentId}/send`,
+    });
+    if (!process.argv.includes('--fault-csp-no-collector'))
+      await cspObserver.install((method, params) => cdp(method, params, session));
+  }
   preview = spawn(
     process.execPath,
     [
@@ -336,6 +364,9 @@ try {
       '--port',
       '4173',
       '--strictPort',
+      ...(cspMode
+        ? ['--config', fileURLToPath(new URL('./csp-preview.config.mjs', import.meta.url))]
+        : []),
     ],
     { cwd: fileURLToPath(new URL('../../apps/web/', import.meta.url)), stdio: 'ignore' },
   );
@@ -403,6 +434,27 @@ try {
     blockedRequests: requestBlocks,
     snapshot: `/tmp/${runId}-dom.json`,
   });
+  if (cspMode) {
+    if (process.argv.includes('--fault-csp-extra-write')) {
+      await cdp(
+        'Runtime.evaluate',
+        {
+          expression: `fetch('/api/v1/csp-unmapped-write',{method:'POST',body:'{}'}).catch(()=>false)`,
+          awaitPromise: true,
+          returnByValue: true,
+        },
+        session,
+      );
+      throw new Error('unmapped synthetic write did not interrupt CSP harness');
+    }
+    const { runCspSendProbes } = await import('./csp-send-probes.mjs');
+    suiteResult = await runCspSendProbes({
+      send: (method, params) => cdp(method, params, session),
+      router: suiteRouter,
+      observer: cspObserver,
+      report,
+    });
+  }
   if (process.argv.includes('--probes')) {
     const suite = await import('./probes.mjs');
     suiteRouter = suite.createStubRouter({
@@ -445,6 +497,8 @@ try {
       report,
       expectDialog,
     });
+  }
+  if (suiteResult) {
     if (requestBlocks !== 0) throw new Error('harness had blocked unexpected non-static traffic');
     if (unknownApiRequests !== 0) throw new Error('harness had unmapped API traffic');
     if (failedApiRequests !== 0) throw new Error('harness had failed API fulfillment');
