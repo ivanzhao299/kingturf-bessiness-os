@@ -303,6 +303,8 @@
 
 ## 安全（全部为「变更行为」类，前置人工决策 D1，独立批次 4 提交）
 
+**2026-10-17正式实施授权**：批次3已人工验收64757d4；人工授权S1→S2→S3及S4影响报告，当前只启动S1，均独立行为提交/验证。S4实施必须硬停人工确认，不提前改Cookie/CSRF/Origin、sessionStorage或会话夹具；SEC001强制生产段不在本批。此处仅登记授权，不提前关闭任何条目，详见[R7范围](../tasks/harness-batch4-authorization-2026-10-17.md)。
+
 ### TD-SEC-001｜全链路无 Content-Security-Policy
 
 - **位置**：`infra/nginx/erp.kingturf.cn.conf`（仅 X-Content-Type-Options/X-Frame-Options/Referrer-Policy，无 CSP）；`apps/api/src/app.ts`（无安全头）；`apps/web/index.html`（无 meta CSP）

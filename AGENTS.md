@@ -8,11 +8,11 @@ KingTurf 业务操作系统：面向草坪行业外贸业务的 ERP（CRM→报�
 
 ## 如何开始（渐进式披露：先地图，再细节）
 
-现时3a–3f实施与独立复核完成，待整批人工验收：最后业务dc3697b实际稳定干净HEAD全CI0，Web266/13、工具34、扩展50及原29浏览器通过；root749/70公开/457完整链保持，三个AST证明工具缺陷已修且固定SHA重核。47台账，前端评分按实测更新；本独立工具/证据收尾提交后另全CI，原Playwright仍待补跑，不启动4/5。唯一验收入口见下方整批材料。
+当前批次1/2（含E1）/3已人工验收，基线64757d4。2026-10-17正式授权批次4 D1安全加固，顺序S1安全三头→S2登录限流→S3 CSP Report-Only及默认关闭强制开关→S4影响报告；S4实施前必须硬停人类确认，禁止先改Cookie/CSRF/Origin或会话夹具。本执行步先仅S1，独立提交/完整CI/协调审查后再续派。原Playwright补跑、不push/部署/workflow/阶段5边界保持；授权与验收入口见下方。
 
 - 架构总览与依赖方向：见 `ARCHITECTURE.md`
 - 设计理念与操作原则（争议裁决依据）：见 `docs/design-docs/core-beliefs.md`
-- 当前执行计划与进度：见 `docs/exec-plans/active/` §4.4及§7；整批验收材料见 `docs/evidence/frontend-batch3-acceptance-2026-10-17.md`
+- 当前执行计划与进度：见 `docs/exec-plans/active/` §0及§7；批次4授权见 `docs/tasks/harness-batch4-authorization-2026-10-17.md`；批次3历史验收材料见 `docs/evidence/frontend-batch3-acceptance-2026-10-17.md`
 - 已知技术债（47 条台账，含历史解决项及仅登记的旧门控、顶层挂载、抽屉等候选）：见 `docs/exec-plans/tech-debt-tracker.md`
 - CI 与发布决策（非 Tauri，仅 workflow_dispatch 部署，无 tag/Release）：见 `docs/CI.md`
 - 全部文档索引：见 `docs/index.md`
