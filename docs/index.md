@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[Docker Playwright前置补跑R7授权](tasks/playwright-docker-authorization-2026-10-17.md)：完整人类授权、九旧spec延期裁定、d801237实施收口/真实CI前置及本轮库存/本地通道边界；不代表S4整批人工验收或A/B补跑已通过。
+
 [批次4唯一整体验收包](evidence/security-batch4-acceptance-2026-10-17.md)：S1–S4前后行为、全部必要期望/夹具适配与真实变异总索引、分层计数、配置/生产边界、提交/回滚及台账评分。f114ee0稳定干净HEAD全CI实际0/192524.18ms；本次仅文档收口，最后文档HEAD全CI另跑后交协调，整体人工验收未预填通过。SEC003关闭载体实施项，SEC001强制段/九旧PW义务/TD-TEST-006后继候选保持开放；下方为各小步历史导航。
 
 [S4暂停状态显式退出窄修](evidence/security-batch4-s4-paused-logout-2026-10-17.md)：bfdc4ff、9新增真红绿/实现变异、API17242/Web313及真实DOM原失败链重跑通过；已包含于f114ee0稳定干净HEAD全CI0，整批人工验收待交付。
