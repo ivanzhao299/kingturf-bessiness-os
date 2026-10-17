@@ -1,5 +1,7 @@
 # 技术债台账（tech-debt-tracker）
 
+**首轮部分交付（2026-10-17，58项）**：新增TD-TEST-018，P1两次安全定位出现active upstream4173 CONNECT_TIMEOUT，最新仅3例完成、前两例原看板断言/overview隐藏，第三原因未知；TD-TEST-016转C7，候选封存还原。A六文件全绿/两份各一败，B runtime真红绿/P1未完成，不开第二轮、不改产品/网络失败条件。[事实与封存](../tasks/playwright-p1-replay-blocker-2026-10-17.md)。最后稳定干净HEAD完整CI另实测；下方均历史时点。
+
 **B工具新回归（2026-10-17，57项）**：新增TD-TEST-017，43047ec进度reporter把Playwright构造options误作writer；本地官方源码确认框架传对象，直接回归unit1/5过1败。仅已授B私有工具兼容缺口，先登记/红例后独立最小修复，不改产品/原断言。[证据](../evidence/playwright-local-private-runner-2026-10-17.md)。最新P1诊断还出现upstream4173 CONNECT_TIMEOUT/closing=false并清理，非RESET证据，不贸然放宽通道失败条件；下方56为历史。
 
 **P1首轮现时（2026-10-17，56项）**：新增TD-TEST-016，原种子0/成本关单通过后，完整11发现/完成、11 failed，PW1/65088ms/host1/73640ms，owned全清；raw按人裁清理/未留图，不凭其猜根因。仅安全failureLine定位候选，不改原业务期待/配置，[事实与未测](../tasks/playwright-p1-replay-blocker-2026-10-17.md)。runtime首轮可独立续，第二轮仍禁，下方55为历史。
@@ -120,8 +122,9 @@
 | TD-TEST-013  | 成本转报价原成功提示可见性PW失败，前跳转/预选成功                                             | P2     | UI/oracle边界  | 未修（非S4范围）         | Docker首轮发现/待独立裁定          | C7待裁/候选根因未干预实证       |
 | TD-TEST-014  | Workspace旧PW夹具首次读取gate/360必填字段不兼容                                               | P2     | 合成测试夹具   | 等待点另授/字段待裁      | Docker首轮发现                     | 原2过2败/未修完                 |
 | TD-TEST-015  | Source旧合成应收游标页缺nextCursor                                                            | P2     | 合成测试夹具   | 字段实施已验证关闭       | Docker首轮发现                     | 缺字段/auth真红绿，原3例过      |
-| TD-TEST-016  | P1原浏览器11例失败定位待核                                                                    | P2     | 本地浏览器回归 | 只登记/诊断中            | Docker首轮发现                     | 原11全failed/未定位             |
+| TD-TEST-016  | P1原浏览器11例失败定位待核                                                                    | P2     | 本地浏览器回归 | C7可见性待裁             | Docker首轮发现                     | 前两例隐藏/其余不推定           |
 | TD-TEST-017  | 私有reporter构造options兼容缺口                                                               | P2     | 本地回放工具   | 兼容实施验证关闭         | 原生调用形状回归发现               | unit6/PW接线实证                |
+| TD-TEST-018  | 私有浏览器preview上游连接超时                                                                 | P2     | 本地回放环境   | 只登记/待核实            | 安全relay事件                      | active CONNECT_TIMEOUT          |
 | TD-GATE-001  | 无 git hooks / commitlint / lint-staged，脏提交仅靠 CI 兜底                                   | P1     | 门禁           | 无                       | 阶段 3                             | 已完成                          |
 | TD-GATE-002  | vitest 无配置文件，参数散落各包 scripts                                                       | P2     | 门禁           | 无                       | 阶段 3                             | 已完成                          |
 | TD-GATE-003  | routes覆盖已修复；E1已撤，恢复31旧豁免                                                        | P1     | 工程门禁       | 无                       | 独立门禁任务／阶段5前复核          | 已验收                          |
@@ -430,6 +433,11 @@
 
 ## 测试
 
+### TD-TEST-018｜私有浏览器 preview 上游连接超时
+
+- **事实**：p1-safe-location-2与p1-dom-location-1均有4173/upstream/CONNECT_TIMEOUT/closing=false；最新PW null/SIGTERM、host1/27929ms、仅3 completed/complete=false、owned全清。非RESET证据；旧无观测SIGTERM仍原因未知。
+- **状态/边界**：只登记环境连接故障，具体pre-connect卡顿成因待核，未放宽转发器原timeout/失败条件、不改监听/网络/产品。与P1旧可见性oracle问题分开，不充当全部11例失败共同解释。[原事实](../tasks/playwright-p1-replay-blocker-2026-10-17.md)。
+
 ### TD-TEST-017｜私有reporter构造options兼容缺口
 
 - **实际接线验证收口**：6fe9ef5窄修后原runtime PW完整1例实际过、真实onBegin/安全summary/onEnd均已加载/落盘，Cookie omit真红→还原绿，最后独立匿名context原case再过；unit6/原门禁0。仅该reporter兼容缺口实施关闭，不表示P1/全部B绿；57顶层项保历史。[实际命令/结果](../evidence/playwright-local-private-runner-2026-10-17.md)。
@@ -440,6 +448,8 @@
 - **范围/状态**：仅本轮已授B工具自身兼容回归，已登记待分离options与unit writer参数/独立修复，原配置/业务assert/网络失败规则不改；[真实故障/红例](../evidence/playwright-local-private-runner-2026-10-17.md)。不计B绿或扩大原待裁问题。
 
 ### TD-TEST-016｜P1原浏览器11例失败定位待核
+
+- **最新C7**：只读phase部分诊断前两例failureLine19/overview-board-hidden，第三同断言但unclassified；随后通道超时使complete=false。仅前两例原helper可见性期待与非当前workspace隐藏冲突有实际快照支持，其余不归因。候选封存精确恢复原spec；路由访问/逐页可见性方案属非S4期待变化，未获授权不实施。以下未定位文字为此前时点。
 
 - **事实**：f56365c私有执行器，原seed实际0且成本/关单检查过，P1自然DOM会话候选保原11个test正文；完整11发现/完成、全部failed，PW1/65088ms、host1/73640ms，owned全清。raw按人裁仅tmpfs已清，未导图/未视觉验收，不称拥有原始错误证据。
 - **状态/边界**：安全结果仅case起始行，根因待核；只新增精确固定spec整数failureLine、未知0，不导出错误/stack/路径或改原assert。auth适配未完成真变异，不以种子绿冲抵PW失败；必要C7待事实，不顺手修产品/导航/业务期待。[结果/诊断界线](../tasks/playwright-p1-replay-blocker-2026-10-17.md)。

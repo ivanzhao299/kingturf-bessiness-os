@@ -29,3 +29,17 @@ Workspace字段/成本提示仍另待裁，P1若显露其它非S4期待须具体
 runtime原生接线/1例及Cookie omit红绿已完成，不以此抵P1失败。为区分已登录但非当前路由与认证失败，未提交P1 helper候选仅把原末heading断言原样置try/finally，finally只读固定shell/pipeline标题rect、hash是否overview、route属性是否opportunities；不读页面文本/表单值/Cookie/存储，不写导航/DOM/业务数据，原11个test正文全字节同。诊断失败归固定unavailable，无return吞掉原assert。
 
 只P1固定annotation→reporter七个枚举（其它none）→contract同白名单，原错误/stack/路径不外发，原exit0/完成计数条件不改。unit新增raw annotation canary不转发，实际7/7；首新诊断title非空写法原prefer-optional-chain lint1，改等价可选链后最终lint/format0，无disable。独立只读review无必要阻断，强调phase只是finally时刻粗粒度快照，none也可能是未执行分支，不作根因定论。后继同11例只安全诊断，原C7范围/expect/timeout保持，不启动第二轮。
+
+## 最终部分诊断与 C7 停点
+
+工具8b21715，命令同前述local p1、label改为 `p1-dom-location-1`。安全事件实际discovered11/complete=false，仅完成3例failed：index0/1的failureLine均19、phase均overview-board-hidden、duration5407/5404ms；index2同failureLine19但phase=unclassified、5388ms。前两例支持已到原helper看板可见断言、shell存在且overview下opportunities标题无rect；第三例与其余未完成例不归因。phase为finally时刻快照，不是所有11例共同根因证明。
+
+随后4173/upstream/CONNECT_TIMEOUT/closing=false，PW实际null/SIGTERM，host1/27929ms，owned schema/container/preview全清。日志仅固定结果：`/tmp/kingturf-docker-p1-dom-location-1-2026-10-17.log` 与 `.test-results/docker-local/p1-dom-location-1/safe-events.jsonl`；raw及PNG未导出、未视觉验收。TD-TEST-018单列通道连接超时待核，不改转发失败条件，不把本次原因投射到旧未知中断。
+
+未提交P1自然登录/只读分类候选已封存为[精确补丁](../evidence/playwright-p1-auth-diagnostic-candidate-2026-10-17.patch)，SHA256 `13564cbbf567eca47285cb44a5a8313aebe9869c51dba4f0d509ac75960b40b8`；apply_patch精确恢复HEAD原文件，git diff该spec为空、git apply --check补丁通过。原11正文始终字节同，原完整11败保留，不计P1迁移或变异完成。
+
+C7后继待人工选择：是否另授仅测试的真实路由访问/等待适配。候选应保留全部业务数值、状态、数量、操作参数与样本；旧订单/应收/付款和移动端多工作台“同时可见”若改为逐页可见属于非S4期待变化，须独立明确授权，当前未实施。禁止用CSS/DOM伪造可见或改产品求绿。成本提示、Workspace必填字段仍各自待裁，不复用source或历史CDP许可。
+
+当前独立首轮已覆盖A8/B2：A六文件完整绿、成本1过1败、Workspace3过1败；B runtime原1例真红还原绿、P1原完整11败及本次部分诊断。均为逐文件历史结果，不冒称最终HEAD一次完整PW套件；第二轮未开始、C生产禁。文档最终提交后只跑稳定干净HEAD完整CI，实际结果另交付。
+
+收口静态验证：prettier、doc-lint（173篇）、git diff --check均0，private-contract真实7/7。独立只读review核对safe-events、补丁SHA、spec零diff与台账表实数58，无必要阻断；未读取raw或执行PG/浏览器。最后提交后全CI尚待实际结束，不预写通过。

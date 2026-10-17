@@ -1,5 +1,7 @@
 # Docker 单 spec 回放证据（2026-10-17）
 
+**独立首轮部分收口**：A8均已首试，login2/document7/order1/revocation2/startup5/source3六文件全绿且每文件真实源变异红→还原绿；成本1过1败、Workspace3过1败仍各自待裁，未称适配完成。B runtime原1例真实Cookie omit红→还原绿、P1原完整11败及最新部分定位/C7见[B证据](playwright-local-private-runner-2026-10-17.md)。上述为逐文件实际历史结果，不是最终HEAD一次整套PW运行。P1候选精确封存还原、TD-TEST-016/018待裁/待核，58项；第二完整轮未开、C生产禁、未视觉验收，最后文档提交后稳定干净HEAD完整CI另实跑。下方旧未执行/计数均历史。
+
 **Workspace等待点后继**：0c9a886候选后按本轮人裁仅q=慢请求等待，原16assert与切页/RAF动作不动，实际搜索在quotes后释放；广拦截真变异又使目标case超时，完整清理还原后该case过。全spec仍3过1败（360字段待裁未改），非全绿，[原命令/退出/耗时](../tasks/playwright-workspace-fixture-rulings-2026-10-17.md)。旧2过2败为前时点，第二轮继续禁止。
 
 **Workspace候选后继**：仅已授auth/单void候选原4例2过2败，原16expect同、lint0；首次成本GET被旧gate挂起、360缺必填字段另记TD-TEST-014/54项。[原失败/增量裁定](../tasks/playwright-workspace-fixture-rulings-2026-10-17.md)：等待点已人裁批准未实施、字段独立待裁；此候选只作可复现检查点，未完成全文件真变异/还原绿，不称已交付。其它3A/2B未跑、成本仍1过1败、第二轮禁，旧未执行计数保前时点。

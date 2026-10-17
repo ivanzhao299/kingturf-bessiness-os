@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **Docker回放部分交付停点（2026-10-17）**：A8/B2独立首轮已覆盖；A六文件全绿、成本1过1败/Workspace3过1败各待裁，runtime原1例真实Cookie变异红还原绿，P1原完整11败保留。最新P1仅3完成/complete=false，前两例原helper断言19/overview看板隐藏、第三unclassified；上游4173 CONNECT_TIMEOUT使PWnull/SIGTERM、host1/27929ms、owned全清。候选已封存/精确还原原文件，[事实/C7方案](../../tasks/playwright-p1-replay-blocker-2026-10-17.md)。TD-TEST-018连接故障单列待核/58项，不改产品/原可见性oracle/网络失败条件；第二轮未开/C生产禁/无视觉验收。最终文档提交后在稳定干净HEAD实际完整CI，期间不改文件；结果交付另报。
+
 - **runtime首轮/真红绿（2026-10-17）**：原真实登录/客户/持久化/audit字节保持，仅已授Cookie403与独立匿名401迁移，实际原1例过；Cookie omit在原403行54真红→完整清理还原过。额外共享page.request变异实际过/未检出，不计红，最终还原独立context再过PW0/1701ms、host0/8680ms，owned全清。[全部结果/边界](../../evidence/playwright-local-private-runner-2026-10-17.md)。reporter原生PW接线现已实证，TD-TEST-017仅兼容实施关闭/57项；A六绿两份各一败、B runtime绿/P1原11败，第二轮/C禁，最后HEAD全CI必跑。
 
 - **B安全观测新回归（2026-10-17）**：43047ec后P1诊断upstream4173 CONNECT_TIMEOUT/closing=false→PWnull/SIGTERM、host1/41330ms、owned全清，非RESET证据。reporter options对象被新writer构造误收，本地官方PW源码核证+直接原生调用unit红1/5过1败，新增TD-TEST-017/57，[事实/边界](../../evidence/playwright-local-private-runner-2026-10-17.md)。只登记本轮工具兼容缺口，下一步独立最小修正，不改产品/原业务期待/通道失败条件；原P1完整11败仍有效，runtime可独立首轮，C/第二轮/最后HEAD全CI保护保持。
@@ -3739,6 +3741,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+- **2026-10-17｜独立首轮部分收口/P1 C7**：父8b21715，P1安全分类实际3 failed/complete=false，仅前两例failureLine19/overview-board-hidden，第三unclassified不归因；active4173 CONNECT_TIMEOUT、PWnull/SIGTERM、host1/27929ms、owned全清。TD-TEST-016可见性待裁/018环境超时待核，58项，原完整11败有效。P1候选[精确补丁](../../evidence/playwright-p1-auth-diagnostic-candidate-2026-10-17.patch) SHA13564cbbf567eca47285cb44a5a8313aebe9869c51dba4f0d509ac75960b40b8，apply_patch恢复原spec且git diff空/apply-check通过；只提交封存/事实与地图，不含产品或P1业务期待变化。A六份绿/成本与Workspace各一败、B runtime真红绿；均逐文件历史结果，第二轮未开/C禁/零PNG未视觉验收，最终稳定干净HEAD实际全CI另跑。回滚本次文档/补丁用单独revert，不影响已适配源码。[已测试]（静态检查及已记录实际部分失败，非全部PW通过）
 
 - **2026-10-17｜P1固定只读DOM分类工具候选**：父9ee083c，case只增七固定phase枚举，raw annotation折叠none/不外发，unit7/原lint/format0，独立只读review无必要阻断。[边界](../../tasks/playwright-p1-replay-blocker-2026-10-17.md)。P1未提交helper只原末assert包readonly finally，读固定shell/rect/hash/route布尔，不读文本/表单value/Cookie、不写导航/DOM；11原test body字节同，首新写法optional-chain lint1修等价链不降规则。只工具提交，不把phase当根因；同11例安全诊断未跑，原P1失败/业务期待冻结/C/第二轮/最终HEAD全CI保持。[已测试]（unit/静态，非P1绿）
 

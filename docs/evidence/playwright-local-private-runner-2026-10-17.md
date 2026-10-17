@@ -76,3 +76,9 @@ ed614ba红例独立后，最小改为`constructor(options={},writer=writeFileSyn
 ## P1 固定 DOM 分类安全字段
 
 9ee083c后，仅安全case字段增phase七个固定枚举，runtime/无标记为none，任何外来annotation内容折叠none；controller/host沿同契约再重编码，不导出原描述。unit新增annotation canary及非法phase拒绝，实际7/7/原lint/format0。P1 working helper只读finally分类说明见[诊断范围](../tasks/playwright-p1-replay-blocker-2026-10-17.md)，未包含在本工具提交；原断言/11 test正文/成功完整性保持，独立只读review无必要阻断。字段只是粗快照，不是因果证明/新增业务oracle，尚未实际P1复跑。
+
+## P1 DOM 诊断实际结果与停点
+
+8b21715工具实际 `local p1 p1-dom-location-1`：discovered11/complete=false，3 completed failed，index0/1 failureLine19、phase overview-board-hidden（5407/5404ms），index2 failureLine19、phase unclassified（5388ms）。随后active upstream4173 CONNECT_TIMEOUT/closing=false，PW null/SIGTERM，host1/27929ms，owned全清。安全文件仅固定枚举，raw/PNG未导出已清。不计完整11或绿；前两例只支持原helper路由可见性不符，第三与其它例原因未知，不把粗快照当因果证明。
+
+[P1阻断与精确候选封存](../tasks/playwright-p1-replay-blocker-2026-10-17.md)记录原文件恢复及补丁SHA；本轮停止该spec，TD-TEST-016等待非S4可见性oracle裁定，TD-TEST-018通道超时只登记不放宽。runtime真实原1例/至少一真实变异红绿有效；第二完整轮未开/C禁/零PNG非视觉验收，最终稳定干净HEAD全CI另实跑。

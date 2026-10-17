@@ -1,14 +1,14 @@
 # docs/index.md（全部文档索引）
 
-[P1首轮失败与安全定位](tasks/playwright-p1-replay-blocker-2026-10-17.md)：原seed0后完整11/11 failed/PW1、owned全清，raw按人裁不保留；新增仅固定spec整数failureLine定位，尚未证明根因，TD-TEST-016/56，不改业务期待。
+[P1首轮失败与安全定位](tasks/playwright-p1-replay-blocker-2026-10-17.md)：原完整11败保留；最新仅3完成/complete=false，前两例overview看板隐藏、第三未知，超时中断后owned全清。候选精确封存还原、TD-TEST-016可见性待裁/018连接待核，台账58，不改业务期待/网络失败条件。
 
-[B私有执行器验证记录](evidence/playwright-local-private-runner-2026-10-17.md)：runtime真实1例过、Cookie omit真红→还原绿；额外共享anonymous变异实过未检出如实保留。reporter兼容unit6及实际PW接线验证/TD-TEST-017仅实施关闭，57项；P1原11败/通道中断待核，不导PNG/未视觉验收。
+[B私有执行器验证记录](evidence/playwright-local-private-runner-2026-10-17.md)：runtime真实1例过、Cookie omit真红→还原绿；额外共享anonymous变异实过未检出如实保留。reporter兼容及实际PW接线已验证；P1原11败/部分诊断仍非绿，不导PNG/未视觉验收。独立首轮已覆盖A8/B2，不等于最终HEAD整套PW或第二轮完成。
 
-[B本地产物隔离接线方案](tasks/playwright-local-private-runner-2026-10-17.md)：按已授P1例外接只读容器/tmpfs/无raw导出/安全case索引；首版零PNG导出，不能称截图证据已保留。候选静态通过、动态验证尚待，原config/业务断言/PG同一性保持。
+[B本地产物隔离接线方案](tasks/playwright-local-private-runner-2026-10-17.md)：按已授P1例外接只读容器/tmpfs/无raw导出/安全case索引；首版零PNG导出，不能称截图证据已保留。工具动态探针及runtime已验证，P1失败/中断另见上述证据，原config/业务断言/PG同一性保持。
 
 [Source分页合成夹具R7与验证](tasks/playwright-source-fixture-ruling-2026-10-17.md)：原PG生产器19过、两次原夹具2过1败；人裁只应收stub补nextCursor:null，缺字段/auth各真红→还原原3例绿，样本SHA/权限/断言保持。TD-TEST-015仅该缺口实施关闭，55顶层项；成本/Workspace仍待裁。
 
-[P1最小产物例外R7](tasks/playwright-p1-artifact-authorization-2026-10-17.md)：直接人类批准仅P1命令traceoff/只读容器及owned tmpfs原始产物不导出，只固定结果/核过业务截图；尚未接线执行，不承诺RAM/swap物理零落盘，不扩runtime/C或业务断言。
+[P1最小产物例外R7](tasks/playwright-p1-artifact-authorization-2026-10-17.md)：直接人类批准仅P1命令traceoff/只读容器及owned tmpfs原始产物不导出，只固定结果/核过业务截图；现已执行、首版未导图，不承诺RAM/swap物理零落盘，不扩runtime/C或业务断言。
 
 [Workspace旧夹具失败/增量裁定](tasks/playwright-workspace-fixture-rulings-2026-10-17.md)：原2过2败、首次成本GET被gate挂起及360缺字段；等待点已人裁批准，字段独立待裁，原16expect/合成隔离冻结，台账54，非整文件已绿。
 

@@ -1,0 +1,54 @@
+diff --git a/tests/e2e/p1-demo.spec.ts b/tests/e2e/p1-demo.spec.ts
+index cc0f72b..cd11e8f 100644
+--- a/tests/e2e/p1-demo.spec.ts
++++ b/tests/e2e/p1-demo.spec.ts
+@@ -5,16 +5,40 @@ const password = process.env.KINGTURF_ADMIN_PASSWORD;
+ 
+ async function openAuthenticatedWorkspace(page: Page): Promise<void> {
+   if (!password) throw new Error('KINGTURF_ADMIN_PASSWORD is required');
+-  const response = await page.request.post('/api/v1/auth/login', {
+-    data: { login, password },
+-  });
+-  expect(response.ok()).toBeTruthy();
+-  const { token } = (await response.json()) as { token: string };
+-  await page.addInitScript((sessionToken) => {
+-    globalThis.sessionStorage.setItem('kingturf.session', sessionToken);
+-  }, token);
+   await page.goto('/');
+-  await expect(page.getByRole('heading', { name: '商机阶段看板' })).toBeVisible();
++  await page.getByPlaceholder('账号').fill(login);
++  await page.getByPlaceholder('密码').fill(password);
++  const loggedIn = page.waitForResponse(
++    (response) =>
++      response.url().endsWith('/api/v1/auth/login') && response.request().method() === 'POST',
++  );
++  await page.getByRole('button', { name: '登录', exact: true }).click();
++  const response = await loggedIn;
++  expect(response.ok()).toBeTruthy();
++  try {
++    await expect(page.getByRole('heading', { name: '商机阶段看板' })).toBeVisible();
++  } finally {
++    const phase = await page
++      .evaluate(() => {
++        const shell = document.querySelector('.app-shell');
++        const board = document.querySelector('.pipeline-board');
++        const title = board?.querySelector('h2');
++        const overview = ['', '#', '#/', '#overview', '#/overview'].includes(location.hash);
++        if (
++          shell &&
++          overview &&
++          board?.closest('[data-route-view]')?.getAttribute('data-route-view') ===
++            'opportunities' &&
++          title?.getClientRects().length === 0
++        )
++          return 'overview-board-hidden';
++        if (shell && overview && !board) return 'overview-board-unmounted';
++        if (!shell && document.querySelector('input[type="password"]')) return 'login-ui';
++        return shell ? 'workspace-other' : 'unclassified';
++      })
++      .catch(() => 'unavailable');
++    test.info().annotations.push({ type: 'private-p1-dom', description: phase });
++  }
+ }
+ 
+ test('shows approved, rejected, and expired credit evidence', async ({ page }, testInfo) => {
