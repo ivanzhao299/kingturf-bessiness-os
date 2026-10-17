@@ -1,5 +1,7 @@
 # Docker 单 spec 回放证据（2026-10-17）
 
+**文档发送后继**：原7项auth候选全过，真实旧token变异2败5过→完全清理后还原7过；原strict ESLint旧8错经本会话人类[独立R7](../tasks/playwright-document-lint-authorization-2026-10-17.md)仅最小机械修正，擦除类型除一个未使用void返回的块体外JS全字节同、47expect调用/参数同；机械后原7项再次通过。成本TD-TEST-013仍失败待裁不动，余5A/2B未执行，第二轮禁止；详情见末节。原全A额外tsc旧诊断仍2，不因lint修正写成全A类型绿。
+
 **后继现时**：f3882a3干净HEAD完整CI实际0/201874.74ms后，成本仅auth候选PW1/12294ms、host1/17663ms、1通过1失败。原最后提示不可见、前URL/dialog/decisionId过；[C7事实/trace脱敏/候选与待裁](../tasks/playwright-cost-handoff-blocker-2026-10-17.md)。成本候选已精确还原未提交/未算适配变异完成，失败附件保留。当前login2过、cost1过1败、其它6A/2B未跑、C禁、未第二轮；下方“其它未执行”为原时点。最后文档HEAD完整CI另实跑，不等于PW全绿。
 
 ## 基线和环境执行器
@@ -53,3 +55,31 @@
 真实红均原断言失败且保留截图/trace/HTML；最终helper=43、session无token，变异不入库。每次host guard/容器只读同一性先通过，owned三清理全true；两次红不是改期望/跳过/重试刷绿。原hook ESLint实际0；额外全A tsc旧诊断仍如前，不宣称全A类型绿。API/Web全量和最后干净HEAD完整CI在本适配提交后另实际执行。
 
 仅此文件首轮候选已绿（2测试），不是A8全绿；其它7A/2B未执行/未适配，C2不改不跑，第二完整轮未开始。父60ab881为本夹具适配回滚点；共享helper与本spec一起回滚，后继消费者先撤，保留工具/成本独立链。
+
+## document-send-product-quality：会话适配及获准机械兼容
+
+父ba294ae人类R7，原始人类消息本会话直接收到，协调后亲核01a148a2-7e6a-7e80-a135-1a9652b3ec90，非协调代授。独立只读复核无必要阻断。
+
+会话只把原openDocument的旧storage init换 `seedSyntheticCookies(page)`，原auth/session DTO包 `sessionResponse` 添加合成generation/csrf；保原员工、权限、文档/connector数据、全部业务route mock及断言。该spec原catch-all API合成响应保持，不进入真实API，mock Jar不是服务端Set-Cookie/授权证明。
+
+机械范围仅原8处：两个已测量locator用MeasuredLocator类型投影保原非空假设，去6个box!，不加null分支；单一合成connector路由的ConnectorRoute类型投影给postDataJSON().expectedVersion静态形状，原expect参数/0保持，不加运行时schema/any。requestSubmit原生void回调仅块体，原一次调用、异常及undefined结果不变；调用方仅await未读返回，不称任意猴补方法返回值都可观察等价。
+
+内存transpile实际通过：除上述唯一void arrow形态，其余生成JS逐字节同；47个expect调用/参数AST全同，统一原arrow后的运行SHA256 `aab364b24e910e64f3861a1e3a83984f83ff3697ddf303d21d2b1c214e388f3a`。这只证明擦除/该局部void等价，不是新增业务校验。初次比较命令的shell引用破坏输入而失败，后改UTF16 hex传值，不回显源码/assertion值；不是实际源码行为差异。直接as NonNullable候选曾被原style规则拒2错，最终改类型投影，规则未放宽。
+
+原 `pnpm exec eslint tests/e2e/document-send-product-quality.spec.ts` auth候选实际1/8旧错；内存lint原bd7e80b源码实际1/9（多出的旧storage void已被auth替换消除）。获准机械后真实0。三类机械真实源变异各lint1→立即还原0：首box重新加!同时触no-non-null/no-unnecessary；去ConnectorRoute参数投影触unsafe字段（及未用alias）；恢复void shorthand触no-confusing。均为lint门禁变异，不混记为浏览器用例。
+
+额外全A `tsc -p tests/e2e/tsconfig.json --noEmit` 最后仍实际2，仅原header keys push string|undefined诊断（现162）；该第9种问题不在本8处批准中，保持未修。其它A旧lint只读baseline核：order0、revocation0、source0；workspace2（5/67 void）、startup3（61/83/103旧storage void），未改变它们，不把本文件许可扩大。
+
+实际PW命令同首节，仅文件名=document-send-product-quality.spec.ts、label如下；每份/tmp安全日志及独立本地PW log/HTML/artifacts均以同label保存。
+
+| label                       | 实际PW；host                                                                                                                                            |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| document-adapt-green-1      | 7通过，PW0/9584ms；host0/14978ms                                                                                                                        |
+| document-old-token-red-1    | 真实源只向DRAFT/bound合成session加旧token，2失败/5通过，PW1/67583ms；host1/72963ms；原openDocument业务入口因严格session拒绝到不了，两case均保截图/trace |
+| document-restored-1         | **过早恢复启动错误**：原红运行未drain时发起，端口预检EADDRINUSE拒绝，host1/85ms；未启动API/容器/浏览器，独立owned schema前置已清理，不算恢复绿          |
+| document-restored-2         | 等红工具close及owned清理后严格串行，7通过，PW0/9482ms；host0/14807ms                                                                                    |
+| document-mechanical-final-1 | 获准机械后7通过，PW0/9790ms；host0/15054ms                                                                                                              |
+
+一次过早启动违反本轮严格串行约定，未隐去/充绿；立即恢复等待完整close后才再执行。红worker已载入的变异使两DRAFT case真实失败，未将提前改回源码冒称验证通过；后续restored-2和mechanical-final均在资源完全清理后独立全7过。每轮最终owned三清理均true，最终变异不入库。两红case原HTML/截图/trace在document-old-token-red-1独立目录实际核存在。
+
+本文件适配/获准机械单一职责提交，父ba294ae回滚点；成本不受其覆盖，完整A8尚未绿、第二轮未开始，C2仍禁。最后HEAD完整CI仍必跑，不把前f3882a3 CI作未来提交CI；后续独立首轮继续。

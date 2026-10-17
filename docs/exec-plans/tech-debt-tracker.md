@@ -424,6 +424,8 @@
 
 ### TD-TEST-012｜冻结文档发送PW旧header索引严格类型诊断
 
+- **后继原门禁/人裁**：auth候选原ESLint实际1/8旧错误，baseline内存lint1/9（旧storage void另被auth消除）；本会话人类call_35cccddbc8024f6f890813be80e44491批准仅8处机械兼容，R7 ba294ae。类型投影/去6个!与仅未用void回调块体，47expect参数同、除void例外擦除JS全字节同，三类真实lint源变异1→还原0，机械后原7 PW通过。**旧header keys额外tsc诊断仍2/现162，未修/不关闭本项**；其它文件不扩授。[逐处/全部失败史](../evidence/playwright-docker-spec-replay-2026-10-17.md)。
+
 - **事实/范围**：新增A8精确tsconfig供原ESLint project service归属；额外手动全A `pnpm exec tsc -p tests/e2e/tsconfig.json --noEmit`实际2，`tests/e2e/document-send-product-quality.spec.ts:152–154`的string[]接收headers索引string|undefined，继承原browser/base strict/noUncheckedIndexedAccess。原根lint/typecheck未包含该手动全A命令，PW尚未执行，不能称运行bug或原CI失败。
 - **边界**：仅登记，不修冻结业务断言/加默认值/非空断言，不放宽规则。独立只读建议保留窄TS接线，原login ESLint已0；如实际阻断hook/授权PW或要求新全A tsc为必须验收项，再C7带实证求裁。[执行证据](../evidence/playwright-docker-spec-replay-2026-10-17.md)。
 

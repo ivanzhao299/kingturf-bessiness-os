@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **文档发送后继（2026-10-17）**：人类ba294ae仅授本spec旧8处机械兼容；会话适配真实旧token红2败5过、严格还原7过，机械后再7过，47expect调用/参数与除未使用void例外的擦除JS全同、原lint0。一次过早恢复被端口拒绝1/85ms保历史，后等全部close再串行验证；[全部命令/红绿/机械映射](../../evidence/playwright-docker-spec-replay-2026-10-17.md)。旧header额外tsc仍2，不关闭TD-TEST-012；成本TD-TEST-013仍待裁，余5A/2B未跑、第二轮禁/C禁，独立首轮续。
+
 - **成本提示C7当前交接（2026-10-17）**：f3882a3干净HEAD完整CI实际0/201874.74ms后，成本仅auth候选1过1败，原末提示不可见、前URL/dialog/decisionId过。原trace脱敏核201→GET200及quotes状态文本空，lazy覆盖候选未干预实证；TD-TEST-013/现53项，[待裁事实](../../tasks/playwright-cost-handoff-blocker-2026-10-17.md)。不改业务/期望，临时cost auth精确还原未提交/未完成变异；login2过、其它6A/2B未跑、C禁/未第二轮。当前仅收口/最后文档HEAD全CI后交人裁，不永久冻结独立首轮原授权，不扩阶段5。
 
 - **PW首份夹具候选（2026-10-17）**：login-product-quality原9个expect/导航后全部操作字节守恒，新共享合成会话夹具/冷restore401/login-context/新login及restore DTO；helper代际与spec旧token各真实源变异红→立即还原2通过，失败附件独立保留，执行器真实取消已核。[逐处映射/命令/退出耗时](../../evidence/playwright-docker-spec-replay-2026-10-17.md)。其它7A/2B未跑，C2禁止、第二轮未开始；本适配提交后相关API/Web全量/干净HEAD完整CI另实际跑，不以额外tsc旧诊断改冻结断言，台账52。
@@ -3717,6 +3719,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+- **2026-10-17｜document-send适配/获准机械验证**：父ba294ae人类R7后，旧storage→合成Jar/新restore DTO，数据/route/原47expect参数保持；旧token真实红2败5过PW1/67583ms、host1/72963ms→完全清理还原7过host0/14807ms。曾过早启动restored-1端口拒1/85ms，未进浏览器、不充绿，后改严格drain。机械type投影/去6个!，唯一requestSubmit未用void块体，其余擦除JS全字节同；原lint8错→0，三类真实lint源变异1→还原0，独立只读无阻断；机械后原7case PW0/9790ms、host0/15054ms。[全部失败/附件/边界](../../evidence/playwright-docker-spec-replay-2026-10-17.md)。header额外tsc旧诊断仍2，TD-TEST-012不关闭，台账53；成本不修/第二轮禁，余5A/2B首轮续，最后HEAD完整CI必跑。[已测试]（真实spec/变异及机械；最终CI后跑）
 
 - **2026-10-17｜document-send机械兼容追加R7**：原7项会话夹具候选全过、旧token真红后还原7过，原strict ESLint仍1/8旧代码错误（baseline内存lint1/9）；主代理直接收到人类call_35cccddbc8024f6f890813be80e44491 reply批准仅本文件8处最小类型/语法修正，[原话/严格边界](../../tasks/playwright-document-lint-authorization-2026-10-17.md)。先本docs独立提交，父bd7e80b回滚点；不得改原expect/参数/运行值/数据/步骤/规则，类型擦除一致、void返回未用才块体。其它spec/成本提示不扩授，TD-TEST-012相关本文件未实现前不关闭；最终HEAD完整CI必跑。[未测试]（R7文档，后继实施验证另跑）
 

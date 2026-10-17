@@ -8,6 +8,8 @@ KingTurf 业务操作系统：面向草坪行业外贸业务的 ERP（CRM→报�
 
 ## 如何开始（渐进式披露：先地图，再细节）
 
+文档发送后继：会话适配旧token真红→还原7过，人类ba294ae只授8处旧lint机械兼容，47expect参数/擦除JS（唯一未用void例外）同，最终7过/lint0；旧额外tsc仍2，不关TD-TEST-012。证据 `docs/evidence/playwright-docker-spec-replay-2026-10-17.md` 含一次过早恢复端口拒绝/后严格串行历史。成本TD-TEST-013待裁，余5A/2B未跑、第二轮/C禁，最后HEAD全CI必跑；下方旧时点不覆盖本状态。
+
 当前成本提示C7：f3882a3完整CI真实0/201874.74ms后，成本仅auth候选1过1败，原末提示不可见而前跳转/dialog/预选过。见 `docs/tasks/playwright-cost-handoff-blocker-2026-10-17.md`；TD-TEST-013/现53项，只登记不修业务/期望，临时cost候选精确还原未算完成；login2过、其它6A/2B未跑、C禁/未第二轮。最后文档HEAD全CI后交人裁，独立首轮原授权不永久冻结；下方均历史。
 
 Docker PW首份login夹具已真实变异红→还原2通过，原9expect/导航后操作守恒；执行器中断非零与owned清理已核，见 `docs/evidence/playwright-docker-spec-replay-2026-10-17.md`。其它7A/2B未跑、C2禁跑、第二轮未开始；台账52（新增仅额外tsc旧诊断，不改冻结源码），提交后相关API/Web及干净HEAD全CI另跑。下方旧计数/停点保历史。
