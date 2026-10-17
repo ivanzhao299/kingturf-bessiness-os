@@ -19,6 +19,7 @@ import {
 } from '@kingturf/domain';
 import type { ErrorCode, PermissionKey } from '@kingturf/types';
 import { securityResponseHeaders } from './middleware/security-headers.ts';
+import { LoginRateLimiter } from './middleware/login-rate-limit.ts';
 import { authorizeQuery } from './policy.ts';
 import { auditReadRoutes } from './routes/audit-reads.ts';
 import { numberAllocationRoutes } from './routes/number-allocation.ts';
@@ -265,6 +266,8 @@ export type ApiRequest = Readonly<{
   query?: Readonly<Record<string, string | undefined>>;
   headers?: Readonly<Record<string, string | undefined>>;
   body?: unknown;
+  peerAddress?: string | undefined;
+  forwardedFor?: readonly string[] | undefined;
 }>;
 export type ApiResponse = Readonly<{
   body: Json;
@@ -272,6 +275,7 @@ export type ApiResponse = Readonly<{
   headers?: Readonly<Record<string, string>>;
 }>;
 export type ApiDependencies = Readonly<{
+  loginRateLimiter?: LoginRateLimiter;
   auth: AuthenticationService;
   organizations: OrganizationRepository;
   employees: EmployeeRepository;
@@ -531,6 +535,7 @@ const effectiveRange = (body: Record<string, unknown>) => {
 };
 export function buildApp(dependencies?: ApiDependencies): ApiApplication {
   const telemetry = dependencies?.telemetry ?? NOOP_TELEMETRY;
+  const loginRateLimiter = dependencies?.loginRateLimiter ?? new LoginRateLimiter();
   const application: Pick<ApiApplication, 'dispatch'> = {
     async dispatch(request) {
       const correlationId = correlation(request.headers?.['x-correlation-id']);
@@ -557,6 +562,7 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
           );
         const authRouteContext = {
           auth: dependencies.auth,
+          loginRateLimiter,
           correlationId,
           parsers: { objectBody, string, allow },
         };

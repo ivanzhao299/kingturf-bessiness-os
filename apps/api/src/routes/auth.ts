@@ -1,8 +1,10 @@
 import type { AuthorizationContext } from '@kingturf/domain';
 import type { ApiDependencies } from '../app.ts';
+import type { LoginRateLimiter } from '../middleware/login-rate-limit.ts';
 import { defineRoute, type RouteDefinition } from './types.ts';
 
 type AuthRouteContext = Readonly<{
+  loginRateLimiter: LoginRateLimiter;
   auth: ApiDependencies['auth'];
   correlationId: string;
   parsers: Readonly<{
@@ -31,8 +33,30 @@ export function loginRoutes(context: AuthRouteContext): readonly RouteDefinition
           password: p.string(body.password, 'password'),
         };
       },
-      handler: async (_request, _match, input) => {
-        const result = await context.auth.login(input.login, input.password, context.correlationId);
+      handler: async (request, _match, input) => {
+        const decision = await context.loginRateLimiter.attempt(
+          input.login,
+          request.peerAddress,
+          request.forwardedFor,
+          () => context.auth.login(input.login, input.password, context.correlationId),
+        );
+        if (decision.kind !== 'authenticated') {
+          const limited = decision.kind === 'limited';
+          return {
+            statusCode: limited ? 429 : 503,
+            headers: { 'retry-after': limited ? String(decision.retryAfter) : '1' },
+            body: {
+              error: {
+                code: limited ? 'invalid_request' : 'internal_error',
+                message: limited
+                  ? 'Too many failed login attempts. Try again later.'
+                  : 'Login temporarily unavailable',
+                correlationId: context.correlationId,
+              },
+            },
+          };
+        }
+        const result = decision.value;
         return result
           ? { statusCode: 200, body: result }
           : {

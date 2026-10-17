@@ -18,6 +18,75 @@ const valid = {
   WEBSITE_LEAD_INGEST_SECRET: 'test-website-lead-ingest-secret-at-least-32-characters',
 };
 describe('parseEnvironment', () => {
+  it('defaults and freezes the independently configurable login limiter', () => {
+    const settings = parseEnvironment(valid).loginRateLimit;
+    expect(settings).toEqual({
+      enabled: true,
+      failureLimit: 10,
+      windowMs: 900_000,
+      baseDelayMs: 100,
+      maxDelayMs: 1000,
+      maxBuckets: 10_000,
+      maxPending: 64,
+      trustedProxies: [],
+    });
+    expect(Object.isFrozen(settings)).toBe(true);
+    expect(Object.isFrozen(settings.trustedProxies)).toBe(true);
+  });
+  it('parses explicit rollback, numeric and canonical exact-proxy settings', () => {
+    expect(
+      parseEnvironment({
+        ...valid,
+        LOGIN_RATE_LIMIT_ENABLED: 'false',
+        LOGIN_RATE_LIMIT_FAILURES: '20',
+        LOGIN_RATE_LIMIT_WINDOW_SECONDS: '1200',
+        LOGIN_RATE_LIMIT_BASE_DELAY_MS: '5',
+        LOGIN_RATE_LIMIT_MAX_DELAY_MS: '10',
+        LOGIN_RATE_LIMIT_MAX_BUCKETS: '100',
+        LOGIN_RATE_LIMIT_MAX_PENDING: '12',
+        LOGIN_RATE_LIMIT_TRUSTED_PROXIES: ' ::ffff:192.0.2.1,2001:0DB8:0:0:0:0:0:1,192.0.2.1 ',
+      }).loginRateLimit,
+    ).toEqual({
+      enabled: false,
+      failureLimit: 20,
+      windowMs: 1_200_000,
+      baseDelayMs: 5,
+      maxDelayMs: 10,
+      maxBuckets: 100,
+      maxPending: 12,
+      trustedProxies: ['192.0.2.1', '2001:db8::1'],
+    });
+  });
+  it.each([
+    ['ENABLED', 'yes'],
+    ['FAILURES', '0'],
+    ['FAILURES', '1.5'],
+    ['FAILURES', '1001'],
+    ['WINDOW_SECONDS', '0'],
+    ['WINDOW_SECONDS', '86401'],
+    ['BASE_DELAY_MS', '0'],
+    ['MAX_DELAY_MS', '0'],
+    ['MAX_BUCKETS', '1'],
+    ['MAX_PENDING', '0'],
+    ['MAX_PENDING', '1025'],
+    ['TRUSTED_PROXIES', '127.0.0.0/8'],
+    ['TRUSTED_PROXIES', 'localhost'],
+    ['TRUSTED_PROXIES', '192.0.2.1,'],
+    ['TRUSTED_PROXIES', '999.1.1.1'],
+    ['TRUSTED_PROXIES', 'fe80::1%eth0'],
+  ])('rejects invalid login limiter %s', (key, value) => {
+    expect(() => parseEnvironment({ ...valid, ['LOGIN_RATE_LIMIT_' + key]: value })).toThrow(
+      ConfigurationError,
+    );
+  });
+  it('rejects inverted backoff and excessive retained-state products', () => {
+    expect(() => parseEnvironment({ ...valid, LOGIN_RATE_LIMIT_BASE_DELAY_MS: '1001' })).toThrow(
+      ConfigurationError,
+    );
+    expect(() => parseEnvironment({ ...valid, LOGIN_RATE_LIMIT_FAILURES: '1000' })).toThrow(
+      ConfigurationError,
+    );
+  });
   it('returns an immutable typed configuration', () => {
     expect(Object.isFrozen(parseEnvironment(valid).session)).toBe(true);
   });

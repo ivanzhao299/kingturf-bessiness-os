@@ -1,5 +1,5 @@
 {
   "extends": "./tsconfig/node.json",
-  "compilerOptions": { "composite": true, "noEmit": true },
+  "compilerOptions": { "composite": true, "noEmit": true, "allowImportingTsExtensions": true },
   "include": ["src/**/*.ts"]
 }

@@ -3,6 +3,7 @@ import { createServer } from 'node:http';
 import { parseEnvironment } from '@kingturf/config';
 import { assertMigrationsCurrent, Database, migrate } from '@kingturf/database';
 import { buildApp } from './app.ts';
+import { LoginRateLimiter } from './middleware/login-rate-limit.ts';
 import {
   PostgresAuthorizationRepository,
   PostgresEmployeeRepository,
@@ -64,6 +65,7 @@ const objectAccess = new PostgresRegistryObjectAccessAuthorizer(
   new Map([['employee', new EmployeeObjectInstanceResolver(employees)]]),
 );
 const app = buildApp({
+  loginRateLimiter: new LoginRateLimiter(config.loginRateLimit),
   auth,
   organizations: new PostgresOrganizationRepository(database),
   employees,
@@ -160,6 +162,8 @@ const server = createServer(async (request, response) => {
   }
   const result = await app.dispatch({
     method: request.method ?? 'GET',
+    peerAddress: request.socket.remoteAddress,
+    forwardedFor: request.headersDistinct['x-forwarded-for'],
     pathname: url.pathname,
     query: Object.fromEntries(url.searchParams),
     headers: {
