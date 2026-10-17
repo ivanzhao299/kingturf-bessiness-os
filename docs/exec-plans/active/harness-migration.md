@@ -3722,6 +3722,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+- **2026-10-17｜Workspace等待点独立修正**：父0c9a886，按bfdbcc4本会话人裁仅q=慢请求requested/await原gate、首次原JSON照回；原16expect/主切页RAF动作字节同，固定安全release日志实证一次hash=#/quotes。初修PW1/9435ms、host1/15210ms，3过1败；真实广路径条件变异PW1/39005ms、host1/44821ms、成本30s又红，完整清理后还原PW1/9562ms、host1/15129ms，目标成本case过/3过1败。字段仍未授权未改，原360失败及所有截图trace保留，owned全清，[分层证据](../../tasks/playwright-workspace-fixture-rulings-2026-10-17.md)。只等待点目标真红绿，不称全file已交付；TD-TEST-014/54仍开放，成本oracle/产品/C/第二轮不扩，最后HEAD全CI必跑。[已测试]（整file仍1败）
+
 - **2026-10-17｜Workspace auth/单void部分通过候选提交**：仅旧storage→合成Jar/新restore DTO、dc43e81单void块体，员工/权限/业务JSON/16expect调用参数同、lint0；机械擦除局部仅一个原生未用void形态差异。workspace-adapt-candidate-1原4例2过2败PW1/38957ms、host1/44429ms，owned全清，[失败/附件/候选界线](../../evidence/playwright-docker-spec-replay-2026-10-17.md)。只保可复现候选，字段/等待点均尚未改，全文件真变异/还原绿未完成，不能称交付。父本次夹具裁定R7为回滚点，后继获准修正独立提交；TD-TEST-014/54，成本失败不消除/第二轮禁/最终HEAD全CI必跑。[已测试]（2过2败明确保留，非绿）
 
 - **2026-10-17｜Workspace旧夹具C7/等待点R7**：dc43e81后auth/void候选原16expect同，原4例2过2败PW1/38957ms、host1/44429ms，owned全清；原trace初cost GET q=null/status=-1，旧gate挂首次加载；360缺parser必需字段。TD-TEST-014/54项，直接人类call_2a13b5991a4b4354ae99d03ff621b2b7批仅等待q=慢请求、首次原payload照回，原切页RAF/assert不动，[原话/事实](../../tasks/playwright-workspace-fixture-rulings-2026-10-17.md)。本docs先行/父dc43e81回滚点，字段仍待独立许可，未改新等待点或字段；后继分别提交/真变异，成本/业务/配置/C/第二轮保护，最终HEAD全CI必跑。[未测试]（新增R7，原失败已实测）

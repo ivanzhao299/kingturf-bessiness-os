@@ -421,6 +421,8 @@
 
 ### TD-TEST-014｜Workspace旧夹具gate与360字段
 
+- **等待点已授后实测**：0c9a886后仅q=慢请求requested/awaitgate，首次原JSON照回，主切页/RAF/16assert同；positive1和restored1均3过1败，迟到成本目标过/唯一release hash=#/quotes；广路径真变异使成本再超时，2过2败，立即还原目标再绿，owned全清。只关闭等待点实施，360字段仍独立待裁/原失败、全文件真变异未完成，不写整文件通过。[精确结果](../tasks/playwright-workspace-fixture-rulings-2026-10-17.md)。
+
 - **实证**：原16expect同的auth/void候选PW1/38957ms、host1/44429ms，2过2败；第二input不可见30s、第三360 h2缺5s。原trace非auth初次cost GET q=null/status=-1，旧fixture全cost路径awaitgate；parser须string[]而mock缺，实际API有字段。owned全清、原HTML/截图/trace保留。
 - **边界/裁定**：只读支持旧合成夹具失配，非产品已证；本会话人类call_2a13b5991a4b4354ae99d03ff621b2b7准仅等待q=慢请求、首次原payload返回、原切页/RAF/assert不动。360字段本轮另待裁，不套CDP旧授权；全文件真变异/还原绿未完成。[原话/事实](../tasks/playwright-workspace-fixture-rulings-2026-10-17.md)。
 

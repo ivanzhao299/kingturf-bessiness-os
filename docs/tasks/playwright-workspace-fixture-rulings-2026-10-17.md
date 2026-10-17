@@ -21,3 +21,11 @@ dc43e81后只加已授S4合成Cookie/restore DTO和单void块体，原16expect�
 只准该等待点：requested仅由q=慢请求发出再await原gate，首次q空原payload立即回。主步骤原等requestStarted→quotes→RAF→release不改，核实际搜索在切页后响应。第二字段尚待本轮许可，不因首项先补；成本TD-TEST-013/C2/第二轮/产品保护保持。
 
 独立R7 docs先行、台账54，父dc43e81回滚点。当前auth/void候选未作新等待点/字段变更；后继候选与各获准修正分提交，保原部分通过/失败，不预填全绿。最终稳定干净HEAD完整CI必跑，不push/部署/workflow/生产/一般阶段5。
+
+## 等待点后继实施（字段仍待裁）
+
+0c9a886保auth/void候选2过2败后，单独只对q=慢请求发requested/await原gate，首次原payload正常返回。夹具另只报固定fixture标记及page hash，不打印auth/业务body。主步骤从切costing起到quotes/RAF/release/原断言全字节同，16原expect不动。
+
+workspace-timing-positive-1：PW1/9435ms、host1/15210ms，**3过1败**（迟到成本case已过，360仍原缺字段失败）；实际唯一release标记hash=#/quotes。真实源将条件扰回全部cost路径，workspace-timing-broad-gate-red-1：PW1/39005ms、host1/44821ms，2过2败，成本case又30s超时。完整close/清理后立即还原q条件，workspace-timing-restored-1：PW1/9562ms、host1/15129ms，3过1败，成本case再次过且唯一release hash=#/quotes，原16assert/切页RAF动作未改。每次owned三清理全真，原失败截图/trace独立保留。
+
+这是等待点目标case真红→还原绿，不是整个spec绿；360未获本轮许可未改。TD-TEST-014只等待点实施验证完成、字段/全文件auth变异仍未完成。父0c9a886为本等待点修正独立回滚点，最终HEAD完整CI仍必跑。

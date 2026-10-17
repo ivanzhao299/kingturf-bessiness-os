@@ -1,5 +1,7 @@
 # Docker 单 spec 回放证据（2026-10-17）
 
+**Workspace等待点后继**：0c9a886候选后按本轮人裁仅q=慢请求等待，原16assert与切页/RAF动作不动，实际搜索在quotes后释放；广拦截真变异又使目标case超时，完整清理还原后该case过。全spec仍3过1败（360字段待裁未改），非全绿，[原命令/退出/耗时](../tasks/playwright-workspace-fixture-rulings-2026-10-17.md)。旧2过2败为前时点，第二轮继续禁止。
+
 **Workspace候选后继**：仅已授auth/单void候选原4例2过2败，原16expect同、lint0；首次成本GET被旧gate挂起、360缺必填字段另记TD-TEST-014/54项。[原失败/增量裁定](../tasks/playwright-workspace-fixture-rulings-2026-10-17.md)：等待点已人裁批准未实施、字段独立待裁；此候选只作可复现检查点，未完成全文件真变异/还原绿，不称已交付。其它3A/2B未跑、成本仍1过1败、第二轮禁，旧未执行计数保前时点。
 
 **订单证据后继**：order-evidence仅会话fixture替换，真实旧token红→清理后还原原1例过，15expect及从viewport起全部操作字节同。当前login2/doc7/order1过；成本1过1败待TD-TEST-013，余4A/2B未跑、C禁/未第二轮。下方“余5A”等为前时点；末节含原命令/退出/耗时，最终完整CI未预填。
