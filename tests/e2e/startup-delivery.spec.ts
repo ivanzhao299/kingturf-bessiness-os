@@ -1,4 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+import {
+  installSyntheticColdStart,
+  seedSyntheticCookies,
+  sessionResponse,
+} from './fixtures/browser-session';
 
 const session = {
   employeeId: 'startup-test',
@@ -9,12 +14,34 @@ const session = {
 };
 const workspaceAsset = /\/assets\/bootstrap-[^/]+\.(js|css)$/;
 
+const cookieValues = async (page: Page) =>
+  JSON.stringify(
+    (await page.context().cookies())
+      .map((cookie) => [cookie.name, cookie.value])
+      .sort(([a], [b]) => (a ?? '').localeCompare(b ?? '')),
+  );
+
+async function installRestorableSession(page: Page, restored: () => void) {
+  await seedSyntheticCookies(page);
+  await page.route('**/api/v1/auth/session', async (route) => {
+    const hasCookie = (route.request().headers().cookie ?? '')
+      .split(';')
+      .some((part) => part.trim() === '__Host-kingturf-session=synthetic-browser-fixture-only');
+    restored();
+    await route.fulfill({
+      status: hasCookie ? 200 : 401,
+      json: hasCookie ? sessionResponse(session) : { error: { message: 'No synthetic session' } },
+    });
+  });
+}
+
 test('cold login does not download business JS or CSS, including on a slow connection', async ({
   page,
   context,
 }) => {
   const businessRequests: string[] = [];
   const logoRequests: string[] = [];
+  await installSyntheticColdStart(page);
   await page.setViewportSize({ width: 1440, height: 1200 });
   page.on('request', (request) => {
     if (workspaceAsset.test(request.url())) businessRequests.push(request.url());
@@ -57,12 +84,8 @@ test('shows download progress and waits for business assets only after validatin
   page,
 }) => {
   let sessionValidated = false;
-  await page.addInitScript(() =>
-    sessionStorage.setItem('kingturf.session', 'startup-test-session'),
-  );
-  await page.route('**/api/v1/auth/session', async (route) => {
+  await installRestorableSession(page, () => {
     sessionValidated = true;
-    await route.fulfill({ json: session });
   });
   await page.route(workspaceAsset, async (route) => {
     expect(sessionValidated).toBe(true);
@@ -79,45 +102,54 @@ for (const extension of ['js', 'css']) {
   test(`a failed business ${extension} retains the session and can recover through explicit page refresh`, async ({
     page,
   }) => {
-    await page.addInitScript(() =>
-      sessionStorage.setItem('kingturf.session', 'startup-test-session'),
-    );
-    await page.route('**/api/v1/auth/session', (route) => route.fulfill({ json: session }));
+    let restores = 0;
+    await installRestorableSession(page, () => {
+      restores += 1;
+    });
+    const beforeFailure = await cookieValues(page);
     const asset = new RegExp(`/assets/bootstrap-[^/]+\\.${extension}$`);
     await page.route(asset, (route) => route.abort('failed'));
     await page.goto('/');
     await expect(page.getByRole('heading', { name: '加载遇到问题' })).toBeVisible();
-    expect(await page.evaluate(() => sessionStorage.getItem('kingturf.session'))).toBe(
-      'startup-test-session',
-    );
+    expect((await cookieValues(page)) === beforeFailure).toBe(true);
+    const restoresBeforeRefresh = restores;
     await page.unroute(asset);
     await page.getByRole('button', { name: '刷新页面获取最新版本' }).click();
     await expect(page.getByRole('heading', { name: '经营概览', exact: true })).toBeVisible();
+    expect(restores).toBe(restoresBeforeRefresh + 1);
   });
 }
 
 test('a transient session failure is retryable, while only an explicit 401 returns to login', async ({
   page,
 }) => {
-  await page.addInitScript(() =>
-    sessionStorage.setItem('kingturf.session', 'startup-test-session'),
-  );
+  await seedSyntheticCookies(page);
+  const beforeFailure = await cookieValues(page);
   let status = 503;
   const businessRequests: string[] = [];
   page.on('request', (request) => {
     if (workspaceAsset.test(request.url())) businessRequests.push(request.url());
   });
-  await page.route('**/api/v1/auth/session', (route) =>
-    route.fulfill({ status, json: { error: { message: 'test failure' } } }),
-  );
+  const restoreStatuses: number[] = [];
+  page.on('response', (response) => {
+    if (new URL(response.url()).pathname === '/api/v1/auth/session') {
+      restoreStatuses.push(response.status());
+    }
+  });
+  await page.route('**/api/v1/auth/session', (route) => {
+    expect(route.request().headers().cookie).toContain(
+      '__Host-kingturf-session=synthetic-browser-fixture-only',
+    );
+    return route.fulfill({ status, json: { error: { message: 'test failure' } } });
+  });
   await page.goto('/');
   await expect(page.getByRole('heading', { name: '加载遇到问题' })).toBeVisible();
-  expect(await page.evaluate(() => sessionStorage.getItem('kingturf.session'))).toBe(
-    'startup-test-session',
-  );
+  expect((await cookieValues(page)) === beforeFailure).toBe(true);
   status = 401;
   await page.getByRole('button', { name: '重新加载工作台' }).click();
   await expect(page.getByText('登录状态已失效，请重新登录')).toBeVisible();
-  expect(await page.evaluate(() => sessionStorage.getItem('kingturf.session'))).toBeNull();
+  await expect(page.getByRole('button', { name: '登录', exact: true })).toBeVisible();
+  await expect(page.locator('.app-shell')).toHaveCount(0);
+  expect(restoreStatuses).toEqual([503, 401]);
   expect(businessRequests).toEqual([]);
 });

@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **startup首轮（2026-10-17）**：仅已授fixture/会话oracle，原cold/layout/logo/下载/资产失败刷新业务断言保持；503保Jar、401客户端回登录不要求清HttpOnly。资产删Cookie两红→还原5过、401变403一红→还原5过PW0/6241ms、host0/12660ms，owned全清，[映射/原时序边界](../../evidence/playwright-docker-spec-replay-2026-10-17.md)。现6份A已试中5份全绿、Workspace/成本各仍一败，source/B未跑、第二轮禁/C禁，最后HEAD全CI仍必跑。
+
 - **P1产物最小例外已授（2026-10-17）**：本会话直接人类call_5b46d68608d34eccb6dbaaae626c4776批准P1-only命令traceoff、原配置/断言不改；只读容器、owned tmpfs原raw不导出，仅固定结果/核过业务截图，清理容器，不承诺RAM/swap物理零落盘。[原话/执行界线](../../tasks/playwright-p1-artifact-authorization-2026-10-17.md)先独立落盘，尚未接线/P1执行；A首轮先续，成本/Workspace未绿及B/第二轮/最终CI边界不变。
 
 - **revocation首轮（2026-10-17）**：依已授三文件oracle，旧storage改合成Jar/实际恢复响应，401客户端失效不要求清HttpOnly，403同Jar恢复；原即时业务UI断言保持。真实撤销条件/403删Cookie各红后还原2过PW0/3577ms、host0/9211ms；一次SIGTERM中断明确不算绿，owned全清，[证据](../../evidence/playwright-docker-spec-replay-2026-10-17.md)。login2/doc7/order1/revocation2过，Workspace3过1败缺字段待裁、cost1过1败；startup/source/B未跑，第二轮禁/C禁，最后HEAD全CI必跑。
@@ -3725,6 +3727,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+- **2026-10-17｜startup-delivery会话oracle迁移**：父dc32ffa，只旧storage→合成Jar/DTO、cold显式401，原资产/layout/logo/progress断言保留。JS/CSS失败留Jar且原刷新需新增Cookie门控restore；503留Jar→原401回登录/无shell/无业务下载，实际响应[503,401]。资产误清Cookie真红2败3过→还原5过；retry401改403真红1败4过→还原5过PW0/6241ms、host0/12660ms，owned全清。旧非storage expect节点36（含链内重复）全同，cold动作字节同，原lint/format0，首空默认回调lint1修为必需参数未降规则，只读review无阻断。[逐步命令/边界](../../evidence/playwright-docker-spec-replay-2026-10-17.md)。不称原sessionValidated标记证明响应完成时序，不要求401清HttpOnly/不冒充实际API；source/B未跑，现存cost/Workspace失败与C/第二轮/最后HEAD全CI保护保持。[已测试]（原5例及两类真红绿）
 
 - **2026-10-17｜P1最小产物例外R7**：直接人类call_5b46d68608d34eccb6dbaaae626c4776明确批P1命令traceoff/两配置与业务断言不变，独立只读容器及owned tmpfs不导出raw，仅固定结果和逐张核过业务截图，清理后不承诺RAM/swap物理零落盘。[原始reply/保护边界](../../tasks/playwright-p1-artifact-authorization-2026-10-17.md)。父796eba0，仅docs提交，不包含startup候选；未实施/未运行B，原A0644策略不得扩真实B。具体接线/复核/负向清理另验，不扩成本/字段许可、C/第二轮/一般阶段5，最后HEAD实际全CI必跑。[未测试]（人裁文档，非执行成功）
 

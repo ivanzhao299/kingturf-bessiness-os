@@ -121,6 +121,24 @@ e92bbe9后仅在已有strict TS工程补本地P1文件include，供未来获准�
 
 每次host guard/容器READ ONLY同实例通过，owned三清理均true；红HTML及artifacts下test-failed-1.png/trace.zip实际存在，未覆盖/不跳过。最后无token变异，父253b761为独立回滚点。本文件绿不抵其它spec/成本失败/第二轮，不是API授权或真实Set-Cookie证据。最终最后提交完整CI必跑。
 
+## startup-delivery：已授失败保会话 oracle 迁移
+
+父dc32ffa。只fixture和4e691e5已授会话oracle：cold首goto前装合成restore401；原3处storage setup换合成Jar/新DTO，保原员工/空权限。进度case仍原session handler标记/资产800ms等待；此标记先于fulfill，沿旧时点，不单独证明HTTP响应完成再下载。JS/CSS abort/显式刷新与布局/Logo/下载业务断言不改；旧storage保值变Jar布尔相同，并要求刷新新增一次Cookie门控restore和原经营概览。503原保值变Jar布尔相同，原503→401重试顺序不改，401旧storage-null变登录/无shell，实际响应序列必须[503,401]；不要求清HttpOnly，原businessRequests=[]保留。
+
+内存AST按旧非storage expect开头调用节点（含链式/内层重复，非独立断言数）计36节点，所有表达式原样保留；原cold从setViewport到结束动作/断言/附件字节同。只读review无必要阻断；原ESLint/Prettier最后0/diff-check0。首候选默认空回调曾被no-empty-function拒1，改为各调用方本已传入的必需回调，无disable或业务修改。
+
+命令同首节，文件=startup-delivery.spec.ts；原5例，各唯一label/原附件策略：
+
+| label                      | 实际PW；host                                                                                     |
+| -------------------------- | ------------------------------------------------------------------------------------------------ |
+| startup-adapt-green-1      | 5过，PW0/5963ms；host0/11857ms                                                                   |
+| startup-asset-cookie-red-1 | 真源仅资产abort前删合成auth Cookie，JS/CSS两例Jar布尔false红，其余3过；PW1/6880ms；host1/12797ms |
+| startup-asset-restored-1   | 完整close清理后还原，5过，PW0/5362ms；host0/11039ms                                              |
+| startup-status-403-red-1   | 真源只把原retry目标401改403，原失效提示红、其余4过；PW1/10863ms；host1/16286ms                   |
+| startup-status-restored-1  | 完整close清理后还原，5过，PW0/6241ms；host0/12660ms                                              |
+
+各次owned schema/container/preview三清理true；红截图/trace/HTML各独立保留。变异均已移除，原产品/配置不动。这只是合成浏览器启动/失败恢复证据，非实际服务器撤销/认证安全。父dc32ffa为本文件回滚点；source/B仍待执行，Workspace/成本原失败不消除，不跑C/第二轮，最后HEAD实际全CI仍必跑。
+
 ## session-revocation：已授会话 oracle 最小迁移
 
 父5ef45bc，依4e691e5三项人裁，仅该文件旧storage setup/oracle迁移。先种合成Secure/HttpOnly Jar再导航，不再先发一次未拦截真实restore；原员工/权限、cost搜索/拒绝payload及即时401登录提示/撤shell、403错误/留shell断言均保持。401不要求JS删除HttpOnly Cookie：原storage-null改为原即时UI失效，加显式reload仍登录/无shell；403原storage值改为Jar前后相等布尔，不输出值，并reload证同Cookie可恢复。恢复mock只在实际Cookie存在且未由实际业务401标记revoked时200，不能无条件200伪造恢复；revoked只属受控mock契约，不冒充真实服务端撤销。
