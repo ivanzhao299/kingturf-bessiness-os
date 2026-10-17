@@ -1,5 +1,13 @@
 # 阶段5现状测试地图与补齐清单
 
+## 后继实际补测：佣金专项PG
+
+父ec16d93后新增独立`commission-postgres.integration.test.ts`，每例复用已核共享真实商业图/owned schema、原lint/tsc/format0。六项覆盖policy版本/发布/不可变及audit+outbox精确action/aggregate/id/version；独立固定950000收入、250000毛利/2631bp、100000回款→1052bp、300bp→28500，三独立政策分别自动RELEASED/回款FROZEN/毛利FROZEN及seq1/2账；真实SELF/TEAM锚点/外租户/无scope与同tenant非owner不可见；同key持久行重放无新增、新key同业务唯一冲突；释放门槛、付款/追索必填外部引用、PAID/CLAWED_BACK各28500及连续账/累计金额/终态/不可变；无效refs/期间格式及后置outbox冲突时ledger/状态/version/audit整体回滚。初始图已另有AUTH-COM记录，不假定空表，也不因helper名称把它计作RELEASED证据。
+
+首guard0，全六项实际5过1败/exit1/null/20593ms：新测试误取首次返回不存在的canonicalHash与replay.canonical_hash比较。产品首次DTO和持久行形状本来不同，未补产品字段；等close后改为**重放前**读既存hash快照、校64hex及固定金额，保id/order/前后count/audit/outbox无增，第二轮6过/exit0/null/20327ms。独立复核指出owner=beneficiary样本无法区分错误按受益人过滤，补真实另一同tenant受益人：builder SELF仍可见，reviewer SELF即使是beneficiary仍不可见；最终6/6、exit0/null/20429ms（测试18550ms），真实shuffle.tests/seed20261017及start/result记录证明乱序。日志`/tmp/kingturf-stage5-commission-pg-{first,second,final}-2026-10-17.log`。独立只读核固定oracle/事务后段冲突/范围无必要阻断。
+
+口径：重放比较是既存身份/hash不变，不把DB值当金额算法预言；金额/比例/状态均独立固定。无真实外部付款、outbox投递、全币种、并发、后续实际回款后释放矩阵证明；各层鉴权仍分别由HTTP契约验证，不把direct repo context当全权限体系。未改生产/原fixture/P1数值/seed/网络。TEST003目前5/6，驾驶舱及其它A缺口、B目标和最终CI仍欠。
+
 ## 后继实际补测：风险专项PG/共享商业图及新发现
 
 父d51f074后新增独立`risk-postgres.integration.test.ts`与可复用`fixtures/owned-commercial-graph.ts`。每例owned helper先guard/随机schema-only迁移，再同schema,public新pool以用原扩展函数；真实AuthService/SecurityStore/PG grants及两同tenant合成身份，复用原releasedOrderFixture经生产buildApp.dispatch建图。认证材料仅内存，不返回/打印，不记录原始API响应，身份初始化错误固定化；新pool先关，再owned db/drop/admin，setup失败聚合清理。独立安全只读review无必要阻断。准确称“真实PG+进程内dispatch”，不是HTTP网络/浏览器/Cookie/代理验证；共享fixture名不充显式release路径或订单状态证据。
@@ -108,7 +116,7 @@ C安全注入实做于`packages/domain/src/index.ts`字段权限分支，临时d
 | 商业机会/需求/方案/成本矩阵/销售政策/报价 | opportunity/ctr/technical-solution/cost-matrix/quote/commercial各contract                                          | commercial-postgres与授权PG；不是全部价格来源/异常SQL完备证明                                                 | commercial-store/loading/route-data；销售/定价CDP历史                  |
 | QTC信用/合同/订单/应收/付款/核销          | qtc-\*与root-capture（335旧护栏）                                                                                  | qtc-postgres、授权PG、released-order-http fixture间接                                                         | 共享；履约/财务CDP历史，PW部分待裁                                     |
 | 催收/法务                                 | collection-route-contract                                                                                          | collection-postgres及授权PG                                                                                   | 共享；财务风险CDP历史                                                  |
-| 佣金                                      | commission-route-contract、scope-sql-commission                                                                    | released-order-http:192实际accrue、授权PG:507范围读取；缺专项PG重放/事务证据                                  | 共享；财务风险CDP历史                                                  |
+| 佣金                                      | commission-route-contract、scope-sql-commission                                                                    | 新commission-postgres专项6项真实PG绿，固定金额/范围/ledger/证据回滚（详见本文）                               | 共享；财务风险CDP历史                                                  |
 | 风险                                      | risk-route-contract、scope-sql-risk                                                                                | 新risk-postgres专项6项真实PG绿，固定评分/状态/租户/回滚；TD-RISK-001只登记不修（详见本文）                    | 共享；财务风险CDP历史                                                  |
 | 经营看板                                  | dashboard-route-contract、scope-sql-dashboard                                                                      | 13 PG文件中未找到dashboard实际查询；补专项                                                                    | 共享；财务风险CDP历史                                                  |
 | 制造主数据                                | manufacturing-route-contract                                                                                       | 新manufacturing-postgres专项6项真实通过（详见本文后继证据）；production PG旧直接种子仍另计                    | 共享；运营CDP历史                                                      |

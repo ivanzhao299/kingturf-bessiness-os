@@ -566,6 +566,8 @@
 
 ### TD-TEST-003｜6 个仓储模块仅 mock 路由级测试，SQL 路径未验证
 
+- **佣金后继当前，未关闭**：新增佣金6项真实PG0/20429ms，固定28500/1052及双冻结原因、付款追索/重放/owner≠beneficiary/后置outbox回滚；现制造/MRP/采购/风险/佣金5/6，驾驶舱专项与其余覆盖缺口待。首DTO/持久行hash形状测试错误修正史和全部限制见[测试地图](../evidence/harness-stage5-test-map-2026-10-17.md)，下列4/6及3/6段保留历史。
+
 - **风险后继当前，未关闭**：制造6/MRP8/采购8/风险6专项实际PG绿，现4/6域；风险用真实商业图+正常ownership，recordScopeSql读SELF/TEAM正负和evaluate窄scope实际08P01区分，新增TD-RISK-001只登记未修。共享图经进程内真实dispatch/PG建数非网络HTTP，固定评分/任务/重放/失败回滚及audit边界见[测试地图](../evidence/harness-stage5-test-map-2026-10-17.md)。佣金/驾驶舱独立专项及其余覆盖矩阵待；下段为先前3/6时点，不覆盖本后继。
 
 - **阶段5实际进展，未关闭**：制造专项6项真实PG0、租户SQL实现真注入1败4过→还原5绿→补强最终6绿；MRP专项8项真实PG0，首漏outbox必填字段及共享图顺序依赖修正史完整保留；采购专项8项真实PG0/21242ms、每例独立schema/真实链/状态及事务回滚，新增TD-PROC-001只登记未修。源码恢复SHA/diff0及事件证据见[测试地图](../evidence/harness-stage5-test-map-2026-10-17.md)。这三域公司/GROUP限定并非recordScopeSql接口，也无幂等命令；其余三域专项未完成，MRP非零库存/采购和多桶矩阵仍欠。原“六个无专项”保留为发现时点，佣金/风险旧HTTP间接证据不漏记。

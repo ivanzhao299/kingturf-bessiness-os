@@ -3752,6 +3752,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+- **2026-10-17｜佣金专项真实PG**：父ec16d93，独立六项实际PG0/20429ms，原lint/tsc/format0；复用owned商业图，真实固定28500/1052、毛利/回款冻结、scope owner≠beneficiary、版本证据、重放/付款追索ledger/后置outbox回滚。[完整历史/边界](../../evidence/harness-stage5-test-map-2026-10-17.md)。首5过1败为新测试误取首次DTO不存在的canonicalHash，改重放前持久hash快照+固定金额不改产品；第二6绿、补独立受益人反例最终仍6绿，乱序实证。TEST003仅5/6，驾驶舱与B/最终CI待；回滚本新test/docs独立revert，生产/原fixture/seed/P1原数值不动。[已测试]（实际PG专项，非完整CI）
+
 - **2026-10-17｜风险专项真实PG及R4新发现**：父d51f074，独立六项实际PG0/20363ms，原lint/tsc/format0；新共享商业图helper用原fixture+真实PG/AuthService/app.dispatch（非网络HTTP），认证材料不返回/打印，owned双pool清理独立核无阻塞。首次smoke1过4skip不充全绿；完整首4过2败（未分配owner/错无锚TEAM预言），仅新helper经正常ownership分配、TEAM区分后6绿，补正向TEAM/SELF读与反例最终仍6绿，[全历史/边界](../../evidence/harness-stage5-test-map-2026-10-17.md)。真实固定评分/任务ledger/重放/回滚/audit-only边界；新增TD-RISK-001窄scope参数位次08P01，60=原58+PROC/RISK，只登记不修产品，不把现状负向绿当功能正确。TEST003仅4/6、覆盖率与最终CI待；回滚本新test/helper/docs独立revert，后继复用helper须核依赖。[已测试]（实际PG专项，非完整CI）
 
 - **2026-10-17｜P1数值C7因果核查**：独立只读+主核当前源码，信用450000来自早期部分款快照，main73f9ea4已在拒绝/过期决策前结清尾款；驾驶舱四值来自KT-L11历史两订单环境，当前owned P1仅一个演示订单。[来源/事实与推断/两个待决选项](../../evidence/harness-stage5-browser-rulings-2026-10-17.md)。不把固定0前缀观察称精确金额，不凭环境差异判聚合回归或猜新四值；已询问人类独立验收基准，未改原值/seed/产品/网络，无新PG或浏览器执行，A–F继续。本提交仅docs证据，独立revert不删除旧失败史。[已测试]（源码考古/文档静态，非P1通过）
