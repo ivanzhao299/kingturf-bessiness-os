@@ -1,5 +1,7 @@
 # 技术债台账（tech-debt-tracker）
 
+**阶段5 E旧护栏可移植性实证（2026-10-17，61项）**：新增TD-TEST-019，隔离空Git对象目录/禁lazy-fetch，原QTC old探针实际exit1缺c7833e7；未改项目Git对象/配置/工作树。不是TD-REG-001业务回归复发，也不减少其old/current166+166/335断言。先登记再独立修测试载入，生产/workflow不动；F需原58+PROC/RISK+本项共61处置，历史60不回写。
+
 **阶段5覆盖率实际达标（2026-10-17，仍60项）**：3f03e62干净固定HEAD完整CI实际0/299126ms，六包check整体36471/48566≥75%、domain629/671≥90%、仓储9145/11512≥70%，B不下降/分母不变；TD-TEST-002仅已实施待终验，D最终三连/P1/E/F仍欠。[真实报告/失败史](../evidence/harness-stage5-coverage-protocol-2026-10-17.md)，不将本次全CI充项目竣工或关闭其他债。
 
 **阶段5风险专项新发现（2026-10-17，60项）**：新增TD-RISK-001，真实PG确证evaluate固定四参数却从$3拼recordScopeSql，SELF或真实TEAM锚点追加值导致08P01；不把无锚TEAM的正常not_found混作SQL失败。只登记不修产品，读取范围SQL另有正例；阶段5原58项基线外新PROC/RISK两项须纳入F，不回写旧计数。
@@ -135,6 +137,7 @@
 | TD-TEST-016  | P1原浏览器11例失败定位待核                                                                    | P2     | 本地浏览器回归 | C7可见性待裁             | Docker首轮发现                     | 前两例隐藏/其余不推定           |
 | TD-TEST-017  | 私有reporter构造options兼容缺口                                                               | P2     | 本地回放工具   | 兼容实施验证关闭         | 原生调用形状回归发现               | unit6/PW接线实证                |
 | TD-TEST-018  | 私有浏览器preview上游连接超时                                                                 | P2     | 本地回放环境   | 只登记/待核实            | 安全relay事件                      | active CONNECT_TIMEOUT          |
+| TD-TEST-019  | QTC旧回归探针运行依赖历史Git对象，缺对象时无法启动old校准                                     | P2     | 测试可移植性   | 无（拟仅冻结旧源码载入） | 阶段5 E                            | 已证实/待独立实施               |
 | TD-GATE-001  | 无 git hooks / commitlint / lint-staged，脏提交仅靠 CI 兜底                                   | P1     | 门禁           | 无                       | 阶段 3                             | 已完成                          |
 | TD-GATE-002  | vitest 无配置文件，参数散落各包 scripts                                                       | P2     | 门禁           | 无                       | 阶段 3                             | 已完成                          |
 | TD-GATE-003  | routes覆盖已修复；E1已撤，恢复31旧豁免                                                        | P1     | 工程门禁       | 无                       | 独立门禁任务／阶段5前复核          | 已验收                          |
@@ -553,6 +556,12 @@
 - **证据**：`.gitignore:4` 有 `coverage/` 条目但目录从未生成过；现状无法回答"覆盖率多少"。
 - **修复建议**：阶段 5 接入 `@vitest/coverage-v8`，整体下限 + 关键模块（apps/api 仓储层、packages/domain）单独下限，进 `ci:local`。
 - **业务行为影响**：无 ｜ **关联批次**：阶段 5 ｜ **验收方式**：覆盖率报告产出 + 低于阈值实测拦截
+
+### TD-TEST-019｜QTC旧基准探针依赖历史Git对象
+
+- **位置/事实**：`scripts/analysis/qtc-root-capture-probe.mjs:126–141`每次old目标执行git show短SHA；`qtc-root-capture-route-contract.test.ts`模块加载即运行old/current。主在独立空对象目录以GIT_OBJECT_DIRECTORY、空alternates、GIT_NO_LAZY_FETCH=1运行原old探针，实际exit1，`fatal: invalid object name 'c7833e7'`（日志`/tmp/kingturf-stage5-reg001-missing-object-red-2026-10-17.log`）；这是受控缺对象实证，不冒称已观察生产CI浅克隆失败。repo对象/HEAD/配置未改，亦无PG/浏览器。
+- **类别/优先级/影响**：测试可移植性/P2/无业务行为变化；TD-REG-001原业务回归仍已解决。先登记、再阶段5 E独立测试工具修复，不改产品/旧golden/原335期待或workflow。
+- **候选与验收**：完整旧app纯文本fixture，来源commit `c7833e74dbbb7e9fcdfd9384249a0d496b6d94ee`、blob `6e795061a62b48985364e575a17d6d973d9f0e8e`、202118字节/SHA256 `8abaf6fdd1fe1b02bda6ee39129c6f2901673da8d74c47d1f628f7248bbe9e3f`；装载前校字节hash，缺失/篡改fail-closed，不再运行时查旧Git。保原old/current各166与335校准、原appUrl/transform/import映射；后者仍用当前依赖，不称完整历史闭包。独立只读复核候选无必要阻断；实施后需空对象下完整335实际绿、完整CI另验，当前尚未实施。
 
 ### TD-RISK-001｜风险评价窄scope参数偏移与固定四参数冲突
 

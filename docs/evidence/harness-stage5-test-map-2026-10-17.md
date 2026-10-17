@@ -1,5 +1,9 @@
 # 阶段5现状测试地图与补齐清单
 
+## E旧回归探针缺对象真实红（TD-TEST-019，仅登记）
+
+原QTC old装载在隔离空Git对象目录/禁lazy-fetch实际exit1，缺c7833e7；repo正常对象和配置未改，既有335护栏在3f03e62完整CI仍绿。此是测试装载可移植性问题，不是旧业务回归复发。已先登记[TD-TEST-019](../exec-plans/tech-debt-tracker.md)，原58+PROC/RISK+本项=61，F不能漏新项；下方60等均历史。完整旧app文本fixture+固定commit/blob/字节SHA、保原166+166/335及当前依赖映射的候选已独立只读核，无必要阻断；尚未实施/未有空对象绿，不改产品/原oracle/workflow。
+
 ## 表单payload后继独立复核补强
 
 46f6f7b后第二路建议已补：BOM两种替代料用例均deferred finish，resolve前外层回调未settle，resolve后settle，并显式finish reject向上传播；不再仅靠立即resolve的finish spy。CAPA每路前两次requestId端口返回不同固定值，第二次submit payload必须带second-command-key，不能只调用requestId却重用旧key。仍不证明生产随机key唯一/后端幂等。原eslint/tsc0，制造5+CAPA5实际10/10、exit0，日志`/tmp/kingturf-stage5-manufacturing-capa-strengthened-2026-10-17.log`。下方初版范围保留作时点历史。全部生产源码仍无diff，准备在本轮提交后的干净HEAD运行完整ci:local（含真实六包覆盖check）；此前单包数值不冒称总体达标。

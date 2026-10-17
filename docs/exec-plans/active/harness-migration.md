@@ -3752,6 +3752,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+- **2026-10-17｜E旧护栏可移植性真实红先登记**：原old探针隔离空Git对象/禁lazy-fetch实际exit1缺c7833e7，非产品回归/非生产CI观察，repo对象配置未改。先新增TD-TEST-019 P2，原58+PROC/RISK+本项=61须F处置；[来源/固定hash/候选/验收](../../evidence/harness-stage5-test-map-2026-10-17.md)。独立只读核完整旧源码fixture+装载前字节hash、保335/166+166/原imports映射无必要阻断；当前只登记未修，不改产品/旧golden/workflow。[已测试]（原探针受控缺对象实际红）
+
 - **2026-10-17｜首次三覆盖目标同时达标/完整CI0**：3f03e627干净固定HEAD完整ci:local实际exit0/null/299126ms，六包API132/17281、Web25/414/config71/db68/domain20/types5、build/audit均绿，首尾树空同HEAD；链内真实run5eb8eb3e…结果整体36471/48566=75.10%、domain629/671=93.74%、仓储9145/11512=79.44%，deficits=[]，B不降/377生产/25仓储/分母hash不变。[实际报告hash/完整口径](../../evidence/harness-stage5-coverage-protocol-2026-10-17.md)。非最终三连之一，不关P1两项C7/TEST002终验、E/F未完成，不声明竣工；本docs只记录事实可独立revert。[已测试]（固定源码HEAD完整CI，后继文档HEAD另验）
 
 - **2026-10-17｜BOM/CAPA新断言补强**：父46f6f7b，独立复核建议后新增BOM deferred finish等待/reject传播、CAPA前后不同key精确绑定第二payload；原eslint/tsc0，制造5+CAPA5实际10过/exit0，[日志与范围](../../evidence/harness-stage5-test-map-2026-10-17.md)。不改产品/原断言、不充后端随机性/幂等。下一步干净固定HEAD完整ci:local含六包check实际核总覆盖，而非把单包测量替代；回滚本两test/docs独立revert。[已测试]（目标测试，完整CI待执行）
