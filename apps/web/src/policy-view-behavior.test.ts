@@ -153,37 +153,41 @@ describe('sales policy real view callback contracts', () => {
     expect(f.status.textContent).toBe('unchanged');
   });
 
-  it('revises only latest definition version and keeps immutable rule payload independent', async () => {
-    const views = new Map([
-      ['/api/v1/sales-policies', [published, { ...published, id: 'policy-v1', version: 1 }]],
-    ]);
-    const f = setup(['sales-policy:manage'], views);
-    f.mount();
-    expect(
-      f.workspace
-        .descendants()
-        .filter((node) => node.tagName === 'BUTTON' && node.textContent === '新建政策版本'),
-    ).toHaveLength(1);
-    expect(
-      findElement(
-        f.workspace,
-        (node) => node.tagName === 'BUTTON' && node.textContent === '新建政策版本',
-      ).parentElement?.textContent,
-    ).toContain('第 2 版');
-    const opened = f.click('新建政策版本');
-    expect(opened.title).toBe('修订 SP-1');
-    await opened.run({ minimumMargin: '20.55', maximumDiscount: '10.256' });
-    expect(f.submit).toHaveBeenCalledExactlyOnceWith(
-      '/api/v1/sales-policies/definition-1/versions',
-      { rules, publish: true },
-    );
-    expect(f.load).toHaveBeenCalledTimes(1);
-    f.status.textContent = 'unchanged';
-    f.submit.mockRejectedValueOnce(new Error('revision rejected'));
-    await expect(opened.run({})).rejects.toThrow('revision rejected');
-    expect(f.load).toHaveBeenCalledTimes(1);
-    expect(f.status.textContent).toBe('unchanged');
-  });
+  it.each([true, false])(
+    'revises only latest definition version with latest-first=%s and keeps fixed rules',
+    async (latestFirst) => {
+      const old = { ...published, id: 'policy-v1', version: 1 };
+      const views = new Map([
+        ['/api/v1/sales-policies', latestFirst ? [published, old] : [old, published]],
+      ]);
+      const f = setup(['sales-policy:manage'], views);
+      f.mount();
+      expect(
+        f.workspace
+          .descendants()
+          .filter((node) => node.tagName === 'BUTTON' && node.textContent === '新建政策版本'),
+      ).toHaveLength(1);
+      expect(
+        findElement(
+          f.workspace,
+          (node) => node.tagName === 'BUTTON' && node.textContent === '新建政策版本',
+        ).parentElement?.textContent,
+      ).toContain('第 2 版');
+      const opened = f.click('新建政策版本');
+      expect(opened.title).toBe('修订 SP-1');
+      await opened.run({ minimumMargin: '20.55', maximumDiscount: '10.256' });
+      expect(f.submit).toHaveBeenCalledExactlyOnceWith(
+        '/api/v1/sales-policies/definition-1/versions',
+        { rules, publish: true },
+      );
+      expect(f.load).toHaveBeenCalledTimes(1);
+      f.status.textContent = 'unchanged';
+      f.submit.mockRejectedValueOnce(new Error('revision rejected'));
+      await expect(opened.run({})).rejects.toThrow('revision rejected');
+      expect(f.load).toHaveBeenCalledTimes(1);
+      expect(f.status.textContent).toBe('unchanged');
+    },
+  );
 
   it.each([
     [[], [published], [{ id: 'cost-1' }]],

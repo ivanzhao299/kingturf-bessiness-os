@@ -215,7 +215,10 @@ describe('risk policy and order risk control callback contracts', () => {
     appendOrderRiskEvaluation(
       f.context,
       [{ id: 'order-1', order_number: 'SO-1' }],
-      [{ ...policy, status: 'DRAFT' }, policy],
+      [
+        { ...policy, id: 'draft-version-99', code: 'DRAFT-ONLY', version: 99, status: 'DRAFT' },
+        policy,
+      ],
       htmlElement(f.workspace),
     );
     const opened = f.click('运行订单风险评价');

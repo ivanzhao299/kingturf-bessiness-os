@@ -1,5 +1,11 @@
 # 阶段5现状测试地图与补齐清单
 
+## 政策新断言独立反例复核与真实筛选变异
+
+167e1fd后的第二路指出风险mixed政策样本DRAFT/PUBLISHED同id/code/version，错误筛DRAFT也会假绿。已只改新样本草稿为draft-version-99/DRAFT-ONLY/v99，PUBLISHED预言仍version-1/RISK-1/v2。新7项原实现实际0，随后仅真实实现`order360-risk-controls.ts`选项`.filter`临从PUBLISHED改DRAFT；原期待不动，具名`pins only published options and employee, uses UTC end-of-date and waits for current load message`实际红（1败6过/exit1/313ms），diff显示收到草稿身份而非发布身份。等close后完整还原，原/恢复SHA256均`36b4a56e26fd6109d8a4bb4c49889eb3c7ab987bb752c8849eb8066146b380cd`、源码diff0，再7/7实际0。日志`/tmp/kingturf-stage5-risk-options-{distinct-green,filter-mutant-red,restored-green}-2026-10-17.log`。这是新断言有效性取证，不替代已记C最低三类或最终CI。
+
+销售政策最新版同补正反两种输入序（v2/v1、v1/v2），原固定最大版本卡片预言不变，避免只抓last却放过first替代；现7项而非早期6项。后继Web全包结果另在下方表单payload补测中记录，不改产品终态/B/阈值/原测试。
+
 ## Web销售／风险政策固定预言与版本控制
 
 父dfd063e新增policy-view六项、risk-controls七项，真实模块回调、表单/控制器为mock端口。销售政策独立完整规则预言：20.55%→2055bp、10.256%→1026bp，创建/修订publish true；评价30.125%→3013、2.255%→226、只列已发布政策与固定成本选项，列表给定DTO的通过/审批/原因/hash展示不充实际规则引擎输出。销售政策与CTR最新版本样本改为v2在v1前，锁最大版本而非最后输入；CTR修订拒绝另补status sentinel，原11项不删。创建销售政策deferred load后读当前message，其它销售动作失败不reload/不覆盖status，不冒称逐路径延迟load。
