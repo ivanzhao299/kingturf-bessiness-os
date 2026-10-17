@@ -1,5 +1,23 @@
 # Workspace 旧夹具失败与增量裁定（2026-10-17）
 
+## 阶段5最新许可与实施（下方旧待裁为历史）
+
+5230625人类“4整体验收+浏览器裁断”明确授权Workspace必填字段按输入/载体适配纪律修正；阶段5R7 28215b0已亲核原始人类范围。本次仅第三case合成360响应补 `unavailableSections: ['orders', 'finance']`，与crm-repositories:869、types:371真实固定tuple一致；不是套用旧CDP许可或继续使用此前未批空数组提案。UI断言、route/逐帧步骤、其它payload及产品/两config均不改。
+
+精确命令仍 `NODE_ENV=test DATABASE_URL=<private guarded loopback> node --experimental-transform-types scripts/e2e-docker/preflight.mjs spec workspace-route-isolation.spec.ts <label>`，每次独立标签、完整close/owned清理后才改下一变异：
+
+| label                                  | 实际原用例结果                                                                       | PW / host            |
+| -------------------------------------- | ------------------------------------------------------------------------------------ | -------------------- |
+| stage5-workspace-field-positive-1      | 4过                                                                                  | 0/3930ms；0/9469ms   |
+| stage5-workspace-field-missing-red-1   | 真源删新增字段，第三原详情toHaveText失败；3过1败                                     | 1/9523ms；1/15018ms  |
+| stage5-workspace-field-restored-1      | 原字段立即还原，4过                                                                  | 0/3715ms；0/9075ms   |
+| stage5-workspace-session-old-dto-red-1 | 真源只移除sessionResponse包装回旧员工DTO（Cookie种子保留），4例均原app-shell断言失败 | 1/23705ms；1/29103ms |
+| stage5-workspace-session-restored-1    | 包装立即还原，4过                                                                    | 0/3930ms；0/9389ms   |
+
+每轮host guard及容器READ ONLY同库/schema/instance/marker先通过，owned schema/container/preview三清理true；host日志 `/tmp/kingturf-<label>-2026-10-17.log`，固定spec结果与原Playwright log/HTML/artifacts在 `.test-results/docker-pw/<label>/`，不读/输出认证头/完整trace。以上属形状合成UI，不是服务端真Cookie签名或授权证明。
+
+本文件原16expect/所有主动作不变：AST收集expect起始调用/链共32节点前后全相同，新增字段剥除后与28215b0全字节相同；原eslint/format实际0，完整CI提交后另实跑。auth真变异针对恢复DTO，不夸称单独检出Cookie种子删除。TD-TEST-014等待点及字段实施验证完成，整文件适配红→还原绿完成；不代表成本/P1/全部浏览器义务或阶段5验收。A现七文件绿、成本仍1败；第二轮仍未开，C生产禁。
+
 ## 原失败事实/TD-TEST-014
 
 dc43e81后只加已授S4合成Cookie/restore DTO和单void块体，原16expect调用参数AST同；void局部对照transpile除唯一获准形态外JS同。原catch-all合成API保持，不触真实API。

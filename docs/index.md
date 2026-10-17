@@ -6,6 +6,8 @@
 
 [阶段5浏览器考古与提案](evidence/harness-stage5-browser-rulings-2026-10-17.md)：main产品单页设计与P1逐例待裁方案，成本静态/实际证据及仍待受控对比，Workspace最小输入修正/TD018不放宽。
 
+[Workspace字段适配完成](tasks/playwright-workspace-fixture-rulings-2026-10-17.md)：5230625新许可补真实tuple，缺字段/旧恢复DTO各真实红→还原原4过；A七份绿、成本/P1待后继，非第二轮完成。
+
 [阶段5正式授权R7](tasks/harness-stage5-authorization-2026-10-17.md)：亲核人类原始消息，P/A–F范围、三覆盖率硬目标、唯一新直接依赖、串行PG、产品只临时注入还原、终验前不归档。接手5230625/树空，批次1–4已验收，阶段5未验证项不预写绿。
 
 [P1首轮失败与安全定位](tasks/playwright-p1-replay-blocker-2026-10-17.md)：原完整11败保留；最新仅3完成/complete=false，前两例overview看板隐藏、第三未知，超时中断后owned全清。候选精确封存还原、TD-TEST-016可见性待裁/018连接待核，台账58，不改业务期待/网络失败条件。

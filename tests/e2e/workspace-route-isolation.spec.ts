@@ -162,6 +162,7 @@ test('late customer detail response cannot replace the cost page or shrink its n
         activities: [],
         leads: [],
         opportunities: [],
+        unavailableSections: ['orders', 'finance'],
       },
     });
   });

@@ -1,5 +1,7 @@
 # 技术债台账（tech-debt-tracker）
 
+**阶段5 Workspace实施收口（2026-10-17，仍58项）**：按5230625新字段许可仅补真实orders/finance tuple，原4过；缺字段真红3过1败→还原4过，旧session DTO真红4败→还原4过。TD-TEST-014仅旧夹具/文件适配实施验证关闭，不认定产品问题；A七份绿/成本一败，P1待逐页期待裁定、第二轮未开。[全部实际结果](../tasks/playwright-workspace-fixture-rulings-2026-10-17.md)。批次4已人工验收，SEC003载体项按5230625关闭；下方旧待裁/未验收均历史，阶段5其它义务未完成。
+
 **首轮部分交付（2026-10-17，58项）**：新增TD-TEST-018，P1两次安全定位出现active upstream4173 CONNECT_TIMEOUT，最新仅3例完成、前两例原看板断言/overview隐藏，第三原因未知；TD-TEST-016转C7，候选封存还原。A六文件全绿/两份各一败，B runtime真红绿/P1未完成，不开第二轮、不改产品/网络失败条件。[事实与封存](../tasks/playwright-p1-replay-blocker-2026-10-17.md)。最后稳定干净HEAD完整CI另实测；下方均历史时点。
 
 **B工具新回归（2026-10-17，57项）**：新增TD-TEST-017，43047ec进度reporter把Playwright构造options误作writer；本地官方源码确认框架传对象，直接回归unit1/5过1败。仅已授B私有工具兼容缺口，先登记/红例后独立最小修复，不改产品/原断言。[证据](../evidence/playwright-local-private-runner-2026-10-17.md)。最新P1诊断还出现upstream4173 CONNECT_TIMEOUT/closing=false并清理，非RESET证据，不贸然放宽通道失败条件；下方56为历史。
@@ -120,7 +122,7 @@
 | TD-TEST-011  | 冻结P1种子生产关单缺实际成本批准，HTTP500/P0001                                               | P1     | 种子业务前置   | 已修（人类另授最小本地） | Docker前置补跑                     | 本地前置已验证/补跑未完成       |
 | TD-TEST-012  | 冻结文档发送PW旧header索引在额外strict tsc下类型不匹配                                        | P2     | 测试静态类型   | 未修（仅额外诊断）       | 后继独立授权                       | 待核实原门禁/运行影响           |
 | TD-TEST-013  | 成本转报价原成功提示可见性PW失败，前跳转/预选成功                                             | P2     | UI/oracle边界  | 未修（非S4范围）         | Docker首轮发现/待独立裁定          | C7待裁/候选根因未干预实证       |
-| TD-TEST-014  | Workspace旧PW夹具首次读取gate/360必填字段不兼容                                               | P2     | 合成测试夹具   | 等待点另授/字段待裁      | Docker首轮发现                     | 原2过2败/未修完                 |
+| TD-TEST-014  | Workspace旧PW夹具首次读取gate/360必填字段不兼容                                               | P2     | 合成测试夹具   | 等待点/字段已授验证关闭  | Docker首轮发现/5230625字段许可     | 真实变异红/还原原4例过          |
 | TD-TEST-015  | Source旧合成应收游标页缺nextCursor                                                            | P2     | 合成测试夹具   | 字段实施已验证关闭       | Docker首轮发现                     | 缺字段/auth真红绿，原3例过      |
 | TD-TEST-016  | P1原浏览器11例失败定位待核                                                                    | P2     | 本地浏览器回归 | C7可见性待裁             | Docker首轮发现                     | 前两例隐藏/其余不推定           |
 | TD-TEST-017  | 私有reporter构造options兼容缺口                                                               | P2     | 本地回放工具   | 兼容实施验证关闭         | 原生调用形状回归发现               | unit6/PW接线实证                |
@@ -464,6 +466,8 @@
 - **裁定/状态**：直接人类call_7652a1df412c4d42b66e572bb09ebeb7仅准该合成endpoint补nextCursor:null，原PG业务样本/权限/断言/其它响应保持；已授未实施，不认定产品缺陷或提前关闭。独立修正/缺字段真红绿及auth真变异待验，[完整事实/R7](../tasks/playwright-source-fixture-ruling-2026-10-17.md)。不阻独立B首轮，第二轮须全部绿，成本/Workspace未扩许可。
 
 ### TD-TEST-014｜Workspace旧夹具gate与360字段
+
+- **阶段5实施验证关闭**：5230625新授权＋28215b0 R7后，只360 tuple补真实orders/finance；positive4过、缺字段原第三case红/还原4过、旧恢复DTO四红/还原4过PW0/3930ms、host0/9389ms，owned全清。原16expect/主步骤守恒；本夹具及整个文件会话适配真实红绿完成，不代全部浏览器/第二轮。[映射/全部结果](../tasks/playwright-workspace-fixture-rulings-2026-10-17.md)。以下字段待裁均历史。
 
 - **等待点已授后实测**：0c9a886后仅q=慢请求requested/awaitgate，首次原JSON照回，主切页/RAF/16assert同；positive1和restored1均3过1败，迟到成本目标过/唯一release hash=#/quotes；广路径真变异使成本再超时，2过2败，立即还原目标再绿，owned全清。只关闭等待点实施，360字段仍独立待裁/原失败、全文件真变异未完成，不写整文件通过。[精确结果](../tasks/playwright-workspace-fixture-rulings-2026-10-17.md)。
 
