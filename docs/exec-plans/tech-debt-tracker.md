@@ -534,7 +534,7 @@
 
 ### TD-TEST-002｜无覆盖率配置与阈值
 
-- **阶段5实际进展，未关闭**：真实六包B已冻结、278f22a实际check三目标未达exit1；后继domain单包629/671≥90，不能代整体/仓储达标或最终CI。双写scanner/其余真实缺口仍待，[固定B和失败证据](../evidence/harness-stage5-coverage-protocol-2026-10-17.md)。下方“无配置”等为原发现时点。
+- **阶段5实际进展，未关闭**：真实六包B已冻结、278f22a实际check三目标未达exit1；后继domain单包629/671≥90，不能代整体/仓储达标或最终CI。双写/到期scanner已接（15工具例/真实全仓active0），其余真实缺口和最终达标/CI仍待，[固定B和失败证据](../evidence/harness-stage5-coverage-protocol-2026-10-17.md)。下方“无配置”等为原发现时点。
 
 - **位置**：全仓（package.json 无 coverage 脚本；无 vitest coverage 配置；lockfile 无 `@vitest/coverage-*`）
 - **类别**：测试/门禁 ｜ **严重度**：P1

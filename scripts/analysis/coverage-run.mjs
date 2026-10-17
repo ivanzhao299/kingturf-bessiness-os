@@ -13,6 +13,7 @@ import {
   validateRunManifest,
 } from './coverage-inventory.mjs';
 import { runOwned } from './coverage-process.mjs';
+import { checkCoverageExemptions } from './coverage-exemptions.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 // Set only from the first real six-package measurement; never auto-update a baseline.
@@ -64,9 +65,10 @@ async function collect() {
   );
   assert.equal(process.env.NODE_ENV, 'test', 'coverage requires NODE_ENV=test and guarded test DB');
   assert(process.env.DATABASE_URL, 'coverage requires DATABASE_URL for the existing test guard');
+  const inventory = productionInventory(root);
+  checkCoverageExemptions(root, inventory);
   const guard = await run(['ci:database:guard'], root);
   assert.equal(guard.exit, 0, 'coverage test database guard failed');
-  const inventory = productionInventory(root);
   const expected = {
     runId: randomUUID(),
     head: head(),

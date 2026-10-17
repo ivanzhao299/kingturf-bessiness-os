@@ -1,5 +1,19 @@
 # 阶段5覆盖率首测口径（测量前冻结）
 
+## 双写豁免结构校验接线（不新增豁免）
+
+`coverage-exemptions.mjs`用TS parser的真实comment ranges识别`// coverage-exempt(reason, until-YYYY-MM-DD)`，字符串/template/regexp内容不算注释；源码语法错误、标记畸形、无效日期、缺理由均失败。以源码path:line为身份，与台账JSON记录的reason/until逐值匹配；台账对应顶层TD状态必须精确“已豁免”，源缺台账、台账缺源、状态缺记录、重复/畸形都拦截。当前全377源和58项台账扫描实际`active=0`，没有创建业务豁免，不改inventory/分母/固定B或三目标。
+
+未来经人工批准的记录格式为台账中的单行HTML注释（下方只是本协议模板，不是台账激活记录）：
+
+```text
+<!-- coverage-exempt {"debt":"TD-...","path":"apps/.../src/file.ts","line":1,"reason":"与源码同一理由","until":"YYYY-MM-DD","approval":"明确人工R7引用"} -->
+```
+
+expiry以Asia/Singapore日历日比较，until当日有效、次日00:00恢复拦截；有精确UTC15:59:59→16:00边界反例。approval非空只核结构，**不自动证明人类批准真伪**，新建/续期仍须人工确认并先R7落盘，不能只改日期自续。扫描器仅元数据审计，不排除可执行行或绕最终三目标。
+
+已接入coverage-run在原DB guard前，对同一productionInventory检查；工具单测新增4项、总15/15实际通过，真实全仓scanner exit0（日期2026-10-17）、原ESLint/Prettier通过，独立只读review无必要阻断。反例包括双向孤儿/状态/字段错配、真实注释与literal、重复、坏日期和次日到期；尚未当前新HEAD完整ci:local，不冒称最终覆盖率达标。
+
 ## 首测结果（其后各节“尚未”描述保留为测量前历史）
 
 后继domain边界补测单包报告629/671（20项全绿，原分母671不变）达到该单包90%；[实际补测与安全注入](harness-stage5-test-map-2026-10-17.md)。不更新冻结B、不据此推断新的六包整体/仓储比率；最终check与三连CI仍待。

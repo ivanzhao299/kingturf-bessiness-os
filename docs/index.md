@@ -6,7 +6,7 @@
 
 [阶段5现状测试地图](evidence/harness-stage5-test-map-2026-10-17.md)：逐域mock/PG/Web/CDP边界、六域实际机制与补齐队列；不是旧零测试清单。
 
-[阶段5覆盖率首测协议](evidence/harness-stage5-coverage-protocol-2026-10-17.md)：六包生产源全集/未执行计入/精确整数汇总、B不下降与三目标、报告完整性和豁免边界；[首测固定基线](evidence/harness-stage5-coverage-baseline-2026-10-17.json)已实测，三目标尚未达到。
+[阶段5覆盖率首测协议](evidence/harness-stage5-coverage-protocol-2026-10-17.md)：六包生产源全集/未执行计入/精确整数汇总、B不下降与三目标、报告完整性及已接双写/到期豁免校验；[首测固定基线](evidence/harness-stage5-coverage-baseline-2026-10-17.json)已实测，最终三目标尚未全部达到。
 
 [阶段5浏览器考古与提案](evidence/harness-stage5-browser-rulings-2026-10-17.md)：main产品单页设计与P1逐例待裁方案，成本静态/实际证据及仍待受控对比，Workspace最小输入修正/TD018不放宽。
 
