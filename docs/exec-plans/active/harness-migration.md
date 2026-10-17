@@ -2,7 +2,7 @@
 
 ## 0. 元信息
 
-- **startup首轮（2026-10-17）**：仅已授fixture/会话oracle，原cold/layout/logo/下载/资产失败刷新业务断言保持；503保Jar、401客户端回登录不要求清HttpOnly。资产删Cookie两红→还原5过、401变403一红→还原5过PW0/6241ms、host0/12660ms，owned全清，[映射/原时序边界](../../evidence/playwright-docker-spec-replay-2026-10-17.md)。现6份A已试中5份全绿、Workspace/成本各仍一败，source/B未跑、第二轮禁/C禁，最后HEAD全CI仍必跑。
+- **startup首轮（2026-10-17）**：仅已授fixture/会话oracle，原cold/layout/logo/下载/资产失败刷新业务断言保持；503保Jar、401客户端回登录不要求清HttpOnly。资产删Cookie两红→还原5过、401变403一红→还原5过PW0/6241ms、host0/12660ms，owned全清，[映射/原时序边界](../../evidence/playwright-docker-spec-replay-2026-10-17.md)。现7份A已试中5份全绿、Workspace/成本各仍一败，source/B未跑、第二轮禁/C禁，最后HEAD全CI仍必跑。
 
 - **P1产物最小例外已授（2026-10-17）**：本会话直接人类call_5b46d68608d34eccb6dbaaae626c4776批准P1-only命令traceoff、原配置/断言不改；只读容器、owned tmpfs原raw不导出，仅固定结果/核过业务截图，清理容器，不承诺RAM/swap物理零落盘。[原话/执行界线](../../tasks/playwright-p1-artifact-authorization-2026-10-17.md)先独立落盘，尚未接线/P1执行；A首轮先续，成本/Workspace未绿及B/第二轮/最终CI边界不变。
 
@@ -3727,6 +3727,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+- **2026-10-17｜P1后继范围精度纠正**：dc32ffa人类只批准具体产物例外，并未增加“全部A绿才B”条件；该R7尾部是主代理额外解释，已显式纠正为原A首轮→B首轮，仅第二完整轮须A+B全绿，不借既有失败冻结其它独立首轮。startup当前已试A数应7（5全绿+Workspace/成本各一败），旧6属计数笔误一并纠正；不改变真实用例/日志/失败结果。[未测试]（文档精度修正）
 
 - **2026-10-17｜startup-delivery会话oracle迁移**：父dc32ffa，只旧storage→合成Jar/DTO、cold显式401，原资产/layout/logo/progress断言保留。JS/CSS失败留Jar且原刷新需新增Cookie门控restore；503留Jar→原401回登录/无shell/无业务下载，实际响应[503,401]。资产误清Cookie真红2败3过→还原5过；retry401改403真红1败4过→还原5过PW0/6241ms、host0/12660ms，owned全清。旧非storage expect节点36（含链内重复）全同，cold动作字节同，原lint/format0，首空默认回调lint1修为必需参数未降规则，只读review无阻断。[逐步命令/边界](../../evidence/playwright-docker-spec-replay-2026-10-17.md)。不称原sessionValidated标记证明响应完成时序，不要求401清HttpOnly/不冒充实际API；source/B未跑，现存cost/Workspace失败与C/第二轮/最后HEAD全CI保护保持。[已测试]（原5例及两类真红绿）
 

@@ -14,4 +14,4 @@
 
 本R7不是实施通过。仍需先具体接线/封闭写路径、独立只读复核及真实正负/取消清理证据；发现无法满足即停报，不凭本例外宣称秘密零落盘。协调后到的密封全产物方案未执行、不取代此直接人类裁定，若拟改为保留加密raw须另经具体裁定。
 
-先继续A8独立首轮；全部A绿后才B2，全部A+B绿后才原定第二轮。runtime沿原trace/screenshot off，C2不改不跑。当前cost/Workspace仍有非S4待裁失败，不因本R7改业务/oracle。产品/API/Web/SQL/依赖/workflow/push/部署/一般阶段5保护保持，最后稳定干净HEAD实际完整CI必跑。
+先继续A8独立首轮，再B2首轮；仅第二完整轮须全部A+B绿。先前dc32ffa此处“全部A绿后才B2”是主代理额外解释，非上述人类reply/原授权的新条件，现明确纠正，不因此拦独立未受影响B首轮。runtime沿原trace/screenshot off，C2不改不跑。当前cost/Workspace仍有非S4待裁失败，不因本R7改业务/oracle。产品/API/Web/SQL/依赖/workflow/push/部署/一般阶段5保护保持，最后稳定干净HEAD实际完整CI必跑。
