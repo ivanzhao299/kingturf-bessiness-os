@@ -26,3 +26,28 @@
 真实故障命令为同一入口追加 `interrupt`，label `login-owned-interrupt-1`：真实PW spawn发安全spec-started后才给host SIGTERM。`/tmp/kingturf-docker-login-owned-interrupt-1-2026-10-17.log` host实际1/5592ms；子日志末行owned-playwright-close exit=null、terminationSignal=SIGTERM。container-failed后schemaGone/containerGone/previewGone全true，随后实际Docker本task label列表为空。只证明本受控取消路径，不称任意OS挂起或leaderclose即排空。独立只读复核无必要阻断，未执行额外PG/测试。
 
 实际核 `.test-results/docker-pw/login-adapt-green-1/html/index.html`、独立artifacts下test-failed-1.png/trace.zip，以及generation红的独立HTML/同类附件均存在；没有拿默认报告目录或覆盖旧红。具体登录适配/变异结果下节补记，环境窄修与fixture独立提交。
+
+## login-product-quality：会话夹具独立适配
+
+基线60ab881。只替换原两处auth stub/补冷启动夹具；原session员工/权限、两次180ms延迟、loginRequests计数、导航/进度/防重复提交/密码清空/错误断言不动。AST实际比较原9个expect完整表达式相同，两测试从page.goto起的操作与断言全部字节相同。没有因新协议修改产品源码/业务断言/配置。
+
+| 旧位置/行为                                     | 新夹具映射                                                                                                                                                                                                                                                |
+| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| login原15–23：token登录、普通DTO session始终200 | `installSyntheticLogin`初始restore401；只有用户提交后login-context合成proof→POST login合成expiresAt/generation/csrf→restore完整原员工DTO+proof。登录及后续restore仍各180ms、请求计数只在POST login增加。                                                  |
+| login原40–45：仅login401                        | `installSyntheticColdStart`补初始restore401/login-context；原login401的payload与所有错误/密码/UI断言原样。                                                                                                                                                |
+| 新共享helper                                    | `tests/e2e/fixtures/browser-session.ts`只做合成协议形状/显式host/path合成Cookie；未识别auth路径abort，绝不触真实本地auth。断言intent/POST/login csrf接线，generation43/新session形状，不伪造真实API授权证据。原各业务route stub边界不扩大为全部网络硬闸。 |
+
+逐spec真实命令：`NODE_ENV=test DATABASE_URL=<private guarded loopback> node --experimental-transform-types scripts/e2e-docker/preflight.mjs spec login-product-quality.spec.ts <label>`；容器实际执行原CLI单文件 `--config=playwright.config.ts --output=.test-results/docker-pw/<label>/artifacts`，原Chrome/worker/retries/trace/截图不变。日志 `/tmp/kingturf-docker-<label>-2026-10-17.log`，PW原始log/HTML/附件在上述同标签目录。
+
+| label                         | 实际PW结果/耗时；host结果/耗时                                                                         |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------ |
+| login-adapt-green-1           | 1失败/1通过，exit1/2701ms；host1/8324ms，新增Cookie字段错误历史，非变异通过证据                        |
+| login-adapt-green-2           | 2通过，exit0/2348ms；host0/7615ms                                                                      |
+| login-helper-generation-red-1 | 真实helper源generation43→42，原成功登录断言红；1失败/1通过，exit1/7623ms；host1/13117ms                |
+| login-helper-restored-1       | 立即还原43；2通过，exit0/2415ms；host0/8123ms                                                          |
+| login-spec-old-token-red-1    | 真实login spec传入会话额外旧token字段，客户端严格restore拒绝；1失败/1通过，exit1/7619ms；host1/13086ms |
+| login-spec-restored-1         | 立即还原旧token变异；2通过，exit0/2305ms；host0/7673ms                                                 |
+
+真实红均原断言失败且保留截图/trace/HTML；最终helper=43、session无token，变异不入库。每次host guard/容器只读同一性先通过，owned三清理全true；两次红不是改期望/跳过/重试刷绿。原hook ESLint实际0；额外全A tsc旧诊断仍如前，不宣称全A类型绿。API/Web全量和最后干净HEAD完整CI在本适配提交后另实际执行。
+
+仅此文件首轮候选已绿（2测试），不是A8全绿；其它7A/2B未执行/未适配，C2不改不跑，第二完整轮未开始。父60ab881为本夹具适配回滚点；共享helper与本spec一起回滚，后继消费者先撤，保留工具/成本独立链。

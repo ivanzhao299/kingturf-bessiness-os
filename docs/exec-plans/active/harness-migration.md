@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **PW首份夹具候选（2026-10-17）**：login-product-quality原9个expect/导航后全部操作字节守恒，新共享合成会话夹具/冷restore401/login-context/新login及restore DTO；helper代际与spec旧token各真实源变异红→立即还原2通过，失败附件独立保留，执行器真实取消已核。[逐处映射/命令/退出耗时](../../evidence/playwright-docker-spec-replay-2026-10-17.md)。其它7A/2B未跑，C2禁止、第二轮未开始；本适配提交后相关API/Web全量/干净HEAD完整CI另实际跑，不以额外tsc旧诊断改冻结断言，台账52。
+
 - **A接线现时（2026-10-17）**：成本1228531真实干净HEAD全CI0/202370.62ms后，增加A8精确白名单单spec环境入口与strict TS项目归属，不改PW配置。额外全A tsc暴露冻结document-send:154 header索引类型诊断exit2，TD-TEST-012仅登记、现52项；独立只读确认非原CI门禁/PW失败，不顺手改断言/放宽规则，真阻断原hook/补跑则C7。[证据](../../evidence/playwright-docker-spec-replay-2026-10-17.md)。
 
 - **成本种子现时（2026-10-17）**：bea9a76人类R7最小准备已实施并真实缺料/自批红→还原绿，同schema完整seed两次0/计数不变、owned清理；[证据](../../evidence/playwright-p1-cost-seed-2026-10-17.md)。TD-TEST-011本地前置实施已验证、台账51；原close/其它业务字节守恒。提交后稳定干净HEAD完整CI再直接续已授fixture/oracle及A8→B2/第二轮；下方待裁/未实施/停点保留为历史，不扩大生产/配置/SQL/业务断言/一般阶段5范围。
@@ -3713,6 +3715,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+- **2026-10-17｜login-product-quality独立夹具适配**：只替旧auth stubs和补cold restore401/login-context，共享helper纯合成新DTO/Cookie形状；原9expect完整表达式及page.goto后操作/断言实际完全相同，原180ms两阶段/计数保留。初次Cookie字段失败保历史/附件；helper代际43→42真实红host1/13117ms→还原0/8123ms，spec加入旧token真实红1/13086ms→立即还原0/7673ms、原2测试通过。全部owned清理，[完整映射/原命令/证据](../../evidence/playwright-docker-spec-replay-2026-10-17.md)。父60ab881独立回滚点；其它7A/2B未跑，C未动，API/Web全量与最终干净HEAD CI提交后另执行，不抬评分/称阶段5完成。[已测试]（真实逐文件红绿；最终CI随后）
 
 - **2026-10-17｜单spec执行器取消/证据窄补**：e871a8d后首合成登录候选实跑1失败1通过（CDP夹具Cookie字段），原HTML/截图/trace独立保存；修fixture后2通过，非从未失败。工具补异步mkdir/open后spawn前abort检查、A本地合成日志可读0644、leader原close exit/signal落日志。真实spec-started后SIGTERM host1/5592ms，子exit=null/SIGTERM、owned三清理true且Docker tasklabel空；最终容器删除兜底，不冒称leader即组空。独立只读无阻断，[证据](../../evidence/playwright-docker-spec-replay-2026-10-17.md)。父e871a8d为工具窄修回滚点，fixture仍独立后继提交、未改PW配置/业务源码/C；未完成A8/B2两轮。[已测试]（单spec/真实取消；最终HEAD全CI另跑）
 

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { installSyntheticColdStart, installSyntheticLogin } from './fixtures/browser-session';
 
 const session = {
   employeeId: 'employee-1',
@@ -12,14 +13,11 @@ test('shows deterministic progress, prevents repeated login and enters the works
   page,
 }) => {
   let loginRequests = 0;
-  await page.route('**/api/v1/auth/login', async (route) => {
-    loginRequests += 1;
-    await new Promise((resolve) => setTimeout(resolve, 180));
-    await route.fulfill({ status: 200, json: { token: 'test-session' } });
-  });
-  await page.route('**/api/v1/auth/session', async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, 180));
-    await route.fulfill({ status: 200, json: session });
+  await installSyntheticLogin(page, session, {
+    delayMs: 180,
+    onLogin: () => {
+      loginRequests += 1;
+    },
   });
 
   await page.goto('/');
@@ -37,6 +35,7 @@ test('shows deterministic progress, prevents repeated login and enters the works
 test('keeps one actionable error and safely resets the password after rejection', async ({
   page,
 }) => {
+  await installSyntheticColdStart(page);
   await page.route('**/api/v1/auth/login', async (route) => {
     await route.fulfill({
       status: 401,
