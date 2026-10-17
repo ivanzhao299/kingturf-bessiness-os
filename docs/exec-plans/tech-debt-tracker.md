@@ -116,7 +116,7 @@
 | TD-TEST-002  | 无任何覆盖率配置与阈值                                                                        | P1     | 测试/门禁      | 无                       | 阶段 5                             | 待处理                          |
 | TD-TEST-003  | 6 个仓储模块仅 mock 路由级测试，SQL 路径未验证                                                | P2     | 测试           | 无                       | 阶段 5                             | 待处理                          |
 | TD-TEST-004  | packages/ui、packages/testing 的占位测试                                                      | P2     | 测试           | 无                       | 阶段 5（前置 D3）                  | 已完成                          |
-| TD-TEST-005  | packages/types 占位测试：纯类型包的测试策略未定                                               | P2     | 测试           | 无                       | 阶段 5                             | 待处理                          |
+| TD-TEST-005  | packages/types 类型合同及真实runtime常量策略                                                  | P2     | 测试           | 无                       | 阶段 5                             | 已实施待终验                    |
 | TD-TEST-006  | 自有CDP稳定性：旧点击/viewport历史修复；S4未分类异步失败后继候选                              | P2     | 测试可靠性     | 无（仅工具）             | 批次3/S4后继                       | 历史已修/新候选待核实           |
 | TD-TEST-007  | 在线文档广源 '/submit' 实际只命中CTR旧面板，不能单独保障文档提交                              | P2     | 测试精度       | 无                       | 阶段5／另行授权                    | 仅登记，待独立补护栏            |
 | TD-TEST-008  | 新增CDP客户360合成详情遗漏服务端必需字段                                                      | P2     | 测试夹具契约   | 无（工具修正）           | 3f前置独立工具                     | 已修复验证                      |
@@ -573,6 +573,8 @@
 - **业务行为影响**：无 ｜ **关联批次**：D3 ｜ **验收方式**：依赖清理 + format/typecheck/lint/build/doc-lint/structure/`pnpm ci:local` 全绿
 
 ### TD-TEST-005｜packages/types 占位测试：纯类型包的测试策略未定
+
+- **阶段5实施**：采用现有expectTypeOf正向合同+tsc @ts-expect-error负例，4新项/连原运行时1项共5绿、原lint/tsc/format0；负例哨兵暂改合法值真实TS2578 exit2→还原原tsc/5项绿。保留长度6并加真实六scope值/顺序，不删runtime常量断言。包实际有5个runtime导出，不是纯类型空包，旧描述为发现时点；不作覆盖率豁免、不改生产types/依赖。[策略/实际绑定证据与边界](../evidence/harness-stage5-test-map-2026-10-17.md)。仅实施待终验，不声称最终HEAD完整CI或所有DTO已验证。
 
 - **位置**：`packages/types/src/index.test.ts`（1 用例）；对照 `packages/types/src/index.ts`（约 537 行纯 DTO/枚举/ErrorEnvelope 类型）
 - **类别**：测试 ｜ **严重度**：P2

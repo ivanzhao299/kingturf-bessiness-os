@@ -3752,6 +3752,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+- **2026-10-17｜TEST005共享类型策略实施**：父7c50c30，保留运行时scope长度断言+独立六值/顺序，新增4项expectTypeOf合同与tsc负例，不引依赖/不改生产types/不作豁免。原lint/tsc/两文件5项/format0；首lint2机械写法问题修正不降规则，测试Money负例暂改合法字符串使真实tsc TS2578 exit2→还原原lint/tsc/5项绿，[策略/CI链绑定/边界](../../evidence/harness-stage5-test-map-2026-10-17.md)。普通Vitest转译绿不充类型证明；types实际5个runtime导出，旧纯类型描述不作排除理由。TEST005仅已实施待终验，B目标与最终CI待。回滚本两test/docs独立revert，原长度断言保持。[已测试]（类型/定向运行，非完整CI）
+
 - **2026-10-17｜采购/库存专项真实PG及R4新发现**：父e1174d3，独立8项实际PG0/21242ms，原lint/tsc/format0；每例owned新schema，真实发布料/资格/RFQ/报价/PO/收货/库存账，固定数量/签向/COMPANY或GROUP租户/失败回滚及audit/outbox绑定，[全过程/非全矩阵边界](../../evidence/harness-stage5-test-map-2026-10-17.md)。独立review无必要阻断，错company-only标题已修并补GROUP正写；乱序start/result实证。新增TD-PROC-001（总59=原58+1）：重复部分收货状态机冲突，真实首4/次2失败且四表/证据回滚/最后6成功，只登记不修，不以负向刻画绿当缺陷关闭。TEST003仅3/6，B达标/最终CI待；回滚本新test/docs独立revert，不改产品/旧oracle/seed。一次doc patch锚点不精确原子未写后重施，历史保留。[已测试]（实际PG专项，非完整CI）
 
 - **2026-10-17｜MRP专项真实PG**：父31f694e，独立8项实际PG过，原lint/tsc/format0；复用owned helper、每例独立随机schema迁移/收尾，真实BOM固定10→21→26→30及提案日期、COMPANY/GROUP租户/拒绝、版本/唯一、固定hash非幂等、冻结/连续事件/闭态/不可变、outbox后置冲突与cycle/empty回滚。[真实历史及覆盖边界](../../evidence/harness-stage5-test-map-2026-10-17.md)。首collision seed漏必填列导致6过1败，补后8过；共享图顺序依赖改每例隔离后乱序8过/exit0/null/21729ms，独立review无必要阻断。明确合成算法需求、库存/收货0及单桶，不称商业链/全矩阵；TEST003仅2/6，B最终目标/D三连未完成。回滚本新test/docs独立revert，不含产品/旧断言/seed/配置改动。[已测试]（实际PG专项，非完整CI）

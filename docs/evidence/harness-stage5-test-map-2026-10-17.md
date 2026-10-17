@@ -1,5 +1,15 @@
 # 阶段5现状测试地图与补齐清单
 
+## TEST005：共享类型策略实施（非最终验收）
+
+父7c50c30后保留原DATA_SCOPES长度6运行时断言，并补独立固定六值/顺序；新增`packages/types/src/contracts.test.ts`4项类型合同。选择已有Vitest expectTypeOf正向类型等价/包含及tsc检查的@ts-expect-error反例，不引tsd/其它依赖、不豁免包、不改生产types。覆盖闭合DataScope/error code、PermissionKey冒号形状、Page必填nextCursor及只读数组/字段、Customer360固定unavailable tuple、Money字符串金额、递归JSON排除函数/undefined、RuleExpression判别分支/必填左右操作数。故意无效代码放不调用的函数中，仅检查其类型，不执行无效值。
+
+执行链明确：包tsconfig include src/**/\*.ts，现有`typecheck=tsc --noEmit`；根`pnpm typecheck=pnpm -r typecheck`且ci:local原顺序先typecheck后test:coverage。Vitest普通转译/5项运行绿**不单独证明类型合同\*\*，必须连同原tsc0。首版lint2处（对不存在push的unsafe call、payload只作typeof使用）改为只读数组不可赋给可变数组的静态反例、expectTypeOf传值，原规则不变。最终原lint/tsc/5项/format均0。
+
+负例绑定实测：只把测试中Money.amount的42暂改成合法字符串'42'，保留该行@ts-expect-error，真实`pnpm --filter @kingturf/types typecheck` exit2/TS2578 unused directive，日志`/tmp/kingturf-stage5-types-negative-sentinel-red-2026-10-17.log`。等真实close后apply_patch还原42，再原lint/tsc/两文件5项全0（278ms）/format0。这里只是测试负例哨兵自检，不计线C生产实现注入，也未修改生产模型。
+
+纠正旧发现口径：types不是纯类型零运行时包，实际有DATA_SCOPES/FOUNDATION_CAPABILITIES/FOUNDATION_LIMITS/CRM_CAPABILITIES/COMMERCIAL_CAPABILITIES五个runtime导出；不删真实常量测试、不以纯类型排除其覆盖率。当前策略是DTO类型合同+真实运行时常量断言；不称覆盖全部DTO，不把编译readonly当运行时freeze、冒号形状当授权成功、Decimal=string当运行时decimal语法校验。TEST005实施待阶段5终验，原基线/三目标不改。
+
 ## 后继实际补测：采购/库存专项PG及新发现
 
 父e1174d3后新增独立`procurement-postgres.integration.test.ts`，每例复用owned helper新schema、真实迁移/两租户/制造发布料→供应商→有效资格→RFQ发行→报价→采购单发行→收货地点，不mock数据库、不改生产实现。8项覆盖固定10件/2.5单价、收货及QUARANTINE lot/库存账四表、全部七list实际DTO、所有命令COMPANY/GROUP前置拒绝与租户隔离、资格版本/有效期/空发行单/唯一冲突、超收/未知行/地点及后续重复lot造成的整体回滚、六类库存移动正负方向及负余额/错物料/来源唯一/不可变、部分4→最终6收完、发行outbox后置唯一冲突回滚DRAFT/audit，以及TD-PROC-001现状缺陷与原子性刻画。创建/发行/报价/收货的事件类型、aggregate_type/id/version与audit精确绑定；无幂等参数，唯一冲突不充幂等成功。
