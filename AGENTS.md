@@ -8,12 +8,12 @@ KingTurf 业务操作系统：面向草坪行业外贸业务的 ERP（CRM→报�
 
 ## 如何开始（渐进式披露：先地图，再细节）
 
-当前批次1/2（含E1）/3已验收64757d4；批次4已正式授权。S1安全三头实施及只读复核完成：源码b02ad55首次全CI因旧头期望红，独立同步65文件76处获批三头后59f9dfa实际干净HEAD全CI0（API17114/Web266）。完成证据提交后另全CI并停协调续派，S2/S3未实施；S4仅影响报告后硬停人类确认，禁止先改Cookie/CSRF/Origin或会话夹具。原Playwright补跑、不push/部署/workflow/阶段5边界保持。
+当前批次1/2（含E1）/3已验收64757d4；批次4已授权，S1最终00ed10d经协调确认。S2登录双维失败滑窗/持锁退避已实施：业务bdbda0e首次全CI因新端口未分类红，独立声明身份门禁b8c1212实际干净HEAD全CI0（API17175/Web266/config23）。完成证据HEAD另全CI后停协调复核，S3未实施；S4仅影响报告后硬停人类确认，禁止先改Cookie/CSRF/Origin或会话夹具。原Playwright补跑、不push/部署/workflow/阶段5边界保持。
 
 - 架构总览与依赖方向：见 `ARCHITECTURE.md`
 - 设计理念与操作原则（争议裁决依据）：见 `docs/design-docs/core-beliefs.md`
-- 当前执行计划与进度：见 `docs/exec-plans/active/` §0及§7；批次4授权见 `docs/tasks/harness-batch4-authorization-2026-10-17.md`；S1证据见 `docs/evidence/security-batch4-s1-headers-2026-10-17.md`
-- 已知技术债（47 条台账，含历史解决项及仅登记的旧门控、顶层挂载、抽屉等候选）：见 `docs/exec-plans/tech-debt-tracker.md`
+- 当前执行计划与进度：见 `docs/exec-plans/active/` §0及§7；批次4授权见 `docs/tasks/harness-batch4-authorization-2026-10-17.md`；S2证据见 `docs/evidence/security-batch4-s2-login-limit-2026-10-17.md`
+- 已知技术债（48 条台账，含历史解决项及仅登记的旧preview Dockerfile等候选）：见 `docs/exec-plans/tech-debt-tracker.md`
 - CI 与发布决策（非 Tauri，仅 workflow_dispatch 部署，无 tag/Release）：见 `docs/CI.md`
 - 全部文档索引：见 `docs/index.md`
 - 关键决策记录：见 `docs/adr/`（10 个 ADR）

@@ -1,5 +1,7 @@
 # 批次4 S2登录限流：实施设计与行为表
 
+完成状态：设计2ce5dab→业务bdbda0e→必要门禁b8c1212，后者实际干净HEAD完整CI0/194043.303ms；最终完成docs另实际HEAD全CI后停S2协调复核，不提前S3/S4。真实失败/门禁初审遗漏、回滚及未执行范围见[完成证据](../evidence/security-batch4-s2-login-limit-2026-10-17.md)。下文先行设计时态保留。
+
 输入00ed10d，S1经协调独立确认（最终CI0/178476.659ms，API17114/Web266、干净树；协调另实际只读逆核65文件76期望0）。沿已授权D1/TD-SEC002续派，只实施S2，完成后停协调复核，不提前S3/S4。本文先落盘再实施，R2独立行为提交、旧期望若需变更逐处映射，不混重构/SQL/依赖/会话迁移。
 
 ## 具体算法（默认政策）
@@ -30,6 +32,7 @@
 - server仅传socket.remoteAddress及headersDistinct的X-Forwarded-For原始值数组到内部ApiRequest字段；默认trust-none，未信任peer完全忽略XFF/X-Real-IP（即使伪造/非法）。直接内部buildApp未提供peer的兼容调用进入单独unknown桶，不作为公网绕过；transport提供的非法peer拒绝。
 - `LOGIN_RATE_LIMIT_TRUSTED_PROXIES`默认空，逗号分隔**精确IP**（不接受CIDR/hostname/all-private），统一IPv4-mapped IPv6/IPv6大小写压缩。仅peer命中时解析唯一一条XFF，最多16地址/4096字符，拒空元素/非法IP/重复头/缺链/全可信无最终不可信身份；从右向左跳过显式可信地址，第一不可信地址为身份，左侧可伪造前缀不作为身份。缺一个代理信任只会保守聚合在代理桶，不能猜真实生产IP或固定跳数。
 - parseEnvironment新增冻结loginRateLimit对象：enabled=true，failureLimit=10（可显式配置，合法整数），windowSeconds=900，baseDelayMs=100，maxDelayMs=1000（≥base），maxBuckets=10000，maxPending=64，trustedProxies=[]；整数有限上下界/乘积约束、布尔只true/false、代理严格IP校验，默认值集中导出避免复制。
+- 最终具体校验边界：FAILURES 1..1000，WINDOW_SECONDS 1..86400，BASE_DELAY_MS/MAX_DELAY_MS各1..5000且max≥base，MAX_BUCKETS 2..100000，MAX_PENDING 1..1024，桶数×失败阈值≤1000000。显式运维配置可改变默认阈值，不伪称任何配置下都是10/15分钟。新增纯共享IP parser不依赖Node类型；config本包源.ts导入配合局部allowImportingTsExtensions/构建rewriteRelativeImportExtensions，原生源包及built导入均独立验证，不改package exports/共享tsconfig。
 - 配置键前缀`LOGIN_RATE_LIMIT_`：ENABLED、FAILURES、WINDOW_SECONDS、BASE_DELAY_MS、MAX_DELAY_MS、MAX_BUCKETS、MAX_PENDING、TRUSTED_PROXIES。更新.env.example只追加这些公开默认；生产compose是显式environment清单，须仅追加S2变量透传/默认，保原DB/secret项字节不动，不执行compose/部署。默认trust-none在双代理后会把用户聚到peer桶，部署前必须核实两层实际peer与追加链再显式配代理，不宣称example写好即可生产可用。
 
 ## 验证与停点

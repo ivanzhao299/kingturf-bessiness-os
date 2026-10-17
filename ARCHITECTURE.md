@@ -1,5 +1,7 @@
 # ARCHITECTURE.md
 
+**批次4 S2现时（2026-10-17）**：server从config装配LoginRateLimiter→buildApp唯一实例→auth validate之后执行双维失败滑窗及持锁退避；真实socket peer/headersDistinct经client-address显式信任链，默认不信任。config共享纯IP规范化器无反向依赖/新增包。业务bdbda0e首次全CI在新端口未分类处失败，必要门禁b8c1212绑定固定源唯一类声明身份，31仓储端口/规则不扩免，实际干净HEAD全CI0（API17175/Web266/config23）。仅登录限流，不是全API防DoS；S1头保持，未改SQL/会话模型。配置、代理部署前核实、资源边界、失败史及回滚见[S2证据](docs/evidence/security-batch4-s2-login-limit-2026-10-17.md)。最终docs另全CI后停协调，S3/S4未实施；下方S1与前端现时段保留历史。
+
 **批次4 S1当前（2026-10-17）**：app.buildApp的统一complete→middleware/security-headers纯函数，所有经此收尾的dispatch及rejectOversized响应加nginx同值三头，原状态/body/关联ID/telemetry顺序保持；server原两处writeHead透传。无auth/SQL/nginx/依赖变化。源码b02ad55原严格头期望失败，独立同步65文件76处后59f9dfa实际干净HEAD全CI0，边界/部署重复头风险/独立回滚见[S1证据](docs/evidence/security-batch4-s1-headers-2026-10-17.md)。完成docs另全CI后停协调续派，不是批次4验收；下方前端“唯一当前”为已人工验收的历史快照。
 
 **唯一当前状态（2026-10-17）**：3a–3f实施与独立复核完成，最后业务dc3697b实际干净HEAD完整CI0/178446.705ms，待整批人工验收。bootstrap→CRM/commercial/governance/shared，store→source/read/route状态模块；已知HTTP/storage→五轻量parser，未知动态JSON不强record。root749/完整158/格式5，全web最大完整函数191/AST5，70公开与原457完整链保持。435条内部静态运行时相对导入边无环（不含动态/外部包）；原始“UI七层职责挤在一文件”已不代表当前。3e两证据工具曾漏遍历，已修并固定历史SHA完整重核；见[整批验收包](docs/evidence/frontend-batch3-acceptance-2026-10-17.md)。下方所有“当前/候选/未结清”均为历史时点，不能覆盖本段；本独立工具/文档收尾全CI提交后执行。

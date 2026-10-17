@@ -6,7 +6,9 @@
 
 ## 常驻入口（根与 docs 顶层）
 
-S2门禁适配：新增登录限流基础设施精确端口分类及同类型未知名拒绝对照，保持业务仓储归属规则；见[Service边界护栏](engineering/service-boundary-guard.md)。bdbda0e首次全CI未分类端口真实红，后继独立门禁提交后重跑，不覆盖失败史。
+[批次4 S2登录限流完成证据](evidence/security-batch4-s2-login-limit-2026-10-17.md)：业务bdbda0e首次全CI未分类端口红，独立精确声明身份门禁b8c1212全CI0/194043.303ms；API17175/Web266/config23、49门禁自测、原生入口/并发/代理及资源边界/失败史/回滚。最终证据HEAD另全CI后停协调，不启动S3/S4/阶段5；台账48，新增TD-HYG-002仅登记旧preview Dockerfile遗留COPY。
+
+S2门禁适配：新增登录限流固定源唯一真实类声明身份分类及错类型/来源/改名跨仓拒绝对照，保持业务仓储归属规则；见[Service边界护栏](engineering/service-boundary-guard.md)。bdbda0e首次全CI未分类端口真实红，后继独立门禁b8c1212全CI0；纯名字候选漏报/修正史保留。
 
 [批次4 S2登录限流设计](tasks/harness-batch4-s2-design-2026-10-17.md)：账户/IP独立10失败/15分钟、持锁失败退避、429不续禁、503容量边界、真实peer/显式可信链及配置透传；S1协调通过后先设计，尚未实施S3/S4。
 
@@ -18,21 +20,21 @@ S2门禁适配：新增登录限流基础设施精确端口分类及同类型未
 
 当前3a–3f实施与独立复核完成，业务dc3697b干净HEAD全CI0；47台账，原Playwright仍待补跑。[整批验收包](evidence/frontend-batch3-acceptance-2026-10-17.md)汇总实测评分/回滚/保护区和工具证明更正。本独立工具/文档收尾提交后另全CI，等待用户整批人工验收，不进4/5；下表旧职责时态保留历史。
 
-| 文档                                                                             | 职责                                                                              | 状态                    |
-| -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | ----------------------- |
-| [AGENTS.md](../AGENTS.md)                                                        | 智能体入口地图（≤100 行）                                                         | 常驻                    |
-| [ARCHITECTURE.md](../ARCHITECTURE.md)                                            | 领域与包分层、依赖方向规则与验证点                                                | 常驻                    |
-| [README.md](../README.md)                                                        | 项目简介与本地起步                                                                | 常驻                    |
-| [CI.md](CI.md)                                                                   | 框架判定（非 Tauri）与 CI 决策记录                                                | 常驻                    |
-| [GATES.md](GATES.md)                                                             | 门禁清单（11 项 CI 链 + 2 个本地 hook + 豁免机制）                                | 常驻                    |
-| [RELIABILITY.md](RELIABILITY.md)                                                 | 可靠性机制与发布链路 runbook（逐步对应 deploy-production.yml）                    | 常驻                    |
-| [QUALITY_SCORE.md](QUALITY_SCORE.md)                                             | 按域质量评分（可复算依据）                                                        | 常驻                    |
-| [design-docs/core-beliefs.md](design-docs/core-beliefs.md)                       | 核心信念（争议裁决依据）                                                          | 常驻                    |
-| [exec-plans/active/harness-migration.md](exec-plans/active/harness-migration.md) | 当前3e③日期候选179/13逆AST/47及29齐；源码干净HEAD全CI后续解析3f，3f后整批人工验收 | 常驻                    |
-| [exec-plans/tech-debt-tracker.md](exec-plans/tech-debt-tracker.md)               | 技术债现45项，新增TD-WEB-008旧抽屉闭包候选仅登记；原历史保持                      | 常驻                    |
-| [local-acceptance-cleanup.md](local-acceptance-cleanup.md)                       | `.local-acceptance/` 本地产物清理边界与手动脚本说明                               | 常驻                    |
-| [HARNESS-RULES.md](HARNESS-RULES.md)                                             | 施工规则（竣工验收后按其 §14 归档）                                               | 常驻（施工期）          |
-| [WORKSPACE_ROUTE_ISOLATION.md](WORKSPACE_ROUTE_ISOLATION.md)                     | 工作区路由隔离说明（2026-09-06）                                                  | 已归档-只读（事件复盘） |
+| 文档                                                                             | 职责                                                                   | 状态                    |
+| -------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ----------------------- |
+| [AGENTS.md](../AGENTS.md)                                                        | 智能体入口地图（≤100 行）                                              | 常驻                    |
+| [ARCHITECTURE.md](../ARCHITECTURE.md)                                            | 领域与包分层、依赖方向规则与验证点                                     | 常驻                    |
+| [README.md](../README.md)                                                        | 项目简介与本地起步                                                     | 常驻                    |
+| [CI.md](CI.md)                                                                   | 框架判定（非 Tauri）与 CI 决策记录                                     | 常驻                    |
+| [GATES.md](GATES.md)                                                             | 门禁清单（11 项 CI 链 + 2 个本地 hook + 豁免机制）                     | 常驻                    |
+| [RELIABILITY.md](RELIABILITY.md)                                                 | 可靠性机制与发布链路 runbook（逐步对应 deploy-production.yml）         | 常驻                    |
+| [QUALITY_SCORE.md](QUALITY_SCORE.md)                                             | 按域质量评分（可复算依据）                                             | 常驻                    |
+| [design-docs/core-beliefs.md](design-docs/core-beliefs.md)                       | 核心信念（争议裁决依据）                                               | 常驻                    |
+| [exec-plans/active/harness-migration.md](exec-plans/active/harness-migration.md) | 批次4 S2源码全CI0、完成docs另复验后停协调；S3未实施/S4硬停，旧时点保留 | 常驻                    |
+| [exec-plans/tech-debt-tracker.md](exec-plans/tech-debt-tracker.md)               | 技术债现48项含历史，新增TD-HYG-002旧preview Dockerfile引用仅登记       | 常驻                    |
+| [local-acceptance-cleanup.md](local-acceptance-cleanup.md)                       | `.local-acceptance/` 本地产物清理边界与手动脚本说明                    | 常驻                    |
+| [HARNESS-RULES.md](HARNESS-RULES.md)                                             | 施工规则（竣工验收后按其 §14 归档）                                    | 常驻（施工期）          |
+| [WORKSPACE_ROUTE_ISOLATION.md](WORKSPACE_ROUTE_ISOLATION.md)                     | 工作区路由隔离说明（2026-09-06）                                       | 已归档-只读（事件复盘） |
 
 ## docs/adr（架构决策记录，10 篇）
 

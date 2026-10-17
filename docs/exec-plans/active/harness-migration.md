@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **S2最新检查点（2026-10-17）**：S1最终00ed10d协调确认→设计2ce5dab→业务bdbda0e→声明身份门禁b8c1212，实际稳定干净HEAD完整CI0/194043.303ms，API122/17175、Web13/266/config23、结构0/29；首CI端口未分类失败与纯名字候选复核遗漏均保留。完成证据独立HEAD另完整CI后停S2协调，不提前S3/S4/阶段5。台账48，TD-HYG-002旧preview Dockerfile只登记不修。具体范围/配置/代理/资源限制及回滚见[S2证据](../../evidence/security-batch4-s2-login-limit-2026-10-17.md)；下方S1及其它“当前”均为历史时点。
+
 - **S1最新检查点（2026-10-17）**：R7 bed8b40、业务b02ad55、独立响应头期望59f9dfa；首源码全CI1的65文件6994严格oracle失败如实保留，后继59f9dfa源码不变、仅76处三头期望同步后实际稳定干净HEAD完整CI0/180503.567ms，API118/17114、Web13/266、结构0/29。S1实施及只读复核完成、证据提交后另全CI，停协调审查/续派；S2/S3/S4尚未实施，不是批次4人工验收。[S1证据及逐处变更/回滚](../../evidence/security-batch4-s1-headers-2026-10-17.md)。下方R7及旧“当前”保留时点。
 
 - **唯一当前状态（2026-10-17，批次4授权）**：人工已验收批次1/2（含E1）/3，基线64757d4、干净树；正式授权D1实施S1→S2→S3及S4影响报告，S4实施前必须硬停人工确认。先独立R7 docs提交，当前执行步仅S1统一API安全三头，独立行为/测试/源码及证据实际HEAD完整CI后交协调审查再续派；不push/部署/dispatch/workflow/阶段5。完整授权、后续配置许可与保护区见[批次4授权](../../tasks/harness-batch4-authorization-2026-10-17.md)，下方所有“批次4未启动/仅批准方案”为历史时点。
@@ -3669,6 +3671,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+2026-10-17，S2实施与只读复核完成：设计2ce5dab→行为bdbda0e→必要门禁b8c1212（固定源唯一真实类声明身份，不是名字豁免）。后者开始/结束同一干净HEAD实际完整ci:local exit0/194043.303ms，/tmp/kingturf-batch4-s2-b8c1212-head-ci-2026-10-17.log；API122/17175、Web13/266、config23/database68/domain14/types1及原13 PG链，49门禁自测/31仓储端口/0违规，结构0/29、JS11794/CSS1898及全format/doclint/lint/type/build/audit绿。新增61 API+19 config+10 gate，旧API/Web期望及4配置案例字节保持；原生源/built config/API dist只读导入0，非新真实代理socket实验或Docker构建。默认10实际失败/15分钟、持锁渐进等待、成功/异常不计且不清零、429不续禁、503容量分离；单进程/全局有界等待/队首阻塞/原35MB/代理上线前核实等限制详见[S2证据](../../evidence/security-batch4-s2-login-limit-2026-10-17.md)。R4仅登记TD-HYG-002旧preview Dockerfile COPY已删除包，台账48，未证明生产失败/不修/不构建；评分未上调。完成docs独立提交另实际干净HEAD完整CI后停协调审查续派，S3/S4未实施、S4硬停人工，原Playwright补跑/SQL/会话/依赖/workflow/生产/push部署边界保持。回滚先核后继再配套逆撤b8c1212与bdbda0e，设计/完成docs可独立撤，保S1；显式关闭开关不代替部署授权。所有首失败/变异/工具脱敏事件不覆盖。[已测试]
 
 2026-10-17，S2源码bdbda0e首次实际干净HEAD完整CI真实exit1/14024.039ms（/tmp/kingturf-batch4-s2-bdbda0e-head-ci-2026-10-17.log）：service边界护栏未分类新增ApiDependencies.loginRateLimiter，后续测试未运行。新正向CLI旧门禁真实红；纯名字skip候选虽41自测绿/独立初审漏报，协调发现仓储改名逃逸后未提交，改为固定文件真实唯一类声明身份分类，错类型/来源/union/intersection拒绝，原31业务端口与规则不扩。新增10条正反对照，临时纯名字skip时移除原B后改名跨仓反例真实红，恢复后全自测/真实树重验，实际后继HEAD完整CI另跑。R4新发现旧preview Dockerfile仍COPY已删除包，只登记不修或构建；两次早期多文件patch文档锚不匹配原子失败及一次后续格式锚失败均无写入，正确锚重试成功。
 
