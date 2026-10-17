@@ -3730,6 +3730,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+- **2026-10-17｜B产物隔离接线设计**：按直接P1 R7/dc32ffa，仅设计精确local p1/runtime、PG同一性复用、只读root/repo及owned tmpfs、无Docker raw日志、安全reporter双层字段重编码，[方案/验证计划](../../tasks/playwright-local-private-runner-2026-10-17.md)。首版零PNG导出，原业务截图代码保持但证据不保留/未视觉验收；不把未经核图经base64或cp送出，后继预览若需要另明确边界。只读review支持此允许集合子集；尚未实施/运行B，不扩原配置/业务/第二轮/C，最后HEAD全CI必跑。[未测试]（接线设计）
+
 - **2026-10-17｜source旧分页夹具C7/R7**：41bf26a后原PG producer实际19过/5.87s，仅auth候选PW1/8907ms、host1/14281ms及重复PW1/8937ms、host1/14318ms均2过1败，authorized原卡存在hidden，owned全清。静态ar:read→collections应收依赖→旧stub无nextCursor→strict parser/未ready隐藏支持候选，不改产品/断言；候选apply_patch精确还原并封存patch/SHA。人类call_7652a1df412c4d42b66e572bb09ebeb7只授该应收合成endpoint补null，[原话/事实](../../tasks/playwright-source-fixture-ruling-2026-10-17.md)独立docs先行，新增TD-TEST-015/55，尚未实施/变异不充绿。B独立首轮可续，C/第二轮/最终HEAD全CI边界保持。[未测试]（新增R7，原失败已实测）
 
 - **2026-10-17｜P1后继范围精度纠正**：dc32ffa人类只批准具体产物例外，并未增加“全部A绿才B”条件；该R7尾部是主代理额外解释，已显式纠正为原A首轮→B首轮，仅第二完整轮须A+B全绿，不借既有失败冻结其它独立首轮。startup当前已试A数应7（5全绿+Workspace/成本各一败），旧6属计数笔误一并纠正；不改变真实用例/日志/失败结果。[未测试]（文档精度修正）
