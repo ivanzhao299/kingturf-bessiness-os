@@ -2,6 +2,14 @@
 
 ## 驾驶舱四固定值实施授权（2026-10-17）
 
+### 实施与真实补跑（未抵达四KPI断言）
+
+先独立授权f06b459，再只替换p1-demo.spec.ts中四个字面量数字；原matcher/定位、来源/责任钻取及其它测试字节全保持。主代理独立proof将aa2d4ff原文件按四个唯一旧词面各替换一次，所得完整文件与当前逐字节相同；apps/packages/scripts/infra/.github/依赖无diff，种子/两配置/网络硬闸保持。proof实际0，日志`/tmp/kingturf-stage5-p1-dashboard-four-literal-proof-2026-10-17.log`；原strict eslint/format实际0。不调用产品formatter、不读取页面实际值造期待。
+
+真实原完整11例集合`stage5-p1-dashboard-fixed-1`：仅7完成，index0–5通过，index6驾驶舱用例失败5299ms，failureLine=9是openRoute的parent toBeAttached；该用例尚未抵达四KPI断言，不能称新四值已浏览器验证，更不能把此失败当数值不符。随后4173/upstream CONNECT_TIMEOUT/closing=false触发PWnull/SIGTERM，index7–10未完成；host1/null/26468ms（preflight1/25942ms）。原种子0/2756ms、既有成本种子计数1/2/1/2及异人/closed保持，guard/同实例/marker/只读tmpfs和owned schema/container/preview清理全true。安全日志`/tmp/kingturf-stage5-p1-dashboard-fixed-1-2026-10-17.log`；无raw/DOM/auth产物外导。TD018原故障再次记录，不改超时/转发/权限/产品，不通过反复重跑隐藏flaky。
+
+本次仅四固定值适配已实施，浏览器四值核验/完整11例/P1认证真变异/第二轮仍未完成。最终提交HEAD完整CI另跑，不预填结果、不用完整CI代替受阻P1；DoD4/5与阶段5终验边界保持。
+
 本会话直接收到人类答复`["request_user_input_async","call_ace2fa6a079c47759f8d36234361b00f",0]`：“批准四个固定值最小适配（推荐）”。批准范围严格为下方主代理/只读代理独立推导的隔离P1四值：bookedRevenue由2058608改950000、grossMargin由585399改229000、cashCollected由1550000改950000、openReceivable由508608改0，单位仍CNY。只替换四个固定文本中的数字，保留原定位/matcher及其余来源/责任钻取断言、原种子、产品、两配置、网络硬闸；不从实际页面值生成期待、不改其它业务数值。
 
 接续干净aa2d4ff23af79187b77c1055e2065c2b8c4e3116，该HEAD完整CI实际0/null/331905ms、首尾HEAD同/树空；实际覆盖37492/48601、domain629/671、仓储9787/11512，固定B未改。先本R7独立docs提交，再四字面量适配/真实串行补跑，保留历次失败与TD018连接条件。尚未实施/未11绿/未完成P1认证真变异或第二轮，不沿用旧CI冒称后继通过；新最终HEAD仍实际完整CI。DoD4/5未完成，不扩结构/豁免或执行§14。

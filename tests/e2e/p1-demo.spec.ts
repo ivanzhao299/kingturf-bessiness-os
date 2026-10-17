@@ -227,10 +227,10 @@ test('shows server-calculated executive KPIs with source and responsibility dril
   const dashboard = page.locator('.executive-dashboard');
   await expect(dashboard).toBeVisible();
   await expect(dashboard.getByRole('heading', { name: '管理驾驶舱' })).toBeVisible();
-  await expect(dashboard.locator('.metric-bookedRevenue')).toContainText('CNY 2058608');
-  await expect(dashboard.locator('.metric-grossMargin')).toContainText('CNY 585399');
-  await expect(dashboard.locator('.metric-cashCollected')).toContainText('CNY 1550000');
-  await expect(dashboard.locator('.metric-openReceivable')).toContainText('CNY 508608');
+  await expect(dashboard.locator('.metric-bookedRevenue')).toContainText('CNY 950000');
+  await expect(dashboard.locator('.metric-grossMargin')).toContainText('CNY 229000');
+  await expect(dashboard.locator('.metric-cashCollected')).toContainText('CNY 950000');
+  await expect(dashboard.locator('.metric-openReceivable')).toContainText('CNY 0');
   await expect(dashboard.locator('.metric-activeRisks')).toContainText('cases 0');
   await expect(
     dashboard.locator('.metric-bookedRevenue').getByText(/来源 sales_orders/u),

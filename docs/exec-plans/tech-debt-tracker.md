@@ -452,6 +452,8 @@
 
 ### TD-TEST-018｜私有浏览器 preview 上游连接超时
 
+**2026-10-17后继同故障再现，未放宽**：四KPI期待经独立推导/人裁/仅四字面量适配后，原完整P1集合`stage5-p1-dashboard-fixed-1`仅7完成6过1败，驾驶舱failureLine9仍在路由parent附着检查、未抵达KPI；active4173/upstream CONNECT_TIMEOUT令PWnull/SIGTERM，其余4例未完成，host1/26468ms，owned全清。不是四值不匹配证据；不再靠重跑当修复、不改原网络条件。[固定事实/日志/四字面量proof](../tasks/harness-stage5-p1-money-authorization-2026-10-17.md)。只登记/成因待核，顶层仍61。
+
 - **事实**：p1-safe-location-2与p1-dom-location-1均有4173/upstream/CONNECT_TIMEOUT/closing=false；最新PW null/SIGTERM、host1/27929ms、仅3 completed/complete=false、owned全清。非RESET证据；旧无观测SIGTERM仍原因未知。
 - **状态/边界**：只登记环境连接故障，具体pre-connect卡顿成因待核，未放宽转发器原timeout/失败条件、不改监听/网络/产品。与P1旧可见性oracle问题分开，不充当全部11例失败共同解释。[原事实](../tasks/playwright-p1-replay-blocker-2026-10-17.md)。
 
@@ -465,6 +467,8 @@
 - **范围/状态**：仅本轮已授B工具自身兼容回归，已登记待分离options与unit writer参数/独立修复，原配置/业务assert/网络失败规则不改；[真实故障/红例](../evidence/playwright-local-private-runner-2026-10-17.md)。不计B绿或扩大原待裁问题。
 
 ### TD-TEST-016｜P1原浏览器11例失败定位待核
+
+**后继四值已批/实施，P1仍未收口**：仅bookedRevenue/grossMargin/cashCollected/openReceivable四字面量改950000/229000/950000/0 CNY，其余完整spec字节保持。实际本轮7/11完成6过1败，驾驶舱尚未抵达数值断言即因路由附着/TD018中断；不能说新值已验证或原11绿。原信用结清0已实际过，全部旧失败/未完成保持，P1认证变异/第二轮仍欠。[R7、独立推导与真实结果](../tasks/harness-stage5-p1-money-authorization-2026-10-17.md)。
 
 - **显示许可后实际部分结果**：fb13ba3直接人类R7后，候选仅显示/定位与Order360自然展开，原五计数/18时间线/10事件身份行可见，所有原数值保持。真实发现11/9完成，7过（含mobile/Order360/commission/risk/制造/采购），credit450000和dashboard原bookedRevenue两败后TD018中断；host1/39336ms/owned全清，另两例未完成。非完整11/不关本条/不开第二轮，[完整失败史](../evidence/harness-stage5-browser-rulings-2026-10-17.md)。
 

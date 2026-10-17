@@ -1,5 +1,9 @@
 # 阶段5浏览器裁断考古与适配提案（未实施P1期待）
 
+## 驾驶舱四值人裁后已最小实施，真实核验受TD018阻断
+
+R7独立f06b459先行，仅四固定词面数字换为CNY950000/229000/950000/0；完整spec其余字节/prod/seed/两配置/网络硬闸保持的proof实际0，原strict eslint/format0。原完整11集合`stage5-p1-dashboard-fixed-1`只7完成6过1败；驾驶舱用例failureLine9（openRoute parent attached）未抵达四KPI断言，不能把失败解释为数值不匹配或称四值已验证。4173/upstream CONNECT_TIMEOUT/closing=false后PWnull/SIGTERM、剩余4例未完成，host1/26468ms、guard/同实例/只读tmpfs/owned全清真。[授权/四独立公式/逐处proof/完整安全日志](../tasks/harness-stage5-p1-money-authorization-2026-10-17.md)。不改网络条件、不重复跑掩盖flaky、不导出raw/auth，不算P1认证变异/第二轮/阶段终验；最终新HEAD完整CI另跑。
+
 ## 后继人裁成本窄修：原冷断言已转绿
 
 直接人裁/R7先于产品修改提交842eb0c，TD-TEST-013先登记；新真实回调护栏独立5decf50先冻结（旧实现5败3过）。只改bootstrap同controller报价路由就绪端口、pricing type-only声明与成本冻结成功交接；不改通用route-read/全部message合同，不引全量load。报价预读ready后才赋原成功提示、原重建/切页/RAF预选；活态加载失败保留已冻结成本池事实，不把后提交的预读失败抛回表单形成重复POST。取消/原workspace或matrixSection失效不写旧UI、不跳转，双报价权限之外保持原分支。独立reviewer查出同workspace区块替换与session取消/错误混同两点，已补section身份及ready/unavailable/cancelled三态，终审无必要阻断；不是“任何离开再返回必取消”的visit-epoch合同。
