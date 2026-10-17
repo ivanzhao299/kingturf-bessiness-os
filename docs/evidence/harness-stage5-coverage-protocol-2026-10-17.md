@@ -16,6 +16,8 @@
 
 结果`coverage/run-5eb8eb3e-3323-4fd8-87f1-d7c8d4979be1/result.json` SHA256 `c9d56167e75d3469323aeb8419d5abd606131fbd5ad346a113807000923646ad`。六原报告SHA256依次API `5ca3c811ec1f0c55c679021c3f4ee7a292fa3dff4175b46262ae2b6bd2f25f84`；Web `7f6ac0a3a2da52f20142175f6887ed7b6a3ecdf8bf3cf2988dacb7275ec7f3fc`；config `464a6515f023615cccecdb3f5cde97cb9b205b745d09f2be3f60101d1b21d93b`；database `65bfc3f171fc8974489ccc2d6ba4972d12370975050910d92fe569c835ea745d`；domain `d28f084e7be25444141ebbbd619bf52f022ff8f020b17a73ffea48e04ba21e0f`；types `3e23c4b73f77af4fe95115e360872e42a59baa8e675367b736379ed5814a5aad`。独立原始报告复算另追加实际结论，不以派发替代完成。TEST002仅实施待终验，最终HEAD/三连及P线不由本次替代。
 
+独立复算已完成：只读核验者按六份raw coverage-final重算同一源行statement.start最大命中算法，与377源/25仓储/源hash/报告hash/B及三分数均相符，无exclusion变化/非下降问题。复核是实际完成，不以此前派发代替结果；并不宣称命中行代表全业务或SQL矩阵。
+
 ## 六域专项后同HEAD复测：两目标达标，整体仍红
 
 固定干净HEAD `effdbcf5807612793122718f88900c0fb75d0f4a`，真实`node scripts/analysis/coverage-run.mjs check`，run `9fd091d3-48a3-4a3d-8496-b3771a545a30`，最终host exit1/null/198482ms，唯一deficit=`overall: target not met`。六包各真实exit0/signal null/groupDrained=true/forcedCleanup=false/aborted=false；原API132文件17281项（含新六域39）、Web14/313、config2/71、database3/68、domain4/20、types2/5均通过。首尾Git HEAD相同、树空，运行中无编辑/提交；377生产文件/25仓储、清单hash和所有生产源hash与B不变。
