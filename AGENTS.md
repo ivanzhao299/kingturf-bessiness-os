@@ -8,6 +8,8 @@ KingTurf 业务操作系统：面向草坪行业外贸业务的 ERP（CRM→报�
 
 ## 如何开始（渐进式披露：先地图，再细节）
 
+Workspace已授auth/单void候选2过2败，仅可复现检查点、全文件变异/还原绿未完成；旧首次成本gate/360字段记TD-TEST-014/54项，等待点新批准未实施、字段另待裁。见 `docs/tasks/playwright-workspace-fixture-rulings-2026-10-17.md`；其它3A/2B未跑、成本TD-TEST-013待裁、第二轮/C禁，最终HEAD全CI仍必跑。下方旧计数/未执行为历史。
+
 order会话fixture已真红→还原原1例绿，15expect/viewport后操作字节同；当前login2/doc7/order1过、cost1过1败待裁，余4A/2B未跑、C禁/无第二轮，见 `docs/evidence/playwright-docker-spec-replay-2026-10-17.md`。最后HEAD全CI仍必跑；workspace单void人类新批准待独立R7，不扩业务字段/成本提示。下方旧状态保历史。
 
 文档发送后继：会话适配旧token真红→还原7过，人类ba294ae只授8处旧lint机械兼容，47expect参数/擦除JS（唯一未用void例外）同，最终7过/lint0；旧额外tsc仍2，不关TD-TEST-012。证据 `docs/evidence/playwright-docker-spec-replay-2026-10-17.md` 含一次过早恢复端口拒绝/后严格串行历史。成本TD-TEST-013待裁，余5A/2B未跑、第二轮/C禁，最后HEAD全CI必跑；下方旧时点不覆盖本状态。

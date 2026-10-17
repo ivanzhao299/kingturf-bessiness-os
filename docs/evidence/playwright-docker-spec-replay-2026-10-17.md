@@ -1,5 +1,7 @@
 # Docker 单 spec 回放证据（2026-10-17）
 
+**Workspace候选后继**：仅已授auth/单void候选原4例2过2败，原16expect同、lint0；首次成本GET被旧gate挂起、360缺必填字段另记TD-TEST-014/54项。[原失败/增量裁定](../tasks/playwright-workspace-fixture-rulings-2026-10-17.md)：等待点已人裁批准未实施、字段独立待裁；此候选只作可复现检查点，未完成全文件真变异/还原绿，不称已交付。其它3A/2B未跑、成本仍1过1败、第二轮禁，旧未执行计数保前时点。
+
 **订单证据后继**：order-evidence仅会话fixture替换，真实旧token红→清理后还原原1例过，15expect及从viewport起全部操作字节同。当前login2/doc7/order1过；成本1过1败待TD-TEST-013，余4A/2B未跑、C禁/未第二轮。下方“余5A”等为前时点；末节含原命令/退出/耗时，最终完整CI未预填。
 
 **文档发送后继**：原7项auth候选全过，真实旧token变异2败5过→完全清理后还原7过；原strict ESLint旧8错经本会话人类[独立R7](../tasks/playwright-document-lint-authorization-2026-10-17.md)仅最小机械修正，擦除类型除一个未使用void返回的块体外JS全字节同、47expect调用/参数同；机械后原7项再次通过。成本TD-TEST-013仍失败待裁不动，余5A/2B未执行，第二轮禁止；详情见末节。原全A额外tsc旧诊断仍2，不因lint修正写成全A类型绿。
@@ -116,3 +118,11 @@ e92bbe9后仅在已有strict TS工程补本地P1文件include，供未来获准�
 | order-restored-1      | 等完整close/owned清理后立即还原，1通过，PW0/3058ms；host0/8694ms                         |
 
 每次host guard/容器READ ONLY同实例通过，owned三清理均true；红HTML及artifacts下test-failed-1.png/trace.zip实际存在，未覆盖/不跳过。最后无token变异，父253b761为独立回滚点。本文件绿不抵其它spec/成本失败/第二轮，不是API授权或真实Set-Cookie证据。最终最后提交完整CI必跑。
+
+## Workspace auth/单void部分通过检查点（未交付全文件）
+
+只旧storage→共享合成Jar，原auth/session DTO包sessionResponse，员工/权限/所有业务mock原样；另按dc43e81本会话人裁改原setAttribute回调块体，原调用/值/await未读返回不变。16个expect调用参数与原文件同，机械transpile局部对照只该void形态不同、原ESLint0。
+
+实际全4例命令/退出/附件与[TD-TEST-014事实](../tasks/playwright-workspace-fixture-rulings-2026-10-17.md)一致：workspace-adapt-candidate-1 PW1/38957ms、host1/44429ms，2过2败。第一/第四过不掩第二/第三失败。此提交仅保可复现auth/void候选；**原360字段及成本等待点尚无改动，整个文件未完成适配/真实绑定变异**，不是全部绿、不是跳过失败。后续各获准夹具修正另独立提交及真实红绿，最后才能重新核该文件交付状态。
+
+回滚父为本次workspace夹具裁定R7提交；原失败历史不改，成本/产品源码/业务oracle/两PW配置/C/第二轮保护保持。最终最后HEAD完整CI仍必跑。
