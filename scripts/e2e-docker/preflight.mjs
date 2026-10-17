@@ -24,6 +24,7 @@ const reportContainer = (value) => {
     'container-complete': [],
     'container-failed': [],
     'spec-result': [],
+    'spec-started': [],
   };
   assert(Object.hasOwn(schemas, value.event), 'unknown container event');
   const safe = {};
@@ -51,16 +52,17 @@ const reportContainer = (value) => {
     );
     safe.phase = value.phase;
   }
-  if (value.event === 'spec-result') {
+  if (value.event === 'spec-result' || value.event === 'spec-started') {
     validateSpecCommand(value.spec, value.label);
-    assert(Number.isInteger(value.exit) && value.exit >= 0);
-    assert(Number.isInteger(value.elapsedMs) && value.elapsedMs >= 0);
     Object.assign(safe, {
       spec: value.spec,
       label: value.label,
-      exit: value.exit,
-      elapsedMs: value.elapsedMs,
     });
+    if (value.event === 'spec-result') {
+      assert(Number.isInteger(value.exit) && value.exit >= 0);
+      assert(Number.isInteger(value.elapsedMs) && value.elapsedMs >= 0);
+      Object.assign(safe, { exit: value.exit, elapsedMs: value.elapsedMs });
+    }
   }
   report(value.event, safe);
 };
@@ -94,7 +96,10 @@ assert(
   ].includes(mode),
   'unknown preflight argument',
 );
-if (mode === 'spec') validateSpecCommand(process.argv[3], process.argv[4]);
+if (mode === 'spec') {
+  validateSpecCommand(process.argv[3], process.argv[4]);
+  assert([undefined, 'interrupt'].includes(process.argv[5]), 'unknown spec fault');
+}
 assert.equal(
   execFileSync('docker', ['image', 'inspect', image, '--format', '{{.Id}}'], {
     encoding: 'utf8',
@@ -190,6 +195,8 @@ try {
     for await (const line of lines) {
       const event = JSON.parse(line);
       reportContainer(event);
+      if (event.event === 'spec-started' && process.argv[5] === 'interrupt')
+        process.kill(process.pid, 'SIGTERM');
       if (event.event === 'pg-verified') {
         cancellation.signal.throwIfAborted();
         assert(!mismatch, 'identity negative unexpectedly verified');
@@ -336,7 +343,7 @@ try {
         assert(ready, 'preview readiness deadline');
         fixture.assertApiOwned();
         assertOwnedListener(4173, preview, true);
-        phase = 'browser-probe';
+        phase = mode === 'spec' ? 'playwright-spec' : 'browser-probe';
         cancellation.signal.throwIfAborted();
         await send(
           mode === 'spec'

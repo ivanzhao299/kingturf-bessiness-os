@@ -3714,6 +3714,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+- **2026-10-17｜单spec执行器取消/证据窄补**：e871a8d后首合成登录候选实跑1失败1通过（CDP夹具Cookie字段），原HTML/截图/trace独立保存；修fixture后2通过，非从未失败。工具补异步mkdir/open后spawn前abort检查、A本地合成日志可读0644、leader原close exit/signal落日志。真实spec-started后SIGTERM host1/5592ms，子exit=null/SIGTERM、owned三清理true且Docker tasklabel空；最终容器删除兜底，不冒称leader即组空。独立只读无阻断，[证据](../../evidence/playwright-docker-spec-replay-2026-10-17.md)。父e871a8d为工具窄修回滚点，fixture仍独立后继提交、未改PW配置/业务源码/C；未完成A8/B2两轮。[已测试]（单spec/真实取消；最终HEAD全CI另跑）
+
 - **2026-10-17｜成本HEAD全CI后续单spec环境入口**：12285318f7756b20d446d45523661eac150d1f6a完整CI实际0/202370.62ms，首尾同HEAD/树空；API126/17242、Web14/313。仅A8精确白名单启动原PW主配置，独立标签保留log/trace/截图/HTML，B/C/未知拒绝断言通过；接A8 strict TS工程解决原hook找不到project，不加依赖/放宽规则，两PW配置不改。逐文件适配/变异/执行尚未发生，[后继证据](../../evidence/playwright-docker-spec-replay-2026-10-17.md)。父1228531为环境入口回滚点，C不跑，不扩一般阶段5。[已测试]（白名单/类型接线；浏览器实测后补）
 
 - **2026-10-17｜最小本地成本种子实施/定向验证**：bea9a76 R7后仅原close前新增政策/核算/原异人批准，去掉新增块与父seed全字节相等；既批费率/标识/冲突拒绝、GET绑定核验保持。完整seed同schema重复两遍0；真实缺backing费率host1/7257ms→还原repeat0/8516ms；算者自批host1/8801ms→立即还原repeat0/8719ms，两遍3109/810ms均政策1/费率2/运行1/事件2/异人/closed不变，全部owned清理。独立只读无阻断，[完整证据/限制](../../evidence/playwright-p1-cost-seed-2026-10-17.md)。TD-TEST-011本地前置实施已验证、台账51，旧失败史不删；无spec/配置/产品/SQL改动。父bea9a76回滚点，提交后稳定干净HEAD全CI再续既授A8→B2/第二轮，C不跑，不扩一般阶段5。[已测试]（定向红绿；最终HEAD CI另实跑）

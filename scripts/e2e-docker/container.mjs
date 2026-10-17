@@ -80,7 +80,9 @@ async function verifyAndProbe(control) {
   if (command.action === 'verified-only') return;
   if (command.action === 'spec') {
     phase = 'playwright-spec';
-    const result = await runPreviewSpec(command, cancellation.signal);
+    const result = await runPreviewSpec(command, cancellation.signal, () =>
+      report('spec-started', { spec: command.spec, label: command.label }),
+    );
     report('spec-result', result);
     assert.equal(result.exit, 0, 'individual preview spec failed');
     return;

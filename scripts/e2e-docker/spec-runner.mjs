@@ -20,14 +20,20 @@ export function validateSpecCommand(spec, label) {
   assert.match(label, /^[a-z0-9][a-z0-9-]{0,63}$/u);
 }
 
-export async function runPreviewSpec(command, signal) {
+export async function runPreviewSpec(
+  command,
+  signal,
+  startedCallback = () => {
+    /* Optional observer; does not alter the Playwright invocation. */
+  },
+) {
   validateSpecCommand(command.spec, command.label);
   signal.throwIfAborted();
   await mkdir('.test-results/docker-pw', { recursive: true });
   const directory = `.test-results/docker-pw/${command.label}`;
   // Refuse evidence replacement, including accidentally reusing a green/red label.
   await mkdir(directory);
-  const log = await open(`${directory}/playwright.log`, 'wx', 0o600);
+  const log = await open(`${directory}/playwright.log`, 'wx', 0o644);
   const started = performance.now();
   let child;
   let force;
@@ -47,6 +53,7 @@ export async function runPreviewSpec(command, signal) {
     }
   };
   try {
+    signal.throwIfAborted();
     child = spawn(
       process.execPath,
       [
@@ -69,16 +76,18 @@ export async function runPreviewSpec(command, signal) {
     );
     signal.addEventListener('abort', abort, { once: true });
     if (signal.aborted) abort();
-    const exit = await new Promise((resolve, reject) => {
+    child.once('spawn', startedCallback);
+    const result = await new Promise((resolve, reject) => {
       child.once('error', () => reject(Error('owned Playwright spawn failed')));
-      child.once('close', resolve);
+      child.once('close', (exit, terminationSignal) => resolve({ exit, terminationSignal }));
     });
+    await log.write(`\n${JSON.stringify({ event: 'owned-playwright-close', ...result })}\n`);
     signal.throwIfAborted();
-    assert(Number.isInteger(exit), 'Playwright must finish with an exit code');
+    assert(Number.isInteger(result.exit), 'Playwright must finish with an exit code');
     return {
       spec: command.spec,
       label: command.label,
-      exit,
+      exit: result.exit,
       elapsedMs: Math.round(performance.now() - started),
     };
   } finally {

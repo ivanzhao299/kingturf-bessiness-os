@@ -16,3 +16,13 @@
 环境白名单断言已通过；实际spec执行/逐处适配/变异/首轮与第二轮仍待下列逐项补记，未运行不填绿。仅fixture/已授三文件oracle可改；其它形状/业务失败C7停报。原[全12份库存](playwright-docker-inventory-2026-10-17.md)、C禁跑与旧延期义务不变。
 
 回滚：本环境小步父1228531，逆序撤后继适配再撤此入口/类型接线，先核相邻依赖；未实际revert。最终最后稳定干净HEAD完整CI另执行，不把前成本CI充后继CI。
+
+## 执行器真实运行与取消窄补记
+
+环境提交e871a8d后，用下节合成登录适配工作树实际执行原spec。第一次label `login-adapt-green-1`：PW1/2701ms、host1/8324ms（1失败/1通过），CDP addCookies的HTTP URL与\_\_Host Secure组合无效；**不是通过**，失败HTML/截图/trace均在 `.test-results/docker-pw/login-adapt-green-1/` 独立保留。夹具改显式host/path后 `login-adapt-green-2` PW0/2348ms、host0/7615ms，2通过。首日志root0600宿主不可读，仅对该精确生成文件恢复0644；后继A日志创建0644以便本地验收读取，仅本地受控目录/纯合成材料，不扩到真实认证B或公开托管。
+
+执行器窄修：异步mkdir/open后spawn前再次检查abort；记录原leader close的exit/null与signal后再传播中断，保留原非零，不把leader.close当整组空。原3秒KILL定时器在leader close后清除，最终owned容器精确删除是后代进程的兜底边界。
+
+真实故障命令为同一入口追加 `interrupt`，label `login-owned-interrupt-1`：真实PW spawn发安全spec-started后才给host SIGTERM。`/tmp/kingturf-docker-login-owned-interrupt-1-2026-10-17.log` host实际1/5592ms；子日志末行owned-playwright-close exit=null、terminationSignal=SIGTERM。container-failed后schemaGone/containerGone/previewGone全true，随后实际Docker本task label列表为空。只证明本受控取消路径，不称任意OS挂起或leaderclose即排空。独立只读复核无必要阻断，未执行额外PG/测试。
+
+实际核 `.test-results/docker-pw/login-adapt-green-1/html/index.html`、独立artifacts下test-failed-1.png/trace.zip，以及generation红的独立HTML/同类附件均存在；没有拿默认报告目录或覆盖旧红。具体登录适配/变异结果下节补记，环境窄修与fixture独立提交。
