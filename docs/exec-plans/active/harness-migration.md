@@ -3740,6 +3740,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+- **2026-10-17｜P1固定只读DOM分类工具候选**：父9ee083c，case只增七固定phase枚举，raw annotation折叠none/不外发，unit7/原lint/format0，独立只读review无必要阻断。[边界](../../tasks/playwright-p1-replay-blocker-2026-10-17.md)。P1未提交helper只原末assert包readonly finally，读固定shell/rect/hash/route布尔，不读文本/表单value/Cookie、不写导航/DOM；11原test body字节同，首新写法optional-chain lint1修等价链不降规则。只工具提交，不把phase当根因；同11例安全诊断未跑，原P1失败/业务期待冻结/C/第二轮/最终HEAD全CI保持。[已测试]（unit/静态，非P1绿）
+
 - **2026-10-17｜runtime-local已授会话oracle迁移/首轮收口**：父6fe9ef5，只旧Bearer→浏览器Cookie同源GET403/无items、共享匿名请求→独立空context401/finallydispose；原登录/客户段与DB/audit尾部全字节同，guard/config/off保持。原1例PW0/1965ms、host0/8313ms；真源AR omit Cookie原403行54红PW1/1613ms、host1/6992ms→完整清理还原过PW0/1742ms。额外共享anonymous变异实际过PW0/1740ms/host0/8013ms、明确未检出不计红；恢复独立context最后过PW0/1701ms、host0/8680ms，owned全清，预告的浏览器替换匿名额外变异未实施。[全部安全证据](../../evidence/playwright-local-private-runner-2026-10-17.md)。原lint/format0/只读review无阻断，reporter实际onBegin/summary/onEnd已核，TD-TEST-017只兼容实施关闭/57项。不泛称APIRequestContext Secure派送原因已证，不留raw/图/未视觉验收；原P1十一败/其余C7/C/第二轮/最后HEAD全CI保护。[已测试]（真实API/PG原1例及本文件一真实红绿）
 
 - **2026-10-17｜reporter options最小兼容修正候选**：父ed614ba已先原生形状unit红1/5过1败/TD-TEST-017登记，现仅构造options首参核object不作writer、writer第二参默认fs，unit显式第二参注入；首未使用\_options候选lint1/pre-commit拒绝未提交，后核原生契约修正不降规则，最终6/6及原lint/format/diff0，其它安全字段/完整性/转发失败条件不改。[证据](../../evidence/playwright-local-private-runner-2026-10-17.md)。只本轮私有执行器兼容修正，真实PW接线待runtime/P1验证，57项不提前关闭；原P1完整11败/C/第二轮/最后HEAD全CI边界保持。[已测试]（unit红绿，真实B未验证）

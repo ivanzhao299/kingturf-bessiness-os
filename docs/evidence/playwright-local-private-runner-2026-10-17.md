@@ -72,3 +72,7 @@ ed614ba红例独立后，最小改为`constructor(options={},writer=writeFileSyn
 各轮真实close signal=null、discovered1/complete=true，最后原case通过意味着原客户持久化/同公司/审计及Cookie403/独立匿名401断言均通过；owned三清理true，原raw/图仅tmpfs已清未导出，不称留有失败截图。无需为额外共享变异硬造红：原契约每文件至少一项真实红，已由Cookie omit满足；预告过的浏览器替换匿名额外变异未实施，不改其它assert。该未检出与分辨能力边界如实保留，不能称其验证了独立Jar隔离负例。
 
 原生PW实际加载/onBegin→cases.json→onEnd现已用正常完整1例实证，不仅unit；TD-TEST-017只reporter兼容实施项关闭，57顶层ID含历史保持。runtime会话迁移/每文件真红绿完成，父6fe9ef5为该spec独立回滚点。A六份全绿/成本与Workspace各一败，B runtime绿/P1原11败仍待安全诊断/裁定；第二完整轮禁/C禁，最后稳定干净HEAD完整CI仍必跑。
+
+## P1 固定 DOM 分类安全字段
+
+9ee083c后，仅安全case字段增phase七个固定枚举，runtime/无标记为none，任何外来annotation内容折叠none；controller/host沿同契约再重编码，不导出原描述。unit新增annotation canary及非法phase拒绝，实际7/7/原lint/format0。P1 working helper只读finally分类说明见[诊断范围](../tasks/playwright-p1-replay-blocker-2026-10-17.md)，未包含在本工具提交；原断言/11 test正文/成功完整性保持，独立只读review无必要阻断。字段只是粗快照，不是因果证明/新增业务oracle，尚未实际P1复跑。

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { writeFileSync } from 'node:fs';
-import { localCases, safeLocalCases } from './private-contract.mjs';
+import { localCases, p1DomPhases, safeLocalCases } from './private-contract.mjs';
 
 // This reporter writes only inside the owned container tmpfs. Other original reporters stay raw
 // there too. The controller separately validates and re-encodes this bounded result document.
@@ -37,12 +37,17 @@ export default class PrivateReporter {
       location?.file === expectedFile && Number.isInteger(location.line) && location.line > 0
         ? location.line
         : 0;
+    const annotatedPhase =
+      kind === 'p1'
+        ? test.annotations?.find((annotation) => annotation.type === 'private-p1-dom')?.description
+        : undefined;
     this.cases.push({
       index,
       status: result.status,
       durationMs: Math.round(result.duration),
       line: test.location.line,
       failureLine,
+      phase: p1DomPhases.includes(annotatedPhase) ? annotatedPhase : 'none',
     });
     this.persist(false);
   }

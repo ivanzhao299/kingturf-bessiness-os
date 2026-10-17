@@ -23,3 +23,9 @@ Workspace字段/成本提示仍另待裁，P1若显露其它非S4期待须具体
 `p1-safe-location-1`同一原11例/无业务改动，同schema原seed通过；PW实际close=null/SIGTERM，host1/44424ms，未有完整local-result。owned三清理true，raw仍按人裁仅tmpfs已清。该次不能计完成/绿，也未拿到安全失败行，**中断源尚未知**，不凭SIGTERM断言是用户取消或relay故障。
 
 仅增加无行为变更观测：转发器原socket错误/连接timeout/listener失败条件全部保留，只输出固定port/side/code枚举（其它OTHER，不读原message/流量）；安全reporter每例同步写临时partial，onEnd才complete，取消/nullclose仅报local-progress complete=false，不充当结果。5单测/原lint通过，待独立只读review/实际诊断；P1/rootcause与任何业务期待仍待核。
+
+## 进一步只读 DOM 分类候选（未运行）
+
+runtime原生接线/1例及Cookie omit红绿已完成，不以此抵P1失败。为区分已登录但非当前路由与认证失败，未提交P1 helper候选仅把原末heading断言原样置try/finally，finally只读固定shell/pipeline标题rect、hash是否overview、route属性是否opportunities；不读页面文本/表单值/Cookie/存储，不写导航/DOM/业务数据，原11个test正文全字节同。诊断失败归固定unavailable，无return吞掉原assert。
+
+只P1固定annotation→reporter七个枚举（其它none）→contract同白名单，原错误/stack/路径不外发，原exit0/完成计数条件不改。unit新增raw annotation canary不转发，实际7/7；首新诊断title非空写法原prefer-optional-chain lint1，改等价可选链后最终lint/format0，无disable。独立只读review无必要阻断，强调phase只是finally时刻粗粒度快照，none也可能是未执行分支，不作根因定论。后继同11例只安全诊断，原C7范围/expect/timeout保持，不启动第二轮。

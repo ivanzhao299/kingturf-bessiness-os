@@ -40,7 +40,7 @@ test('result boundary re-encodes only bounded scalar fields', () => {
     attachments: [{ body: 'FIXED_NON_SECRET_ATTACHMENT_CANARY' }],
   };
   assert.deepEqual(safeLocalCases('p1', [value]), [
-    { index: 0, status: 'failed', durationMs: 1, line: 20, failureLine: 0 },
+    { index: 0, status: 'failed', durationMs: 1, line: 20, failureLine: 0, phase: 'none' },
   ]);
   assert.throws(() => safeLocalCases('p1', [value, value]));
   for (const invalid of [
@@ -50,6 +50,7 @@ test('result boundary re-encodes only bounded scalar fields', () => {
     { line: 'raw' },
     { failureLine: 'raw' },
     { failureLine: 10_001 },
+    { phase: 'FIXED_NON_SECRET_PHASE_CANARY' },
   ])
     assert.throws(() => safeLocalCases('p1', [{ ...value, ...invalid }]));
 });
@@ -73,7 +74,7 @@ test('reporter records inventory index without raw errors, titles or attachments
       },
     );
     assert.deepEqual(reporter.cases, [
-      { index: 0, status: 'failed', durationMs: 1, line: 13, failureLine: 61 },
+      { index: 0, status: 'failed', durationMs: 1, line: 13, failureLine: 61, phase: 'none' },
     ]);
     assert.equal(writes[0].complete, false);
     assert.equal(JSON.stringify(writes).includes('CANARY'), false);
@@ -109,7 +110,7 @@ test('zero exit cannot hide missing discovery, completion, cases or failed outco
     discovered: 1,
     complete: true,
     probe: false,
-    cases: [{ index: 0, status: 'passed', durationMs: 1, line: 13, failureLine: 0 }],
+    cases: [{ index: 0, status: 'passed', durationMs: 1, line: 13, failureLine: 0, phase: 'none' }],
   };
   assert.deepEqual(safeLocalResult('runtime', valid), valid);
   for (const invalid of [
@@ -120,4 +121,32 @@ test('zero exit cannot hide missing discovery, completion, cases or failed outco
     { probe: true },
   ])
     assert.throws(() => safeLocalResult('runtime', { ...valid, ...invalid }));
+});
+
+test('P1 DOM diagnostics accept only fixed phases and never raw annotation text', () => {
+  const previous = process.env.KINGTURF_PRIVATE_KIND;
+  process.env.KINGTURF_PRIVATE_KIND = 'p1';
+  try {
+    for (const [description, expected] of [
+      ['overview-board-hidden', 'overview-board-hidden'],
+      ['FIXED_NON_SECRET_ANNOTATION_CANARY', 'none'],
+    ]) {
+      const reporter = new PrivateReporter({}, () => {
+        /* No filesystem writes in the unit test. */
+      });
+      reporter.onTestEnd(
+        {
+          title: localCases.p1[0],
+          location: { line: 21 },
+          annotations: [{ type: 'private-p1-dom', description }],
+        },
+        { status: 'failed', duration: 1 },
+      );
+      assert.equal(reporter.cases[0].phase, expected);
+      assert.equal(JSON.stringify(reporter.cases).includes('CANARY'), false);
+    }
+  } finally {
+    if (previous === undefined) delete process.env.KINGTURF_PRIVATE_KIND;
+    else process.env.KINGTURF_PRIVATE_KIND = previous;
+  }
 });

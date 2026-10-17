@@ -1,5 +1,15 @@
 import assert from 'node:assert/strict';
 
+export const p1DomPhases = Object.freeze([
+  'none',
+  'overview-board-hidden',
+  'overview-board-unmounted',
+  'login-ui',
+  'workspace-other',
+  'unclassified',
+  'unavailable',
+]);
+
 export const localCases = Object.freeze({
   p1: [
     'shows approved, rejected, and expired credit evidence',
@@ -41,6 +51,8 @@ export function safeLocalCases(kind, values) {
     assert(Number.isInteger(value.line) && value.line > 0);
     const failureLine = value.failureLine ?? 0;
     assert(Number.isInteger(failureLine) && failureLine >= 0 && failureLine <= 10_000);
+    const phase = value.phase ?? 'none';
+    assert(p1DomPhases.includes(phase));
     // Re-encode known scalars; never forward a reporter/test/error/attachment object.
     return {
       index: value.index,
@@ -48,6 +60,7 @@ export function safeLocalCases(kind, values) {
       durationMs: value.durationMs,
       line: value.line,
       failureLine,
+      phase,
     };
   });
 }
