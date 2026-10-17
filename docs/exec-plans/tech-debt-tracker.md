@@ -310,6 +310,8 @@
 
 ### TD-SEC-001｜全链路无 Content-Security-Policy
 
+**S3实施前行为登记（2026-10-17）**：S2协调通过后沿R7续派，仅Report-Only与默认off强制开关，先落[具体设计](../tasks/harness-batch4-s3-design-2026-10-17.md)。API统一complete与外层nginx代理HTML分别接线，不用JSON头/meta冒充HTML；不改内层nginx、默认无report接收端，不称生产观察已就绪。最小self仅img放品牌data，打印inline style/CSSOM先观察不盲宽放。本地首次导航前collector与精确合成发送DOM场景、旧严格oracle仅加CSP映射/逆AST、源码及最终HEAD全CI待实施，条目不关闭；强制生产段须一发布周期观察及新人工授权，S4仍硬停。
+
 - **位置**：`infra/nginx/erp.kingturf.cn.conf`（仅 X-Content-Type-Options/X-Frame-Options/Referrer-Policy，无 CSP）；`apps/api/src/app.ts`（无安全头）；`apps/web/index.html`（无 meta CSP）
 - **类别**：安全 ｜ **严重度**：P1 ｜ **业务行为影响**：**变更行为**
 - **证据**：三层 grep `Content-Security-Policy` = 0 命中；bootstrap.ts 存在 17 处 `innerHTML`（已过 `sanitizeBusinessDocumentHtml` 白名单消毒，但缺 CSP 纵深防御；扫描方法见计划 §3.8）。

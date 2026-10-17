@@ -6,6 +6,8 @@
 
 ## 常驻入口（根与 docs 顶层）
 
+[批次4 S3 CSP先行设计](tasks/harness-batch4-s3-design-2026-10-17.md)：S2协调确认74c78c3后续派，仅API/外层HTML Report-Only与默认off强制开关；真实Document头/首次导航前脱敏采集、独立精确合成发送DOM场景、旧oracle逐处映射及保护区，未实施完成。
+
 [批次4 S2登录限流完成证据](evidence/security-batch4-s2-login-limit-2026-10-17.md)：业务bdbda0e首次全CI未分类端口红，独立精确声明身份门禁b8c1212全CI0/194043.303ms；API17175/Web266/config23、49门禁自测、原生入口/并发/代理及资源边界/失败史/回滚。最终证据HEAD另全CI后停协调，不启动S3/S4/阶段5；台账48，新增TD-HYG-002仅登记旧preview Dockerfile遗留COPY。
 
 S2门禁适配：新增登录限流固定源唯一真实类声明身份分类及错类型/来源/改名跨仓拒绝对照，保持业务仓储归属规则；见[Service边界护栏](engineering/service-boundary-guard.md)。bdbda0e首次全CI未分类端口真实红，后继独立门禁b8c1212全CI0；纯名字候选漏报/修正史保留。
