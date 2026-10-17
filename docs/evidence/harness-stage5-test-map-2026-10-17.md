@@ -1,5 +1,18 @@
 # 阶段5现状测试地图与补齐清单
 
+## C三类实现注入证据齐备（非最终CI）
+
+7f8ffb7后完成第三个Web真实实现注入：`shared/api-response-parser.ts:24`临时允许缺nextCursor，而不改原测试/合成样本。diff：
+
+```diff
+- if (record.nextCursor !== null && typeof record.nextCursor !== 'string')
++ if (record.nextCursor !== undefined && record.nextCursor !== null && typeof record.nextCursor !== 'string')
+```
+
+指定原`boundary-parsers.test.ts`实际exit1：`rejects missing or malformed cursor metadata 1`（items=[]缺nextCursor）expected function to throw，1败86过/375ms。日志`/tmp/kingturf-stage5-c-web-cursor-red-2026-10-17.log`；等close后apply_patch完整还原原条件，原Web全14文件313项实际exit0/1780ms，日志`/tmp/kingturf-stage5-c-web-cursor-restored-2026-10-17.log`。该文件原/恢复SHA256均`ea8f526d982ecaa1fae4fadda15dbd4cf798c5be1d9302f3c641330da122c907`、源码diff0；全377源清单hash再次与B一致。
+
+因此C最低三例现有：domain字段权限安全真红→原20绿；制造真实PG tenant SQL真红→还原原5绿/补强6绿；Web游标严格边界真红→原313绿。三次均临改真实生产实现、保持原测试期待、等待实际结束才还原，diff/具名失败/恢复SHA在本文；不是字典/注释/测试注入。该证据不替代A其余五域PG、覆盖率三目标、最终同状态三连CI或浏览器全套验收。
+
 ## 后继实际补测：manufacturing专项PG与C SQL注入
 
 6095937后新增独立`manufacturing-postgres.integration.test.ts`和可复用guarded随机schema helper；真实调用制造仓储，不mock DB、不改生产实现。6项覆盖：安全schema名/精确search_path、成品及原料/替代料发布版本、BOM替代料排序及routing工序排序、创建/发布的audit+outbox事件/aggregate精确绑定、COMPANY/GROUP租户边界与SELF/TEAM-only拒绝、跨租户component FK23503/重复替代priority23505后父/版本/line/substitute/证据整体回滚、未发布替代料及空routing发布失败、outbox唯一冲突发生在audit写入之后而publication/audit一并回滚。无update/delete或幂等接口，不把单号unique当幂等；该域未用recordScopeSql，不虚构SELF成功路径。
