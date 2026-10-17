@@ -3674,6 +3674,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+2026-10-17，S3完成文档e291cd5实际稳定干净HEAD全CI0/192316.095ms（`/tmp/kingturf-batch4-s3-final-head-ci-2026-10-17.log`），结束同HEAD/树空。同期只读复核发现索引/台账首页/架构三处旧“当前”标签与S3现状可能混淆，CI结束后独立纯docs标明历史时点，保旧内容/真实结果；本后继提交另完整CI到`/tmp/kingturf-batch4-s3-final-state-head-ci-2026-10-17.log`后停协调，不新增业务/工具/授权范围。源码f693ee2及其完整CI、原29/新3/20矩阵结果不变，未启S4。
+
 2026-10-17，S3源码与工具实施/独立复核完成：f693ee28322233a3f3a0d639cf678847d42fc120实际稳定干净HEAD完整CI0/219878.817ms，结束同HEAD/树空（`/tmp/kingturf-batch4-s3-f693ee2-head-ci-2026-10-17.log`），API123/17184、Web13/266/config29/database68/domain14/types1、结构0/29/工具65/audit零漏洞。真实提交后msqifE三场景0、网络三零/自有清理全真；头矩阵20明确每次CLI status0、四组owned清理真，未知启动回执故障实际1且容器/目录清理真。初次工具commit lint8红→改browser global/新测试写法→lint0/65绿；client只SIGTERM等close的静态阻断修成5秒独立settle/毁stdio，假kill=false无close证明等待有界，不冒称保证CLI退出；两名独立工具/证据只读审无必要阻塞。完成docs独立本提交后另实际干净HEAD完整CI（专用final-head日志）再交协调，未S4/部署/强制/阶段5。配套回滚按本docs→f693ee2→a4c2ca3→762e393→10f841e核依赖逆序，保S1/S2；[完整边界及失败史](../../evidence/security-batch4-s3-csp-2026-10-17.md)。下方工具候选为历史。
 
 2026-10-17，S3工具收尾候选：行为762e393/oracle a4c2ca3之后仅独立opt-in CDP/本地nginx验证工具与证据，Web/CRM/旧fixtures/Playwright/SQL/锁/workflow零改动；历史CRM状态恢复与360必填补齐异步确认不构成本轮新业务授权。65工具单测绿；原29 Us0W3d与CSP3 4Lyd6t真实0，collector缺失/未知写各实际1，有限观察仅哨兵事件，不称生产观察就绪。nginx四组合20本地检查及未知启动回执故障清理、HTTP client严格超时修正和客户端退出码断言最终重跑中；具体失败史/隐私边界见[S3证据](../../evidence/security-batch4-s3-csp-2026-10-17.md)。本候选尚未实际干净HEAD全CI，完成docs也须另全CI后停协调，S4实施硬停人类确认。

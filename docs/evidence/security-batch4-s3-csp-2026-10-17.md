@@ -13,7 +13,7 @@
 
 源码及工具固定 `f693ee28322233a3f3a0d639cf678847d42fc120` 实际完整 `pnpm ci:local` 退出0/219878.817ms，开始及结束同SHA/树空，日志 `/tmp/kingturf-batch4-s3-f693ee2-head-ci-2026-10-17.log`：API123文件/17184，Web13/266，config29/database68/domain14/types1；format/doc-lint/结构0违规29豁免/guardrails/type/lint/build/audit零漏洞通过。登录启动预算JS11794/CSS1898 gzip保持。源码、构建config及built API原生import0（`native-final-2026-10-17.log`），不启动server/端口/真实环境解析。固定该SHA的122旧API文件逆AST证明0（`oracle-f693ee2-2026-10-17.json`）。
 
-完成文档为本次独立提交：提交后须在实际稳定干净HEAD串行完整CI，专用日志 `/tmp/kingturf-batch4-s3-final-head-ci-2026-10-17.log`，结束复核SHA/树空后才交协调；该结果只能执行后由最终交付报告，本文不预填。SEC-001仅RO段实施完成待批次验收，未来强制生产段开放；台账仍48，TD-HYG-002只登记不修，评分不提前上调。
+首完成文档`e291cd5fba3132c9bdb87d92b1ee327ca89b3aa1`也已实际稳定干净HEAD完整CI0/192316.095ms，结束同SHA/树空（`/tmp/kingturf-batch4-s3-final-head-ci-2026-10-17.log`）。其运行期间的只读复核发现索引/台账首页/架构仍有三处历史“当前”标签容易混淆，等该CI结束后仅补历史时点消歧，不改既有结果/业务/工具。本次后继纯文档提交仍须在实际稳定干净HEAD串行完整CI，专用日志 `/tmp/kingturf-batch4-s3-final-state-head-ci-2026-10-17.log`，结束复核SHA/树空后才交协调；该最后结果只能执行后由最终交付报告，本文不预填。SEC-001仅RO段实施完成待批次验收，未来强制生产段开放；台账仍48，TD-HYG-002只登记不修，评分不提前上调。
 
 ## 行为与部署边界
 
