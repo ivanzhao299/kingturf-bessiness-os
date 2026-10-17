@@ -1,5 +1,13 @@
 # 阶段5现状测试地图与补齐清单
 
+## Web生产／发运动作回调护栏
+
+父c14884e新增`fulfillment-actions-behavior.test.ts`15项，复用部分DOM；只mock表单入口以捕获原生产回调，不mock生产/发运动作模块。固定四工单状态→权限/action/reason/evidence/key，终态无按钮；报工固定decimal/key与ISO日期、无效日期先拒绝；领退料按append时balances引用（换Map值不偷换批次），固定库存IDs/日期/无效索引；成品按固定report/location选项和order itemVersion提交（locations同样在append捕获）。不把选项端口当真实库存/质量门禁。
+
+发运验证RELEASED/权限/已有shipments门槛；非数组也显示按钮明确为当前兼容行为，不是合法业务数据背书。固定运单/封车证据/key；POD过滤DELIVERED、按所点击shipment绑定ID/回单证据。四transition的pending submit尚未完成时不refresh，发运pending submit不load，pending load不更新status；所有动作类别有submit reject后不刷新/不写成功状态，发运load reject也不更新成功状态。并未逐个证明refresh自身等待、真实表单校验、API接收或后端事务。
+
+独立只读复核无必要阻断并据建议补失败/延迟load断言；首lint1处测试recordText对unknown stringify，改显式string/number分支，不降规则。原eslint/tsc0，首15/15实际0/336ms，日志`/tmp/kingturf-stage5-fulfillment-actions-first-2026-10-17.log`；补强后Web全17文件342项实际exit0，日志`/tmp/kingturf-stage5-fulfillment-actions-final-2026-10-17.log`。无产品/种子/网络硬闸改动；这不是浏览器全套、六包覆盖门禁或最终CI。
+
 ## Web上下文业务文档真实回调护栏（Node端口，不是浏览器验收）
 
 父62cd870后新增`contextual-documents-behavior.test.ts`十项（含表驱动），调用原`appendContextualDocuments`和HTML构建器，不改生产实现；新增`test/fixtures/behavior-dom.ts`明确为部分DOM double及四项自测。helper在生产src外，不新增依赖、不移除原src夹具、不改变冻结377生产源/覆盖分母；Web tsconfig只扩include到test/\*_/_.ts以接受原严格lint/tsc检查，未放宽规则。

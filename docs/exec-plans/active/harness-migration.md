@@ -3752,6 +3752,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+- **2026-10-17｜Web生产/发运动作回调护栏**：父c14884e，新增15项状态/权限/固定payload与幂等键/日期/库存选项快照/失败不刷新/延迟load状态更新测试；只mock openForm入口，真实动作函数回调。[范围与独立复核](../../evidence/harness-stage5-test-map-2026-10-17.md)。原eslint/tsc0、Web17/342实际0；不改产品/种子/原断言，不充浏览器原生校验/后端事务/新六包覆盖check/最终CI。回滚本新test与docs独立revert。[已测试]（Web全包，非完整CI）
+
 - **2026-10-17｜Web上下文文档回调护栏**：父62cd870，新增十项真实生产回调测试与生产src外部分DOM double/四自测；原eslint/tsc0、Web16/327实际0/1.88s。固定payload/转义/可选绑定/原对象引用/忙态/失败重试/懒GET/保存版本及权限位；[精确证据与限制](../../evidence/harness-stage5-test-map-2026-10-17.md)。只扩Web tsconfig include测试目录，不加依赖/改产品/排除源。单包首V8 Web9341/20592增404，同分母，非新六包check/全CI；B/TEST002不变。独立复核建议已补toBe，DOM点击不充真实下载，路由stub不充权限映射。回滚新增tests/helper、include与本docs独立revert。[已测试]（Web全包，非完整CI）
 
 - **2026-10-17｜六域后真实覆盖率门禁复测**：effdbcf干净固定HEAD六包原测试全绿（API132/17281含六域39、Web313/config71/db68/domain20/types5），实际check仍exit1/null/198482ms，唯一整体target未达。[完整计数/产物hash/清单](../../evidence/harness-stage5-coverage-protocol-2026-10-17.md)：整体34122/48566=70.26%尚差2303行，domain629/671=93.74%、API仓储9145/11512=79.44%已达各目标，B不下降/生产377/仓储25及分母/源hash不变。六组真close0/drained/无强制取消，首尾同HEAD/树空。不是完整CI或最终三连之一；继续Web真实交互补测，不改B/阈值/exclude，不提前关TEST002。回滚本docs只撤后继记录，不回滚固定B或删失败史。[已测试]（真实六包覆盖率门禁失败，非验收绿）
