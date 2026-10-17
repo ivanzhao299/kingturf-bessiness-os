@@ -165,7 +165,6 @@ describe('technical requirement view real callback contracts', () => {
 
   it('offers revision only for the latest non-draft root and preserves numeric/prefill fields', async () => {
     const records = [
-      { ...draft, status: 'APPROVED' },
       {
         ...draft,
         id: 'version-2',
@@ -174,6 +173,7 @@ describe('technical requirement view real callback contracts', () => {
         requirements: { ...requirements, color: '新版绿' },
         attachments: [{ id: 'a' }],
       },
+      { ...draft, status: 'APPROVED' },
       { id: 'orphan', status: 'APPROVED', version: 9 },
     ];
     const f = setup(records, ['ctr:update']);
@@ -184,7 +184,7 @@ describe('technical requirement view real callback contracts', () => {
         .filter((node) => node.tagName === 'BUTTON' && node.textContent === '新建修订'),
     ).toHaveLength(1);
     const rows = f.workspace.descendants().filter((node) => node.classList.contains('ctr-row'));
-    const latest = rows[1];
+    const latest = rows[0];
     if (!latest) throw new Error('Latest row missing');
     expect(latest.textContent).toContain('新版绿（上一版：双色翠绿）');
     expect(latest.textContent).toContain('1 个附件');
@@ -205,9 +205,11 @@ describe('technical requirement view real callback contracts', () => {
       requirements,
     });
     expect(f.load).toHaveBeenCalledTimes(1);
+    f.status.textContent = 'revision unchanged';
     f.submit.mockRejectedValueOnce(new Error('revision rejected'));
     await expect(opened.run({})).rejects.toThrow('revision rejected');
     expect(f.load).toHaveBeenCalledTimes(1);
+    expect(f.status.textContent).toBe('revision unchanged');
   });
 
   it('does not revise an older published revision when the latest root version is still draft', () => {

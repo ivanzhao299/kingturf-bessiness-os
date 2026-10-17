@@ -1,5 +1,13 @@
 # 阶段5现状测试地图与补齐清单
 
+## Web销售／风险政策固定预言与版本控制
+
+父dfd063e新增policy-view六项、risk-controls七项，真实模块回调、表单/控制器为mock端口。销售政策独立完整规则预言：20.55%→2055bp、10.256%→1026bp，创建/修订publish true；评价30.125%→3013、2.255%→226、只列已发布政策与固定成本选项，列表给定DTO的通过/审批/原因/hash展示不充实际规则引擎输出。销售政策与CTR最新版本样本改为v2在v1前，锁最大版本而非最后输入；CTR修订拒绝另补status sentinel，原11项不删。创建销售政策deferred load后读当前message，其它销售动作失败不reload/不覆盖status，不冒称逐路径延迟load。
+
+风险政策固定五rule code、bp/天数数值、effectiveAt UTC日始；修订按snake-case预填/根ID，payload不含publish。版本卡权限/状态、发布固定version路径，发布仅成功pending后load，不声称reject已处理。createRiskPolicyButton是无权限factory，caller权限不在本例。风险评价按钮gate按权限+订单/政策**数组非空**，只有options过滤PUBLISHED；不称仅草稿政策时按钮隐藏。固定订单/责任人/版本ID与validUntil/dueAt UTC 23:59:59.000Z，invalid日期提交前拒绝、deferred load后当前message；create/revise/evaluate失败不reload且status sentinel不变。均不证浏览器/后端。
+
+原eslint/tsc0；policy首次tsc缺完整未使用query结构，仅补完整原类型值不放宽规则；target销售6/6实际0/312ms、风险7/7实际0/320ms。全Web22/399带V8实际0/2.31s，`coverage/web-policy-risk-dfd063e-first/coverage-final.json`按原算法10742/20592，policy296/296、risk-controls224/224。独立只读复核无必要阻断，据建议补状态sentinel；后全Web22/399再次实际0，日志`/tmp/kingturf-stage5-policy-risk-final-2026-10-17.log`。首单包V8日志`/tmp/kingturf-stage5-web-policy-risk-coverage-2026-10-17.log`；后继断言补强不更新B，以上非六包门禁/完整CI。产品/原测试/PG/seed/P1四值不改。
+
 ## Web技术需求单版本与动作护栏
 
 父874e4d6新增`ctr-view-behavior.test.ts`最终11项，真实appendCtrView与回调，独立写定输入50.5/8000.25/8→requirements数值字段，不从生产mapper生成期待。创建路径deferred load期间status不变，改变controller.message后resolve再观察新消息；创建/修订submit reject不load。最新非DRAFT根版本可修订，旧版本/无根/最新仍DRAFT均无修订按钮；旧新规格差异与附件计数、修订预填/固定根路径与payload。上传固定版本ID且原File引用、不额外load；提交评审固定expectedVersion，两审批固定decision/reason；各拒绝后不写成功status。严格等待load后读取当前message只在创建路径动态验证，未泛称所有回调均有延迟测试。

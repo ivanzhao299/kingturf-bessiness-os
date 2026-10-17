@@ -3752,6 +3752,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+- **2026-10-17｜Web销售/风险政策控制护栏**：父dfd063e新增6+7项，独立完整规则/基点oracle、UTC日始日末/固定版本与责任人、权限与选项、失败状态、deferred load当前message；CTR补v2在v1前反例和拒绝status。原eslint/tsc0、Web22/399实际0，单包V8 10742/20592同分母。[独立复核/精确限制](../../evidence/harness-stage5-test-map-2026-10-17.md)：risk发布只成功pending；factory非权限guard；政策数组非空不等于已发布存在；mock表单/控制器非浏览器/后端。产品/seed/P1原数值/B不动；回滚新tests与CTR断言/docs独立revert。[已测试]（Web全包，非六包覆盖门禁/完整CI）
+
 - **2026-10-17｜Web技术需求单版本动作护栏**：父874e4d6新增最终11项，独立数值requirements/最新非草稿与最新DRAFT反例/原File版本绑定/评审expectedVersion/审批固定载荷及失败状态。原eslint/tsc0，最终Web20/386实际0/1.85s；首定位错父节点改精确BUTTON，失败史保留。[独立复核/单包覆盖/边界](../../evidence/harness-stage5-test-map-2026-10-17.md)：Web10349/20592测量不充六包门禁，表单/API端口mock不充浏览器或PG。产品/seed/原期待/B不改；回滚新test/docs独立revert。[已测试]（Web全包，非完整CI）
 
 - **2026-10-17｜Web线索列表护栏**：父4840b35新增9项，真实controller筛选/去重/分页、权限/版本/owner按钮门槛、固定命令/原Lead引用与成功后bootstrap；命令与表单仍端口spy，不充真实API。原eslint/tsc0、target9过/Web19/375实际0；[独立复核/精确范围](../../evidence/harness-stage5-test-map-2026-10-17.md)，claim仅成功pending，不冒称拒绝恢复。回滚本新test/docs独立revert，产品/原测试/B不变。[已测试]（Web全包，非完整CI）
