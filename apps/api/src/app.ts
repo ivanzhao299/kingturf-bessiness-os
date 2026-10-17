@@ -18,6 +18,7 @@ import {
   type Telemetry,
 } from '@kingturf/domain';
 import type { ErrorCode, PermissionKey } from '@kingturf/types';
+import { securityResponseHeaders } from './middleware/security-headers.ts';
 import { authorizeQuery } from './policy.ts';
 import { auditReadRoutes } from './routes/audit-reads.ts';
 import { numberAllocationRoutes } from './routes/number-allocation.ts';
@@ -4103,7 +4104,10 @@ export function buildApp(dependencies?: ApiDependencies): ApiApplication {
       statusCode: response.statusCode,
       durationMs,
     });
-    return { ...response, headers: { ...response.headers, 'x-correlation-id': correlationId } };
+    return {
+      ...response,
+      headers: { ...securityResponseHeaders(response.headers), 'x-correlation-id': correlationId },
+    };
   };
   return {
     rejectOversized(incomingCorrelationId) {

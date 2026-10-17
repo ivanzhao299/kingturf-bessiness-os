@@ -485,6 +485,75 @@ const dispatch = (
     body,
   });
 
+describe('uniform API security response headers (TD-SEC-004)', () => {
+  const expectedHeaders = {
+    'x-content-type-options': 'nosniff',
+    'x-frame-options': 'SAMEORIGIN',
+    'referrer-policy': 'strict-origin-when-cross-origin',
+    'x-correlation-id': targetId,
+  };
+
+  it.each([
+    ['health', 'GET', '/health', 200],
+    ['release', 'GET', '/version', 200],
+    ['session', 'GET', '/api/v1/auth/session', 200],
+    ['logout', 'POST', '/api/v1/auth/logout', 204],
+    ['invalid body', 'POST', '/api/v1/auth/login', 400],
+    ['permission denied', 'GET', '/api/v1/employees', 403],
+    ['unknown route', 'GET', '/api/v1/nonexistent-security-header-probe', 404],
+    ['readiness unavailable', 'GET', '/ready', 503],
+  ] as const)('adds the same headers to %s responses', async (_, method, pathname, status) => {
+    const response = await dispatch(
+      dependencies(context(new Map())),
+      method,
+      pathname,
+      undefined,
+      targetId,
+    );
+    expect(response.statusCode).toBe(status);
+    expect(response.headers).toMatchObject(expectedHeaders);
+  });
+
+  it('adds the same headers to unauthenticated responses', async () => {
+    const response = await buildApp(dependencies(null)).dispatch({
+      method: 'GET',
+      pathname: '/api/v1/session',
+      headers: { 'x-correlation-id': targetId },
+    });
+    expect(response.statusCode).toBe(401);
+    expect(response.headers).toMatchObject(expectedHeaders);
+  });
+
+  it('adds the same headers to unexpected application errors without leaking the error', async () => {
+    const deps = dependencies(context(new Map()));
+    vi.spyOn(deps.auth, 'authenticate').mockRejectedValueOnce(
+      new Error('synthetic header probe failure'),
+    );
+    const response = await dispatch(deps, 'GET', '/api/v1/session', undefined, targetId);
+    expect(response.statusCode).toBe(500);
+    expect(response.body).toEqual({
+      error: { code: 'internal_error', message: 'Internal server error', correlationId: targetId },
+    });
+    expect(response.headers).toMatchObject(expectedHeaders);
+  });
+
+  it('adds the same headers to transport oversized rejections', () => {
+    const response = buildApp().rejectOversized(targetId);
+    expect(response.statusCode).toBe(413);
+    expect(response.headers).toMatchObject(expectedHeaders);
+  });
+
+  it('adds the same headers when application dependencies are unavailable', async () => {
+    const response = await buildApp().dispatch({
+      method: 'GET',
+      pathname: '/api/v1/session',
+      headers: { 'x-correlation-id': targetId },
+    });
+    expect(response.statusCode).toBe(503);
+    expect(response.headers).toMatchObject(expectedHeaders);
+  });
+});
+
 describe('authentication and protected API contracts', () => {
   it('accepts authenticated website lead ingestion without an employee session', async () => {
     const ingest = vi.fn(() =>
