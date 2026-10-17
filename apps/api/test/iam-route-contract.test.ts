@@ -55,7 +55,12 @@ function assertError(
   message?: string,
 ) {
   expect(result.statusCode).toBe(status);
-  expect(result.headers).toEqual({ 'x-correlation-id': correlationId });
+  expect(result.headers).toEqual({
+    'x-correlation-id': correlationId,
+    'x-content-type-options': 'nosniff',
+    'x-frame-options': 'SAMEORIGIN',
+    'referrer-policy': 'strict-origin-when-cross-origin',
+  });
   expect(result.body).toMatchObject({
     error: { code, correlationId, ...(message ? { message } : {}) },
   });
@@ -108,7 +113,12 @@ describe('IAM inline permission and prerequisite contracts', () => {
         expect(await dispatch(resource, 'GET', ['ignored'])).toEqual({
           statusCode: 200,
           body: { fixed: call },
-          headers: { 'x-correlation-id': correlationId },
+          headers: {
+            'x-correlation-id': correlationId,
+            'x-content-type-options': 'nosniff',
+            'x-frame-options': 'SAMEORIGIN',
+            'referrer-policy': 'strict-origin-when-cross-origin',
+          },
         });
         expect(repository[call]).toHaveBeenCalledExactlyOnceWith(
           ...(resource === 'permissions' ? [] : [actor.companyId]),
@@ -219,7 +229,12 @@ describe('IAM supported write contracts', () => {
         expect(result).toEqual({
           statusCode: entry.status,
           body: entry.status === 204 ? {} : { fixed: entry.call },
-          headers: { 'x-correlation-id': correlationId },
+          headers: {
+            'x-correlation-id': correlationId,
+            'x-content-type-options': 'nosniff',
+            'x-frame-options': 'SAMEORIGIN',
+            'referrer-policy': 'strict-origin-when-cross-origin',
+          },
         });
         expect(repository[entry.call]).toHaveBeenCalledExactlyOnceWith(
           ...entry.args,

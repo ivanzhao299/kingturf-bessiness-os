@@ -115,7 +115,12 @@ function fixture(
 const response = (statusCode: number, value: unknown) => ({
   statusCode,
   body: value,
-  headers: { 'x-correlation-id': correlationId },
+  headers: {
+    'x-correlation-id': correlationId,
+    'x-content-type-options': 'nosniff',
+    'x-frame-options': 'SAMEORIGIN',
+    'referrer-policy': 'strict-origin-when-cross-origin',
+  },
 });
 const error = (status: number, code: string, message: string) =>
   response(status, { error: { code, message, correlationId } });

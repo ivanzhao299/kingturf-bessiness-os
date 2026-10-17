@@ -3668,6 +3668,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+2026-10-17，S1源码b02ad55首次全量真实红：R7已先独立bed8b40落盘；S1仅统一complete接纯security-header helper及12+3新增检查，目标54/2绿、原app39字节同，type/lint/结构0/29已过。完整干净源码HEAD CI退出1/182202.688ms，API65文件/6994用例失败、53文件/10120通过共118/17114，Web266绿；旧响应envelope严格toEqual只预期correlation头，与D1 S1获批三头冲突。不得声称b02ad55全CI绿。按本批明确授权独立test同步74响应envelope+2直接headers期望，65文件，仅增加安全三头，其它AST/请求头/状态正文/调用顺序不动，另24同形请求头不改。全文件完整AST去这三新增字段回等b02ad55；[逐处旧→新→D1映射](../../evidence/security-batch4-s1-oracle-map-2026-10-17.md)，测试后继实际HEAD全CI待执行，保留失败史，不弱化严格断言/跳过。S2–S4尚未实施。
+
 2026-10-17，R7批次4正式实施授权落盘：已直接只读核人类原始授权，基线harnessing64757d4树空，批次1/2含E1/3已人工验收；先独立docs，尚无业务改动。顺序S1安全三头（值与nginx24–26一致）→S2账户+IP内存滑窗10失败/15分钟/429退避配置化（明确packages/config许可）→S3仓库API/nginx Report-Only/默认关闭强制开关与本地CDP违例采集→S4仅影响报告硬停人工确认。禁止S4前改Cookie/CSRF/Origin/sessionStorage/会话夹具，原ADR0003模型不变。当前执行步仅S1，源码和证据各独立实际干净HEAD完整CI后交协调独立审查再续派。授权docs回滚基点64757d4，后续SHA/真实测试待补；47台账不提前关闭，SEC006/007/BOUND003/004/七N+1/原Playwright补跑边界保持。详见[R7授权全文](../../tasks/harness-batch4-authorization-2026-10-17.md)。
 
 2026-10-17，3a–3f整批交付收尾：独立行为源码dc3697b实际稳定干净HEAD完整pnpm ci:local真实0/178446.705ms，开始/结束HEAD同且树空，无其它编辑/测试/构建并发；API117/17099/13 PG、Web13/266、工具34、能力39/19、结构0/29、预算11794/1898、audit零已知漏洞。随后固定FRONTEND_PROOF_REF=dc3697b完整3f逆AST0。历史proof缺陷登记TD-TEST009，台账47项；三份工具修复与旧3e证据顶部更正/整批验收材料、前端实测评分独立后继提交，不混业务行为。root16082→749、商业完整8551→158，全web源最大文件749/完整函数191/AST5；当前前端复杂度按既定阈值5、测试评分不升。TD-WEB001/002/003、ARCH002与轻量BOUND001已实施待人工验收，unknown/overview/public全量兼容边界保留。见[整批验收包及逐步回滚/读源映射](../../evidence/frontend-batch3-acceptance-2026-10-17.md)。本收尾实际干净HEAD完整CI提交后执行并由真实工具日志确认；不预填完成，不push/部署，不进4/5，原Playwright仍待用户环境后阶段5前补跑。其余“当前/待源码CI”为各自历史时点。

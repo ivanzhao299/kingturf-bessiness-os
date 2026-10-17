@@ -39,7 +39,12 @@ function fixture() {
 const envelope = (statusCode: number, code: string, message: string) => ({
   statusCode,
   body: { error: { code, message, correlationId } },
-  headers: { 'x-correlation-id': correlationId },
+  headers: {
+    'x-correlation-id': correlationId,
+    'x-content-type-options': 'nosniff',
+    'x-frame-options': 'SAMEORIGIN',
+    'referrer-policy': 'strict-origin-when-cross-origin',
+  },
 });
 
 describe('auth HTTP contracts frozen at 0fdd996', () => {
@@ -54,7 +59,12 @@ describe('auth HTTP contracts frozen at 0fdd996', () => {
     ).toEqual({
       statusCode: 200,
       body: { token: 'fixture-token', expiresAt: '2030-01-01' },
-      headers: { 'x-correlation-id': correlationId },
+      headers: {
+        'x-correlation-id': correlationId,
+        'x-content-type-options': 'nosniff',
+        'x-frame-options': 'SAMEORIGIN',
+        'referrer-policy': 'strict-origin-when-cross-origin',
+      },
     });
     expect(auth.login).toHaveBeenCalledExactlyOnceWith('user', 'fixture-password', correlationId);
     expect(auth.authenticate).not.toHaveBeenCalled();
@@ -88,7 +98,16 @@ describe('auth HTTP contracts frozen at 0fdd996', () => {
   it('logout/session authenticate once per request and preserve exact arguments and response', async () => {
     const { auth, findById, dispatch } = fixture();
     expect(await dispatch({ method: 'POST', pathname: '/api/v1/auth/logout', body: null })).toEqual(
-      { statusCode: 204, body: {}, headers: { 'x-correlation-id': correlationId } },
+      {
+        statusCode: 204,
+        body: {},
+        headers: {
+          'x-correlation-id': correlationId,
+          'x-content-type-options': 'nosniff',
+          'x-frame-options': 'SAMEORIGIN',
+          'referrer-policy': 'strict-origin-when-cross-origin',
+        },
+      },
     );
     expect(auth.logout).toHaveBeenCalledExactlyOnceWith('fixture-token', context, correlationId);
     expect(auth.authenticate).toHaveBeenCalledExactlyOnceWith('fixture-token');
@@ -100,7 +119,12 @@ describe('auth HTTP contracts frozen at 0fdd996', () => {
         employeeNumber: 'E01',
         permissions: ['identity:read', 'role:read'],
       },
-      headers: { 'x-correlation-id': correlationId },
+      headers: {
+        'x-correlation-id': correlationId,
+        'x-content-type-options': 'nosniff',
+        'x-frame-options': 'SAMEORIGIN',
+        'referrer-policy': 'strict-origin-when-cross-origin',
+      },
     });
     expect(findById).toHaveBeenCalledExactlyOnceWith('employee', 'company', ['SELF'], 'employee');
     expect(auth.authenticate).toHaveBeenCalledTimes(2);
@@ -120,7 +144,16 @@ describe('auth HTTP contracts frozen at 0fdd996', () => {
         pathname: '/api/v1/auth/credential',
         body: { currentPassword: ' old ', password: ' new ' },
       }),
-    ).toEqual({ statusCode: 204, body: {}, headers: { 'x-correlation-id': correlationId } });
+    ).toEqual({
+      statusCode: 204,
+      body: {},
+      headers: {
+        'x-correlation-id': correlationId,
+        'x-content-type-options': 'nosniff',
+        'x-frame-options': 'SAMEORIGIN',
+        'referrer-policy': 'strict-origin-when-cross-origin',
+      },
+    });
     expect(auth.changePassword).toHaveBeenCalledExactlyOnceWith(
       context,
       'old',

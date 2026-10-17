@@ -37,7 +37,12 @@ function fixture(allowed = true) {
 const response = (statusCode: number, code: string, message: string) => ({
   statusCode,
   body: { error: { code, message, correlationId } },
-  headers: { 'x-correlation-id': correlationId },
+  headers: {
+    'x-correlation-id': correlationId,
+    'x-content-type-options': 'nosniff',
+    'x-frame-options': 'SAMEORIGIN',
+    'referrer-policy': 'strict-origin-when-cross-origin',
+  },
 });
 
 describe('identity provisioning inline contract', () => {
@@ -50,7 +55,12 @@ describe('identity provisioning inline contract', () => {
       const result = await dispatch(body, path);
       expect(result.statusCode).toBe(403);
       expect(result.body).toMatchObject({ error: { code: 'forbidden', correlationId } });
-      expect(result.headers).toEqual({ 'x-correlation-id': correlationId });
+      expect(result.headers).toEqual({
+        'x-correlation-id': correlationId,
+        'x-content-type-options': 'nosniff',
+        'x-frame-options': 'SAMEORIGIN',
+        'referrer-policy': 'strict-origin-when-cross-origin',
+      });
     }
     expect(provisionIdentity).not.toHaveBeenCalled();
   });
@@ -76,7 +86,12 @@ describe('identity provisioning inline contract', () => {
     expect(await dispatch({ login: ' user ', password: ' fixture-password ' })).toEqual({
       statusCode: 204,
       body: {},
-      headers: { 'x-correlation-id': correlationId },
+      headers: {
+        'x-correlation-id': correlationId,
+        'x-content-type-options': 'nosniff',
+        'x-frame-options': 'SAMEORIGIN',
+        'referrer-policy': 'strict-origin-when-cross-origin',
+      },
     });
     expect(provisionIdentity).toHaveBeenCalledExactlyOnceWith(
       context,

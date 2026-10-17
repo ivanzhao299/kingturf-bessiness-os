@@ -331,6 +331,8 @@
 
 ### TD-SEC-004｜API 自身不设安全响应头
 
+**S1实施验证中（2026-10-17）**：R7 bed8b40先登记，源码b02ad55统一complete加与nginx一致三头，12新应用/3 helper检查绿；首次实际干净HEAD全CI1，旧65文件6994严格响应期望拒绝新增头，非默许回归。按已授D1测试规则另独立test提交仅同步76处/65文件三header，完整AST证明其它内容同，旧→新映射见[S1清单](../evidence/security-batch4-s1-oracle-map-2026-10-17.md)。全量重新验证及最终证据待真实执行，不提前关闭。Nginx已有同值add_header，上线后可能重复；未来混合大小写同名路由头亦需关注，当前未发现producer，只登记/不顺手去重，不据本步宣称已实测代理/所有站点响应。
+
 - **位置**：`apps/api/src/app.ts`（`setHeader('X-…')` = 0 处）；对照 `infra/nginx/erp.kingturf.cn.conf:22-24`（生产有三头）
 - **类别**：安全 ｜ **严重度**：P2 ｜ **业务行为影响**：**变更行为**（响应头新增）
 - **证据**：本地 dev、预览环境、以及任何绕过 nginx 的直连路径均无 `X-Content-Type-Options`/`X-Frame-Options`/`Referrer-Policy`。

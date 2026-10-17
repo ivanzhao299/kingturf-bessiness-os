@@ -88,7 +88,12 @@ function fixture(permissions = defaultPermissions, available = true) {
 const response = (statusCode: number, body: unknown) => ({
   statusCode,
   body,
-  headers: { 'x-correlation-id': correlationId },
+  headers: {
+    'x-correlation-id': correlationId,
+    'x-content-type-options': 'nosniff',
+    'x-frame-options': 'SAMEORIGIN',
+    'referrer-policy': 'strict-origin-when-cross-origin',
+  },
 });
 const error = (status: number, code: string, message: string) =>
   response(status, { error: { code, message, correlationId } });

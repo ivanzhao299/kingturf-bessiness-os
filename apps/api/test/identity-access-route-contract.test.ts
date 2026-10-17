@@ -49,7 +49,12 @@ function fixture(
 const error = (statusCode: number, code: string, message: string) => ({
   statusCode,
   body: { error: { code, message, correlationId } },
-  headers: { 'x-correlation-id': correlationId },
+  headers: {
+    'x-correlation-id': correlationId,
+    'x-content-type-options': 'nosniff',
+    'x-frame-options': 'SAMEORIGIN',
+    'referrer-policy': 'strict-origin-when-cross-origin',
+  },
 });
 const denied = error(403, 'forbidden', 'Permission denied');
 const fieldDenied = error(403, 'forbidden', 'Field permission denied');
@@ -74,7 +79,12 @@ describe('profiles inline contract', () => {
       expect(await f.dispatch('GET', profilesPath, ['ignored'])).toEqual({
         statusCode: 200,
         body: { items },
-        headers: { 'x-correlation-id': correlationId },
+        headers: {
+          'x-correlation-id': correlationId,
+          'x-content-type-options': 'nosniff',
+          'x-frame-options': 'SAMEORIGIN',
+          'referrer-policy': 'strict-origin-when-cross-origin',
+        },
       });
       expect(f.listUserAccessProfiles).toHaveBeenCalledExactlyOnceWith(actor.companyId);
       expect(f.listUserAccessProfiles.mock.contexts).toEqual([f.repository]);
@@ -169,7 +179,12 @@ describe('identity state inline validation and field permission contract', () =>
       expect(await f.dispatch('PATCH', statePath, { active: false })).toEqual({
         statusCode: 204,
         body: {},
-        headers: { 'x-correlation-id': correlationId },
+        headers: {
+          'x-correlation-id': correlationId,
+          'x-content-type-options': 'nosniff',
+          'x-frame-options': 'SAMEORIGIN',
+          'referrer-policy': 'strict-origin-when-cross-origin',
+        },
       });
       expect(f.setIdentityActive).toHaveBeenCalledExactlyOnceWith(
         identityId,
@@ -213,7 +228,12 @@ describe('identity state successful calls and global boundaries', () => {
       expect(await f.dispatch('PATCH', statePath, body)).toEqual({
         statusCode: 204,
         body: {},
-        headers: { 'x-correlation-id': correlationId },
+        headers: {
+          'x-correlation-id': correlationId,
+          'x-content-type-options': 'nosniff',
+          'x-frame-options': 'SAMEORIGIN',
+          'referrer-policy': 'strict-origin-when-cross-origin',
+        },
       });
       expect(f.setIdentityActive).toHaveBeenCalledExactlyOnceWith(
         identityId,
