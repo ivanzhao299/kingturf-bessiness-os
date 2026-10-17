@@ -1,5 +1,15 @@
 # 阶段5现状测试地图与补齐清单
 
+## Web上下文业务文档真实回调护栏（Node端口，不是浏览器验收）
+
+父62cd870后新增`contextual-documents-behavior.test.ts`十项（含表驱动），调用原`appendContextualDocuments`和HTML构建器，不改生产实现；新增`test/fixtures/behavior-dom.ts`明确为部分DOM double及四项自测。helper在生产src外，不新增依赖、不移除原src夹具、不改变冻结377生产源/覆盖分母；Web tsconfig只扩include到test/\*_/_.ts以接受原严格lint/tsc检查，未放宽规则。
+
+独立固定payload/HTML sentinel验证：管理与只读入口、无权限无读取、模板选择/下载点击接线、wrapped/unwrapped subject列表先截100再过滤坏ID、subject原对象传给label/prefill（mock参数`toBe`）、订单联动客户/三员工绑定、可选ID省略、POST双击忙态/固定字段/转义、原创建与详情DTO引用传入编辑器、五权限位、保存回调版本更新。详情只在点击后GET，重复点击仅一个pending请求，创建/读取Error及非Error失败后按钮恢复且重试有实际编辑器/终态断言；空列表与失败区分，技术资料路由不读subject。保存测试只证首次打开和回调更新，不称保存后再次打开已覆盖。
+
+独立只读复核无必要阻断，指出深等不等于引用，已补精确toBe。模拟锚点clickCalls只证handler接线，不证真实下载；visibleAppRoutes固定端口只证输出过滤/去重，不证实际权限映射。helper无原生校验/事件冒泡/布局/网络/真实modal，固定五轮microtask不是通用异步静止证明，以上不替代原Playwright/CDP。
+
+初始helper原lint两处（void简写/tsconfig范围），新增测试七处require-await/void/optional风格及一处多余optional均仅修新代码；原规则不降。最终原eslint/tsc0，Web16文件327项实际exit0/1.88s，日志`/tmp/kingturf-stage5-web-contextual-final-2026-10-17.log`。首轮同冻结all/include/exclude的单包V8亦16/327、exit0/2.02s，`coverage/web-contextual-62cd870-first/coverage-final.json`按原同行statement-start max计Web9341/20592（前8937，同分母增404），contextual-documents420/420。补引用断言后第二轮16/327、实际exit0/2.06s，`coverage/web-contextual-62cd870-final/coverage-final.json`同9341/20592，日志`/tmp/kingturf-stage5-web-contextual-coverage-final-2026-10-17.log`。命中全部计数行不等于全部业务/浏览器语义；这两次dirty WIP单包测量不更新B、不称新六包check/完整CI或TEST002验收。
+
 ## 六域专项实施齐备：驾驶舱最后一域（非全阶段验收）
 
 父6081dfb后新增`dashboard-postgres.integration.test.ts`，每例复用owned真实商业图。五项真实guard0/PG5过、exit0/null/17740ms（测试15088ms），显式shuffle.tests/seed20261017及start/result记录；日志`/tmp/kingturf-stage5-dashboard-pg-first-2026-10-17.log`。首lint1处refreshedAt可能object被String转换，改显式string guard，原lint/tsc/format0，不降规则。独立只读核源码/输入与固定oracle，无必要阻断。
