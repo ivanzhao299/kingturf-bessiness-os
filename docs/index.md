@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[P1种子机器认证适配与C7停点](evidence/playwright-docker-seed-auth-2026-10-17.md)：一行URL/实际CLI绑定真红绿；完整原seed信用决策POST500，根因待核实、按C7不继续spec/两轮，非业务已修。
+
 [Docker真实回环通道验证](evidence/playwright-docker-loopback-2026-10-17.md)：宿主guard/marker→容器只读同实例→自然Secure Cookie与Origin/真实PG计数；1流程/11工具负向、失败史/清理与最小lint接线，不是spec补跑。
 
 [Docker Playwright三项增量裁定R7](tasks/playwright-docker-rulings-2026-10-17.md)：三份会话请求/oracle、真实容器回环HTTP/PG、seed机器URL最小适配已获原始人类批准；配置/业务断言/生产边界保持，先通道实证。

@@ -10,7 +10,7 @@
   "scripts": {
     "prepare": "git rev-parse --git-dir >/dev/null 2>&1 && git config core.hooksPath .githooks || true",
     "dev": "pnpm --parallel --filter @kingturf/web --filter @kingturf/api dev",
-    "lint": "eslint scripts/verify_frontend_capability_manifest.mjs scripts/validate_release*.mjs scripts/analysis/*.mjs scripts/analysis/proofs/*.mjs scripts/e2e-cdp/*.mjs scripts/e2e-docker/*.mjs && pnpm exec eslint tests/e2e/runtime-local.spec.mjs playwright.runtime.config.ts && pnpm -r lint",
+    "lint": "eslint scripts/verify_frontend_capability_manifest.mjs scripts/seed_p1_demo.mjs scripts/validate_release*.mjs scripts/analysis/*.mjs scripts/analysis/proofs/*.mjs scripts/e2e-cdp/*.mjs scripts/e2e-docker/*.mjs && pnpm exec eslint tests/e2e/runtime-local.spec.mjs playwright.runtime.config.ts && pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm test:release-guardrails && pnpm test:session-network-tools && pnpm -r test",
     "test:session-network-tools": "node --test scripts/e2e-cdp/session-network.test.mjs",

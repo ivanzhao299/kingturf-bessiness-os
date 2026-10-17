@@ -23,6 +23,7 @@ export default tseslint.config(
       'scripts/validate_release*.mjs',
       'scripts/verify_frontend_capability_manifest.mjs',
       'scripts/verify_p1_demo.mjs',
+      'scripts/seed_p1_demo.mjs',
       'scripts/analysis/*.mjs',
       'scripts/analysis/proofs/*.mjs',
       'scripts/e2e-cdp/*.mjs',

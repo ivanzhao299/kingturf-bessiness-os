@@ -5,6 +5,7 @@ import { performance } from 'node:perf_hooks';
 import { setTimeout as delay } from 'node:timers/promises';
 import net from 'node:net';
 import { createFixture, stopChild, assertOwnedListener } from './fixture.mjs';
+import { verifySeedAuthentication } from './seed-auth.mjs';
 
 const image = 'kingturf-e2e:pw1.62.1-chrome';
 const imageId = 'sha256:1a0e14c3fd2351aab685106ad17d86b0bd38e6ed89cc0d0d2be809579f8dab3e';
@@ -70,6 +71,9 @@ assert(
     'fail-stdin',
     'fail-preview-spawn',
     'browser-launch-sigterm',
+    'seed-auth',
+    'seed-full',
+    'seed-diagnose',
   ].includes(mode),
   'unknown preflight argument',
 );
@@ -81,7 +85,7 @@ assert.equal(
 );
 const fixture = await createFixture(process.env.DATABASE_URL);
 const name = `kt-pw-channel-${fixture.expected.schema.slice(-12)}`;
-let child, preview, processing;
+let child, preview, processing, seedChild;
 let containerCreated = false;
 let phase = 'gateway';
 try {
@@ -173,14 +177,89 @@ try {
         assert(!mismatch, 'identity negative unexpectedly verified');
         verified = true;
         phase = 'initialize-api-preview';
-        const users = await fixture.initialize(cancellation.signal, () => {
-          if (mode?.startsWith('setup-'))
-            setTimeout(
-              () => process.kill(process.pid, mode === 'setup-sigterm' ? 'SIGTERM' : 'SIGINT'),
-              20,
-            );
-        });
+        const users = await fixture.initialize(
+          cancellation.signal,
+          () => {
+            if (mode?.startsWith('setup-'))
+              setTimeout(
+                () => process.kill(process.pid, mode === 'setup-sigterm' ? 'SIGTERM' : 'SIGINT'),
+                20,
+              );
+          },
+          mode === 'seed-diagnose'
+            ? (detail) =>
+                report('owned-pg-failure', {
+                  code: detail.code,
+                  constraint: detail.constraint,
+                  locations: detail.locations,
+                  category: detail.category,
+                  trigger: detail.trigger,
+                  triggerLine: detail.triggerLine,
+                })
+            : undefined,
+        );
         cancellation.signal.throwIfAborted();
+        if (mode === 'seed-auth' || mode === 'seed-full' || mode === 'seed-diagnose') {
+          phase = mode;
+          fixture.assertApiOwned();
+          if (mode === 'seed-auth') {
+            await verifySeedAuthentication(users, cancellation.signal);
+            report('seed-auth-binding', {
+              actualCliFunction: true,
+              twoSyntheticIdentities: true,
+              tokenLoginSwitchEnabled: true,
+              noCookieMachineBearer: true,
+            });
+          } else {
+            const seedStart = performance.now();
+            seedChild = spawn(
+              process.execPath,
+              ['--import', './scripts/e2e-docker/seed-audit.mjs', 'scripts/seed_p1_demo.mjs'],
+              {
+                env: {
+                  ...process.env,
+                  KINGTURF_BASE_URL: 'http://127.0.0.1:3000',
+                  KINGTURF_ADMIN_LOGIN: users.admin.login,
+                  KINGTURF_ADMIN_PASSWORD: users.admin.password,
+                  KINGTURF_CREDIT_APPROVER_LOGIN: users.approver.login,
+                  KINGTURF_CREDIT_APPROVER_PASSWORD: users.approver.password,
+                },
+                stdio: ['ignore', 'ignore', 'pipe'],
+              },
+            );
+            const errors = createInterface({ input: seedChild.stderr, crlfDelay: Infinity });
+            errors.on('line', (line) => {
+              try {
+                const detail = JSON.parse(line);
+                if (
+                  detail.kind === 'seed-http-failure' &&
+                  /^[A-Z]+$/u.test(detail.method) &&
+                  /^\/api\/v1\/[a-zA-Z0-9_/-]+$/u.test(detail.path) &&
+                  Number.isInteger(detail.status)
+                )
+                  report('seed-http-failure', {
+                    method: detail.method,
+                    path: detail.path,
+                    status: detail.status,
+                  });
+              } catch {
+                /* Do not relay raw stderr or identity-bearing assertion text. */
+              }
+            });
+            const exit = await new Promise((resolve, reject) => {
+              seedChild.once('error', () => reject(Error('owned seed spawn failed')));
+              seedChild.once('exit', resolve);
+            });
+            report('seed-full-result', {
+              exit,
+              elapsedMs: Math.round(performance.now() - seedStart),
+            });
+            assert.equal(exit, 0, 'full frozen seed failed; do not repair business steps');
+          }
+          cancellation.signal.throwIfAborted();
+          await send({ action: 'verified-only' });
+          continue;
+        }
         preview = spawn(
           mode === 'fail-preview-spawn' ? '/__kingturf_missing_preview__' : 'pnpm',
           [
@@ -270,6 +349,11 @@ try {
   process.exitCode = 1;
 } finally {
   let stopped = true;
+  if (seedChild)
+    await stopChild(seedChild).catch(() => {
+      stopped = false;
+      process.exitCode = 1;
+    });
   if (containerCreated) {
     try {
       const status = execFileSync('docker', ['inspect', name, '--format', '{{.State.Status}}'], {

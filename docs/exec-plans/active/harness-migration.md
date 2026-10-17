@@ -3706,6 +3706,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+- **2026-10-17｜P1种子认证独立小步/C7停点**：ce74386通道后，仅seed机器URL改token-login，其余全文件字节守恒；实际CLI唯一login函数真实HTTP/Bearer两身份，旧URL真实变异工具1/4629ms→还原0/4506ms。根plainJS门禁只补seed精确文件，无规则放宽；[认证/完整seed失败证据](../../evidence/playwright-docker-seed-auth-2026-10-17.md)。完整冻结业务seed实跑POST credit-decisions500，child1/680ms、host1/5050ms并清理；根因待核实，非该URL小步范围，R4登记/C7停止后继spec适配/A8/B2/两轮。父ce74386为认证小步回滚点，两配置/spec/业务源码/SQL零改，最后停点docs提交后另完整CI。[已测试]（认证真红绿，完整seed失败不隐去）
+
 - **2026-10-17｜Docker owned真实回环通道**：4e691e5增量R7后仅环境工具＋最小rootplainJS/lint glob接线；host原guard/owned marker、container READ ONLY同db/schema/start/systemID/marker后才初始化。自然Chrome155 Cookie/Origin/3负例403、合法201及PG写0/1，实际exit0/6089ms；5同一性拒绝/2setup迁移中SIGTERM-INT/4relay负向均如实通过并清理。fixture外键/漏generation与lint失败史保留，[证据](../../evidence/playwright-docker-loopback-2026-10-17.md)。两配置/spec/seed/业务源码零改，A/B未跑，C不触；父4e691e5为独立回滚点，最后HEAD全CI另真实跑。[已测试]（环境定向＋文档/结构，非spec补跑）
 
 - **2026-10-17｜Docker三项增量裁定R7**：协调续派，主代理亲读人类原始三项reply全文并落[引用](../../tasks/playwright-docker-rulings-2026-10-17.md)；c2ff52bb410e3bf32fc3f0eda797583f2f8b6a09树空，完整CI真实0/190014.635ms。只最小会话请求/oracle迁移、真实回环环境转发/PG同一性、seed机器URL三项增量获准；两配置/其余业务断言/C生产/监听防火墙/依赖/workflow/一般阶段5仍保护。R7仅docs独立提交，父c2ff52b回滚点；先实证通道，受guard阻断必须停报，未预填补跑绿。[未测试]（R7文档校验，最终HEAD完整CI随后）

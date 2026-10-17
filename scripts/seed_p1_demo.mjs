@@ -9,7 +9,7 @@ if (!adminPassword || !approverPassword)
   throw new Error('KINGTURF_ADMIN_PASSWORD and KINGTURF_CREDIT_APPROVER_PASSWORD are required');
 
 async function login(loginName, password) {
-  const response = await fetch(`${baseUrl}/api/v1/auth/login`, {
+  const response = await fetch(`${baseUrl}/api/v1/auth/token-login`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ login: loginName, password }),

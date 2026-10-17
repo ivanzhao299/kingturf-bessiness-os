@@ -76,6 +76,7 @@ async function verifyAndProbe(control) {
     sameHostMarker: true,
   });
   const command = await receive();
+  if (command.action === 'verified-only') return;
   assert.equal(command.action, 'preflight');
   phase = 'natural-browser-cookie-origin';
   const launching = chromium.launch({ channel: 'chrome', headless: true });
