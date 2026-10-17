@@ -16,7 +16,7 @@ import { runOwned } from './coverage-process.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 // Set only from the first real six-package measurement; never auto-update a baseline.
-const baselineDigest = '';
+const baselineDigest = '73bf74135208cdba109401f2d37507ac81ac7ba03cd9beb497feec849bc6a8ed';
 const mode = process.argv[2];
 assert(['measure', 'check'].includes(mode), 'use coverage-run.mjs measure|check');
 const controller = new AbortController();

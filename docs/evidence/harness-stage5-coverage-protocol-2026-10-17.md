@@ -1,5 +1,13 @@
 # 阶段5覆盖率首测口径（测量前冻结）
 
+## 首测结果（其后各节“尚未”描述保留为测量前历史）
+
+5b3dd0ac249bdf8bc1c1d28995cb3deed77a17c2干净固定HEAD，真实`NODE_ENV=test pnpm coverage:measure`经原回环测试库guard执行，host实际exit0/signal=null/104178ms、首尾HEAD相同且工作区干净。六包真实close0、同PGID无存活成员、无强制清理/取消；API126文件/17242、Web14/313、config2/71、database3/68、domain3/14、types1/1全部通过。377文件/25仓储完整性与源码位置校验通过，未导入文件未排除，纯类型规则未放宽。
+
+固定[B记录](harness-stage5-coverage-baseline-2026-10-17.json)保存整数计数、UUID、HEAD/清单hash、六包实际执行和报告SHA；该记录SHA256为`73bf74135208cdba109401f2d37507ac81ac7ba03cd9beb497feec849bc6a8ed`，check显式pin且不自动更新。B₀=31623/48566（约65.11%），B_d=496/671（约73.92%），B_r=6782/11512（约58.91%），**三目标全部未达**。同分母至少还需4802/108/1277条被覆盖行，分组会重叠，不把缺口相加。measure退出0仅表示真实度量成功；后继check必须三阈值+B不下降同时满足，不能以基线替代阈值。
+
+原始本地报告`coverage/run-53d6621c-420f-48a7-bb0f-1627e8f99ee0/result.json` SHA256 `5cd8f8f20c57af9b28f57ea8be09a38c74a89133cb0336a0bcdb429b64d4353a`；日志`/tmp/kingturf-stage5-coverage-first-5b3dd0a-2026-10-17.log`。独立复核发现进程表检查抛错的异常清理缺口：本轮未触发，不改写本轮成功史；下一独立工具修复需真实反例验证。当前证据只证明同PGID排空，不宣称脱组后代、宿主SIGKILL或实际PG异常后的schema清理。豁免双写scanner、实际check失败与最终CI尚待完成。
+
 ## 首测前进程与输入快照加固
 
 在1068b94后接线owned Linux进程组：每次guard/Vitest独立进程组，SIGINT/SIGTERM传递整组，等待真实close并用仅PID/PGID/state的进程表确认无存活后代；必要强制清理会使测量失败，不能以leader退出充当整树结束。清单校验同时要求groupDrained=true、forcedCleanup=false、aborted=false。启动及完成均要求整个Git工作区干净且HEAD不变，防止只冻结生产源却换测试、配置、runner或依赖。
