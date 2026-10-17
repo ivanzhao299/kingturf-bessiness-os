@@ -3722,6 +3722,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+- **2026-10-17｜workspace单void追加R7**：本会话直接人类call_18640ce480e847d8885863c94508ca59 reply批准仅原67行setAttribute未用void改块体，[原话/边界](../../tasks/playwright-workspace-void-authorization-2026-10-17.md)；不泛化doc8许可/不改data-preserved值、原调用或任何节点/路由assert，不批360字段/成本提示。独立docs先行，父当前order适配提交回滚点；真实等价/变异/实跑尚待执行，C/第二轮/一般阶段5保护，最终HEAD全CI必跑。[未测试]（R7文档，非实施通过）
+
 - **2026-10-17｜order-evidence会话夹具独立适配**：父253b761，仅旧login/session分支替共享合成协议，原员工/权限及全部sales-order/证据payload/503重试/键盘/计数/移动断言冻结；AST15expect同，viewport起所有动作/断言字节同。初绿PW0/3048ms、host0/8262ms；真源加旧token红PW1/6450ms、host1/11745ms，完整close/清理后还原PW0/3058ms、host0/8694ms，原1例过，红附件保留、全owned清理。[逐处/原命令/边界](../../evidence/playwright-docker-spec-replay-2026-10-17.md)。原hook lint0，未跑B/C/第二轮；成本原失败不消除，最终HEAD完整CI仍必跑。[已测试]（逐文件真红绿，非全A/B绿）
 
 - **2026-10-17｜剩余非生产机械门禁一次库存**：e92bbe9后strict TS项目仅补P1本地include，不改PW配置/规则/C；一次只读内存lint bd7e80b A8+B2，7文件0，doc9（八处现已人裁修）、workspace2（旧storage5属S4替换、67非会话void未改/许可不泛化）、startup3皆旧storage属S4替换。[完整库存/界线](../../evidence/playwright-docker-spec-replay-2026-10-17.md)。P1/runtime原lint接线实际0，未执行B浏览器/生产，A-only runner不扩白名单。父e92bbe9为本工程接线回滚点，最后完整CI必跑。[已测试]（原strict静态库存，非PW通过）

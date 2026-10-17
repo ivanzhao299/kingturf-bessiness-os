@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[Workspace单void语法R7](tasks/playwright-workspace-void-authorization-2026-10-17.md)：本会话原始人类仅批67行setAttribute未用void块体，原属性值/调用/全部节点和路由断言不变；不扩360字段或成本提示，先独立落盘再改。
+
 [文档发送最小机械兼容R7](tasks/playwright-document-lint-authorization-2026-10-17.md)：人类明确只授该spec的8处旧strict ESLint阻断，类型擦除字节保持/void未使用例外，原业务断言参数/数据/步骤/规则不动；不扩其它spec或成本提示。
 
 [成本转报价提示C7待裁](tasks/playwright-cost-handoff-blocker-2026-10-17.md)：真实PW1通过1失败，最后提示不可见而原URL/dialog/decisionId过；原trace只读核201→GET200及报价状态文本空。候选根因/产品或oracle范围待裁，临时auth适配精确还原未完成变异；台账53/未第二轮。
