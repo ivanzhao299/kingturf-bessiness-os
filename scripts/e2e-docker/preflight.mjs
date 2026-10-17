@@ -6,6 +6,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import net from 'node:net';
 import { createFixture, stopChild, assertOwnedListener } from './fixture.mjs';
 import { verifySeedAuthentication } from './seed-auth.mjs';
+import { validateSpecCommand } from './spec-runner.mjs';
 
 const image = 'kingturf-e2e:pw1.62.1-chrome';
 const imageId = 'sha256:1a0e14c3fd2351aab685106ad17d86b0bd38e6ed89cc0d0d2be809579f8dab3e';
@@ -22,6 +23,7 @@ const reportContainer = (value) => {
     ],
     'container-complete': [],
     'container-failed': [],
+    'spec-result': [],
   };
   assert(Object.hasOwn(schemas, value.event), 'unknown container event');
   const safe = {};
@@ -44,9 +46,21 @@ const reportContainer = (value) => {
         'natural-login-origin',
         'missing-null-foreign-origin',
         'natural-signed-write',
+        'playwright-spec',
       ].includes(value.phase),
     );
     safe.phase = value.phase;
+  }
+  if (value.event === 'spec-result') {
+    validateSpecCommand(value.spec, value.label);
+    assert(Number.isInteger(value.exit) && value.exit >= 0);
+    assert(Number.isInteger(value.elapsedMs) && value.elapsedMs >= 0);
+    Object.assign(safe, {
+      spec: value.spec,
+      label: value.label,
+      exit: value.exit,
+      elapsedMs: value.elapsedMs,
+    });
   }
   report(value.event, safe);
 };
@@ -76,9 +90,11 @@ assert(
     'seed-full',
     'seed-repeat',
     'seed-diagnose',
+    'spec',
   ].includes(mode),
   'unknown preflight argument',
 );
+if (mode === 'spec') validateSpecCommand(process.argv[3], process.argv[4]);
 assert.equal(
   execFileSync('docker', ['image', 'inspect', image, '--format', '{{.Id}}'], {
     encoding: 'utf8',
@@ -322,7 +338,11 @@ try {
         assertOwnedListener(4173, preview, true);
         phase = 'browser-probe';
         cancellation.signal.throwIfAborted();
-        await send({ action: 'preflight', user: users.runtime, fault: mode });
+        await send(
+          mode === 'spec'
+            ? { action: 'spec', spec: process.argv[3], label: process.argv[4] }
+            : { action: 'preflight', user: users.runtime, fault: mode },
+        );
       }
       if (event.event === 'natural-cookie-origin') {
         await fixture.verifyProbeWrites();
@@ -344,10 +364,13 @@ try {
       Promise.all([consume, done]),
       interrupted,
       new Promise((_, reject) => {
-        timer = setTimeout(() => {
-          cancellation.abort(Error('preflight deadline'));
-          reject(cancellation.signal.reason);
-        }, 120_000);
+        timer = setTimeout(
+          () => {
+            cancellation.abort(Error('preflight deadline'));
+            reject(cancellation.signal.reason);
+          },
+          mode === 'spec' ? 600_000 : 120_000,
+        );
       }),
     ]);
   } finally {

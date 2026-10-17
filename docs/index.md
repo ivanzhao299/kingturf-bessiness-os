@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[Docker逐spec回放证据](evidence/playwright-docker-spec-replay-2026-10-17.md)：1228531干净HEAD全CI0后续A8精确白名单执行入口/唯一附件目录/原配置；适配变异与A/B两轮逐项补记，未执行不称绿、C禁止。
+
 [P1本地成本种子验证](evidence/playwright-p1-cost-seed-2026-10-17.md)：最小原close前准备、其它字节不变；真实缺料/自批红、立即还原后同schema完整seed重复绿，计数1/2/1/2/异人/closed不变；独立只读复核，最终HEAD完整CI另实跑。下方旧待裁/未实施为前时点。
 
 [P1本地成本种子增量R7](tasks/playwright-p1-cost-seed-authorization-2026-10-17.md)：原始人类批准已审方案最小本地policy/核算/异人批准，7b1bc62实际干净HEAD全CI0先完成；原close/其它步骤/SQL/配置/断言保护，独立变异/重复验证待执行。

@@ -1,5 +1,7 @@
 # 技术债台账（tech-debt-tracker）
 
+**A类接线静态发现（2026-10-17，52顶层项）**：TD-TEST-012仅登记冻结document-send spec:154在额外strict全A tsc下string|undefined诊断（exit2），非原CI/PW失败证据；不改旧断言或放宽规则，若实阻断原门禁/补跑再C7。成本种子前置已验证，下列51为前时点。
+
 **成本种子现时（2026-10-17，仍51项）**：TD-TEST-011已获独立人类R7并完成最小本地policy→calculate→异人approve→原close；完整seed同schema重复计数稳定、缺料/自批真实红后还原绿。只关闭本地种子前置实施项，不等于A/B补跑或整批验收；[证据](../evidence/playwright-p1-cost-seed-2026-10-17.md)。下列待裁/未修均为历史，原500保留，不改产品SQL/其它业务或抬分。
 
 **Docker前置当前停点（2026-10-17，51顶层项）**：TD-TEST-010 owned pgcrypto可见性仅环境修正，信用段已通过；新增TD-TEST-011：冻结P1 seed缺实际成本批准，生产关单500/P0001/require_approved_cost_before_close已实证。补业务种子超仅认证URL/环境授权，C7停后继spec/两轮；不认定产品触发器有bug、不绕过约束，待人裁。源码/两PW配置/spec/原业务步骤保持，最终HEAD完整CI另实测。下方50/49及旧信用停点均保留历史。
@@ -102,6 +104,7 @@
 | TD-TEST-009  | 三份临时AST证明encoder返回truthy而漏比后续子节点                                              | P1     | 证明工具      | 无（工具修正）           | 3f后独立工具/证据收尾              | 已修完整重核                    |
 | TD-TEST-010  | Docker owned schema信用种子缺已装public.pgcrypto可见性                                        | P2     | 测试环境      | 无（仅工具）             | Docker前置补跑                     | 环境已修/信用通过，整seed另阻断 |
 | TD-TEST-011  | 冻结P1种子生产关单缺实际成本批准，HTTP500/P0001                                               | P1     | 种子业务前置  | 已修（人类另授最小本地） | Docker前置补跑                     | 本地前置已验证/补跑未完成       |
+| TD-TEST-012  | 冻结文档发送PW旧header索引在额外strict tsc下类型不匹配                                        | P2     | 测试静态类型  | 未修（仅额外诊断）       | 后继独立授权                       | 待核实原门禁/运行影响           |
 | TD-GATE-001  | 无 git hooks / commitlint / lint-staged，脏提交仅靠 CI 兜底                                   | P1     | 门禁          | 无                       | 阶段 3                             | 已完成                          |
 | TD-GATE-002  | vitest 无配置文件，参数散落各包 scripts                                                       | P2     | 门禁          | 无                       | 阶段 3                             | 已完成                          |
 | TD-GATE-003  | routes覆盖已修复；E1已撤，恢复31旧豁免                                                        | P1     | 工程门禁      | 无                       | 独立门禁任务／阶段5前复核          | 已验收                          |
@@ -409,6 +412,11 @@
 - **关联批次**：阶段 3 ｜ **验收方式**：故意注入直拼 SQL 的测试提交必须被门禁拦截（实测）✓（三轮样本共 11 个，全部退出码 1）
 
 ## 测试
+
+### TD-TEST-012｜冻结文档发送PW旧header索引严格类型诊断
+
+- **事实/范围**：新增A8精确tsconfig供原ESLint project service归属；额外手动全A `pnpm exec tsc -p tests/e2e/tsconfig.json --noEmit`实际2，`tests/e2e/document-send-product-quality.spec.ts:152–154`的string[]接收headers索引string|undefined，继承原browser/base strict/noUncheckedIndexedAccess。原根lint/typecheck未包含该手动全A命令，PW尚未执行，不能称运行bug或原CI失败。
+- **边界**：仅登记，不修冻结业务断言/加默认值/非空断言，不放宽规则。独立只读建议保留窄TS接线，原login ESLint已0；如实际阻断hook/授权PW或要求新全A tsc为必须验收项，再C7带实证求裁。[执行证据](../evidence/playwright-docker-spec-replay-2026-10-17.md)。
 
 ### TD-TEST-011｜冻结P1种子缺关单实际成本审批前置
 
