@@ -3752,6 +3752,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+- **2026-10-17｜MRP专项真实PG**：父31f694e，独立8项实际PG过，原lint/tsc/format0；复用owned helper、每例独立随机schema迁移/收尾，真实BOM固定10→21→26→30及提案日期、COMPANY/GROUP租户/拒绝、版本/唯一、固定hash非幂等、冻结/连续事件/闭态/不可变、outbox后置冲突与cycle/empty回滚。[真实历史及覆盖边界](../../evidence/harness-stage5-test-map-2026-10-17.md)。首collision seed漏必填列导致6过1败，补后8过；共享图顺序依赖改每例隔离后乱序8过/exit0/null/21729ms，独立review无必要阻断。明确合成算法需求、库存/收货0及单桶，不称商业链/全矩阵；TEST003仅2/6，B最终目标/D三连未完成。回滚本新test/docs独立revert，不含产品/旧断言/seed/配置改动。[已测试]（实际PG专项，非完整CI）
+
 - **2026-10-17｜P1货币显示人类增量R7**：父7117c41，亲核原始人类call_dd0e2120495445669087b3dbae8dba45批准最小金额显示适配，[原话与边界](../../tasks/harness-stage5-p1-money-authorization-2026-10-17.md)。仅有main af0de8f/7e3e46c等明确依据的货币词面改独立固定本地化期待；原数值/币种/计数/状态/事件/seed保持，不用产品formatter造期待。其它业务失败/C7、成本提示/TD018/C与第二轮边界保持。本提交只有R7/index/日志，不改期待或产品，后继逐处映射/真变异/实际补跑另提交；回滚本授权docs独立revert须核依赖。[已测试]（授权文档静态，非P1通过）
 - **2026-10-17｜覆盖率首测生命周期检查点**：父1068b94，owned Linux进程组/取消整组清理与首尾全工作区干净快照约束；manifest拒绝未drain、强制清理或中断结果。工具10项实际通过、原lint/format通过；无PG进程实验不冒充PG中断清理或B首测。接线细节见[覆盖率协议](../../evidence/harness-stage5-coverage-protocol-2026-10-17.md)。尚未实测B、不称完整CI通过；回滚本工具/docs/package提交，不涉及产品或workflow。[已测试]（定向工具检查）
 - **2026-10-17｜覆盖率真实首测冻结B**：5b3dd0a干净固定HEAD六包真实exit0/104178ms，377文件/25仓储完整性通过，API17242/Web313等全绿。B₀=31623/48566、B_d=496/671、B_r=6782/11512；75/90/70三目标全未达，不以measure0称验收或全CI通过。[固定基线](../../evidence/harness-stage5-coverage-baseline-2026-10-17.json)与runner SHA pin独立冻结；进程异常清理问题留后继单独修复。回滚本基线/文档/pin须保持真实失败史，不重写B。[已测试]（真实六包覆盖率测量）

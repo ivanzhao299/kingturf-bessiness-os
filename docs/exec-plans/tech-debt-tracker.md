@@ -546,7 +546,7 @@
 
 ### TD-TEST-003｜6 个仓储模块仅 mock 路由级测试，SQL 路径未验证
 
-- **阶段5实际进展，未关闭**：制造专项6项真实PG0、租户SQL实现真注入1败4过→还原5绿→补强最终6绿；源码恢复SHA/diff0及事件回滚证据见[测试地图](../evidence/harness-stage5-test-map-2026-10-17.md)。该域公司/GROUP限定并非recordScopeSql接口，也无幂等命令；其余五域专项未完成。原“六个无专项”保留为发现时点，佣金/风险旧HTTP间接证据不漏记。
+- **阶段5实际进展，未关闭**：制造专项6项真实PG0、租户SQL实现真注入1败4过→还原5绿→补强最终6绿；MRP专项8项真实PG0（每例独立schema、固定展开净额、状态/租户/失败回滚，乱序21729ms），首漏outbox必填字段及共享图顺序依赖修正史完整保留。源码恢复SHA/diff0及事件回滚证据见[测试地图](../evidence/harness-stage5-test-map-2026-10-17.md)。两域公司/GROUP限定并非recordScopeSql接口，也无幂等命令；其余四域专项未完成，MRP非零库存/采购和多桶矩阵仍欠。原“六个无专项”保留为发现时点，佣金/风险旧HTTP间接证据不漏记。
 
 - **位置**：`commission`/`dashboard`/`manufacturing`/`mrp`/`procurement`/`risk` 六个 `*-repositories.ts`
 - **类别**：测试 ｜ **严重度**：P2
