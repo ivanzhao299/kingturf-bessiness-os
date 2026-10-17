@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[阶段5最新完整检查点](evidence/harness-stage5-coverage-protocol-2026-10-17.md)：0b78c94实际完整CI0/340356ms，API17293/Web426，真实覆盖37389/48566、629/671、9787/11512；A核心/E/F在链内验证、分母/B不变，非D最终三连。
+
 [阶段5 F收官准备](evidence/harness-stage5-closeout-preparation-2026-10-17.md)：61项逐条去向、DoD10及§14映射/常驻diff草案；质量/发货与文档核心本轮已补、全CI待。四长函数/29旧豁免列具体待裁候选，不实施新例外、不归档或宣称竣工；[当前评分实测](QUALITY_SCORE.md)保历史并列真实覆盖分数。
 
 [P1货币显示适配R7](tasks/harness-stage5-p1-money-authorization-2026-10-17.md)：亲核新增人类原话；仅main有据货币格式用独立固定期待，原币种/数值/数量/状态/seed保持，其它差异仍上报。

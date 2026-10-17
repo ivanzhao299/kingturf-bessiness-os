@@ -1,5 +1,9 @@
 # 阶段5现状测试地图与补齐清单
 
+## A核心/E/F固定检查点完整CI已过（非最终D三连）
+
+0b78c94468f9872e1811b1e54be3620bf0192e1d首尾相同/树空，完整ci:local实际0/null/340356ms，期间无编辑/并发PG或浏览器；API134/17293、Web26/426、config71/database68/domain20/types5，含下方Quality6/Shipment6/文档动作12、TEST019四工具及原335均实际执行，build/audit通过。真实run8e319e61…三覆盖整体37389/48566、domain629/671、仓储9787/11512，分母/生产377/仓储25/B不变，独立raw复算相符。[完整hash/口径](harness-stage5-coverage-protocol-2026-10-17.md)。后继成本对比工具/证据另需最终HEAD全CI，P线C7与D最终三连不由此抵销；下方“待全CI”为此前历史。
+
 ## A剩余核心：Shipment真实PG六项及Order360正向来源
 
 新增 `shipment-postgres.integration.test.ts`，复用已冻结真实销售图，实际制造发布/工艺/生产单release-start-report-output-complete、库存10的QUARANTINE产出。固定申请5/需款100001，独立断九门禁flags与失败清单payment/overdue/orderLink/quality/cost，明确不是九gate全绿READY。request精确audit-only一条/outbox0，snapshot哈希仅一致性校验而非独立业务oracle。未批拒放行/拒发、自批拒绝→异人approve→release→dispatch→in-transit→完整POD deliver，缺POD失败无残留；reject终态、重复request为23505不伪称幂等成功；COMPANY/GROUP tenant及narrow scope各入口；直接DB伪造quality_ok=true仍拒。dispatch先插shipment后初始事件key冲突，六类counts全不增、fresh key成功。

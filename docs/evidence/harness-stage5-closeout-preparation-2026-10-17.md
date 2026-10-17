@@ -2,6 +2,10 @@
 
 ## 当前边界与证据索引
 
+**后继检查点**：0b78c94稳定干净HEAD完整CI实际0/null/340356ms，A新增核心/E装载/F文档均在链内过；API134/17293、Web26/426、三覆盖37389/48566、629/671、9787/11512，独立原始报告复算相符。[实际结果](harness-stage5-coverage-protocol-2026-10-17.md)。后继成本三臂已完成且当前冷路径原PW仍红，产品C7/信用/驾驶舱/函数期限仍待，D最终三连不计此checkpoint。
+
+函数/旧豁免三选已通过用户异步问题提交一次，尚无答复不算批准；下文拟“2026-11-17”明确指 **2026-11-17 00:00:00 Asia/Singapore** 硬到期时刻，owner为待人确认的后端/门禁维护角色，不是已有指派/生效例外。若人类另指定时点，以新的R7落盘为准，未批准前不实施。下段为本稿初版时点，当前进度以本段为准。
+
 这是F要求的准备件，不是阶段5或项目竣工声明。批次1–4已由人类验收；阶段5最近完整CI为固定干净`3f03e6278f30800a6166a233c7db59cbc7675d0e`实际0/299126ms，三覆盖目标首次同时通过。后继E测试工具`c5000ac`尚待新完整CI；D最终同状态三连/P线仍欠。不得提前移动、删除或精简HARNESS-RULES，DoD10只列待终验后单独人令。
 
 证据代号：R7=[正式授权](../tasks/harness-stage5-authorization-2026-10-17.md)；L=[主台账](../exec-plans/tech-debt-tracker.md)；Plan=[计划§7](../exec-plans/active/harness-migration.md)；CI=[发布/CI决定](../CI.md)；B3=[批次3证据](frontend-batch3-acceptance-2026-10-17.md)；B4=[批次4证据](security-batch4-acceptance-2026-10-17.md)；Map=[测试地图与E回归](harness-stage5-test-map-2026-10-17.md)；Cov=[固定B/真实覆盖门禁](harness-stage5-coverage-protocol-2026-10-17.md)；Browser=[浏览器考古/待裁](harness-stage5-browser-rulings-2026-10-17.md)。B3/B4交验包的旧“待验收”时点，须结合更新的Plan正式验收/R7读取，不倒写历史。下表D2/D3均指历史决策编号，不是本阶段D线第2/3轮。
@@ -66,7 +70,7 @@
 | TD-TEST-016  | P2   | P1部分完成/待裁   | 已批准显示定位后7过2败+2未完成，不称11绿                     | Browser/Plan    |
 | TD-TEST-017  | P2   | 工具兼容已验证    | reporter options原生形状/接线，非业务通过证明                | L/Map           |
 | TD-TEST-018  | P2   | 环境连接待核      | active CONNECT_TIMEOUT，不放宽硬闸/超时/重试求绿             | L/Browser       |
-| TD-TEST-019  | P2   | 装载已修待全CI    | 原335正常/空Git对象绿，缺失篡改拒绝；仍当前依赖              | Map             |
+| TD-TEST-019  | P2   | 装载已修全CI已过  | 原335正常/空Git对象绿，0b78c94完整链通过；仍当前依赖         | Map             |
 | TD-GATE-001  | P1   | 已完成/本轮补验   | 真实commit-msg非法1/合法0，hook非CI模拟提交                  | L/Map           |
 | TD-GATE-002  | P2   | 已完成            | 原Vitest配置与API串行保持                                    | L/Cov           |
 | TD-GATE-003  | P1   | 路由漏扫/E1已验收 | 不复活已撤E1，不混作函数200缺口已修                          | R7/Plan/L       |

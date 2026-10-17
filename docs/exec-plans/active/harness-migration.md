@@ -3752,6 +3752,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+- **2026-10-17｜A核心/E/F完整检查点真实0**：0b78c94468f9872e1811b1e54be3620bf0192e1d首尾同HEAD/树空，期间无编辑/并发PG浏览器，完整ci:local实际0/null/340356ms；API134/17293、Web26/426、其余71/68/20/5，新增质量/发货/文档核心与E原335/四工具/F文档在链内通过，build/audit0。[raw run8e319e61三分数/摘要/独立复算](../../evidence/harness-stage5-coverage-protocol-2026-10-17.md)：37389/48566、629/671、9787/11512，分母/377源/25仓储/固定B不变。不是最终D三连；成本三条件诊断后新工具/证据HEAD仍需全CI，P数值/成本与F精确函数期限裁断待；不实施新例外或产品修复、不归档。回滚本事实文档不撤核心护栏/旧B。[已测试]（固定0b78c94完整CI，非后继文档HEAD）
+
 - **2026-10-17｜F只准备/61项与当前实测**：本阶段原58加PROC/RISK/TEST019共61逐条ID/级别/处置与证据、DoD10、§14.3全映射、常驻文档内容diff及§14.6自检问题进[独立准备件](../../evidence/harness-stage5-closeout-preparation-2026-10-17.md)。QUALITY_SCORE保历史并列3f03e62原始三分数/包分数，后继12+12目标绿不预混旧run；coverage独立raw复算已完成。四长函数与29旧豁免真实审计/三具体可裁方案、精确符号上限/拟owner与到期仅提案，不实施/续期或擅重构；A已补核心不靠F延期。只读核61/级别/映射已有无必要阻断，新增候选另核；doclint/format与完整CI待实际执行。HARNESS未移动删除精简，永久diff未应用，无竣工声明；回滚本准备件/score/索引/docs独立revert。[未测试]（F新文档待门禁，不否定既有目标测试）
 
 - **2026-10-17｜A剩余Shipment真实PG核心/360正向来源**：实际生产产出但不伪造质量/MRP/成本READY，固定九gate flags/五失败项、异人例外审批→放行→运输→签收，tenant/scope/POD/伪造gate/后段事件key冲突事务回滚六项；Order360用真实load与7事件、无grant/窄scope隐去。[独立预言/边界/日志](../../evidence/harness-stage5-test-map-2026-10-17.md)。原strict lint/tsc0、真实PG6/6 exit0/null/19561ms，独立只读复核待实结论。A核心与文档12项已补，不外推全矩阵；产品/旧断言不改。回滚新test及docs独立revert；后继固定HEAD完整CI待。[已测试]（目标PG，非最终CI）

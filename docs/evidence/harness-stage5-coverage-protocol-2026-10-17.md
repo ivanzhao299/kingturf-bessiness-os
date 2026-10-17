@@ -1,5 +1,13 @@
 # 阶段5覆盖率首测口径（测量前冻结）
 
+## A核心/E/F检查点完整CI（0b78c94，仍非最终D三连）
+
+固定干净HEAD `0b78c94468f9872e1811b1e54be3620bf0192e1d` 完整ci:local实际exit0/null/340356ms；首尾HEAD不变/树空，运行中无文件修改、并发PG/浏览器。API134/17293（含Quality6/Shipment6）、Web26/426（含文档动作12）、config71/database68/domain20/types5，原工具含TEST019四项/原335、build/audit无已知漏洞全部通过。日志 `/tmp/kingturf-stage5-e-a-core-f-full-ci-2026-10-17.log`。E新装载与A新增核心已在完整链实际执行，F文档通过门禁；P成本对比/数值裁断/函数期限尚待，不计D最终三连或竣工。
+
+真实check run `8e319e61-f493-47e9-b085-56621de9a926`，整体37389/48566=76.985957%、domain629/671=93.740686%、仓储9787/11512=85.015636%，deficits=[]。包内API24683/26752、Web11562/20592，其余同下方首次达标；377源/25仓储/全部源码hash/分母和固定B一致，未变排除/豁免/规则。manifest六包各exit0/null/groupDrained，forcedCleanup/aborted皆false；内部跨度232032ms，不与完整CI外围340356ms混淆。结果SHA256 `3b64fda2d993570e6433bbae69161523c709a7a71c1484a9ce788b1363b2b133`，路径 `coverage/run-8e319e61-f493-47e9-b085-56621de9a926/result.json`。
+
+独立只读按六raw报告SHA及statement.start同行最大命中重算，377文件、六包与三汇总全一致，精确整数交叉比较三目标+B不降通过；另一路核当前377源码hash也一致。不是派发即完成，也不把TS行覆盖冒充SQL/全业务矩阵。下方3f03e62及全部红史保留各自时点。
+
 ## 首次三目标同时达标与完整CI（非最终三连）
 
 干净固定HEAD `3f03e6278f30800a6166a233c7db59cbc7675d0e`，完整`pnpm ci:local`实际exit0/signal null/299126ms；首尾同HEAD、树空，期间无编辑/提交、无并发PG/浏览器。原format/doclint/structure/service/capability/DB guard/migrate/status/lint/tsc、工具回归、六包V8、build、prod audit全部实际通过（audit无已知漏洞）。日志`/tmp/kingturf-stage5-web-behavior-full-ci-2026-10-17.log`。这不是D最终同状态三连之一：后继E/F及P1业务待裁仍欠，不借此宣布阶段5或项目竣工。
