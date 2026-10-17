@@ -451,6 +451,8 @@
 
 ### TD-TEST-016｜P1原浏览器11例失败定位待核
 
+- **阶段5后继**：main单页设计d4e9dbd考古后，人类已批准逐路由（R7 f4b54c2）。首候选11失败/其中10timeout，独立review指出测试helper先即时isVisible竞态，完整结束后只补parent attached。第二候选仅原credit count3/订单CNY950000断言失败后TD018中断；非完整11。main af0de8f已明确货币本地化，当前固定formatter输入950000→¥950,000，与旧词面不符；币种/数值文案新C7未擅改，保原断言/产品/seed。逐路由候选部分检查点不算P1文件适配/真实红绿完成。[全部事实/建议](../evidence/harness-stage5-browser-rulings-2026-10-17.md)。以下待路由许可/未定位为前时点。
+
 - **最新C7**：只读phase部分诊断前两例failureLine19/overview-board-hidden，第三同断言但unclassified；随后通道超时使complete=false。仅前两例原helper可见性期待与非当前workspace隐藏冲突有实际快照支持，其余不归因。候选封存精确恢复原spec；路由访问/逐页可见性方案属非S4期待变化，未获授权不实施。以下未定位文字为此前时点。
 
 - **事实**：f56365c私有执行器，原seed实际0且成本/关单检查过，P1自然DOM会话候选保原11个test正文；完整11发现/完成、全部failed，PW1/65088ms、host1/73640ms，owned全清。raw按人裁仅tmpfs已清，未导图/未视觉验收，不称拥有原始错误证据。

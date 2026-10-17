@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **阶段5 P1部分检查点/新增显示C7（2026-10-17）**：f4b54c2人类逐路由许可后，首候选11失败（10timeout）完整收齐；测试helper只补parent attached/原13移动检查固定站点后，第二次仅原credit count3与订单CNY950000断言失败，随TD018中断/complete=false/owned全清。[实际结果/main货币本地化证据](../../evidence/harness-stage5-browser-rulings-2026-10-17.md)。只停该spec，不改原金额/币种/seed/产品或放宽relay；新显示期待待C7，P1真变异未完成/第二轮未开，其它阶段5线继续。coverage-v83.2.6唯一直接新开发依赖已装、口径工具仍候选/未首测B。
+
 - **P1逐路由已授（2026-10-17）**：b1eab97先交main考古/11例提案后，人类call_f9cc886e017b44faadc7ee055b90d8d5直接批准，主执行者亲核[独立R7](../../tasks/harness-stage5-p1-route-authorization-2026-10-17.md)。自然登录后真实菜单商机及各业务页，mobile原13类逐页，原数值/状态/事件/参数/seed全保；产品/原config不改，真实变异/实际补跑未完成不预报绿。Workspace最终ac7082a实际干净HEAD全CI0/209428ms，原4例已真红绿；P1新业务失败仍C7、成本信息保留未证/第二轮未开/C禁。
 
 - **阶段5 Workspace字段实施收口（2026-10-17）**：5230625已授字段仅补真实orders/finance tuple，缺字段真红→还原原4过、旧恢复DTO真四红→还原原4过PW0/3930ms、host0/9389ms，owned全清；[逐处/全部结果](../../tasks/playwright-workspace-fixture-rulings-2026-10-17.md)。TD-TEST-014仅实施验证关闭/58项；A七份绿，成本/P1与其它阶段5线继续，第二轮未开/C禁。产品/原16expect/两config保持，提交后该稳定HEAD完整CI另跑。
@@ -3749,6 +3751,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+- **2026-10-17｜P1已授逐路由部分候选与真实失败保留**：父f4b54c2，只自然登录+真实菜单/加载等待，原11标题/数值/状态/事件/seed守恒，mobile13类同序逐页/各截图当前页。首候选PW1/310270ms、11失败（10timeout）/host1/321925ms/owned全清；独立review指出parent即时false竞态，完整退出后加attached等待，mobile展开固定行只为安全定位，原13检查不减。第二次仅2失败（原count3、CNY950000）后activeCONNECT_TIMEOUT、PWnull/SIGTERM、host1/28483ms、complete=false、owned全清。[main af0de8f本地化证据/全部边界](../../evidence/harness-stage5-browser-rulings-2026-10-17.md)。保持原金额文本期待不擅改/不放宽TD018，P1每文件真变异/全绿未完成，不开第二轮，A–F独立续。原lint/format0，独立候选review完成；此测试部分检查点独立revert回父P1，不含依赖/覆盖工具候选。[已测试]（明确真实失败/中断，非P1绿）
 
 - **2026-10-17｜P1逐路由适配人类增量R7**：父ac7082a已实际干净HEAD完整CI0/209428ms/HEAD不变树空；b1eab97已版本化考古与逐例方案后，人类reply call_f9cc886e017b44faadc7ee055b90d8d5批准最小逐路由适配，亲核原始消息。[授权原话/精确范围](../../tasks/harness-stage5-p1-route-authorization-2026-10-17.md)。本提交仅授权docs/index，不改spec或产品；下一步11例真实菜单/原13移动类逐页，数值/状态/事件/seed全保，不force/evaluate/CSS造可见；新业务失败仍C7，成本/TD018/C/第二轮边界保持。回滚本R7单独revert须核后继依赖，P1后继另独立提交。[已测试]（授权静态/Workspace实际CI，非P1通过）
 

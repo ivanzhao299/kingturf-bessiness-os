@@ -1,5 +1,24 @@
 # 阶段5浏览器裁断考古与适配提案（未实施P1期待）
 
+## 最新：逐路由已授候选实跑，新增金额显示C7
+
+用户已在证据b1eab97后批准逐路由方案，[原话R7 f4b54c2](../tasks/harness-stage5-p1-route-authorization-2026-10-17.md)。本候选只自然DOM登录、真实菜单/ready等待及逐页截图；原11标题/金额/状态/事件/seed不改。旧下方“待裁/未实施P1逐路由”是批准前材料，不覆盖本段。
+
+| 回放                       | 实际固定结果                                                                                                                                             | 完整性与清理                                                                |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| stage5-p1-route-first-1    | 原seed0/3412ms；PW1/310270ms，11 completed failed（10 timedOut、mobile原可见断言失败line109）                                                            | discovered11/complete=true，host1/321925ms；未有relay失败，owned三清理true  |
+| stage5-p1-route-attached-1 | 先补parent attached真实挂载等待；仅index0/1 failed，原credit count3在line46、原订单CNY950000可见在line66；随后active4173 CONNECT_TIMEOUT、PWnull/SIGTERM | discovered11/complete=false，host1/28483ms、owned三清理true；不是完整11结果 |
+
+首候选先即时parent.isVisible可能在DOM未挂载时误跳桌面展开，是本轮测试helper静态竞态；只读review指出后，等首跑完整结束/清理才加原parent attached等待，未改timeout/业务值或中途改文件。mobile相同13次验证改展开固定行号，以便不导出raw仍定位具体原断言，selector/顺序/路由一一保持。首版AST前后11标题/原expect表达式/数字字面量均同；最终mobile展开只使原13次循环检查变13个固定站点，不减少业务检查。独立review确认该挂载等待与13映射无必要静态阻断，但未代主执行浏览器。
+
+日志：`/tmp/kingturf-<label>-2026-10-17.log` 与 `.test-results/docker-local/<label>/safe-events.jsonl`。首跑进行中仅在精确owned容器读取 `cases.json`，经safeLocalCases再次白名单重编码固定partial；不读raw stdout/HTML/错误上下文/认证头/DOM文本。raw与PNG仍tmpfs随容器清理未导出，零PNG非视觉验收。
+
+### 金额显示新增C7（不改原期待）
+
+明确main产品提交 `af0de8f1cbfad6b56d4795eda5845ba868305301`（fix: localize production business surfaces）新增displayMoney并将信用raw文案换为Intl zh-CN货币格式；是main祖先，早于Harness。当前shared/business-format:43–54、credit-view:30、sales-orders-view:152仍同逻辑。主执行者对当前formatter做固定合成输入CNY/950000的纯函数执行（TS转CommonJS VM，只stub未使用日期import），得到 `¥950,000`；“申请 950000”子串和“CNY 950000”精确文本均不匹配。此证明格式函数/旧词面的差异，不冒充真实DOM中已读取所有实际金额，也不归因其余未完成例。
+
+本次逐路由许可未包含金额文案期待变更。当前停止该spec，保原两失败断言，不改币种/950000或seed、不复跑粉饰、不将TD018放宽。最小后继建议另裁：只对有明确af0de8f显示演进依据的货币文本，用独立固定本地化期待保持原币种/数值/计数/状态，未显示的业务差异仍逐项上报；不能调用产品displayMoney来同时生成实际与期待。全部11绿/每文件真变异仍未完成，第二轮未开，独立A–F继续。
+
 ## 来源与当前边界
 
 5230625计划§7四项裁断＋[阶段5R7](../tasks/harness-stage5-authorization-2026-10-17.md)。主执行者与独立只读scout核git/当前源；禁止把静态实现变化等同已批准P1期待变更。原P1完整11败和最新partial3保留，原spec精确恢复。
