@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[P1逐路由适配R7](tasks/harness-stage5-p1-route-authorization-2026-10-17.md)：原始人类reply批准已版本化11例提案，真实菜单/逐页等待，原业务数值和seed保持，零产品改动。
+
 [阶段5现状测试地图](evidence/harness-stage5-test-map-2026-10-17.md)：逐域mock/PG/Web/CDP边界、六域实际机制与补齐队列；不是旧零测试清单。
 
 [阶段5覆盖率首测协议](evidence/harness-stage5-coverage-protocol-2026-10-17.md)：六包生产源全集/未执行计入/精确整数汇总、B不下降与三目标、报告完整性和豁免边界，尚无实测B值。

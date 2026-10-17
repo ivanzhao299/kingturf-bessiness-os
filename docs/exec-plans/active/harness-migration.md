@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **P1逐路由已授（2026-10-17）**：b1eab97先交main考古/11例提案后，人类call_f9cc886e017b44faadc7ee055b90d8d5直接批准，主执行者亲核[独立R7](../../tasks/harness-stage5-p1-route-authorization-2026-10-17.md)。自然登录后真实菜单商机及各业务页，mobile原13类逐页，原数值/状态/事件/参数/seed全保；产品/原config不改，真实变异/实际补跑未完成不预报绿。Workspace最终ac7082a实际干净HEAD全CI0/209428ms，原4例已真红绿；P1新业务失败仍C7、成本信息保留未证/第二轮未开/C禁。
+
 - **阶段5 Workspace字段实施收口（2026-10-17）**：5230625已授字段仅补真实orders/finance tuple，缺字段真红→还原原4过、旧恢复DTO真四红→还原原4过PW0/3930ms、host0/9389ms，owned全清；[逐处/全部结果](../../tasks/playwright-workspace-fixture-rulings-2026-10-17.md)。TD-TEST-014仅实施验证关闭/58项；A七份绿，成本/P1与其它阶段5线继续，第二轮未开/C禁。产品/原16expect/两config保持，提交后该稳定HEAD完整CI另跑。
 
 - **阶段5首步证据（2026-10-17）**：R7 28215b0稳定干净HEAD完整CI实际0/209252ms；[现状地图](../../evidence/harness-stage5-test-map-2026-10-17.md)、[覆盖率首测口径](../../evidence/harness-stage5-coverage-protocol-2026-10-17.md)、[浏览器考古/逐例提案](../../evidence/harness-stage5-browser-rulings-2026-10-17.md)已独立只读复核。生产TS377/API仓储25，实测B尚无，三目标不放宽；P1有main单页产品意图但逐页期待未获后继许可，成本旧新尚待受控对比。Workspace已授最小字段正在逐次变异/还原验证，未完成不关闭；不阻其它独立线。
@@ -3747,6 +3749,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+- **2026-10-17｜P1逐路由适配人类增量R7**：父ac7082a已实际干净HEAD完整CI0/209428ms/HEAD不变树空；b1eab97已版本化考古与逐例方案后，人类reply call_f9cc886e017b44faadc7ee055b90d8d5批准最小逐路由适配，亲核原始消息。[授权原话/精确范围](../../tasks/harness-stage5-p1-route-authorization-2026-10-17.md)。本提交仅授权docs/index，不改spec或产品；下一步11例真实菜单/原13移动类逐页，数值/状态/事件/seed全保，不force/evaluate/CSS造可见；新业务失败仍C7，成本/TD018/C/第二轮边界保持。回滚本R7单独revert须核后继依赖，P1后继另独立提交。[已测试]（授权静态/Workspace实际CI，非P1通过）
 
 - **2026-10-17｜Workspace获准必填tuple最小修正**：父b1eab97（R7为28215b0），新增一字段与真实服务端tuple一致，其它payload/产品/原16expect/主步骤不动。原4过→删字段第三详情断言红（3过1败）→还原4过；旧恢复DTO真四红→还原原4过PW0/3930ms、host0/9389ms，全部owned清理true。[全部退出/耗时/映射](../../tasks/playwright-workspace-fixture-rulings-2026-10-17.md)。TD-TEST-014实施验证关闭，不抵成本/P1/二轮；本次测试/证据独立revert可回滚字段修正，原auth/void/等待点各有旧SHA。该稳定提交HEAD完整CI另实跑，不预写绿。[已测试]（原4例/两类真实红绿，完整CI待实际结束）
 
