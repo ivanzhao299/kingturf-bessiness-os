@@ -125,7 +125,7 @@
 | TD-TEST-004  | packages/ui、packages/testing 的占位测试                                                      | P2     | 测试           | 无                       | 阶段 5（前置 D3）                  | 已完成                          |
 | TD-TEST-005  | packages/types 类型合同及真实runtime常量策略                                                  | P2     | 测试           | 无                       | 阶段 5                             | 已实施待终验                    |
 | TD-TEST-006  | 自有CDP稳定性：旧点击/viewport历史修复；S4未分类异步失败后继候选                              | P2     | 测试可靠性     | 无（仅工具）             | 批次3/S4后继                       | 历史已修/新候选待核实           |
-| TD-TEST-007  | 在线文档广源 '/submit' 实际只命中CTR旧面板，不能单独保障文档提交                              | P2     | 测试精度       | 无                       | 阶段5／另行授权                    | 仅登记，待独立补护栏            |
+| TD-TEST-007  | 在线文档广源 '/submit' 实际只命中CTR旧面板，不能单独保障文档提交                              | P2     | 测试精度       | 无                       | 阶段5／另行授权                    | 专门动作12项已补，待最终门禁    |
 | TD-TEST-008  | 新增CDP客户360合成详情遗漏服务端必需字段                                                      | P2     | 测试夹具契约   | 无（工具修正）           | 3f前置独立工具                     | 已修复验证                      |
 | TD-TEST-009  | 三份临时AST证明encoder返回truthy而漏比后续子节点                                              | P1     | 证明工具       | 无（工具修正）           | 3f后独立工具/证据收尾              | 已修完整重核                    |
 | TD-TEST-010  | Docker owned schema信用种子缺已装public.pgcrypto可见性                                        | P2     | 测试环境       | 无（仅工具）             | Docker前置补跑                     | 环境已修/信用通过，整seed另阻断 |
@@ -630,6 +630,8 @@
 - **业务行为影响**：无（当前为登记；统一时为变更行为） ｜ **关联批次**：待决策（批次 1 后） ｜ **验收方式**：决策落盘；若统一，foundation 集成测试补失效组织负例
 
 ### TD-TEST-007｜在线文档广源提交关键词实际只命中 CTR 旧面板
+
+**阶段5实施补记**：专门真实save/review/send-form回调12项已补，原广源断言保留不充精确性；固定state版本与初始documentData版本分离，完整payload/裸receiver/等待/失败重试/译文选择与发送key复用，原strict lint/typecheck及目标测试通过，独立只读无必要阻断。[实际范围与日志](../evidence/harness-stage5-test-map-2026-10-17.md)。仅实施待最终门禁，不充真实外部投递/浏览器原生验证；下方登记描述是历史。
 
 - **位置**：固定eb86107 `apps/web/src/bootstrap.test.ts:1000–1049`，其中1018的`expect(source).toContain('/submit')`；旧bootstrap2197唯一匹配，真实迁移目标`commercial/workspace-legacy-panels.ts`。
 - **类别**：测试精度 ｜ **严重度**：P2

@@ -4,7 +4,7 @@
 
 [P1逐路由适配R7](tasks/harness-stage5-p1-route-authorization-2026-10-17.md)：原始人类reply批准已版本化11例提案，真实菜单/逐页等待，原业务数值和seed保持，零产品改动。
 
-[阶段5现状测试地图](evidence/harness-stage5-test-map-2026-10-17.md)：六域新增39项PG专项、Web业务回调/部分DOM护栏、types策略/实现注入；E运行时/机械hook与TEST019旧对象红→冻结源码下原335空对象绿，总61，不充最终三连/阶段验收。
+[阶段5现状测试地图](evidence/harness-stage5-test-map-2026-10-17.md)：六域新增39项PG专项、Web业务回调/部分DOM护栏、types策略/实现注入；文档save/review/send真实回调12项补TEST007，Quality/Shipment PG核心仍施工；E运行时/机械hook与TEST019旧对象红→冻结源码下原335空对象绿，总61，不充最终三连/阶段验收。
 
 [阶段5覆盖率首测协议](evidence/harness-stage5-coverage-protocol-2026-10-17.md)：3f03e62完整CI0内真实六包整体75.10%/domain93.74%/仓储79.44%首次同时达标，生产清单/分母与[首测固定基线](evidence/harness-stage5-coverage-baseline-2026-10-17.json)不变；保留失败史/报告hash/B不下降及双写豁免，不充最终三连或P线完成。
 

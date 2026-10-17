@@ -1,5 +1,13 @@
 # 阶段5现状测试地图与补齐清单
 
+## A文档真实动作合同补齐（TD-TEST-007）
+
+新增 `online-document-actions-behavior.test.ts` 12项，实际调用 save/review/send-form，不改原广源测试、旧expect或产品。固定文档ID/版本7，独立完整payload，API/history/onSaved的裸调用receiver，save/review等待与失败重试、后续本地编辑不覆盖、三审核动作状态，发送仅当前READY译文、失败同payload复用key/变更payload新key、QUEUED回执不输出收件地址。初次tsc拒绝测试夹具缺provider/错误DRAFT译文枚举及非UUID型mock key；仅新测试改为合法QUEUED/provider/固定UUID形状后，原strict ESLint/typecheck0，12/12实际0/415ms，日志 `/tmp/kingturf-stage5-online-document-actions-second-2026-10-17.log`。独立只读核验与实现一致、无必要阻断。
+
+此为原补齐队列#4的专门行为护栏，TD-TEST-007仅实施待最终门禁，不宣称旧关键词本身变精确。DOM与openForm/requestId为受控端口；不证明原生校验、真实HTTP、外部投递、服务端幂等或全部并发组合。队列#2仍须补本轮Quality/Shipment真实PG核心；现存foundation PG已直接覆盖文档create/translate/未批拒send/异人批后send/重放冲突，production PG已直接覆盖成本policy/calculate/异人批/close，Order360已有真实HTTP+PG入口/来源/tenant/SELF投影。provider零命中不等于零SQL；不重复这些既有链，也不把剩余核心承诺挪到F“后续立项”。
+
+第二路建议后再将初始documentData.currentVersion固定3，与操作state.activeVersion7分离；审核/发送显式POST，发送表单创建后activeVersion改9仍取提交时live版本。原strict lint/tsc再0、12/12实际0/359ms，日志 `/tmp/kingturf-stage5-online-document-actions-final-2026-10-17.log`；不宣称未单独测试的pending期间summary/time投影或外层权限/渠道门禁。
+
 ## E旧QTC装载可移植修复（独立测试工具，不改产品）
 
 父7fb4324登记后，完整旧源码复制为`apps/api/test/fixtures/qtc-root-capture-app-c7833e74.ts.fixture`（纯文本202118字节），与完整历史commit的原blob逐字节SHA相同，未删剪/改写代码。`qtc-root-capture-source.mjs`装载前校原Buffer字节数+固定SHA，缺文件/截断/等长篡改固定fail-closed，无fallback/运行时Git查找。probe仅替换读取渠道，原appUrl/TS transform/import重写及所有166+166场景/golden/335断言零diff；原golden另pin SHA。来源和摘要见TD-TEST-019及helper固定metadata，旧源码仍配当前依赖，**不是完整历史依赖复原**。
