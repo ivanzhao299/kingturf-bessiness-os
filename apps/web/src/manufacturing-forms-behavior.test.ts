@@ -93,16 +93,35 @@ describe('manufacturing form fixed draft payloads', () => {
         value: '',
         label: '无替代料',
       });
-      await current.run({
-        code: 'BOM-1',
-        name: '标准BOM',
-        product: 'product-version',
-        component: 'component-version',
-        quantity: '2.125',
-        scrap: '500',
-        substitute,
-        effectiveAt: '2026-10-18',
-      });
+      let finishNow: () => void = () => {
+        throw new Error('Not initialized');
+      };
+      finish.mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            finishNow = resolve;
+          }),
+      );
+      let settled = false;
+      const pending = current
+        .run({
+          code: 'BOM-1',
+          name: '标准BOM',
+          product: 'product-version',
+          component: 'component-version',
+          quantity: '2.125',
+          scrap: '500',
+          substitute,
+          effectiveAt: '2026-10-18',
+        })
+        .then(() => {
+          settled = true;
+        });
+      await Promise.resolve();
+      expect(settled).toBe(false);
+      finishNow();
+      await pending;
+      expect(settled).toBe(true);
       expect(finish).toHaveBeenCalledExactlyOnceWith({
         code: 'BOM-1',
         name: '标准BOM',
@@ -120,6 +139,8 @@ describe('manufacturing form fixed draft payloads', () => {
         ],
         publish: false,
       });
+      finish.mockRejectedValueOnce(new Error('BOM finish rejected'));
+      await expect(current.run({})).rejects.toThrow('BOM finish rejected');
     },
   );
 

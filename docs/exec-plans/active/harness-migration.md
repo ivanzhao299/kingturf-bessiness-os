@@ -3752,6 +3752,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 ## 7. 进度与决策日志
 
+- **2026-10-17｜BOM/CAPA新断言补强**：父46f6f7b，独立复核建议后新增BOM deferred finish等待/reject传播、CAPA前后不同key精确绑定第二payload；原eslint/tsc0，制造5+CAPA5实际10过/exit0，[日志与范围](../../evidence/harness-stage5-test-map-2026-10-17.md)。不改产品/原断言、不充后端随机性/幂等。下一步干净固定HEAD完整ci:local含六包check实际核总覆盖，而非把单包测量替代；回滚本两test/docs独立revert。[已测试]（目标测试，完整CI待执行）
+
 - **2026-10-17｜制造/CAPA/成本因子表单payload护栏**：新增5+5+4项与src外typed operations-context，独立根/版本/Decimal/BOM替代/工序/并发版本/证据/时间/key映射，CAPA各路pending/reject与refresh reject；[独立复核及精确边界](../../evidence/harness-stage5-test-map-2026-10-17.md)。原eslint/tsc0、Web25/414实际0/1.99s；单包V8 11286/20592同分母，六包整体目标仍待干净HEAD真实check，不更新B/提前关TEST002。factory/finish/form端口非权限/后端/原生日期验证，产品/原测试/seed不动。回滚三新test/helper/docs独立revert。[已测试]（Web全包，非六包覆盖门禁/完整CI）
 
 - **2026-10-17｜政策新断言反例与真实变异复核**：父167e1fd，第二路发现DRAFT/PUBLISHED同身份可假绿，仅改新草稿身份与销售最新版双输入序；风险真实filter PUBLISHED→DRAFT临变异，具名新例实际1败6过/313ms，close后完整还原SHA/diff0，再7绿。[详细diff/失败证据](../../evidence/harness-stage5-test-map-2026-10-17.md)。生产终态不变、原断言/B不动；仅新增测试补强，非浏览器/完整CI。回滚两测试补强/docs独立revert。[已测试]（真实变异红→恢复绿）

@@ -153,6 +153,9 @@ describe('CAPA forms preserve concurrency versions and immutable evidence payloa
       let complete: () => void = () => {
         throw new Error('Not initialized');
       };
+      f.requestId
+        .mockReturnValueOnce('fixed-command-key')
+        .mockReturnValueOnce('second-command-key');
       f.submit.mockImplementationOnce(
         () =>
           new Promise<void>((resolve) => {
@@ -170,6 +173,10 @@ describe('CAPA forms preserve concurrency versions and immutable evidence payloa
       await expect(call[5](entry.values)).rejects.toThrow('command rejected');
       expect(refresh).toHaveBeenCalledTimes(1);
       expect(f.requestId).toHaveBeenCalledTimes(2);
+      expect(f.submit.mock.calls[1]).toEqual([
+        entry.path,
+        { ...entry.payload, idempotencyKey: 'second-command-key' },
+      ]);
       refresh.mockRejectedValueOnce(new Error('refresh rejected'));
       await expect(call[5](entry.values)).rejects.toThrow('refresh rejected');
     },

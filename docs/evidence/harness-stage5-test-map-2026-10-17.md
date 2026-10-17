@@ -1,5 +1,9 @@
 # 阶段5现状测试地图与补齐清单
 
+## 表单payload后继独立复核补强
+
+46f6f7b后第二路建议已补：BOM两种替代料用例均deferred finish，resolve前外层回调未settle，resolve后settle，并显式finish reject向上传播；不再仅靠立即resolve的finish spy。CAPA每路前两次requestId端口返回不同固定值，第二次submit payload必须带second-command-key，不能只调用requestId却重用旧key。仍不证明生产随机key唯一/后端幂等。原eslint/tsc0，制造5+CAPA5实际10/10、exit0，日志`/tmp/kingturf-stage5-manufacturing-capa-strengthened-2026-10-17.log`。下方初版范围保留作时点历史。全部生产源码仍无diff，准备在本轮提交后的干净HEAD运行完整ci:local（含真实六包覆盖check）；此前单包数值不冒称总体达标。
+
 ## 制造／CAPA／成本因子表单固定payload护栏
 
 新增制造表单5项、CAPA5项、成本因子4项及生产src外typed operations-context fixture，未加依赖/改产品/扩大覆盖排除。真实工厂与回调，openForm和finish/controller是受控端口：物料草高有/无、发布false、BOM根ID≠版本ID/固定decimal字符串/500bp/替代料有无；三工序固定code/工作中心/10/20/30次序/不同setup与节拍。只证明入参映射，制造日期为文本拼接，不证明未知product/日期合法性/权限/发布仓储约束。制造finish失败只显式覆盖item/routing，不称BOM全失败矩阵。
