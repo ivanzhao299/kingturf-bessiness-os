@@ -1,5 +1,15 @@
 # 阶段5现状测试地图与补齐清单
 
+## 六域专项实施齐备：驾驶舱最后一域（非全阶段验收）
+
+父6081dfb后新增`dashboard-postgres.integration.test.ts`，每例复用owned真实商业图。五项真实guard0/PG5过、exit0/null/17740ms（测试15088ms），显式shuffle.tests/seed20261017及start/result记录；日志`/tmp/kingturf-stage5-dashboard-pg-first-2026-10-17.log`。首lint1处refreshedAt可能object被String转换，改显式string guard，原lint/tsc/format0，不降规则。独立只读核源码/输入与固定oracle，无必要阻断。
+
+独立固定十指标：商机950000×60%=570000、订单950000、固定报价毛利250000、已分配100000、应收/逾期850000、订单1、风险活动1/critical0、佣金计提28500；非从产品输出自动造期待。验证真实订单状态/来源/basis、钻取行、SELF/COMPANY/GROUP同owner可见、同tenant非owner/外tenant/空scope所有值零与钻取空；起点含/终点不含，现金按allocation.created_at而非银行received_at；关闭风险任务后活动0但钻取仍CLOSED；取消佣金后原计提额仍在聚合。get前后audit/outbox/risk_events/commission_entries计数不变，只称所列证据无新增，静态SQL为读，不冒称完整数据库写监控。
+
+查询不对称明确为**现状刻画，不是业务正确性背书**：USD仍显示风险（无currency谓词）；future from仍保留AR/risk（仅as-of to）；取消佣金仍计commission_amount（无有效状态过滤）。不为“统一口径”改SQL，也不把本合成图数值移植到P1。此专项单图/币种数据、未覆盖每个组织锚点/20条订单limit/多币种汇率或全财务算法，P1原四值仍C7。
+
+六份新增PG专项均有实际绿记录（分别的最终检查点，**不是同HEAD全链或最终三连CI**）：制造6、MRP8、采购8、风险6、佣金6、驾驶舱5，共39项；每域独立提交，原scope/事务不发明幂等/审计机制。TEST003仅实施待终验；PROC/RISK新债仍开放，A其它真实缺口/B三目标/D三连/E/F/浏览器义务均未被这39项替代。下方5/6及更早进度按当时时点保留。
+
 ## 后继实际补测：佣金专项PG
 
 父ec16d93后新增独立`commission-postgres.integration.test.ts`，每例复用已核共享真实商业图/owned schema、原lint/tsc/format0。六项覆盖policy版本/发布/不可变及audit+outbox精确action/aggregate/id/version；独立固定950000收入、250000毛利/2631bp、100000回款→1052bp、300bp→28500，三独立政策分别自动RELEASED/回款FROZEN/毛利FROZEN及seq1/2账；真实SELF/TEAM锚点/外租户/无scope与同tenant非owner不可见；同key持久行重放无新增、新key同业务唯一冲突；释放门槛、付款/追索必填外部引用、PAID/CLAWED_BACK各28500及连续账/累计金额/终态/不可变；无效refs/期间格式及后置outbox冲突时ledger/状态/version/audit整体回滚。初始图已另有AUTH-COM记录，不假定空表，也不因helper名称把它计作RELEASED证据。
@@ -118,7 +128,7 @@ C安全注入实做于`packages/domain/src/index.ts`字段权限分支，临时d
 | 催收/法务                                 | collection-route-contract                                                                                          | collection-postgres及授权PG                                                                                   | 共享；财务风险CDP历史                                                  |
 | 佣金                                      | commission-route-contract、scope-sql-commission                                                                    | 新commission-postgres专项6项真实PG绿，固定金额/范围/ledger/证据回滚（详见本文）                               | 共享；财务风险CDP历史                                                  |
 | 风险                                      | risk-route-contract、scope-sql-risk                                                                                | 新risk-postgres专项6项真实PG绿，固定评分/状态/租户/回滚；TD-RISK-001只登记不修（详见本文）                    | 共享；财务风险CDP历史                                                  |
-| 经营看板                                  | dashboard-route-contract、scope-sql-dashboard                                                                      | 13 PG文件中未找到dashboard实际查询；补专项                                                                    | 共享；财务风险CDP历史                                                  |
+| 经营看板                                  | dashboard-route-contract、scope-sql-dashboard                                                                      | 新dashboard-postgres专项5项真实PG绿；固定十指标/scope/时币边界/当前投影（详见本文）                           | 共享；财务风险CDP历史                                                  |
 | 制造主数据                                | manufacturing-route-contract                                                                                       | 新manufacturing-postgres专项6项真实通过（详见本文后继证据）；production PG旧直接种子仍另计                    | 共享；运营CDP历史                                                      |
 | 采购/库存                                 | procurement-route-contract                                                                                         | 新procurement-postgres专项8项真实通过，真实资格/收货/台账/回滚；TD-PROC-001只登记不修（详见本文）             | 共享；运营CDP历史                                                      |
 | MRP                                       | mrp-route-contract                                                                                                 | 新mrp-postgres专项8项真实通过；每例独立schema/固定展开净额/状态与失败回滚，非零库存采购及多桶仍欠（详见本文） | 共享；运营CDP历史                                                      |
