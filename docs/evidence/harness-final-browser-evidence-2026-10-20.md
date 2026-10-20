@@ -4,6 +4,28 @@
 
 ## 后继MRP五期待批准与实跑（2026-10-20）
 
+### 最新同状态A8与独立runtime（596a927）
+
+同一HEAD `596a927c87f900efef64a2e894203bb0a600eba7`、每次首尾HEAD不变/树空，主执行者严格串行原入口 `node --experimental-transform-types scripts/e2e-docker/preflight.mjs local <kind> final-current-a8-runtime-<kind>-1`。安全日志统一 `/tmp/kingturf-final-current-a8-runtime-<kind>-1-2026-10-20.log`，只读容器/tmpfs/原配置/断言与失败硬闸保持。
+
+| kind       | 原例完整通过数 | PW实际耗时ms | host实际耗时ms |
+| ---------- | -------------- | ------------ | -------------- |
+| cost       | 2              | 8128         | 15139          |
+| document   | 7              | 10532        | 17293          |
+| login      | 2              | 2503         | 9312           |
+| order      | 1              | 3245         | 10296          |
+| workspace  | 4              | 4204         | 11010          |
+| revocation | 2              | 3758         | 10345          |
+| startup    | 5              | 6157         | 12875          |
+| source     | 3              | 11849        | 19976          |
+| runtime    | 1              | 1831         | 8413           |
+
+九次host/PW均实际exit0/signal null，discovered与原库存相同、complete=true、全部passed，relay事件0、runtime schema/container/preview owned清理全true。Source另实际原19 producer exit0/null/8090ms、fixtureValidated/ownershipVerified true，精确marker/schema/container回收全true。A8合26例，runtime另1例，不把真实PG19计入UI26。
+
+来源分层：九份上述安全日志提供local-result/PW close、preflight-result与清理；表中host耗时、host signal及每次HEAD/树空来自主执行器串行外层实际stdout事件`final-current-a8-runtime`（本轮工具输出），不是九份子日志内字段。独立只读审逐份核了子日志/原库存/Source19判定，无必要结果阻断；外层HEAD/耗时由主执行器记录，不伪称代理从子日志独立复算。
+
+这证明最新工具/Source生命周期状态的完整A8及独立runtime通过，不是完整B2或第一/第二完整浏览器轮：P1精确还原全11仍因下述TD018中断。旧七A、一次P1全11及完整认证负例不能拼接充两完整轮；不重复P1求绿。后继仅文档不改功能状态，最终干净HEAD完整CI另验。
+
 后继完整认证负例`final-p1-auth-401-tcp-state-1`：仅首例登录后临时撤Cookie、实际同源只读会话GET断言401，再让原保护导航自然失败；完整11/complete=true，首例failureLine9、其它10passed，故新增401核验已先通过，非人工抛错或改原业务期待求红。PW1/24703ms、host1/null/34667ms，无relay/owned全清。临时五行精确撤回，对提交版零diff；还原`final-p1-auth-exact-restored-2`仅7/11完成即原CONNECT_TIMEOUT，host1/null/28443ms，尚不充红→还原绿闭环。[实证TCP状态/空载对照/边界](harness-final-network-diagnostics-2026-10-20.md)。原MRP完整11首次全过仍保留，不与此部分还原拼绿；停止重复P1，独立A8/runtime/最终CI继续。
 
 直接人裁call_cd7a7a15cceb41c58e9cb15399c877a1先由e800666独立[R7](../tasks/harness-final-mrp-expectation-authorization-2026-10-20.md)，34e5453仅五行：卡5/冻结2/建议6000/取整6000/说明2。相对b907ac7逐处唯一替换且其余字节完全相同，原放行6/gross10300/safety500与原其它10例、产品/seed/两config/网络全部保留；strict lint/format及五处byte proof实际0。

@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[最新同状态A8原26与runtime原1全绿](evidence/harness-final-browser-evidence-2026-10-20.md)：596a927首尾HEAD/树空、九次严格串行exit0/complete/owned全清；Source另原19生产器及精确回收全真。P1完整认证负例已证，精确还原7/11仍TCP建连中断，不充B2或两完整轮；Source/MRP旧待裁均历史，最终新HEAD全CI另验，非终验/竣工。
+
 [TD018本机转发环境只读专项人裁R7](tasks/harness-final-network-environment-authorization-2026-10-20.md)：仅Docker Desktop/WSL/Windows只读定位与精确方案；监听/转发/防火墙修改逐项另批，原超时与失败硬闸不变，不重复P1求绿。A8/runtime与最终CI独立继续，非终验或竣工。
 
 [Source原19＋3与真实故障清理完成](evidence/harness-final-source-lifecycle-2026-10-20.md)：正例2实际完整过、三项handled取消/KILL精确owned回收；首正例工具字段误报史保留，原19正文/样本/产品/UI3未改，独立只读复核通过。默认分支最终CI及P两整轮另验，不外推host掉电/强杀保证。

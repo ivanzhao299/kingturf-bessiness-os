@@ -8,6 +8,8 @@ KingTurf 业务操作系统：面向草坪行业外贸业务的 ERP（CRM→报�
 
 ## 如何开始（渐进式披露：先地图，再细节）
 
+2026-10-20最新同596a927干净HEAD串行A8原26例及runtime原1例全过，Source原19生产器与精确owned回收均过；MRP五处已获批/实施且原11曾一次全绿，完整认证负例1败10过，但精确还原7/11再遇TCP建连超时。TD018仍开放，本机转发只读专项已新授，配置修改另批。见 `docs/evidence/harness-final-browser-evidence-2026-10-20.md` 与 `docs/tasks/harness-final-network-environment-authorization-2026-10-20.md`。P1还原全绿/同状态两完整轮未成，最终新HEAD全CI另实跑，非终验/竣工；下方待裁均保留原时点历史。
+
 最新检查点b8abc83已干净HEAD完整CI0；Source生命周期与MRP五期待仍待人裁，候选已可恢复封存，P链未完成/不能终验。先看 `docs/evidence/harness-final-blocked-checkpoint-2026-10-20.md`；最终新文档HEAD另完整验证，§14不执行。下方此前检查点保历史。
 
 2026-10-20终验收口以 `docs/tasks/harness-final-acceptance-authorization-2026-10-20.md` 为准：37a7bb9阶段5主体已验，非终验/竣工；当前P/B/D与62项DoD去向见 `docs/evidence/harness-final-closeout-preparation-2026-10-20.md`。G5完整函数已机械验证/四有限表，原29不续期；七A绿仍非A8整轮，MRP/Source待裁不冒绿；新SEC008/P1只登记，C生产禁跑，§14只准备。下方旧计数/停点保留历史，以计划§0/7和最新直接人裁落盘为准。

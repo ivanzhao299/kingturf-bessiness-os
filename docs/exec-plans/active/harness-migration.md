@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **最新A8/runtime完整与本机只读专项（2026-10-20）**：596a927同HEAD树空严格串行A8原26例及runtime原1全过，Source原19 producer/精确owned回收通过；[固定命令/耗时](../../evidence/harness-final-browser-evidence-2026-10-20.md)。MRP五期待已授实施/一次原11绿，完整认证负例1败10过，但精确还原7/11被active TCP pending中断；不拼接充B2/两完整轮。50/50空载仅可达，TD018仍开放；本机Docker Desktop/WSL/Windows[只读专项R7](../../tasks/harness-final-network-environment-authorization-2026-10-20.md)596a927已落盘，配置修改须另批，不重复P1求绿。Source/MRP旧待裁均历史，最终新HEAD完整CI另实际运行，非终验/竣工、不§14。
+
 - **TD018被动观测准备（2026-10-20）**：原总R7只诊断权限内，仅原CONNECT_TIMEOUT加四TCP状态bool/活动socket计数白名单，不记地址/流量/auth，不改5000ms/网关/失败分支。[资源/验证](../../evidence/harness-final-network-diagnostics-2026-10-20.md)：2工具与固定只读容器原forward四例实际0；未实际捕获新超时、不称修复，P1还原闭环仍欠。Source19+3及三handled清理已证，后继原用例为复现采集不作盲目求绿。
 
 - **Source生命周期19＋3与真实故障已证（2026-10-20）**：c65c67f R7→58c3ece owned实现→f2d0b11新私有工具精确识别原公开业务marker；[首失败/三handled故障/正例2](../../evidence/harness-final-source-lifecycle-2026-10-20.md)全保留。原19完整成功、UI3全过，host0/19599ms、marker/schema/container及外层全清，独立只读复核；原19正文hash/原样本/产品/UI断言/配置/网络不改。P1认证还原因TD018中断仍欠、两完整轮与最终新HEAD全CI待执行。
@@ -3803,6 +3805,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+- **2026-10-20｜后继最新同状态A8/runtime与TD018专项授权**：596a927同HEAD树空严格串行，原A8合26例/runtime另1全绿、Source另原19生产器及精确marker回收全真，[固定安全日志/退出/耗时](../../evidence/harness-final-browser-evidence-2026-10-20.md)。P1完整认证负例1败10过已核，精确还原7/11 TCP pending故障保留，未重复P1求绿；不充B2/两完整轮。只读本机环境新R7先独立596a927，监听/转发/防火墙修改未授权；Source/MRP旧待裁在E/评分/地图加最新状态、不抹历史，62项/六开放P1与DoD4/5/10边界不变。最终材料提交后新干净HEAD全CI实际另验，非终验/竣工、不§14。回滚仅此次文档不撤独立R7/已验工具。[已测试]（A8/runtime实跑，最终新HEAD CI另验）
 
 - **2026-10-20｜TD018仅被动状态观测**：再次P1中断后按总R7补四bool+bounded活动socket数，原forward connect/5000ms/connect后0/destroy/fail和网关校验不改，[固定资源/2工具/真实forward四例](../../evidence/harness-final-network-diagnostics-2026-10-20.md)。不记录地址/auth/字节/原文、不增retry；宿主累计内核值不冒作run差值/网关因果。新状态尚未观测真实超时，原失败保持，P1闭环/两轮及新HEAD全CI待执行；代码观测与原输出校验成组回滚，不降失败条件。[已测试]（定向2+4，非P1或全CI）
 

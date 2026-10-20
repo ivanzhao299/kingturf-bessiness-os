@@ -16,7 +16,7 @@
 
 完整函数G5当前377源/3413节点，四存量3627/3558/208/522有精确有限表，11-18新加坡零时失效；原29/G3不改，[真实红绿与完整CI](evidence/harness-final-g5-evidence-2026-10-20.md)。这是机械能力新增，不是后端函数拆完，复杂度1–5不自动上调。新[D四项PG](evidence/harness-final-decision-pg-evidence-2026-10-20.md)确证SEC008/P1可用性，仅仓储层安全差异，不据此宣称HTTP可利用或生产事故。
 
-最新七A原23例绿、P1仍10过1败且MRP五期待候选待裁，Source/完整认证变异及同状态两完整轮仍欠，[P证据](evidence/harness-final-browser-evidence-2026-10-20.md)；C2禁跑/D八卡待人类。旧测试评分不因局部浏览器或V8达标任意调高。[62项/DoD10/收官草案](evidence/harness-final-closeout-preparation-2026-10-20.md)保持开放与已验范围分离，DoD4/5不宣称完成，§14未执行。
+最新596a927同HEAD树空串行A8原26例及独立runtime原1例绿，Source原19生产器及精确回收通过；MRP仅已授五期待实施后原11曾一次全绿，完整认证负例1败10过，精确还原7/11遇TCP建连超时，不能充还原全绿或最新同状态两完整轮，[P证据](evidence/harness-final-browser-evidence-2026-10-20.md)。TD018原因待核/本机环境只读专项已授，配置修改另批；最终新HEAD全CI仍待。C2禁跑/D八卡待人类，旧评分不因局部浏览器或V8达标任意调高。[62项/DoD10/收官草案](evidence/harness-final-closeout-preparation-2026-10-20.md)保持开放与已验范围分离，DoD4/5不宣称完成，§14未执行。
 
 > **可复算性**：每行分数都给出依据（命令/文件），任何人重跑命令应得到同样分数。评分 1-5（5 最好）。
 > **基线**：2026-10-12，commit `779dea3`。**更新纪律**：每个改造子批次合并时同步更新受影响行（计划 §5 阶段 4 子任务 7）。

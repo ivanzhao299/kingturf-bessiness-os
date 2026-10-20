@@ -29,6 +29,6 @@
 
 30个工具单测实际0（旧21＋Source结构4/owner5），strict lint与API typecheck0。包含参数/坏marker/异实例拒绝、原19 AST正文hash、故障入口仅Source、私有输出重编码；纯工具模拟不是PG取消证明。独立只读实现审无必要静态阻断，未代主执行者测试/访问DB。
 
-本提交时真实Source正例、三故障、默认API19完整验证尚未执行；不得预写19+3绿或精确取消清理已证。后继命令、exit/耗时/owned状态逐项追加，失败史不删除；最后干净HEAD全CI与最新同状态两完整轮仍须实际完成。原产品/SQL与Source spec/两config/workflow对基线零diff已核，C2不跑/不§14。
+原58c3ece提交时真实Source正例、三故障、默认API19完整验证尚未执行；这是实施提交时历史，不覆盖上文后继真实19+3与故障清理结果。最新596a927完整A8中的Source亦实际19+3全绿/精确回收，见[P证据](harness-final-browser-evidence-2026-10-20.md)。默认非owned原API19仍须最后干净HEAD全CI实际核验；两完整浏览器轮仍欠。原产品/SQL与Source spec/两config/workflow对基线零diff已核，C2不跑/不§14。
 
 回滚原测试生命周期、host owner/fixture/preflight、Source prep/private入口及测试命令需成组，避免producer失去owner却仍跳DROP；MRP五期待不属于该组。文档/历史补丁不删除失败或直接人裁来源，未push/部署/生产。

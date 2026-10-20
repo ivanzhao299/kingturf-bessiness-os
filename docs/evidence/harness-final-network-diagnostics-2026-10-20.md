@@ -23,6 +23,22 @@ runtime执行后2026-10-20T04:37:58.021Z再次只读观测：CPU与总内存不�
 
 ## 当前结论
 
+### 本机专项只读结果与精确下一步提案（596a927授权后）
+
+只读代理采集截至2026-10-20 06:01:30 UTC，主代理据固定标量报告收口：WSL 2.7.11.0、kernel 6.18.33.2、networking mode=mirrored；Windows build 10.0.26100.1；Docker Desktop 4.93.0.240920，Engine/CLI 29.8.1，daemon同WSL2 kernel，默认bridge driver/1个IPAM entry。正式容器未指定自定义网络，以host-gateway别名解析后仍执行预核数值网关同址校验；这描述拓扑，不代表故障归属。
+
+查询范围为`wslinfo --networking-mode`、`uname -r`、`wsl.exe --version`数字提取、Docker Desktop ProductVersion、`docker version/info/network inspect bridge`指定标量、WSL `ss`固定端口状态/队列、`nstat`固定TCP计数及Windows `Get-NetTCPConnection`固定端口listener/全局SynSent计数；没有读取env/进程参数/认证/流量内容，也未执行服务/探针/测试/浏览器/PG或网络配置变更。只保留核验后的版本、布尔、计数/拓扑，不导地址或系统原文。Windows初次全局SynSent查询超过10秒yield未取值，随后同只读查询3.6秒成功0，无权限阻断；不是故障窗口采集。
+
+空闲快照：WSL/Windows的4173 listener均0；5432 WSL listener1、队列RecvQ/SendQ=0/4096，Windows listener0；WSL 4173 SYN_SENT/ESTABLISHED均0，Windows全局SynSent0。WSL累计ListenOverflows/ListenDrops/TCPReqQFullDrop均0、TCPTimeouts1177、TCPSynRetrans58。累计计数不是单次故障差值，先前1171到1177的变化不能归属某条连接；此时没有owned preview，监听0符合空闲状态。没有历史超时同期Docker VM/WSL/Windows三层证据，不能据mirrored、版本或50/50空载归因，更不能推荐立即修改某配置。
+
+**结论：未确定故障组件，暂不提出无证据的网络配置修复。**精确下一步候选仅为同期被动取证，尚未新增工具或改runner：
+
+1. 在原CONNECT_TIMEOUT事件仍立即destroy/fail、原5秒与pass/fail不变；旁路只读采集不参与判定，不等待采集再报失败，不新增P1重试。
+2. 同一有界时间窗只取容器relay固定端口connecting状态计数、WSL固定4173监听队列及SYN-RECV/SYN-SENT数、前后固定TCP计数差、Windows固定4173按状态计数/全局SynSent；只导白名单整数/布尔、采样延迟及unavailable，绝不地址/进程/错误原文。
+3. 采集进程须精确自有、有限时取消与清理，不改系统监听/转发/防火墙。先以纯mock/canary核输出不泄IP/认证/原文、采集失败不改原超时/拒绝/owned清理；再决定是否需一次明确获批的原失败复现，不自动重复P1求绿。
+
+该新增采集工具/runner变更及真实复现将另询人类，不把当前只读专项扩大成工程实施；若仍缺Docker VM队列权限也另裁。方案目标是区分容器出口、WSL接收队列、Windows转发层的同期证据，不预设其中一层有错。TD018保持开放，P1还原全11/两完整轮仍阻断，独立A8/runtime已完成、最终干净HEAD全CI继续。
+
 ### 被动实证与有限空载对照（后继）
 
 `final-p1-auth-401-tcp-state-1`原11完整发现/完成：首例撤Cookie后实际GET会话401核验通过，随后原openRoute第9行失败，其余10过；PW1/24703ms、host1/null/34667ms，无relay、owned全清。临时五行已精确撤回，对已提交五期待版本零diff。紧随`final-p1-auth-exact-restored-2`前7例过后中断：PWnull/SIGTERM、host1/null/28443ms、complete=false，owned全清，不能充还原11绿。
@@ -33,7 +49,7 @@ runtime执行后2026-10-20T04:37:58.021Z再次只读观测：CPU与总内存不�
 
 最终实际host0/null/6003ms，安全日志`/tmp/kingturf-final-tcp-connect-baseline-2026-10-20.log`：两侧各50尝试/50连接，timeout/refused/other均0，containerGone/childGone/listenerGone均true。初次实现前同一空载对照也50/50，辅助patch一次因格式化后的声明不匹配在编辑前失败，随后修正；最终入口/纯parser自测后以上述日志为准。2纯边界用例及strict lint0；独立只读实现审无必要阻断。
 
-限制：探针复用Docker静态host-gateway别名，仅校IPv4，未执行正式forward对宿主预测gateway的独立同址比对；也未观察Windows/Docker VM内部状态。50/50仅说明该空载窗口别名可达，不能排除P1时序/负载下间歇TCP问题，不能证明relay/产品已修复。更深Docker Desktop/WSL/Windows转发环境只读专项已另询人类、未获批，不擅改网络配置，不重复P1求绿。独立最新A8/runtime及最终干净HEAD全CI继续；完整认证负例已证，但认证还原全绿/两完整浏览器轮仍欠。
+限制：探针复用Docker静态host-gateway别名，仅校IPv4，未执行正式forward对宿主预测gateway的独立同址比对；也未观察Windows/Docker VM内部状态。50/50仅说明该空载窗口别名可达，不能排除P1时序/负载下间歇TCP问题，不能证明relay/产品已修复。更深Docker Desktop/WSL/Windows只读专项在596a927已按[直接人裁R7](../tasks/harness-final-network-environment-authorization-2026-10-20.md)落盘，配置修改仍另批，不重复P1求绿。独立最新596a927 A8原26/runtime原1已全绿且owned全清，Source另19生产器/精确回收通过；最终干净HEAD全CI另验。完整认证负例已证，但认证还原全绿/两完整浏览器轮仍欠。
 
 ### 后继：只增被动TCP状态，不放宽原失败合同
 
