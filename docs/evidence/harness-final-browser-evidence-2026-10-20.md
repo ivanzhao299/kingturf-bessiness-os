@@ -4,6 +4,12 @@
 
 ## 成本 TD-TEST-013：正式两例及认证真变异已闭环
 
+### 后继私有A入口扩充（未充浏览器结果）
+
+新增document/login/order/workspace/revocation/startup六个精确kind→原文件/固定原标题，复用原readonly repo/owned tmpfs/白名单reporter及完整发现结果硬校验；原两配置/trace（仅P1既授off）/业务断言/合成响应/网络闸均不改，不开放裸目录/C/all。加上既有cost共A七文件/23例；source仍须单独解决原真实PG生产器与RAM夹具消费，未冒作全A8入口。非P1/runtime不传真实账户/连接环境。
+
+工具自测23/23、strict lint/format通过。首新自测曾把文件内RegExp.test调用算成test声明（22过1败），只将新声明计数锚定到行首，原spec与注册原标题不变；两日志 `/tmp/kingturf-final-p-a-private-inventory-unit-2026-10-20.log` 与unit-fixed同前缀保留。新增入口尚未实际PW验证，不把静态库存/工具单测充浏览器绿或轮次；既有各文件原变异证据不重复造改动。
+
 先前f5c2ed5仅修产品冷路径反馈，本轮业务源码零改。正式`tests/e2e/cost-matrix-product-quality.spec.ts`仅应用先前获批auth-only补丁：源SHA7290b42f60ae107770622ac4f685f97308a68b14ede29281648afbc69665c0ca→适配SHA8ce3d50454711e0b31008a2a39b47af1ccce5f9d528d35899281b47a9c91a788；补丁SHA1f77630ed4b01e498a46b299ec3e2fba1c37fc80059231da6953a4f9e5dee2a1不变。新源自测固定完整适配SHA，并比较所有原expect链AST等值，含原冷场景7条；不改样本/动作/原可见期待/两配置/seed/relay，不用暖路径替代冷路径。
 
 诊断工具改读版本化非发现fixture`legacy.ts.txt`，字节仍为原7290…；原旧冷对照hash/精确授权patch/适配结果hash三钉保持，不重新依赖旧spec Git对象（旧Web构建自身原Git ref依赖仍在）。正式CLI始终指向原spec，fixture不被Playwright发现。

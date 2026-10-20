@@ -11,6 +11,37 @@ export const p1DomPhases = Object.freeze([
 ]);
 
 export const localCases = Object.freeze({
+  document: [
+    'draft sends give immediate, actionable feedback without requests; approval updates in place',
+    'missing customer is explained, with mobile feedback fitting the viewport',
+    'connector read failure can retry and cancelling a pending read never reopens a dialog',
+    'queue submission retains idempotency on retry, blocks double submit and never claims delivery',
+    'send controls remain hidden without sending permission',
+    'admin goes directly to configuration, saves without reloading, and returns with unsaved document intact',
+    'approved document navigates to settings from unconfigured feedback and settings read errors can retry on mobile',
+  ],
+  login: [
+    'shows deterministic progress, prevents repeated login and enters the workspace',
+    'keeps one actionable error and safely resets the password after rejection',
+  ],
+  order: ['opens order evidence on demand with keyboard, retry and full-width mobile detail'],
+  workspace: [
+    'CRM filtering preserves complete role navigation, workspace identity and route handlers',
+    'late cost results never appear on the quote page, even for a single paint',
+    'late customer detail response cannot replace the cost page or shrink its navigation',
+    'customer detail failures remain actionable without losing the role menu',
+  ],
+  revocation: [
+    'a running workspace handles 401 without confusing expiry and permission denial',
+    'a running workspace handles 403 without confusing expiry and permission denial',
+  ],
+  startup: [
+    'cold login does not download business JS or CSS, including on a slow connection',
+    'shows download progress and waits for business assets only after validating the session',
+    'a failed business js retains the session and can recover through explicit page refresh',
+    'a failed business css retains the session and can recover through explicit page refresh',
+    'a transient session failure is retryable, while only an explicit 401 returns to login',
+  ],
   cost: [
     'presents a paginated matrix ledger and a full-width on-demand model workspace',
     'hands an approved matrix cost directly into a preselected sales quote',
@@ -35,11 +66,17 @@ export const localCases = Object.freeze({
 
 export function privateSpecFile(kind) {
   assert(Object.hasOwn(localCases, kind), 'only inventoried local browser targets allowed');
-  return kind === 'p1'
-    ? 'p1-demo.spec.ts'
-    : kind === 'cost'
-      ? 'cost-matrix-product-quality.spec.ts'
-      : 'runtime-local.spec.mjs';
+  return {
+    document: 'document-send-product-quality.spec.ts',
+    login: 'login-product-quality.spec.ts',
+    order: 'order-evidence-product-quality.spec.ts',
+    workspace: 'workspace-route-isolation.spec.ts',
+    revocation: 'session-revocation.spec.ts',
+    startup: 'startup-delivery.spec.ts',
+    p1: 'p1-demo.spec.ts',
+    cost: 'cost-matrix-product-quality.spec.ts',
+    runtime: 'runtime-local.spec.mjs',
+  }[kind];
 }
 
 export function validateLocalCommand(kind, label, fault) {

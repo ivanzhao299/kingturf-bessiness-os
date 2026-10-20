@@ -11,7 +11,7 @@ import {
 import PrivateReporter from './private-reporter.mjs';
 
 test('local inventory rejects discovery, production, unsafe labels and unknown faults', () => {
-  for (const kind of ['p1', 'runtime', 'cost']) validateLocalCommand(kind, 'fixed-label');
+  for (const kind of Object.keys(localCases)) validateLocalCommand(kind, 'fixed-label');
   for (const kind of ['production', 'all', '../p1', undefined])
     assert.throws(() => validateLocalCommand(kind, 'fixed-label'));
   for (const label of ['../raw', '', 'a/b', 'UPPER', 'x'.repeat(65)])
@@ -19,17 +19,88 @@ test('local inventory rejects discovery, production, unsafe labels and unknown f
   assert.throws(() => validateLocalCommand('p1', 'fixed-label', 'raw-export'));
 });
 
-test('fixed private inventory matches both original local spec declarations', () => {
+test('fixed private inventory matches original literal local spec declarations', () => {
   for (const [kind, file] of [
     ['p1', 'p1-demo.spec.ts'],
     ['runtime', 'runtime-local.spec.mjs'],
     ['cost', 'cost-matrix-product-quality.spec.ts'],
+    ['document', 'document-send-product-quality.spec.ts'],
+    ['login', 'login-product-quality.spec.ts'],
+    ['order', 'order-evidence-product-quality.spec.ts'],
+    ['workspace', 'workspace-route-isolation.spec.ts'],
   ]) {
     const source = readFileSync(new URL(`../../tests/e2e/${file}`, import.meta.url), 'utf8');
     const titles = [...source.matchAll(/\btest\('([^']+)'/gu)].map((match) => match[1]);
     assert.deepEqual(titles, localCases[kind]);
     assert.equal(privateSpecFile(kind), file);
   }
+});
+
+test('fixed revocation/startup inventory expands only their original bounded parameter lists', () => {
+  const revoke = readFileSync(
+    new URL('../../tests/e2e/session-revocation.spec.ts', import.meta.url),
+    'utf8',
+  );
+  assert(revoke.includes('for (const status of [401, 403])'));
+  assert(
+    revoke.includes(
+      'test(`a running workspace handles ${String(status)} without confusing expiry and permission denial`',
+    ),
+  );
+  assert.deepEqual(
+    localCases.revocation,
+    [401, 403].map(
+      (status) =>
+        `a running workspace handles ${status} without confusing expiry and permission denial`,
+    ),
+  );
+  assert.equal([...revoke.matchAll(/^\s*test\(/gmu)].length, 1);
+  const startup = readFileSync(
+    new URL('../../tests/e2e/startup-delivery.spec.ts', import.meta.url),
+    'utf8',
+  );
+  const literals = [...startup.matchAll(/\btest\('([^']+)'/gu)].map((match) => match[1]);
+  assert.equal(literals.length, 3);
+  assert(startup.includes("for (const extension of ['js', 'css'])"));
+  assert(
+    startup.includes(
+      'test(`a failed business ${extension} retains the session and can recover through explicit page refresh`',
+    ),
+  );
+  assert.equal([...startup.matchAll(/^\s*test\(/gmu)].length, 4);
+  assert.deepEqual(localCases.startup, [
+    literals[0],
+    literals[1],
+    ...['js', 'css'].map(
+      (extension) =>
+        `a failed business ${extension} retains the session and can recover through explicit page refresh`,
+    ),
+    literals[2],
+  ]);
+});
+
+test('every added fixed A file requires all original cases and never grants C or discovery entry', () => {
+  for (const kind of ['document', 'login', 'order', 'workspace', 'revocation', 'startup']) {
+    const cases = localCases[kind].map((_, index) => ({
+      index,
+      status: 'passed',
+      durationMs: 1,
+      line: index + 1,
+    }));
+    const result = {
+      exit: 0,
+      elapsedMs: 1,
+      discovered: cases.length,
+      complete: true,
+      probe: false,
+      cases,
+    };
+    assert.equal(safeLocalResult(kind, result).cases.length, cases.length);
+    assert.throws(() => safeLocalResult(kind, { ...result, cases: cases.slice(0, -1) }));
+    assert.throws(() => safeLocalResult(kind, { ...result, complete: false }));
+  }
+  for (const kind of ['source', 'production-readonly', 'production-role-uat', 'all'])
+    assert.throws(() => privateSpecFile(kind));
 });
 
 test('cost private completion cannot omit either original case or enter production', () => {
