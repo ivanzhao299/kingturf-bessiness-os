@@ -8,6 +8,8 @@ KingTurf 业务操作系统：面向草坪行业外贸业务的 ERP（CRM→报�
 
 ## 如何开始（渐进式披露：先地图，再细节）
 
+2026-10-20终验收口以 `docs/tasks/harness-final-acceptance-authorization-2026-10-20.md` 为准：37a7bb9阶段5主体已验，非终验/竣工；当前P/B/D与62项DoD去向见 `docs/evidence/harness-final-closeout-preparation-2026-10-20.md`。G5完整函数已机械验证/四有限表，原29不续期；七A绿仍非A8整轮，MRP/Source待裁不冒绿；新SEC008/P1只登记，C生产禁跑，§14只准备。下方旧计数/停点保留历史，以计划§0/7和最新直接人裁落盘为准。
+
 阶段5已由人类正式授权，基线5230625/批次1–4已验收；授权范围/停止边界见 `docs/tasks/harness-stage5-authorization-2026-10-17.md`。先P浏览器裁断与A真实测试地图，再六域PG/覆盖率三目标/≥3注入/三连CI/P1核账/收官准备；只准备§14，不执行归档、不宣称竣工。浏览器上报不阻塞独立线；C生产不跑，源码仅线C临时注入后完整还原。下方所有旧待验收/阶段5未启均历史。
 
 Docker Playwright独立首轮已覆盖A8/B2：A六文件全绿、成本1过1败/Workspace3过1败仍待各自裁定；B runtime原1例真红还原绿，P1原完整11败、部分定位前两例overview看板隐藏，候选已封存还原，见 `docs/tasks/playwright-p1-replay-blocker-2026-10-17.md`。TD-TEST-016/018分别为可见性待裁/连接超时待核，台账58；第二轮未开/C生产禁，最后稳定干净HEAD全CI必跑。下方旧计数/停点均历史。
@@ -33,7 +35,7 @@ Docker Playwright前置当前停点：三项人裁已落R7，回环/自然Cookie
 - 架构总览与依赖方向：见 `ARCHITECTURE.md`
 - 设计理念与操作原则（争议裁决依据）：见 `docs/design-docs/core-beliefs.md`
 - 当前执行计划与进度：见 `docs/exec-plans/active/` §0及§7（2e22837六项已决）；S4开工R7见 `docs/tasks/harness-batch4-s4-authorization-2026-10-17.md`；原影响报告 `docs/tasks/harness-batch4-s4-session-impact-2026-10-17.md` 保留历史/库存/S1–S3证据索引
-- 已知技术债（58 条台账，含历史解决项及Docker回放TD-TEST-010至018）：见 `docs/exec-plans/tech-debt-tracker.md`
+- 已知技术债（62条含历史解决项；当前逐ID去向见终验E，关联子任务不重复计数）：见 `docs/exec-plans/tech-debt-tracker.md`
 - CI 与发布决策（非 Tauri，仅 workflow_dispatch 部署，无 tag/Release）：见 `docs/CI.md`
 - 全部文档索引：见 `docs/index.md`
 - 关键决策记录：见 `docs/adr/`（10 个 ADR）

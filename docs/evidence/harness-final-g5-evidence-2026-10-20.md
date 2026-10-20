@@ -4,6 +4,8 @@
 
 先[终验R7](../tasks/harness-final-acceptance-authorization-2026-10-20.md)/2e1159d，再[实测设计](../tasks/harness-final-g5-design-2026-10-20.md)/db045d9；当前定向验证已完成，完整实际HEAD CI后补，不称人类终验或§14竣工。
 
+上述CI实际coverage run为`740cdf6f-ff81-4277-bb5f-02e35af45620`，结果`coverage/run-740cdf6f-ff81-4277-bb5f-02e35af45620/result.json`：377生产源/25仓储，整体37492/48601（77.14%）、domain629/671（93.74%）、API仓储9787/11512（85.02%），deficits空；固定B哈希`73bf74135208cdba109401f2d37507ac81ac7ba03cd9beb497feec849bc6a8ed`不变。仅绑定该实际HEAD，不提前覆盖后继提交。
+
 ## 实施与库存
 
 `function-length.mjs`全生产src独立遍历，不复用旧walk的routes裁剪。与覆盖率最低生产库存对齐，src/test内普通.ts仍扫描，只按声明/测试文件后缀排除；新运行时扩展/符号链接/AST坏语法失败关闭。全部带body函数递归、包含签名和嵌套重叠的完整跨度；阈值200。结构符号是名称祖先链，不声称任意无名Block/If间移动都可检测；扫描覆盖当前两层apps/*与packages/*工作区布局，不声称任意未来workspace自动覆盖。

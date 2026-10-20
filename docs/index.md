@@ -1,5 +1,9 @@
 # docs/index.md（全部文档索引）
 
+[终验TD018资源/复现条件与runtime本轮](evidence/harness-final-network-diagnostics-2026-10-20.md)：固定资源基线/原5000ms硬闸保持，runtime原1例实际通过且owned全清；不是完整轮、不是旧超时根因修复，TD018保持开放。
+
+[终验E当前62项/DoD10与收官草案](evidence/harness-final-closeout-preparation-2026-10-20.md)：62唯一顶层ID逐项去向、六开放P1承接提案、G5/真实覆盖及P欠项映射；阶段5主体已验非终验，DoD4/5不自动勾选，§14不执行，最终实际HEAD全CI另验。
+
 [最新A七文件真实23例通过](evidence/harness-final-browser-evidence-2026-10-20.md)：c4f9c19同HEAD树空串行，原例完整/owned全清/无relay；Source仍待，不算完整A8轮或第二轮，后继变更仍按最新同状态完整重跑。
 
 [MRP固定输入实证/最小期待候选](evidence/harness-final-browser-evidence-2026-10-20.md)：种子独立推导五建议/两冻结/6000；固定输入/数量bool实际全真，放行卡内5/外1合6，原五处期待未改、候选另待人裁；三次安全诊断史保留，不充P1绿或轮次。

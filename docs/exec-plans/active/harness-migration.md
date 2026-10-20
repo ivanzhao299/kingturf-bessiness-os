@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **终验E与独立runtime/TD018（2026-10-20）**：[62项/DoD10/收官草案](../../evidence/harness-final-closeout-preparation-2026-10-20.md)逐ID与主台账集合相同，17个P1中11个窄范围已验、6个仍待承接/裁定；QUALITY_SCORE用实际G5 run，不抬历史评分。runtime原1例实际PW0/host0/8923ms、owned全清，执行时Source/E候选存在，不充干净HEAD或全轮。[资源与复现条件](../../evidence/harness-final-network-diagnostics-2026-10-20.md)不关闭TD018；Source生命周期/MRP五期待均待直接人裁。§14不执行，最终新干净HEAD完整CI待补。
+
 - **最新A七文件/23原例实跑通过（2026-10-20）**：c4f9c19首尾同HEAD/树空，cost2/doc7/login2/order1/workspace4/revocation2/startup5均原PW0/complete=true、owned全清/无relay，[逐命令/耗时](../../evidence/harness-final-browser-evidence-2026-10-20.md)。Source私有真实生产器尚待，本批不是完整A8轮或第二轮；不把历史变异或工具单测顶替最新整轮，后继变更后仍整跑。P1五期待未批不改，B两项/TD018/E独立继续。
 
 - **MRP固定输入已核、期待仍未改（2026-10-20）**：2339780先人裁，第三私有诊断四输入bool与6000两bool全真、卡内/外放行5/1=原6；固定计算输入含gross/safety/政策tuple且不读后续库存或用planned结果反证。[独立种子推导/三次诊断史/五期待候选](../../evidence/harness-final-browser-evidence-2026-10-20.md)。host0/12881ms/owned全清，原P1仍10过1败、原6/3/10000等未改，五处候选另待直接人裁；B/D/E及独立A/runtime/TD018继续。
@@ -3787,6 +3789,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+- **2026-10-20｜终验E核账与独立环境诊断**：[当前62项准备件](../../evidence/harness-final-closeout-preparation-2026-10-20.md)与台账逐ID机械集合相等（62/62，无缺漏/额外），DoD4/5/10不冒充完成，真实覆盖37492/48601、629/671、9787/11512绑定G5实际run，旧分数不抬。主执行者串行runtime原1例PW0/1992ms、host0/null/8923ms、owned全清且无relay；有Source/E候选，非干净HEAD或完整轮。TD018仅[资源基线与固定条件对照](../../evidence/harness-final-network-diagnostics-2026-10-20.md)，不改5000ms/relay/安全、不关旧故障；Source取消清理与MRP五期待仍待直接人裁，不擅改原生产器/期待。仅准备§14，不归档/删改HARNESS；本次文档可独立revert，最终新HEAD完整CI另验。[已测试]（逐ID/doc-lint与runtime实际结果，非全CI）
 
 - **2026-10-20｜最新私有A七文件实跑**：c4f9c19固定入口/原标题完整性后，稳定同HEAD树空串行原23例全部实际PW0/完整发现，cost/document/login/order/workspace/revocation/startup逐命令/耗时/owned三清/relay0见[证据](../../evidence/harness-final-browser-evidence-2026-10-20.md)。无原spec/config/业务/fixture改动，原充分变异不重造；source尚缺不称完整A8轮，B/P1变异与同状态两完整轮仍待，最终实际新HEAD全CI另补。[已测试]（实际七文件，非全A8或全CI）
 

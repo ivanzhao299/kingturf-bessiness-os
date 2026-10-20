@@ -4,6 +4,16 @@
 
 ## 成本 TD-TEST-013：正式两例及认证真变异已闭环
 
+### Source 私有生产器准备停点（未通过）
+
+新私有工具候选首次命令`preflight.mjs local source final-source-private-producer-1`，日志`/tmp/kingturf-final-p-source-private-producer-1-2026-10-20.log`，host实际1/null/16546ms、preflight1/16003ms，失败位于private-local-browser准备阶段，尚无生产器成功固定事件或UI开始事件；精确根因未知，不称原19或原3通过。同一性/只读tmpfs核验通过，外层owned schema/container/preview清理全部true，无relay。随后固定只读目录检查实际0，日志`/tmp/kingturf-final-p-source-postfailure-catalog-2026-10-20.log`仅导出`authzSchemasRemaining:0`，没有删除任何不明schema。
+
+后继候选只增加固定阶段/布尔诊断与取消窗口检查，工具27单测及strict lint通过，未再次实际启动Source。独立审查指出：原PG生产器被强杀时afterAll不保证执行，目录检测不是兜底清理。已单独询问人类是否允许可选owned schema/私有marker生命周期交接；未答前原生产器、原19个test正文与原Source spec/config保持不改，不再次执行该候选、不充Source绿。当前候选未提交，E/runtime/TD018继续；后继获批须先R7再独立实现/真实取消故障核验。
+
+### 本轮独立 runtime 实跑（不计完整轮）
+
+命令`node --experimental-transform-types scripts/e2e-docker/preflight.mjs local runtime final-runtime-current-1`，安全日志`/tmp/kingturf-final-p-runtime-current-1-2026-10-20.log`。HEAD cb9a41f首尾不变，但当时存在已声明的Source工具/E文档候选，因此不称干净HEAD或完整A/B轮。原1例discovered=1/complete=true/passed，case762ms，PW实际0/null/1992ms，preflight0/8327ms；host实际0/null/8923ms及HEAD不变来自主执行器实时固定JSON输出`runtime-current-close`，不在子进程安全日志内。只读容器/tmpfs/PG同一性与owned schema/container/preview清理全部true，无relay-failure；未修改原runtime/config/产品/网络硬闸。此前真实认证扰动红→还原绿证据保留，不将本次单个正例计为新的变异证据。Source/P1待裁不阻塞该独立检查；[TD018资源与条件对照](harness-final-network-diagnostics-2026-10-20.md)仍不关闭旧故障。
+
 ### 后继私有A入口扩充（未充浏览器结果）
 
 后补真实运行：`c4f9c1915c5de84a63f9d112cb7acee4274ab7e4`首尾同HEAD/树空，主执行者串行七文件、原23例全部通过。每命令为`preflight.mjs local <kind> final-a-current-<kind>-1`；集合日志 `/tmp/kingturf-final-p-a-current-seven-1-2026-10-20.log`，各kind日志同前缀单独命名。不是完整A8轮或第二轮：source尚缺、B两项与P1认证变异仍另欠，后继工具/期待变化后整轮须同最新状态重跑，不拼此批结果充整轮。

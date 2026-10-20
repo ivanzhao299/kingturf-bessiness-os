@@ -1,5 +1,7 @@
 # 技术债台账（tech-debt-tracker）
 
+**2026-10-20现时逐项状态入口**：[终验E62项](../evidence/harness-final-closeout-preparation-2026-10-20.md)逐ID列当前已验范围/未决/去向及六开放P1，独立只读索引核账62唯一ID/17P1；旧索引行与更早“待验收/待核实”保持其原时点，不能覆盖已验或本轮真实PG后继证据。TEST013授权范围已闭环、BOUND003/004已核影响但行为未决、TEST016/P1原11仍10过1败、SEC008新P1待人裁排期。不是全部债务结案或DoD5达成。
+
 **终验D实际PG新发现（2026-10-20，62项）**：新增TD-SEC-008，仅登记complaint/dashboard匹配显式锚点引用不存在osr列、真实42703；P1可用性风险待人裁，不称权限扩大/生产事故、不修产品。BOUND003 PG最终拒绝且未存，BOUND004实际部分提交/replay，SEC007仅仓储层差异，[四项实测与边界](../evidence/harness-final-decision-pg-evidence-2026-10-20.md)。旧61历史保持，独立B通过不代表全部P1排期已决/DoD5完成。
 
 **阶段5 D当前状态三连（2026-10-17，仍61项）**：4ca894f连续三次完整ci:local实际0/null、329429/330768/328574ms，每次首尾同HEAD/树空、均<15分钟，无中途编辑/并发PG浏览器或失败重跑；三覆盖37389/48566、629/671、9787/11512且B/分母不变，独立18 raw复算/driver close核准。[三run/SHA与边界](../evidence/harness-stage5-coverage-protocol-2026-10-17.md)。TEST002门禁/D已实证但阶段终验待；末次文档HEAD另验，P冷成本/信用/驾驶舱与F旧期限仍待裁，不因CI绿关这些项。
@@ -460,6 +462,8 @@
 ## 测试
 
 ### TD-TEST-018｜私有浏览器 preview 上游连接超时
+
+**2026-10-20终验只读诊断**：[固定资源与条件对照](../evidence/harness-final-network-diagnostics-2026-10-20.md)已记录宿主/Docker基线；最新完整P1为业务MRP单败、七A与独立runtime无relay事件，不能据此关闭旧CONNECT_TIMEOUT或推定负载因果。原5000ms预连接超时/活动失败硬闸不改，无压力注入/原始流量导出。成因仍待核，62项计数不变。
 
 **2026-10-17后继同故障再现，未放宽**：四KPI期待经独立推导/人裁/仅四字面量适配后，原完整P1集合`stage5-p1-dashboard-fixed-1`仅7完成6过1败，驾驶舱failureLine9仍在路由parent附着检查、未抵达KPI；active4173/upstream CONNECT_TIMEOUT令PWnull/SIGTERM，其余4例未完成，host1/26468ms，owned全清。不是四值不匹配证据；不再靠重跑当修复、不改原网络条件。[固定事实/日志/四字面量proof](../tasks/harness-stage5-p1-money-authorization-2026-10-17.md)。只登记/成因待核，顶层仍61。
 
