@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[终验B G5基线与设计](tasks/harness-final-g5-design-2026-10-20.md)：完整生产src377/3413，四函数3627/3558/208/522；新200行AST门禁和独立有限精确表设计，原29/G3不动，尚未实施或验证。
+
 [MRP固定只读观测结果](evidence/harness-final-browser-evidence-2026-10-20.md)：5卡/2冻结/6放行标签，原数量部分条件不匹配；host0/12867ms/owned全清，无原始产物导出，原6/3/6等期待不改、P1仍10过1败，静态归因及B/D/E继续。
 
 [MRP固定只读诊断后继人裁](tasks/harness-final-acceptance-authorization-2026-10-20.md)：仅卡数/冻结/放行及原条件匹配，不改6/3/6等期待，保留10过1败；f13bec8干净HEAD完整CI0/387793ms，诊断待实施，B/D/E继续。
