@@ -4,6 +4,8 @@
 
 ## 后继MRP五期待批准与实跑（2026-10-20）
 
+后继完整认证负例`final-p1-auth-401-tcp-state-1`：仅首例登录后临时撤Cookie、实际同源只读会话GET断言401，再让原保护导航自然失败；完整11/complete=true，首例failureLine9、其它10passed，故新增401核验已先通过，非人工抛错或改原业务期待求红。PW1/24703ms、host1/null/34667ms，无relay/owned全清。临时五行精确撤回，对提交版零diff；还原`final-p1-auth-exact-restored-2`仅7/11完成即原CONNECT_TIMEOUT，host1/null/28443ms，尚不充红→还原绿闭环。[实证TCP状态/空载对照/边界](harness-final-network-diagnostics-2026-10-20.md)。原MRP完整11首次全过仍保留，不与此部分还原拼绿；停止重复P1，独立A8/runtime/最终CI继续。
+
 直接人裁call_cd7a7a15cceb41c58e9cb15399c877a1先由e800666独立[R7](../tasks/harness-final-mrp-expectation-authorization-2026-10-20.md)，34e5453仅五行：卡5/冻结2/建议6000/取整6000/说明2。相对b907ac7逐处唯一替换且其余字节完全相同，原放行6/gross10300/safety500与原其它10例、产品/seed/两config/网络全部保留；strict lint/format及五处byte proof实际0。
 
 主执行者严格串行命令均`preflight.mjs local p1 <label>`，原11固定库存/配置/既授P1 trace off、私有原始产物纪律保持；安全日志`/tmp/kingturf-<label>-2026-10-20.log`：

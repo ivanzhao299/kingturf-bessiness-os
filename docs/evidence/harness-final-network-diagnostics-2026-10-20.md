@@ -23,6 +23,18 @@ runtime执行后2026-10-20T04:37:58.021Z再次只读观测：CPU与总内存不�
 
 ## 当前结论
 
+### 被动实证与有限空载对照（后继）
+
+`final-p1-auth-401-tcp-state-1`原11完整发现/完成：首例撤Cookie后实际GET会话401核验通过，随后原openRoute第9行失败，其余10过；PW1/24703ms、host1/null/34667ms，无relay、owned全清。临时五行已精确撤回，对已提交五期待版本零diff。紧随`final-p1-auth-exact-restored-2`前7例过后中断：PWnull/SIGTERM、host1/null/28443ms、complete=false，owned全清，不能充还原11绿。
+
+后者实际固定事件为active4173/upstream CONNECT_TIMEOUT：`connected=false, connecting=true, upstreamDestroyed=false, downstreamDestroyed=false, activeSockets=8`。本次5秒计时点上游仍在TCP建立中，不是已连接HTTP响应/空闲超时；8是整个relay Set的socket数，不是根因或资源耗尽证明。不将这一次状态倒写为旧所有故障的已核原因；不归因认证、业务响应或某个具体网络组件。
+
+依总R7网络基线/复现条件权限执行独立零认证对照：`node scripts/e2e-docker/tcp-baseline.mjs`，脚本不读取env/.env、不连DB/API、不发送payload，先独占4173且ss核自有PID，临时bind与既授owned preview相同0.0.0.0，不修改任何既有监听/转发/防火墙配置。宿主回环与固定只读镜像容器的host-gateway别名，各最多50次单并发、50ms间隔、同5秒deadline、首败停止。输出只有方向/固定计数/精确清理布尔；这不是P1替代路线或绕过正式gateway校验。
+
+最终实际host0/null/6003ms，安全日志`/tmp/kingturf-final-tcp-connect-baseline-2026-10-20.log`：两侧各50尝试/50连接，timeout/refused/other均0，containerGone/childGone/listenerGone均true。初次实现前同一空载对照也50/50，辅助patch一次因格式化后的声明不匹配在编辑前失败，随后修正；最终入口/纯parser自测后以上述日志为准。2纯边界用例及strict lint0；独立只读实现审无必要阻断。
+
+限制：探针复用Docker静态host-gateway别名，仅校IPv4，未执行正式forward对宿主预测gateway的独立同址比对；也未观察Windows/Docker VM内部状态。50/50仅说明该空载窗口别名可达，不能排除P1时序/负载下间歇TCP问题，不能证明relay/产品已修复。更深Docker Desktop/WSL/Windows转发环境只读专项已另询人类、未获批，不擅改网络配置，不重复P1求绿。独立最新A8/runtime及最终干净HEAD全CI继续；完整认证负例已证，但认证还原全绿/两完整浏览器轮仍欠。
+
 ### 后继：只增被动TCP状态，不放宽原失败合同
 
 MRP五期待适配后原11一次全绿，但认证负例3/11及精确还原8/11再次active4173/upstream CONNECT_TIMEOUT，[失败史](harness-final-browser-evidence-2026-10-20.md)保留；两次均owned全清，不把部分失败/还原或重跑充完整闭环。

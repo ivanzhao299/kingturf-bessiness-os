@@ -463,6 +463,8 @@
 
 ### TD-TEST-018｜私有浏览器 preview 上游连接超时
 
+**最新固定实证**：完整认证负例1败10过且实际401先验证/无relay；精确还原又7/11中断。唯一新状态捕获确认该次上游未建TCP连接（connected false/connecting true/两端未destroy/全relay sockets8），不是已建连HTTP响应超时；不追写旧全部故障或归咎组件。无认证空载host/容器别名各50/50通且owned全清，只证低压窗口可达，原P1还原/两轮仍阻。[事实/限制](../evidence/harness-final-network-diagnostics-2026-10-20.md)。已单询更深本地环境只读专项，未批不扩；不改网络/产品/期待/超时硬闸，62项不变。
+
 同日独立Source owned正例准备/三真实故障回收均未出现relay；原19通过但首UI因新工具误拒公开合成业务marker未启动，详见[Source生命周期](../evidence/harness-final-source-lifecycle-2026-10-20.md)，不是本项超时已修复的证据。原19/3与P1/两轮分别计账。
 
 **2026-10-20后继再现**：MRP五期待获批34e5453原完整11首次全过；随后仅首例真实撤Cookie的负例3/11和精确还原8/11均遭active4173/upstream CONNECT_TIMEOUT，host分别1/27268ms、1/32346ms，owned全清。负例首例真实失败/随后两过不顶完整负例；还原前7过不顶还原11绿。[实跑历史](../evidence/harness-final-browser-evidence-2026-10-20.md)。未放宽硬闸/超时/配置，不重复P1求绿；原因仍待核，独立Source获批生命周期继续，62项不变。
