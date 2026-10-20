@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[Source owned生命周期直接人裁R7](tasks/harness-final-source-lifecycle-authorization-2026-10-20.md)：仅可选schema/私有marker交接、同实例精确回收与真实取消/故障核验；原19正文/样本/产品/两配置/网络保持，先独立授权再实施，未充Source通过。
+
 [MRP五期待直接人裁R7](tasks/harness-final-mrp-expectation-authorization-2026-10-20.md)：仅卡5/冻结2/建议与取整6000/说明2，保留放行6及其它全部断言/种子/产品/网络；先独立授权，再五处实施/原11与真实认证红绿，尚未执行不充通过。
 
 [最新干净检查点及两项待裁](evidence/harness-final-blocked-checkpoint-2026-10-20.md)：b8abc83完整CI实际0/397020ms、API17297/Web436、覆盖77.25/93.74/85.46%，HEAD与树空守恒；Source生命周期/MRP五期待尚未批，P全链未完成/不能终验，最终新文档HEAD仍另完整实跑，§14不执行。

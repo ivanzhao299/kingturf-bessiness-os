@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **Source owned生命周期已获直接人裁（2026-10-20）**：call_16b42add444c484cb54d55d38b87e32c，仅原测试可选owned schema/私有marker交接与外层同实例精确回收，原19正文/样本/权限/响应/产品SQL/两配置/网络全留。[独立R7](../../tasks/harness-final-source-lifecycle-authorization-2026-10-20.md)先提交，再恢复候选审查/生命周期/真实取消故障/19+3；尚未实施不充绿，MRP独立提交。
+
 - **MRP五期待已获直接人裁（2026-10-20）**：call_cd7a7a15cceb41c58e9cb15399c877a1仅批准卡6→5/冻结3→2/建议与取整10000→6000/说明3→2，原放行6/gross10300/safety500及其它断言/seed/产品/网络全留。[独立R7](../../tasks/harness-final-mrp-expectation-authorization-2026-10-20.md)先提交，再实现与原完整11/认证真红→还原绿；b907ac7最终CI0/398864ms为前检查点，不代新验证。
 
 - **终验执行检查点b8abc83完整绿（2026-10-20）**：[实际CI/覆盖/已完成与两项待裁](../../evidence/harness-final-blocked-checkpoint-2026-10-20.md)，完整0/null/397020ms，HEAD不变/树空；API17297/Web436，run426eb455整体37543/48601、domain629/671、仓储9838/11512，deficits空。Source原19在常规CI通过不顶私有19+3，P1仍10过1败/五期待待裁，最新同状态两完整轮欠。最终新文档HEAD完整CI另实跑，不宣称终验/竣工、不§14。
@@ -3795,6 +3797,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+- **2026-10-20｜Source生命周期直接授权先行**：用户call_16b42add444c484cb54d55d38b87e32c明确允许[owned最小生命周期](../../tasks/harness-final-source-lifecycle-authorization-2026-10-20.md)，不扩产品/原19正文/样本/两配置/网络。候选封存失败史保留，先本独立R7再精确恢复/修订，必须同实例marker与取消/故障真实清理，不以目录检测代回收；最终最新同状态两完整轮和新HEAD全CI待执行。MRP另批、C2/§14禁。[未测试]（授权落盘，尚未实施）
 
 - **2026-10-20｜MRP五处直接授权先行**：用户call_cd7a7a15cceb41c58e9cb15399c877a1明确批准隔离种子五期待最小适配，[范围/守恒/回滚](../../tasks/harness-final-mrp-expectation-authorization-2026-10-20.md)。接手b907ac7树空/实际完整CI0；本次仅文档，原spec/产品未改，先独立授权后实施，不把固定诊断当原11绿。Source另批不混，C2/§14禁；最终新HEAD完整CI另验。[未测试]（授权落盘，尚未实施）
 
