@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[TD018本机转发环境只读专项人裁R7](tasks/harness-final-network-environment-authorization-2026-10-20.md)：仅Docker Desktop/WSL/Windows只读定位与精确方案；监听/转发/防火墙修改逐项另批，原超时与失败硬闸不变，不重复P1求绿。A8/runtime与最终CI独立继续，非终验或竣工。
+
 [Source原19＋3与真实故障清理完成](evidence/harness-final-source-lifecycle-2026-10-20.md)：正例2实际完整过、三项handled取消/KILL精确owned回收；首正例工具字段误报史保留，原19正文/样本/产品/UI3未改，独立只读复核通过。默认分支最终CI及P两整轮另验，不外推host掉电/强杀保证。
 
 [Source owned生命周期实施](evidence/harness-final-source-lifecycle-2026-10-20.md)：host同事务schema/marker/同实例精确回收、原19 AST正文固定、默认分支守恒；30工具/lint/APItypecheck过，真实取消/故障与19+3尚待，不充通过。
