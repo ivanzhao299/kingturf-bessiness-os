@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, rename, writeFile } from 'node:fs/promises';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createServer } from 'node:net';
@@ -20,7 +20,21 @@ const companyGrant: Grant = { scopes: ['COMPANY'], fields: null };
 const selfGrant: Grant = { scopes: ['SELF'], fields: null };
 
 describe('real HTTP source scopes and nested legal authorization', () => {
-  const schema = `authz_http_${randomUUID().replaceAll('-', '')}`;
+  const ownedSchema = process.env.KINGTURF_SOURCE_SCHEMA;
+  const ownedMarker = process.env.KINGTURF_SOURCE_MARKER;
+  const ownedIdentity = process.env.KINGTURF_SOURCE_IDENTITY;
+  const externalOwner =
+    ownedSchema !== undefined || ownedMarker !== undefined || ownedIdentity !== undefined;
+  if (
+    externalOwner &&
+    (!ownedSchema ||
+      !/^authz_http_[a-f0-9]{32}$/u.test(ownedSchema) ||
+      !ownedMarker ||
+      !/^[a-f0-9]{64}$/u.test(ownedMarker) ||
+      !ownedIdentity)
+  )
+    throw new Error('Complete private Source ownership required');
+  const schema = ownedSchema ?? `authz_http_${randomUUID().replaceAll('-', '')}`;
   const company = randomUUID(),
     otherCompany = randomUUID(),
     teamA = randomUUID(),
@@ -129,8 +143,21 @@ describe('real HTTP source scopes and nested legal authorization', () => {
   beforeAll(async () => {
     admin = new Database(connection);
     cleanup.push(() => admin.close());
-    await admin.query(`CREATE SCHEMA ${schema}`);
-    cleanup.push(() => admin.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`));
+    if (externalOwner) {
+      await admin.transaction(async (client) => {
+        await client.query('SET TRANSACTION READ ONLY');
+        const actual = await client.query(
+          'SELECT current_database() AS database,pg_postmaster_start_time()::text AS started,system_identifier::text AS instance FROM pg_control_system()',
+        );
+        const expectedIdentity: unknown = JSON.parse(ownedIdentity ?? 'null');
+        expect(actual.rows[0]).toEqual(expectedIdentity);
+        const marker = await client.query(`SELECT marker FROM ${schema}.source_owner_marker`);
+        expect(marker.rows).toEqual([{ marker: ownedMarker }]);
+      });
+    } else {
+      await admin.query(`CREATE SCHEMA ${schema}`);
+      cleanup.push(() => admin.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`));
+    }
     const target = new URL(connection);
     target.searchParams.set('options', `-csearch_path=${schema}`);
     db = new Database(target.toString());
@@ -217,6 +244,16 @@ describe('real HTTP source scopes and nested legal authorization', () => {
       owner.employeeId,
       teamA,
     ]);
+    if (externalOwner) {
+      await writeFile('/tmp/kingturf-private/source-owner-ready.tmp', '{"ready":true}', {
+        flag: 'wx',
+        mode: 0o600,
+      });
+      await rename(
+        '/tmp/kingturf-private/source-owner-ready.tmp',
+        '/tmp/kingturf-private/source-owner-ready.json',
+      );
+    }
   }, 30_000);
   afterAll(async () => {
     const stoppedChild = child;

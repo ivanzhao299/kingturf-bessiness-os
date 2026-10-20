@@ -6,6 +6,7 @@ import { createInterface } from 'node:readline';
 import { Database, assertTestDatabaseTarget, migrate } from '../../packages/database/src/index.ts';
 import { PasswordHasher } from '../../apps/api/src/security.ts';
 import { stopChild } from '../e2e-cdp/session-network-fixture.mjs';
+import { createSourceOwnership } from './source-ownership.mjs';
 
 export { stopChild };
 
@@ -40,7 +41,12 @@ export async function createFixture(connection) {
   const children = [];
   let db;
   let created = false;
-  const close = async () => {
+  let sourceOwner;
+  const close = async (
+    onSourceCleanup = () => {
+      /* Optional fixed cleanup acknowledgement. */
+    },
+  ) => {
     let failed = false;
     const attempt = async (work) => {
       try {
@@ -55,6 +61,11 @@ export async function createFixture(connection) {
       (child) => child.pid === undefined || child.exitCode !== null || child.signalCode !== null,
     );
     if (!gone) failed = true;
+    if (sourceOwner && gone)
+      await attempt(async () => {
+        await sourceOwner.close();
+        onSourceCleanup();
+      });
     if (created && gone) {
       await attempt(() => admin.query(`DROP SCHEMA ${schema} CASCADE`));
       await attempt(async () => {
@@ -289,6 +300,11 @@ export async function createFixture(connection) {
     };
     return {
       expected,
+      ownSource: async () => {
+        assert.equal(sourceOwner, undefined, 'source owner created once');
+        sourceOwner = await createSourceOwnership(admin, expected);
+        return sourceOwner.control;
+      },
       containerConnection: containerTarget.href,
       initialize,
       verifyProbeWrites,

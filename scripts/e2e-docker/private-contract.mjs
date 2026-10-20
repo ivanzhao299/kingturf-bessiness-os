@@ -11,6 +11,11 @@ export const p1DomPhases = Object.freeze([
 ]);
 
 export const localCases = Object.freeze({
+  source: [
+    'collection and order evidence reflect independent legal read (denied)',
+    'collection and order evidence reflect independent legal read (authorized)',
+    'collection and order evidence reflect independent legal read (masked)',
+  ],
   document: [
     'draft sends give immediate, actionable feedback without requests; approval updates in place',
     'missing customer is explained, with mobile feedback fitting the viewport',
@@ -67,6 +72,7 @@ export const localCases = Object.freeze({
 export function privateSpecFile(kind) {
   assert(Object.hasOwn(localCases, kind), 'only inventoried local browser targets allowed');
   return {
+    source: 'source-nested-authorization.spec.ts',
     document: 'document-send-product-quality.spec.ts',
     login: 'login-product-quality.spec.ts',
     order: 'order-evidence-product-quality.spec.ts',
@@ -83,10 +89,20 @@ export function validateLocalCommand(kind, label, fault) {
   assert(Object.hasOwn(localCases, kind), 'only inventoried local browser targets allowed');
   assert.match(label, /^[a-z0-9][a-z0-9-]{0,63}$/u);
   assert(
-    [undefined, 'privacy', 'interrupt', 'interrupt-stop', 'diagnostics'].includes(fault),
+    [
+      undefined,
+      'privacy',
+      'interrupt',
+      'interrupt-stop',
+      'diagnostics',
+      'source-cancel',
+      'source-kill',
+      'source-failure',
+    ].includes(fault),
     'unknown local fault',
   );
   if (fault === 'diagnostics') assert.equal(kind, 'p1', 'diagnostics is only authorized for P1');
+  if (fault?.startsWith('source-')) assert.equal(kind, 'source', 'Source lifecycle faults only');
 }
 
 export function safeLocalCases(kind, values) {

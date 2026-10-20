@@ -13,12 +13,17 @@ import { relayFailureCodes } from './forward.mjs';
 import { safeDiagnostic, safeDiagnosticResult } from './p1-diagnostics-contract.mjs';
 import { prepareOldCostWeb } from './cost-comparison.mjs';
 import { safeCostObservation, validateCostComparison } from './cost-comparison-source.mjs';
+import { safeSourcePreparation } from './source-preparation.mjs';
 
 const image = 'kingturf-e2e:pw1.62.1-chrome';
 const imageId = 'sha256:1a0e14c3fd2351aab685106ad17d86b0bd38e6ed89cc0d0d2be809579f8dab3e';
 let localEventFile;
 let localChildClose;
 let localResultSeen = false;
+let sourcePrepared = false;
+let sourcePreparationSeen = false;
+let sourceProducerReady = false;
+let sourceControl;
 const diagnosticObserved = new Set();
 const report = (event, details = {}) => {
   const line = JSON.stringify({ event, ...details });
@@ -47,9 +52,38 @@ const reportContainer = (value) => {
     'p1-diagnostic': [],
     'diagnostics-result': [],
     'cost-comparison': [],
+    'source-fixture-result': [],
+    'source-producer-ready': [],
   };
   assert(Object.hasOwn(schemas, value.event), 'unknown container event');
   const safe = {};
+  if (value.event === 'source-producer-ready') {
+    assert.equal(mode, 'local');
+    assert.equal(process.argv[3], 'source');
+    assert.equal(value.kind, 'source');
+    assert.equal(value.label, process.argv[4]);
+    assert.equal(value.ownerVerified, true);
+    assert.equal(sourceProducerReady, false);
+    sourceProducerReady = true;
+    Object.assign(safe, { kind: 'source', label: value.label, ownerVerified: true });
+  }
+  if (value.event === 'source-fixture-result') {
+    assert.equal(mode, 'local');
+    assert.equal(process.argv[3], 'source');
+    assert.equal(value.kind, 'source');
+    assert.equal(value.label, process.argv[4]);
+    assert.equal(sourcePreparationSeen, false);
+    sourcePreparationSeen = true;
+    const observation = safeSourcePreparation(value);
+    Object.assign(safe, { kind: 'source', label: value.label, ...observation });
+    sourcePrepared =
+      observation.exit === 0 &&
+      observation.signal === null &&
+      observation.producerPassed &&
+      observation.fixtureValidated &&
+      observation.ownershipVerified &&
+      sourceProducerReady;
+  }
   if (value.event === 'cost-comparison') {
     assert.equal(mode, 'cost-compare');
     validateCostComparison(value.condition, value.label);
@@ -146,6 +180,8 @@ const reportContainer = (value) => {
       assert.equal(localResultSeen, false, 'duplicate private result');
       assert.equal(value.probe, process.argv[5] === 'privacy', 'probe must match explicit command');
       if (!value.probe) {
+        if (value.kind === 'source')
+          assert(sourcePrepared, 'source browser requires observed successful private producer');
         assert.equal(localChildClose?.exit, value.exit, 'result requires observed browser close');
         assert.equal(localChildClose.terminationSignal, null);
       } else assert.equal(localChildClose, undefined);
@@ -363,6 +399,12 @@ try {
     for await (const line of lines) {
       const event = JSON.parse(line);
       reportContainer(event);
+      if (event.event === 'source-producer-ready' && process.argv[5] === 'source-cancel')
+        process.kill(process.pid, 'SIGTERM');
+      if (event.event === 'source-producer-ready' && process.argv[5] === 'source-kill') {
+        report('source-container-kill-injected', { ready: true });
+        execFileSync('docker', ['kill', '--signal', 'KILL', name], { stdio: 'ignore' });
+      }
       if (event.event === 'spec-started' && process.argv[5] === 'interrupt')
         process.kill(process.pid, 'SIGTERM');
       if (
@@ -527,6 +569,7 @@ try {
             ? 'playwright-spec'
             : 'browser-probe';
         cancellation.signal.throwIfAborted();
+        if (local && process.argv[3] === 'source') sourceControl = await fixture.ownSource();
         await send(
           costComparison
             ? { action: 'cost-comparison', condition: process.argv[3], label: process.argv[4] }
@@ -538,6 +581,7 @@ try {
                   fault: process.argv[5],
                   user: process.argv[3] === 'p1' ? users.admin : users.runtime,
                   connection: fixture.containerConnection,
+                  ...(sourceControl ? { sourceOwner: sourceControl } : {}),
                 }
               : mode === 'spec'
                 ? { action: 'spec', spec: process.argv[3], label: process.argv[4] }
@@ -660,10 +704,16 @@ try {
   }
   if (stopped)
     await fixture
-      .close()
-      .then(() =>
-        report('owned-cleanup', { schemaGone: true, containerGone: true, previewGone: true }),
+      .close(() =>
+        report('source-owned-cleanup', {
+          schemaGone: true,
+          markerMatched: true,
+          containerGone: true,
+        }),
       )
+      .then(() => {
+        report('owned-cleanup', { schemaGone: true, containerGone: true, previewGone: true });
+      })
       .catch(() => {
         process.exitCode = 1;
         report('cleanup-failed');

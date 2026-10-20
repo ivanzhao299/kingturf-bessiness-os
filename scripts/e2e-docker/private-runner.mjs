@@ -9,6 +9,7 @@ import {
   validateLocalCommand,
 } from './private-contract.mjs';
 import { runP1Diagnostics } from './p1-diagnostics.mjs';
+import { prepareSourceFixture } from './source-preparation.mjs';
 
 export async function verifyPrivateFilesystem(label) {
   const mounts = await readFile('/proc/mounts', 'utf8');
@@ -115,6 +116,8 @@ export async function runPrivateSpec(command, signal, report) {
     }
   };
   try {
+    signal.throwIfAborted();
+    if (kind === 'source') await prepareSourceFixture(command, signal, environment, raw.fd, report);
     signal.throwIfAborted();
     child = spawn(process.execPath, args, {
       env: environment,

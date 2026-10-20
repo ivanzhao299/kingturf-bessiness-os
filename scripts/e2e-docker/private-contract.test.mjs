@@ -99,7 +99,7 @@ test('every added fixed A file requires all original cases and never grants C or
     assert.throws(() => safeLocalResult(kind, { ...result, cases: cases.slice(0, -1) }));
     assert.throws(() => safeLocalResult(kind, { ...result, complete: false }));
   }
-  for (const kind of ['source', 'production-readonly', 'production-role-uat', 'all'])
+  for (const kind of ['production-readonly', 'production-role-uat', 'all'])
     assert.throws(() => privateSpecFile(kind));
 });
 

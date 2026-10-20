@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[Source owned生命周期实施](evidence/harness-final-source-lifecycle-2026-10-20.md)：host同事务schema/marker/同实例精确回收、原19 AST正文固定、默认分支守恒；30工具/lint/APItypecheck过，真实取消/故障与19+3尚待，不充通过。
+
 [Source owned生命周期直接人裁R7](tasks/harness-final-source-lifecycle-authorization-2026-10-20.md)：仅可选schema/私有marker交接、同实例精确回收与真实取消/故障核验；原19正文/样本/产品/两配置/网络保持，先独立授权再实施，未充Source通过。
 
 [MRP五期待直接人裁R7](tasks/harness-final-mrp-expectation-authorization-2026-10-20.md)：仅卡5/冻结2/建议与取整6000/说明2，保留放行6及其它全部断言/种子/产品/网络；先独立授权，再五处实施/原11与真实认证红绿，尚未执行不充通过。
