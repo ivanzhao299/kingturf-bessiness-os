@@ -7,10 +7,12 @@
 //   G2 嵌套深度：API routes/批次3新web目录为AST词法函数/控制流，其余保留原格式缩进（上限5）
 //   G3 SQL 原始输入插值（TD-SEC-005，始终强制）：apps/api/src 模板字符串中禁止以原始请求对象开头的插值
 //   G4 路由表校验约束（始终强制，批次 2 前待命）：apps/api/src/routes/** 的路由定义必须声明 validate
+//   G5 完整函数跨度：全生产src AST ≤200，独立逐函数限期存量表
 // 每条失败信息必须包含修复指令（§4.2 硬要求）。
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import ts from 'typescript';
+import { scanFunctionLengths } from './function-length.mjs';
 
 export const MAX_FILE_LINES = 800;
 export const MAX_NESTING = 5;
@@ -288,6 +290,8 @@ function render(v) {
     return v.grandfathered
       ? `${head} 【存量豁免】${v.reason}，到期：${v.due}`
       : `${head} SQL 模板串出现白名单之外的插值。修复：请求值一律改用参数化占位符（pg 的 $N，经 values.push 传参）；确属代码内枚举/SQL 片段组合，将其加入 structure-gate.mjs 的 SQL_ENUM_NAMES/结构模式并在提交说明登记理由；禁止把请求值先赋给白名单变量再拼入。`;
+  if (v.rule === 'G5')
+    return `${head} ${v.symbol ?? ''}${v.first ? `:${v.first}-${v.last}` : ''} ${v.whitelisted ? `【G5精确限期豁免】上限${v.maxLines}，${v.reason}，到期：${v.due}` : `${v.problem}。修复：先排除语法/扫描/表失配问题；按职责拆分完整函数，存量只能经独立授权登记精确有限表，不得加宽目录/文件豁免或自动续期。`}`;
   return `${head} defineRoute 路由缺少 validate 声明（逐路由校验）。修复：为该 defineRoute 增加 validate 字段（复用 apps/api/src/app.ts 的校验器）；无请求体的路由显式写 validate: null 并注释原因。`;
 }
 
@@ -314,10 +318,12 @@ export function runChecks({ reportOnly = false } = {}) {
   } catch {
     /* routes/ 不存在：G4 待命 */
   }
+  violations.push(...scanFunctionLengths().violations);
   const soft = violations.filter(
     (v) =>
       ((v.rule === 'G1' || v.rule === 'G2') && (v.whitelisted || reportOnly)) ||
-      (v.rule === 'G3' && v.grandfathered),
+      (v.rule === 'G3' && v.grandfathered) ||
+      (v.rule === 'G5' && v.whitelisted),
   );
   const hard = violations.filter((v) => !soft.includes(v));
   return { violations, hard, soft };
@@ -326,7 +332,8 @@ export function runChecks({ reportOnly = false } = {}) {
 function main() {
   const reportOnly = process.argv.includes('--report');
   const { hard, soft } = runChecks({ reportOnly });
-  const exempt = soft.filter((v) => v.whitelisted || v.grandfathered).length;
+  const exempt = soft.filter((v) => v.rule !== 'G5' && (v.whitelisted || v.grandfathered)).length;
+  const g5Exempt = soft.filter((v) => v.rule === 'G5').length;
   for (const v of soft)
     console.log(
       `[${v.rule === 'G3' ? '存量值插值豁免' : v.whitelisted ? '白名单豁免' : '诊断模式'}] ${render(v)}`,
@@ -337,7 +344,7 @@ function main() {
     process.exit(1);
   }
   console.log(
-    `structure-gate 通过：强制违规 0；白名单豁免 ${exempt} 条（随批次移除）${reportOnly ? `；诊断模式未拦截 ${soft.length - exempt} 条` : ''}`,
+    `structure-gate 通过：强制违规 0；白名单豁免 ${exempt} 条（随批次移除）；G5精确限期豁免 ${g5Exempt} 条${reportOnly ? `；诊断模式未拦截 ${soft.length - exempt - g5Exempt} 条` : ''}`,
   );
 }
 

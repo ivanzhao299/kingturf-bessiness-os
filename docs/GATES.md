@@ -1,5 +1,7 @@
 # GATES.md（门禁清单）
 
+终验B新增G5（2026-10-20）：[完整函数设计](tasks/harness-final-g5-design-2026-10-20.md)/[真实验证](evidence/harness-final-g5-evidence-2026-10-20.md)。structure:check新增全生产src完整函数AST≤200，含嵌套/回调；四存量精确限期表独立于原29/G3，SG2026-11-18零时到期，失配/增长/新超限/坏表/到期/陈旧表均硬失败，--report也不放宽。修复须拆职责或独立授权，禁止目录放行/自动续期。原下方“函数200未新增强制”等是历史；本轮定向48过、真实201/过期/缺表红→还原绿，实际提交HEAD全CI另补。
+
 > 阶段 3 产出（规则 §5）。每项：触发时机 / 失败含义 / 修复指引。**任何新提交都必须通过全部 CI 链门禁**；本地提交另过两个 git hook。
 > 选型说明：git hooks 采用零依赖方案（`.githooks/` + `core.hooksPath`，等效 commitlint + lint-staged），与仓库零依赖哲学一致（core-beliefs「偏好可内化技术」）。
 

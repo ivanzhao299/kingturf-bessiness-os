@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[终验B G5定向实测](evidence/harness-final-g5-evidence-2026-10-20.md)：377/3413，原29＋独立限期四项；48自测及真实201/过期/缺表红→精确还原绿，产品零改，实际新HEAD全CI待补，非终验/竣工。
+
 [终验B G5基线与设计](tasks/harness-final-g5-design-2026-10-20.md)：完整生产src377/3413，四函数3627/3558/208/522；新200行AST门禁和独立有限精确表设计，原29/G3不动，尚未实施或验证。
 
 [MRP固定只读观测结果](evidence/harness-final-browser-evidence-2026-10-20.md)：5卡/2冻结/6放行标签，原数量部分条件不匹配；host0/12867ms/owned全清，无原始产物导出，原6/3/6等期待不改、P1仍10过1败，静态归因及B/D/E继续。
