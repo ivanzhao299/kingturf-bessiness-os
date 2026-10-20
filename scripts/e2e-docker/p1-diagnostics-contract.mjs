@@ -58,6 +58,16 @@ export const diagnosticFields = Object.freeze({
     rounded10000Matches: 'boolean',
     frozenExplanationNotes: 'count',
   },
+  mrpInputs: {
+    runInputMatches: 'boolean',
+    demandInputMatches: 'boolean',
+    calculationInventoryInputMatches: 'boolean',
+    scheduledReceiptsInputMatches: 'boolean',
+    quantity6000Matches: 'boolean',
+    rounded6000Matches: 'boolean',
+    releasedLabelsInsideCards: 'count',
+    releasedLabelsOutsideCards: 'count',
+  },
 });
 
 export function safeDiagnostic(id, values) {

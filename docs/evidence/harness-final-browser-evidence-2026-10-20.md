@@ -24,6 +24,20 @@ TD-TEST-013按本授权关闭“原冷提示修复验证＋正式整文件认证
 
 ## Workspace/P1/TD018与整轮当前边界
 
+### MRP第二次已授固定输入/标签归属诊断与独立候选
+
+先2339780独立人裁R7，新增mrpInputs八固定键，旧MRP九键与原P1完全保持。自然菜单/原只读GET登录闸不变；同一已核数据库连接在BEGIN后SET TRANSACTION READ ONLY，仅参数化tenant，读持久mrp_runs/demand_snapshots/item_calculations与合成item/customer/order，不读后续生产领料后的inventory_balances。仅布尔/有界计数跨输出边界，未知键/原文/类型错误拒绝；只有runInputMatches的恰一固定run与其余输入bool合看才表示同一指定运行。
+
+主代理先独立从固定种子与生产SQL推导，不从页面6000反推：seed的两个FG需求100/8000（8月20日/11月15日），BOM草纱1.25×1.03，毛需求128.75/10300；MRP前seed已质检放行5000kg，repo按RELEASED库存而不按asOf截断。草纱安全500、MOQ1000、倍数500、lead14、freeze7。早桶128.75+500−5000≤0无建议；远桶累计128.75+10300+500−5000=5928.75，按500上取整6000。FG/底布早桶各有正计划、三个SKU远桶各有正计划→五建议；asOf8月16日+freeze7=8月23日，两个早桶开始日在冻结窗内→两冻结。来源 `seed_p1_demo.mjs:670,839,944,955–1015`，`mrp-repositories.ts:153–165,216–244`。两独立只读源核验同结论；曾把lead14误作freeze的候选口误已纠正，固定种子freeze是7。以上在输入验证前是条件性候选，不能冒称已观测数量。
+
+实际 `preflight.mjs local p1 final-p1-mrp-input-diagnostic-3 diagnostics`：安全日志 `/tmp/kingturf-final-p-p1-mrp-input-diagnostic-3-2026-10-20.log`，input四bool全部true；quantity6000Matches/rounded6000Matches均true；releasedLabelsInsideCards=5/outside=1，总6。该输入predicate不仅on_hand5000/其余0，还固定六计算桶各SKU/日期/毛需求/安全库存/制造采购方式/trace MOQ、倍数、lead与freeze；scheduled_receipts六桶均0。**不校验planned_quantity作输入**，避免把结果混作原因。UI数量bool使用独立段落固定6000数值边界，拒60000/6000.5，不输出实际文本。远期唯一卡原gross10300/safety500仍true；卡数5/冻结2/提示2稳定，原10000条件仍false。
+
+本次九类diagnostics complete=true/browserClosed=true/2452ms，preflight0/12249ms、host实际0/null/12881ms；同一性/只读tmpfs/owned三清全true，无relay-failure。新工具自测21/21、strict ESLint/格式过，原spec/seed/产品/两配置/网络硬闸无改。独立只读审已核只读/边界及合看run条件，最终增强predicate后另审/完整HEAD CI后补。
+
+保留诊断历史：第1次新八键查询未含完整gross/政策tuple，四输入bool真、quantity6000真，但whole-card文本拼接使新rounded6000边界探针false（host0/12858ms，diagnostic-1同前缀日志）；不是原用例失败的新根因。仅将新增观测定位到独立quantity段落/公式段落，补60000/小数/空/整卡拼接负例，第2次rounded真（host0/12830ms，diagnostic-2日志）。第3次再加强原有固定输入bool内部tuple，不新增输出键/表/端点，全部实际真。原P1期待始终不改，三个安全日志不删，诊断exit0不计原用例绿或完整轮。
+
+候选待人裁（尚未实施）：仅原MRP五处期待，card6→5、frozen3→2、建议10000→6000、取整10000→6000、冻结说明3→2；原放行标签6保持（卡内5/卡外1，卡外具体元素来源未采集/不猜），gross10300/safety500/run/全部其它用例/seed/产品/网络保持。这是隔离现种子口径的显式期待行为适配，不能未经新批求绿；旧原11的10过1败及P1认证变异/同状态两完整轮欠项保持。B已全CI绿，D/E与独立A/runtime/TD018诊断继续。
+
 ### P1本轮完整11：10过1败，MRP待归因，非通道失败
 
 ### 后继：已授固定MRP只读观测（不替代原用例）

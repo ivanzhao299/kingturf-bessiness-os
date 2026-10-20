@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { performance } from 'node:perf_hooks';
 import { chromium } from '@playwright/test';
+import { Database, assertTestDatabaseTarget } from '../../packages/database/dist/index.js';
+import { fixedMrp6000Matches, fixedMrpInputMatches } from './mrp-input-diagnostics.mjs';
 import {
   diagnosticRequestAllowed,
   safeDiagnostic,
@@ -244,6 +246,36 @@ export async function runP1Diagnostics(command, signal, report) {
       rounded10000Matches:
         longRangeYarnCards === 1 && (await contains(longRangeYarn, '按批量取整为 10000')),
       frozenExplanationNotes: await mrp.getByText(/冻结窗口内：批准必须提供覆盖审批证据/u).count(),
+    });
+    signal.throwIfAborted();
+    assertTestDatabaseTarget(command.connection, 'test');
+    const database = new Database(command.connection);
+    let inputMatches;
+    try {
+      inputMatches = await database.transaction((client) =>
+        fixedMrpInputMatches(client, command.user.companyId),
+      );
+    } finally {
+      await database.close();
+    }
+    const releasedLabels = await mrp.getByText('已放行', { exact: true }).count();
+    const releasedLabelsInsideCards = await mrp
+      .locator('.mrp-proposal-card')
+      .getByText('已放行', { exact: true })
+      .count();
+    // Match the individual text node containers, not concatenated card text.
+    const quantityMatches =
+      longRangeYarnCards === 1
+        ? fixedMrp6000Matches(
+            await longRangeYarn.locator(':scope > p').first().textContent(),
+            await longRangeYarn.locator('.mrp-formula').textContent(),
+          )
+        : fixedMrp6000Matches(null, null);
+    emit('mrpInputs', {
+      ...inputMatches,
+      ...quantityMatches,
+      releasedLabelsInsideCards,
+      releasedLabelsOutsideCards: releasedLabels - releasedLabelsInsideCards,
     });
     assert.equal(unexpectedWrites, 0, 'read-only diagnostic rejected an unexpected write');
   } finally {
