@@ -3816,6 +3816,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 - **2026-10-20｜受控收口S4按超时停止**：精确还原一次11/11全过（`final-controlled-p1-restore-1`）；临时认证撤销负例在首个upstream `CONNECT_TIMEOUT` 即停止，未形成11例数据。sampler 仅在relay事件后触发且native/runtime清理全true；临时spec片段精确移除并SHA恢复，[S4证据](../../evidence/harness-final-channel-controlled-2026-10-20.md)。依授权不重试认证负例、不启动S5两轮；连接超时仍阻断，最终新HEAD全CI另验，不宣称P1收口/终验。[已测试]（还原11/11，认证负例未完成）
 
+- **2026-10-21｜TD018环境重建复现正式R7先行**：人类最新授权落盘于[环境重建复现授权](../../tasks/harness-final-channel-reconstruction-authorization-2026-10-21.md)。接手 `17c4f4c` 树空、S1–S3及P1精确还原11/11已有证据；先做S4a负例后同状态无负例单例冒烟，冒烟也超时才进入一次S4b重建与完整白名单观测。S4a上报即停；仅X/Y收口后才两轮A8+B2，最终新HEAD全CI；不改relay/失败合同、产品、测试正文、网络配置或workflow，不执行§14。[未测试]（R7文档提交前不得运行）
+
 - **2026-10-20｜TD018受控收口正式R7先行**：主执行者亲核原始人类消息01a15804-2a6a-7543-bc23-d761ddfba287后，第一独立docs落[本授权及两硬审查](../../tasks/harness-final-channel-closeout-authorization-2026-10-20.md)。Windows3.6秒/旧1.5秒采集窗须重设，原relay5秒不动；真实启动/取消/精确PID创建身份与无残留必须实测，lost-handoff窗口监督、私有identity/16KiB/固定重编码与先原失败后清理保持。S1–S3证据独立审齐才S4，S4闭环才同HEAD两轮；再超时且数据不足定位即停上报。接手d973ce8树空，原CI0/null/401325ms不顶新结果；此提交无工具改动/真实新结果，后继设计/代码单责、最终新干净HEAD完整CI另实跑。回滚仅本R7记录须核后继，不撤原已验；不push/部署/生产/workflow/产品/依赖、不§14。[未测试]（授权文档，静态校验另跑）
 
 - **2026-10-20｜TD018独立未激活采集工具**：839d5ce先直接R7→ef908ad新增独立模块/12纯测，合49工具303.349778ms及lint/format0，原forward/preflight/spec/产品/配置零diff；不读实际采样/不再P1。独立审必要Windows取消风险已修为unavailable/childrenGone=false并纯负例，不将Linux组消失冒原生清理；实际激活/复现另批。[实现/限制/未完成](../../evidence/harness-final-network-diagnostics-2026-10-20.md)。最后材料一次提交后实际新干净HEAD完整CI，固定独立日志`/tmp/kingturf-final-post-grants-head-ci-2026-10-20.log`，结果由交付引用，不循环补CI自指提交。回滚ef908ad只撤工具与测试入口、不撤R7/历史；P链/人类终验仍未通过，§14不执行。[已测试]（纯工具，非实际采集/P1）

@@ -6,6 +6,8 @@
 
 [TD018受控收口正式新授权R7](tasks/harness-final-channel-closeout-authorization-2026-10-20.md)：亲核人类原始授权，先完成驱动有界采集窗及Windows精确原生清理现场证据/独立审，再P1认证红→还原绿及同状态两完整轮。原relay5秒/失败硬闸不改，超时数据不足即停、不重试粉饰；最终新HEAD全CI另验、不§14。
 
+[TD018环境重建复现与分支收口R7](tasks/harness-final-channel-reconstruction-authorization-2026-10-21.md)：仅授权一次 S4a 同状态冒烟与必要的 S4b 环境重建、完整白名单观测及 X/Y 分支收口；原 relay/失败合同、产品/测试正文和网络配置不改，S4a 上报即停，最终全 CI 与人工终验仍为硬前提。
+
 [TD018专项结果与未激活工具](evidence/harness-final-network-diagnostics-2026-10-20.md)：WSL mirrored/版本及空闲计数不证明历史根因，暂不改配置；839d5ce R7→ef908ad独立API、12新增/49工具绿/独立审过。Windows取消未确认不假报gone，未接runner/未再P1，真实激活/复现另裁；最终干净HEAD全CI实际另验。
 
 [TD018同期采集工具窄授权R7](tasks/harness-final-network-sampling-authorization-2026-10-20.md)：仅有界白名单被动工具/纯测试，原超时立即失败与硬闸保持；任何网络配置不改，不再运行P1、实际复现另裁，最终全CI继续。
