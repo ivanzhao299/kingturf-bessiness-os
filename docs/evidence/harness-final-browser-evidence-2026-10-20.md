@@ -6,6 +6,20 @@
 
 ### 后继私有A入口扩充（未充浏览器结果）
 
+后补真实运行：`c4f9c1915c5de84a63f9d112cb7acee4274ab7e4`首尾同HEAD/树空，主执行者串行七文件、原23例全部通过。每命令为`preflight.mjs local <kind> final-a-current-<kind>-1`；集合日志 `/tmp/kingturf-final-p-a-current-seven-1-2026-10-20.log`，各kind日志同前缀单独命名。不是完整A8轮或第二轮：source尚缺、B两项与P1认证变异仍另欠，后继工具/期待变化后整轮须同最新状态重跑，不拼此批结果充整轮。
+
+| kind       | 原例/发现/complete | PW实际exit/耗时 | host实际exit/耗时 |
+| ---------- | ------------------ | --------------- | ----------------- |
+| cost       | 2/2/true           | 0/7589ms        | 0/null/14618ms    |
+| document   | 7/7/true           | 0/10517ms       | 0/null/17157ms    |
+| login      | 2/2/true           | 0/2455ms        | 0/null/9258ms     |
+| order      | 1/1/true           | 0/3191ms        | 0/null/10084ms    |
+| workspace  | 4/4/true           | 0/4137ms        | 0/null/10839ms    |
+| revocation | 2/2/true           | 0/4002ms        | 0/null/10787ms    |
+| startup    | 5/5/true           | 0/5636ms        | 0/null/12527ms    |
+
+七次无relay-failure，同一性/readonly/tmpfs及owned schema/container/preview清理全部true；无原始artifact/DOM/认证导出。原每文件变异充分处不重复制造适配，本批不是新的逐文件负例证据。新固定入口独立只读审无阻断，未代主执行PW。原段“尚未PW”为提交时历史，当前以上为实际结果。
+
 新增document/login/order/workspace/revocation/startup六个精确kind→原文件/固定原标题，复用原readonly repo/owned tmpfs/白名单reporter及完整发现结果硬校验；原两配置/trace（仅P1既授off）/业务断言/合成响应/网络闸均不改，不开放裸目录/C/all。加上既有cost共A七文件/23例；source仍须单独解决原真实PG生产器与RAM夹具消费，未冒作全A8入口。非P1/runtime不传真实账户/连接环境。
 
 工具自测23/23、strict lint/format通过。首新自测曾把文件内RegExp.test调用算成test声明（22过1败），只将新声明计数锚定到行首，原spec与注册原标题不变；两日志 `/tmp/kingturf-final-p-a-private-inventory-unit-2026-10-20.log` 与unit-fixed同前缀保留。新增入口尚未实际PW验证，不把静态库存/工具单测充浏览器绿或轮次；既有各文件原变异证据不重复造改动。

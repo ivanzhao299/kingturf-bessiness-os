@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[最新A七文件真实23例通过](evidence/harness-final-browser-evidence-2026-10-20.md)：c4f9c19同HEAD树空串行，原例完整/owned全清/无relay；Source仍待，不算完整A8轮或第二轮，后继变更仍按最新同状态完整重跑。
+
 [MRP固定输入实证/最小期待候选](evidence/harness-final-browser-evidence-2026-10-20.md)：种子独立推导五建议/两冻结/6000；固定输入/数量bool实际全真，放行卡内5/外1合6，原五处期待未改、候选另待人裁；三次安全诊断史保留，不充P1绿或轮次。
 
 终验D八张待决卡（仅建议，未批准/未实施）：[D1日历日期](tasks/harness-final-decision-bound003-2026-10-20.md)、[D2批次UUID](tasks/harness-final-decision-bound004-2026-10-20.md)、[D3记录锚点/SEC008](tasks/harness-final-decision-record-scope-2026-10-20.md)、[D4通知组织](tasks/harness-final-decision-employee-scope-2026-10-20.md)、[D5生产RO](tasks/harness-final-decision-production-readonly-2026-10-20.md)、[D6角色UAT](tasks/harness-final-decision-role-uat-2026-10-20.md)、[D7 CSP强制节奏](tasks/harness-final-decision-csp-2026-10-20.md)、[D8七个N+1排期](tasks/harness-final-decision-nplusone-2026-10-20.md)。每卡含现状/影响/多选项/建议/所需授权；C禁跑、不生产/部署、不修SQL或权限。

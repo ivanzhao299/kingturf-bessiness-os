@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **最新A七文件/23原例实跑通过（2026-10-20）**：c4f9c19首尾同HEAD/树空，cost2/doc7/login2/order1/workspace4/revocation2/startup5均原PW0/complete=true、owned全清/无relay，[逐命令/耗时](../../evidence/harness-final-browser-evidence-2026-10-20.md)。Source私有真实生产器尚待，本批不是完整A8轮或第二轮；不把历史变异或工具单测顶替最新整轮，后继变更后仍整跑。P1五期待未批不改，B两项/TD018/E独立继续。
+
 - **MRP固定输入已核、期待仍未改（2026-10-20）**：2339780先人裁，第三私有诊断四输入bool与6000两bool全真、卡内/外放行5/1=原6；固定计算输入含gross/safety/政策tuple且不读后续库存或用planned结果反证。[独立种子推导/三次诊断史/五期待候选](../../evidence/harness-final-browser-evidence-2026-10-20.md)。host0/12881ms/owned全清，原P1仍10过1败、原6/3/10000等未改，五处候选另待直接人裁；B/D/E及独立A/runtime/TD018继续。
 
 - **终验D八卡已准备（2026-10-20）**：BOUND003/004、SEC006/008与007、C生产RO/角色UAT、CSP节奏、七N+1，均现状/影响/≥2选项/建议/明确所需授权，不预填人类答案。[D1入口](../../tasks/harness-final-decision-bound003-2026-10-20.md)，其余索引见docs/index终验D八卡。SEC008/P1只登记及建议优先独立批次，终验是否阻断/排期仍需人裁；C禁跑/无生产部署、产品SQL零改，材料不等同实施验收，E及P继续。
@@ -3785,6 +3787,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+- **2026-10-20｜最新私有A七文件实跑**：c4f9c19固定入口/原标题完整性后，稳定同HEAD树空串行原23例全部实际PW0/完整发现，cost/document/login/order/workspace/revocation/startup逐命令/耗时/owned三清/relay0见[证据](../../evidence/harness-final-browser-evidence-2026-10-20.md)。无原spec/config/业务/fixture改动，原充分变异不重造；source尚缺不称完整A8轮，B/P1变异与同状态两完整轮仍待，最终实际新HEAD全CI另补。[已测试]（实际七文件，非全A8或全CI）
 
 - **2026-10-20｜终验D决策材料成套**：八张独立一页卡全部列已证/未证、备选/建议/所需授权，未预填人类决定；[D3记录锚点](../../tasks/harness-final-decision-record-scope-2026-10-20.md)区分P1缺列可用性与旧P2弱语义，[D4通知](../../tasks/harness-final-decision-employee-scope-2026-10-20.md)仅仓储差异且隐式actor_org未单独PG实跑。C2禁跑、生产/部署/强制/业务性能修复零执行；建议不冒作排期批准，SEC008开放。八卡及链接可独立revert不撤已获授权或发现史，最终新HEAD全CI另验。[已测试]（doc-lint/格式与既有四项PG证据，非C/产品实施）
 
