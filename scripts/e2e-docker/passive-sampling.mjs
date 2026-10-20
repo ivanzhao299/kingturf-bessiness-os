@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 
+// Completion-driven collection cap; this is never the relay's unchanged 5s deadline.
+export const SAMPLING_CAP_MS = 15_000;
+
 const counterNames = [
   'ListenOverflows',
   'ListenDrops',
@@ -201,7 +204,7 @@ export function boundedRead(
         raw = '';
       });
       signal.addEventListener('abort', cancel, { once: true });
-      timer = setTimeout(cancel, 1_500);
+      timer = setTimeout(cancel, SAMPLING_CAP_MS);
       if (signal.aborted) cancel();
     } catch {
       finish({ available: false, childrenGone: true });

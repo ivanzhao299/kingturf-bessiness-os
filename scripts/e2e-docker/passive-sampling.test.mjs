@@ -11,6 +11,7 @@ import {
   parseSockets,
   parseWindows,
   samplingCommands,
+  SAMPLING_CAP_MS,
 } from './passive-sampling.mjs';
 
 const counters = (n = 0) =>
@@ -228,13 +229,38 @@ test('mock child that errors without close is still deadline-killed and bounded'
     (pid, signal) => kills.push([pid, signal]),
   );
   child.emit('error', Error(canary));
-  t.mock.timers.tick(1_499);
+  assert.equal(SAMPLING_CAP_MS, 15_000);
+  t.mock.timers.tick(14_999);
   assert.equal(kills.length, 0);
   t.mock.timers.tick(1);
   assert.equal(kills.length, 1);
   t.mock.timers.tick(300);
   assert.deepEqual(await result, { available: false, childrenGone: false });
   assert.deepEqual(kills, [[-424242, 'SIGKILL']]);
+});
+
+test('a 3.6 second mock Windows query completes immediately before absolute collection cap', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const child = mockChild();
+  let resolved = false;
+  const result = boundedRead(
+    samplingCommands.windows,
+    new AbortController().signal,
+    () => child,
+    noGroup,
+  ).then((value) => {
+    resolved = true;
+    return value;
+  });
+  setTimeout(() => {
+    child.stdout.write(windows);
+    child.emit('close', 0, null);
+  }, 3_600);
+  t.mock.timers.tick(3_599);
+  assert.equal(resolved, false);
+  t.mock.timers.tick(1);
+  assert.equal((await result).available, true);
+  assert.equal(resolved, true);
 });
 
 test('cancelled Windows interop never claims native process cleanup from Linux close', async () => {
