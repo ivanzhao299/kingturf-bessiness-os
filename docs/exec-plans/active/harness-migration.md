@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **MRP第二次固定诊断已人裁（2026-10-20）**：call_4b25d60f732145e0a144e6120ee1936d，仅run/需求/库存/在途输入固定匹配bool、6000条件bool和卡内/卡外放行计数，[R7](../../tasks/harness-final-acceptance-authorization-2026-10-20.md)。先独立落盘后实施，不改原6/3/6、10000或任何产品/seed/网络硬闸，不导原文/认证/原始产物；B/D/E继续，尚未观测不预填结果。
+
 - **终验D四项真实PG核因（2026-10-20）**：B完整CI结束后串行owned PG，新4/4实际0/13197ms、逐例schemaGone；BOUND日期PG22008/dispatch500未存、UUID批次一成功一conflict/重放无投诉event或所查audit增加、两域anchor42703、通知仅仓储skip/validate差异。[证据](../../evidence/harness-final-decision-pg-evidence-2026-10-20.md)。新SEC008/P1可用性登记/62项待人裁排期，旧006/007语义仍待，产品/SQL零改、不外推HTTP漏洞；首新夹具2败历史保留，D决策卡/E材料及新HEAD全CI继续。
 
 - **终验B实际完整CI通过（2026-10-20）**：a7432e6稳定干净HEAD完整ci:local真实0/null/390232ms、首尾HEAD/树空守恒；最终G5九＋原39结构自测全部执行，29旧/四精确限期分列、service/三覆盖/六包/build/audit通过。[实际日志](../../evidence/harness-final-g5-evidence-2026-10-20.md)。下方B待全CI为历史；P1/两轮及D/E仍在继续，不冒充最终HEAD或人类终验。

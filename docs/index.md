@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[MRP第二次固定诊断人裁](tasks/harness-final-acceptance-authorization-2026-10-20.md)：仅固定输入/6000条件布尔及标签卡内外计数，不改原期待或产品；先授权后实施，B/D/E继续。
+
 [终验D真实PG影响](evidence/harness-final-decision-pg-evidence-2026-10-20.md)：四项定向过、owned逐例全清；非法日期PG拒绝/UUID批次部分提交重放/锚点缺列42703/通知仅仓储谓词差异，新SEC008登记P1待裁，不修产品或宣称HTTP可利用。
 
 [终验B完整CI后补](evidence/harness-final-g5-evidence-2026-10-20.md)：a7432e6真实完整0/390232ms，首尾HEAD与干净树守恒，最终48结构自测已执行；G5工程验证闭环，业务体量债/P两轮/D/E及最终人类终验不充完成。
