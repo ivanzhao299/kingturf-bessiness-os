@@ -50,3 +50,7 @@ root/worker创建ticks不进公共日志；worker存在的六类均有私有work
 随后只在首例临时加入认证撤销片段，首个 relay 事件即为固定 `port=4173 / side=upstream / code=CONNECT_TIMEOUT / closing=false`；本次 child `exit=1`、发现0，未形成认证负例11例结果，按授权停止，不重试求绿。sampler 只在该 relay 事件后触发，nativeGone/nativeChildrenGone/runtimeGone/artifactsGone 全true；安全日志为 `/tmp/kingturf-final-controlled-p1-auth-negative-1-2026-10-20.log`，未纳入仓库。临时片段已移除，`tests/e2e/p1-demo.spec.ts` SHA-256 恢复为 `37734ce8bae62a0bf5690339658a43cc63e18ac69b04529e97da5ddb4c5bb1c2`，工作树无该文件差异。
 
 因此本轮未达到“认证负例11/11＋精确还原11/11”，也未启动 S5 两轮；连接超时数据不足仍是阻断，原5秒 relay/失败硬闸保持。
+
+## 最终干净 HEAD 门禁
+
+提交 `1902c0f` 后使用固定回环测试库 `kingturf_test` 实跑 `DATABASE_URL=postgresql://kingturf:local-development-only@127.0.0.1:5432/kingturf_test pnpm ci:local`：format、doc-lint、structure、service boundary、capability、database guard/migrate/status、lint、typecheck、coverage、build、security 全部通过。覆盖结果为 377 源文件/25 仓库，overall 37,543/48,601，domain 629/671，repository 9,838/11,512，deficits=[]；API 135 文件/17,297，Web 27/436；结构强制违规0、存量豁免29、G5限期豁免4；安全审计无高危。该门禁不改变 P1 负例和两轮未完成状态。
