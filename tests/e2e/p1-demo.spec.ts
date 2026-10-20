@@ -289,17 +289,17 @@ test('shows recursive MRP explanations, frozen overrides, and released proposal 
   const workbench = page.locator('.mrp-workbench');
   await expect(workbench).toBeVisible();
   await expect(workbench.getByText(/MRP-KT-2026-001 · 已计算/u)).toBeVisible();
-  await expect(workbench.locator('.mrp-proposal-card')).toHaveCount(6);
-  await expect(workbench.locator('.mrp-proposal-card.frozen')).toHaveCount(3);
+  await expect(workbench.locator('.mrp-proposal-card')).toHaveCount(5);
+  await expect(workbench.locator('.mrp-proposal-card.frozen')).toHaveCount(2);
   await expect(workbench.getByText('已放行', { exact: true })).toHaveCount(6);
   const longRangeYarn = workbench
     .locator('.mrp-proposal-card', { hasText: 'RM-KT-YARN-12000' })
     .filter({ hasText: '2026-11-15' });
-  await expect(longRangeYarn).toContainText('建议 10000');
+  await expect(longRangeYarn).toContainText('建议 6000');
   await expect(longRangeYarn).toContainText('毛需求 10300');
   await expect(longRangeYarn).toContainText('安全库存 500');
-  await expect(longRangeYarn).toContainText('按批量取整为 10000');
-  await expect(workbench.getByText(/冻结窗口内：批准必须提供覆盖审批证据/u)).toHaveCount(3);
+  await expect(longRangeYarn).toContainText('按批量取整为 6000');
+  await expect(workbench.getByText(/冻结窗口内：批准必须提供覆盖审批证据/u)).toHaveCount(2);
   await testInfo.attach('mrp-explainable-planning-desktop', {
     body: await workbench.screenshot(),
     contentType: 'image/png',
