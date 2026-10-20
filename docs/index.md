@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[Source未完成候选精确保全](tasks/harness-final-source-proposal-2026-10-20.md)：七工具文件完整公开源码补丁/hash/基线，已精确撤回执行入口、两个新文件可恢复；原API19与MRP期待未改，生命周期许可仍待，不充Source绿或终验。脏快照全CI被覆盖采集硬拒的失败保留，提交后干净HEAD另验。
+
 [终验TD018资源/复现条件与runtime本轮](evidence/harness-final-network-diagnostics-2026-10-20.md)：固定资源基线/原5000ms硬闸保持，runtime原1例实际通过且owned全清；不是完整轮、不是旧超时根因修复，TD018保持开放。
 
 [终验E当前62项/DoD10与收官草案](evidence/harness-final-closeout-preparation-2026-10-20.md)：62唯一顶层ID逐项去向、六开放P1承接提案、G5/真实覆盖及P欠项映射；阶段5主体已验非终验，DoD4/5不自动勾选，§14不执行，最终实际HEAD全CI另验。

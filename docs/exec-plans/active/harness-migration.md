@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **Source候选安全封存（2026-10-20）**：生命周期与MRP五期待仍待直接人裁，不动原API19/产品/原期待。[公开源码补丁及七项hash](../../tasks/harness-final-source-proposal-2026-10-20.md)完整保全，仅精确撤回自己的未完成执行入口与两个新增候选，base字节核对及apply--check均0；已完成A7/runtime/MRP诊断/G5/D/E保持。f454aa4脏候选全CI真实1/115346ms，由覆盖采集clean快照硬闸拒绝，不放宽；封存提交后的新干净HEAD完整CI另验，P链未完成/不能终验、§14不执行。
+
 - **终验E与独立runtime/TD018（2026-10-20）**：[62项/DoD10/收官草案](../../evidence/harness-final-closeout-preparation-2026-10-20.md)逐ID与主台账集合相同，17个P1中11个窄范围已验、6个仍待承接/裁定；QUALITY_SCORE用实际G5 run，不抬历史评分。runtime原1例实际PW0/host0/8923ms、owned全清，执行时Source/E候选存在，不充干净HEAD或全轮。[资源与复现条件](../../evidence/harness-final-network-diagnostics-2026-10-20.md)不关闭TD018；Source生命周期/MRP五期待均待直接人裁。§14不执行，最终新干净HEAD完整CI待补。
 
 - **最新A七文件/23原例实跑通过（2026-10-20）**：c4f9c19首尾同HEAD/树空，cost2/doc7/login2/order1/workspace4/revocation2/startup5均原PW0/complete=true、owned全清/无relay，[逐命令/耗时](../../evidence/harness-final-browser-evidence-2026-10-20.md)。Source私有真实生产器尚待，本批不是完整A8轮或第二轮；不把历史变异或工具单测顶替最新整轮，后继变更后仍整跑。P1五期待未批不改，B两项/TD018/E独立继续。
@@ -3789,6 +3791,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+- **2026-10-20｜Source候选保全而非丢弃**：f454aa4工作区完整CI真实1/null/115346ms，候选27工具/覆盖工具15过后，覆盖收集硬拒脏测试/配置/执行器快照；未进六包/后继build/audit，不冒称完整绿。[七文件公开补丁/逐文件base和candidate SHA/精确恢复](../../tasks/harness-final-source-proposal-2026-10-20.md)，仅自己候选退出运行路径、两新增可从补丁恢复；原API19/Source spec/MRP期待/产品与既有成果不动，无猜测DB清理。新许可未到不实施生命周期，P链未完成/不能终验；提交后实际干净HEAD全CI另跑，不§14。回滚本提案需连补丁，不撤旧失败或人裁。[已测试]（工具27/格式静态/补丁check与hash；该次全CI失败如实保留）
 
 - **2026-10-20｜终验E核账与独立环境诊断**：[当前62项准备件](../../evidence/harness-final-closeout-preparation-2026-10-20.md)与台账逐ID机械集合相等（62/62，无缺漏/额外），DoD4/5/10不冒充完成，真实覆盖37492/48601、629/671、9787/11512绑定G5实际run，旧分数不抬。主执行者串行runtime原1例PW0/1992ms、host0/null/8923ms、owned全清且无relay；有Source/E候选，非干净HEAD或完整轮。TD018仅[资源基线与固定条件对照](../../evidence/harness-final-network-diagnostics-2026-10-20.md)，不改5000ms/relay/安全、不关旧故障；Source取消清理与MRP五期待仍待直接人裁，不擅改原生产器/期待。仅准备§14，不归档/删改HARNESS；本次文档可独立revert，最终新HEAD完整CI另验。[已测试]（逐ID/doc-lint与runtime实际结果，非全CI）
 

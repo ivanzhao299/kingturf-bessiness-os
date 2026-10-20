@@ -6,6 +6,8 @@
 
 ### Source 私有生产器准备停点（未通过）
 
+后继状态：[七文件源码补丁已封存并精确撤回运行入口](../tasks/harness-final-source-proposal-2026-10-20.md)，两个新增候选可恢复；下方未提交候选为封存前时点。生命周期许可仍待，原API19/Source spec/config未改，不继续执行旧候选或充Source通过。
+
 新私有工具候选首次命令`preflight.mjs local source final-source-private-producer-1`，日志`/tmp/kingturf-final-p-source-private-producer-1-2026-10-20.log`，host实际1/null/16546ms、preflight1/16003ms，失败位于private-local-browser准备阶段，尚无生产器成功固定事件或UI开始事件；精确根因未知，不称原19或原3通过。同一性/只读tmpfs核验通过，外层owned schema/container/preview清理全部true，无relay。随后固定只读目录检查实际0，日志`/tmp/kingturf-final-p-source-postfailure-catalog-2026-10-20.log`仅导出`authzSchemasRemaining:0`，没有删除任何不明schema。
 
 后继候选只增加固定阶段/布尔诊断与取消窗口检查，工具27单测及strict lint通过，未再次实际启动Source。独立审查指出：原PG生产器被强杀时afterAll不保证执行，目录检测不是兜底清理。已单独询问人类是否允许可选owned schema/私有marker生命周期交接；未答前原生产器、原19个test正文与原Source spec/config保持不改，不再次执行该候选、不充Source绿。当前候选未提交，E/runtime/TD018继续；后继获批须先R7再独立实现/真实取消故障核验。
