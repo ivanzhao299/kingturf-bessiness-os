@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[Source原19＋3与真实故障清理完成](evidence/harness-final-source-lifecycle-2026-10-20.md)：正例2实际完整过、三项handled取消/KILL精确owned回收；首正例工具字段误报史保留，原19正文/样本/产品/UI3未改，独立只读复核通过。默认分支最终CI及P两整轮另验，不外推host掉电/强杀保证。
+
 [Source owned生命周期实施](evidence/harness-final-source-lifecycle-2026-10-20.md)：host同事务schema/marker/同实例精确回收、原19 AST正文固定、默认分支守恒；30工具/lint/APItypecheck过，真实取消/故障与19+3尚待，不充通过。
 
 [Source owned生命周期直接人裁R7](tasks/harness-final-source-lifecycle-authorization-2026-10-20.md)：仅可选schema/私有marker交接、同实例精确回收与真实取消/故障核验；原19正文/样本/产品/两配置/网络保持，先独立授权再实施，未充Source通过。

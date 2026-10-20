@@ -12,6 +12,8 @@
 
 ## 已执行与未执行
 
+最终工具正例`final-source-owned-positive-2`：f2d0b11后原19真实producer exit0/null/8190ms、fixtureValidated/ownershipVerified均true/stage complete，随后原UI3 discovered3/complete=true/三passed（720/1006/737ms），PW0/null/11737ms；preflight0/19021ms，host0/null/19599ms。安全日志`/tmp/kingturf-final-source-owned-positive-2-2026-10-20.log`，无relay，source-owned-cleanup精确marker/schema/container与runtime/preview清理全true。独立只读核验五份安全日志/公开源码无必要证据/隐私阻断，未代主执行者测试。只认本次19+3完整正例，初次失败和三故障不充正例，也不充A8/B2完整轮。
+
 后继真实实测（58c3ece，严格串行，日志均`/tmp/kingturf-<label>-2026-10-20.log`）：
 
 | label / fault                           | host真实exit/signal/耗时 | 实际证据与边界                                                                                                                        |

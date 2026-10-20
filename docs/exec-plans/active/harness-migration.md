@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **Source生命周期19＋3与真实故障已证（2026-10-20）**：c65c67f R7→58c3ece owned实现→f2d0b11新私有工具精确识别原公开业务marker；[首失败/三handled故障/正例2](../../evidence/harness-final-source-lifecycle-2026-10-20.md)全保留。原19完整成功、UI3全过，host0/19599ms、marker/schema/container及外层全清，独立只读复核；原19正文hash/原样本/产品/UI断言/配置/网络不改。P1认证还原因TD018中断仍欠、两完整轮与最终新HEAD全CI待执行。
+
 - **MRP五期待已实施、原11一次全绿/通道再现（2026-10-20）**：e800666 R7→34e5453仅五行，其余字节守恒；[完整11正例与后继失败史](../../evidence/harness-final-browser-evidence-2026-10-20.md)。首PW0/host0/30079ms；真实首例撤Cookie负例3/11、精确还原8/11均遭原CONNECT_TIMEOUT，owned全清，不充完整红还原绿。先停重复P1/继续独立Source生命周期，不改硬闸；两完整轮/最终新HEAD CI仍待。
 
 - **Source owned生命周期已获直接人裁（2026-10-20）**：call_16b42add444c484cb54d55d38b87e32c，仅原测试可选owned schema/私有marker交接与外层同实例精确回收，原19正文/样本/权限/响应/产品SQL/两配置/网络全留。[独立R7](../../tasks/harness-final-source-lifecycle-authorization-2026-10-20.md)先提交，再恢复候选审查/生命周期/真实取消故障/19+3；尚未实施不充绿，MRP独立提交。
@@ -3799,6 +3801,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+- **2026-10-20｜Source owned真实生命周期交付**：58c3ece实现的首正例原19过但新工具误拒原公开业务secret字段，独立静态核唯一路径固定值后f2d0b11仅修新工具/加严格负例。取消13600ms/容器KILL13312ms/producer SIGKILL13420ms真实exit1后精确owner回收全true；正例2原19→UI3完整成功、host0/null/19599ms、无relay、owned全清，[固定日志与边界](../../evidence/harness-final-source-lifecycle-2026-10-20.md)。独立只读复核五日志无必要阻断，不称host自身强杀/掉电保证；原19 AST正文/业务样本/UI断言/产品/两配置不改。P1与同状态两完整轮及最后HEAD全CI另验；回滚必须owner/测试可选分支/私有入口成组，不撤旧失败或人裁。[已测试]
 
 - **2026-10-20｜MRP五期待实现与实际P1回放**：34e5453仅已授五行，unique替换/其余字节同b907ac7、lint/format0；原11首次全过PW0/20046ms、host0/null/30079ms。临时仅首例clearCookies真实认证负例首例failed/后两例passed，但被TD018中断3/11；精确还原零diff再跑8/11也同类连接中断，host1/32346ms、三次owned全清，[命令与边界](../../evidence/harness-final-browser-evidence-2026-10-20.md)。不充完整认证红→还原绿或两完整轮，不把通道当产品回归/数值红；原失败保留、硬闸不改，停重复P1，Source独立获批线继续。回滚仅34e5453五期待需核后继，不撤人裁/seed/产品。[已测试]（一次原11绿，后继负/还原部分失败）
 
