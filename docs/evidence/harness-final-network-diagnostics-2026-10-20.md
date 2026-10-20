@@ -25,6 +25,8 @@ runtime执行后2026-10-20T04:37:58.021Z再次只读观测：CPU与总内存不�
 
 ### 本机专项只读结果与精确下一步提案（596a927授权后）
 
+后继直接人裁`call_f8e442fef3e840fe94903ab61b5f333a`已独立839d5ce [R7](../tasks/harness-final-network-sampling-authorization-2026-10-20.md)：**只实施采集工具与纯测试，不授权再次P1**。下文“另询”是提案时点，现仅工具部分已获批，真实接线/激活与复现仍未执行。
+
 只读代理采集截至2026-10-20 06:01:30 UTC，主代理据固定标量报告收口：WSL 2.7.11.0、kernel 6.18.33.2、networking mode=mirrored；Windows build 10.0.26100.1；Docker Desktop 4.93.0.240920，Engine/CLI 29.8.1，daemon同WSL2 kernel，默认bridge driver/1个IPAM entry。正式容器未指定自定义网络，以host-gateway别名解析后仍执行预核数值网关同址校验；这描述拓扑，不代表故障归属。
 
 查询范围为`wslinfo --networking-mode`、`uname -r`、`wsl.exe --version`数字提取、Docker Desktop ProductVersion、`docker version/info/network inspect bridge`指定标量、WSL `ss`固定端口状态/队列、`nstat`固定TCP计数及Windows `Get-NetTCPConnection`固定端口listener/全局SynSent计数；没有读取env/进程参数/认证/流量内容，也未执行服务/探针/测试/浏览器/PG或网络配置变更。只保留核验后的版本、布尔、计数/拓扑，不导地址或系统原文。Windows初次全局SynSent查询超过10秒yield未取值，随后同只读查询3.6秒成功0，无权限阻断；不是故障窗口采集。
@@ -38,6 +40,16 @@ runtime执行后2026-10-20T04:37:58.021Z再次只读观测：CPU与总内存不�
 3. 采集进程须精确自有、有限时取消与清理，不改系统监听/转发/防火墙。先以纯mock/canary核输出不泄IP/认证/原文、采集失败不改原超时/拒绝/owned清理；再决定是否需一次明确获批的原失败复现，不自动重复P1求绿。
 
 该新增采集工具/runner变更及真实复现将另询人类，不把当前只读专项扩大成工程实施；若仍缺Docker VM队列权限也另裁。方案目标是区分容器出口、WSL接收队列、Windows转发层的同期证据，不预设其中一层有错。TD018保持开放，P1还原全11/两完整轮仍阻断，独立A8/runtime已完成、最终干净HEAD全CI继续。
+
+### 仅工具实施与纯验证（未接线/未激活）
+
+新`passive-sampling.mjs`独立API：baseline只启动固定计数读取，trigger为void/one-shot异步任务，close取消并排空自有任务；**未在forward/preflight导入或调用**，两原文件零diff，不能称已在真实故障点采样或真正不影响失败时序已有实证。容器层仅接受未来现场的固定`connecting/active`计数投影，不启动docker exec与原清理竞争。WSL固定4173 ss队列/状态、nstat固定五计数、Windows固定4173状态/全局SynSent；原文仅限16KiB进程内RAM，固定parser丢弃地址/未知值，无raw logger或错误输出，子命令环境仅PATH/LC_ALL、无shell/认证环境。
+
+nstat用`-asz`，已只读核本机man：`-s/--noupdate`不写历史，未实际执行采样命令。每个私有子进程组1500ms deadline/300ms有限取消确认；不确认close/组消失则`childrenGone=false`，不将SIGKILL发出冒成功。特别是取消/异常Windows interop时，Linux组消失不证明原生Windows进程终止，强制报false/unavailable；**真实激活前仍需精确Windows取消清理方案与验证，不可把当前纯mock充跨系统清理保证**。同时采样不等于同一瞬间，只有实际激活后延迟/差值才有解释价值。
+
+12个新增纯测试覆盖IP/secret canary不外泄、坏/缺/重复/溢出/重置计数fail closed、one-shot/void、读/observer异常不外抛、固定只读命令/限制env、模拟取消/输出超限/未确认组、mock计时1500+300及Windows取消不假报gone。初次strict lint发现两个空mock体，补注释后实际0；最初10测试过，最终12及原工具合计49/49过（303.349778ms），strict lint0。没有运行采样工具的真实命令/P1/新增探针。最终干净HEAD完整CI另实跑；纯测试不充实际转发修复或真实清理通过。
+
+独立只读审指出的Windows取消假报风险已按上述false分支/纯负例修订；同审提醒先前Windows查询3.6秒，1.5秒采集窗可能经常不可用，必须保留unavailable而非当0或暗自延时。当前未激活，暂无真实性能/清理结论；后继激活方案需同时解决Windows可取消性与窗口可用性，不改原relay5秒。
 
 ### 被动实证与有限空载对照（后继）
 

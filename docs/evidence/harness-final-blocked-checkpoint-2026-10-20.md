@@ -2,6 +2,8 @@
 
 ## 后继现状（原两项待裁已获批，以下保留历史）
 
+本机只读专项已完成但根因未定，采集工具进一步直接R7 839d5ce→ef908ad独立未激活API/12纯测试，49工具绿/独立复核，无实际采样/P1重跑；Windows取消精确保证与激活/真实复现另裁。[证据与限制](harness-final-network-diagnostics-2026-10-20.md)。不是网络修复，也不关闭TD018。最终本材料HEAD完整CI仍按下述独立日志实际执行，不预填成功。
+
 MRP与Source直接R7分别e800666/c65c67f：34e5453仅五期待已实施、一次原11全绿；Source原19+3及三项handled故障精确清理已完成。最新596a927同HEAD树空串行A8原26及runtime原1全绿，Source另原19生产器/回收全真。[P证据](harness-final-browser-evidence-2026-10-20.md)完整保留认证负例1败10过与精确还原7/11 TCP pending中断；仍欠还原全11及同状态两完整轮，不充终验。
 
 TD018更深本机Docker Desktop/WSL/Windows只读专项已获[直接R7](../tasks/harness-final-network-environment-authorization-2026-10-20.md)，原硬闸保持/配置修改另批，不重复P1求绿。最后既有b907ac7完整CI实际0/null/398864ms、run79e340ff三目标与下列数值相同，非本轮后继最终HEAD验证。当前所有材料提交后将严格串行实际运行干净HEAD完整CI，独立日志 `/tmp/kingturf-final-post-grants-head-ci-2026-10-20.log`，实际结果由交付报告给出，不预填成功。不执行§14、不宣称竣工；下面b8与两待裁描述都是原检查点历史。
