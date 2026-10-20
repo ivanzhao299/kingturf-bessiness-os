@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[TD018同期采集工具窄授权R7](tasks/harness-final-network-sampling-authorization-2026-10-20.md)：仅有界白名单被动工具/纯测试，原超时立即失败与硬闸保持；任何网络配置不改，不再运行P1、实际复现另裁，最终全CI继续。
+
 [最新同状态A8原26与runtime原1全绿](evidence/harness-final-browser-evidence-2026-10-20.md)：596a927首尾HEAD/树空、九次严格串行exit0/complete/owned全清；Source另原19生产器及精确回收全真。P1完整认证负例已证，精确还原7/11仍TCP建连中断，不充B2或两完整轮；Source/MRP旧待裁均历史，最终新HEAD全CI另验，非终验/竣工。
 
 [TD018本机转发环境只读专项人裁R7](tasks/harness-final-network-environment-authorization-2026-10-20.md)：仅Docker Desktop/WSL/Windows只读定位与精确方案；监听/转发/防火墙修改逐项另批，原超时与失败硬闸不变，不重复P1求绿。A8/runtime与最终CI独立继续，非终验或竣工。
