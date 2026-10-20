@@ -12,6 +12,19 @@
 
 ## 已执行与未执行
 
+后继真实实测（58c3ece，严格串行，日志均`/tmp/kingturf-<label>-2026-10-20.log`）：
+
+| label / fault                           | host真实exit/signal/耗时 | 实际证据与边界                                                                                                                        |
+| --------------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| final-source-owned-positive-1           | 1/null/16254ms           | 生产器真实19/19、ownership true；fixtureValidated false/stage fixture-auth-fields，UI未启动；精确Source marker匹配回收与外层owned全清 |
+| final-source-cancel-1 / source-cancel   | 1/null/13600ms           | beforeAll ready后host可处理SIGTERM取消，producer143/未通过；Source marker匹配/schemaGone/containerGone及runtime/preview全清，无UI     |
+| final-source-kill-1 / source-kill       | 1/null/13312ms           | beforeAll ready后精确owned container KILL，未依赖child afterAll；Source marker匹配/schemaGone/containerGone及外层全清，无UI           |
+| final-source-failure-1 / source-failure | 1/null/13420ms           | beforeAll ready后producer组SIGKILL，producer null/SIGKILL/未通过；Source marker匹配/schemaGone/containerGone及外层全清，无UI          |
+
+三负例均是真实PG/进程故障后回收，不是工具模拟或正常afterAll保证；没有relay事件，也未把ready当19完成。清理保证仅在host可执行finally且DB可达时，不能扩成host自身强杀/掉电绝对保证。
+
+首正例失败的静态根因已独立只读确认：原公开`released-order-http.ts:52`固定合成业务规格`specification.secret`由Order360 `to_jsonb(tsr)`返回到唯一`authorized.technical.specification.secret`，值固定`SENSITIVE-TECHNICAL`；不是认证secret。quote快照只含revision/lines/approvals，无该规格副本。新工具笼统按键拒绝导致误报，不是产品、原样本或权限失败。仅修新工具：完整唯一路径+公开固定值且恰1次绑定，其它所有secret路径/值及token/CSRF/password/cookie/authorization/generation仍拒绝；原fixture/19正文/UI断言/网络不改。补wrong-value/missing/denied/masked/quote-copy负例，定向10工具实际0及lint0；完整31工具与后继19+3正例另实跑，不预填通过。旧30/首次正例失败保留为当时结果。
+
 30个工具单测实际0（旧21＋Source结构4/owner5），strict lint与API typecheck0。包含参数/坏marker/异实例拒绝、原19 AST正文hash、故障入口仅Source、私有输出重编码；纯工具模拟不是PG取消证明。独立只读实现审无必要静态阻断，未代主执行者测试/访问DB。
 
 本提交时真实Source正例、三故障、默认API19完整验证尚未执行；不得预写19+3绿或精确取消清理已证。后继命令、exit/耗时/owned状态逐项追加，失败史不删除；最后干净HEAD全CI与最新同状态两完整轮仍须实际完成。原产品/SQL与Source spec/两config/workflow对基线零diff已核，C2不跑/不§14。

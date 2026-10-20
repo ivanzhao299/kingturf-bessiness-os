@@ -11,7 +11,15 @@ import { localCases, privateSpecFile, safeLocalResult } from './private-contract
 const sample = () =>
   Object.fromEntries(
     ['denied', 'authorized', 'masked'].flatMap((mode) => [
-      [mode, { order: { order_number: 'AUTH-ORDER' } }],
+      [
+        mode,
+        {
+          order: { order_number: 'AUTH-ORDER' },
+          ...(mode === 'authorized'
+            ? { technical: { specification: { secret: 'SENSITIVE-TECHNICAL' } } }
+            : {}),
+        },
+      ],
       [
         `${mode}Session`,
         {
@@ -51,6 +59,23 @@ test('source fixture validation requires exact nine synthetic roots and forbids 
   const session = sample();
   session.authorizedSession.csrfToken = 'FIXED_NON_SECRET_CANARY';
   assert.throws(() => validateSourceFixture(session));
+});
+
+test('only the exact public technical marker path/value is business data, never an authentication exemption', () => {
+  const changed = sample();
+  changed.authorized.technical.specification.secret = 'FIXED_NON_SECRET_WRONG_VALUE';
+  assert.throws(() => validateSourceFixture(changed));
+  const missing = sample();
+  delete missing.authorized.technical.specification.secret;
+  assert.throws(() => validateSourceFixture(missing));
+  for (const mode of ['denied', 'masked']) {
+    const duplicate = sample();
+    duplicate[mode].technical = { specification: { secret: 'SENSITIVE-TECHNICAL' } };
+    assert.throws(() => validateSourceFixture(duplicate));
+  }
+  const copied = sample();
+  copied.authorized.quote = { snapshot: { secret: 'SENSITIVE-TECHNICAL' } };
+  assert.throws(() => validateSourceFixture(copied));
 });
 
 test('only real full 19-case producer success can validate its exact private result file', () => {

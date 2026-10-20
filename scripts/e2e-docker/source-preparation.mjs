@@ -49,28 +49,34 @@ export function validateSourceFixture(
     );
   }
   let visited = 0;
-  const visit = (node, depth) => {
+  let publicBusinessMarkers = 0;
+  const visit = (node, depth, path) => {
     reached('fixture-bounds');
     assert(++visited <= 30000 && depth <= 40, 'bounded synthetic fixture required');
     if (typeof node === 'string') assert(node.length <= 64000);
     if (node && typeof node === 'object')
       for (const [key, child] of Object.entries(node)) {
-        if (
+        // Original public producer fixture, not server/session authentication material.
+        const publicBusinessMarker =
+          key === 'secret' &&
+          path.length === 3 &&
+          path[0] === 'authorized' &&
+          path[1] === 'technical' &&
+          path[2] === 'specification' &&
+          child === 'SENSITIVE-TECHNICAL';
+        if (publicBusinessMarker) publicBusinessMarkers++;
+        const forbidden =
+          !publicBusinessMarker &&
           /^(?:token|csrfToken|csrfProof|password|secret|cookie|authorization|generation)$/iu.test(
             key,
-          )
-        )
-          reached('fixture-auth-fields');
-        assert(
-          !/^(?:token|csrfToken|csrfProof|password|secret|cookie|authorization|generation)$/iu.test(
-            key,
-          ),
-          'authentication fields forbidden in synthetic source fixture',
-        );
-        visit(child, depth + 1);
+          );
+        if (forbidden) reached('fixture-auth-fields');
+        assert(!forbidden, 'authentication fields forbidden in synthetic source fixture');
+        visit(child, depth + 1, [...path, key]);
       }
   };
-  visit(value, 0);
+  visit(value, 0, []);
+  assert.equal(publicBusinessMarkers, 1, 'exact original public business fixture required');
   return true;
 }
 

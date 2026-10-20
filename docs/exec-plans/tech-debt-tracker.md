@@ -463,6 +463,8 @@
 
 ### TD-TEST-018｜私有浏览器 preview 上游连接超时
 
+同日独立Source owned正例准备/三真实故障回收均未出现relay；原19通过但首UI因新工具误拒公开合成业务marker未启动，详见[Source生命周期](../evidence/harness-final-source-lifecycle-2026-10-20.md)，不是本项超时已修复的证据。原19/3与P1/两轮分别计账。
+
 **2026-10-20后继再现**：MRP五期待获批34e5453原完整11首次全过；随后仅首例真实撤Cookie的负例3/11和精确还原8/11均遭active4173/upstream CONNECT_TIMEOUT，host分别1/27268ms、1/32346ms，owned全清。负例首例真实失败/随后两过不顶完整负例；还原前7过不顶还原11绿。[实跑历史](../evidence/harness-final-browser-evidence-2026-10-20.md)。未放宽硬闸/超时/配置，不重复P1求绿；原因仍待核，独立Source获批生命周期继续，62项不变。
 
 **2026-10-20终验只读诊断**：[固定资源与条件对照](../evidence/harness-final-network-diagnostics-2026-10-20.md)已记录宿主/Docker基线；最新完整P1为业务MRP单败、七A与独立runtime无relay事件，不能据此关闭旧CONNECT_TIMEOUT或推定负载因果。原5000ms预连接超时/活动失败硬闸不改，无压力注入/原始流量导出。成因仍待核，62项计数不变。
