@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[最新干净检查点及两项待裁](evidence/harness-final-blocked-checkpoint-2026-10-20.md)：b8abc83完整CI实际0/397020ms、API17297/Web436、覆盖77.25/93.74/85.46%，HEAD与树空守恒；Source生命周期/MRP五期待尚未批，P全链未完成/不能终验，最终新文档HEAD仍另完整实跑，§14不执行。
+
 [Source未完成候选精确保全](tasks/harness-final-source-proposal-2026-10-20.md)：七工具文件完整公开源码补丁/hash/基线，已精确撤回执行入口、两个新文件可恢复；原API19与MRP期待未改，生命周期许可仍待，不充Source绿或终验。脏快照全CI被覆盖采集硬拒的失败保留，提交后干净HEAD另验。
 
 [终验TD018资源/复现条件与runtime本轮](evidence/harness-final-network-diagnostics-2026-10-20.md)：固定资源基线/原5000ms硬闸保持，runtime原1例实际通过且owned全清；不是完整轮、不是旧超时根因修复，TD018保持开放。
