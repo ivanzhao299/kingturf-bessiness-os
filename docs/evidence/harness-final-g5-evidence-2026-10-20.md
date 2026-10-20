@@ -1,5 +1,7 @@
 # 终验 B：G5 完整函数门禁验证（2026-10-20）
 
+后补实际完整CI：`a7432e6cbd787d01ce7011805a5d47ec40bf901f`干净HEAD `pnpm ci:local`实际exit0/signal null/390232ms，首尾HEAD不变、工作树空；日志 `/tmp/kingturf-final-b-g5-a7432e6-ci-2026-10-20.log`。该HEAD已执行最终九项G5与原39项组合48全过，原29/G5四、service强制0，六包/覆盖三目标/build/audit零漏洞通过。下方“完整CI待补”为定向提交前历史；本条不冒充后继文档HEAD验证或P两轮/人工终验。
+
 先[终验R7](../tasks/harness-final-acceptance-authorization-2026-10-20.md)/2e1159d，再[实测设计](../tasks/harness-final-g5-design-2026-10-20.md)/db045d9；当前定向验证已完成，完整实际HEAD CI后补，不称人类终验或§14竣工。
 
 ## 实施与库存
