@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **终验D四项真实PG核因（2026-10-20）**：B完整CI结束后串行owned PG，新4/4实际0/13197ms、逐例schemaGone；BOUND日期PG22008/dispatch500未存、UUID批次一成功一conflict/重放无投诉event或所查audit增加、两域anchor42703、通知仅仓储skip/validate差异。[证据](../../evidence/harness-final-decision-pg-evidence-2026-10-20.md)。新SEC008/P1可用性登记/62项待人裁排期，旧006/007语义仍待，产品/SQL零改、不外推HTTP漏洞；首新夹具2败历史保留，D决策卡/E材料及新HEAD全CI继续。
+
 - **终验B实际完整CI通过（2026-10-20）**：a7432e6稳定干净HEAD完整ci:local真实0/null/390232ms、首尾HEAD/树空守恒；最终G5九＋原39结构自测全部执行，29旧/四精确限期分列、service/三覆盖/六包/build/audit通过。[实际日志](../../evidence/harness-final-g5-evidence-2026-10-20.md)。下方B待全CI为历史；P1/两轮及D/E仍在继续，不冒充最终HEAD或人类终验。
 
 - **终验B G5定向完成（2026-10-20）**：db045d9设计先行，完整生产src377/3413（含src/test普通TS），新G5≤200；四存量精确表11-18新加坡零时失效，原29/G3不改。48自测过、真实201/过期/缺表红→精确还原绿、独立只读审无阻断，[证据](../../evidence/harness-final-g5-evidence-2026-10-20.md)。产品零改，新实际HEAD全CI另跑；不称DoD全部达成或终验。
@@ -3777,6 +3779,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+- **2026-10-20｜终验D隔离PG影响核实**：fe5eac5后guarded owned四例，首跑新空快照夹具拦2例（另2过），仅补非空合成source后4过/host0/null/13197ms，逐例独立查schemaGone。[精确影响/未证范围](../../evidence/harness-final-decision-pg-evidence-2026-10-20.md)。合成授权的真实应用dispatch+PG不充真实认证HTTP；BOUND003/004及SEC006/007据实补证，新SEC008/P1缺列可用性登记62项，独立审对源码/日志核准，不修产品/SQL或期待。D仅决策材料、业务修复另批，新实际HEAD全CI待执行；测试/证据可独立revert但不删除发现史。[已测试]（定向四项与静态门禁，非全CI）
 
 - **2026-10-20｜终验B G5小步实施与定向验证**：db045d9设计先行，全生产src AST377/3413，独立函数200门禁与四精确有限表、SG11-18零时到期，原29/G3逐字保持。48自测实际0、真实201/过期/缺表三注入exit1→精确还原exit0，表hash守恒、产品零改，[证据与回滚责任组](../../evidence/harness-final-g5-evidence-2026-10-20.md)。独立只读审反馈的陈旧表回长备用口与src/test免扫口均收紧，完整新HEAD CI待执行；不称业务体量债全清/DoD全达成/终验。[已测试]（定向与真实注入，非全CI）
 

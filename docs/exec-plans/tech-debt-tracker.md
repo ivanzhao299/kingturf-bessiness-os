@@ -1,5 +1,7 @@
 # 技术债台账（tech-debt-tracker）
 
+**终验D实际PG新发现（2026-10-20，62项）**：新增TD-SEC-008，仅登记complaint/dashboard匹配显式锚点引用不存在osr列、真实42703；P1可用性风险待人裁，不称权限扩大/生产事故、不修产品。BOUND003 PG最终拒绝且未存，BOUND004实际部分提交/replay，SEC007仅仓储层差异，[四项实测与边界](../evidence/harness-final-decision-pg-evidence-2026-10-20.md)。旧61历史保持，独立B通过不代表全部P1排期已决/DoD5完成。
+
 **阶段5 D当前状态三连（2026-10-17，仍61项）**：4ca894f连续三次完整ci:local实际0/null、329429/330768/328574ms，每次首尾同HEAD/树空、均<15分钟，无中途编辑/并发PG浏览器或失败重跑；三覆盖37389/48566、629/671、9787/11512且B/分母不变，独立18 raw复算/driver close核准。[三run/SHA与边界](../evidence/harness-stage5-coverage-protocol-2026-10-17.md)。TEST002门禁/D已实证但阶段终验待；末次文档HEAD另验，P冷成本/信用/驾驶舱与F旧期限仍待裁，不因CI绿关这些项。
 
 **阶段5 A核心/E/F完整检查点（2026-10-17，61项）**：0b78c94干净固定HEAD完整CI真实0/null/340356ms，API17293/Web426；质量6/发货6/文档动作12及TEST019四工具/原335进入完整回归链，覆盖37389/48566、629/671、9787/11512达标，独立raw复算一致。TEST019测试装载修复已全CI验证，不改变原业务；最终D三连/当前文档HEAD/P线C7仍另履行，不自动关开放产品/门禁债。[完整记录](../evidence/harness-stage5-test-map-2026-10-17.md)。
@@ -120,6 +122,7 @@
 | TD-SEC-005   | 动态 SQL 片段拼装面广，缺结构性约束防回归                                                     | P2     | 安全/门禁      | 无                       | 阶段 3（结构测试）                 | 已完成                          |
 | TD-SEC-006   | complaint 锚点谓词语义弱于其他域（osr 单表、TEAM 无 depth、无组织有效性校验）                 | P2     | 安全/一致性    | **变更行为**（若统一）   | 待决策（批次 1 后）                | 待处理                          |
 | TD-SEC-007   | foundation 通知收件人谓词缺省省略 actor_org/authorized_org 两处组织有效性 JOIN                | P2     | 安全/一致性    | **变更行为**（若统一）   | 待决策（批次 1 后）                | 待处理                          |
+| TD-SEC-008   | complaint/dashboard显式匹配锚点SQL引用不存在osr列，真实42703                                  | P1     | 可用性/范围SQL | **变更行为**（修复另批） | 终验D发现，建议独立安全兼容批次    | 真实PG确证/待人裁排期           |
 | TD-PERF-001  | 前端无自动重试/断路，失败依赖人工重试按钮                                                     | P2     | 性能           | **变更行为**（仅实施时） | 待排期                             | 待处理                          |
 | TD-PERF-002  | 13 处 N+1 候选已判定；7项修复待排                                                             | P2     | 性能           | 无                       | 批次 2（子批 2f）                  | 已判定／待修复                  |
 | TD-PERF-003  | 文档旧请求失败可能删除clear后同path新缓存Promise                                              | P2     | 异步缓存       | 修复 bug（若实施）       | 3c⑪仅登记／后续独立授权            | 触发/生产影响待核实             |
@@ -352,6 +355,8 @@
 
 ### TD-BOUND-003｜calendarDate 放行不存在的日历日期到仓储
 
+2026-10-20隔离PG后继：真实应用dispatch（固定合成授权、非真实认证/HTTP）合法POST201，非法2026-02-30 POST/PATCH500，直接repo22008，最终仅合法因子/原日期、审计未新增；不是PG已存非法日期。[证据](../evidence/harness-final-decision-pg-evidence-2026-10-20.md)。收紧API为400仍属行为变更待人裁，其它调用点未逐条PG验证。
+
 - **位置**：`apps/api/src/app.ts` 的 `calendarDate`（登记时 205-210 行）；`apps/api/test/cost-matrix-factor-contract.test.ts` 的 `retains calendarDate shape/Date.parse normalization behavior`（登记时 356 行）。
 - **类别**：边界校验 ｜ **严重度**：P2 ｜ **状态**：待核实 / 待独立人工决策。
 - **事实证据**：原 helper 仅检查 `YYYY-MM-DD` 形状与 `Date.parse` 非 NaN，`2026-02-30` 因日期溢出归一化而通过；冻结的 POST/PATCH 契约证明原字符串可传给 mock 仓储。因子迁移原样保留此行为，未修复。
@@ -363,6 +368,8 @@
 - **关闭条件**：影响与语义核实、人工批准（如需收紧）、独立回归/真实 PG 证据和修复提交齐备；本次仅登记，不标已修复。
 
 ### TD-BOUND-004｜complaint batch 字符串去重放行同一 UUID 大小写变体
+
+2026-10-20隔离PG后继：真实dispatch/仓储（合成授权）同UUID大小写两行200/1成功1版本conflict，状态2/事件2含初始1、派生key保小写；exact replay无重复，反转同key409，全大写重复400，批次1/两种审计各1。[实测边界](../evidence/harness-final-decision-pg-evidence-2026-10-20.md)。旧“副作用未核实”为历史；不称数据损坏/越权，不改canonical或去重，独立人裁仍待。
 
 - **位置**：旧基线 `d17dbc9` 的 `apps/api/src/app.ts:247-254`（UUID 正则/helper）和 `:1713-1717`（batch Set 去重）；当前 `apps/api/src/app.ts:248-255` 的同一正则/helper、`apps/api/src/routes/complaint-batch-triage.ts:52`；冻结 `apps/api/test/complaint-batch-route-contract.test.ts:287-310`（旧契约提交 `d0799b6`）；仓储 `apps/api/src/complaint-repositories.ts:1043-1077`（逐项 transition）。
 - **类别**：边界校验 ｜ **严重度**：P2 ｜ **状态**：待核实 / 待独立人工决策。
@@ -637,6 +644,8 @@
 
 ### TD-SEC-006｜complaint 锚点谓词语义弱于其他域
 
+2026-10-20真实PG补注：匹配TEAM显式anchor在complaint list/get与dashboard实际42703；COMPANY空anchor正控通过、宽scope+匹配anchor也失败。当前先发生缺列，不能据旧SQL形状声称弱谓词已经放大读范围；另登记TD-SEC-008/P1可用性，旧P2强形态统一问题保留待裁。[证据](../evidence/harness-final-decision-pg-evidence-2026-10-20.md)。不修SQL/产品。
+
 - **位置**：原 complaint-repositories.ts:42-58（批次 1b 迁移后由 scope-sql.ts 的 `anchorPredicate='relationshipOnly'` 显式表达）；对照其余 11 域的 organizationJoin 形态
 - **类别**：安全/一致性 ｜ **严重度**：P2 ｜ **业务行为影响**：**变更行为**（若统一为 organizationJoin 形态）
 - **证据**：批次 1b-complaint 迁移时发现并经特征化测试固定（test/scope-sql-complaint.test.ts）：complaint 的锚点 EXISTS 只查 organization_scope_relationships 单表——无 organizations JOIN、无组织 active/deleted 与 organization_type 校验、TEAM 无 depth<=1 限制；租户校验在 osr.tenant_id 上、类型匹配用 osr.scope 列。其余 11 域均为 JOIN organizations + 类型/租户/有效性校验 + TEAM depth。行为已按原样守恒迁移，未修改。
@@ -645,11 +654,21 @@
 
 ### TD-SEC-007｜foundation 通知收件人谓词缺省省略组织有效性 JOIN
 
+2026-10-20真实PG补注：active员工、其所属组织inactive且合法独立DEPT anchor/recipient时，skip与validate计数1/0；实际通知repo可创建，停员工两者0、恢复组织两者1。[对照与局限](../evidence/harness-final-decision-pg-evidence-2026-10-20.md)。这是仓储谓词层差异，未运行真实认证/HTTP，不能认定生产可利用；统一仍为行为变更待裁。
+
 - **位置**：原 foundation-repositories.ts recipientScope（批次 1b 迁移后由 scope-sql.ts 的 `employeeScopedPredicate(..., { actorOrganizationValidation: 'skip' })` 表达）；对照 repositories 员工域变体（缺省 'validate'）
 - **类别**：安全/一致性 ｜ **严重度**：P2 ｜ **业务行为影响**：**变更行为**（若统一为 validate 形态）
 - **证据**：批次 1b-foundation 迁移时发现并经特征化测试固定（test/scope-sql-foundation.test.ts）：foundation 变体的隐式类型锚点 EXISTS 不 JOIN `actor_org`（不校验 actor 自身组织的有效性/归属），actorExists 不 JOIN `authorized_org`（不校验 actor 组织属于其公司且有效）——与 repositories 员工域变体（两处 JOIN 均在位）是真实语义差异。行为已按原样守恒迁移。另更正：原 GRANDFATHERED_VALUE_INTERPS 中 foundation 的 5 条（actorId/companyId/anchorId）经代码核实为**预构建 $N 占位符变量**而非值直插（当时分类保守），随迁移自然消失（豁免 38→33）。
 - **修复建议**：批次 1 完成后与 TD-SEC-006 一并决策：统一为 validate 形态（行为变更，需单独提交+人工批准+集成测试补组织失效负例）；或确认无需组织有效性校验并记录依据。
 - **业务行为影响**：无（当前为登记；统一时为变更行为） ｜ **关联批次**：待决策（批次 1 后） ｜ **验收方式**：决策落盘；若统一，foundation 集成测试补失效组织负例
+
+### TD-SEC-008｜complaint/dashboard匹配显式锚点引用不存在osr列
+
+- **位置**：scope-sql.ts的relationshipOnly分支；complaint-repositories.ts COMPLAINT_SCOPE及dashboard-repositories.ts get复用的五个visible CTE；表0001/0004仅ancestor_id/descendant_id/depth。
+- **级别/状态**：P1可用性/范围SQL，真实guarded owned PG确证，未修、等待人类排期与行为授权；不是权限扩大/数据泄露或已知生产事故。建议终验前单独决定独立安全兼容批次优先级，不预填批准/完成日期。
+- **复现**：新增harness-final-decision-postgres.integration.test.ts SEC006用例；COMPANY空anchor正控成功，匹配TEAM及COMPANY+TEAM显式anchor均42703，两个仓储均实跑。严格触发是有组织ID且其scope在授予集合内，不只TEAM。
+- **方案/停止边界**：只写决策卡；修复可选择统一organizationJoin（涉及旧SEC006接受域）或另设计保守、真实schema可执行的relationship兼容形态，均须人类新批与独立提交/范围负例。当前不改产品/SQL/G3规则。
+- **关闭条件**：人类裁定、独立实现、真实PG正负向/回放/全CI齐备；现仅影响已核实，旧006弱形态语义债不被重复冒关。[证据与回滚](../evidence/harness-final-decision-pg-evidence-2026-10-20.md)。
 
 ### TD-TEST-007｜在线文档广源提交关键词实际只命中 CTR 旧面板
 
