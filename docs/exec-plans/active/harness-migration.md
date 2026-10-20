@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **TD018最后阻断项受控收口新授（2026-10-20）**：主代理亲核协调会话人类原始消息01a15804-2a6a-7543-bc23-d761ddfba287；[正式R7/两项硬审查/顺序/停止/回滚](../../tasks/harness-final-channel-closeout-authorization-2026-10-20.md)。接手d973ce8干净/完整CI0；第一独立docs后才工具。先S1完成驱动＋绝对cap（非relay5秒）、S2受控canary接线、S3三故障Windows精确原生PID/创建身份清理真实证据与独立审，再S4原11认证红还原绿、S5同一干净HEAD连续两轮A8+B2每轮38 UI/Source19另列；TCP再现数据不足即停，不重试粉饰。最后新HEAD完整CI0/树空再人类终验、不§14；下方未授接线/复现为旧时点历史。
+
 - **同期采集工具窄授权/独立落盘（2026-10-20）**：直接人裁call_f8e442fef3e840fe94903ab61b5f333a先839d5ce R7，ef908ad仅新增未激活被动API/纯测，原forward/preflight零diff；12新增/49工具与lint0，独立复核Windows取消假报风险已消除，但不充真实原生清理保证。[工具边界/环境结果](../../evidence/harness-final-network-diagnostics-2026-10-20.md)：未定位根因、不改配置、不再P1；实际激活/复现另裁。最后新材料HEAD全CI实际另跑、日志final-post-grants-head-ci；P1还原/两轮未成，§14不执行。
 
 - **最新A8/runtime完整与本机只读专项（2026-10-20）**：596a927同HEAD树空严格串行A8原26例及runtime原1全过，Source原19 producer/精确owned回收通过；[固定命令/耗时](../../evidence/harness-final-browser-evidence-2026-10-20.md)。MRP五期待已授实施/一次原11绿，完整认证负例1败10过，但精确还原7/11被active TCP pending中断；不拼接充B2/两完整轮。50/50空载仅可达，TD018仍开放；本机Docker Desktop/WSL/Windows[只读专项R7](../../tasks/harness-final-network-environment-authorization-2026-10-20.md)596a927已落盘，配置修改须另批，不重复P1求绿。Source/MRP旧待裁均历史，最终新HEAD完整CI另实际运行，非终验/竣工、不§14。
@@ -3807,6 +3809,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+- **2026-10-20｜TD018受控收口正式R7先行**：主执行者亲核原始人类消息01a15804-2a6a-7543-bc23-d761ddfba287后，第一独立docs落[本授权及两硬审查](../../tasks/harness-final-channel-closeout-authorization-2026-10-20.md)。Windows3.6秒/旧1.5秒采集窗须重设，原relay5秒不动；真实启动/取消/精确PID创建身份与无残留必须实测，lost-handoff窗口监督、私有identity/16KiB/固定重编码与先原失败后清理保持。S1–S3证据独立审齐才S4，S4闭环才同HEAD两轮；再超时且数据不足定位即停上报。接手d973ce8树空，原CI0/null/401325ms不顶新结果；此提交无工具改动/真实新结果，后继设计/代码单责、最终新干净HEAD完整CI另实跑。回滚仅本R7记录须核后继，不撤原已验；不push/部署/生产/workflow/产品/依赖、不§14。[未测试]（授权文档，静态校验另跑）
 
 - **2026-10-20｜TD018独立未激活采集工具**：839d5ce先直接R7→ef908ad新增独立模块/12纯测，合49工具303.349778ms及lint/format0，原forward/preflight/spec/产品/配置零diff；不读实际采样/不再P1。独立审必要Windows取消风险已修为unavailable/childrenGone=false并纯负例，不将Linux组消失冒原生清理；实际激活/复现另批。[实现/限制/未完成](../../evidence/harness-final-network-diagnostics-2026-10-20.md)。最后材料一次提交后实际新干净HEAD完整CI，固定独立日志`/tmp/kingturf-final-post-grants-head-ci-2026-10-20.log`，结果由交付引用，不循环补CI自指提交。回滚ef908ad只撤工具与测试入口、不撤R7/历史；P链/人类终验仍未通过，§14不执行。[已测试]（纯工具，非实际采集/P1）
 
