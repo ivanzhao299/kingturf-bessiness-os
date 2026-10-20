@@ -52,6 +52,28 @@ test('completion requires observed fixed diagnostics and actual successful brows
   assert.equal(JSON.stringify(safeDiagnosticResult(valid, observed)).includes('CANARY'), false);
 });
 
+test('MRP diagnostics expose only fixed bounded counts and original condition booleans', () => {
+  const valid = {
+    proposalCards: 6,
+    frozenCards: 3,
+    releasedLabels: 6,
+    longRangeYarnCards: 1,
+    quantity10000Matches: true,
+    grossDemand10300Matches: true,
+    safetyStock500Matches: true,
+    rounded10000Matches: true,
+    frozenExplanationNotes: 3,
+  };
+  assert.deepEqual(safeDiagnostic('mrp', valid), valid);
+  assert.throws(() => safeDiagnostic('mrp', { ...valid, raw: 'FIXED_NON_SECRET_CANARY' }));
+  const missing = { ...valid };
+  delete missing.proposalCards;
+  assert.throws(() => safeDiagnostic('mrp', missing));
+  for (const proposalCards of [-1, 1001, 1.5, 'FIXED_NON_SECRET_CANARY'])
+    assert.throws(() => safeDiagnostic('mrp', { ...valid, proposalCards }));
+  assert.throws(() => safeDiagnostic('mrp', { ...valid, quantity10000Matches: 'true' }));
+});
+
 test('read-only diagnostic requests allow only exact loopback reads and natural browser login', () => {
   const origin = 'http://127.0.0.1:4173';
   assert(diagnosticRequestAllowed(origin + '/api/v1/customers', 'GET'));

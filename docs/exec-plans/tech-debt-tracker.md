@@ -468,6 +468,8 @@
 
 ### TD-TEST-016｜P1原浏览器11例失败定位待核
 
+**2026-10-20固定MRP诊断（非P1绿）**：先独立c68a50a人裁，固定观测5卡/2冻结/6放行标签，远期纱线唯一卡毛需求10300与安全500匹配，建议10000/取整10000不匹配，冻结说明2。仅整数/布尔跨保密边界，host实际0/null/12867ms、owned全清/无relay；原6/3/6/数量期待、产品/种子/网络条件均未变。仍须从源码独立核因，不以页面反推期待；[完整结果与未覆盖](../evidence/harness-final-browser-evidence-2026-10-20.md)。独立B/D/E继续。
+
 **2026-10-20完整11首跑：MRP原卡数断言失败，停止该依赖线**：`final-p1-whole-positive-1`PW1/25212ms、discovered11/complete=true，10过1败；四驾驶舱固定值/信用0及原来源钻取均实际通过，生产末例也过。唯一MRP index9/line292原卡数6失败，前run编号/状态已过、后续断言未抵达；实际卡数未外导，期待/种子/实现尚待归因，不称产品bug已证。无relay-failure，host1/35357ms、owned全清；不把本失败归因TD018、不改期待/seed/产品求绿，P1认证变异/全部两完整轮仍欠。[本轮固定事实与停止边界](../evidence/harness-final-browser-evidence-2026-10-20.md)。本子项沿既有TD016登记，不重复增ID；独立B/D/E继续。
 
 **后继四值已批/实施，P1仍未收口**：仅bookedRevenue/grossMargin/cashCollected/openReceivable四字面量改950000/229000/950000/0 CNY，其余完整spec字节保持。实际本轮7/11完成6过1败，驾驶舱尚未抵达数值断言即因路由附着/TD018中断；不能说新值已验证或原11绿。原信用结清0已实际过，全部旧失败/未完成保持，P1认证变异/第二轮仍欠。[R7、独立推导与真实结果](../tasks/harness-stage5-p1-money-authorization-2026-10-17.md)。

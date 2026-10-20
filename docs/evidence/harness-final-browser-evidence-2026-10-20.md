@@ -26,6 +26,22 @@ TD-TEST-013按本授权关闭“原冷提示修复验证＋正式整文件认证
 
 ### P1本轮完整11：10过1败，MRP待归因，非通道失败
 
+### 后继：已授固定MRP只读观测（不替代原用例）
+
+先c68a50a独立人裁R7，再仅扩既有固定诊断工具的MRP exact字段；原spec/seed/产品/relay/原6/3/6及数量期待零改。自然菜单进入material-planning并等ready，在私有容器内读取，宿主只重编码有界整数/布尔；新增MRP也必须独立observed且实际browser.close成功才能报告完成。原七类诊断字段不改，历史数量字面量的布尔值不能解释为当前P1期待。独立只读安全复核无必要阻断；工具自测19/19、strict ESLint与格式通过，原P1 git diff为空。
+
+命令 `node --experimental-transform-types scripts/e2e-docker/preflight.mjs local p1 final-p1-mrp-fixed-diagnostic-1 diagnostics`；安全日志 `/tmp/kingturf-final-p-p1-mrp-fixed-diagnostic-1-2026-10-20.log`。seed0/3327ms，固定八类观测complete=true/browserClosed=true/2423ms；preflight0/12295ms，host实际0/null/12867ms，guard/同一性/只读tmpfs及owned schema/container/preview清理均true，无relay-failure。只诊断退出0，不是原11例退出0，不计浏览器轮次。
+
+| 固定MRP观测                                     | 实际值        | 原条件/边界                          |
+| ----------------------------------------------- | ------------- | ------------------------------------ |
+| proposalCards / frozenCards / releasedLabels    | 5 / 2 / 6     | 原期待6/3/6保持                      |
+| longRangeYarnCards                              | 1             | RM-KT-YARN-12000 + 2026-11-15        |
+| quantity10000Matches / rounded10000Matches      | false / false | 不导出实际数量/DOM文本，不反推新期待 |
+| grossDemand10300Matches / safetyStock500Matches | true / true   | 原条件匹配，不代表原用例已抵达或通过 |
+| frozenExplanationNotes                          | 2             | 原冻结提示条件，原期待3保持          |
+
+本次已把“未知实际卡数”推进为固定5/2/6观测，但期待/种子/计算归因仍须独立静态推导，未授权修改期待。P1原完整10过1败及认证变异/两完整轮欠项保持，B/D/E继续。本次无原始产物/认证/DOM导出；不作视觉验收结论。
+
 成本提交86b046d之后，原P1 spec保持dac8e36/aa2d4ff已授期待，不改seed/两config/relay。命令`node --experimental-transform-types scripts/e2e-docker/preflight.mjs local p1 final-p1-whole-positive-1`，安全日志`/tmp/kingturf-final-p-p1-whole-positive-1-2026-10-20.log`：原seed0/3146ms、成本计数1/2/1/2/异人/closed保持；PW实际1/25212ms，discovered11/complete=true、10passed/1failed。信用/订单/移动/Order360/佣金/风险/驾驶舱/制造/采购/生产全部passed，驾驶舱1483ms已抵达并通过四固定值及原来源/责任钻取断言，不再是上次未抵达四值的partial。
 
 唯一失败index9：MRP6427ms，原line292 `.mrp-proposal-card` `toHaveCount(6)`，之前MRP工作台与原run编号/已计算文案均通过；后续冻结3/放行6及长周期数量解释未抵达，不能推断绿。未导出原错误/实际DOM数值，当前实际proposal数量未知；源码`mrp-run.ts`逐项按latestRun.proposals建卡，尚不能仅凭静态投影区分原期待/种子/实现差异。没有relay-failure，本轮不能归因TD018；host1/null/35357ms（preflight34830ms），owned schema/container/preview全清真，所有安全/同一性检查通过。

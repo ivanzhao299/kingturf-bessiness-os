@@ -223,6 +223,28 @@ export async function runP1Diagnostics(command, signal, report) {
         .count(),
       versions: await manufacturing.locator('.manufacturing-version').count(),
     });
+
+    await openRoute('material-planning');
+    const mrp = page.locator('.mrp-workbench');
+    const longRangeYarn = mrp
+      .locator('.mrp-proposal-card', { hasText: 'RM-KT-YARN-12000' })
+      .filter({ hasText: '2026-11-15' });
+    const longRangeYarnCards = await longRangeYarn.count();
+    emit('mrp', {
+      proposalCards: await mrp.locator('.mrp-proposal-card').count(),
+      frozenCards: await mrp.locator('.mrp-proposal-card.frozen').count(),
+      releasedLabels: await mrp.getByText('已放行', { exact: true }).count(),
+      longRangeYarnCards,
+      quantity10000Matches:
+        longRangeYarnCards === 1 && (await contains(longRangeYarn, '建议 10000')),
+      grossDemand10300Matches:
+        longRangeYarnCards === 1 && (await contains(longRangeYarn, '毛需求 10300')),
+      safetyStock500Matches:
+        longRangeYarnCards === 1 && (await contains(longRangeYarn, '安全库存 500')),
+      rounded10000Matches:
+        longRangeYarnCards === 1 && (await contains(longRangeYarn, '按批量取整为 10000')),
+      frozenExplanationNotes: await mrp.getByText(/冻结窗口内：批准必须提供覆盖审批证据/u).count(),
+    });
     assert.equal(unexpectedWrites, 0, 'read-only diagnostic rejected an unexpected write');
   } finally {
     signal.removeEventListener('abort', cancel);

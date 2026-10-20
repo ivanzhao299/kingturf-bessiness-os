@@ -47,6 +47,17 @@ export const diagnosticFields = Object.freeze({
     originalReceivable: 'boolean',
   },
   manufacturing: { oldPublishedV1: 'count', localizedPublishedV1: 'count', versions: 'count' },
+  mrp: {
+    proposalCards: 'count',
+    frozenCards: 'count',
+    releasedLabels: 'count',
+    longRangeYarnCards: 'count',
+    quantity10000Matches: 'boolean',
+    grossDemand10300Matches: 'boolean',
+    safetyStock500Matches: 'boolean',
+    rounded10000Matches: 'boolean',
+    frozenExplanationNotes: 'count',
+  },
 });
 
 export function safeDiagnostic(id, values) {
