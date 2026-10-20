@@ -54,3 +54,13 @@ root/worker创建ticks不进公共日志；worker存在的六类均有私有work
 ## 最终干净 HEAD 门禁
 
 提交 `1902c0f` 后使用固定回环测试库 `kingturf_test` 实跑 `DATABASE_URL=postgresql://kingturf:local-development-only@127.0.0.1:5432/kingturf_test pnpm ci:local`：format、doc-lint、structure、service boundary、capability、database guard/migrate/status、lint、typecheck、coverage、build、security 全部通过。覆盖结果为 377 源文件/25 仓库，overall 37,543/48,601，domain 629/671，repository 9,838/11,512，deficits=[]；API 135 文件/17,297，Web 27/436；结构强制违规0、存量豁免29、G5限期豁免4；安全审计无高危。该门禁不改变 P1 负例和两轮未完成状态。
+
+## 2026-10-21 S4a 同状态对比：停止并上报
+
+按新的 [环境重建复现 R7](../tasks/harness-final-channel-reconstruction-authorization-2026-10-21.md)，只做一次认证负例与紧随其后的无负例单例冒烟。认证负例临时片段仅在首例 `openAuthenticatedWorkspace` 后加入三行：清 Cookie、请求 `/api/v1/auth/session`、断言401；片段随后逐字移除，`tests/e2e/p1-demo.spec.ts` SHA-256 恢复为 `37734ce8bae62a0bf5690339658a43cc63e18ac69b04529e97da5ddb4c5bb1c2`。
+
+认证负例 `final-controlled-p1-auth-negative-s-a-1` 在第一个 relay 事件即失败：`port=4173`、`side=upstream`、`code=CONNECT_TIMEOUT`、`closing=false`；发现0，未形成11例结果。旁路 sampler 只在该事件后触发，`nativeGone=true`、`nativeChildrenGone=true`、runtime/artifacts 清理均为真；owned schema/container/preview 清理为真。安全日志为 `/tmp/kingturf-final-controlled-p1-auth-negative-s-a-1-2026-10-20.log`，未进入仓库。
+
+紧随其后的无负例 runtime 单例 `final-controlled-s4a-smoke-b-1` 完成1/1，`exit=0/null`，单例耗时831ms，preflight exit=0；它执行真实 `/` 登录并进入 hash 路由，容器/schema/preview 清理全真。安全日志由 preflight 私有目录保存，未进入仓库。
+
+同状态对比结果是：无负例路径可达，认证撤销片段路径触发后出现固定连接超时，形成测试侧路径线索。按 R7 分支规则到此停止并上报，不进入 S4b 环境重建、不再跑认证负例、不启动 S5 两轮；原 relay 5 秒和失败硬闸保持，不能据此归因产品或确定网络根因。
