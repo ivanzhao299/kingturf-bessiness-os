@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **MRP固定只读诊断人裁（2026-10-20）**：直接回复call_3fa9b3f6865f4f0e9375fa1e668648b6，仅固定计数/原条件布尔输出；不改原6/3/6及任何期待/产品/种子/网络硬闸。[R7](../../tasks/harness-final-acceptance-authorization-2026-10-20.md)。前检查点f13bec8完整CI实际0/387793ms、HEAD与树空守恒；诊断尚未实施，不称P1绿，独立B/D/E继续。
+
 - **终验P1完整11首跑仍非绿（2026-10-20）**：86b046d成本正式闭环后，P1实际完整11/10过1败，四KPI与信用及生产末例通过；MRP原卡数6在line292失败、后续未抵达，实际卡数未知、归因不明先停P1/第二轮不改期待。无relay，不能归因TD018，host1/35357ms、owned全清。[结果/日志/授权边界](../../evidence/harness-final-browser-evidence-2026-10-20.md)。独立B/D/E继续；新实际HEAD全CI另跑，不算两完整轮或人工终验。
 
 - **终验P成本正式两例闭环（2026-10-20）**：2e1159d授权先行，cost只既授auth-only适配、业务expect AST等值；原2过→旧认证载体真实2 timedOut/PW1→精确还原原2过/PW0/7890ms（冷提示1059ms），host0/15000ms、owned全清。[证据/SHA/保密与独立审](../../evidence/harness-final-browser-evidence-2026-10-20.md)。TD013实施验证关闭，原014/ac7082a已有闭环不重复适配；P1全11/TD018诊断/同状态两完整轮仍待，C禁/不§14。新工具适配实际HEAD完整CI后继执行，不预填。
