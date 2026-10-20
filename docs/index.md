@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[TD018 S1–S3设计与门槛](tasks/harness-final-channel-s1-s3-design-2026-10-20.md)：完成驱动15秒采集cap独立原relay5秒；原生私有PID/创建身份/ACK与自主lease，真实canary和三故障精确消亡分别证明，未实跑不填绿。只受控链路激活，不进入默认系统采集/产品。
+
 [TD018受控收口正式新授权R7](tasks/harness-final-channel-closeout-authorization-2026-10-20.md)：亲核人类原始授权，先完成驱动有界采集窗及Windows精确原生清理现场证据/独立审，再P1认证红→还原绿及同状态两完整轮。原relay5秒/失败硬闸不改，超时数据不足即停、不重试粉饰；最终新HEAD全CI另验、不§14。
 
 [TD018专项结果与未激活工具](evidence/harness-final-network-diagnostics-2026-10-20.md)：WSL mirrored/版本及空闲计数不证明历史根因，暂不改配置；839d5ce R7→ef908ad独立API、12新增/49工具绿/独立审过。Windows取消未确认不假报gone，未接runner/未再P1，真实激活/复现另裁；最终干净HEAD全CI实际另验。
