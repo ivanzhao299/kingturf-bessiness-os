@@ -49,6 +49,7 @@ export async function startForwards(
     for (const port of [4173, 5432]) {
       const server = net.createServer((downstream) => {
         const upstream = net.connect({ host: address, port });
+        let connected = false;
         for (const [side, socket] of [
           ['downstream', downstream],
           ['upstream', upstream],
@@ -68,6 +69,7 @@ export async function startForwards(
           });
         }
         upstream.once('connect', () => {
+          connected = true;
           upstream.setTimeout(0);
           downstream.pipe(upstream);
           upstream.pipe(downstream);
@@ -76,7 +78,19 @@ export async function startForwards(
         downstream.once('close', () => upstream.destroy());
         upstream.once('close', () => downstream.destroy());
         upstream.setTimeout(5_000, () => {
-          observe({ port, side: 'upstream', code: 'CONNECT_TIMEOUT', closing });
+          observe({
+            port,
+            side: 'upstream',
+            code: 'CONNECT_TIMEOUT',
+            closing,
+            socketState: {
+              connected,
+              connecting: upstream.connecting,
+              upstreamDestroyed: upstream.destroyed,
+              downstreamDestroyed: downstream.destroyed,
+              activeSockets: sockets.size,
+            },
+          });
           upstream.destroy();
           downstream.destroy();
           fail();

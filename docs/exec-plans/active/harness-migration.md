@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **TD018被动观测准备（2026-10-20）**：原总R7只诊断权限内，仅原CONNECT_TIMEOUT加四TCP状态bool/活动socket计数白名单，不记地址/流量/auth，不改5000ms/网关/失败分支。[资源/验证](../../evidence/harness-final-network-diagnostics-2026-10-20.md)：2工具与固定只读容器原forward四例实际0；未实际捕获新超时、不称修复，P1还原闭环仍欠。Source19+3及三handled清理已证，后继原用例为复现采集不作盲目求绿。
+
 - **Source生命周期19＋3与真实故障已证（2026-10-20）**：c65c67f R7→58c3ece owned实现→f2d0b11新私有工具精确识别原公开业务marker；[首失败/三handled故障/正例2](../../evidence/harness-final-source-lifecycle-2026-10-20.md)全保留。原19完整成功、UI3全过，host0/19599ms、marker/schema/container及外层全清，独立只读复核；原19正文hash/原样本/产品/UI断言/配置/网络不改。P1认证还原因TD018中断仍欠、两完整轮与最终新HEAD全CI待执行。
 
 - **MRP五期待已实施、原11一次全绿/通道再现（2026-10-20）**：e800666 R7→34e5453仅五行，其余字节守恒；[完整11正例与后继失败史](../../evidence/harness-final-browser-evidence-2026-10-20.md)。首PW0/host0/30079ms；真实首例撤Cookie负例3/11、精确还原8/11均遭原CONNECT_TIMEOUT，owned全清，不充完整红还原绿。先停重复P1/继续独立Source生命周期，不改硬闸；两完整轮/最终新HEAD CI仍待。
@@ -3801,6 +3803,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+- **2026-10-20｜TD018仅被动状态观测**：再次P1中断后按总R7补四bool+bounded活动socket数，原forward connect/5000ms/connect后0/destroy/fail和网关校验不改，[固定资源/2工具/真实forward四例](../../evidence/harness-final-network-diagnostics-2026-10-20.md)。不记录地址/auth/字节/原文、不增retry；宿主累计内核值不冒作run差值/网关因果。新状态尚未观测真实超时，原失败保持，P1闭环/两轮及新HEAD全CI待执行；代码观测与原输出校验成组回滚，不降失败条件。[已测试]（定向2+4，非P1或全CI）
 
 - **2026-10-20｜Source owned真实生命周期交付**：58c3ece实现的首正例原19过但新工具误拒原公开业务secret字段，独立静态核唯一路径固定值后f2d0b11仅修新工具/加严格负例。取消13600ms/容器KILL13312ms/producer SIGKILL13420ms真实exit1后精确owner回收全true；正例2原19→UI3完整成功、host0/null/19599ms、无relay、owned全清，[固定日志与边界](../../evidence/harness-final-source-lifecycle-2026-10-20.md)。独立只读复核五日志无必要阻断，不称host自身强杀/掉电保证；原19 AST正文/业务样本/UI断言/产品/两配置不改。P1与同状态两完整轮及最后HEAD全CI另验；回滚必须owner/测试可选分支/私有入口成组，不撤旧失败或人裁。[已测试]
 

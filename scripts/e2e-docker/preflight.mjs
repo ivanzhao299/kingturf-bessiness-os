@@ -10,6 +10,7 @@ import { verifySeedAuthentication } from './seed-auth.mjs';
 import { validateSpecCommand } from './spec-runner.mjs';
 import { safeLocalCases, safeLocalResult, validateLocalCommand } from './private-contract.mjs';
 import { relayFailureCodes } from './forward.mjs';
+import { safeRelayTimeoutState } from './relay-diagnostics.mjs';
 import { safeDiagnostic, safeDiagnosticResult } from './p1-diagnostics-contract.mjs';
 import { prepareOldCostWeb } from './cost-comparison.mjs';
 import { safeCostObservation, validateCostComparison } from './cost-comparison-source.mjs';
@@ -162,6 +163,8 @@ const reportContainer = (value) => {
       code: value.code,
       closing: value.closing,
     });
+    if (value.code === 'CONNECT_TIMEOUT')
+      safe.socketState = safeRelayTimeoutState(value.socketState);
   }
   if (['local-started', 'local-closed', 'local-result', 'local-progress'].includes(value.event)) {
     assert.equal(mode, 'local');

@@ -23,4 +23,16 @@ runtime执行后2026-10-20T04:37:58.021Z再次只读观测：CPU与总内存不�
 
 ## 当前结论
 
+### 后继：只增被动TCP状态，不放宽原失败合同
+
+MRP五期待适配后原11一次全绿，但认证负例3/11及精确还原8/11再次active4173/upstream CONNECT_TIMEOUT，[失败史](harness-final-browser-evidence-2026-10-20.md)保留；两次均owned全清，不把部分失败/还原或重跑充完整闭环。
+
+2026-10-20T05:37:29.238Z只读宿主快照（主执行器固定JSON stdout `td018-readonly-kernel-resource-snapshot`）：并行度20、load2.16/2.42/2.51、空闲内存12185399296字节；宿主累计TcpExt ListenOverflows/ListenDrops/TCPReqQFullDrop均0，TCPTimeouts1171。不是单run差值、不是Docker VM或Windows网关内核观测，不能据此确认/排除连接故障成因；不读取地址/进程参数/环境/流量内容。
+
+仅给原CONNECT_TIMEOUT事件附加被动状态：四bool `connected/connecting/upstreamDestroyed/downstreamDestroyed`及bounded `activeSockets`计数，经独立重编码校验，丢弃其它原文字段。原4173/5432、网关同一、5000ms、connect后0、destroy/fail分支全部保持；不重试/降级/延时，不输出地址/端口实例/字节数/请求头或内容。上文“原文件未改”是初次合同核查时点，后继diff仅上述观测，不是修复网络。
+
+两个纯工具用例实际0及strict lint0；固定镜像sha256:1a0e14c3…只读仓库/只读根/无DB环境的原`forward.test.mjs`四例实际0（7173.720066ms），先确认宿主无4173 preview，覆盖错网关、两占用端口及真实拒连硬失败/清理，容器--rm无残留。新状态尚未实际捕获本轮超时，不预填诊断结果；后继仅为获授权复现条件采集运行原用例，仍遇原失败即如实停止，不靠重复求绿。
+
+独立只读diff/输出边界审无必要阻断；`activeSockets`是整个relay当时Set内两侧socket总数，不是单连接数，不外推请求数/并发用户数。审查未代主执行者做真实网络/浏览器测试。
+
 TD-TEST-018仍开放/成因待核，本次完成资源基线与条件对照，不登记为修复或关闭。零新relay失败不能代替根因诊断。此页只读诊断证据可独立回滚，不删除原失败史；最终干净HEAD完整CI另验。
