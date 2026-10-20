@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+终验D八张待决卡（仅建议，未批准/未实施）：[D1日历日期](tasks/harness-final-decision-bound003-2026-10-20.md)、[D2批次UUID](tasks/harness-final-decision-bound004-2026-10-20.md)、[D3记录锚点/SEC008](tasks/harness-final-decision-record-scope-2026-10-20.md)、[D4通知组织](tasks/harness-final-decision-employee-scope-2026-10-20.md)、[D5生产RO](tasks/harness-final-decision-production-readonly-2026-10-20.md)、[D6角色UAT](tasks/harness-final-decision-role-uat-2026-10-20.md)、[D7 CSP强制节奏](tasks/harness-final-decision-csp-2026-10-20.md)、[D8七个N+1排期](tasks/harness-final-decision-nplusone-2026-10-20.md)。每卡含现状/影响/多选项/建议/所需授权；C禁跑、不生产/部署、不修SQL或权限。
+
 [MRP第二次固定诊断人裁](tasks/harness-final-acceptance-authorization-2026-10-20.md)：仅固定输入/6000条件布尔及标签卡内外计数，不改原期待或产品；先授权后实施，B/D/E继续。
 
 [终验D真实PG影响](evidence/harness-final-decision-pg-evidence-2026-10-20.md)：四项定向过、owned逐例全清；非法日期PG拒绝/UUID批次部分提交重放/锚点缺列42703/通知仅仓储谓词差异，新SEC008登记P1待裁，不修产品或宣称HTTP可利用。

@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **终验D八卡已准备（2026-10-20）**：BOUND003/004、SEC006/008与007、C生产RO/角色UAT、CSP节奏、七N+1，均现状/影响/≥2选项/建议/明确所需授权，不预填人类答案。[D1入口](../../tasks/harness-final-decision-bound003-2026-10-20.md)，其余索引见docs/index终验D八卡。SEC008/P1只登记及建议优先独立批次，终验是否阻断/排期仍需人裁；C禁跑/无生产部署、产品SQL零改，材料不等同实施验收，E及P继续。
+
 - **MRP第二次固定诊断已人裁（2026-10-20）**：call_4b25d60f732145e0a144e6120ee1936d，仅run/需求/库存/在途输入固定匹配bool、6000条件bool和卡内/卡外放行计数，[R7](../../tasks/harness-final-acceptance-authorization-2026-10-20.md)。先独立落盘后实施，不改原6/3/6、10000或任何产品/seed/网络硬闸，不导原文/认证/原始产物；B/D/E继续，尚未观测不预填结果。
 
 - **终验D四项真实PG核因（2026-10-20）**：B完整CI结束后串行owned PG，新4/4实际0/13197ms、逐例schemaGone；BOUND日期PG22008/dispatch500未存、UUID批次一成功一conflict/重放无投诉event或所查audit增加、两域anchor42703、通知仅仓储skip/validate差异。[证据](../../evidence/harness-final-decision-pg-evidence-2026-10-20.md)。新SEC008/P1可用性登记/62项待人裁排期，旧006/007语义仍待，产品/SQL零改、不外推HTTP漏洞；首新夹具2败历史保留，D决策卡/E材料及新HEAD全CI继续。
@@ -3781,6 +3783,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+- **2026-10-20｜终验D决策材料成套**：八张独立一页卡全部列已证/未证、备选/建议/所需授权，未预填人类决定；[D3记录锚点](../../tasks/harness-final-decision-record-scope-2026-10-20.md)区分P1缺列可用性与旧P2弱语义，[D4通知](../../tasks/harness-final-decision-employee-scope-2026-10-20.md)仅仓储差异且隐式actor_org未单独PG实跑。C2禁跑、生产/部署/强制/业务性能修复零执行；建议不冒作排期批准，SEC008开放。八卡及链接可独立revert不撤已获授权或发现史，最终新HEAD全CI另验。[已测试]（doc-lint/格式与既有四项PG证据，非C/产品实施）
 
 - **2026-10-20｜终验D隔离PG影响核实**：fe5eac5后guarded owned四例，首跑新空快照夹具拦2例（另2过），仅补非空合成source后4过/host0/null/13197ms，逐例独立查schemaGone。[精确影响/未证范围](../../evidence/harness-final-decision-pg-evidence-2026-10-20.md)。合成授权的真实应用dispatch+PG不充真实认证HTTP；BOUND003/004及SEC006/007据实补证，新SEC008/P1缺列可用性登记62项，独立审对源码/日志核准，不修产品/SQL或期待。D仅决策材料、业务修复另批，新实际HEAD全CI待执行；测试/证据可独立revert但不删除发现史。[已测试]（定向四项与静态门禁，非全CI）
 
