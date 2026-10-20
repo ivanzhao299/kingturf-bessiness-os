@@ -2,7 +2,12 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { mkdir, open, readFile, unlink, writeFile } from 'node:fs/promises';
 import { performance } from 'node:perf_hooks';
-import { safeLocalCases, safeLocalResult, validateLocalCommand } from './private-contract.mjs';
+import {
+  privateSpecFile,
+  safeLocalCases,
+  safeLocalResult,
+  validateLocalCommand,
+} from './private-contract.mjs';
 import { runP1Diagnostics } from './p1-diagnostics.mjs';
 
 export async function verifyPrivateFilesystem(label) {
@@ -55,10 +60,10 @@ export async function runPrivateSpec(command, signal, report) {
   const args = [
     'node_modules/@playwright/test/cli.js',
     'test',
-    kind === 'p1' ? 'tests/e2e/p1-demo.spec.ts' : 'tests/e2e/runtime-local.spec.mjs',
-    `--config=${kind === 'p1' ? 'playwright.config.ts' : 'playwright.runtime.config.ts'}`,
+    `tests/e2e/${privateSpecFile(kind)}`,
+    `--config=${kind === 'runtime' ? 'playwright.runtime.config.ts' : 'playwright.config.ts'}`,
     `--output=${directory}/artifacts`,
-    `--reporter=${kind === 'p1' ? 'list,html' : 'list'},./scripts/e2e-docker/private-reporter.mjs`,
+    `--reporter=${kind === 'runtime' ? 'list' : 'list,html'},./scripts/e2e-docker/private-reporter.mjs`,
     ...(kind === 'p1' ? ['--trace=off'] : []),
   ];
   const environment = {
@@ -80,14 +85,16 @@ export async function runPrivateSpec(command, signal, report) {
           KINGTURF_ADMIN_LOGIN: command.user.login,
           KINGTURF_ADMIN_PASSWORD: command.user.password,
         }
-      : {
-          KINGTURF_RUNTIME_ACCEPTANCE: '1',
-          KINGTURF_RUNTIME_WEB_ORIGIN: 'http://127.0.0.1:4173',
-          KINGTURF_RUNTIME_DATABASE_URL: command.connection,
-          KINGTURF_TEST_LOGIN: command.user.login,
-          KINGTURF_TEST_PASSWORD: command.user.password,
-          KINGTURF_TEST_COMPANY: command.user.companyId,
-        }),
+      : kind === 'runtime'
+        ? {
+            KINGTURF_RUNTIME_ACCEPTANCE: '1',
+            KINGTURF_RUNTIME_WEB_ORIGIN: 'http://127.0.0.1:4173',
+            KINGTURF_RUNTIME_DATABASE_URL: command.connection,
+            KINGTURF_TEST_LOGIN: command.user.login,
+            KINGTURF_TEST_PASSWORD: command.user.password,
+            KINGTURF_TEST_COMPANY: command.user.companyId,
+          }
+        : {}),
   };
   const raw = await open('/tmp/kingturf-private/raw.log', 'wx', 0o600);
   let child;

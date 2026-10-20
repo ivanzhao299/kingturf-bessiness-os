@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import {
   localCases,
+  privateSpecFile,
   safeLocalCases,
   safeLocalResult,
   validateLocalCommand,
@@ -10,7 +11,7 @@ import {
 import PrivateReporter from './private-reporter.mjs';
 
 test('local inventory rejects discovery, production, unsafe labels and unknown faults', () => {
-  for (const kind of ['p1', 'runtime']) validateLocalCommand(kind, 'fixed-label');
+  for (const kind of ['p1', 'runtime', 'cost']) validateLocalCommand(kind, 'fixed-label');
   for (const kind of ['production', 'all', '../p1', undefined])
     assert.throws(() => validateLocalCommand(kind, 'fixed-label'));
   for (const label of ['../raw', '', 'a/b', 'UPPER', 'x'.repeat(65)])
@@ -22,11 +23,29 @@ test('fixed private inventory matches both original local spec declarations', ()
   for (const [kind, file] of [
     ['p1', 'p1-demo.spec.ts'],
     ['runtime', 'runtime-local.spec.mjs'],
+    ['cost', 'cost-matrix-product-quality.spec.ts'],
   ]) {
     const source = readFileSync(new URL(`../../tests/e2e/${file}`, import.meta.url), 'utf8');
     const titles = [...source.matchAll(/\btest\('([^']+)'/gu)].map((match) => match[1]);
     assert.deepEqual(titles, localCases[kind]);
+    assert.equal(privateSpecFile(kind), file);
   }
+});
+
+test('cost private completion cannot omit either original case or enter production', () => {
+  assert.equal(privateSpecFile('cost'), 'cost-matrix-product-quality.spec.ts');
+  for (const kind of ['production-readonly', 'production-role-uat', 'all', '../cost'])
+    assert.throws(() => privateSpecFile(kind));
+  const cases = localCases.cost.map((_, index) => ({
+    index,
+    status: 'passed',
+    durationMs: 1,
+    line: index + 1,
+  }));
+  const result = { exit: 0, elapsedMs: 1, discovered: 2, complete: true, probe: false, cases };
+  assert.equal(safeLocalResult('cost', result).cases.length, 2);
+  assert.throws(() => safeLocalResult('cost', { ...result, cases: cases.slice(0, 1) }));
+  assert.throws(() => safeLocalResult('cost', { ...result, discovered: 1 }));
 });
 
 test('result boundary re-encodes only bounded scalar fields', () => {

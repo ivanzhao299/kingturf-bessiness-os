@@ -72,7 +72,10 @@ export async function runCostComparison(command, signal, report) {
     await mkdir(`/tmp/${name}`, { mode: 0o700 });
   const directory = `/work/.test-results/private/${command.label}`;
   await mkdir(directory, { recursive: true });
-  const source = await readFile('/work/tests/e2e/cost-matrix-product-quality.spec.ts', 'utf8');
+  const source = await readFile(
+    '/work/scripts/e2e-docker/fixtures/cost-matrix-product-quality.legacy.ts.txt',
+    'utf8',
+  );
   const patch = await readFile(
     '/work/docs/evidence/playwright-cost-auth-candidate-2026-10-17.patch',
     'utf8',

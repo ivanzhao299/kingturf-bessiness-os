@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import ts from 'typescript';
@@ -8,7 +9,7 @@ import {
   validateCostComparison,
 } from './cost-comparison-source.mjs';
 const source = readFileSync(
-  new URL('../../tests/e2e/cost-matrix-product-quality.spec.ts', import.meta.url),
+  new URL('./fixtures/cost-matrix-product-quality.legacy.ts.txt', import.meta.url),
   'utf8',
 );
 const patch = readFileSync(
@@ -35,6 +36,17 @@ const expectations = (text) => {
   assert.equal(root.parseDiagnostics.length, 0);
   return values;
 };
+test('formal cost spec is exactly the already-authorized authentication-only result', () => {
+  const current = readFileSync(
+    new URL('../../tests/e2e/cost-matrix-product-quality.spec.ts', import.meta.url),
+    'utf8',
+  );
+  assert.equal(
+    createHash('sha256').update(current).digest('hex'),
+    '8ce3d50454711e0b31008a2a39b47af1ccce5f9d528d35899281b47a9c91a788',
+  );
+  assert.deepEqual(expectations(current), expectations(source));
+});
 test('three fixed diagnostic copies preserve every original handoff expectation', () => {
   const original = source.slice(source.indexOf("test('hands an approved matrix"));
   const expected = expectations(original);

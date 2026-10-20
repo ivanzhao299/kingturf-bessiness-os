@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { writeFileSync } from 'node:fs';
-import { localCases, p1DomPhases, safeLocalCases } from './private-contract.mjs';
+import { localCases, p1DomPhases, privateSpecFile, safeLocalCases } from './private-contract.mjs';
 
 // This reporter writes only inside the owned container tmpfs. Other original reporters stay raw
 // there too. The controller separately validates and re-encodes this bounded result document.
@@ -31,7 +31,7 @@ export default class PrivateReporter {
       this.invalid = true;
       return;
     }
-    const expectedFile = `/work/tests/e2e/${kind === 'p1' ? 'p1-demo.spec.ts' : 'runtime-local.spec.mjs'}`;
+    const expectedFile = `/work/tests/e2e/${privateSpecFile(kind)}`;
     const location = result.error?.location;
     const failureLine =
       location?.file === expectedFile && Number.isInteger(location.line) && location.line > 0

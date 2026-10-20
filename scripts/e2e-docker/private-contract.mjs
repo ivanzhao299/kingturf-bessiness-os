@@ -11,6 +11,10 @@ export const p1DomPhases = Object.freeze([
 ]);
 
 export const localCases = Object.freeze({
+  cost: [
+    'presents a paginated matrix ledger and a full-width on-demand model workspace',
+    'hands an approved matrix cost directly into a preselected sales quote',
+  ],
   p1: [
     'shows approved, rejected, and expired credit evidence',
     'shows the released order, partial AR, payment, and reconciliation evidence',
@@ -28,6 +32,15 @@ export const localCases = Object.freeze({
     'real browser proxy login creates a customer with persistence, audit and denied access',
   ],
 });
+
+export function privateSpecFile(kind) {
+  assert(Object.hasOwn(localCases, kind), 'only inventoried local browser targets allowed');
+  return kind === 'p1'
+    ? 'p1-demo.spec.ts'
+    : kind === 'cost'
+      ? 'cost-matrix-product-quality.spec.ts'
+      : 'runtime-local.spec.mjs';
+}
 
 export function validateLocalCommand(kind, label, fault) {
   assert(Object.hasOwn(localCases, kind), 'only inventoried local browser targets allowed');
