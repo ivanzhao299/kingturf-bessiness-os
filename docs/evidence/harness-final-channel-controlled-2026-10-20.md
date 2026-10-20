@@ -42,3 +42,11 @@ root/worker创建ticks不进公共日志；worker存在的六类均有私有work
 | source-failure | preflight exit=1；producer signal=SIGKILL；stage=catalog；ownershipVerified=true | schemaGone/markerMatched/containerGone=true | nativeGone/nativeChildrenGone=true；queryStarted=true | producer 强杀后的同实例 marker 回收成立       |
 
 三次受控回放均有 `source-producer-ready`，source-owned cleanup、owned cleanup 和容器结束事件；runtime 关闭均 `nativeRuntimeGone=true`、`nativeArtifactsGone=true`。追加的 native 结构/边界与现有网络工具合计 53 项测试全过；没有运行 P1，也没有改 relay 5 秒、失败硬闸、产品、网络配置、workflow 或依赖。S3 三故障和原生实现已具备独立审查材料，可进入授权的 S4 P1 两次 11 例回放。
+
+## S4 P1 受控回放（按连接超时停止）
+
+精确还原首跑 `final-controlled-p1-restore-1` 实际 `exit=0/null`，发现11、完成11、通过11、失败0、超时0；旁路未触发采样，owned schema/container/preview 与 native runtime/artifacts 均清理。安全日志为 `/tmp/kingturf-final-controlled-p1-restore-1-2026-10-20.log`，未纳入仓库。
+
+随后只在首例临时加入认证撤销片段，首个 relay 事件即为固定 `port=4173 / side=upstream / code=CONNECT_TIMEOUT / closing=false`；本次 child `exit=1`、发现0，未形成认证负例11例结果，按授权停止，不重试求绿。sampler 只在该 relay 事件后触发，nativeGone/nativeChildrenGone/runtimeGone/artifactsGone 全true；安全日志为 `/tmp/kingturf-final-controlled-p1-auth-negative-1-2026-10-20.log`，未纳入仓库。临时片段已移除，`tests/e2e/p1-demo.spec.ts` SHA-256 恢复为 `37734ce8bae62a0bf5690339658a43cc63e18ac69b04529e97da5ddb4c5bb1c2`，工作树无该文件差异。
+
+因此本轮未达到“认证负例11/11＋精确还原11/11”，也未启动 S5 两轮；连接超时数据不足仍是阻断，原5秒 relay/失败硬闸保持。
