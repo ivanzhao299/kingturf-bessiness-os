@@ -463,6 +463,8 @@
 
 ### TD-TEST-018｜私有浏览器 preview 上游连接超时
 
+**2026-10-20后继再现**：MRP五期待获批34e5453原完整11首次全过；随后仅首例真实撤Cookie的负例3/11和精确还原8/11均遭active4173/upstream CONNECT_TIMEOUT，host分别1/27268ms、1/32346ms，owned全清。负例首例真实失败/随后两过不顶完整负例；还原前7过不顶还原11绿。[实跑历史](../evidence/harness-final-browser-evidence-2026-10-20.md)。未放宽硬闸/超时/配置，不重复P1求绿；原因仍待核，独立Source获批生命周期继续，62项不变。
+
 **2026-10-20终验只读诊断**：[固定资源与条件对照](../evidence/harness-final-network-diagnostics-2026-10-20.md)已记录宿主/Docker基线；最新完整P1为业务MRP单败、七A与独立runtime无relay事件，不能据此关闭旧CONNECT_TIMEOUT或推定负载因果。原5000ms预连接超时/活动失败硬闸不改，无压力注入/原始流量导出。成因仍待核，62项计数不变。
 
 **2026-10-17后继同故障再现，未放宽**：四KPI期待经独立推导/人裁/仅四字面量适配后，原完整P1集合`stage5-p1-dashboard-fixed-1`仅7完成6过1败，驾驶舱failureLine9仍在路由parent附着检查、未抵达KPI；active4173/upstream CONNECT_TIMEOUT令PWnull/SIGTERM，其余4例未完成，host1/26468ms，owned全清。不是四值不匹配证据；不再靠重跑当修复、不改原网络条件。[固定事实/日志/四字面量proof](../tasks/harness-stage5-p1-money-authorization-2026-10-17.md)。只登记/成因待核，顶层仍61。

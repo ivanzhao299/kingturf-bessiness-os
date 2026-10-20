@@ -2,6 +2,20 @@
 
 授权：[终验R7](../tasks/harness-final-acceptance-authorization-2026-10-20.md)，2e1159d先独立落盘，基点37a7bb9。A8/B2/C2固定库存，旧九=A8+P1，不包含runtime或C；C两份禁跑，不能裸跑目录。P的两完整轮必须同最新状态，以下单文件正/变异/还原不冒充A/B完整轮。
 
+## 后继MRP五期待批准与实跑（2026-10-20）
+
+直接人裁call_cd7a7a15cceb41c58e9cb15399c877a1先由e800666独立[R7](../tasks/harness-final-mrp-expectation-authorization-2026-10-20.md)，34e5453仅五行：卡5/冻结2/建议6000/取整6000/说明2。相对b907ac7逐处唯一替换且其余字节完全相同，原放行6/gross10300/safety500与原其它10例、产品/seed/两config/网络全部保留；strict lint/format及五处byte proof实际0。
+
+主执行者严格串行命令均`preflight.mjs local p1 <label>`，原11固定库存/配置/既授P1 trace off、私有原始产物纪律保持；安全日志`/tmp/kingturf-<label>-2026-10-20.log`：
+
+| label                    | 实际PW/host                        | 已完成范围与限制                                                                                                                                    |
+| ------------------------ | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| final-p1-five-positive-1 | PW0/20046ms；host0/null/30079ms    | 原11/11完整通过，MRP新五项及原其余期待通过，无relay，owned全清                                                                                      |
+| final-p1-five-auth-red-1 | PWnull/SIGTERM；host1/null/27268ms | 临时仅首例登录后真实clearCookies，首例failed/5475ms/failureLine9，随后两例passed；之后active4173/upstream CONNECT_TIMEOUT，3/11完成，非完整负例回放 |
+| final-p1-five-restored-1 | PWnull/SIGTERM；host1/null/32346ms | 精确撤掉两行临时认证扰动、文件对34e5453零diff；前7例passed，第8例failureLine9后被同类CONNECT_TIMEOUT中断，8/11完成，非还原11绿                      |
+
+三次owned schema/container/preview均清理true，正例seed0/3267ms、还原seed0/3183ms，原成本计数/异人批准/关单保持。没有导出DOM/认证/原始artifact。认证负例首例失效早于relay，之后两例通过，但不把部分负例或部分还原冒充完整红→还原绿；恢复文件已精确核对，不留临时扰动。TD018再现、根因未知，不放宽原5000ms/活动失败硬闸，不靠重复P1求绿；先继续独立获批Source生命周期，后继恢复闭环及两完整轮仍须实际结果。当前MRP五期待已一次完整验证，P链整体/最新还原闭环仍未完成。
+
 ## 成本 TD-TEST-013：正式两例及认证真变异已闭环
 
 ### Source 私有生产器准备停点（未通过）
