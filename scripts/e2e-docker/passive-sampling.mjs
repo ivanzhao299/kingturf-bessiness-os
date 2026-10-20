@@ -301,5 +301,8 @@ export function createPassiveSampler(emit, read = boundedRead, now = Date.now) {
       controller.abort();
       await Promise.all([...pending]);
     },
+    async drain() {
+      await Promise.all([...pending]);
+    },
   };
 }

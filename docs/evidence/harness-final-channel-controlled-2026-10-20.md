@@ -9,3 +9,36 @@
 新增3.6秒mock完成即收测试；原error无close测试改mock时钟14999→15000触发kill、再300ms未确认false。原12＋新增1=13纯测试实际全过（82.774178ms），strict lint/format实际0。没有运行真实采集/Windows/P1，原forward/preflight/spec/产品/两配置未改。回滚本S1仅cap与对应测试成组，不能把旧1.5秒用于已知3.6秒查询的受控激活。
 
 S2真实canary/原生监督、S3三故障清理与独立审、S4原11认证红还原绿、S5同HEAD两轮38原UI、S6材料及最终新干净HEAD完整CI均尚未执行；未执行不预填绿。不push/部署/生产/网络配置/产品/依赖/§14。
+
+## S2 原生监督/canary先行（尚未容器接线或S3）
+
+独立审后弃用未运行的Console.In.ReadLineAsync草稿：微软同步TextReader实现不能提供自主监督。新C# helper采用专用30秒watchdog、内核创建时JOB_LIST＋HANDLE_LIST（不是create后assign），root/worker私有UTC创建身份、同handle终止、Job成员封闭归属；正常drain/cancel分离。原生代码由现有Framework64/v4.0.30319/csc.exe编译，明确System/System.Core/Web.Extensions引用、x64，不装依赖；源码/二进制只在本次owned临时目录，不含认证/原始查询或身份文件。正常编译必须实际exit0/signal null，源码/二进制由hash固定，runtime全部原生确认后才回收。
+
+失败史：首canary build阶段实际host1/238ms，未启动native采样；第二数字诊断为四项CS0246/CS0103，系/noconfig后漏System引用，仅补现有Framework引用。首编译成功251/271ms后两次查询未通过（4892/4722ms），worker已started，第二固定stage8表明私有输出reader失败；两次root/Job回收均确认。仅新worker设UTF8并抑制模块加载进度后，真实查询4528ms/固定计数解析通过、root/Job回收与owned构建产物清理true；没有单独区分编码/进度两个因素，不外推业务/通道根因。
+
+最终本版本命令`node scripts/e2e-docker/native-sampling-lifecycle.mjs all`，安全日志`/tmp/kingturf-controlled-native-eight-lifecycle-1-2026-10-20.log`，host实际0/null/45878ms（内层45848ms）；编译实际exit0/null/251ms，八情形全部实际通过：
+
+| 情形           | 实际耗时ms | 原生实证                                                                                                                        |
+| -------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| canary         | 5577       | 真实固定查询4269ms；真实私有IP/secret canary注入被parser拒绝，公开输出边界核查通过；helper/worker identity gone、Job成员0       |
+| cancel         | 894        | 事前helper/worker identity匹配且活跃、Job成员≥1，取消后两原生identity gone/成员0                                                |
+| lost-handoff   | 580        | 私有root登记后未ACK/query未启动即取消；root gone、无worker登记、Job0，不伪称worker逐PID轮询                                     |
+| suspended-kill | 1063       | worker创建时入Job、私有创建身份已登记但未Resume；强杀root后helper/worker identity gone/Job0                                     |
+| interop-kill   | 748        | 活跃后Linux transport KILL，外层独立native清理核两identity gone/Job0，不拿Linux close作native证明                               |
+| native-kill    | 1047       | 原生root同handle终止，关闭最后target Job handle触发worker回收，随后两identity gone/Job0                                         |
+| no-ack         | 31404      | stdin保持打开/不ACK且暂停消费输出，禁用host15秒取消；native实际leaseExpired=true，约30秒自主终止，非host EOF/35秒transport KILL |
+| read-break     | 4263       | 活跃真实查询后断私有读端、host15秒取消禁用；结束后两identity gone/Job0                                                          |
+
+root/worker创建ticks不进公共日志；worker存在的六类均有私有worker登记及原PID创建身份消亡核验，Job0表示封闭后代成员归零，不是只扫ParentPID。未注册worker的两项单独标false。全部runtime nativeGone/artifactGone true；inspect自身正常完成只窄证原生exit0，异常inspect另保留owned登记/有限精确核查，不能以Linuxclose充成功。纯工具13＋native结构/边界3=16实际全过、strict lint0；实际容器接线、与PG三故障联合证据/独立审仍未完成，不能先P1。
+
+## S3 源端三故障受控接线（已完成）
+
+在同一版本、同一隔离本地PG目标上，native hold 先完成注册/活跃，再启动 source preflight；采样器位于容器外，source 端分别执行真实取消、精确 owned 容器强杀、原 producer 进程组强杀。三次均保留原 relay/preflight 失败结果，且只导出固定布尔字段。每次私有日志为 `/tmp/kingturf-final-controlled-source-{cancel,kill,failure}-1-2026-10-20.log`，权限0600；日志不进入证据或版本库。
+
+| 故障           | source 结果                                                                      | source 清理                                 | native 清理                                           | 备注                                          |
+| -------------- | -------------------------------------------------------------------------------- | ------------------------------------------- | ----------------------------------------------------- | --------------------------------------------- |
+| source-cancel  | preflight exit=1；producer exit=143；stage=producer                              | schemaGone/markerMatched/containerGone=true | nativeGone/nativeChildrenGone=true；queryStarted=true | 取消后原生采样仍完成精确回收                  |
+| source-kill    | preflight exit=1；owned container 强杀                                           | schemaGone/markerMatched/containerGone=true | nativeGone/nativeChildrenGone=true；queryStarted=true | 仅杀该次白名单容器，未依赖容器状态证明 native |
+| source-failure | preflight exit=1；producer signal=SIGKILL；stage=catalog；ownershipVerified=true | schemaGone/markerMatched/containerGone=true | nativeGone/nativeChildrenGone=true；queryStarted=true | producer 强杀后的同实例 marker 回收成立       |
+
+三次受控回放均有 `source-producer-ready`，source-owned cleanup、owned cleanup 和容器结束事件；runtime 关闭均 `nativeRuntimeGone=true`、`nativeArtifactsGone=true`。追加的 native 结构/边界与现有网络工具合计 53 项测试全过；没有运行 P1，也没有改 relay 5 秒、失败硬闸、产品、网络配置、workflow 或依赖。S3 三故障和原生实现已具备独立审查材料，可进入授权的 S4 P1 两次 11 例回放。
