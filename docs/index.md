@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[终验P1完整11首跑结果](evidence/harness-final-browser-evidence-2026-10-20.md)：10过1败，四KPI/信用及生产实际过；唯一MRP原卡数6断言失败，实际数/归因未知，P1与第二轮按R7停止上报。无relay/owned全清，不能归因TD018，独立B/D/E继续。
+
 [终验P正式浏览器证据（2026-10-20）](evidence/harness-final-browser-evidence-2026-10-20.md)：成本正式原2例绿→旧认证真红→精确还原2绿，原冷断言保留，TD013实施验证关闭；私有只读tmpfs/原硬闸/owned全清。Workspace旧闭环据实核账，P1全11/TD018诊断及最新同状态两完整轮仍待，非终验或竣工。
 
 [终验收口人类新授权R7（2026-10-20）](tasks/harness-final-acceptance-authorization-2026-10-20.md)：37a7bb9阶段5主体已验收；P原spec/两完整轮/逐文件真变异主线，TD018只诊断；B新授完整函数G5，D只PG影响/决策卡、E材料刷新。产品/原29/G3/网络安全不放宽，最终干净HEAD全CI0后交人工终验，不执行§14或宣称竣工。

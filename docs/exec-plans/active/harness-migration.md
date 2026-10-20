@@ -2,6 +2,8 @@
 
 ## 0. 元信息
 
+- **终验P1完整11首跑仍非绿（2026-10-20）**：86b046d成本正式闭环后，P1实际完整11/10过1败，四KPI与信用及生产末例通过；MRP原卡数6在line292失败、后续未抵达，实际卡数未知、归因不明先停P1/第二轮不改期待。无relay，不能归因TD018，host1/35357ms、owned全清。[结果/日志/授权边界](../../evidence/harness-final-browser-evidence-2026-10-20.md)。独立B/D/E继续；新实际HEAD全CI另跑，不算两完整轮或人工终验。
+
 - **终验P成本正式两例闭环（2026-10-20）**：2e1159d授权先行，cost只既授auth-only适配、业务expect AST等值；原2过→旧认证载体真实2 timedOut/PW1→精确还原原2过/PW0/7890ms（冷提示1059ms），host0/15000ms、owned全清。[证据/SHA/保密与独立审](../../evidence/harness-final-browser-evidence-2026-10-20.md)。TD013实施验证关闭，原014/ac7082a已有闭环不重复适配；P1全11/TD018诊断/同状态两完整轮仍待，C禁/不§14。新工具适配实际HEAD完整CI后继执行，不预填。
 
 - **终验收口新授权（2026-10-20，基点37a7bb9树空）**：主执行者亲核人类消息01a15757-ffc6-7d10-9409-4c81f45af788，阶段5主体已验收、非终验/竣工。[R7范围/顺序/停止边界](../../tasks/harness-final-acceptance-authorization-2026-10-20.md)。P先原成本整spec/Workspace核账/P1全11→TD018只诊断→最新同状态连续完整两轮/逐文件真实变异；B新授完整函数200 AST G5与精确限期存量表，不受旧不扩范围限制，但业务源码/旧29/G3不动；D仅真实PG影响与决策卡，E材料刷新，§14只准备。先独立授权提交再执行，未执行不记绿。
@@ -3765,6 +3767,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 | D5   | **已确认并启用（2026-10-13）**：文件 ≤800 行、函数 ≤200 行、嵌套 ≤5 层；三个新增报告项已清零，structure-gate 已切换为拦截模式。                                                                                                               | 阈值已由人工确认，存量热点仍按白名单移除     | 批次 2/3 继续按到期批次消化白名单热点，不关闭剩余复杂度债务 |
 
 ## 7. 进度与决策日志
+
+- **2026-10-20｜终验P1完整11实跑，MRP新抵达断言待归因**：86b046d后不改P1/seed/配置，`final-p1-whole-positive-1`原seed0/3146ms，PW1/25212ms、discovered11/complete=true，10过1败；驾驶舱四值/原来源钻取、信用及生产末例实际过。唯一MRP line292原card数6失败，之前run编号/状态过、之后冻结/放行/数量未抵达，实际数未导出；无relay-failure，host1/null/35357ms、owned全清。[固定事实/未覆盖/停止点](../../evidence/harness-final-browser-evidence-2026-10-20.md)。按R7未知即上报，既有TD016记录、不顺改原数值/产品/seed、不启动第二轮或认证变异，独立B/D/E继续。此证据独立提交/回滚不删旧失败，不改成本86b046d；实际新HEAD完整CI后继执行。[已测试]（完整原11实际10过1败，非P绿）
 
 - **2026-10-20｜终验P成本正式spec/auth真变异收口**：先2e1159d R7，仅固定auth-only补丁7290…→8ce3…、所有原expect AST等值；私有local cost精确两标题/文件、零raw/DOM/auth导出，原配置/relay不动，legacy非发现fixture保旧冷对照hash。原2过/8626ms→真实旧认证两timedOut/PW1/61975ms→child/owned清理后精确还原原2过/PW0/7890ms（冷1059ms），host最终0/null/15000ms、owned全清。18工具自测/原lint/format0、两次独立安全只读审无必要阻断，[逐条/SHA/日志/回滚依赖](../../evidence/harness-final-browser-evidence-2026-10-20.md)。TD013仅实施验证关闭；P1/全部A8B2/两完整轮尚待，旧014已闭环不重复输入修正，C禁/不§14。新稳定HEAD完整CI另实际运行，不以目标绿代全门禁。[已测试]（正式原spec两例/真实认证红→还原绿及工具，完整CI待）
 

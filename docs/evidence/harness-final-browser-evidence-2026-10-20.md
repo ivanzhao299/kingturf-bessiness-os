@@ -24,6 +24,14 @@ TD-TEST-013按本授权关闭“原冷提示修复验证＋正式整文件认证
 
 ## Workspace/P1/TD018与整轮当前边界
 
+### P1本轮完整11：10过1败，MRP待归因，非通道失败
+
+成本提交86b046d之后，原P1 spec保持dac8e36/aa2d4ff已授期待，不改seed/两config/relay。命令`node --experimental-transform-types scripts/e2e-docker/preflight.mjs local p1 final-p1-whole-positive-1`，安全日志`/tmp/kingturf-final-p-p1-whole-positive-1-2026-10-20.log`：原seed0/3146ms、成本计数1/2/1/2/异人/closed保持；PW实际1/25212ms，discovered11/complete=true、10passed/1failed。信用/订单/移动/Order360/佣金/风险/驾驶舱/制造/采购/生产全部passed，驾驶舱1483ms已抵达并通过四固定值及原来源/责任钻取断言，不再是上次未抵达四值的partial。
+
+唯一失败index9：MRP6427ms，原line292 `.mrp-proposal-card` `toHaveCount(6)`，之前MRP工作台与原run编号/已计算文案均通过；后续冻结3/放行6及长周期数量解释未抵达，不能推断绿。未导出原错误/实际DOM数值，当前实际proposal数量未知；源码`mrp-run.ts`逐项按latestRun.proposals建卡，尚不能仅凭静态投影区分原期待/种子/实现差异。没有relay-failure，本轮不能归因TD018；host1/null/35357ms（preflight34830ms），owned schema/container/preview全清真，所有安全/同一性检查通过。
+
+按新R7“归因不明即上报”，停止P1期待适配/该依赖线/第二轮，不改原6/3/6/10000/10300/500或产品求绿。MRP未归因项并入既有TD-TEST-016，不增造重复债务编号；P1认证变异仍未完成。独立B/D/E获授权工作继续；TD018网络/资源基线诊断另计，一次无relay不称其根因已修复或关闭。
+
 Workspace ac7082a历史原4过/缺字段红→还原/旧会话DTO四红→还原证据保持，本轮不再制造无用字段适配；最新整轮复跑仍待。P1 dac8e36四值与aa2d4ff信用0保持，原全11/认证真变异本轮尚待；TD018只诊断/不放宽原硬闸。C两份仅D决策卡，第二完整轮未开始。
 
 回滚本私有cost入口/legacy诊断输入工具与正式auth-only适配须成对核依赖revert，否则固定SHA自测会拒绝不完整状态；不回滚f5c2ed5产品修复、原业务断言或人类授权。证据docs可独立回滚但历史失败不删。最终完整CI/树空与人工终验另计，§14不执行。

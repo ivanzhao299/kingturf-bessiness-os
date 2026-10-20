@@ -468,6 +468,8 @@
 
 ### TD-TEST-016｜P1原浏览器11例失败定位待核
 
+**2026-10-20完整11首跑：MRP原卡数断言失败，停止该依赖线**：`final-p1-whole-positive-1`PW1/25212ms、discovered11/complete=true，10过1败；四驾驶舱固定值/信用0及原来源钻取均实际通过，生产末例也过。唯一MRP index9/line292原卡数6失败，前run编号/状态已过、后续断言未抵达；实际卡数未外导，期待/种子/实现尚待归因，不称产品bug已证。无relay-failure，host1/35357ms、owned全清；不把本失败归因TD018、不改期待/seed/产品求绿，P1认证变异/全部两完整轮仍欠。[本轮固定事实与停止边界](../evidence/harness-final-browser-evidence-2026-10-20.md)。本子项沿既有TD016登记，不重复增ID；独立B/D/E继续。
+
 **后继四值已批/实施，P1仍未收口**：仅bookedRevenue/grossMargin/cashCollected/openReceivable四字面量改950000/229000/950000/0 CNY，其余完整spec字节保持。实际本轮7/11完成6过1败，驾驶舱尚未抵达数值断言即因路由附着/TD018中断；不能说新值已验证或原11绿。原信用结清0已实际过，全部旧失败/未完成保持，P1认证变异/第二轮仍欠。[R7、独立推导与真实结果](../tasks/harness-stage5-p1-money-authorization-2026-10-17.md)。
 
 - **显示许可后实际部分结果**：fb13ba3直接人类R7后，候选仅显示/定位与Order360自然展开，原五计数/18时间线/10事件身份行可见，所有原数值保持。真实发现11/9完成，7过（含mobile/Order360/commission/risk/制造/采购），credit450000和dashboard原bookedRevenue两败后TD018中断；host1/39336ms/owned全清，另两例未完成。非完整11/不关本条/不开第二轮，[完整失败史](../evidence/harness-stage5-browser-rulings-2026-10-17.md)。
