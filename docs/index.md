@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[终验收口人类新授权R7（2026-10-20）](tasks/harness-final-acceptance-authorization-2026-10-20.md)：37a7bb9阶段5主体已验收；P原spec/两完整轮/逐文件真变异主线，TD018只诊断；B新授完整函数G5，D只PG影响/决策卡、E材料刷新。产品/原29/G3/网络安全不放宽，最终干净HEAD全CI0后交人工终验，不执行§14或宣称竣工。
+
 [驾驶舱四固定值已实施/浏览器阻断](tasks/harness-stage5-p1-money-authorization-2026-10-17.md)：先f06b459 R7，仅四唯一数字替换、其余spec字节保持proof0；实际原11集合7完成6过1败，驾驶舱路由附着失败/TD018中断、尚未抵达四KPI。owned全清，网络条件不改，新最终HEAD完整CI另验，不称11绿/第二轮/终验。
 
 [驾驶舱四固定值后继R7](tasks/harness-stage5-p1-money-authorization-2026-10-17.md)：独立推导的950000/229000/950000/0 CNY已由人类批准，仅四字面量数字；先授权再实施，原其余断言/种子/产品/网络硬闸保持，新验证尚待。aa2d4ff完整CI0/331905ms，旧失败史保留，DoD4/5仍未完成。
