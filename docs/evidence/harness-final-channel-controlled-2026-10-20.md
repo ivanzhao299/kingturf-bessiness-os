@@ -83,6 +83,8 @@ T2 静态边界如下：`container.mjs` 在收到控制后先调用 `startForwar
 
 按授权，第一轮仅 P1 再断即停止，不启动第二轮、不重复 P1；由于本次终局协议未形成 A8/Source/runtime 双轮，也不套用替代口径。此前两轮历史记录继续作为背景证据，不能冒充本次清理后双轮。
 
+最终门禁：HEAD `8ba38ff` 实跑 `pnpm ci:local` 真实退出码0；coverage run `ff98bdca-fe93-41cd-844c-9295e6c17f0d`，overall 37,543/48,601、domain 629/671、repository 9,838/11,512、deficits=[]；API135/17,297、Web27/436，构建和安全审计通过。工作树为空。该门禁不把第一轮P1通道失败改写为双轮通过。
+
 ## 2026-10-21 S5 两轮结果与终态
 
 第一轮正常态 A8+B2 全部通过：26 个 A8 UI、Source producer 19＋UI3、runtime 1、P1 11，所有 preflight exit=0、无 relay failure、owned 清理全真。第二轮 A8、Source、runtime 全部通过；P1 首个 `4173/upstream/CONNECT_TIMEOUT` 即失败，preflight exit=1，未产生 local-result。原 relay 5 秒合同与失败硬闸保持，按授权停止重试。
