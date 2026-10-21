@@ -75,6 +75,14 @@ T2 静态边界如下：`container.mjs` 在收到控制后先调用 `startForwar
 
 按 M1/T2 分支，TD018 负例有效性采用等价证明继续收口；本轮不修工具、不重试认证负例。历史真实红、当前 mock/PG 认证拒绝路径和真实注入红记录继续作为证明包组成部分。T1/T2 完成后正式正文恢复，进入两轮正常态 A8+B2。
 
+## 2026-10-21 D2 终局协议结果
+
+清理前起始 SHA 为 `18739f1bc7013889e0c44603a1ae0ab83ab40154`，工作树为空；仅清理明确的 `.test-results/docker-local` 与 `.test-results/docker-pw`，其它历史 `.test-results` 目录保留。清理后未提交、未修改源码或正式 spec，测试自身仅写入受控结果目录和 `/tmp/kingturf-s5-terminal-one-2026-10-21.jsonl`。
+
+第一轮从该 SHA 串行启动：cost 2/2、document 7/7、login 2/2、order 1/1、workspace 4/4、revocation 2/2、startup 5/5、Source producer 19/19＋UI3/3、runtime 1/1 均 exit0、无 relay failure、owned 清理全真。P1 是唯一失败项，首个 `4173/upstream/CONNECT_TIMEOUT` 即停止，preflight exit1、未产生 local-result，schema/container/preview 清理全真。日志只含固定安全汇总，未纳入仓库。
+
+按授权，第一轮仅 P1 再断即停止，不启动第二轮、不重复 P1；由于本次终局协议未形成 A8/Source/runtime 双轮，也不套用替代口径。此前两轮历史记录继续作为背景证据，不能冒充本次清理后双轮。
+
 ## 2026-10-21 S5 两轮结果与终态
 
 第一轮正常态 A8+B2 全部通过：26 个 A8 UI、Source producer 19＋UI3、runtime 1、P1 11，所有 preflight exit=0、无 relay failure、owned 清理全真。第二轮 A8、Source、runtime 全部通过；P1 首个 `4173/upstream/CONNECT_TIMEOUT` 即失败，preflight exit=1，未产生 local-result。原 relay 5 秒合同与失败硬闸保持，按授权停止重试。

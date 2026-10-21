@@ -145,3 +145,7 @@ T1/T2 完成且正式 spec 恢复后，按 [归因收口 R7](../tasks/harness-fi
 第二轮：A8 七个非 Source 文件、Source producer/UI、runtime 均 exit=0、全部通过且清理全真；P1 在首个 `4173/upstream/CONNECT_TIMEOUT` 停止，preflight exit=1、无 local-result，owned schema/container/preview 清理为真。没有重跑 P1 求绿。由此两轮未形成完整双绿证据，TD018 的测试侧 M1/T2 归因和原认证负例等价证明保持终态。
 
 认证拒绝/撤销等价证明包包含：历史真实认证红记录（S4a 与 T1 的首个 relay 红）；mock 认证路径 `tests/e2e/session-revocation.spec.ts` 的 401/403 两支、`tests/e2e/startup-delivery.spec.ts` 的 503→401 还原、`tests/e2e/fixtures/browser-session.ts` 的无 session 401；API 合同 `apps/api/test/auth-route-contract.test.ts` 的 `/api/v1/auth/session` 未认证401，以及真实 PG/HTTP 认证路径 `apps/api/test/auth-http-postgres.integration.test.ts`。这些证明认证拒绝/撤销语义本身有覆盖，不能把通道超时当业务通过。
+
+## 2026-10-21 D2 清理后终局轮
+
+D2 起始 SHA 为 `18739f1bc7013889e0c44603a1ae0ab83ab40154`；仅清理 `.test-results/docker-local` 和 `.test-results/docker-pw`，之后到 P1 停止前无提交、文档或源码写入。第一轮 A8/Source/runtime 全部通过且清理全真；P1 首个 upstream `CONNECT_TIMEOUT` 失败，preflight exit1，无 local-result。按授权停止，不启动第二轮；本次未达到字面双轮，也不套用需要双轮 A8/Source/runtime 的替代口径。安全汇总日志为 `/tmp/kingturf-s5-terminal-one-2026-10-21.jsonl`。

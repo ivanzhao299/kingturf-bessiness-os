@@ -20,6 +20,8 @@
 
 [TD-TEST-020 M1债务登记](exec-plans/tech-debt-tracker.md)：新增测试基础设施 P2，记录 spec 挂载字节变更后首跑 relay 超时；本轮只登记，候选修复方向为挂载同步或建连重试，维护批次后继处理。
 
+[TD018 D2终局轮结果](evidence/harness-final-channel-controlled-2026-10-20.md)：清理后第一轮 A8/Source/runtime 全通过，P1 首个 upstream CONNECT_TIMEOUT 停止；按授权不启动第二轮，连续双轮字面条件未达成。
+
 [TD018专项结果与未激活工具](evidence/harness-final-network-diagnostics-2026-10-20.md)：WSL mirrored/版本及空闲计数不证明历史根因，暂不改配置；839d5ce R7→ef908ad独立API、12新增/49工具绿/独立审过。Windows取消未确认不假报gone，未接runner/未再P1，真实激活/复现另裁；最终干净HEAD全CI实际另验。
 
 [TD018同期采集工具窄授权R7](tasks/harness-final-network-sampling-authorization-2026-10-20.md)：仅有界白名单被动工具/纯测试，原超时立即失败与硬闸保持；任何网络配置不改，不再运行P1、实际复现另裁，最终全CI继续。
