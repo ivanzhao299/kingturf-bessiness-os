@@ -1,6 +1,8 @@
 # 技术债台账（tech-debt-tracker）
 
-**2026-10-20现时逐项状态入口**：[终验E62项](../evidence/harness-final-closeout-preparation-2026-10-20.md)逐ID列当前已验范围/未决/去向及六开放P1，独立只读索引核账62唯一ID/17P1；旧索引行与更早“待验收/待核实”保持其原时点，不能覆盖已验或本轮真实PG后继证据。TEST013授权范围已闭环、BOUND003/004已核影响但行为未决、TEST016/P1原11仍10过1败、SEC008新P1待人裁排期。不是全部债务结案或DoD5达成。
+**2026-10-21现时逐项状态入口**：[终验E63项](../evidence/harness-final-closeout-preparation-2026-10-20.md)逐ID列当前已验范围/未决/去向及六开放P1；本轮新增TD-TEST-020测试基础设施P2，独立只读索引核账63唯一ID/17P1；旧索引行与更早“待验收/待核实”保持其原时点，不能覆盖已验或本轮真实PG后继证据。TEST013授权范围已闭环、BOUND003/004已核影响但行为未决、TEST016/P1原11仍10过1败、SEC008新P1待人裁排期。不是全部债务结案或DoD5达成。
+
+**2026-10-21新增 TD-TEST-020**：登记“容器挂载 spec 文件变更后首跑 relay 建连超时”测试基础设施债，严重度 P2。无害同位置注释与认证撤销片段均在 runner 发现0前触发 `4173/upstream/CONNECT_TIMEOUT`（M1/T2）；S4a 已排除一般环境坏态，`container.mjs` 先建 relay 后加载只读 `/work` spec。影响限定为 e2e 开发修改 spec 后的首跑通道现象，不标 flaky；候选方向为挂载同步策略或 relay 建连重试。本轮不实施，期限=后继 e2e 工具维护批次。
 
 **终验D实际PG新发现（2026-10-20，62项）**：新增TD-SEC-008，仅登记complaint/dashboard匹配显式锚点引用不存在osr列、真实42703；P1可用性风险待人裁，不称权限扩大/生产事故、不修产品。BOUND003 PG最终拒绝且未存，BOUND004实际部分提交/replay，SEC007仅仓储层差异，[四项实测与边界](../evidence/harness-final-decision-pg-evidence-2026-10-20.md)。旧61历史保持，独立B通过不代表全部P1排期已决/DoD5完成。
 
@@ -147,6 +149,7 @@
 | TD-TEST-017  | 私有reporter构造options兼容缺口                                                               | P2     | 本地回放工具   | 兼容实施验证关闭         | 原生调用形状回归发现               | unit6/PW接线实证                |
 | TD-TEST-018  | 私有浏览器preview上游连接超时                                                                 | P2     | 本地回放环境   | 只登记/待核实            | 安全relay事件                      | active CONNECT_TIMEOUT          |
 | TD-TEST-019  | QTC旧回归探针运行依赖历史Git对象，缺对象时无法启动old校准                                     | P2     | 测试可移植性   | 无（仅冻结旧源码载入）   | 阶段5 E                            | 已修验证，阶段终验待            |
+| TD-TEST-020  | 容器挂载 spec 字节变更后首跑 relay 建连超时（M1/T2）                                          | P2     | 测试基础设施   | 无（通道现象）           | 后继 e2e 工具维护批次              | 只登记，待后继维护              |
 | TD-GATE-001  | 无 git hooks / commitlint / lint-staged，脏提交仅靠 CI 兜底                                   | P1     | 门禁           | 无                       | 阶段 3                             | 已完成                          |
 | TD-GATE-002  | vitest 无配置文件，参数散落各包 scripts                                                       | P2     | 门禁           | 无                       | 阶段 3                             | 已完成                          |
 | TD-GATE-003  | routes覆盖已修复；E1已撤，恢复31旧豁免                                                        | P1     | 工程门禁       | 无                       | 独立门禁任务／阶段5前复核          | 已验收                          |
@@ -475,6 +478,15 @@
 
 - **事实**：p1-safe-location-2与p1-dom-location-1均有4173/upstream/CONNECT_TIMEOUT/closing=false；最新PW null/SIGTERM、host1/27929ms、仅3 completed/complete=false、owned全清。非RESET证据；旧无观测SIGTERM仍原因未知。
 - **状态/边界**：只登记环境连接故障，具体pre-connect卡顿成因待核，未放宽转发器原timeout/失败条件、不改监听/网络/产品。与P1旧可见性oracle问题分开，不充当全部11例失败共同解释。[原事实](../tasks/playwright-p1-replay-blocker-2026-10-17.md)。
+
+### TD-TEST-020｜容器挂载 spec 变更后的首跑 relay 超时
+
+- **类别/严重度**：测试基础设施 / P2；**业务行为影响**：无（通道现象）。
+- **现象与证据链**：同一测试位置加入无害单行注释后，首跑在 runner 产生发现结果前触发 `4173/upstream/CONNECT_TIMEOUT`；认证撤销片段也有同样结果（M1/T2）。S4a 无负例 runtime 单例通过，已排除一般环境持续坏态。`scripts/e2e-docker/container.mjs` 在 Playwright spec 加载前先建立 relay，spec 通过只读 `/work` bind 进入私有 runner。
+- **复现条件**：正式 spec 文件发生字节变更后的第一次受控 e2e 启动。
+- **影响与边界**：e2e 开发修改 spec 后首跑可能超时；重跑可通过，但不标 flaky，也不把该现象归入产品/业务或具体网络组件根因。原 relay 5 秒与失败硬闸保持。
+- **候选方向**：挂载同步策略或 relay 建连重试。本轮不实施，期限为后继 e2e 工具维护批次。
+- **证据**：[M1/T2与两轮](../evidence/harness-final-channel-controlled-2026-10-20.md)、[浏览器轮次](../evidence/harness-final-browser-evidence-2026-10-20.md)。
 
 ### TD-TEST-017｜私有reporter构造options兼容缺口
 

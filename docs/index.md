@@ -18,6 +18,8 @@
 
 [TD018终局双轮与终验材料R7](tasks/harness-final-channel-terminal-rounds-authorization-2026-10-21.md)：授权新增 P2 M1 债务登记、清理后同 SHA 连续两轮协议、替代口径和终验材料定稿；正式 spec/relay/失败硬闸/产品不改，最终全 CI 与人工终验仍为硬前提。
 
+[TD-TEST-020 M1债务登记](exec-plans/tech-debt-tracker.md)：新增测试基础设施 P2，记录 spec 挂载字节变更后首跑 relay 超时；本轮只登记，候选修复方向为挂载同步或建连重试，维护批次后继处理。
+
 [TD018专项结果与未激活工具](evidence/harness-final-network-diagnostics-2026-10-20.md)：WSL mirrored/版本及空闲计数不证明历史根因，暂不改配置；839d5ce R7→ef908ad独立API、12新增/49工具绿/独立审过。Windows取消未确认不假报gone，未接runner/未再P1，真实激活/复现另裁；最终干净HEAD全CI实际另验。
 
 [TD018同期采集工具窄授权R7](tasks/harness-final-network-sampling-authorization-2026-10-20.md)：仅有界白名单被动工具/纯测试，原超时立即失败与硬闸保持；任何网络配置不改，不再运行P1、实际复现另裁，最终全CI继续。
