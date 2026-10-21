@@ -135,3 +135,13 @@ TD-TEST-013按本授权关闭“原冷提示修复验证＋正式整文件认证
 Workspace ac7082a历史原4过/缺字段红→还原/旧会话DTO四红→还原证据保持，本轮不再制造无用字段适配；最新整轮复跑仍待。P1 dac8e36四值与aa2d4ff信用0保持，原全11/认证真变异本轮尚待；TD018只诊断/不放宽原硬闸。C两份仅D决策卡，第二完整轮未开始。
 
 回滚本私有cost入口/legacy诊断输入工具与正式auth-only适配须成对核依赖revert，否则固定SHA自测会拒绝不完整状态；不回滚f5c2ed5产品修复、原业务断言或人类授权。证据docs可独立回滚但历史失败不删。最终完整CI/树空与人工终验另计，§14不执行。
+
+## 2026-10-21 TD018 归因后两轮正常态验证
+
+T1/T2 完成且正式 spec 恢复后，按 [归因收口 R7](../tasks/harness-final-channel-attribution-authorization-2026-10-21.md) 串行执行两轮正常态 A8+B2，认证撤销负例不运行。第一轮安全汇总日志为 `/tmp/kingturf-s5-round---2026-10-21.jsonl`（编排器内部十项均 `exit=0`；外层 shell 多执行了一个参数而返回127，不影响十项结果），第二轮为 `/tmp/kingturf-s5-round-2-2026-10-21.jsonl`。
+
+第一轮：cost 2/2、document 7/7、login 2/2、order 1/1、workspace 4/4、revocation 2/2、startup 5/5、Source producer 19/19 且 UI 3/3、runtime 1/1、P1 11/11；每项 preflight exit=0、无 relay-failure、schema/container/preview 全清，Source marker/schema/container 全清。
+
+第二轮：A8 七个非 Source 文件、Source producer/UI、runtime 均 exit=0、全部通过且清理全真；P1 在首个 `4173/upstream/CONNECT_TIMEOUT` 停止，preflight exit=1、无 local-result，owned schema/container/preview 清理为真。没有重跑 P1 求绿。由此两轮未形成完整双绿证据，TD018 的测试侧 M1/T2 归因和原认证负例等价证明保持终态。
+
+认证拒绝/撤销等价证明包包含：历史真实认证红记录（S4a 与 T1 的首个 relay 红）；mock 认证路径 `tests/e2e/session-revocation.spec.ts` 的 401/403 两支、`tests/e2e/startup-delivery.spec.ts` 的 503→401 还原、`tests/e2e/fixtures/browser-session.ts` 的无 session 401；API 合同 `apps/api/test/auth-route-contract.test.ts` 的 `/api/v1/auth/session` 未认证401，以及真实 PG/HTTP 认证路径 `apps/api/test/auth-http-postgres.integration.test.ts`。这些证明认证拒绝/撤销语义本身有覆盖，不能把通道超时当业务通过。

@@ -74,3 +74,9 @@ root/worker创建ticks不进公共日志；worker存在的六类均有私有work
 T2 静态边界如下：`container.mjs` 在收到控制后先调用 `startForwards`，再进入 PG 同一性核验和 `runPrivateSpec`；`private-runner.mjs` 随后才以固定 `tests/e2e/p1-demo.spec.ts` 路径、只读 `/work` bind、tmpfs 结果目录和 `--trace=off` 启动 Playwright。撤 Cookie、会话 GET 和单行注释都位于该 spec 的测试函数体内，模块顶层只有 Playwright/AppRoute 导入和环境变量读取，不能在 relay 初始化前执行。S4a 的无负例 runtime 单例通过，而 T1 无害字节变更也在发现0阶段超时，机制证据落在“spec 文件变更/挂载同步/runner 加载边界与 relay 的时序耦合”；它不能证明具体 Docker、WSL 或 Windows 根因，也不能归因产品或正式测试语义。
 
 按 M1/T2 分支，TD018 负例有效性采用等价证明继续收口；本轮不修工具、不重试认证负例。历史真实红、当前 mock/PG 认证拒绝路径和真实注入红记录继续作为证明包组成部分。T1/T2 完成后正式正文恢复，进入两轮正常态 A8+B2。
+
+## 2026-10-21 S5 两轮结果与终态
+
+第一轮正常态 A8+B2 全部通过：26 个 A8 UI、Source producer 19＋UI3、runtime 1、P1 11，所有 preflight exit=0、无 relay failure、owned 清理全真。第二轮 A8、Source、runtime 全部通过；P1 首个 `4173/upstream/CONNECT_TIMEOUT` 即失败，preflight exit=1，未产生 local-result。原 relay 5 秒合同与失败硬闸保持，按授权停止重试。
+
+结合 T1 无害片段同样触发超时和 T2 的加载边界，TD018 终态为：**片段触发性超时（测试侧，M1+T2）+ S4a 已排除一般环境坏态 + 认证拒绝/撤销以 mock、PG/HTTP 和历史真实注入红形成等价证明**。两轮正常态没有形成完整双绿闭环；不宣称 Harness 竣工，等待人工终验。
