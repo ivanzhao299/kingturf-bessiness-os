@@ -1,5 +1,7 @@
 # CI 配置决定
 
+Harness 施工已归档；本项目是纯 Web monorepo，非 Tauri，不生成桌面打包或 Release 流水线。常规提交继续以 `pnpm ci:local` 为唯一完整门禁。
+
 > 依据 `docs/HARNESS-RULES.md` §3（框架识别与条件式 CI）与附录 C 模板建立。
 > 本文档记录框架判定结论、现有 CI 盘点与后续 CI 相关决策，长期保留（§14.3）。
 

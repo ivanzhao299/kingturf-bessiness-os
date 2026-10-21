@@ -115,6 +115,10 @@ Types → Config → Repo → Service → Runtime → UI
 
 ## 6. 关键决策（ADR 索引）
 
+## 7. 竣工后不变量
+
+常驻规则是单向 `apps/api → packages`、`domain → types` 的依赖 DAG；SQL 必须参数化，G3 采用“形状 × 可信根”白名单，路由校验和 service 边界由 `docs/GATES.md` 机械执行。行为守恒与显式变更登记遵循 R1/R2；认证继续使用 ADR-0003 的不透明 token，不引入 JWT。新依赖边、行为变更或 CSP 强制化都须先登记、独立提交并获得相应授权。
+
 2e护栏先行（2026-10-16）：`pnpm service:check`以TypeScript AST/类型检查服务仅依赖已登记仓储端口实现或packages、仓储不得反向依赖Service、Runtime同入口不得跨仓编排；接入ci:local，无业务Service迁移。单仓路由继续直调Repo，不添加透传层。真实库存、静态能力边界及注入验证见[Service边界护栏](docs/engineering/service-boundary-guard.md)；该护栏不代表上述所有历史架构验证点均已机械覆盖，也不修TD-GATE-003。
 
 `docs/adr/0001`~`0010`：TS monorepo 选型、PostgreSQL 与迁移、不透明会话、default-deny RBAC 与 DataScope、版本化平台引擎、事务 outbox、不可变业务对象 schema、P1 CRM 兼容、商务修订图、不可变 Quote-to-Cash 台账。架构改动前先读对应 ADR；与 ADR 冲突的改动须新开 ADR 并经人工确认。

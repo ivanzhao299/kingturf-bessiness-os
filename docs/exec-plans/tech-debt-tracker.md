@@ -2,6 +2,8 @@
 
 **2026-10-21现时逐项状态入口**：[终验E63项](../evidence/harness-final-closeout-preparation-2026-10-20.md)逐ID列当前已验范围/未决/去向及六开放P1；本轮新增TD-TEST-020测试基础设施P2，独立只读索引核账63唯一ID/17P1；旧索引行与更早“待验收/待核实”保持其原时点，不能覆盖已验或本轮真实PG后继证据。TEST013授权范围已闭环、BOUND003/004已核影响但行为未决、TEST016/P1原11仍10过1败、SEC008新P1待人裁排期。不是全部债务结案或DoD5达成。
 
+**2026-10-21 Harness施工关闭登记**：一次性施工图已归档，常驻契约迁入 `AGENTS.md`、`core-beliefs.md`、`ARCHITECTURE.md`、`docs/CI.md` 与 `docs/GATES.md`。开放债务转入维护批次；本登记不关闭、不抬绿任何 TD/SEC/P1 项。
+
 **2026-10-21新增 TD-TEST-020**：登记“容器挂载 spec 文件变更后首跑 relay 建连超时”测试基础设施债，严重度 P2。无害同位置注释与认证撤销片段均在 runner 发现0前触发 `4173/upstream/CONNECT_TIMEOUT`（M1/T2）；S4a 已排除一般环境坏态，`container.mjs` 先建 relay 后加载只读 `/work` spec。影响限定为 e2e 开发修改 spec 后的首跑通道现象，不标 flaky；候选方向为挂载同步策略或 relay 建连重试。本轮不实施，期限=后继 e2e 工具维护批次。
 
 **终验D实际PG新发现（2026-10-20，62项）**：新增TD-SEC-008，仅登记complaint/dashboard匹配显式锚点引用不存在osr列、真实42703；P1可用性风险待人裁，不称权限扩大/生产事故、不修产品。BOUND003 PG最终拒绝且未存，BOUND004实际部分提交/replay，SEC007仅仓储层差异，[四项实测与边界](../evidence/harness-final-decision-pg-evidence-2026-10-20.md)。旧61历史保持，独立B通过不代表全部P1排期已决/DoD5完成。

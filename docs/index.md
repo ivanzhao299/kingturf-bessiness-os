@@ -1,5 +1,10 @@
 # docs/index.md（全部文档索引）
 
+[Harness施工图竣工归档](exec-plans/completed/harness-2026-10-21.md)：阶段1–5与§14迁移记录；常驻规则以AGENTS、核心信念、架构、CI和门禁文档为准。
+[Harness竣工收官报告](evidence/harness-final-closeout-report-2026-10-21.md)：五阶段摘要、开放项承接、母模板反馈与归档后合同。
+[Harness常驻契约自检](evidence/harness-final-closeout-self-check-2026-10-21.md)：无施工图依赖的机械自检结果与证据入口。
+[Harness归档授权](tasks/harness-final-closeout-archive-authorization-2026-10-21.md)：§14 归档范围、停止边界与最终验证授权。
+
 [TD018受控收口实际证据](evidence/harness-final-channel-controlled-2026-10-20.md)：S1完成驱动15秒绝对cap、13纯测/lint/格式过，非relay5秒；S2/S3真实canary/原生清理与后续P1/两完整轮仍待，不预填绿。
 
 [TD018 S1–S3设计与门槛](tasks/harness-final-channel-s1-s3-design-2026-10-20.md)：完成驱动15秒采集cap独立原relay5秒；原生私有PID/创建身份/ACK与自主lease，真实canary和三故障精确消亡分别证明，未实跑不填绿。只受控链路激活，不进入默认系统采集/产品。
@@ -199,7 +204,7 @@ S2门禁适配：新增登录限流固定源唯一真实类声明身份分类及
 | [exec-plans/active/harness-migration.md](exec-plans/active/harness-migration.md) | 批次4 S1–S3人工验收；S4已授权，先R7/设计docs停协调复核再编码     | 常驻                    |
 | [exec-plans/tech-debt-tracker.md](exec-plans/tech-debt-tracker.md)               | 技术债现48项含历史，新增TD-HYG-002旧preview Dockerfile引用仅登记 | 常驻                    |
 | [local-acceptance-cleanup.md](local-acceptance-cleanup.md)                       | `.local-acceptance/` 本地产物清理边界与手动脚本说明              | 常驻                    |
-| [HARNESS-RULES.md](HARNESS-RULES.md)                                             | 施工规则（竣工验收后按其 §14 归档）                              | 常驻（施工期）          |
+| [harness-2026-10-21.md](exec-plans/completed/harness-2026-10-21.md)              | Harness 一次性施工图（已竣工归档）                               | 历史归档                |
 | [WORKSPACE_ROUTE_ISOLATION.md](WORKSPACE_ROUTE_ISOLATION.md)                     | 工作区路由隔离说明（2026-09-06）                                 | 已归档-只读（事件复盘） |
 
 ## docs/adr（架构决策记录，10 篇）
@@ -406,4 +411,4 @@ E1先行固定证据：[authorization守恒候选/773例旧新探针](evidence/e
 
 ## exec-plans/completed/
 
-（暂无已归档计划；harness 改造竣工后首个归档件为 HARNESS-RULES 拆解产物。）
+归档计划：[harness-2026-10-21.md](exec-plans/completed/harness-2026-10-21.md)。

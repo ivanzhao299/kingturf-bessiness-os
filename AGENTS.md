@@ -1,6 +1,6 @@
 # AGENTS.md
 
-> 本文件是**内容目录（地图）**，不是百科全书。需要细节时按下方指引跳转；改造施工期间先读 `docs/HARNESS-RULES.md`。
+> 本文件是**内容目录（地图）**，不是百科全书。Harness 改造已于 2026-10-21 竣工；常驻契约见 `docs/design-docs/core-beliefs.md`、`ARCHITECTURE.md`、`docs/CI.md`、`docs/GATES.md`，施工记录见归档计划。
 
 ## 这是什么项目
 
