@@ -64,3 +64,13 @@ root/worker创建ticks不进公共日志；worker存在的六类均有私有work
 紧随其后的无负例 runtime 单例 `final-controlled-s4a-smoke-b-1` 完成1/1，`exit=0/null`，单例耗时831ms，preflight exit=0；它执行真实 `/` 登录并进入 hash 路由，容器/schema/preview 清理全真。安全日志由 preflight 私有目录保存，未进入仓库。
 
 同状态对比结果是：无负例路径可达，认证撤销片段路径触发后出现固定连接超时，形成测试侧路径线索。按 R7 分支规则到此停止并上报，不进入 S4b 环境重建、不再跑认证负例、不启动 S5 两轮；原 relay 5 秒和失败硬闸保持，不能据此归因产品或确定网络根因。
+
+## 2026-10-21 T1/T2 归因收口
+
+按 [归因收口 R7](../tasks/harness-final-channel-attribution-authorization-2026-10-21.md)，在首例 `openAuthenticatedWorkspace` 后同一位置加入单行无害注释，运行一次 `final-controlled-p1-harmless-t-a-1`。结果与认证撤销片段一致：首个固定 `4173/upstream/CONNECT_TIMEOUT`、`closing=false`，无 `local-result`，发现数为0；native sampler 的 `nativeGone/nativeChildrenGone`、runtime/artifacts、owned schema/container/preview 均清理为真。安全日志为 `/tmp/kingturf-final-controlled-p1-harmless-t-a-1-2026-10-20.log`，未进入仓库。
+
+因此 T1 判定 **M1**：只要在该位置改变正式 spec 文件字节，受控容器路径就可在 runner 产生发现结果前触发相同 relay 超时；不能把认证撤销语义单独判为 M2。正式文件已逐字恢复，SHA-256 为 `37734ce8bae62a0bf5690339658a43cc63e18ac69b04529e97da5ddb4c5bb1c2`。
+
+T2 静态边界如下：`container.mjs` 在收到控制后先调用 `startForwards`，再进入 PG 同一性核验和 `runPrivateSpec`；`private-runner.mjs` 随后才以固定 `tests/e2e/p1-demo.spec.ts` 路径、只读 `/work` bind、tmpfs 结果目录和 `--trace=off` 启动 Playwright。撤 Cookie、会话 GET 和单行注释都位于该 spec 的测试函数体内，模块顶层只有 Playwright/AppRoute 导入和环境变量读取，不能在 relay 初始化前执行。S4a 的无负例 runtime 单例通过，而 T1 无害字节变更也在发现0阶段超时，机制证据落在“spec 文件变更/挂载同步/runner 加载边界与 relay 的时序耦合”；它不能证明具体 Docker、WSL 或 Windows 根因，也不能归因产品或正式测试语义。
+
+按 M1/T2 分支，TD018 负例有效性采用等价证明继续收口；本轮不修工具、不重试认证负例。历史真实红、当前 mock/PG 认证拒绝路径和真实注入红记录继续作为证明包组成部分。T1/T2 完成后正式正文恢复，进入两轮正常态 A8+B2。

@@ -12,6 +12,8 @@
 
 [TD018归因收口与两轮启动R7](tasks/harness-final-channel-attribution-authorization-2026-10-21.md)：授权一次无害片段对照、静态机制推演、明确 M1/M2/T2 分支及随后两轮正常态 A8+B2；正式测试正文逐字恢复，原 relay/失败硬闸和产品不改。
 
+[TD018 T1/T2 结果](evidence/harness-final-channel-controlled-2026-10-20.md)：同位置无害注释同样触发首个 upstream CONNECT_TIMEOUT，判定 M1；T2 将边界限定为 spec 文件变更/挂载同步/runner 加载与 relay 时序耦合，不归因认证语义、产品或具体网络层。
+
 [TD018专项结果与未激活工具](evidence/harness-final-network-diagnostics-2026-10-20.md)：WSL mirrored/版本及空闲计数不证明历史根因，暂不改配置；839d5ce R7→ef908ad独立API、12新增/49工具绿/独立审过。Windows取消未确认不假报gone，未接runner/未再P1，真实激活/复现另裁；最终干净HEAD全CI实际另验。
 
 [TD018同期采集工具窄授权R7](tasks/harness-final-network-sampling-authorization-2026-10-20.md)：仅有界白名单被动工具/纯测试，原超时立即失败与硬闸保持；任何网络配置不改，不再运行P1、实际复现另裁，最终全CI继续。

@@ -3822,6 +3822,8 @@ readonly scout另独立复算源码范围/779LOC/55运行函数/13静态与runti
 
 - **2026-10-21｜TD018归因收口与两轮启动R7先行**：最新授权落盘于[归因收口授权](../../tasks/harness-final-channel-attribution-authorization-2026-10-21.md)。接手 `f48db89` 树空；先做一次同位置无害片段 T1 与 T2 静态推演，按 M1/M2/T2 分支处理，正式正文逐字恢复后启动两轮正常态 A8+B2。负例只在具体机制获准且证据充分时最多重试一次；原 5 秒合同、失败硬闸、产品、workflow 和网络配置不改。[未测试]（R7 文档提交前不得运行）
 
+- **2026-10-21｜TD018 T1/T2 完成，判定M1**：同位置无害注释也在首个 `4173/upstream/CONNECT_TIMEOUT`、发现0阶段失败，认证撤销语义不再单独归因；T2 由 `container.mjs` relay先行、只读 bind/spec加载期边界支持“文件变更/挂载同步/runner加载与relay时序耦合”的机制界定。正式正文已恢复SHA，证据已落盘；按M1/T2不修工具、不重试负例，立即进入两轮正常态A8+B2。[已测试]（T1真实回放与静态推演，非两轮/终验）
+
 - **2026-10-20｜TD018受控收口正式R7先行**：主执行者亲核原始人类消息01a15804-2a6a-7543-bc23-d761ddfba287后，第一独立docs落[本授权及两硬审查](../../tasks/harness-final-channel-closeout-authorization-2026-10-20.md)。Windows3.6秒/旧1.5秒采集窗须重设，原relay5秒不动；真实启动/取消/精确PID创建身份与无残留必须实测，lost-handoff窗口监督、私有identity/16KiB/固定重编码与先原失败后清理保持。S1–S3证据独立审齐才S4，S4闭环才同HEAD两轮；再超时且数据不足定位即停上报。接手d973ce8树空，原CI0/null/401325ms不顶新结果；此提交无工具改动/真实新结果，后继设计/代码单责、最终新干净HEAD完整CI另实跑。回滚仅本R7记录须核后继，不撤原已验；不push/部署/生产/workflow/产品/依赖、不§14。[未测试]（授权文档，静态校验另跑）
 
 - **2026-10-20｜TD018独立未激活采集工具**：839d5ce先直接R7→ef908ad新增独立模块/12纯测，合49工具303.349778ms及lint/format0，原forward/preflight/spec/产品/配置零diff；不读实际采样/不再P1。独立审必要Windows取消风险已修为unavailable/childrenGone=false并纯负例，不将Linux组消失冒原生清理；实际激活/复现另批。[实现/限制/未完成](../../evidence/harness-final-network-diagnostics-2026-10-20.md)。最后材料一次提交后实际新干净HEAD完整CI，固定独立日志`/tmp/kingturf-final-post-grants-head-ci-2026-10-20.log`，结果由交付引用，不循环补CI自指提交。回滚ef908ad只撤工具与测试入口、不撤R7/历史；P链/人类终验仍未通过，§14不执行。[已测试]（纯工具，非实际采集/P1）
