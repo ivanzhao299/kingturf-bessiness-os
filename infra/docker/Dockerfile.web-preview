@@ -9,11 +9,9 @@ RUN corepack enable && corepack prepare pnpm@10.33.4 --activate
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json ./
 COPY apps/web/package.json apps/web/package.json
 COPY packages/config/package.json packages/config/package.json
-COPY packages/ui/package.json packages/ui/package.json
 RUN pnpm install --frozen-lockfile
 COPY apps/web apps/web
 COPY packages/config packages/config
-COPY packages/ui packages/ui
 RUN pnpm --filter @kingturf/web build
 
 FROM nginx:1.29-alpine

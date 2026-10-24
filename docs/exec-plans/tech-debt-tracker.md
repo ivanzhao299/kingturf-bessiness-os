@@ -859,6 +859,9 @@
 
 ### TD-HYG-002｜旧preview Dockerfile引用已删除包
 
+- **2026-10-24 发布前核实与修复**：发布前本地 API 镜像实际构建 exit 1，确认 testing/ui 的 COPY 源不存在。仅删除 API Dockerfile 两条、Web Dockerfile 两条失效 COPY；独立只读审查核对 workspace/lockfile/运行依赖，无业务或依赖变化。修复后两个生产使用镜像均实际构建 exit 0，API 容器离线导入 app.ts 成功、Web 镜像 nginx -t 成功；完整远端 CI 与发布结果另以对应 PR/Actions 为准。首次发布已在 verify 阶段申请取消，未更新生产应用；本项的镜像引用缺口已修，不代表全部生产发布已完成。
+- **验证边界与失败史**：Web 首次离线 nginx -t 因没有 Compose 的 api DNS 名而退出 1；仅在该离线检查容器内增加 api 到回环的 hosts 记录后重测退出 0。未改仓库 nginx 或生产 DNS；该检查只证明镜像配置语法，不能替代生产健康探针。
+
 - **位置/证据**：`infra/docker/Dockerfile.api-preview:16,18`仍COPY `packages/testing/package.json`、`packages/ui/package.json`，工作树目标均不存在；此Dockerfile相对S1最终00ed10d零diff，是旧D3删除包后的遗留引用，不是本次S2修改。
 - **类别**：构建/工程卫生 ｜ **严重度**：P2 ｜ **业务行为影响**：目前仅登记无变化，后续修复须独立审查。
 - **事实/推断边界**：静态路径缺失已证；疑似preview镜像构建失败，未执行Docker构建/部署，未证明生产运行或发布失败。
