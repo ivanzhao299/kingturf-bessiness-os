@@ -123,7 +123,7 @@ describe('real HTTP password security across two API instances and PostgreSQL', 
     });
   }
   async function login(user: User, password = oldPassword, server = 0): Promise<string> {
-    const response = await request(server, '/auth/login', '', 'POST', {
+    const response = await request(server, '/auth/token-login', '', 'POST', {
       login: user.login,
       password,
     });
@@ -309,8 +309,12 @@ describe('real HTTP password security across two API instances and PostgreSQL', 
       for (const server of [0, 1])
         expect((await request(server, '/auth/session', token)).status).toBe(401);
     expect(
-      (await request(0, '/auth/login', '', 'POST', { login: user.login, password: oldPassword }))
-        .status,
+      (
+        await request(0, '/auth/token-login', '', 'POST', {
+          login: user.login,
+          password: oldPassword,
+        })
+      ).status,
     ).toBe(401);
     const fresh = await login(user, newPassword, 1);
     expect((await request(0, '/auth/session', fresh)).status).toBe(200);
@@ -363,8 +367,12 @@ describe('real HTTP password security across two API instances and PostgreSQL', 
         expect((await request(1, '/auth/session', saved)).status).toBe(200);
       await login(user);
       expect(
-        (await request(0, '/auth/login', '', 'POST', { login: user.login, password: newPassword }))
-          .status,
+        (
+          await request(0, '/auth/token-login', '', 'POST', {
+            login: user.login,
+            password: newPassword,
+          })
+        ).status,
       ).toBe(401);
       expect(await auditCount('auth.password_change', user.employeeId)).toBe(0);
     });
@@ -485,7 +493,7 @@ describe('real HTTP password security across two API instances and PostgreSQL', 
     await lockedEmployee(user, async (unlock) => {
       const reset = change(token);
       await pendingLocks(1);
-      const oldLogin = request(1, '/auth/login', '', 'POST', {
+      const oldLogin = request(1, '/auth/token-login', '', 'POST', {
         login: user.login,
         password: oldPassword,
       });
@@ -506,7 +514,7 @@ describe('real HTTP password security across two API instances and PostgreSQL', 
     const user = await seed();
     const token = await login(user);
     await lockedEmployee(user, async (unlock) => {
-      const oldLogin = request(1, '/auth/login', '', 'POST', {
+      const oldLogin = request(1, '/auth/token-login', '', 'POST', {
         login: user.login,
         password: oldPassword,
       });
@@ -550,7 +558,7 @@ describe('real HTTP password security across two API instances and PostgreSQL', 
         password: newPassword,
       });
       await pendingLocks(1);
-      const oldLogin = request(1, '/auth/login', '', 'POST', {
+      const oldLogin = request(1, '/auth/token-login', '', 'POST', {
         login: target.login,
         password: oldPassword,
       });
@@ -653,8 +661,12 @@ describe('real HTTP password security across two API instances and PostgreSQL', 
     const user = await seed();
     await fault('auth.login', user.identityId, async () => {
       expect(
-        (await request(0, '/auth/login', '', 'POST', { login: user.login, password: oldPassword }))
-          .status,
+        (
+          await request(0, '/auth/token-login', '', 'POST', {
+            login: user.login,
+            password: oldPassword,
+          })
+        ).status,
       ).toBe(500);
       const rows = await database.query<{ count: string }>(
         'SELECT count(*) FROM sessions WHERE identity_id=$1',
@@ -663,6 +675,113 @@ describe('real HTTP password security across two API instances and PostgreSQL', 
       expect(Number(rows.rows[0]?.count)).toBe(0);
       expect(await auditCount('auth.login', user.identityId)).toBe(0);
     });
+  });
+
+  it('S4 Cookie HTTP login and proof cross instances; logout and password change revoke without Cookie clearing', async () => {
+    const user = await seed();
+    const origin = 'http://127.0.0.1:4173';
+    const call = (
+      server: number,
+      path: string,
+      method = 'GET',
+      headers: Record<string, string> = {},
+      body?: unknown,
+    ) =>
+      fetch(`${servers[server]?.origin ?? ''}/api/v1${path}`, {
+        method,
+        headers: { 'content-type': 'application/json', ...headers },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+        signal: AbortSignal.timeout(10000),
+      });
+    const browser = async (cookie = '') => {
+      const context = await call(0, '/auth/login-context', 'GET', {
+        ...(cookie ? { cookie } : {}),
+        'x-kingturf-session-intent': 'login',
+      });
+      expect(context.status).toBe(200);
+      expect(context.headers.get('cache-control')).toBe('no-store');
+      const contextBody = (await context.json()) as { csrfToken: string };
+      sensitiveValues.push(contextBody.csrfToken);
+      const authCookie = cookie
+        .split('; ')
+        .filter((part) => part.startsWith('__Host-kingturf-session='))
+        .join('; ');
+      const csrfCookie = context.headers
+        .getSetCookie()
+        .map((line) => line.split(';')[0])
+        .join('; ');
+      const response = await call(
+        0,
+        '/auth/login',
+        'POST',
+        {
+          origin,
+          cookie: [authCookie, csrfCookie].filter(Boolean).join('; '),
+          'x-kingturf-csrf': contextBody.csrfToken,
+        },
+        { login: user.login, password: oldPassword },
+      );
+      expect(response.status).toBe(200);
+      expect(response.headers.get('cache-control')).toBe('no-store');
+      expect(response.headers.getSetCookie().length).toBe(2);
+      expect(
+        response.headers
+          .getSetCookie()
+          .every((line) => line.includes('Secure; SameSite=Lax') && !line.includes('Domain=')),
+      ).toBe(true);
+      const result = (await response.json()) as {
+        generation: string;
+        csrfToken: string;
+        token?: unknown;
+      };
+      expect(result.token).toBeUndefined();
+      const nextCookie = response.headers
+        .getSetCookie()
+        .map((line) => line.split(';')[0])
+        .join('; ');
+      sensitiveValues.push(
+        result.generation,
+        result.csrfToken,
+        ...response.headers
+          .getSetCookie()
+          .map((line) =>
+            (line.split(';')[0] ?? '').slice((line.split(';')[0] ?? '').indexOf('=') + 1),
+          ),
+      );
+      return {
+        cookie: nextCookie,
+        headers: {
+          origin,
+          cookie: nextCookie,
+          'x-kingturf-csrf': result.csrfToken,
+          'x-kingturf-session-generation': result.generation,
+        },
+      };
+    };
+    const a = await browser();
+    const session = await call(1, '/auth/session', 'GET', { cookie: a.cookie });
+    expect(session.status).toBe(200);
+    expect(((await session.json()) as { employeeId: string }).employeeId === user.employeeId).toBe(
+      true,
+    );
+    expect(session.headers.getSetCookie().length).toBe(0);
+    const logout = await call(1, '/auth/logout', 'POST', a.headers);
+    expect(logout.status).toBe(204);
+    expect(logout.headers.getSetCookie().length).toBe(0);
+    expect((await call(0, '/auth/session', 'GET', { cookie: a.cookie })).status).toBe(401);
+    const b = await browser(a.cookie);
+    const c = await browser(b.cookie);
+    const changed = await call(1, '/auth/credential', 'PUT', b.headers, {
+      currentPassword: oldPassword,
+      password: newPassword,
+    });
+    expect(changed.status).toBe(204);
+    expect(changed.headers.getSetCookie().length).toBe(0);
+    for (const cookie of [b.cookie, c.cookie]) {
+      const revoked = await call(0, '/auth/session', 'GET', { cookie });
+      expect(revoked.status).toBe(401);
+      expect(revoked.headers.getSetCookie().length).toBe(0);
+    }
   });
 
   it('does not log passwords, password hashes, session secrets or bearer material', () => {

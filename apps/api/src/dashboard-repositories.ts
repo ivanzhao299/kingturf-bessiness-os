@@ -1,6 +1,7 @@
 import { type Actor, type ScopeAnchor } from '@kingturf/domain';
 import type { Database, SqlClient } from '@kingturf/database';
 import type { DataScope, JsonObject } from '@kingturf/types';
+import { recordScopeSql } from './scope-sql.ts';
 
 type Db = SqlClient & Pick<Database, 'transaction'>;
 type Context = Readonly<{
@@ -8,31 +9,15 @@ type Context = Readonly<{
   scopes: readonly DataScope[];
   anchors: readonly ScopeAnchor[];
 }>;
-const customerScope = (context: Context, alias: string, offset = 5) => {
-  const clauses: string[] = [],
-    values: string[] = [];
-  if (context.scopes.includes('COMPANY') || context.scopes.includes('GROUP')) clauses.push('TRUE');
-  if (context.scopes.includes('SELF')) {
-    values.push(context.actor.employeeId);
-    clauses.push(`${alias}.owner_id=$${String(offset + values.length - 1)}`);
-  }
-  for (const anchor of context.anchors)
-    if (anchor.organizationId && context.scopes.includes(anchor.scope)) {
-      values.push(anchor.organizationId);
-      clauses.push(
-        `EXISTS(SELECT 1 FROM organization_scope_relationships osr WHERE osr.tenant_id=${alias}.tenant_id AND osr.ancestor_id=$${String(offset + values.length - 1)} AND osr.descendant_id=${alias}.owner_organization_id AND osr.scope='${anchor.scope}')`,
-      );
-    }
-  return { sql: clauses.length ? `(${clauses.join(' OR ')})` : 'FALSE', values };
-};
-
 export class PostgresDashboardRepository {
   public constructor(private readonly db: Db) {}
   public async get(
     input: { from: string; to: string; currency: string },
     context: Context,
   ): Promise<JsonObject> {
-    const secured = customerScope(context, 'c');
+    const secured = recordScopeSql(context.scopes, context.anchors, context.actor, 'c', 5, {
+      anchorPredicate: 'relationshipOnly',
+    });
     const row = (
       await this.db.query<{ item: JsonObject }>(
         `WITH

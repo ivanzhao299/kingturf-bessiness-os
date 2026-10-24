@@ -1,0 +1,540 @@
+diff --git a/package.json b/package.json
+index a2da62e..2252c1b 100644
+--- a/package.json
++++ b/package.json
+@@ -16,7 +16,7 @@
+     "test:coverage-tools": "node --test scripts/analysis/coverage-inventory.test.mjs scripts/analysis/coverage-process.test.mjs scripts/analysis/coverage-exemptions.test.mjs",
+     "test:coverage": "pnpm test:release-guardrails && pnpm test:session-network-tools && pnpm test:coverage-tools && node scripts/analysis/coverage-run.mjs check",
+     "coverage:measure": "node scripts/analysis/coverage-run.mjs measure",
+-    "test:session-network-tools": "node --test scripts/e2e-cdp/session-network.test.mjs scripts/e2e-docker/private-contract.test.mjs scripts/e2e-docker/p1-diagnostics-contract.test.mjs scripts/e2e-docker/cost-comparison-source.test.mjs",
++    "test:session-network-tools": "node --test scripts/e2e-cdp/session-network.test.mjs scripts/e2e-docker/private-contract.test.mjs scripts/e2e-docker/p1-diagnostics-contract.test.mjs scripts/e2e-docker/cost-comparison-source.test.mjs scripts/e2e-docker/source-preparation.test.mjs",
+     "test:release-guardrails": "node --test scripts/validate_release.test.mjs && node --test scripts/analysis/structure-gate.test.mjs scripts/analysis/function-length.test.mjs && node --test scripts/analysis/service-boundary-gate.test.mjs && node --test scripts/analysis/frontend-runtime-sources.test.mjs scripts/analysis/qtc-root-capture-source.test.mjs && node --test scripts/analysis/csp-nginx-client.test.mjs scripts/e2e-cdp/fixtures.test.mjs scripts/e2e-cdp/network-policy.test.mjs scripts/e2e-cdp/driver.test.mjs scripts/e2e-cdp/csp-observer.test.mjs scripts/e2e-cdp/csp-send.test.mjs scripts/e2e-cdp/cookie-http.test.mjs && PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests/operations -p \"*_test.py\"",
+     "build": "pnpm -r build",
+     "db:migrate": "pnpm --filter @kingturf/database db:migrate",
+diff --git a/scripts/e2e-docker/preflight.mjs b/scripts/e2e-docker/preflight.mjs
+index 6f50648..84efb3b 100644
+--- a/scripts/e2e-docker/preflight.mjs
++++ b/scripts/e2e-docker/preflight.mjs
+@@ -13,12 +13,15 @@ import { relayFailureCodes } from './forward.mjs';
+ import { safeDiagnostic, safeDiagnosticResult } from './p1-diagnostics-contract.mjs';
+ import { prepareOldCostWeb } from './cost-comparison.mjs';
+ import { safeCostObservation, validateCostComparison } from './cost-comparison-source.mjs';
++import { safeSourcePreparation } from './source-preparation.mjs';
+
+ const image = 'kingturf-e2e:pw1.62.1-chrome';
+ const imageId = 'sha256:1a0e14c3fd2351aab685106ad17d86b0bd38e6ed89cc0d0d2be809579f8dab3e';
+ let localEventFile;
+ let localChildClose;
+ let localResultSeen = false;
++let sourcePrepared = false;
++let sourcePreparationSeen = false;
+ const diagnosticObserved = new Set();
+ const report = (event, details = {}) => {
+   const line = JSON.stringify({ event, ...details });
+@@ -47,9 +50,26 @@ const reportContainer = (value) => {
+     'p1-diagnostic': [],
+     'diagnostics-result': [],
+     'cost-comparison': [],
++    'source-fixture-result': [],
+   };
+   assert(Object.hasOwn(schemas, value.event), 'unknown container event');
+   const safe = {};
++  if (value.event === 'source-fixture-result') {
++    assert.equal(mode, 'local');
++    assert.equal(process.argv[3], 'source');
++    assert.equal(value.kind, 'source');
++    assert.equal(value.label, process.argv[4]);
++    assert.equal(sourcePreparationSeen, false);
++    sourcePreparationSeen = true;
++    const observation = safeSourcePreparation(value);
++    Object.assign(safe, { kind: 'source', label: value.label, ...observation });
++    sourcePrepared =
++      observation.exit === 0 &&
++      observation.signal === null &&
++      observation.producerPassed &&
++      observation.fixtureValidated &&
++      observation.schemaCleanup;
++  }
+   if (value.event === 'cost-comparison') {
+     assert.equal(mode, 'cost-compare');
+     validateCostComparison(value.condition, value.label);
+@@ -146,6 +166,8 @@ const reportContainer = (value) => {
+       assert.equal(localResultSeen, false, 'duplicate private result');
+       assert.equal(value.probe, process.argv[5] === 'privacy', 'probe must match explicit command');
+       if (!value.probe) {
++        if (value.kind === 'source')
++          assert(sourcePrepared, 'source browser requires observed successful private producer');
+         assert.equal(localChildClose?.exit, value.exit, 'result requires observed browser close');
+         assert.equal(localChildClose.terminationSignal, null);
+       } else assert.equal(localChildClose, undefined);
+diff --git a/scripts/e2e-docker/private-contract.mjs b/scripts/e2e-docker/private-contract.mjs
+index 4da8c3d..b954ed2 100644
+--- a/scripts/e2e-docker/private-contract.mjs
++++ b/scripts/e2e-docker/private-contract.mjs
+@@ -11,6 +11,11 @@ export const p1DomPhases = Object.freeze([
+ ]);
+
+ export const localCases = Object.freeze({
++  source: [
++    'collection and order evidence reflect independent legal read (denied)',
++    'collection and order evidence reflect independent legal read (authorized)',
++    'collection and order evidence reflect independent legal read (masked)',
++  ],
+   document: [
+     'draft sends give immediate, actionable feedback without requests; approval updates in place',
+     'missing customer is explained, with mobile feedback fitting the viewport',
+@@ -67,6 +72,7 @@ export const localCases = Object.freeze({
+ export function privateSpecFile(kind) {
+   assert(Object.hasOwn(localCases, kind), 'only inventoried local browser targets allowed');
+   return {
++    source: 'source-nested-authorization.spec.ts',
+     document: 'document-send-product-quality.spec.ts',
+     login: 'login-product-quality.spec.ts',
+     order: 'order-evidence-product-quality.spec.ts',
+diff --git a/scripts/e2e-docker/private-contract.test.mjs b/scripts/e2e-docker/private-contract.test.mjs
+index 3c1d576..d2d4208 100644
+--- a/scripts/e2e-docker/private-contract.test.mjs
++++ b/scripts/e2e-docker/private-contract.test.mjs
+@@ -99,7 +99,7 @@ test('every added fixed A file requires all original cases and never grants C or
+     assert.throws(() => safeLocalResult(kind, { ...result, cases: cases.slice(0, -1) }));
+     assert.throws(() => safeLocalResult(kind, { ...result, complete: false }));
+   }
+-  for (const kind of ['source', 'production-readonly', 'production-role-uat', 'all'])
++  for (const kind of ['production-readonly', 'production-role-uat', 'all'])
+     assert.throws(() => privateSpecFile(kind));
+ });
+
+diff --git a/scripts/e2e-docker/private-runner.mjs b/scripts/e2e-docker/private-runner.mjs
+index 2adc24e..8ab1e47 100644
+--- a/scripts/e2e-docker/private-runner.mjs
++++ b/scripts/e2e-docker/private-runner.mjs
+@@ -9,6 +9,7 @@ import {
+   validateLocalCommand,
+ } from './private-contract.mjs';
+ import { runP1Diagnostics } from './p1-diagnostics.mjs';
++import { prepareSourceFixture } from './source-preparation.mjs';
+
+ export async function verifyPrivateFilesystem(label) {
+   const mounts = await readFile('/proc/mounts', 'utf8');
+@@ -115,6 +116,8 @@ export async function runPrivateSpec(command, signal, report) {
+     }
+   };
+   try {
++    signal.throwIfAborted();
++    if (kind === 'source') await prepareSourceFixture(command, signal, environment, raw.fd, report);
+     signal.throwIfAborted();
+     child = spawn(process.execPath, args, {
+       env: environment,
+diff --git a/scripts/e2e-docker/source-preparation.mjs b/scripts/e2e-docker/source-preparation.mjs
+new file mode 100644
+--- /dev/null
++++ b/scripts/e2e-docker/source-preparation.mjs
+@@ -0,0 +1,261 @@
++import assert from 'node:assert/strict';
++import { spawn } from 'node:child_process';
++import { readFile, stat } from 'node:fs/promises';
++import { performance } from 'node:perf_hooks';
++
++const modes = ['denied', 'authorized', 'masked'];
++const fixturePath = '/work/.test-results/authz-ui-fixtures.json';
++const resultPath = '/tmp/kingturf-private/source-pg.json';
++const isObject = (value) => value && typeof value === 'object' && !Array.isArray(value);
++export function validateSourceFixture(
++  value,
++  reached = () => {
++    /* Optional fixed-stage observer; no fixture values are forwarded. */
++  },
++) {
++  reached('fixture-roots');
++  assert(isObject(value), 'source fixture object required');
++  assert.deepEqual(
++    Object.keys(value).sort(),
++    modes.flatMap((mode) => [mode, `${mode}Session`, `${mode}Collections`]).sort(),
++  );
++  for (const mode of modes) {
++    reached('fixture-aggregate');
++    assert(
++      isObject(value[mode]) && isObject(value[mode].order),
++      'synthetic source aggregate required',
++    );
++    const session = value[`${mode}Session`];
++    reached('fixture-session');
++    assert(isObject(session));
++    assert.deepEqual(
++      Object.keys(session).sort(),
++      ['companyId', 'displayName', 'employeeId', 'employeeNumber', 'permissions'].sort(),
++      'machine-session fixture must not carry browser authentication material',
++    );
++    assert.equal(typeof session.companyId, 'string');
++    assert.equal(typeof session.employeeId, 'string');
++    for (const key of ['displayName', 'employeeNumber'])
++      assert(session[key] === null || typeof session[key] === 'string');
++    assert(
++      Array.isArray(session.permissions) &&
++        session.permissions.every((item) => typeof item === 'string'),
++    );
++    reached('fixture-collections');
++    assert(
++      isObject(value[`${mode}Collections`]) && Array.isArray(value[`${mode}Collections`].items),
++    );
++  }
++  let visited = 0;
++  const visit = (node, depth) => {
++    reached('fixture-bounds');
++    assert(++visited <= 30000 && depth <= 40, 'bounded synthetic fixture required');
++    if (typeof node === 'string') assert(node.length <= 64000);
++    if (node && typeof node === 'object')
++      for (const [key, child] of Object.entries(node)) {
++        if (
++          /^(?:token|csrfToken|csrfProof|password|secret|cookie|authorization|generation)$/iu.test(
++            key,
++          )
++        )
++          reached('fixture-auth-fields');
++        assert(
++          !/^(?:token|csrfToken|csrfProof|password|secret|cookie|authorization|generation)$/iu.test(
++            key,
++          ),
++          'authentication fields forbidden in synthetic source fixture',
++        );
++        visit(child, depth + 1);
++      }
++  };
++  visit(value, 0);
++  return true;
++}
++
++export function sourceProducerPassed(value) {
++  const suite = value?.testResults?.[0];
++  return (
++    value?.success === true &&
++    value.numTotalTests === 19 &&
++    value.numPassedTests === 19 &&
++    value.numFailedTests === 0 &&
++    value.numPendingTests === 0 &&
++    value.numTodoTests === 0 &&
++    Array.isArray(value.testResults) &&
++    value.testResults.length === 1 &&
++    suite.name === '/work/apps/api/test/authorization-http-postgres.integration.test.ts' &&
++    Array.isArray(suite.assertionResults) &&
++    suite.assertionResults.length === 19 &&
++    suite.assertionResults.every((item) => item.status === 'passed')
++  );
++}
++
++export function safeSourcePreparation(value) {
++  assert(
++    value.exit === null || (Number.isInteger(value.exit) && value.exit >= 0 && value.exit <= 255),
++  );
++  assert(value.signal === null || /^SIG[A-Z0-9]+$/u.test(value.signal));
++  assert(Number.isSafeInteger(value.elapsedMs) && value.elapsedMs >= 0);
++  for (const key of ['producerPassed', 'fixtureValidated', 'schemaCleanup'])
++    assert.equal(typeof value[key], 'boolean');
++  assert(
++    [
++      'catalog',
++      'producer',
++      'producer-json',
++      'fixture-json',
++      'fixture-roots',
++      'fixture-aggregate',
++      'fixture-session',
++      'fixture-collections',
++      'fixture-bounds',
++      'fixture-auth-fields',
++      'complete',
++    ].includes(value.stage),
++  );
++  return {
++    exit: value.exit,
++    signal: value.signal,
++    elapsedMs: value.elapsedMs,
++    producerPassed: value.producerPassed,
++    fixtureValidated: value.fixtureValidated,
++    schemaCleanup: value.schemaCleanup,
++    stage: value.stage,
++  };
++}
++
++async function absent(path) {
++  try {
++    await stat(path);
++  } catch (error) {
++    if (error.code === 'ENOENT') return;
++    throw error;
++  }
++  throw Error('private producer requires a fresh fixed path');
++}
++async function boundedJson(path) {
++  const info = await stat(path);
++  assert(
++    info.isFile() && info.size > 0 && info.size <= 2 * 1024 * 1024,
++    'bounded private producer JSON required',
++  );
++  return JSON.parse(await readFile(path, 'utf8'));
++}
++
++// Producer and consumer stay in the same readonly repository + owned RAM filesystems.
++// Failure never falls back to a host fixture, original raw logs, or guessed schema deletion.
++export async function prepareSourceFixture(command, signal, environment, rawFd, report) {
++  const { Database, assertTestDatabaseTarget } =
++    await import('../../packages/database/dist/index.js');
++  assert.equal(command.kind, 'source');
++  assertTestDatabaseTarget(command.connection, 'test');
++  await absent(fixturePath);
++  await absent(resultPath);
++  for (const name of ['.env', '.env.local', '.env.test', '.env.test.local'])
++    await absent(`/work/apps/api/${name}`);
++  const database = new Database(command.connection);
++  const schemas = () =>
++    database.transaction(async (client) => {
++      await client.query('SET TRANSACTION READ ONLY');
++      return new Set(
++        (
++          await client.query(
++            "SELECT nspname FROM pg_namespace WHERE nspname ~ '^authz_http_[a-f0-9]{32}$'",
++          )
++        ).rows.map((row) => row.nspname),
++      );
++    });
++  let child, force;
++  const abort = () => {
++    if (!child?.pid || child.exitCode !== null || child.signalCode !== null) return;
++    try {
++      process.kill(-child.pid, 'SIGTERM');
++      force ??= setTimeout(() => {
++        try {
++          process.kill(-child.pid, 'SIGKILL');
++        } catch {
++          /* Owned group already drained. */
++        }
++      }, 3000);
++    } catch {
++      /* Owned group already drained. */
++    }
++  };
++  const started = performance.now();
++  let closed = { exit: null, signal: null };
++  let producerPassed = false,
++    fixtureValidated = false,
++    schemaCleanup = false,
++    failed = false;
++  let stage = 'catalog';
++  try {
++    const before = await schemas();
++    signal.throwIfAborted();
++    stage = 'producer';
++    child = spawn(
++      process.execPath,
++      [
++        '/work/node_modules/vitest/vitest.mjs',
++        'run',
++        'test/authorization-http-postgres.integration.test.ts',
++        '--configLoader=native',
++        '--no-cache',
++        '--reporter=json',
++        `--outputFile=${resultPath}`,
++      ],
++      {
++        cwd: '/work/apps/api',
++        env: { ...environment, NODE_ENV: 'test', DATABASE_URL: command.connection },
++        stdio: ['ignore', rawFd, rawFd],
++        detached: true,
++      },
++    );
++    signal.addEventListener('abort', abort, { once: true });
++    if (signal.aborted) abort();
++    closed = await new Promise((resolve, reject) => {
++      child.once('error', () => reject(Error('fixed private source producer spawn failed')));
++      child.once('close', (exit, terminationSignal) =>
++        resolve({ exit, signal: terminationSignal }),
++      );
++    });
++    stage = 'catalog';
++    const after = await schemas();
++    schemaCleanup = [...after].every((name) => before.has(name));
++    if (closed.exit === 0 && closed.signal === null && !signal.aborted) {
++      stage = 'producer-json';
++      producerPassed = sourceProducerPassed(await boundedJson(resultPath));
++      if (producerPassed) {
++        stage = 'fixture-json';
++        fixtureValidated = validateSourceFixture(await boundedJson(fixturePath), (next) => {
++          stage = next;
++        });
++      }
++    }
++    assert(
++      closed.exit === 0 &&
++        closed.signal === null &&
++        producerPassed &&
++        fixtureValidated &&
++        schemaCleanup,
++      'fixed source producer requires real 19/19 success, validated RAM fixture and no new schema remaining',
++    );
++    stage = 'complete';
++    signal.throwIfAborted();
++  } catch {
++    failed = true;
++  } finally {
++    signal.removeEventListener('abort', abort);
++    clearTimeout(force);
++    await database.close();
++  }
++  const observation = safeSourcePreparation({
++    ...closed,
++    elapsedMs: Math.round(performance.now() - started),
++    producerPassed,
++    fixtureValidated,
++    schemaCleanup,
++    stage,
++  });
++  report('source-fixture-result', { kind: command.kind, label: command.label, ...observation });
++  assert(!failed, 'fixed private source preparation failed at a fixed reported stage');
++}
+diff --git a/scripts/e2e-docker/source-preparation.test.mjs b/scripts/e2e-docker/source-preparation.test.mjs
+new file mode 100644
+--- /dev/null
++++ b/scripts/e2e-docker/source-preparation.test.mjs
+@@ -0,0 +1,142 @@
++import assert from 'node:assert/strict';
++import { readFileSync } from 'node:fs';
++import test from 'node:test';
++import {
++  safeSourcePreparation,
++  sourceProducerPassed,
++  validateSourceFixture,
++} from './source-preparation.mjs';
++import { localCases, privateSpecFile, safeLocalResult } from './private-contract.mjs';
++
++const sample = () =>
++  Object.fromEntries(
++    ['denied', 'authorized', 'masked'].flatMap((mode) => [
++      [mode, { order: { order_number: 'AUTH-ORDER' } }],
++      [
++        `${mode}Session`,
++        {
++          companyId: 'fixed-company',
++          employeeId: 'fixed-employee',
++          displayName: 'Synthetic actor',
++          employeeNumber: null,
++          permissions: ['order-360:read'],
++        },
++      ],
++      [`${mode}Collections`, { items: [] }],
++    ]),
++  );
++
++test('source fixture validation requires exact nine synthetic roots and forbids authentication fields', () => {
++  assert.equal(validateSourceFixture(sample()), true);
++  for (const key of [
++    'token',
++    'csrfToken',
++    'csrfProof',
++    'password',
++    'secret',
++    'cookie',
++    'authorization',
++    'generation',
++  ]) {
++    const value = sample();
++    value.denied.nested = { [key]: 'FIXED_NON_SECRET_CANARY' };
++    assert.throws(() => validateSourceFixture(value));
++  }
++  const extra = sample();
++  extra.raw = 'FIXED_NON_SECRET_CANARY';
++  assert.throws(() => validateSourceFixture(extra));
++  const missing = sample();
++  delete missing.maskedCollections;
++  assert.throws(() => validateSourceFixture(missing));
++  const session = sample();
++  session.authorizedSession.csrfToken = 'FIXED_NON_SECRET_CANARY';
++  assert.throws(() => validateSourceFixture(session));
++});
++
++test('only real full 19-case producer success can validate its exact private result file', () => {
++  const value = {
++    success: true,
++    numTotalTests: 19,
++    numPassedTests: 19,
++    numFailedTests: 0,
++    numPendingTests: 0,
++    numTodoTests: 0,
++    testResults: [
++      {
++        name: '/work/apps/api/test/authorization-http-postgres.integration.test.ts',
++        assertionResults: Array.from({ length: 19 }, () => ({ status: 'passed' })),
++      },
++    ],
++  };
++  assert.equal(sourceProducerPassed(value), true);
++  for (const changes of [
++    { success: false },
++    { numPassedTests: 18 },
++    { numTotalTests: 20 },
++    { numPendingTests: 1 },
++    { numTodoTests: 1 },
++    { numFailedTests: 1 },
++    { testResults: [] },
++    { testResults: [{ ...value.testResults[0], name: '/tmp/foreign.test.ts' }] },
++    {
++      testResults: [
++        {
++          ...value.testResults[0],
++          assertionResults: Array.from({ length: 19 }, () => ({ status: 'skipped' })),
++        },
++      ],
++    },
++  ])
++    assert.equal(sourceProducerPassed({ ...value, ...changes }), false);
++  assert.equal(sourceProducerPassed(undefined), false);
++});
++
++test('private source preparation exports only fixed scalar flags, never raw failures or fixture values', () => {
++  const value = {
++    exit: 0,
++    signal: null,
++    elapsedMs: 1,
++    producerPassed: true,
++    fixtureValidated: true,
++    schemaCleanup: true,
++    stage: 'complete',
++  };
++  assert.deepEqual(safeSourcePreparation({ ...value, raw: 'FIXED_NON_SECRET_CANARY' }), value);
++  for (const changes of [
++    { exit: 'raw' },
++    { exit: -1 },
++    { signal: 'raw' },
++    { elapsedMs: -1 },
++    { schemaCleanup: 'true' },
++  ])
++    assert.throws(() => safeSourcePreparation({ ...value, ...changes }));
++});
++
++test('fixed source inventory preserves original three modes and requires all UI cases', () => {
++  const source = readFileSync(
++    new URL('../../tests/e2e/source-nested-authorization.spec.ts', import.meta.url),
++    'utf8',
++  );
++  assert(source.includes("for (const mode of ['denied', 'authorized', 'masked'] as const)"));
++  assert(
++    source.includes(
++      'test(`collection and order evidence reflect independent legal read (${mode})`',
++    ),
++  );
++  assert.deepEqual(
++    localCases.source,
++    ['denied', 'authorized', 'masked'].map(
++      (mode) => `collection and order evidence reflect independent legal read (${mode})`,
++    ),
++  );
++  assert.equal(privateSpecFile('source'), 'source-nested-authorization.spec.ts');
++  const cases = localCases.source.map((_, index) => ({
++    index,
++    status: 'passed',
++    durationMs: 1,
++    line: index + 1,
++  }));
++  const result = { exit: 0, elapsedMs: 1, discovered: 3, complete: true, probe: false, cases };
++  assert.equal(safeLocalResult('source', result).cases.length, 3);
++  assert.throws(() => safeLocalResult('source', { ...result, cases: cases.slice(0, 2) }));
++});

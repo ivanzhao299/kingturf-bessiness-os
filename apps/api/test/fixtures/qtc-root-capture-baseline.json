@@ -1,0 +1,5823 @@
+{
+  "baseline": "c7833e7",
+  "regressionStart": "7251b08",
+  "reports": [
+    {
+      "name": "GET credit-limits / plain",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "limits"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:credit:read",
+        "scopes",
+        "fields",
+        "permission:credit:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:first",
+        "actor",
+        "call:first",
+        "permission:credit:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET credit-limits / guard_throw",
+      "status": 500,
+      "body": {
+        "error": {
+          "code": "internal_error",
+          "message": "Internal server error",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": ["header", "auth", "root:1"],
+      "outputRef": false
+    },
+    {
+      "name": "GET credit-limits / root_throw",
+      "status": 500,
+      "body": {
+        "error": {
+          "code": "internal_error",
+          "message": "Internal server error",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 2,
+      "calls": [],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:credit:read",
+        "scopes",
+        "fields",
+        "permission:credit:read",
+        "scopes",
+        "anchors",
+        "root:2"
+      ],
+      "outputRef": false
+    },
+    {
+      "name": "GET credit-limits / method_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "limits"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:credit:read",
+        "scopes",
+        "fields",
+        "permission:credit:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:first",
+        "actor",
+        "call:first",
+        "permission:credit:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET credit-limits / actor_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "limits"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:credit:read",
+        "scopes",
+        "fields",
+        "permission:credit:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:first",
+        "actor",
+        "call:first",
+        "permission:credit:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET credit-limits / deny",
+      "status": 403,
+      "body": {
+        "error": {
+          "code": "forbidden",
+          "message": "Permission denied",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": ["header", "auth", "root:1", "permission:credit:read"],
+      "outputRef": false
+    },
+    {
+      "name": "GET credit-limits / auth_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "limits"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:credit:read",
+        "scopes",
+        "fields",
+        "permission:credit:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:second",
+        "actor",
+        "call:second",
+        "permission:credit:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET credit-limits / scopes_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "limits"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:credit:read",
+        "scopes",
+        "fields",
+        "permission:credit:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:second",
+        "actor",
+        "call:second",
+        "permission:credit:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET credit-limits / anchors_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "limits"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:credit:read",
+        "scopes",
+        "fields",
+        "permission:credit:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:second",
+        "actor",
+        "call:second",
+        "permission:credit:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET credit-limits / fields_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "limits"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:credit:read",
+        "scopes",
+        "fields",
+        "permission:credit:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:second",
+        "actor",
+        "call:second",
+        "permission:credit:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET credit-limits / late_fields_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "limits"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:credit:read",
+        "scopes",
+        "fields",
+        "permission:credit:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:first",
+        "actor",
+        "call:first",
+        "permission:credit:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET credit-limits / deny_root_throw",
+      "status": 403,
+      "body": {
+        "error": {
+          "code": "forbidden",
+          "message": "Permission denied",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": ["header", "auth", "root:1", "permission:credit:read"],
+      "outputRef": false
+    },
+    {
+      "name": "GET credit-decisions / plain",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "credit"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:credit:read",
+        "scopes",
+        "fields",
+        "permission:credit:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:first",
+        "actor",
+        "call:first",
+        "permission:credit:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET credit-decisions / guard_throw",
+      "status": 500,
+      "body": {
+        "error": {
+          "code": "internal_error",
+          "message": "Internal server error",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": ["header", "auth", "root:1"],
+      "outputRef": false
+    },
+    {
+      "name": "GET credit-decisions / root_throw",
+      "status": 500,
+      "body": {
+        "error": {
+          "code": "internal_error",
+          "message": "Internal server error",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 2,
+      "calls": [],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:credit:read",
+        "scopes",
+        "fields",
+        "permission:credit:read",
+        "scopes",
+        "anchors",
+        "root:2"
+      ],
+      "outputRef": false
+    },
+    {
+      "name": "GET credit-decisions / method_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "credit"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:credit:read",
+        "scopes",
+        "fields",
+        "permission:credit:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:first",
+        "actor",
+        "call:first",
+        "permission:credit:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET credit-decisions / actor_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "credit"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:credit:read",
+        "scopes",
+        "fields",
+        "permission:credit:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:first",
+        "actor",
+        "call:first",
+        "permission:credit:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET credit-decisions / deny",
+      "status": 403,
+      "body": {
+        "error": {
+          "code": "forbidden",
+          "message": "Permission denied",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": ["header", "auth", "root:1", "permission:credit:read"],
+      "outputRef": false
+    },
+    {
+      "name": "GET credit-decisions / auth_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "credit"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:credit:read",
+        "scopes",
+        "fields",
+        "permission:credit:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:second",
+        "actor",
+        "call:second",
+        "permission:credit:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET credit-decisions / scopes_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "credit"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:credit:read",
+        "scopes",
+        "fields",
+        "permission:credit:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:second",
+        "actor",
+        "call:second",
+        "permission:credit:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET credit-decisions / anchors_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "credit"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:credit:read",
+        "scopes",
+        "fields",
+        "permission:credit:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:second",
+        "actor",
+        "call:second",
+        "permission:credit:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET credit-decisions / fields_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "credit"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:credit:read",
+        "scopes",
+        "fields",
+        "permission:credit:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:second",
+        "actor",
+        "call:second",
+        "permission:credit:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET credit-decisions / late_fields_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "credit"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:credit:read",
+        "scopes",
+        "fields",
+        "permission:credit:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:first",
+        "actor",
+        "call:first",
+        "permission:credit:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET credit-decisions / deny_root_throw",
+      "status": 403,
+      "body": {
+        "error": {
+          "code": "forbidden",
+          "message": "Permission denied",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": ["header", "auth", "root:1", "permission:credit:read"],
+      "outputRef": false
+    },
+    {
+      "name": "GET contracts / plain",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "contracts"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:contract:read",
+        "scopes",
+        "fields",
+        "permission:contract:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:first",
+        "actor",
+        "call:first",
+        "permission:contract:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET contracts / guard_throw",
+      "status": 500,
+      "body": {
+        "error": {
+          "code": "internal_error",
+          "message": "Internal server error",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": ["header", "auth", "root:1"],
+      "outputRef": false
+    },
+    {
+      "name": "GET contracts / root_throw",
+      "status": 500,
+      "body": {
+        "error": {
+          "code": "internal_error",
+          "message": "Internal server error",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 2,
+      "calls": [],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:contract:read",
+        "scopes",
+        "fields",
+        "permission:contract:read",
+        "scopes",
+        "anchors",
+        "root:2"
+      ],
+      "outputRef": false
+    },
+    {
+      "name": "GET contracts / method_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "contracts"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:contract:read",
+        "scopes",
+        "fields",
+        "permission:contract:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:first",
+        "actor",
+        "call:first",
+        "permission:contract:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET contracts / actor_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "contracts"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:contract:read",
+        "scopes",
+        "fields",
+        "permission:contract:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:first",
+        "actor",
+        "call:first",
+        "permission:contract:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET contracts / deny",
+      "status": 403,
+      "body": {
+        "error": {
+          "code": "forbidden",
+          "message": "Permission denied",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": ["header", "auth", "root:1", "permission:contract:read"],
+      "outputRef": false
+    },
+    {
+      "name": "GET contracts / auth_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "contracts"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:contract:read",
+        "scopes",
+        "fields",
+        "permission:contract:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:second",
+        "actor",
+        "call:second",
+        "permission:contract:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET contracts / scopes_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "contracts"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:contract:read",
+        "scopes",
+        "fields",
+        "permission:contract:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:second",
+        "actor",
+        "call:second",
+        "permission:contract:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET contracts / anchors_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "contracts"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:contract:read",
+        "scopes",
+        "fields",
+        "permission:contract:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:second",
+        "actor",
+        "call:second",
+        "permission:contract:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET contracts / fields_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "contracts"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:contract:read",
+        "scopes",
+        "fields",
+        "permission:contract:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:second",
+        "actor",
+        "call:second",
+        "permission:contract:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET contracts / late_fields_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "contracts"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:contract:read",
+        "scopes",
+        "fields",
+        "permission:contract:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:first",
+        "actor",
+        "call:first",
+        "permission:contract:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET contracts / deny_root_throw",
+      "status": 403,
+      "body": {
+        "error": {
+          "code": "forbidden",
+          "message": "Permission denied",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": ["header", "auth", "root:1", "permission:contract:read"],
+      "outputRef": false
+    },
+    {
+      "name": "GET sales-orders / plain",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "orders"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:sales-order:read",
+        "scopes",
+        "fields",
+        "permission:sales-order:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:first",
+        "actor",
+        "call:first",
+        "permission:sales-order:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET sales-orders / guard_throw",
+      "status": 500,
+      "body": {
+        "error": {
+          "code": "internal_error",
+          "message": "Internal server error",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": ["header", "auth", "root:1"],
+      "outputRef": false
+    },
+    {
+      "name": "GET sales-orders / root_throw",
+      "status": 500,
+      "body": {
+        "error": {
+          "code": "internal_error",
+          "message": "Internal server error",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 2,
+      "calls": [],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:sales-order:read",
+        "scopes",
+        "fields",
+        "permission:sales-order:read",
+        "scopes",
+        "anchors",
+        "root:2"
+      ],
+      "outputRef": false
+    },
+    {
+      "name": "GET sales-orders / method_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "orders"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:sales-order:read",
+        "scopes",
+        "fields",
+        "permission:sales-order:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:first",
+        "actor",
+        "call:first",
+        "permission:sales-order:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET sales-orders / actor_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "orders"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:sales-order:read",
+        "scopes",
+        "fields",
+        "permission:sales-order:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:first",
+        "actor",
+        "call:first",
+        "permission:sales-order:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET sales-orders / deny",
+      "status": 403,
+      "body": {
+        "error": {
+          "code": "forbidden",
+          "message": "Permission denied",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": ["header", "auth", "root:1", "permission:sales-order:read"],
+      "outputRef": false
+    },
+    {
+      "name": "GET sales-orders / auth_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "orders"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:sales-order:read",
+        "scopes",
+        "fields",
+        "permission:sales-order:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:second",
+        "actor",
+        "call:second",
+        "permission:sales-order:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET sales-orders / scopes_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "orders"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:sales-order:read",
+        "scopes",
+        "fields",
+        "permission:sales-order:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:second",
+        "actor",
+        "call:second",
+        "permission:sales-order:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET sales-orders / anchors_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "orders"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:sales-order:read",
+        "scopes",
+        "fields",
+        "permission:sales-order:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:second",
+        "actor",
+        "call:second",
+        "permission:sales-order:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET sales-orders / fields_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "orders"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:sales-order:read",
+        "scopes",
+        "fields",
+        "permission:sales-order:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:second",
+        "actor",
+        "call:second",
+        "permission:sales-order:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET sales-orders / late_fields_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "orders"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:sales-order:read",
+        "scopes",
+        "fields",
+        "permission:sales-order:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:first",
+        "actor",
+        "call:first",
+        "permission:sales-order:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET sales-orders / deny_root_throw",
+      "status": 403,
+      "body": {
+        "error": {
+          "code": "forbidden",
+          "message": "Permission denied",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": ["header", "auth", "root:1", "permission:sales-order:read"],
+      "outputRef": false
+    },
+    {
+      "name": "GET reconciliation-runs / plain",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "reconciliation"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:reconciliation:read",
+        "scopes",
+        "fields",
+        "permission:reconciliation:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:first",
+        "actor",
+        "call:first",
+        "permission:reconciliation:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET reconciliation-runs / guard_throw",
+      "status": 500,
+      "body": {
+        "error": {
+          "code": "internal_error",
+          "message": "Internal server error",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": ["header", "auth", "root:1"],
+      "outputRef": false
+    },
+    {
+      "name": "GET reconciliation-runs / root_throw",
+      "status": 500,
+      "body": {
+        "error": {
+          "code": "internal_error",
+          "message": "Internal server error",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 2,
+      "calls": [],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:reconciliation:read",
+        "scopes",
+        "fields",
+        "permission:reconciliation:read",
+        "scopes",
+        "anchors",
+        "root:2"
+      ],
+      "outputRef": false
+    },
+    {
+      "name": "GET reconciliation-runs / method_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "reconciliation"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:reconciliation:read",
+        "scopes",
+        "fields",
+        "permission:reconciliation:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:first",
+        "actor",
+        "call:first",
+        "permission:reconciliation:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET reconciliation-runs / actor_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "reconciliation"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:reconciliation:read",
+        "scopes",
+        "fields",
+        "permission:reconciliation:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:first",
+        "actor",
+        "call:first",
+        "permission:reconciliation:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET reconciliation-runs / deny",
+      "status": 403,
+      "body": {
+        "error": {
+          "code": "forbidden",
+          "message": "Permission denied",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": ["header", "auth", "root:1", "permission:reconciliation:read"],
+      "outputRef": false
+    },
+    {
+      "name": "GET reconciliation-runs / auth_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "reconciliation"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:reconciliation:read",
+        "scopes",
+        "fields",
+        "permission:reconciliation:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:second",
+        "actor",
+        "call:second",
+        "permission:reconciliation:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET reconciliation-runs / scopes_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "reconciliation"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:reconciliation:read",
+        "scopes",
+        "fields",
+        "permission:reconciliation:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:second",
+        "actor",
+        "call:second",
+        "permission:reconciliation:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET reconciliation-runs / anchors_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "reconciliation"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:reconciliation:read",
+        "scopes",
+        "fields",
+        "permission:reconciliation:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:second",
+        "actor",
+        "call:second",
+        "permission:reconciliation:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET reconciliation-runs / fields_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "reconciliation"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:reconciliation:read",
+        "scopes",
+        "fields",
+        "permission:reconciliation:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:second",
+        "actor",
+        "call:second",
+        "permission:reconciliation:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET reconciliation-runs / late_fields_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ]
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 2,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "reconciliation"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:reconciliation:read",
+        "scopes",
+        "fields",
+        "permission:reconciliation:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:first",
+        "actor",
+        "call:first",
+        "permission:reconciliation:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET reconciliation-runs / deny_root_throw",
+      "status": 403,
+      "body": {
+        "error": {
+          "code": "forbidden",
+          "message": "Permission denied",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": ["header", "auth", "root:1", "permission:reconciliation:read"],
+      "outputRef": false
+    },
+    {
+      "name": "GET ar-open-items / plain",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ],
+        "nextCursor": null
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 3,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "ar"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:ar:read",
+        "scopes",
+        "fields",
+        "permission:ar:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:first",
+        "actor",
+        "call:first",
+        "permission:ar:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET ar-open-items / guard_throw",
+      "status": 500,
+      "body": {
+        "error": {
+          "code": "internal_error",
+          "message": "Internal server error",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": ["header", "auth", "root:1"],
+      "outputRef": false
+    },
+    {
+      "name": "GET ar-open-items / root_throw",
+      "status": 500,
+      "body": {
+        "error": {
+          "code": "internal_error",
+          "message": "Internal server error",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 2,
+      "calls": [],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:ar:read",
+        "scopes",
+        "fields",
+        "permission:ar:read",
+        "scopes",
+        "anchors",
+        "root:2"
+      ],
+      "outputRef": false
+    },
+    {
+      "name": "GET ar-open-items / method_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ],
+        "nextCursor": null
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 3,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "ar"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:ar:read",
+        "scopes",
+        "fields",
+        "permission:ar:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:first",
+        "actor",
+        "call:first",
+        "permission:ar:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET ar-open-items / actor_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ],
+        "nextCursor": null
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 3,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "ar"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:ar:read",
+        "scopes",
+        "fields",
+        "permission:ar:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:first",
+        "actor",
+        "call:first",
+        "permission:ar:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET ar-open-items / deny",
+      "status": 403,
+      "body": {
+        "error": {
+          "code": "forbidden",
+          "message": "Permission denied",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": ["header", "auth", "root:1", "permission:ar:read"],
+      "outputRef": false
+    },
+    {
+      "name": "GET ar-open-items / auth_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ],
+        "nextCursor": null
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 3,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "ar"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:ar:read",
+        "scopes",
+        "fields",
+        "permission:ar:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:second",
+        "actor",
+        "call:second",
+        "permission:ar:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET ar-open-items / scopes_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ],
+        "nextCursor": null
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 3,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "ar"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:ar:read",
+        "scopes",
+        "fields",
+        "permission:ar:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:second",
+        "actor",
+        "call:second",
+        "permission:ar:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET ar-open-items / anchors_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ],
+        "nextCursor": null
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 3,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "ar"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:ar:read",
+        "scopes",
+        "fields",
+        "permission:ar:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:second",
+        "actor",
+        "call:second",
+        "permission:ar:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET ar-open-items / fields_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ],
+        "nextCursor": null
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 3,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "ar"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:ar:read",
+        "scopes",
+        "fields",
+        "permission:ar:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:second",
+        "actor",
+        "call:second",
+        "permission:ar:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET ar-open-items / late_fields_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ],
+        "nextCursor": null
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 3,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "ar"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:ar:read",
+        "scopes",
+        "fields",
+        "permission:ar:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:first",
+        "actor",
+        "call:first",
+        "permission:ar:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET ar-open-items / deny_root_throw",
+      "status": 403,
+      "body": {
+        "error": {
+          "code": "forbidden",
+          "message": "Permission denied",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": ["header", "auth", "root:1", "permission:ar:read"],
+      "outputRef": false
+    },
+    {
+      "name": "GET ar-open-items / state_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ],
+        "nextCursor": null
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 3,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "ar"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:ar:read",
+        "scopes",
+        "fields",
+        "permission:ar:read",
+        "scopes",
+        "anchors",
+        "query:state",
+        "root:2",
+        "method:second",
+        "actor",
+        "call:second",
+        "permission:ar:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET ar-open-items / min_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ],
+        "nextCursor": null
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 3,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "ar"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:ar:read",
+        "scopes",
+        "fields",
+        "permission:ar:read",
+        "scopes",
+        "anchors",
+        "query:minAmount",
+        "query:minAmount",
+        "root:2",
+        "method:second",
+        "actor",
+        "call:second",
+        "permission:ar:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET ar-open-items / max_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ],
+        "nextCursor": null
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 3,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "ar"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:ar:read",
+        "scopes",
+        "fields",
+        "permission:ar:read",
+        "scopes",
+        "anchors",
+        "query:maxAmount",
+        "query:maxAmount",
+        "root:2",
+        "method:second",
+        "actor",
+        "call:second",
+        "permission:ar:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET ar-open-items / filter_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ],
+        "nextCursor": null
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 3,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "ar"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:ar:read",
+        "scopes",
+        "fields",
+        "permission:ar:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:first",
+        "query:limit",
+        "query:limit",
+        "actor",
+        "call:first",
+        "permission:ar:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET ar-open-items / invalid_state_root_throw",
+      "status": 400,
+      "body": {
+        "error": {
+          "code": "invalid_request",
+          "message": "state is unsupported",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:ar:read",
+        "scopes",
+        "fields",
+        "permission:ar:read",
+        "scopes",
+        "anchors"
+      ],
+      "outputRef": false
+    },
+    {
+      "name": "GET ar-open-items / invalid_min_root_throw",
+      "status": 400,
+      "body": {
+        "error": {
+          "code": "invalid_request",
+          "message": "Invalid decimal",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:ar:read",
+        "scopes",
+        "fields",
+        "permission:ar:read",
+        "scopes",
+        "anchors"
+      ],
+      "outputRef": false
+    },
+    {
+      "name": "GET ar-open-items / invalid_max_root_throw",
+      "status": 400,
+      "body": {
+        "error": {
+          "code": "invalid_request",
+          "message": "Invalid decimal",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:ar:read",
+        "scopes",
+        "fields",
+        "permission:ar:read",
+        "scopes",
+        "anchors"
+      ],
+      "outputRef": false
+    },
+    {
+      "name": "GET ar-open-items / invalid_compare_root_throw",
+      "status": 400,
+      "body": {
+        "error": {
+          "code": "invalid_request",
+          "message": "minAmount must not exceed maxAmount",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:ar:read",
+        "scopes",
+        "fields",
+        "permission:ar:read",
+        "scopes",
+        "anchors"
+      ],
+      "outputRef": false
+    },
+    {
+      "name": "GET ar-open-items / invalid_filter",
+      "status": 400,
+      "body": {
+        "error": {
+          "code": "invalid_request",
+          "message": "limit must be an integer between 1 and 100",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 2,
+      "calls": [],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:ar:read",
+        "scopes",
+        "fields",
+        "permission:ar:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:first"
+      ],
+      "outputRef": false
+    },
+    {
+      "name": "GET bank-payments / plain",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ],
+        "nextCursor": null
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 3,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "payments"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:bank-payment:read",
+        "scopes",
+        "fields",
+        "permission:bank-payment:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:first",
+        "actor",
+        "call:first",
+        "permission:bank-payment:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET bank-payments / guard_throw",
+      "status": 500,
+      "body": {
+        "error": {
+          "code": "internal_error",
+          "message": "Internal server error",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": ["header", "auth", "root:1"],
+      "outputRef": false
+    },
+    {
+      "name": "GET bank-payments / root_throw",
+      "status": 500,
+      "body": {
+        "error": {
+          "code": "internal_error",
+          "message": "Internal server error",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 2,
+      "calls": [],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:bank-payment:read",
+        "scopes",
+        "fields",
+        "permission:bank-payment:read",
+        "scopes",
+        "anchors",
+        "root:2"
+      ],
+      "outputRef": false
+    },
+    {
+      "name": "GET bank-payments / method_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ],
+        "nextCursor": null
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 3,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "payments"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:bank-payment:read",
+        "scopes",
+        "fields",
+        "permission:bank-payment:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:first",
+        "actor",
+        "call:first",
+        "permission:bank-payment:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET bank-payments / actor_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ],
+        "nextCursor": null
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 3,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "payments"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:bank-payment:read",
+        "scopes",
+        "fields",
+        "permission:bank-payment:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:first",
+        "actor",
+        "call:first",
+        "permission:bank-payment:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET bank-payments / deny",
+      "status": 403,
+      "body": {
+        "error": {
+          "code": "forbidden",
+          "message": "Permission denied",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": ["header", "auth", "root:1", "permission:bank-payment:read"],
+      "outputRef": false
+    },
+    {
+      "name": "GET bank-payments / auth_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ],
+        "nextCursor": null
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 3,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "payments"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:bank-payment:read",
+        "scopes",
+        "fields",
+        "permission:bank-payment:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:second",
+        "actor",
+        "call:second",
+        "permission:bank-payment:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET bank-payments / scopes_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ],
+        "nextCursor": null
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 3,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "payments"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:bank-payment:read",
+        "scopes",
+        "fields",
+        "permission:bank-payment:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:second",
+        "actor",
+        "call:second",
+        "permission:bank-payment:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET bank-payments / anchors_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ],
+        "nextCursor": null
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 3,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "payments"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:bank-payment:read",
+        "scopes",
+        "fields",
+        "permission:bank-payment:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:second",
+        "actor",
+        "call:second",
+        "permission:bank-payment:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET bank-payments / fields_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ],
+        "nextCursor": null
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 3,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "payments"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:bank-payment:read",
+        "scopes",
+        "fields",
+        "permission:bank-payment:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:second",
+        "actor",
+        "call:second",
+        "permission:bank-payment:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET bank-payments / late_fields_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ],
+        "nextCursor": null
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 3,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "payments"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:bank-payment:read",
+        "scopes",
+        "fields",
+        "permission:bank-payment:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:first",
+        "actor",
+        "call:first",
+        "permission:bank-payment:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET bank-payments / deny_root_throw",
+      "status": 403,
+      "body": {
+        "error": {
+          "code": "forbidden",
+          "message": "Permission denied",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": ["header", "auth", "root:1", "permission:bank-payment:read"],
+      "outputRef": false
+    },
+    {
+      "name": "GET bank-payments / state_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ],
+        "nextCursor": null
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 3,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "payments"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:bank-payment:read",
+        "scopes",
+        "fields",
+        "permission:bank-payment:read",
+        "scopes",
+        "anchors",
+        "query:state",
+        "root:2",
+        "method:second",
+        "actor",
+        "call:second",
+        "permission:bank-payment:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET bank-payments / min_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ],
+        "nextCursor": null
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 3,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "payments"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:bank-payment:read",
+        "scopes",
+        "fields",
+        "permission:bank-payment:read",
+        "scopes",
+        "anchors",
+        "query:minAmount",
+        "query:minAmount",
+        "root:2",
+        "method:second",
+        "actor",
+        "call:second",
+        "permission:bank-payment:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET bank-payments / max_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ],
+        "nextCursor": null
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 3,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "payments"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:bank-payment:read",
+        "scopes",
+        "fields",
+        "permission:bank-payment:read",
+        "scopes",
+        "anchors",
+        "query:maxAmount",
+        "query:maxAmount",
+        "root:2",
+        "method:second",
+        "actor",
+        "call:second",
+        "permission:bank-payment:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET bank-payments / filter_swap",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "nested": {
+              "directMock": true
+            },
+            "status": "FIXTURE"
+          }
+        ],
+        "nextCursor": null
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 3,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": "payments"
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:bank-payment:read",
+        "scopes",
+        "fields",
+        "permission:bank-payment:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:first",
+        "query:limit",
+        "query:limit",
+        "actor",
+        "call:first",
+        "permission:bank-payment:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "GET bank-payments / invalid_state_root_throw",
+      "status": 400,
+      "body": {
+        "error": {
+          "code": "invalid_request",
+          "message": "state is unsupported",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:bank-payment:read",
+        "scopes",
+        "fields",
+        "permission:bank-payment:read",
+        "scopes",
+        "anchors"
+      ],
+      "outputRef": false
+    },
+    {
+      "name": "GET bank-payments / invalid_min_root_throw",
+      "status": 400,
+      "body": {
+        "error": {
+          "code": "invalid_request",
+          "message": "Invalid decimal",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:bank-payment:read",
+        "scopes",
+        "fields",
+        "permission:bank-payment:read",
+        "scopes",
+        "anchors"
+      ],
+      "outputRef": false
+    },
+    {
+      "name": "GET bank-payments / invalid_max_root_throw",
+      "status": 400,
+      "body": {
+        "error": {
+          "code": "invalid_request",
+          "message": "Invalid decimal",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:bank-payment:read",
+        "scopes",
+        "fields",
+        "permission:bank-payment:read",
+        "scopes",
+        "anchors"
+      ],
+      "outputRef": false
+    },
+    {
+      "name": "GET bank-payments / invalid_compare_root_throw",
+      "status": 400,
+      "body": {
+        "error": {
+          "code": "invalid_request",
+          "message": "minAmount must not exceed maxAmount",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:bank-payment:read",
+        "scopes",
+        "fields",
+        "permission:bank-payment:read",
+        "scopes",
+        "anchors"
+      ],
+      "outputRef": false
+    },
+    {
+      "name": "GET bank-payments / invalid_filter",
+      "status": 400,
+      "body": {
+        "error": {
+          "code": "invalid_request",
+          "message": "limit must be an integer between 1 and 100",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 2,
+      "calls": [],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "permission:bank-payment:read",
+        "scopes",
+        "fields",
+        "permission:bank-payment:read",
+        "scopes",
+        "anchors",
+        "root:2",
+        "method:first"
+      ],
+      "outputRef": false
+    },
+    {
+      "name": "POST credit-limits / plain",
+      "status": 201,
+      "body": {
+        "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "nested": {
+          "directMock": true
+        },
+        "status": "FIXTURE"
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 4,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": ["customerId", "currency", "amount", "effectiveAt", "expiresAt"]
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "bodykeys",
+        "root:2",
+        "method:first",
+        "bodykeys",
+        "permission:credit:approve",
+        "scopes",
+        "fields",
+        "permission:credit:approve",
+        "scopes",
+        "anchors",
+        "actor",
+        "call:first",
+        "permission:credit:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "POST credit-limits / guard_throw",
+      "status": 500,
+      "body": {
+        "error": {
+          "code": "internal_error",
+          "message": "Internal server error",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": ["header", "auth", "root:1"],
+      "outputRef": false
+    },
+    {
+      "name": "POST credit-limits / root_throw",
+      "status": 500,
+      "body": {
+        "error": {
+          "code": "internal_error",
+          "message": "Internal server error",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 2,
+      "calls": [],
+      "events": ["header", "auth", "root:1", "bodykeys", "root:2"],
+      "outputRef": false
+    },
+    {
+      "name": "POST credit-limits / method_swap",
+      "status": 201,
+      "body": {
+        "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "nested": {
+          "directMock": true
+        },
+        "status": "FIXTURE"
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 4,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": ["customerId", "currency", "amount", "effectiveAt", "expiresAt"]
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "bodykeys",
+        "root:2",
+        "method:first",
+        "bodykeys",
+        "permission:credit:approve",
+        "scopes",
+        "fields",
+        "permission:credit:approve",
+        "scopes",
+        "anchors",
+        "actor",
+        "call:first",
+        "permission:credit:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "POST credit-limits / actor_swap",
+      "status": 201,
+      "body": {
+        "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "nested": {
+          "directMock": true
+        },
+        "status": "FIXTURE"
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 4,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": ["customerId", "currency", "amount", "effectiveAt", "expiresAt"]
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "bodykeys",
+        "root:2",
+        "method:first",
+        "bodykeys",
+        "permission:credit:approve",
+        "scopes",
+        "fields",
+        "permission:credit:approve",
+        "scopes",
+        "anchors",
+        "actor",
+        "call:first",
+        "permission:credit:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "POST credit-limits / deny",
+      "status": 403,
+      "body": {
+        "error": {
+          "code": "forbidden",
+          "message": "Permission denied",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 2,
+      "calls": [],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "bodykeys",
+        "root:2",
+        "method:first",
+        "bodykeys",
+        "permission:credit:approve"
+      ],
+      "outputRef": false
+    },
+    {
+      "name": "POST credit-limits / allow_swap",
+      "status": 201,
+      "body": {
+        "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "nested": {
+          "directMock": true
+        },
+        "status": "FIXTURE"
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 4,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": ["customerId", "currency", "amount", "effectiveAt", "expiresAt"]
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "bodykeys",
+        "root:2",
+        "method:second",
+        "bodykeys",
+        "permission:credit:approve",
+        "scopes",
+        "fields",
+        "permission:credit:approve",
+        "scopes",
+        "anchors",
+        "actor",
+        "call:second",
+        "permission:credit:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "POST credit-limits / unknown",
+      "status": 400,
+      "body": {
+        "error": {
+          "code": "invalid_request",
+          "message": "Unsupported fields: unknown",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": ["header", "auth", "root:1", "bodykeys"],
+      "outputRef": false
+    },
+    {
+      "name": "POST credit-limits / unknown_root_throw",
+      "status": 400,
+      "body": {
+        "error": {
+          "code": "invalid_request",
+          "message": "Unsupported fields: unknown",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": ["header", "auth", "root:1", "bodykeys"],
+      "outputRef": false
+    },
+    {
+      "name": "POST credit-limits / input_swap",
+      "status": 201,
+      "body": {
+        "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "nested": {
+          "directMock": true
+        },
+        "status": "FIXTURE"
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 4,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": ["customerId", "currency", "amount", "effectiveAt", "expiresAt"]
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "bodykeys",
+        "root:2",
+        "method:first",
+        "input:customerId",
+        "bodykeys",
+        "permission:credit:approve",
+        "scopes",
+        "fields",
+        "permission:credit:approve",
+        "scopes",
+        "anchors",
+        "actor",
+        "call:first",
+        "permission:credit:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "POST credit-limits / input_invalid",
+      "status": 400,
+      "body": {
+        "error": {
+          "code": "invalid_request",
+          "message": "customerId is required",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 2,
+      "calls": [],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "bodykeys",
+        "root:2",
+        "method:first",
+        "input:customerId"
+      ],
+      "outputRef": false
+    },
+    {
+      "name": "POST credit-limits / input_invalid_root_throw",
+      "status": 500,
+      "body": {
+        "error": {
+          "code": "internal_error",
+          "message": "Internal server error",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 2,
+      "calls": [],
+      "events": ["header", "auth", "root:1", "bodykeys", "root:2"],
+      "outputRef": false
+    },
+    {
+      "name": "POST credit-decisions / plain",
+      "status": 201,
+      "body": {
+        "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "nested": {
+          "directMock": true
+        },
+        "status": "FIXTURE"
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 4,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": [
+            "customerId",
+            "quoteRevisionId",
+            "quoteSnapshotId",
+            "creditLimitId",
+            "validUntil"
+          ]
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "bodykeys",
+        "root:2",
+        "method:first",
+        "bodykeys",
+        "permission:credit:evaluate",
+        "scopes",
+        "fields",
+        "permission:credit:evaluate",
+        "scopes",
+        "anchors",
+        "actor",
+        "call:first",
+        "permission:credit:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "POST credit-decisions / guard_throw",
+      "status": 500,
+      "body": {
+        "error": {
+          "code": "internal_error",
+          "message": "Internal server error",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": ["header", "auth", "root:1"],
+      "outputRef": false
+    },
+    {
+      "name": "POST credit-decisions / root_throw",
+      "status": 500,
+      "body": {
+        "error": {
+          "code": "internal_error",
+          "message": "Internal server error",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 2,
+      "calls": [],
+      "events": ["header", "auth", "root:1", "bodykeys", "root:2"],
+      "outputRef": false
+    },
+    {
+      "name": "POST credit-decisions / method_swap",
+      "status": 201,
+      "body": {
+        "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "nested": {
+          "directMock": true
+        },
+        "status": "FIXTURE"
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 4,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": [
+            "customerId",
+            "quoteRevisionId",
+            "quoteSnapshotId",
+            "creditLimitId",
+            "validUntil"
+          ]
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "bodykeys",
+        "root:2",
+        "method:first",
+        "bodykeys",
+        "permission:credit:evaluate",
+        "scopes",
+        "fields",
+        "permission:credit:evaluate",
+        "scopes",
+        "anchors",
+        "actor",
+        "call:first",
+        "permission:credit:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "POST credit-decisions / actor_swap",
+      "status": 201,
+      "body": {
+        "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "nested": {
+          "directMock": true
+        },
+        "status": "FIXTURE"
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 4,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": [
+            "customerId",
+            "quoteRevisionId",
+            "quoteSnapshotId",
+            "creditLimitId",
+            "validUntil"
+          ]
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "bodykeys",
+        "root:2",
+        "method:first",
+        "bodykeys",
+        "permission:credit:evaluate",
+        "scopes",
+        "fields",
+        "permission:credit:evaluate",
+        "scopes",
+        "anchors",
+        "actor",
+        "call:first",
+        "permission:credit:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "POST credit-decisions / deny",
+      "status": 403,
+      "body": {
+        "error": {
+          "code": "forbidden",
+          "message": "Permission denied",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 2,
+      "calls": [],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "bodykeys",
+        "root:2",
+        "method:first",
+        "bodykeys",
+        "permission:credit:evaluate"
+      ],
+      "outputRef": false
+    },
+    {
+      "name": "POST credit-decisions / allow_swap",
+      "status": 201,
+      "body": {
+        "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "nested": {
+          "directMock": true
+        },
+        "status": "FIXTURE"
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 4,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": [
+            "customerId",
+            "quoteRevisionId",
+            "quoteSnapshotId",
+            "creditLimitId",
+            "validUntil"
+          ]
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "bodykeys",
+        "root:2",
+        "method:second",
+        "bodykeys",
+        "permission:credit:evaluate",
+        "scopes",
+        "fields",
+        "permission:credit:evaluate",
+        "scopes",
+        "anchors",
+        "actor",
+        "call:second",
+        "permission:credit:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "POST credit-decisions / unknown",
+      "status": 400,
+      "body": {
+        "error": {
+          "code": "invalid_request",
+          "message": "Unsupported fields: unknown",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": ["header", "auth", "root:1", "bodykeys"],
+      "outputRef": false
+    },
+    {
+      "name": "POST credit-decisions / unknown_root_throw",
+      "status": 400,
+      "body": {
+        "error": {
+          "code": "invalid_request",
+          "message": "Unsupported fields: unknown",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": ["header", "auth", "root:1", "bodykeys"],
+      "outputRef": false
+    },
+    {
+      "name": "POST credit-decisions / input_swap",
+      "status": 201,
+      "body": {
+        "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "nested": {
+          "directMock": true
+        },
+        "status": "FIXTURE"
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 4,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": [
+            "customerId",
+            "quoteRevisionId",
+            "quoteSnapshotId",
+            "creditLimitId",
+            "validUntil"
+          ]
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "bodykeys",
+        "root:2",
+        "method:first",
+        "input:customerId",
+        "bodykeys",
+        "permission:credit:evaluate",
+        "scopes",
+        "fields",
+        "permission:credit:evaluate",
+        "scopes",
+        "anchors",
+        "actor",
+        "call:first",
+        "permission:credit:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "POST credit-decisions / input_invalid",
+      "status": 400,
+      "body": {
+        "error": {
+          "code": "invalid_request",
+          "message": "customerId is required",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 2,
+      "calls": [],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "bodykeys",
+        "root:2",
+        "method:first",
+        "input:customerId"
+      ],
+      "outputRef": false
+    },
+    {
+      "name": "POST credit-decisions / input_invalid_root_throw",
+      "status": 500,
+      "body": {
+        "error": {
+          "code": "internal_error",
+          "message": "Internal server error",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 2,
+      "calls": [],
+      "events": ["header", "auth", "root:1", "bodykeys", "root:2"],
+      "outputRef": false
+    },
+    {
+      "name": "POST credit-decisions/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/approve / plain",
+      "status": 200,
+      "body": {
+        "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "nested": {
+          "directMock": true
+        },
+        "status": "FIXTURE"
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 6,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": [
+            "0",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13",
+            "14",
+            "15",
+            "16",
+            "17",
+            "18",
+            "19",
+            "20",
+            "21",
+            "22",
+            "23",
+            "24",
+            "25",
+            "26",
+            "27",
+            "28",
+            "29",
+            "30",
+            "31",
+            "32",
+            "33",
+            "34",
+            "35"
+          ]
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "bodykeys",
+        "root:2",
+        "method:first",
+        "bodykeys",
+        "permission:credit:approve",
+        "scopes",
+        "fields",
+        "permission:credit:approve",
+        "scopes",
+        "anchors",
+        "actor",
+        "call:first",
+        "permission:credit:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "POST credit-decisions/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/approve / guard_throw",
+      "status": 500,
+      "body": {
+        "error": {
+          "code": "internal_error",
+          "message": "Internal server error",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": ["header", "auth", "root:1"],
+      "outputRef": false
+    },
+    {
+      "name": "POST credit-decisions/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/approve / root_throw",
+      "status": 500,
+      "body": {
+        "error": {
+          "code": "internal_error",
+          "message": "Internal server error",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 2,
+      "calls": [],
+      "events": ["header", "auth", "root:1", "bodykeys", "root:2"],
+      "outputRef": false
+    },
+    {
+      "name": "POST credit-decisions/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/approve / method_swap",
+      "status": 200,
+      "body": {
+        "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "nested": {
+          "directMock": true
+        },
+        "status": "FIXTURE"
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 6,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": [
+            "0",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13",
+            "14",
+            "15",
+            "16",
+            "17",
+            "18",
+            "19",
+            "20",
+            "21",
+            "22",
+            "23",
+            "24",
+            "25",
+            "26",
+            "27",
+            "28",
+            "29",
+            "30",
+            "31",
+            "32",
+            "33",
+            "34",
+            "35"
+          ]
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "bodykeys",
+        "root:2",
+        "method:first",
+        "bodykeys",
+        "permission:credit:approve",
+        "scopes",
+        "fields",
+        "permission:credit:approve",
+        "scopes",
+        "anchors",
+        "actor",
+        "call:first",
+        "permission:credit:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "POST credit-decisions/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/approve / actor_swap",
+      "status": 200,
+      "body": {
+        "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "nested": {
+          "directMock": true
+        },
+        "status": "FIXTURE"
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 6,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": [
+            "0",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13",
+            "14",
+            "15",
+            "16",
+            "17",
+            "18",
+            "19",
+            "20",
+            "21",
+            "22",
+            "23",
+            "24",
+            "25",
+            "26",
+            "27",
+            "28",
+            "29",
+            "30",
+            "31",
+            "32",
+            "33",
+            "34",
+            "35"
+          ]
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "bodykeys",
+        "root:2",
+        "method:first",
+        "bodykeys",
+        "permission:credit:approve",
+        "scopes",
+        "fields",
+        "permission:credit:approve",
+        "scopes",
+        "anchors",
+        "actor",
+        "call:first",
+        "permission:credit:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "POST credit-decisions/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/approve / deny",
+      "status": 403,
+      "body": {
+        "error": {
+          "code": "forbidden",
+          "message": "Permission denied",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 2,
+      "calls": [],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "bodykeys",
+        "root:2",
+        "method:first",
+        "bodykeys",
+        "permission:credit:approve"
+      ],
+      "outputRef": false
+    },
+    {
+      "name": "POST credit-decisions/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/approve / allow_swap",
+      "status": 200,
+      "body": {
+        "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "nested": {
+          "directMock": true
+        },
+        "status": "FIXTURE"
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 6,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": [
+            "0",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13",
+            "14",
+            "15",
+            "16",
+            "17",
+            "18",
+            "19",
+            "20",
+            "21",
+            "22",
+            "23",
+            "24",
+            "25",
+            "26",
+            "27",
+            "28",
+            "29",
+            "30",
+            "31",
+            "32",
+            "33",
+            "34",
+            "35"
+          ]
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "bodykeys",
+        "root:2",
+        "method:second",
+        "bodykeys",
+        "permission:credit:approve",
+        "scopes",
+        "fields",
+        "permission:credit:approve",
+        "scopes",
+        "anchors",
+        "actor",
+        "call:second",
+        "permission:credit:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "POST credit-decisions/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/approve / unknown",
+      "status": 400,
+      "body": {
+        "error": {
+          "code": "invalid_request",
+          "message": "Unsupported fields: unknown",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": ["header", "auth", "root:1", "bodykeys"],
+      "outputRef": false
+    },
+    {
+      "name": "POST credit-decisions/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/approve / unknown_root_throw",
+      "status": 400,
+      "body": {
+        "error": {
+          "code": "invalid_request",
+          "message": "Unsupported fields: unknown",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": ["header", "auth", "root:1", "bodykeys"],
+      "outputRef": false
+    },
+    {
+      "name": "POST credit-decisions/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/approve / input_swap",
+      "status": 200,
+      "body": {
+        "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "nested": {
+          "directMock": true
+        },
+        "status": "FIXTURE"
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 6,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": [
+            "0",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13",
+            "14",
+            "15",
+            "16",
+            "17",
+            "18",
+            "19",
+            "20",
+            "21",
+            "22",
+            "23",
+            "24",
+            "25",
+            "26",
+            "27",
+            "28",
+            "29",
+            "30",
+            "31",
+            "32",
+            "33",
+            "34",
+            "35"
+          ]
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "bodykeys",
+        "root:2",
+        "method:first",
+        "input:reason",
+        "bodykeys",
+        "permission:credit:approve",
+        "scopes",
+        "fields",
+        "permission:credit:approve",
+        "scopes",
+        "anchors",
+        "actor",
+        "call:first",
+        "permission:credit:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "POST credit-decisions/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/approve / input_invalid",
+      "status": 400,
+      "body": {
+        "error": {
+          "code": "invalid_request",
+          "message": "reason is required",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 2,
+      "calls": [],
+      "events": ["header", "auth", "root:1", "bodykeys", "root:2", "method:first", "input:reason"],
+      "outputRef": false
+    },
+    {
+      "name": "POST credit-decisions/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/approve / input_invalid_root_throw",
+      "status": 500,
+      "body": {
+        "error": {
+          "code": "internal_error",
+          "message": "Internal server error",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 2,
+      "calls": [],
+      "events": ["header", "auth", "root:1", "bodykeys", "root:2"],
+      "outputRef": false
+    },
+    {
+      "name": "POST credit-decisions/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/approve / decision_swap",
+      "status": 200,
+      "body": {
+        "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "nested": {
+          "directMock": true
+        },
+        "status": "FIXTURE"
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 6,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": [
+            "0",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13",
+            "14",
+            "15",
+            "16",
+            "17",
+            "18",
+            "19",
+            "20",
+            "21",
+            "22",
+            "23",
+            "24",
+            "25",
+            "26",
+            "27",
+            "28",
+            "29",
+            "30",
+            "31",
+            "32",
+            "33",
+            "34",
+            "35"
+          ]
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "bodykeys",
+        "decision",
+        "root:2",
+        "method:second",
+        "bodykeys",
+        "permission:credit:approve",
+        "scopes",
+        "fields",
+        "permission:credit:approve",
+        "scopes",
+        "anchors",
+        "actor",
+        "call:second",
+        "permission:credit:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "POST credit-decisions/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/approve / decision_invalid_root_throw",
+      "status": 400,
+      "body": {
+        "error": {
+          "code": "invalid_request",
+          "message": "decision is unsupported",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": ["header", "auth", "root:1", "bodykeys", "decision"],
+      "outputRef": false
+    },
+    {
+      "name": "POST credit-decisions/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/approve / raw_id_invalid",
+      "status": 400,
+      "body": {
+        "error": {
+          "code": "invalid_request",
+          "message": "creditDecisionId must be a UUID",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 2,
+      "calls": [],
+      "events": ["header", "auth", "root:1", "bodykeys", "root:2", "method:first"],
+      "outputRef": false
+    },
+    {
+      "name": "POST contracts / plain",
+      "status": 201,
+      "body": {
+        "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "nested": {
+          "directMock": true
+        },
+        "status": "FIXTURE"
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 4,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": [
+            "customerId",
+            "opportunityId",
+            "contractNumber",
+            "quoteRevisionId",
+            "quoteSnapshotId",
+            "content"
+          ]
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "bodykeys",
+        "root:2",
+        "method:first",
+        "bodykeys",
+        "permission:contract:revise",
+        "scopes",
+        "fields",
+        "permission:contract:revise",
+        "scopes",
+        "anchors",
+        "actor",
+        "call:first",
+        "permission:contract:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "POST contracts / guard_throw",
+      "status": 500,
+      "body": {
+        "error": {
+          "code": "internal_error",
+          "message": "Internal server error",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": ["header", "auth", "root:1"],
+      "outputRef": false
+    },
+    {
+      "name": "POST contracts / root_throw",
+      "status": 500,
+      "body": {
+        "error": {
+          "code": "internal_error",
+          "message": "Internal server error",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 2,
+      "calls": [],
+      "events": ["header", "auth", "root:1", "bodykeys", "root:2"],
+      "outputRef": false
+    },
+    {
+      "name": "POST contracts / method_swap",
+      "status": 201,
+      "body": {
+        "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "nested": {
+          "directMock": true
+        },
+        "status": "FIXTURE"
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 4,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": [
+            "customerId",
+            "opportunityId",
+            "contractNumber",
+            "quoteRevisionId",
+            "quoteSnapshotId",
+            "content"
+          ]
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "bodykeys",
+        "root:2",
+        "method:first",
+        "bodykeys",
+        "permission:contract:revise",
+        "scopes",
+        "fields",
+        "permission:contract:revise",
+        "scopes",
+        "anchors",
+        "actor",
+        "call:first",
+        "permission:contract:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "POST contracts / actor_swap",
+      "status": 201,
+      "body": {
+        "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "nested": {
+          "directMock": true
+        },
+        "status": "FIXTURE"
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 4,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": [
+            "customerId",
+            "opportunityId",
+            "contractNumber",
+            "quoteRevisionId",
+            "quoteSnapshotId",
+            "content"
+          ]
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "bodykeys",
+        "root:2",
+        "method:first",
+        "bodykeys",
+        "permission:contract:revise",
+        "scopes",
+        "fields",
+        "permission:contract:revise",
+        "scopes",
+        "anchors",
+        "actor",
+        "call:first",
+        "permission:contract:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "POST contracts / deny",
+      "status": 403,
+      "body": {
+        "error": {
+          "code": "forbidden",
+          "message": "Permission denied",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 2,
+      "calls": [],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "bodykeys",
+        "root:2",
+        "method:first",
+        "bodykeys",
+        "permission:contract:revise"
+      ],
+      "outputRef": false
+    },
+    {
+      "name": "POST contracts / allow_swap",
+      "status": 201,
+      "body": {
+        "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "nested": {
+          "directMock": true
+        },
+        "status": "FIXTURE"
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 4,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": [
+            "customerId",
+            "opportunityId",
+            "contractNumber",
+            "quoteRevisionId",
+            "quoteSnapshotId",
+            "content"
+          ]
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "bodykeys",
+        "root:2",
+        "method:second",
+        "bodykeys",
+        "permission:contract:revise",
+        "scopes",
+        "fields",
+        "permission:contract:revise",
+        "scopes",
+        "anchors",
+        "actor",
+        "call:second",
+        "permission:contract:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "POST contracts / unknown",
+      "status": 400,
+      "body": {
+        "error": {
+          "code": "invalid_request",
+          "message": "Unsupported fields: unknown",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": ["header", "auth", "root:1", "bodykeys"],
+      "outputRef": false
+    },
+    {
+      "name": "POST contracts / unknown_root_throw",
+      "status": 400,
+      "body": {
+        "error": {
+          "code": "invalid_request",
+          "message": "Unsupported fields: unknown",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": ["header", "auth", "root:1", "bodykeys"],
+      "outputRef": false
+    },
+    {
+      "name": "POST contracts / input_swap",
+      "status": 201,
+      "body": {
+        "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "nested": {
+          "directMock": true
+        },
+        "status": "FIXTURE"
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 4,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": [
+            "customerId",
+            "opportunityId",
+            "contractNumber",
+            "quoteRevisionId",
+            "quoteSnapshotId",
+            "content"
+          ]
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "bodykeys",
+        "root:2",
+        "method:first",
+        "input:customerId",
+        "bodykeys",
+        "permission:contract:revise",
+        "scopes",
+        "fields",
+        "permission:contract:revise",
+        "scopes",
+        "anchors",
+        "actor",
+        "call:first",
+        "permission:contract:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "POST contracts / input_invalid",
+      "status": 400,
+      "body": {
+        "error": {
+          "code": "invalid_request",
+          "message": "customerId is required",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 2,
+      "calls": [],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "bodykeys",
+        "root:2",
+        "method:first",
+        "input:customerId"
+      ],
+      "outputRef": false
+    },
+    {
+      "name": "POST contracts / input_invalid_root_throw",
+      "status": 500,
+      "body": {
+        "error": {
+          "code": "internal_error",
+          "message": "Internal server error",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 2,
+      "calls": [],
+      "events": ["header", "auth", "root:1", "bodykeys", "root:2"],
+      "outputRef": false
+    },
+    {
+      "name": "POST contracts/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/sign / plain",
+      "status": 201,
+      "body": {
+        "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "nested": {
+          "directMock": true
+        },
+        "status": "FIXTURE"
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 5,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": ["provider", "providerReceiptId", "payload", "signedAt"]
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "bodykeys",
+        "root:2",
+        "method:first",
+        "bodykeys",
+        "permission:contract:sign",
+        "scopes",
+        "fields",
+        "permission:contract:sign",
+        "scopes",
+        "anchors",
+        "actor",
+        "call:first",
+        "permission:contract:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "POST contracts/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/sign / guard_throw",
+      "status": 500,
+      "body": {
+        "error": {
+          "code": "internal_error",
+          "message": "Internal server error",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": ["header", "auth", "root:1"],
+      "outputRef": false
+    },
+    {
+      "name": "POST contracts/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/sign / root_throw",
+      "status": 500,
+      "body": {
+        "error": {
+          "code": "internal_error",
+          "message": "Internal server error",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 2,
+      "calls": [],
+      "events": ["header", "auth", "root:1", "bodykeys", "root:2"],
+      "outputRef": false
+    },
+    {
+      "name": "POST contracts/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/sign / method_swap",
+      "status": 201,
+      "body": {
+        "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "nested": {
+          "directMock": true
+        },
+        "status": "FIXTURE"
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 5,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": ["provider", "providerReceiptId", "payload", "signedAt"]
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "bodykeys",
+        "root:2",
+        "method:first",
+        "bodykeys",
+        "permission:contract:sign",
+        "scopes",
+        "fields",
+        "permission:contract:sign",
+        "scopes",
+        "anchors",
+        "actor",
+        "call:first",
+        "permission:contract:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "POST contracts/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/sign / actor_swap",
+      "status": 201,
+      "body": {
+        "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "nested": {
+          "directMock": true
+        },
+        "status": "FIXTURE"
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 5,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": ["provider", "providerReceiptId", "payload", "signedAt"]
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "bodykeys",
+        "root:2",
+        "method:first",
+        "bodykeys",
+        "permission:contract:sign",
+        "scopes",
+        "fields",
+        "permission:contract:sign",
+        "scopes",
+        "anchors",
+        "actor",
+        "call:first",
+        "permission:contract:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "POST contracts/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/sign / deny",
+      "status": 403,
+      "body": {
+        "error": {
+          "code": "forbidden",
+          "message": "Permission denied",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 2,
+      "calls": [],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "bodykeys",
+        "root:2",
+        "method:first",
+        "bodykeys",
+        "permission:contract:sign"
+      ],
+      "outputRef": false
+    },
+    {
+      "name": "POST contracts/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/sign / allow_swap",
+      "status": 201,
+      "body": {
+        "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "nested": {
+          "directMock": true
+        },
+        "status": "FIXTURE"
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "second",
+          "receiver": "second",
+          "argc": 5,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": ["provider", "providerReceiptId", "payload", "signedAt"]
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "bodykeys",
+        "root:2",
+        "method:second",
+        "bodykeys",
+        "permission:contract:sign",
+        "scopes",
+        "fields",
+        "permission:contract:sign",
+        "scopes",
+        "anchors",
+        "actor",
+        "call:second",
+        "permission:contract:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "POST contracts/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/sign / unknown",
+      "status": 400,
+      "body": {
+        "error": {
+          "code": "invalid_request",
+          "message": "Unsupported fields: unknown",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": ["header", "auth", "root:1", "bodykeys"],
+      "outputRef": false
+    },
+    {
+      "name": "POST contracts/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/sign / unknown_root_throw",
+      "status": 400,
+      "body": {
+        "error": {
+          "code": "invalid_request",
+          "message": "Unsupported fields: unknown",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 1,
+      "calls": [],
+      "events": ["header", "auth", "root:1", "bodykeys"],
+      "outputRef": false
+    },
+    {
+      "name": "POST contracts/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/sign / input_swap",
+      "status": 201,
+      "body": {
+        "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "nested": {
+          "directMock": true
+        },
+        "status": "FIXTURE"
+      },
+      "roots": 2,
+      "calls": [
+        {
+          "callee": "first",
+          "receiver": "first",
+          "argc": 5,
+          "expectedArgc": true,
+          "actorRef": true,
+          "scopesRef": true,
+          "anchorsRef": true,
+          "first": ["provider", "providerReceiptId", "payload", "signedAt"]
+        }
+      ],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "bodykeys",
+        "root:2",
+        "method:first",
+        "input:provider",
+        "bodykeys",
+        "permission:contract:sign",
+        "scopes",
+        "fields",
+        "permission:contract:sign",
+        "scopes",
+        "anchors",
+        "actor",
+        "call:first",
+        "permission:contract:read",
+        "fields"
+      ],
+      "outputRef": true
+    },
+    {
+      "name": "POST contracts/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/sign / input_invalid",
+      "status": 400,
+      "body": {
+        "error": {
+          "code": "invalid_request",
+          "message": "provider is required",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 2,
+      "calls": [],
+      "events": [
+        "header",
+        "auth",
+        "root:1",
+        "bodykeys",
+        "root:2",
+        "method:first",
+        "input:provider"
+      ],
+      "outputRef": false
+    },
+    {
+      "name": "POST contracts/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/sign / input_invalid_root_throw",
+      "status": 500,
+      "body": {
+        "error": {
+          "code": "internal_error",
+          "message": "Internal server error",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 2,
+      "calls": [],
+      "events": ["header", "auth", "root:1", "bodykeys", "root:2"],
+      "outputRef": false
+    },
+    {
+      "name": "POST contracts/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/sign / raw_id_invalid",
+      "status": 400,
+      "body": {
+        "error": {
+          "code": "invalid_request",
+          "message": "contractRevisionId must be a UUID",
+          "correlationId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "roots": 2,
+      "calls": [],
+      "events": ["header", "auth", "root:1", "bodykeys", "root:2", "method:first"],
+      "outputRef": false
+    }
+  ]
+}

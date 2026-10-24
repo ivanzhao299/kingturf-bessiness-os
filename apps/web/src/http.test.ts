@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { json, onSessionExpired, RequestError } from './http';
+import { sessionFixture, sessionResponse } from './test-fixtures/session';
+import { SessionState, expireSession } from './session';
+const context = sessionFixture();
+const oldContext = sessionFixture('b');
+const currentContext = sessionFixture('c');
+const selfContext = sessionFixture('d');
+const adminContext = sessionFixture('e');
 
 afterEach(() => {
   onSessionExpired(undefined);
@@ -12,11 +19,13 @@ describe('bounded JSON exchange', () => {
     const fetcher = vi.fn().mockResolvedValue(new Response('{"ok":true}'));
     vi.stubGlobal('fetch', fetcher);
     await expect(
-      json('/test', 'session', { headers: { 'idempotency-key': 'command-1' } }),
+      json('/test', context, { headers: { 'idempotency-key': 'command-1' } }),
     ).resolves.toEqual({ ok: true });
     const options = fetcher.mock.calls[0]?.[1] as RequestInit;
     const headers = new Headers(options.headers);
-    expect(headers.get('authorization')).toBe('Bearer session');
+    expect(headers.has('authorization')).toBe(false);
+    expect(headers.get('x-kingturf-session-generation')).toBe(context.generation);
+    expect(headers.has('x-kingturf-csrf')).toBe(false);
     expect(headers.get('idempotency-key')).toBe('command-1');
     expect(headers.get('x-correlation-id')).toBeTruthy();
     expect(headers.has('content-type')).toBe(false);
@@ -33,8 +42,8 @@ describe('bounded JSON exchange', () => {
           new Response('{"error":{"message":"denied","correlationId":"ref-1"}}', { status: 403 }),
         ),
     );
-    await expect(json('/test', '')).resolves.toBeUndefined();
-    await expect(json('/test', '')).rejects.toMatchObject({
+    await expect(json('/test', null)).resolves.toBeUndefined();
+    await expect(json('/test', null)).rejects.toMatchObject({
       name: 'RequestError',
       status: 403,
       message: 'denied',
@@ -47,8 +56,8 @@ describe('bounded JSON exchange', () => {
       'fetch',
       vi.fn().mockResolvedValue(new Response('<html>Bad gateway</html>', { status: 502 })),
     );
-    await expect(json('/test', '')).rejects.toBeInstanceOf(RequestError);
-    await expect(json('/test', '')).rejects.toMatchObject({ status: 502 });
+    await expect(json('/test', null)).rejects.toBeInstanceOf(RequestError);
+    await expect(json('/test', null)).rejects.toMatchObject({ status: 502 });
   });
 
   for (const status of [200, 503]) {
@@ -72,7 +81,7 @@ describe('bounded JSON exchange', () => {
           ),
         ),
       );
-      const assertion = expect(json('/test', '')).rejects.toThrow('请求超时，请检查网络后重试');
+      const assertion = expect(json('/test', null)).rejects.toThrow('请求超时，请检查网络后重试');
       await vi.advanceTimersByTimeAsync(15_000);
       await assertion;
       expect(vi.getTimerCount()).toBe(0);
@@ -83,13 +92,13 @@ describe('bounded JSON exchange', () => {
     const controller = new AbortController();
     const remove = vi.spyOn(controller.signal, 'removeEventListener');
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}')));
-    await json('/test', '', { signal: controller.signal });
+    await json('/test', null, { signal: controller.signal });
     expect(remove).toHaveBeenCalledOnce();
     controller.abort(new Error('user cancelled'));
     vi.stubGlobal('fetch', (_path: string, init: RequestInit) =>
       Promise.reject(init.signal?.reason as Error),
     );
-    await expect(json('/test', '', { signal: controller.signal })).rejects.toThrow(
+    await expect(json('/test', null, { signal: controller.signal })).rejects.toThrow(
       'user cancelled',
     );
     expect(remove).toHaveBeenCalledTimes(2);
@@ -108,21 +117,89 @@ describe('session expiry notifications', () => {
         .mockResolvedValueOnce(new Response('{}', { status: 401 }))
         .mockResolvedValueOnce(new Response('{}', { status: 403 })),
     );
-    await expect(json('/api/v1/auth/session', 'old-session')).rejects.toMatchObject({
+    await expect(json('/api/v1/auth/session', oldContext)).rejects.toMatchObject({
       status: 401,
     });
-    await expect(json('/api/v1/auth/login', '')).rejects.toMatchObject({ status: 401 });
-    await expect(json('/api/v1/employees', 'current-session')).rejects.toMatchObject({
+    await expect(json('/api/v1/auth/login', null)).rejects.toMatchObject({ status: 401 });
+    await expect(json('/api/v1/employees', currentContext)).rejects.toMatchObject({
       status: 403,
     });
-    expect(expired.mock.calls).toEqual([['old-session']]);
+    expect(expired.mock.calls).toEqual([[oldContext]]);
   });
   it('notifies immediately after successful self password change, not an admin reset', async () => {
     const expired = vi.fn();
     onSessionExpired(expired);
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 204 })));
-    await json('/api/v1/auth/credential', 'self', { method: 'PUT', body: '{}' });
-    await json('/api/v1/employees/target/identity', 'admin', { method: 'PUT', body: '{}' });
-    expect(expired.mock.calls).toEqual([['self']]);
+    await json('/api/v1/auth/credential', selfContext, { method: 'PUT', body: '{}' });
+    await json('/api/v1/employees/target/identity', adminContext, { method: 'PUT', body: '{}' });
+    expect(expired.mock.calls).toEqual([[selfContext]]);
+  });
+});
+
+describe('explicit logout while business writes are paused', () => {
+  it('sends only the exact current POST logout with captured proof and keeps the owner paused', async () => {
+    const paused = sessionFixture('p');
+    paused.owner.pause();
+    const fetcher = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    vi.stubGlobal('fetch', fetcher);
+    await expect(json('/api/v1/auth/logout', paused, { method: 'POST' })).resolves.toBeUndefined();
+    expect(fetcher).toHaveBeenCalledOnce();
+    const init = fetcher.mock.calls[0]?.[1] as RequestInit;
+    expect(init.credentials).toBe('same-origin');
+    expect(new Headers(init.headers).get('x-kingturf-csrf')).toBe(paused.csrfToken);
+    expect(new Headers(init.headers).get('x-kingturf-session-generation')).toBe(paused.generation);
+    expect(paused.owner.canWrite()).toBe(false);
+  });
+  for (const [path, method] of [
+    ['/api/v1/employees', 'POST'],
+    ['/api/v1/auth/credential', 'PUT'],
+    ['/api/v1/auth/logout?x=1', 'POST'],
+    ['/api/v1/auth/logout/', 'POST'],
+    ['/api/v1/auth/logout', 'PUT'],
+    ['/api/v1/auth/logout', 'post'],
+  ] as const)
+    it(`does not send paused ${method} ${path}`, async () => {
+      const paused = sessionFixture('p');
+      paused.owner.pause();
+      const fetcher = vi.fn();
+      vi.stubGlobal('fetch', fetcher);
+      await expect(json(path, paused, { method })).rejects.toMatchObject({ status: 403 });
+      expect(fetcher).not.toHaveBeenCalled();
+    });
+  it('never sends a disposed logout', async () => {
+    const disposed = sessionFixture('p');
+    disposed.owner.dispose();
+    const fetcher = vi.fn();
+    vi.stubGlobal('fetch', fetcher);
+    await expect(json('/api/v1/auth/logout', disposed, { method: 'POST' })).rejects.toMatchObject({
+      status: 401,
+    });
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+  it('does not let late A logout success clear or reload B', async () => {
+    const state = new SessionState();
+    const a = state.install(sessionResponse('a'), state.begin());
+    if (!a) throw new Error('Missing test context');
+    a.owner.pause();
+    let finish: ((value: Response) => void) | undefined;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        () =>
+          new Promise<Response>((resolve) => {
+            finish = resolve;
+          }),
+      ),
+    );
+    const reload = vi.fn();
+    const pending = json('/api/v1/auth/logout', a, { method: 'POST' }).then(() =>
+      expireSession(a, state, reload),
+    );
+    const b = state.install(sessionResponse('b'), state.begin());
+    finish?.(new Response(null, { status: 204 }));
+    await expect(pending).rejects.toMatchObject({ status: 401 });
+    expect(reload).not.toHaveBeenCalled();
+    expect(state.current).toBe(b);
+    expect(b?.owner.canWrite()).toBe(true);
   });
 });

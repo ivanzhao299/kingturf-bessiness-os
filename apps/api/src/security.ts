@@ -1,6 +1,7 @@
 import { createHash, randomBytes, scrypt as nodeScrypt, timingSafeEqual } from 'node:crypto';
 import type { AppConfig } from '@kingturf/config';
 import { DomainError, type AuditSink, type AuthorizationContext } from '@kingturf/domain';
+import { SessionProof } from './session-proof.ts';
 
 const scrypt = (
   password: string,
@@ -100,6 +101,7 @@ export function hashSessionToken(token: string, secret: string): string {
 
 export class AuthenticationService {
   readonly #dummyHash: Promise<string>;
+  readonly #proof: SessionProof;
   public constructor(
     private readonly store: CredentialStore,
     private readonly hasher: PasswordHasher,
@@ -107,6 +109,7 @@ export class AuthenticationService {
     private readonly audit: AuditSink,
   ) {
     this.#dummyHash = hasher.hash('invalid-password-padding');
+    this.#proof = new SessionProof(config.secret);
   }
   public async login(
     login: string,
@@ -164,6 +167,24 @@ export class AuthenticationService {
   }
   public authenticate(token: string): Promise<AuthorizationContext | null> {
     return this.store.resolveSession(hashSessionToken(token, this.config.secret), new Date());
+  }
+  public sessionGeneration(token: string): string {
+    return this.#proof.generation(token);
+  }
+  public matchesSessionGeneration(token: string, value: string): boolean {
+    return this.#proof.matchesGeneration(token, value);
+  }
+  public issueCsrfProof(token: string): string {
+    return this.#proof.issueSession(token);
+  }
+  public verifyCsrfProof(token: string, value: string): boolean {
+    return this.#proof.verifySession(token, value);
+  }
+  public issueLoginProof(token: string | null): string {
+    return this.#proof.issueLogin(token);
+  }
+  public verifyLoginProof(token: string | null, value: string): boolean {
+    return this.#proof.verifyLogin(token, value);
   }
   public async changePassword(
     context: AuthorizationContext,

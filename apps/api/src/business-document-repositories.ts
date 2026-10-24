@@ -2,6 +2,18 @@ import { createHash } from 'node:crypto';
 import { canonicalize, DomainError, type Actor } from '@kingturf/domain';
 import type { Database } from '@kingturf/database';
 import type { DataScope, JsonObject } from '@kingturf/types';
+import {
+  writeBusinessDocumentBindingsAudit,
+  writeBusinessDocumentCreateAudit,
+  writeBusinessDocumentConnectorAudit,
+  writeBusinessDocumentVersionAudit,
+  writeBusinessDocumentSendAudit,
+  writeBusinessDocumentReviewAudit,
+  writeBusinessDocumentActivityAudit,
+  writeBusinessDocumentTranslationAudit,
+  writeBusinessDocumentTranslationOutbox,
+  writeBusinessDocumentDispatchOutbox,
+} from './audit-outbox.ts';
 
 type Context = Readonly<{
   actor: Actor;
@@ -157,16 +169,12 @@ export class PostgresBusinessDocumentRepository {
          VALUES($1,$2,1,$3,'从受控模板创建',$4,$5)`,
         [actor.companyId, document.id, input.content, canonicalHash, actor.employeeId],
       );
-      await tx.query(
-        `INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata)
-         VALUES('business-document.create','SUCCESS',$1,$2,'business-document',$3,$4,$5)`,
-        [
-          actor.employeeId,
-          actor.companyId,
-          document.id,
-          correlationId,
-          { templateKey: input.templateKey },
-        ],
+      await writeBusinessDocumentCreateAudit(
+        tx,
+        actor,
+        document.id,
+        correlationId,
+        input.templateKey,
       );
       return {
         id: document.id,
@@ -240,10 +248,12 @@ export class PostgresBusinessDocumentRepository {
     ).rows[0];
     if (!updated)
       throw new DomainError('conflict', 'Document bindings cannot be changed in the current state');
-    await this.db.query(
-      `INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata)
-       VALUES('business-document.bindings-updated','SUCCESS',$1,$2,'business-document',$3,$4,$5)`,
-      [context.actor.employeeId, context.actor.companyId, id, correlationId, input],
+    await writeBusinessDocumentBindingsAudit(
+      this.db,
+      context.actor,
+      id,
+      correlationId,
+      input as JsonObject,
     );
     return { id, ...input };
   }
@@ -292,11 +302,7 @@ export class PostgresBusinessDocumentRepository {
           actor.employeeId,
         ],
       );
-      await tx.query(
-        `INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata)
-         VALUES('business-document.version-created','SUCCESS',$1,$2,'business-document',$3,$4,$5)`,
-        [actor.employeeId, actor.companyId, id, correlationId, { version: nextVersion }],
-      );
+      await writeBusinessDocumentVersionAudit(tx, actor, id, correlationId, nextVersion);
       return { id, currentVersion: nextVersion };
     });
   }
@@ -355,18 +361,10 @@ export class PostgresBusinessDocumentRepository {
          VALUES($1,$2,$3,$4,$5,$6)`,
         [actor.companyId, id, input.expectedVersion, input.action, input.reason, actor.employeeId],
       );
-      await tx.query(
-        `INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata)
-         VALUES($1,'SUCCESS',$2,$3,'business-document',$4,$5,$6)`,
-        [
-          `business-document.${input.action.toLowerCase()}`,
-          actor.employeeId,
-          actor.companyId,
-          id,
-          correlationId,
-          { version: input.expectedVersion, reason: input.reason },
-        ],
-      );
+      await writeBusinessDocumentReviewAudit(tx, actor, id, input.action, correlationId, {
+        version: input.expectedVersion,
+        reason: input.reason,
+      });
       return { id, state: nextState, currentVersion: input.expectedVersion };
     });
   }
@@ -448,17 +446,18 @@ export class PostgresBusinessDocumentRepository {
         )
       ).rows[0];
       if (!row) throw new DomainError('conflict', 'Connector configuration version is stale');
-      await tx.query(
-        `INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata)
-         VALUES('business-document.connector-configured','SUCCESS',$1,$2,'business-document-connector',
-           (SELECT id FROM business_document_connectors WHERE tenant_id=$2 AND connector=$3),$4,$5)`,
-        [
-          actor.employeeId,
-          actor.companyId,
+      await writeBusinessDocumentConnectorAudit(
+        tx,
+        actor,
+        actor.companyId,
+        connector,
+        correlationId,
+        {
           connector,
-          correlationId,
-          { connector, provider: input.provider, status: input.status, version: row.item.version },
-        ],
+          provider: input.provider,
+          status: input.status,
+          version: row.item.version as number,
+        },
       );
       return row.item;
     });
@@ -532,31 +531,20 @@ export class PostgresBusinessDocumentRepository {
       ).rows[0];
       if (!translation) throw new Error('Business document translation insert failed');
       if (!manual) {
-        await tx.query(
-          `INSERT INTO domain_event_outbox(
-             tenant_id,event_type,event_version,aggregate_type,aggregate_id,aggregate_version,
-             occurred_at,actor_id,correlation_id,payload)
-           VALUES($1,'business-document.translation.requested',1,'business-document-translation',$2,1,
-             now(),$3,$4,jsonb_build_object('translationId',$2::uuid))`,
-          [context.actor.companyId, translation.item.id, context.actor.employeeId, correlationId],
+        await writeBusinessDocumentTranslationOutbox(
+          tx,
+          context.actor.companyId,
+          translation.item.id as string,
+          context.actor.employeeId,
+          correlationId,
         );
       }
-      await tx.query(
-        `INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata)
-         VALUES('business-document.translation-created','SUCCESS',$1,$2,'business-document',$3,$4,$5)`,
-        [
-          context.actor.employeeId,
-          context.actor.companyId,
-          id,
-          correlationId,
-          {
-            version: input.expectedVersion,
-            targetLocale: input.targetLocale,
-            provider: manual ? 'MANUAL' : 'CONNECTED_PROVIDER',
-            translationId: translation.item.id,
-          },
-        ],
-      );
+      await writeBusinessDocumentTranslationAudit(tx, context.actor, id, correlationId, {
+        version: input.expectedVersion,
+        targetLocale: input.targetLocale,
+        provider: manual ? 'MANUAL' : 'CONNECTED_PROVIDER',
+        translationId: translation.item.id as string,
+      });
       return translation.item;
     });
   }
@@ -576,17 +564,13 @@ export class PostgresBusinessDocumentRepository {
       )
     ).rows[0];
     if (!document) throw new DomainError('not_found', 'Business document not found');
-    await this.db.query(
-      `INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata)
-       VALUES($1,'SUCCESS',$2,$3,'business-document',$4,$5,$6)`,
-      [
-        `business-document.${action.toLowerCase()}`,
-        context.actor.employeeId,
-        context.actor.companyId,
-        id,
-        correlationId,
-        { version },
-      ],
+    await writeBusinessDocumentActivityAudit(
+      this.db,
+      context.actor,
+      id,
+      action,
+      correlationId,
+      version,
     );
     return { id, action, version };
   }
@@ -707,37 +691,21 @@ export class PostgresBusinessDocumentRepository {
         )
       ).rows[0];
       if (!dispatch) throw new Error('Business document dispatch insert failed');
-      await tx.query(
-        `INSERT INTO domain_event_outbox(
-           tenant_id,event_type,event_version,aggregate_type,aggregate_id,aggregate_version,
-           occurred_at,actor_id,correlation_id,payload)
-         VALUES($1,'business-document.dispatch.requested',1,'business-document-dispatch',$2,1,
-           now(),$3,$4,jsonb_build_object('dispatchId',$2::uuid,'channel',$5::text))`,
-        [
-          context.actor.companyId,
-          dispatch.item.id,
-          context.actor.employeeId,
-          correlationId,
-          input.channel,
-        ],
+      await writeBusinessDocumentDispatchOutbox(
+        tx,
+        context.actor.companyId,
+        dispatch.item.id as string,
+        context.actor.employeeId,
+        correlationId,
+        input.channel,
       );
-      await tx.query(
-        `INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata)
-         VALUES('business-document.send-requested','SUCCESS',$1,$2,'business-document',$3,$4,$5)`,
-        [
-          context.actor.employeeId,
-          context.actor.companyId,
-          id,
-          correlationId,
-          {
-            version: input.expectedVersion,
-            channel: input.channel,
-            recipientHash: digest(input.recipientAddress.trim().toLowerCase()),
-            dispatchId: dispatch.item.id,
-            translationId: input.translationId ?? null,
-          },
-        ],
-      );
+      await writeBusinessDocumentSendAudit(tx, context.actor, id, correlationId, {
+        version: input.expectedVersion,
+        channel: input.channel,
+        recipientHash: digest(input.recipientAddress.trim().toLowerCase()),
+        dispatchId: dispatch.item.id as string,
+        translationId: input.translationId ?? null,
+      });
       return dispatch.item;
     });
   }

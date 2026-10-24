@@ -2,6 +2,13 @@ import { createHash } from 'node:crypto';
 /* eslint-disable @typescript-eslint/no-non-null-assertion -- INSERT/aggregate RETURNING rows are transaction invariants. */
 import { canonicalize, DomainError, type Actor, type ScopeAnchor } from '@kingturf/domain';
 import type { Database, SqlClient } from '@kingturf/database';
+import { recordScopeSql } from './scope-sql.ts';
+import { writeAuditOutbox as evidence } from './audit-outbox.ts';
+import {
+  lockCommercialCommand,
+  replayCommercialCommandAfterLock,
+  retainCommercialCommand,
+} from './command-results.ts';
 import type { DataScope, JsonObject, OperationalListFilter, Page } from '@kingturf/types';
 
 type Db = SqlClient & Pick<Database, 'transaction'>;
@@ -12,49 +19,15 @@ type Context = Readonly<{
 }>;
 const hash = (value: unknown) => createHash('sha256').update(canonicalize(value)).digest('hex');
 const json = (value: unknown) => value as JsonObject;
-const scope = (context: Context, alias = 'c', offset = 2) => {
-  const clauses: string[] = [];
-  const values: string[] = [];
-  if (context.scopes.includes('COMPANY') || context.scopes.includes('GROUP')) clauses.push('TRUE');
-  if (context.scopes.includes('SELF'))
-    clauses.push(
-      `${alias}.owner_id=$${String(offset + values.push(context.actor.employeeId) - 1)}`,
-    );
-  for (const anchor of context.anchors)
-    if (anchor.organizationId && context.scopes.includes(anchor.scope)) {
-      values.push(anchor.organizationId);
-      clauses.push(
-        `EXISTS(SELECT 1 FROM organizations anchor JOIN organization_scope_relationships osr ON osr.ancestor_id=anchor.id AND osr.descendant_id=${alias}.owner_organization_id${anchor.scope === 'TEAM' ? ' AND osr.depth<=1' : ''} WHERE anchor.id=$${String(offset + values.length - 1)} AND anchor.owner_organization_id=${alias}.tenant_id AND anchor.organization_type='${anchor.scope}' AND anchor.active AND anchor.deleted_at IS NULL)`,
-      );
-    }
-  return { sql: clauses.length ? `(${clauses.join(' OR ')})` : 'FALSE', values };
-};
+// 数据范围谓词已收敛至 scope-sql.ts 的 recordScopeSql（批次 1b，TD-DUP-001）。
+// qtc 变体与共享实现的缺省（commercial 语义）文本一致：granted 锚点守卫、无短路、osr 别名——零归一化对拍见 test/scope-sql-qtc.test.ts。
 const requireCustomer = async (tx: SqlClient, customerId: string, context: Context) => {
-  const secured = scope(context, 'c', 3);
+  const secured = recordScopeSql(context.scopes, context.anchors, context.actor, 'c', 3);
   const found = await tx.query(
     `SELECT 1 FROM customers c WHERE c.id=$1 AND c.tenant_id=$2 AND c.deleted_at IS NULL AND ${secured.sql}`,
     [customerId, context.actor.companyId, ...secured.values],
   );
   if (!found.rowCount) throw new DomainError('not_found', 'Customer not found');
-};
-const evidence = async (
-  tx: SqlClient,
-  action: string,
-  aggregate: string,
-  id: string,
-  version: number,
-  actor: Actor,
-  correlationId: string,
-  payload: JsonObject,
-) => {
-  await tx.query(
-    "INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata) VALUES($1,'SUCCESS',$2,$3,$4,$5,$6,$7)",
-    [action, actor.employeeId, actor.companyId, aggregate, id, correlationId, payload],
-  );
-  await tx.query(
-    'INSERT INTO domain_event_outbox(tenant_id,event_type,event_version,aggregate_type,aggregate_id,aggregate_version,occurred_at,actor_id,correlation_id,payload) VALUES($1,$2,1,$3,$4,$5,now(),$6,$7,$8)',
-    [actor.companyId, action, aggregate, id, version, actor.employeeId, correlationId, payload],
-  );
 };
 const command = async <T extends JsonObject>(
   tx: SqlClient,
@@ -67,38 +40,24 @@ const command = async <T extends JsonObject>(
   work: () => Promise<T>,
 ): Promise<T> => {
   const requestHash = hash(input);
-  await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
-    `${actor.companyId}:${key}`,
-  ]);
+  await lockCommercialCommand(tx, actor.companyId, key);
   // Authorization is deliberately re-evaluated before looking up a replay. A
   // previously valid idempotency result must not bypass a revoked DataScope.
   await authorize();
-  const prior = (
-    await tx.query<{
-      command_type: string;
-      subject_id: string;
-      actor_id: string;
-      request_hash: string;
-      payload: T;
-    }>(
-      'SELECT command_type,subject_id,actor_id,request_hash,payload FROM commercial_command_results WHERE tenant_id=$1 AND idempotency_key=$2',
-      [actor.companyId, key],
-    )
-  ).rows[0];
-  if (prior) {
-    if (
-      prior.command_type !== type ||
-      prior.subject_id !== subject ||
-      prior.actor_id !== actor.employeeId ||
-      prior.request_hash !== requestHash
-    )
-      throw new DomainError('conflict', 'Idempotency key is bound to another command');
-    return prior.payload;
-  }
+  const prior = await replayCommercialCommandAfterLock<T>(tx, actor.companyId, key, {
+    type,
+    subjectId: subject,
+    actorId: actor.employeeId,
+    requestHash,
+  });
+  if (prior) return prior;
   const result = await work();
-  await tx.query(
-    'INSERT INTO commercial_command_results(tenant_id,idempotency_key,command_type,subject_id,actor_id,request_hash,payload) VALUES($1,$2,$3,$4,$5,$6,$7)',
-    [actor.companyId, key, type, subject, actor.employeeId, requestHash, result],
+  await retainCommercialCommand(
+    tx,
+    actor.companyId,
+    key,
+    { type, subjectId: subject, actorId: actor.employeeId, requestHash },
+    result,
   );
   return result;
 };
@@ -167,7 +126,7 @@ export class PostgresQuoteToCashRepository {
     view: 'limits' | 'credit' | 'contracts' | 'orders' | 'ar' | 'payments' | 'reconciliation',
     context: Context,
   ) {
-    const secured = scope(context, 'c', 2);
+    const secured = recordScopeSql(context.scopes, context.anchors, context.actor, 'c', 2);
     const queries = {
       limits: `SELECT to_jsonb(l) AS item FROM credit_limits l JOIN customers c ON c.id=l.customer_id AND c.tenant_id=l.tenant_id WHERE l.tenant_id=$1 AND ${secured.sql} ORDER BY l.effective_at DESC,l.id`,
       credit: `SELECT to_jsonb(d)||jsonb_build_object('exposureAmount',d.calculation_trace->>'exposureAmount','creditLimit',d.calculation_trace->>'creditLimit') AS item FROM effective_credit_decisions d JOIN customers c ON c.id=d.customer_id AND c.tenant_id=d.tenant_id WHERE d.tenant_id=$1 AND ${secured.sql} ORDER BY d.created_at DESC,d.id`,
@@ -190,7 +149,7 @@ export class PostgresQuoteToCashRepository {
     filter: OperationalListFilter,
     context: Context,
   ): Promise<Page<JsonObject>> {
-    const secured = scope(context, 'c', 2);
+    const secured = recordScopeSql(context.scopes, context.anchors, context.actor, 'c', 2);
     const values: unknown[] = [context.actor.companyId, ...secured.values];
     const add = (value: unknown): string => {
       values.push(value);

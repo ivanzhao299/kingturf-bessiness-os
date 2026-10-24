@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { canonicalize, DomainError, type Actor, type ScopeAnchor } from '@kingturf/domain';
-import type { Database, SqlClient } from '@kingturf/database';
+import type { Database } from '@kingturf/database';
+import { writeContractAudit as audit } from './audit-outbox.ts';
 import type { DataScope, JsonObject } from '@kingturf/types';
 
 type Context = Readonly<{
@@ -13,19 +14,6 @@ const company = (context: Context) => {
   if (!context.scopes.includes('COMPANY') && !context.scopes.includes('GROUP'))
     throw new DomainError('forbidden', 'Contract document operations require company scope');
 };
-const audit = (
-  tx: SqlClient,
-  action: string,
-  actor: Actor,
-  target: string,
-  id: string,
-  correlationId: string,
-  metadata: JsonObject,
-) =>
-  tx.query(
-    "INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata) VALUES($1,'SUCCESS',$2,$3,$4,$5,$6,$7)",
-    [action, actor.employeeId, actor.companyId, target, id, correlationId, metadata],
-  );
 
 export class PostgresContractDocumentRepository {
   public constructor(private readonly db: Database) {}

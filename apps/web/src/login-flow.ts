@@ -22,8 +22,8 @@ export class LoginCoordinator {
   private pending: Promise<boolean> | null = null;
 
   public constructor(
-    private readonly authenticate: (login: string, password: string) => Promise<string>,
-    private readonly initialize: (token: string) => Promise<void>,
+    private readonly authenticate: (login: string, password: string) => Promise<void>,
+    private readonly initialize: () => Promise<void>,
   ) {}
 
   public get busy(): boolean {
@@ -51,9 +51,9 @@ export class LoginCoordinator {
   ): Promise<boolean> {
     onProgress({ phase: 'authenticating', message: '正在验证账号…' });
     try {
-      const token = await this.authenticate(login, password);
+      await this.authenticate(login, password);
       onProgress({ phase: 'initializing', message: '登录成功，正在加载工作台…' });
-      await this.initialize(token);
+      await this.initialize();
       return true;
     } catch (error) {
       onProgress({ phase: 'error', message: loginFailureMessage(error) });

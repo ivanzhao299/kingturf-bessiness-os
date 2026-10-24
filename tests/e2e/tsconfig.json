@@ -1,0 +1,20 @@
+{
+  "extends": "../../packages/config/tsconfig/browser.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"],
+    "typeRoots": ["../../apps/api/node_modules/@types"]
+  },
+  "include": [
+    "cost-matrix-product-quality.spec.ts",
+    "document-send-product-quality.spec.ts",
+    "login-product-quality.spec.ts",
+    "order-evidence-product-quality.spec.ts",
+    "workspace-route-isolation.spec.ts",
+    "session-revocation.spec.ts",
+    "startup-delivery.spec.ts",
+    "source-nested-authorization.spec.ts",
+    "p1-demo.spec.ts",
+    "fixtures/**/*.ts"
+  ]
+}

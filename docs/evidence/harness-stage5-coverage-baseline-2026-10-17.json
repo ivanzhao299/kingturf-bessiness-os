@@ -1,0 +1,146 @@
+{
+  "schemaVersion": 1,
+  "command": "NODE_ENV=test pnpm coverage:measure (guarded loopback test database)",
+  "elapsedMs": 104178,
+  "inventoryCount": 377,
+  "repositoryCount": 25,
+  "resultHash": "5cd8f8f20c57af9b28f57ea8be09a38c74a89133cb0336a0bcdb429b64d4353a",
+  "manifest": {
+    "schemaVersion": 1,
+    "runId": "53d6621c-420f-48a7-bb0f-1627e8f99ee0",
+    "head": "5b3dd0ac249bdf8bc1c1d28995cb3deed77a17c2",
+    "inventoryHash": "b5f1a41de8f5391051ad23b2a80aea7f9e2b44013b3387e97891c8bcb2daebd5",
+    "startedAtMs": 1792227479813,
+    "versions": {
+      "vitest": "3.2.6",
+      "provider": "3.2.6"
+    },
+    "packages": [
+      {
+        "owner": "apps/api",
+        "runId": "53d6621c-420f-48a7-bb0f-1627e8f99ee0",
+        "exit": 0,
+        "signal": null,
+        "startedAtMs": 1792227479815,
+        "finishedAtMs": 1792227568170,
+        "groupDrained": true,
+        "forcedCleanup": false,
+        "aborted": false,
+        "processGroup": 2567680,
+        "report": "/home/jinhuit/Kingturf/kingturf-bessiness-os/coverage/run-53d6621c-420f-48a7-bb0f-1627e8f99ee0/apps-api/coverage-final.json",
+        "reportHash": "8ec47dd5b3245a68df659884cfccbe4b47633730b60b8e43d2d6c568ab87d2c9"
+      },
+      {
+        "owner": "apps/web",
+        "runId": "53d6621c-420f-48a7-bb0f-1627e8f99ee0",
+        "exit": 0,
+        "signal": null,
+        "startedAtMs": 1792227568191,
+        "finishedAtMs": 1792227570780,
+        "groupDrained": true,
+        "forcedCleanup": false,
+        "aborted": false,
+        "processGroup": 2573221,
+        "report": "/home/jinhuit/Kingturf/kingturf-bessiness-os/coverage/run-53d6621c-420f-48a7-bb0f-1627e8f99ee0/apps-web/coverage-final.json",
+        "reportHash": "44527dfb178d633fc73024c58f0b944d2c6c42f47227041b99bc105f213da9ee"
+      },
+      {
+        "owner": "packages/config",
+        "runId": "53d6621c-420f-48a7-bb0f-1627e8f99ee0",
+        "exit": 0,
+        "signal": null,
+        "startedAtMs": 1792227570792,
+        "finishedAtMs": 1792227571734,
+        "groupDrained": true,
+        "forcedCleanup": false,
+        "aborted": false,
+        "processGroup": 2574023,
+        "report": "/home/jinhuit/Kingturf/kingturf-bessiness-os/coverage/run-53d6621c-420f-48a7-bb0f-1627e8f99ee0/packages-config/coverage-final.json",
+        "reportHash": "464a6515f023615cccecdb3f5cde97cb9b205b745d09f2be3f60101d1b21d93b"
+      },
+      {
+        "owner": "packages/database",
+        "runId": "53d6621c-420f-48a7-bb0f-1627e8f99ee0",
+        "exit": 0,
+        "signal": null,
+        "startedAtMs": 1792227571735,
+        "finishedAtMs": 1792227580786,
+        "groupDrained": true,
+        "forcedCleanup": false,
+        "aborted": false,
+        "processGroup": 2574551,
+        "report": "/home/jinhuit/Kingturf/kingturf-bessiness-os/coverage/run-53d6621c-420f-48a7-bb0f-1627e8f99ee0/packages-database/coverage-final.json",
+        "reportHash": "65bfc3f171fc8974489ccc2d6ba4972d12370975050910d92fe569c835ea745d"
+      },
+      {
+        "owner": "packages/domain",
+        "runId": "53d6621c-420f-48a7-bb0f-1627e8f99ee0",
+        "exit": 0,
+        "signal": null,
+        "startedAtMs": 1792227580786,
+        "finishedAtMs": 1792227581709,
+        "groupDrained": true,
+        "forcedCleanup": false,
+        "aborted": false,
+        "processGroup": 2576849,
+        "report": "/home/jinhuit/Kingturf/kingturf-bessiness-os/coverage/run-53d6621c-420f-48a7-bb0f-1627e8f99ee0/packages-domain/coverage-final.json",
+        "reportHash": "b1775733c77ca4552d80b2ec6bb9edaaf8511c0d19a36c4927a5ab35fd023579"
+      },
+      {
+        "owner": "packages/types",
+        "runId": "53d6621c-420f-48a7-bb0f-1627e8f99ee0",
+        "exit": 0,
+        "signal": null,
+        "startedAtMs": 1792227581710,
+        "finishedAtMs": 1792227582591,
+        "groupDrained": true,
+        "forcedCleanup": false,
+        "aborted": false,
+        "processGroup": 2577396,
+        "report": "/home/jinhuit/Kingturf/kingturf-bessiness-os/coverage/run-53d6621c-420f-48a7-bb0f-1627e8f99ee0/packages-types/coverage-final.json",
+        "reportHash": "3e23c4b73f77af4fe95115e360872e42a59baa8e675367b736379ed5814a5aad"
+      }
+    ],
+    "finishedAtMs": 1792227582592
+  },
+  "summary": {
+    "overall": {
+      "covered": 31623,
+      "total": 48566
+    },
+    "domain": {
+      "covered": 496,
+      "total": 671
+    },
+    "repositories": {
+      "covered": 6782,
+      "total": 11512
+    },
+    "packages": {
+      "apps/api": {
+        "covered": 21675,
+        "total": 26752
+      },
+      "apps/web": {
+        "covered": 8937,
+        "total": 20592
+      },
+      "packages/config": {
+        "covered": 298,
+        "total": 308
+      },
+      "packages/database": {
+        "covered": 143,
+        "total": 169
+      },
+      "packages/domain": {
+        "covered": 496,
+        "total": 671
+      },
+      "packages/types": {
+        "covered": 74,
+        "total": 74
+      }
+    }
+  }
+}

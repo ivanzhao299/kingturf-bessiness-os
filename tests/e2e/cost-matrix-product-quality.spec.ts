@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { installSyntheticLogin } from './fixtures/browser-session';
 
 const matrices = Array.from({ length: 36 }, (_, index) => ({
   id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
@@ -78,21 +79,13 @@ test('presents a paginated matrix ledger and a full-width on-demand model worksp
       : {}),
     auditTrail: [],
   });
-  await page.route('**/api/v1/auth/login', (route) =>
-    route.fulfill({ status: 200, json: { token: 'cost-matrix-session' } }),
-  );
-  await page.route('**/api/v1/auth/session', (route) =>
-    route.fulfill({
-      status: 200,
-      json: {
-        employeeId: 'employee-cost-analyst',
-        companyId: 'company-1',
-        displayName: '成本分析员',
-        employeeNumber: 'KT-COST-01',
-        permissions: ['cost-matrix:read', 'cost-matrix:manage', 'cost-matrix:calculate'],
-      },
-    }),
-  );
+  await installSyntheticLogin(page, {
+    employeeId: 'employee-cost-analyst',
+    companyId: 'company-1',
+    displayName: '成本分析员',
+    employeeNumber: 'KT-COST-01',
+    permissions: ['cost-matrix:read', 'cost-matrix:manage', 'cost-matrix:calculate'],
+  });
   await page.route('**/api/v1/cost-matrix-summaries**', async (route) => {
     const url = new URL(route.request().url());
     const query = (url.searchParams.get('q') ?? '').toLocaleLowerCase('zh-CN');
@@ -310,32 +303,24 @@ test('hands an approved matrix cost directly into a preselected sales quote', as
   const policyVersionId = '00000000-0000-4000-8000-000000000006';
   let linkedToQuote = false;
 
-  await page.route('**/api/v1/auth/login', (route) =>
-    route.fulfill({ status: 200, json: { token: 'cost-to-quote-session' } }),
-  );
-  await page.route('**/api/v1/auth/session', (route) =>
-    route.fulfill({
-      status: 200,
-      json: {
-        employeeId: 'employee-commercial-admin',
-        companyId: 'company-1',
-        displayName: '商务管理员',
-        employeeNumber: 'KT-COMMERCIAL-01',
-        permissions: [
-          'cost-matrix:read',
-          'cost-matrix:calculate',
-          'cost-model:read',
-          'cost:read',
-          'cost:evaluate',
-          'technical-solution:read',
-          'ctr:read',
-          'sales-policy:read',
-          'quote:read',
-          'quote:create',
-        ],
-      },
-    }),
-  );
+  await installSyntheticLogin(page, {
+    employeeId: 'employee-commercial-admin',
+    companyId: 'company-1',
+    displayName: '商务管理员',
+    employeeNumber: 'KT-COMMERCIAL-01',
+    permissions: [
+      'cost-matrix:read',
+      'cost-matrix:calculate',
+      'cost-model:read',
+      'cost:read',
+      'cost:evaluate',
+      'technical-solution:read',
+      'ctr:read',
+      'sales-policy:read',
+      'quote:read',
+      'quote:create',
+    ],
+  });
   await page.route('**/api/v1/cost-matrix-calculations/*/quote-cost-decision', async (route) => {
     linkedToQuote = true;
     await route.fulfill({

@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "measuredOn": "2026-10-20",
+  "exemptions": [
+    {
+      "path": "apps/api/src/app.ts",
+      "symbol": "FunctionDeclaration:buildApp",
+      "baselineStart": 541,
+      "baselineEnd": 4167,
+      "maxLines": 3627,
+      "reason": "TD-API-001 existing application factory; no growth or new function permission",
+      "owner": "Current Harness executor (gate tracking only)",
+      "dueBatch": "Independent long-function remediation after final acceptance; hard date takes precedence",
+      "until": "2026-11-17"
+    },
+    {
+      "path": "apps/api/src/app.ts",
+      "symbol": "FunctionDeclaration:buildApp/VariableDeclaration:application/MethodDeclaration:dispatch",
+      "baselineStart": 549,
+      "baselineEnd": 4106,
+      "maxLines": 3558,
+      "reason": "TD-API-001 existing nested dispatch; independently capped despite overlap with buildApp",
+      "owner": "Current Harness executor (gate tracking only)",
+      "dueBatch": "Independent long-function remediation after final acceptance; hard date takes precedence",
+      "until": "2026-11-17"
+    },
+    {
+      "path": "apps/api/src/commercial-repositories.ts",
+      "symbol": "ClassDeclaration:PostgresCommercialRepository/MethodDeclaration:createQuote",
+      "baselineStart": 1714,
+      "baselineEnd": 1921,
+      "maxLines": 208,
+      "reason": "Existing quote transaction body; requires separately authorized behavior-preserving decomposition",
+      "owner": "Current Harness executor (gate tracking only)",
+      "dueBatch": "Independent long-function remediation after final acceptance; hard date takes precedence",
+      "until": "2026-11-17"
+    },
+    {
+      "path": "apps/api/src/routes/foundation.ts",
+      "symbol": "FunctionDeclaration:foundationRoutes",
+      "baselineStart": 89,
+      "baselineEnd": 610,
+      "maxLines": 522,
+      "reason": "Existing foundation route factory; full span previously omitted by partial function measurement",
+      "owner": "Current Harness executor (gate tracking only)",
+      "dueBatch": "Independent long-function remediation after final acceptance; hard date takes precedence",
+      "until": "2026-11-17"
+    }
+  ]
+}

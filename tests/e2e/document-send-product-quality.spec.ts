@@ -1,4 +1,14 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page, type Request, type Route } from '@playwright/test';
+import { seedSyntheticCookies, sessionResponse } from './fixtures/browser-session';
+
+type ConnectorRoute = Omit<Route, 'request'> & {
+  request(): Omit<Request, 'postDataJSON'> & {
+    postDataJSON(): { expectedVersion: unknown };
+  };
+};
+type MeasuredLocator = Omit<Locator, 'boundingBox'> & {
+  boundingBox(): Promise<NonNullable<Awaited<ReturnType<Locator['boundingBox']>>>>;
+};
 
 // Isolated browser fixtures only: no real customer, provider or production writes.
 async function openDocument(
@@ -24,14 +34,12 @@ async function openDocument(
       },
     ],
   };
-  await page.addInitScript(() =>
-    sessionStorage.setItem('kingturf.session', 'document-test-session'),
-  );
+  await seedSyntheticCookies(page);
   await page.route('**/api/v1/**', async (route) => {
     const path = new URL(route.request().url()).pathname;
     if (path.endsWith('/auth/session'))
       return route.fulfill({
-        json: {
+        json: sessionResponse({
           employeeId: 'document-test',
           companyId: 'test-company',
           displayName: '文档测试',
@@ -45,7 +53,7 @@ async function openDocument(
             ...(canSend ? ['business-document:send'] : []),
             ...(configure ? ['business-document:configure'] : []),
           ],
-        },
+        }),
       });
     if (path.endsWith('/business-documents/reference-data'))
       return route.fulfill({ json: { customers: [], orders: [], employees: [] } });
@@ -112,11 +120,11 @@ test('missing customer is explained, with mobile feedback fitting the viewport',
   await page.setViewportSize({ width: 390, height: 844 });
   await openDocument(page, 'DRAFT', false);
   await send(page).click();
-  const notice = page.locator('.document-send-notice');
+  const notice = page.locator('.document-send-notice') as MeasuredLocator;
   await expect(notice).toContainText('尚未绑定客户');
   const box = await notice.boundingBox();
-  expect(box!.x).toBeGreaterThanOrEqual(0);
-  expect(box!.x + box!.width).toBeLessThanOrEqual(390);
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(390);
   await page.getByRole('button', { name: '返回文档' }).click();
   await expect(editor(page)).toBeVisible();
 });
@@ -164,7 +172,9 @@ test('queue submission retains idempotency on retry, blocks double submit and ne
   const submit = page.getByRole('button', { name: '确认进入发送队列' });
   const form = page.locator('.entity-form').filter({ has: page.getByLabel('收件人姓名') });
   await submit.click();
-  await form.evaluate((node: HTMLFormElement) => node.requestSubmit());
+  await form.evaluate((node: HTMLFormElement) => {
+    node.requestSubmit();
+  });
   await expect(page.getByText('响应丢失，请重试', { exact: true })).toBeVisible();
   expect(keys).toHaveLength(1);
   await submit.click();
@@ -197,7 +207,7 @@ test('admin goes directly to configuration, saves without reloading, and returns
     route.fulfill({ json: { items: [connector] } }),
   );
   let saves = 0;
-  await page.route('**/api/v1/document-connectors/EMAIL', (route) => {
+  await page.route('**/api/v1/document-connectors/EMAIL', (route: ConnectorRoute) => {
     expect(route.request().method()).toBe('PUT');
     expect(route.request().postDataJSON().expectedVersion).toBe(0);
     saves++;
@@ -261,13 +271,13 @@ test('approved document navigates to settings from unconfigured feedback and set
   });
   await send(page).click();
   await page.getByRole('button', { name: '前往发送配置' }).click();
-  const settings = page.locator('.document-send-settings');
+  const settings = page.locator('.document-send-settings') as MeasuredLocator;
   await expect(settings).toContainText('配置网络暂不可用');
   await settings.getByRole('button', { name: '重试加载配置' }).click();
   await expect(settings.getByRole('button', { name: '配置', exact: true })).toBeVisible();
   const box = await settings.boundingBox();
-  expect(box!.x).toBeGreaterThanOrEqual(0);
-  expect(box!.x + box!.width).toBeLessThanOrEqual(390);
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(390);
   await page.screenshot({ path: '.test-results/document-settings-mobile.png' });
   await settings.getByRole('button', { name: '配置', exact: true }).click();
   await page.getByRole('combobox', { name: /^状态/ }).selectOption('READY');

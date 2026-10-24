@@ -7,6 +7,7 @@ import { createHash } from 'node:crypto';
 import { canonicalize, DomainError, type Actor, type ScopeAnchor } from '@kingturf/domain';
 import type { Database, SqlClient } from '@kingturf/database';
 import type { DataScope, JsonObject } from '@kingturf/types';
+import { writeCollectionAudit as audit } from './audit-outbox.ts';
 
 type Db = SqlClient & Pick<Database, 'transaction'>;
 type Context = Readonly<{
@@ -24,27 +25,6 @@ type CaseState =
   | 'RESOLVED'
   | 'CLOSED';
 const digest = (value: unknown) => createHash('sha256').update(canonicalize(value)).digest('hex');
-const audit = (
-  tx: SqlClient,
-  action: string,
-  targetType: string,
-  targetId: string,
-  context: Context,
-  correlationId: string,
-  metadata: JsonObject,
-) =>
-  tx.query(
-    "INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata) VALUES($1,'SUCCESS',$2,$3,$4,$5,$6,$7)",
-    [
-      action,
-      context.actor.employeeId,
-      context.actor.companyId,
-      targetType,
-      targetId,
-      correlationId,
-      metadata,
-    ],
-  );
 const company = (context: Context) => {
   if (!context.scopes.includes('COMPANY') && !context.scopes.includes('GROUP'))
     throw new DomainError('forbidden', 'Collection and legal operations require company scope');

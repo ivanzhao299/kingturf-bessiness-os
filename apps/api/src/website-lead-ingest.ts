@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { Database, Transaction } from '@kingturf/database';
 import { DomainError } from '@kingturf/domain';
+import { writeWebsiteLeadAudit } from './audit-outbox.ts';
 
 export type WebsiteLeadPayload = Readonly<{
   externalRef: string;
@@ -177,16 +178,13 @@ export class PostgresWebsiteLeadIngestor {
         payload.sourcePage,
       ],
     );
-    await tx.query(
-      `INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata)
-       VALUES('lead.website_ingested','SUCCESS',$1,$2,'lead',$3,$4,$5)`,
-      [
-        actor.id,
-        tenantId,
-        lead.id,
-        correlationId,
-        { externalRef: payload.externalRef, source: 'WEBSITE' },
-      ],
+    await writeWebsiteLeadAudit(
+      tx,
+      actor.id,
+      tenantId,
+      lead.id,
+      correlationId,
+      payload.externalRef,
     );
     return { leadId: lead.id, externalRef: payload.externalRef, status: 'POOL', duplicate: false };
   }

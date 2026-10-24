@@ -1,74 +1,52 @@
-let sessionExpiredHandler: ((token: string) => void) | undefined;
+import { exchange, RequestError } from './http-core';
+import type { ResponseParser } from './shared/response-parser';
+import type { SessionContext, LoginProof } from './session';
+export { RequestError, requestId } from './http-core';
 
-/** Only the application owns session storage and navigation; requests report the affected token. */
-export function onSessionExpired(handler: ((token: string) => void) | undefined): void {
+let sessionExpiredHandler: ((context: SessionContext) => void) | undefined;
+/** Only the application owns UI invalidation; requests report their captured context. */
+export function onSessionExpired(handler: ((context: SessionContext) => void) | undefined): void {
   sessionExpiredHandler = handler;
 }
 
-export const requestId = () => globalThis.crypto.randomUUID();
-
-export class RequestError extends Error {
-  public constructor(
-    message: string,
-    public readonly status: number,
-    public readonly correlationId?: string,
-  ) {
-    super(message);
-    this.name = 'RequestError';
-  }
-}
-
-/** Bound the complete exchange, including a stalled response body, not just the headers. */
-export async function json<T>(path: string, token: string, init?: RequestInit): Promise<T> {
-  const headers = new Headers(init?.headers);
-  headers.set('accept', 'application/json');
-  if (init?.body !== undefined) headers.set('content-type', 'application/json');
-  headers.set('x-correlation-id', requestId());
-  if (token) headers.set('authorization', `Bearer ${token}`);
-  const controller = new AbortController();
-  const timeoutError = new Error('请求超时，请检查网络后重试');
-  const timeout = globalThis.setTimeout(() => {
-    controller.abort(timeoutError);
-  }, 15_000);
-  const externalSignal = init?.signal;
-  const abort = () => {
-    controller.abort(externalSignal?.reason);
+/** Protected/browser-login policy wraps the same statically loaded exchange engine. */
+export async function json<T>(
+  path: string,
+  context: SessionContext | LoginProof | null,
+  init?: RequestInit,
+  decode: ResponseParser<unknown> | null = null,
+): Promise<T> {
+  const session = context && 'owner' in context ? context : null;
+  const unsafe = !['GET', 'HEAD'].includes((init?.method ?? 'GET').toUpperCase());
+  const revokingSession =
+    session !== null && path === '/api/v1/auth/logout' && init?.method === 'POST';
+  const current = () => {
+    if (session && !session.owner.isCurrent())
+      throw new RequestError('登录上下文已变化，请重新操作', 401);
   };
-  if (externalSignal?.aborted) abort();
-  else externalSignal?.addEventListener('abort', abort, { once: true });
-  try {
-    const response = await fetch(path, {
-      ...init,
-      credentials: 'same-origin',
-      headers,
-      signal: controller.signal,
-    });
-    if (response.status === 401 && token) sessionExpiredHandler?.(token);
-    if (!response.ok) {
-      const body = (await response.json().catch(() => ({}))) as {
-        message?: string;
-        error?: { message?: string; correlationId?: string };
-      };
-      controller.signal.throwIfAborted();
-      throw new RequestError(
-        body.error?.message ?? body.message ?? `请求失败（${String(response.status)}）`,
-        response.status,
-        body.error?.correlationId,
-      );
-    }
-    if (
-      response.status === 204 &&
-      init?.method === 'PUT' &&
-      path === '/api/v1/auth/credential' &&
-      token
-    )
-      sessionExpiredHandler?.(token);
-    return (response.status === 204 ? undefined : await response.json()) as T;
-  } catch (error) {
-    if (controller.signal.reason === timeoutError) throw timeoutError;
-    throw error;
-  } finally {
-    globalThis.clearTimeout(timeout);
-    externalSignal?.removeEventListener('abort', abort);
-  }
+  return exchange<T>(path, init, decode, {
+    prepare(headers) {
+      headers.delete('authorization');
+      headers.delete('x-kingturf-csrf');
+      headers.delete('x-kingturf-session-generation');
+      current();
+      if (session && unsafe && !session.owner.canWrite() && !revokingSession)
+        throw new RequestError('正在核验登录状态，请稍后重新操作', 403);
+      if (session) headers.set('x-kingturf-session-generation', session.generation);
+      if (context && unsafe) headers.set('x-kingturf-csrf', context.csrfToken);
+    },
+    received(response) {
+      if (response.status === 401 && session) sessionExpiredHandler?.(session);
+      if (!response.ok) return;
+      current();
+      if (
+        response.status === 204 &&
+        init?.method === 'PUT' &&
+        path === '/api/v1/auth/credential' &&
+        session
+      )
+        sessionExpiredHandler?.(session);
+    },
+    decoded: current,
+  });
 }

@@ -13,6 +13,13 @@ import {
   type ScopeAnchor,
 } from '@kingturf/domain';
 import type { Database, SqlClient } from '@kingturf/database';
+import { recordScopeSql } from './scope-sql.ts';
+import {
+  replayCommercialCommand,
+  retainCommercialCommand,
+  type CommandResultIdentity,
+} from './command-results.ts';
+import { writeCommercialEvidence as evidence } from './audit-outbox.ts';
 import type {
   CostEngineInput,
   CostRule,
@@ -59,50 +66,9 @@ const dto = (row: OpportunityRow): OpportunityDto => ({
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
-const scope = (
-  scopes: readonly DataScope[],
-  anchors: readonly ScopeAnchor[],
-  actor: Actor,
-  offset: number,
-) => {
-  const clauses: string[] = [];
-  const values: unknown[] = [];
-  if (scopes.includes('COMPANY') || scopes.includes('GROUP')) clauses.push('TRUE');
-  if (scopes.includes('SELF'))
-    clauses.push(`o.owner_id=$${String(offset + values.push(actor.employeeId) - 1)}`);
-  for (const anchor of anchors)
-    if (anchor.organizationId && scopes.includes(anchor.scope))
-      clauses.push(
-        `EXISTS(SELECT 1 FROM organizations anchor JOIN organization_scope_relationships osr ON osr.ancestor_id=anchor.id AND osr.descendant_id=o.owner_organization_id${anchor.scope === 'TEAM' ? ' AND osr.depth<=1' : ''} WHERE anchor.id=$${String(offset + values.push(anchor.organizationId) - 1)} AND anchor.owner_organization_id=o.tenant_id AND anchor.organization_type='${anchor.scope}' AND anchor.active AND anchor.deleted_at IS NULL)`,
-      );
-  return { sql: clauses.length ? `(${clauses.join(' OR ')})` : 'FALSE', values };
-};
-const evidence = async (
-  tx: SqlClient,
-  action: string,
-  actor: Actor,
-  id: string,
-  version: number,
-  correlationId: string,
-  payload: JsonObject,
-  aggregateType = 'opportunity',
-) => {
-  await tx.query(
-    "INSERT INTO audit_events(action,outcome,actor_id,organization_id,target_type,target_id,correlation_id,metadata) VALUES($1,'SUCCESS',$2,$3,$4,$5,$6,$7)",
-    [action, actor.employeeId, actor.companyId, aggregateType, id, correlationId, payload],
-  );
-  await tx.query(
-    'INSERT INTO domain_event_outbox(tenant_id,event_type,event_version,aggregate_type,aggregate_id,aggregate_version,occurred_at,actor_id,correlation_id,payload) VALUES($1,$2,1,$3,$4,$5,now(),$6,$7,$8)',
-    [actor.companyId, action, aggregateType, id, version, actor.employeeId, correlationId, payload],
-  );
-};
+// 数据范围谓词已收敛至 scope-sql.ts 的 recordScopeSql（批次 1b，TD-DUP-001）；SQL 与迁移前逐字一致（alias='o'）。
 
-type CommandIdentity = Readonly<{
-  type: string;
-  subjectId: string;
-  actorId: string;
-  requestHash: string;
-}>;
+type CommandIdentity = CommandResultIdentity;
 const commandIdentity = (type: string, subjectId: string, actor: Actor, request: unknown) => ({
   type,
   subjectId,
@@ -114,49 +80,14 @@ const replayCommand = async (
   tenantId: string,
   key: string,
   identity: CommandIdentity,
-): Promise<JsonObject | null> => {
-  await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [`${tenantId}:${key}`]);
-  const retained = (
-    await tx.query<{
-      command_type: string;
-      subject_id: string;
-      actor_id: string;
-      request_hash: string;
-      payload: JsonObject;
-    }>(
-      'SELECT command_type,subject_id,actor_id,request_hash,payload FROM commercial_command_results WHERE tenant_id=$1 AND idempotency_key=$2',
-      [tenantId, key],
-    )
-  ).rows[0];
-  if (!retained) return null;
-  if (
-    retained.command_type !== identity.type ||
-    retained.subject_id !== identity.subjectId ||
-    retained.actor_id !== identity.actorId ||
-    retained.request_hash !== identity.requestHash
-  )
-    throw new DomainError('conflict', 'Idempotency key is bound to another command');
-  return retained.payload;
-};
+): Promise<JsonObject | null> => replayCommercialCommand<JsonObject>(tx, tenantId, key, identity);
 const retainCommand = (
   tx: SqlClient,
   tenantId: string,
   key: string,
   identity: CommandIdentity,
   payload: JsonObject,
-) =>
-  tx.query(
-    'INSERT INTO commercial_command_results(tenant_id,idempotency_key,command_type,subject_id,actor_id,request_hash,payload) VALUES($1,$2,$3,$4,$5,$6,$7)',
-    [
-      tenantId,
-      key,
-      identity.type,
-      identity.subjectId,
-      identity.actorId,
-      identity.requestHash,
-      payload,
-    ],
-  );
+) => retainCommercialCommand(tx, tenantId, key, identity, payload);
 
 export class PostgresCommercialRepository {
   public constructor(private readonly db: Db) {}
@@ -843,7 +774,7 @@ export class PostgresCommercialRepository {
     scopes: readonly DataScope[],
     anchors: readonly ScopeAnchor[],
   ) {
-    const secured = scope(scopes, anchors, actor, 2);
+    const secured = recordScopeSql(scopes, anchors, actor, 'o', 2);
     return (
       await this.db.query<OpportunityRow>(
         `SELECT o.* FROM opportunities o WHERE o.tenant_id=$1 AND o.deleted_at IS NULL AND ${secured.sql} ORDER BY o.updated_at DESC,o.id LIMIT 100`,
@@ -857,7 +788,7 @@ export class PostgresCommercialRepository {
     scopes: readonly DataScope[],
     anchors: readonly ScopeAnchor[],
   ) {
-    const secured = scope(scopes, anchors, actor, 3);
+    const secured = recordScopeSql(scopes, anchors, actor, 'o', 3);
     const row = (
       await this.db.query<OpportunityRow>(
         `SELECT o.* FROM opportunities o WHERE o.id=$1 AND o.tenant_id=$2 AND o.deleted_at IS NULL AND ${secured.sql}`,
@@ -872,7 +803,7 @@ export class PostgresCommercialRepository {
     scopes: readonly DataScope[],
     anchors: readonly ScopeAnchor[],
   ): Promise<readonly JsonObject[]> {
-    const secured = scope(scopes, anchors, actor, 2);
+    const secured = recordScopeSql(scopes, anchors, actor, 'o', 2);
     const definitions = {
       ctrs: `SELECT v.id,c.id AS "ctrId",c.opportunity_id AS "opportunityId",c.code,v.version,v.status,v.title,v.requirements,v.snapshot_hash AS "snapshotHash",v.submitted_at AS "submittedAt",v.created_at AS "createdAt",
         (SELECT coalesce(jsonb_agg(to_jsonb(a) ORDER BY a.decided_at),'[]'::jsonb) FROM ctr_approvals a WHERE a.tenant_id=v.tenant_id AND a.ctr_version_id=v.id) approvals,
@@ -960,7 +891,7 @@ export class PostgresCommercialRepository {
     correlationId: string,
   ) {
     return this.db.transaction(async (tx) => {
-      const secured = scope(scopes, anchors, actor, 3);
+      const secured = recordScopeSql(scopes, anchors, actor, 'o', 3);
       const current = (
         await tx.query<OpportunityRow>(
           `SELECT o.* FROM opportunities o WHERE o.id=$1 AND o.tenant_id=$2 AND o.deleted_at IS NULL AND ${secured.sql} FOR UPDATE`,
@@ -1003,7 +934,7 @@ export class PostgresCommercialRepository {
     correlationId: string,
   ) {
     return this.db.transaction(async (tx) => {
-      const secured = scope(scopes, anchors, actor, 3);
+      const secured = recordScopeSql(scopes, anchors, actor, 'o', 3);
       const current = (
         await tx.query<OpportunityRow>(
           `SELECT o.* FROM opportunities o WHERE o.id=$1 AND o.tenant_id=$2 AND o.deleted_at IS NULL AND ${secured.sql} FOR UPDATE`,
@@ -1106,7 +1037,7 @@ export class PostgresCommercialRepository {
     scopes: readonly DataScope[],
     anchors: readonly ScopeAnchor[],
   ): Promise<OpportunityRow> {
-    const secured = scope(scopes, anchors, actor, 3);
+    const secured = recordScopeSql(scopes, anchors, actor, 'o', 3);
     const row = (
       await tx.query<OpportunityRow>(
         `SELECT o.* FROM opportunities o WHERE o.id=$1 AND o.tenant_id=$2 AND o.deleted_at IS NULL AND ${secured.sql} FOR UPDATE`,

@@ -1,0 +1,34 @@
+diff --git a/tests/e2e/source-nested-authorization.spec.ts b/tests/e2e/source-nested-authorization.spec.ts
+index cc33e57..46db4ac 100644
+--- a/tests/e2e/source-nested-authorization.spec.ts
++++ b/tests/e2e/source-nested-authorization.spec.ts
+@@ -1,5 +1,6 @@
+ import { readFileSync } from 'node:fs';
+ import { expect, test } from '@playwright/test';
++import { installSyntheticLogin } from './fixtures/browser-session';
+ 
+ // Response replay checks UI parity using synthetic data actually returned by the real HTTP/PG suite.
+ // API enforcement remains independently tested there; this browser runner does not contact production.
+@@ -14,19 +15,18 @@ for (const mode of ['denied', 'authorized', 'masked'] as const) {
+   }) => {
+     const aggregate = samples[mode];
+     const collectionPayload = samples[`${mode}Collections`];
+-    if (!aggregate || !collectionPayload)
++    const replaySession = samples[`${mode}Session`];
++    if (!aggregate || !collectionPayload || !replaySession)
+       throw new Error('Run real HTTP authorization fixture producer first');
+     await page.route('**/api/v1/**', (route) => {
+       const path = new URL(route.request().url()).pathname;
+-      if (path.endsWith('/auth/login'))
+-        return route.fulfill({ json: { token: 'browser-response-replay' } });
+-      if (path.endsWith('/auth/session')) return route.fulfill({ json: samples[`${mode}Session`] });
+       if (path.endsWith('/collection-cases')) return route.fulfill({ json: collectionPayload });
+       if (path.endsWith('/sales-orders'))
+         return route.fulfill({ json: { items: [aggregate.order] } });
+       if (path.endsWith('/360')) return route.fulfill({ json: aggregate });
+       return route.fulfill({ json: { items: [] } });
+     });
++    await installSyntheticLogin(page, replaySession);
+     await page.goto('/');
+     await page.getByPlaceholder('账号').fill('synthetic');
+     await page.getByPlaceholder('密码').fill('test-only');

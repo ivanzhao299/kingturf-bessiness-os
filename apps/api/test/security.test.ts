@@ -6,7 +6,7 @@ import {
   hashSessionToken,
   type CredentialStore,
 } from '../src/security.js';
-import { dataScopeSql } from '../src/policy.js';
+import { dataScopeSql } from '../src/scope-sql.js';
 const options = {
   saltBytes: 16,
   keyLength: 32,
@@ -233,16 +233,10 @@ describe('password change and stale login contracts', () => {
     expect(await hasher.verify('new correct horse battery', input.passwordHash)).toBe(true);
     expect(audit.record).not.toHaveBeenCalled();
   });
-  it('rejects a wrong current password before mutation or success audit', async () => {
+  it('rejects a wrong current password before short new-password policy, mutation or success audit', async () => {
     const { service, context, store, audit } = await fixture();
     await expect(
-      service.changePassword(
-        context,
-        'wrong old password',
-        'new correct horse battery',
-        'test-bearer',
-        'correlation',
-      ),
+      service.changePassword(context, 'wrong old password', 'short', 'test-bearer', 'correlation'),
     ).rejects.toMatchObject({ code: 'forbidden' });
     expect(store.replacePasswordForEmployee).not.toHaveBeenCalled();
     expect(audit.record).not.toHaveBeenCalled();

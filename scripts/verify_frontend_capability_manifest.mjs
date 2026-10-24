@@ -1,14 +1,24 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+import { collectFrontendRuntimeSources } from './analysis/frontend-runtime-sources.mjs';
 
 const api = await readFile(new URL('../apps/api/src/app.ts', import.meta.url), 'utf8');
-const web = await readFile(new URL('../apps/web/src/bootstrap.ts', import.meta.url), 'utf8');
+const graph = await collectFrontendRuntimeSources(
+  fileURLToPath(new URL('../apps/web/src/bootstrap.ts', import.meta.url)),
+  fileURLToPath(new URL('../apps/web/src/', import.meta.url)),
+);
+const webSources = graph.sources.map(({ source }) => source);
+if (graph.nonLiteralDynamicImports > 0)
+  process.stderr.write(
+    `Frontend static source scan excludes ${String(graph.nonLiteralDynamicImports)} non-literal dynamic imports.\n`,
+  );
 
 const directPermissions = [
   ...new Set([...api.matchAll(/authorizeQuery\(context,\s*'([^']+)'/gu)].map((match) => match[1])),
 ].sort();
 const missingPermissions = directPermissions.filter(
-  (permission) => !web.includes(`'${permission}'`),
+  (permission) => !webSources.some((source) => source.includes(`'${permission}'`)),
 );
 assert.deepEqual(
   missingPermissions,
@@ -37,7 +47,9 @@ const governedPlatformPaths = [
   '/api/v1/business-objects',
   '/api/v1/operations/events',
 ];
-const missingPaths = governedPlatformPaths.filter((path) => !web.includes(`'${path}'`));
+const missingPaths = governedPlatformPaths.filter(
+  (path) => !webSources.some((source) => source.includes(`'${path}'`)),
+);
 assert.deepEqual(
   missingPaths,
   [],

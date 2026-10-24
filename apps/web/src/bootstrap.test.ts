@@ -1,3 +1,4 @@
+import { sessionFixture } from './test-fixtures/session';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {
@@ -43,6 +44,203 @@ import {
   governanceNextAction,
 } from './bootstrap';
 
+const readBoundSource = (path: string, anchor: string): string => {
+  const source = readFileSync(new URL(path, import.meta.url), 'utf8');
+  if (
+    !source.trim() ||
+    !source.includes(anchor) ||
+    source.indexOf(anchor) !== source.lastIndexOf(anchor)
+  )
+    throw new Error(`Source must remain bound to a unique implementation anchor: ${path}`);
+  return source;
+};
+
+const readOnlineEditorSources = (): string[] => [
+  readBoundSource('./shared/online-editor.ts', 'export function createOnlineDocumentEditor'),
+  readBoundSource('./shared/online-editor-heading.ts', 'export function createOnlineEditorHeading'),
+  readBoundSource(
+    './shared/online-editor-workspace.ts',
+    'export function createOnlineEditorWorkspace',
+  ),
+  readBoundSource(
+    './shared/online-editor-pagination.ts',
+    'export function bindOnlineEditorPagination',
+  ),
+  readBoundSource('./shared/online-editor-save.ts', 'export function createOnlineEditorSave'),
+  readBoundSource('./shared/online-editor-review.ts', 'export function createOnlineEditorReview'),
+  readBoundSource(
+    './shared/online-editor-review-completion.ts',
+    'export function completeOnlineEditorReview',
+  ),
+  readBoundSource('./shared/online-editor-history.ts', 'export function appendOnlineEditorHistory'),
+  readBoundSource(
+    './shared/online-editor-version-history.ts',
+    'export function createOnlineEditorVersionHistory',
+  ),
+  readBoundSource(
+    './shared/online-editor-translation.ts',
+    'export function bindOnlineEditorTranslation',
+  ),
+  readBoundSource(
+    './shared/online-editor-send-settings.ts',
+    'export function createOnlineEditorSendSettings',
+  ),
+  readBoundSource(
+    './shared/online-editor-send-form.ts',
+    'export function openOnlineEditorSendForm',
+  ),
+  readBoundSource(
+    './shared/online-editor-send-blocked.ts',
+    'export function showOnlineEditorBlockedNotice',
+  ),
+  readBoundSource('./shared/online-editor-send.ts', 'export function bindOnlineEditorSend'),
+  readBoundSource('./shared/online-editor-export.ts', 'export function bindOnlineEditorExport'),
+];
+
+const readDocumentSupportSources = (): string[] => [
+  readBoundSource('./shared/business-date.ts', 'export const formatBusinessDate ='),
+  readBoundSource('./shared/document-read-service.ts', 'export function createDocumentReadService'),
+  readBoundSource(
+    './shared/document-connector-configuration.ts',
+    'export function openDocumentConnectorConfiguration',
+  ),
+  readBoundSource(
+    './shared/document-connector-card.ts',
+    'export function appendDocumentConnectorCard',
+  ),
+  readBoundSource(
+    './shared/document-connectors.ts',
+    'export function createDocumentConnectorRenderer',
+  ),
+  readBoundSource('./shared/document-bindings.ts', 'export const BUSINESS_DOCUMENT_SUBJECTS'),
+  readBoundSource('./shared/document-html.ts', 'export const sanitizeBusinessDocumentHtml'),
+  readBoundSource('./shared/document-print.ts', 'export const printOnlineBusinessDocument'),
+];
+
+const readGovernanceSources = (): string[] => [
+  readBoundSource('./shared/permission-prefix.ts', 'export const hasPermissionPrefix'),
+  readBoundSource('./governance/controller.ts', 'export class GovernanceController'),
+  readBoundSource('./governance/surfaces.ts', 'export const GOVERNANCE_SURFACES'),
+  readBoundSource('./governance/presentation.ts', 'export const governanceItems'),
+  readBoundSource('./governance/audit-workbench.ts', 'export const auditLogWorkbench'),
+  readBoundSource('./governance/workspace-heading.ts', 'export function createGovernanceHeading'),
+  readBoundSource(
+    './governance/workspace-actions.ts',
+    'export function createGovernanceFormActions',
+  ),
+  readBoundSource('./governance/workspace-ordering.ts', 'export function createGovernanceOrdering'),
+  readBoundSource('./governance/workspace-card.ts', 'export function createGovernanceCard'),
+  readBoundSource(
+    './governance/organization-actions.ts',
+    'export function appendGovernanceOrganizationActions',
+  ),
+  readBoundSource(
+    './governance/employee-actions.ts',
+    'export function appendGovernanceEmployeeActions',
+  ),
+  readBoundSource(
+    './governance/identity-role-buttons.ts',
+    'export function createGovernanceRoleButtons',
+  ),
+  readBoundSource(
+    './governance/identity-account-buttons.ts',
+    'export function createGovernanceAccountButtons',
+  ),
+  readBoundSource(
+    './governance/identity-grant-button.ts',
+    'export function createGovernanceGrantButton',
+  ),
+  readBoundSource(
+    './governance/identity-state.ts',
+    'export function appendGovernanceIdentityState',
+  ),
+  readBoundSource(
+    './governance/identity-revoke-grant.ts',
+    'export function appendGovernanceRevokeGrant',
+  ),
+  readBoundSource(
+    './governance/identity-scopes.ts',
+    'export function appendGovernanceIdentityScopes',
+  ),
+  readBoundSource(
+    './governance/identity-actions.ts',
+    'export function appendGovernanceIdentityActions',
+  ),
+  readBoundSource(
+    './governance/master-data-actions.ts',
+    'export function appendGovernanceMasterDataActions',
+  ),
+  readBoundSource(
+    './governance/numbering-actions.ts',
+    'export function appendGovernanceNumberingActions',
+  ),
+  readBoundSource('./governance/rule-actions.ts', 'export function appendGovernanceRuleActions'),
+  readBoundSource(
+    './governance/workflow-actions.ts',
+    'export function appendGovernanceWorkflowActions',
+  ),
+  readBoundSource(
+    './governance/workflow-task-actions.ts',
+    'export function appendGovernanceTaskActions',
+  ),
+  readBoundSource(
+    './governance/notification-actions.ts',
+    'export function appendGovernanceNotificationActions',
+  ),
+  readBoundSource(
+    './governance/registry-actions.ts',
+    'export function appendGovernanceRegistryActions',
+  ),
+  readBoundSource('./governance/workspace-sources.ts', 'export function appendGovernanceSources'),
+  readBoundSource('./governance/workspace.ts', 'export function createGovernanceWorkspace'),
+];
+
+const readCommercialStoreSources = (): string[] => [
+  readBoundSource('./commercial/store/controller.ts', 'export class CommercialController'),
+  readBoundSource('./commercial/store/cost-query.ts', 'export const initialCostMatrixQuery'),
+  readBoundSource(
+    './commercial/store/readable-sources.ts',
+    'export function readableCommercialSources',
+  ),
+  readBoundSource(
+    './commercial/store/load-opportunities.ts',
+    'export function startCommercialOpportunityLoad',
+  ),
+  readBoundSource('./commercial/store/load-views.ts', 'export function startCommercialViewLoad'),
+  readBoundSource(
+    './commercial/store/dashboard-query.ts',
+    'export function commercialDashboardQuery',
+  ),
+  readBoundSource('./commercial/store/read-owner.ts', 'export class CommercialReadOwner'),
+  readBoundSource(
+    './commercial/store/route-dependencies.ts',
+    'export function commercialRoutePlan',
+  ),
+  readBoundSource('./commercial/store/route-read.ts', 'export async function readCommercialRoute'),
+  readBoundSource('./commercial/store/route-state.ts', 'export class CommercialRouteState'),
+  readBoundSource(
+    './commercial/workspace-frame.ts',
+    'export function createCommercialWorkspaceFrame',
+  ),
+  readBoundSource('./commercial/route-dom.ts', 'export function populateCommercialRoute'),
+  readBoundSource(
+    './commercial/route-navigation.ts',
+    'export function installCommercialRouteNavigation',
+  ),
+];
+
+const readBoundaryParserSources = (): string[] => [
+  readBoundSource('./shared/response-parser.ts', 'export function parseResponseRecord'),
+  readBoundSource('./shared/session-parser.ts', 'export function parseSessionRestore'),
+  readBoundSource('./shared/login-parser.ts', 'export function parseLoginProof'),
+  readBoundSource('./shared/api-response-parser.ts', 'export function parseResponseArray'),
+  readBoundSource('./shared/register-view-parser.ts', 'export function parseStoredRegisterView'),
+  readBoundSource(
+    './shared/document-response-parser.ts',
+    'export function parseKnownDocumentResponse',
+  ),
+];
+
 it('translates risk rules and derives the daily commission next action', () => {
   expect(riskRuleLabel('LOW_MARGIN')).toBe('毛利率低于政策门槛');
   expect(riskRuleLabel('OVERDUE_AR')).toBe('存在逾期应收');
@@ -77,7 +275,180 @@ it('translates operations codes and derives accountable next actions', () => {
 });
 
 it('captures artificial-turf project handoff fields without test-channel evidence markers', () => {
-  const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+  const source = [
+    readBoundSource('./bootstrap.ts', 'export function commercialWorkspaceStructure'),
+    ...readOnlineEditorSources(),
+    ...readDocumentSupportSources(),
+    ...readGovernanceSources(),
+    ...readCommercialStoreSources(),
+    ...readBoundaryParserSources(),
+    readBoundSource('./crm/customer360-view.ts', 'export function customer360Content'),
+    readBoundSource('./shared/shell-presentation.ts', 'export function navIcon'),
+    readBoundSource('./shared/role-insights.ts', 'export function roleTaskInsight'),
+    readBoundSource('./shared/route-sections.ts', 'export function installRouteSectionNavigation'),
+    readBoundSource('./shared/document-templates.ts', 'export const BUSINESS_DOCUMENT_TEMPLATES'),
+    readBoundSource('./shared/business-format.ts', 'export const recordValue'),
+    readBoundSource('./shared/business-labels.ts', 'export const businessEventLabel'),
+    readBoundSource('./commercial/ctr-fields.ts', 'export const ctrRequirementFields'),
+    readBoundSource('./commercial/quote-print.ts', 'export function printIssuedQuote'),
+    readBoundSource('./commercial/readiness.ts', 'export function contractOrderReadiness'),
+    readBoundSource('./shared/register-profile.ts', 'export const registerProfile'),
+    readBoundSource('./shared/register-drawer.ts', 'export function createRegisterDrawer'),
+    readBoundSource('./shared/register-controls.ts', 'export function createRegisterControls'),
+    readBoundSource('./shared/register-readers.ts', 'export function createRegisterReaders'),
+    readBoundSource('./shared/register-rendering.ts', 'export function createRegisterRendering'),
+    readBoundSource('./shared/register-search.ts', 'export function createRegisterSearch'),
+    readBoundSource('./shared/register-selection.ts', 'export function bindRegisterSelection'),
+    readBoundSource('./shared/register-actions.ts', 'export function bindRegisterActions'),
+    readBoundSource('./shared/register-saved-view.ts', 'export function installSavedRegisterView'),
+    readBoundSource(
+      './shared/workspace-list-tools.ts',
+      'export function installWorkspaceListTools',
+    ),
+    readBoundSource('./commercial/opportunity-view.ts', 'export function appendOpportunityView'),
+    readBoundSource('./commercial/ctr-view.ts', 'export function appendCtrView'),
+    readBoundSource('./commercial/solution-view.ts', 'export function appendSolutionView'),
+    readBoundSource('./commercial/cost-view.ts', 'export function appendCostView'),
+    readBoundSource(
+      './commercial/cost-matrix-bindings.ts',
+      'export function createCostMatrixBindings',
+    ),
+    readBoundSource('./commercial/cost-factor-form.ts', 'export function createCostFactorFields'),
+    readBoundSource(
+      './commercial/cost-matrix-detail.ts',
+      'export function appendCostDetailActions',
+    ),
+    readBoundSource('./commercial/cost-matrix-ledger.ts', 'export function appendCostLedgerRows'),
+    readBoundSource('./commercial/cost-model-heading.ts', 'export function appendCostModelHeading'),
+    readBoundSource(
+      './commercial/cost-model-evaluations.ts',
+      'export function appendCostModelCatalog',
+    ),
+    readBoundSource('./commercial/policy-view.ts', 'export function appendPolicyView'),
+    readBoundSource('./commercial/quote-view.ts', 'export function appendQuoteView'),
+    readBoundSource('./commercial/quote-create.ts', 'export function appendQuoteHeading'),
+    readBoundSource('./commercial/quote-cards.ts', 'export function appendQuoteCardActions'),
+    readBoundSource('./commercial/credit-view.ts', 'export function appendCreditView'),
+    readBoundSource('./commercial/receivables-view.ts', 'export function appendReceivablesView'),
+    readBoundSource('./commercial/collections-view.ts', 'export function appendCollectionsView'),
+    readBoundSource(
+      './commercial/collection-actions.ts',
+      'export function appendCollectionFollowups',
+    ),
+    readBoundSource('./commercial/payments-view.ts', 'export function appendPaymentsView'),
+    readBoundSource('./commercial/commission-view.ts', 'export function appendCommissionView'),
+    readBoundSource('./commercial/commission-policy.ts', 'export function appendCommissionHeading'),
+    readBoundSource('./commercial/commission-ledger.ts', 'export function createCommissionCard'),
+    readBoundSource('./commercial/risk-view.ts', 'export function appendRiskView'),
+    readBoundSource(
+      './commercial/workspace-readiness.ts',
+      'export function appendWorkspaceReadiness',
+    ),
+    readBoundSource(
+      './commercial/workspace-dashboard.ts',
+      'export function appendWorkspaceDashboard',
+    ),
+    readBoundSource(
+      './commercial/workspace-fulfillment.ts',
+      'export function appendWorkspaceFulfillment',
+    ),
+    readBoundSource('./commercial/workspace-sales.ts', 'export function appendWorkspaceSales'),
+    readBoundSource('./commercial/workspace-finance.ts', 'export function appendWorkspaceFinance'),
+    readBoundSource(
+      './commercial/workspace-operations.ts',
+      'export function appendWorkspaceOperations',
+    ),
+    readBoundSource(
+      './commercial/workspace-routes.ts',
+      'export function assignCommercialRouteViews',
+    ),
+    readBoundSource(
+      './commercial/workspace-legacy-panels.ts',
+      'export function appendLegacyCommercialPanels',
+    ),
+    readBoundSource(
+      './commercial/manufacturing-view.ts',
+      'export function appendManufacturingView',
+    ),
+    readBoundSource(
+      './commercial/manufacturing-cards.ts',
+      'export function createManufacturingCard',
+    ),
+    readBoundSource('./commercial/manufacturing-forms.ts', 'export function openItemVersionForm'),
+    readBoundSource('./commercial/supplier-register.ts', 'export function createSupplierPanel'),
+    readBoundSource('./commercial/sourcing-register.ts', 'export function createSourcingPanel'),
+    readBoundSource('./commercial/purchase-register.ts', 'export function createOrderPanel'),
+    readBoundSource('./commercial/inventory-register.ts', 'export function createInventoryPanel'),
+    readBoundSource('./commercial/procurement-view.ts', 'export function appendProcurementView'),
+    readBoundSource(
+      './commercial/purchase-order-cards.ts',
+      'export function createPurchaseOrderCard',
+    ),
+    readBoundSource(
+      './commercial/purchase-documents.ts',
+      'export function createPurchaseDocumentRow',
+    ),
+    readBoundSource('./commercial/purchase-actions.ts', 'export function appendPurchaseActions'),
+    readBoundSource('./commercial/mrp-view.ts', 'export function appendMrpView'),
+    readBoundSource('./commercial/mrp-actions.ts', 'export function appendMrpActions'),
+    readBoundSource('./commercial/mrp-run.ts', 'export function appendMrpRun'),
+    readBoundSource('./commercial/mrp-proposals.ts', 'export function createMrpProposalCard'),
+    readBoundSource('./commercial/quality-view.ts', 'export function appendQualityView'),
+    readBoundSource('./commercial/complaints-view.ts', 'export function appendComplaints'),
+    readBoundSource('./commercial/complaint-actions.ts', 'export function appendComplaintActions'),
+    readBoundSource(
+      './commercial/complaint-assignment.ts',
+      'export function appendComplaintSlaAction',
+    ),
+    readBoundSource('./commercial/complaint-rows.ts', 'export function createComplaintRow'),
+    readBoundSource('./commercial/complaint-ncr.ts', 'export function appendComplaintNcrAction'),
+    readBoundSource(
+      './commercial/complaint-workflow.ts',
+      'export async function runComplaintWorkflow',
+    ),
+    readBoundSource('./commercial/capa-forms.ts', 'export function openCapaCreate'),
+    readBoundSource('./commercial/quality-plans.ts', 'export function appendQualityPlans'),
+    readBoundSource(
+      './commercial/quality-inspections.ts',
+      'export function appendQualityInspections',
+    ),
+    readBoundSource(
+      './commercial/quality-inspection-cards.ts',
+      'export function createInspectionCard',
+    ),
+    readBoundSource('./commercial/quality-traceability.ts', 'export function appendTraceability'),
+    readBoundSource('./commercial/permissions.ts', 'export function isCommercialPermission'),
+    readBoundSource(
+      './commercial/production-orders-view.ts',
+      'export function appendProductionOrdersView',
+    ),
+    readBoundSource(
+      './commercial/production-actions.ts',
+      'export function appendProductionTransition',
+    ),
+    readBoundSource(
+      './commercial/production-cost-view.ts',
+      'export function appendProductionCostView',
+    ),
+    readBoundSource(
+      './commercial/production-cost-policy.ts',
+      'export function createProductionCostPolicyButton',
+    ),
+    readBoundSource('./commercial/shipments-view.ts', 'export function appendShipmentsView'),
+    readBoundSource('./commercial/shipment-actions.ts', 'export function appendShipmentDispatch'),
+    readBoundSource('./commercial/sales-orders-view.ts', 'export function appendSalesOrdersView'),
+    readBoundSource('./commercial/order360-view.ts', 'export function appendOrder360Content'),
+    readBoundSource(
+      './commercial/order360-risk-controls.ts',
+      'export function createRiskPolicyButton',
+    ),
+    readBoundSource('./commercial/order360-evidence.ts', 'export function createOrderEvidence'),
+    readBoundSource('./commercial/contract-view.ts', 'export function appendContractView'),
+    readBoundSource(
+      './commercial/contract-documents.ts',
+      'export function createContractDocumentPanel',
+    ),
+  ].join('\n');
   for (const field of [
     'projectRegion',
     'performanceStandard',
@@ -95,7 +466,13 @@ it('captures artificial-turf project handoff fields without test-channel evidenc
 });
 
 it('uses daily business language instead of analytics jargon in visible workspace copy', () => {
-  const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+  const source = [
+    readBoundSource('./bootstrap.ts', 'export function commercialWorkspaceStructure'),
+    readBoundSource(
+      './commercial/workspace-dashboard.ts',
+      'export function appendWorkspaceDashboard',
+    ),
+  ].join('\n');
   expect(source).toContain('订单贡献明细');
   expect(source).toContain('风险责任明细');
   expect(source).toContain('订单关联业务与证据记录');
@@ -126,7 +503,17 @@ it('makes authentication and startup progress explicit, single-flight and recove
 });
 
 it('uses the canonical shipment release source and caches repeated document reference reads', () => {
-  const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+  const source = [
+    readBoundSource(
+      './shared/document-read-service.ts',
+      'export function createDocumentReadService',
+    ),
+    readBoundSource('./shared/document-bindings.ts', 'export const BUSINESS_DOCUMENT_SUBJECTS'),
+    readBoundSource(
+      './shared/contextual-documents.ts',
+      'export function appendContextualDocuments',
+    ),
+  ].join('\n');
   expect(source).toContain("endpoint: '/api/v1/shipment-releases'");
   expect(source).not.toContain("endpoint: '/api/v1/shipments'");
   expect(source).toContain('const onlineDocumentReadCache = new Map');
@@ -144,7 +531,28 @@ it('keeps product pages on one content rail and renders business records as dens
 });
 
 it('provides product-grade register controls for high-frequency business records', () => {
-  const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+  const workspaceSource = [
+    readBoundSource('./bootstrap.ts', 'export function commercialWorkspaceStructure'),
+    readBoundSource(
+      './shared/workspace-list-tools.ts',
+      'export function installWorkspaceListTools',
+    ),
+    readBoundSource('./shared/register-controls.ts', 'export function createRegisterControls'),
+  ].join('\n');
+  const factorySource = readFileSync(
+    new URL('./shared/commercial-http.ts', import.meta.url),
+    'utf8',
+  );
+  const factoryAnchor = 'export const createFetchCommercialApi';
+  if (
+    !workspaceSource.trim() ||
+    !workspaceSource.includes('function installWorkspaceListTools') ||
+    !factorySource.trim() ||
+    !factorySource.includes(factoryAnchor) ||
+    factorySource.indexOf(factoryAnchor) !== factorySource.lastIndexOf(factoryAnchor)
+  )
+    throw new Error('Register sources must remain bound to workspace and HTTP factory');
+  const source = `${workspaceSource}\n${factorySource}`;
   const styles = readFileSync(new URL('./style.css', import.meta.url), 'utf8');
   expect(source).toContain("list.setAttribute('role', 'table')");
   expect(source).toContain("column.setAttribute('role', 'columnheader')");
@@ -165,7 +573,7 @@ it('provides product-grade register controls for high-frequency business records
 });
 
 it('uses a smooth two-level sidebar with an icon-only collapse control', () => {
-  const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+  const source = readBoundSource('./crm/shell-frame.ts', 'export function createShellSidebar');
   const styles = readFileSync(new URL('./style.css', import.meta.url), 'utf8');
   expect(source).toContain("const sidebarToggle = el('button', 'sidebar-toggle')");
   expect(source).toContain("parent.setAttribute('data-nav-routes'");
@@ -184,7 +592,7 @@ it('uses a smooth two-level sidebar with an icon-only collapse control', () => {
 });
 
 it('uses a dedicated transparent King Turf mark without cropping in compact navigation', () => {
-  const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+  const source = readBoundSource('./crm/shell-frame.ts', 'export function createShellSidebar');
   const styles = readFileSync(new URL('./style.css', import.meta.url), 'utf8');
   expect(source).toContain('brandLogo.src = brandMark');
   expect(source).toContain("brandLogoFrame.setAttribute('aria-label', '金特夫 King Turf')");
@@ -197,7 +605,10 @@ it('uses a dedicated transparent King Turf mark without cropping in compact navi
 });
 
 it('adds status filtering and a permission-scoped detail drawer to business registers', () => {
-  const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+  const source = [
+    readBoundSource('./shared/register-controls.ts', 'export function createRegisterControls'),
+    readBoundSource('./shared/register-drawer.ts', 'export function createRegisterDrawer'),
+  ].join('\n');
   const styles = readFileSync(new URL('./style.css', import.meta.url), 'utf8');
   expect(source).toContain("statusFilter.setAttribute('aria-label', '按业务状态筛选')");
   expect(source).toContain('查看选中详情');
@@ -209,7 +620,15 @@ it('adds status filtering and a permission-scoped detail drawer to business regi
 });
 
 it('uses module-specific register columns, structured detail fields and business sorting', () => {
-  const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+  const source = [
+    readBoundSource('./shared/register-profile.ts', 'export const registerProfile'),
+    readBoundSource('./shared/register-controls.ts', 'export function createRegisterControls'),
+    readBoundSource('./shared/register-drawer.ts', 'export function createRegisterDrawer'),
+    readBoundSource(
+      './shared/workspace-list-tools.ts',
+      'export function installWorkspaceListTools',
+    ),
+  ].join('\n');
   const styles = readFileSync(new URL('./style.css', import.meta.url), 'utf8');
   expect(source).toContain("label: '生产工单台账'");
   expect(source).toContain("headers: ['工单与产品', '生产状态与数量', '计划与车间', '操作']");
@@ -224,7 +643,10 @@ it('uses module-specific register columns, structured detail fields and business
 });
 
 it('supports safe bulk selection, attention filtering and selected-record export', () => {
-  const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+  const source = [
+    readBoundSource('./shared/register-controls.ts', 'export function createRegisterControls'),
+    readBoundSource('./shared/register-selection.ts', 'export function bindRegisterSelection'),
+  ].join('\n');
   const styles = readFileSync(new URL('./style.css', import.meta.url), 'utf8');
   expect(source).toContain("['attention', '只看需关注']");
   expect(source).toContain("['actionable', '只看可操作']");
@@ -450,7 +872,13 @@ it('matches a route inside multi-workspace data-route-view tokens', () => {
 });
 
 it('binds each major business workbench to one process-stage route', () => {
-  const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+  const source = [
+    readBoundSource('./bootstrap.ts', 'export function commercialWorkspaceStructure'),
+    readBoundSource(
+      './commercial/workspace-routes.ts',
+      'export function assignCommercialRouteViews',
+    ),
+  ].join('\n');
   for (const [workbench, route] of [
     ['pipeline-board', 'opportunities'],
     ['ctr-workbench', 'technical-requirements'],
@@ -544,7 +972,7 @@ it('prioritizes governance exceptions and translates daily notification channels
 it('renders only governance actions granted to the authenticated role', () => {
   const controller = new GovernanceController(
     new Set(['organization:read', 'organization:update', 'audit:read']),
-    'test-token',
+    sessionFixture(),
   );
   controller.views = [
     {
@@ -562,10 +990,22 @@ it('renders only governance actions granted to the authenticated role', () => {
   expect(workspace.textContent).toContain('下一步：');
 });
 
+it('binds the governance request adapter to the captured session context', async () => {
+  const context = sessionFixture();
+  const fetcher = vi.fn().mockResolvedValue(new Response('[]'));
+  vi.stubGlobal('fetch', fetcher);
+  const controller = new GovernanceController(new Set(['organization:read']), context);
+  await controller.load();
+  expect(fetcher).toHaveBeenCalledOnce();
+  const headers = new Headers((fetcher.mock.calls[0]?.[1] as RequestInit).headers);
+  expect(headers.has('authorization')).toBe(false);
+  expect(headers.get('x-kingturf-session-generation')).toBe(context.generation);
+});
+
 it('exposes governed identity provisioning, role assignment, and role removal together', () => {
   const controller = new GovernanceController(
     new Set(['authorization:read', 'authorization:manage', 'employee:read']),
-    'test-token',
+    sessionFixture(),
   );
   controller.views = [
     {
@@ -599,7 +1039,7 @@ it('renders atomic IAM administration without the legacy broad management capabi
       'employee:read',
       'organization:read',
     ]),
-    'test-token',
+    sessionFixture(),
   );
   controller.views = [
     { path: '/api/v1/user-access-profiles', value: { items: [] } },
@@ -821,7 +1261,10 @@ describe('web bootstrap', () => {
   });
 
   it('exposes a downloadable controlled business-document library', () => {
-    const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+    const source = [
+      readBoundSource('./crm/shell-frame.ts', 'export function createShellSidebar'),
+      readBoundSource('./shared/document-library.ts', 'export function appendDocumentLibrary'),
+    ].join('\n');
     expect(appRouteFromHash('#/document-templates')).toBe('document-templates');
     expect(source).toContain("navGroup('业务文档', 'operations'");
     expect(source).toContain('25-客户投诉与不合格闭环单.docx');
@@ -844,7 +1287,20 @@ describe('web bootstrap', () => {
     expect(templatesForRoute('shipments').map((template) => template.name)).toContain(
       '发货到货与签收确认单',
     );
-    const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+    const source = [
+      readBoundSource('./bootstrap.ts', 'const openOnlineDocumentEditor'),
+      ...readOnlineEditorSources(),
+      ...readDocumentSupportSources(),
+      readBoundSource(
+        './commercial/workspace-legacy-panels.ts',
+        'export function appendLegacyCommercialPanels',
+      ),
+      readBoundSource(
+        './shared/contextual-documents.ts',
+        'export function appendContextualDocuments',
+      ),
+      readBoundSource('./shared/document-library.ts', 'export function appendDocumentLibrary'),
+    ].join('\n');
     expect(source).toContain('新建在线文档');
     expect(source).toContain('保存为新版本');
     expect(source).toContain('/api/v1/business-documents');
@@ -890,14 +1346,31 @@ describe('web bootstrap', () => {
 
   it('keeps the document editor open and advances its active version after saving', () => {
     const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
-    const editorSource = source.slice(
-      source.indexOf('const openOnlineDocumentEditor'),
-      source.indexOf('type FormField'),
+    const editorSource = readOnlineEditorSources().join('\n');
+    const contextualSource = readBoundSource(
+      './shared/contextual-documents.ts',
+      'export function appendContextualDocuments',
     );
-    const contextualDocumentsSource = source.slice(
-      source.indexOf('for (const route of templateRoutes)'),
-      source.indexOf("const sectionHeader = el('div', 'section-heading')"),
-    );
+    const recordsSource = readBoundSource('./crm/records.ts', 'export function createCrmRecords');
+    const shellTailStart = source.indexOf('  content.append(createCrmRecords(shell, controller));');
+    const shellTailEnd = source.indexOf('function bootstrapView(', shellTailStart);
+    const recordsStart = recordsSource.indexOf('export function createCrmRecords');
+    const recordsEnd = recordsSource.indexOf("const sectionHeader = el('div', 'section-heading')");
+    if (
+      shellTailStart < 0 ||
+      shellTailEnd <= shellTailStart ||
+      recordsEnd <= recordsStart ||
+      source.lastIndexOf('  content.append(createCrmRecords(shell, controller));') !==
+        shellTailStart ||
+      source.lastIndexOf('function bootstrapView(') !== shellTailEnd ||
+      recordsSource.lastIndexOf("const sectionHeader = el('div', 'section-heading')") !== recordsEnd
+    )
+      throw new Error('Contextual document tail and records prefix must remain uniquely ordered');
+    const shellTail = source.slice(shellTailStart, shellTailEnd);
+    const recordsPrefix = recordsSource.slice(recordsStart, recordsEnd);
+    if (!shellTail.trim() || !recordsPrefix.trim())
+      throw new Error('Contextual slices must not be empty');
+    const contextualDocumentsSource = [contextualSource, shellTail, recordsPrefix].join('\n');
 
     expect(editorSource).toContain('activeVersion = saved.currentVersion');
     expect(editorSource).toContain('继续保存为新版本');
@@ -907,7 +1380,24 @@ describe('web bootstrap', () => {
   });
 
   it('keeps the utility-bar title synchronized with route navigation', () => {
-    const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+    const workspaceSource = readBoundSource(
+      './crm/shell-frame.ts',
+      'export function createShellOverview',
+    );
+    const navigationSource = readFileSync(
+      new URL('./shared/navigation.ts', import.meta.url),
+      'utf8',
+    );
+    const navigationAnchor = 'export function installAppNavigation';
+    if (
+      !workspaceSource.trim() ||
+      !workspaceSource.includes("utilityContext.setAttribute('data-utility-context', 'true')") ||
+      !navigationSource.trim() ||
+      !navigationSource.includes(navigationAnchor) ||
+      navigationSource.indexOf(navigationAnchor) !== navigationSource.lastIndexOf(navigationAnchor)
+    )
+      throw new Error('Utility sources must remain bound to shell and navigation');
+    const source = `${workspaceSource}\n${navigationSource}`;
     expect(source).toContain("utilityContext.setAttribute('data-utility-context', 'true')");
     expect(source).toContain('utilityContext.textContent = APP_ROUTE_LABELS[route]');
   });
@@ -1029,7 +1519,13 @@ describe('web bootstrap', () => {
     ) as unknown as RenderedElement;
 
     expect(workspace.findByText('添加成本因子')).toHaveLength(1);
-    const source = readFileSync(new URL('./bootstrap.ts', import.meta.url), 'utf8');
+    const source = [
+      readBoundSource('./commercial/cost-factor-form.ts', 'export function createCostFactorFields'),
+      readBoundSource(
+        './commercial/cost-matrix-detail.ts',
+        'export function appendCostDetailActions',
+      ),
+    ].join('\n');
     expect(source).toContain("name: 'priceSourceName'");
     expect(source).toContain("name: 'priceEffectiveAt'");
     expect(source).toContain("name: 'priceNote'");

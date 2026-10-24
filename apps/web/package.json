@@ -11,9 +11,6 @@
     "test": "vitest run",
     "build": "vite build && node scripts/check-startup-budget.mjs"
   },
-  "dependencies": {
-    "@kingturf/ui": "workspace:*"
-  },
   "devDependencies": {
     "typescript": "catalog:",
     "vite": "7.3.6",

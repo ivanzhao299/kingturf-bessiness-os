@@ -1,14 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
+import { seedSyntheticCookies, sessionResponse } from './fixtures/browser-session';
 
 async function prepare(page: Page) {
-  await page.addInitScript(() =>
-    sessionStorage.setItem('kingturf.session', 'isolated-routing-session'),
-  );
+  await seedSyntheticCookies(page);
   await page.route('**/api/v1/**', (route) => {
     const path = new URL(route.request().url()).pathname;
     if (path.endsWith('/auth/session'))
       return route.fulfill({
-        json: {
+        json: sessionResponse({
           employeeId: 'routing-admin',
           companyId: 'test-company',
           displayName: '隔离导航管理员',
@@ -20,7 +19,7 @@ async function prepare(page: Page) {
             'quote:read',
             'organization:read',
           ],
-        },
+        }),
       });
     if (path.endsWith('/cost-matrix-summaries'))
       return route.fulfill({ json: { items: [], total: 0, page: 1, pageSize: 20 } });
@@ -62,9 +61,9 @@ test('CRM filtering preserves complete role navigation, workspace identity and r
   const routes = await page
     .locator('[data-app-route]')
     .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-app-route')));
-  await page
-    .locator('.commercial-workspace')
-    .evaluate((node) => node.setAttribute('data-preserved', 'yes'));
+  await page.locator('.commercial-workspace').evaluate((node) => {
+    node.setAttribute('data-preserved', 'yes');
+  });
   await page.getByPlaceholder('搜索客户名称或编号').fill('客户甲');
   expect(
     await page
@@ -98,8 +97,13 @@ test('late cost results never appear on the quote page, even for a single paint'
     requested = resolve;
   });
   await page.route('**/api/v1/cost-matrix-summaries**', async (route) => {
-    requested();
-    await gate;
+    if (new URL(route.request().url()).searchParams.get('q') === '慢请求') {
+      requested();
+      await gate;
+      console.log(
+        JSON.stringify({ fixture: 'workspace-late-cost-release', hash: new URL(page.url()).hash }),
+      );
+    }
     await route.fulfill({ json: { items: [], total: 0, page: 1, pageSize: 20 } });
   });
   await page.evaluate(() => {
@@ -158,6 +162,7 @@ test('late customer detail response cannot replace the cost page or shrink its n
         activities: [],
         leads: [],
         opportunities: [],
+        unavailableSections: ['orders', 'finance'],
       },
     });
   });

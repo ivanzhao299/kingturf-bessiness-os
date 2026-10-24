@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { expect, test } from '@playwright/test';
+import { expect, request, test } from '@playwright/test';
 import { assertTestDatabaseTarget, Database } from '../../packages/database/dist/index.js';
 
 // Explicit opt-in, real local HTTP only. No routes/mocked authentication or default credentials.
@@ -48,15 +48,17 @@ test('real browser proxy login creates a customer with persistence, audit and de
   });
   await expect(page.getByText(name, { exact: true }).first()).toBeVisible();
   const denied = await page.evaluate(async () => {
-    const token = globalThis.sessionStorage.getItem('kingturf.session') ?? '';
-    const result = await fetch('/api/v1/ar-open-items', {
-      headers: { authorization: `Bearer ${token}` },
-    });
+    const result = await fetch('/api/v1/ar-open-items');
     return { status: result.status, payload: await result.json() };
   });
   expect(denied.status).toBe(403);
   expect(denied.payload).not.toHaveProperty('items');
-  expect((await page.request.get('/api/v1/customers')).status()).toBe(401);
+  const anonymous = await request.newContext({ baseURL: new URL(page.url()).origin });
+  try {
+    expect((await anonymous.get('/api/v1/customers')).status()).toBe(401);
+  } finally {
+    await anonymous.dispose();
+  }
   const db = new Database(connection);
   try {
     const saved = await db.query('SELECT id,tenant_id,status FROM customers WHERE name=$1', [name]);
