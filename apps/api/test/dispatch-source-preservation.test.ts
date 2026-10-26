@@ -116,30 +116,54 @@ function expand(file: ts.SourceFile, symbol: string, bindings: string[]): string
 }
 const groups = JSON.parse(
   readFileSync(new URL('./fixtures/app-dispatch-groups.json', import.meta.url), 'utf8'),
-) as { name: string; symbol: string; file: string; property: string }[];
+) as {
+  name: string;
+  symbol: string;
+  file: string;
+  property?: string;
+  baselineSpan?: [number, number];
+}[];
 describe('dispatch group inverse source preservation against fixed f3', () => {
   for (const group of groups)
     it(
       group.name + ' keeps every original predicate, parser, call, continuation and return',
       () => {
-        const original = findAll(
-          old,
-          (n) =>
-            ts.isIfStatement(n) && n.expression.getText(old) === 'dependencies.' + group.property,
+        const oldBlock = findAll(old, ts.isTryStatement).sort(
+          (a, b) => b.end - b.pos - (a.end - a.pos),
         )[0];
-        if (!original) throw new Error('Frozen group missing');
-        const bindings = findAll(
-          original,
-          (n) =>
-            ts.isVariableDeclaration(n) && !!n.initializer && ts.isAwaitExpression(n.initializer),
-        ).map((n) => {
-          if (!ts.isVariableDeclaration(n)) throw new Error('Binding missing');
-          return n.name.getText(old);
-        });
+        if (!oldBlock || !ts.isTryStatement(oldBlock)) throw new Error('Frozen dispatch missing');
+        const originalRows = group.baselineSpan
+          ? [...oldBlock.tryBlock.statements].slice(...group.baselineSpan)
+          : undefined;
+        const original = originalRows
+          ? undefined
+          : findAll(
+              old,
+              (n) =>
+                ts.isIfStatement(n) &&
+                n.expression.getText(old) === 'dependencies.' + String(group.property),
+            )[0];
+        if (!originalRows && !original) throw new Error('Frozen group missing');
+        const nodes = originalRows ?? (original ? [original] : []);
+        const originalText = nodes.map((n) => n.getText(old)).join('\n');
+        const bindings = nodes
+          .flatMap((node) =>
+            findAll(
+              node,
+              (n) =>
+                ts.isVariableDeclaration(n) &&
+                !!n.initializer &&
+                ts.isAwaitExpression(n.initializer),
+            ),
+          )
+          .map((n) => {
+            if (!ts.isVariableDeclaration(n)) throw new Error('Binding missing');
+            return n.name.getText(old);
+          });
         expect(
           firstDifference(
             tokens(expand(parse('../src/routes/dispatch/' + group.file), group.symbol, bindings)),
-            tokens(original.getText(old)),
+            tokens(originalText),
           ),
         ).toBeNull();
         expect(bindings).toHaveLength(0);

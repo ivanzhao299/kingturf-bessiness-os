@@ -120,11 +120,11 @@ import { customerCollectionRoutes, customerDetailRoutes } from './routes/custome
 import { customerContactRoutes } from './routes/customer-contacts.ts';
 import { customerLifecycleRoutes } from './routes/customer-lifecycle.ts';
 import { customerOwnershipRoutes } from './routes/customer-ownership.ts';
-import { executiveDashboardRoutes } from './routes/dashboard.ts';
 import { collectionsAttempts } from './routes/dispatch/collections.ts';
 import { commissionAttempts } from './routes/dispatch/commission.ts';
 import { complaintsAttempts } from './routes/dispatch/complaints.ts';
 import { costsAttempts } from './routes/dispatch/costs.ts';
+import { dashboardAttempts } from './routes/dispatch/dashboard.ts';
 import { manufacturingAttempts } from './routes/dispatch/manufacturing.ts';
 import { mrpAttempts } from './routes/dispatch/mrp.ts';
 import { procurementAttempts } from './routes/dispatch/procurement.ts';
@@ -567,22 +567,17 @@ export function buildApp(
             if (response) return response;
           } else if (response !== null) return response;
         }
-        if (
-          request.method === 'GET' &&
-          request.pathname === '/api/v1/executive-dashboard' &&
-          dependencies.dashboard
-        ) {
-          const response = await dispatchRoutes(
-            executiveDashboardRoutes({
-              repository: () =>
-                dependencies.dashboard as Pick<NonNullable<ApiDependencies['dashboard']>, 'get'>,
-              authorization: context,
-              authorizeQuery,
-              parsers: { timestamp, currency },
-            }),
-            request,
-          );
-          if (response !== null) return response;
+        for (const pending of dashboardAttempts({
+          request,
+          dependencies,
+          context,
+          correlationId,
+        })) {
+          if (pending.accept === 'always') return pending.project(await pending.pending);
+          const response = pending.project(await pending.pending);
+          if (pending.accept === 'truthy') {
+            if (response) return response;
+          } else if (response !== null) return response;
         }
         for (const pending of riskAttempts({ request, dependencies, context, correlationId })) {
           if (pending.accept === 'always') return pending.project(await pending.pending);

@@ -1,3 +1,4 @@
+import type { credentialRoutes } from '../auth.ts';
 import type { AuthorizationContext } from '@kingturf/domain';
 import type { ApiRequest, ApiResponse } from '../../api-types.ts';
 import type { ApiDependencies } from '../../app.ts';
@@ -8,6 +9,8 @@ export type RouteDispatchContext = Readonly<{
   context: AuthorizationContext;
   correlationId: string;
 }>;
+export type AuthenticatedRouteDispatchContext = RouteDispatchContext &
+  Readonly<{ securedAuthContext: Parameters<typeof credentialRoutes>[0] }>;
 type Projection<Result, Reply> = { project(value: Awaited<Result>): Reply }['project'];
 type ContinueAcceptance = 'non-null' | 'truthy';
 type Acceptance = ContinueAcceptance | 'always';

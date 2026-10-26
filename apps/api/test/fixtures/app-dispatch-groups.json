@@ -58,5 +58,11 @@
     "symbol": "commissionAttempts",
     "file": "commission.ts",
     "property": "commissions"
+  },
+  {
+    "name": "dashboard",
+    "symbol": "dashboardAttempts",
+    "file": "dashboard.ts",
+    "baselineSpan": [29, 30]
   }
 ]
