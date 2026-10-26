@@ -114,7 +114,7 @@ export class PostgresMrpRepository {
       const row = (
         await tx.query<{ id: string }>(
           `INSERT INTO mrp_demand_signals(tenant_id,item_version_id,source_type,source_id,required_at,quantity,priority,created_by,canonical_hash)
-           SELECT $1,v.id,$3,$4,$5,$6,$7,$8,$9 FROM manufacturing_item_versions v WHERE v.id=$2 AND v.tenant_id=$1 AND v.status='PUBLISHED' RETURNING id`,
+           SELECT $1,v.id,$3,$4,$5,$6,$7,$8,$9 FROM manufacturing_item_versions v WHERE v.id=$2 AND v.tenant_id=$1 AND v.status='PUBLISHED' AND ($3<>'SALES_ORDER' OR EXISTS(SELECT 1 FROM sales_orders source WHERE source.id=$4 AND source.tenant_id=$1 AND source.status='RELEASED')) RETURNING id`,
           [
             context.actor.companyId,
             input.itemVersionId,
@@ -128,7 +128,11 @@ export class PostgresMrpRepository {
           ],
         )
       ).rows[0];
-      if (!row) throw new DomainError('conflict', 'MRP demand requires a published item version');
+      if (!row)
+        throw new DomainError(
+          'conflict',
+          'MRP demand requires a published item version and a valid declared source',
+        );
       const result = json({ id: row.id, canonicalHash: hash(input), ...input });
       await evidence(
         tx,
