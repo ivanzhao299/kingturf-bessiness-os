@@ -1,0 +1,126 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ❯ test/mrp-postgres.integration.test.ts (10 tests | 2 failed | 8 skipped) 5955ms
+   ↓ MRP repository real PostgreSQL contracts > explodes a real published BOM, nets fixed quantities and persists paired evidence
+   ↓ MRP repository real PostgreSQL contracts > rejects non-company scopes and keeps GROUP reads and writes inside the actor tenant
+   ↓ MRP repository real PostgreSQL contracts > requires published tenant versions and preserves uniqueness without inventing idempotency
+   ↓ MRP repository real PostgreSQL contracts > makes distinct runs with identical input hashes and atomically rejects a duplicate run number
+   ↓ MRP repository real PostgreSQL contracts > enforces frozen approval evidence, contiguous decisions and immutable computed evidence
+   ↓ MRP repository real PostgreSQL contracts > rolls back a proposal decision and its audit when outbox uniqueness fails afterwards
+   ↓ MRP repository real PostgreSQL contracts > rejects skipped decisions and stops new decisions once the run is closed
+   ↓ MRP repository real PostgreSQL contracts > rolls back runs and snapshots for cyclic BOMs and empty demand horizons
+   × MRP repository real PostgreSQL contracts > TD-MRP-001: uses output basis for new runs and preserves previously computed quantities 3164ms
+     → expected [ { quantity: '21.000000' } ] to deeply equal [ { quantity: '2.100000' } ]
+   × MRP repository real PostgreSQL contracts > TD-MRP-001: divides by each level output basis before applying that component scrap 2790ms
+     → expected [ { quantity: '66.000000' } ] to deeply equal [ { quantity: '1.320000' } ]
+ ❯ test/production-postgres.integration.test.ts (2 tests | 1 failed) 5227ms
+   ✓ KT-L15 production acceptance with BOM output '1' > executes and freezes order, material, operation, roll, inventory, and state evidence 104ms
+   × KT-L15 production acceptance with BOM output '10' > executes and freezes order, material, operation, roll, inventory, and state evidence 73ms
+     → expected '88.500000' to be '43.500000' // Object.is equality
+ ❯ test/mrp-source-postgres.integration.test.ts (1 test | 1 failed) 3298ms
+   × TD-MRP-002 real sales order source validation > accepts released tenant orders, rejects nonexistent/foreign/cancelled sources and keeps other demand kinds 3297ms
+     → promise resolved "{ …(8) }" instead of rejecting
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/mrp-postgres.integration.test.ts > MRP repository real PostgreSQL contracts > TD-MRP-001: uses output basis for new runs and preserves previously computed quantities
+AssertionError: expected [ { quantity: '21.000000' } ] to deeply equal [ { quantity: '2.100000' } ]
+
+- Expected
++ Received
+
+  [
+    {
+-     "quantity": "2.100000",
++     "quantity": "21.000000",
+    },
+  ]
+
+ ❯ test/mrp-postgres.integration.test.ts:566:42
+    564|       ).rows;
+    565|     expect(await gross(identifier(initialRun))).toEqual([{ quantity: '…
+    566|     expect(await gross(identifier(run))).toEqual([{ quantity: '2.10000…
+       |                                          ^
+    567|     await repository.createDemand(
+    568|       { ...demand(identifier(product)), quantity: '2.5', requiredAt: '…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  test/mrp-postgres.integration.test.ts > MRP repository real PostgreSQL contracts > TD-MRP-001: divides by each level output basis before applying that component scrap
+AssertionError: expected [ { quantity: '66.000000' } ] to deeply equal [ { quantity: '1.320000' } ]
+
+- Expected
++ Received
+
+  [
+    {
+-     "quantity": "1.320000",
++     "quantity": "66.000000",
+    },
+  ]
+
+ ❯ test/mrp-postgres.integration.test.ts:632:7
+    630|         )
+    631|       ).rows,
+    632|     ).toEqual([{ quantity: '1.320000' }]);
+       |       ^
+    633|   });
+    634| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  test/mrp-source-postgres.integration.test.ts > TD-MRP-002 real sales order source validation > accepts released tenant orders, rejects nonexistent/foreign/cancelled sources and keeps other demand kinds
+AssertionError: promise resolved "{ …(8) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "canonicalHash": "c121f7e90318b6e4055480d6771bd14b051a8533d8515fd3ad6308f669719996",
++   "id": "c2b50116-6093-4740-9471-58e71b9a7de8",
++   "itemVersionId": "91a6ad44-2db9-4ff7-9a5a-c5f54a6380b3",
++   "priority": 100,
++   "quantity": "10",
++   "requiredAt": "2026-02-01",
++   "sourceId": "34acdea6-6e96-4987-8898-ca129cdcfda6",
++   "sourceType": "SALES_ORDER",
+  }
+
+ ❯ test/mrp-source-postgres.integration.test.ts:72:74
+     70|       const before = await count(),
+     71|         correlation = randomUUID();
+     72|       await expect(repository.createDemand(candidate, actor, correlati…
+       |                                                                          ^
+     73|         code: 'conflict',
+     74|       });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  test/production-postgres.integration.test.ts > KT-L15 production acceptance with BOM output '10' > executes and freezes order, material, operation, roll, inventory, and state evidence
+AssertionError: expected '88.500000' to be '43.500000' // Object.is equality
+
+Expected: "43.500000"
+Received: "88.500000"
+
+ ❯ test/production-postgres.integration.test.ts:262:36
+    260|         randomUUID(),
+    261|       );
+    262|       expect(costRun.plannedTotal).toBe(plannedTotal);
+       |                                    ^
+    263|       expect(costRun.actualTotal).toBe('237.500000');
+    264|       await expect(
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  3 failed (3)
+      Tests  4 failed | 1 passed | 8 skipped (13)
+   Start at  11:42:14
+   Duration  15.90s (transform 656ms, setup 0ms, collect 962ms, tests 14.48s, environment 0ms, prepare 131ms)
+
+undefined
+/home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run test/mrp-postgres.integration.test.ts test/production-postgres.integration.test.ts test/mrp-source-postgres.integration.test.ts -t TD-MRP|BOM output

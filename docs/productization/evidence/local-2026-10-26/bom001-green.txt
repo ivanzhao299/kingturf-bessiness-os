@@ -1,0 +1,21 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ✓ test/mrp-postgres.integration.test.ts (10 tests) 27058ms
+   ✓ MRP repository real PostgreSQL contracts > explodes a real published BOM, nets fixed quantities and persists paired evidence  2799ms
+   ✓ MRP repository real PostgreSQL contracts > rejects non-company scopes and keeps GROUP reads and writes inside the actor tenant  2580ms
+   ✓ MRP repository real PostgreSQL contracts > requires published tenant versions and preserves uniqueness without inventing idempotency  2770ms
+   ✓ MRP repository real PostgreSQL contracts > makes distinct runs with identical input hashes and atomically rejects a duplicate run number  2656ms
+   ✓ MRP repository real PostgreSQL contracts > enforces frozen approval evidence, contiguous decisions and immutable computed evidence  2591ms
+   ✓ MRP repository real PostgreSQL contracts > rolls back a proposal decision and its audit when outbox uniqueness fails afterwards  2570ms
+   ✓ MRP repository real PostgreSQL contracts > rejects skipped decisions and stops new decisions once the run is closed  2915ms
+   ✓ MRP repository real PostgreSQL contracts > rolls back runs and snapshots for cyclic BOMs and empty demand horizons  2707ms
+   ✓ MRP repository real PostgreSQL contracts > TD-MRP-001: uses output basis for new runs and preserves previously computed quantities  2771ms
+   ✓ MRP repository real PostgreSQL contracts > TD-MRP-001: divides by each level output basis before applying that component scrap  2698ms
+ ✓ test/production-postgres.integration.test.ts (2 tests) 5334ms
+
+ Test Files  2 passed (2)
+      Tests  12 passed (12)
+   Start at  11:44:22
+   Duration  32.92s (transform 137ms, setup 0ms, collect 210ms, tests 32.39s, environment 0ms, prepare 99ms)
+

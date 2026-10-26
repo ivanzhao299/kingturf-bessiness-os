@@ -434,3 +434,7 @@ E1先行固定证据：[authorization守恒候选/773例旧新探针](evidence/e
 | [KingTurf V1.0 接管验证证据 2026年10月26日](productization/verification-evidence.md) | 2026-10-26本地审计/方案草稿；未作业务放行 |
 
 [本地正确性整改执行](productization/local-execution-2026-10-26.md)：本地审计保全、A/B/C及获批BOM/来源规则、分提交与新SHA验证，生产/远程禁写。
+
+[KingTurf V1.0 本地整改交付记录 2026年10月26日](productization/local-delivery-2026-10-26.md)：本地修复/提交、PG与CI、浏览器两轮、失败史和残余。
+
+[KingTurf 本地整改后的业务决策材料](productization/local-business-decisions-2026-10-26.md)：风险重放、驳回成本修订、发运出库与金额/利润，待批准内容不实施。

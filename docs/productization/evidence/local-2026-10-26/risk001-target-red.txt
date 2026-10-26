@@ -1,0 +1,38 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ❯ test/risk-postgres.integration.test.ts (6 tests | 1 failed | 5 skipped) 3622ms
+   ↓ risk repository real PostgreSQL contracts > creates versioned policies with audit-only evidence and immutable publication
+   ↓ risk repository real PostgreSQL contracts > calculates fixed capped findings, trace and a task from the real order/AR graph
+   ↓ risk repository real PostgreSQL contracts > does not create a task for zero score and replays the existing persisted evaluation
+   ↓ risk repository real PostgreSQL contracts > rejects ineligible references without inserting evaluation or task evidence
+   ↓ risk repository real PostgreSQL contracts > records contiguous task decisions, enforces assignee access and preserves replay semantics
+   × risk repository real PostgreSQL contracts > TD-RISK-001: binds fixed and dynamic parameters across real scope combinations and replays once 3620ms
+     → bind message supplies 5 parameters, but prepared statement "" requires 4
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/risk-postgres.integration.test.ts > risk repository real PostgreSQL contracts > TD-RISK-001: binds fixed and dynamic parameters across real scope combinations and replays once
+error: bind message supplies 5 parameters, but prepared statement "" requires 4
+ ❯ ../../node_modules/.pnpm/pg@8.22.0/node_modules/pg/lib/client.js:652:17
+ ❯ src/risk-repositories.ts:204:9
+    202|       const secured = recordScopeSql(context.scopes, context.anchors, …
+    203|       const basis = (
+    204|         await tx.query<{
+       |         ^
+    205|           order_number: string;
+    206|           margin_basis_points: number;
+ ❯ Database.transaction ../../packages/database/src/index.ts:45:21
+ ❯ test/risk-postgres.integration.test.ts:441:22
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 5 skipped (6)
+   Start at  11:34:32
+   Duration  4.94s (transform 778ms, setup 0ms, collect 1.11s, tests 3.62s, environment 0ms, prepare 55ms)
+
+undefined
+/home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run test/risk-postgres.integration.test.ts -t TD-RISK-001
