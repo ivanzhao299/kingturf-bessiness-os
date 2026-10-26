@@ -14,7 +14,6 @@ import {
   type Telemetry,
 } from '@kingturf/domain';
 import type { PermissionKey } from '@kingturf/types';
-import { projectCollectionLegal } from './aggregate-authorization.ts';
 import type { ApiApplication, ApiRequest, ApiResponse } from './api-types.ts';
 import {
   allow,
@@ -37,7 +36,6 @@ import {
   idempotency,
   integer,
   jsonObject,
-  legalMutationDto,
   mutationDto,
   notificationChannel,
   objectBody,
@@ -110,7 +108,6 @@ import { businessDocumentReviewRoutes } from './routes/business-document-review.
 import { businessDocumentSendRoutes } from './routes/business-document-send.ts';
 import { businessDocumentTranslationRoutes } from './routes/business-document-translation.ts';
 import { businessDocumentVersionRoutes } from './routes/business-document-version.ts';
-import { collectionRoutes } from './routes/collection.ts';
 import { commercialDefinitionRoutes } from './routes/commercial-definitions.ts';
 import { commercialEvaluationRoutes } from './routes/commercial-evaluations.ts';
 import { commercialNestedReadRoutes } from './routes/commercial-nested-reads.ts';
@@ -134,6 +131,7 @@ import { customerContactRoutes } from './routes/customer-contacts.ts';
 import { customerLifecycleRoutes } from './routes/customer-lifecycle.ts';
 import { customerOwnershipRoutes } from './routes/customer-ownership.ts';
 import { executiveDashboardRoutes } from './routes/dashboard.ts';
+import { collectionsAttempts } from './routes/dispatch/collections.ts';
 import { complaintsAttempts } from './routes/dispatch/complaints.ts';
 import { costsAttempts } from './routes/dispatch/costs.ts';
 import { manufacturingAttempts } from './routes/dispatch/manufacturing.ts';
@@ -574,33 +572,17 @@ export function buildApp(
             if (response) return response;
           } else if (response !== null) return response;
         }
-        if (dependencies.collections) {
-          const collectionResponse = await dispatchRoutes(
-            collectionRoutes({
-              repository: dependencies.collections,
-              authorization: context,
-              correlationId,
-              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
-              projectLegal: projectCollectionLegal,
-              permittedDto,
-              mutationDto: (value) => mutationDto(value, context, 'collection:read'),
-              legalMutationDto: (value) => legalMutationDto(value, context),
-              parsers: {
-                objectBody,
-                allow,
-                string,
-                uuid,
-                timestamp,
-                decimal,
-                currency,
-                strings,
-                jsonObject,
-                stableCode: assertStableCode,
-              },
-            }),
-            request,
-          );
-          if (collectionResponse) return collectionResponse;
+        for (const pending of collectionsAttempts({
+          request,
+          dependencies,
+          context,
+          correlationId,
+        })) {
+          if (pending.accept === 'always') return pending.project(await pending.pending);
+          const response = pending.project(await pending.pending);
+          if (pending.accept === 'truthy') {
+            if (response) return response;
+          } else if (response !== null) return response;
         }
         if (dependencies.quality) {
           const qualityLists: Readonly<

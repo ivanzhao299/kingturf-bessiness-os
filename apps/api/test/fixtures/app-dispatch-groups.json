@@ -34,5 +34,11 @@
     "symbol": "complaintsAttempts",
     "file": "complaints.ts",
     "property": "complaints"
+  },
+  {
+    "name": "collections",
+    "symbol": "collectionsAttempts",
+    "file": "collections.ts",
+    "property": "collections"
   }
 ]
