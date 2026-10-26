@@ -88,5 +88,11 @@
     "symbol": "commercialAttempts",
     "file": "commercial.ts",
     "baselineSpan": [43, 56]
+  },
+  {
+    "name": "crm",
+    "symbol": "crmAttempts",
+    "file": "crm.ts",
+    "baselineSpan": [56, 65]
   }
 ]

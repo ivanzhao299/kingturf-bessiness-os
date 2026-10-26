@@ -103,18 +103,13 @@ import { businessDocumentReviewRoutes } from './routes/business-document-review.
 import { businessDocumentSendRoutes } from './routes/business-document-send.ts';
 import { businessDocumentTranslationRoutes } from './routes/business-document-translation.ts';
 import { businessDocumentVersionRoutes } from './routes/business-document-version.ts';
-import { customer360Routes } from './routes/customer-360.ts';
-import { customerActivityRoutes } from './routes/customer-activities.ts';
-import { customerCollectionRoutes, customerDetailRoutes } from './routes/customer-base.ts';
-import { customerContactRoutes } from './routes/customer-contacts.ts';
-import { customerLifecycleRoutes } from './routes/customer-lifecycle.ts';
-import { customerOwnershipRoutes } from './routes/customer-ownership.ts';
 import { collectionsAttempts } from './routes/dispatch/collections.ts';
 import { commercialAttempts } from './routes/dispatch/commercial.ts';
 import { commissionAttempts } from './routes/dispatch/commission.ts';
 import { complaintsAttempts } from './routes/dispatch/complaints.ts';
 import { costsAttempts } from './routes/dispatch/costs.ts';
 import { credentialsAttempts } from './routes/dispatch/credentials.ts';
+import { crmAttempts } from './routes/dispatch/crm.ts';
 import { dashboardAttempts } from './routes/dispatch/dashboard.ts';
 import { manufacturingAttempts } from './routes/dispatch/manufacturing.ts';
 import { mrpAttempts } from './routes/dispatch/mrp.ts';
@@ -126,9 +121,6 @@ import { qualityAttempts } from './routes/dispatch/quality.ts';
 import { riskAttempts } from './routes/dispatch/risk.ts';
 import { dispatchFoundationRoutes, foundationRoutes } from './routes/foundation.ts';
 import { identityAccessRoutes } from './routes/identity-access.ts';
-import { leadCreateRoutes, leadListRoutes, leadPoolRoutes } from './routes/lead-base.ts';
-import { leadClaimRoutes } from './routes/lead-claim.ts';
-import { leadCommandRoutes } from './routes/lead-commands.ts';
 import {
   masterCategoryCreateRoutes,
   masterCategoryDeleteRoutes,
@@ -982,176 +974,13 @@ export function buildApp(
             if (response) return response;
           } else if (response !== null) return response;
         }
-        const customerMatch =
-          /^\/api\/v1\/customers(?:\/([0-9a-f-]+))?(?:\/(contacts|ownership|activities|360))?$/u.exec(
-            request.pathname,
-          );
-        if (customerMatch) {
-          if (!dependencies.crm)
-            return error(503, 'internal_error', 'CRM dependency unavailable', correlationId);
-          const customerBaseContext = {
-            repository: dependencies.crm,
-            authorization: context,
-            correlationId,
-            authorize: (capability: PermissionKey, fields?: readonly string[]) =>
-              authorizeQuery(context, capability, fields),
-            permittedDto,
-            mutationDto: (value: Record<string, unknown>) =>
-              mutationDto(value, context, 'customer:read'),
-            notFound: () => error(404, 'not_found', 'Customer not found', correlationId),
-            parsers: { objectBody, allow, string, strings, uuid },
-          } as const;
-          const customerCollectionResponse = await dispatchRoutes(
-            customerCollectionRoutes(customerBaseContext),
-            request,
-          );
-          if (customerCollectionResponse) return customerCollectionResponse;
-          const customerOwnershipResponse = await dispatchRoutes(
-            customerOwnershipRoutes({
-              repository: dependencies.crm,
-              authorization: context,
-              correlationId,
-              authorize: (capability) => authorizeQuery(context, capability),
-              mutationDto: (value) => mutationDto(value, context, 'customer:read'),
-              parsers: { objectBody, allow, uuid, expectedVersion, string },
-            }),
-            request,
-          );
-          if (customerOwnershipResponse) return customerOwnershipResponse;
-          const customerActivityResponse = await dispatchRoutes(
-            customerActivityRoutes({
-              repository: dependencies.crm,
-              authorization: context,
-              correlationId,
-              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
-              mutationDto: (value) => mutationDto(value, context, 'customer-activity:read'),
-              parsers: { objectBody, allow, uuid, string, timestamp },
-            }),
-            request,
-          );
-          if (customerActivityResponse) return customerActivityResponse;
-          const customerLifecycleResponse = await dispatchRoutes(
-            customerLifecycleRoutes({
-              repository: dependencies.crm,
-              authorization: context,
-              correlationId,
-              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
-              mutationDto: (value) => mutationDto(value, context, 'customer:read'),
-              parsers: { objectBody, allow, uuid, string, expectedVersion },
-            }),
-            request,
-          );
-          if (customerLifecycleResponse) return customerLifecycleResponse;
-          const customer360Response = await dispatchRoutes(
-            customer360Routes({
-              repository: dependencies.crm,
-              authorization: context,
-              authorize: (capability) => authorizeQuery(context, capability),
-              uuid,
-              customerNotFound: () => error(404, 'not_found', 'Customer not found', correlationId),
-              permittedDto,
-            }),
-            request,
-          );
-          if (customer360Response) return customer360Response;
-          const customerContactResponse = await dispatchRoutes(
-            customerContactRoutes({
-              repository: dependencies.crm,
-              authorization: context,
-              correlationId,
-              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
-              mutationDto: (value) => mutationDto(value, context, 'customer-360:read'),
-              parsers: { objectBody, allow, uuid, string },
-            }),
-            request,
-          );
-          if (customerContactResponse) return customerContactResponse;
-          const customerDetailResponse = await dispatchRoutes(
-            customerDetailRoutes(customerBaseContext),
-            request,
-          );
-          if (customerDetailResponse) return customerDetailResponse;
-        }
-        if (request.method === 'GET' && request.pathname === '/api/v1/leads') {
-          if (!dependencies.crm)
-            return error(503, 'internal_error', 'CRM dependency unavailable', correlationId);
-          const leadListResponse = await dispatchRoutes(
-            leadListRoutes({
-              repository: dependencies.crm,
-              authorization: context,
-              authorize: (capability) => authorizeQuery(context, capability),
-              permittedDto,
-            }),
-            request,
-          );
-          if (leadListResponse) return leadListResponse;
-        }
-        if (request.method === 'POST' && request.pathname === '/api/v1/leads') {
-          if (!dependencies.crm)
-            return error(503, 'internal_error', 'CRM dependency unavailable', correlationId);
-          const leadCreateResponse = await dispatchRoutes(
-            leadCreateRoutes({
-              repository: dependencies.crm,
-              authorization: context,
-              correlationId,
-              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
-              mutationDto: (value) => mutationDto(value, context, 'lead:read'),
-              parsers: { objectBody, allow, string, uuid },
-            }),
-            request,
-          );
-          if (leadCreateResponse) return leadCreateResponse;
-        }
-        if (request.method === 'GET' && request.pathname === '/api/v1/leads/pool') {
-          if (!dependencies.crm)
-            return error(503, 'internal_error', 'CRM dependency unavailable', correlationId);
-          const leadPoolResponse = await dispatchRoutes(
-            leadPoolRoutes({
-              repository: dependencies.crm,
-              authorization: context,
-              authorize: (capability) => authorizeQuery(context, capability),
-              permittedDto,
-            }),
-            request,
-          );
-          if (leadPoolResponse) return leadPoolResponse;
-        }
-        const claimMatch = /^\/api\/v1\/leads\/([0-9a-f-]+)\/claim$/u.exec(request.pathname);
-        if (request.method === 'POST' && claimMatch) {
-          if (!dependencies.crm)
-            return error(503, 'internal_error', 'CRM dependency unavailable', correlationId);
-          const leadClaimResponse = await dispatchRoutes(
-            leadClaimRoutes({
-              repository: dependencies.crm,
-              authorization: context,
-              correlationId,
-              authorize: (capability) => authorizeQuery(context, capability),
-              mutationDto: (value) => mutationDto(value, context, 'lead:read'),
-              parsers: { objectBody, allow, uuid, expectedVersion },
-            }),
-            request,
-          );
-          if (leadClaimResponse) return leadClaimResponse;
-        }
-        const leadActionMatch =
-          /^\/api\/v1\/leads\/([0-9a-f-]+)\/(transition|assign|reassign|release)$/u.exec(
-            request.pathname,
-          );
-        if (request.method === 'POST' && leadActionMatch) {
-          if (!dependencies.crm)
-            return error(503, 'internal_error', 'CRM dependency unavailable', correlationId);
-          const leadCommandResponse = await dispatchRoutes(
-            leadCommandRoutes({
-              repository: dependencies.crm,
-              authorization: context,
-              correlationId,
-              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
-              mutationDto: (value) => mutationDto(value, context, 'lead:read'),
-              parsers: { uuid, objectBody, allow, expectedVersion, string },
-            }),
-            request,
-          );
-          if (leadCommandResponse) return leadCommandResponse;
+        for (const pending of crmAttempts({ request, dependencies, context, correlationId })) {
+          if (pending.kind === 'immediate') return pending.value;
+          if (pending.accept === 'always') return pending.project(await pending.pending);
+          const response = pending.project(await pending.pending);
+          if (pending.accept === 'truthy') {
+            if (response) return response;
+          } else if (response !== null) return response;
         }
         const organizationMatch = /^\/api\/v1\/organizations(?:\/([0-9a-f-]+))?$/u.exec(
           request.pathname,

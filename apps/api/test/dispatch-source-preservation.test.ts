@@ -108,7 +108,17 @@ function expand(file: ts.SourceFile, symbol: string, bindings: string[]): string
         restored = `const ${binding}=await ${pending.getText(file)};if(${mode === "'truthy'" ? binding : binding + '!==null'})return ${binding};`;
       }
       // Operate on statement text positions through a unique marker, preserving nested block structure.
-      const text = n.getText(file);
+      const immediateBlock =
+        ts.isCallExpression(call) &&
+        call.expression.getText(file) === 'directReply' &&
+        ts.isBlock(n.parent) &&
+        n.parent.statements.length === 2 &&
+        !!n.parent.statements[1] &&
+        ts.isReturnStatement(n.parent.statements[1]) &&
+        !n.parent.statements[1].expression
+          ? n.parent
+          : undefined;
+      const text = (immediateBlock ?? n).getText(file);
       const start = body.indexOf(text, cursor);
       cursor = start + text.length;
       if (start < 0) throw new Error('Yield not in factory body');
