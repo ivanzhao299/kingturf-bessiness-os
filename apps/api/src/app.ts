@@ -398,8 +398,11 @@ export function buildApp(
           context,
           correlationId,
         })) {
+          if (pending.accept === 'always') return pending.project(await pending.pending);
           const response = pending.project(await pending.pending);
-          if (response !== null) return response;
+          if (pending.accept === 'truthy') {
+            if (response) return response;
+          } else if (response !== null) return response;
         }
         for (const pending of procurementAttempts({
           request,
@@ -407,12 +410,18 @@ export function buildApp(
           context,
           correlationId,
         })) {
+          if (pending.accept === 'always') return pending.project(await pending.pending);
           const response = pending.project(await pending.pending);
-          if (response !== null) return response;
+          if (pending.accept === 'truthy') {
+            if (response) return response;
+          } else if (response !== null) return response;
         }
         for (const pending of mrpAttempts({ request, dependencies, context, correlationId })) {
+          if (pending.accept === 'always') return pending.project(await pending.pending);
           const response = pending.project(await pending.pending);
-          if (response !== null) return response;
+          if (pending.accept === 'truthy') {
+            if (response) return response;
+          } else if (response !== null) return response;
         }
         for (const pending of productionAttempts({
           request,
@@ -420,12 +429,18 @@ export function buildApp(
           context,
           correlationId,
         })) {
+          if (pending.accept === 'always') return pending.project(await pending.pending);
           const response = pending.project(await pending.pending);
-          if (response !== null) return response;
+          if (pending.accept === 'truthy') {
+            if (response) return response;
+          } else if (response !== null) return response;
         }
         for (const pending of costsAttempts({ request, dependencies, context, correlationId })) {
+          if (pending.accept === 'always') return pending.project(await pending.pending);
           const response = pending.project(await pending.pending);
-          if (response !== null) return response;
+          if (pending.accept === 'truthy') {
+            if (response) return response;
+          } else if (response !== null) return response;
         }
         if (dependencies.shipments) {
           if (request.method === 'GET' && request.pathname === '/api/v1/shipment-releases') {

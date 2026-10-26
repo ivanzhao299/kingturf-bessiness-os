@@ -57,7 +57,7 @@ function firstDifference(a: unknown, b: unknown, path = ''): unknown {
   }
   return { path, actual: a, expected: b };
 }
-function expand(file: ts.SourceFile, symbol: string): string {
+function expand(file: ts.SourceFile, symbol: string, bindings: string[]): string {
   const functions = new Map(
     file.statements.filter(ts.isFunctionDeclaration).map((n) => [n.name?.text, n]),
   );
@@ -90,13 +90,15 @@ function expand(file: ts.SourceFile, symbol: string): string {
         throw new Error('Attempt must call a typed factory');
       const call = yielded.expression;
       let restored: string;
-      if (yielded.asteriskToken) restored = expand(file, call.expression.getText(file));
+      if (yielded.asteriskToken) restored = expand(file, call.expression.getText(file), bindings);
       else {
         expect(call.expression.getText(file)).toBe('routeReply');
         const pending = call.arguments[0];
         if (!pending) throw new Error('Pending expression missing');
         const mode = call.arguments[1]?.getText(file);
-        restored = `const response=await ${pending.getText(file)};if(${mode === "'truthy'" ? 'response' : 'response!==null'})return response;`;
+        const binding = bindings.shift();
+        if (!binding) throw new Error('Original binding missing');
+        restored = `const ${binding}=await ${pending.getText(file)};if(${mode === "'truthy'" ? binding : binding + '!==null'})return ${binding};`;
       }
       // Operate on statement text positions through a unique marker, preserving nested block structure.
       const text = n.getText(file);
@@ -123,12 +125,21 @@ describe('dispatch group inverse source preservation against fixed f3', () => {
             ts.isIfStatement(n) && n.expression.getText(old) === 'dependencies.' + group.property,
         )[0];
         if (!original) throw new Error('Frozen group missing');
+        const bindings = findAll(
+          original,
+          (n) =>
+            ts.isVariableDeclaration(n) && !!n.initializer && ts.isAwaitExpression(n.initializer),
+        ).map((n) => {
+          if (!ts.isVariableDeclaration(n)) throw new Error('Binding missing');
+          return n.name.getText(old);
+        });
         expect(
           firstDifference(
-            tokens(expand(parse('../src/routes/dispatch/' + group.file), group.symbol)),
+            tokens(expand(parse('../src/routes/dispatch/' + group.file), group.symbol, bindings)),
             tokens(original.getText(old)),
           ),
         ).toBeNull();
+        expect(bindings).toHaveLength(0);
       },
     );
 });
