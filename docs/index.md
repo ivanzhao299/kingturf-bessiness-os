@@ -432,3 +432,5 @@ E1先行固定证据：[authorization守恒候选/773例旧新探针](evidence/e
 | [KingTurf V1.0 目标产品设计草案](productization/target-product-design.md)            | 2026-10-26本地审计/方案草稿；未作业务放行 |
 | [KingTurf V1.0 受控试运行和维护方案草案](productization/trial-operations.md)         | 2026-10-26本地审计/方案草稿；未作业务放行 |
 | [KingTurf V1.0 接管验证证据 2026年10月26日](productization/verification-evidence.md) | 2026-10-26本地审计/方案草稿；未作业务放行 |
+
+[本地正确性整改执行](productization/local-execution-2026-10-26.md)：本地审计保全、A/B/C及获批BOM/来源规则、分提交与新SHA验证，生产/远程禁写。
