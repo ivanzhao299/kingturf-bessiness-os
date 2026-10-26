@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[V1.0 Batch4 执行计划](productization/batch4-execution-2026-10-26.md)：从f3稳定基线进行G5收口、SEC010隔离核查与业务规则定稿；不改未批准业务语义、不操作远程/生产。
+
 [V1.0 Batch3 定向证据](productization/evidence/batch3-2026-10-26/README.md)：目标红绿、失败修正、隔离模型和独立源码复核，最终CI/双轮另据固定SHA本地回执。
 
 [V1.0 Batch3 验证与交付](productization/batch3-verification-2026-10-26.md)：库存并发非负、风险重放与读取范围本地修复；G5两项消除、两项仍开放；最终CI/浏览器看精确SHA回执。
