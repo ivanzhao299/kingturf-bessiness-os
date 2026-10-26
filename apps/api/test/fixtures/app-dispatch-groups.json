@@ -130,5 +130,11 @@
     "symbol": "contractsAttempts",
     "file": "contracts.ts",
     "property": "contractDocuments"
+  },
+  {
+    "name": "organizations",
+    "symbol": "organizationsAttempts",
+    "file": "organizations.ts",
+    "baselineSpan": [65, 67]
   }
 ]
