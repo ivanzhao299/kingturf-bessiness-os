@@ -76,5 +76,11 @@
     "symbol": "credentialsAttempts",
     "file": "credentials.ts",
     "baselineSpan": [33, 37]
+  },
+  {
+    "name": "qtcreads",
+    "symbol": "qtcreadsAttempts",
+    "file": "qtcreads.ts",
+    "baselineSpan": [38, 41]
   }
 ]

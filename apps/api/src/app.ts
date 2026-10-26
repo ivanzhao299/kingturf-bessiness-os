@@ -131,6 +131,7 @@ import { mrpAttempts } from './routes/dispatch/mrp.ts';
 import { orderAttempts } from './routes/dispatch/order.ts';
 import { procurementAttempts } from './routes/dispatch/procurement.ts';
 import { productionAttempts } from './routes/dispatch/production.ts';
+import { qtcreadsAttempts } from './routes/dispatch/qtcreads.ts';
 import { qualityAttempts } from './routes/dispatch/quality.ts';
 import { riskAttempts } from './routes/dispatch/risk.ts';
 import { dispatchFoundationRoutes, foundationRoutes } from './routes/foundation.ts';
@@ -161,12 +162,10 @@ import {
 import { dispatchOpportunityRoutes } from './routes/opportunities.ts';
 import { qtcArPostRoutes } from './routes/qtc-ar-post.ts';
 import { qtcBankPaymentIntakeRoutes } from './routes/qtc-bank-payment-intake.ts';
-import { qtcBaseReadRoutes } from './routes/qtc-base-reads.ts';
 import { qtcContractCreateRoutes } from './routes/qtc-contract-create.ts';
 import { qtcContractSignRoutes } from './routes/qtc-contract-sign.ts';
 import { qtcCreditApprovalRoutes } from './routes/qtc-credit-approval.ts';
 import { qtcCreditEvaluationRoutes, qtcCreditLimitRoutes } from './routes/qtc-credit-writes.ts';
-import { qtcOperationalReadRoutes } from './routes/qtc-operational-reads.ts';
 import { qtcReconciliationRunRoutes } from './routes/qtc-reconciliation-run.ts';
 import { qtcSalesOrderCreateRoutes } from './routes/qtc-sales-order-create.ts';
 import { quoteCommandRoutes } from './routes/quote-commands.ts';
@@ -747,54 +746,12 @@ export function buildApp(
             };
           }
         }
-        const qtcReads = new Map<
-          string,
-          readonly [
-            `${string}:${string}`,
-            'limits' | 'credit' | 'contracts' | 'orders' | 'ar' | 'payments' | 'reconciliation',
-          ]
-        >([
-          ['/api/v1/credit-limits', ['credit:read', 'limits']],
-          ['/api/v1/credit-decisions', ['credit:read', 'credit']],
-          ['/api/v1/contracts', ['contract:read', 'contracts']],
-          ['/api/v1/sales-orders', ['sales-order:read', 'orders']],
-          ['/api/v1/ar-open-items', ['ar:read', 'ar']],
-          ['/api/v1/bank-payments', ['bank-payment:read', 'payments']],
-          ['/api/v1/reconciliation-runs', ['reconciliation:read', 'reconciliation']],
-        ]);
-        const qtcRead = qtcReads.get(request.pathname);
-        if (request.method === 'GET' && qtcRead && dependencies.quoteToCash) {
-          if (qtcRead[1] === 'ar' || qtcRead[1] === 'payments') {
-            const response = await dispatchRoutes(
-              qtcOperationalReadRoutes({
-                repository: () =>
-                  dependencies.quoteToCash as Pick<
-                    NonNullable<ApiDependencies['quoteToCash']>,
-                    'listOperationalPage'
-                  >,
-                authorization: context,
-                authorizeQuery,
-                permittedDto,
-                parsers: { decimal, integer, uuid, string, timestamp },
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          const response = await dispatchRoutes(
-            qtcBaseReadRoutes({
-              repository: () =>
-                dependencies.quoteToCash as Pick<
-                  NonNullable<ApiDependencies['quoteToCash']>,
-                  'list'
-                >,
-              authorization: context,
-              authorizeQuery,
-              permittedDto,
-            }),
-            request,
-          );
-          if (response !== null) return response;
+        for (const pending of qtcreadsAttempts({ request, dependencies, context, correlationId })) {
+          if (pending.accept === 'always') return pending.project(await pending.pending);
+          const response = pending.project(await pending.pending);
+          if (pending.accept === 'truthy') {
+            if (response) return response;
+          } else if (response !== null) return response;
         }
         if (request.method === 'POST' && dependencies.quoteToCash) {
           const body = objectBody(request.body),
