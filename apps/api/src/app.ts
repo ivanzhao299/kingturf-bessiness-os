@@ -1,26 +1,76 @@
-import { companyReadAllowed, projectCollectionLegal } from './aggregate-authorization.ts';
-import { randomUUID } from 'node:crypto';
+import { DEFAULT_BROWSER_SESSION, type BrowserSessionConfig } from '@kingturf/config';
 import {
-  assertEffectiveRange,
   addDecimal,
+  assertCurrency,
   assertStableCode,
   DomainError,
+  NOOP_TELEMETRY,
   normalizeContactEmail,
   normalizeDecimal,
-  assertCurrency,
   parseEffectiveTimestamp,
   type AuthorizationRepository,
-  type AuthorizationContext,
   type EmployeeRepository,
-  type OrganizationRepository,
-  NOOP_TELEMETRY,
   type OperationalLogger,
+  type OrganizationRepository,
   type Telemetry,
 } from '@kingturf/domain';
-import type { ErrorCode, PermissionKey } from '@kingturf/types';
-import { securityResponseHeaders } from './middleware/security-headers.ts';
+import type { PermissionKey } from '@kingturf/types';
+import { projectCollectionLegal } from './aggregate-authorization.ts';
+import type { ApiApplication, ApiRequest, ApiResponse } from './api-types.ts';
+import {
+  allow,
+  array,
+  attachmentBytes,
+  authorizeOneOf,
+  boundedString,
+  calendarDate,
+  connectorProvider,
+  connectorSecretReference,
+  correlation,
+  costFactorSourceType,
+  currency,
+  decimal,
+  documentConnector,
+  documentLocale,
+  effectiveRange,
+  error,
+  expectedVersion,
+  idempotency,
+  integer,
+  jsonObject,
+  legalMutationDto,
+  mutationDto,
+  notificationChannel,
+  objectBody,
+  optionalCalendarDate,
+  permittedDto,
+  requireCostFactorItemSource,
+  safeConnectorConfiguration,
+  string,
+  strings,
+  timestamp,
+  uuid,
+  version,
+  type RiskEvaluationRepository,
+  type RiskTaskRepository,
+} from './app-values.ts';
+import type { PostgresBusinessDocumentRepository } from './business-document-repositories.ts';
+import type { PostgresCollectionRepository } from './collection-repositories.ts';
+import type { PostgresCommercialRepository } from './commercial-repositories.ts';
+import type { PostgresCommissionRepository } from './commission-repositories.ts';
+import type { PostgresComplaintRepository } from './complaint-repositories.ts';
+import type { PostgresContractDocumentRepository } from './contract-document-repositories.ts';
+import type { PostgresCrmRepository } from './crm-repositories.ts';
+import type { PostgresDashboardRepository } from './dashboard-repositories.ts';
+import type {
+  PostgresAttachmentRepository,
+  PostgresBusinessObjectRepository,
+  PostgresEventRepository,
+  PostgresNotificationRepository,
+} from './foundation-repositories.ts';
+import type { PostgresManufacturingRepository } from './manufacturing-repositories.ts';
 import { LoginRateLimiter } from './middleware/login-rate-limit.ts';
-import { DEFAULT_BROWSER_SESSION, type BrowserSessionConfig } from '@kingturf/config';
+import { securityResponseHeaders } from './middleware/security-headers.ts';
 import {
   authorizeCookieRequest,
   browserAuthResponse,
@@ -28,100 +78,8 @@ import {
   requireMachineContext,
   SessionRequestError,
 } from './middleware/session-carrier.ts';
-import { authorizeQuery } from './policy.ts';
-import { auditReadRoutes } from './routes/audit-reads.ts';
-import { numberAllocationRoutes } from './routes/number-allocation.ts';
-import { ruleEvaluationRoutes } from './routes/rule-evaluation.ts';
-import {
-  ruleDefinitionListRoutes,
-  ruleDefinitionCreateRoutes,
-  ruleDefinitionPublishRoutes,
-  ruleDefinitionVersionRoutes,
-} from './routes/rule-definitions.ts';
-import {
-  workflowDefinitionListRoutes,
-  workflowDefinitionCreateRoutes,
-  workflowDefinitionVersionRoutes,
-  workflowDefinitionPublishRoutes,
-} from './routes/workflow-definitions.ts';
-import {
-  workflowRuntimeStartRoutes,
-  workflowRuntimeTaskListRoutes,
-  workflowRuntimeDecisionRoutes,
-} from './routes/workflow-runtime.ts';
-import {
-  productionOrderReadRoutes,
-  productionCostPolicyReadRoutes,
-  productionCostRunReadRoutes,
-} from './routes/production-reads.ts';
-import { productionOrderCreateRoutes } from './routes/production-order-create.ts';
-import { productionOrderCommandRoutes } from './routes/production-order-commands.ts';
-import { productionMaterialRoutes } from './routes/production-material.ts';
-import { productionReportRoutes } from './routes/production-report.ts';
-import { productionOutputRoutes } from './routes/production-output.ts';
-import { productionCostPolicyRoutes } from './routes/production-cost-policy.ts';
-import { productionCostCalculationRoutes } from './routes/production-cost-calculation.ts';
-import { productionCostDecisionRoutes } from './routes/production-cost-decisions.ts';
-import { qtcBaseReadRoutes } from './routes/qtc-base-reads.ts';
-import { qtcOperationalReadRoutes } from './routes/qtc-operational-reads.ts';
-import { qtcCreditLimitRoutes, qtcCreditEvaluationRoutes } from './routes/qtc-credit-writes.ts';
-import { qtcCreditApprovalRoutes } from './routes/qtc-credit-approval.ts';
-import { qtcContractCreateRoutes } from './routes/qtc-contract-create.ts';
-import { qtcContractSignRoutes } from './routes/qtc-contract-sign.ts';
-import { qtcSalesOrderCreateRoutes } from './routes/qtc-sales-order-create.ts';
-import { qtcArPostRoutes } from './routes/qtc-ar-post.ts';
-import { qtcBankPaymentIntakeRoutes } from './routes/qtc-bank-payment-intake.ts';
-import { qtcReconciliationRunRoutes } from './routes/qtc-reconciliation-run.ts';
-import { commissionReadRoutes } from './routes/commission-reads.ts';
-import { executiveDashboardRoutes } from './routes/dashboard.ts';
-import { manufacturingReadRoutes } from './routes/manufacturing-reads.ts';
-import { manufacturingItemCreateRoutes } from './routes/manufacturing-item-create.ts';
-import { manufacturingBomCreateRoutes } from './routes/manufacturing-bom-create.ts';
-import { manufacturingRoutingCreateRoutes } from './routes/manufacturing-routing-create.ts';
-import { manufacturingPublishRoutes } from './routes/manufacturing-publish.ts';
-import { procurementReadRoutes } from './routes/procurement-reads.ts';
-import { procurementSupplierCreateRoutes } from './routes/procurement-supplier-create.ts';
-import { procurementSupplierQualificationRoutes } from './routes/procurement-supplier-qualification.ts';
-import { procurementRfqCreateRoutes } from './routes/procurement-rfq-create.ts';
-import { procurementSupplierQuoteCreateRoutes } from './routes/procurement-supplier-quote-create.ts';
-import { procurementPurchaseOrderCreateRoutes } from './routes/procurement-purchase-order-create.ts';
-import { procurementIssueRoutes } from './routes/procurement-issue.ts';
-import { procurementLocationCreateRoutes } from './routes/procurement-location-create.ts';
-import { procurementReceiptCreateRoutes } from './routes/procurement-receipt-create.ts';
-import { procurementMovementCreateRoutes } from './routes/procurement-movement-create.ts';
-import { mrpReadRoutes } from './routes/mrp-reads.ts';
-import { mrpPolicyCreateRoutes } from './routes/mrp-policy-create.ts';
-import { mrpDemandCreateRoutes } from './routes/mrp-demand-create.ts';
-import { mrpRunCreateRoutes } from './routes/mrp-run-create.ts';
-import { mrpProposalCommandRoutes } from './routes/mrp-proposal-commands.ts';
-import { commissionCommandRoutes } from './routes/commission-commands.ts';
-import { commissionAccrueRoutes } from './routes/commission-accrue.ts';
-import { commissionPolicyPublishRoutes } from './routes/commission-policy-publish.ts';
-import {
-  commissionPolicyCreateRoutes,
-  commissionPolicyVersionRoutes,
-} from './routes/commission-policy-writes.ts';
-import { websiteLeadIngestRoutes } from './routes/website-lead-ingest.ts';
-import {
-  numberDefinitionListRoutes,
-  numberDefinitionCreateRoutes,
-  numberDefinitionPublishRoutes,
-  numberDefinitionVersionRoutes,
-} from './routes/number-definitions.ts';
-import {
-  masterEntryCreateRoutes,
-  masterEntryListRoutes,
-  masterEntryDetailRoutes,
-  masterEntryUpdateRoutes,
-  masterEntryDeleteRoutes,
-} from './routes/master-data-entries.ts';
-import {
-  masterCategoryReadRoutes,
-  masterCategoryCreateRoutes,
-  masterCategoryUpdateRoutes,
-  masterCategoryDeleteRoutes,
-} from './routes/master-data-categories.ts';
-import type { AuthenticationService } from './security.ts';
+import type { PostgresMrpRepository } from './mrp-repositories.ts';
+import type { PostgresOrder360Repository } from './order-360-repositories.ts';
 import type {
   PostgresAuditRepository,
   PostgresMasterDataRepository,
@@ -129,161 +87,181 @@ import type {
   PostgresRuleRepository,
   PostgresWorkflowRepository,
 } from './platform-repositories.ts';
-import type {
-  PostgresAttachmentRepository,
-  PostgresBusinessObjectRepository,
-  PostgresEventRepository,
-  PostgresNotificationRepository,
-} from './foundation-repositories.ts';
-import type { PostgresCrmRepository } from './crm-repositories.ts';
-import type { PostgresCommercialRepository } from './commercial-repositories.ts';
-import type { PostgresQuoteToCashRepository } from './qtc-repositories.ts';
-import type { PostgresCommissionRepository } from './commission-repositories.ts';
-import type { PostgresOrder360Repository } from './order-360-repositories.ts';
-import type { PostgresRiskRepository } from './risk-repositories.ts';
-import type { PostgresDashboardRepository } from './dashboard-repositories.ts';
-import type { PostgresManufacturingRepository } from './manufacturing-repositories.ts';
+import { authorizeQuery } from './policy.ts';
 import type { PostgresProcurementRepository } from './procurement-repositories.ts';
-import type { PostgresMrpRepository } from './mrp-repositories.ts';
-import type { PostgresProductionRepository } from './production-repositories.ts';
 import type { PostgresProductionCostRepository } from './production-cost-repositories.ts';
+import type { PostgresProductionRepository } from './production-repositories.ts';
+import type { PostgresQuoteToCashRepository } from './qtc-repositories.ts';
 import type { PostgresQualityRepository } from './quality-repositories.ts';
-import type { PostgresShipmentRepository } from './shipment-repositories.ts';
-import type { PostgresCollectionRepository } from './collection-repositories.ts';
-import type { PostgresComplaintRepository } from './complaint-repositories.ts';
-import type { PostgresBusinessDocumentRepository } from './business-document-repositories.ts';
-import type { PostgresContractDocumentRepository } from './contract-document-repositories.ts';
-import type { PostgresWebsiteLeadIngestor } from './website-lead-ingest.ts';
-import { dispatchFoundationRoutes, foundationRoutes } from './routes/foundation.ts';
+import type { PostgresRiskRepository } from './risk-repositories.ts';
+import { auditReadRoutes } from './routes/audit-reads.ts';
 import { credentialRoutes, loginRoutes, sessionRoutes } from './routes/auth.ts';
-import { dispatchRoutes } from './routes/types.ts';
-import { identityProvisionRoutes } from './routes/identity-provision.ts';
 import { dispatchAuthorizationRoutes } from './routes/authorization.ts';
-import { identityAccessRoutes } from './routes/identity-access.ts';
-import { collectionRoutes } from './routes/collection.ts';
-import { dispatchOpportunityRoutes } from './routes/opportunities.ts';
-import { commercialNestedReadRoutes } from './routes/commercial-nested-reads.ts';
-import { commercialViewRoutes } from './routes/commercial-views.ts';
-import { ctrRoutes } from './routes/ctr.ts';
-import { technicalSolutionRoutes } from './routes/technical-solutions.ts';
-import { costMatrixBaseRoutes } from './routes/cost-matrix-base.ts';
-import { costMatrixFactorRoutes } from './routes/cost-matrix-factors.ts';
-import { costMatrixCalculationRoutes } from './routes/cost-matrix-calculations.ts';
-import { commercialDefinitionRoutes } from './routes/commercial-definitions.ts';
-import { commercialEvaluationRoutes } from './routes/commercial-evaluations.ts';
-import { quoteWriteRoutes } from './routes/quote-writes.ts';
-import { quoteCommandRoutes } from './routes/quote-commands.ts';
-import { complaintSlaRoutes } from './routes/complaint-sla.ts';
-import { complaintReadRoutes } from './routes/complaint-reads.ts';
-import { complaintCreateRoutes } from './routes/complaint-create.ts';
-import { complaintBatchTriageRoutes } from './routes/complaint-batch-triage.ts';
-import { complaintTransitionRoutes } from './routes/complaint-transitions.ts';
-import { ncrCreateRoutes } from './routes/ncr-create.ts';
-import { ncrTransitionRoutes } from './routes/ncr-transitions.ts';
-import { capaCreateRoutes } from './routes/capa-create.ts';
-import { capaActionRoutes } from './routes/capa-actions.ts';
-import { capaLifecycleRoutes } from './routes/capa-lifecycle.ts';
-import { customerCollectionRoutes, customerDetailRoutes } from './routes/customer-base.ts';
-import { customerOwnershipRoutes } from './routes/customer-ownership.ts';
-import { customerActivityRoutes } from './routes/customer-activities.ts';
-import { customerLifecycleRoutes } from './routes/customer-lifecycle.ts';
-import { customer360Routes } from './routes/customer-360.ts';
-import { customerContactRoutes } from './routes/customer-contacts.ts';
-import { leadListRoutes, leadCreateRoutes, leadPoolRoutes } from './routes/lead-base.ts';
-import { leadClaimRoutes } from './routes/lead-claim.ts';
-import { leadCommandRoutes } from './routes/lead-commands.ts';
-import { riskPolicyReadRoutes, riskEvaluationReadRoutes } from './routes/risk-reads.ts';
-import { riskPolicyCreateRoutes } from './routes/risk-policy-create.ts';
-import { riskPolicyRevisionRoutes } from './routes/risk-policy-revision.ts';
-import { riskPolicyPublishRoutes } from './routes/risk-policy-publish.ts';
-import { riskEvaluationCreateRoutes } from './routes/risk-evaluation-create.ts';
-import { riskTaskCommandRoutes } from './routes/risk-task-commands.ts';
-import { order360Routes } from './routes/order-360.ts';
-import {
-  qualityPlanReadRoutes,
-  qualityInspectionReadRoutes,
-  lotTraceabilityReadRoutes,
-} from './routes/quality-reads.ts';
-import { qualityPlanCreateRoutes } from './routes/quality-plan-create.ts';
-import { qualityPlanPublishRoutes } from './routes/quality-plan-publish.ts';
-import { qualityInspectionOpenRoutes } from './routes/quality-inspection-open.ts';
-import { qualityInspectionTransitionRoutes } from './routes/quality-inspection-transitions.ts';
-import { qualityResultRecordRoutes } from './routes/quality-result-record.ts';
-import { qualityDispositionRoutes } from './routes/quality-disposition.ts';
-import { businessDocumentSendRoutes } from './routes/business-document-send.ts';
 import { businessDocumentActivityRoutes } from './routes/business-document-activity.ts';
-import { businessDocumentTranslationRoutes } from './routes/business-document-translation.ts';
-import { businessDocumentReviewRoutes } from './routes/business-document-review.ts';
-import { businessDocumentVersionRoutes } from './routes/business-document-version.ts';
 import { businessDocumentBindingRoutes } from './routes/business-document-bindings.ts';
-import { businessDocumentCreateRoutes } from './routes/business-document-create.ts';
 import { businessDocumentConnectorRoutes } from './routes/business-document-connector.ts';
+import { businessDocumentCreateRoutes } from './routes/business-document-create.ts';
 import {
-  businessDocumentConnectorReadRoutes,
   businessDocumentActivityLogReadRoutes,
+  businessDocumentConnectorReadRoutes,
+  businessDocumentDetailReadRoutes,
   businessDocumentListReadRoutes,
   businessDocumentReferenceReadRoutes,
-  businessDocumentDetailReadRoutes,
 } from './routes/business-document-reads.ts';
+import { businessDocumentReviewRoutes } from './routes/business-document-review.ts';
+import { businessDocumentSendRoutes } from './routes/business-document-send.ts';
+import { businessDocumentTranslationRoutes } from './routes/business-document-translation.ts';
+import { businessDocumentVersionRoutes } from './routes/business-document-version.ts';
+import { capaActionRoutes } from './routes/capa-actions.ts';
+import { capaCreateRoutes } from './routes/capa-create.ts';
+import { capaLifecycleRoutes } from './routes/capa-lifecycle.ts';
+import { collectionRoutes } from './routes/collection.ts';
+import { commercialDefinitionRoutes } from './routes/commercial-definitions.ts';
+import { commercialEvaluationRoutes } from './routes/commercial-evaluations.ts';
+import { commercialNestedReadRoutes } from './routes/commercial-nested-reads.ts';
+import { commercialViewRoutes } from './routes/commercial-views.ts';
+import { commissionAccrueRoutes } from './routes/commission-accrue.ts';
+import { commissionCommandRoutes } from './routes/commission-commands.ts';
+import { commissionPolicyPublishRoutes } from './routes/commission-policy-publish.ts';
+import {
+  commissionPolicyCreateRoutes,
+  commissionPolicyVersionRoutes,
+} from './routes/commission-policy-writes.ts';
+import { commissionReadRoutes } from './routes/commission-reads.ts';
+import { complaintBatchTriageRoutes } from './routes/complaint-batch-triage.ts';
+import { complaintCreateRoutes } from './routes/complaint-create.ts';
+import { complaintReadRoutes } from './routes/complaint-reads.ts';
+import { complaintSlaRoutes } from './routes/complaint-sla.ts';
+import { complaintTransitionRoutes } from './routes/complaint-transitions.ts';
+import { costMatrixBaseRoutes } from './routes/cost-matrix-base.ts';
+import { costMatrixCalculationRoutes } from './routes/cost-matrix-calculations.ts';
+import { costMatrixFactorRoutes } from './routes/cost-matrix-factors.ts';
+import { ctrRoutes } from './routes/ctr.ts';
+import { customer360Routes } from './routes/customer-360.ts';
+import { customerActivityRoutes } from './routes/customer-activities.ts';
+import { customerCollectionRoutes, customerDetailRoutes } from './routes/customer-base.ts';
+import { customerContactRoutes } from './routes/customer-contacts.ts';
+import { customerLifecycleRoutes } from './routes/customer-lifecycle.ts';
+import { customerOwnershipRoutes } from './routes/customer-ownership.ts';
+import { executiveDashboardRoutes } from './routes/dashboard.ts';
+import { dispatchFoundationRoutes, foundationRoutes } from './routes/foundation.ts';
+import { identityAccessRoutes } from './routes/identity-access.ts';
+import { identityProvisionRoutes } from './routes/identity-provision.ts';
+import { leadCreateRoutes, leadListRoutes, leadPoolRoutes } from './routes/lead-base.ts';
+import { leadClaimRoutes } from './routes/lead-claim.ts';
+import { leadCommandRoutes } from './routes/lead-commands.ts';
+import { manufacturingBomCreateRoutes } from './routes/manufacturing-bom-create.ts';
+import { manufacturingItemCreateRoutes } from './routes/manufacturing-item-create.ts';
+import { manufacturingPublishRoutes } from './routes/manufacturing-publish.ts';
+import { manufacturingReadRoutes } from './routes/manufacturing-reads.ts';
+import { manufacturingRoutingCreateRoutes } from './routes/manufacturing-routing-create.ts';
+import {
+  masterCategoryCreateRoutes,
+  masterCategoryDeleteRoutes,
+  masterCategoryReadRoutes,
+  masterCategoryUpdateRoutes,
+} from './routes/master-data-categories.ts';
+import {
+  masterEntryCreateRoutes,
+  masterEntryDeleteRoutes,
+  masterEntryDetailRoutes,
+  masterEntryListRoutes,
+  masterEntryUpdateRoutes,
+} from './routes/master-data-entries.ts';
+import { mrpDemandCreateRoutes } from './routes/mrp-demand-create.ts';
+import { mrpPolicyCreateRoutes } from './routes/mrp-policy-create.ts';
+import { mrpProposalCommandRoutes } from './routes/mrp-proposal-commands.ts';
+import { mrpReadRoutes } from './routes/mrp-reads.ts';
+import { mrpRunCreateRoutes } from './routes/mrp-run-create.ts';
+import { ncrCreateRoutes } from './routes/ncr-create.ts';
+import { ncrTransitionRoutes } from './routes/ncr-transitions.ts';
+import { numberAllocationRoutes } from './routes/number-allocation.ts';
+import {
+  numberDefinitionCreateRoutes,
+  numberDefinitionListRoutes,
+  numberDefinitionPublishRoutes,
+  numberDefinitionVersionRoutes,
+} from './routes/number-definitions.ts';
+import { dispatchOpportunityRoutes } from './routes/opportunities.ts';
+import { order360Routes } from './routes/order-360.ts';
+import { procurementIssueRoutes } from './routes/procurement-issue.ts';
+import { procurementLocationCreateRoutes } from './routes/procurement-location-create.ts';
+import { procurementMovementCreateRoutes } from './routes/procurement-movement-create.ts';
+import { procurementPurchaseOrderCreateRoutes } from './routes/procurement-purchase-order-create.ts';
+import { procurementReadRoutes } from './routes/procurement-reads.ts';
+import { procurementReceiptCreateRoutes } from './routes/procurement-receipt-create.ts';
+import { procurementRfqCreateRoutes } from './routes/procurement-rfq-create.ts';
+import { procurementSupplierCreateRoutes } from './routes/procurement-supplier-create.ts';
+import { procurementSupplierQualificationRoutes } from './routes/procurement-supplier-qualification.ts';
+import { procurementSupplierQuoteCreateRoutes } from './routes/procurement-supplier-quote-create.ts';
+import { productionCostCalculationRoutes } from './routes/production-cost-calculation.ts';
+import { productionCostDecisionRoutes } from './routes/production-cost-decisions.ts';
+import { productionCostPolicyRoutes } from './routes/production-cost-policy.ts';
+import { productionMaterialRoutes } from './routes/production-material.ts';
+import { productionOrderCommandRoutes } from './routes/production-order-commands.ts';
+import { productionOrderCreateRoutes } from './routes/production-order-create.ts';
+import { productionOutputRoutes } from './routes/production-output.ts';
+import {
+  productionCostPolicyReadRoutes,
+  productionCostRunReadRoutes,
+  productionOrderReadRoutes,
+} from './routes/production-reads.ts';
+import { productionReportRoutes } from './routes/production-report.ts';
+import { qtcArPostRoutes } from './routes/qtc-ar-post.ts';
+import { qtcBankPaymentIntakeRoutes } from './routes/qtc-bank-payment-intake.ts';
+import { qtcBaseReadRoutes } from './routes/qtc-base-reads.ts';
+import { qtcContractCreateRoutes } from './routes/qtc-contract-create.ts';
+import { qtcContractSignRoutes } from './routes/qtc-contract-sign.ts';
+import { qtcCreditApprovalRoutes } from './routes/qtc-credit-approval.ts';
+import { qtcCreditEvaluationRoutes, qtcCreditLimitRoutes } from './routes/qtc-credit-writes.ts';
+import { qtcOperationalReadRoutes } from './routes/qtc-operational-reads.ts';
+import { qtcReconciliationRunRoutes } from './routes/qtc-reconciliation-run.ts';
+import { qtcSalesOrderCreateRoutes } from './routes/qtc-sales-order-create.ts';
+import { qualityDispositionRoutes } from './routes/quality-disposition.ts';
+import { qualityInspectionOpenRoutes } from './routes/quality-inspection-open.ts';
+import { qualityInspectionTransitionRoutes } from './routes/quality-inspection-transitions.ts';
+import { qualityPlanCreateRoutes } from './routes/quality-plan-create.ts';
+import { qualityPlanPublishRoutes } from './routes/quality-plan-publish.ts';
+import {
+  lotTraceabilityReadRoutes,
+  qualityInspectionReadRoutes,
+  qualityPlanReadRoutes,
+} from './routes/quality-reads.ts';
+import { qualityResultRecordRoutes } from './routes/quality-result-record.ts';
+import { quoteCommandRoutes } from './routes/quote-commands.ts';
+import { quoteWriteRoutes } from './routes/quote-writes.ts';
+import { riskEvaluationCreateRoutes } from './routes/risk-evaluation-create.ts';
+import { riskPolicyCreateRoutes } from './routes/risk-policy-create.ts';
+import { riskPolicyPublishRoutes } from './routes/risk-policy-publish.ts';
+import { riskPolicyRevisionRoutes } from './routes/risk-policy-revision.ts';
+import { riskEvaluationReadRoutes, riskPolicyReadRoutes } from './routes/risk-reads.ts';
+import { riskTaskCommandRoutes } from './routes/risk-task-commands.ts';
+import {
+  ruleDefinitionCreateRoutes,
+  ruleDefinitionListRoutes,
+  ruleDefinitionPublishRoutes,
+  ruleDefinitionVersionRoutes,
+} from './routes/rule-definitions.ts';
+import { ruleEvaluationRoutes } from './routes/rule-evaluation.ts';
+import { technicalSolutionRoutes } from './routes/technical-solutions.ts';
+import { dispatchRoutes } from './routes/types.ts';
+import { websiteLeadIngestRoutes } from './routes/website-lead-ingest.ts';
+import {
+  workflowDefinitionCreateRoutes,
+  workflowDefinitionListRoutes,
+  workflowDefinitionPublishRoutes,
+  workflowDefinitionVersionRoutes,
+} from './routes/workflow-definitions.ts';
+import {
+  workflowRuntimeDecisionRoutes,
+  workflowRuntimeStartRoutes,
+  workflowRuntimeTaskListRoutes,
+} from './routes/workflow-runtime.ts';
+import type { AuthenticationService } from './security.ts';
+import type { PostgresShipmentRepository } from './shipment-repositories.ts';
+import type { PostgresWebsiteLeadIngestor } from './website-lead-ingest.ts';
+export type { ApiApplication, ApiRequest, ApiResponse } from './api-types.ts';
 
-type Json = unknown;
-const permittedDto = <T extends Record<string, unknown>>(
-  value: T,
-  fields: readonly string[] | null,
-): Partial<T> => {
-  if (fields === null) return value;
-  const visible = new Set(['id', ...fields]);
-  return Object.fromEntries(
-    Object.entries(value).filter(([key]) => visible.has(key)),
-  ) as Partial<T>;
-};
-const mutationDto = <T extends Record<string, unknown>>(
-  value: T,
-  context: AuthorizationContext,
-  readCapability: PermissionKey,
-): Partial<T> => {
-  const read = context.permissions.get(readCapability);
-  return read ? permittedDto(value, read.fields) : permittedDto(value, ['version']);
-};
-// A legal write capability does not widen the independent legal read scope of its response.
-const legalMutationDto = <T extends Record<string, unknown>>(
-  value: T,
-  context: AuthorizationContext,
-): Partial<T> => {
-  const read = context.permissions.get('legal-case:read');
-  const legalRead = read
-    ? {
-        scopes: read.scopes,
-        anchors: context.scopeAnchors?.get('legal-case:read') ?? [],
-        fields: read.fields,
-      }
-    : undefined;
-  return companyReadAllowed(legalRead)
-    ? permittedDto(value, read ? read.fields : [])
-    : permittedDto(value, ['version']);
-};
-const authorizeOneOf = (
-  context: AuthorizationContext,
-  preferred: PermissionKey,
-  fallback: PermissionKey,
-  fields?: readonly string[],
-) => authorizeQuery(context, context.permissions.has(preferred) ? preferred : fallback, fields);
-export type ApiRequest = Readonly<{
-  method: string;
-  pathname: string;
-  query?: Readonly<Record<string, string | undefined>>;
-  headers?: Readonly<Record<string, string | undefined>>;
-  headersDistinct?: Readonly<Record<string, readonly string[] | undefined>>;
-  hasQuery?: boolean;
-  body?: unknown;
-  peerAddress?: string | undefined;
-  forwardedFor?: readonly string[] | undefined;
-}>;
-export type ApiResponse = Readonly<{
-  body: Json;
-  statusCode: number;
-  headers?: Readonly<Record<string, string | readonly string[]>>;
-}>;
 export type ApiDependencies = Readonly<{
   loginRateLimiter?: LoginRateLimiter;
   auth: AuthenticationService;
@@ -323,229 +301,6 @@ export type ApiDependencies = Readonly<{
   telemetry?: Telemetry;
   logger?: OperationalLogger;
 }>;
-export type ApiApplication = Readonly<{
-  dispatch(request: ApiRequest): Promise<ApiResponse>;
-  rejectOversized(correlationId?: string): ApiResponse;
-}>;
-const error = (
-  statusCode: number,
-  code: ErrorCode,
-  message: string,
-  correlationId: string,
-  details?: readonly string[],
-): ApiResponse => ({
-  statusCode,
-  body: { error: { code, message, correlationId, ...(details ? { details } : {}) } },
-});
-const objectBody = (body: unknown): Record<string, unknown> => {
-  if (typeof body !== 'object' || body === null || Array.isArray(body))
-    throw new DomainError('invalid_request', 'A JSON object body is required');
-  return body as Record<string, unknown>;
-};
-const string = (value: unknown, name: string): string => {
-  if (typeof value !== 'string' || !value.trim())
-    throw new DomainError('invalid_request', `${name} is required`);
-  return value.trim();
-};
-const boundedString = (value: unknown, name: string, maximum: number): string => {
-  const result = string(value, name);
-  if (result.length > maximum)
-    throw new DomainError('invalid_request', `${name} exceeds ${String(maximum)} characters`);
-  return result;
-};
-const timestamp = (value: unknown, name: string): string => {
-  const result = string(value, name);
-  const parsed = new Date(result);
-  if (!Number.isFinite(parsed.getTime()))
-    throw new DomainError('invalid_request', `${name} must be a valid timestamp`);
-  return parsed.toISOString();
-};
-const calendarDate = (value: unknown, name: string): string => {
-  const result = string(value, name);
-  if (!/^\d{4}-\d{2}-\d{2}$/u.test(result) || Number.isNaN(Date.parse(`${result}T00:00:00Z`)))
-    throw new DomainError('invalid_request', `${name} must be a valid YYYY-MM-DD date`);
-  return result;
-};
-const optionalCalendarDate = (value: unknown, name: string): string | null =>
-  value === null || value === undefined ? null : calendarDate(value, name);
-const COST_FACTOR_SOURCE_TYPES = [
-  'MANUAL',
-  'PURCHASE_ORDER',
-  'SUPPLIER_QUOTE',
-  'MARKET_REFERENCE',
-  'INTERNAL_BENCHMARK',
-] as const;
-const costFactorSourceType = (value: unknown): string => {
-  const result = string(value, 'sourceType');
-  if (!COST_FACTOR_SOURCE_TYPES.some((candidate) => candidate === result))
-    throw new DomainError('invalid_request', 'sourceType is not supported');
-  return result;
-};
-const requireCostFactorItemSource = (sourceType: string, sourceItemVersionId: unknown): void => {
-  if ((sourceType === 'PURCHASE_ORDER' || sourceType === 'SUPPLIER_QUOTE') && !sourceItemVersionId)
-    throw new DomainError(
-      'invalid_request',
-      'Purchase order and supplier quote sources require a linked purchasing item',
-    );
-};
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
-const correlation = (value: string | undefined): string =>
-  value && UUID.test(value) ? value : randomUUID();
-const uuid = (value: unknown, name: string): string => {
-  const result = string(value, name);
-  if (!UUID.test(result)) throw new DomainError('invalid_request', `${name} must be a UUID`);
-  return result;
-};
-const allow = (body: Record<string, unknown>, fields: readonly string[]): void => {
-  const unexpected = Object.keys(body).filter((key) => !fields.includes(key));
-  if (unexpected.length)
-    throw new DomainError('invalid_request', `Unsupported fields: ${unexpected.sort().join(', ')}`);
-};
-const version = (value: unknown): number => {
-  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 1)
-    throw new DomainError('invalid_request', 'version must be a positive integer');
-  return value;
-};
-const expectedVersion = (value: unknown): number => {
-  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0)
-    throw new DomainError('invalid_request', 'expectedVersion must be a non-negative integer');
-  return value;
-};
-const strings = (value: unknown, name: string): readonly string[] => {
-  if (!Array.isArray(value) || value.some((v) => typeof v !== 'string' || !v.trim()))
-    throw new DomainError('invalid_request', `${name} must be an array of non-empty strings`);
-  return [...new Set(value as string[])].sort();
-};
-const notificationChannel = (value: unknown): string => {
-  const channel = string(value, 'channel');
-  if (!['IN_APP', 'EMAIL', 'SMS', 'PUSH'].includes(channel))
-    throw new DomainError('invalid_request', 'channel is unsupported');
-  return channel;
-};
-const documentConnector = (value: unknown, includeTranslation = false): string => {
-  const connector = string(value, 'connector');
-  const supported = [
-    'EMAIL',
-    'WECHAT_WORK',
-    'WHATSAPP_BUSINESS',
-    'MICROSOFT_TEAMS',
-    'TELEGRAM',
-    'LINE',
-    ...(includeTranslation ? ['TRANSLATION'] : []),
-  ];
-  if (!supported.includes(connector))
-    throw new DomainError('invalid_request', 'document connector is unsupported');
-  return connector;
-};
-const documentLocale = (value: unknown): string => {
-  const locale = string(value, 'targetLocale');
-  if (!/^[a-z]{2,3}(?:-[A-Z]{2})?$/u.test(locale))
-    throw new DomainError('invalid_request', 'targetLocale must use a supported locale code');
-  return locale;
-};
-const connectorProvider = (value: unknown): string => {
-  const provider = string(value, 'provider');
-  if (!/^[A-Z][A-Z0-9_]{1,63}$/u.test(provider))
-    throw new DomainError('invalid_request', 'provider must be an uppercase provider code');
-  return provider;
-};
-const connectorSecretReference = (value: unknown): string | null => {
-  if (value === undefined || value === null || value === '') return null;
-  const reference = string(value, 'secretReference');
-  if (!/^KINGTURF_CONNECTOR_[A-Z0-9_]{3,96}$/u.test(reference))
-    throw new DomainError(
-      'invalid_request',
-      'secretReference must name a KINGTURF_CONNECTOR_* managed secret',
-    );
-  return reference;
-};
-const safeConnectorConfiguration = (value: unknown): Record<string, never> => {
-  const configuration = jsonObject(value ?? {}, 'configuration');
-  const secretKeys: string[] = [];
-  const visit = (candidate: unknown, path = ''): void => {
-    if (typeof candidate !== 'object' || candidate === null) return;
-    for (const [key, nested] of Object.entries(candidate)) {
-      const current = path ? `${path}.${key}` : key;
-      if (/(secret|token|password|api.?key|credential)/iu.test(key)) secretKeys.push(current);
-      visit(nested, current);
-    }
-  };
-  visit(configuration);
-  if (secretKeys.length)
-    throw new DomainError(
-      'invalid_request',
-      'Connector secrets must be stored in the secret reference, not configuration',
-    );
-  if (JSON.stringify(configuration).length > 8192)
-    throw new DomainError('invalid_request', 'Connector configuration exceeds 8192 characters');
-  return configuration;
-};
-const attachmentBytes = (value: unknown): Uint8Array => {
-  const encoded = string(value, 'contentBase64');
-  if (encoded.length > 34_952_536)
-    throw new DomainError('invalid_request', 'Attachment transport exceeds 25 MiB');
-  if (
-    encoded.length % 4 !== 0 ||
-    !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u.test(encoded)
-  )
-    throw new DomainError('invalid_request', 'contentBase64 must be canonical base64');
-  const bytes = Buffer.from(encoded, 'base64');
-  if (bytes.byteLength > 26_214_400)
-    throw new DomainError('invalid_request', 'Attachment transport exceeds 25 MiB');
-  return bytes;
-};
-const integer = (value: unknown, name: string, minimum: number, maximum: number): number => {
-  if (
-    typeof value !== 'number' ||
-    !Number.isSafeInteger(value) ||
-    value < minimum ||
-    value > maximum
-  )
-    throw new DomainError(
-      'invalid_request',
-      `${name} must be an integer between ${String(minimum)} and ${String(maximum)}`,
-    );
-  return value;
-};
-const jsonObject = (value: unknown, name: string): Record<string, never> => {
-  if (typeof value !== 'object' || value === null || Array.isArray(value))
-    throw new DomainError('invalid_request', `${name} must be a JSON object`);
-  return value as Record<string, never>;
-};
-const array = (value: unknown, name: string): readonly unknown[] => {
-  if (!Array.isArray(value)) throw new DomainError('invalid_request', `${name} must be an array`);
-  return value;
-};
-const decimal = (value: unknown, name: string, nonnegative = true): string => {
-  const result = normalizeDecimal(string(value, name));
-  if (nonnegative && result.startsWith('-'))
-    throw new DomainError('invalid_request', `${name} must be non-negative`);
-  return result;
-};
-const currency = (value: unknown): string => assertCurrency(string(value, 'currency'));
-const idempotency = (request: ApiRequest): string => {
-  const key = request.headers?.['idempotency-key'];
-  if (!key || key.length > 128)
-    throw new DomainError('invalid_request', 'Idempotency-Key is required');
-  return key;
-};
-const effectiveRange = (body: Record<string, unknown>) => {
-  const effectiveFrom = string(body.effectiveFrom, 'effectiveFrom');
-  const effectiveTo =
-    body.effectiveTo === null || body.effectiveTo === undefined
-      ? null
-      : string(body.effectiveTo, 'effectiveTo');
-  assertEffectiveRange(effectiveFrom, effectiveTo);
-  return { effectiveFrom, effectiveTo };
-};
-type RiskEvaluationRepository = Pick<
-  NonNullable<ApiDependencies['risks']>,
-  'evaluate' | 'canReadResult'
->;
-type RiskTaskRepository = Pick<
-  NonNullable<ApiDependencies['risks']>,
-  'transitionTask' | 'canReadResult'
->;
 
 export function buildApp(
   dependencies?: ApiDependencies,
