@@ -382,6 +382,12 @@ export class PostgresProcurementRepository {
   ) {
     return this.db.transaction(async (tx) => {
       company(context);
+      const locked = await tx.query(
+        "SELECT id FROM purchase_orders WHERE id=$1 AND tenant_id=$2 AND status IN('ISSUED','PARTIALLY_RECEIVED') FOR UPDATE",
+        [input.purchaseOrderId, context.actor.companyId],
+      );
+      if (!locked.rowCount)
+        throw new DomainError('conflict', 'Receipt requires an open issued purchase order');
       const contentHash = hash(input);
       const receipt = (
         await tx.query<{ id: string; supplier_id: string }>(
@@ -402,13 +408,18 @@ export class PostgresProcurementRepository {
         throw new DomainError('conflict', 'Receipt requires an open issued purchase order');
       for (const line of input.lines) {
         const poLine = (
-          await tx.query<{ item_version_id: string; remaining: string }>(
-            `SELECT l.item_version_id,(l.quantity-coalesce((SELECT sum(r.quantity) FROM goods_receipt_lines r WHERE r.purchase_order_line_id=l.id AND r.tenant_id=l.tenant_id),0))::text remaining
+          await tx.query<{ item_version_id: string; within_remaining: boolean }>(
+            `SELECT l.item_version_id,($4::numeric<=l.quantity-coalesce((SELECT sum(r.quantity) FROM goods_receipt_lines r WHERE r.purchase_order_line_id=l.id AND r.tenant_id=l.tenant_id),0)) within_remaining
              FROM purchase_order_lines l WHERE l.id=$1 AND l.purchase_order_id=$2 AND l.tenant_id=$3 FOR UPDATE`,
-            [line.purchaseOrderLineId, input.purchaseOrderId, context.actor.companyId],
+            [
+              line.purchaseOrderLineId,
+              input.purchaseOrderId,
+              context.actor.companyId,
+              line.quantity,
+            ],
           )
         ).rows[0];
-        if (!poLine || Number(line.quantity) > Number(poLine.remaining))
+        if (!poLine?.within_remaining)
           throw new DomainError(
             'conflict',
             'Receipt quantity exceeds open purchase order quantity',
@@ -472,11 +483,14 @@ export class PostgresProcurementRepository {
          AND l.quantity>coalesce((SELECT sum(r.quantity) FROM goods_receipt_lines r WHERE r.purchase_order_line_id=l.id AND r.tenant_id=l.tenant_id),0) LIMIT 1`,
         [input.purchaseOrderId, context.actor.companyId],
       );
-      await tx.query('UPDATE purchase_orders SET status=$1 WHERE id=$2 AND tenant_id=$3', [
-        open.rowCount ? 'PARTIALLY_RECEIVED' : 'RECEIVED',
-        input.purchaseOrderId,
-        context.actor.companyId,
-      ]);
+      await tx.query(
+        'UPDATE purchase_orders SET status=$1 WHERE id=$2 AND tenant_id=$3 AND status IS DISTINCT FROM $1',
+        [
+          open.rowCount ? 'PARTIALLY_RECEIVED' : 'RECEIVED',
+          input.purchaseOrderId,
+          context.actor.companyId,
+        ],
+      );
       const result = json({
         id: receipt.id,
         status: open.rowCount ? 'PARTIALLY_RECEIVED' : 'RECEIVED',

@@ -570,28 +570,129 @@ describe('procurement and inventory repository real PostgreSQL contracts', () =>
     expect(await evidenceCounts(collision)).toEqual({ audit: '0', outbox: '1' });
   });
 
-  it('preserves the first receipt when the current guard rejects another partial receipt (TD-PROC-001)', async () => {
-    // Characterizes the registered defect and rollback, not the desired receipt semantics.
+  it('TD-PROC-001: receives 4 + 2 + 4 with exact stock, lot links and paired evidence', async () => {
+    const { context, db } = state();
+    let count = 0;
+    for (const [number, quantity, status, total] of [
+      ['FIRST', '4', 'PARTIALLY_RECEIVED', '4.000000'],
+      ['SECOND', '2', 'PARTIALLY_RECEIVED', '6.000000'],
+      ['FINAL', '4', 'RECEIVED', '10.000000'],
+    ] as const) {
+      const correlation = randomUUID();
+      const result = await repository.receive(receiptInput(number, quantity), context, correlation);
+      count++;
+      expect(result.status).toBe(status);
+      expect(await orderStatus()).toBe(status);
+      expect(await receiptCounts()).toEqual({
+        receipts: count,
+        lines: count,
+        lots: count,
+        movements: count,
+      });
+      expect(await evidenceCounts(correlation)).toEqual({ audit: '1', outbox: '1' });
+      expect(
+        (
+          await db.query<{ total: string }>(
+            'SELECT sum(quantity)::text total FROM goods_receipt_lines WHERE purchase_order_line_id=$1',
+            [orderLineId],
+          )
+        ).rows[0]?.total,
+      ).toBe(total);
+      expect(
+        (
+          await db.query<{ n: number }>(
+            'SELECT count(*)::int n FROM goods_receipt_lines l JOIN inventory_lots lot ON lot.id=l.lot_id AND lot.goods_receipt_id=l.goods_receipt_id JOIN inventory_movements m ON m.source_id=l.id AND m.lot_id=lot.id AND m.location_id=l.location_id AND m.quantity_delta=l.quantity WHERE l.goods_receipt_id=$1',
+            [identifier(result)],
+          )
+        ).rows[0]?.n,
+      ).toBe(1);
+      expect(
+        (
+          await db.query<{ total: string }>(
+            'SELECT sum(quantity)::text total FROM inventory_balances WHERE tenant_id=$1',
+            [context.actor.companyId],
+          )
+        ).rows[0]?.total,
+      ).toBe(total);
+    }
+  });
+
+  it('TD-PROC-001: rejects duplicate receipt identities and excess after partial stock without residual writes', async () => {
     const { context } = state();
-    await repository.receive(receiptInput('FIRST', '4'), context, randomUUID());
-    const before = await receiptCounts(),
-      correlation = randomUUID();
+    await repository.receive(receiptInput('PARTIAL', '4'), context, randomUUID());
+    const before = await receiptCounts();
+    for (const [input, code] of [
+      [receiptInput('PARTIAL', '4'), '23505'],
+      [{ ...receiptInput('OTHER', '4'), sourceReference: 'PARTIAL' }, '23505'],
+      [receiptInput('EXCESS', '7'), 'conflict'],
+    ] as const) {
+      const correlation = randomUUID();
+      await expect(
+        repository.receive({ ...input, lines: [...input.lines] }, context, correlation),
+      ).rejects.toMatchObject({ code });
+      expect(await receiptCounts()).toEqual(before);
+      expect(await orderStatus()).toBe('PARTIALLY_RECEIVED');
+      expect(await evidenceCounts(correlation)).toEqual({ audit: '0', outbox: '0' });
+    }
+    const line = receiptInput('LATE', '1').lines[0];
+    if (!line) throw new Error('Receipt line missing');
+    const correlation = randomUUID();
     await expect(
-      repository.receive(receiptInput('STILL-PARTIAL', '2'), context, correlation),
-    ).rejects.toMatchObject({
-      code: 'P0001',
-      message: 'partially received purchase order has invalid transition',
-    });
+      repository.receive({ ...receiptInput('LATE'), lines: [line, line] }, context, correlation),
+    ).rejects.toMatchObject({ code: '23505' });
     expect(await receiptCounts()).toEqual(before);
-    expect(before).toEqual({ receipts: 1, lines: 1, lots: 1, movements: 1 });
-    expect(await orderStatus()).toBe('PARTIALLY_RECEIVED');
     expect(await evidenceCounts(correlation)).toEqual({ audit: '0', outbox: '0' });
-    expect(await repository.list('inventory', context)).toMatchObject([
-      { quantity: 4, lotNumber: 'LOT-FIRST' },
-    ]);
+  });
+
+  it('TD-PROC-001: real concurrent receipts cannot over-receive and valid splits settle exactly', async () => {
+    const { context, db } = state();
+    const correlations = [randomUUID(), randomUUID()];
+    const results = await Promise.allSettled(
+      ['LEFT', 'RIGHT'].map((n, i) =>
+        repository.receive(receiptInput(n, '6'), context, correlations[i] ?? randomUUID()),
+      ),
+    );
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+    expect(results.filter((r) => r.status === 'rejected')).toHaveLength(1);
+    for (const result of results)
+      if (result.status === 'rejected') expect(result.reason).toMatchObject({ code: 'conflict' });
+    expect(await receiptCounts()).toEqual({ receipts: 1, lines: 1, lots: 1, movements: 1 });
     expect(
-      (await repository.receive(receiptInput('FINAL', '6'), context, randomUUID())).status,
+      (
+        await db.query<{ total: string }>(
+          'SELECT sum(quantity)::text total FROM goods_receipt_lines WHERE purchase_order_line_id=$1',
+          [orderLineId],
+        )
+      ).rows[0]?.total,
+    ).toBe('6.000000');
+    for (const [i, r] of results.entries())
+      expect(await evidenceCounts(correlations[i] ?? '')).toEqual(
+        r.status === 'fulfilled' ? { audit: '1', outbox: '1' } : { audit: '0', outbox: '0' },
+      );
+    expect(
+      (await repository.receive(receiptInput('REST', '4'), context, randomUUID())).status,
     ).toBe('RECEIVED');
+  });
+
+  it('TD-PROC-001: two valid concurrent 4 and 6 receipts both commit once', async () => {
+    const { context, db } = state();
+    const correlations = [randomUUID(), randomUUID()];
+    const result = await Promise.all([
+      repository.receive(receiptInput('FOUR', '4'), context, correlations[0] ?? ''),
+      repository.receive(receiptInput('SIX', '6'), context, correlations[1] ?? ''),
+    ]);
+    expect(result).toHaveLength(2);
+    expect(await orderStatus()).toBe('RECEIVED');
+    expect(
+      (
+        await db.query<{ total: string }>(
+          'SELECT sum(quantity)::text total FROM goods_receipt_lines WHERE purchase_order_line_id=$1',
+          [orderLineId],
+        )
+      ).rows,
+    ).toEqual([{ total: '10.000000' }]);
+    for (const correlation of correlations)
+      expect(await evidenceCounts(correlation)).toEqual({ audit: '1', outbox: '1' });
     expect(await receiptCounts()).toEqual({ receipts: 2, lines: 2, lots: 2, movements: 2 });
   });
 });
