@@ -307,5 +307,117 @@ describe.each([
       );
       expect(Number(balance.rows[0]?.quantity)).toBe(12);
     });
+    it('TD-COST-002: records rejected cost revision uniqueness and blocked close without changing history', async () => {
+      const order = await production.create(
+        {
+          orderNumber: 'REJECT-WO',
+          itemVersionId: finishedVersion,
+          routingVersionId: routingVersion,
+          plannedQuantity: '1',
+          plannedStartAt: '2026-08-16',
+          plannedDueAt: '2026-08-20',
+          sourceReference: 'TEST-REJECT',
+        },
+        context,
+        randomUUID(),
+      );
+      if (typeof order.id !== 'string') throw new Error('Order ID missing');
+      for (const state of ['RELEASED', 'IN_PROGRESS'] as const)
+        await production.transition(
+          order.id,
+          state,
+          { reason: 'Synthetic revision setup', evidence: {}, idempotencyKey: randomUUID() },
+          context,
+          randomUUID(),
+        );
+      const operation = (
+        await db.query<{ id: string }>(
+          'SELECT id FROM production_order_operations WHERE production_order_id=$1',
+          [order.id],
+        )
+      ).rows[0];
+      if (!operation) throw new Error('Operation missing');
+      await production.reportOperation(
+        order.id,
+        {
+          operationId: operation.id,
+          goodQuantity: '1',
+          scrapQuantity: '0',
+          laborMinutes: '1',
+          machineMinutes: '1',
+          startedAt: '2026-08-17T09:00:00Z',
+          completedAt: '2026-08-17T09:01:00Z',
+          notes: 'Synthetic report',
+          idempotencyKey: randomUUID(),
+        },
+        context,
+        randomUUID(),
+      );
+      await production.transition(
+        order.id,
+        'COMPLETED',
+        { reason: 'Completed', evidence: {}, idempotencyKey: randomUUID() },
+        context,
+        randomUUID(),
+      );
+      const policy = await costs.createPolicy(
+        {
+          version: 99,
+          currency: 'CNY',
+          laborRatePerHour: '60',
+          machineRatePerHour: '120',
+          overheadRatePerMachineHour: '30',
+          effectiveFrom: '2026-08-01',
+          sourceReference: 'REJECT-POLICY',
+          materialRates: [
+            { itemVersionId: materialVersion, unitCost: '5', sourceReference: 'FIXED' },
+          ],
+        },
+        context,
+        randomUUID(),
+      );
+      const input = {
+        productionOrderId: order.id,
+        policyId: policy.id,
+        runNumber: 'REJECT-COST-1',
+        idempotencyKey: randomUUID(),
+      };
+      const first = await costs.calculate(input, context, randomUUID());
+      await costs.decide(
+        first.id,
+        'REJECTED',
+        {
+          reason: 'Synthetic finance rejection',
+          evidence: { review: 'REVISE' },
+          idempotencyKey: randomUUID(),
+        },
+        { ...context, actor: { companyId: company, employeeId: approver } },
+        randomUUID(),
+      );
+      await expect(
+        costs.calculate(
+          { ...input, runNumber: 'REJECT-COST-2', idempotencyKey: randomUUID() },
+          context,
+          randomUUID(),
+        ),
+      ).rejects.toMatchObject({ code: '23505' });
+      await expect(
+        production.transition(
+          order.id,
+          'CLOSED',
+          { reason: 'Must remain blocked', evidence: {}, idempotencyKey: randomUUID() },
+          context,
+          randomUUID(),
+        ),
+      ).rejects.toThrow(/approved/u);
+      expect(
+        (
+          await db.query<{ n: number }>(
+            'SELECT count(*)::int n FROM production_cost_runs WHERE production_order_id=$1',
+            [order.id],
+          )
+        ).rows,
+      ).toEqual([{ n: 1 }]);
+    });
   },
 );

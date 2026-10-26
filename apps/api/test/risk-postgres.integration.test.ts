@@ -497,4 +497,27 @@ describe('risk repository real PostgreSQL contracts', () => {
     ).rejects.toMatchObject({ code: 'not_found' });
     expect(await counts()).toEqual(before);
   });
+  it('TD-RISK-002: characterizes same-tenant replay before current data scope validation', async () => {
+    const { context, reviewerEmployee } = state();
+    const policy = await repository.createPolicy(
+      policyInput('REPLAY-SCOPE'),
+      context,
+      randomUUID(),
+    );
+    const key = randomUUID(),
+      input = evaluationInput(identifier(policy));
+    const first = await repository.evaluate(input, key, context, randomUUID());
+    const before = await counts();
+    const narrowed = {
+      ...context,
+      actor: { ...context.actor, employeeId: reviewerEmployee },
+      scopes: ['SELF'] as const,
+    };
+    const replay = await repository.evaluate(input, key, narrowed, randomUUID());
+    expect(replay.id).toBe(first.id);
+    await expect(
+      repository.evaluate(input, randomUUID(), narrowed, randomUUID()),
+    ).rejects.toMatchObject({ code: 'not_found' });
+    expect(await counts()).toEqual(before);
+  });
 });
