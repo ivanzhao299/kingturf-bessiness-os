@@ -75,7 +75,10 @@ function expand(file: ts.SourceFile, symbol: string, bindings: string[]): string
         )
       ),
   );
-  let body = statements.map((n) => n.getText(file)).join('\n');
+  let body = statements
+    .map((n) => n.getText(file))
+    .join('\n')
+    .replace(/dependencyPresent\(scope, ['"]([A-Za-z]+)['"]\)/gu, 'dependencies.$1');
   const edits: { start: number; end: number; text: string }[] = [];
   let cursor = 0;
   for (const statement of statements)

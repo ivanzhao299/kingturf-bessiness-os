@@ -110,9 +110,6 @@ import { businessDocumentReviewRoutes } from './routes/business-document-review.
 import { businessDocumentSendRoutes } from './routes/business-document-send.ts';
 import { businessDocumentTranslationRoutes } from './routes/business-document-translation.ts';
 import { businessDocumentVersionRoutes } from './routes/business-document-version.ts';
-import { capaActionRoutes } from './routes/capa-actions.ts';
-import { capaCreateRoutes } from './routes/capa-create.ts';
-import { capaLifecycleRoutes } from './routes/capa-lifecycle.ts';
 import { collectionRoutes } from './routes/collection.ts';
 import { commercialDefinitionRoutes } from './routes/commercial-definitions.ts';
 import { commercialEvaluationRoutes } from './routes/commercial-evaluations.ts';
@@ -126,11 +123,6 @@ import {
   commissionPolicyVersionRoutes,
 } from './routes/commission-policy-writes.ts';
 import { commissionReadRoutes } from './routes/commission-reads.ts';
-import { complaintBatchTriageRoutes } from './routes/complaint-batch-triage.ts';
-import { complaintCreateRoutes } from './routes/complaint-create.ts';
-import { complaintReadRoutes } from './routes/complaint-reads.ts';
-import { complaintSlaRoutes } from './routes/complaint-sla.ts';
-import { complaintTransitionRoutes } from './routes/complaint-transitions.ts';
 import { costMatrixBaseRoutes } from './routes/cost-matrix-base.ts';
 import { costMatrixCalculationRoutes } from './routes/cost-matrix-calculations.ts';
 import { costMatrixFactorRoutes } from './routes/cost-matrix-factors.ts';
@@ -142,6 +134,7 @@ import { customerContactRoutes } from './routes/customer-contacts.ts';
 import { customerLifecycleRoutes } from './routes/customer-lifecycle.ts';
 import { customerOwnershipRoutes } from './routes/customer-ownership.ts';
 import { executiveDashboardRoutes } from './routes/dashboard.ts';
+import { complaintsAttempts } from './routes/dispatch/complaints.ts';
 import { costsAttempts } from './routes/dispatch/costs.ts';
 import { manufacturingAttempts } from './routes/dispatch/manufacturing.ts';
 import { mrpAttempts } from './routes/dispatch/mrp.ts';
@@ -166,8 +159,6 @@ import {
   masterEntryListRoutes,
   masterEntryUpdateRoutes,
 } from './routes/master-data-entries.ts';
-import { ncrCreateRoutes } from './routes/ncr-create.ts';
-import { ncrTransitionRoutes } from './routes/ncr-transitions.ts';
 import { numberAllocationRoutes } from './routes/number-allocation.ts';
 import {
   numberDefinitionCreateRoutes,
@@ -571,201 +562,17 @@ export function buildApp(
             return { statusCode: 201, body: mutationDto(result, context, 'shipment:read') };
           }
         }
-        if (dependencies.complaints) {
-          const slaResponse = await dispatchRoutes(
-            complaintSlaRoutes({
-              repository: dependencies.complaints,
-              authorization: context,
-              correlationId,
-              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
-              permittedDto,
-              mutationDto: (value) => mutationDto(value, context, 'complaint-sla:read'),
-              parsers: {
-                objectBody,
-                allow,
-                string,
-                stableCode: assertStableCode,
-                integer,
-                timestamp,
-              },
-            }),
-            request,
-          );
-          if (slaResponse) return slaResponse;
-          const complaintReadResponse = await dispatchRoutes(
-            complaintReadRoutes({
-              repository: dependencies.complaints,
-              authorization: context,
-              authorize: (capability) => authorizeQuery(context, capability),
-              permittedDto,
-              parsers: { string, uuid, integer, timestamp },
-            }),
-            request,
-          );
-          if (complaintReadResponse) return complaintReadResponse;
-          const complaintCreateResponse = await dispatchRoutes(
-            complaintCreateRoutes({
-              repository: dependencies.complaints,
-              authorization: context,
-              correlationId,
-              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
-              mutationDto: (value) => mutationDto(value, context, 'complaint:read'),
-              parsers: {
-                objectBody,
-                allow,
-                string,
-                stableCode: assertStableCode,
-                uuid,
-                timestamp,
-                jsonObject,
-              },
-            }),
-            request,
-          );
-          if (complaintCreateResponse) return complaintCreateResponse;
-          const complaintBatchResponse = await dispatchRoutes(
-            complaintBatchTriageRoutes({
-              repository: dependencies.complaints,
-              authorization: context,
-              correlationId,
-              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
-              parsers: {
-                objectBody,
-                allow,
-                array,
-                uuid,
-                integer,
-                string,
-                stableCode: assertStableCode,
-              },
-            }),
-            request,
-          );
-          if (complaintBatchResponse) return complaintBatchResponse;
-          const complaintTransitionResponse = await dispatchRoutes(
-            complaintTransitionRoutes({
-              repository: dependencies.complaints,
-              authorization: context,
-              correlationId,
-              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
-              mutationDto: (value) => mutationDto(value, context, 'complaint:read'),
-              parsers: {
-                objectBody,
-                allow,
-                uuid,
-                integer,
-                string,
-                jsonObject,
-                stableCode: assertStableCode,
-              },
-            }),
-            request,
-          );
-          if (complaintTransitionResponse) return complaintTransitionResponse;
-          const ncrCreateResponse = await dispatchRoutes(
-            ncrCreateRoutes({
-              repository: dependencies.complaints,
-              authorization: context,
-              correlationId,
-              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
-              mutationDto: (value) => mutationDto(value, context, 'ncr:read'),
-              parsers: {
-                objectBody,
-                allow,
-                string,
-                stableCode: assertStableCode,
-                uuid,
-                decimal,
-                integer,
-                jsonObject,
-              },
-            }),
-            request,
-          );
-          if (ncrCreateResponse) return ncrCreateResponse;
-          const ncrTransitionResponse = await dispatchRoutes(
-            ncrTransitionRoutes({
-              repository: dependencies.complaints,
-              authorization: context,
-              correlationId,
-              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
-              mutationDto: (value) => mutationDto(value, context, 'ncr:read'),
-              parsers: {
-                objectBody,
-                allow,
-                string,
-                uuid,
-                integer,
-                jsonObject,
-                stableCode: assertStableCode,
-              },
-            }),
-            request,
-          );
-          if (ncrTransitionResponse) return ncrTransitionResponse;
-          const capaCreateResponse = await dispatchRoutes(
-            capaCreateRoutes({
-              repository: dependencies.complaints,
-              authorization: context,
-              correlationId,
-              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
-              mutationDto: (value) => mutationDto(value, context, 'capa:read'),
-              parsers: {
-                objectBody,
-                allow,
-                string,
-                stableCode: assertStableCode,
-                uuid,
-                timestamp,
-                integer,
-                jsonObject,
-              },
-            }),
-            request,
-          );
-          if (capaCreateResponse) return capaCreateResponse;
-          const capaActionResponse = await dispatchRoutes(
-            capaActionRoutes({
-              repository: dependencies.complaints,
-              authorization: context,
-              correlationId,
-              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
-              mutationDto: (value) => mutationDto(value, context, 'capa:read'),
-              parsers: {
-                objectBody,
-                allow,
-                string,
-                stableCode: assertStableCode,
-                uuid,
-                timestamp,
-                integer,
-                jsonObject,
-              },
-            }),
-            request,
-          );
-          if (capaActionResponse) return capaActionResponse;
-          const capaLifecycleResponse = await dispatchRoutes(
-            capaLifecycleRoutes({
-              repository: dependencies.complaints,
-              authorization: context,
-              correlationId,
-              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
-              mutationDto: (value) => mutationDto(value, context, 'capa:read'),
-              parsers: {
-                objectBody,
-                allow,
-                string,
-                stableCode: assertStableCode,
-                uuid,
-                timestamp,
-                integer,
-                jsonObject,
-              },
-            }),
-            request,
-          );
-          if (capaLifecycleResponse) return capaLifecycleResponse;
+        for (const pending of complaintsAttempts({
+          request,
+          dependencies,
+          context,
+          correlationId,
+        })) {
+          if (pending.accept === 'always') return pending.project(await pending.pending);
+          const response = pending.project(await pending.pending);
+          if (pending.accept === 'truthy') {
+            if (response) return response;
+          } else if (response !== null) return response;
         }
         if (dependencies.collections) {
           const collectionResponse = await dispatchRoutes(

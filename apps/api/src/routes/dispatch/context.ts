@@ -49,3 +49,16 @@ export function routeReply(
 ): PendingReply<ApiResponse | null, ApiResponse | null, ContinueAcceptance> {
   return PendingReply.pair(pending, (value) => value, accept);
 }
+
+export type DependencyScope<Port extends keyof ApiDependencies> = RouteDispatchContext & {
+  readonly dependencies: ApiDependencies & {
+    readonly [Key in Port]-?: NonNullable<ApiDependencies[Key]>;
+  };
+};
+// Exactly the original presence test. Never cache the repository or widen its authorization.
+export function dependencyPresent<Port extends keyof ApiDependencies>(
+  scope: RouteDispatchContext,
+  port: Port,
+): scope is DependencyScope<Port> {
+  return !!scope.dependencies[port];
+}

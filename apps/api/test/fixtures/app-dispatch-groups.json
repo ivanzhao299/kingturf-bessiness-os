@@ -28,5 +28,11 @@
     "symbol": "costsAttempts",
     "file": "costs.ts",
     "property": "productionCosts"
+  },
+  {
+    "name": "complaints",
+    "symbol": "complaintsAttempts",
+    "file": "complaints.ts",
+    "property": "complaints"
   }
 ]
