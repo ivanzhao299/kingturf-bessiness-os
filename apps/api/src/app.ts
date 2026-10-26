@@ -538,6 +538,15 @@ const effectiveRange = (body: Record<string, unknown>) => {
   assertEffectiveRange(effectiveFrom, effectiveTo);
   return { effectiveFrom, effectiveTo };
 };
+type RiskEvaluationRepository = Pick<
+  NonNullable<ApiDependencies['risks']>,
+  'evaluate' | 'canReadResult'
+>;
+type RiskTaskRepository = Pick<
+  NonNullable<ApiDependencies['risks']>,
+  'transitionTask' | 'canReadResult'
+>;
+
 export function buildApp(
   dependencies?: ApiDependencies,
   security: Readonly<{ enforceCsp?: boolean; browserSession?: BrowserSessionConfig }> = {},
@@ -2068,11 +2077,7 @@ export function buildApp(
           if (request.method === 'POST' && request.pathname === '/api/v1/risk-evaluations') {
             const response = await dispatchRoutes(
               riskEvaluationCreateRoutes({
-                repository: () =>
-                  dependencies.risks as Pick<
-                    NonNullable<ApiDependencies['risks']>,
-                    'evaluate' | 'canReadResult'
-                  >,
+                repository: () => dependencies.risks as RiskEvaluationRepository,
                 authorization: context,
                 authorizeQuery,
                 idempotency,
@@ -2091,11 +2096,7 @@ export function buildApp(
           if (request.method === 'POST' && riskTaskCommand) {
             const response = await dispatchRoutes(
               riskTaskCommandRoutes({
-                repository: () =>
-                  dependencies.risks as Pick<
-                    NonNullable<ApiDependencies['risks']>,
-                    'transitionTask' | 'canReadResult'
-                  >,
+                repository: () => dependencies.risks as RiskTaskRepository,
                 authorization: context,
                 authorizeQuery,
                 idempotency,
