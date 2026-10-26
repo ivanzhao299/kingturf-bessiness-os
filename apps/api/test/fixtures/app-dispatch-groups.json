@@ -1,0 +1,14 @@
+[
+  {
+    "name": "manufacturing",
+    "symbol": "manufacturingAttempts",
+    "file": "manufacturing.ts",
+    "property": "manufacturing"
+  },
+  {
+    "name": "procurement",
+    "symbol": "procurementAttempts",
+    "file": "procurement.ts",
+    "property": "procurement"
+  }
+]

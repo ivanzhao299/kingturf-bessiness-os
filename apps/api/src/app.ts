@@ -42,7 +42,6 @@ import {
   mutationDto,
   notificationChannel,
   objectBody,
-  optionalCalendarDate,
   permittedDto,
   requireCostFactorItemSource,
   safeConnectorConfiguration,
@@ -145,6 +144,7 @@ import { customerLifecycleRoutes } from './routes/customer-lifecycle.ts';
 import { customerOwnershipRoutes } from './routes/customer-ownership.ts';
 import { executiveDashboardRoutes } from './routes/dashboard.ts';
 import { manufacturingAttempts } from './routes/dispatch/manufacturing.ts';
+import { procurementAttempts } from './routes/dispatch/procurement.ts';
 import { dispatchFoundationRoutes, foundationRoutes } from './routes/foundation.ts';
 import { identityAccessRoutes } from './routes/identity-access.ts';
 import { identityProvisionRoutes } from './routes/identity-provision.ts';
@@ -180,16 +180,6 @@ import {
 } from './routes/number-definitions.ts';
 import { dispatchOpportunityRoutes } from './routes/opportunities.ts';
 import { order360Routes } from './routes/order-360.ts';
-import { procurementIssueRoutes } from './routes/procurement-issue.ts';
-import { procurementLocationCreateRoutes } from './routes/procurement-location-create.ts';
-import { procurementMovementCreateRoutes } from './routes/procurement-movement-create.ts';
-import { procurementPurchaseOrderCreateRoutes } from './routes/procurement-purchase-order-create.ts';
-import { procurementReadRoutes } from './routes/procurement-reads.ts';
-import { procurementReceiptCreateRoutes } from './routes/procurement-receipt-create.ts';
-import { procurementRfqCreateRoutes } from './routes/procurement-rfq-create.ts';
-import { procurementSupplierCreateRoutes } from './routes/procurement-supplier-create.ts';
-import { procurementSupplierQualificationRoutes } from './routes/procurement-supplier-qualification.ts';
-import { procurementSupplierQuoteCreateRoutes } from './routes/procurement-supplier-quote-create.ts';
 import { productionCostCalculationRoutes } from './routes/production-cost-calculation.ts';
 import { productionCostDecisionRoutes } from './routes/production-cost-decisions.ts';
 import { productionCostPolicyRoutes } from './routes/production-cost-policy.ts';
@@ -427,297 +417,14 @@ export function buildApp(
           const response = pending.project(await pending.pending);
           if (response !== null) return response;
         }
-        if (dependencies.procurement) {
-          const procurementLists: Readonly<
-            Record<
-              string,
-              | readonly [
-                  (
-                    | 'suppliers'
-                    | 'rfqs'
-                    | 'quotes'
-                    | 'orders'
-                    | 'receipts'
-                    | 'locations'
-                    | 'inventory'
-                  ),
-                  PermissionKey,
-                ]
-              | undefined
-            >
-          > = {
-            '/api/v1/suppliers': ['suppliers', 'supplier:read'],
-            '/api/v1/procurement-rfqs': ['rfqs', 'procurement:read'],
-            '/api/v1/supplier-quotes': ['quotes', 'procurement:read'],
-            '/api/v1/purchase-orders': ['orders', 'procurement:read'],
-            '/api/v1/goods-receipts': ['receipts', 'procurement:read'],
-            '/api/v1/inventory-locations': ['locations', 'inventory:read'],
-            '/api/v1/inventory-balances': ['inventory', 'inventory:read'],
-          };
-          const listDefinition = procurementLists[request.pathname];
-          if (request.method === 'GET' && listDefinition) {
-            const [view, capability] = listDefinition;
-            const effectiveCapability =
-              request.pathname === '/api/v1/inventory-locations' &&
-              !context.permissions.has('inventory:read') &&
-              context.permissions.has('inventory:move')
-                ? 'inventory:move'
-                : capability;
-            const response = await dispatchRoutes(
-              procurementReadRoutes({
-                repository: () =>
-                  dependencies.procurement as Pick<
-                    NonNullable<ApiDependencies['procurement']>,
-                    'list'
-                  >,
-                view,
-                capability: effectiveCapability,
-                authorization: context,
-                authorizeQuery,
-                permittedDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          if (request.method === 'POST' && request.pathname === '/api/v1/suppliers') {
-            const response = await dispatchRoutes(
-              procurementSupplierCreateRoutes({
-                repository: () =>
-                  dependencies.procurement as Pick<
-                    NonNullable<ApiDependencies['procurement']>,
-                    'createSupplier'
-                  >,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                parsers: {
-                  objectBody,
-                  allow,
-                  string,
-                  stableCode: assertStableCode,
-                  currency,
-                  integer,
-                  jsonObject,
-                },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          const qualification = /^\/api\/v1\/suppliers\/([0-9a-f-]+)\/qualifications$/u.exec(
-            request.pathname,
-          );
-          if (request.method === 'POST' && qualification) {
-            const response = await dispatchRoutes(
-              procurementSupplierQualificationRoutes({
-                repository: () =>
-                  dependencies.procurement as Pick<
-                    NonNullable<ApiDependencies['procurement']>,
-                    'qualifySupplier'
-                  >,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                parsers: {
-                  objectBody,
-                  allow,
-                  string,
-                  uuid,
-                  calendarDate,
-                  decimal,
-                  integer,
-                  jsonObject,
-                },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          if (request.method === 'POST' && request.pathname === '/api/v1/procurement-rfqs') {
-            const response = await dispatchRoutes(
-              procurementRfqCreateRoutes({
-                repository: () =>
-                  dependencies.procurement as Pick<
-                    NonNullable<ApiDependencies['procurement']>,
-                    'createRfq'
-                  >,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                parsers: {
-                  objectBody,
-                  allow,
-                  array,
-                  jsonObject,
-                  uuid,
-                  decimal,
-                  calendarDate,
-                  string,
-                  stableCode: assertStableCode,
-                  timestamp,
-                  currency,
-                },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          if (request.method === 'POST' && request.pathname === '/api/v1/supplier-quotes') {
-            const response = await dispatchRoutes(
-              procurementSupplierQuoteCreateRoutes({
-                repository: () =>
-                  dependencies.procurement as Pick<
-                    NonNullable<ApiDependencies['procurement']>,
-                    'createSupplierQuote'
-                  >,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                parsers: {
-                  objectBody,
-                  allow,
-                  array,
-                  jsonObject,
-                  uuid,
-                  decimal,
-                  calendarDate,
-                  string,
-                  timestamp,
-                },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          if (request.method === 'POST' && request.pathname === '/api/v1/purchase-orders') {
-            const response = await dispatchRoutes(
-              procurementPurchaseOrderCreateRoutes({
-                repository: () =>
-                  dependencies.procurement as Pick<
-                    NonNullable<ApiDependencies['procurement']>,
-                    'createPurchaseOrder'
-                  >,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                parsers: {
-                  objectBody,
-                  allow,
-                  array,
-                  jsonObject,
-                  uuid,
-                  decimal,
-                  calendarDate,
-                  string,
-                  stableCode: assertStableCode,
-                  currency,
-                },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          const procurementIssue =
-            /^\/api\/v1\/(procurement-rfqs|purchase-orders)\/([0-9a-f-]+)\/issue$/u.exec(
-              request.pathname,
-            );
-          if (request.method === 'POST' && procurementIssue) {
-            const response = await dispatchRoutes(
-              procurementIssueRoutes({
-                repository: () =>
-                  dependencies.procurement as Pick<
-                    NonNullable<ApiDependencies['procurement']>,
-                    'issueRfq' | 'issuePurchaseOrder'
-                  >,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                parsers: { objectBody, allow, uuid },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          if (request.method === 'POST' && request.pathname === '/api/v1/inventory-locations') {
-            const response = await dispatchRoutes(
-              procurementLocationCreateRoutes({
-                repository: () =>
-                  dependencies.procurement as Pick<
-                    NonNullable<ApiDependencies['procurement']>,
-                    'createLocation'
-                  >,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                parsers: { objectBody, allow, string, stableCode: assertStableCode },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          if (request.method === 'POST' && request.pathname === '/api/v1/goods-receipts') {
-            const response = await dispatchRoutes(
-              procurementReceiptCreateRoutes({
-                repository: () =>
-                  dependencies.procurement as Pick<
-                    NonNullable<ApiDependencies['procurement']>,
-                    'receive'
-                  >,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                parsers: {
-                  objectBody,
-                  allow,
-                  array,
-                  jsonObject,
-                  uuid,
-                  string,
-                  stableCode: assertStableCode,
-                  decimal,
-                  optionalCalendarDate,
-                  timestamp,
-                },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          if (request.method === 'POST' && request.pathname === '/api/v1/inventory-movements') {
-            const response = await dispatchRoutes(
-              procurementMovementCreateRoutes({
-                repository: () =>
-                  dependencies.procurement as Pick<
-                    NonNullable<ApiDependencies['procurement']>,
-                    'move'
-                  >,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                parsers: {
-                  objectBody,
-                  allow,
-                  string,
-                  uuid,
-                  decimal,
-                  timestamp,
-                  stableCode: assertStableCode,
-                },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
+        for (const pending of procurementAttempts({
+          request,
+          dependencies,
+          context,
+          correlationId,
+        })) {
+          const response = pending.project(await pending.pending);
+          if (response !== null) return response;
         }
         if (dependencies.mrp) {
           const mrpLists: Readonly<

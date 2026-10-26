@@ -26,14 +26,36 @@ function tokens(fragment: string) {
     ts.ScriptTarget.Latest,
     true,
   );
-  const result: string[] = [];
-  const visit = (node: ts.Node) => {
+  const serialize = (node: ts.Node): unknown => {
+    if (ts.isParenthesizedTypeNode(node)) return serialize(node.type);
+    if (ts.isUnionTypeNode(node) || ts.isIntersectionTypeNode(node))
+      return [node.kind, node.types.map(serialize)];
+    if (
+      node.kind === ts.SyntaxKind.CommaToken &&
+      file.text.slice(node.end).trimStart().startsWith(')')
+    )
+      return undefined;
     const children = node.getChildren(file);
-    if (children.length) children.forEach(visit);
-    else if (node.getText(file)) result.push(node.getText(file));
+    return children.length
+      ? [node.kind, children.map(serialize).filter((value) => value !== undefined)]
+      : [node.kind, node.getText(file)];
   };
-  visit(file);
-  return result.filter((value, index) => !(value === ',' && result[index + 1] === ')'));
+  return serialize(file);
+}
+function firstDifference(a: unknown, b: unknown, path = ''): unknown {
+  if (Object.is(a, b)) return null;
+  if (Array.isArray(a) && Array.isArray(b)) {
+    const left = a as unknown[],
+      right = b as unknown[];
+    if (left.length !== right.length)
+      return { path, actualLength: left.length, expectedLength: right.length };
+    for (let i = 0; i < left.length; i++) {
+      const difference = firstDifference(left[i], right[i], path + '/' + String(i));
+      if (difference) return difference;
+    }
+    return null;
+  }
+  return { path, actual: a, expected: b };
 }
 function expand(file: ts.SourceFile, symbol: string): string {
   const functions = new Map(
@@ -55,6 +77,7 @@ function expand(file: ts.SourceFile, symbol: string): string {
   );
   let body = statements.map((n) => n.getText(file)).join('\n');
   const edits: { start: number; end: number; text: string }[] = [];
+  let cursor = 0;
   for (const statement of statements)
     for (const n of findAll(
       statement,
@@ -77,7 +100,8 @@ function expand(file: ts.SourceFile, symbol: string): string {
       }
       // Operate on statement text positions through a unique marker, preserving nested block structure.
       const text = n.getText(file);
-      const start = body.indexOf(text);
+      const start = body.indexOf(text, cursor);
+      cursor = start + text.length;
       if (start < 0) throw new Error('Yield not in factory body');
       edits.push({ start, end: start + text.length, text: restored });
     }
@@ -85,15 +109,33 @@ function expand(file: ts.SourceFile, symbol: string): string {
     body = body.slice(0, edit.start) + edit.text + body.slice(edit.end);
   return body;
 }
+const groups = JSON.parse(
+  readFileSync(new URL('./fixtures/app-dispatch-groups.json', import.meta.url), 'utf8'),
+) as { name: string; symbol: string; file: string; property: string }[];
 describe('dispatch group inverse source preservation against fixed f3', () => {
-  it('manufacturing keeps every original predicate, parser, call, continuation and return', () => {
-    const original = findAll(
-      old,
-      (n) => ts.isIfStatement(n) && n.expression.getText(old) === 'dependencies.manufacturing',
-    )[0];
-    if (!original) throw new Error('Frozen manufacturing block missing');
-    expect(
-      tokens(expand(parse('../src/routes/dispatch/manufacturing.ts'), 'manufacturingAttempts')),
-    ).toEqual(tokens(original.getText(old)));
-  });
+  for (const group of groups)
+    it(
+      group.name + ' keeps every original predicate, parser, call, continuation and return',
+      () => {
+        const original = findAll(
+          old,
+          (n) =>
+            ts.isIfStatement(n) && n.expression.getText(old) === 'dependencies.' + group.property,
+        )[0];
+        if (!original) throw new Error('Frozen group missing');
+        expect(
+          firstDifference(
+            tokens(expand(parse('../src/routes/dispatch/' + group.file), group.symbol)),
+            tokens(original.getText(old)),
+          ),
+        ).toBeNull();
+      },
+    );
+});
+
+it('proof normalization preserves value grouping, type hierarchy and array holes', () => {
+  expect(tokens('type X=(string);')).toEqual(tokens('type X=string;'));
+  expect(tokens("type X=('a'|'b')[];")).not.toEqual(tokens("type X='a'|'b'[];"));
+  expect(tokens('const x=a*(b+c);')).not.toEqual(tokens('const x=a*b+c;'));
+  expect(tokens("const x=['a',,];")).not.toEqual(tokens("const x=['a',];"));
 });
