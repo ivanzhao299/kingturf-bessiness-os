@@ -16,5 +16,11 @@
     "symbol": "mrpAttempts",
     "file": "mrp.ts",
     "property": "mrp"
+  },
+  {
+    "name": "production",
+    "symbol": "productionAttempts",
+    "file": "production.ts",
+    "property": "production"
   }
 ]

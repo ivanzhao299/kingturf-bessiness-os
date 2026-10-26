@@ -146,6 +146,7 @@ import { executiveDashboardRoutes } from './routes/dashboard.ts';
 import { manufacturingAttempts } from './routes/dispatch/manufacturing.ts';
 import { mrpAttempts } from './routes/dispatch/mrp.ts';
 import { procurementAttempts } from './routes/dispatch/procurement.ts';
+import { productionAttempts } from './routes/dispatch/production.ts';
 import { dispatchFoundationRoutes, foundationRoutes } from './routes/foundation.ts';
 import { identityAccessRoutes } from './routes/identity-access.ts';
 import { identityProvisionRoutes } from './routes/identity-provision.ts';
@@ -179,16 +180,10 @@ import { order360Routes } from './routes/order-360.ts';
 import { productionCostCalculationRoutes } from './routes/production-cost-calculation.ts';
 import { productionCostDecisionRoutes } from './routes/production-cost-decisions.ts';
 import { productionCostPolicyRoutes } from './routes/production-cost-policy.ts';
-import { productionMaterialRoutes } from './routes/production-material.ts';
-import { productionOrderCommandRoutes } from './routes/production-order-commands.ts';
-import { productionOrderCreateRoutes } from './routes/production-order-create.ts';
-import { productionOutputRoutes } from './routes/production-output.ts';
 import {
   productionCostPolicyReadRoutes,
   productionCostRunReadRoutes,
-  productionOrderReadRoutes,
 } from './routes/production-reads.ts';
-import { productionReportRoutes } from './routes/production-report.ts';
 import { qtcArPostRoutes } from './routes/qtc-ar-post.ts';
 import { qtcBankPaymentIntakeRoutes } from './routes/qtc-bank-payment-intake.ts';
 import { qtcBaseReadRoutes } from './routes/qtc-base-reads.ts';
@@ -426,141 +421,14 @@ export function buildApp(
           const response = pending.project(await pending.pending);
           if (response !== null) return response;
         }
-        if (dependencies.production) {
-          if (request.method === 'GET' && request.pathname === '/api/v1/production-orders') {
-            const response = await dispatchRoutes(
-              productionOrderReadRoutes({
-                repository: dependencies.production,
-                authorization: context,
-                authorizeQuery,
-                permittedDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          if (request.method === 'POST' && request.pathname === '/api/v1/production-orders') {
-            const response = await dispatchRoutes(
-              productionOrderCreateRoutes({
-                repository: dependencies.production,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                parsers: {
-                  objectBody,
-                  allow,
-                  string,
-                  stableCode: assertStableCode,
-                  uuid,
-                  decimal,
-                  calendarDate,
-                },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          const productionCommand =
-            /^\/api\/v1\/production-orders\/([0-9a-f-]+)\/(release|start|complete|close|cancel)$/u.exec(
-              request.pathname,
-            );
-          if (request.method === 'POST' && productionCommand) {
-            const response = await dispatchRoutes(
-              productionOrderCommandRoutes({
-                repository: dependencies.production,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                parsers: {
-                  objectBody,
-                  allow,
-                  uuid,
-                  string,
-                  jsonObject,
-                  stableCode: assertStableCode,
-                },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          const materialCommand = /^\/api\/v1\/production-orders\/([0-9a-f-]+)\/materials$/u.exec(
-            request.pathname,
-          );
-          if (request.method === 'POST' && materialCommand) {
-            const response = await dispatchRoutes(
-              productionMaterialRoutes({
-                repository: dependencies.production,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                parsers: {
-                  objectBody,
-                  allow,
-                  string,
-                  uuid,
-                  decimal,
-                  timestamp,
-                  stableCode: assertStableCode,
-                },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          const reportCommand =
-            /^\/api\/v1\/production-orders\/([0-9a-f-]+)\/operation-reports$/u.exec(
-              request.pathname,
-            );
-          if (request.method === 'POST' && reportCommand) {
-            const response = await dispatchRoutes(
-              productionReportRoutes({
-                repository: dependencies.production,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                parsers: {
-                  objectBody,
-                  allow,
-                  uuid,
-                  decimal,
-                  timestamp,
-                  string,
-                  stableCode: assertStableCode,
-                },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          const outputCommand =
-            /^\/api\/v1\/production-orders\/([0-9a-f-]+)\/finished-rolls$/u.exec(request.pathname);
-          if (request.method === 'POST' && outputCommand) {
-            const response = await dispatchRoutes(
-              productionOutputRoutes({
-                repository: dependencies.production,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                parsers: {
-                  objectBody,
-                  allow,
-                  uuid,
-                  string,
-                  stableCode: assertStableCode,
-                  decimal,
-                  calendarDate,
-                },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
+        for (const pending of productionAttempts({
+          request,
+          dependencies,
+          context,
+          correlationId,
+        })) {
+          const response = pending.project(await pending.pending);
+          if (response !== null) return response;
         }
         if (dependencies.productionCosts) {
           if (request.method === 'GET' && request.pathname === '/api/v1/production-cost-policies') {
