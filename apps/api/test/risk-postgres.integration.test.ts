@@ -43,7 +43,7 @@ describe('risk repository real PostgreSQL contracts', () => {
     ).rows[0];
   const counts = async () =>
     (
-      await state().db.query(
+      await state().db.query<{ evaluations: number; tasks: number; events: number }>(
         'SELECT (SELECT count(*)::integer FROM risk_evaluations) evaluations,(SELECT count(*)::integer FROM risk_tasks) tasks,(SELECT count(*)::integer FROM risk_task_events) events',
       )
     ).rows[0];
@@ -567,7 +567,7 @@ describe('risk repository real PostgreSQL contracts', () => {
     expect(await counts()).toEqual(before);
   });
 
-  it('TD-RISK-003: characterizes task-event replay before current assignee and task identity checks', async () => {
+  it('TD-RISK-003: authorizes the current task and rejects a known key belonging to another task', async () => {
     const { context, reviewerEmployee } = state();
     const policy = await repository.createPolicy(policyInput('TASK-REPLAY'), context, randomUUID());
     const evaluation = await repository.evaluate(
@@ -591,15 +591,40 @@ describe('risk repository real PostgreSQL contracts', () => {
       actor: { ...context.actor, employeeId: reviewerEmployee },
       scopes: ['SELF'] as const,
     };
-    expect(
-      await repository.transitionTask(
+    await expect(
+      repository.transitionTask(
         randomUUID(),
         { state: 'ESCALATED', reason: 'Different task path', evidence: {} },
         key,
         narrowed,
         randomUUID(),
       ),
-    ).toMatchObject({ taskId: task, state: 'ACKNOWLEDGED' });
+    ).rejects.toMatchObject({ code: 'not_found' });
+    await expect(
+      repository.transitionTask(
+        task,
+        { state: 'ESCALATED', reason: 'Revoked scope', evidence: {} },
+        key,
+        narrowed,
+        randomUUID(),
+      ),
+    ).rejects.toMatchObject({ code: 'not_found' });
+    const next = await repository.evaluate(
+      evaluationInput(identifier(policy)),
+      randomUUID(),
+      context,
+      randomUUID(),
+    );
+    const nextTask = identifier(next, 'taskId');
+    await expect(
+      repository.transitionTask(
+        nextTask,
+        { state: 'ACKNOWLEDGED', reason: 'Different original object', evidence: {} },
+        key,
+        context,
+        randomUUID(),
+      ),
+    ).rejects.toMatchObject({ code: 'conflict' });
     await expect(
       repository.transitionTask(
         task,
@@ -609,6 +634,11 @@ describe('risk repository real PostgreSQL contracts', () => {
         randomUUID(),
       ),
     ).rejects.toMatchObject({ code: 'not_found' });
-    expect(await counts()).toEqual(before);
+    expect(await counts()).toEqual({
+      ...before,
+      evaluations: (before?.evaluations ?? 0) + 1,
+      tasks: (before?.tasks ?? 0) + 1,
+      events: (before?.events ?? 0) + 1,
+    });
   });
 });

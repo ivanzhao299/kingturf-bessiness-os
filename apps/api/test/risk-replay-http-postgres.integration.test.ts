@@ -22,7 +22,7 @@ describe('TD-RISK-002 real HTTP current authorization on PostgreSQL replays', ()
   let origin: string;
   let owner: User, peer: User, outsider: User;
   let ownerToken: string, peerToken: string, outsiderToken: string;
-  let otherTeam: string, policyId: string, key: string, firstId: string;
+  let otherTeam: string, policyId: string, key: string, firstId: string, taskId: string;
   let before: Awaited<ReturnType<typeof counts>>;
   const applicationName = `risk_replay_${randomUUID().replaceAll('-', '')}`;
   const hasher = new PasswordHasher({
@@ -134,6 +134,35 @@ describe('TD-RISK-002 real HTTP current authorization on PostgreSQL replays', ()
     expect(result).not.toHaveProperty('canonical_input');
     expect(await counts()).toEqual(before);
   }
+  async function manage(user: User, scopes: readonly DataScope[]) {
+    await fixture.db.query(
+      "DELETE FROM role_permission_grants WHERE role_id IN(SELECT role_id FROM employee_role_assignments WHERE employee_id=$1) AND permission_id=(SELECT id FROM permissions WHERE capability='risk:manage')",
+      [user.employeeId],
+    );
+    if (scopes.length)
+      await fixture.db.query(
+        "INSERT INTO role_permission_grants(role_id,permission_id,data_scopes) SELECT $1,id,$2::data_scope[] FROM permissions WHERE capability='risk:manage'",
+        [user.roleId, scopes],
+      );
+  }
+  const taskCommand = (
+    token: string,
+    commandKey: string,
+    subject = taskId,
+    action = 'acknowledge',
+    body = { reason: 'Synthetic acknowledgement', evidence: { ack: true } },
+  ) =>
+    fetch(`${origin}/api/v1/risk-tasks/${subject}/${action}`, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${token}`,
+        'content-type': 'application/json',
+        'idempotency-key': commandKey,
+        'x-correlation-id': randomUUID(),
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(10_000),
+    });
   beforeAll(async () => {
     fixture = await ownedCommercialGraph();
     closeFixture = fixture.close;
@@ -231,6 +260,9 @@ describe('TD-RISK-002 real HTTP current authorization on PostgreSQL replays', ()
     await grant(owner, ['COMPANY']);
     await grant(peer, ['SELF']);
     await grant(outsider, ['COMPANY']);
+    await manage(owner, ['COMPANY']);
+    await manage(peer, ['COMPANY']);
+    await manage(outsider, ['COMPANY']);
     ownerToken = await login(owner);
     peerToken = await login(peer);
     outsiderToken = await login(outsider);
@@ -240,6 +272,8 @@ describe('TD-RISK-002 real HTTP current authorization on PostgreSQL replays', ()
     const first = (await response.json()) as Record<string, unknown>;
     if (typeof first.id !== 'string') throw new Error('Initial risk evaluation missing identifier');
     firstId = first.id;
+    if (typeof first.taskId !== 'string') throw new Error('Initial risk task missing');
+    taskId = first.taskId;
     before = await counts();
   });
   afterAll(async () => {
@@ -405,5 +439,157 @@ describe('TD-RISK-002 real HTTP current authorization on PostgreSQL replays', ()
       sales_order_id: fixture.graph.orderId,
     });
     expect(await counts()).toEqual(before);
+  });
+  it('TD-RISK-003: keeps authorized same-user and current broad-user task replay unchanged', async () => {
+    const replayKey = randomUUID();
+    const first = await taskCommand(ownerToken, replayKey);
+    expect(first.status).toBe(201);
+    const after = await counts();
+    for (const token of [ownerToken, peerToken]) {
+      const replay = await taskCommand(token, replayKey, taskId, 'escalate');
+      expect(replay.status).toBe(201);
+      expect((await replay.json()) as Record<string, unknown>).toMatchObject({
+        taskId,
+        state: 'ACKNOWLEDGED',
+        reason: 'Synthetic acknowledgement',
+      });
+      expect(await counts()).toEqual(after);
+    }
+  });
+  it('TD-RISK-003: denies cached events after action revocation and narrowing away from the assignee', async () => {
+    const replayKey = randomUUID();
+    expect((await taskCommand(ownerToken, replayKey)).status).toBe(201);
+    const after = await counts();
+    await manage(peer, ['SELF']);
+    const denied = await taskCommand(peerToken, replayKey);
+    expect(denied.status).toBe(404);
+    const rejected = (await denied.json()) as Record<string, unknown>;
+    for (const field of ['taskId', 'evidence', 'reason'])
+      expect(rejected).not.toHaveProperty(field);
+    await manage(owner, []);
+    expect((await taskCommand(ownerToken, replayKey)).status).toBe(403);
+    expect(await counts()).toEqual(after);
+  });
+  it('TD-RISK-003: rejects invalid membership and cross-company cached task reads', async () => {
+    const replayKey = randomUUID();
+    expect((await taskCommand(ownerToken, replayKey)).status).toBe(201);
+    const after = await counts();
+    expect((await taskCommand(outsiderToken, replayKey)).status).toBe(404);
+    await fixture.db.query(
+      'UPDATE organization_memberships SET active=false WHERE employee_id=$1',
+      [peer.employeeId],
+    );
+    try {
+      expect((await taskCommand(peerToken, replayKey)).status).toBe(401);
+    } finally {
+      await fixture.db.query(
+        'UPDATE organization_memberships SET active=true WHERE employee_id=$1',
+        [peer.employeeId],
+      );
+    }
+    expect(await counts()).toEqual(after);
+  });
+  it('TD-RISK-003: binds a tenant key to its original task without leaking another subject', async () => {
+    const replayKey = randomUUID();
+    expect((await taskCommand(ownerToken, replayKey)).status).toBe(201);
+    const created = await evaluate(ownerToken, randomUUID());
+    expect(created.status).toBe(201);
+    const next = (await created.json()) as Record<string, unknown>;
+    if (typeof next.taskId !== 'string') throw new Error('Second risk task missing');
+    const after = await counts();
+    const conflict = await taskCommand(ownerToken, replayKey, next.taskId);
+    expect(conflict.status).toBe(409);
+    const body = (await conflict.json()) as Record<string, unknown>;
+    expect(body).not.toHaveProperty('taskId');
+    expect(body).not.toHaveProperty('evidence');
+    expect(await counts()).toEqual(after);
+  });
+  it('TD-RISK-003: serializes truly overlapping duplicate task commands without another event', async () => {
+    const replayKey = randomUUID();
+    let pending: Promise<Response[]> | undefined;
+    try {
+      await fixture.db.transaction(async (tx) => {
+        await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+          `${fixture.context.actor.companyId}:${replayKey}:risk-task-key`,
+        ]);
+        pending = Promise.all(Array.from({ length: 4 }, () => taskCommand(ownerToken, replayKey)));
+        let waiting = 0;
+        for (let attempt = 0; attempt < 100; attempt++) {
+          waiting =
+            (
+              await fixture.db.query<{ n: number }>(
+                "SELECT count(*)::int n FROM pg_stat_activity WHERE application_name=$1 AND wait_event='advisory'",
+                [applicationName],
+              )
+            ).rows[0]?.n ?? 0;
+          if (waiting >= 2) break;
+          await delay(20);
+        }
+        expect(waiting).toBeGreaterThanOrEqual(2);
+      });
+    } catch (error) {
+      await pending;
+      throw error;
+    }
+    if (!pending) throw new Error('Concurrent task requests missing');
+    const responses = await pending;
+    expect(responses.map((r) => r.status)).toEqual([201, 201, 201, 201]);
+    expect(await counts()).toEqual({ ...before, events: (before?.events ?? 0) + 1 });
+  });
+  it('TD-RISK-003: serializes one key across two accessible task subjects', async () => {
+    const created = await evaluate(ownerToken, randomUUID());
+    expect(created.status).toBe(201);
+    const next = (await created.json()) as Record<string, unknown>;
+    if (typeof next.taskId !== 'string') throw new Error('Second task missing');
+    const subjects = [taskId, next.taskId];
+    const baseline = await counts();
+    const replayKey = randomUUID();
+    let pending: Promise<Response[]> | undefined;
+    try {
+      await fixture.db.transaction(async (tx) => {
+        const held = (await tx.query<{ pid: number }>('SELECT pg_backend_pid() pid')).rows[0];
+        if (!held) throw new Error('Barrier connection missing');
+        await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+          `${fixture.context.actor.companyId}:${replayKey}:risk-task-key`,
+        ]);
+        pending = Promise.all(subjects.map((id) => taskCommand(ownerToken, replayKey, id)));
+        let waiting = 0;
+        for (let attempt = 0; attempt < 100; attempt++) {
+          waiting =
+            (
+              await fixture.db.query<{ n: number }>(
+                'SELECT count(*)::int n FROM pg_stat_activity WHERE application_name=$1 AND $2=ANY(pg_blocking_pids(pid))',
+                [applicationName, held.pid],
+              )
+            ).rows[0]?.n ?? 0;
+          if (waiting === 2) break;
+          await delay(20);
+        }
+        expect(waiting).toBe(2);
+      });
+    } catch (error) {
+      await pending;
+      throw error;
+    }
+    if (!pending) throw new Error('Concurrent commands missing');
+    const responses = await pending;
+    expect(responses.map((r) => r.status).sort()).toEqual([201, 409]);
+    for (const response of responses) {
+      const body = (await response.json()) as Record<string, unknown>;
+      if (response.status === 409) {
+        expect(body).not.toHaveProperty('taskId');
+        expect(body).not.toHaveProperty('evidence');
+        expect(body).not.toHaveProperty('reason');
+      }
+    }
+    expect(await counts()).toEqual({ ...baseline, events: (baseline?.events ?? 0) + 1 });
+    expect(
+      (
+        await fixture.db.query<{ n: number }>(
+          'SELECT count(*)::int n FROM risk_task_events WHERE idempotency_key=$1',
+          [replayKey],
+        )
+      ).rows[0]?.n,
+    ).toBe(1);
   });
 });

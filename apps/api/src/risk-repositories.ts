@@ -393,27 +393,37 @@ export class PostgresRiskRepository {
       if (input.state === 'CLOSED' && Object.keys(input.evidence).length === 0)
         throw new DomainError('invalid_request', 'Risk task closure requires evidence');
       await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+        `${context.actor.companyId}:${key}:risk-task-key`,
+      ]);
+      await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
         `${context.actor.companyId}:${id}:risk-task`,
       ]);
-      const replay = (
-        await tx.query<{ evidence: JsonObject }>(
-          'SELECT evidence FROM risk_task_events WHERE tenant_id=$1 AND idempotency_key=$2',
-          [context.actor.companyId, key],
-        )
-      ).rows[0];
-      if (replay) return replay.evidence;
       const current = (
         await tx.query<{ next_sequence: number }>(
           `SELECT max(x.sequence)+1 next_sequence FROM risk_tasks t JOIN risk_evaluations e ON e.id=t.risk_evaluation_id AND e.tenant_id=t.tenant_id JOIN sales_orders o ON o.id=e.sales_order_id AND o.tenant_id=e.tenant_id JOIN customers c ON c.id=o.customer_id AND c.tenant_id=o.tenant_id JOIN risk_task_events x ON x.risk_task_id=t.id AND x.tenant_id=t.tenant_id WHERE t.id=$1 AND t.tenant_id=$2 AND (t.assignee_employee_id=$3 OR $4::boolean) GROUP BY t.id`,
           [
             id,
             context.actor.companyId,
-            context.actor.employeeId,
+            context.scopes.length ? context.actor.employeeId : null,
             context.scopes.includes('COMPANY') || context.scopes.includes('GROUP'),
           ],
         )
       ).rows[0];
       if (!current) throw new DomainError('not_found', 'Risk task not found');
+      const replay = (
+        await tx.query<{ risk_task_id: string; evidence: JsonObject }>(
+          'SELECT risk_task_id,evidence FROM risk_task_events WHERE tenant_id=$1 AND idempotency_key=$2',
+          [context.actor.companyId, key],
+        )
+      ).rows[0];
+      if (replay) {
+        if (replay.risk_task_id !== id)
+          throw new DomainError(
+            'conflict',
+            'Idempotency key is already bound to another risk task',
+          );
+        return replay.evidence;
+      }
       const evidence = json({
         taskId: id,
         state: input.state,
