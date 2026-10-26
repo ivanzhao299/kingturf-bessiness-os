@@ -435,6 +435,7 @@ describe('risk repository real PostgreSQL contracts', () => {
       { ...context, scopes: ['COMPANY', 'TEAM'], anchors: [team] },
       { ...context, scopes: ['GROUP'] },
     ];
+    let readReference: { evaluation: string; task: string } | undefined;
     for (const actor of variants) {
       const key = randomUUID(),
         correlation = randomUUID();
@@ -445,6 +446,11 @@ describe('risk repository real PostgreSQL contracts', () => {
         correlation,
       );
       expect(result).toMatchObject({ salesOrderId: state().graph.orderId });
+      readReference = { evaluation: identifier(result), task: identifier(result, 'taskId') };
+      expect(await repository.canReadResult('evaluation', readReference.evaluation, actor)).toBe(
+        true,
+      );
+      expect(await repository.canReadResult('task', readReference.task, actor)).toBe(true);
       const after = await counts(),
         paired = await evidenceCounts(correlation);
       expect(
@@ -477,6 +483,11 @@ describe('risk repository real PostgreSQL contracts', () => {
         anchors: [{ scope: 'DEPARTMENT' as const, organizationId: teamId }],
       },
     ]) {
+      if (!readReference) throw new Error('Read reference missing');
+      expect(await repository.canReadResult('evaluation', readReference.evaluation, actor)).toBe(
+        false,
+      );
+      expect(await repository.canReadResult('task', readReference.task, actor)).toBe(false);
       const before = await counts(),
         correlation = randomUUID();
       await expect(

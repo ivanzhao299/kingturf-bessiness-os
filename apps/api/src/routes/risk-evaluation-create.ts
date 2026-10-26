@@ -3,8 +3,9 @@ import type { PermissionKey } from '@kingturf/types';
 import type { ApiDependencies, ApiRequest } from '../app.ts';
 import type { authorizeQuery } from '../policy.ts';
 import { defineRoute, type RouteDefinition } from './types.ts';
+import { riskResultDto } from './risk-result-dto.ts';
 
-type Repository = Pick<NonNullable<ApiDependencies['risks']>, 'evaluate'>;
+type Repository = Pick<NonNullable<ApiDependencies['risks']>, 'evaluate' | 'canReadResult'>;
 type Evaluate = Repository['evaluate'];
 type Input = Readonly<Parameters<Evaluate>[0]>;
 type Key = Parameters<Evaluate>[1];
@@ -83,7 +84,15 @@ export function riskEvaluationCreateRoutes(context: Context): readonly RouteDefi
         );
         return {
           statusCode: 201,
-          body: context.mutationDto(result, context.authorization, 'risk:read'),
+          body: await riskResultDto(
+            result,
+            'evaluation',
+            undefined,
+            validated.repository,
+            context.authorization,
+            validated.scopeContext.actor,
+            context.mutationDto,
+          ),
         };
       },
     }),

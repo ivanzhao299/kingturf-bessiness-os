@@ -421,7 +421,7 @@ describe('TD-RISK-002 real HTTP current authorization on PostgreSQL replays', ()
     });
   });
 
-  it('TD-SEC-009: characterizes wider mutation responses than the independent read data scope', async () => {
+  it('TD-SEC-009: restricts replay responses to the independent current read scope', async () => {
     await fixture.db.query(
       "UPDATE role_permission_grants SET data_scopes=ARRAY['SELF']::data_scope[] WHERE role_id=$1 AND permission_id=(SELECT id FROM permissions WHERE capability='risk:read')",
       [owner.roleId],
@@ -434,10 +434,7 @@ describe('TD-RISK-002 real HTTP current authorization on PostgreSQL replays', ()
     expect((await read.json()) as Record<string, unknown>).toMatchObject({ items: [] });
     const replay = await evaluate(ownerToken);
     expect(replay.status).toBe(201);
-    expect((await replay.json()) as Record<string, unknown>).toMatchObject({
-      id: firstId,
-      sales_order_id: fixture.graph.orderId,
-    });
+    expect((await replay.json()) as Record<string, unknown>).toEqual({ id: firstId });
     expect(await counts()).toEqual(before);
   });
   it('TD-RISK-003: keeps authorized same-user and current broad-user task replay unchanged', async () => {
@@ -591,5 +588,92 @@ describe('TD-RISK-002 real HTTP current authorization on PostgreSQL replays', ()
         )
       ).rows[0]?.n,
     ).toBe(1);
+  });
+  async function readGrant(
+    user: User,
+    scopes: readonly DataScope[],
+    fields: readonly string[] | null = null,
+  ) {
+    await fixture.db.query(
+      "DELETE FROM role_permission_grants WHERE role_id IN(SELECT role_id FROM employee_role_assignments WHERE employee_id=$1) AND permission_id=(SELECT id FROM permissions WHERE capability='risk:read')",
+      [user.employeeId],
+    );
+    if (scopes.length)
+      await fixture.db.query(
+        "INSERT INTO role_permission_grants(role_id,permission_id,data_scopes,field_allowlist) SELECT $1,id,$2::data_scope[],$3::text[] FROM permissions WHERE capability='risk:read'",
+        [user.roleId, scopes, fields],
+      );
+  }
+  const readEvaluations = (token: string) =>
+    fetch(`${origin}/api/v1/risk-evaluations`, {
+      headers: { authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(10000),
+    });
+  it('TD-SEC-009: permits a write with only a receipt when read permission is absent, including replay', async () => {
+    await readGrant(owner, []);
+    const newKey = randomUUID();
+    const created = await evaluate(ownerToken, newKey);
+    expect(created.status).toBe(201);
+    const receipt = (await created.json()) as Record<string, unknown>;
+    expect(Object.keys(receipt)).toEqual(['id']);
+    const baseline = await counts();
+    expect((await readEvaluations(ownerToken)).status).toBe(403);
+    const replay = await evaluate(ownerToken, newKey);
+    expect(replay.status).toBe(201);
+    expect(await replay.json()).toEqual(receipt);
+    expect(await counts()).toEqual(baseline);
+    await readGrant(owner, ['COMPANY']);
+    const visible = await evaluate(ownerToken, newKey);
+    expect((await visible.json()) as Record<string, unknown>).toMatchObject({
+      id: receipt.id,
+      sales_order_id: fixture.graph.orderId,
+    });
+    expect(await counts()).toEqual(baseline);
+  });
+  it('TD-SEC-009: filters nested data and retains read-only access without execution', async () => {
+    await readGrant(owner, ['COMPANY'], ['score']);
+    const replay = await evaluate(ownerToken);
+    const result = (await replay.json()) as Record<string, unknown>;
+    expect(Object.keys(result).sort()).toEqual(['id', 'score']);
+    expect(result.id).toBe(firstId);
+    const read = await readEvaluations(ownerToken);
+    expect(read.status).toBe(200);
+    const items = ((await read.json()) as { items: Record<string, unknown>[] }).items;
+    const historical = items.find((item) => item.id === firstId);
+    expect(Object.keys(historical ?? {}).sort()).toEqual(['id', 'score']);
+    await fixture.db.query(
+      "DELETE FROM role_permission_grants WHERE role_id=$1 AND permission_id=(SELECT id FROM permissions WHERE capability='risk:evaluate')",
+      [owner.roleId],
+    );
+    expect((await evaluate(ownerToken)).status).toBe(403);
+    expect((await readEvaluations(ownerToken)).status).toBe(200);
+    expect(await counts()).toEqual(before);
+  });
+  it('TD-SEC-009: task action authority does not grant access to cached task evidence', async () => {
+    await readGrant(owner, ['SELF']);
+    const commandKey = randomUUID();
+    const first = await taskCommand(ownerToken, commandKey);
+    expect(first.status).toBe(201);
+    expect(await first.json()).toEqual({});
+    const baseline = await counts();
+    const hidden = await taskCommand(ownerToken, commandKey);
+    expect(hidden.status).toBe(201);
+    expect(await hidden.json()).toEqual({});
+    await readGrant(owner, ['COMPANY']);
+    const restored = await taskCommand(ownerToken, commandKey);
+    expect(restored.status).toBe(201);
+    expect(await restored.json()).toMatchObject({ taskId, reason: 'Synthetic acknowledgement' });
+    await fixture.db.query('UPDATE customers SET owner_id=$1 WHERE id=$2', [
+      owner.employeeId,
+      fixture.graph.customerId,
+    ]);
+    await readGrant(owner, ['SELF']);
+    expect(await (await taskCommand(ownerToken, commandKey)).json()).toMatchObject({ taskId });
+    await fixture.db.query('UPDATE customers SET owner_id=$1 WHERE id=$2', [
+      peer.employeeId,
+      fixture.graph.customerId,
+    ]);
+    expect(await (await taskCommand(ownerToken, commandKey)).json()).toEqual({});
+    expect(await counts()).toEqual(baseline);
   });
 });

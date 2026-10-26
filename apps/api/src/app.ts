@@ -2069,7 +2069,10 @@ export function buildApp(
             const response = await dispatchRoutes(
               riskEvaluationCreateRoutes({
                 repository: () =>
-                  dependencies.risks as Pick<NonNullable<ApiDependencies['risks']>, 'evaluate'>,
+                  dependencies.risks as Pick<
+                    NonNullable<ApiDependencies['risks']>,
+                    'evaluate' | 'canReadResult'
+                  >,
                 authorization: context,
                 authorizeQuery,
                 idempotency,
@@ -2091,7 +2094,7 @@ export function buildApp(
                 repository: () =>
                   dependencies.risks as Pick<
                     NonNullable<ApiDependencies['risks']>,
-                    'transitionTask'
+                    'transitionTask' | 'canReadResult'
                   >,
                 authorization: context,
                 authorizeQuery,

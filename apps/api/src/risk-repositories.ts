@@ -52,6 +52,14 @@ export class PostgresRiskRepository {
       )
     ).rows.map((r) => r.item);
   }
+  public async canReadResult(kind: 'evaluation' | 'task', id: string, context: Context) {
+    const secured = recordScopeSql(context.scopes, context.anchors, context.actor, 'c', 4);
+    const result = await this.db.query<{ visible: boolean }>(
+      `SELECT EXISTS(SELECT 1 FROM risk_evaluations e JOIN sales_orders o ON o.id=e.sales_order_id AND o.tenant_id=e.tenant_id JOIN customers c ON c.id=o.customer_id AND c.tenant_id=o.tenant_id LEFT JOIN risk_tasks t ON t.risk_evaluation_id=e.id AND t.tenant_id=e.tenant_id WHERE e.tenant_id=$1 AND (($3::text='evaluation' AND e.id=$2::uuid) OR ($3::text='task' AND t.id=$2::uuid)) AND ${secured.sql}) visible`,
+      [context.actor.companyId, id, kind, ...secured.values],
+    );
+    return result.rows[0]?.visible === true;
+  }
   public createPolicy(
     input: {
       code: string;
