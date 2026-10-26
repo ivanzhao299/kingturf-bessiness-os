@@ -1,28 +1,23 @@
 import { DEFAULT_BROWSER_SESSION, type BrowserSessionConfig } from '@kingturf/config';
 import {
-  addDecimal,
   assertStableCode,
   DomainError,
   NOOP_TELEMETRY,
-  normalizeDecimal,
   type AuthorizationRepository,
   type EmployeeRepository,
   type OperationalLogger,
   type OrganizationRepository,
   type Telemetry,
 } from '@kingturf/domain';
-import type { PermissionKey } from '@kingturf/types';
 import type { ApiApplication, ApiRequest, ApiResponse } from './api-types.ts';
 import {
   allow,
   array,
   attachmentBytes,
   correlation,
-  currency,
   decimal,
   error,
   expectedVersion,
-  idempotency,
   integer,
   jsonObject,
   mutationDto,
@@ -92,18 +87,11 @@ import { mrpAttempts } from './routes/dispatch/mrp.ts';
 import { orderAttempts } from './routes/dispatch/order.ts';
 import { procurementAttempts } from './routes/dispatch/procurement.ts';
 import { productionAttempts } from './routes/dispatch/production.ts';
+import { qtcpostAttempts } from './routes/dispatch/qtcpost.ts';
 import { qtcreadsAttempts } from './routes/dispatch/qtcreads.ts';
 import { qualityAttempts } from './routes/dispatch/quality.ts';
 import { riskAttempts } from './routes/dispatch/risk.ts';
 import { dispatchFoundationRoutes, foundationRoutes } from './routes/foundation.ts';
-import { qtcArPostRoutes } from './routes/qtc-ar-post.ts';
-import { qtcBankPaymentIntakeRoutes } from './routes/qtc-bank-payment-intake.ts';
-import { qtcContractCreateRoutes } from './routes/qtc-contract-create.ts';
-import { qtcContractSignRoutes } from './routes/qtc-contract-sign.ts';
-import { qtcCreditApprovalRoutes } from './routes/qtc-credit-approval.ts';
-import { qtcCreditEvaluationRoutes, qtcCreditLimitRoutes } from './routes/qtc-credit-writes.ts';
-import { qtcReconciliationRunRoutes } from './routes/qtc-reconciliation-run.ts';
-import { qtcSalesOrderCreateRoutes } from './routes/qtc-sales-order-create.ts';
 import { dispatchRoutes } from './routes/types.ts';
 import { websiteLeadIngestRoutes } from './routes/website-lead-ingest.ts';
 import type { AuthenticationService } from './security.ts';
@@ -681,209 +669,13 @@ export function buildApp(
             if (response) return response;
           } else if (response !== null) return response;
         }
-        if (request.method === 'POST' && dependencies.quoteToCash) {
-          const body = objectBody(request.body),
-            ctx = (capability: PermissionKey) => {
-              const grant = authorizeQuery(context, capability, Object.keys(body));
-              return { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors };
-            };
-          if (request.pathname === '/api/v1/credit-limits') {
-            const response = await dispatchRoutes(
-              qtcCreditLimitRoutes({
-                repository: () =>
-                  dependencies.quoteToCash as Pick<
-                    NonNullable<ApiDependencies['quoteToCash']>,
-                    'setCreditLimit'
-                  >,
-                body,
-                authorization: context,
-                authorizeScope: ctx,
-                mutationDto,
-                correlationId,
-                parsers: { allow, uuid, currency, decimal, timestamp, idempotency },
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          if (request.pathname === '/api/v1/credit-decisions') {
-            const response = await dispatchRoutes(
-              qtcCreditEvaluationRoutes({
-                repository: () =>
-                  dependencies.quoteToCash as Pick<
-                    NonNullable<ApiDependencies['quoteToCash']>,
-                    'evaluateCredit'
-                  >,
-                body,
-                authorization: context,
-                authorizeScope: ctx,
-                mutationDto,
-                correlationId,
-                parsers: { allow, uuid, currency, decimal, timestamp, idempotency },
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          const creditApproval = /^\/api\/v1\/credit-decisions\/([0-9a-f-]+)\/approve$/u.exec(
-            request.pathname,
-          );
-          if (creditApproval) {
-            const response = await dispatchRoutes(
-              qtcCreditApprovalRoutes({
-                repository: () =>
-                  dependencies.quoteToCash as Pick<
-                    NonNullable<ApiDependencies['quoteToCash']>,
-                    'approveCredit'
-                  >,
-                rawId: creditApproval[1],
-                body,
-                authorization: context,
-                authorizeScope: ctx,
-                mutationDto,
-                correlationId,
-                parsers: { allow, string, uuid, idempotency },
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          if (request.pathname === '/api/v1/contracts') {
-            const response = await dispatchRoutes(
-              qtcContractCreateRoutes({
-                repository: () =>
-                  dependencies.quoteToCash as Pick<
-                    NonNullable<ApiDependencies['quoteToCash']>,
-                    'createContract'
-                  >,
-                body,
-                authorization: context,
-                authorizeScope: ctx,
-                mutationDto,
-                correlationId,
-                parsers: { allow, uuid, string, jsonObject, idempotency },
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          const signing = /^\/api\/v1\/contracts\/([0-9a-f-]+)\/sign$/u.exec(request.pathname);
-          if (signing) {
-            const response = await dispatchRoutes(
-              qtcContractSignRoutes({
-                repository: () =>
-                  dependencies.quoteToCash as Pick<
-                    NonNullable<ApiDependencies['quoteToCash']>,
-                    'signContract'
-                  >,
-                rawId: signing[1],
-                body,
-                authorization: context,
-                authorizeScope: ctx,
-                mutationDto,
-                correlationId,
-                parsers: { allow, uuid, string, jsonObject, timestamp, idempotency },
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          if (request.pathname === '/api/v1/sales-orders') {
-            const response = await dispatchRoutes(
-              qtcSalesOrderCreateRoutes({
-                repository: () =>
-                  dependencies.quoteToCash as Pick<
-                    NonNullable<ApiDependencies['quoteToCash']>,
-                    'createOrder'
-                  >,
-                body,
-                authorization: context,
-                authorizeScope: ctx,
-                mutationDto,
-                correlationId,
-                parsers: {
-                  allow,
-                  array,
-                  objectBody,
-                  string,
-                  decimal,
-                  addDecimal,
-                  normalizeDecimal,
-                  uuid,
-                  currency,
-                  idempotency,
-                },
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          if (request.pathname === '/api/v1/ar-open-items') {
-            const response = await dispatchRoutes(
-              qtcArPostRoutes({
-                repository: () =>
-                  dependencies.quoteToCash as Pick<
-                    NonNullable<ApiDependencies['quoteToCash']>,
-                    'postAr'
-                  >,
-                body,
-                authorization: context,
-                authorizeScope: ctx,
-                mutationDto,
-                correlationId,
-                parsers: { allow, string, uuid, currency, decimal, timestamp, idempotency },
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          if (request.pathname === '/api/v1/bank-payments') {
-            const response = await dispatchRoutes(
-              qtcBankPaymentIntakeRoutes({
-                repository: () =>
-                  dependencies.quoteToCash as Pick<
-                    NonNullable<ApiDependencies['quoteToCash']>,
-                    'intakePayment'
-                  >,
-                body,
-                authorization: context,
-                authorizeScope: ctx,
-                mutationDto,
-                correlationId,
-                parsers: {
-                  allow,
-                  uuid,
-                  currency,
-                  decimal,
-                  timestamp,
-                  string,
-                  jsonObject,
-                  idempotency,
-                },
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          if (request.pathname === '/api/v1/reconciliation-runs') {
-            const response = await dispatchRoutes(
-              qtcReconciliationRunRoutes({
-                repository: () =>
-                  dependencies.quoteToCash as Pick<
-                    NonNullable<ApiDependencies['quoteToCash']>,
-                    'reconcile'
-                  >,
-                body,
-                authorization: context,
-                authorizeScope: ctx,
-                mutationDto,
-                correlationId,
-                parsers: { allow, uuid, idempotency },
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
+        for (const pending of qtcpostAttempts({ request, dependencies, context, correlationId })) {
+          if (pending.kind === 'immediate') return pending.value;
+          if (pending.accept === 'always') return pending.project(await pending.pending);
+          const response = pending.project(await pending.pending);
+          if (pending.accept === 'truthy') {
+            if (response) return response;
+          } else if (response !== null) return response;
         }
         for (const pending of commissionAttempts({
           request,

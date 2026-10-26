@@ -93,8 +93,40 @@ function expand(file: ts.SourceFile, symbol: string, bindings: string[]): string
         throw new Error('Attempt must call a typed factory');
       const call = yielded.expression;
       let restored: string;
-      if (yielded.asteriskToken) restored = expand(file, call.expression.getText(file), bindings);
-      else if (call.expression.getText(file) === 'directReply') {
+      if (yielded.asteriskToken) {
+        const child = functions.get(call.expression.getText(file));
+        if (!child) throw new Error('Delegated attempt missing');
+        expect(call.arguments.map((n) => n.getText(file))).toEqual(
+          child.parameters.map((n) => n.name.getText(file)),
+        );
+        restored = expand(file, call.expression.getText(file), bindings);
+      } else if (call.expression.getText(file) === 'projectedReply') {
+        const pending = call.arguments[0],
+          projector = call.arguments[1];
+        if (
+          !pending ||
+          !projector ||
+          !ts.isArrowFunction(projector) ||
+          !ts.isBlock(projector.body) ||
+          projector.parameters.length !== 1
+        )
+          throw new Error('Projection shape changed');
+        const parameter = projector.parameters[0];
+        if (!parameter) throw new Error('Projection parameter missing');
+        const name = parameter.name.getText(file);
+        const tail = projector.body.statements.map((n) => n.getText(file)).join('\n');
+        if (name === 'resolvedBody') {
+          // Only the two reviewed literal-status/body await returns use this exact form.
+          expect(projector.body.statements).toHaveLength(1);
+          expect(
+            findAll(projector.body, (n) => ts.isIdentifier(n) && n.text === name),
+          ).toHaveLength(1);
+          restored = tail.replace(/\bresolvedBody\b/u, 'await ' + pending.getText(file));
+        } else {
+          expect(bindings.shift()).toBe(name);
+          restored = 'const ' + name + '=await ' + pending.getText(file) + ';' + tail;
+        }
+      } else if (call.expression.getText(file) === 'directReply') {
         const value = call.arguments[0];
         if (!value) throw new Error('Immediate response missing');
         restored = 'return ' + value.getText(file) + ';';
