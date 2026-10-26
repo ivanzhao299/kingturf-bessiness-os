@@ -76,6 +76,7 @@ import { credentialsAttempts } from './routes/dispatch/credentials.ts';
 import { crmAttempts } from './routes/dispatch/crm.ts';
 import { dashboardAttempts } from './routes/dispatch/dashboard.ts';
 import { documentsAttempts } from './routes/dispatch/documents.ts';
+import { employeesAttempts } from './routes/dispatch/employees.ts';
 import { manufacturingAttempts } from './routes/dispatch/manufacturing.ts';
 import { mrpAttempts } from './routes/dispatch/mrp.ts';
 import { orderAttempts } from './routes/dispatch/order.ts';
@@ -476,79 +477,18 @@ export function buildApp(
             if (response) return response;
           } else if (response !== null) return response;
         }
-        const employeeMatch = /^\/api\/v1\/employees(?:\/([0-9a-f-]+))?$/u.exec(request.pathname);
-        if (employeeMatch) {
-          const id = employeeMatch[1];
-          if (request.method === 'GET' && !id) {
-            const grant = authorizeQuery(context, 'employee:read');
-            return {
-              statusCode: 200,
-              body: await dependencies.employees.list(
-                context.actor.companyId,
-                grant.scopes,
-                context.actor.employeeId,
-                grant.anchors,
-              ),
-            };
-          }
-          if (request.method === 'GET' && id) {
-            const grant = authorizeQuery(context, 'employee:read');
-            const found = await dependencies.employees.findById(
-              uuid(id, 'employeeId'),
-              context.actor.companyId,
-              grant.scopes,
-              context.actor.employeeId,
-              grant.anchors,
-            );
-            return found
-              ? { statusCode: 200, body: found }
-              : error(404, 'not_found', 'Employee not found', correlationId);
-          }
-          if (request.method === 'POST' && !id) {
-            authorizeQuery(context, 'employee:create');
-            const b = objectBody(request.body);
-            allow(b, ['organizationId', 'employeeNumber', 'displayName', 'email']);
-            const created = await dependencies.employees.create(
-              {
-                companyId: context.actor.companyId,
-                organizationId: uuid(b.organizationId, 'organizationId'),
-                employeeNumber: string(b.employeeNumber, 'employeeNumber'),
-                displayName: string(b.displayName, 'displayName'),
-                email: string(b.email, 'email'),
-                active: true,
-              },
-              context.actor,
-              correlationId,
-            );
-            return { statusCode: 201, body: created };
-          }
-          if (request.method === 'PATCH' && id) {
-            const b = objectBody(request.body);
-            allow(b, ['displayName', 'email', 'organizationId', 'active', 'version']);
-            const fields = Object.keys(b).filter((k) => k !== 'version');
-            const grant = authorizeQuery(context, 'employee:update', fields);
-            const patch = {
-              ...(typeof b.displayName === 'string'
-                ? { displayName: string(b.displayName, 'displayName') }
-                : {}),
-              ...(typeof b.email === 'string' ? { email: string(b.email, 'email') } : {}),
-              ...(typeof b.organizationId === 'string'
-                ? { organizationId: uuid(b.organizationId, 'organizationId') }
-                : {}),
-              ...(typeof b.active === 'boolean' ? { active: b.active } : {}),
-            };
-            const updated = await dependencies.employees.update(
-              uuid(id, 'employeeId'),
-              context.actor.companyId,
-              patch,
-              version(b.version),
-              context.actor,
-              grant.scopes,
-              grant.anchors,
-              correlationId,
-            );
-            return { statusCode: 200, body: updated };
-          }
+        for (const pending of employeesAttempts({
+          request,
+          dependencies,
+          context,
+          correlationId,
+        })) {
+          if (pending.kind === 'immediate') return pending.value;
+          if (pending.accept === 'always') return pending.project(await pending.pending);
+          const response = pending.project(await pending.pending);
+          if (pending.accept === 'truthy') {
+            if (response) return response;
+          } else if (response !== null) return response;
         }
         for (const pending of accessAttempts({ request, dependencies, context, correlationId })) {
           if (pending.kind === 'immediate') return pending.value;

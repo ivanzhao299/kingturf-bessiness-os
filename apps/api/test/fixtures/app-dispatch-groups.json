@@ -136,5 +136,11 @@
     "symbol": "organizationsAttempts",
     "file": "organizations.ts",
     "baselineSpan": [65, 67]
+  },
+  {
+    "name": "employees",
+    "symbol": "employeesAttempts",
+    "file": "employees.ts",
+    "baselineSpan": [67, 69]
   }
 ]
