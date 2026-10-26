@@ -100,5 +100,11 @@
     "symbol": "accessAttempts",
     "file": "access.ts",
     "baselineSpan": [69, 75]
+  },
+  {
+    "name": "catalog",
+    "symbol": "catalogAttempts",
+    "file": "catalog.ts",
+    "baselineSpan": [75, 113]
   }
 ]
