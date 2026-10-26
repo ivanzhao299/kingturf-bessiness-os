@@ -719,4 +719,99 @@ describe('JTF-P0-E12..E15 PostgreSQL acceptance', () => {
     expect((await repo.find(definition.id, company))?.versions).toHaveLength(2);
     expect(await repo.find(definition.id, otherCompany)).toBeNull();
   });
+  it('TD-SEC-010 characterization: known full send input replays outside current creator scope', async () => {
+    const repository = new PostgresBusinessDocumentRepository(db);
+    const context = { actor, scopes: ['COMPANY'] as const };
+    const document = await repository.create(
+      {
+        templateKey: '13-quotes',
+        title: 'SEC010 synthetic',
+        route: 'quotes',
+        customerId: customer,
+        content: { body: 'Synthetic only' },
+      },
+      actor,
+      randomUUID(),
+    );
+    const currentConnector = (
+      await db.query<{ version: number; status: string }>(
+        "SELECT version,status FROM business_document_connectors WHERE tenant_id=$1 AND connector='EMAIL'",
+        [company],
+      )
+    ).rows[0];
+    if (currentConnector) expect(currentConnector.status).toBe('READY');
+    else
+      await repository.configureConnector(
+        'EMAIL',
+        {
+          provider: 'RESEND',
+          displayName: 'Synthetic adapter',
+          senderIdentity: 'sender@example.test',
+          secretReference: 'KINGTURF_CONNECTOR_EMAIL_TOKEN',
+          configuration: {},
+          status: 'READY',
+          expectedVersion: 0,
+        },
+        actor,
+        randomUUID(),
+      );
+    await repository.transition(
+      document.id,
+      { expectedVersion: 1, action: 'SUBMITTED', reason: 'Synthetic submit' },
+      context,
+      randomUUID(),
+    );
+    await repository.transition(
+      document.id,
+      { expectedVersion: 1, action: 'APPROVED', reason: 'Synthetic independent approval' },
+      { actor: { companyId: company, employeeId: recipient }, scopes: ['COMPANY'] },
+      randomUUID(),
+    );
+    const input = {
+      expectedVersion: 1,
+      channel: 'EMAIL',
+      recipientName: 'Synthetic buyer',
+      recipientAddress: 'synthetic@example.test',
+      subject: 'Synthetic evidence',
+      message: 'No provider call',
+      idempotencyKey: randomUUID(),
+    };
+    const first = await repository.dispatch(document.id, input, context, randomUUID());
+    const narrowed = {
+      actor: { companyId: company, employeeId: recipient },
+      scopes: ['SELF'] as const,
+    };
+    await expect(repository.get(document.id, narrowed)).rejects.toMatchObject({
+      code: 'not_found',
+    });
+    const before = (
+      await db.query(
+        'SELECT (SELECT count(*)::int FROM business_document_dispatches) dispatches,(SELECT count(*)::int FROM audit_events) audits,(SELECT count(*)::int FROM domain_event_outbox) outbox',
+      )
+    ).rows;
+    await expect(
+      repository.dispatch(
+        document.id,
+        { ...input, idempotencyKey: randomUUID() },
+        narrowed,
+        randomUUID(),
+      ),
+    ).rejects.toMatchObject({ code: 'conflict' });
+    expect(await repository.dispatch(document.id, input, narrowed, randomUUID())).toEqual(first);
+    await expect(
+      repository.dispatch(
+        document.id,
+        { ...input, subject: 'Unknown original body' },
+        narrowed,
+        randomUUID(),
+      ),
+    ).rejects.toMatchObject({ code: 'conflict' });
+    expect(
+      (
+        await db.query(
+          'SELECT (SELECT count(*)::int FROM business_document_dispatches) dispatches,(SELECT count(*)::int FROM audit_events) audits,(SELECT count(*)::int FROM domain_event_outbox) outbox',
+        )
+      ).rows,
+    ).toEqual(before);
+  });
 });

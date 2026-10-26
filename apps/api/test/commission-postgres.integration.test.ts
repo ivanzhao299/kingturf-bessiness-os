@@ -518,4 +518,94 @@ describe('commission repository real PostgreSQL contracts', () => {
     ).toEqual([{ version: 1 }]);
     expect(await evidenceCounts(correlation)).toEqual({ audit: '0', outbox: '0' });
   });
+  it('TD-SEC-010 characterization: a known accrual key bypasses current owner scope', async () => {
+    const { context, reviewerEmployee } = state();
+    const policy = await repository.createPolicy(
+      policyInput('SEC010-ACCRUE'),
+      context,
+      randomUUID(),
+    );
+    const key = randomUUID(),
+      correlation = randomUUID();
+    const first = await repository.accrue(
+      accrueInput(identifier(policy)),
+      key,
+      context,
+      randomUUID(),
+    );
+    const narrowed = {
+      ...context,
+      actor: { ...context.actor, employeeId: reviewerEmployee },
+      scopes: ['SELF'] as const,
+    };
+    const baseline = await counts();
+    expect(await repository.listCases(narrowed)).toEqual([]);
+    await expect(
+      repository.accrue(accrueInput(identifier(policy)), randomUUID(), narrowed, correlation),
+    ).rejects.toMatchObject({ code: 'not_found' });
+    const leaked = await repository.accrue(
+      accrueInput(identifier(policy)),
+      key,
+      narrowed,
+      correlation,
+    );
+    expect(leaked).toMatchObject({
+      id: identifier(first),
+      sales_order_id: state().graph.orderId,
+      commission_amount: 28500,
+    });
+    expect(await counts()).toEqual(baseline);
+    expect(await evidenceCounts(correlation)).toEqual({ audit: '0', outbox: '0' });
+  });
+  it('TD-SEC-010 characterization: an old event key returns another inaccessible case evidence', async () => {
+    const { context, reviewerEmployee } = state();
+    const first = await accrue('SEC010-EVENT-A');
+    const other = await accrue('SEC010-EVENT-B');
+    const eventKey = randomUUID(),
+      correlation = randomUUID();
+    const original = await repository.transition(
+      identifier(first),
+      { state: 'PAID', reason: 'Synthetic payment', externalReference: 'SYNTHETIC-ONLY' },
+      eventKey,
+      context,
+      randomUUID(),
+    );
+    const narrowed = {
+      ...context,
+      actor: { ...context.actor, employeeId: reviewerEmployee },
+      scopes: ['SELF'] as const,
+    };
+    const baseline = await counts();
+    await expect(
+      repository.transition(
+        identifier(other),
+        { state: 'CANCELLED', reason: 'Denied with fresh key', externalReference: null },
+        randomUUID(),
+        narrowed,
+        correlation,
+      ),
+    ).rejects.toMatchObject({ code: 'not_found' });
+    const leaked = await repository.transition(
+      identifier(other),
+      { state: 'CANCELLED', reason: 'Different subject and input', externalReference: null },
+      eventKey,
+      narrowed,
+      correlation,
+    );
+    const persisted = (
+      await state().db.query<{ evidence: JsonObject }>(
+        'SELECT evidence FROM commission_ledger_entries WHERE tenant_id=$1 AND idempotency_key=$2',
+        [context.actor.companyId, eventKey],
+      )
+    ).rows[0];
+    expect(leaked).toEqual(persisted?.evidence);
+    expect(original).toMatchObject(leaked);
+    expect(leaked).toMatchObject({
+      id: identifier(first),
+      state: 'PAID',
+      amount: '28500.000000',
+    });
+    expect(await counts()).toEqual(baseline);
+    expect(await evidenceCounts(correlation)).toEqual({ audit: '0', outbox: '0' });
+  });
 });
