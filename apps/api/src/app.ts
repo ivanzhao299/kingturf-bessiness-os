@@ -21,11 +21,9 @@ import {
   attachmentBytes,
   authorizeOneOf,
   boundedString,
-  calendarDate,
   connectorProvider,
   connectorSecretReference,
   correlation,
-  costFactorSourceType,
   currency,
   decimal,
   documentConnector,
@@ -40,7 +38,6 @@ import {
   notificationChannel,
   objectBody,
   permittedDto,
-  requireCostFactorItemSource,
   safeConnectorConfiguration,
   string,
   strings,
@@ -106,14 +103,6 @@ import { businessDocumentReviewRoutes } from './routes/business-document-review.
 import { businessDocumentSendRoutes } from './routes/business-document-send.ts';
 import { businessDocumentTranslationRoutes } from './routes/business-document-translation.ts';
 import { businessDocumentVersionRoutes } from './routes/business-document-version.ts';
-import { commercialDefinitionRoutes } from './routes/commercial-definitions.ts';
-import { commercialEvaluationRoutes } from './routes/commercial-evaluations.ts';
-import { commercialNestedReadRoutes } from './routes/commercial-nested-reads.ts';
-import { commercialViewRoutes } from './routes/commercial-views.ts';
-import { costMatrixBaseRoutes } from './routes/cost-matrix-base.ts';
-import { costMatrixCalculationRoutes } from './routes/cost-matrix-calculations.ts';
-import { costMatrixFactorRoutes } from './routes/cost-matrix-factors.ts';
-import { ctrRoutes } from './routes/ctr.ts';
 import { customer360Routes } from './routes/customer-360.ts';
 import { customerActivityRoutes } from './routes/customer-activities.ts';
 import { customerCollectionRoutes, customerDetailRoutes } from './routes/customer-base.ts';
@@ -121,6 +110,7 @@ import { customerContactRoutes } from './routes/customer-contacts.ts';
 import { customerLifecycleRoutes } from './routes/customer-lifecycle.ts';
 import { customerOwnershipRoutes } from './routes/customer-ownership.ts';
 import { collectionsAttempts } from './routes/dispatch/collections.ts';
+import { commercialAttempts } from './routes/dispatch/commercial.ts';
 import { commissionAttempts } from './routes/dispatch/commission.ts';
 import { complaintsAttempts } from './routes/dispatch/complaints.ts';
 import { costsAttempts } from './routes/dispatch/costs.ts';
@@ -159,7 +149,6 @@ import {
   numberDefinitionPublishRoutes,
   numberDefinitionVersionRoutes,
 } from './routes/number-definitions.ts';
-import { dispatchOpportunityRoutes } from './routes/opportunities.ts';
 import { qtcArPostRoutes } from './routes/qtc-ar-post.ts';
 import { qtcBankPaymentIntakeRoutes } from './routes/qtc-bank-payment-intake.ts';
 import { qtcContractCreateRoutes } from './routes/qtc-contract-create.ts';
@@ -168,8 +157,6 @@ import { qtcCreditApprovalRoutes } from './routes/qtc-credit-approval.ts';
 import { qtcCreditEvaluationRoutes, qtcCreditLimitRoutes } from './routes/qtc-credit-writes.ts';
 import { qtcReconciliationRunRoutes } from './routes/qtc-reconciliation-run.ts';
 import { qtcSalesOrderCreateRoutes } from './routes/qtc-sales-order-create.ts';
-import { quoteCommandRoutes } from './routes/quote-commands.ts';
-import { quoteWriteRoutes } from './routes/quote-writes.ts';
 import {
   ruleDefinitionCreateRoutes,
   ruleDefinitionListRoutes,
@@ -177,7 +164,6 @@ import {
   ruleDefinitionVersionRoutes,
 } from './routes/rule-definitions.ts';
 import { ruleEvaluationRoutes } from './routes/rule-evaluation.ts';
-import { technicalSolutionRoutes } from './routes/technical-solutions.ts';
 import { dispatchRoutes } from './routes/types.ts';
 import { websiteLeadIngestRoutes } from './routes/website-lead-ingest.ts';
 import {
@@ -969,212 +955,17 @@ export function buildApp(
             if (response) return response;
           } else if (response !== null) return response;
         }
-        const opportunityResponse = await dispatchOpportunityRoutes(
-          {
-            repository: dependencies.commercial,
-            authorization: context,
-            correlationId,
-            authorize: (capability, fields) => authorizeQuery(context, capability, fields),
-            unavailable: () =>
-              error(503, 'internal_error', 'Commercial dependency unavailable', correlationId),
-            notFound: () => error(404, 'not_found', 'Opportunity not found', correlationId),
-            permittedDto: (value) =>
-              permittedDto(value, context.permissions.get('opportunity:read')?.fields ?? null),
-            mutationDto: (value) => mutationDto(value, context, 'opportunity:read'),
-            parsers: {
-              objectBody,
-              allow,
-              string,
-              uuid,
-              decimal,
-              currency,
-              integer,
-              expectedVersion,
-            },
-          },
+        for (const pending of commercialAttempts({
           request,
-        );
-        if (opportunityResponse) return opportunityResponse;
-        if (dependencies.commercial) {
-          const commercialNestedResponse = await dispatchRoutes(
-            commercialNestedReadRoutes({
-              repository: dependencies.commercial,
-              authorization: context,
-              authorize: (capability) => authorizeQuery(context, capability),
-              permittedDto: (value, capability) =>
-                permittedDto(value, context.permissions.get(capability)?.fields ?? null),
-              uuid,
-            }),
-            request,
-          );
-          if (commercialNestedResponse) return commercialNestedResponse;
-        }
-        if (dependencies.commercial) {
-          const commercialViewResponse = await dispatchRoutes(
-            commercialViewRoutes({
-              repository: dependencies.commercial,
-              authorization: context,
-              authorize: (capability) => authorizeQuery(context, capability),
-              permittedDto: (value, capability) =>
-                permittedDto(value, context.permissions.get(capability)?.fields ?? null),
-            }),
-            request,
-          );
-          if (commercialViewResponse) return commercialViewResponse;
-        }
-        if (dependencies.commercial) {
-          const ctrResponse = await dispatchRoutes(
-            ctrRoutes({
-              repository: dependencies.commercial,
-              authorization: context,
-              correlationId,
-              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
-              mutationDto: (value) => mutationDto(value, context, 'ctr:read'),
-              parsers: { objectBody, allow, uuid, string, jsonObject, version, idempotency },
-            }),
-            request,
-          );
-          if (ctrResponse) return ctrResponse;
-        }
-        if (dependencies.commercial) {
-          const solutionResponse = await dispatchRoutes(
-            technicalSolutionRoutes({
-              repository: dependencies.commercial,
-              authorization: context,
-              correlationId,
-              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
-              mutationDto: (value) => mutationDto(value, context, 'technical-solution:read'),
-              parsers: { objectBody, allow, uuid, string, jsonObject, strings },
-            }),
-            request,
-          );
-          if (solutionResponse) return solutionResponse;
-        }
-        if (dependencies.commercial) {
-          const matrixResponse = await dispatchRoutes(
-            costMatrixBaseRoutes({
-              repository: dependencies.commercial,
-              authorization: context,
-              correlationId,
-              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
-              parsers: { objectBody, allow, uuid, string, jsonObject, integer, currency, decimal },
-            }),
-            request,
-          );
-          if (matrixResponse) return matrixResponse;
-        }
-        if (dependencies.commercial) {
-          const factorResponse = await dispatchRoutes(
-            costMatrixFactorRoutes({
-              repository: dependencies.commercial,
-              authorization: context,
-              correlationId,
-              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
-              parsers: {
-                objectBody,
-                allow,
-                uuid,
-                string,
-                decimal,
-                calendarDate,
-                integer,
-                costFactorSourceType,
-                requireCostFactorItemSource,
-              },
-            }),
-            request,
-          );
-          if (factorResponse) return factorResponse;
-        }
-        if (dependencies.commercial) {
-          const calculationResponse = await dispatchRoutes(
-            costMatrixCalculationRoutes({
-              repository: dependencies.commercial,
-              authorization: context,
-              correlationId,
-              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
-              mutationDto: (value) => mutationDto(value, context, 'cost:read'),
-              parsers: { objectBody, allow, uuid, string, idempotency },
-            }),
-            request,
-          );
-          if (calculationResponse) return calculationResponse;
-        }
-        if (dependencies.commercial) {
-          const definitionResponse = await dispatchRoutes(
-            commercialDefinitionRoutes({
-              repository: dependencies.commercial,
-              authorization: context,
-              correlationId,
-              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
-              parsers: { objectBody, allow, uuid, string, currency, array },
-            }),
-            request,
-          );
-          if (definitionResponse) return definitionResponse;
-        }
-        if (dependencies.commercial) {
-          const evaluationResponse = await dispatchRoutes(
-            commercialEvaluationRoutes({
-              repository: dependencies.commercial,
-              authorization: context,
-              correlationId,
-              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
-              mutationDto: (value, capability) => mutationDto(value, context, capability),
-              parsers: {
-                objectBody,
-                allow,
-                uuid,
-                string,
-                decimal,
-                currency,
-                array,
-                jsonObject,
-                idempotency,
-              },
-            }),
-            request,
-          );
-          if (evaluationResponse) return evaluationResponse;
-        }
-        if (dependencies.commercial) {
-          const quoteResponse = await dispatchRoutes(
-            quoteWriteRoutes({
-              repository: dependencies.commercial,
-              authorization: context,
-              correlationId,
-              authorize: (capability, fields) => authorizeQuery(context, capability, fields),
-              mutationDto: (value) => mutationDto(value, context, 'quote:read'),
-              parsers: {
-                objectBody,
-                allow,
-                uuid,
-                string,
-                decimal,
-                currency,
-                integer,
-                timestamp,
-                array,
-                jsonObject,
-              },
-            }),
-            request,
-          );
-          if (quoteResponse) return quoteResponse;
-        }
-        if (dependencies.commercial) {
-          const quoteCommandResponse = await dispatchRoutes(
-            quoteCommandRoutes({
-              repository: dependencies.commercial,
-              authorization: context,
-              correlationId,
-              authorize: (capability) => authorizeQuery(context, capability),
-              mutationDto: (value) => mutationDto(value, context, 'quote:read'),
-              parsers: { objectBody, allow, uuid, string, idempotency },
-            }),
-            request,
-          );
-          if (quoteCommandResponse) return quoteCommandResponse;
+          dependencies,
+          context,
+          correlationId,
+        })) {
+          if (pending.accept === 'always') return pending.project(await pending.pending);
+          const response = pending.project(await pending.pending);
+          if (pending.accept === 'truthy') {
+            if (response) return response;
+          } else if (response !== null) return response;
         }
         const customerMatch =
           /^\/api\/v1\/customers(?:\/([0-9a-f-]+))?(?:\/(contacts|ownership|activities|360))?$/u.exec(
