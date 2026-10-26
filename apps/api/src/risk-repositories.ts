@@ -199,7 +199,10 @@ export class PostgresRiskRepository {
         )
       ).rows[0];
       if (replay) return replay.item;
-      const secured = recordScopeSql(context.scopes, context.anchors, context.actor, 'c', 3);
+      const { actor, scopes, anchors } = context;
+      const { salesOrderId, policyVersionId, assigneeEmployeeId } = input;
+      const basisParameters = [salesOrderId, actor.companyId, policyVersionId, assigneeEmployeeId];
+      const secured = recordScopeSql(scopes, anchors, actor, 'c', basisParameters.length + 1);
       const basis = (
         await tx.query<{
           order_number: string;
@@ -212,13 +215,7 @@ export class PostgresRiskRepository {
           credit_warning_days: number;
         }>(
           `SELECT o.order_number,qr.margin_basis_points,cd.valid_until::text credit_valid_until,coalesce(sum(b.remaining_amount),0)::text open_ar,coalesce(sum(b.remaining_amount) FILTER(WHERE b.due_at+make_interval(days=>pv.overdue_grace_days)<now()),0)::text overdue_ar,pv.minimum_margin_basis_points,pv.overdue_grace_days,pv.credit_warning_days FROM sales_orders o JOIN customers c ON c.id=o.customer_id AND c.tenant_id=o.tenant_id JOIN quote_revisions qr ON qr.id=o.quote_revision_id AND qr.tenant_id=o.tenant_id JOIN effective_credit_decisions cd ON cd.id=o.credit_decision_id AND cd.tenant_id=o.tenant_id JOIN risk_policy_versions pv ON pv.id=$3 AND pv.tenant_id=o.tenant_id AND pv.status='PUBLISHED' AND pv.effective_at<=now() LEFT JOIN ar_documents d ON d.sales_order_id=o.id AND d.tenant_id=o.tenant_id LEFT JOIN ar_open_item_balances b ON b.ar_document_id=d.id AND b.tenant_id=d.tenant_id WHERE o.id=$1 AND o.tenant_id=$2 AND ${secured.sql} AND EXISTS(SELECT 1 FROM employees x WHERE x.id=$4 AND x.company_id=o.tenant_id AND x.active) GROUP BY o.id,qr.margin_basis_points,cd.valid_until,pv.minimum_margin_basis_points,pv.overdue_grace_days,pv.credit_warning_days`,
-          [
-            input.salesOrderId,
-            context.actor.companyId,
-            input.policyVersionId,
-            input.assigneeEmployeeId,
-            ...secured.values,
-          ],
+          [...basisParameters, ...secured.values],
         )
       ).rows[0];
       if (!basis)

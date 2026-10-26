@@ -408,38 +408,90 @@ describe('risk repository real PostgreSQL contracts', () => {
     ]);
     expect(await evidenceCounts(correlation)).toEqual({ audit: '0', outbox: '0' });
   });
-  it('records narrowed-scope evaluation binding failure without inserting rows (TD-RISK-001)', async () => {
-    // Existing defect candidate: evaluate starts scope placeholders at 3 despite
-    // four fixed parameters. This records the failure, not desired authorization semantics.
-    const { context } = state();
+  it('TD-RISK-001: binds fixed and dynamic parameters across real scope combinations and replays once', async () => {
+    const { context, db, teamId, reviewerEmployee, otherContext } = state();
     const policy = await repository.createPolicy(
       policyInput('NARROW-SCOPE'),
       context,
       randomUUID(),
     );
-    const { teamId } = state();
+    const department = randomUUID(),
+      region = randomUUID();
+    await db.query(
+      "INSERT INTO organizations(id,owner_organization_id,code,name,organization_type) VALUES($1,$2,'RISK-DEPT','Risk department','DEPARTMENT'),($3,$2,'RISK-REGION','Risk region','REGION')",
+      [department, context.actor.companyId, region],
+    );
+    await db.query('UPDATE organizations SET parent_id=$1 WHERE id=$2', [region, department]);
+    await db.query('UPDATE organizations SET parent_id=$1 WHERE id=$2', [department, teamId]);
+    const team = { scope: 'TEAM' as const, organizationId: teamId };
+    const dept = { scope: 'DEPARTMENT' as const, organizationId: department };
+    const variants: readonly Parameters<typeof repository.evaluate>[2][] = [
+      { ...context, scopes: ['SELF'] },
+      { ...context, scopes: ['TEAM'], anchors: [team] },
+      { ...context, scopes: ['DEPARTMENT'], anchors: [dept] },
+      { ...context, scopes: ['REGION'], anchors: [{ scope: 'REGION', organizationId: region }] },
+      { ...context, scopes: ['SELF', 'TEAM'], anchors: [team] },
+      { ...context, scopes: ['TEAM', 'DEPARTMENT'], anchors: [team, dept] },
+      { ...context, scopes: ['COMPANY', 'TEAM'], anchors: [team] },
+      { ...context, scopes: ['GROUP'] },
+    ];
+    for (const actor of variants) {
+      const key = randomUUID(),
+        correlation = randomUUID();
+      const result = await repository.evaluate(
+        evaluationInput(identifier(policy)),
+        key,
+        actor,
+        correlation,
+      );
+      expect(result).toMatchObject({ salesOrderId: state().graph.orderId });
+      const after = await counts(),
+        paired = await evidenceCounts(correlation);
+      expect(
+        (await repository.evaluate(evaluationInput(identifier(policy)), key, actor, randomUUID()))
+          .id,
+      ).toBe(result.id);
+      expect(await counts()).toEqual(after);
+      expect(await evidenceCounts(correlation)).toEqual(paired);
+      expect(paired).toEqual({ audit: '0', outbox: '0' });
+      expect(
+        (
+          await db.query<{ n: number }>(
+            'SELECT count(*)::int n FROM risk_evaluations WHERE id=$1 AND correlation_id=$2',
+            [result.id, correlation],
+          )
+        ).rows,
+      ).toEqual([{ n: 1 }]);
+    }
     for (const actor of [
-      { ...context, scopes: ['SELF'] as const },
+      { ...context, scopes: ['TEAM'] as const, anchors: [] },
       {
         ...context,
-        scopes: ['TEAM'] as const,
-        anchors: [{ scope: 'TEAM' as const, organizationId: teamId }],
+        scopes: ['SELF'] as const,
+        actor: { ...context.actor, employeeId: reviewerEmployee },
+      },
+      { ...otherContext, scopes: ['GROUP'] as const },
+      {
+        ...context,
+        scopes: ['DEPARTMENT'] as const,
+        anchors: [{ scope: 'DEPARTMENT' as const, organizationId: teamId }],
       },
     ]) {
       const before = await counts(),
         correlation = randomUUID();
       await expect(
         repository.evaluate(evaluationInput(identifier(policy)), randomUUID(), actor, correlation),
-      ).rejects.toMatchObject({ code: '08P01' });
+      ).rejects.toMatchObject({ code: 'not_found' });
       expect(await counts()).toEqual(before);
       expect(await evidenceCounts(correlation)).toEqual({ audit: '0', outbox: '0' });
     }
+    await db.query('UPDATE organizations SET active=false WHERE id=$1', [department]);
     const before = await counts();
     await expect(
       repository.evaluate(
         evaluationInput(identifier(policy)),
         randomUUID(),
-        { ...context, scopes: ['TEAM'], anchors: [] },
+        { ...context, scopes: ['DEPARTMENT'], anchors: [dept] },
         randomUUID(),
       ),
     ).rejects.toMatchObject({ code: 'not_found' });
