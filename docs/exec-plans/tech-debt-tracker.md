@@ -1,5 +1,7 @@
 # 技术债台账（tech-debt-tracker）
 
+**2026-10-26 Batch3授权**：INV001、RISK003、SEC009正式本地修复及独立G5守恒获批，0071新迁移仅隔离验证；成本/金额/发运语义仍待决，不改生产/远程。见[本批计划](../productization/batch3-execution-2026-10-26.md)。原缺陷记录保留，目标红/修复绿分列，不用Batch2结果替代新候选。
+
 **2026-10-26 Batch2实施后继**：[本批交付](../productization/batch2-delivery-2026-10-26.md)为最新状态：TD-RISK-002动作范围重放本地修复/PG与真实HTTP/并发/独立源码复核；最终CI另以精确HEAD实跑。新增RISK003、SEC009、INV001均实证仍开放，累计76历史/现行唯一ID；COST001分项总额约束拒绝已PG确认，COST002/发运/金额规则仍设计待裁。旧73/未修描述保留原时点。
 
 **2026-10-26 Batch2授权**：TD-RISK-002获准最小本地安全修复与真实PG/HTTP/并发验证；TD-COST-002与发运库存仅设计/隔离验证，金额语义不变。见[本批执行](../productization/batch2-execution-2026-10-26.md)。Batch1已验成果保留，不重复实施，不推远程/不改生产。

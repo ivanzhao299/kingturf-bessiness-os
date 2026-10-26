@@ -450,3 +450,5 @@ E1先行固定证据：[authorization守恒候选/773例旧新探针](evidence/e
 [Batch 2 金额、BOM版本与订单利润研究](productization/batch2-money-bom-profit.md)：独立精度样本、版本冻结、四层成本与利润权威。
 
 [Batch 2 四项长函数豁免独立整改计划](productization/batch2-complexity-plan.md)：到期、重叠、守恒拆分与回归保护，不续期。
+
+[KingTurf V1.0 Batch 3 本地执行授权与计划](productization/batch3-execution-2026-10-26.md)：19d40a2后继，库存/风险三项正式修复、独立G5守恒及设计边界。
