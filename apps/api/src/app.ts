@@ -127,6 +127,7 @@ import { costsAttempts } from './routes/dispatch/costs.ts';
 import { dashboardAttempts } from './routes/dispatch/dashboard.ts';
 import { manufacturingAttempts } from './routes/dispatch/manufacturing.ts';
 import { mrpAttempts } from './routes/dispatch/mrp.ts';
+import { orderAttempts } from './routes/dispatch/order.ts';
 import { procurementAttempts } from './routes/dispatch/procurement.ts';
 import { productionAttempts } from './routes/dispatch/production.ts';
 import { qualityAttempts } from './routes/dispatch/quality.ts';
@@ -158,7 +159,6 @@ import {
   numberDefinitionVersionRoutes,
 } from './routes/number-definitions.ts';
 import { dispatchOpportunityRoutes } from './routes/opportunities.ts';
-import { order360Routes } from './routes/order-360.ts';
 import { qtcArPostRoutes } from './routes/qtc-ar-post.ts';
 import { qtcBankPaymentIntakeRoutes } from './routes/qtc-bank-payment-intake.ts';
 import { qtcBaseReadRoutes } from './routes/qtc-base-reads.ts';
@@ -586,21 +586,12 @@ export function buildApp(
             if (response) return response;
           } else if (response !== null) return response;
         }
-        const order360Match = /^\/api\/v1\/sales-orders\/([0-9a-f-]+)\/360$/u.exec(
-          request.pathname,
-        );
-        if (request.method === 'GET' && order360Match && dependencies.order360) {
-          const response = await dispatchRoutes(
-            order360Routes({
-              repository: () =>
-                dependencies.order360 as Pick<NonNullable<ApiDependencies['order360']>, 'get'>,
-              authorization: context,
-              authorizeQuery,
-              permittedDto,
-            }),
-            request,
-          );
-          if (response !== null) return response;
+        for (const pending of orderAttempts({ request, dependencies, context, correlationId })) {
+          if (pending.accept === 'always') return pending.project(await pending.pending);
+          const response = pending.project(await pending.pending);
+          if (pending.accept === 'truthy') {
+            if (response) return response;
+          } else if (response !== null) return response;
         }
         const credentialResponse = await dispatchRoutes(
           credentialRoutes(securedAuthContext),

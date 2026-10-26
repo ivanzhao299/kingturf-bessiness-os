@@ -64,5 +64,11 @@
     "symbol": "dashboardAttempts",
     "file": "dashboard.ts",
     "baselineSpan": [29, 30]
+  },
+  {
+    "name": "order",
+    "symbol": "orderAttempts",
+    "file": "order.ts",
+    "baselineSpan": [31, 33]
   }
 ]
