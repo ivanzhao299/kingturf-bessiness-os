@@ -70,5 +70,11 @@
     "symbol": "orderAttempts",
     "file": "order.ts",
     "baselineSpan": [31, 33]
+  },
+  {
+    "name": "credentials",
+    "symbol": "credentialsAttempts",
+    "file": "credentials.ts",
+    "baselineSpan": [33, 37]
   }
 ]

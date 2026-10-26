@@ -89,7 +89,7 @@ import type { PostgresQuoteToCashRepository } from './qtc-repositories.ts';
 import type { PostgresQualityRepository } from './quality-repositories.ts';
 import type { PostgresRiskRepository } from './risk-repositories.ts';
 import { auditReadRoutes } from './routes/audit-reads.ts';
-import { credentialRoutes, loginRoutes, sessionRoutes } from './routes/auth.ts';
+import { loginRoutes, sessionRoutes } from './routes/auth.ts';
 import { dispatchAuthorizationRoutes } from './routes/authorization.ts';
 import { businessDocumentActivityRoutes } from './routes/business-document-activity.ts';
 import { businessDocumentBindingRoutes } from './routes/business-document-bindings.ts';
@@ -124,6 +124,7 @@ import { collectionsAttempts } from './routes/dispatch/collections.ts';
 import { commissionAttempts } from './routes/dispatch/commission.ts';
 import { complaintsAttempts } from './routes/dispatch/complaints.ts';
 import { costsAttempts } from './routes/dispatch/costs.ts';
+import { credentialsAttempts } from './routes/dispatch/credentials.ts';
 import { dashboardAttempts } from './routes/dispatch/dashboard.ts';
 import { manufacturingAttempts } from './routes/dispatch/manufacturing.ts';
 import { mrpAttempts } from './routes/dispatch/mrp.ts';
@@ -134,7 +135,6 @@ import { qualityAttempts } from './routes/dispatch/quality.ts';
 import { riskAttempts } from './routes/dispatch/risk.ts';
 import { dispatchFoundationRoutes, foundationRoutes } from './routes/foundation.ts';
 import { identityAccessRoutes } from './routes/identity-access.ts';
-import { identityProvisionRoutes } from './routes/identity-provision.ts';
 import { leadCreateRoutes, leadListRoutes, leadPoolRoutes } from './routes/lead-base.ts';
 import { leadClaimRoutes } from './routes/lead-claim.ts';
 import { leadCommandRoutes } from './routes/lead-commands.ts';
@@ -593,24 +593,19 @@ export function buildApp(
             if (response) return response;
           } else if (response !== null) return response;
         }
-        const credentialResponse = await dispatchRoutes(
-          credentialRoutes(securedAuthContext),
+        for (const pending of credentialsAttempts({
           request,
-        );
-        if (credentialResponse) return credentialResponse;
-        const identityProvisionResponse = await dispatchRoutes(
-          identityProvisionRoutes({
-            auth: dependencies.auth,
-            authorization: context,
-            correlationId,
-            authorize: () => {
-              authorizeQuery(context, 'authorization:manage');
-            },
-            parsers: { objectBody, allow, uuid, string },
-          }),
-          request,
-        );
-        if (identityProvisionResponse) return identityProvisionResponse;
+          dependencies,
+          context,
+          correlationId,
+          securedAuthContext,
+        })) {
+          if (pending.accept === 'always') return pending.project(await pending.pending);
+          const response = pending.project(await pending.pending);
+          if (pending.accept === 'truthy') {
+            if (response) return response;
+          } else if (response !== null) return response;
+        }
         if (dependencies.contractDocuments) {
           if (request.method === 'GET' && request.pathname === '/api/v1/contract-documents') {
             const grant = authorizeQuery(context, 'contract-document:read');
