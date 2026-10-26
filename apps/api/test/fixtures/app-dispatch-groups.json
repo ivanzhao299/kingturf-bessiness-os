@@ -52,5 +52,11 @@
     "symbol": "riskAttempts",
     "file": "risk.ts",
     "property": "risks"
+  },
+  {
+    "name": "commission",
+    "symbol": "commissionAttempts",
+    "file": "commission.ts",
+    "property": "commissions"
   }
 ]

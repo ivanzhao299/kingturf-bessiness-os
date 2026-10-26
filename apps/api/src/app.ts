@@ -110,14 +110,6 @@ import { commercialDefinitionRoutes } from './routes/commercial-definitions.ts';
 import { commercialEvaluationRoutes } from './routes/commercial-evaluations.ts';
 import { commercialNestedReadRoutes } from './routes/commercial-nested-reads.ts';
 import { commercialViewRoutes } from './routes/commercial-views.ts';
-import { commissionAccrueRoutes } from './routes/commission-accrue.ts';
-import { commissionCommandRoutes } from './routes/commission-commands.ts';
-import { commissionPolicyPublishRoutes } from './routes/commission-policy-publish.ts';
-import {
-  commissionPolicyCreateRoutes,
-  commissionPolicyVersionRoutes,
-} from './routes/commission-policy-writes.ts';
-import { commissionReadRoutes } from './routes/commission-reads.ts';
 import { costMatrixBaseRoutes } from './routes/cost-matrix-base.ts';
 import { costMatrixCalculationRoutes } from './routes/cost-matrix-calculations.ts';
 import { costMatrixFactorRoutes } from './routes/cost-matrix-factors.ts';
@@ -130,6 +122,7 @@ import { customerLifecycleRoutes } from './routes/customer-lifecycle.ts';
 import { customerOwnershipRoutes } from './routes/customer-ownership.ts';
 import { executiveDashboardRoutes } from './routes/dashboard.ts';
 import { collectionsAttempts } from './routes/dispatch/collections.ts';
+import { commissionAttempts } from './routes/dispatch/commission.ts';
 import { complaintsAttempts } from './routes/dispatch/complaints.ts';
 import { costsAttempts } from './routes/dispatch/costs.ts';
 import { manufacturingAttempts } from './routes/dispatch/manufacturing.ts';
@@ -1026,139 +1019,17 @@ export function buildApp(
             if (response !== null) return response;
           }
         }
-        if (dependencies.commissions) {
-          if (request.method === 'GET' && request.pathname === '/api/v1/commission-policies') {
-            const response = await dispatchRoutes(
-              commissionReadRoutes({
-                repository: () =>
-                  dependencies.commissions as Pick<
-                    NonNullable<ApiDependencies['commissions']>,
-                    'listPolicies' | 'listCases'
-                  >,
-                authorization: context,
-                authorizeQuery,
-                permittedDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          if (request.method === 'GET' && request.pathname === '/api/v1/commissions') {
-            const response = await dispatchRoutes(
-              commissionReadRoutes({
-                repository: () =>
-                  dependencies.commissions as Pick<
-                    NonNullable<ApiDependencies['commissions']>,
-                    'listPolicies' | 'listCases'
-                  >,
-                authorization: context,
-                authorizeQuery,
-                permittedDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          if (request.method === 'POST' && request.pathname === '/api/v1/commission-policies') {
-            const response = await dispatchRoutes(
-              commissionPolicyCreateRoutes({
-                repository: () =>
-                  dependencies.commissions as Pick<
-                    NonNullable<ApiDependencies['commissions']>,
-                    'createPolicy' | 'createPolicyVersion'
-                  >,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                parsers: { objectBody, allow, string, uuid, integer, timestamp, jsonObject, array },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          const commissionPolicyRevision =
-            /^\/api\/v1\/commission-policies\/([0-9a-f-]+)\/versions$/u.exec(request.pathname);
-          if (request.method === 'POST' && commissionPolicyRevision) {
-            const response = await dispatchRoutes(
-              commissionPolicyVersionRoutes({
-                repository: () =>
-                  dependencies.commissions as Pick<
-                    NonNullable<ApiDependencies['commissions']>,
-                    'createPolicy' | 'createPolicyVersion'
-                  >,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                parsers: { objectBody, allow, string, uuid, integer, timestamp, jsonObject, array },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          const commissionPolicyPublish =
-            /^\/api\/v1\/commission-policy-versions\/([0-9a-f-]+)\/publish$/u.exec(
-              request.pathname,
-            );
-          if (request.method === 'POST' && commissionPolicyPublish) {
-            const response = await dispatchRoutes(
-              commissionPolicyPublishRoutes({
-                repository: () =>
-                  dependencies.commissions as Pick<
-                    NonNullable<ApiDependencies['commissions']>,
-                    'publishPolicyVersion'
-                  >,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                parsers: { objectBody, allow, uuid },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          if (request.method === 'POST' && request.pathname === '/api/v1/commissions/accrue') {
-            const response = await dispatchRoutes(
-              commissionAccrueRoutes({
-                repository: () =>
-                  dependencies.commissions as Pick<
-                    NonNullable<ApiDependencies['commissions']>,
-                    'accrue'
-                  >,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                parsers: { objectBody, allow, string, uuid, idempotency },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          const commissionCommand =
-            /^\/api\/v1\/commissions\/([0-9a-f-]+)\/(freeze|release|pay|clawback|cancel)$/u.exec(
-              request.pathname,
-            );
-          if (request.method === 'POST' && commissionCommand) {
-            const response = await dispatchRoutes(
-              commissionCommandRoutes({
-                repository: () =>
-                  dependencies.commissions as Pick<
-                    NonNullable<ApiDependencies['commissions']>,
-                    'transition'
-                  >,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                parsers: { objectBody, allow, uuid, string, idempotency },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
+        for (const pending of commissionAttempts({
+          request,
+          dependencies,
+          context,
+          correlationId,
+        })) {
+          if (pending.accept === 'always') return pending.project(await pending.pending);
+          const response = pending.project(await pending.pending);
+          if (pending.accept === 'truthy') {
+            if (response) return response;
+          } else if (response !== null) return response;
         }
         const opportunityResponse = await dispatchOpportunityRoutes(
           {
