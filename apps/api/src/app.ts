@@ -4,7 +4,6 @@ import {
   assertStableCode,
   DomainError,
   NOOP_TELEMETRY,
-  normalizeContactEmail,
   normalizeDecimal,
   type AuthorizationRepository,
   type EmployeeRepository,
@@ -18,15 +17,9 @@ import {
   allow,
   array,
   attachmentBytes,
-  authorizeOneOf,
-  boundedString,
-  connectorProvider,
-  connectorSecretReference,
   correlation,
   currency,
   decimal,
-  documentConnector,
-  documentLocale,
   error,
   expectedVersion,
   idempotency,
@@ -36,7 +29,6 @@ import {
   notificationChannel,
   objectBody,
   permittedDto,
-  safeConnectorConfiguration,
   string,
   strings,
   timestamp,
@@ -84,21 +76,6 @@ import type { PostgresQuoteToCashRepository } from './qtc-repositories.ts';
 import type { PostgresQualityRepository } from './quality-repositories.ts';
 import type { PostgresRiskRepository } from './risk-repositories.ts';
 import { loginRoutes, sessionRoutes } from './routes/auth.ts';
-import { businessDocumentActivityRoutes } from './routes/business-document-activity.ts';
-import { businessDocumentBindingRoutes } from './routes/business-document-bindings.ts';
-import { businessDocumentConnectorRoutes } from './routes/business-document-connector.ts';
-import { businessDocumentCreateRoutes } from './routes/business-document-create.ts';
-import {
-  businessDocumentActivityLogReadRoutes,
-  businessDocumentConnectorReadRoutes,
-  businessDocumentDetailReadRoutes,
-  businessDocumentListReadRoutes,
-  businessDocumentReferenceReadRoutes,
-} from './routes/business-document-reads.ts';
-import { businessDocumentReviewRoutes } from './routes/business-document-review.ts';
-import { businessDocumentSendRoutes } from './routes/business-document-send.ts';
-import { businessDocumentTranslationRoutes } from './routes/business-document-translation.ts';
-import { businessDocumentVersionRoutes } from './routes/business-document-version.ts';
 import { accessAttempts } from './routes/dispatch/access.ts';
 import { catalogAttempts } from './routes/dispatch/catalog.ts';
 import { collectionsAttempts } from './routes/dispatch/collections.ts';
@@ -109,6 +86,7 @@ import { costsAttempts } from './routes/dispatch/costs.ts';
 import { credentialsAttempts } from './routes/dispatch/credentials.ts';
 import { crmAttempts } from './routes/dispatch/crm.ts';
 import { dashboardAttempts } from './routes/dispatch/dashboard.ts';
+import { documentsAttempts } from './routes/dispatch/documents.ts';
 import { manufacturingAttempts } from './routes/dispatch/manufacturing.ts';
 import { mrpAttempts } from './routes/dispatch/mrp.ts';
 import { orderAttempts } from './routes/dispatch/order.ts';
@@ -1102,373 +1080,18 @@ export function buildApp(
             if (response) return response;
           } else if (response !== null) return response;
         }
-        if (request.pathname === '/api/v1/document-connectors' && request.method === 'GET') {
-          const canConfigure = context.permissions.has('business-document:configure');
-          if (!canConfigure)
-            authorizeOneOf(context, 'business-document:send', 'business-document:translate');
-          if (!dependencies.businessDocuments)
-            return error(
-              503,
-              'internal_error',
-              'Business document repository unavailable',
-              correlationId,
-            );
-          const response = await dispatchRoutes(
-            businessDocumentConnectorReadRoutes({
-              repository: () =>
-                dependencies.businessDocuments as Pick<
-                  NonNullable<ApiDependencies['businessDocuments']>,
-                  'listConnectors' | 'activityLog' | 'list' | 'referenceData' | 'get'
-                >,
-              authorization: context,
-              canConfigure,
-            }),
-            request,
-          );
-          if (response !== null) return response;
-        }
-        const connectorConfiguration = /^\/api\/v1\/document-connectors\/([A-Z_]+)$/u.exec(
-          request.pathname,
-        );
-        if (connectorConfiguration && request.method === 'PUT') {
-          authorizeQuery(context, 'business-document:configure');
-          if (!dependencies.businessDocuments)
-            return error(
-              503,
-              'internal_error',
-              'Business document repository unavailable',
-              correlationId,
-            );
-          const response = await dispatchRoutes(
-            businessDocumentConnectorRoutes({
-              repository: () =>
-                dependencies.businessDocuments as Pick<
-                  NonNullable<ApiDependencies['businessDocuments']>,
-                  'configureConnector'
-                >,
-              authorization: context,
-              correlationId,
-              parsers: {
-                objectBody,
-                allow,
-                string,
-                expectedVersion,
-                boundedString,
-                connectorSecretReference,
-                connectorProvider,
-                safeConnectorConfiguration,
-                documentConnector,
-              },
-            }),
-            request,
-          );
-          if (response !== null) return response;
-        }
-        if (request.pathname === '/api/v1/business-document-activity' && request.method === 'GET') {
-          authorizeQuery(context, 'business-document:audit');
-          if (!dependencies.businessDocuments)
-            return error(
-              503,
-              'internal_error',
-              'Business document repository unavailable',
-              correlationId,
-            );
-          const response = await dispatchRoutes(
-            businessDocumentActivityLogReadRoutes({
-              repository: () =>
-                dependencies.businessDocuments as Pick<
-                  NonNullable<ApiDependencies['businessDocuments']>,
-                  'listConnectors' | 'activityLog' | 'list' | 'referenceData' | 'get'
-                >,
-              authorization: context,
-              parsers: { uuid },
-            }),
-            request,
-          );
-          if (response !== null) return response;
-        }
-        if (request.pathname === '/api/v1/business-documents' && request.method === 'GET') {
-          const grant = authorizeQuery(context, 'business-document:read');
-          if (!dependencies.businessDocuments)
-            return error(
-              503,
-              'internal_error',
-              'Business document repository unavailable',
-              correlationId,
-            );
-          const response = await dispatchRoutes(
-            businessDocumentListReadRoutes({
-              repository: () =>
-                dependencies.businessDocuments as Pick<
-                  NonNullable<ApiDependencies['businessDocuments']>,
-                  'listConnectors' | 'activityLog' | 'list' | 'referenceData' | 'get'
-                >,
-              authorization: context,
-              grant,
-            }),
-            request,
-          );
-          if (response !== null) return response;
-        }
-        if (
-          request.pathname === '/api/v1/business-documents/reference-data' &&
-          request.method === 'GET'
-        ) {
-          const grant = authorizeQuery(context, 'business-document:manage');
-          if (!dependencies.businessDocuments)
-            return error(
-              503,
-              'internal_error',
-              'Business document repository unavailable',
-              correlationId,
-            );
-          const response = await dispatchRoutes(
-            businessDocumentReferenceReadRoutes({
-              repository: () =>
-                dependencies.businessDocuments as Pick<
-                  NonNullable<ApiDependencies['businessDocuments']>,
-                  'listConnectors' | 'activityLog' | 'list' | 'referenceData' | 'get'
-                >,
-              authorization: context,
-              grant,
-            }),
-            request,
-          );
-          if (response !== null) return response;
-        }
-        if (request.pathname === '/api/v1/business-documents' && request.method === 'POST') {
-          authorizeQuery(context, 'business-document:manage');
-          if (!dependencies.businessDocuments)
-            return error(
-              503,
-              'internal_error',
-              'Business document repository unavailable',
-              correlationId,
-            );
-          const response = await dispatchRoutes(
-            businessDocumentCreateRoutes({
-              repository: () =>
-                dependencies.businessDocuments as Pick<
-                  NonNullable<ApiDependencies['businessDocuments']>,
-                  'create'
-                >,
-              authorization: context,
-              correlationId,
-              parsers: { objectBody, allow, string, uuid, jsonObject },
-            }),
-            request,
-          );
-          if (response !== null) return response;
-        }
-        const businessDocument = /^\/api\/v1\/business-documents\/([0-9a-f-]+)$/u.exec(
-          request.pathname,
-        );
-        if (businessDocument && request.method === 'GET') {
-          const grant = authorizeQuery(context, 'business-document:read');
-          if (!dependencies.businessDocuments)
-            return error(
-              503,
-              'internal_error',
-              'Business document repository unavailable',
-              correlationId,
-            );
-          const response = await dispatchRoutes(
-            businessDocumentDetailReadRoutes({
-              repository: () =>
-                dependencies.businessDocuments as Pick<
-                  NonNullable<ApiDependencies['businessDocuments']>,
-                  'listConnectors' | 'activityLog' | 'list' | 'referenceData' | 'get'
-                >,
-              authorization: context,
-              grant,
-              parsers: { uuid },
-            }),
-            request,
-          );
-          if (response !== null) return response;
-        }
-        const businessDocumentVersion =
-          /^\/api\/v1\/business-documents\/([0-9a-f-]+)\/versions$/u.exec(request.pathname);
-        if (businessDocumentVersion && request.method === 'POST') {
-          const grant = authorizeQuery(context, 'business-document:manage');
-          if (!dependencies.businessDocuments)
-            return error(
-              503,
-              'internal_error',
-              'Business document repository unavailable',
-              correlationId,
-            );
-          const response = await dispatchRoutes(
-            businessDocumentVersionRoutes({
-              repository: () =>
-                dependencies.businessDocuments as Pick<
-                  NonNullable<ApiDependencies['businessDocuments']>,
-                  'saveVersion'
-                >,
-              authorization: context,
-              grant,
-              correlationId,
-              parsers: { objectBody, allow, string, uuid, version, jsonObject },
-            }),
-            request,
-          );
-          if (response !== null) return response;
-        }
-        const businessDocumentBindings =
-          /^\/api\/v1\/business-documents\/([0-9a-f-]+)\/bindings$/u.exec(request.pathname);
-        if (businessDocumentBindings && request.method === 'PATCH') {
-          const grant = authorizeQuery(context, 'business-document:manage');
-          if (!dependencies.businessDocuments)
-            return error(
-              503,
-              'internal_error',
-              'Business document repository unavailable',
-              correlationId,
-            );
-          const response = await dispatchRoutes(
-            businessDocumentBindingRoutes({
-              repository: () =>
-                dependencies.businessDocuments as Pick<
-                  NonNullable<ApiDependencies['businessDocuments']>,
-                  'updateBindings'
-                >,
-              authorization: context,
-              grant,
-              correlationId,
-              parsers: { objectBody, allow, uuid },
-            }),
-            request,
-          );
-          if (response !== null) return response;
-        }
-        const businessDocumentReview =
-          /^\/api\/v1\/business-documents\/([0-9a-f-]+)\/(submit|approve|reject)$/u.exec(
-            request.pathname,
-          );
-        if (businessDocumentReview && request.method === 'POST') {
-          const operation = businessDocumentReview[2];
-          const action =
-            operation === 'submit'
-              ? 'SUBMITTED'
-              : operation === 'approve'
-                ? 'APPROVED'
-                : 'REJECTED';
-          const grant = authorizeQuery(
-            context,
-            action === 'SUBMITTED' ? 'business-document:manage' : 'business-document:approve',
-          );
-          if (!dependencies.businessDocuments)
-            return error(
-              503,
-              'internal_error',
-              'Business document repository unavailable',
-              correlationId,
-            );
-          const response = await dispatchRoutes(
-            businessDocumentReviewRoutes({
-              repository: () =>
-                dependencies.businessDocuments as Pick<
-                  NonNullable<ApiDependencies['businessDocuments']>,
-                  'transition'
-                >,
-              authorization: context,
-              grant,
-              correlationId,
-              action,
-              parsers: { objectBody, allow, string, uuid, version },
-            }),
-            request,
-          );
-          if (response !== null) return response;
-        }
-        const businessDocumentTranslation =
-          /^\/api\/v1\/business-documents\/([0-9a-f-]+)\/translations$/u.exec(request.pathname);
-        if (businessDocumentTranslation && request.method === 'POST') {
-          const grant = authorizeQuery(context, 'business-document:translate');
-          if (!dependencies.businessDocuments)
-            return error(
-              503,
-              'internal_error',
-              'Business document repository unavailable',
-              correlationId,
-            );
-          const response = await dispatchRoutes(
-            businessDocumentTranslationRoutes({
-              repository: () =>
-                dependencies.businessDocuments as Pick<
-                  NonNullable<ApiDependencies['businessDocuments']>,
-                  'createTranslation'
-                >,
-              authorization: context,
-              grant,
-              correlationId,
-              parsers: { objectBody, allow, uuid, version, jsonObject, documentLocale },
-            }),
-            request,
-          );
-          if (response !== null) return response;
-        }
-        const businessDocumentActivity =
-          /^\/api\/v1\/business-documents\/([0-9a-f-]+)\/activity$/u.exec(request.pathname);
-        if (businessDocumentActivity && request.method === 'POST') {
-          const grant = authorizeQuery(context, 'business-document:read');
-          if (!dependencies.businessDocuments)
-            return error(
-              503,
-              'internal_error',
-              'Business document repository unavailable',
-              correlationId,
-            );
-          const response = await dispatchRoutes(
-            businessDocumentActivityRoutes({
-              repository: () =>
-                dependencies.businessDocuments as Pick<
-                  NonNullable<ApiDependencies['businessDocuments']>,
-                  'recordClientActivity'
-                >,
-              authorization: context,
-              grant,
-              correlationId,
-              parsers: { objectBody, allow, string, uuid, version },
-            }),
-            request,
-          );
-          if (response !== null) return response;
-        }
-        const businessDocumentDispatch =
-          /^\/api\/v1\/business-documents\/([0-9a-f-]+)\/send$/u.exec(request.pathname);
-        if (businessDocumentDispatch && request.method === 'POST') {
-          const grant = authorizeQuery(context, 'business-document:send');
-          if (!dependencies.businessDocuments)
-            return error(
-              503,
-              'internal_error',
-              'Business document repository unavailable',
-              correlationId,
-            );
-          const response = await dispatchRoutes(
-            businessDocumentSendRoutes({
-              repository: () =>
-                dependencies.businessDocuments as Pick<
-                  NonNullable<ApiDependencies['businessDocuments']>,
-                  'dispatch'
-                >,
-              authorization: context,
-              grant,
-              correlationId,
-              parsers: {
-                objectBody,
-                allow,
-                uuid,
-                version,
-                boundedString,
-                documentConnector,
-                normalizeContactEmail,
-              },
-            }),
-            request,
-          );
-          if (response !== null) return response;
+        for (const pending of documentsAttempts({
+          request,
+          dependencies,
+          context,
+          correlationId,
+        })) {
+          if (pending.kind === 'immediate') return pending.value;
+          if (pending.accept === 'always') return pending.project(await pending.pending);
+          const response = pending.project(await pending.pending);
+          if (pending.accept === 'truthy') {
+            if (response) return response;
+          } else if (response !== null) return response;
         }
         return error(404, 'not_found', 'Route not found', correlationId);
       } catch (cause) {
