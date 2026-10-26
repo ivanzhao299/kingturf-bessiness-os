@@ -150,6 +150,14 @@
       "seconds": 116.77,
       "sha256": "2c6cae6e18d4368276dd8606bc272a3c2d63ad7b358c2499f7142977e5851742",
       "meaning": "full ci correctly stopped: release manifest expected70 and0070 as last; new0071 requires snapshot71 and0071; no production calls"
+    },
+    {
+      "file": "final-ci-risk-mock-failure.txt",
+      "sourceSha": "fe12e42469fcc3d0f64cd8fe308050ea9b98c38d",
+      "exit": 1,
+      "seconds": 297.84,
+      "sha256": "aa545c9142e6c252d9b8ac262b553d839a053707a161784b03da503b6df31a6b",
+      "meaning": "app.test legacy risk mock missing new canReadResult port; API17370pass/1fail; actualPG/HTTPgreen"
     }
   ]
 }

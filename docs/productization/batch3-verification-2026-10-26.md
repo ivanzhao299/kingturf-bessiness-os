@@ -61,3 +61,5 @@ PILOT_READINESS=NO_GO。阻断包括金额一致性/成本驳回可修订、BOM�
 ## 最终门禁首次执行后继
 
 c540721完整ci:local实际退出1、116.77秒，在operations预检manifest测试发现硬编码70/0070仍旧，实际新schema应为71/0071。更新该版本断言并保留0070存在性、所有checksum长度及原其他预检失败断言，不改生产预检工具/工作流。日志保留final-ci-migration-manifest-failure.txt。该次未到覆盖率/完整API阶段，不作为完整CI绿。修正后的新精确提交须重跑整条CI及同SHA浏览器双轮，不能沿用旧候选结果。
+
+fe12e42第二次完整CI实际退出1、297.84秒，API17370通过/1失败：app.test.ts旧风险模拟仓储漏新canReadResult端口，合法风险动作后投影查询报500。补齐模拟端口并新增评价/任务各自实际read TEAM上下文的精确调用断言，原201及动作/拒绝断言保持；生产代码不改。真实PG/HTTP专项在该轮仍通过；此轮不能作完整CI通过或生成覆盖率成功报告。日志保留final-ci-risk-mock-failure.txt，下一新精确提交重跑全CI/双轮。
