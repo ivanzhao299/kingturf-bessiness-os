@@ -4,6 +4,11 @@ import type { JsonObject } from '@kingturf/types';
 import { PostgresManufacturingRepository } from '../src/manufacturing-repositories.js';
 import { PostgresProcurementRepository } from '../src/procurement-repositories.js';
 import { ownedPostgres } from './fixtures/owned-postgres.js';
+import {
+  controlledTransaction,
+  outcome,
+  waitForBlocking,
+} from './fixtures/controlled-transaction.js';
 
 const identifier = (item: JsonObject, key = 'id'): string => {
   const value = item[key];
@@ -696,7 +701,7 @@ describe('procurement and inventory repository real PostgreSQL contracts', () =>
     expect(await receiptCounts()).toEqual({ receipts: 2, lines: 2, lots: 2, movements: 2 });
   });
 
-  it('TD-INV-001: characterizes overlapping committed issues bypassing the existing balance sum guard', async () => {
+  it('TD-INV-001: blocks overlapping 7+7 issues and commits only the satisfiable transaction', async () => {
     const { context, db } = state();
     await repository.receive(receiptInput('RACE-SEED'), context, randomUUID());
     const lot = (
@@ -706,66 +711,65 @@ describe('procurement and inventory repository real PostgreSQL contracts', () =>
       )
     ).rows[0];
     if (!lot) throw new Error('Synthetic race lot missing');
-    let arrivals = 0,
-      release: (() => void) | undefined;
-    const both = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    const gated: ConstructorParameters<typeof PostgresProcurementRepository>[0] = {
-      query: db.query.bind(db),
-      transaction: async (work) =>
-        db.transaction(async (tx) => {
-          const result = await work(tx);
-          arrivals++;
-          if (arrivals === 2) release?.();
-          let timer: ReturnType<typeof setTimeout> | undefined;
-          try {
-            await Promise.race([
-              both,
-              new Promise<never>((_resolve, reject) => {
-                timer = setTimeout(() => {
-                  reject(
-                    new Error('Two independent move transactions did not reach commit barrier'),
-                  );
-                }, 2000);
-              }),
-            ]);
-          } finally {
-            if (timer) clearTimeout(timer);
-          }
-          return result;
-        }),
-    };
-    const moves = new PostgresProcurementRepository(gated);
+    const firstGate = controlledTransaction(db, true),
+      secondGate = controlledTransaction(db);
     const correlations = [randomUUID(), randomUUID()];
-    const results = await Promise.all(
-      correlations.map((correlation) =>
-        moves.move(
-          {
-            movementType: 'ISSUE',
-            itemVersionId: identifier(material),
-            lotId: lot.id,
-            locationId: identifier(location),
-            quantity: '7',
-            occurredAt: '2026-02-01T01:00:00Z',
-            sourceType: 'SYNTHETIC-RACE',
-            sourceId: randomUUID(),
-          },
-          context,
-          correlation,
-        ),
+    const input = {
+      movementType: 'ISSUE' as const,
+      itemVersionId: identifier(material),
+      lotId: lot.id,
+      locationId: identifier(location),
+      quantity: '7',
+      occurredAt: '2026-02-01T01:00:00Z',
+      sourceType: 'SYNTHETIC-RACE',
+      sourceId: randomUUID(),
+    };
+    const first = outcome(
+      new PostgresProcurementRepository(firstGate.db).move(
+        input,
+        context,
+        correlations[0] ?? randomUUID(),
       ),
     );
-    expect(results).toHaveLength(2);
-    expect(arrivals).toBe(2);
-    const balance = (
-      await db.query<{ quantity: string }>(
-        'SELECT quantity FROM inventory_balances WHERE tenant_id=$1 AND lot_id=$2 AND location_id=$3',
-        [context.actor.companyId, lot.id, identifier(location)],
-      )
-    ).rows[0];
-    expect(Number(balance?.quantity)).toBe(-4);
-    for (const correlation of correlations)
-      expect(await evidenceCounts(correlation)).toEqual({ audit: '1', outbox: '1' });
+    let second: ReturnType<typeof outcome> | undefined;
+    try {
+      await firstGate.written;
+      second = outcome(
+        new PostgresProcurementRepository(secondGate.db).move(
+          { ...input, sourceId: randomUUID() },
+          context,
+          correlations[1] ?? randomUUID(),
+        ),
+      );
+      await waitForBlocking(db, await secondGate.started, await firstGate.started);
+      firstGate.release();
+      expect((await first).ok).toBe(true);
+      expect(await second).toMatchObject({
+        ok: false,
+        error: { code: 'P0001', message: 'inventory movement cannot create negative lot balance' },
+      });
+      const balance = (
+        await db.query<{ quantity: string }>(
+          'SELECT quantity FROM inventory_balances WHERE tenant_id=$1 AND lot_id=$2 AND location_id=$3',
+          [context.actor.companyId, lot.id, identifier(location)],
+        )
+      ).rows[0];
+      expect(Number(balance?.quantity)).toBe(3);
+      expect(await evidenceCounts(correlations[0] ?? '')).toEqual({ audit: '1', outbox: '1' });
+      expect(await evidenceCounts(correlations[1] ?? '')).toEqual({ audit: '0', outbox: '0' });
+      expect(
+        (
+          await db.query<{ n: number }>(
+            'SELECT count(*)::int n FROM inventory_movements WHERE correlation_id=ANY($1::uuid[])',
+            [correlations],
+          )
+        ).rows,
+      ).toEqual([{ n: 1 }]);
+    } finally {
+      firstGate.release();
+      secondGate.release();
+      await first;
+      await second;
+    }
   });
 });

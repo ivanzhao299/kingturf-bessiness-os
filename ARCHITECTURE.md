@@ -41,7 +41,7 @@ packages/{types, config} ──→ 零依赖
       → 生产 nginx（infra/nginx/erp.kingturf.cn.conf，静态 + /api 反代）
           → apps/api/src/app.ts buildApp（路由分发：校验→授权→编排→DTO）
               → apps/api/src/*-repositories.ts（pg 参数化 SQL + DataScope 谓词 + 审计/outbox 双写）
-                  → PostgreSQL 17（packages/database 70 个有序迁移）
+                  → PostgreSQL 17（packages/database 71 个有序迁移）
 ```
 
 - 组合根唯一：`apps/api/src/server.ts` 实例化全部仓储并注入 `buildApp`；`app.ts` 对仓储只做 type-only import（依赖倒置）。
@@ -122,3 +122,5 @@ Types → Config → Repo → Service → Runtime → UI
 2e护栏先行（2026-10-16）：`pnpm service:check`以TypeScript AST/类型检查服务仅依赖已登记仓储端口实现或packages、仓储不得反向依赖Service、Runtime同入口不得跨仓编排；接入ci:local，无业务Service迁移。单仓路由继续直调Repo，不添加透传层。真实库存、静态能力边界及注入验证见[Service边界护栏](docs/engineering/service-boundary-guard.md)；该护栏不代表上述所有历史架构验证点均已机械覆盖，也不修TD-GATE-003。
 
 `docs/adr/0001`~`0010`：TS monorepo 选型、PostgreSQL 与迁移、不透明会话、default-deny RBAC 与 DataScope、版本化平台引擎、事务 outbox、不可变业务对象 schema、P1 CRM 兼容、商务修订图、不可变 Quote-to-Cash 台账。架构改动前先读对应 ADR；与 ADR 冲突的改动须新开 ADR 并经人工确认。
+
+Batch3库存同步元数据与流水权威分离见[ADR0011](docs/adr/0011_inventory_resource_serialization.md)：0071仅本地测试获准，生产执行另授；旧SQL兼容不等于旧binary启动兼容。

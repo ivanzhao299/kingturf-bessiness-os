@@ -452,3 +452,5 @@ E1先行固定证据：[authorization守恒候选/773例旧新探针](evidence/e
 [Batch 2 四项长函数豁免独立整改计划](productization/batch2-complexity-plan.md)：到期、重叠、守恒拆分与回归保护，不续期。
 
 [KingTurf V1.0 Batch 3 本地执行授权与计划](productization/batch3-execution-2026-10-26.md)：19d40a2后继，库存/风险三项正式修复、独立G5守恒及设计边界。
+
+[ADR 0011: Serialize inventory resources without a second balance ledger](adr/0011_inventory_resource_serialization.md)：Batch3库存保护行、快照、兼容与回退；仅本地验证授权。
