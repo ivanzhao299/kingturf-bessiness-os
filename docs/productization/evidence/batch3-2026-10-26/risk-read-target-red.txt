@@ -1,0 +1,130 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ❯ test/risk-replay-http-postgres.integration.test.ts (16 tests | 1 failed | 15 skipped) 2252ms
+   ↓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > retains legal same-user and authorized different-user replay without duplicate effects
+   ↓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > rejects an existing key after current action permission is revoked
+   ↓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > rejects scope narrowing even if the new payload names another order
+   ↓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > rejects same-tenant nonowners and a caller with no current action grant
+   ↓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > uses changed organization anchors rather than the original authorization snapshot
+   ↓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > rejects revoked sessions and disabled organizations before returning old results
+   ↓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > isolates the same idempotency key in another company
+   ↓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > checks each caller independently during concurrent legal and denied replays
+   ↓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > serializes truly overlapping same-key HTTP requests without duplicate writes
+   × TD-RISK-002 real HTTP current authorization on PostgreSQL replays > TD-SEC-009: restricts replay responses to the independent current read scope 235ms
+     → expected { …(16) } to deeply equal { Object (id) }
+   ↓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > TD-RISK-003: keeps authorized same-user and current broad-user task replay unchanged
+   ↓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > TD-RISK-003: denies cached events after action revocation and narrowing away from the assignee
+   ↓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > TD-RISK-003: rejects invalid membership and cross-company cached task reads
+   ↓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > TD-RISK-003: binds a tenant key to its original task without leaking another subject
+   ↓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > TD-RISK-003: serializes truly overlapping duplicate task commands without another event
+   ↓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > TD-RISK-003: serializes one key across two accessible task subjects
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/risk-replay-http-postgres.integration.test.ts > TD-RISK-002 real HTTP current authorization on PostgreSQL replays > TD-SEC-009: restricts replay responses to the independent current read scope
+AssertionError: expected { …(16) } to deeply equal { Object (id) }
+
+- Expected
++ Received
+
+  {
++   "actor_id": "ae0f5313-2830-4493-b14e-b9d316b78162",
++   "calculation_trace": [
++     {
++       "actual": 2631,
++       "matched": true,
++       "rule": "LOW_MARGIN",
++       "threshold": 10000,
++     },
++     {
++       "amount": "850000.000000",
++       "graceDays": 0,
++       "matched": true,
++       "rule": "OVERDUE_AR",
++     },
++     {
++       "matched": false,
++       "rule": "CREDIT_EXPIRY",
++       "validUntil": "2099-03-31 23:59:59+00",
++       "warningDays": 0,
++     },
++     {
++       "evidence": "released order pins an exact signed contract",
++       "matched": false,
++       "rule": "CONTRACT_SIGNATURE",
++     },
++     {
++       "evidence": "order status and graph were validated at release",
++       "matched": false,
++       "rule": "ORDER_RELEASE_GATE",
++     },
++   ],
++   "canonical_hash": "f6a5430853298b55f9a22e459291a6162a7017e92c84f6ee37a22ab91e54a5ca",
++   "canonical_input": {
++     "assigneeEmployeeId": "ae0f5313-2830-4493-b14e-b9d316b78162",
++     "creditValidUntil": "2099-03-31 23:59:59+00",
++     "dueAt": "2099-01-01T00:00:00.000Z",
++     "marginBasisPoints": 2631,
++     "openAr": "850000.000000",
++     "orderNumber": "AUTH-ORDER",
++     "overdueAr": "850000.000000",
++     "policyVersionId": "8dd231d0-8073-48d2-9462-b1c71d26378d",
++     "salesOrderId": "8e0ea599-65a7-4164-b0d6-de67ed5c5f39",
++     "validUntil": "2099-01-01T00:00:00.000Z",
++   },
++   "correlation_id": "af6e8036-daf9-4a06-8036-be9e4eafef1f",
++   "created_at": "2026-10-26T07:50:04.777496+00:00",
++   "findings": [
++     {
++       "actual": 2631,
++       "code": "LOW_MARGIN",
++       "severity": "HIGH",
++       "threshold": 10000,
++     },
++     {
++       "amount": "850000.000000",
++       "code": "OVERDUE_AR",
++       "graceDays": 0,
++       "severity": "CRITICAL",
++     },
++   ],
+    "id": "edb8d9ae-ba98-4e5e-93b2-9c037276ee00",
++   "idempotency_key": "ca505c1c-5021-4035-8089-f3c8f927d6a2",
++   "policy_version_id": "8dd231d0-8073-48d2-9462-b1c71d26378d",
++   "recommended_actions": [
++     {
++       "action": "复核利润与例外审批",
++       "finding": "LOW_MARGIN",
++     },
++     {
++       "action": "立即催收并升级",
++       "finding": "OVERDUE_AR",
++     },
++   ],
++   "sales_order_id": "8e0ea599-65a7-4164-b0d6-de67ed5c5f39",
++   "score": 100,
++   "severity": "CRITICAL",
++   "tenant_id": "0e0315c2-e4a8-4aca-b480-edb142271bc5",
++   "valid_until": "2099-01-01T00:00:00+00:00",
+  }
+
+ ❯ test/risk-replay-http-postgres.integration.test.ts:437:62
+    435|     const replay = await evaluate(ownerToken);
+    436|     expect(replay.status).toBe(201);
+    437|     expect((await replay.json()) as Record<string, unknown>).toEqual({…
+       |                                                              ^
+    438|     expect(await counts()).toEqual(before);
+    439|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 15 skipped (16)
+   Start at  15:50:01
+   Duration  3.28s (transform 619ms, setup 0ms, collect 868ms, tests 2.25s, environment 0ms, prepare 44ms)
+
+undefined
+/home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run test/risk-replay-http-postgres.integration.test.ts -t TD-SEC-009

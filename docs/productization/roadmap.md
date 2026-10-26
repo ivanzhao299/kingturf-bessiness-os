@@ -1,5 +1,7 @@
 # KingTurf V1.0 执行路线图草案
 
+**2026-10-26 Batch3最新进度**：[验证/交付](batch3-verification-2026-10-26.md)记录INV001、RISK003、SEC009本地修复与独立源码复核；[业务增量设计](batch3-business-design.md)保留未决口径，隔离原型不并入正式候选。G5-Q/F已消除，B/D仍限期开放。最终精确提交完整CI及浏览器两轮只认本地机器回执，不复用Batch2。远程/主线/生产未授权，PILOT_READINESS=NO_GO。以下旧状态保留原时点。
+
 **Batch2后继**：[交付记录](batch2-delivery-2026-10-26.md)登记TD-RISK-002本地动作范围修复、B/C设计、TD-INV-001负库存并发及其余新安全/成本阻断。原Batch1成果不重做，未证人工/生产状态不抬绿，PILOT_READINESS=NO_GO。
 
 **本地整改后继**：[交付记录](local-delivery-2026-10-26.md)为A/B/C/D/F实际实施及新候选测试状态，[业务决策](local-business-decisions-2026-10-26.md)为剩余口径。下文保留b1ef7a9审计时点，不以旧“未修复/未授权”覆盖新证据；仍未人工放行，PILOT_READINESS=NO_GO。

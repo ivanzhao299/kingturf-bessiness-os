@@ -1,0 +1,1181 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ✓ test/risk-replay-http-postgres.integration.test.ts (16 tests) 4779ms
+ ✓ test/risk-postgres.integration.test.ts (9 tests) 12153ms
+   ✓ risk repository real PostgreSQL contracts > creates versioned policies with audit-only evidence and immutable publication  1524ms
+   ✓ risk repository real PostgreSQL contracts > calculates fixed capped findings, trace and a task from the real order/AR graph  1324ms
+   ✓ risk repository real PostgreSQL contracts > does not create a task for zero score and replays the existing persisted evaluation  1279ms
+   ✓ risk repository real PostgreSQL contracts > rejects ineligible references without inserting evaluation or task evidence  1317ms
+   ✓ risk repository real PostgreSQL contracts > records contiguous task decisions, enforces assignee access and preserves replay semantics  1324ms
+   ✓ risk repository real PostgreSQL contracts > TD-RISK-001: binds fixed and dynamic parameters across real scope combinations and replays once  1408ms
+   ✓ risk repository real PostgreSQL contracts > TD-RISK-002: rejects a known-key replay outside the current scope and keeps authorized handoff  1292ms
+   ✓ risk repository real PostgreSQL contracts > TD-RISK-002: reevaluates explicit anchors on the stored order for every replay  1317ms
+   ✓ risk repository real PostgreSQL contracts > TD-RISK-003: authorizes the current task and rejects a known key belonging to another task  1366ms
+ ❯ test/risk-route-contract.test.ts (1099 tests | 8 failed) 455ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list > passes exact arguments, opaque refs, receiver and response status 7ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list > authenticates before any malformed body 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list > requires bearer without authenticating 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list > denies missing capability before parsing fields 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list > denies empty scopes 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list > forwards scopes without HTTP business restriction SELF 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list > forwards scopes without HTTP business restriction TEAM 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list > forwards scopes without HTTP business restriction DEPARTMENT 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list > forwards scopes without HTTP business restriction COMPANY 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list > forwards scopes without HTTP business restriction GROUP 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list > uses empty anchor array when absent 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list > missing/falsy root falls through undefined 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list > missing/falsy root falls through null 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list > missing/falsy root falls through false 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list > missing/falsy root falls through 0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list > preserves DomainError forbidden 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list > preserves DomainError not_found 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list > preserves DomainError conflict 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list > preserves DomainError invalid_request 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list > hides ordinary repository error 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list > does not read method before authorization 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list > resolves second root and method only after Q, calls second receiver 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list > keeps method even if actor getter replaces it 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list > late actor getter failure becomes generic500 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list > late Map.get retains receiver and read capability 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list > reads response permission after unresolved promise 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list > reads all own entries even when projecting fields 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list > returns unprojected original reference with null fields, no entry enumeration 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list > body getter exception before inner dispatch remains rejected 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list > passes exact arguments, opaque refs, receiver and response status 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list > authenticates before any malformed body 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list > requires bearer without authenticating 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list > denies missing capability before parsing fields 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list > denies empty scopes 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list > forwards scopes without HTTP business restriction SELF 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list > forwards scopes without HTTP business restriction TEAM 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list > forwards scopes without HTTP business restriction DEPARTMENT 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list > forwards scopes without HTTP business restriction COMPANY 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list > forwards scopes without HTTP business restriction GROUP 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list > uses empty anchor array when absent 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list > missing/falsy root falls through undefined 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list > missing/falsy root falls through null 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list > missing/falsy root falls through false 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list > missing/falsy root falls through 0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list > preserves DomainError forbidden 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list > preserves DomainError not_found 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list > preserves DomainError conflict 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list > preserves DomainError invalid_request 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list > hides ordinary repository error 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list > does not read method before authorization 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list > resolves second root and method only after Q, calls second receiver 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list > keeps method even if actor getter replaces it 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list > late actor getter failure becomes generic500 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list > late Map.get retains receiver and read capability 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list > reads response permission after unresolved promise 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list > reads all own entries even when projecting fields 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list > returns unprojected original reference with null fields, no entry enumeration 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list > body getter exception before inner dispatch remains rejected 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create > passes exact arguments, opaque refs, receiver and response status 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create > authenticates before any malformed body 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create > requires bearer without authenticating 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create > denies missing capability before parsing fields 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create > denies empty scopes 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create > forwards scopes without HTTP business restriction SELF 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create > forwards scopes without HTTP business restriction TEAM 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create > forwards scopes without HTTP business restriction DEPARTMENT 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create > forwards scopes without HTTP business restriction COMPANY 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create > forwards scopes without HTTP business restriction GROUP 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create > uses empty anchor array when absent 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create > missing/falsy root falls through undefined 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create > missing/falsy root falls through null 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create > missing/falsy root falls through false 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create > missing/falsy root falls through 0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create > preserves DomainError forbidden 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create > preserves DomainError not_found 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create > preserves DomainError conflict 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create > preserves DomainError invalid_request 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create > hides ordinary repository error 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create > does not read method before authorization 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create > resolves second root and method only after Q, calls second receiver 3ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create > keeps method even if actor getter replaces it 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create > late actor getter failure becomes generic500 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create > late Map.get retains receiver and read capability 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create > reads response permission after unresolved promise 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create > reads all own entries even when projecting fields 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create > returns unprojected original reference with null fields, no entry enumeration 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create > body getter exception before inner dispatch remains rejected 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision > passes exact arguments, opaque refs, receiver and response status 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision > authenticates before any malformed body 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision > requires bearer without authenticating 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision > denies missing capability before parsing fields 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision > denies empty scopes 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision > forwards scopes without HTTP business restriction SELF 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision > forwards scopes without HTTP business restriction TEAM 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision > forwards scopes without HTTP business restriction DEPARTMENT 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision > forwards scopes without HTTP business restriction COMPANY 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision > forwards scopes without HTTP business restriction GROUP 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision > uses empty anchor array when absent 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision > missing/falsy root falls through undefined 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision > missing/falsy root falls through null 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision > missing/falsy root falls through false 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision > missing/falsy root falls through 0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision > preserves DomainError forbidden 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision > preserves DomainError not_found 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision > preserves DomainError conflict 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision > preserves DomainError invalid_request 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision > hides ordinary repository error 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision > does not read method before authorization 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision > resolves second root and method only after Q, calls second receiver 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision > keeps method even if actor getter replaces it 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision > late actor getter failure becomes generic500 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision > late Map.get retains receiver and read capability 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision > reads response permission after unresolved promise 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision > reads all own entries even when projecting fields 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision > returns unprojected original reference with null fields, no entry enumeration 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision > body getter exception before inner dispatch remains rejected 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish > passes exact arguments, opaque refs, receiver and response status 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish > authenticates before any malformed body 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish > requires bearer without authenticating 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish > denies missing capability before parsing fields 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish > denies empty scopes 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish > forwards scopes without HTTP business restriction SELF 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish > forwards scopes without HTTP business restriction TEAM 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish > forwards scopes without HTTP business restriction DEPARTMENT 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish > forwards scopes without HTTP business restriction COMPANY 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish > forwards scopes without HTTP business restriction GROUP 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish > uses empty anchor array when absent 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish > missing/falsy root falls through undefined 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish > missing/falsy root falls through null 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish > missing/falsy root falls through false 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish > missing/falsy root falls through 0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish > preserves DomainError forbidden 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish > preserves DomainError not_found 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish > preserves DomainError conflict 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish > preserves DomainError invalid_request 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish > hides ordinary repository error 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish > does not read method before authorization 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish > resolves second root and method only after Q, calls second receiver 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish > keeps method even if actor getter replaces it 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish > late actor getter failure becomes generic500 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish > late Map.get retains receiver and read capability 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish > reads response permission after unresolved promise 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish > reads all own entries even when projecting fields 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish > returns unprojected original reference with null fields, no entry enumeration 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish > body getter exception before inner dispatch remains rejected 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate > passes exact arguments, opaque refs, receiver and response status 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate > authenticates before any malformed body 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate > requires bearer without authenticating 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate > denies missing capability before parsing fields 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate > denies empty scopes 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate > forwards scopes without HTTP business restriction SELF 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate > forwards scopes without HTTP business restriction TEAM 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate > forwards scopes without HTTP business restriction DEPARTMENT 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate > forwards scopes without HTTP business restriction COMPANY 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate > forwards scopes without HTTP business restriction GROUP 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate > uses empty anchor array when absent 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate > missing/falsy root falls through undefined 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate > missing/falsy root falls through null 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate > missing/falsy root falls through false 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate > missing/falsy root falls through 0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate > preserves DomainError forbidden 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate > preserves DomainError not_found 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate > preserves DomainError conflict 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate > preserves DomainError invalid_request 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate > hides ordinary repository error 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate > does not read method before authorization 0ms
+   × frozen inline risk HTTP contract at 0eccaf6 > evaluate > resolves second root and method only after Q, calls second receiver 7ms
+     → expected 500 to be 201 // Object.is equality
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate > keeps method even if actor getter replaces it 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate > late actor getter failure becomes generic500 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate > late Map.get retains receiver and read capability 0ms
+   × frozen inline risk HTTP contract at 0eccaf6 > evaluate > reads response permission after unresolved promise 2ms
+     → expected { …(2) } to deeply equal { …(2) }
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate > reads all own entries even when projecting fields 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate > returns unprojected original reference with null fields, no entry enumeration 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate > body getter exception before inner dispatch remains rejected 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge > passes exact arguments, opaque refs, receiver and response status 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge > authenticates before any malformed body 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge > requires bearer without authenticating 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge > denies missing capability before parsing fields 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge > denies empty scopes 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge > forwards scopes without HTTP business restriction SELF 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge > forwards scopes without HTTP business restriction TEAM 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge > forwards scopes without HTTP business restriction DEPARTMENT 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge > forwards scopes without HTTP business restriction COMPANY 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge > forwards scopes without HTTP business restriction GROUP 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge > uses empty anchor array when absent 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge > missing/falsy root falls through undefined 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge > missing/falsy root falls through null 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge > missing/falsy root falls through false 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge > missing/falsy root falls through 0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge > preserves DomainError forbidden 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge > preserves DomainError not_found 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge > preserves DomainError conflict 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge > preserves DomainError invalid_request 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge > hides ordinary repository error 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge > does not read method before authorization 0ms
+   × frozen inline risk HTTP contract at 0eccaf6 > task acknowledge > resolves second root and method only after Q, calls second receiver 1ms
+     → expected 500 to be 201 // Object.is equality
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge > keeps method even if actor getter replaces it 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge > late actor getter failure becomes generic500 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge > late Map.get retains receiver and read capability 0ms
+   × frozen inline risk HTTP contract at 0eccaf6 > task acknowledge > reads response permission after unresolved promise 1ms
+     → expected { …(2) } to deeply equal { …(2) }
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge > reads all own entries even when projecting fields 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge > returns unprojected original reference with null fields, no entry enumeration 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge > body getter exception before inner dispatch remains rejected 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate > passes exact arguments, opaque refs, receiver and response status 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate > authenticates before any malformed body 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate > requires bearer without authenticating 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate > denies missing capability before parsing fields 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate > denies empty scopes 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate > forwards scopes without HTTP business restriction SELF 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate > forwards scopes without HTTP business restriction TEAM 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate > forwards scopes without HTTP business restriction DEPARTMENT 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate > forwards scopes without HTTP business restriction COMPANY 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate > forwards scopes without HTTP business restriction GROUP 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate > uses empty anchor array when absent 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate > missing/falsy root falls through undefined 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate > missing/falsy root falls through null 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate > missing/falsy root falls through false 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate > missing/falsy root falls through 0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate > preserves DomainError forbidden 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate > preserves DomainError not_found 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate > preserves DomainError conflict 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate > preserves DomainError invalid_request 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate > hides ordinary repository error 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate > does not read method before authorization 0ms
+   × frozen inline risk HTTP contract at 0eccaf6 > task escalate > resolves second root and method only after Q, calls second receiver 1ms
+     → expected 500 to be 201 // Object.is equality
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate > keeps method even if actor getter replaces it 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate > late actor getter failure becomes generic500 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate > late Map.get retains receiver and read capability 0ms
+   × frozen inline risk HTTP contract at 0eccaf6 > task escalate > reads response permission after unresolved promise 1ms
+     → expected { …(2) } to deeply equal { …(2) }
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate > reads all own entries even when projecting fields 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate > returns unprojected original reference with null fields, no entry enumeration 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate > body getter exception before inner dispatch remains rejected 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close > passes exact arguments, opaque refs, receiver and response status 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close > authenticates before any malformed body 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close > requires bearer without authenticating 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close > denies missing capability before parsing fields 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close > denies empty scopes 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close > forwards scopes without HTTP business restriction SELF 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close > forwards scopes without HTTP business restriction TEAM 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close > forwards scopes without HTTP business restriction DEPARTMENT 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close > forwards scopes without HTTP business restriction COMPANY 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close > forwards scopes without HTTP business restriction GROUP 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close > uses empty anchor array when absent 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close > missing/falsy root falls through undefined 3ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close > missing/falsy root falls through null 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close > missing/falsy root falls through false 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close > missing/falsy root falls through 0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close > preserves DomainError forbidden 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close > preserves DomainError not_found 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close > preserves DomainError conflict 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close > preserves DomainError invalid_request 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close > hides ordinary repository error 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close > does not read method before authorization 0ms
+   × frozen inline risk HTTP contract at 0eccaf6 > task close > resolves second root and method only after Q, calls second receiver 1ms
+     → expected 500 to be 201 // Object.is equality
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close > keeps method even if actor getter replaces it 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close > late actor getter failure becomes generic500 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close > late Map.get retains receiver and read capability 0ms
+   × frozen inline risk HTTP contract at 0eccaf6 > task close > reads response permission after unresolved promise 1ms
+     → expected { …(2) } to deeply equal { …(2) }
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close > reads all own entries even when projecting fields 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close > returns unprojected original reference with null fields, no entry enumeration 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close > body getter exception before inner dispatch remains rejected 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > object body before Q undefined 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > object body before Q null 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > object body before Q  0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > object body before Q  0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > object body before Q false 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > object body before Q 0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > unknown own fields sorted before Q and without reading values 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > inherited unknown and symbols ignored by allow/field authorization 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > own allowed fields are requested, publish requests none 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > inherited supported fields read although not requested 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > independent late read fields null 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > independent late read fields [] 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > independent late read fields ["score"] 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > without read grant only id/version 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > no-read null result500 while all-read null remains null 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > array result without read projects own entries id/version only 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > code invalid #0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > code invalid #1 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > code invalid #2 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > code invalid #3 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > code invalid #4 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > code invalid #5 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > code invalid #6 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > code invalid #7 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > code getter reads once after method and before actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > code throwing method precedes invalid input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > code undefined method still evaluates bad input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > code input failure precedes actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > code input mutating method cannot replace captured receiver 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > name invalid #0 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > name invalid #1 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > name invalid #2 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > name invalid #3 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > name invalid #4 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > name invalid #5 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > name invalid #6 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > name invalid #7 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > name getter reads once after method and before actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > name throwing method precedes invalid input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > name undefined method still evaluates bad input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > name input failure precedes actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > name input mutating method cannot replace captured receiver 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > minimumMarginBasisPoints invalid #0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > minimumMarginBasisPoints invalid #1 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > minimumMarginBasisPoints invalid #2 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > minimumMarginBasisPoints invalid #3 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > minimumMarginBasisPoints invalid #4 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > minimumMarginBasisPoints invalid #5 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > minimumMarginBasisPoints invalid #6 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > minimumMarginBasisPoints invalid #7 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > minimumMarginBasisPoints invalid #8 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > minimumMarginBasisPoints invalid #9 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > minimumMarginBasisPoints getter reads once after method and before actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > minimumMarginBasisPoints throwing method precedes invalid input 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > minimumMarginBasisPoints undefined method still evaluates bad input 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > minimumMarginBasisPoints input failure precedes actor 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > minimumMarginBasisPoints input mutating method cannot replace captured receiver 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > minimumMarginBasisPoints exact integer boundary -100000 3ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > minimumMarginBasisPoints exact integer boundary 10000 2ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > minimumMarginBasisPoints exact integer boundary 0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > overdueGraceDays invalid #0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > overdueGraceDays invalid #1 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > overdueGraceDays invalid #2 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > overdueGraceDays invalid #3 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > overdueGraceDays invalid #4 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > overdueGraceDays invalid #5 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > overdueGraceDays invalid #6 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > overdueGraceDays invalid #7 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > overdueGraceDays invalid #8 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > overdueGraceDays invalid #9 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > overdueGraceDays getter reads once after method and before actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > overdueGraceDays throwing method precedes invalid input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > overdueGraceDays undefined method still evaluates bad input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > overdueGraceDays input failure precedes actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > overdueGraceDays input mutating method cannot replace captured receiver 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > overdueGraceDays exact integer boundary 0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > overdueGraceDays exact integer boundary 3650 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > overdueGraceDays exact integer boundary 0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > creditWarningDays invalid #0 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > creditWarningDays invalid #1 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > creditWarningDays invalid #2 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > creditWarningDays invalid #3 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > creditWarningDays invalid #4 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > creditWarningDays invalid #5 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > creditWarningDays invalid #6 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > creditWarningDays invalid #7 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > creditWarningDays invalid #8 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > creditWarningDays invalid #9 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > creditWarningDays getter reads once after method and before actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > creditWarningDays throwing method precedes invalid input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > creditWarningDays undefined method still evaluates bad input 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > creditWarningDays input failure precedes actor 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > creditWarningDays input mutating method cannot replace captured receiver 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > creditWarningDays exact integer boundary 0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > creditWarningDays exact integer boundary 3650 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > creditWarningDays exact integer boundary 0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > effectiveAt invalid #0 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > effectiveAt invalid #1 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > effectiveAt invalid #2 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > effectiveAt invalid #3 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > effectiveAt invalid #4 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > effectiveAt invalid #5 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > effectiveAt invalid #6 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > effectiveAt invalid #7 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > effectiveAt invalid #8 2ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > effectiveAt invalid #9 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > effectiveAt invalid #10 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > effectiveAt getter reads once after method and before actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > effectiveAt throwing method precedes invalid input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > effectiveAt undefined method still evaluates bad input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > effectiveAt input failure precedes actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > effectiveAt input mutating method cannot replace captured receiver 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > effectiveAt old Date normalization  2026-02-30  0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > effectiveAt old Date normalization 2026-08-01 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > rules invalid #0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > rules invalid #1 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > rules invalid #2 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > rules invalid #3 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > rules invalid #4 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > rules invalid #5 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > rules getter reads once after method and before actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > rules throwing method precedes invalid input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > rules undefined method still evaluates bad input 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > rules input failure precedes actor 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > rules input mutating method cannot replace captured receiver 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > all field getters remain original input order 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > first error code before name 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > first error code before minimumMarginBasisPoints 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > first error code before overdueGraceDays 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > first error code before creditWarningDays 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > first error code before effectiveAt 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > first error code before rules 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > first error name before minimumMarginBasisPoints 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > first error name before overdueGraceDays 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > first error name before creditWarningDays 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > first error name before effectiveAt 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > first error name before rules 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > first error minimumMarginBasisPoints before overdueGraceDays 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > first error minimumMarginBasisPoints before creditWarningDays 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > first error minimumMarginBasisPoints before effectiveAt 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > first error minimumMarginBasisPoints before rules 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > first error overdueGraceDays before creditWarningDays 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > first error overdueGraceDays before effectiveAt 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > first error overdueGraceDays before rules 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > first error creditWarningDays before effectiveAt 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > first error creditWarningDays before rules 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create writes > first error effectiveAt before rules 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > object body before Q undefined 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > object body before Q null 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > object body before Q  0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > object body before Q  0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > object body before Q false 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > object body before Q 0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > unknown own fields sorted before Q and without reading values 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > inherited unknown and symbols ignored by allow/field authorization 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > own allowed fields are requested, publish requests none 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > inherited supported fields read although not requested 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > independent late read fields null 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > independent late read fields [] 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > independent late read fields ["score"] 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > without read grant only id/version 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > no-read null result500 while all-read null remains null 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > array result without read projects own entries id/version only 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > minimumMarginBasisPoints invalid #0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > minimumMarginBasisPoints invalid #1 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > minimumMarginBasisPoints invalid #2 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > minimumMarginBasisPoints invalid #3 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > minimumMarginBasisPoints invalid #4 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > minimumMarginBasisPoints invalid #5 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > minimumMarginBasisPoints invalid #6 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > minimumMarginBasisPoints invalid #7 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > minimumMarginBasisPoints invalid #8 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > minimumMarginBasisPoints invalid #9 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > minimumMarginBasisPoints getter reads once after method and before actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > minimumMarginBasisPoints throwing method precedes invalid input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > minimumMarginBasisPoints undefined method still evaluates bad input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > minimumMarginBasisPoints input failure precedes actor 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > minimumMarginBasisPoints input mutating method cannot replace captured receiver 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > minimumMarginBasisPoints exact integer boundary -100000 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > minimumMarginBasisPoints exact integer boundary 10000 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > minimumMarginBasisPoints exact integer boundary 0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > overdueGraceDays invalid #0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > overdueGraceDays invalid #1 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > overdueGraceDays invalid #2 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > overdueGraceDays invalid #3 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > overdueGraceDays invalid #4 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > overdueGraceDays invalid #5 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > overdueGraceDays invalid #6 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > overdueGraceDays invalid #7 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > overdueGraceDays invalid #8 5ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > overdueGraceDays invalid #9 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > overdueGraceDays getter reads once after method and before actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > overdueGraceDays throwing method precedes invalid input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > overdueGraceDays undefined method still evaluates bad input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > overdueGraceDays input failure precedes actor 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > overdueGraceDays input mutating method cannot replace captured receiver 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > overdueGraceDays exact integer boundary 0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > overdueGraceDays exact integer boundary 3650 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > overdueGraceDays exact integer boundary 0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > creditWarningDays invalid #0 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > creditWarningDays invalid #1 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > creditWarningDays invalid #2 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > creditWarningDays invalid #3 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > creditWarningDays invalid #4 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > creditWarningDays invalid #5 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > creditWarningDays invalid #6 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > creditWarningDays invalid #7 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > creditWarningDays invalid #8 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > creditWarningDays invalid #9 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > creditWarningDays getter reads once after method and before actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > creditWarningDays throwing method precedes invalid input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > creditWarningDays undefined method still evaluates bad input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > creditWarningDays input failure precedes actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > creditWarningDays input mutating method cannot replace captured receiver 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > creditWarningDays exact integer boundary 0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > creditWarningDays exact integer boundary 3650 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > creditWarningDays exact integer boundary 0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > effectiveAt invalid #0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > effectiveAt invalid #1 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > effectiveAt invalid #2 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > effectiveAt invalid #3 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > effectiveAt invalid #4 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > effectiveAt invalid #5 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > effectiveAt invalid #6 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > effectiveAt invalid #7 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > effectiveAt invalid #8 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > effectiveAt invalid #9 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > effectiveAt invalid #10 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > effectiveAt getter reads once after method and before actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > effectiveAt throwing method precedes invalid input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > effectiveAt undefined method still evaluates bad input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > effectiveAt input failure precedes actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > effectiveAt input mutating method cannot replace captured receiver 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > effectiveAt old Date normalization  2026-02-30  0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > effectiveAt old Date normalization 2026-08-01 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > rules invalid #0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > rules invalid #1 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > rules invalid #2 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > rules invalid #3 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > rules invalid #4 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > rules invalid #5 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > rules getter reads once after method and before actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > rules throwing method precedes invalid input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > rules undefined method still evaluates bad input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > rules input failure precedes actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > rules input mutating method cannot replace captured receiver 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > all field getters remain original input order 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > first error minimumMarginBasisPoints before overdueGraceDays 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > first error minimumMarginBasisPoints before creditWarningDays 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > first error minimumMarginBasisPoints before effectiveAt 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > first error minimumMarginBasisPoints before rules 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > first error overdueGraceDays before creditWarningDays 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > first error overdueGraceDays before effectiveAt 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > first error overdueGraceDays before rules 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > first error creditWarningDays before effectiveAt 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > first error creditWarningDays before rules 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision writes > first error effectiveAt before rules 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish writes > object body before Q undefined 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish writes > object body before Q null 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish writes > object body before Q  1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish writes > object body before Q  0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish writes > object body before Q false 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish writes > object body before Q 0 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish writes > unknown own fields sorted before Q and without reading values 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish writes > inherited unknown and symbols ignored by allow/field authorization 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish writes > own allowed fields are requested, publish requests none 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish writes > inherited supported fields read although not requested 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish writes > independent late read fields null 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish writes > independent late read fields [] 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish writes > independent late read fields ["score"] 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish writes > without read grant only id/version 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish writes > no-read null result500 while all-read null remains null 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish writes > array result without read projects own entries id/version only 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish writes > all field getters remain original input order 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > object body before Q undefined 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > object body before Q null 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > object body before Q  1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > object body before Q  0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > object body before Q false 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > object body before Q 0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > unknown own fields sorted before Q and without reading values 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > inherited unknown and symbols ignored by allow/field authorization 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > own allowed fields are requested, publish requests none 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > inherited supported fields read although not requested 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > independent late read fields null 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > independent late read fields [] 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > independent late read fields ["score"] 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > without read grant only id/version 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > no-read null result500 while all-read null remains null 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > array result without read projects own entries id/version only 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > salesOrderId invalid #0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > salesOrderId invalid #1 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > salesOrderId invalid #2 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > salesOrderId invalid #3 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > salesOrderId invalid #4 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > salesOrderId invalid #5 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > salesOrderId invalid #6 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > salesOrderId invalid #7 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > salesOrderId invalid #8 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > salesOrderId invalid #9 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > salesOrderId invalid #10 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > salesOrderId invalid #11 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > salesOrderId getter reads once after method and before actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > salesOrderId throwing method precedes invalid input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > salesOrderId undefined method still evaluates bad input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > salesOrderId input failure precedes actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > salesOrderId input mutating method cannot replace captured receiver 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > salesOrderId trims uppercase preserving spelling 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > policyVersionId invalid #0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > policyVersionId invalid #1 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > policyVersionId invalid #2 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > policyVersionId invalid #3 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > policyVersionId invalid #4 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > policyVersionId invalid #5 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > policyVersionId invalid #6 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > policyVersionId invalid #7 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > policyVersionId invalid #8 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > policyVersionId invalid #9 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > policyVersionId invalid #10 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > policyVersionId invalid #11 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > policyVersionId getter reads once after method and before actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > policyVersionId throwing method precedes invalid input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > policyVersionId undefined method still evaluates bad input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > policyVersionId input failure precedes actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > policyVersionId input mutating method cannot replace captured receiver 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > policyVersionId trims uppercase preserving spelling 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > assigneeEmployeeId invalid #0 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > assigneeEmployeeId invalid #1 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > assigneeEmployeeId invalid #2 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > assigneeEmployeeId invalid #3 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > assigneeEmployeeId invalid #4 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > assigneeEmployeeId invalid #5 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > assigneeEmployeeId invalid #6 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > assigneeEmployeeId invalid #7 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > assigneeEmployeeId invalid #8 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > assigneeEmployeeId invalid #9 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > assigneeEmployeeId invalid #10 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > assigneeEmployeeId invalid #11 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > assigneeEmployeeId getter reads once after method and before actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > assigneeEmployeeId throwing method precedes invalid input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > assigneeEmployeeId undefined method still evaluates bad input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > assigneeEmployeeId input failure precedes actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > assigneeEmployeeId input mutating method cannot replace captured receiver 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > assigneeEmployeeId trims uppercase preserving spelling 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > validUntil invalid #0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > validUntil invalid #1 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > validUntil invalid #2 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > validUntil invalid #3 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > validUntil invalid #4 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > validUntil invalid #5 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > validUntil invalid #6 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > validUntil invalid #7 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > validUntil invalid #8 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > validUntil invalid #9 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > validUntil invalid #10 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > validUntil getter reads once after method and before actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > validUntil throwing method precedes invalid input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > validUntil undefined method still evaluates bad input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > validUntil input failure precedes actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > validUntil input mutating method cannot replace captured receiver 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > validUntil old Date normalization  2026-02-30  0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > validUntil old Date normalization 2026-08-01 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > dueAt invalid #0 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > dueAt invalid #1 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > dueAt invalid #2 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > dueAt invalid #3 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > dueAt invalid #4 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > dueAt invalid #5 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > dueAt invalid #6 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > dueAt invalid #7 5ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > dueAt invalid #8 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > dueAt invalid #9 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > dueAt invalid #10 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > dueAt getter reads once after method and before actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > dueAt throwing method precedes invalid input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > dueAt undefined method still evaluates bad input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > dueAt input failure precedes actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > dueAt input mutating method cannot replace captured receiver 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > dueAt old Date normalization  2026-02-30  0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > dueAt old Date normalization 2026-08-01 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > all field getters remain original input order 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > first error salesOrderId before policyVersionId 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > first error salesOrderId before assigneeEmployeeId 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > first error salesOrderId before validUntil 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > first error salesOrderId before dueAt 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > first error policyVersionId before assigneeEmployeeId 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > first error policyVersionId before validUntil 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > first error policyVersionId before dueAt 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > first error assigneeEmployeeId before validUntil 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > first error assigneeEmployeeId before dueAt 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate writes > first error validUntil before dueAt 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > object body before Q undefined 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > object body before Q null 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > object body before Q  0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > object body before Q  0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > object body before Q false 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > object body before Q 0 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > unknown own fields sorted before Q and without reading values 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > inherited unknown and symbols ignored by allow/field authorization 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > own allowed fields are requested, publish requests none 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > inherited supported fields read although not requested 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > independent late read fields null 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > independent late read fields [] 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > independent late read fields ["score"] 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > without read grant only id/version 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > no-read null result500 while all-read null remains null 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > array result without read projects own entries id/version only 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > reason invalid #0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > reason invalid #1 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > reason invalid #2 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > reason invalid #3 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > reason invalid #4 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > reason invalid #5 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > reason invalid #6 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > reason invalid #7 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > reason getter reads once after method and before actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > reason throwing method precedes invalid input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > reason undefined method still evaluates bad input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > reason input failure precedes actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > reason input mutating method cannot replace captured receiver 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > evidence invalid #0 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > evidence invalid #1 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > evidence invalid #2 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > evidence invalid #3 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > evidence invalid #4 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > evidence invalid #5 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > evidence getter reads once after method and before actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > evidence throwing method precedes invalid input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > evidence undefined method still evaluates bad input 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > evidence input failure precedes actor 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > evidence input mutating method cannot replace captured receiver 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > all field getters remain original input order 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge writes > first error reason before evidence 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > object body before Q undefined 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > object body before Q null 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > object body before Q  0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > object body before Q  0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > object body before Q false 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > object body before Q 0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > unknown own fields sorted before Q and without reading values 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > inherited unknown and symbols ignored by allow/field authorization 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > own allowed fields are requested, publish requests none 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > inherited supported fields read although not requested 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > independent late read fields null 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > independent late read fields [] 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > independent late read fields ["score"] 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > without read grant only id/version 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > no-read null result500 while all-read null remains null 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > array result without read projects own entries id/version only 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > reason invalid #0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > reason invalid #1 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > reason invalid #2 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > reason invalid #3 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > reason invalid #4 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > reason invalid #5 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > reason invalid #6 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > reason invalid #7 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > reason getter reads once after method and before actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > reason throwing method precedes invalid input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > reason undefined method still evaluates bad input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > reason input failure precedes actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > reason input mutating method cannot replace captured receiver 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > evidence invalid #0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > evidence invalid #1 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > evidence invalid #2 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > evidence invalid #3 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > evidence invalid #4 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > evidence invalid #5 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > evidence getter reads once after method and before actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > evidence throwing method precedes invalid input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > evidence undefined method still evaluates bad input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > evidence input failure precedes actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > evidence input mutating method cannot replace captured receiver 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > all field getters remain original input order 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate writes > first error reason before evidence 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > object body before Q undefined 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > object body before Q null 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > object body before Q  0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > object body before Q  0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > object body before Q false 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > object body before Q 0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > unknown own fields sorted before Q and without reading values 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > inherited unknown and symbols ignored by allow/field authorization 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > own allowed fields are requested, publish requests none 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > inherited supported fields read although not requested 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > independent late read fields null 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > independent late read fields [] 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > independent late read fields ["score"] 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > without read grant only id/version 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > no-read null result500 while all-read null remains null 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > array result without read projects own entries id/version only 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > reason invalid #0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > reason invalid #1 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > reason invalid #2 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > reason invalid #3 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > reason invalid #4 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > reason invalid #5 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > reason invalid #6 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > reason invalid #7 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > reason getter reads once after method and before actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > reason throwing method precedes invalid input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > reason undefined method still evaluates bad input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > reason input failure precedes actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > reason input mutating method cannot replace captured receiver 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > evidence invalid #0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > evidence invalid #1 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > evidence invalid #2 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > evidence invalid #3 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > evidence invalid #4 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > evidence invalid #5 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > evidence getter reads once after method and before actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > evidence throwing method precedes invalid input 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > evidence undefined method still evaluates bad input 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > evidence input failure precedes actor 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > evidence input mutating method cannot replace captured receiver 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > all field getters remain original input order 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close writes > first error reason before evidence 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list reads > does not read late field-grant fields for empty result 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list reads > field projection is per row and late 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list reads > missing read after repository uses null fields and original row refs 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list reads > non-array repository result is500 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list reads > null row remains null without projection 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list reads > null row with projection is500 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list reads > does not read late field-grant fields for empty result 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list reads > field projection is per row and late 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list reads > missing read after repository uses null fields and original row refs 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list reads > non-array repository result is500 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list reads > null row remains null without projection 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list reads > null row with projection is500 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create rules > invalid shallow rule #0 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create rules > invalid shallow rule #1 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create rules > invalid shallow rule #2 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create rules > invalid shallow rule #3 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create rules > invalid shallow rule #4 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create rules > invalid shallow rule #5 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create rules > allows empty/holes/Date rule 0:false 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create rules > allows empty/holes/Date rule 2:false 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create rules > allows empty/holes/Date rule 1:true 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create rules > uses inherited numeric index and same nested refs, new outer array 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create rules > does not walk rule values or own getters 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create rules > rules map property is read after captured method 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create rules > native map snapshot length and per-index getter order 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create rules > second bad rule reports actual index and stops later getter 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision rules > invalid shallow rule #0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision rules > invalid shallow rule #1 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision rules > invalid shallow rule #2 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision rules > invalid shallow rule #3 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision rules > invalid shallow rule #4 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision rules > invalid shallow rule #5 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision rules > allows empty/holes/Date rule 0:false 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision rules > allows empty/holes/Date rule 2:false 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision rules > allows empty/holes/Date rule 1:true 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision rules > uses inherited numeric index and same nested refs, new outer array 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision rules > does not walk rule values or own getters 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision rules > rules map property is read after captured method 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision rules > native map snapshot length and per-index getter order 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision rules > second bad rule reports actual index and stops later getter 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > publish is strict boolean, not coercion #0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > publish is strict boolean, not coercion #1 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > publish is strict boolean, not coercion #2 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > publish is strict boolean, not coercion #3 8ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > publish is strict boolean, not coercion #4 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > publish is strict boolean, not coercion #5 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > publish is strict boolean, not coercion #6 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > publish is strict boolean, not coercion #7 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate idempotency > rejects key after valid input undefined 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate idempotency > rejects key after valid input 0 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate idempotency > rejects key after valid input 129 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate idempotency > passes opaque key unchanged 1 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate idempotency > passes opaque key unchanged 128 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate idempotency > passes opaque key unchanged 17 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate idempotency > outer header getter copied once; input before key validation before actor 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate idempotency > bad input wins over missing key and actor getter 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate idempotency > missing key wins over actor getter 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate idempotency > original request headers copied before input mutation 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge idempotency > rejects key after valid input undefined 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge idempotency > rejects key after valid input 0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge idempotency > rejects key after valid input 129 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge idempotency > passes opaque key unchanged 1 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge idempotency > passes opaque key unchanged 128 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge idempotency > passes opaque key unchanged 17 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge idempotency > outer header getter copied once; input before key validation before actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge idempotency > bad input wins over missing key and actor getter 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge idempotency > missing key wins over actor getter 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge idempotency > original request headers copied before input mutation 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate idempotency > rejects key after valid input undefined 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate idempotency > rejects key after valid input 0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate idempotency > rejects key after valid input 129 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate idempotency > passes opaque key unchanged 1 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate idempotency > passes opaque key unchanged 128 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate idempotency > passes opaque key unchanged 17 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate idempotency > outer header getter copied once; input before key validation before actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate idempotency > bad input wins over missing key and actor getter 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate idempotency > missing key wins over actor getter 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate idempotency > original request headers copied before input mutation 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close idempotency > rejects key after valid input undefined 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close idempotency > rejects key after valid input 0 7ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close idempotency > rejects key after valid input 129 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close idempotency > passes opaque key unchanged 1 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close idempotency > passes opaque key unchanged 128 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close idempotency > passes opaque key unchanged 17 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close idempotency > outer header getter copied once; input before key validation before actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close idempotency > bad input wins over missing key and actor getter 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close idempotency > missing key wins over actor getter 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close idempotency > original request headers copied before input mutation 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list root getter throw becomes internal500 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list second root getter throw occurs after authorization 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list Q captures scopes and anchors before method/input effects 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list normal undefined method with valid input500 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy list method getter DomainError is not hidden as generic500 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list root getter throw becomes internal500 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list second root getter throw occurs after authorization 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list Q captures scopes and anchors before method/input effects 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list normal undefined method with valid input500 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluation list method getter DomainError is not hidden as generic500 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create root getter throw becomes internal500 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create second root getter throw occurs after authorization 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create Q captures scopes and anchors before method/input effects 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create normal undefined method with valid input500 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create method getter DomainError is not hidden as generic500 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision root getter throw becomes internal500 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision second root getter throw occurs after authorization 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision Q captures scopes and anchors before method/input effects 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision normal undefined method with valid input500 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision method getter DomainError is not hidden as generic500 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish root getter throw becomes internal500 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish second root getter throw occurs after authorization 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish Q captures scopes and anchors before method/input effects 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish normal undefined method with valid input500 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish method getter DomainError is not hidden as generic500 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate root getter throw becomes internal500 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate second root getter throw occurs after authorization 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate Q captures scopes and anchors before method/input effects 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate normal undefined method with valid input500 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate method getter DomainError is not hidden as generic500 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge root getter throw becomes internal500 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge second root getter throw occurs after authorization 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge Q captures scopes and anchors before method/input effects 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge normal undefined method with valid input500 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge method getter DomainError is not hidden as generic500 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate root getter throw becomes internal500 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate second root getter throw occurs after authorization 2ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate Q captures scopes and anchors before method/input effects 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate normal undefined method with valid input500 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate method getter DomainError is not hidden as generic500 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close root getter throw becomes internal500 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close second root getter throw occurs after authorization 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close Q captures scopes and anchors before method/input effects 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close normal undefined method with valid input500 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close method getter DomainError is not hidden as generic500 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create grants exact own keys including optional publish 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create late read Map getter failure is500 after write 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy create Date body passes objectBody then original missing first field 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision grants exact own keys including optional publish 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision late read Map getter failure is500 after write 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision Date body passes objectBody then original missing first field 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish grants exact own keys including optional publish 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish late read Map getter failure is500 after write 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish Date body passes objectBody then original missing first field 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate grants exact own keys including optional publish 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate late read Map getter failure is500 after write 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate Date body passes objectBody then original missing first field 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge grants exact own keys including optional publish 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge late read Map getter failure is500 after write 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge Date body passes objectBody then original missing first field 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate grants exact own keys including optional publish 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate late read Map getter failure is500 after write 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate Date body passes objectBody then original missing first field 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close grants exact own keys including optional publish 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close late read Map getter failure is500 after write 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close Date body passes objectBody then original missing first field 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate header length getter runs after input before actor; one inner length read 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate original headers getter is read three times by wrapper; inner key from third 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > evaluate throwing key length wins over actor 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge header length getter runs after input before actor; one inner length read 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge original headers getter is read three times by wrapper; inner key from third 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge throwing key length wins over actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate header length getter runs after input before actor; one inner length read 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate original headers getter is read three times by wrapper; inner key from third 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate throwing key length wins over actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close header length getter runs after input before actor; one inner length read 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close original headers getter is read three times by wrapper; inner key from third 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close throwing key length wins over actor 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge empty evidence Date accepted at HTTP, no SQL close check 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge empty evidence object accepted at HTTP 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate empty evidence Date accepted at HTTP, no SQL close check 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate empty evidence object accepted at HTTP 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close empty evidence Date accepted at HTTP, no SQL close check 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close empty evidence object accepted at HTTP 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision raw short ID passed unchanged a 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision raw short ID passed unchanged - 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision raw short ID passed unchanged ---- 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision raw short ID passed unchanged a-0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision raw matcher rejects "AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision raw matcher rejects "g" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision raw matcher rejects "%61" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision raw matcher rejects "" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision raw matcher rejects "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy revision raw matcher rejects "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\n" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish raw short ID passed unchanged a 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish raw short ID passed unchanged - 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish raw short ID passed unchanged ---- 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish raw short ID passed unchanged a-0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish raw matcher rejects "AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish raw matcher rejects "g" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish raw matcher rejects "%61" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish raw matcher rejects "" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish raw matcher rejects "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > policy publish raw matcher rejects "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\n" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge raw short ID passed unchanged a 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge raw short ID passed unchanged - 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge raw short ID passed unchanged ---- 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge raw short ID passed unchanged a-0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge raw matcher rejects "AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge raw matcher rejects "g" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge raw matcher rejects "%61" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge raw matcher rejects "" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge raw matcher rejects "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task acknowledge raw matcher rejects "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\n" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate raw short ID passed unchanged a 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate raw short ID passed unchanged - 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate raw short ID passed unchanged ---- 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate raw short ID passed unchanged a-0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate raw matcher rejects "AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate raw matcher rejects "g" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate raw matcher rejects "%61" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate raw matcher rejects "" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate raw matcher rejects "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task escalate raw matcher rejects "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\n" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close raw short ID passed unchanged a 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close raw short ID passed unchanged - 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close raw short ID passed unchanged ---- 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close raw short ID passed unchanged a-0 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close raw matcher rejects "AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close raw matcher rejects "g" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close raw matcher rejects "%61" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close raw matcher rejects "" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close raw matcher rejects "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > task close raw matcher rejects "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\n" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method PUT /api/v1/risk-policies 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method PATCH /api/v1/risk-policies 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method DELETE /api/v1/risk-policies 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method HEAD /api/v1/risk-policies 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method OPTIONS /api/v1/risk-policies 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v1/risk-policies/" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v1/risk-policies?q=1" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v1/risk-policies#x" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v1/risk-policies\n" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/API/V1/RISK-POLICIES" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/prefix/api/v1/risk-policies" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v2/risk-policies" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v1/risk-policies/unknown" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method PUT /api/v1/risk-evaluations 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method PATCH /api/v1/risk-evaluations 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method DELETE /api/v1/risk-evaluations 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method HEAD /api/v1/risk-evaluations 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method OPTIONS /api/v1/risk-evaluations 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v1/risk-evaluations/" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v1/risk-evaluations?q=1" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v1/risk-evaluations#x" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v1/risk-evaluations\n" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/API/V1/RISK-EVALUATIONS" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/prefix/api/v1/risk-evaluations" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v2/risk-evaluations" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v1/risk-evaluations/unknown" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method GET /api/v1/risk-policies/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/versions 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method PUT /api/v1/risk-policies/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/versions 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method PATCH /api/v1/risk-policies/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/versions 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method DELETE /api/v1/risk-policies/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/versions 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method HEAD /api/v1/risk-policies/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/versions 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method OPTIONS /api/v1/risk-policies/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/versions 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v1/risk-policies/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/versions/" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v1/risk-policies/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/versions?q=1" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v1/risk-policies/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/versions#x" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v1/risk-policies/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/versions\n" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/API/V1/RISK-POLICIES/AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA/VERSIONS" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/prefix/api/v1/risk-policies/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/versions" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v2/risk-policies/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/versions" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v1/risk-policies/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/versions/unknown" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method GET /api/v1/risk-policy-versions/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/publish 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method PUT /api/v1/risk-policy-versions/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/publish 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method PATCH /api/v1/risk-policy-versions/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/publish 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method DELETE /api/v1/risk-policy-versions/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/publish 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method HEAD /api/v1/risk-policy-versions/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/publish 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method OPTIONS /api/v1/risk-policy-versions/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/publish 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v1/risk-policy-versions/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/publish/" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v1/risk-policy-versions/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/publish?q=1" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v1/risk-policy-versions/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/publish#x" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v1/risk-policy-versions/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/publish\n" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/API/V1/RISK-POLICY-VERSIONS/AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA/PUBLISH" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/prefix/api/v1/risk-policy-versions/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/publish" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v2/risk-policy-versions/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/publish" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v1/risk-policy-versions/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/publish/unknown" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method GET /api/v1/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/acknowledge 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method PUT /api/v1/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/acknowledge 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method PATCH /api/v1/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/acknowledge 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method DELETE /api/v1/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/acknowledge 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method HEAD /api/v1/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/acknowledge 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method OPTIONS /api/v1/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/acknowledge 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v1/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/acknowledge/" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v1/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/acknowledge?q=1" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v1/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/acknowledge#x" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v1/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/acknowledge\n" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/API/V1/RISK-TASKS/AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA/ACKNOWLEDGE" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/prefix/api/v1/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/acknowledge" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v2/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/acknowledge" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v1/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/acknowledge/unknown" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method GET /api/v1/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/escalate 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method PUT /api/v1/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/escalate 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method PATCH /api/v1/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/escalate 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method DELETE /api/v1/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/escalate 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method HEAD /api/v1/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/escalate 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method OPTIONS /api/v1/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/escalate 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v1/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/escalate/" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v1/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/escalate?q=1" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v1/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/escalate#x" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v1/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/escalate\n" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/API/V1/RISK-TASKS/AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA/ESCALATE" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/prefix/api/v1/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/escalate" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v2/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/escalate" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v1/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/escalate/unknown" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method GET /api/v1/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/close 1ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method PUT /api/v1/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/close 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method PATCH /api/v1/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/close 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method DELETE /api/v1/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/close 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method HEAD /api/v1/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/close 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > unsupported method OPTIONS /api/v1/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/close 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v1/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/close/" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v1/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/close?q=1" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v1/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/close#x" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v1/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/close\n" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/API/V1/RISK-TASKS/AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA/CLOSE" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/prefix/api/v1/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/close" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v2/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/close" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > alternate exact/raw path "/api/v1/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/close/unknown" 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > neighbor root unavailable does not consume /api/v1/risk-tasks/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/reopen 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > neighbor root unavailable does not consume /api/v1/quality-plans 0ms
+   ✓ frozen inline risk HTTP contract at 0eccaf6 > neighbor root unavailable does not consume /api/v1/sales-orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/360 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/risk-route-contract.test.ts > frozen inline risk HTTP contract at 0eccaf6 > evaluate > resolves second root and method only after Q, calls second receiver
+ FAIL  test/risk-route-contract.test.ts > frozen inline risk HTTP contract at 0eccaf6 > task acknowledge > resolves second root and method only after Q, calls second receiver
+ FAIL  test/risk-route-contract.test.ts > frozen inline risk HTTP contract at 0eccaf6 > task escalate > resolves second root and method only after Q, calls second receiver
+ FAIL  test/risk-route-contract.test.ts > frozen inline risk HTTP contract at 0eccaf6 > task close > resolves second root and method only after Q, calls second receiver
+AssertionError: expected 500 to be 201 // Object.is equality
+
+- Expected
++ Received
+
+- 201
++ 500
+
+ ❯ test/risk-route-contract.test.ts:472:49
+    470|             },
+    471|         );
+    472|         expect((await f.dispatch()).statusCode).toBe(
+       |                                                 ^
+    473|           row.kind === 'list' || row.kind === 'publish' ? 200 : 201,
+    474|         );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯
+
+ FAIL  test/risk-route-contract.test.ts > frozen inline risk HTTP contract at 0eccaf6 > evaluate > reads response permission after unresolved promise
+ FAIL  test/risk-route-contract.test.ts > frozen inline risk HTTP contract at 0eccaf6 > task acknowledge > reads response permission after unresolved promise
+ FAIL  test/risk-route-contract.test.ts > frozen inline risk HTTP contract at 0eccaf6 > task escalate > reads response permission after unresolved promise
+ FAIL  test/risk-route-contract.test.ts > frozen inline risk HTTP contract at 0eccaf6 > task close > reads response permission after unresolved promise
+AssertionError: expected { …(2) } to deeply equal { …(2) }
+
+- Expected
++ Received
+
+  {
+    "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+-   "name": "Visible",
++   "version": 7,
+  }
+
+ ❯ test/risk-route-contract.test.ts:540:11
+    538|         expect(
+    539|           row.kind === 'list' ? (record(response.body).items as unknow…
+    540|         ).toEqual({ id, name: 'Visible' });
+       |           ^
+    541|       });
+    542|       it('reads all own entries even when projecting fields', async ()…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯
+
+
+ Test Files  1 failed | 2 passed (3)
+      Tests  8 failed | 1116 passed (1124)
+   Start at  15:51:12
+   Duration  19.09s (transform 682ms, setup 0ms, collect 1.22s, tests 17.39s, environment 0ms, prepare 130ms)
+
+undefined
+/home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run test/risk-route-contract.test.ts test/risk-replay-http-postgres.integration.test.ts test/risk-postgres.integration.test.ts

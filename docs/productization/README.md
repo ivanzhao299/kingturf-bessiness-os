@@ -1,5 +1,7 @@
 # KingTurf V1.0 产品化改造与试运行交付工程
 
+**2026-10-26 Batch3最新进度**：[验证/交付](batch3-verification-2026-10-26.md)记录INV001、RISK003、SEC009本地修复与独立源码复核；[业务增量设计](batch3-business-design.md)保留未决口径，隔离原型不并入正式候选。G5-Q/F已消除，B/D仍限期开放。最终精确提交完整CI及浏览器两轮只认本地机器回执，不复用Batch2。远程/主线/生产未授权，PILOT_READINESS=NO_GO。以下旧状态保留原时点。
+
 **最新Batch2**：[本批交付](batch2-delivery-2026-10-26.md)承接已验证916f63f，仅正式修复TD-RISK-002动作范围重放；[成本修订](batch2-cost-revisions.md)、[发运库存](batch2-shipping-inventory.md)、[金额/版本/利润](batch2-money-bom-profit.md)和[四项复杂度任务](batch2-complexity-plan.md)为设计/分析。新增库存/风险/响应范围问题仍开放，PILOT_READINESS=NO_GO；本批最终CI/P1看收尾回执，不用旧测试替代。
 
 **最新本地实施授权**：负责人已批准进入[本地整改执行](local-execution-2026-10-26.md)，A/B/C及BOM基数、SALES_ORDER最小校验按该记录执行；此前“未授权实施”保留为审计时点。云端文件不是依赖，远程/生产仍不授权。

@@ -1,0 +1,57 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ❯ test/inventory-concurrency-postgres.integration.test.ts (16 tests | 1 failed) 14864ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > serializes 7+7 at a lazily created guard while retaining old ledger quantities  1043ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > exhausts exactly ten, preserves an empty zero balance projection and rejects shortage atomically  898ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > keeps duplicate source retries unique including truly competing requests  789ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > uses the post-wait balance for 'ISSUE' then 'RETURN'  912ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > uses the post-wait balance for 'RETURN' then 'ISSUE'  915ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > fails stale 'REPEATABLE READ' snapshots rather than creating negative stock  876ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > fails stale 'SERIALIZABLE' snapshots rather than creating negative stock  822ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > also rejects a stale RR snapshot when the shared guard is initially absent  859ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > coordinates first zero-balance concurrent inbound operations on a previously unused resource  900ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > does not serialize unrelated locations, lots, materials or companies  879ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > rejects foreign resources and mismatched material without guard or evidence residue  785ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > rolls back earlier writes of a failing multi-statement transaction including guard and paired evidence  872ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > protects direct same-statement multi-row inserts and restores the guard on rejection  857ms
+   × TD-INV-001 cross-connection inventory resource integrity > rolls inventory and guard back when a later production material constraint fails 797ms
+     → expected error: production issue requires released… { …(15) } to match object { code: '23503' }
+(17 matching properties omitted from actual)
+   ✓ TD-INV-001 cross-connection inventory resource integrity > aborts an unsorted two-resource deadlock victim with no partial inventory or success evidence  1827ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > uses a stable resource order for concurrent commands touching two existing resources  832ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/inventory-concurrency-postgres.integration.test.ts > TD-INV-001 cross-connection inventory resource integrity > rolls inventory and guard back when a later production material constraint fails
+AssertionError: expected error: production issue requires released… { …(15) } to match object { code: '23503' }
+(17 matching properties omitted from actual)
+
+- Expected
++ Received
+
+- {
+-   "code": "23503",
++ DatabaseError {
++   "code": "P0001",
+  }
+
+ ❯ test/inventory-concurrency-postgres.integration.test.ts:414:5
+    412|     const before = await revision(),
+    413|       correlation = randomUUID();
+    414|     await expect(
+       |     ^
+    415|       new PostgresProductionRepository(state().db).transactMaterial(
+    416|         randomUUID(),
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 15 passed (16)
+   Start at  15:22:46
+   Duration  15.20s (transform 112ms, setup 0ms, collect 149ms, tests 14.86s, environment 0ms, prepare 50ms)
+
+undefined
+/home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run test/inventory-concurrency-postgres.integration.test.ts

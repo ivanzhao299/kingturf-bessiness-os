@@ -1,0 +1,11 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ✓ test/procurement-postgres.integration.test.ts (12 tests | 11 skipped) 829ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > TD-INV-001: blocks overlapping 7+7 issues and commits only the satisfiable transaction  828ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 11 skipped (12)
+   Start at  15:18:47
+   Duration  1.12s (transform 111ms, setup 0ms, collect 146ms, tests 829ms, environment 0ms, prepare 45ms)
+

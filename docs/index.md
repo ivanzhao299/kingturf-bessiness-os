@@ -1,5 +1,11 @@
 # docs/index.md（全部文档索引）
 
+[V1.0 Batch3 定向证据](productization/evidence/batch3-2026-10-26/README.md)：目标红绿、失败修正、隔离模型和独立源码复核，最终CI/双轮另据固定SHA本地回执。
+
+[V1.0 Batch3 验证与交付](productization/batch3-verification-2026-10-26.md)：库存并发非负、风险重放与读取范围本地修复；G5两项消除、两项仍开放；最终CI/浏览器看精确SHA回执。
+
+[V1.0 Batch3 业务设计增量](productization/batch3-business-design.md)：成本舍入/修订、仓库出库、BOM pin与实际利润最小待决项，原型独立分支未合入正式候选。
+
 [V1.0产品化接管入口](productization/README.md)：2026-10-26，基线b1ef7a9；当前真实状态、行业/业务/架构审计、十二工作包及No-Go准入草稿。本轮仅本地文档和隔离验证，未授权业务实施或生产变更。同日再次核验主线、开放PR/Issue和证据哈希一致；补充技术层分别选型及管理员/运维场景。
 
 [Harness施工图竣工归档](exec-plans/completed/harness-2026-10-21.md)：阶段1–5与§14迁移记录；常驻规则以AGENTS、核心信念、架构、CI和门禁文档为准。

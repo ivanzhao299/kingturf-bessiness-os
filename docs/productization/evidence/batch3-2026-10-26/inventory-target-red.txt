@@ -1,0 +1,42 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ❯ test/procurement-postgres.integration.test.ts (12 tests | 1 failed | 11 skipped) 2949ms
+   ↓ procurement and inventory repository real PostgreSQL contracts > persists the qualified RFQ-to-receipt chain, derived stock and exact paired evidence
+   ↓ procurement and inventory repository real PostgreSQL contracts > requires COMPANY or GROUP scope and keeps GROUP reads and writes tenant-bounded
+   ↓ procurement and inventory repository real PostgreSQL contracts > rolls back invalid qualification, quote and issued-document inputs
+   ↓ procurement and inventory repository real PostgreSQL contracts > rolls back receipts, lots and movements on quantity, location and later-line failures
+   ↓ procurement and inventory repository real PostgreSQL contracts > nets signed movement types and rejects negative balances, mismatched lots and duplicate sources
+   ↓ procurement and inventory repository real PostgreSQL contracts > completes partial then final receipt and refuses receipt against the closed order
+   ↓ procurement and inventory repository real PostgreSQL contracts > rolls back issue and audit when an already-seeded outbox aggregate conflicts
+   ↓ procurement and inventory repository real PostgreSQL contracts > TD-PROC-001: receives 4 + 2 + 4 with exact stock, lot links and paired evidence
+   ↓ procurement and inventory repository real PostgreSQL contracts > TD-PROC-001: rejects duplicate receipt identities and excess after partial stock without residual writes
+   ↓ procurement and inventory repository real PostgreSQL contracts > TD-PROC-001: real concurrent receipts cannot over-receive and valid splits settle exactly
+   ↓ procurement and inventory repository real PostgreSQL contracts > TD-PROC-001: two valid concurrent 4 and 6 receipts both commit once
+   × procurement and inventory repository real PostgreSQL contracts > TD-INV-001: blocks overlapping 7+7 issues and commits only the satisfiable transaction 2947ms
+     → Expected competing PostgreSQL backend did not block on the held resource
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/procurement-postgres.integration.test.ts > procurement and inventory repository real PostgreSQL contracts > TD-INV-001: blocks overlapping 7+7 issues and commits only the satisfiable transaction
+Error: Expected competing PostgreSQL backend did not block on the held resource
+ ❯ waitForBlocking test/fixtures/controlled-transaction.ts:57:9
+     55|     await delay(20);
+     56|   }
+     57|   throw new Error('Expected competing PostgreSQL backend did not block…
+       |         ^
+     58| }
+     59| 
+ ❯ test/procurement-postgres.integration.test.ts:744:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 11 skipped (12)
+   Start at  15:17:15
+   Duration  3.26s (transform 109ms, setup 0ms, collect 152ms, tests 2.95s, environment 0ms, prepare 51ms)
+
+undefined
+/home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run test/procurement-postgres.integration.test.ts -t TD-INV-001

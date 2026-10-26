@@ -1,0 +1,16 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ✓ test/foundation-postgres.integration.test.ts (8 tests) 1089ms
+ ✓ test/commercial-postgres.integration.test.ts (2 tests) 1111ms
+ ✓ test/qtc-postgres.integration.test.ts (2 tests) 877ms
+ ✓ test/g5-qf-preservation.test.ts (4 tests) 107ms
+ ✓ test/commercial-evaluation-contract.test.ts (56 tests) 51ms
+ ✓ test/foundation-api.test.ts (21 tests) 43ms
+ ✓ test/foundation-route-snapshot.test.ts (2 tests) 17ms
+
+ Test Files  7 passed (7)
+      Tests  95 passed (95)
+   Start at  16:02:01
+   Duration  5.91s (transform 672ms, setup 0ms, collect 1.54s, tests 3.30s, environment 1ms, prepare 294ms)
+

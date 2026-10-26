@@ -1,0 +1,92 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ✓ test/production-postgres.integration.test.ts (6 tests) 1771ms
+ ✓ test/procurement-postgres.integration.test.ts (12 tests) 9592ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > persists the qualified RFQ-to-receipt chain, derived stock and exact paired evidence  855ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > requires COMPANY or GROUP scope and keeps GROUP reads and writes tenant-bounded  777ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > rolls back invalid qualification, quote and issued-document inputs  732ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > rolls back receipts, lots and movements on quantity, location and later-line failures  790ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > nets signed movement types and rejects negative balances, mismatched lots and duplicate sources  871ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > completes partial then final receipt and refuses receipt against the closed order  717ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > rolls back issue and audit when an already-seeded outbox aggregate conflicts  802ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > TD-PROC-001: receives 4 + 2 + 4 with exact stock, lot links and paired evidence  790ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > TD-PROC-001: rejects duplicate receipt identities and excess after partial stock without residual writes  713ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > TD-PROC-001: real concurrent receipts cannot over-receive and valid splits settle exactly  860ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > TD-PROC-001: two valid concurrent 4 and 6 receipts both commit once  856ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > TD-INV-001: blocks overlapping 7+7 issues and commits only the satisfiable transaction  827ms
+ ❯ test/inventory-concurrency-postgres.integration.test.ts (16 tests | 16 failed) 11908ms
+   × TD-INV-001 cross-connection inventory resource integrity > serializes 7+7 at a lazily created guard while retaining old ledger quantities 782ms
+     → new row for relation "inventory_locations" violates check constraint "inventory_locations_location_type_check"
+   × TD-INV-001 cross-connection inventory resource integrity > exhausts exactly ten, preserves an empty zero balance projection and rejects shortage atomically 776ms
+     → new row for relation "inventory_locations" violates check constraint "inventory_locations_location_type_check"
+   × TD-INV-001 cross-connection inventory resource integrity > keeps duplicate source retries unique including truly competing requests 732ms
+     → new row for relation "inventory_locations" violates check constraint "inventory_locations_location_type_check"
+   × TD-INV-001 cross-connection inventory resource integrity > uses the post-wait balance for 'ISSUE' then 'RETURN' 728ms
+     → new row for relation "inventory_locations" violates check constraint "inventory_locations_location_type_check"
+   × TD-INV-001 cross-connection inventory resource integrity > uses the post-wait balance for 'RETURN' then 'ISSUE' 765ms
+     → new row for relation "inventory_locations" violates check constraint "inventory_locations_location_type_check"
+   × TD-INV-001 cross-connection inventory resource integrity > fails stale 'REPEATABLE READ' snapshots rather than creating negative stock 712ms
+     → new row for relation "inventory_locations" violates check constraint "inventory_locations_location_type_check"
+   × TD-INV-001 cross-connection inventory resource integrity > fails stale 'SERIALIZABLE' snapshots rather than creating negative stock 745ms
+     → new row for relation "inventory_locations" violates check constraint "inventory_locations_location_type_check"
+   × TD-INV-001 cross-connection inventory resource integrity > also rejects a stale RR snapshot when the shared guard is initially absent 793ms
+     → new row for relation "inventory_locations" violates check constraint "inventory_locations_location_type_check"
+   × TD-INV-001 cross-connection inventory resource integrity > coordinates first zero-balance concurrent inbound operations on a previously unused resource 693ms
+     → new row for relation "inventory_locations" violates check constraint "inventory_locations_location_type_check"
+   × TD-INV-001 cross-connection inventory resource integrity > does not serialize unrelated locations, lots, materials or companies 743ms
+     → new row for relation "inventory_locations" violates check constraint "inventory_locations_location_type_check"
+   × TD-INV-001 cross-connection inventory resource integrity > rejects foreign resources and mismatched material without guard or evidence residue 754ms
+     → new row for relation "inventory_locations" violates check constraint "inventory_locations_location_type_check"
+   × TD-INV-001 cross-connection inventory resource integrity > rolls back earlier writes of a failing multi-statement transaction including guard and paired evidence 682ms
+     → new row for relation "inventory_locations" violates check constraint "inventory_locations_location_type_check"
+   × TD-INV-001 cross-connection inventory resource integrity > protects direct same-statement multi-row inserts and restores the guard on rejection 760ms
+     → new row for relation "inventory_locations" violates check constraint "inventory_locations_location_type_check"
+   × TD-INV-001 cross-connection inventory resource integrity > rolls inventory and guard back when a later production material constraint fails 754ms
+     → new row for relation "inventory_locations" violates check constraint "inventory_locations_location_type_check"
+   × TD-INV-001 cross-connection inventory resource integrity > aborts an unsorted two-resource deadlock victim with no partial inventory or success evidence 728ms
+     → new row for relation "inventory_locations" violates check constraint "inventory_locations_location_type_check"
+   × TD-INV-001 cross-connection inventory resource integrity > uses a stable resource order for concurrent commands touching two existing resources 758ms
+     → new row for relation "inventory_locations" violates check constraint "inventory_locations_location_type_check"
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 16 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/inventory-concurrency-postgres.integration.test.ts > TD-INV-001 cross-connection inventory resource integrity > serializes 7+7 at a lazily created guard while retaining old ledger quantities
+ FAIL  test/inventory-concurrency-postgres.integration.test.ts > TD-INV-001 cross-connection inventory resource integrity > exhausts exactly ten, preserves an empty zero balance projection and rejects shortage atomically
+ FAIL  test/inventory-concurrency-postgres.integration.test.ts > TD-INV-001 cross-connection inventory resource integrity > keeps duplicate source retries unique including truly competing requests
+ FAIL  test/inventory-concurrency-postgres.integration.test.ts > TD-INV-001 cross-connection inventory resource integrity > uses the post-wait balance for 'ISSUE' then 'RETURN'
+ FAIL  test/inventory-concurrency-postgres.integration.test.ts > TD-INV-001 cross-connection inventory resource integrity > uses the post-wait balance for 'RETURN' then 'ISSUE'
+ FAIL  test/inventory-concurrency-postgres.integration.test.ts > TD-INV-001 cross-connection inventory resource integrity > fails stale 'REPEATABLE READ' snapshots rather than creating negative stock
+ FAIL  test/inventory-concurrency-postgres.integration.test.ts > TD-INV-001 cross-connection inventory resource integrity > fails stale 'SERIALIZABLE' snapshots rather than creating negative stock
+ FAIL  test/inventory-concurrency-postgres.integration.test.ts > TD-INV-001 cross-connection inventory resource integrity > also rejects a stale RR snapshot when the shared guard is initially absent
+ FAIL  test/inventory-concurrency-postgres.integration.test.ts > TD-INV-001 cross-connection inventory resource integrity > coordinates first zero-balance concurrent inbound operations on a previously unused resource
+ FAIL  test/inventory-concurrency-postgres.integration.test.ts > TD-INV-001 cross-connection inventory resource integrity > does not serialize unrelated locations, lots, materials or companies
+ FAIL  test/inventory-concurrency-postgres.integration.test.ts > TD-INV-001 cross-connection inventory resource integrity > rejects foreign resources and mismatched material without guard or evidence residue
+ FAIL  test/inventory-concurrency-postgres.integration.test.ts > TD-INV-001 cross-connection inventory resource integrity > rolls back earlier writes of a failing multi-statement transaction including guard and paired evidence
+ FAIL  test/inventory-concurrency-postgres.integration.test.ts > TD-INV-001 cross-connection inventory resource integrity > protects direct same-statement multi-row inserts and restores the guard on rejection
+ FAIL  test/inventory-concurrency-postgres.integration.test.ts > TD-INV-001 cross-connection inventory resource integrity > rolls inventory and guard back when a later production material constraint fails
+ FAIL  test/inventory-concurrency-postgres.integration.test.ts > TD-INV-001 cross-connection inventory resource integrity > aborts an unsorted two-resource deadlock victim with no partial inventory or success evidence
+ FAIL  test/inventory-concurrency-postgres.integration.test.ts > TD-INV-001 cross-connection inventory resource integrity > uses a stable resource order for concurrent commands touching two existing resources
+error: new row for relation "inventory_locations" violates check constraint "inventory_locations_location_type_check"
+ ❯ ../../node_modules/.pnpm/pg@8.22.0/node_modules/pg/lib/client.js:652:17
+ ❯ src/procurement-repositories.ts:586:9
+    584|       company(context);
+    585|       const row = (
+    586|         await tx.query<{ id: string }>(
+       |         ^
+    587|           'INSERT INTO inventory_locations(tenant_id,code,name,locatio…
+    588|           [context.actor.companyId, input.code, input.name, input.loca…
+ ❯ Database.transaction ../../packages/database/src/index.ts:45:21
+ ❯ test/inventory-concurrency-postgres.integration.test.ts:91:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/16]⎯
+
+
+ Test Files  1 failed | 2 passed (3)
+      Tests  16 failed | 18 passed (34)
+   Start at  15:21:53
+   Duration  24.01s (transform 129ms, setup 0ms, collect 217ms, tests 23.27s, environment 0ms, prepare 145ms)
+
+undefined
+/home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run test/inventory-concurrency-postgres.integration.test.ts test/procurement-postgres.integration.test.ts test/production-postgres.integration.test.ts
