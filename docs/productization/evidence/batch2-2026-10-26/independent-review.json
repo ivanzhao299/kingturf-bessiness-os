@@ -1,0 +1,28 @@
+{
+  "scope": "independent read-only source/design review; no independent execution",
+  "source_commit": "778cf6f",
+  "test_commit": "01b4a8a",
+  "reviews": [
+    {
+      "role": "b2_security_review",
+      "result": "no blocker in TD-RISK-002 action-scope fix; SQL parameter order/original subject and current grants correct; risk task and independent read-scope gaps explicitly open",
+      "independent_test_run": false
+    },
+    {
+      "role": "b2_shipping_design",
+      "result": "commit barrier preserves real movement SQL, constraints and evidence; negative balance is a legitimate overlapping-transaction outcome; all movement channels need common serialization",
+      "independent_test_run": false
+    },
+    {
+      "role": "b2_cost_design",
+      "result": "append-only link/current-version design accepted as draft; exact constraint probe valid; added common order/run lock ordering and selected-BOM rate coverage requirement",
+      "independent_test_run": false
+    },
+    {
+      "role": "b2_money_versions",
+      "result": "precision/version/profit/G5 boundaries accurate; corrected quote preconditions from credit/contract to cost decision/policy/technical/opportunity",
+      "independent_test_run": false
+    }
+  ],
+  "delivery_evidence_review": "no blocking misstatement of scope, 37-test meaning, unchanged contracts, independent-review limits or pending final checks"
+}

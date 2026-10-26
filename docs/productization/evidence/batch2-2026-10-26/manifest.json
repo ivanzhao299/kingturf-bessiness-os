@@ -1,0 +1,27 @@
+{
+  "source_sha": "01b4a8a43b41d951fe5f65d23b44cc6c3632db31",
+  "binding": "controller-recorded source/test candidate; hashes preserve sanitized evidence, not a cryptographic execution attestation",
+  "sha256": {
+    "baseline-migrate.txt": "b76ea074418619883f8ce767de0317f2e46b607fdc7200a3e8c86400fba54fa4",
+    "baseline-risk-cost.txt": "b9b6e41f28df030732d6374650ce673e9a510ebd4b0f25673d4ef51fabfb51cb",
+    "browser-orchestrator.txt": "64d7569bb188930bc89ffdade81c4ade92af2f52ab4f4be4fae237131abfb91f",
+    "cost-rounding-exact-constraint.txt": "b461a2f5dcdbe8c9bc716323bf4e5282018417f6bb69d9db651703592a147f14",
+    "final-target-lint.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "gap-probes-final.txt": "c04783332fc7171afd3af9a2a12cbf52754339e896d419eb8cfd7d4a3a467cac",
+    "gap-regression.txt": "b1df8b184dc6487204c8314dee7ed5112c3945b065b9d9881798bc27bcbfee8d",
+    "independent-gap-probes.txt": "2ca669ea21a05a47990ee7097395e730cd5619a724656b407eb88d4a93c8d717",
+    "independent-review.json": "295cd23ee1371640f3c48362c9b148fe705afa092aa1d078fa5ac5c71742e1a8",
+    "money-reference-tool.txt": "56d80c4374e46278d4aa181edcbaca86a87d2e2e89b564cdfff748748eea2318",
+    "money-reference.json": "a16362b923805f7cde6aab30b77cb9d2c3e5cdce810be8618a1ab9b872b2e063",
+    "money-reference.txt": "92cd53268c3c1658e99b12d2953bb05e10d2ac981132b50f7cd627a463588421",
+    "risk-final-target.txt": "bb0039f2635416e87c252c3355bc4f0eeb326923f6da58530d3c4ee47dd1569a",
+    "risk-http-target-red-r2.txt": "30af1dfb7ef09f46f71db80ad3e007ba56d611c90ce8a1715543c49698554d38",
+    "risk-http-target-red-r3.txt": "e82e5efcb7bbce5881d87a8a4223b148491df86f2cee5cf72af5639f9f02f304",
+    "risk-http-target-red.txt": "2be9b8af2a6baaa60136a05f9881bf31cc68bd4ac3b6eb7164fbbf8845443042",
+    "risk-replay-green.txt": "6a723df6b0e901285d849b828db2e233013ede8443687fda2e891f9e23ff9ce1",
+    "risk-replay-target-red.txt": "b78aba2ff45ab5e56929f86379fa476cb2090251e277bb1df944662db8982d1e",
+    "shipping-quality-current-contract.txt": "1687cc90cf21ebfa08bc056a586e5af2ff557830f70b10d92336c78e475d2380",
+    "structure-final.txt": "3345a5cad973ffcfe2d7d0141dfc2a117f9c29d1fa72df082eaf235fc39e9663",
+    "verification.json": "ef65be704ba4ea837892873a8b62177f994bd625aba3a52c77b36c9987644c5e"
+  }
+}

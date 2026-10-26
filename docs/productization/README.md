@@ -1,5 +1,7 @@
 # KingTurf V1.0 产品化改造与试运行交付工程
 
+**最新Batch2**：[本批交付](batch2-delivery-2026-10-26.md)承接已验证916f63f，仅正式修复TD-RISK-002动作范围重放；[成本修订](batch2-cost-revisions.md)、[发运库存](batch2-shipping-inventory.md)、[金额/版本/利润](batch2-money-bom-profit.md)和[四项复杂度任务](batch2-complexity-plan.md)为设计/分析。新增库存/风险/响应范围问题仍开放，PILOT_READINESS=NO_GO；本批最终CI/P1看收尾回执，不用旧测试替代。
+
 **最新本地实施授权**：负责人已批准进入[本地整改执行](local-execution-2026-10-26.md)，A/B/C及BOM基数、SALES_ORDER最小校验按该记录执行；此前“未授权实施”保留为审计时点。云端文件不是依赖，远程/生产仍不授权。
 
 本入口承接 2026-10-26 负责人两次总控指令；同日再次实态复核见接管审计第六节。审计代码基线为 `b1ef7a9e7fdbfc0341f29f1cb612504ff47cd41b`。目标是岗位能够正确、安全地完成业务，当前结论为 **No-Go，尚未满足 V1.0 试运行准入**。这不撤销 Harness 治理验收，也不代表生产服务不可访问。

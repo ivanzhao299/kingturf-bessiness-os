@@ -1,5 +1,7 @@
 # KingTurf V1.0 技术债和整改清单
 
+**Batch2后继**：[交付记录](batch2-delivery-2026-10-26.md)登记TD-RISK-002本地动作范围修复、B/C设计、TD-INV-001负库存并发及其余新安全/成本阻断。原Batch1成果不重做，未证人工/生产状态不抬绿，PILOT_READINESS=NO_GO。
+
 **本地整改后继**：[交付记录](local-delivery-2026-10-26.md)为A/B/C/D/F实际实施及新候选测试状态，[业务决策](local-business-decisions-2026-10-26.md)为剩余口径。下文保留b1ef7a9审计时点，不以旧“未修复/未授权”覆盖新证据；仍未人工放行，PILOT_READINESS=NO_GO。
 
 **最新本地实施授权**：负责人已批准进入[本地整改执行](local-execution-2026-10-26.md)，A/B/C及BOM基数、SALES_ORDER最小校验按该记录执行；此前“未授权实施”保留为审计时点。云端文件不是依赖，远程/生产仍不授权。

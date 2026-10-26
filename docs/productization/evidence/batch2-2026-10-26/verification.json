@@ -1,0 +1,41 @@
+{
+  "source_sha": "01b4a8a43b41d951fe5f65d23b44cc6c3632db31",
+  "risk_fix_commit": "778cf6ff2b022dc333a5fdc8de43c90ab0090bb9",
+  "failures_preserved": [
+    {
+      "file": "risk-replay-target-red.txt",
+      "meaning": "two target assertions fail on original repository replay behavior"
+    },
+    {
+      "file": "risk-http-target-red.txt",
+      "meaning": "fixture setup duplicate employee identity; eight tests skipped, no business outcome"
+    },
+    {
+      "file": "risk-http-target-red-r2.txt",
+      "meaning": "fixture role parameter UUID/text type inference; eight tests skipped"
+    },
+    {
+      "file": "risk-http-target-red-r3.txt",
+      "meaning": "old behavior real HTTP: 5 pass, 3 fail expected scope rejection; not green"
+    },
+    {
+      "file": "independent-gap-probes.txt",
+      "meaning": "3 new gap characterizations pass, 2 precision probes blocked earlier by completed-order guard; expected constraint not reached until corrected fixture"
+    },
+    {
+      "source": "interactive tool output only",
+      "meaning": "first lint reported five fixture-style errors; later one redundant assertion reported; all corrected, final-target-lint exit0. No checks disabled."
+    }
+  ],
+  "verification": {
+    "baseline_risk_cost": "3 characterization tests pass; old risk behavior and rejected cost limitation reproduced",
+    "risk_final_target": "1116 passed: 17 PG/HTTP cases plus 1099 route-contract cases",
+    "gap_regression": "37 tests passed in four PG/HTTP files; includes characterizations of unresolved behavior",
+    "gap_probes_final": "5 new characterizations pass, 32 filtered, not 37 run",
+    "cost_rounding_exact_constraint": "2 pass, validates actual existing planned_total constraint name",
+    "shipping_quality_current_contract": "12 existing PostgreSQL tests pass; no new inventory semantics",
+    "money_reference": "4 independent PG numeric vectors and sum agree with existing domain truncation; no rounding rule approval"
+  },
+  "independent_review": "four scoped reviewers: source/security, shipping and inventory proof, cost/model and precision proof, money/versions/G5; none independently reran tests",
+  "final_commit_checks": "ci:local and unchanged original P1 on final clean document commit still required; actual closing results in .test-results/batch2-productization"
+}

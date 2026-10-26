@@ -1,0 +1,38 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ❯ test/risk-replay-http-postgres.integration.test.ts (8 tests | 8 skipped) 1412ms
+   ↓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > retains legal same-user and authorized different-user replay without duplicate effects
+   ↓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > rejects an existing key after current action permission is revoked
+   ↓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > rejects scope narrowing even if the new payload names another order
+   ↓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > rejects same-tenant nonowners and a caller with an empty current scope
+   ↓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > uses changed organization anchors rather than the original authorization snapshot
+   ↓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > rejects revoked sessions and disabled organizations before returning old results
+   ↓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > isolates the same idempotency key in another company
+   ↓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > serializes truly overlapping same-key HTTP requests without duplicate writes
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/risk-replay-http-postgres.integration.test.ts > TD-RISK-002 real HTTP current authorization on PostgreSQL replays
+error: inconsistent types deduced for parameter $1
+ ❯ ../../node_modules/.pnpm/pg-pool@3.14.0_pg@8.22.0/node_modules/pg-pool/index.js:45:11
+ ❯ account test/risk-replay-http-postgres.integration.test.ts:74:5
+     72|       [employeeId, companyId],
+     73|     );
+     74|     await fixture.db.query(
+       |     ^
+     75|       "INSERT INTO roles(id,organization_id,code,name) VALUES($1,$2,$1…
+     76|       [roleId, companyId],
+ ❯ test/risk-replay-http-postgres.integration.test.ts:137:13
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  8 skipped (8)
+   Start at  13:41:12
+   Duration  2.49s (transform 603ms, setup 0ms, collect 843ms, tests 1.41s, environment 0ms, prepare 64ms)
+
+undefined
+/home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run test/risk-replay-http-postgres.integration.test.ts

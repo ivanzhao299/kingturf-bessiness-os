@@ -1,0 +1,55 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ✓ test/procurement-postgres.integration.test.ts (12 tests | 11 skipped) 816ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > TD-INV-001: characterizes overlapping committed issues bypassing the existing balance sum guard  815ms
+ ✓ test/risk-postgres.integration.test.ts (9 tests | 8 skipped) 1476ms
+   ✓ risk repository real PostgreSQL contracts > TD-RISK-003: characterizes task-event replay before current assignee and task identity checks  1475ms
+ ✓ test/risk-replay-http-postgres.integration.test.ts (10 tests | 9 skipped) 2154ms
+ ❯ test/production-postgres.integration.test.ts (6 tests | 2 failed | 4 skipped) 1528ms
+   ↓ KT-L15 production acceptance with BOM output '1' > executes and freezes order, material, operation, roll, inventory, and state evidence
+   ↓ KT-L15 production acceptance with BOM output '1' > TD-COST-002: records rejected cost revision uniqueness and blocked close without changing history
+   × KT-L15 production acceptance with BOM output '1' > TD-COST-001: characterizes independent component rounding rejected by the exact total constraint 37ms
+     → expected error: manufacturing cost calculation req… { …(15) } to match object { code: '23514' }
+(17 matching properties omitted from actual)
+   ↓ KT-L15 production acceptance with BOM output '10' > executes and freezes order, material, operation, roll, inventory, and state evidence
+   ↓ KT-L15 production acceptance with BOM output '10' > TD-COST-002: records rejected cost revision uniqueness and blocked close without changing history
+   × KT-L15 production acceptance with BOM output '10' > TD-COST-001: characterizes independent component rounding rejected by the exact total constraint 17ms
+     → expected error: manufacturing cost calculation req… { …(15) } to match object { code: '23514' }
+(17 matching properties omitted from actual)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/production-postgres.integration.test.ts > KT-L15 production acceptance with BOM output '1' > TD-COST-001: characterizes independent component rounding rejected by the exact total constraint
+ FAIL  test/production-postgres.integration.test.ts > KT-L15 production acceptance with BOM output '10' > TD-COST-001: characterizes independent component rounding rejected by the exact total constraint
+AssertionError: expected error: manufacturing cost calculation req… { …(15) } to match object { code: '23514' }
+(17 matching properties omitted from actual)
+
+- Expected
++ Received
+
+- {
+-   "code": "23514",
++ DatabaseError {
++   "code": "P0001",
+  }
+
+ ❯ test/production-postgres.integration.test.ts:460:7
+    458|       expect(reference).toEqual({ parts: '0.099999', total: '0.100000'…
+    459|       const correlation = randomUUID();
+    460|       await expect(
+       |       ^
+    461|         costs.calculate(
+    462|           {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed | 3 passed (4)
+      Tests  2 failed | 3 passed | 32 skipped (37)
+   Start at  13:49:29
+   Duration  7.87s (transform 865ms, setup 0ms, collect 1.27s, tests 5.97s, environment 0ms, prepare 177ms)
+
+undefined
+/home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run test/risk-postgres.integration.test.ts test/risk-replay-http-postgres.integration.test.ts test/procurement-postgres.integration.test.ts test/production-postgres.integration.test.ts -t TD-RISK-003|TD-SEC-009|TD-INV-001|TD-COST-001

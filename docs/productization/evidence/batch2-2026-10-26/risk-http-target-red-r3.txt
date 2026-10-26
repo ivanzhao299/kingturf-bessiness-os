@@ -1,0 +1,87 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ❯ test/risk-replay-http-postgres.integration.test.ts (8 tests | 3 failed) 3189ms
+   ✓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > retains legal same-user and authorized different-user replay without duplicate effects 204ms
+   ✓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > rejects an existing key after current action permission is revoked 156ms
+   × TD-RISK-002 real HTTP current authorization on PostgreSQL replays > rejects scope narrowing even if the new payload names another order 154ms
+     → expected 201 to be 404 // Object.is equality
+   × TD-RISK-002 real HTTP current authorization on PostgreSQL replays > rejects same-tenant nonowners and a caller with an empty current scope 137ms
+     → expected 201 to be 404 // Object.is equality
+   × TD-RISK-002 real HTTP current authorization on PostgreSQL replays > uses changed organization anchors rather than the original authorization snapshot 153ms
+     → expected 201 to be 404 // Object.is equality
+   ✓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > rejects revoked sessions and disabled organizations before returning old results 138ms
+   ✓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > isolates the same idempotency key in another company 150ms
+   ✓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > serializes truly overlapping same-key HTTP requests without duplicate writes 181ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/risk-replay-http-postgres.integration.test.ts > TD-RISK-002 real HTTP current authorization on PostgreSQL replays > rejects scope narrowing even if the new payload names another order
+AssertionError: expected 201 to be 404 // Object.is equality
+
+- Expected
++ Received
+
+- 404
++ 201
+
+ ❯ denied test/risk-replay-http-postgres.integration.test.ts:129:29
+    127|   async function denied(token: string, status: number, body = input())…
+    128|     const response = await evaluate(token, key, body);
+    129|     expect(response.status).toBe(status);
+       |                             ^
+    130|     const result = (await response.json()) as Record<string, unknown>;
+    131|     expect(result).not.toHaveProperty('id');
+ ❯ test/risk-replay-http-postgres.integration.test.ts:279:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  test/risk-replay-http-postgres.integration.test.ts > TD-RISK-002 real HTTP current authorization on PostgreSQL replays > rejects same-tenant nonowners and a caller with an empty current scope
+AssertionError: expected 201 to be 404 // Object.is equality
+
+- Expected
++ Received
+
+- 404
++ 201
+
+ ❯ denied test/risk-replay-http-postgres.integration.test.ts:129:29
+    127|   async function denied(token: string, status: number, body = input())…
+    128|     const response = await evaluate(token, key, body);
+    129|     expect(response.status).toBe(status);
+       |                             ^
+    130|     const result = (await response.json()) as Record<string, unknown>;
+    131|     expect(result).not.toHaveProperty('id');
+ ❯ test/risk-replay-http-postgres.integration.test.ts:288:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  test/risk-replay-http-postgres.integration.test.ts > TD-RISK-002 real HTTP current authorization on PostgreSQL replays > uses changed organization anchors rather than the original authorization snapshot
+AssertionError: expected 201 to be 404 // Object.is equality
+
+- Expected
++ Received
+
+- 404
++ 201
+
+ ❯ denied test/risk-replay-http-postgres.integration.test.ts:129:29
+    127|   async function denied(token: string, status: number, body = input())…
+    128|     const response = await evaluate(token, key, body);
+    129|     expect(response.status).toBe(status);
+       |                             ^
+    130|     const result = (await response.json()) as Record<string, unknown>;
+    131|     expect(result).not.toHaveProperty('id');
+ ❯ test/risk-replay-http-postgres.integration.test.ts:300:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 5 passed (8)
+   Start at  13:41:35
+   Duration  4.23s (transform 619ms, setup 0ms, collect 870ms, tests 3.19s, environment 0ms, prepare 42ms)
+
+undefined
+/home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run test/risk-replay-http-postgres.integration.test.ts

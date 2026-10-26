@@ -27,3 +27,7 @@
 ## 当前状态
 
 LOCAL_IMPLEMENTATION=PLANNED；POSTGRES_VERIFICATION=PENDING；AUTHORIZATION_MATRIX=PENDING；CONCURRENCY_AND_ROLLBACK=PENDING；INDEPENDENT_REVIEW=PENDING；FULL_CI=PENDING；BROWSER_ROUND_1=PENDING；BROWSER_ROUND_2=PENDING。设计完成不等于实施完成，自动验证不等于人工岗位验收。后续结果与精确SHA、日志、清理回执另行记录。
+
+## 实施后继
+
+TD-RISK-002已在778cf6f实施并经真实PG/HTTP、同key并发及独立源码复核；现状特征测试01b4a8a记录额外开放问题。成本/发运/金额/复杂度设计已完成，未并入正式语义或原型。各结论和完整CI/浏览器收尾要求见[交付记录](batch2-delivery-2026-10-26.md)；上节PLANNED/PENDING保留为开始时点，最终提交的真实结束状态在本地收尾回执。

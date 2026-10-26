@@ -440,3 +440,13 @@ E1先行固定证据：[authorization守恒候选/773例旧新探针](evidence/e
 [KingTurf 本地整改后的业务决策材料](productization/local-business-decisions-2026-10-26.md)：风险重放、驳回成本修订、发运出库与金额/利润，待批准内容不实施。
 
 [KingTurf V1.0 Batch 2 本地执行与授权记录](productization/batch2-execution-2026-10-26.md)：916f63f后继，风险重放实施，成本/发运/金额/版本设计边界，远程生产禁写。
+
+[KingTurf V1.0 Batch 2 本地交付记录](productization/batch2-delivery-2026-10-26.md)：风险评价重放整改、成本/发运设计、新PG阻断与真实验证分层。
+
+[Batch 2 制造成本不可变修订设计](productization/batch2-cost-revisions.md)：状态机/关联模型/门卫/API/UI/兼容回退，尚未批准正式实施。
+
+[Batch 2 发运与出库闭环设计](productization/batch2-shipping-inventory.md)：A/B比较、数量来源/库存并发/撤销/历史与待裁。
+
+[Batch 2 金额、BOM版本与订单利润研究](productization/batch2-money-bom-profit.md)：独立精度样本、版本冻结、四层成本与利润权威。
+
+[Batch 2 四项长函数豁免独立整改计划](productization/batch2-complexity-plan.md)：到期、重叠、守恒拆分与回归保护，不续期。
