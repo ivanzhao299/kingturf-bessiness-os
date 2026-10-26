@@ -23,3 +23,9 @@ ApiDependencies保持app.ts的机械溯源锚点，HTTP DTO类型可独立导出
 ## 回退与边界
 
 每个业务族独立提交，按组代码回退并复跑保护。无新依赖、数据库迁移、业务状态、金额、库存过账、权限规则或会话变更；两个G5原期限不延。仅实际函数≤200且全结构门禁通过时移除相应精确项。临近到期后回退到原超长版本仍会被门禁拒绝，不能调时钟/续期规避。
+
+## Batch4逐组实施补充
+
+原同步返回使用directReply包装，根在await前立即返回；包装不冻结原响应。缺仓储的同步拒绝在generator中保留终止return，不能yield后继续执行。QTC POST的body和ctx在原位置建立，以同一引用传给分组，非匹配POST的解析行为仍保留。遗留18个await操作新增72条成功、同步throw、拒绝及结算后字段范围变化对照，原238条仍保留，共310条轨迹。
+
+依赖门禁原只识别defineRoute对象与原app内条件分支。迁移后的`yield projectedReply(originalPromise,synchronousProjector)`是等价的单次路由执行单元：新增严格S5只接受真实context.ts工厂、同步generator直接yield、同步非generator投影；不接受提前数组/变量存储。S3仍将pending、投影、间接helper和共享前置工作合并计仓储，沿委托传播调用者工作，不能用generator类型整体豁免。新增真实CLI正反例，包括双仓投影、bind/call、跨文件、共享工作+委托/局部分支/手工消费、伪工厂及不合法async/eager形状。仓储来源规则和S3阈值不变；不声称覆盖任意高阶callback调用图。
