@@ -46,5 +46,11 @@
     "symbol": "qualityAttempts",
     "file": "quality.ts",
     "property": "quality"
+  },
+  {
+    "name": "risk",
+    "symbol": "riskAttempts",
+    "file": "risk.ts",
+    "property": "risks"
   }
 ]

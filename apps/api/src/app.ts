@@ -47,8 +47,6 @@ import {
   timestamp,
   uuid,
   version,
-  type RiskEvaluationRepository,
-  type RiskTaskRepository,
 } from './app-values.ts';
 import type { PostgresBusinessDocumentRepository } from './business-document-repositories.ts';
 import type { PostgresCollectionRepository } from './collection-repositories.ts';
@@ -139,6 +137,7 @@ import { mrpAttempts } from './routes/dispatch/mrp.ts';
 import { procurementAttempts } from './routes/dispatch/procurement.ts';
 import { productionAttempts } from './routes/dispatch/production.ts';
 import { qualityAttempts } from './routes/dispatch/quality.ts';
+import { riskAttempts } from './routes/dispatch/risk.ts';
 import { dispatchFoundationRoutes, foundationRoutes } from './routes/foundation.ts';
 import { identityAccessRoutes } from './routes/identity-access.ts';
 import { identityProvisionRoutes } from './routes/identity-provision.ts';
@@ -179,12 +178,6 @@ import { qtcReconciliationRunRoutes } from './routes/qtc-reconciliation-run.ts';
 import { qtcSalesOrderCreateRoutes } from './routes/qtc-sales-order-create.ts';
 import { quoteCommandRoutes } from './routes/quote-commands.ts';
 import { quoteWriteRoutes } from './routes/quote-writes.ts';
-import { riskEvaluationCreateRoutes } from './routes/risk-evaluation-create.ts';
-import { riskPolicyCreateRoutes } from './routes/risk-policy-create.ts';
-import { riskPolicyPublishRoutes } from './routes/risk-policy-publish.ts';
-import { riskPolicyRevisionRoutes } from './routes/risk-policy-revision.ts';
-import { riskEvaluationReadRoutes, riskPolicyReadRoutes } from './routes/risk-reads.ts';
-import { riskTaskCommandRoutes } from './routes/risk-task-commands.ts';
 import {
   ruleDefinitionCreateRoutes,
   ruleDefinitionListRoutes,
@@ -598,126 +591,12 @@ export function buildApp(
           );
           if (response !== null) return response;
         }
-        if (dependencies.risks) {
-          if (request.method === 'GET' && request.pathname === '/api/v1/risk-policies') {
-            const response = await dispatchRoutes(
-              riskPolicyReadRoutes({
-                repository: () =>
-                  dependencies.risks as Pick<NonNullable<ApiDependencies['risks']>, 'listPolicies'>,
-                authorization: context,
-                authorizeQuery,
-                permittedDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          if (request.method === 'GET' && request.pathname === '/api/v1/risk-evaluations') {
-            const response = await dispatchRoutes(
-              riskEvaluationReadRoutes({
-                repository: () =>
-                  dependencies.risks as Pick<
-                    NonNullable<ApiDependencies['risks']>,
-                    'listEvaluations'
-                  >,
-                authorization: context,
-                authorizeQuery,
-                permittedDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          if (request.method === 'POST' && request.pathname === '/api/v1/risk-policies') {
-            const response = await dispatchRoutes(
-              riskPolicyCreateRoutes({
-                repository: () =>
-                  dependencies.risks as Pick<NonNullable<ApiDependencies['risks']>, 'createPolicy'>,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                parsers: { objectBody, allow, string, integer, timestamp, array, jsonObject },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          const riskPolicyRevision = /^\/api\/v1\/risk-policies\/([0-9a-f-]+)\/versions$/u.exec(
-            request.pathname,
-          );
-          if (request.method === 'POST' && riskPolicyRevision) {
-            const response = await dispatchRoutes(
-              riskPolicyRevisionRoutes({
-                repository: () =>
-                  dependencies.risks as Pick<
-                    NonNullable<ApiDependencies['risks']>,
-                    'createPolicyVersion'
-                  >,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                parsers: { objectBody, allow, integer, timestamp, array, jsonObject },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          const riskPolicyPublish =
-            /^\/api\/v1\/risk-policy-versions\/([0-9a-f-]+)\/publish$/u.exec(request.pathname);
-          if (request.method === 'POST' && riskPolicyPublish) {
-            const response = await dispatchRoutes(
-              riskPolicyPublishRoutes({
-                repository: () =>
-                  dependencies.risks as Pick<
-                    NonNullable<ApiDependencies['risks']>,
-                    'publishPolicyVersion'
-                  >,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                parsers: { objectBody, allow },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          if (request.method === 'POST' && request.pathname === '/api/v1/risk-evaluations') {
-            const response = await dispatchRoutes(
-              riskEvaluationCreateRoutes({
-                repository: () => dependencies.risks as RiskEvaluationRepository,
-                authorization: context,
-                authorizeQuery,
-                idempotency,
-                correlationId,
-                parsers: { objectBody, allow, uuid, timestamp },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          const riskTaskCommand =
-            /^\/api\/v1\/risk-tasks\/([0-9a-f-]+)\/(acknowledge|escalate|close)$/u.exec(
-              request.pathname,
-            );
-          if (request.method === 'POST' && riskTaskCommand) {
-            const response = await dispatchRoutes(
-              riskTaskCommandRoutes({
-                repository: () => dependencies.risks as RiskTaskRepository,
-                authorization: context,
-                authorizeQuery,
-                idempotency,
-                correlationId,
-                parsers: { objectBody, allow, string, jsonObject },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
+        for (const pending of riskAttempts({ request, dependencies, context, correlationId })) {
+          if (pending.accept === 'always') return pending.project(await pending.pending);
+          const response = pending.project(await pending.pending);
+          if (pending.accept === 'truthy') {
+            if (response) return response;
+          } else if (response !== null) return response;
         }
         const order360Match = /^\/api\/v1\/sales-orders\/([0-9a-f-]+)\/360$/u.exec(
           request.pathname,
