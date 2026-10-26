@@ -144,17 +144,13 @@ import { customerContactRoutes } from './routes/customer-contacts.ts';
 import { customerLifecycleRoutes } from './routes/customer-lifecycle.ts';
 import { customerOwnershipRoutes } from './routes/customer-ownership.ts';
 import { executiveDashboardRoutes } from './routes/dashboard.ts';
+import { manufacturingAttempts } from './routes/dispatch/manufacturing.ts';
 import { dispatchFoundationRoutes, foundationRoutes } from './routes/foundation.ts';
 import { identityAccessRoutes } from './routes/identity-access.ts';
 import { identityProvisionRoutes } from './routes/identity-provision.ts';
 import { leadCreateRoutes, leadListRoutes, leadPoolRoutes } from './routes/lead-base.ts';
 import { leadClaimRoutes } from './routes/lead-claim.ts';
 import { leadCommandRoutes } from './routes/lead-commands.ts';
-import { manufacturingBomCreateRoutes } from './routes/manufacturing-bom-create.ts';
-import { manufacturingItemCreateRoutes } from './routes/manufacturing-item-create.ts';
-import { manufacturingPublishRoutes } from './routes/manufacturing-publish.ts';
-import { manufacturingReadRoutes } from './routes/manufacturing-reads.ts';
-import { manufacturingRoutingCreateRoutes } from './routes/manufacturing-routing-create.ts';
 import {
   masterCategoryCreateRoutes,
   masterCategoryDeleteRoutes,
@@ -422,139 +418,14 @@ export function buildApp(
         };
         const sessionResponse = await dispatchRoutes(sessionRoutes(securedAuthContext), request);
         if (sessionResponse) return sessionResponse;
-        if (dependencies.manufacturing) {
-          const manufacturingLists: Readonly<
-            Record<string, readonly ['items' | 'boms' | 'routings', PermissionKey] | undefined>
-          > = {
-            '/api/v1/manufacturing-items': ['items', 'manufacturing-item:read'],
-            '/api/v1/manufacturing-boms': ['boms', 'bom:read'],
-            '/api/v1/manufacturing-routings': ['routings', 'routing:read'],
-          } as const;
-          const listDefinition = manufacturingLists[request.pathname];
-          if (request.method === 'GET' && listDefinition) {
-            const [view, capability] = listDefinition;
-            const response = await dispatchRoutes(
-              manufacturingReadRoutes({
-                repository: () =>
-                  dependencies.manufacturing as Pick<
-                    NonNullable<ApiDependencies['manufacturing']>,
-                    'list'
-                  >,
-                view,
-                capability,
-                authorization: context,
-                authorizeQuery,
-                permittedDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          if (request.method === 'POST' && request.pathname === '/api/v1/manufacturing-items') {
-            const response = await dispatchRoutes(
-              manufacturingItemCreateRoutes({
-                repository: () =>
-                  dependencies.manufacturing as Pick<
-                    NonNullable<ApiDependencies['manufacturing']>,
-                    'createItem'
-                  >,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                parsers: {
-                  objectBody,
-                  allow,
-                  string,
-                  stableCode: assertStableCode,
-                  jsonObject,
-                  timestamp,
-                },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          if (request.method === 'POST' && request.pathname === '/api/v1/manufacturing-boms') {
-            const response = await dispatchRoutes(
-              manufacturingBomCreateRoutes({
-                repository: () =>
-                  dependencies.manufacturing as Pick<
-                    NonNullable<ApiDependencies['manufacturing']>,
-                    'createBom'
-                  >,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                parsers: {
-                  objectBody,
-                  allow,
-                  string,
-                  stableCode: assertStableCode,
-                  jsonObject,
-                  array,
-                  uuid,
-                  decimal,
-                  integer,
-                  timestamp,
-                },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          if (request.method === 'POST' && request.pathname === '/api/v1/manufacturing-routings') {
-            const response = await dispatchRoutes(
-              manufacturingRoutingCreateRoutes({
-                repository: () =>
-                  dependencies.manufacturing as Pick<
-                    NonNullable<ApiDependencies['manufacturing']>,
-                    'createRouting'
-                  >,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                parsers: {
-                  objectBody,
-                  allow,
-                  string,
-                  stableCode: assertStableCode,
-                  jsonObject,
-                  array,
-                  uuid,
-                  decimal,
-                  integer,
-                  timestamp,
-                },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          const manufacturingPublish =
-            /^\/api\/v1\/manufacturing-(item|bom|routing)-versions\/([0-9a-f-]+)\/publish$/u.exec(
-              request.pathname,
-            );
-          if (request.method === 'POST' && manufacturingPublish) {
-            const response = await dispatchRoutes(
-              manufacturingPublishRoutes({
-                repository: () =>
-                  dependencies.manufacturing as Pick<
-                    NonNullable<ApiDependencies['manufacturing']>,
-                    'publish'
-                  >,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                parsers: { objectBody, allow, uuid },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
+        for (const pending of manufacturingAttempts({
+          request,
+          dependencies,
+          context,
+          correlationId,
+        })) {
+          const response = pending.project(await pending.pending);
+          if (response !== null) return response;
         }
         if (dependencies.procurement) {
           const procurementLists: Readonly<
