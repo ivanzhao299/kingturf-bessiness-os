@@ -144,6 +144,7 @@ import { customerLifecycleRoutes } from './routes/customer-lifecycle.ts';
 import { customerOwnershipRoutes } from './routes/customer-ownership.ts';
 import { executiveDashboardRoutes } from './routes/dashboard.ts';
 import { manufacturingAttempts } from './routes/dispatch/manufacturing.ts';
+import { mrpAttempts } from './routes/dispatch/mrp.ts';
 import { procurementAttempts } from './routes/dispatch/procurement.ts';
 import { dispatchFoundationRoutes, foundationRoutes } from './routes/foundation.ts';
 import { identityAccessRoutes } from './routes/identity-access.ts';
@@ -164,11 +165,6 @@ import {
   masterEntryListRoutes,
   masterEntryUpdateRoutes,
 } from './routes/master-data-entries.ts';
-import { mrpDemandCreateRoutes } from './routes/mrp-demand-create.ts';
-import { mrpPolicyCreateRoutes } from './routes/mrp-policy-create.ts';
-import { mrpProposalCommandRoutes } from './routes/mrp-proposal-commands.ts';
-import { mrpReadRoutes } from './routes/mrp-reads.ts';
-import { mrpRunCreateRoutes } from './routes/mrp-run-create.ts';
 import { ncrCreateRoutes } from './routes/ncr-create.ts';
 import { ncrTransitionRoutes } from './routes/ncr-transitions.ts';
 import { numberAllocationRoutes } from './routes/number-allocation.ts';
@@ -426,114 +422,9 @@ export function buildApp(
           const response = pending.project(await pending.pending);
           if (response !== null) return response;
         }
-        if (dependencies.mrp) {
-          const mrpLists: Readonly<
-            Record<string, readonly ['policies' | 'demands' | 'runs', PermissionKey] | undefined>
-          > = {
-            '/api/v1/mrp-policies': ['policies', 'mrp-policy:read'],
-            '/api/v1/mrp-demands': ['demands', 'mrp:read'],
-            '/api/v1/mrp-runs': ['runs', 'mrp:read'],
-          };
-          const listDefinition = mrpLists[request.pathname];
-          if (request.method === 'GET' && listDefinition) {
-            const [view, capability] = listDefinition;
-            const response = await dispatchRoutes(
-              mrpReadRoutes({
-                repository: () =>
-                  dependencies.mrp as Pick<NonNullable<ApiDependencies['mrp']>, 'list'>,
-                view,
-                capability,
-                authorization: context,
-                authorizeQuery,
-                permittedDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          if (request.method === 'POST' && request.pathname === '/api/v1/mrp-policies') {
-            const response = await dispatchRoutes(
-              mrpPolicyCreateRoutes({
-                repository: () =>
-                  dependencies.mrp as Pick<NonNullable<ApiDependencies['mrp']>, 'createPolicy'>,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                parsers: { objectBody, allow, string, uuid, decimal, integer, timestamp },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          if (request.method === 'POST' && request.pathname === '/api/v1/mrp-demands') {
-            const response = await dispatchRoutes(
-              mrpDemandCreateRoutes({
-                repository: () =>
-                  dependencies.mrp as Pick<NonNullable<ApiDependencies['mrp']>, 'createDemand'>,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                parsers: {
-                  objectBody,
-                  allow,
-                  string,
-                  stableCode: assertStableCode,
-                  uuid,
-                  calendarDate,
-                  decimal,
-                  integer,
-                },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          if (request.method === 'POST' && request.pathname === '/api/v1/mrp-runs') {
-            const response = await dispatchRoutes(
-              mrpRunCreateRoutes({
-                repository: () =>
-                  dependencies.mrp as Pick<NonNullable<ApiDependencies['mrp']>, 'run'>,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                parsers: {
-                  objectBody,
-                  allow,
-                  string,
-                  stableCode: assertStableCode,
-                  timestamp,
-                  calendarDate,
-                },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          const proposalCommand =
-            /^\/api\/v1\/mrp-proposals\/([0-9a-f-]+)\/(approve|reject|release|cancel)$/u.exec(
-              request.pathname,
-            );
-          if (request.method === 'POST' && proposalCommand) {
-            const response = await dispatchRoutes(
-              mrpProposalCommandRoutes({
-                repository: () =>
-                  dependencies.mrp as Pick<
-                    NonNullable<ApiDependencies['mrp']>,
-                    'transitionProposal'
-                  >,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                parsers: { objectBody, allow, uuid, string, jsonObject },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
+        for (const pending of mrpAttempts({ request, dependencies, context, correlationId })) {
+          const response = pending.project(await pending.pending);
+          if (response !== null) return response;
         }
         if (dependencies.production) {
           if (request.method === 'GET' && request.pathname === '/api/v1/production-orders') {

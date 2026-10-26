@@ -10,5 +10,11 @@
     "symbol": "procurementAttempts",
     "file": "procurement.ts",
     "property": "procurement"
+  },
+  {
+    "name": "mrp",
+    "symbol": "mrpAttempts",
+    "file": "mrp.ts",
+    "property": "mrp"
   }
 ]
