@@ -16,6 +16,7 @@ type ContinueAcceptance = 'non-null' | 'truthy';
 type Acceptance = ContinueAcceptance | 'always';
 // Nominal pairing prevents handwritten/spread objects from replacing either half.
 class PendingReply<Result, Reply, Accept extends Acceptance> {
+  public readonly kind = 'pending';
   readonly #projector: Projection<Result, Reply>;
   private constructor(
     public readonly pending: Promise<Result>,
@@ -37,6 +38,7 @@ class PendingReply<Result, Reply, Accept extends Acceptance> {
   }
 }
 export type RouteAttempt =
+  | Readonly<{ kind: 'immediate'; value: ApiResponse }>
   | PendingReply<unknown, ApiResponse, 'always'>
   | PendingReply<unknown, ApiResponse | null, ContinueAcceptance>;
 export type RouteAttempts = Iterable<RouteAttempt>;
@@ -64,4 +66,8 @@ export function dependencyPresent<Port extends keyof ApiDependencies>(
   port: Port,
 ): scope is DependencyScope<Port> {
   return !!scope.dependencies[port];
+}
+
+export function directReply(value: ApiResponse): RouteAttempt {
+  return Object.freeze({ kind: 'immediate', value });
 }

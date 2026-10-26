@@ -348,6 +348,7 @@ export function buildApp(
           context,
           correlationId,
         })) {
+          if (pending.kind === 'immediate') return pending.value;
           if (pending.accept === 'always') return pending.project(await pending.pending);
           const response = pending.project(await pending.pending);
           if (pending.accept === 'truthy') {
@@ -360,6 +361,7 @@ export function buildApp(
           context,
           correlationId,
         })) {
+          if (pending.kind === 'immediate') return pending.value;
           if (pending.accept === 'always') return pending.project(await pending.pending);
           const response = pending.project(await pending.pending);
           if (pending.accept === 'truthy') {
@@ -367,6 +369,7 @@ export function buildApp(
           } else if (response !== null) return response;
         }
         for (const pending of mrpAttempts({ request, dependencies, context, correlationId })) {
+          if (pending.kind === 'immediate') return pending.value;
           if (pending.accept === 'always') return pending.project(await pending.pending);
           const response = pending.project(await pending.pending);
           if (pending.accept === 'truthy') {
@@ -379,6 +382,7 @@ export function buildApp(
           context,
           correlationId,
         })) {
+          if (pending.kind === 'immediate') return pending.value;
           if (pending.accept === 'always') return pending.project(await pending.pending);
           const response = pending.project(await pending.pending);
           if (pending.accept === 'truthy') {
@@ -386,6 +390,7 @@ export function buildApp(
           } else if (response !== null) return response;
         }
         for (const pending of costsAttempts({ request, dependencies, context, correlationId })) {
+          if (pending.kind === 'immediate') return pending.value;
           if (pending.accept === 'always') return pending.project(await pending.pending);
           const response = pending.project(await pending.pending);
           if (pending.accept === 'truthy') {
@@ -527,6 +532,7 @@ export function buildApp(
           context,
           correlationId,
         })) {
+          if (pending.kind === 'immediate') return pending.value;
           if (pending.accept === 'always') return pending.project(await pending.pending);
           const response = pending.project(await pending.pending);
           if (pending.accept === 'truthy') {
@@ -539,6 +545,7 @@ export function buildApp(
           context,
           correlationId,
         })) {
+          if (pending.kind === 'immediate') return pending.value;
           if (pending.accept === 'always') return pending.project(await pending.pending);
           const response = pending.project(await pending.pending);
           if (pending.accept === 'truthy') {
@@ -546,6 +553,7 @@ export function buildApp(
           } else if (response !== null) return response;
         }
         for (const pending of qualityAttempts({ request, dependencies, context, correlationId })) {
+          if (pending.kind === 'immediate') return pending.value;
           if (pending.accept === 'always') return pending.project(await pending.pending);
           const response = pending.project(await pending.pending);
           if (pending.accept === 'truthy') {
@@ -558,6 +566,7 @@ export function buildApp(
           context,
           correlationId,
         })) {
+          if (pending.kind === 'immediate') return pending.value;
           if (pending.accept === 'always') return pending.project(await pending.pending);
           const response = pending.project(await pending.pending);
           if (pending.accept === 'truthy') {
@@ -565,6 +574,7 @@ export function buildApp(
           } else if (response !== null) return response;
         }
         for (const pending of riskAttempts({ request, dependencies, context, correlationId })) {
+          if (pending.kind === 'immediate') return pending.value;
           if (pending.accept === 'always') return pending.project(await pending.pending);
           const response = pending.project(await pending.pending);
           if (pending.accept === 'truthy') {
@@ -572,6 +582,7 @@ export function buildApp(
           } else if (response !== null) return response;
         }
         for (const pending of orderAttempts({ request, dependencies, context, correlationId })) {
+          if (pending.kind === 'immediate') return pending.value;
           if (pending.accept === 'always') return pending.project(await pending.pending);
           const response = pending.project(await pending.pending);
           if (pending.accept === 'truthy') {
@@ -585,6 +596,7 @@ export function buildApp(
           correlationId,
           securedAuthContext,
         })) {
+          if (pending.kind === 'immediate') return pending.value;
           if (pending.accept === 'always') return pending.project(await pending.pending);
           const response = pending.project(await pending.pending);
           if (pending.accept === 'truthy') {
@@ -733,6 +745,7 @@ export function buildApp(
           }
         }
         for (const pending of qtcreadsAttempts({ request, dependencies, context, correlationId })) {
+          if (pending.kind === 'immediate') return pending.value;
           if (pending.accept === 'always') return pending.project(await pending.pending);
           const response = pending.project(await pending.pending);
           if (pending.accept === 'truthy') {
@@ -949,6 +962,7 @@ export function buildApp(
           context,
           correlationId,
         })) {
+          if (pending.kind === 'immediate') return pending.value;
           if (pending.accept === 'always') return pending.project(await pending.pending);
           const response = pending.project(await pending.pending);
           if (pending.accept === 'truthy') {
@@ -961,6 +975,7 @@ export function buildApp(
           context,
           correlationId,
         })) {
+          if (pending.kind === 'immediate') return pending.value;
           if (pending.accept === 'always') return pending.project(await pending.pending);
           const response = pending.project(await pending.pending);
           if (pending.accept === 'truthy') {

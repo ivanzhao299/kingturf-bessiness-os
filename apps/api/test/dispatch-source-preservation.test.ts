@@ -94,7 +94,11 @@ function expand(file: ts.SourceFile, symbol: string, bindings: string[]): string
       const call = yielded.expression;
       let restored: string;
       if (yielded.asteriskToken) restored = expand(file, call.expression.getText(file), bindings);
-      else {
+      else if (call.expression.getText(file) === 'directReply') {
+        const value = call.arguments[0];
+        if (!value) throw new Error('Immediate response missing');
+        restored = 'return ' + value.getText(file) + ';';
+      } else {
         expect(call.expression.getText(file)).toBe('routeReply');
         const pending = call.arguments[0];
         if (!pending) throw new Error('Pending expression missing');

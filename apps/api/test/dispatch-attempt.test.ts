@@ -37,3 +37,12 @@ describe('typed lazy reply pairing', () => {
     expect(() => throws.project(1)).toThrow(failure);
   });
 });
+
+it('represents an original synchronous response without constructing a promise', async () => {
+  const { directReply } = await import('../src/routes/dispatch/context.js');
+  const response = { statusCode: 503, body: { error: 'Synthetic unavailable' } };
+  const immediate = directReply(response);
+  expect(immediate).toEqual({ kind: 'immediate', value: response });
+  expect(immediate).not.toHaveProperty('pending');
+  expect(Object.isFrozen(immediate)).toBe(true);
+});
