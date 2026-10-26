@@ -1,0 +1,52 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ✓ test/qtc-root-capture-route-contract.test.ts (335 tests) 19ms
+ ✓ test/dispatch-no-match-timing.test.ts (1 test) 9ms
+
+ Test Files  1 failed | 2 passed (3)
+      Tests  336 passed (336)
+   Start at  17:01:52
+   Duration  1.89s (transform 549ms, setup 0ms, collect 1.33s, tests 28ms, environment 0ms, prepare 128ms)
+
+undefined
+/home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run test/app-batch4-preservation.test.ts test/dispatch-no-match-timing.test.ts test/qtc-root-capture-route-contract.test.ts
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/app-batch4-preservation.test.ts [ test/app-batch4-preservation.test.ts ]
+Error: Command failed: /home/jinhuit/.nvm/versions/node/v24.19.0/bin/node --experimental-transform-types /home/jinhuit/Kingturf/kingturf-bessiness-os/scripts/analysis/app-preservation-probe.mjs baseline
+node:internal/url:840
+      href = bindingUrl.parse(input, base, true);
+                        ^
+
+TypeError: Invalid URL
+    at new URL (node:internal/url:840:25)
+    at file:///home/jinhuit/Kingturf/kingturf-bessiness-os/scripts/analysis/app-preservation-probe.mjs:24:92
+    at String.replace (<anonymous>)
+    at baselineBuildApp (file:///home/jinhuit/Kingturf/kingturf-bessiness-os/scripts/analysis/app-preservation-probe.mjs:21:92)
+    at file:///home/jinhuit/Kingturf/kingturf-bessiness-os/scripts/analysis/app-preservation-probe.mjs:195:34
+    at ModuleJob.run (node:internal/modules/esm/module_job:439:25)
+    at async node:internal/modules/esm/loader:643:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  code: 'ERR_INVALID_URL',
+  input: 'file://node:crypto'
+}
+
+Node.js v24.19.0
+
+ ❯ ../../scripts/analysis/app-preservation-probe.mjs:24:92
+ ❯ baselineBuildApp ../../scripts/analysis/app-preservation-probe.mjs:21:92
+ ❯ ../../scripts/analysis/app-preservation-probe.mjs:195:34
+ ❯ run test/app-batch4-preservation.test.ts:12:5
+     10| const run = (mode: string) =>
+     11|   JSON.parse(
+     12|     execFileSync(process.execPath, ['--experimental-transform-types', …
+       |     ^
+     13|       cwd: root,
+     14|       encoding: 'utf8',
+ ❯ test/app-batch4-preservation.test.ts:19:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+

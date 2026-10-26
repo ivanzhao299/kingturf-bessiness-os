@@ -1,0 +1,93 @@
+✔ real CLI: independent routes, same-repository calls, unused container ports pass (523.419055ms)
+✔ real CLI: S3 rejects direct calls (486.446416ms)
+✔ real CLI: S3 rejects destructured alias and call (519.411757ms)
+✔ real CLI: S3 rejects apply and bind (491.032998ms)
+✔ real CLI: S3 rejects late receiver and literal key (525.088184ms)
+✔ real CLI: S3 rejects local cross-closure helper (487.377852ms)
+✔ real CLI: S3 rejects validate plus handler (457.748488ms)
+✔ real CLI: transitive helper in another module is attributed to caller (530.247443ms)
+✔ real CLI: S1 rejects import type { ApiDependencies } from '../app.ts'; (465.371729ms)
+✔ real CLI: S1 rejects export type { ApiDependencies } from '../app.ts'; (523.16247ms)
+✔ real CLI: S1 rejects type D = import('../app.ts').ApiDependencies; (456.074379ms)
+✔ real CLI: S1 rejects const runtime = import('../app.ts'); (528.644567ms)
+✔ real CLI: S1 rejects const runtime = require('../app.ts'); (455.255202ms)
+✔ real CLI: S1 rejects import runtime = require('../app.ts'); (444.144723ms)
+✔ real CLI: S1 rejects const runtime = import(process.env.RUNTIME); (545.500862ms)
+✔ real CLI: S1 rejects import type { IncomingMessage } from 'node:http'; (467.109409ms)
+✔ real CLI: S2 rejects reverse type edge through a barrel (546.682957ms)
+✔ real CLI: valid service repository/packages dependencies pass (463.819977ms)
+✔ real CLI: S4 rejects erased/dynamic repository provenance (553.528878ms)
+✔ real CLI: S4 rejects erased/dynamic repository provenance (522.374676ms)
+✔ real CLI: S2 rejects reverse dependency through packages (496.482702ms)
+✔ real CLI: alias defineRoute keeps validate/handler together (538.35435ms)
+✔ real CLI: legacy nested branch includes shared parent work (482.758978ms)
+✔ real CLI: S4 rejects explicitly erased variable type (535.124583ms)
+✔ real CLI: structural repository provenance erasure fails (478.834076ms)
+✔ real CLI: separate bound methods are not executed by factory (523.741079ms)
+✔ real CLI: receiver provenance a.read.call(b) (497.246183ms)
+✔ real CLI: receiver provenance a.read.apply(b, []) (545.286232ms)
+✔ real CLI: receiver provenance a.read.bind(b)() (526.352364ms)
+✔ real CLI: repository-looking filename outside repository layer is denied (481.576855ms)
+✔ real CLI: unresolved relative repository edge fails (492.79373ms)
+✔ real CLI: unregistered root repository-looking module is denied (461.777478ms)
+✔ real CLI: route includes shared factory execution, not only handler (544.563938ms)
+✔ real CLI: bound receiver provenance survives subsequent call (501.824684ms)
+✔ real CLI: unrelated same-named function is not a route declaration (548.40566ms)
+✔ real CLI: nested map route inherits outer factory shared execution (511.501569ms)
+✔ real CLI: nested independent routes with bound captures pass (512.988783ms)
+✔ real CLI: unresolved local edge in a package barrel fails (511.701798ms)
+✔ real CLI: unresolved repository dependency fails closed (461.190677ms)
+✔ real CLI: only explicit login limiter infrastructure is excluded (loginRateLimiter) (562.21765ms)
+✔ real CLI: only explicit login limiter infrastructure is excluded (unclassifiedLimiter) (446.956131ms)
+✔ real CLI: limiter classification binds declaration identity (repository renamed) (495.241593ms)
+✔ real CLI: limiter classification binds declaration identity (same name elsewhere) (458.737505ms)
+✔ real CLI: limiter classification binds declaration identity (reexport from elsewhere) (471.379913ms)
+✔ real CLI: limiter classification binds declaration identity (wrong class in correct file) (499.870003ms)
+✔ real CLI: limiter classification binds declaration identity (union with repository) (457.60913ms)
+✔ real CLI: limiter classification binds declaration identity (intersection with repository) (499.638953ms)
+✔ real CLI: limiter classification binds declaration identity (legitimate type alias) (469.835524ms)
+✔ real CLI: renaming the only B port to limiter cannot hide cross-repository work (452.791929ms)
+✔ lazy projected units: independent routes and same-port projection pass (506.696418ms)
+✔ lazy projected units: S3 rejects pending plus projector (455.363211ms)
+✔ lazy projected units: S3 rejects shared prework (517.791427ms)
+✔ lazy projected units: S3 rejects bound methods (484.372894ms)
+✔ lazy projected units: S3 rejects delegated shared work (509.265606ms)
+✔ lazy projected units: S3 rejects delegated shared work plus local branch (494.701175ms)
+✔ lazy projected units: S3 rejects manual consumer plus shared work (466.703745ms)
+✔ lazy projected units: transitive projector helpers retain provenance (513.689063ms)
+✔ lazy projected units: S5 rejects async generator (462.389991ms)
+✔ lazy projected units: S5 rejects async projector (531.262976ms)
+✔ lazy projected units: S5 rejects eager array (466.866979ms)
+✔ lazy projected units: S5 rejects variable intermediate (508.882587ms)
+✖ lazy projected units: same-named local builder cannot hide cross-port work (482.838034ms)
+ℹ tests 62
+ℹ suites 0
+ℹ pass 61
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 30916.90275
+
+✖ failing tests:
+
+test at scripts/analysis/service-boundary-gate.test.mjs:526:1
+✖ lazy projected units: same-named local builder cannot hide cross-port work (482.838034ms)
+  AssertionError [ERR_ASSERTION]: {"status":0,"result":{"inventory":[{"file":"apps/api/src/runtime.ts","line":1,"repositories":["a"],"calls":[{"line":1,"ports":["a"],"expression":"a.read"}]},{"file":"apps/api/src/runtime.ts","line":1,"repositories":["b"],"calls":[{"line":1,"ports":["b"],"expression":"b.write"}]}],"runtimeFiles":3,"routes":0,"legacyBranches":0,"issues":[],"ports":["a","b"],"files":5},"stderr":""}
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///home/jinhuit/Kingturf/kingturf-bessiness-os/scripts/analysis/service-boundary-gate.test.mjs:530:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

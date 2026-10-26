@@ -1,5 +1,7 @@
 # KingTurf V1.0 产品化改造与试运行交付工程
 
+**2026-10-26 Batch4当前入口**：[本批交付](batch4-delivery-2026-10-26.md)承接f3稳定基线，G5-B/D已拆为160/149行、精确豁免归零；[SEC010](batch4-sec010-assessment.md)真实PG/HTTP已复现而正式未修；[业务决策单](batch4-decisions.md)链接金额、成本修订、仓库发运、BOM和利润设计并纠正同日历史编号歧义。完整CI/浏览器双轮以最终同SHA本地回执为准，不提前填PASS。所有设计仍DESIGN_ONLY，远程/主线/生产未授权，PILOT_READINESS=NO_GO。以下旧材料保历史时点。
+
 **2026-10-26 Batch3最新进度**：[验证/交付](batch3-verification-2026-10-26.md)记录INV001、RISK003、SEC009本地修复与独立源码复核；[业务增量设计](batch3-business-design.md)保留未决口径，隔离原型不并入正式候选。G5-Q/F已消除，B/D仍限期开放。最终精确提交完整CI及浏览器两轮只认本地机器回执，不复用Batch2。远程/主线/生产未授权，PILOT_READINESS=NO_GO。以下旧状态保留原时点。
 
 **最新Batch2**：[本批交付](batch2-delivery-2026-10-26.md)承接已验证916f63f，仅正式修复TD-RISK-002动作范围重放；[成本修订](batch2-cost-revisions.md)、[发运库存](batch2-shipping-inventory.md)、[金额/版本/利润](batch2-money-bom-profit.md)和[四项复杂度任务](batch2-complexity-plan.md)为设计/分析。新增库存/风险/响应范围问题仍开放，PILOT_READINESS=NO_GO；本批最终CI/P1看收尾回执，不用旧测试替代。

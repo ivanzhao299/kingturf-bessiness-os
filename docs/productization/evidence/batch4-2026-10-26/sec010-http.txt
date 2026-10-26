@@ -1,0 +1,39 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ❯ test/sec010-http-postgres.integration.test.ts (3 tests | 1 failed) 2484ms
+   × TD-SEC-010 actual HTTP characterization on owned PostgreSQL > known accrual key returns inaccessible data although fresh key and current list reject it 46ms
+     → expected { …(17) } to have property "sales_order_id" with value '6722174d-7106-4434-85a8-4ee45b0ddfbc'
+   ✓ TD-SEC-010 actual HTTP characterization on owned PostgreSQL > known event key returns inaccessible old evidence even for a different path identifier 127ms
+   ✓ TD-SEC-010 actual HTTP characterization on owned PostgreSQL > known complete send request replays receipt outside creator scope without provider calls 118ms
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 2 passed (3)
+   Start at  18:27:27
+   Duration  3.83s (transform 873ms, setup 0ms, collect 1.18s, tests 2.48s, environment 0ms, prepare 47ms)
+
+undefined
+/home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run test/sec010-http-postgres.integration.test.ts
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/sec010-http-postgres.integration.test.ts > TD-SEC-010 actual HTTP characterization on owned PostgreSQL > known accrual key returns inaccessible data although fresh key and current list reject it
+AssertionError: expected { …(17) } to have property "sales_order_id" with value '6722174d-7106-4434-85a8-4ee45b0ddfbc'
+
+- Expected: 
+"6722174d-7106-4434-85a8-4ee45b0ddfbc"
+
++ Received: 
+undefined
+
+ ❯ test/sec010-http-postgres.integration.test.ts:82:19
+     80|       201,
+     81|     );
+     82|     expect(first).toHaveProperty('sales_order_id', fixture.graph.order…
+       |                   ^
+     83|     expect(await json(await peer.request('/api/v1/commissions'), 200))…
+     84|     const before = await counts();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+

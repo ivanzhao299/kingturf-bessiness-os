@@ -124,3 +124,7 @@ Types → Config → Repo → Service → Runtime → UI
 `docs/adr/0001`~`0010`：TS monorepo 选型、PostgreSQL 与迁移、不透明会话、default-deny RBAC 与 DataScope、版本化平台引擎、事务 outbox、不可变业务对象 schema、P1 CRM 兼容、商务修订图、不可变 Quote-to-Cash 台账。架构改动前先读对应 ADR；与 ADR 冲突的改动须新开 ADR 并经人工确认。
 
 Batch3库存同步元数据与流水权威分离见[ADR0011](docs/adr/0011_inventory_resource_serialization.md)：0071仅本地测试获准，生产执行另授；旧SQL兼容不等于旧binary启动兼容。
+
+## Batch4路由组合根收口（2026-10-26）
+
+app.ts保留ApiDependencies类型锚点、认证/生命周期及原Promise的唯一等待；routes/dispatch/business.ts按原顺序委托24个同步惰性路由组，API纯类型在api-types.ts并由app重导出，纯解析/投影在app-values.ts，完成响应收尾在application-completion.ts。路由对app依赖仅type-only，server仍唯一仓储实例组合根，仓储/事务/规则不改。同步directReply与原Promise+同步投影保持原拒绝、null/truthy/always及错误边界；无异步空匹配包装。见[ADR-0012](docs/adr/0012_lazy_route_attempts.md)和[Batch4交付](docs/productization/batch4-delivery-2026-10-26.md)。G5精确表已为空，不代表其余文件体量/嵌套或业务债全部关闭。

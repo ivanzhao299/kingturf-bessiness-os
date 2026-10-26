@@ -1,5 +1,7 @@
 # KingTurf V1.0 接管验证证据 2026年10月26日
 
+**2026-10-26 Batch4当前入口**：[本批交付](batch4-delivery-2026-10-26.md)承接f3稳定基线，G5-B/D已拆为160/149行、精确豁免归零；[SEC010](batch4-sec010-assessment.md)真实PG/HTTP已复现而正式未修；[业务决策单](batch4-decisions.md)链接金额、成本修订、仓库发运、BOM和利润设计并纠正同日历史编号歧义。完整CI/浏览器双轮以最终同SHA本地回执为准，不提前填PASS。所有设计仍DESIGN_ONLY，远程/主线/生产未授权，PILOT_READINESS=NO_GO。以下旧材料保历史时点。
+
 **2026-10-26 Batch3最新进度**：[验证/交付](batch3-verification-2026-10-26.md)记录INV001、RISK003、SEC009本地修复与独立源码复核；[业务增量设计](batch3-business-design.md)保留未决口径，隔离原型不并入正式候选。G5-Q/F已消除，B/D仍限期开放。最终精确提交完整CI及浏览器两轮只认本地机器回执，不复用Batch2。远程/主线/生产未授权，PILOT_READINESS=NO_GO。以下旧状态保留原时点。
 
 代码基线 `b1ef7a9e7fdbfc0341f29f1cb612504ff47cd41b`。所有运行验证在本地专属 PostgreSQL17.7 测试容器、随机回环端口、临时内存数据目录进行；没有读取本机既有数据库连接配置，没有复用生产/其他项目数据库。容器名 `kt-v1-audit-pg-20261026`，数据库名含独立 `test` 段，NODE_ENV=test，迁移前经过项目既有guard。临时凭据不入仓库、不输出。

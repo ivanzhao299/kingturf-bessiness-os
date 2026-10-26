@@ -14,7 +14,7 @@
 
 ## 架构实施边界
 
-主控唯一写入；三专项工作区只读独立探索。共享app/G5/安全入口串行集成，测试单独回环PG17.7、随机端口/test库，不读.env或生产数据。无新依赖、会话/SQL/业务算法不换。
+主控唯一源码写入；专项工作区独立探索，另有受控非PG独立复跑（仅owned缓存/临时夹具）。共享app/G5/安全入口串行集成，测试单独回环PG17.7、随机端口/test库，不读.env或生产数据。无新依赖、会话/SQL/业务算法不换。
 
 同步selector不能将“无匹配”变成Promise；整域首Promise结果为null后仍须按原顺序续查。优先惰性route-attempt迭代，仅产出既有dispatchRoutes的原Promise，root在对应点await；不用unknown值send/throw的通用协程解释器。旧QTC eager POST解析、缺仓储/错误method等旁路读取保留。遗留内联分支按既有声明式接口逐族处理，先做请求/仓储/DTO/logger/telemetry差分，若实际有意义时序变化则局部调整，不凭新增await无害作假设。
 
@@ -22,4 +22,4 @@
 
 ## 当前状态
 
-全部新工作PENDING。REMOTE_PUSH/MAIN_MERGE/PRODUCTION_DEPLOY=NOT_AUTHORIZED；PILOT_READINESS=NO_GO。生产迁移、写入、重启、部署及附件/备份清理均未授权。
+G5逐组及生命周期收口已实施，应用工厂160/主dispatch149，两个精确项消除；SEC010已PG/HTTP复现而正式未修；业务契约DESIGN_ONLY，待决编号已统一。0503d9e源码/安全证据独立复核通过，独立非PG351项及门禁63项/结构通过。最终文档提交同SHA完整CI/浏览器两轮仍由本地机器回执补充，不预填。见[本批交付](batch4-delivery-2026-10-26.md)。REMOTE_PUSH/MAIN_MERGE/PRODUCTION_DEPLOY=NOT_AUTHORIZED；PILOT_READINESS=NO_GO。生产迁移、写入、重启、部署及附件/备份清理均未授权。

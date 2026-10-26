@@ -1,0 +1,268 @@
+{"family":"shipments","awaits":5}
+apps/api/src/app.ts 131ms
+apps/api/src/routes/dispatch/shipments.ts 15ms
+apps/api/test/fixtures/app-dispatch-groups.json 11ms
+
+> @kingturf/api@0.0.0 typecheck /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+> tsc --noEmit
+
+[白名单豁免] [G1] apps/api/src/app.ts（854 行） 【白名单豁免】TD-API-001 buildApp 巨函数，到期：批次 2
+[白名单豁免] [G2] apps/api/src/app.ts（格式缩进 10 层） 【白名单豁免】随对应批次拆分消解
+[白名单豁免] [G2] apps/api/src/business-document-repositories.ts（格式缩进 7 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G2] apps/api/src/collection-repositories.ts（格式缩进 8 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G1] apps/api/src/commercial-repositories.ts（2037 行） 【白名单豁免】最大仓储域，到期：批次 2（分域 handler 化时拆分）
+[白名单豁免] [G2] apps/api/src/commercial-repositories.ts（格式缩进 7 层） 【白名单豁免】随对应批次拆分消解
+[白名单豁免] [G2] apps/api/src/commission-repositories.ts（格式缩进 6 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G1] apps/api/src/complaint-repositories.ts（1340 行） 【白名单豁免】单域仓储超限，到期：批次 2
+[白名单豁免] [G2] apps/api/src/complaint-repositories.ts（格式缩进 6 层） 【白名单豁免】随对应批次拆分消解
+[白名单豁免] [G2] apps/api/src/contract-document-repositories.ts（格式缩进 6 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G1] apps/api/src/crm-repositories.ts（873 行） 【白名单豁免】单域仓储超限，到期：批次 2
+[白名单豁免] [G2] apps/api/src/crm-repositories.ts（格式缩进 6 层） 【白名单豁免】随对应批次拆分消解
+[白名单豁免] [G2] apps/api/src/manufacturing-repositories.ts（格式缩进 7 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G2] apps/api/src/mrp-repositories.ts（格式缩进 6 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G2] apps/api/src/order-360-repositories.ts（格式缩进 6 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G1] apps/api/src/platform-repositories.ts（1189 行） 【白名单豁免】单域仓储超限，到期：批次 2
+[白名单豁免] [G2] apps/api/src/platform-repositories.ts（格式缩进 6 层） 【白名单豁免】随对应批次拆分消解
+[白名单豁免] [G2] apps/api/src/procurement-repositories.ts（格式缩进 7 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G2] apps/api/src/production-cost-repositories.ts（格式缩进 6 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G2] apps/api/src/production-repositories.ts（格式缩进 6 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G1] apps/api/src/qtc-repositories.ts（931 行） 【白名单豁免】单域仓储超限，到期：批次 2
+[白名单豁免] [G2] apps/api/src/qtc-repositories.ts（格式缩进 8 层） 【白名单豁免】随对应批次拆分消解
+[白名单豁免] [G2] apps/api/src/quality-repositories.ts（格式缩进 6 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G1] apps/api/src/repositories.ts（869 行） 【白名单豁免】组织员工主数据仓储，到期：批次 2
+[白名单豁免] [G2] apps/api/src/repositories.ts（格式缩进 6 层） 【白名单豁免】随对应批次拆分消解
+[白名单豁免] [G2] apps/api/src/risk-repositories.ts（格式缩进 8 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G2] apps/api/src/shipment-repositories.ts（格式缩进 6 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G1] packages/domain/src/index.ts（1032 行） 【白名单豁免】共享域包单文件，到期：批次 4 后评估拆分
+[白名单豁免] [G2] packages/domain/src/index.ts（格式缩进 6 层） 【白名单豁免】随对应批次拆分消解
+[白名单豁免] [G5] apps/api/src/app.ts（714 行） FunctionDeclaration:buildApp:140-853 【G5精确限期豁免】上限3627，TD-API-001 existing application factory; no growth or new function permission，到期：Independent long-function remediation after final acceptance; hard date takes precedence; 2026-11-17 inclusive Asia/Singapore
+[白名单豁免] [G5] apps/api/src/app.ts（645 行） FunctionDeclaration:buildApp/VariableDeclaration:application/MethodDeclaration:dispatch:148-792 【G5精确限期豁免】上限3558，TD-API-001 existing nested dispatch; independently capped despite overlap with buildApp，到期：Independent long-function remediation after final acceptance; hard date takes precedence; 2026-11-17 inclusive Asia/Singapore
+structure-gate 通过：强制违规 0；白名单豁免 29 条（随批次移除）；G5精确限期豁免 2 条
+service-boundary: 186 files, 31 repository ports, 220 route templates, 227 violations
+S3 apps/api/src/app.ts:486 Runtime entry/helper orchestrates contractDocuments, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/app.ts:640 Runtime entry/helper orchestrates organizations, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/app.ts:713 Runtime entry/helper orchestrates employees, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/audit-reads.ts:22 Runtime entry/helper orchestrates audit, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/audit-reads.ts:58 Runtime entry/helper orchestrates audit, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/auth.ts:186 Runtime entry/helper orchestrates employees, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/authorization.ts:61 Runtime entry/helper orchestrates authorization, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/authorization.ts:67 Runtime entry/helper orchestrates authorization, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/authorization.ts:79 Runtime entry/helper orchestrates authorization, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/authorization.ts:85 Runtime entry/helper orchestrates authorization, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/authorization.ts:103 Runtime entry/helper orchestrates authorization, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/authorization.ts:112 Runtime entry/helper orchestrates authorization, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/authorization.ts:130 Runtime entry/helper orchestrates authorization, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/authorization.ts:139 Runtime entry/helper orchestrates authorization, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/authorization.ts:148 Runtime entry/helper orchestrates authorization, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/authorization.ts:157 Runtime entry/helper orchestrates authorization, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/authorization.ts:166 Runtime entry/helper orchestrates authorization, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/authorization.ts:175 Runtime entry/helper orchestrates authorization, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/authorization.ts:206 Runtime entry/helper orchestrates authorization, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/business-document-activity.ts:24 Runtime entry/helper orchestrates businessDocuments, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/business-document-bindings.ts:22 Runtime entry/helper orchestrates businessDocuments, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/business-document-connector.ts:27 Runtime entry/helper orchestrates businessDocuments, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/business-document-create.ts:23 Runtime entry/helper orchestrates businessDocuments, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/business-document-reads.ts:24 Runtime entry/helper orchestrates businessDocuments, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/business-document-reads.ts:61 Runtime entry/helper orchestrates businessDocuments, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/business-document-reads.ts:110 Runtime entry/helper orchestrates businessDocuments, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/business-document-reads.ts:150 Runtime entry/helper orchestrates businessDocuments, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/business-document-reads.ts:189 Runtime entry/helper orchestrates businessDocuments, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/business-document-review.ts:25 Runtime entry/helper orchestrates businessDocuments, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/business-document-send.ts:26 Runtime entry/helper orchestrates businessDocuments, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/business-document-translation.ts:26 Runtime entry/helper orchestrates businessDocuments, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/business-document-version.ts:26 Runtime entry/helper orchestrates businessDocuments, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/capa-actions.ts:34 Runtime entry/helper orchestrates complaints, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/capa-actions.ts:83 Runtime entry/helper orchestrates complaints, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/capa-create.ts:56 Runtime entry/helper orchestrates complaints, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/capa-lifecycle.ts:31 Runtime entry/helper orchestrates complaints, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/capa-lifecycle.ts:68 Runtime entry/helper orchestrates complaints, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/collection.ts:66 Runtime entry/helper orchestrates collections, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/collection.ts:103 Runtime entry/helper orchestrates collections, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/collection.ts:135 Runtime entry/helper orchestrates collections, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/collection.ts:184 Runtime entry/helper orchestrates collections, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/collection.ts:227 Runtime entry/helper orchestrates collections, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/collection.ts:271 Runtime entry/helper orchestrates collections, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/collection.ts:319 Runtime entry/helper orchestrates collections, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/collection.ts:351 Runtime entry/helper orchestrates collections, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/collection.ts:388 Runtime entry/helper orchestrates collections, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/commercial-definitions.ts:37 Runtime entry/helper orchestrates commercial, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/commercial-definitions.ts:58 Runtime entry/helper orchestrates commercial, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/commercial-definitions.ts:99 Runtime entry/helper orchestrates commercial, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/commercial-evaluations.ts:49 Runtime entry/helper orchestrates commercial, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/commercial-evaluations.ts:92 Runtime entry/helper orchestrates commercial, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/commercial-nested-reads.ts:20 Runtime entry/helper orchestrates commercial, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/commercial-nested-reads.ts:45 Runtime entry/helper orchestrates commercial, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/commercial-views.ts:25 Runtime entry/helper orchestrates commercial, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/commission-accrue.ts:40 Runtime entry/helper orchestrates commissions, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/commission-commands.ts:53 Runtime entry/helper orchestrates commissions, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/commission-policy-publish.ts:36 Runtime entry/helper orchestrates commissions, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/commission-policy-writes.ts:55 Runtime entry/helper orchestrates commissions, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/commission-policy-writes.ts:133 Runtime entry/helper orchestrates commissions, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/commission-reads.ts:38 Runtime entry/helper orchestrates commissions, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/complaint-batch-triage.ts:72 Runtime entry/helper orchestrates complaints, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/complaint-create.ts:73 Runtime entry/helper orchestrates complaints, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/complaint-reads.ts:64 Runtime entry/helper orchestrates complaints, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/complaint-reads.ts:91 Runtime entry/helper orchestrates complaints, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/complaint-sla.ts:66 Runtime entry/helper orchestrates complaints, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/complaint-sla.ts:89 Runtime entry/helper orchestrates complaints, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/complaint-transitions.ts:34 Runtime entry/helper orchestrates complaints, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/cost-matrix-base.ts:31 Runtime entry/helper orchestrates commercial, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/cost-matrix-base.ts:80 Runtime entry/helper orchestrates commercial, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/cost-matrix-base.ts:94 Runtime entry/helper orchestrates commercial, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/cost-matrix-base.ts:126 Runtime entry/helper orchestrates commercial, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/cost-matrix-calculations.ts:38 Runtime entry/helper orchestrates commercial, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/cost-matrix-calculations.ts:73 Runtime entry/helper orchestrates commercial, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/cost-matrix-factors.ts:87 Runtime entry/helper orchestrates commercial, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/cost-matrix-factors.ts:119 Runtime entry/helper orchestrates commercial, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/ctr.ts:49 Runtime entry/helper orchestrates commercial, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/ctr.ts:82 Runtime entry/helper orchestrates commercial, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/ctr.ts:122 Runtime entry/helper orchestrates commercial, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/ctr.ts:153 Runtime entry/helper orchestrates commercial, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/ctr.ts:195 Runtime entry/helper orchestrates commercial, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/customer-360.ts:95 Runtime entry/helper orchestrates crm, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/customer-activities.ts:34 Runtime entry/helper orchestrates crm, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/customer-base.ts:38 Runtime entry/helper orchestrates crm, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/customer-base.ts:60 Runtime entry/helper orchestrates crm, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/customer-base.ts:90 Runtime entry/helper orchestrates crm, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/customer-contacts.ts:36 Runtime entry/helper orchestrates crm, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/customer-lifecycle.ts:34 Runtime entry/helper orchestrates crm, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/customer-ownership.ts:35 Runtime entry/helper orchestrates crm, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/dashboard.ts:30 Runtime entry/helper orchestrates dashboard, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/foundation.ts:240 Runtime entry/helper orchestrates notifications, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/foundation.ts:257 Runtime entry/helper orchestrates notifications, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/foundation.ts:271 Runtime entry/helper orchestrates notifications, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/foundation.ts:288 Runtime entry/helper orchestrates notifications, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/foundation.ts:305 Runtime entry/helper orchestrates notifications, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/foundation.ts:319 Runtime entry/helper orchestrates notifications, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/foundation.ts:339 Runtime entry/helper orchestrates notifications, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/foundation.ts:373 Runtime entry/helper orchestrates attachments, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/foundation.ts:387 Runtime entry/helper orchestrates attachments, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/foundation.ts:428 Runtime entry/helper orchestrates attachments, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/foundation.ts:448 Runtime entry/helper orchestrates attachments, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/foundation.ts:473 Runtime entry/helper orchestrates attachments, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/foundation.ts:501 Runtime entry/helper orchestrates businessObjects, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/foundation.ts:512 Runtime entry/helper orchestrates businessObjects, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/foundation.ts:532 Runtime entry/helper orchestrates businessObjects, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/foundation.ts:551 Runtime entry/helper orchestrates businessObjects, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/foundation.ts:570 Runtime entry/helper orchestrates businessObjects, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/foundation.ts:595 Runtime entry/helper orchestrates events, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/foundation.ts:609 Runtime entry/helper orchestrates events, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/foundation.ts:629 Runtime entry/helper orchestrates events, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/identity-access.ts:39 Runtime entry/helper orchestrates authorization, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/identity-access.ts:57 Runtime entry/helper orchestrates authorization, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/lead-base.ts:37 Runtime entry/helper orchestrates crm, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/lead-base.ts:65 Runtime entry/helper orchestrates crm, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/lead-base.ts:103 Runtime entry/helper orchestrates crm, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/lead-claim.ts:32 Runtime entry/helper orchestrates crm, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/lead-commands.ts:102 Runtime entry/helper orchestrates crm, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/lead-commands.ts:121 Runtime entry/helper orchestrates crm, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/lead-commands.ts:140 Runtime entry/helper orchestrates crm, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/lead-commands.ts:159 Runtime entry/helper orchestrates crm, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/manufacturing-bom-create.ts:44 Runtime entry/helper orchestrates manufacturing, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/manufacturing-item-create.ts:40 Runtime entry/helper orchestrates manufacturing, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/manufacturing-publish.ts:38 Runtime entry/helper orchestrates manufacturing, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/manufacturing-reads.ts:32 Runtime entry/helper orchestrates manufacturing, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/manufacturing-routing-create.ts:44 Runtime entry/helper orchestrates manufacturing, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/master-data-categories.ts:55 Runtime entry/helper orchestrates masterData, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/master-data-categories.ts:72 Runtime entry/helper orchestrates masterData, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/master-data-categories.ts:100 Runtime entry/helper orchestrates masterData, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/master-data-categories.ts:136 Runtime entry/helper orchestrates masterData, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/master-data-entries.ts:68 Runtime entry/helper orchestrates masterData, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/master-data-entries.ts:94 Runtime entry/helper orchestrates masterData, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/master-data-entries.ts:114 Runtime entry/helper orchestrates masterData, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/master-data-entries.ts:132 Runtime entry/helper orchestrates masterData, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/master-data-entries.ts:165 Runtime entry/helper orchestrates masterData, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/mrp-demand-create.ts:42 Runtime entry/helper orchestrates mrp, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/mrp-policy-create.ts:41 Runtime entry/helper orchestrates mrp, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/mrp-proposal-commands.ts:41 Runtime entry/helper orchestrates mrp, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/mrp-reads.ts:32 Runtime entry/helper orchestrates mrp, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/mrp-run-create.ts:40 Runtime entry/helper orchestrates mrp, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/ncr-create.ts:30 Runtime entry/helper orchestrates complaints, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/ncr-transitions.ts:35 Runtime entry/helper orchestrates complaints, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/number-allocation.ts:16 Runtime entry/helper orchestrates numbers, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/number-definitions.ts:60 Runtime entry/helper orchestrates numbers, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/number-definitions.ts:74 Runtime entry/helper orchestrates numbers, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/number-definitions.ts:113 Runtime entry/helper orchestrates numbers, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/number-definitions.ts:140 Runtime entry/helper orchestrates numbers, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/opportunities.ts:60 Runtime entry/helper orchestrates commercial, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/opportunities.ts:78 Runtime entry/helper orchestrates commercial, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/opportunities.ts:105 Runtime entry/helper orchestrates commercial, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/opportunities.ts:145 Runtime entry/helper orchestrates commercial, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/order-360.ts:168 Runtime entry/helper orchestrates order360, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/procurement-issue.ts:39 Runtime entry/helper orchestrates procurement, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/procurement-location-create.ts:38 Runtime entry/helper orchestrates procurement, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/procurement-movement-create.ts:41 Runtime entry/helper orchestrates procurement, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/procurement-purchase-order-create.ts:44 Runtime entry/helper orchestrates procurement, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/procurement-reads.ts:32 Runtime entry/helper orchestrates procurement, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/procurement-receipt-create.ts:44 Runtime entry/helper orchestrates procurement, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/procurement-rfq-create.ts:45 Runtime entry/helper orchestrates procurement, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/procurement-supplier-create.ts:41 Runtime entry/helper orchestrates procurement, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/procurement-supplier-qualification.ts:45 Runtime entry/helper orchestrates procurement, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/procurement-supplier-quote-create.ts:43 Runtime entry/helper orchestrates procurement, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/production-cost-calculation.ts:37 Runtime entry/helper orchestrates productionCosts, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/production-cost-decisions.ts:48 Runtime entry/helper orchestrates productionCosts, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/production-cost-policy.ts:42 Runtime entry/helper orchestrates productionCosts, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/production-material.ts:40 Runtime entry/helper orchestrates production, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/production-order-commands.ts:72 Runtime entry/helper orchestrates production, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/production-order-create.ts:39 Runtime entry/helper orchestrates production, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/production-output.ts:40 Runtime entry/helper orchestrates production, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/production-reads.ts:29 Runtime entry/helper orchestrates production, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/production-reads.ts:60 Runtime entry/helper orchestrates productionCosts, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/production-reads.ts:82 Runtime entry/helper orchestrates productionCosts, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/production-report.ts:40 Runtime entry/helper orchestrates production, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/qtc-ar-post.ts:42 Runtime entry/helper orchestrates quoteToCash, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/qtc-bank-payment-intake.ts:43 Runtime entry/helper orchestrates quoteToCash, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/qtc-base-reads.ts:41 Runtime entry/helper orchestrates quoteToCash, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/qtc-contract-create.ts:39 Runtime entry/helper orchestrates quoteToCash, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/qtc-contract-sign.ts:42 Runtime entry/helper orchestrates quoteToCash, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/qtc-credit-approval.ts:40 Runtime entry/helper orchestrates quoteToCash, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/qtc-credit-writes.ts:56 Runtime entry/helper orchestrates quoteToCash, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/qtc-credit-writes.ts:99 Runtime entry/helper orchestrates quoteToCash, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/qtc-operational-reads.ts:43 Runtime entry/helper orchestrates quoteToCash, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/qtc-reconciliation-run.ts:38 Runtime entry/helper orchestrates quoteToCash, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/qtc-sales-order-create.ts:46 Runtime entry/helper orchestrates quoteToCash, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/quality-disposition.ts:45 Runtime entry/helper orchestrates quality, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/quality-inspection-open.ts:41 Runtime entry/helper orchestrates quality, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/quality-inspection-transitions.ts:45 Runtime entry/helper orchestrates quality, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/quality-plan-create.ts:82 Runtime entry/helper orchestrates quality, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/quality-plan-publish.ts:34 Runtime entry/helper orchestrates quality, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/quality-reads.ts:32 Runtime entry/helper orchestrates quality, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/quality-reads.ts:71 Runtime entry/helper orchestrates quality, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/quality-reads.ts:110 Runtime entry/helper orchestrates quality, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/quality-result-record.ts:44 Runtime entry/helper orchestrates quality, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/quote-commands.ts:47 Runtime entry/helper orchestrates commercial, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/quote-commands.ts:81 Runtime entry/helper orchestrates commercial, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/quote-writes.ts:90 Runtime entry/helper orchestrates commercial, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/quote-writes.ts:110 Runtime entry/helper orchestrates commercial, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/risk-evaluation-create.ts:42 Runtime entry/helper orchestrates risks, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/risk-policy-create.ts:41 Runtime entry/helper orchestrates risks, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/risk-policy-publish.ts:35 Runtime entry/helper orchestrates risks, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/risk-policy-revision.ts:41 Runtime entry/helper orchestrates risks, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/risk-reads.ts:40 Runtime entry/helper orchestrates risks, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/risk-reads.ts:77 Runtime entry/helper orchestrates risks, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/risk-task-commands.ts:43 Runtime entry/helper orchestrates risks, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/rule-definitions.ts:64 Runtime entry/helper orchestrates rules, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/rule-definitions.ts:78 Runtime entry/helper orchestrates rules, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/rule-definitions.ts:101 Runtime entry/helper orchestrates rules, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/rule-definitions.ts:128 Runtime entry/helper orchestrates rules, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/rule-evaluation.ts:22 Runtime entry/helper orchestrates rules, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/technical-solutions.ts:31 Runtime entry/helper orchestrates commercial, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/technical-solutions.ts:70 Runtime entry/helper orchestrates commercial, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/website-lead-ingest.ts:20 Runtime entry/helper orchestrates shipments, websiteLeads. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/workflow-definitions.ts:59 Runtime entry/helper orchestrates shipments, workflows. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/workflow-definitions.ts:73 Runtime entry/helper orchestrates shipments, workflows. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/workflow-definitions.ts:97 Runtime entry/helper orchestrates shipments, workflows. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/workflow-definitions.ts:126 Runtime entry/helper orchestrates shipments, workflows. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/workflow-runtime.ts:59 Runtime entry/helper orchestrates shipments, workflows. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/workflow-runtime.ts:92 Runtime entry/helper orchestrates shipments, workflows. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/routes/workflow-runtime.ts:108 Runtime entry/helper orchestrates shipments, workflows. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/app.ts:406 Runtime entry/helper orchestrates contractDocuments, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/app.ts:420 Runtime entry/helper orchestrates contractDocuments, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/app.ts:453 Runtime entry/helper orchestrates contractDocuments, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/app.ts:525 Runtime entry/helper orchestrates contractDocuments, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/app.ts:601 Runtime entry/helper orchestrates organizations, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/app.ts:608 Runtime entry/helper orchestrates organizations, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/app.ts:618 Runtime entry/helper orchestrates organizations, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/app.ts:670 Runtime entry/helper orchestrates employees, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/app.ts:682 Runtime entry/helper orchestrates employees, shipments. Move genuine cross-repository business orchestration into an explicit service.
+S3 apps/api/src/app.ts:695 Runtime entry/helper orchestrates employees, shipments. Move genuine cross-repository business orchestration into an explicit service.

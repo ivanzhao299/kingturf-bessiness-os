@@ -1,0 +1,13 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ✓ test/commission-postgres.integration.test.ts (8 tests | 6 skipped) 2903ms
+   ✓ commission repository real PostgreSQL contracts > TD-SEC-010 characterization: a known accrual key bypasses current owner scope  1552ms
+   ✓ commission repository real PostgreSQL contracts > TD-SEC-010 characterization: an old event key returns another inaccessible case evidence  1350ms
+ ✓ test/foundation-postgres.integration.test.ts (9 tests | 8 skipped) 853ms
+
+ Test Files  2 passed (2)
+      Tests  3 passed | 14 skipped (17)
+   Start at  17:43:37
+   Duration  5.15s (transform 770ms, setup 0ms, collect 1.11s, tests 3.76s, environment 0ms, prepare 84ms)
+

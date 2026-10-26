@@ -1,5 +1,13 @@
 # docs/index.md（全部文档索引）
 
+[V1.0 Batch4交付](productization/batch4-delivery-2026-10-26.md)：G5应用工厂/总分发收口、最终同SHA回执及独立复核边界。
+
+[V1.0 Batch4安全影响](productization/batch4-sec010-assessment.md)：TD-SEC-010的PG/HTTP复现和当前授权前重放最小整改建议，正式未修。
+
+[V1.0 Batch4业务裁定](productization/batch4-decisions.md)：稳定编号/历史映射和最小待决项；[成本契约](productization/batch4-cost-contract.md)、[仓库发运契约](productization/batch4-shipping-contract.md)、[BOM/实际利润契约](productization/batch4-bom-profit-contract.md)均DESIGN_ONLY。
+
+[V1.0 Batch4证据索引](productization/evidence/batch4-2026-10-26/README.md)：逐组与失败记录、原始脱敏日志、固定SHA最终机器回执读取方式。
+
 [ADR0012 惰性路由尝试与同步投影](adr/0012_lazy_route_attempts.md)：Batch4 G5拆分决策，保持原Promise等待、null续走和权限/错误顺序，不引入通用协程或业务规则变更。
 
 [V1.0 Batch4 执行计划](productization/batch4-execution-2026-10-26.md)：从f3稳定基线进行G5收口、SEC010隔离核查与业务规则定稿；不改未批准业务语义、不操作远程/生产。

@@ -1,0 +1,79 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ❯ test/commission-postgres.integration.test.ts (8 tests | 1 failed | 6 skipped) 2663ms
+   ↓ commission repository real PostgreSQL contracts > versions and publishes policies with exact paired aggregate evidence
+   ↓ commission repository real PostgreSQL contracts > accrues fixed money and collection ratios with separate release and freeze causes
+   ↓ commission repository real PostgreSQL contracts > filters actual owner and TEAM scope and preserves accrual replay without duplicate evidence
+   ↓ commission repository real PostgreSQL contracts > enforces release thresholds, exact paid/clawback ledger and terminal states
+   ↓ commission repository real PostgreSQL contracts > rejects ineligible references and malformed periods with no partial accrual writes
+   ↓ commission repository real PostgreSQL contracts > rolls back ledger/state or policy version plus audit on later outbox conflicts
+   ✓ commission repository real PostgreSQL contracts > TD-SEC-010 characterization: a known accrual key bypasses current owner scope  1367ms
+   × commission repository real PostgreSQL contracts > TD-SEC-010 characterization: an old event key returns another inaccessible case evidence 1295ms
+     → expected { …(9) } to deeply equal { …(10) }
+ ❯ test/foundation-postgres.integration.test.ts (9 tests | 1 failed | 8 skipped) 772ms
+   ↓ JTF-P0-E12..E15 PostgreSQL acceptance > creates idempotent tenant inbox records atomically and isolates recipients
+   ↓ JTF-P0-E12..E15 PostgreSQL acceptance > pins translations and approved customer delivery while exposing only administrator audit data
+   ↓ JTF-P0-E12..E15 PostgreSQL acceptance > requires compare-and-swap versions for notification preferences under concurrency
+   ↓ JTF-P0-E12..E15 PostgreSQL acceptance > allows every consumer exactly once and reports counts only for its tenant
+   ↓ JTF-P0-E12..E15 PostgreSQL acceptance > publishes through a caller-owned transaction and rolls back with its business mutation
+   ↓ JTF-P0-E12..E15 PostgreSQL acceptance > enforces authorized object binding and attachment integrity
+   ↓ JTF-P0-E12..E15 PostgreSQL acceptance > resolves concrete employee attachment targets through a published type and fails closed
+   ↓ JTF-P0-E12..E15 PostgreSQL acceptance > versions registry schemas and makes published versions immutable
+   × JTF-P0-E12..E15 PostgreSQL acceptance > TD-SEC-010 characterization: known full send input replays outside current creator scope 11ms
+     → Connector configuration version is stale
+
+ Test Files  2 failed (2)
+      Tests  2 failed | 1 passed | 14 skipped (17)
+   Start at  17:41:02
+   Duration  4.70s (transform 661ms, setup 0ms, collect 950ms, tests 3.44s, environment 0ms, prepare 85ms)
+
+undefined
+/home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run test/commission-postgres.integration.test.ts test/foundation-postgres.integration.test.ts -t TD-SEC-010
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/commission-postgres.integration.test.ts > commission repository real PostgreSQL contracts > TD-SEC-010 characterization: an old event key returns another inaccessible case evidence
+AssertionError: expected { …(9) } to deeply equal { …(10) }
+
+- Expected
++ Received
+
+@@ -2,11 +2,10 @@
+    "amount": "28500.000000",
+    "collectedAmount": "100000.000000",
+    "collectionBasisPoints": 1052,
+    "externalReference": "SYNTHETIC-ONLY",
+    "id": "5d926689-a713-4199-90ab-55eb62d47489",
+-   "ledgerEntryId": "ab9e7cf0-c385-464d-9119-54599ac89e97",
+    "previousState": "RELEASED",
+    "reason": "Synthetic payment",
+    "releaseCollectionBasisPoints": 0,
+    "state": "PAID",
+  }
+
+ ❯ test/commission-postgres.integration.test.ts:595:20
+    593|       correlation,
+    594|     );
+    595|     expect(leaked).toEqual(original);
+       |                    ^
+    596|     expect(leaked).toMatchObject({
+    597|       commissionCaseId: identifier(first),
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/foundation-postgres.integration.test.ts > JTF-P0-E12..E15 PostgreSQL acceptance > TD-SEC-010 characterization: known full send input replays outside current creator scope
+Error: Connector configuration version is stale
+ ❯ src/business-document-repositories.ts:448:23
+    446|         )
+    447|       ).rows[0];
+    448|       if (!row) throw new DomainError('conflict', 'Connector configura…
+       |                       ^
+    449|       await writeBusinessDocumentConnectorAudit(
+    450|         tx,
+ ❯ Database.transaction ../../packages/database/src/index.ts:45:21
+ ❯ test/foundation-postgres.integration.test.ts:736:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+

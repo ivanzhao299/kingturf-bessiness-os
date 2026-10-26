@@ -1,0 +1,10 @@
+
+/home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api/test/dispatch-source-preservation.test.ts
+  248:21  error  Passing a number to Number() does not change the type or value of the number  @typescript-eslint/no-unnecessary-type-conversion
+  248:41  error  Passing a number to Number() does not change the type or value of the number  @typescript-eslint/no-unnecessary-type-conversion
+  252:19  error  Passing a number to Number() does not change the type or value of the number  @typescript-eslint/no-unnecessary-type-conversion
+  252:39  error  Passing a number to Number() does not change the type or value of the number  @typescript-eslint/no-unnecessary-type-conversion
+  253:20  error  Passing a number to Number() does not change the type or value of the number  @typescript-eslint/no-unnecessary-type-conversion
+
+✖ 5 problems (5 errors, 0 warnings)
+

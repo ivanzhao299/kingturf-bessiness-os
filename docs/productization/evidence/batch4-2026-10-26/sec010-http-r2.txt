@@ -1,0 +1,10 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ✓ test/sec010-http-postgres.integration.test.ts (3 tests) 2804ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  18:28:28
+   Duration  4.09s (transform 781ms, setup 0ms, collect 1.12s, tests 2.80s, environment 0ms, prepare 44ms)
+
