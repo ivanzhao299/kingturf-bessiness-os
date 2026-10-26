@@ -18,6 +18,20 @@ type Context = Readonly<{
 const hash = (value: unknown) => createHash('sha256').update(canonicalize(value)).digest('hex');
 const json = (value: unknown) => value as JsonObject;
 
+// A key identifies the persisted order, never a replacement order supplied on replay.
+async function authorizedEvaluationReplay(tx: SqlClient, key: string, context: Context) {
+  const secured = recordScopeSql(context.scopes, context.anchors, context.actor, 'c', 3);
+  const replay = (
+    await tx.query<{ item: JsonObject; visible: boolean }>(
+      `SELECT to_jsonb(e) item,EXISTS(SELECT 1 FROM sales_orders o JOIN customers c ON c.id=o.customer_id AND c.tenant_id=o.tenant_id WHERE o.id=e.sales_order_id AND o.tenant_id=e.tenant_id AND ${secured.sql}) visible FROM risk_evaluations e WHERE e.tenant_id=$1 AND e.idempotency_key=$2`,
+      [context.actor.companyId, key, ...secured.values],
+    )
+  ).rows[0];
+  if (replay && !replay.visible)
+    throw new DomainError('not_found', 'Risk evaluation not found in current scope');
+  return replay?.item ?? null;
+}
+
 export class PostgresRiskRepository {
   public constructor(private readonly db: Db) {}
   public async listPolicies(context: Context) {
@@ -192,13 +206,8 @@ export class PostgresRiskRepository {
       await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
         `${context.actor.companyId}:${key}:risk`,
       ]);
-      const replay = (
-        await tx.query<{ item: JsonObject }>(
-          'SELECT to_jsonb(e) item FROM risk_evaluations e WHERE e.tenant_id=$1 AND e.idempotency_key=$2',
-          [context.actor.companyId, key],
-        )
-      ).rows[0];
-      if (replay) return replay.item;
+      const replay = await authorizedEvaluationReplay(tx, key, context);
+      if (replay) return replay;
       const { actor, scopes, anchors } = context;
       const { salesOrderId, policyVersionId, assigneeEmployeeId } = input;
       const basisParameters = [salesOrderId, actor.companyId, policyVersionId, assigneeEmployeeId];

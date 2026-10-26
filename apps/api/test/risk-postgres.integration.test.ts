@@ -497,7 +497,7 @@ describe('risk repository real PostgreSQL contracts', () => {
     ).rejects.toMatchObject({ code: 'not_found' });
     expect(await counts()).toEqual(before);
   });
-  it('TD-RISK-002: characterizes same-tenant replay before current data scope validation', async () => {
+  it('TD-RISK-002: rejects a known-key replay outside the current scope and keeps authorized handoff', async () => {
     const { context, reviewerEmployee } = state();
     const policy = await repository.createPolicy(
       policyInput('REPLAY-SCOPE'),
@@ -513,11 +513,57 @@ describe('risk repository real PostgreSQL contracts', () => {
       actor: { ...context.actor, employeeId: reviewerEmployee },
       scopes: ['SELF'] as const,
     };
-    const replay = await repository.evaluate(input, key, narrowed, randomUUID());
-    expect(replay.id).toBe(first.id);
+    await expect(repository.evaluate(input, key, narrowed, randomUUID())).rejects.toMatchObject({
+      code: 'not_found',
+    });
+    await expect(
+      repository.evaluate({ ...input, salesOrderId: randomUUID() }, key, narrowed, randomUUID()),
+    ).rejects.toMatchObject({ code: 'not_found' });
+    expect(
+      (await repository.evaluate(input, key, { ...narrowed, scopes: ['COMPANY'] }, randomUUID()))
+        .id,
+    ).toBe(first.id);
     await expect(
       repository.evaluate(input, randomUUID(), narrowed, randomUUID()),
     ).rejects.toMatchObject({ code: 'not_found' });
+    expect(await counts()).toEqual(before);
+  });
+
+  it('TD-RISK-002: reevaluates explicit anchors on the stored order for every replay', async () => {
+    const { context, db, teamId, otherContext } = state();
+    const policy = await repository.createPolicy(
+      policyInput('REPLAY-ANCHORS'),
+      context,
+      randomUUID(),
+    );
+    const input = evaluationInput(identifier(policy)),
+      key = randomUUID();
+    const anchored = {
+      ...context,
+      scopes: ['TEAM'] as const,
+      anchors: [{ scope: 'TEAM' as const, organizationId: teamId }],
+    };
+    const first = await repository.evaluate(input, key, anchored, randomUUID());
+    const before = await counts();
+    for (const denied of [
+      { ...context, scopes: [] as const },
+      { ...anchored, anchors: [] },
+      { ...anchored, anchors: [{ scope: 'TEAM' as const, organizationId: randomUUID() }] },
+      otherContext,
+    ]) {
+      const correlation = randomUUID();
+      await expect(repository.evaluate(input, key, denied, correlation)).rejects.toMatchObject({
+        code: 'not_found',
+      });
+      expect(await counts()).toEqual(before);
+      expect(await evidenceCounts(correlation)).toEqual({ audit: '0', outbox: '0' });
+    }
+    await db.query('UPDATE organizations SET active=false WHERE id=$1', [teamId]);
+    await expect(repository.evaluate(input, key, anchored, randomUUID())).rejects.toMatchObject({
+      code: 'not_found',
+    });
+    await db.query('UPDATE organizations SET active=true WHERE id=$1', [teamId]);
+    expect((await repository.evaluate(input, key, anchored, randomUUID())).id).toBe(first.id);
     expect(await counts()).toEqual(before);
   });
 });
