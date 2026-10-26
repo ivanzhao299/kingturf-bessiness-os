@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[V1.0产品化接管入口](productization/README.md)：2026-10-26，基线b1ef7a9；当前真实状态、行业/业务/架构审计、十二工作包及No-Go准入草稿。本轮仅本地文档和隔离验证，未授权业务实施或生产变更。同日再次核验主线、开放PR/Issue和证据哈希一致；补充技术层分别选型及管理员/运维场景。
+
 [Harness施工图竣工归档](exec-plans/completed/harness-2026-10-21.md)：阶段1–5与§14迁移记录；常驻规则以AGENTS、核心信念、架构、CI和门禁文档为准。
 [Harness竣工收官报告](evidence/harness-final-closeout-report-2026-10-21.md)：五阶段摘要、开放项承接、母模板反馈与归档后合同。
 [Harness常驻契约自检](evidence/harness-final-closeout-self-check-2026-10-21.md)：无施工图依赖的机械自检结果与证据入口。
@@ -412,3 +414,21 @@ E1先行固定证据：[authorization守恒候选/773例旧新探针](evidence/e
 ## exec-plans/completed/
 
 归档计划：[harness-2026-10-21.md](exec-plans/completed/harness-2026-10-21.md)。
+
+## docs/productization（V1.0接管与产品化草稿）
+
+| 文件                                                                                 | 内容与状态                                |
+| ------------------------------------------------------------------------------------ | ----------------------------------------- |
+| [KingTurf V1.0 产品化改造与试运行交付工程](productization/README.md)                 | 2026-10-26本地审计/方案草稿；未作业务放行 |
+| [KingTurf V1.0 真实业务验收方案](productization/business-acceptance.md)              | 2026-10-26本地审计/方案草稿；未作业务放行 |
+| [KingTurf V1.0 业务能力和实现映射](productization/business-capability-matrix.md)     | 2026-10-26本地审计/方案草稿；未作业务放行 |
+| [KingTurf V1.0 技术债和整改清单](productization/debt-remediation.md)                 | 2026-10-26本地审计/方案草稿；未作业务放行 |
+| [KingTurf V1.0 行业对标](productization/industry-benchmark.md)                       | 2026-10-26本地审计/方案草稿；未作业务放行 |
+| [KingTurf V1.0 产品差距分析](productization/product-gap-analysis.md)                 | 2026-10-26本地审计/方案草稿；未作业务放行 |
+| [KingTurf V1.0 发布和试运行准入报告草案](productization/release-readiness.md)        | 2026-10-26本地审计/方案草稿；未作业务放行 |
+| [KingTurf V1.0 执行路线图草案](productization/roadmap.md)                            | 2026-10-26本地审计/方案草稿；未作业务放行 |
+| [KingTurf V1.0 接管审计 2026年10月26日](productization/takeover-audit-2026-10-26.md) | 2026-10-26本地审计/方案草稿；未作业务放行 |
+| [KingTurf V1.0 目标技术架构草案](productization/target-architecture.md)              | 2026-10-26本地审计/方案草稿；未作业务放行 |
+| [KingTurf V1.0 目标产品设计草案](productization/target-product-design.md)            | 2026-10-26本地审计/方案草稿；未作业务放行 |
+| [KingTurf V1.0 受控试运行和维护方案草案](productization/trial-operations.md)         | 2026-10-26本地审计/方案草稿；未作业务放行 |
+| [KingTurf V1.0 接管验证证据 2026年10月26日](productization/verification-evidence.md) | 2026-10-26本地审计/方案草稿；未作业务放行 |

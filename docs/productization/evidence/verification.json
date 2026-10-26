@@ -1,0 +1,93 @@
+{
+  "baseline": "b1ef7a9e7fdbfc0341f29f1cb612504ff47cd41b",
+  "observed_date": "2026-10-26",
+  "timezone": "Asia/Singapore",
+  "baseline_ci": {
+    "exit": 0,
+    "elapsed_seconds": 399.93,
+    "clean_start_and_end": true,
+    "api_tests": 17297,
+    "web_tests": 436,
+    "coverage": {
+      "overall": [37543, 48601],
+      "domain": [629, 671],
+      "repository": [9838, 11512],
+      "deficits": []
+    }
+  },
+  "targeted_pg": {
+    "exit": 0,
+    "tests_passed": 18,
+    "elapsed_seconds": 54.56,
+    "interpretation": "Existing tests confirm known failures and rollback; not fixes"
+  },
+  "audit_probes": {
+    "round1": {
+      "exit": 1,
+      "failed": 2,
+      "filtered_existing_tests": 14,
+      "elapsed_seconds": 12.82
+    },
+    "round2": {
+      "exit": 1,
+      "failed": 3,
+      "filtered_existing_tests": 14,
+      "elapsed_seconds": 10.69
+    },
+    "observations": {
+      "bom_expected": "2.100000",
+      "bom_actual": "21.000000",
+      "inventory_before_first_second": ["10.000000", "10.000000", "10.000000"],
+      "second_dispatch_accepted": true,
+      "sales_order_source_exists": false,
+      "sales_order_demand_accepted": true
+    }
+  },
+  "not_run": [
+    "browser E2E",
+    "current-SHA human business UAT",
+    "production business writes",
+    "load test",
+    "database-files-config joint restore",
+    "production CSP observation",
+    "production environment approval settings"
+  ],
+  "changes": "local documentation and evidence only; no commits, push, merge, workflow or production changes",
+  "final_document_checks": {
+    "status": "passed",
+    "doc_lint": {
+      "exit": 0,
+      "indexed_docs": 224
+    },
+    "prettier_changed_documents": {
+      "exit": 0
+    },
+    "git_diff_check": {
+      "exit": 0
+    },
+    "new_document_local_links": {
+      "resolved": 35,
+      "broken": 0
+    },
+    "unique_debt_ids": {
+      "historical": 63,
+      "new_candidates": 8,
+      "total": 71
+    },
+    "baseline_source_config_hashes_unchanged": 660,
+    "ignored_evidence_files": 0,
+    "temporary_credential_scan": "clean",
+    "independent_review": "ops reviewer identified ignored .log files and pending manifest; evidence converted to .txt, all links and checksums regenerated; no other state or authorization blocker found",
+    "full_repository_format_check": {
+      "exit": 0
+    }
+  },
+  "owned_resources": {
+    "status": "cleaned",
+    "owned_postgres_tmpfs_container": "stopped and automatically removed",
+    "temporary_connection_file": "removed",
+    "remaining_owned_test_schemas_before_stop": 0,
+    "detached_audit_worktrees_removed": 6,
+    "production_and_existing_databases": "untouched"
+  }
+}
