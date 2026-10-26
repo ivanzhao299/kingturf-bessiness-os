@@ -28,3 +28,5 @@
 禁止提交临时账号、token、连接串、数据库/附件备份或原始浏览器认证材料；只保存脱敏日志、数值摘要与合成样本。REMOTE_PUSH/MAIN_MERGE/PRODUCTION_DEPLOY=NOT_AUTHORIZED，PILOT_READINESS=NO_GO。
 
 补充正确文件名的库存/迁移/采购/生产/授权专项：inventory-auth-regression.txt，5文件57项通过；真实并发与回滚/0071兼容及19项HTTP授权均包括。与安全组合48项分开记录，最终完整CI另验。
+
+首轮最终完整CI：full-ci-attempt-1.txt/json，711c4e4，exit1/126.45秒，重复SEC010台账主键被既有覆盖率元数据门禁拦截。修正规范登记形态，不改门禁；新文档提交另完整执行。

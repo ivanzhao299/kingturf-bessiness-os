@@ -55,3 +55,7 @@ G5逐组均可精确代码回退，无数据迁移；完整回退点f3仍可定�
 | KT-V1-010/011                 | 负责人确定试运行范围、真实岗位/金额库存独立期望、负载/恢复目标、运维责任及环境授权     | 人工UAT、双轮、备份恢复/性能/发布审批齐备方可Go                    |
 
 REMOTE_PUSH=NOT_AUTHORIZED；MAIN_MERGE=NOT_AUTHORIZED；PRODUCTION_DEPLOY=NOT_AUTHORIZED；PILOT_READINESS=NO_GO。没有正式生产写入、迁移、重启、配置或附件/备份清理。
+
+## 首轮完整CI真实失败与文档修正
+
+711c4e4的完整ci:local实际exit1/126.45秒，在覆盖率元数据检查以duplicate debt table identity拒绝，尚未开始包覆盖率采集。原因是本批SEC010后继表格重复使用既有规范行主键；改为引用原登记的补充段落，历史行保留，门禁不改。完整日志/回执在证据目录full-ci-attempt-1；该失败不抹去。文档修正的新提交必须重新完整CI，并在新提交固定后执行P1两轮，不借用711或Batch3结果。
