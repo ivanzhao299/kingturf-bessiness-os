@@ -121,10 +121,10 @@ export class PostgresProductionCostRepository {
           unit_cost: string;
         }>(
           `WITH chosen_bom AS(
-        SELECT b.id FROM manufacturing_bom_versions b JOIN production_orders o ON o.tenant_id=b.tenant_id AND o.item_version_id=b.product_item_version_id
+        SELECT b.id,b.output_quantity FROM manufacturing_bom_versions b JOIN production_orders o ON o.tenant_id=b.tenant_id AND o.item_version_id=b.product_item_version_id
         WHERE o.tenant_id=$1 AND o.id=$2 AND b.status='PUBLISHED' ORDER BY b.published_at DESC LIMIT 1)
         SELECT l.component_item_version_id item_version_id,i.sku,
-          trunc(l.quantity*(1+l.scrap_basis_points::numeric/10000)*o.planned_quantity,6)::text planned_quantity,
+          trunc(l.quantity*(1+l.scrap_basis_points::numeric/10000)*o.planned_quantity/c.output_quantity,6)::text planned_quantity,
           coalesce((SELECT trunc(sum(CASE WHEN t.transaction_type='ISSUE' THEN t.quantity ELSE -t.quantity END),6) FROM production_material_transactions t WHERE t.tenant_id=o.tenant_id AND t.production_order_id=o.id AND t.item_version_id=l.component_item_version_id),0)::text actual_quantity,
           r.unit_cost::text FROM chosen_bom c JOIN manufacturing_bom_lines l ON l.bom_version_id=c.id
         JOIN production_orders o ON o.tenant_id=l.tenant_id AND o.id=$2 JOIN production_cost_policy_material_rates r ON r.tenant_id=l.tenant_id AND r.policy_id=$3 AND r.item_version_id=l.component_item_version_id
@@ -183,7 +183,7 @@ export class PostgresProductionCostRepository {
       const plannedTotal = plannedMaterial + plannedLabor + plannedMachine + plannedOverhead,
         actualTotal = actualMaterial + actualLabor + actualMachine + actualOverhead;
       const trace = {
-        formulaVersion: 'KT-L17-V1',
+        formulaVersion: 'KT-L17-V1.1-BOM-OUTPUT',
         roundingScale: 6,
         materialValuation: 'FROZEN_POLICY_RATE',
         laborRatePerHour: policy.labor_rate_per_hour,
