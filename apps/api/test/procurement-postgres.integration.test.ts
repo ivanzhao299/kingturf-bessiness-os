@@ -695,4 +695,77 @@ describe('procurement and inventory repository real PostgreSQL contracts', () =>
       expect(await evidenceCounts(correlation)).toEqual({ audit: '1', outbox: '1' });
     expect(await receiptCounts()).toEqual({ receipts: 2, lines: 2, lots: 2, movements: 2 });
   });
+
+  it('TD-INV-001: characterizes overlapping committed issues bypassing the existing balance sum guard', async () => {
+    const { context, db } = state();
+    await repository.receive(receiptInput('RACE-SEED'), context, randomUUID());
+    const lot = (
+      await db.query<{ id: string }>(
+        "SELECT id FROM inventory_lots WHERE tenant_id=$1 AND lot_number='LOT-RACE-SEED'",
+        [context.actor.companyId],
+      )
+    ).rows[0];
+    if (!lot) throw new Error('Synthetic race lot missing');
+    let arrivals = 0,
+      release: (() => void) | undefined;
+    const both = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const gated: ConstructorParameters<typeof PostgresProcurementRepository>[0] = {
+      query: db.query.bind(db),
+      transaction: async (work) =>
+        db.transaction(async (tx) => {
+          const result = await work(tx);
+          arrivals++;
+          if (arrivals === 2) release?.();
+          let timer: ReturnType<typeof setTimeout> | undefined;
+          try {
+            await Promise.race([
+              both,
+              new Promise<never>((_resolve, reject) => {
+                timer = setTimeout(() => {
+                  reject(
+                    new Error('Two independent move transactions did not reach commit barrier'),
+                  );
+                }, 2000);
+              }),
+            ]);
+          } finally {
+            if (timer) clearTimeout(timer);
+          }
+          return result;
+        }),
+    };
+    const moves = new PostgresProcurementRepository(gated);
+    const correlations = [randomUUID(), randomUUID()];
+    const results = await Promise.all(
+      correlations.map((correlation) =>
+        moves.move(
+          {
+            movementType: 'ISSUE',
+            itemVersionId: identifier(material),
+            lotId: lot.id,
+            locationId: identifier(location),
+            quantity: '7',
+            occurredAt: '2026-02-01T01:00:00Z',
+            sourceType: 'SYNTHETIC-RACE',
+            sourceId: randomUUID(),
+          },
+          context,
+          correlation,
+        ),
+      ),
+    );
+    expect(results).toHaveLength(2);
+    expect(arrivals).toBe(2);
+    const balance = (
+      await db.query<{ quantity: string }>(
+        'SELECT quantity FROM inventory_balances WHERE tenant_id=$1 AND lot_id=$2 AND location_id=$3',
+        [context.actor.companyId, lot.id, identifier(location)],
+      )
+    ).rows[0];
+    expect(Number(balance?.quantity)).toBe(-4);
+    for (const correlation of correlations)
+      expect(await evidenceCounts(correlation)).toEqual({ audit: '1', outbox: '1' });
+  });
 });

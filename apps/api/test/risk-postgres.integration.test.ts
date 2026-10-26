@@ -566,4 +566,49 @@ describe('risk repository real PostgreSQL contracts', () => {
     expect((await repository.evaluate(input, key, anchored, randomUUID())).id).toBe(first.id);
     expect(await counts()).toEqual(before);
   });
+
+  it('TD-RISK-003: characterizes task-event replay before current assignee and task identity checks', async () => {
+    const { context, reviewerEmployee } = state();
+    const policy = await repository.createPolicy(policyInput('TASK-REPLAY'), context, randomUUID());
+    const evaluation = await repository.evaluate(
+      evaluationInput(identifier(policy)),
+      randomUUID(),
+      context,
+      randomUUID(),
+    );
+    const task = identifier(evaluation, 'taskId'),
+      key = randomUUID();
+    await repository.transitionTask(
+      task,
+      { state: 'ACKNOWLEDGED', reason: 'Synthetic acknowledgement', evidence: { ack: true } },
+      key,
+      context,
+      randomUUID(),
+    );
+    const before = await counts();
+    const narrowed = {
+      ...context,
+      actor: { ...context.actor, employeeId: reviewerEmployee },
+      scopes: ['SELF'] as const,
+    };
+    expect(
+      await repository.transitionTask(
+        randomUUID(),
+        { state: 'ESCALATED', reason: 'Different task path', evidence: {} },
+        key,
+        narrowed,
+        randomUUID(),
+      ),
+    ).toMatchObject({ taskId: task, state: 'ACKNOWLEDGED' });
+    await expect(
+      repository.transitionTask(
+        task,
+        { state: 'ESCALATED', reason: 'New key remains forbidden', evidence: {} },
+        randomUUID(),
+        narrowed,
+        randomUUID(),
+      ),
+    ).rejects.toMatchObject({ code: 'not_found' });
+    expect(await counts()).toEqual(before);
+  });
 });

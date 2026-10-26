@@ -419,5 +419,117 @@ describe.each([
         ).rows,
       ).toEqual([{ n: 1 }]);
     });
+
+    it('TD-COST-001: characterizes independent component rounding rejected by the exact total constraint', async () => {
+      const order = await production.create(
+        {
+          orderNumber: 'ROUND-WO',
+          itemVersionId: finishedVersion,
+          routingVersionId: routingVersion,
+          plannedQuantity: '1',
+          plannedStartAt: '2026-08-16',
+          plannedDueAt: '2026-08-20',
+          sourceReference: 'TEST-ROUND',
+        },
+        context,
+        randomUUID(),
+      );
+      if (typeof order.id !== 'string') throw new Error('Synthetic rounding order missing');
+      for (const state of ['RELEASED', 'IN_PROGRESS'] as const)
+        await production.transition(
+          order.id,
+          state,
+          { reason: 'Rounding setup', evidence: {}, idempotencyKey: randomUUID() },
+          context,
+          randomUUID(),
+        );
+      const operation = (
+        await db.query<{ id: string }>(
+          'SELECT id FROM production_order_operations WHERE production_order_id=$1',
+          [order.id],
+        )
+      ).rows[0];
+      if (!operation) throw new Error('Synthetic rounding operation missing');
+      await production.reportOperation(
+        order.id,
+        {
+          operationId: operation.id,
+          goodQuantity: '1',
+          scrapQuantity: '0',
+          laborMinutes: '1',
+          machineMinutes: '1',
+          startedAt: '2026-08-17T09:00:00Z',
+          completedAt: '2026-08-17T09:01:00Z',
+          notes: 'Rounding setup',
+          idempotencyKey: randomUUID(),
+        },
+        context,
+        randomUUID(),
+      );
+      await production.transition(
+        order.id,
+        'COMPLETED',
+        { reason: 'Rounding setup completed', evidence: {}, idempotencyKey: randomUUID() },
+        context,
+        randomUUID(),
+      );
+      const policy = await costs.createPolicy(
+        {
+          version: 100,
+          currency: 'CNY',
+          laborRatePerHour: '1',
+          machineRatePerHour: '1',
+          overheadRatePerMachineHour: '1',
+          effectiveFrom: '2026-08-01',
+          sourceReference: 'ROUND-POLICY',
+          materialRates: [
+            { itemVersionId: materialVersion, unitCost: '5', sourceReference: 'ROUND-FIXED' },
+          ],
+        },
+        context,
+        randomUUID(),
+      );
+      const reference = (
+        await db.query<{ parts: string; total: string }>(
+          'SELECT (3*round(2::numeric/60,6))::text parts,round(3*(2::numeric/60),6)::text total',
+        )
+      ).rows[0];
+      expect(reference).toEqual({ parts: '0.099999', total: '0.100000' });
+      const guard = (
+        await db.query<{ conname: string }>(
+          "SELECT conname FROM pg_constraint WHERE conrelid='production_cost_runs'::regclass AND pg_get_constraintdef(oid) LIKE '%planned_total%planned_material%' ",
+        )
+      ).rows[0];
+      if (!guard) throw new Error('Existing planned component total constraint missing');
+      const correlation = randomUUID();
+      await expect(
+        costs.calculate(
+          {
+            productionOrderId: order.id,
+            policyId: policy.id,
+            runNumber: 'ROUND-COST',
+            idempotencyKey: randomUUID(),
+          },
+          context,
+          correlation,
+        ),
+      ).rejects.toMatchObject({ code: '23514', constraint: guard.conname });
+      expect(
+        (
+          await db.query<{ n: number }>(
+            'SELECT count(*)::int n FROM production_cost_runs WHERE production_order_id=$1',
+            [order.id],
+          )
+        ).rows,
+      ).toEqual([{ n: 0 }]);
+      expect(
+        (
+          await db.query<{ n: number }>(
+            'SELECT count(*)::int n FROM audit_events WHERE correlation_id=$1',
+            [correlation],
+          )
+        ).rows,
+      ).toEqual([{ n: 0 }]);
+    });
   },
 );

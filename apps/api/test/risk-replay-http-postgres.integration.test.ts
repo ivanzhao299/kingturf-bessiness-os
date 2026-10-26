@@ -386,4 +386,24 @@ describe('TD-RISK-002 real HTTP current authorization on PostgreSQL replays', ()
       events: (before?.events ?? 0) + 1,
     });
   });
+
+  it('TD-SEC-009: characterizes wider mutation responses than the independent read data scope', async () => {
+    await fixture.db.query(
+      "UPDATE role_permission_grants SET data_scopes=ARRAY['SELF']::data_scope[] WHERE role_id=$1 AND permission_id=(SELECT id FROM permissions WHERE capability='risk:read')",
+      [owner.roleId],
+    );
+    const read = await fetch(`${origin}/api/v1/risk-evaluations`, {
+      headers: { authorization: `Bearer ${ownerToken}` },
+      signal: AbortSignal.timeout(10_000),
+    });
+    expect(read.status).toBe(200);
+    expect((await read.json()) as Record<string, unknown>).toMatchObject({ items: [] });
+    const replay = await evaluate(ownerToken);
+    expect(replay.status).toBe(201);
+    expect((await replay.json()) as Record<string, unknown>).toMatchObject({
+      id: firstId,
+      sales_order_id: fixture.graph.orderId,
+    });
+    expect(await counts()).toEqual(before);
+  });
 });
