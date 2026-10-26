@@ -1,7 +1,6 @@
 import { DEFAULT_BROWSER_SESSION, type BrowserSessionConfig } from '@kingturf/config';
 import {
   addDecimal,
-  assertCurrency,
   assertStableCode,
   DomainError,
   NOOP_TELEMETRY,
@@ -143,6 +142,7 @@ import { customerContactRoutes } from './routes/customer-contacts.ts';
 import { customerLifecycleRoutes } from './routes/customer-lifecycle.ts';
 import { customerOwnershipRoutes } from './routes/customer-ownership.ts';
 import { executiveDashboardRoutes } from './routes/dashboard.ts';
+import { costsAttempts } from './routes/dispatch/costs.ts';
 import { manufacturingAttempts } from './routes/dispatch/manufacturing.ts';
 import { mrpAttempts } from './routes/dispatch/mrp.ts';
 import { procurementAttempts } from './routes/dispatch/procurement.ts';
@@ -177,13 +177,6 @@ import {
 } from './routes/number-definitions.ts';
 import { dispatchOpportunityRoutes } from './routes/opportunities.ts';
 import { order360Routes } from './routes/order-360.ts';
-import { productionCostCalculationRoutes } from './routes/production-cost-calculation.ts';
-import { productionCostDecisionRoutes } from './routes/production-cost-decisions.ts';
-import { productionCostPolicyRoutes } from './routes/production-cost-policy.ts';
-import {
-  productionCostPolicyReadRoutes,
-  productionCostRunReadRoutes,
-} from './routes/production-reads.ts';
 import { qtcArPostRoutes } from './routes/qtc-ar-post.ts';
 import { qtcBankPaymentIntakeRoutes } from './routes/qtc-bank-payment-intake.ts';
 import { qtcBaseReadRoutes } from './routes/qtc-base-reads.ts';
@@ -430,96 +423,9 @@ export function buildApp(
           const response = pending.project(await pending.pending);
           if (response !== null) return response;
         }
-        if (dependencies.productionCosts) {
-          if (request.method === 'GET' && request.pathname === '/api/v1/production-cost-policies') {
-            const response = await dispatchRoutes(
-              productionCostPolicyReadRoutes({
-                repository: dependencies.productionCosts,
-                authorization: context,
-                authorizeQuery,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          if (request.method === 'GET' && request.pathname === '/api/v1/production-cost-runs') {
-            const response = await dispatchRoutes(
-              productionCostRunReadRoutes({
-                repository: dependencies.productionCosts,
-                authorization: context,
-                authorizeQuery,
-                permittedDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          if (
-            request.method === 'POST' &&
-            request.pathname === '/api/v1/production-cost-policies'
-          ) {
-            const response = await dispatchRoutes(
-              productionCostPolicyRoutes({
-                repository: dependencies.productionCosts,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                parsers: {
-                  objectBody,
-                  allow,
-                  uuid,
-                  decimal,
-                  string,
-                  stableCode: assertStableCode,
-                  integer,
-                  currency: assertCurrency,
-                  calendarDate,
-                },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          if (request.method === 'POST' && request.pathname === '/api/v1/production-cost-runs') {
-            const response = await dispatchRoutes(
-              productionCostCalculationRoutes({
-                repository: dependencies.productionCosts,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                parsers: { objectBody, allow, uuid, string, stableCode: assertStableCode },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          const costDecision =
-            /^\/api\/v1\/production-cost-runs\/([0-9a-f-]+)\/(approve|reject)$/u.exec(
-              request.pathname,
-            );
-          if (request.method === 'POST' && costDecision) {
-            const response = await dispatchRoutes(
-              productionCostDecisionRoutes({
-                repository: dependencies.productionCosts,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                parsers: {
-                  objectBody,
-                  allow,
-                  uuid,
-                  string,
-                  jsonObject,
-                  stableCode: assertStableCode,
-                },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
+        for (const pending of costsAttempts({ request, dependencies, context, correlationId })) {
+          const response = pending.project(await pending.pending);
+          if (response !== null) return response;
         }
         if (dependencies.shipments) {
           if (request.method === 'GET' && request.pathname === '/api/v1/shipment-releases') {

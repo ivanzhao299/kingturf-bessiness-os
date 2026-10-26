@@ -22,5 +22,11 @@
     "symbol": "productionAttempts",
     "file": "production.ts",
     "property": "production"
+  },
+  {
+    "name": "costs",
+    "symbol": "costsAttempts",
+    "file": "costs.ts",
+    "property": "productionCosts"
   }
 ]
