@@ -40,5 +40,11 @@
     "symbol": "collectionsAttempts",
     "file": "collections.ts",
     "property": "collections"
+  },
+  {
+    "name": "quality",
+    "symbol": "qualityAttempts",
+    "file": "quality.ts",
+    "property": "quality"
   }
 ]

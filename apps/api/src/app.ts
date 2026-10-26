@@ -138,6 +138,7 @@ import { manufacturingAttempts } from './routes/dispatch/manufacturing.ts';
 import { mrpAttempts } from './routes/dispatch/mrp.ts';
 import { procurementAttempts } from './routes/dispatch/procurement.ts';
 import { productionAttempts } from './routes/dispatch/production.ts';
+import { qualityAttempts } from './routes/dispatch/quality.ts';
 import { dispatchFoundationRoutes, foundationRoutes } from './routes/foundation.ts';
 import { identityAccessRoutes } from './routes/identity-access.ts';
 import { identityProvisionRoutes } from './routes/identity-provision.ts';
@@ -176,17 +177,6 @@ import { qtcCreditEvaluationRoutes, qtcCreditLimitRoutes } from './routes/qtc-cr
 import { qtcOperationalReadRoutes } from './routes/qtc-operational-reads.ts';
 import { qtcReconciliationRunRoutes } from './routes/qtc-reconciliation-run.ts';
 import { qtcSalesOrderCreateRoutes } from './routes/qtc-sales-order-create.ts';
-import { qualityDispositionRoutes } from './routes/quality-disposition.ts';
-import { qualityInspectionOpenRoutes } from './routes/quality-inspection-open.ts';
-import { qualityInspectionTransitionRoutes } from './routes/quality-inspection-transitions.ts';
-import { qualityPlanCreateRoutes } from './routes/quality-plan-create.ts';
-import { qualityPlanPublishRoutes } from './routes/quality-plan-publish.ts';
-import {
-  lotTraceabilityReadRoutes,
-  qualityInspectionReadRoutes,
-  qualityPlanReadRoutes,
-} from './routes/quality-reads.ts';
-import { qualityResultRecordRoutes } from './routes/quality-result-record.ts';
 import { quoteCommandRoutes } from './routes/quote-commands.ts';
 import { quoteWriteRoutes } from './routes/quote-writes.ts';
 import { riskEvaluationCreateRoutes } from './routes/risk-evaluation-create.ts';
@@ -584,194 +574,12 @@ export function buildApp(
             if (response) return response;
           } else if (response !== null) return response;
         }
-        if (dependencies.quality) {
-          const qualityLists: Readonly<
-            Record<string, readonly ['plans' | 'inspections' | 'lots', PermissionKey] | undefined>
-          > = {
-            '/api/v1/quality-plans': ['plans', 'quality-plan:read'],
-            '/api/v1/quality-inspections': ['inspections', 'quality:read'],
-            '/api/v1/lot-traceability': ['lots', 'traceability:read'],
-          };
-          const qualityList = qualityLists[request.pathname];
-          if (request.method === 'GET' && qualityList) {
-            const [view, capability] = qualityList;
-            const readContext = {
-              repository: () =>
-                dependencies.quality as Pick<NonNullable<ApiDependencies['quality']>, 'list'>,
-              authorization: context,
-              authorizeQuery,
-              view,
-              capability,
-              permittedDto,
-            };
-            const response = await dispatchRoutes(
-              [
-                ...qualityPlanReadRoutes(readContext),
-                ...qualityInspectionReadRoutes(readContext),
-                ...lotTraceabilityReadRoutes(readContext),
-              ],
-              request,
-            );
-            if (response !== null) return response;
-          }
-          if (request.method === 'POST' && request.pathname === '/api/v1/quality-plans') {
-            const response = await dispatchRoutes(
-              qualityPlanCreateRoutes({
-                repository: () =>
-                  dependencies.quality as Pick<
-                    NonNullable<ApiDependencies['quality']>,
-                    'createPlan'
-                  >,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                parsers: {
-                  objectBody,
-                  allow,
-                  string,
-                  uuid,
-                  decimal,
-                  timestamp,
-                  array,
-                  jsonObject,
-                  stableCode: assertStableCode,
-                },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          const planPublish = /^\/api\/v1\/quality-plans\/([0-9a-f-]+)\/publish$/u.exec(
-            request.pathname,
-          );
-          if (request.method === 'POST' && planPublish) {
-            const response = await dispatchRoutes(
-              qualityPlanPublishRoutes({
-                repository: () =>
-                  dependencies.quality as Pick<
-                    NonNullable<ApiDependencies['quality']>,
-                    'publishPlan'
-                  >,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                uuid,
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          if (request.method === 'POST' && request.pathname === '/api/v1/quality-inspections') {
-            const response = await dispatchRoutes(
-              qualityInspectionOpenRoutes({
-                repository: () =>
-                  dependencies.quality as Pick<
-                    NonNullable<ApiDependencies['quality']>,
-                    'openInspection'
-                  >,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                parsers: {
-                  objectBody,
-                  allow,
-                  string,
-                  uuid,
-                  decimal,
-                  stableCode: assertStableCode,
-                },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          const inspectionCommand =
-            /^\/api\/v1\/quality-inspections\/([0-9a-f-]+)\/(sample|complete|cancel)$/u.exec(
-              request.pathname,
-            );
-          if (request.method === 'POST' && inspectionCommand) {
-            const response = await dispatchRoutes(
-              qualityInspectionTransitionRoutes({
-                repository: () =>
-                  dependencies.quality as Pick<
-                    NonNullable<ApiDependencies['quality']>,
-                    'transitionInspection'
-                  >,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                parsers: {
-                  objectBody,
-                  allow,
-                  uuid,
-                  string,
-                  jsonObject,
-                  stableCode: assertStableCode,
-                },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          const resultCommand = /^\/api\/v1\/quality-inspections\/([0-9a-f-]+)\/results$/u.exec(
-            request.pathname,
-          );
-          if (request.method === 'POST' && resultCommand) {
-            const response = await dispatchRoutes(
-              qualityResultRecordRoutes({
-                repository: () =>
-                  dependencies.quality as Pick<
-                    NonNullable<ApiDependencies['quality']>,
-                    'recordResult'
-                  >,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                parsers: {
-                  objectBody,
-                  allow,
-                  uuid,
-                  string,
-                  decimal,
-                  timestamp,
-                  stableCode: assertStableCode,
-                },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
-          const dispositionCommand =
-            /^\/api\/v1\/quality-inspections\/([0-9a-f-]+)\/(release|reject)$/u.exec(
-              request.pathname,
-            );
-          if (request.method === 'POST' && dispositionCommand) {
-            const response = await dispatchRoutes(
-              qualityDispositionRoutes({
-                repository: () =>
-                  dependencies.quality as Pick<NonNullable<ApiDependencies['quality']>, 'dispose'>,
-                authorization: context,
-                authorizeQuery,
-                correlationId,
-                parsers: {
-                  objectBody,
-                  allow,
-                  uuid,
-                  string,
-                  jsonObject,
-                  stableCode: assertStableCode,
-                },
-                mutationDto,
-              }),
-              request,
-            );
-            if (response !== null) return response;
-          }
+        for (const pending of qualityAttempts({ request, dependencies, context, correlationId })) {
+          if (pending.accept === 'always') return pending.project(await pending.pending);
+          const response = pending.project(await pending.pending);
+          if (pending.accept === 'truthy') {
+            if (response) return response;
+          } else if (response !== null) return response;
         }
         if (
           request.method === 'GET' &&
