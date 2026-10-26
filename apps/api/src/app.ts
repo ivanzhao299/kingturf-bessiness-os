@@ -85,9 +85,7 @@ import type { PostgresProductionRepository } from './production-repositories.ts'
 import type { PostgresQuoteToCashRepository } from './qtc-repositories.ts';
 import type { PostgresQualityRepository } from './quality-repositories.ts';
 import type { PostgresRiskRepository } from './risk-repositories.ts';
-import { auditReadRoutes } from './routes/audit-reads.ts';
 import { loginRoutes, sessionRoutes } from './routes/auth.ts';
-import { dispatchAuthorizationRoutes } from './routes/authorization.ts';
 import { businessDocumentActivityRoutes } from './routes/business-document-activity.ts';
 import { businessDocumentBindingRoutes } from './routes/business-document-bindings.ts';
 import { businessDocumentConnectorRoutes } from './routes/business-document-connector.ts';
@@ -103,6 +101,7 @@ import { businessDocumentReviewRoutes } from './routes/business-document-review.
 import { businessDocumentSendRoutes } from './routes/business-document-send.ts';
 import { businessDocumentTranslationRoutes } from './routes/business-document-translation.ts';
 import { businessDocumentVersionRoutes } from './routes/business-document-version.ts';
+import { accessAttempts } from './routes/dispatch/access.ts';
 import { collectionsAttempts } from './routes/dispatch/collections.ts';
 import { commercialAttempts } from './routes/dispatch/commercial.ts';
 import { commissionAttempts } from './routes/dispatch/commission.ts';
@@ -120,7 +119,6 @@ import { qtcreadsAttempts } from './routes/dispatch/qtcreads.ts';
 import { qualityAttempts } from './routes/dispatch/quality.ts';
 import { riskAttempts } from './routes/dispatch/risk.ts';
 import { dispatchFoundationRoutes, foundationRoutes } from './routes/foundation.ts';
-import { identityAccessRoutes } from './routes/identity-access.ts';
 import {
   masterCategoryCreateRoutes,
   masterCategoryDeleteRoutes,
@@ -1127,56 +1125,13 @@ export function buildApp(
             return { statusCode: 200, body: updated };
           }
         }
-        const authorizationResponse = await dispatchAuthorizationRoutes(
-          {
-            repository: dependencies.authorization,
-            authorization: context,
-            correlationId,
-            authorizeOneOf: (preferred, fallback) => {
-              authorizeOneOf(context, preferred, fallback);
-            },
-            unavailable: () =>
-              error(
-                503,
-                'internal_error',
-                'Authorization repository is unavailable',
-                correlationId,
-              ),
-            parsers: { objectBody, allow, uuid, string, strings },
-          },
-          request,
-        );
-        if (authorizationResponse) return authorizationResponse;
-        const identityAccessResponse = await dispatchRoutes(
-          identityAccessRoutes({
-            repository: dependencies.authorization,
-            authorization: context,
-            correlationId,
-            authorizeOneOf: (preferred, fallback, fields) => {
-              authorizeOneOf(context, preferred, fallback, fields);
-            },
-            unavailable: (message) => error(503, 'internal_error', message, correlationId),
-            parsers: { objectBody, allow, uuid },
-          }),
-          request,
-        );
-        if (identityAccessResponse) return identityAccessResponse;
-        const auditMatch = /^\/api\/v1\/audit-events(?:\/([0-9a-f-]+))?$/u.exec(request.pathname);
-        if (auditMatch && request.method === 'GET') {
-          const auditGrant = authorizeQuery(context, 'audit:read');
-          if (!dependencies.audit)
-            return error(503, 'internal_error', 'Audit repository unavailable', correlationId);
-          const auditResponse = await dispatchRoutes(
-            auditReadRoutes({
-              repository: dependencies.audit,
-              actor: context.actor,
-              grant: auditGrant,
-              uuid,
-              notFound: () => error(404, 'not_found', 'Audit event not found', correlationId),
-            }),
-            request,
-          );
-          if (auditResponse) return auditResponse;
+        for (const pending of accessAttempts({ request, dependencies, context, correlationId })) {
+          if (pending.kind === 'immediate') return pending.value;
+          if (pending.accept === 'always') return pending.project(await pending.pending);
+          const response = pending.project(await pending.pending);
+          if (pending.accept === 'truthy') {
+            if (response) return response;
+          } else if (response !== null) return response;
         }
         if (request.pathname === '/api/v1/master-data/categories' && request.method === 'GET') {
           authorizeQuery(context, 'master-data:read');

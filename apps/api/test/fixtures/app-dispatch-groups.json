@@ -94,5 +94,11 @@
     "symbol": "crmAttempts",
     "file": "crm.ts",
     "baselineSpan": [56, 65]
+  },
+  {
+    "name": "access",
+    "symbol": "accessAttempts",
+    "file": "access.ts",
+    "baselineSpan": [69, 75]
   }
 ]
