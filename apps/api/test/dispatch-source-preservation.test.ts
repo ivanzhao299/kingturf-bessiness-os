@@ -223,3 +223,101 @@ it('proof normalization preserves value grouping, type hierarchy and array holes
   expect(tokens('const x=a*(b+c);')).not.toEqual(tokens('const x=a*b+c;'));
   expect(tokens("const x=['a',,];")).not.toEqual(tokens("const x=['a',];"));
 });
+
+function declaration(file: ts.SourceFile, name: string) {
+  const fn = file.statements.find((n) => ts.isFunctionDeclaration(n) && n.name?.text === name);
+  if (!fn || !ts.isFunctionDeclaration(fn) || !fn.body)
+    throw new Error('Function missing: ' + name);
+  return fn;
+}
+it('composition covers every frozen business statement exactly once in original order', () => {
+  const frozenTry = findAll(old, ts.isTryStatement).sort(
+    (a, b) => b.end - b.pos - (a.end - a.pos),
+  )[0];
+  if (!frozenTry || !ts.isTryStatement(frozenTry)) throw new Error('Frozen root missing');
+  const rows = [...frozenTry.tryBlock.statements];
+  const ordered = groups
+    .map((g) => {
+      const at = rows.findIndex(
+        (n) =>
+          ts.isIfStatement(n) && n.expression.getText(old) === 'dependencies.' + String(g.property),
+      );
+      const span: [number, number] = g.baselineSpan ?? [at, at + 1];
+      return { ...g, span };
+    })
+    .sort((a, b) => a.span[0] - b.span[0]);
+  expect(
+    ordered.flatMap((g) => Array.from({ length: g.span[1] - g.span[0] }, (_x, i) => g.span[0] + i)),
+  ).toEqual(Array.from({ length: 114 }, (_x, i) => 20 + i));
+  const composition = parse('../src/routes/dispatch/business.ts'),
+    fn = declaration(composition, 'businessAttempts');
+  expect(fn.asteriskToken).toBeDefined();
+  expect(fn.body?.statements.map((n) => n.getText(composition).replaceAll(/\s/gu, ''))).toEqual(
+    ordered.map((g) => 'yield*' + g.symbol + '(scope);'),
+  );
+  for (const g of ordered) {
+    const imp = composition.statements.find(
+      (n) =>
+        ts.isImportDeclaration(n) &&
+        ts.isStringLiteral(n.moduleSpecifier) &&
+        n.moduleSpecifier.text === './' + g.file,
+    );
+    if (!imp || !ts.isImportDeclaration(imp)) throw new Error('Group import missing');
+    expect(imp.importClause?.namedBindings?.getText(composition).replaceAll(/\s/gu, '')).toBe(
+      '{' + g.symbol + '}',
+    );
+  }
+});
+it('root authentication, errors, lifecycle, completion and acceptance modes inverse-expand to fixed f3', () => {
+  const current = parse('../src/app.ts'),
+    fn = declaration(current, 'buildApp'),
+    original = declaration(old, 'buildApp');
+  const loops = findAll(fn, ts.isForOfStatement);
+  expect(loops).toHaveLength(1);
+  const loop = loops[0];
+  if (!loop) throw new Error('Root loop missing');
+  const scaffold = `for (const pending of businessAttempts({request,dependencies,context,correlationId,securedAuthContext,})) {
+ if(pending.kind==='immediate')return pending.value;
+ if(pending.accept==='always')return pending.project(await pending.pending);
+ const response=pending.project(await pending.pending);
+ if(pending.accept==='truthy'){if(response)return response;}else if(response!==null)return response;
+ }`;
+  expect(firstDifference(tokens(loop.getText(current)), tokens(scaffold))).toBeNull();
+  const oldTry = findAll(original, ts.isTryStatement)[0];
+  if (!oldTry || !ts.isTryStatement(oldTry)) throw new Error('Original try missing');
+  const middle = [...oldTry.tryBlock.statements]
+    .slice(20, 134)
+    .map((n) => n.getText(old))
+    .join('\n');
+  const tail = fn.body?.statements.at(-1);
+  if (!tail) throw new Error('Completion invocation missing');
+  expect(
+    firstDifference(
+      tokens(tail.getText(current)),
+      tokens(
+        'return completeApplication(application,dependencies,security,telemetry,browserSession);',
+      ),
+    ),
+  ).toBeNull();
+  const completion = parse('../src/application-completion.ts'),
+    complete = declaration(completion, 'completeApplication');
+  expect(complete.parameters.map((p) => p.name.getText(completion))).toEqual([
+    'application',
+    'dependencies',
+    'security',
+    'telemetry',
+    'browserSession',
+  ]);
+  const completionBody = complete.body?.statements.map((n) => n.getText(completion)).join('\n');
+  if (!completionBody) throw new Error('Completion missing');
+  const expanded = fn.body
+    ?.getText(current)
+    .replace(loop.getText(current), middle)
+    .replace(tail.getText(current), completionBody);
+  expect(
+    firstDifference(tokens(expanded ?? ''), tokens(original.body?.getText(old) ?? '')),
+  ).toBeNull();
+  expect(fn.parameters.map((p) => tokens(p.getText(current)))).toEqual(
+    original.parameters.map((p) => tokens(p.getText(old))),
+  );
+});
