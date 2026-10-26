@@ -124,5 +124,11 @@
     "symbol": "shipmentsAttempts",
     "file": "shipments.ts",
     "property": "shipments"
+  },
+  {
+    "name": "contracts",
+    "symbol": "contractsAttempts",
+    "file": "contracts.ts",
+    "property": "contractDocuments"
   }
 ]
