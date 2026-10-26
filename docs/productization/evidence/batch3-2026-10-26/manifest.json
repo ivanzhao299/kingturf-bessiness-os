@@ -158,6 +158,14 @@
       "seconds": 297.84,
       "sha256": "aa545c9142e6c252d9b8ac262b553d839a053707a161784b03da503b6df31a6b",
       "meaning": "app.test legacy risk mock missing new canReadResult port; API17370pass/1fail; actualPG/HTTPgreen"
+    },
+    {
+      "file": "final-ci-readonly-manifest-failure.txt",
+      "sourceSha": "0826de23015e5f49961d2df411059d3ca6e979b8",
+      "exit": 1,
+      "seconds": 297.34,
+      "sha256": "5a0c8dbabbe114a6d71d4124a0a466a1b29c9a95189bc9937a34b1dff244aff7",
+      "meaning": "API17371/Web436green; DB read-only manifest legacy70 assertion fails71; no successful coverage result"
     }
   ]
 }

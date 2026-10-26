@@ -52,14 +52,14 @@ describe('read-only production migration compatibility', () => {
       await admin.close();
     }
   });
-  it('accepts all 70 checksums using a SELECT-only role with read-only transactions', async () => {
+  it('accepts all 71 checksums using a SELECT-only role with read-only transactions', async () => {
     expect(
       (await reader.query<{ transaction_read_only: string }>('SHOW transaction_read_only')).rows[0]
         ?.transaction_read_only,
     ).toBe('on');
     await assertMigrationsCurrent(reader);
     const status = await migrationStatus(reader);
-    expect(status).toHaveLength(70);
+    expect(status).toHaveLength(71);
     expect(status.every((item) => item.state === 'applied')).toBe(true);
     await expect(
       reader.query('CREATE TABLE forbidden_readonly_write(id integer)'),
