@@ -92,7 +92,137 @@ const repos = [
 const paths = [
   ...new Set([...original.matchAll(/request\.pathname\s*===\s*'([^']+)'/gu)].map((m) => m[1])),
 ];
+const id = actor.employeeId,
+  time = '2026-10-26T00:00:00Z';
+const legacyOperations = [
+  ['shipments', 'list', 'GET', '/shipment-releases', {}],
+  [
+    'shipments',
+    'request',
+    'POST',
+    '/shipment-releases',
+    {
+      requestNumber: 'SYNTHETIC',
+      salesOrderId: id,
+      productionOrderId: id,
+      finishedLotId: id,
+      requestedQuantity: '1',
+      requiredPaymentAmount: '0',
+      reason: 'Synthetic',
+      idempotencyKey: 'KEY',
+    },
+  ],
+  [
+    'shipments',
+    'transition',
+    'POST',
+    `/shipment-releases/${id}/release`,
+    { reason: 'Synthetic', idempotencyKey: 'KEY' },
+  ],
+  [
+    'shipments',
+    'dispatch',
+    'POST',
+    `/shipment-releases/${id}/dispatch`,
+    {
+      shipmentNumber: 'SYNTHETIC',
+      carrierName: 'Synthetic',
+      trackingNumber: 'TRACK',
+      dispatchedAt: time,
+      location: 'Synthetic',
+      idempotencyKey: 'KEY',
+    },
+  ],
+  [
+    'shipments',
+    'track',
+    'POST',
+    `/shipments/${id}/deliver`,
+    { occurredAt: time, location: 'Synthetic', idempotencyKey: 'KEY' },
+  ],
+  ['contractDocuments', 'list', 'GET', '/contract-documents', {}],
+  [
+    'contractDocuments',
+    'create',
+    'POST',
+    '/contract-documents',
+    {
+      businessType: 'SALES',
+      subjectType: 'contract-revision',
+      subjectId: id,
+      attachmentId: id,
+      title: 'Synthetic',
+    },
+  ],
+  [
+    'contractDocuments',
+    'ocr',
+    'POST',
+    `/contract-documents/${id}/ocr`,
+    { provider: 'Synthetic', text: 'Synthetic', confidence: 0.5 },
+  ],
+  [
+    'contractDocuments',
+    'createEnvelope',
+    'POST',
+    `/contract-documents/${id}/signature-envelopes`,
+    {
+      provider: 'Synthetic',
+      providerEnvelopeId: 'Synthetic',
+      signingOrder: 'SEQUENTIAL',
+      signers: [
+        { sequence: 1, role: 'Synthetic', name: 'Synthetic', contact: 'synthetic@example.test' },
+      ],
+    },
+  ],
+  [
+    'contractDocuments',
+    'completeEnvelope',
+    'POST',
+    `/signature-envelopes/${id}/complete`,
+    { providerEventId: 'Synthetic', signedAt: time, signedAttachmentId: id },
+  ],
+  ...['organizations', 'employees'].flatMap((repository) => [
+    [repository, 'list', 'GET', `/${repository}`, {}],
+    [repository, 'findById', 'GET', `/${repository}/${id}`, {}],
+    [
+      repository,
+      'create',
+      'POST',
+      `/${repository}`,
+      repository === 'organizations'
+        ? { code: 'SYNTHETIC', name: 'Synthetic' }
+        : {
+            organizationId: id,
+            employeeNumber: 'SYNTHETIC',
+            displayName: 'Synthetic',
+            email: 'synthetic@example.test',
+          },
+    ],
+    [
+      repository,
+      'update',
+      'PATCH',
+      `/${repository}/${id}`,
+      repository === 'organizations'
+        ? { name: 'Synthetic', version: 1 }
+        : { displayName: 'Synthetic', version: 1 },
+    ],
+  ]),
+];
 export const scenarios = [
+  ...legacyOperations.flatMap(([repository, operation, method, path, body]) =>
+    ['ok', 'sync-throw', 'reject', 'scope-change'].map((behavior) => ({
+      name: `legacy ${repository}.${operation} ${behavior}`,
+      method,
+      path: '/api/v1' + path,
+      body,
+      repository,
+      operation,
+      behavior,
+    })),
+  ),
+
   ...['GET', 'POST', 'PUT', 'DELETE'].flatMap((method) =>
     paths.map((path) => ({ name: `${method} ${path}`, method, path, body: {} })),
   ),
@@ -140,8 +270,30 @@ async function execute(build, scenario) {
             trace.push(['method', name, String(method)]);
             return (...args) => {
               trace.push(['call', name, String(method), canonical(args)]);
+              if (
+                name === scenario.repository &&
+                method === scenario.operation &&
+                scenario.behavior === 'sync-throw'
+              )
+                throw new Error('Synthetic synchronous failure');
               // Realistic one-hop work at promise settlement must precede dependent projections.
-              queueMicrotask(() => trace.push(['settlement-microtask', name, String(method)]));
+              queueMicrotask(() => {
+                trace.push(['settlement-microtask', name, String(method)]);
+                if (
+                  name === scenario.repository &&
+                  method === scenario.operation &&
+                  scenario.behavior === 'scope-change'
+                )
+                  grant.fields = ['id'];
+              });
+              if (
+                name === scenario.repository &&
+                method === scenario.operation &&
+                scenario.behavior === 'reject'
+              )
+                return Promise.reject(new Error('Synthetic rejected operation'));
+              if (name === scenario.repository && method === 'list')
+                return Promise.resolve([success]);
               if (
                 [
                   'list',
@@ -195,6 +347,23 @@ async function execute(build, scenario) {
         'x-correlation-id': actor.employeeId,
       },
     });
+    if (scenario.repository) {
+      assert(
+        trace.some(
+          (row) =>
+            row[0] === 'call' && row[1] === scenario.repository && row[2] === scenario.operation,
+        ),
+        'Legacy scenario must actually reach its intended repository',
+      );
+      assert.equal(
+        response.statusCode,
+        ['sync-throw', 'reject'].includes(scenario.behavior)
+          ? 500
+          : scenario.method === 'POST'
+            ? 201
+            : 200,
+      );
+    }
     return { name: scenario.name, response: canonical(response), trace };
   } catch (error) {
     return { name: scenario.name, rejection: error.constructor.name, trace };

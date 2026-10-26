@@ -118,5 +118,11 @@
     "symbol": "qtcpostAttempts",
     "file": "qtcpost.ts",
     "baselineSpan": [41, 42]
+  },
+  {
+    "name": "shipments",
+    "symbol": "shipmentsAttempts",
+    "file": "shipments.ts",
+    "property": "shipments"
   }
 ]

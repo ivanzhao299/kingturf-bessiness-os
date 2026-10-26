@@ -22,7 +22,7 @@ describe('Batch4 app extraction against fixed f3 complete request traces', () =>
   it('retains the frozen baseline and every scenario', () => {
     expect(current.baseline).toBe('f3f0c42aa8493f594076c03d3270f0c21de7ba78');
     expect(current.results.map((r) => r.name)).toEqual(baseline.results.map((r) => r.name));
-    expect(current.results).toHaveLength(238);
+    expect(current.results).toHaveLength(310);
   });
   for (const [index, row] of baseline.results.entries())
     it(row.name, () => {

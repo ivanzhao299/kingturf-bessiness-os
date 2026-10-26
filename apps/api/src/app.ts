@@ -1,6 +1,5 @@
 import { DEFAULT_BROWSER_SESSION, type BrowserSessionConfig } from '@kingturf/config';
 import {
-  assertStableCode,
   DomainError,
   NOOP_TELEMETRY,
   type AuthorizationRepository,
@@ -15,7 +14,6 @@ import {
   array,
   attachmentBytes,
   correlation,
-  decimal,
   error,
   expectedVersion,
   integer,
@@ -23,7 +21,6 @@ import {
   mutationDto,
   notificationChannel,
   objectBody,
-  permittedDto,
   string,
   strings,
   timestamp,
@@ -91,6 +88,7 @@ import { qtcpostAttempts } from './routes/dispatch/qtcpost.ts';
 import { qtcreadsAttempts } from './routes/dispatch/qtcreads.ts';
 import { qualityAttempts } from './routes/dispatch/quality.ts';
 import { riskAttempts } from './routes/dispatch/risk.ts';
+import { shipmentsAttempts } from './routes/dispatch/shipments.ts';
 import { dispatchFoundationRoutes, foundationRoutes } from './routes/foundation.ts';
 import { dispatchRoutes } from './routes/types.ts';
 import { websiteLeadIngestRoutes } from './routes/website-lead-ingest.ts';
@@ -314,134 +312,18 @@ export function buildApp(
             if (response) return response;
           } else if (response !== null) return response;
         }
-        if (dependencies.shipments) {
-          if (request.method === 'GET' && request.pathname === '/api/v1/shipment-releases') {
-            const grant = authorizeQuery(context, 'shipment:read');
-            const items = await dependencies.shipments.list({
-              actor: context.actor,
-              scopes: grant.scopes,
-              anchors: grant.anchors,
-            });
-            return {
-              statusCode: 200,
-              body: {
-                items: items.map((item) =>
-                  permittedDto(item, context.permissions.get('shipment:read')?.fields ?? null),
-                ),
-              },
-            };
-          }
-          if (request.method === 'POST' && request.pathname === '/api/v1/shipment-releases') {
-            const body = objectBody(request.body);
-            allow(body, [
-              'requestNumber',
-              'salesOrderId',
-              'productionOrderId',
-              'finishedLotId',
-              'requestedQuantity',
-              'requiredPaymentAmount',
-              'reason',
-              'idempotencyKey',
-            ]);
-            const grant = authorizeQuery(context, 'shipment:request', Object.keys(body));
-            const result = await dependencies.shipments.request(
-              {
-                requestNumber: assertStableCode(string(body.requestNumber, 'requestNumber')),
-                salesOrderId: uuid(body.salesOrderId, 'salesOrderId'),
-                productionOrderId: uuid(body.productionOrderId, 'productionOrderId'),
-                finishedLotId: uuid(body.finishedLotId, 'finishedLotId'),
-                requestedQuantity: decimal(body.requestedQuantity, 'requestedQuantity'),
-                requiredPaymentAmount: decimal(body.requiredPaymentAmount, 'requiredPaymentAmount'),
-                reason: string(body.reason, 'reason'),
-                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
-            );
-            return { statusCode: 201, body: mutationDto(result, context, 'shipment:read') };
-          }
-          const releaseTransition =
-            /^\/api\/v1\/shipment-releases\/([0-9a-f-]+)\/(approve-exception|reject-exception|release)$/u.exec(
-              request.pathname,
-            );
-          if (request.method === 'POST' && releaseTransition) {
-            const body = objectBody(request.body);
-            allow(body, ['reason', 'evidence', 'idempotencyKey']);
-            const action = releaseTransition[2] ?? '';
-            const capability =
-              action === 'release' ? 'shipment:release' : 'shipment:approve-exception';
-            const grant = authorizeQuery(context, capability, Object.keys(body));
-            const state =
-              action === 'release'
-                ? 'RELEASED'
-                : action === 'approve-exception'
-                  ? 'APPROVED'
-                  : 'REJECTED';
-            const result = await dependencies.shipments.transition(
-              uuid(releaseTransition[1], 'releaseRequestId'),
-              state,
-              {
-                reason: string(body.reason, 'reason'),
-                evidence: jsonObject(body.evidence ?? {}, 'evidence'),
-                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
-            );
-            return { statusCode: 201, body: mutationDto(result, context, 'shipment:read') };
-          }
-          const dispatchCommand = /^\/api\/v1\/shipment-releases\/([0-9a-f-]+)\/dispatch$/u.exec(
-            request.pathname,
-          );
-          if (request.method === 'POST' && dispatchCommand) {
-            const body = objectBody(request.body);
-            allow(body, [
-              'shipmentNumber',
-              'carrierName',
-              'trackingNumber',
-              'dispatchedAt',
-              'location',
-              'evidence',
-              'idempotencyKey',
-            ]);
-            const grant = authorizeQuery(context, 'shipment:dispatch', Object.keys(body));
-            const result = await dependencies.shipments.dispatch(
-              uuid(dispatchCommand[1], 'releaseRequestId'),
-              {
-                shipmentNumber: assertStableCode(string(body.shipmentNumber, 'shipmentNumber')),
-                carrierName: string(body.carrierName, 'carrierName'),
-                trackingNumber: assertStableCode(string(body.trackingNumber, 'trackingNumber')),
-                dispatchedAt: timestamp(body.dispatchedAt, 'dispatchedAt'),
-                location: string(body.location, 'location'),
-                evidence: jsonObject(body.evidence ?? {}, 'evidence'),
-                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
-            );
-            return { statusCode: 201, body: mutationDto(result, context, 'shipment:read') };
-          }
-          const trackCommand = /^\/api\/v1\/shipments\/([0-9a-f-]+)\/(in-transit|deliver)$/u.exec(
-            request.pathname,
-          );
-          if (request.method === 'POST' && trackCommand) {
-            const body = objectBody(request.body);
-            allow(body, ['occurredAt', 'location', 'evidence', 'idempotencyKey']);
-            const grant = authorizeQuery(context, 'shipment:track', Object.keys(body));
-            const result = await dependencies.shipments.track(
-              uuid(trackCommand[1], 'shipmentId'),
-              trackCommand[2] === 'deliver' ? 'DELIVERED' : 'IN_TRANSIT',
-              {
-                occurredAt: timestamp(body.occurredAt, 'occurredAt'),
-                location: string(body.location, 'location'),
-                evidence: jsonObject(body.evidence ?? {}, 'evidence'),
-                idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
-              },
-              { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
-              correlationId,
-            );
-            return { statusCode: 201, body: mutationDto(result, context, 'shipment:read') };
-          }
+        for (const pending of shipmentsAttempts({
+          request,
+          dependencies,
+          context,
+          correlationId,
+        })) {
+          if (pending.kind === 'immediate') return pending.value;
+          if (pending.accept === 'always') return pending.project(await pending.pending);
+          const response = pending.project(await pending.pending);
+          if (pending.accept === 'truthy') {
+            if (response) return response;
+          } else if (response !== null) return response;
         }
         for (const pending of complaintsAttempts({
           request,
