@@ -1,10 +1,10 @@
 # Batch 7 本地累计集成风险矩阵
 
-审查范围：Batch 1—6 累计代码与迁移、Batch 7 当前本地候选。审查基线为 Batch 6 `040a5208e9972215c2e464d2b416ab09a4f46d07`；当前 Batch 7 文档候选为 `642151a1c47839d7487d5934554033fc0e1cf375`。远程 `origin/main` 与生产已知主线均为 `b1ef7a9e7fdbfc0341f29f1cb612504ff47cd41b`，本地候选在其上游历史内，领先 67 个提交、落后 0 个提交；本次未执行 fetch、push、PR、合并或部署。
+审查范围：Batch 1—6 累计代码与迁移、Batch 7 当前本地文档候选。审查基线为 Batch 6 `040a5208e9972215c2e464d2b416ab09a4f46d07`；最终 Batch 7 SHA 以本轮验证回执为准。远程 `origin/main` 与生产已知主线均为 `b1ef7a9e7fdbfc0341f29f1cb612504ff47cd41b`，本地候选在其上游历史内，领先 67 个提交、落后 0 个提交；本次未执行 fetch、push、PR、合并或部署。
 
 ## 结论
 
-- Batch 1—6 的提交链连续，Batch 7 当前新增仅为审批文档；未重写 Batch 6 代码或历史证据。
+- Batch 1—6 的提交链连续，Batch 7 当前新增为审批、岗位验收和集成文档；未重写 Batch 6 代码或历史证据。
 - Batch 6 代码变更集中在实际材料归集和 Connector CAS；Batch 6 及此前安全、库存、风险修复均有对应 PostgreSQL/HTTP/回归证据。Batch 7 当前文档提交本身尚未重新运行完整 CI，应以最终候选上的复跑结果为准。
 - Batch 1—6 相对 `origin/main` 包含大量架构治理、权限和业务修复，不能把“本地 CI 通过”解释为生产可直接升级。生产版本仍未包含这些本地修复。
 - Batch 3 的 `0071_inventory_stock_resource_guards.sql` 是累计差异中唯一新增迁移；Batch 4—7 没有新增迁移，已发布迁移文件未修改。0071 需要在目标环境先完成负库存检查、锁表和 checksum 兼容核验。
