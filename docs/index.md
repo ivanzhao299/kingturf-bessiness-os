@@ -22,6 +22,12 @@
 
 [V1.0 Batch7岗位与运维准入](productization/batch7-uat-ops-readiness.md)：十岗位隔离验收、性能基线、备份恢复和监控准备。
 
+[V1.0 Batch8非生产集成交付](productization/batch8-delivery-2026-10-27.md)：累计兼容性、安全回归、性能与恢复基线。
+
+[V1.0 Batch8安全回归](productization/batch8-security-review.md)：风险重放、佣金、文档回执和跨组织授权矩阵。
+
+[V1.0 Batch8性能与恢复](productization/batch8-perf-restore.md)：隔离数据库恢复和有界性能基线。
+
 [V1.0 Batch5安全整改](productization/batch5-security.md)：TD-SEC-010三条幂等重放路径的当前授权修复与验证边界。
 
 [V1.0 Batch5成本复现](productization/batch5-cost003.md)：重复BOM组件实际成本重复归集的隔离PG证据和待裁方案。
