@@ -961,3 +961,5 @@
 | TD-CONN-001 | 新foundation现状场景整文件运行时，已存在EMAIL connector、expectedVersion当前非0，configureConnector报stale；初次0可成功。SQL INSERT SELECT WHERE $10=0使非0无输入行，ON CONFLICT更新无法执行 | P2本地失败已观察；独立最小更新/并发矩阵待补，不宣称生产影响 | 独立复现创建0→更新1→version2、旧版本拒绝/越权/跨组织/并发CAS/审计原子性后最小修复；新安全测试复用既有READY合成connector而不放宽安全断言。无生产配置变更；独立回退，防止覆盖最新配置 |
 
 TD-API-001的本批G5跨度已消除；其余产品/原生DOM/HTTP/仓储文件体量及G1/G2存量不据此全部关闭。最终源码和证据审查、CI/PG/P1分别记，不把结构通过当业务试运行放行。
+
+**2026-10-27 Batch5**：TD-SEC-010已由635b59e修复：佣金accrue重放复用原订单/客户DataScope，transition绑定路径case并复用范围，business-document dispatch重放先校验当前文档可见性；隔离PG仓储17/17、真实HTTP3/3通过，最终CI/浏览器待最终SHA。TD-COST-003隔离PG确认重复BOM组件行重复计量，仍P1候选未修；TD-CONN-001隔离PG确认connector expectedVersion>0更新SQL控制流缺陷，P2候选未修。见Batch5安全/成本/连接/决策和岗位差距材料。

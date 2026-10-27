@@ -2,6 +2,18 @@
 
 [V1.0 Batch4交付](productization/batch4-delivery-2026-10-26.md)：G5应用工厂/总分发收口、最终同SHA回执及独立复核边界。
 
+[V1.0 Batch5交付](productization/batch5-delivery-2026-10-27.md)：TD-SEC-010本地修复、TD-COST-003/TD-CONN-001复现与五类业务审批契约。
+
+[V1.0 Batch5安全整改](productization/batch5-security.md)：TD-SEC-010三条幂等重放路径的当前授权修复与验证边界。
+
+[V1.0 Batch5成本复现](productization/batch5-cost003.md)：重复BOM组件实际成本重复归集的隔离PG证据和待裁方案。
+
+[V1.0 Batch5连接复现](productization/batch5-conn001.md)：连接器CAS更新SQL缺陷的复现和最小候选。
+
+[V1.0 Batch5审批契约](productization/batch5-decisions.md)：金额、成本、发运、BOM和利润的待批准规则。
+
+[V1.0 Batch5岗位差距矩阵](productization/batch5-pilot-gap-matrix.md)：十类岗位的自动证据、人工验收缺口和试运行阻断。
+
 [V1.0 Batch4安全影响](productization/batch4-sec010-assessment.md)：TD-SEC-010的PG/HTTP复现和当前授权前重放最小整改建议，正式未修。
 
 [V1.0 Batch4业务裁定](productization/batch4-decisions.md)：稳定编号/历史映射和最小待决项；[成本契约](productization/batch4-cost-contract.md)、[仓库发运契约](productization/batch4-shipping-contract.md)、[BOM/实际利润契约](productization/batch4-bom-profit-contract.md)均DESIGN_ONLY。
