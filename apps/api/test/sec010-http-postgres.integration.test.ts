@@ -83,17 +83,14 @@ describe('TD-SEC-010 actual HTTP characterization on owned PostgreSQL', () => {
     expect(await json(await peer.request('/api/v1/commissions'), 200)).toMatchObject({ items: [] });
     const before = await counts();
     expect(
+      await json(await owner.request('/api/v1/commissions/accrue', 'POST', body, key), 201),
+    ).toMatchObject({ id: first.id });
+    expect(
       await json(await peer.request('/api/v1/commissions/accrue', 'POST', body, randomUUID()), 404),
     ).not.toHaveProperty('commission_amount');
-    const leaked = await json(
-      await peer.request('/api/v1/commissions/accrue', 'POST', body, key),
-      201,
-    );
-    expect(leaked).toMatchObject({
-      id: first.id,
-      sales_order_id: fixture.graph.orderId,
-      commission_amount: 28500,
-    });
+    expect(
+      await json(await peer.request('/api/v1/commissions/accrue', 'POST', body, key), 404),
+    ).not.toHaveProperty('commission_amount');
     expect(
       await json(await outsider.request('/api/v1/commissions/accrue', 'POST', body, key), 404),
     ).not.toHaveProperty('commission_amount');
@@ -104,7 +101,7 @@ describe('TD-SEC-010 actual HTTP characterization on owned PostgreSQL', () => {
     await peer.grant(['commission:accrue'], ['SELF']);
     expect(await counts()).toEqual(before);
   });
-  it('known event key returns inaccessible old evidence even for a different path identifier', async () => {
+  it('known event key cannot replay evidence through a different path identifier', async () => {
     const body = await commission('SEC010-HTTP-PAY');
     const first = await json(
       await owner.request('/api/v1/commissions/accrue', 'POST', body, randomUUID()),
@@ -112,17 +109,24 @@ describe('TD-SEC-010 actual HTTP characterization on owned PostgreSQL', () => {
     );
     const command = { reason: 'Synthetic payment', externalReference: 'SYNTHETIC-ONLY' },
       key = randomUUID();
-    const paid = await json(
+    await json(
       await owner.request(`/api/v1/commissions/${String(first.id)}/pay`, 'POST', command, key),
       201,
     );
     const inaccessible = `/api/v1/commissions/${randomUUID()}/pay`,
       before = await counts();
     expect(
+      await json(
+        await owner.request(`/api/v1/commissions/${String(first.id)}/pay`, 'POST', command, key),
+        201,
+      ),
+    ).toMatchObject({ id: first.id, state: 'PAID' });
+    expect(
       await json(await peer.request(inaccessible, 'POST', command, randomUUID()), 404),
     ).not.toHaveProperty('amount');
-    const leaked = await json(await peer.request(inaccessible, 'POST', command, key), 201);
-    expect(leaked).toMatchObject({ id: first.id, state: 'PAID', amount: paid.amount });
+    expect(
+      await json(await peer.request(inaccessible, 'POST', command, key), 404),
+    ).not.toHaveProperty('amount');
     expect(
       await json(await outsider.request(inaccessible, 'POST', command, key), 404),
     ).not.toHaveProperty('amount');
@@ -133,7 +137,7 @@ describe('TD-SEC-010 actual HTTP characterization on owned PostgreSQL', () => {
     await peer.grant(['commission:pay'], ['SELF']);
     expect(await counts()).toEqual(before);
   });
-  it('known complete send request replays receipt outside creator scope without provider calls', async () => {
+  it('known complete send request is denied outside creator scope without provider calls', async () => {
     const repository = new PostgresBusinessDocumentRepository(fixture.db),
       actor = fixture.context.actor;
     const document = await repository.create(
@@ -186,15 +190,16 @@ describe('TD-SEC-010 actual HTTP characterization on owned PostgreSQL', () => {
       },
       key = randomUUID(),
       path = `/api/v1/business-documents/${document.id}/send`;
-    const first = await json(await owner.request(path, 'POST', body, key), 202);
+    await json(await owner.request(path, 'POST', body, key), 202);
     const before = await counts();
+    expect(await json(await owner.request(path, 'POST', body, key), 202)).toHaveProperty('id');
     expect(
       await json(await peer.request(`/api/v1/business-documents/${document.id}`), 404),
     ).not.toHaveProperty('content');
     expect(
       await json(await peer.request(path, 'POST', body, randomUUID()), 409),
     ).not.toHaveProperty('id');
-    expect(await json(await peer.request(path, 'POST', body, key), 202)).toEqual(first);
+    expect(await json(await peer.request(path, 'POST', body, key), 409)).not.toHaveProperty('id');
     expect(
       await json(await peer.request(path, 'POST', { ...body, subject: 'Changed' }, key), 409),
     ).not.toHaveProperty('id');

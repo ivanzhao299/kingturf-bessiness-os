@@ -527,12 +527,7 @@ describe('commission repository real PostgreSQL contracts', () => {
     );
     const key = randomUUID(),
       correlation = randomUUID();
-    const first = await repository.accrue(
-      accrueInput(identifier(policy)),
-      key,
-      context,
-      randomUUID(),
-    );
+    await repository.accrue(accrueInput(identifier(policy)), key, context, randomUUID());
     const narrowed = {
       ...context,
       actor: { ...context.actor, employeeId: reviewerEmployee },
@@ -543,17 +538,9 @@ describe('commission repository real PostgreSQL contracts', () => {
     await expect(
       repository.accrue(accrueInput(identifier(policy)), randomUUID(), narrowed, correlation),
     ).rejects.toMatchObject({ code: 'not_found' });
-    const leaked = await repository.accrue(
-      accrueInput(identifier(policy)),
-      key,
-      narrowed,
-      correlation,
-    );
-    expect(leaked).toMatchObject({
-      id: identifier(first),
-      sales_order_id: state().graph.orderId,
-      commission_amount: 28500,
-    });
+    await expect(
+      repository.accrue(accrueInput(identifier(policy)), key, narrowed, correlation),
+    ).rejects.toMatchObject({ code: 'not_found' });
     expect(await counts()).toEqual(baseline);
     expect(await evidenceCounts(correlation)).toEqual({ audit: '0', outbox: '0' });
   });
@@ -585,26 +572,16 @@ describe('commission repository real PostgreSQL contracts', () => {
         correlation,
       ),
     ).rejects.toMatchObject({ code: 'not_found' });
-    const leaked = await repository.transition(
-      identifier(other),
-      { state: 'CANCELLED', reason: 'Different subject and input', externalReference: null },
-      eventKey,
-      narrowed,
-      correlation,
-    );
-    const persisted = (
-      await state().db.query<{ evidence: JsonObject }>(
-        'SELECT evidence FROM commission_ledger_entries WHERE tenant_id=$1 AND idempotency_key=$2',
-        [context.actor.companyId, eventKey],
-      )
-    ).rows[0];
-    expect(leaked).toEqual(persisted?.evidence);
-    expect(original).toMatchObject(leaked);
-    expect(leaked).toMatchObject({
-      id: identifier(first),
-      state: 'PAID',
-      amount: '28500.000000',
-    });
+    await expect(
+      repository.transition(
+        identifier(other),
+        { state: 'CANCELLED', reason: 'Different subject and input', externalReference: null },
+        eventKey,
+        narrowed,
+        correlation,
+      ),
+    ).rejects.toMatchObject({ code: 'not_found' });
+    expect(original).toMatchObject({ id: identifier(first), state: 'PAID' });
     expect(await counts()).toEqual(baseline);
     expect(await evidenceCounts(correlation)).toEqual({ audit: '0', outbox: '0' });
   });

@@ -776,7 +776,7 @@ describe('JTF-P0-E12..E15 PostgreSQL acceptance', () => {
       message: 'No provider call',
       idempotencyKey: randomUUID(),
     };
-    const first = await repository.dispatch(document.id, input, context, randomUUID());
+    await repository.dispatch(document.id, input, context, randomUUID());
     const narrowed = {
       actor: { companyId: company, employeeId: recipient },
       scopes: ['SELF'] as const,
@@ -797,7 +797,11 @@ describe('JTF-P0-E12..E15 PostgreSQL acceptance', () => {
         randomUUID(),
       ),
     ).rejects.toMatchObject({ code: 'conflict' });
-    expect(await repository.dispatch(document.id, input, narrowed, randomUUID())).toEqual(first);
+    await expect(
+      repository.dispatch(document.id, input, narrowed, randomUUID()),
+    ).rejects.toMatchObject({
+      code: 'conflict',
+    });
     await expect(
       repository.dispatch(
         document.id,

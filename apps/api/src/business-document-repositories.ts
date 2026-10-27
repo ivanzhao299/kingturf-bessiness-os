@@ -603,13 +603,21 @@ export class PostgresBusinessDocumentRepository {
       });
       const existing = (
         await tx.query<{ item: JsonObject; request_hash: string }>(
-          `SELECT request_hash,jsonb_build_object('id',id,'documentVersion',document_version,
-             'translationId',translation_id,'channel',channel,'recipientName',recipient_name,
-             'recipientMasked',CASE WHEN length(recipient_address)<=4 THEN '***'
-               ELSE left(recipient_address,2)||'***'||right(recipient_address,2) END,
-             'subject',subject,'status',status,'requestedAt',requested_at) item
-           FROM business_document_dispatches WHERE tenant_id=$1 AND idempotency_key=$2`,
-          [context.actor.companyId, input.idempotencyKey],
+          `SELECT x.request_hash,jsonb_build_object('id',x.id,'documentVersion',x.document_version,
+             'translationId',x.translation_id,'channel',x.channel,'recipientName',x.recipient_name,
+             'recipientMasked',CASE WHEN length(x.recipient_address)<=4 THEN '***'
+               ELSE left(x.recipient_address,2)||'***'||right(x.recipient_address,2) END,
+             'subject',x.subject,'status',x.status,'requestedAt',x.requested_at) item
+           FROM business_document_dispatches x
+           JOIN business_documents d ON d.id=x.document_id AND d.tenant_id=x.tenant_id
+           WHERE x.tenant_id=$1 AND x.idempotency_key=$2
+             AND ($3::boolean OR d.created_by=$4)`,
+          [
+            context.actor.companyId,
+            input.idempotencyKey,
+            companyWide(context),
+            context.actor.employeeId,
+          ],
         )
       ).rows[0];
       if (existing) {
