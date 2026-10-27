@@ -822,12 +822,12 @@ describe('JTF-P0-E12..E15 PostgreSQL acceptance', () => {
   it('TD-CONN-001: connector updates use compare-and-swap after initial creation', async () => {
     const repository = new PostgresBusinessDocumentRepository(db);
     const first = await repository.configureConnector(
-      'SMS',
+      'TRANSLATION',
       {
         provider: 'SYNTHETIC',
         displayName: 'Synthetic connector',
         senderIdentity: 'sender@example.test',
-        secretReference: 'SYNTHETIC_CONNECTOR_TOKEN',
+        secretReference: 'KINGTURF_CONNECTOR_SYNTHETIC_TOKEN',
         configuration: {},
         status: 'READY',
         expectedVersion: 0,
@@ -835,14 +835,14 @@ describe('JTF-P0-E12..E15 PostgreSQL acceptance', () => {
       actor,
       randomUUID(),
     );
-    expect(first).toMatchObject({ connector: 'SMS', version: 1 });
+    expect(first).toMatchObject({ connector: 'TRANSLATION', version: 1 });
     const second = await repository.configureConnector(
-      'SMS',
+      'TRANSLATION',
       {
         provider: 'SYNTHETIC',
         displayName: 'Synthetic connector v2',
         senderIdentity: 'sender@example.test',
-        secretReference: 'SYNTHETIC_CONNECTOR_TOKEN',
+        secretReference: 'KINGTURF_CONNECTOR_SYNTHETIC_TOKEN',
         configuration: { version: 2 },
         status: 'READY',
         expectedVersion: 1,
@@ -851,18 +851,18 @@ describe('JTF-P0-E12..E15 PostgreSQL acceptance', () => {
       randomUUID(),
     );
     expect(second).toMatchObject({
-      connector: 'SMS',
+      connector: 'TRANSLATION',
       version: 2,
       displayName: 'Synthetic connector v2',
     });
     await expect(
       repository.configureConnector(
-        'SMS',
+        'TRANSLATION',
         {
           provider: 'SYNTHETIC',
           displayName: 'Stale update',
           senderIdentity: 'sender@example.test',
-          secretReference: 'SYNTHETIC_CONNECTOR_TOKEN',
+          secretReference: 'KINGTURF_CONNECTOR_SYNTHETIC_TOKEN',
           configuration: {},
           status: 'READY',
           expectedVersion: 1,
@@ -874,7 +874,7 @@ describe('JTF-P0-E12..E15 PostgreSQL acceptance', () => {
     expect(
       (
         await db.query<{ version: number; display_name: string }>(
-          "SELECT version,display_name FROM business_document_connectors WHERE tenant_id=$1 AND connector='SMS'",
+          "SELECT version,display_name FROM business_document_connectors WHERE tenant_id=$1 AND connector='TRANSLATION'",
           [company],
         )
       ).rows[0],
