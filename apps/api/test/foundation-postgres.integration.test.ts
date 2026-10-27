@@ -879,5 +879,34 @@ describe('JTF-P0-E12..E15 PostgreSQL acceptance', () => {
         )
       ).rows[0],
     ).toEqual({ version: 2, display_name: 'Synthetic connector v2' });
+
+    const concurrent = await Promise.allSettled(
+      ['Concurrent A', 'Concurrent B'].map((displayName) =>
+        repository.configureConnector(
+          'TRANSLATION',
+          {
+            provider: 'SYNTHETIC',
+            displayName,
+            senderIdentity: 'sender@example.test',
+            secretReference: 'KINGTURF_CONNECTOR_SYNTHETIC_TOKEN',
+            configuration: {},
+            status: 'READY',
+            expectedVersion: 2,
+          },
+          actor,
+          randomUUID(),
+        ),
+      ),
+    );
+    expect(concurrent.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+    expect(concurrent.filter((result) => result.status === 'rejected')).toHaveLength(1);
+    expect(
+      (
+        await db.query<{ version: number }>(
+          "SELECT version FROM business_document_connectors WHERE tenant_id=$1 AND connector='TRANSLATION'",
+          [company],
+        )
+      ).rows[0],
+    ).toEqual({ version: 3 });
   });
 });
