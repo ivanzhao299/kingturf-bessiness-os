@@ -10,6 +10,10 @@
 
 [V1.0 Batch6岗位验收计划](productization/batch6-pilot-acceptance-plan.md)：十类岗位的场景、拒绝、对账和签署字段。
 
+[V1.0 Batch6本地集成审查](productization/batch6-integration-review-2026-10-27.md)：提交链、迁移兼容、回滚与未完成事项。
+
+[V1.0 Batch6验证证据](productization/evidence/batch6-2026-10-27/README.md)：专项 PostgreSQL、完整 CI 和浏览器双轮摘要。
+
 [V1.0 Batch5安全整改](productization/batch5-security.md)：TD-SEC-010三条幂等重放路径的当前授权修复与验证边界。
 
 [V1.0 Batch5成本复现](productization/batch5-cost003.md)：重复BOM组件实际成本重复归集的隔离PG证据和待裁方案。
