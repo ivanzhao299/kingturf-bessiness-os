@@ -5,7 +5,7 @@
 ## 结论
 
 - Batch 1—6 的提交链连续，Batch 7 当前新增为审批、岗位验收和集成文档；未重写 Batch 6 代码或历史证据。
-- Batch 6 代码变更集中在实际材料归集和 Connector CAS；Batch 6 及此前安全、库存、风险修复均有对应 PostgreSQL/HTTP/回归证据。Batch 7 当前文档提交本身尚未重新运行完整 CI，应以最终候选上的复跑结果为准。
+- Batch 6 代码变更集中在实际材料归集和 Connector CAS；Batch 6 及此前安全、库存、风险修复均有对应 PostgreSQL/HTTP/回归证据。Batch 7 最终文档候选已在精确 SHA 上重新运行完整 CI，文档门禁和代码回归均通过。
 - Batch 1—6 相对 `origin/main` 包含大量架构治理、权限和业务修复，不能把“本地 CI 通过”解释为生产可直接升级。生产版本仍未包含这些本地修复。
 - Batch 3 的 `0071_inventory_stock_resource_guards.sql` 是累计差异中唯一新增迁移；Batch 4—7 没有新增迁移，已发布迁移文件未修改。0071 需要在目标环境先完成负库存检查、锁表和 checksum 兼容核验。
 
