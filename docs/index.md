@@ -4,6 +4,12 @@
 
 [V1.0 Batch5交付](productization/batch5-delivery-2026-10-27.md)：TD-SEC-010本地修复、TD-COST-003/TD-CONN-001复现与五类业务审批契约。
 
+[V1.0 Batch6交付](productization/batch6-delivery-2026-10-27.md)：成本重复归集与connector CAS修复、CI接线核账和岗位验收准备。
+
+[V1.0 Batch6业务审批](productization/batch6-decisions.md)：五项业务规则的最小审批契约。
+
+[V1.0 Batch6岗位验收计划](productization/batch6-pilot-acceptance-plan.md)：十类岗位的场景、拒绝、对账和签署字段。
+
 [V1.0 Batch5安全整改](productization/batch5-security.md)：TD-SEC-010三条幂等重放路径的当前授权修复与验证边界。
 
 [V1.0 Batch5成本复现](productization/batch5-cost003.md)：重复BOM组件实际成本重复归集的隔离PG证据和待裁方案。

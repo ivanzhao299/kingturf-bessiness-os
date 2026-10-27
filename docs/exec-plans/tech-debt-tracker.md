@@ -963,3 +963,5 @@
 TD-API-001的本批G5跨度已消除；其余产品/原生DOM/HTTP/仓储文件体量及G1/G2存量不据此全部关闭。最终源码和证据审查、CI/PG/P1分别记，不把结构通过当业务试运行放行。
 
 **2026-10-27 Batch5**：TD-SEC-010已由635b59e修复：佣金accrue重放复用原订单/客户DataScope，transition绑定路径case并复用范围，business-document dispatch重放先校验当前文档可见性；隔离PG仓储17/17、真实HTTP3/3通过，最终CI/浏览器待最终SHA。TD-COST-003隔离PG确认重复BOM组件行重复计量，仍P1候选未修；TD-CONN-001隔离PG确认connector expectedVersion>0更新SQL控制流缺陷，P2候选未修。见Batch5安全/成本/连接/决策和岗位差距材料。
+
+**2026-10-27 Batch6**：TD-COST-003已由f4c904e修复，实际材料移动按工单/组件聚合，重复BOM行不再重复计量；真实生产PG 8项测试通过，历史run不改。TD-CONN-001已由d5b5e2d修复，connector更新改为VALUES+CAS ON CONFLICT；foundation新增CAS测试并通过。Batch5安全测试已确认被API Vitest/coverage全量发现。五项业务规则和十岗位验收仍待批准/人工签署。
