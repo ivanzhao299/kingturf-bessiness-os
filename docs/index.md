@@ -502,3 +502,5 @@ E1先行固定证据：[authorization守恒候选/773例旧新探针](evidence/e
 [KingTurf V1.0 Batch 3 本地执行授权与计划](productization/batch3-execution-2026-10-26.md)：19d40a2后继，库存/风险三项正式修复、独立G5守恒及设计边界。
 
 [ADR 0011: Serialize inventory resources without a second balance ledger](adr/0011_inventory_resource_serialization.md)：Batch3库存保护行、快照、兼容与回退；仅本地验证授权。
+
+[V1.0 Batch8累计集成与岗位验收前置](productization/batch8-integration-uat.md)：迁移/API兼容、十岗位合成验收边界和未决规则阻断。
