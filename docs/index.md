@@ -14,6 +14,14 @@
 
 [V1.0 Batch6验证证据](productization/evidence/batch6-2026-10-27/README.md)：专项 PostgreSQL、完整 CI 和浏览器双轮摘要。
 
+[V1.0 Batch7准备交付](productization/batch7-delivery-2026-10-27.md)：业务审批、累计集成风险、bundle 恢复和岗位/运维准入状态。
+
+[V1.0 Batch7业务审批表](productization/batch7-business-approval.md)：A1–A5 五项规则的最终待批契约。
+
+[V1.0 Batch7集成风险矩阵](productization/batch7-integration-risk.md)：本地累计差异、迁移兼容和远程发布停止条件。
+
+[V1.0 Batch7岗位与运维准入](productization/batch7-uat-ops-readiness.md)：十岗位隔离验收、性能基线、备份恢复和监控准备。
+
 [V1.0 Batch5安全整改](productization/batch5-security.md)：TD-SEC-010三条幂等重放路径的当前授权修复与验证边界。
 
 [V1.0 Batch5成本复现](productization/batch5-cost003.md)：重复BOM组件实际成本重复归集的隔离PG证据和待裁方案。
