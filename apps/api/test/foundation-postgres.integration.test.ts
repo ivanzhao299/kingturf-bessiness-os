@@ -185,8 +185,8 @@ describe('JTF-P0-E12..E15 PostgreSQL acceptance', () => {
   });
 
   it('pins translations and approved customer delivery while exposing only administrator audit data', async () => {
-    const repository = new PostgresBusinessDocumentRepository(db);
-    const context = { actor, scopes: ['COMPANY'] as const };
+    const repository = new PostgresBusinessDocumentRepository(db),
+      context = { actor, scopes: ['COMPANY'] as const };
     const created = await repository.create(
       {
         templateKey: '13-quotes',
@@ -817,5 +817,67 @@ describe('JTF-P0-E12..E15 PostgreSQL acceptance', () => {
         )
       ).rows,
     ).toEqual(before);
+  });
+
+  it('TD-CONN-001: connector updates use compare-and-swap after initial creation', async () => {
+    const repository = new PostgresBusinessDocumentRepository(db);
+    const first = await repository.configureConnector(
+      'SMS',
+      {
+        provider: 'SYNTHETIC',
+        displayName: 'Synthetic connector',
+        senderIdentity: 'sender@example.test',
+        secretReference: 'SYNTHETIC_CONNECTOR_TOKEN',
+        configuration: {},
+        status: 'READY',
+        expectedVersion: 0,
+      },
+      actor,
+      randomUUID(),
+    );
+    expect(first).toMatchObject({ connector: 'SMS', version: 1 });
+    const second = await repository.configureConnector(
+      'SMS',
+      {
+        provider: 'SYNTHETIC',
+        displayName: 'Synthetic connector v2',
+        senderIdentity: 'sender@example.test',
+        secretReference: 'SYNTHETIC_CONNECTOR_TOKEN',
+        configuration: { version: 2 },
+        status: 'READY',
+        expectedVersion: 1,
+      },
+      actor,
+      randomUUID(),
+    );
+    expect(second).toMatchObject({
+      connector: 'SMS',
+      version: 2,
+      displayName: 'Synthetic connector v2',
+    });
+    await expect(
+      repository.configureConnector(
+        'SMS',
+        {
+          provider: 'SYNTHETIC',
+          displayName: 'Stale update',
+          senderIdentity: 'sender@example.test',
+          secretReference: 'SYNTHETIC_CONNECTOR_TOKEN',
+          configuration: {},
+          status: 'READY',
+          expectedVersion: 1,
+        },
+        actor,
+        randomUUID(),
+      ),
+    ).rejects.toMatchObject({ code: 'conflict' });
+    expect(
+      (
+        await db.query<{ version: number; display_name: string }>(
+          "SELECT version,display_name FROM business_document_connectors WHERE tenant_id=$1 AND connector='SMS'",
+          [company],
+        )
+      ).rows[0],
+    ).toEqual({ version: 2, display_name: 'Synthetic connector v2' });
   });
 });

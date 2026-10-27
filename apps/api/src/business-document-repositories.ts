@@ -418,7 +418,7 @@ export class PostgresBusinessDocumentRepository {
           `INSERT INTO business_document_connectors(
              tenant_id,connector,provider,display_name,sender_identity,secret_reference,
              configuration,status,configured_by)
-           SELECT $1,$2,$3,$4,$5,$6,$7,$8,$9 WHERE $10=0
+           VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)
            ON CONFLICT(tenant_id,connector) DO UPDATE SET
              provider=excluded.provider,display_name=excluded.display_name,
              sender_identity=excluded.sender_identity,secret_reference=excluded.secret_reference,
