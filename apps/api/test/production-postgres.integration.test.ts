@@ -307,6 +307,123 @@ describe.each([
       );
       expect(Number(balance.rows[0]?.quantity)).toBe(12);
     });
+    it('TD-COST-003: aggregates one actual material movement once across duplicate BOM lines', async () => {
+      await db.query(
+        'INSERT INTO manufacturing_bom_lines(tenant_id,bom_version_id,line_number,component_item_version_id,quantity) VALUES($1,$2,2,$3,1)',
+        [company, bomVersion, materialVersion],
+      );
+      const order = await production.create(
+        {
+          orderNumber: `DUPLICATE-BOM-${outputQuantity}`,
+          itemVersionId: finishedVersion,
+          routingVersionId: routingVersion,
+          plannedQuantity: '10',
+          plannedStartAt: '2026-08-16',
+          plannedDueAt: '2026-08-20',
+          sourceReference: 'TD-COST-003',
+        },
+        context,
+        randomUUID(),
+      );
+      if (typeof order.id !== 'string') throw new Error('Order ID missing');
+      for (const state of ['RELEASED', 'IN_PROGRESS'] as const)
+        await production.transition(
+          order.id,
+          state,
+          { reason: 'Duplicate BOM setup', evidence: {}, idempotencyKey: randomUUID() },
+          context,
+          randomUUID(),
+        );
+      await production.transactMaterial(
+        order.id,
+        {
+          transactionType: 'ISSUE',
+          itemVersionId: materialVersion,
+          lotId: materialLot,
+          locationId: location,
+          quantity: '8',
+          reason: 'Single actual movement for duplicate component',
+          occurredAt: '2026-08-17T08:00:00Z',
+          idempotencyKey: randomUUID(),
+        },
+        context,
+        randomUUID(),
+      );
+      const operation = (
+        await db.query<{ id: string }>(
+          'SELECT id FROM production_order_operations WHERE production_order_id=$1',
+          [order.id],
+        )
+      ).rows[0];
+      if (!operation) throw new Error('Operation missing');
+      const report = await production.reportOperation(
+        order.id,
+        {
+          operationId: operation.id,
+          goodQuantity: '10',
+          scrapQuantity: '0',
+          laborMinutes: '1',
+          machineMinutes: '1',
+          startedAt: '2026-08-17T09:00:00Z',
+          completedAt: '2026-08-17T09:01:00Z',
+          notes: 'Duplicate BOM cost sample',
+          idempotencyKey: randomUUID(),
+        },
+        context,
+        randomUUID(),
+      );
+      await production.createOutput(
+        order.id,
+        {
+          operationReportId: report.id as string,
+          itemVersionId: finishedVersion,
+          rollNumber: `DUP-ROLL-${outputQuantity}`,
+          lotNumber: `DUP-LOT-${outputQuantity}`,
+          locationId: location,
+          quantity: '10',
+          manufacturedAt: '2026-08-17',
+        },
+        context,
+        randomUUID(),
+      );
+      await production.transition(
+        order.id,
+        'COMPLETED',
+        { reason: 'Duplicate BOM complete', evidence: {}, idempotencyKey: randomUUID() },
+        context,
+        randomUUID(),
+      );
+      const policy = await costs.createPolicy(
+        {
+          version: 700 + Number(outputQuantity),
+          currency: 'CNY',
+          laborRatePerHour: '60',
+          machineRatePerHour: '120',
+          overheadRatePerMachineHour: '30',
+          effectiveFrom: '2026-08-01',
+          sourceReference: 'TD-COST-003-POLICY',
+          materialRates: [
+            { itemVersionId: materialVersion, unitCost: '5', sourceReference: 'TD-COST-003-RATE' },
+          ],
+        },
+        context,
+        randomUUID(),
+      );
+      const costRun = await costs.calculate(
+        {
+          productionOrderId: order.id,
+          policyId: policy.id,
+          runNumber: `DUP-COST-${outputQuantity}`,
+          idempotencyKey: randomUUID(),
+        },
+        context,
+        randomUUID(),
+      );
+      expect(costRun.materialSnapshot).toHaveLength(2);
+      expect(costRun.materialSnapshot[0]?.actual_quantity).toBe('8.000000');
+      expect(costRun.materialSnapshot[1]?.actual_quantity).toBe('8.000000');
+      expect(costRun.actualTotal).toBe('43.500000');
+    });
     it('TD-COST-002: records rejected cost revision uniqueness and blocked close without changing history', async () => {
       const order = await production.create(
         {
