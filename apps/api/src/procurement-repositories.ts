@@ -275,7 +275,19 @@ export class PostgresProcurementRepository {
       const row = (
         await tx.query<{ id: string }>(
           `INSERT INTO purchase_orders(tenant_id,po_number,supplier_id,supplier_quote_id,currency,canonical_hash,created_by)
-           SELECT $1,$2,s.id,$4,$5,$6,$7 FROM suppliers s WHERE s.id=$3 AND s.tenant_id=$1 AND s.status='ACTIVE' RETURNING id`,
+           SELECT $1,$2,s.id,$4,$5,$6,$7
+           FROM suppliers s
+           LEFT JOIN supplier_quotes q
+             ON q.id=$4::uuid
+            AND q.tenant_id=$1
+            AND q.supplier_id=s.id
+            AND EXISTS(
+              SELECT 1 FROM procurement_rfqs r
+              WHERE r.id=q.rfq_id AND r.tenant_id=q.tenant_id AND r.status='ISSUED'
+            )
+           WHERE s.id=$3 AND s.tenant_id=$1 AND s.status='ACTIVE'
+             AND ($4::uuid IS NULL OR q.id IS NOT NULL)
+           RETURNING id`,
           [
             context.actor.companyId,
             input.poNumber,
@@ -287,7 +299,13 @@ export class PostgresProcurementRepository {
           ],
         )
       ).rows[0];
-      if (!row) throw new DomainError('conflict', 'Purchase order requires an active supplier');
+      if (!row)
+        throw new DomainError(
+          'conflict',
+          input.supplierQuoteId
+            ? 'Purchase order requires an active supplier and valid supplier quote'
+            : 'Purchase order requires an active supplier',
+        );
       for (const [index, line] of input.lines.entries()) {
         const inserted = await tx.query(
           `INSERT INTO purchase_order_lines(tenant_id,purchase_order_id,line_number,item_version_id,quantity,unit_price,required_at)

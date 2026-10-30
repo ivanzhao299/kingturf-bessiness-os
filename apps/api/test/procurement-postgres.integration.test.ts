@@ -274,6 +274,142 @@ describe('procurement and inventory repository real PostgreSQL contracts', () =>
     }
   });
 
+  it('requires a same-tenant, same-supplier quote from an issued RFQ', async () => {
+    const { context, otherContext, db } = state();
+
+    const sameSupplier = await repository.createPurchaseOrder(
+      { ...orderInput('PO-SAME-SUPPLIER'), issue: false },
+      context,
+      randomUUID(),
+    );
+    expect(sameSupplier.status).toBe('DRAFT');
+
+    const otherSupplier = await repository.createSupplier(
+      { ...supplierInput, supplierNumber: 'SUP-2', name: 'Other supplier' },
+      context,
+      randomUUID(),
+    );
+    await expect(
+      repository.createPurchaseOrder(
+        { ...orderInput('PO-DIFFERENT-SUPPLIER'), supplierId: identifier(otherSupplier) },
+        context,
+        randomUUID(),
+      ),
+    ).rejects.toMatchObject({
+      code: 'conflict',
+      message: 'Purchase order requires an active supplier and valid supplier quote',
+    });
+
+    await db.query("UPDATE suppliers SET status='ON_HOLD' WHERE id=$1 AND tenant_id=$2", [
+      identifier(supplier),
+      context.actor.companyId,
+    ]);
+    await expect(
+      repository.createPurchaseOrder(
+        { ...orderInput('PO-INACTIVE-SUPPLIER') },
+        context,
+        randomUUID(),
+      ),
+    ).rejects.toMatchObject({
+      code: 'conflict',
+      message: 'Purchase order requires an active supplier and valid supplier quote',
+    });
+    await db.query("UPDATE suppliers SET status='ACTIVE' WHERE id=$1 AND tenant_id=$2", [
+      identifier(supplier),
+      context.actor.companyId,
+    ]);
+
+    await expect(
+      repository.createPurchaseOrder(
+        { ...orderInput('PO-MISSING-QUOTE'), supplierQuoteId: randomUUID() },
+        context,
+        randomUUID(),
+      ),
+    ).rejects.toMatchObject({
+      code: 'conflict',
+      message: 'Purchase order requires an active supplier and valid supplier quote',
+    });
+
+    const foreignSupplier = await repository.createSupplier(
+      { ...supplierInput, supplierNumber: 'SUP-F', name: 'Foreign supplier' },
+      otherContext,
+      randomUUID(),
+    );
+    await repository.qualifySupplier(
+      identifier(foreignSupplier),
+      qualification(identifier(foreign)),
+      otherContext,
+      randomUUID(),
+    );
+    const foreignRfq = await repository.createRfq(
+      {
+        ...rfqInput('RFQ-F'),
+        lines: [
+          {
+            itemVersionId: identifier(foreign),
+            quantity: '10',
+            requiredAt: '2026-02-01',
+          },
+        ],
+      },
+      otherContext,
+      randomUUID(),
+    );
+    await repository.issueRfq(identifier(foreignRfq), otherContext, randomUUID());
+    const foreignRfqLine = (
+      await db.query<{ id: string }>(
+        'SELECT id FROM procurement_rfq_lines WHERE rfq_id=$1 AND tenant_id=$2',
+        [identifier(foreignRfq), otherContext.actor.companyId],
+      )
+    ).rows[0];
+    if (!foreignRfqLine) throw new Error('Foreign RFQ line missing');
+    const foreignQuote = await repository.createSupplierQuote(
+      {
+        rfqId: identifier(foreignRfq),
+        supplierId: identifier(foreignSupplier),
+        quoteReference: 'QUOTE-F',
+        receivedAt: '2026-01-09T00:00:00Z',
+        validUntil: '2026-02-01',
+        terms: { incoterm: 'EXW' },
+        lines: [
+          {
+            rfqLineId: foreignRfqLine.id,
+            unitPrice: '2.5',
+            promisedAt: '2026-02-01',
+            minimumOrderQuantity: '1',
+          },
+        ],
+      },
+      otherContext,
+      randomUUID(),
+    );
+    const beforeCrossTenant = (
+      await db.query<{ count: string }>('SELECT count(*)::text AS count FROM purchase_orders')
+    ).rows[0]?.count;
+    const crossTenantCorrelation = randomUUID();
+    await expect(
+      repository.createPurchaseOrder(
+        { ...orderInput('PO-CROSS-TENANT'), supplierQuoteId: identifier(foreignQuote) },
+        context,
+        crossTenantCorrelation,
+      ),
+    ).rejects.toMatchObject({ code: 'conflict' });
+    expect(
+      (await db.query<{ count: string }>('SELECT count(*)::text AS count FROM purchase_orders'))
+        .rows[0]?.count,
+    ).toBe(beforeCrossTenant);
+    expect(await evidenceCounts(crossTenantCorrelation)).toEqual({ audit: '0', outbox: '0' });
+
+    await expect(
+      db.query('UPDATE purchase_orders SET supplier_quote_id=$1 WHERE id=$2 AND tenant_id=$3', [
+        null,
+        identifier(order),
+        context.actor.companyId,
+      ]),
+    ).rejects.toMatchObject({ code: 'P0001' });
+    expect(await orderStatus()).toBe('ISSUED');
+  });
+
   it('requires COMPANY or GROUP scope and keeps GROUP reads and writes tenant-bounded', async () => {
     const { context, otherContext } = state();
     const views = [
