@@ -413,37 +413,40 @@ export class PostgresBusinessDocumentRepository {
     correlationId: string,
   ) {
     return this.db.transaction(async (tx) => {
-      const row = (
-        await tx.query<{ item: JsonObject }>(
-          `INSERT INTO business_document_connectors(
+      const statement =
+        input.expectedVersion === 0
+          ? `INSERT INTO business_document_connectors(
              tenant_id,connector,provider,display_name,sender_identity,secret_reference,
              configuration,status,configured_by)
            VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)
-           ON CONFLICT(tenant_id,connector) DO UPDATE SET
-             provider=excluded.provider,display_name=excluded.display_name,
-             sender_identity=excluded.sender_identity,secret_reference=excluded.secret_reference,
-             configuration=excluded.configuration,status=excluded.status,
-             configured_by=excluded.configured_by,version=business_document_connectors.version+1,
-             updated_at=now()
-           WHERE business_document_connectors.version=$10
+           ON CONFLICT(tenant_id,connector) DO NOTHING
            RETURNING jsonb_build_object(
              'connector',connector,'provider',provider,'displayName',display_name,
              'senderIdentity',sender_identity,'secretReference',secret_reference,
              'configuration',configuration,'status',status,'version',version,
-             'configuredAt',updated_at) item`,
-          [
-            actor.companyId,
-            connector,
-            input.provider,
-            input.displayName,
-            input.senderIdentity,
-            input.secretReference,
-            input.configuration,
-            input.status,
-            actor.employeeId,
-            input.expectedVersion,
-          ],
-        )
+             'configuredAt',updated_at) item`
+          : `UPDATE business_document_connectors
+           SET provider=$3,display_name=$4,sender_identity=$5,secret_reference=$6,
+             configuration=$7,status=$8,configured_by=$9,version=version+1,updated_at=now()
+           WHERE tenant_id=$1 AND connector=$2 AND version=$10
+           RETURNING jsonb_build_object(
+             'connector',connector,'provider',provider,'displayName',display_name,
+             'senderIdentity',sender_identity,'secretReference',secret_reference,
+             'configuration',configuration,'status',status,'version',version,
+             'configuredAt',updated_at) item`;
+      const row = (
+        await tx.query<{ item: JsonObject }>(statement, [
+          actor.companyId,
+          connector,
+          input.provider,
+          input.displayName,
+          input.senderIdentity,
+          input.secretReference,
+          input.configuration,
+          input.status,
+          actor.employeeId,
+          ...(input.expectedVersion === 0 ? [] : [input.expectedVersion]),
+        ])
       ).rows[0];
       if (!row) throw new DomainError('conflict', 'Connector configuration version is stale');
       await writeBusinessDocumentConnectorAudit(

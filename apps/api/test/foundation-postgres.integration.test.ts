@@ -909,4 +909,118 @@ describe('JTF-P0-E12..E15 PostgreSQL acceptance', () => {
       ).rows[0],
     ).toEqual({ version: 3 });
   });
+
+  it('TD-CONN-001: connector creation fences expectedVersion and isolates failed CAS writes', async () => {
+    const repository = new PostgresBusinessDocumentRepository(db);
+    const connector = 'TELEGRAM';
+    const otherActor = { companyId: otherCompany, employeeId: outsider } as const;
+    const input = (displayName: string, expectedVersion: number, configuration = {}) => ({
+      provider: 'SYNTHETIC',
+      displayName,
+      senderIdentity: 'sender@example.test',
+      secretReference: 'KINGTURF_CONNECTOR_SYNTHETIC_TOKEN',
+      configuration,
+      status: 'READY' as const,
+      expectedVersion,
+    });
+    const snapshot = async () => {
+      const row = (
+        await db.query<{ connectors: string; audits: string; outbox: string }>(
+          `SELECT
+             (SELECT count(*)::text FROM business_document_connectors
+               WHERE connector=$1 AND tenant_id IN ($2,$3)) connectors,
+             (SELECT count(*)::text FROM audit_events) audits,
+             (SELECT count(*)::text FROM domain_event_outbox) outbox`,
+          [connector, company, otherCompany],
+        )
+      ).rows[0];
+      if (!row) throw new Error('Connector CAS snapshot query returned no row');
+      return row;
+    };
+    const expectConflictWithoutWrites = async (
+      owner: typeof actor | typeof otherActor,
+      expectedVersion: number,
+      displayName: string,
+    ) => {
+      const before = await snapshot();
+      await expect(
+        repository.configureConnector(
+          connector,
+          input(displayName, expectedVersion),
+          owner,
+          randomUUID(),
+        ),
+      ).rejects.toMatchObject({ code: 'conflict' });
+      expect(await snapshot()).toEqual(before);
+    };
+
+    await expectConflictWithoutWrites(actor, 999, 'Initial stale');
+    expect(
+      (
+        await db.query(
+          'SELECT 1 FROM business_document_connectors WHERE tenant_id=$1 AND connector=$2',
+          [company, connector],
+        )
+      ).rowCount,
+    ).toBe(0);
+
+    const beforeCreate = await snapshot();
+    const created = await repository.configureConnector(
+      connector,
+      input('Synthetic connector', 0),
+      actor,
+      randomUUID(),
+    );
+    expect(created).toMatchObject({ connector, version: 1 });
+    const afterCreate = await snapshot();
+    expect(Number(afterCreate.connectors)).toBe(Number(beforeCreate.connectors) + 1);
+    expect(Number(afterCreate.audits)).toBe(Number(beforeCreate.audits) + 1);
+    expect(afterCreate.outbox).toBe(beforeCreate.outbox);
+
+    await expectConflictWithoutWrites(actor, 0, 'Duplicate initial');
+    await expectConflictWithoutWrites(actor, 999, 'Wrong current version');
+
+    const updated = await repository.configureConnector(
+      connector,
+      input('Synthetic connector v2', 1, { revision: 2 }),
+      actor,
+      randomUUID(),
+    );
+    expect(updated).toMatchObject({ connector, version: 2, displayName: 'Synthetic connector v2' });
+    await expectConflictWithoutWrites(actor, 0, 'Stale zero update');
+    await expectConflictWithoutWrites(actor, 999, 'Stale high update');
+
+    const beforeConcurrent = await snapshot();
+    const concurrent = await Promise.allSettled(
+      ['Concurrent A', 'Concurrent B'].map((displayName) =>
+        repository.configureConnector(connector, input(displayName, 2), actor, randomUUID()),
+      ),
+    );
+    expect(concurrent.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+    expect(concurrent.filter((result) => result.status === 'rejected')).toHaveLength(1);
+    const afterConcurrent = await snapshot();
+    expect(Number(afterConcurrent.audits)).toBe(Number(beforeConcurrent.audits) + 1);
+    expect(afterConcurrent.outbox).toBe(beforeConcurrent.outbox);
+
+    const otherCreated = await repository.configureConnector(
+      connector,
+      input('Other tenant connector', 0),
+      otherActor,
+      randomUUID(),
+    );
+    expect(otherCreated).toMatchObject({ connector, version: 1 });
+    const rows = (
+      await db.query<{ tenant_id: string; version: number; display_name: string }>(
+        'SELECT tenant_id,version,display_name FROM business_document_connectors WHERE connector=$1 ORDER BY tenant_id',
+        [connector],
+      )
+    ).rows;
+    expect(rows).toHaveLength(2);
+    expect(rows.find((row) => row.tenant_id === company)).toMatchObject({ version: 3 });
+    expect(rows.find((row) => row.tenant_id === otherCompany)).toMatchObject({
+      version: 1,
+      display_name: 'Other tenant connector',
+    });
+    await expectConflictWithoutWrites(otherActor, 0, 'Other duplicate initial');
+  });
 });
