@@ -4,6 +4,7 @@ import { Database, migrate } from '@kingturf/database';
 import type { ObjectAccessAuthorizer, ObjectStorage } from '@kingturf/domain';
 import { PostgresEmployeeRepository } from '../src/repositories.js';
 import { PostgresBusinessDocumentRepository } from '../src/business-document-repositories.js';
+import { projectBusinessDocumentDetail } from '../src/routes/business-document-reads.js';
 import {
   InProcessEventDispatcher,
   EmployeeObjectInstanceResolver,
@@ -285,6 +286,51 @@ describe('JTF-P0-E12..E15 PostgreSQL acceptance', () => {
       ]),
     );
     expect(log.some((item) => item.actorName === 'Actor')).toBe(true);
+  });
+
+  it('projects persisted document detail fields across nested collections', async () => {
+    const repository = new PostgresBusinessDocumentRepository(db),
+      context = { actor, scopes: ['COMPANY'] as const };
+    const created = await repository.create(
+      {
+        templateKey: '13-quotes',
+        title: 'Projection fixture',
+        route: 'quotes',
+        content: { body: 'controlled body' },
+      },
+      actor,
+      randomUUID(),
+    );
+    const translation = await repository.createTranslation(
+      created.id,
+      {
+        expectedVersion: 1,
+        targetLocale: 'en-US',
+        content: { body: 'translated body' },
+      },
+      context,
+      randomUUID(),
+    );
+    expect(translation.id).toEqual(expect.any(String));
+    const full = await repository.get(created.id, { ...context, includeAudit: true });
+    const projected = projectBusinessDocumentDetail(full, [
+      'title',
+      'versions.content',
+      'translations.targetLocale',
+      'reviewEvents.action',
+      'dispatches.channel',
+    ]);
+    expect(projected).toMatchObject({
+      id: created.id,
+      title: 'Projection fixture',
+      versions: [{ content: { body: 'controlled body' } }],
+      translations: [{ targetLocale: 'en-US' }],
+    });
+    expect(projected).not.toHaveProperty('route');
+    expect((projected.versions as Record<string, unknown>[])[0]).not.toHaveProperty(
+      'canonicalHash',
+    );
+    expect((projected.translations as Record<string, unknown>[])[0]).not.toHaveProperty('content');
   });
 
   it('requires compare-and-swap versions for notification preferences under concurrency', async () => {
