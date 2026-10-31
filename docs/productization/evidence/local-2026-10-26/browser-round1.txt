@@ -1,0 +1,8 @@
+(node:412477) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+{"event":"host-guard-marker-ready","guardPassed":true,"isolatedSchema":true,"markerCreatedOnHost":true}
+{"event":"local-container-isolation","rootAndRepositoryReadOnly":true,"rawLogDriverDisabled":true,"declaredTmpfsVerified":true}
+{"event":"container-failed","phase":"pg-read-only-identity"}
+{"event":"preflight-failed","phase":"gateway"}
+{"event":"owned-cleanup","schemaGone":true,"containerGone":true,"previewGone":true}
+{"event":"preflight-result","exit":1,"elapsedMs":2186}

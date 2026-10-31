@@ -68,8 +68,8 @@ const anchorCases: readonly (readonly ScopeAnchor[])[] = [
 ];
 const offsets = [1, 2, 3, 5];
 
-describe('recordScopeSql（complaint 选项）× 迁移前快照对拍（批次 1b，零归一化）', () => {
-  it('全部 432 组合（9 scope 组 × 6 锚点组 × 4 偏移 × 2 别名）SQL 与参数逐字节一致', () => {
+describe('recordScopeSql（complaint）保留非锚点快照并验证SEC008修复边界', () => {
+  it('432组合保留参数/非锚点SQL，锚点使用真实组织列（SEC008）', () => {
     for (const scopes of scopeCases)
       for (const anchors of anchorCases)
         for (const offset of offsets)
@@ -77,14 +77,23 @@ describe('recordScopeSql（complaint 选项）× 迁移前快照对拍（批次 
             const context = { actor, scopes, anchors };
             const legacy = legacyComplaintScope(context, alias, offset);
             const migrated = recordScopeSql(scopes, anchors, actor, alias, offset, COMPLAINT_SCOPE);
-            expect(migrated.sql).toBe(legacy.sql);
+            if (!legacy.sql.includes('osr.tenant_id')) expect(migrated.sql).toBe(legacy.sql);
+            else {
+              expect(migrated.sql).not.toContain('osr.tenant_id');
+              expect(migrated.sql).not.toContain('osr.scope=');
+              expect(migrated.sql).toContain(
+                'anchor.owner_organization_id=' + alias + '.tenant_id',
+              );
+              expect(migrated.sql).toContain('anchor.active AND anchor.deleted_at IS NULL');
+              expect(migrated.sql).not.toContain('osr.depth');
+            }
             expect(migrated.values).toEqual(legacy.values);
           }
   });
 });
 
 describe('recordScopeSql 特征化（complaint 语义 = relationshipOnly 锚点谓词）', () => {
-  it('锚点谓词只查 osr 单表：无 organizations JOIN、无 depth、无组织有效性/类型校验', () => {
+  it('锚点校验真实组织类型/租户/有效性，保留无 depth 兼容边界', () => {
     const r = recordScopeSql(
       ['TEAM'],
       [{ scope: 'TEAM', organizationId: org }],
@@ -93,14 +102,14 @@ describe('recordScopeSql 特征化（complaint 语义 = relationshipOnly 锚点�
       2,
       COMPLAINT_SCOPE,
     );
-    expect(r.sql).toContain('EXISTS(SELECT 1 FROM organization_scope_relationships osr WHERE');
+    expect(r.sql).toContain('FROM organizations anchor JOIN organization_scope_relationships osr');
     expect(r.sql).not.toContain('JOIN organizations');
     expect(r.sql).not.toContain('depth');
-    expect(r.sql).not.toContain('anchor.active');
-    expect(r.sql).not.toContain("organization_type='TEAM'");
-    expect(r.sql).toContain('osr.tenant_id=cu.tenant_id');
-    expect(r.sql).toContain("osr.scope='TEAM'");
-    expect(r.sql).toContain('osr.ancestor_id=$2');
+    expect(r.sql).toContain('anchor.active AND anchor.deleted_at IS NULL');
+    expect(r.sql).toContain("organization_type='TEAM'");
+    expect(r.sql).toContain('anchor.owner_organization_id=cu.tenant_id');
+    expect(r.sql).not.toContain('osr.scope=');
+    expect(r.sql).toContain('anchor.id=$2');
   });
 
   it('TEAM 与 DEPARTMENT 生成相同形态（无 depth 区分）——与 organizationJoin 形态的语义差异（TD-SEC-006）', () => {
@@ -120,8 +129,8 @@ describe('recordScopeSql 特征化（complaint 语义 = relationshipOnly 锚点�
       2,
       COMPLAINT_SCOPE,
     );
-    expect(team.sql.replace("osr.scope='TEAM'", 'X')).toBe(
-      dept.sql.replace("osr.scope='DEPARTMENT'", 'X'),
+    expect(team.sql.replace("anchor.organization_type='TEAM'", 'X')).toBe(
+      dept.sql.replace("anchor.organization_type='DEPARTMENT'", 'X'),
     );
 
     const joined = recordScopeSql(

@@ -1,0 +1,10 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ✓ test/risk-replay-http-postgres.integration.test.ts (16 tests) 4824ms
+
+ Test Files  1 passed (1)
+      Tests  16 passed (16)
+   Start at  15:49:44
+   Duration  5.90s (transform 655ms, setup 0ms, collect 919ms, tests 4.82s, environment 0ms, prepare 47ms)
+

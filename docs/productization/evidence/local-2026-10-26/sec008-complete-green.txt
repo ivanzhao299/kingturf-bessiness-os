@@ -1,0 +1,47 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ✓ test/dashboard-postgres.integration.test.ts (6 tests) 20662ms
+   ✓ dashboard repository real PostgreSQL contracts > aggregates ten fixed metrics and source-bound drilldowns from the real commercial graph  3613ms
+   ✓ dashboard repository real PostgreSQL contracts > applies real owner and tenant scope across every metric and drilldown  3572ms
+   ✓ dashboard repository real PostgreSQL contracts > preserves the existing currency and from/as-of asymmetries without rewriting SQL  3500ms
+   ✓ dashboard repository real PostgreSQL contracts > uses inclusive starts, exclusive ends and allocation posting rather than bank receipt dates  3264ms
+   ✓ dashboard repository real PostgreSQL contracts > projects latest task closure and pinned accrual without performing new writes  3392ms
+   ✓ dashboard repository real PostgreSQL contracts > SEC008: filters every aggregate and drilldown through valid explicit organization anchors  3320ms
+ ✓ test/complaint-postgres.integration.test.ts (4 tests) 3088ms
+ ❯ test/harness-final-decision-postgres.integration.test.ts (5 tests | 1 failed) 13401ms
+   ✓ BOUND003: real API forwards invalid date but PG rejects insert/update without storing it  2759ms
+   ✓ BOUND004: UUID case aliases partly commit once and preserve raw-case batch replay identity  2535ms
+   ✓ SEC008: real complaint scope queries validate organization anchors without changing broad grants  2911ms
+   ✓ SEC007: active actor in inactive organization differs at real notification repository predicate layer  2605ms
+   × SEC008: real login resolves TEAM anchors, filters fields and rejects revoked access 2587ms
+     → null value in column "algorithm" of relation "password_credentials" violates not-null constraint
+ ✓ test/scope-sql-complaint.test.ts (5 tests) 14ms
+ ✓ test/scope-sql-dashboard.test.ts (2 tests) 19ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/harness-final-decision-postgres.integration.test.ts > SEC008: real login resolves TEAM anchors, filters fields and rejects revoked access
+error: null value in column "algorithm" of relation "password_credentials" violates not-null constraint
+ ❯ ../../node_modules/.pnpm/pg-pool@3.14.0_pg@8.22.0/node_modules/pg-pool/index.js:45:11
+ ❯ test/harness-final-decision-postgres.integration.test.ts:377:5
+    375|       [identity, owned.employee],
+    376|     );
+    377|     await owned.db.query(
+       |     ^
+    378|       'INSERT INTO password_credentials(identity_id,password_hash) VAL…
+    379|       [identity, passwordHash],
+ ❯ withOwned test/harness-final-decision-postgres.integration.test.ts:24:5
+ ❯ test/harness-final-decision-postgres.integration.test.ts:360:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 4 passed (5)
+      Tests  1 failed | 21 passed (22)
+   Start at  11:31:35
+   Duration  39.13s (transform 718ms, setup 0ms, collect 1.19s, tests 37.18s, environment 1ms, prepare 223ms)
+
+undefined
+/home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run test/scope-sql-complaint.test.ts test/scope-sql-dashboard.test.ts test/harness-final-decision-postgres.integration.test.ts test/dashboard-postgres.integration.test.ts test/complaint-postgres.integration.test.ts

@@ -1,0 +1,43 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ❯ test/procurement-postgres.integration.test.ts (11 tests | 1 failed | 7 skipped) 10706ms
+   ↓ procurement and inventory repository real PostgreSQL contracts > persists the qualified RFQ-to-receipt chain, derived stock and exact paired evidence
+   ↓ procurement and inventory repository real PostgreSQL contracts > requires COMPANY or GROUP scope and keeps GROUP reads and writes tenant-bounded
+   ↓ procurement and inventory repository real PostgreSQL contracts > rolls back invalid qualification, quote and issued-document inputs
+   ↓ procurement and inventory repository real PostgreSQL contracts > rolls back receipts, lots and movements on quantity, location and later-line failures
+   ↓ procurement and inventory repository real PostgreSQL contracts > nets signed movement types and rejects negative balances, mismatched lots and duplicate sources
+   ↓ procurement and inventory repository real PostgreSQL contracts > completes partial then final receipt and refuses receipt against the closed order
+   ↓ procurement and inventory repository real PostgreSQL contracts > rolls back issue and audit when an already-seeded outbox aggregate conflicts
+   × procurement and inventory repository real PostgreSQL contracts > TD-PROC-001: receives 4 + 2 + 4 with exact stock, lot links and paired evidence 2699ms
+     → partially received purchase order has invalid transition
+   ✓ procurement and inventory repository real PostgreSQL contracts > TD-PROC-001: rejects duplicate receipt identities and excess after partial stock without residual writes  2639ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > TD-PROC-001: real concurrent receipts cannot over-receive and valid splits settle exactly  2653ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > TD-PROC-001: two valid concurrent 4 and 6 receipts both commit once  2714ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/procurement-postgres.integration.test.ts > procurement and inventory repository real PostgreSQL contracts > TD-PROC-001: receives 4 + 2 + 4 with exact stock, lot links and paired evidence
+error: partially received purchase order has invalid transition
+ ❯ ../../node_modules/.pnpm/pg@8.22.0/node_modules/pg/lib/client.js:652:17
+ ❯ src/procurement-repositories.ts:475:7
+    473|         [input.purchaseOrderId, context.actor.companyId],
+    474|       );
+    475|       await tx.query('UPDATE purchase_orders SET status=$1 WHERE id=$2…
+       |       ^
+    476|         open.rowCount ? 'PARTIALLY_RECEIVED' : 'RECEIVED',
+    477|         input.purchaseOrderId,
+ ❯ Database.transaction ../../packages/database/src/index.ts:45:21
+ ❯ test/procurement-postgres.integration.test.ts:582:22
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 3 passed | 7 skipped (11)
+   Start at  11:38:51
+   Duration  11.03s (transform 123ms, setup 0ms, collect 154ms, tests 10.71s, environment 0ms, prepare 50ms)
+
+undefined
+/home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run test/procurement-postgres.integration.test.ts -t TD-PROC-001

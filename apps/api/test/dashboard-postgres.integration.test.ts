@@ -217,4 +217,37 @@ describe('dashboard repository real PostgreSQL contracts', () => {
     expect(result).toMatchObject({ drilldowns: { risks: [{ state: 'CLOSED', score: 60 }] } });
     expect(await writes()).toEqual(before);
   });
+  it('SEC008: filters every aggregate and drilldown through valid explicit organization anchors', async () => {
+    const { context, otherContext, db, teamId } = state();
+    const anchored = {
+      ...context,
+      scopes: ['TEAM'] as const,
+      anchors: [{ scope: 'TEAM' as const, organizationId: teamId }],
+    };
+    const before = await writes();
+    expect(values(await repository.get(input, anchored))).toEqual(expected);
+    expect(values(await repository.get(input, { ...anchored, scopes: ['SELF', 'TEAM'] }))).toEqual(
+      expected,
+    );
+    expect(
+      values(await repository.get(input, { ...anchored, scopes: ['COMPANY', 'TEAM'] })),
+    ).toEqual(expected);
+    await db.query('UPDATE organizations SET active=false WHERE id=$1', [teamId]);
+    const denied = await repository.get(input, anchored);
+    expect(values(denied)).toEqual(allZero);
+    expect(denied.drilldowns).toEqual({ orders: [], overdue: [], risks: [] });
+    expect(
+      values(await repository.get(input, { ...anchored, scopes: ['COMPANY', 'TEAM'] })),
+    ).toEqual(expected);
+    expect(
+      values(
+        await repository.get(input, {
+          ...otherContext,
+          scopes: ['TEAM'],
+          anchors: anchored.anchors,
+        }),
+      ),
+    ).toEqual(allZero);
+    expect(await writes()).toEqual(before);
+  });
 });

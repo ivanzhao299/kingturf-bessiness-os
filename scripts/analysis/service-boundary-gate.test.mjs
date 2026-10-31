@@ -428,3 +428,122 @@ export function routes(deps: ApiDependencies) {
   assert.notEqual(output.status, 0);
   assert.match(output.stderr, /Invalid loginRateLimiter infrastructure port/u);
 });
+
+const attemptModule = {
+  'apps/api/src/routes/dispatch/context.ts':
+    'export function projectedReply<T>(pending:T,project:(value:T)=>unknown){return {pending,project};}',
+};
+const attempts = (body) => `import type { ApiDependencies } from './app.ts';
+import { projectedReply } from './routes/dispatch/context.ts';
+type A=ApiDependencies['a'];type B=ApiDependencies['b'];
+${body}`;
+test('lazy projected units: independent routes and same-port projection pass', () => {
+  const out = run({
+    ...attemptModule,
+    'apps/api/src/runtime.ts': attempts(`
+ function* first(a:A){yield projectedReply(a.read(),()=>a.other());}
+ function* second(b:B){yield projectedReply(b.write(),value=>value);}
+ export function* routes(a:A,b:B){yield* first(a);yield* second(b);}`),
+  });
+  assert.equal(out.status, 0, JSON.stringify(out));
+  assert.equal(out.result.routes, 2);
+});
+for (const [label, body] of [
+  [
+    'pending plus projector',
+    'export function* routes(a:A,b:B){yield projectedReply(a.read(),()=>b.write());}',
+  ],
+  [
+    'shared prework',
+    'export function* routes(a:A,b:B){a.read();yield projectedReply(b.write(),value=>value);}',
+  ],
+  [
+    'bound methods',
+    'export function* routes(a:A,b:B){const read=a.read.bind(a);const write=b.write;yield projectedReply(read(),()=>write.call(b));}',
+  ],
+  [
+    'delegated shared work',
+    'function* second(b:B){yield projectedReply(b.write(),value=>value);} export function* routes(a:A,b:B){a.read();yield* second(b);}',
+  ],
+  [
+    'delegated shared work plus local branch',
+    'function* second(b:B){yield projectedReply(b.write(),value=>value);} export function* routes(a:A,b:B){a.read();if(false)yield projectedReply(a.other(),value=>value);yield* second(b);}',
+  ],
+  [
+    'manual consumer plus shared work',
+    'function* second(b:B){yield projectedReply(b.write(),value=>value);} export function routes(a:A,b:B){for(const attempt of second(b)){attempt.project(attempt.pending);}a.read();}',
+  ],
+])
+  test(`lazy projected units: S3 rejects ${label}`, () => {
+    const out = run({ ...attemptModule, 'apps/api/src/runtime.ts': attempts(body) });
+    assert.equal(out.status, 1, JSON.stringify(out));
+    assert.ok(
+      out.result.issues.some((i) => i.rule === 'S3' && i.message.includes('a, b')),
+      JSON.stringify(out),
+    );
+  });
+test('lazy projected units: transitive projector helpers retain provenance', () => {
+  const out = run({
+    ...attemptModule,
+    'apps/api/src/helper.ts':
+      "import type {ApiDependencies} from './app.ts';export function second(b:ApiDependencies['b']){return b.write();}",
+    'apps/api/src/runtime.ts':
+      "import {second} from './helper.ts';" +
+      attempts('export function* routes(a:A,b:B){yield projectedReply(a.read(),()=>second(b));}'),
+  });
+  assert.equal(out.status, 1, JSON.stringify(out));
+  assert.ok(
+    out.result.issues.some((i) => i.rule === 'S3'),
+    JSON.stringify(out),
+  );
+});
+for (const [label, body] of [
+  [
+    'async generator',
+    'export async function* routes(a:A){yield projectedReply(a.read(),value=>value);}',
+  ],
+  [
+    'async projector',
+    'export function* routes(a:A){yield projectedReply(a.read(),async value=>value);}',
+  ],
+  [
+    'eager array',
+    'export function* routes(a:A){const attempts=[projectedReply(a.read(),value=>value)];yield* attempts;}',
+  ],
+  [
+    'variable intermediate',
+    'export function* routes(a:A){const attempt=projectedReply(a.read(),value=>value);yield attempt;}',
+  ],
+])
+  test(`lazy projected units: S5 rejects ${label}`, () => {
+    const out = run({ ...attemptModule, 'apps/api/src/runtime.ts': attempts(body) });
+    assert.equal(out.status, 1, JSON.stringify(out));
+    assert.ok(
+      out.result.issues.some((i) => i.rule === 'S5'),
+      JSON.stringify(out),
+    );
+  });
+test('lazy projected units: same-named local builder cannot hide cross-port work', () => {
+  const out = run({
+    'apps/api/src/runtime.ts': `import type {ApiDependencies} from './app.ts';function projectedReply<T>(pending:T,project:(x:T)=>unknown){return {pending,project};}export function* routes(a:ApiDependencies['a'],b:ApiDependencies['b']){yield projectedReply((a.read(),b.write()),value=>value);}`,
+  });
+  assert.equal(out.status, 1, JSON.stringify(out));
+  assert.ok(
+    out.result.issues.some((i) => i.rule === 'S3'),
+    JSON.stringify(out),
+  );
+});
+
+test('lazy projected units: S5 rejects generator projector', () => {
+  const out = run({
+    ...attemptModule,
+    'apps/api/src/runtime.ts': attempts(
+      'export function* routes(a:A){yield projectedReply(a.read(),function*(value){yield value;});}',
+    ),
+  });
+  assert.equal(out.status, 1, JSON.stringify(out));
+  assert.ok(
+    out.result.issues.some((i) => i.rule === 'S5'),
+    JSON.stringify(out),
+  );
+});

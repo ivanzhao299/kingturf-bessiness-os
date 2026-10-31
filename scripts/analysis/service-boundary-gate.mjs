@@ -295,6 +295,39 @@ function inspectRuntime({ checker, sources, name, report }, { origins, dependenc
         ts.isObjectLiteralExpression(node.arguments[0])
       )
         routeObjects.add(node.arguments[0]);
+      if (ts.isCallExpression(node)) {
+        const declaration = checker.getResolvedSignature(node)?.declaration;
+        if (
+          declaration?.name?.getText() === 'projectedReply' &&
+          name(declaration.getSourceFile().fileName) === 'apps/api/src/routes/dispatch/context.ts'
+        ) {
+          let enclosing = node.parent;
+          while (enclosing && !functionNode(enclosing)) enclosing = enclosing.parent;
+          const projector = node.arguments[1];
+          const async = (fn) => !!fn.modifiers?.some((m) => m.kind === ts.SyntaxKind.AsyncKeyword);
+          const directYield =
+            ts.isYieldExpression(node.parent) &&
+            node.parent.expression === node &&
+            !node.parent.asteriskToken &&
+            ts.isExpressionStatement(node.parent.parent);
+          if (
+            directYield &&
+            enclosing?.asteriskToken &&
+            !async(enclosing) &&
+            projector &&
+            (ts.isArrowFunction(projector) || ts.isFunctionExpression(projector)) &&
+            !async(projector) &&
+            !projector.asteriskToken
+          ) {
+            routeObjects.add(node);
+          } else
+            report(
+              'S5',
+              node,
+              'A projected route must be directly yielded by a synchronous generator with a synchronous projector.',
+            );
+        }
+      }
       // Legacy app dispatch only: nearest request.method/pathname branch is one entry.
       if (name(source.fileName) === 'apps/api/src/app.ts' && ts.isIfStatement(node)) {
         let selector = false;
@@ -389,12 +422,21 @@ function inspectRuntime({ checker, sources, name, report }, { origins, dependenc
         }
         const callee = functionGroups.get(key(declaration));
         // A route factory constructs callbacks; it does not execute every route.
-        let factory = false;
+        let factory = false,
+          projectedFactory = false;
         if (callee)
           children(declaration, (child) => {
-            if (routeObjects.has(child)) factory = true;
+            if (routeObjects.has(child)) {
+              factory = true;
+              if (ts.isCallExpression(child)) projectedFactory = true;
+            }
           });
-        if (callee && callee !== current && !factory) current.edges.add(callee);
+        if (callee && callee !== current) {
+          // Lazy route units inherit caller/shared work, including delegated generators.
+          // Do not merge independent units back into the HTTP composition root.
+          if (projectedFactory) callee.edges.add(current);
+          if (!factory) current.edges.add(callee);
+        }
       }
     });
   function reachable(current, seen = new Set()) {

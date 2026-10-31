@@ -275,7 +275,19 @@ export class PostgresProcurementRepository {
       const row = (
         await tx.query<{ id: string }>(
           `INSERT INTO purchase_orders(tenant_id,po_number,supplier_id,supplier_quote_id,currency,canonical_hash,created_by)
-           SELECT $1,$2,s.id,$4,$5,$6,$7 FROM suppliers s WHERE s.id=$3 AND s.tenant_id=$1 AND s.status='ACTIVE' RETURNING id`,
+           SELECT $1,$2,s.id,$4,$5,$6,$7
+           FROM suppliers s
+           LEFT JOIN supplier_quotes q
+             ON q.id=$4::uuid
+            AND q.tenant_id=$1
+            AND q.supplier_id=s.id
+            AND EXISTS(
+              SELECT 1 FROM procurement_rfqs r
+              WHERE r.id=q.rfq_id AND r.tenant_id=q.tenant_id AND r.status='ISSUED'
+            )
+           WHERE s.id=$3 AND s.tenant_id=$1 AND s.status='ACTIVE'
+             AND ($4::uuid IS NULL OR q.id IS NOT NULL)
+           RETURNING id`,
           [
             context.actor.companyId,
             input.poNumber,
@@ -287,7 +299,13 @@ export class PostgresProcurementRepository {
           ],
         )
       ).rows[0];
-      if (!row) throw new DomainError('conflict', 'Purchase order requires an active supplier');
+      if (!row)
+        throw new DomainError(
+          'conflict',
+          input.supplierQuoteId
+            ? 'Purchase order requires an active supplier and valid supplier quote'
+            : 'Purchase order requires an active supplier',
+        );
       for (const [index, line] of input.lines.entries()) {
         const inserted = await tx.query(
           `INSERT INTO purchase_order_lines(tenant_id,purchase_order_id,line_number,item_version_id,quantity,unit_price,required_at)
@@ -382,6 +400,12 @@ export class PostgresProcurementRepository {
   ) {
     return this.db.transaction(async (tx) => {
       company(context);
+      const locked = await tx.query(
+        "SELECT id FROM purchase_orders WHERE id=$1 AND tenant_id=$2 AND status IN('ISSUED','PARTIALLY_RECEIVED') FOR UPDATE",
+        [input.purchaseOrderId, context.actor.companyId],
+      );
+      if (!locked.rowCount)
+        throw new DomainError('conflict', 'Receipt requires an open issued purchase order');
       const contentHash = hash(input);
       const receipt = (
         await tx.query<{ id: string; supplier_id: string }>(
@@ -402,13 +426,18 @@ export class PostgresProcurementRepository {
         throw new DomainError('conflict', 'Receipt requires an open issued purchase order');
       for (const line of input.lines) {
         const poLine = (
-          await tx.query<{ item_version_id: string; remaining: string }>(
-            `SELECT l.item_version_id,(l.quantity-coalesce((SELECT sum(r.quantity) FROM goods_receipt_lines r WHERE r.purchase_order_line_id=l.id AND r.tenant_id=l.tenant_id),0))::text remaining
+          await tx.query<{ item_version_id: string; within_remaining: boolean }>(
+            `SELECT l.item_version_id,($4::numeric<=l.quantity-coalesce((SELECT sum(r.quantity) FROM goods_receipt_lines r WHERE r.purchase_order_line_id=l.id AND r.tenant_id=l.tenant_id),0)) within_remaining
              FROM purchase_order_lines l WHERE l.id=$1 AND l.purchase_order_id=$2 AND l.tenant_id=$3 FOR UPDATE`,
-            [line.purchaseOrderLineId, input.purchaseOrderId, context.actor.companyId],
+            [
+              line.purchaseOrderLineId,
+              input.purchaseOrderId,
+              context.actor.companyId,
+              line.quantity,
+            ],
           )
         ).rows[0];
-        if (!poLine || Number(line.quantity) > Number(poLine.remaining))
+        if (!poLine?.within_remaining)
           throw new DomainError(
             'conflict',
             'Receipt quantity exceeds open purchase order quantity',
@@ -472,11 +501,14 @@ export class PostgresProcurementRepository {
          AND l.quantity>coalesce((SELECT sum(r.quantity) FROM goods_receipt_lines r WHERE r.purchase_order_line_id=l.id AND r.tenant_id=l.tenant_id),0) LIMIT 1`,
         [input.purchaseOrderId, context.actor.companyId],
       );
-      await tx.query('UPDATE purchase_orders SET status=$1 WHERE id=$2 AND tenant_id=$3', [
-        open.rowCount ? 'PARTIALLY_RECEIVED' : 'RECEIVED',
-        input.purchaseOrderId,
-        context.actor.companyId,
-      ]);
+      await tx.query(
+        'UPDATE purchase_orders SET status=$1 WHERE id=$2 AND tenant_id=$3 AND status IS DISTINCT FROM $1',
+        [
+          open.rowCount ? 'PARTIALLY_RECEIVED' : 'RECEIVED',
+          input.purchaseOrderId,
+          context.actor.companyId,
+        ],
+      );
       const result = json({
         id: receipt.id,
         status: open.rowCount ? 'PARTIALLY_RECEIVED' : 'RECEIVED',

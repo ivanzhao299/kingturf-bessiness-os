@@ -1,0 +1,10 @@
+{
+  "source_sha": "1e38c4a704f87ea85db416614ffde49cf0b2bf1f",
+  "basis": "fixed-category extraction from private diagnostic run raw; raw not committed",
+  "missing_nss_dynamic_module": "libsoftokn3.so",
+  "missing_module_occurrences": 11,
+  "nss_error_minus_5925_occurrences": 11,
+  "browser_sigabrt_occurrences": 11,
+  "initial_round_cause": "inferred from repeated browser-close symptoms in same environment, not a separate DEBUG trace",
+  "global_system_packages_changed": false
+}

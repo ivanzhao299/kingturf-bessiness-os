@@ -1,0 +1,38 @@
+import assert from 'node:assert/strict';
+import {spawn} from 'node:child_process';
+import {mkdirSync,writeFileSync,openSync,closeSync,readFileSync} from 'node:fs';
+import {setTimeout as delay} from 'node:timers/promises';
+import net from 'node:net';
+import {createFixture,stopChild,assertOwnedListener} from '/home/jinhuit/Kingturf/kingturf-bessiness-os/scripts/e2e-docker/fixture.mjs';
+const root=process.cwd(),temp='/tmp/kt-v1-local-_7mtrvwa', label=process.argv[2];
+assert.match(label,/^host-(?:round[12]|ready-round[12])$/u);
+process.umask(0o077);
+const dir=`${temp}/${label}`;mkdirSync(dir,{mode:0o700});
+const config=`${dir}/playwright.config.ts`;
+writeFileSync(config,`import original from '${root}/playwright.config.ts';\nexport default {...original,testDir:'${root}/tests/e2e',outputDir:'${dir}/artifacts',reporter:[['json',{outputFile:'${dir}/results.json'}]],use:{...original.use,channel:undefined,trace:'off',launchOptions:{...original.use?.launchOptions,executablePath:'/home/jinhuit/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome'}}};\n`);
+for (const port of [3000,4173]) {const server=net.createServer();await new Promise((resolve,reject)=>server.once('error',reject).listen(port,'127.0.0.1',resolve));await new Promise(resolve=>server.close(resolve));}
+const control=new AbortController();
+for (const sig of ['SIGINT','SIGTERM'])process.once(sig,()=>control.abort(Error('owned browser interrupted')));
+let fixture,preview,current,raw;
+let exit=1;
+const run=async(args,env)=>{current=spawn(args[0],args.slice(1),{env,stdio:['ignore',raw,raw],detached:true});const abort=()=>{if(current?.pid)process.kill(-current.pid,'SIGTERM');};control.signal.addEventListener('abort',abort,{once:true});try{return await new Promise((resolve,reject)=>{current.once('error',reject);current.once('exit',resolve);});}finally{control.signal.removeEventListener('abort',abort);current=null;}};
+try {
+ raw=openSync(`${dir}/raw.log`,'wx',0o600);
+ fixture=await createFixture(process.env.DATABASE_URL);
+ console.log(JSON.stringify({event:'owned-host-fixture',isolatedSchema:true,guardedLoopback:true,containerGateway:false}));
+ const users=await fixture.initialize(control.signal);fixture.assertApiOwned();
+ const env={...process.env,KINGTURF_BASE_URL:'http://127.0.0.1:3000',KINGTURF_ADMIN_LOGIN:users.admin.login,KINGTURF_ADMIN_PASSWORD:users.admin.password,KINGTURF_CREDIT_APPROVER_LOGIN:users.approver.login,KINGTURF_CREDIT_APPROVER_PASSWORD:users.approver.password};
+ const seed=await run([process.execPath,'--import','./scripts/e2e-docker/seed-audit.mjs','scripts/seed_p1_demo.mjs'],env);
+ console.log(JSON.stringify({event:'original-seed',exit:seed}));assert.equal(seed,0);
+ console.log(JSON.stringify({event:'seed-cost-verification',...await fixture.verifySeedCost()}));
+ preview=spawn('pnpm',['--filter','@kingturf/web','exec','vite','preview','--port','4173','--strictPort','--host','127.0.0.1'],{env:{...process.env,KINGTURF_API_PROXY_TARGET:'http://127.0.0.1:3000'},stdio:['ignore',raw,raw],detached:true});
+ let ready=false;for(let i=0;i<150;i++){control.signal.throwIfAborted();if(preview.exitCode!==null)throw Error('owned preview failed');try {ready=(await fetch('http://127.0.0.1:4173/',{signal:AbortSignal.timeout(500)})).ok;}catch{}if(ready)break;await delay(30);}assert(ready,'original preview readiness');
+ assertOwnedListener(4173,preview,true);fixture.assertApiOwned();
+ exit=await run([process.execPath,'node_modules/@playwright/test/cli.js','test','tests/e2e/p1-demo.spec.ts',`--config=${config}`],{...env,KINGTURF_BASE_URL:'http://127.0.0.1:4173',LD_LIBRARY_PATH:`${temp}/chromium-libs`,XDG_DATA_HOME:`${dir}/data`,XDG_CONFIG_HOME:`${dir}/config`,XDG_CACHE_HOME:`${dir}/cache`});
+ const json=JSON.parse(readFileSync(`${dir}/results.json`,'utf8'));const cases=[];
+ function collect(suite){for(const spec of suite.specs??[])for(const test of spec.tests??[])cases.push({title:spec.title,line:spec.line,expectedStatus:test.expectedStatus,status:test.status,results:test.results.map(r=>({status:r.status,duration:r.duration,errorLocation:r.error?.location??null}))});for(const nested of suite.suites??[])collect(nested);}
+ for(const suite of json.suites)collect(suite);
+ const safe={label,exit,cases,stats:json.stats};writeFileSync(`${temp}/${label}-safe.json`,JSON.stringify(safe,null,2));console.log(JSON.stringify(safe));
+}catch(error){console.log(JSON.stringify({event:'host-browser-failed',category:error.name,code:error.code??null}));}
+finally{if(current)await stopChild(current);if(preview?.pid){try{process.kill(-preview.pid,'SIGTERM');}catch{}await stopChild(preview);}if(fixture)await fixture.close();if(raw)closeSync(raw);console.log(JSON.stringify({event:'owned-host-cleanup',complete:true}));}
+process.exitCode=exit;

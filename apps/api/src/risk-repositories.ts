@@ -18,6 +18,20 @@ type Context = Readonly<{
 const hash = (value: unknown) => createHash('sha256').update(canonicalize(value)).digest('hex');
 const json = (value: unknown) => value as JsonObject;
 
+// A key identifies the persisted order, never a replacement order supplied on replay.
+async function authorizedEvaluationReplay(tx: SqlClient, key: string, context: Context) {
+  const secured = recordScopeSql(context.scopes, context.anchors, context.actor, 'c', 3);
+  const replay = (
+    await tx.query<{ item: JsonObject; visible: boolean }>(
+      `SELECT to_jsonb(e) item,EXISTS(SELECT 1 FROM sales_orders o JOIN customers c ON c.id=o.customer_id AND c.tenant_id=o.tenant_id WHERE o.id=e.sales_order_id AND o.tenant_id=e.tenant_id AND ${secured.sql}) visible FROM risk_evaluations e WHERE e.tenant_id=$1 AND e.idempotency_key=$2`,
+      [context.actor.companyId, key, ...secured.values],
+    )
+  ).rows[0];
+  if (replay && !replay.visible)
+    throw new DomainError('not_found', 'Risk evaluation not found in current scope');
+  return replay?.item ?? null;
+}
+
 export class PostgresRiskRepository {
   public constructor(private readonly db: Db) {}
   public async listPolicies(context: Context) {
@@ -37,6 +51,14 @@ export class PostgresRiskRepository {
         [context.actor.companyId, ...secured.values],
       )
     ).rows.map((r) => r.item);
+  }
+  public async canReadResult(kind: 'evaluation' | 'task', id: string, context: Context) {
+    const secured = recordScopeSql(context.scopes, context.anchors, context.actor, 'c', 4);
+    const result = await this.db.query<{ visible: boolean }>(
+      `SELECT EXISTS(SELECT 1 FROM risk_evaluations e JOIN sales_orders o ON o.id=e.sales_order_id AND o.tenant_id=e.tenant_id JOIN customers c ON c.id=o.customer_id AND c.tenant_id=o.tenant_id LEFT JOIN risk_tasks t ON t.risk_evaluation_id=e.id AND t.tenant_id=e.tenant_id WHERE e.tenant_id=$1 AND (($3::text='evaluation' AND e.id=$2::uuid) OR ($3::text='task' AND t.id=$2::uuid)) AND ${secured.sql}) visible`,
+      [context.actor.companyId, id, kind, ...secured.values],
+    );
+    return result.rows[0]?.visible === true;
   }
   public createPolicy(
     input: {
@@ -192,14 +214,12 @@ export class PostgresRiskRepository {
       await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
         `${context.actor.companyId}:${key}:risk`,
       ]);
-      const replay = (
-        await tx.query<{ item: JsonObject }>(
-          'SELECT to_jsonb(e) item FROM risk_evaluations e WHERE e.tenant_id=$1 AND e.idempotency_key=$2',
-          [context.actor.companyId, key],
-        )
-      ).rows[0];
-      if (replay) return replay.item;
-      const secured = recordScopeSql(context.scopes, context.anchors, context.actor, 'c', 3);
+      const replay = await authorizedEvaluationReplay(tx, key, context);
+      if (replay) return replay;
+      const { actor, scopes, anchors } = context;
+      const { salesOrderId, policyVersionId, assigneeEmployeeId } = input;
+      const basisParameters = [salesOrderId, actor.companyId, policyVersionId, assigneeEmployeeId];
+      const secured = recordScopeSql(scopes, anchors, actor, 'c', basisParameters.length + 1);
       const basis = (
         await tx.query<{
           order_number: string;
@@ -212,13 +232,7 @@ export class PostgresRiskRepository {
           credit_warning_days: number;
         }>(
           `SELECT o.order_number,qr.margin_basis_points,cd.valid_until::text credit_valid_until,coalesce(sum(b.remaining_amount),0)::text open_ar,coalesce(sum(b.remaining_amount) FILTER(WHERE b.due_at+make_interval(days=>pv.overdue_grace_days)<now()),0)::text overdue_ar,pv.minimum_margin_basis_points,pv.overdue_grace_days,pv.credit_warning_days FROM sales_orders o JOIN customers c ON c.id=o.customer_id AND c.tenant_id=o.tenant_id JOIN quote_revisions qr ON qr.id=o.quote_revision_id AND qr.tenant_id=o.tenant_id JOIN effective_credit_decisions cd ON cd.id=o.credit_decision_id AND cd.tenant_id=o.tenant_id JOIN risk_policy_versions pv ON pv.id=$3 AND pv.tenant_id=o.tenant_id AND pv.status='PUBLISHED' AND pv.effective_at<=now() LEFT JOIN ar_documents d ON d.sales_order_id=o.id AND d.tenant_id=o.tenant_id LEFT JOIN ar_open_item_balances b ON b.ar_document_id=d.id AND b.tenant_id=d.tenant_id WHERE o.id=$1 AND o.tenant_id=$2 AND ${secured.sql} AND EXISTS(SELECT 1 FROM employees x WHERE x.id=$4 AND x.company_id=o.tenant_id AND x.active) GROUP BY o.id,qr.margin_basis_points,cd.valid_until,pv.minimum_margin_basis_points,pv.overdue_grace_days,pv.credit_warning_days`,
-          [
-            input.salesOrderId,
-            context.actor.companyId,
-            input.policyVersionId,
-            input.assigneeEmployeeId,
-            ...secured.values,
-          ],
+          [...basisParameters, ...secured.values],
         )
       ).rows[0];
       if (!basis)
@@ -387,27 +401,37 @@ export class PostgresRiskRepository {
       if (input.state === 'CLOSED' && Object.keys(input.evidence).length === 0)
         throw new DomainError('invalid_request', 'Risk task closure requires evidence');
       await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+        `${context.actor.companyId}:${key}:risk-task-key`,
+      ]);
+      await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
         `${context.actor.companyId}:${id}:risk-task`,
       ]);
-      const replay = (
-        await tx.query<{ evidence: JsonObject }>(
-          'SELECT evidence FROM risk_task_events WHERE tenant_id=$1 AND idempotency_key=$2',
-          [context.actor.companyId, key],
-        )
-      ).rows[0];
-      if (replay) return replay.evidence;
       const current = (
         await tx.query<{ next_sequence: number }>(
           `SELECT max(x.sequence)+1 next_sequence FROM risk_tasks t JOIN risk_evaluations e ON e.id=t.risk_evaluation_id AND e.tenant_id=t.tenant_id JOIN sales_orders o ON o.id=e.sales_order_id AND o.tenant_id=e.tenant_id JOIN customers c ON c.id=o.customer_id AND c.tenant_id=o.tenant_id JOIN risk_task_events x ON x.risk_task_id=t.id AND x.tenant_id=t.tenant_id WHERE t.id=$1 AND t.tenant_id=$2 AND (t.assignee_employee_id=$3 OR $4::boolean) GROUP BY t.id`,
           [
             id,
             context.actor.companyId,
-            context.actor.employeeId,
+            context.scopes.length ? context.actor.employeeId : null,
             context.scopes.includes('COMPANY') || context.scopes.includes('GROUP'),
           ],
         )
       ).rows[0];
       if (!current) throw new DomainError('not_found', 'Risk task not found');
+      const replay = (
+        await tx.query<{ risk_task_id: string; evidence: JsonObject }>(
+          'SELECT risk_task_id,evidence FROM risk_task_events WHERE tenant_id=$1 AND idempotency_key=$2',
+          [context.actor.companyId, key],
+        )
+      ).rows[0];
+      if (replay) {
+        if (replay.risk_task_id !== id)
+          throw new DomainError(
+            'conflict',
+            'Idempotency key is already bound to another risk task',
+          );
+        return replay.evidence;
+      }
       const evidence = json({
         taskId: id,
         state: input.state,

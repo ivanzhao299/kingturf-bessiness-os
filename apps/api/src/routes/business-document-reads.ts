@@ -1,7 +1,44 @@
 import { DomainError, type AuthorizationContext } from '@kingturf/domain';
 import type { ApiDependencies } from '../app.ts';
+import { permittedDto } from '../app-values.ts';
 import type { authorizeQuery } from '../policy.ts';
 import { defineRoute, type RouteDefinition } from './types.ts';
+
+const DETAIL_NESTED_COLLECTIONS = [
+  'versions',
+  'translations',
+  'reviewEvents',
+  'dispatches',
+] as const;
+
+const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' &&
+  value !== null &&
+  !Array.isArray(value) &&
+  Object.getPrototypeOf(value) === Object.prototype;
+
+export function projectBusinessDocumentDetail(
+  value: Record<string, unknown>,
+  fields: readonly string[] | null,
+): Record<string, unknown> {
+  if (fields === null) return value;
+  const directFields = fields.filter((field) => !field.includes('.'));
+  const projected = permittedDto(value, directFields) as Record<string, unknown>;
+  for (const key of DETAIL_NESTED_COLLECTIONS) {
+    const nestedFields = fields
+      .filter((field) => field.startsWith(`${key}.`))
+      .map((field) => field.slice(key.length + 1));
+    const direct = fields.includes(key);
+    if (!direct && nestedFields.length === 0) continue;
+    const collection = value[key];
+    if (!Array.isArray(collection)) continue;
+    projected[key] = collection.map((item): unknown => {
+      if (isPlainRecord(item)) return permittedDto(item, nestedFields);
+      return item as unknown;
+    });
+  }
+  return projected;
+}
 
 type Repository = Pick<
   NonNullable<ApiDependencies['businessDocuments']>,
@@ -183,6 +220,7 @@ type ValidatedGet = Readonly<{
   repository: Repository;
   method: Repository['get'];
   args: Parameters<Repository['get']>;
+  fields: readonly string[] | null;
 }>;
 export function businessDocumentDetailReadRoutes(context: GetContext): readonly RouteDefinition[] {
   return [
@@ -203,14 +241,24 @@ export function businessDocumentDetailReadRoutes(context: GetContext): readonly 
             includeAudit: context.authorization.permissions.has('business-document:audit'),
           },
         ];
-        return { repository, method, args };
+        return {
+          repository,
+          method,
+          args,
+          fields: context.authorization.permissions.get('business-document:read')?.fields ?? null,
+        };
       },
       handler: async (_request, _match, validated) => {
         const result: Awaited<ReturnType<Repository['get']>> = await validated.method.call(
           validated.repository,
           ...validated.args,
         );
-        return { statusCode: 200, body: result };
+        const rawResult: unknown = result;
+        if (!isPlainRecord(rawResult)) return { statusCode: 200, body: rawResult };
+        return {
+          statusCode: 200,
+          body: projectBusinessDocumentDetail(rawResult, validated.fields),
+        };
       },
     }),
   ];

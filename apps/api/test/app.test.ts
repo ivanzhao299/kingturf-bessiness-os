@@ -202,7 +202,9 @@ function dependencies(authContext: AuthorizationContext | null) {
   const riskTransition = vi.fn(() =>
     Promise.resolve({ taskId: targetId, state: 'CLOSED', eventId: organizationId }),
   );
+  const riskCanRead = vi.fn(() => Promise.resolve(true));
   const risks = {
+    canReadResult: riskCanRead,
     listPolicies: vi.fn(() => Promise.resolve([])),
     listEvaluations: vi.fn(() => Promise.resolve([])),
     createPolicy: vi.fn(() => Promise.resolve({ id: targetId, status: 'PUBLISHED' })),
@@ -450,6 +452,7 @@ function dependencies(authContext: AuthorizationContext | null) {
     dashboardGet,
     riskEvaluate,
     riskTransition,
+    riskCanRead,
     order360Get,
     commissionAccrue,
     commissionTransition,
@@ -1353,6 +1356,16 @@ describe('authorization management API', () => {
       'risk-close',
     );
     expect(closed.statusCode).toBe(201);
+    expect(deps.riskCanRead).toHaveBeenNthCalledWith(1, 'evaluation', targetId, {
+      actor: { employeeId, companyId },
+      scopes: ['TEAM'],
+      anchors: [],
+    });
+    expect(deps.riskCanRead).toHaveBeenNthCalledWith(2, 'task', targetId, {
+      actor: { employeeId, companyId },
+      scopes: ['TEAM'],
+      anchors: [],
+    });
     expect(deps.riskTransition).toHaveBeenCalledWith(
       targetId,
       { state: 'CLOSED', reason: 'Approved exception archived', evidence: { ticket: 'RISK-1' } },

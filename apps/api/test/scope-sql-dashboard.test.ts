@@ -56,11 +56,18 @@ describe('dashboard scope migration', () => {
       for (const anchors of anchorCases)
         for (const offset of [2, 5, 9])
           for (const alias of ['c', 'cu']) {
-            expect(
-              recordScopeSql(scopes, anchors, actor, alias, offset, {
-                anchorPredicate: 'relationshipOnly',
-              }),
-            ).toEqual(legacy(scopes, anchors, offset, alias));
+            const result = recordScopeSql(scopes, anchors, actor, alias, offset, {
+              anchorPredicate: 'relationshipOnly',
+            });
+            const previous = legacy(scopes, anchors, offset, alias);
+            expect(result.values).toEqual(previous.values);
+            if (!previous.sql.includes('osr.tenant_id')) expect(result.sql).toBe(previous.sql);
+            else {
+              expect(result.sql).toContain('anchor.owner_organization_id=' + alias + '.tenant_id');
+              expect(result.sql).toContain('anchor.active AND anchor.deleted_at IS NULL');
+              expect(result.sql).not.toContain('osr.tenant_id');
+              expect(result.sql).not.toContain('osr.scope=');
+            }
           }
   });
   it('preserves relationship-only semantics and parameter numbering', () => {
@@ -72,8 +79,10 @@ describe('dashboard scope migration', () => {
       5,
       { anchorPredicate: 'relationshipOnly' },
     );
-    expect(result.sql).toContain('FROM organization_scope_relationships osr');
-    expect(result.sql).toContain("osr.scope='TEAM'");
+    expect(result.sql).toContain(
+      'FROM organizations anchor JOIN organization_scope_relationships osr',
+    );
+    expect(result.sql).toContain("anchor.organization_type='TEAM'");
     expect(result.sql).not.toContain('JOIN organizations');
     expect(result.sql).not.toContain('osr.depth<=1');
     expect(result.values).toEqual([actor.employeeId, org]);

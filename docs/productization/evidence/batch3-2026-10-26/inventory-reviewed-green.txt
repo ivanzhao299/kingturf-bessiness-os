@@ -1,0 +1,44 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ✓ test/inventory-concurrency-postgres.integration.test.ts (17 tests) 14554ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > serializes 7+7 at a lazily created guard while retaining old ledger quantities  846ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > exhausts exactly ten, preserves an empty zero balance projection and rejects shortage atomically  842ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > keeps duplicate source retries unique including truly competing requests  835ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > uses the post-wait balance for 'ISSUE' then 'RETURN'  770ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > uses the post-wait balance for 'RETURN' then 'ISSUE'  807ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > fails stale 'REPEATABLE READ' snapshots rather than creating negative stock  865ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > fails stale 'SERIALIZABLE' snapshots rather than creating negative stock  819ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > also rejects a stale RR snapshot when the shared guard is initially absent  746ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > coordinates first zero-balance concurrent inbound operations on a previously unused resource  781ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > does not serialize unrelated locations, lots, materials or companies  823ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > rejects foreign resources and mismatched material without guard or evidence residue  752ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > rolls back earlier writes of a failing multi-statement transaction including guard and paired evidence  793ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > protects direct same-statement multi-row inserts and restores the guard on rejection  769ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > rolls inventory and guard back when a later production order/quality guard fails  732ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > aborts an unsorted two-resource deadlock victim with no partial inventory or success evidence  1812ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > uses a stable resource order for concurrent commands touching two existing resources  844ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > propagates an early SQL failure to waiting checkpoints and releases the connection  717ms
+ ✓ test/procurement-postgres.integration.test.ts (12 tests) 10045ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > persists the qualified RFQ-to-receipt chain, derived stock and exact paired evidence  852ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > requires COMPANY or GROUP scope and keeps GROUP reads and writes tenant-bounded  901ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > rolls back invalid qualification, quote and issued-document inputs  818ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > rolls back receipts, lots and movements on quantity, location and later-line failures  802ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > nets signed movement types and rejects negative balances, mismatched lots and duplicate sources  895ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > completes partial then final receipt and refuses receipt against the closed order  821ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > rolls back issue and audit when an already-seeded outbox aggregate conflicts  841ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > TD-PROC-001: receives 4 + 2 + 4 with exact stock, lot links and paired evidence  768ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > TD-PROC-001: rejects duplicate receipt identities and excess after partial stock without residual writes  888ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > TD-PROC-001: real concurrent receipts cannot over-receive and valid splits settle exactly  819ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > TD-PROC-001: two valid concurrent 4 and 6 receipts both commit once  740ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > TD-INV-001: blocks overlapping 7+7 issues and commits only the satisfiable transaction  900ms
+ ✓ test/production-postgres.integration.test.ts (6 tests) 2011ms
+ ✓ test/inventory-migration-postgres.integration.test.ts (2 tests) 1708ms
+   ✓ 0071 forward inventory compatibility > upgrades real 0070 history without modifying ledger and keeps legacy SQL protected  884ms
+   ✓ 0071 forward inventory compatibility > refuses preexisting negative stock and rolls back guard creation and migration registry  823ms
+
+ Test Files  4 passed (4)
+      Tests  37 passed (37)
+   Start at  15:33:19
+   Duration  29.33s (transform 178ms, setup 0ms, collect 320ms, tests 28.32s, environment 1ms, prepare 219ms)
+

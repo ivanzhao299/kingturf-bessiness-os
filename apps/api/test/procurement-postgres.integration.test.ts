@@ -4,6 +4,11 @@ import type { JsonObject } from '@kingturf/types';
 import { PostgresManufacturingRepository } from '../src/manufacturing-repositories.js';
 import { PostgresProcurementRepository } from '../src/procurement-repositories.js';
 import { ownedPostgres } from './fixtures/owned-postgres.js';
+import {
+  controlledTransaction,
+  outcome,
+  waitForBlocking,
+} from './fixtures/controlled-transaction.js';
 
 const identifier = (item: JsonObject, key = 'id'): string => {
   const value = item[key];
@@ -267,6 +272,142 @@ describe('procurement and inventory repository real PostgreSQL contracts', () =>
         },
       ]);
     }
+  });
+
+  it('requires a same-tenant, same-supplier quote from an issued RFQ', async () => {
+    const { context, otherContext, db } = state();
+
+    const sameSupplier = await repository.createPurchaseOrder(
+      { ...orderInput('PO-SAME-SUPPLIER'), issue: false },
+      context,
+      randomUUID(),
+    );
+    expect(sameSupplier.status).toBe('DRAFT');
+
+    const otherSupplier = await repository.createSupplier(
+      { ...supplierInput, supplierNumber: 'SUP-2', name: 'Other supplier' },
+      context,
+      randomUUID(),
+    );
+    await expect(
+      repository.createPurchaseOrder(
+        { ...orderInput('PO-DIFFERENT-SUPPLIER'), supplierId: identifier(otherSupplier) },
+        context,
+        randomUUID(),
+      ),
+    ).rejects.toMatchObject({
+      code: 'conflict',
+      message: 'Purchase order requires an active supplier and valid supplier quote',
+    });
+
+    await db.query("UPDATE suppliers SET status='ON_HOLD' WHERE id=$1 AND tenant_id=$2", [
+      identifier(supplier),
+      context.actor.companyId,
+    ]);
+    await expect(
+      repository.createPurchaseOrder(
+        { ...orderInput('PO-INACTIVE-SUPPLIER') },
+        context,
+        randomUUID(),
+      ),
+    ).rejects.toMatchObject({
+      code: 'conflict',
+      message: 'Purchase order requires an active supplier and valid supplier quote',
+    });
+    await db.query("UPDATE suppliers SET status='ACTIVE' WHERE id=$1 AND tenant_id=$2", [
+      identifier(supplier),
+      context.actor.companyId,
+    ]);
+
+    await expect(
+      repository.createPurchaseOrder(
+        { ...orderInput('PO-MISSING-QUOTE'), supplierQuoteId: randomUUID() },
+        context,
+        randomUUID(),
+      ),
+    ).rejects.toMatchObject({
+      code: 'conflict',
+      message: 'Purchase order requires an active supplier and valid supplier quote',
+    });
+
+    const foreignSupplier = await repository.createSupplier(
+      { ...supplierInput, supplierNumber: 'SUP-F', name: 'Foreign supplier' },
+      otherContext,
+      randomUUID(),
+    );
+    await repository.qualifySupplier(
+      identifier(foreignSupplier),
+      qualification(identifier(foreign)),
+      otherContext,
+      randomUUID(),
+    );
+    const foreignRfq = await repository.createRfq(
+      {
+        ...rfqInput('RFQ-F'),
+        lines: [
+          {
+            itemVersionId: identifier(foreign),
+            quantity: '10',
+            requiredAt: '2026-02-01',
+          },
+        ],
+      },
+      otherContext,
+      randomUUID(),
+    );
+    await repository.issueRfq(identifier(foreignRfq), otherContext, randomUUID());
+    const foreignRfqLine = (
+      await db.query<{ id: string }>(
+        'SELECT id FROM procurement_rfq_lines WHERE rfq_id=$1 AND tenant_id=$2',
+        [identifier(foreignRfq), otherContext.actor.companyId],
+      )
+    ).rows[0];
+    if (!foreignRfqLine) throw new Error('Foreign RFQ line missing');
+    const foreignQuote = await repository.createSupplierQuote(
+      {
+        rfqId: identifier(foreignRfq),
+        supplierId: identifier(foreignSupplier),
+        quoteReference: 'QUOTE-F',
+        receivedAt: '2026-01-09T00:00:00Z',
+        validUntil: '2026-02-01',
+        terms: { incoterm: 'EXW' },
+        lines: [
+          {
+            rfqLineId: foreignRfqLine.id,
+            unitPrice: '2.5',
+            promisedAt: '2026-02-01',
+            minimumOrderQuantity: '1',
+          },
+        ],
+      },
+      otherContext,
+      randomUUID(),
+    );
+    const beforeCrossTenant = (
+      await db.query<{ count: string }>('SELECT count(*)::text AS count FROM purchase_orders')
+    ).rows[0]?.count;
+    const crossTenantCorrelation = randomUUID();
+    await expect(
+      repository.createPurchaseOrder(
+        { ...orderInput('PO-CROSS-TENANT'), supplierQuoteId: identifier(foreignQuote) },
+        context,
+        crossTenantCorrelation,
+      ),
+    ).rejects.toMatchObject({ code: 'conflict' });
+    expect(
+      (await db.query<{ count: string }>('SELECT count(*)::text AS count FROM purchase_orders'))
+        .rows[0]?.count,
+    ).toBe(beforeCrossTenant);
+    expect(await evidenceCounts(crossTenantCorrelation)).toEqual({ audit: '0', outbox: '0' });
+
+    await expect(
+      db.query('UPDATE purchase_orders SET supplier_quote_id=$1 WHERE id=$2 AND tenant_id=$3', [
+        null,
+        identifier(order),
+        context.actor.companyId,
+      ]),
+    ).rejects.toMatchObject({ code: 'P0001' });
+    expect(await orderStatus()).toBe('ISSUED');
   });
 
   it('requires COMPANY or GROUP scope and keeps GROUP reads and writes tenant-bounded', async () => {
@@ -570,28 +711,201 @@ describe('procurement and inventory repository real PostgreSQL contracts', () =>
     expect(await evidenceCounts(collision)).toEqual({ audit: '0', outbox: '1' });
   });
 
-  it('preserves the first receipt when the current guard rejects another partial receipt (TD-PROC-001)', async () => {
-    // Characterizes the registered defect and rollback, not the desired receipt semantics.
+  it('TD-PROC-001: receives 4 + 2 + 4 with exact stock, lot links and paired evidence', async () => {
+    const { context, db } = state();
+    let count = 0;
+    for (const [number, quantity, status, total] of [
+      ['FIRST', '4', 'PARTIALLY_RECEIVED', '4.000000'],
+      ['SECOND', '2', 'PARTIALLY_RECEIVED', '6.000000'],
+      ['FINAL', '4', 'RECEIVED', '10.000000'],
+    ] as const) {
+      const correlation = randomUUID();
+      const result = await repository.receive(receiptInput(number, quantity), context, correlation);
+      count++;
+      expect(result.status).toBe(status);
+      expect(await orderStatus()).toBe(status);
+      expect(await receiptCounts()).toEqual({
+        receipts: count,
+        lines: count,
+        lots: count,
+        movements: count,
+      });
+      expect(await evidenceCounts(correlation)).toEqual({ audit: '1', outbox: '1' });
+      expect(
+        (
+          await db.query<{ total: string }>(
+            'SELECT sum(quantity)::text total FROM goods_receipt_lines WHERE purchase_order_line_id=$1',
+            [orderLineId],
+          )
+        ).rows[0]?.total,
+      ).toBe(total);
+      expect(
+        (
+          await db.query<{ n: number }>(
+            'SELECT count(*)::int n FROM goods_receipt_lines l JOIN inventory_lots lot ON lot.id=l.lot_id AND lot.goods_receipt_id=l.goods_receipt_id JOIN inventory_movements m ON m.source_id=l.id AND m.lot_id=lot.id AND m.location_id=l.location_id AND m.quantity_delta=l.quantity WHERE l.goods_receipt_id=$1',
+            [identifier(result)],
+          )
+        ).rows[0]?.n,
+      ).toBe(1);
+      expect(
+        (
+          await db.query<{ total: string }>(
+            'SELECT sum(quantity)::text total FROM inventory_balances WHERE tenant_id=$1',
+            [context.actor.companyId],
+          )
+        ).rows[0]?.total,
+      ).toBe(total);
+    }
+  });
+
+  it('TD-PROC-001: rejects duplicate receipt identities and excess after partial stock without residual writes', async () => {
     const { context } = state();
-    await repository.receive(receiptInput('FIRST', '4'), context, randomUUID());
-    const before = await receiptCounts(),
-      correlation = randomUUID();
+    await repository.receive(receiptInput('PARTIAL', '4'), context, randomUUID());
+    const before = await receiptCounts();
+    for (const [input, code] of [
+      [receiptInput('PARTIAL', '4'), '23505'],
+      [{ ...receiptInput('OTHER', '4'), sourceReference: 'PARTIAL' }, '23505'],
+      [receiptInput('EXCESS', '7'), 'conflict'],
+    ] as const) {
+      const correlation = randomUUID();
+      await expect(
+        repository.receive({ ...input, lines: [...input.lines] }, context, correlation),
+      ).rejects.toMatchObject({ code });
+      expect(await receiptCounts()).toEqual(before);
+      expect(await orderStatus()).toBe('PARTIALLY_RECEIVED');
+      expect(await evidenceCounts(correlation)).toEqual({ audit: '0', outbox: '0' });
+    }
+    const line = receiptInput('LATE', '1').lines[0];
+    if (!line) throw new Error('Receipt line missing');
+    const correlation = randomUUID();
     await expect(
-      repository.receive(receiptInput('STILL-PARTIAL', '2'), context, correlation),
-    ).rejects.toMatchObject({
-      code: 'P0001',
-      message: 'partially received purchase order has invalid transition',
-    });
+      repository.receive({ ...receiptInput('LATE'), lines: [line, line] }, context, correlation),
+    ).rejects.toMatchObject({ code: '23505' });
     expect(await receiptCounts()).toEqual(before);
-    expect(before).toEqual({ receipts: 1, lines: 1, lots: 1, movements: 1 });
-    expect(await orderStatus()).toBe('PARTIALLY_RECEIVED');
     expect(await evidenceCounts(correlation)).toEqual({ audit: '0', outbox: '0' });
-    expect(await repository.list('inventory', context)).toMatchObject([
-      { quantity: 4, lotNumber: 'LOT-FIRST' },
-    ]);
+  });
+
+  it('TD-PROC-001: real concurrent receipts cannot over-receive and valid splits settle exactly', async () => {
+    const { context, db } = state();
+    const correlations = [randomUUID(), randomUUID()];
+    const results = await Promise.allSettled(
+      ['LEFT', 'RIGHT'].map((n, i) =>
+        repository.receive(receiptInput(n, '6'), context, correlations[i] ?? randomUUID()),
+      ),
+    );
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+    expect(results.filter((r) => r.status === 'rejected')).toHaveLength(1);
+    for (const result of results)
+      if (result.status === 'rejected') expect(result.reason).toMatchObject({ code: 'conflict' });
+    expect(await receiptCounts()).toEqual({ receipts: 1, lines: 1, lots: 1, movements: 1 });
     expect(
-      (await repository.receive(receiptInput('FINAL', '6'), context, randomUUID())).status,
+      (
+        await db.query<{ total: string }>(
+          'SELECT sum(quantity)::text total FROM goods_receipt_lines WHERE purchase_order_line_id=$1',
+          [orderLineId],
+        )
+      ).rows[0]?.total,
+    ).toBe('6.000000');
+    for (const [i, r] of results.entries())
+      expect(await evidenceCounts(correlations[i] ?? '')).toEqual(
+        r.status === 'fulfilled' ? { audit: '1', outbox: '1' } : { audit: '0', outbox: '0' },
+      );
+    expect(
+      (await repository.receive(receiptInput('REST', '4'), context, randomUUID())).status,
     ).toBe('RECEIVED');
+  });
+
+  it('TD-PROC-001: two valid concurrent 4 and 6 receipts both commit once', async () => {
+    const { context, db } = state();
+    const correlations = [randomUUID(), randomUUID()];
+    const result = await Promise.all([
+      repository.receive(receiptInput('FOUR', '4'), context, correlations[0] ?? ''),
+      repository.receive(receiptInput('SIX', '6'), context, correlations[1] ?? ''),
+    ]);
+    expect(result).toHaveLength(2);
+    expect(await orderStatus()).toBe('RECEIVED');
+    expect(
+      (
+        await db.query<{ total: string }>(
+          'SELECT sum(quantity)::text total FROM goods_receipt_lines WHERE purchase_order_line_id=$1',
+          [orderLineId],
+        )
+      ).rows,
+    ).toEqual([{ total: '10.000000' }]);
+    for (const correlation of correlations)
+      expect(await evidenceCounts(correlation)).toEqual({ audit: '1', outbox: '1' });
     expect(await receiptCounts()).toEqual({ receipts: 2, lines: 2, lots: 2, movements: 2 });
+  });
+
+  it('TD-INV-001: blocks overlapping 7+7 issues and commits only the satisfiable transaction', async () => {
+    const { context, db } = state();
+    await repository.receive(receiptInput('RACE-SEED'), context, randomUUID());
+    const lot = (
+      await db.query<{ id: string }>(
+        "SELECT id FROM inventory_lots WHERE tenant_id=$1 AND lot_number='LOT-RACE-SEED'",
+        [context.actor.companyId],
+      )
+    ).rows[0];
+    if (!lot) throw new Error('Synthetic race lot missing');
+    const firstGate = controlledTransaction(db, true),
+      secondGate = controlledTransaction(db);
+    const correlations = [randomUUID(), randomUUID()];
+    const input = {
+      movementType: 'ISSUE' as const,
+      itemVersionId: identifier(material),
+      lotId: lot.id,
+      locationId: identifier(location),
+      quantity: '7',
+      occurredAt: '2026-02-01T01:00:00Z',
+      sourceType: 'SYNTHETIC-RACE',
+      sourceId: randomUUID(),
+    };
+    const first = outcome(
+      new PostgresProcurementRepository(firstGate.db).move(
+        input,
+        context,
+        correlations[0] ?? randomUUID(),
+      ),
+    );
+    let second: ReturnType<typeof outcome> | undefined;
+    try {
+      await firstGate.written;
+      second = outcome(
+        new PostgresProcurementRepository(secondGate.db).move(
+          { ...input, sourceId: randomUUID() },
+          context,
+          correlations[1] ?? randomUUID(),
+        ),
+      );
+      await waitForBlocking(db, await secondGate.started, await firstGate.started);
+      firstGate.release();
+      expect((await first).ok).toBe(true);
+      expect(await second).toMatchObject({
+        ok: false,
+        error: { code: 'P0001', message: 'inventory movement cannot create negative lot balance' },
+      });
+      const balance = (
+        await db.query<{ quantity: string }>(
+          'SELECT quantity FROM inventory_balances WHERE tenant_id=$1 AND lot_id=$2 AND location_id=$3',
+          [context.actor.companyId, lot.id, identifier(location)],
+        )
+      ).rows[0];
+      expect(Number(balance?.quantity)).toBe(3);
+      expect(await evidenceCounts(correlations[0] ?? '')).toEqual({ audit: '1', outbox: '1' });
+      expect(await evidenceCounts(correlations[1] ?? '')).toEqual({ audit: '0', outbox: '0' });
+      expect(
+        (
+          await db.query<{ n: number }>(
+            'SELECT count(*)::int n FROM inventory_movements WHERE correlation_id=ANY($1::uuid[])',
+            [correlations],
+          )
+        ).rows,
+      ).toEqual([{ n: 1 }]);
+    } finally {
+      firstGate.release();
+      secondGate.release();
+      await first;
+      await second;
+    }
   });
 });

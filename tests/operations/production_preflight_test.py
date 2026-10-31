@@ -113,8 +113,9 @@ class ProductionPreflightTest(unittest.TestCase):
     def test_manifest_mode_reads_all_current_migration_files_without_production_calls(self):
         result = subprocess.run([sys.executable, str(ROOT / 'scripts/production_preflight.py'), '--manifest', str(ROOT / 'packages/database/migrations')], capture_output=True, text=True, check=True)
         manifest = json.loads(base64.b64decode(result.stdout, validate=False))
-        self.assertEqual(len(manifest), 70)
-        self.assertEqual(sorted(manifest)[-1], '0070_business_document_communications.sql')
+        self.assertEqual(len(manifest), 72)
+        self.assertEqual(sorted(manifest)[-1], '0072_production_return_guards.sql')
+        self.assertIn('0070_business_document_communications.sql', manifest)
         self.assertTrue(all(len(value) == 64 for value in manifest.values()))
 
 

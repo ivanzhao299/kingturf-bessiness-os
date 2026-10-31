@@ -474,16 +474,20 @@ describe('old business-document buildApp HTTP contract', () => {
         'Business document repository unavailable',
       );
     });
-    it(row.label + ': no requested-field check or response projection is added', async () => {
-      const f = fixture();
-      for (const cap of capabilities) f.permissions.set(cap, { fields: [], scopes: f.scopes });
-      const response = await f.app.dispatch(f.request(row));
-      expect(response.statusCode).toBe(row.status);
-      const value = ['connectors', 'audit', 'list'].includes(row.kind)
-        ? record(response.body).items
-        : response.body;
-      expect(value).toBe(f.result);
-    });
+    it(
+      row.label + ': field allowlists are enforced only for detail response projection',
+      async () => {
+        const f = fixture();
+        for (const cap of capabilities) f.permissions.set(cap, { fields: [], scopes: f.scopes });
+        const response = await f.app.dispatch(f.request(row));
+        expect(response.statusCode).toBe(row.status);
+        const value = ['connectors', 'audit', 'list'].includes(row.kind)
+          ? record(response.body).items
+          : response.body;
+        if (row.kind === 'detail') expect(value).toEqual({ id: f.result.id });
+        else expect(value).toBe(f.result);
+      },
+    );
     it(row.label + ': empty scope denies except configure-presence connector list', async () => {
       const f = fixture();
       f.permissions.clear();
@@ -1253,5 +1257,41 @@ describe('business-document route-specific old parser and priority edges', () =>
       (await f.app.dispatch(f.request(row, { query: { documentId: '', actorId: '' } }))).statusCode,
     ).toBe(200);
     expect(f.calls.activityLog).toHaveBeenCalledWith(actor, {});
+  });
+  it('detail applies read field allowlists to nested versions, translations, review events, and dispatches', async () => {
+    const row = rowFor('detail'),
+      f = fixture();
+    f.permissions.set('business-document:read', {
+      fields: [
+        'title',
+        'versions.content',
+        'translations.targetLocale',
+        'reviewEvents.action',
+        'dispatches.channel',
+      ],
+      scopes: f.scopes,
+    });
+    f.calls.get.mockResolvedValue({
+      id,
+      title: 'Visible title',
+      state: 'APPROVED',
+      secret: 'must-not-leak',
+      versions: [
+        { id: 'version-1', version: 1, content: { body: 'visible' }, canonicalHash: 'hash' },
+      ],
+      translations: [{ id: 'translation-1', targetLocale: 'en-US', content: { body: 'secret' } }],
+      reviewEvents: [{ id: 'review-1', action: 'APPROVED', reason: 'secret reason' }],
+      dispatches: [{ id: 'dispatch-1', channel: 'EMAIL', recipientMasked: 'b***r' }],
+    });
+    const response = await f.app.dispatch(f.request(row));
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toEqual({
+      id,
+      title: 'Visible title',
+      versions: [{ id: 'version-1', content: { body: 'visible' } }],
+      translations: [{ id: 'translation-1', targetLocale: 'en-US' }],
+      reviewEvents: [{ id: 'review-1', action: 'APPROVED' }],
+      dispatches: [{ id: 'dispatch-1', channel: 'EMAIL' }],
+    });
   });
 });

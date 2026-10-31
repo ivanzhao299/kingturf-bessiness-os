@@ -1,0 +1,15 @@
+
+ RUN  v3.2.6 /tmp/kt-v1-b4-structure-review/apps/api
+
+ ✓ test/dispatch-source-preservation.test.ts (27 tests) 333ms
+ ✓ test/dispatch-attempt-root.test.ts (6 tests) 7ms
+ ✓ test/app-values-preservation.test.ts (2 tests) 95ms
+ ✓ test/dispatch-attempt.test.ts (4 tests) 4ms
+ ✓ test/dispatch-no-match-timing.test.ts (1 test) 6ms
+ ✓ test/app-batch4-preservation.test.ts (311 tests) 57ms
+
+ Test Files  6 passed (6)
+      Tests  351 passed (351)
+   Start at  18:56:02
+   Duration  3.75s (transform 683ms, setup 0ms, collect 2.35s, tests 503ms, environment 1ms, prepare 263ms)
+

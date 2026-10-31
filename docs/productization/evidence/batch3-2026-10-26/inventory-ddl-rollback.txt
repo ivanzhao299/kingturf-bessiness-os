@@ -1,0 +1,13 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ✓ test/inventory-migration-postgres.integration.test.ts (3 tests) 2600ms
+   ✓ 0071 forward inventory compatibility > upgrades real 0070 history without modifying ledger and keeps legacy SQL protected  917ms
+   ✓ 0071 forward inventory compatibility > refuses preexisting negative stock and rolls back guard creation and migration registry  810ms
+   ✓ 0071 forward inventory compatibility > rolls back newly created guard DDL if a later index creation fails  873ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  15:37:43
+   Duration  2.93s (transform 98ms, setup 0ms, collect 125ms, tests 2.60s, environment 0ms, prepare 47ms)
+

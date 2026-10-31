@@ -1,0 +1,10 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ✓ test/production-postgres.integration.test.ts (6 tests | 4 skipped) 1552ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed | 4 skipped (6)
+   Start at  13:53:30
+   Duration  1.80s (transform 76ms, setup 0ms, collect 98ms, tests 1.55s, environment 0ms, prepare 43ms)
+

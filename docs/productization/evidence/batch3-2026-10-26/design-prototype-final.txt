@@ -1,0 +1,13 @@
+✔ explicit positive/negative ties and negative zero (0.877703ms)
+✔ stored parts sum exactly and alternatives really differ (0.327636ms)
+✔ full stored actual versus stored standard variance, no float drift (0.104368ms)
+✔ two partial allocations need already posted quantities and preserve input (0.737861ms)
+✔ negative, oversized and inconsistent allocation requests rejected (0.752298ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 43.147223

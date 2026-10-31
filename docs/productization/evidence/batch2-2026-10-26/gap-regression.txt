@@ -1,0 +1,35 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ✓ test/risk-replay-http-postgres.integration.test.ts (10 tests) 3755ms
+   ✓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > retains legal same-user and authorized different-user replay without duplicate effects  307ms
+ ✓ test/production-postgres.integration.test.ts (6 tests) 1998ms
+ ✓ test/risk-postgres.integration.test.ts (9 tests) 11766ms
+   ✓ risk repository real PostgreSQL contracts > creates versioned policies with audit-only evidence and immutable publication  1449ms
+   ✓ risk repository real PostgreSQL contracts > calculates fixed capped findings, trace and a task from the real order/AR graph  1280ms
+   ✓ risk repository real PostgreSQL contracts > does not create a task for zero score and replays the existing persisted evaluation  1358ms
+   ✓ risk repository real PostgreSQL contracts > rejects ineligible references without inserting evaluation or task evidence  1311ms
+   ✓ risk repository real PostgreSQL contracts > records contiguous task decisions, enforces assignee access and preserves replay semantics  1268ms
+   ✓ risk repository real PostgreSQL contracts > TD-RISK-001: binds fixed and dynamic parameters across real scope combinations and replays once  1332ms
+   ✓ risk repository real PostgreSQL contracts > TD-RISK-002: rejects a known-key replay outside the current scope and keeps authorized handoff  1260ms
+   ✓ risk repository real PostgreSQL contracts > TD-RISK-002: reevaluates explicit anchors on the stored order for every replay  1274ms
+   ✓ risk repository real PostgreSQL contracts > TD-RISK-003: characterizes task-event replay before current assignee and task identity checks  1233ms
+ ✓ test/procurement-postgres.integration.test.ts (12 tests) 9447ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > persists the qualified RFQ-to-receipt chain, derived stock and exact paired evidence  823ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > requires COMPANY or GROUP scope and keeps GROUP reads and writes tenant-bounded  862ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > rolls back invalid qualification, quote and issued-document inputs  769ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > rolls back receipts, lots and movements on quantity, location and later-line failures  730ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > nets signed movement types and rejects negative balances, mismatched lots and duplicate sources  844ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > completes partial then final receipt and refuses receipt against the closed order  806ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > rolls back issue and audit when an already-seeded outbox aggregate conflicts  688ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > TD-PROC-001: receives 4 + 2 + 4 with exact stock, lot links and paired evidence  832ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > TD-PROC-001: rejects duplicate receipt identities and excess after partial stock without residual writes  799ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > TD-PROC-001: real concurrent receipts cannot over-receive and valid splits settle exactly  729ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > TD-PROC-001: two valid concurrent 4 and 6 receipts both commit once  762ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > TD-INV-001: characterizes overlapping committed issues bypassing the existing balance sum guard  800ms
+
+ Test Files  4 passed (4)
+      Tests  37 passed (37)
+   Start at  14:02:30
+   Duration  28.68s (transform 664ms, setup 0ms, collect 1.10s, tests 26.97s, environment 0ms, prepare 182ms)
+

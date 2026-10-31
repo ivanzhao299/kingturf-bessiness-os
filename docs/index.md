@@ -1,5 +1,61 @@
 # docs/index.md（全部文档索引）
 
+[V1.0 Batch4交付](productization/batch4-delivery-2026-10-26.md)：G5应用工厂/总分发收口、最终同SHA回执及独立复核边界。
+
+[V1.0 Batch5交付](productization/batch5-delivery-2026-10-27.md)：TD-SEC-010本地修复、TD-COST-003/TD-CONN-001复现与五类业务审批契约。
+
+[V1.0 Batch6交付](productization/batch6-delivery-2026-10-27.md)：成本重复归集与connector CAS修复、CI接线核账和岗位验收准备。
+
+[V1.0 Batch6业务审批](productization/batch6-decisions.md)：五项业务规则的最小审批契约。
+
+[V1.0 Batch6岗位验收计划](productization/batch6-pilot-acceptance-plan.md)：十类岗位的场景、拒绝、对账和签署字段。
+
+[V1.0 Batch6本地集成审查](productization/batch6-integration-review-2026-10-27.md)：提交链、迁移兼容、回滚与未完成事项。
+
+[V1.0 Batch6验证证据](productization/evidence/batch6-2026-10-27/README.md)：专项 PostgreSQL、完整 CI 和浏览器双轮摘要。
+
+[V1.0 Batch7准备交付](productization/batch7-delivery-2026-10-27.md)：业务审批、累计集成风险、bundle 恢复和岗位/运维准入状态。
+
+[V1.0 Batch7业务审批表](productization/batch7-business-approval.md)：A1–A5 五项规则的最终待批契约。
+
+[V1.0 Batch7集成风险矩阵](productization/batch7-integration-risk.md)：本地累计差异、迁移兼容和远程发布停止条件。
+
+[V1.0 Batch7岗位与运维准入](productization/batch7-uat-ops-readiness.md)：十岗位隔离验收、性能基线、备份恢复和监控准备。
+
+[V1.0 Batch8非生产集成交付](productization/batch8-delivery-2026-10-27.md)：累计兼容性、安全回归、性能与恢复基线。
+
+[V1.0 Batch8安全回归](productization/batch8-security-review.md)：风险重放、佣金、文档回执和跨组织授权矩阵。
+
+[V1.0 Batch8性能与恢复](productization/batch8-perf-restore.md)：隔离数据库恢复和有界性能基线。
+
+[V1.0 Batch5安全整改](productization/batch5-security.md)：TD-SEC-010三条幂等重放路径的当前授权修复与验证边界。
+
+[V1.0 Batch5成本复现](productization/batch5-cost003.md)：重复BOM组件实际成本重复归集的隔离PG证据和待裁方案。
+
+[V1.0 Batch5连接复现](productization/batch5-conn001.md)：连接器CAS更新SQL缺陷的复现和最小候选。
+
+[V1.0 Batch5审批契约](productization/batch5-decisions.md)：金额、成本、发运、BOM和利润的待批准规则。
+
+[V1.0 Batch5岗位差距矩阵](productization/batch5-pilot-gap-matrix.md)：十类岗位的自动证据、人工验收缺口和试运行阻断。
+
+[V1.0 Batch4安全影响](productization/batch4-sec010-assessment.md)：TD-SEC-010的PG/HTTP复现和当前授权前重放最小整改建议，正式未修。
+
+[V1.0 Batch4业务裁定](productization/batch4-decisions.md)：稳定编号/历史映射和最小待决项；[成本契约](productization/batch4-cost-contract.md)、[仓库发运契约](productization/batch4-shipping-contract.md)、[BOM/实际利润契约](productization/batch4-bom-profit-contract.md)均DESIGN_ONLY。
+
+[V1.0 Batch4证据索引](productization/evidence/batch4-2026-10-26/README.md)：逐组与失败记录、原始脱敏日志、固定SHA最终机器回执读取方式。
+
+[ADR0012 惰性路由尝试与同步投影](adr/0012_lazy_route_attempts.md)：Batch4 G5拆分决策，保持原Promise等待、null续走和权限/错误顺序，不引入通用协程或业务规则变更。
+
+[V1.0 Batch4 执行计划](productization/batch4-execution-2026-10-26.md)：从f3稳定基线进行G5收口、SEC010隔离核查与业务规则定稿；不改未批准业务语义、不操作远程/生产。
+
+[V1.0 Batch3 定向证据](productization/evidence/batch3-2026-10-26/README.md)：目标红绿、失败修正、隔离模型和独立源码复核，最终CI/双轮另据固定SHA本地回执。
+
+[V1.0 Batch3 验证与交付](productization/batch3-verification-2026-10-26.md)：库存并发非负、风险重放与读取范围本地修复；G5两项消除、两项仍开放；最终CI/浏览器看精确SHA回执。
+
+[V1.0 Batch3 业务设计增量](productization/batch3-business-design.md)：成本舍入/修订、仓库出库、BOM pin与实际利润最小待决项，原型独立分支未合入正式候选。
+
+[V1.0产品化接管入口](productization/README.md)：2026-10-26，基线b1ef7a9；当前真实状态、行业/业务/架构审计、十二工作包及No-Go准入草稿。本轮仅本地文档和隔离验证，未授权业务实施或生产变更。同日再次核验主线、开放PR/Issue和证据哈希一致；补充技术层分别选型及管理员/运维场景。
+
 [Harness施工图竣工归档](exec-plans/completed/harness-2026-10-21.md)：阶段1–5与§14迁移记录；常驻规则以AGENTS、核心信念、架构、CI和门禁文档为准。
 [Harness竣工收官报告](evidence/harness-final-closeout-report-2026-10-21.md)：五阶段摘要、开放项承接、母模板反馈与归档后合同。
 [Harness常驻契约自检](evidence/harness-final-closeout-self-check-2026-10-21.md)：无施工图依赖的机械自检结果与证据入口。
@@ -412,3 +468,45 @@ E1先行固定证据：[authorization守恒候选/773例旧新探针](evidence/e
 ## exec-plans/completed/
 
 归档计划：[harness-2026-10-21.md](exec-plans/completed/harness-2026-10-21.md)。
+
+## docs/productization（V1.0接管与产品化草稿）
+
+| 文件                                                                                 | 内容与状态                                |
+| ------------------------------------------------------------------------------------ | ----------------------------------------- |
+| [KingTurf V1.0 产品化改造与试运行交付工程](productization/README.md)                 | 2026-10-26本地审计/方案草稿；未作业务放行 |
+| [KingTurf V1.0 真实业务验收方案](productization/business-acceptance.md)              | 2026-10-26本地审计/方案草稿；未作业务放行 |
+| [KingTurf V1.0 业务能力和实现映射](productization/business-capability-matrix.md)     | 2026-10-26本地审计/方案草稿；未作业务放行 |
+| [KingTurf V1.0 技术债和整改清单](productization/debt-remediation.md)                 | 2026-10-26本地审计/方案草稿；未作业务放行 |
+| [KingTurf V1.0 行业对标](productization/industry-benchmark.md)                       | 2026-10-26本地审计/方案草稿；未作业务放行 |
+| [KingTurf V1.0 产品差距分析](productization/product-gap-analysis.md)                 | 2026-10-26本地审计/方案草稿；未作业务放行 |
+| [KingTurf V1.0 发布和试运行准入报告草案](productization/release-readiness.md)        | 2026-10-26本地审计/方案草稿；未作业务放行 |
+| [KingTurf V1.0 执行路线图草案](productization/roadmap.md)                            | 2026-10-26本地审计/方案草稿；未作业务放行 |
+| [KingTurf V1.0 接管审计 2026年10月26日](productization/takeover-audit-2026-10-26.md) | 2026-10-26本地审计/方案草稿；未作业务放行 |
+| [KingTurf V1.0 目标技术架构草案](productization/target-architecture.md)              | 2026-10-26本地审计/方案草稿；未作业务放行 |
+| [KingTurf V1.0 目标产品设计草案](productization/target-product-design.md)            | 2026-10-26本地审计/方案草稿；未作业务放行 |
+| [KingTurf V1.0 受控试运行和维护方案草案](productization/trial-operations.md)         | 2026-10-26本地审计/方案草稿；未作业务放行 |
+| [KingTurf V1.0 接管验证证据 2026年10月26日](productization/verification-evidence.md) | 2026-10-26本地审计/方案草稿；未作业务放行 |
+
+[本地正确性整改执行](productization/local-execution-2026-10-26.md)：本地审计保全、A/B/C及获批BOM/来源规则、分提交与新SHA验证，生产/远程禁写。
+
+[KingTurf V1.0 本地整改交付记录 2026年10月26日](productization/local-delivery-2026-10-26.md)：本地修复/提交、PG与CI、浏览器两轮、失败史和残余。
+
+[KingTurf 本地整改后的业务决策材料](productization/local-business-decisions-2026-10-26.md)：风险重放、驳回成本修订、发运出库与金额/利润，待批准内容不实施。
+
+[KingTurf V1.0 Batch 2 本地执行与授权记录](productization/batch2-execution-2026-10-26.md)：916f63f后继，风险重放实施，成本/发运/金额/版本设计边界，远程生产禁写。
+
+[KingTurf V1.0 Batch 2 本地交付记录](productization/batch2-delivery-2026-10-26.md)：风险评价重放整改、成本/发运设计、新PG阻断与真实验证分层。
+
+[Batch 2 制造成本不可变修订设计](productization/batch2-cost-revisions.md)：状态机/关联模型/门卫/API/UI/兼容回退，尚未批准正式实施。
+
+[Batch 2 发运与出库闭环设计](productization/batch2-shipping-inventory.md)：A/B比较、数量来源/库存并发/撤销/历史与待裁。
+
+[Batch 2 金额、BOM版本与订单利润研究](productization/batch2-money-bom-profit.md)：独立精度样本、版本冻结、四层成本与利润权威。
+
+[Batch 2 四项长函数豁免独立整改计划](productization/batch2-complexity-plan.md)：到期、重叠、守恒拆分与回归保护，不续期。
+
+[KingTurf V1.0 Batch 3 本地执行授权与计划](productization/batch3-execution-2026-10-26.md)：19d40a2后继，库存/风险三项正式修复、独立G5守恒及设计边界。
+
+[ADR 0011: Serialize inventory resources without a second balance ledger](adr/0011_inventory_resource_serialization.md)：Batch3库存保护行、快照、兼容与回退；仅本地验证授权。
+
+[V1.0 Batch8累计集成与岗位验收前置](productization/batch8-integration-uat.md)：迁移/API兼容、十岗位合成验收边界和未决规则阻断。

@@ -43,7 +43,7 @@ describe('risk repository real PostgreSQL contracts', () => {
     ).rows[0];
   const counts = async () =>
     (
-      await state().db.query(
+      await state().db.query<{ evaluations: number; tasks: number; events: number }>(
         'SELECT (SELECT count(*)::integer FROM risk_evaluations) evaluations,(SELECT count(*)::integer FROM risk_tasks) tasks,(SELECT count(*)::integer FROM risk_task_events) events',
       )
     ).rows[0];
@@ -408,41 +408,248 @@ describe('risk repository real PostgreSQL contracts', () => {
     ]);
     expect(await evidenceCounts(correlation)).toEqual({ audit: '0', outbox: '0' });
   });
-  it('records narrowed-scope evaluation binding failure without inserting rows (TD-RISK-001)', async () => {
-    // Existing defect candidate: evaluate starts scope placeholders at 3 despite
-    // four fixed parameters. This records the failure, not desired authorization semantics.
-    const { context } = state();
+  it('TD-RISK-001: binds fixed and dynamic parameters across real scope combinations and replays once', async () => {
+    const { context, db, teamId, reviewerEmployee, otherContext } = state();
     const policy = await repository.createPolicy(
       policyInput('NARROW-SCOPE'),
       context,
       randomUUID(),
     );
-    const { teamId } = state();
+    const department = randomUUID(),
+      region = randomUUID();
+    await db.query(
+      "INSERT INTO organizations(id,owner_organization_id,code,name,organization_type) VALUES($1,$2,'RISK-DEPT','Risk department','DEPARTMENT'),($3,$2,'RISK-REGION','Risk region','REGION')",
+      [department, context.actor.companyId, region],
+    );
+    await db.query('UPDATE organizations SET parent_id=$1 WHERE id=$2', [region, department]);
+    await db.query('UPDATE organizations SET parent_id=$1 WHERE id=$2', [department, teamId]);
+    const team = { scope: 'TEAM' as const, organizationId: teamId };
+    const dept = { scope: 'DEPARTMENT' as const, organizationId: department };
+    const variants: readonly Parameters<typeof repository.evaluate>[2][] = [
+      { ...context, scopes: ['SELF'] },
+      { ...context, scopes: ['TEAM'], anchors: [team] },
+      { ...context, scopes: ['DEPARTMENT'], anchors: [dept] },
+      { ...context, scopes: ['REGION'], anchors: [{ scope: 'REGION', organizationId: region }] },
+      { ...context, scopes: ['SELF', 'TEAM'], anchors: [team] },
+      { ...context, scopes: ['TEAM', 'DEPARTMENT'], anchors: [team, dept] },
+      { ...context, scopes: ['COMPANY', 'TEAM'], anchors: [team] },
+      { ...context, scopes: ['GROUP'] },
+    ];
+    let readReference: { evaluation: string; task: string } | undefined;
+    for (const actor of variants) {
+      const key = randomUUID(),
+        correlation = randomUUID();
+      const result = await repository.evaluate(
+        evaluationInput(identifier(policy)),
+        key,
+        actor,
+        correlation,
+      );
+      expect(result).toMatchObject({ salesOrderId: state().graph.orderId });
+      readReference = { evaluation: identifier(result), task: identifier(result, 'taskId') };
+      expect(await repository.canReadResult('evaluation', readReference.evaluation, actor)).toBe(
+        true,
+      );
+      expect(await repository.canReadResult('task', readReference.task, actor)).toBe(true);
+      const after = await counts(),
+        paired = await evidenceCounts(correlation);
+      expect(
+        (await repository.evaluate(evaluationInput(identifier(policy)), key, actor, randomUUID()))
+          .id,
+      ).toBe(result.id);
+      expect(await counts()).toEqual(after);
+      expect(await evidenceCounts(correlation)).toEqual(paired);
+      expect(paired).toEqual({ audit: '0', outbox: '0' });
+      expect(
+        (
+          await db.query<{ n: number }>(
+            'SELECT count(*)::int n FROM risk_evaluations WHERE id=$1 AND correlation_id=$2',
+            [result.id, correlation],
+          )
+        ).rows,
+      ).toEqual([{ n: 1 }]);
+    }
     for (const actor of [
-      { ...context, scopes: ['SELF'] as const },
+      { ...context, scopes: ['TEAM'] as const, anchors: [] },
       {
         ...context,
-        scopes: ['TEAM'] as const,
-        anchors: [{ scope: 'TEAM' as const, organizationId: teamId }],
+        scopes: ['SELF'] as const,
+        actor: { ...context.actor, employeeId: reviewerEmployee },
+      },
+      { ...otherContext, scopes: ['GROUP'] as const },
+      {
+        ...context,
+        scopes: ['DEPARTMENT'] as const,
+        anchors: [{ scope: 'DEPARTMENT' as const, organizationId: teamId }],
       },
     ]) {
+      if (!readReference) throw new Error('Read reference missing');
+      expect(await repository.canReadResult('evaluation', readReference.evaluation, actor)).toBe(
+        false,
+      );
+      expect(await repository.canReadResult('task', readReference.task, actor)).toBe(false);
       const before = await counts(),
         correlation = randomUUID();
       await expect(
         repository.evaluate(evaluationInput(identifier(policy)), randomUUID(), actor, correlation),
-      ).rejects.toMatchObject({ code: '08P01' });
+      ).rejects.toMatchObject({ code: 'not_found' });
       expect(await counts()).toEqual(before);
       expect(await evidenceCounts(correlation)).toEqual({ audit: '0', outbox: '0' });
     }
+    await db.query('UPDATE organizations SET active=false WHERE id=$1', [department]);
     const before = await counts();
     await expect(
       repository.evaluate(
         evaluationInput(identifier(policy)),
         randomUUID(),
-        { ...context, scopes: ['TEAM'], anchors: [] },
+        { ...context, scopes: ['DEPARTMENT'], anchors: [dept] },
         randomUUID(),
       ),
     ).rejects.toMatchObject({ code: 'not_found' });
     expect(await counts()).toEqual(before);
+  });
+  it('TD-RISK-002: rejects a known-key replay outside the current scope and keeps authorized handoff', async () => {
+    const { context, reviewerEmployee } = state();
+    const policy = await repository.createPolicy(
+      policyInput('REPLAY-SCOPE'),
+      context,
+      randomUUID(),
+    );
+    const key = randomUUID(),
+      input = evaluationInput(identifier(policy));
+    const first = await repository.evaluate(input, key, context, randomUUID());
+    const before = await counts();
+    const narrowed = {
+      ...context,
+      actor: { ...context.actor, employeeId: reviewerEmployee },
+      scopes: ['SELF'] as const,
+    };
+    await expect(repository.evaluate(input, key, narrowed, randomUUID())).rejects.toMatchObject({
+      code: 'not_found',
+    });
+    await expect(
+      repository.evaluate({ ...input, salesOrderId: randomUUID() }, key, narrowed, randomUUID()),
+    ).rejects.toMatchObject({ code: 'not_found' });
+    expect(
+      (await repository.evaluate(input, key, { ...narrowed, scopes: ['COMPANY'] }, randomUUID()))
+        .id,
+    ).toBe(first.id);
+    await expect(
+      repository.evaluate(input, randomUUID(), narrowed, randomUUID()),
+    ).rejects.toMatchObject({ code: 'not_found' });
+    expect(await counts()).toEqual(before);
+  });
+
+  it('TD-RISK-002: reevaluates explicit anchors on the stored order for every replay', async () => {
+    const { context, db, teamId, otherContext } = state();
+    const policy = await repository.createPolicy(
+      policyInput('REPLAY-ANCHORS'),
+      context,
+      randomUUID(),
+    );
+    const input = evaluationInput(identifier(policy)),
+      key = randomUUID();
+    const anchored = {
+      ...context,
+      scopes: ['TEAM'] as const,
+      anchors: [{ scope: 'TEAM' as const, organizationId: teamId }],
+    };
+    const first = await repository.evaluate(input, key, anchored, randomUUID());
+    const before = await counts();
+    for (const denied of [
+      { ...context, scopes: [] as const },
+      { ...anchored, anchors: [] },
+      { ...anchored, anchors: [{ scope: 'TEAM' as const, organizationId: randomUUID() }] },
+      otherContext,
+    ]) {
+      const correlation = randomUUID();
+      await expect(repository.evaluate(input, key, denied, correlation)).rejects.toMatchObject({
+        code: 'not_found',
+      });
+      expect(await counts()).toEqual(before);
+      expect(await evidenceCounts(correlation)).toEqual({ audit: '0', outbox: '0' });
+    }
+    await db.query('UPDATE organizations SET active=false WHERE id=$1', [teamId]);
+    await expect(repository.evaluate(input, key, anchored, randomUUID())).rejects.toMatchObject({
+      code: 'not_found',
+    });
+    await db.query('UPDATE organizations SET active=true WHERE id=$1', [teamId]);
+    expect((await repository.evaluate(input, key, anchored, randomUUID())).id).toBe(first.id);
+    expect(await counts()).toEqual(before);
+  });
+
+  it('TD-RISK-003: authorizes the current task and rejects a known key belonging to another task', async () => {
+    const { context, reviewerEmployee } = state();
+    const policy = await repository.createPolicy(policyInput('TASK-REPLAY'), context, randomUUID());
+    const evaluation = await repository.evaluate(
+      evaluationInput(identifier(policy)),
+      randomUUID(),
+      context,
+      randomUUID(),
+    );
+    const task = identifier(evaluation, 'taskId'),
+      key = randomUUID();
+    await repository.transitionTask(
+      task,
+      { state: 'ACKNOWLEDGED', reason: 'Synthetic acknowledgement', evidence: { ack: true } },
+      key,
+      context,
+      randomUUID(),
+    );
+    const before = await counts();
+    const narrowed = {
+      ...context,
+      actor: { ...context.actor, employeeId: reviewerEmployee },
+      scopes: ['SELF'] as const,
+    };
+    await expect(
+      repository.transitionTask(
+        randomUUID(),
+        { state: 'ESCALATED', reason: 'Different task path', evidence: {} },
+        key,
+        narrowed,
+        randomUUID(),
+      ),
+    ).rejects.toMatchObject({ code: 'not_found' });
+    await expect(
+      repository.transitionTask(
+        task,
+        { state: 'ESCALATED', reason: 'Revoked scope', evidence: {} },
+        key,
+        narrowed,
+        randomUUID(),
+      ),
+    ).rejects.toMatchObject({ code: 'not_found' });
+    const next = await repository.evaluate(
+      evaluationInput(identifier(policy)),
+      randomUUID(),
+      context,
+      randomUUID(),
+    );
+    const nextTask = identifier(next, 'taskId');
+    await expect(
+      repository.transitionTask(
+        nextTask,
+        { state: 'ACKNOWLEDGED', reason: 'Different original object', evidence: {} },
+        key,
+        context,
+        randomUUID(),
+      ),
+    ).rejects.toMatchObject({ code: 'conflict' });
+    await expect(
+      repository.transitionTask(
+        task,
+        { state: 'ESCALATED', reason: 'New key remains forbidden', evidence: {} },
+        randomUUID(),
+        narrowed,
+        randomUUID(),
+      ),
+    ).rejects.toMatchObject({ code: 'not_found' });
+    expect(await counts()).toEqual({
+      ...before,
+      evaluations: (before?.evaluations ?? 0) + 1,
+      tasks: (before?.tasks ?? 0) + 1,
+      events: (before?.events ?? 0) + 1,
+    });
   });
 });

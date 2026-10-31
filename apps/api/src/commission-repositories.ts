@@ -15,6 +15,24 @@ type CommissionState = 'ACCRUED' | 'FROZEN' | 'RELEASED' | 'PAID' | 'CLAWED_BACK
 const hash = (value: unknown) => createHash('sha256').update(canonicalize(value)).digest('hex');
 const json = (value: unknown) => value as JsonObject;
 
+async function findAccrualReplay(
+  tx: SqlClient,
+  context: Context,
+  key: string,
+): Promise<JsonObject | undefined> {
+  const scope = recordScopeSql(context.scopes, context.anchors, context.actor, 'cu', 3);
+  return (
+    await tx.query<{ item: JsonObject }>(
+      `SELECT to_jsonb(c) AS item
+       FROM commission_cases c
+       JOIN sales_orders o ON o.id=c.sales_order_id AND o.tenant_id=c.tenant_id
+       JOIN customers cu ON cu.id=o.customer_id AND cu.tenant_id=o.tenant_id
+       WHERE c.tenant_id=$1 AND c.idempotency_key=$2 AND ${scope.sql}`,
+      [context.actor.companyId, key, ...scope.values],
+    )
+  ).rows[0]?.item;
+}
+
 export class PostgresCommissionRepository {
   public constructor(private readonly db: Db) {}
 
@@ -247,13 +265,8 @@ export class PostgresCommissionRepository {
       await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
         `${context.actor.companyId}:${key}:commission-accrue`,
       ]);
-      const replay = (
-        await tx.query<{ item: JsonObject }>(
-          'SELECT to_jsonb(c) AS item FROM commission_cases c WHERE c.tenant_id=$1 AND c.idempotency_key=$2',
-          [context.actor.companyId, key],
-        )
-      ).rows[0];
-      if (replay) return replay.item;
+      const replay = await findAccrualReplay(tx, context, key);
+      if (replay) return replay;
       const secured = recordScopeSql(context.scopes, context.anchors, context.actor, 'cu', 5);
       const basis = (
         await tx.query<{
@@ -441,13 +454,27 @@ export class PostgresCommissionRepository {
       await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
         `${context.actor.companyId}:${id}:commission`,
       ]);
+      const scope = recordScopeSql(context.scopes, context.anchors, context.actor, 'cu', 4);
       const replay = (
         await tx.query<{ evidence: JsonObject }>(
-          'SELECT evidence FROM commission_ledger_entries WHERE tenant_id=$1 AND idempotency_key=$2',
-          [context.actor.companyId, key],
+          `SELECT le.evidence
+           FROM commission_ledger_entries le
+           JOIN effective_commission_cases c ON c.id=le.commission_case_id AND c.tenant_id=le.tenant_id
+           JOIN sales_orders o ON o.id=c.sales_order_id AND o.tenant_id=c.tenant_id
+           JOIN customers cu ON cu.id=o.customer_id AND cu.tenant_id=o.tenant_id
+           WHERE le.tenant_id=$1 AND le.idempotency_key=$2 AND le.commission_case_id=$3
+             AND ${scope.sql}`,
+          [context.actor.companyId, key, id, ...scope.values],
         )
       ).rows[0];
       if (replay) return replay.evidence;
+      const conflictingReplay = (
+        await tx.query<{ id: string }>(
+          'SELECT commission_case_id AS id FROM commission_ledger_entries WHERE tenant_id=$1 AND idempotency_key=$2 LIMIT 1',
+          [context.actor.companyId, key],
+        )
+      ).rows[0];
+      if (conflictingReplay) throw new DomainError('not_found', 'Commission case not found');
       const secured = recordScopeSql(context.scopes, context.anchors, context.actor, 'cu', 3);
       const current = (
         await tx.query<{

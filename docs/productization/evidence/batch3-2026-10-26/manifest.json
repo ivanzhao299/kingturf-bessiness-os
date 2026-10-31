@@ -1,0 +1,171 @@
+{
+  "baseline": "19d40a2011aff3e2e9b8bc18b9b5722d0cb14906",
+  "scope": "targeted tests before final candidate; no final CI or browser claim",
+  "evidence": [
+    {
+      "label": "baseline-three-defects",
+      "exit": 0,
+      "seconds": 7.42,
+      "file": "baseline-three-defects.txt",
+      "sha256": "7c489a489e7e5d52af6ecc2ee9457c8b396a4de0811d2d7f9f85d561d7ef2dfe"
+    },
+    {
+      "label": "inventory-target-red",
+      "exit": 1,
+      "seconds": 4.19,
+      "file": "inventory-target-red.txt",
+      "sha256": "6d52fe60996741dd41f661f2acc5ec9f080afef5f5d9ddb099db06f2a71e1f9a"
+    },
+    {
+      "label": "inventory-first-green",
+      "exit": 0,
+      "seconds": 2.09,
+      "file": "inventory-first-green.txt",
+      "sha256": "66bdefb5603f50f77270ca1e7f346876b3b6dd5425e28b9178829efe4bb56168"
+    },
+    {
+      "label": "inventory-matrix",
+      "exit": 1,
+      "seconds": 24.93,
+      "file": "inventory-matrix.txt",
+      "sha256": "0818628ce9d95f52d5dd07e888e43faf4fe3829d630a33ce9b6187659d49a31e"
+    },
+    {
+      "label": "inventory-matrix-r2",
+      "exit": 1,
+      "seconds": 16.45,
+      "file": "inventory-matrix-r2.txt",
+      "sha256": "0bfed60b408ff92c1eeed0f885dfefa8f0b24917247f03753f801a98ea7d332f"
+    },
+    {
+      "label": "inventory-reviewed-green",
+      "exit": 0,
+      "seconds": 30.29,
+      "file": "inventory-reviewed-green.txt",
+      "sha256": "f95bcb50572162c4f4b640d0189b0899b51fcbbee600f4e6ff3b655ed2b7d500"
+    },
+    {
+      "label": "inventory-ddl-rollback",
+      "exit": 0,
+      "seconds": 3.96,
+      "file": "inventory-ddl-rollback.txt",
+      "sha256": "cae40e61f4bc4bfb968d65877034357caea58b23e5df714e029393fcd7f23347"
+    },
+    {
+      "label": "risk-event-target-red",
+      "exit": 1,
+      "seconds": 9.15,
+      "file": "risk-event-target-red.txt",
+      "sha256": "057aa3fd30c48c7e2321ee870d6d417bd4ddd9e4c02697c1a61681abbc61debf"
+    },
+    {
+      "label": "risk-event-reviewed-green",
+      "exit": 0,
+      "seconds": 20.45,
+      "file": "risk-event-reviewed-green.txt",
+      "sha256": "db154d4d115a32b795b1034dcc504987b6e50d7dfdb5c4cf7a1ad4f9aa4a4f9b"
+    },
+    {
+      "label": "risk-event-final-green",
+      "exit": 0,
+      "seconds": 6.89,
+      "file": "risk-event-final-green.txt",
+      "sha256": "30c26fccf53451e24adaff709dc2d206e20351fd0cfcc14638cb27bb31eac340"
+    },
+    {
+      "label": "risk-read-target-red",
+      "exit": 1,
+      "seconds": 4.29,
+      "file": "risk-read-target-red.txt",
+      "sha256": "be54ce2efdc750641999c0eb3f82c5cbc79024810f3442e6e0b427cbb2c5ad0a"
+    },
+    {
+      "label": "risk-read-first-green",
+      "exit": 1,
+      "seconds": 20.07,
+      "file": "risk-read-first-green.txt",
+      "sha256": "d79aa23398a89a183ff4cc9ba31a8959968c00c3ecb8657612c51960d276a824"
+    },
+    {
+      "label": "risk-read-final-target",
+      "exit": 0,
+      "seconds": 21.28,
+      "file": "risk-read-final-target.txt",
+      "sha256": "db5d563cadcf997832ac4aa9bc814625de4c5f65772812efdbb59f47cbe361f2"
+    },
+    {
+      "label": "g5-final-target",
+      "exit": 0,
+      "seconds": 6.87,
+      "file": "g5-final-target.txt",
+      "sha256": "898f56b7a79922b9be70bdd7c6582ea3fe96b33d05935494ba05888219cb23f8"
+    },
+    {
+      "label": "g5-no-match-mutation-red",
+      "exit": 1,
+      "seconds": 2.1,
+      "file": "g5-no-match-mutation-red.txt",
+      "sha256": "d8a9c308aabaee446ba15b6d136754e731f885b5970b4e8de70ced46d9d334b7"
+    },
+    {
+      "label": "g5-no-match-restored-green",
+      "exit": 1,
+      "seconds": 3.27,
+      "file": "g5-no-match-restored-green.txt",
+      "sha256": "fa555106f6ab21435fa5439246c75226e0ac33281f8c6ba6b83223d5de978003"
+    },
+    {
+      "label": "g5-no-match-valid-baseline",
+      "exit": 0,
+      "seconds": 1.9,
+      "file": "g5-no-match-valid-baseline.txt",
+      "sha256": "c0f323ea2ce894be35ef419597ce3941da0dcdaf78e12674a406d0633ac97879"
+    },
+    {
+      "label": "g5-no-match-valid-mutation-red",
+      "exit": 1,
+      "seconds": 1.8,
+      "file": "g5-no-match-valid-mutation-red.txt",
+      "sha256": "09b9ab2797d00e3c166fa2622cd74edec5bdf84fb2601979e3d4d5070eb49b5e"
+    },
+    {
+      "label": "g5-no-match-valid-restored-green",
+      "exit": 0,
+      "seconds": 3.0,
+      "file": "g5-no-match-valid-restored-green.txt",
+      "sha256": "aec4ce8f22a3335faf59dd2c8459b3f5ba5e18c09b2dd337d2d97c927027df80"
+    },
+    {
+      "file": "design-prototype-final.txt",
+      "sha256": "e098d0dac91d2aa199330d009e940612a51f06b1f17aece050823b3935ffb7fd"
+    },
+    {
+      "file": "structure-qf.txt",
+      "sha256": "93724fcfffe07883f6ecf812da69cf77b47d70501135c07d1f804783deb64c80"
+    },
+    {
+      "file": "final-ci-migration-manifest-failure.txt",
+      "sourceSha": "c5407212783e0388878c3fed7b0f9322a8cab3fe",
+      "exit": 1,
+      "seconds": 116.77,
+      "sha256": "2c6cae6e18d4368276dd8606bc272a3c2d63ad7b358c2499f7142977e5851742",
+      "meaning": "full ci correctly stopped: release manifest expected70 and0070 as last; new0071 requires snapshot71 and0071; no production calls"
+    },
+    {
+      "file": "final-ci-risk-mock-failure.txt",
+      "sourceSha": "fe12e42469fcc3d0f64cd8fe308050ea9b98c38d",
+      "exit": 1,
+      "seconds": 297.84,
+      "sha256": "aa545c9142e6c252d9b8ac262b553d839a053707a161784b03da503b6df31a6b",
+      "meaning": "app.test legacy risk mock missing new canReadResult port; API17370pass/1fail; actualPG/HTTPgreen"
+    },
+    {
+      "file": "final-ci-readonly-manifest-failure.txt",
+      "sourceSha": "0826de23015e5f49961d2df411059d3ca6e979b8",
+      "exit": 1,
+      "seconds": 297.34,
+      "sha256": "5a0c8dbabbe114a6d71d4124a0a466a1b29c9a95189bc9937a34b1dff244aff7",
+      "meaning": "API17371/Web436green; DB read-only manifest legacy70 assertion fails71; no successful coverage result"
+    }
+  ]
+}

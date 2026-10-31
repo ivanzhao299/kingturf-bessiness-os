@@ -1,0 +1,58 @@
+--- a/apps/api/test/v1-audit-mrp.test.ts
++++ b/apps/api/test/v1-audit-mrp.test.ts
+@@ -110,7 +110,7 @@
+         name: 'Fixed two-unit BOM with five percent scrap',
+         productItemId: identifier(product, 'itemId'),
+         productItemVersionId: identifier(product),
+-        outputQuantity: '1',
++        outputQuantity: '10',
+         effectiveAt: '2025-01-01T00:00:00Z',
+         publish: true,
+         lines: [
+@@ -531,4 +531,21 @@
+       expect(await evidenceCounts(correlation)).toEqual({ audit: '0', outbox: '0' });
+     }
+   });
++
++  it('V1_AUDIT BOM output basis independent reconciliation', async () => {
++    const result = await state().db.query<{ gross: string }>(
++      'SELECT gross_demand::text gross FROM mrp_item_calculations WHERE tenant_id=$1 AND mrp_run_id=$2 AND item_version_id=$3',
++      [state().company, identifier(initialRun), identifier(material)],
++    );
++    console.log('V1_AUDIT_BOM', JSON.stringify({demand: '10', bomOutput: '10', componentPerBom: '2', scrapBasisPoints: 500, expectedGross: '2.100000', actualGross: result.rows[0]?.gross}));
++    expect(result.rows[0]?.gross).toBe('2.100000');
++  });
++
++  it('V1_AUDIT sales order demand source existence', async () => {
++    const unknownOrder = randomUUID();
++    const result = await repository.createDemand({...demand(identifier(product)), sourceType: 'SALES_ORDER', sourceId: unknownOrder}, state().context, randomUUID());
++    const exists = await state().db.query<{n: number}>('SELECT count(*)::int n FROM sales_orders WHERE id=$1', [unknownOrder]);
++    console.log('V1_AUDIT_SOURCE', JSON.stringify({sourceType: 'SALES_ORDER', sourceExists: exists.rows[0]?.n, demandAccepted: Boolean(result.id)}));
++    expect(Boolean(result.id)).toBe(false);
++  });
+ });
+--- a/apps/api/test/v1-audit-shipment.test.ts
++++ b/apps/api/test/v1-audit-shipment.test.ts
+@@ -503,4 +503,22 @@
+     );
+     expect(await shipment.list(context)).toMatchObject([{ shipments: [{}, {}] }]);
+   });
++
++  it('V1_AUDIT repeated dispatch and inventory independent reconciliation', async () => {
++    const { context, db } = owned();
++    const request = await release();
++    const balance = async () => (await db.query<{quantity: string}>('SELECT coalesce(sum(quantity),0)::text quantity FROM inventory_balances WHERE tenant_id=$1 AND lot_id=$2', [context.actor.companyId, lotId])).rows[0]?.quantity;
++    const before = await balance();
++    await shipment.dispatch(request.id, dispatchInput(), context, randomUUID());
++    const first = await balance();
++    let acceptedSecond = false;
++    try {
++      await shipment.dispatch(request.id, {...dispatchInput(), shipmentNumber: 'SHIPMENT-2', trackingNumber: 'TRACK-2', idempotencyKey: 'DISPATCH-2'}, context, randomUUID());
++      acceptedSecond = true;
++    } catch (error) { console.log("V1_AUDIT_SECOND_ERROR", (error as {code?: string}).code); }
++    const after = await balance();
++    console.log('V1_AUDIT_SHIPMENT', JSON.stringify({requested: '5', before, first, after, acceptedSecond}));
++    expect(first).toBe('5.000000');
++    expect(acceptedSecond).toBe(false);
++  });
+ });

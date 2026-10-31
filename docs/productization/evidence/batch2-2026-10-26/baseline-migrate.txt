@@ -1,0 +1,8 @@
+
+> kingturf-business-os@0.0.0 db:migrate /home/jinhuit/Kingturf/kingturf-bessiness-os
+> pnpm --filter @kingturf/database db:migrate
+
+
+> @kingturf/database@0.0.0 db:migrate /home/jinhuit/Kingturf/kingturf-bessiness-os/packages/database
+> node --experimental-strip-types src/cli.ts migrate
+

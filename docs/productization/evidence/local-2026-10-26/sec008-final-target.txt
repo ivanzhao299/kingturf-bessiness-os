@@ -1,0 +1,25 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ✓ test/dashboard-postgres.integration.test.ts (6 tests) 19273ms
+   ✓ dashboard repository real PostgreSQL contracts > aggregates ten fixed metrics and source-bound drilldowns from the real commercial graph  3238ms
+   ✓ dashboard repository real PostgreSQL contracts > applies real owner and tenant scope across every metric and drilldown  3192ms
+   ✓ dashboard repository real PostgreSQL contracts > preserves the existing currency and from/as-of asymmetries without rewriting SQL  3248ms
+   ✓ dashboard repository real PostgreSQL contracts > uses inclusive starts, exclusive ends and allocation posting rather than bank receipt dates  3256ms
+   ✓ dashboard repository real PostgreSQL contracts > projects latest task closure and pinned accrual without performing new writes  3193ms
+   ✓ dashboard repository real PostgreSQL contracts > SEC008: filters every aggregate and drilldown through valid explicit organization anchors  3144ms
+ ✓ test/harness-final-decision-postgres.integration.test.ts (6 tests) 15653ms
+   ✓ BOUND003: real API forwards invalid date but PG rejects insert/update without storing it  2697ms
+   ✓ BOUND004: UUID case aliases partly commit once and preserve raw-case batch replay identity  2536ms
+   ✓ SEC008: real complaint scope queries validate organization anchors without changing broad grants  2737ms
+   ✓ SEC007: active actor in inactive organization differs at real notification repository predicate layer  2525ms
+   ✓ SEC008: real login resolves TEAM anchors, filters fields and rejects revoked access  2654ms
+   ✓ SEC008: preserves deep TEAM compatibility and guards complaint writes on real PostgreSQL  2502ms
+ ✓ test/scope-sql-dashboard.test.ts (2 tests) 14ms
+ ✓ test/scope-sql-complaint.test.ts (5 tests) 14ms
+
+ Test Files  4 passed (4)
+      Tests  19 passed (19)
+   Start at  11:35:51
+   Duration  36.92s (transform 806ms, setup 0ms, collect 1.31s, tests 34.95s, environment 0ms, prepare 204ms)
+

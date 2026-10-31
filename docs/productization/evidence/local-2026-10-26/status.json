@@ -1,0 +1,89 @@
+{
+  "source_sha": "1e38c4a704f87ea85db416614ffde49cf0b2bf1f",
+  "baseline_sha": "b1ef7a9e7fdbfc0341f29f1cb612504ff47cd41b",
+  "branch": "codex/kt-v1-local-productization",
+  "commits": [
+    {
+      "sha": "ef4f2d99ba11f7f328b2345a1cf7cafea8ad422e",
+      "subject": "docs(productization): preserve local takeover audit [未测试]"
+    },
+    {
+      "sha": "25849609a84e5afabfe480498ac83eb4df9b2242",
+      "subject": "docs(productization): authorize local correctness work packages [未测试]"
+    },
+    {
+      "sha": "f7397a4a159bfe429f392393b729c06e75390128",
+      "subject": "fix(auth): repair complaint and dashboard scope anchors [已测试]"
+    },
+    {
+      "sha": "cc6905e1e362d7c979d4bf79d571a604abafe63b",
+      "subject": "fix(risk): derive scope offsets from fixed query parameters [已测试]"
+    },
+    {
+      "sha": "119832691d78d0cf398f86cdc06a556b9deeef49",
+      "subject": "fix(procurement): serialize receipts and preserve partial order state [已测试]"
+    },
+    {
+      "sha": "b5ae0d089e42b66c8d37c13f8fb469f0c3ecd8c7",
+      "subject": "fix(manufacturing): honor BOM output basis in new calculations [已测试]"
+    },
+    {
+      "sha": "21f3ce608df20dda27cb63e99c6c7cf1af240246",
+      "subject": "fix(mrp): validate declared sales order demand sources [已测试]"
+    },
+    {
+      "sha": "1e38c4a704f87ea85db416614ffde49cf0b2bf1f",
+      "subject": "test(productization): capture replay and rejected cost blockers [已测试]"
+    }
+  ],
+  "LOCAL_IMPLEMENTATION": "PASS A/B/C/D/F only",
+  "POSTGRES_VERIFICATION": "PASS isolated PostgreSQL17.7",
+  "CONCURRENCY_AND_ROLLBACK": "PASS procurement scoped, not all business domains",
+  "AUTHORIZATION_MATRIX": "PASS scope matrices and real login via in-process router; not full socket/role UAT",
+  "FULL_CI": {
+    "status": "PASS",
+    "sha": "1e38c4a704f87ea85db416614ffde49cf0b2bf1f",
+    "exit": 0,
+    "seconds": 426.33,
+    "api": 17310,
+    "web": 436,
+    "coverage_run": "4cb421bb-23ad-4ebe-a76d-b6f67a26837c",
+    "coverage": {
+      "overall": [37604, 48616],
+      "domain": [629, 671],
+      "repository": [9899, 11527],
+      "deficits": []
+    }
+  },
+  "BROWSER_ROUND_1": {
+    "status": "PASS_EXISTING_P1_ONLY",
+    "sha": "1e38c4a704f87ea85db416614ffde49cf0b2bf1f",
+    "tests": 11,
+    "failed": 0,
+    "skipped": 0,
+    "seconds": 26.41,
+    "result": "host-ready-round1-safe.json"
+  },
+  "BROWSER_ROUND_2": {
+    "status": "PASS_EXISTING_P1_ONLY",
+    "sha": "1e38c4a704f87ea85db416614ffde49cf0b2bf1f",
+    "tests": 11,
+    "failed": 0,
+    "skipped": 0,
+    "seconds": 26.93,
+    "result": "host-ready-round2-safe.json"
+  },
+  "INDEPENDENT_REVIEW": "PASS scoped source review by two reviewers; not independent test rerun",
+  "REMOTE_PUSH": "NOT_AUTHORIZED / NOT_EXECUTED",
+  "MAIN_MERGE": "NOT_AUTHORIZED / NOT_EXECUTED",
+  "PRODUCTION_DEPLOY": "NOT_AUTHORIZED / NOT_EXECUTED",
+  "PILOT_READINESS": "NO_GO",
+  "open_blockers": [
+    "TD-RISK-002",
+    "TD-COST-002",
+    "TD-SHIP-001",
+    "cost/BOM-binding/profit business definitions",
+    "role UAT, restoration/performance and final approval"
+  ],
+  "final_document_commit_verification": "Run ci:local and two unchanged original P1 rounds after committing documents; final SHA and logs are local closing evidence, not retroactively substituted for source_sha."
+}

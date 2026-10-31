@@ -114,7 +114,7 @@ export class PostgresMrpRepository {
       const row = (
         await tx.query<{ id: string }>(
           `INSERT INTO mrp_demand_signals(tenant_id,item_version_id,source_type,source_id,required_at,quantity,priority,created_by,canonical_hash)
-           SELECT $1,v.id,$3,$4,$5,$6,$7,$8,$9 FROM manufacturing_item_versions v WHERE v.id=$2 AND v.tenant_id=$1 AND v.status='PUBLISHED' RETURNING id`,
+           SELECT $1,v.id,$3,$4,$5,$6,$7,$8,$9 FROM manufacturing_item_versions v WHERE v.id=$2 AND v.tenant_id=$1 AND v.status='PUBLISHED' AND ($3<>'SALES_ORDER' OR EXISTS(SELECT 1 FROM sales_orders source WHERE source.id=$4 AND source.tenant_id=$1 AND source.status='RELEASED')) RETURNING id`,
           [
             context.actor.companyId,
             input.itemVersionId,
@@ -128,7 +128,11 @@ export class PostgresMrpRepository {
           ],
         )
       ).rows[0];
-      if (!row) throw new DomainError('conflict', 'MRP demand requires a published item version');
+      if (!row)
+        throw new DomainError(
+          'conflict',
+          'MRP demand requires a published item version and a valid declared source',
+        );
       const result = json({ id: row.id, canonicalHash: hash(input), ...input });
       await evidence(
         tx,
@@ -204,8 +208,8 @@ export class PostgresMrpRepository {
         `WITH RECURSIVE exploded(item_version_id,required_at,quantity,path,depth) AS (
           SELECT d.item_version_id,d.required_at,d.quantity,ARRAY[d.item_version_id],0 FROM mrp_demand_snapshots d WHERE d.tenant_id=$1 AND d.mrp_run_id=$2
           UNION ALL
-          SELECT l.component_item_version_id,e.required_at,(e.quantity*l.quantity*(1+l.scrap_basis_points::numeric/10000))::numeric(24,6),e.path||l.component_item_version_id,e.depth+1
-          FROM exploded e JOIN LATERAL(SELECT v.id FROM manufacturing_bom_versions v WHERE v.tenant_id=$1 AND v.product_item_version_id=e.item_version_id AND v.status='PUBLISHED' AND v.effective_at<=$3 ORDER BY v.effective_at DESC,v.version DESC LIMIT 1)b ON true
+          SELECT l.component_item_version_id,e.required_at,(e.quantity/b.output_quantity*l.quantity*(1+l.scrap_basis_points::numeric/10000))::numeric(24,6),e.path||l.component_item_version_id,e.depth+1
+          FROM exploded e JOIN LATERAL(SELECT v.id,v.output_quantity FROM manufacturing_bom_versions v WHERE v.tenant_id=$1 AND v.product_item_version_id=e.item_version_id AND v.status='PUBLISHED' AND v.effective_at<=$3 ORDER BY v.effective_at DESC,v.version DESC LIMIT 1)b ON true
           JOIN manufacturing_bom_lines l ON l.bom_version_id=b.id AND l.tenant_id=$1 WHERE e.depth<20 AND NOT l.component_item_version_id=ANY(e.path)
         ), gross AS (
           SELECT item_version_id,required_at,sum(quantity)::numeric(24,6) gross_demand FROM exploded GROUP BY item_version_id,required_at
@@ -229,7 +233,7 @@ export class PostgresMrpRepository {
         )
         INSERT INTO mrp_item_calculations(tenant_id,mrp_run_id,item_version_id,required_at,gross_demand,on_hand,scheduled_receipts,safety_stock,net_requirement,planned_quantity,make_or_buy,policy_id,trace,canonical_hash)
         SELECT $1,$2,item_version_id,required_at,gross_demand,on_hand,scheduled_receipts,safety_stock,net_requirement,planned_quantity,make_or_buy,policy_id,
-          jsonb_build_object('formula','max(0,cumulativeGross+safetyStock-onHand-scheduledReceipts-priorPlan)','cumulativeGross',cumulative_gross,'cumulativeScheduledReceipts',cumulative_receipts,'minimumOrderQuantity',minimum_order_quantity,'orderMultiple',order_multiple,'leadTimeDays',lead_time_days,'freezeWindowDays',freeze_window_days),
+          jsonb_build_object('bomFormulaVersion','KT-MRP-V1.1-BOM-OUTPUT','formula','max(0,cumulativeGross+safetyStock-onHand-scheduledReceipts-priorPlan)','cumulativeGross',cumulative_gross,'cumulativeScheduledReceipts',cumulative_receipts,'minimumOrderQuantity',minimum_order_quantity,'orderMultiple',order_multiple,'leadTimeDays',lead_time_days,'freezeWindowDays',freeze_window_days),
           encode(sha256(convert_to(concat_ws('|',$2::text,item_version_id::text,required_at::text,gross_demand::text,on_hand::text,scheduled_receipts::text,safety_stock::text,net_requirement::text,planned_quantity::text,make_or_buy),'UTF8')),'hex')
         FROM bucketed RETURNING id`,
         [context.actor.companyId, run.id, input.asOf],
