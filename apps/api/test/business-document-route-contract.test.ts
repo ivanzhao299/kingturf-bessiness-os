@@ -1258,6 +1258,17 @@ describe('business-document route-specific old parser and priority edges', () =>
     ).toBe(200);
     expect(f.calls.activityLog).toHaveBeenCalledWith(actor, {});
   });
+  it('reference data fails closed for narrow manage scopes', async () => {
+    const row = rowFor('reference'),
+      f = fixture();
+    f.permissions.set('business-document:manage', { fields: null, scopes: ['SELF'] });
+    errorBody(
+      await f.app.dispatch(f.request(row)),
+      403,
+      'Business document reference data requires company or group scope',
+    );
+    expect(f.calls.referenceData).not.toHaveBeenCalled();
+  });
   it('detail applies read field allowlists to nested versions, translations, review events, and dispatches', async () => {
     const row = rowFor('detail'),
       f = fixture();

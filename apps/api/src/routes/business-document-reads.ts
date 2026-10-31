@@ -189,6 +189,11 @@ export function businessDocumentReferenceReadRoutes(
       match: (pathname) =>
         pathname === '/api/v1/business-documents/reference-data' ? { params: [] } : null,
       validate: (): ValidatedReferenceData => {
+        if (!context.grant.scopes.some((scope) => scope === 'COMPANY' || scope === 'GROUP'))
+          throw new DomainError(
+            'forbidden',
+            'Business document reference data requires company or group scope',
+          );
         const repository = context.repository();
         const method = repository.referenceData;
         const args: Parameters<Repository['referenceData']> = [
