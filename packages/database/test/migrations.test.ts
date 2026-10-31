@@ -24,7 +24,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0071_inventory_stock_resource_guards.sql');
+    expect(ordered.at(-1)).toBe('0072_production_return_guards.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
@@ -779,6 +779,23 @@ describe('identity and authorization migration', () => {
       'inventory_movements_sequence_unique',
     ])
       expect(sql).toContain(invariant);
+  });
+  it('adds production return cumulative guards without rewriting history', async () => {
+    const sql = await readFile(
+      join(process.cwd(), 'migrations/0072_production_return_guards.sql'),
+      'utf8',
+    );
+    expect(sql).toContain('existing production return exceeds issue; reconcile before migration');
+    expect(sql).toContain(
+      'existing production return movement has no material transaction; reconcile before migration',
+    );
+    expect(sql).toContain('production_material_guards');
+    expect(sql).toContain('production return exceeds cumulative issue for material resource');
+    expect(sql).toContain('production material movement requires a material transaction');
+    expect(sql).toContain('LOCK TABLE inventory_movements, production_material_transactions');
+    expect(sql).not.toMatch(
+      /UPDATE\s+production_material_transactions|DELETE\s+FROM\s+production_material_transactions/iu,
+    );
   });
   it('adds immutable explainable MRP calculations and approval ledgers', async () => {
     const sql = await readFile(

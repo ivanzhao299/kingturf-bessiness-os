@@ -38,13 +38,15 @@ describe.each([
     let admin: Database,
       db: Database,
       production: PostgresProductionRepository,
-      costs: PostgresProductionCostRepository;
+      costs: PostgresProductionCostRepository,
+      scopedConnection: string;
 
     beforeAll(async () => {
       admin = new Database(connectionString);
       await admin.query(`CREATE SCHEMA ${schema}`);
       const scoped = new URL(connectionString);
       scoped.searchParams.set('options', `-csearch_path=${schema}`);
+      scopedConnection = scoped.toString();
       db = new Database(scoped.toString());
       await migrate(db);
       await db.query(
@@ -647,6 +649,287 @@ describe.each([
           )
         ).rows,
       ).toEqual([{ n: 0 }]);
+    });
+
+    it('R1 bounds cumulative returns, preserves idempotency, and rejects direct orphan movements', async () => {
+      const order = await production.create(
+        {
+          orderNumber: `R1-WO-${outputQuantity}`,
+          itemVersionId: finishedVersion,
+          routingVersionId: routingVersion,
+          plannedQuantity: '10',
+          plannedStartAt: '2026-08-16',
+          plannedDueAt: '2026-08-20',
+          sourceReference: `R1-SOURCE-${outputQuantity}`,
+        },
+        context,
+        randomUUID(),
+      );
+      if (typeof order.id !== 'string') throw new Error('R1 order missing');
+      for (const state of ['RELEASED', 'IN_PROGRESS'] as const)
+        await production.transition(
+          order.id,
+          state,
+          { reason: 'R1 setup', evidence: {}, idempotencyKey: randomUUID() },
+          context,
+          randomUUID(),
+        );
+      await db.query(
+        `INSERT INTO inventory_movements(tenant_id,movement_type,item_version_id,lot_id,location_id,quantity_delta,occurred_at,source_type,source_id,canonical_hash,actor_id,correlation_id)
+         VALUES($1,'ADJUSTMENT_IN',$2,$3,$4,100,now(),'R1-TEST',$5,repeat('e',64),$6,$7)`,
+        [company, materialVersion, materialLot, location, randomUUID(), employee, randomUUID()],
+      );
+      const material = (quantity: string, type: 'ISSUE' | 'RETURN', key: string) => ({
+        transactionType: type,
+        itemVersionId: materialVersion,
+        lotId: materialLot,
+        locationId: location,
+        quantity,
+        reason: 'R1 test',
+        occurredAt: '2026-10-31T00:00:00Z',
+        idempotencyKey: key,
+      });
+      await production.transactMaterial(
+        order.id,
+        material('10', 'ISSUE', `R1-ISSUE-${outputQuantity}`),
+        context,
+        randomUUID(),
+      );
+      await expect(
+        production.transactMaterial(
+          order.id,
+          material('11', 'RETURN', `R1-OVER-${outputQuantity}`),
+          context,
+          randomUUID(),
+        ),
+      ).rejects.toMatchObject({ code: 'P0001', message: /cumulative issue/u });
+      await production.transactMaterial(
+        order.id,
+        material('3', 'ISSUE', `R1-ISSUE-2-${outputQuantity}`),
+        context,
+        randomUUID(),
+      );
+      await production.transactMaterial(
+        order.id,
+        material('4', 'RETURN', `R1-RETURN-4-${outputQuantity}`),
+        context,
+        randomUUID(),
+      );
+      const finalReturn = material('9', 'RETURN', `R1-RETURN-9-${outputQuantity}`);
+      await production.transactMaterial(order.id, finalReturn, context, randomUUID());
+      await expect(
+        production.transactMaterial(order.id, finalReturn, context, randomUUID()),
+      ).rejects.toMatchObject({ code: '23505' });
+      expect(
+        (
+          await db.query<{ issued: string; returned: string; net: string }>(
+            `SELECT
+              coalesce(sum(quantity) FILTER (WHERE transaction_type='ISSUE'),0)::text issued,
+              coalesce(sum(quantity) FILTER (WHERE transaction_type='RETURN'),0)::text returned,
+              (coalesce(sum(quantity) FILTER (WHERE transaction_type='ISSUE'),0)-coalesce(sum(quantity) FILTER (WHERE transaction_type='RETURN'),0))::text net
+             FROM production_material_transactions
+             WHERE tenant_id=$1 AND production_order_id=$2 AND item_version_id=$3 AND lot_id=$4 AND location_id=$5`,
+            [company, order.id, materialVersion, materialLot, location],
+          )
+        ).rows,
+      ).toEqual([{ issued: '13.000000', returned: '13.000000', net: '0.000000' }]);
+
+      const concurrentOrder = await production.create(
+        {
+          orderNumber: `R1-CONCURRENT-${outputQuantity}`,
+          itemVersionId: finishedVersion,
+          routingVersionId: routingVersion,
+          plannedQuantity: '1',
+          plannedStartAt: '2026-08-16',
+          plannedDueAt: '2026-08-20',
+          sourceReference: `R1-CONCURRENT-SOURCE-${outputQuantity}`,
+        },
+        context,
+        randomUUID(),
+      );
+      for (const state of ['RELEASED', 'IN_PROGRESS'] as const)
+        await production.transition(
+          concurrentOrder.id as string,
+          state,
+          { reason: 'R1 concurrency setup', evidence: {}, idempotencyKey: randomUUID() },
+          context,
+          randomUUID(),
+        );
+      await production.transactMaterial(
+        concurrentOrder.id as string,
+        material('10', 'ISSUE', `R1-CONCURRENT-ISSUE-${outputQuantity}`),
+        context,
+        randomUUID(),
+      );
+      const left = new Database(scopedConnection);
+      const right = new Database(scopedConnection);
+      try {
+        const results = await Promise.allSettled([
+          new PostgresProductionRepository(left).transactMaterial(
+            concurrentOrder.id as string,
+            material('7', 'RETURN', `R1-CONCURRENT-RETURN-A-${outputQuantity}`),
+            context,
+            randomUUID(),
+          ),
+          new PostgresProductionRepository(right).transactMaterial(
+            concurrentOrder.id as string,
+            material('7', 'RETURN', `R1-CONCURRENT-RETURN-B-${outputQuantity}`),
+            context,
+            randomUUID(),
+          ),
+        ]);
+        expect(results.filter((item) => item.status === 'fulfilled')).toHaveLength(1);
+        expect(results.filter((item) => item.status === 'rejected')).toHaveLength(1);
+      } finally {
+        await left.close();
+        await right.close();
+      }
+      expect(
+        (
+          await db.query<{ issued: string; returned: string; net: string }>(
+            `SELECT
+              coalesce(sum(quantity) FILTER (WHERE transaction_type='ISSUE'),0)::text issued,
+              coalesce(sum(quantity) FILTER (WHERE transaction_type='RETURN'),0)::text returned,
+              (coalesce(sum(quantity) FILTER (WHERE transaction_type='ISSUE'),0)-coalesce(sum(quantity) FILTER (WHERE transaction_type='RETURN'),0))::text net
+             FROM production_material_transactions
+             WHERE tenant_id=$1 AND production_order_id=$2 AND item_version_id=$3 AND lot_id=$4 AND location_id=$5`,
+            [company, concurrentOrder.id, materialVersion, materialLot, location],
+          )
+        ).rows,
+      ).toEqual([{ issued: '10.000000', returned: '7.000000', net: '3.000000' }]);
+
+      for (const isolation of ['REPEATABLE READ', 'SERIALIZABLE'] as const) {
+        const isolatedOrder = await production.create(
+          {
+            orderNumber: `R1-${isolation.replaceAll(' ', '-')}-${outputQuantity}`,
+            itemVersionId: finishedVersion,
+            routingVersionId: routingVersion,
+            plannedQuantity: '1',
+            plannedStartAt: '2026-08-16',
+            plannedDueAt: '2026-08-20',
+            sourceReference: `R1-${isolation}-SOURCE-${outputQuantity}`,
+          },
+          context,
+          randomUUID(),
+        );
+        for (const state of ['RELEASED', 'IN_PROGRESS'] as const)
+          await production.transition(
+            isolatedOrder.id as string,
+            state,
+            { reason: 'R1 isolation setup', evidence: {}, idempotencyKey: randomUUID() },
+            context,
+            randomUUID(),
+          );
+        await production.transactMaterial(
+          isolatedOrder.id as string,
+          material('10', 'ISSUE', `R1-${isolation}-ISSUE-${outputQuantity}`),
+          context,
+          randomUUID(),
+        );
+        let ready = 0;
+        let releaseBarrier!: () => void;
+        const barrier = new Promise<void>((resolve) => {
+          releaseBarrier = resolve;
+        });
+        const attempt = async (connection: Database, key: string) =>
+          connection.transaction(async (tx) => {
+            await tx.query(`SET TRANSACTION ISOLATION LEVEL ${isolation}`);
+            await tx.query('SELECT 1');
+            ready += 1;
+            if (ready === 2) releaseBarrier();
+            await barrier;
+            const nested = {
+              query: tx.query.bind(tx),
+              transaction: <T>(work: (client: typeof tx) => Promise<T>) => work(tx),
+            };
+            return new PostgresProductionRepository(nested).transactMaterial(
+              isolatedOrder.id as string,
+              material('7', 'RETURN', key),
+              context,
+              randomUUID(),
+            );
+          });
+        const left = new Database(scopedConnection);
+        const right = new Database(scopedConnection);
+        try {
+          const results = await Promise.allSettled([
+            attempt(left, `R1-${isolation}-A-${outputQuantity}`),
+            attempt(right, `R1-${isolation}-B-${outputQuantity}`),
+          ]);
+          expect(results.filter((item) => item.status === 'fulfilled')).toHaveLength(1);
+          expect(results.filter((item) => item.status === 'rejected')).toHaveLength(1);
+          const rejected = results.find((item) => item.status === 'rejected');
+          if (rejected?.status === 'rejected')
+            expect((rejected.reason as { code?: string }).code).toMatch(/^(40001|P0001|23505)$/u);
+        } finally {
+          await left.close();
+          await right.close();
+        }
+        expect(
+          (
+            await db.query<{ issued: string; returned: string; net: string }>(
+              `SELECT
+                coalesce(sum(quantity) FILTER (WHERE transaction_type='ISSUE'),0)::text issued,
+                coalesce(sum(quantity) FILTER (WHERE transaction_type='RETURN'),0)::text returned,
+                (coalesce(sum(quantity) FILTER (WHERE transaction_type='ISSUE'),0)-coalesce(sum(quantity) FILTER (WHERE transaction_type='RETURN'),0))::text net
+               FROM production_material_transactions
+               WHERE tenant_id=$1 AND production_order_id=$2 AND item_version_id=$3 AND lot_id=$4 AND location_id=$5`,
+              [company, isolatedOrder.id, materialVersion, materialLot, location],
+            )
+          ).rows,
+        ).toEqual([{ issued: '10.000000', returned: '7.000000', net: '3.000000' }]);
+      }
+
+      const otherLot = randomUUID(),
+        otherLocation = randomUUID();
+      await db.query(
+        "INSERT INTO inventory_locations(id,tenant_id,code,name,location_type) VALUES($1,$2,$3,'R1 Other','STORAGE')",
+        [otherLocation, company, `R1-LOC-${outputQuantity}`],
+      );
+      await db.query(
+        "INSERT INTO inventory_lots(id,tenant_id,lot_number,item_version_id,quality_status) VALUES($1,$2,$3,$4,'RELEASED')",
+        [otherLot, company, `R1-LOT-${outputQuantity}`, materialVersion],
+      );
+      await expect(
+        production.transactMaterial(
+          order.id,
+          { ...material('1', 'RETURN', `R1-OTHER-${outputQuantity}`), lotId: otherLot },
+          context,
+          randomUUID(),
+        ),
+      ).rejects.toMatchObject({ code: 'P0001', message: /cumulative issue/u });
+
+      const draft = await production.create(
+        {
+          orderNumber: `R1-DRAFT-${outputQuantity}`,
+          itemVersionId: finishedVersion,
+          routingVersionId: routingVersion,
+          plannedQuantity: '1',
+          plannedStartAt: '2026-08-16',
+          plannedDueAt: '2026-08-20',
+          sourceReference: `R1-DRAFT-SOURCE-${outputQuantity}`,
+        },
+        context,
+        randomUUID(),
+      );
+      await expect(
+        production.transactMaterial(
+          draft.id as string,
+          material('1', 'RETURN', `R1-DRAFT-RETURN-${outputQuantity}`),
+          context,
+          randomUUID(),
+        ),
+      ).rejects.toMatchObject({ code: 'P0001', message: /released or active/u });
+
+      await expect(
+        db.transaction(async (tx) =>
+          tx.query(
+            `INSERT INTO inventory_movements(tenant_id,movement_type,item_version_id,lot_id,location_id,quantity_delta,occurred_at,source_type,source_id,canonical_hash,actor_id,correlation_id)
+             VALUES($1,'RETURN',$2,$3,$4,1,now(),'PRODUCTION_ORDER',$5,repeat('f',64),$6,$7)`,
+            [company, materialVersion, materialLot, location, order.id, employee, randomUUID()],
+          ),
+        ),
+      ).rejects.toThrow(/requires a material transaction/u);
     });
   },
 );
