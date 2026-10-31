@@ -698,6 +698,14 @@ describe.each([
       await expect(
         production.transactMaterial(
           order.id,
+          { ...material('9', 'ISSUE', `R1-ISSUE-${outputQuantity}`) },
+          context,
+          randomUUID(),
+        ),
+      ).rejects.toMatchObject({ code: '23505' });
+      await expect(
+        production.transactMaterial(
+          order.id,
           material('11', 'RETURN', `R1-OVER-${outputQuantity}`),
           context,
           randomUUID(),
@@ -881,7 +889,9 @@ describe.each([
       }
 
       const otherLot = randomUUID(),
-        otherLocation = randomUUID();
+        otherLocation = randomUUID(),
+        otherMaterialVersion = randomUUID(),
+        otherMaterialLot = randomUUID();
       await db.query(
         "INSERT INTO inventory_locations(id,tenant_id,code,name,location_type) VALUES($1,$2,$3,'R1 Other','STORAGE')",
         [otherLocation, company, `R1-LOC-${outputQuantity}`],
@@ -893,11 +903,104 @@ describe.each([
       await expect(
         production.transactMaterial(
           order.id,
-          { ...material('1', 'RETURN', `R1-OTHER-${outputQuantity}`), lotId: otherLot },
+          {
+            ...material('1', 'RETURN', `R1-OTHER-LOCATION-${outputQuantity}`),
+            locationId: otherLocation,
+          },
           context,
           randomUUID(),
         ),
       ).rejects.toMatchObject({ code: 'P0001', message: /cumulative issue/u });
+      await expect(
+        production.transactMaterial(
+          order.id,
+          { ...material('1', 'RETURN', `R1-OTHER-LOT-${outputQuantity}`), lotId: otherLot },
+          context,
+          randomUUID(),
+        ),
+      ).rejects.toMatchObject({ code: 'P0001', message: /cumulative issue/u });
+
+      await db.query(
+        "INSERT INTO manufacturing_item_versions(id,tenant_id,item_id,version,status,specification,effective_at,canonical_hash,published_at,created_by) VALUES($1,$2,$3,2,'PUBLISHED','{}',now(),repeat('f',64),now(),$4)",
+        [otherMaterialVersion, company, materialItem, employee],
+      );
+      await db.query(
+        "INSERT INTO inventory_lots(id,tenant_id,lot_number,item_version_id,quality_status) VALUES($1,$2,$3,$4,'RELEASED')",
+        [otherMaterialLot, company, `R1-OTHER-MATERIAL-${outputQuantity}`, otherMaterialVersion],
+      );
+      await expect(
+        production.transactMaterial(
+          order.id,
+          {
+            ...material('1', 'RETURN', `R1-OTHER-MATERIAL-${outputQuantity}`),
+            itemVersionId: otherMaterialVersion,
+            lotId: otherMaterialLot,
+          },
+          context,
+          randomUUID(),
+        ),
+      ).rejects.toMatchObject({ code: 'P0001', message: /cumulative issue/u });
+
+      const otherOrder = await production.create(
+        {
+          orderNumber: `R1-OTHER-ORDER-${outputQuantity}`,
+          itemVersionId: finishedVersion,
+          routingVersionId: routingVersion,
+          plannedQuantity: '1',
+          plannedStartAt: '2026-08-16',
+          plannedDueAt: '2026-08-20',
+          sourceReference: `R1-OTHER-ORDER-SOURCE-${outputQuantity}`,
+        },
+        context,
+        randomUUID(),
+      );
+      for (const state of ['RELEASED', 'IN_PROGRESS'] as const)
+        await production.transition(
+          otherOrder.id as string,
+          state,
+          { reason: 'R1 other order setup', evidence: {}, idempotencyKey: randomUUID() },
+          context,
+          randomUUID(),
+        );
+      await expect(
+        production.transactMaterial(
+          otherOrder.id as string,
+          material('1', 'RETURN', `R1-OTHER-ORDER-${outputQuantity}`),
+          context,
+          randomUUID(),
+        ),
+      ).rejects.toMatchObject({ code: 'P0001', message: /cumulative issue/u });
+
+      await expect(
+        production.transactMaterial(
+          order.id,
+          material('0', 'RETURN', `R1-ZERO-${outputQuantity}`),
+          context,
+          randomUUID(),
+        ),
+      ).rejects.toThrow();
+      await expect(
+        production.transactMaterial(
+          order.id,
+          material('-1', 'RETURN', `R1-NEGATIVE-${outputQuantity}`),
+          context,
+          randomUUID(),
+        ),
+      ).rejects.toThrow();
+
+      const foreignContext = {
+        actor: { companyId: randomUUID(), employeeId: randomUUID() },
+        scopes: ['COMPANY'] as const,
+        anchors: [],
+      };
+      await expect(
+        production.transactMaterial(
+          order.id,
+          material('1', 'RETURN', `R1-FOREIGN-TENANT-${outputQuantity}`),
+          foreignContext,
+          randomUUID(),
+        ),
+      ).rejects.toThrow();
 
       const draft = await production.create(
         {
