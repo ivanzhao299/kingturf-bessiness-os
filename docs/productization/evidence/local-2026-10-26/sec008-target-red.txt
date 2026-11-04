@@ -1,0 +1,55 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ❯ test/dashboard-postgres.integration.test.ts (6 tests | 1 failed | 5 skipped) 3397ms
+   ↓ dashboard repository real PostgreSQL contracts > aggregates ten fixed metrics and source-bound drilldowns from the real commercial graph
+   ↓ dashboard repository real PostgreSQL contracts > applies real owner and tenant scope across every metric and drilldown
+   ↓ dashboard repository real PostgreSQL contracts > preserves the existing currency and from/as-of asymmetries without rewriting SQL
+   ↓ dashboard repository real PostgreSQL contracts > uses inclusive starts, exclusive ends and allocation posting rather than bank receipt dates
+   ↓ dashboard repository real PostgreSQL contracts > projects latest task closure and pinned accrual without performing new writes
+   × dashboard repository real PostgreSQL contracts > SEC008: filters every aggregate and drilldown through valid explicit organization anchors 3397ms
+     → column osr.tenant_id does not exist
+ ❯ test/harness-final-decision-postgres.integration.test.ts (4 tests | 1 failed | 3 skipped) 2675ms
+   ↓ BOUND003: real API forwards invalid date but PG rejects insert/update without storing it
+   ↓ BOUND004: UUID case aliases partly commit once and preserve raw-case batch replay identity
+   × SEC008: real complaint scope queries validate organization anchors without changing broad grants 2675ms
+     → column osr.tenant_id does not exist
+   ↓ SEC007: active actor in inactive organization differs at real notification repository predicate layer
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/dashboard-postgres.integration.test.ts > dashboard repository real PostgreSQL contracts > SEC008: filters every aggregate and drilldown through valid explicit organization anchors
+error: column osr.tenant_id does not exist
+ ❯ ../../node_modules/.pnpm/pg-pool@3.14.0_pg@8.22.0/node_modules/pg-pool/index.js:45:11
+ ❯ PostgresDashboardRepository.get src/dashboard-repositories.ts:22:7
+
+ ❯ test/dashboard-postgres.integration.test.ts:224:19
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/harness-final-decision-postgres.integration.test.ts > SEC008: real complaint scope queries validate organization anchors without changing broad grants
+error: column osr.tenant_id does not exist
+ ❯ ../../node_modules/.pnpm/pg-pool@3.14.0_pg@8.22.0/node_modules/pg-pool/index.js:45:11
+ ❯ PostgresComplaintRepository.list src/complaint-repositories.ts:183:7
+    181|     values.push(limit + 1);
+    182|     const rows = (
+    183|       await this.db.query<{ item: JsonObject }>(
+       |       ^
+    184|         `SELECT to_jsonb(c)||jsonb_build_object(
+    185|           'state',s.state,'version',s.sequence,'assignedTo',s.assigned…
+ ❯ expectVisible test/harness-final-decision-postgres.integration.test.ts:250:15
+ ❯ test/harness-final-decision-postgres.integration.test.ts:257:7
+ ❯ withOwned test/harness-final-decision-postgres.integration.test.ts:22:5
+ ❯ test/harness-final-decision-postgres.integration.test.ts:239:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  2 failed | 8 skipped (10)
+   Start at  11:27:58
+   Duration  7.45s (transform 681ms, setup 0ms, collect 1.08s, tests 6.07s, environment 0ms, prepare 88ms)
+
+undefined
+/home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run test/harness-final-decision-postgres.integration.test.ts test/dashboard-postgres.integration.test.ts -t SEC008

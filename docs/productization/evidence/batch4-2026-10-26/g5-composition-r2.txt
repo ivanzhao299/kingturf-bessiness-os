@@ -1,0 +1,117 @@
+
+> @kingturf/api@0.0.0 typecheck /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+> tsc --noEmit
+
+[白名单豁免] [G1] apps/api/src/app.ts（275 行） 【白名单豁免】TD-API-001 buildApp 巨函数，到期：批次 2
+[白名单豁免] [G2] apps/api/src/app.ts（格式缩进 9 层） 【白名单豁免】随对应批次拆分消解
+[白名单豁免] [G2] apps/api/src/business-document-repositories.ts（格式缩进 7 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G2] apps/api/src/collection-repositories.ts（格式缩进 8 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G1] apps/api/src/commercial-repositories.ts（2037 行） 【白名单豁免】最大仓储域，到期：批次 2（分域 handler 化时拆分）
+[白名单豁免] [G2] apps/api/src/commercial-repositories.ts（格式缩进 7 层） 【白名单豁免】随对应批次拆分消解
+[白名单豁免] [G2] apps/api/src/commission-repositories.ts（格式缩进 6 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G1] apps/api/src/complaint-repositories.ts（1340 行） 【白名单豁免】单域仓储超限，到期：批次 2
+[白名单豁免] [G2] apps/api/src/complaint-repositories.ts（格式缩进 6 层） 【白名单豁免】随对应批次拆分消解
+[白名单豁免] [G2] apps/api/src/contract-document-repositories.ts（格式缩进 6 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G1] apps/api/src/crm-repositories.ts（873 行） 【白名单豁免】单域仓储超限，到期：批次 2
+[白名单豁免] [G2] apps/api/src/crm-repositories.ts（格式缩进 6 层） 【白名单豁免】随对应批次拆分消解
+[白名单豁免] [G2] apps/api/src/manufacturing-repositories.ts（格式缩进 7 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G2] apps/api/src/mrp-repositories.ts（格式缩进 6 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G2] apps/api/src/order-360-repositories.ts（格式缩进 6 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G1] apps/api/src/platform-repositories.ts（1189 行） 【白名单豁免】单域仓储超限，到期：批次 2
+[白名单豁免] [G2] apps/api/src/platform-repositories.ts（格式缩进 6 层） 【白名单豁免】随对应批次拆分消解
+[白名单豁免] [G2] apps/api/src/procurement-repositories.ts（格式缩进 7 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G2] apps/api/src/production-cost-repositories.ts（格式缩进 6 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G2] apps/api/src/production-repositories.ts（格式缩进 6 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G1] apps/api/src/qtc-repositories.ts（931 行） 【白名单豁免】单域仓储超限，到期：批次 2
+[白名单豁免] [G2] apps/api/src/qtc-repositories.ts（格式缩进 8 层） 【白名单豁免】随对应批次拆分消解
+[白名单豁免] [G2] apps/api/src/quality-repositories.ts（格式缩进 6 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G1] apps/api/src/repositories.ts（869 行） 【白名单豁免】组织员工主数据仓储，到期：批次 2
+[白名单豁免] [G2] apps/api/src/repositories.ts（格式缩进 6 层） 【白名单豁免】随对应批次拆分消解
+[白名单豁免] [G2] apps/api/src/risk-repositories.ts（格式缩进 8 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G2] apps/api/src/shipment-repositories.ts（格式缩进 6 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G1] packages/domain/src/index.ts（1032 行） 【白名单豁免】共享域包单文件，到期：批次 4 后评估拆分
+[白名单豁免] [G2] packages/domain/src/index.ts（格式缩进 6 层） 【白名单豁免】随对应批次拆分消解
+structure-gate 通过：强制违规 0；白名单豁免 29 条（随批次移除）；G5精确限期豁免 0 条
+service-boundary: 191 files, 31 repository ports, 238 route templates, 0 violations
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ✓ test/auth-http-postgres.integration.test.ts (20 tests) 5538ms
+   ✓ real HTTP password security across two API instances and PostgreSQL > changes the password, atomically audits and rejects every old device through real HTTP on both instances  497ms
+   ✓ real HTTP password security across two API instances and PostgreSQL > rolls back password and all revocations when the success audit fails  449ms
+   ✓ real HTTP password security across two API instances and PostgreSQL > blocks stale login after a concurrent admin reset and revokes admin self-reset sessions  416ms
+ ✓ test/authorization-http-postgres.integration.test.ts (19 tests) 3328ms
+ ❯ test/dispatch-source-preservation.test.ts (27 tests | 1 failed) 419ms
+   ✓ dispatch group inverse source preservation against fixed f3 > manufacturing keeps every original predicate, parser, call, continuation and return 35ms
+   ✓ dispatch group inverse source preservation against fixed f3 > procurement keeps every original predicate, parser, call, continuation and return 26ms
+   ✓ dispatch group inverse source preservation against fixed f3 > mrp keeps every original predicate, parser, call, continuation and return 17ms
+   ✓ dispatch group inverse source preservation against fixed f3 > production keeps every original predicate, parser, call, continuation and return 15ms
+   ✓ dispatch group inverse source preservation against fixed f3 > costs keeps every original predicate, parser, call, continuation and return 15ms
+   ✓ dispatch group inverse source preservation against fixed f3 > complaints keeps every original predicate, parser, call, continuation and return 21ms
+   ✓ dispatch group inverse source preservation against fixed f3 > collections keeps every original predicate, parser, call, continuation and return 13ms
+   ✓ dispatch group inverse source preservation against fixed f3 > quality keeps every original predicate, parser, call, continuation and return 31ms
+   ✓ dispatch group inverse source preservation against fixed f3 > risk keeps every original predicate, parser, call, continuation and return 18ms
+   ✓ dispatch group inverse source preservation against fixed f3 > commission keeps every original predicate, parser, call, continuation and return 19ms
+   ✓ dispatch group inverse source preservation against fixed f3 > dashboard keeps every original predicate, parser, call, continuation and return 6ms
+   ✓ dispatch group inverse source preservation against fixed f3 > order keeps every original predicate, parser, call, continuation and return 7ms
+   ✓ dispatch group inverse source preservation against fixed f3 > credentials keeps every original predicate, parser, call, continuation and return 5ms
+   ✓ dispatch group inverse source preservation against fixed f3 > qtcreads keeps every original predicate, parser, call, continuation and return 6ms
+   ✓ dispatch group inverse source preservation against fixed f3 > commercial keeps every original predicate, parser, call, continuation and return 14ms
+   ✓ dispatch group inverse source preservation against fixed f3 > crm keeps every original predicate, parser, call, continuation and return 14ms
+   ✓ dispatch group inverse source preservation against fixed f3 > access keeps every original predicate, parser, call, continuation and return 8ms
+   ✓ dispatch group inverse source preservation against fixed f3 > catalog keeps every original predicate, parser, call, continuation and return 29ms
+   ✓ dispatch group inverse source preservation against fixed f3 > documents keeps every original predicate, parser, call, continuation and return 15ms
+   ✓ dispatch group inverse source preservation against fixed f3 > qtcpost keeps every original predicate, parser, call, continuation and return 13ms
+   ✓ dispatch group inverse source preservation against fixed f3 > shipments keeps every original predicate, parser, call, continuation and return 31ms
+   ✓ dispatch group inverse source preservation against fixed f3 > contracts keeps every original predicate, parser, call, continuation and return 20ms
+   ✓ dispatch group inverse source preservation against fixed f3 > organizations keeps every original predicate, parser, call, continuation and return 10ms
+   ✓ dispatch group inverse source preservation against fixed f3 > employees keeps every original predicate, parser, call, continuation and return 9ms
+   ✓ proof normalization preserves value grouping, type hierarchy and array holes 3ms
+   ✓ composition covers every frozen business statement exactly once in original order 7ms
+   × root authentication, errors, lifecycle, completion and acceptance modes inverse-expand to fixed f3 10ms
+     → expected { …(3) } to be null
+ ✓ test/app.test.ts (51 tests) 123ms
+ ✓ test/app-values-preservation.test.ts (2 tests) 82ms
+ ✓ test/auth-route-contract.test.ts (5 tests) 116ms
+ ✓ test/app-batch4-preservation.test.ts (311 tests) 69ms
+ ✓ test/qtc-root-capture-route-contract.test.ts (335 tests) 27ms
+ ✓ test/session-proof.test.ts (11 tests) 6ms
+ ✓ test/dispatch-attempt-root.test.ts (6 tests) 10ms
+ ✓ test/dispatch-no-match-timing.test.ts (1 test) 5ms
+ ✓ test/dispatch-attempt.test.ts (4 tests) 3ms
+ ✓ test/authorization-routes.test.ts (2 tests) 4ms
+
+ Test Files  1 failed | 12 passed (13)
+      Tests  1 failed | 793 passed (794)
+   Start at  18:49:42
+   Duration  15.06s (transform 733ms, setup 0ms, collect 3.28s, tests 9.73s, environment 2ms, prepare 568ms)
+
+undefined
+/home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run test/dispatch-source-preservation.test.ts test/app-values-preservation.test.ts test/app-batch4-preservation.test.ts test/dispatch-no-match-timing.test.ts test/dispatch-attempt test/qtc-root-capture-route-contract.test.ts test/app.test.ts test/session test/auth
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/dispatch-source-preservation.test.ts > root authentication, errors, lifecycle, completion and acceptance modes inverse-expand to fixed f3
+AssertionError: expected { …(3) } to be null
+
+- Expected: 
+null
+
++ Received: 
+{
+  "actualLength": 10,
+  "expectedLength": 9,
+  "path": "/1/0/1/0/1/6/1/1/1/0/1/4/1/2/1/0/1/1/1",
+}
+
+ ❯ test/dispatch-source-preservation.test.ts:285:76
+    283|  if(pending.accept==='truthy'){if(response)return response;}else if(re…
+    284|  }`;
+    285|   expect(firstDifference(tokens(loop.getText(current)), tokens(scaffol…
+       |                                                                            ^
+    286|   const oldTry = findAll(original, ts.isTryStatement)[0];
+    287|   if (!oldTry || !ts.isTryStatement(oldTry)) throw new Error('Original…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+

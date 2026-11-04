@@ -1,0 +1,21 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ✓ test/quality-postgres.integration.test.ts (6 tests) 4596ms
+   ✓ quality repository and immutable ledgers on real PostgreSQL > pins published plan, typed results and inclusive boundary 10 through release  826ms
+   ✓ quality repository and immutable ledgers on real PostgreSQL > pins published plan, typed results and inclusive boundary 12 through release  744ms
+   ✓ quality repository and immutable ledgers on real PostgreSQL > rejects premature completion, wrong types, wrong numeric verdicts and duplicate observations without evidence writes  731ms
+   ✓ quality repository and immutable ledgers on real PostgreSQL > rejects release of a failed inspection but permits inspected rejection  794ms
+   ✓ quality repository and immutable ledgers on real PostgreSQL > keeps GROUP tenant-bound, denies narrow scopes, and refuses unpublished or foreign plan use  779ms
+   ✓ quality repository and immutable ledgers on real PostgreSQL > rolls back the first disposition ledger insert when the later inspection key conflicts  721ms
+ ✓ test/quality-route-contract.test.ts (1310 tests) 420ms
+ ✓ test/dispatch-source-preservation.test.ts (9 tests) 75ms
+ ✓ test/app-batch4-preservation.test.ts (239 tests) 48ms
+ ✓ test/qtc-root-capture-route-contract.test.ts (335 tests) 39ms
+ ✓ test/dispatch-no-match-timing.test.ts (1 test) 11ms
+
+ Test Files  6 passed (6)
+      Tests  1900 passed (1900)
+   Start at  18:12:21
+   Duration  8.60s (transform 590ms, setup 0ms, collect 2.43s, tests 5.19s, environment 1ms, prepare 253ms)
+

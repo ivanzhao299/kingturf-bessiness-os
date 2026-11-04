@@ -1,0 +1,47 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ✓ test/dashboard-postgres.integration.test.ts (6 tests) 20195ms
+   ✓ dashboard repository real PostgreSQL contracts > aggregates ten fixed metrics and source-bound drilldowns from the real commercial graph  3390ms
+   ✓ dashboard repository real PostgreSQL contracts > applies real owner and tenant scope across every metric and drilldown  3230ms
+   ✓ dashboard repository real PostgreSQL contracts > preserves the existing currency and from/as-of asymmetries without rewriting SQL  3797ms
+   ✓ dashboard repository real PostgreSQL contracts > uses inclusive starts, exclusive ends and allocation posting rather than bank receipt dates  3210ms
+   ✓ dashboard repository real PostgreSQL contracts > projects latest task closure and pinned accrual without performing new writes  3325ms
+   ✓ dashboard repository real PostgreSQL contracts > SEC008: filters every aggregate and drilldown through valid explicit organization anchors  3242ms
+ ❯ test/harness-final-decision-postgres.integration.test.ts (4 tests | 1 failed) 10170ms
+   ✓ BOUND003: real API forwards invalid date but PG rejects insert/update without storing it  2563ms
+   ✓ BOUND004: UUID case aliases partly commit once and preserve raw-case batch replay identity  2529ms
+   × SEC008: real complaint scope queries validate organization anchors without changing broad grants 2593ms
+     → Complaint not found
+   ✓ SEC007: active actor in inactive organization differs at real notification repository predicate layer  2483ms
+ ✓ test/complaint-postgres.integration.test.ts (4 tests) 2978ms
+ ✓ test/scope-sql-complaint.test.ts (5 tests) 14ms
+ ✓ test/scope-sql-dashboard.test.ts (2 tests) 11ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/harness-final-decision-postgres.integration.test.ts > SEC008: real complaint scope queries validate organization anchors without changing broad grants
+Error: Complaint not found
+ ❯ PostgresComplaintRepository.getById src/complaint-repositories.ts:235:21
+    233|       )
+    234|     ).rows[0];
+    235|     if (!row) throw new DomainError('not_found', 'Complaint not found'…
+       |                     ^
+    236|     return row.item;
+    237|   }
+ ❯ expectVisible test/harness-final-decision-postgres.integration.test.ts:258:22
+ ❯ test/harness-final-decision-postgres.integration.test.ts:269:7
+ ❯ withOwned test/harness-final-decision-postgres.integration.test.ts:22:5
+ ❯ test/harness-final-decision-postgres.integration.test.ts:239:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 4 passed (5)
+      Tests  1 failed | 20 passed (21)
+   Start at  11:29:15
+   Duration  35.16s (transform 628ms, setup 0ms, collect 1.03s, tests 33.37s, environment 1ms, prepare 205ms)
+
+undefined
+/home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run test/scope-sql-complaint.test.ts test/scope-sql-dashboard.test.ts test/harness-final-decision-postgres.integration.test.ts test/dashboard-postgres.integration.test.ts test/complaint-postgres.integration.test.ts

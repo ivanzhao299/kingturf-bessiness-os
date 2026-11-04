@@ -1,0 +1,12 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ✓ test/mrp-postgres.integration.test.ts (10 tests | 8 skipped) 5225ms
+   ✓ MRP repository real PostgreSQL contracts > TD-MRP-001: uses output basis for new runs and preserves previously computed quantities  2609ms
+   ✓ MRP repository real PostgreSQL contracts > TD-MRP-001: divides by each level output basis before applying that component scrap  2615ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed | 8 skipped (10)
+   Start at  11:46:58
+   Duration  5.53s (transform 93ms, setup 0ms, collect 122ms, tests 5.23s, environment 0ms, prepare 53ms)
+

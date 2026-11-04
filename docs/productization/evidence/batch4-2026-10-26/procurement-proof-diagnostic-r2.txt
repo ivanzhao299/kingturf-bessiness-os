@@ -1,0 +1,43 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ❯ test/dispatch-source-preservation.test.ts (3 tests | 1 failed) 41ms
+   ✓ dispatch group inverse source preservation against fixed f3 > manufacturing keeps every original predicate, parser, call, continuation and return 17ms
+   × dispatch group inverse source preservation against fixed f3 > procurement keeps every original predicate, parser, call, continuation and return 21ms
+     → expected { …(3) } to be null
+   ✓ proof normalization preserves value grouping, type hierarchy and array holes 2ms
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 2 passed (3)
+   Start at  17:39:28
+   Duration  495ms (transform 27ms, setup 0ms, collect 301ms, tests 41ms, environment 0ms, prepare 41ms)
+
+undefined
+/home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run test/dispatch-source-preservation.test.ts
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/dispatch-source-preservation.test.ts > dispatch group inverse source preservation against fixed f3 > procurement keeps every original predicate, parser, call, continuation and return
+AssertionError: expected { …(3) } to be null
+
+- Expected: 
+null
+
++ Received: 
+{
+  "actualLength": 13,
+  "expectedLength": 14,
+  "path": "/1/0/1/0/1/6/1/1/1/0/1/4/1/1/1/0/1/0/1/1/1/0/1/2/1/2/1/0/1/2/1/2/1/0/1/1/1/1/1/1/1/0/1/0/1",
+}
+
+ ❯ test/dispatch-source-preservation.test.ts:129:11
+    127|             tokens(original.getText(old)),
+    128|           ),
+    129|         ).toBeNull();
+       |           ^
+    130|       },
+    131|     );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+

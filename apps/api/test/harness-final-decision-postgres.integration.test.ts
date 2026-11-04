@@ -1,17 +1,18 @@
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { Database } from '@kingturf/database';
 import type { AuthorizationContext } from '@kingturf/domain';
 import { expect, it } from 'vitest';
 import { buildApp, type ApiDependencies } from '../src/app.js';
 import { PostgresCommercialRepository } from '../src/commercial-repositories.js';
 import { PostgresComplaintRepository } from '../src/complaint-repositories.js';
-import { PostgresDashboardRepository } from '../src/dashboard-repositories.js';
 import { PostgresNotificationRepository } from '../src/notification-repositories.js';
-import { employeeScopedPredicate } from '../src/scope-sql.js';
+import { employeeScopedPredicate, recordScopeSql } from '../src/scope-sql.js';
+import { AuthenticationService, PasswordHasher } from '../src/security.js';
+import { PostgresSecurityStore } from '../src/repositories.js';
 import { ownedPostgres } from './fixtures/owned-postgres.js';
 
-// Characterization only: real guarded PG, no product edits and no authentication claim.
-// API probes inject a fixed synthetic authorization context; no real credentials are created.
+// Historical boundary probes and approved local scope regressions use guarded PostgreSQL.
+// Older API probes inject context; the SEC008 login case uses real ephemeral credentials/session.
 type Owned = Awaited<ReturnType<typeof ownedPostgres>>;
 async function withOwned(run: (owned: Owned) => Promise<void>) {
   const owned = await ownedPostgres('final_decision_pg');
@@ -235,25 +236,73 @@ it('BOUND004: UUID case aliases partly commit once and preserve raw-case batch r
   });
 }, 20000);
 
-it('SEC006: matching explicit anchors cause real complaint and dashboard undefined-column failures', async () => {
+it('SEC008: real complaint scope queries validate organization anchors without changing broad grants', async () => {
   await withOwned(async (owned) => {
     const id = await complaintFixture(owned);
-    const complaints = new PostgresComplaintRepository(owned.db),
-      dashboard = new PostgresDashboardRepository(owned.db);
-    const filter = { from: '2026-01-01T00:00:00Z', to: '2027-01-01T00:00:00Z', currency: 'CNY' };
-    expect((await complaints.list({}, owned.context)).items).toHaveLength(1);
-    expect(await complaints.getById(id, owned.context)).toMatchObject({ id });
-    expect(await dashboard.get(filter, owned.context)).toHaveProperty('metrics');
-    const anchored = {
-      actor: owned.context.actor,
-      scopes: ['TEAM'] as const,
-      anchors: [{ scope: 'TEAM' as const, organizationId: owned.team }],
+    const complaints = new PostgresComplaintRepository(owned.db);
+    const department = randomUUID(),
+      region = randomUUID();
+    await owned.db.query(
+      "INSERT INTO organizations(id,owner_organization_id,code,name,organization_type) VALUES($1,$2,'SCOPE-DEPT','Scope department','DEPARTMENT'),($3,$2,'SCOPE-REGION','Scope region','REGION')",
+      [department, owned.company, region],
+    );
+    await owned.db.query('UPDATE organizations SET parent_id=$1 WHERE id=$2', [region, department]);
+    await owned.db.query('UPDATE organizations SET parent_id=$1 WHERE id=$2', [
+      department,
+      owned.team,
+    ]);
+    const expectVisible = async (
+      context: Parameters<typeof complaints.list>[1],
+      visible: boolean,
+    ) => {
+      expect((await complaints.list({}, context)).items).toHaveLength(visible ? 1 : 0);
+      if (visible) expect(await complaints.getById(id, context)).toMatchObject({ id });
+      else
+        await expect(complaints.getById(id, context)).rejects.toMatchObject({ code: 'not_found' });
     };
-    for (const context of [anchored, { ...anchored, scopes: ['COMPANY', 'TEAM'] as const }]) {
-      await expect(complaints.list({}, context)).rejects.toMatchObject({ code: '42703' });
-      await expect(complaints.getById(id, context)).rejects.toMatchObject({ code: '42703' });
-      await expect(dashboard.get(filter, context)).rejects.toMatchObject({ code: '42703' });
+    for (const scopes of [['SELF'], ['COMPANY'], ['GROUP']] as const)
+      await expectVisible({ ...owned.context, scopes }, true);
+    for (const [scope, organizationId] of [
+      ['TEAM', owned.team],
+      ['DEPARTMENT', department],
+      ['REGION', region],
+    ] as const) {
+      const context = { ...owned.context, scopes: [scope], anchors: [{ scope, organizationId }] };
+      await expectVisible(context, true);
+      await expectVisible({ ...context, anchors: [] }, false);
+      await expectVisible({ ...context, scopes: [] }, false);
+      await expectVisible(
+        { ...context, anchors: [{ scope, organizationId: owned.otherTeam }] },
+        false,
+      );
+      await owned.db.query('UPDATE organizations SET active=false WHERE id=$1', [organizationId]);
+      await expectVisible(context, false);
+      await expectVisible({ ...context, scopes: ['COMPANY', scope] }, true);
+      await owned.db.query('UPDATE organizations SET active=true,deleted_at=now() WHERE id=$1', [
+        organizationId,
+      ]);
+      await expectVisible(context, false);
+      await owned.db.query('UPDATE organizations SET deleted_at=NULL WHERE id=$1', [
+        organizationId,
+      ]);
     }
+    await expectVisible(
+      {
+        ...owned.context,
+        scopes: ['DEPARTMENT'],
+        anchors: [{ scope: 'DEPARTMENT', organizationId: owned.team }],
+      },
+      false,
+    );
+    await expectVisible(
+      {
+        ...owned.context,
+        scopes: ['SELF'],
+        actor: { ...owned.context.actor, employeeId: owned.otherEmployee },
+      },
+      false,
+    );
+    await expectVisible(owned.otherContext, false);
   });
 }, 20000);
 
@@ -303,5 +352,149 @@ it('SEC007: active actor in inactive organization differs at real notification r
     await owned.db.query('UPDATE employees SET active=true WHERE id=$1', [owned.employee]);
     await owned.db.query('UPDATE organizations SET active=true WHERE id=$1', [owned.team]);
     expect([await count('skip'), await count('validate')]).toEqual([1, 1]);
+  });
+}, 20000);
+
+it('SEC008: real login resolves TEAM anchors, filters fields and rejects revoked access', async () => {
+  await withOwned(async (owned) => {
+    const id = await complaintFixture(owned),
+      identity = randomUUID(),
+      role = randomUUID();
+    const hasher = new PasswordHasher({
+      saltBytes: 16,
+      keyLength: 32,
+      cost: 16384,
+      blockSize: 8,
+      parallelization: 1,
+    });
+    const password = randomBytes(24).toString('base64url');
+    const passwordHash = await hasher.hash(password);
+    await owned.db.query(
+      "INSERT INTO identities(id,employee_id,login_name) VALUES($1,$2,'local-scope-login')",
+      [identity, owned.employee],
+    );
+    await owned.db.query(
+      "INSERT INTO password_credentials(identity_id,algorithm,password_hash) VALUES($1,'scrypt',$2)",
+      [identity, passwordHash],
+    );
+    await owned.db.query(
+      'INSERT INTO organization_memberships(employee_id,organization_id) VALUES($1,$2)',
+      [owned.employee, owned.company],
+    );
+    await owned.db.query(
+      "INSERT INTO roles(id,organization_id,code,name) VALUES($1,$2,'LOCAL-SCOPE','Local scope')",
+      [role, owned.company],
+    );
+    await owned.db.query(
+      'INSERT INTO employee_role_assignments(employee_id,role_id) VALUES($1,$2)',
+      [owned.employee, role],
+    );
+    await owned.db.query(
+      "INSERT INTO role_permission_grants(role_id,permission_id,field_allowlist,data_scopes) SELECT $1,id,ARRAY['id'],ARRAY['TEAM']::data_scope[] FROM permissions WHERE capability='complaint:read'",
+      [role],
+    );
+    await owned.db.query(
+      "INSERT INTO data_scope_grants(employee_id,permission_id,scope,scope_organization_id) SELECT $1,id,'TEAM',$2 FROM permissions WHERE capability='complaint:read'",
+      [owned.employee, owned.team],
+    );
+    const store = new PostgresSecurityStore(owned.db);
+    const auth = new AuthenticationService(
+      store,
+      hasher,
+      { secret: randomBytes(32).toString('hex'), ttlSeconds: 3600 },
+      store,
+    );
+    const session = await auth.login('local-scope-login', password, randomUUID());
+    if (!session) throw new Error('Synthetic scope login failed');
+    const app = buildApp({
+      auth,
+      employees: {} as ApiDependencies['employees'],
+      organizations: {} as ApiDependencies['organizations'],
+      complaints: new PostgresComplaintRepository(owned.db),
+    });
+    const get = (pathname: string) =>
+      app.dispatch({
+        method: 'GET',
+        pathname,
+        headers: { authorization: `Bearer ${session.token}` },
+      });
+    expect((await get('/api/v1/complaints')).body).toEqual({ items: [{ id }], nextCursor: null });
+    expect((await get(`/api/v1/complaints/${randomUUID()}`)).statusCode).toBe(404);
+    await owned.db.query('DELETE FROM data_scope_grants WHERE employee_id=$1', [owned.employee]);
+    expect((await get('/api/v1/complaints')).body).toEqual({ items: [], nextCursor: null });
+    await owned.db.query('DELETE FROM role_permission_grants WHERE role_id=$1', [role]);
+    expect((await get('/api/v1/complaints')).statusCode).toBe(403);
+    await owned.db.query('UPDATE organizations SET active=false WHERE id=$1', [owned.team]);
+    expect((await get('/api/v1/complaints')).statusCode).toBe(401);
+  });
+}, 20000);
+
+it('SEC008: preserves deep TEAM compatibility and guards complaint writes on real PostgreSQL', async () => {
+  await withOwned(async (owned) => {
+    const id = await complaintFixture(owned),
+      top = randomUUID(),
+      middle = randomUUID();
+    await owned.db.query(
+      "INSERT INTO organizations(id,owner_organization_id,code,name,organization_type) VALUES($1,$2,'DEEP-TOP','Deep top','TEAM'),($3,$2,'DEEP-MID','Deep middle','TEAM')",
+      [top, owned.company, middle],
+    );
+    await owned.db.query('UPDATE organizations SET parent_id=$1 WHERE id=$2', [top, middle]);
+    await owned.db.query('UPDATE organizations SET parent_id=$1 WHERE id=$2', [middle, owned.team]);
+    const context = {
+      ...owned.context,
+      scopes: ['TEAM'] as const,
+      anchors: [{ scope: 'TEAM' as const, organizationId: top }],
+    };
+    const complaints = new PostgresComplaintRepository(owned.db);
+    expect(await complaints.getById(id, context)).toMatchObject({ id });
+    const strict = recordScopeSql(context.scopes, context.anchors, context.actor, 'cu', 2);
+    const strictRows = await owned.db.query(
+      `SELECT cu.id FROM customers cu WHERE cu.tenant_id=$1 AND ${strict.sql}`,
+      [owned.company, ...strict.values],
+    );
+    expect(strictRows.rows).toEqual([]);
+    const basis = (
+      await owned.db.query<{ customer_id: string; sla_policy_version_id: string }>(
+        'SELECT customer_id,sla_policy_version_id FROM customer_complaints WHERE id=$1',
+        [id],
+      )
+    ).rows[0];
+    if (!basis) throw new Error('Complaint basis missing');
+    const input = {
+      complaintNumber: 'LOCAL-CREATE',
+      customerId: basis.customer_id,
+      slaPolicyVersionId: basis.sla_policy_version_id,
+      channel: 'EMAIL' as const,
+      defectCategory: 'PILE_HEIGHT',
+      severity: 'MAJOR' as const,
+      occurredAt: '2026-08-01T00:00:00Z',
+      reportedAt: '2026-08-02T00:00:00Z',
+      description: 'Synthetic authorized complaint',
+      customerRequest: 'Investigate',
+      initialSnapshot: { source: 'local-test' },
+      idempotencyKey: randomUUID(),
+    };
+    const created = await complaints.createComplaint(input, context, randomUUID());
+    if (typeof created.id !== 'string') throw new Error('Created complaint ID missing');
+    expect(await complaints.getById(created.id, context)).toMatchObject({ id: created.id });
+    const before = (await owned.db.query('SELECT count(*)::int n FROM customer_complaints')).rows;
+    const correlation = randomUUID();
+    await expect(
+      complaints.createComplaint(
+        { ...input, complaintNumber: 'DENIED', idempotencyKey: randomUUID() },
+        { ...context, anchors: [{ scope: 'TEAM', organizationId: owned.otherTeam }] },
+        correlation,
+      ),
+    ).rejects.toMatchObject({ code: 'not_found' });
+    expect((await owned.db.query('SELECT count(*)::int n FROM customer_complaints')).rows).toEqual(
+      before,
+    );
+    expect(
+      (
+        await owned.db.query('SELECT count(*)::int n FROM audit_events WHERE correlation_id=$1', [
+          correlation,
+        ])
+      ).rows,
+    ).toEqual([{ n: 0 }]);
   });
 }, 20000);

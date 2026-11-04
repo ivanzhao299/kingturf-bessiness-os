@@ -1,0 +1,41 @@
+{
+  "source_sha": "0503d9ed69878bd40bcfa5b4efaac93ea521fde2",
+  "source_review": {
+    "architecture": "PASS",
+    "security_source_and_evidence": "PASS",
+    "business_design": "PASS_AFTER_FOUR_BOUNDARY_ADDITIONS",
+    "runtime_source_blockers": [],
+    "documentation_issue": "new connector issue ID collided with historical TD-DOC-001; corrected to TD-CONN-001 before submission"
+  },
+  "independent_execution": {
+    "source_sha": "0503d9ed69878bd40bcfa5b4efaac93ea521fde2",
+    "clean_start_end": true,
+    "vitest": {
+      "files": 6,
+      "tests": 351,
+      "exit": 0,
+      "seconds": 3.75
+    },
+    "service_gate_cli": {
+      "tests": 63,
+      "exit": 0,
+      "seconds": 31.17
+    },
+    "structure_gate": {
+      "exit": 0,
+      "G5_exemptions": 0
+    },
+    "writes": [
+      "owned review worktree ignored Vitest cache",
+      "fresh CLI fixture temporary directories removed by tests"
+    ],
+    "postgres": "NOT_RERUN",
+    "full_ci": "NOT_RERUN",
+    "browser": "NOT_RERUN"
+  },
+  "limits": [
+    "fixed old app resolves current downstream modules; no downstream business change this batch",
+    "inverse expander is reviewed tooling, not formal proof",
+    "service graph does not model arbitrary higher-order callbacks"
+  ]
+}

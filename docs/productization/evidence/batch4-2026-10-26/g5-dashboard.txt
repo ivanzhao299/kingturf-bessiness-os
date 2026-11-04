@@ -1,0 +1,7 @@
+
+/home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api/test/dispatch-source-preservation.test.ts
+  144:65  error  Invalid operand for a '+' operation. Operands must each be a number or string. Got `string | undefined`  @typescript-eslint/restrict-plus-operands
+  147:40  error  Forbidden non-null assertion                                                                             @typescript-eslint/no-non-null-assertion
+
+✖ 2 problems (2 errors, 0 warnings)
+

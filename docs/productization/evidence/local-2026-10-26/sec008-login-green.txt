@@ -1,0 +1,11 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ✓ test/harness-final-decision-postgres.integration.test.ts (5 tests | 4 skipped) 2719ms
+   ✓ SEC008: real login resolves TEAM anchors, filters fields and rejects revoked access  2718ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 4 skipped (5)
+   Start at  11:33:08
+   Duration  3.73s (transform 594ms, setup 0ms, collect 847ms, tests 2.72s, environment 0ms, prepare 50ms)
+

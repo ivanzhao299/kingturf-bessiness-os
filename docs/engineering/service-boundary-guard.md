@@ -60,3 +60,7 @@ TD-GATE-003仍未修复：本护栏扫描routes不等于G1/G2/G3扫描已修复�
 协调复核的SHA256：gate `da205b9d041888b0fa499444a5bcbcd1795958804726155bc63f42d8edbf108a`；测试 `8f1ad4856ab26b376f5fb5e33ab79835d75cf962561583ba3f913888a439ec81`；工程时本文档 `cd212e7a29bc60c20d985878c5ccff0f9580ae0a69109197b55399e7ef5f0c4f`（本证据追加后文档哈希自然变化，脚本/测试不变）。日志保存在/tmp/kingturf-2e-source-ci.log、/tmp/kingturf-2e-independent-guard.log；库存由上述命令随时复算，不仅依赖临时产物。
 
 本独立证据提交后再跑最终实际HEAD完整ci:local，并在交接报实际退出码，未成功不得用源码CI替代。2e整批零候选结案或扩至同仓编排均待用户验收/决策，本轮不自行宣布、不新增透传层。
+
+## Batch4惰性路由执行单元（2026-10-26）
+
+S1–S4原规则保持。S5适配ADR-0012的直接`yield projectedReply`：只信任checker解析到`routes/dispatch/context.ts`的真实工厂，同步generator中直接yield表达式语句、同步非generator projector；async、提前构建数组和变量中转强制拒绝。pending与projector归同一S3单元，原共享前置工作沿委托/消费边传入执行单元，跨仓储仍拒绝。不是按目录、函数名或RouteAttempts类型放行；CLI注入保留全部原测试及新增负例。调用图对任意高阶callback仍非完整证明，源码独立复核继续必要。

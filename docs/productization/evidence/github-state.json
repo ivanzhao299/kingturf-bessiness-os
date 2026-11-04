@@ -1,0 +1,438 @@
+{
+  "observed_date": "2026-10-26 Asia/Singapore",
+  "branch": {
+    "name": "main",
+    "sha": "b1ef7a9e7fdbfc0341f29f1cb612504ff47cd41b",
+    "protected": false
+  },
+  "rulesets": [],
+  "prs": [
+    {
+      "number": 39,
+      "title": "Fix production container builds after workspace cleanup",
+      "state": "closed",
+      "merged_at": "2026-10-24T02:30:01Z",
+      "merge_commit_sha": "b1ef7a9e7fdbfc0341f29f1cb612504ff47cd41b",
+      "head": "1761ddb52e5b784d6adb5f1c1a160da7a5c414d4",
+      "base": "main",
+      "url": "https://github.com/ivanzhao299/kingturf-bessiness-os/pull/39"
+    },
+    {
+      "number": 38,
+      "title": "Complete KingTurf Harness engineering and closeout",
+      "state": "closed",
+      "merged_at": "2026-10-24T02:16:47Z",
+      "merge_commit_sha": "4ba4582b080200df88be31c95a6c3fc5884a7b33",
+      "head": "af45b15189a4facab25e330fce8853c0c700bcca",
+      "base": "main",
+      "url": "https://github.com/ivanzhao299/kingturf-bessiness-os/pull/38"
+    },
+    {
+      "number": 37,
+      "title": "docs: archive isolated final-main acceptance",
+      "state": "closed",
+      "merged_at": "2026-10-10T05:28:42Z",
+      "merge_commit_sha": "779dea31c3d0019f53119a8bda605eebe2ed15a6",
+      "head": "2331da3febc84d92c5d999de31767323e23c4158",
+      "base": "main",
+      "url": "https://github.com/ivanzhao299/kingturf-bessiness-os/pull/37"
+    },
+    {
+      "number": 36,
+      "title": "docs: archive final isolated test acceptance",
+      "state": "closed",
+      "merged_at": null,
+      "merge_commit_sha": null,
+      "head": "d6d515495a953d5675e829dc0672549fea36a5a7",
+      "base": "main",
+      "url": "https://github.com/ivanzhao299/kingturf-bessiness-os/pull/36"
+    },
+    {
+      "number": 35,
+      "title": "fix(runtime): harden local startup and production migration checks",
+      "state": "closed",
+      "merged_at": "2026-10-09T07:13:18Z",
+      "merge_commit_sha": "3ec6d83c3e12a417dfe7087dd9a7d9fa6fc6d73f",
+      "head": "b23aa23649568a24663e8ef7e7429775152699ea",
+      "base": "main",
+      "url": "https://github.com/ivanzhao299/kingturf-bessiness-os/pull/35"
+    }
+  ],
+  "runs": [
+    {
+      "id": 40054428605,
+      "name": "Deploy KingTurf Production",
+      "sha": "b1ef7a9e7fdbfc0341f29f1cb612504ff47cd41b",
+      "event": "workflow_dispatch",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 3,
+      "created_at": "2026-10-24T02:30:13Z",
+      "updated_at": "2026-10-24T02:49:32Z",
+      "url": "https://github.com/ivanzhao299/kingturf-bessiness-os/actions/runs/40054428605"
+    },
+    {
+      "id": 40054415428,
+      "name": "CI",
+      "sha": "b1ef7a9e7fdbfc0341f29f1cb612504ff47cd41b",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1,
+      "created_at": "2026-10-24T02:30:04Z",
+      "updated_at": "2026-10-24T02:37:53Z",
+      "url": "https://github.com/ivanzhao299/kingturf-bessiness-os/actions/runs/40054415428"
+    },
+    {
+      "id": 40053803128,
+      "name": "CI",
+      "sha": "1761ddb52e5b784d6adb5f1c1a160da7a5c414d4",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1,
+      "created_at": "2026-10-24T02:21:04Z",
+      "updated_at": "2026-10-24T02:28:33Z",
+      "url": "https://github.com/ivanzhao299/kingturf-bessiness-os/actions/runs/40053803128"
+    },
+    {
+      "id": 40053518142,
+      "name": "Deploy KingTurf Production",
+      "sha": "4ba4582b080200df88be31c95a6c3fc5884a7b33",
+      "event": "workflow_dispatch",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "attempt": 1,
+      "created_at": "2026-10-24T02:17:00Z",
+      "updated_at": "2026-10-24T02:20:03Z",
+      "url": "https://github.com/ivanzhao299/kingturf-bessiness-os/actions/runs/40053518142"
+    },
+    {
+      "id": 40053509035,
+      "name": "CI",
+      "sha": "4ba4582b080200df88be31c95a6c3fc5884a7b33",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1,
+      "created_at": "2026-10-24T02:16:51Z",
+      "updated_at": "2026-10-24T02:23:27Z",
+      "url": "https://github.com/ivanzhao299/kingturf-bessiness-os/actions/runs/40053509035"
+    },
+    {
+      "id": 40052804374,
+      "name": "CI",
+      "sha": "af45b15189a4facab25e330fce8853c0c700bcca",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1,
+      "created_at": "2026-10-24T02:06:54Z",
+      "updated_at": "2026-10-24T02:16:38Z",
+      "url": "https://github.com/ivanzhao299/kingturf-bessiness-os/actions/runs/40052804374"
+    },
+    {
+      "id": 38027635413,
+      "name": "CI",
+      "sha": "779dea31c3d0019f53119a8bda605eebe2ed15a6",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1,
+      "created_at": "2026-10-10T05:28:45Z",
+      "updated_at": "2026-10-10T05:31:03Z",
+      "url": "https://github.com/ivanzhao299/kingturf-bessiness-os/actions/runs/38027635413"
+    },
+    {
+      "id": 38027206145,
+      "name": "CI",
+      "sha": "2331da3febc84d92c5d999de31767323e23c4158",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1,
+      "created_at": "2026-10-10T05:21:01Z",
+      "updated_at": "2026-10-10T05:23:19Z",
+      "url": "https://github.com/ivanzhao299/kingturf-bessiness-os/actions/runs/38027206145"
+    }
+  ],
+  "jobs": {
+    "ci": [
+      {
+        "id": 120754099612,
+        "name": "quality",
+        "conclusion": "success",
+        "started_at": "2026-10-24T02:30:06Z",
+        "completed_at": "2026-10-24T02:37:53Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "conclusion": "success"
+          },
+          {
+            "name": "Initialize containers",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v6",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run pnpm/action-setup@v6",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@v6",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run pnpm ci:local",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-node@v6",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run pnpm/action-setup@v6",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v6",
+            "conclusion": "success"
+          },
+          {
+            "name": "Stop containers",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "conclusion": "success"
+          }
+        ]
+      }
+    ],
+    "deployment": [
+      {
+        "id": 120757996379,
+        "name": "validate",
+        "conclusion": "success",
+        "started_at": "2026-10-24T02:30:16Z",
+        "completed_at": "2026-10-24T02:30:27Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "conclusion": "success"
+          },
+          {
+            "name": "Reject untrusted dispatch context and malformed input",
+            "conclusion": "success"
+          },
+          {
+            "name": "Checkout immutable release control",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@v6",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify canonical origin and main history",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-node@v6",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Checkout immutable release control",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 120757996759,
+        "name": "verify",
+        "conclusion": "success",
+        "started_at": "2026-10-24T02:30:29Z",
+        "completed_at": "2026-10-24T02:39:38Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "conclusion": "success"
+          },
+          {
+            "name": "Initialize containers",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v6",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify exact candidate checkout",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run pnpm/action-setup@v6",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@v6",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run pnpm ci:local",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-node@v6",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run pnpm/action-setup@v6",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v6",
+            "conclusion": "success"
+          },
+          {
+            "name": "Stop containers",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 120757997174,
+        "name": "deploy",
+        "conclusion": "success",
+        "started_at": "2026-10-24T02:48:01Z",
+        "completed_at": "2026-10-24T02:49:31Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v6",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify exact deployment checkout",
+            "conclusion": "success"
+          },
+          {
+            "name": "Checkout immutable release control",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@v6",
+            "conclusion": "success"
+          },
+          {
+            "name": "Revalidate main history after acquiring production concurrency",
+            "conclusion": "success"
+          },
+          {
+            "name": "Pin independently verified production SSH host key",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run webfactory/ssh-agent@v0.10.0",
+            "conclusion": "success"
+          },
+          {
+            "name": "Read-only production storage and candidate schema preflight",
+            "conclusion": "success"
+          },
+          {
+            "name": "Diagnose production public HTTPS ingress",
+            "conclusion": "success"
+          },
+          {
+            "name": "Create production recovery point",
+            "conclusion": "success"
+          },
+          {
+            "name": "Synchronize configured website ingest secret",
+            "conclusion": "success"
+          },
+          {
+            "name": "Sync isolated KingTurf release",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify unchanged production Nginx ingress",
+            "conclusion": "success"
+          },
+          {
+            "name": "Deploy and verify",
+            "conclusion": "success"
+          },
+          {
+            "name": "Required production hostname HTTPS probe",
+            "conclusion": "success"
+          },
+          {
+            "name": "Record verified production release",
+            "conclusion": "success"
+          },
+          {
+            "name": "Retain latest KingTurf recovery point and active images",
+            "conclusion": "success"
+          },
+          {
+            "name": "Diagnostic cross-border HTTPS probe from GitHub runner",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run webfactory/ssh-agent@v0.10.0",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-node@v6",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Checkout immutable release control",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v6",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "conclusion": "success"
+          }
+        ]
+      }
+    ]
+  },
+  "publicProbes": [
+    {
+      "path": "/health",
+      "http": 200,
+      "status": "ok"
+    },
+    {
+      "path": "/ready",
+      "http": 200,
+      "status": "ready"
+    },
+    {
+      "path": "/version",
+      "http": 200,
+      "sha": "b1ef7a9e7fdbfc0341f29f1cb612504ff47cd41b"
+    }
+  ]
+}

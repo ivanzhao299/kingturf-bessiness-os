@@ -1,0 +1,21 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ✓ test/risk-postgres.integration.test.ts (9 tests) 12406ms
+   ✓ risk repository real PostgreSQL contracts > creates versioned policies with audit-only evidence and immutable publication  1506ms
+   ✓ risk repository real PostgreSQL contracts > calculates fixed capped findings, trace and a task from the real order/AR graph  1358ms
+   ✓ risk repository real PostgreSQL contracts > does not create a task for zero score and replays the existing persisted evaluation  1319ms
+   ✓ risk repository real PostgreSQL contracts > rejects ineligible references without inserting evaluation or task evidence  1367ms
+   ✓ risk repository real PostgreSQL contracts > records contiguous task decisions, enforces assignee access and preserves replay semantics  1427ms
+   ✓ risk repository real PostgreSQL contracts > TD-RISK-001: binds fixed and dynamic parameters across real scope combinations and replays once  1453ms
+   ✓ risk repository real PostgreSQL contracts > TD-RISK-002: rejects a known-key replay outside the current scope and keeps authorized handoff  1329ms
+   ✓ risk repository real PostgreSQL contracts > TD-RISK-002: reevaluates explicit anchors on the stored order for every replay  1342ms
+   ✓ risk repository real PostgreSQL contracts > TD-RISK-003: authorizes the current task and rejects a known key belonging to another task  1304ms
+ ✓ test/risk-replay-http-postgres.integration.test.ts (16 tests) 4747ms
+ ✓ test/risk-route-contract.test.ts (1099 tests) 387ms
+
+ Test Files  3 passed (3)
+      Tests  1124 passed (1124)
+   Start at  15:49:08
+   Duration  19.42s (transform 744ms, setup 0ms, collect 1.31s, tests 17.54s, environment 0ms, prepare 132ms)
+

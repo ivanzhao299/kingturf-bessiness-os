@@ -86,8 +86,7 @@ const pattern =
     return match ? { params: match.slice(1) } : null;
   };
 
-export function foundationRoutes(context: FoundationRouteContext): readonly RouteDefinition[] {
-  const p = context.parsers;
+function createFoundationValidators(p: FoundationParsers) {
   const validatePreference = (request: ApiRequest): NotificationPreferenceInput => {
     const body = p.objectBody(request.body);
     p.allow(body, ['channel', 'enabled', 'expectedVersion']);
@@ -217,7 +216,27 @@ export function foundationRoutes(context: FoundationRouteContext): readonly Rout
           }),
     };
   };
-  const routes: RouteDefinition[] = [
+  return {
+    validatePreference,
+    validateNotification,
+    validateAttachmentCreate,
+    validateAttachmentUpload,
+    validateAttachmentBinding,
+    validateAttachmentDelete,
+    validateBusinessObjectCreate,
+    validateBusinessObjectVersion,
+    validateEventClaim,
+    validateEventDelivery,
+  };
+}
+type Validators = ReturnType<typeof createFoundationValidators>;
+function notificationRoutes(
+  context: FoundationRouteContext,
+  p: FoundationParsers,
+  validators: Validators,
+): readonly RouteDefinition[] {
+  const { validatePreference, validateNotification } = validators;
+  return [
     defineRoute({
       method: 'GET',
       match: literal('/api/v1/notifications'),
@@ -337,6 +356,20 @@ export function foundationRoutes(context: FoundationRouteContext): readonly Rout
         };
       },
     }),
+  ];
+}
+function attachmentRoutes(
+  context: FoundationRouteContext,
+  p: FoundationParsers,
+  validators: Validators,
+): readonly RouteDefinition[] {
+  const {
+    validateAttachmentCreate,
+    validateAttachmentUpload,
+    validateAttachmentBinding,
+    validateAttachmentDelete,
+  } = validators;
+  return [
     defineRoute({
       method: 'POST',
       match: literal('/api/v1/attachments'),
@@ -456,6 +489,15 @@ export function foundationRoutes(context: FoundationRouteContext): readonly Rout
         return { statusCode: 204, body: {} };
       },
     }),
+  ];
+}
+function businessObjectRoutes(
+  context: FoundationRouteContext,
+  p: FoundationParsers,
+  validators: Validators,
+): readonly RouteDefinition[] {
+  const { validateBusinessObjectCreate, validateBusinessObjectVersion } = validators;
+  return [
     defineRoute({
       method: 'GET',
       match: literal('/api/v1/business-objects'),
@@ -542,6 +584,14 @@ export function foundationRoutes(context: FoundationRouteContext): readonly Rout
           : context.error(404, 'not_found', 'Business object not found');
       },
     }),
+  ];
+}
+function eventRoutes(
+  context: FoundationRouteContext,
+  validators: Validators,
+): readonly RouteDefinition[] {
+  const { validateEventClaim, validateEventDelivery } = validators;
+  return [
     defineRoute({
       method: 'GET',
       match: literal('/api/v1/operations/events'),
@@ -606,7 +656,16 @@ export function foundationRoutes(context: FoundationRouteContext): readonly Rout
       },
     }),
   ];
-  return routes;
+}
+export function foundationRoutes(context: FoundationRouteContext): readonly RouteDefinition[] {
+  const p = context.parsers;
+  const validators = createFoundationValidators(p);
+  return [
+    ...notificationRoutes(context, p, validators),
+    ...attachmentRoutes(context, p, validators),
+    ...businessObjectRoutes(context, p, validators),
+    ...eventRoutes(context, validators),
+  ];
 }
 
 export async function dispatchFoundationRoutes(

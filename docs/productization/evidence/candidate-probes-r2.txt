@@ -1,0 +1,97 @@
+
+ RUN  v3.2.6 /tmp/kt-v1-audit-20261026-probes/apps/api
+
+stdout | test/v1-audit-shipment.test.ts > shipment exception release and Order360 shipment source on real PostgreSQL > V1_AUDIT repeated dispatch and inventory independent reconciliation
+V1_AUDIT_SHIPMENT {"requested":"5","before":"10.000000","first":"10.000000","after":"10.000000","acceptedSecond":true}
+
+ ❯ test/v1-audit-shipment.test.ts (7 tests | 1 failed | 6 skipped) 3375ms
+   ↓ shipment exception release and Order360 shipment source on real PostgreSQL > evaluates independent failed gates and writes exactly an audit-only request
+   ↓ shipment exception release and Order360 shipment source on real PostgreSQL > requires independent exception approval, then projects real dispatch and POD only for an allowed Order360 source
+   ↓ shipment exception release and Order360 shipment source on real PostgreSQL > keeps rejected release terminal and refuses duplicate requests rather than claiming replay support
+   ↓ shipment exception release and Order360 shipment source on real PostgreSQL > denies narrow scope methods and keeps GROUP reads and foreign writes tenant-bound
+   ↓ shipment exception release and Order360 shipment source on real PostgreSQL > has the database independently reject a forged positive gate snapshot
+   ↓ shipment exception release and Order360 shipment source on real PostgreSQL > rolls back a new shipment row when its later initial-event key conflicts
+   × shipment exception release and Order360 shipment source on real PostgreSQL > V1_AUDIT repeated dispatch and inventory independent reconciliation 3374ms
+     → expected '10.000000' to be '5.000000' // Object.is equality
+stdout | test/v1-audit-mrp.test.ts > MRP repository real PostgreSQL contracts > V1_AUDIT BOM output basis independent reconciliation
+V1_AUDIT_BOM {"demand":"10","bomOutput":"10","componentPerBom":"2","scrapBasisPoints":500,"expectedGross":"2.100000","actualGross":"21.000000"}
+
+stdout | test/v1-audit-mrp.test.ts > MRP repository real PostgreSQL contracts > V1_AUDIT sales order demand source existence
+V1_AUDIT_SOURCE {"sourceType":"SALES_ORDER","sourceExists":0,"demandAccepted":true}
+
+ ❯ test/v1-audit-mrp.test.ts (10 tests | 2 failed | 8 skipped) 4963ms
+   ↓ MRP repository real PostgreSQL contracts > explodes a real published BOM, nets fixed quantities and persists paired evidence
+   ↓ MRP repository real PostgreSQL contracts > rejects non-company scopes and keeps GROUP reads and writes inside the actor tenant
+   ↓ MRP repository real PostgreSQL contracts > requires published tenant versions and preserves uniqueness without inventing idempotency
+   ↓ MRP repository real PostgreSQL contracts > makes distinct runs with identical input hashes and atomically rejects a duplicate run number
+   ↓ MRP repository real PostgreSQL contracts > enforces frozen approval evidence, contiguous decisions and immutable computed evidence
+   ↓ MRP repository real PostgreSQL contracts > rolls back a proposal decision and its audit when outbox uniqueness fails afterwards
+   ↓ MRP repository real PostgreSQL contracts > rejects skipped decisions and stops new decisions once the run is closed
+   ↓ MRP repository real PostgreSQL contracts > rolls back runs and snapshots for cyclic BOMs and empty demand horizons
+   × MRP repository real PostgreSQL contracts > V1_AUDIT BOM output basis independent reconciliation 2574ms
+     → expected '21.000000' to be '2.100000' // Object.is equality
+   × MRP repository real PostgreSQL contracts > V1_AUDIT sales order demand source existence 2387ms
+     → expected true to be false // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/v1-audit-mrp.test.ts > MRP repository real PostgreSQL contracts > V1_AUDIT BOM output basis independent reconciliation
+AssertionError: expected '21.000000' to be '2.100000' // Object.is equality
+
+Expected: "2.100000"
+Received: "21.000000"
+
+ ❯ test/v1-audit-mrp.test.ts:541:35
+    539|     );
+    540|     console.log('V1_AUDIT_BOM', JSON.stringify({demand: '10', bomOutpu…
+    541|     expect(result.rows[0]?.gross).toBe('2.100000');
+       |                                   ^
+    542|   });
+    543| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  test/v1-audit-mrp.test.ts > MRP repository real PostgreSQL contracts > V1_AUDIT sales order demand source existence
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ test/v1-audit-mrp.test.ts:549:32
+    547|     const exists = await state().db.query<{n: number}>('SELECT count(*…
+    548|     console.log('V1_AUDIT_SOURCE', JSON.stringify({sourceType: 'SALES_…
+    549|     expect(Boolean(result.id)).toBe(false);
+       |                                ^
+    550|   });
+    551| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  test/v1-audit-shipment.test.ts > shipment exception release and Order360 shipment source on real PostgreSQL > V1_AUDIT repeated dispatch and inventory independent reconciliation
+AssertionError: expected '10.000000' to be '5.000000' // Object.is equality
+
+Expected: "5.000000"
+Received: "10.000000"
+
+ ❯ test/v1-audit-shipment.test.ts:521:19
+    519|     const after = await balance();
+    520|     console.log('V1_AUDIT_SHIPMENT', JSON.stringify({requested: '5', b…
+    521|     expect(first).toBe('5.000000');
+       |                   ^
+    522|     expect(acceptedSecond).toBe(false);
+    523|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  3 failed | 14 skipped (17)
+   Start at  10:43:59
+   Duration  9.67s (transform 701ms, setup 0ms, collect 1.01s, tests 8.34s, environment 0ms, prepare 87ms)
+
+undefined
+/tmp/kt-v1-audit-20261026-probes/apps/api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run test/v1-audit-mrp.test.ts test/v1-audit-shipment.test.ts -t V1_AUDIT

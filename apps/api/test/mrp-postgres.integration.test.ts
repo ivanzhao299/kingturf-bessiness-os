@@ -531,4 +531,112 @@ describe('MRP repository real PostgreSQL contracts', () => {
       expect(await evidenceCounts(correlation)).toEqual({ audit: '0', outbox: '0' });
     }
   });
+  it('TD-MRP-001: uses output basis for new runs and preserves previously computed quantities', async () => {
+    const { context, db } = state();
+    await manufacturing.createBom(
+      {
+        code: 'BOM-BATCH',
+        name: 'Two units for ten output',
+        productItemId: identifier(product, 'itemId'),
+        productItemVersionId: identifier(product),
+        outputQuantity: '10',
+        effectiveAt: '2025-06-01T00:00:00Z',
+        publish: true,
+        lines: [
+          {
+            componentItemVersionId: identifier(material),
+            quantity: '2',
+            scrapBasisPoints: 500,
+            substitutes: [],
+          },
+        ],
+      },
+      context,
+      randomUUID(),
+    );
+    const run = await repository.run(runInput('BATCH'), context, randomUUID());
+    const gross = async (runId: string) =>
+      (
+        await db.query<{ quantity: string }>(
+          'SELECT gross_demand::text quantity FROM mrp_item_calculations WHERE mrp_run_id=$1 AND item_version_id=$2',
+          [runId, identifier(material)],
+        )
+      ).rows;
+    expect(await gross(identifier(initialRun))).toEqual([{ quantity: '21.000000' }]);
+    expect(await gross(identifier(run))).toEqual([{ quantity: '2.100000' }]);
+    expect(
+      (
+        await db.query<{ version: string }>(
+          "SELECT DISTINCT trace->>'bomFormulaVersion' version FROM mrp_item_calculations WHERE mrp_run_id=$1",
+          [identifier(run)],
+        )
+      ).rows,
+    ).toEqual([{ version: 'KT-MRP-V1.1-BOM-OUTPUT' }]);
+    await repository.createDemand(
+      { ...demand(identifier(product)), quantity: '2.5', requiredAt: '2026-02-02' },
+      context,
+      randomUUID(),
+    );
+    const fractional = await repository.run(runInput('FRACTIONAL'), context, randomUUID());
+    expect(await gross(identifier(fractional))).toEqual(
+      expect.arrayContaining([{ quantity: '2.100000' }, { quantity: '0.525000' }]),
+    );
+    expect(await gross(identifier(initialRun))).toEqual([{ quantity: '21.000000' }]);
+  });
+
+  it('TD-MRP-001: divides by each level output basis before applying that component scrap', async () => {
+    const { context, db } = state();
+    const semi = await item('SEMI-BATCH', 'SEMI_FINISHED');
+    await manufacturing.createBom(
+      {
+        code: 'BOM-LEVEL-1',
+        name: 'Five output uses two semi',
+        productItemId: identifier(product, 'itemId'),
+        productItemVersionId: identifier(product),
+        outputQuantity: '5',
+        effectiveAt: '2025-08-01T00:00:00Z',
+        publish: true,
+        lines: [
+          {
+            componentItemVersionId: identifier(semi),
+            quantity: '2',
+            scrapBasisPoints: 0,
+            substitutes: [],
+          },
+        ],
+      },
+      context,
+      randomUUID(),
+    );
+    await manufacturing.createBom(
+      {
+        code: 'BOM-LEVEL-2',
+        name: 'Ten semi uses three raw',
+        productItemId: identifier(semi, 'itemId'),
+        productItemVersionId: identifier(semi),
+        outputQuantity: '10',
+        effectiveAt: '2025-01-01T00:00:00Z',
+        publish: true,
+        lines: [
+          {
+            componentItemVersionId: identifier(material),
+            quantity: '3',
+            scrapBasisPoints: 1000,
+            substitutes: [],
+          },
+        ],
+      },
+      context,
+      randomUUID(),
+    );
+    const run = await repository.run(runInput('TWO-LEVEL'), context, randomUUID());
+    expect(
+      (
+        await db.query<{ quantity: string }>(
+          'SELECT gross_demand::text quantity FROM mrp_item_calculations WHERE mrp_run_id=$1 AND item_version_id=$2',
+          [identifier(run), identifier(material)],
+        )
+      ).rows,
+    ).toEqual([{ quantity: '1.320000' }]);
+  });
 });

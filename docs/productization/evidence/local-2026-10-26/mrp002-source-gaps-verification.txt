@@ -1,0 +1,29 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ❯ test/mrp-source-postgres.integration.test.ts (1 test | 1 failed) 3326ms
+   × TD-MRP-002 real sales order source validation > accepts released tenant orders, rejects nonexistent/foreign/cancelled sources and keeps other demand kinds 3325ms
+     → sales order requires lines totaling order total
+ ✓ test/risk-postgres.integration.test.ts (7 tests | 6 skipped) 3277ms
+   ✓ risk repository real PostgreSQL contracts > TD-RISK-002: characterizes same-tenant replay before current data scope validation  3276ms
+ ✓ test/production-postgres.integration.test.ts (4 tests | 2 skipped) 5215ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/mrp-source-postgres.integration.test.ts > TD-MRP-002 real sales order source validation > accepts released tenant orders, rejects nonexistent/foreign/cancelled sources and keeps other demand kinds
+error: sales order requires lines totaling order total
+ ❯ ../../node_modules/.pnpm/pg-pool@3.14.0_pg@8.22.0/node_modules/pg-pool/index.js:45:11
+ ❯ test/mrp-source-postgres.integration.test.ts:85:5
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 2 passed (3)
+      Tests  1 failed | 3 passed | 8 skipped (12)
+   Start at  11:48:50
+   Duration  13.32s (transform 653ms, setup 0ms, collect 1.08s, tests 11.82s, environment 0ms, prepare 134ms)
+
+undefined
+/home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run test/mrp-source-postgres.integration.test.ts test/risk-postgres.integration.test.ts test/production-postgres.integration.test.ts -t TD-MRP-002|TD-RISK-002|TD-COST-002

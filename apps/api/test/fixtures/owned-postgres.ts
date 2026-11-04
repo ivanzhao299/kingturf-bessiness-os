@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { assertTestDatabaseTarget, Database, migrate } from '@kingturf/database';
 
 /** Real local PG only; connection strings are never explicit fixture results or diagnostics. */
-export async function ownedPostgres(prefix: string) {
+export async function ownedPostgres(prefix: string, migrationDirectory?: string) {
   if (!/^[a-z][a-z_]{0,29}$/u.test(prefix)) throw new Error('Invalid owned schema prefix');
   const connection = process.env.DATABASE_URL;
   if (!connection) throw new Error('DATABASE_URL required; PostgreSQL tests must not be skipped');
@@ -34,7 +34,7 @@ export async function ownedPostgres(prefix: string) {
     cleanup.push(() => db.close());
     const active = await db.query<{ schema: string }>('SELECT current_schema() AS schema');
     if (active.rows[0]?.schema !== schema) throw new Error('Owned schema search path mismatch');
-    await migrate(db);
+    await migrate(db, migrationDirectory);
     const company = randomUUID(),
       otherCompany = randomUUID();
     const team = randomUUID(),

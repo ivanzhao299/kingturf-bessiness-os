@@ -1,0 +1,40 @@
+{
+  "scope": "existing quote fixed-point multiply/add compared to independent PostgreSQL numeric; not approval of new rounding rules",
+  "vectors": [
+    {
+      "quantity": "3",
+      "unitPrice": "0.333333",
+      "domain": "0.999999",
+      "postgresTruncated": "0.999999",
+      "postgresRounded": "0.999999"
+    },
+    {
+      "quantity": "0.333333",
+      "unitPrice": "0.333333",
+      "domain": "0.11111",
+      "postgresTruncated": "0.111110",
+      "postgresRounded": "0.111111"
+    },
+    {
+      "quantity": "9007199254740993.123456",
+      "unitPrice": "0.000001",
+      "domain": "9007199254.740993",
+      "postgresTruncated": "9007199254.740993",
+      "postgresRounded": "9007199254.740993"
+    },
+    {
+      "quantity": "1000000000.000001",
+      "unitPrice": "0.123456",
+      "domain": "123456000",
+      "postgresTruncated": "123456000.000000",
+      "postgresRounded": "123456000.000000"
+    }
+  ],
+  "domainTotal": "9130655255.852102",
+  "postgresTotal": "9130655255.852102",
+  "sourceSha256": {
+    "packages/domain/src/index.ts": "bae4a67463e8efa52b7e1e34c7b887f1503d2d4202579c435ce9206f997712c7",
+    "apps/api/src/commercial-repositories.ts": "a51d25ffb8c00d0589913e57282e6f08c8e615ee9758a05fdfa84e8557b35822",
+    "apps/api/src/production-cost-repositories.ts": "7488e0a0747ac8a7461a2270ee385504476276880f3c32a0e8e94601ee2d303f"
+  }
+}

@@ -1,0 +1,156 @@
+{
+  "date": "2026-10-26",
+  "timezone": "Asia/Singapore",
+  "queries": [
+    {
+      "key": "branch",
+      "value": {
+        "name": "main",
+        "sha": "b1ef7a9e7fdbfc0341f29f1cb612504ff47cd41b",
+        "protected": false
+      }
+    },
+    {
+      "key": "recent_prs",
+      "value": [
+        {
+          "number": 39,
+          "title": "Fix production container builds after workspace cleanup",
+          "state": "closed",
+          "merged_at": "2026-10-24T02:30:01Z",
+          "sha": "b1ef7a9e7fdbfc0341f29f1cb612504ff47cd41b",
+          "url": "https://github.com/ivanzhao299/kingturf-bessiness-os/pull/39",
+          "resource_kind": "pull_request"
+        },
+        {
+          "number": 38,
+          "title": "Complete KingTurf Harness engineering and closeout",
+          "state": "closed",
+          "merged_at": "2026-10-24T02:16:47Z",
+          "sha": "4ba4582b080200df88be31c95a6c3fc5884a7b33",
+          "url": "https://github.com/ivanzhao299/kingturf-bessiness-os/pull/38",
+          "resource_kind": "pull_request"
+        },
+        {
+          "number": 37,
+          "title": "docs: archive isolated final-main acceptance",
+          "state": "closed",
+          "merged_at": "2026-10-10T05:28:42Z",
+          "sha": "779dea31c3d0019f53119a8bda605eebe2ed15a6",
+          "url": "https://github.com/ivanzhao299/kingturf-bessiness-os/pull/37",
+          "resource_kind": "pull_request"
+        },
+        {
+          "number": 36,
+          "title": "docs: archive final isolated test acceptance",
+          "state": "closed",
+          "merged_at": null,
+          "sha": null,
+          "url": "https://github.com/ivanzhao299/kingturf-bessiness-os/pull/36",
+          "resource_kind": "pull_request"
+        },
+        {
+          "number": 35,
+          "title": "fix(runtime): harden local startup and production migration checks",
+          "state": "closed",
+          "merged_at": "2026-10-09T07:13:18Z",
+          "sha": "3ec6d83c3e12a417dfe7087dd9a7d9fa6fc6d73f",
+          "url": "https://github.com/ivanzhao299/kingturf-bessiness-os/pull/35",
+          "resource_kind": "pull_request"
+        }
+      ]
+    },
+    {
+      "key": "open_prs",
+      "value": []
+    },
+    {
+      "key": "open_issues",
+      "value": []
+    },
+    {
+      "key": "runs",
+      "value": [
+        {
+          "id": 40054428605,
+          "name": "Deploy KingTurf Production",
+          "sha": "b1ef7a9e7fdbfc0341f29f1cb612504ff47cd41b",
+          "status": "completed",
+          "conclusion": "success",
+          "attempt": 3,
+          "updated_at": "2026-10-24T02:49:32Z",
+          "url": "https://github.com/ivanzhao299/kingturf-bessiness-os/actions/runs/40054428605"
+        },
+        {
+          "id": 40054415428,
+          "name": "CI",
+          "sha": "b1ef7a9e7fdbfc0341f29f1cb612504ff47cd41b",
+          "status": "completed",
+          "conclusion": "success",
+          "attempt": 1,
+          "updated_at": "2026-10-24T02:37:53Z",
+          "url": "https://github.com/ivanzhao299/kingturf-bessiness-os/actions/runs/40054415428"
+        },
+        {
+          "id": 40053803128,
+          "name": "CI",
+          "sha": "1761ddb52e5b784d6adb5f1c1a160da7a5c414d4",
+          "status": "completed",
+          "conclusion": "success",
+          "attempt": 1,
+          "updated_at": "2026-10-24T02:28:33Z",
+          "url": "https://github.com/ivanzhao299/kingturf-bessiness-os/actions/runs/40053803128"
+        },
+        {
+          "id": 40053518142,
+          "name": "Deploy KingTurf Production",
+          "sha": "4ba4582b080200df88be31c95a6c3fc5884a7b33",
+          "status": "completed",
+          "conclusion": "cancelled",
+          "attempt": 1,
+          "updated_at": "2026-10-24T02:20:03Z",
+          "url": "https://github.com/ivanzhao299/kingturf-bessiness-os/actions/runs/40053518142"
+        },
+        {
+          "id": 40053509035,
+          "name": "CI",
+          "sha": "4ba4582b080200df88be31c95a6c3fc5884a7b33",
+          "status": "completed",
+          "conclusion": "success",
+          "attempt": 1,
+          "updated_at": "2026-10-24T02:23:27Z",
+          "url": "https://github.com/ivanzhao299/kingturf-bessiness-os/actions/runs/40053509035"
+        }
+      ]
+    },
+    {
+      "key": "rulesets",
+      "value": []
+    }
+  ],
+  "baselineVerification": {
+    "source_config_files": 660,
+    "evidence_files": 10,
+    "mismatches": [],
+    "reused_tests": "Previously executed clean baseline CI and isolated PG evidence; no new full CI or PG execution in this reconfirmation"
+  },
+  "externalResearch": {
+    "erpnext_bom": "full page accessible",
+    "business_central_tracking": "full page accessible",
+    "kingdee_bom": "official operation manual accessible; publication/version unspecified",
+    "odoo_costs": "official search extracted content available; direct page fetch timed out",
+    "kingdee_marketing_article": "direct fetch timed out",
+    "yonyou_case_study": "only official case study/solution material found; no public technical operation manual established"
+  },
+  "documentVerification": {
+    "format_check_exit": 0,
+    "doc_lint_exit": 0,
+    "diff_check_exit": 0,
+    "code_config_hashes_matched": 660,
+    "original_evidence_hashes_matched": 10,
+    "valid_local_document_links": 36,
+    "unique_debt_ids": 71,
+    "business_code_workflow_diff": "empty",
+    "new_test_execution": "none; identical baseline evidence reused"
+  }
+}

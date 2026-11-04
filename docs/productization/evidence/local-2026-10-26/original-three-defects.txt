@@ -1,0 +1,30 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ✓ test/procurement-postgres.integration.test.ts (8 tests) 21228ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > persists the qualified RFQ-to-receipt chain, derived stock and exact paired evidence  2641ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > requires COMPANY or GROUP scope and keeps GROUP reads and writes tenant-bounded  2668ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > rolls back invalid qualification, quote and issued-document inputs  2494ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > rolls back receipts, lots and movements on quantity, location and later-line failures  2536ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > nets signed movement types and rejects negative balances, mismatched lots and duplicate sources  2635ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > completes partial then final receipt and refuses receipt against the closed order  2663ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > rolls back issue and audit when an already-seeded outbox aggregate conflicts  2878ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > preserves the first receipt when the current guard rejects another partial receipt (TD-PROC-001)  2711ms
+ ✓ test/risk-postgres.integration.test.ts (6 tests) 25196ms
+   ✓ risk repository real PostgreSQL contracts > creates versioned policies with audit-only evidence and immutable publication  4809ms
+   ✓ risk repository real PostgreSQL contracts > calculates fixed capped findings, trace and a task from the real order/AR graph  4791ms
+   ✓ risk repository real PostgreSQL contracts > does not create a task for zero score and replays the existing persisted evaluation  4593ms
+   ✓ risk repository real PostgreSQL contracts > rejects ineligible references without inserting evaluation or task evidence  3642ms
+   ✓ risk repository real PostgreSQL contracts > records contiguous task decisions, enforces assignee access and preserves replay semantics  3641ms
+   ✓ risk repository real PostgreSQL contracts > records narrowed-scope evaluation binding failure without inserting rows (TD-RISK-001)  3719ms
+ ✓ test/harness-final-decision-postgres.integration.test.ts (4 tests) 11321ms
+   ✓ BOUND003: real API forwards invalid date but PG rejects insert/update without storing it  2927ms
+   ✓ BOUND004: UUID case aliases partly commit once and preserve raw-case batch replay identity  2845ms
+   ✓ SEC006: matching explicit anchors cause real complaint and dashboard undefined-column failures  2755ms
+   ✓ SEC007: active actor in inactive organization differs at real notification repository predicate layer  2792ms
+
+ Test Files  3 passed (3)
+      Tests  18 passed (18)
+   Start at  11:24:44
+   Duration  59.43s (transform 748ms, setup 0ms, collect 1.20s, tests 57.74s, environment 1ms, prepare 163ms)
+

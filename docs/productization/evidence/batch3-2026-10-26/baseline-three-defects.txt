@@ -1,0 +1,14 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ✓ test/risk-postgres.integration.test.ts (9 tests | 8 skipped) 1487ms
+   ✓ risk repository real PostgreSQL contracts > TD-RISK-003: characterizes task-event replay before current assignee and task identity checks  1486ms
+ ✓ test/procurement-postgres.integration.test.ts (12 tests | 11 skipped) 860ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > TD-INV-001: characterizes overlapping committed issues bypassing the existing balance sum guard  858ms
+ ✓ test/risk-replay-http-postgres.integration.test.ts (10 tests | 9 skipped) 2257ms
+
+ Test Files  3 passed (3)
+      Tests  3 passed | 28 skipped (31)
+   Start at  15:11:47
+   Duration  6.35s (transform 744ms, setup 0ms, collect 1.24s, tests 4.60s, environment 0ms, prepare 142ms)
+

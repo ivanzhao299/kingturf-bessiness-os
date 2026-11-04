@@ -1,0 +1,224 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ❯ test/risk-postgres.integration.test.ts (8 tests | 2 failed | 6 skipped) 2618ms
+   ↓ risk repository real PostgreSQL contracts > creates versioned policies with audit-only evidence and immutable publication
+   ↓ risk repository real PostgreSQL contracts > calculates fixed capped findings, trace and a task from the real order/AR graph
+   ↓ risk repository real PostgreSQL contracts > does not create a task for zero score and replays the existing persisted evaluation
+   ↓ risk repository real PostgreSQL contracts > rejects ineligible references without inserting evaluation or task evidence
+   ↓ risk repository real PostgreSQL contracts > records contiguous task decisions, enforces assignee access and preserves replay semantics
+   ↓ risk repository real PostgreSQL contracts > TD-RISK-001: binds fixed and dynamic parameters across real scope combinations and replays once
+   × risk repository real PostgreSQL contracts > TD-RISK-002: rejects a known-key replay outside the current scope and keeps authorized handoff 1372ms
+     → promise resolved "{ …(16) }" instead of rejecting
+   × risk repository real PostgreSQL contracts > TD-RISK-002: reevaluates explicit anchors on the stored order for every replay 1245ms
+     → promise resolved "{ …(16) }" instead of rejecting
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/risk-postgres.integration.test.ts > risk repository real PostgreSQL contracts > TD-RISK-002: rejects a known-key replay outside the current scope and keeps authorized handoff
+AssertionError: promise resolved "{ …(16) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "actor_id": "5ca2e268-c965-4844-883c-f811c358dfab",
++   "calculation_trace": [
++     {
++       "actual": 2631,
++       "matched": true,
++       "rule": "LOW_MARGIN",
++       "threshold": 3000,
++     },
++     {
++       "amount": "850000.000000",
++       "graceDays": 0,
++       "matched": true,
++       "rule": "OVERDUE_AR",
++     },
++     {
++       "matched": false,
++       "rule": "CREDIT_EXPIRY",
++       "validUntil": "2099-03-31 23:59:59+00",
++       "warningDays": 0,
++     },
++     {
++       "evidence": "released order pins an exact signed contract",
++       "matched": false,
++       "rule": "CONTRACT_SIGNATURE",
++     },
++     {
++       "evidence": "order status and graph were validated at release",
++       "matched": false,
++       "rule": "ORDER_RELEASE_GATE",
++     },
++   ],
++   "canonical_hash": "160020db12acea1e33f59448fff4476608ce80dffe5177f96232b0a8e64e399b",
++   "canonical_input": {
++     "assigneeEmployeeId": "5ca2e268-c965-4844-883c-f811c358dfab",
++     "creditValidUntil": "2099-03-31 23:59:59+00",
++     "dueAt": "2099-01-01T00:00:00Z",
++     "marginBasisPoints": 2631,
++     "openAr": "850000.000000",
++     "orderNumber": "AUTH-ORDER",
++     "overdueAr": "850000.000000",
++     "policyVersionId": "88d6220c-fa09-4991-8ac4-f57fe3027aaa",
++     "salesOrderId": "84c786d6-05c2-4eb5-92e9-87d981d30a03",
++     "validUntil": "2099-01-01T00:00:00Z",
++   },
++   "correlation_id": "764ee9a9-221d-450a-b7ee-2c350881f89e",
++   "created_at": "2026-10-26T05:38:48.576396+00:00",
++   "findings": [
++     {
++       "actual": 2631,
++       "code": "LOW_MARGIN",
++       "severity": "HIGH",
++       "threshold": 3000,
++     },
++     {
++       "amount": "850000.000000",
++       "code": "OVERDUE_AR",
++       "graceDays": 0,
++       "severity": "CRITICAL",
++     },
++   ],
++   "id": "fb0e8cdb-7b20-4362-aaca-e9cbe9219e9c",
++   "idempotency_key": "4b3b9f02-7f03-47ca-ade0-6c44ffecbfa0",
++   "policy_version_id": "88d6220c-fa09-4991-8ac4-f57fe3027aaa",
++   "recommended_actions": [
++     {
++       "action": "复核利润与例外审批",
++       "finding": "LOW_MARGIN",
++     },
++     {
++       "action": "立即催收并升级",
++       "finding": "OVERDUE_AR",
++     },
++   ],
++   "sales_order_id": "84c786d6-05c2-4eb5-92e9-87d981d30a03",
++   "score": 100,
++   "severity": "CRITICAL",
++   "tenant_id": "199fa038-f402-4450-89b9-3b442c7106c1",
++   "valid_until": "2099-01-01T00:00:00+00:00",
+  }
+
+ ❯ test/risk-postgres.integration.test.ts:516:73
+    514|       scopes: ['SELF'] as const,
+    515|     };
+    516|     await expect(repository.evaluate(input, key, narrowed, randomUUID(…
+       |                                                                         ^
+    517|       code: 'not_found',
+    518|     });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/risk-postgres.integration.test.ts > risk repository real PostgreSQL contracts > TD-RISK-002: reevaluates explicit anchors on the stored order for every replay
+AssertionError: promise resolved "{ …(16) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "actor_id": "c58ac1ae-4871-4c25-ba4a-bad6a325256a",
++   "calculation_trace": [
++     {
++       "actual": 2631,
++       "matched": true,
++       "rule": "LOW_MARGIN",
++       "threshold": 3000,
++     },
++     {
++       "amount": "850000.000000",
++       "graceDays": 0,
++       "matched": true,
++       "rule": "OVERDUE_AR",
++     },
++     {
++       "matched": false,
++       "rule": "CREDIT_EXPIRY",
++       "validUntil": "2099-03-31 23:59:59+00",
++       "warningDays": 0,
++     },
++     {
++       "evidence": "released order pins an exact signed contract",
++       "matched": false,
++       "rule": "CONTRACT_SIGNATURE",
++     },
++     {
++       "evidence": "order status and graph were validated at release",
++       "matched": false,
++       "rule": "ORDER_RELEASE_GATE",
++     },
++   ],
++   "canonical_hash": "efeb9567bede664486e30341eb71d38ac3ee92ddaa620d73fba90687bffa81c6",
++   "canonical_input": {
++     "assigneeEmployeeId": "c58ac1ae-4871-4c25-ba4a-bad6a325256a",
++     "creditValidUntil": "2099-03-31 23:59:59+00",
++     "dueAt": "2099-01-01T00:00:00Z",
++     "marginBasisPoints": 2631,
++     "openAr": "850000.000000",
++     "orderNumber": "AUTH-ORDER",
++     "overdueAr": "850000.000000",
++     "policyVersionId": "ce2fa0d5-3c28-4d98-bd59-3bc7311bd98b",
++     "salesOrderId": "bea5d84f-781a-4624-85cb-6964fb148afa",
++     "validUntil": "2099-01-01T00:00:00Z",
++   },
++   "correlation_id": "1ce1e4fa-a310-4d62-b943-b43c1258cb25",
++   "created_at": "2026-10-26T05:38:49.826307+00:00",
++   "findings": [
++     {
++       "actual": 2631,
++       "code": "LOW_MARGIN",
++       "severity": "HIGH",
++       "threshold": 3000,
++     },
++     {
++       "amount": "850000.000000",
++       "code": "OVERDUE_AR",
++       "graceDays": 0,
++       "severity": "CRITICAL",
++     },
++   ],
++   "id": "ad453bc6-9dc1-4a81-8db2-a43c17a535aa",
++   "idempotency_key": "6556375b-5b83-45c9-82e6-4eaef6539295",
++   "policy_version_id": "ce2fa0d5-3c28-4d98-bd59-3bc7311bd98b",
++   "recommended_actions": [
++     {
++       "action": "复核利润与例外审批",
++       "finding": "LOW_MARGIN",
++     },
++     {
++       "action": "立即催收并升级",
++       "finding": "OVERDUE_AR",
++     },
++   ],
++   "sales_order_id": "bea5d84f-781a-4624-85cb-6964fb148afa",
++   "score": 100,
++   "severity": "CRITICAL",
++   "tenant_id": "c370de8d-cb32-44bb-9dcf-b21eb5b3743b",
++   "valid_until": "2099-01-01T00:00:00+00:00",
+  }
+
+ ❯ test/risk-postgres.integration.test.ts:555:72
+    553|     ]) {
+    554|       const correlation = randomUUID();
+    555|       await expect(repository.evaluate(input, key, denied, correlation…
+       |                                                                        ^
+    556|         code: 'not_found',
+    557|       });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 6 skipped (8)
+   Start at  13:38:46
+   Duration  3.74s (transform 662ms, setup 0ms, collect 933ms, tests 2.62s, environment 0ms, prepare 61ms)
+
+undefined
+/home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run test/risk-postgres.integration.test.ts -t TD-RISK-002

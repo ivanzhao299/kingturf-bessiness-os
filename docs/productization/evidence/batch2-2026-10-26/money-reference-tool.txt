@@ -1,0 +1,17 @@
+import {Database,assertTestDatabaseTarget} from '/home/jinhuit/Kingturf/kingturf-bessiness-os/packages/database/src/index.ts';
+import {multiplyDecimal,normalizeDecimal,addDecimal} from '/home/jinhuit/Kingturf/kingturf-bessiness-os/packages/domain/src/index.ts';
+import {writeFileSync,readFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+import assert from 'node:assert/strict';
+assertTestDatabaseTarget(process.env.DATABASE_URL,process.env.NODE_ENV);
+const db=new Database(process.env.DATABASE_URL),vectors=[['3','0.333333'],['0.333333','0.333333'],['9007199254740993.123456','0.000001'],['1000000000.000001','0.123456']];
+try{
+ const results=[];
+ for(const [quantity,unitPrice] of vectors){const row=(await db.query('SELECT trunc($1::numeric*$2::numeric,6)::text truncated,round($1::numeric*$2::numeric,6)::text rounded',[quantity,unitPrice])).rows[0];const domain=multiplyDecimal(quantity,unitPrice);assert.equal(domain,normalizeDecimal(row.truncated));results.push({quantity,unitPrice,domain,postgresTruncated:row.truncated,postgresRounded:row.rounded});}
+ const domainTotal=results.reduce((s,r)=>addDecimal(s,r.domain),'0');
+ const pgTotal=(await db.query('SELECT sum(x::numeric)::text total FROM unnest($1::text[]) x',[results.map(r=>r.postgresTruncated)])).rows[0].total;
+ assert.equal(domainTotal,normalizeDecimal(pgTotal));
+ const sourceFiles=['packages/domain/src/index.ts','apps/api/src/commercial-repositories.ts','apps/api/src/production-cost-repositories.ts'];
+ const report={scope:'existing quote fixed-point multiply/add compared to independent PostgreSQL numeric; not approval of new rounding rules',vectors:results,domainTotal,postgresTotal:pgTotal,sourceSha256:Object.fromEntries(sourceFiles.map(p=>[p,createHash('sha256').update(readFileSync(p)).digest('hex')]))};
+ writeFileSync('/tmp/kt-v1-b2-1uc57dkp/money-reference.json',JSON.stringify(report,null,2));console.log(JSON.stringify({independentVectors:results.length,allMatchExistingTruncation:true,sumMatches:true}));
+}finally{await db.close();}

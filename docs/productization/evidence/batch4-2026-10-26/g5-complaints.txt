@@ -1,0 +1,31 @@
+{"family":"complaints","attempts":10,"parts":2}
+apps/api/src/app.ts 254ms
+apps/api/src/routes/dispatch/complaints.ts 11ms
+apps/api/test/fixtures/app-dispatch-groups.json 7ms (unchanged)
+
+> @kingturf/api@0.0.0 typecheck /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+> tsc --noEmit
+
+src/routes/dispatch/complaints.ts(33,9): error TS2322: Type 'PostgresComplaintRepository | undefined' is not assignable to type 'SlaRepository'.
+  Type 'undefined' is not assignable to type 'SlaRepository'.
+src/routes/dispatch/complaints.ts(55,9): error TS2322: Type 'PostgresComplaintRepository | undefined' is not assignable to type 'ReadRepository'.
+  Type 'undefined' is not assignable to type 'ReadRepository'.
+src/routes/dispatch/complaints.ts(68,9): error TS2322: Type 'PostgresComplaintRepository | undefined' is not assignable to type 'CreateRepository'.
+  Type 'undefined' is not assignable to type 'CreateRepository'.
+src/routes/dispatch/complaints.ts(90,9): error TS2322: Type 'PostgresComplaintRepository | undefined' is not assignable to type 'BatchRepository'.
+  Type 'undefined' is not assignable to type 'BatchRepository'.
+src/routes/dispatch/complaints.ts(111,9): error TS2322: Type 'PostgresComplaintRepository | undefined' is not assignable to type 'TransitionRepository'.
+  Type 'undefined' is not assignable to type 'TransitionRepository'.
+src/routes/dispatch/complaints.ts(133,9): error TS2322: Type 'PostgresComplaintRepository | undefined' is not assignable to type 'NcrRepository'.
+  Type 'undefined' is not assignable to type 'NcrRepository'.
+src/routes/dispatch/complaints.ts(156,9): error TS2322: Type 'PostgresComplaintRepository | undefined' is not assignable to type 'NcrRepository'.
+  Type 'undefined' is not assignable to type 'NcrRepository'.
+src/routes/dispatch/complaints.ts(178,9): error TS2322: Type 'PostgresComplaintRepository | undefined' is not assignable to type 'CapaRepository'.
+  Type 'undefined' is not assignable to type 'CapaRepository'.
+src/routes/dispatch/complaints.ts(201,9): error TS2322: Type 'PostgresComplaintRepository | undefined' is not assignable to type 'CapaRepository'.
+  Type 'undefined' is not assignable to type 'CapaRepository'.
+src/routes/dispatch/complaints.ts(227,9): error TS2322: Type 'PostgresComplaintRepository | undefined' is not assignable to type 'CapaRepository'.
+  Type 'undefined' is not assignable to type 'CapaRepository'.
+/home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @kingturf/api@0.0.0 typecheck: `tsc --noEmit`
+Exit status 2

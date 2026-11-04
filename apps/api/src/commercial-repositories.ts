@@ -1,3 +1,4 @@
+import { assertQuotePolicyEvaluation } from './quote-policy-validation.ts';
 import { createHash } from 'node:crypto';
 import {
   DomainError,
@@ -1790,23 +1791,12 @@ export class PostgresCommercialRepository {
           [input.policyEvaluationId, actor.companyId],
         )
       ).rows[0];
-      if (!policyEvaluation)
-        throw new DomainError('invalid_request', 'Policy evaluation was not found');
-      if (
-        policyEvaluation.sales_policy_version_id !== input.policyVersionId ||
-        policyEvaluation.cost_decision_id !== input.costDecisionId ||
-        policyEvaluation.canonical_input.marginBasisPoints !== serverMarginBasisPoints ||
-        policyEvaluation.canonical_input.discountBasisPoints !== serverDiscountBasisPoints ||
-        !policyEvaluation.passed ||
-        (policyEvaluation.minimum_margin_basis_points !== null &&
-          serverMarginBasisPoints < policyEvaluation.minimum_margin_basis_points) ||
-        (policyEvaluation.maximum_discount_basis_points !== null &&
-          serverDiscountBasisPoints > policyEvaluation.maximum_discount_basis_points)
-      )
-        throw new DomainError(
-          'invalid_request',
-          'Policy evaluation does not match the actual quote economics',
-        );
+      assertQuotePolicyEvaluation(
+        policyEvaluation,
+        input,
+        serverMarginBasisPoints,
+        serverDiscountBasisPoints,
+      );
       const opportunity = await this.requireOpportunityScope(
         tx,
         input.opportunityId,

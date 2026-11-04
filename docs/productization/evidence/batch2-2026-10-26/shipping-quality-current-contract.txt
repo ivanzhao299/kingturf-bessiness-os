@@ -1,0 +1,23 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ✓ test/shipment-postgres.integration.test.ts (6 tests) 8049ms
+   ✓ shipment exception release and Order360 shipment source on real PostgreSQL > evaluates independent failed gates and writes exactly an audit-only request  1412ms
+   ✓ shipment exception release and Order360 shipment source on real PostgreSQL > requires independent exception approval, then projects real dispatch and POD only for an allowed Order360 source  1455ms
+   ✓ shipment exception release and Order360 shipment source on real PostgreSQL > keeps rejected release terminal and refuses duplicate requests rather than claiming replay support  1342ms
+   ✓ shipment exception release and Order360 shipment source on real PostgreSQL > denies narrow scope methods and keeps GROUP reads and foreign writes tenant-bound  1273ms
+   ✓ shipment exception release and Order360 shipment source on real PostgreSQL > has the database independently reject a forged positive gate snapshot  1294ms
+   ✓ shipment exception release and Order360 shipment source on real PostgreSQL > rolls back a new shipment row when its later initial-event key conflicts  1272ms
+ ✓ test/quality-postgres.integration.test.ts (6 tests) 4698ms
+   ✓ quality repository and immutable ledgers on real PostgreSQL > pins published plan, typed results and inclusive boundary 10 through release  847ms
+   ✓ quality repository and immutable ledgers on real PostgreSQL > pins published plan, typed results and inclusive boundary 12 through release  741ms
+   ✓ quality repository and immutable ledgers on real PostgreSQL > rejects premature completion, wrong types, wrong numeric verdicts and duplicate observations without evidence writes  785ms
+   ✓ quality repository and immutable ledgers on real PostgreSQL > rejects release of a failed inspection but permits inspected rejection  811ms
+   ✓ quality repository and immutable ledgers on real PostgreSQL > keeps GROUP tenant-bound, denies narrow scopes, and refuses unpublished or foreign plan use  744ms
+   ✓ quality repository and immutable ledgers on real PostgreSQL > rolls back the first disposition ledger insert when the later inspection key conflicts  770ms
+
+ Test Files  2 passed (2)
+      Tests  12 passed (12)
+   Start at  13:53:42
+   Duration  14.02s (transform 681ms, setup 0ms, collect 973ms, tests 12.75s, environment 0ms, prepare 82ms)
+

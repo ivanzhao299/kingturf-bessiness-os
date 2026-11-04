@@ -1,0 +1,35 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ❯ test/dispatch-source-preservation.test.ts (3 tests | 1 failed) 60ms
+   ✓ dispatch group inverse source preservation against fixed f3 > manufacturing keeps every original predicate, parser, call, continuation and return 21ms
+   × dispatch group inverse source preservation against fixed f3 > procurement keeps every original predicate, parser, call, continuation and return 36ms
+     → expected [ 308, [ [ 353, …(1) ], [ 1, '' ] ] ] to deeply equal [ 308, [ [ 353, …(1) ], [ 1, '' ] ] ]
+   ✓ proof normalization preserves value grouping, type hierarchy and array holes 1ms
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 2 passed (3)
+   Start at  17:39:12
+   Duration  539ms (transform 26ms, setup 0ms, collect 314ms, tests 60ms, environment 0ms, prepare 42ms)
+
+undefined
+/home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run test/dispatch-source-preservation.test.ts
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/dispatch-source-preservation.test.ts > dispatch group inverse source preservation against fixed f3 > procurement keeps every original predicate, parser, call, continuation and return
+AssertionError: expected [ 308, [ [ 353, …(1) ], [ 1, '' ] ] ] to deeply equal [ 308, [ [ 353, …(1) ], [ 1, '' ] ] ]
+
+Compared values have no visual difference.
+
+ ❯ test/dispatch-source-preservation.test.ts:109:93
+    107|         )[0];
+    108|         if (!original) throw new Error('Frozen group missing');
+    109|         expect(tokens(expand(parse('../src/routes/dispatch/' + group.f…
+       |                                                                                             ^
+    110|           tokens(original.getText(old)),
+    111|         );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+

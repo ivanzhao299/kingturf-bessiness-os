@@ -1,0 +1,10 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ✓ test/dispatch-source-preservation.test.ts (3 tests) 29ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  17:40:32
+   Duration  452ms (transform 25ms, setup 0ms, collect 280ms, tests 29ms, environment 0ms, prepare 42ms)
+

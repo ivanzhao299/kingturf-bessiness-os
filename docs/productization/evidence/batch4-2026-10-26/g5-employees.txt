@@ -1,0 +1,58 @@
+{"family":"employees","awaits":4}
+apps/api/src/app.ts 93ms
+apps/api/src/routes/dispatch/employees.ts 10ms
+apps/api/test/fixtures/app-dispatch-groups.json 10ms
+
+> @kingturf/api@0.0.0 typecheck /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+> tsc --noEmit
+
+[白名单豁免] [G1] apps/api/src/app.ts（606 行） 【白名单豁免】TD-API-001 buildApp 巨函数，到期：批次 2
+[白名单豁免] [G2] apps/api/src/app.ts（格式缩进 9 层） 【白名单豁免】随对应批次拆分消解
+[白名单豁免] [G2] apps/api/src/business-document-repositories.ts（格式缩进 7 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G2] apps/api/src/collection-repositories.ts（格式缩进 8 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G1] apps/api/src/commercial-repositories.ts（2037 行） 【白名单豁免】最大仓储域，到期：批次 2（分域 handler 化时拆分）
+[白名单豁免] [G2] apps/api/src/commercial-repositories.ts（格式缩进 7 层） 【白名单豁免】随对应批次拆分消解
+[白名单豁免] [G2] apps/api/src/commission-repositories.ts（格式缩进 6 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G1] apps/api/src/complaint-repositories.ts（1340 行） 【白名单豁免】单域仓储超限，到期：批次 2
+[白名单豁免] [G2] apps/api/src/complaint-repositories.ts（格式缩进 6 层） 【白名单豁免】随对应批次拆分消解
+[白名单豁免] [G2] apps/api/src/contract-document-repositories.ts（格式缩进 6 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G1] apps/api/src/crm-repositories.ts（873 行） 【白名单豁免】单域仓储超限，到期：批次 2
+[白名单豁免] [G2] apps/api/src/crm-repositories.ts（格式缩进 6 层） 【白名单豁免】随对应批次拆分消解
+[白名单豁免] [G2] apps/api/src/manufacturing-repositories.ts（格式缩进 7 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G2] apps/api/src/mrp-repositories.ts（格式缩进 6 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G2] apps/api/src/order-360-repositories.ts（格式缩进 6 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G1] apps/api/src/platform-repositories.ts（1189 行） 【白名单豁免】单域仓储超限，到期：批次 2
+[白名单豁免] [G2] apps/api/src/platform-repositories.ts（格式缩进 6 层） 【白名单豁免】随对应批次拆分消解
+[白名单豁免] [G2] apps/api/src/procurement-repositories.ts（格式缩进 7 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G2] apps/api/src/production-cost-repositories.ts（格式缩进 6 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G2] apps/api/src/production-repositories.ts（格式缩进 6 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G1] apps/api/src/qtc-repositories.ts（931 行） 【白名单豁免】单域仓储超限，到期：批次 2
+[白名单豁免] [G2] apps/api/src/qtc-repositories.ts（格式缩进 8 层） 【白名单豁免】随对应批次拆分消解
+[白名单豁免] [G2] apps/api/src/quality-repositories.ts（格式缩进 6 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G1] apps/api/src/repositories.ts（869 行） 【白名单豁免】组织员工主数据仓储，到期：批次 2
+[白名单豁免] [G2] apps/api/src/repositories.ts（格式缩进 6 层） 【白名单豁免】随对应批次拆分消解
+[白名单豁免] [G2] apps/api/src/risk-repositories.ts（格式缩进 8 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G2] apps/api/src/shipment-repositories.ts（格式缩进 6 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G1] packages/domain/src/index.ts（1032 行） 【白名单豁免】共享域包单文件，到期：批次 4 后评估拆分
+[白名单豁免] [G2] packages/domain/src/index.ts（格式缩进 6 层） 【白名单豁免】随对应批次拆分消解
+[白名单豁免] [G5] apps/api/src/app.ts（467 行） FunctionDeclaration:buildApp:139-605 【G5精确限期豁免】上限3627，TD-API-001 existing application factory; no growth or new function permission，到期：Independent long-function remediation after final acceptance; hard date takes precedence; 2026-11-17 inclusive Asia/Singapore
+[白名单豁免] [G5] apps/api/src/app.ts（398 行） FunctionDeclaration:buildApp/VariableDeclaration:application/MethodDeclaration:dispatch:147-544 【G5精确限期豁免】上限3558，TD-API-001 existing nested dispatch; independently capped despite overlap with buildApp，到期：Independent long-function remediation after final acceptance; hard date takes precedence; 2026-11-17 inclusive Asia/Singapore
+structure-gate 通过：强制违规 0；白名单豁免 29 条（随批次移除）；G5精确限期豁免 2 条
+service-boundary: 189 files, 31 repository ports, 238 route templates, 0 violations
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ✓ test/dispatch-source-preservation.test.ts (25 tests) 252ms
+ ✓ test/app.test.ts (51 tests) 148ms
+ ✓ test/app-batch4-preservation.test.ts (311 tests) 63ms
+ ✓ test/qtc-root-capture-route-contract.test.ts (335 tests) 28ms
+ ✓ test/dispatch-no-match-timing.test.ts (1 test) 6ms
+
+ Test Files  5 passed (5)
+      Tests  723 passed (723)
+   Start at  18:46:55
+   Duration  3.76s (transform 604ms, setup 0ms, collect 2.49s, tests 497ms, environment 1ms, prepare 221ms)
+
+[codex/kt-v1-batch4 d8f1c59] refactor(api): extract employees single-await projections [已测试]
+ 3 files changed, 116 insertions(+), 73 deletions(-)
+ create mode 100644 apps/api/src/routes/dispatch/employees.ts

@@ -1,0 +1,157 @@
+{
+  "label": "b6-round2",
+  "exit": 0,
+  "cases": [
+    {
+      "title": "shows approved, rejected, and expired credit evidence",
+      "line": 40,
+      "expectedStatus": "passed",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 1316,
+          "errorLocation": null
+        }
+      ]
+    },
+    {
+      "title": "shows the released order, partial AR, payment, and reconciliation evidence",
+      "line": 61,
+      "expectedStatus": "passed",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 1569,
+          "errorLocation": null
+        }
+      ]
+    },
+    {
+      "title": "keeps the P1 evidence usable on a mobile viewport",
+      "line": 95,
+      "expectedStatus": "passed",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 2430,
+          "errorLocation": null
+        }
+      ]
+    },
+    {
+      "title": "shows the permission-bounded Order 360 summary and evidence timeline",
+      "line": 135,
+      "expectedStatus": "passed",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 1665,
+          "errorLocation": null
+        }
+      ]
+    },
+    {
+      "title": "shows commission economics and the immutable control ledger",
+      "line": 173,
+      "expectedStatus": "passed",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 1204,
+          "errorLocation": null
+        }
+      ]
+    },
+    {
+      "title": "shows explainable risk findings and the closed responsibility trail",
+      "line": 195,
+      "expectedStatus": "passed",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 1303,
+          "errorLocation": null
+        }
+      ]
+    },
+    {
+      "title": "shows server-calculated executive KPIs with source and responsibility drilldowns",
+      "line": 222,
+      "expectedStatus": "passed",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 1103,
+          "errorLocation": null
+        }
+      ]
+    },
+    {
+      "title": "shows published manufacturing versions, BOM substitute evidence, and ordered operations",
+      "line": 246,
+      "expectedStatus": "passed",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 1236,
+          "errorLocation": null
+        }
+      ]
+    },
+    {
+      "title": "shows supplier qualification, received purchase order, receipt, and derived lot balance",
+      "line": 264,
+      "expectedStatus": "passed",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 1142,
+          "errorLocation": null
+        }
+      ]
+    },
+    {
+      "title": "shows recursive MRP explanations, frozen overrides, and released proposal ledgers",
+      "line": 284,
+      "expectedStatus": "passed",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 1324,
+          "errorLocation": null
+        }
+      ]
+    },
+    {
+      "title": "shows closed production execution with routing, material, reports, and serialized output",
+      "line": 309,
+      "expectedStatus": "passed",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 1606,
+          "errorLocation": null
+        }
+      ]
+    }
+  ],
+  "stats": {
+    "startTime": "2026-10-27T06:42:54.280Z",
+    "duration": 16629.639,
+    "expected": 11,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

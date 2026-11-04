@@ -1,0 +1,2299 @@
+{
+  "files": 30,
+  "maxFile": 618,
+  "maxFunction": 200,
+  "exemptions": [],
+  "details": [
+    {
+      "path": "apps/api/src/app.ts",
+      "lines": 274,
+      "functions": [
+        {
+          "path": "apps/api/src/app.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:buildApp",
+          "first": 115,
+          "last": 274,
+          "lines": 160
+        },
+        {
+          "path": "apps/api/src/app.ts",
+          "kind": "MethodDeclaration",
+          "symbol": "FunctionDeclaration:buildApp/VariableDeclaration:application/MethodDeclaration:dispatch",
+          "first": 123,
+          "last": 271,
+          "lines": 149
+        },
+        {
+          "path": "apps/api/src/app.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:buildApp/VariableDeclaration:application/MethodDeclaration:dispatch/VariableDeclaration:response/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 172,
+          "last": 176,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/app.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:buildApp/VariableDeclaration:application/MethodDeclaration:dispatch/VariableDeclaration:foundationResponse/PropertyAssignment:authorize/ArrowFunction:<anonymous>",
+          "first": 207,
+          "last": 207,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/app.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:buildApp/VariableDeclaration:application/MethodDeclaration:dispatch/VariableDeclaration:foundationResponse/PropertyAssignment:unavailable/ArrowFunction:<anonymous>",
+          "first": 208,
+          "last": 208,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/app.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:buildApp/VariableDeclaration:application/MethodDeclaration:dispatch/VariableDeclaration:foundationResponse/PropertyAssignment:error/ArrowFunction:<anonymous>",
+          "first": 209,
+          "last": 209,
+          "lines": 1
+        }
+      ]
+    },
+    {
+      "path": "apps/api/src/app-values.ts",
+      "lines": 318,
+      "functions": [
+        {
+          "path": "apps/api/src/app-values.ts",
+          "kind": "ArrowFunction",
+          "symbol": "VariableDeclaration:permittedDto/ArrowFunction:<anonymous>",
+          "first": 20,
+          "last": 29,
+          "lines": 10
+        },
+        {
+          "path": "apps/api/src/app-values.ts",
+          "kind": "ArrowFunction",
+          "symbol": "VariableDeclaration:permittedDto/ArrowFunction:<anonymous>/ArrowFunction:<anonymous>",
+          "first": 27,
+          "last": 27,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/app-values.ts",
+          "kind": "ArrowFunction",
+          "symbol": "VariableDeclaration:mutationDto/ArrowFunction:<anonymous>",
+          "first": 31,
+          "last": 38,
+          "lines": 8
+        },
+        {
+          "path": "apps/api/src/app-values.ts",
+          "kind": "ArrowFunction",
+          "symbol": "VariableDeclaration:legalMutationDto/ArrowFunction:<anonymous>",
+          "first": 41,
+          "last": 56,
+          "lines": 16
+        },
+        {
+          "path": "apps/api/src/app-values.ts",
+          "kind": "ArrowFunction",
+          "symbol": "VariableDeclaration:authorizeOneOf/ArrowFunction:<anonymous>",
+          "first": 58,
+          "last": 63,
+          "lines": 6
+        },
+        {
+          "path": "apps/api/src/app-values.ts",
+          "kind": "ArrowFunction",
+          "symbol": "VariableDeclaration:error/ArrowFunction:<anonymous>",
+          "first": 65,
+          "last": 74,
+          "lines": 10
+        },
+        {
+          "path": "apps/api/src/app-values.ts",
+          "kind": "ArrowFunction",
+          "symbol": "VariableDeclaration:objectBody/ArrowFunction:<anonymous>",
+          "first": 76,
+          "last": 80,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/app-values.ts",
+          "kind": "ArrowFunction",
+          "symbol": "VariableDeclaration:string/ArrowFunction:<anonymous>",
+          "first": 82,
+          "last": 86,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/app-values.ts",
+          "kind": "ArrowFunction",
+          "symbol": "VariableDeclaration:boundedString/ArrowFunction:<anonymous>",
+          "first": 88,
+          "last": 93,
+          "lines": 6
+        },
+        {
+          "path": "apps/api/src/app-values.ts",
+          "kind": "ArrowFunction",
+          "symbol": "VariableDeclaration:timestamp/ArrowFunction:<anonymous>",
+          "first": 95,
+          "last": 101,
+          "lines": 7
+        },
+        {
+          "path": "apps/api/src/app-values.ts",
+          "kind": "ArrowFunction",
+          "symbol": "VariableDeclaration:calendarDate/ArrowFunction:<anonymous>",
+          "first": 103,
+          "last": 108,
+          "lines": 6
+        },
+        {
+          "path": "apps/api/src/app-values.ts",
+          "kind": "ArrowFunction",
+          "symbol": "VariableDeclaration:optionalCalendarDate/ArrowFunction:<anonymous>",
+          "first": 110,
+          "last": 111,
+          "lines": 2
+        },
+        {
+          "path": "apps/api/src/app-values.ts",
+          "kind": "ArrowFunction",
+          "symbol": "VariableDeclaration:costFactorSourceType/ArrowFunction:<anonymous>",
+          "first": 121,
+          "last": 126,
+          "lines": 6
+        },
+        {
+          "path": "apps/api/src/app-values.ts",
+          "kind": "ArrowFunction",
+          "symbol": "VariableDeclaration:costFactorSourceType/ArrowFunction:<anonymous>/ArrowFunction:<anonymous>",
+          "first": 123,
+          "last": 123,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/app-values.ts",
+          "kind": "ArrowFunction",
+          "symbol": "VariableDeclaration:requireCostFactorItemSource/ArrowFunction:<anonymous>",
+          "first": 128,
+          "last": 137,
+          "lines": 10
+        },
+        {
+          "path": "apps/api/src/app-values.ts",
+          "kind": "ArrowFunction",
+          "symbol": "VariableDeclaration:correlation/ArrowFunction:<anonymous>",
+          "first": 141,
+          "last": 142,
+          "lines": 2
+        },
+        {
+          "path": "apps/api/src/app-values.ts",
+          "kind": "ArrowFunction",
+          "symbol": "VariableDeclaration:uuid/ArrowFunction:<anonymous>",
+          "first": 144,
+          "last": 148,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/app-values.ts",
+          "kind": "ArrowFunction",
+          "symbol": "VariableDeclaration:allow/ArrowFunction:<anonymous>",
+          "first": 150,
+          "last": 154,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/app-values.ts",
+          "kind": "ArrowFunction",
+          "symbol": "VariableDeclaration:allow/ArrowFunction:<anonymous>/VariableDeclaration:unexpected/ArrowFunction:<anonymous>",
+          "first": 151,
+          "last": 151,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/app-values.ts",
+          "kind": "ArrowFunction",
+          "symbol": "VariableDeclaration:version/ArrowFunction:<anonymous>",
+          "first": 156,
+          "last": 160,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/app-values.ts",
+          "kind": "ArrowFunction",
+          "symbol": "VariableDeclaration:expectedVersion/ArrowFunction:<anonymous>",
+          "first": 162,
+          "last": 166,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/app-values.ts",
+          "kind": "ArrowFunction",
+          "symbol": "VariableDeclaration:strings/ArrowFunction:<anonymous>",
+          "first": 168,
+          "last": 172,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/app-values.ts",
+          "kind": "ArrowFunction",
+          "symbol": "VariableDeclaration:strings/ArrowFunction:<anonymous>/ArrowFunction:<anonymous>",
+          "first": 169,
+          "last": 169,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/app-values.ts",
+          "kind": "ArrowFunction",
+          "symbol": "VariableDeclaration:notificationChannel/ArrowFunction:<anonymous>",
+          "first": 174,
+          "last": 179,
+          "lines": 6
+        },
+        {
+          "path": "apps/api/src/app-values.ts",
+          "kind": "ArrowFunction",
+          "symbol": "VariableDeclaration:documentConnector/ArrowFunction:<anonymous>",
+          "first": 181,
+          "last": 195,
+          "lines": 15
+        },
+        {
+          "path": "apps/api/src/app-values.ts",
+          "kind": "ArrowFunction",
+          "symbol": "VariableDeclaration:documentLocale/ArrowFunction:<anonymous>",
+          "first": 197,
+          "last": 202,
+          "lines": 6
+        },
+        {
+          "path": "apps/api/src/app-values.ts",
+          "kind": "ArrowFunction",
+          "symbol": "VariableDeclaration:connectorProvider/ArrowFunction:<anonymous>",
+          "first": 204,
+          "last": 209,
+          "lines": 6
+        },
+        {
+          "path": "apps/api/src/app-values.ts",
+          "kind": "ArrowFunction",
+          "symbol": "VariableDeclaration:connectorSecretReference/ArrowFunction:<anonymous>",
+          "first": 211,
+          "last": 220,
+          "lines": 10
+        },
+        {
+          "path": "apps/api/src/app-values.ts",
+          "kind": "ArrowFunction",
+          "symbol": "VariableDeclaration:safeConnectorConfiguration/ArrowFunction:<anonymous>",
+          "first": 222,
+          "last": 242,
+          "lines": 21
+        },
+        {
+          "path": "apps/api/src/app-values.ts",
+          "kind": "ArrowFunction",
+          "symbol": "VariableDeclaration:safeConnectorConfiguration/ArrowFunction:<anonymous>/VariableDeclaration:visit/ArrowFunction:<anonymous>",
+          "first": 225,
+          "last": 232,
+          "lines": 8
+        },
+        {
+          "path": "apps/api/src/app-values.ts",
+          "kind": "ArrowFunction",
+          "symbol": "VariableDeclaration:attachmentBytes/ArrowFunction:<anonymous>",
+          "first": 244,
+          "last": 257,
+          "lines": 14
+        },
+        {
+          "path": "apps/api/src/app-values.ts",
+          "kind": "ArrowFunction",
+          "symbol": "VariableDeclaration:integer/ArrowFunction:<anonymous>",
+          "first": 259,
+          "last": 271,
+          "lines": 13
+        },
+        {
+          "path": "apps/api/src/app-values.ts",
+          "kind": "ArrowFunction",
+          "symbol": "VariableDeclaration:jsonObject/ArrowFunction:<anonymous>",
+          "first": 273,
+          "last": 277,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/app-values.ts",
+          "kind": "ArrowFunction",
+          "symbol": "VariableDeclaration:array/ArrowFunction:<anonymous>",
+          "first": 279,
+          "last": 282,
+          "lines": 4
+        },
+        {
+          "path": "apps/api/src/app-values.ts",
+          "kind": "ArrowFunction",
+          "symbol": "VariableDeclaration:decimal/ArrowFunction:<anonymous>",
+          "first": 284,
+          "last": 289,
+          "lines": 6
+        },
+        {
+          "path": "apps/api/src/app-values.ts",
+          "kind": "ArrowFunction",
+          "symbol": "VariableDeclaration:currency/ArrowFunction:<anonymous>",
+          "first": 291,
+          "last": 291,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/app-values.ts",
+          "kind": "ArrowFunction",
+          "symbol": "VariableDeclaration:idempotency/ArrowFunction:<anonymous>",
+          "first": 293,
+          "last": 298,
+          "lines": 6
+        },
+        {
+          "path": "apps/api/src/app-values.ts",
+          "kind": "ArrowFunction",
+          "symbol": "VariableDeclaration:effectiveRange/ArrowFunction:<anonymous>",
+          "first": 300,
+          "last": 308,
+          "lines": 9
+        }
+      ]
+    },
+    {
+      "path": "apps/api/src/api-types.ts",
+      "lines": 24,
+      "functions": []
+    },
+    {
+      "path": "apps/api/src/application-completion.ts",
+      "lines": 73,
+      "functions": [
+        {
+          "path": "apps/api/src/application-completion.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:completeApplication",
+          "first": 7,
+          "last": 73,
+          "lines": 67
+        },
+        {
+          "path": "apps/api/src/application-completion.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:completeApplication/VariableDeclaration:complete/ArrowFunction:<anonymous>",
+          "first": 14,
+          "last": 52,
+          "lines": 39
+        },
+        {
+          "path": "apps/api/src/application-completion.ts",
+          "kind": "MethodDeclaration",
+          "symbol": "FunctionDeclaration:completeApplication/MethodDeclaration:rejectOversized",
+          "first": 54,
+          "last": 62,
+          "lines": 9
+        },
+        {
+          "path": "apps/api/src/application-completion.ts",
+          "kind": "MethodDeclaration",
+          "symbol": "FunctionDeclaration:completeApplication/MethodDeclaration:dispatch",
+          "first": 63,
+          "last": 71,
+          "lines": 9
+        }
+      ]
+    },
+    {
+      "path": "apps/api/src/routes/dispatch/access.ts",
+      "lines": 79,
+      "functions": [
+        {
+          "path": "apps/api/src/routes/dispatch/access.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:accessAttempts",
+          "first": 21,
+          "last": 79,
+          "lines": 59
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/access.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:accessAttempts/PropertyAssignment:authorizeOneOf/ArrowFunction:<anonymous>",
+          "first": 29,
+          "last": 31,
+          "lines": 3
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/access.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:accessAttempts/PropertyAssignment:unavailable/ArrowFunction:<anonymous>",
+          "first": 32,
+          "last": 33,
+          "lines": 2
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/access.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:accessAttempts/PropertyAssignment:authorizeOneOf/ArrowFunction:<anonymous>",
+          "first": 46,
+          "last": 48,
+          "lines": 3
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/access.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:accessAttempts/PropertyAssignment:unavailable/ArrowFunction:<anonymous>",
+          "first": 49,
+          "last": 49,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/access.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:accessAttempts/PropertyAssignment:notFound/ArrowFunction:<anonymous>",
+          "first": 72,
+          "last": 72,
+          "lines": 1
+        }
+      ]
+    },
+    {
+      "path": "apps/api/src/routes/dispatch/business.ts",
+      "lines": 51,
+      "functions": [
+        {
+          "path": "apps/api/src/routes/dispatch/business.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:businessAttempts",
+          "first": 26,
+          "last": 51,
+          "lines": 26
+        }
+      ]
+    },
+    {
+      "path": "apps/api/src/routes/dispatch/catalog.ts",
+      "lines": 618,
+      "functions": [
+        {
+          "path": "apps/api/src/routes/dispatch/catalog.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:catalogPart1",
+          "first": 59,
+          "last": 258,
+          "lines": 200
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/catalog.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:catalogPart1/PropertyAssignment:keyRequired/ArrowFunction:<anonymous>",
+          "first": 250,
+          "last": 252,
+          "lines": 3
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/catalog.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:catalogPart2",
+          "first": 259,
+          "last": 445,
+          "lines": 187
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/catalog.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:catalogPart2/PropertyAssignment:keyRequired/ArrowFunction:<anonymous>",
+          "first": 327,
+          "last": 329,
+          "lines": 3
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/catalog.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:catalogPart2/PropertyAssignment:notFound/ArrowFunction:<anonymous>",
+          "first": 372,
+          "last": 372,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/catalog.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:catalogPart3",
+          "first": 446,
+          "last": 613,
+          "lines": 168
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/catalog.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:catalogPart3/PropertyAssignment:missingKey/ArrowFunction:<anonymous>",
+          "first": 563,
+          "last": 565,
+          "lines": 3
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/catalog.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:catalogPart3/PropertyAssignment:missingKey/ArrowFunction:<anonymous>",
+          "first": 605,
+          "last": 607,
+          "lines": 3
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/catalog.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:catalogAttempts",
+          "first": 614,
+          "last": 618,
+          "lines": 5
+        }
+      ]
+    },
+    {
+      "path": "apps/api/src/routes/dispatch/collections.ts",
+      "lines": 53,
+      "functions": [
+        {
+          "path": "apps/api/src/routes/dispatch/collections.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:collectionsAttempts",
+          "first": 21,
+          "last": 53,
+          "lines": 33
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/collections.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:collectionsAttempts/PropertyAssignment:authorize/ArrowFunction:<anonymous>",
+          "first": 30,
+          "last": 30,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/collections.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:collectionsAttempts/PropertyAssignment:mutationDto/ArrowFunction:<anonymous>",
+          "first": 33,
+          "last": 33,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/collections.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:collectionsAttempts/PropertyAssignment:legalMutationDto/ArrowFunction:<anonymous>",
+          "first": 34,
+          "last": 34,
+          "lines": 1
+        }
+      ]
+    },
+    {
+      "path": "apps/api/src/routes/dispatch/commercial.ts",
+      "lines": 278,
+      "functions": [
+        {
+          "path": "apps/api/src/routes/dispatch/commercial.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:commercialPart1",
+          "first": 38,
+          "last": 228,
+          "lines": 191
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/commercial.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:commercialPart1/PropertyAssignment:authorize/ArrowFunction:<anonymous>",
+          "first": 46,
+          "last": 46,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/commercial.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:commercialPart1/PropertyAssignment:unavailable/ArrowFunction:<anonymous>",
+          "first": 47,
+          "last": 48,
+          "lines": 2
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/commercial.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:commercialPart1/PropertyAssignment:notFound/ArrowFunction:<anonymous>",
+          "first": 49,
+          "last": 49,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/commercial.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:commercialPart1/PropertyAssignment:permittedDto/ArrowFunction:<anonymous>",
+          "first": 50,
+          "last": 51,
+          "lines": 2
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/commercial.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:commercialPart1/PropertyAssignment:mutationDto/ArrowFunction:<anonymous>",
+          "first": 52,
+          "last": 52,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/commercial.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:commercialPart1/PropertyAssignment:authorize/ArrowFunction:<anonymous>",
+          "first": 74,
+          "last": 74,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/commercial.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:commercialPart1/PropertyAssignment:permittedDto/ArrowFunction:<anonymous>",
+          "first": 75,
+          "last": 76,
+          "lines": 2
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/commercial.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:commercialPart1/PropertyAssignment:authorize/ArrowFunction:<anonymous>",
+          "first": 90,
+          "last": 90,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/commercial.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:commercialPart1/PropertyAssignment:permittedDto/ArrowFunction:<anonymous>",
+          "first": 91,
+          "last": 92,
+          "lines": 2
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/commercial.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:commercialPart1/PropertyAssignment:authorize/ArrowFunction:<anonymous>",
+          "first": 106,
+          "last": 106,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/commercial.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:commercialPart1/PropertyAssignment:mutationDto/ArrowFunction:<anonymous>",
+          "first": 107,
+          "last": 107,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/commercial.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:commercialPart1/PropertyAssignment:authorize/ArrowFunction:<anonymous>",
+          "first": 122,
+          "last": 122,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/commercial.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:commercialPart1/PropertyAssignment:mutationDto/ArrowFunction:<anonymous>",
+          "first": 123,
+          "last": 123,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/commercial.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:commercialPart1/PropertyAssignment:authorize/ArrowFunction:<anonymous>",
+          "first": 138,
+          "last": 138,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/commercial.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:commercialPart1/PropertyAssignment:authorize/ArrowFunction:<anonymous>",
+          "first": 153,
+          "last": 153,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/commercial.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:commercialPart1/PropertyAssignment:authorize/ArrowFunction:<anonymous>",
+          "first": 178,
+          "last": 178,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/commercial.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:commercialPart1/PropertyAssignment:mutationDto/ArrowFunction:<anonymous>",
+          "first": 179,
+          "last": 179,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/commercial.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:commercialPart1/PropertyAssignment:authorize/ArrowFunction:<anonymous>",
+          "first": 194,
+          "last": 194,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/commercial.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:commercialPart1/PropertyAssignment:authorize/ArrowFunction:<anonymous>",
+          "first": 209,
+          "last": 209,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/commercial.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:commercialPart1/PropertyAssignment:mutationDto/ArrowFunction:<anonymous>",
+          "first": 210,
+          "last": 210,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/commercial.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:commercialPart2",
+          "first": 229,
+          "last": 274,
+          "lines": 46
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/commercial.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:commercialPart2/PropertyAssignment:authorize/ArrowFunction:<anonymous>",
+          "first": 238,
+          "last": 238,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/commercial.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:commercialPart2/PropertyAssignment:mutationDto/ArrowFunction:<anonymous>",
+          "first": 239,
+          "last": 239,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/commercial.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:commercialPart2/PropertyAssignment:authorize/ArrowFunction:<anonymous>",
+          "first": 265,
+          "last": 265,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/commercial.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:commercialPart2/PropertyAssignment:mutationDto/ArrowFunction:<anonymous>",
+          "first": 266,
+          "last": 266,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/commercial.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:commercialAttempts",
+          "first": 275,
+          "last": 278,
+          "lines": 4
+        }
+      ]
+    },
+    {
+      "path": "apps/api/src/routes/dispatch/commission.ts",
+      "lines": 167,
+      "functions": [
+        {
+          "path": "apps/api/src/routes/dispatch/commission.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:commissionAttempts",
+          "first": 26,
+          "last": 167,
+          "lines": 142
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/commission.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:commissionAttempts/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 33,
+          "last": 37,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/commission.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:commissionAttempts/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 50,
+          "last": 54,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/commission.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:commissionAttempts/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 67,
+          "last": 71,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/commission.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:commissionAttempts/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 88,
+          "last": 92,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/commission.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:commissionAttempts/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 109,
+          "last": 113,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/commission.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:commissionAttempts/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 128,
+          "last": 132,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/commission.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:commissionAttempts/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 151,
+          "last": 155,
+          "lines": 5
+        }
+      ]
+    },
+    {
+      "path": "apps/api/src/routes/dispatch/complaints.ts",
+      "lines": 259,
+      "functions": [
+        {
+          "path": "apps/api/src/routes/dispatch/complaints.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:complaintsPart1",
+          "first": 34,
+          "last": 227,
+          "lines": 194
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/complaints.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:complaintsPart1/PropertyAssignment:authorize/ArrowFunction:<anonymous>",
+          "first": 42,
+          "last": 42,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/complaints.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:complaintsPart1/PropertyAssignment:mutationDto/ArrowFunction:<anonymous>",
+          "first": 44,
+          "last": 44,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/complaints.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:complaintsPart1/PropertyAssignment:authorize/ArrowFunction:<anonymous>",
+          "first": 63,
+          "last": 63,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/complaints.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:complaintsPart1/PropertyAssignment:authorize/ArrowFunction:<anonymous>",
+          "first": 77,
+          "last": 77,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/complaints.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:complaintsPart1/PropertyAssignment:mutationDto/ArrowFunction:<anonymous>",
+          "first": 78,
+          "last": 78,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/complaints.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:complaintsPart1/PropertyAssignment:authorize/ArrowFunction:<anonymous>",
+          "first": 99,
+          "last": 99,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/complaints.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:complaintsPart1/PropertyAssignment:authorize/ArrowFunction:<anonymous>",
+          "first": 120,
+          "last": 120,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/complaints.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:complaintsPart1/PropertyAssignment:mutationDto/ArrowFunction:<anonymous>",
+          "first": 121,
+          "last": 121,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/complaints.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:complaintsPart1/PropertyAssignment:authorize/ArrowFunction:<anonymous>",
+          "first": 142,
+          "last": 142,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/complaints.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:complaintsPart1/PropertyAssignment:mutationDto/ArrowFunction:<anonymous>",
+          "first": 143,
+          "last": 143,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/complaints.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:complaintsPart1/PropertyAssignment:authorize/ArrowFunction:<anonymous>",
+          "first": 165,
+          "last": 165,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/complaints.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:complaintsPart1/PropertyAssignment:mutationDto/ArrowFunction:<anonymous>",
+          "first": 166,
+          "last": 166,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/complaints.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:complaintsPart1/PropertyAssignment:authorize/ArrowFunction:<anonymous>",
+          "first": 187,
+          "last": 187,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/complaints.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:complaintsPart1/PropertyAssignment:mutationDto/ArrowFunction:<anonymous>",
+          "first": 188,
+          "last": 188,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/complaints.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:complaintsPart1/PropertyAssignment:authorize/ArrowFunction:<anonymous>",
+          "first": 210,
+          "last": 210,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/complaints.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:complaintsPart1/PropertyAssignment:mutationDto/ArrowFunction:<anonymous>",
+          "first": 211,
+          "last": 211,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/complaints.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:complaintsPart2",
+          "first": 228,
+          "last": 253,
+          "lines": 26
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/complaints.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:complaintsPart2/PropertyAssignment:authorize/ArrowFunction:<anonymous>",
+          "first": 236,
+          "last": 236,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/complaints.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:complaintsPart2/PropertyAssignment:mutationDto/ArrowFunction:<anonymous>",
+          "first": 237,
+          "last": 237,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/complaints.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:complaintsAttempts",
+          "first": 254,
+          "last": 259,
+          "lines": 6
+        }
+      ]
+    },
+    {
+      "path": "apps/api/src/routes/dispatch/context.ts",
+      "lines": 73,
+      "functions": [
+        {
+          "path": "apps/api/src/routes/dispatch/context.ts",
+          "kind": "Constructor",
+          "symbol": "ClassDeclaration:PendingReply/Constructor:<anonymous>",
+          "first": 21,
+          "last": 28,
+          "lines": 8
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/context.ts",
+          "kind": "MethodDeclaration",
+          "symbol": "ClassDeclaration:PendingReply/MethodDeclaration:project",
+          "first": 29,
+          "last": 31,
+          "lines": 3
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/context.ts",
+          "kind": "MethodDeclaration",
+          "symbol": "ClassDeclaration:PendingReply/MethodDeclaration:pair",
+          "first": 32,
+          "last": 38,
+          "lines": 7
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/context.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:projectedReply",
+          "first": 45,
+          "last": 50,
+          "lines": 6
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/context.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:routeReply",
+          "first": 51,
+          "last": 56,
+          "lines": 6
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/context.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:routeReply/ArrowFunction:<anonymous>",
+          "first": 55,
+          "last": 55,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/context.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:dependencyPresent",
+          "first": 64,
+          "last": 69,
+          "lines": 6
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/context.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:directReply",
+          "first": 71,
+          "last": 73,
+          "lines": 3
+        }
+      ]
+    },
+    {
+      "path": "apps/api/src/routes/dispatch/contracts.ts",
+      "lines": 177,
+      "functions": [
+        {
+          "path": "apps/api/src/routes/dispatch/contracts.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:contractsAttempts",
+          "first": 15,
+          "last": 177,
+          "lines": 163
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/contracts.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:contractsAttempts/ArrowFunction:<anonymous>",
+          "first": 31,
+          "last": 33,
+          "lines": 3
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/contracts.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:contractsAttempts/ArrowFunction:<anonymous>",
+          "first": 62,
+          "last": 67,
+          "lines": 6
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/contracts.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:contractsAttempts/ArrowFunction:<anonymous>",
+          "first": 98,
+          "last": 103,
+          "lines": 6
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/contracts.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:contractsAttempts/VariableDeclaration:signers/ArrowFunction:<anonymous>",
+          "first": 116,
+          "last": 125,
+          "lines": 10
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/contracts.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:contractsAttempts/ArrowFunction:<anonymous>",
+          "first": 141,
+          "last": 146,
+          "lines": 6
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/contracts.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:contractsAttempts/ArrowFunction:<anonymous>",
+          "first": 168,
+          "last": 173,
+          "lines": 6
+        }
+      ]
+    },
+    {
+      "path": "apps/api/src/routes/dispatch/costs.ts",
+      "lines": 118,
+      "functions": [
+        {
+          "path": "apps/api/src/routes/dispatch/costs.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:costsAttempts",
+          "first": 24,
+          "last": 118,
+          "lines": 95
+        }
+      ]
+    },
+    {
+      "path": "apps/api/src/routes/dispatch/credentials.ts",
+      "lines": 29,
+      "functions": [
+        {
+          "path": "apps/api/src/routes/dispatch/credentials.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:credentialsAttempts",
+          "first": 11,
+          "last": 29,
+          "lines": 19
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/credentials.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:credentialsAttempts/PropertyAssignment:authorize/ArrowFunction:<anonymous>",
+          "first": 20,
+          "last": 22,
+          "lines": 3
+        }
+      ]
+    },
+    {
+      "path": "apps/api/src/routes/dispatch/crm.ts",
+      "lines": 230,
+      "functions": [
+        {
+          "path": "apps/api/src/routes/dispatch/crm.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:crmAttempts",
+          "first": 31,
+          "last": 230,
+          "lines": 200
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/crm.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:crmAttempts/VariableDeclaration:customerBaseContext/PropertyAssignment:authorize/ArrowFunction:<anonymous>",
+          "first": 46,
+          "last": 47,
+          "lines": 2
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/crm.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:crmAttempts/VariableDeclaration:customerBaseContext/PropertyAssignment:mutationDto/ArrowFunction:<anonymous>",
+          "first": 49,
+          "last": 49,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/crm.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:crmAttempts/VariableDeclaration:customerBaseContext/PropertyAssignment:notFound/ArrowFunction:<anonymous>",
+          "first": 50,
+          "last": 50,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/crm.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:crmAttempts/PropertyAssignment:authorize/ArrowFunction:<anonymous>",
+          "first": 63,
+          "last": 63,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/crm.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:crmAttempts/PropertyAssignment:mutationDto/ArrowFunction:<anonymous>",
+          "first": 64,
+          "last": 64,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/crm.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:crmAttempts/PropertyAssignment:authorize/ArrowFunction:<anonymous>",
+          "first": 77,
+          "last": 77,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/crm.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:crmAttempts/PropertyAssignment:mutationDto/ArrowFunction:<anonymous>",
+          "first": 78,
+          "last": 78,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/crm.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:crmAttempts/PropertyAssignment:authorize/ArrowFunction:<anonymous>",
+          "first": 91,
+          "last": 91,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/crm.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:crmAttempts/PropertyAssignment:mutationDto/ArrowFunction:<anonymous>",
+          "first": 92,
+          "last": 92,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/crm.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:crmAttempts/PropertyAssignment:authorize/ArrowFunction:<anonymous>",
+          "first": 104,
+          "last": 104,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/crm.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:crmAttempts/PropertyAssignment:customerNotFound/ArrowFunction:<anonymous>",
+          "first": 106,
+          "last": 106,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/crm.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:crmAttempts/PropertyAssignment:authorize/ArrowFunction:<anonymous>",
+          "first": 119,
+          "last": 119,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/crm.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:crmAttempts/PropertyAssignment:mutationDto/ArrowFunction:<anonymous>",
+          "first": 120,
+          "last": 120,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/crm.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:crmAttempts/PropertyAssignment:authorize/ArrowFunction:<anonymous>",
+          "first": 139,
+          "last": 139,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/crm.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:crmAttempts/PropertyAssignment:authorize/ArrowFunction:<anonymous>",
+          "first": 158,
+          "last": 158,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/crm.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:crmAttempts/PropertyAssignment:mutationDto/ArrowFunction:<anonymous>",
+          "first": 159,
+          "last": 159,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/crm.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:crmAttempts/PropertyAssignment:authorize/ArrowFunction:<anonymous>",
+          "first": 177,
+          "last": 177,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/crm.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:crmAttempts/PropertyAssignment:authorize/ArrowFunction:<anonymous>",
+          "first": 197,
+          "last": 197,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/crm.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:crmAttempts/PropertyAssignment:mutationDto/ArrowFunction:<anonymous>",
+          "first": 198,
+          "last": 198,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/crm.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:crmAttempts/PropertyAssignment:authorize/ArrowFunction:<anonymous>",
+          "first": 221,
+          "last": 221,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/crm.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:crmAttempts/PropertyAssignment:mutationDto/ArrowFunction:<anonymous>",
+          "first": 222,
+          "last": 222,
+          "lines": 1
+        }
+      ]
+    },
+    {
+      "path": "apps/api/src/routes/dispatch/dashboard.ts",
+      "lines": 27,
+      "functions": [
+        {
+          "path": "apps/api/src/routes/dispatch/dashboard.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:dashboardAttempts",
+          "first": 7,
+          "last": 27,
+          "lines": 21
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/dashboard.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:dashboardAttempts/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 17,
+          "last": 18,
+          "lines": 2
+        }
+      ]
+    },
+    {
+      "path": "apps/api/src/routes/dispatch/documents.ts",
+      "lines": 422,
+      "functions": [
+        {
+          "path": "apps/api/src/routes/dispatch/documents.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:documentsPart1",
+          "first": 43,
+          "last": 203,
+          "lines": 161
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/documents.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:documentsPart1/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 58,
+          "last": 62,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/documents.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:documentsPart1/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 84,
+          "last": 88,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/documents.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:documentsPart1/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 118,
+          "last": 122,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/documents.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:documentsPart1/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 141,
+          "last": 145,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/documents.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:documentsPart1/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 167,
+          "last": 171,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/documents.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:documentsPart1/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 190,
+          "last": 194,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/documents.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:documentsPart2",
+          "first": 204,
+          "last": 350,
+          "lines": 147
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/documents.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:documentsPart2/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 218,
+          "last": 222,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/documents.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:documentsPart2/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 245,
+          "last": 249,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/documents.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:documentsPart2/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 273,
+          "last": 277,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/documents.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:documentsPart2/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 308,
+          "last": 312,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/documents.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:documentsPart2/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 336,
+          "last": 340,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/documents.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:documentsPart3",
+          "first": 351,
+          "last": 417,
+          "lines": 67
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/documents.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:documentsPart3/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 367,
+          "last": 371,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/documents.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:documentsPart3/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 395,
+          "last": 399,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/documents.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:documentsAttempts",
+          "first": 418,
+          "last": 422,
+          "lines": 5
+        }
+      ]
+    },
+    {
+      "path": "apps/api/src/routes/dispatch/employees.ts",
+      "lines": 97,
+      "functions": [
+        {
+          "path": "apps/api/src/routes/dispatch/employees.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:employeesAttempts",
+          "first": 4,
+          "last": 97,
+          "lines": 94
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/employees.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:employeesAttempts/ArrowFunction:<anonymous>",
+          "first": 18,
+          "last": 23,
+          "lines": 6
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/employees.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:employeesAttempts/ArrowFunction:<anonymous>",
+          "first": 36,
+          "last": 40,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/employees.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:employeesAttempts/ArrowFunction:<anonymous>",
+          "first": 60,
+          "last": 62,
+          "lines": 3
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/employees.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:employeesAttempts/VariableDeclaration:fields/ArrowFunction:<anonymous>",
+          "first": 68,
+          "last": 68,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/employees.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:employeesAttempts/ArrowFunction:<anonymous>",
+          "first": 91,
+          "last": 93,
+          "lines": 3
+        }
+      ]
+    },
+    {
+      "path": "apps/api/src/routes/dispatch/manufacturing.ts",
+      "lines": 167,
+      "functions": [
+        {
+          "path": "apps/api/src/routes/dispatch/manufacturing.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:manufacturingAttempts",
+          "first": 26,
+          "last": 167,
+          "lines": 142
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/manufacturing.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:manufacturingAttempts/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 42,
+          "last": 46,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/manufacturing.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:manufacturingAttempts/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 61,
+          "last": 65,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/manufacturing.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:manufacturingAttempts/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 87,
+          "last": 91,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/manufacturing.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:manufacturingAttempts/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 117,
+          "last": 121,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/manufacturing.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:manufacturingAttempts/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 151,
+          "last": 155,
+          "lines": 5
+        }
+      ]
+    },
+    {
+      "path": "apps/api/src/routes/dispatch/mrp.ts",
+      "lines": 136,
+      "functions": [
+        {
+          "path": "apps/api/src/routes/dispatch/mrp.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:mrpAttempts",
+          "first": 25,
+          "last": 136,
+          "lines": 112
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/mrp.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:mrpAttempts/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 41,
+          "last": 41,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/mrp.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:mrpAttempts/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 56,
+          "last": 57,
+          "lines": 2
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/mrp.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:mrpAttempts/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 72,
+          "last": 73,
+          "lines": 2
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/mrp.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:mrpAttempts/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 97,
+          "last": 97,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/mrp.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:mrpAttempts/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 123,
+          "last": 124,
+          "lines": 2
+        }
+      ]
+    },
+    {
+      "path": "apps/api/src/routes/dispatch/order.ts",
+      "lines": 24,
+      "functions": [
+        {
+          "path": "apps/api/src/routes/dispatch/order.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:orderAttempts",
+          "first": 7,
+          "last": 24,
+          "lines": 18
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/order.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:orderAttempts/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 14,
+          "last": 15,
+          "lines": 2
+        }
+      ]
+    },
+    {
+      "path": "apps/api/src/routes/dispatch/organizations.ts",
+      "lines": 85,
+      "functions": [
+        {
+          "path": "apps/api/src/routes/dispatch/organizations.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:organizationsAttempts",
+          "first": 4,
+          "last": 85,
+          "lines": 82
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/organizations.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:organizationsAttempts/ArrowFunction:<anonymous>",
+          "first": 13,
+          "last": 18,
+          "lines": 6
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/organizations.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:organizationsAttempts/ArrowFunction:<anonymous>",
+          "first": 25,
+          "last": 29,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/organizations.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:organizationsAttempts/ArrowFunction:<anonymous>",
+          "first": 51,
+          "last": 53,
+          "lines": 3
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/organizations.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:organizationsAttempts/VariableDeclaration:fields/ArrowFunction:<anonymous>",
+          "first": 59,
+          "last": 59,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/organizations.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:organizationsAttempts/ArrowFunction:<anonymous>",
+          "first": 79,
+          "last": 81,
+          "lines": 3
+        }
+      ]
+    },
+    {
+      "path": "apps/api/src/routes/dispatch/procurement.ts",
+      "lines": 329,
+      "functions": [
+        {
+          "path": "apps/api/src/routes/dispatch/procurement.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:procurementPart1",
+          "first": 33,
+          "last": 195,
+          "lines": 163
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/procurement.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:procurementPart1/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 65,
+          "last": 66,
+          "lines": 2
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/procurement.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:procurementPart1/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 81,
+          "last": 85,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/procurement.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:procurementPart1/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 111,
+          "last": 115,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/procurement.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:procurementPart1/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 139,
+          "last": 143,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/procurement.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:procurementPart1/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 170,
+          "last": 174,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/procurement.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:procurementPart2",
+          "first": 196,
+          "last": 322,
+          "lines": 127
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/procurement.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:procurementPart2/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 202,
+          "last": 206,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/procurement.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:procurementPart2/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 234,
+          "last": 238,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/procurement.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:procurementPart2/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 253,
+          "last": 257,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/procurement.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:procurementPart2/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 272,
+          "last": 276,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/procurement.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:procurementPart2/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 302,
+          "last": 303,
+          "lines": 2
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/procurement.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:procurementAttempts",
+          "first": 323,
+          "last": 329,
+          "lines": 7
+        }
+      ]
+    },
+    {
+      "path": "apps/api/src/routes/dispatch/production.ts",
+      "lines": 167,
+      "functions": [
+        {
+          "path": "apps/api/src/routes/dispatch/production.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:productionAttempts",
+          "first": 23,
+          "last": 167,
+          "lines": 145
+        }
+      ]
+    },
+    {
+      "path": "apps/api/src/routes/dispatch/qtcpost.ts",
+      "lines": 256,
+      "functions": [
+        {
+          "path": "apps/api/src/routes/dispatch/qtcpost.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:qtcPostPart1",
+          "first": 28,
+          "last": 171,
+          "lines": 144
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/qtcpost.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:qtcPostPart1/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 38,
+          "last": 42,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/qtcpost.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:qtcPostPart1/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 58,
+          "last": 62,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/qtcpost.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:qtcPostPart1/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 81,
+          "last": 85,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/qtcpost.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:qtcPostPart1/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 102,
+          "last": 106,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/qtcpost.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:qtcPostPart1/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 123,
+          "last": 127,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/qtcpost.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:qtcPostPart1/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 144,
+          "last": 148,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/qtcpost.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:qtcPostPart2",
+          "first": 172,
+          "last": 244,
+          "lines": 73
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/qtcpost.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:qtcPostPart2/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 182,
+          "last": 183,
+          "lines": 2
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/qtcpost.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:qtcPostPart2/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 199,
+          "last": 203,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/qtcpost.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:qtcPostPart2/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 228,
+          "last": 232,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/qtcpost.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:qtcpostAttempts",
+          "first": 245,
+          "last": 256,
+          "lines": 12
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/qtcpost.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:qtcpostAttempts/VariableDeclaration:ctx/ArrowFunction:<anonymous>",
+          "first": 249,
+          "last": 252,
+          "lines": 4
+        }
+      ]
+    },
+    {
+      "path": "apps/api/src/routes/dispatch/qtcreads.ts",
+      "lines": 58,
+      "functions": [
+        {
+          "path": "apps/api/src/routes/dispatch/qtcreads.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:qtcreadsAttempts",
+          "first": 8,
+          "last": 58,
+          "lines": 51
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/qtcreads.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:qtcreadsAttempts/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 31,
+          "last": 35,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/qtcreads.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:qtcreadsAttempts/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 48,
+          "last": 49,
+          "lines": 2
+        }
+      ]
+    },
+    {
+      "path": "apps/api/src/routes/dispatch/quality.ts",
+      "lines": 224,
+      "functions": [
+        {
+          "path": "apps/api/src/routes/dispatch/quality.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:qualityPart1",
+          "first": 35,
+          "last": 190,
+          "lines": 156
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/quality.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:qualityPart1/VariableDeclaration:readContext/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 48,
+          "last": 49,
+          "lines": 2
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/quality.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:qualityPart1/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 71,
+          "last": 72,
+          "lines": 2
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/quality.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:qualityPart1/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 98,
+          "last": 99,
+          "lines": 2
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/quality.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:qualityPart1/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 114,
+          "last": 115,
+          "lines": 2
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/quality.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:qualityPart1/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 141,
+          "last": 145,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/quality.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:qualityPart1/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 170,
+          "last": 171,
+          "lines": 2
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/quality.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:qualityPart2",
+          "first": 191,
+          "last": 218,
+          "lines": 28
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/quality.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:qualityPart2/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 199,
+          "last": 200,
+          "lines": 2
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/quality.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:qualityAttempts",
+          "first": 219,
+          "last": 224,
+          "lines": 6
+        }
+      ]
+    },
+    {
+      "path": "apps/api/src/routes/dispatch/risk.ts",
+      "lines": 152,
+      "functions": [
+        {
+          "path": "apps/api/src/routes/dispatch/risk.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:riskAttempts",
+          "first": 26,
+          "last": 152,
+          "lines": 127
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/risk.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:riskAttempts/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 33,
+          "last": 34,
+          "lines": 2
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/risk.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:riskAttempts/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 47,
+          "last": 48,
+          "lines": 2
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/risk.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:riskAttempts/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 61,
+          "last": 62,
+          "lines": 2
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/risk.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:riskAttempts/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 80,
+          "last": 84,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/risk.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:riskAttempts/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 102,
+          "last": 106,
+          "lines": 5
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/risk.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:riskAttempts/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 121,
+          "last": 121,
+          "lines": 1
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/risk.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:riskAttempts/PropertyAssignment:repository/ArrowFunction:<anonymous>",
+          "first": 139,
+          "last": 139,
+          "lines": 1
+        }
+      ]
+    },
+    {
+      "path": "apps/api/src/routes/dispatch/shipments.ts",
+      "lines": 165,
+      "functions": [
+        {
+          "path": "apps/api/src/routes/dispatch/shipments.ts",
+          "kind": "FunctionDeclaration",
+          "symbol": "FunctionDeclaration:shipmentsAttempts",
+          "first": 15,
+          "last": 165,
+          "lines": 151
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/shipments.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:shipmentsAttempts/ArrowFunction:<anonymous>",
+          "first": 26,
+          "last": 35,
+          "lines": 10
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/shipments.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:shipmentsAttempts/ArrowFunction:<anonymous>/PropertyAssignment:body/PropertyAssignment:items/ArrowFunction:<anonymous>",
+          "first": 30,
+          "last": 31,
+          "lines": 2
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/shipments.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:shipmentsAttempts/ArrowFunction:<anonymous>",
+          "first": 66,
+          "last": 68,
+          "lines": 3
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/shipments.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:shipmentsAttempts/ArrowFunction:<anonymous>",
+          "first": 99,
+          "last": 101,
+          "lines": 3
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/shipments.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:shipmentsAttempts/ArrowFunction:<anonymous>",
+          "first": 134,
+          "last": 136,
+          "lines": 3
+        },
+        {
+          "path": "apps/api/src/routes/dispatch/shipments.ts",
+          "kind": "ArrowFunction",
+          "symbol": "FunctionDeclaration:shipmentsAttempts/ArrowFunction:<anonymous>",
+          "first": 159,
+          "last": 161,
+          "lines": 3
+        }
+      ]
+    }
+  ]
+}

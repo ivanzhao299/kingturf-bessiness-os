@@ -1,0 +1,39 @@
+{"family":"crm","attempts":18,"parts":1,"span":[56,65]}
+apps/api/src/app.ts 165ms
+apps/api/src/routes/dispatch/crm.ts 13ms
+apps/api/test/fixtures/app-dispatch-groups.json 9ms
+
+> @kingturf/api@0.0.0 typecheck /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+> tsc --noEmit
+
+src/routes/dispatch/crm.ts(52,47): error TS2345: Argument of type '{ readonly repository: PostgresCrmRepository | undefined; readonly authorization: Readonly<{ actor: Actor; permissions: ReadonlyMap<PermissionKey, Readonly<{ fields: readonly string[] | null; scopes: readonly DataScope[]; }>>; scopeAnchors?: ReadonlyMap<PermissionKey, readonly Readonly<{ scope: DataScope; organizati...' is not assignable to parameter of type 'Readonly<{ repository: CustomerRepository; authorization: Readonly<{ actor: Readonly<{ employeeId: string; companyId: string; }>; permissions: ReadonlyMap<`${string}:${string}`, Readonly<{ fields: readonly string[] | null; scopes: readonly ("SELF" | ... 4 more ... | "GROUP")[]; }>>; scopeAnchors?: ReadonlyMap<...>; ...'.
+  Types of property 'repository' are incompatible.
+    Type 'PostgresCrmRepository | undefined' is not assignable to type 'CustomerRepository'.
+      Type 'undefined' is not assignable to type 'CustomerRepository'.
+src/routes/dispatch/crm.ts(58,11): error TS2322: Type 'PostgresCrmRepository | undefined' is not assignable to type 'OwnershipRepository'.
+  Type 'undefined' is not assignable to type 'OwnershipRepository'.
+src/routes/dispatch/crm.ts(72,11): error TS2322: Type 'PostgresCrmRepository | undefined' is not assignable to type 'ActivityRepository'.
+  Type 'undefined' is not assignable to type 'ActivityRepository'.
+src/routes/dispatch/crm.ts(86,11): error TS2322: Type 'PostgresCrmRepository | undefined' is not assignable to type 'LifecycleRepository'.
+  Type 'undefined' is not assignable to type 'LifecycleRepository'.
+src/routes/dispatch/crm.ts(100,11): error TS2322: Type 'PostgresCrmRepository | undefined' is not assignable to type 'Customer360Repository'.
+  Type 'undefined' is not assignable to type 'Customer360Repository'.
+src/routes/dispatch/crm.ts(114,11): error TS2322: Type 'PostgresCrmRepository | undefined' is not assignable to type 'ContactRepository'.
+  Type 'undefined' is not assignable to type 'ContactRepository'.
+src/routes/dispatch/crm.ts(125,58): error TS2345: Argument of type '{ readonly repository: PostgresCrmRepository | undefined; readonly authorization: Readonly<{ actor: Actor; permissions: ReadonlyMap<PermissionKey, Readonly<{ fields: readonly string[] | null; scopes: readonly DataScope[]; }>>; scopeAnchors?: ReadonlyMap<PermissionKey, readonly Readonly<{ scope: DataScope; organizati...' is not assignable to parameter of type 'Readonly<{ repository: CustomerRepository; authorization: Readonly<{ actor: Readonly<{ employeeId: string; companyId: string; }>; permissions: ReadonlyMap<`${string}:${string}`, Readonly<{ fields: readonly string[] | null; scopes: readonly ("SELF" | ... 4 more ... | "GROUP")[]; }>>; scopeAnchors?: ReadonlyMap<...>; ...'.
+  Types of property 'repository' are incompatible.
+    Type 'PostgresCrmRepository | undefined' is not assignable to type 'CustomerRepository'.
+      Type 'undefined' is not assignable to type 'CustomerRepository'.
+src/routes/dispatch/crm.ts(133,11): error TS2322: Type 'PostgresCrmRepository | undefined' is not assignable to type 'LeadReadRepository'.
+  Type 'undefined' is not assignable to type 'LeadReadRepository'.
+src/routes/dispatch/crm.ts(149,11): error TS2322: Type 'PostgresCrmRepository | undefined' is not assignable to type 'LeadCreateRepository'.
+  Type 'undefined' is not assignable to type 'LeadCreateRepository'.
+src/routes/dispatch/crm.ts(167,11): error TS2322: Type 'PostgresCrmRepository | undefined' is not assignable to type 'LeadReadRepository'.
+  Type 'undefined' is not assignable to type 'LeadReadRepository'.
+src/routes/dispatch/crm.ts(184,11): error TS2322: Type 'PostgresCrmRepository | undefined' is not assignable to type 'ClaimRepository'.
+  Type 'undefined' is not assignable to type 'ClaimRepository'.
+src/routes/dispatch/crm.ts(206,11): error TS2322: Type 'PostgresCrmRepository | undefined' is not assignable to type 'CommandRepository'.
+  Type 'undefined' is not assignable to type 'CommandRepository'.
+/home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @kingturf/api@0.0.0 typecheck: `tsc --noEmit`
+Exit status 2

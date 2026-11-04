@@ -1,0 +1,8 @@
+
+> @kingturf/api@0.0.0 typecheck /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+> tsc --noEmit
+
+test/foundation-postgres.integration.test.ts(753,46): error TS2339: Property 'version' does not exist on type 'never'.
+/home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @kingturf/api@0.0.0 typecheck: `tsc --noEmit`
+Exit status 2

@@ -1,0 +1,10 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ✓ test/conn001-repro.integration.test.ts (10 tests | 9 skipped) 1014ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 9 skipped (10)
+   Start at  13:26:51
+   Duration  1.34s (transform 126ms, setup 0ms, collect 168ms, tests 1.01s, environment 0ms, prepare 46ms)
+

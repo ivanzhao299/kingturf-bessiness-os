@@ -198,6 +198,7 @@ function fixture(
   const returned = { id, version: 7, name: 'Visible', score: 80, nested: { keep: true } };
   const output = [returned, { ...returned, id: other }];
   const repository = {
+    canReadResult: vi.fn().mockResolvedValue(true),
     listPolicies: vi.fn<Call>().mockResolvedValue(output),
     listEvaluations: vi.fn<Call>().mockResolvedValue(output),
     createPolicy: vi.fn<Call>().mockResolvedValue(returned),
@@ -444,6 +445,7 @@ describe('frozen inline risk HTTP contract at 0eccaf6', () => {
         const f = fixture(row);
         const events: string[] = [];
         const second = {
+          canReadResult: vi.fn().mockResolvedValue(true),
           [row.method]: function (this: object, ...args: unknown[]) {
             expect(this).toBe(second);
             expect(args).toHaveLength(scopeIndex(row) + (row.kind === 'list' ? 1 : 2));
@@ -536,7 +538,7 @@ describe('frozen inline risk HTTP contract at 0eccaf6', () => {
         const response = await pending;
         expect(
           row.kind === 'list' ? (record(response.body).items as unknown[])[0] : response.body,
-        ).toEqual({ id, name: 'Visible' });
+        ).toEqual(keyed.includes(row) ? { id, version: 7 } : { id, name: 'Visible' });
       });
       it('reads all own entries even when projecting fields', async () => {
         const f = fixture(row);
@@ -613,7 +615,13 @@ describe('frozen inline risk HTTP contract at 0eccaf6', () => {
           f.permissions.set(row.read, { scopes: [], fields });
           const response = await f.dispatch();
           expect(response.body).toEqual(
-            fields === null ? f.returned : fields.length ? { id, score: 80 } : { id },
+            keyed.includes(row)
+              ? { id, version: 7 }
+              : fields === null
+                ? f.returned
+                : fields.length
+                  ? { id, score: 80 }
+                  : { id },
           );
         });
       it('without read grant only id/version', async () => {
@@ -1222,4 +1230,28 @@ describe('frozen inline risk HTTP contract at 0eccaf6', () => {
       error(await f.dispatch({ pathname: path }), 404, 'not_found', 'Route not found');
       for (const call of Object.values(f.repository)) expect(call).not.toHaveBeenCalled();
     });
+  for (const row of keyed) {
+    it(row.label + ' TD-SEC-009 checks stored result read scope independently', async () => {
+      const f = fixture(row);
+      f.repository.canReadResult.mockResolvedValue(false);
+      expect((await f.dispatch()).body).toEqual({ id, version: 7 });
+      expect(f.repository.canReadResult).toHaveBeenCalledWith(
+        row.kind === 'evaluate' ? 'evaluation' : 'task',
+        id,
+        { actor, scopes: ['COMPANY'], anchors: [] },
+      );
+      expect(f.call).toHaveBeenCalledTimes(1);
+    });
+    it(row.label + ' TD-SEC-009 scope query failure never returns sensitive response', async () => {
+      const f = fixture(row);
+      f.repository.canReadResult.mockRejectedValue(new Error('query unavailable'));
+      error(await f.dispatch(), 500, 'internal_error', 'Internal server error');
+      expect(f.call).toHaveBeenCalledTimes(1);
+    });
+    it(row.label + ' TD-SEC-009 absent read scope never invokes scope query', async () => {
+      const f = fixture(row, { noRead: true });
+      expect((await f.dispatch()).body).toEqual({ id, version: 7 });
+      expect(f.repository.canReadResult).not.toHaveBeenCalled();
+    });
+  }
 });

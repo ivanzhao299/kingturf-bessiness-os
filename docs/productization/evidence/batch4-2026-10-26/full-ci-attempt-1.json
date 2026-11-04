@@ -1,0 +1,8 @@
+{
+  "label": "full-ci-attempt-1",
+  "exit": 1,
+  "seconds": 126.45,
+  "source_sha": "711c4e4ed43e96e831924bb8679b2a40ba46aae7",
+  "log": "full-ci-attempt-1.txt",
+  "reason": "duplicate debt table identity (SEC010 successor row repeated historical canonical ID); fixed documentation only, original entry and gate unchanged"
+}

@@ -1,0 +1,19 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ✓ test/commission-postgres.integration.test.ts (8 tests) 13223ms
+   ✓ commission repository real PostgreSQL contracts > versions and publishes policies with exact paired aggregate evidence  1857ms
+   ✓ commission repository real PostgreSQL contracts > accrues fixed money and collection ratios with separate release and freeze causes  1700ms
+   ✓ commission repository real PostgreSQL contracts > filters actual owner and TEAM scope and preserves accrual replay without duplicate evidence  1726ms
+   ✓ commission repository real PostgreSQL contracts > enforces release thresholds, exact paid/clawback ledger and terminal states  1602ms
+   ✓ commission repository real PostgreSQL contracts > rejects ineligible references and malformed periods with no partial accrual writes  1685ms
+   ✓ commission repository real PostgreSQL contracts > rolls back ledger/state or policy version plus audit on later outbox conflicts  1555ms
+   ✓ commission repository real PostgreSQL contracts > TD-SEC-010 characterization: a known accrual key bypasses current owner scope  1483ms
+   ✓ commission repository real PostgreSQL contracts > TD-SEC-010 characterization: an old event key returns another inaccessible case evidence  1613ms
+ ✓ test/foundation-postgres.integration.test.ts (9 tests) 1440ms
+
+ Test Files  2 passed (2)
+      Tests  17 passed (17)
+   Start at  11:10:03
+   Duration  16.11s (transform 718ms, setup 0ms, collect 1.04s, tests 14.66s, environment 0ms, prepare 94ms)
+

@@ -4,6 +4,7 @@ import { Database, migrate } from '@kingturf/database';
 import type { ObjectAccessAuthorizer, ObjectStorage } from '@kingturf/domain';
 import { PostgresEmployeeRepository } from '../src/repositories.js';
 import { PostgresBusinessDocumentRepository } from '../src/business-document-repositories.js';
+import { projectBusinessDocumentDetail } from '../src/routes/business-document-reads.js';
 import {
   InProcessEventDispatcher,
   EmployeeObjectInstanceResolver,
@@ -185,8 +186,8 @@ describe('JTF-P0-E12..E15 PostgreSQL acceptance', () => {
   });
 
   it('pins translations and approved customer delivery while exposing only administrator audit data', async () => {
-    const repository = new PostgresBusinessDocumentRepository(db);
-    const context = { actor, scopes: ['COMPANY'] as const };
+    const repository = new PostgresBusinessDocumentRepository(db),
+      context = { actor, scopes: ['COMPANY'] as const };
     const created = await repository.create(
       {
         templateKey: '13-quotes',
@@ -285,6 +286,51 @@ describe('JTF-P0-E12..E15 PostgreSQL acceptance', () => {
       ]),
     );
     expect(log.some((item) => item.actorName === 'Actor')).toBe(true);
+  });
+
+  it('projects persisted document detail fields across nested collections', async () => {
+    const repository = new PostgresBusinessDocumentRepository(db),
+      context = { actor, scopes: ['COMPANY'] as const };
+    const created = await repository.create(
+      {
+        templateKey: '13-quotes',
+        title: 'Projection fixture',
+        route: 'quotes',
+        content: { body: 'controlled body' },
+      },
+      actor,
+      randomUUID(),
+    );
+    const translation = await repository.createTranslation(
+      created.id,
+      {
+        expectedVersion: 1,
+        targetLocale: 'en-US',
+        content: { body: 'translated body' },
+      },
+      context,
+      randomUUID(),
+    );
+    expect(translation.id).toEqual(expect.any(String));
+    const full = await repository.get(created.id, { ...context, includeAudit: true });
+    const projected = projectBusinessDocumentDetail(full, [
+      'title',
+      'versions.content',
+      'translations.targetLocale',
+      'reviewEvents.action',
+      'dispatches.channel',
+    ]);
+    expect(projected).toMatchObject({
+      id: created.id,
+      title: 'Projection fixture',
+      versions: [{ content: { body: 'controlled body' } }],
+      translations: [{ targetLocale: 'en-US' }],
+    });
+    expect(projected).not.toHaveProperty('route');
+    expect((projected.versions as Record<string, unknown>[])[0]).not.toHaveProperty(
+      'canonicalHash',
+    );
+    expect((projected.translations as Record<string, unknown>[])[0]).not.toHaveProperty('content');
   });
 
   it('requires compare-and-swap versions for notification preferences under concurrency', async () => {
@@ -718,5 +764,309 @@ describe('JTF-P0-E12..E15 PostgreSQL acceptance', () => {
     expect((await repo.find(definition.id, company))?.version).toBe(3);
     expect((await repo.find(definition.id, company))?.versions).toHaveLength(2);
     expect(await repo.find(definition.id, otherCompany)).toBeNull();
+  });
+  it('TD-SEC-010 characterization: known full send input replays outside current creator scope', async () => {
+    const repository = new PostgresBusinessDocumentRepository(db);
+    const context = { actor, scopes: ['COMPANY'] as const };
+    const document = await repository.create(
+      {
+        templateKey: '13-quotes',
+        title: 'SEC010 synthetic',
+        route: 'quotes',
+        customerId: customer,
+        content: { body: 'Synthetic only' },
+      },
+      actor,
+      randomUUID(),
+    );
+    const currentConnector = (
+      await db.query<{ version: number; status: string }>(
+        "SELECT version,status FROM business_document_connectors WHERE tenant_id=$1 AND connector='EMAIL'",
+        [company],
+      )
+    ).rows[0];
+    if (currentConnector) expect(currentConnector.status).toBe('READY');
+    else
+      await repository.configureConnector(
+        'EMAIL',
+        {
+          provider: 'RESEND',
+          displayName: 'Synthetic adapter',
+          senderIdentity: 'sender@example.test',
+          secretReference: 'KINGTURF_CONNECTOR_EMAIL_TOKEN',
+          configuration: {},
+          status: 'READY',
+          expectedVersion: 0,
+        },
+        actor,
+        randomUUID(),
+      );
+    await repository.transition(
+      document.id,
+      { expectedVersion: 1, action: 'SUBMITTED', reason: 'Synthetic submit' },
+      context,
+      randomUUID(),
+    );
+    await repository.transition(
+      document.id,
+      { expectedVersion: 1, action: 'APPROVED', reason: 'Synthetic independent approval' },
+      { actor: { companyId: company, employeeId: recipient }, scopes: ['COMPANY'] },
+      randomUUID(),
+    );
+    const input = {
+      expectedVersion: 1,
+      channel: 'EMAIL',
+      recipientName: 'Synthetic buyer',
+      recipientAddress: 'synthetic@example.test',
+      subject: 'Synthetic evidence',
+      message: 'No provider call',
+      idempotencyKey: randomUUID(),
+    };
+    await repository.dispatch(document.id, input, context, randomUUID());
+    const narrowed = {
+      actor: { companyId: company, employeeId: recipient },
+      scopes: ['SELF'] as const,
+    };
+    await expect(repository.get(document.id, narrowed)).rejects.toMatchObject({
+      code: 'not_found',
+    });
+    const before = (
+      await db.query(
+        'SELECT (SELECT count(*)::int FROM business_document_dispatches) dispatches,(SELECT count(*)::int FROM audit_events) audits,(SELECT count(*)::int FROM domain_event_outbox) outbox',
+      )
+    ).rows;
+    await expect(
+      repository.dispatch(
+        document.id,
+        { ...input, idempotencyKey: randomUUID() },
+        narrowed,
+        randomUUID(),
+      ),
+    ).rejects.toMatchObject({ code: 'conflict' });
+    await expect(
+      repository.dispatch(document.id, input, narrowed, randomUUID()),
+    ).rejects.toMatchObject({
+      code: 'conflict',
+    });
+    await expect(
+      repository.dispatch(
+        document.id,
+        { ...input, subject: 'Unknown original body' },
+        narrowed,
+        randomUUID(),
+      ),
+    ).rejects.toMatchObject({ code: 'conflict' });
+    expect(
+      (
+        await db.query(
+          'SELECT (SELECT count(*)::int FROM business_document_dispatches) dispatches,(SELECT count(*)::int FROM audit_events) audits,(SELECT count(*)::int FROM domain_event_outbox) outbox',
+        )
+      ).rows,
+    ).toEqual(before);
+  });
+
+  it('TD-CONN-001: connector updates use compare-and-swap after initial creation', async () => {
+    const repository = new PostgresBusinessDocumentRepository(db);
+    const first = await repository.configureConnector(
+      'TRANSLATION',
+      {
+        provider: 'SYNTHETIC',
+        displayName: 'Synthetic connector',
+        senderIdentity: 'sender@example.test',
+        secretReference: 'KINGTURF_CONNECTOR_SYNTHETIC_TOKEN',
+        configuration: {},
+        status: 'READY',
+        expectedVersion: 0,
+      },
+      actor,
+      randomUUID(),
+    );
+    expect(first).toMatchObject({ connector: 'TRANSLATION', version: 1 });
+    const second = await repository.configureConnector(
+      'TRANSLATION',
+      {
+        provider: 'SYNTHETIC',
+        displayName: 'Synthetic connector v2',
+        senderIdentity: 'sender@example.test',
+        secretReference: 'KINGTURF_CONNECTOR_SYNTHETIC_TOKEN',
+        configuration: { version: 2 },
+        status: 'READY',
+        expectedVersion: 1,
+      },
+      actor,
+      randomUUID(),
+    );
+    expect(second).toMatchObject({
+      connector: 'TRANSLATION',
+      version: 2,
+      displayName: 'Synthetic connector v2',
+    });
+    await expect(
+      repository.configureConnector(
+        'TRANSLATION',
+        {
+          provider: 'SYNTHETIC',
+          displayName: 'Stale update',
+          senderIdentity: 'sender@example.test',
+          secretReference: 'KINGTURF_CONNECTOR_SYNTHETIC_TOKEN',
+          configuration: {},
+          status: 'READY',
+          expectedVersion: 1,
+        },
+        actor,
+        randomUUID(),
+      ),
+    ).rejects.toMatchObject({ code: 'conflict' });
+    expect(
+      (
+        await db.query<{ version: number; display_name: string }>(
+          "SELECT version,display_name FROM business_document_connectors WHERE tenant_id=$1 AND connector='TRANSLATION'",
+          [company],
+        )
+      ).rows[0],
+    ).toEqual({ version: 2, display_name: 'Synthetic connector v2' });
+
+    const concurrent = await Promise.allSettled(
+      ['Concurrent A', 'Concurrent B'].map((displayName) =>
+        repository.configureConnector(
+          'TRANSLATION',
+          {
+            provider: 'SYNTHETIC',
+            displayName,
+            senderIdentity: 'sender@example.test',
+            secretReference: 'KINGTURF_CONNECTOR_SYNTHETIC_TOKEN',
+            configuration: {},
+            status: 'READY',
+            expectedVersion: 2,
+          },
+          actor,
+          randomUUID(),
+        ),
+      ),
+    );
+    expect(concurrent.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+    expect(concurrent.filter((result) => result.status === 'rejected')).toHaveLength(1);
+    expect(
+      (
+        await db.query<{ version: number }>(
+          "SELECT version FROM business_document_connectors WHERE tenant_id=$1 AND connector='TRANSLATION'",
+          [company],
+        )
+      ).rows[0],
+    ).toEqual({ version: 3 });
+  });
+
+  it('TD-CONN-001: connector creation fences expectedVersion and isolates failed CAS writes', async () => {
+    const repository = new PostgresBusinessDocumentRepository(db);
+    const connector = 'TELEGRAM';
+    const otherActor = { companyId: otherCompany, employeeId: outsider } as const;
+    const input = (displayName: string, expectedVersion: number, configuration = {}) => ({
+      provider: 'SYNTHETIC',
+      displayName,
+      senderIdentity: 'sender@example.test',
+      secretReference: 'KINGTURF_CONNECTOR_SYNTHETIC_TOKEN',
+      configuration,
+      status: 'READY' as const,
+      expectedVersion,
+    });
+    const snapshot = async () => {
+      const row = (
+        await db.query<{ connectors: string; audits: string; outbox: string }>(
+          `SELECT
+             (SELECT count(*)::text FROM business_document_connectors
+               WHERE connector=$1 AND tenant_id IN ($2,$3)) connectors,
+             (SELECT count(*)::text FROM audit_events) audits,
+             (SELECT count(*)::text FROM domain_event_outbox) outbox`,
+          [connector, company, otherCompany],
+        )
+      ).rows[0];
+      if (!row) throw new Error('Connector CAS snapshot query returned no row');
+      return row;
+    };
+    const expectConflictWithoutWrites = async (
+      owner: typeof actor | typeof otherActor,
+      expectedVersion: number,
+      displayName: string,
+    ) => {
+      const before = await snapshot();
+      await expect(
+        repository.configureConnector(
+          connector,
+          input(displayName, expectedVersion),
+          owner,
+          randomUUID(),
+        ),
+      ).rejects.toMatchObject({ code: 'conflict' });
+      expect(await snapshot()).toEqual(before);
+    };
+
+    await expectConflictWithoutWrites(actor, 999, 'Initial stale');
+    expect(
+      (
+        await db.query(
+          'SELECT 1 FROM business_document_connectors WHERE tenant_id=$1 AND connector=$2',
+          [company, connector],
+        )
+      ).rowCount,
+    ).toBe(0);
+
+    const beforeCreate = await snapshot();
+    const created = await repository.configureConnector(
+      connector,
+      input('Synthetic connector', 0),
+      actor,
+      randomUUID(),
+    );
+    expect(created).toMatchObject({ connector, version: 1 });
+    const afterCreate = await snapshot();
+    expect(Number(afterCreate.connectors)).toBe(Number(beforeCreate.connectors) + 1);
+    expect(Number(afterCreate.audits)).toBe(Number(beforeCreate.audits) + 1);
+    expect(afterCreate.outbox).toBe(beforeCreate.outbox);
+
+    await expectConflictWithoutWrites(actor, 0, 'Duplicate initial');
+    await expectConflictWithoutWrites(actor, 999, 'Wrong current version');
+
+    const updated = await repository.configureConnector(
+      connector,
+      input('Synthetic connector v2', 1, { revision: 2 }),
+      actor,
+      randomUUID(),
+    );
+    expect(updated).toMatchObject({ connector, version: 2, displayName: 'Synthetic connector v2' });
+    await expectConflictWithoutWrites(actor, 0, 'Stale zero update');
+    await expectConflictWithoutWrites(actor, 999, 'Stale high update');
+
+    const beforeConcurrent = await snapshot();
+    const concurrent = await Promise.allSettled(
+      ['Concurrent A', 'Concurrent B'].map((displayName) =>
+        repository.configureConnector(connector, input(displayName, 2), actor, randomUUID()),
+      ),
+    );
+    expect(concurrent.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+    expect(concurrent.filter((result) => result.status === 'rejected')).toHaveLength(1);
+    const afterConcurrent = await snapshot();
+    expect(Number(afterConcurrent.audits)).toBe(Number(beforeConcurrent.audits) + 1);
+    expect(afterConcurrent.outbox).toBe(beforeConcurrent.outbox);
+
+    const otherCreated = await repository.configureConnector(
+      connector,
+      input('Other tenant connector', 0),
+      otherActor,
+      randomUUID(),
+    );
+    expect(otherCreated).toMatchObject({ connector, version: 1 });
+    const rows = (
+      await db.query<{ tenant_id: string; version: number; display_name: string }>(
+        'SELECT tenant_id,version,display_name FROM business_document_connectors WHERE connector=$1 ORDER BY tenant_id',
+        [connector],
+      )
+    ).rows;
+    expect(rows).toHaveLength(2);
+    expect(rows.find((row) => row.tenant_id === company)).toMatchObject({ version: 3 });
+    expect(rows.find((row) => row.tenant_id === otherCompany)).toMatchObject({
+      version: 1,
+      display_name: 'Other tenant connector',
+    });
+    await expectConflictWithoutWrites(otherActor, 0, 'Other duplicate initial');
   });
 });

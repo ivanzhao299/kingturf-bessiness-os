@@ -1,0 +1,1290 @@
+
+> kingturf-business-os@0.0.0 ci:local /home/jinhuit/Kingturf/kingturf-bessiness-os
+> NODE_ENV=test sh -c 'pnpm install --frozen-lockfile && pnpm format:check && pnpm doc:lint && pnpm structure:check && pnpm service:check && pnpm verify:frontend-capabilities && pnpm ci:database:guard && pnpm db:migrate && pnpm db:status && pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm build && pnpm security:check'
+
+Scope: all 7 workspace projects
+Lockfile is up to date, resolution step is skipped
+Already up to date
+
+. prepare$ git rev-parse --git-dir >/dev/null 2>&1 && git config core.hooksPath .githooks || true
+. prepare: Done
+Done in 606ms using pnpm v10.33.4
+
+> kingturf-business-os@0.0.0 format:check /home/jinhuit/Kingturf/kingturf-bessiness-os
+> prettier --check .
+
+Checking formatting...
+All matched files use Prettier code style!
+
+> kingturf-business-os@0.0.0 doc:lint /home/jinhuit/Kingturf/kingturf-bessiness-os
+> node scripts/analysis/doc-lint.mjs
+
+doc-lint 通过：AGENTS 行数/必填节 ✓，索引收录 238 个 docs 文件 ✓，3 个文件链接全部可解析 ✓
+
+> kingturf-business-os@0.0.0 structure:check /home/jinhuit/Kingturf/kingturf-bessiness-os
+> node scripts/analysis/structure-gate.mjs
+
+[白名单豁免] [G1] apps/api/src/app.ts（4172 行） 【白名单豁免】TD-API-001 buildApp 巨函数，到期：批次 2
+[白名单豁免] [G2] apps/api/src/app.ts（格式缩进 10 层） 【白名单豁免】随对应批次拆分消解
+[白名单豁免] [G2] apps/api/src/business-document-repositories.ts（格式缩进 7 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G2] apps/api/src/collection-repositories.ts（格式缩进 8 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G1] apps/api/src/commercial-repositories.ts（2037 行） 【白名单豁免】最大仓储域，到期：批次 2（分域 handler 化时拆分）
+[白名单豁免] [G2] apps/api/src/commercial-repositories.ts（格式缩进 7 层） 【白名单豁免】随对应批次拆分消解
+[白名单豁免] [G2] apps/api/src/commission-repositories.ts（格式缩进 6 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G1] apps/api/src/complaint-repositories.ts（1340 行） 【白名单豁免】单域仓储超限，到期：批次 2
+[白名单豁免] [G2] apps/api/src/complaint-repositories.ts（格式缩进 6 层） 【白名单豁免】随对应批次拆分消解
+[白名单豁免] [G2] apps/api/src/contract-document-repositories.ts（格式缩进 6 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G1] apps/api/src/crm-repositories.ts（873 行） 【白名单豁免】单域仓储超限，到期：批次 2
+[白名单豁免] [G2] apps/api/src/crm-repositories.ts（格式缩进 6 层） 【白名单豁免】随对应批次拆分消解
+[白名单豁免] [G2] apps/api/src/manufacturing-repositories.ts（格式缩进 7 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G2] apps/api/src/mrp-repositories.ts（格式缩进 6 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G2] apps/api/src/order-360-repositories.ts（格式缩进 6 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G1] apps/api/src/platform-repositories.ts（1189 行） 【白名单豁免】单域仓储超限，到期：批次 2
+[白名单豁免] [G2] apps/api/src/platform-repositories.ts（格式缩进 6 层） 【白名单豁免】随对应批次拆分消解
+[白名单豁免] [G2] apps/api/src/procurement-repositories.ts（格式缩进 7 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G2] apps/api/src/production-cost-repositories.ts（格式缩进 6 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G2] apps/api/src/production-repositories.ts（格式缩进 6 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G1] apps/api/src/qtc-repositories.ts（931 行） 【白名单豁免】单域仓储超限，到期：批次 2
+[白名单豁免] [G2] apps/api/src/qtc-repositories.ts（格式缩进 8 层） 【白名单豁免】随对应批次拆分消解
+[白名单豁免] [G2] apps/api/src/quality-repositories.ts（格式缩进 6 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G1] apps/api/src/repositories.ts（869 行） 【白名单豁免】组织员工主数据仓储，到期：批次 2
+[白名单豁免] [G2] apps/api/src/repositories.ts（格式缩进 6 层） 【白名单豁免】随对应批次拆分消解
+[白名单豁免] [G2] apps/api/src/risk-repositories.ts（格式缩进 8 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G2] apps/api/src/shipment-repositories.ts（格式缩进 6 层） 【白名单豁免】存量嵌套热点（6-8 层），到期：批次 2（分域 handler 化时压平）
+[白名单豁免] [G1] packages/domain/src/index.ts（1032 行） 【白名单豁免】共享域包单文件，到期：批次 4 后评估拆分
+[白名单豁免] [G2] packages/domain/src/index.ts（格式缩进 6 层） 【白名单豁免】随对应批次拆分消解
+[白名单豁免] [G5] apps/api/src/app.ts（3622 行） FunctionDeclaration:buildApp:550-4171 【G5精确限期豁免】上限3627，TD-API-001 existing application factory; no growth or new function permission，到期：Independent long-function remediation after final acceptance; hard date takes precedence; 2026-11-17 inclusive Asia/Singapore
+[白名单豁免] [G5] apps/api/src/app.ts（3553 行） FunctionDeclaration:buildApp/VariableDeclaration:application/MethodDeclaration:dispatch:558-4110 【G5精确限期豁免】上限3558，TD-API-001 existing nested dispatch; independently capped despite overlap with buildApp，到期：Independent long-function remediation after final acceptance; hard date takes precedence; 2026-11-17 inclusive Asia/Singapore
+structure-gate 通过：强制违规 0；白名单豁免 29 条（随批次移除）；G5精确限期豁免 2 条
+
+> kingturf-business-os@0.0.0 service:check /home/jinhuit/Kingturf/kingturf-bessiness-os
+> node scripts/analysis/service-boundary-gate.mjs
+
+service-boundary: 162 files, 31 repository ports, 220 route templates, 0 violations
+
+> kingturf-business-os@0.0.0 verify:frontend-capabilities /home/jinhuit/Kingturf/kingturf-bessiness-os
+> node scripts/verify_frontend_capability_manifest.mjs
+
+Verified 39 direct capabilities and 19 governed platform endpoint families.
+
+> kingturf-business-os@0.0.0 ci:database:guard /home/jinhuit/Kingturf/kingturf-bessiness-os
+> NODE_ENV=test pnpm --filter @kingturf/database exec node --experimental-strip-types src/cli.ts guard-test-target
+
+Verified disposable test database: kingturf_batch3_test
+
+> kingturf-business-os@0.0.0 db:migrate /home/jinhuit/Kingturf/kingturf-bessiness-os
+> pnpm --filter @kingturf/database db:migrate
+
+
+> @kingturf/database@0.0.0 db:migrate /home/jinhuit/Kingturf/kingturf-bessiness-os/packages/database
+> node --experimental-strip-types src/cli.ts migrate
+
+
+> kingturf-business-os@0.0.0 db:status /home/jinhuit/Kingturf/kingturf-bessiness-os
+> pnpm --filter @kingturf/database db:status
+
+
+> @kingturf/database@0.0.0 db:status /home/jinhuit/Kingturf/kingturf-bessiness-os/packages/database
+> node --experimental-strip-types src/cli.ts status
+
+[
+  {
+    "name": "0001_identity_authorization_foundation.sql",
+    "checksum": "c53c5cf749da1135ca7bed9ecaa91f74f461dd6e252d11c2eca0a5a02aa694ee",
+    "storedChecksum": "c53c5cf749da1135ca7bed9ecaa91f74f461dd6e252d11c2eca0a5a02aa694ee",
+    "state": "applied"
+  },
+  {
+    "name": "0002_tenant_integrity.sql",
+    "checksum": "918c043b124b539fc702582f166daff6552feee0594be2e08484eea8e1e05538",
+    "storedChecksum": "918c043b124b539fc702582f166daff6552feee0594be2e08484eea8e1e05538",
+    "state": "applied"
+  },
+  {
+    "name": "0003_identity_authorization_hardening.sql",
+    "checksum": "f47063fa8acd913682abc8d11d0bc6440ec9e377e6df20fe57883746345ea71d",
+    "storedChecksum": "f47063fa8acd913682abc8d11d0bc6440ec9e377e6df20fe57883746345ea71d",
+    "state": "applied"
+  },
+  {
+    "name": "0004_authorization_integrity_completion.sql",
+    "checksum": "59a2aa362d90c575b9dc5013ba52b19f20701fc9b09280d100be139ffaa6c518",
+    "storedChecksum": "59a2aa362d90c575b9dc5013ba52b19f20701fc9b09280d100be139ffaa6c518",
+    "state": "applied"
+  },
+  {
+    "name": "0005_business_platform_foundations.sql",
+    "checksum": "5955c1e94e1ef38b5ab2d8228a35a676719e6791d7b1d932bf58c6022e946fc9",
+    "storedChecksum": "5955c1e94e1ef38b5ab2d8228a35a676719e6791d7b1d932bf58c6022e946fc9",
+    "state": "applied"
+  },
+  {
+    "name": "0006_platform_engine_integrity.sql",
+    "checksum": "d9ed3c6084f93532688aa103f71737763f27965142f7a8761f3b216c69629402",
+    "storedChecksum": "d9ed3c6084f93532688aa103f71737763f27965142f7a8761f3b216c69629402",
+    "state": "applied"
+  },
+  {
+    "name": "0007_event_notification_foundations.sql",
+    "checksum": "ee59aaca8530662e1a9344962eb982ca573abcc2b947f29d1910049698880459",
+    "storedChecksum": "ee59aaca8530662e1a9344962eb982ca573abcc2b947f29d1910049698880459",
+    "state": "applied"
+  },
+  {
+    "name": "0008_attachment_foundation.sql",
+    "checksum": "9293f8bfb4047737fd15c9639537ce869a885e5ef004a965cd440d4b40f0506f",
+    "storedChecksum": "9293f8bfb4047737fd15c9639537ce869a885e5ef004a965cd440d4b40f0506f",
+    "state": "applied"
+  },
+  {
+    "name": "0009_business_object_registry.sql",
+    "checksum": "96dd0606130d7edd6d20d9f29f357eea6595843c6d3cd451c924ea7bc8a74730",
+    "storedChecksum": "96dd0606130d7edd6d20d9f29f357eea6595843c6d3cd451c924ea7bc8a74730",
+    "state": "applied"
+  },
+  {
+    "name": "0010_foundation_tenant_guards.sql",
+    "checksum": "43d647bec187d90756c6cf4ebe72b5a38d8ee1666fc49fb8cd6b398cb6facf3e",
+    "storedChecksum": "43d647bec187d90756c6cf4ebe72b5a38d8ee1666fc49fb8cd6b398cb6facf3e",
+    "state": "applied"
+  },
+  {
+    "name": "0011_foundation_review_hardening.sql",
+    "checksum": "af96f8e7eb9efe02bc28a885c1b75c87d1fd2c38ac07b29503b43a05817dfbd0",
+    "storedChecksum": "af96f8e7eb9efe02bc28a885c1b75c87d1fd2c38ac07b29503b43a05817dfbd0",
+    "state": "applied"
+  },
+  {
+    "name": "0012_foundation_operational_safety.sql",
+    "checksum": "563f6b54d816cdae8ba0cccac73e074d926a8bf0c3f2063f78ba251a7f8ae5ce",
+    "storedChecksum": "563f6b54d816cdae8ba0cccac73e074d926a8bf0c3f2063f78ba251a7f8ae5ce",
+    "state": "applied"
+  },
+  {
+    "name": "0013_foundation_operational_safety_columns.sql",
+    "checksum": "a491578b6b5c2c5b63da7027a75d3a52007f86f44d38114bf55bcffb5d27e76c",
+    "storedChecksum": "a491578b6b5c2c5b63da7027a75d3a52007f86f44d38114bf55bcffb5d27e76c",
+    "state": "applied"
+  },
+  {
+    "name": "0014_event_claim_fencing.sql",
+    "checksum": "a74b260d98c2514b4dd5af7e75a37c96430d4ba7d6052d80d6d928bef103e5a9",
+    "storedChecksum": "a74b260d98c2514b4dd5af7e75a37c96430d4ba7d6052d80d6d928bef103e5a9",
+    "state": "applied"
+  },
+  {
+    "name": "0015_published_relationship_immutability.sql",
+    "checksum": "a5f1a291ec2cfff2f0879839bf0f82a2c68c365d8226fac674a277e41f17413b",
+    "storedChecksum": "a5f1a291ec2cfff2f0879839bf0f82a2c68c365d8226fac674a277e41f17413b",
+    "state": "applied"
+  },
+  {
+    "name": "0016_notification_idempotency_and_registry_revision.sql",
+    "checksum": "a4c04891433af4522dbbbaa9cea1b3a3e7f00dea220ce2371d3bd6fb6a570a84",
+    "storedChecksum": "a4c04891433af4522dbbbaa9cea1b3a3e7f00dea220ce2371d3bd6fb6a570a84",
+    "state": "applied"
+  },
+  {
+    "name": "0017_crm_customer_lead_foundation.sql",
+    "checksum": "6e42e44269d1bcd5558b63f235213084eba3b68c1b46be901f163b9480efaa75",
+    "storedChecksum": "6e42e44269d1bcd5558b63f235213084eba3b68c1b46be901f163b9480efaa75",
+    "state": "applied"
+  },
+  {
+    "name": "0018_customer_ownership_reassign_permission.sql",
+    "checksum": "c110789c49b900a98bbb9332a2402b72268d6ffbedb4e9c04c90493c2cfc2b15",
+    "storedChecksum": "c110789c49b900a98bbb9332a2402b72268d6ffbedb4e9c04c90493c2cfc2b15",
+    "state": "applied"
+  },
+  {
+    "name": "0019_crm_contact_identity_integrity.sql",
+    "checksum": "4514b5115d2d0089a5f0cc1fdb81b8686f738054ec77787dea22f0a722bdffee",
+    "storedChecksum": "4514b5115d2d0089a5f0cc1fdb81b8686f738054ec77787dea22f0a722bdffee",
+    "state": "applied"
+  },
+  {
+    "name": "0020_crm_response_and_deletion_hardening.sql",
+    "checksum": "2c5dea964ebc318a222af8960efdfff19892ef92891671de49791b86851d96c6",
+    "storedChecksum": "2c5dea964ebc318a222af8960efdfff19892ef92891671de49791b86851d96c6",
+    "state": "applied"
+  },
+  {
+    "name": "0021_commercial_sales_to_cash.sql",
+    "checksum": "242924ade695325d08f28fabe5ca48bce86ffaa8ab9b1a1dd37db90434eb7640",
+    "storedChecksum": "242924ade695325d08f28fabe5ca48bce86ffaa8ab9b1a1dd37db90434eb7640",
+    "state": "applied"
+  },
+  {
+    "name": "0022_commercial_integrity_completion.sql",
+    "checksum": "f4f668288fe8be624156e3f06c775a11dec09e6ed29dbff8a35a264ecfd95485",
+    "storedChecksum": "f4f668288fe8be624156e3f06c775a11dec09e6ed29dbff8a35a264ecfd95485",
+    "state": "applied"
+  },
+  {
+    "name": "0023_commercial_review_hardening.sql",
+    "checksum": "27aabe7a8765e949a053ef873fe59fab200a251aa34f0271dd932c1bb50e62d7",
+    "storedChecksum": "27aabe7a8765e949a053ef873fe59fab200a251aa34f0271dd932c1bb50e62d7",
+    "state": "applied"
+  },
+  {
+    "name": "0024_ctr_attachment_snapshot_freeze.sql",
+    "checksum": "c5daa59226b6ce2097aa409f2536d6db0781a428e2895684b711954ca9104daf",
+    "storedChecksum": "c5daa59226b6ce2097aa409f2536d6db0781a428e2895684b711954ca9104daf",
+    "state": "applied"
+  },
+  {
+    "name": "0025_commercial_final_integrity.sql",
+    "checksum": "43161c3d3db5389542add10c3866c4b3537ffc57d6644fa9608b1c105e0bed8d",
+    "storedChecksum": "43161c3d3db5389542add10c3866c4b3537ffc57d6644fa9608b1c105e0bed8d",
+    "state": "applied"
+  },
+  {
+    "name": "0026_quote_to_cash_immutable_ledger.sql",
+    "checksum": "f9505021c71098d6030cb699c61c881963ca644e5d7c448f522952a72b387299",
+    "storedChecksum": "f9505021c71098d6030cb699c61c881963ca644e5d7c448f522952a72b387299",
+    "state": "applied"
+  },
+  {
+    "name": "0027_quote_to_cash_governance_repairs.sql",
+    "checksum": "ec728d81fc964a13097fcab095eeb82c22e8da92da2dc030a94894b0db781bbc",
+    "storedChecksum": "ec728d81fc964a13097fcab095eeb82c22e8da92da2dc030a94894b0db781bbc",
+    "state": "applied"
+  },
+  {
+    "name": "0028_platform_permission_catalog.sql",
+    "checksum": "c52e432189a59c2d3e017f48baafc0f2019d7c253cd2bae323607c2814729d7f",
+    "storedChecksum": "c52e432189a59c2d3e017f48baafc0f2019d7c253cd2bae323607c2814729d7f",
+    "state": "applied"
+  },
+  {
+    "name": "0029_commercial_definition_company_scope.sql",
+    "checksum": "7110e22638e563e7f186cab46f915d39e612a9b9dbf8ff67f1c49ad2a6035b31",
+    "storedChecksum": "7110e22638e563e7f186cab46f915d39e612a9b9dbf8ff67f1c49ad2a6035b31",
+    "state": "applied"
+  },
+  {
+    "name": "0030_qtc_order_trigger_alias_repair.sql",
+    "checksum": "afef76d741e3cee08d9675dbc9ec7e6aa47b930fea6c477f1ca89768e6831e8f",
+    "storedChecksum": "afef76d741e3cee08d9675dbc9ec7e6aa47b930fea6c477f1ca89768e6831e8f",
+    "state": "applied"
+  },
+  {
+    "name": "0031_commission_engine_immutable_ledger.sql",
+    "checksum": "b2dea2d74c9cd87f0699df3a1571e7c55c97ee4e84220401289012904202398b",
+    "storedChecksum": "b2dea2d74c9cd87f0699df3a1571e7c55c97ee4e84220401289012904202398b",
+    "state": "applied"
+  },
+  {
+    "name": "0032_order_360_permission.sql",
+    "checksum": "d99bf9ee17dd03a2d0a219901f3884ce010684089ea2c5b6a91e416f51027e44",
+    "storedChecksum": "d99bf9ee17dd03a2d0a219901f3884ce010684089ea2c5b6a91e416f51027e44",
+    "state": "applied"
+  },
+  {
+    "name": "0033_risk_engine_v1.sql",
+    "checksum": "d1cb0ed65180e786afa0d6f5b0c7824e8ef75c8562250e743e753a730330dd95",
+    "storedChecksum": "d1cb0ed65180e786afa0d6f5b0c7824e8ef75c8562250e743e753a730330dd95",
+    "state": "applied"
+  },
+  {
+    "name": "0034_risk_governance_repairs.sql",
+    "checksum": "ffc03bc92767a4de217551ea66af0fada5f78bed08f63738c66cf1760db37cee",
+    "storedChecksum": "ffc03bc92767a4de217551ea66af0fada5f78bed08f63738c66cf1760db37cee",
+    "state": "applied"
+  },
+  {
+    "name": "0035_executive_dashboard_permission.sql",
+    "checksum": "81f7f66d858b6b1629c05acd2d878770094371770e6ea715f6ee45de4f90d83b",
+    "storedChecksum": "81f7f66d858b6b1629c05acd2d878770094371770e6ea715f6ee45de4f90d83b",
+    "state": "applied"
+  },
+  {
+    "name": "0036_manufacturing_master_data.sql",
+    "checksum": "048a7b16edd19c858c65df19f1067dcb1df8a78179025e70ebefaaa1ce43f120",
+    "storedChecksum": "048a7b16edd19c858c65df19f1067dcb1df8a78179025e70ebefaaa1ce43f120",
+    "state": "applied"
+  },
+  {
+    "name": "0037_procurement_inventory_ledger.sql",
+    "checksum": "a3d658744555ec06605221722fa811f74bb5428564b4f441e20500f6903ff2a1",
+    "storedChecksum": "a3d658744555ec06605221722fa811f74bb5428564b4f441e20500f6903ff2a1",
+    "state": "applied"
+  },
+  {
+    "name": "0038_procurement_inventory_integrity.sql",
+    "checksum": "55f1df65448fbb278ffa5a1bccf5c346f8b03eaab938f2ce87b96e1150180562",
+    "storedChecksum": "55f1df65448fbb278ffa5a1bccf5c346f8b03eaab938f2ce87b96e1150180562",
+    "state": "applied"
+  },
+  {
+    "name": "0039_mrp_planning_foundation.sql",
+    "checksum": "80d54980a3efd2e5f721916174896c0772ce0f964affb7f17388bdc23ca4081e",
+    "storedChecksum": "80d54980a3efd2e5f721916174896c0772ce0f964affb7f17388bdc23ca4081e",
+    "state": "applied"
+  },
+  {
+    "name": "0040_mrp_integrity_hardening.sql",
+    "checksum": "0bf8c30b95a7393d232cde2765f6e4912730147c03999320a94569bcb632c195",
+    "storedChecksum": "0bf8c30b95a7393d232cde2765f6e4912730147c03999320a94569bcb632c195",
+    "state": "applied"
+  },
+  {
+    "name": "0041_production_execution_foundation.sql",
+    "checksum": "9e2783fcec3d771a828977f022abc8a051ebb9da91c71bc141ac536c740dc49c",
+    "storedChecksum": "9e2783fcec3d771a828977f022abc8a051ebb9da91c71bc141ac536c740dc49c",
+    "state": "applied"
+  },
+  {
+    "name": "0042_production_execution_integrity.sql",
+    "checksum": "c98249ccd3cb4b6d64841ae6a07695ef5e53547b04292903f81fb55980a742e2",
+    "storedChecksum": "c98249ccd3cb4b6d64841ae6a07695ef5e53547b04292903f81fb55980a742e2",
+    "state": "applied"
+  },
+  {
+    "name": "0043_quality_wms_foundation.sql",
+    "checksum": "492e85ca38f4fc8629d916bc6844ae75d8b7629fa47a225c6b7823e1735ce9bb",
+    "storedChecksum": "492e85ca38f4fc8629d916bc6844ae75d8b7629fa47a225c6b7823e1735ce9bb",
+    "state": "applied"
+  },
+  {
+    "name": "0044_quality_inventory_integration.sql",
+    "checksum": "6cf407e779fbd671bc7f1a8b8b5ff06843e3e1a42bd4b2b6be86832298bb405e",
+    "storedChecksum": "6cf407e779fbd671bc7f1a8b8b5ff06843e3e1a42bd4b2b6be86832298bb405e",
+    "state": "applied"
+  },
+  {
+    "name": "0045_system_admin_commercial_company_scope.sql",
+    "checksum": "b93b4a65a3ccc4c024f8e96b2a31c98bcc0ce3352e361b9244cbc0b5d977ac5e",
+    "storedChecksum": "b93b4a65a3ccc4c024f8e96b2a31c98bcc0ce3352e361b9244cbc0b5d977ac5e",
+    "state": "applied"
+  },
+  {
+    "name": "0046_atomic_business_role_catalog.sql",
+    "checksum": "cb8996f8f9044386dc59a9fc116d7d3a445a731868a283ad6827b7b0cccf37ac",
+    "storedChecksum": "cb8996f8f9044386dc59a9fc116d7d3a445a731868a283ad6827b7b0cccf37ac",
+    "state": "applied"
+  },
+  {
+    "name": "0047_atomic_role_segregation_guards.sql",
+    "checksum": "f15602f078a79daa1032756ea73c3edd2b025d352090cbdbde54b77b8733ff1f",
+    "storedChecksum": "f15602f078a79daa1032756ea73c3edd2b025d352090cbdbde54b77b8733ff1f",
+    "state": "applied"
+  },
+  {
+    "name": "0048_actual_manufacturing_cost.sql",
+    "checksum": "d78362aec51e68c541f2cb2234e606cf44cca2ce920312d49364a1241c1b3acb",
+    "storedChecksum": "d78362aec51e68c541f2cb2234e606cf44cca2ce920312d49364a1241c1b3acb",
+    "state": "applied"
+  },
+  {
+    "name": "0049_manufacturing_cost_admin_grants.sql",
+    "checksum": "3b6affdccb95733f7bd3b06644cb57a15f39da318ceedfd9b884017cb0a6f298",
+    "storedChecksum": "3b6affdccb95733f7bd3b06644cb57a15f39da318ceedfd9b884017cb0a6f298",
+    "state": "applied"
+  },
+  {
+    "name": "0050_shipment_release_logistics_pod.sql",
+    "checksum": "9ab8c1d7c5bdd160e7c47d5debd5f9b13b70ded1a7c1dd3dbc0975140f8d378d",
+    "storedChecksum": "9ab8c1d7c5bdd160e7c47d5debd5f9b13b70ded1a7c1dd3dbc0975140f8d378d",
+    "state": "applied"
+  },
+  {
+    "name": "0051_shipment_sales_order_source_compatibility.sql",
+    "checksum": "590ab25a48686120f56c4c5e7d3c323db79a3929d5644d6d05c2eb9ad967ad99",
+    "storedChecksum": "590ab25a48686120f56c4c5e7d3c323db79a3929d5644d6d05c2eb9ad967ad99",
+    "state": "applied"
+  },
+  {
+    "name": "0052_platform_read_permissions.sql",
+    "checksum": "2d61bee8ecbfda3d6d6e7f7314fe06a6b7c06e351629e684b6f998892b70dde0",
+    "storedChecksum": "2d61bee8ecbfda3d6d6e7f7314fe06a6b7c06e351629e684b6f998892b70dde0",
+    "state": "applied"
+  },
+  {
+    "name": "0053_collections_legal_evidence.sql",
+    "checksum": "278b82fa2f0497b8deb9696c75930947b252245c6df7841b97d5081470e79196",
+    "storedChecksum": "278b82fa2f0497b8deb9696c75930947b252245c6df7841b97d5081470e79196",
+    "state": "applied"
+  },
+  {
+    "name": "0054_complaint_ncr_capa.sql",
+    "checksum": "9931ae9ab7847616ed3901cdba1bf7b85629c7ec7b3c9dbc4cf507a1d1b5f499",
+    "storedChecksum": "9931ae9ab7847616ed3901cdba1bf7b85629c7ec7b3c9dbc4cf507a1d1b5f499",
+    "state": "applied"
+  },
+  {
+    "name": "0055_complaint_ncr_capa_hardening.sql",
+    "checksum": "da4a48c07886e7b637f66fee747af1d84f6b0b74b10e68f31074b88aeb2c97f1",
+    "storedChecksum": "da4a48c07886e7b637f66fee747af1d84f6b0b74b10e68f31074b88aeb2c97f1",
+    "state": "applied"
+  },
+  {
+    "name": "0056_complaint_sla_policy_permissions.sql",
+    "checksum": "78ed620b5ad97baca288500313847a00acfeb7e9ac65a897f3bf98aa44c6dbdf",
+    "storedChecksum": "78ed620b5ad97baca288500313847a00acfeb7e9ac65a897f3bf98aa44c6dbdf",
+    "state": "applied"
+  },
+  {
+    "name": "0057_complaint_closure_chain.sql",
+    "checksum": "8cd3cdb4ce2ae5cfc10235274a91285f08d0d725fc1df285766a22137414525a",
+    "storedChecksum": "8cd3cdb4ce2ae5cfc10235274a91285f08d0d725fc1df285766a22137414525a",
+    "state": "applied"
+  },
+  {
+    "name": "0058_ncr_close_permission.sql",
+    "checksum": "39e8c251d55218f32d8268c4b879035aaa187a1a73bb5922a4541bd75285c6c7",
+    "storedChecksum": "39e8c251d55218f32d8268c4b879035aaa187a1a73bb5922a4541bd75285c6c7",
+    "state": "applied"
+  },
+  {
+    "name": "0059_business_document_versioning.sql",
+    "checksum": "23931d23cbbc5e84254fad791cec47092df224b087774490ec38c81fcdd3d35a",
+    "storedChecksum": "23931d23cbbc5e84254fad791cec47092df224b087774490ec38c81fcdd3d35a",
+    "state": "applied"
+  },
+  {
+    "name": "0060_business_document_approval.sql",
+    "checksum": "10bb2f55ada674fc2ab6ee39f9bb69411afc82568d2d66d4d4aff38c09eb3c62",
+    "storedChecksum": "10bb2f55ada674fc2ab6ee39f9bb69411afc82568d2d66d4d4aff38c09eb3c62",
+    "state": "applied"
+  },
+  {
+    "name": "0061_contract_document_lifecycle.sql",
+    "checksum": "5734d64780d7c9629d448fb25e7ee060a32eb1d27767d35a61dc9f2201441b8f",
+    "storedChecksum": "5734d64780d7c9629d448fb25e7ee060a32eb1d27767d35a61dc9f2201441b8f",
+    "state": "applied"
+  },
+  {
+    "name": "0062_atomic_iam_administration.sql",
+    "checksum": "ba7e02973bcaddc7765473261a05a81d645c664731b8aa338f5b5f505d8312a3",
+    "storedChecksum": "ba7e02973bcaddc7765473261a05a81d645c664731b8aa338f5b5f505d8312a3",
+    "state": "applied"
+  },
+  {
+    "name": "0063_business_document_role_permissions.sql",
+    "checksum": "c25d03706087d10bac4e3203a641e4016f37c30f21a9e99c0ce5ae9eeaf2a4e2",
+    "storedChecksum": "c25d03706087d10bac4e3203a641e4016f37c30f21a9e99c0ce5ae9eeaf2a4e2",
+    "state": "applied"
+  },
+  {
+    "name": "0064_business_document_bindings.sql",
+    "checksum": "de8e1a037d58e7f3c74bde581c70bb94c569e00decf8624e0c6b47ae81affc61",
+    "storedChecksum": "de8e1a037d58e7f3c74bde581c70bb94c569e00decf8624e0c6b47ae81affc61",
+    "state": "applied"
+  },
+  {
+    "name": "0065_cost_model_matrix.sql",
+    "checksum": "6577febbd926c1f4067f6e00c3a5ebf094369a542132ea1d1b0a09f1f641c2a8",
+    "storedChecksum": "6577febbd926c1f4067f6e00c3a5ebf094369a542132ea1d1b0a09f1f641c2a8",
+    "state": "applied"
+  },
+  {
+    "name": "0066_cost_model_presets.sql",
+    "checksum": "f0ca22894e7442cbc8f77cc88ec1208bdf8db8960709c32d32c59843c227c71b",
+    "storedChecksum": "f0ca22894e7442cbc8f77cc88ec1208bdf8db8960709c32d32c59843c227c71b",
+    "state": "applied"
+  },
+  {
+    "name": "0067_cost_matrix_role_grants.sql",
+    "checksum": "ca7891860802b92e68896618919feadd3b2d786abc8922d4b70d886a3fc0a3c4",
+    "storedChecksum": "ca7891860802b92e68896618919feadd3b2d786abc8922d4b70d886a3fc0a3c4",
+    "state": "applied"
+  },
+  {
+    "name": "0068_website_lead_ingest.sql",
+    "checksum": "b6255304ca01db1c58925200302b84374a6cc9a0069980be560f5062a849d003",
+    "storedChecksum": "b6255304ca01db1c58925200302b84374a6cc9a0069980be560f5062a849d003",
+    "state": "applied"
+  },
+  {
+    "name": "0069_cost_matrix_price_governance.sql",
+    "checksum": "dc65b36dbed285642f0ea9ea2140f2b634bc0e6fb8110791ccafb00f780c87f4",
+    "storedChecksum": "dc65b36dbed285642f0ea9ea2140f2b634bc0e6fb8110791ccafb00f780c87f4",
+    "state": "applied"
+  },
+  {
+    "name": "0070_business_document_communications.sql",
+    "checksum": "dd0daaf9dcd502845859090045e93a2d7ef5575f669f787d52a68347a7153a6b",
+    "storedChecksum": "dd0daaf9dcd502845859090045e93a2d7ef5575f669f787d52a68347a7153a6b",
+    "state": "applied"
+  },
+  {
+    "name": "0071_inventory_stock_resource_guards.sql",
+    "checksum": "e30c2218b48c66c4fd49b3cf16761652b410379a6752b6a475d3d745dfd7a764",
+    "storedChecksum": "e30c2218b48c66c4fd49b3cf16761652b410379a6752b6a475d3d745dfd7a764",
+    "state": "applied"
+  }
+]
+
+> kingturf-business-os@0.0.0 lint /home/jinhuit/Kingturf/kingturf-bessiness-os
+> eslint scripts/verify_frontend_capability_manifest.mjs scripts/seed_p1_demo.mjs scripts/validate_release*.mjs scripts/analysis/*.mjs scripts/analysis/proofs/*.mjs scripts/e2e-cdp/*.mjs scripts/e2e-docker/*.mjs && pnpm exec eslint tests/e2e/runtime-local.spec.mjs playwright.runtime.config.ts && pnpm -r lint
+
+Scope: 6 of 7 workspace projects
+apps/web lint$ eslint .
+packages/config lint$ eslint .
+packages/database lint$ eslint .
+packages/types lint$ eslint .
+packages/types lint: Done
+packages/config lint: Done
+packages/database lint: Done
+apps/web lint: Done
+packages/domain lint$ eslint .
+packages/domain lint: Done
+apps/api lint$ eslint .
+apps/api lint: Done
+
+> kingturf-business-os@0.0.0 typecheck /home/jinhuit/Kingturf/kingturf-bessiness-os
+> pnpm -r typecheck
+
+Scope: 6 of 7 workspace projects
+apps/web typecheck$ tsc --noEmit
+packages/config typecheck$ tsc --noEmit
+packages/database typecheck$ tsc --noEmit
+packages/types typecheck$ tsc --noEmit
+packages/database typecheck: Done
+packages/config typecheck: Done
+packages/types typecheck: Done
+apps/web typecheck: Done
+packages/domain typecheck$ tsc --noEmit
+packages/domain typecheck: Done
+apps/api typecheck$ tsc --noEmit
+apps/api typecheck: Done
+
+> kingturf-business-os@0.0.0 test:coverage /home/jinhuit/Kingturf/kingturf-bessiness-os
+> pnpm test:release-guardrails && pnpm test:session-network-tools && pnpm test:coverage-tools && node scripts/analysis/coverage-run.mjs check
+
+
+> kingturf-business-os@0.0.0 test:release-guardrails /home/jinhuit/Kingturf/kingturf-bessiness-os
+> node --test scripts/validate_release.test.mjs && node --test scripts/analysis/structure-gate.test.mjs scripts/analysis/function-length.test.mjs && node --test scripts/analysis/service-boundary-gate.test.mjs && node --test scripts/analysis/frontend-runtime-sources.test.mjs scripts/analysis/qtc-root-capture-source.test.mjs && node --test scripts/analysis/csp-nginx-client.test.mjs scripts/e2e-cdp/fixtures.test.mjs scripts/e2e-cdp/network-policy.test.mjs scripts/e2e-cdp/driver.test.mjs scripts/e2e-cdp/csp-observer.test.mjs scripts/e2e-cdp/csp-send.test.mjs scripts/e2e-cdp/cookie-http.test.mjs && PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests/operations -p "*_test.py"
+
+✔ accepts a current main commit from a fresh real Git fetch (90.821423ms)
+✔ accepts a tagged stable main commit by its exact SHA for rollback (79.952728ms)
+✔ main advancing does not change the already selected historical candidate (115.941458ms)
+✔ rejects an existing commit on an unmerged branch (78.749074ms)
+✔ rejects a nonexistent full SHA (114.385978ms)
+✔ rejects an annotated tag object SHA instead of silently dereferencing it (98.37022ms)
+✔ rejects an unrelated source repository before any fetch (57.526905ms)
+✔ rejects multiple origin URLs and Git insteadOf redirection (79.560826ms)
+✔ rejects a mismatched control checkout (52.908293ms)
+✔ rejects a control commit outside main history (79.422911ms)
+✔ fails closed when refreshing trusted main fails (57.517073ms)
+✔ rejects malformed input "" without invoking Git (0.210753ms)
+✔ rejects malformed input "main" without invoking Git (0.045135ms)
+✔ rejects malformed input "v-stable" without invoking Git (0.03405ms)
+✔ rejects malformed input "abc1234" without invoking Git (0.030598ms)
+✔ rejects malformed input "gggggggggggggggggggggggggggggggggggggggg" without invoking Git (0.032285ms)
+✔ rejects malformed input "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" without invoking Git (0.028856ms)
+✔ rejects malformed input "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" without invoking Git (0.026564ms)
+✔ rejects malformed input "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" without invoking Git (0.034491ms)
+✔ rejects malformed input "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n" without invoking Git (0.110571ms)
+✔ rejects malformed input "'; exit 0; #" without invoking Git (0.04694ms)
+✔ rejects malformed input "$(touch INJECTION)" without invoking Git (0.037341ms)
+✔ rejects malformed input "`touch INJECTION`" without invoking Git (0.060115ms)
+✔ rejects malformed input "a\ncommit_sha=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" without invoking Git (0.06316ms)
+✔ rejects a fork or non-main workflow regardless of a valid candidate SHA (0.240104ms)
+✔ the actual early Bash gate rejects malicious env input and non-main dispatch (41.396611ms)
+✔ the CLI rejects invalid input without writing Actions outputs (22.757368ms)
+✔ workflow binds verification and deployment to the validated SHA and fixed production lock (0.545175ms)
+✔ a non-conflicting release promotes the exact version only after all probes and then cleans up (160.075925ms)
+✔ a failed recovery dump prevents any secret synchronization and promotion (21.059891ms)
+✔ build-failure preserves the previous verified marker and recovery dump without cleanup (74.742412ms)
+✔ ready-failure preserves the previous verified marker and recovery dump without cleanup (76.505521ms)
+✔ version-failure preserves the previous verified marker and recovery dump without cleanup (81.970563ms)
+✔ public-failure preserves the previous verified marker and recovery dump without cleanup (98.269151ms)
+✔ an explicit rerun after a failed update can promote the same candidate (312.23214ms)
+✔ cleanup failure does not stage a remote script or falsify the already verified marker (140.676685ms)
+✔ a missing cleanup control fails the release instead of only running probes (122.537959ms)
+✔ a cleanup read failure cannot be masked by the probe tail or successful SSH (140.831098ms)
+✔ deployment verification uses the guarded disposable test target and full candidate quality gate (0.245098ms)
+✔ all production transports pin host keys and run read-only inventory before backups or writes (0.254056ms)
+✔ an independently pinned valid host key authorizes transports without network discovery (20.733596ms)
+✔ host key missing cannot authorize production SSH (11.910338ms)
+✔ host key wrong-host cannot authorize production SSH (18.62326ms)
+✔ host key invalid-key cannot authorize production SSH (20.805133ms)
+✔ deployment retention preserves every recovery pair and never deletes rollback images (30.671504ms)
+✔ production persistence has no silent fallback to new named volumes (0.217568ms)
+ℹ tests 46
+ℹ suites 0
+ℹ pass 46
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2354.237556
+✔ G5 complete inclusive span permits 200 and blocks 201, including multiline signatures (7.493694ms)
+✔ G5 recurses every body kind, anonymous callbacks, default arguments and expression arrows (4.181927ms)
+✔ G5 source discovery covers nested routes in every workspace and excludes only documented TS tests (1.515268ms)
+✔ G5 exact finite exemption allows original/shifted body, rejects stale exemption, growth and new long function (2.306994ms)
+✔ G5 missing, renamed, moved or ambiguous function cannot inherit an exemption (0.969388ms)
+✔ G5 expiry includes Singapore until day and fails at next midnight, including entries now below 200 (2.030986ms)
+✔ G5 rejects malformed metadata, duplicate identities, non-calendar and indefinite dates (1.525092ms)
+✔ G5 isolated root with absent policy has zero exemptions; corrupt/duplicate JSON never downgrades to empty (11.067393ms)
+✔ G5 real CLI --report still rejects 201 lines and accepts 200 in an unexempt workspace (676.372066ms)
+✔ 已消解bootstrap白名单：真实CLI拒801行/六层缩进，放行800行 (670.549879ms)
+✔ 批次3 AST最小范围精确到四个新web目录，不扩旧bootstrap/http或其他域 (0.256467ms)
+✔ 新web真实CLI在隔离临时仓库拒G1/AST6-7/残缺语法，放行800/AST5/深格式 (6023.46202ms)
+✔ G1 拦截超限文件并附修复指令 (1.171284ms)
+✔ G1 白名单豁免必须携带原因与到期 (0.182102ms)
+✔ G2 拦截 15 层嵌套 (0.206494ms)
+✔ G2 放行 ≤5 层嵌套 (0.177194ms)
+✔ G3 拦截 SQL 模板串中的原始请求插值 (0.48562ms)
+✔ G3 拦截任意白名单外插值（防 input.* 与裸变量绕过） (0.348057ms)
+✔ G3 拦截不可信根的形状匹配（第二轮评审绕过样本） (0.320042ms)
+✔ G3 放行可信根的同类形状（与绕过样本一一对照） (0.195438ms)
+✔ G3 放行白名单形态：占位符构造/片段组合/枚举/字面量三元/门控清单 (0.098934ms)
+✔ G3 存量值插值标记为豁免而非放行（带原因与到期批次） (0.165141ms)
+✔ G4 拦截无 validate 的路由定义 (0.185842ms)
+✔ G4 逐路由校验：混合文件只报缺 validate 的路由 (0.106439ms)
+✔ G4 放行全部带 validate 的多路由文件 (0.058311ms)
+✔ 嵌套阈值与文件阈值等于 D5 默认提案 (0.029325ms)
+✔ 拦截模式：白名单信息放行，临时超限样本失败，清理后干净树通过 (2115.076335ms)
+✔ routes AST边界5放行/6拦截；非routes仍旧格式算法 (5.704536ms)
+✔ routes AST function declaration不reset祖先深度 (0.878217ms)
+✔ routes AST function expression不reset祖先深度 (1.329726ms)
+✔ routes AST arrow callback不reset祖先深度 (1.543019ms)
+✔ routes AST method不reset祖先深度 (1.627188ms)
+✔ routes AST constructor不reset祖先深度 (1.179997ms)
+✔ routes AST getter不reset祖先深度 (0.857901ms)
+✔ routes AST setter不reset祖先深度 (0.950702ms)
+✔ routes AST for不reset祖先深度 (0.568237ms)
+✔ routes AST for of不reset祖先深度 (0.640084ms)
+✔ routes AST for in不reset祖先深度 (0.567885ms)
+✔ routes AST while不reset祖先深度 (1.051688ms)
+✔ routes AST do while不reset祖先深度 (0.540879ms)
+✔ routes AST switch不reset祖先深度 (0.918694ms)
+✔ routes AST try catch finally不reset祖先深度 (0.78752ms)
+✔ routes AST else-if同级，else块新if加层；三元逐层计数 (0.604133ms)
+✔ routes AST switch case/try各分支同级，不顺序叠加 (0.454918ms)
+✔ routes AST不漏默认参数/表达式箭头，不因对象包装或短路重置 (1.014965ms)
+✔ routes AST语法残缺强制失败，不用部分AST放行 (0.543798ms)
+✔ E1已撤：authorization深度5无豁免，同路径任意合法6/7层强制失败 (17.610917ms)
+✔ 真实CLI routes覆盖G1/G2/G3/G4，合法深格式通过，清理后全仓绿 (4398.633352ms)
+ℹ tests 48
+ℹ suites 0
+ℹ pass 48
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 13484.299254
+✔ real CLI: independent routes, same-repository calls, unused container ports pass (483.166987ms)
+✔ real CLI: S3 rejects direct calls (549.779773ms)
+✔ real CLI: S3 rejects destructured alias and call (505.462202ms)
+✔ real CLI: S3 rejects apply and bind (573.104222ms)
+✔ real CLI: S3 rejects late receiver and literal key (487.643188ms)
+✔ real CLI: S3 rejects local cross-closure helper (501.006156ms)
+✔ real CLI: S3 rejects validate plus handler (511.09855ms)
+✔ real CLI: transitive helper in another module is attributed to caller (479.613681ms)
+✔ real CLI: S1 rejects import type { ApiDependencies } from '../app.ts'; (518.247015ms)
+✔ real CLI: S1 rejects export type { ApiDependencies } from '../app.ts'; (482.618748ms)
+✔ real CLI: S1 rejects type D = import('../app.ts').ApiDependencies; (505.101569ms)
+✔ real CLI: S1 rejects const runtime = import('../app.ts'); (473.094671ms)
+✔ real CLI: S1 rejects const runtime = require('../app.ts'); (447.652239ms)
+✔ real CLI: S1 rejects import runtime = require('../app.ts'); (509.299429ms)
+✔ real CLI: S1 rejects const runtime = import(process.env.RUNTIME); (461.239604ms)
+✔ real CLI: S1 rejects import type { IncomingMessage } from 'node:http'; (535.453985ms)
+✔ real CLI: S2 rejects reverse type edge through a barrel (457.983545ms)
+✔ real CLI: valid service repository/packages dependencies pass (503.37448ms)
+✔ real CLI: S4 rejects erased/dynamic repository provenance (490.622198ms)
+✔ real CLI: S4 rejects erased/dynamic repository provenance (480.839885ms)
+✔ real CLI: S2 rejects reverse dependency through packages (504.063543ms)
+✔ real CLI: alias defineRoute keeps validate/handler together (488.174697ms)
+✔ real CLI: legacy nested branch includes shared parent work (521.073214ms)
+✔ real CLI: S4 rejects explicitly erased variable type (467.216206ms)
+✔ real CLI: structural repository provenance erasure fails (520.720158ms)
+✔ real CLI: separate bound methods are not executed by factory (494.629544ms)
+✔ real CLI: receiver provenance a.read.call(b) (482.868122ms)
+✔ real CLI: receiver provenance a.read.apply(b, []) (515.67846ms)
+✔ real CLI: receiver provenance a.read.bind(b)() (502.509178ms)
+✔ real CLI: repository-looking filename outside repository layer is denied (692.568309ms)
+✔ real CLI: unresolved relative repository edge fails (507.302456ms)
+✔ real CLI: unregistered root repository-looking module is denied (553.774373ms)
+✔ real CLI: route includes shared factory execution, not only handler (517.160605ms)
+✔ real CLI: bound receiver provenance survives subsequent call (581.557564ms)
+✔ real CLI: unrelated same-named function is not a route declaration (484.11333ms)
+✔ real CLI: nested map route inherits outer factory shared execution (534.873639ms)
+✔ real CLI: nested independent routes with bound captures pass (506.8524ms)
+✔ real CLI: unresolved local edge in a package barrel fails (472.88514ms)
+✔ real CLI: unresolved repository dependency fails closed (504.008912ms)
+✔ real CLI: only explicit login limiter infrastructure is excluded (loginRateLimiter) (507.109848ms)
+✔ real CLI: only explicit login limiter infrastructure is excluded (unclassifiedLimiter) (549.978087ms)
+✔ real CLI: limiter classification binds declaration identity (repository renamed) (578.776509ms)
+✔ real CLI: limiter classification binds declaration identity (same name elsewhere) (574.788105ms)
+✔ real CLI: limiter classification binds declaration identity (reexport from elsewhere) (506.624444ms)
+✔ real CLI: limiter classification binds declaration identity (wrong class in correct file) (519.541854ms)
+✔ real CLI: limiter classification binds declaration identity (union with repository) (484.903885ms)
+✔ real CLI: limiter classification binds declaration identity (intersection with repository) (451.157391ms)
+✔ real CLI: limiter classification binds declaration identity (legitimate type alias) (500.159196ms)
+✔ real CLI: renaming the only B port to limiter cannot hide cross-repository work (470.966862ms)
+ℹ tests 49
+ℹ suites 0
+ℹ pass 49
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 25011.474669
+✔ runtime graph follows static imports, re-exports, dynamic literals, js-to-ts and index; cycles deduplicate and sort (24.908408ms)
+✔ pure type-only and named type-only imports/exports do not read missing files, mixed/default/namespace value edges do (16.0407ms)
+✔ external modules, explicit assets with queries, declarations, tests, fixtures and generated inputs cannot fill a missing literal (6.329916ms)
+✔ non-literal dynamic imports are counted as an explicit static-graph limitation (5.357758ms)
+✔ fails closed: missing code (5.985402ms)
+✔ fails closed: empty implementation (6.060834ms)
+✔ fails closed: parse error (5.170875ms)
+✔ fails closed: escape (5.161399ms)
+✔ fails closed: unsupported code extension (3.435818ms)
+✔ fails closed: code query (3.91095ms)
+✔ fails closed: missing entry (2.363447ms)
+✔ symlink to an outside implementation fails the realpath boundary (5.891368ms)
+✔ a detached implementation is not scanned and an excluded entry is rejected (3.021069ms)
+✔ explicit js: competing implementation is not silently replaced with ts (3.806751ms)
+✔ extensionless file: competing implementation is not silently replaced with ts (4.084096ms)
+✔ extensionless index: competing implementation is not silently replaced with ts (4.154701ms)
+✔ extensionless mjs: competing implementation is not silently replaced with ts (4.290348ms)
+✔ extensionless mts: competing implementation is not silently replaced with ts (6.372061ms)
+✔ extensionless exact file: competing implementation is not silently replaced with ts (3.872308ms)
+✔ extensionless index mjs: competing implementation is not silently replaced with ts (7.120246ms)
+✔ directory package entry: competing implementation is not silently replaced with ts (9.387636ms)
+✔ an in-boundary symlink cannot disguise non-ts text as a ts implementation (7.507675ms)
+✔ loads byte-exact historical source without a runtime Git lookup (1.678484ms)
+✔ rejects missing historical source with a fixed diagnostic (0.627267ms)
+✔ rejects truncation and same-length byte tampering before transformation (0.56586ms)
+✔ pins the original immutable 166-report oracle without replacing expectations (0.311569ms)
+ℹ tests 26
+ℹ suites 0
+ℹ pass 26
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 383.119331
+✔ HTTP timeout settles without close and ignores late data/error/close (7.462309ms)
+✔ HTTP response overflow settles without close and bounds captured output (0.59775ms)
+✔ HTTP normal close preserves status and bounded response (0.335373ms)
+✔ Cookie mode is explicitly opt-in and mutually exclusive with both old suites (1.581506ms)
+✔ actual entry enforces exclusivity before creating Chrome or HTTP resources (107.886219ms)
+✔ transport allowlist contains only six exact same-origin method/path pairs (0.325042ms)
+✔ unknown paths, API, cross-origin, query, userinfo and other writes fail closed (0.326008ms)
+✔ real owned HTTP emits two raw safe Set-Cookie headers and checks round trips (19.032054ms)
+✔ raw header observer rejects folding, missing or Domain-modified Cookie evidence (11.145069ms)
+✔ missing Cookie, wrong Origin and missing/wrong proof never increment writes (26.385878ms)
+✔ independent synthetic listener values are not accepted across instances (35.4966ms)
+✔ owned cleanup closes an idle active connection and is idempotent (28.711504ms)
+✔ failed bind does not close another owned listener (33.690857ms)
+✔ CSP URL projection omits credentials/query/hash, data/blob bodies and inline samples (0.974525ms)
+✔ CSP metadata never preserves identity fragments in paths or arbitrary origins (0.714247ms)
+✔ pre-navigation source binds the actual DOM event and projects only the allowed fields (5.96321ms)
+✔ collector installation order precedes navigation and never injects session storage (0.564117ms)
+✔ Document response proof rejects missing/wrong/meta-only or enforced policy (1.840334ms)
+✔ send response proof is independent of the fixture and checks actual network status (0.308552ms)
+✔ node receiver bounds counts/samples, re-sanitizes and excludes reports with extra payload (12.05532ms)
+✔ sentinel requires an actual report-only script event and Document proof, not zero events (0.437627ms)
+✔ opt-in preview gives real HTML report-only headers and has no live API proxy (1.168935ms)
+✔ outer nginx policy/default-off switch and upstream dedup remain explicitly wired (0.342742ms)
+✔ public API enforcement key is passed through compose and the actual server option (0.175391ms)
+✔ original router still rejects every write without opt-in (0.787384ms)
+✔ new opt-in login requires actual body/header metadata and exact credentials (1.558855ms)
+✔ opt-in approved document/READY connector/send exact payload yield synthetic queue receipt (0.636483ms)
+✔ opt-in send rejects wrong origin without accepting any write (0.589078ms)
+✔ opt-in send rejects unknown POST without accepting any write (0.499657ms)
+✔ opt-in send rejects wrong document without accepting any write (0.622583ms)
+✔ opt-in send rejects wrong method without accepting any write (0.729477ms)
+✔ opt-in send rejects extra query without accepting any write (0.357024ms)
+✔ opt-in send rejects missing body without accepting any write (0.327682ms)
+✔ opt-in send rejects extra body field without accepting any write (0.262422ms)
+✔ opt-in send rejects wrong version without accepting any write (0.264369ms)
+✔ opt-in send rejects missing authorization without accepting any write (0.19136ms)
+✔ opt-in send rejects invalid idempotency without accepting any write (0.253996ms)
+✔ same exact payload binds the first random idempotency key; replacement key rejects (0.329656ms)
+✔ UUID-shaped keys with invalid version or variant cannot pass the synthetic send gate (0.321382ms)
+✔ network hard gate rejects external origins/writes before static continuation (0.153724ms)
+✔ preflight opt-in installs collector before first navigation and passes actual request metadata (0.288243ms)
+✔ real click waits for moving geometry and uses its final stable point without a second scroll (155.592911ms)
+✔ related running max-height transitions must finish even when geometry briefly stops (152.981172ms)
+✔ preceding navigation group layout transitions also affect the target position (152.953141ms)
+✔ unrelated following layout animations and non-layout animations do not block clicks (102.542814ms)
+✔ a replaced real node cannot inherit the old target coordinate (51.906254ms)
+✔ the original shared deadline rejects a target hidden without dispatch (101.198634ms)
+✔ the original shared deadline rejects a target occluded by a neighboring item without dispatch (101.659157ms)
+✔ the original shared deadline rejects a target outside viewport without dispatch (100.607306ms)
+✔ the original shared deadline rejects a target continuously moving without dispatch (101.84811ms)
+✔ route mismatch still fails rather than rewriting hash or retrying the click (3071.81039ms)
+✔ viewport waits for delayed shell and commercial resize state rather than metrics alone (608.22537ms)
+✔ viewport setup before mount accepts metrics without inventing a shell (0.890179ms)
+✔ stale responsive state exhausts the original sixty polls without clicks or mutation (3018.646702ms)
+✔ lazy fixtures are opt-in and hold only the first mapped solutions response (3.786222ms)
+✔ lazy quote failure is an exact mapped 503 response and restores the original payload (1.69282ms)
+✔ customer 360 fixture includes the server-required unavailable section array (0.246547ms)
+✔ boundary overlay changes only a mapped quote response and cannot authorize writes or unknown routes (0.601792ms)
+✔ governance overlay supplies exact read surfaces, coherent metrics and the employee array DTO (0.815291ms)
+✔ governance overlay refuses writes, unknown paths and nonempty queries without changing defaults (2.473262ms)
+✔ document editor overlay adds one read grant and exact read-only route-bound fixtures (0.964576ms)
+✔ document editor overlay refuses writes, wrong IDs, queries and reference-data reads (0.479215ms)
+✔ register overlay preserves default fixtures and grants while adding twelve unique local rows (0.459693ms)
+✔ register overlay delegates unknown/write rejection and binds an exact unpaged quote GET (0.38355ms)
+✔ dashboard opt-in binds its actual yearly query, one read grant and nonempty drilldowns (0.346247ms)
+✔ operations opt-in binds seventeen exact read routes and twelve read permissions only (1.586577ms)
+✔ finance/risk opt-in binds eight read routes, exact pagination and no writes (0.70982ms)
+✔ fulfillment opt-in adds only exact read routes and immutable synthetic evidence (0.474035ms)
+✔ credit/contract opt-in binds only the three reachable read routes and nonempty cards (0.340569ms)
+✔ pricing opt-in keeps the default empty ledger and adds only policy GET routes (0.316411ms)
+✔ cost hold binds the exact search request, not initial cost fetch or its fulfillment (0.166238ms)
+✔ CDP API fixtures are exact GET routes and fail closed for unknown paths and mutations (0.150517ms)
+✔ CDP holds must be explicitly released; detail failure is local synthetic data (0.125995ms)
+✔ sales views opt-in adds only three exact GET routes and nonempty synthetic records (0.611894ms)
+✔ CDP allows only local GET static resources; every proxy context and unknown path is closed (1.068653ms)
+ℹ tests 75
+ℹ suites 0
+ℹ pass 75
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7778.639762
+..........
+----------------------------------------------------------------------
+Ran 10 tests in 0.081s
+
+OK
+
+> kingturf-business-os@0.0.0 test:session-network-tools /home/jinhuit/Kingturf/kingturf-bessiness-os
+> node --test scripts/e2e-cdp/session-network.test.mjs scripts/e2e-docker/private-contract.test.mjs scripts/e2e-docker/p1-diagnostics-contract.test.mjs scripts/e2e-docker/cost-comparison-source.test.mjs scripts/e2e-docker/source-preparation.test.mjs scripts/e2e-docker/source-ownership.test.mjs scripts/e2e-docker/relay-diagnostics.test.mjs scripts/e2e-docker/tcp-baseline.test.mjs scripts/e2e-docker/passive-sampling.test.mjs scripts/e2e-docker/native-sampling.test.mjs
+
+✔ session network exact raw allowlist rejects queries, normalization and unknown writes (2.055799ms)
+✔ real gateway barrier holds headers before client Cookie delivery, not only body (152.872481ms)
+✔ formal cost spec is exactly the already-authorized authentication-only result (36.228019ms)
+✔ three fixed diagnostic copies preserve every original handoff expectation (12.86465ms)
+✔ source or authorized patch drift refuses diagnostic generation (1.933367ms)
+✔ comparison output re-encodes only the fixed bounded observations (3.997665ms)
+✔ native private identity uses exact keys, UTC ticks string and random job ownership (7.849295ms)
+✔ native public inspection drops all raw identity/error additions by rejection (2.510367ms)
+✔ native job and watchdog contracts reject regressions to post-create assignment or ParentPID guessing (0.583146ms)
+✔ only exact fixed boolean and bounded count observations can cross the diagnostic boundary (5.553987ms)
+✔ completion requires observed fixed diagnostics and actual successful browser close, not original P1 cases (6.077563ms)
+✔ MRP diagnostics expose only fixed bounded counts and original condition booleans (0.888009ms)
+✔ read-only diagnostic requests allow only exact loopback reads and natural browser login (0.448139ms)
+✔ fixed MRP snapshot inputs query only boolean observations after a read-only transaction barrier (1.963256ms)
+✔ fixed 6000 observation matches exact numeric paragraph containers, not whole-card concatenation or larger numbers (0.445077ms)
+✔ diagnostic mode is a separately authorized P1-only command, never a runtime or production mode (0.502693ms)
+✔ fixed parsers project only counts, not endpoints or canary fields (10.798455ms)
+✔ missing, duplicate, reset, overflowing or unbounded counters fail closed (3.285853ms)
+✔ passive trigger is void, one-shot, and emits only bounded projections and delta (6.237622ms)
+✔ malformed stdout, missing baseline and bad relay are unavailable without raw error (2.557634ms)
+✔ read rejection and observer failure never replace original failure or hang close (0.953632ms)
+✔ bounded reader uses only exact fixed command, restricted env and no shell (1.075984ms)
+✔ abort kills only spawned group and requires actual close confirmation (0.447284ms)
+✔ output overflow and nonzero exit cannot export captured data (0.398211ms)
+✔ unconfirmed group cleanup is explicit, never falsely marked gone (0.231022ms)
+✔ mock child that errors without close is still deadline-killed and bounded (0.801304ms)
+✔ a 3.6 second mock Windows query completes immediately before absolute collection cap (0.330479ms)
+✔ cancelled Windows interop never claims native process cleanup from Linux close (0.399039ms)
+✔ spawn failure, pre-abort and close during sampling remain bounded and safe (2.338245ms)
+✔ local inventory rejects discovery, production, unsafe labels and unknown faults (3.113898ms)
+✔ fixed private inventory matches original literal local spec declarations (1.794288ms)
+✔ fixed revocation/startup inventory expands only their original bounded parameter lists (0.607506ms)
+✔ every added fixed A file requires all original cases and never grants C or discovery entry (1.621042ms)
+✔ cost private completion cannot omit either original case or enter production (2.098073ms)
+✔ result boundary re-encodes only bounded scalar fields (7.046387ms)
+✔ reporter records inventory index without raw errors, titles or attachments (0.801423ms)
+✔ Playwright options are not mistaken for the reporter filesystem writer (0.109842ms)
+✔ zero exit cannot hide missing discovery, completion, cases or failed outcomes (0.876778ms)
+✔ P1 DOM diagnostics accept only fixed phases and never raw annotation text (0.420288ms)
+✔ TCP timeout diagnostics re-encode only four state flags and a bounded count (9.464197ms)
+✔ passive TCP diagnostics preserve the original timeout and unconditional failure branch (0.377486ms)
+✔ Source ownership is exact, parameterizes marker values and verifies identity before DROP (2.806302ms)
+✔ wrong private marker retains the exact schema instead of deleting a guessed resource (1.335819ms)
+✔ foreign instance or malformed ownership never permits schema creation or deletion (2.114473ms)
+✔ Source lifecycle fault entry is bounded to Source, not P1/runtime/production (1.029483ms)
+✔ all original 19 producer test call bodies remain byte-identical to the accepted baseline (32.521465ms)
+✔ source fixture validation requires exact nine synthetic roots and forbids authentication fields (7.154049ms)
+✔ only the exact public technical marker path/value is business data, never an authentication exemption (1.168328ms)
+✔ only real full 19-case producer success can validate its exact private result file (0.363887ms)
+✔ private source preparation exports only fixed scalar flags, never raw failures or fixture values (5.340393ms)
+✔ fixed source inventory preserves original three modes and requires all UI cases (0.645247ms)
+✔ TCP baseline exports fixed count categories, never raw network or authentication fields (1.84796ms)
+✔ TCP baseline rejects unknown sides, excessive counts and inconsistent outcomes (6.655072ms)
+ℹ tests 53
+ℹ suites 0
+ℹ pass 53
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 315.259588
+
+> kingturf-business-os@0.0.0 test:coverage-tools /home/jinhuit/Kingturf/kingturf-bessiness-os
+> node --test scripts/analysis/coverage-inventory.test.mjs scripts/analysis/coverage-process.test.mjs scripts/analysis/coverage-exemptions.test.mjs
+
+✔ coverage exemptions are bidirectional exact metadata, not coverage denominator exclusions (35.188395ms)
+✔ expiry starts on the next Singapore calendar day, including the UTC boundary (2.619667ms)
+✔ real TS comments count but string, template and regexp contents never create exemptions (7.935599ms)
+✔ malformed, duplicate and impossible-date exemptions fail closed (3.066878ms)
+✔ inventory includes never imported production files and top-level repository files (10.337413ms)
+✔ line semantics merge same-line hits and do not count a statement span as extra lines (0.913732ms)
+✔ overall weights executable lines rather than averaging percentages (2.148429ms)
+✔ missing packages, empty reports, foreign ownership, stale source and aliases fail closed (5.982723ms)
+✔ exact fractions reject rounded-up thresholds and enforce all targets plus baseline (5.809893ms)
+✔ only proven pure type files may report N/A and new runtime extensions require scope review (59.563861ms)
+✔ statement line/column ranges must refer to real source positions (0.447108ms)
+✔ fresh run provenance rejects unchanged-source old reports and incomplete executions (2.909692ms)
+✔ normal completion observes owned leader close and zero live group members (38.793126ms)
+✔ cancellation drains a controlled child and grandchild that ignore TERM, without PG (186.952313ms)
+✔ process-table failure still kills its known owned group before rejecting, without PG (181.481395ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 458.991892
+{"event":"coverage-child-owned","group":2138657,"owner":"guard"}
+
+> kingturf-business-os@0.0.0 ci:database:guard /home/jinhuit/Kingturf/kingturf-bessiness-os
+> NODE_ENV=test pnpm --filter @kingturf/database exec node --experimental-strip-types src/cli.ts guard-test-target
+
+Verified disposable test database: kingturf_batch3_test
+{"event":"coverage-child-owned","group":2139143,"owner":"apps/api"}
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+      Coverage enabled with v8
+
+ ✓ test/inventory-concurrency-postgres.integration.test.ts (17 tests) 15480ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > serializes 7+7 at a lazily created guard while retaining old ledger quantities  918ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > exhausts exactly ten, preserves an empty zero balance projection and rejects shortage atomically  841ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > keeps duplicate source retries unique including truly competing requests  844ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > uses the post-wait balance for 'ISSUE' then 'RETURN'  868ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > uses the post-wait balance for 'RETURN' then 'ISSUE'  856ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > fails stale 'REPEATABLE READ' snapshots rather than creating negative stock  901ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > fails stale 'SERIALIZABLE' snapshots rather than creating negative stock  896ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > also rejects a stale RR snapshot when the shared guard is initially absent  847ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > coordinates first zero-balance concurrent inbound operations on a previously unused resource  797ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > does not serialize unrelated locations, lots, materials or companies  870ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > rejects foreign resources and mismatched material without guard or evidence residue  812ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > rolls back earlier writes of a failing multi-statement transaction including guard and paired evidence  879ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > protects direct same-statement multi-row inserts and restores the guard on rejection  787ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > rolls inventory and guard back when a later production order/quality guard fails  830ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > aborts an unsorted two-resource deadlock victim with no partial inventory or success evidence  1870ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > uses a stable resource order for concurrent commands touching two existing resources  812ms
+   ✓ TD-INV-001 cross-connection inventory resource integrity > propagates an early SQL failure to waiting checkpoints and releases the connection  849ms
+ ✓ test/risk-postgres.integration.test.ts (9 tests) 13379ms
+   ✓ risk repository real PostgreSQL contracts > creates versioned policies with audit-only evidence and immutable publication  1617ms
+   ✓ risk repository real PostgreSQL contracts > calculates fixed capped findings, trace and a task from the real order/AR graph  1531ms
+   ✓ risk repository real PostgreSQL contracts > does not create a task for zero score and replays the existing persisted evaluation  1473ms
+   ✓ risk repository real PostgreSQL contracts > rejects ineligible references without inserting evaluation or task evidence  1476ms
+   ✓ risk repository real PostgreSQL contracts > records contiguous task decisions, enforces assignee access and preserves replay semantics  1453ms
+   ✓ risk repository real PostgreSQL contracts > TD-RISK-001: binds fixed and dynamic parameters across real scope combinations and replays once  1607ms
+   ✓ risk repository real PostgreSQL contracts > TD-RISK-002: rejects a known-key replay outside the current scope and keeps authorized handoff  1418ms
+   ✓ risk repository real PostgreSQL contracts > TD-RISK-002: reevaluates explicit anchors on the stored order for every replay  1391ms
+   ✓ risk repository real PostgreSQL contracts > TD-RISK-003: authorizes the current task and rejects a known key belonging to another task  1412ms
+ ✓ test/procurement-postgres.integration.test.ts (12 tests) 9798ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > persists the qualified RFQ-to-receipt chain, derived stock and exact paired evidence  886ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > requires COMPANY or GROUP scope and keeps GROUP reads and writes tenant-bounded  852ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > rolls back invalid qualification, quote and issued-document inputs  787ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > rolls back receipts, lots and movements on quantity, location and later-line failures  800ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > nets signed movement types and rejects negative balances, mismatched lots and duplicate sources  808ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > completes partial then final receipt and refuses receipt against the closed order  854ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > rolls back issue and audit when an already-seeded outbox aggregate conflicts  881ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > TD-PROC-001: receives 4 + 2 + 4 with exact stock, lot links and paired evidence  798ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > TD-PROC-001: rejects duplicate receipt identities and excess after partial stock without residual writes  758ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > TD-PROC-001: real concurrent receipts cannot over-receive and valid splits settle exactly  809ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > TD-PROC-001: two valid concurrent 4 and 6 receipts both commit once  795ms
+   ✓ procurement and inventory repository real PostgreSQL contracts > TD-INV-001: blocks overlapping 7+7 issues and commits only the satisfiable transaction  770ms
+ ✓ test/shipment-postgres.integration.test.ts (6 tests) 8366ms
+   ✓ shipment exception release and Order360 shipment source on real PostgreSQL > evaluates independent failed gates and writes exactly an audit-only request  1452ms
+   ✓ shipment exception release and Order360 shipment source on real PostgreSQL > requires independent exception approval, then projects real dispatch and POD only for an allowed Order360 source  1512ms
+   ✓ shipment exception release and Order360 shipment source on real PostgreSQL > keeps rejected release terminal and refuses duplicate requests rather than claiming replay support  1349ms
+   ✓ shipment exception release and Order360 shipment source on real PostgreSQL > denies narrow scope methods and keeps GROUP reads and foreign writes tenant-bound  1376ms
+   ✓ shipment exception release and Order360 shipment source on real PostgreSQL > has the database independently reject a forged positive gate snapshot  1314ms
+   ✓ shipment exception release and Order360 shipment source on real PostgreSQL > rolls back a new shipment row when its later initial-event key conflicts  1361ms
+ ✓ test/mrp-postgres.integration.test.ts (10 tests) 8508ms
+   ✓ MRP repository real PostgreSQL contracts > explodes a real published BOM, nets fixed quantities and persists paired evidence  901ms
+   ✓ MRP repository real PostgreSQL contracts > rejects non-company scopes and keeps GROUP reads and writes inside the actor tenant  858ms
+   ✓ MRP repository real PostgreSQL contracts > requires published tenant versions and preserves uniqueness without inventing idempotency  778ms
+   ✓ MRP repository real PostgreSQL contracts > makes distinct runs with identical input hashes and atomically rejects a duplicate run number  852ms
+   ✓ MRP repository real PostgreSQL contracts > enforces frozen approval evidence, contiguous decisions and immutable computed evidence  864ms
+   ✓ MRP repository real PostgreSQL contracts > rolls back a proposal decision and its audit when outbox uniqueness fails afterwards  828ms
+   ✓ MRP repository real PostgreSQL contracts > rejects skipped decisions and stops new decisions once the run is closed  821ms
+   ✓ MRP repository real PostgreSQL contracts > rolls back runs and snapshots for cyclic BOMs and empty demand horizons  845ms
+   ✓ MRP repository real PostgreSQL contracts > TD-MRP-001: uses output basis for new runs and preserves previously computed quantities  969ms
+   ✓ MRP repository real PostgreSQL contracts > TD-MRP-001: divides by each level output basis before applying that component scrap  790ms
+ ✓ test/commission-postgres.integration.test.ts (6 tests) 8189ms
+   ✓ commission repository real PostgreSQL contracts > versions and publishes policies with exact paired aggregate evidence  1481ms
+   ✓ commission repository real PostgreSQL contracts > accrues fixed money and collection ratios with separate release and freeze causes  1377ms
+   ✓ commission repository real PostgreSQL contracts > filters actual owner and TEAM scope and preserves accrual replay without duplicate evidence  1349ms
+   ✓ commission repository real PostgreSQL contracts > enforces release thresholds, exact paid/clawback ledger and terminal states  1369ms
+   ✓ commission repository real PostgreSQL contracts > rejects ineligible references and malformed periods with no partial accrual writes  1306ms
+   ✓ commission repository real PostgreSQL contracts > rolls back ledger/state or policy version plus audit on later outbox conflicts  1307ms
+ ✓ test/dashboard-postgres.integration.test.ts (6 tests) 7862ms
+   ✓ dashboard repository real PostgreSQL contracts > aggregates ten fixed metrics and source-bound drilldowns from the real commercial graph  1400ms
+   ✓ dashboard repository real PostgreSQL contracts > applies real owner and tenant scope across every metric and drilldown  1291ms
+   ✓ dashboard repository real PostgreSQL contracts > preserves the existing currency and from/as-of asymmetries without rewriting SQL  1289ms
+   ✓ dashboard repository real PostgreSQL contracts > uses inclusive starts, exclusive ends and allocation posting rather than bank receipt dates  1315ms
+   ✓ dashboard repository real PostgreSQL contracts > projects latest task closure and pinned accrual without performing new writes  1285ms
+   ✓ dashboard repository real PostgreSQL contracts > SEC008: filters every aggregate and drilldown through valid explicit organization anchors  1281ms
+ ✓ test/auth-http-postgres.integration.test.ts (20 tests) 5574ms
+   ✓ real HTTP password security across two API instances and PostgreSQL > changes the password, atomically audits and rejects every old device through real HTTP on both instances  492ms
+   ✓ real HTTP password security across two API instances and PostgreSQL > rolls back password and all revocations when the success audit fails  461ms
+   ✓ real HTTP password security across two API instances and PostgreSQL > blocks stale login after a concurrent admin reset and revokes admin self-reset sessions  426ms
+ ✓ test/risk-replay-http-postgres.integration.test.ts (19 tests) 5444ms
+ ✓ test/quality-postgres.integration.test.ts (6 tests) 4863ms
+   ✓ quality repository and immutable ledgers on real PostgreSQL > pins published plan, typed results and inclusive boundary 10 through release  893ms
+   ✓ quality repository and immutable ledgers on real PostgreSQL > pins published plan, typed results and inclusive boundary 12 through release  819ms
+   ✓ quality repository and immutable ledgers on real PostgreSQL > rejects premature completion, wrong types, wrong numeric verdicts and duplicate observations without evidence writes  779ms
+   ✓ quality repository and immutable ledgers on real PostgreSQL > rejects release of a failed inspection but permits inspected rejection  767ms
+   ✓ quality repository and immutable ledgers on real PostgreSQL > keeps GROUP tenant-bound, denies narrow scopes, and refuses unpublished or foreign plan use  804ms
+   ✓ quality repository and immutable ledgers on real PostgreSQL > rolls back the first disposition ledger insert when the later inspection key conflicts  799ms
+ ✓ test/harness-final-decision-postgres.integration.test.ts (6 tests) 5046ms
+   ✓ BOUND003: real API forwards invalid date but PG rejects insert/update without storing it  889ms
+   ✓ BOUND004: UUID case aliases partly commit once and preserve raw-case batch replay identity  759ms
+   ✓ SEC008: real complaint scope queries validate organization anchors without changing broad grants  974ms
+   ✓ SEC007: active actor in inactive organization differs at real notification repository predicate layer  800ms
+   ✓ SEC008: real login resolves TEAM anchors, filters fields and rejects revoked access  881ms
+   ✓ SEC008: preserves deep TEAM compatibility and guards complaint writes on real PostgreSQL  741ms
+ ✓ test/authorization-http-postgres.integration.test.ts (19 tests) 3176ms
+ ✓ test/production-startup-postgres.integration.test.ts (4 tests) 2451ms
+   ✓ real production-mode HTTP startup without database mutation > starts with a truly SELECT-only role, serves exact version and still requires authentication  447ms
+   ✓ real production-mode HTTP startup without database mutation > fails closed before HTTP listening when a migration is pending  426ms
+   ✓ real production-mode HTTP startup without database mutation > fails closed rather than repairing drifted checksums  400ms
+   ✓ real production-mode HTTP startup without database mutation > fails before HTTP listening without creating a missing registry  400ms
+ ✓ test/inventory-migration-postgres.integration.test.ts (3 tests) 2439ms
+   ✓ 0071 forward inventory compatibility > upgrades real 0070 history without modifying ledger and keeps legacy SQL protected  872ms
+   ✓ 0071 forward inventory compatibility > refuses preexisting negative stock and rolls back guard creation and migration registry  773ms
+   ✓ 0071 forward inventory compatibility > rolls back newly created guard DDL if a later index creation fails  793ms
+ ✓ test/production-postgres.integration.test.ts (6 tests) 1900ms
+ ✓ test/mrp-source-postgres.integration.test.ts (1 test) 1556ms
+   ✓ TD-MRP-002 real sales order source validation > accepts released tenant orders, rejects nonexistent/foreign/cancelled sources and keeps other demand kinds  1554ms
+ ✓ test/procurement-route-contract.test.ts (1762 tests) 1531ms
+ ✓ test/mrp-route-contract.test.ts (930 tests) 1336ms
+ ✓ test/foundation-postgres.integration.test.ts (8 tests) 1124ms
+ ✓ test/crm-postgres.integration.test.ts (10 tests) 1170ms
+ ✓ test/platform-postgres.integration.test.ts (5 tests) 1119ms
+ ✓ test/commercial-postgres.integration.test.ts (2 tests) 1055ms
+ ✓ test/complaint-postgres.integration.test.ts (4 tests) 1109ms
+ ✓ test/postgres.integration.test.ts (16 tests) 1031ms
+ ✓ test/manufacturing-postgres.integration.test.ts (6 tests) 919ms
+ ✓ test/qtc-postgres.integration.test.ts (2 tests) 872ms
+ ✓ test/collection-postgres.integration.test.ts (1 test) 830ms
+ ✓ test/quality-route-contract.test.ts (1310 tests) 497ms
+ ✓ test/manufacturing-route-contract.test.ts (571 tests) 828ms
+ ✓ test/website-lead-ingest-postgres.integration.test.ts (2 tests) 809ms
+ ✓ test/business-document-route-contract.test.ts (882 tests) 449ms
+ ✓ test/security.test.ts (13 tests) 407ms
+ ✓ test/risk-route-contract.test.ts (1111 tests) 431ms
+ ✓ test/commission-route-contract.test.ts (549 tests) 310ms
+ ✓ test/production-command-route-contract.test.ts (479 tests) 145ms
+ ✓ test/order-360-route-contract.test.ts (751 tests) 206ms
+ ✓ test/qtc-sales-order-create-route-contract.test.ts (343 tests) 183ms
+ ✓ test/lead-command-route-contract.test.ts (69 tests) 197ms
+ ✓ test/ncr-transition-route-contract.test.ts (272 tests) 163ms
+ ✓ test/master-entry-route-contract.test.ts (173 tests) 167ms
+ ✓ test/app.test.ts (51 tests) 157ms
+ ✓ test/browser-session-api.test.ts (33 tests) 103ms
+ ✓ test/qtc-operational-read-route-contract.test.ts (392 tests) 160ms
+ ✓ test/complaint-transition-route-contract.test.ts (152 tests) 117ms
+ ✓ test/qtc-credit-approval-route-contract.test.ts (260 tests) 120ms
+ ✓ test/collection-route-contract.test.ts (145 tests) 146ms
+ ✓ test/qtc-bank-payment-intake-route-contract.test.ts (189 tests) 120ms
+ ✓ test/master-category-route-contract.test.ts (138 tests) 144ms
+ ✓ test/qtc-credit-write-route-contract.test.ts (275 tests) 133ms
+ ✓ test/number-definition-route-contract.test.ts (210 tests) 131ms
+ ✓ test/dashboard-route-contract.test.ts (311 tests) 174ms
+ ✓ test/g5-qf-preservation.test.ts (4 tests) 130ms
+ ✓ test/production-cost-policy-route-contract.test.ts (291 tests) 122ms
+ ✓ test/qtc-ar-post-route-contract.test.ts (208 tests) 112ms
+ ✓ test/qtc-contract-sign-route-contract.test.ts (162 tests) 93ms
+ ✓ test/auth-route-contract.test.ts (5 tests) 122ms
+ ✓ test/commercial-definition-contract.test.ts (79 tests) 78ms
+ ✓ test/rule-definition-route-contract.test.ts (136 tests) 90ms
+ ✓ test/opportunity-route-contract.test.ts (66 tests) 80ms
+ ✓ test/iam-route-contract.test.ts (56 tests) 83ms
+ ✓ test/qtc-contract-create-route-contract.test.ts (172 tests) 114ms
+ ✓ test/customer-contact-route-contract.test.ts (113 tests) 131ms
+ ✓ test/customer-base-route-contract.test.ts (65 tests) 81ms
+ ✓ test/production-report-route-contract.test.ts (245 tests) 110ms
+ ✓ test/capa-lifecycle-route-contract.test.ts (111 tests) 111ms
+ ✓ test/lead-base-route-contract.test.ts (81 tests) 98ms
+ ✓ test/workflow-runtime-route-contract.test.ts (124 tests) 113ms
+ ✓ test/complaint-create-route-contract.test.ts (108 tests) 78ms
+ ✓ test/lead-claim-route-contract.test.ts (74 tests) 89ms
+ ✓ test/capa-action-route-contract.test.ts (81 tests) 97ms
+ ✓ test/qtc-base-read-route-contract.test.ts (270 tests) 92ms
+ ✓ test/commercial-view-route-contract.test.ts (55 tests) 68ms
+ ✓ test/production-cost-decision-route-contract.test.ts (214 tests) 109ms
+ ✓ test/ctr-route-contract.test.ts (73 tests) 76ms
+ ✓ test/production-output-route-contract.test.ts (185 tests) 75ms
+ ✓ test/production-material-route-contract.test.ts (190 tests) 80ms
+ ✓ test/workflow-definition-route-contract.test.ts (112 tests) 96ms
+ ✓ test/customer-activity-route-contract.test.ts (66 tests) 73ms
+ ✓ test/customer-lifecycle-route-contract.test.ts (83 tests) 74ms
+ ✓ test/customer-ownership-route-contract.test.ts (80 tests) 74ms
+ ✓ test/client-address.test.ts (35 tests) 78ms
+ ✓ test/production-create-route-contract.test.ts (198 tests) 103ms
+ ✓ test/capa-create-route-contract.test.ts (61 tests) 64ms
+ ✓ test/qtc-reconciliation-run-route-contract.test.ts (118 tests) 81ms
+ ✓ test/production-read-route-contract.test.ts (112 tests) 75ms
+ ✓ test/cost-matrix-factor-contract.test.ts (104 tests) 76ms
+ ✓ test/customer-360-route-contract.test.ts (73 tests) 71ms
+ ✓ test/cost-matrix-base-contract.test.ts (80 tests) 81ms
+ ✓ test/complaint-read-route-contract.test.ts (70 tests) 53ms
+ ✓ test/quote-write-contract.test.ts (62 tests) 65ms
+ ✓ test/production-cost-calculation-route-contract.test.ts (125 tests) 58ms
+ ✓ test/ncr-create-route-contract.test.ts (67 tests) 61ms
+ ✓ test/identity-access-route-contract.test.ts (47 tests) 34ms
+ ✓ test/rule-evaluation-route-contract.test.ts (74 tests) 56ms
+ ✓ test/foundation-api.test.ts (21 tests) 45ms
+ ✓ test/native-config-import.test.ts (1 test) 60ms
+ ✓ test/commercial-evaluation-contract.test.ts (56 tests) 52ms
+ ✓ test/website-lead-ingest-route-contract.test.ts (94 tests) 43ms
+ ✓ test/complaint-batch-route-contract.test.ts (56 tests) 51ms
+ ✓ test/technical-solution-route-contract.test.ts (43 tests) 46ms
+ ✓ test/quote-command-contract.test.ts (45 tests) 45ms
+ ✓ test/complaint-sla-route-contract.test.ts (61 tests) 46ms
+ ✓ test/cost-matrix-calculation-contract.test.ts (38 tests) 37ms
+ ✓ test/audit-route-contract.test.ts (68 tests) 37ms
+ ✓ test/number-allocation-route-contract.test.ts (56 tests) 55ms
+ ✓ test/machine-token-client.test.ts (1 test) 35ms
+ ✓ test/qtc-root-capture-route-contract.test.ts (335 tests) 26ms
+ ✓ test/commercial-nested-read-contract.test.ts (22 tests) 28ms
+ ✓ test/login-rate-limit-http.test.ts (7 tests) 17ms
+ ✓ test/scope-sql-order-360.test.ts (3 tests) 16ms
+ ✓ test/scope-sql-complaint.test.ts (5 tests) 16ms
+ ✓ test/identity-provision-route.test.ts (5 tests) 19ms
+ ✓ test/foundation-route-snapshot.test.ts (2 tests) 19ms
+ ✓ test/scope-sql-risk.test.ts (2 tests) 12ms
+ ✓ test/login-rate-limit.test.ts (18 tests) 16ms
+ ✓ test/session-proof.test.ts (11 tests) 8ms
+ ✓ test/scope-sql-qtc.test.ts (5 tests) 14ms
+ ✓ test/iam-administration-api.test.ts (2 tests) 12ms
+ ✓ test/scope-sql-dashboard.test.ts (2 tests) 12ms
+ ✓ test/scope-sql-crm.test.ts (7 tests) 13ms
+ ✓ test/scope-sql-platform.test.ts (6 tests) 9ms
+ ✓ test/scope-sql-foundation.test.ts (5 tests) 12ms
+ ✓ test/contract-document-api.test.ts (2 tests) 10ms
+ ✓ test/dispatch-no-match-timing.test.ts (1 test) 9ms
+ ✓ test/csp.test.ts (9 tests) 14ms
+ ✓ test/audit-outbox.test.ts (23 tests) 14ms
+ ✓ test/scope-sql-commission.test.ts (2 tests) 13ms
+ ✓ test/shipment-repositories.test.ts (1 test) 4ms
+ ✓ test/scope-sql-commercial.test.ts (7 tests) 9ms
+ ✓ test/health.test.ts (2 tests) 7ms
+ ✓ test/repositories.test.ts (9 tests) 10ms
+ ✓ test/command-results.test.ts (3 tests) 7ms
+ ✓ test/attachment-repositories.test.ts (2 tests) 5ms
+ ✓ test/opportunities-routes.test.ts (2 tests) 5ms
+ ✓ test/business-object-repositories.test.ts (1 test) 3ms
+ ✓ test/routes-dispatcher.test.ts (4 tests) 5ms
+ ✓ test/notification-repositories.test.ts (1 test) 10ms
+ ✓ test/authorization-routes.test.ts (2 tests) 5ms
+ ✓ test/runtime-telemetry.test.ts (2 tests) 5ms
+ ✓ test/scope-sql.test.ts (6 tests) 5ms
+ ✓ test/security-headers.test.ts (3 tests) 3ms
+
+ Test Files  141 passed (141)
+      Tests  17371 passed (17371)
+   Start at  16:24:40
+   Duration  168.45s (transform 2.02s, setup 0ms, collect 14.88s, tests 127.08s, environment 22ms, prepare 7.51s)
+
+{"event":"coverage-child-owned","group":2160232,"owner":"apps/web"}
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/web
+      Coverage enabled with v8
+
+ ✓ src/workspace-loader.test.ts (3 tests) 8ms
+ ✓ src/business-date.test.ts (16 tests) 20ms
+ ✓ src/risk-controls-behavior.test.ts (7 tests) 17ms
+ ✓ src/policy-view-behavior.test.ts (7 tests) 19ms
+ ✓ src/ctr-view-behavior.test.ts (11 tests) 23ms
+ ✓ src/manufacturing-forms-behavior.test.ts (5 tests) 18ms
+ ✓ src/fulfillment-actions-behavior.test.ts (15 tests) 33ms
+ ✓ src/lead-records-behavior.test.ts (9 tests) 23ms
+ ✓ src/forms-behavior.test.ts (24 tests) 39ms
+ ✓ src/capa-forms-behavior.test.ts (5 tests) 19ms
+ ✓ src/http.test.ts (17 tests) 32ms
+ ✓ src/contextual-documents-behavior.test.ts (10 tests) 45ms
+ ✓ src/cost-quote-handoff-behavior.test.ts (10 tests) 69ms
+ ✓ src/online-document-actions-behavior.test.ts (12 tests) 41ms
+ ✓ src/boundary-parsers.test.ts (87 tests) 69ms
+ ✓ src/browser-session.test.ts (35 tests) 66ms
+ ✓ src/session.test.ts (4 tests) 9ms
+ ✓ src/business-document-content.test.ts (4 tests) 6ms
+ ✓ src/cost-factor-form-behavior.test.ts (4 tests) 4ms
+ ✓ src/document-send.test.ts (2 tests) 6ms
+ ✓ src/login-flow.test.ts (3 tests) 10ms
+ ✓ src/behavior-dom.test.ts (4 tests) 10ms
+ ✓ src/crm-selection.test.ts (2 tests) 4ms
+ ✓ src/commercial-store-contract.test.ts (6 tests) 11ms
+ ✓ src/commercial-loading.test.ts (3 tests) 59ms
+ ✓ src/bootstrap.test.ts (88 tests) 213ms
+ ✓ src/commercial-route-data.test.ts (43 tests) 425ms
+
+ Test Files  27 passed (27)
+      Tests  436 passed (436)
+   Start at  16:27:29
+   Duration  2.82s (transform 3.89s, setup 0ms, collect 11.83s, tests 1.30s, environment 7ms, prepare 4.23s)
+
+{"event":"coverage-child-owned","group":2161319,"owner":"packages/config"}
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/packages/config
+      Coverage enabled with v8
+
+ ✓ src/browser-session.test.ts (42 tests) 9ms
+ ✓ src/index.test.ts (29 tests) 10ms
+
+ Test Files  2 passed (2)
+      Tests  71 passed (71)
+   Start at  16:27:32
+   Duration  496ms (transform 113ms, setup 0ms, collect 172ms, tests 19ms, environment 0ms, prepare 215ms)
+
+{"event":"coverage-child-owned","group":2161844,"owner":"packages/database"}
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/packages/database
+      Coverage enabled with v8
+
+ ✓ test/migrations.test.ts (49 tests) 71ms
+ ❯ test/read-only-status.integration.test.ts (7 tests | 1 failed) 1311ms
+   × read-only production migration compatibility > accepts all 70 checksums using a SELECT-only role with read-only transactions 45ms
+     → expected [ { …(4) }, { …(4) }, { …(4) }, …(68) ] to have a length of 70 but got 71
+   ✓ read-only production migration compatibility > rejects pending migrations without re-inserting the missing registry row 18ms
+   ✓ read-only production migration compatibility > rejects drift without repairing a changed checksum 13ms
+   ✓ read-only production migration compatibility > rejects unknown future migrations rather than treating an old application as compatible 12ms
+   ✓ read-only production migration compatibility > rejects legacy null checksums without automatic backfill 14ms
+   ✓ read-only production migration compatibility > does not create a missing registry 14ms
+   ✓ read-only production migration compatibility > does not add a missing checksum column 23ms
+ ✓ test/postgres.integration.test.ts (12 tests) 3179ms
+   ✓ PostgreSQL 0067 production-role upgrade compatibility > repairs existing SYSTEM_ADMIN and KT_COST_ANALYST roles without reprovisioning them  798ms
+   ✓ PostgreSQL 0069 cost baseline upgrade compatibility > upgrades existing zero-price presets and creates a visible non-zero calculation  850ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/read-only-status.integration.test.ts > read-only production migration compatibility > accepts all 70 checksums using a SELECT-only role with read-only transactions
+AssertionError: expected [ { …(4) }, { …(4) }, { …(4) }, …(68) ] to have a length of 70 but got 71
+
+- Expected
++ Received
+
+- 70
++ 71
+
+ ❯ test/read-only-status.integration.test.ts:62:20
+     60|     await assertMigrationsCurrent(reader);
+     61|     const status = await migrationStatus(reader);
+     62|     expect(status).toHaveLength(70);
+       |                    ^
+     63|     expect(status.every((item) => item.state === 'applied')).toBe(true…
+     64|     await expect(
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 2 passed (3)
+      Tests  1 failed | 67 passed (68)
+   Start at  16:27:33
+   Duration  3.74s (transform 230ms, setup 0ms, collect 423ms, tests 4.56s, environment 0ms, prepare 374ms)
+
+Coverage collection failed: coverage package failed: packages/database
+
+1 !== 0
+
+ ELIFECYCLE  Command failed with exit code 1.
+ ELIFECYCLE  Command failed with exit code 1.

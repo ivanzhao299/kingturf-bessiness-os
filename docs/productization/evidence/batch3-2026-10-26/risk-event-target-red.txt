@@ -1,0 +1,124 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ❯ test/risk-replay-http-postgres.integration.test.ts (15 tests | 3 failed | 10 skipped) 5176ms
+   ↓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > retains legal same-user and authorized different-user replay without duplicate effects
+   ↓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > rejects an existing key after current action permission is revoked
+   ↓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > rejects scope narrowing even if the new payload names another order
+   ↓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > rejects same-tenant nonowners and a caller with no current action grant
+   ↓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > uses changed organization anchors rather than the original authorization snapshot
+   ↓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > rejects revoked sessions and disabled organizations before returning old results
+   ↓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > isolates the same idempotency key in another company
+   ↓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > checks each caller independently during concurrent legal and denied replays
+   ↓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > serializes truly overlapping same-key HTTP requests without duplicate writes
+   ↓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > TD-SEC-009: characterizes wider mutation responses than the independent read data scope
+   ✓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > TD-RISK-003: keeps authorized same-user and current broad-user task replay unchanged 224ms
+   × TD-RISK-002 real HTTP current authorization on PostgreSQL replays > TD-RISK-003: denies cached events after action revocation and narrowing away from the assignee 226ms
+     → expected 201 to be 404 // Object.is equality
+   ✓ TD-RISK-002 real HTTP current authorization on PostgreSQL replays > TD-RISK-003: rejects invalid membership and cross-company cached task reads 177ms
+   × TD-RISK-002 real HTTP current authorization on PostgreSQL replays > TD-RISK-003: binds a tenant key to its original task without leaking another subject 222ms
+     → expected 201 to be 409 // Object.is equality
+   × TD-RISK-002 real HTTP current authorization on PostgreSQL replays > TD-RISK-003: serializes truly overlapping duplicate task commands without another event 2306ms
+     → expected 0 to be greater than or equal to 2
+ ❯ test/risk-postgres.integration.test.ts (9 tests | 1 failed | 8 skipped) 1519ms
+   ↓ risk repository real PostgreSQL contracts > creates versioned policies with audit-only evidence and immutable publication
+   ↓ risk repository real PostgreSQL contracts > calculates fixed capped findings, trace and a task from the real order/AR graph
+   ↓ risk repository real PostgreSQL contracts > does not create a task for zero score and replays the existing persisted evaluation
+   ↓ risk repository real PostgreSQL contracts > rejects ineligible references without inserting evaluation or task evidence
+   ↓ risk repository real PostgreSQL contracts > records contiguous task decisions, enforces assignee access and preserves replay semantics
+   ↓ risk repository real PostgreSQL contracts > TD-RISK-001: binds fixed and dynamic parameters across real scope combinations and replays once
+   ↓ risk repository real PostgreSQL contracts > TD-RISK-002: rejects a known-key replay outside the current scope and keeps authorized handoff
+   ↓ risk repository real PostgreSQL contracts > TD-RISK-002: reevaluates explicit anchors on the stored order for every replay
+   × risk repository real PostgreSQL contracts > TD-RISK-003: authorizes the current task and rejects a known key belonging to another task 1518ms
+     → promise resolved "{ state: 'ACKNOWLEDGED', …(3) }" instead of rejecting
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/risk-postgres.integration.test.ts > risk repository real PostgreSQL contracts > TD-RISK-003: authorizes the current task and rejects a known key belonging to another task
+AssertionError: promise resolved "{ state: 'ACKNOWLEDGED', …(3) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "evidence": {
++     "ack": true,
++   },
++   "reason": "Synthetic acknowledgement",
++   "state": "ACKNOWLEDGED",
++   "taskId": "9da62018-e49d-43c1-8203-03d5bb8cae36",
+  }
+
+ ❯ test/risk-postgres.integration.test.ts:602:5
+    600|         randomUUID(),
+    601|       ),
+    602|     ).rejects.toMatchObject({ code: 'not_found' });
+       |     ^
+    603|     await expect(
+    604|       repository.transitionTask(
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  test/risk-replay-http-postgres.integration.test.ts > TD-RISK-002 real HTTP current authorization on PostgreSQL replays > TD-RISK-003: denies cached events after action revocation and narrowing away from the assignee
+AssertionError: expected 201 to be 404 // Object.is equality
+
+- Expected
++ Received
+
+- 404
++ 201
+
+ ❯ test/risk-replay-http-postgres.integration.test.ts:464:62
+    462|     const after = await counts();
+    463|     await manage(peer, ['SELF']);
+    464|     expect((await taskCommand(peerToken, replayKey)).status).toBe(404);
+       |                                                              ^
+    465|     await manage(owner, []);
+    466|     expect((await taskCommand(ownerToken, replayKey)).status).toBe(403…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  test/risk-replay-http-postgres.integration.test.ts > TD-RISK-002 real HTTP current authorization on PostgreSQL replays > TD-RISK-003: binds a tenant key to its original task without leaking another subject
+AssertionError: expected 201 to be 409 // Object.is equality
+
+- Expected
++ Received
+
+- 409
++ 201
+
+ ❯ test/risk-replay-http-postgres.integration.test.ts:497:29
+    495|     const after = await counts();
+    496|     const conflict = await taskCommand(ownerToken, replayKey, next.tas…
+    497|     expect(conflict.status).toBe(409);
+       |                             ^
+    498|     const body = (await conflict.json()) as Record<string, unknown>;
+    499|     expect(body).not.toHaveProperty('taskId');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  test/risk-replay-http-postgres.integration.test.ts > TD-RISK-002 real HTTP current authorization on PostgreSQL replays > TD-RISK-003: serializes truly overlapping duplicate task commands without another event
+AssertionError: expected 0 to be greater than or equal to 2
+ ❯ test/risk-replay-http-postgres.integration.test.ts:524:25
+    522|           await delay(20);
+    523|         }
+    524|         expect(waiting).toBeGreaterThanOrEqual(2);
+       |                         ^
+    525|       });
+    526|     } catch (error) {
+ ❯ Database.transaction ../../packages/database/src/index.ts:45:21
+ ❯ test/risk-replay-http-postgres.integration.test.ts:507:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  4 failed | 2 passed | 18 skipped (24)
+   Start at  15:42:47
+   Duration  8.13s (transform 690ms, setup 0ms, collect 1.11s, tests 6.70s, environment 0ms, prepare 93ms)
+
+undefined
+/home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run test/risk-postgres.integration.test.ts test/risk-replay-http-postgres.integration.test.ts -t TD-RISK-003

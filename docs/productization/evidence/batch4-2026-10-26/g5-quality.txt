@@ -1,0 +1,16 @@
+{"family":"quality","attempts":7,"parts":2}
+apps/api/src/app.ts 219ms
+apps/api/src/routes/dispatch/quality.ts 17ms
+apps/api/test/fixtures/app-dispatch-groups.json 15ms (unchanged)
+
+/home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api/src/routes/dispatch/quality.ts
+   73:13  error  This assertion is unnecessary since the receiver accepts the original type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+  100:13  error  This assertion is unnecessary since the receiver accepts the original type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+  116:13  error  This assertion is unnecessary since the receiver accepts the original type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+  143:13  error  This assertion is unnecessary since the receiver accepts the original type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+  172:13  error  This assertion is unnecessary since the receiver accepts the original type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+  201:13  error  This assertion is unnecessary since the receiver accepts the original type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+
+✖ 6 problems (6 errors, 0 warnings)
+  6 errors and 0 warnings potentially fixable with the `--fix` option.
+

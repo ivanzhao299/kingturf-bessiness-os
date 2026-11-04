@@ -1,0 +1,13 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ✓ test/harness-final-decision-postgres.integration.test.ts (4 tests | 3 skipped) 2845ms
+   ✓ SEC008: real complaint scope queries validate organization anchors without changing broad grants  2845ms
+ ✓ test/dashboard-postgres.integration.test.ts (6 tests | 5 skipped) 3328ms
+   ✓ dashboard repository real PostgreSQL contracts > SEC008: filters every aggregate and drilldown through valid explicit organization anchors  3327ms
+
+ Test Files  2 passed (2)
+      Tests  2 passed | 8 skipped (10)
+   Start at  11:30:46
+   Duration  7.50s (transform 646ms, setup 0ms, collect 1.02s, tests 6.17s, environment 0ms, prepare 86ms)
+

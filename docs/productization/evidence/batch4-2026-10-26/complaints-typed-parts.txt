@@ -1,0 +1,25 @@
+
+ RUN  v3.2.6 /home/jinhuit/Kingturf/kingturf-bessiness-os/apps/api
+
+ ✓ test/complaint-postgres.integration.test.ts (4 tests) 1068ms
+ ✓ test/ncr-transition-route-contract.test.ts (272 tests) 168ms
+ ✓ test/complaint-transition-route-contract.test.ts (152 tests) 99ms
+ ✓ test/capa-action-route-contract.test.ts (81 tests) 68ms
+ ✓ test/capa-lifecycle-route-contract.test.ts (111 tests) 83ms
+ ✓ test/complaint-create-route-contract.test.ts (108 tests) 67ms
+ ✓ test/capa-create-route-contract.test.ts (61 tests) 62ms
+ ✓ test/ncr-create-route-contract.test.ts (67 tests) 59ms
+ ✓ test/dispatch-source-preservation.test.ts (7 tests) 86ms
+ ✓ test/complaint-read-route-contract.test.ts (70 tests) 48ms
+ ✓ test/complaint-batch-route-contract.test.ts (56 tests) 51ms
+ ✓ test/app-batch4-preservation.test.ts (239 tests) 46ms
+ ✓ test/complaint-sla-route-contract.test.ts (61 tests) 41ms
+ ✓ test/qtc-root-capture-route-contract.test.ts (335 tests) 19ms
+ ✓ test/dispatch-attempt-root.test.ts (6 tests) 9ms
+ ✓ test/dispatch-no-match-timing.test.ts (1 test) 12ms
+
+ Test Files  16 passed (16)
+      Tests  1631 passed (1631)
+   Start at  18:00:59
+   Duration  8.17s (transform 639ms, setup 0ms, collect 3.63s, tests 1.99s, environment 2ms, prepare 736ms)
+
