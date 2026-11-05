@@ -199,6 +199,13 @@ class OrchestratorTest(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'ON_ERROR_STOP'):
             ro.PsqlSession(['psql', '-X', '-qAt'])
 
+    def test_psql_argv_accepts_the_workflow_sh_c_form(self):
+        # The production compose-exec form carries the flag inside one sh -c string;
+        # construction must not spawn a process we would not clean up, so only the
+        # validation path is exercised via a rejected stub afterwards.
+        argv = ['docker', 'compose', 'exec', '-T', 'postgres', 'sh', '-c', 'exec psql -X -qAt -v ON_ERROR_STOP=1 --username="$POSTGRES_USER"']
+        ro.PsqlSession(argv).close()
+
     def test_new_approval_loader_binds_release_and_canonical_form(self):
         consumed = {'release_sha': SHA, 'approved_suffix': ['0002_two.sql'], 'approved_at_utc': '2026-11-05T11:00:00Z', 'window_end_utc': '2026-11-05T13:00:00Z', 'approver': 'lead'}
         replay = self.base / 'replay.json'

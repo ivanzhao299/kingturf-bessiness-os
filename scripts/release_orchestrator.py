@@ -64,8 +64,10 @@ class PsqlSession:
         if isinstance(target, list):
             argv = target
             # The no-registration-on-failure guarantee depends on this flag;
-            # never trust a caller-supplied argv that omits it.
-            require('ON_ERROR_STOP=1' in argv, 'psql argv must include -v ON_ERROR_STOP=1')
+            # never trust a caller-supplied argv that omits it. The flag may sit in a
+            # single sh -c command string (the production compose-exec form) or as a
+            # standalone -v ON_ERROR_STOP=1 element.
+            require(any('ON_ERROR_STOP=1' in part for part in argv), 'psql argv must include -v ON_ERROR_STOP=1')
         else:
             argv = ['psql', '-X', '-qAt', '-v', 'ON_ERROR_STOP=1', '--no-psqlrc', target]
         self.process = subprocess.Popen(
