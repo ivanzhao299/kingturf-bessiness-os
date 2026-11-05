@@ -28,6 +28,47 @@ def command(args, *, text=None):
     return result.stdout.strip()
 
 
+NAME_PATTERN = re.compile(r'[0-9]{4}.*\.sql')
+CHECKSUM_PATTERN = re.compile(r'[0-9a-f]{64}')
+
+
+def validate_candidate_manifest(expected):
+    require(isinstance(expected, dict) and expected and all(isinstance(k, str) and isinstance(v, str) and NAME_PATTERN.fullmatch(k) and CHECKSUM_PATTERN.fullmatch(v) for k, v in expected.items()), 'Invalid candidate migration manifest')
+    ordered = sorted(expected)
+    prefixes = [name[:4] for name in ordered]
+    require(len(set(prefixes)) == len(prefixes) and prefixes == sorted(prefixes), 'Candidate migration manifest is not strictly ordered by unique numeric prefix')
+    return ordered
+
+
+def classify_registry(rows, expected):
+    """Classify the applied registry against the candidate manifest.
+
+    The applied set must be a complete, checksum-identical, contiguous prefix of the
+    candidate sequence. Returns (classification, pending) where pending is the list of
+    {name, checksum} still to apply. Fails closed with category-specific errors.
+    """
+    ordered = validate_candidate_manifest(expected)
+    require(isinstance(rows, list), 'INVALID_REGISTRY: production registry is not a list')
+    seen = set()
+    for row in rows:
+        require(isinstance(row, dict) and set(row) <= {'name', 'checksum'} and isinstance(row.get('name'), str) and isinstance(row.get('checksum'), str), 'INVALID_REGISTRY: registry row is malformed')
+        require(NAME_PATTERN.fullmatch(row['name']) and CHECKSUM_PATTERN.fullmatch(row['checksum']), 'INVALID_REGISTRY: registry row name or checksum format invalid')
+        require(row['name'] not in seen, 'DUPLICATE_MIGRATION: ' + row['name'])
+        seen.add(row['name'])
+    applied = [row['name'] for row in rows]
+    require(applied == sorted(applied), 'INVALID_MIGRATION_ORDER: applied registry is not in migration order')
+    unknown = [name for name in applied if name not in expected]
+    require(not unknown, 'UNKNOWN_EXTRA_MIGRATION: ' + ', '.join(unknown))
+    missing_prefix = [name for name in ordered[:len(applied)] if name not in seen]
+    require(not missing_prefix, 'MIGRATION_HISTORY_GAP: missing applied prefix migration(s): ' + ', '.join(missing_prefix))
+    require(applied == ordered[:len(applied)], 'INVALID_MIGRATION_ORDER: applied registry is not the contiguous candidate prefix')
+    for row in rows:
+        require(row['checksum'] == expected[row['name']], 'HISTORICAL_CHECKSUM_DRIFT: production migration checksums do not match candidate for ' + row['name'])
+    pending = [{'name': name, 'checksum': expected[name]} for name in ordered[len(applied):]]
+    classification = 'FULLY_MATCHED' if not pending else 'MATCHED_PREFIX_PENDING'
+    return classification, pending
+
+
 def validate_config(config):
     require(config.get('name') == PROJECT, 'Unexpected Compose project')
     for service, target, expected in (
@@ -44,7 +85,7 @@ def validate_config(config):
     require(len(api['SESSION_SECRET']) >= 32 and len(api['WEBSITE_LEAD_INGEST_SECRET']) >= 32, 'Required security configuration invalid')
 
 
-def preflight(root, expected):
+def preflight(root, expected, *, require_full=False):
     require(Path(root) == RELEASE, 'Unexpected release directory')
     require(isinstance(expected, dict) and expected and all(isinstance(k, str) and isinstance(v, str) and re.fullmatch(r'[0-9]{4}.*\.sql', k) and re.fullmatch(r'[0-9a-f]{64}', v) for k, v in expected.items()), 'Invalid candidate migration manifest')
     require(command(['findmnt', '-n', '-T', '/data', '-o', 'TARGET']) == '/data', '/data must be an actual mounted filesystem')
@@ -68,9 +109,11 @@ def preflight(root, expected):
         if target:
             mounts = [m for m in container['Mounts'] if m['Destination'] == target]
             require(len(mounts) == 1 and mounts[0]['Type'] == 'bind' and Path(mounts[0]['Source']) == source, 'Live persistent mount disagrees with approved configuration')
-    sql = "BEGIN READ ONLY; SET LOCAL statement_timeout='5s'; SELECT coalesce(jsonb_object_agg(name,checksum),'{}'::jsonb) FROM schema_migrations; COMMIT;\n"
-    actual = json.loads(command(compose + ['exec', '-T', 'postgres', 'sh', '-c', 'exec psql -X -qAt -v ON_ERROR_STOP=1 --username="$POSTGRES_USER" --dbname="$POSTGRES_DB"'], text=sql))
-    require(actual == expected, 'Production registry is not exactly compatible with candidate migration checksums')
+    sql = "BEGIN READ ONLY; SET LOCAL statement_timeout='5s'; SELECT coalesce(jsonb_agg(jsonb_build_object('name',name,'checksum',checksum) ORDER BY name),'[]'::jsonb) FROM schema_migrations; COMMIT;\n"
+    rows = json.loads(command(compose + ['exec', '-T', 'postgres', 'sh', '-c', 'exec psql -X -qAt -v ON_ERROR_STOP=1 --username="$POSTGRES_USER" --dbname="$POSTGRES_DB"'], text=sql))
+    classification, pending = classify_registry(rows, expected)
+    if require_full:
+        require(classification == 'FULLY_MATCHED', 'Post-migration check failed: registry is not FULLY_MATCHED; pending migrations remain')
     marker = (RELEASE / '.release-sha').read_text().strip()
     require(re.fullmatch(r'[0-9a-f]{40}', marker), 'Previous release marker is missing or invalid')
     port = config['services']['web']['ports'][0]['published']
@@ -78,7 +121,7 @@ def preflight(root, expected):
     with urllib.request.urlopen(f'http://127.0.0.1:{port}/version', timeout=10) as reply:
         version = json.load(reply)
     require(version.get('sha') == marker, 'Actual runtime version disagrees with previous verified marker; investigate before retry')
-    print(json.dumps({'preflight': 'PASS', 'previous_sha': marker, 'migrations': len(expected), 'services': 3, 'storage': 'approved_bind_mounts', 'restore': 'REQUIRES_INDEPENDENT_EVIDENCE'}))
+    print(json.dumps({'preflight': 'PASS', 'registry_classification': classification, 'previous_sha': marker, 'applied': len(rows), 'pending': pending, 'services': 3, 'storage': 'approved_bind_mounts', 'restore': 'REQUIRES_INDEPENDENT_EVIDENCE'}))
 
 
 def main():
@@ -87,11 +130,14 @@ def main():
         require(bool(files), 'Candidate migration files missing')
         value = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in files}
         print(base64.b64encode(json.dumps(value).encode()).decode())
+    elif len(sys.argv) == 4 and sys.argv[3] == '--require-full':
+        expected = json.loads(base64.b64decode(sys.argv[2], validate=True))
+        preflight(sys.argv[1], expected, require_full=True)
     elif len(sys.argv) == 3:
         expected = json.loads(base64.b64decode(sys.argv[2], validate=True))
         preflight(sys.argv[1], expected)
     else:
-        raise RuntimeError('Usage: production_preflight.py --manifest <directory> OR <release-path> <manifest-base64>')
+        raise RuntimeError('Usage: production_preflight.py --manifest <directory> OR <release-path> <manifest-base64> [--require-full]')
 
 
 if __name__ == '__main__':

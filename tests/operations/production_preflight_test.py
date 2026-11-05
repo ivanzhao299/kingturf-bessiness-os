@@ -30,7 +30,7 @@ class ProductionPreflightTest(unittest.TestCase):
         self.marker = 'b' * 40
         (self.root / '.release-sha').write_text(self.marker)
         self.expected = {'0001_fixture.sql': 'a' * 64}
-        self.actual = dict(self.expected)
+        self.actual = [{'name': name, 'checksum': value} for name, value in self.expected.items()]
         self.mount = '/data'
         self.healthy = True
         self.live_source = self.pg
@@ -60,13 +60,13 @@ class ProductionPreflightTest(unittest.TestCase):
             return json.dumps(self.actual)
         raise AssertionError('Unexpected inventory command')
 
-    def run_gate(self):
+    def run_gate(self, *, require_full=False):
         original_stat = os.stat
         def stat(path, *args, **kwargs):
             return original_stat(self.root if str(path) == '/data' else path, *args, **kwargs)
         output = io.StringIO()
         with patch.object(gate, 'RELEASE', self.root), patch.object(gate, 'POSTGRES', self.pg), patch.object(gate, 'ATTACHMENTS', self.files), patch.object(gate, 'command', self.command), patch.object(gate.os, 'stat', stat), patch.object(gate.shutil, 'disk_usage', return_value=SimpleNamespace(free=self.free)), patch.object(gate.urllib.request, 'urlopen', return_value=io.BytesIO(json.dumps({'sha': self.version}).encode())), contextlib.redirect_stdout(output):
-            gate.preflight(str(self.root), self.expected)
+            gate.preflight(str(self.root), self.expected, require_full=require_full)
         return output.getvalue()
 
     def test_healthy_inventory_is_readonly_and_does_not_claim_restore(self):
@@ -91,8 +91,52 @@ class ProductionPreflightTest(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'Live persistent mount'): self.run_gate()
 
     def test_schema_drift_blocks_before_runtime_promotion(self):
-        self.actual['0001_fixture.sql'] = '0' * 64
+        self.actual[0]['checksum'] = '0' * 64
         with self.assertRaisesRegex(RuntimeError, 'migration checksums'): self.run_gate()
+
+    def test_matched_prefix_pending_classifies_and_reports_pending_suffix(self):
+        self.expected = {'0001_fixture.sql': 'a' * 64, '0002_fixture.sql': 'b' * 64, '0003_fixture.sql': 'c' * 64}
+        self.actual = [{'name': '0001_fixture.sql', 'checksum': 'a' * 64}, {'name': '0002_fixture.sql', 'checksum': 'b' * 64}]
+        result = json.loads(self.run_gate())
+        self.assertEqual(result['registry_classification'], 'MATCHED_PREFIX_PENDING')
+        self.assertEqual(result['applied'], 2)
+        self.assertEqual(result['pending'], [{'name': '0003_fixture.sql', 'checksum': 'c' * 64}])
+
+    def test_fully_matched_registry_passes_with_empty_pending(self):
+        self.expected = {'0001_fixture.sql': 'a' * 64, '0002_fixture.sql': 'b' * 64}
+        self.actual = [{'name': name, 'checksum': value} for name, value in self.expected.items()]
+        result = json.loads(self.run_gate())
+        self.assertEqual(result['registry_classification'], 'FULLY_MATCHED')
+        self.assertEqual(result['pending'], [])
+
+    def test_require_full_mode_rejects_pending_suffix(self):
+        self.expected = {'0001_fixture.sql': 'a' * 64, '0002_fixture.sql': 'b' * 64}
+        self.actual = [{'name': '0001_fixture.sql', 'checksum': 'a' * 64}]
+        with self.assertRaisesRegex(RuntimeError, 'FULLY_MATCHED'): self.run_gate(require_full=True)
+
+    def test_missing_middle_migration_blocks(self):
+        self.expected = {'0001_fixture.sql': 'a' * 64, '0002_fixture.sql': 'b' * 64, '0003_fixture.sql': 'c' * 64}
+        self.actual = [{'name': '0001_fixture.sql', 'checksum': 'a' * 64}, {'name': '0003_fixture.sql', 'checksum': 'c' * 64}]
+        with self.assertRaisesRegex(RuntimeError, 'MIGRATION_HISTORY_GAP'): self.run_gate()
+
+    def test_unknown_extra_migration_blocks(self):
+        self.expected = {'0001_fixture.sql': 'a' * 64}
+        self.actual = [{'name': '0001_fixture.sql', 'checksum': 'a' * 64}, {'name': '0004_unknown.sql', 'checksum': 'd' * 64}]
+        with self.assertRaisesRegex(RuntimeError, 'UNKNOWN_EXTRA_MIGRATION'): self.run_gate()
+
+    def test_duplicate_registry_rows_block(self):
+        self.expected = {'0001_fixture.sql': 'a' * 64}
+        self.actual = [{'name': '0001_fixture.sql', 'checksum': 'a' * 64}, {'name': '0001_fixture.sql', 'checksum': 'a' * 64}]
+        with self.assertRaisesRegex(RuntimeError, 'DUPLICATE_MIGRATION'): self.run_gate()
+
+    def test_malformed_registry_row_blocks(self):
+        self.expected = {'0001_fixture.sql': 'a' * 64}
+        self.actual = [{'name': '0001_fixture.sql', 'checksum': 'short'}]
+        with self.assertRaisesRegex(RuntimeError, 'INVALID_REGISTRY'): self.run_gate()
+
+    def test_out_of_order_manifest_is_rejected(self):
+        self.expected = {'0001_a.sql': 'a' * 64, '0001_b.sql': 'b' * 64}
+        with self.assertRaisesRegex(RuntimeError, 'strictly ordered'): self.run_gate()
 
     def test_missing_security_configuration_blocks(self):
         self.config['services']['api']['environment']['SESSION_SECRET'] = ''
