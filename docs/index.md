@@ -463,6 +463,7 @@ E1先行固定证据：[authorization守恒候选/773例旧新探针](evidence/e
 | [JTF-P1-E11-E17-QUOTE-TO-CASH](tasks/JTF-P1-E11-E17-QUOTE-TO-CASH.md)         | 已归档-只读（任务档案） |
 | [JTF-P1-E18-E21-CLOSURE](tasks/JTF-P1-E18-E21-CLOSURE.md)                     | 已归档-只读（任务档案） |
 | [KINGTURF_V2_LONG_TASK_PLAN](tasks/KINGTURF_V2_LONG_TASK_PLAN.md)             | 常驻                    |
+| [PHASE12C-RELEASE-REMEDIATION](tasks/phase12c-release-remediation.md)         | 本地整改待独立评审      |
 | [ROADMAP](tasks/ROADMAP.md)                                                   | 常驻                    |
 
 ## exec-plans/completed/
