@@ -28,7 +28,7 @@ def command(args, *, text=None):
     return result.stdout.strip()
 
 
-NAME_PATTERN = re.compile(r'[0-9]{4}.*\.sql')
+NAME_PATTERN = re.compile(r'[0-9]{4}[0-9a-z_]*\.sql')
 CHECKSUM_PATTERN = re.compile(r'[0-9a-f]{64}')
 
 

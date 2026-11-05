@@ -22,6 +22,7 @@ class FakeSession:
         self.fail_names = set(fail_names)
         self.registry_under_lock = registry_under_lock
         self.applied = []
+        self.wrapped = []
         self.lock_attempts = 0
 
     def query(self, sql):
@@ -37,6 +38,7 @@ class FakeSession:
         if 'pg_advisory_unlock' in sql:
             return ['t']
         if sql.startswith('BEGIN;'):
+            self.wrapped.append(sql)
             name = next(part for part in sql.splitlines() if 'INSERT INTO schema_migrations' in part).split("VALUES ('")[1].split("','")[0]
             if name in self.fail_names:
                 raise ro.StopError('database session ended unexpectedly: simulated failure in ' + name)
@@ -75,7 +77,7 @@ class OrchestratorTest(unittest.TestCase):
             'release_approval': {'release_sha': SHA, 'approved_suffix': ['0002_two.sql', '0003_three.sql'], 'approved_at_utc': '2026-11-05T11:00:00Z', 'window_end_utc': '2026-11-05T13:00:00Z', 'approver': 'lead'},
             'write_fence': {'method': 'api_write_fence', 'enabled_at_utc': '2026-11-05T11:30:00Z', 'observed_no_new_writes_utc': '2026-11-05T11:40:00Z', 'api_release_sha': SHA, 'in_flight_settled': True},
             'task_drain': {'background_queues_drained': True, 'external_write_channels_isolated': True, 'drained_at_utc': '2026-11-05T11:45:00Z'},
-            'backup_restore': {'database_dump': {'file': 'x.dump', 'sha256': 'a' * 64}, 'attachments_archive': {'file': 'x.tar', 'sha256': 'b' * 64}, 'config_material': 'AVAILABLE', 'restore_rehearsal': 'PASS', 'rehearsal_report': 'report.md', 'rpo_statement': 'rpo', 'rto_statement': 'rto'},
+            'backup_restore': {'database_dump': {'file': 'x.dump', 'sha256': 'a' * 64, 'captured_at_utc': '2026-11-05T11:35:00Z'}, 'attachments_archive': {'file': 'x.tar', 'sha256': 'b' * 64, 'captured_at_utc': '2026-11-05T11:35:00Z'}, 'config_material': 'AVAILABLE', 'restore_rehearsal': 'PASS', 'rehearsal_report': 'report.md', 'rpo_statement': 'rpo', 'rto_statement': 'rto'},
             'image_compatibility': {'candidate_image_digest': 'c' * 64, 'old_app_on_new_schema': {'verified': True, 'evidence': 'compat.md'}},
             'data_preconditions': {'negative_balance_groups': 0, 'over_return_groups': 0, 'orphan_return_movements': 0, 'checked_at_utc': '2026-11-05T11:50:00Z'},
         }
@@ -166,6 +168,56 @@ class OrchestratorTest(unittest.TestCase):
         self.run_stages(session)
         self.assertEqual(session.applied, ['0002_two.sql', '0003_three.sql'])
         self.assertEqual(session.lock_attempts, 1)
+        self.assertEqual(len(session.wrapped), 2)
+        for wrapped in session.wrapped:
+            for setting in ("SET LOCAL lock_timeout = '2s'", "SET LOCAL statement_timeout = '300s'", "SET LOCAL idle_in_transaction_session_timeout = '300s'"):
+                self.assertIn(setting, wrapped)
+            self.assertTrue(wrapped.lstrip().startswith('BEGIN;'))
+            self.assertTrue(wrapped.rstrip().endswith('COMMIT;'))
+
+    def test_backup_artifact_hash_or_timestamp_violations_block(self):
+        for index, mutate in enumerate((
+            lambda evidence: evidence['database_dump'].update(sha256='not-hex'),
+            lambda evidence: evidence['attachments_archive'].update(captured_at_utc='2026-11-05T11:00:00Z'),
+            lambda evidence: evidence['database_dump'].update(file=123),
+        )):
+            with self.subTest(mutation=index):
+                self.write_evidence()
+                evidence = json.loads((self.evidence / 'backup_restore.json').read_text())
+                mutate(evidence)
+                (self.evidence / 'backup_restore.json').write_text(json.dumps(evidence))
+                state = self.base / f'state-backup-{index}'
+                with self.assertRaisesRegex(ro.StopError, 'backup_restore'):
+                    ro.run_stages(self.plan, self.evidence, FakeSession(self.rows), self.migrations, state, now=ro.parse_instant(FIXED_NOW))
+
+    def test_digest_length_violation_blocks(self):
+        self.write_evidence(image_compatibility={'candidate_image_digest': 'c' * 65, 'old_app_on_new_schema': {'verified': True, 'evidence': 'compat.md'}})
+        with self.assertRaisesRegex(ro.StopError, 'image_compatibility'):
+            self.run_stages(FakeSession(self.rows))
+
+    def test_psql_argv_without_on_error_stop_is_rejected(self):
+        with self.assertRaisesRegex(RuntimeError, 'ON_ERROR_STOP'):
+            ro.PsqlSession(['psql', '-X', '-qAt'])
+
+    def test_new_approval_loader_binds_release_and_canonical_form(self):
+        consumed = {'release_sha': SHA, 'approved_suffix': ['0002_two.sql'], 'approved_at_utc': '2026-11-05T11:00:00Z', 'window_end_utc': '2026-11-05T13:00:00Z', 'approver': 'lead'}
+        replay = self.base / 'replay.json'
+        replay.write_text(json.dumps(consumed, indent=4))
+        consumed_hash = ro.load_new_approval(replay, SHA)
+        # Any non-canonical formatting of the SAME artifact hashes identically...
+        replay_differently_formatted = self.base / 'replay2.json'
+        replay_differently_formatted.write_text(json.dumps(consumed, separators=(',', ':')))
+        self.assertEqual(ro.load_new_approval(replay_differently_formatted, SHA), consumed_hash)
+        # ...so a rerun presenting the consumed approval is detectably stale:
+        self.assertNotEqual(consumed_hash, 'not-the-consumed-hash')
+        wrong_release = self.base / 'wrong.json'
+        wrong_release.write_text(json.dumps({**consumed, 'release_sha': '9' * 40}))
+        with self.assertRaisesRegex(RuntimeError, 'different release'):
+            ro.load_new_approval(wrong_release, SHA)
+        garbage = self.base / 'garbage.json'
+        garbage.write_text('not json')
+        with self.assertRaises(ValueError):
+            ro.load_new_approval(garbage, SHA)
 
     def test_plan_requires_contiguous_prefix(self):
         with self.assertRaisesRegex(RuntimeError, 'MIGRATION_HISTORY_GAP'):

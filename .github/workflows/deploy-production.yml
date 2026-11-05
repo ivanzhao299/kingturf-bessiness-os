@@ -203,33 +203,55 @@ jobs:
       - name: Controlled migration (evidence-gated, fail-closed)
         run: |
           set -euo pipefail
-          SSH_OPTS="-o KexAlgorithms=curve25519-sha256 -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -p '${{ secrets.PROD_SSH_PORT }}'"
-          SSH_TARGET='${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}'
+          PROD_SSH_PORT_VALUE='${{ secrets.PROD_SSH_PORT }}'
+          run_ssh() {
+            ssh -o KexAlgorithms=curve25519-sha256 -o StrictHostKeyChecking=yes \
+              -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p "$PROD_SSH_PORT_VALUE" \
+              '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' "$@"
+          }
           # Safety evidence (write fence, task drain, joint backup/restore rehearsal, image
           # compatibility, data preconditions, release approval with maintenance window) is
           # provisioned on the host at .release-migration-evidence/ by a separately authorized
           # procedure. Any missing or invalid evidence stops this deploy before migrations run.
           for script in production_preflight.py release_orchestrator.py; do
             expected=$(sha256sum ".release-control/scripts/$script" | cut -d ' ' -f 1)
-            actual=$(ssh $SSH_OPTS "$SSH_TARGET" "sha256sum '${{ secrets.PROD_DEPLOY_PATH }}/scripts/$script'" | cut -d ' ' -f 1)
+            actual=$(run_ssh "sha256sum '${{ secrets.PROD_DEPLOY_PATH }}/scripts/$script'" | cut -d ' ' -f 1)
             test "$expected" = "$actual" || { echo "Synced control script $script does not match immutable release control" >&2; exit 1; }
           done
           candidate_manifest=$(python3 .release-control/scripts/production_preflight.py --manifest packages/database/migrations)
-          ssh $SSH_OPTS "$SSH_TARGET" "sh -s -- '${{ secrets.PROD_DEPLOY_PATH }}' '$RELEASE_SHA'" <<'REMOTE'
+          # Stage 1 (read-only): fetch the live registry and build the plan on the host.
+          run_ssh "sh -s -- '${{ secrets.PROD_DEPLOY_PATH }}' '$RELEASE_SHA'" <<'REMOTE'
           set -eu
           cd "$1"
           test -d .release-migration-evidence
           argv_file=.release-migration-evidence/psql-argv.json
-          printf '%s\n' '["docker","compose","--env-file",".env.production","-f","infra/docker/compose.production.yaml","exec","-T","postgres","psql","-X","-qAt","-v","ON_ERROR_STOP=1"]' > "$argv_file"
+          # sh -c inside the postgres container expands $POSTGRES_USER/$POSTGRES_DB exactly
+          # like every other production query path; never trust container-default roles.
+          printf '%s\n' '["docker","compose","--env-file",".env.production","-f","infra/docker/compose.production.yaml","exec","-T","postgres","sh","-c","exec psql -X -qAt -v ON_ERROR_STOP=1 --username=\"$POSTGRES_USER\" --dbname=\"$POSTGRES_DB\""]' > "$argv_file"
           python3 scripts/release_orchestrator.py registry placeholder --psql-argv-file "$argv_file" > .release-migration-evidence/registry-live.json
           python3 scripts/release_orchestrator.py plan packages/database/migrations "$2" .release-migration-evidence/registry-live.json > .release-migration-evidence/plan.json
-          python3 scripts/release_orchestrator.py execute .release-migration-evidence/plan.json .release-migration-evidence packages/database/migrations .release-migration-state placeholder --psql-argv-file "$argv_file"
+          REMOTE
+          # Stage 2 (pre-execution binding): the host plan must describe exactly the candidate
+          # manifest dispatched from this runner BEFORE any migration executes.
+          plan_manifest=$(run_ssh "python3 -c 'import json,sys;print(json.dumps(json.load(open(sys.argv[1]))[\"manifest\"],sort_keys=True))' '${{ secrets.PROD_DEPLOY_PATH }}/.release-migration-evidence/plan.json'" 2>/dev/null || true)
+          RELEASE_SHA="$RELEASE_SHA" plan_manifest="$plan_manifest" candidate_manifest="$candidate_manifest" python3 - <<'CHECK'
+          import base64, json, os, sys
+          plan_manifest, candidate = os.environ['plan_manifest'], os.environ['candidate_manifest']
+          if not plan_manifest:
+              sys.exit('host plan manifest could not be read')
+          runner = json.dumps(json.loads(base64.b64decode(candidate)), sort_keys=True)
+          if plan_manifest != runner:
+              sys.exit('Host migration plan manifest disagrees with dispatched candidate')
+          CHECK
+          # Stage 3: execute the approved suffix, then require the full-registry postcheck.
+          run_ssh "sh -s -- '${{ secrets.PROD_DEPLOY_PATH }}' '$RELEASE_SHA'" <<'REMOTE'
+          set -eu
+          cd "$1"
+          argv_file=.release-migration-evidence/psql-argv.json
+          state_dir=".release-migration-state/$2"
+          python3 scripts/release_orchestrator.py execute .release-migration-evidence/plan.json .release-migration-evidence packages/database/migrations "$state_dir" placeholder --psql-argv-file "$argv_file"
           python3 scripts/release_orchestrator.py postcheck .release-migration-evidence/plan.json placeholder --psql-argv-file "$argv_file"
           REMOTE
-          # The plan must describe exactly the candidate manifest dispatched from this runner.
-          plan_manifest=$(ssh $SSH_OPTS "$SSH_TARGET" "python3 -c 'import json;print(json.dumps(json.load(open(\"${{ secrets.PROD_DEPLOY_PATH }}/.release-migration-evidence/plan.json\"))[\"manifest\"],sort_keys=True))'")
-          runner_manifest=$(MANIFEST="$candidate_manifest" python3 -c 'import base64,json,os;print(json.dumps(json.loads(base64.b64decode(os.environ["MANIFEST"])),sort_keys=True))')
-          test "$plan_manifest" = "$runner_manifest" || { echo 'Host migration plan manifest disagrees with dispatched candidate' >&2; exit 1; }
       - name: Deploy and verify
         run: |
           ssh -o KexAlgorithms=curve25519-sha256 -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \

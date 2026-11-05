@@ -41,8 +41,8 @@ def parse_instant(value):
 
 
 def migration_checksum(path):
-    """Byte-for-byte the repository migrator's digest: sha256 over utf8 file text."""
-    return hashlib.sha256(path.read_text(encoding='utf8').encode('utf8')).hexdigest()
+    """Byte-for-byte the repository migrator's digest (sha256 over raw file bytes)."""
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def read_manifest(directory):
@@ -63,6 +63,9 @@ class PsqlSession:
     def __init__(self, target):
         if isinstance(target, list):
             argv = target
+            # The no-registration-on-failure guarantee depends on this flag;
+            # never trust a caller-supplied argv that omits it.
+            require('ON_ERROR_STOP=1' in argv, 'psql argv must include -v ON_ERROR_STOP=1')
         else:
             argv = ['psql', '-X', '-qAt', '-v', 'ON_ERROR_STOP=1', '--no-psqlrc', target]
         self.process = subprocess.Popen(
@@ -96,6 +99,9 @@ class PsqlSession:
             self.process.wait(timeout=10)
         except Exception:
             self.process.kill()
+        finally:
+            self.process.stdout.close()
+            self.process.stderr.close()
 
 
 def read_registry(session):
@@ -115,7 +121,7 @@ def load_evidence(evidence_dir, name, *, required=True):
         value = json.loads(path.read_text())
         require(isinstance(value, dict), 'evidence must be a JSON object')
         return value
-    except (ValueError, RuntimeError) as error:
+    except (ValueError, RuntimeError, OSError) as error:
         raise StopError(f'GATE_FAILED:{name}: evidence unreadable ({error})') from error
 
 
@@ -152,11 +158,20 @@ def check_task_drain(evidence):
     require_value(evidence, 'drained_at_utc', 'task_drain')
 
 
-def check_backup_restore(evidence):
-    dump = evidence.get('database_dump')
-    require(isinstance(dump, dict) and dump.get('file') and dump.get('sha256'), 'GATE_FAILED:backup_restore: database dump evidence incomplete')
-    attachments = evidence.get('attachments_archive')
-    require(isinstance(attachments, dict) and attachments.get('file') and attachments.get('sha256'), 'GATE_FAILED:backup_restore: attachments archive evidence incomplete')
+def check_backup_restore(evidence, fence_evidence):
+    fenced = parse_instant(require_value(fence_evidence, 'enabled_at_utc', 'write_fence'))
+
+    def artifact(kind, label):
+        value = evidence.get(kind)
+        require(isinstance(value, dict), f'GATE_FAILED:backup_restore: {label} evidence incomplete')
+        require(isinstance(value.get('file'), str) and value['file'].strip(), f'GATE_FAILED:backup_restore: {label} file missing')
+        sha = value.get('sha256')
+        require(isinstance(sha, str) and len(sha) == 64 and all(c in '0123456789abcdef' for c in sha), f'GATE_FAILED:backup_restore: {label} sha256 malformed')
+        captured = parse_instant(require_value(value, 'captured_at_utc', 'backup_restore'))
+        require(captured >= fenced, f'GATE_FAILED:backup_restore: {label} captured before the write fence')
+
+    artifact('database_dump', 'database dump')
+    artifact('attachments_archive', 'attachments archive')
     require(evidence.get('config_material') == 'AVAILABLE', 'GATE_FAILED:backup_restore: config/secret recovery material missing')
     require(evidence.get('restore_rehearsal') == 'PASS', 'GATE_FAILED:backup_restore: joint restore rehearsal not passed')
     require(bool(evidence.get('rehearsal_report')), 'GATE_FAILED:backup_restore: rehearsal report reference missing')
@@ -165,9 +180,9 @@ def check_backup_restore(evidence):
 
 def check_image_compatibility(evidence):
     digest = require_value(evidence, 'candidate_image_digest', 'image_compatibility')
-    require(len(digest) >= 64 and all(c in '0123456789abcdef' for c in digest), 'GATE_FAILED:image_compatibility: digest malformed')
+    require(len(digest) == 64 and all(c in '0123456789abcdef' for c in digest), 'GATE_FAILED:image_compatibility: digest malformed')
     old_app = evidence.get('old_app_on_new_schema')
-    require(isinstance(old_app, dict) and old_app.get('verified') is True and old_app.get('evidence'), 'GATE_FAILED:image_compatibility: old-application-on-new-schema not verified')
+    require(isinstance(old_app, dict) and old_app.get('verified') is True and isinstance(old_app.get('evidence'), str) and old_app['evidence'].strip(), 'GATE_FAILED:image_compatibility: old-application-on-new-schema not verified')
 
 
 def check_data_preconditions(evidence, fence_evidence):
@@ -212,6 +227,14 @@ def load_state(state_dir, release_sha):
     return state
 
 
+def load_new_approval(path, release_sha):
+    """Canonicalize a fresh approval artifact so rerun comparisons are like-for-like."""
+    candidate = json.loads(Path(path).read_text())
+    require(isinstance(candidate, dict), 'new approval artifact is not a JSON object')
+    require(candidate.get('release_sha') == release_sha, 'new approval artifact belongs to a different release')
+    return hashlib.sha256(json.dumps(candidate, sort_keys=True).encode()).hexdigest()
+
+
 def write_state(state_dir, state):
     Path(state_dir).mkdir(parents=True, exist_ok=True)
     (Path(state_dir) / 'orchestration-state.json').write_text(json.dumps(state, indent=2) + '\n')
@@ -248,23 +271,26 @@ def run_stages(plan, evidence_dir, session, migrations_dir, state_dir, now=None,
     record('verify_plan', f"pending={len(plan['pending'])}")
 
     approval_sha = None
+    fence_evidence = None
     for name, check in GATES:
         try:
             evidence = load_evidence(evidence_dir, name)
             if name == 'release_approval':
                 approval_sha = check(evidence, plan, now)
             elif name == 'write_fence':
+                fence_evidence = evidence
                 check(evidence, now)
+            elif name == 'backup_restore':
+                check(evidence, fence_evidence)
             else:
                 check(evidence)
-        except (StopError, RuntimeError) as error:
+        except (StopError, RuntimeError, ValueError, OSError) as error:
             stop(name, str(error))
         record(name, 'evidence accepted')
     state['approval_sha256'] = approval_sha
     try:
-        fence_evidence = load_evidence(evidence_dir, 'write_fence')
         check_data_preconditions(load_evidence(evidence_dir, 'data_preconditions'), fence_evidence)
-    except (StopError, RuntimeError) as error:
+    except (StopError, RuntimeError, ValueError, OSError) as error:
         stop('data_preconditions', str(error))
     record('data_preconditions', 'zero anomalies after fence')
 
@@ -285,9 +311,10 @@ def run_stages(plan, evidence_dir, session, migrations_dir, state_dir, now=None,
             require(path.is_file(), f'approved migration file missing: {item["name"]}')
             require(migration_checksum(path) == item['checksum'], f'approved migration file drifted: {item["name"]}')
             sql = path.read_text(encoding='utf8')
-            # name/checksum are strictly regex-validated constants from the plan manifest.
-            wrapped = ("BEGIN;\nSET LOCAL lock_timeout = '2s';\nSET LOCAL statement_timeout = '60s';\n"
-                       "SET LOCAL idle_in_transaction_session_timeout = '60s';\n"
+            # name/checksum come from the manifest whose charset excludes quotes/semicolons
+            # (strict NAME_PATTERN/CHECKSUM_PATTERN in production_preflight).
+            wrapped = ("BEGIN;\nSET LOCAL lock_timeout = '2s';\nSET LOCAL statement_timeout = '300s';\n"
+                       "SET LOCAL idle_in_transaction_session_timeout = '300s';\n"
                        + sql.rstrip() + '\n'
                        + "INSERT INTO schema_migrations(name,checksum) VALUES ('" + item['name'] + "','" + item['checksum'] + "');\nCOMMIT;\n")
             try:
@@ -303,7 +330,7 @@ def run_stages(plan, evidence_dir, session, migrations_dir, state_dir, now=None,
         record('postcheck', 'FULLY_MATCHED')
     except StopError:
         raise
-    except RuntimeError as error:
+    except (RuntimeError, ValueError, OSError) as error:
         stop('execute', str(error))
     finally:
         try:
@@ -327,7 +354,9 @@ def main():
             target, new_approval, rest = args[5], None, args[6:]
             while rest:
                 if rest[0] == '--new-approval' and len(rest) >= 2:
-                    new_approval = hashlib.sha256(Path(rest[1]).read_bytes()).hexdigest()
+                    # Hash the CANONICAL form of the new approval artifact so the
+                    # comparison against the consumed approval hash is like-for-like.
+                    new_approval = load_new_approval(rest[1], plan['release_sha'])
                 elif rest[0] == '--psql-argv-file' and len(rest) >= 2:
                     target = json.loads(Path(rest[1]).read_text())
                 else:

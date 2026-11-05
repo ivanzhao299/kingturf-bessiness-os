@@ -60,7 +60,7 @@ def write_evidence(directory, *, pending, preconditions_zero=True):
         'release_approval': {'release_sha': RELEASE_SHA, 'approved_suffix': pending, 'approved_at_utc': '2026-01-01T00:00:00Z', 'window_end_utc': '2100-01-01T00:00:00Z', 'approver': 'drill'},
         'write_fence': {'method': 'api_write_fence', 'enabled_at_utc': '2026-01-01T00:00:00Z', 'observed_no_new_writes_utc': '2026-01-01T00:00:01Z', 'api_release_sha': RELEASE_SHA, 'in_flight_settled': True},
         'task_drain': {'background_queues_drained': True, 'external_write_channels_isolated': True, 'drained_at_utc': '2026-01-01T00:00:01Z'},
-        'backup_restore': {'database_dump': {'file': 'x.dump', 'sha256': 'a' * 64}, 'attachments_archive': {'file': 'x.tar', 'sha256': 'b' * 64}, 'config_material': 'AVAILABLE', 'restore_rehearsal': 'PASS', 'rehearsal_report': 'r.md', 'rpo_statement': 'rpo', 'rto_statement': 'rto'},
+        'backup_restore': {'database_dump': {'file': 'x.dump', 'sha256': 'a' * 64, 'captured_at_utc': '2026-01-01T00:00:01Z'}, 'attachments_archive': {'file': 'x.tar', 'sha256': 'b' * 64, 'captured_at_utc': '2026-01-01T00:00:01Z'}, 'config_material': 'AVAILABLE', 'restore_rehearsal': 'PASS', 'rehearsal_report': 'r.md', 'rpo_statement': 'rpo', 'rto_statement': 'rto'},
         'image_compatibility': {'candidate_image_digest': 'c' * 64, 'old_app_on_new_schema': {'verified': True, 'evidence': 'e.md'}},
         'data_preconditions': {'negative_balance_groups': 0 if preconditions_zero else 1, 'over_return_groups': 0, 'orphan_return_movements': 0, 'checked_at_utc': '2026-01-01T00:00:02Z'},
     }
@@ -143,7 +143,7 @@ class Drill(unittest.TestCase):
     def registry_names(self, session):
         return [row['name'] for row in ro.read_registry(session)]
 
-    def verify_registry(self, expected_count):
+    def verify_registry(self):
         # A failed migration kills the executor session by design; verify on a fresh one.
         session = session_for(self.dbname)
         self.sessions.append(session)
@@ -212,7 +212,7 @@ class ControlledUpgradeDrill(Drill):
         state = json.loads((self.base / 'state' / 'orchestration-state.json').read_text())
         self.assertEqual(state['verdict'], 'STOPPED')
         self.assertEqual(state['stop_stage'], 'apply:0072_production_return_guards.sql')
-        applied = self.verify_registry(71)
+        applied = self.verify_registry()
         self.assertEqual(len(applied), 71)
         self.assertNotIn('0072_production_return_guards.sql', applied)
         manifest = ro.read_manifest(MIGRATIONS)
@@ -245,7 +245,7 @@ class ControlledUpgradeDrill(Drill):
         holder.query('BEGIN; LOCK TABLE inventory_movements IN ACCESS EXCLUSIVE MODE;')
         with self.assertRaisesRegex(ro.StopError, '0071'):
             self.run_execute(session)
-        self.assertEqual(len(self.verify_registry(70)), 70)
+        self.assertEqual(len(self.verify_registry()), 70)
 
     def test_missing_evidence_leaves_registry_untouched(self):
         session = self.make_db('phase12c_drill_noevidence')
@@ -274,7 +274,7 @@ class ControlledUpgradeDrill(Drill):
                 state = json.loads((self.base / f'state-{name}' / 'orchestration-state.json').read_text())
                 self.assertEqual(state['verdict'], 'STOPPED')
                 expected_remaining = 70 if failing == '0071' else 71
-                self.assertEqual(len(self.verify_registry(expected_remaining)), expected_remaining)
+                self.assertEqual(len(self.verify_registry()), expected_remaining)
                 self.teardown_db()
 
 

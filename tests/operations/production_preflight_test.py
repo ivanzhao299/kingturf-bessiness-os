@@ -138,6 +138,10 @@ class ProductionPreflightTest(unittest.TestCase):
         self.expected = {'0001_a.sql': 'a' * 64, '0001_b.sql': 'b' * 64}
         with self.assertRaisesRegex(RuntimeError, 'strictly ordered'): self.run_gate()
 
+    def test_hostile_migration_name_is_rejected_by_charset_rule(self):
+        self.expected = {"0001_x'); DELETE FROM schema_migrations;--.sql": 'a' * 64}
+        with self.assertRaisesRegex(RuntimeError, 'Invalid candidate migration manifest'): self.run_gate()
+
     def test_missing_security_configuration_blocks(self):
         self.config['services']['api']['environment']['SESSION_SECRET'] = ''
         with self.assertRaisesRegex(RuntimeError, 'configuration missing'): self.run_gate()
