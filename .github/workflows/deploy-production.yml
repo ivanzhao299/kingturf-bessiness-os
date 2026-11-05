@@ -189,7 +189,7 @@ jobs:
             "python3 -c 'import pathlib,sys; p=pathlib.Path(sys.argv[1]); key=\"WEBSITE_LEAD_INGEST_SECRET\"; value=sys.stdin.read(); lines=[line for line in p.read_text().splitlines() if not line.startswith(key+\"=\")]; p.write_text(\"\\n\".join(lines+[key+\"=\"+value])+\"\\n\")' '${{ secrets.PROD_DEPLOY_PATH }}/.env.production'"
       - name: Sync isolated KingTurf release
         run: |
-          rsync -az --delete --exclude '.git/' --exclude '.release-control/' --exclude '.env.production' --exclude '.release-sha' --exclude '.release-backups/' --exclude 'kingturf_postgres_data/' --exclude 'kingturf_attachments/' \
+          rsync -az --delete --exclude '.git/' --exclude '.release-control/' --exclude '.env.production' --exclude '.release-sha' --exclude '.release-backups/' --exclude '.release-migration-evidence/' --exclude '.release-migration-state/' --exclude 'kingturf_postgres_data/' --exclude 'kingturf_attachments/' \
             -e "ssh -o KexAlgorithms=curve25519-sha256 -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -p ${{ secrets.PROD_SSH_PORT }} -o ServerAliveInterval=30 -o ConnectTimeout=30" \
             ./ '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/'
       - name: Verify unchanged production Nginx ingress
@@ -200,10 +200,40 @@ jobs:
           actual=$(ssh -o KexAlgorithms=curve25519-sha256 -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
             'set -eu; test -r /etc/nginx/conf.d/erp.kingturf.cn.conf; sha256sum /etc/nginx/conf.d/erp.kingturf.cn.conf' | cut -d ' ' -f 1)
           test "$expected" = "$actual" || { echo 'Shared Nginx change requires separate approval; no install or reload performed' >&2; exit 1; }
+      - name: Controlled migration (evidence-gated, fail-closed)
+        run: |
+          set -euo pipefail
+          SSH_OPTS="-o KexAlgorithms=curve25519-sha256 -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -p '${{ secrets.PROD_SSH_PORT }}'"
+          SSH_TARGET='${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}'
+          # Safety evidence (write fence, task drain, joint backup/restore rehearsal, image
+          # compatibility, data preconditions, release approval with maintenance window) is
+          # provisioned on the host at .release-migration-evidence/ by a separately authorized
+          # procedure. Any missing or invalid evidence stops this deploy before migrations run.
+          for script in production_preflight.py release_orchestrator.py; do
+            expected=$(sha256sum ".release-control/scripts/$script" | cut -d ' ' -f 1)
+            actual=$(ssh $SSH_OPTS "$SSH_TARGET" "sha256sum '${{ secrets.PROD_DEPLOY_PATH }}/scripts/$script'" | cut -d ' ' -f 1)
+            test "$expected" = "$actual" || { echo "Synced control script $script does not match immutable release control" >&2; exit 1; }
+          done
+          candidate_manifest=$(python3 .release-control/scripts/production_preflight.py --manifest packages/database/migrations)
+          ssh $SSH_OPTS "$SSH_TARGET" "sh -s -- '${{ secrets.PROD_DEPLOY_PATH }}' '$RELEASE_SHA'" <<'REMOTE'
+          set -eu
+          cd "$1"
+          test -d .release-migration-evidence
+          argv_file=.release-migration-evidence/psql-argv.json
+          printf '%s\n' '["docker","compose","--env-file",".env.production","-f","infra/docker/compose.production.yaml","exec","-T","postgres","psql","-X","-qAt","-v","ON_ERROR_STOP=1"]' > "$argv_file"
+          python3 scripts/release_orchestrator.py registry placeholder --psql-argv-file "$argv_file" > .release-migration-evidence/registry-live.json
+          python3 scripts/release_orchestrator.py plan packages/database/migrations "$2" .release-migration-evidence/registry-live.json > .release-migration-evidence/plan.json
+          python3 scripts/release_orchestrator.py execute .release-migration-evidence/plan.json .release-migration-evidence packages/database/migrations .release-migration-state placeholder --psql-argv-file "$argv_file"
+          python3 scripts/release_orchestrator.py postcheck .release-migration-evidence/plan.json placeholder --psql-argv-file "$argv_file"
+          REMOTE
+          # The plan must describe exactly the candidate manifest dispatched from this runner.
+          plan_manifest=$(ssh $SSH_OPTS "$SSH_TARGET" "python3 -c 'import json;print(json.dumps(json.load(open(\"${{ secrets.PROD_DEPLOY_PATH }}/.release-migration-evidence/plan.json\"))[\"manifest\"],sort_keys=True))'")
+          runner_manifest=$(MANIFEST="$candidate_manifest" python3 -c 'import base64,json,os;print(json.dumps(json.loads(base64.b64decode(os.environ["MANIFEST"])),sort_keys=True))')
+          test "$plan_manifest" = "$runner_manifest" || { echo 'Host migration plan manifest disagrees with dispatched candidate' >&2; exit 1; }
       - name: Deploy and verify
         run: |
           ssh -o KexAlgorithms=curve25519-sha256 -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
-            "cd '${{ secrets.PROD_DEPLOY_PATH }}' && export KINGTURF_RELEASE_SHA='$RELEASE_SHA' KINGTURF_RELEASE_BUILT_AT='${{ github.run_id }}' && (docker compose --env-file .env.production -f infra/docker/compose.production.yaml up -d --build || (docker compose --env-file .env.production -f infra/docker/compose.production.yaml ps -a; sleep 3; docker compose --env-file .env.production -f infra/docker/compose.production.yaml up -d --build)) && sleep 15 && docker compose --env-file .env.production -f infra/docker/compose.production.yaml ps && curl --fail --silent --show-error --retry 12 --retry-all-errors --retry-delay 5 http://127.0.0.1:4332/health && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 http://127.0.0.1:4332/ready && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 http://127.0.0.1:4332/version | grep -F '$RELEASE_SHA' && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 --resolve erp.kingturf.cn:443:127.0.0.1 https://erp.kingturf.cn/health && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 --resolve erp.kingturf.cn:443:127.0.0.1 https://erp.kingturf.cn/ready && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 --resolve erp.kingturf.cn:443:127.0.0.1 https://erp.kingturf.cn/version | grep -F '$RELEASE_SHA'"
+            "cd '${{ secrets.PROD_DEPLOY_PATH }}' && export KINGTURF_RELEASE_SHA='$RELEASE_SHA' KINGTURF_RELEASE_BUILT_AT='${{ github.run_id }}' && (docker compose --env-file .env.production -f infra/docker/compose.production.yaml up -d --build || (docker compose --env-file .env.production -f infra/docker/compose.production.yaml ps -a; exit 1)) && sleep 15 && docker compose --env-file .env.production -f infra/docker/compose.production.yaml ps && curl --fail --silent --show-error --retry 12 --retry-all-errors --retry-delay 5 http://127.0.0.1:4332/health && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 http://127.0.0.1:4332/ready && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 http://127.0.0.1:4332/version | grep -F '$RELEASE_SHA' && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 --resolve erp.kingturf.cn:443:127.0.0.1 https://erp.kingturf.cn/health && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 --resolve erp.kingturf.cn:443:127.0.0.1 https://erp.kingturf.cn/ready && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 --resolve erp.kingturf.cn:443:127.0.0.1 https://erp.kingturf.cn/version | grep -F '$RELEASE_SHA'"
       - name: Required production hostname HTTPS probe
         run: |
           ssh -o KexAlgorithms=curve25519-sha256 -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
