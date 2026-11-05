@@ -3,6 +3,7 @@ import { createServer } from 'node:http';
 import { parseEnvironment } from '@kingturf/config';
 import { assertMigrationsCurrent, Database, migrate } from '@kingturf/database';
 import { buildApp } from './app.ts';
+import { applyWriteFence, writeFenceEnabled } from './middleware/write-fence.ts';
 import { LoginRateLimiter } from './middleware/login-rate-limit.ts';
 import { incomingSessionHeaders, outgoingHttpHeaders } from './http-session-headers.ts';
 import {
@@ -65,7 +66,7 @@ const objectAccess = new PostgresRegistryObjectAccessAuthorizer(
   database,
   new Map([['employee', new EmployeeObjectInstanceResolver(employees)]]),
 );
-const app = buildApp(
+const application = buildApp(
   {
     loginRateLimiter: new LoginRateLimiter(config.loginRateLimit),
     auth,
@@ -104,7 +105,9 @@ const app = buildApp(
     businessDocuments: new PostgresBusinessDocumentRepository(database),
     contractDocuments: new PostgresContractDocumentRepository(database),
     ...(config.websiteLeadIngestSecret
-      ? { websiteLeads: new PostgresWebsiteLeadIngestor(database, config.websiteLeadIngestSecret) }
+      ? {
+          websiteLeads: new PostgresWebsiteLeadIngestor(database, config.websiteLeadIngestSecret),
+        }
       : {}),
     release: {
       sha: process.env.KINGTURF_RELEASE_SHA ?? 'development',
@@ -132,6 +135,7 @@ const app = buildApp(
   },
   { enforceCsp: config.cspEnforce, browserSession: config.browserSession },
 );
+const app = applyWriteFence(application, writeFenceEnabled());
 const server = createServer(async (request, response) => {
   const url = new URL(request.url ?? '/', 'http://localhost');
   const chunks: Buffer[] = [];
