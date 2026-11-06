@@ -24,6 +24,11 @@ require, classify_registry = gate.require, gate.classify_registry
 
 REGISTRY_SQL = "BEGIN READ ONLY; SET LOCAL statement_timeout='5s'; SELECT coalesce(jsonb_agg(jsonb_build_object('name',name,'checksum',checksum) ORDER BY name),'[]'::jsonb) FROM schema_migrations; COMMIT;"
 ADVISORY_KEY = "kingturf-release-migration"
+DATA_PRECONDITION_SQL = (
+    "SELECT 1 FROM inventory_movements GROUP BY tenant_id,item_version_id,lot_id,location_id HAVING sum(quantity_delta)<0",
+    "SELECT 1 FROM production_material_transactions GROUP BY tenant_id,production_order_id,item_version_id,lot_id,location_id HAVING coalesce(sum(quantity) FILTER (WHERE transaction_type='RETURN'),0) > coalesce(sum(quantity) FILTER (WHERE transaction_type='ISSUE'),0)",
+    "SELECT 1 FROM inventory_movements m WHERE m.source_type='PRODUCTION_ORDER' AND m.movement_type='RETURN' AND NOT EXISTS (SELECT 1 FROM production_material_transactions t WHERE t.tenant_id=m.tenant_id AND t.inventory_movement_id=m.id AND t.transaction_type='RETURN')",
+)
 
 
 class StopError(RuntimeError):
@@ -34,9 +39,12 @@ def utcnow():
     return datetime.now(timezone.utc)
 
 
+MAX_WINDOW = 12 * 3600
+
+
 def parse_instant(value):
     parsed = datetime.fromisoformat(value.replace('Z', '+00:00'))
-    require(parsed.tzinfo is not None, 'timestamps must carry an explicit UTC offset')
+    require(parsed.tzinfo is not None and parsed.utcoffset().total_seconds() == 0, 'timestamps must be UTC (Z or +00:00)')
     return parsed
 
 
@@ -135,6 +143,7 @@ def check_approval(evidence, plan, now):
     window_start = parse_instant(require_value(evidence, 'approved_at_utc', 'release_approval'))
     window_end = parse_instant(require_value(evidence, 'window_end_utc', 'release_approval'))
     require(window_start <= now < window_end, 'GATE_FAILED:release_approval: maintenance window not active')
+    require(0 < (window_end - window_start).total_seconds() <= MAX_WINDOW, f'GATE_FAILED:release_approval: window duration must be within 12 hours')
     return hashlib.sha256(json.dumps(evidence, sort_keys=True).encode()).hexdigest()
 
 
@@ -144,12 +153,18 @@ def require_value(evidence, key, gate_name):
     return value
 
 
+FENCE_METHODS = ('api_write_fence', 'controlled_old_api_shutdown')
+
+
 def check_write_fence(evidence, now):
-    require(evidence.get('method') == 'api_write_fence', 'GATE_FAILED:write_fence: unsupported fence method')
+    require(evidence.get('method') in FENCE_METHODS, 'GATE_FAILED:write_fence: unsupported fence method')
     require(evidence.get('in_flight_settled') is True, 'GATE_FAILED:write_fence: in-flight requests not settled')
     require_value(evidence, 'enabled_at_utc', 'write_fence')
     require_value(evidence, 'observed_no_new_writes_utc', 'write_fence')
     require_value(evidence, 'api_release_sha', 'write_fence')
+    if evidence.get('method') == 'controlled_old_api_shutdown':
+        require(evidence.get('api_service_state') == 'stopped', 'GATE_FAILED:write_fence: controlled shutdown requires api_service_state=stopped')
+        require_value(evidence, 'stopped_at_utc', 'write_fence')
     observed = parse_instant(evidence['observed_no_new_writes_utc'])
     require(observed <= now, 'GATE_FAILED:write_fence: observation timestamp is in the future')
 
@@ -160,7 +175,7 @@ def check_task_drain(evidence):
     require_value(evidence, 'drained_at_utc', 'task_drain')
 
 
-def check_backup_restore(evidence, fence_evidence):
+def check_backup_restore(evidence, fence_evidence, backup_root=None):
     fenced = parse_instant(require_value(fence_evidence, 'enabled_at_utc', 'write_fence'))
 
     def artifact(kind, label):
@@ -172,8 +187,19 @@ def check_backup_restore(evidence, fence_evidence):
         captured = parse_instant(require_value(value, 'captured_at_utc', 'backup_restore'))
         require(captured >= fenced, f'GATE_FAILED:backup_restore: {label} captured before the write fence')
 
-    artifact('database_dump', 'database dump')
-    artifact('attachments_archive', 'attachments archive')
+    def verified_artifact(kind, label):
+        artifact(kind, label)
+        value = evidence[kind]
+        path = Path(value['file'])
+        if not path.is_absolute():
+            path = Path(backup_root or '.') / path
+        require(path.is_file(), f'GATE_FAILED:backup_restore: {label} file not found at {path}')
+        import hashlib as _h
+        actual = _h.sha256(path.read_bytes()).hexdigest()
+        require(actual == value['sha256'], f'GATE_FAILED:backup_restore: {label} sha256 mismatch (evidence vs actual file)')
+
+    verified_artifact('database_dump', 'database dump')
+    verified_artifact('attachments_archive', 'attachments archive')
     require(evidence.get('config_material') == 'AVAILABLE', 'GATE_FAILED:backup_restore: config/secret recovery material missing')
     require(evidence.get('restore_rehearsal') == 'PASS', 'GATE_FAILED:backup_restore: joint restore rehearsal not passed')
     require(bool(evidence.get('rehearsal_report')), 'GATE_FAILED:backup_restore: rehearsal report reference missing')
@@ -181,8 +207,9 @@ def check_backup_restore(evidence, fence_evidence):
 
 
 def check_image_compatibility(evidence):
-    digest = require_value(evidence, 'candidate_image_digest', 'image_compatibility')
-    require(len(digest) == 64 and all(c in '0123456789abcdef' for c in digest), 'GATE_FAILED:image_compatibility: digest malformed')
+    for key in ('api_digest', 'web_digest'):
+        digest = require_value(evidence, key, 'image_compatibility')
+        require(len(digest) == 64 and all(c in '0123456789abcdef' for c in digest), f'GATE_FAILED:image_compatibility: {key} malformed')
     old_app = evidence.get('old_app_on_new_schema')
     require(isinstance(old_app, dict) and old_app.get('verified') is True and isinstance(old_app.get('evidence'), str) and old_app['evidence'].strip(), 'GATE_FAILED:image_compatibility: old-application-on-new-schema not verified')
 
@@ -242,7 +269,7 @@ def write_state(state_dir, state):
     (Path(state_dir) / 'orchestration-state.json').write_text(json.dumps(state, indent=2) + '\n')
 
 
-def run_stages(plan, evidence_dir, session, migrations_dir, state_dir, now=None, *, new_approval=None):
+def run_stages(plan, evidence_dir, session, migrations_dir, state_dir, now=None, *, new_approval=None, backup_root=None, release_root=None):
     """Execute the gated sequence. Returns the terminal state; raises StopError on any stop."""
     now = now or utcnow()
     stages = []
@@ -283,7 +310,7 @@ def run_stages(plan, evidence_dir, session, migrations_dir, state_dir, now=None,
                 fence_evidence = evidence
                 check(evidence, now)
             elif name == 'backup_restore':
-                check(evidence, fence_evidence)
+                check(evidence, fence_evidence, backup_root)
             else:
                 check(evidence)
         except (StopError, RuntimeError, ValueError, OSError) as error:
@@ -307,6 +334,33 @@ def run_stages(plan, evidence_dir, session, migrations_dir, state_dir, now=None,
         rows = read_registry(session)
         classification, pending = classify_registry(rows, plan['manifest'])
         require(classification == plan['classification'] and [p['name'] for p in pending] == [p['name'] for p in plan['pending']], 'REGISTRY_CHANGED_UNDER_LOCK: live registry no longer matches the approved plan')
+
+        # Cross-verify declared fence against REAL runtime state (no JSON-only trust).
+        if fence_evidence.get('method') == 'controlled_old_api_shutdown' and release_root:
+            import subprocess as _sp
+            ps = _sp.run(['docker', 'compose', '--env-file', str(Path(release_root) / '.env.production'),
+                          '-f', str(Path(release_root) / 'infra/docker/compose.production.yaml'),
+                          'ps', '--status', 'running', '--format', 'json', 'api'],
+                         capture_output=True, text=True, timeout=30)
+            require(ps.returncode == 0 and not ps.stdout.strip(), 'FENCE_STATE_MISMATCH: declared api stopped but docker compose reports a running api service')
+            record('fence_cross_check', 'docker compose confirms api service stopped')
+        backends = session.query("SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND pid<>pg_backend_pid() AND backend_type='client backend' AND state<>'idle'")
+        require(backends == ['0'], f'FENCE_STATE_MISMATCH: {backends[0] if backends else "?"} active non-orchestrator client backend(s) on the target database')
+        record('quiescence_probe', 'active non-orchestrator client backends = 0')
+
+        # Re-run the three Phase 12B data preconditions LIVE under the lock; JSON claims are not trusted.
+        # A zero-registry bootstrap (fresh database) has no tables yet and nothing historical to recheck.
+        tables_present = session.query("SELECT to_regclass('inventory_movements') IS NOT NULL AND to_regclass('production_material_transactions') IS NOT NULL")
+        if tables_present == ['t']:
+            live_counts = []
+            for query in DATA_PRECONDITION_SQL:
+                live_counts.append(session.query('SELECT count(*) FROM (' + query + ') probe')[0])
+            require(live_counts == ['0', '0', '0'], f'DATA_PRECONDITION_MISMATCH: live counts {live_counts} != 0/0/0')
+            state['live_data_preconditions'] = [int(count) for count in live_counts]
+            record('data_preconditions_live', 're-executed under lock: 0/0/0')
+        else:
+            require(len(rows) == 0, 'DATA_PRECONDITION_MISMATCH: business tables missing on a non-empty registry')
+            record('data_preconditions_live', 'skipped: zero-registry bootstrap')
         base = Path(migrations_dir)
         for item in pending:
             path = base / item['name']
@@ -368,11 +422,32 @@ def main():
                     raise RuntimeError('unknown execute argument: ' + rest[0])
                 rest = rest[2:]
             session = PsqlSession(target)
+            evidence_root = Path(args[2])
+            release_root = evidence_root.parent.name == '.release-migration-evidence' and evidence_root.parent or evidence_root
             try:
-                state = run_stages(plan, args[2], session, args[3], args[4], new_approval=new_approval)
+                state = run_stages(plan, args[2], session, args[3], args[4], new_approval=new_approval,
+                                   backup_root=release_root / '.release-backups', release_root=release_root if release_root != evidence_root else None)
                 print(json.dumps({'verdict': state['verdict']}))
             finally:
                 session.close()
+        elif len(args) == 4 and args[0] == 'check-evidence':
+            plan = json.loads(Path(args[1]).read_text())
+            evidence_root = Path(args[2])
+            release_root = evidence_root.parent if evidence_root.parent.name == '.release-migration-evidence' else evidence_root
+            now = utcnow()
+            fence = load_evidence(evidence_root, 'write_fence')
+            for name, check in GATES:
+                ev = load_evidence(evidence_root, name)
+                if name == 'release_approval':
+                    check(ev, plan, now)
+                elif name == 'write_fence':
+                    check(ev, now)
+                elif name == 'backup_restore':
+                    check(ev, fence, release_root / '.release-backups')
+                else:
+                    check(ev)
+            check_data_preconditions(load_evidence(evidence_root, 'data_preconditions'), fence)
+            print(json.dumps({'check_evidence': 'PASS', 'pending': [p['name'] for p in plan['pending']]}))
         elif args and args[0] == 'registry' and len(args) in (2, 4):
             target = args[1]
             if len(args) == 4:
@@ -383,6 +458,16 @@ def main():
                 print(json.dumps(read_registry(session)))
             finally:
                 session.close()
+        elif args and args[0] == 'verify-images' and len(args) == 3:
+            evidence = json.loads((Path(args[1]) / 'image_compatibility.json').read_text())
+            env = {}
+            for line in Path(args[2]).read_text().splitlines():
+                if '=' in line and not line.lstrip().startswith('#'):
+                    key, _, value = line.partition('=')
+                    env[key.strip()] = value.strip()
+            for var, key in (('KINGTURF_API_DIGEST', 'api_digest'), ('KINGTURF_WEB_DIGEST', 'web_digest')):
+                require(env.get(var) == evidence.get(key), f'IMAGE_DIGEST_MISMATCH: {var} != evidence.{key}')
+            print(json.dumps({'verify_images': 'PASS'}))
         elif args and args[0] == 'postcheck' and len(args) in (3, 5):
             plan = json.loads(Path(args[1]).read_text())
             target = args[2]

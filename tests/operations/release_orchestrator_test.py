@@ -32,6 +32,10 @@ class FakeSession:
             if self.registry_under_lock is not None and self.lock_attempts:
                 return [json.dumps(self.registry_under_lock)]
             return [json.dumps(self.rows)]
+        if 'pg_stat_activity' in sql or 'to_regclass' in sql:
+            return ['0'] if 'pg_stat_activity' in sql else ['t']
+        if 'SELECT count(*) FROM (' in sql or 'SELECT 1 FROM inventory_movements' in sql or 'NOT EXISTS' in sql and 'inventory_movement_id' in sql:
+            return ['0']
         if 'pg_try_advisory_lock' in sql:
             self.lock_attempts += 1
             return ['f' if self.lock_busy else 't']
@@ -77,16 +81,24 @@ class OrchestratorTest(unittest.TestCase):
             'release_approval': {'release_sha': SHA, 'approved_suffix': ['0002_two.sql', '0003_three.sql'], 'approved_at_utc': '2026-11-05T11:00:00Z', 'window_end_utc': '2026-11-05T13:00:00Z', 'approver': 'lead'},
             'write_fence': {'method': 'api_write_fence', 'enabled_at_utc': '2026-11-05T11:30:00Z', 'observed_no_new_writes_utc': '2026-11-05T11:40:00Z', 'api_release_sha': SHA, 'in_flight_settled': True},
             'task_drain': {'background_queues_drained': True, 'external_write_channels_isolated': True, 'drained_at_utc': '2026-11-05T11:45:00Z'},
-            'backup_restore': {'database_dump': {'file': 'x.dump', 'sha256': 'a' * 64, 'captured_at_utc': '2026-11-05T11:35:00Z'}, 'attachments_archive': {'file': 'x.tar', 'sha256': 'b' * 64, 'captured_at_utc': '2026-11-05T11:35:00Z'}, 'config_material': 'AVAILABLE', 'restore_rehearsal': 'PASS', 'rehearsal_report': 'report.md', 'rpo_statement': 'rpo', 'rto_statement': 'rto'},
-            'image_compatibility': {'candidate_image_digest': 'c' * 64, 'old_app_on_new_schema': {'verified': True, 'evidence': 'compat.md'}},
+            'backup_restore': {'database_dump': {'file': 'x.dump', 'sha256': None, 'captured_at_utc': '2026-11-05T11:35:00Z'}, 'attachments_archive': {'file': 'x.tar', 'sha256': None, 'captured_at_utc': '2026-11-05T11:35:00Z'}, 'config_material': 'AVAILABLE', 'restore_rehearsal': 'PASS', 'rehearsal_report': 'report.md', 'rpo_statement': 'rpo', 'rto_statement': 'rto'},
+            'image_compatibility': {'api_digest': 'c' * 64, 'web_digest': 'd' * 64, 'old_app_on_new_schema': {'verified': True, 'evidence': 'compat.md'}},
             'data_preconditions': {'negative_balance_groups': 0, 'over_return_groups': 0, 'orphan_return_movements': 0, 'checked_at_utc': '2026-11-05T11:50:00Z'},
         }
+        import hashlib as _h
+        backups = self.evidence / '.release-backups'
+        backups.mkdir(exist_ok=True)
+        (backups / 'x.dump').write_bytes(b'dump-bytes')
+        (backups / 'x.tar').write_bytes(b'tar-bytes')
+        values['backup_restore']['database_dump']['sha256'] = _h.sha256(b'dump-bytes').hexdigest()
+        values['backup_restore']['attachments_archive']['sha256'] = _h.sha256(b'tar-bytes').hexdigest()
         values.update(overrides)
         for name, value in values.items():
             if value is not None:
                 (self.evidence / (name + '.json')).write_text(json.dumps(value))
 
     def run_stages(self, session, **kwargs):
+        kwargs.setdefault('backup_root', self.evidence / '.release-backups')
         return ro.run_stages(self.plan, self.evidence, session, self.migrations, self.state, now=ro.parse_instant(FIXED_NOW), **kwargs)
 
     def load_state(self):
@@ -191,7 +203,7 @@ class OrchestratorTest(unittest.TestCase):
                     ro.run_stages(self.plan, self.evidence, FakeSession(self.rows), self.migrations, state, now=ro.parse_instant(FIXED_NOW))
 
     def test_digest_length_violation_blocks(self):
-        self.write_evidence(image_compatibility={'candidate_image_digest': 'c' * 65, 'old_app_on_new_schema': {'verified': True, 'evidence': 'compat.md'}})
+        self.write_evidence(image_compatibility={'api_digest': 'c' * 65, 'web_digest': 'd' * 64, 'old_app_on_new_schema': {'verified': True, 'evidence': 'compat.md'}})
         with self.assertRaisesRegex(ro.StopError, 'image_compatibility'):
             self.run_stages(FakeSession(self.rows))
 
