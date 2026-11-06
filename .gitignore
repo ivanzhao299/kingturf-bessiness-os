@@ -14,3 +14,4 @@ tmp/
 .local-acceptance/
 .zcode/
 prompt-history.txt
+__pycache__/
