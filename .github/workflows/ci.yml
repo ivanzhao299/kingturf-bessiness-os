@@ -22,7 +22,7 @@ jobs:
           POSTGRES_PASSWORD: ephemeral-ci-only
         ports: ['5432:5432']
         options: >-
-          --health-cmd "pg_isready -U kingturf_test -d kingturf_test"
+          --health-cmd "pg_isready -U kingturf_test -d kingturf_test" --max-locks-per-transaction 512
           --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       NODE_ENV: test
