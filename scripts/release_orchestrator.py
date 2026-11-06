@@ -311,8 +311,11 @@ def run_stages(plan, evidence_dir, session, migrations_dir, state_dir, now=None,
         for item in pending:
             path = base / item['name']
             require(path.is_file(), f'approved migration file missing: {item["name"]}')
-            require(migration_checksum(path) == item['checksum'], f'approved migration file drifted: {item["name"]}')
-            sql = path.read_text(encoding='utf8')
+            # Read once; hash and execute the SAME bytes so no swap between
+            # verification and execution can ever run unverified content.
+            data = path.read_bytes()
+            require(hashlib.sha256(data).hexdigest() == item['checksum'], f'approved migration file drifted: {item["name"]}')
+            sql = data.decode('utf8')
             # name/checksum come from the manifest whose charset excludes quotes/semicolons
             # (strict NAME_PATTERN/CHECKSUM_PATTERN in production_preflight).
             wrapped = ("BEGIN;\nSET LOCAL lock_timeout = '2s';\nSET LOCAL statement_timeout = '300s';\n"

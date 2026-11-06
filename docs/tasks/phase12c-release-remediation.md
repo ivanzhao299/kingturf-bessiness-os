@@ -21,7 +21,7 @@
 
 - **门禁顺序**（每项都消费主机端 `.release-migration-evidence/` 下的 JSON 证据，缺失/失效即 STOPPED）：
   release_approval（SHA+批准后缀+维护窗口）→ write_fence → task_drain → backup_restore（数据库+附件+配置+恢复演练+RPO/RTO 联合证据）→ image_compatibility（候选镜像 digest + 旧应用兼容新 schema 验证）→ data_preconditions（停写后重跑三项 Phase 12B 审计且必须为 0）。
-- **执行内核**：单会话 `pg_advisory_lock` 单飞；锁内重读登记并核对与计划一致（`REGISTRY_CHANGED_UNDER_LOCK` 拒绝）；逐文件「BEGIN + lock_timeout=2s + statement_timeout=60s + idle_in_transaction_session_timeout=60s + 迁移 SQL + 登记 INSERT + COMMIT」单事务（与迁移器 `tx.query(file.sql)+INSERT` 等价，隔离演练已做逐行登记等价比对）；应用后逐条核对登记；最终 `FULLY_MATCHED` postcheck。
+- **执行内核**：单会话 `pg_advisory_lock` 单飞；锁内重读登记并核对与计划一致（`REGISTRY_CHANGED_UNDER_LOCK` 拒绝）；逐文件「BEGIN + lock_timeout=2s + statement_timeout=300s + idle_in_transaction_session_timeout=300s + 迁移 SQL + 登记 INSERT + COMMIT」单事务（与迁移器 `tx.query(file.sql)+INSERT` 等价，隔离演练已做逐行登记等价比对）；应用后逐条核对登记；最终 `FULLY_MATCHED` postcheck。
 - **失败即停**：任何失败写 `orchestration-state.json`（STOPPED + 阶段 + 原因 + 停止时登记快照）；STOPPED 后拒绝无 `--new-approval`（且必须与已消耗审批哈希不同）的重跑；COMPLETED 后拒绝重复执行。无任何自动重试。
 - 会话经 `psql` 或 `--psql-argv-file`（生产走 `docker compose exec -T postgres psql`，无 5432 发布端口）。语句强制分号终结（标记协议加固）。
 
@@ -39,8 +39,8 @@
 
 ## 5. 测试（tests/operations + packages/database + apps/api）
 
-- `production_preflight_test.py`：18 项（原 10 项适配 + 前缀/全配/门类拒绝/`--require-full`）。
-- `release_orchestrator_test.py`：12 项（门禁拒绝矩阵、部分失败状态、拒绝无新审批重跑、COMPLETED 拒重复、并发锁、锁内漂移）。
+- `production_preflight_test.py`：19 项（原 10 项适配 + 前缀/全配/门类拒绝/`--require-full`）。
+- `release_orchestrator_test.py`：17 项（门禁拒绝矩阵、部分失败状态、拒绝无新审批重跑、COMPLETED 拒重复、并发锁、锁内漂移）。
 - `release_migration_drill_test.py`（真实 PG，跳过条件明确登记）：70→72 全链路 + 与 node 迁移器逐行等价、分类矩阵、0071 成功/0072 破坏、连接中断、锁超时、缺证据不触库、负库存/超退/孤立退料被迁移断言拒绝。
 - `packages/database/test/startup-gate.integration.test.ts`：70/72 前缀报 pending 且生产启动拒绝；72/72 全 applied 且放行。
 - `apps/api/test/write-fence.test.ts`：6 项 fence 行为。
