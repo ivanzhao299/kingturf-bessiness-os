@@ -26,9 +26,9 @@ services:
 
   api:
     logging: *bounded-logging
-    build:
-      context: ../..
-      dockerfile: infra/docker/Dockerfile.api-preview
+    # Immutable deployment: digest-pinned by KINGTURF_API_DIGEST in .env.production
+    # (set during release prep by the release-images workflow output). No build here.
+    image: ${KINGTURF_API_IMAGE:-ghcr.io/ivanzhao299/kingturf-erp-api}@${KINGTURF_API_DIGEST:?KINGTURF_API_DIGEST is required}
     environment:
       NODE_ENV: production
       API_HOST: 0.0.0.0
@@ -76,9 +76,7 @@ services:
 
   web:
     logging: *bounded-logging
-    build:
-      context: ../..
-      dockerfile: infra/docker/Dockerfile.web-preview
+    image: ${KINGTURF_WEB_IMAGE:-ghcr.io/ivanzhao299/kingturf-erp-web}@${KINGTURF_WEB_DIGEST:?KINGTURF_WEB_DIGEST is required}
     ports:
       - '${KINGTURF_WEB_PORT:-4332}:8080'
     depends_on:
