@@ -37,8 +37,8 @@ class ProductionPreflightTest(unittest.TestCase):
         self.version = self.marker
         self.config = {'name': gate.PROJECT, 'services': {
             'postgres': {'volumes': [{'type': 'bind', 'source': str(self.pg), 'target': '/var/lib/postgresql/data'}]},
-            'api': {'volumes': [{'type': 'bind', 'source': str(self.files), 'target': '/var/lib/kingturf/attachments'}], 'environment': {'DATABASE_URL': 'synthetic-sensitive-url', 'SESSION_SECRET': 'x' * 32, 'WEBSITE_LEAD_INGEST_SECRET': 'y' * 32}},
-            'web': {'ports': [{'published': '4332'}]},
+            'api': {'image': 'ghcr.io/x/api@sha256:' + 'a' * 64, 'volumes': [{'type': 'bind', 'source': str(self.files), 'target': '/var/lib/kingturf/attachments'}], 'environment': {'DATABASE_URL': 'synthetic-sensitive-url', 'SESSION_SECRET': 'x' * 32, 'WEBSITE_LEAD_INGEST_SECRET': 'y' * 32}},
+            'web': {'image': 'ghcr.io/x/web@sha256:' + 'b' * 64, 'ports': [{'published': '4332'}]},
         }}
         self.calls = []
         self.free = 20 * 1024 ** 3
@@ -145,6 +145,22 @@ class ProductionPreflightTest(unittest.TestCase):
     def test_missing_security_configuration_blocks(self):
         self.config['services']['api']['environment']['SESSION_SECRET'] = ''
         with self.assertRaisesRegex(RuntimeError, 'configuration missing'): self.run_gate()
+
+    def test_mutable_image_tag_blocks(self):
+        self.config['services']['api']['image'] = 'ghcr.io/x/api:latest'
+        with self.assertRaisesRegex(RuntimeError, 'digest-pinned'): self.run_gate()
+
+    def test_malformed_digest_references_block(self):
+        for image in (
+            'ghcr.io/x/api@sha256:' + 'a' * 63,                      # too short
+            'ghcr.io/x/api@sha256:' + 'a' * 65,                      # too long
+            'ghcr.io/x/api@sha256:' + 'a' * 64 + 'x',                # trailing garbage
+            'ghcr.io/x/api@sha256:' + 'a' * 32 + '@sha256:' + 'b' * 64,  # double digest segment
+            'ghcr.io/x/api@' + 'a' * 64,                             # algorithm prefix missing
+        ):
+            with self.subTest(image=image[-12:]):
+                self.config['services']['api']['image'] = image
+                with self.assertRaisesRegex(RuntimeError, 'digest-pinned'): self.run_gate()
 
     def test_unhealthy_service_blocks(self):
         self.healthy = False

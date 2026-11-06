@@ -142,6 +142,11 @@ jobs:
           manifest=$(python3 .release-control/scripts/production_preflight.py --manifest packages/database/migrations)
           cat .release-control/scripts/production_preflight.py | ssh -o KexAlgorithms=curve25519-sha256 -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
             "python3 - '/data/kingturf-erp' '$manifest'"
+      - name: Stage A read-only verify image digests against evidence
+        run: |
+          set -euo pipefail
+          SSH_OPTS="-o KexAlgorithms=curve25519-sha256 -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -p '${{ secrets.PROD_SSH_PORT }}'"
+          ssh $SSH_OPTS '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' "cd '${{ secrets.PROD_DEPLOY_PATH }}' && python3 scripts/release_orchestrator.py verify-images .release-migration-evidence .env.production"
       - name: Diagnose production public HTTPS ingress
         run: |
           ssh -o KexAlgorithms=curve25519-sha256 -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
@@ -162,6 +167,11 @@ jobs:
              curl -k -sS -D - --connect-timeout 8 --max-time 15 https://127.0.0.1/health -H "Host: erp.kingturf.cn" 2>&1 || true
              echo "== local HTTP =="
              curl -sS -D - --connect-timeout 8 --max-time 15 http://127.0.0.1/health -H "Host: erp.kingturf.cn" 2>&1 || true'
+      - name: Stage B first-write authorization all six evidence gates must pass
+        run: |
+          set -euo pipefail
+          SSH_OPTS="-o KexAlgorithms=curve25519-sha256 -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -p '${{ secrets.PROD_SSH_PORT }}'"
+          ssh $SSH_OPTS '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' "cd '${{ secrets.PROD_DEPLOY_PATH }}' && python3 scripts/release_orchestrator.py check-evidence .release-migration-evidence/plan.json .release-migration-evidence"
       - name: Create production recovery point
         run: |
           ssh -o KexAlgorithms=curve25519-sha256 -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
@@ -255,7 +265,7 @@ jobs:
       - name: Deploy and verify
         run: |
           ssh -o KexAlgorithms=curve25519-sha256 -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
-            "cd '${{ secrets.PROD_DEPLOY_PATH }}' && export KINGTURF_RELEASE_SHA='$RELEASE_SHA' KINGTURF_RELEASE_BUILT_AT='${{ github.run_id }}' && (docker compose --env-file .env.production -f infra/docker/compose.production.yaml up -d --build || (docker compose --env-file .env.production -f infra/docker/compose.production.yaml ps -a; exit 1)) && sleep 15 && docker compose --env-file .env.production -f infra/docker/compose.production.yaml ps && curl --fail --silent --show-error --retry 12 --retry-all-errors --retry-delay 5 http://127.0.0.1:4332/health && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 http://127.0.0.1:4332/ready && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 http://127.0.0.1:4332/version | grep -F '$RELEASE_SHA' && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 --resolve erp.kingturf.cn:443:127.0.0.1 https://erp.kingturf.cn/health && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 --resolve erp.kingturf.cn:443:127.0.0.1 https://erp.kingturf.cn/ready && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 --resolve erp.kingturf.cn:443:127.0.0.1 https://erp.kingturf.cn/version | grep -F '$RELEASE_SHA'"
+            "cd '${{ secrets.PROD_DEPLOY_PATH }}' && export KINGTURF_RELEASE_SHA='$RELEASE_SHA' KINGTURF_RELEASE_BUILT_AT='${{ github.run_id }}' && (docker compose --env-file .env.production -f infra/docker/compose.production.yaml pull api web && docker compose --env-file .env.production -f infra/docker/compose.production.yaml config --format json | grep -q '@sha256:' && docker compose --env-file .env.production -f infra/docker/compose.production.yaml up -d || (docker compose --env-file .env.production -f infra/docker/compose.production.yaml ps -a; exit 1)) && sleep 15 && docker compose --env-file .env.production -f infra/docker/compose.production.yaml ps && curl --fail --silent --show-error --retry 12 --retry-all-errors --retry-delay 5 http://127.0.0.1:4332/health && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 http://127.0.0.1:4332/ready && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 http://127.0.0.1:4332/version | grep -F '$RELEASE_SHA' && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 --resolve erp.kingturf.cn:443:127.0.0.1 https://erp.kingturf.cn/health && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 --resolve erp.kingturf.cn:443:127.0.0.1 https://erp.kingturf.cn/ready && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 --resolve erp.kingturf.cn:443:127.0.0.1 https://erp.kingturf.cn/version | grep -F '$RELEASE_SHA'"
       - name: Required production hostname HTTPS probe
         run: |
           ssh -o KexAlgorithms=curve25519-sha256 -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \

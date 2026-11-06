@@ -56,13 +56,23 @@ def admin_session():
 def write_evidence(directory, *, pending, preconditions_zero=True):
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
+    from datetime import datetime, timedelta, timezone
+    import hashlib as _h
+    start = (datetime.now(timezone.utc) - timedelta(hours=1)).strftime('%Y-%m-%dT%H:%M:%SZ')
+    end = (datetime.now(timezone.utc) + timedelta(hours=6)).strftime('%Y-%m-%dT%H:%M:%SZ')
+    mid = (datetime.now(timezone.utc) - timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M:%SZ')
+    late = (datetime.now(timezone.utc) - timedelta(minutes=29)).strftime('%Y-%m-%dT%H:%M:%SZ')
+    backups = directory / '.release-backups'
+    backups.mkdir(parents=True, exist_ok=True)
+    (backups / 'x.dump').write_bytes(b'drill-dump')
+    (backups / 'x.tar').write_bytes(b'drill-tar')
     values = {
-        'release_approval': {'release_sha': RELEASE_SHA, 'approved_suffix': pending, 'approved_at_utc': '2026-01-01T00:00:00Z', 'window_end_utc': '2100-01-01T00:00:00Z', 'approver': 'drill'},
-        'write_fence': {'method': 'api_write_fence', 'enabled_at_utc': '2026-01-01T00:00:00Z', 'observed_no_new_writes_utc': '2026-01-01T00:00:01Z', 'api_release_sha': RELEASE_SHA, 'in_flight_settled': True},
-        'task_drain': {'background_queues_drained': True, 'external_write_channels_isolated': True, 'drained_at_utc': '2026-01-01T00:00:01Z'},
-        'backup_restore': {'database_dump': {'file': 'x.dump', 'sha256': 'a' * 64, 'captured_at_utc': '2026-01-01T00:00:01Z'}, 'attachments_archive': {'file': 'x.tar', 'sha256': 'b' * 64, 'captured_at_utc': '2026-01-01T00:00:01Z'}, 'config_material': 'AVAILABLE', 'restore_rehearsal': 'PASS', 'rehearsal_report': 'r.md', 'rpo_statement': 'rpo', 'rto_statement': 'rto'},
-        'image_compatibility': {'candidate_image_digest': 'c' * 64, 'old_app_on_new_schema': {'verified': True, 'evidence': 'e.md'}},
-        'data_preconditions': {'negative_balance_groups': 0 if preconditions_zero else 1, 'over_return_groups': 0, 'orphan_return_movements': 0, 'checked_at_utc': '2026-01-01T00:00:02Z'},
+        'release_approval': {'release_sha': RELEASE_SHA, 'approved_suffix': pending, 'approved_at_utc': start, 'window_end_utc': end, 'approver': 'drill'},
+        'write_fence': {'method': 'api_write_fence', 'enabled_at_utc': start, 'observed_no_new_writes_utc': mid, 'api_release_sha': RELEASE_SHA, 'in_flight_settled': True},
+        'task_drain': {'background_queues_drained': True, 'external_write_channels_isolated': True, 'drained_at_utc': mid},
+        'backup_restore': {'database_dump': {'file': 'x.dump', 'sha256': _h.sha256(b'drill-dump').hexdigest(), 'captured_at_utc': late}, 'attachments_archive': {'file': 'x.tar', 'sha256': _h.sha256(b'drill-tar').hexdigest(), 'captured_at_utc': late}, 'config_material': 'AVAILABLE', 'restore_rehearsal': 'PASS', 'rehearsal_report': 'r.md', 'rpo_statement': 'rpo', 'rto_statement': 'rto'},
+        'image_compatibility': {'api_digest': 'c' * 64, 'web_digest': 'd' * 64, 'old_app_on_new_schema': {'verified': True, 'evidence': 'e.md'}},
+        'data_preconditions': {'negative_balance_groups': 0 if preconditions_zero else 1, 'over_return_groups': 0, 'orphan_return_movements': 0, 'checked_at_utc': late},
     }
     for name, value in values.items():
         (directory / (name + '.json')).write_text(json.dumps(value))
@@ -90,7 +100,7 @@ class Drill(unittest.TestCase):
         try:
             plan = ro.build_plan(cls.filtered, RELEASE_SHA, [])
             write_evidence(cls.base / 'evidence70', pending=[p['name'] for p in plan['pending']])
-            ro.run_stages(plan, cls.base / 'evidence70', session, cls.filtered, cls.base / 'state70')
+            ro.run_stages(plan, cls.base / 'evidence70', session, cls.filtered, cls.base / 'state70', backup_root=cls.base / 'evidence70' / '.release-backups')
         finally:
             session.close()
 
@@ -138,7 +148,7 @@ class Drill(unittest.TestCase):
         plan = ro.build_plan(migrations, RELEASE_SHA, ro.read_registry(session))
         evidence = evidence or (self.base / 'evidence')
         write_evidence(evidence, pending=[p['name'] for p in plan['pending']])
-        return ro.run_stages(plan, evidence, session, migrations, self.base / state_name)
+        return ro.run_stages(plan, evidence, session, migrations, self.base / state_name, backup_root=evidence / '.release-backups')
 
     def registry_names(self, session):
         return [row['name'] for row in ro.read_registry(session)]
@@ -238,14 +248,18 @@ class ControlledUpgradeDrill(Drill):
         self.sessions.append(followup)
         self.assertEqual(len(self.registry_names(followup)), 71)
 
-    def test_lock_timeout_blocks_and_rolls_back_migration(self):
+    def test_active_holder_session_blocks_at_quiescence_probe(self):
+        # An idle-in-transaction holder on the target DB is an UNSETTLED writer:
+        # the live quiescence probe must fail closed before any migration SQL.
         session = self.make_db('phase12c_drill_lock')
         holder = session_for(self.dbname)
         self.sessions.append(holder)
         holder.query('BEGIN; LOCK TABLE inventory_movements IN ACCESS EXCLUSIVE MODE;')
-        with self.assertRaisesRegex(ro.StopError, '0071'):
+        with self.assertRaisesRegex(ro.StopError, 'FENCE_STATE_MISMATCH'):
             self.run_execute(session)
         self.assertEqual(len(self.verify_registry()), 70)
+        state = json.loads((self.base / 'state' / 'orchestration-state.json').read_text())
+        self.assertEqual(state['verdict'], 'STOPPED')
 
     def test_missing_evidence_leaves_registry_untouched(self):
         session = self.make_db('phase12c_drill_noevidence')
@@ -257,10 +271,10 @@ class ControlledUpgradeDrill(Drill):
         self.assertEqual(len(self.registry_names(session)), 70)
 
     def test_migration_assertions_reject_negative_stock_over_return_and_orphans(self):
-        for name, fixture, failing in (
-            ('phase12c_drill_neg', 'neg', '0071'),
-            ('phase12c_drill_over', 'over', '0072'),
-            ('phase12c_drill_orphan', 'orphan', '0072'),
+        for name, fixture in (
+            ('phase12c_drill_neg', 'neg'),
+            ('phase12c_drill_over', 'over'),
+            ('phase12c_drill_orphan', 'orphan'),
         ):
             with self.subTest(case=name):
                 session = self.make_db(name)
@@ -269,12 +283,12 @@ class ControlledUpgradeDrill(Drill):
                     'over': "INSERT INTO production_material_transactions(id,tenant_id,production_order_id,transaction_type,item_version_id,lot_id,location_id,quantity,inventory_movement_id,reason,actor_id,correlation_id,idempotency_key,occurred_at,canonical_hash) VALUES (gen_random_uuid(),'00000000-0000-0000-0000-000000000001','44444444-4444-4444-4444-444444444401','RETURN','11111111-1111-1111-1111-111111111101','22222222-2222-2222-2222-222222222201','33333333-3333-3333-3333-333333333301',9,gen_random_uuid(),'drill','aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaa001','cccccccc-cccc-cccc-cccc-ccccccccc001','drill-over',now(),rpad('b',64,'b'))",
                     'orphan': "INSERT INTO inventory_movements(id,tenant_id,movement_type,item_version_id,lot_id,location_id,quantity_delta,occurred_at,source_type,source_id,canonical_hash,actor_id,correlation_id) VALUES (gen_random_uuid(),'00000000-0000-0000-0000-000000000001','RETURN','11111111-1111-1111-1111-111111111101','22222222-2222-2222-2222-222222222201','33333333-3333-3333-3333-333333333301',3,now(),'PRODUCTION_ORDER',gen_random_uuid(),rpad('c',64,'c'),'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaa001','cccccccc-cccc-cccc-cccc-ccccccccc002')",
                 }[fixture])
-                with self.assertRaisesRegex(ro.StopError, failing):
+                with self.assertRaisesRegex(ro.StopError, 'DATA_PRECONDITION_MISMATCH'):
                     self.run_execute(session, state_name=f'state-{name}')
                 state = json.loads((self.base / f'state-{name}' / 'orchestration-state.json').read_text())
                 self.assertEqual(state['verdict'], 'STOPPED')
-                expected_remaining = 70 if failing == '0071' else 71
-                self.assertEqual(len(self.verify_registry()), expected_remaining)
+                self.assertEqual(state['stop_stage'], 'execute')
+                self.assertEqual(len(self.verify_registry()), 70)
                 self.teardown_db()
 
 

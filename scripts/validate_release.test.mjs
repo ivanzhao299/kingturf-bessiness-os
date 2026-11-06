@@ -348,6 +348,8 @@ function deploymentFixture(t) {
 case "$*" in
   *'exec -T postgres'*) [ "$MODE" != dump-failure ] || exit 1; printf 'synthetic dump';;
   *'up -d --build'*) [ "$MODE" != build-failure ] || exit 1;;
+  *'config --format json'*) [ "$MODE" != build-failure ] || exit 1; printf '{"services":{"api":{"image":"x@sha256:%s"}}}' "$CANDIDATE";;
+  *'pull api web'*) [ "$MODE" != build-failure ] || exit 1;;
 esac`,
     curl: `case "$*" in
   *https://erp.kingturf.cn/*) case "$*" in *--resolve*) :;; *) [ "$MODE" != public-failure ] || exit 22;; esac;;
@@ -371,6 +373,12 @@ exec /usr/bin/cat "$@"`,
   };
   for (const [name, script] of Object.entries(tools))
     writeFileSync(join(bin, name), `#!/bin/sh\nset -eu\n${script}\n`, { mode: 0o700 });
+  const releaseScripts = join(release, 'scripts');
+  mkdirSync(releaseScripts, { recursive: true });
+  writeFileSync(
+    join(releaseScripts, 'release_orchestrator.py'),
+    'import json,os,sys\nprint(json.dumps({"stub": sys.argv[1]}))\nsys.exit(2 if os.environ.get("MODE") == "gates-failure" and sys.argv[1] == "check-evidence" else 0)\n',
+  );
   const cleanupDirectory = join(root, '.release-control', 'scripts');
   mkdirSync(cleanupDirectory, { recursive: true });
   writeFileSync(
@@ -394,6 +402,8 @@ exec /usr/bin/cat "$@"`,
     SIMULATED_NGINX_CONF: simulatedNginx,
   };
   const names = [
+    'Stage A read-only verify image digests against evidence',
+    'Stage B first-write authorization all six evidence gates must pass',
     'Create production recovery point',
     'Synchronize configured website ingest secret',
     'Sync isolated KingTurf release',
@@ -435,7 +445,7 @@ test('a non-conflicting release promotes the exact version only after all probes
   const f = deploymentFixture(t);
   const result = f.execute('success');
   assert.equal(result.failed, undefined, result.result?.stderr);
-  assert.equal(result.completed.length, 8);
+  assert.equal(result.completed.length, 10);
   assert.equal(readFileSync(join(f.release, '.release-sha'), 'utf8'), f.candidate);
   assert.match(readFileSync(f.log, 'utf8'), /cleanup/);
   assert.doesNotMatch(
@@ -453,6 +463,22 @@ test('a failed recovery dump prevents any secret synchronization and promotion',
   );
   assert.equal(readFileSync(join(f.release, '.release-sha'), 'utf8'), f.previous);
   assert.doesNotMatch(readFileSync(f.log, 'utf8'), /cleanup/);
+});
+
+test('an evidence-gate failure stops before the recovery point and any production write', (t) => {
+  const f = deploymentFixture(t);
+  assert.equal(
+    f.execute('gates-failure').failed,
+    'Stage B first-write authorization all six evidence gates must pass',
+  );
+  assert.equal(
+    readFileSync(join(f.release, '.env.production'), 'utf8'),
+    'WEBSITE_LEAD_INGEST_SECRET=synthetic-old\n',
+  );
+  assert.equal(readFileSync(join(f.release, '.release-sha'), 'utf8'), f.previous);
+  assert.equal(existsSync(join(f.release, '.release-backups')), false);
+  // No docker probe ran at all, so the probe log was never even created.
+  assert.equal(existsSync(f.log), false);
 });
 
 for (const mode of ['build-failure', 'ready-failure', 'version-failure', 'public-failure']) {
