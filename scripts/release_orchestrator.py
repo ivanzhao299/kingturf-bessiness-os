@@ -158,12 +158,12 @@ FENCE_METHODS = ('api_write_fence', 'controlled_old_api_shutdown')
 
 EVIDENCE_DIR_NAME = '.release-migration-evidence'
 
-# The deploy root is the PARENT of the evidence directory when the evidence
-# directory keeps its canonical name (release/.release-migration-evidence).
-DIGEST_PATTERN = re.compile(r'(?:sha256:)?[0-9a-f]{64}')
+DIGEST_PATTERN = re.compile(r'[0-9a-f]{64}')
 
 
 def derive_release_root(evidence_root):
+    """The deploy root is the PARENT of the evidence directory when the evidence
+    directory keeps its canonical name (release/.release-migration-evidence)."""
     root = Path(evidence_root)
     return root.parent if root.name == EVIDENCE_DIR_NAME else root
 

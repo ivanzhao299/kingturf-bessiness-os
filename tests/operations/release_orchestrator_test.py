@@ -216,6 +216,7 @@ class OrchestratorTest(unittest.TestCase):
             lambda evidence: evidence.pop('web_digest'),
             lambda evidence: evidence.update(web_digest='d' * 63),
             lambda evidence: evidence.update(web_digest='sha256:zz'),
+            lambda evidence: evidence.update(api_digest='sha256:sha256:' + 'c' * 64),
         )):
             with self.subTest(mutation=index):
                 self.write_evidence()
