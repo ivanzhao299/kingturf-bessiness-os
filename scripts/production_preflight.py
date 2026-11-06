@@ -85,7 +85,7 @@ def validate_config(config):
     require(len(api['SESSION_SECRET']) >= 32 and len(api['WEBSITE_LEAD_INGEST_SECRET']) >= 32, 'Required security configuration invalid')
     for service in ('api', 'web'):
         image = config['services'][service].get('image', '')
-        require('@sha256:' in image and re.search(r'@sha256:[0-9a-f]{64}', image), f'{service} image must be digest-pinned (image@sha256:<64hex>)')
+        require(re.fullmatch(r'[^@\s]+@sha256:[0-9a-f]{64}', image), f'{service} image must be digest-pinned (image@sha256:<64hex>)')
 
 
 def preflight(root, expected, *, require_full=False):

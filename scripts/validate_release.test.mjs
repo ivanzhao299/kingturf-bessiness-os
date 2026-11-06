@@ -377,7 +377,7 @@ exec /usr/bin/cat "$@"`,
   mkdirSync(releaseScripts, { recursive: true });
   writeFileSync(
     join(releaseScripts, 'release_orchestrator.py'),
-    'import json,sys\nprint(json.dumps({"stub": sys.argv[1]}))\nsys.exit(0 if __import__("os").environ.get("MODE") != "gates-failure" else 2)\n',
+    'import json,os,sys\nprint(json.dumps({"stub": sys.argv[1]}))\nsys.exit(2 if os.environ.get("MODE") == "gates-failure" and sys.argv[1] == "check-evidence" else 0)\n',
   );
   const cleanupDirectory = join(root, '.release-control', 'scripts');
   mkdirSync(cleanupDirectory, { recursive: true });
@@ -463,6 +463,22 @@ test('a failed recovery dump prevents any secret synchronization and promotion',
   );
   assert.equal(readFileSync(join(f.release, '.release-sha'), 'utf8'), f.previous);
   assert.doesNotMatch(readFileSync(f.log, 'utf8'), /cleanup/);
+});
+
+test('an evidence-gate failure stops before the recovery point and any production write', (t) => {
+  const f = deploymentFixture(t);
+  assert.equal(
+    f.execute('gates-failure').failed,
+    'Stage B first-write authorization all six evidence gates must pass',
+  );
+  assert.equal(
+    readFileSync(join(f.release, '.env.production'), 'utf8'),
+    'WEBSITE_LEAD_INGEST_SECRET=synthetic-old\n',
+  );
+  assert.equal(readFileSync(join(f.release, '.release-sha'), 'utf8'), f.previous);
+  assert.equal(existsSync(join(f.release, '.release-backups')), false);
+  // No docker probe ran at all, so the probe log was never even created.
+  assert.equal(existsSync(f.log), false);
 });
 
 for (const mode of ['build-failure', 'ready-failure', 'version-failure', 'public-failure']) {

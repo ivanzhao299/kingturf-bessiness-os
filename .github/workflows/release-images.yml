@@ -16,6 +16,9 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     timeout-minutes: 40
+    outputs:
+      api_digest: ${{ steps.digests.outputs.api_digest }}
+      web_digest: ${{ steps.digests.outputs.web_digest }}
     steps:
       - name: Reject malformed input
         run: |
@@ -27,7 +30,14 @@ jobs:
       - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.commit_sha }}
+          fetch-depth: 0
           persist-credentials: false
+      - name: Verify commit is in main history
+        env:
+          RELEASE_SHA: ${{ inputs.commit_sha }}
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor "$RELEASE_SHA" origin/main
       - uses: docker/setup-buildx-action@v3
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -51,11 +61,30 @@ jobs:
           file: infra/docker/Dockerfile.web-preview
           push: true
           tags: ghcr.io/ivanzhao299/kingturf-erp-web:${{ inputs.commit_sha }}
-      - name: Emit immutable digests
+      - name: Cross-check pushed tags resolve to the emitted digests
         run: |
+          set -euo pipefail
+          for image in api web; do
+            repo="ghcr.io/ivanzhao299/kingturf-erp-$image"
+            case "$image" in api) emitted='${{ steps.api.outputs.digest }}';; web) emitted='${{ steps.web.outputs.digest }}';; esac
+            test -n "$emitted"
+            tag_digest="sha256:$(docker buildx imagetools inspect --raw "$repo:$RELEASE_SHA" | sha256sum | cut -d ' ' -f 1)"
+            test "$tag_digest" = "$emitted" || { echo "tag digest $tag_digest != emitted $emitted for $repo" >&2; exit 1; }
+          done
+        env:
+          RELEASE_SHA: ${{ inputs.commit_sha }}
+      - name: Emit immutable digests
+        id: digests
+        run: |
+          set -euo pipefail
+          test -n '${{ steps.api.outputs.digest }}'
+          test -n '${{ steps.web.outputs.digest }}'
+          {
+            echo "api_digest=${{ steps.api.outputs.digest }}"
+            echo "web_digest=${{ steps.web.outputs.digest }}"
+          } >> "$GITHUB_OUTPUT"
           cat >> "$GITHUB_STEP_SUMMARY" <<EOF
           ## Release image digests (${{ inputs.commit_sha }})
           - API: `${{ steps.api.outputs.digest }}`
           - Web: `${{ steps.web.outputs.digest }}`
           EOF
-          echo "API_DIGEST=${{ steps.api.outputs.digest }}" >> "$GITHUB_OUTPUT" || true

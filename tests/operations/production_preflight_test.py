@@ -150,6 +150,18 @@ class ProductionPreflightTest(unittest.TestCase):
         self.config['services']['api']['image'] = 'ghcr.io/x/api:latest'
         with self.assertRaisesRegex(RuntimeError, 'digest-pinned'): self.run_gate()
 
+    def test_malformed_digest_references_block(self):
+        for image in (
+            'ghcr.io/x/api@sha256:' + 'a' * 63,                      # too short
+            'ghcr.io/x/api@sha256:' + 'a' * 65,                      # too long
+            'ghcr.io/x/api@sha256:' + 'a' * 64 + 'x',                # trailing garbage
+            'ghcr.io/x/api@sha256:' + 'a' * 32 + '@sha256:' + 'b' * 64,  # double digest segment
+            'ghcr.io/x/api@' + 'a' * 64,                             # algorithm prefix missing
+        ):
+            with self.subTest(image=image[-12:]):
+                self.config['services']['api']['image'] = image
+                with self.assertRaisesRegex(RuntimeError, 'digest-pinned'): self.run_gate()
+
     def test_unhealthy_service_blocks(self):
         self.healthy = False
         with self.assertRaisesRegex(RuntimeError, 'not healthy'): self.run_gate()

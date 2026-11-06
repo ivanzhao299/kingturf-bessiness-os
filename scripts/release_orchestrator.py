@@ -11,6 +11,7 @@ authorization; this module is verified in isolation.
 import hashlib
 import importlib.util
 import json
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -155,6 +156,24 @@ def require_value(evidence, key, gate_name):
 
 FENCE_METHODS = ('api_write_fence', 'controlled_old_api_shutdown')
 
+EVIDENCE_DIR_NAME = '.release-migration-evidence'
+
+# The deploy root is the PARENT of the evidence directory when the evidence
+# directory keeps its canonical name (release/.release-migration-evidence).
+DIGEST_PATTERN = re.compile(r'(?:sha256:)?[0-9a-f]{64}')
+
+
+def derive_release_root(evidence_root):
+    root = Path(evidence_root)
+    return root.parent if root.name == EVIDENCE_DIR_NAME else root
+
+
+def normalize_digest(digest):
+    """Accept the compose/env form `sha256:<64hex>` and bare `<64hex>`; return bare hex."""
+    value = digest[7:] if digest.startswith('sha256:') else digest
+    return value if DIGEST_PATTERN.fullmatch(value) else None
+
+
 
 def check_write_fence(evidence, now):
     require(evidence.get('method') in FENCE_METHODS, 'GATE_FAILED:write_fence: unsupported fence method')
@@ -191,11 +210,12 @@ def check_backup_restore(evidence, fence_evidence, backup_root=None):
         artifact(kind, label)
         value = evidence[kind]
         path = Path(value['file'])
-        if not path.is_absolute():
-            path = Path(backup_root or '.') / path
-        require(path.is_file(), f'GATE_FAILED:backup_restore: {label} file not found at {path}')
-        import hashlib as _h
-        actual = _h.sha256(path.read_bytes()).hexdigest()
+        require(not path.is_absolute(), f'GATE_FAILED:backup_restore: {label} file must be relative to .release-backups')
+        root = Path(backup_root or '.').resolve()
+        resolved = (root / path).resolve()
+        require(resolved == root or root in resolved.parents, f'GATE_FAILED:backup_restore: {label} file escapes .release-backups')
+        require(resolved.is_file(), f'GATE_FAILED:backup_restore: {label} file not found at {resolved}')
+        actual = hashlib.sha256(resolved.read_bytes()).hexdigest()
         require(actual == value['sha256'], f'GATE_FAILED:backup_restore: {label} sha256 mismatch (evidence vs actual file)')
 
     verified_artifact('database_dump', 'database dump')
@@ -209,7 +229,7 @@ def check_backup_restore(evidence, fence_evidence, backup_root=None):
 def check_image_compatibility(evidence):
     for key in ('api_digest', 'web_digest'):
         digest = require_value(evidence, key, 'image_compatibility')
-        require(len(digest) == 64 and all(c in '0123456789abcdef' for c in digest), f'GATE_FAILED:image_compatibility: {key} malformed')
+        require(normalize_digest(digest) is not None, f'GATE_FAILED:image_compatibility: {key} malformed')
     old_app = evidence.get('old_app_on_new_schema')
     require(isinstance(old_app, dict) and old_app.get('verified') is True and isinstance(old_app.get('evidence'), str) and old_app['evidence'].strip(), 'GATE_FAILED:image_compatibility: old-application-on-new-schema not verified')
 
@@ -336,12 +356,12 @@ def run_stages(plan, evidence_dir, session, migrations_dir, state_dir, now=None,
         require(classification == plan['classification'] and [p['name'] for p in pending] == [p['name'] for p in plan['pending']], 'REGISTRY_CHANGED_UNDER_LOCK: live registry no longer matches the approved plan')
 
         # Cross-verify declared fence against REAL runtime state (no JSON-only trust).
-        if fence_evidence.get('method') == 'controlled_old_api_shutdown' and release_root:
-            import subprocess as _sp
-            ps = _sp.run(['docker', 'compose', '--env-file', str(Path(release_root) / '.env.production'),
-                          '-f', str(Path(release_root) / 'infra/docker/compose.production.yaml'),
-                          'ps', '--status', 'running', '--format', 'json', 'api'],
-                         capture_output=True, text=True, timeout=30)
+        if fence_evidence.get('method') == 'controlled_old_api_shutdown':
+            require(release_root is not None, 'FENCE_STATE_MISMATCH: controlled_old_api_shutdown requires the canonical .release-migration-evidence layout for live cross-verification')
+            ps = subprocess.run(['docker', 'compose', '--env-file', str(Path(release_root) / '.env.production'),
+                                 '-f', str(Path(release_root) / 'infra/docker/compose.production.yaml'),
+                                 'ps', '--status', 'running', '--format', 'json', 'api'],
+                                capture_output=True, text=True, timeout=30)
             require(ps.returncode == 0 and not ps.stdout.strip(), 'FENCE_STATE_MISMATCH: declared api stopped but docker compose reports a running api service')
             record('fence_cross_check', 'docker compose confirms api service stopped')
         backends = session.query("SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND pid<>pg_backend_pid() AND backend_type='client backend' AND state<>'idle'")
@@ -423,17 +443,17 @@ def main():
                 rest = rest[2:]
             session = PsqlSession(target)
             evidence_root = Path(args[2])
-            release_root = evidence_root.parent.name == '.release-migration-evidence' and evidence_root.parent or evidence_root
+            release_root = derive_release_root(evidence_root)
             try:
                 state = run_stages(plan, args[2], session, args[3], args[4], new_approval=new_approval,
                                    backup_root=release_root / '.release-backups', release_root=release_root if release_root != evidence_root else None)
                 print(json.dumps({'verdict': state['verdict']}))
             finally:
                 session.close()
-        elif len(args) == 4 and args[0] == 'check-evidence':
+        elif len(args) == 3 and args[0] == 'check-evidence':
             plan = json.loads(Path(args[1]).read_text())
             evidence_root = Path(args[2])
-            release_root = evidence_root.parent if evidence_root.parent.name == '.release-migration-evidence' else evidence_root
+            release_root = derive_release_root(evidence_root)
             now = utcnow()
             fence = load_evidence(evidence_root, 'write_fence')
             for name, check in GATES:
@@ -459,14 +479,25 @@ def main():
             finally:
                 session.close()
         elif args and args[0] == 'verify-images' and len(args) == 3:
-            evidence = json.loads((Path(args[1]) / 'image_compatibility.json').read_text())
+            evidence = load_evidence(args[1], 'image_compatibility')
+            env_path = Path(args[2])
+            require(env_path.is_file(), f'IMAGE_DIGEST_MISMATCH: env file missing: {args[2]}')
             env = {}
-            for line in Path(args[2]).read_text().splitlines():
+            for line in env_path.read_text().splitlines():
                 if '=' in line and not line.lstrip().startswith('#'):
                     key, _, value = line.partition('=')
                     env[key.strip()] = value.strip()
             for var, key in (('KINGTURF_API_DIGEST', 'api_digest'), ('KINGTURF_WEB_DIGEST', 'web_digest')):
-                require(env.get(var) == evidence.get(key), f'IMAGE_DIGEST_MISMATCH: {var} != evidence.{key}')
+                # compose interpolates `${VAR}` after a literal `@`, so the env file MUST
+                # carry the docker-native `sha256:<64hex>` form or every pull/config fails.
+                env_digest = env.get(var)
+                require(isinstance(env_digest, str) and re.fullmatch(r'sha256:[0-9a-f]{64}', env_digest),
+                        f'IMAGE_DIGEST_MISMATCH: {var} must be sha256:<64hex> in {args[2]}')
+                evidence_digest = evidence.get(key)
+                require(isinstance(evidence_digest, str) and normalize_digest(evidence_digest) is not None,
+                        f'IMAGE_DIGEST_MISMATCH: evidence.{key} malformed')
+                require(normalize_digest(env_digest) == normalize_digest(evidence_digest),
+                        f'IMAGE_DIGEST_MISMATCH: {var} != evidence.{key}')
             print(json.dumps({'verify_images': 'PASS'}))
         elif args and args[0] == 'postcheck' and len(args) in (3, 5):
             plan = json.loads(Path(args[1]).read_text())
@@ -485,6 +516,8 @@ def main():
             raise RuntimeError('Usage: release_orchestrator.py plan <migrations> <release-sha> <registry.json> | '
                                'registry <database-url> [--psql-argv-file file] | '
                                'execute <plan.json> <evidence-dir> <migrations> <state-dir> <database-url|psql-argv via --psql-argv-file> [--new-approval file] | '
+                               'check-evidence <plan.json> <evidence-dir> | '
+                               'verify-images <evidence-dir> <env-file> | '
                                'postcheck <plan.json> <database-url> [--psql-argv-file file]')
     except StopError as error:
         print('orchestration STOPPED: ' + str(error), file=sys.stderr)
