@@ -348,6 +348,8 @@ function deploymentFixture(t) {
 case "$*" in
   *'exec -T postgres'*) [ "$MODE" != dump-failure ] || exit 1; printf 'synthetic dump';;
   *'up -d --build'*) [ "$MODE" != build-failure ] || exit 1;;
+  *'config --format json'*) [ "$MODE" != build-failure ] || exit 1; printf '{"services":{"api":{"image":"x@sha256:%s"}}}' "$CANDIDATE";;
+  *'pull api web'*) [ "$MODE" != build-failure ] || exit 1;;
 esac`,
     curl: `case "$*" in
   *https://erp.kingturf.cn/*) case "$*" in *--resolve*) :;; *) [ "$MODE" != public-failure ] || exit 22;; esac;;
@@ -371,6 +373,12 @@ exec /usr/bin/cat "$@"`,
   };
   for (const [name, script] of Object.entries(tools))
     writeFileSync(join(bin, name), `#!/bin/sh\nset -eu\n${script}\n`, { mode: 0o700 });
+  const releaseScripts = join(release, 'scripts');
+  mkdirSync(releaseScripts, { recursive: true });
+  writeFileSync(
+    join(releaseScripts, 'release_orchestrator.py'),
+    'import json,sys\nprint(json.dumps({"stub": sys.argv[1]}))\nsys.exit(0 if __import__("os").environ.get("MODE") != "gates-failure" else 2)\n',
+  );
   const cleanupDirectory = join(root, '.release-control', 'scripts');
   mkdirSync(cleanupDirectory, { recursive: true });
   writeFileSync(
@@ -394,6 +402,8 @@ exec /usr/bin/cat "$@"`,
     SIMULATED_NGINX_CONF: simulatedNginx,
   };
   const names = [
+    'Stage A read-only verify image digests against evidence',
+    'Stage B first-write authorization all six evidence gates must pass',
     'Create production recovery point',
     'Synchronize configured website ingest secret',
     'Sync isolated KingTurf release',
@@ -435,7 +445,7 @@ test('a non-conflicting release promotes the exact version only after all probes
   const f = deploymentFixture(t);
   const result = f.execute('success');
   assert.equal(result.failed, undefined, result.result?.stderr);
-  assert.equal(result.completed.length, 8);
+  assert.equal(result.completed.length, 10);
   assert.equal(readFileSync(join(f.release, '.release-sha'), 'utf8'), f.candidate);
   assert.match(readFileSync(f.log, 'utf8'), /cleanup/);
   assert.doesNotMatch(

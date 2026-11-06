@@ -142,7 +142,7 @@ jobs:
           manifest=$(python3 .release-control/scripts/production_preflight.py --manifest packages/database/migrations)
           cat .release-control/scripts/production_preflight.py | ssh -o KexAlgorithms=curve25519-sha256 -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
             "python3 - '/data/kingturf-erp' '$manifest'"
-      - name: 'Stage A (read-only): verify image digests against evidence'
+      - name: Stage A read-only verify image digests against evidence
         run: |
           set -euo pipefail
           SSH_OPTS="-o KexAlgorithms=curve25519-sha256 -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -p '${{ secrets.PROD_SSH_PORT }}'"
@@ -167,7 +167,7 @@ jobs:
              curl -k -sS -D - --connect-timeout 8 --max-time 15 https://127.0.0.1/health -H "Host: erp.kingturf.cn" 2>&1 || true
              echo "== local HTTP =="
              curl -sS -D - --connect-timeout 8 --max-time 15 http://127.0.0.1/health -H "Host: erp.kingturf.cn" 2>&1 || true'
-      - name: 'Stage B (first-write authorization): all six evidence gates must pass before ANY production write'
+      - name: Stage B first-write authorization all six evidence gates must pass
         run: |
           set -euo pipefail
           SSH_OPTS="-o KexAlgorithms=curve25519-sha256 -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -p '${{ secrets.PROD_SSH_PORT }}'"

@@ -40,12 +40,12 @@ class DeployWorkflowStaticTest(unittest.TestCase):
         self.assertNotIn('up -d --build', self.text)
 
     def test_stage_a_digest_verification_precedes_all_writes(self):
-        self.assertIn('Stage A (read-only): verify image digests', self.text)
-        self.assertLess(self.text.index('Stage A (read-only): verify image digests'), self.text.index('Create production recovery point'))
+        self.assertIn('Stage A read-only verify image digests', self.text)
+        self.assertLess(self.text.index('Stage A read-only verify image digests'), self.text.index('Create production recovery point'))
 
     def test_stage_b_first_write_gate_precedes_recovery_point_and_writes(self):
-        self.assertLess(self.text.index('Stage B (first-write authorization)'), self.text.index('Create production recovery point'))
-        self.assertLess(self.text.index('Stage B (first-write authorization)'), self.text.index('Synchronize configured website ingest secret'))
+        self.assertLess(self.text.index('Stage B first-write authorization'), self.text.index('Create production recovery point'))
+        self.assertLess(self.text.index('Stage B first-write authorization'), self.text.index('Synchronize configured website ingest secret'))
 
     def test_digest_pinned_pull_deploy(self):
         self.assertIn('pull api web', self.text)
