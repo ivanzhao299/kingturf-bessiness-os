@@ -60,7 +60,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U kingturf_test -d kingturf_test" --max-locks-per-transaction 512
+          --health-cmd "pg_isready -U kingturf_test -d kingturf_test"
           --health-interval 5s --health-timeout 5s --health-retries 20
     steps:
       - uses: actions/checkout@v6
