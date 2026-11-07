@@ -61,8 +61,20 @@ class DeployWorkflowStaticTest(unittest.TestCase):
                 self.assertNotIn(':', name, f'{path.name}: step name contains a colon: {name}')
 
     def test_digest_pinned_pull_deploy(self):
-        self.assertIn('pull api web', self.text)
+        self.assertIn('docker pull "$api_image"', self.text)
+        self.assertIn('docker pull "$web_image"', self.text)
+        self.assertIn('docker save "$api_image" "$web_image" | run_ssh "docker load"', self.text)
         self.assertIn("grep -q '@sha256:'", self.text)
+
+    def test_image_load_step_sits_between_migration_and_deploy(self):
+        self.assertLess(self.text.index('Controlled migration'), self.text.index('Load digest-pinned images onto the production host'))
+        self.assertLess(self.text.index('Load digest-pinned images onto the production host'), self.text.index('- name: Deploy and verify'))
+
+    def test_runner_only_registry_credentials(self):
+        # The host never receives registry credentials; only image bytes cross the link.
+        deploy_job = self.text[self.text.index('  deploy:'):]
+        self.assertIn('packages: read', deploy_job)
+        self.assertNotIn('docker login', deploy_job.replace('docker/login-action', ''))
 
     def test_preflight_window_mode_is_explicit(self):
         # The 13F write fence stops the old api before dispatch; the preflight must
