@@ -153,8 +153,7 @@ jobs:
       - name: Stage A read-only verify image digests against evidence
         run: |
           set -euo pipefail
-          SSH_OPTS="-o KexAlgorithms=curve25519-sha256 -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -p '${{ secrets.PROD_SSH_PORT }}'"
-          ssh $SSH_OPTS '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' "cd '${{ secrets.PROD_DEPLOY_PATH }}' && python3 scripts/release_orchestrator.py verify-images .release-migration-evidence .env.production"
+          ssh -o KexAlgorithms=curve25519-sha256 -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' "cd '${{ secrets.PROD_DEPLOY_PATH }}' && python3 scripts/release_orchestrator.py verify-images .release-migration-evidence .env.production"
       - name: Diagnose production public HTTPS ingress
         run: |
           ssh -o KexAlgorithms=curve25519-sha256 -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
@@ -178,8 +177,7 @@ jobs:
       - name: Stage B first-write authorization all six evidence gates must pass
         run: |
           set -euo pipefail
-          SSH_OPTS="-o KexAlgorithms=curve25519-sha256 -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -p '${{ secrets.PROD_SSH_PORT }}'"
-          ssh $SSH_OPTS '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' "cd '${{ secrets.PROD_DEPLOY_PATH }}' && python3 scripts/release_orchestrator.py check-evidence .release-migration-evidence/plan.json .release-migration-evidence"
+          ssh -o KexAlgorithms=curve25519-sha256 -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' "cd '${{ secrets.PROD_DEPLOY_PATH }}' && python3 scripts/release_orchestrator.py check-evidence .release-migration-evidence/plan.json .release-migration-evidence"
       - name: Create production recovery point
         run: |
           ssh -o KexAlgorithms=curve25519-sha256 -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
