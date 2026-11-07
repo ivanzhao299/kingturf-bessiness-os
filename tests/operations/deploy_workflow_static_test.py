@@ -66,6 +66,11 @@ class DeployWorkflowStaticTest(unittest.TestCase):
         self.assertIn('docker save "$api_image" "$web_image" | run_ssh "docker load"', self.text)
         self.assertIn("grep -q '@sha256:'", self.text)
 
+    def test_no_interpolated_ssh_options_variable(self):
+        # An options variable expanded unquoted leaves literal quotes around the
+        # port (ssh: Bad port '"22"'); every step must inline its ssh options.
+        self.assertNotIn('SSH_OPTS=', self.text)
+
     def test_image_load_step_sits_between_migration_and_deploy(self):
         self.assertLess(self.text.index('Controlled migration'), self.text.index('Load digest-pinned images onto the production host'))
         self.assertLess(self.text.index('Load digest-pinned images onto the production host'), self.text.index('- name: Deploy and verify'))
