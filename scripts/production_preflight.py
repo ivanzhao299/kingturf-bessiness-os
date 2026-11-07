@@ -88,7 +88,7 @@ def validate_config(config):
         require(re.fullmatch(r'[^@\s]+@sha256:[0-9a-f]{64}', image), f'{service} image must be digest-pinned (image@sha256:<64hex>)')
 
 
-def preflight(root, expected, *, require_full=False):
+def preflight(root, expected, *, require_full=False, allow_stopped_api=False):
     require(Path(root) == RELEASE, 'Unexpected release directory')
     require(isinstance(expected, dict) and expected and all(isinstance(k, str) and isinstance(v, str) and re.fullmatch(r'[0-9]{4}.*\.sql', k) and re.fullmatch(r'[0-9a-f]{64}', v) for k, v in expected.items()), 'Invalid candidate migration manifest')
     require(command(['findmnt', '-n', '-T', '/data', '-o', 'TARGET']) == '/data', '/data must be an actual mounted filesystem')
@@ -108,7 +108,14 @@ def preflight(root, expected, *, require_full=False):
         ids = command(['docker', 'container', 'ls', '-aq', '--filter', f'label=com.docker.compose.project={PROJECT}', '--filter', f'label=com.docker.compose.service={service}']).splitlines()
         require(len(ids) == 1, 'Expected exactly one existing container per production service')
         container = json.loads(command(['docker', 'inspect', ids[0]]))[0]
-        require(container['State'].get('Running') and container['State'].get('Health', {}).get('Status') == 'healthy', 'Existing production container is not healthy')
+        running = container['State'].get('Running')
+        healthy = container['State'].get('Health', {}).get('Status') == 'healthy'
+        # Window mode: a controlled old-api shutdown fence legitimately stops the api
+        # container before the deploy workflow starts. Stage B's evidence gates and the
+        # orchestrator's live docker/quiescence probes still enforce that stop, so a
+        # stopped api here is accepted only for this one service under an explicit flag.
+        fenced_api_stopped = allow_stopped_api and service == 'api' and not running
+        require((running and healthy) or fenced_api_stopped, 'Existing production container is not healthy')
         if target:
             mounts = [m for m in container['Mounts'] if m['Destination'] == target]
             require(len(mounts) == 1 and mounts[0]['Type'] == 'bind' and Path(mounts[0]['Source']) == source, 'Live persistent mount disagrees with approved configuration')
@@ -121,6 +128,11 @@ def preflight(root, expected, *, require_full=False):
     require(re.fullmatch(r'[0-9a-f]{40}', marker), 'Previous release marker is missing or invalid')
     port = config['services']['web']['ports'][0]['published']
     require(str(port).isdigit(), 'Production ingress port invalid')
+    if allow_stopped_api:
+        # The version endpoint is served by the (stopped) old api; the fence evidence's
+        # api_release_sha and the pre-stop marker reading cover the version binding.
+        print(json.dumps({'preflight': 'PASS', 'registry_classification': classification, 'previous_sha': marker, 'applied': len(rows), 'pending': pending, 'services': 3, 'storage': 'approved_bind_mounts', 'restore': 'REQUIRES_INDEPENDENT_EVIDENCE', 'version_probe': 'skipped (window mode: api stopped by write fence)'}))
+        return
     with urllib.request.urlopen(f'http://127.0.0.1:{port}/version', timeout=10) as reply:
         version = json.load(reply)
     require(version.get('sha') == marker, 'Actual runtime version disagrees with previous verified marker; investigate before retry')
@@ -133,14 +145,16 @@ def main():
         require(bool(files), 'Candidate migration files missing')
         value = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in files}
         print(base64.b64encode(json.dumps(value).encode()).decode())
-    elif len(sys.argv) == 4 and sys.argv[3] == '--require-full':
+    elif len(sys.argv) >= 3 and sys.argv[1] != '--manifest':
         expected = json.loads(base64.b64decode(sys.argv[2], validate=True))
-        preflight(sys.argv[1], expected, require_full=True)
+        flags = sys.argv[3:]
+        require(all(flag in ('--require-full', '--allow-stopped-api') for flag in flags), 'unknown preflight flag')
+        preflight(sys.argv[1], expected, require_full='--require-full' in flags, allow_stopped_api='--allow-stopped-api' in flags)
     elif len(sys.argv) == 3:
         expected = json.loads(base64.b64decode(sys.argv[2], validate=True))
         preflight(sys.argv[1], expected)
     else:
-        raise RuntimeError('Usage: production_preflight.py --manifest <directory> OR <release-path> <manifest-base64> [--require-full]')
+        raise RuntimeError('Usage: production_preflight.py --manifest <directory> OR <release-path> <manifest-base64> [--require-full] [--allow-stopped-api]')
 
 
 if __name__ == '__main__':
