@@ -34,6 +34,7 @@ class ProductionPreflightTest(unittest.TestCase):
         self.mount = '/data'
         self.healthy = True
         self.api_running = True
+        self.web_health = None  # None: follow self.healthy; else explicit web-only override
         self.live_source = self.pg
         self.version = self.marker
         self.config = {'name': gate.PROJECT, 'services': {
@@ -55,7 +56,11 @@ class ProductionPreflightTest(unittest.TestCase):
             target = '/var/lib/postgresql/data' if service == 'postgres' else '/var/lib/kingturf/attachments'
             source = self.live_source if service == 'postgres' else self.files
             running = self.api_running if service == 'api' else True
-            return json.dumps([{'State': {'Running': running, 'Health': {'Status': 'healthy' if self.healthy else 'unhealthy'}}, 'Mounts': [] if service == 'web' else [{'Type': 'bind', 'Source': str(source), 'Destination': target}]}])
+            if service == 'web' and self.web_health is not None:
+                healthy = self.web_health
+            else:
+                healthy = self.healthy
+            return json.dumps([{'State': {'Running': running, 'Health': {'Status': 'healthy' if healthy else 'unhealthy'}}, 'Mounts': [] if service == 'web' else [{'Type': 'bind', 'Source': str(source), 'Destination': target}]}])
         if 'exec' in args:
             self.assertIn('BEGIN READ ONLY', text)
             for forbidden in ('INSERT ', 'UPDATE ', 'DELETE ', 'ALTER ', 'CREATE '): self.assertNotIn(forbidden, text)
@@ -197,6 +202,18 @@ class ProductionPreflightTest(unittest.TestCase):
     def test_window_mode_still_requires_running_healthy_postgres_and_web(self):
         self.api_running = False
         self.healthy = False  # postgres is inspected first and must stay healthy
+        with self.assertRaisesRegex(RuntimeError, 'not healthy'): self.run_gate(allow_stopped_api=True)
+
+    def test_window_mode_tolerates_web_transitive_unhealthiness_only_behind_the_fence(self):
+        # web /health proxies the api, so the fence's 502 is expected transitive fallout.
+        self.api_running = False
+        self.web_health = False
+        result = self.run_gate(allow_stopped_api=True)
+        self.assertEqual(json.loads(result)['preflight'], 'PASS')
+
+    def test_window_mode_rejects_web_unhealthy_without_the_api_fence(self):
+        self.api_running = True
+        self.web_health = False
         with self.assertRaisesRegex(RuntimeError, 'not healthy'): self.run_gate(allow_stopped_api=True)
 
     def test_window_mode_running_api_still_requires_health(self):

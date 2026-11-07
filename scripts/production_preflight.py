@@ -100,6 +100,7 @@ def preflight(root, expected, *, require_full=False, allow_stopped_api=False):
     config = json.loads(command(compose + ['config', '--format', 'json']))
     validate_config(config)
     # Validate the actual existing containers; a new empty named volume is never an acceptable fallback.
+    api_fenced = False
     for service, target, source in (
         ('postgres', '/var/lib/postgresql/data', POSTGRES),
         ('api', '/var/lib/kingturf/attachments', ATTACHMENTS),
@@ -111,11 +112,14 @@ def preflight(root, expected, *, require_full=False, allow_stopped_api=False):
         running = container['State'].get('Running')
         healthy = container['State'].get('Health', {}).get('Status') == 'healthy'
         # Window mode: a controlled old-api shutdown fence legitimately stops the api
-        # container before the deploy workflow starts. Stage B's evidence gates and the
-        # orchestrator's live docker/quiescence probes still enforce that stop, so a
-        # stopped api here is accepted only for this one service under an explicit flag.
+        # container before the deploy workflow starts. web's /health proxies the api,
+        # so its healthcheck fails transitively (502) and is tolerated as well, only
+        # while the api fence is actually observed. Stage B's evidence gates and the
+        # orchestrator's live docker/quiescence probes still enforce the fence.
         fenced_api_stopped = allow_stopped_api and service == 'api' and not running
-        require((running and healthy) or fenced_api_stopped, 'Existing production container is not healthy')
+        fenced_web_transitive = allow_stopped_api and service == 'web' and running and api_fenced
+        require((running and healthy) or fenced_api_stopped or fenced_web_transitive, 'Existing production container is not healthy')
+        api_fenced = api_fenced or fenced_api_stopped
         if target:
             mounts = [m for m in container['Mounts'] if m['Destination'] == target]
             require(len(mounts) == 1 and mounts[0]['Type'] == 'bind' and Path(mounts[0]['Source']) == source, 'Live persistent mount disagrees with approved configuration')
