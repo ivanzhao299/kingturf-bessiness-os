@@ -341,7 +341,10 @@ function deploymentFixture(t) {
   const previous = 'b'.repeat(40),
     candidate = 'a'.repeat(40);
   writeFileSync(join(release, '.release-sha'), previous);
-  writeFileSync(join(release, '.env.production'), 'WEBSITE_LEAD_INGEST_SECRET=synthetic-old\n');
+  writeFileSync(
+    join(release, '.env.production'),
+    `WEBSITE_LEAD_INGEST_SECRET=synthetic-old\nKINGTURF_API_DIGEST=sha256:${'a'.repeat(64)}\nKINGTURF_WEB_DIGEST=sha256:${'b'.repeat(64)}\n`,
+  );
   const tools = {
     ssh: 'for command do :; done\ncommand=$(printf "%s" "$command" | sed "s#/etc/nginx/conf.d/erp.kingturf.cn.conf#$SIMULATED_NGINX_CONF#g")\nexec bash -c "$command"',
     docker: `printf 'docker %s\\n' "$*" >> "$PROBE_LOG"
@@ -349,7 +352,10 @@ case "$*" in
   *'exec -T postgres'*) [ "$MODE" != dump-failure ] || exit 1; printf 'synthetic dump';;
   *'up -d --build'*) [ "$MODE" != build-failure ] || exit 1;;
   *'config --format json'*) [ "$MODE" != build-failure ] || exit 1; printf '{"services":{"api":{"image":"x@sha256:%s"}}}' "$CANDIDATE";;
-  *'pull api web'*) [ "$MODE" != build-failure ] || exit 1;;
+  *@sha256:*) [ "$MODE" != build-failure ] || exit 1;;
+  *save*) :;;
+  *load*) :;;
+  *'image inspect'*) printf 'loaded\n';;
 esac`,
     curl: `case "$*" in
   *https://erp.kingturf.cn/*) case "$*" in *--resolve*) :;; *) [ "$MODE" != public-failure ] || exit 22;; esac;;
@@ -406,6 +412,7 @@ exec /usr/bin/cat "$@"`,
     'Stage B first-write authorization all six evidence gates must pass',
     'Create production recovery point',
     'Synchronize configured website ingest secret',
+    'Load digest-pinned images onto the production host',
     'Sync isolated KingTurf release',
     'Verify unchanged production Nginx ingress',
     'Deploy and verify',
@@ -445,7 +452,7 @@ test('a non-conflicting release promotes the exact version only after all probes
   const f = deploymentFixture(t);
   const result = f.execute('success');
   assert.equal(result.failed, undefined, result.result?.stderr);
-  assert.equal(result.completed.length, 10);
+  assert.equal(result.completed.length, 11);
   assert.equal(readFileSync(join(f.release, '.release-sha'), 'utf8'), f.candidate);
   assert.match(readFileSync(f.log, 'utf8'), /cleanup/);
   assert.doesNotMatch(
@@ -457,10 +464,9 @@ test('a non-conflicting release promotes the exact version only after all probes
 test('a failed recovery dump prevents any secret synchronization and promotion', (t) => {
   const f = deploymentFixture(t);
   assert.equal(f.execute('dump-failure').failed, 'Create production recovery point');
-  assert.equal(
-    readFileSync(join(f.release, '.env.production'), 'utf8'),
-    'WEBSITE_LEAD_INGEST_SECRET=synthetic-old\n',
-  );
+  const env = readFileSync(join(f.release, '.env.production'), 'utf8');
+  assert.match(env, /WEBSITE_LEAD_INGEST_SECRET=synthetic-old/);
+  assert.doesNotMatch(env, /synthetic-new/);
   assert.equal(readFileSync(join(f.release, '.release-sha'), 'utf8'), f.previous);
   assert.doesNotMatch(readFileSync(f.log, 'utf8'), /cleanup/);
 });
@@ -471,10 +477,9 @@ test('an evidence-gate failure stops before the recovery point and any productio
     f.execute('gates-failure').failed,
     'Stage B first-write authorization all six evidence gates must pass',
   );
-  assert.equal(
-    readFileSync(join(f.release, '.env.production'), 'utf8'),
-    'WEBSITE_LEAD_INGEST_SECRET=synthetic-old\n',
-  );
+  const env = readFileSync(join(f.release, '.env.production'), 'utf8');
+  assert.match(env, /WEBSITE_LEAD_INGEST_SECRET=synthetic-old/);
+  assert.doesNotMatch(env, /synthetic-new/);
   assert.equal(readFileSync(join(f.release, '.release-sha'), 'utf8'), f.previous);
   assert.equal(existsSync(join(f.release, '.release-backups')), false);
   // No docker probe ran at all, so the probe log was never even created.
@@ -487,7 +492,11 @@ for (const mode of ['build-failure', 'ready-failure', 'version-failure', 'public
     const result = f.execute(mode);
     assert.equal(
       result.failed,
-      mode === 'public-failure' ? 'Required production hostname HTTPS probe' : 'Deploy and verify',
+      mode === 'public-failure'
+        ? 'Required production hostname HTTPS probe'
+        : mode === 'build-failure'
+          ? 'Load digest-pinned images onto the production host'
+          : 'Deploy and verify',
     );
     assert.equal(readFileSync(join(f.release, '.release-sha'), 'utf8'), f.previous);
     assert.doesNotMatch(readFileSync(f.log, 'utf8'), /cleanup/);
@@ -504,7 +513,10 @@ for (const mode of ['build-failure', 'ready-failure', 'version-failure', 'public
 
 test('an explicit rerun after a failed update can promote the same candidate', (t) => {
   const f = deploymentFixture(t);
-  assert.equal(f.execute('build-failure').failed, 'Deploy and verify');
+  assert.equal(
+    f.execute('build-failure').failed,
+    'Load digest-pinned images onto the production host',
+  );
   assert.equal(f.execute('success').failed, undefined);
   assert.equal(readFileSync(join(f.release, '.release-sha'), 'utf8'), f.candidate);
 });

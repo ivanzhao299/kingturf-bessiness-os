@@ -82,6 +82,11 @@ jobs:
     needs: [validate, verify]
     runs-on: ubuntu-latest
     environment: production
+    permissions:
+      contents: read
+      # Runner-side digest pulls of the private release images (streamed to the host
+      # via docker save | ssh docker load; no registry credential ever lands on the host).
+      packages: read
     # Every workflow that writes this production target must share this exact group.
     concurrency:
       group: kingturf-erp-production
@@ -265,10 +270,34 @@ jobs:
           python3 scripts/release_orchestrator.py execute .release-migration-evidence/plan.json .release-migration-evidence packages/database/migrations "$state_dir" placeholder --psql-argv-file "$argv_file"
           python3 scripts/release_orchestrator.py postcheck .release-migration-evidence/plan.json placeholder --psql-argv-file "$argv_file"
           REMOTE
+      - name: Authenticate runner for digest image pulls
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Load digest-pinned images onto the production host
+        run: |
+          set -euo pipefail
+          PROD_SSH_PORT_VALUE='${{ secrets.PROD_SSH_PORT }}'
+          run_ssh() {
+            ssh -o KexAlgorithms=curve25519-sha256 -o StrictHostKeyChecking=yes \
+              -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p "$PROD_SSH_PORT_VALUE" \
+              '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' "$@"
+          }
+          api_digest=$(run_ssh "grep -E '^KINGTURF_API_DIGEST=' '${{ secrets.PROD_DEPLOY_PATH }}/.env.production' | cut -d= -f2")
+          web_digest=$(run_ssh "grep -E '^KINGTURF_WEB_DIGEST=' '${{ secrets.PROD_DEPLOY_PATH }}/.env.production' | cut -d= -f2")
+          [[ "$api_digest" =~ ^sha256:[0-9a-f]{64}$ && "$web_digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+          api_image="ghcr.io/ivanzhao299/kingturf-erp-api@$api_digest"
+          web_image="ghcr.io/ivanzhao299/kingturf-erp-web@$web_digest"
+          docker pull "$api_image"
+          docker pull "$web_image"
+          docker save "$api_image" "$web_image" | run_ssh "docker load"
+          run_ssh "docker image inspect '$api_image' '$web_image' --format '{{.Id}}'"
       - name: Deploy and verify
         run: |
           ssh -o KexAlgorithms=curve25519-sha256 -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
-            "cd '${{ secrets.PROD_DEPLOY_PATH }}' && export KINGTURF_RELEASE_SHA='$RELEASE_SHA' KINGTURF_RELEASE_BUILT_AT='${{ github.run_id }}' && (docker compose --env-file .env.production -f infra/docker/compose.production.yaml pull api web && docker compose --env-file .env.production -f infra/docker/compose.production.yaml config --format json | grep -q '@sha256:' && docker compose --env-file .env.production -f infra/docker/compose.production.yaml up -d || (docker compose --env-file .env.production -f infra/docker/compose.production.yaml ps -a; exit 1)) && sleep 15 && docker compose --env-file .env.production -f infra/docker/compose.production.yaml ps && curl --fail --silent --show-error --retry 12 --retry-all-errors --retry-delay 5 http://127.0.0.1:4332/health && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 http://127.0.0.1:4332/ready && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 http://127.0.0.1:4332/version | grep -F '$RELEASE_SHA' && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 --resolve erp.kingturf.cn:443:127.0.0.1 https://erp.kingturf.cn/health && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 --resolve erp.kingturf.cn:443:127.0.0.1 https://erp.kingturf.cn/ready && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 --resolve erp.kingturf.cn:443:127.0.0.1 https://erp.kingturf.cn/version | grep -F '$RELEASE_SHA'"
+            "cd '${{ secrets.PROD_DEPLOY_PATH }}' && export KINGTURF_RELEASE_SHA='$RELEASE_SHA' KINGTURF_RELEASE_BUILT_AT='${{ github.run_id }}' && (docker compose --env-file .env.production -f infra/docker/compose.production.yaml config --format json | grep -q '@sha256:' && docker compose --env-file .env.production -f infra/docker/compose.production.yaml up -d || (docker compose --env-file .env.production -f infra/docker/compose.production.yaml ps -a; exit 1)) && sleep 15 && docker compose --env-file .env.production -f infra/docker/compose.production.yaml ps && curl --fail --silent --show-error --retry 12 --retry-all-errors --retry-delay 5 http://127.0.0.1:4332/health && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 http://127.0.0.1:4332/ready && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 http://127.0.0.1:4332/version | grep -F '$RELEASE_SHA' && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 --resolve erp.kingturf.cn:443:127.0.0.1 https://erp.kingturf.cn/health && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 --resolve erp.kingturf.cn:443:127.0.0.1 https://erp.kingturf.cn/ready && curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 3 --resolve erp.kingturf.cn:443:127.0.0.1 https://erp.kingturf.cn/version | grep -F '$RELEASE_SHA'"
       - name: Required production hostname HTTPS probe
         run: |
           ssh -o KexAlgorithms=curve25519-sha256 -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -p '${{ secrets.PROD_SSH_PORT }}' '${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}' \
