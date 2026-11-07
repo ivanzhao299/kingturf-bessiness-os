@@ -33,6 +33,7 @@ class ProductionPreflightTest(unittest.TestCase):
         self.actual = [{'name': name, 'checksum': value} for name, value in self.expected.items()]
         self.mount = '/data'
         self.healthy = True
+        self.api_running = True
         self.live_source = self.pg
         self.version = self.marker
         self.config = {'name': gate.PROJECT, 'services': {
@@ -53,20 +54,25 @@ class ProductionPreflightTest(unittest.TestCase):
             service = args[-1]
             target = '/var/lib/postgresql/data' if service == 'postgres' else '/var/lib/kingturf/attachments'
             source = self.live_source if service == 'postgres' else self.files
-            return json.dumps([{'State': {'Running': True, 'Health': {'Status': 'healthy' if self.healthy else 'unhealthy'}}, 'Mounts': [] if service == 'web' else [{'Type': 'bind', 'Source': str(source), 'Destination': target}]}])
+            running = self.api_running if service == 'api' else True
+            return json.dumps([{'State': {'Running': running, 'Health': {'Status': 'healthy' if self.healthy else 'unhealthy'}}, 'Mounts': [] if service == 'web' else [{'Type': 'bind', 'Source': str(source), 'Destination': target}]}])
         if 'exec' in args:
             self.assertIn('BEGIN READ ONLY', text)
             for forbidden in ('INSERT ', 'UPDATE ', 'DELETE ', 'ALTER ', 'CREATE '): self.assertNotIn(forbidden, text)
             return json.dumps(self.actual)
         raise AssertionError('Unexpected inventory command')
 
-    def run_gate(self, *, require_full=False):
+    def run_gate(self, *, require_full=False, allow_stopped_api=False):
         original_stat = os.stat
+        self.urlopen_calls = []
         def stat(path, *args, **kwargs):
             return original_stat(self.root if str(path) == '/data' else path, *args, **kwargs)
+        def urlopen(*args, **kwargs):
+            self.urlopen_calls.append(args)
+            return io.BytesIO(json.dumps({'sha': self.version}).encode())
         output = io.StringIO()
-        with patch.object(gate, 'RELEASE', self.root), patch.object(gate, 'POSTGRES', self.pg), patch.object(gate, 'ATTACHMENTS', self.files), patch.object(gate, 'command', self.command), patch.object(gate.os, 'stat', stat), patch.object(gate.shutil, 'disk_usage', return_value=SimpleNamespace(free=self.free)), patch.object(gate.urllib.request, 'urlopen', return_value=io.BytesIO(json.dumps({'sha': self.version}).encode())), contextlib.redirect_stdout(output):
-            gate.preflight(str(self.root), self.expected, require_full=require_full)
+        with patch.object(gate, 'RELEASE', self.root), patch.object(gate, 'POSTGRES', self.pg), patch.object(gate, 'ATTACHMENTS', self.files), patch.object(gate, 'command', self.command), patch.object(gate.os, 'stat', stat), patch.object(gate.shutil, 'disk_usage', return_value=SimpleNamespace(free=self.free)), patch.object(gate.urllib.request, 'urlopen', urlopen), contextlib.redirect_stdout(output):
+            gate.preflight(str(self.root), self.expected, require_full=require_full, allow_stopped_api=allow_stopped_api)
         return output.getvalue()
 
     def test_healthy_inventory_is_readonly_and_does_not_claim_restore(self):
@@ -173,6 +179,35 @@ class ProductionPreflightTest(unittest.TestCase):
     def test_failed_rollout_marker_mismatch_blocks_blind_retry(self):
         self.version = 'c' * 40
         with self.assertRaisesRegex(RuntimeError, 'disagrees'): self.run_gate()
+
+    def test_stopped_api_blocks_without_window_mode(self):
+        self.api_running = False
+        with self.assertRaisesRegex(RuntimeError, 'not healthy'): self.run_gate()
+
+    def test_window_mode_allows_stopped_api_and_skips_version_probe(self):
+        self.api_running = False
+        self.version = 'c' * 40  # would disagree with the marker if probed at all
+        result = self.run_gate(allow_stopped_api=True)
+        payload = json.loads(result)
+        self.assertEqual(payload['preflight'], 'PASS')
+        self.assertEqual(payload['previous_sha'], self.marker)
+        self.assertIn('skipped', payload['version_probe'])
+        self.assertEqual(self.urlopen_calls, [])
+
+    def test_window_mode_still_requires_running_healthy_postgres_and_web(self):
+        self.api_running = False
+        self.healthy = False  # postgres is inspected first and must stay healthy
+        with self.assertRaisesRegex(RuntimeError, 'not healthy'): self.run_gate(allow_stopped_api=True)
+
+    def test_window_mode_running_api_still_requires_health(self):
+        self.api_running = True
+        self.healthy = False
+        with self.assertRaisesRegex(RuntimeError, 'not healthy'): self.run_gate(allow_stopped_api=True)
+
+    def test_unknown_preflight_flag_is_rejected(self):
+        probe = subprocess.run([sys.executable, str(ROOT / 'scripts/production_preflight.py'), '/data/kingturf-erp', base64.b64encode(b'{}').decode(), '--allow-build'], capture_output=True, text=True)
+        self.assertNotEqual(probe.returncode, 0)
+        self.assertIn('unknown preflight flag', probe.stderr)
 
     def test_manifest_mode_reads_all_current_migration_files_without_production_calls(self):
         result = subprocess.run([sys.executable, str(ROOT / 'scripts/production_preflight.py'), '--manifest', str(ROOT / 'packages/database/migrations')], capture_output=True, text=True, check=True)

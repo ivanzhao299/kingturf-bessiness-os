@@ -64,6 +64,11 @@ class DeployWorkflowStaticTest(unittest.TestCase):
         self.assertIn('pull api web', self.text)
         self.assertIn("grep -q '@sha256:'", self.text)
 
+    def test_preflight_window_mode_is_explicit(self):
+        # The 13F write fence stops the old api before dispatch; the preflight must
+        # acknowledge it explicitly rather than by silent tolerance.
+        self.assertIn('--allow-stopped-api', self.text)
+
     def test_rsync_preserves_migration_evidence_and_state(self):
         self.assertIn("--exclude '.release-migration-evidence/'", self.text)
         self.assertIn("--exclude '.release-migration-state/'", self.text)
