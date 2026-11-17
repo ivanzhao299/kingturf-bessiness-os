@@ -9,7 +9,16 @@ release_sha=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["re
 cleanup() { docker rm -f "$prefix-api" "$prefix-web" > /dev/null 2>&1 || true; }
 trap cleanup EXIT
 # Local test-only database and secrets; no production material.
-docker run -d --pull never --name "$prefix-api" --network host -e NODE_ENV=production -e API_HOST=0.0.0.0 -e API_PORT=3000 -e DATABASE_URL -e SESSION_SECRET=isolated-image-verification-only-32bytes -e WEBSITE_LEAD_INGEST_SECRET=isolated-image-verification-only-32bytes -e KINGTURF_RELEASE_SHA="$release_sha" -e KINGTURF_RELEASE_ENVIRONMENT=production -e KINGTURF_RELEASE_BUILT_AT=image-smoke -e KINGTURF_WRITE_FENCE=enabled "$api" > /dev/null
+api_environment=(-e NODE_ENV=production -e API_HOST=0.0.0.0 -e API_PORT=3000 -e DATABASE_URL
+  -e SESSION_SECRET=isolated-image-verification-only-32bytes -e WEBSITE_LEAD_INGEST_SECRET=isolated-image-verification-only-32bytes
+  -e SESSION_TTL_SECONDS=28800 -e PASSWORD_SALT_BYTES=16 -e PASSWORD_KEY_LENGTH=64
+  -e PASSWORD_SCRYPT_COST=16384 -e PASSWORD_SCRYPT_BLOCK_SIZE=8 -e PASSWORD_SCRYPT_PARALLELIZATION=1
+  -e ATTACHMENT_STORAGE_ADAPTER=local -e ATTACHMENT_LOCAL_DIRECTORY=/var/lib/kingturf/attachments
+  -e KINGTURF_RELEASE_SHA="$release_sha" -e KINGTURF_RELEASE_ENVIRONMENT=production -e KINGTURF_RELEASE_BUILT_AT=image-smoke -e KINGTURF_WRITE_FENCE=enabled)
+# Run the image's own configuration parser first: missing inputs fail immediately
+# with key names only, before a background process can disappear during polling.
+docker run --rm --pull never --network host "${api_environment[@]}" --entrypoint node "$api" --experimental-transform-types --input-type=module -e "import {parseEnvironment} from './packages/config/src/index.ts'; parseEnvironment(process.env); console.log('Production image configuration passed')"
+docker run -d --pull never --name "$prefix-api" --network host "${api_environment[@]}" "$api" > /dev/null
 for attempt in $(seq 1 30); do
   if curl -fsS http://127.0.0.1:3000/ready > /dev/null; then break; fi
   test "$attempt" -lt 30

@@ -57,3 +57,15 @@
 - [PR #47](https://github.com/ivanzhao299/kingturf-bessiness-os/pull/47) 已创建为draft；source image SHA仍45605d3，不重建批准镜像。平台只读发现main未启保护、production无审批/分支限制；未修改或绕过平台设置，主线集成仍经PR与完整CI及独立复核。此既有平台配置为残余限制，不充作已启用保护。
 
 最终d6e7361本地完整CI实际退出0（含104运维测试、六包覆盖率、build及audit），远程CI run44056178709亦success。准备部署前最后权限核验发现新增tar在旧0755 backup目录和0022掩码下可能在写入期间暂时0644；独立复核确认。新增进程级0077掩码和真实tar写入期间权限测试，只影响本工具新文件，历史材料不改；该新工具尚未生产执行。此次安全增量单独提交，随后再次冻结并完整CI，不沿用d6e的绿。
+
+## 正式首轮失败与继续恢复
+
+PR47已正常合并至91740514dc3178ba0e758fbaef7e4b4f57fb06ae，精确主线CI44059670232 success。正式run44062257356中候选45605完整ci:local、publication来源、OCI导出/真实runner导入均success；原API未监听导致startup smoke失败，deploy skipped。配置解析器要求会话TTL、五项密码参数和附件适配路径，原smoke漏传，前30次ready拒连不能证明传输失败。补足测试配置并前台执行镜像原解析器，完整脚本另实际演练。旧失败保留，生产未停API。
+
+等待期间已经按9174051原工具真实预载生产缓存：批准两根、平台manifest、原始config字节和diff IDs全部PASS，恢复runtime保持health/ready且临时registry已停。主机`.release-image-recovery`私有祖先root0700预置；父目录所有者属既有Docker管理员，与root同属主机特权信任边界，不声称防御这些管理员。本轮源码再内化tar data filter和run0700，避免保留archive UID/GID或'.'权限。
+
+保持原有完整候选CI和主协调先等主线CI通过再dispatch的顺序，不引入新的CI复用或证明系统。此修复另PR，最终head再完整CI和独立复核后重试，禁止重跑迁移。
+
+修复后已在独立Docker29.5.1 containerd daemon内**直接执行仓库smoke_release_images.sh原字节入口到末尾**并退出0。主机与容器脚本SHA256均0e6a66512141d3b452f7aceda3b2722a8f6836231a0a523a799e6dc689e7a10c。外部适配仅测试DB地址改为同隔离daemon的PG bridge IP/相同5432和测试凭据；API3000、Web8080、脚本逻辑及参数数组未改，工作流仍使用已发布到runner loopback的CI PG。真实配置解析、API health/ready/version、write fence、Web HTML和实际容器identity全部通过，精确日志exact-smoke-success.log保留。
+
+同时用recover脚本中的原Python提取片段在root隔离daemon真实执行：archive刻意携带uid/gid12345、目录0777、文件0666；data filter后控制文件owner0/mode0644、run目录owner0/mode0700，原字节全等。此为实证安全补强，不扩大其余发布架构。
