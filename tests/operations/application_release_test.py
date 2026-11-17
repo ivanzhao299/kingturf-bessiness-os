@@ -107,6 +107,26 @@ class ApplicationRecoveryTest(unittest.TestCase):
         self.assertFalse([(x,f) for x in strings for f in forbidden if f in x])
         self.assertTrue(ar.REGISTRY_SQL.startswith('BEGIN READ ONLY;'))
 
+    def test_archive_is_private_during_writing_even_under_public_parent_and_default_umask(self):
+        # Exercise the real CLI entry and tar writer with an initially public
+        # parent/default process mask. Observe mode before archive completion.
+        import contextlib,io,tarfile
+        bundle=self.root/'.release-image-recovery/1-1';bundle.mkdir(parents=True)
+        public=self.root/'backups';public.mkdir(mode=0o755)
+        archive_path=public/'config.tar'
+        observed=[]
+        def write_archive(_bundle):
+            with tarfile.open(archive_path,'x'):
+                observed.append(archive_path.stat().st_mode & 0o777)
+            return {}
+        previous=os.umask(0o022)
+        try:
+            with mock.patch.object(ar,'ROOT',self.root),mock.patch.object(ar,'precheck',side_effect=write_archive),mock.patch.object(sys,'argv',['application_release.py','precheck',str(bundle)]),contextlib.redirect_stdout(io.StringIO()):
+                ar.main()
+        finally:
+            os.umask(previous)
+        self.assertEqual(observed,[0o600])
+
     def test_private_recovery_snapshot_is_exclusive_and_private(self):
         path=self.root/'private'
         ar.private_write(path,b'private test fixture')

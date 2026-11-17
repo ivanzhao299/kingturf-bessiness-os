@@ -279,6 +279,9 @@ def switch(bundle):
 
 
 def main():
+    # Existing backup roots may be 0755: archives must be private from creation,
+    # before any payload is written, rather than only chmod'ed after completion.
+    os.umask(0o077)
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=('precheck','backup','switch','postcheck'))
     parser.add_argument('bundle', type=Path)
