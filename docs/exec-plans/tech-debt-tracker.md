@@ -1,5 +1,9 @@
 # 技术债台账（tech-debt-tracker）
 
+## 2026-11-17 生产镜像传输修复登记
+
+TD-REL-001（P1，已授权修复）：run 42335884296 已完成72迁移后，GHCR源拉取成功、远端docker load报告image ID，随后repo@批准digest查询失败。save/load不足以证明或保留registry manifest身份；旧workflow还无条件重入迁移执行器。需验证原始manifest/config/layers跨daemon全链、FULLY_MATCHED只读应用发布、恢复产物保全及正式部署验收。范围与授权见[执行任务](../tasks/ghcr-transport-recovery-2026-11-17.md)，尚未关闭。
+
 **2026-10-26 Batch4后继**：G5应用工厂160/总分发149行，ccc1ef2消除B/D两精确项（原Q/F由Batch3消除），当前G5表为空，期限未续；新依赖门禁只适配真实同步yield/projectedReply，保S3及共享/委托反例。TD-SEC-010在0503d9e的PG/真实HTTP现状刻画已证当前范围前重放，建议P1，正式修复未实施；完整最终CI/P1只认同SHA机器回执。新增TD-COST-003静态候选及TD-CONN-001隔离失败发现，不顺手改业务；累计79唯一历史/现行ID，不等于79开放。见[Batch4交付](../productization/batch4-delivery-2026-10-26.md)。以下原状态均保历史。
 
 **2026-10-26 Batch3实施后继**：INV001=7a8990a、RISK003=0751594、SEC009=5ca828d本地正式修复与PG/HTTP/独立源码复核；最终新提交CI/P1不据此预填。G5-Q/F=a501477消除，B/D仍原到期日。新增TD-SEC-010仅静态候选，累计77唯一历史/现行ID，不等于77开放；生产状态不推断。见[本批证据](../productization/batch3-verification-2026-10-26.md)。

@@ -1,5 +1,19 @@
 # KingTurf production — Singapore runbook
 
+## 当前应用发布契约（2026-11-17）
+
+72项迁移已经完成。生产应用发布唯一入口改为 `recover-application-images.yml`；旧 `deploy-production.yml` 首步骤无条件停止，保留旧代码作为迁移失败历史，不再提供 save/load 路径。新迁移执行、历史改写和生产数据恢复必须另行授权及设计。以下迁移时代流程描述保留为历史，不能据此重执行迁移。
+
+新入口输入精确main历史候选SHA、原批准API/Web根digest及成功的release-images run ID。控制脚本来自workflow自身固定SHA，独立于旧应用候选；候选完整ci:local、发布run来源、当前tag原始摘要、既有生产image_compatibility双digest必须全等。此次授权来源及进度见[执行任务](../tasks/ghcr-transport-recovery-2026-11-17.md)。
+
+GHCR仍为制品真源。Runner使用固定Skopeo镜像，以 `--all --preserve-digests` 导出原OCI索引、平台manifest、config及全部layers；逐descriptor验证sha256/size，tar总哈希绑定传输。生产仅在拉取时启动 `127.0.0.1:15432` 只读registry，不存GHCR凭据、不改Docker信任或共享Nginx。目标按原根digest拉取，单平台export核原始config字节，核RootFS diff IDs及实际运行容器的镜像引用和平台manifest。Docker29 containerd的image ID可为index/manifest摘要，不能按经典存储的config ID语义处理。
+
+持久 `.env.production` 记录固定loopback镜像仓库名及原根digest；compose使用 `--pull never`。registry在导入完成即停止，正常容器重启不依赖registry。重建或回退须先对保留的 `.release-image-recovery/<run>-<attempt>/` bundle再次验证/导入；不得普通compose拉取一个已经停止的临时registry。严禁清理这些bundle、原恢复镜像或历史迁移状态。
+
+镜像传输、导入、72-schema隔离启动和全部可行预检均先于停服。随后先保存真实旧容器完整配置（仅主机0600），停API并排空，再采数据库/附件/配置联合备份，并在独立、无网络、tmpfs PostgreSQL容器还原核72登记。随后一次应用切换，API/Web仅用现存镜像、`--no-deps --pull never`，不更新PG、不调用迁移执行器。名称/checksum/原applied_at与迁移状态文件hash必须始终不变。
+
+停API之后任一步失败自动尝试**仅应用恢复**：从主机私有快照还原环境配置，以原准确image ID重新启动API/Web，核健康、版本与迁移不变；不恢复生产数据。状态记于bundle内 `application-state.json`。若状态为 `RECOVERY_FAILED`，保留全部现场，主协调必须先读真实状态/错误并恢复服务再继续。不得抹状态冒充成功。成功时全部内外health/ready/version及运行字节身份通过后才原子更新marker。
+
 The sole production entry is `https://erp.kingturf.cn`. The Singapore host is `47.236.122.224`, shared with Phoenix ERP and the independent KingTurf website. This file retains its historical filename for existing links; its authority is the current deployment below:
 
 - separate `PROD_DEPLOY_PATH=/data/kingturf-erp`;
