@@ -1,5 +1,9 @@
 # 技术债台账（tech-debt-tracker）
 
+## 2026-11-17 生产镜像传输修复登记
+
+TD-REL-001（P1，已授权修复）：run 42335884296 已完成72迁移后，GHCR源拉取成功、远端docker load报告image ID，随后repo@批准digest查询失败。save/load不足以证明或保留registry manifest身份；旧workflow还无条件重入迁移执行器。需验证原始manifest/config/layers跨daemon全链、FULLY_MATCHED只读应用发布、恢复产物保全及正式部署验收。范围与授权见[执行任务](../tasks/ghcr-transport-recovery-2026-11-17.md)，尚未关闭。
+
 **2026-10-26 Batch4后继**：G5应用工厂160/总分发149行，ccc1ef2消除B/D两精确项（原Q/F由Batch3消除），当前G5表为空，期限未续；新依赖门禁只适配真实同步yield/projectedReply，保S3及共享/委托反例。TD-SEC-010在0503d9e的PG/真实HTTP现状刻画已证当前范围前重放，建议P1，正式修复未实施；完整最终CI/P1只认同SHA机器回执。新增TD-COST-003静态候选及TD-CONN-001隔离失败发现，不顺手改业务；累计79唯一历史/现行ID，不等于79开放。见[Batch4交付](../productization/batch4-delivery-2026-10-26.md)。以下原状态均保历史。
 
 **2026-10-26 Batch3实施后继**：INV001=7a8990a、RISK003=0751594、SEC009=5ca828d本地正式修复与PG/HTTP/独立源码复核；最终新提交CI/P1不据此预填。G5-Q/F=a501477消除，B/D仍原到期日。新增TD-SEC-010仅静态候选，累计77唯一历史/现行ID，不等于77开放；生产状态不推断。见[本批证据](../productization/batch3-verification-2026-10-26.md)。
@@ -965,3 +969,9 @@ TD-API-001的本批G5跨度已消除；其余产品/原生DOM/HTTP/仓储文件�
 **2026-10-27 Batch5**：TD-SEC-010已由635b59e修复：佣金accrue重放复用原订单/客户DataScope，transition绑定路径case并复用范围，business-document dispatch重放先校验当前文档可见性；隔离PG仓储17/17、真实HTTP3/3通过，最终CI/浏览器待最终SHA。TD-COST-003隔离PG确认重复BOM组件行重复计量，仍P1候选未修；TD-CONN-001隔离PG确认connector expectedVersion>0更新SQL控制流缺陷，P2候选未修。见Batch5安全/成本/连接/决策和岗位差距材料。
 
 **2026-10-27 Batch6**：TD-COST-003已由f4c904e修复，实际材料移动按工单/组件聚合，重复BOM行不再重复计量；真实生产PG 8项测试通过，历史run不改。TD-CONN-001已由d5b5e2d修复，connector更新改为VALUES+CAS ON CONFLICT；foundation新增CAS测试并通过。Batch5安全测试已确认被API Vitest/coverage全量发现。五项业务规则和十岗位验收仍待批准/人工签署。
+
+TD-REL-002（2026-11-17，P1 HTTPS验收阻断）：ERP证书2026-11-15过期，主机及客户端均TLS拒绝；共享certbot.timer只读显示failed/resources，最近触发10月24。用户已限定授权仅ERP证书续期与Nginx平滑重载及同机回归；定时器/其他域证书维护仍另行协调，不扩大本次修复。来源见[本次新增授权](../tasks/ghcr-transport-recovery-2026-11-17.md)。
+
+TD-REL-002后继：本次限定ERP证书已续至2027-02-15，SAN保持、nginx配置全哈希保持、平滑reload与ERP HTTPS及其他站点基线核验通过；两个其他域名的既有过期证书未动。共享timer的failed/resources仍另行维护，不将证书症状解除冒充定时续期治理完成。
+
+TD-REL-001部署前保密补强（2026-11-17）：现场只读确认旧backup根0755、root umask0022。新工具tarfile.open先以默认权限创建再chmod600，在归档写入中存在本机其他用户可读窗口；该新工具尚未在生产执行，不声称已泄露。独立复核确认，应仅对本应用发布进程设置umask0077，使新增私有材料从创建即0600；不改历史目录/材料权限。此必要安全修复单独提交后重跑完整CI。

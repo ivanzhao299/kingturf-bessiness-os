@@ -1,4 +1,4 @@
-name: Deploy KingTurf Production
+name: Legacy Migration Release (Retired)
 
 on:
   workflow_dispatch:
@@ -23,6 +23,10 @@ jobs:
       RELEASE_SHA: ${{ inputs.commit_sha }}
       RELEASE_CONTROL_SHA: ${{ github.workflow_sha }}
     steps:
+      - name: Reject retired migration release entry
+        run: |
+          echo 'This migration-era entry is retired. Use recover-application-images.yml for FULLY_MATCHED application releases. New migrations require a separately reviewed release path.' >&2
+          exit 1
       - name: Reject untrusted dispatch context and malformed input
         shell: bash
         run: |

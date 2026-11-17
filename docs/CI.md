@@ -1,5 +1,7 @@
 # CI 配置决定
 
+2026-11-17当前发布入口为 `recover-application-images.yml`（仅已FULLY_MATCHED的72-schema应用发布）；原 `deploy-production.yml` 已在首步骤封闭，以下原部署盘点是历史。新入口保留精确候选与固定控制SHA、完整ci:local、production审批/并发锁；新增批准OCI字节传输、真实API/Web启动、只读schema全等、联合恢复演练及运行身份校验。见[当前生产契约](deployment/PRODUCTION_PARK_HOST.md)。源码CI和模拟传输不代替真实跨daemon及生产验收。
+
 Harness 施工已归档；本项目是纯 Web monorepo，非 Tauri，不生成桌面打包或 Release 流水线。常规提交继续以 `pnpm ci:local` 为唯一完整门禁。
 
 > 依据 `docs/HARNESS-RULES.md` §3（框架识别与条件式 CI）与附录 C 模板建立。
