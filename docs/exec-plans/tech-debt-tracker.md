@@ -978,6 +978,6 @@ TD-REL-001部署前保密补强（2026-11-17）：现场只读确认旧backup根
 
 TD-REL-001正式首轮后继：run44062257356候选完整CI、真实镜像来源/OCI导入均成功，但runner独立startup因smoke夹具缺SESSION_TTL/PASSWORD/附件适配参数而API未监听；deploy skipped，生产API未停。补齐全部parseEnvironment必需字段并先前台跑镜像原解析器，随后实际全脚本演练；不放宽生产启动。另对host tar提取使用data filter与保持0700，去除源UID/GID及目录权限恢复；本机已预置root0700私有祖先保护当前控制面，现为默认源码内化。保持原有完整候选CI与人工协调等待主线CI的执行顺序，不引入CI复用。
 
-TD-REL-001已关闭（2026-11-17技术验收）：PR47/48、正式run44070050685三job success；主协调/独立审查核实际API/Web字节链及72行含applied_at/迁移state原始hash全等，恢复材料保留、隔离restore通过、临时registry关闭。证据见[正式验收](../evidence/ghcr-production-acceptance-2026-11-17.md)。不把此关闭外推到共享平台设置、定时器或历史材料权限。
+TD-REL-001已关闭（2026-11-17技术验收）：PR47/48、正式run44070050685三job success；主协调/独立审查核实际API/Web字节链及72行含applied_at/迁移state原始hash全等，恢复材料保留、隔离restore通过、临时registry关闭。证据见[最终验收摘要](../tasks/ghcr-transport-recovery-2026-11-17.md)。不把此关闭外推到共享平台设置、定时器或历史材料权限。
 
 TD-REL-003（P1访问控制候选，已核权限、未证访问，待单独整改）：本次只读库存确认既有backup根0755、10件原材料中9件0644，其他本机普通用户在可遍历路径下可能读取历史dump/归档；不声称已泄露。原SHA/size/mode按恢复保全要求保持，本轮新三件从创建即0600。后续需明确恢复操作者、目录/文件最小权限及离机加密/取用流程，再单独收紧并验证恢复可用性；不扩大本次发布范围，禁止删除或改写原材料。
