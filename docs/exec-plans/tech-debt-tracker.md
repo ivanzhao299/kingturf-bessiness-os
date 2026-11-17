@@ -975,3 +975,5 @@ TD-REL-002（2026-11-17，P1 HTTPS验收阻断）：ERP证书2026-11-15过期，
 TD-REL-002后继：本次限定ERP证书已续至2027-02-15，SAN保持、nginx配置全哈希保持、平滑reload与ERP HTTPS及其他站点基线核验通过；两个其他域名的既有过期证书未动。共享timer的failed/resources仍另行维护，不将证书症状解除冒充定时续期治理完成。
 
 TD-REL-001部署前保密补强（2026-11-17）：现场只读确认旧backup根0755、root umask0022。新工具tarfile.open先以默认权限创建再chmod600，在归档写入中存在本机其他用户可读窗口；该新工具尚未在生产执行，不声称已泄露。独立复核确认，应仅对本应用发布进程设置umask0077，使新增私有材料从创建即0600；不改历史目录/材料权限。此必要安全修复单独提交后重跑完整CI。
+
+TD-REL-001正式首轮后继：run44062257356候选完整CI、真实镜像来源/OCI导入均成功，但runner独立startup因smoke夹具缺SESSION_TTL/PASSWORD/附件适配参数而API未监听；deploy skipped，生产API未停。补齐全部parseEnvironment必需字段并先前台跑镜像原解析器，随后实际全脚本演练；不放宽生产启动。另对host tar提取使用data filter与保持0700，去除源UID/GID及目录权限恢复；本机已预置root0700私有祖先保护当前控制面，现为默认源码内化。保持原有完整候选CI与人工协调等待主线CI的执行顺序，不引入CI复用。

@@ -30,7 +30,8 @@ with tarfile.open('bundle.tar.gz') as t:
     members=t.getmembers()
     assert len(members)<10000 and sum(m.size for m in members)<4*1024**3
     assert all(not pathlib.PurePosixPath(m.name).is_absolute() and '..' not in pathlib.PurePosixPath(m.name).parts and (m.isfile() or m.isdir()) for m in members)
-    t.extractall('.')
+    t.extractall('.', filter='data')
+    pathlib.Path('.').chmod(0o700)
 PYTHON
 REMOTE
 # The whole tar is already bound to runner SHA; assert control bytes separately too.
