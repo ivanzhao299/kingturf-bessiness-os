@@ -40,3 +40,18 @@
 - 实际Docker读取被篡改层时拒绝：filesystem layer verification failed。另10个OCI工具用例覆盖缺失/截断/等长篡改、错误root、descriptor size、缺目标平台、attestation完整性、symlink和真实HTTP范围。
 - 生产只读require-full预检真实PASS；只读写通道库存证实PG无宿主发布端口、网络精确API/Web/PG、附件仅API可写。新gate在停止前后和备份后重查这些运行通道；排空检查包括idle在内的所有其他client backend必须为0。特权主机运维仍须由授权协调，代码不能阻止root的独立操作。
 - 运维测试102项一轮通过。首完整CI在04b0612启动后独立审查引出上述写通道增量，故不作为最终干净HEAD验证；最终增量提交后重跑完整CI。
+
+## 限定证书维护新增授权（2026-11-17）
+
+生产原证书SAN仅erp.kingturf.cn，于2026-11-15T04:28:03Z到期；主机自身和外部客户端都验证失败。用户在本会话直接答复“授权这项限定维护，继续部署”，原协调会话同步转交用户原话“授权限定证书续期及平滑重载，继续部署”。授权仅ERP证书续期、nginx -t通过后的共享Nginx平滑重载、ERP及同机其他站点复核；不修改其他站点配置、不扩大到全局证书/定时器治理。
+
+只读准备确认现有HTTP ACME location已指向/var/www/html、证书SAN单一，nginx -t通过且有存量warn；certbot.timer为failed/resources，后者只登记，不顺手修共享定时器。执行前保存ERP renewal配置和各Nginx配置hash、同机HTTPS基线；采用仅ERP lineage的certonly webroot验证避免改动Nginx路由；保留原证书archive，检查新SAN/期限与Nginx配置后再reload并逐站比对。
+
+## 证书维护结果与最终验证冻结
+
+- 仅ERP证书certonly webroot续期成功；新有效期截至2027-02-15T08:26:14Z，SAN仍仅erp.kingturf.cn。nginx -t后平滑重载，53份Nginx文件哈希全部保持；TLS实际服务端叶证书SHA256与磁盘原件均为b843c55005601dfd7f4f53f387f373e636b9edc5007a4095e5803df9ba040f0d。
+- reload后的首个即时ERP断言未通过，后续完整重测PASS；现场保留原命令失败史，不声称首测通过。ERP内外HTTPS health/ready/version恢复；其他11个域名检查结果与维护前全同（包括两个原本证书过期域名，未扩修）。主机证据 `.release-certificate-maintenance-20261117/after.json`、原证书及renewal配置保留。
+- 独立终审提出的Docker写通道缺口已经闭合；containerd写通道增量后的完整备份/切换再次真实PASS。Classic Compose以原精确config image ID实际启动API/Web二进制亦过；完整失败回退和业务健康恢复在containerd镜像存储上实测通过。
+- 新增公共HTTPS基线门禁，在任何停API之前校对当前证书与三个探针，避免把已过期证书带入切换窗口。Actionlint已实际通过两个workflow的语义检查。
+- 04b0612的完整CI因运行中源码增量被干净树门禁拒绝；3ba4201完整CI运行中新增证书授权文档，同样被门禁拒绝（该轮六包测试都已通过，但不得冒称CI通过）。失败日志均保留。最终收口提交后不再改工作区，重新执行完整CI。最终本地PG为独立PostgreSQL17.7 tmpfs测试库，仍保留默认fsync，所有PG集成真实执行；psql仅通过本任务专用docker客户端适配，不复用或启动他人测试容器。
+- [PR #47](https://github.com/ivanzhao299/kingturf-bessiness-os/pull/47) 已创建为draft；source image SHA仍45605d3，不重建批准镜像。平台只读发现main未启保护、production无审批/分支限制；未修改或绕过平台设置，主线集成仍经PR与完整CI及独立复核。此既有平台配置为残余限制，不充作已启用保护。

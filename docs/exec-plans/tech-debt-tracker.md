@@ -969,3 +969,7 @@ TD-API-001的本批G5跨度已消除；其余产品/原生DOM/HTTP/仓储文件�
 **2026-10-27 Batch5**：TD-SEC-010已由635b59e修复：佣金accrue重放复用原订单/客户DataScope，transition绑定路径case并复用范围，business-document dispatch重放先校验当前文档可见性；隔离PG仓储17/17、真实HTTP3/3通过，最终CI/浏览器待最终SHA。TD-COST-003隔离PG确认重复BOM组件行重复计量，仍P1候选未修；TD-CONN-001隔离PG确认connector expectedVersion>0更新SQL控制流缺陷，P2候选未修。见Batch5安全/成本/连接/决策和岗位差距材料。
 
 **2026-10-27 Batch6**：TD-COST-003已由f4c904e修复，实际材料移动按工单/组件聚合，重复BOM行不再重复计量；真实生产PG 8项测试通过，历史run不改。TD-CONN-001已由d5b5e2d修复，connector更新改为VALUES+CAS ON CONFLICT；foundation新增CAS测试并通过。Batch5安全测试已确认被API Vitest/coverage全量发现。五项业务规则和十岗位验收仍待批准/人工签署。
+
+TD-REL-002（2026-11-17，P1 HTTPS验收阻断）：ERP证书2026-11-15过期，主机及客户端均TLS拒绝；共享certbot.timer只读显示failed/resources，最近触发10月24。用户已限定授权仅ERP证书续期与Nginx平滑重载及同机回归；定时器/其他域证书维护仍另行协调，不扩大本次修复。来源见[本次新增授权](../tasks/ghcr-transport-recovery-2026-11-17.md)。
+
+TD-REL-002后继：本次限定ERP证书已续至2027-02-15，SAN保持、nginx配置全哈希保持、平滑reload与ERP HTTPS及其他站点基线核验通过；两个其他域名的既有过期证书未动。共享timer的failed/resources仍另行维护，不将证书症状解除冒充定时续期治理完成。

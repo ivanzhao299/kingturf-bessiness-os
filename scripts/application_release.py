@@ -85,6 +85,8 @@ def precheck(bundle):
         images.require(c['State']['Running'] and c['State'].get('Health', {}).get('Status') == 'healthy', 'Current recovery container unavailable')
     marker = (ROOT / '.release-sha').read_text().strip()
     probe('http://127.0.0.1:4332', marker)
+    # Baseline HTTPS must pass before API shutdown, including certificate validity.
+    probe('https://erp.kingturf.cn', marker)
     return {'write_channels':verify_write_channels(), 'registry': rows, 'migration_state_hashes': state_hashes(), 'previous_sha': marker, 'recovery_images': [{'name':c['Name'],'id':c['Image'],'ref':c['Config']['Image']} for c in containers]}
 
 

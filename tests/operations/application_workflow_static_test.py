@@ -17,6 +17,13 @@ class ApplicationWorkflowContract(unittest.TestCase):
             self.assertIn(contract,text)
         self.assertNotIn('release_orchestrator.py execute',text)
 
+    def test_current_public_https_is_required_before_any_application_stop(self):
+        text=(ROOT/'scripts/application_release.py').read_text()
+        precheck=text.split('def precheck(bundle):',1)[1].split('def private_write',1)[0]
+        self.assertIn("probe('https://erp.kingturf.cn', marker)",precheck)
+        backup=text.split('def backup(bundle):',1)[1].split('def verify_unchanged',1)[0]
+        self.assertLess(backup.index('precheck(bundle)'),backup.index("compose('stop'"))
+
     def test_all_transfer_and_import_failures_precede_api_stop(self):
         text=(ROOT/'scripts/recover_application_images.sh').read_text()
         self.assertLess(text.index(' --require-full'),text.index('mkdir -p /data'))
