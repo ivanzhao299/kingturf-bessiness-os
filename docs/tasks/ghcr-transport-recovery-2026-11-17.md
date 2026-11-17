@@ -69,3 +69,15 @@ PR47已正常合并至91740514dc3178ba0e758fbaef7e4b4f57fb06ae，精确主线CI4
 修复后已在独立Docker29.5.1 containerd daemon内**直接执行仓库smoke_release_images.sh原字节入口到末尾**并退出0。主机与容器脚本SHA256均0e6a66512141d3b452f7aceda3b2722a8f6836231a0a523a799e6dc689e7a10c。外部适配仅测试DB地址改为同隔离daemon的PG bridge IP/相同5432和测试凭据；API3000、Web8080、脚本逻辑及参数数组未改，工作流仍使用已发布到runner loopback的CI PG。真实配置解析、API health/ready/version、write fence、Web HTML和实际容器identity全部通过，精确日志exact-smoke-success.log保留。
 
 同时用recover脚本中的原Python提取片段在root隔离daemon真实执行：archive刻意携带uid/gid12345、目录0777、文件0666；data filter后控制文件owner0/mode0644、run目录owner0/mode0700，原字节全等。此为实证安全补强，不扩大其余发布架构。
+
+## 当前最终状态（2026-11-17 19:14 Singapore后复核）
+
+PR48合并fbf7b7a，主线CI44068484102 success后正式run44070050685全部success。应用SHA45605d3、控制SHAfbf7b7a分别固定；主协调与独立审查证实运行API/Web批准根/manifest/config/diff IDs及实际容器全链匹配、内外探针与marker通过、72条含applied_at和迁移state原始字节hash全等、PG容器未变、原两恢复镜像与10材料全保留、新三私有联合备份与隔离恢复PASS。15432无监听、临时restore容器已移除。生产技术部署及验收完成。最终实况摘要如下。本步只补最终文档，最后文档head仍须完整ci:local，生产服务不再改动。
+
+- 正式发布：[run44070050685](https://github.com/ivanzhao299/kingturf-bessiness-os/actions/runs/44070050685) validate/verify/deploy全success，2026-11-17 19:14 Singapore完成。[PR47](https://github.com/ivanzhao299/kingturf-bessiness-os/pull/47)/[PR48](https://github.com/ivanzhao299/kingturf-bessiness-os/pull/48)均合并，8d92572本地完整CI0、PR CI44066642334及主线CI44068484102 success。
+- 控制SHA=`fbf7b7a802b61d789985b6d6fea4b4d788669999`；应用/marker SHA=`45605d37e462801927a50d0ef6f97aea7b7d13c3`；实际builtAt=`application-44070050685-1`。两个SHA用途不同；复用原批准镜像，未重建/主机源码构建。
+- API批准根=`sha256:18685f7a1070fdd4ef983da1d83140377eabcd630e1aaedc0c842bd218159d61`；Web批准根=`sha256:229eecf8bc6ed257a94a7fe5fac1320283591f15a862ab271c8bf6865d490130`。GHCR根→linux/amd64 manifest→原始config及压缩层→目标diff IDs/RepoDigests→实际container.Image/Config.Image及manifest描述符全匹配。生产Docker29.5.1/containerd的image ID为根摘要，原始config另经实际docker save重导出hash，发布后又独立复核一次。
+- 72行name/checksum/原applied_at逐行相等；旧migration_states语义及原始文件hash与run.before全等；PG容器ID未更换。没有调用迁移execute或改写历史状态。host HTTP/HTTPS、GitHub Runner及外部主协调的health/ready/version均通过。
+- 原两恢复镜像仍可inspect，旧10件材料sha/size/mode逐件保持。新dump/attachments/config三件均0600，network-none/tmpfs同版本PG完整pg_restore --exit-on-error及登记原时间戳全等PASS。主机完整证据与bundle保留于`.release-image-recovery/44070050685-1/`，制品父/run目录root0700，私有快照0600；没有上传ENV/config秘密或生产业务数据。15432监听已关闭，临时restore容器已删除，未prune镜像或旧恢复材料。
+- 独立只读审查复核生产前后metadata、实际容器链、迁移state原始hash、旧材料hash及控制脚本fbf7b7a Git对象到现场字节hash均PASS；原协调会话另独立核公网与72登记。现场/Actions原始记录及脱敏JSON位于工作区外`ghcr-recovery-evidence-20261117/`，Actions artifact为application-recovery-evidence。
+- ERP证书已限定续至2027-02-15，SAN仅ERP，nginx -t后平滑reload，53份配置hash及其他11域基线保持。共享timer failed/resources、其他两个域的旧过期证书、未启用的main/production平台保护及9件旧0644恢复材料仍为明确残余；本次未改共享权限/其他域，不把技术部署通过外推为这些债务或业务岗位准入已关闭。

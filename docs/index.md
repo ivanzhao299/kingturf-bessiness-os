@@ -1,6 +1,6 @@
 # docs/index.md（全部文档索引）
 
-[GHCR传输修复与已迁移发布恢复](tasks/ghcr-transport-recovery-2026-11-17.md)：2026-11-17正式授权、生产刷新、身份链及部署验收。
+[GHCR传输修复与已迁移发布恢复](tasks/ghcr-transport-recovery-2026-11-17.md)：2026-11-17正式授权及最终验收；PR47/48、成功run44070050685、72未重执行与恢复保全。
 
 [V1.0 Batch4交付](productization/batch4-delivery-2026-10-26.md)：G5应用工厂/总分发收口、最终同SHA回执及独立复核边界。
 
