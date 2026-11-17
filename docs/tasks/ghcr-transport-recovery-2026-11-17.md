@@ -69,3 +69,7 @@ PR47已正常合并至91740514dc3178ba0e758fbaef7e4b4f57fb06ae，精确主线CI4
 修复后已在独立Docker29.5.1 containerd daemon内**直接执行仓库smoke_release_images.sh原字节入口到末尾**并退出0。主机与容器脚本SHA256均0e6a66512141d3b452f7aceda3b2722a8f6836231a0a523a799e6dc689e7a10c。外部适配仅测试DB地址改为同隔离daemon的PG bridge IP/相同5432和测试凭据；API3000、Web8080、脚本逻辑及参数数组未改，工作流仍使用已发布到runner loopback的CI PG。真实配置解析、API health/ready/version、write fence、Web HTML和实际容器identity全部通过，精确日志exact-smoke-success.log保留。
 
 同时用recover脚本中的原Python提取片段在root隔离daemon真实执行：archive刻意携带uid/gid12345、目录0777、文件0666；data filter后控制文件owner0/mode0644、run目录owner0/mode0700，原字节全等。此为实证安全补强，不扩大其余发布架构。
+
+## 当前最终状态（2026-11-17 19:14 Singapore后复核）
+
+PR48合并fbf7b7a，主线CI44068484102 success后正式run44070050685全部success。应用SHA45605d3、控制SHAfbf7b7a分别固定；主协调与独立审查证实运行API/Web批准根/manifest/config/diff IDs及实际容器全链匹配、内外探针与marker通过、72条含applied_at和迁移state原始字节hash全等、PG容器未变、原两恢复镜像与10材料全保留、新三私有联合备份与隔离恢复PASS。15432无监听、临时restore容器已移除。生产技术部署及验收完成。详见[正式验收](../evidence/ghcr-production-acceptance-2026-11-17.md)。本步只补最终文档，最后文档head仍须完整ci:local，生产服务不再改动。

@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[GHCR正式生产验收](evidence/ghcr-production-acceptance-2026-11-17.md)：PR47/48、正式run44070050685成功、实际字节链/72未重执行/恢复保全与残余。
+
 [GHCR传输修复与已迁移发布恢复](tasks/ghcr-transport-recovery-2026-11-17.md)：2026-11-17正式授权、生产刷新、身份链及部署验收。
 
 [V1.0 Batch4交付](productization/batch4-delivery-2026-10-26.md)：G5应用工厂/总分发收口、最终同SHA回执及独立复核边界。
