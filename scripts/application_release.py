@@ -85,7 +85,7 @@ def precheck(bundle):
         images.require(c['State']['Running'] and c['State'].get('Health', {}).get('Status') == 'healthy', 'Current recovery container unavailable')
     marker = (ROOT / '.release-sha').read_text().strip()
     probe('http://127.0.0.1:4332', marker)
-    return {'registry': rows, 'migration_state_hashes': state_hashes(), 'previous_sha': marker, 'recovery_images': [{'name':c['Name'],'id':c['Image'],'ref':c['Config']['Image']} for c in containers]}
+    return {'write_channels':verify_write_channels(), 'registry': rows, 'migration_state_hashes': state_hashes(), 'previous_sha': marker, 'recovery_images': [{'name':c['Name'],'id':c['Image'],'ref':c['Config']['Image']} for c in containers]}
 
 
 def private_write(path, data):
@@ -98,10 +98,36 @@ def checkpoint(bundle, phase):
     atomic_json(bundle/'application-state.json',{'phase':phase,'at_utc':datetime.now(timezone.utc).isoformat(),'migration_execution':'NOT_INVOKED'})
 
 
+def verify_write_channels():
+    # Restrict observed runtime write access, not merely currently active queries.
+    ids=command(['docker','ps','-aq','--filter','label=com.docker.compose.project='+PROJECT]).decode().split()
+    project=json.loads(command(['docker','inspect',*ids]))
+    by_service={c['Config']['Labels'].get('com.docker.compose.service'):c for c in project}
+    images.require(len(project)==3 and set(by_service)=={'api','web','postgres'},'Unexpected production project writer inventory')
+    pg=by_service['postgres']
+    images.require(not pg['HostConfig'].get('PortBindings') and pg['HostConfig']['NetworkMode']!='host','Production database must not publish host ports')
+    networks=list(pg['NetworkSettings']['Networks'])
+    images.require(networks==[PROJECT+'_default'],'Unexpected production database network')
+    network=json.loads(command(['docker','network','inspect',networks[0]]))[0]
+    images.require(set(network.get('Containers',{}))<={c['Id'] for c in project},'Other container can access production database network')
+    attachments=Path('/data/kingturf-erp-data/attachments')
+    running=command(['docker','ps','-q']).decode().split()
+    all_containers=json.loads(command(['docker','inspect',*running]))
+    for c in all_containers:
+        if c['Id']==by_service['api']['Id']:
+            continue
+        for mount in c['Mounts']:
+            if mount['Type']=='bind' and mount.get('RW'):
+                source=Path(mount['Source'])
+                images.require(not (source==attachments or source in attachments.parents or attachments in source.parents),'Additional container can write approved attachments')
+    return {'database_network':networks[0],'database_host_ports':False,'network_members':sorted(v['Name'] for v in network.get('Containers',{}).values()),'attachment_container_writer':'api_only','scope':'Docker runtime channels; privileged host operations remain coordinated by the authorized operator'}
+
+
 def assert_drained():
     state=json.loads(command(['docker','inspect',PROJECT+'-api-1']))[0]['State']
     images.require(not state['Running'],'API shutdown fence absent')
-    sql="BEGIN READ ONLY; SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND pid<>pg_backend_pid() AND backend_type='client backend' AND state<>'idle'; COMMIT;"
+    verify_write_channels()
+    sql="BEGIN READ ONLY; SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND pid<>pg_backend_pid() AND backend_type='client backend'; COMMIT;"
     for sample in range(3):
         active=command(['docker','exec','-i',PROJECT+'-postgres-1','sh','-c','exec psql -X -qAt --username="$POSTGRES_USER" --dbname="$POSTGRES_DB"'],data=sql.encode())
         images.require(active.strip()==b'0','Database activity remained after API stop')
@@ -188,6 +214,7 @@ def backup(bundle):
         images.require(restored == before['registry'], 'Isolated restore migration metadata differs')
     finally:
         command(['docker', 'rm', '-f', scratch])
+    assert_drained()
     before['backup'] = {str(p.relative_to(ROOT)): {'sha256':images.checksum(p),'size':p.stat().st_size} for p in (dump_path,attach,config)}
     before['isolated_restore'] = 'PASS'
     atomic_json(bundle / 'before.json', before)

@@ -73,9 +73,31 @@ class ApplicationRecoveryTest(unittest.TestCase):
         with mock.patch.object(ar,'command',return_value=json.dumps([{'State':{'Running':True}}]).encode()):
             with self.assertRaisesRegex(RuntimeError,'shutdown fence'):
                 ar.assert_drained()
-        with mock.patch.object(ar,'command',side_effect=[json.dumps([{'State':{'Running':False}}]).encode(),b'1']):
+        with mock.patch.object(ar,'verify_write_channels'),mock.patch.object(ar,'command',side_effect=[json.dumps([{'State':{'Running':False}}]).encode(),b'1']):
             with self.assertRaisesRegex(RuntimeError,'activity'):
                 ar.assert_drained()
+
+    def test_write_channels_reject_ports_other_network_clients_and_attachment_writers(self):
+        ids=['api-id','web-id','pg-id']
+        project=[{'Id':i,'Config':{'Labels':{'com.docker.compose.service':s}},'HostConfig':{'PortBindings':{},'NetworkMode':ar.PROJECT+'_default'},'NetworkSettings':{'Networks':{ar.PROJECT+'_default':{}}},'Mounts':[]} for i,s in zip(ids,('api','web','postgres'))]
+        network={'Containers':{i:{'Name':i} for i in ids}}
+        def replies(p=project,n=network,r=project):
+            return [' '.join(ids).encode(),json.dumps(p).encode(),json.dumps([n]).encode(),' '.join(ids).encode(),json.dumps(r).encode()]
+        with mock.patch.object(ar,'command',side_effect=replies()):
+            self.assertFalse(ar.verify_write_channels()['database_host_ports'])
+        import copy
+        changed=copy.deepcopy(project);changed[2]['HostConfig']['PortBindings']={'5432/tcp':[{'HostPort':'5432'}]}
+        with mock.patch.object(ar,'command',side_effect=replies(p=changed)):
+            with self.assertRaisesRegex(RuntimeError,'publish host ports'):
+                ar.verify_write_channels()
+        changed_network=copy.deepcopy(network);changed_network['Containers']['unknown']={'Name':'external-writer'}
+        with mock.patch.object(ar,'command',side_effect=replies(n=changed_network)):
+            with self.assertRaisesRegex(RuntimeError,'Other container'):
+                ar.verify_write_channels()
+        changed=copy.deepcopy(project);changed[1]['Mounts']=[{'Type':'bind','Source':'/data','RW':True}]
+        with mock.patch.object(ar,'command',side_effect=replies(r=changed)):
+            with self.assertRaisesRegex(RuntimeError,'attachments'):
+                ar.verify_write_channels()
 
     def test_application_path_contains_no_migration_executor_or_ddl(self):
         import ast

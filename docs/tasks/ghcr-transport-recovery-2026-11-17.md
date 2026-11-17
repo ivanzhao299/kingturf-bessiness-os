@@ -32,3 +32,11 @@
 - 新授权工件类型是delegated_application_recovery，operator=codex、来源为本次用户授权，按实际运行时间生成有限执行窗口；不填写人类approver，不修改旧迁移审批。固定控制SHA及候选SHA由可信workflow外传并与工件精确比对。
 
 仍待：完整切换/失败恢复隔离演练、最终CI、独立终审、PR/main集成、正式Actions和生产验收。当前未部署。
+
+## 独立复核后的补强与真实应用演练
+
+- 独立复核指出切换失败的回退需要实证、联合备份必须在停写后、需核外部写通道。全部按此补强；不以停止即安全作为部署完成。
+- Docker29.5.1 containerd隔离环境（真实批准API/Web+PG72schema）已完成停API、联合备份、无网络tmpfs PG真实restore、原registry含applied_at全等。故意在API已停后使授权过期，switch非零拒绝并通过真实Compose原image ID恢复API/Web健康，状态RECOVERED_PREVIOUS_APPLICATION。随后新run正向切换PASS/FULLY_MATCHED/NOT_INVOKED。该隔离fixture仅把公网探针路由到本地，不计正式公网验收。
+- 实际Docker读取被篡改层时拒绝：filesystem layer verification failed。另10个OCI工具用例覆盖缺失/截断/等长篡改、错误root、descriptor size、缺目标平台、attestation完整性、symlink和真实HTTP范围。
+- 生产只读require-full预检真实PASS；只读写通道库存证实PG无宿主发布端口、网络精确API/Web/PG、附件仅API可写。新gate在停止前后和备份后重查这些运行通道；排空检查包括idle在内的所有其他client backend必须为0。特权主机运维仍须由授权协调，代码不能阻止root的独立操作。
+- 运维测试102项一轮通过。首完整CI在04b0612启动后独立审查引出上述写通道增量，故不作为最终干净HEAD验证；最终增量提交后重跑完整CI。
