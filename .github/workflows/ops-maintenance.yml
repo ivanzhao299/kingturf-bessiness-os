@@ -1,0 +1,114 @@
+name: KingTurf Ops Maintenance
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'dispose-legacy-outbox | cleanup-staged'
+        required: true
+        type: choice
+        options:
+          - dispose-legacy-outbox
+          - cleanup-staged
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      control_sha: ${{ steps.guard.outputs.control_sha }}
+      mode: ${{ steps.mode.outputs.mode }}
+    env:
+      RELEASE_CONTROL_SHA: ${{ github.workflow_sha }}
+      MODE: ${{ inputs.mode }}
+    steps:
+      - name: Reject untrusted dispatch context and malformed input
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = ivanzhao299/kingturf-bessiness-os
+          test "$GITHUB_REF" = refs/heads/main
+          [[ "$MODE" == dispose-legacy-outbox || "$MODE" == cleanup-staged ]]
+      - name: Checkout immutable maintenance control
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.workflow_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.13.0
+      - name: Verify canonical origin and main history
+        id: guard
+        run: node scripts/validate_release.mjs
+      - name: Export validated mode
+        id: mode
+        run: echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+
+  run-maintenance:
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 30
+    concurrency:
+      group: kingturf-erp-production
+      cancel-in-progress: false
+    env:
+      MODE: ${{ needs.validate.outputs.mode }}
+      PROD_SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
+      PROD_SSH_PORT: ${{ secrets.PROD_SSH_PORT }}
+      PROD_SSH_USER: ${{ secrets.PROD_SSH_USER }}
+      PROD_DEPLOY_PATH: ${{ secrets.PROD_DEPLOY_PATH }}
+    steps:
+      - name: Checkout immutable maintenance control
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.validate.outputs.control_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Bind control script bytes
+        id: bytes
+        run: |
+          set -euo pipefail
+          sha256sum scripts/operations/dispose_legacy_outbox.py > control.sha256
+          echo "sha=$(sha256sum scripts/operations/dispose_legacy_outbox.py | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+      - name: Pin independently verified production SSH host key
+        run: |
+          set -euo pipefail
+          known_hosts_file="$RUNNER_TEMP/kingturf-production-known-hosts"
+          cp infra/ssh/production_known_hosts "$known_hosts_file"
+          chmod 600 "$known_hosts_file"
+          host_key_name="$PROD_SSH_HOST"
+          if [ "$PROD_SSH_PORT" != 22 ]; then host_key_name="[$PROD_SSH_HOST]:$PROD_SSH_PORT"; fi
+          ssh-keygen -F "$host_key_name" -f "$known_hosts_file" > "$known_hosts_file.matches"
+          ssh-keygen -l -f "$known_hosts_file.matches" > /dev/null
+          printf 'SSH_KNOWN_HOSTS_FILE=%s\n' "$known_hosts_file" >> "$GITHUB_ENV"
+      - uses: webfactory/ssh-agent@v0.10.0
+        with:
+          ssh-private-key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+      - name: Stage and run maintenance mode (fail-closed)
+        run: |
+          set -euo pipefail
+          test "$PROD_DEPLOY_PATH" = /data/kingturf-erp
+          STAGED="/tmp/ops-maint-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          ssh_transport="ssh -o BatchMode=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -o KexAlgorithms=curve25519-sha256 -p $PROD_SSH_PORT"
+          ssh -o BatchMode=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -o KexAlgorithms=curve25519-sha256 -p $PROD_SSH_PORT "$PROD_SSH_USER@$PROD_SSH_HOST" "set -eu; rm -rf '$STAGED'; mkdir -m 700 -p '$STAGED'"
+          rsync -az --partial -e "$ssh_transport" scripts/operations/dispose_legacy_outbox.py "$PROD_SSH_USER@$PROD_SSH_HOST:$STAGED/"
+          ssh -o BatchMode=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -o KexAlgorithms=curve25519-sha256 -p $PROD_SSH_PORT "$PROD_SSH_USER@$PROD_SSH_HOST" "set -eu; cd '$STAGED'; sha256sum dispose_legacy_outbox.py | grep -q '${{ steps.bytes.outputs.sha }}'"
+          mkdir -p "$RUNNER_TEMP/results"
+          ssh -o BatchMode=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -o KexAlgorithms=curve25519-sha256 -p $PROD_SSH_PORT "$PROD_SSH_USER@$PROD_SSH_HOST" \
+            "python3 '$STAGED/dispose_legacy_outbox.py' '$MODE' --prod-root /data/kingturf-erp" \
+            | tee "$RUNNER_TEMP/results/maintenance-log.jsonl"
+          grep -q '"step": "done"' "$RUNNER_TEMP/results/maintenance-log.jsonl"
+          ssh -o BatchMode=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -o KexAlgorithms=curve25519-sha256 -p $PROD_SSH_PORT "$PROD_SSH_USER@$PROD_SSH_HOST" "rm -rf '$STAGED'"
+      - name: Upload maintenance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maintenance-evidence
+          path: ${{ runner.temp }}/results/
+          if-no-files-found: ignore
+          retention-days: 90
