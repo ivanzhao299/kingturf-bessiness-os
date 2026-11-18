@@ -62,7 +62,9 @@ function fixture(entries = defaultEntries, available = true) {
     createContact: vi.fn(),
     createActivity: vi.fn(),
   };
-  const organizations = { list: vi.fn().mockResolvedValue([{ id: 'organization' }]) };
+  const organizations = {
+    list: vi.fn().mockResolvedValue({ items: [{ id: 'organization' }], nextCursor: null }),
+  };
   const app = buildApp({
     auth: {
       authenticate: vi.fn().mockResolvedValue(context),
@@ -478,9 +480,10 @@ describe('inline combined matcher/POST503/unsupported and organization boundary'
   it('organization matcher must remain: authorized GET reaches original organization repository withoutCRM', async () => {
     const f = fixture([['organization:read', read]], false);
     expect(await f.dispatch('/api/v1/organizations', null, { method: 'GET' })).toEqual(
-      response(200, [{ id: 'organization' }]),
+      response(200, { items: [{ id: 'organization' }], nextCursor: null }),
     );
-    expect(f.organizations.list).toHaveBeenCalledExactlyOnceWith(actor.companyId);
+    // B2（TD-API-003）：治理列表统一 cursor 分页，未传 query 时默认 filter { limit: 50 }。
+    expect(f.organizations.list).toHaveBeenCalledExactlyOnceWith(actor.companyId, { limit: 50 });
     noCalls(f);
   });
 });

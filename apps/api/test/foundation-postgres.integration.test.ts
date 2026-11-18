@@ -139,10 +139,11 @@ describe('JTF-P0-E12..E15 PostgreSQL acceptance', () => {
         )
       ).rows[0]?.count,
     ).toBe('1');
+    // B2（TD-API-003）：仓储 list 统一返回 { items, nextCursor } 分页信封。
     expect(
-      (await repo.list({ companyId: company, employeeId: recipient })).map((x) => x.id),
+      (await repo.list({ companyId: company, employeeId: recipient })).items.map((x) => x.id),
     ).toEqual([first.id]);
-    expect(await repo.list({ companyId: otherCompany, employeeId: outsider })).toEqual([]);
+    expect((await repo.list({ companyId: otherCompany, employeeId: outsider })).items).toEqual([]);
     await repo.setRead(first.id, true, { companyId: company, employeeId: recipient }, randomUUID());
     expect(await repo.unread({ companyId: company, employeeId: recipient })).toBe(0);
     await expect(

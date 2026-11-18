@@ -456,8 +456,10 @@ describe('real HTTP password security across two API instances and PostgreSQL', 
     expect((await request(1, '/auth/session', outsiderToken)).status).toBe(200);
     const response = await request(0, '/employees', ordinaryToken);
     expect(response.status).toBe(200);
-    const body = (await response.json()) as { id: string }[];
-    expect(body.map((employee) => employee.id)).toEqual([ordinary.employeeId]);
+    // B2（TD-API-003）：治理列表响应统一为 { items, nextCursor } 分页信封。
+    const body = (await response.json()) as { items: { id: string }[]; nextCursor: string | null };
+    expect(body.items.map((employee) => employee.id)).toEqual([ordinary.employeeId]);
+    expect(body.nextCursor).toBeNull();
   });
 
   it('keeps pre-existing opaque token rows compatible until their own identity changes password', async () => {

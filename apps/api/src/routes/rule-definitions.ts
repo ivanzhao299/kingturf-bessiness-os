@@ -1,12 +1,13 @@
 import type { ApiDependencies } from '../app.ts';
 import { defineRoute, type RouteDefinition, type RouteMatch } from './types.ts';
+import { parsePageFilter, type PageFilter } from '../pagination.ts';
 
 type Rules = NonNullable<ApiDependencies['rules']>;
 type ListArgs = Parameters<Rules['list']>;
 type CreateArgs = Parameters<Rules['create']>;
 type PublishArgs = Parameters<Rules['publish']>;
 type VersionArgs = Parameters<Rules['createVersion']>;
-type ListInput = Readonly<{ companyId: ListArgs[0] }>;
+type ListInput = Readonly<{ companyId: ListArgs[0]; filter: PageFilter }>;
 type PublishInput = Readonly<{ id: PublishArgs[0]; version: PublishArgs[1] }>;
 type VersionInput = Readonly<{ id: VersionArgs[0]; input: VersionArgs[1] }>;
 type BodyParsers = Readonly<{
@@ -64,10 +65,13 @@ export function ruleDefinitionListRoutes(context: ListContext): readonly RouteDe
     defineRoute({
       method: 'GET',
       match: (pathname) => (pathname === '/api/v1/rules' ? { params: [] } : null),
-      validate: (): ListInput => ({ companyId: context.actor.companyId }),
+      validate: (request): ListInput => ({
+        companyId: context.actor.companyId,
+        filter: parsePageFilter(request.query),
+      }),
       handler: async (_request, _match, input) => ({
         statusCode: 200,
-        body: { items: await context.repository.list(input.companyId) },
+        body: await context.repository.list(input.companyId, input.filter),
       }),
     }),
   ];

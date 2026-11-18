@@ -13,6 +13,8 @@ const base = '/api/v1/workflows';
 const spec = { arbitrary: { retained: true }, steps: [] };
 const row = { id, version: { version: 7 }, private: { retained: true } };
 const rows = [row];
+// B2（TD-API-003）：治理列表响应统一为 { items, nextCursor } 分页信封。
+const page = { items: rows, nextCursor: null };
 const routes = [
   { kind: 'list', method: 'GET', pathname: base, capability: 'workflow:read' },
   { kind: 'create', method: 'POST', pathname: base, capability: 'workflow:create' },
@@ -67,12 +69,12 @@ function fixture(
   };
   const get = vi.spyOn(permissions, 'get');
   const repository = {
-    list: vi.fn<Workflows['list']>().mockResolvedValue(rows),
+    list: vi.fn<Workflows['list']>().mockResolvedValue(page),
     create: vi.fn<Workflows['create']>().mockResolvedValue(row),
     createVersion: vi.fn<Workflows['createVersion']>().mockResolvedValue(row),
     publish: vi.fn<Workflows['publish']>().mockResolvedValue(row),
     start: vi.fn().mockResolvedValue({ id: 'instance-neighbor' }),
-    listTasks: vi.fn().mockResolvedValue([{ id: 'task-neighbor' }]),
+    listTasks: vi.fn().mockResolvedValue({ items: [{ id: 'task-neighbor' }], nextCursor: null }),
     decide: vi.fn().mockResolvedValue({ id: 'decision-neighbor' }),
   };
   const rules = { createVersion: vi.fn().mockResolvedValue({ id: 'rule-neighbor' }) };
@@ -174,8 +176,9 @@ describe('old workflow definition contracts', () => {
     const f = fixture();
     const actual = await f.dispatch(route);
     if (route.kind === 'list') {
-      expect(actual).toEqual(response(200, { items: rows }));
-      expect(f.repository.list).toHaveBeenCalledExactlyOnceWith(actor.companyId);
+      expect(actual).toEqual(response(200, page));
+      // B2（TD-API-003）：治理列表统一 cursor 分页，未传 query 时默认 filter { limit: 50 }。
+      expect(f.repository.list).toHaveBeenCalledExactlyOnceWith(actor.companyId, { limit: 50 });
       expect(f.repository.list.mock.contexts).toEqual([f.repository]);
     } else if (route.kind === 'create') {
       expect(actual).toEqual(response(201, row));
@@ -212,21 +215,22 @@ describe('old workflow definition contracts', () => {
     expect(f.repository.listTasks).not.toHaveBeenCalled();
     expect(f.repository.decide).not.toHaveBeenCalled();
   });
-  it('GET newwrapper preserves array identity and ignores body/query/header', async () => {
+  it('GET forwards repository page identity and ignores body/query/header', async () => {
     const f = fixture();
     const first = await f.dispatch(routes[0], { body: false });
     const second = await f.dispatch(routes[0], { body: null });
-    expect(first).toEqual(response(200, { items: rows }));
-    expect(first.body).not.toBe(rows);
-    expect(first.body).not.toBe(second.body);
+    // B2（TD-API-003）：路由直传仓储分页信封，不再逐请求新建包装。
+    expect(first).toEqual(response(200, page));
+    expect(first.body).toBe(page);
+    expect(second.body).toBe(page);
     if (typeof first.body !== 'object' || first.body === null || !('items' in first.body))
       throw new Error('Expected wrapper');
     expect(first.body.items).toBe(rows);
   });
   it('GET empty items remains wrapper', async () => {
     const f = fixture();
-    f.repository.list.mockResolvedValue([]);
-    expect(await f.dispatch(routes[0])).toEqual(response(200, { items: [] }));
+    f.repository.list.mockResolvedValue({ items: [], nextCursor: null });
+    expect(await f.dispatch(routes[0])).toEqual(response(200, { items: [], nextCursor: null }));
   });
   it.each([{ fields: null }, { fields: [] }, { fields: ['unrelated'] }] as const)(
     'Q0 fields $fields do not project',
@@ -507,9 +511,10 @@ describe('old workflow definition contracts', () => {
       correlationId,
     );
     expect(await f.dispatch(routes[0], { pathname: '/api/v1/workflow-tasks', body: null })).toEqual(
-      response(200, [{ id: 'task-neighbor' }]),
+      response(200, { items: [{ id: 'task-neighbor' }], nextCursor: null }),
     );
-    expect(f.repository.listTasks).toHaveBeenCalledExactlyOnceWith(actor);
+    // B2（TD-API-003）：治理列表统一 cursor 分页，未传 query 时默认 filter { limit: 50 }。
+    expect(f.repository.listTasks).toHaveBeenCalledExactlyOnceWith(actor, { limit: 50 });
     expect(
       await f.dispatch(routes[1], {
         pathname: `/api/v1/workflow-tasks/${id}/decisions`,

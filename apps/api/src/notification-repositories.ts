@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { pageEnvelope, type Page, type PageFilter } from './pagination.ts';
 import type { Database, Transaction } from '@kingturf/database';
 import { employeeScopedPredicate, type EmployeeScopeOptions } from './scope-sql.ts';
 import { writeFoundationEmptyAudit as audit } from './audit-outbox.ts';
@@ -196,13 +197,29 @@ export class PostgresNotificationRepository {
       createdAt: r.created_at.toISOString(),
     };
   }
-  public async list(actor: Actor, unreadOnly = false): Promise<readonly NotificationDto[]> {
-    return (
+  public async list(
+    actor: Actor,
+    unreadOnly = false,
+    filter: PageFilter = { limit: 50 },
+  ): Promise<Page<NotificationDto>> {
+    const values: unknown[] = [actor.companyId, actor.employeeId, unreadOnly];
+    let keyset = '';
+    if (filter.cursor) {
+      values.push(filter.cursor);
+      keyset = ` AND (r.created_at,n.id)<(SELECT x.created_at,x.notification_id FROM notification_recipients x WHERE x.tenant_id=$1 AND x.employee_id=$2 AND x.notification_id=$4::uuid)`;
+    }
+    values.push(filter.limit + 1);
+    const rows = (
       await this.db.query<NotificationReadRow>(
-        'SELECT n.*,r.read_at FROM notification_recipients r JOIN notifications n ON n.id=r.notification_id AND n.tenant_id=r.tenant_id WHERE r.tenant_id=$1 AND r.employee_id=$2 AND ($3=false OR r.read_at IS NULL) ORDER BY r.created_at DESC LIMIT 100',
-        [actor.companyId, actor.employeeId, unreadOnly],
+        `SELECT n.*,r.read_at FROM notification_recipients r JOIN notifications n ON n.id=r.notification_id AND n.tenant_id=r.tenant_id WHERE r.tenant_id=$1 AND r.employee_id=$2 AND ($3=false OR r.read_at IS NULL)${keyset} ORDER BY r.created_at DESC,n.id DESC LIMIT $${String(values.length)}`,
+        values,
       )
-    ).rows.map((r) => this.map(r));
+    ).rows;
+    return pageEnvelope(
+      rows.map((r) => this.map(r)),
+      filter,
+      (row) => row.id,
+    );
   }
   public async find(id: string, actor: Actor): Promise<NotificationDto | null> {
     const r = await this.db.query<NotificationReadRow>(

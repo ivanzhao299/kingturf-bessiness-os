@@ -164,6 +164,9 @@ export function validateBusinessObjectSchema(value: unknown): BusinessObjectSche
 }
 
 export type Actor = Readonly<{ employeeId: Identifier; companyId: Identifier }>;
+// B2（TD-API-003）：治理列表统一 cursor 分页契约（limit 1-100 默认 50 + opaque cursor）。
+export type ListPageFilter = Readonly<{ limit: number; cursor?: string }>;
+export type ListPage<T> = Readonly<{ items: readonly T[]; nextCursor: string | null }>;
 export type AuthorizationContext = Readonly<{
   actor: Actor;
   permissions: ReadonlyMap<
@@ -621,7 +624,7 @@ export type OrganizationRepository = {
     correlationId: string,
   ): Promise<OrganizationDto>;
   findById(id: Identifier, companyId: Identifier): Promise<OrganizationDto | null>;
-  list(companyId: Identifier): Promise<readonly OrganizationDto[]>;
+  list(companyId: Identifier, filter?: ListPageFilter): Promise<ListPage<OrganizationDto>>;
   update(
     id: Identifier,
     companyId: Identifier,
@@ -650,7 +653,8 @@ export type EmployeeRepository = {
     scopes: readonly DataScope[],
     actorId: Identifier,
     anchors?: readonly ScopeAnchor[],
-  ): Promise<readonly EmployeeDto[]>;
+    filter?: ListPageFilter,
+  ): Promise<ListPage<EmployeeDto>>;
   update(
     id: Identifier,
     companyId: Identifier,
@@ -966,20 +970,23 @@ export type UserAccessProfileRecord = Readonly<{
   }>[];
 }>;
 export type AuthorizationRepository = {
-  listRoles(companyId: Identifier): Promise<readonly RoleRecord[]>;
+  listRoles(companyId: Identifier, filter?: ListPageFilter): Promise<ListPage<RoleRecord>>;
   createRole(
     input: Readonly<{ code: string; name: string }>,
     actor: Actor,
     correlationId: string,
   ): Promise<RoleRecord>;
-  listPermissions(): Promise<readonly PermissionRecord[]>;
+  listPermissions(filter?: ListPageFilter): Promise<ListPage<PermissionRecord>>;
   createPermission(
     input: Readonly<{ capability: PermissionKey; description: string }>,
     actor: Actor,
     correlationId: string,
   ): Promise<PermissionRecord>;
   isSystemAdministrator(actor: Actor): Promise<boolean>;
-  listGrants(companyId: Identifier): Promise<readonly RolePermissionGrantRecord[]>;
+  listGrants(
+    companyId: Identifier,
+    filter?: ListPageFilter,
+  ): Promise<ListPage<RolePermissionGrantRecord>>;
   grant(
     input: Readonly<{
       roleId: Identifier;
@@ -996,7 +1003,10 @@ export type AuthorizationRepository = {
     actor: Actor,
     correlationId: string,
   ): Promise<void>;
-  listAssignments(companyId: Identifier): Promise<readonly RoleAssignmentRecord[]>;
+  listAssignments(
+    companyId: Identifier,
+    filter?: ListPageFilter,
+  ): Promise<ListPage<RoleAssignmentRecord>>;
   assign(
     employeeId: Identifier,
     roleId: Identifier,
@@ -1009,7 +1019,10 @@ export type AuthorizationRepository = {
     actor: Actor,
     correlationId: string,
   ): Promise<void>;
-  listScopeGrants(companyId: Identifier): Promise<readonly DirectScopeGrantRecord[]>;
+  listScopeGrants(
+    companyId: Identifier,
+    filter?: ListPageFilter,
+  ): Promise<ListPage<DirectScopeGrantRecord>>;
   grantScope(
     input: Readonly<{
       employeeId: Identifier;
@@ -1021,7 +1034,10 @@ export type AuthorizationRepository = {
     correlationId: string,
   ): Promise<DirectScopeGrantRecord>;
   revokeScope(id: Identifier, actor: Actor, correlationId: string): Promise<void>;
-  listUserAccessProfiles?(companyId: Identifier): Promise<readonly UserAccessProfileRecord[]>;
+  listUserAccessProfiles?(
+    companyId: Identifier,
+    filter?: ListPageFilter,
+  ): Promise<ListPage<UserAccessProfileRecord>>;
   setIdentityActive?(
     identityId: Identifier,
     active: boolean,

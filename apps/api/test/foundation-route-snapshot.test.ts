@@ -151,7 +151,8 @@ describe('foundation route migration snapshot', () => {
       expect(response.statusCode, `${request.method} ${request.pathname}`).toBeLessThan(300);
       expect(response.headers?.['x-correlation-id']).toMatch(UUID_PATTERN);
     }
-    expect(notifications.list).toHaveBeenCalledWith(actor, true);
+    // B2（TD-API-003）：治理列表统一 cursor 分页，未传 query 时默认 filter { limit: 50 }。
+    expect(notifications.list).toHaveBeenCalledWith(actor, true, { limit: 50 });
     expect(events.complete).toHaveBeenCalledWith(eventId, actor, 'c', token);
   });
 

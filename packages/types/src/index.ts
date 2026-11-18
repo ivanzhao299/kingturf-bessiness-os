@@ -54,6 +54,8 @@ export type AuditEventFilter = PageRequest &
     correlationId?: Identifier;
     from?: string;
     to?: string;
+    outcome?: 'SUCCESS' | 'FAILURE';
+    query?: string;
   }>;
 export type MasterCategoryDto = VersionReference &
   EffectiveRange &

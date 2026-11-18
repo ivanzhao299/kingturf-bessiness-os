@@ -1,5 +1,6 @@
 import type { ApiDependencies } from '../app.ts';
 import { defineRoute, type RouteDefinition, type RouteMatch } from './types.ts';
+import { parsePageFilter, type PageFilter } from '../pagination.ts';
 
 type Workflows = NonNullable<ApiDependencies['workflows']>;
 type StartArgs = Parameters<Workflows['start']>;
@@ -11,7 +12,7 @@ type StartInput = Readonly<{
   subjectId: StartArgs[2];
   key: StartArgs[3];
 }>;
-type ListInput = Readonly<{ actor: ListArgs[0] }>;
+type ListInput = Readonly<{ actor: ListArgs[0]; filter: PageFilter }>;
 type DecisionInput = Readonly<{
   taskId: DecisionArgs[0];
   decision: DecisionArgs[1];
@@ -92,10 +93,13 @@ export function workflowRuntimeTaskListRoutes(context: ListContext): readonly Ro
     defineRoute({
       method: 'GET',
       match: (pathname) => (pathname === '/api/v1/workflow-tasks' ? { params: [] } : null),
-      validate: (): ListInput => ({ actor: context.actor }),
+      validate: (request): ListInput => ({
+        actor: context.actor,
+        filter: parsePageFilter(request.query),
+      }),
       handler: async (_request, _match, input) => ({
         statusCode: 200,
-        body: await context.repository.listTasks(input.actor),
+        body: await context.repository.listTasks(input.actor, input.filter),
       }),
     }),
   ];

@@ -170,6 +170,10 @@ const groups = JSON.parse(
   baselineSpan?: [number, number];
 }[];
 describe('dispatch group inverse source preservation against fixed f3', () => {
+  // B2（TD-API-003，行为变更已批）：治理列表 list 调用新增 parsePageFilter(request.query)
+  // 分页实参（冻结 f3 基线为单实参/四实参且无 filter）；比对前仅将该已批实参从展开
+  // 文本中归一化移除，其余谓词/解析/调用/续行/返回仍逐字节冻结。
+  const PAGE_FILTER_ARG = /,\s*parsePageFilter\(request\.query\)/gu;
   for (const group of groups)
     it(
       group.name + ' keeps every original predicate, parser, call, continuation and return',
@@ -206,15 +210,24 @@ describe('dispatch group inverse source preservation against fixed f3', () => {
             if (!ts.isVariableDeclaration(n)) throw new Error('Binding missing');
             return n.name.getText(old);
           });
-        expect(
-          firstDifference(
-            tokens(expand(parse('../src/routes/dispatch/' + group.file), group.symbol, bindings)),
-            tokens(originalText),
-          ),
-        ).toBeNull();
+        const expanded = expand(
+          parse('../src/routes/dispatch/' + group.file),
+          group.symbol,
+          bindings,
+        ).replace(PAGE_FILTER_ARG, '');
+        expect(firstDifference(tokens(expanded), tokens(originalText))).toBeNull();
         expect(bindings).toHaveLength(0);
       },
     );
+  it('B2 pagination forwards the parsed page filter in list attempts (TD-API-003)', () => {
+    for (const file of ['organizations.ts', 'employees.ts']) {
+      const source = readFileSync(
+        new URL('../src/routes/dispatch/' + file, import.meta.url),
+        'utf8',
+      );
+      expect(source).toMatch(/\.list\([^)]*parsePageFilter\(request\.query\)/u);
+    }
+  });
 });
 
 it('proof normalization preserves value grouping, type hierarchy and array holes', () => {

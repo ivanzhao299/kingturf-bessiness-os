@@ -1,12 +1,17 @@
 import type { ApiDependencies } from '../app.ts';
 import { defineRoute, type RouteDefinition, type RouteMatch } from './types.ts';
+import { parsePageFilter, type PageFilter } from '../pagination.ts';
 
 type MasterData = NonNullable<ApiDependencies['masterData']>;
 type ListArgs = Parameters<MasterData['listCategories']>;
 type CreateArgs = Parameters<MasterData['createCategory']>;
 type UpdateArgs = Parameters<MasterData['updateCategory']>;
 type DeleteArgs = Parameters<MasterData['deleteCategory']>;
-type ReadInput = Readonly<{ companyId: ListArgs[0]; at: NonNullable<ListArgs[1]> }>;
+type ReadInput = Readonly<{
+  companyId: ListArgs[0];
+  at: NonNullable<ListArgs[1]>;
+  filter: PageFilter;
+}>;
 type UpdateInput = Readonly<{ id: UpdateArgs[0]; input: UpdateArgs[1] }>;
 type DeleteInput = Readonly<{ id: DeleteArgs[0]; version: DeleteArgs[1] }>;
 type BodyParsers = Readonly<{
@@ -58,10 +63,11 @@ export function masterCategoryReadRoutes(context: ReadContext): readonly RouteDe
       validate: (request): ReadInput => ({
         companyId: context.actor.companyId,
         at: request.query?.at ? context.parseEffectiveTimestamp(request.query.at) : new Date(),
+        filter: parsePageFilter(request.query),
       }),
       handler: async (_request, _match, input) => ({
         statusCode: 200,
-        body: await context.repository.listCategories(input.companyId, input.at),
+        body: await context.repository.listCategories(input.companyId, input.at, input.filter),
       }),
     }),
   ];

@@ -125,8 +125,12 @@ describe('JTF-P0-E07..E11 PostgreSQL scenarios', () => {
       actor,
       randomUUID(),
     );
-    expect((await repo.listCategories(company, new Date(firstEffective)))[0]?.name).toBe('Color');
-    expect((await repo.listCategories(company, new Date(secondEffective)))[0]?.name).toBe('Colour');
+    // B2（TD-API-003）：仓储 list 统一返回 { items, nextCursor } 分页信封；
+    // 列表行 SQL 含 name/version 等列，测试按需读取。
+    const categoryAt = async (iso: string): Promise<{ name?: string } | undefined> =>
+      (await repo.listCategories(company, new Date(iso))).items[0] as { name?: string } | undefined;
+    expect((await categoryAt(firstEffective))?.name).toBe('Color');
+    expect((await categoryAt(secondEffective))?.name).toBe('Colour');
     await expect(
       repo.updateCategory(
         categoryId,
@@ -196,7 +200,7 @@ describe('JTF-P0-E07..E11 PostgreSQL scenarios', () => {
       repo.deleteCategory(categoryId, 2, { ...actor, companyId: otherCompany }, randomUUID()),
     ).rejects.toThrow();
     await repo.deleteCategory(categoryId, 2, actor, randomUUID());
-    expect(await repo.listCategories(company, new Date(secondEffective))).toEqual([]);
+    expect((await repo.listCategories(company, new Date(secondEffective))).items).toEqual([]);
     await expect(
       repo.createCategory(
         {
@@ -231,10 +235,10 @@ describe('JTF-P0-E07..E11 PostgreSQL scenarios', () => {
       randomUUID(),
     )) as { id: string };
     await repo.publish(definition.id, 1, actor, randomUUID());
-    expect(await repo.list(company)).toEqual([
+    expect((await repo.list(company)).items).toEqual([
       expect.objectContaining({ id: definition.id, code: 'GENERIC' }),
     ]);
-    expect(await repo.list(otherCompany)).toEqual([]);
+    expect((await repo.list(otherCompany)).items).toEqual([]);
     const values = await Promise.all(
       Array.from({ length: 12 }, (_, i) =>
         repo.allocate(definition.id, `key-${String(i)}`, actor, randomUUID()),
@@ -297,10 +301,10 @@ describe('JTF-P0-E07..E11 PostgreSQL scenarios', () => {
       randomUUID(),
     )) as { id: string };
     await repo.publish(definition.id, 1, actor, randomUUID());
-    expect(await repo.list(company)).toEqual([
+    expect((await repo.list(company)).items).toEqual([
       expect.objectContaining({ id: definition.id, code: 'GENERIC_RULE' }),
     ]);
-    expect(await repo.list(otherCompany)).toEqual([]);
+    expect((await repo.list(otherCompany)).items).toEqual([]);
     const first = await repo.evaluate(definition.id, { flag: true }, 'same', actor, randomUUID());
     const retry = await repo.evaluate(definition.id, { flag: false }, 'same', actor, randomUUID());
     expect(retry).toEqual(first);
@@ -336,10 +340,10 @@ describe('JTF-P0-E07..E11 PostgreSQL scenarios', () => {
       id: string;
     };
     await repo.publish(definition.id, 1, actor, randomUUID());
-    expect(await repo.list(company)).toEqual([
+    expect((await repo.list(company)).items).toEqual([
       expect.objectContaining({ id: definition.id, code: 'GENERIC_FLOW' }),
     ]);
-    expect(await repo.list(otherCompany)).toEqual([]);
+    expect((await repo.list(otherCompany)).items).toEqual([]);
     const subject = randomUUID(),
       started = (await repo.start(
         definition.id,
@@ -361,10 +365,12 @@ describe('JTF-P0-E07..E11 PostgreSQL scenarios', () => {
         )) as { id: string }
       ).id,
     ).toBe(started.id);
-    const task = (await repo.listTasks(approverActor))[0] as { id: string } | undefined;
+    const task = (await repo.listTasks(approverActor)).items[0] as { id: string } | undefined;
     expect(task).toBeTruthy();
     if (!task) throw new Error('Expected workflow task');
-    expect(await repo.listTasks({ companyId: otherCompany, employeeId: outsider })).toEqual([]);
+    expect((await repo.listTasks({ companyId: otherCompany, employeeId: outsider })).items).toEqual(
+      [],
+    );
     await expect(
       repo.start(
         definition.id,

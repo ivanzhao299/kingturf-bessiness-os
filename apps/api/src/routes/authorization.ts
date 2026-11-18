@@ -6,6 +6,7 @@ import {
 import { DATA_SCOPES, type DataScope, type PermissionKey } from '@kingturf/types';
 import type { ApiRequest, ApiResponse } from '../app.ts';
 import { defineRoute, dispatchRoutes, type RouteDefinition, type RouteMatch } from './types.ts';
+import { parsePageFilter } from '../pagination.ts';
 
 type AuthorizationRouteContext = Readonly<{
   repository: AuthorizationRepository | undefined;
@@ -100,7 +101,10 @@ function authorizationRoutes(
       method: 'GET',
       match: literal('/api/v1/roles'),
       validate: null,
-      handler: async () => ({ statusCode: 200, body: await repository.listRoles(actor.companyId) }),
+      handler: async (request) => ({
+        statusCode: 200,
+        body: await repository.listRoles(actor.companyId, parsePageFilter(request.query)),
+      }),
     }),
     defineRoute({
       method: 'POST',
@@ -126,16 +130,19 @@ function authorizationRoutes(
       method: 'GET',
       match: literal('/api/v1/permissions'),
       validate: null,
-      handler: async () => ({ statusCode: 200, body: await repository.listPermissions() }),
+      handler: async (request) => ({
+        statusCode: 200,
+        body: await repository.listPermissions(parsePageFilter(request.query)),
+      }),
     }),
     createPermissionCatalogRoute(context, repository, body),
     defineRoute({
       method: 'GET',
       match: literal('/api/v1/grants'),
       validate: null,
-      handler: async () => ({
+      handler: async (request) => ({
         statusCode: 200,
-        body: await repository.listGrants(actor.companyId),
+        body: await repository.listGrants(actor.companyId, parsePageFilter(request.query)),
       }),
     }),
     defineRoute({
@@ -169,9 +176,9 @@ function authorizationRoutes(
       method: 'GET',
       match: literal('/api/v1/assignments'),
       validate: null,
-      handler: async () => ({
+      handler: async (request) => ({
         statusCode: 200,
-        body: await repository.listAssignments(actor.companyId),
+        body: await repository.listAssignments(actor.companyId, parsePageFilter(request.query)),
       }),
     }),
     defineRoute({
@@ -196,9 +203,9 @@ function authorizationRoutes(
       method: 'GET',
       match: literal('/api/v1/scope-grants'),
       validate: null,
-      handler: async () => ({
+      handler: async (request) => ({
         statusCode: 200,
-        body: await repository.listScopeGrants(actor.companyId),
+        body: await repository.listScopeGrants(actor.companyId, parsePageFilter(request.query)),
       }),
     }),
     defineRoute({

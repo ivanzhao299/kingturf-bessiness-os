@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { pageEnvelope, type PageFilter } from './pagination.ts';
 import type { Database, SqlClient } from '@kingturf/database';
 import { auditScopePredicate } from './scope-sql.ts';
 import {
@@ -111,6 +112,12 @@ export class PostgresAuditRepository {
     };
     if (filter.actorId) add('actor_id=', filter.actorId);
     if (filter.action) add('action=', filter.action);
+    if (filter.outcome) add('outcome=', filter.outcome);
+    if (filter.query)
+      clauses.push(
+        `(a.action ILIKE $${String(values.length + 1)} OR a.target_type ILIKE $${String(values.length + 1)} OR a.correlation_id::text ILIKE $${String(values.length + 1)} OR a.actor_id::text ILIKE $${String(values.length + 1)})`,
+      );
+    if (filter.query) values.push(`%${filter.query}%`);
     if (filter.targetType) add('target_type=', filter.targetType);
     if (filter.targetId) add('target_id=', filter.targetId);
     if (filter.correlationId) add('correlation_id=', filter.correlationId);
@@ -254,13 +261,28 @@ export class PostgresMasterDataRepository {
       });
     });
   }
-  public async listCategories(tenantId: string, at = new Date()) {
-    return (
-      await this.db.query(
-        'SELECT c.id,c.code,c.version,c.deleted_at,v.id version_id,v.name,v.description,v.effective_from,v.effective_to FROM master_categories c JOIN LATERAL(SELECT * FROM master_category_versions v WHERE v.category_id=c.id AND v.tenant_id=$1 AND v.effective_from<=$2 AND (v.effective_to IS NULL OR v.effective_to>$2) ORDER BY v.version DESC LIMIT 1)v ON true WHERE c.tenant_id=$1 AND c.deleted_at IS NULL ORDER BY c.code',
-        [tenantId, at],
-      )
-    ).rows;
+  public async listCategories(
+    tenantId: string,
+    at = new Date(),
+    filter: PageFilter = { limit: 50 },
+  ) {
+    const values: unknown[] = [tenantId, at];
+    let keyset = '';
+    if (filter.cursor) {
+      values.push(filter.cursor);
+      keyset = ` AND (c.code,c.id)>(SELECT x.code,x.id FROM master_categories x WHERE x.tenant_id=$1 AND x.id=$3::uuid)`;
+    }
+    values.push(filter.limit + 1);
+    return pageEnvelope(
+      (
+        await this.db.query<{ id: string }>(
+          `SELECT c.id,c.code,c.version,c.deleted_at,v.id version_id,v.name,v.description,v.effective_from,v.effective_to FROM master_categories c JOIN LATERAL(SELECT * FROM master_category_versions v WHERE v.category_id=c.id AND v.tenant_id=$1 AND v.effective_from<=$2 AND (v.effective_to IS NULL OR v.effective_to>$2) ORDER BY v.version DESC LIMIT 1)v ON true WHERE c.tenant_id=$1 AND c.deleted_at IS NULL${keyset} ORDER BY c.code,c.id LIMIT $${String(values.length)}`,
+          values,
+        )
+      ).rows,
+      filter,
+      (row) => row.id,
+    );
   }
   public async createEntry(
     input: Readonly<{
@@ -310,13 +332,29 @@ export class PostgresMasterDataRepository {
       return row;
     });
   }
-  public async listEntries(tenantId: string, categoryId: string | null, at = new Date()) {
-    return (
-      await this.db.query(
-        'SELECT e.id,e.category_id,e.code,e.version,v.id version_id,v.label,v.value,v.effective_from,v.effective_to FROM master_entries e JOIN LATERAL(SELECT * FROM master_entry_versions v WHERE v.entry_id=e.id AND v.tenant_id=$1 AND v.effective_from<=$3 AND (v.effective_to IS NULL OR v.effective_to>$3) ORDER BY v.version DESC LIMIT 1)v ON true WHERE e.tenant_id=$1 AND e.deleted_at IS NULL AND ($2::uuid IS NULL OR e.category_id=$2) ORDER BY e.code',
-        [tenantId, categoryId, at],
-      )
-    ).rows;
+  public async listEntries(
+    tenantId: string,
+    categoryId: string | null,
+    at = new Date(),
+    filter: PageFilter = { limit: 50 },
+  ) {
+    const values: unknown[] = [tenantId, categoryId, at];
+    let keyset = '';
+    if (filter.cursor) {
+      values.push(filter.cursor);
+      keyset = ` AND (e.code,e.id)>(SELECT x.code,x.id FROM master_entries x WHERE x.tenant_id=$1 AND x.id=$4::uuid)`;
+    }
+    values.push(filter.limit + 1);
+    return pageEnvelope(
+      (
+        await this.db.query<{ id: string }>(
+          `SELECT e.id,e.category_id,e.code,e.version,v.id version_id,v.label,v.value,v.effective_from,v.effective_to FROM master_entries e JOIN LATERAL(SELECT * FROM master_entry_versions v WHERE v.entry_id=e.id AND v.tenant_id=$1 AND v.effective_from<=$3 AND (v.effective_to IS NULL OR v.effective_to>$3) ORDER BY v.version DESC LIMIT 1)v ON true WHERE e.tenant_id=$1 AND e.deleted_at IS NULL AND ($2::uuid IS NULL OR e.category_id=$2)${keyset} ORDER BY e.code,e.id LIMIT $${String(values.length)}`,
+          values,
+        )
+      ).rows,
+      filter,
+      (row) => row.id,
+    );
   }
   public async findEntry(id: string, tenantId: string, at = new Date()) {
     return (
@@ -440,8 +478,15 @@ export class PostgresNumberRepository {
     private readonly db: Database,
     private readonly audit = new TransactionalAuditWriter(),
   ) {}
-  public async list(tenantId: string) {
-    return (
+  public async list(tenantId: string, filter: PageFilter = { limit: 50 }) {
+    const values: unknown[] = [tenantId];
+    let keyset = '';
+    if (filter.cursor) {
+      values.push(filter.cursor);
+      keyset = ` AND (d.code,d.id)>(SELECT x.code,x.id FROM number_definitions x WHERE x.tenant_id=$1 AND x.id=$2::uuid)`;
+    }
+    values.push(filter.limit + 1);
+    const rows = (
       await this.db.query<{ item: Record<string, unknown> }>(
         `SELECT jsonb_build_object(
           'id',d.id,'code',d.code,'version',d.version,
@@ -449,11 +494,13 @@ export class PostgresNumberRepository {
         ) item
         FROM number_definitions d
         LEFT JOIN number_definition_versions v ON v.definition_id=d.id AND v.tenant_id=d.tenant_id
-        WHERE d.tenant_id=$1 AND d.deleted_at IS NULL
-        GROUP BY d.id,d.code,d.version ORDER BY d.code`,
-        [tenantId],
+        WHERE d.tenant_id=$1 AND d.deleted_at IS NULL${keyset}
+        GROUP BY d.id,d.code,d.version ORDER BY d.code,d.id LIMIT $${String(values.length)}`,
+        values,
       )
-    ).rows.map((row) => row.item);
+    ).rows;
+    const items = rows.map((row) => row.item);
+    return pageEnvelope(items, filter, (item) => String(item.id));
   }
   public async createDefinition(
     input: Readonly<{
@@ -684,8 +731,15 @@ export class PostgresRuleRepository {
     private readonly db: Database,
     private readonly audit = new TransactionalAuditWriter(),
   ) {}
-  public async list(tenantId: string) {
-    return (
+  public async list(tenantId: string, filter: PageFilter = { limit: 50 }) {
+    const values: unknown[] = [tenantId];
+    let keyset = '';
+    if (filter.cursor) {
+      values.push(filter.cursor);
+      keyset = ` AND (d.code,d.id)>(SELECT x.code,x.id FROM rule_definitions x WHERE x.tenant_id=$1 AND x.id=$2::uuid)`;
+    }
+    values.push(filter.limit + 1);
+    const rows = (
       await this.db.query<{ item: Record<string, unknown> }>(
         `SELECT jsonb_build_object(
           'id',d.id,'code',d.code,'version',d.version,
@@ -693,11 +747,13 @@ export class PostgresRuleRepository {
         ) item
         FROM rule_definitions d
         LEFT JOIN rule_definition_versions v ON v.definition_id=d.id AND v.tenant_id=d.tenant_id
-        WHERE d.tenant_id=$1 AND d.deleted_at IS NULL
-        GROUP BY d.id,d.code,d.version ORDER BY d.code`,
-        [tenantId],
+        WHERE d.tenant_id=$1 AND d.deleted_at IS NULL${keyset}
+        GROUP BY d.id,d.code,d.version ORDER BY d.code,d.id LIMIT $${String(values.length)}`,
+        values,
       )
-    ).rows.map((row) => row.item);
+    ).rows;
+    const items = rows.map((row) => row.item);
+    return pageEnvelope(items, filter, (item) => String(item.id));
   }
   public async create(
     input: Readonly<{ code: string; ast: unknown; requiredInputs: readonly string[] }>,
@@ -879,8 +935,15 @@ export class PostgresWorkflowRepository {
     private readonly db: Database,
     private readonly audit = new TransactionalAuditWriter(),
   ) {}
-  public async list(tenantId: string) {
-    return (
+  public async list(tenantId: string, filter: PageFilter = { limit: 50 }) {
+    const values: unknown[] = [tenantId];
+    let keyset = '';
+    if (filter.cursor) {
+      values.push(filter.cursor);
+      keyset = ` AND (d.code,d.id)>(SELECT x.code,x.id FROM workflow_definitions x WHERE x.tenant_id=$1 AND x.id=$2::uuid)`;
+    }
+    values.push(filter.limit + 1);
+    const rows = (
       await this.db.query<{ item: Record<string, unknown> }>(
         `SELECT jsonb_build_object(
           'id',d.id,'code',d.code,'version',d.version,
@@ -888,11 +951,13 @@ export class PostgresWorkflowRepository {
         ) item
         FROM workflow_definitions d
         LEFT JOIN workflow_definition_versions v ON v.definition_id=d.id AND v.tenant_id=d.tenant_id
-        WHERE d.tenant_id=$1 AND d.deleted_at IS NULL
-        GROUP BY d.id,d.code,d.version ORDER BY d.code`,
-        [tenantId],
+        WHERE d.tenant_id=$1 AND d.deleted_at IS NULL${keyset}
+        GROUP BY d.id,d.code,d.version ORDER BY d.code,d.id LIMIT $${String(values.length)}`,
+        values,
       )
-    ).rows.map((row) => row.item);
+    ).rows;
+    const items = rows.map((row) => row.item);
+    return pageEnvelope(items, filter, (item) => String(item.id));
   }
   public async create(
     input: Readonly<{ code: string; spec: WorkflowSpec }>,
@@ -1074,13 +1139,24 @@ export class PostgresWorkflowRepository {
       return instance;
     });
   }
-  public async listTasks(actor: Actor) {
-    return (
-      await this.db.query(
-        "SELECT t.* FROM workflow_tasks t WHERE t.tenant_id=$1 AND t.status IN('OPEN','CLAIMED') AND (t.assigned_actor_id=$2 OR (t.assigned_role_code IS NOT NULL AND EXISTS(SELECT 1 FROM employee_role_assignments era JOIN roles r ON r.id=era.role_id WHERE era.employee_id=$2 AND r.organization_id=$1 AND r.code=t.assigned_role_code AND r.deleted_at IS NULL))) ORDER BY t.created_at",
-        [actor.companyId, actor.employeeId],
-      )
-    ).rows;
+  public async listTasks(actor: Actor, filter: PageFilter = { limit: 50 }) {
+    const values: unknown[] = [actor.companyId, actor.employeeId];
+    let keyset = '';
+    if (filter.cursor) {
+      values.push(filter.cursor);
+      keyset = ` AND (t.created_at,t.id)<(SELECT x.created_at,x.id FROM workflow_tasks x WHERE x.tenant_id=$1 AND x.id=$3::uuid)`;
+    }
+    values.push(filter.limit + 1);
+    return pageEnvelope(
+      (
+        await this.db.query<{ id: string }>(
+          `SELECT t.* FROM workflow_tasks t WHERE t.tenant_id=$1 AND t.status IN('OPEN','CLAIMED') AND (t.assigned_actor_id=$2 OR (t.assigned_role_code IS NOT NULL AND EXISTS(SELECT 1 FROM employee_role_assignments era JOIN roles r ON r.id=era.role_id WHERE era.employee_id=$2 AND r.organization_id=$1 AND r.code=t.assigned_role_code AND r.deleted_at IS NULL)))${keyset} ORDER BY t.created_at DESC,t.id DESC LIMIT $${String(values.length)}`,
+          values,
+        )
+      ).rows,
+      filter,
+      (row) => row.id,
+    );
   }
   public async decide(
     taskId: string,

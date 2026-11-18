@@ -109,14 +109,15 @@ describe('PostgreSQL identity and authorization behavior', () => {
     ['COMPANY', [actorId, childId, deepId, looseId]],
     ['GROUP', [actorId, childId, deepId, looseId]],
   ])('enforces %s scope with tenant boundaries', async (scope, expected) => {
-    const rows = await employees.list(company, [scope], actorId);
+    // B2（TD-API-003）：仓储 list 统一返回 { items, nextCursor } 分页信封。
+    const rows = (await employees.list(company, [scope], actorId)).items;
     expect(rows.map((row) => row.id).sort()).toEqual([...expected].sort());
     expect(rows.map((row) => row.id)).not.toContain(otherId);
   });
 
   it('fails closed when a typed actor ancestor is missing', async () => {
-    expect(await employees.list(company, ['DEPARTMENT'], looseId)).toEqual([]);
-    expect(await employees.list(company, ['REGION'], looseId)).toEqual([]);
+    expect((await employees.list(company, ['DEPARTMENT'], looseId)).items).toEqual([]);
+    expect((await employees.list(company, ['REGION'], looseId)).items).toEqual([]);
   });
 
   it('provisions a login only for an active employee in the actor tenant', async () => {
@@ -318,12 +319,14 @@ describe('PostgreSQL identity and authorization behavior', () => {
       );
       const context = await security.resolveSession(tokenHash, new Date());
       expect(context?.scopeAnchors?.get('employee:read')).toEqual([{ scope, organizationId }]);
-      const visible = await employees.list(
-        company,
-        context?.permissions.get('employee:read')?.scopes ?? [],
-        actorId,
-        context?.scopeAnchors?.get('employee:read'),
-      );
+      const visible = (
+        await employees.list(
+          company,
+          context?.permissions.get('employee:read')?.scopes ?? [],
+          actorId,
+          context?.scopeAnchors?.get('employee:read'),
+        )
+      ).items;
       expect(visible.map((row) => row.id).sort()).toEqual([...expected].sort());
       expect(visible.map((row) => row.id)).not.toContain(otherId);
       await authorization.revokeScope(direct.id, actor, randomUUID());
@@ -345,12 +348,15 @@ describe('PostgreSQL identity and authorization behavior', () => {
         ),
       ).rejects.toThrow(/may not specify an organization anchor/u);
     expect(
-      await employees.list(company, [], actorId, [
-        { scope: 'TEAM', organizationId: otherOrganization },
-      ]),
+      (
+        await employees.list(company, [], actorId, [
+          { scope: 'TEAM', organizationId: otherOrganization },
+        ])
+      ).items,
     ).toEqual([]);
     expect(
-      await employees.list(company, [], actorId, [{ scope: 'DEPARTMENT', organizationId: team }]),
+      (await employees.list(company, [], actorId, [{ scope: 'DEPARTMENT', organizationId: team }]))
+        .items,
     ).toEqual([]);
   });
 
@@ -467,6 +473,37 @@ describe('PostgreSQL identity and authorization behavior', () => {
     ).toBe(false);
   });
 
+  it('pages governance lists through keyset cursors without duplicates or gaps (B2)', async () => {
+    // 55 名员工 > 默认页 50：翻页并集必须与全量精确一致（keyset 不重不漏）。
+    const bulkTeam = randomUUID();
+    await database.query(
+      "INSERT INTO organizations(id,owner_organization_id,parent_id,code,name,organization_type) VALUES($1,$2,$2,'BULK','Bulk','TEAM')",
+      [bulkTeam, company],
+    );
+    const rows = Array.from({ length: 55 }, (_item, index) => ({
+      id: randomUUID(),
+      employeeNumber: `BULK-${String(index)}`,
+    }));
+    for (const row of rows)
+      await database.query(
+        'INSERT INTO employees(id,company_id,organization_id,employee_number,display_name,normalized_email) VALUES($1,$2,$3,$4,$4,$5)',
+        [row.id, company, bulkTeam, row.employeeNumber, `${row.id}@example.test`],
+      );
+    const first = await employees.list(company, ['COMPANY'], actorId);
+    expect(first.items.length).toBe(50);
+    expect(first.nextCursor).toBeTruthy();
+    const second = await employees.list(company, ['COMPANY'], actorId, [], {
+      limit: 50,
+      ...(first.nextCursor ? { cursor: first.nextCursor } : {}),
+    });
+    expect(second.nextCursor).toBeNull();
+    const pagedIds = [...first.items, ...second.items].map((row2) => row2.id);
+    const full = await employees.list(company, ['COMPANY'], actorId, [], { limit: 100 });
+    expect(pagedIds.length).toBe(full.items.length);
+    expect(pagedIds.sort()).toEqual([...new Set(full.items.map((row2) => row2.id))].sort());
+    expect(new Set(pagedIds).size).toBe(pagedIds.length);
+  });
+
   it('writes organization and employee audits atomically with target and correlation', async () => {
     const correlationId = randomUUID();
     const created = await employees.create(
@@ -513,7 +550,8 @@ describe('PostgreSQL identity and authorization behavior', () => {
       actor,
       correlationId,
     );
-    expect((await authorization.listScopeGrants(company)).map((row) => row.id)).toContain(
+    // B2（TD-API-003）：仓储 list 统一返回 { items, nextCursor } 分页信封。
+    expect((await authorization.listScopeGrants(company)).items.map((row) => row.id)).toContain(
       direct.id,
     );
     await expect(

@@ -16,6 +16,8 @@ const to = '2026-03-01';
 const value = { nested: { retained: true }, items: [1, null], raw: ' untrimmed ' };
 const row = { id, version: 7, label: 'raw entry', value, private: 'not projected' };
 const rows = [row];
+// B2（TD-API-003）：治理列表响应统一为 { items, nextCursor } 分页信封。
+const page = { items: rows, nextCursor: null };
 const routes = [
   { kind: 'create', method: 'POST', capability: 'master-data:create', pathname: base },
   { kind: 'list', method: 'GET', capability: 'master-data:read', pathname: base },
@@ -77,16 +79,20 @@ function fixture(
   const get = vi.spyOn(permissions, 'get');
   const repository = {
     createEntry: vi.fn<Master['createEntry']>().mockResolvedValue(row),
-    listEntries: vi.fn<Master['listEntries']>().mockResolvedValue(rows),
+    listEntries: vi.fn<Master['listEntries']>().mockResolvedValue(page),
     findEntry: vi.fn<Master['findEntry']>().mockResolvedValue(row),
     updateEntry: vi.fn<Master['updateEntry']>().mockResolvedValue(row),
     deleteEntry: vi.fn<Master['deleteEntry']>().mockResolvedValue(undefined),
     listCategories: vi
       .fn<Master['listCategories']>()
-      .mockResolvedValue([{ id: 'category-neighbor' }]),
+      .mockResolvedValue({ items: [{ id: 'category-neighbor' }], nextCursor: null }),
   };
-  const numbers = { list: vi.fn().mockResolvedValue([{ id: 'number-neighbor' }]) };
-  const rules = { list: vi.fn().mockResolvedValue([{ id: 'rule-neighbor' }]) };
+  const numbers = {
+    list: vi.fn().mockResolvedValue({ items: [{ id: 'number-neighbor' }], nextCursor: null }),
+  };
+  const rules = {
+    list: vi.fn().mockResolvedValue({ items: [{ id: 'rule-neighbor' }], nextCursor: null }),
+  };
   const app = buildApp({
     auth: {
       authenticate: vi.fn().mockResolvedValue(context),
@@ -201,11 +207,13 @@ describe('old master entry route contracts', () => {
           'effectiveTo',
         ]);
       } else if (route.kind === 'list') {
-        expect(actual).toEqual(response(200, rows));
+        expect(actual).toEqual(response(200, page));
+        // B2（TD-API-003）：治理列表统一 cursor 分页，未传 query 时默认 filter { limit: 50 }。
         expect(f.repository.listEntries).toHaveBeenCalledExactlyOnceWith(
           actor.companyId,
           null,
           new Date(from),
+          { limit: 50 },
         );
         expect(f.repository.listEntries.mock.contexts).toEqual([f.repository]);
       } else if (route.kind === 'detail') {
@@ -245,7 +253,7 @@ describe('old master entry route contracts', () => {
         expect(f.repository.deleteEntry.mock.contexts).toEqual([f.repository]);
         expect(f.repository.deleteEntry.mock.calls[0]?.[2]).toBe(actor);
       }
-      if (route.kind !== 'delete') expect(actual.body).toBe(route.kind === 'list' ? rows : row);
+      if (route.kind !== 'delete') expect(actual.body).toBe(route.kind === 'list' ? page : row);
       expect(f.get.mock.calls.every(([capability]) => capability === route.capability)).toBe(true);
     },
   );
@@ -258,7 +266,7 @@ describe('old master entry route contracts', () => {
         expect(actual.statusCode).toBe(
           route.kind === 'create' ? 201 : route.kind === 'delete' ? 204 : 200,
         );
-        if (route.kind !== 'delete') expect(actual.body).toBe(route.kind === 'list' ? rows : row);
+        if (route.kind !== 'delete') expect(actual.body).toBe(route.kind === 'list' ? page : row);
       }
     },
   );
@@ -270,11 +278,12 @@ describe('old master entry route contracts', () => {
     );
     expect(f.repository.findEntry).toHaveBeenCalledTimes(1);
   });
-  it('list retains empty array without wrapping', async () => {
+  it('list retains an empty items array inside the page envelope', async () => {
     const f = fixture();
     const empty: typeof rows = [];
-    f.repository.listEntries.mockResolvedValue(empty);
-    expect((await f.dispatch(routes[1])).body).toBe(empty);
+    const emptyPage = { items: empty, nextCursor: null };
+    f.repository.listEntries.mockResolvedValue(emptyPage);
+    expect((await f.dispatch(routes[1])).body).toBe(emptyPage);
   });
   it.each([{ raw: '' }, { raw: undefined }, { raw: null }])(
     'list category $raw maps to null',
@@ -283,10 +292,12 @@ describe('old master entry route contracts', () => {
       await f.dispatch(routes[1], {
         query: { categoryId: raw, at: from } as unknown as NonNullable<ApiRequest['query']>,
       });
+      // B2（TD-API-003）：治理列表统一 cursor 分页，未传 query 时默认 filter { limit: 50 }。
       expect(f.repository.listEntries).toHaveBeenCalledExactlyOnceWith(
         actor.companyId,
         null,
         new Date(from),
+        { limit: 50 },
       );
     },
   );
@@ -299,6 +310,7 @@ describe('old master entry route contracts', () => {
       actor.companyId,
       categoryId.toUpperCase(),
       new Date(from),
+      { limit: 50 },
     );
   });
   it.each([
@@ -390,7 +402,7 @@ describe('old master entry route contracts', () => {
             body: false,
             query: { at: from, unknown: 'bad', version: 'bad' },
           }),
-        ).toEqual(response(200, route.kind === 'list' ? rows : row));
+        ).toEqual(response(200, route.kind === 'list' ? page : row));
       });
     });
   }
@@ -721,20 +733,22 @@ describe('old master entry route contracts', () => {
     f.permissions.set('number:read', { scopes: ['SELF'], fields: null });
     f.permissions.set('rule:read', { scopes: ['SELF'], fields: null });
     expect(await f.dispatch(routes[1], { pathname: '/api/v1/master-data/categories' })).toEqual(
-      response(200, [{ id: 'category-neighbor' }]),
+      response(200, { items: [{ id: 'category-neighbor' }], nextCursor: null }),
     );
     expect(await f.dispatch(routes[1], { pathname: '/api/v1/number-definitions' })).toEqual(
-      response(200, { items: [{ id: 'number-neighbor' }] }),
+      response(200, { items: [{ id: 'number-neighbor' }], nextCursor: null }),
     );
     expect(await f.dispatch(routes[1], { pathname: '/api/v1/rules' })).toEqual(
-      response(200, { items: [{ id: 'rule-neighbor' }] }),
+      response(200, { items: [{ id: 'rule-neighbor' }], nextCursor: null }),
     );
+    // B2（TD-API-003）：治理列表统一 cursor 分页，未传 query 时默认 filter { limit: 50 }。
     expect(f.repository.listCategories).toHaveBeenCalledExactlyOnceWith(
       actor.companyId,
       new Date(from),
+      { limit: 50 },
     );
-    expect(f.numbers.list).toHaveBeenCalledExactlyOnceWith(actor.companyId);
-    expect(f.rules.list).toHaveBeenCalledExactlyOnceWith(actor.companyId);
+    expect(f.numbers.list).toHaveBeenCalledExactlyOnceWith(actor.companyId, { limit: 50 });
+    expect(f.rules.list).toHaveBeenCalledExactlyOnceWith(actor.companyId, { limit: 50 });
     expect(f.repository.listEntries).not.toHaveBeenCalled();
   });
 });

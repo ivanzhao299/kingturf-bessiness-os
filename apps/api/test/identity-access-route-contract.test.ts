@@ -11,6 +11,8 @@ const profilesPath = '/api/v1/user-access-profiles';
 const statePath = `/api/v1/identities/${identityId}/state`;
 const badStatePath = '/api/v1/identities/bad/state';
 const items = [{ id: 'fixed-profile' }];
+// B2（TD-API-003）：治理列表统一返回 { items, nextCursor } 分页信封。
+const profilesPage = { items, nextCursor: null };
 type Grant = NonNullable<ReturnType<AuthorizationContext['permissions']['get']>>;
 const grant: Grant = { scopes: ['SELF'], fields: null };
 function fixture(
@@ -22,7 +24,7 @@ function fixture(
 ) {
   const context: AuthorizationContext = { actor, permissions: new Map(permissions) };
   const authenticate = vi.fn().mockResolvedValue(context);
-  const listUserAccessProfiles = vi.fn().mockResolvedValue(items);
+  const listUserAccessProfiles = vi.fn().mockResolvedValue(profilesPage);
   const setIdentityActive = vi.fn().mockResolvedValue(undefined);
   const repository = {
     ...(['both', 'profiles'].includes(available) ? { listUserAccessProfiles } : {}),
@@ -81,7 +83,7 @@ describe('profiles inline contract', () => {
       const f = fixture([[capability, grant]]);
       expect(await f.dispatch('GET', profilesPath, ['ignored'])).toEqual({
         statusCode: 200,
-        body: { items },
+        body: profilesPage,
         headers: {
           'x-correlation-id': correlationId,
           'x-content-type-options': 'nosniff',
@@ -92,7 +94,10 @@ describe('profiles inline contract', () => {
             "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'",
         },
       });
-      expect(f.listUserAccessProfiles).toHaveBeenCalledExactlyOnceWith(actor.companyId);
+      // B2（TD-API-003）：治理列表统一 cursor 分页，未传 query 时默认 filter { limit: 50 }。
+      expect(f.listUserAccessProfiles).toHaveBeenCalledExactlyOnceWith(actor.companyId, {
+        limit: 50,
+      });
       expect(f.listUserAccessProfiles.mock.contexts).toEqual([f.repository]);
       expect(f.setIdentityActive).not.toHaveBeenCalled();
     },
@@ -121,7 +126,9 @@ describe('profiles inline contract', () => {
   it('does not introduce field checks for GET profiles', async () => {
     const f = fixture([['identity:read', { scopes: ['SELF'], fields: [] }]]);
     expect((await f.dispatch('GET', profilesPath, { extra: true })).statusCode).toBe(200);
-    expect(f.listUserAccessProfiles).toHaveBeenCalledExactlyOnceWith(actor.companyId);
+    expect(f.listUserAccessProfiles).toHaveBeenCalledExactlyOnceWith(actor.companyId, {
+      limit: 50,
+    });
   });
 });
 

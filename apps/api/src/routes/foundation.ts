@@ -1,4 +1,5 @@
 import { DomainError, type AuthorizationContext } from '@kingturf/domain';
+import { parsePageFilter } from '../pagination.ts';
 import type { ErrorCode, PermissionKey } from '@kingturf/types';
 import type { AuthorizedQuery } from '../policy.ts';
 import type { ApiDependencies, ApiRequest, ApiResponse } from '../app.ts';
@@ -250,6 +251,7 @@ function notificationRoutes(
           body: await notifications.list(
             context.authorization.actor,
             request.query?.unread === 'true',
+            parsePageFilter(request.query),
           ),
         };
       },
@@ -502,11 +504,17 @@ function businessObjectRoutes(
       method: 'GET',
       match: literal('/api/v1/business-objects'),
       validate: null,
-      handler: async () => {
+      handler: async (request) => {
         context.authorize('business-object:read');
         const objects = context.dependencies.businessObjects;
         if (!objects) return context.unavailable('Registry unavailable');
-        return { statusCode: 200, body: await objects.list(context.authorization.actor.companyId) };
+        return {
+          statusCode: 200,
+          body: await objects.list(
+            context.authorization.actor.companyId,
+            parsePageFilter(request.query),
+          ),
+        };
       },
     }),
     defineRoute({

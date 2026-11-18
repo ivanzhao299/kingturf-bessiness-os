@@ -1,3 +1,4 @@
+import { DomainError } from '@kingturf/domain';
 import type { AuthorizationContext } from '@kingturf/domain';
 import type { ApiDependencies, ApiResponse } from '../app.ts';
 import type { AuthorizedQuery } from '../policy.ts';
@@ -39,6 +40,17 @@ export function auditReadRoutes(context: AuditContext): readonly RouteDefinition
               : {}),
             ...(q.from ? { from: q.from } : {}),
             ...(q.to ? { to: q.to } : {}),
+            ...(q.outcome
+              ? {
+                  outcome:
+                    q.outcome === 'SUCCESS' || q.outcome === 'FAILURE'
+                      ? q.outcome
+                      : (() => {
+                          throw new DomainError('invalid_request', 'outcome is unsupported');
+                        })(),
+                }
+              : {}),
+            ...(q.query ? { query: q.query } : {}),
             ...(q.cursor ? { cursor: context.uuid(q.cursor, 'cursor') } : {}),
             ...(q.limit ? { limit: Number(q.limit) } : {}),
           },

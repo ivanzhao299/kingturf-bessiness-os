@@ -1,5 +1,6 @@
 import type { ApiDependencies, ApiResponse } from '../app.ts';
 import { defineRoute, type RouteDefinition, type RouteMatch } from './types.ts';
+import { parsePageFilter, type PageFilter } from '../pagination.ts';
 
 type MasterData = NonNullable<ApiDependencies['masterData']>;
 type CreateArgs = Parameters<MasterData['createEntry']>;
@@ -11,6 +12,7 @@ type ListInput = Readonly<{
   companyId: ListArgs[0];
   categoryId: ListArgs[1];
   at: NonNullable<ListArgs[2]>;
+  filter: PageFilter;
 }>;
 type DetailInput = Readonly<{
   id: FindArgs[0];
@@ -100,10 +102,16 @@ export function masterEntryListRoutes(context: ListContext): readonly RouteDefin
           ? context.uuid(request.query.categoryId, 'categoryId')
           : null,
         at: request.query?.at ? context.parseEffectiveTimestamp(request.query.at) : new Date(),
+        filter: parsePageFilter(request.query),
       }),
       handler: async (_request, _match, input) => ({
         statusCode: 200,
-        body: await context.repository.listEntries(input.companyId, input.categoryId, input.at),
+        body: await context.repository.listEntries(
+          input.companyId,
+          input.categoryId,
+          input.at,
+          input.filter,
+        ),
       }),
     }),
   ];

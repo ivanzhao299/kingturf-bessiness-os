@@ -1,5 +1,6 @@
 import { allow, error, objectBody, string, uuid, version } from '../../app-values.ts';
 import { authorizeQuery } from '../../policy.ts';
+import { parsePageFilter } from '../../pagination.ts';
 import { projectedReply, type RouteAttempts, type RouteDispatchContext } from './context.ts';
 export function* organizationsAttempts(scope: RouteDispatchContext): RouteAttempts {
   const { request, dependencies, context, correlationId } = scope;
@@ -9,7 +10,7 @@ export function* organizationsAttempts(scope: RouteDispatchContext): RouteAttemp
     if (request.method === 'GET' && !id) {
       authorizeQuery(context, 'organization:read');
       yield projectedReply(
-        dependencies.organizations.list(context.actor.companyId),
+        dependencies.organizations.list(context.actor.companyId, parsePageFilter(request.query)),
         (resolvedBody) => {
           return {
             statusCode: 200,

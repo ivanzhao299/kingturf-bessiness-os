@@ -157,8 +157,10 @@ describe('IAM inline permission and prerequisite contracts', () => {
               "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'",
           },
         });
+        // B2（TD-API-003）：治理列表统一 cursor 分页，未传 query 时默认 filter { limit: 50 }。
         expect(repository[call]).toHaveBeenCalledExactlyOnceWith(
           ...(resource === 'permissions' ? [] : [actor.companyId]),
+          { limit: 50 },
         );
       }
     },

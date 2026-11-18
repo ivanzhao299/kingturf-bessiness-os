@@ -1,4 +1,5 @@
 import type { Database, Transaction } from '@kingturf/database';
+import { pageEnvelope, type Page, type PageFilter } from './pagination.ts';
 import { writeFoundationEmptyAudit as audit } from './audit-outbox.ts';
 import { eventPublisher } from './event-repositories.ts';
 import {
@@ -225,18 +226,33 @@ export class PostgresBusinessObjectRepository {
       versions,
     };
   }
-  public async list(tenantId: string): Promise<readonly BusinessObjectDefinitionDto[]> {
-    return (
+  public async list(
+    tenantId: string,
+    filter: PageFilter = { limit: 50 },
+  ): Promise<Page<BusinessObjectDefinitionDto>> {
+    const values: unknown[] = [tenantId];
+    let keyset = '';
+    if (filter.cursor) {
+      values.push(filter.cursor);
+      keyset = ` AND (code,id)>(SELECT x.code,x.id FROM business_object_definitions x WHERE x.tenant_id=$1 AND x.id=$2::uuid)`;
+    }
+    values.push(filter.limit + 1);
+    const rows = (
       await this.db.query<BusinessObjectDefinitionRow>(
-        'SELECT * FROM business_object_definitions WHERE tenant_id=$1 AND deleted_at IS NULL ORDER BY code',
-        [tenantId],
+        `SELECT * FROM business_object_definitions WHERE tenant_id=$1 AND deleted_at IS NULL${keyset} ORDER BY code,id LIMIT $${String(values.length)}`,
+        values,
       )
-    ).rows.map((r) => ({
-      id: r.id,
-      tenantId: r.tenant_id,
-      code: r.code,
-      name: r.name,
-      version: r.version,
-    }));
+    ).rows;
+    return pageEnvelope(
+      rows.map((r) => ({
+        id: r.id,
+        tenantId: r.tenant_id,
+        code: r.code,
+        name: r.name,
+        version: r.version,
+      })),
+      filter,
+      (row) => row.id,
+    );
   }
 }

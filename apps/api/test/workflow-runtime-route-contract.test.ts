@@ -12,6 +12,8 @@ const correlationId = '33333333-3333-4333-8333-333333333333';
 const actor = { companyId: 'runtime-tenant', employeeId: id };
 const row = { id: 'runtime-row', private: { retained: true } };
 const rows = [row];
+// B2（TD-API-003）：治理列表响应统一为 { items, nextCursor } 分页信封。
+const page = { items: rows, nextCursor: null };
 const key = 'runtime-key';
 const routes = [
   {
@@ -75,9 +77,9 @@ function fixture(
   const get = vi.spyOn(permissions, 'get');
   const repository = {
     start: vi.fn<Workflows['start']>().mockResolvedValue(row),
-    listTasks: vi.fn<Workflows['listTasks']>().mockResolvedValue(rows),
+    listTasks: vi.fn<Workflows['listTasks']>().mockResolvedValue(page),
     decide: vi.fn<Workflows['decide']>().mockResolvedValue(row),
-    list: vi.fn<Workflows['list']>().mockResolvedValue(rows),
+    list: vi.fn<Workflows['list']>().mockResolvedValue(page),
     create: vi.fn<Workflows['create']>().mockResolvedValue({ ...row, version: undefined }),
     createVersion: vi.fn<Workflows['createVersion']>().mockResolvedValue(row),
     publish: vi.fn<Workflows['publish']>().mockResolvedValue(row),
@@ -177,9 +179,9 @@ describe('old workflow runtime contracts', () => {
     const f = fixture();
     const actual = await f.dispatch(route);
     expect(actual).toEqual(
-      response(route.kind === 'start' ? 201 : 200, route.kind === 'list' ? rows : row),
+      response(route.kind === 'start' ? 201 : 200, route.kind === 'list' ? page : row),
     );
-    expect(actual.body).toBe(route.kind === 'list' ? rows : row);
+    expect(actual.body).toBe(route.kind === 'list' ? page : row);
     if (route.kind === 'start') {
       expect(f.repository.start).toHaveBeenCalledExactlyOnceWith(
         id,
@@ -192,7 +194,8 @@ describe('old workflow runtime contracts', () => {
       expect(f.repository.start.mock.contexts).toEqual([f.repository]);
       expect(f.repository.start.mock.calls[0]?.[4]).toBe(actor);
     } else if (route.kind === 'list') {
-      expect(f.repository.listTasks).toHaveBeenCalledExactlyOnceWith(actor);
+      // B2（TD-API-003）：治理列表统一 cursor 分页，未传 query 时默认 filter { limit: 50 }。
+      expect(f.repository.listTasks).toHaveBeenCalledExactlyOnceWith(actor, { limit: 50 });
       expect(f.repository.listTasks.mock.contexts).toEqual([f.repository]);
       expect(f.repository.listTasks.mock.calls[0]?.[0]).toBe(actor);
     } else {
@@ -219,7 +222,7 @@ describe('old workflow runtime contracts', () => {
     async ({ fields }) => {
       const f = fixture({ fields });
       for (const route of routes)
-        expect((await f.dispatch(route)).body).toBe(route.kind === 'list' ? rows : row);
+        expect((await f.dispatch(route)).body).toBe(route.kind === 'list' ? page : row);
     },
   );
   it('task list uses decide not workflow read/start/update', async () => {
@@ -229,7 +232,7 @@ describe('old workflow runtime contracts', () => {
     expect(await f.dispatch(routes[1])).toEqual(denied);
     noCalls(f);
   });
-  it('task list ignores body/query/all key headers and preserves array even empty', async () => {
+  it('task list ignores body/query/all key headers and preserves page even empty', async () => {
     const f = fixture();
     const getter = vi.fn(() => {
       throw new Error('List must not read body');
@@ -243,13 +246,13 @@ describe('old workflow runtime contracts', () => {
           query: { version: '1' },
         })
       ).body,
-    ).toBe(rows);
+    ).toBe(page);
     expect(getter).not.toHaveBeenCalled();
-    const empty: typeof rows = [];
-    f.repository.listTasks.mockResolvedValue(empty);
+    const emptyPage = { items: [] as typeof rows, nextCursor: null };
+    f.repository.listTasks.mockResolvedValue(emptyPage);
     expect(
       (await f.dispatch(routes[1], { body: null, headers: { 'idempotency-key': undefined } })).body,
-    ).toBe(empty);
+    ).toBe(emptyPage);
   });
   for (const route of writes) {
     it.each([{ value: undefined }, { value: '' }])(

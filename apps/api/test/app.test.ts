@@ -78,13 +78,14 @@ function dependencies(authContext: AuthorizationContext | null) {
   const organizations = {
     create: vi.fn(() => Promise.resolve(organization)),
     findById: vi.fn(() => Promise.resolve(organization)),
-    list: vi.fn(() => Promise.resolve([organization])),
+    // B2（TD-API-003）：治理列表统一返回 { items, nextCursor } 分页信封。
+    list: vi.fn(() => Promise.resolve({ items: [organization], nextCursor: null })),
     update: vi.fn(() => Promise.resolve(organization)),
   } satisfies OrganizationRepository;
   const employees = {
     create: vi.fn(() => Promise.resolve(employee)),
     findById: vi.fn(() => Promise.resolve(employee)),
-    list: vi.fn(() => Promise.resolve([employee])),
+    list: vi.fn(() => Promise.resolve({ items: [employee], nextCursor: null })),
     update: vi.fn(() => Promise.resolve(employee)),
   } satisfies EmployeeRepository;
   const assign = vi.fn(() => Promise.resolve());

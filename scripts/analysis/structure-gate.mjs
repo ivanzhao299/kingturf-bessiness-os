@@ -187,6 +187,9 @@ const GATED_LIST_RE = /^(timelineAllowed|allowed)\.\w+$/;
 const TRUSTED_ENUM_INDEXES = new Set(['definitions[view]']);
 // ⑧ 代码内枚举/别名/表名/占位符串：精确字符串 Set
 const SQL_ENUM_NAMES = new Set([
+  // B2（TD-API-003）分页 keyset 游标片段：cursor 值一律经 values.push 参数化（$N），
+  // 变量本体只含代码内表/列名与占位符；2026-11-18 随 18 端点分页批次登记。
+  'keyset',
   'alias',
   'anchor.scope',
   'a.scope',

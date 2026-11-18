@@ -6,6 +6,7 @@ import {
 import type { PermissionKey } from '@kingturf/types';
 import type { ApiResponse } from '../app.ts';
 import { defineRoute, type RouteDefinition } from './types.ts';
+import { parsePageFilter } from '../pagination.ts';
 
 type IdentityAccessContext = Readonly<{
   repository: AuthorizationRepository | undefined;
@@ -41,16 +42,17 @@ export function identityAccessRoutes(context: IdentityAccessContext): readonly R
       match: (pathname) => (pathname === '/api/v1/user-access-profiles' ? { params: [] } : null),
       // Profiles GET deliberately ignores the body and requests no field authorization.
       validate: null,
-      handler: async () => {
+      handler: async (request) => {
         context.authorizeOneOf('identity:read', 'authorization:read');
         const repository = context.repository;
         if (!repository?.listUserAccessProfiles)
           return context.unavailable('User access profile repository is unavailable');
         return {
           statusCode: 200,
-          body: {
-            items: await repository.listUserAccessProfiles(context.authorization.actor.companyId),
-          },
+          body: await repository.listUserAccessProfiles(
+            context.authorization.actor.companyId,
+            parsePageFilter(request.query),
+          ),
         };
       },
     }),

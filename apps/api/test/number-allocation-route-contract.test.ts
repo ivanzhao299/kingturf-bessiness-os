@@ -55,14 +55,16 @@ function fixture(
   const get = vi.spyOn(permissions, 'get');
   const repository = {
     allocate: vi.fn<Numbers['allocate']>().mockResolvedValue(row),
-    list: vi.fn<Numbers['list']>().mockResolvedValue([]),
+    list: vi.fn<Numbers['list']>().mockResolvedValue({ items: [], nextCursor: null }),
     createDefinition: vi
       .fn<Numbers['createDefinition']>()
       .mockResolvedValue({ id, version: undefined }),
     publish: vi.fn<Numbers['publish']>().mockResolvedValue({ id: 'publish-neighbor' }),
     createVersion: vi.fn<Numbers['createVersion']>().mockResolvedValue({ id }),
   };
-  const rules = { list: vi.fn().mockResolvedValue([{ id: 'rule-neighbor' }]) };
+  const rules = {
+    list: vi.fn().mockResolvedValue({ items: [{ id: 'rule-neighbor' }], nextCursor: null }),
+  };
   const app = buildApp({
     auth: {
       authenticate: vi.fn().mockResolvedValue(context),
@@ -333,9 +335,10 @@ describe('old number allocation contracts', () => {
     ).toEqual(response(200, { id: 'publish-neighbor' }));
     expect(f.repository.publish).toHaveBeenCalledExactlyOnceWith(id, 1, actor, correlationId);
     expect(await f.dispatch({ method: 'GET', pathname: '/api/v1/rules', body: null })).toEqual(
-      response(200, { items: [{ id: 'rule-neighbor' }] }),
+      response(200, { items: [{ id: 'rule-neighbor' }], nextCursor: null }),
     );
-    expect(f.rules.list).toHaveBeenCalledExactlyOnceWith(actor.companyId);
+    // B2（TD-API-003）：治理列表统一 cursor 分页，未传 query 时默认 filter { limit: 50 }。
+    expect(f.rules.list).toHaveBeenCalledExactlyOnceWith(actor.companyId, { limit: 50 });
     expect(f.repository.allocate).not.toHaveBeenCalled();
   });
 });

@@ -14,6 +14,8 @@ const from = '2026-02-01T08:00:00+08:00';
 const to = '2026-03-01';
 const row = { id, version: 8, name: 'raw row', deleted_at: null, private: { retained: true } };
 const rows = [row];
+// B2（TD-API-003）：治理列表响应统一为 { items, nextCursor } 分页信封。
+const page = { items: rows, nextCursor: null };
 const routes = [
   { method: 'GET', capability: 'master-data:read', pathname: base },
   { method: 'POST', capability: 'master-data:create', pathname: base },
@@ -68,11 +70,13 @@ function fixture(
   };
   const get = vi.spyOn(context.permissions, 'get');
   const repository = {
-    listCategories: vi.fn<Master['listCategories']>().mockResolvedValue(rows),
+    listCategories: vi.fn<Master['listCategories']>().mockResolvedValue(page),
     createCategory: vi.fn<Master['createCategory']>().mockResolvedValue(row),
     updateCategory: vi.fn<Master['updateCategory']>().mockResolvedValue(row),
     deleteCategory: vi.fn<Master['deleteCategory']>().mockResolvedValue(undefined),
-    listEntries: vi.fn<Master['listEntries']>().mockResolvedValue([{ id: 'entry-neighbor' }]),
+    listEntries: vi
+      .fn<Master['listEntries']>()
+      .mockResolvedValue({ items: [{ id: 'entry-neighbor' }], nextCursor: null }),
   };
   const audit = {
     list: vi.fn().mockResolvedValue({ items: [{ id: 'audit-neighbor' }], nextCursor: null }),
@@ -170,11 +174,13 @@ describe('old master category contracts', () => {
       const f = fixture();
       const result = await f.dispatch(route, { query: { at: from, version: '1', unknown: 'bad' } });
       if (route.method === 'GET') {
-        expect(result).toEqual(response(200, rows));
-        expect(result.body).toBe(rows);
+        expect(result).toEqual(response(200, page));
+        expect(result.body).toBe(page);
+        // B2（TD-API-003）：治理列表统一 cursor 分页，未传 query 时默认 filter { limit: 50 }。
         expect(f.repository.listCategories).toHaveBeenCalledExactlyOnceWith(
           actor.companyId,
           new Date(from),
+          { limit: 50 },
         );
         expect(f.repository.listCategories.mock.contexts).toEqual([f.repository]);
       } else if (route.method === 'POST') {
@@ -222,7 +228,7 @@ describe('old master category contracts', () => {
           route.method === 'POST' ? 201 : route.method === 'DELETE' ? 204 : 200,
         );
         if (route.method !== 'DELETE')
-          expect(actual.body).toBe(route.method === 'GET' ? rows : row);
+          expect(actual.body).toBe(route.method === 'GET' ? page : row);
       }
     },
   );
@@ -249,9 +255,11 @@ describe('old master category contracts', () => {
         vi.setSystemTime(new Date('2026-10-14T03:00:00Z'));
         const f = fixture();
         await f.dispatch(routes[0], { query, body: ['ignored'] });
+        // B2（TD-API-003）：治理列表统一 cursor 分页，未传 query 时默认 filter { limit: 50 }。
         expect(f.repository.listCategories).toHaveBeenCalledExactlyOnceWith(
           actor.companyId,
           new Date('2026-10-14T03:00:00Z'),
+          { limit: 50 },
         );
         expect(f.repository.listCategories.mock.calls[0]?.[1]).toBeInstanceOf(Date);
       } finally {
@@ -277,11 +285,12 @@ describe('old master category contracts', () => {
     );
     noCalls(f);
   });
-  it('GET retains an empty returned array without wrapping', async () => {
+  it('GET retains an empty items array inside the page envelope', async () => {
     const f = fixture();
     const empty: typeof rows = [];
-    f.repository.listCategories.mockResolvedValue(empty);
-    expect((await f.dispatch(routes[0])).body).toBe(empty);
+    const emptyPage = { items: empty, nextCursor: null };
+    f.repository.listCategories.mockResolvedValue(emptyPage);
+    expect((await f.dispatch(routes[0])).body).toBe(emptyPage);
   });
   for (const route of writes) {
     describe(route.method, () => {
@@ -617,12 +626,14 @@ describe('old master category contracts', () => {
     );
     expect(
       await f.dispatch(routes[0], { pathname: '/api/v1/master-data/entries', query: { at: from } }),
-    ).toEqual(response(200, [{ id: 'entry-neighbor' }]));
+    ).toEqual(response(200, { items: [{ id: 'entry-neighbor' }], nextCursor: null }));
     expect(f.audit.list).toHaveBeenCalledTimes(1);
+    // B2（TD-API-003）：治理列表统一 cursor 分页，未传 query 时默认 filter { limit: 50 }。
     expect(f.repository.listEntries).toHaveBeenCalledExactlyOnceWith(
       actor.companyId,
       null,
       new Date(from),
+      { limit: 50 },
     );
     expect(f.repository.listCategories).not.toHaveBeenCalled();
   });

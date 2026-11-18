@@ -36,7 +36,8 @@ describe('atomic IAM administration API', () => {
       headers: { authorization: 'Bearer token' },
     });
     expect(response.statusCode).toBe(200);
-    expect(listUserAccessProfiles).toHaveBeenCalledWith(actor.companyId);
+    // B2（TD-API-003）：治理列表统一 cursor 分页，未传 query 时默认 filter { limit: 50 }。
+    expect(listUserAccessProfiles).toHaveBeenCalledWith(actor.companyId, { limit: 50 });
   });
 
   it('separates identity management from role management and validates state input', async () => {

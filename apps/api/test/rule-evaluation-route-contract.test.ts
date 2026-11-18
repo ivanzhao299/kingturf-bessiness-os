@@ -55,12 +55,14 @@ function fixture(
   const get = vi.spyOn(permissions, 'get');
   const repository = {
     evaluate: vi.fn<Rules['evaluate']>().mockResolvedValue(row),
-    list: vi.fn<Rules['list']>().mockResolvedValue([]),
+    list: vi.fn<Rules['list']>().mockResolvedValue({ items: [], nextCursor: null }),
     create: vi.fn<Rules['create']>().mockResolvedValue({ id, version: undefined }),
     publish: vi.fn<Rules['publish']>().mockResolvedValue({ id: 'publish-neighbor' }),
     createVersion: vi.fn<Rules['createVersion']>().mockResolvedValue({ id }),
   };
-  const entries = { listEntries: vi.fn().mockResolvedValue([{ id: 'entry-neighbor' }]) };
+  const entries = {
+    listEntries: vi.fn().mockResolvedValue({ items: [{ id: 'entry-neighbor' }], nextCursor: null }),
+  };
   const app = buildApp({
     auth: {
       authenticate: vi.fn().mockResolvedValue(context),
@@ -454,11 +456,13 @@ describe('old rule evaluation contracts', () => {
         body: null,
         query: { at: '2026-01-01' },
       }),
-    ).toEqual(response(200, [{ id: 'entry-neighbor' }]));
+    ).toEqual(response(200, { items: [{ id: 'entry-neighbor' }], nextCursor: null }));
+    // B2（TD-API-003）：治理列表统一 cursor 分页，未传 query 时默认 filter { limit: 50 }。
     expect(f.entries.listEntries).toHaveBeenCalledExactlyOnceWith(
       actor.companyId,
       null,
       new Date('2026-01-01'),
+      { limit: 50 },
     );
     expect(f.repository.evaluate).not.toHaveBeenCalled();
   });

@@ -12,6 +12,8 @@ const actor = { companyId: 'number-tenant', employeeId: id };
 const base = '/api/v1/number-definitions';
 const row = { id, version: { version: 7, private: 'raw' }, private: { retained: true } };
 const rows = [row];
+// B2（TD-API-003）：治理列表响应统一为 { items, nextCursor } 分页信封。
+const page = { items: rows, nextCursor: null };
 const routes = [
   { kind: 'list', method: 'GET', capability: 'number:read', pathname: base },
   { kind: 'create', method: 'POST', capability: 'number:create', pathname: base },
@@ -86,14 +88,18 @@ function fixture(
   };
   const get = vi.spyOn(permissions, 'get');
   const repository = {
-    list: vi.fn<Numbers['list']>().mockResolvedValue(rows),
+    list: vi.fn<Numbers['list']>().mockResolvedValue(page),
     createDefinition: vi.fn<Numbers['createDefinition']>().mockResolvedValue(row),
     publish: vi.fn<Numbers['publish']>().mockResolvedValue(row),
     createVersion: vi.fn<Numbers['createVersion']>().mockResolvedValue(row),
     allocate: vi.fn().mockResolvedValue({ id: 'allocation-neighbor' }),
   };
-  const rules = { list: vi.fn().mockResolvedValue([{ id: 'rule-neighbor' }]) };
-  const entries = { listEntries: vi.fn().mockResolvedValue([{ id: 'entry-neighbor' }]) };
+  const rules = {
+    list: vi.fn().mockResolvedValue({ items: [{ id: 'rule-neighbor' }], nextCursor: null }),
+  };
+  const entries = {
+    listEntries: vi.fn().mockResolvedValue({ items: [{ id: 'entry-neighbor' }], nextCursor: null }),
+  };
   const app = buildApp({
     auth: {
       authenticate: vi.fn().mockResolvedValue(context),
@@ -197,8 +203,9 @@ describe('old number definition contracts', () => {
     const f = fixture();
     const actual = await f.dispatch(route);
     if (route.kind === 'list') {
-      expect(actual).toEqual(response(200, { items: rows }));
-      expect(f.repository.list).toHaveBeenCalledExactlyOnceWith(actor.companyId);
+      expect(actual).toEqual(response(200, page));
+      // B2（TD-API-003）：治理列表统一 cursor 分页，未传 query 时默认 filter { limit: 50 }。
+      expect(f.repository.list).toHaveBeenCalledExactlyOnceWith(actor.companyId, { limit: 50 });
       expect(f.repository.list.mock.contexts).toEqual([f.repository]);
     } else if (route.kind === 'create') {
       expect(actual).toEqual(response(201, row));
@@ -246,13 +253,14 @@ describe('old number definition contracts', () => {
     expect(f.get.mock.calls.every(([capability]) => capability === route.capability)).toBe(true);
     expect(f.repository.allocate).not.toHaveBeenCalled();
   });
-  it('GET creates an items wrapper, preserves array identity, and ignores body/query/header', async () => {
+  it('GET forwards repository page, preserves array identity, and ignores body/query/header', async () => {
     const f = fixture();
     const first = await f.dispatch(routes[0], { body: false });
     const second = await f.dispatch(routes[0], { body: null });
-    expect(first.body).toEqual({ items: rows });
-    expect(first.body).not.toBe(rows);
-    expect(first.body).not.toBe(second.body);
+    // B2（TD-API-003）：路由直传仓储分页信封，不再逐请求新建包装。
+    expect(first.body).toEqual(page);
+    expect(first.body).toBe(page);
+    expect(second.body).toBe(page);
     expect(first.body).toHaveProperty('items', rows);
     if (
       typeof first.body !== 'object' ||
@@ -266,8 +274,8 @@ describe('old number definition contracts', () => {
   it('GET preserves an empty array inside items', async () => {
     const f = fixture();
     const empty: typeof rows = [];
-    f.repository.list.mockResolvedValue(empty);
-    expect(await f.dispatch(routes[0])).toEqual(response(200, { items: empty }));
+    f.repository.list.mockResolvedValue({ items: empty, nextCursor: null });
+    expect(await f.dispatch(routes[0])).toEqual(response(200, { items: empty, nextCursor: null }));
   });
   it.each([{ fields: null }, { fields: [] }, { fields: ['unrelated-field'] }] as const)(
     'all four use Q0/no projection for $fields',
@@ -636,19 +644,21 @@ describe('old number definition contracts', () => {
       correlationId,
     );
     expect(await f.dispatch(routes[0], { pathname: '/api/v1/rules' })).toEqual(
-      response(200, { items: [{ id: 'rule-neighbor' }] }),
+      response(200, { items: [{ id: 'rule-neighbor' }], nextCursor: null }),
     );
     expect(
       await f.dispatch(routes[0], {
         pathname: '/api/v1/master-data/entries',
         query: { at: '2026-01-01' },
       }),
-    ).toEqual(response(200, [{ id: 'entry-neighbor' }]));
-    expect(f.rules.list).toHaveBeenCalledExactlyOnceWith(actor.companyId);
+    ).toEqual(response(200, { items: [{ id: 'entry-neighbor' }], nextCursor: null }));
+    // B2（TD-API-003）：治理列表统一 cursor 分页，未传 query 时默认 filter { limit: 50 }。
+    expect(f.rules.list).toHaveBeenCalledExactlyOnceWith(actor.companyId, { limit: 50 });
     expect(f.entries.listEntries).toHaveBeenCalledExactlyOnceWith(
       actor.companyId,
       null,
       new Date('2026-01-01'),
+      { limit: 50 },
     );
     expect(f.repository.createDefinition).not.toHaveBeenCalled();
     expect(f.repository.createVersion).not.toHaveBeenCalled();

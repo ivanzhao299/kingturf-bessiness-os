@@ -9,6 +9,13 @@ import type {
   RoleRecord,
   ScopeAnchor,
 } from '@kingturf/domain';
+import {
+  compositeCursor,
+  pageEnvelope,
+  parseCompositeCursor,
+  type Page,
+  type PageFilter,
+} from './pagination.ts';
 import { DomainError, normalizeEmail } from '@kingturf/domain';
 import type { Database, SqlClient } from '@kingturf/database';
 import type {
@@ -105,13 +112,24 @@ export class PostgresOrganizationRepository implements OrganizationRepository {
     );
     return result.rows[0] ? organization(result.rows[0]) : null;
   }
-  public async list(companyId: string): Promise<readonly OrganizationDto[]> {
-    return (
+  public async list(
+    companyId: string,
+    filter: PageFilter = { limit: 50 },
+  ): Promise<Page<OrganizationDto>> {
+    const values: unknown[] = [companyId];
+    let keyset = '';
+    if (filter.cursor) {
+      values.push(filter.cursor);
+      keyset = ` AND (o.created_at,o.id)<(SELECT x.created_at,x.id FROM organizations x WHERE x.owner_organization_id=$1 AND x.id=$2::uuid)`;
+    }
+    values.push(filter.limit + 1);
+    const rows = (
       await this.db.query<OrganizationRow>(
-        'SELECT * FROM organizations WHERE owner_organization_id=$1 AND deleted_at IS NULL ORDER BY code',
-        [companyId],
+        `SELECT o.* FROM organizations o WHERE o.owner_organization_id=$1 AND o.deleted_at IS NULL${keyset} ORDER BY o.created_at DESC,o.id DESC LIMIT $${String(values.length)}`,
+        values,
       )
-    ).rows.map(organization);
+    ).rows;
+    return pageEnvelope(rows.map(organization), filter, (row) => row.id);
   }
   public async update(
     id: string,
@@ -210,18 +228,24 @@ export class PostgresEmployeeRepository implements EmployeeRepository {
     scopes: readonly DataScope[],
     actorId: string,
     anchors: readonly ScopeAnchor[] = [],
-  ): Promise<readonly EmployeeDto[]> {
-    const scoped = this.#scoped(scopes, actorId, companyId, anchors);
-    const shifted = scoped.predicate.replaceAll(
-      /\$(\d+)/gu,
-      (_, n: string) => `$${String(Number(n) - 1)}`,
-    );
-    return (
+    filter: PageFilter = { limit: 50 },
+  ): Promise<Page<EmployeeDto>> {
+    // B2：消除 $n 重排 hack——谓词直接以 startParameter=2 生成。
+    const scoped = this.#scoped(scopes, actorId, companyId, anchors, 2);
+    const values: unknown[] = [companyId, ...scoped.values];
+    let keyset = '';
+    if (filter.cursor) {
+      values.push(filter.cursor);
+      keyset = ` AND (e.created_at,e.id)<(SELECT x.created_at,x.id FROM employees x WHERE x.company_id=$1 AND x.id=$${String(values.length)}::uuid)`;
+    }
+    values.push(filter.limit + 1);
+    const rows = (
       await this.db.query<EmployeeRow>(
-        `SELECT e.* FROM employees e WHERE e.company_id=$1 AND e.deleted_at IS NULL AND ${shifted} ORDER BY e.employee_number`,
-        [companyId, ...scoped.values],
+        `SELECT e.* FROM employees e WHERE e.company_id=$1 AND e.deleted_at IS NULL AND ${scoped.predicate}${keyset} ORDER BY e.created_at DESC,e.id DESC LIMIT $${String(values.length)}`,
+        values,
       )
-    ).rows.map(employee);
+    ).rows;
+    return pageEnvelope(rows.map(employee), filter, (row) => row.id);
   }
   public async update(
     id: string,
@@ -499,8 +523,18 @@ export class PostgresSecurityStore implements CredentialStore, AuditSink {
 
 export class PostgresAuthorizationRepository implements AuthorizationRepository {
   public constructor(private readonly db: Database) {}
-  public async listRoles(companyId: string): Promise<readonly RoleRecord[]> {
-    return (
+  public async listRoles(
+    companyId: string,
+    filter: PageFilter = { limit: 50 },
+  ): Promise<Page<RoleRecord>> {
+    const values: unknown[] = [companyId];
+    let keyset = '';
+    if (filter.cursor) {
+      values.push(filter.cursor);
+      keyset = ` AND (r.code,r.id)>(SELECT x.code,x.id FROM roles x WHERE x.organization_id=$1 AND x.id=$2::uuid)`;
+    }
+    values.push(filter.limit + 1);
+    const rows = (
       await this.db.query<{
         id: string;
         organization_id: string;
@@ -508,18 +542,30 @@ export class PostgresAuthorizationRepository implements AuthorizationRepository 
         name: string;
         version: number;
       }>(
-        'SELECT id,organization_id,code,name,version FROM roles WHERE organization_id=$1 AND deleted_at IS NULL ORDER BY code',
-        [companyId],
+        `SELECT r.id,r.organization_id,r.code,r.name,r.version FROM roles r WHERE r.organization_id=$1 AND r.deleted_at IS NULL${keyset} ORDER BY r.code,r.id LIMIT $${String(values.length)}`,
+        values,
       )
-    ).rows.map((r) => ({
-      id: r.id,
-      organizationId: r.organization_id,
-      code: r.code,
-      name: r.name,
-      version: r.version,
-    }));
+    ).rows;
+    return pageEnvelope(
+      rows.map((r) => ({
+        id: r.id,
+        organizationId: r.organization_id,
+        code: r.code,
+        name: r.name,
+        version: r.version,
+      })),
+      filter,
+      (row) => row.id,
+    );
   }
-  public async listUserAccessProfiles(companyId: string) {
+  public async listUserAccessProfiles(companyId: string, filter: PageFilter = { limit: 50 }) {
+    const values: unknown[] = [companyId];
+    let keyset = '';
+    if (filter.cursor) {
+      values.push(filter.cursor);
+      keyset = ` AND (e.created_at,e.id)<(SELECT x.created_at,x.id FROM employees x WHERE x.company_id=$1 AND x.id=$2::uuid)`;
+    }
+    values.push(filter.limit + 1);
     const rows = await this.db.query<{
       employeeId: string;
       employeeNumber: string;
@@ -547,14 +593,18 @@ export class PostgresAuthorizationRepository implements AuthorizationRepository 
       coalesce((SELECT jsonb_agg(DISTINCT p.capability ORDER BY p.capability) FROM employee_role_assignments era JOIN roles r ON r.id=era.role_id AND r.organization_id=e.company_id AND r.deleted_at IS NULL JOIN role_permission_grants g ON g.role_id=r.id JOIN permissions p ON p.id=g.permission_id WHERE era.employee_id=e.id),'[]'::jsonb) AS capabilities,
       coalesce((SELECT jsonb_agg(jsonb_build_object('permissionId',d.permission_id,'capability',p.capability,'scope',d.scope,'organizationId',d.scope_organization_id) ORDER BY p.capability,d.scope) FROM data_scope_grants d JOIN permissions p ON p.id=d.permission_id WHERE d.employee_id=e.id),'[]'::jsonb) AS "directScopes"
       FROM employees e LEFT JOIN identities i ON i.employee_id=e.id AND i.deleted_at IS NULL LEFT JOIN password_credentials pc ON pc.identity_id=i.id
-      WHERE e.company_id=$1 AND e.deleted_at IS NULL ORDER BY e.employee_number`,
-      [companyId],
+      WHERE e.company_id=$1 AND e.deleted_at IS NULL${keyset} ORDER BY e.created_at DESC,e.id DESC LIMIT $${String(values.length)}`,
+      values,
     );
-    return rows.rows.map((row) => ({
-      ...row,
-      passwordChangedAt: row.passwordChangedAt?.toISOString() ?? null,
-      activeSessionCount: Number(row.activeSessionCount),
-    }));
+    return pageEnvelope(
+      rows.rows.map((row) => ({
+        ...row,
+        passwordChangedAt: row.passwordChangedAt?.toISOString() ?? null,
+        activeSessionCount: Number(row.activeSessionCount),
+      })),
+      filter,
+      (row) => row.employeeId,
+    );
   }
   public async setIdentityActive(
     identityId: string,
@@ -616,12 +666,23 @@ export class PostgresAuthorizationRepository implements AuthorizationRepository 
       };
     });
   }
-  public async listPermissions(): Promise<readonly PermissionRecord[]> {
-    return (
+  public async listPermissions(
+    filter: PageFilter = { limit: 50 },
+  ): Promise<Page<PermissionRecord>> {
+    const values: unknown[] = [];
+    let keyset = '';
+    if (filter.cursor) {
+      values.push(filter.cursor);
+      keyset = ` WHERE (p.capability,p.id)>(SELECT x.capability,x.id FROM permissions x WHERE x.id=$1::uuid)`;
+    }
+    values.push(filter.limit + 1);
+    const rows = (
       await this.db.query<{ id: string; capability: PermissionKey; description: string }>(
-        'SELECT id,capability,description FROM permissions ORDER BY capability',
+        `SELECT p.id,p.capability,p.description FROM permissions p${keyset} ORDER BY p.capability,p.id LIMIT $${String(values.length)}`,
+        values,
       )
     ).rows;
+    return pageEnvelope(rows, filter, (row) => row.id);
   }
   public async createPermission(
     input: { capability: PermissionKey; description: string },
@@ -662,18 +723,30 @@ export class PostgresAuthorizationRepository implements AuthorizationRepository 
       ).rows[0]?.present === true
     );
   }
-  public async listGrants(companyId: string) {
-    return (
-      await this.db.query<{
-        roleId: string;
-        permissionId: string;
-        fields: string[] | null;
-        scopes: DataScope[];
-      }>(
-        'SELECT g.role_id AS "roleId",g.permission_id AS "permissionId",g.field_allowlist AS fields,g.data_scopes AS scopes FROM role_permission_grants g JOIN roles r ON r.id=g.role_id WHERE r.organization_id=$1 AND r.deleted_at IS NULL ORDER BY g.role_id,g.permission_id',
-        [companyId],
-      )
-    ).rows;
+  public async listGrants(companyId: string, filter: PageFilter = { limit: 50 }) {
+    const values: unknown[] = [companyId];
+    let keyset = '';
+    if (filter.cursor) {
+      const [roleId, permissionId] = parseCompositeCursor(filter.cursor);
+      values.push(roleId, permissionId);
+      keyset = ` AND (g.created_at,g.role_id,g.permission_id)<(SELECT x.created_at,x.role_id,x.permission_id FROM role_permission_grants x JOIN roles xr ON xr.id=x.role_id WHERE xr.organization_id=$1 AND x.role_id=$2::uuid AND x.permission_id=$3::uuid)`;
+    }
+    values.push(filter.limit + 1);
+    return pageEnvelope(
+      (
+        await this.db.query<{
+          roleId: string;
+          permissionId: string;
+          fields: string[] | null;
+          scopes: DataScope[];
+        }>(
+          `SELECT g.role_id AS "roleId",g.permission_id AS "permissionId",g.field_allowlist AS fields,g.data_scopes AS scopes FROM role_permission_grants g JOIN roles r ON r.id=g.role_id WHERE r.organization_id=$1 AND r.deleted_at IS NULL${keyset} ORDER BY g.created_at DESC,g.role_id DESC,g.permission_id DESC LIMIT $${String(values.length)}`,
+          values,
+        )
+      ).rows,
+      filter,
+      (row) => compositeCursor(row.roleId, row.permissionId),
+    );
   }
   public async grant(
     input: {
@@ -723,13 +796,25 @@ export class PostgresAuthorizationRepository implements AuthorizationRepository 
       });
     });
   }
-  public async listAssignments(companyId: string) {
-    return (
-      await this.db.query<{ employeeId: string; roleId: string }>(
-        'SELECT era.employee_id AS "employeeId",era.role_id AS "roleId" FROM employee_role_assignments era JOIN employees e ON e.id=era.employee_id JOIN roles r ON r.id=era.role_id WHERE e.company_id=$1 AND r.organization_id=$1 ORDER BY era.employee_id,era.role_id',
-        [companyId],
-      )
-    ).rows;
+  public async listAssignments(companyId: string, filter: PageFilter = { limit: 50 }) {
+    const values: unknown[] = [companyId];
+    let keyset = '';
+    if (filter.cursor) {
+      const [employeeId, roleId] = parseCompositeCursor(filter.cursor);
+      values.push(employeeId, roleId);
+      keyset = ` AND (era.created_at,era.employee_id,era.role_id)<(SELECT x.created_at,x.employee_id,x.role_id FROM employee_role_assignments x JOIN employees xe ON xe.id=x.employee_id WHERE xe.company_id=$1 AND x.employee_id=$2::uuid AND x.role_id=$3::uuid)`;
+    }
+    values.push(filter.limit + 1);
+    return pageEnvelope(
+      (
+        await this.db.query<{ employeeId: string; roleId: string }>(
+          `SELECT era.employee_id AS "employeeId",era.role_id AS "roleId" FROM employee_role_assignments era JOIN employees e ON e.id=era.employee_id JOIN roles r ON r.id=era.role_id WHERE e.company_id=$1 AND r.organization_id=$1${keyset} ORDER BY era.created_at DESC,era.employee_id DESC,era.role_id DESC LIMIT $${String(values.length)}`,
+          values,
+        )
+      ).rows,
+      filter,
+      (row) => compositeCursor(row.employeeId, row.roleId),
+    );
   }
   public async assign(
     employeeId: string,
@@ -783,19 +868,30 @@ export class PostgresAuthorizationRepository implements AuthorizationRepository 
       });
     });
   }
-  public async listScopeGrants(companyId: string) {
-    return (
-      await this.db.query<{
-        id: string;
-        employeeId: string;
-        permissionId: string;
-        scope: DataScope;
-        organizationId: string | null;
-      }>(
-        'SELECT d.id,d.employee_id AS "employeeId",d.permission_id AS "permissionId",d.scope,d.scope_organization_id AS "organizationId" FROM data_scope_grants d JOIN employees e ON e.id=d.employee_id AND e.company_id=$1 AND e.deleted_at IS NULL LEFT JOIN organizations o ON o.id=d.scope_organization_id WHERE d.scope_organization_id IS NULL OR (o.owner_organization_id=$1 AND o.deleted_at IS NULL) ORDER BY d.employee_id,d.permission_id,d.scope,d.id',
-        [companyId],
-      )
-    ).rows;
+  public async listScopeGrants(companyId: string, filter: PageFilter = { limit: 50 }) {
+    const values: unknown[] = [companyId];
+    let keyset = '';
+    if (filter.cursor) {
+      values.push(filter.cursor);
+      keyset = ` AND (d.created_at,d.id)<(SELECT x.created_at,x.id FROM data_scope_grants x JOIN employees xe ON xe.id=x.employee_id AND xe.company_id=$1 AND xe.deleted_at IS NULL WHERE x.id=$2::uuid)`;
+    }
+    values.push(filter.limit + 1);
+    return pageEnvelope(
+      (
+        await this.db.query<{
+          id: string;
+          employeeId: string;
+          permissionId: string;
+          scope: DataScope;
+          organizationId: string | null;
+        }>(
+          `SELECT d.id,d.employee_id AS "employeeId",d.permission_id AS "permissionId",d.scope,d.scope_organization_id AS "organizationId" FROM data_scope_grants d JOIN employees e ON e.id=d.employee_id AND e.company_id=$1 AND e.deleted_at IS NULL LEFT JOIN organizations o ON o.id=d.scope_organization_id WHERE (d.scope_organization_id IS NULL OR (o.owner_organization_id=$1 AND o.deleted_at IS NULL))${keyset} ORDER BY d.created_at DESC,d.id DESC LIMIT $${String(values.length)}`,
+          values,
+        )
+      ).rows,
+      filter,
+      (row) => row.id,
+    );
   }
   public async grantScope(
     input: {
