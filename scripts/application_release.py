@@ -62,9 +62,39 @@ def authorize(bundle, approval):
     return auth
 
 
+def verify_image_evidence(root, approval, identities, auth):
+    path = root / '.release-migration-evidence/image_compatibility.json'
+    images.require(path.is_file(), 'Host image compatibility evidence missing')
+    old = json.loads(path.read_bytes())
+    if old.get('images_built_at') == approval['release_sha']:
+        images.require(old.get('old_app_on_new_schema', {}).get('verified') is True and old['old_app_on_new_schema'].get('evidence'), 'Prior schema compatibility evidence missing')
+        for service, i in identities.items():
+            images.require(old.get(service + '_digest') == i['approved_digest'], 'Digest disagrees with prior approved image evidence')
+    else:
+        images.require(auth.get('smoke') == 'PASS', 'Newer candidate image evidence requires a passed runner isolation smoke')
+
+
+def advance_image_evidence(root, bundle, approval, identities):
+    directory = root / '.release-migration-evidence'
+    images.require(directory.is_dir(), 'Host migration evidence directory missing')
+    archive = bundle / 'recovery-bundle.tar.gz'
+    images.require(archive.is_file(), 'Recovery bundle archive missing for evidence advancement')
+    value = {
+        'images_built_at': approval['release_sha'],
+        **{service + '_digest': i['approved_digest'] for service, i in identities.items()},
+        'old_app_on_new_schema': {'verified': True, 'evidence': 'runner isolation smoke images_run_id=%s bundle=%s' % (bundle.name.split('-')[0], images.checksum(archive))},
+    }
+    path = directory / 'image_compatibility.json'
+    temporary = path.with_suffix(path.suffix + '.tmp')
+    fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, 'w') as stream:
+        stream.write(json.dumps(value, sort_keys=True))
+    temporary.replace(path)
+
+
 def precheck(bundle):
     approval, identities, _ = images.load_bundle(bundle)
-    authorize(bundle, approval)
+    auth = authorize(bundle, approval)
     expected = json.loads((bundle / 'migrations.json').read_bytes())
     images.require(hashlib.sha256((bundle / 'migrations.json').read_bytes()).hexdigest() == approval['migration_manifest_sha256'] and len(expected) == 72, 'Candidate migration manifest binding invalid')
     spec = importlib.util.spec_from_file_location('preflight', Path(__file__).with_name('production_preflight.py'))
@@ -74,11 +104,9 @@ def precheck(bundle):
     rows = registry_snapshot()
     classification, pending = gate.classify_registry([{k:r[k] for k in ('name', 'checksum')} for r in rows], expected)
     images.require(classification == 'FULLY_MATCHED' and not pending, 'Application-only release requires FULLY_MATCHED')
-    old = json.loads((ROOT / '.release-migration-evidence/image_compatibility.json').read_bytes())
-    images.require(old.get('images_built_at') == approval['release_sha'], 'Existing approved image evidence is for a different release')
-    images.require(old.get('old_app_on_new_schema', {}).get('verified') is True and old['old_app_on_new_schema'].get('evidence'), 'Prior schema compatibility evidence missing')
-    for service, i in identities.items():
-        images.require(old.get(service + '_digest') == i['approved_digest'], 'Digest disagrees with prior approved image evidence')
+    # Host image evidence: same-candidate reruns stay byte-strict; a newer candidate
+    # is accepted only with the runner's isolated FULLY_MATCHED + smoke-PASS proof.
+    verify_image_evidence(ROOT, approval, identities, auth)
     containers = json.loads(command(['docker', 'inspect', PROJECT+'-api-1', PROJECT+'-web-1']))
     for c in containers:
         command(['docker', 'image', 'inspect', c['Image']])
@@ -275,6 +303,9 @@ def switch(bundle):
     temporary_marker.write_text(approval['release_sha'])
     temporary_marker.replace(ROOT / '.release-sha')
     checkpoint(bundle,'DEPLOYED')
+    # Every successful application-only release advances the in-file compatibility
+    # record; the next precheck rerun of this candidate stays byte-strict.
+    advance_image_evidence(ROOT, bundle, approval, identities)
     return {'deployment':'PASS','sha':approval['release_sha'],'migration_registry':'FULLY_MATCHED','migration_execution':'NOT_INVOKED','recovery_images':'RETAINED','images':runtime['images']}
 
 

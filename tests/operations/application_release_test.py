@@ -134,5 +134,69 @@ class ApplicationRecoveryTest(unittest.TestCase):
         with self.assertRaises(FileExistsError):
             ar.private_write(path,b'cannot overwrite')
 
+    def test_image_evidence_gate_accepts_newer_candidate_via_runner_smoke_only(self):
+        evidence=self.root/'.release-migration-evidence';evidence.mkdir()
+        compat=lambda body:(evidence/'image_compatibility.json').write_text(json.dumps(body))
+        identities={'api':{'approved_digest':'sha256:api'},'web':{'approved_digest':'sha256:web'}}
+        approval={'release_sha':'c'*40}
+        # Same-candidate rerun keeps byte-strict digests and prior verification.
+        compat({'images_built_at':'c'*40,'api_digest':'sha256:api','web_digest':'sha256:web','old_app_on_new_schema':{'verified':True,'evidence':'runner isolation smoke images_run_id=1 bundle=x'}})
+        ar.verify_image_evidence(self.root,approval,identities,{'smoke':'PASS'})
+        compat({'images_built_at':'c'*40,'api_digest':'sha256:other','web_digest':'sha256:web','old_app_on_new_schema':{'verified':True,'evidence':'x'}})
+        with self.assertRaisesRegex(RuntimeError,'Digest disagrees'):
+            ar.verify_image_evidence(self.root,approval,identities,{'smoke':'PASS'})
+        compat({'images_built_at':'c'*40,'api_digest':'sha256:api','web_digest':'sha256:web','old_app_on_new_schema':{}})
+        with self.assertRaisesRegex(RuntimeError,'Prior schema compatibility evidence missing'):
+            ar.verify_image_evidence(self.root,approval,identities,{'smoke':'PASS'})
+        # Newer candidate: historical file stays on file, acceptance now requires
+        # FULLY_MATCHED-isolated smoke; without it the gate must fail closed.
+        compat({'images_built_at':'a'*40,'api_digest':'sha256:old','web_digest':'sha256:old','old_app_on_new_schema':{'verified':True,'evidence':'x'}})
+        with self.assertRaisesRegex(RuntimeError,'runner isolation smoke'):
+            ar.verify_image_evidence(self.root,approval,identities,{'smoke':'FAIL'})
+        ar.verify_image_evidence(self.root,approval,identities,{'smoke':'PASS'})
+        (evidence/'image_compatibility.json').unlink()
+        with self.assertRaisesRegex(RuntimeError,'image compatibility evidence missing'):
+            ar.verify_image_evidence(self.root,approval,identities,{'smoke':'PASS'})
+
+    def test_switch_advances_host_image_evidence_privately_after_deployed(self):
+        bundle=self.root/'.release-image-recovery/44284158221-1';bundle.mkdir(parents=True)
+        (bundle/'recovery-bundle.tar.gz').write_bytes(b'bundle-bytes')
+        evidence=self.root/'.release-migration-evidence';evidence.mkdir()
+        (evidence/'image_compatibility.json').write_text(json.dumps({'images_built_at':'a'*40}))
+        approval={'release_sha':'c'*40}
+        identities={'api':{'approved_digest':'sha256:api'},'web':{'approved_digest':'sha256:web'}}
+        import hashlib
+        expected_bundle=hashlib.sha256(b'bundle-bytes').hexdigest()
+        previous=os.umask(0o022)
+        try:
+            ar.advance_image_evidence(self.root,bundle,approval,identities)
+        finally:
+            os.umask(previous)
+        path=evidence/'image_compatibility.json'
+        body=json.loads(path.read_bytes())
+        self.assertEqual(body['images_built_at'],'c'*40)
+        self.assertEqual(body['api_digest'],'sha256:api')
+        self.assertEqual(body['web_digest'],'sha256:web')
+        self.assertTrue(body['old_app_on_new_schema']['verified'])
+        self.assertEqual(body['old_app_on_new_schema']['evidence'],'runner isolation smoke images_run_id=44284158221 bundle=sha256:'+expected_bundle)
+        self.assertEqual(path.stat().st_mode & 0o777,0o600)
+        (bundle/'recovery-bundle.tar.gz').unlink()
+        with self.assertRaisesRegex(RuntimeError,'Recovery bundle archive missing'):
+            ar.advance_image_evidence(self.root,bundle,approval,identities)
+
+    def test_switch_wiring_advances_evidence_only_after_deployed_checkpoint(self):
+        import ast
+        tree=ast.parse((ROOT/'scripts/application_release.py').read_text())
+        switch=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='switch')
+        markers={}
+        for node in ast.walk(switch):
+            if isinstance(node,ast.Call) and isinstance(node.func,ast.Name):
+                if node.func.id=='checkpoint' and any(getattr(a,'value',None)=='DEPLOYED' for a in node.args):
+                    markers['deployed']=node.lineno
+                if node.func.id=='advance_image_evidence':
+                    markers['advance']=node.lineno
+        self.assertEqual(sorted(markers),['advance','deployed'])
+        self.assertLess(markers['deployed'],markers['advance'])
+
 
 if __name__=='__main__':unittest.main()
