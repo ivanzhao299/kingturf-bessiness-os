@@ -128,6 +128,16 @@ class PureLogicTest(unittest.TestCase):
             self.assertEqual(payload['migrations'], 1)
             self.assertNotEqual(result.returncode, 0)  # fails later at host access, as designed
 
+    def test_scalar_joins_psql_session_row_list(self):
+        class FakeSession:
+            def query(self, sql):
+                return ['0', '\n']          # PsqlSession returns a list of lines
+        self.assertEqual(am.scalar(FakeSession(), 'SELECT 1;'), '0')
+        class ListSession:
+            def query(self, sql):
+                return ['12']
+        self.assertEqual(am.scalar(ListSession(), 'SELECT 1;'), '12')
+
 
 if __name__ == '__main__':
     unittest.main()

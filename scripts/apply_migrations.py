@@ -96,6 +96,11 @@ def build_write_fence(api_release_sha, t_fence, t_obs, t_stop):
     }
 
 
+def scalar(session, sql):
+    """PsqlSession.query returns a list of output lines; join and strip for one value."""
+    return ''.join(session.query(sql)).strip()
+
+
 def validate_staged_layout(staged, migrations, expected_after, approved_suffixes):
     """Staged tree contract: two control scripts as files + migrations directory tree."""
     for required in (Path(staged) / 'release_orchestrator.py', Path(staged) / 'production_preflight.py'):
@@ -265,7 +270,7 @@ def main():
                          "(SELECT 1 FROM event_consumer_deliveries d WHERE d.event_id=o.id"
                          " AND d.tenant_id=o.tenant_id)) + (SELECT count(*) FROM"
                          " event_consumer_deliveries WHERE state IN ('PENDING','PROCESSING'))")
-            drained = session.query('SELECT count(*) FROM (' + drain_sql + ') probe').strip()
+            drained = scalar(session, 'SELECT count(*) FROM (' + drain_sql + ') probe')
             require(drained == '0', f'background queues not drained: {drained}')
             drain = {'background_queues_drained': True, 'external_write_channels_isolated': True,
                      'drained_at_utc': iso(utcnow())}
@@ -321,7 +326,7 @@ def main():
             step = 'data-preconditions'
             counts = []
             for query in ro.DATA_PRECONDITION_SQL:
-                count = session.query('SELECT count(*) FROM (' + query + ') probe').strip()
+                count = scalar(session, 'SELECT count(*) FROM (' + query + ') probe')
                 require(count == '0', f'data precondition returned {count}: {query[:60]}')
                 counts.append(0)
             preconditions = {'negative_balance_groups': 0, 'over_return_groups': 0,
