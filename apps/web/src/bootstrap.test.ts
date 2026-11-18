@@ -1,4 +1,5 @@
 import { sessionFixture } from './test-fixtures/session';
+import { scopeGrantChoiceLabeler } from './governance/identity-scopes';
 import { BehaviorInput, BehaviorSelect, BehaviorTextarea } from '../test/fixtures/behavior-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -1226,6 +1227,83 @@ it('verb-izes governance submit labels so sensitive actions confirm twice (B3)',
   }
 });
 
+it('guards optimistic version fallback instead of sending NaN (B4)', async () => {
+  const controller = new GovernanceController(
+    new Set(['employee:read', 'employee:update']),
+    sessionFixture(),
+  );
+  controller.views = [
+    {
+      path: '/api/v1/employees',
+      value: [{ id: 'employee-1', employeeNumber: 'E-1', displayName: '在场员工', version: 3 }],
+    },
+  ];
+  const page = governanceSubpage(
+    controller,
+    'governance/organization',
+  ) as unknown as RenderedElement;
+  const formData = vi.fn();
+  let entries: [string, string][] = [];
+  class ControlledFormData {
+    public constructor(form: unknown) {
+      formData(form);
+    }
+    public entries(): IterableIterator<[string, string]> {
+      return entries.values();
+    }
+  }
+  const fetcher = vi.fn();
+  vi.stubGlobal('fetch', fetcher);
+  vi.stubGlobal('HTMLInputElement', BehaviorInput);
+  vi.stubGlobal('HTMLSelectElement', BehaviorSelect);
+  vi.stubGlobal('HTMLTextAreaElement', BehaviorTextarea);
+  vi.stubGlobal('FormData', ControlledFormData);
+  const findForm = (node: RenderedElement): RenderedElement | null => {
+    for (const child of node.children) {
+      if (child.tagName === 'form') return child;
+      const nested = findForm(child);
+      if (nested) return nested;
+    }
+    return null;
+  };
+  try {
+    const updateButton = page.findByText('更新员工')[0];
+    if (!updateButton) throw new Error('更新员工 button is required');
+    updateButton.click();
+    const form = findForm(page);
+    if (!form) throw new Error('update dialog form is required');
+    // 提交一个不在已加载列表中的员工：乐观版本无法解析。
+    entries = [
+      ['employeeId', 'missing-employee'],
+      ['displayName', '新名字'],
+      ['active', 'true'],
+    ];
+    form.dispatchEvent({ type: 'submit', preventDefault: () => undefined });
+    await new Promise((resolve) => {
+      setTimeout(resolve, 0);
+    });
+    expect(page.textContent).toContain('记录版本未知，请刷新后重试');
+    expect(fetcher).not.toHaveBeenCalled();
+  } finally {
+    vi.unstubAllGlobals();
+    vi.stubGlobal('document', { createElement: (tagName: string) => new RenderedElement(tagName) });
+  }
+});
+
+it('labels revoke-scope choices with employee and capability names (B4)', () => {
+  const label = scopeGrantChoiceLabeler(
+    [{ employeeId: 'employee-1', displayName: '张三' }],
+    [{ id: 'permission-1', capability: 'customer:read' }],
+  );
+  expect(label({ employeeId: 'employee-1', permissionId: 'permission-1', scope: 'TEAM' })).toBe(
+    '张三 · customer:read · TEAM',
+  );
+  // 查不到员工/能力时回退到现标签（scope · 员工ID 前 8 位）。
+  expect(label({ employeeId: 'employee-2', permissionId: 'permission-2', scope: 'SELF' })).toBe(
+    'SELF · employee',
+  );
+});
+
 it('loads further governance pages on demand with the cursor contract (B2)', async () => {
   const controller = new GovernanceController(new Set(['employee:read']), sessionFixture());
   controller.views = [
@@ -1430,7 +1508,19 @@ class RenderedElement {
   public click(): void {
     for (const listener of this.listeners.get('click') ?? []) listener();
   }
-  public dispatchEvent(event: Readonly<{ type: string }>): boolean {
+  public checkValidity(): boolean {
+    return true;
+  }
+  public reportValidity(): boolean {
+    return true;
+  }
+  public focus(): void {
+    return undefined;
+  }
+  public removeAttribute(): void {
+    return undefined;
+  }
+  public dispatchEvent(event: Readonly<{ type: string; preventDefault?: () => void }>): boolean {
     for (const listener of this.listeners.get(event.type) ?? [])
       (listener as (argument: unknown) => void)(event);
     return true;

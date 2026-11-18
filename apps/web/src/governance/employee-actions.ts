@@ -12,6 +12,7 @@ export function appendGovernanceEmployeeActions(context: GovernanceActionContext
     actions,
     records,
     requiredValue,
+    requiredVersion,
   } = context;
   if (surface.id === 'employees' && permissions.has('employee:create')) {
     const create = el('button', 'secondary', '新建员工');
@@ -87,7 +88,7 @@ export function appendGovernanceEmployeeActions(context: GovernanceActionContext
             {
               displayName: values.displayName,
               active: values.active === 'true',
-              version: Number(selected?.version),
+              version: requiredVersion(selected),
             },
             'PATCH',
           );

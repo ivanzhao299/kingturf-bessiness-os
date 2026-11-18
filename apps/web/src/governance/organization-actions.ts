@@ -12,6 +12,7 @@ export function appendGovernanceOrganizationActions(context: GovernanceActionCon
     actions,
     records,
     requiredValue,
+    requiredVersion,
   } = context;
   if (surface.id === 'organizations' && permissions.has('organization:create')) {
     const create = el('button', 'secondary', '新建组织');
@@ -75,7 +76,7 @@ export function appendGovernanceOrganizationActions(context: GovernanceActionCon
           );
           await controller.submit(
             `/api/v1/organizations/${requiredValue(values.organizationId, '组织')}`,
-            { name: values.name, version: Number(selected?.version) },
+            { name: values.name, version: requiredVersion(selected) },
             'PATCH',
           );
         },

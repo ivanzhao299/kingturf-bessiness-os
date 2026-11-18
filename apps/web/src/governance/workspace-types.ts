@@ -29,4 +29,5 @@ export type GovernanceActionContext = Readonly<{
   ) => void;
   jsonField: (value: string | undefined, label: string) => Record<string, unknown>;
   requiredValue: (value: string | undefined, label: string) => string;
+  requiredVersion: (selected: Record<string, unknown> | undefined) => number;
 }>;

@@ -1,11 +1,28 @@
 import { el } from '../dom';
 import { textValue } from '../shared/business-format';
 import type { GovernanceActionContext } from './workspace-types';
+
+// B4：撤销数据范围下拉标签——优先「员工名 · 能力 · scope」，取不到时回退「scope · 员工ID 前 8 位」。
+export const scopeGrantChoiceLabeler =
+  (profiles: readonly Record<string, unknown>[], permissions: readonly Record<string, unknown>[]) =>
+  (item: Record<string, unknown>): string => {
+    const employeeName = profiles.find(
+      (profile) => String(profile.employeeId) === String(item.employeeId),
+    )?.displayName;
+    const capability = permissions.find(
+      (permission) => String(permission.id) === String(item.permissionId),
+    )?.capability;
+    const scope = textValue(item.scope, '');
+    if (typeof employeeName === 'string' && typeof capability === 'string')
+      return `${employeeName} · ${capability} · ${scope}`;
+    return `${scope} · ${String(item.employeeId).slice(0, 8)}`;
+  };
 export function appendGovernanceIdentityScopes(
   context: GovernanceActionContext,
   mayManageScopes: boolean,
 ) {
-  const { openAction, choices, choiceAvailability, controller, requiredValue, actions } = context;
+  const { openAction, choices, choiceAvailability, records, controller, requiredValue, actions } =
+    context;
   if (mayManageScopes) {
     const scopeGrant = el('button', 'secondary', '配置用户数据范围');
     scopeGrant.addEventListener('click', () => {
@@ -85,8 +102,10 @@ export function appendGovernanceIdentityScopes(
             hint: choiceAvailability('/api/v1/scope-grants'),
             options: choices(
               '/api/v1/scope-grants',
-              (item) =>
-                `${textValue(item.scope, '')} · ${textValue(item.employeeId, '').slice(0, 8)}`,
+              scopeGrantChoiceLabeler(
+                records('/api/v1/user-access-profiles'),
+                records('/api/v1/permissions'),
+              ),
             ),
           },
         ],

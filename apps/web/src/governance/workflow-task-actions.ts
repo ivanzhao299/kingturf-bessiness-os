@@ -12,6 +12,7 @@ export function appendGovernanceTaskActions(context: GovernanceActionContext) {
     records,
     controller,
     requiredValue,
+    requiredVersion,
     actions,
   } = context;
   if (surface.id === 'workflow' && permissions.has('workflow:decide')) {
@@ -54,7 +55,7 @@ export function appendGovernanceTaskActions(context: GovernanceActionContext) {
             {
               decision: values.decision,
               comment: values.comment ?? null,
-              version: Number(selected?.version),
+              version: requiredVersion(selected),
             },
           );
         },

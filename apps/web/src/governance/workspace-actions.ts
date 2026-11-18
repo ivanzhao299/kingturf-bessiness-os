@@ -70,5 +70,19 @@ export function createGovernanceFormActions(
     if (!normalized) throw new Error(`${label}不能为空`);
     return normalized;
   };
-  return { records, choices, choiceAvailability, openAction, jsonField, requiredValue };
+  // B4：乐观并发版本守卫——记录未命中/缺 version 时不发请求（原实现发送 NaN）。
+  const requiredVersion = (selected: Record<string, unknown> | undefined): number => {
+    const version = Number(selected?.version);
+    if (!Number.isFinite(version)) throw new Error('记录版本未知，请刷新后重试');
+    return version;
+  };
+  return {
+    records,
+    choices,
+    choiceAvailability,
+    openAction,
+    jsonField,
+    requiredValue,
+    requiredVersion,
+  };
 }

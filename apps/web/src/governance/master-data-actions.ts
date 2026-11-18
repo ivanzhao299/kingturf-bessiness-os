@@ -13,6 +13,7 @@ export function appendGovernanceMasterDataActions(context: GovernanceActionConte
     actions,
     records,
     requiredValue,
+    requiredVersion,
   } = context;
   if (surface.id === 'master-data' && permissions.has('master-data:create')) {
     const category = el('button', 'secondary', '新建分类');
@@ -106,7 +107,7 @@ export function appendGovernanceMasterDataActions(context: GovernanceActionConte
               value: jsonField(values.value, '结构化值'),
               effectiveFrom: values.effectiveFrom,
               effectiveTo: null,
-              version: Number(selected?.version),
+              version: requiredVersion(selected),
             },
             'PATCH',
           );
@@ -140,7 +141,7 @@ export function appendGovernanceMasterDataActions(context: GovernanceActionConte
             (item) => item.id === values.entryId,
           );
           await controller.submit(
-            `/api/v1/master-data/entries/${requiredValue(values.entryId, '主数据条目')}?version=${String(Number(selected?.version))}`,
+            `/api/v1/master-data/entries/${requiredValue(values.entryId, '主数据条目')}?version=${String(requiredVersion(selected))}`,
             {},
             'DELETE',
           );
