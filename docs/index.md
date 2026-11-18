@@ -49,6 +49,7 @@
 [V1.0 Batch4证据索引](productization/evidence/batch4-2026-10-26/README.md)：逐组与失败记录、原始脱敏日志、固定SHA最终机器回执读取方式。
 
 [ADR0012 惰性路由尝试与同步投影](adr/0012_lazy_route_attempts.md)：Batch4 G5拆分决策，保持原Promise等待、null续走和权限/错误顺序，不引入通用协程或业务规则变更。
+[ADR-0013 租户设置中心](adr/0013-tenant-settings.md)：tenant_settings+追加版本/单向发布/触发器禁改禁删、key代码注册白名单与手写schema零新依赖、同事务审计、三试点键与新capability；CP4草案待人工确认。
 
 [V1.0 Batch4 执行计划](productization/batch4-execution-2026-10-26.md)：从f3稳定基线进行G5收口、SEC010隔离核查与业务规则定稿；不改未批准业务语义、不操作远程/生产。
 
