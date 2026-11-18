@@ -127,6 +127,18 @@ def require_zero(session, sql, label):
     return value
 
 
+def version_matches_marker(path, marker):
+    """Compare /version response BODY sha against the .release-sha marker content."""
+    try:
+        with urllib.request.urlopen(HEALTH.replace('/health', path), timeout=15) as reply:
+            if reply.status != 200:
+                return False
+            payload = json.load(reply)
+    except (urllib.error.URLError, ValueError, OSError):
+        return False
+    return payload.get('sha') == marker
+
+
 def restore_api_on_failure(prod_root):
     """Failure-restore semantics (recover_previous_application counterpart, light):
 
@@ -138,7 +150,7 @@ def restore_api_on_failure(prod_root):
     compose(prod_root, 'up', '-d', '--no-deps', '--pull', 'never', 'api')
     marker = (prod_root / '.release-sha').read_text().strip()
     healthy = wait_until(lambda: http_status('/health') == 200
-                         and http_status('/version') == 200)
+                         and version_matches_marker('/version', marker))
     if not healthy:
         emit('api-restore-failed', {'marker': marker}, status='FAIL')
         return False
@@ -314,8 +326,18 @@ def main():
                          "(SELECT 1 FROM event_consumer_deliveries d WHERE d.event_id=o.id"
                          " AND d.tenant_id=o.tenant_id)) + (SELECT count(*) FROM"
                          " event_consumer_deliveries WHERE state IN ('PENDING','PROCESSING'))")
-            require_zero(session, 'SELECT count(*) FROM (' + drain_sql + ') probe',
-                         'background queues not drained')
+            try:
+                require_zero(session, 'SELECT count(*) FROM (' + drain_sql + ') probe',
+                             'background queues not drained')
+            except RuntimeError:
+                stuck = session.query(
+                    "SELECT o.id::text, o.event_type, d.state, o.created_at::text"
+                    " FROM domain_event_outbox o"
+                    " LEFT JOIN event_consumer_deliveries d ON d.event_id=o.id AND d.tenant_id=o.tenant_id"
+                    " WHERE (d.id IS NULL) OR d.state IN ('PENDING','PROCESSING')")
+                emit('task-drain-stuck', {'records': [' '.join(line.split()) for line in stuck]},
+                     status='FAIL')
+                raise
             drain = {'background_queues_drained': True, 'external_write_channels_isolated': True,
                      'drained_at_utc': iso(utcnow())}
             (evidence / 'task_drain.json').write_text(json.dumps(drain))
@@ -428,7 +450,9 @@ def main():
             except Exception as restore_failure:  # noqa: BLE001 - report, keep scene
                 emit('api-restore-failed', {'error': str(restore_failure)[:300]}, status='FAIL')
                 sys.exit(2)
-            sys.exit(0 if restored else 2)
+            # Migration incomplete: the run stays a failure even when the API was
+            # restored — a green run must mean the approved suffix was applied.
+            sys.exit(1)
         sys.exit(1)
 
 

@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import unittest.mock
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import tempfile
@@ -168,6 +169,31 @@ class PureLogicTest(unittest.TestCase):
             return state['n'] >= 3
         self.assertTrue(am.wait_until(flaky, attempts=5, delay=0))
         self.assertFalse(am.wait_until(lambda: False, attempts=3, delay=0))
+
+    def test_version_matches_marker_compares_body_sha(self):
+        import urllib.request, io
+        class Reply:
+            status = 200
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+            def read(self): return json.dumps({'sha': 'a' * 40}).encode()
+        def fake_urlopen(url, timeout=15): return Reply()
+        with unittest.mock.patch.object(urllib.request, 'urlopen', fake_urlopen):
+            self.assertTrue(am.version_matches_marker('/version', 'a' * 40))
+            self.assertFalse(am.version_matches_marker('/version', 'b' * 40))
+
+    def test_version_matches_marker_swallows_transport_and_body_errors(self):
+        import urllib.request
+        def boom(url, timeout=15): raise OSError('down')
+        with unittest.mock.patch.object(urllib.request, 'urlopen', boom):
+            self.assertFalse(am.version_matches_marker('/version', 'a' * 40))
+        class BadBody(Reply if False else object):
+            status = 200
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+            def read(self): return b'not-json'
+        with unittest.mock.patch.object(urllib.request, 'urlopen', lambda url, timeout=15: BadBody()):
+            self.assertFalse(am.version_matches_marker('/version', 'a' * 40))
 
 
 if __name__ == '__main__':
