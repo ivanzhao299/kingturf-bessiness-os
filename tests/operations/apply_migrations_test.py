@@ -195,6 +195,40 @@ class PureLogicTest(unittest.TestCase):
         with unittest.mock.patch.object(urllib.request, 'urlopen', lambda url, timeout=15: BadBody()):
             self.assertFalse(am.version_matches_marker('/version', 'a' * 40))
 
+    def test_drain_gate_four_states(self):
+        """(1) scalar sum is fetched directly (never the constant-1 wrapper bug);
+        (2) seed-era undelivered outbox is ignored by the in-flight gate but
+        disclosed by the legacy count; (3) recent undelivered blocks;
+        (4) a PENDING delivery blocks regardless of age."""
+        inflight = am.inflight_drain_sql()
+        legacy = am.legacy_undelivered_sql()
+        # (1) the in-flight SQL is a direct scalar sum, not count(*) over a scalar
+        self.assertTrue(inflight.startswith('SELECT coalesce(('))
+        self.assertNotIn('SELECT count(*) FROM (SELECT', inflight)
+        self.assertIn("interval '7 days'", inflight)
+        # (2) legacy disclosure counts ALL undelivered, no time filter
+        self.assertNotIn('interval', legacy)
+        class ScalarSession:
+            """Executes the exact SQL shapes against an in-table predicate."""
+            def __init__(self, results): self.results = results; self.queries = []
+            def query(self, sql):
+                self.queries.append(sql)
+                if "interval '7 days'" in sql:
+                    return [str(self.results['recent'] + self.results['deliveries'])]
+                return [str(self.results['legacy'])]
+        # seed-era only: gate passes, legacy disclosed as 164
+        session = ScalarSession({'recent': 0, 'deliveries': 0, 'legacy': 164})
+        am.require_zero(session, inflight, 'background queues have in-flight work')
+        self.assertEqual(am.scalar(session, legacy), '164')
+        # recent undelivered: gate blocks
+        blocked = ScalarSession({'recent': 1, 'deliveries': 0, 'legacy': 164})
+        with self.assertRaisesRegex(RuntimeError, 'in-flight'):
+            am.require_zero(blocked, inflight, 'background queues have in-flight work')
+        # PENDING delivery blocks regardless of age
+        pending = ScalarSession({'recent': 0, 'deliveries': 2, 'legacy': 164})
+        with self.assertRaisesRegex(RuntimeError, 'in-flight'):
+            am.require_zero(pending, inflight, 'background queues have in-flight work')
+
 
 if __name__ == '__main__':
     unittest.main()

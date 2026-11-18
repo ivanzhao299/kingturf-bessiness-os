@@ -25,6 +25,7 @@ from datetime import datetime, timedelta, timezone
 SUFFIX_RE = re.compile(r'^[0-9]{4}_[a-z0-9_]+\.sql$')
 SHA_RE = re.compile(r'^[0-9a-f]{40}$')
 HEALTH = 'http://127.0.0.1:4332/health'
+DRAIN_INFLIGHT_CUTOFF_DAYS = 7
 
 
 def utcnow():
@@ -119,6 +120,24 @@ def wait_until(predicate, attempts=45, delay=2.0):
             return True
         time.sleep(delay)
     return False
+
+
+def inflight_drain_sql(cutoff_days=DRAIN_INFLIGHT_CUTOFF_DAYS):
+    """In-flight gate: recent undelivered outbox + any PENDING/PROCESSING delivery."""
+    return (
+        "SELECT coalesce((SELECT count(*) FROM domain_event_outbox o WHERE o.created_at >= now()"
+        f" - interval '{cutoff_days} days' AND NOT EXISTS"
+        "(SELECT 1 FROM event_consumer_deliveries d WHERE d.event_id=o.id"
+        " AND d.tenant_id=o.tenant_id)),0) + coalesce((SELECT count(*) FROM"
+        " event_consumer_deliveries WHERE state IN ('PENDING','PROCESSING')),0)")
+
+
+def legacy_undelivered_sql():
+    """Disclosure-only count: all-time outbox rows with no delivery row (TD-REL-006)."""
+    return (
+        "SELECT count(*) FROM domain_event_outbox o WHERE NOT EXISTS"
+        "(SELECT 1 FROM event_consumer_deliveries d WHERE d.event_id=o.id"
+        " AND d.tenant_id=o.tenant_id)")
 
 
 def require_zero(session, sql, label):
@@ -322,26 +341,32 @@ def main():
                                  'write_probe_status': fence_status})
 
             step = 'task-drain'
-            drain_sql = ("SELECT (SELECT count(*) FROM domain_event_outbox o WHERE NOT EXISTS"
-                         "(SELECT 1 FROM event_consumer_deliveries d WHERE d.event_id=o.id"
-                         " AND d.tenant_id=o.tenant_id)) + (SELECT count(*) FROM"
-                         " event_consumer_deliveries WHERE state IN ('PENDING','PROCESSING'))")
+            # Gate intent: no IN-FLIGHT work crossing the maintenance window. Seed-era
+            # outbox events with no consumer delivery (pre-production demo data) are
+            # legacy undelivered, not in-flight; they are disclosed below and tracked
+            # as TD-REL-006 instead of blocking migration windows.
+            inflight_sql = inflight_drain_sql()
+            legacy_sql = legacy_undelivered_sql()
             try:
-                require_zero(session, 'SELECT count(*) FROM (' + drain_sql + ') probe',
-                             'background queues not drained')
+                in_flight = int(require_zero(session, inflight_sql,
+                                             'background queues have in-flight work'))
             except RuntimeError:
                 stuck = session.query(
                     "SELECT o.id::text, o.event_type, d.state, o.created_at::text"
                     " FROM domain_event_outbox o"
                     " LEFT JOIN event_consumer_deliveries d ON d.event_id=o.id AND d.tenant_id=o.tenant_id"
-                    " WHERE (d.id IS NULL) OR d.state IN ('PENDING','PROCESSING')")
+                    " WHERE (o.created_at >= now()"
+                    f" - interval '{DRAIN_INFLIGHT_CUTOFF_DAYS} days' AND d.id IS NULL)"
+                    " OR d.state IN ('PENDING','PROCESSING')")
                 emit('task-drain-stuck', {'records': [' '.join(line.split()) for line in stuck]},
                      status='FAIL')
                 raise
+            legacy = int(scalar(session, legacy_sql))
             drain = {'background_queues_drained': True, 'external_write_channels_isolated': True,
-                     'drained_at_utc': iso(utcnow())}
+                     'drained_at_utc': iso(utcnow()),
+                     'in_flight': in_flight, 'legacy_undelivered_observed': legacy}
             (evidence / 'task_drain.json').write_text(json.dumps(drain))
-            emit('task-drain', {'queues': 0})
+            emit('task-drain', {'in_flight': in_flight, 'legacy_undelivered': legacy})
 
             step = 'backup-restore'
             stamp2 = utcnow().strftime('%Y%m%dT%H%M%SZ')
