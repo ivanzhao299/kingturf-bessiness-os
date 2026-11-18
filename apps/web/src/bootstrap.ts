@@ -25,6 +25,7 @@ export { GovernanceController } from './governance/controller';
 export { governanceNextAction, governanceChannelLabel } from './governance/presentation';
 import { createGovernanceWorkspace } from './governance/workspace';
 import { createGovernanceSubpages } from './governance/subpage';
+import { mustChangeGate } from './must-change-screen';
 import { governanceInitialSurfaces, mountGovernanceViews } from './governance/route-loading';
 import { createDocumentReadService } from './shared/document-read-service';
 import { createDocumentConnectorRenderer } from './shared/document-connectors';
@@ -655,6 +656,11 @@ export async function mountWorkspace(
   // Reset document reads when the authenticated identity changes.
   if (!isCurrent()) return;
   if (session !== context.session) throw new Error('工作台与会话上下文不匹配');
+  // A1（TD-SEC-011）：MUST_CHANGE 会话先改密再入工作台（成功后自动刷新重登）。
+  if (session.credentialState === 'MUST_CHANGE') {
+    await mustChangeGate(root, context);
+    return;
+  }
   const documents = createWorkspaceDocuments(context);
   const allowed = new Set<CrmPermission>([
     'employee:read',

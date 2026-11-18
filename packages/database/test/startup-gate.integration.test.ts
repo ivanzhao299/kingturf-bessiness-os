@@ -34,8 +34,8 @@ describe('production startup migration gate', () => {
     const files = readdirSync(migrations)
       .filter((name) => /^\d+.*\.sql$/u.test(name))
       .sort();
-    if (files.length !== 72)
-      throw new Error(`expected 72 candidate migrations, found ${String(files.length)}`);
+    if (files.length !== 73)
+      throw new Error(`expected 73 candidate migrations, found ${String(files.length)}`);
     const filtered = mkdtempSync(join(tmpdir(), 'kingturf-startup-gate-'));
     for (const name of files.slice(0, 70))
       copyFileSync(join(migrations, name), join(filtered, name));
@@ -53,16 +53,17 @@ describe('production startup migration gate', () => {
     await admin.close();
   });
 
-  it('reports the 70-of-72 prefix as pending, mirroring the verified production registry', async () => {
+  it('reports the 70-of-current prefix as pending, mirroring the verified production registry', async () => {
     const status = await migrationStatus(prefixOnly);
     expect(status.filter((item) => item.state === 'applied')).toHaveLength(70);
     expect(status.filter((item) => item.state === 'pending').map((item) => item.name)).toEqual([
       '0071_inventory_stock_resource_guards.sql',
       '0072_production_return_guards.sql',
+      '0073_credential_must_change.sql',
     ]);
   });
 
-  it('refuses production startup when the registry is a 70-of-72 prefix', async () => {
+  it('refuses production startup when the registry is a 70-of-current prefix', async () => {
     await expect(assertMigrationsCurrent(prefixOnly)).rejects.toThrow(
       /Migration compatibility check failed: 0071_inventory_stock_resource_guards\.sql:pending/,
     );

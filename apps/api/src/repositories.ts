@@ -359,8 +359,12 @@ export class PostgresSecurityStore implements CredentialStore, AuditSink {
   }
   public async resolveSession(hash: string, now: Date): Promise<AuthorizationContext | null> {
     return this.database.transaction(async (tx) => {
-      const base = await tx.query<{ employee_id: string; company_id: string }>(
-        "SELECT e.id employee_id,e.company_id FROM sessions s JOIN identities i ON i.id=s.identity_id AND i.active AND i.deleted_at IS NULL JOIN employees e ON e.id=i.employee_id AND e.active AND e.deleted_at IS NULL JOIN organizations company ON company.id=e.company_id AND company.organization_type='COMPANY' AND company.active AND company.deleted_at IS NULL JOIN organizations employee_org ON employee_org.id=e.organization_id AND employee_org.owner_organization_id=e.company_id AND employee_org.active AND employee_org.deleted_at IS NULL JOIN organization_memberships om ON om.employee_id=e.id AND om.organization_id=e.company_id AND om.active WHERE s.token_hash=$1 AND s.revoked_at IS NULL AND s.expires_at>$2 AND s.organization_id=e.company_id LIMIT 1",
+      const base = await tx.query<{
+        employee_id: string;
+        company_id: string;
+        must_change: boolean;
+      }>(
+        "SELECT e.id employee_id,e.company_id,COALESCE(pc.must_change_password,false) must_change FROM sessions s JOIN identities i ON i.id=s.identity_id AND i.active AND i.deleted_at IS NULL LEFT JOIN password_credentials pc ON pc.identity_id=i.id JOIN employees e ON e.id=i.employee_id AND e.active AND e.deleted_at IS NULL JOIN organizations company ON company.id=e.company_id AND company.organization_type='COMPANY' AND company.active AND company.deleted_at IS NULL JOIN organizations employee_org ON employee_org.id=e.organization_id AND employee_org.owner_organization_id=e.company_id AND employee_org.active AND employee_org.deleted_at IS NULL JOIN organization_memberships om ON om.employee_id=e.id AND om.organization_id=e.company_id AND om.active WHERE s.token_hash=$1 AND s.revoked_at IS NULL AND s.expires_at>$2 AND s.organization_id=e.company_id LIMIT 1",
         [hash, now],
       );
       const actor = base.rows[0];
@@ -409,6 +413,7 @@ export class PostgresSecurityStore implements CredentialStore, AuditSink {
         actor: { employeeId: actor.employee_id, companyId: actor.company_id },
         permissions,
         scopeAnchors,
+        credentialState: actor.must_change ? 'MUST_CHANGE' : 'OK',
       };
     });
   }
@@ -448,8 +453,9 @@ export class PostgresSecurityStore implements CredentialStore, AuditSink {
         [identityId, input.companyId, input.tokenHash],
       );
       if (!session.rows[0]) throw new DomainError('forbidden', 'Session is no longer active');
+      // A1：自助改密成功即清位（同事务）；MUST_CHANGE 门随之解除。
       await tx.query(
-        'UPDATE password_credentials SET password_hash=$2,changed_at=clock_timestamp(),updated_by=$3 WHERE identity_id=$1',
+        'UPDATE password_credentials SET password_hash=$2,must_change_password=false,changed_at=clock_timestamp(),updated_by=$3 WHERE identity_id=$1',
         [identityId, input.passwordHash, input.employeeId],
       );
       await tx.query(
@@ -463,7 +469,7 @@ export class PostgresSecurityStore implements CredentialStore, AuditSink {
         'employee',
         input.employeeId,
         input.correlationId,
-        {},
+        { must_change_cleared: true },
       );
     });
   }
@@ -493,8 +499,9 @@ export class PostgresSecurityStore implements CredentialStore, AuditSink {
       );
       const identityId = identity.rows[0]?.id;
       if (!identityId) throw new DomainError('conflict', 'Identity could not be provisioned');
+      // A1（TD-SEC-012→011）：开通/重置写入的临时密码必须首登改密。
       await tx.query(
-        "INSERT INTO password_credentials(identity_id,algorithm,password_hash,created_by,updated_by) VALUES($1,'scrypt',$2,$3,$3) ON CONFLICT(identity_id) DO UPDATE SET password_hash=excluded.password_hash,changed_at=now(),updated_by=$3",
+        "INSERT INTO password_credentials(identity_id,algorithm,password_hash,must_change_password,created_by,updated_by) VALUES($1,'scrypt',$2,true,$3,$3) ON CONFLICT(identity_id) DO UPDATE SET password_hash=excluded.password_hash,must_change_password=true,changed_at=now(),updated_by=$3",
         [identityId, input.passwordHash, input.actorId],
       );
       await tx.query(

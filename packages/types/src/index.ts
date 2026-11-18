@@ -122,6 +122,7 @@ export type PermissionKey = `${string}:${string}`;
 export type ErrorCode =
   | 'authentication_required'
   | 'forbidden'
+  | 'credential_must_change'
   | 'invalid_request'
   | 'conflict'
   | 'not_found'

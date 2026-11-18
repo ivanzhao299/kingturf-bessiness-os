@@ -199,6 +199,20 @@ export function buildApp(
           );
         if (carrier.kind === 'cookie')
           authorizeCookieRequest(request, carrier, dependencies.auth, browserSession);
+        // A1（TD-SEC-011）：MUST_CHANGE 会话门（服务端强制）——仅放行改密三端点。
+        if (context.credentialState === 'MUST_CHANGE') {
+          const permitted =
+            (request.method === 'GET' && request.pathname === '/api/v1/auth/session') ||
+            (request.method === 'PUT' && request.pathname === '/api/v1/auth/credential') ||
+            (request.method === 'POST' && request.pathname === '/api/v1/auth/logout');
+          if (!permitted)
+            return error(
+              403,
+              'credential_must_change',
+              'Password change is required before using this session',
+              correlationId,
+            );
+        }
         const foundationResponse = await dispatchFoundationRoutes(
           foundationRoutes({
             dependencies,

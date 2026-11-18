@@ -21,10 +21,19 @@ describe('CI database target safety', () => {
 });
 
 describe('identity and authorization migration', () => {
+  it('0073 adds only the must-change flag column (A1)', async () => {
+    const sql = await readFile(
+      join(process.cwd(), 'migrations/0073_credential_must_change.sql'),
+      'utf8',
+    );
+    expect(sql).toContain('ADD COLUMN must_change_password boolean NOT NULL DEFAULT false');
+    expect(sql).not.toMatch(/DROP|UPDATE |DELETE |ALTER COLUMN/iu);
+  });
+
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0072_production_return_guards.sql');
+    expect(ordered.at(-1)).toBe('0073_credential_must_change.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',

@@ -20,7 +20,7 @@ ro = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(ro)
 MIGRATIONS = ROOT / 'packages/database/migrations'
 REAL_FILES = sorted(MIGRATIONS.glob('[0-9][0-9][0-9][0-9]*.sql'))
-assert len(REAL_FILES) == 72, 'candidate migration set must have exactly 72 files'
+assert len(REAL_FILES) == 73, 'candidate migration set must have exactly 73 files'
 
 CONTAINER = 'kingturf-business-os-postgres-1'
 PG_USER = 'kingturf'
@@ -162,11 +162,11 @@ class Drill(unittest.TestCase):
 
 @unittest.skipUnless(HAS_PSQL or HAS_DOCKER, 'no psql client and no local development postgres container')
 class ControlledUpgradeDrill(Drill):
-    def test_70_to_72_via_orchestrator_matches_reference_migrator_exactly(self):
+    def test_full_current_set_via_orchestrator_matches_reference_migrator_exactly(self):
         session = self.make_db('phase12c_drill_upgrade')
         state = self.run_execute(session)
         self.assertEqual(state['verdict'], 'COMPLETED')
-        self.assertEqual(len(self.registry_names(session)), 72)
+        self.assertEqual(len(self.registry_names(session)), 73)
         admin = admin_session()
         try:
             admin.query('DROP DATABASE IF EXISTS phase12c_drill_reference')

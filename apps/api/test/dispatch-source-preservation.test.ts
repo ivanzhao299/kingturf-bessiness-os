@@ -323,10 +323,19 @@ it('root authentication, errors, lifecycle, completion and acceptance modes inve
   ]);
   const completionBody = complete.body?.statements.map((n) => n.getText(completion)).join('\n');
   if (!completionBody) throw new Error('Completion missing');
+  // A1（TD-SEC-011，行为变更已批）：try 内新增 MUST_CHANGE 会话门 if 语句；比对前仅
+  // 从展开文本中删除该已批语句（注释不入 AST token），其余须逐 token 逆展开等于冻结 f3。
+  const gate = findAll(fn, ts.isIfStatement).find(
+    (node): node is ts.IfStatement =>
+      ts.isIfStatement(node) &&
+      node.expression.getText(current).includes("credentialState === 'MUST_CHANGE'"),
+  );
+  if (!gate) throw new Error('Approved A1 must-change gate missing');
   const expanded = fn.body
     ?.getText(current)
     .replace(loop.getText(current), middle)
-    .replace(tail.getText(current), completionBody);
+    .replace(tail.getText(current), completionBody)
+    .replace(gate.getText(current), '');
   expect(
     firstDifference(tokens(expanded ?? ''), tokens(original.body?.getText(old) ?? '')),
   ).toBeNull();

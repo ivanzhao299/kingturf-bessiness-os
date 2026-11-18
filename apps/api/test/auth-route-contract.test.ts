@@ -134,6 +134,7 @@ describe('auth HTTP contracts frozen at 0fdd996; S4 machine carrier mapping', ()
         ...actor,
         displayName: 'User',
         employeeNumber: 'E01',
+        credentialState: 'OK',
         permissions: ['identity:read', 'role:read'],
       },
       headers: {
@@ -153,6 +154,7 @@ describe('auth HTTP contracts frozen at 0fdd996; S4 machine carrier mapping', ()
       ...actor,
       displayName: null,
       employeeNumber: null,
+      credentialState: 'OK',
       permissions: ['identity:read', 'role:read'],
     });
   });

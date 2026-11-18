@@ -730,6 +730,7 @@ describe('authentication and protected API contracts', () => {
       companyId,
       displayName: 'Employee',
       employeeNumber: 'E-1',
+      credentialState: 'OK',
       permissions: [],
     });
     expect((await dispatch(deps, 'POST', '/api/v1/auth/logout')).statusCode).toBe(204);

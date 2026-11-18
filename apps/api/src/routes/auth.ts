@@ -222,6 +222,8 @@ export function sessionRoutes(context: SecuredAuthContext): readonly RouteDefini
             companyId: actor.companyId,
             displayName: profile?.displayName ?? null,
             employeeNumber: profile?.employeeNumber ?? null,
+            // A1（TD-SEC-011）：加性字段；MUST_CHANGE 前端跳改密屏。
+            credentialState: context.authorization.credentialState ?? 'OK',
             permissions: [...context.authorization.permissions.keys()].sort(),
             ...(cookie ? { generation: context.auth.sessionGeneration(context.token) } : {}),
             ...(csrfToken !== undefined ? { csrfToken } : {}),

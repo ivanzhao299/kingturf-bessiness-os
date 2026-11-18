@@ -177,6 +177,8 @@ export type AuthorizationContext = Readonly<{
     PermissionKey,
     readonly Readonly<{ scope: DataScope; organizationId: Identifier | null }>[]
   >;
+  // A1（TD-SEC-011）：MUST_CHANGE 会话在 dispatch 层被限制为改密三端点；加性字段，旧消费方无感。
+  credentialState?: 'OK' | 'MUST_CHANGE';
 }>;
 
 export function normalizeEmail(value: string): string {

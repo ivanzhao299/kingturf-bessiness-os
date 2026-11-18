@@ -4,6 +4,8 @@ export type SessionDto = Readonly<{
   displayName: string | null;
   employeeNumber: string | null;
   permissions: readonly string[];
+  // A1（TD-SEC-011）：加性字段；MUST_CHANGE 时前端进入强制改密屏。
+  credentialState?: 'OK' | 'MUST_CHANGE';
 }>;
 
 export class SessionOwner {
