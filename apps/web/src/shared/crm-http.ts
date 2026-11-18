@@ -2,11 +2,7 @@ import type { SessionContext } from '../session';
 import { json, requestId } from '../http';
 import type { CrmApi, Customer, Employee, Lead } from '../crm/types';
 import { parseResponseRecord, type ResponseParser } from './response-parser';
-import {
-  parseResponseArray,
-  parseResponseItems,
-  parseCustomer360Response,
-} from './api-response-parser';
+import { parseResponseItems, parseCustomer360Response } from './api-response-parser';
 
 export function createFetchCrmApi(context: SessionContext): CrmApi {
   const post = <T>(
@@ -26,8 +22,16 @@ export function createFetchCrmApi(context: SessionContext): CrmApi {
       decode,
     );
   return {
-    listEmployees: () =>
-      json<readonly Employee[]>('/api/v1/employees', context, undefined, parseResponseArray),
+    async listEmployees() {
+      return (
+        await json<{ items: Employee[] }>(
+          '/api/v1/employees',
+          context,
+          undefined,
+          parseResponseItems,
+        )
+      ).items;
+    },
     async listCustomers() {
       return (
         await json<{ items: Customer[] }>(

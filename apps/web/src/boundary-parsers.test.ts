@@ -193,7 +193,10 @@ it('runs schema checks in real CRM and commercial HTTP adapters', async () => {
   const commercial = createFetchCommercialApi(sessionFixture());
   await expect(crm.listCustomers()).rejects.toThrow();
   await expect(commercial.list('/api/v1/quotes')).rejects.toThrow();
+  // B2：employees 响应由裸数组改为 {items,nextCursor} 信封。
   fetcher.mockResolvedValue(response([{}]));
+  await expect(crm.listEmployees()).rejects.toThrow();
+  fetcher.mockResolvedValue(response({ items: [{}] }));
   await expect(crm.listEmployees()).resolves.toEqual([{}]);
   fetcher.mockResolvedValue(response({ items: [], nextCursor: 3 }));
   await expect(commercial.list('/api/v1/ar-open-items')).rejects.toThrow();

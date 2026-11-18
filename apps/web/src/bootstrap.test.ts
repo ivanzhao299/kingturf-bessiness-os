@@ -124,7 +124,8 @@ const readGovernanceSources = (): string[] => [
   readBoundSource('./governance/controller.ts', 'export class GovernanceController'),
   readBoundSource('./governance/surfaces.ts', 'export const GOVERNANCE_SURFACES'),
   readBoundSource('./governance/presentation.ts', 'export const governanceItems'),
-  readBoundSource('./governance/audit-workbench.ts', 'export const auditLogWorkbench'),
+  readBoundSource('./governance/audit-workbench.ts', 'export function auditWorkbench'),
+  readBoundSource('./governance/list-view.ts', 'export function createGovernanceListView'),
   readBoundSource('./governance/workspace-heading.ts', 'export function createGovernanceHeading'),
   readBoundSource(
     './governance/workspace-actions.ts',
@@ -1225,6 +1226,124 @@ it('verb-izes governance submit labels so sensitive actions confirm twice (B3)',
   }
 });
 
+it('loads further governance pages on demand with the cursor contract (B2)', async () => {
+  const controller = new GovernanceController(new Set(['employee:read']), sessionFixture());
+  controller.views = [
+    {
+      path: '/api/v1/employees',
+      value: {
+        items: [{ id: 'employee-1', displayName: '第一名' }],
+        nextCursor: '11111111-1111-4111-8111-111111111111',
+      },
+    },
+  ];
+  const page = governanceSubpage(
+    controller,
+    'governance/organization',
+  ) as unknown as RenderedElement;
+  expect(page.textContent).toContain('已加载 1 条记录');
+  const more = page.findByText('继续加载')[0];
+  if (!more) throw new Error('继续加载 button is required');
+  const fetcher = vi.fn().mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        items: [{ id: 'employee-2', displayName: '第二名' }],
+        nextCursor: null,
+      }),
+      { status: 200 },
+    ),
+  );
+  vi.stubGlobal('fetch', fetcher);
+  try {
+    more.click();
+    await new Promise((resolve) => {
+      setTimeout(resolve, 0);
+    });
+    expect(fetcher).toHaveBeenCalledOnce();
+    expect(String(fetcher.mock.calls[0]?.[0])).toContain('cursor=');
+    expect(page.textContent).toContain('已加载 2 条记录');
+    expect(page.findByText('继续加载')).toEqual([]);
+  } finally {
+    vi.unstubAllGlobals();
+    vi.stubGlobal('document', { createElement: (tagName: string) => new RenderedElement(tagName) });
+  }
+});
+
+it('filters audit events server-side and exports every filtered page (B2)', async () => {
+  const controller = new GovernanceController(new Set(['audit:read']), sessionFixture());
+  controller.views = [
+    {
+      path: '/api/v1/audit-events',
+      value: {
+        items: [{ id: 'audit-1', action: 'AUTH_LOGIN' }],
+        nextCursor: '11111111-1111-4111-8111-111111111111',
+      },
+    },
+  ];
+  const page = governanceSubpage(controller, 'governance/audit') as unknown as RenderedElement;
+  expect(page.textContent).toContain('筛选结果已加载 1 条');
+  const calls: string[] = [];
+  const fetcher = vi.fn((input: string) => {
+    const url = input;
+    calls.push(url);
+    const respond = (payload: unknown) =>
+      Promise.resolve(new Response(JSON.stringify(payload), { status: 200 }));
+    if (url.includes('cursor=11111111-1111-4111-8111-111111111111'))
+      return respond({
+        items: [{ id: 'audit-2', action: 'AUTH_LOGIN' }],
+        nextCursor: '22222222-2222-4222-8222-222222222222',
+      });
+    if (url.includes('cursor=22222222-2222-4222-8222-222222222222'))
+      return respond({ items: [{ id: 'audit-3', action: 'AUTH_LOGIN' }], nextCursor: null });
+    return respond({
+      items: [{ id: 'audit-1', action: 'AUTH_LOGIN' }],
+      nextCursor: '11111111-1111-4111-8111-111111111111',
+    });
+  });
+  const urlWithBlob = URL as unknown as { createObjectURL?: unknown; revokeObjectURL?: unknown };
+  const hadCreate = 'createObjectURL' in urlWithBlob;
+  const hadRevoke = 'revokeObjectURL' in urlWithBlob;
+  urlWithBlob.createObjectURL = () => 'blob:fixture';
+  urlWithBlob.revokeObjectURL = () => undefined;
+  vi.stubGlobal('fetch', fetcher);
+  const findInput = (node: RenderedElement): RenderedElement | null => {
+    for (const child of node.children) {
+      if (
+        child.tagName.toUpperCase() === 'INPUT' &&
+        child.getAttribute('aria-label') === '搜索系统日志'
+      )
+        return child;
+      const nested = findInput(child);
+      if (nested) return nested;
+    }
+    return null;
+  };
+  try {
+    const keyword = findInput(page);
+    if (!keyword) throw new Error('audit keyword input is required');
+    keyword.value = 'AUTH';
+    keyword.dispatchEvent({ type: 'input' });
+    await new Promise((resolve) => {
+      setTimeout(resolve, 0);
+    });
+    expect(calls[0]).toContain('query=AUTH');
+    const exportButton = page.findByText('导出当前日志')[0];
+    if (!exportButton) throw new Error('导出当前日志 button is required');
+    exportButton.click();
+    await new Promise((resolve) => {
+      setTimeout(resolve, 0);
+    });
+    // 导出从当前页游标继续循环拉取至 nextCursor 为空。
+    expect(calls.some((url) => url.includes('cursor=11111111'))).toBe(true);
+    expect(calls.some((url) => url.includes('cursor=22222222'))).toBe(true);
+  } finally {
+    vi.unstubAllGlobals();
+    if (!hadCreate) delete urlWithBlob.createObjectURL;
+    if (!hadRevoke) delete urlWithBlob.revokeObjectURL;
+    vi.stubGlobal('document', { createElement: (tagName: string) => new RenderedElement(tagName) });
+  }
+});
+
 it('admits manufacturing cost capabilities into the commercial workspace', () => {
   expect(isCommercialPermission('manufacturing-cost:read')).toBe(true);
   expect(isCommercialPermission('manufacturing-cost:approve')).toBe(true);
@@ -1280,6 +1399,9 @@ class RenderedElement {
   public append(...children: RenderedElement[]): void {
     this.children.push(...children);
   }
+  public replaceChildren(...children: RenderedElement[]): void {
+    this.children = [...children];
+  }
   public addEventListener(type: string, listener: () => void): void {
     this.listeners.set(type, [...(this.listeners.get(type) ?? []), listener]);
   }
@@ -1307,6 +1429,11 @@ class RenderedElement {
   }
   public click(): void {
     for (const listener of this.listeners.get('click') ?? []) listener();
+  }
+  public dispatchEvent(event: Readonly<{ type: string }>): boolean {
+    for (const listener of this.listeners.get(event.type) ?? [])
+      (listener as (argument: unknown) => void)(event);
+    return true;
   }
   public querySelector(selector: string): RenderedElement | null {
     return selector.startsWith('.') ? (this.findByClass(selector.slice(1))[0] ?? null) : null;

@@ -9,6 +9,18 @@ export const governanceItems = (value: unknown): readonly unknown[] => {
   return [value];
 };
 
+// B2：统一把视图值解为分页形状；兼容裸数组（测试夹具）与 {items,nextCursor}。
+export const governancePage = (
+  value: unknown,
+): Readonly<{ items: readonly unknown[]; nextCursor: string | null }> => {
+  if (Array.isArray(value)) return { items: value, nextCursor: null };
+  if (typeof value === 'object' && value !== null) {
+    const record = value as { items?: readonly unknown[]; nextCursor?: string | null };
+    return { items: record.items ?? [], nextCursor: record.nextCursor ?? null };
+  }
+  return { items: [], nextCursor: null };
+};
+
 export const GOVERNANCE_SOURCE_LABELS: Readonly<Record<string, string>> = {
   '/api/v1/user-access-profiles': '用户访问档案',
   '/api/v1/organizations': '组织清单',
