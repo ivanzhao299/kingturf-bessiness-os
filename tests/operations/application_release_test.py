@@ -229,5 +229,23 @@ class ApplicationRecoveryTest(unittest.TestCase):
         self.assertIn("'Handover state expects the api container to be stopped'", body)
         self.assertIn("'Current recovery container unavailable'", body)
 
+    def test_preflight_handover_guard_is_precise(self):
+        import importlib.util as ilu
+        spec = ilu.spec_from_file_location('preflight_mod', ROOT/'scripts/production_preflight.py')
+        gate = ilu.module_from_spec(spec); spec.loader.exec_module(gate)
+        # Handover: candidate given, registry matches candidate, marker on previous.
+        self.assertTrue(gate.handover_state('FULLY_MATCHED', 'a'*40, 'b'*40))
+        # No candidate sha (plain rerun semantics) -> never handover.
+        self.assertFalse(gate.handover_state('FULLY_MATCHED', 'a'*40, None))
+        # Marker already on the candidate -> strict rerun, no handover.
+        self.assertFalse(gate.handover_state('FULLY_MATCHED', 'b'*40, 'b'*40))
+        # Pending migrations -> never handover.
+        self.assertFalse(gate.handover_state('MATCHED_PREFIX_PENDING', 'a'*40, 'b'*40))
+
+    def test_recovery_shell_passes_candidate_sha_to_preflight(self):
+        text = (ROOT/'scripts/recover_application_images.sh').read_text()
+        self.assertIn("--require-full --candidate-sha='$RELEASE_SHA'", text)
+        self.assertLess(text.index("--candidate-sha='$RELEASE_SHA'"), text.index('.release-image-recovery; mkdir'))
+
 
 if __name__=='__main__':unittest.main()

@@ -12,7 +12,10 @@ expected_nginx=$(sha256sum infra/nginx/erp.kingturf.cn.conf | cut -d ' ' -f 1)
 actual_nginx=$(run_ssh 'sha256sum /etc/nginx/conf.d/erp.kingturf.cn.conf' | cut -d ' ' -f 1)
 test "$actual_nginx" = "$expected_nginx"
 manifest=$(base64 -w0 "$bundle/migrations.json")
-cat scripts/production_preflight.py | run_ssh "python3 - '/data/kingturf-erp' '$manifest' --require-full"
+# --candidate-sha lets the read-only preflight recognize the migration->application
+# handover state (registry FULLY_MATCHED on the candidate manifest, marker still on
+# the previous release, api deliberately stopped by the migration run).
+cat scripts/production_preflight.py | run_ssh "python3 - '/data/kingturf-erp' '$manifest' --require-full --candidate-sha='$RELEASE_SHA'"
 # A unique run directory is retained on failure; no --delete and no source rsync.
 run_ssh "set -eu; test ! -L /data/kingturf-erp/.release-image-recovery; mkdir -p /data/kingturf-erp/.release-image-recovery; test ! -e '$remote'; mkdir -m 700 '$remote'"
 printf -v ssh_transport '%q ' ssh "${ssh_args[@]}"

@@ -88,7 +88,13 @@ def validate_config(config):
         require(re.fullmatch(r'[^@\s]+@sha256:[0-9a-f]{64}', image), f'{service} image must be digest-pinned (image@sha256:<64hex>)')
 
 
-def preflight(root, expected, *, require_full=False, allow_stopped_api=False):
+def handover_state(classification, marker, candidate_sha):
+    """Migration->application handover guard: the registry already matches the
+    candidate manifest while the marker still names the previous release."""
+    return candidate_sha is not None and classification == 'FULLY_MATCHED' and marker != candidate_sha
+
+
+def preflight(root, expected, *, require_full=False, allow_stopped_api=False, candidate_sha=None):
     require(Path(root) == RELEASE, 'Unexpected release directory')
     require(isinstance(expected, dict) and expected and all(isinstance(k, str) and isinstance(v, str) and re.fullmatch(r'[0-9]{4}.*\.sql', k) and re.fullmatch(r'[0-9a-f]{64}', v) for k, v in expected.items()), 'Invalid candidate migration manifest')
     require(command(['findmnt', '-n', '-T', '/data', '-o', 'TARGET']) == '/data', '/data must be an actual mounted filesystem')
@@ -100,6 +106,14 @@ def preflight(root, expected, *, require_full=False, allow_stopped_api=False):
     config = json.loads(command(compose + ['config', '--format', 'json']))
     validate_config(config)
     # Validate the actual existing containers; a new empty named volume is never an acceptable fallback.
+    sql = "BEGIN READ ONLY; SET LOCAL statement_timeout='5s'; SELECT coalesce(jsonb_agg(jsonb_build_object('name',name,'checksum',checksum) ORDER BY name),'[]'::jsonb) FROM schema_migrations; COMMIT;\n"
+    rows = json.loads(command(compose + ['exec', '-T', 'postgres', 'sh', '-c', 'exec psql -X -qAt -v ON_ERROR_STOP=1 --username="$POSTGRES_USER" --dbname="$POSTGRES_DB"'], text=sql))
+    classification, pending = classify_registry(rows, expected)
+    marker = (RELEASE / '.release-sha').read_text().strip()
+    require(re.fullmatch(r'[0-9a-f]{40}', marker), 'Previous release marker is missing or invalid')
+    # Migration->application handover: registry already matches the candidate manifest
+    # while the marker still names the previous release; the migration run leaves the
+    # api deliberately stopped in that state (window mode applies).
     api_fenced = False
     for service, target, source in (
         ('postgres', '/var/lib/postgresql/data', POSTGRES),
@@ -116,23 +130,19 @@ def preflight(root, expected, *, require_full=False, allow_stopped_api=False):
         # so its healthcheck fails transitively (502) and is tolerated as well, only
         # while the api fence is actually observed. Stage B's evidence gates and the
         # orchestrator's live docker/quiescence probes still enforce the fence.
-        fenced_api_stopped = allow_stopped_api and service == 'api' and not running
-        fenced_web_transitive = allow_stopped_api and service == 'web' and running and api_fenced
+        window_mode = allow_stopped_api or handover_state(classification, marker, candidate_sha)
+        fenced_api_stopped = window_mode and service == 'api' and not running
+        fenced_web_transitive = window_mode and service == 'web' and running and api_fenced
         require((running and healthy) or fenced_api_stopped or fenced_web_transitive, 'Existing production container is not healthy')
         api_fenced = api_fenced or fenced_api_stopped
         if target:
             mounts = [m for m in container['Mounts'] if m['Destination'] == target]
             require(len(mounts) == 1 and mounts[0]['Type'] == 'bind' and Path(mounts[0]['Source']) == source, 'Live persistent mount disagrees with approved configuration')
-    sql = "BEGIN READ ONLY; SET LOCAL statement_timeout='5s'; SELECT coalesce(jsonb_agg(jsonb_build_object('name',name,'checksum',checksum) ORDER BY name),'[]'::jsonb) FROM schema_migrations; COMMIT;\n"
-    rows = json.loads(command(compose + ['exec', '-T', 'postgres', 'sh', '-c', 'exec psql -X -qAt -v ON_ERROR_STOP=1 --username="$POSTGRES_USER" --dbname="$POSTGRES_DB"'], text=sql))
-    classification, pending = classify_registry(rows, expected)
     if require_full:
         require(classification == 'FULLY_MATCHED', 'Post-migration check failed: registry is not FULLY_MATCHED; pending migrations remain')
-    marker = (RELEASE / '.release-sha').read_text().strip()
-    require(re.fullmatch(r'[0-9a-f]{40}', marker), 'Previous release marker is missing or invalid')
     port = config['services']['web']['ports'][0]['published']
     require(str(port).isdigit(), 'Production ingress port invalid')
-    if allow_stopped_api:
+    if allow_stopped_api or handover_state(classification, marker, candidate_sha):
         # The version endpoint is served by the (stopped) old api; the fence evidence's
         # api_release_sha and the pre-stop marker reading cover the version binding.
         print(json.dumps({'preflight': 'PASS', 'registry_classification': classification, 'previous_sha': marker, 'applied': len(rows), 'pending': pending, 'services': 3, 'storage': 'approved_bind_mounts', 'restore': 'REQUIRES_INDEPENDENT_EVIDENCE', 'version_probe': 'skipped (window mode: api stopped by write fence)'}))
@@ -152,8 +162,10 @@ def main():
     elif len(sys.argv) >= 3 and sys.argv[1] != '--manifest':
         expected = json.loads(base64.b64decode(sys.argv[2], validate=True))
         flags = sys.argv[3:]
-        require(all(flag in ('--require-full', '--allow-stopped-api') for flag in flags), 'unknown preflight flag')
-        preflight(sys.argv[1], expected, require_full='--require-full' in flags, allow_stopped_api='--allow-stopped-api' in flags)
+        require(all(flag in ('--require-full', '--allow-stopped-api') or flag.startswith('--candidate-sha=') for flag in flags), 'unknown preflight flag')
+        candidate_sha = next((flag.split('=', 1)[1] for flag in flags if flag.startswith('--candidate-sha=')), None)
+        require(candidate_sha is None or re.fullmatch(r'[0-9a-f]{40}', candidate_sha), 'candidate sha must be 40 lowercase hex')
+        preflight(sys.argv[1], expected, require_full='--require-full' in flags, allow_stopped_api='--allow-stopped-api' in flags, candidate_sha=candidate_sha)
     elif len(sys.argv) == 3:
         expected = json.loads(base64.b64decode(sys.argv[2], validate=True))
         preflight(sys.argv[1], expected)
