@@ -177,6 +177,15 @@ def restore_api_on_failure(prod_root):
     return True
 
 
+def run_orchestrator(staged, *cli):
+    """Delegate a gated step to the staged orchestrator CLI (single source of truth)."""
+    argv = [sys.executable, str(Path(staged) / 'release_orchestrator.py'), *cli]
+    result = subprocess.run(argv, capture_output=True, text=True, timeout=1800)
+    require(result.returncode == 0,
+            'orchestrator failed: ' + result.stderr.strip()[-400:])
+    return json.loads(result.stdout)
+
+
 def validate_staged_layout(staged, migrations, expected_after, approved_suffixes):
     """Staged tree contract: two control scripts as files + migrations directory tree."""
     for required in (Path(staged) / 'release_orchestrator.py', Path(staged) / 'production_preflight.py'):
@@ -431,27 +440,20 @@ def main():
             emit('release-approval', {'approver': args.approver,
                                       'window_end_utc': approval['window_end_utc']})
 
-            def orchestrator(*cli):
-                argv = [sys.executable, str(staged / 'release_orchestrator.py'), *cli]
-                result = subprocess.run(argv, capture_output=True, text=True, timeout=1800)
-                require(result.returncode == 0,
-                        'orchestrator failed: ' + result.stderr.strip()[-400:])
-                return json.loads(result.stdout)
-
             step = 'check-evidence'
-            checked = orchestrator('check-evidence', str(plan_path), str(evidence))
+            checked = run_orchestrator(staged, 'check-evidence', str(plan_path), str(evidence))
             require(checked.get('check_evidence') == 'PASS', f'check-evidence verdict: {checked}')
             emit('check-evidence', checked)
 
             step = 'execute'
-            executed = orchestrator('execute', str(plan_path), str(evidence), str(migrations),
+            executed = run_orchestrator(staged, 'execute', str(plan_path), str(evidence), str(migrations),
                                     str(args.prod_root / '.release-migration-state'), 'ignored',
                                     '--psql-argv-file', write_psql_argv_file(staged, argv))
             require(executed.get('verdict') == 'COMPLETED', f'execute verdict: {executed}')
             emit('execute', executed)
 
             step = 'postcheck'
-            posted = orchestrator('postcheck', str(plan_path), 'ignored',
+            posted = run_orchestrator(staged, 'postcheck', str(plan_path), 'ignored',
                                   '--psql-argv-file', write_psql_argv_file(staged, argv))
             require(posted.get('postcheck') == 'PASS'
                     and posted.get('classification') == 'FULLY_MATCHED',
