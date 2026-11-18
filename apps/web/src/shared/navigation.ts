@@ -24,7 +24,16 @@ export type AppRoute =
   | 'production-orders'
   | 'quality-inspection'
   | 'shipments'
-  | 'governance';
+  | 'governance'
+  | 'governance/identity'
+  | 'governance/organization'
+  | 'governance/audit'
+  | 'governance/master-data'
+  | 'governance/numbering'
+  | 'governance/rules'
+  | 'governance/workflow'
+  | 'governance/notifications'
+  | 'governance/system';
 
 export const APP_ROUTE_LABELS: Readonly<Record<AppRoute, string>> = {
   overview: '经营总览',
@@ -53,6 +62,15 @@ export const APP_ROUTE_LABELS: Readonly<Record<AppRoute, string>> = {
   'quality-inspection': '质量检验',
   shipments: '发货与签收',
   governance: '系统管理与治理',
+  'governance/identity': '身份与授权',
+  'governance/organization': '组织与员工',
+  'governance/audit': '审计中心',
+  'governance/master-data': '主数据',
+  'governance/numbering': '编号规则',
+  'governance/rules': '业务规则',
+  'governance/workflow': '工作流与待办',
+  'governance/notifications': '通知中心',
+  'governance/system': '业务对象与事件',
 };
 const APP_ROUTE_DESCRIPTIONS: Readonly<Record<AppRoute, string>> = {
   overview: '指标、待办与经营异常',
@@ -81,6 +99,15 @@ const APP_ROUTE_DESCRIPTIONS: Readonly<Record<AppRoute, string>> = {
   'quality-inspection': '检验、处置与批次追溯',
   shipments: '发货门禁、物流与签收',
   governance: '组织、权限与平台配置',
+  'governance/identity': '角色、权限与数据范围',
+  'governance/organization': '公司、部门与员工归属',
+  'governance/audit': '人员、操作与业务审计记录',
+  'governance/master-data': '业务分类、条目与生效版本',
+  'governance/numbering': '业务编号、版本与分配规则',
+  'governance/rules': '规则版本、发布与试算',
+  'governance/workflow': '流程定义与审批待办',
+  'governance/notifications': '消息通知与个人偏好',
+  'governance/system': '业务对象定义与事件运行状态',
 };
 
 export const routeViewSelector = (route: AppRoute): string => `[data-route-view~="${route}"]`;

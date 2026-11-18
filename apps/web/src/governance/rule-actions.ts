@@ -10,6 +10,7 @@ export function appendGovernanceRuleActions(context: GovernanceActionContext) {
     jsonField,
     actions,
     choices,
+    choiceAvailability,
     requiredValue,
   } = context;
   if (surface.id === 'rules' && permissions.has('rule:create')) {
@@ -32,6 +33,7 @@ export function appendGovernanceRuleActions(context: GovernanceActionContext) {
               .map((item) => item.trim())
               .filter(Boolean),
           }),
+        '创建业务规则',
       );
     });
     actions.append(rule);
@@ -48,6 +50,7 @@ export function appendGovernanceRuleActions(context: GovernanceActionContext) {
             label: '业务规则',
             type: 'select',
             required: true,
+            hint: choiceAvailability('/api/v1/rules'),
             options: choices('/api/v1/rules', (item) => textValue(item.code, '规则')),
           },
           { name: 'version', label: '待发布版本', type: 'number', required: true },
@@ -72,6 +75,7 @@ export function appendGovernanceRuleActions(context: GovernanceActionContext) {
             label: '业务规则',
             type: 'select',
             required: true,
+            hint: choiceAvailability('/api/v1/rules'),
             options: choices('/api/v1/rules', (item) => textValue(item.code, '规则')),
           },
           { name: 'input', label: '输入数据（高级配置）', type: 'textarea', required: true },

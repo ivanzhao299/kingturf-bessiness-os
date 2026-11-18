@@ -1,5 +1,44 @@
 import { el, setOperationStatus } from '../dom';
 
+// B3：脏表单放弃修改改用内置 dialog 确认，替代原生 confirm()（forms.ts 原 111/195 行）。
+const confirmDiscardChanges = (host: HTMLElement): Promise<boolean> =>
+  new Promise((resolve) => {
+    const dialog = el('dialog', 'form-dialog discard-dialog');
+    const form = el('form', 'entity-form');
+    const heading = el('div', 'dialog-heading');
+    heading.append(
+      el('p', 'eyebrow', '业务流程'),
+      el('h2', '', '放弃未保存的修改？'),
+      el('p', 'muted', '关闭后当前填写的内容不会保留。'),
+    );
+    const actions = el('div', 'dialog-actions');
+    const stay = el('button', 'secondary', '继续编辑');
+    stay.type = 'button';
+    const discard = el('button', 'primary', '放弃修改');
+    discard.type = 'submit';
+    actions.append(stay, discard);
+    form.append(heading, actions);
+    let decided = false;
+    stay.addEventListener('click', () => {
+      dialog.close();
+    });
+    // 直接在按钮 click 接线（dialog 表单的 method=dialog 原生提交在测试 DOM 不可用）。
+    discard.addEventListener('click', () => {
+      decided = true;
+      dialog.close();
+    });
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+    });
+    dialog.append(form);
+    dialog.addEventListener('close', () => {
+      dialog.remove();
+      resolve(decided);
+    });
+    host.append(dialog);
+    dialog.showModal();
+  });
+
 export type FormField = Readonly<{
   name: string;
   label: string;
@@ -16,7 +55,7 @@ export type FormField = Readonly<{
   required?: boolean;
   placeholder?: string;
   value?: string;
-  hint?: string;
+  hint?: string | undefined;
   minLength?: number;
   maxLength?: number;
   min?: number;
@@ -105,18 +144,18 @@ export function openForm(
   const cancel = el('button', 'secondary', '取消');
   cancel.type = 'button';
   cancel.addEventListener('click', () => {
-    if (
-      dirty &&
-      typeof globalThis.confirm === 'function' &&
-      !globalThis.confirm('当前修改尚未保存，确定关闭吗？')
-    )
+    if (!dirty) {
+      dialog.close();
       return;
-    dialog.close();
+    }
+    void confirmDiscardChanges(dialog).then((discard) => {
+      if (discard) dialog.close();
+    });
   });
   const submit = el('button', 'primary', submitLabel);
   submit.type = 'submit';
   let confirmationCheckbox: HTMLInputElement | null = null;
-  const sensitive = /删除|停用|取消|驳回|拒绝|追回|关闭|释放/u.test(submitLabel);
+  const sensitive = /删除|停用|取消|撤销|驳回|拒绝|追回|关闭|释放/u.test(submitLabel);
   if (sensitive) {
     const confirmation = el('label', 'operation-confirmation');
     const checkbox = el('input');
@@ -189,12 +228,11 @@ export function openForm(
   dialog.append(form);
   host.append(dialog);
   dialog.addEventListener('cancel', (event) => {
-    if (
-      dirty &&
-      typeof globalThis.confirm === 'function' &&
-      !globalThis.confirm('当前修改尚未保存，确定关闭吗？')
-    )
-      event.preventDefault();
+    if (!dirty) return;
+    event.preventDefault();
+    void confirmDiscardChanges(dialog).then((discard) => {
+      if (discard) dialog.close();
+    });
   });
   dialog.addEventListener('close', () => {
     dialog.remove();

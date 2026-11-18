@@ -2,7 +2,7 @@ import { el } from '../dom';
 import { textValue } from '../shared/business-format';
 import type { GovernanceActionContext } from './workspace-types';
 export function createGovernanceRoleButtons(context: GovernanceActionContext) {
-  const { openAction, controller, choices } = context;
+  const { openAction, controller, choices, choiceAvailability } = context;
   const role = el('button', 'secondary', '新建角色');
   role.addEventListener('click', () => {
     openAction(
@@ -13,6 +13,7 @@ export function createGovernanceRoleButtons(context: GovernanceActionContext) {
         { name: 'name', label: '角色名称', required: true },
       ],
       (values) => controller.submit('/api/v1/roles', { code: values.code, name: values.name }),
+      '创建角色',
     );
   });
   const assignment = el('button', 'secondary', '分配角色');
@@ -26,6 +27,7 @@ export function createGovernanceRoleButtons(context: GovernanceActionContext) {
           label: '员工',
           type: 'select',
           required: true,
+          hint: choiceAvailability('/api/v1/employees'),
           options: choices(
             '/api/v1/employees',
             (item) => `${textValue(item.employeeNumber, '')} · ${textValue(item.displayName, '')}`,
@@ -36,6 +38,7 @@ export function createGovernanceRoleButtons(context: GovernanceActionContext) {
           label: '角色',
           type: 'select',
           required: true,
+          hint: choiceAvailability('/api/v1/roles'),
           options: choices(
             '/api/v1/roles',
             (item) => `${textValue(item.code, '')} · ${textValue(item.name, '')}`,
@@ -47,6 +50,7 @@ export function createGovernanceRoleButtons(context: GovernanceActionContext) {
           employeeId: values.employeeId,
           roleId: values.roleId,
         }),
+      '分配角色',
     );
   });
   return { role, assignment };

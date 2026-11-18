@@ -2,8 +2,17 @@ import { el } from '../dom';
 import { textValue } from '../shared/business-format';
 import type { GovernanceActionContext } from './workspace-types';
 export function appendGovernanceEmployeeActions(context: GovernanceActionContext) {
-  const { surface, permissions, openAction, choices, controller, actions, records, requiredValue } =
-    context;
+  const {
+    surface,
+    permissions,
+    openAction,
+    choices,
+    choiceAvailability,
+    controller,
+    actions,
+    records,
+    requiredValue,
+  } = context;
   if (surface.id === 'employees' && permissions.has('employee:create')) {
     const create = el('button', 'secondary', '新建员工');
     create.addEventListener('click', () => {
@@ -16,6 +25,7 @@ export function appendGovernanceEmployeeActions(context: GovernanceActionContext
             label: '所属组织',
             type: 'select',
             required: true,
+            hint: choiceAvailability('/api/v1/organizations'),
             options: choices(
               '/api/v1/organizations',
               (item) => `${textValue(item.code, '')} · ${textValue(item.name, '')}`,
@@ -32,6 +42,7 @@ export function appendGovernanceEmployeeActions(context: GovernanceActionContext
             displayName: values.displayName,
             email: values.email,
           }),
+        '创建员工',
       );
     });
     actions.append(create);
@@ -48,6 +59,7 @@ export function appendGovernanceEmployeeActions(context: GovernanceActionContext
             label: '员工',
             type: 'select',
             required: true,
+            hint: choiceAvailability('/api/v1/employees'),
             options: choices(
               '/api/v1/employees',
               (item) =>
@@ -80,6 +92,7 @@ export function appendGovernanceEmployeeActions(context: GovernanceActionContext
             'PATCH',
           );
         },
+        '保存员工变更',
       );
     });
     actions.append(update);

@@ -1,4 +1,5 @@
 import { sessionFixture } from './test-fixtures/session';
+import { BehaviorInput, BehaviorSelect, BehaviorTextarea } from '../test/fixtures/behavior-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {
@@ -40,6 +41,7 @@ import {
   technicalSolutionOpportunityId,
   templatesForRoute,
   governanceWorkspace,
+  governanceSubpage,
   governanceChannelLabel,
   governanceNextAction,
 } from './bootstrap';
@@ -193,6 +195,8 @@ const readGovernanceSources = (): string[] => [
   ),
   readBoundSource('./governance/workspace-sources.ts', 'export function appendGovernanceSources'),
   readBoundSource('./governance/workspace.ts', 'export function createGovernanceWorkspace'),
+  readBoundSource('./governance/subpage.ts', 'export function createGovernanceSubpages'),
+  readBoundSource('./governance/route-loading.ts', 'export function installGovernanceRouteLoading'),
 ];
 
 const readCommercialStoreSources = (): string[] => [
@@ -812,8 +816,10 @@ it('derives application navigation from atomic role capabilities', () => {
     'overview',
     'document-templates',
   ]);
+  // B1：notification:read 同时注册治理概览与通知子路由。
   expect([...visibleAppRoutes(new Set(['notification:read']))]).toEqual([
     'governance',
+    'governance/notifications',
     'overview',
     'document-templates',
   ]);
@@ -824,7 +830,7 @@ it('derives application navigation from atomic role capabilities', () => {
     'document-templates',
   ]);
   expect(visibleAppRoutes(new Set(['executive-dashboard:read', 'authorization:read']))).toEqual(
-    new Set(['overview', 'governance', 'document-templates']),
+    new Set(['overview', 'governance', 'governance/identity', 'document-templates']),
   );
   expect(visibleAppRoutes(new Set(['cost-matrix:read']))).toEqual(
     new Set(['costing', 'overview', 'document-templates']),
@@ -961,6 +967,40 @@ it('exposes governance navigation only from atomic session capabilities', () => 
   expect(appRouteFromHash('#/governance')).toBe('governance');
 });
 
+it('registers governance sub-routes from per-surface visibility unions (B1)', () => {
+  const governanceRoutesOf = (permissions: readonly string[]) =>
+    [...visibleAppRoutes(new Set(permissions))].filter((route) => route.startsWith('governance'));
+  expect(governanceRoutesOf(['authorization:read'])).toEqual(['governance', 'governance/identity']);
+  expect(governanceRoutesOf(['organization:read', 'employee:read'])).toEqual([
+    'governance',
+    'governance/organization',
+  ]);
+  expect(governanceRoutesOf(['audit:read'])).toEqual(['governance', 'governance/audit']);
+  expect(governanceRoutesOf(['master-data:read'])).toEqual([
+    'governance',
+    'governance/master-data',
+  ]);
+  expect(governanceRoutesOf(['number:read', 'rule:read', 'workflow:read'])).toEqual([
+    'governance',
+    'governance/numbering',
+    'governance/rules',
+    'governance/workflow',
+  ]);
+  expect(governanceRoutesOf(['notification:read'])).toEqual([
+    'governance',
+    'governance/notifications',
+  ]);
+  expect(governanceRoutesOf(['business-object:read', 'event:operate'])).toEqual([
+    'governance',
+    'governance/system',
+  ]);
+  expect(governanceRoutesOf(['customer:read'])).toEqual([]);
+  // 路由器整段字符串匹配：多段 hash 直接成为合法 AppRoute，未知段回落 overview。
+  expect(appRouteFromHash('#/governance/identity')).toBe('governance/identity');
+  expect(appRouteFromHash('#/governance/system')).toBe('governance/system');
+  expect(appRouteFromHash('#/governance/unknown')).toBe('overview');
+});
+
 it('prioritizes governance exceptions and translates daily notification channels', () => {
   expect(governanceNextAction('workflow', 3, 0)).toBe('优先处理当前账号的审批待办');
   expect(governanceNextAction('audit', 2, 1)).toBe('先处理数据读取异常并核对权限或服务状态');
@@ -1059,6 +1099,132 @@ it('renders atomic IAM administration without the legacy broad management capabi
   expect(workspace.textContent).toContain('撤销用户数据范围');
 });
 
+it('renders one governance sub-page per route with only its domain surfaces (B1)', () => {
+  const controller = new GovernanceController(
+    new Set([
+      'authorization:read',
+      'authorization:manage',
+      'employee:read',
+      'role:read',
+      'role:manage',
+      'role-assignment:manage',
+      'organization:read',
+    ]),
+    sessionFixture(),
+  );
+  controller.views = [
+    { path: '/api/v1/employees', value: [{ id: 'employee-1', displayName: '测试员工' }] },
+    { path: '/api/v1/roles', value: [{ id: 'role-1', code: 'KT_X', name: '测试角色' }] },
+    { path: '/api/v1/permissions', value: [] },
+    { path: '/api/v1/grants', value: [] },
+    { path: '/api/v1/assignments', value: [] },
+    { path: '/api/v1/scope-grants', value: [] },
+    { path: '/api/v1/organizations', value: [{ id: 'org-1', code: 'HQ', name: '总部' }] },
+  ];
+  const page = governanceSubpage(controller, 'governance/identity') as unknown as RenderedElement;
+  expect(page.getAttribute('data-route-view')).toBe('governance/identity');
+  expect(page.textContent).toContain('身份与授权');
+  expect(page.textContent).toContain('角色清单');
+  expect(page.textContent).toContain('分配角色');
+  expect(page.textContent).not.toContain('组织清单');
+  const organizationPage = governanceSubpage(
+    controller,
+    'governance/organization',
+  ) as unknown as RenderedElement;
+  expect(organizationPage.getAttribute('data-route-view')).toBe('governance/organization');
+  expect(organizationPage.textContent).toContain('组织清单');
+  expect(organizationPage.textContent).toContain('员工清单');
+  expect(organizationPage.textContent).not.toContain('角色清单');
+  // 概览卡片墙保持原样（兼容策略）。
+  const overview = governanceWorkspace(controller) as unknown as RenderedElement;
+  expect(overview.getAttribute('data-route-view')).toBe('governance');
+  expect(overview.textContent).toContain('下一步：');
+});
+
+it('renders full domain lists on sub-pages instead of the eight-row preview (B1)', () => {
+  const employees = Array.from({ length: 12 }, (_item, index) => ({
+    id: `employee-${String(index)}`,
+    displayName: `员工${String(index)}`,
+  }));
+  const controller = new GovernanceController(new Set(['employee:read']), sessionFixture());
+  controller.views = [{ path: '/api/v1/employees', value: employees }];
+  const page = governanceSubpage(
+    controller,
+    'governance/organization',
+  ) as unknown as RenderedElement;
+  expect(page.textContent).toContain('员工11');
+  expect(page.textContent).not.toContain('当前预览前 8 条记录');
+  const overview = governanceWorkspace(controller) as unknown as RenderedElement;
+  expect(overview.textContent).toContain('当前预览前 8 条记录');
+});
+
+it('explains missing read permissions instead of silent empty dropdowns (C4)', () => {
+  // openForm 的原生控件 instanceof 端口复用行为测试夹具类（真实 instanceof 可判）。
+  vi.stubGlobal('HTMLInputElement', BehaviorInput);
+  vi.stubGlobal('HTMLSelectElement', BehaviorSelect);
+  vi.stubGlobal('HTMLTextAreaElement', BehaviorTextarea);
+  try {
+    const controller = new GovernanceController(
+      new Set([
+        'authorization:read',
+        'authorization:manage',
+        'role:read',
+        'role:manage',
+        'role-assignment:manage',
+        'permission:read',
+      ]),
+      sessionFixture(),
+    );
+    controller.views = [
+      { path: '/api/v1/roles', value: [{ id: 'role-1', code: 'KT_X', name: '测试角色' }] },
+      { path: '/api/v1/permissions', value: [] },
+    ];
+    const page = governanceSubpage(controller, 'governance/identity') as unknown as RenderedElement;
+    const assignButton = page.findByText('分配角色')[0];
+    if (!assignButton) throw new Error('分配角色 button is required');
+    assignButton.click();
+    expect(page.textContent).toContain('需要 employee:read 权限才能选择员工');
+  } finally {
+    vi.unstubAllGlobals();
+    vi.stubGlobal('document', { createElement: (tagName: string) => new RenderedElement(tagName) });
+  }
+});
+
+it('verb-izes governance submit labels so sensitive actions confirm twice (B3)', () => {
+  const controller = new GovernanceController(
+    new Set(['master-data:read', 'master-data:create', 'master-data:update', 'master-data:delete']),
+    sessionFixture(),
+  );
+  controller.views = [
+    { path: '/api/v1/master-data/categories', value: [] },
+    {
+      path: '/api/v1/master-data/entries',
+      value: [{ id: 'entry-1', code: 'COLOR-RED', name: '红色' }],
+    },
+  ];
+  const page = governanceSubpage(
+    controller,
+    'governance/master-data',
+  ) as unknown as RenderedElement;
+  vi.stubGlobal('HTMLInputElement', BehaviorInput);
+  vi.stubGlobal('HTMLSelectElement', BehaviorSelect);
+  vi.stubGlobal('HTMLTextAreaElement', BehaviorTextarea);
+  try {
+    const disableButton = page.findByText('停用主数据条目')[0];
+    if (!disableButton) throw new Error('停用主数据条目 button is required');
+    disableButton.click();
+    expect(page.textContent).toContain('停用条目');
+    expect(page.textContent).toContain('我已核对当前单据、操作理由及其对后续流程的影响');
+    const createButton = page.findByText('新建分类')[0];
+    if (!createButton) throw new Error('新建分类 button is required');
+    createButton.click();
+    expect(page.textContent).toContain('创建分类');
+  } finally {
+    vi.unstubAllGlobals();
+    vi.stubGlobal('document', { createElement: (tagName: string) => new RenderedElement(tagName) });
+  }
+});
+
 it('admits manufacturing cost capabilities into the commercial workspace', () => {
   expect(isCommercialPermission('manufacturing-cost:read')).toBe(true);
   expect(isCommercialPermission('manufacturing-cost:approve')).toBe(true);
@@ -1119,6 +1285,19 @@ class RenderedElement {
   }
   public setAttribute(name: string, value: string): void {
     this.attributes.set(name, value);
+  }
+  public getAttribute(name: string): string | null {
+    return this.attributes.get(name) ?? null;
+  }
+  public open = false;
+  public showModal(): void {
+    this.open = true;
+  }
+  public close(): void {
+    this.open = false;
+  }
+  public remove(): void {
+    return undefined;
   }
   public replaceWith(): void {
     return undefined;

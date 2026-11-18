@@ -8,6 +8,7 @@ export function appendGovernanceMasterDataActions(context: GovernanceActionConte
     openAction,
     controller,
     choices,
+    choiceAvailability,
     jsonField,
     actions,
     records,
@@ -33,6 +34,7 @@ export function appendGovernanceMasterDataActions(context: GovernanceActionConte
             effectiveFrom: values.effectiveFrom,
             effectiveTo: null,
           }),
+        '创建分类',
       );
     });
     const entry = el('button', 'secondary', '新建条目');
@@ -46,6 +48,7 @@ export function appendGovernanceMasterDataActions(context: GovernanceActionConte
             label: '分类',
             type: 'select',
             required: true,
+            hint: choiceAvailability('/api/v1/master-data/categories'),
             options: choices(
               '/api/v1/master-data/categories',
               (item) => `${textValue(item.code, '')} · ${textValue(item.name, '')}`,
@@ -65,6 +68,7 @@ export function appendGovernanceMasterDataActions(context: GovernanceActionConte
             effectiveFrom: values.effectiveFrom,
             effectiveTo: null,
           }),
+        '创建条目',
       );
     });
     actions.append(category, entry);
@@ -81,6 +85,7 @@ export function appendGovernanceMasterDataActions(context: GovernanceActionConte
             label: '条目',
             type: 'select',
             required: true,
+            hint: choiceAvailability('/api/v1/master-data/entries'),
             options: choices(
               '/api/v1/master-data/entries',
               (item) => `${textValue(item.code, '')} · ${textValue(item.label, '')}`,
@@ -106,6 +111,7 @@ export function appendGovernanceMasterDataActions(context: GovernanceActionConte
             'PATCH',
           );
         },
+        '保存条目变更',
       );
     });
     actions.append(update);
@@ -122,6 +128,7 @@ export function appendGovernanceMasterDataActions(context: GovernanceActionConte
             label: '条目',
             type: 'select',
             required: true,
+            hint: choiceAvailability('/api/v1/master-data/entries'),
             options: choices(
               '/api/v1/master-data/entries',
               (item) => `${textValue(item.code, '')} · ${textValue(item.label, '')}`,
@@ -138,6 +145,7 @@ export function appendGovernanceMasterDataActions(context: GovernanceActionConte
             'DELETE',
           );
         },
+        '停用条目',
       );
     });
     actions.append(remove);

@@ -19,6 +19,7 @@ export function appendGovernanceRegistryActions(context: GovernanceActionContext
             name: values.name,
             schema: jsonField(values.schema, '对象结构'),
           }),
+        '创建业务对象',
       );
     });
     actions.append(object);

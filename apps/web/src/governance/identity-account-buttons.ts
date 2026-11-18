@@ -2,7 +2,7 @@ import { el } from '../dom';
 import { textValue } from '../shared/business-format';
 import type { GovernanceActionContext } from './workspace-types';
 export function createGovernanceAccountButtons(context: GovernanceActionContext) {
-  const { openAction, choices, controller, requiredValue } = context;
+  const { openAction, choices, choiceAvailability, controller, requiredValue } = context;
   const identity = el('button', 'secondary', '配置登录账号');
   identity.addEventListener('click', () => {
     openAction(
@@ -14,6 +14,7 @@ export function createGovernanceAccountButtons(context: GovernanceActionContext)
           label: '员工',
           type: 'select',
           required: true,
+          hint: choiceAvailability('/api/v1/employees'),
           options: choices(
             '/api/v1/employees',
             (item) => `${textValue(item.employeeNumber, '')} · ${textValue(item.displayName, '')}`,
@@ -35,6 +36,7 @@ export function createGovernanceAccountButtons(context: GovernanceActionContext)
           { login: values.login, password: values.password },
           'PUT',
         ),
+      '开通登录账号',
     );
   });
   const unassignment = el('button', 'secondary', '撤销角色');
@@ -48,6 +50,7 @@ export function createGovernanceAccountButtons(context: GovernanceActionContext)
           label: '员工',
           type: 'select',
           required: true,
+          hint: choiceAvailability('/api/v1/employees'),
           options: choices(
             '/api/v1/employees',
             (item) => `${textValue(item.employeeNumber, '')} · ${textValue(item.displayName, '')}`,
@@ -58,6 +61,7 @@ export function createGovernanceAccountButtons(context: GovernanceActionContext)
           label: '角色',
           type: 'select',
           required: true,
+          hint: choiceAvailability('/api/v1/roles'),
           options: choices(
             '/api/v1/roles',
             (item) => `${textValue(item.code, '')} · ${textValue(item.name, '')}`,
@@ -70,6 +74,7 @@ export function createGovernanceAccountButtons(context: GovernanceActionContext)
           { employeeId: values.employeeId, roleId: values.roleId },
           'DELETE',
         ),
+      '撤销角色',
     );
   });
   return { identity, unassignment };

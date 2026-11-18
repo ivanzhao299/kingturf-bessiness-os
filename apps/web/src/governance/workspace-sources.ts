@@ -4,7 +4,10 @@ import { GOVERNANCE_SOURCE_LABELS } from './presentation';
 import { governanceTable } from './presentation';
 import { auditLogWorkbench } from './audit-workbench';
 import type { GovernanceActionContext } from './workspace-types';
-export function appendGovernanceSources(context: GovernanceActionContext) {
+export function appendGovernanceSources(
+  context: GovernanceActionContext,
+  options: Readonly<{ full?: boolean }> = {},
+) {
   const { surface, views, panel } = context;
   for (const path of surface.paths) {
     const view = views.find((item) => item.path === path);
@@ -21,7 +24,9 @@ export function appendGovernanceSources(context: GovernanceActionContext) {
     else if (items.length === 0) row.append(el('p', 'empty', '当前范围内暂无记录'));
     else
       row.append(
-        path === '/api/v1/audit-events' ? auditLogWorkbench(items) : governanceTable(items),
+        path === '/api/v1/audit-events'
+          ? auditLogWorkbench(items)
+          : governanceTable(items, { preview: !options.full }),
       );
     panel.append(row);
   }

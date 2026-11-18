@@ -1,6 +1,7 @@
 import { el } from '../dom';
 import type { GovernanceController } from './controller';
 import type { GovernanceWorkspacePorts } from './workspace-types';
+type WorkspaceAssemblyPorts = Pick<GovernanceWorkspacePorts, 'replaceRouteView'>;
 import { createGovernanceFormActions } from './workspace-actions';
 import { createGovernanceHeading } from './workspace-heading';
 import { createGovernanceOrdering } from './workspace-ordering';
@@ -16,7 +17,7 @@ import { appendGovernanceWorkflowActions } from './workflow-actions';
 import { appendGovernanceTaskActions } from './workflow-task-actions';
 import { appendGovernanceNotificationActions } from './notification-actions';
 import { appendGovernanceRegistryActions } from './registry-actions';
-export function createGovernanceWorkspace(ports: GovernanceWorkspacePorts) {
+export function createGovernanceWorkspace(ports: WorkspaceAssemblyPorts) {
   const { replaceRouteView } = ports;
   function governanceWorkspace(controller: GovernanceController): HTMLElement {
     const { permissions, views } = controller;
@@ -24,7 +25,7 @@ export function createGovernanceWorkspace(ports: GovernanceWorkspacePorts) {
     const { workspace, visible } = headingNodes;
     const formActions = createGovernanceFormActions(
       { controller, views, workspace },
-      { replaceRouteView, governanceWorkspace },
+      { replaceRouteView, rebuild: () => governanceWorkspace(controller) },
     );
     const renderContext = { controller, permissions, views, workspace, visible, ...formActions };
     const grid = el('section', 'governance-grid');

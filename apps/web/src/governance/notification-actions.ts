@@ -46,6 +46,7 @@ export function appendGovernanceNotificationActions(context: GovernanceActionCon
             'PUT',
           );
         },
+        '保存通知偏好',
       );
     });
     actions.append(preference);

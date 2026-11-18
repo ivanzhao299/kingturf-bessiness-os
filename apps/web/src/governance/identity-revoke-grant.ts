@@ -5,7 +5,7 @@ export function appendGovernanceRevokeGrant(
   context: GovernanceActionContext,
   mayManageRoles: boolean,
 ) {
-  const { openAction, choices, controller, actions } = context;
+  const { openAction, choices, choiceAvailability, controller, actions } = context;
   if (mayManageRoles) {
     const revokeGrant = el('button', 'secondary danger', '撤销角色能力');
     revokeGrant.addEventListener('click', () => {
@@ -18,6 +18,7 @@ export function appendGovernanceRevokeGrant(
             label: '角色',
             type: 'select',
             required: true,
+            hint: choiceAvailability('/api/v1/roles'),
             options: choices(
               '/api/v1/roles',
               (item) => `${textValue(item.code, '')} · ${textValue(item.name, '')}`,
@@ -28,6 +29,7 @@ export function appendGovernanceRevokeGrant(
             label: '能力',
             type: 'select',
             required: true,
+            hint: choiceAvailability('/api/v1/permissions'),
             options: choices('/api/v1/permissions', (item) => textValue(item.capability, '能力')),
           },
         ],
@@ -37,6 +39,7 @@ export function appendGovernanceRevokeGrant(
             { roleId: values.roleId, permissionId: values.permissionId },
             'DELETE',
           ),
+        '撤销授权',
       );
     });
     actions.append(revokeGrant);

@@ -3,8 +3,17 @@ import { textValue } from '../shared/business-format';
 import { businessStateLabel } from '../shared/business-labels';
 import type { GovernanceActionContext } from './workspace-types';
 export function appendGovernanceTaskActions(context: GovernanceActionContext) {
-  const { surface, permissions, openAction, choices, records, controller, requiredValue, actions } =
-    context;
+  const {
+    surface,
+    permissions,
+    openAction,
+    choices,
+    choiceAvailability,
+    records,
+    controller,
+    requiredValue,
+    actions,
+  } = context;
   if (surface.id === 'workflow' && permissions.has('workflow:decide')) {
     const decide = el('button', 'secondary', '处理审批待办');
     decide.addEventListener('click', () => {
@@ -17,6 +26,7 @@ export function appendGovernanceTaskActions(context: GovernanceActionContext) {
             label: '待办任务',
             type: 'select',
             required: true,
+            hint: choiceAvailability('/api/v1/workflow-tasks'),
             options: choices(
               '/api/v1/workflow-tasks',
               (item) =>
@@ -48,6 +58,7 @@ export function appendGovernanceTaskActions(context: GovernanceActionContext) {
             },
           );
         },
+        '提交审批决定',
       );
     });
     actions.append(decide);

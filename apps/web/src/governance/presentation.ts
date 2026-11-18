@@ -150,8 +150,12 @@ export const governanceCellText = (value: unknown): string => {
   return GOVERNANCE_CHANNEL_LABELS[text] ?? ENTERPRISE_STATUS_LABELS[text] ?? text;
 };
 
-export const governanceTable = (items: readonly unknown[]): HTMLElement => {
-  const records = items.slice(0, 8).map(recordValue);
+export const governanceTable = (
+  items: readonly unknown[],
+  options: Readonly<{ preview?: boolean }> = {},
+): HTMLElement => {
+  const previewLimit = options.preview === false ? items.length : 8;
+  const records = items.slice(0, previewLimit).map(recordValue);
   const availableFields = new Set(records.flatMap((record) => Object.keys(record)));
   const fields = [
     ...governanceFieldPriority.filter((field) => availableFields.has(field)),
@@ -180,7 +184,9 @@ export const governanceTable = (items: readonly unknown[]): HTMLElement => {
   }
   table.append(head, body);
   wrap.append(table);
-  if (items.length > records.length)
+  if (options.preview === false)
+    wrap.append(el('p', 'table-footnote', `当前已加载 ${String(records.length)} 条记录`));
+  else if (items.length > records.length)
     wrap.append(el('p', 'table-footnote', `当前预览前 ${String(records.length)} 条记录`));
   return wrap;
 };

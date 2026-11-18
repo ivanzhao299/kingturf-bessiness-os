@@ -2,7 +2,7 @@ import { el } from '../dom';
 import { textValue } from '../shared/business-format';
 import type { GovernanceActionContext } from './workspace-types';
 export function createGovernanceGrantButton(context: GovernanceActionContext) {
-  const { openAction, choices, controller } = context;
+  const { openAction, choices, choiceAvailability, controller } = context;
   const grant = el('button', 'secondary', '授予能力');
   grant.addEventListener('click', () => {
     openAction(
@@ -14,6 +14,7 @@ export function createGovernanceGrantButton(context: GovernanceActionContext) {
           label: '角色',
           type: 'select',
           required: true,
+          hint: choiceAvailability('/api/v1/roles'),
           options: choices('/api/v1/roles', (item) => textValue(item.code, '角色')),
         },
         {
@@ -21,6 +22,7 @@ export function createGovernanceGrantButton(context: GovernanceActionContext) {
           label: '能力',
           type: 'select',
           required: true,
+          hint: choiceAvailability('/api/v1/permissions'),
           options: choices('/api/v1/permissions', (item) => textValue(item.capability, '能力')),
         },
       ],
@@ -31,6 +33,7 @@ export function createGovernanceGrantButton(context: GovernanceActionContext) {
           scopes: ['COMPANY'],
           fields: null,
         }),
+      '授予能力',
     );
   });
   return { grant };

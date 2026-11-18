@@ -192,7 +192,18 @@ export function createShellSidebar(
     ['quality', '质量检验', 'quality-inspection'],
     ['delivery', '发货与签收', 'shipments'],
   ]);
-  navGroup('系统管理', 'governance', [['governance', '组织、权限与配置', 'governance']]);
+  navGroup('系统管理', 'governance', [
+    ['governance', '治理概览', 'governance'],
+    ['governance', '身份与授权', 'governance/identity'],
+    ['governance', '组织与员工', 'governance/organization'],
+    ['governance', '审计中心', 'governance/audit'],
+    ['operations', '主数据', 'governance/master-data'],
+    ['operations', '编号规则', 'governance/numbering'],
+    ['operations', '业务规则', 'governance/rules'],
+    ['operations', '工作流与待办', 'governance/workflow'],
+    ['governance', '通知中心', 'governance/notifications'],
+    ['operations', '业务对象与事件', 'governance/system'],
+  ]);
   aside.append(nav);
   return { shell, aside, sidebarToggle, sections, visibleRoutes, roleProfile, currentRoute };
 }

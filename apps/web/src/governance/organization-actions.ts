@@ -2,8 +2,17 @@ import { el } from '../dom';
 import { textValue } from '../shared/business-format';
 import type { GovernanceActionContext } from './workspace-types';
 export function appendGovernanceOrganizationActions(context: GovernanceActionContext) {
-  const { surface, permissions, openAction, choices, controller, actions, records, requiredValue } =
-    context;
+  const {
+    surface,
+    permissions,
+    openAction,
+    choices,
+    choiceAvailability,
+    controller,
+    actions,
+    records,
+    requiredValue,
+  } = context;
   if (surface.id === 'organizations' && permissions.has('organization:create')) {
     const create = el('button', 'secondary', '新建组织');
     create.addEventListener('click', () => {
@@ -17,6 +26,7 @@ export function appendGovernanceOrganizationActions(context: GovernanceActionCon
             name: 'parentId',
             label: '父组织',
             type: 'select',
+            hint: choiceAvailability('/api/v1/organizations'),
             options: [
               { value: '', label: '无父组织' },
               ...choices(
@@ -34,6 +44,7 @@ export function appendGovernanceOrganizationActions(context: GovernanceActionCon
             locale: 'zh-CN',
             currency: 'CNY',
           }),
+        '创建组织',
       );
     });
     actions.append(create);
@@ -50,6 +61,7 @@ export function appendGovernanceOrganizationActions(context: GovernanceActionCon
             label: '组织',
             type: 'select',
             required: true,
+            hint: choiceAvailability('/api/v1/organizations'),
             options: choices(
               '/api/v1/organizations',
               (item) => `${textValue(item.code, '')} · ${textValue(item.name, '')}`,
@@ -67,6 +79,7 @@ export function appendGovernanceOrganizationActions(context: GovernanceActionCon
             'PATCH',
           );
         },
+        '保存组织变更',
       );
     });
     actions.append(update);

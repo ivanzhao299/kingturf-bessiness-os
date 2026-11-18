@@ -2,7 +2,16 @@ import { el } from '../dom';
 import { textValue } from '../shared/business-format';
 import type { GovernanceActionContext } from './workspace-types';
 export function appendGovernanceNumberingActions(context: GovernanceActionContext) {
-  const { surface, permissions, openAction, controller, actions, choices, requiredValue } = context;
+  const {
+    surface,
+    permissions,
+    openAction,
+    controller,
+    actions,
+    choices,
+    choiceAvailability,
+    requiredValue,
+  } = context;
   if (surface.id === 'numbering' && permissions.has('number:create')) {
     const number = el('button', 'secondary', '新建编号规则');
     number.addEventListener('click', () => {
@@ -26,6 +35,7 @@ export function appendGovernanceNumberingActions(context: GovernanceActionContex
             increment: Number(values.increment),
             resetPeriod: 'NEVER',
           }),
+        '创建编号规则',
       );
     });
     actions.append(number);
@@ -42,6 +52,7 @@ export function appendGovernanceNumberingActions(context: GovernanceActionContex
             label: '编号规则',
             type: 'select',
             required: true,
+            hint: choiceAvailability('/api/v1/number-definitions'),
             options: choices('/api/v1/number-definitions', (item) =>
               textValue(item.code, '编号规则'),
             ),
@@ -55,6 +66,7 @@ export function appendGovernanceNumberingActions(context: GovernanceActionContex
               version: Number(values.version),
             },
           ),
+        '发布编号版本',
       );
     });
     actions.append(publish);
@@ -71,6 +83,7 @@ export function appendGovernanceNumberingActions(context: GovernanceActionContex
             label: '编号规则',
             type: 'select',
             required: true,
+            hint: choiceAvailability('/api/v1/number-definitions'),
             options: choices('/api/v1/number-definitions', (item) =>
               textValue(item.code, '编号规则'),
             ),
@@ -81,6 +94,7 @@ export function appendGovernanceNumberingActions(context: GovernanceActionContex
             `/api/v1/number-definitions/${requiredValue(values.definitionId, '编号规则')}/allocate`,
             {},
           ),
+        '分配编号',
       );
     });
     actions.append(allocate);

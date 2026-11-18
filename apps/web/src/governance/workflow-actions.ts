@@ -10,6 +10,7 @@ export function appendGovernanceWorkflowActions(context: GovernanceActionContext
     jsonField,
     actions,
     choices,
+    choiceAvailability,
     requiredValue,
   } = context;
   if (surface.id === 'workflow' && permissions.has('workflow:create')) {
@@ -27,6 +28,7 @@ export function appendGovernanceWorkflowActions(context: GovernanceActionContext
             code: values.code,
             spec: jsonField(values.spec, '流程规范'),
           }),
+        '创建工作流',
       );
     });
     actions.append(workflow);
@@ -43,6 +45,7 @@ export function appendGovernanceWorkflowActions(context: GovernanceActionContext
             label: '工作流',
             type: 'select',
             required: true,
+            hint: choiceAvailability('/api/v1/workflows'),
             options: choices('/api/v1/workflows', (item) => textValue(item.code, '工作流')),
           },
           { name: 'version', label: '待发布版本', type: 'number', required: true },
@@ -70,6 +73,7 @@ export function appendGovernanceWorkflowActions(context: GovernanceActionContext
             label: '工作流',
             type: 'select',
             required: true,
+            hint: choiceAvailability('/api/v1/workflows'),
             options: choices('/api/v1/workflows', (item) => textValue(item.code, '工作流')),
           },
           { name: 'subjectType', label: '业务对象类型', required: true },

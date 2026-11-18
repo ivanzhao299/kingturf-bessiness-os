@@ -5,7 +5,7 @@ export function appendGovernanceIdentityState(
   context: GovernanceActionContext,
   mayManageIdentity: boolean,
 ) {
-  const { records, openAction, controller, requiredValue, actions } = context;
+  const { records, openAction, controller, requiredValue, choiceAvailability, actions } = context;
   if (mayManageIdentity) {
     const identityState = el('button', 'secondary', '账号启停与下线');
     identityState.addEventListener('click', () => {
@@ -21,6 +21,7 @@ export function appendGovernanceIdentityState(
             label: '登录账号',
             type: 'select',
             required: true,
+            hint: choiceAvailability('/api/v1/user-access-profiles'),
             options: profiles.map((item) => ({
               value: String(item.identityId),
               label: `${textValue(item.employeeNumber, '')} · ${textValue(item.displayName, '')} · ${textValue(item.loginName, '')}`,
@@ -56,6 +57,7 @@ export function appendGovernanceIdentityState(
             },
             'PATCH',
           ),
+        '停用或启用账号',
       );
     });
     actions.append(identityState);

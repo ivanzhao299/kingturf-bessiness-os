@@ -12,9 +12,11 @@ import {
 } from './commercial/workspace-frame';
 export { CommercialController } from './commercial/store/controller';
 import { hasPermissionPrefix } from './shared/permission-prefix';
-import { visibleGovernanceSurfaces } from './governance/surfaces';
+import { governanceRoutes, visibleGovernanceSurfaces } from './governance/surfaces';
 export {
   GOVERNANCE_SURFACES,
+  GOVERNANCE_ROUTE_ORDER,
+  governanceRoutes,
   visibleGovernanceSurfaces,
   type GovernanceSurface,
 } from './governance/surfaces';
@@ -22,6 +24,8 @@ import { GovernanceController } from './governance/controller';
 export { GovernanceController } from './governance/controller';
 export { governanceNextAction, governanceChannelLabel } from './governance/presentation';
 import { createGovernanceWorkspace } from './governance/workspace';
+import { createGovernanceSubpages } from './governance/subpage';
+import { governanceInitialSurfaces, mountGovernanceViews } from './governance/route-loading';
 import { createDocumentReadService } from './shared/document-read-service';
 import { createDocumentConnectorRenderer } from './shared/document-connectors';
 import {
@@ -182,7 +186,8 @@ export function visibleAppRoutes(permissions: ReadonlySet<string>): ReadonlySet<
     'capa:',
   ]);
   addWhen('shipments', ['shipment:']);
-  if (visibleGovernanceSurfaces(permissions).length > 0) routes.add('governance');
+  // B1 治理子路由化：概览保留，子路由按 surface 可见性并集注册。
+  for (const route of governanceRoutes(permissions)) routes.add(route);
   if (routes.size > 0) {
     routes.add('overview');
     routes.add('document-templates');
@@ -638,6 +643,7 @@ function bootstrapView(current: HTMLElement, controller: CrmController): void {
 }
 
 export const governanceWorkspace = createGovernanceWorkspace({ replaceRouteView });
+export const governanceSubpage = createGovernanceSubpages({ replaceRouteView });
 
 export async function mountWorkspace(
   root: HTMLElement,
@@ -704,7 +710,7 @@ export async function mountWorkspace(
         commercialController.message =
           error instanceof Error ? error.message : '商业工作台加载失败';
       }),
-    governanceController?.load(),
+    governanceController?.load(governanceInitialSurfaces(allPermissions, globalThis.location.hash)),
   ]);
   if (!isCurrent()) return;
   onProgress('业务数据已就绪，正在构建工作台…');
@@ -737,11 +743,14 @@ export async function mountWorkspace(
         ),
       );
   }
-  if (governanceController) {
-    shell
-      .querySelector<HTMLElement>('.workspace')
-      ?.append(governanceWorkspace(governanceController));
-  }
+  mountGovernanceViews(shell, governanceController, {
+    replaceRouteView,
+    governanceWorkspace,
+    governanceSubpage,
+    onDispose: (dispose) => {
+      context.owner.onDispose(dispose);
+    },
+  });
   localizeEnterpriseCopy(shell);
   const commercialWorkspace = shell.querySelector<HTMLElement>('.commercial-workspace');
   if (commercialWorkspace && commercialData)

@@ -232,7 +232,7 @@ describe('real form orchestration through explicit DOM/native ports', () => {
     },
   );
 
-  it.each(['删除', '停用', '取消', '驳回', '拒绝', '追回', '关闭', '释放'])(
+  it.each(['删除', '停用', '取消', '撤销', '驳回', '拒绝', '追回', '关闭', '释放'])(
     'enables sensitive %s button only when checked and restores checkbox state after failure',
     async (label) => {
       const f = setup(label);
@@ -257,33 +257,37 @@ describe('real form orchestration through explicit DOM/native ports', () => {
     },
   );
 
-  it('confirms dirty cancel/escape, permits clean cancel and handles absent confirm port', () => {
+  it('confirms discarding dirty edits through a dialog and permits clean cancel (B3)', async () => {
     const f = setup();
-    const confirm = vi.fn(() => false);
-    vi.stubGlobal('confirm', confirm);
     findElement(f.form, (node) => node.tagName === 'INPUT').dispatchEvent(new Event('input'));
     f.cancel.click();
     expect(f.dialog.open).toBe(true);
-    expect(f.dialog.dispatchEvent(new Event('cancel', { cancelable: true }))).toBe(false);
-    expect(confirm).toHaveBeenCalledTimes(2);
-    confirm.mockReturnValue(true);
-    expect(f.dialog.dispatchEvent(new Event('cancel', { cancelable: true }))).toBe(true);
-    // The double does not perform a browser's default Escape close.
+    const discardDialog = findElement(
+      f.host,
+      (node) => node.tagName === 'DIALOG' && node !== f.dialog,
+    );
+    expect(discardDialog.textContent).toContain('放弃未保存的修改');
+    const keepEditing = findElement(discardDialog, (node) => node.textContent === '继续编辑');
+    keepEditing.click();
+    await flushBehaviorPromises();
+    expect(f.dialog.open).toBe(true);
+    expect(f.dialog.parentElement).not.toBeNull();
     f.cancel.click();
+    const discardAgain = findElement(
+      f.host,
+      (node) => node.tagName === 'DIALOG' && node !== f.dialog,
+    );
+    const discard = findElement(discardAgain, (node) => node.textContent === '放弃修改');
+    discard.click();
+    await flushBehaviorPromises();
     expect(f.dialog.parentElement).toBeNull();
     const clean = setup();
-    confirm.mockClear();
     clean.cancel.click();
-    expect(confirm).not.toHaveBeenCalled();
+    await flushBehaviorPromises();
+    expect(
+      clean.host.descendants().filter((node) => node.tagName === 'DIALOG' && node !== clean.dialog),
+    ).toEqual([]);
     expect(clean.dialog.parentElement).toBeNull();
-    const noConfirm = setup();
-    vi.stubGlobal('confirm', undefined);
-    findElement(noConfirm.form, (node) => node.tagName === 'INPUT').dispatchEvent(
-      new Event('input'),
-    );
-    expect(noConfirm.dialog.dispatchEvent(new Event('cancel', { cancelable: true }))).toBe(true);
-    noConfirm.cancel.click();
-    expect(noConfirm.dialog.parentElement).toBeNull();
   });
 });
 

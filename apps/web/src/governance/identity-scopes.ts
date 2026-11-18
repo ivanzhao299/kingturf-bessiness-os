@@ -5,7 +5,7 @@ export function appendGovernanceIdentityScopes(
   context: GovernanceActionContext,
   mayManageScopes: boolean,
 ) {
-  const { openAction, choices, controller, requiredValue, actions } = context;
+  const { openAction, choices, choiceAvailability, controller, requiredValue, actions } = context;
   if (mayManageScopes) {
     const scopeGrant = el('button', 'secondary', '配置用户数据范围');
     scopeGrant.addEventListener('click', () => {
@@ -18,6 +18,7 @@ export function appendGovernanceIdentityScopes(
             label: '员工',
             type: 'select',
             required: true,
+            hint: choiceAvailability('/api/v1/employees'),
             options: choices(
               '/api/v1/employees',
               (item) =>
@@ -29,6 +30,7 @@ export function appendGovernanceIdentityScopes(
             label: '能力',
             type: 'select',
             required: true,
+            hint: choiceAvailability('/api/v1/permissions'),
             options: choices('/api/v1/permissions', (item) => textValue(item.capability, '能力')),
           },
           {
@@ -66,6 +68,7 @@ export function appendGovernanceIdentityScopes(
               ? requiredValue(values.organizationId, '组织范围')
               : null,
           }),
+        '保存数据范围',
       );
     });
     const revokeScope = el('button', 'secondary danger', '撤销用户数据范围');
@@ -79,6 +82,7 @@ export function appendGovernanceIdentityScopes(
             label: '数据范围记录',
             type: 'select',
             required: true,
+            hint: choiceAvailability('/api/v1/scope-grants'),
             options: choices(
               '/api/v1/scope-grants',
               (item) =>
@@ -92,6 +96,7 @@ export function appendGovernanceIdentityScopes(
             {},
             'DELETE',
           ),
+        '撤销数据范围',
       );
     });
     actions.append(scopeGrant, revokeScope);

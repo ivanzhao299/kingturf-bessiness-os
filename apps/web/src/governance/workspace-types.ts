@@ -3,6 +3,7 @@ import type { GovernanceSurface } from './surfaces';
 import type { FormField } from '../shared/forms';
 export type GovernanceWorkspacePorts = Readonly<{
   replaceRouteView: (current: HTMLElement, replacement: HTMLElement) => void;
+  rebuild: (controller: GovernanceController, host: HTMLElement) => HTMLElement;
 }>;
 export type GovernanceActionContext = Readonly<{
   controller: GovernanceController;
@@ -18,11 +19,13 @@ export type GovernanceActionContext = Readonly<{
     path: string,
     label: (item: Record<string, unknown>) => string,
   ) => { value: string; label: string }[];
+  choiceAvailability: (path: string) => string | undefined;
   openAction: (
     title: string,
     description: string,
     fields: readonly FormField[],
     submit: (values: Record<string, string>) => Promise<void>,
+    submitLabel?: string,
   ) => void;
   jsonField: (value: string | undefined, label: string) => Record<string, unknown>;
   requiredValue: (value: string | undefined, label: string) => string;
