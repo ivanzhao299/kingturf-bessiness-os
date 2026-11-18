@@ -21,6 +21,18 @@ describe('CI database target safety', () => {
 });
 
 describe('identity and authorization migration', () => {
+  it('0074 creates tenant settings with immutable published versions (D5)', async () => {
+    const sql = await readFile(join(process.cwd(), 'migrations/0074_tenant_settings.sql'), 'utf8');
+    expect(sql).toContain('CREATE TABLE tenant_settings (');
+    expect(sql).toContain('CREATE TABLE tenant_setting_versions (');
+    expect(sql).toContain("RAISE EXCEPTION 'published tenant setting versions are immutable'");
+    expect(sql).toContain('tenant-setting:read');
+    expect(sql).toContain('tenant-setting:manage');
+    expect(sql).not.toMatch(
+      /INSERT INTO tenant_setting_versions|UPDATE tenant_settings SET|DROP TABLE/iu,
+    );
+  });
+
   it('0073 adds only the must-change flag column (A1)', async () => {
     const sql = await readFile(
       join(process.cwd(), 'migrations/0073_credential_must_change.sql'),
@@ -33,7 +45,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0073_credential_must_change.sql');
+    expect(ordered.at(-1)).toBe('0074_tenant_settings.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',

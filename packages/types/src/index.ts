@@ -136,6 +136,48 @@ export type ErrorEnvelope = Readonly<{
   }>;
 }>;
 
+// D5（ADR-0013）：租户设置键目录——代码注册白名单 + 每键手写 schema（零新依赖）。
+// 未设置的键回落 default；消费者只读 PUBLISHED 版本。
+export type TenantSettingValue = number | string;
+export type TenantSettingDefinition = Readonly<{
+  key: string;
+  label: string;
+  description: string;
+  valueType: 'integer' | 'string';
+  minimum?: number;
+  maximum?: number;
+  maxLength?: number;
+  default: TenantSettingValue;
+}>;
+export const TENANT_SETTING_DEFINITIONS: readonly TenantSettingDefinition[] = [
+  {
+    key: 'security.password.minLength',
+    label: '密码最小长度',
+    description: '供凭证首登改密等策略读取；未设置时使用默认 12。',
+    valueType: 'integer',
+    minimum: 8,
+    maximum: 128,
+    default: 12,
+  },
+  {
+    key: 'security.password.historyCount',
+    label: '密码历史次数',
+    description: '为后续密码策略批次预留的存储位；当前无消费方。',
+    valueType: 'integer',
+    minimum: 0,
+    maximum: 24,
+    default: 0,
+  },
+  {
+    key: 'ux.loginNoticeText',
+    label: '登录横幅文本',
+    description: '登录页公告横幅；留空（默认）不显示。',
+    valueType: 'string',
+    maxLength: 500,
+    default: '',
+  },
+];
+
 export const FOUNDATION_CAPABILITIES = [
   'notification:read',
   'notification:manage',

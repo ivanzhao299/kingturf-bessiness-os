@@ -59,7 +59,7 @@ describe('read-only production migration compatibility', () => {
     ).toBe('on');
     await assertMigrationsCurrent(reader);
     const status = await migrationStatus(reader);
-    expect(status).toHaveLength(73);
+    expect(status).toHaveLength(74);
     expect(status.every((item) => item.state === 'applied')).toBe(true);
     await expect(
       reader.query('CREATE TABLE forbidden_readonly_write(id integer)'),

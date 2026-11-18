@@ -299,6 +299,8 @@ export type ApiDependencies = Readonly<{
   attachments?: PostgresAttachmentRepository;
   events?: PostgresEventRepository;
   businessObjects?: PostgresBusinessObjectRepository;
+  // D5（ADR-0013，已批新增）：租户设置仓储端口（加性可选成员）。
+  tenantSettings?: import('./tenant-settings-repositories.ts').PostgresTenantSettingsRepository;
   crm?: PostgresCrmRepository;
   commercial?: PostgresCommercialRepository;
   quoteToCash?: PostgresQuoteToCashRepository;

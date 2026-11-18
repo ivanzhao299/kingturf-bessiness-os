@@ -210,11 +210,23 @@ describe('dispatch group inverse source preservation against fixed f3', () => {
             if (!ts.isVariableDeclaration(n)) throw new Error('Binding missing');
             return n.name.getText(old);
           });
-        const expanded = expand(
-          parse('../src/routes/dispatch/' + group.file),
-          group.symbol,
-          bindings,
-        ).replace(PAGE_FILTER_ARG, '');
+        // D5（ADR-0013，已批新增）：catalogPart1 顶部新增 tenant-settings 分支；展开前
+        // 先把该已批分支从源文本剥离再重解析，使冻结绑定的消费顺序保持不变。
+        const rawPath = '../src/routes/dispatch/' + group.file;
+        const raw = ts.createSourceFile(
+          rawPath,
+          readFileSync(new URL(rawPath, import.meta.url), 'utf8'),
+          ts.ScriptTarget.Latest,
+          true,
+        );
+        const added = findAll(
+          raw,
+          (n) => ts.isIfStatement(n) && n.expression.getText(raw).includes('tenant-settings'),
+        ).sort((a, b) => b.pos - a.pos);
+        let source = readFileSync(new URL(rawPath, import.meta.url), 'utf8');
+        for (const node of added) source = source.slice(0, node.pos) + source.slice(node.end);
+        const current = ts.createSourceFile(rawPath, source, ts.ScriptTarget.Latest, true);
+        const expanded = expand(current, group.symbol, bindings).replace(PAGE_FILTER_ARG, '');
         expect(firstDifference(tokens(expanded), tokens(originalText))).toBeNull();
         expect(bindings).toHaveLength(0);
       },

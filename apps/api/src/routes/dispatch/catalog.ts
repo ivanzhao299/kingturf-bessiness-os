@@ -38,6 +38,11 @@ import {
   ruleDefinitionVersionRoutes,
 } from '../rule-definitions.ts';
 import { ruleEvaluationRoutes } from '../rule-evaluation.ts';
+import {
+  tenantSettingListRoutes,
+  tenantSettingPublishRoutes,
+  tenantSettingWriteRoutes,
+} from '../tenant-settings.ts';
 import { dispatchRoutes } from '../types.ts';
 import {
   workflowDefinitionCreateRoutes,
@@ -58,6 +63,52 @@ import {
 } from './context.ts';
 function* catalogPart1(scope: RouteDispatchContext): RouteAttempts {
   const { request, dependencies, context, correlationId } = scope;
+  if (request.pathname === '/api/v1/tenant-settings' && ['GET', 'PUT'].includes(request.method)) {
+    authorizeQuery(
+      context,
+      request.method === 'GET' ? 'tenant-setting:read' : 'tenant-setting:manage',
+    );
+    if (!dependencies.tenantSettings) {
+      yield directReply(
+        error(503, 'internal_error', 'Tenant settings repository unavailable', correlationId),
+      );
+      return;
+    }
+    const routes =
+      request.method === 'GET'
+        ? tenantSettingListRoutes({
+            repository: dependencies.tenantSettings,
+            tenantId: context.actor.companyId,
+          })
+        : tenantSettingWriteRoutes({
+            repository: dependencies.tenantSettings,
+            tenantId: context.actor.companyId,
+            correlationId,
+            actor: context.actor,
+          });
+    yield routeReply(dispatchRoutes(routes, request), 'truthy');
+  }
+  if (request.pathname === '/api/v1/tenant-settings/publish' && request.method === 'POST') {
+    authorizeQuery(context, 'tenant-setting:manage');
+    if (!dependencies.tenantSettings) {
+      yield directReply(
+        error(503, 'internal_error', 'Tenant settings repository unavailable', correlationId),
+      );
+      return;
+    }
+    yield routeReply(
+      dispatchRoutes(
+        tenantSettingPublishRoutes({
+          repository: dependencies.tenantSettings,
+          tenantId: context.actor.companyId,
+          correlationId,
+          actor: context.actor,
+        }),
+        request,
+      ),
+      'truthy',
+    );
+  }
   if (request.pathname === '/api/v1/master-data/categories' && request.method === 'GET') {
     authorizeQuery(context, 'master-data:read');
     if (!dependencies.masterData) {

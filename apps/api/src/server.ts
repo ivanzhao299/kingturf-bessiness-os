@@ -20,6 +20,7 @@ import {
   PostgresRuleRepository,
   PostgresWorkflowRepository,
 } from './platform-repositories.ts';
+import { PostgresTenantSettingsRepository } from './tenant-settings-repositories.ts';
 import {
   EmployeeObjectInstanceResolver,
   LocalAttachmentStorage,
@@ -75,6 +76,7 @@ const application = buildApp(
     authorization: new PostgresAuthorizationRepository(database),
     audit: new PostgresAuditRepository(database),
     masterData: new PostgresMasterDataRepository(database),
+    tenantSettings: new PostgresTenantSettingsRepository(database),
     numbers: new PostgresNumberRepository(database),
     rules: new PostgresRuleRepository(database),
     workflows: new PostgresWorkflowRepository(database),

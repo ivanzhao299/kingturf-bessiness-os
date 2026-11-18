@@ -87,6 +87,7 @@ export type ApiDependencies = Readonly<{
   attachments?: PostgresAttachmentRepository;
   events?: PostgresEventRepository;
   businessObjects?: PostgresBusinessObjectRepository;
+  tenantSettings?: import('./tenant-settings-repositories.ts').PostgresTenantSettingsRepository;
   crm?: PostgresCrmRepository;
   commercial?: PostgresCommercialRepository;
   quoteToCash?: PostgresQuoteToCashRepository;
