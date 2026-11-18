@@ -63,7 +63,8 @@
 
 [Harness施工图竣工归档](exec-plans/completed/harness-2026-10-21.md)：阶段1–5与§14迁移记录；常驻规则以AGENTS、核心信念、架构、CI和门禁文档为准。
 [Wave1合并验证与CP3发布材料](evidence/wave1-verification-2026-11-18.md)：系统管理优化Wave1两轮完整CI、e2e:p1实跑与环境偏差、发布输入契约/步骤/回滚/pg_dump确认项。
-[Wave1生产部署记录](evidence/wave1-deployment-2026-11-18.md)：run 44318126044部署成功全证据、探针/marker/恢复点、证据推进尾步缺陷根因与无锁死论证（TD-REL-004随Wave2修复）。
+[Wave1生产部署记录](evidence/wave1-deployment-2026-11-18.md)
+[Wave2迁移执行手册](deployment/wave2-migration-runbook-2026-11-18.md)：72→74（0073/0074）所有者SSH命令序列、orchestrator五门证据链、失败中止与回滚要点、隔离演练证据。：run 44318126044部署成功全证据、探针/marker/恢复点、证据推进尾步缺陷根因与无锁死论证（TD-REL-004随Wave2修复）。
 [Harness竣工收官报告](evidence/harness-final-closeout-report-2026-10-21.md)：五阶段摘要、开放项承接、母模板反馈与归档后合同。
 [Harness常驻契约自检](evidence/harness-final-closeout-self-check-2026-10-21.md)：无施工图依赖的机械自检结果与证据入口。
 [Harness归档授权](tasks/harness-final-closeout-archive-authorization-2026-10-21.md)：§14 归档范围、停止边界与最终验证授权。
