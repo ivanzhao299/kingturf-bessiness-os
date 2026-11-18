@@ -1,4 +1,5 @@
 import importlib.util
+import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import tempfile
@@ -101,6 +102,31 @@ class PureLogicTest(unittest.TestCase):
             (staged / 'migrations').rename(staged / 'not-migrations')
             with self.assertRaisesRegex(RuntimeError, 'staged migrations directory missing'):
                 am.validate_staged_layout(staged, staged / 'migrations', 1, ['0073_a.sql'])
+
+    def test_cli_validate_inputs_passes_on_valid_staged_tree(self):
+        """End-to-end smoke for the fixed layout assertion: a valid staged tree must
+        emit a validate-inputs PASS line (the is_file() bug and the names NameError
+        both turned this into an early FAIL with no PASS line)."""
+        import subprocess, sys
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            staged = root / 'staged'
+            (staged / 'migrations').mkdir(parents=True)
+            (staged / 'migrations' / '0073_a.sql').write_text('-- a')
+            (staged / 'release_orchestrator.py').write_text('# orchestrator')
+            (staged / 'production_preflight.py').write_text('# preflight')
+            result = subprocess.run(
+                [sys.executable, str(ROOT / 'scripts/apply_migrations.py'),
+                 '--candidate-sha', 'f' * 40, '--approved-suffixes', '0073_a.sql',
+                 '--staged-root', str(staged), '--approver', 'test',
+                 '--expected-after', '1', '--prod-root', str(root / 'prod')],
+                capture_output=True, text=True, timeout=120)
+            first = result.stdout.strip().splitlines()[0] if result.stdout.strip() else '{}'
+            payload = json.loads(first)
+            self.assertEqual(payload['step'], 'validate-inputs')
+            self.assertEqual(payload['status'], 'PASS')
+            self.assertEqual(payload['migrations'], 1)
+            self.assertNotEqual(result.returncode, 0)  # fails later at host access, as designed
 
 
 if __name__ == '__main__':

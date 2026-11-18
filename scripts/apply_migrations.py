@@ -204,7 +204,7 @@ def main():
         suffixes = parse_suffixes(args.approved_suffixes)
         staged = args.staged_root
         migrations = staged / 'migrations'
-        validate_staged_layout(staged, migrations, args.expected_after, suffixes)
+        names = validate_staged_layout(staged, migrations, args.expected_after, suffixes)
         spec = importlib.util.spec_from_file_location('release_orchestrator', staged / 'release_orchestrator.py')
         ro = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(ro)
