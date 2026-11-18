@@ -14,15 +14,30 @@ const definitionOf = (key: string) => {
 /** 键白名单 + 手写 schema 校验；返回原值（jsonb 序列化前）。 */
 export function validateTenantSettingValue(key: string, value: unknown): TenantSettingValue {
   const definition = definitionOf(key);
-  if (definition.valueType === 'integer') {
-    if (typeof value !== 'number' || !Number.isSafeInteger(value))
-      throw new DomainError('invalid_request', `${key} must be an integer`);
-    if (definition.minimum !== undefined && value < definition.minimum)
-      throw new DomainError('invalid_request', `${key} must be >= ${String(definition.minimum)}`);
-    if (definition.maximum !== undefined && value > definition.maximum)
-      throw new DomainError('invalid_request', `${key} must be <= ${String(definition.maximum)}`);
-    return value;
-  }
+  return definition.valueType === 'integer'
+    ? validateIntegerSetting(key, definition, value)
+    : validateStringSetting(key, definition, value);
+}
+
+function validateIntegerSetting(
+  key: string,
+  definition: Readonly<{ minimum?: number; maximum?: number }>,
+  value: unknown,
+): number {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value))
+    throw new DomainError('invalid_request', `${key} must be an integer`);
+  if (definition.minimum !== undefined && value < definition.minimum)
+    throw new DomainError('invalid_request', `${key} must be >= ${String(definition.minimum)}`);
+  if (definition.maximum !== undefined && value > definition.maximum)
+    throw new DomainError('invalid_request', `${key} must be <= ${String(definition.maximum)}`);
+  return value;
+}
+
+function validateStringSetting(
+  key: string,
+  definition: Readonly<{ maxLength?: number }>,
+  value: unknown,
+): string {
   if (typeof value !== 'string')
     throw new DomainError('invalid_request', `${key} must be a string`);
   if (definition.maxLength !== undefined && value.length > definition.maxLength)
@@ -134,17 +149,18 @@ export class PostgresTenantSettingsRepository {
         )
       ).rows[0]?.version;
       if (!next) throw new DomainError('conflict', 'Tenant setting version could not be allocated');
+      const draftParameters: unknown[] = [
+        input.tenantId,
+        input.key,
+        next,
+        JSON.stringify(value),
+        input.idempotencyKey,
+        input.actor.employeeId,
+      ];
       const inserted = (
         await tx.query<VersionRow>(
           "INSERT INTO tenant_setting_versions(tenant_id,key,version,value,status,idempotency_key,created_by) VALUES($1,$2,$3,$4,'DRAFT',$5,$6) RETURNING id,version,value,status,published_at",
-          [
-            input.tenantId,
-            input.key,
-            next,
-            JSON.stringify(value),
-            input.idempotencyKey,
-            input.actor.employeeId,
-          ],
+          draftParameters,
         )
       ).rows[0];
       if (!inserted?.id)
@@ -187,14 +203,14 @@ export class PostgresTenantSettingsRepository {
       ).rows[0];
       if (!latest) throw new DomainError('not_found', 'Tenant setting has no versions');
       if (latest.status === 'PUBLISHED') {
-        if (latest.publish_idempotency_key === input.idempotencyKey)
-          return {
-            version: latest.version,
-            value: latest.value,
-            status: latest.status,
-            publishedAt: latest.published_at?.toISOString() ?? null,
-          };
-        throw new DomainError('conflict', 'Latest tenant setting version is already published');
+        if (latest.publish_idempotency_key !== input.idempotencyKey)
+          throw new DomainError('conflict', 'Latest tenant setting version is already published');
+        return {
+          version: latest.version,
+          value: latest.value,
+          status: latest.status,
+          publishedAt: latest.published_at?.toISOString() ?? null,
+        };
       }
       await tx.query(
         "UPDATE tenant_setting_versions SET status='PUBLISHED',published_at=now(),publish_idempotency_key=$3 WHERE id=$1 AND tenant_id=$2",

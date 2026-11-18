@@ -199,6 +199,7 @@ const readGovernanceSources = (): string[] => [
   readBoundSource('./governance/workspace.ts', 'export function createGovernanceWorkspace'),
   readBoundSource('./governance/subpage.ts', 'export function createGovernanceSubpages'),
   readBoundSource('./governance/route-loading.ts', 'export function installGovernanceRouteLoading'),
+  readBoundSource('./governance/tenant-settings.ts', 'export function createTenantSettingsSection'),
 ];
 
 const readCommercialStoreSources = (): string[] => [
@@ -1418,6 +1419,80 @@ it('filters audit events server-side and exports every filtered page (B2)', asyn
     vi.unstubAllGlobals();
     if (!hadCreate) delete urlWithBlob.createObjectURL;
     if (!hadRevoke) delete urlWithBlob.revokeObjectURL;
+    vi.stubGlobal('document', { createElement: (tagName: string) => new RenderedElement(tagName) });
+  }
+});
+
+it('renders the tenant settings catalog with defaults and draft publish flow (D5)', async () => {
+  const controller = new GovernanceController(
+    new Set(['tenant-setting:read', 'tenant-setting:manage', 'business-object:read']),
+    sessionFixture(),
+  );
+  controller.views = [];
+  const fetcher = vi.fn().mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        items: [
+          {
+            key: 'security.password.minLength',
+            label: '密码最小长度',
+            description: '供凭证首登改密等策略读取；未设置时使用默认 12。',
+            valueType: 'integer',
+            minimum: 8,
+            maximum: 128,
+            default: 12,
+            value: 12,
+            publishedVersion: null,
+            draftVersion: null,
+            history: [],
+          },
+        ],
+      }),
+      { status: 200 },
+    ),
+  );
+  vi.stubGlobal('fetch', fetcher);
+  try {
+    const page = governanceSubpage(controller, 'governance/system') as unknown as RenderedElement;
+    await new Promise((resolve) => {
+      setTimeout(resolve, 0);
+    });
+    expect(page.textContent).toContain('系统参数');
+    expect(page.textContent).toContain('密码最小长度');
+    expect(page.textContent).toContain('使用代码默认');
+    expect(page.textContent).toContain('版本历史（0）');
+    const edit = page.findByText('修改参数')[0];
+    if (!edit) throw new Error('修改参数 button is required');
+    vi.stubGlobal('HTMLInputElement', BehaviorInput);
+    vi.stubGlobal('HTMLSelectElement', BehaviorSelect);
+    vi.stubGlobal('HTMLTextAreaElement', BehaviorTextarea);
+    edit.click();
+    expect(page.textContent).toContain('保存草稿');
+    const publish = page.findByText('发布该参数')[0];
+    if (!publish) throw new Error('发布该参数 button is required');
+    publish.click();
+    expect(page.textContent).toContain('发布为单向动作');
+    expect(page.textContent).toContain('发布参数');
+  } finally {
+    vi.unstubAllGlobals();
+    vi.stubGlobal('document', { createElement: (tagName: string) => new RenderedElement(tagName) });
+  }
+});
+
+it('hides tenant settings without tenant-setting capabilities (D5)', async () => {
+  const controller = new GovernanceController(new Set(['business-object:read']), sessionFixture());
+  controller.views = [{ path: '/api/v1/business-objects', value: { items: [] } }];
+  const fetcher = vi.fn();
+  vi.stubGlobal('fetch', fetcher);
+  try {
+    const page = governanceSubpage(controller, 'governance/system') as unknown as RenderedElement;
+    await new Promise((resolve) => {
+      setTimeout(resolve, 0);
+    });
+    expect(page.textContent).not.toContain('系统参数');
+    expect(fetcher).not.toHaveBeenCalled();
+  } finally {
+    vi.unstubAllGlobals();
     vi.stubGlobal('document', { createElement: (tagName: string) => new RenderedElement(tagName) });
   }
 });

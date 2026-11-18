@@ -16,6 +16,7 @@ import { appendGovernanceWorkflowActions } from './workflow-actions';
 import { appendGovernanceTaskActions } from './workflow-task-actions';
 import { appendGovernanceNotificationActions } from './notification-actions';
 import { appendGovernanceRegistryActions } from './registry-actions';
+import { createTenantSettingsSection } from './tenant-settings';
 
 // B1 治理子路由页：标题 + 该域全量列表 + 既有操作按钮组（*-actions 原样挂载）。
 // surface 定义复用为路由注册表（surfaces.ts route 字段），此处不重复权限判定。
@@ -77,6 +78,9 @@ export function createGovernanceSubpages(ports: SubpageAssemblyPorts) {
       appendGovernanceSources(context, { full: true });
       section.append(panel);
     }
+    // D5（ADR-0013）：系统管理子页附加「系统参数」区（键目录由服务端提供）。
+    if (route === 'governance/system' && permissions.has('tenant-setting:read'))
+      section.append(createTenantSettingsSection(renderContext));
     return section;
   };
   return (controller: GovernanceController, route: AppRoute): HTMLElement =>
