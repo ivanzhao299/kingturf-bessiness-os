@@ -23,6 +23,8 @@ type AuthorizationRouteContext = Readonly<{
 }>;
 
 const CAPABILITY = /^[a-z][a-z0-9_.-]*:[a-z][a-z0-9_.-]*$/u;
+// M1a（TD-SEC-012 后继）：目录写入门禁依据的保留角色编码，API 不可创建。
+const RESERVED_ROLE_CODES = new Set(['SYSTEM_ADMIN', 'SUPER_ADMIN']);
 const literal =
   (pathname: string) =>
   (candidate: string): RouteMatch | null =>
@@ -105,7 +107,15 @@ function authorizationRoutes(
       match: literal('/api/v1/roles'),
       validate: () => {
         p.allow(body, ['code', 'name']);
-        return { code: p.string(body.code, 'code'), name: p.string(body.name, 'name') };
+        const code = p.string(body.code, 'code');
+        // M1a（TD-SEC-012 后继）：保留角色编码只经运维/种子通道（SQL/bootstrap）存在，
+        // API 创建路径拒绝（大小写归一），防租户自建同名角色后自授绕过目录写入门禁。
+        if (RESERVED_ROLE_CODES.has(code.toUpperCase()))
+          throw new DomainError(
+            'forbidden',
+            'Reserved administrator role codes cannot be created through the API',
+          );
+        return { code, name: p.string(body.name, 'name') };
       },
       handler: async (_request, _match, input) => ({
         statusCode: 201,
