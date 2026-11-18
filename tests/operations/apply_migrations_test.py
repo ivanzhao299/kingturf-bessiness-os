@@ -127,6 +127,8 @@ class PureLogicTest(unittest.TestCase):
             self.assertEqual(payload['status'], 'PASS')
             self.assertEqual(payload['migrations'], 1)
             self.assertNotEqual(result.returncode, 0)  # fails later at host access, as designed
+            self.assertNotIn('api-restored', result.stdout)  # fence never applied on this path
+            self.assertNotIn('api-restore-failed', result.stdout)
 
     def test_scalar_joins_psql_session_row_list(self):
         class FakeSession:
@@ -137,6 +139,35 @@ class PureLogicTest(unittest.TestCase):
             def query(self, sql):
                 return ['12']
         self.assertEqual(am.scalar(ListSession(), 'SELECT 1;'), '12')
+
+    def test_require_zero_covers_task_drain_and_precondition_scalar_paths(self):
+        class Zero:
+            def query(self, sql):
+                return ['0', '\n']
+        class One:
+            def query(self, sql):
+                return ['1']
+        am.require_zero(Zero(), 'SELECT 1;', 'label')
+        with self.assertRaisesRegex(RuntimeError, 'label: 1'):
+            am.require_zero(One(), 'SELECT 1;', 'label')
+
+    def test_fence_text_transforms_are_inverse_and_idempotent(self):
+        base = 'A=1\nKINGTURF_WRITE_FENCE=disabled\nB=2\n'
+        enabled = am.enable_fence_text(base)
+        self.assertIn('KINGTURF_WRITE_FENCE=enabled', enabled)
+        self.assertEqual(am.disable_fence_text(enabled), base)
+        self.assertEqual(am.enable_fence_text(enabled), enabled)
+        with self.assertRaises(RuntimeError):
+            am.enable_fence_text('no fence line')
+
+    def test_wait_until_success_and_timeout(self):
+        state = {'n': 0}
+
+        def flaky():
+            state['n'] += 1
+            return state['n'] >= 3
+        self.assertTrue(am.wait_until(flaky, attempts=5, delay=0))
+        self.assertFalse(am.wait_until(lambda: False, attempts=3, delay=0))
 
 
 if __name__ == '__main__':

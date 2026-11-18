@@ -101,6 +101,51 @@ def scalar(session, sql):
     return ''.join(session.query(sql)).strip()
 
 
+def disable_fence_text(env_text):
+    require('KINGTURF_WRITE_FENCE=' in env_text, '.env.production lacks KINGTURF_WRITE_FENCE')
+    return re.sub(r'^KINGTURF_WRITE_FENCE=.*$', 'KINGTURF_WRITE_FENCE=disabled',
+                  env_text, flags=re.MULTILINE)
+
+
+def enable_fence_text(env_text):
+    require('KINGTURF_WRITE_FENCE=' in env_text, '.env.production lacks KINGTURF_WRITE_FENCE')
+    return re.sub(r'^KINGTURF_WRITE_FENCE=.*$', 'KINGTURF_WRITE_FENCE=enabled',
+                  env_text, flags=re.MULTILINE)
+
+
+def wait_until(predicate, attempts=45, delay=2.0):
+    for attempt in range(attempts):
+        if predicate():
+            return True
+        time.sleep(delay)
+    return False
+
+
+def require_zero(session, sql, label):
+    value = scalar(session, sql)
+    require(value == '0', f'{label}: {value}')
+    return value
+
+
+def restore_api_on_failure(prod_root):
+    """Failure-restore semantics (recover_previous_application counterpart, light):
+
+    Only invoked from the failure path when this script itself stopped the API via
+    the write fence. Re-enables traffic (fence disabled) and brings the previous
+    application back; the database is untouched by design up to that point."""
+    env_path = prod_root / '.env.production'
+    env_path.write_text(disable_fence_text(env_path.read_text()))
+    compose(prod_root, 'up', '-d', '--no-deps', '--pull', 'never', 'api')
+    marker = (prod_root / '.release-sha').read_text().strip()
+    healthy = wait_until(lambda: http_status('/health') == 200
+                         and http_status('/version') == 200)
+    if not healthy:
+        emit('api-restore-failed', {'marker': marker}, status='FAIL')
+        return False
+    emit('api-restored', {'marker': marker, 'fence': 'disabled'})
+    return True
+
+
 def validate_staged_layout(staged, migrations, expected_after, approved_suffixes):
     """Staged tree contract: two control scripts as files + migrations directory tree."""
     for required in (Path(staged) / 'release_orchestrator.py', Path(staged) / 'production_preflight.py'):
@@ -204,6 +249,7 @@ def main():
     args = parser.parse_args()
 
     step = 'validate-inputs'
+    fence_applied = False
     try:
         validate_candidate_sha(args.candidate_sha)
         suffixes = parse_suffixes(args.approved_suffixes)
@@ -247,10 +293,8 @@ def main():
             step = 'write-fence'
             t_fence = iso(utcnow())
             env_path = args.prod_root / '.env.production'
-            env_text = env_path.read_text()
-            require('KINGTURF_WRITE_FENCE=' in env_text, '.env.production lacks KINGTURF_WRITE_FENCE')
-            env_path.write_text(re.sub(r'^KINGTURF_WRITE_FENCE=.*$', 'KINGTURF_WRITE_FENCE=enabled',
-                                       env_text, flags=re.MULTILINE))
+            env_path.write_text(enable_fence_text(env_path.read_text()))
+            fence_applied = True
             compose(args.prod_root, 'up', '-d', '--no-deps', '--pull', 'never', 'api')
             time.sleep(8)
             require(http_status('/health') == 200, 'fenced API health probe did not return 200')
@@ -270,8 +314,8 @@ def main():
                          "(SELECT 1 FROM event_consumer_deliveries d WHERE d.event_id=o.id"
                          " AND d.tenant_id=o.tenant_id)) + (SELECT count(*) FROM"
                          " event_consumer_deliveries WHERE state IN ('PENDING','PROCESSING'))")
-            drained = scalar(session, 'SELECT count(*) FROM (' + drain_sql + ') probe')
-            require(drained == '0', f'background queues not drained: {drained}')
+            require_zero(session, 'SELECT count(*) FROM (' + drain_sql + ') probe',
+                         'background queues not drained')
             drain = {'background_queues_drained': True, 'external_write_channels_isolated': True,
                      'drained_at_utc': iso(utcnow())}
             (evidence / 'task_drain.json').write_text(json.dumps(drain))
@@ -326,8 +370,8 @@ def main():
             step = 'data-preconditions'
             counts = []
             for query in ro.DATA_PRECONDITION_SQL:
-                count = scalar(session, 'SELECT count(*) FROM (' + query + ') probe')
-                require(count == '0', f'data precondition returned {count}: {query[:60]}')
+                require_zero(session, 'SELECT count(*) FROM (' + query + ') probe',
+                             'data precondition returned non-zero')
                 counts.append(0)
             preconditions = {'negative_balance_groups': 0, 'over_return_groups': 0,
                              'orphan_return_movements': 0, 'checked_at_utc': iso(utcnow())}
@@ -375,6 +419,16 @@ def main():
                       'write_fence': 'enabled (recover switch disables)'})
     except Exception as failure:  # noqa: BLE001 - single fail-closed report path
         emit(step, {'error': str(failure)[:500]}, status='FAIL')
+        if fence_applied:
+            # Design gap fixed: this script stopped the API, so this script must
+            # restore it on failure (schema untouched pre-execute; after a partial
+            # execute the orchestrator guarantees no registration of failed work).
+            try:
+                restored = restore_api_on_failure(args.prod_root)
+            except Exception as restore_failure:  # noqa: BLE001 - report, keep scene
+                emit('api-restore-failed', {'error': str(restore_failure)[:300]}, status='FAIL')
+                sys.exit(2)
+            sys.exit(0 if restored else 2)
         sys.exit(1)
 
 
