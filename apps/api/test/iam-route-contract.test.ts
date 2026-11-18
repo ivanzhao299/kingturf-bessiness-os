@@ -22,9 +22,14 @@ const methods = [
   'revokeScope',
 ] as const;
 function fixture(capabilities: readonly string[], available = true) {
-  const repository = Object.fromEntries(
-    methods.map((name) => [name, vi.fn().mockResolvedValue({ fixed: name })]),
-  );
+  const repository: Record<string, ReturnType<typeof vi.fn>> = {
+    ...Object.fromEntries(
+      methods.map((name) => [name, vi.fn().mockResolvedValue({ fixed: name })]),
+    ),
+    // A2（TD-SEC-012）：目录写入角色门在本套夹具默认放行；403 负例由
+    // permission-catalog-route-contract.test.ts 固化。
+    isSystemAdministrator: vi.fn().mockResolvedValue(true),
+  };
   const context = {
     actor,
     permissions: new Map(capabilities.map((name) => [name, { scopes: ['SELF'], fields: null }])),
@@ -77,7 +82,7 @@ const resources = [
 ] as const;
 
 describe('IAM inline permission and prerequisite contracts', () => {
-  it.each(resources)(
+  it.each(resources.filter(([resource]) => resource !== 'permissions'))(
     '%s preserves authorization before repository before body',
     async (resource, capability) => {
       const denied = fixture([]);
@@ -101,6 +106,32 @@ describe('IAM inline permission and prerequisite contracts', () => {
       );
     },
   );
+  // A2（TD-SEC-012，行为变更已批）：目录写入不经 capability 门，前置顺序变为
+  // repository → body；无授权会话与持 permission:manage 的租户管理员同序。
+  it('permissions catalog writes use repository and body prerequisites only (A2)', async () => {
+    const denied = fixture([]);
+    assertError(
+      await denied.dispatch('permissions', 'POST', null),
+      400,
+      'invalid_request',
+      'A JSON object body is required',
+    );
+    expect(denied.repository.isSystemAdministrator).not.toHaveBeenCalled();
+    const missing = fixture(['permission:manage'], false);
+    assertError(
+      await missing.dispatch('permissions', 'POST', null),
+      503,
+      'internal_error',
+      'Authorization repository is unavailable',
+    );
+    const allowed = fixture(['permission:manage']);
+    assertError(
+      await allowed.dispatch('permissions', 'POST', null),
+      400,
+      'invalid_request',
+      'A JSON object body is required',
+    );
+  });
   it.each(resources)(
     '%s accepts atomic read and authorization fallback, ignoring GET body',
     async (resource, capability) => {
@@ -339,7 +370,7 @@ describe('IAM unsupported method/item compatibility', () => {
     }
     expect(Object.values(repository).every((call) => call.mock.calls.length === 0)).toBe(true);
   });
-  it.each(resources)(
+  it.each(resources.filter(([resource]) => resource !== 'permissions'))(
     '%s item and unsupported methods retain prerequisite errors',
     async (resource) => {
       for (const [path, method] of [
@@ -371,6 +402,38 @@ describe('IAM unsupported method/item compatibility', () => {
       }
     },
   );
+  // A2（TD-SEC-012，行为变更已批）：目录资源仅 GET 保留 capability 前置；
+  // 非 GET 的无授权会话先落 body 前置错误（repository 仍先于 body）。
+  it('permissions item and unsupported methods retain repository/body prerequisites (A2)', async () => {
+    for (const [path, method] of [
+      ['permissions/' + id, 'GET'],
+      ['permissions/' + id, 'POST'],
+      ['permissions', 'PATCH'],
+    ] as const) {
+      assertError(
+        await fixture([]).dispatch(path, method, null),
+        method === 'GET' ? 403 : 400,
+        method === 'GET' ? 'forbidden' : 'invalid_request',
+        method === 'GET' ? undefined : 'A JSON object body is required',
+      );
+      assertError(
+        await fixture(['authorization:read', 'authorization:manage'], false).dispatch(
+          path,
+          method,
+          null,
+        ),
+        503,
+        'internal_error',
+        'Authorization repository is unavailable',
+      );
+      assertError(
+        await fixture(['authorization:read', 'authorization:manage']).dispatch(path, method, null),
+        method === 'GET' ? 404 : 400,
+        method === 'GET' ? 'not_found' : 'invalid_request',
+        method === 'GET' ? 'Route not found' : 'A JSON object body is required',
+      );
+    }
+  });
   it.each(resources)(
     '%s DELETE item ignores body; only scope-grants validates item UUID',
     async (resource) => {

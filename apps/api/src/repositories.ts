@@ -648,6 +648,20 @@ export class PostgresAuthorizationRepository implements AuthorizationRepository 
       return r;
     });
   }
+  // A2（TD-SEC-012）：目录写入门禁按角色编码直查，不新增 capability。
+  public async isSystemAdministrator(actor: {
+    employeeId: string;
+    companyId: string;
+  }): Promise<boolean> {
+    return (
+      (
+        await this.db.query<{ present: boolean }>(
+          "SELECT EXISTS(SELECT 1 FROM employee_role_assignments era JOIN roles r ON r.id=era.role_id AND r.deleted_at IS NULL WHERE era.employee_id=$1 AND r.organization_id=$2 AND r.code='SYSTEM_ADMIN') AS present",
+          [actor.employeeId, actor.companyId],
+        )
+      ).rows[0]?.present === true
+    );
+  }
   public async listGrants(companyId: string) {
     return (
       await this.db.query<{

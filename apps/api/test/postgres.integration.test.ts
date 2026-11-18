@@ -428,6 +428,45 @@ describe('PostgreSQL identity and authorization behavior', () => {
     await authorization.unassign(looseId, editor.id, actor, randomUUID());
   });
 
+  it('restricts permission catalog maintenance to the SYSTEM_ADMIN role code (A2)', async () => {
+    const nearMissRole = randomUUID(),
+      systemAdminRole = randomUUID();
+    await database.query(
+      "INSERT INTO roles(id,organization_id,code,name) VALUES($1,$2,'SYSTEM_ADMINISTRATOR','Near miss')",
+      [nearMissRole, company],
+    );
+    await database.query(
+      'INSERT INTO employee_role_assignments(employee_id,role_id) VALUES($1,$2)',
+      [deepId, nearMissRole],
+    );
+    await database.query(
+      "INSERT INTO roles(id,organization_id,code,name) VALUES($1,$2,'SYSTEM_ADMIN','System administrator')",
+      [systemAdminRole, company],
+    );
+    await database.query(
+      'INSERT INTO employee_role_assignments(employee_id,role_id) VALUES($1,$2)',
+      [childId, systemAdminRole],
+    );
+    expect(
+      await authorization.isSystemAdministrator({ employeeId: childId, companyId: company }),
+    ).toBe(true);
+    // Exact code match only, and only for a role inside the actor's tenant.
+    expect(
+      await authorization.isSystemAdministrator({ employeeId: deepId, companyId: company }),
+    ).toBe(false);
+    expect(
+      await authorization.isSystemAdministrator({ employeeId: actorId, companyId: company }),
+    ).toBe(false);
+    expect(
+      await authorization.isSystemAdministrator({ employeeId: childId, companyId: otherCompany }),
+    ).toBe(false);
+    // Deleted maintenance roles lose the gate.
+    await database.query('UPDATE roles SET deleted_at=now() WHERE id=$1', [systemAdminRole]);
+    expect(
+      await authorization.isSystemAdministrator({ employeeId: childId, companyId: company }),
+    ).toBe(false);
+  });
+
   it('writes organization and employee audits atomically with target and correlation', async () => {
     const correlationId = randomUUID();
     const created = await employees.create(

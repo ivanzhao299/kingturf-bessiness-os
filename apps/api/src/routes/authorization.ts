@@ -28,6 +28,42 @@ const literal =
   (candidate: string): RouteMatch | null =>
     candidate === pathname ? { params: [] } : null;
 
+// A2（TD-SEC-012）：权限目录为代码所有——目录写入默认 403，仅系统管理维护角色
+// （SYSTEM_ADMIN 直查角色编码，不新增 capability）可作种子外补录。
+function createPermissionCatalogRoute(
+  context: AuthorizationRouteContext,
+  repository: AuthorizationRepository,
+  body: Record<string, unknown>,
+): RouteDefinition {
+  const p = context.parsers;
+  const actor = context.authorization.actor;
+  return defineRoute({
+    method: 'POST',
+    match: literal('/api/v1/permissions'),
+    validate: () => {
+      p.allow(body, ['capability', 'description']);
+      const value = p.string(body.capability, 'capability');
+      if (!CAPABILITY.test(value))
+        throw new DomainError('invalid_request', 'capability must use resource:action syntax');
+      return {
+        capability: value as PermissionKey,
+        description: p.string(body.description, 'description'),
+      };
+    },
+    handler: async (_request, _match, input) => {
+      if (!(await repository.isSystemAdministrator(actor)))
+        throw new DomainError(
+          'forbidden',
+          'Permission catalog writes require the SYSTEM_ADMIN role',
+        );
+      return {
+        statusCode: 201,
+        body: await repository.createPermission(input, actor, context.correlationId),
+      };
+    },
+  });
+}
+
 function authorizationRoutes(
   context: AuthorizationRouteContext,
   repository: AuthorizationRepository,
@@ -82,24 +118,7 @@ function authorizationRoutes(
       validate: null,
       handler: async () => ({ statusCode: 200, body: await repository.listPermissions() }),
     }),
-    defineRoute({
-      method: 'POST',
-      match: literal('/api/v1/permissions'),
-      validate: () => {
-        p.allow(body, ['capability', 'description']);
-        const value = p.string(body.capability, 'capability');
-        if (!CAPABILITY.test(value))
-          throw new DomainError('invalid_request', 'capability must use resource:action syntax');
-        return {
-          capability: value as PermissionKey,
-          description: p.string(body.description, 'description'),
-        };
-      },
-      handler: async (_request, _match, input) => ({
-        statusCode: 201,
-        body: await repository.createPermission(input, actor, correlationId),
-      }),
-    }),
+    createPermissionCatalogRoute(context, repository, body),
     defineRoute({
       method: 'GET',
       match: literal('/api/v1/grants'),
@@ -241,10 +260,14 @@ export async function dispatchAuthorizationRoutes(
         : resource === 'scope-grants'
           ? `data-scope:${request.method === 'GET' ? 'read' : 'manage'}`
           : `role:${request.method === 'GET' ? 'read' : 'manage'}`;
-  context.authorizeOneOf(
-    atomicCapability,
-    `authorization:${request.method === 'GET' ? 'read' : 'manage'}`,
-  );
+  // A2（TD-SEC-012）：权限目录为代码所有——目录写入不经业务 capability 下放，改由
+  // POST 处理器内按 SYSTEM_ADMIN 角色编码直查放行（不新增 capability）；GET 双轨只读保持不变。
+  if (!(resource === 'permissions' && request.method !== 'GET')) {
+    context.authorizeOneOf(
+      atomicCapability,
+      `authorization:${request.method === 'GET' ? 'read' : 'manage'}`,
+    );
+  }
   const repository = context.repository;
   if (!repository) return context.unavailable();
   const p = context.parsers;

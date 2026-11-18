@@ -978,6 +978,7 @@ export type AuthorizationRepository = {
     actor: Actor,
     correlationId: string,
   ): Promise<PermissionRecord>;
+  isSystemAdministrator(actor: Actor): Promise<boolean>;
   listGrants(companyId: Identifier): Promise<readonly RolePermissionGrantRecord[]>;
   grant(
     input: Readonly<{
