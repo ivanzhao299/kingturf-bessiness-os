@@ -61,6 +61,7 @@
 [V1.0产品化接管入口](productization/README.md)：2026-10-26，基线b1ef7a9；当前真实状态、行业/业务/架构审计、十二工作包及No-Go准入草稿。本轮仅本地文档和隔离验证，未授权业务实施或生产变更。同日再次核验主线、开放PR/Issue和证据哈希一致；补充技术层分别选型及管理员/运维场景。
 
 [Harness施工图竣工归档](exec-plans/completed/harness-2026-10-21.md)：阶段1–5与§14迁移记录；常驻规则以AGENTS、核心信念、架构、CI和门禁文档为准。
+[Wave1合并验证与CP3发布材料](evidence/wave1-verification-2026-11-18.md)：系统管理优化Wave1两轮完整CI、e2e:p1实跑与环境偏差、发布输入契约/步骤/回滚/pg_dump确认项。
 [Harness竣工收官报告](evidence/harness-final-closeout-report-2026-10-21.md)：五阶段摘要、开放项承接、母模板反馈与归档后合同。
 [Harness常驻契约自检](evidence/harness-final-closeout-self-check-2026-10-21.md)：无施工图依赖的机械自检结果与证据入口。
 [Harness归档授权](tasks/harness-final-closeout-archive-authorization-2026-10-21.md)：§14 归档范围、停止边界与最终验证授权。
