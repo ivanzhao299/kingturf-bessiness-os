@@ -96,6 +96,19 @@ def build_write_fence(api_release_sha, t_fence, t_obs, t_stop):
     }
 
 
+def validate_staged_layout(staged, migrations, expected_after, approved_suffixes):
+    """Staged tree contract: two control scripts as files + migrations directory tree."""
+    for required in (Path(staged) / 'release_orchestrator.py', Path(staged) / 'production_preflight.py'):
+        require(Path(required).is_file(), f'staged file missing: {required}')
+    require(migrations.is_dir(), f'staged migrations directory missing: {migrations}')
+    names = sorted(p.name for p in migrations.glob('[0-9][0-9][0-9][0-9]*.sql'))
+    require(names and len(names) == expected_after,
+            f'staged migrations count {len(names)} != {expected_after}')
+    for name in approved_suffixes:
+        require(name in names, f'approved suffix absent from staged migrations: {name}')
+    return names
+
+
 def dump_paths(backup_root, stamp):
     root = Path(backup_root)
     return root / f'wave2-{stamp}.dump', root / f'wave2-{stamp}.dump.sha256'
@@ -191,13 +204,7 @@ def main():
         suffixes = parse_suffixes(args.approved_suffixes)
         staged = args.staged_root
         migrations = staged / 'migrations'
-        for required in (staged / 'release_orchestrator.py', staged / 'production_preflight.py', migrations):
-            require(Path(required).is_file(), f'staged file missing: {required}')
-        names = sorted(p.name for p in migrations.glob('[0-9][0-9][0-9][0-9]*.sql'))
-        require(len(names) == args.expected_after,
-                f'staged migrations count {len(names)} != {args.expected_after}')
-        for name in suffixes:
-            require(name in names, f'approved suffix absent from staged migrations: {name}')
+        validate_staged_layout(staged, migrations, args.expected_after, suffixes)
         spec = importlib.util.spec_from_file_location('release_orchestrator', staged / 'release_orchestrator.py')
         ro = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(ro)

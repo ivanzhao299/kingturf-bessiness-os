@@ -81,6 +81,27 @@ class PureLogicTest(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'pending'):
             am.require_plan(plan, ['0073_a.sql'])
 
+    def test_staged_layout_validation_accepts_tree_and_rejects_missing_pieces(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as temp:
+            staged = Path(temp)
+            # Red first: directory-only staged (previous is_file() bug always failed here).
+            (staged / 'migrations').mkdir()
+            (staged / 'migrations' / '0073_a.sql').write_text('-- x')
+            (staged / 'release_orchestrator.py').write_text('# o')
+            (staged / 'production_preflight.py').write_text('# p')
+            am.validate_staged_layout(staged, staged / 'migrations', 1, ['0073_a.sql'])
+            (staged / 'release_orchestrator.py').unlink()
+            with self.assertRaisesRegex(RuntimeError, 'staged file missing'):
+                am.validate_staged_layout(staged, staged / 'migrations', 1, ['0073_a.sql'])
+            (staged / 'release_orchestrator.py').write_text('# o')
+            (staged / 'migrations' / '0073_a.sql').unlink()
+            with self.assertRaisesRegex(RuntimeError, 'migrations count'):
+                am.validate_staged_layout(staged, staged / 'migrations', 1, ['0073_a.sql'])
+            (staged / 'migrations').rename(staged / 'not-migrations')
+            with self.assertRaisesRegex(RuntimeError, 'staged migrations directory missing'):
+                am.validate_staged_layout(staged, staged / 'migrations', 1, ['0073_a.sql'])
+
 
 if __name__ == '__main__':
     unittest.main()
