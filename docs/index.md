@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[系统管理模块优化计划](tasks/system-admin-optimization-plan-2026-11-18.md)：2026-11-18复核终版并审查通过授权执行（主协调+独立执行会话至部署完成）；A1/A2/B1/B2/D5、六项TD登记、两波发布模型（开发阶段无真实数据，Wave2迁移随部署）、CP检查点与监督组织。
+
 [GHCR传输修复与已迁移发布恢复](tasks/ghcr-transport-recovery-2026-11-17.md)：2026-11-17正式授权及最终验收；PR47/48、成功run44070050685、72未重执行与恢复保全。
 
 [V1.0 Batch4交付](productization/batch4-delivery-2026-10-26.md)：G5应用工厂/总分发收口、最终同SHA回执及独立复核边界。
