@@ -62,6 +62,13 @@ def authorize(bundle, approval):
     return auth
 
 
+def handover_state(classification, marker, release_sha):
+    """Migration->application handover: registry already matches the candidate
+    manifest while the marker still names the previous release. Exactly this
+    combination legitimately carries a deliberately stopped api container."""
+    return classification == 'FULLY_MATCHED' and marker != release_sha
+
+
 def verify_image_evidence(root, approval, identities, auth):
     path = root / '.release-migration-evidence/image_compatibility.json'
     images.require(path.is_file(), 'Host image compatibility evidence missing')
@@ -104,9 +111,19 @@ def precheck(bundle):
     spec = importlib.util.spec_from_file_location('preflight', Path(__file__).with_name('production_preflight.py'))
     gate = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(gate)
-    gate.preflight(str(ROOT), expected, require_full=True)
+    # Handover state (apply-migrations -> recover): the registry already matches the
+    # candidate manifest (FULLY_MATCHED) while the marker still names the previous
+    # release, and the migration run left the API deliberately stopped. In exactly
+    # that state the stopped-api window mode is allowed for preflight and the
+    # baseline runtime probes are skipped: no application is supposed to be running,
+    # and switch()'s own new-application probes remain the full gate. Known tradeoff:
+    # if switch then fails, recover_previous_application restarts the OLD application
+    # which now fails closed on the newer schema (one-way door, runbook section 6).
     rows = registry_snapshot()
     classification, pending = gate.classify_registry([{k:r[k] for k in ('name', 'checksum')} for r in rows], expected)
+    marker = (ROOT / '.release-sha').read_text().strip()
+    handover = handover_state(classification, marker, approval['release_sha'])
+    gate.preflight(str(ROOT), expected, require_full=True, allow_stopped_api=handover)
     images.require(classification == 'FULLY_MATCHED' and not pending, 'Application-only release requires FULLY_MATCHED')
     # Host image evidence: same-candidate reruns stay byte-strict; a newer candidate
     # is accepted only with the runner's isolated FULLY_MATCHED + smoke-PASS proof.
@@ -114,12 +131,15 @@ def precheck(bundle):
     containers = json.loads(command(['docker', 'inspect', PROJECT+'-api-1', PROJECT+'-web-1']))
     for c in containers:
         command(['docker', 'image', 'inspect', c['Image']])
-        images.require(c['State']['Running'] and c['State'].get('Health', {}).get('Status') == 'healthy', 'Current recovery container unavailable')
-    marker = (ROOT / '.release-sha').read_text().strip()
-    probe('http://127.0.0.1:4332', marker)
-    # Baseline HTTPS must pass before API shutdown, including certificate validity.
-    probe('https://erp.kingturf.cn', marker)
-    return {'write_channels':verify_write_channels(), 'registry': rows, 'migration_state_hashes': state_hashes(), 'previous_sha': marker, 'recovery_images': [{'name':c['Name'],'id':c['Image'],'ref':c['Config']['Image']} for c in containers]}
+        if handover:
+            images.require(c['Config']['Labels'].get('com.docker.compose.service') != 'api' or not c['State']['Running'], 'Handover state expects the api container to be stopped')
+        else:
+            images.require(c['State']['Running'] and c['State'].get('Health', {}).get('Status') == 'healthy', 'Current recovery container unavailable')
+    if not handover:
+        probe('http://127.0.0.1:4332', marker)
+        # Baseline HTTPS must pass before API shutdown, including certificate validity.
+        probe('https://erp.kingturf.cn', marker)
+    return {'write_channels':verify_write_channels(), 'registry': rows, 'migration_state_hashes': state_hashes(), 'previous_sha': marker, 'recovery_images': [{'name':c['Name'],'id':c['Image'],'ref':c['Config']['Image']} for c in containers], **({'handover_state': True} if handover else {})}
 
 
 def private_write(path, data):

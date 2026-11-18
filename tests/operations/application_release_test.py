@@ -203,5 +203,31 @@ class ApplicationRecoveryTest(unittest.TestCase):
         self.assertEqual(sorted(markers),['advance','deployed'])
         self.assertLess(markers['deployed'],markers['advance'])
 
+    def test_handover_state_guard_is_precise(self):
+        # Handover: FULLY_MATCHED registry + marker still on the previous release.
+        self.assertTrue(ar.handover_state('FULLY_MATCHED', 'a'*40, 'b'*40))
+        # Same-candidate rerun (marker already advanced): strict semantics retained.
+        self.assertFalse(ar.handover_state('FULLY_MATCHED', 'b'*40, 'b'*40))
+        # Pending migrations: never a handover, stopped api stays an error.
+        self.assertFalse(ar.handover_state('MATCHED_PREFIX_PENDING', 'a'*40, 'b'*40))
+
+    def test_precheck_wires_handover_branch_and_probe_skips(self):
+        import ast as ast_module
+        source = (ROOT/'scripts/application_release.py').read_text()
+        tree = ast_module.parse(source)
+        precheck = next(n for n in tree.body if isinstance(n, ast_module.FunctionDef) and n.name == 'precheck')
+        text = ast_module.dump(precheck)
+        self.assertIn('allow_stopped_api=handover', source)
+        # Baseline probes guarded: both probe calls sit under the not-handover branch.
+        body = source.split('def precheck(bundle):',1)[1].split('def private_write',1)[0]
+        guard_pos = body.index('if not handover:')
+        probe_pos = body.index("probe('http://127.0.0.1:4332', marker)")
+        https_pos = body.index("probe('https://erp.kingturf.cn', marker)")
+        self.assertLess(guard_pos, probe_pos)
+        self.assertLess(probe_pos, https_pos)
+        # Container branch: handover allows exactly a stopped api.
+        self.assertIn("'Handover state expects the api container to be stopped'", body)
+        self.assertIn("'Current recovery container unavailable'", body)
+
 
 if __name__=='__main__':unittest.main()
