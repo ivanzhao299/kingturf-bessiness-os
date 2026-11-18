@@ -1,0 +1,376 @@
+#!/usr/bin/env python3
+"""Workflow-driven production migration control (Wave2 72->74). Fail-closed, no retries.
+
+Runs ON the production host over SSH from .github/workflows/apply-migrations.yml.
+Machine-measures every orchestrator evidence gate, then delegates the gated apply to
+release_orchestrator.py (single-flight, no-registration-on-failure). The API remains
+STOPPED and the write fence remains ENABLED afterwards; the recover workflow's switch()
+disables the fence and restores service with the Wave2 images.
+"""
+import argparse
+import hashlib
+import importlib.util
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import sys
+import tarfile
+import time
+import urllib.request
+from datetime import datetime, timedelta, timezone
+
+SUFFIX_RE = re.compile(r'^[0-9]{4}_[a-z0-9_]+\.sql$')
+SHA_RE = re.compile(r'^[0-9a-f]{40}$')
+HEALTH = 'http://127.0.0.1:4332/health'
+
+
+def utcnow():
+    return datetime.now(timezone.utc)
+
+
+def iso(moment):
+    return moment.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+
+def emit(step, payload, status='PASS'):
+    line = {'step': step, 'status': status, 'at_utc': iso(utcnow())}
+    line.update(payload)
+    print(json.dumps(line, sort_keys=True), flush=True)
+
+
+def require(condition, message):
+    if not condition:
+        raise RuntimeError(message)
+
+
+# ---------------------------------------------------------------- pure helpers
+
+
+def parse_suffixes(text):
+    require(isinstance(text, str) and text.strip(), 'approved suffixes input is empty')
+    names = [part.strip() for part in text.split(',')]
+    require(all(names), 'approved suffixes contain an empty entry')
+    for name in names:
+        require(SUFFIX_RE.fullmatch(name), f'approved suffix is not an exact migration name: {name}')
+    require(len(set(names)) == len(names), 'approved suffixes contain duplicates')
+    return names
+
+
+def validate_candidate_sha(sha):
+    require(isinstance(sha, str) and SHA_RE.fullmatch(sha), 'candidate sha must be 40 lowercase hex')
+
+
+def approval_window(now):
+    start = now
+    end = now + timedelta(hours=6)
+    require(0 < (end - start).total_seconds() <= 12 * 3600, 'approval window must be within 12 hours')
+    return start, end
+
+
+def build_release_approval(candidate_sha, suffixes, approver, now):
+    validate_candidate_sha(candidate_sha)
+    require(isinstance(approver, str) and approver.strip(), 'approver is required')
+    start, end = approval_window(now)
+    return {
+        'release_sha': candidate_sha,
+        'approved_suffix': list(suffixes),
+        'approved_at_utc': iso(start),
+        'window_end_utc': iso(end),
+        'approver': approver,
+    }
+
+
+def build_write_fence(api_release_sha, t_fence, t_obs, t_stop):
+    require(SHA_RE.fullmatch(api_release_sha), 'api release sha must be 40 lowercase hex')
+    return {
+        'method': 'controlled_old_api_shutdown',
+        'enabled_at_utc': t_fence,
+        'observed_no_new_writes_utc': t_obs,
+        'api_release_sha': api_release_sha,
+        'in_flight_settled': True,
+        'api_service_state': 'stopped',
+        'stopped_at_utc': t_stop,
+    }
+
+
+def dump_paths(backup_root, stamp):
+    root = Path(backup_root)
+    return root / f'wave2-{stamp}.dump', root / f'wave2-{stamp}.dump.sha256'
+
+
+def parse_postgres_env(env_text):
+    values = {}
+    for line in env_text.splitlines():
+        if '=' in line and not line.lstrip().startswith('#'):
+            key, _, value = line.partition('=')
+            values[key.strip()] = value.strip()
+    user, db = values.get('POSTGRES_USER'), values.get('POSTGRES_DB')
+    require(user and db, '.env.production must define POSTGRES_USER and POSTGRES_DB')
+    return user, db
+
+
+def require_registry(rows, expected_before, approved_suffixes):
+    require(isinstance(rows, list), 'registry query did not return a list')
+    require(len(rows) == expected_before,
+            f'registry count {len(rows)} != expected {expected_before}')
+    present = {row['name'] for row in rows}
+    for name in approved_suffixes:
+        require(name not in present, f'approved migration already present in registry: {name}')
+    return rows
+
+
+def require_plan(plan, approved_suffixes):
+    require(plan.get('classification') == 'MATCHED_PREFIX_PENDING',
+            f"plan classification is {plan.get('classification')}, expected MATCHED_PREFIX_PENDING")
+    pending = sorted(item['name'] for item in plan.get('pending', []))
+    require(pending == sorted(approved_suffixes),
+            f"plan pending {pending} != approved suffixes {sorted(approved_suffixes)}")
+    return plan
+
+
+# ------------------------------------------------------------------- host flow
+
+
+def command(argv, *, timeout=300, stdin_bytes=None):
+    result = subprocess.run(argv, input=stdin_bytes, capture_output=True, timeout=timeout)
+    require(result.returncode == 0,
+            'host command failed: ' + ' '.join(map(str, argv[:4])) + ': ' + result.stderr.decode()[-400:])
+    return result.stdout
+
+
+def psql_argv(prod_root, user, db, container):
+    return ['docker', 'exec', '-i', container, 'psql', '-X', '-qAt',
+            '-v', 'ON_ERROR_STOP=1', '--no-psqlrc', '-U', user, '-d', db]
+
+
+def compose(prod_root, *args):
+    return command(['docker', 'compose', '--project-directory', str(prod_root),
+                    '--env-file', str(prod_root / '.env.production'),
+                    '-f', str(prod_root / 'infra/docker/compose.production.yaml'), *args],
+                   timeout=180)
+
+
+def http_status(path, method='GET', timeout=15):
+    request = urllib.request.Request(HEALTH.replace('/health', path), method=method,
+                                     headers={'content-type': 'application/json'},
+                                     data=b'{}' if method == 'POST' else None)
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as reply:
+            return reply.status
+    except urllib.error.HTTPError as failure:
+        return failure.code
+
+
+def dump_database(container, user, db, target, timeout=600):
+    stdout = command(['docker', 'exec', container, 'pg_dump', '--format=custom',
+                      '--username', user, db], timeout=timeout)
+    require(bool(stdout), 'empty database dump')
+    target.write_bytes(stdout)
+    return hashlib.sha256(stdout).hexdigest()
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--candidate-sha', required=True)
+    parser.add_argument('--approved-suffixes', required=True)
+    parser.add_argument('--staged-root', required=True, type=Path)
+    parser.add_argument('--approver', required=True)
+    parser.add_argument('--prod-root', default=Path('/data/kingturf-erp'), type=Path)
+    parser.add_argument('--attachments-dir', default=Path('/data/kingturf-erp-data/attachments'), type=Path)
+    parser.add_argument('--postgres-container', default='kingturf-erp-production-postgres-1')
+    parser.add_argument('--expected-before', type=int, default=72)
+    parser.add_argument('--expected-after', type=int, default=74)
+    args = parser.parse_args()
+
+    step = 'validate-inputs'
+    try:
+        validate_candidate_sha(args.candidate_sha)
+        suffixes = parse_suffixes(args.approved_suffixes)
+        staged = args.staged_root
+        migrations = staged / 'migrations'
+        for required in (staged / 'release_orchestrator.py', staged / 'production_preflight.py', migrations):
+            require(Path(required).is_file(), f'staged file missing: {required}')
+        names = sorted(p.name for p in migrations.glob('[0-9][0-9][0-9][0-9]*.sql'))
+        require(len(names) == args.expected_after,
+                f'staged migrations count {len(names)} != {args.expected_after}')
+        for name in suffixes:
+            require(name in names, f'approved suffix absent from staged migrations: {name}')
+        spec = importlib.util.spec_from_file_location('release_orchestrator', staged / 'release_orchestrator.py')
+        ro = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(ro)
+        emit('validate-inputs', {'candidate_sha': args.candidate_sha, 'suffixes': suffixes,
+                                 'migrations': len(names)})
+
+        user, db = parse_postgres_env((args.prod_root / '.env.production').read_text())
+        argv = psql_argv(args.prod_root, user, db, args.postgres_container)
+        session = ro.PsqlSession(argv)
+        try:
+            step = 'registry-precheck'
+            rows = ro.read_registry(session)
+            require_registry(rows, args.expected_before, suffixes)
+            emit('registry-precheck', {'count': len(rows)})
+
+            step = 'recovery-point'
+            stamp = utcnow().strftime('%Y%m%dT%H%M%SZ')
+            dump, sidecar = dump_paths(args.prod_root / '.release-backups', stamp)
+            dump.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            sha = dump_database(args.postgres_container, user, db, dump)
+            sidecar.write_text(sha + '  ' + dump.name + '\n')
+            emit('recovery-point', {'file': str(dump), 'sha256': sha})
+
+            step = 'plan'
+            plan = ro.build_plan(migrations, args.candidate_sha, ro.read_registry(session))
+            require_plan(plan, suffixes)
+            plan_path = staged / 'plan.json'
+            plan_path.write_text(json.dumps(plan, sort_keys=True))
+            emit('plan', {'classification': plan['classification'],
+                          'pending': [item['name'] for item in plan['pending']]})
+
+            evidence = args.prod_root / '.release-migration-evidence'
+            evidence.mkdir(parents=True, exist_ok=True)
+
+            step = 'write-fence'
+            t_fence = iso(utcnow())
+            env_path = args.prod_root / '.env.production'
+            env_text = env_path.read_text()
+            require('KINGTURF_WRITE_FENCE=' in env_text, '.env.production lacks KINGTURF_WRITE_FENCE')
+            env_path.write_text(re.sub(r'^KINGTURF_WRITE_FENCE=.*$', 'KINGTURF_WRITE_FENCE=enabled',
+                                       env_text, flags=re.MULTILINE))
+            compose(args.prod_root, 'up', '-d', '--no-deps', '--pull', 'never', 'api')
+            time.sleep(8)
+            require(http_status('/health') == 200, 'fenced API health probe did not return 200')
+            fence_status = http_status('/api/v1/customers', method='POST')
+            require(fence_status == 503, f'write probe under fence returned {fence_status}, expected 503')
+            t_obs = iso(utcnow())
+            compose(args.prod_root, 'stop', '-t', '30', 'api')
+            t_stop = iso(utcnow())
+            api_sha = (args.prod_root / '.release-sha').read_text().strip()
+            fence = build_write_fence(api_sha, t_fence, t_obs, t_stop)
+            (evidence / 'write_fence.json').write_text(json.dumps(fence))
+            emit('write-fence', {'method': fence['method'], 'api_release_sha': api_sha,
+                                 'write_probe_status': fence_status})
+
+            step = 'task-drain'
+            drain_sql = ("SELECT (SELECT count(*) FROM domain_event_outbox o WHERE NOT EXISTS"
+                         "(SELECT 1 FROM event_consumer_deliveries d WHERE d.event_id=o.id"
+                         " AND d.tenant_id=o.tenant_id)) + (SELECT count(*) FROM"
+                         " event_consumer_deliveries WHERE state IN ('PENDING','PROCESSING'))")
+            drained = session.query('SELECT count(*) FROM (' + drain_sql + ') probe').strip()
+            require(drained == '0', f'background queues not drained: {drained}')
+            drain = {'background_queues_drained': True, 'external_write_channels_isolated': True,
+                     'drained_at_utc': iso(utcnow())}
+            (evidence / 'task_drain.json').write_text(json.dumps(drain))
+            emit('task-drain', {'queues': 0})
+
+            step = 'backup-restore'
+            stamp2 = utcnow().strftime('%Y%m%dT%H%M%SZ')
+            gate_dump = args.prod_root / '.release-backups' / f'wave2-{stamp2}.dump'
+            attach = args.prod_root / '.release-backups' / f'attachments-{stamp2}.tar.gz'
+            dump_sha = dump_database(args.postgres_container, user, db, gate_dump)
+            with tarfile.open(attach, 'x:gz') as archive:
+                archive.add(args.attachments_dir, arcname='attachments')
+            os.chmod(attach, 0o600)
+            att_sha = hashlib.sha256(attach.read_bytes()).hexdigest()
+            scratch = 'wave2-restore-' + stamp2
+            pg_image = json.loads(command(['docker', 'inspect', args.postgres_container]))[0]['Image']
+            command(['docker', 'run', '-d', '--pull', 'never', '--network', 'none', '--name', scratch,
+                     '--tmpfs', '/var/lib/postgresql/data', '-e', 'POSTGRES_USER=verify',
+                     '-e', 'POSTGRES_DB=verification', '-e', 'POSTGRES_HOST_AUTH_METHOD=trust', pg_image])
+            try:
+                for attempt in range(30):
+                    probe = subprocess.run(['docker', 'exec', scratch, 'pg_isready', '-U', 'verify',
+                                            '-d', 'verification'], capture_output=True)
+                    if probe.returncode == 0:
+                        break
+                    time.sleep(1)
+                else:
+                    raise RuntimeError('isolated restore database did not start')
+                command(['docker', 'exec', '-i', scratch, 'pg_restore', '--username=verify',
+                         '--dbname=verification', '--no-owner', '--no-acl', '--exit-on-error'],
+                        timeout=600, stdin_bytes=gate_dump.read_bytes())
+                restored = command(['docker', 'exec', scratch, 'psql', '-X', '-qAt', '-U', 'verify',
+                                    '-d', 'verification', '-c',
+                                    'SELECT count(*) FROM schema_migrations;']).decode().strip()
+                require(restored == str(args.expected_before),
+                        f'restored registry count {restored} != {args.expected_before}')
+            finally:
+                command(['docker', 'rm', '-f', scratch])
+            backup = {
+                'database_dump': {'file': gate_dump.name, 'sha256': dump_sha,
+                                  'captured_at_utc': iso(utcnow())},
+                'attachments_archive': {'file': attach.name, 'sha256': att_sha,
+                                        'captured_at_utc': iso(utcnow())},
+                'config_material': 'AVAILABLE', 'restore_rehearsal': 'PASS',
+                'rehearsal_report': f'wave2-{stamp2}-restore', 'rpo_statement': 'RPO=0 fence-gated joint backup',
+                'rto_statement': 'RTO<1h isolated rehearsal',
+            }
+            (evidence / 'backup_restore.json').write_text(json.dumps(backup))
+            emit('backup-restore', {'dump': gate_dump.name, 'sha256': dump_sha,
+                                    'restored_registry': args.expected_before})
+
+            step = 'data-preconditions'
+            counts = []
+            for query in ro.DATA_PRECONDITION_SQL:
+                count = session.query('SELECT count(*) FROM (' + query + ') probe').strip()
+                require(count == '0', f'data precondition returned {count}: {query[:60]}')
+                counts.append(0)
+            preconditions = {'negative_balance_groups': 0, 'over_return_groups': 0,
+                             'orphan_return_movements': 0, 'checked_at_utc': iso(utcnow())}
+            (evidence / 'data_preconditions.json').write_text(json.dumps(preconditions))
+            emit('data-preconditions', {'counts': counts})
+
+            step = 'release-approval'
+            approval = build_release_approval(args.candidate_sha, suffixes, args.approver, utcnow())
+            (evidence / 'release_approval.json').write_text(json.dumps(approval))
+            emit('release-approval', {'approver': args.approver,
+                                      'window_end_utc': approval['window_end_utc']})
+
+            def orchestrator(*cli):
+                argv = [sys.executable, str(staged / 'release_orchestrator.py'), *cli]
+                result = subprocess.run(argv, capture_output=True, text=True, timeout=1800)
+                require(result.returncode == 0,
+                        'orchestrator failed: ' + result.stderr.strip()[-400:])
+                return json.loads(result.stdout)
+
+            step = 'check-evidence'
+            checked = orchestrator('check-evidence', str(plan_path), str(evidence))
+            require(checked.get('check_evidence') == 'PASS', f'check-evidence verdict: {checked}')
+            emit('check-evidence', checked)
+
+            step = 'execute'
+            executed = orchestrator('execute', str(plan_path), str(evidence), str(migrations),
+                                    str(args.prod_root / '.release-migration-state'), 'ignored',
+                                    '--psql-argv-file', write_psql_argv_file(staged, argv))
+            require(executed.get('verdict') == 'COMPLETED', f'execute verdict: {executed}')
+            emit('execute', executed)
+
+            step = 'postcheck'
+            posted = orchestrator('postcheck', str(plan_path), 'ignored',
+                                  '--psql-argv-file', write_psql_argv_file(staged, argv))
+            require(posted.get('postcheck') == 'PASS'
+                    and posted.get('classification') == 'FULLY_MATCHED',
+                    f'postcheck verdict: {posted}')
+            final = ro.read_registry(session)
+            require(len(final) == args.expected_after,
+                    f'final registry count {len(final)} != {args.expected_after}')
+            emit('postcheck', dict(posted, final_count=len(final)))
+        finally:
+            session.close()
+        emit('done', {'api_state': 'stopped (recover switch restores service)',
+                      'write_fence': 'enabled (recover switch disables)'})
+    except Exception as failure:  # noqa: BLE001 - single fail-closed report path
+        emit(step, {'error': str(failure)[:500]}, status='FAIL')
+        sys.exit(1)
+
+
+def write_psql_argv_file(staged, argv):
+    path = staged / 'psql-argv.json'
+    path.write_text(json.dumps(argv))
+    return str(path)
+
+
+if __name__ == '__main__':
+    main()

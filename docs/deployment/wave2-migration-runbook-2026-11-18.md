@@ -1,9 +1,11 @@
 # Wave2 迁移执行手册（72→74：0073 凭证首登改密 + 0074 租户设置）— 2026-11-18
 
-> 执行主体：**项目所有者一次性 SSH 执行**（主协调无主机密钥）。完成后由主协调走
-> `recover-application-images.yml` 应用发布（该入口永不跑迁移且要求 FULLY_MATCHED）。
-> 依据：`scripts/release_orchestrator.py`（fail-closed、单飞、证据门禁迁移机，唯一已授权
-> 的生产迁移执行器）；隔离演练证据见附录 A。
+> 执行主体（2026-11-19 起）：**`apply-migrations.yml` workflow（项目所有者 GitHub
+> dispatch）**——`scripts/apply_migrations.py` 在主机机械化执行本手册 §0–§4 全部门禁与
+> 迁移（每步单行 JSON 证据入 run 日志/artifact），与 `recover-application-images.yml`
+> 共用 `kingturf-erp-production` 并发锁互斥。迁移完成后仍由主协调走 recover 应用发布
+> （switch 置 disabled 并恢复服务）。下方 §0–§6 的人工 SSH 序列保留为**参考备选**
+> （与 workflow 步骤一一对应）；隔离演练证据见附录 A。
 
 ## 0. 前提与常量
 

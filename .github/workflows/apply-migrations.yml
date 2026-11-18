@@ -1,0 +1,155 @@
+name: Apply KingTurf Production Migrations
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: 'Exact lowercase 40-character candidate commit from main history'
+        required: true
+        type: string
+      approved_suffixes:
+        description: 'Comma-separated exact migration file names to apply (e.g. 0073_credential_must_change.sql,0074_tenant_settings.sql)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      commit_sha: ${{ steps.guard.outputs.commit_sha }}
+      control_sha: ${{ steps.guard.outputs.control_sha }}
+      approved_suffixes: ${{ steps.suffix.outputs.approved_suffixes }}
+    env:
+      RELEASE_SHA: ${{ inputs.commit_sha }}
+      RELEASE_CONTROL_SHA: ${{ github.workflow_sha }}
+      APPROVED_SUFFIXES: ${{ inputs.approved_suffixes }}
+    steps:
+      - name: Reject untrusted dispatch context and malformed input
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = ivanzhao299/kingturf-bessiness-os
+          test "$GITHUB_REF" = refs/heads/main
+          [[ ${#RELEASE_SHA} -eq 40 && "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]
+      - name: Checkout immutable migration control
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.workflow_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.13.0
+      - name: Verify canonical origin and main history
+        id: guard
+        run: node scripts/validate_release.mjs
+      - name: Validate approved suffix names against the candidate tree
+        id: suffix
+        run: |
+          set -euo pipefail
+          test -z "${APPROVED_SUFFIXES//[0-9a-z_., ]/}"
+          SUFFIXES=$(python3 - "$APPROVED_SUFFIXES" <<'PYTHON'
+          import re,sys
+          names=[part.strip() for part in sys.argv[1].split(',')]
+          assert names and all(re.fullmatch(r'[0-9]{4}_[a-z0-9_]+\.sql', name) for name in names), names
+          assert len(set(names))==len(names), names
+          print(','.join(names))
+          PYTHON
+          )
+          echo "approved_suffixes=$SUFFIXES" >> "$GITHUB_OUTPUT"
+      - name: Checkout migration candidate
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.commit_sha }}
+          path: .candidate
+          persist-credentials: false
+      - name: Verify candidate carries the approved suffix set
+        run: |
+          set -euo pipefail
+          COUNT=$(ls .candidate/packages/database/migrations/[0-9][0-9][0-9][0-9]_*.sql | wc -l)
+          test "$COUNT" -eq 74
+          IFS=',' read -ra NAMES <<< "$APPROVED_SUFFIXES"
+          for name in "${NAMES[@]}"; do
+            test -f ".candidate/packages/database/migrations/$name"
+          done
+          test "$(git -C .candidate rev-parse HEAD)" = "$RELEASE_SHA"
+
+  apply:
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 45
+    concurrency:
+      group: kingturf-erp-production
+      cancel-in-progress: false
+    env:
+      RELEASE_SHA: ${{ needs.validate.outputs.commit_sha }}
+      APPROVED_SUFFIXES: ${{ needs.validate.outputs.approved_suffixes }}
+      PROD_SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
+      PROD_SSH_PORT: ${{ secrets.PROD_SSH_PORT }}
+      PROD_SSH_USER: ${{ secrets.PROD_SSH_USER }}
+      PROD_DEPLOY_PATH: ${{ secrets.PROD_DEPLOY_PATH }}
+    steps:
+      - name: Checkout immutable migration control
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.validate.outputs.control_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Checkout migration candidate
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.validate.outputs.commit_sha }}
+          path: .candidate
+          persist-credentials: false
+      - name: Bind control script bytes
+        id: bytes
+        run: |
+          set -euo pipefail
+          sha256sum scripts/apply_migrations.py scripts/release_orchestrator.py scripts/production_preflight.py > control.sha256
+          echo "sha=$(sha256sum scripts/apply_migrations.py | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+      - name: Pin independently verified production SSH host key
+        run: |
+          set -euo pipefail
+          known_hosts_file="$RUNNER_TEMP/kingturf-production-known-hosts"
+          cp infra/ssh/production_known_hosts "$known_hosts_file"
+          chmod 600 "$known_hosts_file"
+          host_key_name="$PROD_SSH_HOST"
+          if [ "$PROD_SSH_PORT" != 22 ]; then host_key_name="[$PROD_SSH_HOST]:$PROD_SSH_PORT"; fi
+          ssh-keygen -F "$host_key_name" -f "$known_hosts_file" > "$known_hosts_file.matches"
+          ssh-keygen -l -f "$known_hosts_file.matches" > /dev/null
+          printf 'SSH_KNOWN_HOSTS_FILE=%s\n' "$known_hosts_file" >> "$GITHUB_ENV"
+      - uses: webfactory/ssh-agent@v0.10.0
+        with:
+          ssh-private-key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+      - name: Stage control and candidate migrations on the host
+        run: |
+          set -euo pipefail
+          test "$PROD_DEPLOY_PATH" = /data/kingturf-erp
+          STAGED="/tmp/wave2-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          ssh_transport="ssh -o BatchMode=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -o KexAlgorithms=curve25519-sha256 -p $PROD_SSH_PORT"
+          ssh -o BatchMode=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -o KexAlgorithms=curve25519-sha256 -p $PROD_SSH_PORT "$PROD_SSH_USER@$PROD_SSH_HOST" "set -eu; rm -rf '$STAGED'; mkdir -m 700 -p '$STAGED/migrations'"
+          rsync -az --partial -e "$ssh_transport" scripts/apply_migrations.py scripts/release_orchestrator.py scripts/production_preflight.py "$PROD_SSH_USER@$PROD_SSH_HOST:$STAGED/"
+          rsync -az --partial -e "$ssh_transport" .candidate/packages/database/migrations/ "$PROD_SSH_USER@$PROD_SSH_HOST:$STAGED/migrations/"
+          ssh -o BatchMode=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -o KexAlgorithms=curve25519-sha256 -p $PROD_SSH_PORT "$PROD_SSH_USER@$PROD_SSH_HOST" "set -eu; cd '$STAGED'; sha256sum apply_migrations.py | grep -q '${{ steps.bytes.outputs.sha }}'; ls migrations/*.sql | wc -l | grep -qx 74"
+      - name: Apply approved migrations (fail-closed, no retry)
+        run: |
+          set -euo pipefail
+          STAGED="/tmp/wave2-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          mkdir -p "$RUNNER_TEMP/results"
+          ssh -o BatchMode=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -o KexAlgorithms=curve25519-sha256 -p $PROD_SSH_PORT "$PROD_SSH_USER@$PROD_SSH_HOST" \
+            "python3 '$STAGED/apply_migrations.py' --candidate-sha '$RELEASE_SHA' --approved-suffixes '$APPROVED_SUFFIXES' --staged-root '$STAGED' --approver '${GITHUB_ACTOR}'" \
+            | tee "$RUNNER_TEMP/results/migration-log.jsonl"
+          grep -q '"step": "done"' "$RUNNER_TEMP/results/migration-log.jsonl"
+      - name: Upload migration evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-evidence
+          path: ${{ runner.temp }}/results/
+          if-no-files-found: ignore
+          retention-days: 90
