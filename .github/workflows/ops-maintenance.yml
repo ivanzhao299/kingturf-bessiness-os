@@ -22,6 +22,10 @@ jobs:
       control_sha: ${{ steps.guard.outputs.control_sha }}
       mode: ${{ steps.mode.outputs.mode }}
     env:
+      # validate_release.mjs is candidate-oriented: RELEASE_SHA must name a commit in
+      # trusted main history. A maintenance dispatch has no separate candidate, so the
+      # control commit itself is the validated commit.
+      RELEASE_SHA: ${{ github.workflow_sha }}
       RELEASE_CONTROL_SHA: ${{ github.workflow_sha }}
       MODE: ${{ inputs.mode }}
     steps:
