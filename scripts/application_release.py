@@ -77,7 +77,11 @@ def verify_image_evidence(root, approval, identities, auth):
 def advance_image_evidence(root, bundle, approval, identities):
     directory = root / '.release-migration-evidence'
     images.require(directory.is_dir(), 'Host migration evidence directory missing')
-    archive = bundle / 'recovery-bundle.tar.gz'
+    # Host bundle layout renames the runner artifact to bundle.tar.gz
+    # (recover_application_images.sh rsync); accept either name defensively (TD-REL-004).
+    archive = bundle / 'bundle.tar.gz'
+    if not archive.is_file():
+        archive = bundle / 'recovery-bundle.tar.gz'
     images.require(archive.is_file(), 'Recovery bundle archive missing for evidence advancement')
     value = {
         'images_built_at': approval['release_sha'],
@@ -96,7 +100,7 @@ def precheck(bundle):
     approval, identities, _ = images.load_bundle(bundle)
     auth = authorize(bundle, approval)
     expected = json.loads((bundle / 'migrations.json').read_bytes())
-    images.require(hashlib.sha256((bundle / 'migrations.json').read_bytes()).hexdigest() == approval['migration_manifest_sha256'] and len(expected) == 72, 'Candidate migration manifest binding invalid')
+    images.require(hashlib.sha256((bundle / 'migrations.json').read_bytes()).hexdigest() == approval['migration_manifest_sha256'] and len(expected) == 74, 'Candidate migration manifest binding invalid')
     spec = importlib.util.spec_from_file_location('preflight', Path(__file__).with_name('production_preflight.py'))
     gate = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(gate)

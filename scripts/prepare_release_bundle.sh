@@ -27,7 +27,7 @@ RELEASE_SHA="$release_sha" API_DIGEST="$api_digest" WEB_DIGEST="$web_digest" BUN
 import hashlib,json,os,pathlib
 root=pathlib.Path(os.environ['BUNDLE'])
 manifest={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(pathlib.Path('packages/database/migrations').glob('*.sql'))}
-assert len(manifest)==72,'This application-only recovery is restricted to the completed 72-migration manifest'
+assert len(manifest)==74,'This application-only recovery is restricted to the completed 74-migration manifest'
 (root/'migrations.json').write_text(json.dumps(manifest,sort_keys=True))
 (root/'release.json').write_text(json.dumps({'release_sha':os.environ['RELEASE_SHA'],'migration_manifest_sha256':hashlib.sha256((root/'migrations.json').read_bytes()).hexdigest(),'images':{s:{'source':'ghcr.io/ivanzhao299/kingturf-erp-'+s,'digest':os.environ[s.upper()+'_DIGEST']} for s in ('api','web')}},sort_keys=True))
 PY

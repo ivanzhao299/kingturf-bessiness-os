@@ -160,7 +160,9 @@ class ApplicationRecoveryTest(unittest.TestCase):
 
     def test_switch_advances_host_image_evidence_privately_after_deployed(self):
         bundle=self.root/'.release-image-recovery/44284158221-1';bundle.mkdir(parents=True)
-        (bundle/'recovery-bundle.tar.gz').write_bytes(b'bundle-bytes')
+        # Host layout (recover_application_images.sh rsync) names the artifact bundle.tar.gz;
+        # the runner-side name remains accepted as a fallback (TD-REL-004).
+        (bundle/'bundle.tar.gz').write_bytes(b'bundle-bytes')
         evidence=self.root/'.release-migration-evidence';evidence.mkdir()
         (evidence/'image_compatibility.json').write_text(json.dumps({'images_built_at':'a'*40}))
         approval={'release_sha':'c'*40}
@@ -180,9 +182,12 @@ class ApplicationRecoveryTest(unittest.TestCase):
         self.assertTrue(body['old_app_on_new_schema']['verified'])
         self.assertEqual(body['old_app_on_new_schema']['evidence'],'runner isolation smoke images_run_id=44284158221 bundle=sha256:'+expected_bundle)
         self.assertEqual(path.stat().st_mode & 0o777,0o600)
-        (bundle/'recovery-bundle.tar.gz').unlink()
+        (bundle/'bundle.tar.gz').unlink()
         with self.assertRaisesRegex(RuntimeError,'Recovery bundle archive missing'):
             ar.advance_image_evidence(self.root,bundle,approval,identities)
+        (bundle/'recovery-bundle.tar.gz').write_bytes(b'bundle-bytes')
+        ar.advance_image_evidence(self.root,bundle,approval,identities)
+        self.assertEqual(json.loads((evidence/'image_compatibility.json').read_bytes())['images_built_at'],'c'*40)
 
     def test_switch_wiring_advances_evidence_only_after_deployed_checkpoint(self):
         import ast
