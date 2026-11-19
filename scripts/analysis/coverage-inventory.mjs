@@ -17,8 +17,9 @@ export const coverageRoots = Object.freeze([
 
 const slash = (value) => value.split(sep).join('/');
 export const sourceHash = (value) => createHash('sha256').update(value).digest('hex');
+// ADR-0014/U1：.tsx 与 .ts 同为受测运行时源（排除口径一致）。
 const runtimeSource = (path) =>
-  path.endsWith('.ts') && !path.endsWith('.d.ts') && !/\.(?:test|spec)\.ts$/u.test(path);
+  /\.tsx?$/u.test(path) && !path.endsWith('.d.ts') && !/\.(?:test|spec)\.tsx?$/u.test(path);
 
 function walk(directory) {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
