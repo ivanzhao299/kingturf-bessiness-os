@@ -12,6 +12,8 @@
 
 [UI 基座计划](tasks/ui-foundation-program-2026-11-19.md)：2026-11-19第四次人裁立项（练手定位/解除#8大爆炸禁令仅限本计划/全权执行）；Preact+signals 组件层（ADR-0014）、U0-U4 分域重写路线、UI-CP1..UI-CP5 检查点与各批DoD、解剖合规率/授权角色5→2步度量、每域行为重写+UX升级双标签迁移政策、TD-UI-001 载体。
 
+[ADR-0015 后端增量现代化](adr/0015-backend-incremental-modernization.md)：第五次人裁；增量引入 Fastify（HTTP 壳）+ Zod（schema 校验，恰 3 个新运行时依赖落 apps/api）；分域全栈迁移（自 U3 起每域=UI Preact 重写+API Fastify/zod 化同批）；保留参数化 SQL 仓储/DataScope/认证/outbox/发布链，不引 ORM；TD-BOUND-002 迁移路径裁决。
+
 [ADR-0014 前端组件层与框架](adr/0014-frontend-component-layer-and-framework.md)：Preact+@preact/signals 仅2个新运行时依赖落 packages/ui、零新构建工具链；四类页面解剖模板/设计tokens/分域迁移与旧vanilla视图共存；替代方案否决（vanilla组件层/Lit/Vue/React/全站一次性重写）与依赖边登记（web→ui）。
 
 [系统管理模块优化计划](tasks/system-admin-optimization-plan-2026-11-18.md)：2026-11-18复核终版并审查通过授权执行（主协调+独立执行会话至部署完成）；A1/A2/B1/B2/D5、六项TD登记、两波发布模型（开发阶段无真实数据，Wave2迁移随部署）、CP检查点与监督组织。

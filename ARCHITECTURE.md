@@ -25,7 +25,8 @@
 ## 1. 包分层与依赖方向（现状：干净 DAG，禁止破坏）
 
 ```text
-apps/api (Runtime+Repo) ──→ packages/{config, database, domain, types}
+apps/api ──→ packages/{config, database, domain, types}
+apps/api ──→ {fastify, zod, @fastify/type-provider-zod}（外部运行时依赖；ADR-0015，首个 API 批起真实建立）
 apps/web ──→ packages/ui（前端组件层；ADR-0014，U1 起真实建立）
 packages/ui ──→ {preact, @preact/signals}（外部运行时依赖；ADR-0014）
 packages/database ──→ pg（外部运行时依赖）
@@ -36,6 +37,8 @@ packages/{types, config} ──→ 零依赖
 **规则**：依赖只能沿上述方向；新增依赖边必须先在本文件登记理由。`packages/` 之间除 `domain→types` 外互不依赖；任何包不得反向依赖 `apps/*`。
 
 **边登记（2026-11-19，ADR-0014）**：`packages/ui → {preact, @preact/signals}`——第四次人裁批准的轻量框架组件基座，全仓外部运行时依赖由 1 个（pg）增至 3 个，仍为最小集；`apps/web → packages/ui`——web 消费组件层；`apps/web → {preact, @preact/signals}`（U1 起）——JSX 运行时（jsxImportSource）与 signals 消费需直依，与 ui 同版本同单实例（pnpm 去重），非新增外部包。`packages/ui` 不依赖其余 packages、不被任何 package 反向依赖，DAG 保持。现 `packages/ui` 为 ADR-0014 重建（与 D3/TD-HYG-001 清理的旧占位包无继承关系）。
+
+**边登记（2026-11-19，ADR-0015）**：`apps/api → {fastify, zod, @fastify/type-provider-zod}`——第五次人裁批准的后端增量现代化（HTTP 壳+schema 校验，恰 3 个新运行时依赖落 apps/api）；全仓外部运行时依赖增至 6 个（pg、preact、@preact/signals、fastify、zod、@fastify/type-provider-zod）。分域迁移：自 U3 起每域=UI 重写+API Fastify/zod 化同批；参数化 SQL 仓储/DataScope/认证/outbox/发布链保留，不引 ORM。当前为规范落盘，依赖边自首个 API 批（UI-M2 后）真实建立。
 
 ## 2. 运行时请求流
 
@@ -111,7 +114,7 @@ Types → Config → Repo → Service → Runtime → UI
 ## 5. 依赖方向验证点（≥3，命令可复核）
 
 1. **app.ts 仓储依赖为 type-only**：`grep -n "import type" apps/api/src/app.ts` → 20 个仓储全部 `import type`（依赖倒置成立）。
-2. **包级 DAG 无环**：`pnpm why` 或直接查各 `package.json` 的 dependencies——workspace 内边全集为 `domain→types`、`api→{config,database,domain,types}`、`web→ui`（ADR-0014，U1 建立），外部边 `database→pg`、`ui→{preact,@preact/signals}`（ADR-0014），无反向、无环。
+2. **包级 DAG 无环**：`pnpm why` 或直接查各 `package.json` 的 dependencies——workspace 内边全集为 `domain→types`、`api→{config,database,domain,types}`、`web→ui`（ADR-0014，U1 建立），外部边 `database→pg`、`ui→{preact,@preact/signals}`（ADR-0014）、`api→{fastify,zod,@fastify/type-provider-zod}`（ADR-0015，首个 API 批起真实建立），无反向、无环。
 3. **web 侧无反向引用**：`grep -n "from './entry'\|from './main'\|from './workspace-loader'" apps/web/src/bootstrap.ts` → 零命中；`grep -n "from './entry'\|from './bootstrap'" apps/web/src/{dom,http,session}.ts` → 零命中（入口链单向：main→entry→workspace-loader→bootstrap，已实测）。
 4. **server.ts 是唯一组合根**：`grep -rln "new.*Repository(" apps/api/src --include='*.ts' | grep -v server.ts | grep -v test` → 仅仓储文件自身与测试，无第二处装配。
 

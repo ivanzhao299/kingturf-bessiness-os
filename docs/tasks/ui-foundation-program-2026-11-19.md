@@ -8,6 +8,7 @@
 - **监督模式**：主协调 + 哨兵 + 检查点（UI-CP1..UI-CP5）+ **绝对止损**——任何 FAIL 停止即报，不得自行续修。
 - **主协调已裁（不再议）**：框架=Preact+@preact/signals（仅此 2 个运行时依赖，落 `packages/ui`；零新构建工具链；tsconfig `jsx: react-jsx` + `jsxImportSource: preact`）；迁移策略=分域彻底重写而非全站一次性大爆炸。
 - **工程规则**：红→绿先行；每提交单一职责 Conventional Commits + 完整 `pnpm ci:local` + `[已测试]` 标注；先提交后验证、status 树干净、禁 force-push；SQL 全参数化；既有 governance/业务页面在 U0/U1 两批零改动（U2 等 UI-CP1 复核后另下指令）；push 允许（前向快进）。
+- **第五次人裁（2026-11-19，UI-M0b 追加）**：前端或后端技术栈/框架有问题可按主协调经验与行业主流方案设计重构，不过于依赖现有项目设计内容。已裁定并落盘 [ADR-0015](../adr/0015-backend-incremental-modernization.md)：增量引入 **Fastify（HTTP 壳）+ Zod（schema 校验，恰 3 个新运行时依赖落 apps/api）**；分域迁移策略升级为**分域全栈迁移**——自 U3 起每域迁移=UI Preact 重写+该域 API 路由 Fastify/zod 化**同批完成**；U2 governance 试点（UI-M2）仍纯 UI；参数化 SQL 仓储/DataScope 下推/ADR-0003 认证/审计 outbox/CI 发布链保留，不引 ORM；TD-BOUND-002 迁移路径已裁决（随分域清偿）。
 - 本地环境：`export NODE_ENV=test DATABASE_URL="postgresql://kingturf:local-development-only@localhost:5432/kingturf_test"`。
 
 ## §1 背景（问题定义）
@@ -36,9 +37,9 @@ ADR-0014、本计划、台账顶部登记段+TD-UI-001、core-beliefs #8 注记�
 - **审计** = 查询工作台。
   **DoD（=UI-CP2）**：三页按四类解剖模板对表 100% 合规；授权角色操作 5→2 步度量达标（§4）；governance 域既有行为测试同批重写并双标签注明（§5）；完整 `pnpm ci:local` 0。
 
-### U3 commercial+CRM 分域迁移（捆绑 TD-WEB-001 巨石债）
+### U3 commercial+CRM 分域全栈迁移（UI Preact 重写 + 该域 API 路由 Fastify/zod 化同批完成；捆绑 TD-WEB-001 巨石债与 TD-BOUND-002 分域清偿，ADR-0015）
 
-按域分批迁入组件层（列表族→详情族→配置族），`apps/web/src/bootstrap.ts` 巨石（TD-WEB-001）随迁移批次逐域消解；每域独立提交可单独 revert。
+**每域=UI Preact 重写+该域 API 路由 Fastify/zod 化同批完成（ADR-0015 分域全栈迁移）**；UI 侧按列表族→详情族→配置族分批迁入组件层，`apps/web/src/bootstrap.ts` 巨石（TD-WEB-001）随迁移批次逐域消解；每域独立提交可单独 revert。
 **DoD（=UI-CP3/U3 中段、UI-CP4/U3 收尾）**：已迁域解剖合规率 100%；启动预算门禁全程守恒；TD-WEB-001 关闭条件按台账口径另核；完整 `pnpm ci:local` 0。
 
 ### U4 门户统一
