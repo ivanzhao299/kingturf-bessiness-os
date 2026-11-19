@@ -1,0 +1,18 @@
+# A-F0'（第七次人裁 A 系列审计，A3/A4 文件项）：双生态周更依赖告警。
+# 平台设置项（main 分支保护、secret scanning+push protection、Dependabot 警报开关）
+# 主协调无 admin 权限，已交项目所有者按 docs/audits/a3/a4 清单执行。
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      workspace-dev-dependencies:
+        dependency-type: development
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5

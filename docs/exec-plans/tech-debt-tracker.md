@@ -1,5 +1,9 @@
 # 技术债台账（tech-debt-tracker）
 
+## 2026-11-19 第七次人裁：A 系列资产审计落盘（A-F0'）
+
+第七次人裁配套：主协调派四个并行审计代理对「不动层」做全量行业基准审计（OWASP ASVS/NIST/SLSA），总录+四分报告已落盘 [docs/audits/](../audits/2026-11-19-asset-audit-summary.md)（index 已收录）。依审计结论：**TD-SEC-008、TD-RISK-001 关闭**（A1 核实已于 2026-10-26 f7397a4/cc6905e 修复）；新登记 **TD-SEC-013**（P1：complaint/dashboard TEAM 锚点无 depth 横向越读，A-F2 承接）、**TD-SEC-014**（P2：profiles 字段绕过/SoD 自定义角色/持久锁定缺失，合并 A2 发现，A-F2 承接）、**TD-CI-001**（P1：actions 零 SHA 钉扎/无 SAST/镜像无扫描，A-F3 承接）、**TD-OPS-001**（P2：.env 权限断言/staged 竞态/HSTS，A-F1/F2 承接）。平台设置项（分支保护/secret scanning 等）主协调无 admin 权限，已交项目所有者按 A3/A4 清单执行；仓库文件项 `.github/dependabot.yml` 本批落盘。A-F1 快赢批（九项）随后执行。
+
 ## 2026-11-19 部署现代化登记（第六次人裁，TD-REL-008）
 
 项目所有者第六次人裁：部署方案需重新审查设计，追加进方案。主协调裁决落盘 [UI 基座计划](../tasks/ui-foundation-program-2026-11-19.md) §9「部署现代化 D1/D2」：诊断四痛点（恢复级入口当常规发布用／迁移-发布两管道接缝=Wave2 78 分钟停机根因／无单一发布动作／无预生产）；**D1=单管道 release.yml 单输入 commit_sha**（validate→build digest 内传 job output→migrate 条件步五门证据保留→deploy recover 逻辑与安全契约全保留→post 证据推进+摘要；api-restored 兜底保留；旧 recover 降级应急通道 N 次稳定后封存；新增 release-rollback.yml 历史 SHA 应用级回滚；**不动清单**=production 审批/并发组/known_hosts/字节校验/恢复点/fail-closed/保护产物全保留）；**D2=同宿主 staging compose 生产 dump 脱敏灌入预演+tag 自动发布**（后置）。排期：D1 插 UI-M2 之后、U3 之前；**D-CP1=主协调审 workflow 全 diff 后才许首次 dispatch 生产**。新登记 **TD-REL-008**（P1）：发布入口为恢复级三输入（commit_sha+双 digest+release-images run ID）手工缝合，迁移-发布两管道接缝致 Wave2 78 分钟停机（含两轮交接缺口修复），需单管道化消除跨 run 手工缝合与接缝——D1 承接，本批仅登记不改 workflow。PRODUCTION_PARK_HOST.md 头部已加「D1 设计中，现行契约不变直至 release.yml 上线」注记。
@@ -178,7 +182,7 @@ TD-REL-001（P1，已授权修复）：run 42335884296 已完成72迁移后，GH
 | TD-API-003   | 18个治理面读端点无界返回且无确定性排序，未接入既有cursor分页契约                              | P1     | API契约           | **变更行为**（已批）             | 系统管理优化Wave1-B2                                  | 已上生产（Wave1 run 44318126044）             |
 | TD-REG-001   | QTC 前六模块提前读取仓储根，违反旧求值/receiver契约                                           | P1     | 重构回归          | 修复 bug（恢复旧契约）           | 2b独立回归恢复                                        | 已解决（留历史）                              |
 | TD-PROC-001  | 重复部分收货与采购单状态触发器冲突                                                            | P2     | 采购状态机        | 修复bug需单独批准                | 阶段5只登记                                           | 真实PG确证/未修复                             |
-| TD-RISK-001  | 风险评价窄scope参数偏移与固定四参数冲突                                                       | P2     | 数据范围SQL       | 修复bug需单独批准                | 阶段5只登记                                           | 真实PG确证/未修复                             |
+| TD-RISK-001  | 风险评价窄scope参数偏移与固定四参数冲突                                                       | P2     | 数据范围SQL       | 修复bug                          | A系列审计核销（已于cc6905e修复）                      | 关闭（A1审计核实）                            |
 | TD-DUP-001   | 数据范围(DataScope) SQL 谓词在 12 个文件各复制一份                                            | P1     | 重复/安全         | 无                               | 批次 1                                                | 已完成                                        |
 | TD-DUP-002   | audit_events + domain_event_outbox 双写 44 处/20 文件                                         | P1     | 重复              | 无                               | 批次 1                                                | 已完成                                        |
 | TD-DUP-003   | 幂等键查询样板 23 行重复                                                                      | P2     | 重复              | 无                               | 批次 1                                                | 已完成                                        |
@@ -197,9 +201,13 @@ TD-REL-001（P1，已授权修复）：run 42335884296 已完成72迁移后，GH
 | TD-SEC-005   | 动态 SQL 片段拼装面广，缺结构性约束防回归                                                     | P2     | 安全/门禁         | 无                               | 阶段 3（结构测试）                                    | 已完成                                        |
 | TD-SEC-006   | complaint 锚点谓词语义弱于其他域（osr 单表、TEAM 无 depth、无组织有效性校验）                 | P2     | 安全/一致性       | **变更行为**（若统一）           | 待决策（批次 1 后）                                   | 待处理                                        |
 | TD-SEC-007   | foundation 通知收件人谓词缺省省略 actor_org/authorized_org 两处组织有效性 JOIN                | P2     | 安全/一致性       | **变更行为**（若统一）           | 待决策（批次 1 后）                                   | 待处理                                        |
-| TD-SEC-008   | complaint/dashboard显式匹配锚点SQL引用不存在osr列，真实42703                                  | P1     | 可用性/范围SQL    | **变更行为**（修复另批）         | 终验D发现，建议独立安全兼容批次                       | 真实PG确证/待人裁排期                         |
+| TD-SEC-008   | complaint/dashboard显式匹配锚点SQL引用不存在osr列，真实42703                                  | P1     | 可用性/范围SQL    | 修复bug                          | A系列审计核销（已于f7397a4修复）                      | 关闭（A1审计核实）                            |
 | TD-SEC-011   | 管理员开通/重置直接设定用户密码，无首登强制改密（ASVS 2.5.5/2.5.6）                           | P1     | 安全/凭证生命周期 | **变更行为**（已批）             | 系统管理优化Wave2（迁移0073另授）                     | 已上生产（Wave2 run 44362962206/44374541682） |
 | TD-SEC-012   | permissions目录全局共享，任意租户permission:manage可创建跨租户capability                      | P1     | 安全/多租户       | **变更行为**（已批）             | 系统管理优化Wave1-A2                                  | 已上生产（Wave1 run 44318126044）             |
+| TD-SEC-013   | complaint/dashboard TEAM 锚点无 depth，横向越读                                               | P1     | 安全/DataScope    | **变更行为**（修复另批）         | A-F2（A1审计）                                        | A-F0'登记/A-F2承接                            |
+| TD-SEC-014   | profiles字段绕过/SoD自定义角色/持久锁定缺失（合并A2发现）                                     | P2     | 安全/纵深         | **变更行为**（修复另批）         | A-F2（A2审计）                                        | A-F0'登记/A-F2承接                            |
+| TD-CI-001    | actions零SHA钉扎/无SAST/镜像无扫描                                                            | P1     | CI/供应链         | 无                               | A-F3（A3审计）                                        | A-F0'登记/A-F3承接                            |
+| TD-OPS-001   | .env权限断言缺失/staged目录竞态/无HSTS                                                        | P2     | 运维加固          | 无                               | A-F1/F2（A4审计）                                     | A-F0'登记/A-F1部分本批承接                    |
 | TD-PERF-001  | 前端无自动重试/断路，失败依赖人工重试按钮                                                     | P2     | 性能              | **变更行为**（仅实施时）         | 待排期                                                | 待处理                                        |
 | TD-PERF-002  | 13 处 N+1 候选已判定；7项修复待排                                                             | P2     | 性能              | 无                               | 批次 2（子批 2f）                                     | 已判定／待修复                                |
 | TD-PERF-003  | 文档旧请求失败可能删除clear后同path新缓存Promise                                              | P2     | 异步缓存          | 修复 bug（若实施）               | 3c⑪仅登记／后续独立授权                               | 触发/生产影响待核实                           |
@@ -692,6 +700,8 @@ TD-REL-001（P1，已授权修复）：run 42335884296 已完成72迁移后，GH
 
 ### TD-RISK-001｜风险评价窄scope参数偏移与固定四参数冲突
 
+> **2026-11-19 关闭**：A1 审计核实已于 cc6905e 修复（[审计总录](../audits/2026-11-19-asset-audit-summary.md)），本详条保留历史。
+
 - **位置**：`apps/api/src/risk-repositories.ts` evaluate:202–221；对照listEvaluations:32–39和`scope-sql.ts` recordScopeSql:174–211。
 - **证据**：evaluate先固定order/tenant/policy/assignee四参数，却调用scope offset=3；SELF/有效TEAM anchor把scope值作为第5参追加，而SQL占位仍复用$3，真实PG抛08P01。最终专项六项实际0/20363ms，独立只读复核一致；无锚TEAM为FALSE/无附加参数，正常not_found，不泛化为所有TEAM都失败。
 - **影响/状态**：评价窄范围的可用性错误；无生产环境动态观察、不称越权泄露。新共享夹具用正常客户ownership接口分配真实owner，再分别验证list SELF/TEAM读取与evaluate错位失败；失败前后evaluation/task/event计数及相关audit/outbox不增。只登记、未修复，负向现状刻画不是期望授权语义。
@@ -758,7 +768,9 @@ TD-REL-001（P1，已授权修复）：run 42335884296 已完成72迁移后，GH
 - **修复建议**：批次 1 完成后与 TD-SEC-006 一并决策：统一为 validate 形态（行为变更，需单独提交+人工批准+集成测试补组织失效负例）；或确认无需组织有效性校验并记录依据。
 - **业务行为影响**：无（当前为登记；统一时为变更行为） ｜ **关联批次**：待决策（批次 1 后） ｜ **验收方式**：决策落盘；若统一，foundation 集成测试补失效组织负例
 
-### TD-SEC-008｜complaint/dashboard匹配显式锚点引用不存在osr列
+### TD-SEC-008
+
+> **2026-11-19 关闭**：A1 审计核实已于 f7397a4 修复（[审计总录](../audits/2026-11-19-asset-audit-summary.md)），本详条保留历史。｜complaint/dashboard匹配显式锚点引用不存在osr列
 
 - **位置**：scope-sql.ts的relationshipOnly分支；complaint-repositories.ts COMPLAINT_SCOPE及dashboard-repositories.ts get复用的五个visible CTE；表0001/0004仅ancestor_id/descendant_id/depth。
 - **级别/状态**：P1可用性/范围SQL，真实guarded owned PG确证，未修、等待人类排期与行为授权；不是权限扩大/数据泄露或已知生产事故。建议终验前单独决定独立安全兼容批次优先级，不预填批准/完成日期。
