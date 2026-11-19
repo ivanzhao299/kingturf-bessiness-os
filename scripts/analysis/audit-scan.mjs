@@ -66,7 +66,7 @@ console.log(
 console.log('\n== S2 git 跟踪的 .env 文件 ==');
 const tracked = execSync('git ls-files', { encoding: 'utf8' })
   .split('\n')
-  .filter((p) => /(^|\/)\.env/i.test(p));
+  .filter((p) => /(^|\/)\.env/i.test(p) && p !== '.env.example'); // A-F1: 模板例外，其余跟踪即失败
 console.log(`  ${tracked.length === 0 ? '无' : tracked.join(', ')}`);
 
 console.log('\n== S3 生产代码 console 调用（apps+packages） ==');
@@ -167,3 +167,12 @@ console.log(
     ? '  结果: 0 处待判定（`input.*` 等领域参数插值属入口层已校验对象，人工抽查确认）'
     : `  结果: ${suspicious} 处待人工判定`,
 );
+
+// A3-P1-5（A-F1）：S1/S2 接入 ci:local 的失败退出码——密钥命中或 git 跟踪 .env 即 exit 1。
+const failures = [];
+if (secretHits > 0) failures.push(`S1 secret-scan hits: ${secretHits}`);
+if (tracked.length > 0) failures.push(`S2 tracked .env files: ${tracked.join(', ')}`);
+if (failures.length > 0) {
+  console.error('audit-scan failed: ' + failures.join('; '));
+  process.exit(1);
+}

@@ -97,9 +97,9 @@ jobs:
         run: |
           set -euo pipefail
           test "$PROD_DEPLOY_PATH" = /data/kingturf-erp
-          STAGED="/tmp/ops-maint-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          STAGED="/data/kingturf-erp/.staging/ops-maint-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
           ssh_transport="ssh -o BatchMode=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -o KexAlgorithms=curve25519-sha256 -p $PROD_SSH_PORT"
-          ssh -o BatchMode=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -o KexAlgorithms=curve25519-sha256 -p $PROD_SSH_PORT "$PROD_SSH_USER@$PROD_SSH_HOST" "set -eu; rm -rf '$STAGED'; mkdir -m 700 -p '$STAGED'"
+          ssh -o BatchMode=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -o KexAlgorithms=curve25519-sha256 -p $PROD_SSH_PORT "$PROD_SSH_USER@$PROD_SSH_HOST" "set -eu; rm -rf '$STAGED'; mkdir -m 700 -p '$STAGED'; test \"$(stat -c %a '$STAGED')\" = 700 && test \"$(stat -c %U '$STAGED')\" = \"$PROD_SSH_USER\""
           rsync -az --partial -e "$ssh_transport" scripts/operations/dispose_legacy_outbox.py "$PROD_SSH_USER@$PROD_SSH_HOST:$STAGED/"
           ssh -o BatchMode=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -o KexAlgorithms=curve25519-sha256 -p $PROD_SSH_PORT "$PROD_SSH_USER@$PROD_SSH_HOST" "set -eu; cd '$STAGED'; sha256sum dispose_legacy_outbox.py | grep -q '${{ steps.bytes.outputs.sha }}'"
           mkdir -p "$RUNNER_TEMP/results"
@@ -107,7 +107,7 @@ jobs:
             "python3 '$STAGED/dispose_legacy_outbox.py' '$MODE' --prod-root /data/kingturf-erp" \
             | tee "$RUNNER_TEMP/results/maintenance-log.jsonl"
           grep -q '"step": "done"' "$RUNNER_TEMP/results/maintenance-log.jsonl"
-          ssh -o BatchMode=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -o KexAlgorithms=curve25519-sha256 -p $PROD_SSH_PORT "$PROD_SSH_USER@$PROD_SSH_HOST" "rm -rf '$STAGED'"
+          ssh -o BatchMode=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -o KexAlgorithms=curve25519-sha256 -p $PROD_SSH_PORT "$PROD_SSH_USER@$PROD_SSH_HOST" "set -eu; test -z \"$(find '$STAGED' -mindepth 1 -type l)\" || exit 1; rm -rf '$STAGED'"
       - name: Upload maintenance evidence
         if: always()
         uses: actions/upload-artifact@v4

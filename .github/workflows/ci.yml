@@ -38,6 +38,8 @@ jobs:
       PASSWORD_SCRYPT_PARALLELIZATION: 1
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false # A3-P2-9 (A-F1)
       - uses: pnpm/action-setup@v6
         with:
           version: 10.33.4

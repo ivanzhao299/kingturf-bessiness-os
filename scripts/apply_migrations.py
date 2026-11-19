@@ -165,7 +165,11 @@ def restore_api_on_failure(prod_root):
     the write fence. Re-enables traffic (fence disabled) and brings the previous
     application back; the database is untouched by design up to that point."""
     env_path = prod_root / '.env.production'
+    # A4-P1-2 (A-F1)：写回前断言既有权限 ≤0600 并保持 owner-only。
+    require((env_path.stat().st_mode & 0o777) <= 0o600,
+            '.env.production permissions are broader than 0600')
     env_path.write_text(disable_fence_text(env_path.read_text()))
+    env_path.chmod(0o600)
     compose(prod_root, 'up', '-d', '--no-deps', '--pull', 'never', 'api')
     marker = (prod_root / '.release-sha').read_text().strip()
     healthy = wait_until(lambda: http_status('/health') == 200

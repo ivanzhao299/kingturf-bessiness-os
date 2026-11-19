@@ -59,6 +59,7 @@ jobs:
         run: node scripts/validate_release.mjs
 
   verify:
+    timeout-minutes: 45 # A3-P2-9 (A-F1)
     needs: validate
     runs-on: ubuntu-latest
     env:
@@ -89,7 +90,7 @@ jobs:
           version: 10.33.4
       - uses: actions/setup-node@v6
         with:
-          node-version: 24
+          node-version: 24.13.0 # A3-P3-11 (A-F1): pin across workflows
           cache: pnpm
       - run: pnpm ci:local
 

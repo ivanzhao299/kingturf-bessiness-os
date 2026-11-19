@@ -4,7 +4,7 @@
 
 ## 当前应用发布契约（2026-11-17）
 
-72项迁移已经完成。生产应用发布唯一入口改为 `recover-application-images.yml`；旧 `deploy-production.yml` 首步骤无条件停止，保留旧代码作为迁移失败历史，不再提供 save/load 路径。新迁移执行、历史改写和生产数据恢复必须另行授权及设计。以下迁移时代流程描述保留为历史，不能据此重执行迁移。
+74 项迁移已经完成（Wave2 对齐）。生产应用发布唯一入口为 `recover-application-images.yml`；旧 `deploy-production.yml` 文件已于 A-F1（2026-11-19）删除，其历史见 git 记录。新迁移执行、历史改写和生产数据恢复必须另行授权及设计。以下迁移时代流程描述保留为历史，不能据此重执行迁移。
 
 新入口输入精确main历史候选SHA、原批准API/Web根digest及成功的release-images run ID。控制脚本来自workflow自身固定SHA，独立于旧应用候选；候选完整ci:local、发布run来源、当前tag原始摘要必须全等。主机`image_compatibility.json`按候选分派：同候选重跑须双digest逐字全等并保留既有schema兼容证据；新候选在注册表FULLY_MATCHED且授权冒烟PASS（runner隔离启动已过，workflow冒烟步骤成功后才写授权）时放行。每次成功发布在DEPLOYED之后以0600原子推进该证据文件（`images_built_at`=发布SHA、digest取自identities、`old_app_on_new_schema`记runner隔离冒烟的run ID与bundle sha256），后续发布证据自动滚动。此次授权来源及进度见[执行任务](../tasks/ghcr-transport-recovery-2026-11-17.md)。
 

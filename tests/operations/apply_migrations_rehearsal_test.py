@@ -56,6 +56,7 @@ class HostFlowRehearsal(unittest.TestCase):
         (cls.prod / '.release-sha').write_text('01ef0e1fd34c724b21cfd470a41161687020ec5c')
         (cls.prod / '.env.production').write_text(
             'POSTGRES_USER=kingturf\nPOSTGRES_DB=kingturf\nKINGTURF_WRITE_FENCE=disabled\n')
+        (cls.prod / '.env.production').chmod(0o600)  # A4-P1-2 (A-F1): fixture matches the enforced mode
         (cls.prod / 'attachments').mkdir()
         (cls.prod / 'attachments' / 'keep.txt').write_text('attachment-bytes')
         cls.runner = cls.base / 'reference-migrator.mjs'
@@ -114,6 +115,7 @@ class HostFlowRehearsal(unittest.TestCase):
         env_backup = env_path.read_text()
         dbname = url.rsplit('/', 1)[-1]
         env_path.write_text(env_backup.replace('POSTGRES_DB=kingturf', f'POSTGRES_DB={dbname}'))
+        env_path.chmod(0o600)  # write_text 不保留模式，重设为门禁要求
         try:
             with mock.patch.object(sys, 'argv', ['apply_migrations.py'] + self.base_argv()):
                 with mock.patch.object(am, 'compose', lambda root, *a: seen['compose'].append(a)):

@@ -1,6 +1,6 @@
 # CI 配置决定
 
-2026-11-17当前发布入口为 `recover-application-images.yml`（仅已FULLY_MATCHED的72-schema应用发布）；原 `deploy-production.yml` 已在首步骤封闭，以下原部署盘点是历史。新入口保留精确候选与固定控制SHA、完整ci:local、production审批/并发锁；新增批准OCI字节传输、真实API/Web启动、只读schema全等、联合恢复演练及运行身份校验。见[当前生产契约](deployment/PRODUCTION_PARK_HOST.md)。源码CI和模拟传输不代替真实跨daemon及生产验收。
+2026-11-19（A-F1）当前发布入口为 `recover-application-images.yml`（仅已FULLY_MATCHED的**74**-schema应用发布；迁移计数已于Wave2对齐74）；原 `deploy-production.yml` 文件已于 A-F1 删除（其封闭首步骤的历史描述见 git 历史），以下原部署盘点是历史。新入口保留精确候选与固定控制SHA、完整ci:local、production审批/并发锁；新增批准OCI字节传输、真实API/Web启动、只读schema全等、联合恢复演练及运行身份校验。见[当前生产契约](deployment/PRODUCTION_PARK_HOST.md)。源码CI和模拟传输不代替真实跨daemon及生产验收。
 
 Harness 施工已归档；本项目是纯 Web monorepo，非 Tauri，不生成桌面打包或 Release 流水线。常规提交继续以 `pnpm ci:local` 为唯一完整门禁。
 
@@ -22,7 +22,7 @@ Harness 施工已归档；本项目是纯 Web monorepo，非 Tauri，不生成�
 - **实际技术形态**：
   - 前端 `apps/web`：Vite 7.3.6 构建的**无框架（vanilla TypeScript）SPA**，原生 DOM 操作，零 UI 库依赖
   - 后端 `apps/api`：Node.js 24 原生 `node:http` 服务器（`apps/api/src/server.ts`），无 express/fastify
-  - 数据层：PostgreSQL 17 + 原生 `pg` 8.22.0 + 70 个手写 SQL 迁移（`packages/database/migrations/`）
+  - 数据层：PostgreSQL 17 + 原生 `pg` 8.22.0 + 74 个手写 SQL 迁移（`packages/database/migrations/`）
   - 共享包：`packages/{types,domain,config,database,ui,testing}`
   - 运行时依赖合计仅 `pg` 一个外部包
 

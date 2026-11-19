@@ -5,11 +5,7 @@ ROOT=Path(__file__).resolve().parents[2]
 
 
 class ApplicationWorkflowContract(unittest.TestCase):
-    def test_retired_migration_entry_stops_before_all_host_access(self):
-        text=(ROOT/'.github/workflows/deploy-production.yml').read_text()
-        first=text.split('    steps:\n',1)[1].split('      - name:',2)
-        self.assertIn('Reject retired migration release entry',first[1])
-        self.assertIn('exit 1',first[1])
+    # A-F1（A3-P2-9）：deploy-production.yml 已删除，其「首步骤封闭」测试随文件退役（历史见 git）。
 
     def test_new_entry_keeps_fixed_history_concurrency_approval_and_full_ci(self):
         text=(ROOT/'.github/workflows/recover-application-images.yml').read_text()

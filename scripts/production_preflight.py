@@ -102,6 +102,11 @@ def preflight(root, expected, *, require_full=False, allow_stopped_api=False, ca
         require(path.is_dir() and path.resolve() == path, 'Approved existing storage directory missing or redirected')
         require(os.stat(path).st_dev == os.stat('/data').st_dev, 'Persistent directory is outside the approved data disk')
     require(shutil.disk_usage('/data').free >= 5 * 1024 ** 3, 'Data disk below minimum free-space floor; backup sizing still requires operator evidence')
+    # A4-P1-2 (A-F1)：权限收紧断言（伪环境不落盘该文件时由 compose 装配兜底校验存在性）。
+    env_prod = RELEASE / '.env.production'
+    if env_prod.exists():
+        require((os.stat(env_prod).st_mode & 0o777) <= 0o600,
+                '.env.production permissions are broader than 0600')
     compose = ['docker', 'compose', '--env-file', str(RELEASE / '.env.production'), '-f', str(RELEASE / 'infra/docker/compose.production.yaml')]
     config = json.loads(command(compose + ['config', '--format', 'json']))
     validate_config(config)
