@@ -200,6 +200,9 @@ const SQL_ENUM_NAMES = new Set([
   // B2（TD-API-003）分页 keyset 游标片段：cursor 值一律经 values.push 参数化（$N），
   // 变量本体只含代码内表/列名与占位符；2026-11-18 随 18 端点分页批次登记。
   'keyset',
+  // UI-M2（governance 左树右表）employees.list 可选组织过滤片段：组织 uuid 一律经
+  // values.push 参数化（$N::uuid），变量本体为空串或参数化占位符；2026-11-19 登记。
+  'orgFilter',
   'alias',
   'anchor.scope',
   'a.scope',
