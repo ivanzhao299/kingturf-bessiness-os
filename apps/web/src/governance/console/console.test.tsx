@@ -349,10 +349,7 @@ describe('UI-M2b 配置页控制台（六页通用面）', () => {
       | ((ports: ConsolePorts) => () => preact.VNode)
       | undefined;
     if (!spec) throw new Error('spec missing for ' + route);
-    return mount(
-      (ports) => spec(ports) as unknown as preact.ComponentType,
-      cfgPorts(route, views, extra),
-    );
+    return mount((ports) => spec(ports), cfgPorts(route, views, extra));
   };
 
   it('六页宿主 spec 全部注册（master-data/numbering/rules/workflow/notifications/system）', () => {
@@ -421,7 +418,7 @@ describe('UI-M2b 配置页控制台（六页通用面）', () => {
     );
     const spec = configConsoleFor('governance/rules');
     if (!spec) throw new Error('rules spec');
-    const host = mount((p) => spec(p) as unknown as preact.ComponentType, ports);
+    const host = mount((p) => spec(p), ports);
     element(host.querySelector('[data-testid="kt-cfg-action-publish"]')).click();
     await flush();
     const select = element(host.querySelector('[data-testid="kt-cfg-form-publish"] select'));
@@ -470,7 +467,7 @@ describe('UI-M2b 配置页控制台（六页通用面）', () => {
     );
     const spec = configConsoleFor('governance/system');
     if (!spec) throw new Error('system spec');
-    const host = mount((p) => spec(p) as unknown as preact.ComponentType, ports);
+    const host = mount((p) => spec(p), ports);
     expect(host.textContent).toContain('报价单');
     await flush();
     await flush();

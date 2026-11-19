@@ -76,6 +76,28 @@ export function TenantSettingsAppendix(ports: ConsolePorts): preact.ComponentTyp
 
   const MayManage = ports.permissions.has('tenant-setting:manage');
 
+  const saveDraft = (item: SettingItem, raw: string): Promise<void> =>
+    ports
+      .submit(
+        '/api/v1/tenant-settings',
+        {
+          key: item.key,
+          value: item.valueType === 'integer' ? Number(raw) : raw,
+        },
+        'PUT',
+      )
+      .then(() => {
+        editKey.value = null;
+        reload();
+      });
+
+  const publishItem = (key: string): void => {
+    void ports.submit('/api/v1/tenant-settings/publish', { key }, 'POST').then(() => {
+      editKey.value = null;
+      reload();
+    });
+  };
+
   const Appendix = () => (
     <section class="console-split-tree" data-testid="kt-tenant-settings">
       <h3>系统参数</h3>
@@ -117,12 +139,7 @@ export function TenantSettingsAppendix(ports: ConsolePorts): preact.ComponentTyp
                 class="secondary compact"
                 data-testid="kt-tenant-setting-publish"
                 onClick={() => {
-                  void ports
-                    .submit('/api/v1/tenant-settings/publish', { key: item.key }, 'POST')
-                    .then(() => {
-                      editKey.value = null;
-                      reload();
-                    });
+                  publishItem(item.key);
                 }}
               >
                 发布该参数
@@ -135,21 +152,7 @@ export function TenantSettingsAppendix(ports: ConsolePorts): preact.ComponentTyp
               description="保存仅创建新草稿；发布后立即生效且不可撤回，纠错需发布新版本。"
               fields={[settingField(item)]}
               submitLabel="保存草稿"
-              onSubmit={(values) =>
-                ports
-                  .submit(
-                    '/api/v1/tenant-settings',
-                    {
-                      key: item.key,
-                      value: item.valueType === 'integer' ? Number(values.value) : values.value,
-                    },
-                    'PUT',
-                  )
-                  .then(() => {
-                    editKey.value = null;
-                    reload();
-                  })
-              }
+              onSubmit={(values) => saveDraft(item, values.value ?? '')}
             />
           ) : null}
           <details>

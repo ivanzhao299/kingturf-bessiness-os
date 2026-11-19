@@ -66,6 +66,29 @@ const jsonParseField = (value: string | undefined, label: string): Record<string
   }
 };
 
+// G2 压平：动作按钮渲染抽为模块级组件。
+const ConfigActionBar = (
+  props: Readonly<{
+    allowed: readonly ConfigActionSpec[];
+    onOpen: (item: ConfigActionSpec) => void;
+  }>,
+): preact.VNode => (
+  <ActionBar label={props.allowed[0]?.label ?? '操作'}>
+    {props.allowed.map((item) => (
+      <button
+        type="button"
+        class="secondary"
+        data-testid={`kt-cfg-action-${item.id}`}
+        onClick={() => {
+          props.onOpen(item);
+        }}
+      >
+        {item.label}
+      </button>
+    ))}
+  </ActionBar>
+);
+
 export function ConfigConsolePage(spec: ConfigPageSpec) {
   return (ports: ConsolePorts): preact.ComponentType => {
     const activeAction = signal<ConfigActionSpec | null>(null);
@@ -135,21 +158,13 @@ export function ConfigConsolePage(spec: ConfigPageSpec) {
       return (
         <div class="console-page" data-testid={spec.pageTestId}>
           {allowed.length > 0 ? (
-            <ActionBar label={spec.title}>
-              {allowed.map((item) => (
-                <button
-                  type="button"
-                  class="secondary"
-                  data-testid={`kt-cfg-action-${item.id}`}
-                  onClick={() => {
-                    activeAction.value = item;
-                    actionError.value = '';
-                  }}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </ActionBar>
+            <ConfigActionBar
+              allowed={allowed}
+              onOpen={(item) => {
+                activeAction.value = item;
+                actionError.value = '';
+              }}
+            />
           ) : null}
           <DataTable
             columns={[
