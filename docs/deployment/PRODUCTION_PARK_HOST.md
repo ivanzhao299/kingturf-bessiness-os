@@ -1,5 +1,7 @@
 # KingTurf production — Singapore runbook
 
+> **D1 设计中（2026-11-19 第六次人裁）**：单管道 release.yml 单输入发布方案已立项（[UI 基座计划](../tasks/ui-foundation-program-2026-11-19.md) §9，TD-REL-008 承接，插 UI-M2 后/U3 前，D-CP1 人审全 diff 后才许首次 dispatch 生产）。**现行契约不变、照常执行，直至 release.yml 上线。**
+
 ## 当前应用发布契约（2026-11-17）
 
 72项迁移已经完成。生产应用发布唯一入口改为 `recover-application-images.yml`；旧 `deploy-production.yml` 首步骤无条件停止，保留旧代码作为迁移失败历史，不再提供 save/load 路径。新迁移执行、历史改写和生产数据恢复必须另行授权及设计。以下迁移时代流程描述保留为历史，不能据此重执行迁移。

@@ -9,6 +9,7 @@
 - **主协调已裁（不再议）**：框架=Preact+@preact/signals（仅此 2 个运行时依赖，落 `packages/ui`；零新构建工具链；tsconfig `jsx: react-jsx` + `jsxImportSource: preact`）；迁移策略=分域彻底重写而非全站一次性大爆炸。
 - **工程规则**：红→绿先行；每提交单一职责 Conventional Commits + 完整 `pnpm ci:local` + `[已测试]` 标注；先提交后验证、status 树干净、禁 force-push；SQL 全参数化；既有 governance/业务页面在 U0/U1 两批零改动（U2 等 UI-CP1 复核后另下指令）；push 允许（前向快进）。
 - **第五次人裁（2026-11-19，UI-M0b 追加）**：前端或后端技术栈/框架有问题可按主协调经验与行业主流方案设计重构，不过于依赖现有项目设计内容。已裁定并落盘 [ADR-0015](../adr/0015-backend-incremental-modernization.md)：增量引入 **Fastify（HTTP 壳）+ Zod（schema 校验，恰 3 个新运行时依赖落 apps/api）**；分域迁移策略升级为**分域全栈迁移**——自 U3 起每域迁移=UI Preact 重写+该域 API 路由 Fastify/zod 化**同批完成**；U2 governance 试点（UI-M2）仍纯 UI；参数化 SQL 仓储/DataScope 下推/ADR-0003 认证/审计 outbox/CI 发布链保留，不引 ORM；TD-BOUND-002 迁移路径已裁决（随分域清偿）。
+- **第六次人裁（2026-11-19，追加指令 3）**：部署方案需重新审查设计，追加进方案。已落盘为 §9「部署现代化 D1/D2」：D1=单管道 release.yml 单输入发布（插 UI-M2 之后、U3 之前，检查点 D-CP1 人审全 diff 后才许首次 dispatch 生产）；D2=同宿主 staging 预演+tag 自动发布（后置）；登记 TD-REL-008（P1，D1 承接）；现行生产契约不变直至 release.yml 上线（PRODUCTION_PARK_HOST.md 头部已加注记）。
 - 本地环境：`export NODE_ENV=test DATABASE_URL="postgresql://kingturf:local-development-only@localhost:5432/kingturf_test"`。
 
 ## §1 背景（问题定义）
@@ -121,3 +122,37 @@ frontend-runtime-sources 门禁与 service-boundary 门禁对 TSX/Preact 模块�
 ### 8.6 稳定选择器政策
 
 UI 基座原语一律输出 `data-testid`（命名规范：`kt-<原语kebab>-<槽位|实例>`，如 `kt-data-table-row`、`kt-detail-drawer-close`；U1.5 落入 packages/ui 原语与 tokens 文档）；**e2e 与组件测试只依赖 data-testid / role / label**——为后续所有域迁移保住 e2e 不随 DOM 重写。
+
+## §9 部署现代化 D1/D2（第六次人裁配套，2026-11-19 主协调裁决落盘）
+
+> 本节为政策落盘批（**零 workflow/代码改动**）；D1 批次插在 UI-M2 之后、U3 之前，实施前须另下指令。检查点 **D-CP1：主协调审 workflow 全 diff 后才许首次 dispatch 生产**。
+
+### 9.1 诊断（四痛点）
+
+1. **恢复级入口当常规发布用**：现行唯一应用发布入口 `recover-application-images.yml` 是为「迁移时代恢复」设计的三输入（commit_sha+双 digest+release-images run ID）手工缝合入口，被当作常规发布通道使用。
+2. **迁移-发布两管道接缝 = 78 分钟停机根因**：apply-migrations 与 recover 两管道间的交接守卫/证据对齐缺口，Wave2 实测停机 78 分钟（含两轮交接缺口修复）。
+3. **无单一发布动作**：一次完整发布需人工编排多个 workflow 与输入，无单一 dispatch 动作承载端到端语义。
+4. **无预生产**：无 staging 环境，发布验证只能发生在生产。
+
+### 9.2 D1 = 单管道 release.yml（单输入 commit_sha）
+
+`validate → build（digest 内传 job output）→ migrate（条件步，五门证据保留）→ deploy（recover 逻辑与安全契约全保留）→ post（证据推进 + 摘要）`：
+
+- **validate**：SHA/来源/完整 `ci:local` 门禁（沿用现行 verify 语义）。
+- **build**：构建 API/Web 镜像，digest 经 **job output 内传**（消除跨 run 手工缝合与 run ID 输入）。
+- **migrate**：**条件步**（迁移注册表有 pending 时执行；apply-migrations 的**五门证据链全保留**，机器实测语义不变）。
+- **deploy**：**recover 的部署逻辑与安全契约全保留**（切换/双探针/恢复点/marker/证据推进）。
+- **post**：证据推进收口 + 发布摘要。
+- **api-restored 兜底保留**；旧 `recover-application-images.yml` 降级为应急通道（N 次稳定后封存）；**新增 `release-rollback.yml`**（输入历史 SHA，应用级回滚，不自动动 schema）。
+
+### 9.3 不动清单（显式）
+
+production environment 审批／`kingturf-erp-production` 并发组锁／known_hosts 钉扎／控制件 sha256 字节校验／恢复点 dump／fail-closed 证据门禁／保护产物（bundle/marker/image_compatibility.json）——全部原样保留进 D1 管道。
+
+### 9.4 D2 = 预生产（后置，D1 稳定后）
+
+同宿主 staging compose（**生产 dump 脱敏灌入**）部署预演 + tag 自动发布；D2 立项与设计在 D1 稳定后另批。
+
+### 9.5 排期与检查点
+
+D1 批次：**UI-M2 之后、U3 之前**；**D-CP1**=主协调审 release.yml/rollback.yml 全 diff 后，才允许首次 dispatch 生产；TD-REL-008（台账）为承接载体。现行契约（PRODUCTION_PARK_HOST.md）不变直至 release.yml 上线。

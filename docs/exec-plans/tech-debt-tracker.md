@@ -1,5 +1,9 @@
 # 技术债台账（tech-debt-tracker）
 
+## 2026-11-19 部署现代化登记（第六次人裁，TD-REL-008）
+
+项目所有者第六次人裁：部署方案需重新审查设计，追加进方案。主协调裁决落盘 [UI 基座计划](../tasks/ui-foundation-program-2026-11-19.md) §9「部署现代化 D1/D2」：诊断四痛点（恢复级入口当常规发布用／迁移-发布两管道接缝=Wave2 78 分钟停机根因／无单一发布动作／无预生产）；**D1=单管道 release.yml 单输入 commit_sha**（validate→build digest 内传 job output→migrate 条件步五门证据保留→deploy recover 逻辑与安全契约全保留→post 证据推进+摘要；api-restored 兜底保留；旧 recover 降级应急通道 N 次稳定后封存；新增 release-rollback.yml 历史 SHA 应用级回滚；**不动清单**=production 审批/并发组/known_hosts/字节校验/恢复点/fail-closed/保护产物全保留）；**D2=同宿主 staging compose 生产 dump 脱敏灌入预演+tag 自动发布**（后置）。排期：D1 插 UI-M2 之后、U3 之前；**D-CP1=主协调审 workflow 全 diff 后才许首次 dispatch 生产**。新登记 **TD-REL-008**（P1）：发布入口为恢复级三输入（commit_sha+双 digest+release-images run ID）手工缝合，迁移-发布两管道接缝致 Wave2 78 分钟停机（含两轮交接缺口修复），需单管道化消除跨 run 手工缝合与接缝——D1 承接，本批仅登记不改 workflow。PRODUCTION_PARK_HOST.md 头部已加「D1 设计中，现行契约不变直至 release.yml 上线」注记。
+
 ## 2026-11-19 测试与 CI 现代化登记（第五次人裁配套，主协调裁决）
 
 分层处置政策落盘（[UI 基座计划](../tasks/ui-foundation-program-2026-11-19.md) §8，零代码/测试本体改动）：**外层黑盒=迁移安全网不动**（P1 e2e/PG 集成/python ops/发布护栏，每域 DoD 增「迁移前后同绿」）；**内层白盒=随域重写**（web 行为测试→组件行为测试，允许新增 devDependency @preact/testing-library；API 路由契约测试→fastify.inject() 注入式；冻结哈希守恒类测试迁移域解旧钉/迁后重钉新基线——经第四/五次人裁授权）；**机制不动**（ci:local 15 步链/门禁阈值/coverage 机制按域重基线记录/发布链 workflow）；**按需适配登记**（frontend-runtime-sources/service-boundary 对 TSX 模块图；structure-gate tsx 纳管 U1 已完成）；**新增四项**（原语组件测试已含、fastify.inject 模式 U3 起、#/ui-kit 视觉回归 U1.5、a11y 基础断言不引 axe）；**稳定选择器政策**（原语一律输出 data-testid `kt-<原语>-<槽位>`，e2e/组件测试只依赖 data-testid/role/label）。实施分批：U1.5/UI-M1.5 与 U3 各域。
