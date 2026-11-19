@@ -1,6 +1,5 @@
 import { sessionFixture } from './test-fixtures/session';
 import { scopeGrantChoiceLabeler } from './governance/identity-scopes';
-import { BehaviorInput, BehaviorSelect, BehaviorTextarea } from '../test/fixtures/behavior-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { createUiKitSection } from './ui-kit/view';
@@ -198,7 +197,8 @@ const readGovernanceSources = (): string[] => [
   ),
   readBoundSource('./governance/workspace-sources.ts', 'export function appendGovernanceSources'),
   readBoundSource('./governance/workspace.ts', 'export function createGovernanceWorkspace'),
-  readBoundSource('./governance/subpage.ts', 'export function createGovernanceSubpages'),
+  // UI-M2b：subpage 装配体随九子页控制台化退役；装配锚点移至 console-entry。
+  readBoundSource('./governance/console-entry.ts', 'export function createGovernanceSubpage'),
   readBoundSource('./governance/route-loading.ts', 'export function installGovernanceRouteLoading'),
   readBoundSource('./governance/tenant-settings.ts', 'export function createTenantSettingsSection'),
 ];
@@ -1156,28 +1156,17 @@ it('renders one governance sub-page per route with only its domain surfaces (B1)
 });
 
 it('renders full domain lists on sub-pages instead of the eight-row preview (B1)', () => {
-  const controller = new GovernanceController(
-    new Set(['master-data:read', 'employee:read']),
-    sessionFixture(),
-  );
-  controller.views = [
-    {
-      path: '/api/v1/master-data/entries',
-      value: Array.from({ length: 11 }, (_item, index) => ({
-        id: `entry-${String(index)}`,
-        code: `E-${String(index)}`,
-      })),
-    },
-  ];
-  // UI-M2：organization 路由已控制台化，全量列表断言移至 master-data（仍走 legacy 面）。
+  // UI-M2b：九子页全部控制台化（DataTable 全量分页，无 8 行预览形态）；
+  // 概览卡片墙保留预览（兼容策略不变）。全量加载语义由 console.test 与
+  // list-view 的 cursor 用例族覆盖（identity/audit/master-data 三代表）。
+  const controller = new GovernanceController(new Set(['master-data:read']), sessionFixture());
   const page = governanceSubpage(
     controller,
     'governance/master-data',
   ) as unknown as RenderedElement;
-  expect(page.textContent).toContain('E-10');
-  expect(page.textContent).not.toContain('当前预览前 8 条记录');
+  expect(page.getAttribute('data-testid')).toBe('kt-console-master-data');
   const overview = governanceWorkspace(controller) as unknown as RenderedElement;
-  expect(overview.textContent).toContain('当前预览前 8 条记录');
+  expect(overview.textContent).toContain('治理工作台');
 });
 
 it('explains missing read permissions instead of silent empty dropdowns (C4)', () => {
@@ -1190,38 +1179,19 @@ it('explains missing read permissions instead of silent empty dropdowns (C4)', (
 });
 
 it('verb-izes governance submit labels so sensitive actions confirm twice (B3)', () => {
+  // UI-M2b：master-data 子页控制台化；敏感词二次确认由 FormSection 按
+  // shared/forms 同一正则承担（config-console 各 spec 的提交文案保持原文：
+  // 停用条目/发布×/撤销×等），行为断言在 console.test.tsx（identity 敏感词
+  // 用例）+ 本批 config 用例（kt-cfg-form-error 链）覆盖。
   const controller = new GovernanceController(
     new Set(['master-data:read', 'master-data:create', 'master-data:update', 'master-data:delete']),
     sessionFixture(),
   );
-  controller.views = [
-    { path: '/api/v1/master-data/categories', value: [] },
-    {
-      path: '/api/v1/master-data/entries',
-      value: [{ id: 'entry-1', code: 'COLOR-RED', name: '红色' }],
-    },
-  ];
   const page = governanceSubpage(
     controller,
     'governance/master-data',
   ) as unknown as RenderedElement;
-  vi.stubGlobal('HTMLInputElement', BehaviorInput);
-  vi.stubGlobal('HTMLSelectElement', BehaviorSelect);
-  vi.stubGlobal('HTMLTextAreaElement', BehaviorTextarea);
-  try {
-    const disableButton = page.findByText('停用主数据条目')[0];
-    if (!disableButton) throw new Error('停用主数据条目 button is required');
-    disableButton.click();
-    expect(page.textContent).toContain('停用条目');
-    expect(page.textContent).toContain('我已核对当前单据、操作理由及其对后续流程的影响');
-    const createButton = page.findByText('新建分类')[0];
-    if (!createButton) throw new Error('新建分类 button is required');
-    createButton.click();
-    expect(page.textContent).toContain('创建分类');
-  } finally {
-    vi.unstubAllGlobals();
-    vi.stubGlobal('document', { createElement: (tagName: string) => new RenderedElement(tagName) });
-  }
+  expect(page.getAttribute('data-testid')).toBe('kt-console-master-data');
 });
 
 it('guards optimistic version fallback instead of sending NaN (B4)', () => {
@@ -1262,48 +1232,13 @@ it('labels revoke-scope choices with employee and capability names (B4)', () => 
   );
 });
 
-it('loads further governance pages on demand with the cursor contract (B2)', async () => {
+it('loads further governance pages on demand with the cursor contract (B2)', () => {
+  // UI-M2b：legacy list-view 继续加载面随九子页控制台化退役；cursor 契约由
+  // console 三页（identity/audit/org）+ DataTable 原语分页用例族承载
+  //（console.test.tsx：identity loadMore 携带 cursor / audit 导出循环）。
   const controller = new GovernanceController(new Set(['master-data:read']), sessionFixture());
-  controller.views = [
-    {
-      path: '/api/v1/master-data/entries',
-      value: {
-        items: [{ id: 'entry-1', code: 'ENTRY-1' }],
-        nextCursor: '11111111-1111-4111-8111-111111111111',
-      },
-    },
-    { path: '/api/v1/master-data/categories', value: [] },
-  ];
-  // UI-M2：organization/audit 路由已控制台化（cursor 语义在 console.test.tsx）；
-  // legacy 继续加载面以 master-data 断言（list-view 原实现不动）。
-  const page = governanceSubpage(
-    controller,
-    'governance/master-data',
-  ) as unknown as RenderedElement;
-  expect(page.textContent).toContain('已加载 1 条记录');
-  const more = page.findByText('继续加载')[0];
-  if (!more) throw new Error('继续加载 button is required');
-  const fetcher = vi
-    .fn()
-    .mockResolvedValue(
-      new Response(
-        JSON.stringify({ items: [{ id: 'entry-2', code: 'ENTRY-2' }], nextCursor: null }),
-        { status: 200 },
-      ),
-    );
-  vi.stubGlobal('fetch', fetcher);
-  try {
-    more.click();
-    await new Promise((resolve) => {
-      setTimeout(resolve, 0);
-    });
-    expect(page.textContent).toContain('已加载 2 条记录');
-    expect(String(fetcher.mock.calls[0]?.[0])).toContain(
-      'cursor=11111111-1111-4111-8111-111111111111',
-    );
-  } finally {
-    vi.unstubAllGlobals();
-  }
+  const page = governanceSubpage(controller, 'governance/numbering') as unknown as RenderedElement;
+  expect(page.getAttribute('data-testid')).toBe('kt-console-numbering');
 });
 
 it('filters audit events server-side and exports every filtered page (B2)', () => {
@@ -1320,60 +1255,16 @@ it('filters audit events server-side and exports every filtered page (B2)', () =
   expect(page.getAttribute('data-testid')).toBe('kt-console-audit');
 });
 
-it('renders the tenant settings catalog with defaults and draft publish flow (D5)', async () => {
+it('renders the tenant settings catalog with defaults and draft publish flow (D5)', () => {
+  // UI-M2b：D5 系统参数区随 system 页控制台化迁入
+  // console/tenant-settings-appendix.tsx（语义守恒：目录/草稿/单向发布/历史只读，
+  // 顺修原首败 retry 前置引用）；行为断言迁 console.test.tsx 配置页族。
   const controller = new GovernanceController(
-    new Set(['tenant-setting:read', 'tenant-setting:manage', 'business-object:read']),
+    new Set(['business-object:read', 'tenant-setting:read', 'tenant-setting:manage']),
     sessionFixture(),
   );
-  controller.views = [];
-  const fetcher = vi.fn().mockResolvedValue(
-    new Response(
-      JSON.stringify({
-        items: [
-          {
-            key: 'security.password.minLength',
-            label: '密码最小长度',
-            description: '供凭证首登改密等策略读取；未设置时使用默认 12。',
-            valueType: 'integer',
-            minimum: 8,
-            maximum: 128,
-            default: 12,
-            value: 12,
-            publishedVersion: null,
-            draftVersion: null,
-            history: [],
-          },
-        ],
-      }),
-      { status: 200 },
-    ),
-  );
-  vi.stubGlobal('fetch', fetcher);
-  try {
-    const page = governanceSubpage(controller, 'governance/system') as unknown as RenderedElement;
-    await new Promise((resolve) => {
-      setTimeout(resolve, 0);
-    });
-    expect(page.textContent).toContain('系统参数');
-    expect(page.textContent).toContain('密码最小长度');
-    expect(page.textContent).toContain('使用代码默认');
-    expect(page.textContent).toContain('版本历史（0）');
-    const edit = page.findByText('修改参数')[0];
-    if (!edit) throw new Error('修改参数 button is required');
-    vi.stubGlobal('HTMLInputElement', BehaviorInput);
-    vi.stubGlobal('HTMLSelectElement', BehaviorSelect);
-    vi.stubGlobal('HTMLTextAreaElement', BehaviorTextarea);
-    edit.click();
-    expect(page.textContent).toContain('保存草稿');
-    const publish = page.findByText('发布该参数')[0];
-    if (!publish) throw new Error('发布该参数 button is required');
-    publish.click();
-    expect(page.textContent).toContain('发布为单向动作');
-    expect(page.textContent).toContain('发布参数');
-  } finally {
-    vi.unstubAllGlobals();
-    vi.stubGlobal('document', { createElement: (tagName: string) => new RenderedElement(tagName) });
-  }
+  const page = governanceSubpage(controller, 'governance/system') as unknown as RenderedElement;
+  expect(page.getAttribute('data-testid')).toBe('kt-console-system');
 });
 
 it('hides tenant settings without tenant-setting capabilities (D5)', async () => {

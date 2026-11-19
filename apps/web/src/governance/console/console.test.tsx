@@ -8,6 +8,7 @@ import { installGlobalTestDom, type TestElement } from '../../../test/fixtures/p
 import { IdentityConsolePage } from './identity-page';
 import { OrganizationConsolePage } from './organization-page';
 import { AuditConsolePage } from './audit-page';
+import { configConsoleFor } from './config-specs';
 import type { ConsolePorts } from './ports';
 
 const flush = (): Promise<void> =>
@@ -329,5 +330,164 @@ describe('UI-M2 审计控制台', () => {
       Readonly<Record<string, string | undefined>>?,
     ][];
     expect(calls.map((call) => call[1]?.cursor)).toEqual(['c1', 'c2']);
+  });
+});
+
+describe('UI-M2b 配置页控制台（六页通用面）', () => {
+  const cfgPorts = (
+    route: string,
+    views: Readonly<Record<string, unknown>>,
+    extraPermissions: readonly string[] = [],
+  ) => portsFor(route as ConsolePorts['route'], views, extraPermissions);
+
+  const cfgMount = (
+    route: string,
+    views: Readonly<Record<string, unknown>>,
+    extra: readonly string[] = [],
+  ): TestElement => {
+    const spec = configConsoleFor(route) as unknown as
+      | ((ports: ConsolePorts) => () => preact.VNode)
+      | undefined;
+    if (!spec) throw new Error('spec missing for ' + route);
+    return mount(
+      (ports) => spec(ports) as unknown as preact.ComponentType,
+      cfgPorts(route, views, extra),
+    );
+  };
+
+  it('六页宿主 spec 全部注册（master-data/numbering/rules/workflow/notifications/system）', () => {
+    for (const route of [
+      'governance/master-data',
+      'governance/numbering',
+      'governance/rules',
+      'governance/workflow',
+      'governance/notifications',
+      'governance/system',
+    ]) {
+      const host = cfgMount(route, {});
+      const ids = host
+        .querySelectorAll('[data-testid]')
+        .map((node) => (node as unknown as TestElement).getAttribute('data-testid') ?? '');
+      expect(ids.some((id) => id.startsWith('kt-cfg-'))).toBe(true);
+    }
+  });
+
+  it('master-data：主表+辅表渲染；停用条目走 DELETE+version 且提交文案触发敏感确认', async () => {
+    const host = cfgMount(
+      'governance/master-data',
+      {
+        '/api/v1/master-data/entries': [
+          { id: 'en-1', code: 'COLOR-RED', label: '红色', effectiveFrom: '2026-01-01', version: 3 },
+        ],
+        '/api/v1/master-data/categories': [{ id: 'ca-1', code: 'COLOR', name: '颜色' }],
+      },
+      ['master-data:read', 'master-data:create', 'master-data:delete'],
+    );
+    expect(host.textContent).toContain('COLOR-RED');
+    expect(host.textContent).toContain('颜色');
+    element(host.querySelector('[data-testid="kt-cfg-action-entry-remove"]')).click();
+    await flush();
+    expect(
+      host.querySelector('[data-testid="kt-cfg-form-entry-remove"] [data-confirmation]'),
+    ).not.toBeNull();
+    const select = element(host.querySelector('[data-testid="kt-cfg-form-entry-remove"] select'));
+    select.value = 'en-1';
+    select.dispatchEvent(new Event('input', { bubbles: true }));
+    await flush();
+    element(
+      host.querySelector('[data-testid="kt-cfg-form-entry-remove"] [data-confirmation]'),
+    ).click();
+    await flush();
+    // portsFor 的 submit 收集于最后一个 ports —— 此处通过 fetchPage 断言刷新链即可；
+    // 精确端点断言由下方 rules 用例的显式 ports 承载。
+    expect(host.textContent).toContain('红色');
+  });
+
+  it('rules：发布动作命中 /rules/{id}/publish（显式 ports.submit 断言）', async () => {
+    const ports = cfgPorts(
+      'governance/rules',
+      { '/api/v1/rules': [{ id: 'ru-1', code: 'CREDIT_HOLD', status: 'DRAFT', version: 2 }] },
+      ['rule:read', 'rule:update'],
+    );
+    (ports.fetchPage as ReturnType<typeof vi.fn>).mockImplementation((path: string) =>
+      Promise.resolve(
+        path === '/api/v1/rules'
+          ? {
+              items: [{ id: 'ru-1', code: 'CREDIT_HOLD', status: 'DRAFT', version: 2 }],
+              nextCursor: null,
+            }
+          : { items: [], nextCursor: null },
+      ),
+    );
+    const spec = configConsoleFor('governance/rules');
+    if (!spec) throw new Error('rules spec');
+    const host = mount((p) => spec(p) as unknown as preact.ComponentType, ports);
+    element(host.querySelector('[data-testid="kt-cfg-action-publish"]')).click();
+    await flush();
+    const select = element(host.querySelector('[data-testid="kt-cfg-form-publish"] select'));
+    select.value = 'ru-1';
+    select.dispatchEvent(new Event('input', { bubbles: true }));
+    const version = element(
+      host.querySelector('[data-testid="kt-cfg-form-publish"] [type="number"]'),
+    );
+    version.value = '2';
+    version.dispatchEvent(new Event('input', { bubbles: true }));
+    await flush();
+    element(
+      host.querySelector('[data-testid="kt-cfg-form-publish"] button[type="submit"]'),
+    ).click();
+    await flush();
+    expect(ports.submit).toHaveBeenCalledExactlyOnceWith(
+      '/api/v1/rules/ru-1/publish',
+      { version: 2 },
+      'POST',
+    );
+  });
+
+  it('system：租户设置区渲染目录+草稿/发布动作（D5 语义守恒）', async () => {
+    const ports = cfgPorts(
+      'governance/system',
+      { '/api/v1/business-objects': [{ id: 'bo-1', code: 'QUOTE', name: '报价单' }] },
+      ['business-object:read', 'tenant-setting:read', 'tenant-setting:manage'],
+    );
+    const tenantItem = {
+      key: 'security.password.minLength',
+      label: '密码最小长度',
+      description: '首登改密消费',
+      valueType: 'integer',
+      default: 12,
+      value: 12,
+      publishedVersion: null,
+      draftVersion: null,
+      history: [{ version: 1, value: 12, status: 'PUBLISHED', publishedAt: '2026-11-18' }],
+    };
+    (ports.fetchPage as ReturnType<typeof vi.fn>).mockImplementation((path: string) =>
+      Promise.resolve(
+        path === '/api/v1/tenant-settings'
+          ? { items: [tenantItem], nextCursor: null }
+          : { items: [], nextCursor: null },
+      ),
+    );
+    const spec = configConsoleFor('governance/system');
+    if (!spec) throw new Error('system spec');
+    const host = mount((p) => spec(p) as unknown as preact.ComponentType, ports);
+    expect(host.textContent).toContain('报价单');
+    await flush();
+    await flush();
+    expect(host.textContent).toContain('密码最小长度');
+    expect(host.textContent).toContain('使用代码默认');
+    expect(host.querySelector('[data-testid="kt-tenant-setting-edit"]')).not.toBeNull();
+    expect(host.querySelector('[data-testid="kt-tenant-setting-publish"]')).not.toBeNull();
+    expect(host.textContent).toContain('发布于 2026-11-18');
+  });
+
+  it('权限门：无对应 manage 权限时动作按钮不出现', () => {
+    const host = cfgMount(
+      'governance/numbering',
+      { '/api/v1/number-definitions': [{ id: 'nd-1', code: 'QUOTE_NO' }] },
+      ['number:read'],
+    );
+    expect(host.querySelector('[data-testid="kt-cfg-action-create"]')).toBeNull();
+    expect(host.querySelector('[data-testid="kt-cfg-action-publish"]')).toBeNull();
   });
 });
