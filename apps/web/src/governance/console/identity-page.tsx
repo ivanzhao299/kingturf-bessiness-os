@@ -199,6 +199,15 @@ const IdentityView = (state: IdentityState) => (
   </div>
 );
 
+// UI-M2（G2 压平）：刷新后角色清单去重合并（纯函数，避免工厂内嵌套层级）。
+const mergeRoles = (current: ProfileRow[], incoming: readonly unknown[]): void => {
+  for (const item of incoming) {
+    const record = recordOf(item);
+    if (typeof record.id === 'string' && !current.some((role) => role.id === record.id))
+      current.push(record);
+  }
+};
+
 export function IdentityConsolePage(ports: ConsolePorts) {
   const initialProfiles = ports.initialView('/api/v1/user-access-profiles');
   const rolesLoaded = ports.loaded('/api/v1/roles');
@@ -226,11 +235,7 @@ export function IdentityConsolePage(ports: ConsolePorts) {
       ]);
       profiles.value = { items: freshProfiles.items, nextCursor: freshProfiles.nextCursor };
       loadError.value = '';
-      for (const item of freshRoles.items) {
-        const record = recordOf(item);
-        if (typeof record.id === 'string' && !roles.some((role) => role.id === record.id))
-          roles.push(record);
-      }
+      mergeRoles(roles, freshRoles.items);
     } catch (error) {
       loadError.value = error instanceof Error ? error.message : '用户访问档案加载失败';
     }
