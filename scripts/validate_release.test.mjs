@@ -8,8 +8,9 @@ import { test } from 'node:test';
 import { validateRelease } from './validate_release.mjs';
 
 const canonical = 'https://github.com/ivanzhao299/kingturf-bessiness-os.git';
+// A-F1（A3-P2-9）：deploy-production.yml 已删除；早门真执行测试改用 apply-migrations 的同名 gate。
 const workflow = readFileSync(
-  new URL('../.github/workflows/deploy-production.yml', import.meta.url),
+  new URL('../.github/workflows/apply-migrations.yml', import.meta.url),
   'utf8',
 );
 const context = { repository: 'ivanzhao299/kingturf-bessiness-os', workflowRef: 'refs/heads/main' };
@@ -230,6 +231,8 @@ test('rejects a fork or non-main workflow regardless of a valid candidate SHA', 
   }
 });
 
+// A-F1（A3-P2-9）：deploy-production.yml 编排用例已随 workflow 删除退役（历史见 git）；
+// stepRun 现仅服务 apply-migrations 早门真执行测试。
 function stepRun(name) {
   const text = workflow.split(`      - name: ${name}\n`)[1];
   assert.ok(text, name);
@@ -288,297 +291,8 @@ test('the CLI rejects invalid input without writing Actions outputs', (t) => {
   assert.equal(existsSync(join(root, 'INJECTION')), false);
 });
 
-test('workflow binds verification and deployment to the validated SHA and fixed production lock', () => {
-  const validate = workflow.split('  validate:\n')[1].split('  verify:\n')[0];
-  const verify = workflow.split('  verify:\n')[1].split('  deploy:\n')[0];
-  const deploy = workflow.split('  deploy:\n')[1];
-  assert.equal(workflow.match(/inputs\.commit_sha/g)?.length, 1);
-  assert.match(validate, /ref: \$\{\{ github\.workflow_sha \}\}/);
-  assert.doesNotMatch(validate, /secrets\.|environment: production/);
-  assert.match(verify, /needs: validate/);
-  assert.match(deploy, /needs: \[validate, verify\]/);
-  for (const job of [verify, deploy]) {
-    assert.match(job, /ref: \$\{\{ needs\.validate\.outputs\.commit_sha \}\}/);
-    assert.match(job, /test "\$\(git rev-parse HEAD\)" = "\$RELEASE_SHA"/);
-  }
-  assert.match(
-    deploy,
-    /concurrency:\n {6}group: kingturf-erp-production\n {6}cancel-in-progress: false/,
-  );
-  assert.doesNotMatch(validate + verify, /concurrency:/);
-  assert.doesNotMatch(
-    readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8'),
-    /concurrency:/,
-  );
-  assert.ok(deploy.indexOf('Revalidate main history') < deploy.indexOf('ssh-private-key:'));
-  assert.match(deploy, /ref: \$\{\{ needs\.validate\.outputs\.control_sha \}\}/);
-  assert.match(deploy, /\.release-control\/scripts\/cleanup_kingturf_release_artifacts\.sh/);
-  assert.match(deploy, /--exclude '\.git\/' --exclude '\.release-control\/'/);
-  assert.ok(
-    deploy.indexOf('Create production recovery point') <
-      deploy.indexOf('Synchronize configured website ingest secret'),
-  );
-  assert.ok(
-    deploy.indexOf('Required production hostname HTTPS probe') <
-      deploy.indexOf('Record verified production release'),
-  );
-  assert.ok(
-    deploy.indexOf('Record verified production release') <
-      deploy.indexOf('Retain latest KingTurf recovery point'),
-  );
-  assert.doesNotMatch(stepRun('Deploy and verify'), /printf.*> \.release-sha/);
-});
-
 // Replay the workflow's real shell in an owned temporary directory. Every network,
 // container and privileged command is replaced before execution; no host is contacted.
-function deploymentFixture(t) {
-  const root = mkdtempSync(join(tmpdir(), 'kingturf-deploy-simulation-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
-  const bin = join(root, 'bin');
-  mkdirSync(bin);
-  const release = join(root, 'release');
-  mkdirSync(release);
-  const previous = 'b'.repeat(40),
-    candidate = 'a'.repeat(40);
-  writeFileSync(join(release, '.release-sha'), previous);
-  writeFileSync(
-    join(release, '.env.production'),
-    `WEBSITE_LEAD_INGEST_SECRET=synthetic-old\nKINGTURF_API_DIGEST=sha256:${'a'.repeat(64)}\nKINGTURF_WEB_DIGEST=sha256:${'b'.repeat(64)}\n`,
-  );
-  const tools = {
-    ssh: 'for command do :; done\ncommand=$(printf "%s" "$command" | sed "s#/etc/nginx/conf.d/erp.kingturf.cn.conf#$SIMULATED_NGINX_CONF#g")\nexec bash -c "$command"',
-    docker: `printf 'docker %s\\n' "$*" >> "$PROBE_LOG"
-case "$*" in
-  *'exec -T postgres'*) [ "$MODE" != dump-failure ] || exit 1; printf 'synthetic dump';;
-  *'up -d --build'*) [ "$MODE" != build-failure ] || exit 1;;
-  *'config --format json'*) [ "$MODE" != build-failure ] || exit 1; printf '{"services":{"api":{"image":"x@sha256:%s"}}}' "$CANDIDATE";;
-  *@sha256:*) [ "$MODE" != build-failure ] || exit 1;;
-  *save*) :;;
-  *load*) :;;
-  *'image inspect'*) printf 'loaded\n';;
-esac`,
-    curl: `case "$*" in
-  *https://erp.kingturf.cn/*) case "$*" in *--resolve*) :;; *) [ "$MODE" != public-failure ] || exit 22;; esac;;
-esac
-case "$*" in
-  */version*) if [ "$MODE" = version-failure ]; then printf '{"sha":"wrong"}'; else printf '{"sha":"%s"}' "$CANDIDATE"; fi;;
-  */ready*) [ "$MODE" != ready-failure ] || exit 22; printf '{"status":"ready"}';;
-  */health*) printf '{"status":"ok"}';;
-esac`,
-    sha256sum: `printf '%064d  %s\\n' 1 "$*"`,
-    test: `case "$*" in *'/etc/nginx/conf.d/erp.kingturf.cn.conf'*) exit 0;; esac
-exec /usr/bin/test "$@"`,
-    sleep: ':',
-    rsync: ':',
-    sudo: ':',
-    scp: ':',
-    cat: `case "$*" in
-  .release-control/*) [ "$MODE" != cleanup-read-failure ] || exit 1;;
-esac
-exec /usr/bin/cat "$@"`,
-  };
-  for (const [name, script] of Object.entries(tools))
-    writeFileSync(join(bin, name), `#!/bin/sh\nset -eu\n${script}\n`, { mode: 0o700 });
-  const releaseScripts = join(release, 'scripts');
-  mkdirSync(releaseScripts, { recursive: true });
-  writeFileSync(
-    join(releaseScripts, 'release_orchestrator.py'),
-    'import json,os,sys\nprint(json.dumps({"stub": sys.argv[1]}))\nsys.exit(2 if os.environ.get("MODE") == "gates-failure" and sys.argv[1] == "check-evidence" else 0)\n',
-  );
-  const cleanupDirectory = join(root, '.release-control', 'scripts');
-  mkdirSync(cleanupDirectory, { recursive: true });
-  writeFileSync(
-    join(cleanupDirectory, 'cleanup_kingturf_release_artifacts.sh'),
-    'printf "cleanup\\n" >> "$PROBE_LOG"\n[ "$MODE" != cleanup-failure ]\n',
-  );
-  const simulatedNginx = join(root, 'synthetic-nginx.conf');
-  writeFileSync(simulatedNginx, 'synthetic independently controlled ingress');
-  const runId = `batch1-${root.split('/').at(-1)}`;
-  const log = join(root, 'operations');
-  const env = {
-    ...process.env,
-    PATH: `${bin}:${process.env.PATH}`,
-    RELEASE_SHA: candidate,
-    CANDIDATE: candidate,
-    PROBE_LOG: log,
-    GITHUB_RUN_ID: runId,
-    GITHUB_RUN_ATTEMPT: '1',
-    WEBSITE_LEAD_INGEST_SECRET: 'synthetic-new',
-    SSH_KNOWN_HOSTS_FILE: join(root, 'synthetic-known-hosts'),
-    SIMULATED_NGINX_CONF: simulatedNginx,
-  };
-  const names = [
-    'Stage A read-only verify image digests against evidence',
-    'Stage B first-write authorization all six evidence gates must pass',
-    'Create production recovery point',
-    'Synchronize configured website ingest secret',
-    'Load digest-pinned images onto the production host',
-    'Sync isolated KingTurf release',
-    'Verify unchanged production Nginx ingress',
-    'Deploy and verify',
-    'Required production hostname HTTPS probe',
-    'Record verified production release',
-    'Retain latest KingTurf recovery point and active images',
-  ];
-  const execute = (mode) => {
-    const completed = [];
-    for (const name of names) {
-      const script = stepRun(name).replace(/\$\{\{\s*([^}]+)\s*\}\}/g, (_, key) => {
-        const values = {
-          'secrets.PROD_SSH_PORT': '22',
-          'secrets.PROD_SSH_USER': 'synthetic',
-          'secrets.PROD_SSH_HOST': 'no-network.invalid',
-          'secrets.PROD_DEPLOY_PATH': release,
-          'github.run_id': runId,
-          'github.run_attempt': '1',
-        };
-        assert.ok(Object.hasOwn(values, key.trim()), key);
-        return values[key.trim()];
-      });
-      const result = spawnSync('bash', ['-e', '-o', 'pipefail', '-c', script], {
-        cwd: root,
-        env: { ...env, MODE: mode },
-        encoding: 'utf8',
-      });
-      if (result.status !== 0) return { failed: name, result, completed };
-      completed.push(name);
-    }
-    return { completed };
-  };
-  return { root, release, previous, candidate, log, execute };
-}
-
-test('a non-conflicting release promotes the exact version only after all probes and then cleans up', (t) => {
-  const f = deploymentFixture(t);
-  const result = f.execute('success');
-  assert.equal(result.failed, undefined, result.result?.stderr);
-  assert.equal(result.completed.length, 11);
-  assert.equal(readFileSync(join(f.release, '.release-sha'), 'utf8'), f.candidate);
-  assert.match(readFileSync(f.log, 'utf8'), /cleanup/);
-  assert.doesNotMatch(
-    stepRun('Retain latest KingTurf recovery point and active images'),
-    /\bscp\b|\/tmp\//,
-  );
-});
-
-test('a failed recovery dump prevents any secret synchronization and promotion', (t) => {
-  const f = deploymentFixture(t);
-  assert.equal(f.execute('dump-failure').failed, 'Create production recovery point');
-  const env = readFileSync(join(f.release, '.env.production'), 'utf8');
-  assert.match(env, /WEBSITE_LEAD_INGEST_SECRET=synthetic-old/);
-  assert.doesNotMatch(env, /synthetic-new/);
-  assert.equal(readFileSync(join(f.release, '.release-sha'), 'utf8'), f.previous);
-  assert.doesNotMatch(readFileSync(f.log, 'utf8'), /cleanup/);
-});
-
-test('an evidence-gate failure stops before the recovery point and any production write', (t) => {
-  const f = deploymentFixture(t);
-  assert.equal(
-    f.execute('gates-failure').failed,
-    'Stage B first-write authorization all six evidence gates must pass',
-  );
-  const env = readFileSync(join(f.release, '.env.production'), 'utf8');
-  assert.match(env, /WEBSITE_LEAD_INGEST_SECRET=synthetic-old/);
-  assert.doesNotMatch(env, /synthetic-new/);
-  assert.equal(readFileSync(join(f.release, '.release-sha'), 'utf8'), f.previous);
-  assert.equal(existsSync(join(f.release, '.release-backups')), false);
-  // No docker probe ran at all, so the probe log was never even created.
-  assert.equal(existsSync(f.log), false);
-});
-
-for (const mode of ['build-failure', 'ready-failure', 'version-failure', 'public-failure']) {
-  test(`${mode} preserves the previous verified marker and recovery dump without cleanup`, (t) => {
-    const f = deploymentFixture(t);
-    const result = f.execute(mode);
-    assert.equal(
-      result.failed,
-      mode === 'public-failure'
-        ? 'Required production hostname HTTPS probe'
-        : mode === 'build-failure'
-          ? 'Load digest-pinned images onto the production host'
-          : 'Deploy and verify',
-    );
-    assert.equal(readFileSync(join(f.release, '.release-sha'), 'utf8'), f.previous);
-    assert.doesNotMatch(readFileSync(f.log, 'utf8'), /cleanup/);
-    const metadata = execFileSync(
-      'find',
-      [join(f.release, '.release-backups'), '-name', '*.metadata'],
-      { encoding: 'utf8' },
-    ).trim();
-    assert.match(readFileSync(metadata, 'utf8'), new RegExp(`previous_sha=${f.previous}`));
-    const dump = metadata.replace(/\.metadata$/, '.dump');
-    assert.equal(readFileSync(dump, 'utf8'), 'synthetic dump');
-  });
-}
-
-test('an explicit rerun after a failed update can promote the same candidate', (t) => {
-  const f = deploymentFixture(t);
-  assert.equal(
-    f.execute('build-failure').failed,
-    'Load digest-pinned images onto the production host',
-  );
-  assert.equal(f.execute('success').failed, undefined);
-  assert.equal(readFileSync(join(f.release, '.release-sha'), 'utf8'), f.candidate);
-});
-
-test('cleanup failure does not stage a remote script or falsify the already verified marker', (t) => {
-  const f = deploymentFixture(t);
-  assert.equal(
-    f.execute('cleanup-failure').failed,
-    'Retain latest KingTurf recovery point and active images',
-  );
-  assert.doesNotMatch(
-    stepRun('Retain latest KingTurf recovery point and active images'),
-    /\bscp\b|\/tmp\//,
-  );
-  assert.equal(readFileSync(join(f.release, '.release-sha'), 'utf8'), f.candidate);
-});
-
-test('a missing cleanup control fails the release instead of only running probes', (t) => {
-  const f = deploymentFixture(t);
-  rmSync(join(f.root, '.release-control/scripts/cleanup_kingturf_release_artifacts.sh'));
-  assert.equal(
-    f.execute('success').failed,
-    'Retain latest KingTurf recovery point and active images',
-  );
-  assert.doesNotMatch(readFileSync(f.log, 'utf8'), /cleanup/);
-});
-
-test('a cleanup read failure cannot be masked by the probe tail or successful SSH', (t) => {
-  const f = deploymentFixture(t);
-  assert.equal(
-    f.execute('cleanup-read-failure').failed,
-    'Retain latest KingTurf recovery point and active images',
-  );
-  assert.doesNotMatch(readFileSync(f.log, 'utf8'), /cleanup/);
-});
-
-test('deployment verification uses the guarded disposable test target and full candidate quality gate', () => {
-  const verify = workflow.split('  verify:\n')[1].split('  deploy:\n')[0];
-  assert.match(verify, /POSTGRES_DB: kingturf_test/);
-  assert.match(verify, /DATABASE_URL: postgresql:\/\/kingturf_test:.*\/kingturf_test/);
-  assert.match(verify, /postgres:17\.7-alpine3\.23/);
-  assert.match(verify, /- run: pnpm ci:local/);
-  assert.doesNotMatch(verify, /kingturf_ci/);
-});
-
-test('all production transports pin host keys and run read-only inventory before backups or writes', () => {
-  const deploy = workflow.split('  deploy:\n')[1];
-  assert.doesNotMatch(deploy, /ssh-keyscan/);
-  assert.ok(deploy.indexOf('Pin independently verified') < deploy.indexOf('ssh-private-key:'));
-  assert.ok(
-    deploy.indexOf('Read-only production storage') <
-      deploy.indexOf('Create production recovery point'),
-  );
-  for (const line of deploy.split('\n').filter((line) => /\b(?:ssh|scp) -(?:p|P) /u.test(line)))
-    assert.fail(`Unpinned direct SSH transport: ${line}`);
-  assert.match(deploy, /StrictHostKeyChecking=yes/);
-  assert.match(deploy, /UserKnownHostsFile=/);
-  assert.match(
-    stepRun('Read-only production storage and candidate schema preflight'),
-    /--manifest packages\/database\/migrations/,
-  );
-});
 
 function hostKeyFixture(t) {
   const root = mkdtempSync(join(tmpdir(), 'kingturf-pinned-host-'));
@@ -593,27 +307,6 @@ function hostKeyFixture(t) {
   return { root, pub, output, asset };
 }
 
-test('an independently pinned valid host key authorizes transports without network discovery', (t) => {
-  const f = hostKeyFixture(t);
-  writeFileSync(join(f.asset, 'production_known_hosts'), `deployment.invalid ${f.pub}`);
-  const result = spawnSync(
-    'bash',
-    ['-e', '-o', 'pipefail', '-c', stepRun('Pin independently verified production SSH host key')],
-    {
-      cwd: f.root,
-      env: {
-        ...process.env,
-        RUNNER_TEMP: f.root,
-        GITHUB_ENV: f.output,
-        PROD_SSH_HOST: 'deployment.invalid',
-        PROD_SSH_PORT: '22',
-      },
-      encoding: 'utf8',
-    },
-  );
-  assert.equal(result.status, 0, result.stderr);
-  assert.match(readFileSync(f.output, 'utf8'), /SSH_KNOWN_HOSTS_FILE=/);
-});
 for (const mode of ['missing', 'wrong-host', 'invalid-key']) {
   test(`host key ${mode} cannot authorize production SSH`, (t) => {
     const f = hostKeyFixture(t);
