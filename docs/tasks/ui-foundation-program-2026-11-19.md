@@ -30,17 +30,22 @@ ADR-0014、本计划、台账顶部登记段+TD-UI-001、core-beliefs #8 注记�
 4. 结构门禁纳管 `packages/ui`。
    **DoD（=UI-CP1）**：完整 `pnpm ci:local` 0；提交 `feat(ui): add component foundation primitives and design tokens [已测试]`；push；**停 UI-CP1 报告**（原语清单+测试结果+demo 路由说明+`pnpm why` 证明仅 2 个新依赖）。
 
+### U1.5 测试与 CI 现代化实施批（UI-CP1 复核后、U2 前或并行，范围见 §8）
+
+原语输出 data-testid（§8.6 命名规范落入 packages/ui 原语与 tokens 文档）；登记 devDependency `@preact/testing-library`；#/ui-kit Playwright 视觉回归（截图比对）；组件测试内建基础 a11y 断言。
+**DoD（并入 UI-CP2 门禁）**：data-testid 全原语覆盖；视觉回归基线入库并过 ci:local；a11y 断言绿；`pnpm why` 证明零新运行时依赖（devDep 除外）。
+
 ### U3 前置：U2 governance 试点主从化（UI-CP1 复核通过后另下指令）
 
 - **身份页** = 用户主列表 + 详情抽屉聚合 profile/角色/授权；
 - **组织页** = 左树右表；
 - **审计** = 查询工作台。
-  **DoD（=UI-CP2）**：三页按四类解剖模板对表 100% 合规；授权角色操作 5→2 步度量达标（§4）；governance 域既有行为测试同批重写并双标签注明（§5）；完整 `pnpm ci:local` 0。
+  **DoD（=UI-CP2）**：三页按四类解剖模板对表 100% 合规；授权角色操作 5→2 步度量达标（§4）；governance 域既有行为测试同批重写并双标签注明（§5）；完整 `pnpm ci:local` 0；**外层黑盒迁移前后同绿**（§8.1：P1 e2e/PG 集成/python ops/发布护栏）。
 
 ### U3 commercial+CRM 分域全栈迁移（UI Preact 重写 + 该域 API 路由 Fastify/zod 化同批完成；捆绑 TD-WEB-001 巨石债与 TD-BOUND-002 分域清偿，ADR-0015）
 
 **每域=UI Preact 重写+该域 API 路由 Fastify/zod 化同批完成（ADR-0015 分域全栈迁移）**；UI 侧按列表族→详情族→配置族分批迁入组件层，`apps/web/src/bootstrap.ts` 巨石（TD-WEB-001）随迁移批次逐域消解；每域独立提交可单独 revert。
-**DoD（=UI-CP3/U3 中段、UI-CP4/U3 收尾）**：已迁域解剖合规率 100%；启动预算门禁全程守恒；TD-WEB-001 关闭条件按台账口径另核；完整 `pnpm ci:local` 0。
+**DoD（=UI-CP3/U3 中段、UI-CP4/U3 收尾）**：已迁域解剖合规率 100%；启动预算门禁全程守恒；TD-WEB-001 关闭条件按台账口径另核；完整 `pnpm ci:local` 0；**外层黑盒迁移前后同绿**（§8.1）+ 迁移域白盒三层按 §8.2 同批改写/重钉。
 
 ### U4 门户统一
 
@@ -86,3 +91,33 @@ ADR-0014、本计划、台账顶部登记段+TD-UI-001、core-beliefs #8 注记�
 | U2/U3/U4    | —                                                                | —                                                                                                                                                                                                             | 未开始（UI-CP 序列门禁） |
 
 **U1 后续记**：哨兵并行会话于 10:48 落盘第七次人裁配套 A 系列审计五份（docs/audits/），阻塞 doc-lint 与 coverage 干净树断言；经核实为完整交付物，以独立提交 3597120 原样收录+登记（仅 prettier 表格留白规范化，内容零改动），不属 UI 计划范围、不改其结论。
+
+## §8 测试与 CI 现代化（第五次人裁配套，2026-11-19 主协调裁决落盘）
+
+> 本节为政策落盘批（零代码/测试本体改动）；4-6 项实施分别在 UI-M1.5/U1.5 与 U3 各域批次。核心原则：**外层黑盒=迁移安全网不动；内层白盒=随域重写**。
+
+### 8.1 保留·安全网（黑盒层，整个重构期不改动，迁移前后必须同绿）
+
+①Playwright e2e（P1 全链）②PG 集成测试（HTTP/DB 契约层——**Fastify 化后仍直打 HTTP**，不因进程内注入而降级）③python ops 测试④发布护栏脚本。**每个域迁移的 DoD 增加「外层黑盒迁移前后同绿」**（已并入 §2 U2/U3 DoD）。
+
+### 8.2 随域重写·经授权（白盒层）
+
+- **web 行为测试**（28 文件，vanilla DOM 结构断言）→ 迁移域改写为**组件行为测试**（允许新增 devDependency `@preact/testing-library`，U1.5 登记；运行时依赖计数不变）。
+- **API 路由契约测试**（import RouteDefinition 形态）→ 迁移域改写为 **`fastify.inject()` 进程内注入式契约测试**（与 8.1 PG 集成的直打 HTTP 互不替代）。
+- **冻结哈希钉死的守恒类测试**（iam-route-contract / dispatch-source-preservation 等）→ 迁移域**解除旧钉、迁移完成后重钉新基线**（政策经第四/五次人裁授权；解钉/重钉须同批可证并在提交说明记录新旧基线）。
+
+### 8.3 保留·机制不动
+
+`ci.yml` 与 `ci:local` 15 步链、structure/function-length 门禁（阈值不变）、coverage 机制（**阈值按迁移域重基线并记录**，沿既有复算口径，不缩分母）、发布链全部 workflow。
+
+### 8.4 适配（按需最小调整，登记变更）
+
+frontend-runtime-sources 门禁与 service-boundary 门禁对 TSX/Preact 模块图的适配（迁移首批出现时）；structure-gate 对 .tsx 纳管（**U1 已完成**：AST 控制流深度口径，见台账 U1 段）。
+
+### 8.5 新增四项
+
+①UI 原语组件测试（**U1 已含**：44 例）；②`fastify.inject()` 契约测试模式（U3 起每域）；③#/ui-kit 视觉回归（Playwright 截图比对，token 回归捕获，**U1.5**）；④组件测试内建基础 a11y 断言（role/label/focus，**不引 axe**）。
+
+### 8.6 稳定选择器政策
+
+UI 基座原语一律输出 `data-testid`（命名规范：`kt-<原语kebab>-<槽位|实例>`，如 `kt-data-table-row`、`kt-detail-drawer-close`；U1.5 落入 packages/ui 原语与 tokens 文档）；**e2e 与组件测试只依赖 data-testid / role / label**——为后续所有域迁移保住 e2e 不随 DOM 重写。

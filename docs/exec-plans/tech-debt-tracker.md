@@ -1,5 +1,9 @@
 # 技术债台账（tech-debt-tracker）
 
+## 2026-11-19 测试与 CI 现代化登记（第五次人裁配套，主协调裁决）
+
+分层处置政策落盘（[UI 基座计划](../tasks/ui-foundation-program-2026-11-19.md) §8，零代码/测试本体改动）：**外层黑盒=迁移安全网不动**（P1 e2e/PG 集成/python ops/发布护栏，每域 DoD 增「迁移前后同绿」）；**内层白盒=随域重写**（web 行为测试→组件行为测试，允许新增 devDependency @preact/testing-library；API 路由契约测试→fastify.inject() 注入式；冻结哈希守恒类测试迁移域解旧钉/迁后重钉新基线——经第四/五次人裁授权）；**机制不动**（ci:local 15 步链/门禁阈值/coverage 机制按域重基线记录/发布链 workflow）；**按需适配登记**（frontend-runtime-sources/service-boundary 对 TSX 模块图；structure-gate tsx 纳管 U1 已完成）；**新增四项**（原语组件测试已含、fastify.inject 模式 U3 起、#/ui-kit 视觉回归 U1.5、a11y 基础断言不引 axe）；**稳定选择器政策**（原语一律输出 data-testid `kt-<原语>-<槽位>`，e2e/组件测试只依赖 data-testid/role/label）。实施分批：U1.5/UI-M1.5 与 U3 各域。
+
 ## 2026-11-19 第五次人裁：后端增量现代化登记（ADR-0015）
 
 项目所有者第五次人裁：前端或后端技术栈/框架有问题可按主协调经验与行业主流方案设计重构，不过于依赖现有项目设计内容。主协调裁定并落盘 [ADR-0015](../adr/0015-backend-incremental-modernization.md)：增量引入 **Fastify（HTTP 壳）+ Zod（schema 校验）+ @fastify/type-provider-zod（type provider）恰 3 个新运行时依赖落 apps/api**；分域迁移——自 U3 起每域迁移=UI Preact 重写+该域 API 路由 Fastify/zod 化**同批完成**，U2 governance 试点仍纯 UI，旧 node:http 路由过渡期共存；保留参数化 SQL 仓储/DataScope 下推/ADR-0003 认证/审计 outbox/CI 发布链，**不引 ORM、不换数据库**；否决全量一次性框架替换。**TD-BOUND-002 迁移路径已裁决：随分域 Fastify+zod 化清偿（ADR-0015）**；入站收紧仍按 R2 行为变更纪律。本批（UI-M0b）仅规范落盘零后端代码，Fastify/zod 首段 hello 级挂载留 UI-M2 后 API 批；ARCHITECTURE §1 已登记 api→{fastify,zod,@fastify/type-provider-zod} 边（首个 API 批起真实建立）。
