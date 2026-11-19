@@ -9,6 +9,8 @@
 
 ## P0-1：分支保护与 production 审批未实施（单点平台级绕过）
 
+> **2026-11-19 挂起裁定**：待仓库迁移自部署 Git 触发时随《迁移就绪清单》（总录）一并执行；残余风险=单操作者委托模式+第三方管理员信任假设，所有者已知情接受。
+
 main protected=false、rulesets=[]、production environment protection_rules=[]（GITHUB_PROTECTION_AUDIT_20261008_BATCH1.md:15，至今无后续落地记录）。所有 workflow 自防御建立在「main 历史可信」上；文档自认（PRODUCTION_PARK_HOST.md:42）。**修复（管理员设置，约 0.5-1h）**：main ruleset=required status check `quality`+禁 force-push/删除；Actions 默认 token 只读确认；production environment 建议配 reviewer+分支限 main（注：reviewer 会给每次生产发布加人工审批点，与项目所有者已授权主协调全权发布冲突——是否启用由所有者定夺）。
 
 ## 其余发现

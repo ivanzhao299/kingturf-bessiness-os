@@ -10,7 +10,10 @@
 
 ## 发现
 
-- **P0-1**：production environment 无审批人+main 无保护——双 SHA/溯源自检信任根悬空（证据 GITHUB_PROTECTION_AUDIT_20261008_BATCH1.md:15）。修复：管理员 0.5h 配置；仓库侧契约已为此预备好。
+- **P0-1**：production environment 无审批人+main 无保护
+
+> **2026-11-19 挂起裁定**：待仓库迁移自部署 Git 触发时随《迁移就绪清单》（总录）一并执行；残余风险=单操作者委托模式+第三方管理员信任假设，所有者已知情接受。——双 SHA/溯源自检信任根悬空（证据 GITHUB_PROTECTION_AUDIT_20261008_BATCH1.md:15）。修复：管理员 0.5h 配置；仓库侧契约已为此预备好。
+
 - **P1-1**：无 cosign 签名/SLSA provenance 验证/SBOM（buildx 默认附 provenance 但恢复链从不验证）。多协作者场景无法区分官方构建与协作者合法 dispatch 构建。修复：id-token+cosign keyless 签名/验证+syft SBOM，1-2 天。
 - **P1-2**：.env.production 权限无机器强制（含三秘密；apply_migrations.py:168,336 write_text 继承既有 inode 权限）。修复：preflight 断言 mode≤0600+写后 chmod，0.5h。
 - **P1-3**：nginx 无 HSTS（唯一对外 HTTPS 入口）。修复：加 header+主机同步审批（recover 脚本 hash 钉扎会拦截未同步变更——有意的门），0.5h。
