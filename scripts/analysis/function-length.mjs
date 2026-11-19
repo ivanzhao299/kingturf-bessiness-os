@@ -6,7 +6,9 @@ import ts from 'typescript';
 export const MAX_FUNCTION_LINES = 200;
 export const FUNCTION_POLICY = 'scripts/analysis/function-length-exemptions.json';
 
-const sourceTs = (path) => path.endsWith('.ts') && !/\.(?:d|test|spec)\.ts$/u.test(path);
+// ADR-0014/U1：组件层 .tsx 纳管 G5（完整函数 ≤200），按扩展名选择 AST 方言。
+const sourceTs = (path) =>
+  (path.endsWith('.ts') || path.endsWith('.tsx')) && !/\.(?:d|test|spec)\.tsx?$/.test(path);
 
 export function productionSources(root) {
   const files = [];
@@ -19,7 +21,7 @@ export function productionSources(root) {
     } else if (sourceTs(relative)) files.push(relative);
     else
       assert(
-        !/\.(?:js|jsx|mjs|cjs|tsx|mts|cts)$/u.test(relative),
+        !/\.(?:js|jsx|mjs|cjs|mts|cts)$/u.test(relative),
         `G5 requires an explicit parser contract for runtime source: ${relative}`,
       );
   };
@@ -49,7 +51,9 @@ function structuralSymbol(node, source) {
 }
 
 export function completeFunctions(path, content) {
-  const source = ts.createSourceFile(path, content, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  // ADR-0014/U1：tsx 按 XML 方言解析（G5 完整函数 ≤200 对组件层同样生效）。
+  const kind = path.endsWith('.tsx') ? ts.SyntaxKind.TSX : ts.SyntaxKind.TS;
+  const source = ts.createSourceFile(path, content, ts.ScriptTarget.Latest, true, kind);
   assert.equal(source.parseDiagnostics.length, 0, `G5 AST parse failed: ${path}`);
   const functions = [];
   const visit = (node) => {
@@ -109,7 +113,7 @@ export function validateFunctionPolicy(policy, now = Date.now()) {
     assert.equal(typeof entry.path, 'string');
     assert.match(
       entry.path,
-      /^(?:apps|packages)\/[\w-]+\/src\/(?:[\w-]+\/)*[\w.-]+\.ts$/u,
+      /^(?:apps|packages)\/[\w-]+\/src\/(?:[\w-]+\/)*[\w.-]+\.tsx?$/u,
       'G5 exact relative source path required',
     );
     assert(

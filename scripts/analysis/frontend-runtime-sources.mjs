@@ -72,7 +72,8 @@ export async function collectFrontendRuntimeSources(entry, root) {
     inside(target);
     const extension = extname(target);
     // Deliberately fail on competing code/package candidates, rather than emulate Vite.
-    const nonTsExtensions = ['.mjs', '.js', '.mts', '.jsx', '.tsx', '.json', '.cjs'];
+    // ADR-0014/U1：.tsx 为一等 TS 源（组件层），不再视为歧义非-TS 候选。
+    const nonTsExtensions = ['.mjs', '.js', '.mts', '.jsx', '.json', '.cjs'];
     const ambiguousCandidates =
       extension === '.js'
         ? [target]
@@ -94,11 +95,16 @@ export async function collectFrontendRuntimeSources(entry, root) {
     }
     const candidates =
       extension === '.js'
-        ? [target.slice(0, -3) + '.ts']
-        : extension === '.ts'
+        ? [target.slice(0, -3) + '.ts', target.slice(0, -3) + '.tsx']
+        : extension === '.ts' || extension === '.tsx'
           ? [target]
           : extension === ''
-            ? [target + '.ts', resolve(target, 'index.ts')]
+            ? [
+                target + '.ts',
+                target + '.tsx',
+                resolve(target, 'index.ts'),
+                resolve(target, 'index.tsx'),
+              ]
             : [];
     if (!candidates.length) throw new Error(`Unsupported frontend code dependency: ${target}`);
     for (const candidate of candidates) {
@@ -106,7 +112,8 @@ export async function collectFrontendRuntimeSources(entry, root) {
         if (!(await stat(candidate)).isFile()) continue;
         const actual = await realpath(candidate);
         inside(actual);
-        if (extname(actual) !== '.ts') throw new Error(`Non-TS frontend implementation: ${actual}`);
+        if (extname(actual) !== '.ts' && extname(actual) !== '.tsx')
+          throw new Error(`Non-TS frontend implementation: ${actual}`);
         return actual;
       } catch (error) {
         if (error.code !== 'ENOENT' && error.code !== 'ENOTDIR') throw error;

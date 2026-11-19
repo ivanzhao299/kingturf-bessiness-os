@@ -35,7 +35,7 @@ packages/{types, config} ──→ 零依赖
 
 **规则**：依赖只能沿上述方向；新增依赖边必须先在本文件登记理由。`packages/` 之间除 `domain→types` 外互不依赖；任何包不得反向依赖 `apps/*`。
 
-**边登记（2026-11-19，ADR-0014）**：`packages/ui → {preact, @preact/signals}`——第四次人裁批准的轻量框架组件基座，全仓外部运行时依赖由 1 个（pg）增至 3 个，仍为最小集；`apps/web → packages/ui`——web 消费组件层。`packages/ui` 不依赖其余 packages、不被任何 package 反向依赖，DAG 保持。现 `packages/ui` 为 ADR-0014 重建（与 D3/TD-HYG-001 清理的旧占位包无继承关系）。
+**边登记（2026-11-19，ADR-0014）**：`packages/ui → {preact, @preact/signals}`——第四次人裁批准的轻量框架组件基座，全仓外部运行时依赖由 1 个（pg）增至 3 个，仍为最小集；`apps/web → packages/ui`——web 消费组件层；`apps/web → {preact, @preact/signals}`（U1 起）——JSX 运行时（jsxImportSource）与 signals 消费需直依，与 ui 同版本同单实例（pnpm 去重），非新增外部包。`packages/ui` 不依赖其余 packages、不被任何 package 反向依赖，DAG 保持。现 `packages/ui` 为 ADR-0014 重建（与 D3/TD-HYG-001 清理的旧占位包无继承关系）。
 
 ## 2. 运行时请求流
 

@@ -51,13 +51,14 @@ test('inventory includes never imported production files and top-level repositor
   writeFileSync(resolve(root, 'apps/web/src/placeholder.d.ts'), 'export type Missing = string;\n');
   writeFileSync(resolve(root, 'apps/web/src/extra.test.ts'), 'export const testOnly = 1;\n');
   const inventory = productionInventory(root);
-  assert.equal(inventory.length, 7);
+  // ADR-0014/U1：packages/ui 成为第七个覆盖根，夹具计数随之 +1。
+  assert.equal(inventory.length, 8);
   assert.equal(inventory.filter((entry) => entry.repository).length, 1);
   assert.throws(() => summarizeReports(root, inventory, reports), /missing unimported/u);
   const path = resolve(root, 'apps/web/src/never-imported.ts');
   reports['apps/web'][path] = fileCoverage(path, [0]);
   const summary = summarizeReports(root, inventory, reports);
-  assert.deepEqual(summary.overall, { covered: 6, total: 7 });
+  assert.deepEqual(summary.overall, { covered: 7, total: 8 });
   assert.deepEqual(summary.packages['apps/web'], { covered: 1, total: 2 });
 });
 
@@ -91,7 +92,7 @@ test('overall weights executable lines rather than averaging percentages', (t) =
   const inventory = productionInventory(root);
   reports['apps/web'][path] = fileCoverage(path, [1, 0, 0, 0, 0]);
   const summary = summarizeReports(root, inventory, reports);
-  assert.deepEqual(summary.overall, { covered: 6, total: 10 });
+  assert.deepEqual(summary.overall, { covered: 7, total: 11 });
   assert.deepEqual(summary.repositories, { covered: 1, total: 1 });
   assert.deepEqual(summary.domain, { covered: 1, total: 1 });
 });
@@ -149,7 +150,7 @@ test('only proven pure type files may report N/A and new runtime extensions requ
   writeFileSync(path, 'export type Value = string;\n');
   const summary = summarizeReports(root, productionInventory(root), reports);
   assert.deepEqual(summary.packages['packages/types'], { covered: 0, total: 0 });
-  assert.deepEqual(summary.overall, { covered: 5, total: 5 });
+  assert.deepEqual(summary.overall, { covered: 6, total: 6 });
   writeFileSync(resolve(root, 'apps/web/src/new.js'), 'export const extra = 1;\n');
   assert.throws(() => productionInventory(root), /scope review/u);
 });

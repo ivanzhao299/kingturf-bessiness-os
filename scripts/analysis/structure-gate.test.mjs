@@ -44,10 +44,13 @@ test('已消解bootstrap白名单：真实CLI拒801行/六层缩进，放行800�
 });
 
 test('批次3 AST最小范围精确到四个新web目录，不扩旧bootstrap/http或其他域', () => {
-  for (const scope of ['shared', 'crm', 'commercial', 'governance']) {
+  for (const scope of ['shared', 'crm', 'commercial', 'governance', 'ui-kit']) {
     assert.equal(isNewWebModule(`apps/web/src/${scope}/module.ts`), true);
     assert.equal(isNewWebModule(`apps/web/src/${scope}/routes/module.ts`), true);
   }
+  // ADR-0014/U1：组件基座包同口径（tsx 与 ts 均纳管 AST 嵌套）。
+  assert.equal(isNewWebModule('packages/ui/src/data-table.tsx'), true);
+  assert.equal(isNewWebModule('packages/ui/src/pagination.ts'), true);
   for (const path of [
     'apps/web/src/bootstrap.ts',
     'apps/web/src/http.ts',

@@ -3,6 +3,7 @@ import { businessHeadingDateFormatter } from '../shared/business-date';
 import { parseSidebarCollapsed } from '../shared/register-view-parser';
 import { brandMark } from '../brand';
 import { openForm } from '../shared/forms';
+import { createUiKitSection } from '../ui-kit/view';
 import {
   APP_ROUTE_LABELS,
   APP_ROUTE_DESCRIPTIONS,
@@ -203,6 +204,7 @@ export function createShellSidebar(
     ['operations', '工作流与待办', 'governance/workflow'],
     ['governance', '通知中心', 'governance/notifications'],
     ['operations', '业务对象与事件', 'governance/system'],
+    ['operations', 'UI 组件基座', 'ui-kit'],
   ]);
   aside.append(nav);
   return { shell, aside, sidebarToggle, sections, visibleRoutes, roleProfile, currentRoute };
@@ -254,6 +256,8 @@ export function createShellOverview(
     el('p', 'page-subtitle', APP_ROUTE_DESCRIPTIONS[currentRoute]),
   );
   content.append(routeContext);
+  // ADR-0014/U1：#/ui-kit 演示页骨架随壳挂载（渲染体在 ui-kit/render.tsx 独立 chunk）。
+  if (visibleRoutes.has('ui-kit')) content.append(createUiKitSection());
   const header = el('header', 'topbar');
   const title = el('div');
   const today = businessHeadingDateFormatter().format(new Date());

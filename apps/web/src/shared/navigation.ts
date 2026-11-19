@@ -33,7 +33,8 @@ export type AppRoute =
   | 'governance/rules'
   | 'governance/workflow'
   | 'governance/notifications'
-  | 'governance/system';
+  | 'governance/system'
+  | 'ui-kit';
 
 export const APP_ROUTE_LABELS: Readonly<Record<AppRoute, string>> = {
   overview: '经营总览',
@@ -71,6 +72,7 @@ export const APP_ROUTE_LABELS: Readonly<Record<AppRoute, string>> = {
   'governance/workflow': '工作流与待办',
   'governance/notifications': '通知中心',
   'governance/system': '业务对象与事件',
+  'ui-kit': 'UI 组件基座',
 };
 const APP_ROUTE_DESCRIPTIONS: Readonly<Record<AppRoute, string>> = {
   overview: '指标、待办与经营异常',
@@ -108,6 +110,7 @@ const APP_ROUTE_DESCRIPTIONS: Readonly<Record<AppRoute, string>> = {
   'governance/workflow': '流程定义与审批待办',
   'governance/notifications': '消息通知与个人偏好',
   'governance/system': '业务对象定义与事件运行状态',
+  'ui-kit': '组件原语演示与视觉验收（ADR-0014/U1）',
 };
 
 export const routeViewSelector = (route: AppRoute): string => `[data-route-view~="${route}"]`;

@@ -166,6 +166,12 @@ export const governanceSurfacesForRoute = (
   route: AppRoute,
 ) => surfaces.filter((surface) => surface.route === route);
 
+// ADR-0014/U1：#/ui-kit 演示路由增补（authorization:read 可见；非治理面，仅寄居路由注册表口径）。
+export const withUiKitRoute = (
+  routes: readonly AppRoute[],
+  permissions: ReadonlySet<string>,
+): readonly AppRoute[] => (permissions.has('authorization:read') ? [...routes, 'ui-kit'] : routes);
+
 // 概览路由 + 可见 surface 覆盖的子路由（菜单与路由注册的并集来源）。
 export const governanceRoutes = (permissions: ReadonlySet<string>): readonly AppRoute[] => {
   const surfaces = visibleGovernanceSurfaces(permissions);

@@ -1,0 +1,10 @@
+{
+  "extends": "../config/tsconfig/browser.json",
+  "compilerOptions": {
+    "composite": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact"
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts", "test/**/*.tsx", "vitest.config.ts"]
+}

@@ -11,6 +11,8 @@ export const coverageRoots = Object.freeze([
   'packages/database',
   'packages/domain',
   'packages/types',
+  // ADR-0014/U1：组件基座包纳入覆盖率度量（第七根；tsx 同为生产运行时源）。
+  'packages/ui',
 ]);
 
 const slash = (value) => value.split(sep).join('/');
@@ -33,8 +35,10 @@ export function productionInventory(root) {
   const canonicalRoot = realpathSync(root);
   return coverageRoots.flatMap((owner) => {
     const sources = walk(resolve(canonicalRoot, owner, 'src'));
+    // ADR-0014/U1 覆盖率范围评审：.tsx 为组件层显式批准的运行时扩展（jsx react-jsx + preact），
+    // 其余新扩展仍 fail-closed。
     assert(
-      sources.every((path) => !/\.[cm]?[jt]sx?$/u.test(path) || path.endsWith('.ts')),
+      sources.every((path) => !/\.[cm]?[jt]sx?$/u.test(path) || /\.tsx?$/u.test(path)),
       'new runtime extension requires a coverage scope review; it must not be silently omitted',
     );
     return sources

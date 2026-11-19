@@ -12,7 +12,7 @@ import {
 } from './commercial/workspace-frame';
 export { CommercialController } from './commercial/store/controller';
 import { hasPermissionPrefix } from './shared/permission-prefix';
-import { governanceRoutes, visibleGovernanceSurfaces } from './governance/surfaces';
+import { governanceRoutes, visibleGovernanceSurfaces, withUiKitRoute } from './governance/surfaces';
 export {
   GOVERNANCE_SURFACES,
   GOVERNANCE_ROUTE_ORDER,
@@ -188,7 +188,7 @@ export function visibleAppRoutes(permissions: ReadonlySet<string>): ReadonlySet<
   ]);
   addWhen('shipments', ['shipment:']);
   // B1 治理子路由化：概览保留，子路由按 surface 可见性并集注册。
-  for (const route of governanceRoutes(permissions)) routes.add(route);
+  for (const route of withUiKitRoute(governanceRoutes(permissions), permissions)) routes.add(route);
   if (routes.size > 0) {
     routes.add('overview');
     routes.add('document-templates');

@@ -3,7 +3,9 @@
   "compilerOptions": {
     "composite": true,
     "noEmit": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact",
     "types": ["vite/client", "vitest/globals"]
   },
-  "include": ["src/**/*.ts", "test/**/*.ts", "vite.config.ts"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts", "vite.config.ts"]
 }

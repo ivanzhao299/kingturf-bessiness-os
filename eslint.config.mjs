@@ -8,7 +8,8 @@ export default tseslint.config(
   ...tseslint.configs.strictTypeChecked,
   ...tseslint.configs.stylisticTypeChecked,
   {
-    files: ['**/*.ts'],
+    // ADR-0014/U1：组件层 .tsx 与 .ts 同标准（strictTypeChecked + projectService）。
+    files: ['**/*.ts', '**/*.tsx'],
     languageOptions: {
       parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },
       globals: { ...globals.node, ...globals.browser },

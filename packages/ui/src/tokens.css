@@ -1,0 +1,79 @@
+/*
+ * KingTurf UI 设计 tokens（ADR-0014/U1）。
+ * 组件样式的唯一取值来源：组件 CSS 引用变量，不写死值。
+ * 暗色主题预留：[data-theme="dark"] 作用域占位，U4 门户统一批落地评估。
+ */
+:root {
+  /* 色彩 · 品牌与中性 */
+  --kt-color-brand: #2f6f4f;
+  --kt-color-brand-strong: #24583e;
+  --kt-color-brand-soft: #e7f1ec;
+  --kt-color-surface: #ffffff;
+  --kt-color-surface-muted: #f5f7f6;
+  --kt-color-surface-raised: #ffffff;
+  --kt-color-border: #d7ded9;
+  --kt-color-border-strong: #b7c2ba;
+  --kt-color-text: #1f2a24;
+  --kt-color-text-muted: #5d6b62;
+  --kt-color-text-inverse: #ffffff;
+
+  /* 色彩 · 语义状态（StatusBadge/表单反馈/表格状态） */
+  --kt-color-neutral: #5d6b62;
+  --kt-color-neutral-soft: #eceff0;
+  --kt-color-info: #2b5f8f;
+  --kt-color-info-soft: #e5eef6;
+  --kt-color-success: #2f6f4f;
+  --kt-color-success-soft: #e7f1ec;
+  --kt-color-warning: #8a5b16;
+  --kt-color-warning-soft: #f7ecdb;
+  --kt-color-danger: #a03c34;
+  --kt-color-danger-soft: #f7e6e4;
+
+  /* 间距 · 4px 基线 */
+  --kt-space-1: 4px;
+  --kt-space-2: 8px;
+  --kt-space-3: 12px;
+  --kt-space-4: 16px;
+  --kt-space-5: 24px;
+  --kt-space-6: 32px;
+  --kt-space-7: 48px;
+
+  /* 字阶 */
+  --kt-font-size-caption: 12px;
+  --kt-font-size-body: 14px;
+  --kt-font-size-lead: 16px;
+  --kt-font-size-title: 20px;
+  --kt-font-size-headline: 26px;
+  --kt-font-weight-regular: 400;
+  --kt-font-weight-medium: 500;
+  --kt-font-weight-semibold: 600;
+  --kt-font-family: 'PingFang SC', 'Microsoft YaHei', system-ui, -apple-system, sans-serif;
+
+  /* 圆角 */
+  --kt-radius-sm: 4px;
+  --kt-radius-md: 8px;
+  --kt-radius-lg: 12px;
+  --kt-radius-pill: 999px;
+
+  /* 阴影 */
+  --kt-shadow-flat: 0 1px 2px rgba(31, 42, 36, 0.08);
+  --kt-shadow-raised: 0 6px 18px rgba(31, 42, 36, 0.12);
+  --kt-shadow-overlay: 0 12px 32px rgba(31, 42, 36, 0.2);
+
+  /* 布局节奏 */
+  --kt-z-drawer: 60;
+  --kt-drawer-width: 520px;
+  --kt-toolbar-height: 48px;
+}
+
+/* 暗色主题预留（ADR-0014 决策 4；U4 前不接线，仅保证 token 具备可覆写作用域）。 */
+[data-theme='dark'] {
+  --kt-color-surface: #17201b;
+  --kt-color-surface-muted: #1e2822;
+  --kt-color-surface-raised: #212c26;
+  --kt-color-border: #31403a;
+  --kt-color-border-strong: #42524b;
+  --kt-color-text: #e6ece8;
+  --kt-color-text-muted: #a3b0a8;
+  --kt-color-brand-soft: #24352c;
+}

@@ -3,6 +3,7 @@ import { scopeGrantChoiceLabeler } from './governance/identity-scopes';
 import { BehaviorInput, BehaviorSelect, BehaviorTextarea } from '../test/fixtures/behavior-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { createUiKitSection } from './ui-kit/view';
 import {
   BOOTSTRAP_TITLE,
   businessEventDetailLabel,
@@ -813,6 +814,17 @@ it('translates production evidence event codes into business language', () => {
   expect(businessEventLabel('CUSTOM_EVENT')).toBe('CUSTOM_EVENT');
 });
 
+it('exposes the ui-kit demo route only with authorization:read (ADR-0014/U1)', () => {
+  expect(visibleAppRoutes(new Set(['authorization:read'])).has('ui-kit')).toBe(true);
+  expect(visibleAppRoutes(new Set(['customer:read'])).has('ui-kit')).toBe(false);
+  expect(appRouteFromHash('#/ui-kit')).toBe('ui-kit');
+  expect(appRouteFromHash('#/ui-kit-extra')).toBe('overview');
+  const section = createUiKitSection();
+  expect(section.getAttribute('data-route-view')).toBe('ui-kit');
+  expect(section.hidden).toBe(true);
+  expect(section.className).toContain('ui-kit-view');
+});
+
 it('derives application navigation from atomic role capabilities', () => {
   expect([...visibleAppRoutes(new Set(['shipment:read']))]).toEqual([
     'shipments',
@@ -832,8 +844,9 @@ it('derives application navigation from atomic role capabilities', () => {
     'overview',
     'document-templates',
   ]);
+  // ADR-0014/U1：authorization:read 同时注册治理身份子路由与 ui-kit 演示路由。
   expect(visibleAppRoutes(new Set(['executive-dashboard:read', 'authorization:read']))).toEqual(
-    new Set(['overview', 'governance', 'governance/identity', 'document-templates']),
+    new Set(['overview', 'governance', 'governance/identity', 'ui-kit', 'document-templates']),
   );
   expect(visibleAppRoutes(new Set(['cost-matrix:read']))).toEqual(
     new Set(['costing', 'overview', 'document-templates']),

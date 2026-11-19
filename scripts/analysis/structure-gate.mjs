@@ -54,8 +54,11 @@ const NESTING_EXTRA = new Map(
   ]),
 );
 
+// ADR-0014/U1：组件层（apps/web/src/ui-kit 与 packages/ui/src）与既有 web 模块同口径——
+// G2 用 AST 控制流深度而非格式缩进（JSX 标记深度不计嵌套），TSX 按 XML 方言解析。
 export const isNewWebModule = (path) =>
-  /^apps\/web\/src\/(?:shared|crm|commercial|governance)\//u.test(path);
+  /^apps\/web\/src\/(?:shared|crm|commercial|governance|ui-kit)\//u.test(path) ||
+  /^packages\/ui\/src\//u.test(path);
 
 export function walk(dir, out = []) {
   for (const entry of readdirSync(dir)) {
@@ -75,10 +78,13 @@ export function walk(dir, out = []) {
   return out;
 }
 
+// ADR-0014/U1：组件层 .tsx 与 .ts 同门禁（G1/G2 纳管；test/spec/d 与 /test/ 目录排除口径一致）。
 export const isSourceTs = (p) =>
-  p.endsWith('.ts') &&
+  (p.endsWith('.ts') || p.endsWith('.tsx')) &&
   !p.endsWith('.test.ts') &&
   !p.endsWith('.spec.ts') &&
+  !p.endsWith('.test.tsx') &&
+  !p.endsWith('.spec.tsx') &&
   !p.endsWith('.d.ts') &&
   !p.includes('/test/');
 
@@ -101,13 +107,14 @@ export function nestingViolations(path, content) {
   return [{ rule: 'G2', path, maxIndent, whitelisted: wl, ...(NESTING_EXTRA.get(path) ?? {}) }];
 }
 
-export function routeNestingMetrics(content) {
+export function routeNestingMetrics(content, kind = ts.ScriptKind.TS) {
+  // TS 5.9 会按文件名扩展名覆盖 scriptKind：tsx 方言必须配 .tsx 文件名。
   const source = ts.createSourceFile(
-    'route.ts',
+    kind === ts.ScriptKind.TSX ? 'route.tsx' : 'route.ts',
     content,
     ts.ScriptTarget.Latest,
     true,
-    ts.ScriptKind.TS,
+    kind,
   );
   let maxDepth = 0;
   let line = 1;
@@ -144,7 +151,10 @@ export function routeNestingMetrics(content) {
 }
 
 export function routeNestingViolations(path, content) {
-  const metrics = routeNestingMetrics(content);
+  const metrics = routeNestingMetrics(
+    content,
+    path.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+  );
   if (metrics.parseErrors.length) return [{ rule: 'G2', path, ...metrics, whitelisted: false }];
   if (metrics.maxDepth <= MAX_NESTING) return [];
   return [{ rule: 'G2', path, ...metrics, whitelisted: false }];
