@@ -2,7 +2,7 @@
 
 ## 2026-11-19 第七次人裁：A 系列资产审计落盘（A-F0'）
 
-第七次人裁配套：主协调派四个并行审计代理对「不动层」做全量行业基准审计（OWASP ASVS/NIST/SLSA），总录+四分报告已落盘 [docs/audits/](../audits/2026-11-19-asset-audit-summary.md)（index 已收录）。依审计结论：**TD-SEC-008、TD-RISK-001 关闭**（A1 核实已于 2026-10-26 f7397a4/cc6905e 修复）；新登记 **TD-SEC-013**（P1：complaint/dashboard TEAM 锚点无 depth 横向越读，A-F2 承接）、**TD-SEC-014**（P2：profiles 字段绕过/SoD 自定义角色/持久锁定缺失，合并 A2 发现，A-F2 承接）、**TD-CI-001**（P1：actions 零 SHA 钉扎/无 SAST/镜像无扫描，A-F3 承接）、**TD-OPS-001**（P2：.env 权限断言/staged 竞态/HSTS，A-F1/F2 承接）。平台设置项（分支保护/secret scanning 等）主协调无 admin 权限，已交项目所有者按 A3/A4 清单执行；仓库文件项 `.github/dependabot.yml` 本批落盘。A-F1 快赢批（九项）随后执行。
+第七次人裁配套：主协调派四个并行审计代理对「不动层」做全量行业基准审计（OWASP ASVS/NIST/SLSA），总录+四分报告已落盘 [docs/audits/](../audits/2026-11-19-asset-audit-summary.md)（index 已收录）。依审计结论：**TD-SEC-008、TD-RISK-001 关闭**（A1 核实已于 2026-10-26 f7397a4/cc6905e 修复）；新登记 **TD-SEC-013**（P1：complaint/dashboard TEAM 锚点无 depth 横向越读，A-F2 承接）、**TD-SEC-014**（P2：profiles 字段绕过/SoD 自定义角色/持久锁定缺失，合并 A2 发现，A-F2 承接）、**TD-CI-001**（P1：actions 零 SHA 钉扎/无 SAST/镜像无扫描，A-F3 承接）、**TD-OPS-002**（P2：.env 权限断言/staged 竞态/HSTS，A-F1/F2 承接；历史区已有旧 TD-OPS-001，避让改号）。平台设置项（分支保护/secret scanning 等）主协调无 admin 权限，已交项目所有者按 A3/A4 清单执行；仓库文件项 `.github/dependabot.yml` 本批落盘。A-F1 快赢批（九项）随后执行。
 
 ## 2026-11-19 部署现代化登记（第六次人裁，TD-REL-008）
 
@@ -207,7 +207,7 @@ TD-REL-001（P1，已授权修复）：run 42335884296 已完成72迁移后，GH
 | TD-SEC-013   | complaint/dashboard TEAM 锚点无 depth，横向越读                                               | P1     | 安全/DataScope    | **变更行为**（修复另批）         | A-F2（A1审计）                                        | A-F0'登记/A-F2承接                            |
 | TD-SEC-014   | profiles字段绕过/SoD自定义角色/持久锁定缺失（合并A2发现）                                     | P2     | 安全/纵深         | **变更行为**（修复另批）         | A-F2（A2审计）                                        | A-F0'登记/A-F2承接                            |
 | TD-CI-001    | actions零SHA钉扎/无SAST/镜像无扫描                                                            | P1     | CI/供应链         | 无                               | A-F3（A3审计）                                        | A-F0'登记/A-F3承接                            |
-| TD-OPS-001   | .env权限断言缺失/staged目录竞态/无HSTS                                                        | P2     | 运维加固          | 无                               | A-F1/F2（A4审计）                                     | A-F0'登记/A-F1部分本批承接                    |
+| TD-OPS-002   | .env权限断言缺失/staged目录竞态/无HSTS                                                        | P2     | 运维加固          | 无                               | A-F1/F2（A4审计）                                     | A-F0'登记/A-F1部分本批承接                    |
 | TD-PERF-001  | 前端无自动重试/断路，失败依赖人工重试按钮                                                     | P2     | 性能              | **变更行为**（仅实施时）         | 待排期                                                | 待处理                                        |
 | TD-PERF-002  | 13 处 N+1 候选已判定；7项修复待排                                                             | P2     | 性能              | 无                               | 批次 2（子批 2f）                                     | 已判定／待修复                                |
 | TD-PERF-003  | 文档旧请求失败可能删除clear后同path新缓存Promise                                              | P2     | 异步缓存          | 修复 bug（若实施）               | 3c⑪仅登记／后续独立授权                               | 触发/生产影响待核实                           |
