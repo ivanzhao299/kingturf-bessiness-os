@@ -91,7 +91,7 @@ export function browserSessionFixture(
     new AuthenticationService(
       store,
       hasher,
-      { secret, ttlSeconds: 3600 },
+      { secret, ttlSeconds: 3600, idleSeconds: 3600 },
       { record: vi.fn(() => Promise.resolve()) },
     );
   const auth = createAuth();

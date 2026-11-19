@@ -5,6 +5,7 @@ import {
 } from '@kingturf/domain';
 import type { PermissionKey } from '@kingturf/types';
 import type { ApiResponse } from '../app.ts';
+import { permittedDto } from '../app-values.ts';
 import { defineRoute, type RouteDefinition } from './types.ts';
 import { parsePageFilter } from '../pagination.ts';
 
@@ -47,12 +48,18 @@ export function identityAccessRoutes(context: IdentityAccessContext): readonly R
         const repository = context.repository;
         if (!repository?.listUserAccessProfiles)
           return context.unavailable('User access profile repository is unavailable');
+        const page = await repository.listUserAccessProfiles(
+          context.authorization.actor.companyId,
+          parsePageFilter(request.query),
+        );
+        // A2-F2: profiles honor the identity:read field allowlist — a narrow grant
+        // sees only the projected intersection instead of the full identity
+        // picture; an unfielded identity:read grant keeps the current field set.
+        const fields = context.authorization.permissions.get('identity:read')?.fields ?? null;
+        if (!fields) return { statusCode: 200, body: page };
         return {
           statusCode: 200,
-          body: await repository.listUserAccessProfiles(
-            context.authorization.actor.companyId,
-            parsePageFilter(request.query),
-          ),
+          body: { ...page, items: page.items.map((item) => permittedDto(item, fields)) },
         };
       },
     }),

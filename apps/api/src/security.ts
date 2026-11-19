@@ -43,7 +43,11 @@ export type CredentialStore = {
     }>,
   ): Promise<boolean>;
   revokeSession(tokenHash: string): Promise<boolean>;
-  resolveSession(tokenHash: string, now: Date): Promise<AuthorizationContext | null>;
+  resolveSession(
+    tokenHash: string,
+    now: Date,
+    idleCutoff: Date,
+  ): Promise<AuthorizationContext | null>;
   findPasswordForEmployee(employeeId: string, companyId: string): Promise<string | null>;
   replacePasswordForEmployee(
     input: Readonly<{
@@ -234,7 +238,14 @@ export class AuthenticationService {
     });
   }
   public authenticate(token: string): Promise<AuthorizationContext | null> {
-    return this.store.resolveSession(hashSessionToken(token, this.config.secret), new Date());
+    const now = new Date();
+    // A2-F5: sessions idle beyond the configured window stop resolving even while
+    // their absolute TTL has not elapsed; the store throttles the last_seen write.
+    return this.store.resolveSession(
+      hashSessionToken(token, this.config.secret),
+      now,
+      new Date(now.getTime() - this.config.idleSeconds * 1000),
+    );
   }
   public sessionGeneration(token: string): string {
     return this.#proof.generation(token);

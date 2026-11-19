@@ -23,7 +23,10 @@ describe('KT-L20 PostgreSQL complaint, NCR, and CAPA integrity', () => {
     outsider = randomUUID(),
     customer = randomUUID(),
     otherCustomer = randomUUID(),
-    policy = randomUUID();
+    policy = randomUUID(),
+    subTeam = randomUUID(),
+    subSubTeam = randomUUID(),
+    subOwner = randomUUID();
   let admin: Database, db: Database, repository: PostgresComplaintRepository;
 
   beforeAll(async () => {
@@ -40,6 +43,16 @@ describe('KT-L20 PostgreSQL complaint, NCR, and CAPA integrity', () => {
     await db.query(
       "INSERT INTO organizations(id,owner_organization_id,code,name,organization_type) VALUES($1,$2,'QA','Quality','TEAM'),($3,$4,'OQA','Other Quality','TEAM')",
       [team, company, otherTeam, otherCompany],
+    );
+    // A1-P1-1 negative fixture: SUBQA hangs one relationship below the QA anchor
+    // and SUBSUB one more, so SUBSUB sits two relationships (depth 2) away.
+    await db.query(
+      "INSERT INTO organizations(id,owner_organization_id,parent_id,code,name,organization_type) VALUES($1,$2,$3,'SUBQA','Sub quality','TEAM'),($4,$2,$1,'SUBSUB','Sub sub quality','TEAM')",
+      [subTeam, company, team, subSubTeam],
+    );
+    await db.query(
+      "INSERT INTO employees(id,company_id,organization_id,employee_number,display_name,normalized_email) VALUES($1,$2,$3,'SUBOWNER','Sub Owner','subowner@kt.test')",
+      [subOwner, company, subSubTeam],
     );
     await db.query(
       `INSERT INTO employees(id,company_id,organization_id,employee_number,display_name,normalized_email) VALUES
@@ -219,6 +232,50 @@ describe('KT-L20 PostgreSQL complaint, NCR, and CAPA integrity', () => {
     await expect(db.query('DELETE FROM ncr_events WHERE ncr_id=$1', [ncr])).rejects.toThrow(
       /immutable/u,
     );
+  });
+
+  it('hides depth-2 sub-team complaints from a TEAM anchor (A1-P1-1)', async () => {
+    // The complaint scope predicate rides on the customer ownership columns
+    // (cu.owner_organization_id): a customer owned by the depth-2 sub-team must
+    // stay invisible behind the depth<=1 TEAM anchor.
+    const subCustomer = randomUUID();
+    await db.query(
+      `INSERT INTO customers(id,tenant_id,customer_number,name,normalized_name,status,owner_id,owner_organization_id,created_by,updated_by) VALUES
+       ($1,$2,'C-SUB','Sub Customer','sub customer','ACTIVE',$3,$4,$3,$3)`,
+      [subCustomer, company, subOwner, subSubTeam],
+    );
+    const subContext = {
+      actor: { companyId: company, employeeId: subOwner },
+      scopes: ['COMPANY'] as const,
+      anchors: [],
+    };
+    const created = await repository.createComplaint(
+      {
+        complaintNumber: 'CMP-DEPTH-1',
+        customerId: subCustomer,
+        slaPolicyVersionId: policy,
+        channel: 'CUSTOMER_SERVICE',
+        defectCategory: 'COLOUR_DIFFERENCE',
+        severity: 'MAJOR',
+        occurredAt: '2026-08-20T08:00:00.000Z',
+        reportedAt: '2026-08-21T08:00:00.000Z',
+        description: 'Sub-team complaint used to verify the TEAM depth gate',
+        customerRequest: 'Verify the depth gate',
+        initialSnapshot: { customerReference: 'CMP-DEPTH-1' },
+        idempotencyKey: 'repo-complaint-depth',
+      },
+      subContext,
+      randomUUID(),
+    );
+    const teamAnchor = {
+      actor: { companyId: company, employeeId: investigator },
+      scopes: ['TEAM'] as const,
+      anchors: [{ scope: 'TEAM' as const, organizationId: team }],
+    };
+    // The depth-1 complaint of the investigator's own team stays visible while
+    // the depth-2 sub-team complaint is now hidden (previously leaked).
+    const visible = await repository.list({ limit: 50 }, teamAnchor);
+    expect(visible.items.some((item) => item.id === created.id)).toBe(false);
   });
 
   it('requires completed CAPA actions and an independent verifier', async () => {

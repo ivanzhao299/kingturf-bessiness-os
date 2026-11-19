@@ -42,9 +42,9 @@ export type ComplaintListFilter = Readonly<{
 const digest = (value: unknown) => createHash('sha256').update(canonicalize(value)).digest('hex');
 const json = (value: unknown) => value as JsonObject;
 // 数据范围谓词已收敛至 scope-sql.ts 的 recordScopeSql（批次 1b，TD-DUP-001）。
-// relationshipOnly 兼容形态已修复缺列并校验锚点组织；仍保留 TEAM 无 depth 限制。
-// 与其他域 organizationJoin 的深度差异继续登记 TD-SEC-006，不在缺列修复中统一。
-const COMPLAINT_SCOPE: RecordScopeOptions = { anchorPredicate: 'relationshipOnly' };
+// A1-P1-1（A-F2）：TEAM 锚点补齐 depth<=1——relationshipOnly 兼容形态退役，complaint
+// 与其他域对齐缺省 organizationJoin 形态（锚点组织校验+深度限制），TD-SEC-006 关闭。
+const COMPLAINT_SCOPE: RecordScopeOptions = {};
 
 const assertReplay = (storedHash: string, payload: unknown) => {
   if (storedHash !== digest(payload))

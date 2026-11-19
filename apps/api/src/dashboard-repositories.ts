@@ -15,9 +15,9 @@ export class PostgresDashboardRepository {
     input: { from: string; to: string; currency: string },
     context: Context,
   ): Promise<JsonObject> {
-    const secured = recordScopeSql(context.scopes, context.anchors, context.actor, 'c', 5, {
-      anchorPredicate: 'relationshipOnly',
-    });
+    // A1-P1-1（A-F2）：relationshipOnly 退役——dashboard 与其他域对齐缺省
+    // organizationJoin 形态（TEAM 锚点 depth<=1）。
+    const secured = recordScopeSql(context.scopes, context.anchors, context.actor, 'c', 5);
     const row = (
       await this.db.query<{ item: JsonObject }>(
         `WITH

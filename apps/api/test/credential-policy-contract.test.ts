@@ -53,7 +53,7 @@ describe('credential parsing and screening contracts (A-F2a)', () => {
     const service = new AuthenticationService(
       store,
       new PasswordHasher(options),
-      { secret: 'server-secret', ttlSeconds: 3600 },
+      { secret: 'server-secret', ttlSeconds: 3600, idleSeconds: 3600 },
       { record: () => Promise.resolve() },
     );
     await expect(
@@ -80,7 +80,7 @@ describe('credential parsing and screening contracts (A-F2a)', () => {
     const service = new AuthenticationService(
       store,
       hasher,
-      { secret: 'server-secret', ttlSeconds: 3600 },
+      { secret: 'server-secret', ttlSeconds: 3600, idleSeconds: 3600 },
       { record: () => Promise.resolve() },
     );
     await expect(
@@ -128,7 +128,7 @@ describe('credential parsing and screening contracts (A-F2a)', () => {
     const lockedService = new AuthenticationService(
       makeStore(true),
       hasher,
-      { secret: 'server-secret', ttlSeconds: 3600 },
+      { secret: 'server-secret', ttlSeconds: 3600, idleSeconds: 3600 },
       audit,
       DEFAULT_LOGIN_LOCKOUT,
     );
@@ -138,7 +138,7 @@ describe('credential parsing and screening contracts (A-F2a)', () => {
     const plainService = new AuthenticationService(
       makeStore(false),
       hasher,
-      { secret: 'server-secret', ttlSeconds: 3600 },
+      { secret: 'server-secret', ttlSeconds: 3600, idleSeconds: 3600 },
       audit,
       DEFAULT_LOGIN_LOCKOUT,
     );
@@ -191,7 +191,7 @@ describe('credential parsing and screening contracts (A-F2a)', () => {
     const service = new AuthenticationService(
       store,
       hasher,
-      { secret: 'server-secret', ttlSeconds: 3600 },
+      { secret: 'server-secret', ttlSeconds: 3600, idleSeconds: 3600 },
       { record: () => Promise.resolve() },
       DEFAULT_LOGIN_LOCKOUT,
     );

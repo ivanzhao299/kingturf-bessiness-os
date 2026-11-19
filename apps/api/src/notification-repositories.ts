@@ -37,9 +37,10 @@ type NotificationPreferenceRow = Readonly<{
   version: number;
 }>;
 
-// foundation（通知收件人）员工域谓词选项：缺省省略 actor_org 与 authorized_org 两处
-// 组织有效性 JOIN（与 repositories 变体的语义差异登记 TD-SEC-007）；SQL 与迁移前逐字一致。
-const NOTIFICATION_SCOPE: EmployeeScopeOptions = { actorOrganizationValidation: 'skip' };
+// foundation（通知收件人）员工域谓词：A1-P2-1（A-F2）——actorOrganizationValidation
+// 由 'skip' 改为缺省 'validate'（actor_org 与 authorized_org 两处组织有效性 JOIN 恢复），
+// 组织停用后其员工不再被解析为合法收件人；TD-SEC-007 关闭。
+const NOTIFICATION_SCOPE: EmployeeScopeOptions = {};
 const INSERT_PREFERENCE_SQL =
   'INSERT INTO notification_preferences(tenant_id,employee_id,channel,enabled) VALUES($1,$2,$3,$4) ON CONFLICT(tenant_id,employee_id,channel) DO NOTHING RETURNING channel,enabled,version';
 const UPDATE_PREFERENCE_SQL =

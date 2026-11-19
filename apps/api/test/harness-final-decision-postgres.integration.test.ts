@@ -308,7 +308,7 @@ it('SEC008: real complaint scope queries validate organization anchors without c
   });
 }, 20000);
 
-it('SEC007: active actor in inactive organization differs at real notification repository predicate layer', async () => {
+it('SEC007: a deactivated actor organization revokes notification reach (A1-P2-1, re-pinned)', async () => {
   await withOwned(async (owned) => {
     const department = randomUUID(),
       recipient = randomUUID();
@@ -335,20 +335,23 @@ it('SEC007: active actor in inactive organization differs at real notification r
     expect([await count('skip'), await count('validate')]).toEqual([1, 1]);
     await owned.db.query('UPDATE organizations SET active=false WHERE id=$1', [owned.team]);
     expect([await count('skip'), await count('validate')]).toEqual([1, 0]);
-    const notification = await new PostgresNotificationRepository(owned.db).create(
-      {
-        kind: 'FINAL-SYNTHETIC',
-        title: 'Synthetic notification',
-        message: 'Predicate-layer characterization only',
-        recipients: [recipient],
-        idempotencyKey: 'final-scope-notification',
-      },
-      owned.context.actor,
-      randomUUID(),
-      [],
-      anchors,
-    );
-    expect(notification).toHaveProperty('id');
+    // A1-P2-1 (A-F2): with the strict validation restored, the actor's deactivated
+    // organization fails the actorExists JOIN — recipient resolution refuses.
+    await expect(
+      new PostgresNotificationRepository(owned.db).create(
+        {
+          kind: 'FINAL-SYNTHETIC',
+          title: 'Synthetic notification',
+          message: 'Predicate-layer characterization only',
+          recipients: [recipient],
+          idempotencyKey: 'final-scope-notification',
+        },
+        owned.context.actor,
+        randomUUID(),
+        [],
+        anchors,
+      ),
+    ).rejects.toThrow(/outside the granted data scope/u);
     await owned.db.query('UPDATE employees SET active=false WHERE id=$1', [owned.employee]);
     expect([await count('skip'), await count('validate')]).toEqual([0, 0]);
     await owned.db.query('UPDATE employees SET active=true WHERE id=$1', [owned.employee]);
@@ -403,7 +406,7 @@ it('SEC008: real login resolves TEAM anchors, filters fields and rejects revoked
     const auth = new AuthenticationService(
       store,
       hasher,
-      { secret: randomBytes(32).toString('hex'), ttlSeconds: 3600 },
+      { secret: randomBytes(32).toString('hex'), ttlSeconds: 3600, idleSeconds: 3600 },
       store,
     );
     const session = await auth.login('local-scope-login', password, randomUUID());
@@ -431,7 +434,7 @@ it('SEC008: real login resolves TEAM anchors, filters fields and rejects revoked
   });
 }, 20000);
 
-it('SEC008: preserves deep TEAM compatibility and guards complaint writes on real PostgreSQL', async () => {
+it('SEC008: deep TEAM complaints are hidden behind the depth gate (A1-P1-1, re-pinned)', async () => {
   await withOwned(async (owned) => {
     const id = await complaintFixture(owned),
       top = randomUUID(),
@@ -448,7 +451,9 @@ it('SEC008: preserves deep TEAM compatibility and guards complaint writes on rea
       anchors: [{ scope: 'TEAM' as const, organizationId: top }],
     };
     const complaints = new PostgresComplaintRepository(owned.db);
-    expect(await complaints.getById(id, context)).toMatchObject({ id });
+    // A1-P1-1 (A-F2): the two-relationships-away sub-team complaint is no longer
+    // reachable through the depth<=1 TEAM anchor (previously leaked).
+    await expect(complaints.getById(id, context)).rejects.toMatchObject({ code: 'not_found' });
     const strict = recordScopeSql(context.scopes, context.anchors, context.actor, 'cu', 2);
     const strictRows = await owned.db.query(
       `SELECT cu.id FROM customers cu WHERE cu.tenant_id=$1 AND ${strict.sql}`,
@@ -476,9 +481,11 @@ it('SEC008: preserves deep TEAM compatibility and guards complaint writes on rea
       initialSnapshot: { source: 'local-test' },
       idempotencyKey: randomUUID(),
     };
-    const created = await complaints.createComplaint(input, context, randomUUID());
-    if (typeof created.id !== 'string') throw new Error('Created complaint ID missing');
-    expect(await complaints.getById(created.id, context)).toMatchObject({ id: created.id });
+    // The write path rides the same predicate: creating against the depth-2
+    // customer under the depth<=1 anchor is refused as well.
+    await expect(complaints.createComplaint(input, context, randomUUID())).rejects.toMatchObject({
+      code: 'not_found',
+    });
     const before = (await owned.db.query('SELECT count(*)::int n FROM customer_complaints')).rows;
     const correlation = randomUUID();
     await expect(

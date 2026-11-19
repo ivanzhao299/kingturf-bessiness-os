@@ -77,7 +77,7 @@ describe('password and session security', () => {
     const service = new AuthenticationService(
       store,
       hasher,
-      { secret: 'server-secret', ttlSeconds: 3600 },
+      { secret: 'server-secret', ttlSeconds: 3600, idleSeconds: 3600 },
       {
         record: (event) => {
           audits.push(event);
@@ -127,7 +127,7 @@ describe('password and session security', () => {
     const service = new AuthenticationService(
       store,
       hasher,
-      { secret: 'server-secret', ttlSeconds: 3600 },
+      { secret: 'server-secret', ttlSeconds: 3600, idleSeconds: 3600 },
       {
         record: (event) => {
           audits.push(event);
@@ -195,7 +195,12 @@ describe('password change and stale login contracts', () => {
         .fn<CredentialStore['replacePasswordForEmployee']>()
         .mockResolvedValue(undefined),
       revokeSession: vi.fn(() => Promise.resolve(true)),
-      resolveSession: vi.fn(() => Promise.resolve(null)),
+      resolveSession: vi.fn((hash: string, now: Date, idleCutoff: Date) => {
+        void hash;
+        void now;
+        void idleCutoff;
+        return Promise.resolve(null);
+      }),
       provisionIdentity: vi.fn(() => Promise.resolve('identity')),
     } satisfies CredentialStore;
     const audit = { record: vi.fn(() => Promise.resolve()) };
@@ -212,7 +217,7 @@ describe('password change and stale login contracts', () => {
       service: new AuthenticationService(
         store,
         hasher,
-        { secret: 'test-server-secret', ttlSeconds: 3600 },
+        { secret: 'test-server-secret', ttlSeconds: 3600, idleSeconds: 3600 },
         audit,
       ),
     };
@@ -257,5 +262,16 @@ describe('password change and stale login contracts', () => {
     expect(audit.record).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'auth.login', outcome: 'FAILURE' }),
     );
+  });
+  it('resolves sessions with an idle cutoff of now minus the configured window (A2-F5)', async () => {
+    const { service, store } = await fixture();
+    const before = Date.now();
+    await service.authenticate('opaque-token');
+    const call = store.resolveSession.mock.calls[0];
+    if (!call) throw new Error('resolveSession was not called');
+    const cutoff = call[2];
+    // idleSeconds: 3600 in this fixture's session config.
+    expect(cutoff.getTime()).toBeLessThanOrEqual(before - 3_600_000);
+    expect(cutoff.getTime()).toBeGreaterThan(before - 3_601_000);
   });
 });

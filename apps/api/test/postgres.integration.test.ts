@@ -317,7 +317,12 @@ describe('PostgreSQL identity and authorization behavior', () => {
         actor,
         randomUUID(),
       );
-      const context = await security.resolveSession(tokenHash, new Date());
+      // A2-F5: the seeded session is freshly seen, so a one-hour-back cutoff resolves it.
+      const context = await security.resolveSession(
+        tokenHash,
+        new Date(),
+        new Date(Date.now() - 3_600_000),
+      );
       expect(context?.scopeAnchors?.get('employee:read')).toEqual([{ scope, organizationId }]);
       const visible = (
         await employees.list(

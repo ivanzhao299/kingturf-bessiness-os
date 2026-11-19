@@ -381,18 +381,28 @@ export class PostgresSecurityStore implements CredentialStore, AuditSink {
       ).rowCount === 1
     );
   }
-  public async resolveSession(hash: string, now: Date): Promise<AuthorizationContext | null> {
+  public async resolveSession(
+    hash: string,
+    now: Date,
+    idleCutoff: Date,
+  ): Promise<AuthorizationContext | null> {
     return this.database.transaction(async (tx) => {
       const base = await tx.query<{
         employee_id: string;
         company_id: string;
         must_change: boolean;
       }>(
-        "SELECT e.id employee_id,e.company_id,COALESCE(pc.must_change_password,false) must_change FROM sessions s JOIN identities i ON i.id=s.identity_id AND i.active AND i.deleted_at IS NULL LEFT JOIN password_credentials pc ON pc.identity_id=i.id JOIN employees e ON e.id=i.employee_id AND e.active AND e.deleted_at IS NULL JOIN organizations company ON company.id=e.company_id AND company.organization_type='COMPANY' AND company.active AND company.deleted_at IS NULL JOIN organizations employee_org ON employee_org.id=e.organization_id AND employee_org.owner_organization_id=e.company_id AND employee_org.active AND employee_org.deleted_at IS NULL JOIN organization_memberships om ON om.employee_id=e.id AND om.organization_id=e.company_id AND om.active WHERE s.token_hash=$1 AND s.revoked_at IS NULL AND s.expires_at>$2 AND s.organization_id=e.company_id LIMIT 1",
-        [hash, now],
+        "SELECT e.id employee_id,e.company_id,COALESCE(pc.must_change_password,false) must_change FROM sessions s JOIN identities i ON i.id=s.identity_id AND i.active AND i.deleted_at IS NULL LEFT JOIN password_credentials pc ON pc.identity_id=i.id JOIN employees e ON e.id=i.employee_id AND e.active AND e.deleted_at IS NULL JOIN organizations company ON company.id=e.company_id AND company.organization_type='COMPANY' AND company.active AND company.deleted_at IS NULL JOIN organizations employee_org ON employee_org.id=e.organization_id AND employee_org.owner_organization_id=e.company_id AND employee_org.active AND employee_org.deleted_at IS NULL JOIN organization_memberships om ON om.employee_id=e.id AND om.organization_id=e.company_id AND om.active WHERE s.token_hash=$1 AND s.revoked_at IS NULL AND s.expires_at>$2 AND s.last_seen_at>$3 AND s.organization_id=e.company_id LIMIT 1",
+        [hash, now, idleCutoff],
       );
       const actor = base.rows[0];
       if (!actor) return null;
+      // A2-F5: keep last_seen_at fresh, but throttle the write-back to at most
+      // one update per minute per session.
+      await tx.query(
+        "UPDATE sessions SET last_seen_at=now() WHERE token_hash=$1 AND last_seen_at<=now()-interval '60 seconds'",
+        [hash],
+      );
       const grants = await tx.query<{
         capability: PermissionKey;
         field_allowlist: string[] | null;

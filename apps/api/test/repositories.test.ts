@@ -63,14 +63,16 @@ describe('PostgreSQL authorization repositories', () => {
         rows: [{ employee_id: 'employee', company_id: 'company' }],
         rowCount: 1,
       })
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // A2-F5 throttled last_seen write-back
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })
       .mockResolvedValueOnce({ rows: [], rowCount: 0 });
     const transaction = vi.fn(async (work: (tx: SqlClient) => Promise<unknown>) => work({ query }));
     await new PostgresSecurityStore({ transaction } as unknown as Database).resolveSession(
       'hash',
       new Date(),
+      new Date(),
     );
-    expect((query.mock.calls[1] as [string])[0]).toContain('g.data_scopes::text[] data_scopes');
+    expect((query.mock.calls[2] as [string])[0]).toContain('g.data_scopes::text[] data_scopes');
   });
   it('rejects cross-company organization updates before opening a transaction', async () => {
     const query = vi.fn();
@@ -138,6 +140,7 @@ describe('PostgreSQL authorization repositories', () => {
             rows: [{ employee_id: 'employee', company_id: 'company' }],
             rowCount: 1,
           })
+          .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // A2-F5 throttled write-back
           .mockResolvedValueOnce({
             rows: [
               {
@@ -157,7 +160,7 @@ describe('PostgreSQL authorization repositories', () => {
       }),
     );
     const store = new PostgresSecurityStore({ transaction } as unknown as Database);
-    const result = await store.resolveSession('hash', new Date());
+    const result = await store.resolveSession('hash', new Date(), new Date());
     expect(result?.permissions.get('employee:update')).toEqual({
       fields: ['displayName', 'email'],
       scopes: ['COMPANY', 'SELF'],
@@ -173,6 +176,7 @@ describe('PostgreSQL authorization repositories', () => {
             rows: [{ employee_id: 'employee', company_id: 'company' }],
             rowCount: 1,
           })
+          .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // A2-F5 throttled write-back
           .mockResolvedValueOnce({
             rows: [
               {
@@ -189,7 +193,9 @@ describe('PostgreSQL authorization repositories', () => {
     );
     const store = new PostgresSecurityStore({ transaction } as unknown as Database);
     expect(
-      (await store.resolveSession('hash', new Date()))?.permissions.get('employee:read'),
+      (await store.resolveSession('hash', new Date(), new Date()))?.permissions.get(
+        'employee:read',
+      ),
     ).toEqual({ fields: null, scopes: ['SELF', 'TEAM'] });
   });
 
@@ -202,6 +208,7 @@ describe('PostgreSQL authorization repositories', () => {
             rows: [{ employee_id: 'employee', company_id: 'company' }],
             rowCount: 1,
           })
+          .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // A2-F5 throttled write-back
           .mockResolvedValueOnce({
             rows: [{ capability: 'employee:read', field_allowlist: null, data_scopes: ['SELF'] }],
             rowCount: 1,
@@ -214,7 +221,7 @@ describe('PostgreSQL authorization repositories', () => {
     );
     const result = await new PostgresSecurityStore({
       transaction,
-    } as unknown as Database).resolveSession('hash', new Date());
+    } as unknown as Database).resolveSession('hash', new Date(), new Date());
     expect(result?.permissions.get('employee:read')?.scopes).toEqual(['SELF']);
     expect(result?.scopeAnchors?.get('employee:read')).toEqual([
       { scope: 'TEAM', organizationId: 'team' },

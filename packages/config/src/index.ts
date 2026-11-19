@@ -15,7 +15,7 @@ export type AppConfig = Readonly<{
   nodeEnv: 'development' | 'test' | 'production';
   databaseUrl: string;
   api: Readonly<{ host: string; port: number }>;
-  session: Readonly<{ secret: string; ttlSeconds: number }>;
+  session: Readonly<{ secret: string; ttlSeconds: number; idleSeconds: number }>;
   password: Readonly<{
     saltBytes: number;
     keyLength: number;
@@ -85,11 +85,23 @@ export function parseEnvironment(env: EnvironmentRecord): AppConfig {
     !required(env, 'ATTACHMENT_LOCAL_DIRECTORY').startsWith('/var/lib/kingturf/')
   )
     throw new ConfigurationError('Production local attachment storage must use /var/lib/kingturf/');
+  const sessionTtlSeconds = integer(env, 'SESSION_TTL_SECONDS', 60, 2_592_000);
   const config: Omit<AppConfig, 'loginRateLimit' | 'cspEnforce' | 'browserSession'> = {
     nodeEnv: nodeEnv as AppConfig['nodeEnv'],
     databaseUrl,
     api: { host: required(env, 'API_HOST'), port: integer(env, 'API_PORT', 1, 65_535) },
-    session: { secret, ttlSeconds: integer(env, 'SESSION_TTL_SECONDS', 60, 2_592_000) },
+    session: {
+      secret,
+      ttlSeconds: sessionTtlSeconds,
+      // A2-F5: idle sessions expire after this window of inactivity (default 12h);
+      // the effective window never exceeds the absolute session TTL.
+      idleSeconds: Math.min(
+        env.SESSION_IDLE_WINDOW_SECONDS === undefined
+          ? 43_200
+          : integer(env, 'SESSION_IDLE_WINDOW_SECONDS', 60, 2_592_000),
+        sessionTtlSeconds,
+      ),
+    },
     password: {
       saltBytes: integer(env, 'PASSWORD_SALT_BYTES', 16, 64),
       keyLength: integer(env, 'PASSWORD_KEY_LENGTH', 32, 128),

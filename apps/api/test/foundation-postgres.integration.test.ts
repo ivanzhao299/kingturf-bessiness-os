@@ -186,6 +186,31 @@ describe('JTF-P0-E12..E15 PostgreSQL acceptance', () => {
     ).toBe(company);
   });
 
+  it('drops recipients whose organization is deactivated (A1-P2-1)', async () => {
+    const repo = new PostgresNotificationRepository(db);
+    // With the strict actor-organization validation restored, a TEAM-scoped
+    // notification no longer reaches employees sitting in a deactivated team.
+    await db.query('UPDATE organizations SET active=false WHERE id=$1', [organization]);
+    try {
+      await expect(
+        repo.create(
+          {
+            kind: 'generic',
+            title: 'Deactivated',
+            message: 'Deactivated organization',
+            recipients: [recipient],
+            idempotencyKey: 'notice-deactivated',
+          },
+          actor,
+          randomUUID(),
+          ['TEAM'],
+        ),
+      ).rejects.toThrow(/outside the granted data scope/u);
+    } finally {
+      await db.query('UPDATE organizations SET active=true WHERE id=$1', [organization]);
+    }
+  });
+
   it('pins translations and approved customer delivery while exposing only administrator audit data', async () => {
     const repository = new PostgresBusinessDocumentRepository(db),
       context = { actor, scopes: ['COMPANY'] as const };

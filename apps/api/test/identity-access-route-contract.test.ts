@@ -130,6 +130,21 @@ describe('profiles inline contract', () => {
       limit: 50,
     });
   });
+  // A2-F2: a narrow identity:read grant sees only the projected intersection —
+  // loginName and the rest of the identity picture stay hidden.
+  it('projects profiles to the identity:read field allowlist', async () => {
+    const f = fixture([['identity:read', { scopes: ['SELF'], fields: ['displayName'] }]]);
+    const response = await f.dispatch('GET', profilesPath);
+    expect(response.statusCode).toBe(200);
+    // permittedDto always keeps `id`; displayName is not in the grant's allowlist.
+    expect(response.body).toEqual({ items: [{ id: 'fixed-profile' }], nextCursor: null });
+  });
+  it('keeps the current field set when identity:read is unfielded or absent', async () => {
+    const unfielded = fixture([['identity:read', grant]]);
+    expect((await unfielded.dispatch('GET', profilesPath)).body).toEqual(profilesPage);
+    const authorizationOnly = fixture([['authorization:read', grant]]);
+    expect((await authorizationOnly.dispatch('GET', profilesPath)).body).toEqual(profilesPage);
+  });
 });
 
 describe('identity state inline validation and field permission contract', () => {

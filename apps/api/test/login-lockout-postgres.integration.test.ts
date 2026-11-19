@@ -140,7 +140,7 @@ describe('PostgreSQL persistent login lockout behavior', () => {
     const service = new AuthenticationService(
       security,
       hasher,
-      { secret: 'audit-secret', ttlSeconds: 3600 },
+      { secret: 'audit-secret', ttlSeconds: 3600, idleSeconds: 3600 },
       security, // PostgresSecurityStore doubles as the audit sink (server.ts wiring).
       lockout,
     );

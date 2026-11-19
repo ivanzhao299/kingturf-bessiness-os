@@ -100,7 +100,7 @@ export async function ownedCommercialGraph() {
         blockSize: 8,
         parallelization: 1,
       }),
-      { secret: sessionSecret, ttlSeconds: 3600 },
+      { secret: sessionSecret, ttlSeconds: 3600, idleSeconds: 3600 },
       store,
     );
     const app = buildApp({
