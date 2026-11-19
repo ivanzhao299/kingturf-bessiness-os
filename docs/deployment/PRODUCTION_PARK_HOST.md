@@ -1,10 +1,10 @@
 # KingTurf production — Singapore runbook
 
-> **D1 设计中（2026-11-19 第六次人裁）**：单管道 release.yml 单输入发布方案已立项（[UI 基座计划](../tasks/ui-foundation-program-2026-11-19.md) §9，TD-REL-008 承接，插 UI-M2 后/U3 前，D-CP1 人审全 diff 后才许首次 dispatch 生产）。**现行契约不变、照常执行，直至 release.yml 上线。**
+> **D1 已上线（2026-11-20）**：**常规发布唯一入口 = `release.yml`**（单输入 commit_sha；validate→build→verify→deploy 单锁内联条件迁移→post；首跑 44609703668 零迁移路径已验证，迁移路径待首个含迁移发布验证后关闭——TD-REL-008）。应用级回滚入口 = `release-rollback.yml`（单输入历史已发布 SHA；首验另批）。**旧通道 `recover-application-images.yml` / `apply-migrations.yml` / `release-images.yml` 降级为应急/维护用途**（人工缝合输入仅应急时按 runbook 使用；退役待 D1 连续 N 次稳定另议）。安全契约（production 审批/并发组/known_hosts/字节校验/恢复点/fail-closed）在新旧入口中完全一致。首跑证据见 [ui-console-deployment-2026-11-20](../evidence/ui-console-deployment-2026-11-20.md) §8。
 
 ## 当前应用发布契约（2026-11-17）
 
-74 项迁移已经完成（Wave2 对齐）。生产应用发布唯一入口为 `recover-application-images.yml`；旧 `deploy-production.yml` 文件已于 A-F1（2026-11-19）删除，其历史见 git 记录。新迁移执行、历史改写和生产数据恢复必须另行授权及设计。以下迁移时代流程描述保留为历史，不能据此重执行迁移。
+74 项迁移已经完成（Wave2 对齐）。自 D1 上线（2026-11-20）起生产应用发布常规入口为 `release.yml`；以下「`recover-application-images.yml` 为唯一入口」的描述降级为应急通道历史。旧 `deploy-production.yml` 文件已于 A-F1（2026-11-19）删除，其历史见 git 记录。新迁移执行、历史改写和生产数据恢复必须另行授权及设计。以下迁移时代流程描述保留为历史，不能据此重执行迁移。
 
 新入口输入精确main历史候选SHA、原批准API/Web根digest及成功的release-images run ID。控制脚本来自workflow自身固定SHA，独立于旧应用候选；候选完整ci:local、发布run来源、当前tag原始摘要必须全等。主机`image_compatibility.json`按候选分派：同候选重跑须双digest逐字全等并保留既有schema兼容证据；新候选在注册表FULLY_MATCHED且授权冒烟PASS（runner隔离启动已过，workflow冒烟步骤成功后才写授权）时放行。每次成功发布在DEPLOYED之后以0600原子推进该证据文件（`images_built_at`=发布SHA、digest取自identities、`old_app_on_new_schema`记runner隔离冒烟的run ID与bundle sha256），后续发布证据自动滚动。此次授权来源及进度见[执行任务](../tasks/ghcr-transport-recovery-2026-11-17.md)。
 

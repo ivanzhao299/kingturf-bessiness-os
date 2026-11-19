@@ -68,3 +68,13 @@
 生产终态（2026-11-19T19:52Z 公网实测）：`/health` 200 ok、`/ready` 200 ready、`/version`==`45a5218f111a2fb1083c1d1340609cdaa46c2a75`（builtAt application-44600095006-1）、TLS 有效；`deployment.json`=PASS、FULLY_MATCHED、migration_execution=NOT_INVOKED、recovery_images=RETAINED（恢复点前缀 application-44600095006）；postcheck release_sha=45a5218；api/web 运行 digest 与批准值逐字一致。**生产侧 CSS 佐证**：`/assets/bootstrap-CzVB_eVc.css` 公网 200 且含 `.console-page{display:flex;…gap:var(--kt-space-4)…` 与 `--kt-*` token 定义（文件名与本地同 SHA 构建一致）。deploy job 19:49:10Z→19:51:08Z（118 秒），受控停机约 1 分钟级；dispatch（19:36:35Z）→deploy 全程 13 分钟，与 verify 正常区间一致，未见 >10 分钟额外 environment 审批等待。
 
 **所有者九页样式重验说明**：浏览器刷新即可——CSS 文件名带内容哈希（index-\*.html 引用链自动指向新哈希），无需清缓存；九页直链见 §6。
+
+## 8. D1 单管道上线（裁定10 后继指令，36a7097 首跑验证）
+
+**实施（36a7097）**：新增 `.github/workflows/release.yml`（单管道：validate→build 内联构建+digest job outputs 内传→verify 完整 ci:local+bundle→**deploy 单锁内联条件迁移**→post 摘要）与 `.github/workflows/release-rollback.yml`（历史 SHA 应用级回滚，digest 自算自 GHCR tag）；契约测试 `tests/operations/release_pipeline_workflow_test.py` 5 例（单输入/job 链序/digest 内传/锁唯一获取点/migrate 内联序/rollback 禁迁移工具）。本地验证：run 块 bash -n 全过、orchestrator plan CLI 三态演练（FULLY_MATCHED→skip / MATCHED_PREFIX_PENDING→apply / UNKNOWN_EXTRA fail-closed）、引用脚本存在性。**设计偏离（主协调 D-CP1 正式批准）**：migrate 条件步内联进持锁 deploy job——job 间分锁会保留 Wave2 接缝（诊断 2 的根因），锁贯穿是消除接缝的唯一实现；契约钉死「全 yml 恰一个 `kingturf-erp-production` 并发组」。旧四 workflow（release-images/recover/apply-migrations/ops-maintenance）零改动保留为应急/维护通道，退役待 D1 连续 N 次稳定后另议。
+
+**首跑证据（run [44609703668](https://github.com/ivanzhao299/kingturf-bessiness-os/actions/runs/44609703668)，commit 36a7097，dispatch 20:32:26Z）**：validate/build/verify/deploy/post **五 job 全绿**，全程约 16 分钟。成功判据逐项核实：deploy plan step 输出 `MIGRATION_SUMMARY: skipped (registry already FULLY_MATCHED at 74 migrations)`（零 pending 判空跳过 ✓）；precheck.jsonl 首行 preflight=PASS/FULLY_MATCHED/applied=74/pending=[] 且**无 version_probe skip 键**——零迁移+API 运行走严格路径，裁定9 修复在新管道闭环实战验证 ✓；`deployment.json`=PASS/sha=36a7097/FULLY_MATCHED/recovery_images=RETAINED ✓；post 摘要含双 digest ✓；公网探针 `/health` 200 ok、`/ready` 200 ready、`/version`==`36a7097d783f88d5210ef955d65664c68e8eb797`（builtAt application-44609703668-1）✓。deploy job 20:45:51Z→20:47:59Z（128 秒，plan+transfer+probes；受控停机约 1 分钟级）；未见 >10 分钟额外 environment 审批等待。
+
+**首跑发现并修复的展示层缺陷（c3cf48c）**：post 摘要 heredoc 未加引号，markdown 反引号包裹的 `$RELEASE_SHA`/`$API_DIGEST` 被 shell 当命令替换执行（`command not found`）致摘要 sha/digest 行渲染为空——部署语义零影响；修复为 printf 形态并加契约断言（post 块禁 `<<EOF`）。
+
+**TD-REL-008 状态**：零迁移路径已验证（首跑 run 44609703668）；迁移路径待首个含迁移发布验证后关闭；rollback 首验待历史 SHA 非紧急演练（另批）。**新发布入口=release.yml**（PRODUCTION_PARK_HOST.md 头部已更新）；旧通道降级应急。已知限制：`prepare_release_bundle.sh` manifest==74 硬编码（脚本红线未动）——0075+ 迁移批次须先另批更新该断言。

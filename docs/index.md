@@ -82,7 +82,7 @@
 [Wave1生产部署记录](evidence/wave1-deployment-2026-11-18.md)
 [Wave2生产部署终录](evidence/wave2-deployment-2026-11-19.md)
 [Wave2部署终录·R批更新](evidence/wave2-deployment-2026-11-19.md)：TD-REL-006 死信处置164清零、TD-REL-007 rehearsal harness、staged 7目录清理——三项遗留全部关闭（见§5）。：迁移74+recover全绿、/health时间线（78分钟停机）、交接守卫三分支、TD终态与保全清理清单——系统管理优化计划收官。
-[UI控制台生产部署终录](evidence/ui-console-deployment-2026-11-20.md)：governance 九页 Preact 控制台+UI 基座上生产（05796e5 run 44587934364；R2 CSS 注入修复 45a5218 run 44600095006）；四+2 run 清单、三轮发布失败修复全史（Docker 上下文缺 packages/ui、handover_state 误判零迁移发布→裁定9、懒载 CSS 永不注入→裁定10守卫）、探针/SHA 链/停机窗口与九页验收直链。
+[UI控制台生产部署终录](evidence/ui-console-deployment-2026-11-20.md)：governance 九页 Preact 控制台+UI 基座上生产（05796e5 run 44587934364；R2 CSS 注入修复 45a5218 run 44600095006）+D1 单管道 release.yml 上线（36a7097 首跑 44609703668 五 job 全绿，零迁移路径验证，TD-REL-008 待迁移路径终验）；五+2 run 清单、三轮发布失败修复全史（Docker 上下文缺 packages/ui、handover_state 误判零迁移发布→裁定9、懒载 CSS 永不注入→裁定10守卫）、探针/SHA 链/停机窗口与九页验收直链。
 [Wave2迁移执行手册](deployment/wave2-migration-runbook-2026-11-18.md)
 [Wave2迁移执行指引](deployment/wave2-operator-sheet-2026-11-18.md)：apply-migrations.yml dispatch 步骤、成功判据与失败语义（SSH人工单已被取代）。：72→74（0073/0074）所有者SSH命令序列、orchestrator五门证据链、失败中止与回滚要点、隔离演练证据。：run 44318126044部署成功全证据、探针/marker/恢复点、证据推进尾步缺陷根因与无锁死论证（TD-REL-004随Wave2修复）。
 [Harness竣工收官报告](evidence/harness-final-closeout-report-2026-10-21.md)：五阶段摘要、开放项承接、母模板反馈与归档后合同。
