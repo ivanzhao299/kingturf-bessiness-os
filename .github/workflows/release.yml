@@ -371,11 +371,13 @@ jobs:
           API_DIGEST: ${{ needs.build.outputs.api_digest }}
           WEB_DIGEST: ${{ needs.build.outputs.web_digest }}
           MIGRATION_SUMMARY: ${{ needs.deploy.outputs.migration_summary }}
+        # printf (not an unquoted heredoc): markdown backticks around the values
+        # would otherwise be executed as command substitution by the shell.
         run: |
-          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
-          ## Release deployed: `$RELEASE_SHA`
-          - API digest: `$API_DIGEST`
-          - Web digest: `$WEB_DIGEST`
-          - Migration: $MIGRATION_SUMMARY
-          - Deployment evidence: `application-recovery-evidence` artifact (deployment.json / postcheck.json / runtime.json)
-          EOF
+          {
+            printf '## Release deployed: `%s`\n' "$RELEASE_SHA"
+            printf -- '- API digest: `%s`\n' "$API_DIGEST"
+            printf -- '- Web digest: `%s`\n' "$WEB_DIGEST"
+            printf -- '- Migration: %s\n' "$MIGRATION_SUMMARY"
+            printf -- '- Deployment evidence: application-recovery-evidence artifact (deployment.json / postcheck.json / runtime.json)\n'
+          } >> "$GITHUB_STEP_SUMMARY"

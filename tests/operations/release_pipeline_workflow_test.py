@@ -128,6 +128,12 @@ class ReleasePipelineContract(unittest.TestCase):
         self.assertLess(apply_pos, transfer_pos)
         # The pinned control bundle still carries the application release gate.
         self.assertIn('for script in oci_image_transport application_release production_preflight', deploy)
+        # The post summary is rendered with printf: an unquoted heredoc would treat
+        # the markdown backticks around digest values as command substitution
+        # (observed on the first release.yml run: 'sha: command not found').
+        post = text.split('\n  post:', 1)[1]
+        self.assertIn("printf '## Release deployed: `%s`\\n' \"$RELEASE_SHA\"", post)
+        self.assertNotIn('<<EOF', post)
 
 
 if __name__ == '__main__':
