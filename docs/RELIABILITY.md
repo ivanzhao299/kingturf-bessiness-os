@@ -1,6 +1,6 @@
 # RELIABILITY.md（可靠性与发布链路 runbook）
 
-> 本文档与 `.github/workflows/deploy-production.yml` **逐步对应**（对齐验收：抽查核对）。
+> 本文档为**历史 runbook**（原与已删除的 `deploy-production.yml` 逐步对应；该 workflow 已于 A-F1/2026-11-19 删除）。现行发布契约见 [PRODUCTION_PARK_HOST](deployment/PRODUCTION_PARK_HOST.md)（入口 `recover-application-images.yml`；D1 单管道设计中，见 UI 基座计划 §9）。
 > 发布方式：**仅 `workflow_dispatch` 手动触发，输入 40 位 commit SHA**；无 tag、无 GitHub Release、无自动发布（判定记录见 `docs/CI.md`）。
 
 ## 1. 发布 runbook（三段式，对应 workflow 三个 job）
