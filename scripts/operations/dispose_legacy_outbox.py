@@ -39,7 +39,27 @@ STAGED_WHITELIST = (
     '/tmp/wave2-44359813902-1',
     '/tmp/wave2-44362962206-1',
 )
-STAGED_EXPECTED_ENTRIES = ('migrations', 'production_preflight.py', 'release_orchestrator.py')
+# Calibrated 2026-11-19 against both sources (ruling 8): ① apply-migrations.yml
+# rsync literals (apply_migrations.py, release_orchestrator.py, production_preflight.py,
+# migrations/) plus artifacts the control script itself writes on the host
+# (plan.json at apply_migrations.py:325, psql-argv.json at :487), and ② the measured
+# per-directory listings in run 44426076583's cleanup evidence. __pycache__ is the
+# bytecode cache of the staged control scripts executed via python3.
+STAGED_EXPECTED_ENTRIES = frozenset((
+    'apply_migrations.py',
+    '__pycache__',
+    'migrations',
+    'plan.json',
+    'production_preflight.py',
+    'psql-argv.json',
+    'release_orchestrator.py',
+))
+STAGED_MANDATORY_ENTRIES = frozenset((
+    'apply_migrations.py',
+    'migrations',
+    'production_preflight.py',
+    'release_orchestrator.py',
+))
 FORBIDDEN_PATH_MARKERS = ('.release-backups', '.release-image-recovery')
 
 
@@ -94,8 +114,12 @@ def classify_drift(actual_ids, expected_count):
 
 
 def staged_entry_ok(names):
-    """Exactly the expected control shape; anything else is unexpected."""
-    return sorted(names) == sorted(STAGED_EXPECTED_ENTRIES)
+    """All mandatory control entries present; extras only from the calibrated
+    allowlist; symlinks and non-regular entries are unexpected."""
+    present = set(names)
+    if not STAGED_MANDATORY_ENTRIES <= present:
+        return False
+    return present <= STAGED_EXPECTED_ENTRIES
 
 
 def refuse_forbidden(path):
@@ -155,6 +179,9 @@ def mode_cleanup_staged():
         if not path.is_dir():
             results.append({'path': directory, 'action': 'missing (already clean)'})
             continue
+        irregular = [p.name for p in path.iterdir()
+                     if p.is_symlink() or (not p.is_dir() and p.name == 'migrations')]
+        require(not irregular, f'unexpected symlink/irregular entry in {directory}: {irregular}')
         entries = sorted(p.name for p in path.iterdir())
         if not staged_entry_ok(entries):
             results.append({'path': directory, 'action': 'SKIPPED unexpected entries',

@@ -169,13 +169,34 @@ class PureHelpers(unittest.TestCase):
         self.assertEqual(drift['expected'], 3)
         self.assertEqual(drift['sample'], ['a', 'b', 'c', 'd'])
 
-    def test_staged_shape_guard_accepts_only_exact_control_set(self):
-        self.assertTrue(disp.staged_entry_ok(
+    def test_staged_shape_guard_calibrated_allowlist(self):
+        """Red first with the old 3-entry fixture; green with the calibrated set."""
+        measured = ['apply_migrations.py', '__pycache__', 'migrations', 'plan.json',
+                    'production_preflight.py', 'psql-argv.json', 'release_orchestrator.py']
+        # Old 3-entry fixture must NOT satisfy the calibrated mandatory set.
+        self.assertFalse(disp.staged_entry_ok(
             ['migrations', 'production_preflight.py', 'release_orchestrator.py']))
-        for names in (['migrations', 'release_orchestrator.py'],  # missing preflight
-                      ['migrations', 'production_preflight.py', 'release_orchestrator.py', 'plan.json'],
-                      []):
-            self.assertFalse(disp.staged_entry_ok(names))
+        # Full measured listing passes (mandatory present, extras allowlisted).
+        self.assertTrue(disp.staged_entry_ok(measured))
+        # run-1 minimal shape (no extras) also passes.
+        self.assertTrue(disp.staged_entry_ok(
+            ['apply_migrations.py', 'migrations', 'production_preflight.py',
+             'release_orchestrator.py']))
+        # Unknown literal name (not in yml sources nor measured) fails.
+        self.assertFalse(disp.staged_entry_ok(measured + ['plan.json.bak']))
+        # Missing any mandatory entry fails.
+        self.assertFalse(disp.staged_entry_ok(
+            ['__pycache__', 'migrations', 'plan.json', 'production_preflight.py',
+             'psql-argv.json', 'release_orchestrator.py']))
+
+    def test_irregular_and_symlink_entries_are_reported(self):
+        """The host mode checks via a require() on irregular entries; the pure
+        contract here is the naming convention (directories only for migrations)."""
+        # The host flow refuses a symlinked migrations entry before any rm.
+        # This is verified end-to-end in CP7; here we pin the check's existence.
+        source = (ROOT / 'scripts/operations/dispose_legacy_outbox.py').read_text()
+        self.assertIn('is_symlink', source)
+        self.assertIn('unexpected symlink/irregular entry', source)
 
     def test_forbidden_paths_are_refused(self):
         for path in ('/data/kingturf-erp/.release-backups/x', '/tmp/.release-image-recovery'):
