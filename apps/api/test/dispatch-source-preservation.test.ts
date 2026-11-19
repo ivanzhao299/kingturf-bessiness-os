@@ -174,7 +174,11 @@ describe('dispatch group inverse source preservation against fixed f3', () => {
   // B2（TD-API-003，行为变更已批）：治理列表 list 调用新增 parsePageFilter(request.query)
   // 分页实参（冻结 f3 基线为单实参/四实参且无 filter）；比对前仅将该已批实参从展开
   // 文本中归一化移除，其余谓词/解析/调用/续行/返回仍逐字节冻结。
-  const PAGE_FILTER_ARG = /,\s*parsePageFilter\(request\.query\)/gu;
+  const PAGE_FILTER_ARG = /,(?:\s*\/\/[^\n]*)*\s*parsePageFilter\(request\.query\)/gu;
+  // UI-M2（加性契约已批）：employees.list 的可选 organization 过滤实参块，对拍前剥离。
+  // （两条剥离正则均容忍其间已批注释行。）
+  const ORGANIZATION_ARG =
+    /,(?:\s*\/\/[^\n]*)*\s*request\.query\?\.organization\s*\?\s*uuid\(request\.query\.organization, 'organization'\)\s*:\s*undefined/gu;
   for (const group of groups)
     it(
       group.name + ' keeps every original predicate, parser, call, continuation and return',
@@ -227,7 +231,9 @@ describe('dispatch group inverse source preservation against fixed f3', () => {
         let source = readFileSync(new URL(rawPath, import.meta.url), 'utf8');
         for (const node of added) source = source.slice(0, node.pos) + source.slice(node.end);
         const current = ts.createSourceFile(rawPath, source, ts.ScriptTarget.Latest, true);
-        const expanded = expand(current, group.symbol, bindings).replace(PAGE_FILTER_ARG, '');
+        const expanded = expand(current, group.symbol, bindings)
+          .replace(ORGANIZATION_ARG, '')
+          .replace(PAGE_FILTER_ARG, '');
         expect(firstDifference(tokens(expanded), tokens(originalText))).toBeNull();
         expect(bindings).toHaveLength(0);
       },

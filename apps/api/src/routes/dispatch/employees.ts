@@ -16,6 +16,10 @@ export function* employeesAttempts(scope: RouteDispatchContext): RouteAttempts {
           context.actor.employeeId,
           grant.anchors,
           parsePageFilter(request.query),
+          // UI-M2：可选组织过滤（uuid；非法值 400，加性契约）。
+          request.query?.organization
+            ? uuid(request.query.organization, 'organization')
+            : undefined,
         ),
         (resolvedBody) => {
           return {

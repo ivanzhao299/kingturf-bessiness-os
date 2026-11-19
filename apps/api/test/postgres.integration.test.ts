@@ -473,6 +473,25 @@ describe('PostgreSQL identity and authorization behavior', () => {
     ).toBe(false);
   });
 
+  it('UI-M2: employees.list organization filter is additive over DataScope (左树右表)', async () => {
+    // 夹具：ACTOR→team、CHILD→childTeam、DEEP→deepTeam、LOOSE→looseTeam（同 company）。
+    const teamPage = await employees.list(company, ['COMPANY'], actorId, [], { limit: 50 }, team);
+    expect(teamPage.items.map((e) => e.employeeNumber)).toEqual(['ACTOR']);
+    const childPage = await employees.list(
+      company,
+      ['COMPANY'],
+      actorId,
+      [],
+      { limit: 50 },
+      childTeam,
+    );
+    expect(childPage.items.map((e) => e.employeeNumber)).toEqual(['CHILD']);
+    // 组织过滤与 scope 谓词叠加：不满足 scope 的组合仍为空（过滤只收窄、不放宽）。
+    expect(
+      (await employees.list(company, ['DEPARTMENT'], looseId, [], { limit: 50 }, team)).items,
+    ).toEqual([]);
+  });
+
   it('A2-F4②: assign() rejects assigning reserved-code roles (API 创建路径对齐)', async () => {
     const reservedRole = randomUUID();
     await database.query(

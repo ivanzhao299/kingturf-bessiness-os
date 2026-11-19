@@ -229,10 +229,15 @@ export class PostgresEmployeeRepository implements EmployeeRepository {
     actorId: string,
     anchors: readonly ScopeAnchor[] = [],
     filter: PageFilter = { limit: 50 },
+    organizationId?: string,
   ): Promise<Page<EmployeeDto>> {
     // B2：消除 $n 重排 hack——谓词直接以 startParameter=2 生成。
     const scoped = this.#scoped(scopes, actorId, companyId, anchors, 2);
     const values: unknown[] = [companyId, ...scoped.values];
+    // UI-M2：选中组织过滤（加性，参数化，DataScope 谓词原样叠加）。
+    const orgFilter = organizationId
+      ? (values.push(organizationId), ` AND e.organization_id=$${String(values.length)}::uuid`)
+      : '';
     let keyset = '';
     if (filter.cursor) {
       values.push(filter.cursor);
@@ -241,7 +246,7 @@ export class PostgresEmployeeRepository implements EmployeeRepository {
     values.push(filter.limit + 1);
     const rows = (
       await this.db.query<EmployeeRow>(
-        `SELECT e.* FROM employees e WHERE e.company_id=$1 AND e.deleted_at IS NULL AND ${scoped.predicate}${keyset} ORDER BY e.created_at DESC,e.id DESC LIMIT $${String(values.length)}`,
+        `SELECT e.* FROM employees e WHERE e.company_id=$1 AND e.deleted_at IS NULL AND ${scoped.predicate}${orgFilter}${keyset} ORDER BY e.created_at DESC,e.id DESC LIMIT $${String(values.length)}`,
         values,
       )
     ).rows;

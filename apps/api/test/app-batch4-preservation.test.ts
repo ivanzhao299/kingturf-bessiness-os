@@ -27,16 +27,40 @@ const isPageFilterArg = (value: unknown): boolean =>
   !Array.isArray(value) &&
   Object.keys(value).length === 1 &&
   (value as { limit?: unknown }).limit === 50;
-const stripApprovedPageFilter = (row: unknown): unknown => {
-  if (!Array.isArray(row) || row[0] !== 'call' || row[2] !== 'list' || !Array.isArray(row[3]))
+// UI-M2（加性契约已批）：employees.list 新增可选 organization 过滤实参；无过滤时
+// 恒为末尾 undefined，比对前同样移除（仅该一处，其余 trace 逐字段相等）。
+// JSON 往返后 undefined 呈现为 null：尾参为 null/undefined 且其前恰为 pageFilter
+// 默认实参时成对剥离（employees.list 的 UI-M2 organization 过滤；其余 list 不受影响）。
+const stripApprovedOrganizationArg = (row: unknown): unknown => {
+  if (
+    !Array.isArray(row) ||
+    row[0] !== 'call' ||
+    row[2] !== 'list' ||
+    !Array.isArray(row[3]) ||
+    (row[3].at(-1) !== null && row[3].at(-1) !== undefined) ||
+    !isPageFilterArg(row[3].at(-2))
+  )
     return row;
-  const args = row[3] as unknown[];
-  return isPageFilterArg(args.at(-1)) ? ['call', row[1], row[2], args.slice(0, -1)] : row;
+  return ['call', row[1], row[2], row[3].slice(0, -1)];
+};
+const stripApprovedListArgs = (row: unknown): unknown => {
+  // 先剥 UI-M2 组织过滤尾参（undefined），再剥 B2 pageFilter 默认实参。
+  const withoutOrganization = stripApprovedOrganizationArg(row);
+  if (
+    !Array.isArray(withoutOrganization) ||
+    withoutOrganization[0] !== 'call' ||
+    !Array.isArray(withoutOrganization[3])
+  )
+    return withoutOrganization;
+  const args = withoutOrganization[3] as unknown[];
+  return isPageFilterArg(args.at(-1))
+    ? ['call', withoutOrganization[1], withoutOrganization[2], args.slice(0, -1)]
+    : withoutOrganization;
 };
 const preserve = (result: { name: string; [key: string]: unknown }) => ({
   ...result,
   ...(Array.isArray(result.trace)
-    ? { trace: result.trace.map((row) => stripApprovedPageFilter(row)) }
+    ? { trace: result.trace.map((row) => stripApprovedListArgs(row)) }
     : {}),
 });
 describe('Batch4 app extraction against fixed f3 complete request traces', () => {

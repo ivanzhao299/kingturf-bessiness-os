@@ -660,6 +660,8 @@ export type EmployeeRepository = {
     actorId: Identifier,
     anchors?: readonly ScopeAnchor[],
     filter?: ListPageFilter,
+    // UI-M2（governance/organization 左树右表）：可选组织过滤，DataScope 谓词原样叠加。
+    organizationId?: Identifier,
   ): Promise<ListPage<EmployeeDto>>;
   update(
     id: Identifier,
