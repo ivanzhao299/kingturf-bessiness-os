@@ -266,13 +266,14 @@ for (const route of definitions)
         expect(f.get).not.toHaveBeenCalled();
       });
       if (field.kind === 'uuid')
-        it('uppercase/trim ' + field.key + ' preserved', async () => {
+        it('uppercase/trim ' + field.key + ' normalizes to lowercase', async () => {
           const f = fixture(route),
             value = id.toUpperCase();
           expect(
             (await f.dispatch({ body: { ...f.body, [field.key]: ' ' + value + ' ' } })).statusCode,
           ).toBe(201);
-          expect(f.method.mock.calls[0]?.[0]).toMatchObject({ [field.key]: value });
+          // A1-P3-2（A-F1）：大小写变体归一小写。
+          expect(f.method.mock.calls[0]?.[0]).toMatchObject({ [field.key]: id });
         });
       if (field.kind === 'timestamp')
         it('Date normalization/no new strict date ' + field.key, async () => {

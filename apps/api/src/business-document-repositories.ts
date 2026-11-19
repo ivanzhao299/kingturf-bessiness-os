@@ -227,35 +227,41 @@ export class PostgresBusinessDocumentRepository {
     context: Context,
     correlationId: string,
   ) {
-    const updated = (
-      await this.db.query<{ id: string }>(
-        `UPDATE business_documents SET customer_id=$3,sales_order_id=$4,operator_id=$5,
-           salesperson_id=$6,assigned_to=$7,updated_at=now()
-         WHERE id=$1 AND tenant_id=$2 AND state IN ('DRAFT','REJECTED')
-           AND ($8::boolean OR created_by=$9) RETURNING id`,
-        [
-          id,
-          context.actor.companyId,
-          input.customerId ?? null,
-          input.salesOrderId ?? null,
-          input.operatorId ?? null,
-          input.salespersonId ?? null,
-          input.assignedTo ?? null,
-          companyWide(context),
-          context.actor.employeeId,
-        ],
-      )
-    ).rows[0];
-    if (!updated)
-      throw new DomainError('conflict', 'Document bindings cannot be changed in the current state');
-    await writeBusinessDocumentBindingsAudit(
-      this.db,
-      context.actor,
-      id,
-      correlationId,
-      input as JsonObject,
-    );
-    return { id, ...input };
+    // A1-P2-2（A-F1）：业务变更与审计证据同事务，杜绝两连接非原子双写。
+    return this.db.transaction(async (tx) => {
+      const updated = (
+        await tx.query<{ id: string }>(
+          `UPDATE business_documents SET customer_id=$3,sales_order_id=$4,operator_id=$5,
+             salesperson_id=$6,assigned_to=$7,updated_at=now()
+           WHERE id=$1 AND tenant_id=$2 AND state IN ('DRAFT','REJECTED')
+             AND ($8::boolean OR created_by=$9) RETURNING id`,
+          [
+            id,
+            context.actor.companyId,
+            input.customerId ?? null,
+            input.salesOrderId ?? null,
+            input.operatorId ?? null,
+            input.salespersonId ?? null,
+            input.assignedTo ?? null,
+            companyWide(context),
+            context.actor.employeeId,
+          ],
+        )
+      ).rows[0];
+      if (!updated)
+        throw new DomainError(
+          'conflict',
+          'Document bindings cannot be changed in the current state',
+        );
+      await writeBusinessDocumentBindingsAudit(
+        tx,
+        context.actor,
+        id,
+        correlationId,
+        input as JsonObject,
+      );
+      return { id, ...input };
+    });
   }
 
   public saveVersion(

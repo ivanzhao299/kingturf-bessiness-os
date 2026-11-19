@@ -40,7 +40,8 @@ const input = (kind: string): Record<string, unknown> => ({
   ...(kind === 'update' ? { version: 1 } : {}),
 });
 const parsed = (kind: string) => ({
-  ...(kind === 'create' ? { categoryId: categoryId.toUpperCase(), code: 'COLOR_1' } : {}),
+  // A1-P3-2（A-F1）：大小写变体归一小写。
+  ...(kind === 'create' ? { categoryId, code: 'COLOR_1' } : {}),
   label: 'Label',
   value,
   effectiveFrom: from,
@@ -308,7 +309,8 @@ describe('old master entry route contracts', () => {
     });
     expect(f.repository.listEntries).toHaveBeenCalledExactlyOnceWith(
       actor.companyId,
-      categoryId.toUpperCase(),
+      // A1-P3-2（A-F1）：大小写变体归一小写。
+      categoryId,
       new Date(from),
       { limit: 50 },
     );

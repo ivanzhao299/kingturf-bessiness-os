@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
+// A-F1（A1-P3-1/2、A2-F4①，第四/五/七次人裁授权）：fixture 基线已按已批行为变更重钉（calendarDate 回验/uuid 归一/credentials authorizeOneOf）。
 
 const parse = (path: string) =>
   ts.createSourceFile(

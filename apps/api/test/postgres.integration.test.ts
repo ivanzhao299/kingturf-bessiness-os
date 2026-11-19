@@ -473,6 +473,23 @@ describe('PostgreSQL identity and authorization behavior', () => {
     ).toBe(false);
   });
 
+  it('A2-F4②: assign() rejects assigning reserved-code roles (API 创建路径对齐)', async () => {
+    const reservedRole = randomUUID();
+    await database.query(
+      "INSERT INTO roles(id,organization_id,code,name) VALUES($1,$2,'SUPER_ADMIN','Ops reserved')",
+      [reservedRole, company],
+    );
+    const actor = { employeeId: actorId, companyId: company };
+    await expect(
+      authorization.assign(childId, reservedRole, actor, randomUUID()),
+    ).rejects.toMatchObject({ code: 'forbidden' });
+    const assigned = await database.query(
+      'SELECT count(*)::int AS n FROM employee_role_assignments WHERE employee_id=$1 AND role_id=$2',
+      [childId, reservedRole],
+    );
+    expect(assigned.rows[0]).toMatchObject({ n: 0 });
+  });
+
   it('pages governance lists through keyset cursors without duplicates or gaps (B2)', async () => {
     // 55 名员工 > 默认页 50：翻页并集必须与全量精确一致（keyset 不重不漏）。
     const bulkTeam = randomUUID();

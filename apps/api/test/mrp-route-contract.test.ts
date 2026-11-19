@@ -1084,7 +1084,15 @@ describe('original parser acceptance, first errors, method capture and defaults'
   }
   for (const row of writes.filter((row) => row.kind === 'demand' || row.kind === 'run')) {
     const field = required(fieldsFor(row).find((field) => field.parser === 'calendar'));
-    for (const value of ['2026-02-30', '2026-04-31', ' 2026-08-01 ', '0000-01-01'])
+    // A1-P3-1（A-F1）：溢出日历拒绝；真实日历与 0000-01-01 保持原样透传。
+    for (const value of ['2026-02-30', '2026-04-31'])
+      it(row.label + ' calendar rejects overflowed ' + value, async () => {
+        const f = fixture(row);
+        f.body[field.name] = value;
+        expect((await f.dispatch()).statusCode).toBe(400);
+        expect(f.call).not.toHaveBeenCalled();
+      });
+    for (const value of [' 2026-08-01 ', '0000-01-01'])
       it(row.label + ' calendar keeps old string ' + value, async () => {
         const f = fixture(row);
         f.body[field.name] = value;
@@ -1232,13 +1240,16 @@ describe('late Map method lookup, raw list rows and helper identity boundaries',
   }
   for (const row of writes.filter((row) => row.kind === 'policy' || row.kind === 'demand'))
     for (const field of fieldsFor(row).filter((field) => field.parser === 'uuid'))
-      it(row.label + ' ' + field.name + ' UUID helper trims but preserves uppercase', async () => {
-        const f = fixture(row);
-        const value = ' ' + other.toUpperCase() + ' ';
-        f.body[field.name] = value;
-        expect((await f.dispatch()).statusCode).toBe(201);
-        expect(record(f.call.mock.calls[0]?.[0])[field.name]).toBe(value.trim());
-      });
+      it(
+        row.label + ' ' + field.name + ' UUID helper trims and normalizes to lowercase',
+        async () => {
+          const f = fixture(row);
+          f.body[field.name] = ' ' + other.toUpperCase() + ' ';
+          expect((await f.dispatch()).statusCode).toBe(201);
+          // A1-P3-2（A-F1）：大小写变体归一小写。
+          expect(record(f.call.mock.calls[0]?.[0])[field.name]).toBe(other);
+        },
+      );
   for (const row of lists) {
     it(
       row.label + ' null fields preserve malformed primitive/array/object refs as opaque rows',

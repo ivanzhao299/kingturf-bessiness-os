@@ -292,7 +292,7 @@ describe('inline complaint batch triage route contracts', () => {
     );
     noCalls(f);
   });
-  it('UUID case is preserved rather than canonicalized for duplicate detection', async () => {
+  it('UUID case normalizes to lowercase before duplicate detection (A1-P3-2)', async () => {
     const lower = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
     const upper = 'AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA';
     const f = fixture();
@@ -304,18 +304,8 @@ describe('inline complaint batch triage route contracts', () => {
           { ...row, id: upper },
         ],
       }),
-    ).toEqual(response(200, rawResult));
-    expect(f.repository.batchTriage).toHaveBeenCalledExactlyOnceWith(
-      {
-        ...input,
-        items: [
-          { ...parsedRow, id: lower },
-          { ...parsedRow, id: upper },
-        ],
-      },
-      repositoryContext,
-      correlationId,
-    );
+    ).toEqual(invalid('items must not contain duplicate complaints'));
+    expect(f.repository.batchTriage).not.toHaveBeenCalled();
   });
   it('intersection preserves triage scope/anchor order and duplicates, requiring both scope and org match', async () => {
     const triage: Grant = { scopes: ['TEAM', 'COMPANY', 'TEAM', 'SELF'], fields: null };

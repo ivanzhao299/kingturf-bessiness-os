@@ -276,12 +276,13 @@ describe('old one QTC sales-order create POST', () => {
         invalid(key + ' must be a UUID'),
       );
     });
-    it('UUID ' + key + ' trim uppercase', async () => {
+    it('UUID ' + key + ' trim normalizes to lowercase', async () => {
       const f = fixture();
       expect(
         (await f.dispatch({ body: { ...f.body, [key]: ' ' + id.toUpperCase() + ' ' } })).statusCode,
       ).toBe(201);
-      expect(f.createOrder.mock.calls[0]?.[0]).toMatchObject({ [key]: id.toUpperCase() });
+      // A1-P3-2（A-F1）：大小写变体归一小写（BOUND-004 对齐）。
+      expect(f.createOrder.mock.calls[0]?.[0]).toMatchObject({ [key]: id });
     });
   }
   it.each([' number/#订单 ', 'x'.repeat(4096)])(

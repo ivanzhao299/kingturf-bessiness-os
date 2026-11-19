@@ -16,7 +16,7 @@ import {
   type Page,
   type PageFilter,
 } from './pagination.ts';
-import { DomainError, normalizeEmail } from '@kingturf/domain';
+import { DomainError, normalizeEmail, RESERVED_ROLE_CODES } from '@kingturf/domain';
 import type { Database, SqlClient } from '@kingturf/database';
 import type {
   DataScope,
@@ -830,6 +830,18 @@ export class PostgresAuthorizationRepository implements AuthorizationRepository 
     correlationId: string,
   ): Promise<void> {
     await this.db.transaction(async (tx) => {
+      // A2-F4②（A-F1）：指派路径与创建路径对齐——保留管理员角色编码拒绝 API 指派。
+      const reserved = (
+        await tx.query<{ code: string }>(
+          'SELECT code FROM roles WHERE id=$1 AND organization_id=$2 AND deleted_at IS NULL',
+          [roleId, actor.companyId],
+        )
+      ).rows[0];
+      if (reserved && RESERVED_ROLE_CODES.has(reserved.code.toUpperCase()))
+        throw new DomainError(
+          'forbidden',
+          'Reserved administrator role codes cannot be assigned through the API',
+        );
       const conflict = (
         await tx.query<{ incomingCode: string; existingCode: string; reason: string }>(
           `SELECT incoming.code AS "incomingCode",existing.code AS "existingCode",c.reason

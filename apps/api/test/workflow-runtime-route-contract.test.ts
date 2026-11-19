@@ -434,7 +434,8 @@ describe('old workflow runtime contracts', () => {
     expect(f.repository.start).toHaveBeenCalledExactlyOnceWith(
       id,
       'Unregistered Type',
-      subjectId.toUpperCase(),
+      // A1-P3-2（A-F1）：大小写变体归一小写。
+      subjectId,
       key,
       actor,
       correlationId,

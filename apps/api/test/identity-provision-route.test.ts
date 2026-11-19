@@ -116,6 +116,36 @@ describe('identity provisioning inline contract', () => {
       status: '204',
     });
   });
+  it('A2-F4①: allows identity:manage holders without authorization:manage', async () => {
+    const context = {
+      actor: { employeeId: 'actor', companyId: 'company' },
+      permissions: new Map([['identity:manage', { scopes: ['SELF'], fields: null }]]),
+    };
+    const provisionIdentity = vi.fn().mockResolvedValue(undefined);
+    const app = buildApp({
+      auth: {
+        provisionIdentity,
+        authenticate: vi.fn().mockResolvedValue(context),
+      } as unknown as ApiDependencies['auth'],
+      employees: {} as ApiDependencies['employees'],
+      organizations: {} as ApiDependencies['organizations'],
+      telemetry: { count: vi.fn(), timing: vi.fn() },
+    });
+    const result = await app.dispatch({
+      method: 'PUT',
+      pathname,
+      body: { login: 'user', password: 'fixture-password' },
+      headers: { authorization: 'Bearer fixture-token', 'x-correlation-id': correlationId },
+    });
+    expect(result.statusCode).toBe(204);
+    expect(provisionIdentity).toHaveBeenCalledExactlyOnceWith(
+      context,
+      employeeId,
+      'user',
+      'fixture-password',
+      correlationId,
+    );
+  });
   it('does not mutate without a session or on unsupported method/path', async () => {
     const { dispatch, provisionIdentity, authenticate } = fixture();
     expect(await dispatch(null, pathname, 'PUT', false)).toEqual(

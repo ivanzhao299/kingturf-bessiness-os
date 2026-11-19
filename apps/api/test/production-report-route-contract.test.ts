@@ -371,7 +371,8 @@ describe('old production operation-reports contract', () => {
     expect(
       (await f.dispatch({ ...valid(), operationId: ' ' + other.toUpperCase() + ' ' })).statusCode,
     ).toBe(201);
-    expect(inputOf(f)?.operationId).toBe(other.toUpperCase());
+    // A1-P3-2（A-F1）：大小写变体归一小写。
+    expect(inputOf(f)?.operationId).toBe(other);
   });
   for (const key of decimals) {
     it.each([

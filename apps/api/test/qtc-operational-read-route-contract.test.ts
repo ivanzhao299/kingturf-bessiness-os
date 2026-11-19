@@ -115,7 +115,8 @@ const accepted: readonly { query: unknown; expected: Filter }[] = [
   { query: { limit: true }, expected: { limit: 1 } },
   {
     query: { cursor: ' ' + id.toUpperCase() + ' ' },
-    expected: { limit: 50, cursor: id.toUpperCase() },
+    // A1-P3-2（A-F1）：大小写变体归一小写（cursor 为双 UUID 令牌）。
+    expected: { limit: 50, cursor: id },
   },
   { query: { query: ' search%_ ' }, expected: { limit: 50, query: 'search%_' } },
   {

@@ -272,10 +272,12 @@ describe('old production create contract', () => {
   });
   it('optional mrp exists at exact input position and UUID case is preserved', async () => {
     const f = fixture();
-    const mrp = id.toUpperCase();
-    expect((await f.dispatch({ ...valid(), mrpProposalId: ' ' + mrp + ' ' })).statusCode).toBe(201);
+    expect(
+      (await f.dispatch({ ...valid(), mrpProposalId: ' ' + id.toUpperCase() + ' ' })).statusCode,
+    ).toBe(201);
     expect(Object.keys(keyInput(f) ?? {})).toEqual(fields);
-    expect(keyInput(f)?.mrpProposalId).toBe(mrp);
+    // A1-P3-2（A-F1）：大小写变体归一小写。
+    expect(keyInput(f)?.mrpProposalId).toBe(id);
   });
   it('non-enumerable/inherited recognized fields remain parser-readable but are not requested fields', async () => {
     const f = fixture({ writeFields: [] });
@@ -381,12 +383,13 @@ describe('old production create contract', () => {
         );
       },
     );
-    it('UUID ' + key + ' accepts trimmed uppercase without lowering', async () => {
+    it('UUID ' + key + ' normalizes trimmed uppercase to lowercase', async () => {
       const f = fixture();
       expect(
         (await f.dispatch({ ...valid(), [key]: ' ' + id.toUpperCase() + ' ' })).statusCode,
       ).toBe(201);
-      expect(keyInput(f)?.[key]).toBe(id.toUpperCase());
+      // A1-P3-2（A-F1）：大小写变体归一小写（BOUND-004 对齐）。
+      expect(keyInput(f)?.[key]).toBe(id);
     });
   }
   it.each([null, '', ' ', 0, false, [], {}])(
@@ -444,14 +447,21 @@ describe('old production create contract', () => {
         );
       },
     );
-    it.each(['2026-02-30', '2026-02-29', '2026-04-31', '0000-01-01'])(
-      'date ' + key + ' old accepted surface %s, not PG validity',
+    it.each(['2026-02-30', '2026-02-29', '2026-04-31'])(
+      'date ' + key + ' rejects overflowed calendar %s (A1-P3-1)',
       async (value) => {
         const f = fixture();
-        expect((await f.dispatch({ ...valid(), [key]: ' ' + value + ' ' })).statusCode).toBe(201);
-        expect(keyInput(f)?.[key]).toBe(value);
+        // A1-P3-1（A-F1）：真实日历回验，旧「Date.parse 归一透传」接受面收窄。
+        expect(await f.dispatch({ ...valid(), [key]: ' ' + value + ' ' })).toEqual(
+          invalid(key + ' must be a valid YYYY-MM-DD date'),
+        );
       },
     );
+    it('date ' + key + ' still accepts trimmed 0000-01-01', async () => {
+      const f = fixture();
+      expect((await f.dispatch({ ...valid(), [key]: ' 0000-01-01 ' })).statusCode).toBe(201);
+      expect(keyInput(f)?.[key]).toBe('0000-01-01');
+    });
   }
   it('does not impose planned start <= due order', async () => {
     const f = fixture();

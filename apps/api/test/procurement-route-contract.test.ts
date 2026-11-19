@@ -187,7 +187,7 @@ function bodyFor(row: Row): Record<string, unknown> {
     return {
       itemVersionId: id,
       status: ' APPROVED ',
-      validFrom: ' 2026-02-30 ',
+      validFrom: ' 2026-02-28 ',
       validTo: null,
       minimumOrderQuantity: ' 0.000000 ',
       leadTimeDays: 3650,
@@ -241,7 +241,7 @@ function bodyFor(row: Row): Record<string, unknown> {
           lotNumber: ' LOT_1 ',
           locationCode: ' LOC_1 ',
           quantity: '1.250000',
-          manufacturedAt: '2026-02-30',
+          manufacturedAt: '2026-02-28',
           expiresAt: null,
         },
       ],
@@ -273,7 +273,7 @@ function expectedInput(row: Row, body: Record<string, unknown>): Record<string, 
     return {
       itemVersionId: id,
       status: 'APPROVED',
-      validFrom: '2026-02-30',
+      validFrom: '2026-02-28',
       validTo: null,
       minimumOrderQuantity: '0',
       leadTimeDays: 3650,
@@ -319,7 +319,7 @@ function expectedInput(row: Row, body: Record<string, unknown>): Record<string, 
           lotNumber: 'LOT_1',
           locationCode: 'LOC_1',
           quantity: '1.25',
-          manufacturedAt: '2026-02-30',
+          manufacturedAt: '2026-02-28',
           expiresAt: null,
         },
       ],
@@ -1312,13 +1312,12 @@ describe('top input parsers, priority of errors and original enum capture', () =
           error(await f.dispatch(), 500, 'internal_error', 'Internal server error');
         });
       if (spec.parser === 'uuid')
-        it(row.label + ' ' + spec.name + ' UUID trim retains uppercase', async () => {
+        it(row.label + ' ' + spec.name + ' UUID trim normalizes to lowercase', async () => {
           const f = fixture(row);
           f.body[spec.name] = ' ' + other.toUpperCase() + ' ';
           expect((await f.dispatch()).statusCode).toBe(201);
-          expect(record(f.call.mock.calls[0]?.[inputIndex(row)])[spec.name]).toBe(
-            other.toUpperCase(),
-          );
+          // A1-P3-2（A-F1）：大小写变体归一小写（BOUND-004 对齐）。
+          expect(record(f.call.mock.calls[0]?.[inputIndex(row)])[spec.name]).toBe(other);
         });
       if (spec.parser === 'code')
         for (const value of ['A', 'A'.repeat(64), ' CODE_1-X '])
@@ -1352,7 +1351,7 @@ describe('top input parsers, priority of errors and original enum capture', () =
       if (spec.parser === 'timestamp')
         for (const [value, normalized] of [
           ['2026-08-01', iso],
-          ['2026-02-30', '2026-03-02T00:00:00.000Z'],
+          ['2026-02-28', '2026-02-28T00:00:00.000Z'],
           [' ' + time + ' ', iso],
         ] as const)
           it(row.label + ' ' + spec.name + ' Date accepts ' + value, async () => {
@@ -1362,13 +1361,21 @@ describe('top input parsers, priority of errors and original enum capture', () =
             expect(record(f.call.mock.calls[0]?.[inputIndex(row)])[spec.name]).toBe(normalized);
           });
       if (spec.parser === 'calendar')
-        for (const value of ['2026-02-30', '2026-04-31', ' 0000-01-01 '])
-          it(row.label + ' ' + spec.name + ' calendar keeps ' + value, async () => {
+        for (const value of ['2026-02-30', '2026-04-31'])
+          it(row.label + ' ' + spec.name + ' calendar rejects overflowed ' + value, async () => {
             const f = fixture(row);
             f.body[spec.name] = value;
-            expect((await f.dispatch()).statusCode).toBe(201);
-            expect(record(f.call.mock.calls[0]?.[inputIndex(row)])[spec.name]).toBe(value.trim());
+            // A1-P3-1（A-F1）：真实日历回验，溢出日期不再经 Date.parse 归一透传。
+            expect((await f.dispatch()).statusCode).toBe(400);
+            expect(f.call).not.toHaveBeenCalled();
           });
+      if (spec.parser === 'calendar')
+        it(row.label + ' ' + spec.name + ' calendar keeps trimmed 0000-01-01', async () => {
+          const f = fixture(row);
+          f.body[spec.name] = ' 0000-01-01 ';
+          expect((await f.dispatch()).statusCode).toBe(201);
+          expect(record(f.call.mock.calls[0]?.[inputIndex(row)])[spec.name]).toBe('0000-01-01');
+        });
       if (spec.nullable)
         for (const value of [null, undefined])
           it(row.label + ' ' + spec.name + ' nullish default ' + String(value), async () => {
@@ -1578,24 +1585,36 @@ describe('nested lines parse before capture; sparse arrays and receipt own-defau
             ).toBe(normalized);
           });
       if (spec.parser === 'uuid')
-        it(row.label + ' line ' + spec.name + ' UUID retains upper', async () => {
+        it(row.label + ' line ' + spec.name + ' UUID normalizes to lowercase', async () => {
           const f = fixture(row);
           sourceLine(f)[spec.name] = ' ' + other.toUpperCase() + ' ';
           expect((await f.dispatch()).statusCode).toBe(201);
+          // A1-P3-2（A-F1）：行级 UUID 同样归一小写。
           expect(record((record(f.call.mock.calls[0]?.[0]).lines as unknown[])[0])[spec.name]).toBe(
-            other.toUpperCase(),
+            other,
           );
         });
       if (spec.parser === 'calendar')
-        for (const value of ['2026-02-30', '2026-04-31', ' 0000-01-01 '])
-          it(row.label + ' line ' + spec.name + ' weak calendar ' + value, async () => {
+        for (const value of ['2026-02-30', '2026-04-31'])
+          it(row.label + ' line ' + spec.name + ' rejects overflowed ' + value, async () => {
             const f = fixture(row);
             sourceLine(f)[spec.name] = value;
+            // A1-P3-1（A-F1）：行级日历同样真实回验。
+            expect((await f.dispatch()).statusCode).toBe(400);
+            expect(f.call).not.toHaveBeenCalled();
+          });
+      if (spec.parser === 'calendar')
+        it(
+          row.label + ' line ' + spec.name + ' weak calendar keeps trimmed 0000-01-01',
+          async () => {
+            const f = fixture(row);
+            sourceLine(f)[spec.name] = ' 0000-01-01 ';
             expect((await f.dispatch()).statusCode).toBe(201);
             expect(
               record((record(f.call.mock.calls[0]?.[0]).lines as unknown[])[0])[spec.name],
-            ).toBe(value.trim());
-          });
+            ).toBe('0000-01-01');
+          },
+        );
     }
     const specs = lineFields(row);
     for (let i = 0; i < specs.length - 1; i++) {

@@ -280,37 +280,40 @@ export class PostgresCommercialRepository {
     scopes: readonly DataScope[],
     correlationId: string,
   ) {
-    if (!scopes.includes('COMPANY'))
-      throw new DomainError('forbidden', 'Cost matrices require company scope');
-    const row = (
-      await this.db.query<JsonObject>(
-        'INSERT INTO cost_specification_models(tenant_id,code,name,product_item_version_id,product_specification,currency,default_tax_rate,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id,code,name,currency,default_tax_rate AS "defaultTaxRate"',
-        [
-          actor.companyId,
-          input.code,
-          input.name,
-          input.productItemVersionId ?? null,
-          input.productSpecification,
-          input.currency,
-          input.defaultTaxRate,
-          actor.employeeId,
-        ],
-      )
-    ).rows[0];
-    if (!row) throw new DomainError('conflict', 'Cost matrix could not be created');
-    if (typeof row.id !== 'string')
-      throw new DomainError('conflict', 'Cost matrix identifier missing');
-    await evidence(
-      this.db,
-      'cost-matrix.created',
-      actor,
-      row.id,
-      1,
-      correlationId,
-      row,
-      'cost-matrix',
-    );
-    return row;
+    // A1-P2-2（A-F1）：业务变更与审计证据同事务，杜绝两连接非原子双写。
+    return this.db.transaction(async (tx) => {
+      if (!scopes.includes('COMPANY'))
+        throw new DomainError('forbidden', 'Cost matrices require company scope');
+      const row = (
+        await tx.query<JsonObject>(
+          'INSERT INTO cost_specification_models(tenant_id,code,name,product_item_version_id,product_specification,currency,default_tax_rate,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id,code,name,currency,default_tax_rate AS "defaultTaxRate"',
+          [
+            actor.companyId,
+            input.code,
+            input.name,
+            input.productItemVersionId ?? null,
+            input.productSpecification,
+            input.currency,
+            input.defaultTaxRate,
+            actor.employeeId,
+          ],
+        )
+      ).rows[0];
+      if (!row) throw new DomainError('conflict', 'Cost matrix could not be created');
+      if (typeof row.id !== 'string')
+        throw new DomainError('conflict', 'Cost matrix identifier missing');
+      await evidence(
+        tx,
+        'cost-matrix.created',
+        actor,
+        row.id,
+        1,
+        correlationId,
+        row,
+        'cost-matrix',
+      );
+      return row;
+    });
   }
 
   public async addCostMatrixFactor(
@@ -336,46 +339,49 @@ export class PostgresCommercialRepository {
     scopes: readonly DataScope[],
     correlationId: string,
   ) {
-    if (!scopes.includes('COMPANY'))
-      throw new DomainError('forbidden', 'Cost matrices require company scope');
-    const row = (
-      await this.db.query<JsonObject>(
-        `INSERT INTO cost_specification_factors(tenant_id,specification_model_id,factor_code,factor_name,category,source_type,source_item_version_id,quantity,unit_code,manual_unit_price_tax_inclusive,tax_rate,price_source_name,price_source_reference,price_effective_at,price_note,adjustable,sort_order,created_by)
-      SELECT $1,id,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18 FROM cost_specification_models WHERE id=$2 AND tenant_id=$1 RETURNING id,factor_code AS "factorCode",factor_name AS "factorName"`,
-        [
-          actor.companyId,
-          modelId,
-          input.factorCode,
-          input.factorName,
-          input.category,
-          input.sourceType,
-          input.sourceItemVersionId ?? null,
-          input.quantity,
-          input.unitCode,
-          input.manualUnitPriceTaxInclusive,
-          input.taxRate,
-          input.priceSourceName,
-          input.priceSourceReference ?? null,
-          input.priceEffectiveAt ?? null,
-          input.priceNote ?? null,
-          input.adjustable,
-          input.sortOrder,
-          actor.employeeId,
-        ],
-      )
-    ).rows[0];
-    if (!row) throw new DomainError('not_found', 'Cost specification model not found');
-    await evidence(
-      this.db,
-      'cost-matrix.factor-added',
-      actor,
-      modelId,
-      1,
-      correlationId,
-      row,
-      'cost-matrix',
-    );
-    return row;
+    // A1-P2-2（A-F1）：业务变更与审计证据同事务，杜绝两连接非原子双写。
+    return this.db.transaction(async (tx) => {
+      if (!scopes.includes('COMPANY'))
+        throw new DomainError('forbidden', 'Cost matrices require company scope');
+      const row = (
+        await tx.query<JsonObject>(
+          `INSERT INTO cost_specification_factors(tenant_id,specification_model_id,factor_code,factor_name,category,source_type,source_item_version_id,quantity,unit_code,manual_unit_price_tax_inclusive,tax_rate,price_source_name,price_source_reference,price_effective_at,price_note,adjustable,sort_order,created_by)
+        SELECT $1,id,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18 FROM cost_specification_models WHERE id=$2 AND tenant_id=$1 RETURNING id,factor_code AS "factorCode",factor_name AS "factorName"`,
+          [
+            actor.companyId,
+            modelId,
+            input.factorCode,
+            input.factorName,
+            input.category,
+            input.sourceType,
+            input.sourceItemVersionId ?? null,
+            input.quantity,
+            input.unitCode,
+            input.manualUnitPriceTaxInclusive,
+            input.taxRate,
+            input.priceSourceName,
+            input.priceSourceReference ?? null,
+            input.priceEffectiveAt ?? null,
+            input.priceNote ?? null,
+            input.adjustable,
+            input.sortOrder,
+            actor.employeeId,
+          ],
+        )
+      ).rows[0];
+      if (!row) throw new DomainError('not_found', 'Cost specification model not found');
+      await evidence(
+        tx,
+        'cost-matrix.factor-added',
+        actor,
+        modelId,
+        1,
+        correlationId,
+        row,
+        'cost-matrix',
+      );
+      return row;
+    });
   }
 
   public async updateCostMatrixFactor(
@@ -401,48 +407,51 @@ export class PostgresCommercialRepository {
     scopes: readonly DataScope[],
     correlationId: string,
   ) {
-    if (!scopes.includes('COMPANY'))
-      throw new DomainError('forbidden', 'Cost matrices require company scope');
-    const row = (
-      await this.db.query<JsonObject>(
-        `UPDATE cost_specification_factors SET factor_name=$4,category=$5,source_type=$6,source_item_version_id=$7,quantity=$8,unit_code=$9,
-          manual_unit_price_tax_inclusive=$10,tax_rate=$11,price_source_name=$12,price_source_reference=$13,price_effective_at=$14,price_note=$15,
-          adjustable=$16,sort_order=$17,updated_at=now()
-         WHERE tenant_id=$1 AND specification_model_id=$2 AND id=$3 AND adjustable=true
-         RETURNING id,factor_code AS "factorCode",factor_name AS "factorName",source_type AS "sourceType",quantity,unit_code AS "unitCode",manual_unit_price_tax_inclusive AS "manualUnitPriceTaxInclusive",price_source_name AS "priceSourceName"`,
-        [
-          actor.companyId,
-          modelId,
-          factorId,
-          input.factorName,
-          input.category,
-          input.sourceType,
-          input.sourceItemVersionId ?? null,
-          input.quantity,
-          input.unitCode,
-          input.manualUnitPriceTaxInclusive,
-          input.taxRate,
-          input.priceSourceName,
-          input.priceSourceReference ?? null,
-          input.priceEffectiveAt ?? null,
-          input.priceNote ?? null,
-          input.adjustable,
-          input.sortOrder,
-        ],
-      )
-    ).rows[0];
-    if (!row) throw new DomainError('not_found', 'Adjustable cost factor not found');
-    await evidence(
-      this.db,
-      'cost-matrix.factor-updated',
-      actor,
-      modelId,
-      1,
-      correlationId,
-      row,
-      'cost-matrix',
-    );
-    return row;
+    // A1-P2-2（A-F1）：业务变更与审计证据同事务，杜绝两连接非原子双写。
+    return this.db.transaction(async (tx) => {
+      if (!scopes.includes('COMPANY'))
+        throw new DomainError('forbidden', 'Cost matrices require company scope');
+      const row = (
+        await tx.query<JsonObject>(
+          `UPDATE cost_specification_factors SET factor_name=$4,category=$5,source_type=$6,source_item_version_id=$7,quantity=$8,unit_code=$9,
+            manual_unit_price_tax_inclusive=$10,tax_rate=$11,price_source_name=$12,price_source_reference=$13,price_effective_at=$14,price_note=$15,
+            adjustable=$16,sort_order=$17,updated_at=now()
+           WHERE tenant_id=$1 AND specification_model_id=$2 AND id=$3 AND adjustable=true
+           RETURNING id,factor_code AS "factorCode",factor_name AS "factorName",source_type AS "sourceType",quantity,unit_code AS "unitCode",manual_unit_price_tax_inclusive AS "manualUnitPriceTaxInclusive",price_source_name AS "priceSourceName"`,
+          [
+            actor.companyId,
+            modelId,
+            factorId,
+            input.factorName,
+            input.category,
+            input.sourceType,
+            input.sourceItemVersionId ?? null,
+            input.quantity,
+            input.unitCode,
+            input.manualUnitPriceTaxInclusive,
+            input.taxRate,
+            input.priceSourceName,
+            input.priceSourceReference ?? null,
+            input.priceEffectiveAt ?? null,
+            input.priceNote ?? null,
+            input.adjustable,
+            input.sortOrder,
+          ],
+        )
+      ).rows[0];
+      if (!row) throw new DomainError('not_found', 'Adjustable cost factor not found');
+      await evidence(
+        tx,
+        'cost-matrix.factor-updated',
+        actor,
+        modelId,
+        1,
+        correlationId,
+        row,
+        'cost-matrix',
+      );
+      return row;
+    });
   }
 
   public async calculateCostMatrix(

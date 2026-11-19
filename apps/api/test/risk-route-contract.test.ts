@@ -724,13 +724,12 @@ describe('frozen inline risk HTTP contract at 0eccaf6', () => {
             });
           }
         if (field.parser === 'uuid')
-          it(field.name + ' trims uppercase preserving spelling', async () => {
+          it(field.name + ' trims uppercase normalizing to lowercase', async () => {
             const f = fixture(row);
             f.body[field.name] = ' ' + id.toUpperCase() + ' ';
             await f.dispatch();
-            expect(record(required(f.call.mock.calls[0])[inputIndex(row)])[field.name]).toBe(
-              id.toUpperCase(),
-            );
+            // A1-P3-2（A-F1）：大小写变体归一小写。
+            expect(record(required(f.call.mock.calls[0])[inputIndex(row)])[field.name]).toBe(id);
           });
         if (field.parser === 'timestamp')
           for (const [value, expected] of [

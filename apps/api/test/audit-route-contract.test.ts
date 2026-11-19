@@ -219,7 +219,7 @@ describe('old inline audit read contracts', () => {
     });
     const filter = f.repository.list.mock.calls[0]?.[1];
     expect(filter).toEqual({
-      actorId: second.toUpperCase(),
+      actorId: second, // A1-P3-2：归一小写
       action: '  raw action  ',
       targetType: ' unknown ',
       targetId: id,

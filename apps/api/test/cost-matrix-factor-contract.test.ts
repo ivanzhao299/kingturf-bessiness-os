@@ -363,6 +363,7 @@ describe('inline cost matrix factor contracts', () => {
     });
     it('retains calendarDate shape/Date.parse normalization behavior for ' + op.verb, async () => {
       const f = fixture();
+      // A1-P3-1（A-F1）：溢出日历改为 API 400；其余弱值照旧放行（下段循环）。
       expect(
         await f.dispatch(op, {
           ...op.body,
@@ -371,21 +372,12 @@ describe('inline cost matrix factor contracts', () => {
           manualUnitPriceTaxInclusive: '0.0000',
           taxRate: '-0',
         }),
-      ).toEqual(response(op.status, result));
-      expect(f.repository[op.method]).toHaveBeenCalledExactlyOnceWith(
-        ...expectedArgs(op, {
-          ...op.input,
-          priceEffectiveAt: '2026-02-30',
-          quantity: '0',
-          manualUnitPriceTaxInclusive: '0',
-          taxRate: '0',
-        }),
-      );
+      ).toEqual(invalid('priceEffectiveAt must be a valid YYYY-MM-DD date'));
       for (const priceEffectiveAt of ['2026-1-01', '2026-10-13T00:00:00Z'])
         expect(await f.dispatch(op, { ...op.body, priceEffectiveAt })).toEqual(
           invalid('priceEffectiveAt must be a valid YYYY-MM-DD date'),
         );
-      expect(f.repository[op.method]).toHaveBeenCalledOnce();
+      expect(f.repository[op.method]).not.toHaveBeenCalled();
     });
   }
   it('POST model UUID precedes factorCode, and factorCode precedes factorName', async () => {

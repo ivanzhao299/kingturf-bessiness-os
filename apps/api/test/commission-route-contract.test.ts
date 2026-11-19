@@ -1173,7 +1173,8 @@ describe('commission global and raw-path boundaries', () => {
     const f = fixture(named('accrue'));
     f.body.salesOrderId = ' ' + id.toUpperCase() + ' ';
     expect((await f.dispatch()).statusCode).toBe(201);
-    expect((onlyCall(f)[0] as { salesOrderId: string }).salesOrderId).toBe(id.toUpperCase());
+    // A1-P3-2（A-F1）：body 值归一小写；路径大写不放宽的语义保持。
+    expect((onlyCall(f)[0] as { salesOrderId: string }).salesOrderId).toBe(id);
   });
   it('GET ignores body and idempotency value although global shallow header getter is evaluated', async () => {
     const f = fixture(named('listPolicies'));

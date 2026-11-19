@@ -439,12 +439,13 @@ describe('old production materials contract', () => {
         );
       },
     );
-    it('UUID ' + key + ' accepts trimmed uppercase and preserves case', async () => {
+    it('UUID ' + key + ' accepts trimmed uppercase and normalizes to lowercase', async () => {
       const f = fixture();
       expect(
         (await f.dispatch({ ...valid(), [key]: ' ' + id.toUpperCase() + ' ' })).statusCode,
       ).toBe(201);
-      expect(inputOf(f)?.[key]).toBe(id.toUpperCase());
+      // A1-P3-2（A-F1）：大小写变体归一小写。
+      expect(inputOf(f)?.[key]).toBe(id);
     });
   }
   it.each([

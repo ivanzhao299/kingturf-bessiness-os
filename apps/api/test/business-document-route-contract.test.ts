@@ -768,7 +768,8 @@ describe('business-document route-specific old parser and priority edges', () =>
       title: 'Title',
       route: 'not-whitelisted-route',
       subjectType: 'ANY_KIND',
-      subjectId: id.toUpperCase(),
+      // A1-P3-2（A-F1）：大小写变体归一小写。
+      subjectId: id,
       customerId: other,
       salesOrderId: id,
       operatorId: other,
@@ -804,7 +805,8 @@ describe('business-document route-specific old parser and priority edges', () =>
       ['undefined', undefined, undefined],
       ['null', null, null],
       ['empty', '', null],
-      ['uuid', ' ' + id.toUpperCase() + ' ', id.toUpperCase()],
+      // A1-P3-2（A-F1）：大小写变体归一小写。
+      ['uuid', ' ' + id.toUpperCase() + ' ', id],
     ] as const) {
       it('bindings explicit key ' + field + '/' + label, async () => {
         const f = fixture();
@@ -1045,7 +1047,8 @@ describe('business-document route-specific old parser and priority edges', () =>
       ).toBe(202);
       const input = record(f.calls.dispatch.mock.calls[0]?.[1]);
       expect(Object.hasOwn(input, 'translationId')).toBe(Boolean(value));
-      if (value) expect(input.translationId).toBe(value);
+      // A1-P3-2（A-F1）：大写 UUID 归一小写后透传。
+      if (value) expect(input.translationId).toBe(String(value).toLowerCase());
     });
   }
   for (const status of ['UNCONFIGURED', 'DISABLED', 'READY']) {

@@ -102,7 +102,11 @@ export const timestamp = (value: unknown, name: string): string => {
 
 export const calendarDate = (value: unknown, name: string): string => {
   const result = string(value, name);
-  if (!/^\d{4}-\d{2}-\d{2}$/u.test(result) || Number.isNaN(Date.parse(`${result}T00:00:00Z`)))
+  // A1-P3-1（A-F1）：Date.parse 对溢出日期静默归一（2026-02-30→02+），回验真实日历。
+  const parsed = /^\d{4}-\d{2}-\d{2}$/u.exec(result);
+  const epoch = parsed === null ? Number.NaN : Date.parse(`${result}T00:00:00Z`);
+  const roundTrip = Number.isNaN(epoch) ? null : new Date(epoch).toISOString().slice(0, 10);
+  if (roundTrip !== result)
     throw new DomainError('invalid_request', `${name} must be a valid YYYY-MM-DD date`);
   return result;
 };
@@ -144,7 +148,8 @@ export const correlation = (value: string | undefined): string =>
 export const uuid = (value: unknown, name: string): string => {
   const result = string(value, name);
   if (!UUID.test(result)) throw new DomainError('invalid_request', `${name} must be a UUID`);
-  return result;
+  // A1-P3-2（A-F1）：大小写变体归一为小写，消除同 UUID 双写绕过（BOUND-004 对齐）。
+  return result.toLowerCase();
 };
 
 export const allow = (body: Record<string, unknown>, fields: readonly string[]): void => {

@@ -255,13 +255,14 @@ describe('old one QTC AR posting POST', () => {
       );
       expect(f.get).not.toHaveBeenCalled();
     });
-    it('UUID ' + key + ' trim/uppercase preserved', async () => {
+    it('UUID ' + key + ' trim normalizes to lowercase', async () => {
       const f = fixture(),
         value = id.toUpperCase();
       expect((await f.dispatch({ body: { ...f.body, [key]: ' ' + value + ' ' } })).statusCode).toBe(
         201,
       );
-      expect(f.postAr.mock.calls[0]?.[0]).toMatchObject({ [key]: value });
+      // A1-P3-2（A-F1）：大小写变体归一小写。
+      expect(f.postAr.mock.calls[0]?.[0]).toMatchObject({ [key]: id });
     });
   }
   it.each([' number/#?合同 ', '\nnumber\t', 'x'.repeat(4096)])(
@@ -617,7 +618,7 @@ describe('old one QTC AR posting POST', () => {
   it.each([
     { first: undefined, second: other, expected: other },
     { first: 'bad', second: other, expected: other },
-    { first: other, second: id.toUpperCase(), expected: id.toUpperCase() },
+    { first: other, second: id.toUpperCase(), expected: id }, // A1-P3-2：归一小写
     { first: null, second: 'bad', expected: null },
   ])(
     'salesOrderId changing getter $first / $second accepted second-or-null only',

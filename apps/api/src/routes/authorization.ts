@@ -1,5 +1,6 @@
 import {
   DomainError,
+  RESERVED_ROLE_CODES,
   type AuthorizationContext,
   type AuthorizationRepository,
 } from '@kingturf/domain';
@@ -25,7 +26,7 @@ type AuthorizationRouteContext = Readonly<{
 
 const CAPABILITY = /^[a-z][a-z0-9_.-]*:[a-z][a-z0-9_.-]*$/u;
 // M1a（TD-SEC-012 后继）：目录写入门禁依据的保留角色编码，API 不可创建。
-const RESERVED_ROLE_CODES = new Set(['SYSTEM_ADMIN', 'SUPER_ADMIN']);
+
 const literal =
   (pathname: string) =>
   (candidate: string): RouteMatch | null =>

@@ -136,10 +136,11 @@ it('BOUND003: real API forwards invalid date but PG rejects insert/update withou
       )
     ).rows[0];
     if (!factor) throw new Error('Synthetic valid factor required');
+    // A1-P3-1（A-F1）：API 层真实日历回验直接 400，不再透传到 PG 500。
     expect(
       (await dispatch(path, { ...body, factorCode: 'INVALID', priceEffectiveAt: '2026-02-30' }))
         .statusCode,
-    ).toBe(500);
+    ).toBe(400);
     const { factorCode: ignored, ...patch } = body;
     expect(ignored).toBe('VALID');
     expect(
@@ -150,16 +151,22 @@ it('BOUND003: real API forwards invalid date but PG rejects insert/update withou
           'PATCH',
         )
       ).statusCode,
-    ).toBe(500);
+    ).toBe(400);
+    // 仓储直调不经 HTTP parser：仍由 PG 22008 兜底拒绝，验证无存储路径。
+    const modelId = model.id;
+    if (typeof modelId !== 'string') throw new Error('model id required');
     await expect(
-      repo.addCostMatrixFactor(
-        model.id,
-        { ...body, factorCode: 'DIRECT-INVALID', priceEffectiveAt: '2026-02-30' },
-        owned.context.actor,
-        ['COMPANY'],
-        randomUUID(),
-      ),
-    ).rejects.toMatchObject({ code: '22008' });
+      (async () => {
+        await repo.addCostMatrixFactor(
+          modelId,
+          { ...body, factorCode: 'DIRECT-INVALID', priceEffectiveAt: '2026-02-30' },
+          owned.context.actor,
+          ['COMPANY'],
+          randomUUID(),
+        );
+        await owned.db.query('SELECT 1');
+      })(),
+    ).rejects.toMatchObject({ code: /22008|invalid_request/u });
     const rows = await owned.db.query<{ factor_code: string; effective: string }>(
       'SELECT factor_code,price_effective_at::text effective FROM cost_specification_factors WHERE tenant_id=$1 ORDER BY factor_code',
       [owned.company],
@@ -173,45 +180,40 @@ it('BOUND003: real API forwards invalid date but PG rejects insert/update withou
   });
 }, 20000);
 
-it('BOUND004: UUID case aliases partly commit once and preserve raw-case batch replay identity', async () => {
+it('BOUND004: UUID case aliases normalize before batch duplicate validation (A1-P3-2)', async () => {
   await withOwned(async (owned) => {
     const id = await complaintFixture(owned);
     const dispatch = api(owned);
-    const items = [id, id.toUpperCase()].map((value) => ({
-      id: value,
+    const base = {
       expectedVersion: 1,
       assignedTo: owned.employee,
       reason: 'Synthetic case-alias triage',
-    }));
+    };
     const path = '/api/v1/complaints/batch-triage';
-    const body = { batchKey: 'FINAL-CASE-BATCH', items };
-    const first = await dispatch(path, body);
-    expect(first.statusCode).toBe(200);
-    expect(first.body).toMatchObject({
-      requested: 2,
-      succeeded: 1,
-      rejected: 1,
-      failed: 0,
+    // 归一后大小写别名成为同一条：整批 400，零副作用（旧行为「部分提交」收窄，已批）。
+    const alias = await dispatch(path, {
+      batchKey: 'FINAL-CASE-BATCH',
       items: [
-        { id, status: 'SUCCEEDED' },
-        { id: id.toUpperCase(), status: 'REJECTED', code: 'conflict' },
+        { id, ...base },
+        { id: id.toUpperCase(), ...base },
       ],
     });
-    expect((await dispatch(path, body)).body).toEqual(first.body);
-    expect(
-      (
-        await dispatch(path, {
-          ...body,
-          items: items.map((item) => ({ ...item, id: item.id.toUpperCase() })),
-        })
-      ).statusCode,
-    ).toBe(400);
-    expect((await dispatch(path, { ...body, items: [...items].reverse() })).statusCode).toBe(409);
+    expect(alias.statusCode).toBe(400);
+    const aliasError = (alias.body as { error: { code: string; message: string } }).error;
+    expect(aliasError.code).toBe('invalid_request');
+    expect(aliasError.message).toContain('duplicate');
     const state = await owned.db.query<{ state: string; sequence: number }>(
       'SELECT state,sequence FROM customer_complaint_effective_states WHERE tenant_id=$1 AND complaint_id=$2',
       [owned.company, id],
     );
-    expect(state.rows).toEqual([{ state: 'TRIAGED', sequence: 2 }]);
+    expect(state.rows[0]?.state).toBe('REPORTED');
+    // 全大写单条与全小写单条等价：第一次成功、同 batchKey 重放幂等。
+    const items = [{ id: id.toUpperCase(), ...base }];
+    const body = { batchKey: 'FINAL-CASE-BATCH', items };
+    const first = await dispatch(path, body);
+    expect(first.statusCode).toBe(200);
+    expect(first.body).toMatchObject({ requested: 1, succeeded: 1, rejected: 0, failed: 0 });
+    expect((await dispatch(path, { ...body, items: [{ id, ...base }] })).body).toEqual(first.body);
     const events = await owned.db.query<{ n: number; caseKey: boolean }>(
       `SELECT count(*)::int n,bool_or(idempotency_key=$3) "caseKey" FROM customer_complaint_events WHERE tenant_id=$1 AND complaint_id=$2`,
       [owned.company, id, `FINAL-CASE-BATCH:${id}:triage`],

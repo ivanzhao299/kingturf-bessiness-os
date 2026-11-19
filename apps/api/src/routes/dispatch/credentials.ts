@@ -1,5 +1,4 @@
-import { allow, objectBody, string, uuid } from '../../app-values.ts';
-import { authorizeQuery } from '../../policy.ts';
+import { allow, authorizeOneOf, objectBody, string, uuid } from '../../app-values.ts';
 import { credentialRoutes } from '../auth.ts';
 import { identityProvisionRoutes } from '../identity-provision.ts';
 import { dispatchRoutes } from '../types.ts';
@@ -18,7 +17,8 @@ export function* credentialsAttempts(scope: AuthenticatedRouteDispatchContext): 
         authorization: context,
         correlationId,
         authorize: () => {
-          authorizeQuery(context, 'authorization:manage');
+          // A2-F4①（A-F1）：开通端点原子权限——identity:manage 优先，回落 authorization:manage。
+          authorizeOneOf(context, 'identity:manage', 'authorization:manage');
         },
         parsers: { objectBody, allow, uuid, string },
       }),

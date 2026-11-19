@@ -411,11 +411,8 @@ describe('old production cost policy contract', () => {
       rate(),
     ];
     expect((await f.dispatch({ ...valid(), materialRates: rates })).statusCode).toBe(201);
-    expect(inputOf(f)?.materialRates.map((x) => x.itemVersionId)).toEqual([
-      other,
-      other.toUpperCase(),
-      other,
-    ]);
+    // A1-P3-2（A-F1）：大小写变体归一小写。
+    expect(inputOf(f)?.materialRates.map((x) => x.itemVersionId)).toEqual([other, other, other]);
     expect(inputOf(f)?.materialRates[1]?.unitCost).toBe('0');
   });
   const rowFailures = [
@@ -467,7 +464,7 @@ describe('old production cost policy contract', () => {
       ).toEqual(invalid('itemVersionId must be a UUID'));
     },
   );
-  it('row UUID trim and case preserved', async () => {
+  it('row UUID trim normalizes to lowercase', async () => {
     const f = fixture();
     expect(
       (
@@ -477,7 +474,8 @@ describe('old production cost policy contract', () => {
         })
       ).statusCode,
     ).toBe(201);
-    expect(inputOf(f)?.materialRates[0]?.itemVersionId).toBe(other.toUpperCase());
+    // A1-P3-2（A-F1）：大小写变体归一小写。
+    expect(inputOf(f)?.materialRates[0]?.itemVersionId).toBe(other);
   });
   const topFailures = [
     { key: 'version', value: 'bad', message: 'version must be an integer between 1 and 1000000' },
@@ -645,12 +643,20 @@ describe('old production cost policy contract', () => {
     });
   }
   for (const key of ['effectiveFrom', 'effectiveTo'] as const) {
-    it.each(['2026-10-14', '2026-02-30', '2026-04-31', '2024-02-29'])(
+    it.each(['2026-10-14', '2024-02-29'])(
       'calendar ' + key + ' %s trim original text',
       async (value) => {
         const f = fixture();
         expect((await f.dispatch({ ...valid(), [key]: ' ' + value + ' ' })).statusCode).toBe(201);
         expect(inputOf(f)?.[key]).toBe(value);
+      },
+    );
+    // A1-P3-1（A-F1）：溢出日历拒绝。
+    it.each(['2026-02-30', '2026-04-31'])(
+      'calendar ' + key + ' rejects overflowed %s',
+      async (value) => {
+        const f = fixture();
+        expect((await f.dispatch({ ...valid(), [key]: ' ' + value + ' ' })).statusCode).toBe(400);
       },
     );
     it.each(['bad', '2026-13-01', '2026-01-32', '2026-1-01', '2026-10-14T00:00:00Z'])(

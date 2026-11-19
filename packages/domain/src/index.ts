@@ -18,6 +18,10 @@ import type {
 
 export const domainPackageVersion = 'identity-foundation' as const;
 
+// A-F1（A2-F4②，TD-SEC-012 后继）：保留管理员角色编码只经运维/种子通道存在；
+// API 创建与指派路径一致拒绝（routes/authorization.ts 与 repositories.ts 共用）。
+export const RESERVED_ROLE_CODES: ReadonlySet<string> = new Set(['SYSTEM_ADMIN', 'SUPER_ADMIN']);
+
 export class DomainError extends Error {
   public constructor(
     public readonly code: 'invalid_request' | 'conflict' | 'not_found' | 'forbidden',

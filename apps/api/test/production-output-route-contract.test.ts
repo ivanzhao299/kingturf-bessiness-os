@@ -387,12 +387,13 @@ describe('old production finished-rolls contract', () => {
         );
       },
     );
-    it('UUID ' + key + ' trimmed uppercase preserved', async () => {
+    it('UUID ' + key + ' trimmed uppercase normalizes to lowercase', async () => {
       const f = fixture();
       expect(
         (await f.dispatch({ ...valid(), [key]: ' ' + id.toUpperCase() + ' ' })).statusCode,
       ).toBe(201);
-      expect(inputOf(f)?.[key]).toBe(id.toUpperCase());
+      // A1-P3-2（A-F1）：大小写变体归一小写。
+      expect(inputOf(f)?.[key]).toBe(id);
     });
   }
   for (const key of codes) {
@@ -434,7 +435,7 @@ describe('old production finished-rolls contract', () => {
       invalid('quantity must be non-negative'),
     );
   });
-  it.each(['2026-10-14', '2026-02-30', '2026-04-31', '2024-02-29'])(
+  it.each(['2026-10-14', '2024-02-29'])(
     'calendar %s returns original trimmed text, not ISO/realPG validity',
     async (value) => {
       const f = fixture();
@@ -444,6 +445,13 @@ describe('old production finished-rolls contract', () => {
       expect(inputOf(f)?.manufacturedAt).toBe(value);
     },
   );
+  // A1-P3-1（A-F1）：溢出日历拒绝。
+  it.each(['2026-02-30', '2026-04-31'])('calendar %s rejects overflowed dates', async (value) => {
+    const f = fixture();
+    expect((await f.dispatch({ ...valid(), manufacturedAt: ' ' + value + ' ' })).statusCode).toBe(
+      400,
+    );
+  });
   it.each([
     'bad',
     '2026-13-01',

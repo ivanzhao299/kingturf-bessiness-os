@@ -364,7 +364,10 @@ const timestamp = (value: unknown, name: string): string => {
 };
 const calendarDate = (value: unknown, name: string): string => {
   const result = string(value, name);
-  if (!/^\d{4}-\d{2}-\d{2}$/u.test(result) || Number.isNaN(Date.parse(`${result}T00:00:00Z`)))
+  const parsed = /^\d{4}-\d{2}-\d{2}$/u.exec(result);
+  const epoch = parsed === null ? Number.NaN : Date.parse(`${result}T00:00:00Z`);
+  const roundTrip = Number.isNaN(epoch) ? null : new Date(epoch).toISOString().slice(0, 10);
+  if (roundTrip !== result)
     throw new DomainError('invalid_request', `${name} must be a valid YYYY-MM-DD date`);
   return result;
 };
@@ -396,7 +399,7 @@ const correlation = (value: string | undefined): string =>
 const uuid = (value: unknown, name: string): string => {
   const result = string(value, name);
   if (!UUID.test(result)) throw new DomainError('invalid_request', `${name} must be a UUID`);
-  return result;
+  return result.toLowerCase();
 };
 const allow = (body: Record<string, unknown>, fields: readonly string[]): void => {
   const unexpected = Object.keys(body).filter((key) => !fields.includes(key));
@@ -2138,7 +2141,7 @@ export function buildApp(
             authorization: context,
             correlationId,
             authorize: () => {
-              authorizeQuery(context, 'authorization:manage');
+              authorizeOneOf(context, 'identity:manage', 'authorization:manage');
             },
             parsers: { objectBody, allow, uuid, string },
           }),

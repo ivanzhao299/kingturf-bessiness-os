@@ -746,7 +746,8 @@ describe('fixed old quality body/parsers and first-error ordering', () => {
             const f = fixture(r);
             f.body[field.name] = value;
             expect((await f.dispatch()).statusCode).toBe(201);
-            expect(input(f, r)[field.name]).toBe(value.trim());
+            // A1-P3-2（A-F1）：大小写变体归一小写后透传。
+            expect(input(f, r)[field.name]).toBe(value.trim().toLowerCase());
           });
       if (field.parser === 'decimal')
         for (const [value, expected] of [
