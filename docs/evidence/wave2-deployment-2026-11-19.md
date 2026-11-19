@@ -31,7 +31,12 @@
 - **恢复点 dump ×7+**（`/data/kingturf-erp/.release-backups/`）：apply 轮前置 `wave2-pre-*`（最新 `4cb7f37a…`）+ 门禁 `wave2-2026*`（`3f207bb8/599696d2/02e9fc20/a506b937…`）+ recover 轮 `application-443*`。**发布链已验证完成——按现行契约这些 dump 保全不自动清理，退役需另批**（PRODUCTION_PARK_HOST「Retirement requires separate authorization」）。
 - 主机 `.release-image-recovery/` 各 run bundle（含 44374541682 成功现场）与 `.release-migration-evidence/`（已推进至 f742143）——契约保全，勿动。
 
-## 5. 遗留开放项
+## 5. 遗留开放项（批次 R 处置后更新）
+
+- **TD-REL-006 已关闭**：ops-maintenance run 44424270862（validate fail→572814d 控制件自校验修复）→ **44425845916 success**（预检恰 164→单事务 DEAD_LETTER×164→postcheck legacy=0）；重跑 44426345451 被预检正确拦截（0≠164，零写入）。
+- **TD-REL-007 已关闭**：rehearsal harness 提交 998687f（apply_migrations 主机流本地端到端演练 + 三 bug 形状资产化）。
+- **staged 目录已清理**：run 44426076583 形状守卫保守跳过（白名单按 runbook 时代过时）→ 裁定 8 双源校准（a16f474）→ run **44428411030 七目录全部 removed、零跳过**。
+- 本地残留：`.test-results/playwright-root-oct26`（root 属主）、`~/pw-libs/`（主协调裁定维持现状）。
 
 - **TD-REL-006**（P2 开放）：164 条种子期 outbox 死信（明细=run 44359813902 artifact），后置经 operations dead-letter API 清理；
 - **TD-REL-007**（P2 新登记）：apply_migrations 主机流缺本地真实演练夹具——本轮三个预检级 bug（is_file/names/join）均可被「伪完整主机环境冒烟」拦截，后继补 rehearsal harness；
