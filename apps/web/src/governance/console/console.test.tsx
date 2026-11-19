@@ -1,0 +1,333 @@
+// UI-M2 governance 控制台白盒行为测试（按域重写政策：三页 Preact 化后的行为面；
+// 旧卡片墙 DOM 断言已随域重写更新——经第四/五次人裁授权，见程序计划 §5/§8.2）。
+// 测试 DOM=零依赖 double（test/fixtures/preact-dom.ts，与 packages/ui 同源）。
+import { describe, expect, it, vi } from 'vitest';
+import { h, render } from 'preact';
+import type { ComponentType } from 'preact';
+import { installGlobalTestDom, type TestElement } from '../../../test/fixtures/preact-dom';
+import { IdentityConsolePage } from './identity-page';
+import { OrganizationConsolePage } from './organization-page';
+import { AuditConsolePage } from './audit-page';
+import type { ConsolePorts } from './ports';
+
+const flush = (): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(resolve, 0);
+  });
+
+const element = (node: unknown): TestElement => {
+  if (node === null || node === undefined || (node as { nodeType?: number }).nodeType !== 1)
+    throw new Error(`expected element, got ${String(node)}`);
+  return node as TestElement;
+};
+
+type PortsOverrides = Partial<ConsolePorts>;
+
+const portsFor = (
+  route: ConsolePorts['route'],
+  views: Readonly<Record<string, unknown>>,
+  extraPermissions: readonly string[] = [],
+  overrides: PortsOverrides = {},
+): ConsolePorts => ({
+  route,
+  permissions: new Set([
+    'identity:read',
+    'authorization:read',
+    'employee:read',
+    'role:read',
+    'audit:read',
+    ...extraPermissions,
+  ]),
+  loaded: (path) => path in views,
+  initialView: (path) => {
+    const value = views[path];
+    if (Array.isArray(value)) return { items: value, nextCursor: null };
+    if (value && typeof value === 'object')
+      return value as { items: readonly unknown[]; nextCursor: string | null };
+    return { items: [], nextCursor: null };
+  },
+  fetchPage: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
+  submit: vi.fn().mockResolvedValue(undefined),
+  ...overrides,
+});
+
+const mount = (page: (ports: ConsolePorts) => ComponentType, ports: ConsolePorts): TestElement => {
+  const host = installGlobalTestDom().document.createElement('div');
+  render(h(page(ports), {}), host);
+  return host;
+};
+
+const profileRow = {
+  employeeId: 'e-1',
+  employeeNumber: 'E001',
+  displayName: '王小明',
+  loginName: 'wang',
+  identityId: 'i-1',
+  identityActive: true,
+  employeeActive: true,
+  activeSessionCount: '2',
+  roles: [{ id: 'r-1', code: 'KT_SALES', name: '销售' }],
+  capabilities: ['customer:read', 'quote:read'],
+  directScopes: [{ capability: 'customer:read', scope: 'TEAM' }],
+};
+
+describe('UI-M2 身份与授权控制台', () => {
+  it('主列表渲染员工/登录名/状态/角色数/活跃会话，不含组织树（域隔离）', () => {
+    const host = mount(
+      IdentityConsolePage,
+      portsFor('governance/identity', {
+        '/api/v1/user-access-profiles': [profileRow],
+      }),
+    );
+    expect(host.textContent).toContain('王小明');
+    expect(host.textContent).toContain('wang');
+    expect(host.textContent).toContain('在職');
+    expect(host.textContent).toContain('2');
+    expect(host.querySelector('.data-table table')).not.toBeNull();
+    expect(host.textContent).not.toContain('组织架构');
+  });
+
+  it('点行「查看」开用户 360 抽屉：聚合角色/能力/数据范围/会话（2 步度量第 1 步）', async () => {
+    const host = mount(
+      IdentityConsolePage,
+      portsFor('governance/identity', {
+        '/api/v1/user-access-profiles': [profileRow],
+      }),
+    );
+    element(host.querySelector('[data-testid="kt-identity-open"]')).click();
+    await flush();
+    const drawer = host.querySelector('[data-testid="kt-identity-summary"]');
+    expect(drawer?.textContent).toContain('KT_SALES');
+    expect(drawer?.textContent).toContain('2 项');
+    expect(host.textContent).toContain('用户 360 · 王小明');
+  });
+
+  it('无管理权限时不出现行级操作按钮（权限门保持）', async () => {
+    const host = mount(
+      IdentityConsolePage,
+      portsFor('governance/identity', {
+        '/api/v1/user-access-profiles': [profileRow],
+      }),
+    );
+    element(host.querySelector('[data-testid="kt-identity-open"]')).click();
+    await flush();
+    expect(host.querySelector('[data-testid="kt-identity-action-state"]')).toBeNull();
+    expect(host.querySelector('[data-testid="kt-identity-action-provision"]')).toBeNull();
+    expect(host.querySelector('[data-testid="kt-identity-action-assign"]')).toBeNull();
+  });
+
+  it('授权角色 2 步流：查看→分配→提交即 POST /api/v1/assignments（原 5 步）', async () => {
+    const ports = portsFor(
+      'governance/identity',
+      {
+        '/api/v1/user-access-profiles': [profileRow],
+        '/api/v1/roles': [{ id: 'r-2', code: 'KT_OPS', name: '运营' }],
+      },
+      ['role-assignment:manage'],
+    );
+    const host = mount(IdentityConsolePage, ports);
+    element(host.querySelector('[data-testid="kt-identity-open"]')).click();
+    await flush();
+    element(host.querySelector('[data-testid="kt-identity-action-assign"]')).click();
+    await flush();
+    const select = element(host.querySelector('[data-testid="kt-identity-form-assign"] select'));
+    select.value = 'r-2';
+    select.dispatchEvent(new Event('input', { bubbles: true }));
+    await flush();
+    element(
+      host.querySelector('[data-testid="kt-identity-form-assign"] button[type="submit"]'),
+    ).click();
+    await flush();
+    expect(ports.submit).toHaveBeenCalledExactlyOnceWith(
+      '/api/v1/assignments',
+      { employeeId: 'e-1', roleId: 'r-2' },
+      'POST',
+    );
+  });
+
+  it('启停表单提交文案含「停用」→ 敏感词确认勾选出现（B3 语义）', async () => {
+    const ports = portsFor(
+      'governance/identity',
+      {
+        '/api/v1/user-access-profiles': [profileRow],
+      },
+      ['identity:manage'],
+    );
+    const host = mount(IdentityConsolePage, ports);
+    element(host.querySelector('[data-testid="kt-identity-open"]')).click();
+    await flush();
+    element(host.querySelector('[data-testid="kt-identity-action-state"]')).click();
+    await flush();
+    expect(
+      host.querySelector('[data-testid="kt-identity-form-state"] [data-confirmation]'),
+    ).not.toBeNull();
+  });
+
+  it('撤销角色走 DELETE 且带确认；配置账号提示首登强制改密', async () => {
+    const ports = portsFor(
+      'governance/identity',
+      {
+        '/api/v1/user-access-profiles': [profileRow],
+        '/api/v1/roles': [{ id: 'r-1', code: 'KT_SALES', name: '销售' }],
+      },
+      ['identity:manage', 'role-assignment:manage'],
+    );
+    // 撤销成功后 refresh 仍返回该用户（抽屉保持打开，供配置账号动作续验）。
+    (ports.fetchPage as ReturnType<typeof vi.fn>).mockImplementation((path: string) =>
+      Promise.resolve(
+        path === '/api/v1/user-access-profiles'
+          ? { items: [profileRow], nextCursor: null }
+          : { items: [], nextCursor: null },
+      ),
+    );
+    const host = mount(IdentityConsolePage, ports);
+    element(host.querySelector('[data-testid="kt-identity-open"]')).click();
+    await flush();
+    element(host.querySelector('[data-testid="kt-identity-action-revoke"]')).click();
+    await flush();
+    expect(
+      host.querySelector('[data-testid="kt-identity-form-revoke"] [data-confirmation]'),
+    ).not.toBeNull();
+    const select = element(host.querySelector('[data-testid="kt-identity-form-revoke"] select'));
+    select.value = 'r-1';
+    select.dispatchEvent(new Event('input', { bubbles: true }));
+    await flush();
+    element(
+      host.querySelector('[data-testid="kt-identity-form-revoke"] [data-confirmation]'),
+    ).click();
+    await flush();
+    element(
+      host.querySelector('[data-testid="kt-identity-form-revoke"] button[type="submit"]'),
+    ).click();
+    await flush();
+    expect(ports.submit).toHaveBeenCalledExactlyOnceWith(
+      '/api/v1/assignments',
+      { employeeId: 'e-1', roleId: 'r-1' },
+      'DELETE',
+    );
+    element(host.querySelector('[data-testid="kt-identity-action-provision"]')).click();
+    await flush();
+    expect(host.textContent).toContain('首次登录将被强制修改密码');
+  });
+
+  it('继续加载携带 cursor（分页契约）', async () => {
+    const ports = portsFor('governance/identity', {
+      '/api/v1/user-access-profiles': { items: [profileRow], nextCursor: 'c-1' },
+    });
+    const host = mount(IdentityConsolePage, ports);
+    element(host.querySelector('.data-table-footer button')).click();
+    await flush();
+    expect(ports.fetchPage).toHaveBeenCalledWith('/api/v1/user-access-profiles', { cursor: 'c-1' });
+  });
+});
+
+describe('UI-M2 组织与员工控制台', () => {
+  it('左树右表；选中组织触发 organization 服务端过滤', async () => {
+    const ports = portsFor('governance/organization', {
+      '/api/v1/organizations': [
+        { id: 'org-1', code: 'HQ', name: '总部', parentId: null },
+        { id: 'org-2', code: 'SALES', name: '销售部', parentId: 'org-1' },
+      ],
+      '/api/v1/employees': [
+        { id: 'e-1', employeeNumber: 'E1', displayName: '张三', email: 'z@x.co', active: true },
+      ],
+    });
+    const host = mount(OrganizationConsolePage, ports);
+    expect(host.querySelector('[data-testid="kt-org-tree"]')).not.toBeNull();
+    expect(host.textContent).toContain('张三');
+    element(host.querySelector('.tree-select-trigger')).click();
+    await flush();
+    element(host.querySelector('[role="option"][data-id="org-2"]')).click();
+    await flush();
+    expect(ports.fetchPage).toHaveBeenCalledWith('/api/v1/employees', { organization: 'org-2' });
+  });
+
+  it('更新员工带 version 乐观锁；版本未知提示刷新且不发请求', async () => {
+    const ports = portsFor(
+      'governance/organization',
+      {
+        '/api/v1/organizations': [{ id: 'org-1', code: 'HQ', name: '总部', parentId: null }],
+        '/api/v1/employees': [
+          { id: 'e-1', employeeNumber: 'E1', displayName: '张三', active: true },
+        ],
+      },
+      ['employee:update', 'employee:create'],
+    );
+    const host = mount(OrganizationConsolePage, ports);
+    element(host.querySelector('[data-testid="kt-org-update"]')).click();
+    await flush();
+    const name = element(
+      host.querySelector('[data-testid="kt-org-form-update"] [name="displayName"]'),
+    );
+    name.value = '李四';
+    name.dispatchEvent(new Event('input', { bubbles: true }));
+    await flush();
+    const active = element(host.querySelector('[data-testid="kt-org-form-update"] select'));
+    active.value = 'true';
+    active.dispatchEvent(new Event('input', { bubbles: true }));
+    await flush();
+    element(host.querySelector('[data-testid="kt-org-form-update"] button[type="submit"]')).click();
+    await flush();
+    expect(host.textContent).toContain('记录版本未知，请刷新后重试');
+    expect(ports.submit).not.toHaveBeenCalled();
+  });
+});
+
+describe('UI-M2 审计控制台', () => {
+  it('筛选区提交服务端过滤参数（query/outcome/from/to）', async () => {
+    const ports = portsFor('governance/audit', {
+      '/api/v1/audit-events': [
+        {
+          id: 'a-1',
+          occurredAt: '2026-11-19T00:00:00Z',
+          outcome: 'SUCCESS',
+          action: 'AUTH_LOGIN',
+          actorId: 'x',
+          targetType: 'session',
+          targetId: 't',
+        },
+      ],
+    });
+    const host = mount(AuditConsolePage, ports);
+    const query = element(host.querySelector('[data-testid="kt-audit-query"]'));
+    query.value = 'login';
+    query.dispatchEvent(new Event('input', { bubbles: true }));
+    const from = element(host.querySelector('[data-testid="kt-audit-from"]'));
+    from.value = '2026-11-01';
+    from.dispatchEvent(new Event('input', { bubbles: true }));
+    element(host.querySelector('[data-testid="kt-audit-apply"]')).click();
+    await flush();
+    expect(ports.fetchPage).toHaveBeenCalledWith('/api/v1/audit-events', {
+      query: 'login',
+      from: '2026-11-01',
+    });
+  });
+
+  it('导出循环遵循 nextCursor 直到耗尽（B2 语义保留）', async () => {
+    const ports = portsFor('governance/audit', {
+      '/api/v1/audit-events': { items: [{ id: 'a-1' }], nextCursor: 'c1' },
+    });
+    (ports.fetchPage as ReturnType<typeof vi.fn>).mockImplementation(
+      (_p: string, params?: Readonly<Record<string, string | undefined>>) => {
+        const cursor = params?.cursor;
+        return Promise.resolve(
+          cursor === 'c1'
+            ? { items: [{ id: 'a-2' }], nextCursor: 'c2' }
+            : cursor === 'c2'
+              ? { items: [{ id: 'a-3' }], nextCursor: null }
+              : { items: [{ id: 'a-1' }], nextCursor: 'c1' },
+        );
+      },
+    );
+    const host = mount(AuditConsolePage, ports);
+    element(host.querySelector('[data-testid="kt-audit-export"]')).click();
+    await flush();
+    await flush();
+    // 初始页来自 initialView；导出循环仅按 cursor 续拉（c1→c2→耗尽）= 恰好两次。
+    const calls = (ports.fetchPage as ReturnType<typeof vi.fn>).mock.calls as unknown as readonly [
+      string,
+      Readonly<Record<string, string | undefined>>?,
+    ][];
+    expect(calls.map((call) => call[1]?.cursor)).toEqual(['c1', 'c2']);
+  });
+});

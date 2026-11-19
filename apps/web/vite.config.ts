@@ -26,7 +26,12 @@ export default defineConfig(({ mode }) => {
     ]),
   );
   return {
-    build: { manifest: true },
+    build: {
+      manifest: true,
+      // UI-M2：登录入口无动态子 chunk（工作台整块懒载），modulePreload polyfill 为死重；
+      // 关闭以对冲全图模块 id 布局噪声（预算阈值不调，见提交说明）。
+      modulePreload: { polyfill: false },
+    },
     server: { host: '127.0.0.1', port: webPort, proxy },
     preview: { host: '127.0.0.1', port: 4173, proxy },
   };

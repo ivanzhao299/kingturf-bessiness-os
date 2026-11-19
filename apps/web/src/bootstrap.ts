@@ -24,7 +24,7 @@ import { GovernanceController } from './governance/controller';
 export { GovernanceController } from './governance/controller';
 export { governanceNextAction, governanceChannelLabel } from './governance/presentation';
 import { createGovernanceWorkspace } from './governance/workspace';
-import { createGovernanceSubpages } from './governance/subpage';
+import { createGovernanceSubpage } from './governance/console-entry';
 import { mustChangeGate } from './must-change-screen';
 import { governanceInitialSurfaces, mountGovernanceViews } from './governance/route-loading';
 import { createDocumentReadService } from './shared/document-read-service';
@@ -644,7 +644,7 @@ function bootstrapView(current: HTMLElement, controller: CrmController): void {
 }
 
 export const governanceWorkspace = createGovernanceWorkspace({ replaceRouteView });
-export const governanceSubpage = createGovernanceSubpages({ replaceRouteView });
+export const governanceSubpage = createGovernanceSubpage({ replaceRouteView });
 
 export async function mountWorkspace(
   root: HTMLElement,

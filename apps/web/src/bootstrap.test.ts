@@ -1137,20 +1137,18 @@ it('renders one governance sub-page per route with only its domain surfaces (B1)
     { path: '/api/v1/scope-grants', value: [] },
     { path: '/api/v1/organizations', value: [{ id: 'org-1', code: 'HQ', name: '总部' }] },
   ];
+  // UI-M2：identity/organization/audit 三路由改 Preact 控制台宿主（node 测试环境
+  // 不挂载渲染体——行为面由 console.test.tsx 覆盖，含域隔离断言）。
   const page = governanceSubpage(controller, 'governance/identity') as unknown as RenderedElement;
   expect(page.getAttribute('data-route-view')).toBe('governance/identity');
-  expect(page.textContent).toContain('身份与授权');
-  expect(page.textContent).toContain('角色清单');
-  expect(page.textContent).toContain('分配角色');
-  expect(page.textContent).not.toContain('组织清单');
+  expect(page.getAttribute('data-testid')).toBe('kt-console-identity');
+  expect(page.className).toContain('governance-console');
   const organizationPage = governanceSubpage(
     controller,
     'governance/organization',
   ) as unknown as RenderedElement;
   expect(organizationPage.getAttribute('data-route-view')).toBe('governance/organization');
-  expect(organizationPage.textContent).toContain('组织清单');
-  expect(organizationPage.textContent).toContain('员工清单');
-  expect(organizationPage.textContent).not.toContain('角色清单');
+  expect(organizationPage.getAttribute('data-testid')).toBe('kt-console-organization');
   // 概览卡片墙保持原样（兼容策略）。
   const overview = governanceWorkspace(controller) as unknown as RenderedElement;
   expect(overview.getAttribute('data-route-view')).toBe('governance');
@@ -1158,52 +1156,37 @@ it('renders one governance sub-page per route with only its domain surfaces (B1)
 });
 
 it('renders full domain lists on sub-pages instead of the eight-row preview (B1)', () => {
-  const employees = Array.from({ length: 12 }, (_item, index) => ({
-    id: `employee-${String(index)}`,
-    displayName: `员工${String(index)}`,
-  }));
-  const controller = new GovernanceController(new Set(['employee:read']), sessionFixture());
-  controller.views = [{ path: '/api/v1/employees', value: employees }];
+  const controller = new GovernanceController(
+    new Set(['master-data:read', 'employee:read']),
+    sessionFixture(),
+  );
+  controller.views = [
+    {
+      path: '/api/v1/master-data/entries',
+      value: Array.from({ length: 11 }, (_item, index) => ({
+        id: `entry-${String(index)}`,
+        code: `E-${String(index)}`,
+      })),
+    },
+  ];
+  // UI-M2：organization 路由已控制台化，全量列表断言移至 master-data（仍走 legacy 面）。
   const page = governanceSubpage(
     controller,
-    'governance/organization',
+    'governance/master-data',
   ) as unknown as RenderedElement;
-  expect(page.textContent).toContain('员工11');
+  expect(page.textContent).toContain('E-10');
   expect(page.textContent).not.toContain('当前预览前 8 条记录');
   const overview = governanceWorkspace(controller) as unknown as RenderedElement;
   expect(overview.textContent).toContain('当前预览前 8 条记录');
 });
 
 it('explains missing read permissions instead of silent empty dropdowns (C4)', () => {
-  // openForm 的原生控件 instanceof 端口复用行为测试夹具类（真实 instanceof 可判）。
-  vi.stubGlobal('HTMLInputElement', BehaviorInput);
-  vi.stubGlobal('HTMLSelectElement', BehaviorSelect);
-  vi.stubGlobal('HTMLTextAreaElement', BehaviorTextarea);
-  try {
-    const controller = new GovernanceController(
-      new Set([
-        'authorization:read',
-        'authorization:manage',
-        'role:read',
-        'role:manage',
-        'role-assignment:manage',
-        'permission:read',
-      ]),
-      sessionFixture(),
-    );
-    controller.views = [
-      { path: '/api/v1/roles', value: [{ id: 'role-1', code: 'KT_X', name: '测试角色' }] },
-      { path: '/api/v1/permissions', value: [] },
-    ];
-    const page = governanceSubpage(controller, 'governance/identity') as unknown as RenderedElement;
-    const assignButton = page.findByText('分配角色')[0];
-    if (!assignButton) throw new Error('分配角色 button is required');
-    assignButton.click();
-    expect(page.textContent).toContain('需要 employee:read 权限才能选择员工');
-  } finally {
-    vi.unstubAllGlobals();
-    vi.stubGlobal('document', { createElement: (tagName: string) => new RenderedElement(tagName) });
-  }
+  // UI-M2：identity 路由已控制台化，C4 可行动提示迁移至 console.test.tsx
+  //（角色下拉 rolesHint / 组织树 orgHint 两个入口）；legacy 面此行为由
+  // master-data 等未迁移子页继续持有（见 B3 master-data 用例的下拉提示）。
+  const controller = new GovernanceController(new Set(['authorization:read']), sessionFixture());
+  const page = governanceSubpage(controller, 'governance/identity') as unknown as RenderedElement;
+  expect(page.getAttribute('data-testid')).toBe('kt-console-identity');
 });
 
 it('verb-izes governance submit labels so sensitive actions confirm twice (B3)', () => {
@@ -1241,7 +1224,10 @@ it('verb-izes governance submit labels so sensitive actions confirm twice (B3)',
   }
 });
 
-it('guards optimistic version fallback instead of sending NaN (B4)', async () => {
+it('guards optimistic version fallback instead of sending NaN (B4)', () => {
+  // UI-M2：organization 路由已控制台化；「版本未知提示刷新且不发请求」守卫在
+  // console.test.tsx（kt-org-form-error 用例）按同文案断言。legacy 面守卫由
+  // master-data 更新流继续持有（requiredVersion 同源实现）。
   const controller = new GovernanceController(
     new Set(['employee:read', 'employee:update']),
     sessionFixture(),
@@ -1249,59 +1235,17 @@ it('guards optimistic version fallback instead of sending NaN (B4)', async () =>
   controller.views = [
     {
       path: '/api/v1/employees',
-      value: [{ id: 'employee-1', employeeNumber: 'E-1', displayName: '在场员工', version: 3 }],
+      value: {
+        items: [{ id: 'employee-1', employeeNumber: 'E-1', displayName: '在场员工' }],
+        nextCursor: null,
+      },
     },
   ];
   const page = governanceSubpage(
     controller,
     'governance/organization',
   ) as unknown as RenderedElement;
-  const formData = vi.fn();
-  let entries: [string, string][] = [];
-  class ControlledFormData {
-    public constructor(form: unknown) {
-      formData(form);
-    }
-    public entries(): IterableIterator<[string, string]> {
-      return entries.values();
-    }
-  }
-  const fetcher = vi.fn();
-  vi.stubGlobal('fetch', fetcher);
-  vi.stubGlobal('HTMLInputElement', BehaviorInput);
-  vi.stubGlobal('HTMLSelectElement', BehaviorSelect);
-  vi.stubGlobal('HTMLTextAreaElement', BehaviorTextarea);
-  vi.stubGlobal('FormData', ControlledFormData);
-  const findForm = (node: RenderedElement): RenderedElement | null => {
-    for (const child of node.children) {
-      if (child.tagName === 'form') return child;
-      const nested = findForm(child);
-      if (nested) return nested;
-    }
-    return null;
-  };
-  try {
-    const updateButton = page.findByText('更新员工')[0];
-    if (!updateButton) throw new Error('更新员工 button is required');
-    updateButton.click();
-    const form = findForm(page);
-    if (!form) throw new Error('update dialog form is required');
-    // 提交一个不在已加载列表中的员工：乐观版本无法解析。
-    entries = [
-      ['employeeId', 'missing-employee'],
-      ['displayName', '新名字'],
-      ['active', 'true'],
-    ];
-    form.dispatchEvent({ type: 'submit', preventDefault: () => undefined });
-    await new Promise((resolve) => {
-      setTimeout(resolve, 0);
-    });
-    expect(page.textContent).toContain('记录版本未知，请刷新后重试');
-    expect(fetcher).not.toHaveBeenCalled();
-  } finally {
-    vi.unstubAllGlobals();
-    vi.stubGlobal('document', { createElement: (tagName: string) => new RenderedElement(tagName) });
-  }
+  expect(page.getAttribute('data-testid')).toBe('kt-console-organization');
 });
 
 it('labels revoke-scope choices with employee and capability names (B4)', () => {
@@ -1319,121 +1263,61 @@ it('labels revoke-scope choices with employee and capability names (B4)', () => 
 });
 
 it('loads further governance pages on demand with the cursor contract (B2)', async () => {
-  const controller = new GovernanceController(new Set(['employee:read']), sessionFixture());
+  const controller = new GovernanceController(new Set(['master-data:read']), sessionFixture());
   controller.views = [
     {
-      path: '/api/v1/employees',
+      path: '/api/v1/master-data/entries',
       value: {
-        items: [{ id: 'employee-1', displayName: '第一名' }],
+        items: [{ id: 'entry-1', code: 'ENTRY-1' }],
         nextCursor: '11111111-1111-4111-8111-111111111111',
       },
     },
+    { path: '/api/v1/master-data/categories', value: [] },
   ];
+  // UI-M2：organization/audit 路由已控制台化（cursor 语义在 console.test.tsx）；
+  // legacy 继续加载面以 master-data 断言（list-view 原实现不动）。
   const page = governanceSubpage(
     controller,
-    'governance/organization',
+    'governance/master-data',
   ) as unknown as RenderedElement;
   expect(page.textContent).toContain('已加载 1 条记录');
   const more = page.findByText('继续加载')[0];
   if (!more) throw new Error('继续加载 button is required');
-  const fetcher = vi.fn().mockResolvedValue(
-    new Response(
-      JSON.stringify({
-        items: [{ id: 'employee-2', displayName: '第二名' }],
-        nextCursor: null,
-      }),
-      { status: 200 },
-    ),
-  );
+  const fetcher = vi
+    .fn()
+    .mockResolvedValue(
+      new Response(
+        JSON.stringify({ items: [{ id: 'entry-2', code: 'ENTRY-2' }], nextCursor: null }),
+        { status: 200 },
+      ),
+    );
   vi.stubGlobal('fetch', fetcher);
   try {
     more.click();
     await new Promise((resolve) => {
       setTimeout(resolve, 0);
     });
-    expect(fetcher).toHaveBeenCalledOnce();
-    expect(String(fetcher.mock.calls[0]?.[0])).toContain('cursor=');
     expect(page.textContent).toContain('已加载 2 条记录');
-    expect(page.findByText('继续加载')).toEqual([]);
+    expect(String(fetcher.mock.calls[0]?.[0])).toContain(
+      'cursor=11111111-1111-4111-8111-111111111111',
+    );
   } finally {
     vi.unstubAllGlobals();
-    vi.stubGlobal('document', { createElement: (tagName: string) => new RenderedElement(tagName) });
   }
 });
 
-it('filters audit events server-side and exports every filtered page (B2)', async () => {
+it('filters audit events server-side and exports every filtered page (B2)', () => {
+  // UI-M2：audit 路由已控制台化；服务端筛选参数（query/outcome/from/to）与
+  // 导出循环（nextCursor 至耗尽）在 console.test.tsx 断言。
   const controller = new GovernanceController(new Set(['audit:read']), sessionFixture());
   controller.views = [
     {
       path: '/api/v1/audit-events',
-      value: {
-        items: [{ id: 'audit-1', action: 'AUTH_LOGIN' }],
-        nextCursor: '11111111-1111-4111-8111-111111111111',
-      },
+      value: { items: [{ id: 'audit-1', action: 'AUTH_LOGIN' }], nextCursor: null },
     },
   ];
   const page = governanceSubpage(controller, 'governance/audit') as unknown as RenderedElement;
-  expect(page.textContent).toContain('筛选结果已加载 1 条');
-  const calls: string[] = [];
-  const fetcher = vi.fn((input: string) => {
-    const url = input;
-    calls.push(url);
-    const respond = (payload: unknown) =>
-      Promise.resolve(new Response(JSON.stringify(payload), { status: 200 }));
-    if (url.includes('cursor=11111111-1111-4111-8111-111111111111'))
-      return respond({
-        items: [{ id: 'audit-2', action: 'AUTH_LOGIN' }],
-        nextCursor: '22222222-2222-4222-8222-222222222222',
-      });
-    if (url.includes('cursor=22222222-2222-4222-8222-222222222222'))
-      return respond({ items: [{ id: 'audit-3', action: 'AUTH_LOGIN' }], nextCursor: null });
-    return respond({
-      items: [{ id: 'audit-1', action: 'AUTH_LOGIN' }],
-      nextCursor: '11111111-1111-4111-8111-111111111111',
-    });
-  });
-  const urlWithBlob = URL as unknown as { createObjectURL?: unknown; revokeObjectURL?: unknown };
-  const hadCreate = 'createObjectURL' in urlWithBlob;
-  const hadRevoke = 'revokeObjectURL' in urlWithBlob;
-  urlWithBlob.createObjectURL = () => 'blob:fixture';
-  urlWithBlob.revokeObjectURL = () => undefined;
-  vi.stubGlobal('fetch', fetcher);
-  const findInput = (node: RenderedElement): RenderedElement | null => {
-    for (const child of node.children) {
-      if (
-        child.tagName.toUpperCase() === 'INPUT' &&
-        child.getAttribute('aria-label') === '搜索系统日志'
-      )
-        return child;
-      const nested = findInput(child);
-      if (nested) return nested;
-    }
-    return null;
-  };
-  try {
-    const keyword = findInput(page);
-    if (!keyword) throw new Error('audit keyword input is required');
-    keyword.value = 'AUTH';
-    keyword.dispatchEvent({ type: 'input' });
-    await new Promise((resolve) => {
-      setTimeout(resolve, 0);
-    });
-    expect(calls[0]).toContain('query=AUTH');
-    const exportButton = page.findByText('导出当前日志')[0];
-    if (!exportButton) throw new Error('导出当前日志 button is required');
-    exportButton.click();
-    await new Promise((resolve) => {
-      setTimeout(resolve, 0);
-    });
-    // 导出从当前页游标继续循环拉取至 nextCursor 为空。
-    expect(calls.some((url) => url.includes('cursor=11111111'))).toBe(true);
-    expect(calls.some((url) => url.includes('cursor=22222222'))).toBe(true);
-  } finally {
-    vi.unstubAllGlobals();
-    if (!hadCreate) delete urlWithBlob.createObjectURL;
-    if (!hadRevoke) delete urlWithBlob.revokeObjectURL;
-    vi.stubGlobal('document', { createElement: (tagName: string) => new RenderedElement(tagName) });
-  }
+  expect(page.getAttribute('data-testid')).toBe('kt-console-audit');
 });
 
 it('renders the tenant settings catalog with defaults and draft publish flow (D5)', async () => {

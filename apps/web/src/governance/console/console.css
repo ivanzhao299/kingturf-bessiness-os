@@ -1,0 +1,109 @@
+/* UI-M2 governance 控制台样式：全部取值来自 tokens（ADR-0014），不写死颜色/间距。 */
+.console-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kt-space-4);
+}
+
+.console-split {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: var(--kt-space-5);
+  align-items: start;
+}
+
+.console-split-tree {
+  border: 1px solid var(--kt-color-border);
+  border-radius: var(--kt-radius-md);
+  background: var(--kt-color-surface-muted);
+  padding: var(--kt-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--kt-space-3);
+}
+
+.console-split-tree h3 {
+  margin: 0;
+  font-size: var(--kt-font-size-lead);
+  font-weight: var(--kt-font-weight-semibold);
+  color: var(--kt-color-text);
+}
+
+.console-split-main {
+  min-width: 0;
+}
+
+.console-hint {
+  margin: 0;
+  font-size: var(--kt-font-size-caption);
+  color: var(--kt-color-text-muted);
+}
+
+.console-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kt-space-2);
+  align-items: center;
+}
+
+.console-filters input,
+.console-filters select {
+  border: 1px solid var(--kt-color-border);
+  border-radius: var(--kt-radius-sm);
+  padding: var(--kt-space-1) var(--kt-space-2);
+  font-size: var(--kt-font-size-body);
+  background: var(--kt-color-surface);
+  color: var(--kt-color-text);
+}
+
+.console-filters input[type='search'] {
+  flex: 1 1 240px;
+}
+
+.console-summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kt-space-2);
+  margin: 0 0 var(--kt-space-3);
+}
+
+.console-summary p {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kt-space-2);
+  align-items: center;
+}
+
+.console-label {
+  font-size: var(--kt-font-size-caption);
+  color: var(--kt-color-text-muted);
+  margin-left: var(--kt-space-3);
+}
+
+.console-label:first-child {
+  margin-left: 0;
+}
+
+.console-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kt-space-2);
+}
+
+.console-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--kt-space-1);
+  border: 1px solid var(--kt-color-border);
+  border-radius: var(--kt-radius-pill);
+  background: var(--kt-color-surface-muted);
+  padding: var(--kt-space-1) var(--kt-space-3);
+  font-size: var(--kt-font-size-caption);
+}
+
+.console-error {
+  color: var(--kt-color-danger);
+  font-size: var(--kt-font-size-caption);
+  margin: var(--kt-space-2) 0 0;
+}
