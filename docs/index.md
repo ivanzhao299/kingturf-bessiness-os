@@ -1,5 +1,15 @@
 # docs/index.md（全部文档索引）
 
+[A系列资产审计总录](audits/2026-11-19-asset-audit-summary.md)：第七次人裁配套只读审计（ASVS/NIST/SLSA基准）；代码层零P0、唯一P0=GitHub平台配置，A-F0..A-F4修复批次规划与两项过期TD复核。
+
+[A1 SQL/DataScope仓储审计](audits/a1-sql-datascope-repositories.md)：注入防护达行业水准之上，零字符串值拼接、动态片段全封闭。
+
+[A2 认证授权审计](audits/a2-authn-authz-audit.md)：opaque token+CSRF体系复核。
+
+[A3 CI供应链审计](audits/a3-ci-supply-chain.md)：workflow级自检信任根与平台配置缺口。
+
+[A4 发布安全契约审计](audits/a4-release-security-contracts.md)：双SHA控制面与恢复链契约复核。
+
 [UI 基座计划](tasks/ui-foundation-program-2026-11-19.md)：2026-11-19第四次人裁立项（练手定位/解除#8大爆炸禁令仅限本计划/全权执行）；Preact+signals 组件层（ADR-0014）、U0-U4 分域重写路线、UI-CP1..UI-CP5 检查点与各批DoD、解剖合规率/授权角色5→2步度量、每域行为重写+UX升级双标签迁移政策、TD-UI-001 载体。
 
 [ADR-0014 前端组件层与框架](adr/0014-frontend-component-layer-and-framework.md)：Preact+@preact/signals 仅2个新运行时依赖落 packages/ui、零新构建工具链；四类页面解剖模板/设计tokens/分域迁移与旧vanilla视图共存；替代方案否决（vanilla组件层/Lit/Vue/React/全站一次性重写）与依赖边登记（web→ui）。
