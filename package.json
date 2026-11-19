@@ -39,14 +39,14 @@
     "ci:local": "NODE_ENV=test sh -c 'pnpm install --frozen-lockfile && pnpm format:check && pnpm doc:lint && pnpm structure:check && pnpm service:check && pnpm verify:frontend-capabilities && pnpm ci:database:guard && pnpm db:migrate && pnpm db:status && pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm build && pnpm audit:scan && pnpm security:check'"
   },
   "devDependencies": {
-    "@eslint/js": "9.39.4",
-    "@playwright/test": "^1.62.1",
-    "@vitest/coverage-v8": "3.2.6",
-    "eslint": "9.39.4",
-    "globals": "16.4.0",
-    "prettier": "3.8.1",
+    "@eslint/js": "10.0.1",
+    "@playwright/test": "^1.65.1",
+    "@vitest/coverage-v8": "5.1.0",
+    "eslint": "10.15.0",
+    "globals": "17.14.0",
+    "prettier": "3.10.1",
     "typescript": "5.9.3",
-    "typescript-eslint": "8.59.2",
+    "typescript-eslint": "8.73.0",
     "vitest": "3.2.6"
   }
 }
