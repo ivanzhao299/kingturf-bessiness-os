@@ -204,12 +204,16 @@ class ApplicationRecoveryTest(unittest.TestCase):
         self.assertLess(markers['deployed'],markers['advance'])
 
     def test_handover_state_guard_is_precise(self):
-        # Handover: FULLY_MATCHED registry + marker still on the previous release.
-        self.assertTrue(ar.handover_state('FULLY_MATCHED', 'a'*40, 'b'*40))
+        # Handover: FULLY_MATCHED registry + marker still on the previous release
+        # + the api container actually stopped (ruling 9).
+        self.assertTrue(ar.handover_state('FULLY_MATCHED', 'a'*40, 'b'*40, True))
         # Same-candidate rerun (marker already advanced): strict semantics retained.
-        self.assertFalse(ar.handover_state('FULLY_MATCHED', 'b'*40, 'b'*40))
+        self.assertFalse(ar.handover_state('FULLY_MATCHED', 'b'*40, 'b'*40, True))
         # Pending migrations: never a handover, stopped api stays an error.
-        self.assertFalse(ar.handover_state('MATCHED_PREFIX_PENDING', 'a'*40, 'b'*40))
+        self.assertFalse(ar.handover_state('MATCHED_PREFIX_PENDING', 'a'*40, 'b'*40, True))
+        # Plain application-only release (zero new migrations, api running): the
+        # same registry shape must stay strict instead of expecting a stop.
+        self.assertFalse(ar.handover_state('FULLY_MATCHED', 'a'*40, 'b'*40, False))
 
     def test_precheck_wires_handover_branch_and_probe_skips(self):
         import ast as ast_module
@@ -228,19 +232,23 @@ class ApplicationRecoveryTest(unittest.TestCase):
         # Container branch: handover allows exactly a stopped api.
         self.assertIn("'Handover state expects the api container to be stopped'", body)
         self.assertIn("'Current recovery container unavailable'", body)
+        # Ruling 9: the relaxation additionally requires the observed stopped api.
+        self.assertIn("handover_state(classification, marker, approval['release_sha'], api_stopped)", body)
 
     def test_preflight_handover_guard_is_precise(self):
         import importlib.util as ilu
         spec = ilu.spec_from_file_location('preflight_mod', ROOT/'scripts/production_preflight.py')
         gate = ilu.module_from_spec(spec); spec.loader.exec_module(gate)
-        # Handover: candidate given, registry matches candidate, marker on previous.
-        self.assertTrue(gate.handover_state('FULLY_MATCHED', 'a'*40, 'b'*40))
+        # Handover: candidate given, registry matches candidate, marker on previous, api stopped.
+        self.assertTrue(gate.handover_state('FULLY_MATCHED', 'a'*40, 'b'*40, True))
         # No candidate sha (plain rerun semantics) -> never handover.
-        self.assertFalse(gate.handover_state('FULLY_MATCHED', 'a'*40, None))
+        self.assertFalse(gate.handover_state('FULLY_MATCHED', 'a'*40, None, True))
         # Marker already on the candidate -> strict rerun, no handover.
-        self.assertFalse(gate.handover_state('FULLY_MATCHED', 'b'*40, 'b'*40))
+        self.assertFalse(gate.handover_state('FULLY_MATCHED', 'b'*40, 'b'*40, True))
         # Pending migrations -> never handover.
-        self.assertFalse(gate.handover_state('MATCHED_PREFIX_PENDING', 'a'*40, 'b'*40))
+        self.assertFalse(gate.handover_state('MATCHED_PREFIX_PENDING', 'a'*40, 'b'*40, True))
+        # Running api with the same registry shape -> strict application-only release.
+        self.assertFalse(gate.handover_state('FULLY_MATCHED', 'a'*40, 'b'*40, False))
 
     def test_recovery_shell_passes_candidate_sha_to_preflight(self):
         text = (ROOT/'scripts/recover_application_images.sh').read_text()

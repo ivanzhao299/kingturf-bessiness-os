@@ -88,10 +88,13 @@ def validate_config(config):
         require(re.fullmatch(r'[^@\s]+@sha256:[0-9a-f]{64}', image), f'{service} image must be digest-pinned (image@sha256:<64hex>)')
 
 
-def handover_state(classification, marker, candidate_sha):
+def handover_state(classification, marker, candidate_sha, api_stopped):
     """Migration->application handover guard: the registry already matches the
-    candidate manifest while the marker still names the previous release."""
-    return candidate_sha is not None and classification == 'FULLY_MATCHED' and marker != candidate_sha
+    candidate manifest while the marker still names the previous release and
+    the api container is actually stopped. A running api with the same
+    registry shape is a plain application-only release and keeps the strict
+    path (ruling 9: zero-migration releases share that registry shape)."""
+    return candidate_sha is not None and classification == 'FULLY_MATCHED' and marker != candidate_sha and api_stopped
 
 
 def preflight(root, expected, *, require_full=False, allow_stopped_api=False, candidate_sha=None):
@@ -119,6 +122,14 @@ def preflight(root, expected, *, require_full=False, allow_stopped_api=False, ca
     # Migration->application handover: registry already matches the candidate manifest
     # while the marker still names the previous release; the migration run leaves the
     # api deliberately stopped in that state (window mode applies).
+    # Ruling 9: the same registry shape also occurs for zero-migration application
+    # releases where the api is running normally, so the relaxation additionally
+    # requires the api container to be actually stopped (not merely restarting);
+    # otherwise the strict path below (health checks + version probe) stays in force.
+    api_ids = command(['docker', 'container', 'ls', '-aq', '--filter', f'label=com.docker.compose.project={PROJECT}', '--filter', f'label=com.docker.compose.service=api']).splitlines()
+    require(len(api_ids) == 1, 'Expected exactly one existing container per production service')
+    api_state = json.loads(command(['docker', 'inspect', api_ids[0]]))[0]['State']
+    api_stopped = not api_state.get('Running') and not api_state.get('Restarting')
     api_fenced = False
     for service, target, source in (
         ('postgres', '/var/lib/postgresql/data', POSTGRES),
@@ -135,7 +146,7 @@ def preflight(root, expected, *, require_full=False, allow_stopped_api=False, ca
         # so its healthcheck fails transitively (502) and is tolerated as well, only
         # while the api fence is actually observed. Stage B's evidence gates and the
         # orchestrator's live docker/quiescence probes still enforce the fence.
-        window_mode = allow_stopped_api or handover_state(classification, marker, candidate_sha)
+        window_mode = allow_stopped_api or handover_state(classification, marker, candidate_sha, api_stopped)
         fenced_api_stopped = window_mode and service == 'api' and not running
         fenced_web_transitive = window_mode and service == 'web' and running and api_fenced
         require((running and healthy) or fenced_api_stopped or fenced_web_transitive, 'Existing production container is not healthy')
@@ -147,7 +158,7 @@ def preflight(root, expected, *, require_full=False, allow_stopped_api=False, ca
         require(classification == 'FULLY_MATCHED', 'Post-migration check failed: registry is not FULLY_MATCHED; pending migrations remain')
     port = config['services']['web']['ports'][0]['published']
     require(str(port).isdigit(), 'Production ingress port invalid')
-    if allow_stopped_api or handover_state(classification, marker, candidate_sha):
+    if allow_stopped_api or handover_state(classification, marker, candidate_sha, api_stopped):
         # The version endpoint is served by the (stopped) old api; the fence evidence's
         # api_release_sha and the pre-stop marker reading cover the version binding.
         print(json.dumps({'preflight': 'PASS', 'registry_classification': classification, 'previous_sha': marker, 'applied': len(rows), 'pending': pending, 'services': 3, 'storage': 'approved_bind_mounts', 'restore': 'REQUIRES_INDEPENDENT_EVIDENCE', 'version_probe': 'skipped (window mode: api stopped by write fence)'}))

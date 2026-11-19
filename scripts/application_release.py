@@ -62,11 +62,14 @@ def authorize(bundle, approval):
     return auth
 
 
-def handover_state(classification, marker, release_sha):
+def handover_state(classification, marker, release_sha, api_stopped):
     """Migration->application handover: registry already matches the candidate
-    manifest while the marker still names the previous release. Exactly this
-    combination legitimately carries a deliberately stopped api container."""
-    return classification == 'FULLY_MATCHED' and marker != release_sha
+    manifest while the marker still names the previous release and the api
+    container is actually stopped. Exactly this combination legitimately
+    carries a deliberately stopped api container; a running api with the same
+    registry shape is a plain application-only release and must stay strict
+    (ruling 9: the same shape also occurs with zero pending migrations)."""
+    return classification == 'FULLY_MATCHED' and marker != release_sha and api_stopped
 
 
 def verify_image_evidence(root, approval, identities, auth):
@@ -122,13 +125,19 @@ def precheck(bundle):
     rows = registry_snapshot()
     classification, pending = gate.classify_registry([{k:r[k] for k in ('name', 'checksum')} for r in rows], expected)
     marker = (ROOT / '.release-sha').read_text().strip()
-    handover = handover_state(classification, marker, approval['release_sha'])
+    containers = json.loads(command(['docker', 'inspect', PROJECT+'-api-1', PROJECT+'-web-1']))
+    # Ruling 9: the handover relaxation additionally requires the api container
+    # to be actually stopped (not restarting); a running api with the same
+    # registry shape is a plain application-only release and stays strict, so
+    # the container health checks and baseline probes below keep running.
+    api_state = containers[0]['State']
+    api_stopped = not api_state.get('Running') and not api_state.get('Restarting')
+    handover = handover_state(classification, marker, approval['release_sha'], api_stopped)
     gate.preflight(str(ROOT), expected, require_full=True, allow_stopped_api=handover)
     images.require(classification == 'FULLY_MATCHED' and not pending, 'Application-only release requires FULLY_MATCHED')
     # Host image evidence: same-candidate reruns stay byte-strict; a newer candidate
     # is accepted only with the runner's isolated FULLY_MATCHED + smoke-PASS proof.
     verify_image_evidence(ROOT, approval, identities, auth)
-    containers = json.loads(command(['docker', 'inspect', PROJECT+'-api-1', PROJECT+'-web-1']))
     for c in containers:
         command(['docker', 'image', 'inspect', c['Image']])
         if handover:

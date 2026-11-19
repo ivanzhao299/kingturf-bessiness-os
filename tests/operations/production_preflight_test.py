@@ -34,6 +34,7 @@ class ProductionPreflightTest(unittest.TestCase):
         self.mount = '/data'
         self.healthy = True
         self.api_running = True
+        self.api_restarting = False
         self.web_health = None  # None: follow self.healthy; else explicit web-only override
         self.live_source = self.pg
         self.version = self.marker
@@ -60,14 +61,14 @@ class ProductionPreflightTest(unittest.TestCase):
                 healthy = self.web_health
             else:
                 healthy = self.healthy
-            return json.dumps([{'State': {'Running': running, 'Health': {'Status': 'healthy' if healthy else 'unhealthy'}}, 'Mounts': [] if service == 'web' else [{'Type': 'bind', 'Source': str(source), 'Destination': target}]}])
+            return json.dumps([{'State': {'Running': running, 'Restarting': self.api_restarting, 'Health': {'Status': 'healthy' if healthy else 'unhealthy'}}, 'Mounts': [] if service == 'web' else [{'Type': 'bind', 'Source': str(source), 'Destination': target}]}])
         if 'exec' in args:
             self.assertIn('BEGIN READ ONLY', text)
             for forbidden in ('INSERT ', 'UPDATE ', 'DELETE ', 'ALTER ', 'CREATE '): self.assertNotIn(forbidden, text)
             return json.dumps(self.actual)
         raise AssertionError('Unexpected inventory command')
 
-    def run_gate(self, *, require_full=False, allow_stopped_api=False):
+    def run_gate(self, *, require_full=False, allow_stopped_api=False, candidate_sha=None):
         original_stat = os.stat
         self.urlopen_calls = []
         def stat(path, *args, **kwargs):
@@ -77,7 +78,7 @@ class ProductionPreflightTest(unittest.TestCase):
             return io.BytesIO(json.dumps({'sha': self.version}).encode())
         output = io.StringIO()
         with patch.object(gate, 'RELEASE', self.root), patch.object(gate, 'POSTGRES', self.pg), patch.object(gate, 'ATTACHMENTS', self.files), patch.object(gate, 'command', self.command), patch.object(gate.os, 'stat', stat), patch.object(gate.shutil, 'disk_usage', return_value=SimpleNamespace(free=self.free)), patch.object(gate.urllib.request, 'urlopen', urlopen), contextlib.redirect_stdout(output):
-            gate.preflight(str(self.root), self.expected, require_full=require_full, allow_stopped_api=allow_stopped_api)
+            gate.preflight(str(self.root), self.expected, require_full=require_full, allow_stopped_api=allow_stopped_api, candidate_sha=candidate_sha)
         return output.getvalue()
 
     def test_healthy_inventory_is_readonly_and_does_not_claim_restore(self):
@@ -220,6 +221,35 @@ class ProductionPreflightTest(unittest.TestCase):
         self.api_running = True
         self.healthy = False
         with self.assertRaisesRegex(RuntimeError, 'not healthy'): self.run_gate(allow_stopped_api=True)
+
+    def test_candidate_handover_with_running_api_keeps_strict_path(self):
+        # Ruling 9: FULLY_MATCHED + marker on the previous release + a running api
+        # is a plain application-only release. The strict path (health checks and
+        # the version probe against the marker) must run, not the window mode.
+        self.api_running = True
+        result = self.run_gate(candidate_sha='c' * 40)
+        payload = json.loads(result)
+        self.assertEqual(payload['preflight'], 'PASS')
+        self.assertNotIn('version_probe', payload)
+        self.assertEqual(len(self.urlopen_calls), 1)
+
+    def test_candidate_handover_with_stopped_api_gets_window_mode(self):
+        # True migration->application handover: the api was deliberately stopped
+        # by the migration run, so the window mode applies and skips the probe.
+        self.api_running = False
+        self.version = 'c' * 40  # would disagree with the marker if probed at all
+        result = self.run_gate(candidate_sha='c' * 40)
+        payload = json.loads(result)
+        self.assertEqual(payload['preflight'], 'PASS')
+        self.assertIn('skipped', payload['version_probe'])
+        self.assertEqual(self.urlopen_calls, [])
+
+    def test_candidate_handover_with_restarting_api_fails_both_paths(self):
+        # A restarting api is neither a running healthy service nor a deliberately
+        # stopped one: neither the strict path nor the handover relaxation may pass.
+        self.api_running = False
+        self.api_restarting = True
+        with self.assertRaisesRegex(RuntimeError, 'not healthy'): self.run_gate(candidate_sha='c' * 40)
 
     def test_unknown_preflight_flag_is_rejected(self):
         probe = subprocess.run([sys.executable, str(ROOT / 'scripts/production_preflight.py'), '/data/kingturf-erp', base64.b64encode(b'{}').decode(), '--allow-build'], capture_output=True, text=True)
