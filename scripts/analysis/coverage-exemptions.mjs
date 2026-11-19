@@ -5,8 +5,14 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import ts from 'typescript';
 import { productionInventory } from './coverage-inventory.mjs';
 
-function comments(source) {
-  const file = ts.createSourceFile('source.ts', source, ts.ScriptTarget.Latest, true);
+function comments(path, source) {
+  // ADR-0014/U1：tsx 源须以 .tsx 文件名按 XML 方言解析（TS5.9 按扩展名定方言）。
+  const file = ts.createSourceFile(
+    path.endsWith('.tsx') ? 'source.tsx' : 'source.ts',
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+  );
   assert.equal(file.parseDiagnostics.length, 0, 'invalid source cannot establish exemptions');
   const ranges = new Map();
   const visit = (node) => {
@@ -53,7 +59,7 @@ export function validateCoverageExemptions(sources, ledger, now = new Date()) {
   const annotations = new Map();
   const today = singaporeDate(now);
   for (const { path, source } of sources) {
-    for (const comment of comments(source)) {
+    for (const comment of comments(path, source)) {
       if (!/^\/\/\s*coverage-exempt\b/u.test(comment.text)) continue;
       assert.equal(comment.kind, ts.SyntaxKind.SingleLineCommentTrivia);
       const match = /^\/\/\s*coverage-exempt\((.+), until-(\d{4}-\d{2}-\d{2})\)\s*$/u.exec(
