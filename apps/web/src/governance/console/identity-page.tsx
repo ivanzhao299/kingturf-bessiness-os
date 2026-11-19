@@ -23,6 +23,182 @@ import {
 // 授权角色度量：列表点行（查看）→ 抽屉内提交 = 2 步。
 type ProfileRow = Readonly<Record<string, unknown>>;
 
+// UI-M2（G5 拆分）：列定义与渲染视图为纯展示职责，独立于状态工厂。
+type IdentityState = Readonly<{
+  profiles: { readonly items: readonly unknown[]; readonly nextCursor: string | null };
+  loadingMore: boolean;
+  loadError: string;
+  rows: readonly ProfileRow[];
+  selected: ProfileRow | null;
+  activeForm: 'state' | 'provision' | 'assign' | 'revoke' | null;
+  identityManage: boolean;
+  assignmentManage: boolean;
+  roles: readonly ProfileRow[];
+  rolesHint: string | undefined;
+  open: (employeeId: string | null) => void;
+  openForm: (form: 'state' | 'provision' | 'assign' | 'revoke') => void;
+  close: () => void;
+  loadMore: () => void;
+  runAction: (
+    path: string,
+    payload: Record<string, unknown>,
+    method: 'POST' | 'PUT' | 'PATCH' | 'DELETE',
+  ) => Promise<void>;
+}>;
+
+const identityColumns = (state: IdentityState): readonly DataTableColumn<ProfileRow>[] => [
+  {
+    key: 'employee',
+    header: '员工',
+    sortable: true,
+    field: (row) => `${textOf(row.displayName)}（${textOf(row.employeeNumber)}）`,
+  },
+  { key: 'login', header: '登录名', field: (row) => textOf(row.loginName, '—') },
+  {
+    key: 'state',
+    header: '状态',
+    field: (row) => (row.identityActive === true ? 'active' : row.identityId ? 'disabled' : 'none'),
+    render: (row) =>
+      row.identityId ? (
+        <StatusBadge tone={row.identityActive === true ? 'success' : 'neutral'}>
+          {row.identityActive === true ? '在職' : '已停用'}
+        </StatusBadge>
+      ) : (
+        <StatusBadge tone="info">未开通</StatusBadge>
+      ),
+  },
+  {
+    key: 'roles',
+    header: '角色数',
+    sortable: true,
+    field: (row) => (Array.isArray(row.roles) ? row.roles.length : 0),
+  },
+  { key: 'sessions', header: '活跃会话', field: (row) => textOf(row.activeSessionCount, '0') },
+  {
+    key: 'actions',
+    header: '操作',
+    field: () => '查看',
+    render: (row) => (
+      <button
+        type="button"
+        class="secondary compact"
+        data-testid="kt-identity-open"
+        onClick={() => {
+          state.open(typeof row.employeeId === 'string' ? row.employeeId : null);
+        }}
+      >
+        查看
+      </button>
+    ),
+  },
+];
+
+const IdentityView = (state: IdentityState) => (
+  <div class="console-page" data-testid="kt-identity-page">
+    <DataTable
+      columns={identityColumns(state)}
+      rows={state.rows}
+      rowId={(row) => textOf(row.employeeId, textOf(row.employeeNumber, 'row'))}
+      caption="用户主列表（按员工聚合身份、角色与授权）"
+      pagination={{
+        loadedCount: state.profiles.items.length,
+        hasMore: state.profiles.nextCursor !== null,
+        loading: state.loadingMore,
+        onLoadMore: state.loadMore,
+      }}
+      {...(state.loadError === '' ? {} : { error: state.loadError })}
+      emptyTitle="暂无用户档案"
+      emptyDescription="开通身份后用户会出现在这里"
+    />
+    {state.selected ? (
+      <DetailDrawer
+        title={`用户 360 · ${textOf(state.selected.displayName, textOf(state.selected.employeeNumber, ''))}`}
+        onClose={state.close}
+        footer={
+          <ActionBar label="用户行级操作">
+            {state.identityManage ? (
+              <button
+                type="button"
+                class="secondary"
+                data-testid="kt-identity-action-state"
+                onClick={() => {
+                  state.openForm('state');
+                }}
+              >
+                账号启停与下线
+              </button>
+            ) : null}
+            {state.identityManage ? (
+              <button
+                type="button"
+                class="secondary"
+                data-testid="kt-identity-action-provision"
+                onClick={() => {
+                  state.openForm('provision');
+                }}
+              >
+                配置登录账号
+              </button>
+            ) : null}
+            {state.assignmentManage ? (
+              <button
+                type="button"
+                class="secondary"
+                data-testid="kt-identity-action-assign"
+                onClick={() => {
+                  state.openForm('assign');
+                }}
+              >
+                分配角色
+              </button>
+            ) : null}
+            {state.assignmentManage ? (
+              <button
+                type="button"
+                class="secondary"
+                data-testid="kt-identity-action-revoke"
+                onClick={() => {
+                  state.openForm('revoke');
+                }}
+              >
+                撤销角色
+              </button>
+            ) : null}
+          </ActionBar>
+        }
+      >
+        <IdentitySummary row={state.selected} />
+        {state.activeForm === 'state' && typeof state.selected.identityId === 'string' ? (
+          <IdentityStateForm row={state.selected} onSubmit={state.runAction} />
+        ) : null}
+        {state.activeForm === 'provision' ? (
+          <ProvisionForm row={state.selected} onSubmit={state.runAction} />
+        ) : null}
+        {state.activeForm === 'assign' ? (
+          <AssignRoleForm
+            row={state.selected}
+            roles={state.roles}
+            hint={state.rolesHint}
+            onSubmit={state.runAction}
+          />
+        ) : null}
+        {state.activeForm === 'revoke' ? (
+          <RevokeRoleForm
+            row={state.selected}
+            roles={state.selected.roles}
+            onSubmit={state.runAction}
+          />
+        ) : null}
+        {!state.activeForm &&
+        Array.isArray(state.selected.roles) &&
+        state.selected.roles.length === 0 ? (
+          <EmptyState title="该用户暂无角色" description="在抽屉操作中分配角色后即可获得能力" />
+        ) : null}
+      </DetailDrawer>
+    ) : null}
+  </div>
+);
+
 export function IdentityConsolePage(ports: ConsolePorts) {
   const initialProfiles = ports.initialView('/api/v1/user-access-profiles');
   const rolesLoaded = ports.loaded('/api/v1/roles');
@@ -90,154 +266,31 @@ export function IdentityConsolePage(ports: ConsolePorts) {
       return refresh();
     });
 
-  const columns: readonly DataTableColumn<ProfileRow>[] = [
-    {
-      key: 'employee',
-      header: '员工',
-      sortable: true,
-      field: (row) => `${textOf(row.displayName)}（${textOf(row.employeeNumber)}）`,
-    },
-    { key: 'login', header: '登录名', field: (row) => textOf(row.loginName, '—') },
-    {
-      key: 'state',
-      header: '状态',
-      field: (row) =>
-        row.identityActive === true ? 'active' : row.identityId ? 'disabled' : 'none',
-      render: (row) =>
-        row.identityId ? (
-          <StatusBadge tone={row.identityActive === true ? 'success' : 'neutral'}>
-            {row.identityActive === true ? '在職' : '已停用'}
-          </StatusBadge>
-        ) : (
-          <StatusBadge tone="info">未开通</StatusBadge>
-        ),
-    },
-    {
-      key: 'roles',
-      header: '角色数',
-      sortable: true,
-      field: (row) => (Array.isArray(row.roles) ? row.roles.length : 0),
-    },
-    { key: 'sessions', header: '活跃会话', field: (row) => textOf(row.activeSessionCount, '0') },
-    {
-      key: 'actions',
-      header: '操作',
-      field: () => '查看',
-      render: (row) => (
-        <button
-          type="button"
-          class="secondary compact"
-          data-testid="kt-identity-open"
-          onClick={() => {
-            selectedId.value = typeof row.employeeId === 'string' ? row.employeeId : null;
-            activeForm.value = null;
-          }}
-        >
-          查看
-        </button>
-      ),
-    },
-  ];
-
-  const Page = () => {
-    const current = selected();
-    return (
-      <div class="console-page" data-testid="kt-identity-page">
-        <DataTable
-          columns={columns}
-          rows={rows()}
-          rowId={(row) => textOf(row.employeeId, textOf(row.employeeNumber, 'row'))}
-          caption="用户主列表（按员工聚合身份、角色与授权）"
-          pagination={{
-            loadedCount: profiles.value.items.length,
-            hasMore: profiles.value.nextCursor !== null,
-            loading: loadingMore.value,
-            onLoadMore: loadMore,
-          }}
-          {...(loadError.value === '' ? {} : { error: loadError.value })}
-          emptyTitle="暂无用户档案"
-          emptyDescription="开通身份后用户会出现在这里"
-        />
-        {current ? (
-          <DetailDrawer
-            title={`用户 360 · ${textOf(current.displayName, textOf(current.employeeNumber, ''))}`}
-            onClose={() => {
-              selectedId.value = null;
-            }}
-            footer={
-              <ActionBar label="用户行级操作">
-                {identityManage ? (
-                  <button
-                    type="button"
-                    class="secondary"
-                    data-testid="kt-identity-action-state"
-                    onClick={() => {
-                      activeForm.value = 'state';
-                    }}
-                  >
-                    账号启停与下线
-                  </button>
-                ) : null}
-                {identityManage ? (
-                  <button
-                    type="button"
-                    class="secondary"
-                    data-testid="kt-identity-action-provision"
-                    onClick={() => {
-                      activeForm.value = 'provision';
-                    }}
-                  >
-                    配置登录账号
-                  </button>
-                ) : null}
-                {assignmentManage ? (
-                  <button
-                    type="button"
-                    class="secondary"
-                    data-testid="kt-identity-action-assign"
-                    onClick={() => {
-                      activeForm.value = 'assign';
-                    }}
-                  >
-                    分配角色
-                  </button>
-                ) : null}
-                {assignmentManage ? (
-                  <button
-                    type="button"
-                    class="secondary"
-                    data-testid="kt-identity-action-revoke"
-                    onClick={() => {
-                      activeForm.value = 'revoke';
-                    }}
-                  >
-                    撤销角色
-                  </button>
-                ) : null}
-              </ActionBar>
-            }
-          >
-            <IdentitySummary row={current} />
-            {activeForm.value === 'state' && typeof current.identityId === 'string' ? (
-              <IdentityStateForm row={current} onSubmit={runAction} />
-            ) : null}
-            {activeForm.value === 'provision' ? (
-              <ProvisionForm row={current} onSubmit={runAction} />
-            ) : null}
-            {activeForm.value === 'assign' ? (
-              <AssignRoleForm row={current} roles={roles} hint={rolesHint} onSubmit={runAction} />
-            ) : null}
-            {activeForm.value === 'revoke' ? (
-              <RevokeRoleForm row={current} roles={current.roles} onSubmit={runAction} />
-            ) : null}
-            {!activeForm.value && Array.isArray(current.roles) && current.roles.length === 0 ? (
-              <EmptyState title="该用户暂无角色" description="在抽屉操作中分配角色后即可获得能力" />
-            ) : null}
-          </DetailDrawer>
-        ) : null}
-      </div>
-    );
-  };
+  const Page = () =>
+    IdentityView({
+      profiles: profiles.value,
+      loadingMore: loadingMore.value,
+      loadError: loadError.value,
+      rows: rows(),
+      selected: selected(),
+      activeForm: activeForm.value,
+      identityManage,
+      assignmentManage,
+      roles,
+      rolesHint,
+      open: (employeeId) => {
+        selectedId.value = employeeId;
+        activeForm.value = null;
+      },
+      openForm: (form) => {
+        activeForm.value = form;
+      },
+      close: () => {
+        selectedId.value = null;
+      },
+      loadMore,
+      runAction,
+    });
   return Page;
 }
 
