@@ -47,3 +47,24 @@
 - D1 单管道 release.yml 将取代本「release-images + recover 手工缝合」接缝设计（TD-REL-008 / UI 计划 §9 D1 承接；D-CP1 后方可首次 dispatch）。
 - 失败 run 主机 bundle `44580949290-1` 留待 cleanup 白名单扩展，本批不动。
 - 九页验收直链（hash 路由，`https://erp.kingturf.cn/#/governance/` 后接子路径）：identity（身份与授权）、organization（组织与员工）、audit（审计中心）、master-data（主数据）、numbering（编号规则）、rules（业务规则）、workflow（工作流与待办）、notifications（通知中心）、system（业务对象与事件）。
+
+## 7. R2 追发：控制台 CSS 注入修复（裁定10 → 45a5218）
+
+**现象与根因（主协调定位，R2-CP 前生产探针复核）**：R1 发布后九页控制台在生产为纯文本列表——多入口构建关闭 modulePreload polyfill 后，动态 chunk 的 preload 助手无 stylesheet 注入分支；九页经 bootstrap 侧 `import('./mount')` 懒载，mount-\*.css 产出但运行时永不注入。dev 模式 CSS 走 JS 注入故本地无异常；测试不渲染 CSS 故全绿。
+
+**修复（45a5218）**：`governance/console-entry.ts` 顶部静态 import `@kingturf/ui/tokens.css` + `./console/console.css`（bootstrap 静态图 → 主 CSS 包 → index 入口完整助手统一注入）；`ui-kit/view.ts` 同型补 tokens 静态 import（render.tsx 懒载同型失效）；mount.tsx/render.tsx 既有 import 保留（懒载独立场景仍可用，vite 将重复 CSS 去重进主包）。
+
+**构建产物回归守卫**：新增 `apps/web/scripts/check-console-css.mjs` 接入 web build 链——断言 bootstrap 主 CSS 包（manifest bootstrap 动态入口关联的 css）含 `.console-page{` 与 `--kt-` token 定义，防「动态 chunk CSS 静默失效」再犯。红→绿：未修复态实测红（`Governance console styles missing from the bootstrap css bundle`，exit 1）→ 修复后绿（`Console css guard: assets/bootstrap-CzVB_eVc.css carries console styles and kt tokens.`）。
+
+**预算复核**：login 关键路径 JS 11769→11767（gzip）/12000、CSS 1898/4000 不变；主 CSS 包（bootstrap-\*.css）82.15→85.67 kB（gzip 17.03→17.83 kB，+0.8 kB），该包无预算阈值。
+
+**R2 run 清单与发布证据**：
+
+| Run             | Workflow                         | 结论                                                                                                                                                                                       |
+| --------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **44599106745** | release-images（45a5218）        | ✅ api=`sha256:eae58b6e8346f4e26238c4bbf338a7b74399893e3788e6884924cf95d45bbbcf` / web=`sha256:57a7f7483834a09550098e772f676621a370b3a23f1b7d3e62ce1a80bc1fbd84`（R2-CP 主协调亲验后放行） |
+| **44600095006** | recover（四输入照 R2-CP 精确值） | ✅ validate/verify/deploy 全绿                                                                                                                                                             |
+
+生产终态（2026-11-19T19:52Z 公网实测）：`/health` 200 ok、`/ready` 200 ready、`/version`==`45a5218f111a2fb1083c1d1340609cdaa46c2a75`（builtAt application-44600095006-1）、TLS 有效；`deployment.json`=PASS、FULLY_MATCHED、migration_execution=NOT_INVOKED、recovery_images=RETAINED（恢复点前缀 application-44600095006）；postcheck release_sha=45a5218；api/web 运行 digest 与批准值逐字一致。**生产侧 CSS 佐证**：`/assets/bootstrap-CzVB_eVc.css` 公网 200 且含 `.console-page{display:flex;…gap:var(--kt-space-4)…` 与 `--kt-*` token 定义（文件名与本地同 SHA 构建一致）。deploy job 19:49:10Z→19:51:08Z（118 秒），受控停机约 1 分钟级；dispatch（19:36:35Z）→deploy 全程 13 分钟，与 verify 正常区间一致，未见 >10 分钟额外 environment 审批等待。
+
+**所有者九页样式重验说明**：浏览器刷新即可——CSS 文件名带内容哈希（index-\*.html 引用链自动指向新哈希），无需清缓存；九页直链见 §6。
