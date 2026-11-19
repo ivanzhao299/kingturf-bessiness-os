@@ -1,3 +1,5 @@
+// A-F1（A1-P3-1/2、A2-F4①，人裁授权重钉）：fixture 与 baseline bytes/sha256 已按已批
+// 行为变更同步（calendarDate 回验/uuid 归一/credentials authorizeOneOf），trace 对拍语义不变。
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
