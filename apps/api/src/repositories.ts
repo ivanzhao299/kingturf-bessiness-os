@@ -303,8 +303,10 @@ export class PostgresSecurityStore implements CredentialStore, AuditSink {
       identity_active: boolean;
       employee_active: boolean;
       member_active: boolean;
+      failed_attempts: number;
+      locked_until: string | Date | null;
     }>(
-      'SELECT i.id identity_id,e.id employee_id,e.company_id,pc.password_hash,i.active identity_active,e.active employee_active,COALESCE(bool_or(om.active),false) member_active FROM identities i JOIN password_credentials pc ON pc.identity_id=i.id JOIN employees e ON e.id=i.employee_id LEFT JOIN organization_memberships om ON om.employee_id=e.id WHERE i.login_name=$1 AND i.deleted_at IS NULL AND e.deleted_at IS NULL GROUP BY i.id,e.id,pc.password_hash',
+      'SELECT i.id identity_id,e.id employee_id,e.company_id,pc.password_hash,i.active identity_active,e.active employee_active,COALESCE(bool_or(om.active),false) member_active,i.failed_attempts,i.locked_until FROM identities i JOIN password_credentials pc ON pc.identity_id=i.id JOIN employees e ON e.id=i.employee_id LEFT JOIN organization_memberships om ON om.employee_id=e.id WHERE i.login_name=$1 AND i.deleted_at IS NULL AND e.deleted_at IS NULL GROUP BY i.id,e.id,pc.password_hash',
       [login],
     );
     const r = result.rows[0];
@@ -317,8 +319,20 @@ export class PostgresSecurityStore implements CredentialStore, AuditSink {
           identityActive: r.identity_active,
           employeeActive: r.employee_active,
           memberActive: r.member_active,
+          failedAttempts: r.failed_attempts,
+          lockedUntil: r.locked_until === null ? null : new Date(r.locked_until),
         }
       : null;
+  }
+  public async recordLoginFailure(
+    input: Parameters<CredentialStore['recordLoginFailure']>[0],
+  ): Promise<void> {
+    // A2-F1: the increment and the threshold lock land in one atomic statement;
+    // the lock window is fixed at the moment the threshold is first crossed.
+    await this.database.query(
+      'UPDATE identities SET failed_attempts=failed_attempts+1,locked_until=CASE WHEN failed_attempts+1>=$2 THEN now()+make_interval(secs=>$3) ELSE locked_until END WHERE id=$1',
+      [input.identityId, input.attempts, input.windowSeconds],
+    );
   }
   public async createSession(
     input: Parameters<CredentialStore['createSession']>[0],
@@ -336,6 +350,11 @@ export class PostgresSecurityStore implements CredentialStore, AuditSink {
         [input.identityId],
       );
       if (credential.rows[0]?.password_hash !== input.expectedPasswordHash) return false;
+      // A2-F1: a successful login clears the persistent lockout counters in the
+      // same transaction that issues the session.
+      await tx.query('UPDATE identities SET failed_attempts=0,locked_until=NULL WHERE id=$1', [
+        input.identityId,
+      ]);
       await tx.query(
         'INSERT INTO sessions(identity_id,organization_id,token_hash,expires_at) VALUES($1,$2,$3,$4)',
         [input.identityId, input.organizationId, input.tokenHash, input.expiresAt],

@@ -6,6 +6,7 @@ export type { BrowserSessionConfig } from './browser-session.ts';
 export { CONTENT_SECURITY_POLICY } from './csp.ts';
 export { DEFAULT_LOGIN_RATE_LIMIT } from './login-rate-limit.ts';
 export { canonicalIp } from './ip-address.ts';
+export { COMMON_PASSWORDS } from './common-passwords.ts';
 export type { LoginRateLimitConfig } from './login-rate-limit.ts';
 
 export const DEFAULT_API_PORT = 3000;

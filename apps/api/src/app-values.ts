@@ -85,6 +85,14 @@ export const string = (value: unknown, name: string): string => {
   return value.trim();
 };
 
+// A2-F7: credential parser — unlike `string` it never trims, so passwords with
+// leading or trailing whitespace round-trip byte-exactly.
+export const secret = (value: unknown, name: string): string => {
+  if (typeof value !== 'string' || value.length === 0)
+    throw new DomainError('invalid_request', `${name} is required`);
+  return value;
+};
+
 export const boundedString = (value: unknown, name: string, maximum: number): string => {
   const result = string(value, name);
   if (result.length > maximum)

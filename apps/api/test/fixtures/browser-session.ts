@@ -57,8 +57,11 @@ export function browserSessionFixture(
         identityActive: true,
         employeeActive: true,
         memberActive: true,
+        failedAttempts: 0,
+        lockedUntil: null,
       }),
     ),
+    recordLoginFailure: vi.fn(() => Promise.resolve()),
     createSession: vi.fn((input: Parameters<CredentialStore['createSession']>[0]) => {
       sessions.set(input.tokenHash, { employeeId: input.employeeId, expiresAt: input.expiresAt });
       return Promise.resolve(true);

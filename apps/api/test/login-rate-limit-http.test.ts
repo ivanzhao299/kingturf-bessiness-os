@@ -19,7 +19,7 @@ function fixture(options: { pending?: number; proxies?: readonly string[] } = {}
     () => time,
     () => Promise.resolve(),
   );
-  const auth = { login };
+  const auth = { login, auditRateLimited: vi.fn(() => Promise.resolve()) };
   const app = buildApp({
     auth,
     loginRateLimiter: limiter,
@@ -107,7 +107,12 @@ describe('D1 S2 application login middleware', () => {
     });
     expect(success.statusCode).toBe(200);
     expect(success.body).toBe(result);
-    expect(f.login).toHaveBeenCalledExactlyOnceWith('Account', 'synthetic-password', correlationId);
+    // A-F2a (A2-F7): the login identifier is normalized, the password is not trimmed.
+    expect(f.login).toHaveBeenCalledExactlyOnceWith(
+      'Account',
+      ' synthetic-password ',
+      correlationId,
+    );
     expect(f.login.mock.contexts[0]).toBe(f.auth);
     f.login.mockRejectedValue(new Error('synthetic internal error'));
     for (let index = 0; index < 11; index++) {

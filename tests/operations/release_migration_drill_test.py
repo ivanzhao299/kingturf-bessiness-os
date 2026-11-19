@@ -20,7 +20,7 @@ ro = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(ro)
 MIGRATIONS = ROOT / 'packages/database/migrations'
 REAL_FILES = sorted(MIGRATIONS.glob('[0-9][0-9][0-9][0-9]*.sql'))
-assert len(REAL_FILES) == 74, 'candidate migration set must have exactly 74 files'
+assert len(REAL_FILES) == 75, 'candidate migration set must have exactly 75 files'
 
 CONTAINER = 'kingturf-business-os-postgres-1'
 PG_USER = 'kingturf'
@@ -166,7 +166,7 @@ class ControlledUpgradeDrill(Drill):
         session = self.make_db('phase12c_drill_upgrade')
         state = self.run_execute(session)
         self.assertEqual(state['verdict'], 'COMPLETED')
-        self.assertEqual(len(self.registry_names(session)), 74)
+        self.assertEqual(len(self.registry_names(session)), 75)
         admin = admin_session()
         try:
             admin.query('DROP DATABASE IF EXISTS phase12c_drill_reference')

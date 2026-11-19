@@ -349,6 +349,11 @@ const string = (value: unknown, name: string): string => {
     throw new DomainError('invalid_request', `${name} is required`);
   return value.trim();
 };
+const secret = (value: unknown, name: string): string => {
+  if (typeof value !== 'string' || value.length === 0)
+    throw new DomainError('invalid_request', `${name} is required`);
+  return value;
+};
 const boundedString = (value: unknown, name: string, maximum: number): string => {
   const result = string(value, name);
   if (result.length > maximum)
@@ -588,7 +593,7 @@ export function buildApp(
           loginRateLimiter,
           browserSession,
           correlationId,
-          parsers: { objectBody, string, allow },
+          parsers: { objectBody, string, secret, allow },
         };
         const loginResponse = await dispatchRoutes(loginRoutes(authRouteContext), request);
         if (loginResponse) return loginResponse;
@@ -2143,7 +2148,7 @@ export function buildApp(
             authorize: () => {
               authorizeOneOf(context, 'identity:manage', 'authorization:manage');
             },
-            parsers: { objectBody, allow, uuid, string },
+            parsers: { objectBody, allow, uuid, string, secret },
           }),
           request,
         );

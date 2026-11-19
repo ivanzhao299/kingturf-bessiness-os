@@ -61,6 +61,10 @@ const auth = new AuthenticationService(
   new PasswordHasher(config.password),
   config.session,
   securityStore,
+  {
+    attempts: config.loginRateLimit.lockoutAttempts,
+    windowSeconds: config.loginRateLimit.lockoutWindowSeconds,
+  },
 );
 const employees = new PostgresEmployeeRepository(database);
 const objectAccess = new PostgresRegistryObjectAccessAuthorizer(

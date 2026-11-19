@@ -28,7 +28,7 @@ am = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(am)
 
 CONTAINER = drill.CONTAINER
-APPROVED = ('0073_credential_must_change.sql', '0074_tenant_settings.sql')
+APPROVED = ('0073_credential_must_change.sql', '0074_tenant_settings.sql', '0075_login_lockout.sql')
 
 
 def stamp():
@@ -101,7 +101,7 @@ class HostFlowRehearsal(unittest.TestCase):
                 '--prod-root', str(self.prod),
                 '--attachments-dir', str(self.prod / 'attachments'),
                 '--postgres-container', CONTAINER,
-                '--expected-before', '72', '--expected-after', '74']
+                '--expected-before', '72', '--expected-after', '75']
 
     def run_main(self, url, orchestrator_stub, version_ok=True):
         seen = {'compose': [], 'orchestrator': []}
@@ -140,9 +140,8 @@ class HostFlowRehearsal(unittest.TestCase):
             if cli[0] == 'check-evidence':
                 return {'check_evidence': 'PASS', 'pending': list(APPROVED)}
             if cli[0] == 'execute':
-                psql_helper.query(url,
-                                  "INSERT INTO schema_migrations(name,checksum) VALUES"
-                                  f" ('{APPROVED[0]}',md5('a')),('{APPROVED[1]}',md5('b'));")
+                rows = ','.join(f"('{name}',md5('{index}'))" for index, name in enumerate(APPROVED))
+                psql_helper.query(url, f'INSERT INTO schema_migrations(name,checksum) VALUES {rows};')
                 return {'verdict': 'COMPLETED'}
             return {'postcheck': 'PASS', 'classification': 'FULLY_MATCHED'}
 
@@ -154,7 +153,7 @@ class HostFlowRehearsal(unittest.TestCase):
         self.assertEqual(fence['api_release_sha'], '01ef0e1fd34c724b21cfd470a41161687020ec5c')
         drain = json.loads((self.prod / '.release-migration-evidence/task_drain.json').read_text())
         self.assertEqual(drain['in_flight'], 0)
-        self.assertEqual(int(psql_helper.query(url, 'SELECT count(*) FROM schema_migrations;')), 74)
+        self.assertEqual(int(psql_helper.query(url, 'SELECT count(*) FROM schema_migrations;')), 75)
 
     def test_drain_blocked_restores_api_and_fails_closed(self):
         url, _ = self.prepare_database()

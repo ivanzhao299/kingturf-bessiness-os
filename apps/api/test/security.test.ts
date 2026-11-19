@@ -47,7 +47,10 @@ describe('password and session security', () => {
           identityActive: true,
           employeeActive: true,
           memberActive: true,
+          failedAttempts: 0,
+          lockedUntil: null,
         }),
+      recordLoginFailure: () => Promise.resolve(),
       createSession: (input) => {
         storedHash = input.tokenHash;
         audits.push({
@@ -101,6 +104,7 @@ describe('password and session security', () => {
     const audits: AuditEvent[] = [];
     const store: CredentialStore = {
       findForLogin: () => Promise.resolve(null),
+      recordLoginFailure: () => Promise.resolve(),
       createSession: () => Promise.resolve(true),
       resolveSession: () => Promise.resolve(null),
       revokeSession: () => Promise.resolve(false),
@@ -180,8 +184,11 @@ describe('password change and stale login contracts', () => {
           identityActive: true,
           employeeActive: true,
           memberActive: true,
+          failedAttempts: 0,
+          lockedUntil: null,
         }),
       ),
+      recordLoginFailure: vi.fn(() => Promise.resolve()),
       createSession: vi.fn(() => Promise.resolve(true)),
       findPasswordForEmployee: vi.fn(() => Promise.resolve(passwordHash)),
       replacePasswordForEmployee: vi

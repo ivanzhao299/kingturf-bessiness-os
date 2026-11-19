@@ -57,10 +57,18 @@ const stripApprovedListArgs = (row: unknown): unknown => {
     ? ['call', withoutOrganization[1], withoutOrganization[2], args.slice(0, -1)]
     : withoutOrganization;
 };
+// A-F2a（A2-F8，行为变更已批）：登录路由上下文新增 audit 依赖访问；比对前从 trace
+// 移除该已批 ["root","audit"] 行（仅该一处新增访问，其余 trace 逐字段相等）。
+const stripApprovedAuditAccess = (row: unknown): boolean =>
+  Array.isArray(row) && row.length === 2 && row[0] === 'root' && row[1] === 'audit';
 const preserve = (result: { name: string; [key: string]: unknown }) => ({
   ...result,
   ...(Array.isArray(result.trace)
-    ? { trace: result.trace.map((row) => stripApprovedListArgs(row)) }
+    ? {
+        trace: result.trace
+          .filter((row) => !stripApprovedAuditAccess(row))
+          .map((row) => stripApprovedListArgs(row)),
+      }
     : {}),
 });
 describe('Batch4 app extraction against fixed f3 complete request traces', () => {

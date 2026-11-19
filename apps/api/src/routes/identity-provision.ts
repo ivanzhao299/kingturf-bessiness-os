@@ -12,6 +12,7 @@ type IdentityProvisionContext = Readonly<{
     allow: (body: Record<string, unknown>, fields: readonly string[]) => void;
     uuid: (value: unknown, name: string) => string;
     string: (value: unknown, name: string) => string;
+    secret: (value: unknown, name: string) => string;
   }>;
 }>;
 
@@ -36,7 +37,7 @@ export function identityProvisionRoutes(
         return {
           employeeId: p.uuid(match.params[0], 'employeeId'),
           login: p.string(body.login, 'login'),
-          password: p.string(body.password, 'password'),
+          password: p.secret(body.password, 'password'),
         };
       },
       handler: async (_request, _match, input) => {

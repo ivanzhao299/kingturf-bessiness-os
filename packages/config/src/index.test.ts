@@ -40,6 +40,8 @@ describe('parseEnvironment', () => {
     expect(settings).toEqual({
       enabled: true,
       failureLimit: 10,
+      lockoutAttempts: 5,
+      lockoutWindowSeconds: 900,
       windowMs: 900_000,
       baseDelayMs: 100,
       maxDelayMs: 1000,
@@ -66,6 +68,8 @@ describe('parseEnvironment', () => {
     ).toEqual({
       enabled: false,
       failureLimit: 20,
+      lockoutAttempts: 5,
+      lockoutWindowSeconds: 900,
       windowMs: 1_200_000,
       baseDelayMs: 5,
       maxDelayMs: 10,

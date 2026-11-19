@@ -33,6 +33,13 @@ describe('identity and authorization migration', () => {
     );
   });
 
+  it('0075 adds only the persistent login lockout columns (A-F2a)', async () => {
+    const sql = await readFile(join(process.cwd(), 'migrations/0075_login_lockout.sql'), 'utf8');
+    expect(sql).toContain('ADD COLUMN failed_attempts integer NOT NULL DEFAULT 0');
+    expect(sql).toContain('ADD COLUMN locked_until timestamptz');
+    expect(sql).not.toMatch(/DROP|UPDATE |DELETE |ALTER COLUMN|CREATE (TABLE|INDEX)/iu);
+  });
+
   it('0073 adds only the must-change flag column (A1)', async () => {
     const sql = await readFile(
       join(process.cwd(), 'migrations/0073_credential_must_change.sql'),
@@ -45,7 +52,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0074_tenant_settings.sql');
+    expect(ordered.at(-1)).toBe('0075_login_lockout.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',

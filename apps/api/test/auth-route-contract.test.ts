@@ -58,7 +58,7 @@ const authEnvelope = (statusCode: number, code: string, message: string) => {
   return { ...result, headers: { ...result.headers, 'cache-control': 'no-store' } };
 };
 describe('auth HTTP contracts frozen at 0fdd996; S4 machine carrier mapping', () => {
-  it('login is pre-auth, trims strings and accepts extra fields', async () => {
+  it('login is pre-auth, normalizes the login but preserves credential bytes, and accepts extra fields', async () => {
     const { auth, dispatch } = fixture();
     expect(
       await dispatch({
@@ -80,7 +80,8 @@ describe('auth HTTP contracts frozen at 0fdd996; S4 machine carrier mapping', ()
           "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'",
       },
     });
-    expect(auth.login).toHaveBeenCalledExactlyOnceWith('user', 'fixture-password', correlationId);
+    // A-F2a (A2-F7): the login identifier is normalized, the password is not trimmed.
+    expect(auth.login).toHaveBeenCalledExactlyOnceWith('user', ' fixture-password ', correlationId);
     expect(auth.authenticate).not.toHaveBeenCalled();
     auth.login.mockResolvedValueOnce(null);
     expect(
@@ -179,10 +180,11 @@ describe('auth HTTP contracts frozen at 0fdd996; S4 machine carrier mapping', ()
           "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'",
       },
     });
+    // A-F2a (A2-F7): credential bytes round-trip without trimming.
     expect(auth.changePassword).toHaveBeenCalledExactlyOnceWith(
       context,
-      'old',
-      'new',
+      ' old ',
+      ' new ',
       'fixture-token',
       correlationId,
     );

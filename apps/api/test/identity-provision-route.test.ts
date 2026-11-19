@@ -102,11 +102,12 @@ describe('identity provisioning inline contract', () => {
           "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'",
       },
     });
+    // A-F2a (A2-F7): the login identifier is normalized, the password is not trimmed.
     expect(provisionIdentity).toHaveBeenCalledExactlyOnceWith(
       context,
       employeeId,
       'user',
-      'fixture-password',
+      ' fixture-password ',
       correlationId,
     );
     expect(authenticate).toHaveBeenCalledExactlyOnceWith('fixture-token');

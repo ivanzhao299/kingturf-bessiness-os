@@ -1,5 +1,6 @@
 import { createHash, randomBytes, scrypt as nodeScrypt, timingSafeEqual } from 'node:crypto';
 import type { AppConfig } from '@kingturf/config';
+import { COMMON_PASSWORDS } from '@kingturf/config';
 import { DomainError, type AuditSink, type AuthorizationContext } from '@kingturf/domain';
 import { SessionProof } from './session-proof.ts';
 
@@ -24,7 +25,12 @@ export type CredentialStore = {
     identityActive: boolean;
     employeeActive: boolean;
     memberActive: boolean;
+    failedAttempts: number;
+    lockedUntil: Date | null;
   }> | null>;
+  recordLoginFailure(
+    input: Readonly<{ identityId: string; attempts: number; windowSeconds: number }>,
+  ): Promise<void>;
   createSession(
     input: Readonly<{
       identityId: string;
@@ -60,11 +66,22 @@ export type CredentialStore = {
     }>,
   ): Promise<string>;
 };
+// A2-F7: common-password screening — SHA-256 membership over the config data set
+// (built once per process; packages/config stays free of node imports).
+const COMMON_PASSWORD_HASHES: ReadonlySet<string> = new Set(
+  [...COMMON_PASSWORDS].map((word) => createHash('sha256').update(word, 'utf8').digest('hex')),
+);
+export const isCommonPassword = (password: string): boolean =>
+  COMMON_PASSWORD_HASHES.has(createHash('sha256').update(password, 'utf8').digest('hex'));
+
 export class PasswordHasher {
   public constructor(private readonly options: AppConfig['password']) {}
   public async hash(password: string): Promise<string> {
     if (password.length < 12)
       throw new DomainError('invalid_request', 'Password must contain at least 12 characters');
+    // A2-F7: bound the hashing input so oversized bodies cannot drive scrypt cost.
+    if (password.length > 512)
+      throw new DomainError('invalid_request', 'Password must contain at most 512 characters');
     const salt = randomBytes(this.options.saltBytes);
     const derived = await scrypt(password, salt, this.options.keyLength, {
       N: this.options.cost,
@@ -99,6 +116,13 @@ export function hashSessionToken(token: string, secret: string): string {
   return createHash('sha256').update(secret).update(token).digest('hex');
 }
 
+export type LoginLockoutConfig = Readonly<{ attempts: number; windowSeconds: number }>;
+
+export const DEFAULT_LOGIN_LOCKOUT: LoginLockoutConfig = Object.freeze({
+  attempts: 5,
+  windowSeconds: 900,
+});
+
 export class AuthenticationService {
   readonly #dummyHash: Promise<string>;
   readonly #proof: SessionProof;
@@ -107,6 +131,7 @@ export class AuthenticationService {
     private readonly hasher: PasswordHasher,
     private readonly config: AppConfig['session'],
     private readonly audit: AuditSink,
+    private readonly lockout: LoginLockoutConfig = DEFAULT_LOGIN_LOCKOUT,
   ) {
     this.#dummyHash = hasher.hash('invalid-password-padding');
     this.#proof = new SessionProof(config.secret);
@@ -118,17 +143,43 @@ export class AuthenticationService {
   ): Promise<Readonly<{ token: string; expiresAt: string }> | null> {
     const normalizedLogin = login.trim().toLocaleLowerCase('en-US');
     const credential = await this.store.findForLogin(normalizedLogin);
+    // A2-F1: the password check always runs (real or dummy scrypt) so locked and
+    // unlocked accounts are indistinguishable by timing.
     const valid = await this.hasher.verify(
       password,
       credential?.passwordHash ?? (await this.#dummyHash),
     );
+    const locked =
+      credential?.lockedUntil !== null &&
+      credential?.lockedUntil !== undefined &&
+      credential.lockedUntil.getTime() > Date.now();
     if (
       !credential ||
       !valid ||
+      locked ||
       !credential.identityActive ||
       !credential.employeeActive ||
       !credential.memberActive
     ) {
+      if (locked) {
+        await this.audit.record({
+          action: 'auth.rate_limited',
+          outcome: 'FAILURE',
+          actorId: null,
+          organizationId: credential.companyId,
+          targetType: 'identity',
+          targetId: credential.identityId,
+          correlationId,
+          metadata: { reason: 'persistent_lockout' },
+        });
+        return null;
+      }
+      if (credential && this.lockout.attempts > 0)
+        await this.store.recordLoginFailure({
+          identityId: credential.identityId,
+          attempts: this.lockout.attempts,
+          windowSeconds: this.lockout.windowSeconds,
+        });
       await this.audit.record({
         action: 'auth.login',
         outcome: 'FAILURE',
@@ -165,6 +216,23 @@ export class AuthenticationService {
     }
     return { token, expiresAt: expiresAt.toISOString() };
   }
+  // A2-F8: sliding-window 429s are audited on the same sink as the persistent
+  // lockout hits recorded inside login(); metadata carries no sensitive values.
+  public async auditRateLimited(
+    correlationId: string,
+    metadata: Readonly<Record<string, unknown>>,
+  ): Promise<void> {
+    await this.audit.record({
+      action: 'auth.rate_limited',
+      outcome: 'FAILURE',
+      actorId: null,
+      organizationId: null,
+      targetType: null,
+      targetId: null,
+      correlationId,
+      metadata,
+    });
+  }
   public authenticate(token: string): Promise<AuthorizationContext | null> {
     return this.store.resolveSession(hashSessionToken(token, this.config.secret), new Date());
   }
@@ -199,6 +267,15 @@ export class AuthenticationService {
     );
     if (!expectedPasswordHash || !(await this.hasher.verify(currentPassword, expectedPasswordHash)))
       throw new DomainError('forbidden', 'Current password is incorrect');
+    // A2-F7: the replacement must differ from the current password and must not
+    // be a screened common password.
+    if (password === currentPassword)
+      throw new DomainError(
+        'invalid_request',
+        'New password must differ from the current password',
+      );
+    if (isCommonPassword(password))
+      throw new DomainError('invalid_request', 'Password must not be a common password');
     await this.store.replacePasswordForEmployee({
       employeeId: context.actor.employeeId,
       companyId: context.actor.companyId,
@@ -220,6 +297,8 @@ export class AuthenticationService {
       throw new Error(
         'Login must contain 3-64 lowercase letters, numbers, dots, underscores or hyphens',
       );
+    if (isCommonPassword(password))
+      throw new DomainError('invalid_request', 'Password must not be a common password');
     await this.store.provisionIdentity({
       employeeId,
       companyId: context.actor.companyId,

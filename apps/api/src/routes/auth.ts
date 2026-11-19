@@ -24,6 +24,7 @@ type AuthRouteContext = Readonly<{
   parsers: Readonly<{
     objectBody: (body: unknown) => Record<string, unknown>;
     string: (value: unknown, name: string) => string;
+    secret: (value: unknown, name: string) => string;
     allow: (body: Record<string, unknown>, fields: readonly string[]) => void;
   }>;
 }>;
@@ -71,6 +72,13 @@ async function authenticateLogin(
   );
   if (decision.kind !== 'authenticated') {
     const limited = decision.kind === 'limited';
+    // A2-F8: sliding-window 429s are audited on the service's audit sink,
+    // alongside the persistent lockout hits recorded inside login().
+    if (limited)
+      await context.auth.auditRateLimited(context.correlationId, {
+        reason: 'sliding_window',
+        retryAfter: decision.retryAfter,
+      });
     return {
       statusCode: limited ? 429 : 503,
       headers: { 'retry-after': limited ? String(decision.retryAfter) : '1' },
@@ -133,7 +141,7 @@ export function loginRoutes(context: AuthRouteContext): readonly RouteDefinition
         const body = p.objectBody(request.body);
         return {
           login: p.string(body.login, 'login'),
-          password: p.string(body.password, 'password'),
+          password: p.secret(body.password, 'password'),
         };
       },
       handler: (request, _match, input) =>
@@ -244,8 +252,8 @@ export function credentialRoutes(context: SecuredAuthContext): readonly RouteDef
         const body = p.objectBody(request.body);
         p.allow(body, ['currentPassword', 'password']);
         return {
-          currentPassword: p.string(body.currentPassword, 'currentPassword'),
-          password: p.string(body.password, 'password'),
+          currentPassword: p.secret(body.currentPassword, 'currentPassword'),
+          password: p.secret(body.password, 'password'),
         };
       },
       handler: async (_request, _match, input) => {

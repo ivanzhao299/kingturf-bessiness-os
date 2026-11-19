@@ -34,8 +34,8 @@ describe('production startup migration gate', () => {
     const files = readdirSync(migrations)
       .filter((name) => /^\d+.*\.sql$/u.test(name))
       .sort();
-    if (files.length !== 74)
-      throw new Error(`expected 74 candidate migrations, found ${String(files.length)}`);
+    if (files.length !== 75)
+      throw new Error(`expected 75 candidate migrations, found ${String(files.length)}`);
     const filtered = mkdtempSync(join(tmpdir(), 'kingturf-startup-gate-'));
     for (const name of files.slice(0, 70))
       copyFileSync(join(migrations, name), join(filtered, name));
@@ -61,6 +61,7 @@ describe('production startup migration gate', () => {
       '0072_production_return_guards.sql',
       '0073_credential_must_change.sql',
       '0074_tenant_settings.sql',
+      '0075_login_lockout.sql',
     ]);
   });
 

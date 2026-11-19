@@ -18,6 +18,7 @@ import {
   integer,
   notificationChannel,
   objectBody,
+  secret,
   string,
   strings,
   uuid,
@@ -149,7 +150,7 @@ export function buildApp(
           loginRateLimiter,
           browserSession,
           correlationId,
-          parsers: { objectBody, string, allow },
+          parsers: { objectBody, string, secret, allow },
         };
         const loginResponse = await dispatchRoutes(loginRoutes(authRouteContext), request);
         if (loginResponse) return loginResponse;

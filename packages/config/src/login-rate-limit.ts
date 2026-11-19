@@ -4,6 +4,8 @@ import type { EnvironmentRecord } from './index.ts';
 export type LoginRateLimitConfig = Readonly<{
   enabled: boolean;
   failureLimit: number;
+  lockoutAttempts: number;
+  lockoutWindowSeconds: number;
   windowMs: number;
   baseDelayMs: number;
   maxDelayMs: number;
@@ -15,6 +17,8 @@ export type LoginRateLimitConfig = Readonly<{
 export const DEFAULT_LOGIN_RATE_LIMIT: LoginRateLimitConfig = Object.freeze({
   enabled: true,
   failureLimit: 10,
+  lockoutAttempts: 5,
+  lockoutWindowSeconds: 900,
   windowMs: 900_000,
   baseDelayMs: 100,
   maxDelayMs: 1000,
@@ -48,6 +52,13 @@ export function parseLoginRateLimitEnvironment(
   const config: LoginRateLimitConfig = {
     enabled: flag === 'true',
     failureLimit: integer('LOGIN_RATE_LIMIT_FAILURES', defaults.failureLimit, 1, 1000),
+    lockoutAttempts: integer('LOGIN_LOCKOUT_ATTEMPTS', defaults.lockoutAttempts, 1, 1000),
+    lockoutWindowSeconds: integer(
+      'LOGIN_LOCKOUT_WINDOW_SECONDS',
+      defaults.lockoutWindowSeconds,
+      10,
+      86_400,
+    ),
     windowMs:
       integer('LOGIN_RATE_LIMIT_WINDOW_SECONDS', defaults.windowMs / 1000, 1, 86_400) * 1000,
     baseDelayMs: integer('LOGIN_RATE_LIMIT_BASE_DELAY_MS', defaults.baseDelayMs, 1, 5000),
