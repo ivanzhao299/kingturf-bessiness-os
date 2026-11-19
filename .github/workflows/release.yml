@@ -1,0 +1,381 @@
+name: Release KingTurf Production
+
+# D1 single-pipeline release (UI foundation program §9.2; TD-REL-008). One dispatch,
+# one input: the exact main-history commit to release. The digest hand-stitching and
+# cross-run ID inputs of the legacy channels are replaced by in-run job outputs.
+# All gating scripts (validate_release.mjs, prepare_release_bundle.sh,
+# smoke_release_images.sh, apply_migrations.py, release_orchestrator.py,
+# recover_application_images.sh, application_release.py) are reused unchanged.
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: 'Exact lowercase 40-character commit from main history to release'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      commit_sha: ${{ steps.guard.outputs.commit_sha }}
+      control_sha: ${{ steps.guard.outputs.control_sha }}
+      main_sha: ${{ steps.guard.outputs.main_sha }}
+    env:
+      RELEASE_SHA: ${{ inputs.commit_sha }}
+      RELEASE_CONTROL_SHA: ${{ github.workflow_sha }}
+    steps:
+      - name: Reject untrusted dispatch context and malformed input
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = ivanzhao299/kingturf-bessiness-os
+          test "$GITHUB_REF" = refs/heads/main
+          [[ ${#RELEASE_SHA} -eq 40 && "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]
+      - name: Checkout immutable release control
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.workflow_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.13.0
+      - name: Verify canonical origin and main history
+        id: guard
+        run: node scripts/validate_release.mjs
+
+  build:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      api_digest: ${{ steps.digests.outputs.api_digest }}
+      web_digest: ${{ steps.digests.outputs.web_digest }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.validate.outputs.commit_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify commit is in main history
+        env:
+          RELEASE_SHA: ${{ needs.validate.outputs.commit_sha }}
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor "$RELEASE_SHA" origin/main
+      - uses: docker/setup-buildx-action@v3
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push API image
+        id: api
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/docker/Dockerfile.api-preview
+          push: true
+          tags: ghcr.io/ivanzhao299/kingturf-erp-api:${{ needs.validate.outputs.commit_sha }}
+      - name: Build and push Web image
+        id: web
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/docker/Dockerfile.web-preview
+          push: true
+          tags: ghcr.io/ivanzhao299/kingturf-erp-web:${{ needs.validate.outputs.commit_sha }}
+      - name: Cross-check pushed tags resolve to the emitted digests
+        run: |
+          set -euo pipefail
+          for image in api web; do
+            repo="ghcr.io/ivanzhao299/kingturf-erp-$image"
+            case "$image" in api) emitted='${{ steps.api.outputs.digest }}';; web) emitted='${{ steps.web.outputs.digest }}';; esac
+            test -n "$emitted"
+            tag_digest="sha256:$(docker buildx imagetools inspect --raw "$repo:$RELEASE_SHA" | sha256sum | cut -d ' ' -f 1)"
+            test "$tag_digest" = "$emitted" || { echo "tag digest $tag_digest != emitted $emitted for $repo" >&2; exit 1; }
+          done
+        env:
+          RELEASE_SHA: ${{ needs.validate.outputs.commit_sha }}
+      - name: Emit immutable digests
+        id: digests
+        run: |
+          set -euo pipefail
+          test -n '${{ steps.api.outputs.digest }}'
+          test -n '${{ steps.web.outputs.digest }}'
+          {
+            echo "api_digest=${{ steps.api.outputs.digest }}"
+            echo "web_digest=${{ steps.web.outputs.digest }}"
+          } >> "$GITHUB_OUTPUT"
+          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          ## Release image digests (${{ needs.validate.outputs.commit_sha }})
+          - API: `${{ steps.api.outputs.digest }}`
+          - Web: `${{ steps.web.outputs.digest }}`
+          EOF
+
+  verify:
+    needs: [validate, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45 # A3-P2-9 (A-F1)
+    permissions:
+      contents: read
+      packages: read
+    env:
+      RELEASE_SHA: ${{ needs.validate.outputs.commit_sha }}
+      API_DIGEST: ${{ needs.build.outputs.api_digest }}
+      WEB_DIGEST: ${{ needs.build.outputs.web_digest }}
+      DATABASE_URL: postgresql://kingturf_test:ephemeral-ci-only@127.0.0.1:5432/kingturf_test
+      NODE_ENV: test
+    services:
+      postgres:
+        image: postgres:17.7-alpine3.23
+        env:
+          POSTGRES_DB: kingturf_test
+          POSTGRES_USER: kingturf_test
+          POSTGRES_PASSWORD: ephemeral-ci-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U kingturf_test -d kingturf_test"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.validate.outputs.commit_sha }}
+          persist-credentials: false
+      - name: Verify exact candidate checkout
+        run: test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.33.4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.13.0 # A3-P3-11 (A-F1): pin across workflows
+          cache: pnpm
+      - run: pnpm ci:local
+
+      - name: Checkout immutable release control
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.validate.outputs.control_sha }}
+          path: .release-control
+          persist-credentials: false
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Prepare original approved OCI bytes
+        run: bash .release-control/scripts/prepare_release_bundle.sh "$RELEASE_SHA" "$API_DIGEST" "$WEB_DIGEST" "$RUNNER_TEMP/recovery-bundle"
+      - name: Import and verify approved images on isolated runner
+        run: python3 .release-control/scripts/oci_image_transport.py import "$RUNNER_TEMP/recovery-bundle" > "$RUNNER_TEMP/recovery-bundle/transport.json"
+      - name: Real API and Web startup against fully migrated CI database
+        run: bash .release-control/scripts/smoke_release_images.sh "$RUNNER_TEMP/recovery-bundle"
+      - name: Bind fixed control scripts and transfer artifact
+        env:
+          CONTROL_SHA: ${{ needs.validate.outputs.control_sha }}
+        run: |
+          set -euo pipefail
+          mkdir "$RUNNER_TEMP/recovery-bundle/controls"
+          cp .release-control/scripts/{oci_image_transport,application_release,production_preflight}.py "$RUNNER_TEMP/recovery-bundle/controls/"
+          python3 - <<'PYTHON'
+          import datetime,json,os,pathlib
+          start=datetime.datetime.now(datetime.timezone.utc)
+          bundle=pathlib.Path(os.environ['RUNNER_TEMP'])/'recovery-bundle'
+          auth={'kind':'delegated_application_recovery','authorization_source_thread':'01a1c9d5-653a-7bf0-a627-c2eab5ac0834','operator':'codex','migration_execution':'forbidden','release_sha':os.environ['RELEASE_SHA'],'control_sha':os.environ['CONTROL_SHA'],'images_run_id':os.environ['GITHUB_RUN_ID'],'started_at_utc':start.isoformat(),'window_end_utc':(start+datetime.timedelta(hours=3)).isoformat(),'smoke':'PASS','source_authorization':'docs/tasks/ui-foundation-program-2026-11-19.md #9.2 D1 single pipeline'}
+          (bundle/'authorization.json').write_text(json.dumps(auth,sort_keys=True))
+          PYTHON
+          tar -C "$RUNNER_TEMP/recovery-bundle" -czf "$RUNNER_TEMP/recovery-bundle.tar.gz" .
+          (cd "$RUNNER_TEMP" && sha256sum recovery-bundle.tar.gz > recovery-bundle.sha256)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: approved-application-image-bundle
+          path: |
+            ${{ runner.temp }}/recovery-bundle.tar.gz
+            ${{ runner.temp }}/recovery-bundle.sha256
+          retention-days: 30
+
+  deploy:
+    needs: [validate, build, verify]
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 50
+    concurrency:
+      group: kingturf-erp-production
+      cancel-in-progress: false
+    outputs:
+      migration_summary: ${{ steps.plan.outputs.migration_summary }}
+    env:
+      RELEASE_SHA: ${{ needs.validate.outputs.commit_sha }}
+      RELEASE_CONTROL_SHA: ${{ needs.validate.outputs.control_sha }}
+      PROD_SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
+      PROD_SSH_PORT: ${{ secrets.PROD_SSH_PORT }}
+      PROD_SSH_USER: ${{ secrets.PROD_SSH_USER }}
+      PROD_DEPLOY_PATH: ${{ secrets.PROD_DEPLOY_PATH }}
+      # Identical registry query to release_orchestrator.py REGISTRY_SQL; executed
+      # read-only over SSH against the production postgres container.
+      REGISTRY_SQL: "BEGIN READ ONLY; SET LOCAL statement_timeout='5s'; SELECT coalesce(jsonb_agg(jsonb_build_object('name',name,'checksum',checksum) ORDER BY name),'[]'::jsonb) FROM schema_migrations; COMMIT;"
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.validate.outputs.control_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Checkout migration candidate
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.validate.outputs.commit_sha }}
+          path: .candidate
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.13.0
+      - name: Revalidate fixed control and candidate main history under production lock
+        run: node scripts/validate_release.mjs
+      - uses: actions/download-artifact@v4
+        with:
+          name: approved-application-image-bundle
+          path: ${{ runner.temp }}/approved-bundle
+      - name: Verify transfer bytes and pinned control before any host write
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/approved-bundle"
+          sha256sum -c recovery-bundle.sha256
+          mkdir extracted
+          tar -xzf recovery-bundle.tar.gz -C extracted
+          cd "$GITHUB_WORKSPACE"
+          for script in oci_image_transport application_release production_preflight; do
+            cmp "scripts/$script.py" "$RUNNER_TEMP/approved-bundle/extracted/controls/$script.py"
+          done
+          python3 scripts/oci_image_transport.py verify "$RUNNER_TEMP/approved-bundle/extracted"
+          test "$PROD_DEPLOY_PATH" = /data/kingturf-erp
+      - name: Pin independently verified production SSH host key
+        run: |
+          set -euo pipefail
+          known_hosts_file="$RUNNER_TEMP/kingturf-production-known-hosts"
+          cp infra/ssh/production_known_hosts "$known_hosts_file"
+          chmod 600 "$known_hosts_file"
+          host_key_name="$PROD_SSH_HOST"
+          if [ "$PROD_SSH_PORT" != 22 ]; then host_key_name="[$PROD_SSH_HOST]:$PROD_SSH_PORT"; fi
+          ssh-keygen -F "$host_key_name" -f "$known_hosts_file" > "$known_hosts_file.matches"
+          ssh-keygen -l -f "$known_hosts_file.matches" > /dev/null
+          printf 'SSH_KNOWN_HOSTS_FILE=%s\n' "$known_hosts_file" >> "$GITHUB_ENV"
+      - uses: webfactory/ssh-agent@v0.10.0
+        with:
+          ssh-private-key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+      - name: Read production migration registry (read-only)
+        run: |
+          set -euo pipefail
+          printf '%s\n' "$REGISTRY_SQL" | ssh -o BatchMode=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o KexAlgorithms=curve25519-sha256 -p "$PROD_SSH_PORT" "$PROD_SSH_USER@$PROD_SSH_HOST" \
+            'docker exec -i kingturf-erp-production-postgres-1 sh -c "exec psql -X -qAt -v ON_ERROR_STOP=1 --username=\"\$POSTGRES_USER\" --dbname=\"\$POSTGRES_DB\""' \
+            > "$RUNNER_TEMP/registry.json"
+      - name: Plan (read-only) against the candidate manifest
+        id: plan
+        run: |
+          set -euo pipefail
+          # CLI argv order: plan <migrations_dir> <release_sha> <registry.json>
+          # (release_orchestrator.py main maps build_plan(args[1], args[2], registry)).
+          python3 scripts/release_orchestrator.py plan .candidate/packages/database/migrations "$RELEASE_SHA" "$RUNNER_TEMP/registry.json" > "$RUNNER_TEMP/plan.json"
+          python3 - <<'PYTHON' >> "$GITHUB_OUTPUT"
+          import json,os,re
+          plan=json.load(open(os.environ['RUNNER_TEMP']+'/plan.json'))
+          require=plan.get('classification') in ('FULLY_MATCHED','MATCHED_PREFIX_PENDING')
+          assert require, plan.get('classification')
+          pending=sorted(item['name'] for item in plan['pending'])
+          assert all(re.fullmatch(r'[0-9]{4}_[a-z0-9_]+\.sql', name) for name in pending)
+          expected_after=len(plan['manifest'])
+          print('has_pending=%s' % ('true' if pending else 'false'))
+          print('pending_names=%s' % ','.join(pending))
+          print('expected_before=%d' % (expected_after-len(pending)))
+          print('expected_after=%d' % expected_after)
+          if pending:
+              print('migration_summary=applied %d migration(s): %s' % (len(pending), ','.join(pending)))
+          else:
+              print('migration_summary=skipped (registry already FULLY_MATCHED at %d migrations)' % expected_after)
+          PYTHON
+      - name: Stage control and candidate migrations on the host
+        if: steps.plan.outputs.has_pending == 'true'
+        env:
+          EXPECTED_AFTER: ${{ steps.plan.outputs.expected_after }}
+        run: |
+          set -euo pipefail
+          test "$PROD_DEPLOY_PATH" = /data/kingturf-erp
+          STAGED="/data/kingturf-erp/.staging/wave2-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          sha256sum scripts/apply_migrations.py > "$RUNNER_TEMP/apply-bytes.sha256"
+          ssh_transport="ssh -o BatchMode=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -o KexAlgorithms=curve25519-sha256 -p $PROD_SSH_PORT"
+          ssh -o BatchMode=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -o KexAlgorithms=curve25519-sha256 -p $PROD_SSH_PORT "$PROD_SSH_USER@$PROD_SSH_HOST" "set -eu; rm -rf '$STAGED'; mkdir -m 700 -p '$STAGED/migrations''; test "$(stat -c %a '$STAGED')" = 700 && test "$(stat -c %U '$STAGED')" = "$PROD_SSH_USER" && test -z "$(find '$STAGED' -type l)" && printf x '"
+          rsync -az --partial -e "$ssh_transport" scripts/apply_migrations.py scripts/release_orchestrator.py scripts/production_preflight.py "$PROD_SSH_USER@$PROD_SSH_HOST:$STAGED/"
+          rsync -az --partial -e "$ssh_transport" .candidate/packages/database/migrations/ "$PROD_SSH_USER@$PROD_SSH_HOST:$STAGED/migrations/"
+          ssh -o BatchMode=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -o KexAlgorithms=curve25519-sha256 -p $PROD_SSH_PORT "$PROD_SSH_USER@$PROD_SSH_HOST" "set -eu; cd '$STAGED'; sha256sum apply_migrations.py | grep -q \"$(cat "$RUNNER_TEMP/apply-bytes.sha256" | cut -d' ' -f1)\"; ls migrations/*.sql | wc -l | grep -qx $EXPECTED_AFTER"
+      - name: Apply approved migrations (fail-closed, no retry)
+        if: steps.plan.outputs.has_pending == 'true'
+        env:
+          PENDING_NAMES: ${{ steps.plan.outputs.pending_names }}
+          EXPECTED_BEFORE: ${{ steps.plan.outputs.expected_before }}
+          EXPECTED_AFTER: ${{ steps.plan.outputs.expected_after }}
+        run: |
+          set -euo pipefail
+          STAGED="/data/kingturf-erp/.staging/wave2-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          mkdir -p "$RUNNER_TEMP/results"
+          ssh -o BatchMode=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -o KexAlgorithms=curve25519-sha256 -p $PROD_SSH_PORT "$PROD_SSH_USER@$PROD_SSH_HOST" \
+            "python3 '$STAGED/apply_migrations.py' --candidate-sha '$RELEASE_SHA' --approved-suffixes '$PENDING_NAMES' --staged-root '$STAGED' --approver '${GITHUB_ACTOR}' --expected-before '$EXPECTED_BEFORE' --expected-after '$EXPECTED_AFTER'" \
+            | tee "$RUNNER_TEMP/results/migration-log.jsonl"
+          grep -q '"step": "done"' "$RUNNER_TEMP/results/migration-log.jsonl"
+      - name: Upload migration evidence
+        if: always() && steps.plan.outputs.has_pending == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-evidence
+          path: ${{ runner.temp }}/results/
+          if-no-files-found: ignore
+          retention-days: 90
+      - name: Transfer and recover application only
+        run: bash scripts/recover_application_images.sh "$RUNNER_TEMP/approved-bundle"
+      - name: Independent runner public probes
+        run: |
+          set -euo pipefail
+          python3 scripts/verify_public_https.py --host erp.kingturf.cn --path /health --expected '{"status":"ok"}'
+          python3 scripts/verify_public_https.py --host erp.kingturf.cn --path /ready --expected '{"status":"ready"}'
+          curl --fail --silent --show-error --max-time 30 https://erp.kingturf.cn/version | python3 -c 'import json,sys;assert json.load(sys.stdin)["sha"]==sys.argv[1]' "$RELEASE_SHA"
+      - name: Upload public release evidence only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: application-recovery-evidence
+          path: ${{ runner.temp }}/approved-bundle/results/
+          if-no-files-found: ignore
+          retention-days: 90
+
+  post:
+    needs: [validate, build, verify, deploy]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: application-recovery-evidence
+          path: evidence
+      - name: Publish release summary
+        env:
+          RELEASE_SHA: ${{ needs.validate.outputs.commit_sha }}
+          API_DIGEST: ${{ needs.build.outputs.api_digest }}
+          WEB_DIGEST: ${{ needs.build.outputs.web_digest }}
+          MIGRATION_SUMMARY: ${{ needs.deploy.outputs.migration_summary }}
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          ## Release deployed: `$RELEASE_SHA`
+          - API digest: `$API_DIGEST`
+          - Web digest: `$WEB_DIGEST`
+          - Migration: $MIGRATION_SUMMARY
+          - Deployment evidence: `application-recovery-evidence` artifact (deployment.json / postcheck.json / runtime.json)
+          EOF
