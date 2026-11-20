@@ -1,0 +1,41 @@
+name: CodeQL
+
+# A-F3b（审计 A3/A4）：CodeQL SAST，workflow 化的 Default Setup 等价实现
+# （init→analyze，TypeScript 与 actions 双语言矩阵）。选择理由：本仓库为
+# public repo，CodeQL 对公开仓库免费可用，无需退用 semgrep 免费档；若仓库
+# 转私有且无 GitHub Advanced Security，SARIF 上传将失败，届时按 docs/CI.md
+# §5 记录替代方案（semgrep）决策。javascript-typescript 为解释型语言，
+# 无需 autobuild 步骤。
+# github/codeql-action 非 actions/* 一方前缀，按 A-F3a 规则钉 full SHA。
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  security-events: write # A-F3b: SARIF 上传
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [javascript-typescript, actions]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false # A3-P2-9 (A-F1)
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          languages: ${{ matrix.language }}
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          category: '/language:${{ matrix.language }}'
