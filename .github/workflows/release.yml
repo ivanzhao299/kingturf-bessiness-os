@@ -242,7 +242,7 @@ jobs:
           node-version: 24.13.0
       - name: Revalidate fixed control and candidate main history under production lock
         run: node scripts/validate_release.mjs
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: approved-application-image-bundle
           path: ${{ runner.temp }}/approved-bundle
@@ -361,7 +361,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: application-recovery-evidence
           path: evidence
