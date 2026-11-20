@@ -43,7 +43,7 @@ jobs:
           ref: ${{ github.workflow_sha }}
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 24.13.0
       - name: Verify canonical origin and main history
@@ -158,7 +158,7 @@ jobs:
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
           version: 10.33.4
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 24.13.0 # A3-P3-11 (A-F1): pin across workflows
           cache: pnpm
@@ -237,7 +237,7 @@ jobs:
           ref: ${{ needs.validate.outputs.commit_sha }}
           path: .candidate
           persist-credentials: false
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 24.13.0
       - name: Revalidate fixed control and candidate main history under production lock
