@@ -47,6 +47,35 @@ def require(condition, message):
         raise RuntimeError(message)
 
 
+def archive_terminal_state(prod_root: Path, candidate_sha: str) -> None:
+    """Ruling 11: a prior release's terminal orchestration state must not block a
+    new candidate. Archive it (0600) before execute; RUNNING states and
+    same-candidate states are left untouched for the orchestrator's own
+    fail-closed resume/refusal semantics."""
+    state_file = prod_root / '.release-migration-state' / 'orchestration-state.json'
+    if not state_file.is_file():
+        return
+    previous = json.loads(state_file.read_text())
+    if previous.get('release_sha') == candidate_sha:
+        return
+    require(
+        previous.get('verdict') in ('COMPLETED', 'STOPPED'),
+        'migration state belongs to a different release and is not terminal '
+        f'(release_sha={previous.get("release_sha")}, verdict={previous.get("verdict")}); '
+        'inspect .release-migration-state manually before retrying',
+    )
+    archive_dir = prod_root / '.release-migration-state' / 'archive'
+    archive_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+    archived = archive_dir / (
+        f"{previous.get('release_sha', 'unknown')}-{utcnow().strftime('%Y%m%dT%H%M%SZ')}.json"
+    )
+    os.replace(state_file, archived)
+    os.chmod(archived, 0o600)
+    emit('state-archive', {'archived_sha': previous.get('release_sha'),
+                           'verdict': previous.get('verdict'),
+                           'archive': str(archived)})
+
+
 # ---------------------------------------------------------------- pure helpers
 
 
@@ -448,6 +477,9 @@ def main():
             checked = run_orchestrator(staged, 'check-evidence', str(plan_path), str(evidence))
             require(checked.get('check_evidence') == 'PASS', f'check-evidence verdict: {checked}')
             emit('check-evidence', checked)
+
+            step = 'state-archive'
+            archive_terminal_state(args.prod_root, args.candidate_sha)
 
             step = 'execute'
             executed = run_orchestrator(staged, 'execute', str(plan_path), str(evidence), str(migrations),
