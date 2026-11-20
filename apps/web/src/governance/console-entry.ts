@@ -5,6 +5,7 @@
 // 独立场景仍可用）。守卫：scripts/check-console-css.mjs 断言 bootstrap 主 CSS 包
 // 必须携带 console 样式与 kt tokens。
 import '@kingturf/ui/tokens.css';
+import '@kingturf/ui/components.css';
 import './console/console.css';
 import type { AppRoute } from '../shared/navigation';
 import type { GovernanceController } from './controller';

@@ -1,4 +1,5 @@
 import '@kingturf/ui/tokens.css';
+import '@kingturf/ui/components.css';
 import { el } from '../dom';
 
 // ADR-0014/U1（UI-CP1 视觉验收载体）：#/ui-kit 演示页骨架。渲染体经动态 import 拆独立

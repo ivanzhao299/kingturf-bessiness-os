@@ -14,6 +14,7 @@ import {
   type TreeSelectNode,
 } from '@kingturf/ui';
 import '@kingturf/ui/tokens.css';
+import '@kingturf/ui/components.css';
 
 type DemoRow = Readonly<{ id: string; user: string; org: string; quota: number; state: string }>;
 

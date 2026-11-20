@@ -1,5 +1,6 @@
 import { h, render } from 'preact';
 import '@kingturf/ui/tokens.css';
+import '@kingturf/ui/components.css';
 import './console.css';
 import { IdentityConsolePage } from './identity-page';
 import { OrganizationConsolePage } from './organization-page';
