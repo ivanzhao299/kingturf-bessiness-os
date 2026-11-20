@@ -37,7 +37,7 @@ jobs:
           test "$GITHUB_REF" = refs/heads/main
           [[ "$MODE" == dispose-legacy-outbox || "$MODE" == cleanup-staged ]]
       - name: Checkout immutable maintenance control
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.workflow_sha }}
           fetch-depth: 0
@@ -68,7 +68,7 @@ jobs:
       PROD_DEPLOY_PATH: ${{ secrets.PROD_DEPLOY_PATH }}
     steps:
       - name: Checkout immutable maintenance control
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.validate.outputs.control_sha }}
           fetch-depth: 0

@@ -37,7 +37,7 @@ jobs:
       PASSWORD_SCRYPT_BLOCK_SIZE: 8
       PASSWORD_SCRYPT_PARALLELIZATION: 1
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false # A3-P2-9 (A-F1)
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1

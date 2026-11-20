@@ -46,7 +46,7 @@ jobs:
           test "$GITHUB_REF" = refs/heads/main
           [[ ${#RELEASE_SHA} -eq 40 && "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]
       - name: Checkout immutable release control
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.workflow_sha }}
           fetch-depth: 0
@@ -79,7 +79,7 @@ jobs:
           --health-cmd "pg_isready -U kingturf_test -d kingturf_test"
           --health-interval 5s --health-timeout 5s --health-retries 20
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.validate.outputs.commit_sha }}
           persist-credentials: false
@@ -95,7 +95,7 @@ jobs:
       - run: pnpm ci:local
 
       - name: Checkout immutable application recovery control
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.validate.outputs.control_sha }}
           path: .release-control
@@ -170,7 +170,7 @@ jobs:
       PROD_SSH_USER: ${{ secrets.PROD_SSH_USER }}
       PROD_DEPLOY_PATH: ${{ secrets.PROD_DEPLOY_PATH }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.validate.outputs.control_sha }}
           fetch-depth: 0

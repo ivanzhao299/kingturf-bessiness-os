@@ -38,7 +38,7 @@ jobs:
           test "$GITHUB_REF" = refs/heads/main
           [[ ${#RELEASE_SHA} -eq 40 && "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]
       - name: Checkout immutable release control
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.workflow_sha }}
           fetch-depth: 0
@@ -61,7 +61,7 @@ jobs:
       api_digest: ${{ steps.digests.outputs.api_digest }}
       web_digest: ${{ steps.digests.outputs.web_digest }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.validate.outputs.commit_sha }}
           fetch-depth: 0
@@ -149,7 +149,7 @@ jobs:
           --health-cmd "pg_isready -U kingturf_test -d kingturf_test"
           --health-interval 5s --health-timeout 5s --health-retries 20
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.validate.outputs.commit_sha }}
           persist-credentials: false
@@ -165,7 +165,7 @@ jobs:
       - run: pnpm ci:local
 
       - name: Checkout immutable release control
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.validate.outputs.control_sha }}
           path: .release-control
@@ -226,13 +226,13 @@ jobs:
       # read-only over SSH against the production postgres container.
       REGISTRY_SQL: "BEGIN READ ONLY; SET LOCAL statement_timeout='5s'; SELECT coalesce(jsonb_agg(jsonb_build_object('name',name,'checksum',checksum) ORDER BY name),'[]'::jsonb) FROM schema_migrations; COMMIT;"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.validate.outputs.control_sha }}
           fetch-depth: 0
           persist-credentials: false
       - name: Checkout migration candidate
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.validate.outputs.commit_sha }}
           path: .candidate

@@ -36,7 +36,7 @@ jobs:
           test "$GITHUB_REF" = refs/heads/main
           [[ ${#RELEASE_SHA} -eq 40 && "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]
       - name: Checkout immutable migration control
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.workflow_sha }}
           fetch-depth: 0
@@ -62,7 +62,7 @@ jobs:
           )
           echo "approved_suffixes=$SUFFIXES" >> "$GITHUB_OUTPUT"
       - name: Checkout migration candidate
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.commit_sha }}
           path: .candidate
@@ -95,13 +95,13 @@ jobs:
       PROD_DEPLOY_PATH: ${{ secrets.PROD_DEPLOY_PATH }}
     steps:
       - name: Checkout immutable migration control
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.validate.outputs.control_sha }}
           fetch-depth: 0
           persist-credentials: false
       - name: Checkout migration candidate
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.validate.outputs.commit_sha }}
           path: .candidate

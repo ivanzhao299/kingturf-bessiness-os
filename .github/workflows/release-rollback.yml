@@ -38,7 +38,7 @@ jobs:
           test "$GITHUB_REF" = refs/heads/main
           [[ ${#RELEASE_SHA} -eq 40 && "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]
       - name: Checkout immutable release control
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.workflow_sha }}
           fetch-depth: 0
@@ -60,14 +60,14 @@ jobs:
     env:
       RELEASE_SHA: ${{ needs.validate.outputs.commit_sha }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.validate.outputs.commit_sha }}
           persist-credentials: false
       - name: Verify exact candidate checkout
         run: test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
       - name: Checkout immutable release control
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.validate.outputs.control_sha }}
           path: .release-control
@@ -136,7 +136,7 @@ jobs:
       PROD_SSH_USER: ${{ secrets.PROD_SSH_USER }}
       PROD_DEPLOY_PATH: ${{ secrets.PROD_DEPLOY_PATH }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.validate.outputs.control_sha }}
           fetch-depth: 0
