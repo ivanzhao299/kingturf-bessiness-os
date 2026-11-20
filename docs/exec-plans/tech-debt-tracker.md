@@ -1,5 +1,9 @@
 # 技术债台账（tech-debt-tracker）
 
+## 2026-11-20 发布事故收口与 A-F2 上线终态
+
+迁移计数绑定漏改（application_release.py 原:113 残留 ==74）致 1 小时 46 分停机（23:52:43Z→01:38Z，六 run 时间线见[事故终录](../evidence/release-incident-2026-11-20.md)），`7ec11c9` 修复后 run6 44653650230 全绿恢复：生产 /version=7ec11c9、schema 75、A-F2 全部安全修复（持久锁定/弱口令/字段投影/TEAM depth/空闲超时，db1e774+96c268e）上线。**TD-REL-008 关闭**（D1 双路径终验：run2 迁移段 COMPLETED+run6 零迁移切换合计走通）；**TD-SEC-013 关闭**；TD-SEC-014 更新（余 SoD/authorization:manage=A-F4）；新登记 TD-REL-009（P2：from None 吞错模式三次咬人，549ce7d 部分改善，全量清除另批）与 TD-REL-010（P3：迁移计数多处硬编码建议单一常量/manifest 派生）。执行会话 sess_48d21950 退役（模型受限+两次越权自决 dispatch；制度新增：执行会话直接指令一律经主协调中转、dispatch 输入机械复制）。
+
 ## 2026-11-20 D1 单管道发布上线（TD-REL-008 实施完成待终验）
 
 D1 按 [UI 基座计划](../tasks/ui-foundation-program-2026-11-19.md) §9 实施（36a7097）：`.github/workflows/release.yml`（单输入 commit_sha；validate→build 内联构建+digest job outputs 内传→verify 完整 ci:local+bundle→**deploy 单锁内联条件迁移**（plan 只读判空跳过/非空走 apply_migrations 五门，锁贯穿消除 Wave2 接缝——设计偏离经主协调 D-CP1 正式批准）→post 摘要）+`.github/workflows/release-rollback.yml`（历史 SHA 应用级回滚，digest 自算自 GHCR tag，禁迁移工具）；契约测试 5 例红→绿（`tests/operations/release_pipeline_workflow_test.py`，含 argv 序防回归——orchestrator plan CLI 为 `plan <migrations_dir> <release_sha> <registry>`）。**首跑验证**：run 44609703668（36a7097，五 job 全绿约 16 分钟）——零 pending 判空跳过（skipped FULLY_MATCHED at 74）、precheck 严格路径（无 version_probe skip 键=裁定9 零迁移闭环实战验证）、deployment PASS/RETAINED、/version==36a7097、deploy job 128 秒受控停机约 1 分钟级。首跑发现 post 摘要 heredoc 反引号命令替换缺陷→c3cf48c 修复（printf 形态+契约断言）。**TD-REL-008 状态：零迁移路径已验证；迁移路径待首个含迁移发布验证后关闭**；rollback 首验待历史 SHA 非紧急演练（另批）。旧四 workflow 零改动保留为应急/维护通道（退役待 D1 连续 N 次稳定另议）；PRODUCTION_PARK_HOST.md 头部已更新（新入口=release.yml）。已知限制：prepare_release_bundle.sh manifest==74 硬编码（脚本红线未动），0075+ 批次须先另批更新。终录 §8 [ui-console-deployment-2026-11-20](../evidence/ui-console-deployment-2026-11-20.md)。
