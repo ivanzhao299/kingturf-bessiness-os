@@ -202,23 +202,33 @@ dialog .dialog-actions {
 }
 
 /* ===== DetailDrawer ===== */
-.detail-drawer-overlay {
+.drawer-root {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  pointer-events: none;
+}
+.drawer-overlay {
   position: fixed;
   inset: 0;
   background: rgb(0 0 0 / 40%);
   z-index: 1000;
-  display: flex;
-  justify-content: flex-end;
+  pointer-events: auto;
 }
 .detail-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
   width: min(480px, 90vw);
-  height: 100%;
-  background: var(--kt-surface);
+  height: 100vh;
+  background: var(--kt-surface, #fff);
   box-shadow: -4px 0 24px rgb(0 0 0 / 15%);
   display: flex;
   flex-direction: column;
   z-index: 1001;
+  pointer-events: auto;
   animation: drawer-slide-in 0.2s ease-out;
+  border-radius: 12px 0 0 12px;
 }
 @keyframes drawer-slide-in {
   from {
@@ -228,45 +238,76 @@ dialog .dialog-actions {
     transform: translateX(0);
   }
 }
-.detail-drawer .detail-drawer-header {
+.detail-drawer .drawer-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--kt-space-4) var(--kt-space-5);
-  border-bottom: 1px solid var(--kt-border);
+  padding: var(--kt-space-4, 16px) var(--kt-space-5, 20px);
+  border-bottom: 1px solid var(--kt-border, #dce6e0);
   flex-shrink: 0;
 }
-.detail-drawer .detail-drawer-header h3 {
-  font-size: var(--kt-text-lg);
-  color: var(--kt-ink);
+.detail-drawer .drawer-header h2 {
+  font-size: var(--kt-text-lg, 18px);
+  color: var(--kt-ink, #13271f);
   margin: 0;
   font-weight: 600;
 }
-.detail-drawer .detail-drawer-close {
+.detail-drawer .drawer-close {
   background: none;
   border: none;
-  font-size: 20px;
-  color: var(--kt-muted);
+  font-size: 22px;
+  color: var(--kt-muted, #667a71);
   cursor: pointer;
-  padding: 4px 8px;
-  border-radius: var(--kt-radius-sm);
+  padding: 6px 10px;
+  border-radius: var(--kt-radius-sm, 6px);
+  line-height: 1;
 }
-.detail-drawer .detail-drawer-close:hover {
-  background: var(--kt-surface-soft);
-  color: var(--kt-ink);
+.detail-drawer .drawer-close:hover {
+  background: var(--kt-surface-soft, #f0f5f2);
+  color: var(--kt-ink, #13271f);
 }
-.detail-drawer .detail-drawer-body {
+.detail-drawer .drawer-body {
   flex: 1;
   overflow-y: auto;
-  padding: var(--kt-space-5);
+  padding: var(--kt-space-5, 20px);
 }
-.detail-drawer .detail-drawer-footer {
-  padding: var(--kt-space-3) var(--kt-space-5);
-  border-top: 1px solid var(--kt-border);
+.detail-drawer .drawer-footer {
+  padding: var(--kt-space-3, 12px) var(--kt-space-5, 20px);
+  border-top: 1px solid var(--kt-border, #dce6e0);
   display: flex;
-  gap: var(--kt-space-2);
+  gap: var(--kt-space-2, 8px);
   justify-content: flex-end;
   flex-shrink: 0;
+}
+
+/* ===== 表格行内操作列 ===== */
+.data-table td button + button {
+  margin-left: 4px;
+}
+.data-table td button.compact {
+  min-height: 26px;
+  padding: 0 8px;
+  font-size: var(--kt-text-xs, 12px);
+  border-radius: 4px;
+}
+
+/* ===== 控制台操作栏 ===== */
+.console-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kt-space-2, 8px);
+  align-items: center;
+  padding: var(--kt-space-2, 8px) 0;
+}
+.console-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kt-space-2, 8px);
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--kt-space-3, 12px) 0;
+  border-bottom: 1px solid var(--kt-border, #dce6e0);
+  margin-bottom: var(--kt-space-3, 12px);
 }
 
 /* ===== ActionBar ===== */
