@@ -69,6 +69,19 @@ const dto = (row: OpportunityRow): OpportunityDto => ({
 });
 // 数据范围谓词已收敛至 scope-sql.ts 的 recordScopeSql（批次 1b，TD-DUP-001）；SQL 与迁移前逐字一致（alias='o'）。
 
+// U3-COM-1（ADR-0015 双轨）：fastify 商机列表页的 keyset 分页契约（单一来源，
+// routes/fastify/commercial-opportunities.ts 引用本定义）。
+export type OpportunityPageFilter = Readonly<{
+  limit: number;
+  cursor?: string;
+  status?: OpportunityDto['status'];
+  customerId?: string;
+}>;
+export type OpportunityPage = Readonly<{
+  items: readonly OpportunityDto[];
+  nextCursor: string | null;
+}>;
+
 type CommandIdentity = CommandResultIdentity;
 const commandIdentity = (type: string, subjectId: string, actor: Actor, request: unknown) => ({
   type,
@@ -791,6 +804,42 @@ export class PostgresCommercialRepository {
         [actor.companyId, ...secured.values],
       )
     ).rows.map(dto);
+  }
+  // U3-COM-1（ADR-0015 双轨）：fastify 商机列表页的 keyset cursor 分页只读；原
+  // listOpportunities 保持逐字不动（行为守恒）。排序键与原列表一致（updated_at,id）。
+  public async listOpportunityPage(
+    actor: Actor,
+    scopes: readonly DataScope[],
+    anchors: readonly ScopeAnchor[],
+    filter: OpportunityPageFilter,
+  ): Promise<OpportunityPage> {
+    const secured = recordScopeSql(scopes, anchors, actor, 'o', 2);
+    const values: unknown[] = [actor.companyId, ...secured.values];
+    const add = (value: unknown): string => {
+      values.push(value);
+      return `$${String(values.length)}`;
+    };
+    const clauses = ['o.tenant_id=$1', 'o.deleted_at IS NULL', secured.sql];
+    if (filter.status) clauses.push(`o.status=${add(filter.status)}`);
+    if (filter.customerId) clauses.push(`o.customer_id=${add(filter.customerId)}::uuid`);
+    if (filter.cursor) {
+      const parameter = add(filter.cursor);
+      clauses.push(
+        `(o.updated_at,o.id)<(SELECT x.updated_at,x.id FROM opportunities x WHERE x.tenant_id=$1 AND x.id=${parameter}::uuid)`,
+      );
+    }
+    const limit = Math.min(Math.max(filter.limit, 1), 100);
+    values.push(limit + 1);
+    const rows = (
+      await this.db.query<OpportunityRow>(
+        `SELECT o.* FROM opportunities o WHERE ${clauses.join(' AND ')} ORDER BY o.updated_at DESC,o.id LIMIT $${String(values.length)}`,
+        values,
+      )
+    ).rows;
+    return {
+      items: rows.slice(0, limit).map(dto),
+      nextCursor: rows.length > limit ? (rows[limit - 1]?.id ?? null) : null,
+    };
   }
   public async findOpportunity(
     id: string,

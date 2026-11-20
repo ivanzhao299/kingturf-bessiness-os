@@ -24,7 +24,10 @@ export type SalesViewPorts = Readonly<{
     ctrs: readonly Record<string, unknown>[],
     ctrVersionId: string,
   ) => string;
-  opportunityPipelineSummary: (opportunities: readonly Opportunity[]) => Readonly<{
+  opportunityPipelineSummary: (
+    opportunities: readonly Opportunity[],
+    today?: string,
+  ) => Readonly<{
     active: number;
     overdue: number;
     closingSoon: number;

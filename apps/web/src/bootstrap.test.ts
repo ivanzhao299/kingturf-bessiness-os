@@ -313,7 +313,6 @@ it('captures artificial-turf project handoff fields without test-channel evidenc
       './shared/workspace-list-tools.ts',
       'export function installWorkspaceListTools',
     ),
-    readBoundSource('./commercial/opportunity-view.ts', 'export function appendOpportunityView'),
     readBoundSource('./commercial/ctr-view.ts', 'export function appendCtrView'),
     readBoundSource('./commercial/solution-view.ts', 'export function appendSolutionView'),
     readBoundSource('./commercial/cost-view.ts', 'export function appendCostView'),
@@ -2355,7 +2354,7 @@ describe('web bootstrap', () => {
     expect(controller.loading).toBe(false);
   });
 
-  it('renders the field-driven opportunity pipeline and CTR workbench', async () => {
+  it('mounts the opportunity console host and CTR workbench', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-10-08T08:00:00Z'));
     const commercialApi = {
@@ -2409,57 +2408,20 @@ describe('web bootstrap', () => {
       false,
       controller,
     ) as unknown as RenderedElement;
-    expect(workspace.findByClass('pipeline-board')).toHaveLength(1);
-    expect(workspace.findByClass('pipeline-column')).toHaveLength(5);
-    expect(workspace.findByClass('opportunity-card')).toHaveLength(1);
-    expect(workspace.findByClass('opportunity-card')[0]?.classList.contains('overdue')).toBe(true);
-    expect(workspace.textContent).toContain('成交日期已逾期');
+    expect(workspace.findByClass('opportunity-console')).toHaveLength(1);
+    expect(workspace.findByClass('commercial-console')).toHaveLength(1);
+    const opportunityHost = workspace.findByClass('opportunity-console')[0];
+    expect(opportunityHost?.getAttribute('data-route-view')).toBe('opportunities');
+    expect(opportunityHost?.getAttribute('data-testid')).toBe('kt-commercial-opportunities');
     expect(workspace.findByClass('ctr-workbench')).toHaveLength(1);
     expect(workspace.findByClass('ctr-evidence')).toHaveLength(1);
     expect(workspace.textContent).toContain('技术需求单');
     expect(workspace.textContent).toContain('上传附件');
     expect(workspace.findByClass('ctr-row')).toHaveLength(1);
-    expect(workspace.textContent).toContain('国际学校足球场');
     expect(workspace.textContent).toContain('CTR-2026-001');
     expect(workspace.textContent).not.toContain('商机与 CTR');
     expect(workspace.textContent).not.toContain('JSON 请求');
   });
-
-  it.each([
-    ['2026-10-07', true],
-    ['2026-10-08', false],
-    ['2026-10-09', false],
-    [undefined, false],
-  ] as const)(
-    'marks only past-due open opportunities with overdue class (%s)',
-    async (expectedCloseDate, overdue) => {
-      vi.useFakeTimers({ toFake: ['Date'] });
-      vi.setSystemTime(new Date('2026-10-08T23:59:59Z'));
-      const api = {
-        listOpportunities: vi
-          .fn()
-          .mockResolvedValue([
-            { id: 'boundary', name: 'Boundary', status: 'OPEN', expectedCloseDate },
-          ]),
-        list: vi.fn().mockResolvedValue([]),
-        submit: vi.fn().mockResolvedValue({}),
-        uploadCtrAttachment: vi.fn().mockResolvedValue({}),
-        command: vi.fn().mockResolvedValue({}),
-      };
-      const controller = new CommercialController(api, new Set(['opportunity:read']));
-      await controller.load();
-      const workspace = commercialWorkspaceStructure(
-        'desktop',
-        false,
-        controller,
-      ) as unknown as RenderedElement;
-      const cards = workspace.findByClass('opportunity-card');
-      expect(cards).toHaveLength(1);
-      expect(cards[0]?.classList.contains('opportunity-card')).toBe(true);
-      expect(cards[0]?.classList.contains('overdue')).toBe(overdue);
-      expect(cards[0]?.textContent.includes('成交日期已逾期')).toBe(overdue);
-    },
-  );
 
   it('renders structured technical solution specifications and revision actions', async () => {
     const commercialApi = {

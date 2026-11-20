@@ -1,0 +1,20 @@
+/* U3-COM-1 商机列表控制台页面样式：全部取值来自 kt tokens（ADR-0014），不写死颜色/间距。
+   列表/抽屉/表单复用 @kingturf/ui components.css 原语；概要度量沿用既有 .pipeline-metric。 */
+.commercial-console-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kt-space-4);
+}
+
+.commercial-console-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kt-space-3);
+}
+
+.commercial-console-overdue {
+  display: block;
+  font-style: normal;
+  font-size: var(--kt-font-size-caption);
+  color: var(--kt-color-danger);
+}

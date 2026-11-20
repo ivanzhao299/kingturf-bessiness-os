@@ -3,7 +3,7 @@ import type { SalesViewPorts } from './sales-view-ports';
 import type { PricingViewPorts } from './pricing-view-ports';
 import type { CreditContractViewContext } from './credit-contract-view-ports';
 import type { FulfillmentViewContext } from './fulfillment-view-ports';
-import { appendOpportunityView } from './opportunity-view';
+import { appendOpportunityConsole } from './console-entry';
 import { appendCtrView } from './ctr-view';
 import { appendSolutionView } from './solution-view';
 import { appendCostView } from './cost-view';
@@ -22,7 +22,9 @@ export function appendWorkspaceSales(
 ): void {
   const { workspace, status, controller, permissions } = context;
   if (controller && permissions.has('opportunity:read')) {
-    appendOpportunityView(workspace, status, controller, permissions, salesViewPorts);
+    // U3-COM-1：商机路由切换至 Preact 控制台（controller 与展示端口最小面直通；
+    // 原 vanilla pipeline-board 随本次迁移退役）。
+    appendOpportunityConsole(workspace, controller, permissions, salesViewPorts);
   }
   if (controller && permissions.has('ctr:read')) {
     appendCtrView(workspace, status, controller, permissions, salesViewPorts);
