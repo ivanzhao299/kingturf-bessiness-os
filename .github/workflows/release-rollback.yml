@@ -112,7 +112,7 @@ jobs:
           PYTHON
           tar -C "$RUNNER_TEMP/recovery-bundle" -czf "$RUNNER_TEMP/recovery-bundle.tar.gz" .
           (cd "$RUNNER_TEMP" && sha256sum recovery-bundle.tar.gz > recovery-bundle.sha256)
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: approved-application-image-bundle
           path: |
@@ -187,7 +187,7 @@ jobs:
           curl --fail --silent --show-error --max-time 30 https://erp.kingturf.cn/version | python3 -c 'import json,sys;assert json.load(sys.stdin)["sha"]==sys.argv[1]' "$RELEASE_SHA"
       - name: Upload public release evidence only
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: application-recovery-evidence
           path: ${{ runner.temp }}/approved-bundle/results/

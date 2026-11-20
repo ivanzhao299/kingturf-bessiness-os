@@ -110,7 +110,7 @@ jobs:
           ssh -o BatchMode=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -o KexAlgorithms=curve25519-sha256 -p $PROD_SSH_PORT "$PROD_SSH_USER@$PROD_SSH_HOST" "set -eu; test -z \"$(find '$STAGED' -mindepth 1 -type l)\" || exit 1; rm -rf '$STAGED'"
       - name: Upload maintenance evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: maintenance-evidence
           path: ${{ runner.temp }}/results/
