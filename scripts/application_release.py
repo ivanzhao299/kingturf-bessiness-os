@@ -6,6 +6,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import sys
 from pathlib import Path
 import re
 import subprocess
@@ -358,15 +359,20 @@ def main():
         else:
             verify_unchanged(args.bundle)
             result=images.verify_runtime(args.bundle)
-    except Exception:
+    except Exception as failure:
+        # Ruling 11 diagnosis: the wrapper must not swallow the original failure —
+        # keep the chain (traceback prints both) and echo the repr to stderr so
+        # the Actions log carries the exact inner error without host access.
+        print(f'inner failure: {failure!r}', file=sys.stderr)
         state=args.bundle/'application-state.json'
         if state.exists() and json.loads(state.read_bytes())['phase'] in ('STOPPING_API','API_STOPPED','SWITCHING_APPLICATION'):
             try:
                 recover_previous_application(args.bundle)
-            except Exception:
+            except Exception as recovery_failure:
                 checkpoint(args.bundle,'RECOVERY_FAILED')
-                raise RuntimeError('Application recovery failed; inspect retained private host evidence') from None
-        raise RuntimeError('Application release stopped; previous application recovery attempted where required; inspect application-state.json') from None
+                print(f'recovery failure: {recovery_failure!r}', file=sys.stderr)
+                raise RuntimeError('Application recovery failed; inspect retained private host evidence') from recovery_failure
+        raise RuntimeError('Application release stopped; previous application recovery attempted where required; inspect application-state.json') from failure
     print(json.dumps(result,sort_keys=True))
 
 
