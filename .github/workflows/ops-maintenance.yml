@@ -90,7 +90,7 @@ jobs:
           ssh-keygen -F "$host_key_name" -f "$known_hosts_file" > "$known_hosts_file.matches"
           ssh-keygen -l -f "$known_hosts_file.matches" > /dev/null
           printf 'SSH_KNOWN_HOSTS_FILE=%s\n' "$known_hosts_file" >> "$GITHUB_ENV"
-      - uses: webfactory/ssh-agent@v0.10.0
+      - uses: webfactory/ssh-agent@e83874834305fe9a4a2997156cb26c5de65a8555 # v0.10.0
         with:
           ssh-private-key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
       - name: Stage and run maintenance mode (fail-closed)

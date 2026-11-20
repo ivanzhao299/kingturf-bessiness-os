@@ -58,10 +58,13 @@ Harness 施工已归档；本项目是纯 Web monorepo，非 Tauri，不生成�
 
 ## 5. 变更历史
 
+2026-11-20，A-F3a 供应链加固（审计 A3/A4）：全部 7 个 workflow 的第三方 action（pnpm/action-setup v6.1.1、docker/setup-buildx-action v3.12.0、docker/login-action v3.7.0、docker/build-push-action v6.19.2、webfactory/ssh-agent v0.10.0）从 tag 改钉 full-length commit SHA；一方 `actions/*` 前缀按 GitHub 官方建议保留移动主版本 tag。静态断言 `tests/workflows/actions-sha-pinning.test.mjs` 接入 ci.yml quality job（先于 ci:local 执行），防止钉扎退化回 tag。
+
 2026-10-16，2e护栏先行：ci:local在structure:check后新增service:check，test:release-guardrails新增Service边界真实CLI自测。无workflow改动，无业务迁移；范围与限制见[Service边界护栏](engineering/service-boundary-guard.md)。旧CI审计记录是历史快照，当前执行顺序以package.json为准（14步）。
 
 | 日期       | 变更                                                                | 原因                                                                                      |
 | ---------- | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| 2026-11-20 | A-F3a：第三方 workflow action 全量钉 commit SHA + ci.yml 静态断言   | 审计 A3/A4 供应链风险：移动 tag 可被上游重指，SHA 钉扎不可变                              |
 | 2026-11-19 | 前端引入组件层框架（§1「运行时依赖仅 pg」自 U1 起为历史时点）       | [ADR-0014](adr/0014-frontend-component-layer-and-framework.md)：pg+preact+@preact/signals |
 | 2026-10-12 | 建档：落盘框架判定（其他类型/非 Tauri）与现有 CI 审计结论           | Harness 改造阶段 1 产出物（规则 §5 阶段 1 / §3.4）                                        |
 | 2026-10-12 | 修正 §4 表述：「tag/dispatch」改为「仅 workflow_dispatch 指定 SHA」 | 人工审核 P2：实际 workflow 无 tag 触发，原表述会误导后续会话补出不存在的 tag 发布链路     |

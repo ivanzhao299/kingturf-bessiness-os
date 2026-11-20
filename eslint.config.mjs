@@ -30,6 +30,7 @@ export default tseslint.config(
       'scripts/e2e-cdp/*.mjs',
       'scripts/e2e-docker/*.mjs',
       'tests/e2e/runtime-local.spec.mjs',
+      'tests/workflows/*.mjs',
     ],
     ...tseslint.configs.disableTypeChecked,
     languageOptions: { globals: globals.node },

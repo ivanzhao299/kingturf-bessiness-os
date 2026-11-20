@@ -85,7 +85,7 @@ jobs:
           persist-credentials: false
       - name: Verify exact candidate checkout
         run: test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
-      - uses: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
           version: 10.33.4
       - uses: actions/setup-node@v6
@@ -114,7 +114,7 @@ jobs:
           assert run['head_sha']==sys.argv[2] and run['conclusion']=='success' and run['event']=='workflow_dispatch'
           assert run['path']=='.github/workflows/release-images.yml' and run['head_repository']['full_name']=='ivanzhao299/kingturf-bessiness-os'
           PYTHON
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -208,7 +208,7 @@ jobs:
           ssh-keygen -F "$host_key_name" -f "$known_hosts_file" > "$known_hosts_file.matches"
           ssh-keygen -l -f "$known_hosts_file.matches" > /dev/null
           printf 'SSH_KNOWN_HOSTS_FILE=%s\n' "$known_hosts_file" >> "$GITHUB_ENV"
-      - uses: webfactory/ssh-agent@v0.10.0
+      - uses: webfactory/ssh-agent@e83874834305fe9a4a2997156cb26c5de65a8555 # v0.10.0
         with:
           ssh-private-key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
       - name: Transfer and recover application only
