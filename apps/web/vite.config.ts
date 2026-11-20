@@ -28,8 +28,11 @@ export default defineConfig(({ mode }) => {
   return {
     build: {
       manifest: true,
-      // UI-M2：登录入口无动态子 chunk（工作台整块懒载），modulePreload polyfill 为死重；
-      // 关闭以对冲全图模块 id 布局噪声（预算阈值不调，见提交说明）。
+      // 裁定15（2026-11-20）：动态 CSS 注入在多 chunk 场景不可靠（__vitePreload 的
+      // CSS 分支在真实登录流中被跳过，bootstrap CSS 从未被请求——生产纯文本列表
+      // 的根因）。cssCodeSplit: false 将全部 CSS 合并为单一文件，经 index.html
+      // 静态 <link> 加载，永久消灭此类问题。登录页多载 ~18KB gzip（可接受）。
+      cssCodeSplit: false,
       modulePreload: { polyfill: false },
     },
     server: { host: '127.0.0.1', port: webPort, proxy },

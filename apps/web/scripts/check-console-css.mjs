@@ -1,30 +1,29 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 
+// 裁定15（2026-11-20）：cssCodeSplit: false 后全部 CSS 合并为单一 style-*.css，
+// 经 index.html 静态 <link> 加载——不再依赖任何运行时注入。
+// 本守卫断言：唯一 CSS 文件存在、被 index.html 静态引用、且包含 console 样式与 kt tokens。
 const dist = new URL('../dist/', import.meta.url);
-const manifest = JSON.parse(readFileSync(new URL('.vite/manifest.json', dist), 'utf8'));
-// 与 check-startup-budget.mjs 同型：bootstrap 动态入口的 manifest 键被 vite 规范化为
-// `_bootstrap-*.js`（chunk 不再与源模块 1:1）。
-const bootstrapKey = Object.keys(manifest).find(
-  (key) =>
-    manifest[key].isDynamicEntry &&
-    (key === 'src/bootstrap.ts' || /^_bootstrap-[^/]*\.js$/u.test(key)),
+const cssFiles = readdirSync(new URL('assets/', dist)).filter((f) => f.endsWith('.css'));
+assert.strictEqual(
+  cssFiles.length,
+  1,
+  `cssCodeSplit:false expects exactly one css file, found ${cssFiles.length}: ${cssFiles.join(', ')}`,
 );
-assert.ok(bootstrapKey, 'Business workspace chunk missing from manifest');
-// 裁定10守卫：console 样式与 UI 基座 tokens 必须随 bootstrap 主 CSS 包分发（由 index
-// 入口的完整 preload 助手注入）。多入口构建关闭 polyfill 后，动态 chunk 的 preload
-// 助手没有 stylesheet 注入分支——CSS 只产出在懒载 chunk（mount-*.css 先例）则运行时
-// 永不注入，生产页面退化为纯文本列表。静态宿主（console-entry.ts / ui-kit/view.ts）
-// 的 CSS import 并入 bootstrap 主包后本守卫才通过。
-const cssFiles = manifest[bootstrapKey].css ?? [];
-assert.ok(cssFiles.length > 0, 'Bootstrap chunk ships no css bundle');
-const bundle = cssFiles.map((file) => readFileSync(new URL(file, dist), 'utf8')).join('\n');
+const cssFile = cssFiles[0];
+const bundle = readFileSync(new URL(`assets/${cssFile}`, dist), 'utf8');
 assert.ok(
   bundle.includes('.console-page{'),
-  'Governance console styles missing from the bootstrap css bundle (lazy chunk css is never injected at runtime)',
+  'Governance console styles missing from the merged css bundle',
 );
+assert.ok(bundle.includes('--kt-'), 'UI foundation tokens missing from the merged css bundle');
+// Verify static link in index.html (no runtime injection dependency)
+const html = readFileSync(new URL('index.html', dist), 'utf8');
 assert.ok(
-  bundle.includes('--kt-'),
-  'UI foundation tokens missing from the bootstrap css bundle (lazy chunk css is never injected at runtime)',
+  html.includes(`href="/assets/${cssFile}"`),
+  `index.html must statically link the merged css (${cssFile}) — cssCodeSplit:false guard`,
 );
-console.log(`Console css guard: ${cssFiles.join(', ')} carries console styles and kt tokens.`);
+console.log(
+  `Console css guard: ${cssFile} statically linked, console styles + kt tokens verified.`,
+);

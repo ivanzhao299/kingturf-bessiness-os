@@ -38,7 +38,10 @@ assert.ok(
   jsBytes <= 12_000,
   `Login JavaScript including inline brand gzip budget exceeded: ${jsBytes} > 12000 bytes`,
 );
-assert.ok(cssBytes <= 4_000, `Login CSS gzip budget exceeded: ${cssBytes} > 4000 bytes`);
+// 裁定15：cssCodeSplit:false 后全站 CSS 合并（~19KB gzip）随登录页加载。
+// 旧 4KB 预算已不适用；新预算 25KB 容纳合并样式（消除运行时 CSS 注入不可靠性
+// 的结构性代价）。练手项目可接受。
+assert.ok(cssBytes <= 25_000, `Login CSS gzip budget exceeded: ${cssBytes} > 25000 bytes`);
 // This guard runs in local CI, GitHub CI and the production Docker build.
 console.log(
   `Login critical path: JS ${jsBytes} bytes + CSS ${cssBytes} bytes (gzip); workspace deferred.`,
