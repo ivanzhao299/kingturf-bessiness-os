@@ -58,6 +58,8 @@ Harness 施工已归档；本项目是纯 Web monorepo，非 Tauri，不生成�
 
 ## 5. 变更历史
 
+2026-11-20，A-F3c 发布镜像扫描与 SBOM（审计 A3 P1-4）：`release-images.yml` 双镜像 build-push 追加 `sbom: true` + `provenance: mode=max`（顶部权限新增 id-token:write + attestations:write）；推送后、digest 输出前以 aquasecurity/trivy-action（v0.36.0 full SHA 钉扎）按 digest 扫 HIGH,CRITICAL（exit 1 断言），并生成 CycloneDX SBOM 与扫描表随 step summary 展示。发布语义不变：扫描失败不回滚已推送构建，但 run 结论置败，recover 通道（要求 release-images conclusion=success）无法消费未过检镜像。tag→digest 由 image index 解析，控制脚本 oci_image_transport.py 原生支持 index 摘要。
+
 2026-11-20，A-F3b SAST 接线（审计 A3 P1-3）：新增 `.github/workflows/codeql.yml`——CodeQL（workflow 化 Default Setup：init→analyze 矩阵），覆盖 javascript-typescript 与 actions 双语言，pull_request + push(main) 触发，permissions 最小化为 contents:read + security-events:write。选 CodeQL 而非 semgrep 免费档的理由：本仓库为 public repo，CodeQL 对公开仓库免费可用；若仓库转私有且无 GHAS，SARIF 上传将失败，届时在此记录替代方案决策。github/codeql-action 钉 v4.39.3 full SHA（A-F3a 规则）。
 
 2026-11-20，A-F3a 供应链加固（审计 A3/A4）：全部 7 个 workflow 的第三方 action（pnpm/action-setup v6.1.1、docker/setup-buildx-action v3.12.0、docker/login-action v3.7.0、docker/build-push-action v6.19.2、webfactory/ssh-agent v0.10.0）从 tag 改钉 full-length commit SHA；一方 `actions/*` 前缀按 GitHub 官方建议保留移动主版本 tag。静态断言 `tests/workflows/actions-sha-pinning.test.mjs` 接入 ci.yml quality job（先于 ci:local 执行），防止钉扎退化回 tag。
@@ -66,6 +68,7 @@ Harness 施工已归档；本项目是纯 Web monorepo，非 Tauri，不生成�
 
 | 日期       | 变更                                                                | 原因                                                                                      |
 | ---------- | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| 2026-11-20 | A-F3c：release-images 加 trivy HIGH+ 拦截、SBOM/provenance=max      | 审计 A3 P1-4：发布镜像无 CVE 扫描/SBOM/provenance attestation                             |
 | 2026-11-20 | A-F3b：新增 codeql.yml SAST（TS+actions 双语言矩阵）                | 审计 A3 P1-3：无 SAST；public repo CodeQL 免费可用                                        |
 | 2026-11-20 | A-F3a：第三方 workflow action 全量钉 commit SHA + ci.yml 静态断言   | 审计 A3/A4 供应链风险：移动 tag 可被上游重指，SHA 钉扎不可变                              |
 | 2026-11-19 | 前端引入组件层框架（§1「运行时依赖仅 pg」自 U1 起为历史时点）       | [ADR-0014](adr/0014-frontend-component-layer-and-framework.md)：pg+preact+@preact/signals |

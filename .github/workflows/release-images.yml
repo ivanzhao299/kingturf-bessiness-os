@@ -11,6 +11,8 @@ on:
 permissions:
   contents: read
   packages: write
+  id-token: write # A-F3c: buildx attestation keyless signing (sbom/provenance)
+  attestations: write # A-F3c: push image attestations
 
 jobs:
   publish:
@@ -52,6 +54,8 @@ jobs:
           context: .
           file: infra/docker/Dockerfile.api-preview
           push: true
+          sbom: true # A-F3c: SBOM attestation
+          provenance: mode=max # A-F3c: maximal provenance attestation
           tags: ghcr.io/ivanzhao299/kingturf-erp-api:${{ inputs.commit_sha }}
       - name: Build and push Web image
         id: web
@@ -60,6 +64,8 @@ jobs:
           context: .
           file: infra/docker/Dockerfile.web-preview
           push: true
+          sbom: true # A-F3c: SBOM attestation
+          provenance: mode=max # A-F3c: maximal provenance attestation
           tags: ghcr.io/ivanzhao299/kingturf-erp-web:${{ inputs.commit_sha }}
       - name: Cross-check pushed tags resolve to the emitted digests
         run: |
@@ -73,6 +79,71 @@ jobs:
           done
         env:
           RELEASE_SHA: ${{ inputs.commit_sha }}
+      # A-F3c: scans run after push and before digest emission. A scan failure
+      # (exit 1 on HIGH,CRITICAL) does not undo the build/push, but fails the
+      # run conclusion so downstream recover paths (which require a successful
+      # release-images run) cannot consume unvetted images.
+      - name: Scan API image for vulnerabilities (HIGH+ exit 1) # A-F3c
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          scan-type: image
+          image-ref: ghcr.io/ivanzhao299/kingturf-erp-api@${{ steps.api.outputs.digest }}
+          severity: HIGH,CRITICAL
+          exit-code: 1
+          format: table
+          output: ${{ runner.temp }}/trivy-api.txt
+      - name: Scan Web image for vulnerabilities (HIGH+ exit 1) # A-F3c
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          scan-type: image
+          image-ref: ghcr.io/ivanzhao299/kingturf-erp-web@${{ steps.web.outputs.digest }}
+          severity: HIGH,CRITICAL
+          exit-code: 1
+          format: table
+          output: ${{ runner.temp }}/trivy-web.txt
+      - name: Generate API image SBOM (CycloneDX) # A-F3c
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          scan-type: image
+          image-ref: ghcr.io/ivanzhao299/kingturf-erp-api@${{ steps.api.outputs.digest }}
+          format: cyclonedx
+          output: ${{ runner.temp }}/sbom-api.json
+      - name: Generate Web image SBOM (CycloneDX) # A-F3c
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          scan-type: image
+          image-ref: ghcr.io/ivanzhao299/kingturf-erp-web@${{ steps.web.outputs.digest }}
+          format: cyclonedx
+          output: ${{ runner.temp }}/sbom-web.json
+      - name: Publish scan and SBOM evidence to step summary # A-F3c
+        if: always() # evidence survives scan failure (recorded in run conclusion)
+        run: |
+          set -euo pipefail
+          {
+            echo '## A-F3c image vulnerability scan and SBOM'
+            for image in api web; do
+              echo "### $image trivy (HIGH,CRITICAL)"
+              echo '```'
+              cat "$RUNNER_TEMP/trivy-$image.txt" || echo '(scan report missing)'
+              echo '```'
+              echo "### $image SBOM (CycloneDX)"
+              echo '```json'
+              cat "$RUNNER_TEMP/sbom-$image.json" || echo '{}'
+              echo '```'
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Emit immutable digests
         id: digests
         run: |
