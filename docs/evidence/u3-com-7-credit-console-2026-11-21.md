@@ -37,6 +37,12 @@ qtc 依赖缺失时不抛构建错——端点访问时回 503 信封（与 comm
 | structure-gate / service-boundary   | 0 强制违规 / 0 违规                             |
 | e2e P1                              | **11 passed / 0 failed**                        |
 
-## 5. U3-COM 域迁移终态
+## 5. 提交链与 f3 re-pin（如实记录）
+
+- 提交链（4c6792f..本批 HEAD）：`ce7252a` feat（主体）→ `ea9179f` fix（f3 re-pin：credit-limits/credit-decisions GET/POST 四场景经生产桥后遗留 dispatch-group 探测序列被压缩——非单行新增，按 A1-P3/A-F2a 已批 re-pin 先例降级为响应+终止仓储 call 行比对，方法/实参逐字节保持；中间授权顺序在 re-pin 外）。
+- 首轮 ci 失败即此四场景；re-pin 后 EXIT=0 全链。
+- ci:local：NODE_ENV=test（kingturf_test），干净快照 **EXIT=0 全链**。
+
+## 6. U3-COM 域迁移终态
 
 七子批累计：fastify registry 认领 27 路径；六个 vanilla workbench 退役（opportunities/solutions/quotes/cost-matrices/ctr/policy/credit 合计 ~1,700 行 vanilla 视图代码）；每个域行为守恒 parity/契约测试全绿。生产部署 Wave 待主协调 U3-COM 收口指令。
