@@ -1,4 +1,4 @@
-import { signal } from '@preact/signals';
+import { signal, type Signal } from '@preact/signals';
 import {
   DataTable,
   DetailDrawer,
@@ -502,210 +502,259 @@ const MatrixView = (state: MatrixPageState) => {
   );
 };
 
-export function CostMatrixConsolePage(ports: CostMatrixConsolePorts) {
-  const page = signal<CostMatrixPage>(ports.initialPage);
-  const query = signal<CostMatrixQuery>({ ...ports.initialQuery });
-  const search = signal(ports.initialQuery.query);
-  const productFamily = signal(ports.initialQuery.productFamily);
-  const loadError = signal('');
-  const submitError = signal('');
-  const loading = signal(false);
-  const selected = signal<CostMatrixRow | null>(null);
-  const activeForm = signal<MatrixFormKind>(null);
-  const editingFactor = signal<CostMatrixRow | null>(null);
+// G5 拆分：动作工厂独立于状态工厂（每函数 ≤200 行）。
+type MatrixSignalBundle = Readonly<{
+  page: Signal<CostMatrixPage>;
+  query: Signal<CostMatrixQuery>;
+  loadError: Signal<string>;
+  submitError: Signal<string>;
+  search: Signal<string>;
+  productFamily: Signal<string>;
+  loading: Signal<boolean>;
+  selected: Signal<CostMatrixRow | null>;
+  activeForm: Signal<MatrixFormKind>;
+  editingFactor: Signal<CostMatrixRow | null>;
+}>;
 
-  const applyPage = (next: CostMatrixPage): void => {
-    page.value = next;
-    loadError.value = '';
+type MatrixActions = Readonly<{
+  runCreate: (values: Readonly<Record<string, string>>) => Promise<void>;
+  runAddFactor: (values: Readonly<Record<string, string>>) => Promise<void>;
+  runUpdateFactor: (values: Readonly<Record<string, string>>) => Promise<void>;
+  runCalculate: (mode: 'TAX_INCLUSIVE' | 'TAX_EXCLUSIVE') => Promise<void>;
+  runQuoteCostDecision: () => Promise<void>;
+}>;
+
+const applyPage = (bundle: MatrixSignalBundle, next: CostMatrixPage): void => {
+  bundle.page.value = next;
+  bundle.loadError.value = '';
+};
+const closeForm = (bundle: MatrixSignalBundle): void => {
+  bundle.activeForm.value = null;
+  bundle.editingFactor.value = null;
+  bundle.submitError.value = '';
+};
+const fail = (error: unknown, bundle: MatrixSignalBundle, fallback: string): void => {
+  const message = error instanceof Error ? error.message : fallback;
+  // 抽屉打开（含行级动作失败）就地呈现；列表级失败走表格错误面。
+  if (bundle.selected.value !== null || bundle.activeForm.value !== null)
+    bundle.submitError.value = message;
+  else bundle.loadError.value = message;
+};
+
+const runQueryFor = async (
+  ports: CostMatrixConsolePorts,
+  bundle: MatrixSignalBundle,
+  next: CostMatrixQuery,
+): Promise<void> => {
+  bundle.loading.value = true;
+  try {
+    bundle.query.value = next;
+    applyPage(bundle, await ports.querySummaries(next));
+  } catch (error: unknown) {
+    fail(error, bundle, '规格成本模型加载失败');
+  } finally {
+    bundle.loading.value = false;
+  }
+};
+
+const costMatrixActions = (
+  ports: CostMatrixConsolePorts,
+  bundle: MatrixSignalBundle,
+): MatrixActions => {
+  const runCreate = async (values: Readonly<Record<string, string>>): Promise<void> => {
+    bundle.loading.value = true;
+    bundle.submitError.value = '';
+    try {
+      await ports.submit('/api/v1/cost-matrices', {
+        code: values.code ?? '',
+        name: values.name ?? '',
+        ...(values.productItemVersionId
+          ? { productItemVersionId: values.productItemVersionId }
+          : {}),
+        productSpecification: {},
+        currency: values.currency ?? 'CNY',
+        defaultTaxRate: values.defaultTaxRate ?? '0.13',
+      });
+      applyPage(bundle, await ports.refresh());
+      closeForm(bundle);
+    } catch (error: unknown) {
+      fail(error, bundle, '规格模型创建失败');
+    } finally {
+      bundle.loading.value = false;
+    }
   };
-  const fail = (error: unknown, fallback: string): void => {
-    const message = error instanceof Error ? error.message : fallback;
-    // 抽屉打开（含行级动作失败）就地呈现；列表级失败走表格错误面。
-    if (selected.value !== null || activeForm.value !== null) submitError.value = message;
-    else loadError.value = message;
+  const runAddFactor = async (values: Readonly<Record<string, string>>): Promise<void> => {
+    const matrix = bundle.selected.value;
+    if (!matrix) return;
+    bundle.loading.value = true;
+    bundle.submitError.value = '';
+    try {
+      await ports.submit(`/api/v1/cost-matrices/${ports.textValue(matrix.id, '')}/factors`, {
+        ...values,
+      });
+      const fresh = await ports.loadMatrix(ports.textValue(matrix.id, ''));
+      if (fresh) bundle.selected.value = fresh;
+      bundle.submitError.value = '';
+      bundle.activeForm.value = null;
+    } catch (error: unknown) {
+      fail(error, bundle, '因子添加失败');
+    } finally {
+      bundle.loading.value = false;
+    }
   };
-  const closeForm = (): void => {
-    activeForm.value = null;
-    editingFactor.value = null;
-    submitError.value = '';
+  const runUpdateFactor = async (values: Readonly<Record<string, string>>): Promise<void> => {
+    const matrix = bundle.selected.value;
+    const factor = bundle.editingFactor.value;
+    if (!matrix || !factor) return;
+    bundle.loading.value = true;
+    bundle.submitError.value = '';
+    try {
+      await ports.submit(
+        `/api/v1/cost-matrices/${ports.textValue(matrix.id, '')}/factors/${ports.textValue(factor.id, '')}`,
+        { ...values },
+        'PUT',
+      );
+      const fresh = await ports.loadMatrix(ports.textValue(matrix.id, ''));
+      if (fresh) bundle.selected.value = fresh;
+      closeForm(bundle);
+    } catch (error: unknown) {
+      fail(error, bundle, '因子保存失败');
+    } finally {
+      bundle.loading.value = false;
+    }
+  };
+  const runCalculate = async (mode: 'TAX_INCLUSIVE' | 'TAX_EXCLUSIVE'): Promise<void> => {
+    const matrix = bundle.selected.value;
+    if (!matrix) return;
+    bundle.loading.value = true;
+    bundle.submitError.value = '';
+    try {
+      await ports.submit(`/api/v1/cost-matrices/${ports.textValue(matrix.id, '')}/calculate`, {
+        pricingMode: mode,
+      });
+      const fresh = await ports.loadMatrix(ports.textValue(matrix.id, ''));
+      if (fresh) bundle.selected.value = fresh;
+    } catch (error: unknown) {
+      fail(error, bundle, '矩阵重算失败');
+    } finally {
+      bundle.loading.value = false;
+    }
+  };
+  const runQuoteCostDecision = async () => {
+    const matrix = bundle.selected.value;
+    if (!matrix) return;
+    const calculations = Array.isArray(matrix.calculations) ? matrix.calculations : [];
+    const latest = calculations.length > 0 ? ports.recordValue(calculations[0]) : null;
+    if (!latest || typeof latest.id !== 'string') return;
+    bundle.loading.value = true;
+    bundle.submitError.value = '';
+    try {
+      const result = ports.recordValue(
+        await ports.submit(
+          `/api/v1/cost-matrix-calculations/${ports.textValue(latest.id, '')}/quote-cost-decision`,
+          {
+            technicalSolutionRevisionId: ports.textValue(
+              latest.technicalSolutionRevisionId ?? matrix.technicalSolutionRevisionId,
+              '',
+            ),
+            modelVersionId: ports.textValue(latest.modelVersionId ?? matrix.version, ''),
+          },
+        ),
+      );
+      if (typeof result.costDecisionId === 'string') ports.navigateToQuotes();
+    } catch (error: unknown) {
+      fail(error, bundle, '报价成本决策创建失败');
+    } finally {
+      bundle.loading.value = false;
+    }
+  };
+  return {
+    runCreate,
+    runAddFactor,
+    runUpdateFactor,
+    runCalculate,
+    runQuoteCostDecision,
+  };
+};
+
+export function CostMatrixConsolePage(ports: CostMatrixConsolePorts) {
+  const bundle: MatrixSignalBundle = {
+    page: signal<CostMatrixPage>(ports.initialPage),
+    query: signal<CostMatrixQuery>({ ...ports.initialQuery }),
+    search: signal(ports.initialQuery.query),
+    productFamily: signal(ports.initialQuery.productFamily),
+    loadError: signal(''),
+    submitError: signal(''),
+    loading: signal(false),
+    selected: signal<CostMatrixRow | null>(null),
+    activeForm: signal<MatrixFormKind>(null),
+    editingFactor: signal<CostMatrixRow | null>(null),
   };
 
   const runQuery = async (next: CostMatrixQuery): Promise<void> => {
-    loading.value = true;
-    try {
-      query.value = next;
-      applyPage(await ports.querySummaries(next));
-    } catch (error: unknown) {
-      fail(error, '规格成本模型加载失败');
-    } finally {
-      loading.value = false;
-    }
+    await runQueryFor(ports, bundle, next);
   };
 
   const state = (): MatrixPageState => ({
-    page: page.value,
-    query: query.value,
-    search: search.value,
-    productFamily: productFamily.value,
-    loadError: loadError.value,
-    submitError: submitError.value,
-    loading: loading.value,
-    selected: selected.value,
-    activeForm: activeForm.value,
-    editingFactor: editingFactor.value,
+    page: bundle.page.value,
+    query: bundle.query.value,
+    search: bundle.search.value,
+    productFamily: bundle.productFamily.value,
+    loadError: bundle.loadError.value,
+    submitError: bundle.submitError.value,
+    loading: bundle.loading.value,
+    selected: bundle.selected.value,
+    activeForm: bundle.activeForm.value,
+    editingFactor: bundle.editingFactor.value,
     permissions: ports.permissions,
     ports,
     open: (matrix) => {
-      selected.value = matrix;
-      activeForm.value = null;
-      editingFactor.value = null;
-      submitError.value = '';
+      bundle.selected.value = matrix;
+      bundle.activeForm.value = null;
+      bundle.editingFactor.value = null;
+      bundle.submitError.value = '';
     },
     openAsync: async (matrix) => {
-      selected.value = matrix;
-      activeForm.value = null;
-      editingFactor.value = null;
-      submitError.value = '';
+      bundle.selected.value = matrix;
+      bundle.activeForm.value = null;
+      bundle.editingFactor.value = null;
+      bundle.submitError.value = '';
       try {
         const fresh = await ports.loadMatrix(ports.textValue(matrix.id ?? matrix.code, ''));
-        if (fresh && selected.value === matrix) selected.value = fresh;
+        if (fresh && bundle.selected.value === matrix) bundle.selected.value = fresh;
       } catch (error: unknown) {
-        fail(error, '矩阵详情加载失败');
+        fail(error, bundle, '矩阵详情加载失败');
       }
     },
     openForm: (kind, factor) => {
-      activeForm.value = kind;
-      editingFactor.value = factor ?? null;
-      submitError.value = '';
+      bundle.activeForm.value = kind;
+      bundle.editingFactor.value = factor ?? null;
+      bundle.submitError.value = '';
     },
-    closeForm,
+    closeForm: () => {
+      closeForm(bundle);
+    },
     setSearch: (next) => {
-      search.value = next;
-      void runQuery({ ...query.value, page: 1, query: next.trim().slice(0, 120) });
+      bundle.search.value = next;
+      void runQuery({ ...bundle.query.value, page: 1, query: next.trim().slice(0, 120) });
     },
     setProductFamily: (next) => {
-      productFamily.value = next;
-      void runQuery({ ...query.value, page: 1, productFamily: next.trim().slice(0, 80) });
+      bundle.productFamily.value = next;
+      void runQuery({ ...bundle.query.value, page: 1, productFamily: next.trim().slice(0, 80) });
     },
     setAttention: (next) => {
-      void runQuery({ ...query.value, page: 1, attention: next });
+      void runQuery({ ...bundle.query.value, page: 1, attention: next });
     },
     setSort: (next) => {
-      void runQuery({ ...query.value, page: 1, sort: next });
+      void runQuery({ ...bundle.query.value, page: 1, sort: next });
     },
     gotoPage: (next) => {
-      void runQuery({ ...query.value, page: Math.max(1, next) });
+      void runQuery({ ...bundle.query.value, page: Math.max(1, next) });
     },
     runRefresh: async () => {
-      await runQuery(query.value);
+      await runQuery(bundle.query.value);
     },
-    runCreate: async (values) => {
-      loading.value = true;
-      submitError.value = '';
-      try {
-        await ports.submit('/api/v1/cost-matrices', {
-          code: values.code ?? '',
-          name: values.name ?? '',
-          ...(values.productItemVersionId
-            ? { productItemVersionId: values.productItemVersionId }
-            : {}),
-          productSpecification: {},
-          currency: values.currency ?? 'CNY',
-          defaultTaxRate: values.defaultTaxRate ?? '0.13',
-        });
-        applyPage(await ports.refresh());
-        closeForm();
-      } catch (error: unknown) {
-        fail(error, '规格模型创建失败');
-      } finally {
-        loading.value = false;
-      }
-    },
-    runAddFactor: async (values) => {
-      const matrix = selected.value;
-      if (!matrix) return;
-      loading.value = true;
-      submitError.value = '';
-      try {
-        await ports.submit(`/api/v1/cost-matrices/${ports.textValue(matrix.id, '')}/factors`, {
-          ...values,
-        });
-        const fresh = await ports.loadMatrix(ports.textValue(matrix.id, ''));
-        if (fresh) selected.value = fresh;
-        submitError.value = '';
-        activeForm.value = null;
-      } catch (error: unknown) {
-        fail(error, '因子添加失败');
-      } finally {
-        loading.value = false;
-      }
-    },
-    runUpdateFactor: async (values) => {
-      const matrix = selected.value;
-      const factor = editingFactor.value;
-      if (!matrix || !factor) return;
-      loading.value = true;
-      submitError.value = '';
-      try {
-        await ports.submit(
-          `/api/v1/cost-matrices/${ports.textValue(matrix.id, '')}/factors/${ports.textValue(factor.id, '')}`,
-          { ...values },
-          'PUT',
-        );
-        const fresh = await ports.loadMatrix(ports.textValue(matrix.id, ''));
-        if (fresh) selected.value = fresh;
-        closeForm();
-      } catch (error: unknown) {
-        fail(error, '因子保存失败');
-      } finally {
-        loading.value = false;
-      }
-    },
-    runCalculate: async (mode) => {
-      const matrix = selected.value;
-      if (!matrix) return;
-      loading.value = true;
-      submitError.value = '';
-      try {
-        await ports.submit(`/api/v1/cost-matrices/${ports.textValue(matrix.id, '')}/calculate`, {
-          pricingMode: mode,
-        });
-        const fresh = await ports.loadMatrix(ports.textValue(matrix.id, ''));
-        if (fresh) selected.value = fresh;
-      } catch (error: unknown) {
-        fail(error, '矩阵重算失败');
-      } finally {
-        loading.value = false;
-      }
-    },
-    runQuoteCostDecision: async () => {
-      const matrix = selected.value;
-      if (!matrix) return;
-      const calculations = Array.isArray(matrix.calculations) ? matrix.calculations : [];
-      const latest = calculations.length > 0 ? ports.recordValue(calculations[0]) : null;
-      if (!latest || typeof latest.id !== 'string') return;
-      loading.value = true;
-      submitError.value = '';
-      try {
-        const result = ports.recordValue(
-          await ports.submit(
-            `/api/v1/cost-matrix-calculations/${ports.textValue(latest.id, '')}/quote-cost-decision`,
-            {
-              technicalSolutionRevisionId: ports.textValue(
-                latest.technicalSolutionRevisionId ?? matrix.technicalSolutionRevisionId,
-                '',
-              ),
-              modelVersionId: ports.textValue(latest.modelVersionId ?? matrix.version, ''),
-            },
-          ),
-        );
-        if (typeof result.costDecisionId === 'string') ports.navigateToQuotes();
-      } catch (error: unknown) {
-        fail(error, '报价成本决策创建失败');
-      } finally {
-        loading.value = false;
-      }
-    },
+    ...costMatrixActions(ports, bundle),
   });
 
   const Page = () => MatrixView(state());
