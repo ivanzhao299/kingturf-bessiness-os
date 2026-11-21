@@ -119,6 +119,20 @@ export class CrmController {
     await this.api.createContact(customerId, input);
     if (this.permissions.has('customer-360:read')) await this.selectCustomer(customerId);
   }
+  public async createActivity(
+    customerId: string,
+    input: {
+      leadId: string | null;
+      type: string;
+      occurredAt: string;
+      summary: string;
+      details: Record<string, unknown>;
+    },
+  ): Promise<void> {
+    if (!this.permissions.has('customer-activity:create')) return;
+    await this.api.createActivity(customerId, input);
+    if (this.permissions.has('customer-360:read')) await this.selectCustomer(customerId);
+  }
   public async createLead(input: LeadInput): Promise<void> {
     if (!this.permissions.has('lead:create')) return;
     await this.api.createLead(input);

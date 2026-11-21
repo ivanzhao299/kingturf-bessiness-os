@@ -9,6 +9,7 @@ import {
   type FormSectionField,
   type StatusTone,
 } from '@kingturf/ui';
+import { businessEventLabel } from '../../shared/business-labels';
 import type { CustomerConsolePorts, CustomerRow } from './customer-ports';
 
 // U3-CRM-2（ADR-0014 分域重写）：客户控制台——原 vanilla customer-records 能力面
@@ -34,6 +35,12 @@ type CustomerPageState = Readonly<{
   openContactForm: () => void;
   closeContactForm: () => void;
   runAddContact: (values: Readonly<Record<string, string>>) => Promise<void>;
+  activityForm: boolean;
+  openActivityForm: () => void;
+  closeActivityForm: () => void;
+  runAddActivity: (values: Readonly<Record<string, string>>) => Promise<void>;
+  activityTypeFilter: string;
+  setActivityTypeFilter: (next: string) => void;
   closeForm: () => void;
   setStatusFilter: (next: 'ALL' | 'PROSPECT' | 'ACTIVE' | 'INACTIVE') => void;
   setSearch: (next: string) => void;
@@ -115,14 +122,31 @@ const filteredCustomers = (state: CustomerPageState): readonly CustomerRow[] =>
 const Customer360Detail = ({
   view,
   ports,
+  typeFilter,
+  onTypeFilter,
 }: Readonly<{
   view: Readonly<Record<string, unknown>>;
   ports: CustomerConsolePorts;
+  typeFilter: string;
+  onTypeFilter: (next: string) => void;
 }>) => {
   const customer = recordOf(view.customer);
   const contacts = Array.isArray(view.contacts) ? view.contacts : [];
   const activities = Array.isArray(view.activities) ? view.activities : [];
   const opportunities = Array.isArray(view.opportunities) ? view.opportunities : [];
+  const activityTypes = [
+    ...new Set(
+      activities
+        .map((activity) => ports.textValue(recordOf(activity).type, ''))
+        .filter((type) => type !== ''),
+    ),
+  ];
+  const visibleActivities =
+    typeFilter === ''
+      ? activities
+      : activities.filter(
+          (activity) => ports.textValue(recordOf(activity).type, '') === typeFilter,
+        );
   return (
     <div class="console-summary" data-testid="kt-customer-360">
       <p>
@@ -147,16 +171,37 @@ const Customer360Detail = ({
       </div>
       <div data-testid="kt-customer-activities">
         <span class="console-label">活动时间线</span>
-        {activities.map((activity) => {
+        {activityTypes.length > 1 ? (
+          <select
+            class="console-input"
+            data-testid="kt-customer-activity-type-filter"
+            value={typeFilter}
+            onChange={(event) => {
+              onTypeFilter((event.target as HTMLSelectElement).value);
+            }}
+          >
+            <option value="">全部类型</option>
+            {activityTypes.map((type) => (
+              <option key={type} value={type}>
+                {businessEventLabel(type)}
+              </option>
+            ))}
+          </select>
+        ) : null}
+        {visibleActivities.map((activity) => {
           const item = recordOf(activity);
           return (
-            <p key={ports.textValue(item.id ?? item.subject, '')}>
-              {ports.textValue(item.activityType, '—')} · {ports.textValue(item.subject, '—')} ·{' '}
+            <p key={ports.textValue(item.id ?? item.summary, '')}>
+              {businessEventLabel(item.type)} · {ports.textValue(item.summary, '—')} ·{' '}
               {ports.textValue(item.occurredAt, '—').slice(0, 10)}
             </p>
           );
         })}
-        {activities.length === 0 ? <p>暂无活动</p> : null}
+        {activities.length === 0 ? (
+          <p>暂无活动</p>
+        ) : visibleActivities.length === 0 ? (
+          <p>该类型暂无活动</p>
+        ) : null}
       </div>
       <div data-testid="kt-customer-opportunities">
         <span class="console-label">商机关联</span>
@@ -188,7 +233,12 @@ const CustomerDrawer = ({ state }: Readonly<{ state: CustomerPageState }>) => {
       }}
     >
       {state.view360 ? (
-        <Customer360Detail view={state.view360} ports={state.ports} />
+        <Customer360Detail
+          view={state.view360}
+          ports={state.ports}
+          typeFilter={state.activityTypeFilter}
+          onTypeFilter={state.setActivityTypeFilter}
+        />
       ) : (
         <p class="console-hint">客户 360 加载中…</p>
       )}
@@ -209,6 +259,18 @@ const CustomerDrawer = ({ state }: Readonly<{ state: CustomerPageState }>) => {
             }}
           >
             添加联系人
+          </button>
+        ) : null}
+        {state.permissions.has('customer-activity:create') && !state.activityForm ? (
+          <button
+            type="button"
+            class="text-button"
+            data-testid="kt-customer-add-activity"
+            onClick={() => {
+              state.openActivityForm();
+            }}
+          >
+            添加活动
           </button>
         ) : null}
       </div>
@@ -235,6 +297,34 @@ const CustomerDrawer = ({ state }: Readonly<{ state: CustomerPageState }>) => {
           submitLabel="保存联系人"
           onSubmit={(values) => {
             void state.runAddContact(values);
+          }}
+        />
+      ) : null}
+      {state.activityForm ? (
+        <FormSection
+          title="添加活动"
+          description="活动记录写入客户时间线；发生时间默认为当前时间。"
+          fields={
+            [
+              {
+                name: 'activityType',
+                label: '活动类型',
+                type: 'select',
+                required: true,
+                options: [
+                  { value: '拜访', label: '拜访' },
+                  { value: '电话', label: '电话' },
+                  { value: '邮件', label: '邮件' },
+                  { value: '展会', label: '展会' },
+                ],
+              } satisfies FormSectionField,
+              { name: 'summary', label: '活动摘要', required: true },
+              { name: 'occurredAt', label: '发生时间（留空为当前时间）', type: 'date' },
+            ] satisfies readonly FormSectionField[]
+          }
+          submitLabel="保存活动"
+          onSubmit={(values) => {
+            void state.runAddActivity(values);
           }}
         />
       ) : null}
@@ -400,6 +490,8 @@ export function CustomerConsolePage(ports: CustomerConsolePorts) {
     view360: signal<Readonly<Record<string, unknown>> | null>(null),
     activeForm: signal<CustomerFormKind>(null),
     contactForm: signal(false),
+    activityForm: signal(false),
+    activityTypeFilter: signal(''),
     shownCount: signal(20),
   };
 
@@ -440,6 +532,32 @@ export function CustomerConsolePage(ports: CustomerConsolePorts) {
       closeForm();
     } catch (error: unknown) {
       fail(error, bundle, '客户创建失败');
+    } finally {
+      bundle.loading.value = false;
+    }
+  };
+
+  const runAddActivity = async (values: Readonly<Record<string, string>>): Promise<void> => {
+    const customer = bundle.selected.value;
+    if (!customer) return;
+    bundle.loading.value = true;
+    bundle.submitError.value = '';
+    try {
+      await ports.createActivity(ports.textValue(customer.id, ''), {
+        leadId: null,
+        type: values.activityType ?? '拜访',
+        occurredAt: values.occurredAt
+          ? new Date(`${values.occurredAt}T00:00:00`).toISOString()
+          : new Date().toISOString(),
+        summary: values.summary ?? '',
+        details: {},
+      });
+      const fresh = await ports.load360(ports.textValue(customer.id, ''));
+      if (fresh && bundle.selected.value === customer) bundle.view360.value = fresh;
+      bundle.activityForm.value = false;
+      bundle.submitError.value = '';
+    } catch (error: unknown) {
+      fail(error, bundle, '活动创建失败');
     } finally {
       bundle.loading.value = false;
     }
@@ -486,6 +604,7 @@ export function CustomerConsolePage(ports: CustomerConsolePorts) {
       bundle.selected.value = row;
       bundle.activeForm.value = null;
       bundle.submitError.value = '';
+      bundle.activityTypeFilter.value = '';
       if (row !== null) loadDetail(bundle, ports, row);
     },
     openForm: (kind) => {
@@ -500,6 +619,20 @@ export function CustomerConsolePage(ports: CustomerConsolePorts) {
     closeContactForm: () => {
       bundle.contactForm.value = false;
       bundle.submitError.value = '';
+    },
+    activityForm: bundle.activityForm.value,
+    openActivityForm: () => {
+      bundle.activityForm.value = true;
+      bundle.submitError.value = '';
+    },
+    closeActivityForm: () => {
+      bundle.activityForm.value = false;
+      bundle.submitError.value = '';
+    },
+    runAddActivity,
+    activityTypeFilter: bundle.activityTypeFilter.value,
+    setActivityTypeFilter: (next) => {
+      bundle.activityTypeFilter.value = next;
     },
     closeForm,
     setStatusFilter: (next) => {

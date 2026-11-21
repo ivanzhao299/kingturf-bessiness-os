@@ -71,6 +71,13 @@ export function createFetchCrmApi(context: SessionContext): CrmApi {
         { leadId: null, type: 'NOTE', occurredAt: new Date().toISOString(), summary, details: {} },
         { 'idempotency-key': requestId() },
       ),
+    createActivity: (customerId, input) =>
+      post(
+        `/api/v1/customers/${customerId}/activities`,
+        input,
+        { 'idempotency-key': requestId() },
+        parseResponseRecord,
+      ),
     assignCustomer: (customer, assigneeId, reason) =>
       post(
         `/api/v1/customers/${customer.id}/ownership`,

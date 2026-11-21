@@ -1485,6 +1485,7 @@ const api = () => {
     transitionCustomer: vi.fn(() => Promise.resolve({ ...customer, status: 'ACTIVE', version: 2 })),
     addContact: vi.fn(() => Promise.resolve()),
     addActivity: vi.fn(() => Promise.resolve()),
+    createActivity: vi.fn(() => Promise.resolve({})),
     assignCustomer: vi.fn(() => Promise.resolve(customer)),
     listPool: vi.fn(() => Promise.resolve([lead])),
     listLeads: vi.fn(() => Promise.resolve([])),

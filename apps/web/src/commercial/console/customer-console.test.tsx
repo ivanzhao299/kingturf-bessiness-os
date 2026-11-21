@@ -41,8 +41,8 @@ const view360 = {
   activities: [
     {
       id: 'activity-1',
-      activityType: '拜访',
-      subject: '需求沟通',
+      type: 'NOTE',
+      summary: '需求沟通',
       occurredAt: '2026-11-20T08:00:00Z',
     },
   ],
@@ -65,6 +65,7 @@ const portsFor = (
     typeof value === 'string' || typeof value === 'number' ? String(value) : fallback,
   submit: vi.fn().mockResolvedValue(null),
   createContact: vi.fn().mockResolvedValue(null),
+  createActivity: vi.fn().mockResolvedValue(null),
   load360: vi.fn().mockResolvedValue(view360),
   refresh: vi.fn().mockResolvedValue([customer]),
   ...overrides,
@@ -84,6 +85,16 @@ const fillField = (host: TestElement, name: string, value: string): void => {
   if (!input) throw new Error(`missing field ${name}`);
   input.value = value;
   input.dispatchEvent(new Event('input', { bubbles: true }));
+};
+
+const fillSelect = (host: TestElement, name: string, value: string): void => {
+  const drawer = element(host.querySelector('.detail-drawer'));
+  const select = drawer
+    .querySelectorAll('select')
+    .find((item) => (item as TestElement).getAttribute('name') === name) as TestElement | undefined;
+  if (!select) throw new Error(`missing select ${name}`);
+  select.value = value;
+  select.dispatchEvent(new Event('input', { bubbles: true }));
 };
 
 const submitDrawer = async (host: TestElement): Promise<void> => {
@@ -169,5 +180,64 @@ describe('U3-CRM-2 客户控制台', () => {
     await flush();
     expect(host.querySelector('.data-table-error')).not.toBeNull();
     expect(host.textContent).toContain('客户加载失败');
+  });
+});
+
+describe('U3-CRM-4 活动时间线增强', () => {
+  it('创建入口经权限门呈现；提交走桥轨端口（五字段载荷）并刷新 360、收起表单', async () => {
+    const ports = portsFor(['customer-activity:create']);
+    const host = mount(ports);
+    expect(host.querySelector('[data-testid="kt-customer-add-activity"]')).toBeNull();
+    element(host.querySelector('[data-testid="kt-customer-open"]')).click();
+    await flush();
+    element(host.querySelector('[data-testid="kt-customer-add-activity"]')).click();
+    await flush();
+    fillSelect(host, 'activityType', '拜访');
+    fillField(host, 'summary', '周例会跟进');
+    await flush();
+    await submitDrawer(host);
+    expect(ports.createActivity).toHaveBeenCalledExactlyOnceWith('customer-1', {
+      leadId: null,
+      type: '拜访',
+      occurredAt: expect.any(String) as string,
+      summary: '周例会跟进',
+      details: {},
+    });
+    expect(ports.load360).toHaveBeenCalledTimes(2);
+    expect(
+      element(host.querySelector('[data-testid="kt-customer-add-activity"]')).textContent,
+    ).toBe('添加活动');
+    expect(host.querySelector('button[type="submit"]')).toBeNull();
+  });
+
+  it('无 customer-activity:create 权限不出现活动创建入口', async () => {
+    const host = mount(portsFor());
+    element(host.querySelector('[data-testid="kt-customer-open"]')).click();
+    await flush();
+    expect(host.querySelector('[data-testid="kt-customer-add-activity"]')).toBeNull();
+  });
+
+  it('时间线类型筛选：多类型时呈现下拉，选择后仅保留匹配活动', async () => {
+    const activities = [
+      { id: 'a-1', type: 'NOTE', summary: '电话记录', occurredAt: '2026-11-20T08:00:00Z' },
+      { id: 'a-2', type: 'MEETING', summary: '现场拜访', occurredAt: '2026-11-19T08:00:00Z' },
+    ];
+    const host = mount(
+      portsFor([], {
+        load360: vi.fn().mockResolvedValue({ ...view360, activities }),
+      }),
+    );
+    element(host.querySelector('[data-testid="kt-customer-open"]')).click();
+    await flush();
+    const filter = element(
+      host.querySelector('[data-testid="kt-customer-activity-type-filter"]'),
+    ) as unknown as HTMLSelectElement;
+    expect(host.textContent).toContain('电话记录');
+    expect(host.textContent).toContain('现场拜访');
+    filter.value = 'NOTE';
+    filter.dispatchEvent(new Event('change', { bubbles: true }));
+    await flush();
+    expect(host.textContent).toContain('电话记录');
+    expect(host.textContent).not.toContain('现场拜访');
   });
 });

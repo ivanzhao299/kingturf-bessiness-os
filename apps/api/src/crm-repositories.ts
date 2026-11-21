@@ -142,6 +142,17 @@ const lead = (r: LeadRow): LeadDto => ({
   createdAt: timestamp(r.created_at),
   updatedAt: timestamp(r.updated_at),
 });
+// 与 createActivity/customer360 activities 投影逐字段一致（U3-CRM-4 复用）。
+const activityDto = (r: ActivityRow): ActivityDto => ({
+  id: r.id,
+  customerId: r.customer_id,
+  leadId: r.lead_id,
+  type: r.activity_type,
+  occurredAt: r.occurred_at,
+  actorId: r.actor_id,
+  summary: r.summary,
+  details: r.details,
+});
 const opportunity = (r: OpportunityRow): OpportunityDto => ({
   id: r.id,
   tenantId: r.tenant_id,
@@ -438,6 +449,39 @@ export class PostgresCrmRepository {
       version: row.version,
       createdAt: row.created_at,
     };
+  }
+
+  // U3-CRM-4（ADR-0015）：客户活动列表/详情只读（additive）——customer360 activities
+  // 同表同谓词同排序同投影（ActivityDto：type=activity_type；不含租户/幂等键列）。
+  public async listActivities(
+    customerId: string,
+    actor: Actor,
+    scopes: readonly DataScope[],
+    anchors: readonly ScopeAnchor[],
+  ): Promise<readonly ActivityDto[]> {
+    await this.requireScopedSubject(this.db, 'customers', customerId, actor, scopes, anchors);
+    return (
+      await this.db.query<ActivityRow>(
+        'SELECT * FROM customer_activities WHERE tenant_id=$1 AND customer_id=$2 ORDER BY occurred_at DESC,id LIMIT 100',
+        [actor.companyId, customerId],
+      )
+    ).rows.map(activityDto);
+  }
+  public async findActivity(
+    activityId: string,
+    customerId: string,
+    actor: Actor,
+    scopes: readonly DataScope[],
+    anchors: readonly ScopeAnchor[],
+  ): Promise<ActivityDto | null> {
+    await this.requireScopedSubject(this.db, 'customers', customerId, actor, scopes, anchors);
+    const row = (
+      await this.db.query<ActivityRow>(
+        'SELECT * FROM customer_activities WHERE id=$1 AND tenant_id=$2 AND customer_id=$3 LIMIT 1',
+        [activityId, actor.companyId, customerId],
+      )
+    ).rows[0];
+    return row ? activityDto(row) : null;
   }
   public async listLeads(
     actor: Actor,

@@ -99,6 +99,16 @@ export type CrmApi = {
   transitionCustomer(customer: Customer, status: string, reason: string): Promise<Customer>;
   addContact(customerId: string, name: string, email: string): Promise<void>;
   addActivity(customerId: string, summary: string): Promise<void>;
+  createActivity(
+    customerId: string,
+    input: {
+      leadId: string | null;
+      type: string;
+      occurredAt: string;
+      summary: string;
+      details: Record<string, unknown>;
+    },
+  ): Promise<Record<string, unknown>>;
   assignCustomer(customer: Customer, assigneeId: string, reason: string): Promise<Customer>;
   listPool(): Promise<readonly Lead[]>;
   listLeads(): Promise<readonly Lead[]>;

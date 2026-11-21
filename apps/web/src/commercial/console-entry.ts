@@ -400,6 +400,15 @@ export function appendCustomerConsole(content: HTMLElement, controller: CrmContr
       await controller.selectCustomer(customerId);
       return controller.selected;
     },
+    createActivity: async (customerId, payload) => {
+      // 活动创建走 controller.createActivity（additive：customer-activity:create 门 +
+      // 360 刷新），POST /api/v1/customers/:id/activities 生产由 Fastify 桥轨认领。
+      await controller.createActivity(
+        customerId,
+        payload as Parameters<typeof controller.createActivity>[1],
+      );
+      return null;
+    },
     createContact: async (customerId, payload) => {
       await controller.createContact(
         customerId,

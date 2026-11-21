@@ -17,5 +17,9 @@ export type CustomerConsolePorts = Readonly<{
     customerId: string,
     payload: Record<string, unknown>,
   ) => Promise<Readonly<Record<string, unknown>> | null>;
+  createActivity: (
+    customerId: string,
+    payload: Record<string, unknown>,
+  ) => Promise<Readonly<Record<string, unknown>> | null>;
   refresh: () => Promise<readonly CustomerRow[]>;
 }>;

@@ -47,6 +47,7 @@ const setup = (
     transitionCustomer: unused,
     addContact: unused,
     addActivity: unused,
+    createActivity: unused,
     assignCustomer: unused,
     listPool: unused,
     listLeads: unused,
