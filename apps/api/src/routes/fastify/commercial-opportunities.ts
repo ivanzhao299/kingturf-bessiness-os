@@ -7,20 +7,16 @@ import { z } from 'zod';
 import { authorizeQuery } from '../../policy.ts';
 import { permittedDto } from '../../app-values.ts';
 import type { OpportunityPage, OpportunityPageFilter } from '../../commercial-repositories.ts';
-import type { AuthorizationContext, ScopeAnchor } from '@kingturf/domain';
-import type { DataScope } from '@kingturf/types';
 import type { FastifyRouteGroupApp, FastifyRouteScope } from './registry.ts';
+import type { ApiDependencies } from '../../app.ts';
 
 export type { OpportunityPage, OpportunityPageFilter };
 
-export type OpportunityPageRepository = Readonly<{
-  listOpportunityPage: (
-    actor: AuthorizationContext['actor'],
-    scopes: readonly DataScope[],
-    anchors: readonly ScopeAnchor[],
-    filter: OpportunityPageFilter,
-  ) => Promise<OpportunityPage>;
-}>;
+// 仓储端口自真实依赖派生（S4：禁止结构重注解抹掉 provenance）。
+export type OpportunityPageRepository = Pick<
+  NonNullable<ApiDependencies['commercial']>,
+  'listOpportunityPage'
+>;
 
 const OPPORTUNITY_STATUSES = ['OPEN', 'QUALIFIED', 'PROPOSAL', 'WON', 'LOST', 'CANCELLED'] as const;
 
@@ -74,7 +70,7 @@ export function registerCommercialOpportunitiesRoutes(
   app: FastifyRouteGroupApp,
   scope: FastifyRouteScope,
 ): void {
-  const repository = scope.dependencies.commercial as unknown as OpportunityPageRepository | null;
+  const repository: OpportunityPageRepository | null = scope.dependencies.commercial ?? null;
   if (!repository)
     throw Object.assign(new Error('Commercial dependency unavailable'), { statusCode: 503 });
   app.get(

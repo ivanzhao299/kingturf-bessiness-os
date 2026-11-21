@@ -7,37 +7,15 @@
 import { z } from 'zod';
 import { authorizeQuery } from '../../policy.ts';
 import { mutationDto, permittedDto } from '../../app-values.ts';
-import type { AuthorizationContext, ScopeAnchor } from '@kingturf/domain';
-import type { DataScope, JsonObject } from '@kingturf/types';
+import type { JsonObject } from '@kingturf/types';
 import type { FastifyRouteGroupApp, FastifyRouteScope } from './registry.ts';
+import type { ApiDependencies } from '../../app.ts';
 
-export type SolutionRevisionRepository = Readonly<{
-  listCommercialView: (
-    view: 'ctrs' | 'solutions' | 'costs' | 'policies' | 'quotes',
-    actor: AuthorizationContext['actor'],
-    scopes: readonly DataScope[],
-    anchors: readonly ScopeAnchor[],
-  ) => Promise<readonly JsonObject[]>;
-  findTechnicalSolutionRevision: (
-    id: string,
-    actor: AuthorizationContext['actor'],
-    scopes: readonly DataScope[],
-    anchors: readonly ScopeAnchor[],
-  ) => Promise<JsonObject | null>;
-  createTechnicalSolutionRevision: (
-    technicalSolutionId: string,
-    input: {
-      ctrVersionId: string;
-      specification: JsonObject;
-      assumptions: readonly string[];
-      final: boolean;
-    },
-    actor: AuthorizationContext['actor'],
-    scopes: readonly DataScope[],
-    anchors: readonly ScopeAnchor[],
-    correlationId: string,
-  ) => Promise<JsonObject>;
-}>;
+// 仓储端口自真实依赖派生（S4：禁止结构重注解抹掉 provenance）。
+export type SolutionRevisionRepository = Pick<
+  NonNullable<ApiDependencies['commercial']>,
+  'listCommercialView' | 'findTechnicalSolutionRevision' | 'createTechnicalSolutionRevision'
+>;
 
 const SOLUTION_ROW_SCHEMA = z
   .object({
@@ -90,7 +68,7 @@ export function registerTechnicalSolutionRoutes(
   app: FastifyRouteGroupApp,
   scope: FastifyRouteScope,
 ): void {
-  const repository = scope.dependencies.commercial as unknown as SolutionRevisionRepository | null;
+  const repository: SolutionRevisionRepository | null = scope.dependencies.commercial ?? null;
   if (!repository)
     throw Object.assign(new Error('Commercial dependency unavailable'), { statusCode: 503 });
   const readFields = scope.authorization.permissions.get('technical-solution:read')?.fields;
