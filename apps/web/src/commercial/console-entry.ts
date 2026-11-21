@@ -20,6 +20,7 @@ import type { CtrConsolePorts } from './console/ctr-ports';
 import type { PolicyConsolePorts } from './console/policy-ports';
 import type { CreditConsolePorts } from './console/credit-ports';
 import type { LeadConsolePorts } from './console/lead-ports';
+import type { CustomerConsolePorts } from './console/customer-ports';
 import { setAppRoute } from '../shared/navigation';
 import type { ConsoleMountPorts } from './console/mount';
 
@@ -378,4 +379,36 @@ function firstArg(state: Record<string, unknown>): string {
 }
 function reasonArg(state: Record<string, unknown>): string {
   return typeof state.reason === 'string' ? state.reason : '';
+}
+
+export function appendCustomerConsole(content: HTMLElement, controller: CrmController): void {
+  const ports: CustomerConsolePorts = {
+    permissions: controller.permissions,
+    initialCustomers: controller.customers,
+    opportunities: [],
+    textValue: (value, fallback = '') =>
+      typeof value === 'string' || typeof value === 'number' ? String(value) : fallback,
+    submit: async (_path, payload, method) => {
+      // 客户创建走 legacy POST（controller.createCustomer）；PUT 更新为桥轨 API 端点，
+      // legacy web 无既有编辑表单——控制台亦不提供（method 非 POST 时拒绝以防误调）。
+      if (method !== undefined && method !== 'POST')
+        throw new Error('Customer updates are not available in this console');
+      await controller.createCustomer(payload as Parameters<typeof controller.createCustomer>[0]);
+      return null;
+    },
+    load360: async (customerId) => {
+      await controller.selectCustomer(customerId);
+      return controller.selected;
+    },
+    refresh: async () => {
+      await controller.load();
+      return controller.customers;
+    },
+  };
+  content.append(
+    createConsoleHost('customers', 'kt-commercial-customers', {
+      kind: 'customers',
+      ports,
+    }),
+  );
 }

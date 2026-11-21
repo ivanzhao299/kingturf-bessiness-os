@@ -30,7 +30,8 @@ type Customer360Context = Readonly<{
   ) => Partial<T>;
 }>;
 
-function readCustomer360SectionGrant(
+// U3-CRM-2（ADR-0015）：360 读取链助手导出（fastify/customers.ts 复用，零漂移）。
+export function readCustomer360SectionGrant(
   context: Customer360Context,
   capability: PermissionKey,
 ): Sections['ownership'] {
@@ -39,7 +40,7 @@ function readCustomer360SectionGrant(
   return { scopes: grant.scopes, anchors: grant.anchors };
 }
 
-function projectCustomer360Item<T extends Record<string, unknown>>(
+export function projectCustomer360Item<T extends Record<string, unknown>>(
   context: Customer360Context,
   fields: ViewFields,
   prefix: string,
@@ -64,7 +65,7 @@ function projectCustomer360Item<T extends Record<string, unknown>>(
   return context.permittedDto(item, effectiveFields);
 }
 
-function projectCustomer360Result(
+export function projectCustomer360Result(
   context: Customer360Context,
   fields: ViewFields,
   found: Customer360,
