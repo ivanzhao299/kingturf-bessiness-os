@@ -59,8 +59,8 @@
 
 ## 6. 提交与回执
 
-- 提交：见 git log `feat(commercial): wire fastify route group into production and migrate solution console [已测试]`
-- ci:local：NODE_ENV=test（kingturf_test），干净提交快照，EXIT=0 全链
+- 提交链（0ff66bd..69c1784，均已 push）：`5b4a535` feat（接线+方案控制台主体）→ `cba0982` fix（S4 仓储端口 Pick 派生，service-boundary 门禁驱动）→ `962bfdd` fix（looseObject 出站透传 + opportunity 契约夹具补 listOpportunityPage/DTO 形状）→ `69c1784` test（f3 保全对拍剥离已批桥挂载，A1/A-F2a 先例同款；探针剥离仅施于 current 侧——基线自身拥有其 commercial 行）
+- ci:local：NODE_ENV=test（kingturf_test），69c1784 干净快照 EXIT=0 全链（API 165 文件 17,826 测试；Web 481；coverage/structure/service-boundary/build 守卫/security 全过）
 - e2e P1：11 passed / 0 failed（优于基线，接线事故修复后复跑）
 - 未 dispatch workflow；未触 `.github/workflows/`
 
