@@ -38,7 +38,13 @@
 | structure-gate / service-boundary   | 0 强制违规 / 0 违规                                                                     |
 | e2e P1                              | **11 passed / 0 failed（24.7s）、零 500**——优于基线（矩阵摘要/详情已真实走 Fastify 桥） |
 
-## 5. 边界与后续
+## 5. 提交链与门禁修正（如实记录）
+
+- 提交链（4680d03..本批 HEAD，均已 push）：`524becf` feat（矩阵端点组+控制台+退役）→ `96e270c` fix（G5：五个矩阵动作提取为 costMatrixActions 工厂 over signal bundle；formatting 归一）。
+- 首轮 ci:local 唯一失败为 G5（209 行），拆分后 EXIT=0。
+- ci:local：NODE_ENV=test（kingturf_test），干净快照 **EXIT=0 全链**。
+
+## 6. 边界与后续
 
 - legacy cost-matrix 三路由仍完整在轨（calculate/quote-cost-decision/add-factor/校验链共用）。
 - 后续子批：CTR → 销售政策 → 信用审查。
