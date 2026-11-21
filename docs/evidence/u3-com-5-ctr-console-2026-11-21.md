@@ -35,7 +35,13 @@
 | structure-gate / service-boundary   | 0 强制违规（CTRS_VIEW_SELECT 按指引登记）/ 0 违规                      |
 | e2e P1                              | **11 passed / 0 failed（24.6s）、零 500**——CTR 列表已真实走 Fastify 桥 |
 
-## 5. 边界与后续
+## 5. 提交与回执（如实记录）
+
+- 提交：`ef86c05` feat（本批主体，单提交；过程 typecheck/lint 问题在提交前闭环）。
+- ci:local：NODE_ENV=test（kingturf_test），干净快照 **EXIT=0 全链**（API 17845 测试；Web 488；coverage/structure/service-boundary/build 守卫/security 全过）。
+- 首轮过程中发现并修复：桥未透传原始请求头（幂等键）→ registry headers 透传（生产关键项，CTR 命令依赖）。
+
+## 6. 边界与后续
 
 - legacy ctr.ts 三命令端点（submit/decision/attachments）+ POST /versions + nested reads 全部保留在轨（双轨）。
 - 后续子批：销售政策 → 信用审查。
