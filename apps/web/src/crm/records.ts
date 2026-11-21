@@ -1,7 +1,7 @@
 import { el } from '../dom';
 import { visibleCrmSections, type CrmController } from './controller';
 import { appendCustomerList, appendCustomerDetail } from './customer-records';
-import { appendLeadList } from './lead-records';
+import { appendLeadConsole } from '../commercial/console-entry';
 import type { CrmRecordPorts, SelectedCrmController } from './record-ports';
 
 export function createCrmRecords(
@@ -11,7 +11,7 @@ export function createCrmRecords(
 ): HTMLElement {
   const sections = visibleCrmSections(controller.permissions);
   const content = el('section', 'crm-records');
-  content.setAttribute('data-route-view', 'customers leads');
+  content.setAttribute('data-route-view', 'customers');
   if (controller.error) {
     const notice = el('p', 'error', controller.error);
     notice.setAttribute('role', 'alert');
@@ -40,19 +40,18 @@ export function createCrmRecords(
   };
   const sectionHeader = el('div', 'section-heading');
   sectionHeader.append(el('div', '', '今日业务'), el('span', '', '数据实时来自业务台账'));
-  sectionHeader.setAttribute('data-route-view', 'leads customers');
+  sectionHeader.setAttribute('data-route-view', 'customers');
   content.append(sectionHeader);
   const split = el('section', 'split');
-  split.setAttribute('data-route-view', 'leads customers');
+  split.setAttribute('data-route-view', 'customers');
   if (sections.customers) {
     appendCustomerList(split, shell, controller, pagination, ports);
   }
   if (sections.customer360 && controller.selected) {
     appendCustomerDetail(split, shell, controller as SelectedCrmController, employeeChoices, ports);
   }
-  if (sections.leads) {
-    appendLeadList(split, shell, controller, sections, employeeChoices, pagination, ports);
-  }
+  // U3-CRM-1：线索列表迁移至 Preact 线索控制台（宿主挂 content，data-route-view=leads）。
+  if (sections.leads) appendLeadConsole(content, controller);
   content.append(split);
   return content;
 }

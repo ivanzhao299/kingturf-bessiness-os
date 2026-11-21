@@ -167,6 +167,18 @@ const CRM_SCOPE_POOL: RecordScopeOptions = {
   anchorGuard: 'typed',
   includeUnownedPool: true,
 };
+// U3-CRM-1（ADR-0015）：线索 keyset 分页契约（单一来源，fastify/leads.ts 引用）。
+export type LeadPageFilter = Readonly<{
+  limit: number;
+  cursor?: string;
+  status?: string;
+  pool?: boolean;
+}>;
+export type LeadPage = Readonly<{
+  items: readonly ReturnType<typeof lead>[];
+  nextCursor: string | null;
+}>;
+
 export class PostgresCrmRepository {
   public constructor(private readonly db: Db) {}
   private async requireScopedSubject(
@@ -393,6 +405,66 @@ export class PostgresCrmRepository {
         [actor.companyId, ...authorized.values],
       )
     ).rows.map(lead);
+  }
+
+  // U3-CRM-1（ADR-0015）：线索 keyset cursor 分页只读（additive）——排序键
+  // (created_at,id) 与 listLeads 一致；pool 过滤同 CRM_SCOPE_POOL 语义。
+  public async listLeadPage(
+    actor: Actor,
+    scopes: readonly DataScope[],
+    anchors: readonly ScopeAnchor[],
+    filter: LeadPageFilter,
+  ): Promise<LeadPage> {
+    const authorized = recordScopeSql(
+      scopes,
+      anchors,
+      actor,
+      'l',
+      2,
+      filter.pool ? CRM_SCOPE_POOL : CRM_SCOPE,
+    );
+    const values: unknown[] = [actor.companyId, ...authorized.values];
+    const add = (value: unknown): string => {
+      values.push(value);
+      return `$${String(values.length)}`;
+    };
+    const predicate = filter.pool ? `(l.status='POOL' AND ${authorized.sql})` : authorized.sql;
+    const clauses: string[] = [];
+    if (filter.status) clauses.push(`l.status=${add(filter.status)}`);
+    if (filter.cursor) {
+      const parameter = add(filter.cursor);
+      clauses.push(
+        `(l.created_at,l.id)>(SELECT x.created_at,x.id FROM leads x WHERE x.tenant_id=$1 AND x.id=${parameter}::uuid)`,
+      );
+    }
+    const limit = Math.min(Math.max(filter.limit, 1), 100);
+    values.push(limit + 1);
+    const rows = (
+      await this.db.query<LeadRow>(
+        `SELECT l.* FROM leads l WHERE l.tenant_id=$1 AND l.deleted_at IS NULL AND ${predicate}${clauses.length > 0 ? ` AND ${clauses.join(' AND ')}` : ''} ORDER BY l.created_at,l.id LIMIT $${String(values.length)}`,
+        values,
+      )
+    ).rows;
+    return {
+      items: rows.map(lead),
+      nextCursor: rows.length > limit ? (rows[limit - 1]?.id ?? null) : null,
+    };
+  }
+  // U3-COM-7（ADR-0015）沿用：单行只读（additive；listLeads 同谓词）。
+  public async findLead(
+    id: string,
+    actor: Actor,
+    scopes: readonly DataScope[],
+    anchors: readonly ScopeAnchor[],
+  ): Promise<LeadRow | null> {
+    const authorized = recordScopeSql(scopes, anchors, actor, 'l', 2, CRM_SCOPE);
+    const row = (
+      await this.db.query<LeadRow>(
+        `SELECT l.* FROM leads l WHERE l.id=$1 AND l.tenant_id=$2 AND l.deleted_at IS NULL AND ${authorized.sql}`,
+        [id, actor.companyId, ...authorized.values],
+      )
+    ).rows[0];
+    return row ?? null;
   }
   public async createLead(
     input: { title: string; source: string; customerId: string | null; pool: boolean },

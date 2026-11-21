@@ -9,6 +9,8 @@ import { el } from '../dom';
 import type { SalesViewController, SalesViewPorts } from './sales-view-ports';
 import type { PricingViewController, PricingViewPorts } from './pricing-view-ports';
 import type { CreditContractViewContext } from './credit-contract-view-ports';
+import type { CrmController } from '../crm/controller';
+import type { Lead } from '../crm/types';
 import { itemVersionOptions } from './cost-factor-form';
 import type { OpportunityListPorts } from './console/opportunity-list';
 import type { SolutionConsolePorts } from './console/solution-ports';
@@ -17,6 +19,7 @@ import type { CostMatrixConsolePorts } from './console/cost-matrix-ports';
 import type { CtrConsolePorts } from './console/ctr-ports';
 import type { PolicyConsolePorts } from './console/policy-ports';
 import type { CreditConsolePorts } from './console/credit-ports';
+import type { LeadConsolePorts } from './console/lead-ports';
 import { setAppRoute } from '../shared/navigation';
 import type { ConsoleMountPorts } from './console/mount';
 
@@ -319,4 +322,60 @@ export function appendCreditConsole(context: CreditContractViewContext): void {
       ports,
     }),
   );
+}
+
+export function appendLeadConsole(workspace: HTMLElement, controller: CrmController): void {
+  const employeeChoices = controller.employees
+    .filter((item: { active?: boolean }) => item.active !== false)
+    .map((item: { id: string; displayName?: string }) => ({
+      value: item.id,
+      label: item.displayName ?? item.id,
+    }));
+  const ports: LeadConsolePorts = {
+    permissions: controller.permissions,
+    initialLeads: controller.leads,
+    poolMode: false,
+    employeeChoices,
+    textValue: (value, fallback = '') =>
+      typeof value === 'string' || typeof value === 'number' ? String(value) : fallback,
+    submit: async (_path, payload, method) => {
+      // 线索写路径委托 CrmController（POST 创建/PUT state 经既有 api 面）。
+      if (method === 'PUT') {
+        const state = payload as { action?: string; lead?: Lead };
+        const lead = state.lead;
+        if (state.action === 'claim' && lead) await controller.claim(lead);
+        else if (lead)
+          await controller.mutateLead(
+            lead,
+            actionKind(state.action),
+            firstArg(state),
+            reasonArg(state),
+          );
+        return null;
+      }
+      await controller.createLead(payload as Parameters<typeof controller.createLead>[0]);
+      return null;
+    },
+    refresh: async () => {
+      await controller.load();
+      return controller.leads;
+    },
+  };
+  workspace.append(createConsoleHost('leads', 'kt-commercial-leads', { kind: 'leads', ports }));
+}
+
+function actionKind(action?: string): 'lifecycle' | 'assignment' | 'release' {
+  if (action === 'release') return 'release';
+  if (action === 'assign' || action === 'reassign') return 'assignment';
+  return 'lifecycle';
+}
+function firstArg(state: Record<string, unknown>): string {
+  return typeof state.status === 'string'
+    ? state.status
+    : typeof state.assigneeId === 'string'
+      ? state.assigneeId
+      : '';
+}
+function reasonArg(state: Record<string, unknown>): string {
+  return typeof state.reason === 'string' ? state.reason : '';
 }
