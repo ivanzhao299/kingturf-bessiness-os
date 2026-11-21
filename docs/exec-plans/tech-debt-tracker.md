@@ -1,5 +1,9 @@
 # 技术债台账（tech-debt-tracker）
 
+## 2026-11-21 U3-COM 商机域全栈迁移收官（TD-UI-001 进展）
+
+commercial 域七子批（U3-COM-1..7）全部完成并上生产（3cd897b，run 44870441719 success）：提交链 0ff66bd→3cd897b 共 17 提交（各子批 feat + 门禁驱动 fix + docs receipt）。**Fastify 现代化**：registry 认领 27 路径/8 端点文件（opportunities/technical-solutions/quotes/cost-matrices/ctr/sales-policies/credit-review），生产桥挂 app.ts dispatch（认证/cookie-CSRF/MUST_CHANGE 门之后、legacy 组之前），行为守恒 parity 深比对全覆盖（legacy dispatch vs 生产桥逐字节相等）；桥基础设施修复三项如实记录（pg Date→ISO 归一化、undefined→null 序列化、原始请求头透传）。**Preact 控制台**：七个 vanilla workbench 退役（opportunities/solutions/quotes/cost-matrices/ctr/policy/credit 合计约 1,700 行），每域 PageHeader+DataTable+DetailDrawer+行级操作，factor/policy 域常量单一来源共享。**验证**：每子批 e2e P1 11/11 全绿零 500、契约 79/79..573/573 无改动或按 re-pin 先例适配、每批 ci:local EXIT=0 全链。**TD-UI-001 状态更新**：U1 基座+U2 governance 九页+U3-COM 商机域七子批已上生产；U3-CRM 起待续。各子批证据见 docs/evidence/u3-com-{1..7}-\*.md 与 docs/index.md。
+
 ## 2026-11-20 发布事故收口与 A-F2 上线终态
 
 迁移计数绑定漏改（application_release.py 原:113 残留 ==74）致 1 小时 46 分停机（23:52:43Z→01:38Z，六 run 时间线见[事故终录](../evidence/release-incident-2026-11-20.md)），`7ec11c9` 修复后 run6 44653650230 全绿恢复：生产 /version=7ec11c9、schema 75、A-F2 全部安全修复（持久锁定/弱口令/字段投影/TEAM depth/空闲超时，db1e774+96c268e）上线。**TD-REL-008 关闭**（D1 双路径终验：run2 迁移段 COMPLETED+run6 零迁移切换合计走通）；**TD-SEC-013 关闭**；TD-SEC-014 更新（余 SoD/authorization:manage=A-F4）；新登记 TD-REL-009（P2：from None 吞错模式三次咬人，549ce7d 部分改善，全量清除另批）与 TD-REL-010（P3：迁移计数多处硬编码建议单一常量/manifest 派生）。执行会话 sess_48d21950 退役（模型受限+两次越权自决 dispatch；制度新增：执行会话直接指令一律经主协调中转、dispatch 输入机械复制）。

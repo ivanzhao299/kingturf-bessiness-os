@@ -86,6 +86,7 @@
 [U3-COM-5 CTR 控制台+Fastify ctr 端点组证据](evidence/u3-com-5-ctr-console-2026-11-21.md)：ctr 四端点（GET 列表视图迁移/GET 详情 findCtr/POST 创建 legacy 链/PUT state 状态流转 submit|decide 分派）、CTR 控制台（版本差异/方案关联/批准驳回确认/附件上传三重门）、旧 ctr-view 退役、桥请求头透传修复与 e2e 11/11。
 [U3-COM-6 销售政策控制台+Fastify sales-policies 端点组证据](evidence/u3-com-6-policy-console-2026-11-21.md)：四端点（GET 列表无裁剪/GET 详情 findDefinition/POST 创建 legacy 链/PUT 版本发布别名）、政策控制台（毛利规则/版本历史/评估门三重/判定卡片）、undefined→null 桥序列化修复、旧 policy-view 退役与 e2e 11/11。
 [U3-COM-7 信用审查控制台+Fastify credit-review 端点组证据](evidence/u3-com-7-credit-console-2026-11-21.md)：六端点（GET 双列表/GET 决定详情/POST 额度+评估/PUT 审批决定别名，qtc 依赖运行时 503 门）、信用控制台（状态筛选/敞口额度/批准拒绝）、旧 credit-view 退役、e2e 定位器适配与 11/11——commercial 域七子批收官。
+[U3-COM 商机域全栈迁移收官](exec-plans/tech-debt-tracker.md)：七子批 0ff66bd→3cd897b 共 17 提交、Fastify registry 27 路径/8 文件、七 workbench 退役约 1,700 行、e2e P1 全绿零 500、parity 全覆盖，已上生产（run 44870441719）——TD-UI-001 进展更新。
 [Wave1生产部署记录](evidence/wave1-deployment-2026-11-18.md)
 [Wave2生产部署终录](evidence/wave2-deployment-2026-11-19.md)
 [Wave2部署终录·R批更新](evidence/wave2-deployment-2026-11-19.md)：TD-REL-006 死信处置164清零、TD-REL-007 rehearsal harness、staged 7目录清理——三项遗留全部关闭（见§5）。：迁移74+recover全绿、/health时间线（78分钟停机）、交接守卫三分支、TD终态与保全清理清单——系统管理优化计划收官。
