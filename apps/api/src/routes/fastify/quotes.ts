@@ -122,7 +122,7 @@ export function registerQuoteRoutes(app: FastifyRouteGroupApp, scope: FastifyRou
     throw Object.assign(new Error('Commercial dependency unavailable'), { statusCode: 503 });
   const readFields = scope.authorization.permissions.get('quote:read')?.fields;
   const legacyContext = () => ({
-    repository: scope.dependencies.commercial,
+    repository,
     authorization: scope.authorization,
     correlationId: scope.correlationId,
     authorize: (

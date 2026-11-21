@@ -8,7 +8,7 @@ import { dispatchFastifyRouteGroup } from '../../src/routes/fastify/registry.ts'
 
 // U3-COM-3：quotes Fastify 组契约测试——GET 列表（cursor 分页/状态筛选/遮蔽/键守恒）、
 // GET 详情、POST 创建与 PUT 版本（legacy 同解析链：消息/输入/响应逐字节一致）。
-const quoteRow: JsonObject = {
+const quoteRow = {
   id: '33333333-3333-4333-8333-333333333333',
   quoteId: '44444444-4444-4444-8444-444444444444',
   opportunityId: '22222222-2222-4222-8222-222222222222',
@@ -43,7 +43,7 @@ const quoteRow: JsonObject = {
   approvals: [],
   issuedSnapshotId: null,
   issuedSnapshotHash: null,
-};
+} as unknown as JsonObject;
 
 const repositoryCalls: { method: string; args: unknown[] }[] = [];
 
