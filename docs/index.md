@@ -90,6 +90,7 @@
 [U3-CRM-1 线索控制台+Fastify leads 端点组证据](evidence/u3-crm-1-lead-console-2026-11-21.md)：五端点（GET 列表/pool keyset 分页/GET 详情 findLead/POST 创建/PUT state 统一动作 claim|transition|assign|reassign|release）、线索控制台（状态筛选/认领/变更状态/分配改派释放/权限门保持）、crm-records 装配迁移与 e2e 11/11。
 [U3-CRM-2 客户管理控制台+Fastify customers 端点组证据](evidence/u3-crm-2-customer-console-2026-11-21.md)：四端点（GET 列表/GET 详情/GET 客户 360 同链投影/POST 创建）、客户控制台（状态筛选/360 抽屉三区渲染/创建 tags 切分）、customer-records 客户区改挂控制台与 e2e 11/11。
 [U3-CRM-3 联系人端点组+控制台联系人创建证据](evidence/u3-crm-3-contact-console-2026-11-21.md)：三端点（GET 列表/详情 additive 只读含 sensitive 门/POST 创建 legacy 链）、客户抽屉联系人创建表单（customer:update 门）、PUT 更新如实不提供（legacy 无此操作，待独立人裁）与契约 113/113。
+[U3-CRM-4 客户活动端点组+控制台时间线增强证据](evidence/u3-crm-4-activity-console-2026-11-21.md)：三端点（GET 列表 type 筛选/GET 详情客户绑定/POST 创建 legacy 链，registry 43 路径）、活动时间线增强（字段名守恒修正/类型筛选/创建入口经桥轨 controller.createActivity）、契约 66/66 与 e2e 11/11 零 500——CRM 域四子批完成待整域收口。
 [Wave1生产部署记录](evidence/wave1-deployment-2026-11-18.md)
 [Wave2生产部署终录](evidence/wave2-deployment-2026-11-19.md)
 [Wave2部署终录·R批更新](evidence/wave2-deployment-2026-11-19.md)：TD-REL-006 死信处置164清零、TD-REL-007 rehearsal harness、staged 7目录清理——三项遗留全部关闭（见§5）。：迁移74+recover全绿、/health时间线（78分钟停机）、交接守卫三分支、TD终态与保全清理清单——系统管理优化计划收官。
