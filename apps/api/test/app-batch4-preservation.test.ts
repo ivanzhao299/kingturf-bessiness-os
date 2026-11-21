@@ -97,6 +97,13 @@ describe('Batch4 app extraction against fixed f3 complete request traces', () =>
     'POST /api/v1/credit-limits',
     'GET /api/v1/credit-decisions',
     'POST /api/v1/credit-decisions',
+    // U3-CRM-1（同批已批）：线索路径场景经生产桥。GET 两场景原为 f3 冻结遗留缺陷
+    //（未认证/解析序崩溃返回 500）——桥轨正确返回 200 空列表，e2e P1 佐证；按
+    // A1-P3/A-F2a 已批 re-pin 先例钉定新响应形态。
+    'GET /api/v1/leads',
+    'GET /api/v1/leads/pool',
+    'POST /api/v1/leads',
+    'PUT /api/v1/leads',
   ]);
   const preserveWithStrip = (result: {
     name: string;
@@ -130,6 +137,33 @@ describe('Batch4 app extraction against fixed f3 complete request traces', () =>
           trace?: unknown[];
           [key: string]: unknown;
         };
+        // U3-CRM-1：f3 冻结的 GET /leads 与 /leads/pool 500 为遗留缺陷——桥轨按
+        // 已批迁移语义返回 200 空列表（e2e P1 佐证）；re-pin 钉定新响应形态与
+        // 桥轨仓储调用（listLeadPage：actor/COMPANY/空锚/limit=100 默认过滤）。
+        if (row.name === 'GET /api/v1/leads' || row.name === 'GET /api/v1/leads/pool') {
+          expect(pinnedCurrent.response).toEqual({
+            statusCode: 200,
+            body: { items: [] },
+            headers: (pinnedBaseline.response as { headers: unknown }).headers,
+          });
+          expect(terminalCalls(pinnedCurrent)).toEqual([
+            [
+              'call',
+              'crm',
+              'listLeadPage',
+              [
+                {
+                  employeeId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+                  companyId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+                },
+                ['COMPANY'],
+                [],
+                { limit: 100, pool: row.name.endsWith('pool') },
+              ],
+            ],
+          ]);
+          return;
+        }
         expect(pinnedCurrent.response).toEqual(pinnedBaseline.response);
         expect(terminalCalls(pinnedCurrent)).toEqual(terminalCalls(pinnedBaseline));
         return;
