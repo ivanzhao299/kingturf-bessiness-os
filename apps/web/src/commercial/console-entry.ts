@@ -8,9 +8,12 @@ import './console/commercial-console.css';
 import { el } from '../dom';
 import type { SalesViewController, SalesViewPorts } from './sales-view-ports';
 import type { PricingViewController, PricingViewPorts } from './pricing-view-ports';
+import { itemVersionOptions } from './cost-factor-form';
 import type { OpportunityListPorts } from './console/opportunity-list';
 import type { SolutionConsolePorts } from './console/solution-ports';
 import type { QuoteConsolePorts, QuoteSnapshot } from './console/quote-ports';
+import type { CostMatrixConsolePorts } from './console/cost-matrix-ports';
+import { setAppRoute } from '../shared/navigation';
 import type { ConsoleMountPorts } from './console/mount';
 
 const createConsoleHost = (
@@ -137,4 +140,62 @@ export function appendQuoteConsole(
     },
   };
   workspace.append(createConsoleHost('quotes', 'kt-commercial-quotes', { kind: 'quotes', ports }));
+}
+
+export function appendCostMatrixConsole(
+  workspace: HTMLElement,
+  controller: PricingViewController,
+  permissions: ReadonlySet<string>,
+  pricingViewPorts: PricingViewPorts,
+): void {
+  const summaries = controller.api.listCostMatrixSummaries?.bind(controller.api);
+  const initialMatrices = controller.views.get('/api/v1/cost-matrices') ?? [];
+  const ports: CostMatrixConsolePorts = {
+    permissions,
+    initialQuery: controller.costMatrixQuery,
+    initialPage: {
+      items: initialMatrices,
+      total: initialMatrices.length,
+      page: controller.costMatrixQuery.page,
+      pageSize: controller.costMatrixQuery.pageSize,
+    },
+    itemVersions: itemVersionOptions(
+      controller.views.get('/api/v1/manufacturing-items') ?? [],
+      pricingViewPorts.textValue,
+    ),
+    roleGuidance: (rolePermissions) => pricingViewPorts.costMatrixRoleGuidance(rolePermissions),
+    textValue: (value, fallback = '') => pricingViewPorts.textValue(value, fallback),
+    recordValue: (value) => pricingViewPorts.recordValue(value),
+    decimalValue: (value) => pricingViewPorts.decimalValue(value),
+    querySummaries: async (update) => {
+      const query = { ...controller.costMatrixQuery, ...update };
+      return summaries
+        ? await summaries(query)
+        : { items: [], total: 0, page: query.page, pageSize: query.pageSize };
+    },
+    loadMatrix: async (id) => {
+      const read = controller.api.get;
+      if (!read) return null;
+      return await read(`/api/v1/cost-matrices/${id}`);
+    },
+    submit: async (path, payload, method) => {
+      await controller.submit(path, payload, method);
+      return controller.revisionState;
+    },
+    navigateToQuotes: () => {
+      setAppRoute('quotes');
+    },
+    refresh: async () => {
+      const query = { ...controller.costMatrixQuery };
+      return summaries
+        ? await summaries(query)
+        : { items: [], total: 0, page: query.page, pageSize: query.pageSize };
+    },
+  };
+  workspace.append(
+    createConsoleHost('costing', 'kt-commercial-cost-matrices', {
+      kind: 'cost-matrices',
+      ports,
+    }),
+  );
 }

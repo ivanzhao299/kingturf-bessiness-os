@@ -7,6 +7,7 @@ import {
   appendOpportunityConsole,
   appendSolutionConsole,
   appendQuoteConsole,
+  appendCostMatrixConsole,
 } from './console-entry';
 import { appendCtrView } from './ctr-view';
 import { appendCostView } from './cost-view';
@@ -42,6 +43,8 @@ export function appendWorkspaceSales(
       permissions.has('cost-matrix:read'))
   ) {
     appendCostView({ workspace, status, controller, permissions, ports: pricingViewPorts });
+    // U3-COM-4：矩阵区迁移至 Preact 控制台（原 vanilla ledger/detail 随本次迁移退役）。
+    appendCostMatrixConsole(workspace, controller, permissions, pricingViewPorts);
   }
   if (controller && permissions.has('sales-policy:read')) {
     appendPolicyView({ workspace, status, controller, permissions, ports: pricingViewPorts });

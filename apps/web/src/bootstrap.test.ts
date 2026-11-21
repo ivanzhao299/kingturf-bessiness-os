@@ -319,16 +319,11 @@ it('captures artificial-turf project handoff fields without test-channel evidenc
       'export function SolutionConsolePage',
     ),
     readBoundSource('./commercial/cost-view.ts', 'export function appendCostView'),
-    readBoundSource(
-      './commercial/cost-matrix-bindings.ts',
-      'export function createCostMatrixBindings',
-    ),
     readBoundSource('./commercial/cost-factor-form.ts', 'export function createCostFactorFields'),
     readBoundSource(
-      './commercial/cost-matrix-detail.ts',
-      'export function appendCostDetailActions',
+      './commercial/console/cost-matrix-console.tsx',
+      'export function CostMatrixConsolePage',
     ),
-    readBoundSource('./commercial/cost-matrix-ledger.ts', 'export function appendCostLedgerRows'),
     readBoundSource('./commercial/cost-model-heading.ts', 'export function appendCostModelHeading'),
     readBoundSource(
       './commercial/cost-model-evaluations.ts',
@@ -1708,13 +1703,10 @@ describe('web bootstrap', () => {
       false,
       controller,
     ) as unknown as RenderedElement;
-    expect(workspace.findByClass('cost-matrix-ledger')).toHaveLength(1);
-    expect(workspace.findByClass('cost-matrix-ledger-row')).toHaveLength(2);
-    expect(workspace.findByClass('cost-matrix-search')).toHaveLength(1);
-    expect(workspace.findByClass('cost-matrix-card')).toHaveLength(0);
-    expect(workspace.textContent).toContain('规格成本模型台账');
-    expect(workspace.textContent).toContain('PRESET-LANDSCAPE-20');
-    expect(workspace.textContent).toContain('系统预置');
+    expect(workspace.findByClass('costing-console')).toHaveLength(1);
+    const matrixHost = workspace.findByClass('costing-console')[0];
+    expect(matrixHost?.getAttribute('data-route-view')).toBe('costing');
+    expect(matrixHost?.getAttribute('data-testid')).toBe('kt-commercial-cost-matrices');
   });
 
   it('refreshes only the requested commercial views after a focused mutation', async () => {
@@ -1771,149 +1763,22 @@ describe('web bootstrap', () => {
       controller.selectedCostMatrixId,
       controller.views.get('/api/v1/cost-matrices')?.[0] ?? {},
     );
-    const workspace = commercialWorkspaceStructure(
-      'desktop',
-      false,
-      controller,
-    ) as unknown as RenderedElement;
-
-    expect(workspace.findByText('添加成本因子')).toHaveLength(1);
-    const source = [
-      readBoundSource('./commercial/cost-factor-form.ts', 'export function createCostFactorFields'),
-      readBoundSource(
-        './commercial/cost-matrix-detail.ts',
-        'export function appendCostDetailActions',
-      ),
-    ].join('\n');
+    const source = readBoundSource(
+      './commercial/cost-factor-form.ts',
+      'export function createCostFactorFields',
+    );
     expect(source).toContain("name: 'priceSourceName'");
     expect(source).toContain("name: 'priceEffectiveAt'");
     expect(source).toContain("name: 'priceNote'");
-    expect(source).toContain(
-      "await refreshCostWorkspace(`${values.factorName ?? '成本因子'}已添加并显示`)",
-    );
   });
 
-  it('shows immediate progress and a refreshed total after one-click cost calculation', async () => {
-    let calculated = false;
-    const api = {
-      listOpportunities: vi.fn().mockResolvedValue([]),
-      list: vi.fn().mockImplementation((path: string) =>
-        Promise.resolve(
-          path === '/api/v1/cost-matrices'
-            ? [
-                {
-                  id: 'matrix-1',
-                  code: 'PRESET-LANDSCAPE-20',
-                  name: '景观休闲草 20mm',
-                  currency: 'CNY',
-                  defaultTaxRate: '0.13',
-                  isSystemPreset: true,
-                  factors: [],
-                  ...(calculated
-                    ? {
-                        latestCalculation: {
-                          pricingMode: 'TAX_INCLUSIVE',
-                          directProductionCost: '18.5',
-                          reservedExpenseCost: '1.5',
-                          totalCost: '20',
-                          calculatedAt: '2026-08-29T09:00:00.000Z',
-                        },
-                      }
-                    : {}),
-                },
-              ]
-            : [],
-        ),
-      ),
-      submit: vi.fn().mockImplementation(() => {
-        calculated = true;
-        return Promise.resolve({ totalCost: '20' });
-      }),
-      uploadCtrAttachment: vi.fn().mockResolvedValue({}),
-      command: vi.fn().mockResolvedValue({}),
-    };
-    const controller = new CommercialController(
-      api,
-      new Set(['cost-matrix:read', 'cost-matrix:calculate']),
+  it('matrix calculate flows move to the console (coverage in cost-matrix-console.test.tsx)', () => {
+    const source = readBoundSource(
+      './commercial/console/cost-matrix-console.tsx',
+      'export function CostMatrixConsolePage',
     );
-    await controller.load();
-    controller.selectedCostMatrixId = 'matrix-1';
-    controller.costMatrixDetails.set(
-      controller.selectedCostMatrixId,
-      controller.views.get('/api/v1/cost-matrices')?.[0] ?? {},
-    );
-    const workspace = commercialWorkspaceStructure(
-      'desktop',
-      false,
-      controller,
-    ) as unknown as RenderedElement;
-    const calculate = workspace.findByText('重新核算含税成本')[0];
-    const feedback = workspace.findByClass('cost-matrix-action-status')[0];
-    const globalStatus = workspace.findByClass('commercial-status')[0];
-
-    calculate?.click();
-
-    expect(calculate?.disabled).toBe(true);
-    expect(calculate?.textContent).toBe('核算中…');
-    expect(feedback?.textContent).toContain('正在核算含税成本');
-    await vi.waitFor(() => {
-      expect(api.submit).toHaveBeenCalledWith(
-        '/api/v1/cost-matrices/matrix-1/calculate',
-        {
-          pricingMode: 'TAX_INCLUSIVE',
-        },
-        'POST',
-      );
-      expect(controller.views.get('/api/v1/cost-matrices')?.[0]?.latestCalculation).toBeTruthy();
-      expect(globalStatus?.textContent).toContain('综合成本 ¥ 20.00');
-      expect(calculate?.disabled).toBe(false);
-      expect(calculate?.textContent).toBe('重新核算含税成本');
-    });
-  });
-
-  it('reports one-click cost calculation failures beside the selected card', async () => {
-    const api = {
-      listOpportunities: vi.fn().mockResolvedValue([]),
-      list: vi.fn().mockResolvedValue([
-        {
-          id: 'matrix-1',
-          code: 'PRESET-LANDSCAPE-20',
-          name: '景观休闲草 20mm',
-          currency: 'CNY',
-          defaultTaxRate: '0.13',
-          factors: [],
-        },
-      ]),
-      submit: vi.fn().mockRejectedValue(new Error('价格来源暂不可用')),
-      uploadCtrAttachment: vi.fn().mockResolvedValue({}),
-      command: vi.fn().mockResolvedValue({}),
-    };
-    const controller = new CommercialController(
-      api,
-      new Set(['cost-matrix:read', 'cost-matrix:calculate']),
-    );
-    await controller.load();
-    controller.selectedCostMatrixId = 'matrix-1';
-    controller.costMatrixDetails.set(
-      controller.selectedCostMatrixId,
-      controller.views.get('/api/v1/cost-matrices')?.[0] ?? {},
-    );
-    const workspace = commercialWorkspaceStructure(
-      'desktop',
-      false,
-      controller,
-    ) as unknown as RenderedElement;
-    const calculate = workspace.findByText('重新核算未税成本')[0];
-    const feedback = workspace.findByClass('cost-matrix-action-status')[0];
-
-    calculate?.click();
-
-    await vi.waitFor(() => {
-      expect(feedback?.textContent).toBe('核算失败：价格来源暂不可用');
-      expect(feedback?.className).toContain('error');
-      expect(calculate?.disabled).toBe(false);
-      expect(calculate?.textContent).toBe('重新核算未税成本');
-    });
+    expect(source).toContain('/calculate');
+    expect(source).toContain('pricingMode');
   });
 
   it('loads cost matrix summaries separately from the selected model detail', async () => {

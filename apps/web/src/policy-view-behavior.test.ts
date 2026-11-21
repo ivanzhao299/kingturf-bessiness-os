@@ -46,6 +46,7 @@ const setup = (
     status: htmlElement(status),
     permissions: new Set(permissions),
     controller: {
+      api: {} as PricingViewContext['controller']['api'],
       views,
       message: 'loaded',
       revisionState: null,

@@ -25,7 +25,7 @@ type FactorContext = Readonly<{
     requireCostFactorItemSource: (sourceType: string, sourceItemVersionId: unknown) => void;
   }>;
 }>;
-const factorFields = [
+export const factorFields = [
   'factorName',
   'category',
   'sourceType',
@@ -42,7 +42,12 @@ const factorFields = [
   'sortOrder',
 ] as const;
 
-function bodyAndSource(context: FactorContext, request: ApiRequest, fields: readonly string[]) {
+// U3-COM-4（ADR-0015）：因子解析链提取导出（fastify/cost-matrices.ts 复用，零漂移）。
+export function bodyAndSource(
+  context: FactorContext,
+  request: ApiRequest,
+  fields: readonly string[],
+) {
   const p = context.parsers;
   const body = p.objectBody(request.body);
   p.allow(body, fields);
@@ -52,7 +57,11 @@ function bodyAndSource(context: FactorContext, request: ApiRequest, fields: read
   return { body, grant, sourceType };
 }
 
-function factorValues(context: FactorContext, body: Record<string, unknown>, sourceType: string) {
+export function factorValues(
+  context: FactorContext,
+  body: Record<string, unknown>,
+  sourceType: string,
+) {
   const p = context.parsers;
   return {
     factorName: p.string(body.factorName, 'factorName'),

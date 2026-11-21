@@ -1,10 +1,60 @@
 import type { FormField } from '../shared/forms';
-import type { CostViewContext, CostFactorOptions, PricingViewPorts } from './pricing-view-ports';
+import type { PricingViewPorts } from './pricing-view-ports';
+
+// U3-COM-4（G 防重复）：因子域常量单一来源（cost-view 与矩阵控制台共用）。
+export type CostFactorOptions = Readonly<{
+  itemVersions: readonly Readonly<{ value: string; label: string }>[];
+  categoryOptions: readonly Readonly<{ value: string; label: string }>[];
+  sourceOptions: readonly Readonly<{ value: string; label: string }>[];
+  unitOptions: readonly Readonly<{ value: string; label: string }>[];
+}>;
+
+export const CATEGORY_OPTIONS = [
+  ['DIRECT_MATERIAL', '直接材料'],
+  ['DIRECT_LABOR', '直接人工'],
+  ['DIRECT_ENERGY', '直接能源'],
+  ['DIRECT_OVERHEAD', '直接制造费用'],
+  ['FIXED', '固定成本（预留）'],
+  ['PERSONNEL', '人员成本（预留）'],
+  ['FINANCE', '财务费用（预留）'],
+  ['MARKETING', '营销费用（预留）'],
+  ['OTHER', '其他费用'],
+].map(([value, label]) => ({ value: value ?? '', label: label ?? '' }));
+
+export const SOURCE_OPTIONS = [
+  { value: 'PURCHASE_ORDER', label: '已下达采购订单 / 合同价' },
+  { value: 'SUPPLIER_QUOTE', label: '有效供应商报价' },
+  { value: 'MARKET_REFERENCE', label: '市场公开参考价' },
+  { value: 'INTERNAL_BENCHMARK', label: '企业计划成本基准' },
+  { value: 'MANUAL', label: '临时手工录入' },
+];
+
+export const UNIT_OPTIONS = [
+  { value: 'KG', label: '千克 kg' },
+  { value: 'M2', label: '平方米 m²' },
+  { value: 'HOUR', label: '工时' },
+  { value: 'KWH', label: '千瓦时 kWh' },
+  { value: 'EA', label: '项 / 件' },
+];
+
+export const itemVersionOptions = (
+  items: readonly Record<string, unknown>[],
+  textValue: PricingViewPorts['textValue'],
+) =>
+  items.flatMap((item) =>
+    (Array.isArray(item.versions) ? item.versions : []).map((candidate) => {
+      const version = candidate as Record<string, unknown>;
+      return {
+        value: textValue(version.id, ''),
+        label: `${textValue(item.sku, '物料')} · ${textValue(item.name, '')} · 第 ${textValue(version.version, '1')} 版`,
+      };
+    }),
+  );
 
 export function createCostFactorFields(
   options: CostFactorOptions,
   textValue: PricingViewPorts['textValue'],
-): CostViewContext['factorFields'] {
+): (matrix: Record<string, unknown>, factor?: Record<string, unknown>) => readonly FormField[] {
   const { itemVersions, categoryOptions, sourceOptions, unitOptions } = options;
   const factorFields = (
     matrix: Record<string, unknown>,

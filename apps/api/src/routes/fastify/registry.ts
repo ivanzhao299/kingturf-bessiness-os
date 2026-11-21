@@ -19,6 +19,7 @@ import type { AuthorizationContext } from '@kingturf/domain';
 import { registerCommercialOpportunitiesRoutes } from './commercial-opportunities.ts';
 import { registerTechnicalSolutionRoutes } from './technical-solutions.ts';
 import { registerQuoteRoutes } from './quotes.ts';
+import { registerCostMatrixRoutes } from './cost-matrices.ts';
 
 export type FastifyRouteScope = Readonly<{
   authorization: AuthorizationContext;
@@ -37,6 +38,11 @@ const CLAIMED_FASTIFY_ROUTES: readonly (readonly [method: string, pattern: RegEx
   ['GET', /^\/api\/v1\/quotes\/[0-9a-f-]+$/u],
   ['POST', /^\/api\/v1\/quotes$/u],
   ['PUT', /^\/api\/v1\/quotes\/[0-9a-f-]+$/u],
+  ['GET', /^\/api\/v1\/cost-matrix-summaries$/u],
+  ['GET', /^\/api\/v1\/cost-matrices$/u],
+  ['GET', /^\/api\/v1\/cost-matrices\/[0-9a-f-]+$/u],
+  ['POST', /^\/api\/v1\/cost-matrices$/u],
+  ['PUT', /^\/api\/v1\/cost-matrices\/[0-9a-f-]+\/factors\/[0-9a-f-]+$/u],
 ];
 
 // legacy catch 层的同款 DomainError 状态映射（行为守恒）。
@@ -80,6 +86,7 @@ const buildRouteGroupApp = (scope: FastifyRouteScope) => {
   registerCommercialOpportunitiesRoutes(app, scope);
   registerTechnicalSolutionRoutes(app, scope);
   registerQuoteRoutes(app, scope);
+  registerCostMatrixRoutes(app, scope);
   return app;
 };
 

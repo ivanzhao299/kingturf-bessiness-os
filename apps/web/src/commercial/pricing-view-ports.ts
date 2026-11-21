@@ -1,9 +1,9 @@
-import type { FormField } from '../shared/forms';
-import type { CostMatrixQuery } from './types';
+import type { CommercialApi, CostMatrixQuery } from './types';
 
 // Type-only ports: views share the original controller, never a copied state object.
 export type PricingViewController = {
   views: ReadonlyMap<string, readonly Record<string, unknown>[]>;
+  api: CommercialApi;
   message: string;
   revisionState: Record<string, unknown> | null;
   preferredQuoteCostDecisionId: string;
@@ -49,43 +49,13 @@ export type PricingViewContext = Readonly<{
   ports: PricingViewPorts;
 }>;
 type Records = readonly Record<string, unknown>[];
-type Options = { value: string; label: string }[];
-export type CostFactorOptions = Readonly<{
-  itemVersions: Options;
-  categoryOptions: Options;
-  sourceOptions: Options;
-  unitOptions: Options;
-}>;
 export type CostViewContext = PricingViewContext &
-  CostFactorOptions &
   Readonly<{
     costPanel: HTMLElement;
     models: Records;
     publishedModels: Records;
     solutions: Records;
-    matrices: Records;
-    matrixSection: HTMLElement;
-    costDialogHost: () => HTMLElement;
-    setCostStatus: (message: string) => void;
-    replaceCostMatrixSection: (accepted?: boolean) => void;
-    refreshCostWorkspace: (message: string) => Promise<void>;
-    openMatrix: (matrix: Record<string, unknown>, trigger: HTMLButtonElement) => void;
-    factorFields: (
-      matrix: Record<string, unknown>,
-      factor?: Record<string, unknown>,
-    ) => readonly FormField[];
   }>;
-export type CostDetailContext = CostViewContext &
-  Readonly<{
-    selectedId: string;
-    selectedMatrix: Record<string, unknown>;
-    latest: Record<string, unknown>;
-    factors: unknown[];
-    calculations: unknown[];
-    auditTrail: unknown[];
-  }>;
-export type CostDetailPanelsContext = CostDetailContext &
-  Readonly<{ tabPanels: Map<string, HTMLElement> }>;
 export type PolicyViewContext = PricingViewContext &
   Readonly<{ policies: Records; publishedPolicies: Records; policyPanel: HTMLElement }>;
 export type QuoteViewContext = PricingViewContext &

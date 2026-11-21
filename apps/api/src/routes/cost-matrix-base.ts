@@ -1,6 +1,6 @@
 import { DomainError, type AuthorizationContext } from '@kingturf/domain';
 import type { PermissionKey } from '@kingturf/types';
-import type { ApiDependencies } from '../app.ts';
+import type { ApiDependencies, ApiRequest } from '../app.ts';
 import type { AuthorizedQuery } from '../policy.ts';
 import { defineRoute, type RouteDefinition } from './types.ts';
 
@@ -26,40 +26,45 @@ type MatrixContext = Readonly<{
   }>;
 }>;
 
+// U3-COM-4（ADR-0015）：摘要查询校验提取导出（fastify/cost-matrices.ts 复用同一
+// 解析链，消息/语义逐字节一致；additive export，legacy 轨零变更）。
+export function summaryFilters(
+  context: MatrixContext,
+  request: ApiRequest,
+): { grant: AuthorizedQuery; filters: SummaryFilters } {
+  const grant = context.authorize('cost-matrix:read');
+  const page = context.parsers.integer(Number(request.query?.page ?? 1), 'page', 1, 100000);
+  const pageSize = context.parsers.integer(
+    Number(request.query?.pageSize ?? 20),
+    'pageSize',
+    5,
+    100,
+  );
+  const attention = request.query?.attention ?? 'ALL';
+  if (
+    !['ALL', 'NEEDS_INPUT', 'NEEDS_CALCULATION', 'READY_FOR_QUOTE', 'IN_QUOTE'].includes(attention)
+  )
+    throw new DomainError('invalid_request', 'Invalid cost matrix attention filter');
+  const sort = request.query?.sort ?? 'ATTENTION';
+  if (!['ATTENTION', 'CODE', 'UPDATED', 'COST_DESC'].includes(sort))
+    throw new DomainError('invalid_request', 'Invalid cost matrix sort');
+  const filters: SummaryFilters = {
+    page,
+    pageSize,
+    query: request.query?.q?.trim().slice(0, 120) ?? '',
+    productFamily: request.query?.productFamily?.trim().slice(0, 80) ?? '',
+    attention: attention as SummaryFilters['attention'],
+    sort: sort as SummaryFilters['sort'],
+  };
+  return { grant, filters };
+}
+
 function summaryRoutes(context: MatrixContext): readonly RouteDefinition[] {
   return [
     defineRoute({
       method: 'GET',
       match: (pathname) => (pathname === '/api/v1/cost-matrix-summaries' ? { params: [] } : null),
-      validate: (request) => {
-        const grant = context.authorize('cost-matrix:read');
-        const page = context.parsers.integer(Number(request.query?.page ?? 1), 'page', 1, 100000);
-        const pageSize = context.parsers.integer(
-          Number(request.query?.pageSize ?? 20),
-          'pageSize',
-          5,
-          100,
-        );
-        const attention = request.query?.attention ?? 'ALL';
-        if (
-          !['ALL', 'NEEDS_INPUT', 'NEEDS_CALCULATION', 'READY_FOR_QUOTE', 'IN_QUOTE'].includes(
-            attention,
-          )
-        )
-          throw new DomainError('invalid_request', 'Invalid cost matrix attention filter');
-        const sort = request.query?.sort ?? 'ATTENTION';
-        if (!['ATTENTION', 'CODE', 'UPDATED', 'COST_DESC'].includes(sort))
-          throw new DomainError('invalid_request', 'Invalid cost matrix sort');
-        const filters: SummaryFilters = {
-          page,
-          pageSize,
-          query: request.query?.q?.trim().slice(0, 120) ?? '',
-          productFamily: request.query?.productFamily?.trim().slice(0, 80) ?? '',
-          attention: attention as SummaryFilters['attention'],
-          sort: sort as SummaryFilters['sort'],
-        };
-        return { grant, filters };
-      },
+      validate: (request) => summaryFilters(context, request),
       handler: async (_request, _match, input) => {
         const result = await context.repository.listCostMatrixSummaries(
           input.filters,
@@ -120,40 +125,45 @@ function readRoutes(context: MatrixContext): readonly RouteDefinition[] {
   ];
 }
 
-function creationRoutes(context: MatrixContext): readonly RouteDefinition[] {
+type MatrixCreateInput = Parameters<MatrixRepository['createCostMatrix']>[0];
+
+// U3-COM-4（ADR-0015）：创建解析链提取导出（同上，零漂移复用）。
+export function matrixInput(
+  context: MatrixContext,
+  request: ApiRequest,
+): { grant: AuthorizedQuery; input: MatrixCreateInput } {
   const p = context.parsers;
+  const body = p.objectBody(request.body);
+  p.allow(body, [
+    'code',
+    'name',
+    'productItemVersionId',
+    'productSpecification',
+    'currency',
+    'defaultTaxRate',
+  ]);
+  const grant = context.authorize('cost-matrix:manage', Object.keys(body));
+  return {
+    grant,
+    input: {
+      code: p.string(body.code, 'code'),
+      name: p.string(body.name, 'name'),
+      ...(body.productItemVersionId
+        ? { productItemVersionId: p.uuid(body.productItemVersionId, 'productItemVersionId') }
+        : {}),
+      productSpecification: p.jsonObject(body.productSpecification ?? {}, 'productSpecification'),
+      currency: p.currency(body.currency),
+      defaultTaxRate: p.decimal(body.defaultTaxRate, 'defaultTaxRate'),
+    },
+  };
+}
+
+function creationRoutes(context: MatrixContext): readonly RouteDefinition[] {
   return [
     defineRoute({
       method: 'POST',
       match: (pathname) => (pathname === '/api/v1/cost-matrices' ? { params: [] } : null),
-      validate: (request) => {
-        const body = p.objectBody(request.body);
-        p.allow(body, [
-          'code',
-          'name',
-          'productItemVersionId',
-          'productSpecification',
-          'currency',
-          'defaultTaxRate',
-        ]);
-        const grant = context.authorize('cost-matrix:manage', Object.keys(body));
-        return {
-          grant,
-          input: {
-            code: p.string(body.code, 'code'),
-            name: p.string(body.name, 'name'),
-            ...(body.productItemVersionId
-              ? { productItemVersionId: p.uuid(body.productItemVersionId, 'productItemVersionId') }
-              : {}),
-            productSpecification: p.jsonObject(
-              body.productSpecification ?? {},
-              'productSpecification',
-            ),
-            currency: p.currency(body.currency),
-            defaultTaxRate: p.decimal(body.defaultTaxRate, 'defaultTaxRate'),
-          },
-        };
-      },
+      validate: (request) => matrixInput(context, request),
       handler: async (_request, _match, input) => ({
         statusCode: 201,
         body: await context.repository.createCostMatrix(
