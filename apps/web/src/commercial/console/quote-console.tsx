@@ -633,7 +633,6 @@ const QuoteView = (state: QuotePageState) => {
   );
 };
 
-
 export function QuoteConsolePage(ports: QuoteConsolePorts) {
   const bundle: QuoteSignalBundle = {
     snapshot: signal<QuoteSnapshot>(ports.initialSnapshot),
