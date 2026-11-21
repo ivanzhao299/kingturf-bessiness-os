@@ -36,7 +36,12 @@
 | structure-gate / service-boundary | 0 强制违规 / 0 违规                                                    |
 | e2e P1                            | **11 passed / 0 failed（26.2s）、零 500**——客户列表已真实走 Fastify 桥 |
 
-## 5. 边界与后续
+## 5. 提交链与 CRM-matcher 503 门修复（如实记录）
+
+- 提交链（b10759d..本批 HEAD）：`779c32f` feat（主体）→ `2979cfe` fix（CRM-matcher 门：legacy 契约钉定 CRM 依赖缺失 503 先于权限校验——桥轨客户处理器改为仓储门先行，frozen 消息保持逐字节；首轮 ci 失败即此）。
+- ci:local：NODE_ENV=test（kingturf_test），干净快照 **EXIT=0 全链**。
+
+## 6. 边界与后续
 
 - legacy customer-base/360/lifecycle/contacts/activities/ownership 轨完整保留（双轨并行）。
 - 后续子批：U3-CRM-3 联系人 → CRM-4 客户活动。
