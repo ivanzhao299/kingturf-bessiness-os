@@ -42,6 +42,7 @@ const setup = (
     listEmployees: unused,
     listCustomers: unused,
     customer360: unused,
+    createContact: unused,
     createCustomer: unused,
     transitionCustomer: unused,
     addContact: unused,

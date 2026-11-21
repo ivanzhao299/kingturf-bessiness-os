@@ -45,6 +45,8 @@ export function createFetchCrmApi(context: SessionContext): CrmApi {
     customer360: (id) =>
       json(`/api/v1/customers/${id}/360`, context, undefined, parseCustomer360Response),
     createCustomer: (input) => post('/api/v1/customers', input, undefined, parseResponseRecord),
+    createContact: (customerId, input) =>
+      post(`/api/v1/customers/${customerId}/contacts`, input, undefined, parseResponseRecord),
     transitionCustomer: (customer, status, reason) =>
       json(
         `/api/v1/customers/${customer.id}`,

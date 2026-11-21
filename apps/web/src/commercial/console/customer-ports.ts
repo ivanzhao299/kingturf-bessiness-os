@@ -13,5 +13,9 @@ export type CustomerConsolePorts = Readonly<{
     method?: 'POST' | 'PATCH' | 'PUT',
   ) => Promise<Readonly<Record<string, unknown>> | null>;
   load360: (customerId: string) => Promise<Readonly<Record<string, unknown>> | null>;
+  createContact: (
+    customerId: string,
+    payload: Record<string, unknown>,
+  ) => Promise<Readonly<Record<string, unknown>> | null>;
   refresh: () => Promise<readonly CustomerRow[]>;
 }>;

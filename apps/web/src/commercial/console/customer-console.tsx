@@ -30,6 +30,10 @@ type CustomerPageState = Readonly<{
   ports: CustomerConsolePorts;
   open: (row: CustomerRow | null) => void;
   openForm: (kind: CustomerFormKind) => void;
+  contactForm: boolean;
+  openContactForm: () => void;
+  closeContactForm: () => void;
+  runAddContact: (values: Readonly<Record<string, string>>) => Promise<void>;
   closeForm: () => void;
   setStatusFilter: (next: 'ALL' | 'PROSPECT' | 'ACTIVE' | 'INACTIVE') => void;
   setSearch: (next: string) => void;
@@ -129,6 +133,7 @@ const Customer360Detail = ({
       </p>
       <div data-testid="kt-customer-contacts">
         <span class="console-label">联系人</span>
+
         {contacts.map((contact) => {
           const item = recordOf(contact);
           return (
@@ -194,7 +199,45 @@ const CustomerDrawer = ({ state }: Readonly<{ state: CustomerPageState }>) => {
       ) : null}
       <div class="console-actions">
         <StatusBadge tone={statusTone(status)}>{STATUS_LABELS[status] ?? status}</StatusBadge>
+        {state.permissions.has('customer:update') && !state.contactForm ? (
+          <button
+            type="button"
+            class="text-button"
+            data-testid="kt-customer-add-contact"
+            onClick={() => {
+              state.openContactForm();
+            }}
+          >
+            添加联系人
+          </button>
+        ) : null}
       </div>
+      {state.contactForm ? (
+        <FormSection
+          title="添加联系人"
+          description="联系方式至少提供邮箱或电话之一；归一化后写入客户档案。"
+          fields={[
+            { name: 'name', label: '姓名', required: true },
+            { name: 'title', label: '职务' },
+            { name: 'email', label: '邮箱' },
+            { name: 'phone', label: '电话' },
+            {
+              name: 'primary',
+              label: '设为主联系人',
+              type: 'select',
+              required: true,
+              options: [
+                { value: 'false', label: '否' },
+                { value: 'true', label: '是' },
+              ],
+            } satisfies FormSectionField,
+          ]}
+          submitLabel="保存联系人"
+          onSubmit={(values) => {
+            void state.runAddContact(values);
+          }}
+        />
+      ) : null}
     </DetailDrawer>
   );
 };
@@ -356,6 +399,7 @@ export function CustomerConsolePage(ports: CustomerConsolePorts) {
     selected: signal<CustomerRow | null>(null),
     view360: signal<Readonly<Record<string, unknown>> | null>(null),
     activeForm: signal<CustomerFormKind>(null),
+    contactForm: signal(false),
     shownCount: signal(20),
   };
 
@@ -401,6 +445,30 @@ export function CustomerConsolePage(ports: CustomerConsolePorts) {
     }
   };
 
+  const runAddContact = async (values: Readonly<Record<string, string>>): Promise<void> => {
+    const customer = bundle.selected.value;
+    if (!customer) return;
+    bundle.loading.value = true;
+    bundle.submitError.value = '';
+    try {
+      await ports.createContact(ports.textValue(customer.id, ''), {
+        name: values.name ?? '',
+        title: values.title ?? null,
+        email: values.email ?? null,
+        phone: values.phone ?? null,
+        primary: values.primary === 'true',
+      });
+      const fresh = await ports.load360(ports.textValue(customer.id, ''));
+      if (fresh && bundle.selected.value === customer) bundle.view360.value = fresh;
+      bundle.contactForm.value = false;
+      bundle.submitError.value = '';
+    } catch (error: unknown) {
+      fail(error, bundle, '联系人创建失败');
+    } finally {
+      bundle.loading.value = false;
+    }
+  };
+
   const state = (): CustomerPageState => ({
     customers: bundle.customers.value,
     shownCount: bundle.shownCount.value,
@@ -424,6 +492,15 @@ export function CustomerConsolePage(ports: CustomerConsolePorts) {
       bundle.activeForm.value = kind;
       bundle.submitError.value = '';
     },
+    contactForm: bundle.contactForm.value,
+    openContactForm: () => {
+      bundle.contactForm.value = true;
+      bundle.submitError.value = '';
+    },
+    closeContactForm: () => {
+      bundle.contactForm.value = false;
+      bundle.submitError.value = '';
+    },
     closeForm,
     setStatusFilter: (next) => {
       bundle.statusFilter.value = next;
@@ -436,6 +513,7 @@ export function CustomerConsolePage(ports: CustomerConsolePorts) {
     },
     runRefresh,
     runCreate,
+    runAddContact,
   });
 
   const Page = () => CustomerView(state());

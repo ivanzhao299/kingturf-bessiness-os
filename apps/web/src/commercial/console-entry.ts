@@ -400,6 +400,19 @@ export function appendCustomerConsole(content: HTMLElement, controller: CrmContr
       await controller.selectCustomer(customerId);
       return controller.selected;
     },
+    createContact: async (customerId, payload) => {
+      await controller.createContact(
+        customerId,
+        payload as {
+          name: string;
+          title: string | null;
+          email: string | null;
+          phone: string | null;
+          primary: boolean;
+        },
+      );
+      return null;
+    },
     refresh: async () => {
       await controller.load();
       return controller.customers;

@@ -384,6 +384,61 @@ export class PostgresCrmRepository {
       } satisfies ContactDto;
     });
   }
+
+  // U3-CRM-3（ADR-0015）：联系人列表/详情只读（additive）——与 customer360 contacts
+  // 同表同谓词；sensitive 联系方式门由仓储按 sensitive 参数折叠（同 360 映射）。
+  public async listContacts(
+    customerId: string,
+    actor: Actor,
+    scopes: readonly DataScope[],
+    anchors: readonly ScopeAnchor[],
+    sensitive: Readonly<{ email: boolean; phone: boolean }>,
+  ): Promise<readonly JsonObject[]> {
+    await this.requireScopedSubject(this.db, 'customers', customerId, actor, scopes, anchors);
+    return (
+      await this.db.query<ContactRow>(
+        'SELECT * FROM customer_contacts WHERE tenant_id=$1 AND customer_id=$2 AND deleted_at IS NULL ORDER BY is_primary DESC,created_at',
+        [actor.companyId, customerId],
+      )
+    ).rows.map((r) => ({
+      id: r.id,
+      customerId: r.customer_id,
+      name: r.name,
+      title: r.title,
+      ...(sensitive.email ? { email: r.normalized_email } : {}),
+      ...(sensitive.phone ? { phone: r.normalized_phone } : {}),
+      primary: r.is_primary,
+      version: r.version,
+      createdAt: r.created_at,
+    }));
+  }
+  public async findContact(
+    contactId: string,
+    actor: Actor,
+    scopes: readonly DataScope[],
+    anchors: readonly ScopeAnchor[],
+    sensitive: Readonly<{ email: boolean; phone: boolean }>,
+  ): Promise<JsonObject | null> {
+    const authorized = recordScopeSql(scopes, anchors, actor, 'c', 2, CRM_SCOPE);
+    const row = (
+      await this.db.query<ContactRow & { customer_id: string }>(
+        `SELECT cc.*,cc.customer_id FROM customer_contacts cc JOIN customers c ON c.id=cc.customer_id AND c.tenant_id=cc.tenant_id WHERE cc.id=$1 AND cc.tenant_id=$2 AND cc.deleted_at IS NULL AND ${authorized.sql}`,
+        [contactId, actor.companyId, ...authorized.values],
+      )
+    ).rows[0];
+    if (!row) return null;
+    return {
+      id: row.id,
+      customerId: row.customer_id,
+      name: row.name,
+      title: row.title,
+      ...(sensitive.email ? { email: row.normalized_email } : {}),
+      ...(sensitive.phone ? { phone: row.normalized_phone } : {}),
+      primary: row.is_primary,
+      version: row.version,
+      createdAt: row.created_at,
+    };
+  }
   public async listLeads(
     actor: Actor,
     scopes: readonly DataScope[],

@@ -1481,6 +1481,7 @@ const api = () => {
       }),
     ),
     createCustomer: vi.fn(() => Promise.resolve(customer)),
+    createContact: vi.fn(() => Promise.resolve({})),
     transitionCustomer: vi.fn(() => Promise.resolve({ ...customer, status: 'ACTIVE', version: 2 })),
     addContact: vi.fn(() => Promise.resolve()),
     addActivity: vi.fn(() => Promise.resolve()),

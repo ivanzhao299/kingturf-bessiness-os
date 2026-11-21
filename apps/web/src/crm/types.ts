@@ -86,6 +86,16 @@ export type CrmApi = {
   listCustomers(): Promise<readonly Customer[]>;
   customer360(id: string): Promise<Customer360>;
   createCustomer(input: CustomerInput): Promise<Customer>;
+  createContact(
+    customerId: string,
+    input: {
+      name: string;
+      title: string | null;
+      email: string | null;
+      phone: string | null;
+      primary: boolean;
+    },
+  ): Promise<Record<string, unknown>>;
   transitionCustomer(customer: Customer, status: string, reason: string): Promise<Customer>;
   addContact(customerId: string, name: string, email: string): Promise<void>;
   addActivity(customerId: string, summary: string): Promise<void>;

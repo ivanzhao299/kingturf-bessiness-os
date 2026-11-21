@@ -64,6 +64,7 @@ const portsFor = (
   textValue: (value, fallback = '') =>
     typeof value === 'string' || typeof value === 'number' ? String(value) : fallback,
   submit: vi.fn().mockResolvedValue(null),
+  createContact: vi.fn().mockResolvedValue(null),
   load360: vi.fn().mockResolvedValue(view360),
   refresh: vi.fn().mockResolvedValue([customer]),
   ...overrides,

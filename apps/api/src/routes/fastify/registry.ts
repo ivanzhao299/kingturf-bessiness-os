@@ -26,6 +26,7 @@ import { registerSalesPolicyRoutes } from './sales-policies.ts';
 import { registerCreditReviewRoutes } from './credit-review.ts';
 import { registerLeadRoutes } from './leads.ts';
 import { registerCustomerRoutes } from './customers.ts';
+import { registerContactRoutes } from './contacts.ts';
 
 export type FastifyRouteScope = Readonly<{
   authorization: AuthorizationContext;
@@ -72,6 +73,9 @@ const CLAIMED_FASTIFY_ROUTES: readonly (readonly [method: string, pattern: RegEx
   ['GET', /^\/api\/v1\/customers\/[0-9a-f-]+$/u],
   ['GET', /^\/api\/v1\/customers\/[0-9a-f-]+\/360$/u],
   ['POST', /^\/api\/v1\/customers$/u],
+  ['GET', /^\/api\/v1\/customers\/[0-9a-f-]+\/contacts$/u],
+  ['GET', /^\/api\/v1\/customers\/[0-9a-f-]+\/contacts\/[0-9a-f-]+$/u],
+  ['POST', /^\/api\/v1\/customers\/[0-9a-f-]+\/contacts$/u],
 ];
 
 // legacy catch 层的同款 DomainError 状态映射（行为守恒）。
@@ -120,6 +124,7 @@ const buildRouteGroupApp = (scope: FastifyRouteScope) => {
   registerCreditReviewRoutes(app, scope);
   registerLeadRoutes(app, scope);
   registerCustomerRoutes(app, scope);
+  registerContactRoutes(app, scope);
   return app;
 };
 
