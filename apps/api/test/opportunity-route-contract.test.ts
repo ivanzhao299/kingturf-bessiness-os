@@ -12,9 +12,19 @@ const anchors = [{ scope: 'TEAM', organizationId: otherId }] as const;
 const collectionPath = '/api/v1/opportunities',
   itemPath = `${collectionPath}/${id}`,
   badPath = `${collectionPath}/bad`;
-const result = { id, version: 4, name: 'Fixed', value: '10', currency: 'CNY', secret: 'private' };
+// U3-COM-2：集合 GET 经生产桥走 listOpportunityPage——夹具改为 DTO 形状
+// （value 为 {amount,currency}；未知键如 secret 经 looseObject 透传保持 legacy 语义）。
+const result = {
+  id,
+  version: 4,
+  name: 'Fixed',
+  value: { amount: '10', currency: 'CNY' },
+  status: 'OPEN',
+  secret: 'private',
+};
 const methods = [
   'listOpportunities',
+  'listOpportunityPage',
   'findOpportunity',
   'createOpportunity',
   'updateOpportunity',
@@ -38,7 +48,15 @@ function fixture(permissions = defaultPermissions, available = true) {
   const repository = Object.fromEntries(
     methods.map((method) => [
       method,
-      vi.fn().mockResolvedValue(method === 'listOpportunities' ? [result] : result),
+      vi
+        .fn()
+        .mockResolvedValue(
+          method === 'listOpportunities'
+            ? [result]
+            : method === 'listOpportunityPage'
+              ? { items: [result], nextCursor: null }
+              : result,
+        ),
     ]),
   ) as Record<Method, ReturnType<typeof vi.fn>>;
   const authenticate = vi.fn().mockResolvedValue(context);
@@ -184,17 +202,18 @@ describe('opportunity inline dependency/session/unsupported contracts', () => {
 });
 
 describe('opportunity inline reads', () => {
-  it('lists and finds with exact actor/scopes/anchors, ignores GET body and preserves receiver', async () => {
+  it('lists via the fastify bridge and finds via the legacy track, ignoring GET bodies', async () => {
     const f = fixture();
     expect(await f.dispatch('GET', collectionPath, ['ignored'])).toEqual(
       response(200, { items: [result] }),
     );
-    expect(f.repository.listOpportunities).toHaveBeenCalledExactlyOnceWith(
+    expect(f.repository.listOpportunityPage).toHaveBeenCalledExactlyOnceWith(
       actor,
       ['COMPANY'],
       anchors,
+      { limit: 100 },
     );
-    expect(f.repository.listOpportunities.mock.contexts).toEqual([f.repository]);
+    expect(f.repository.listOpportunityPage.mock.contexts).toEqual([f.repository]);
     expect(await f.dispatch('GET', itemPath, { extra: true })).toEqual(response(200, result));
     expect(f.repository.findOpportunity).toHaveBeenCalledExactlyOnceWith(
       id,

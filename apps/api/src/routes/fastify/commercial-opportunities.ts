@@ -20,10 +20,11 @@ export type OpportunityPageRepository = Pick<
 
 const OPPORTUNITY_STATUSES = ['OPEN', 'QUALIFIED', 'PROPOSAL', 'WON', 'LOST', 'CANCELLED'] as const;
 
-const moneySchema = z.object({ amount: z.string(), currency: z.string() });
+// looseObject（additionalProperties:true）恢复 legacy 透传语义：仓储行未知键原样输出。
+const moneySchema = z.looseObject({ amount: z.string(), currency: z.string() });
 // 行级字段遮蔽（permittedDto）可能裁剪任意列：出站 DTO 以 partial 口径校验。
 const opportunityDtoSchema = z
-  .object({
+  .looseObject({
     id: z.string(),
     tenantId: z.string(),
     customerId: z.string().nullable(),

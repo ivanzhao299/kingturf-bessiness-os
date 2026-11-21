@@ -18,7 +18,7 @@ export type SolutionRevisionRepository = Pick<
 >;
 
 const SOLUTION_ROW_SCHEMA = z
-  .object({
+  .looseObject({
     id: z.string(),
     technicalSolutionId: z.string(),
     opportunityId: z.string(),
