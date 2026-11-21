@@ -329,7 +329,7 @@ it('captures artificial-turf project handoff fields without test-channel evidenc
       './commercial/cost-model-evaluations.ts',
       'export function appendCostModelCatalog',
     ),
-    readBoundSource('./commercial/policy-view.ts', 'export function appendPolicyView'),
+    readBoundSource('./commercial/console/policy-console.tsx', 'export function PolicyConsolePage'),
     readBoundSource('./commercial/console/quote-console.tsx', 'export function QuoteConsolePage'),
     readBoundSource('./commercial/credit-view.ts', 'export function appendCreditView'),
     readBoundSource('./commercial/receivables-view.ts', 'export function appendReceivablesView'),
@@ -2431,14 +2431,11 @@ describe('web bootstrap', () => {
       controller,
     ) as unknown as RenderedElement;
     expect(workspace.findByClass('cost-workbench')).toHaveLength(1);
-    expect(workspace.findByClass('policy-workbench')).toHaveLength(1);
-    expect(workspace.findByClass('decision-card')).toHaveLength(2);
+    expect(workspace.findByClass('sales-policies-console')).toHaveLength(1);
+    expect(workspace.findByClass('policy-workbench')).toHaveLength(0);
     expect(workspace.textContent).toContain('CNY 1030');
     expect(workspace.textContent).toContain('管理费率 3%');
     expect(workspace.textContent).toContain('新建模型版本');
-    expect(workspace.textContent).toContain('政策未通过');
-    expect(workspace.textContent).toContain('毛利率低于 20% 红线');
-    expect(workspace.textContent).toContain('新建政策版本');
     expect(workspace.textContent).not.toContain('JSON 请求');
   });
 

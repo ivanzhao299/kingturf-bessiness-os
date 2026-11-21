@@ -1,6 +1,6 @@
 import type { AuthorizationContext } from '@kingturf/domain';
 import type { PermissionKey } from '@kingturf/types';
-import type { ApiDependencies } from '../app.ts';
+import type { ApiDependencies, ApiRequest } from '../app.ts';
 import type { AuthorizedQuery } from '../policy.ts';
 import { defineRoute, type RouteDefinition } from './types.ts';
 
@@ -52,33 +52,67 @@ function readRoutes(context: DefinitionContext): readonly RouteDefinition[] {
   );
 }
 
-function creationRoutes(context: DefinitionContext): readonly RouteDefinition[] {
+// U3-COM-6（ADR-0015）：解析链提取导出（fastify/sales-policies.ts 复用同一链，
+// frozen 契约消息逐字节一致；additive export，legacy 轨零变更）。
+export function definitionInput(
+  context: DefinitionContext,
+  request: ApiRequest,
+  kind: 'cost' | 'policy',
+) {
   const p = context.parsers;
+  const body = p.objectBody(request.body);
+  const cost = kind === 'cost';
+  p.allow(
+    body,
+    cost ? ['code', 'name', 'currency', 'rules', 'publish'] : ['code', 'name', 'rules', 'publish'],
+  );
+  const grant = context.authorize(
+    kind === 'cost' ? 'cost-model:manage' : 'sales-policy:manage',
+    Object.keys(body),
+  );
+  return {
+    grant,
+    input: {
+      code: p.string(body.code, 'code'),
+      name: p.string(body.name, 'name'),
+      ...(cost ? { currency: p.currency(body.currency) } : {}),
+      rules: p.array(body.rules, 'rules'),
+      publish: body.publish === true,
+    },
+  };
+}
+
+export function definitionVersionInput(
+  context: DefinitionContext,
+  request: ApiRequest,
+  kind: 'cost' | 'policy',
+  definitionId: string,
+) {
+  const p = context.parsers;
+  const body = p.objectBody(request.body);
+  const cost = kind === 'cost';
+  p.allow(body, cost ? ['currency', 'rules', 'publish'] : ['rules', 'publish']);
+  const grant = context.authorize(
+    kind === 'cost' ? 'cost-model:manage' : 'sales-policy:manage',
+    Object.keys(body),
+  );
+  return {
+    grant,
+    definitionId: p.uuid(definitionId, 'definitionId'),
+    input: {
+      ...(cost ? { currency: p.currency(body.currency) } : {}),
+      rules: p.array(body.rules, 'rules'),
+      publish: body.publish === true,
+    },
+  };
+}
+
+function creationRoutes(context: DefinitionContext): readonly RouteDefinition[] {
   return definitions.map((definition) =>
     defineRoute({
       method: 'POST',
       match: (pathname) => (pathname === `/api/v1/${definition.segment}` ? { params: [] } : null),
-      validate: (request) => {
-        const body = p.objectBody(request.body);
-        const cost = definition.kind === 'cost';
-        p.allow(
-          body,
-          cost
-            ? ['code', 'name', 'currency', 'rules', 'publish']
-            : ['code', 'name', 'rules', 'publish'],
-        );
-        const grant = context.authorize(definition.manage, Object.keys(body));
-        return {
-          grant,
-          input: {
-            code: p.string(body.code, 'code'),
-            name: p.string(body.name, 'name'),
-            ...(cost ? { currency: p.currency(body.currency) } : {}),
-            rules: p.array(body.rules, 'rules'),
-            publish: body.publish === true,
-          },
-        };
-      },
+      validate: (request) => definitionInput(context, request, definition.kind),
       handler: async (_request, _match, input) => ({
         statusCode: 201,
         body: await context.repository.createDefinition(
@@ -94,7 +128,6 @@ function creationRoutes(context: DefinitionContext): readonly RouteDefinition[] 
 }
 
 function versionRoutes(context: DefinitionContext): readonly RouteDefinition[] {
-  const p = context.parsers;
   return definitions.map((definition) =>
     defineRoute({
       method: 'POST',
@@ -104,21 +137,8 @@ function versionRoutes(context: DefinitionContext): readonly RouteDefinition[] {
         );
         return match?.[1] === definition.segment ? { params: match.slice(2) } : null;
       },
-      validate: (request, match) => {
-        const body = p.objectBody(request.body);
-        const cost = definition.kind === 'cost';
-        p.allow(body, cost ? ['currency', 'rules', 'publish'] : ['rules', 'publish']);
-        const grant = context.authorize(definition.manage, Object.keys(body));
-        return {
-          grant,
-          definitionId: p.uuid(match.params[0], 'definitionId'),
-          input: {
-            ...(cost ? { currency: p.currency(body.currency) } : {}),
-            rules: p.array(body.rules, 'rules'),
-            publish: body.publish === true,
-          },
-        };
-      },
+      validate: (request, match) =>
+        definitionVersionInput(context, request, definition.kind, match.params[0] ?? ''),
       handler: async (_request, _match, input) => ({
         statusCode: 201,
         body: await context.repository.createDefinitionVersion(

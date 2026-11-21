@@ -14,6 +14,7 @@ import type { SolutionConsolePorts } from './console/solution-ports';
 import type { QuoteConsolePorts, QuoteSnapshot } from './console/quote-ports';
 import type { CostMatrixConsolePorts } from './console/cost-matrix-ports';
 import type { CtrConsolePorts } from './console/ctr-ports';
+import type { PolicyConsolePorts } from './console/policy-ports';
 import { setAppRoute } from '../shared/navigation';
 import type { ConsoleMountPorts } from './console/mount';
 
@@ -234,6 +235,41 @@ export function appendCtrConsole(
   workspace.append(
     createConsoleHost('technical-requirements', 'kt-commercial-ctrs', {
       kind: 'technical-requirements',
+      ports,
+    }),
+  );
+}
+
+export function appendPolicyConsole(
+  workspace: HTMLElement,
+  controller: PricingViewController,
+  permissions: ReadonlySet<string>,
+  pricingViewPorts: PricingViewPorts,
+): void {
+  const snapshot = () => ({
+    policies: controller.views.get('/api/v1/sales-policies') ?? [],
+    costs: controller.views.get('/api/v1/cost-evaluations') ?? [],
+    evaluations: controller.views.get('/api/v1/sales-policy-evaluations') ?? [],
+  });
+  const ports: PolicyConsolePorts = {
+    permissions,
+    initialPolicies: snapshot().policies,
+    initialCosts: snapshot().costs,
+    initialEvaluations: snapshot().evaluations,
+    textValue: (value, fallback = '') => pricingViewPorts.textValue(value, fallback),
+    recordValue: (value) => pricingViewPorts.recordValue(value),
+    submit: async (path, payload, method) => {
+      await controller.submit(path, payload, method);
+      return controller.revisionState;
+    },
+    refresh: async () => {
+      await controller.load();
+      return snapshot();
+    },
+  };
+  workspace.append(
+    createConsoleHost('sales-policies', 'kt-commercial-policies', {
+      kind: 'sales-policies',
       ports,
     }),
   );

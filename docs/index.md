@@ -84,6 +84,7 @@
 [U3-COM-3 报价控制台+Fastify quotes 端点组证据](evidence/u3-com-3-quote-console-2026-11-21.md)：quotes 四端点（GET 列表 cursor 分页/GET 详情/POST 创建/PUT 版本，POST/PUT 走 legacy 同解析链保冻结契约）、Preact 报价控制台（筛选/版本历史/毛利/政策预校验流/批准签发打印）、旧 quote 三件套退役、门禁回执与 e2e 11/11。
 [U3-COM-4 成本矩阵控制台+Fastify cost-matrices 端点组证据](evidence/u3-com-4-cost-matrix-console-2026-11-21.md)：五端点（摘要 page 分页/flat 列表/详情/POST 创建/PUT 因子更新，全部 legacy 解析链+仓储直通）、矩阵控制台（五筛选/因子配置抽屉/重算/报价成本决策 handoff 迁移）、ledger-detail-bindings 退役、契约 222/222 与 e2e 11/11。
 [U3-COM-5 CTR 控制台+Fastify ctr 端点组证据](evidence/u3-com-5-ctr-console-2026-11-21.md)：ctr 四端点（GET 列表视图迁移/GET 详情 findCtr/POST 创建 legacy 链/PUT state 状态流转 submit|decide 分派）、CTR 控制台（版本差异/方案关联/批准驳回确认/附件上传三重门）、旧 ctr-view 退役、桥请求头透传修复与 e2e 11/11。
+[U3-COM-6 销售政策控制台+Fastify sales-policies 端点组证据](evidence/u3-com-6-policy-console-2026-11-21.md)：四端点（GET 列表无裁剪/GET 详情 findDefinition/POST 创建 legacy 链/PUT 版本发布别名）、政策控制台（毛利规则/版本历史/评估门三重/判定卡片）、undefined→null 桥序列化修复、旧 policy-view 退役与 e2e 11/11。
 [Wave1生产部署记录](evidence/wave1-deployment-2026-11-18.md)
 [Wave2生产部署终录](evidence/wave2-deployment-2026-11-19.md)
 [Wave2部署终录·R批更新](evidence/wave2-deployment-2026-11-19.md)：TD-REL-006 死信处置164清零、TD-REL-007 rehearsal harness、staged 7目录清理——三项遗留全部关闭（见§5）。：迁移74+recover全绿、/health时间线（78分钟停机）、交接守卫三分支、TD终态与保全清理清单——系统管理优化计划收官。

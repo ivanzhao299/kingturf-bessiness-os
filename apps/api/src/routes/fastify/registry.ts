@@ -14,6 +14,7 @@ import {
 } from '@fastify/type-provider-zod';
 import { DomainError } from '@kingturf/domain';
 import type { ApiRequest, ApiResponse } from '../../api-types.ts';
+import type { JsonObject } from '@kingturf/types';
 import type { ApiDependencies } from '../../app.ts';
 import type { AuthorizationContext } from '@kingturf/domain';
 import { registerCommercialOpportunitiesRoutes } from './commercial-opportunities.ts';
@@ -21,6 +22,7 @@ import { registerTechnicalSolutionRoutes } from './technical-solutions.ts';
 import { registerQuoteRoutes } from './quotes.ts';
 import { registerCostMatrixRoutes } from './cost-matrices.ts';
 import { registerCtrRoutes } from './ctr.ts';
+import { registerSalesPolicyRoutes } from './sales-policies.ts';
 
 export type FastifyRouteScope = Readonly<{
   authorization: AuthorizationContext;
@@ -48,6 +50,10 @@ const CLAIMED_FASTIFY_ROUTES: readonly (readonly [method: string, pattern: RegEx
   ['GET', /^\/api\/v1\/ctrs\/[0-9a-f-]+$/u],
   ['POST', /^\/api\/v1\/ctrs$/u],
   ['PUT', /^\/api\/v1\/ctr-versions\/[0-9a-f-]+\/state$/u],
+  ['GET', /^\/api\/v1\/sales-policies$/u],
+  ['GET', /^\/api\/v1\/sales-policies\/[0-9a-f-]+$/u],
+  ['POST', /^\/api\/v1\/sales-policies$/u],
+  ['PUT', /^\/api\/v1\/sales-policies\/[0-9a-f-]+\/versions$/u],
 ];
 
 // legacy catch 层的同款 DomainError 状态映射（行为守恒）。
@@ -60,8 +66,7 @@ const domainErrorStatus = (code: DomainError['code']): number => {
 
 const buildRouteGroupApp = (scope: FastifyRouteScope) => {
   const app = Fastify({ logger: false }).withTypeProvider<ZodTypeProvider>();
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- serializerCompiler/validatorCompiler 的泛型签名在 strict 模式下退化为 any；与 server-fastify.ts 同一豁免口径
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+
   app.setSerializerCompiler(serializerCompiler);
   app.setValidatorCompiler(validatorCompiler);
   app.setErrorHandler((cause, _request, reply) => {
@@ -93,10 +98,18 @@ const buildRouteGroupApp = (scope: FastifyRouteScope) => {
   registerQuoteRoutes(app, scope);
   registerCostMatrixRoutes(app, scope);
   registerCtrRoutes(app, scope);
+  registerSalesPolicyRoutes(app, scope);
   return app;
 };
 
 export type FastifyRouteGroupApp = ReturnType<typeof buildRouteGroupApp>;
+
+// U3-COM-6：undefined 值的键序列化为 null（JSON.stringify 默认丢弃 undefined 键，
+// 而 legacy allow/字段授权按 Object.keys 判定键存在性——与 app.dispatch 直传语义对齐）。
+const jsonUndefinedToNull = (
+  _key: string,
+  value: unknown,
+): string | number | boolean | null | object => (value === undefined ? null : value);
 
 export async function dispatchFastifyRouteGroup(
   request: ApiRequest,
@@ -125,9 +138,17 @@ export async function dispatchFastifyRouteGroup(
         ),
         ...(request.body === undefined ? {} : { 'content-type': 'application/json' }),
       },
-      ...(request.body === undefined ? {} : { payload: JSON.stringify(request.body) }),
+      ...(request.body === undefined
+        ? {}
+        : {
+            // undefined 值的键序列化为 null（保留键存在性——legacy allow/字段授权按
+            // Object.keys 判定；真实 HTTP 层 JSON.stringify 同样丢弃 undefined，
+            // 此处与 app.dispatch 直传语义对齐）。
+            payload: JSON.stringify(request.body, jsonUndefinedToNull),
+          }),
     });
-    return { statusCode: response.statusCode, body: response.json() };
+    const body: JsonObject = response.json();
+    return { statusCode: response.statusCode, body };
   } finally {
     await app.close();
   }

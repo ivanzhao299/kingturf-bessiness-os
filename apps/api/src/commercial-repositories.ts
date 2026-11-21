@@ -1417,6 +1417,39 @@ export class PostgresCommercialRepository {
       versions,
     };
   }
+  // U3-COM-6（ADR-0015）：定义详情只读（additive）——根信息 + 全部版本行。
+  // scopes 保留签名一致性（与 listDefinitions 同构）；tenant 隔离由 company 谓词承担。
+  public async findDefinition(
+    kind: 'cost' | 'policy',
+    id: string,
+    actor: Actor,
+    scopes: readonly DataScope[],
+  ): Promise<JsonObject | null> {
+    void scopes;
+    const rootTable = kind === 'cost' ? 'cost_models' : 'sales_policies',
+      versionTable = kind === 'cost' ? 'cost_model_versions' : 'sales_policy_versions',
+      fk = kind === 'cost' ? 'cost_model_id' : 'sales_policy_id',
+      currency = kind === 'cost' ? ',v.currency' : '';
+    const root = (
+      await this.db.query<{ id: string; code: string; name: string }>(
+        `SELECT d.id,d.code,d.name FROM ${rootTable} d WHERE d.id=$1 AND d.tenant_id=$2 AND d.deleted_at IS NULL`,
+        [id, actor.companyId],
+      )
+    ).rows[0];
+    if (!root) return null;
+    const versions = (
+      await this.db.query<JsonObject>(
+        `SELECT v.id,d.id AS "definitionId",d.code,d.name,v.version,v.status${currency},v.rules,v.published_at AS "publishedAt",v.created_at AS "createdAt" FROM ${versionTable} v JOIN ${rootTable} d ON d.id=v.${fk} AND d.tenant_id=v.tenant_id WHERE v.tenant_id=$1 AND d.id=$2 AND d.deleted_at IS NULL ORDER BY v.version DESC`,
+        [actor.companyId, id],
+      )
+    ).rows;
+    return {
+      id: root.id,
+      code: root.code,
+      name: root.name,
+      versions,
+    };
+  }
   public async createTechnicalSolution(
     input: {
       opportunityId: string;

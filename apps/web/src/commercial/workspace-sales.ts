@@ -9,9 +9,9 @@ import {
   appendQuoteConsole,
   appendCostMatrixConsole,
   appendCtrConsole,
+  appendPolicyConsole,
 } from './console-entry';
 import { appendCostView } from './cost-view';
-import { appendPolicyView } from './policy-view';
 import { appendCreditView } from './credit-view';
 import { appendContractView } from './contract-view';
 import { appendSalesOrdersView } from './sales-orders-view';
@@ -48,7 +48,8 @@ export function appendWorkspaceSales(
     appendCostMatrixConsole(workspace, controller, permissions, pricingViewPorts);
   }
   if (controller && permissions.has('sales-policy:read')) {
-    appendPolicyView({ workspace, status, controller, permissions, ports: pricingViewPorts });
+    // U3-COM-6：销售政策路由切换至 Preact 控制台（原 vanilla policy workbench 随本次迁移退役）。
+    appendPolicyConsole(workspace, controller, permissions, pricingViewPorts);
   }
   if (controller && permissions.has('quote:read')) {
     // U3-COM-3：报价路由切换至 Preact 控制台（原 vanilla quote workbench 随本次迁移退役）。
