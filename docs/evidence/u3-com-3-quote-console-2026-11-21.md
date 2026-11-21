@@ -38,7 +38,13 @@
 | service-boundary                             | 0 违规（S4：端口均 Pick 派生）                                                                  |
 | e2e P1                                       | **11 passed / 0 failed（24.9s）、零 500**——优于基线（web 报价加载已真实走 Fastify 桥）          |
 
-## 5. 边界与后续
+## 5. 提交链与门禁修正（如实记录）
+
+- 提交链（0e34d69..0edb207，均已 push）：`73ea947` feat（quotes 端点组+控制台主体）→ `295d637` style（两新文件 prettier）→ `0edb207` fix（quote legacyContext 引用守卫后仓储局部量 + 测试夹具 Date 越界 JsonObject 的定向 cast——CI typecheck 首轮暴露）。
+- 门禁修正：G1（820 行）拆出 `quote-forms.tsx`；G3 按门禁指引登记 QUOTES_VIEW_SELECT；G2/G5 动作工厂拆分；S4 无违规。
+- ci:local：NODE_ENV=test（kingturf_test），0edb207 干净快照 **EXIT=0 全链**（API 17836 测试；Web 491；coverage/structure/service-boundary/build 守卫/security 全过）。
+
+## 6. 边界与后续
 
 - Fastify 组累计认领 8 路径；approve/issue 命令仍走 legacy /quote-revisions 轨（不在本批指令内）。
 - 后续子批：成本矩阵 → CTR → 销售政策 → 信用审查。
