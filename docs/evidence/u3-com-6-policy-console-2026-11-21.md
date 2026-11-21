@@ -34,7 +34,13 @@
 | structure-gate / service-boundary | 0 强制违规 / 0 违规                                                        |
 | e2e P1                            | **11 passed / 0 failed（25.6s）、零 500**——销售政策列表已真实走 Fastify 桥 |
 
-## 5. 边界与后续
+## 5. 提交与回执（如实记录）
+
+- 提交：`f285837` feat（本批主体，单提交；过程 typecheck/lint 问题在提交前闭环）。
+- ci:local：NODE_ENV=test（kingturf_test），干净快照 **EXIT=0 全链**。
+- 过程中契约测试暴露并修复两处：GET 列表 permittedDto 裁剪（legacy 定义轨返回原始行——契约 'read fields do not crop raw data' 钉死）与 undefined→null 桥序列化。
+
+## 6. 边界与后续
 
 - legacy commercial-definitions 轨完整保留（cost-models 双端点 + sales-policies POST versions/双读端点共享解析链助手）。
 - sales-policy-evaluations 端点保持 legacy（不在本批指令内）。
