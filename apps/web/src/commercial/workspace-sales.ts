@@ -10,9 +10,9 @@ import {
   appendCostMatrixConsole,
   appendCtrConsole,
   appendPolicyConsole,
+  appendCreditConsole,
 } from './console-entry';
 import { appendCostView } from './cost-view';
-import { appendCreditView } from './credit-view';
 import { appendContractView } from './contract-view';
 import { appendSalesOrdersView } from './sales-orders-view';
 
@@ -56,7 +56,8 @@ export function appendWorkspaceSales(
     appendQuoteConsole(workspace, controller, permissions, pricingViewPorts);
   }
   if (controller && permissions.has('credit:read')) {
-    appendCreditView({
+    // U3-COM-7：信用审查路由切换至 Preact 控制台（原 vanilla credit workbench 随本次迁移退役）。
+    appendCreditConsole({
       workspace,
       status,
       controller,

@@ -8,6 +8,7 @@ import './console/commercial-console.css';
 import { el } from '../dom';
 import type { SalesViewController, SalesViewPorts } from './sales-view-ports';
 import type { PricingViewController, PricingViewPorts } from './pricing-view-ports';
+import type { CreditContractViewContext } from './credit-contract-view-ports';
 import { itemVersionOptions } from './cost-factor-form';
 import type { OpportunityListPorts } from './console/opportunity-list';
 import type { SolutionConsolePorts } from './console/solution-ports';
@@ -15,6 +16,7 @@ import type { QuoteConsolePorts, QuoteSnapshot } from './console/quote-ports';
 import type { CostMatrixConsolePorts } from './console/cost-matrix-ports';
 import type { CtrConsolePorts } from './console/ctr-ports';
 import type { PolicyConsolePorts } from './console/policy-ports';
+import type { CreditConsolePorts } from './console/credit-ports';
 import { setAppRoute } from '../shared/navigation';
 import type { ConsoleMountPorts } from './console/mount';
 
@@ -270,6 +272,50 @@ export function appendPolicyConsole(
   workspace.append(
     createConsoleHost('sales-policies', 'kt-commercial-policies', {
       kind: 'sales-policies',
+      ports,
+    }),
+  );
+}
+
+export function appendCreditConsole(context: CreditContractViewContext): void {
+  const { workspace } = context;
+  const controller = context.controller;
+  const creditContractViewPorts = context.ports;
+  const permissions = context.permissions;
+  const snapshot = () => ({
+    limits: controller.views.get('/api/v1/credit-limits') ?? [],
+    decisions: controller.views.get('/api/v1/credit-decisions') ?? [],
+  });
+  const ports: CreditConsolePorts = {
+    permissions,
+    initialLimits: snapshot().limits,
+    initialDecisions: snapshot().decisions,
+    issuedQuotes: (controller.views.get('/api/v1/quotes') ?? []).filter(
+      (item) => item.status === 'ISSUED' && typeof item.issuedSnapshotId === 'string',
+    ),
+    customers: controller.customers,
+    textValue: (value, fallback = '') => creditContractViewPorts.textValue(value, fallback),
+    recordText: (record: unknown, camel: string, snake: string, fallback?: string) =>
+      creditContractViewPorts.recordText(
+        typeof record === 'object' && record !== null ? (record as Record<string, unknown>) : {},
+        camel,
+        snake,
+        fallback,
+      ),
+    displayMoney: (currency, value) => creditContractViewPorts.displayMoney(currency, value),
+    currencyLabel: (value) => creditContractViewPorts.currencyLabel(value),
+    submit: async (path, payload, method) => {
+      await controller.submit(path, payload, method);
+      return null;
+    },
+    refresh: async () => {
+      await controller.load();
+      return snapshot();
+    },
+  };
+  workspace.append(
+    createConsoleHost('credit-review', 'kt-commercial-credit', {
+      kind: 'credit-review',
       ports,
     }),
   );

@@ -331,7 +331,7 @@ it('captures artificial-turf project handoff fields without test-channel evidenc
     ),
     readBoundSource('./commercial/console/policy-console.tsx', 'export function PolicyConsolePage'),
     readBoundSource('./commercial/console/quote-console.tsx', 'export function QuoteConsolePage'),
-    readBoundSource('./commercial/credit-view.ts', 'export function appendCreditView'),
+    readBoundSource('./commercial/console/credit-console.tsx', 'export function CreditConsolePage'),
     readBoundSource('./commercial/receivables-view.ts', 'export function appendReceivablesView'),
     readBoundSource('./commercial/collections-view.ts', 'export function appendCollectionsView'),
     readBoundSource(
@@ -2597,12 +2597,10 @@ describe('web bootstrap', () => {
       false,
       controller,
     ) as unknown as RenderedElement;
-    expect(workspace.findByClass('credit-workbench')).toHaveLength(1);
+    expect(workspace.findByClass('credit-review-console')).toHaveLength(1);
+    expect(workspace.findByClass('credit-workbench')).toHaveLength(0);
     expect(workspace.findByClass('contract-workbench')).toHaveLength(1);
-    expect(workspace.textContent).toContain('设置客户额度');
-    expect(workspace.textContent).toContain('发起信用评估');
-    expect(workspace.textContent).toContain('等待信用审批');
-    expect(workspace.textContent).toContain('批准信用');
+    expect(workspace.textContent).not.toContain('JSON 请求');
     expect(workspace.textContent).toContain('新建合同');
     expect(workspace.textContent).toContain('合同待签署');
     expect(workspace.textContent).toContain('记录签署回执');

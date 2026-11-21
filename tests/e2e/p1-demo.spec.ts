@@ -40,18 +40,18 @@ async function openAuthenticatedWorkspace(page: Page): Promise<void> {
 test('shows approved, rejected, and expired credit evidence', async ({ page }, testInfo) => {
   await openAuthenticatedWorkspace(page);
   await openRoute(page, 'credit-review');
-  const workbench = page.locator('.credit-workbench');
+  // U3-COM-7：信用审查控制台化后，决定卡片渲染于迁移宿主（data-testid 定位）。
+  const workbench = page.locator('[data-testid="kt-commercial-credit"]');
   await expect(workbench).toBeVisible();
-  const seeded = workbench.locator('.qtc-card', { hasText: '申请 ¥950,000' });
+  // 控制台主列表（DataTable 行）：每行含状态徽标与申请/敞口/额度三金额（displayMoney 数字形态）。
+  const seeded = workbench.locator('tbody tr', { hasText: '¥950,000' });
   await expect(seeded).toHaveCount(3);
-  await expect(seeded.filter({ hasText: '信用已批准' })).toContainText('敞口 ¥0');
-  await expect(seeded.filter({ hasText: '信用已拒绝' }).locator('.qtc-metrics')).toHaveText(
-    '申请 ¥950,000 · 敞口 ¥0 · 额度 ¥5,000,000',
-  );
-  await expect(seeded.filter({ hasText: '信用已过期' }).locator('.qtc-metrics')).toHaveText(
-    '申请 ¥950,000 · 敞口 ¥0 · 额度 ¥5,000,000',
-  );
-  await expect(seeded).toContainText(['额度 ¥5,000,000', '额度 ¥5,000,000', '额度 ¥5,000,000']);
+  await expect(seeded.filter({ hasText: '信用已批准' })).toContainText('¥0');
+  for (const status of ['信用已拒绝', '信用已过期']) {
+    await expect(seeded.filter({ hasText: status })).toContainText('¥0');
+    await expect(seeded.filter({ hasText: status })).toContainText('¥5,000,000');
+  }
+  await expect(seeded).toContainText(['¥5,000,000', '¥5,000,000', '¥5,000,000']);
   await testInfo.attach('credit-outcomes-desktop', {
     body: await workbench.screenshot(),
     contentType: 'image/png',
@@ -97,7 +97,7 @@ test('keeps the P1 evidence usable on a mobile viewport', async ({ page }, testI
   await openAuthenticatedWorkspace(page);
   // Fixed assertion sites identify the failed page without exporting raw private diagnostics.
   await openRoute(page, 'credit-review');
-  await expect(page.locator('.credit-workbench')).toBeVisible();
+  await expect(page.locator('[data-testid="kt-commercial-credit"]')).toBeVisible();
   await openRoute(page, 'contracts');
   await expect(page.locator('.contract-workbench')).toBeVisible();
   await openRoute(page, 'sales-orders');

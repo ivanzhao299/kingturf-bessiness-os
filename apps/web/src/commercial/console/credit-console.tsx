@@ -1,0 +1,559 @@
+import { signal } from '@preact/signals';
+import {
+  DataTable,
+  DetailDrawer,
+  FormSection,
+  PageHeader,
+  StatusBadge,
+  type DataTableColumn,
+  type StatusTone,
+} from '@kingturf/ui';
+import type { CreditConsolePorts, CreditRow } from './credit-ports';
+
+// U3-COM-7（ADR-0014 分域重写）：信用审查控制台——原 vanilla credit workbench 能力面
+// 等价迁移（设定额度/发起评估/批准拒绝决定；决策列表/筛选/详情抽屉含敞口与额度）。
+type CreditFormKind = 'limit' | 'evaluate' | null;
+
+type CreditPageState = Readonly<{
+  decisions: readonly CreditRow[];
+  limits: readonly CreditRow[];
+  statusFilter: 'ALL' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
+  search: string;
+  loadError: string;
+  submitError: string;
+  loading: boolean;
+  selected: CreditRow | null;
+  activeForm: CreditFormKind;
+  decision: 'APPROVED' | 'REJECTED' | null;
+  permissions: ReadonlySet<string>;
+  ports: CreditConsolePorts;
+  open: (row: CreditRow | null) => void;
+  openForm: (kind: CreditFormKind) => void;
+  openDecision: (decision: 'APPROVED' | 'REJECTED') => void;
+  closeForm: () => void;
+  setStatusFilter: (next: 'ALL' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'EXPIRED') => void;
+  setSearch: (next: string) => void;
+  runRefresh: () => Promise<void>;
+  runSetLimit: (values: Readonly<Record<string, string>>) => Promise<void>;
+  runEvaluate: (values: Readonly<Record<string, string>>) => Promise<void>;
+  runDecision: (row: CreditRow, decision: 'APPROVED' | 'REJECTED', reason: string) => Promise<void>;
+  showMore: () => void;
+}>;
+
+const recordValueOf = (value: unknown): Readonly<Record<string, unknown>> =>
+  typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
+
+const STATUS_LABELS: Readonly<Record<string, string>> = {
+  PENDING_APPROVAL: '等待信用审批',
+  APPROVED: '信用已批准',
+  REJECTED: '信用已拒绝',
+  EXPIRED: '信用已过期',
+};
+
+const statusTone = (status: unknown): StatusTone => {
+  if (status === 'APPROVED') return 'success';
+  if (status === 'REJECTED') return 'danger';
+  if (status === 'PENDING_APPROVAL') return 'warning';
+  return 'neutral';
+};
+
+const decisionStatus = (ports: CreditConsolePorts, decision: CreditRow): string =>
+  ports.recordText(decision, 'effectiveStatus', 'effective_status', 'PENDING_APPROVAL');
+
+const columns = (state: CreditPageState): readonly DataTableColumn<CreditRow>[] => [
+  {
+    key: 'status',
+    header: '信用状态',
+    field: (row) => state.ports.recordText(row, 'effectiveStatus', 'effective_status', '—'),
+    render: (row) => {
+      const status = decisionStatus(state.ports, row);
+      return <StatusBadge tone={statusTone(status)}>{STATUS_LABELS[status] ?? status}</StatusBadge>;
+    },
+  },
+  {
+    key: 'requested',
+    header: '申请金额',
+    field: (row) => Number(row.requestedAmount ?? row.requested_amount ?? 0),
+    render: (row) =>
+      state.ports.displayMoney(row.currency, row.requestedAmount ?? row.requested_amount),
+  },
+  {
+    key: 'exposure',
+    header: '敞口',
+    field: (row) => Number(row.exposureAmount ?? row.exposure_amount ?? 0),
+    render: (row) =>
+      state.ports.displayMoney(row.currency, row.exposureAmount ?? row.exposure_amount),
+  },
+  {
+    key: 'limit',
+    header: '额度',
+    field: (row) => Number(row.creditLimit ?? row.limit_amount ?? 0),
+    render: (row) => state.ports.displayMoney(row.currency, row.creditLimit ?? row.limit_amount),
+  },
+  {
+    key: 'quote',
+    header: '关联报价',
+    field: (row) => state.ports.recordText(row, 'quoteRevisionId', 'quote_revision_id'),
+    render: (row) => (
+      <span>{state.ports.recordText(row, 'quoteRevisionId', 'quote_revision_id').slice(0, 8)}</span>
+    ),
+  },
+  {
+    key: 'actions',
+    header: '操作',
+    field: () => '查看',
+    render: (row) => (
+      <button
+        type="button"
+        class="secondary compact"
+        data-testid="kt-credit-open"
+        onClick={() => {
+          state.open(row);
+        }}
+      >
+        查看
+      </button>
+    ),
+  },
+];
+
+const filteredDecisions = (state: CreditPageState): readonly CreditRow[] =>
+  state.decisions.filter((row) => {
+    const status = decisionStatus(state.ports, row);
+    if (state.statusFilter !== 'ALL' && status !== state.statusFilter) return false;
+    if (state.search === '') return true;
+    return state.ports
+      .recordText(row, 'quoteRevisionId', 'quote_revision_id')
+      .toLowerCase()
+      .includes(state.search.toLowerCase());
+  });
+
+const CreditDetail = ({ state }: Readonly<{ state: CreditPageState }>) => {
+  const decision = state.selected;
+  if (!decision) return null;
+  const { ports } = state;
+  const status = decisionStatus(ports, decision);
+  return (
+    <div class="console-summary" data-testid="kt-credit-detail">
+      <p>
+        <span class="console-label">状态</span>
+        <StatusBadge tone={statusTone(status)}>{STATUS_LABELS[status] ?? status}</StatusBadge>
+        <span class="console-label">敞口快照</span>
+        {ports.recordText(decision, 'exposureSnapshotId', 'exposure_snapshot_id').slice(0, 8)}
+      </p>
+      <p>
+        <span class="console-label">申请</span>
+        {ports.displayMoney(
+          decision.currency,
+          decision.requestedAmount ?? decision.requested_amount,
+        )}
+        <span class="console-label">敞口</span>
+        {ports.displayMoney(decision.currency, decision.exposureAmount ?? decision.exposure_amount)}
+        <span class="console-label">额度</span>
+        {ports.displayMoney(decision.currency, decision.creditLimit ?? decision.limit_amount)}
+      </p>
+      <div data-testid="kt-credit-limits">
+        <span class="console-label">客户额度版本</span>
+        {state.limits.length === 0
+          ? '—'
+          : state.limits
+              .map((limit) => {
+                const item = recordValueOf(limit);
+                return `${ports.currencyLabel(item.currency)} ${ports.recordText(item, 'amount', '—')} · ${ports.recordText(item, 'expiresAt', 'expires_at', '—').slice(0, 10)}`;
+              })
+              .join('；')}
+      </div>
+    </div>
+  );
+};
+
+const CreditDrawer = ({ state }: Readonly<{ state: CreditPageState }>) => {
+  const decision = state.selected;
+  if (!decision) return null;
+  const { ports, permissions } = state;
+  const status = decisionStatus(ports, decision);
+  return (
+    <DetailDrawer
+      title={`信用决定详情 · ${ports.recordText(decision, 'quoteRevisionId', 'quote_revision_id').slice(0, 8)}`}
+      onClose={() => {
+        state.open(null);
+      }}
+    >
+      <CreditDetail state={state} />
+      {state.submitError !== '' ? (
+        <p class="console-error" role="alert" data-testid="kt-credit-submit-error">
+          {state.submitError}
+        </p>
+      ) : null}
+      {status === 'PENDING_APPROVAL' && permissions.has('credit:approve') ? (
+        <div class="console-actions" data-testid="kt-credit-actions">
+          {state.decision === null ? (
+            <>
+              <button
+                type="button"
+                class="primary"
+                data-testid="kt-credit-approve"
+                onClick={() => {
+                  state.openDecision('APPROVED');
+                }}
+              >
+                批准信用
+              </button>
+              <button
+                type="button"
+                class="secondary"
+                data-testid="kt-credit-reject"
+                onClick={() => {
+                  state.openDecision('REJECTED');
+                }}
+              >
+                拒绝信用
+              </button>
+            </>
+          ) : null}
+        </div>
+      ) : null}
+      {state.decision !== null ? (
+        <FormSection
+          title={state.decision === 'APPROVED' ? '批准信用' : '拒绝信用'}
+          description="审批决定将永久保留并影响订单释放资格。"
+          fields={[{ name: 'reason', label: '审批理由', type: 'textarea', required: true }]}
+          submitLabel={`确认${state.decision === 'APPROVED' ? '批准' : '拒绝'}`}
+          onSubmit={(values) => {
+            if (state.decision !== null)
+              void state.runDecision(decision, state.decision, values.reason ?? '');
+          }}
+        />
+      ) : null}
+    </DetailDrawer>
+  );
+};
+
+const LimitDrawer = ({ state }: Readonly<{ state: CreditPageState }>) => {
+  const { ports } = state;
+  return (
+    <DetailDrawer title="设置客户信用额度" onClose={state.closeForm}>
+      <FormSection
+        title="设置客户信用额度"
+        description="额度按客户、币种和有效期形成不可变版本记录。"
+        fields={[
+          {
+            name: 'customerId',
+            label: '客户',
+            type: 'select',
+            required: true,
+            options: ports.customers.map((item) => ({
+              value: item.id,
+              label: item.name ?? item.id,
+            })),
+          },
+          { name: 'amount', label: '信用额度', type: 'number', required: true },
+          {
+            name: 'currency',
+            label: '币种',
+            type: 'select',
+            required: true,
+            options: [
+              { value: 'CNY', label: '人民币' },
+              { value: 'USD', label: '美元 USD' },
+            ],
+          },
+          { name: 'effectiveAt', label: '生效日期', type: 'date', required: true },
+          { name: 'expiresAt', label: '失效日期', type: 'date', required: true },
+        ]}
+        submitLabel="保存额度"
+        onSubmit={(values) => state.runSetLimit(values)}
+      />
+    </DetailDrawer>
+  );
+};
+
+const EvaluateDrawer = ({ state }: Readonly<{ state: CreditPageState }>) => {
+  const { ports } = state;
+  const issuedQuotes = state.ports.issuedQuotes;
+  return (
+    <DetailDrawer title="发起信用评估" onClose={state.closeForm}>
+      <FormSection
+        title="发起信用评估"
+        description="服务器会锁定客户信用台账并重新计算敞口，不能由前端覆盖。"
+        fields={[
+          {
+            name: 'quoteRevisionId',
+            label: '已签发报价',
+            type: 'select',
+            required: true,
+            options: issuedQuotes.map((item) => ({
+              value: ports.textValue(item.id, ''),
+              label: `${ports.textValue(item.quoteNumber, '报价')} · 第 ${ports.textValue(item.revision, '1')} 版 · ${ports.textValue(item.currency, '')} ${ports.textValue(item.total, '—')}`,
+            })),
+          },
+          {
+            name: 'creditLimitId',
+            label: '信用额度版本',
+            type: 'select',
+            required: true,
+            options: state.limits.map((item) => ({
+              value: ports.textValue(item.id, ''),
+              label: `${ports.currencyLabel(ports.recordText(item, 'currency', 'currency', 'CNY'))} ${ports.recordText(item, 'amount', 'amount', '—')} · ${ports.recordText(item, 'expiresAt', 'expires_at', '').slice(0, 10)}`,
+            })),
+          },
+          { name: 'validUntil', label: '信用决定有效期至', type: 'date', required: true },
+        ]}
+        submitLabel="执行信用评估"
+        onSubmit={(values) => state.runEvaluate(values)}
+      />
+    </DetailDrawer>
+  );
+};
+
+const CreditView = (state: CreditPageState) => {
+  const visible = filteredDecisions(state);
+  const shown = visible.slice(0, 20);
+  const mayApprove = state.permissions.has('credit:approve');
+  const mayEvaluate =
+    state.permissions.has('credit:evaluate') &&
+    state.limits.length > 0 &&
+    state.ports.issuedQuotes.length > 0;
+  return (
+    <div class="commercial-console-page" data-testid="kt-credit-page">
+      <PageHeader
+        title="信用审查"
+        description="客户额度、应收与信用敞口"
+        actions={
+          <>
+            {mayApprove ? (
+              <button
+                type="button"
+                class="secondary"
+                data-testid="kt-credit-set-limit"
+                onClick={() => {
+                  state.openForm('limit');
+                }}
+              >
+                设置客户额度
+              </button>
+            ) : null}
+            {mayEvaluate ? (
+              <button
+                type="button"
+                class="primary"
+                data-testid="kt-credit-evaluate"
+                onClick={() => {
+                  state.openForm('evaluate');
+                }}
+              >
+                ＋ 发起信用评估
+              </button>
+            ) : null}
+          </>
+        }
+      />
+      <div class="commercial-console-filters">
+        {(['ALL', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'EXPIRED'] as const).map((option) => (
+          <button
+            key={option}
+            type="button"
+            class={state.statusFilter === option ? 'secondary compact active' : 'secondary compact'}
+            data-testid={`kt-credit-filter-${option.toLowerCase()}`}
+            onClick={() => {
+              state.setStatusFilter(option);
+            }}
+          >
+            {option === 'ALL' ? '全部' : (STATUS_LABELS[option] ?? option)}
+          </button>
+        ))}
+        <input
+          type="search"
+          placeholder="按报价编号检索"
+          data-testid="kt-credit-search"
+          value={state.search}
+          onInput={(event) => {
+            state.setSearch((event.target as { value?: string }).value ?? '');
+          }}
+        />
+      </div>
+      {state.loadError !== '' ? (
+        <p class="console-error" role="alert">
+          {state.loadError}
+        </p>
+      ) : null}
+      <DataTable
+        columns={columns(state)}
+        rows={shown}
+        rowId={(row) => state.ports.recordText(row, 'id', 'id')}
+        caption="信用决定主列表（状态、敞口与额度）"
+        loading={state.loading}
+        pagination={{
+          loadedCount: shown.length,
+          hasMore: visible.length > shown.length,
+          loading: false,
+          onLoadMore: () => {
+            state.showMore();
+          },
+        }}
+        {...(state.loadError === '' ? {} : { error: state.loadError })}
+        emptyTitle="暂无信用决定"
+        emptyDescription="设置客户额度并发起信用评估后会出现在这里"
+      />
+      {state.selected ? <CreditDrawer state={state} /> : null}
+      {state.activeForm === 'limit' ? <LimitDrawer state={state} /> : null}
+      {state.activeForm === 'evaluate' ? <EvaluateDrawer state={state} /> : null}
+    </div>
+  );
+};
+
+export function CreditConsolePage(ports: CreditConsolePorts) {
+  const bundle = {
+    decisions: signal<readonly CreditRow[]>([...ports.initialDecisions]),
+    limits: signal<readonly CreditRow[]>([...ports.initialLimits]),
+    statusFilter: signal<'ALL' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'EXPIRED'>('ALL'),
+    search: signal(''),
+    loadError: signal(''),
+    submitError: signal(''),
+    loading: signal(false),
+    selected: signal<CreditRow | null>(null),
+    activeForm: signal<CreditFormKind>(null),
+    decision: signal<'APPROVED' | 'REJECTED' | null>(null),
+    shownCount: signal(20),
+  };
+
+  const fail = (error: unknown, fallback: string): void => {
+    const message = error instanceof Error ? error.message : fallback;
+    if (bundle.selected.value !== null || bundle.activeForm.value !== null)
+      bundle.submitError.value = message;
+    else bundle.loadError.value = message;
+  };
+  const closeForm = (): void => {
+    bundle.activeForm.value = null;
+    bundle.decision.value = null;
+    bundle.submitError.value = '';
+  };
+
+  const runRefresh = async (): Promise<void> => {
+    bundle.loading.value = true;
+    try {
+      const fresh = await ports.refresh();
+      bundle.decisions.value = fresh.decisions;
+      bundle.limits.value = fresh.limits;
+      bundle.loadError.value = '';
+    } catch (error: unknown) {
+      fail(error, '信用数据加载失败');
+    } finally {
+      bundle.loading.value = false;
+    }
+  };
+
+  const runSetLimit = async (values: Readonly<Record<string, string>>): Promise<void> => {
+    bundle.loading.value = true;
+    bundle.submitError.value = '';
+    try {
+      await ports.submit('/api/v1/credit-limits', {
+        customerId: values.customerId ?? '',
+        currency: values.currency ?? 'CNY',
+        amount: values.amount ?? '',
+        effectiveAt: new Date(`${values.effectiveAt ?? ''}T00:00:00.000Z`).toISOString(),
+        expiresAt: new Date(`${values.expiresAt ?? ''}T23:59:59.000Z`).toISOString(),
+      });
+      const fresh = await ports.refresh();
+      bundle.decisions.value = fresh.decisions;
+      bundle.limits.value = fresh.limits;
+      closeForm();
+    } catch (error: unknown) {
+      fail(error, '额度保存失败');
+    } finally {
+      bundle.loading.value = false;
+    }
+  };
+
+  const runEvaluate = async (values: Readonly<Record<string, string>>): Promise<void> => {
+    bundle.loading.value = true;
+    bundle.submitError.value = '';
+    try {
+      const quote = ports.issuedQuotes.find((item) => item.id === values.quoteRevisionId);
+      const customerId = quote?.customerId;
+      if (typeof customerId !== 'string') throw new Error('报价未关联有效客户');
+      await ports.submit('/api/v1/credit-decisions', {
+        customerId,
+        quoteRevisionId: values.quoteRevisionId ?? '',
+        quoteSnapshotId: ports.textValue(quote?.issuedSnapshotId, ''),
+        creditLimitId: values.creditLimitId ?? '',
+        validUntil: new Date(`${values.validUntil ?? ''}T23:59:59.000Z`).toISOString(),
+      });
+      const fresh = await ports.refresh();
+      bundle.decisions.value = fresh.decisions;
+      closeForm();
+    } catch (error: unknown) {
+      fail(error, '信用评估失败');
+    } finally {
+      bundle.loading.value = false;
+    }
+  };
+
+  const runDecision = async (
+    row: CreditRow,
+    decision: 'APPROVED' | 'REJECTED',
+    reason: string,
+  ): Promise<void> => {
+    bundle.loading.value = true;
+    bundle.submitError.value = '';
+    try {
+      await ports.submit(
+        `/api/v1/credit-decisions/${ports.recordText(row, 'id', 'id')}/state`,
+        { decision, reason },
+        'PUT',
+      );
+      const fresh = await ports.refresh();
+      bundle.decisions.value = fresh.decisions;
+      closeForm();
+    } catch (error: unknown) {
+      fail(error, '信用决定失败');
+    } finally {
+      bundle.loading.value = false;
+    }
+  };
+
+  const state = (): CreditPageState => ({
+    decisions: bundle.decisions.value,
+    limits: bundle.limits.value,
+    statusFilter: bundle.statusFilter.value,
+    search: bundle.search.value,
+    loadError: bundle.loadError.value,
+    submitError: bundle.submitError.value,
+    loading: bundle.loading.value,
+    selected: bundle.selected.value,
+    activeForm: bundle.activeForm.value,
+    decision: bundle.decision.value,
+    permissions: ports.permissions,
+    ports,
+    open: (row) => {
+      bundle.selected.value = row;
+      bundle.activeForm.value = null;
+      bundle.decision.value = null;
+      bundle.submitError.value = '';
+    },
+    openForm: (kind) => {
+      bundle.activeForm.value = kind;
+      bundle.submitError.value = '';
+    },
+    openDecision: (decision) => {
+      bundle.decision.value = decision;
+    },
+    closeForm,
+    setStatusFilter: (next) => {
+      bundle.statusFilter.value = next;
+    },
+    setSearch: (next) => {
+      bundle.search.value = next;
+    },
+    showMore: () => {
+      bundle.shownCount.value = bundle.shownCount.value + 20;
+    },
+    runRefresh,
+    runSetLimit,
+    runEvaluate,
+    runDecision,
+  });
+
+  const Page = () => CreditView(state());
+  return Page;
+}
