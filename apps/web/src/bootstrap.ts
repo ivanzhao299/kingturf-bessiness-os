@@ -42,7 +42,6 @@ import {
   renderBusinessDocumentComparison,
 } from './shared/document-html';
 import { printOnlineBusinessDocument } from './shared/document-print';
-import { customer360Content } from './crm/customer360-view';
 import { navIcon, viewportFor } from './shared/shell-presentation';
 export { viewportFor } from './shared/shell-presentation';
 import { installRoleTaskInsights } from './shared/role-insights';
@@ -75,7 +74,6 @@ import {
   shipmentGateLabel,
   operationsNextAction,
   businessStateLabel,
-  customerStateLabel,
   costMatrixRoleGuidance,
   costMatrixAuditLabel,
 } from './shared/business-labels';
@@ -618,11 +616,7 @@ export function createCrmShell(
 }
 
 function createCrmRecords(shell: HTMLElement, controller: CrmController): HTMLElement {
-  return renderCrmRecords(shell, controller, {
-    bootstrapView,
-    customer360Content,
-    customerStateLabel,
-  });
+  return renderCrmRecords(shell, controller);
 }
 
 function bootstrapView(current: HTMLElement, controller: CrmController): void {
