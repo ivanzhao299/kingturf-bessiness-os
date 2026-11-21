@@ -18,7 +18,7 @@ export type CommercialApi = Readonly<{
   submit(
     path: string,
     payload: Record<string, unknown>,
-    method?: 'POST' | 'PATCH',
+    method?: 'POST' | 'PATCH' | 'PUT',
   ): Promise<Record<string, unknown>>;
   uploadCtrAttachment(versionId: string, file: File): Promise<Record<string, unknown>>;
   uploadContractDocument?(

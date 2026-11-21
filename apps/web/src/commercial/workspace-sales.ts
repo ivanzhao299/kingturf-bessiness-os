@@ -3,9 +3,8 @@ import type { SalesViewPorts } from './sales-view-ports';
 import type { PricingViewPorts } from './pricing-view-ports';
 import type { CreditContractViewContext } from './credit-contract-view-ports';
 import type { FulfillmentViewContext } from './fulfillment-view-ports';
-import { appendOpportunityConsole } from './console-entry';
+import { appendOpportunityConsole, appendSolutionConsole } from './console-entry';
 import { appendCtrView } from './ctr-view';
-import { appendSolutionView } from './solution-view';
 import { appendCostView } from './cost-view';
 import { appendPolicyView } from './policy-view';
 import { appendQuoteView } from './quote-view';
@@ -30,7 +29,8 @@ export function appendWorkspaceSales(
     appendCtrView(workspace, status, controller, permissions, salesViewPorts);
   }
   if (controller && permissions.has('technical-solution:read')) {
-    appendSolutionView(workspace, status, controller, permissions, salesViewPorts);
+    // U3-COM-2：技术方案路由切换至 Preact 控制台（原 vanilla workbench 随本次迁移退役）。
+    appendSolutionConsole(workspace, controller, permissions, salesViewPorts);
   }
   if (
     controller &&

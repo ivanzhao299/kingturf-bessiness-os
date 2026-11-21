@@ -66,6 +66,7 @@ import type { PostgresRiskRepository } from './risk-repositories.ts';
 import { loginRoutes, sessionRoutes } from './routes/auth.ts';
 import { businessAttempts } from './routes/dispatch/business.ts';
 import { dispatchFoundationRoutes, foundationRoutes } from './routes/foundation.ts';
+import { dispatchFastifyRouteGroup } from './routes/fastify/registry.ts';
 import { dispatchRoutes } from './routes/types.ts';
 import { websiteLeadIngestRoutes } from './routes/website-lead-ingest.ts';
 import type { AuthenticationService } from './security.ts';
@@ -214,6 +215,16 @@ export function buildApp(
               'Password change is required before using this session',
               correlationId,
             );
+        }
+        // U3-COM-2（ADR-0015 接线）：认证/cookie-CSRF/MUST_CHANGE 门之后、legacy 组
+        // 之前挂 Fastify 路由组——被认领路径走 Fastify+Zod，其余落回 legacy 轨。
+        if (dependencies.commercial) {
+          const fastifyResponse = await dispatchFastifyRouteGroup(request, {
+            authorization: context,
+            dependencies,
+            correlationId,
+          });
+          if (fastifyResponse) return fastifyResponse;
         }
         const foundationResponse = await dispatchFoundationRoutes(
           foundationRoutes({

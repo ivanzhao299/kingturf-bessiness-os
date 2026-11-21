@@ -80,6 +80,7 @@
 [Harness施工图竣工归档](exec-plans/completed/harness-2026-10-21.md)：阶段1–5与§14迁移记录；常驻规则以AGENTS、核心信念、架构、CI和门禁文档为准。
 [Wave1合并验证与CP3发布材料](evidence/wave1-verification-2026-11-18.md)：系统管理优化Wave1两轮完整CI、e2e:p1实跑与环境偏差、发布输入契约/步骤/回滚/pg_dump确认项。
 [U3-COM-1 商机列表全栈迁移证据](evidence/u3-com-1-opportunity-console-2026-11-21.md)：commercial 首子批（ADR-0014/0015 分域迁移）：Preact 商机列表控制台+Fastify/zod 首端点同批、旧 vanilla 看板退役（裁定17追认）、e2e P1 前后失败集比对零新增、门禁全绿与边界。
+[U3-COM-2 技术方案控制台+Fastify 生产接线证据](evidence/u3-com-2-solution-console-fastify-wiring-2026-11-21.md)：Fastify 路由组接入生产请求流（认领清单/错误信封对齐/行为守恒 parity 深比对）、technical-solutions 三端点（GET 列表守恒迁移/GET 详情 additive/PUT 经新修订）、Preact 技术方案控制台（筛选分页/抽屉/编辑定稿）、旧 vanilla workbench 退役与门禁回执。
 [Wave1生产部署记录](evidence/wave1-deployment-2026-11-18.md)
 [Wave2生产部署终录](evidence/wave2-deployment-2026-11-19.md)
 [Wave2部署终录·R批更新](evidence/wave2-deployment-2026-11-19.md)：TD-REL-006 死信处置164清零、TD-REL-007 rehearsal harness、staged 7目录清理——三项遗留全部关闭（见§5）。：迁移74+recover全绿、/health时间线（78分钟停机）、交接守卫三分支、TD终态与保全清理清单——系统管理优化计划收官。

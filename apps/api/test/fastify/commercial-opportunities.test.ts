@@ -1,19 +1,14 @@
-import { afterEach, describe, expect, it } from 'vitest';
-import type { AuthorizationContext } from '@kingturf/domain';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { DomainError, type AuthorizationContext } from '@kingturf/domain';
 import type { OpportunityDto } from '@kingturf/types';
-import {
-  buildCommercialOpportunitiesFastifyApp,
-  type OpportunityPage,
-} from '../../src/routes/fastify/commercial-opportunities.js';
+import type { ApiRequest } from '../../src/api-types.ts';
+import type { ApiDependencies } from '../../src/app.ts';
+import type { OpportunityPage } from '../../src/routes/fastify/commercial-opportunities.ts';
+import { dispatchFastifyRouteGroup } from '../../src/routes/fastify/registry.ts';
 
-// U3-COM-1：fastify 商机列表端点的 inject 契约测试——zod 入站正/负例（分页/筛选）、
-// 授权谓词委托与字段遮蔽、keyset nextCursor 传递。仓储经 double 注入（PG 集成归常规轨道）。
-const authorization = (fields: readonly string[] | null): AuthorizationContext =>
-  ({
-    actor: { companyId: '11111111-1111-4111-8111-111111111111', employeeId: 'e-1' },
-    permissions: new Map([['opportunity:read', { scopes: ['TENANT'], fields }]]),
-  }) as unknown as AuthorizationContext;
-
+// U3-COM-2：经生产桥 dispatchFastifyRouteGroup 的 inject 契约测试（认证/授权在
+// app.ts 上游已完成，此处从授权上下文起步）——zod 入站正/负例（分页/筛选）、
+// 授权谓词委托与字段遮蔽、nextCursor 缺省键与 legacy { items } 逐键一致。
 const opportunity: OpportunityDto = {
   id: '22222222-2222-4222-8222-222222222222',
   tenantId: '11111111-1111-4111-8111-111111111111',
@@ -31,50 +26,58 @@ const opportunity: OpportunityDto = {
   updatedAt: '2026-11-20T00:00:00.000Z',
 };
 
-const instances: { close: () => Promise<void> }[] = [];
 const repositoryCalls: unknown[][] = [];
 
-function appWithContext(
-  fields: readonly string[] | null,
-  page: OpportunityPage = { items: [opportunity], nextCursor: null },
-) {
-  const instance = buildCommercialOpportunitiesFastifyApp({
-    authorization: authorization(fields),
-    repository: {
+const scopeFor = (fields: readonly string[] | null, page: OpportunityPage) => ({
+  authorization: {
+    actor: { companyId: '11111111-1111-4111-8111-111111111111', employeeId: 'e-1' },
+    permissions: new Map([['opportunity:read', { scopes: ['TENANT'], fields }]]),
+  } as unknown as AuthorizationContext,
+  dependencies: {
+    commercial: {
       listOpportunityPage: (...args: unknown[]) => {
         repositoryCalls.push(args);
         return Promise.resolve(page);
       },
     },
-  });
-  instances.push(instance);
-  return instance;
-}
+  } as unknown as ApiDependencies,
+  correlationId: 'corr-1',
+});
 
-afterEach(async () => {
-  for (const instance of instances.splice(0)) await instance.close();
+const requestFor = (query: Record<string, string> = {}): ApiRequest => ({
+  method: 'GET',
+  pathname: '/api/v1/opportunities',
+  ...(Object.keys(query).length > 0 ? { query, hasQuery: true } : {}),
+});
+
+afterEach(() => {
   repositoryCalls.length = 0;
 });
 
-describe('GET /api/v1/opportunities fastify track', () => {
-  it('accepts a default request and returns the schema-validated page', async () => {
-    const response = await appWithContext(null).inject({
-      method: 'GET',
-      url: '/api/v1/opportunities',
-    });
-    expect(response.statusCode).toBe(200);
-    const body = response.json<{ items: Record<string, unknown>[]; nextCursor: string | null }>();
+describe('GET /api/v1/opportunities fastify bridge track', () => {
+  it('default request returns { items } only — key parity with the legacy body', async () => {
+    const response = await dispatchFastifyRouteGroup(
+      requestFor(),
+      scopeFor(null, { items: [opportunity], nextCursor: null }),
+    );
+    expect(response?.statusCode).toBe(200);
+    const body = response?.body as { items: Record<string, unknown>[]; nextCursor?: unknown };
+    expect(Object.keys(body)).toEqual(['items']);
     expect(body.items).toHaveLength(1);
     expect(body.items[0]).toMatchObject({ name: '国际学校足球场', status: 'OPEN' });
-    expect(body.nextCursor).toBeNull();
-    expect(repositoryCalls[0]?.[3]).toEqual({ limit: 50 });
+    expect(repositoryCalls[0]?.[3]).toEqual({ limit: 100 });
   });
 
   it('passes validated pagination and filter parameters to the repository', async () => {
-    await appWithContext(null).inject({
-      method: 'GET',
-      url: '/api/v1/opportunities?limit=25&cursor=22222222-2222-4222-8222-222222222222&status=OPEN&customerId=44444444-4444-4444-8444-444444444444',
-    });
+    await dispatchFastifyRouteGroup(
+      requestFor({
+        limit: '25',
+        cursor: '22222222-2222-4222-8222-222222222222',
+        status: 'OPEN',
+        customerId: '44444444-4444-4444-8444-444444444444',
+      }),
+      scopeFor(null, { items: [opportunity], nextCursor: null }),
+    );
     expect(repositoryCalls[0]?.[3]).toEqual({
       limit: 25,
       cursor: '22222222-2222-4222-8222-222222222222',
@@ -83,75 +86,79 @@ describe('GET /api/v1/opportunities fastify track', () => {
     });
   });
 
-  it('continues keyset pagination through nextCursor', async () => {
-    const response = await appWithContext(null, {
-      items: [opportunity],
-      nextCursor: '55555555-5555-4555-8555-555555555555',
-    }).inject({ method: 'GET', url: '/api/v1/opportunities?limit=10' });
-    expect(response.statusCode).toBe(200);
-    expect(response.json<{ items: unknown[]; nextCursor: string | null }>().nextCursor).toBe(
+  it('continues keyset pagination through nextCursor when the page overflows', async () => {
+    const response = await dispatchFastifyRouteGroup(
+      requestFor({ limit: '10' }),
+      scopeFor(null, {
+        items: [opportunity],
+        nextCursor: '55555555-5555-4555-8555-555555555555',
+      }),
+    );
+    expect(response?.statusCode).toBe(200);
+    expect((response?.body as { nextCursor?: string }).nextCursor).toBe(
       '55555555-5555-4555-8555-555555555555',
     );
   });
 
   it('masks item fields to the granted read projection', async () => {
-    const response = await appWithContext(['id', 'name', 'status']).inject({
-      method: 'GET',
-      url: '/api/v1/opportunities',
-    });
-    expect(response.statusCode).toBe(200);
-    const body = response.json<{ items: Record<string, unknown>[] }>();
-    expect(body.items[0]).toEqual({
+    const response = await dispatchFastifyRouteGroup(
+      requestFor(),
+      scopeFor(['id', 'name', 'status'], { items: [opportunity], nextCursor: null }),
+    );
+    expect(response?.statusCode).toBe(200);
+    expect((response?.body as { items: Record<string, unknown>[] }).items[0]).toEqual({
       id: opportunity.id,
       name: '国际学校足球场',
       status: 'OPEN',
     });
   });
 
-  it('rejects a non-numeric limit with 400', async () => {
-    const response = await appWithContext(null).inject({
-      method: 'GET',
-      url: '/api/v1/opportunities?limit=abc',
-    });
-    expect(response.statusCode).toBe(400);
+  it('returns null for unclaimed paths so the legacy track keeps serving them', async () => {
+    const response = await dispatchFastifyRouteGroup(
+      { method: 'GET', pathname: '/api/v1/ctrs' },
+      scopeFor(null, { items: [], nextCursor: null }),
+    );
+    expect(response).toBeNull();
     expect(repositoryCalls).toHaveLength(0);
   });
 
-  it('rejects an out-of-range limit with 400', async () => {
-    for (const limit of ['0', '101']) {
-      const response = await appWithContext(null).inject({
-        method: 'GET',
-        url: `/api/v1/opportunities?limit=${limit}`,
-      });
-      expect(response.statusCode).toBe(400);
+  it('maps zod validation failures to the legacy 400 envelope with correlation id', async () => {
+    for (const query of [
+      { limit: 'abc' },
+      { limit: '0' },
+      { limit: '101' },
+      { cursor: 'not-a-uuid' },
+      { status: 'UNKNOWN' },
+      { customerId: '42' },
+    ]) {
+      const response = await dispatchFastifyRouteGroup(
+        requestFor(query),
+        scopeFor(null, { items: [opportunity], nextCursor: null }),
+      );
+      expect(response?.statusCode).toBe(400);
+      const body = response?.body as { error: { code: string; correlationId: string } };
+      expect(body.error.code).toBe('invalid_request');
+      expect(body.error.correlationId).toBe('corr-1');
     }
     expect(repositoryCalls).toHaveLength(0);
   });
 
-  it('rejects a malformed cursor with 400', async () => {
-    const response = await appWithContext(null).inject({
-      method: 'GET',
-      url: '/api/v1/opportunities?cursor=not-a-uuid',
+  it('maps repository DomainError rejections to the legacy status mapping', async () => {
+    const response = await dispatchFastifyRouteGroup(requestFor(), {
+      authorization: {
+        actor: { companyId: '11111111-1111-4111-8111-111111111111', employeeId: 'e-1' },
+        permissions: new Map([['opportunity:read', { scopes: ['TENANT'], fields: null }]]),
+      } as unknown as AuthorizationContext,
+      dependencies: {
+        commercial: {
+          listOpportunityPage: vi
+            .fn()
+            .mockRejectedValue(new DomainError('forbidden', 'Permission denied')),
+        },
+      } as unknown as ApiDependencies,
+      correlationId: 'corr-1',
     });
-    expect(response.statusCode).toBe(400);
-    expect(repositoryCalls).toHaveLength(0);
-  });
-
-  it('rejects an unsupported status with 400', async () => {
-    const response = await appWithContext(null).inject({
-      method: 'GET',
-      url: '/api/v1/opportunities?status=UNKNOWN',
-    });
-    expect(response.statusCode).toBe(400);
-    expect(repositoryCalls).toHaveLength(0);
-  });
-
-  it('rejects a malformed customerId with 400', async () => {
-    const response = await appWithContext(null).inject({
-      method: 'GET',
-      url: '/api/v1/opportunities?customerId=42',
-    });
-    expect(response.statusCode).toBe(400);
-    expect(repositoryCalls).toHaveLength(0);
+    expect(response?.statusCode).toBe(403);
+    expect((response?.body as { error: { code: string } }).error.code).toBe('forbidden');
   });
 });

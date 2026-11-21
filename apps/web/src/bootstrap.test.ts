@@ -314,7 +314,10 @@ it('captures artificial-turf project handoff fields without test-channel evidenc
       'export function installWorkspaceListTools',
     ),
     readBoundSource('./commercial/ctr-view.ts', 'export function appendCtrView'),
-    readBoundSource('./commercial/solution-view.ts', 'export function appendSolutionView'),
+    readBoundSource(
+      './commercial/console/solution-console.tsx',
+      'export function SolutionConsolePage',
+    ),
     readBoundSource('./commercial/cost-view.ts', 'export function appendCostView'),
     readBoundSource(
       './commercial/cost-matrix-bindings.ts',
@@ -2408,9 +2411,9 @@ describe('web bootstrap', () => {
       false,
       controller,
     ) as unknown as RenderedElement;
-    expect(workspace.findByClass('opportunity-console')).toHaveLength(1);
+    expect(workspace.findByClass('opportunities-console')).toHaveLength(1);
     expect(workspace.findByClass('commercial-console')).toHaveLength(1);
-    const opportunityHost = workspace.findByClass('opportunity-console')[0];
+    const opportunityHost = workspace.findByClass('opportunities-console')[0];
     expect(opportunityHost?.getAttribute('data-route-view')).toBe('opportunities');
     expect(opportunityHost?.getAttribute('data-testid')).toBe('kt-commercial-opportunities');
     expect(workspace.findByClass('ctr-workbench')).toHaveLength(1);
@@ -2423,7 +2426,7 @@ describe('web bootstrap', () => {
     expect(workspace.textContent).not.toContain('JSON 请求');
   });
 
-  it('renders structured technical solution specifications and revision actions', async () => {
+  it('mounts the technical-solution console host for desktop and mobile workspaces', async () => {
     const commercialApi = {
       listOpportunities: vi.fn().mockResolvedValue([{ id: 'op-1', name: '学校球场' }]),
       list: vi.fn().mockImplementation((path: string) =>
@@ -2474,19 +2477,17 @@ describe('web bootstrap', () => {
       false,
       controller,
     ) as unknown as RenderedElement;
-    expect(workspace.findByClass('solution-workbench')).toHaveLength(1);
-    expect(workspace.findByClass('solution-card')).toHaveLength(1);
-    expect(workspace.textContent).toContain('KingTurf Pro');
-    expect(workspace.textContent).toContain('新建技术方案');
-    expect(workspace.textContent).toContain('创建方案修订');
+    expect(workspace.findByClass('technical-solutions-console')).toHaveLength(1);
+    const solutionHost = workspace.findByClass('technical-solutions-console')[0];
+    expect(solutionHost?.getAttribute('data-route-view')).toBe('technical-solutions');
+    expect(solutionHost?.getAttribute('data-testid')).toBe('kt-commercial-solutions');
     const mobile = commercialWorkspaceStructure(
       'mobile',
       false,
       controller,
     ) as unknown as RenderedElement;
     expect(mobile.className.split(' ')).toContain('mobile');
-    expect(mobile.findByClass('solution-workbench')).toHaveLength(1);
-    expect(mobile.textContent).toContain('KingTurf Pro');
+    expect(mobile.findByClass('technical-solutions-console')).toHaveLength(1);
   });
 
   it('derives the technical solution opportunity from its approved CTR handoff', () => {

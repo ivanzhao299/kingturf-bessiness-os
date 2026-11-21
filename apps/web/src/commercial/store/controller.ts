@@ -178,7 +178,7 @@ export class CommercialController {
   public async submit(
     path: string,
     payload: Record<string, unknown>,
-    method: 'POST' | 'PATCH' = 'POST',
+    method: 'POST' | 'PATCH' | 'PUT' = 'POST',
   ): Promise<void> {
     this.loading = true;
     try {

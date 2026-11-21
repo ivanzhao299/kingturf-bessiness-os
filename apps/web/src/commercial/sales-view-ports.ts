@@ -7,7 +7,11 @@ export type SalesViewController = {
   customers: readonly Customer[];
   views: ReadonlyMap<string, readonly Record<string, unknown>[]>;
   message: string;
-  submit(path: string, payload: Record<string, unknown>, method?: 'POST' | 'PATCH'): Promise<void>;
+  submit(
+    path: string,
+    payload: Record<string, unknown>,
+    method?: 'POST' | 'PATCH' | 'PUT',
+  ): Promise<void>;
   load(): Promise<void>;
   transitionOpportunity(opportunity: Opportunity, status: string, reason: string): Promise<void>;
   uploadCtrAttachment(versionId: string, file: File): Promise<void>;

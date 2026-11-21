@@ -1299,6 +1299,25 @@ export class PostgresCommercialRepository {
     });
   }
 
+  // U3-COM-2（ADR-0015）：fastify 技术方案详情只读（additive）；谓词与
+  // listCommercialView('solutions') 同口径（opportunity join + recordScopeSql('o')）。
+  public async findTechnicalSolutionRevision(
+    id: string,
+    actor: Actor,
+    scopes: readonly DataScope[],
+    anchors: readonly ScopeAnchor[],
+  ): Promise<JsonObject | null> {
+    const secured = recordScopeSql(scopes, anchors, actor, 'o', 2);
+    const row = (
+      await this.db.query<JsonObject>(
+        `SELECT r.id,s.id AS "technicalSolutionId",s.opportunity_id AS "opportunityId",s.code,r.revision,r.status,r.ctr_version_id AS "ctrVersionId",r.specification,r.assumptions,r.created_at AS "createdAt"
+         FROM technical_solution_revisions r JOIN technical_solutions s ON s.id=r.technical_solution_id AND s.tenant_id=r.tenant_id JOIN opportunities o ON o.id=s.opportunity_id AND o.tenant_id=s.tenant_id
+         WHERE r.id=$1 AND o.tenant_id=$2 AND o.deleted_at IS NULL AND ${secured.sql}`,
+        [id, actor.companyId, ...secured.values],
+      )
+    ).rows[0];
+    return row ?? null;
+  }
   public async createTechnicalSolution(
     input: {
       opportunityId: string;
