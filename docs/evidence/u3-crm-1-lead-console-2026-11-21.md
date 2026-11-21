@@ -37,7 +37,13 @@
 | structure-gate / service-boundary   | 0 强制违规（bootstrap 799 行）/ 0 违规                                 |
 | e2e P1                              | **11 passed / 0 failed（24.1s）、零 500**——线索列表已真实走 Fastify 桥 |
 
-## 5. 边界与后续
+## 5. 提交链与 f3 re-pin（如实记录）
+
+- 提交链（4c6792f..本批 HEAD）：`a1279b5` feat（主体）→ `e3ffc3e` fix（f3 re-pin：线索 GET/pool/POST 场景经生产桥——响应+终止仓储 call 行比对；GET 两场景 f3 冻结 500 为遗留解析缺陷，桥轨正确 200 空列表，e2e P1 佐证，re-pin 钉定新形态）。
+- 首轮 ci 失败即线索路径场景；re-pin 后 EXIT=0 全链。
+- ci:local：NODE_ENV=test（kingturf_test），干净快照 **EXIT=0 全链**（API 17852 测试；Web 495）。
+
+## 6. 边界与后续
 
 - legacy lead-base/claim/commands 轨完整保留（双轨并行）。
 - 后续子批：U3-CRM-2 客户管理 → CRM-3 联系人 → CRM-4 客户活动。
