@@ -350,11 +350,20 @@ it('root authentication, errors, lifecycle, completion and acceptance modes inve
       node.expression.getText(current).includes("credentialState === 'MUST_CHANGE'"),
   );
   if (!gate) throw new Error('Approved A1 must-change gate missing');
+  // U3-COM-2（ADR-0015 接线，主协调已批）：try 内新增 Fastify 路由组挂载 if 语句；
+  // 比对前同样从展开文本中删除该已批语句，其余逐 token 等于冻结 f3。
+  const fastifyMount = findAll(fn, ts.isIfStatement).find(
+    (node): node is ts.IfStatement =>
+      ts.isIfStatement(node) &&
+      node.thenStatement.getText(current).includes('dispatchFastifyRouteGroup'),
+  );
+  if (!fastifyMount) throw new Error('Approved U3-COM-2 fastify mount missing');
   const expanded = fn.body
     ?.getText(current)
     .replace(loop.getText(current), middle)
     .replace(tail.getText(current), completionBody)
-    .replace(gate.getText(current), '');
+    .replace(gate.getText(current), '')
+    .replace(fastifyMount.getText(current), '');
   expect(
     firstDifference(tokens(expanded ?? ''), tokens(original.body?.getText(old) ?? '')),
   ).toBeNull();

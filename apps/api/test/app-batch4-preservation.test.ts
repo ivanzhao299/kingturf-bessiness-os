@@ -61,6 +61,15 @@ const stripApprovedListArgs = (row: unknown): unknown => {
 // 移除该已批 ["root","audit"] 行（仅该一处新增访问，其余 trace 逐字段相等）。
 const stripApprovedAuditAccess = (row: unknown): boolean =>
   Array.isArray(row) && row.length === 2 && row[0] === 'root' && row[1] === 'audit';
+// U3-COM-2（ADR-0015 接线，主协调已批）：dispatch 前段新增 dependencies.commercial
+// 访问（Fastify 路由组认领门）；仅对 current 侧比对前移除该一处新增访问（首个
+// ["root","commercial"] 行）——基线侧不做此剥离（其同键行属冻结基线自身）。
+const stripApprovedBridgeAccess = (rows: unknown[]): unknown[] => {
+  const index = rows.findIndex(
+    (row) => Array.isArray(row) && row.length === 2 && row[0] === 'root' && row[1] === 'commercial',
+  );
+  return index === -1 ? rows : rows.filter((_, at) => at !== index);
+};
 const preserve = (result: { name: string; [key: string]: unknown }) => ({
   ...result,
   ...(Array.isArray(result.trace)
@@ -71,6 +80,12 @@ const preserve = (result: { name: string; [key: string]: unknown }) => ({
       }
     : {}),
 });
+const preserveCurrent = (result: { name: string; [key: string]: unknown }) => {
+  const normalized = preserve(result);
+  return Array.isArray(normalized.trace)
+    ? { ...normalized, trace: stripApprovedBridgeAccess(normalized.trace) }
+    : normalized;
+};
 describe('Batch4 app extraction against fixed f3 complete request traces', () => {
   it('retains the frozen baseline and every scenario', () => {
     expect(current.baseline).toBe('f3f0c42aa8493f594076c03d3270f0c21de7ba78');
@@ -81,6 +96,6 @@ describe('Batch4 app extraction against fixed f3 complete request traces', () =>
     it(row.name, () => {
       const currentRow = current.results[index];
       if (currentRow === undefined) throw new Error('Current scenario result missing');
-      expect(preserve(currentRow)).toEqual(preserve(row));
+      expect(preserveCurrent(currentRow)).toEqual(preserve(row));
     });
 });
