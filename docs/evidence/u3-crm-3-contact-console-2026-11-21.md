@@ -36,7 +36,12 @@
 | structure-gate / service-boundary   | 0 强制违规 / 0 违规                             |
 | e2e P1                              | **11 passed / 0 failed（24.7s）、零 500**       |
 
-## 5. 边界与后续
+## 5. 提交与回执（如实记录）
+
+- 提交：`7750b34` feat（本批主体，单提交；过程 typecheck/lint 问题在提交前闭环）。
+- ci:local：NODE_ENV=test（kingturf_test），干净快照 **EXIT=0 全链**。
+
+## 6. 边界与后续
 
 - legacy POST /contacts 轨保留；联系人更新待独立人裁（新业务能力）。
 - 后续子批：U3-CRM-4 客户活动。
