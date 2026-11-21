@@ -30,7 +30,9 @@ const pattern =
     const match = expression.exec(pathname);
     return match ? { params: match.slice(1) } : null;
   };
-function bodyAndGrant(
+// U3-COM-5（ADR-0015）：解析链助手导出（fastify/ctr.ts 复用同一链，零漂移；
+// additive export，legacy 轨零变更）。
+export function bodyAndGrant(
   context: CtrContext,
   request: ApiRequest,
   fields: readonly string[],
@@ -42,6 +44,59 @@ function bodyAndGrant(
   return { body, grant };
 }
 
+// U3-COM-5（ADR-0015）：各操作解析链提取导出（同上零漂移复用）。
+export function ctrCreateInput(context: CtrContext, request: ApiRequest) {
+  const p = context.parsers;
+  const { body, grant } = bodyAndGrant(
+    context,
+    request,
+    ['opportunityId', 'code', 'title', 'requirements'],
+    'ctr:create',
+  );
+  return {
+    grant,
+    input: {
+      opportunityId: p.uuid(body.opportunityId, 'opportunityId'),
+      code: p.string(body.code, 'code'),
+      title: p.string(body.title, 'title'),
+      requirements: p.jsonObject(body.requirements, 'requirements'),
+    },
+  };
+}
+
+export function ctrStateInput(context: CtrContext, request: ApiRequest, ctrVersionId: string) {
+  const p = context.parsers;
+  const body = p.objectBody(request.body);
+  const versionId = p.uuid(ctrVersionId, 'ctrVersionId');
+  const action = p.string(body.action, 'action');
+  if (action !== 'submit' && action !== 'decide')
+    throw new DomainError('invalid_request', 'action must be submit or decide');
+  if (action === 'submit') {
+    const grant = context.authorize('ctr:submit');
+    p.allow(body, ['action', 'expectedVersion']);
+    return {
+      grant,
+      kind: 'submit' as const,
+      versionId,
+      expectedVersion: p.version(body.expectedVersion),
+      idempotencyKey: p.idempotency(request),
+    };
+  }
+  const grant = context.authorize('ctr:approve');
+  p.allow(body, ['action', 'decision', 'reason']);
+  const decision = p.string(body.decision, 'decision');
+  if (!['APPROVED', 'REJECTED'].includes(decision))
+    throw new DomainError('invalid_request', 'decision is unsupported');
+  return {
+    grant,
+    kind: 'decide' as const,
+    versionId,
+    decision: decision as 'APPROVED' | 'REJECTED',
+    reason: p.string(body.reason, 'reason'),
+    idempotencyKey: p.idempotency(request),
+  };
+}
+
 function creationRoutes(context: CtrContext): readonly RouteDefinition[] {
   const p = context.parsers,
     repository = context.repository;
@@ -49,23 +104,7 @@ function creationRoutes(context: CtrContext): readonly RouteDefinition[] {
     defineRoute({
       method: 'POST',
       match: (pathname) => (pathname === '/api/v1/ctrs' ? { params: [] } : null),
-      validate: (request) => {
-        const { body, grant } = bodyAndGrant(
-          context,
-          request,
-          ['opportunityId', 'code', 'title', 'requirements'],
-          'ctr:create',
-        );
-        return {
-          grant,
-          input: {
-            opportunityId: p.uuid(body.opportunityId, 'opportunityId'),
-            code: p.string(body.code, 'code'),
-            title: p.string(body.title, 'title'),
-            requirements: p.jsonObject(body.requirements, 'requirements'),
-          },
-        };
-      },
+      validate: (request) => ctrCreateInput(context, request),
       handler: async (_request, _match, input) => ({
         statusCode: 201,
         body: context.mutationDto(

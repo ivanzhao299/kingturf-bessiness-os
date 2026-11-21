@@ -124,6 +124,13 @@ const QUOTES_VIEW_SELECT = `SELECT r.id,q.id AS "quoteId",q.opportunity_id AS "o
         (SELECT s.snapshot_hash FROM quote_issued_snapshots s WHERE s.tenant_id=r.tenant_id AND s.quote_revision_id=r.id) AS "issuedSnapshotHash"
         FROM quote_revisions r JOIN quotes q ON q.id=r.quote_id AND q.tenant_id=r.tenant_id JOIN opportunities o ON o.id=q.opportunity_id AND o.tenant_id=q.tenant_id`;
 
+// U3-COM-5（ADR-0015）：CTR 视图 SELECT 提取为共享常量（listCommercialView /
+// findCtr 两处复用，SQL 字节与提取前逐字一致）。
+const CTRS_VIEW_SELECT = `SELECT v.id,c.id AS "ctrId",c.opportunity_id AS "opportunityId",c.code,v.version,v.status,v.title,v.requirements,v.snapshot_hash AS "snapshotHash",v.submitted_at AS "submittedAt",v.created_at AS "createdAt",
+        (SELECT coalesce(jsonb_agg(to_jsonb(a) ORDER BY a.decided_at),'[]'::jsonb) FROM ctr_approvals a WHERE a.tenant_id=v.tenant_id AND a.ctr_version_id=v.id) approvals,
+        (SELECT coalesce(jsonb_agg(to_jsonb(l) ORDER BY l.linked_at),'[]'::jsonb) FROM ctr_attachment_links l WHERE l.tenant_id=v.tenant_id AND l.ctr_version_id=v.id) attachments
+        FROM ctr_versions v JOIN ctrs c ON c.id=v.ctr_id AND c.tenant_id=v.tenant_id JOIN opportunities o ON o.id=c.opportunity_id AND o.tenant_id=c.tenant_id`;
+
 export class PostgresCommercialRepository {
   public constructor(private readonly db: Db) {}
   public async listCostMatrixSummaries(
@@ -885,10 +892,7 @@ export class PostgresCommercialRepository {
   ): Promise<readonly JsonObject[]> {
     const secured = recordScopeSql(scopes, anchors, actor, 'o', 2);
     const definitions = {
-      ctrs: `SELECT v.id,c.id AS "ctrId",c.opportunity_id AS "opportunityId",c.code,v.version,v.status,v.title,v.requirements,v.snapshot_hash AS "snapshotHash",v.submitted_at AS "submittedAt",v.created_at AS "createdAt",
-        (SELECT coalesce(jsonb_agg(to_jsonb(a) ORDER BY a.decided_at),'[]'::jsonb) FROM ctr_approvals a WHERE a.tenant_id=v.tenant_id AND a.ctr_version_id=v.id) approvals,
-        (SELECT coalesce(jsonb_agg(to_jsonb(l) ORDER BY l.linked_at),'[]'::jsonb) FROM ctr_attachment_links l WHERE l.tenant_id=v.tenant_id AND l.ctr_version_id=v.id) attachments
-        FROM ctr_versions v JOIN ctrs c ON c.id=v.ctr_id AND c.tenant_id=v.tenant_id JOIN opportunities o ON o.id=c.opportunity_id AND o.tenant_id=c.tenant_id`,
+      ctrs: CTRS_VIEW_SELECT,
       solutions:
         'SELECT r.id,s.id AS "technicalSolutionId",s.opportunity_id AS "opportunityId",s.code,r.revision,r.status,r.ctr_version_id AS "ctrVersionId",r.specification,r.assumptions,r.created_at AS "createdAt" FROM technical_solution_revisions r JOIN technical_solutions s ON s.id=r.technical_solution_id AND s.tenant_id=r.tenant_id JOIN opportunities o ON o.id=s.opportunity_id AND o.tenant_id=s.tenant_id',
       costs: `SELECT d.id,s.opportunity_id AS "opportunityId",d.technical_solution_revision_id AS "technicalSolutionRevisionId",d.cost_model_version_id AS "modelVersionId",d.input_hash AS "inputHash",d.canonical_input AS "canonicalInput",d.currency,d.subtotal,d.total,d.trace,d.evaluated_at AS "evaluatedAt",
@@ -1384,6 +1388,34 @@ export class PostgresCommercialRepository {
       )
     ).rows[0];
     return row ?? null;
+  }
+  // U3-COM-5（ADR-0015）：CTR 详情只读（additive）——根信息 + 全部版本行（视图同口径）。
+  public async findCtr(
+    id: string,
+    actor: Actor,
+    scopes: readonly DataScope[],
+    anchors: readonly ScopeAnchor[],
+  ): Promise<JsonObject | null> {
+    const secured = recordScopeSql(scopes, anchors, actor, 'o', 2);
+    const root = (
+      await this.db.query<{ id: string; opportunity_id: string; code: string }>(
+        'SELECT c.id,c.opportunity_id,c.code FROM ctrs c WHERE c.id=$1 AND c.tenant_id=$2 AND c.deleted_at IS NULL',
+        [id, actor.companyId],
+      )
+    ).rows[0];
+    if (!root) return null;
+    const versions = (
+      await this.db.query<JsonObject>(
+        `${CTRS_VIEW_SELECT} WHERE c.id=$1 AND o.tenant_id=$2 AND o.deleted_at IS NULL AND ${secured.sql} ORDER BY v.version DESC`,
+        [id, actor.companyId, ...secured.values],
+      )
+    ).rows;
+    return {
+      id: root.id,
+      opportunityId: root.opportunity_id,
+      code: root.code,
+      versions,
+    };
   }
   public async createTechnicalSolution(
     input: {

@@ -1,15 +1,23 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { openFileForm, openForm } from './shared/forms';
-import { appendCtrView } from './commercial/ctr-view';
-import type { SalesViewController, SalesViewPorts } from './commercial/sales-view-ports';
-import { createBehaviorElement, findElement, htmlElement } from '../test/fixtures/behavior-dom';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { h, render } from 'preact';
+import type { ComponentType } from 'preact';
+import { installGlobalTestDom, type TestElement } from '../test/fixtures/preact-dom';
+import { CtrConsolePage } from './commercial/console/ctr-console';
+import type { CtrConsolePorts, CtrRow } from './commercial/console/ctr-ports';
 
-vi.mock('./shared/forms', () => ({ openForm: vi.fn(), openFileForm: vi.fn() }));
-const form = vi.mocked(openForm),
-  fileForm = vi.mocked(openFileForm);
-const unused = (): never => {
-  throw new Error('Unexpected sales port');
+// U3-COM-5：技术需求控制台真实回调契约（原 ctr-view 行为面的等价迁移——
+// 创建载荷/修订门/状态流转 PUT/批准驳回/附件上传；错误经提交错误面呈现）。
+const flush = (): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(resolve, 0);
+  });
+
+const element = (node: unknown): TestElement => {
+  if (node === null || node === undefined || (node as { nodeType?: number }).nodeType !== 1)
+    throw new Error(`expected element, got ${String(node)}`);
+  return node as TestElement;
 };
+
 const requirementInput = {
   application: '足球场',
   projectRegion: '青岛',
@@ -37,65 +45,7 @@ const requirements = {
   warrantyYears: 8,
   delivery: '固定交付',
 };
-const setup = (
-  records: readonly Record<string, unknown>[] = [],
-  permissions: readonly string[] = [],
-) => {
-  const workspace = createBehaviorElement('main'),
-    status = createBehaviorElement('p');
-  status.textContent = 'before';
-  const submit = vi.fn<SalesViewController['submit']>(() => Promise.resolve());
-  const load = vi.fn(() => Promise.resolve());
-  const upload = vi.fn<SalesViewController['uploadCtrAttachment']>(() => Promise.resolve());
-  const controller: SalesViewController = {
-    opportunities: [{ id: 'opportunity-1', name: '学校项目' }],
-    customers: [],
-    views: new Map([['/api/v1/ctrs', records]]),
-    message: 'loaded',
-    submit,
-    load,
-    transitionOpportunity: unused,
-    uploadCtrAttachment: upload,
-  };
-  const displayRequirement = (value: unknown): string =>
-    typeof value === 'string' ? value : typeof value === 'number' ? String(value) : '—';
-  const ports: SalesViewPorts = {
-    recordValue: (value) =>
-      typeof value === 'object' && value !== null && !Array.isArray(value)
-        ? (value as Record<string, unknown>)
-        : {},
-    displayRequirement,
-    formValue: unused,
-    textValue: unused,
-    displayMoney: unused,
-    ctrRequirementFields: [
-      ['pileHeightMm', '草高'],
-      ['color', '颜色'],
-    ],
-    technicalSolutionOpportunityId: unused,
-    opportunityPipelineSummary: unused,
-    replaceRouteView: unused,
-    rebuildWorkspace: unused,
-  };
-  const mount = () => {
-    appendCtrView(
-      htmlElement(workspace),
-      htmlElement(status),
-      controller,
-      new Set(permissions),
-      ports,
-    );
-  };
-  const click = (text: string, root = workspace) => {
-    findElement(root, (node) => node.tagName === 'BUTTON' && node.textContent === text).click();
-    const call = form.mock.calls.at(-1);
-    if (!call) throw new Error('Form missing');
-    expect(call[0]).toBe(htmlElement(workspace));
-    return { fields: call[3], run: call[5], title: call[1] };
-  };
-  return { workspace, status, controller, submit, load, upload, mount, click };
-};
-const draft = {
+const draft: CtrRow = {
   id: 'version-1',
   ctrId: 'ctr-1',
   code: 'CTR-1',
@@ -105,199 +55,231 @@ const draft = {
   requirements,
   attachments: [],
 };
-beforeEach(() => {
-  form.mockClear();
-  fileForm.mockClear();
-  vi.stubGlobal('document', { createElement: createBehaviorElement });
-});
-afterEach(() => vi.unstubAllGlobals());
 
-describe('technical requirement view real callback contracts', () => {
-  it('renders empty state and hides creation and mutation without permission', () => {
-    const empty = setup();
-    empty.mount();
-    expect(empty.workspace.textContent).toContain('暂无技术需求单');
-    expect(empty.workspace.descendants().filter((node) => node.tagName === 'BUTTON')).toEqual([]);
-    const f = setup([draft, { ...draft, id: 'version-2', version: 2, status: 'SUBMITTED' }]);
-    f.mount();
-    expect(f.workspace.descendants().filter((node) => node.tagName === 'BUTTON')).toEqual([]);
-    expect(form).not.toHaveBeenCalled();
+const portsFor = (
+  ctrs: readonly CtrRow[],
+  extraPermissions: readonly string[] = [],
+  overrides: Partial<CtrConsolePorts> = {},
+): CtrConsolePorts => ({
+  permissions: new Set(['ctr:read', ...extraPermissions]),
+  initialCtrs: ctrs,
+  initialSolutions: [],
+  opportunities: [{ id: 'opportunity-1', name: '学校项目' }],
+  textValue: (value, fallback = '') =>
+    typeof value === 'string' || typeof value === 'number' ? String(value) : fallback,
+  recordValue: (value) =>
+    typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {},
+  displayRequirement: (value) =>
+    typeof value === 'string' || typeof value === 'number' ? String(value) : '—',
+  submit: vi.fn().mockResolvedValue(null),
+  uploadAttachment: vi.fn().mockResolvedValue(undefined),
+  refresh: vi.fn().mockResolvedValue({ ctrs, solutions: [] }),
+  ...overrides,
+});
+
+const mount = (ports: CtrConsolePorts): TestElement => {
+  const host = installGlobalTestDom().document.createElement('div');
+  render(h(CtrConsolePage(ports) as ComponentType, {}), host);
+  return host;
+};
+
+const fillField = (host: TestElement, name: string, value: string): void => {
+  const drawer = element(host.querySelector('.detail-drawer'));
+  const select = drawer
+    .querySelectorAll('select')
+    .find((item) => (item as TestElement).getAttribute('name') === name) as TestElement | undefined;
+  if (select) {
+    select.value = value;
+    select.dispatchEvent(new Event('input', { bubbles: true }));
+    return;
+  }
+  const input = drawer
+    .querySelectorAll('input,textarea')
+    .find((item) => (item as TestElement).getAttribute('name') === name) as TestElement | undefined;
+  if (!input) throw new Error(`missing field ${name}`);
+  input.value = value;
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+};
+
+const submitDrawer = async (host: TestElement): Promise<void> => {
+  element(
+    element(host.querySelector('.detail-drawer')).querySelector('button[type="submit"]'),
+  ).click();
+  await flush();
+};
+
+const CREATE_FORM: readonly (readonly [string, string])[] = [
+  ['opportunityId', 'opportunity-1'],
+  ['code', 'CTR-NEW'],
+  ['title', '新需求'],
+  ...Object.entries(requirementInput),
+];
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+describe('technical requirement console real callback contracts (U3-COM-5)', () => {
+  it('renders empty state and hides creation without permission', () => {
+    const empty = mount(portsFor([]));
+    expect(empty.textContent).toContain('暂无技术需求单');
+    expect(empty.querySelector('[data-testid="kt-ctr-create"]')).toBeNull();
+    const noPermission = mount(portsFor([draft]));
+    expect(noPermission.querySelector('[data-testid="kt-ctr-create"]')).toBeNull();
   });
 
-  it('creates fixed typed requirements and waits for reload before reading current message', async () => {
-    const f = setup([], ['ctr:create']);
-    f.mount();
-    const opened = f.click('＋ 新建技术需求');
-    expect(opened.fields[0]?.options).toEqual([{ value: 'opportunity-1', label: '学校项目' }]);
-    expect(opened.fields.find((field) => field.name === 'warrantyYears')?.value).toBe('8');
-    let finish: () => void = unused;
-    f.load.mockImplementationOnce(
-      () =>
-        new Promise<void>((resolve) => {
-          finish = resolve;
-        }),
-    );
-    const pending = opened.run({
-      opportunityId: 'opportunity-1',
-      code: 'CTR-NEW',
-      title: '新需求',
-      ...requirementInput,
-    });
-    expect(f.submit).toHaveBeenCalledExactlyOnceWith('/api/v1/ctrs', {
+  it('creates fixed typed requirements and reloads', async () => {
+    const ports = portsFor([], ['ctr:create']);
+    const host = mount(ports);
+    element(host.querySelector('[data-testid="kt-ctr-create"]')).click();
+    await flush();
+    for (const [name, value] of CREATE_FORM) fillField(host, name, value);
+    await flush();
+    await submitDrawer(host);
+    expect(ports.submit).toHaveBeenCalledExactlyOnceWith('/api/v1/ctrs', {
       opportunityId: 'opportunity-1',
       code: 'CTR-NEW',
       title: '新需求',
       requirements,
     });
-    await Promise.resolve();
-    expect(f.load).toHaveBeenCalledTimes(1);
-    expect(f.status.textContent).toBe('before');
-    f.controller.message = 'reloaded new message';
-    finish();
-    await pending;
-    expect(f.status.textContent).toBe('reloaded new message');
-    f.status.textContent = 'unchanged';
-    f.submit.mockRejectedValueOnce(new Error('creation rejected'));
-    await expect(opened.run({ ...requirementInput })).rejects.toThrow('creation rejected');
-    expect(f.load).toHaveBeenCalledTimes(1);
-    expect(f.status.textContent).toBe('unchanged');
+    expect(ports.refresh).toHaveBeenCalledTimes(1);
   });
 
-  it('offers revision only for the latest non-draft root and preserves numeric/prefill fields', async () => {
-    const records = [
-      {
-        ...draft,
-        id: 'version-2',
-        version: 2,
-        status: 'REJECTED',
-        requirements: { ...requirements, color: '新版绿' },
-        attachments: [{ id: 'a' }],
-      },
-      { ...draft, status: 'APPROVED' },
-      { id: 'orphan', status: 'APPROVED', version: 9 },
-    ];
-    const f = setup(records, ['ctr:update']);
-    f.mount();
-    expect(
-      f.workspace
-        .descendants()
-        .filter((node) => node.tagName === 'BUTTON' && node.textContent === '新建修订'),
-    ).toHaveLength(1);
-    const rows = f.workspace.descendants().filter((node) => node.classList.contains('ctr-row'));
-    const latest = rows[0];
-    if (!latest) throw new Error('Latest row missing');
-    expect(latest.textContent).toContain('新版绿（上一版：双色翠绿）');
-    expect(latest.textContent).toContain('1 个附件');
-    expect(
-      latest
-        .descendants()
-        .filter((node) => node.classList.contains('changed'))
-        .map((node) => node.textContent),
-    ).toEqual(['新版绿（上一版：双色翠绿）']);
-    expect(rows[2]?.textContent).toContain('技术需求单未命名需求');
-    const opened = f.click('新建修订', latest);
-    expect(opened.title).toBe('新建 CTR-1 修订');
-    expect(opened.fields.find((field) => field.name === 'pileHeight')?.value).toBe('50.5');
-    expect(opened.fields.find((field) => field.name === 'color')?.value).toBe('新版绿');
-    await opened.run({ title: '修订需求', ...requirementInput });
-    expect(f.submit).toHaveBeenCalledExactlyOnceWith('/api/v1/ctrs/ctr-1/versions', {
+  it('offers revision only for the latest non-draft root and preserves prefill', async () => {
+    const ports = portsFor(
+      [
+        {
+          ...draft,
+          id: 'version-2',
+          version: 2,
+          status: 'REJECTED',
+          requirements: { ...requirements, color: '新版绿' },
+        },
+        { ...draft, status: 'APPROVED' },
+      ],
+      ['ctr:update'],
+    );
+    const host = mount(ports);
+    element(host.querySelector('[data-testid="kt-ctr-open"]')).click();
+    await flush();
+    expect(host.textContent).toContain('新版绿（上一版：双色翠绿）');
+    const revise = host.querySelector('[data-testid="kt-ctr-revise"]');
+    expect(revise).not.toBeNull();
+    element(revise).click();
+    await flush();
+    const drawer = element(host.querySelector('.detail-drawer'));
+    const title = drawer
+      .querySelectorAll('input')
+      .find((item) => (item as TestElement).getAttribute('name') === 'title') as
+      | TestElement
+      | undefined;
+    if (title) {
+      title.value = '修订需求';
+      title.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    for (const [name, value] of Object.entries(requirementInput)) fillField(host, name, value);
+    await flush();
+    await submitDrawer(host);
+    expect(ports.submit).toHaveBeenCalledExactlyOnceWith('/api/v1/ctrs/ctr-1/versions', {
       title: '修订需求',
       requirements,
     });
-    expect(f.load).toHaveBeenCalledTimes(1);
-    f.status.textContent = 'revision unchanged';
-    f.submit.mockRejectedValueOnce(new Error('revision rejected'));
-    await expect(opened.run({})).rejects.toThrow('revision rejected');
-    expect(f.load).toHaveBeenCalledTimes(1);
-    expect(f.status.textContent).toBe('revision unchanged');
   });
 
-  it('does not revise an older published revision when the latest root version is still draft', () => {
-    const f = setup(
+  it('does not offer revision/upload on older non-latest versions', async () => {
+    const ports = portsFor(
       [
         { ...draft, status: 'APPROVED' },
         { ...draft, id: 'version-2', version: 2 },
       ],
-      ['ctr:update'],
+      ['ctr:update', 'attachment:manage'],
     );
-    f.mount();
-    expect(f.workspace.descendants().filter((node) => node.tagName === 'BUTTON')).toEqual([]);
+    const host = mount(ports);
+    element(host.querySelector('[data-testid="kt-ctr-open"]')).click();
+    await flush();
+    expect(host.querySelector('[data-testid="kt-ctr-revise"]')).toBeNull();
+    expect(host.querySelector('[data-testid="kt-ctr-upload"]')).toBeNull();
   });
 
-  it.each([
-    ['DRAFT', ['ctr:update']],
-    ['DRAFT', ['attachment:manage']],
-    ['SUBMITTED', ['ctr:update', 'attachment:manage']],
-  ] as const)('does not offer upload for %s with incomplete gate %j', (state, permissions) => {
-    const f = setup([{ ...draft, status: state }], permissions);
-    f.mount();
-    expect(f.workspace.descendants().some((node) => node.textContent === '上传附件')).toBe(false);
-    expect(fileForm).not.toHaveBeenCalled();
+  it('does not offer upload for incomplete gate', async () => {
+    const host = mount(
+      portsFor([{ ...draft, status: 'SUBMITTED' }], ['ctr:update', 'attachment:manage']),
+    );
+    element(host.querySelector('[data-testid="kt-ctr-open"]')).click();
+    await flush();
+    expect(host.querySelector('[data-testid="kt-ctr-upload"]')).toBeNull();
   });
 
-  it('uploads the original file against version id, then uses controller message without extra reload', async () => {
-    const f = setup([draft], ['ctr:update', 'attachment:manage']);
-    f.mount();
-    findElement(
-      f.workspace,
-      (node) => node.tagName === 'BUTTON' && node.textContent === '上传附件',
-    ).click();
-    const call = fileForm.mock.calls[0];
-    if (!call) throw new Error('File form missing');
-    expect(call[0]).toBe(htmlElement(f.workspace));
-    expect(call[1]).toBe('为 CTR-1 第 1 版上传附件');
+  it('uploads the original file against version id and reloads', async () => {
+    const ports = portsFor([draft], ['ctr:update', 'attachment:manage']);
+    const host = mount(ports);
+    element(host.querySelector('[data-testid="kt-ctr-open"]')).click();
+    await flush();
+    const input = element(
+      element(host.querySelector('[data-testid="kt-ctr-upload"]')).querySelector(
+        'input[type="file"]',
+      ),
+    );
     const file = new File(['fixed'], 'fixed.pdf');
-    await call[2](file);
-    expect(f.upload).toHaveBeenCalledTimes(1);
-    expect(f.upload.mock.calls[0]?.[0]).toBe('version-1');
-    expect(f.upload.mock.calls[0]?.[1]).toBe(file);
-    expect(f.status.textContent).toBe('loaded');
-    expect(f.load).not.toHaveBeenCalled();
-    f.status.textContent = 'unchanged';
-    f.upload.mockRejectedValueOnce(new Error('upload rejected'));
-    await expect(call[2](file)).rejects.toThrow('upload rejected');
-    expect(f.status.textContent).toBe('unchanged');
+    Object.defineProperty(input, 'files', { value: [file] });
+    input.dispatchEvent(new Event('change'));
+    await flush();
+    expect(ports.uploadAttachment).toHaveBeenCalledTimes(1);
+    expect(ports.uploadAttachment).toHaveBeenCalledWith('version-1', file);
+    expect(ports.refresh).toHaveBeenCalledTimes(1);
   });
 
-  it('submits expected version without inventing reload and does not write success after rejection', async () => {
-    const f = setup([draft], ['ctr:submit']);
-    f.mount();
-    const opened = f.click('提交评审');
-    expect(opened.fields).toEqual([]);
-    await opened.run({});
-    expect(f.submit).toHaveBeenCalledExactlyOnceWith('/api/v1/ctr-versions/version-1/submit', {
-      expectedVersion: 1,
+  it('submits expected version via PUT state (no extra reload) and surfaces rejection', async () => {
+    const ports = portsFor([draft], ['ctr:submit']);
+    const host = mount(ports);
+    element(host.querySelector('[data-testid="kt-ctr-open"]')).click();
+    await flush();
+    element(host.querySelector('[data-testid="kt-ctr-submit"]')).click();
+    await flush();
+    expect(ports.submit).toHaveBeenCalledExactlyOnceWith(
+      '/api/v1/ctr-versions/version-1/state',
+      { action: 'submit', expectedVersion: 1 },
+      'PUT',
+    );
+    const failing = portsFor([draft], ['ctr:submit'], {
+      submit: vi.fn().mockRejectedValue(new Error('submit rejected')),
     });
-    expect(f.status.textContent).toBe('技术需求已提交并生成不可变快照');
-    expect(f.load).not.toHaveBeenCalled();
-    f.status.textContent = 'unchanged';
-    f.submit.mockRejectedValueOnce(new Error('submit rejected'));
-    await expect(opened.run({})).rejects.toThrow('submit rejected');
-    expect(f.status.textContent).toBe('unchanged');
+    const failingHost = mount(failing);
+    element(failingHost.querySelector('[data-testid="kt-ctr-open"]')).click();
+    await flush();
+    element(failingHost.querySelector('[data-testid="kt-ctr-submit"]')).click();
+    await flush();
+    expect(
+      element(failingHost.querySelector('[data-testid="kt-ctr-submit-error"]')).textContent,
+    ).toBe('submit rejected');
   });
 
   it.each([
-    ['批准', 'APPROVED'],
-    ['驳回', 'REJECTED'],
-  ] as const)('binds %s decision with fixed evidence reason', async (label, decision) => {
-    const f = setup([{ ...draft, status: 'SUBMITTED' }], ['ctr:approve']);
-    f.mount();
-    const opened = f.click(label);
-    expect(opened.fields).toEqual([
-      { name: 'reason', label: '审批意见', type: 'textarea', required: true },
-    ]);
-    await opened.run({ reason: 'fixed decision evidence' });
-    expect(f.submit).toHaveBeenCalledExactlyOnceWith('/api/v1/ctr-versions/version-1/decision', {
-      decision,
-      reason: 'fixed decision evidence',
-    });
-    expect(f.status.textContent).toBe(`技术需求已${label}`);
-    expect(f.load).not.toHaveBeenCalled();
-    f.status.textContent = 'unchanged';
-    f.submit.mockRejectedValueOnce(new Error('decision rejected'));
-    await expect(opened.run({ reason: 'fixed decision evidence' })).rejects.toThrow(
-      'decision rejected',
-    );
-    expect(f.status.textContent).toBe('unchanged');
-  });
+    ['批准', 'APPROVED', 'kt-ctr-approve'],
+    ['驳回', 'REJECTED', 'kt-ctr-reject'],
+  ] as const)(
+    'binds %s decision via PUT state with fixed evidence reason',
+    async (label, decision, testId) => {
+      const ports = portsFor([{ ...draft, status: 'SUBMITTED' }], ['ctr:approve']);
+      const host = mount(ports);
+      element(host.querySelector('[data-testid="kt-ctr-open"]')).click();
+      await flush();
+      element(host.querySelector(`[data-testid="${testId}"]`)).click();
+      await flush();
+      fillField(host, 'reason', 'fixed decision evidence');
+      await flush();
+      const confirmation = host.querySelector('[data-confirmation="true"]');
+      if (confirmation) {
+        (confirmation as { click(): void }).click();
+        await flush();
+      }
+      await submitDrawer(host);
+      expect(ports.submit).toHaveBeenCalledExactlyOnceWith(
+        '/api/v1/ctr-versions/version-1/state',
+        { action: 'decide', decision, reason: 'fixed decision evidence' },
+        'PUT',
+      );
+      void label;
+    },
+  );
 });

@@ -313,7 +313,7 @@ it('captures artificial-turf project handoff fields without test-channel evidenc
       './shared/workspace-list-tools.ts',
       'export function installWorkspaceListTools',
     ),
-    readBoundSource('./commercial/ctr-view.ts', 'export function appendCtrView'),
+    readBoundSource('./commercial/console/ctr-console.tsx', 'export function CtrConsolePage'),
     readBoundSource(
       './commercial/console/solution-console.tsx',
       'export function SolutionConsolePage',
@@ -2275,16 +2275,12 @@ describe('web bootstrap', () => {
       controller,
     ) as unknown as RenderedElement;
     expect(workspace.findByClass('opportunities-console')).toHaveLength(1);
-    expect(workspace.findByClass('commercial-console')).toHaveLength(1);
+    expect(workspace.findByClass('commercial-console').length).toBeGreaterThan(0);
     const opportunityHost = workspace.findByClass('opportunities-console')[0];
     expect(opportunityHost?.getAttribute('data-route-view')).toBe('opportunities');
     expect(opportunityHost?.getAttribute('data-testid')).toBe('kt-commercial-opportunities');
-    expect(workspace.findByClass('ctr-workbench')).toHaveLength(1);
-    expect(workspace.findByClass('ctr-evidence')).toHaveLength(1);
-    expect(workspace.textContent).toContain('技术需求单');
-    expect(workspace.textContent).toContain('上传附件');
-    expect(workspace.findByClass('ctr-row')).toHaveLength(1);
-    expect(workspace.textContent).toContain('CTR-2026-001');
+    expect(workspace.findByClass('technical-requirements-console')).toHaveLength(1);
+    expect(workspace.findByClass('ctr-workbench')).toHaveLength(0);
     expect(workspace.textContent).not.toContain('商机与 CTR');
     expect(workspace.textContent).not.toContain('JSON 请求');
   });

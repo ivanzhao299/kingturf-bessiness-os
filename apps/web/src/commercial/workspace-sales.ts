@@ -8,8 +8,8 @@ import {
   appendSolutionConsole,
   appendQuoteConsole,
   appendCostMatrixConsole,
+  appendCtrConsole,
 } from './console-entry';
-import { appendCtrView } from './ctr-view';
 import { appendCostView } from './cost-view';
 import { appendPolicyView } from './policy-view';
 import { appendCreditView } from './credit-view';
@@ -30,7 +30,8 @@ export function appendWorkspaceSales(
     appendOpportunityConsole(workspace, controller, permissions, salesViewPorts);
   }
   if (controller && permissions.has('ctr:read')) {
-    appendCtrView(workspace, status, controller, permissions, salesViewPorts);
+    // U3-COM-5：CTR 路由切换至 Preact 控制台（原 vanilla ctr workbench 随本次迁移退役）。
+    appendCtrConsole(workspace, controller, permissions, salesViewPorts);
   }
   if (controller && permissions.has('technical-solution:read')) {
     // U3-COM-2：技术方案路由切换至 Preact 控制台（原 vanilla workbench 随本次迁移退役）。

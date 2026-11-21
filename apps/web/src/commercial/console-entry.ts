@@ -13,6 +13,7 @@ import type { OpportunityListPorts } from './console/opportunity-list';
 import type { SolutionConsolePorts } from './console/solution-ports';
 import type { QuoteConsolePorts, QuoteSnapshot } from './console/quote-ports';
 import type { CostMatrixConsolePorts } from './console/cost-matrix-ports';
+import type { CtrConsolePorts } from './console/ctr-ports';
 import { setAppRoute } from '../shared/navigation';
 import type { ConsoleMountPorts } from './console/mount';
 
@@ -195,6 +196,44 @@ export function appendCostMatrixConsole(
   workspace.append(
     createConsoleHost('costing', 'kt-commercial-cost-matrices', {
       kind: 'cost-matrices',
+      ports,
+    }),
+  );
+}
+
+export function appendCtrConsole(
+  workspace: HTMLElement,
+  controller: SalesViewController,
+  permissions: ReadonlySet<string>,
+  salesViewPorts: SalesViewPorts,
+): void {
+  const ports: CtrConsolePorts = {
+    permissions,
+    initialCtrs: controller.views.get('/api/v1/ctrs') ?? [],
+    initialSolutions: controller.views.get('/api/v1/technical-solutions') ?? [],
+    opportunities: controller.opportunities,
+    textValue: (value, fallback = '') => salesViewPorts.textValue(value, fallback),
+    recordValue: (value) => salesViewPorts.recordValue(value),
+    displayRequirement: (value) => salesViewPorts.displayRequirement(value),
+    submit: async (path, payload, method) => {
+      await controller.submit(path, payload, method);
+      return (controller as unknown as { revisionState: Record<string, unknown> | null })
+        .revisionState;
+    },
+    uploadAttachment: async (versionId, file) => {
+      await controller.uploadCtrAttachment(versionId, file);
+    },
+    refresh: async () => {
+      await controller.load();
+      return {
+        ctrs: controller.views.get('/api/v1/ctrs') ?? [],
+        solutions: controller.views.get('/api/v1/technical-solutions') ?? [],
+      };
+    },
+  };
+  workspace.append(
+    createConsoleHost('technical-requirements', 'kt-commercial-ctrs', {
+      kind: 'technical-requirements',
       ports,
     }),
   );

@@ -115,7 +115,7 @@ describe('GET /api/v1/opportunities fastify bridge track', () => {
 
   it('returns null for unclaimed paths so the legacy track keeps serving them', async () => {
     const response = await dispatchFastifyRouteGroup(
-      { method: 'GET', pathname: '/api/v1/ctrs' },
+      { method: 'GET', pathname: '/api/v1/opportunities/22222222-2222-4222-8222-222222222222' },
       scopeFor(null, { items: [], nextCursor: null }),
     );
     expect(response).toBeNull();

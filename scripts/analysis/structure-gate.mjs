@@ -200,6 +200,9 @@ const SQL_ENUM_NAMES = new Set([
   // U3-COM-3（主协调已批分域迁移）：报价视图 SELECT 提取为模块常量供三处复用
   //（listCommercialView/listQuotePage/findQuoteRevision），SQL 字节与提取前逐字一致。
   'QUOTES_VIEW_SELECT',
+  // U3-COM-5（主协调已批分域迁移）：CTR 视图 SELECT 提取为模块常量供两处复用
+  //（listCommercialView/findCtr），SQL 字节与提取前逐字一致。
+  'CTRS_VIEW_SELECT',
   // B2（TD-API-003）分页 keyset 游标片段：cursor 值一律经 values.push 参数化（$N），
   // 变量本体只含代码内表/列名与占位符；2026-11-18 随 18 端点分页批次登记。
   'keyset',

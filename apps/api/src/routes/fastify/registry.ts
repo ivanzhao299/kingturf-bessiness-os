@@ -20,6 +20,7 @@ import { registerCommercialOpportunitiesRoutes } from './commercial-opportunitie
 import { registerTechnicalSolutionRoutes } from './technical-solutions.ts';
 import { registerQuoteRoutes } from './quotes.ts';
 import { registerCostMatrixRoutes } from './cost-matrices.ts';
+import { registerCtrRoutes } from './ctr.ts';
 
 export type FastifyRouteScope = Readonly<{
   authorization: AuthorizationContext;
@@ -43,6 +44,10 @@ const CLAIMED_FASTIFY_ROUTES: readonly (readonly [method: string, pattern: RegEx
   ['GET', /^\/api\/v1\/cost-matrices\/[0-9a-f-]+$/u],
   ['POST', /^\/api\/v1\/cost-matrices$/u],
   ['PUT', /^\/api\/v1\/cost-matrices\/[0-9a-f-]+\/factors\/[0-9a-f-]+$/u],
+  ['GET', /^\/api\/v1\/ctrs$/u],
+  ['GET', /^\/api\/v1\/ctrs\/[0-9a-f-]+$/u],
+  ['POST', /^\/api\/v1\/ctrs$/u],
+  ['PUT', /^\/api\/v1\/ctr-versions\/[0-9a-f-]+\/state$/u],
 ];
 
 // legacy catch 层的同款 DomainError 状态映射（行为守恒）。
@@ -87,6 +92,7 @@ const buildRouteGroupApp = (scope: FastifyRouteScope) => {
   registerTechnicalSolutionRoutes(app, scope);
   registerQuoteRoutes(app, scope);
   registerCostMatrixRoutes(app, scope);
+  registerCtrRoutes(app, scope);
   return app;
 };
 
@@ -110,12 +116,16 @@ export async function dispatchFastifyRouteGroup(
     const response = await app.inject({
       method: request.method as 'GET' | 'PUT' | 'POST' | 'PATCH' | 'DELETE' | 'HEAD',
       url: `${request.pathname}${search}`,
-      ...(request.body === undefined
-        ? {}
-        : {
-            payload: JSON.stringify(request.body),
-            headers: { 'content-type': 'application/json' },
-          }),
+      headers: {
+        // 原始请求头透传（幂等键/关联ID 等 legacy 解析链依赖项）。
+        ...Object.fromEntries(
+          Object.entries(request.headers ?? {}).filter(
+            (entry): entry is [string, string] => typeof entry[1] === 'string',
+          ),
+        ),
+        ...(request.body === undefined ? {} : { 'content-type': 'application/json' }),
+      },
+      ...(request.body === undefined ? {} : { payload: JSON.stringify(request.body) }),
     });
     return { statusCode: response.statusCode, body: response.json() };
   } finally {
