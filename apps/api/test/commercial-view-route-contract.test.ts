@@ -114,6 +114,11 @@ function fixture(
     scopeAnchors: new Map(permissions.map(([capability]) => [capability, anchors])),
   };
   const repository = {
+    // U3-COM-3：quotes 集合 GET 经生产桥走 listQuotePage（其余视图仍走 listCommercialView）。
+    listQuotePage: vi.fn().mockResolvedValue({
+      items: [{ id: 'fixed-quotes', title: 'Fixed', secret: 'private', nested: { fixed: true } }],
+      nextCursor: null,
+    }),
     listCommercialView: vi
       .fn()
       .mockImplementation((view: string) =>
@@ -174,6 +179,11 @@ const noCalls = (f: ReturnType<typeof fixture>) => {
   expect(f.repository.listCommercialView).not.toHaveBeenCalled();
   noWrites(f);
 };
+// U3-COM-3：quotes 集合 GET 经生产桥走 listQuotePage（视图轨仍服务其余四个视图）。
+const viewReader = (f: ReturnType<typeof fixture>, c: (typeof cases)[number]) =>
+  c.view === 'quotes' ? f.repository.listQuotePage : f.repository.listCommercialView;
+const readArgs = (c: (typeof cases)[number], scopes: readonly string[]) =>
+  c.view === 'quotes' ? [actor, scopes, anchors, { limit: 100 }] : [c.view, actor, scopes, anchors];
 
 describe.each(cases)('inline commercial read $path contracts', (c) => {
   it('preserves exact view mapping, actor/scopes/anchors, receiver, items and a single call', async () => {
@@ -185,13 +195,8 @@ describe.each(cases)('inline commercial read $path contracts', (c) => {
         ],
       }),
     );
-    expect(f.repository.listCommercialView).toHaveBeenCalledExactlyOnceWith(
-      c.view,
-      actor,
-      ['TEAM'],
-      anchors,
-    );
-    expect(f.repository.listCommercialView.mock.contexts).toEqual([f.repository]);
+    expect(viewReader(f, c)).toHaveBeenCalledExactlyOnceWith(...readArgs(c, ['TEAM']));
+    expect(viewReader(f, c).mock.contexts).toEqual([f.repository]);
     noWrites(f);
   });
   it('requires its own capability rather than any other read or general authorization', async () => {
@@ -213,12 +218,7 @@ describe.each(cases)('inline commercial read $path contracts', (c) => {
     expect(await limited.dispatch(c.path)).toEqual(
       response(200, { items: [{ id: `fixed-${c.view}`, title: 'Fixed' }] }),
     );
-    expect(limited.repository.listCommercialView).toHaveBeenCalledExactlyOnceWith(
-      c.view,
-      actor,
-      ['SELF'],
-      anchors,
-    );
+    expect(viewReader(limited, c)).toHaveBeenCalledExactlyOnceWith(...readArgs(c, ['SELF']));
     const emptyFields = fixture([[c.capability, { scopes: ['TEAM'], fields: [] }]]);
     expect(await emptyFields.dispatch(c.path)).toEqual(
       response(200, { items: [{ id: `fixed-${c.view}` }] }),
@@ -228,12 +228,7 @@ describe.each(cases)('inline commercial read $path contracts', (c) => {
     for (const body of [null, 'invalid', [], { extra: true }]) {
       const f = fixture();
       expect((await f.dispatch(c.path, 'GET', body)).statusCode).toBe(200);
-      expect(f.repository.listCommercialView).toHaveBeenCalledExactlyOnceWith(
-        c.view,
-        actor,
-        ['TEAM'],
-        anchors,
-      );
+      expect(viewReader(f, c)).toHaveBeenCalledExactlyOnceWith(...readArgs(c, ['TEAM']));
       noWrites(f);
     }
   });
@@ -262,7 +257,9 @@ describe.each(cases)('inline commercial read $path contracts', (c) => {
   });
   it('preserves empty items and repository error envelopes', async () => {
     const f = fixture();
-    f.repository.listCommercialView.mockResolvedValueOnce([]);
+    const reader = viewReader(f, c);
+    if (c.view === 'quotes') reader.mockResolvedValueOnce({ items: [], nextCursor: null });
+    else reader.mockResolvedValueOnce([]);
     expect(await f.dispatch(c.path)).toEqual(response(200, { items: [] }));
     for (const [code, status] of [
       ['forbidden', 403],
@@ -270,10 +267,10 @@ describe.each(cases)('inline commercial read $path contracts', (c) => {
       ['conflict', 409],
       ['invalid_request', 400],
     ] as const) {
-      f.repository.listCommercialView.mockRejectedValueOnce(new DomainError(code, 'fixed failure'));
+      reader.mockRejectedValueOnce(new DomainError(code, 'fixed failure'));
       expect(await f.dispatch(c.path)).toEqual(error(status, code, 'fixed failure'));
     }
-    f.repository.listCommercialView.mockRejectedValueOnce(new Error('private fixture failure'));
+    reader.mockRejectedValueOnce(new Error('private fixture failure'));
     expect(await f.dispatch(c.path)).toEqual(error(500, 'internal_error', 'Internal server error'));
     noWrites(f);
   });

@@ -7,8 +7,10 @@ import '@kingturf/ui/components.css';
 import './console/commercial-console.css';
 import { el } from '../dom';
 import type { SalesViewController, SalesViewPorts } from './sales-view-ports';
+import type { PricingViewController, PricingViewPorts } from './pricing-view-ports';
 import type { OpportunityListPorts } from './console/opportunity-list';
 import type { SolutionConsolePorts } from './console/solution-ports';
+import type { QuoteConsolePorts, QuoteSnapshot } from './console/quote-ports';
 import type { ConsoleMountPorts } from './console/mount';
 
 const createConsoleHost = (
@@ -92,4 +94,47 @@ export function appendSolutionConsole(
       ports,
     }),
   );
+}
+
+export function appendQuoteConsole(
+  workspace: HTMLElement,
+  controller: PricingViewController,
+  permissions: ReadonlySet<string>,
+  pricingViewPorts: PricingViewPorts,
+): void {
+  const initialSnapshot = (): QuoteSnapshot => ({
+    quotes: controller.views.get('/api/v1/quotes') ?? [],
+    costs: controller.views.get('/api/v1/cost-evaluations') ?? [],
+    policies: (controller.views.get('/api/v1/sales-policies') ?? []).filter(
+      (item) => item.status === 'PUBLISHED',
+    ),
+    solutions: controller.views.get('/api/v1/technical-solutions') ?? [],
+    ctrs: controller.views.get('/api/v1/ctrs') ?? [],
+    preferredCostDecisionId: controller.preferredQuoteCostDecisionId,
+  });
+  const ports: QuoteConsolePorts = {
+    permissions,
+    initialSnapshot: initialSnapshot(),
+    textValue: (value, fallback = '') => pricingViewPorts.textValue(value, fallback),
+    recordValue: (value) => pricingViewPorts.recordValue(value),
+    decimalValue: (value) => pricingViewPorts.decimalValue(value),
+    printIssuedQuote: (quote) => {
+      pricingViewPorts.printIssuedQuote(quote);
+    },
+    submit: async (path, payload, method) => {
+      await controller.submit(path, payload, method);
+      return controller.revisionState;
+    },
+    command: async (revisionId, action, payload) => {
+      await controller.quoteCommand(revisionId, action, payload);
+    },
+    clearPreferredCostDecisionId: () => {
+      controller.preferredQuoteCostDecisionId = '';
+    },
+    refresh: async () => {
+      await controller.load();
+      return initialSnapshot();
+    },
+  };
+  workspace.append(createConsoleHost('quotes', 'kt-commercial-quotes', { kind: 'quotes', ports }));
 }

@@ -85,6 +85,8 @@ function fixture(
   const repository = {
     createQuote: vi.fn().mockResolvedValue(result),
     listCommercialView: vi.fn().mockResolvedValue([result]),
+    // U3-COM-3：quotes 集合 GET 经生产桥走 listQuotePage。
+    listQuotePage: vi.fn().mockResolvedValue({ items: [result], nextCursor: null }),
   };
   const authenticate = vi.fn().mockResolvedValue(context);
   const app = buildApp({
@@ -382,12 +384,9 @@ describe('inline quote creation and full revision contracts', () => {
     expect(await f.dispatch(createPath, null, { method: 'GET' })).toEqual(
       response(200, { items: [result] }),
     );
-    expect(f.repository.listCommercialView).toHaveBeenCalledExactlyOnceWith(
-      'quotes',
-      actor,
-      ['TEAM'],
-      anchors,
-    );
+    expect(f.repository.listQuotePage).toHaveBeenCalledExactlyOnceWith(actor, ['TEAM'], anchors, {
+      limit: 100,
+    });
     for (const command of ['approve', 'issue']) {
       expect(await f.dispatch(`/api/v1/quote-revisions/bad/${command}`, null)).toEqual(
         invalid('quoteRevisionId must be a UUID'),

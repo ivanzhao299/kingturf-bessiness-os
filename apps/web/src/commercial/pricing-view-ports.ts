@@ -11,7 +11,11 @@ export type PricingViewController = {
   costMatrixQuery: CostMatrixQuery;
   costMatrixTotal: number;
   costMatrixDetails: ReadonlyMap<string, Record<string, unknown>>;
-  submit(path: string, payload: Record<string, unknown>, method?: 'POST' | 'PATCH'): Promise<void>;
+  submit(
+    path: string,
+    payload: Record<string, unknown>,
+    method?: 'POST' | 'PATCH' | 'PUT',
+  ): Promise<void>;
   load(): Promise<void>;
   loadCostMatrixPage(update?: Partial<CostMatrixQuery>): Promise<boolean>;
   refreshSelectedCostMatrix(): Promise<void>;

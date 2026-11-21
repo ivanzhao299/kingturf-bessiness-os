@@ -28,6 +28,7 @@ import type {
   DataScope,
   JsonObject,
   OpportunityDto,
+  QuoteRevisionDto,
   TechnicalSolutionRevisionDto,
 } from '@kingturf/types';
 
@@ -82,6 +83,17 @@ export type OpportunityPage = Readonly<{
   nextCursor: string | null;
 }>;
 
+// U3-COM-3（ADR-0015）：报价列表 keyset 分页契约（单一来源，fastify/quotes.ts 引用）。
+export type QuotePageFilter = Readonly<{
+  limit: number;
+  cursor?: string;
+  status?: QuoteRevisionDto['status'];
+}>;
+export type QuotePage = Readonly<{
+  items: readonly JsonObject[];
+  nextCursor: string | null;
+}>;
+
 type CommandIdentity = CommandResultIdentity;
 const commandIdentity = (type: string, subjectId: string, actor: Actor, request: unknown) => ({
   type,
@@ -102,6 +114,15 @@ const retainCommand = (
   identity: CommandIdentity,
   payload: JsonObject,
 ) => retainCommercialCommand(tx, tenantId, key, identity, payload);
+
+// U3-COM-3（ADR-0015）：报价视图 SELECT 提取为共享常量——listCommercialView('quotes')
+// / listQuotePage / findQuoteRevision 三处复用，SQL 字节与提取前逐字一致。
+const QUOTES_VIEW_SELECT = `SELECT r.id,q.id AS "quoteId",q.opportunity_id AS "opportunityId",q.quote_number AS "quoteNumber",r.revision,r.status,r.opportunity_version AS "opportunityVersion",r.opportunity_snapshot_id AS "opportunitySnapshotId",r.ctr_version_id AS "ctrVersionId",r.technical_solution_revision_id AS "technicalSolutionRevisionId",r.cost_decision_id AS "costDecisionId",r.sales_policy_version_id AS "policyVersionId",r.sales_policy_evaluation_id AS "policyEvaluationId",r.currency,r.subtotal,r.discount,r.total,r.cost_total AS "costTotal",r.margin,r.margin_basis_points AS "marginBasisPoints",r.valid_until AS "validUntil",r.issued_at AS "issuedAt",
+        (SELECT coalesce(jsonb_agg(to_jsonb(l) ORDER BY l.line_number),'[]'::jsonb) FROM quote_lines l WHERE l.tenant_id=r.tenant_id AND l.quote_revision_id=r.id) lines,
+        (SELECT coalesce(jsonb_agg(to_jsonb(a) ORDER BY a.decided_at),'[]'::jsonb) FROM quote_approvals a WHERE a.tenant_id=r.tenant_id AND a.quote_revision_id=r.id) approvals,
+        (SELECT s.id FROM quote_issued_snapshots s WHERE s.tenant_id=r.tenant_id AND s.quote_revision_id=r.id) AS "issuedSnapshotId",
+        (SELECT s.snapshot_hash FROM quote_issued_snapshots s WHERE s.tenant_id=r.tenant_id AND s.quote_revision_id=r.id) AS "issuedSnapshotHash"
+        FROM quote_revisions r JOIN quotes q ON q.id=r.quote_id AND q.tenant_id=r.tenant_id JOIN opportunities o ON o.id=q.opportunity_id AND o.tenant_id=q.tenant_id`;
 
 export class PostgresCommercialRepository {
   public constructor(private readonly db: Db) {}
@@ -875,12 +896,7 @@ export class PostgresCommercialRepository {
         FROM cost_sheet_decisions d JOIN technical_solution_revisions r ON r.id=d.technical_solution_revision_id AND r.tenant_id=d.tenant_id JOIN technical_solutions s ON s.id=r.technical_solution_id AND s.tenant_id=r.tenant_id JOIN opportunities o ON o.id=s.opportunity_id AND o.tenant_id=s.tenant_id`,
       policies:
         'SELECT e.id,s.opportunity_id AS "opportunityId",e.sales_policy_version_id AS "policyVersionId",e.cost_decision_id AS "costDecisionId",e.input_hash AS "inputHash",e.canonical_input AS "canonicalInput",e.passed,e.approval_required AS "approvalRequired",e.minimum_margin_basis_points AS "minimumMarginBasisPoints",e.maximum_discount_basis_points AS "maximumDiscountBasisPoints",e.reasons,e.trace,e.evaluated_at AS "evaluatedAt" FROM sales_policy_evaluations e JOIN cost_sheet_decisions d ON d.id=e.cost_decision_id AND d.tenant_id=e.tenant_id JOIN technical_solution_revisions r ON r.id=d.technical_solution_revision_id AND r.tenant_id=d.tenant_id JOIN technical_solutions s ON s.id=r.technical_solution_id AND s.tenant_id=r.tenant_id JOIN opportunities o ON o.id=s.opportunity_id AND o.tenant_id=s.tenant_id',
-      quotes: `SELECT r.id,q.id AS "quoteId",q.opportunity_id AS "opportunityId",q.quote_number AS "quoteNumber",r.revision,r.status,r.opportunity_version AS "opportunityVersion",r.opportunity_snapshot_id AS "opportunitySnapshotId",r.ctr_version_id AS "ctrVersionId",r.technical_solution_revision_id AS "technicalSolutionRevisionId",r.cost_decision_id AS "costDecisionId",r.sales_policy_version_id AS "policyVersionId",r.sales_policy_evaluation_id AS "policyEvaluationId",r.currency,r.subtotal,r.discount,r.total,r.cost_total AS "costTotal",r.margin,r.margin_basis_points AS "marginBasisPoints",r.valid_until AS "validUntil",r.issued_at AS "issuedAt",
-        (SELECT coalesce(jsonb_agg(to_jsonb(l) ORDER BY l.line_number),'[]'::jsonb) FROM quote_lines l WHERE l.tenant_id=r.tenant_id AND l.quote_revision_id=r.id) lines,
-        (SELECT coalesce(jsonb_agg(to_jsonb(a) ORDER BY a.decided_at),'[]'::jsonb) FROM quote_approvals a WHERE a.tenant_id=r.tenant_id AND a.quote_revision_id=r.id) approvals,
-        (SELECT s.id FROM quote_issued_snapshots s WHERE s.tenant_id=r.tenant_id AND s.quote_revision_id=r.id) AS "issuedSnapshotId",
-        (SELECT s.snapshot_hash FROM quote_issued_snapshots s WHERE s.tenant_id=r.tenant_id AND s.quote_revision_id=r.id) AS "issuedSnapshotHash"
-        FROM quote_revisions r JOIN quotes q ON q.id=r.quote_id AND q.tenant_id=r.tenant_id JOIN opportunities o ON o.id=q.opportunity_id AND o.tenant_id=q.tenant_id`,
+      quotes: QUOTES_VIEW_SELECT,
     } as const;
     return (
       await this.db.query<JsonObject>(
@@ -1313,6 +1329,57 @@ export class PostgresCommercialRepository {
         `SELECT r.id,s.id AS "technicalSolutionId",s.opportunity_id AS "opportunityId",s.code,r.revision,r.status,r.ctr_version_id AS "ctrVersionId",r.specification,r.assumptions,r.created_at AS "createdAt"
          FROM technical_solution_revisions r JOIN technical_solutions s ON s.id=r.technical_solution_id AND s.tenant_id=r.tenant_id JOIN opportunities o ON o.id=s.opportunity_id AND o.tenant_id=s.tenant_id
          WHERE r.id=$1 AND o.tenant_id=$2 AND o.deleted_at IS NULL AND ${secured.sql}`,
+        [id, actor.companyId, ...secured.values],
+      )
+    ).rows[0];
+    return row ?? null;
+  }
+  // U3-COM-3（ADR-0015）：报价列表 keyset cursor 分页只读（additive）；排序键与
+  // listCommercialView('quotes') 的 ORDER BY 1（r.id）DESC 一致，行为守恒。
+  public async listQuotePage(
+    actor: Actor,
+    scopes: readonly DataScope[],
+    anchors: readonly ScopeAnchor[],
+    filter: QuotePageFilter,
+  ): Promise<QuotePage> {
+    const secured = recordScopeSql(scopes, anchors, actor, 'o', 2);
+    const values: unknown[] = [actor.companyId, ...secured.values];
+    const add = (value: unknown): string => {
+      values.push(value);
+      return `$${String(values.length)}`;
+    };
+    const clauses = ['o.tenant_id=$1', 'o.deleted_at IS NULL', secured.sql];
+    if (filter.status) clauses.push(`r.status=${add(filter.status)}`);
+    if (filter.cursor) {
+      const parameter = add(filter.cursor);
+      clauses.push(
+        `r.id<(SELECT x.id FROM quote_revisions x WHERE x.tenant_id=$1 AND x.id=${parameter}::uuid)`,
+      );
+    }
+    const limit = Math.min(Math.max(filter.limit, 1), 100);
+    values.push(limit + 1);
+    const rows = (
+      await this.db.query<JsonObject>(
+        `${QUOTES_VIEW_SELECT} WHERE ${clauses.join(' AND ')} ORDER BY r.id DESC LIMIT $${String(values.length)}`,
+        values,
+      )
+    ).rows;
+    return {
+      items: rows.slice(0, limit),
+      nextCursor: rows.length > limit ? ((rows[limit - 1] as { id?: string }).id ?? null) : null,
+    };
+  }
+  // U3-COM-3（ADR-0015）：报价修订详情只读（additive；谓词与视图轨同口径）。
+  public async findQuoteRevision(
+    id: string,
+    actor: Actor,
+    scopes: readonly DataScope[],
+    anchors: readonly ScopeAnchor[],
+  ): Promise<JsonObject | null> {
+    const secured = recordScopeSql(scopes, anchors, actor, 'o', 2);
+    const row = (
+      await this.db.query<JsonObject>(
+        `${QUOTES_VIEW_SELECT} WHERE r.id=$1 AND o.tenant_id=$2 AND o.deleted_at IS NULL AND ${secured.sql}`,
         [id, actor.companyId, ...secured.values],
       )
     ).rows[0];

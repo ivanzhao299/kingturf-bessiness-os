@@ -335,9 +335,7 @@ it('captures artificial-turf project handoff fields without test-channel evidenc
       'export function appendCostModelCatalog',
     ),
     readBoundSource('./commercial/policy-view.ts', 'export function appendPolicyView'),
-    readBoundSource('./commercial/quote-view.ts', 'export function appendQuoteView'),
-    readBoundSource('./commercial/quote-create.ts', 'export function appendQuoteHeading'),
-    readBoundSource('./commercial/quote-cards.ts', 'export function appendQuoteCardActions'),
+    readBoundSource('./commercial/console/quote-console.tsx', 'export function QuoteConsolePage'),
     readBoundSource('./commercial/credit-view.ts', 'export function appendCreditView'),
     readBoundSource('./commercial/receivables-view.ts', 'export function appendReceivablesView'),
     readBoundSource('./commercial/collections-view.ts', 'export function appendCollectionsView'),
@@ -2669,15 +2667,10 @@ describe('web bootstrap', () => {
       false,
       controller,
     ) as unknown as RenderedElement;
-    expect(workspace.findByClass('quote-workbench')).toHaveLength(1);
-    expect(workspace.findByClass('quote-card')).toHaveLength(2);
-    expect(workspace.textContent).toContain('新建报价');
-    expect(workspace.textContent).toContain('CNY 1000000');
-    expect(workspace.textContent).toContain('毛利 247791（24.77%）');
-    expect(workspace.textContent).toContain('人造草坪系统');
-    expect(workspace.textContent).toContain('批准报价');
-    expect(workspace.textContent).toContain('打印 / 保存 PDF');
-    expect(workspace.textContent).toContain('创建报价修订');
+    expect(workspace.findByClass('quotes-console')).toHaveLength(1);
+    const quoteHost = workspace.findByClass('quotes-console')[0];
+    expect(quoteHost?.getAttribute('data-route-view')).toBe('quotes');
+    expect(quoteHost?.getAttribute('data-testid')).toBe('kt-commercial-quotes');
   });
 
   it('renders field-driven credit and contract workbenches with approval evidence', async () => {

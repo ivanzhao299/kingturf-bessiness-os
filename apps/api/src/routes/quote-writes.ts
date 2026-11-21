@@ -24,7 +24,9 @@ type QuoteContext = Readonly<{
     jsonObject: (value: unknown, name: string) => Record<string, never>;
   }>;
 }>;
-const quoteFields = [
+// U3-COM-3（ADR-0015）：三助手导出供 fastify/quotes.ts 复用——同一解析链保证
+// fastify 轨与 legacy 轨校验语义/消息逐字节一致（additive export，零行为变更）。
+export const quoteFields = [
   'quoteNumber',
   'opportunityId',
   'ctrVersionId',
@@ -43,7 +45,11 @@ const quoteFields = [
   'lines',
 ] as const;
 
-function bodyAndLines(context: QuoteContext, request: ApiRequest, capability: PermissionKey) {
+export function bodyAndLines(
+  context: QuoteContext,
+  request: ApiRequest,
+  capability: PermissionKey,
+) {
   const p = context.parsers;
   const body = p.objectBody(request.body);
   p.allow(body, quoteFields);
@@ -61,7 +67,7 @@ function bodyAndLines(context: QuoteContext, request: ApiRequest, capability: Pe
   return { body, grant, lines };
 }
 
-function quoteValues(context: QuoteContext, body: Record<string, unknown>) {
+export function quoteValues(context: QuoteContext, body: Record<string, unknown>) {
   const p = context.parsers;
   return {
     quoteNumber: p.string(body.quoteNumber, 'quoteNumber'),

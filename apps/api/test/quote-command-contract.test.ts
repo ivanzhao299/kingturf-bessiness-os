@@ -56,6 +56,8 @@ function fixture(
     approveQuote: vi.fn().mockResolvedValue(result),
     issueQuote: vi.fn().mockResolvedValue(result),
     listCommercialView: vi.fn().mockResolvedValue([result]),
+    // U3-COM-3：quotes 集合 GET 经生产桥走 listQuotePage。
+    listQuotePage: vi.fn().mockResolvedValue({ items: [result], nextCursor: null }),
   };
   const authenticate = vi.fn().mockResolvedValue(context);
   const app = buildApp({
@@ -291,12 +293,9 @@ describe('inline quote approve/issue command contracts', () => {
     expect(await f.dispatch('/api/v1/quotes', null, { method: 'GET', key: undefined })).toEqual(
       response(200, { items: [result] }),
     );
-    expect(f.repository.listCommercialView).toHaveBeenCalledExactlyOnceWith(
-      'quotes',
-      actor,
-      ['TEAM'],
-      anchors,
-    );
+    expect(f.repository.listQuotePage).toHaveBeenCalledExactlyOnceWith(actor, ['TEAM'], anchors, {
+      limit: 100,
+    });
     expect(await f.dispatch('/api/v1/quotes', null)).toEqual(
       invalid('A JSON object body is required'),
     );

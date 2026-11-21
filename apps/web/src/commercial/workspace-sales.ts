@@ -3,11 +3,14 @@ import type { SalesViewPorts } from './sales-view-ports';
 import type { PricingViewPorts } from './pricing-view-ports';
 import type { CreditContractViewContext } from './credit-contract-view-ports';
 import type { FulfillmentViewContext } from './fulfillment-view-ports';
-import { appendOpportunityConsole, appendSolutionConsole } from './console-entry';
+import {
+  appendOpportunityConsole,
+  appendSolutionConsole,
+  appendQuoteConsole,
+} from './console-entry';
 import { appendCtrView } from './ctr-view';
 import { appendCostView } from './cost-view';
 import { appendPolicyView } from './policy-view';
-import { appendQuoteView } from './quote-view';
 import { appendCreditView } from './credit-view';
 import { appendContractView } from './contract-view';
 import { appendSalesOrdersView } from './sales-orders-view';
@@ -44,7 +47,8 @@ export function appendWorkspaceSales(
     appendPolicyView({ workspace, status, controller, permissions, ports: pricingViewPorts });
   }
   if (controller && permissions.has('quote:read')) {
-    appendQuoteView({ workspace, status, controller, permissions, ports: pricingViewPorts });
+    // U3-COM-3：报价路由切换至 Preact 控制台（原 vanilla quote workbench 随本次迁移退役）。
+    appendQuoteConsole(workspace, controller, permissions, pricingViewPorts);
   }
   if (controller && permissions.has('credit:read')) {
     appendCreditView({
