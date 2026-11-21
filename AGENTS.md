@@ -8,7 +8,9 @@ KingTurf 业务操作系统：面向草坪行业外贸业务的 ERP（CRM→报�
 
 ## 如何开始（渐进式披露：先地图，再细节）
 
-**U3-COM 商机域全栈迁移收官（2026-11-21）**：commercial 域七个业务视图（商机/方案/报价/成本矩阵/技术需求/销售政策/信用审查）已迁移至 Preact 控制台 + Fastify 端点（U3-COM-1..7，0ff66bd→3cd897b 共 17 提交，registry 27 路径，已上生产 3cd897b run 44870441719）。七个 vanilla workbench 退役约 1,700 行；行为守恒 parity/契约全绿；e2e P1 11/11 零 500。各子批证据见 `docs/evidence/u3-com-{1..7}-*.md`，收官段见 `docs/exec-plans/tech-debt-tracker.md` 顶部与 `docs/index.md`。U3-CRM 域待续。
+**U3-CRM 客户域全栈迁移收官（2026-11-21）**：客户域四子批（线索/客户/联系人/活动，U3-CRM-1..4）已迁移至 Preact 控制台 + Fastify 端点（a1279b5→1e8b4b6 共 10 提交，registry 累计 42 端点/12 文件），经主协调逐批复核通过。线索 vanilla 视图已退役；数据面 /api/v1/customers\* 生产已走 Fastify 桥；**客户路由 Preact 控制台（含 CRM-3 联系人表单/CRM-4 活动时间线增强）已交付待挂载接线（TD-UI-002，现路由仍渲染 vanilla 视图，接线待主协调另批授权）**。每子批 e2e P1 11/11 零 500、ci:local EXIT=0。各子批证据见 `docs/evidence/u3-crm-{1..4}-*.md`，收官段见 `docs/exec-plans/tech-debt-tracker.md` 顶部与 `docs/index.md`。U3-PROC 供应链域待续。
+
+**U3-COM 商机域全栈迁移收官（2026-11-21）**：commercial 域七个业务视图（商机/方案/报价/成本矩阵/技术需求/销售政策/信用审查）已迁移至 Preact 控制台 + Fastify 端点（U3-COM-1..7，0ff66bd→3cd897b 共 17 提交，registry 27 路径，已上生产 3cd897b run 44870441719）。七个 vanilla workbench 退役约 1,700 行；行为守恒 parity/契约全绿；e2e P1 11/11 零 500。各子批证据见 `docs/evidence/u3-com-{1..7}-*.md`，收官段见 `docs/exec-plans/tech-debt-tracker.md` 顶部与 `docs/index.md`。
 
 最新839d5ce窄R7→ef908ad同期采集独立API/新增12纯测及合49工具绿；未接runner/未激活、未再次P1，Windows取消只报未确认、不充实测清理。详见 `docs/evidence/harness-final-network-diagnostics-2026-10-20.md`；真实激活/复现与原生Windows精确清理方案另裁。最后材料HEAD全CI实际运行后交接，P1还原全11/两完整轮仍欠、不终验/竣工/§14。
 
