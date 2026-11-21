@@ -80,13 +80,11 @@ export function registerCustomerRoutes(app: FastifyRouteGroupApp, scope: Fastify
   };
 
   // GET 列表：视图轨迁移（无 cursor——legacy 即全量 100 封顶；strict 键对齐）。
+  // legacy 契约：CRM 依赖缺失 503 先于权限校验（CRM matcher 门）。
   app.get('/api/v1/customers', async () => {
+    const repo = requireRepository();
     const grant = authorizeQuery(scope.authorization, 'customer:read');
-    const items = await requireRepository().listCustomers(
-      scope.authorization.actor,
-      grant.scopes,
-      grant.anchors,
-    );
+    const items = await repo.listCustomers(scope.authorization.actor, grant.scopes, grant.anchors);
     return {
       items: items.map((item) =>
         permittedDto(
@@ -103,8 +101,9 @@ export function registerCustomerRoutes(app: FastifyRouteGroupApp, scope: Fastify
     '/api/v1/customers/:customerId',
     { schema: { response: { 200: CUSTOMER_ROW_SCHEMA, 404: notFoundSchema } } },
     async (request, reply) => {
+      const repo = requireRepository();
       const grant = authorizeQuery(scope.authorization, 'customer:read');
-      const found = await requireRepository().findCustomer(
+      const found = await repo.findCustomer(
         (request.params as { customerId: string }).customerId.toLowerCase(),
         scope.authorization.actor,
         grant.scopes,
@@ -202,6 +201,7 @@ export function registerCustomerRoutes(app: FastifyRouteGroupApp, scope: Fastify
   // POST 创建：legacy customer-base 同解析链（customer:create + allow 三字段）→ 201
   // + mutationDto(customer:read)。
   app.post('/api/v1/customers', async (request, reply) => {
+    const repo = requireRepository();
     authorizeQuery(scope.authorization, 'customer:create', ['name', 'customerNumber', 'tags']);
     const body = objectBody(request.body);
     allow(body, ['name', 'customerNumber', 'tags']);
@@ -210,7 +210,7 @@ export function registerCustomerRoutes(app: FastifyRouteGroupApp, scope: Fastify
       customerNumber: string(body.customerNumber, 'customerNumber'),
       tags: body.tags === undefined ? [] : strings(body.tags, 'tags'),
     };
-    const created = await requireRepository().createCustomer(
+    const created = await repo.createCustomer(
       input,
       scope.authorization.actor,
       scope.correlationId,
