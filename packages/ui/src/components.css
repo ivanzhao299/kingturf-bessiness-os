@@ -325,6 +325,7 @@ dialog .dialog-actions {
 }
 
 /* ===== StatusBadge ===== */
+/* tone 取值见 status-badge.tsx 的 StatusTone；每个 tone 都必须有规则，缺了会落回 neutral 灰。 */
 .status-badge {
   display: inline-flex;
   align-items: center;
@@ -343,9 +344,9 @@ dialog .dialog-actions {
   background: #fff3e0;
   color: #e65100;
 }
-.status-badge[data-tone='error'] {
-  background: #ffebee;
-  color: #b71c1c;
+.status-badge[data-tone='danger'] {
+  background: var(--kt-color-danger-soft, #f7e6e4);
+  color: var(--kt-color-danger, #a03c34);
 }
 .status-badge[data-tone='info'] {
   background: #e3f2fd;

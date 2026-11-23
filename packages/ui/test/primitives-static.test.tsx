@@ -1,9 +1,20 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { ActionBar } from '../src/action-bar';
 import { EmptyState } from '../src/empty-state';
 import { PageHeader } from '../src/page-header';
 import { StatusBadge } from '../src/status-badge';
 import { asElement, mount, mountDom } from './render';
+
+// StatusTone 是纯类型（无运行时值）：从源码解析联合成员，保证清单不漂移。
+const toneSource = readFileSync(new URL('../src/status-badge.tsx', import.meta.url), 'utf8');
+const toneUnion = /export type StatusTone = ([^;]+);/u.exec(toneSource)?.[1];
+if (toneUnion === undefined) throw new Error('StatusTone union not found in status-badge.tsx');
+const tones = toneUnion.split('|').map((member) => member.trim().replace(/^['"]|['"]$/gu, ''));
+const stylesheet = readFileSync(new URL('../src/components.css', import.meta.url), 'utf8');
+const styledTones = [...stylesheet.matchAll(/\.status-badge\[data-tone='([a-z]+)'\]/gu)].map(
+  (match) => match[1],
+);
 
 describe('PageHeader', () => {
   it('renders eyebrow, title, description and action slot', () => {
@@ -78,6 +89,13 @@ describe('StatusBadge', () => {
     expect(asElement(host.container.querySelector('.status-badge')).getAttribute('data-tone')).toBe(
       'neutral',
     );
+  });
+
+  // 回归：类型里的 danger 曾没有 CSS 规则（规则写成了类型中不存在的 error），
+  // 全站 danger 徽章落回 neutral 灰。单测用 mini-DOM 不算样式，只能在样式表层面守。
+  it('ships a components.css rule for every StatusTone（tone 与样式规则一一对应）', () => {
+    expect(tones.length).toBeGreaterThan(0);
+    expect([...styledTones].sort()).toEqual([...tones].sort());
   });
 });
 
