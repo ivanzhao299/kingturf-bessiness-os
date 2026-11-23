@@ -4,14 +4,15 @@
 // 分页；详情抽屉聚合版本历史、组件层级树（折叠/替代料标记）与版本对比三类差异）。
 // 默认视图沿用路由加载的全量快照（legacy 列表语义）；状态/关键字/产品类型任一生效时
 // 切换为服务端分页（显式 limit + (code,version) keyset cursor）。
-import { signal, type Signal } from '@preact/signals';
+import { signal } from '@preact/signals';
+import { createBomActions, createBomMutations } from './bom-console-actions';
+import type { BomBundle } from './bom-console-actions';
 import { DataTable, PageHeader, StatusBadge, type DataTableColumn } from '@kingturf/ui';
 import { BomCreateDrawer } from './bom-create';
 import { BomDetailDrawer } from './bom-detail';
-import type { BomConsolePorts, BomPageQuery, BomRow } from './bom-ports';
+import type { BomConsolePorts, BomRow } from './bom-ports';
 import {
   ALL_PRODUCTS,
-  BOM_PAGE_SIZE,
   bomLines,
   PRODUCT_LABELS,
   STATUS_FILTERS,
@@ -21,28 +22,6 @@ import {
   type BomStatusFilter,
   type BomViewState,
 } from './bom-state';
-
-type BomBundle = Readonly<{
-  snapshot: Signal<readonly BomRow[]>;
-  boms: Signal<readonly BomRow[]>;
-  nextCursor: Signal<string | null>;
-  productFilter: Signal<BomProductFilter>;
-  statusFilter: Signal<BomStatusFilter>;
-  search: Signal<string>;
-  appliedQuery: Signal<string>;
-  loading: Signal<boolean>;
-  loadingMore: Signal<boolean>;
-  loadError: Signal<string>;
-  actionError: Signal<string>;
-  submitError: Signal<string>;
-  selected: Signal<BomRow | null>;
-  detail: Signal<BomRow | null>;
-  detailLoading: Signal<boolean>;
-  activeForm: Signal<'create' | null>;
-  componentRows: Signal<readonly string[]>;
-  compareVersions: Signal<readonly [string, string] | null>;
-  collapsed: Signal<ReadonlySet<string>>;
-}>;
 
 const createBundle = (ports: BomConsolePorts): BomBundle => ({
   snapshot: signal<readonly BomRow[]>([...ports.initialBoms]),
@@ -65,222 +44,6 @@ const createBundle = (ports: BomConsolePorts): BomBundle => ({
   compareVersions: signal<readonly [string, string] | null>(null),
   collapsed: signal<ReadonlySet<string>>(new Set()),
 });
-
-// 数据装载与行级动作闭包（页面 signal 束的最小面）。请求序号守卫丢弃过期响应。
-function createBomActions(ports: BomConsolePorts, bundle: BomBundle) {
-  let requestSequence = 0;
-  let detailSequence = 0;
-  let rowSequence = 0;
-  const isFiltered = (): boolean =>
-    bundle.productFilter.value !== ALL_PRODUCTS ||
-    bundle.statusFilter.value !== 'ALL' ||
-    bundle.appliedQuery.value !== '';
-  const pageQuery = (cursor?: string): BomPageQuery => ({
-    ...(bundle.productFilter.value === ALL_PRODUCTS
-      ? {}
-      : { productType: bundle.productFilter.value }),
-    ...(bundle.statusFilter.value === 'ALL' ? {} : { status: bundle.statusFilter.value }),
-    ...(bundle.appliedQuery.value === '' ? {} : { query: bundle.appliedQuery.value }),
-    limit: BOM_PAGE_SIZE,
-    ...(cursor ? { cursor } : {}),
-  });
-  const messageOf = (error: unknown, fallback: string): string =>
-    error instanceof Error ? error.message : fallback;
-  const loadFailed = (error: unknown, fallback: string): void => {
-    bundle.loadError.value = messageOf(error, fallback);
-  };
-  const actionFailed = (error: unknown, fallback: string): void => {
-    if (bundle.selected.value !== null || bundle.activeForm.value !== null)
-      bundle.submitError.value = messageOf(error, fallback);
-    else bundle.actionError.value = messageOf(error, fallback);
-  };
-  const showAll = (): void => {
-    requestSequence += 1;
-    bundle.actionError.value = '';
-    bundle.boms.value = bundle.snapshot.value;
-    bundle.nextCursor.value = null;
-    bundle.loadError.value = '';
-    bundle.loading.value = false;
-  };
-  const reload = async (): Promise<void> => {
-    const sequence = ++requestSequence;
-    bundle.loading.value = true;
-    try {
-      const page = await ports.fetchPage(pageQuery());
-      if (sequence !== requestSequence) return;
-      bundle.boms.value = page.items;
-      bundle.nextCursor.value = page.nextCursor;
-      bundle.loadError.value = '';
-    } catch (error: unknown) {
-      if (sequence === requestSequence) loadFailed(error, 'BOM 加载失败');
-    } finally {
-      if (sequence === requestSequence) bundle.loading.value = false;
-    }
-  };
-  const loadMore = async (): Promise<void> => {
-    const cursor = bundle.nextCursor.value;
-    if (cursor === null || bundle.loadingMore.value) return;
-    const sequence = requestSequence;
-    bundle.loadingMore.value = true;
-    try {
-      const page = await ports.fetchPage(pageQuery(cursor));
-      if (sequence !== requestSequence) return;
-      bundle.boms.value = [...bundle.boms.value, ...page.items];
-      bundle.nextCursor.value = page.nextCursor;
-      bundle.loadError.value = '';
-    } catch (error: unknown) {
-      if (sequence === requestSequence) loadFailed(error, '继续加载失败');
-    } finally {
-      bundle.loadingMore.value = false;
-    }
-  };
-  const sync = async (): Promise<void> => {
-    bundle.loading.value = true;
-    try {
-      bundle.snapshot.value = await ports.refresh();
-      if (isFiltered()) await reload();
-      else showAll();
-    } catch (error: unknown) {
-      loadFailed(error, 'BOM 刷新失败');
-      bundle.loading.value = false;
-    }
-  };
-  const reloadDetail = async (): Promise<void> => {
-    const row = bundle.selected.value;
-    const bomId = row ? ports.textValue(row.bomId ?? row.id, '') : '';
-    if (!row || bomId === '') return;
-    const sequence = ++detailSequence;
-    bundle.detailLoading.value = true;
-    bundle.compareVersions.value = null;
-    bundle.collapsed.value = new Set();
-    try {
-      const detail = await ports.loadDetail(bomId);
-      if (sequence === detailSequence && detail) bundle.detail.value = detail;
-    } catch {
-      // 详情读取失败静默回退列表行数据。
-    } finally {
-      if (sequence === detailSequence) bundle.detailLoading.value = false;
-    }
-  };
-  const closeForm = (): void => {
-    bundle.activeForm.value = null;
-    bundle.submitError.value = '';
-    bundle.componentRows.value = ['r1'];
-  };
-  const settle = (): void => {
-    if (isFiltered()) void reload();
-    else showAll();
-  };
-
-  // 草稿发布走现代化统一动作端点 PUT /:id/publish（分派 legacy publish('bom') 同链）。
-  const runPublish = async (row: BomRow): Promise<void> => {
-    bundle.submitError.value = '';
-    bundle.actionError.value = '';
-    try {
-      await ports.submit(
-        `/api/v1/manufacturing-boms/${ports.textValue(row.id ?? row.bom_id, '')}/publish`,
-        {},
-        'PUT',
-      );
-      await sync();
-      const opened = bundle.selected.value;
-      if (opened) {
-        const openedId = ports.textValue(opened.bomId ?? opened.id, '');
-        bundle.selected.value =
-          bundle.snapshot.value.find(
-            (candidate) => ports.textValue(candidate.bomId ?? candidate.id, '') === openedId,
-          ) ?? opened;
-        bundle.detail.value = null;
-        await reloadDetail();
-      }
-    } catch (error: unknown) {
-      actionFailed(error, '版本发布失败');
-    }
-  };
-
-  // 创建载荷与原 vanilla「创建标准 BOM」表单逐字节一致（productItemId 取所选版本行
-  // 的 itemId、outputQuantity '1'、publish 恒 false；首行字段裸名与 legacy 对齐，
-  // 追加行带前缀；替代料 priority 1 / conversionFactor '1'）。
-  const runCreate = async (values: Readonly<Record<string, string>>): Promise<void> => {
-    bundle.submitError.value = '';
-    bundle.actionError.value = '';
-    const choiceOf = (versionId: string): string =>
-      ports.itemVersionChoices.find((choice) => choice.value === versionId)?.itemId ?? '';
-    const field = (row: string, name: string): string =>
-      values[row === 'r1' ? name : `${row}:${name}`] ?? '';
-    try {
-      await ports.submit('/api/v1/manufacturing-boms', {
-        code: values.code ?? '',
-        name: values.name ?? '',
-        productItemId: choiceOf(values.product ?? ''),
-        productItemVersionId: values.product ?? '',
-        outputQuantity: '1',
-        effectiveAt: `${values.effectiveAt ?? ''}T00:00:00.000Z`,
-        lines: bundle.componentRows.value.map((row) => {
-          const substitute = field(row, 'substitute');
-          return {
-            componentItemVersionId: field(row, 'component'),
-            quantity: field(row, 'quantity'),
-            scrapBasisPoints: Number(field(row, 'scrap') || '0'),
-            substitutes: substitute
-              ? [{ itemVersionId: substitute, priority: 1, conversionFactor: '1' }]
-              : [],
-          };
-        }),
-        publish: false,
-      });
-    } catch (error: unknown) {
-      actionFailed(error, 'BOM 创建失败');
-      return;
-    }
-    closeForm();
-    await sync();
-  };
-
-  return {
-    isFiltered,
-    sync,
-    settle,
-    loadMore,
-    closeForm,
-    runPublish,
-    runCreate,
-    open: (row: BomRow | null): void => {
-      bundle.selected.value = row;
-      bundle.activeForm.value = null;
-      bundle.submitError.value = '';
-      bundle.detail.value = null;
-      if (row === null) detailSequence += 1;
-      void reloadDetail();
-    },
-    openCreate: (): void => {
-      bundle.activeForm.value = 'create';
-      bundle.submitError.value = '';
-    },
-    toggleNode: (bomVersionId: string): void => {
-      const next = new Set(bundle.collapsed.value);
-      if (next.has(bomVersionId)) next.delete(bomVersionId);
-      else next.add(bomVersionId);
-      bundle.collapsed.value = next;
-    },
-    addComponentRow: (): void => {
-      rowSequence += 1;
-      bundle.componentRows.value = [...bundle.componentRows.value, `r${String(rowSequence + 1)}`];
-    },
-    removeComponentRow: (rowId: string): void => {
-      bundle.componentRows.value = bundle.componentRows.value.filter((row) => row !== rowId);
-    },
-    applySearch: (): void => {
-      bundle.appliedQuery.value = bundle.search.value.trim();
-      settle();
-    },
-    clearSearch: (): void => {
-      bundle.search.value = '';
-      bundle.appliedQuery.value = '';
-      settle();
-    },
-  };
-}
 
 const text = (
   state: BomViewState,
@@ -559,7 +322,22 @@ const BomView = (state: BomViewState) => (
 
 export function BomConsolePage(ports: BomConsolePorts) {
   const bundle = createBundle(ports);
-  const actions = createBomActions(ports, bundle);
+  const loaders = createBomActions(ports, bundle);
+  const mutations = createBomMutations(ports, bundle, {
+    sync: loaders.sync,
+    reloadDetail: loaders.reloadDetail,
+    actionFailed: loaders.actionFailed,
+  });
+  const actions = {
+    ...loaders,
+    ...mutations,
+    ...loaders,
+    ...createBomMutations(ports, bundle, {
+      sync: loaders.sync,
+      reloadDetail: loaders.reloadDetail,
+      actionFailed: loaders.actionFailed,
+    }),
+  };
   const mayManage = ports.permissions.has('bom:manage');
 
   const state = (): BomViewState => ({

@@ -1,7 +1,8 @@
 import { el } from '../dom';
 import type { OperationsViewContext } from './operations-view-ports';
 import { createManufacturingCard } from './manufacturing-cards';
-import { appendManufacturingBomConsole, appendManufacturingItemConsole } from './console-entry';
+import { appendManufacturingItemConsole } from './console-entry';
+import { appendManufacturingBomConsole } from './console/bom-host';
 
 export function appendManufacturingView(context: OperationsViewContext, panel: HTMLElement): void {
   const { workspace, permissions } = context;
