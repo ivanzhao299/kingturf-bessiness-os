@@ -1,11 +1,14 @@
 // U3-COM-1 商机列表控制台白盒行为测试（Preact 分域重写后的行为面；
 // 测试 DOM=零依赖 double（test/fixtures/preact-dom.ts，与 governance console 同源））。
+// COM-UX 行为重写注记：默认视图改为管道看板（看板行为见 opportunity-list-pipeline.test），
+// 本文件覆盖既有能力面守恒（新建/抽屉推进/权限门/刷新）与列表视图保留。
 import { describe, expect, it, vi } from 'vitest';
 import { h, render } from 'preact';
 import type { ComponentType } from 'preact';
 import { installGlobalTestDom, type TestElement } from '../../../test/fixtures/preact-dom';
-import { isOpportunityOverdue, OpportunityListPage } from './opportunity-list';
+import { OpportunityListPage } from './opportunity-list';
 import type { OpportunityListPorts } from './opportunity-list';
+import { isOpportunityOverdue } from './opportunity-list-pipeline';
 
 const flush = (): Promise<void> =>
   new Promise((resolve) => {
@@ -65,14 +68,19 @@ const mount = (ports: OpportunityListPorts): TestElement => {
 };
 
 describe('U3-COM-1 商机列表控制台', () => {
-  it('渲染页头标题与主列表（阶段/金额/赢率/预计成交）', () => {
+  it('渲染页头标题；列表视图保留主列表（阶段/金额/赢率/预计成交）', async () => {
     const host = mount(portsFor([opportunity()]));
     expect(host.textContent).toContain('商机阶段看板');
+    // COM-UX：默认管道视图承载同一批字段（阶段/金额/赢率/预计成交）。
     expect(host.textContent).toContain('国际学校足球场');
     expect(host.textContent).toContain('初步接洽');
     expect(host.textContent).toContain('¥500000.000000');
     expect(host.textContent).toContain('30%');
+    expect(host.querySelector('[data-testid="kt-opportunity-pipeline"]')).not.toBeNull();
+    element(host.querySelector('[data-testid="kt-opportunity-view-list"]')).click();
+    await flush();
     expect(host.querySelector('.data-table table')).not.toBeNull();
+    expect(host.textContent).toContain('商机主列表');
   });
 
   it('概要度量与逾期标记按端口注入的「今天」口径渲染', () => {
@@ -176,7 +184,7 @@ describe('U3-COM-1 商机列表控制台', () => {
     expect(host.textContent).toContain('暂无可用操作');
   });
 
-  it('刷新动作走端口 refresh，失败时错误经 DataTable error 面暴露', async () => {
+  it('刷新动作走端口 refresh，失败时错误就地呈现（看板为 alert，列表为 DataTable error 面）', async () => {
     const ports = portsFor([], [], {
       refresh: vi.fn().mockRejectedValue(new Error('商机列表加载失败')),
     });
@@ -184,6 +192,10 @@ describe('U3-COM-1 商机列表控制台', () => {
     element(host.querySelector('[data-testid="kt-opportunity-refresh"]')).click();
     await flush();
     expect(ports.refresh).toHaveBeenCalledTimes(1);
+    expect(host.querySelector('[role="alert"][data-testid="kt-opportunity-error"]')).not.toBeNull();
+    expect(host.textContent).toContain('商机列表加载失败');
+    element(host.querySelector('[data-testid="kt-opportunity-view-list"]')).click();
+    await flush();
     expect(host.querySelector('.data-table-error')).not.toBeNull();
     expect(host.textContent).toContain('商机列表加载失败');
   });

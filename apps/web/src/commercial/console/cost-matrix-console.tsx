@@ -2,27 +2,29 @@ import { signal, type Signal } from '@preact/signals';
 import {
   DataTable,
   DetailDrawer,
-  FormSection,
   PageHeader,
   StatusBadge,
   type DataTableColumn,
-  type FormSectionField,
   type StatusTone,
 } from '@kingturf/ui';
-import {
-  CATEGORY_OPTIONS,
-  SOURCE_OPTIONS,
-  UNIT_OPTIONS,
-  createCostFactorFields,
-} from '../cost-factor-form';
 import type { CostMatrixPage, CostMatrixQuery } from '../types';
 import type { CostMatrixConsolePorts, CostMatrixRow } from './cost-matrix-ports';
+import {
+  CompareBar,
+  ComparePanel,
+  MAX_COMPARE_MODELS,
+  type ComparisonState,
+  type CompareModel,
+} from './cost-matrix-console-compare';
+import { CreateDrawer, FactorForm } from './cost-matrix-console-forms';
 
 // U3-COM-4（ADR-0014 分域重写）：规格成本矩阵控制台——原 vanilla ledger/detail 能力面
 // 等价迁移（summaries 服务端分页与筛选、矩阵详情、因子增改、重算、报价成本决策 handoff）。
+// COM-UX：主列表支持行选择（≤ 4 个模型）并发起因子对比（同因子取价来源并排 + 最优值标记）；
+// 表单子组件拆至 cost-matrix-console-forms（G1 行数预算）。
 type MatrixFormKind = 'create' | 'addFactor' | 'editFactor' | null;
 
-type MatrixPageState = Readonly<{
+export type MatrixPageState = Readonly<{
   page: CostMatrixPage;
   query: CostMatrixQuery;
   search: string;
@@ -50,6 +52,14 @@ type MatrixPageState = Readonly<{
   runUpdateFactor: (values: Readonly<Record<string, string>>) => Promise<void>;
   runCalculate: (mode: 'TAX_INCLUSIVE' | 'TAX_EXCLUSIVE') => Promise<void>;
   runQuoteCostDecision: () => Promise<void>;
+  /** COM-UX 因子对比：已勾选的模型 id（插入序，≤ MAX_COMPARE_MODELS）。 */
+  selectedIds: ReadonlySet<string>;
+  compareLimitNotice: boolean;
+  comparison: ComparisonState | null;
+  setSelection: (next: ReadonlySet<string>) => void;
+  clearSelection: () => void;
+  openComparison: () => Promise<void>;
+  closeComparison: () => void;
 }>;
 
 const ATTENTION_LABELS: Readonly<Record<string, string>> = {
@@ -271,78 +281,6 @@ const MatrixDrawer = ({ state }: Readonly<{ state: MatrixPageState }>) => {
   );
 };
 
-const FactorForm = ({ state }: Readonly<{ state: MatrixPageState }>) => {
-  const matrix = state.selected;
-  if (!matrix) return null;
-  const editing = state.activeForm === 'editFactor';
-  const factor = editing ? (state.editingFactor ?? {}) : undefined;
-  const fields = createCostFactorFields(
-    {
-      itemVersions: state.ports.itemVersions,
-      categoryOptions: CATEGORY_OPTIONS,
-      sourceOptions: SOURCE_OPTIONS,
-      unitOptions: UNIT_OPTIONS,
-    },
-    state.ports.textValue,
-  )(recordOf(matrix), factor) as readonly FormSectionField[];
-  return (
-    <FormSection
-      title={editing ? '更新因子' : '添加因子'}
-      description={
-        editing ? '因子调整将进入矩阵版本与核算依据。' : '因子来源与数量将进入矩阵版本依据。'
-      }
-      fields={fields}
-      submitLabel={editing ? '保存因子' : '添加因子'}
-      onSubmit={(values) => (editing ? state.runUpdateFactor(values) : state.runAddFactor(values))}
-    />
-  );
-};
-
-const recordOf = (value: unknown): Readonly<Record<string, unknown>> =>
-  typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
-
-const CreateDrawer = ({ state }: Readonly<{ state: MatrixPageState }>) => {
-  const { ports } = state;
-  return (
-    <DetailDrawer title="新建规格成本模型" onClose={state.closeForm}>
-      <FormSection
-        title="新建规格成本模型"
-        description="每种成品规格独立维护成本因子、税率和价格来源。"
-        fields={[
-          { name: 'code', label: '规格模型编号', required: true, placeholder: 'KT-50-3/8' },
-          { name: 'name', label: '产品规格名称', required: true, placeholder: '50mm 单丝加密型' },
-          ...(ports.itemVersions.length
-            ? [
-                {
-                  name: 'productItemVersionId',
-                  label: '关联成品规格',
-                  type: 'select' as const,
-                  options: [{ value: '', label: '暂不关联' }, ...ports.itemVersions],
-                } satisfies FormSectionField,
-              ]
-            : []),
-          {
-            name: 'currency',
-            label: '币种',
-            type: 'select',
-            required: true,
-            options: [{ value: 'CNY', label: '人民币' }],
-          },
-          {
-            name: 'defaultTaxRate',
-            label: '默认税率',
-            type: 'number',
-            required: true,
-            value: '0.13',
-          },
-        ]}
-        submitLabel="创建规格模型"
-        onSubmit={(values) => state.runCreate(values)}
-      />
-    </DetailDrawer>
-  );
-};
-
 const MatrixView = (state: MatrixPageState) => {
   const { ports } = state;
   const mayCreate = state.permissions.has('cost-matrix:manage');
@@ -394,6 +332,7 @@ const MatrixView = (state: MatrixPageState) => {
       <div class="commercial-console-filters">
         <input
           type="search"
+          aria-label="搜索成本模型"
           placeholder="按编号/名称检索"
           data-testid="kt-matrix-search"
           value={state.search}
@@ -403,6 +342,7 @@ const MatrixView = (state: MatrixPageState) => {
         />
         <input
           type="search"
+          aria-label="按产品系列筛选"
           placeholder="按产品系列筛选"
           data-testid="kt-matrix-family"
           value={state.productFamily}
@@ -411,6 +351,7 @@ const MatrixView = (state: MatrixPageState) => {
           }}
         />
         <select
+          aria-label="按状态筛选"
           data-testid="kt-matrix-attention"
           value={state.query.attention}
           onInput={(event) => {
@@ -428,6 +369,7 @@ const MatrixView = (state: MatrixPageState) => {
           )}
         </select>
         <select
+          aria-label="排序方式"
           data-testid="kt-matrix-sort"
           value={state.query.sort}
           onInput={(event) => {
@@ -450,12 +392,15 @@ const MatrixView = (state: MatrixPageState) => {
           {state.loadError}
         </p>
       ) : null}
+      <CompareBar state={state} />
+      <ComparePanel state={state} />
       <DataTable
         columns={columns(state)}
         rows={state.page.items}
         rowId={(row) => ports.textValue(row.id ?? row.code, 'row')}
         caption="规格成本模型台账（服务端分页）"
         loading={state.loading}
+        selection={{ selected: state.selectedIds, onChange: state.setSelection }}
         pagination={{
           loadedCount: state.page.items.length,
           hasMore: state.page.page * state.page.pageSize < state.page.total,
@@ -514,6 +459,9 @@ type MatrixSignalBundle = Readonly<{
   selected: Signal<CostMatrixRow | null>;
   activeForm: Signal<MatrixFormKind>;
   editingFactor: Signal<CostMatrixRow | null>;
+  selectedIds: Signal<ReadonlySet<string>>;
+  compareLimitNotice: Signal<boolean>;
+  comparison: Signal<ComparisonState | null>;
 }>;
 
 type MatrixActions = Readonly<{
@@ -677,6 +625,70 @@ const costMatrixActions = (
   };
 };
 
+// COM-UX 因子对比动作：选择截断到上限并提示；对比时逐个加载详情，失败的列就地呈现，
+// 期间面板被关闭/重开则丢弃过期结果。
+const comparisonActions = (ports: CostMatrixConsolePorts, bundle: MatrixSignalBundle) => {
+  let token = 0;
+  const setSelection = (next: ReadonlySet<string>): void => {
+    const ids = [...next];
+    bundle.compareLimitNotice.value = ids.length > MAX_COMPARE_MODELS;
+    bundle.selectedIds.value = new Set(ids.slice(0, MAX_COMPARE_MODELS));
+  };
+  const openComparison = async (): Promise<void> => {
+    const ids = [...bundle.selectedIds.value];
+    if (ids.length < 2) return;
+    const current = ++token;
+    const headerOf = (id: string): Omit<CompareModel, 'factors' | 'error'> => {
+      const summary = bundle.page.value.items.find((item) => ports.textValue(item.id, '') === id);
+      return {
+        id,
+        code: ports.textValue(summary?.code, id),
+        name: ports.textValue(summary?.name, ''),
+        currency: '',
+      };
+    };
+    bundle.comparison.value = {
+      loading: true,
+      models: ids.map((id) => ({ ...headerOf(id), factors: [], error: '' })),
+    };
+    const models = await Promise.all(
+      ids.map(async (id): Promise<CompareModel> => {
+        try {
+          const detail = await ports.loadMatrix(id);
+          return {
+            ...headerOf(id),
+            currency: ports.textValue(detail?.currency, ''),
+            factors: Array.isArray(detail?.factors) ? detail.factors : [],
+            error: '',
+          };
+        } catch (error: unknown) {
+          return {
+            ...headerOf(id),
+            factors: [],
+            error: error instanceof Error ? error.message : '矩阵详情加载失败',
+          };
+        }
+      }),
+    );
+    // 面板关闭会推进 token：过期结果直接丢弃。
+    if (current !== token) return;
+    bundle.comparison.value = { loading: false, models };
+  };
+  const closeComparison = (): void => {
+    token += 1;
+    bundle.comparison.value = null;
+  };
+  return {
+    setSelection,
+    openComparison,
+    closeComparison,
+    clearSelection: () => {
+      setSelection(new Set());
+      closeComparison();
+    },
+  };
+};
+
 export function CostMatrixConsolePage(ports: CostMatrixConsolePorts) {
   const bundle: MatrixSignalBundle = {
     page: signal<CostMatrixPage>(ports.initialPage),
@@ -689,6 +701,9 @@ export function CostMatrixConsolePage(ports: CostMatrixConsolePorts) {
     selected: signal<CostMatrixRow | null>(null),
     activeForm: signal<MatrixFormKind>(null),
     editingFactor: signal<CostMatrixRow | null>(null),
+    selectedIds: signal<ReadonlySet<string>>(new Set()),
+    compareLimitNotice: signal(false),
+    comparison: signal<ComparisonState | null>(null),
   };
 
   const runQuery = async (next: CostMatrixQuery): Promise<void> => {
@@ -755,6 +770,10 @@ export function CostMatrixConsolePage(ports: CostMatrixConsolePorts) {
       await runQuery(bundle.query.value);
     },
     ...costMatrixActions(ports, bundle),
+    selectedIds: bundle.selectedIds.value,
+    compareLimitNotice: bundle.compareLimitNotice.value,
+    comparison: bundle.comparison.value,
+    ...comparisonActions(ports, bundle),
   });
 
   const Page = () => MatrixView(state());

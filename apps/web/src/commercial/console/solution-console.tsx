@@ -11,11 +11,25 @@ import {
   type StatusTone,
 } from '@kingturf/ui';
 import type { SolutionConsolePorts, SolutionRow } from './solution-ports';
+import {
+  BaselineSelect,
+  ChangeCell,
+  DiffList,
+  DiffListItems,
+  DiffSummary,
+  countChanges,
+  diffFields,
+  diffLists,
+  previousVersion,
+  sortVersions,
+  versionNumber,
+} from './solution-console-diff';
 
 // U3-COM-2（ADR-0014 分域重写）：技术方案 Preact 控制台——原 vanilla solution
 // workbench 能力面等价迁移（新建/修订/定稿、规格与上一版差异标记），列表页
 // 解剖模板（筛选/客户端分页/抽屉详情）；页面不依赖 SalesViewController。
-type SolutionPageState = Readonly<{
+// COM-UX：版本差异升级为字段级红绿标记（可改选更早版本作基准），列表新增「较上一版」列。
+export type SolutionPageState = Readonly<{
   solutions: readonly SolutionRow[];
   shownCount: number;
   statusFilter: 'ALL' | 'DRAFT' | 'FINAL';
@@ -34,6 +48,9 @@ type SolutionPageState = Readonly<{
   setStatusFilter: (next: 'ALL' | 'DRAFT' | 'FINAL') => void;
   setSearch: (next: string) => void;
   showMore: () => void;
+  /** 版本差异的基准版本 id；空串 = 默认取上一版。 */
+  baselineId: string;
+  setBaseline: (id: string) => void;
   runRefresh: () => Promise<void>;
   runRevise: (solution: SolutionRow, payload: Record<string, unknown>) => Promise<void>;
   runCreate: (values: Readonly<Record<string, string>>) => Promise<void>;
@@ -151,16 +168,61 @@ const solutionPayload = (values: Readonly<Record<string, string>>, final: boolea
   final,
 });
 
+// 比对用的字段标签（SPEC_FIELDS 的第三元是表单数值标记，不参与比对）。
+const SPEC_LABELS: readonly (readonly [string, string])[] = SPEC_FIELDS.map(([key, label]) => [
+  key,
+  label,
+]);
+type VersionedRow = Readonly<Record<string, unknown>>;
+const assumptionsOf = (row: SolutionRow): readonly string[] =>
+  Array.isArray(row.assumptions) ? row.assumptions.map(String) : [];
+const rowId = (ports: SolutionConsolePorts, row: VersionedRow): string =>
+  ports.textValue(row.id, '');
+
+// 同一方案根的全部修订（按修订号升序）。
+const versionsOf = (rows: readonly SolutionRow[], row: SolutionRow): readonly SolutionRow[] =>
+  sortVersions(
+    rows.filter((item) => item.technicalSolutionId === row.technicalSolutionId),
+    (item) => versionNumber(item, 'revision'),
+  );
+
+const changesAgainst = (
+  ports: SolutionConsolePorts,
+  row: SolutionRow,
+  baseline: SolutionRow | null,
+): number => {
+  if (!baseline) return 0;
+  return countChanges(
+    diffFields(
+      SPEC_LABELS,
+      recordOf(row.specification),
+      recordOf(baseline.specification),
+      ports.displayRequirement,
+    ),
+    [diffLists(assumptionsOf(baseline), assumptionsOf(row))],
+  );
+};
+
+const changesFromPrevious = (
+  ports: SolutionConsolePorts,
+  rows: readonly SolutionRow[],
+  row: SolutionRow,
+): Readonly<{ count: number; hasBaseline: boolean }> => {
+  const baseline = previousVersion(versionsOf(rows, row), row, (item) => rowId(ports, item));
+  return { count: changesAgainst(ports, row, baseline), hasBaseline: baseline !== null };
+};
+
 const SolutionSummary = ({ state }: Readonly<{ state: SolutionPageState }>) => {
   const solution = state.selected;
   if (!solution) return null;
-  const specification = recordOf(solution.specification);
-  const previous = state.solutions.find(
-    (item) =>
-      item.technicalSolutionId === solution.technicalSolutionId &&
-      Number(item.revision) === Number(solution.revision) - 1,
-  );
-  const previousSpecification = recordOf(previous?.specification);
+  const { ports } = state;
+  const idOf = (row: SolutionRow): string => rowId(ports, row);
+  const versions = versionsOf(state.solutions, solution);
+  const baseline =
+    state.baselineId === ''
+      ? previousVersion(versions, solution, idOf)
+      : (versions.find((item) => idOf(item) === state.baselineId) ?? null);
+  const assumptions = assumptionsOf(solution);
   return (
     <div class="console-summary" data-testid="kt-solution-detail">
       <p>
@@ -173,24 +235,38 @@ const SolutionSummary = ({ state }: Readonly<{ state: SolutionPageState }>) => {
         <span class="console-label">创建</span>
         {state.ports.textValue(solution.createdAt, '—').slice(0, 10)}
       </p>
-      <dl class="ctr-specification" data-testid="kt-solution-spec">
-        {SPEC_FIELDS.map(([key, label]) => {
-          const current = state.ports.displayRequirement(specification[key]);
-          const prior = state.ports.displayRequirement(previousSpecification[key]);
-          const changed = previous !== undefined && current !== prior;
-          return (
-            <span key={key}>
-              <span class="console-label">{label}</span>
-              {changed ? `${current}（上一版：${prior}）` : current}
-            </span>
-          );
-        })}
-      </dl>
-      <p>
-        <span class="console-label">工程假设</span>
-        {(Array.isArray(solution.assumptions) ? solution.assumptions : []).map(String).join('；') ||
-          '—'}
-      </p>
+      <div class="com-diff-toolbar">
+        <DiffSummary
+          changed={changesAgainst(ports, solution, baseline)}
+          hasBaseline={baseline !== null}
+          baseline={`第 ${ports.textValue(baseline?.revision, '1')} 版`}
+        />
+        <BaselineSelect
+          versions={versions.map((item) => ({
+            id: idOf(item),
+            number: versionNumber(item, 'revision'),
+          }))}
+          currentNumber={versionNumber(solution, 'revision')}
+          selectedId={baseline ? idOf(baseline) : ''}
+          onSelect={state.setBaseline}
+        />
+      </div>
+      <DiffList
+        fields={diffFields(
+          SPEC_LABELS,
+          recordOf(solution.specification),
+          baseline ? recordOf(baseline.specification) : null,
+          ports.displayRequirement,
+        )}
+        testId="kt-solution-spec"
+      />
+      <DiffListItems
+        label="工程假设"
+        diff={diffLists(assumptionsOf(baseline ?? solution), assumptions)}
+        current={assumptions}
+        hasBaseline={baseline !== null}
+        testId="kt-solution-assumptions"
+      />
     </div>
   );
 };
@@ -298,6 +374,19 @@ const columns = (state: SolutionPageState): readonly DataTableColumn<SolutionRow
     render: (row) => state.ports.textValue(row.createdAt, '—').slice(0, 10),
   },
   {
+    key: 'changes',
+    header: '较上一版',
+    sortable: true,
+    field: (row) => {
+      const changes = changesFromPrevious(state.ports, state.solutions, row);
+      return changes.hasBaseline ? changes.count : -1;
+    },
+    render: (row) => {
+      const changes = changesFromPrevious(state.ports, state.solutions, row);
+      return <ChangeCell count={changes.count} hasBaseline={changes.hasBaseline} />;
+    },
+  },
+  {
     key: 'actions',
     header: '操作',
     field: () => '查看',
@@ -378,6 +467,7 @@ const SolutionView = (state: SolutionPageState) => {
         ))}
         <input
           type="search"
+          aria-label="按方案编号检索"
           placeholder="按方案编号检索"
           data-testid="kt-solution-search"
           value={state.search}
@@ -423,6 +513,7 @@ export function SolutionConsolePage(ports: SolutionConsolePorts) {
   const selected = signal<SolutionRow | null>(null);
   const activeForm = signal<'edit' | 'publish' | null>(null);
   const creating = signal(false);
+  const baselineId = signal('');
 
   const runRefresh = async (): Promise<void> => {
     loading.value = true;
@@ -452,6 +543,7 @@ export function SolutionConsolePage(ports: SolutionConsolePorts) {
       solutions.value = fresh.solutions;
       selected.value = null;
       activeForm.value = null;
+      baselineId.value = '';
       loadError.value = '';
     } catch (error: unknown) {
       loadError.value = error instanceof Error ? error.message : '方案修订保存失败';
@@ -501,6 +593,7 @@ export function SolutionConsolePage(ports: SolutionConsolePorts) {
     open: (solution) => {
       selected.value = solution;
       activeForm.value = null;
+      baselineId.value = '';
     },
     openForm: (form) => {
       activeForm.value = form;
@@ -519,6 +612,10 @@ export function SolutionConsolePage(ports: SolutionConsolePorts) {
     },
     showMore: () => {
       shownCount.value = shownCount.value + 20;
+    },
+    baselineId: baselineId.value,
+    setBaseline: (id) => {
+      baselineId.value = id;
     },
     runRefresh,
     runRevise,

@@ -11,12 +11,25 @@ import {
 } from '@kingturf/ui';
 import { ctrRequirementFields } from '../ctr-fields';
 import type { CtrConsolePorts, CtrRow } from './ctr-ports';
+import {
+  BaselineSelect,
+  ChangeCell,
+  DiffList,
+  DiffSummary,
+  countChanges,
+  diffFields,
+  previousVersion,
+  sortVersions,
+  versionNumber,
+} from './solution-console-diff';
 
 // U3-COM-5（ADR-0014 分域重写）：技术需求单控制台——原 vanilla ctr workbench 能力面
 // 等价迁移（新建/修订/提交评审/批准驳回/上传附件；列表/筛选/详情抽屉含版本差异）。
+// COM-UX：版本差异升级为字段级红绿标记（需求字段 + 标题，可改选更早版本作基准），
+// 列表新增「较上一版」列；差异原语与方案页共用 solution-console-diff。
 type CtrFormKind = 'create' | 'revise' | null;
 
-type CtrPageState = Readonly<{
+export type CtrPageState = Readonly<{
   ctrs: readonly CtrRow[];
   statusFilter: 'ALL' | 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
   search: string;
@@ -33,6 +46,9 @@ type CtrPageState = Readonly<{
   decision: 'APPROVED' | 'REJECTED' | null;
   closeForm: () => void;
   showMore: () => void;
+  /** 版本差异的基准版本 id；空串 = 默认取上一版。 */
+  baselineId: string;
+  setBaseline: (id: string) => void;
   setStatusFilter: (next: 'ALL' | 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED') => void;
   setSearch: (next: string) => void;
   runRefresh: () => Promise<void>;
@@ -167,6 +183,42 @@ const requirementsPayload = (values: Readonly<Record<string, string>>) => ({
   delivery: values.delivery ?? '',
 });
 
+// 参与版本比对的字段：需求标题 + 全部需求字段。
+const DIFF_FIELDS: readonly (readonly [string, string])[] = [
+  ['title', '需求标题'],
+  ...ctrRequirementFields,
+];
+const rowId = (ports: CtrConsolePorts, row: CtrRow): string => ports.textValue(row.id, '');
+const diffSource = (ports: CtrConsolePorts, row: CtrRow): Readonly<Record<string, unknown>> => ({
+  title: row.title,
+  ...ports.recordValue(row.requirements),
+});
+// 同一需求单根的全部版本（按版本号升序）。
+const versionsOf = (rows: readonly CtrRow[], row: CtrRow): readonly CtrRow[] =>
+  sortVersions(
+    rows.filter((item) => item.ctrId === row.ctrId),
+    (item) => versionNumber(item, 'version'),
+  );
+const changesAgainst = (ports: CtrConsolePorts, row: CtrRow, baseline: CtrRow | null): number =>
+  baseline
+    ? countChanges(
+        diffFields(
+          DIFF_FIELDS,
+          diffSource(ports, row),
+          diffSource(ports, baseline),
+          ports.displayRequirement,
+        ),
+      )
+    : 0;
+const changesFromPrevious = (
+  ports: CtrConsolePorts,
+  rows: readonly CtrRow[],
+  row: CtrRow,
+): Readonly<{ count: number; hasBaseline: boolean }> => {
+  const baseline = previousVersion(versionsOf(rows, row), row, (item) => rowId(ports, item));
+  return { count: changesAgainst(ports, row, baseline), hasBaseline: baseline !== null };
+};
+
 const columns = (state: CtrPageState): readonly DataTableColumn<CtrRow>[] => [
   {
     key: 'code',
@@ -201,6 +253,18 @@ const columns = (state: CtrPageState): readonly DataTableColumn<CtrRow>[] => [
     field: (row) => (Array.isArray(row.attachments) ? row.attachments.length : 0),
   },
   {
+    key: 'changes',
+    header: '较上一版',
+    field: (row) => {
+      const changes = changesFromPrevious(state.ports, state.ctrs, row);
+      return changes.hasBaseline ? changes.count : -1;
+    },
+    render: (row) => {
+      const changes = changesFromPrevious(state.ports, state.ctrs, row);
+      return <ChangeCell count={changes.count} hasBaseline={changes.hasBaseline} />;
+    },
+  },
+  {
     key: 'actions',
     header: '操作',
     field: () => '查看',
@@ -230,11 +294,12 @@ const CtrDetail = ({ state }: Readonly<{ state: CtrPageState }>) => {
   const row = state.selected;
   if (!row) return null;
   const { ports } = state;
-  const requirements = ports.recordValue(row.requirements);
-  const previous = state.ctrs.find(
-    (item) => item.ctrId === row.ctrId && Number(item.version) === Number(row.version) - 1,
-  );
-  const previousRequirements = ports.recordValue(previous?.requirements);
+  const idOf = (item: CtrRow): string => rowId(ports, item);
+  const versions = versionsOf(state.ctrs, row);
+  const baseline =
+    state.baselineId === ''
+      ? previousVersion(versions, row, idOf)
+      : (versions.find((item) => idOf(item) === state.baselineId) ?? null);
   const solutions = state.ports.initialSolutions.filter((item) => item.ctrVersionId === row.id);
   const attachments = Array.isArray(row.attachments) ? row.attachments : [];
   return (
@@ -249,19 +314,31 @@ const CtrDetail = ({ state }: Readonly<{ state: CtrPageState }>) => {
         <span class="console-label">快照</span>
         {ports.textValue(row.snapshotHash, '—').slice(0, 8)}
       </p>
-      <dl class="ctr-specification" data-testid="kt-ctr-spec">
-        {ctrRequirementFields.map(([key, label]) => {
-          const current = ports.displayRequirement(requirements[key]);
-          const prior = ports.displayRequirement(previousRequirements[key]);
-          const changed = previous !== undefined && current !== prior;
-          return (
-            <span key={key}>
-              <span class="console-label">{label}</span>
-              {changed ? `${current}（上一版：${prior}）` : current}
-            </span>
-          );
-        })}
-      </dl>
+      <div class="com-diff-toolbar">
+        <DiffSummary
+          changed={changesAgainst(ports, row, baseline)}
+          hasBaseline={baseline !== null}
+          baseline={`第 ${ports.textValue(baseline?.version, '1')} 版`}
+        />
+        <BaselineSelect
+          versions={versions.map((item) => ({
+            id: idOf(item),
+            number: versionNumber(item, 'version'),
+          }))}
+          currentNumber={versionNumber(row, 'version')}
+          selectedId={baseline ? idOf(baseline) : ''}
+          onSelect={state.setBaseline}
+        />
+      </div>
+      <DiffList
+        fields={diffFields(
+          DIFF_FIELDS,
+          diffSource(ports, row),
+          baseline ? diffSource(ports, baseline) : null,
+          ports.displayRequirement,
+        )}
+        testId="kt-ctr-spec"
+      />
       <p>
         <span class="console-label">技术方案关联</span>
         {solutions.length === 0
@@ -483,6 +560,7 @@ const CtrView = (state: CtrPageState) => {
         ))}
         <input
           type="search"
+          aria-label="按技术需求单编号检索"
           placeholder="按编号检索"
           data-testid="kt-ctr-search"
           value={state.search}
@@ -534,6 +612,7 @@ export function CtrConsolePage(ports: CtrConsolePorts) {
     activeForm: signal<CtrFormKind>(null),
     decision: signal<'APPROVED' | 'REJECTED' | null>(null),
     shownCount: signal(20),
+    baselineId: signal(''),
   };
 
   const fail = (error: unknown, fallback: string): void => {
@@ -661,6 +740,7 @@ export function CtrConsolePage(ports: CtrConsolePorts) {
       bundle.selected.value = row;
       bundle.activeForm.value = null;
       bundle.decision.value = null;
+      bundle.baselineId.value = '';
       bundle.submitError.value = '';
     },
     openForm: (kind) => {
@@ -669,6 +749,10 @@ export function CtrConsolePage(ports: CtrConsolePorts) {
       bundle.submitError.value = '';
     },
     closeForm,
+    baselineId: bundle.baselineId.value,
+    setBaseline: (id) => {
+      bundle.baselineId.value = id;
+    },
     setStatusFilter: (next) => {
       bundle.statusFilter.value = next;
     },

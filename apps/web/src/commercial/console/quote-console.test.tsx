@@ -160,7 +160,8 @@ describe('U3-COM-3 报价控制台', () => {
     expect(detail.textContent).toContain('247791（24.77%）');
     expect(detail.textContent).toContain('人造草坪系统');
     expect(detail.textContent).toContain('技术需求 ctr-v1-a');
-    const history = element(host.querySelector('[data-testid="kt-quote-history"]'));
+    // COM-UX：版本历史由水平版本时间线承载（时间线行为见 quote-console-timeline.test）。
+    const history = element(host.querySelector('[data-testid="kt-quote-timeline"]'));
     expect(history.textContent).toContain('第 1 版');
     expect(history.textContent).toContain('第 2 版');
   });

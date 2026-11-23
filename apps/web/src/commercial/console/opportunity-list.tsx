@@ -8,14 +8,24 @@ import {
   StatusBadge,
   type DataTableColumn,
   type FormSectionField,
-  type StatusTone,
 } from '@kingturf/ui';
+import type { StatusTone } from '@kingturf/ui';
 import type { OpportunityPipelineSummary } from '../readiness';
 import type { Opportunity } from '../types';
+import {
+  PipelineBoard,
+  dropTarget,
+  isOpportunityOverdue,
+  stageLabel,
+  stageTargets,
+  stageTone,
+} from './opportunity-list-pipeline';
 
 // U3-COM-1（ADR-0014 分域重写）：商机列表页 Preact 控制台——原 vanilla pipeline-board
 // 的能力面等价迁移（看板概要/新建/阶段推进/逾期标记），端口层收敛为最小 Props 面
 //（页面不依赖 SalesViewController，行为测试注入 double）。
+// COM-UX：默认呈现按阶段分列的管道视图（卡片按钮/把手拖拽切换阶段），原主列表保留为
+// 可切换的列表视图；两条路径的阶段推进都走同一 transition 端口与依据必填语义。
 export type OpportunityCreator = Readonly<{ id: string; name?: string | null }>;
 
 export type OpportunityListPorts = Readonly<{
@@ -38,40 +48,11 @@ export type OpportunityListPorts = Readonly<{
   refresh: () => Promise<readonly Opportunity[]>;
 }>;
 
-const STAGE_LABELS: readonly (readonly [string, string])[] = [
-  ['OPEN', '初步接洽'],
-  ['QUALIFIED', '需求确认'],
-  ['PROPOSAL', '方案报价'],
-  ['WON', '赢单'],
-  ['LOST', '输单'],
-  ['CANCELLED', '已取消'],
-];
+export type PendingMove = Readonly<{ opportunity: Opportunity; target: string }>;
 
-const NEXT_STAGE: Readonly<Record<string, string>> = {
-  OPEN: 'QUALIFIED',
-  QUALIFIED: 'PROPOSAL',
-  PROPOSAL: 'WON',
-};
+export type OpportunityViewMode = 'pipeline' | 'list';
 
-const stageLabel = (status: unknown): string => {
-  const key = typeof status === 'string' ? status : '';
-  return STAGE_LABELS.find(([stage]) => stage === key)?.[1] ?? (key === '' ? '—' : key);
-};
-
-const stageTone = (status: unknown): StatusTone => {
-  if (status === 'WON') return 'success';
-  if (status === 'LOST') return 'danger';
-  if (status === 'PROPOSAL' || status === 'QUALIFIED') return 'info';
-  return 'neutral';
-};
-
-// 与 opportunityPipelineSummary/readiness 相同的逾期规则（原卡片 overdue 语义保持）。
-export const isOpportunityOverdue = (opportunity: Opportunity, today: string): boolean =>
-  !['WON', 'LOST'].includes(opportunity.status ?? 'OPEN') &&
-  Boolean(opportunity.expectedCloseDate) &&
-  String(opportunity.expectedCloseDate).slice(0, 10) < today;
-
-type OpportunityPageState = Readonly<{
+export type OpportunityPageState = Readonly<{
   items: readonly Opportunity[];
   summary: OpportunityPipelineSummary;
   loading: boolean;
@@ -82,6 +63,27 @@ type OpportunityPageState = Readonly<{
   today: string;
   customers: readonly OpportunityCreator[];
   displayMoney: (currency: unknown, value: unknown) => string;
+  view: OpportunityViewMode;
+  setView: (next: OpportunityViewMode) => void;
+  pendingMove: PendingMove | null;
+  moveError: string;
+  notice: string;
+  focusTarget: string;
+  /** 正在拖拽的商机 id 与其下方的目标列（空串 = 无）。 */
+  dragging: string;
+  over: string;
+  armDrag: (id: string) => void;
+  beginDrag: (opportunity: Opportunity) => boolean;
+  endDrag: () => void;
+  acceptsDrop: (columnKey: string) => boolean;
+  hoverColumn: (columnKey: string) => void;
+  leaveColumn: () => void;
+  dropOn: (columnKey: string) => void;
+  requestMove: (opportunity: Opportunity, target: string) => void;
+  cancelMove: () => void;
+  confirmMove: (reason: string) => Promise<void>;
+  restoreFocus: (id: string) => void;
+  clearFocusTarget: () => void;
   open: (opportunity: Opportunity | null) => void;
   openCreate: () => void;
   closeCreate: () => void;
@@ -177,8 +179,8 @@ const OpportunitySummary = ({ state }: Readonly<{ state: OpportunityPageState }>
 const OpportunityDrawer = ({ state }: Readonly<{ state: OpportunityPageState }>) => {
   const opportunity = state.selected;
   if (!opportunity) return null;
-  const nextStage =
-    opportunity.status === undefined ? null : (NEXT_STAGE[opportunity.status] ?? null);
+  // 抽屉内只提供顺序推进（与原 NEXT_STAGE 语义一致）；关闭出口见看板卡片操作。
+  const nextStage = stageTargets(opportunity.status)[0] ?? null;
   return (
     <DetailDrawer
       title={`商机详情 · ${opportunity.name ?? opportunity.id}`}
@@ -282,6 +284,69 @@ const CreateDrawer = ({ state }: Readonly<{ state: OpportunityPageState }>) => (
   </DetailDrawer>
 );
 
+const ViewToggle = ({ state }: Readonly<{ state: OpportunityPageState }>) => (
+  <div class="com-view-toggle" role="group" aria-label="商机视图切换">
+    {(['pipeline', 'list'] as const).map((mode) => (
+      <button
+        key={mode}
+        type="button"
+        class="secondary compact"
+        aria-pressed={state.view === mode}
+        data-testid={`kt-opportunity-view-${mode}`}
+        onClick={() => {
+          state.setView(mode);
+        }}
+      >
+        {mode === 'pipeline' ? '管道视图' : '列表视图'}
+      </button>
+    ))}
+  </div>
+);
+
+const OpportunityBody = (state: OpportunityPageState) => {
+  if (state.view === 'list')
+    return (
+      <DataTable
+        columns={columns(state)}
+        rows={state.items}
+        rowId={(row) => row.id}
+        caption="商机主列表（阶段、金额、赢率与预计成交）"
+        loading={state.loading}
+        {...(state.loadError === '' ? {} : { error: state.loadError })}
+        emptyTitle="暂无商机"
+        emptyDescription="新建商机后会出现在这里"
+      />
+    );
+  if (state.loadError !== '')
+    return (
+      <p class="console-error" role="alert" data-testid="kt-opportunity-error">
+        {state.loadError}
+      </p>
+    );
+  if (state.items.length === 0 && !state.loading)
+    return (
+      <EmptyState
+        title="暂无商机"
+        description="新建商机后会按阶段出现在这里，拖动卡片或使用卡片按钮即可推进阶段。"
+        {...(state.permissions.has('opportunity:create')
+          ? {
+              action: (
+                <button
+                  type="button"
+                  class="primary"
+                  data-testid="kt-opportunity-create-empty"
+                  onClick={state.openCreate}
+                >
+                  ＋ 新建商机
+                </button>
+              ),
+            }
+          : {})}
+      />
+    );
+  return <PipelineBoard state={state} />;
+};
+
 const OpportunityView = (state: OpportunityPageState) => (
   <div class="commercial-console-page" data-testid="kt-opportunity-page">
     <PageHeader
@@ -289,6 +354,7 @@ const OpportunityView = (state: OpportunityPageState) => (
       description="按阶段推进预计金额、赢率与成交日期"
       actions={
         <>
+          <ViewToggle state={state} />
           <button
             type="button"
             class="secondary"
@@ -315,16 +381,11 @@ const OpportunityView = (state: OpportunityPageState) => (
       }
     />
     <OpportunitySummary state={state} />
-    <DataTable
-      columns={columns(state)}
-      rows={state.items}
-      rowId={(row) => row.id}
-      caption="商机主列表（阶段、金额、赢率与预计成交）"
-      loading={state.loading}
-      {...(state.loadError === '' ? {} : { error: state.loadError })}
-      emptyTitle="暂无商机"
-      emptyDescription="新建商机后会出现在这里"
-    />
+    {/* 容器先于内容存在，移动结果才能被读屏播报（live region 不与内容同时挂载）。 */}
+    <p class="com-visually-hidden" role="status" data-testid="kt-opportunity-notice">
+      {state.notice}
+    </p>
+    {OpportunityBody(state)}
     {state.selected ? <OpportunityDrawer state={state} /> : null}
     {state.creating ? <CreateDrawer state={state} /> : null}
   </div>
@@ -336,28 +397,56 @@ export function OpportunityListPage(ports: OpportunityListPorts) {
   const loadError = signal('');
   const selected = signal<Opportunity | null>(null);
   const creating = signal(false);
+  const view = signal<OpportunityViewMode>('pipeline');
+  const pendingMove = signal<PendingMove | null>(null);
+  const moveError = signal('');
+  const notice = signal('');
+  const focusTarget = signal('');
+  const dragging = signal('');
+  const over = signal('');
+  // 把手按下才允许拖动（非响应式标记：只在事件间传递，不触发渲染）。
+  const dragArm = { id: '' };
 
+  const messageOf = (error: unknown, fallback: string): string =>
+    error instanceof Error ? error.message : fallback;
   const applyItems = (next: readonly Opportunity[]): void => {
     items.value = next;
     loadError.value = '';
   };
   const fail = (error: unknown, fallback: string): void => {
-    loadError.value = error instanceof Error ? error.message : fallback;
+    loadError.value = messageOf(error, fallback);
   };
+  const mayManage = (): boolean => ports.permissions.has('opportunity:lifecycle');
+  const draggedItem = (): Opportunity | undefined =>
+    items.value.find((item) => item.id === dragging.value);
 
-  const runTransition = async (opportunity: Opportunity, status: string, reason: string) => {
+  const runTransition = async (
+    opportunity: Opportunity,
+    status: string,
+    reason: string,
+  ): Promise<void> => {
     loading.value = true;
     try {
       applyItems(await ports.transitionOpportunity(opportunity, status, reason));
       selected.value = null;
+      moveError.value = '';
+      notice.value = `已将「${opportunity.name ?? opportunity.id}」移动到「${stageLabel(status)}」`;
+      // 卡片发起的移动：确认卡卸载，焦点交给已落入新列的同一张卡片。
+      if (pendingMove.value?.opportunity.id === opportunity.id) {
+        pendingMove.value = null;
+        focusTarget.value = opportunity.id;
+      }
     } catch (error: unknown) {
-      fail(error, '商机阶段推进失败');
+      // 卡片流失败就地呈现并保留已输入依据；抽屉流失败走列表/看板级错误面。
+      if (pendingMove.value?.opportunity.id === opportunity.id)
+        moveError.value = messageOf(error, '商机阶段推进失败');
+      else fail(error, '商机阶段推进失败');
     } finally {
       loading.value = false;
     }
   };
 
-  const runCreate = async (payload: Record<string, unknown>) => {
+  const runCreate = async (payload: Record<string, unknown>): Promise<void> => {
     loading.value = true;
     try {
       applyItems(await ports.createOpportunity(payload));
@@ -380,6 +469,21 @@ export function OpportunityListPage(ports: OpportunityListPorts) {
     }
   };
 
+  const endDrag = (): void => {
+    dragging.value = '';
+    over.value = '';
+    dragArm.id = '';
+  };
+  const confirmMove = async (reason: string): Promise<void> => {
+    const move = pendingMove.value;
+    if (move) await runTransition(move.opportunity, move.target, reason);
+  };
+  const requestMove = (opportunity: Opportunity, target: string): void => {
+    pendingMove.value = { opportunity, target };
+    moveError.value = '';
+    notice.value = '';
+  };
+
   const state = (): OpportunityPageState => ({
     items: items.value,
     summary: ports.pipelineSummary(items.value, ports.today),
@@ -391,6 +495,51 @@ export function OpportunityListPage(ports: OpportunityListPorts) {
     today: ports.today,
     customers: ports.customers,
     displayMoney: ports.displayMoney,
+    view: view.value,
+    setView: (next) => {
+      view.value = next;
+    },
+    pendingMove: pendingMove.value,
+    moveError: moveError.value,
+    notice: notice.value,
+    focusTarget: focusTarget.value,
+    dragging: dragging.value,
+    over: over.value,
+    armDrag: (id) => {
+      dragArm.id = id;
+    },
+    beginDrag: (opportunity) => {
+      if (dragArm.id !== opportunity.id || !mayManage()) return false;
+      dragging.value = opportunity.id;
+      return true;
+    },
+    endDrag,
+    // 事件处理读实时 signal 而非渲染快照：dragover/drop 不依赖上一帧是否已重绘。
+    acceptsDrop: (columnKey) => dropTarget(draggedItem()?.status, columnKey) !== null,
+    hoverColumn: (columnKey) => {
+      if (over.value !== columnKey) over.value = columnKey;
+    },
+    leaveColumn: () => {
+      over.value = '';
+    },
+    dropOn: (columnKey) => {
+      const dragged = draggedItem();
+      const target = dropTarget(dragged?.status, columnKey);
+      endDrag();
+      if (dragged && target !== null && mayManage()) requestMove(dragged, target);
+    },
+    requestMove,
+    cancelMove: () => {
+      pendingMove.value = null;
+      moveError.value = '';
+    },
+    confirmMove,
+    restoreFocus: (id) => {
+      focusTarget.value = id;
+    },
+    clearFocusTarget: () => {
+      focusTarget.value = '';
+    },
     open: (opportunity) => {
       selected.value = opportunity;
     },

@@ -9,12 +9,15 @@ import {
   type StatusTone,
 } from '@kingturf/ui';
 import type { CreditConsolePorts, CreditRow } from './credit-ports';
+import { CreditFlow, DecisionFlow, STATUS_LABELS } from './credit-console-flow';
 
 // U3-COM-7（ADR-0014 分域重写）：信用审查控制台——原 vanilla credit workbench 能力面
 // 等价迁移（设定额度/发起评估/批准拒绝决定；决策列表/筛选/详情抽屉含敞口与额度）。
+// COM-UX：页面级审批流程图（提交→评估→审批→批准/拒绝，带计数可点选筛选）；详情抽屉以
+// 逐步骤进度呈现决定所处环节，审批操作就地落在「信用审批」环节。
 type CreditFormKind = 'limit' | 'evaluate' | null;
 
-type CreditPageState = Readonly<{
+export type CreditPageState = Readonly<{
   decisions: readonly CreditRow[];
   limits: readonly CreditRow[];
   statusFilter: 'ALL' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
@@ -42,13 +45,6 @@ type CreditPageState = Readonly<{
 
 const recordValueOf = (value: unknown): Readonly<Record<string, unknown>> =>
   typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
-
-const STATUS_LABELS: Readonly<Record<string, string>> = {
-  PENDING_APPROVAL: '等待信用审批',
-  APPROVED: '信用已批准',
-  REJECTED: '信用已拒绝',
-  EXPIRED: '信用已过期',
-};
 
 const statusTone = (status: unknown): StatusTone => {
   if (status === 'APPROVED') return 'success';
@@ -141,6 +137,7 @@ const CreditDetail = ({ state }: Readonly<{ state: CreditPageState }>) => {
         <span class="console-label">敞口快照</span>
         {ports.recordText(decision, 'exposureSnapshotId', 'exposure_snapshot_id').slice(0, 8)}
       </p>
+      <DecisionFlow state={state} />
       <p>
         <span class="console-label">申请</span>
         {ports.displayMoney(
@@ -170,8 +167,7 @@ const CreditDetail = ({ state }: Readonly<{ state: CreditPageState }>) => {
 const CreditDrawer = ({ state }: Readonly<{ state: CreditPageState }>) => {
   const decision = state.selected;
   if (!decision) return null;
-  const { ports, permissions } = state;
-  const status = decisionStatus(ports, decision);
+  const { ports } = state;
   return (
     <DetailDrawer
       title={`信用决定详情 · ${ports.recordText(decision, 'quoteRevisionId', 'quote_revision_id').slice(0, 8)}`}
@@ -185,34 +181,7 @@ const CreditDrawer = ({ state }: Readonly<{ state: CreditPageState }>) => {
           {state.submitError}
         </p>
       ) : null}
-      {status === 'PENDING_APPROVAL' && permissions.has('credit:approve') ? (
-        <div class="console-actions" data-testid="kt-credit-actions">
-          {state.decision === null ? (
-            <>
-              <button
-                type="button"
-                class="primary"
-                data-testid="kt-credit-approve"
-                onClick={() => {
-                  state.openDecision('APPROVED');
-                }}
-              >
-                批准信用
-              </button>
-              <button
-                type="button"
-                class="secondary"
-                data-testid="kt-credit-reject"
-                onClick={() => {
-                  state.openDecision('REJECTED');
-                }}
-              >
-                拒绝信用
-              </button>
-            </>
-          ) : null}
-        </div>
-      ) : null}
+      {/* 审批操作（批准/拒绝）渲染在办理进度的「信用审批」环节内，见 DecisionFlow。 */}
       {state.decision !== null ? (
         <FormSection
           title={state.decision === 'APPROVED' ? '批准信用' : '拒绝信用'}
@@ -348,6 +317,7 @@ const CreditView = (state: CreditPageState) => {
           </>
         }
       />
+      <CreditFlow state={state} />
       <div class="commercial-console-filters">
         {(['ALL', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'EXPIRED'] as const).map((option) => (
           <button
@@ -364,6 +334,7 @@ const CreditView = (state: CreditPageState) => {
         ))}
         <input
           type="search"
+          aria-label="按报价编号检索"
           placeholder="按报价编号检索"
           data-testid="kt-credit-search"
           value={state.search}

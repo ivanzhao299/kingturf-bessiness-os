@@ -5,13 +5,22 @@ import {
   PageHeader,
   StatusBadge,
   type DataTableColumn,
-  type StatusTone,
 } from '@kingturf/ui';
 import type { QuoteConsolePorts, QuoteRow, QuoteSnapshot } from './quote-ports';
 import { CreateForm, IssueForm, ApproveForm, ReviseForm } from './quote-forms';
+import {
+  MarginMeter,
+  QuoteTimeline,
+  STATUS_LABELS,
+  percent,
+  quoteMarginRate,
+  quoteThresholds,
+  statusTone,
+} from './quote-console-timeline';
 
 // U3-COM-3（ADR-0014 分域重写）：报价控制台——原 vanilla quote workbench 能力面
 // 等价迁移（新建含政策预校验、修订、批准、签发、打印；列表/筛选/客户端分页）。
+// COM-UX：毛利列附毛利率仪表条，详情抽屉以水平版本时间线承载版本历史（节点可切换版本）。
 type QuoteStatusFilter = 'ALL' | 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'ISSUED';
 
 type QuoteFormKind = 'create' | 'revise' | 'approve' | 'issue';
@@ -47,21 +56,10 @@ export type QuotePageState = Readonly<{
 const recordOf = (value: unknown): Readonly<Record<string, unknown>> =>
   typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
 
-const STATUS_LABELS: Readonly<Record<string, string>> = {
-  DRAFT: '草稿',
-  PENDING_APPROVAL: '待审批',
-  APPROVED: '已批准',
-  ISSUED: '已签发',
-  EXPIRED: '已过期',
-  REJECTED: '已拒绝',
-};
-
-const statusTone = (status: unknown): StatusTone => {
-  if (status === 'ISSUED') return 'success';
-  if (status === 'REJECTED') return 'danger';
-  if (status === 'PENDING_APPROVAL') return 'warning';
-  if (status === 'APPROVED' || status === 'DRAFT') return 'info';
-  return 'neutral';
+// 毛利金额 + 毛利率文案（列表与详情同一口径）；毛利率不可见时显示「—」。
+const marginText = (ports: QuoteConsolePorts, row: QuoteRow): string => {
+  const rate = quoteMarginRate(row);
+  return `${ports.textValue(row.margin, '—')}（${rate === null ? '—' : percent(rate)}）`;
 };
 
 // vanilla quote-create/quote-cards 同源的行输入与经济量推导。
@@ -152,9 +150,18 @@ const columns = (state: QuotePageState): readonly DataTableColumn<QuoteRow>[] =>
     key: 'margin',
     header: '毛利',
     sortable: true,
-    field: (row) => Number(row.marginBasisPoints ?? 0),
-    render: (row) =>
-      `${state.ports.textValue(row.margin, '—')}（${String(Number(row.marginBasisPoints ?? 0) / 100)}%）`,
+    field: (row) => quoteMarginRate(row) ?? 0,
+    render: (row) => (
+      // 金额文案保持；下方迷你仪表条按政策红线分带，字段受限时显示「—」而非误判 0%。
+      <span class="com-quote-margin-cell">
+        <span>{marginText(state.ports, row)}</span>
+        <MarginMeter
+          compact
+          rate={quoteMarginRate(row)}
+          thresholds={quoteThresholds(row, state.snapshot.policies)}
+        />
+      </span>
+    ),
   },
   {
     key: 'validUntil',
@@ -187,9 +194,6 @@ const QuoteDetail = ({ state }: Readonly<{ state: QuotePageState }>) => {
   if (!quote) return null;
   const { textValue, recordValue } = state.ports;
   const lines = Array.isArray(quote.lines) ? quote.lines : [];
-  const history = state.snapshot.quotes
-    .filter((item) => item.quoteId === quote.quoteId)
-    .sort((left, right) => Number(left.revision ?? 0) - Number(right.revision ?? 0));
   return (
     <div class="console-summary" data-testid="kt-quote-detail">
       <p>
@@ -206,10 +210,17 @@ const QuoteDetail = ({ state }: Readonly<{ state: QuotePageState }>) => {
         <span class="console-label">成本</span>
         {textValue(quote.costTotal, '—')}
         <span class="console-label">毛利</span>
-        {`${textValue(quote.margin, '—')}（${String(Number(quote.marginBasisPoints ?? 0) / 100)}%）`}
+        {marginText(state.ports, quote)}
         <span class="console-label">有效期至</span>
         {textValue(quote.validUntil, '—').slice(0, 10)}
       </p>
+      <div class="com-quote-margin" data-testid="kt-quote-margin-detail">
+        <span class="console-label">毛利率</span>
+        <MarginMeter
+          rate={quoteMarginRate(quote)}
+          thresholds={quoteThresholds(quote, state.snapshot.policies)}
+        />
+      </div>
       <div class="console-chips" data-testid="kt-quote-pins">
         <span class="console-chip">{`技术需求 ${textValue(quote.ctrVersionId, '').slice(0, 8)}`}</span>
         <span class="console-chip">{`方案 ${textValue(quote.technicalSolutionRevisionId, '').slice(0, 8)}`}</span>
@@ -228,16 +239,7 @@ const QuoteDetail = ({ state }: Readonly<{ state: QuotePageState }>) => {
           );
         })}
       </dl>
-      <div data-testid="kt-quote-history">
-        <span class="console-label">版本历史</span>
-        {history.map((item) => (
-          <p key={textValue(item.id, '')}>
-            第 {textValue(item.revision, '1')} 版 ·{' '}
-            {STATUS_LABELS[textValue(item.status, 'DRAFT')] ?? '—'} · {textValue(item.total, '—')} ·{' '}
-            {textValue(item.issuedAt, '未签发').slice(0, 10)}
-          </p>
-        ))}
-      </div>
+      <QuoteTimeline state={state} />
     </div>
   );
 };
@@ -596,6 +598,7 @@ const QuoteView = (state: QuotePageState) => {
         ))}
         <input
           type="search"
+          aria-label="按报价编号检索"
           placeholder="按报价编号检索"
           data-testid="kt-quote-search"
           value={state.search}
