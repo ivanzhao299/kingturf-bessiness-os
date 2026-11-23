@@ -8,6 +8,7 @@
 - **TD-CRM-002（已实施，R2 登记）线索公海/私海分栏**：`CrmController.leads` 由「仅 `/api/v1/leads` 结果」收敛为「公海 ∪ 已分配」按 id 去重（线索读面单一入口 `loadLeads`）。原因：Preact 控制台经宿主端口只能拿到 `controller.leads`，迁移后 SELF 范围用户在控制台看不到公海线索——与 vanilla `visibleLeads()`（pool ∪ leads）不一致，本批顺带对齐。可见变化：默认分栏私海（无 `lead:read` 则公海）；公海分栏不显示状态筛选，私海分栏移除「公海」筛选；可用分栏 = 读权限 ∪ 当前可见数据（保证没有任何可见线索因分栏而丢失）；写路径、载荷、权限门零改动。
 - **TD-CRM-002 附带交互修正（R2 登记）**：① 抽屉随刷新同步——认领/释放/流转后原先停留在**过期的行对象**上（认领后仍显示「认领」按钮），现同步为最新行，记录已不在可见范围则关闭抽屉；② 新建线索后切到公海分栏让结果可见；③ 搜索关键字加入状态中文文案（原先搜「已认领」不命中 `CLAIMED`）；④ 卡片新增来源图标/负责人头像/「最近更新」列，标题可点开详情。
 - **TD-CRM-003（开放，待主协调裁定）线索「最后跟进时间」无数据源**：简报要求线索卡显示「最后跟进时间」，但 `leads` 表无跟进时间列；`customer_activities.lead_id` 可挂线索，而 Web 端「添加活动」恒写 `leadId: null`，按线索聚合需要新仓储查询（`crm-repositories.ts` 不在边界）且经既有端点加性返回会破坏「与 legacy 逐字节一致」契约，新端点需 `registry.ts` 认领（同样不在边界）。本批如实以 `updatedAt` 呈现并标「最近更新」（认领/流转/改派/释放均刷新），不冒称跟进时间。裁定候选：(a) 维持最近更新；(b) 另批加按线索聚合的只读字段/端点。
+- **TD-CRM-004（已修，写路径载荷修正）客户控制台「添加联系人」只填邮箱或只填电话必然失败**：`FormSection` 未填字段初值是空串而非 `undefined`，控制台 `values.x ?? null` 归一失效，把 `''` 发给 `POST /api/v1/customers/:id/contacts`；legacy 与 Fastify 两轨对字符串一律走 `normalizeContactEmail/Phone`，域函数对空串抛 `invalid_request`（"Contact email is malformed" / "Contact phone is malformed"，以 `packages/domain` 真实实现确认）。即 U3-CRM-3 上线以来只有邮箱与电话**都填**才能保存联系人。修复：空串归一为 null（`blankToNull`），载荷回到 `CrmApi.createContact` 契约（`string | null`）；真红→还原绿，单独提交。两轨 API 行为未改。
 
 ## 2026-11-23 U3-PROC 供应链域全栈迁移收官（TD-UI-001 进展；U3-PROC-4 已复核通过并推送 74743a9/0e76bac）
 

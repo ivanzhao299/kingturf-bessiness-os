@@ -241,3 +241,28 @@ describe('U3-CRM-4 活动时间线增强', () => {
     expect(host.textContent).not.toContain('现场拜访');
   });
 });
+
+describe('TD-CRM-004 添加联系人载荷', () => {
+  it('未填的可选字段归一为 null（只填邮箱也能保存），提交后刷新 360 并收起表单', async () => {
+    const ports = portsFor(['customer:update']);
+    const host = mount(ports);
+    element(host.querySelector('[data-testid="kt-customer-open"]')).click();
+    await flush();
+    element(host.querySelector('[data-testid="kt-customer-add-contact"]')).click();
+    await flush();
+    fillField(host, 'name', '王采购');
+    fillField(host, 'email', 'wang@example.test');
+    fillSelect(host, 'primary', 'false');
+    await flush();
+    await submitDrawer(host);
+    expect(ports.createContact).toHaveBeenCalledExactlyOnceWith('customer-1', {
+      name: '王采购',
+      title: null,
+      email: 'wang@example.test',
+      phone: null,
+      primary: false,
+    });
+    expect(ports.load360).toHaveBeenCalledTimes(2);
+    expect(host.querySelector('button[type="submit"]')).toBeNull();
+  });
+});

@@ -478,6 +478,11 @@ const fail = (
   else bundle.loadError.value = message;
 };
 
+// 表单未填的可选字段初值是空串而非 undefined：空串必须归一为 null，否则服务端会对 ''
+// 做联系方式格式校验并拒绝（"Contact phone is malformed"），导致只填邮箱或只填电话的联系人无法保存。
+const blankToNull = (value: string | undefined): string | null =>
+  value === undefined || value === '' ? null : value;
+
 export function CustomerConsolePage(ports: CustomerConsolePorts) {
   const bundle = {
     customers: signal<readonly CustomerRow[]>([...ports.initialCustomers]),
@@ -571,9 +576,9 @@ export function CustomerConsolePage(ports: CustomerConsolePorts) {
     try {
       await ports.createContact(ports.textValue(customer.id, ''), {
         name: values.name ?? '',
-        title: values.title ?? null,
-        email: values.email ?? null,
-        phone: values.phone ?? null,
+        title: blankToNull(values.title),
+        email: blankToNull(values.email),
+        phone: blankToNull(values.phone),
         primary: values.primary === 'true',
       });
       const fresh = await ports.load360(ports.textValue(customer.id, ''));
