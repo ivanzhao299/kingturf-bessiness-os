@@ -1,6 +1,7 @@
 import { el } from '../dom';
 import type { OperationsViewContext } from './operations-view-ports';
 import { createManufacturingCard } from './manufacturing-cards';
+import { appendManufacturingItemConsole } from './console-entry';
 
 export function appendManufacturingView(context: OperationsViewContext, panel: HTMLElement): void {
   const { workspace, permissions } = context;
@@ -10,24 +11,12 @@ export function appendManufacturingView(context: OperationsViewContext, panel: H
     el('h2', '', '制造主数据工作台'),
     el('p', 'commercial-help', '物料、BOM 与工艺路线版本'),
   );
+  // U3-MFG-1：物料区迁移至 Preact 控制台（分类导航 + 主表 + 详情/新建抽屉）；原
+  // vanilla「物料与规格版本」卡片与「创建物料版本」表单退役（裁定 17 语义）。
+  if (permissions.has('manufacturing-item:read')) appendManufacturingItemConsole(context, panel);
   const grid = el('div', 'manufacturing-grid');
+  // BOM/工艺路线两区保持 vanilla（U3-MFG-2/3 迁移）。
   const definitions = [
-    {
-      title: '物料与规格版本',
-      path: '/api/v1/manufacturing-items',
-      read: 'manufacturing-item:read',
-      manage: 'manufacturing-item:manage',
-      publish: 'manufacturing-item',
-      example: {
-        sku: 'FG-KT-PRO-50',
-        name: '金特夫 50mm 景观草',
-        itemType: 'FINISHED_GOOD',
-        baseUnitCode: 'M2',
-        specification: { pileHeightMm: 50 },
-        effectiveAt: new Date().toISOString(),
-        publish: false,
-      },
-    },
     {
       title: 'BOM 与替代料',
       path: '/api/v1/manufacturing-boms',

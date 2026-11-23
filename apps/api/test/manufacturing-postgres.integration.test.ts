@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { JsonObject } from '@kingturf/types';
 import { PostgresManufacturingRepository } from '../src/manufacturing-repositories.js';
+import { PostgresProductionRepository } from '../src/production-repositories.js';
 import { ownedPostgres } from './fixtures/owned-postgres.js';
 
 const identifier = (item: JsonObject, key = 'id'): string => {
@@ -333,5 +334,329 @@ describe('manufacturing master repository real PostgreSQL contracts', () => {
         )
       ).rows[0]?.count,
     ).toBe('1');
+  });
+});
+
+// U3-MFG-1（ADR-0015）：物料分页/详情 additive 只读仓储的真实 PG 契约——独立 owned
+// schema（不依赖上方 e91b078 契约块的共享状态）。
+describe('U3-MFG-1 manufacturing item page and detail real PostgreSQL contracts', () => {
+  let fixture: Awaited<ReturnType<typeof ownedPostgres>> | undefined;
+  let repository: PostgresManufacturingRepository;
+  const created: JsonObject[] = [];
+  const state = () => {
+    if (!fixture) throw new Error('Owned fixture not initialized');
+    return fixture;
+  };
+  const item = async (
+    sku: string,
+    name: string,
+    itemType: string,
+    specification: JsonObject,
+    publish = true,
+    context = state().context,
+  ) => {
+    const version = await repository.createItem(
+      {
+        sku,
+        name,
+        itemType,
+        baseUnitCode: 'KG',
+        specification,
+        effectiveAt: '2026-01-01T00:00:00Z',
+        publish,
+      },
+      context,
+      randomUUID(),
+    );
+    created.push(version);
+    return version;
+  };
+  const id = (value: JsonObject, key = 'id'): string => {
+    const found = value[key];
+    if (typeof found !== 'string') throw new Error('Fixture identifier missing');
+    return found;
+  };
+  const skus = (page: { items: readonly JsonObject[] }) => page.items.map((row) => id(row, 'sku'));
+
+  beforeAll(async () => {
+    fixture = await ownedPostgres('manufacturing_items_pg');
+    repository = new PostgresManufacturingRepository(fixture.db);
+    // SKU 升序：FG-PRO-50 < FG-PRO-60 < PK-BOX < RM-BACKING-PP < RM-YARN-11000 < RM-YARN-12000 < SF-TUFT-50。
+    const yarn = await item('RM-YARN-12000', '12000D 直丝草纱', 'RAW_MATERIAL', {
+      dtex: 12000,
+      color: '双色绿',
+    });
+    const alternate = await item('RM-YARN-11000', '11000D 替代草纱', 'RAW_MATERIAL', {
+      dtex: 11000,
+    });
+    const backing = await item('RM-BACKING-PP', 'PP 复合底布', 'RAW_MATERIAL', { layers: 2 });
+    const finished = await item('FG-PRO-50', '50mm 景观草', 'FINISHED_GOOD', {
+      pileHeightMm: 50,
+      gauge: '3/8',
+    });
+    await item('FG-PRO-60', '60mm 景观草（草稿）', 'FINISHED_GOOD', { pileHeightMm: 60 }, false);
+    await item('PK-BOX', '出口纸箱', 'PACKAGING', {});
+    await item('SF-TUFT-50', '簇绒半成品', 'SEMI_FINISHED', { pileHeightMm: 50 }, false);
+    await item('FG-FOREIGN', '外租户物料', 'FINISHED_GOOD', {}, true, fixture.otherContext);
+    await repository.createBom(
+      {
+        code: 'BOM-PRO-50',
+        name: '50mm 景观草标准 BOM',
+        productItemId: id(finished, 'itemId'),
+        productItemVersionId: id(finished),
+        outputQuantity: '1',
+        effectiveAt: '2026-01-01T00:00:00Z',
+        publish: true,
+        lines: [
+          {
+            componentItemVersionId: id(yarn),
+            quantity: '1.25',
+            scrapBasisPoints: 300,
+            substitutes: [{ itemVersionId: id(alternate), priority: 1, conversionFactor: '1.05' }],
+          },
+          {
+            componentItemVersionId: id(backing),
+            quantity: '1',
+            scrapBasisPoints: 0,
+            substitutes: [],
+          },
+        ],
+      },
+      fixture.context,
+      randomUUID(),
+    );
+    await repository.createBom(
+      {
+        code: 'BOM-PRO-60',
+        name: '60mm 景观草草稿 BOM',
+        productItemId: id(finished, 'itemId'),
+        productItemVersionId: id(finished),
+        outputQuantity: '1',
+        effectiveAt: '2026-01-01T00:00:00Z',
+        publish: false,
+        lines: [
+          {
+            componentItemVersionId: id(yarn),
+            quantity: '1.5',
+            scrapBasisPoints: 0,
+            substitutes: [],
+          },
+        ],
+      },
+      fixture.context,
+      randomUUID(),
+    );
+    const routing = await repository.createRouting(
+      {
+        code: 'RT-PRO-50',
+        name: '50mm 景观草标准工艺',
+        productItemId: id(finished, 'itemId'),
+        productItemVersionId: id(finished),
+        effectiveAt: '2026-01-01T00:00:00Z',
+        publish: true,
+        operations: [
+          {
+            operationCode: 'TUFT',
+            name: '簇绒',
+            workCenterCode: 'WC-TUFT-01',
+            sequence: 10,
+            setupMinutes: '60',
+            runMinutesPerUnit: '0.8',
+            instructions: {},
+          },
+        ],
+      },
+      fixture.context,
+      randomUUID(),
+    );
+    await new PostgresProductionRepository(fixture.db).create(
+      {
+        orderNumber: 'WO-PRO-50-1',
+        itemVersionId: id(finished),
+        routingVersionId: id(routing),
+        plannedQuantity: '1000',
+        plannedStartAt: '2026-12-01',
+        plannedDueAt: '2026-12-15',
+        sourceReference: 'manual:WO-PRO-50-1',
+      },
+      fixture.context,
+      randomUUID(),
+    );
+  }, 60_000);
+  afterAll(async () => {
+    await fixture?.close();
+  });
+
+  it('listItemPage with no filter is byte-identical to the legacy list and emits no cursor', async () => {
+    const { context } = state();
+    const page = await repository.listItemPage(context, {});
+    expect(page).toEqual({ items: await repository.list('items', context), nextCursor: null });
+    expect(skus(page)).toEqual([
+      'FG-PRO-50',
+      'FG-PRO-60',
+      'PK-BOX',
+      'RM-BACKING-PP',
+      'RM-YARN-11000',
+      'RM-YARN-12000',
+      'SF-TUFT-50',
+    ]);
+    expect(page.items.map((row) => row.id).sort()).toEqual(
+      created
+        .slice(0, 7)
+        .map((row) => row.id)
+        .sort(),
+    );
+  });
+
+  it('listItemPage filters by item type, version status and a literal case-insensitive keyword', async () => {
+    const { context } = state();
+    expect(skus(await repository.listItemPage(context, { itemType: 'RAW_MATERIAL' }))).toEqual([
+      'RM-BACKING-PP',
+      'RM-YARN-11000',
+      'RM-YARN-12000',
+    ]);
+    expect(skus(await repository.listItemPage(context, { status: 'DRAFT' }))).toEqual([
+      'FG-PRO-60',
+      'SF-TUFT-50',
+    ]);
+    expect(skus(await repository.listItemPage(context, { query: '景观草' }))).toEqual([
+      'FG-PRO-50',
+      'FG-PRO-60',
+    ]);
+    // % 与 _ 不作通配符：strpos 字面子串语义（LIKE 通配下 pro_5 会命中 FG-PRO-50）。
+    expect(skus(await repository.listItemPage(context, { query: 'pro_5' }))).toEqual([]);
+    expect(skus(await repository.listItemPage(context, { query: 'PRO-5' }))).toEqual(['FG-PRO-50']);
+    expect(skus(await repository.listItemPage(context, { query: '%mm' }))).toEqual([]);
+    expect(
+      skus(
+        await repository.listItemPage(context, {
+          itemType: 'FINISHED_GOOD',
+          status: 'DRAFT',
+          query: '60',
+        }),
+      ),
+    ).toEqual(['FG-PRO-60']);
+  });
+
+  it('listItemPage keyset cursor walks the full ordered list exactly once across pages', async () => {
+    const { context } = state();
+    const full = await repository.listItemPage(context, {});
+    const walked: string[] = [];
+    let cursor: string | undefined;
+    let pages = 0;
+    for (;;) {
+      const page = await repository.listItemPage(context, {
+        limit: 2,
+        ...(cursor ? { cursor } : {}),
+      });
+      pages += 1;
+      expect(page.items.length).toBeLessThanOrEqual(2);
+      walked.push(...page.items.map((row) => id(row)));
+      if (page.nextCursor === null) break;
+      expect(page.items).toHaveLength(2);
+      cursor = page.nextCursor;
+      expect(pages).toBeLessThan(6);
+    }
+    expect(pages).toBe(4);
+    expect(walked).toEqual(full.items.map((row) => id(row)));
+    // 同 SKU 多版本：游标在同一物料内按版本倒序前进。
+    const secondVersion = await fixture?.db.query(
+      `INSERT INTO manufacturing_item_versions(tenant_id,item_id,version,specification,effective_at,canonical_hash,created_by)
+       SELECT tenant_id,item_id,2,specification,now(),repeat('c',64),created_by FROM manufacturing_item_versions WHERE id=$1
+       RETURNING id`,
+      [id(full.items[0] ?? {})],
+    );
+    expect(secondVersion?.rowCount).toBe(1);
+    const versions = await repository.listItemPage(context, { query: '50mm' });
+    expect(versions.items.map((row) => row.version)).toEqual([2, 1]);
+    const first = await repository.listItemPage(context, { query: '50mm', limit: 1 });
+    expect(first.items.map((row) => row.version)).toEqual([2]);
+    const second = await repository.listItemPage(context, {
+      query: '50mm',
+      limit: 1,
+      ...(first.nextCursor ? { cursor: first.nextCursor } : {}),
+    });
+    expect(second.items.map((row) => row.version)).toEqual([1]);
+    expect(second.nextCursor).toBeNull();
+  });
+
+  it('listItemPage rejects malformed cursors and non-company scopes; tenants stay isolated', async () => {
+    const { context, otherContext } = state();
+    await expect(
+      repository.listItemPage(context, { cursor: 'not-a-cursor' }),
+    ).rejects.toMatchObject({
+      code: 'invalid_request',
+    });
+    await expect(
+      repository.listItemPage({ ...context, scopes: ['TEAM'] }, {}),
+    ).rejects.toMatchObject({ code: 'forbidden' });
+    const foreign = await repository.listItemPage(otherContext, {});
+    expect(skus(foreign)).toEqual(['FG-FOREIGN']);
+  });
+
+  it('findItem returns the root, version history and permission-gated aggregates', async () => {
+    const { context } = state();
+    const finished = created[3] ?? {};
+    const yarn = created[0] ?? {};
+    const alternate = created[1] ?? {};
+    const bare = await repository.findItem(id(finished, 'itemId'), context);
+    expect(bare).toMatchObject({
+      id: id(finished, 'itemId'),
+      sku: 'FG-PRO-50',
+      name: '50mm 景观草',
+      itemType: 'FINISHED_GOOD',
+      baseUnitCode: 'KG',
+    });
+    expect(Object.keys(bare ?? {}).sort()).toEqual(
+      ['baseUnitCode', 'created_at', 'id', 'itemType', 'name', 'sku', 'versions'].sort(),
+    );
+    expect(bare?.versions).toEqual(
+      (await repository.listItemPage(context, { query: '50mm' })).items,
+    );
+    const parts = { boms: true, routings: true, productionOrders: true };
+    const detail = await repository.findItem(id(finished, 'itemId'), context, parts);
+    expect(detail?.boms).toMatchObject([
+      { code: 'BOM-PRO-50', versions: [{ version: 1, status: 'PUBLISHED' }] },
+      { code: 'BOM-PRO-60', versions: [{ version: 1, status: 'DRAFT' }] },
+    ]);
+    expect(detail?.routings).toMatchObject([
+      { code: 'RT-PRO-50', versions: [{ version: 1, status: 'PUBLISHED' }] },
+    ]);
+    expect(detail?.productionOrders).toMatchObject([
+      { orderNumber: 'WO-PRO-50-1', state: 'DRAFT', plannedQuantity: 1000, itemVersion: 1 },
+    ]);
+    expect(detail?.usedIn).toEqual([]);
+    const used = await repository.findItem(id(yarn, 'itemId'), context, parts);
+    expect(used?.boms).toEqual([]);
+    expect(used?.usedIn).toMatchObject([
+      { code: 'BOM-PRO-50', version: 1, role: 'COMPONENT', lineNumber: 1, quantity: 1.25 },
+      { code: 'BOM-PRO-60', version: 1, role: 'COMPONENT', lineNumber: 1 },
+    ]);
+    const substitute = await repository.findItem(id(alternate, 'itemId'), context, {
+      boms: true,
+      routings: false,
+      productionOrders: false,
+    });
+    expect(substitute?.usedIn).toMatchObject([
+      { code: 'BOM-PRO-50', role: 'SUBSTITUTE', lineNumber: 1, priority: 1 },
+    ]);
+    expect(substitute).not.toHaveProperty('routings');
+    expect(substitute).not.toHaveProperty('productionOrders');
+  });
+
+  it('findItem hides other tenants, unknown ids and unauthorized aggregates', async () => {
+    const { context, otherContext } = state();
+    const finished = created[3] ?? {};
+    expect(await repository.findItem(randomUUID(), context)).toBeNull();
+    expect(
+      await repository.findItem(id(finished, 'itemId'), otherContext, {
+        boms: true,
+        routings: true,
+        productionOrders: true,
+      }),
+    ).toBeNull();
+    await expect(
+      repository.findItem(id(finished, 'itemId'), { ...context, scopes: ['SELF'] }),
+    ).rejects.toMatchObject({ code: 'forbidden' });
   });
 });

@@ -220,6 +220,11 @@ const SQL_ENUM_NAMES = new Set([
   // listPurchaseOrders），SQL 字节与提取前逐字一致；status 筛选值经 values.push
   // 参数化（复用已登记 statusClause 片段）。
   'PURCHASE_ORDER_ITEM_PROJECTION',
+  // U3-MFG-1（生产域迁移，同 SUPPLIER 先例）：物料版本行投影（to_jsonb 版本列 +
+  // 物料根列）提取为模块常量供三处复用（list/listItemPage/findItem 版本列表），
+  // SQL 字节与提取前逐字一致；请求值（itemType/status/query/cursor/limit）一律经
+  // values.push 参数化，(sku,version) 键集片段复用已登记 keyset 变量。
+  'ITEM_VERSION_PROJECTION',
   // B2（TD-API-003）分页 keyset 游标片段：cursor 值一律经 values.push 参数化（$N），
   // 变量本体只含代码内表/列名与占位符；2026-11-18 随 18 端点分页批次登记。
   'keyset',

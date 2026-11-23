@@ -1,54 +1,6 @@
 import { openForm } from '../shared/forms';
 import type { OperationsViewContext } from './operations-view-ports';
 
-export function openItemVersionForm(
-  context: OperationsViewContext,
-  finish: (payload: Record<string, unknown>) => Promise<void>,
-): void {
-  const { workspace } = context;
-  openForm(
-    workspace,
-    '创建物料版本',
-    '建立稳定 SKU 和规格版本；确认后可发布并冻结历史。',
-    [
-      { name: 'sku', label: 'SKU 编码', required: true, placeholder: 'FG-KT-PRO-50' },
-      { name: 'name', label: '物料名称', required: true },
-      {
-        name: 'itemType',
-        label: '物料类型',
-        type: 'select',
-        required: true,
-        options: [
-          { value: 'RAW_MATERIAL', label: '原材料' },
-          { value: 'SEMI_FINISHED', label: '半成品' },
-          { value: 'FINISHED_GOOD', label: '成品' },
-          { value: 'PACKAGING', label: '包装物' },
-        ],
-      },
-      { name: 'baseUnitCode', label: '基本单位', required: true, value: 'M2' },
-      { name: 'pileHeightMm', label: '草高（mm，可选）', type: 'number' },
-      {
-        name: 'effectiveAt',
-        label: '生效日期',
-        type: 'date',
-        required: true,
-        value: new Date().toISOString().slice(0, 10),
-      },
-    ],
-    '保存草稿',
-    async (values) =>
-      finish({
-        sku: values.sku,
-        name: values.name,
-        itemType: values.itemType,
-        baseUnitCode: values.baseUnitCode,
-        specification: values.pileHeightMm ? { pileHeightMm: Number(values.pileHeightMm) } : {},
-        effectiveAt: `${values.effectiveAt ?? ''}T00:00:00.000Z`,
-        publish: false,
-      }),
-  );
-}
-
 export function openBomVersionForm(
   context: OperationsViewContext,
   publishedItems: readonly Record<string, unknown>[],

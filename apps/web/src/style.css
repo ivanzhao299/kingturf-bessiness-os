@@ -3944,9 +3944,10 @@ button {
   border-radius: 20px;
   background: linear-gradient(145deg, #f8fbf9, #eef5f1);
 }
+/* U3-MFG-1：物料卡退役后 vanilla 网格仅余 BOM/工艺路线两卡（U3-MFG-2/3 迁移）。 */
 .manufacturing-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
 }
 .manufacturing-card {

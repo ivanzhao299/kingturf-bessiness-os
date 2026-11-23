@@ -121,6 +121,10 @@ describe('Batch4 app extraction against fixed f3 complete request traces', () =>
     // list('receipts') 换为 additive listGoodsReceipts（同投影/排序，页对象形态）。
     'GET /api/v1/goods-receipts',
     'POST /api/v1/goods-receipts',
+    // U3-MFG-1（同批）：manufacturing-items 路径场景经生产桥——同口径；GET 终止
+    // 调用由 list('items') 换为 additive listItemPage（同投影/排序，页对象形态）。
+    'GET /api/v1/manufacturing-items',
+    'POST /api/v1/manufacturing-items',
   ]);
   const preserveWithStrip = (result: {
     name: string;
@@ -225,6 +229,31 @@ describe('Batch4 app extraction against fixed f3 complete request traces', () =>
                 ];
           expect(terminalCalls(pinnedCurrent)).toEqual([
             ['call', 'procurement', listMethod, listArgs],
+          ]);
+          return;
+        }
+        // U3-MFG-1：manufacturing-items GET 经生产桥——响应与 legacy 逐字段一致
+        // （200 {items:[]}）；终止调用钉定桥轨形态（listItemPage：company 作用域
+        // 上下文 + 默认空过滤=legacy 全量语义）。
+        if (row.name === 'GET /api/v1/manufacturing-items') {
+          expect(pinnedCurrent.response).toEqual(pinnedBaseline.response);
+          expect(terminalCalls(pinnedCurrent)).toEqual([
+            [
+              'call',
+              'manufacturing',
+              'listItemPage',
+              [
+                {
+                  actor: {
+                    employeeId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+                    companyId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+                  },
+                  scopes: ['COMPANY'],
+                  anchors: [],
+                },
+                {},
+              ],
+            ],
           ]);
           return;
         }

@@ -1,0 +1,110 @@
+/* U3-MFG-1 物料管理控制台样式：全部取值来自 kt tokens（ADR-0014），不写死颜色/间距。
+   主从布局复用 governance console-split（左分类树 / 右主表），列表/抽屉/表单复用
+   @kingturf/ui components.css 原语；本文件仅承载物料域增量。 */
+.mfg-item-split .console-split-tree h3:not(:first-child) {
+  margin-top: var(--kt-space-2);
+}
+
+.mfg-category-tree {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--kt-space-1);
+}
+
+.mfg-tree-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--kt-space-2);
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: var(--kt-radius-md);
+  background: transparent;
+  padding: var(--kt-space-2) var(--kt-space-3);
+  font: inherit;
+  font-size: var(--kt-font-size-body);
+  color: var(--kt-color-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.mfg-tree-item:hover {
+  background: var(--kt-color-surface);
+  border-color: var(--kt-color-border);
+}
+
+.mfg-tree-item[aria-selected='true'],
+.mfg-tree-item.active {
+  border-color: var(--kt-color-brand);
+  background: var(--kt-color-brand-soft);
+  color: var(--kt-color-brand-strong);
+  font-weight: var(--kt-font-weight-semibold);
+}
+
+.mfg-tree-count {
+  font-size: var(--kt-font-size-caption);
+  color: var(--kt-color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.mfg-status-filters button[aria-pressed='true'] {
+  border-color: var(--kt-color-brand);
+  background: var(--kt-color-brand-soft);
+}
+
+.mfg-item-cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kt-space-1);
+}
+
+.mfg-item-cell small {
+  font-size: var(--kt-font-size-caption);
+}
+
+.mfg-muted {
+  color: var(--kt-color-text-muted);
+}
+
+.mfg-spec-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--kt-space-1);
+}
+
+.mfg-row-actions {
+  display: inline-flex;
+  gap: var(--kt-space-2);
+}
+
+.mfg-item-search input[type='search'] {
+  min-width: 240px;
+}
+
+.mfg-create-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kt-space-3);
+  margin-bottom: var(--kt-space-4);
+}
+
+.mfg-chip-remove {
+  border: 0;
+  background: transparent;
+  color: var(--kt-color-text-muted);
+  cursor: pointer;
+  padding: 0 var(--kt-space-1);
+  font: inherit;
+  line-height: 1;
+}
+
+.mfg-chip-remove:hover {
+  color: var(--kt-color-danger);
+}
+
+.manufacturing-items-console + .manufacturing-grid {
+  margin-top: var(--kt-space-5);
+}

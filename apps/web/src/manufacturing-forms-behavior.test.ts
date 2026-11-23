@@ -1,10 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { openForm } from './shared/forms';
-import {
-  openBomVersionForm,
-  openItemVersionForm,
-  openRoutingVersionForm,
-} from './commercial/manufacturing-forms';
+import { openBomVersionForm, openRoutingVersionForm } from './commercial/manufacturing-forms';
 import { operationsContext } from '../test/fixtures/operations-context';
 vi.mock('./shared/forms', () => ({ openForm: vi.fn() }));
 const form = vi.mocked(openForm);
@@ -29,50 +25,7 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe('manufacturing form fixed draft payloads', () => {
-  it.each([
-    ['50.5', { pileHeightMm: 50.5 }],
-    ['', {}],
-  ] as const)(
-    'creates item specification %s without implicit publish',
-    async (pileHeightMm, specification) => {
-      const f = operationsContext(),
-        finish = vi.fn<(payload: Record<string, unknown>) => Promise<void>>(() =>
-          Promise.resolve(),
-        );
-      openItemVersionForm(f.context, finish);
-      const current = opened();
-      expect(form.mock.calls[0]?.[0]).toBe(f.context.workspace);
-      expect(
-        current.fields
-          .find((field) => field.name === 'itemType')
-          ?.options?.map((item) => item.value),
-      ).toEqual(['RAW_MATERIAL', 'SEMI_FINISHED', 'FINISHED_GOOD', 'PACKAGING']);
-      expect(current.fields.find((field) => field.name === 'effectiveAt')?.value).toBe(
-        '2026-10-17',
-      );
-      await current.run({
-        sku: 'FG-1',
-        name: '草坪',
-        itemType: 'FINISHED_GOOD',
-        baseUnitCode: 'M2',
-        pileHeightMm,
-        effectiveAt: '2026-10-18',
-      });
-      expect(finish).toHaveBeenCalledExactlyOnceWith({
-        sku: 'FG-1',
-        name: '草坪',
-        itemType: 'FINISHED_GOOD',
-        baseUnitCode: 'M2',
-        specification,
-        effectiveAt: '2026-10-18T00:00:00.000Z',
-        publish: false,
-      });
-      finish.mockRejectedValueOnce(new Error('finish rejected'));
-      await expect(current.run({})).rejects.toThrow('finish rejected');
-      expect(f.submit).not.toHaveBeenCalled();
-    },
-  );
-
+  // 物料版本表单用例随 U3-MFG-1 迁入 item-console.test.tsx（创建载荷 oracle 同批改写）。
   it.each([
     [
       'substitute-version',

@@ -1,10 +1,6 @@
 import { el } from '../dom';
 import type { OperationsViewContext, ManufacturingDefinition } from './operations-view-ports';
-import {
-  openItemVersionForm,
-  openBomVersionForm,
-  openRoutingVersionForm,
-} from './manufacturing-forms';
+import { openBomVersionForm, openRoutingVersionForm } from './manufacturing-forms';
 
 export function createManufacturingCard(
   context: OperationsViewContext,
@@ -82,8 +78,8 @@ function openManufacturingCreate(
     await controller.load();
     status.textContent = controller.message;
   };
-  if (definition.path === '/api/v1/manufacturing-items') openItemVersionForm(context, finish);
-  else if (definition.path === '/api/v1/manufacturing-boms')
+  // 物料版本表单已随 U3-MFG-1 迁入物料控制台；此处仅剩 BOM/工艺路线。
+  if (definition.path === '/api/v1/manufacturing-boms')
     openBomVersionForm(context, publishedItems, itemOptions, finish);
   else openRoutingVersionForm(context, publishedItems, itemOptions, finish);
 }

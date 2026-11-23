@@ -377,7 +377,10 @@ it('captures artificial-turf project handoff fields without test-channel evidenc
       './commercial/manufacturing-cards.ts',
       'export function createManufacturingCard',
     ),
-    readBoundSource('./commercial/manufacturing-forms.ts', 'export function openItemVersionForm'),
+    // U3-MFG-1：物料版本表单随 vanilla 物料卡片退役，绑定锚改钉 BOM 表单；
+    // 物料区改由控制台页承载。
+    readBoundSource('./commercial/manufacturing-forms.ts', 'export function openBomVersionForm'),
+    readBoundSource('./commercial/console/item-console.tsx', 'export function ItemConsolePage'),
     readBoundSource('./commercial/sourcing-register.ts', 'export function createSourcingPanel'),
     readBoundSource('./commercial/inventory-register.ts', 'export function createInventoryPanel'),
     readBoundSource('./commercial/procurement-view.ts', 'export function appendProcurementView'),
@@ -1920,9 +1923,36 @@ describe('web bootstrap', () => {
       controller,
     ) as unknown as RenderedElement;
     expect(workspace.findByClass('manufacturing-workbench')).toHaveLength(1);
-    expect(workspace.findByClass('manufacturing-card')).toHaveLength(3);
-    expect(workspace.textContent).toContain('FG-KT-PRO-50');
+    // U3-MFG-1：物料区迁移至 Preact 控制台——vanilla 仅余 BOM/工艺路线两卡（U3-MFG-2/3
+    // 迁移）；物料行渲染由 item-console 行为测试覆盖。
+    expect(workspace.findByClass('manufacturing-card')).toHaveLength(2);
+    // 宿主必须挂载于 manufacturing-workbench 面板内且不带 data-route-view（路由可见性
+    // 随父面板治理——e2e 的 .manufacturing-workbench 定位器作用域依赖该包含关系）。
+    const workbench = workspace.findByClass('manufacturing-workbench')[0];
+    const itemHost = workbench?.findByClass('manufacturing-items-console')[0];
+    expect(itemHost?.getAttribute('data-testid')).toBe('kt-mfg-items');
+    expect(itemHost?.getAttribute('data-route-view')).toBe(null);
+    expect(workbench?.textContent).not.toContain('FG-KT-PRO-50');
     expect(workspace.textContent).toContain('发布版本');
+  });
+
+  it('omits the manufacturing item console without manufacturing-item:read', async () => {
+    const api = {
+      listOpportunities: vi.fn().mockResolvedValue([]),
+      list: vi.fn().mockResolvedValue([]),
+      submit: vi.fn().mockResolvedValue({}),
+      uploadCtrAttachment: vi.fn().mockResolvedValue({}),
+      command: vi.fn().mockResolvedValue({}),
+    };
+    const controller = new CommercialController(api, new Set(['bom:read']));
+    await controller.load();
+    const workspace = commercialWorkspaceStructure(
+      'desktop',
+      false,
+      controller,
+    ) as unknown as RenderedElement;
+    const workbench = workspace.findByClass('manufacturing-workbench')[0];
+    expect(workbench?.findByClass('manufacturing-items-console')).toHaveLength(0);
   });
 
   it('renders supplier, sourcing, purchase, receipt, and immutable lot-balance evidence', async () => {
