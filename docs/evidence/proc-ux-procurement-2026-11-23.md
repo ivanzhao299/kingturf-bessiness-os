@@ -177,3 +177,46 @@ Fastify 路由文件）。按强化简报 ①「FAIL→停止+报告」，该首
   （候选分支 procux-gr-trace-candidate 保留至 TD-PROC-006 裁定）。
 - 姊妹批次参照：COM-UX/CRM-UX/GOV-UX 各自 CSS 文件（commercial-ux.css 等）与徽章 tone
   缺陷同源（TD-PROC-004 若在 packages/ui 修复则全站受益）。
+
+## 10. 主协调复核（2026-11-24）
+
+本节是复核结论。§0–§9 原文保留不改，其中与事实不符之处在此更正。
+
+**提交与门禁。** `d45cd3f` 共 17 个文件：16 个域内文件，加 `apps/web/src/commercial/console-entry.ts` 一处（+22/−1，删掉的那一行是注释）。16 个代码文件与第二轮 ci:local 的干净快照 `ec6faef` 逐字节一致。第二轮回执由日志 `/tmp/procux-ci.log` 坐实：`CI_EXIT=0 DURATION_S=780 BASE=ec6faef…`，API 17916/17916、Web 673/673、structure-gate 强制违规 0、登录入口 JS 11751B、audit 无已知漏洞。第一轮（`7f2e158`）的日志已被第二轮的同名文件覆盖，无法独立复核，按 §7 自述。提交标的 `[未测试]` 与事实不符：未被该回执覆盖的只有本文档这一 docs 增量。不改写历史，在此更正。
+
+**e2e P1。** 9/11 由 `/tmp/procux-e2e/results/.last-run.json` 坐实，失败恰为两例。两例都停在 `openRoute()` 的导航断言，尚未触及页面内容：
+
+| 用例                                                                | 现象（取自 error-context.md）                                                                                             |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| shows explainable risk findings and the closed responsibility trail | `[data-app-route="business-risks"]` 按钮存在（`title="业务风险"`），点击后 `aria-current` 在 5 秒内 14 次轮询均为 `false` |
+| shows server-calculated executive KPIs …                            | `[data-nav-routes~="opportunities"]` 未挂载；页面快照为「登录成功，正在并行加载业务数据…」                                |
+
+§7 把两败归因为「合成账号路由显隐权限解析」。第一例与该说法相符。第二例的现场是工作台尚在准备数据，也可能是首屏加载超过了 5 秒，**成因待核实**。两例与 TD-TEST-016 记录的历史现象同类，不属本批改动的域，已交真浏览器验收会话（UX-VERIFY）用现成 trace 做根因。
+
+**真浏览器截图复核。** 直接查看 `/tmp/procux-e2e/shots` 的截图，发现三处 §7「走查成功」没有写出的缺陷：
+
+1. `04-supplier-drawer.png`、`09-mobile-rfq-drawer.png`：抽屉里的报价对比表被压进窄宽度，供应商名和行项描述一字一行。登记 TD-PROC-008。
+2. `01-suppliers-list.png`、`07-mobile-suppliers.png`：供应商主列表比容器宽，「操作」列被截断；移动端名称列一字一行，表头截断。登记 TD-PROC-009。
+3. `04`、`06` 的背景：`#/procurement` 仍是「供应商与准入 / 询价管理 / 采购订单 / 收货管理」四段竖排，下方接 vanilla 的「供应商报价」「批次库存台账」两卡。本批做的是段内增强，页面解剖没有变。登记 TD-PROC-010，另批做子路由化。
+
+采购订单的列表、进度条、状态流转图与详情抽屉（`03`、`06`）渲染正常。
+
+**TD-PROC-007 根因更正。** §8 的推测（测试 DOM double 经共享模块泄漏）不成立。根因在 `packages/ui/src/detail-drawer.tsx`：
+
+```ts
+const nodes = finder.querySelectorAll(FOCUSABLE_SELECTOR) as readonly Focusable[];
+return nodes.filter(…);
+```
+
+类型断言把 NodeList 当成了数组。单行和跨行 grep 都搜不到，是因为断言夹在调用与 `.filter` 之间。影响不止采购域：全站每个抽屉打开时 `useEffect` 抛错，初始焦点进不了抽屉，清理函数没有登记，关闭后焦点不归还；在抽屉内每次按 Tab，`onKeyDown` 抛错，焦点圈不住。单测看不到，是因为自研 mini-DOM 的 `querySelectorAll` 返回数组。主协调已修复（`27e9224`）：用 `Array.from` 取数组，并加回归用例把返回值包成 NodeList 形状。旧源码上报 `TypeError: nodes.filter is not a function`，修复后通过。
+
+**裁定。**
+
+| 编号        | 裁定                                                                                                                                                          |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TD-PROC-004 | 已修复。`d387f25` 把 `components.css` 中类型里不存在的 `data-tone='error'` 改为 `danger`，并加守卫测试；本批三处内联回退由 `12e4a07` 删除                     |
+| TD-PROC-005 | 宿主函数独立成 `<域>-host.ts`，以 MFG-2 `b6e20a1` 的 `bom-host.ts` 为范式；`console-entry.ts` 按域整体拆分另批                                                |
+| TD-PROC-006 | 维持客户端组合。操作人显示名缺口另批走方案①（仓储内只读聚合 + 加性端点）；方案②（新建 service 层）不采纳。候选分支 `procux-gr-trace-candidate` 保留至该批开工 |
+| TD-PROC-007 | 已修复，见上                                                                                                                                                  |
+
+**临时资产。** worktree `/tmp/procux-ci-wt` 与专用库 `kingturf_test_procux` 已不存在。`/tmp/procux-e2e/` 含可复用的 e2e 配方脚本和两败的 trace，保留至配方沉淀入库后清理。
