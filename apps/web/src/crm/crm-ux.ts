@@ -1,6 +1,7 @@
 // CRM-UX：客户域控制台展示助手——纯函数（无 DOM/信号依赖），组件与单测共用。
 // 行记录沿控制台端口口径为宽松 Record：服务端按字段权限裁剪，业务键可能缺失，
 // 因此取值一律经 textOf/recordOf 收敛，不假设键存在。
+import type { StatusTone } from '@kingturf/ui';
 import { displayMoney } from '../shared/business-format';
 
 export type CrmRecord = Readonly<Record<string, unknown>>;
@@ -185,6 +186,26 @@ export const opportunityStageLabel = (status: unknown): string => {
   return OPPORTUNITY_STAGE_LABELS[key] ?? key;
 };
 
+export const opportunityStageTone = (status: unknown): StatusTone => {
+  if (status === 'WON') return 'success';
+  if (status === 'LOST') return 'danger';
+  if (status === 'QUALIFIED' || status === 'PROPOSAL') return 'info';
+  return 'neutral';
+};
+
+export const leadStatusTone = (status: unknown): StatusTone => {
+  if (status === 'QUALIFIED' || status === 'CONVERTED') return 'success';
+  if (status === 'DISQUALIFIED') return 'danger';
+  if (status === 'CLAIMED') return 'info';
+  return 'neutral';
+};
+
+export const customerStatusTone = (status: unknown): StatusTone => {
+  if (status === 'ACTIVE') return 'success';
+  if (status === 'INACTIVE' || status === 'ARCHIVED') return 'neutral';
+  return 'info';
+};
+
 export type FunnelStage = Readonly<{
   stage: string;
   label: string;
@@ -321,4 +342,72 @@ export const groupByDay = <T>(
     else groups.set(key, [row]);
   }
   return [...groups].map(([key, grouped]) => ({ key, rows: grouped }));
+};
+
+export type CreditMoney = Readonly<{ currency: string; amount: number }>;
+
+/** 客户 360 信用概要：额度、敞口与最近一次信用决定（任一项缺失为 null）。 */
+export type CustomerCreditSummary = Readonly<{
+  limit: CreditMoney | null;
+  exposure: CreditMoney | null;
+  decision: Readonly<{ status: string; decidedAt: string }> | null;
+}>;
+
+const creditMoneyOf = (value: unknown): CreditMoney | null => {
+  const record = recordOf(value);
+  const amount = Number(record.amount);
+  const currency = textOf(record.currency, 'CNY');
+  return Number.isFinite(amount) && currency !== '' ? { currency, amount } : null;
+};
+
+/** 从宽松记录（端口返回或 360 响应内嵌）解析信用概要；非对象或全空返回 null。 */
+export const creditSummaryOf = (value: unknown): CustomerCreditSummary | null => {
+  if (typeof value !== 'object' || value === null) return null;
+  const record = recordOf(value);
+  const decision = recordOf(record.decision);
+  return {
+    limit: creditMoneyOf(record.limit),
+    exposure: creditMoneyOf(record.exposure),
+    decision:
+      Object.keys(decision).length === 0
+        ? null
+        : { status: textOf(decision.status, '—'), decidedAt: textOf(decision.decidedAt) },
+  };
+};
+
+export const isCreditSummaryEmpty = (summary: CustomerCreditSummary): boolean =>
+  summary.limit === null && summary.exposure === null && summary.decision === null;
+
+export type CreditLevel = 'ok' | 'warning' | 'danger';
+
+/** 额度使用率 = 敞口 / 额度（同币种）；≥90% 告急、≥70% 预警。缺项或币种不一致时不可计算。 */
+export const creditUsageOf = (
+  summary: CustomerCreditSummary,
+): Readonly<{ ratio: number | null; level: CreditLevel }> => {
+  const { limit, exposure } = summary;
+  if (limit === null || exposure === null) return { ratio: null, level: 'ok' };
+  if (limit.currency !== exposure.currency) return { ratio: null, level: 'ok' };
+  if (limit.amount <= 0) return { ratio: null, level: exposure.amount > 0 ? 'danger' : 'ok' };
+  const ratio = exposure.amount / limit.amount;
+  return { ratio, level: ratio >= 0.9 ? 'danger' : ratio >= 0.7 ? 'warning' : 'ok' };
+};
+
+/** 信用决定文案与色调，与 commercial 信用审查控制台一致（该常量未导出，此处镜像）。 */
+const CREDIT_DECISION_LABELS: Readonly<Record<string, string>> = {
+  PENDING_APPROVAL: '等待信用审批',
+  APPROVED: '信用已批准',
+  REJECTED: '信用已拒绝',
+  EXPIRED: '信用已过期',
+};
+
+export const creditDecisionLabel = (status: unknown): string => {
+  const key = textOf(status, '—');
+  return CREDIT_DECISION_LABELS[key] ?? key;
+};
+
+export const creditDecisionTone = (status: unknown): StatusTone => {
+  if (status === 'APPROVED') return 'success';
+  if (status === 'REJECTED') return 'danger';
+  if (status === 'PENDING_APPROVAL') return 'warning';
+  return 'neutral';
 };

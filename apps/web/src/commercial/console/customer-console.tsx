@@ -7,62 +7,79 @@ import {
   StatusBadge,
   type DataTableColumn,
   type FormSectionField,
-  type StatusTone,
 } from '@kingturf/ui';
-import { businessEventLabel } from '../../shared/business-labels';
 import type { CustomerConsolePorts, CustomerRow } from './customer-ports';
+import { Customer360Detail, type Customer360State } from './customer-console-360';
+import {
+  customerStatsOf,
+  customerStatusLabel,
+  customerStatusTone,
+  recordOf,
+  type CustomerCreditSummary,
+  type CustomerStats,
+} from '../../crm/crm-ux';
 
 // U3-CRM-2（ADR-0014 分域重写）：客户控制台——原 vanilla customer-records 能力面
 // 等价迁移（新建/客户 360 详情/联系人/活动时间线/商机关联/归属历史）。
+// CRM-UX：列表顶部统计卡 + 360 抽屉增强（时间线/联系人卡/商机漏斗/信用概要），
+// 详见 customer-console-360.tsx；写路径、载荷与权限门不变。
 type CustomerFormKind = 'create' | null;
+type CustomerStatusFilter = 'ALL' | 'PROSPECT' | 'ACTIVE' | 'INACTIVE';
+const STATUS_FILTERS: readonly CustomerStatusFilter[] = ['ALL', 'PROSPECT', 'ACTIVE', 'INACTIVE'];
 
-type CustomerPageState = Readonly<{
-  customers: readonly CustomerRow[];
-  shownCount: number;
-  statusFilter: 'ALL' | 'PROSPECT' | 'ACTIVE' | 'INACTIVE';
-  search: string;
-  loadError: string;
-  submitError: string;
-  loading: boolean;
-  selected: CustomerRow | null;
-  view360: Readonly<Record<string, unknown>> | null;
-  activeForm: CustomerFormKind;
-  permissions: ReadonlySet<string>;
-  ports: CustomerConsolePorts;
-  open: (row: CustomerRow | null) => void;
-  openForm: (kind: CustomerFormKind) => void;
-  contactForm: boolean;
-  openContactForm: () => void;
-  closeContactForm: () => void;
-  runAddContact: (values: Readonly<Record<string, string>>) => Promise<void>;
-  activityForm: boolean;
-  openActivityForm: () => void;
-  closeActivityForm: () => void;
-  runAddActivity: (values: Readonly<Record<string, string>>) => Promise<void>;
-  activityTypeFilter: string;
-  setActivityTypeFilter: (next: string) => void;
-  closeForm: () => void;
-  setStatusFilter: (next: 'ALL' | 'PROSPECT' | 'ACTIVE' | 'INACTIVE') => void;
-  setSearch: (next: string) => void;
-  runRefresh: () => Promise<void>;
-  runCreate: (values: Readonly<Record<string, string>>) => Promise<void>;
-  showMore: () => void;
+type CustomerBundle = Readonly<{
+  customers: Signal<readonly CustomerRow[]>;
+  statusFilter: Signal<CustomerStatusFilter>;
+  search: Signal<string>;
+  loadError: Signal<string>;
+  submitError: Signal<string>;
+  loading: Signal<boolean>;
+  selected: Signal<CustomerRow | null>;
+  view360: Signal<Readonly<Record<string, unknown>> | null>;
+  activeForm: Signal<CustomerFormKind>;
+  contactForm: Signal<boolean>;
+  activityForm: Signal<boolean>;
+  activityTypeFilter: Signal<string>;
+  contactsVisible: Signal<boolean>;
+  highlight: Signal<string>;
+  credit: Signal<CustomerCreditSummary | null | undefined>;
+  shownCount: Signal<number>;
 }>;
 
-const STATUS_LABELS: Readonly<Record<string, string>> = {
-  PROSPECT: '潜在客户',
-  ACTIVE: '活跃客户',
-  INACTIVE: '非活跃',
-};
-
-const statusTone = (status: unknown): StatusTone => {
-  if (status === 'ACTIVE') return 'success';
-  if (status === 'INACTIVE') return 'neutral';
-  return 'info';
-};
-
-const recordOf = (value: unknown): Readonly<Record<string, unknown>> =>
-  typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
+type CustomerPageState = Customer360State &
+  Readonly<{
+    customers: readonly CustomerRow[];
+    stats: CustomerStats;
+    /** 高价值客户口径（宿主注入；未注入时不渲染该卡）。 */
+    highValue: Readonly<{ label: string; hint: string; count: number }> | null;
+    shownCount: number;
+    statusFilter: CustomerStatusFilter;
+    search: string;
+    loadError: string;
+    submitError: string;
+    loading: boolean;
+    selected: CustomerRow | null;
+    view360: Readonly<Record<string, unknown>> | null;
+    activeForm: CustomerFormKind;
+    permissions: ReadonlySet<string>;
+    ports: CustomerConsolePorts;
+    open: (row: CustomerRow | null) => void;
+    openForm: (kind: CustomerFormKind) => void;
+    contactForm: boolean;
+    openContactForm: () => void;
+    closeContactForm: () => void;
+    runAddContact: (values: Readonly<Record<string, string>>) => Promise<void>;
+    activityForm: boolean;
+    openActivityForm: () => void;
+    closeActivityForm: () => void;
+    runAddActivity: (values: Readonly<Record<string, string>>) => Promise<void>;
+    closeForm: () => void;
+    setStatusFilter: (next: CustomerStatusFilter) => void;
+    setSearch: (next: string) => void;
+    runRefresh: () => Promise<void>;
+    runCreate: (values: Readonly<Record<string, string>>) => Promise<void>;
+    showMore: () => void;
+  }>;
 
 const columns = (state: CustomerPageState): readonly DataTableColumn<CustomerRow>[] => [
   {
@@ -82,7 +99,9 @@ const columns = (state: CustomerPageState): readonly DataTableColumn<CustomerRow
     field: (row) => state.ports.textValue(row.status, 'PROSPECT'),
     render: (row) => {
       const status = state.ports.textValue(row.status, 'PROSPECT');
-      return <StatusBadge tone={statusTone(status)}>{STATUS_LABELS[status] ?? status}</StatusBadge>;
+      return (
+        <StatusBadge tone={customerStatusTone(status)}>{customerStatusLabel(status)}</StatusBadge>
+      );
     },
   },
   {
@@ -119,103 +138,53 @@ const filteredCustomers = (state: CustomerPageState): readonly CustomerRow[] =>
     return haystack.includes(state.search.toLowerCase());
   });
 
-const Customer360Detail = ({
-  view,
-  ports,
-  typeFilter,
-  onTypeFilter,
-}: Readonly<{
-  view: Readonly<Record<string, unknown>>;
-  ports: CustomerConsolePorts;
-  typeFilter: string;
-  onTypeFilter: (next: string) => void;
-}>) => {
-  const customer = recordOf(view.customer);
-  const contacts = Array.isArray(view.contacts) ? view.contacts : [];
-  const activities = Array.isArray(view.activities) ? view.activities : [];
-  const opportunities = Array.isArray(view.opportunities) ? view.opportunities : [];
-  const activityTypes = [
-    ...new Set(
-      activities
-        .map((activity) => ports.textValue(recordOf(activity).type, ''))
-        .filter((type) => type !== ''),
-    ),
-  ];
-  const visibleActivities =
-    typeFilter === ''
-      ? activities
-      : activities.filter(
-          (activity) => ports.textValue(recordOf(activity).type, '') === typeFilter,
-        );
-  return (
-    <div class="console-summary" data-testid="kt-customer-360">
-      <p>
-        <span class="console-label">编号</span>
-        {ports.textValue(customer.customerNumber, '—')}
-        <span class="console-label">状态</span>
-        {ports.textValue(customer.status, '—')}
-      </p>
-      <div data-testid="kt-customer-contacts">
-        <span class="console-label">联系人</span>
+const percentOf = (part: number, total: number): string =>
+  total === 0 ? '—' : `${String(Math.round((part / total) * 100))}%`;
 
-        {contacts.map((contact) => {
-          const item = recordOf(contact);
-          return (
-            <p key={ports.textValue(item.id ?? item.name, '')}>
-              {ports.textValue(item.name, '—')} · {ports.textValue(item.title, '—')} ·{' '}
-              {ports.textValue(item.email, '—')} · {ports.textValue(item.phone, '—')}
-            </p>
-          );
-        })}
-        {contacts.length === 0 ? <p>暂无联系人</p> : null}
-      </div>
-      <div data-testid="kt-customer-activities">
-        <span class="console-label">活动时间线</span>
-        {activityTypes.length > 1 ? (
-          <select
-            class="console-input"
-            data-testid="kt-customer-activity-type-filter"
-            value={typeFilter}
-            onChange={(event) => {
-              onTypeFilter((event.target as HTMLSelectElement).value);
-            }}
-          >
-            <option value="">全部类型</option>
-            {activityTypes.map((type) => (
-              <option key={type} value={type}>
-                {businessEventLabel(type)}
-              </option>
-            ))}
-          </select>
-        ) : null}
-        {visibleActivities.map((activity) => {
-          const item = recordOf(activity);
-          return (
-            <p key={ports.textValue(item.id ?? item.summary, '')}>
-              {businessEventLabel(item.type)} · {ports.textValue(item.summary, '—')} ·{' '}
-              {ports.textValue(item.occurredAt, '—').slice(0, 10)}
-            </p>
-          );
-        })}
-        {activities.length === 0 ? (
-          <p>暂无活动</p>
-        ) : visibleActivities.length === 0 ? (
-          <p>该类型暂无活动</p>
-        ) : null}
-      </div>
-      <div data-testid="kt-customer-opportunities">
-        <span class="console-label">商机关联</span>
-        {opportunities.map((opportunity) => {
-          const item = recordOf(opportunity);
-          return (
-            <p key={ports.textValue(item.id ?? item.name, '')}>
-              {ports.textValue(item.name, '—')} · {ports.textValue(item.status, '—')} ·{' '}
-              {ports.textValue((item as { value?: { amount?: unknown } }).value?.amount, '—')}
-            </p>
-          );
-        })}
-        {opportunities.length === 0 ? <p>暂无商机关联</p> : null}
-      </div>
+const StatCard = ({
+  testId,
+  label,
+  value,
+  hint,
+}: Readonly<{ testId: string; label: string; value: string; hint: string }>) => (
+  <div class="crm-stat" data-testid={testId}>
+    <span class="crm-stat-label">{label}</span>
+    <strong class="crm-stat-value">{value}</strong>
+    <span class="crm-stat-hint">{hint}</span>
+  </div>
+);
+
+/** 客户列表顶部统计：基于已加载的可见客户全集；高价值卡仅在宿主给出口径时呈现。 */
+const StatsBar = ({ state }: Readonly<{ state: CustomerPageState }>) => {
+  const { stats } = state;
+  return (
+    <div class="crm-stats" data-testid="kt-customer-stats">
+      <StatCard
+        testId="kt-customer-stat-total"
+        label="客户总数"
+        value={stats.capped ? `${String(stats.total)}+` : String(stats.total)}
+        hint={stats.capped ? '已达单次加载上限' : '当前可见范围'}
+      />
+      <StatCard
+        testId="kt-customer-stat-active"
+        label="活跃客户"
+        value={String(stats.active)}
+        hint={`占可见客户 ${percentOf(stats.active, stats.total)}`}
+      />
+      <StatCard
+        testId="kt-customer-stat-new"
+        label="新增本月"
+        value={String(stats.newThisMonth)}
+        hint="按创建时间统计"
+      />
+      {state.highValue === null ? null : (
+        <StatCard
+          testId="kt-customer-stat-high-value"
+          label={state.highValue.label}
+          value={String(state.highValue.count)}
+          hint={state.highValue.hint}
+        />
+      )}
     </div>
   );
 };
@@ -223,7 +192,7 @@ const Customer360Detail = ({
 const CustomerDrawer = ({ state }: Readonly<{ state: CustomerPageState }>) => {
   const customer = state.selected;
   if (!customer) return null;
-  const { ports } = state;
+  const { ports, permissions } = state;
   const status = ports.textValue(customer.status, 'PROSPECT');
   return (
     <DetailDrawer
@@ -232,24 +201,12 @@ const CustomerDrawer = ({ state }: Readonly<{ state: CustomerPageState }>) => {
         state.open(null);
       }}
     >
-      {state.view360 ? (
-        <Customer360Detail
-          view={state.view360}
-          ports={state.ports}
-          typeFilter={state.activityTypeFilter}
-          onTypeFilter={state.setActivityTypeFilter}
-        />
-      ) : (
-        <p class="console-hint">客户 360 加载中…</p>
-      )}
-      {state.submitError !== '' ? (
-        <p class="console-error" role="alert" data-testid="kt-customer-submit-error">
-          {state.submitError}
-        </p>
-      ) : null}
-      <div class="console-actions">
-        <StatusBadge tone={statusTone(status)}>{STATUS_LABELS[status] ?? status}</StatusBadge>
-        {state.permissions.has('customer:update') && !state.contactForm ? (
+      {/* 操作区置顶：打开抽屉即可记录联系人/活动，无需滚过 360 内容。 */}
+      <div class="console-actions" data-testid="kt-customer-actions">
+        <StatusBadge tone={customerStatusTone(status)}>{customerStatusLabel(status)}</StatusBadge>
+        <span class="console-label">编号</span>
+        {ports.textValue(customer.customerNumber, '—')}
+        {permissions.has('customer:update') && !state.contactForm ? (
           <button
             type="button"
             class="text-button"
@@ -261,7 +218,7 @@ const CustomerDrawer = ({ state }: Readonly<{ state: CustomerPageState }>) => {
             添加联系人
           </button>
         ) : null}
-        {state.permissions.has('customer-activity:create') && !state.activityForm ? (
+        {permissions.has('customer-activity:create') && !state.activityForm ? (
           <button
             type="button"
             class="text-button"
@@ -274,6 +231,11 @@ const CustomerDrawer = ({ state }: Readonly<{ state: CustomerPageState }>) => {
           </button>
         ) : null}
       </div>
+      {state.submitError !== '' ? (
+        <p class="console-error" role="alert" data-testid="kt-customer-submit-error">
+          {state.submitError}
+        </p>
+      ) : null}
       {state.contactForm ? (
         <FormSection
           title="添加联系人"
@@ -328,6 +290,11 @@ const CustomerDrawer = ({ state }: Readonly<{ state: CustomerPageState }>) => {
           }}
         />
       ) : null}
+      {state.view360 ? (
+        <Customer360Detail {...state} />
+      ) : (
+        <p class="console-hint">客户 360 加载中…</p>
+      )}
     </DetailDrawer>
   );
 };
@@ -354,8 +321,9 @@ const CustomerView = (state: CustomerPageState) => {
   const visible = filteredCustomers(state);
   const shown = visible.slice(0, state.shownCount);
   const mayCreate = state.permissions.has('customer:create');
+  const filtered = state.statusFilter !== 'ALL' || state.search !== '';
   return (
-    <div class="commercial-console-page" data-testid="kt-customer-page">
+    <div class="commercial-console-page crm-ux" data-testid="kt-customer-page">
       <PageHeader
         title="客户管理"
         description="客户档案、联系人、活动与商机全链路"
@@ -386,18 +354,20 @@ const CustomerView = (state: CustomerPageState) => {
           </>
         }
       />
-      <div class="commercial-console-filters">
-        {(['ALL', 'PROSPECT', 'ACTIVE', 'INACTIVE'] as const).map((option) => (
+      <StatsBar state={state} />
+      <div class="crm-toolbar commercial-console-filters">
+        {STATUS_FILTERS.map((option) => (
           <button
             key={option}
             type="button"
-            class={state.statusFilter === option ? 'secondary compact active' : 'secondary compact'}
+            class="secondary compact crm-filter"
+            aria-pressed={state.statusFilter === option}
             data-testid={`kt-customer-filter-${option.toLowerCase()}`}
             onClick={() => {
               state.setStatusFilter(option);
             }}
           >
-            {option === 'ALL' ? '全部' : (STATUS_LABELS[option] ?? option)}
+            {option === 'ALL' ? '全部' : customerStatusLabel(option)}
           </button>
         ))}
         <input
@@ -430,8 +400,8 @@ const CustomerView = (state: CustomerPageState) => {
           },
         }}
         {...(state.loadError === '' ? {} : { error: state.loadError })}
-        emptyTitle="暂无客户"
-        emptyDescription="新建客户后会出现在这里"
+        emptyTitle={filtered ? '没有匹配的客户' : '暂无客户'}
+        emptyDescription={filtered ? '换个关键词或状态筛选试试' : '新建客户后会出现在这里'}
       />
       {state.selected ? <CustomerDrawer state={state} /> : null}
       {state.activeForm === 'create' ? <CreateDrawer state={state} /> : null}
@@ -440,22 +410,25 @@ const CustomerView = (state: CustomerPageState) => {
 };
 
 // G2 压平：360 详情加载（选中行变化即异步拉取；失败经提交错误面呈现）。
-function loadDetail(
-  bundle: {
-    selected: Signal<CustomerRow | null>;
-    view360: Signal<Readonly<Record<string, unknown>> | null>;
-    submitError: Signal<string>;
-    loadError: Signal<string>;
-    activeForm: Signal<CustomerFormKind>;
-  },
-  ports: CustomerConsolePorts,
-  row: CustomerRow,
-): void {
+function loadDetail(bundle: CustomerBundle, ports: CustomerConsolePorts, row: CustomerRow): void {
   const id = ports.textValue(row.id ?? row.customerNumber, '');
+  bundle.credit.value = undefined;
   ports
     .load360(id)
     .then((view) => {
-      if (bundle.selected.value === row) bundle.view360.value = view;
+      if (bundle.selected.value !== row) return;
+      bundle.view360.value = view;
+      // 360 响应未内嵌信用分区且宿主提供数据通道时，另行加载（辅助信息：失败即隐藏，不打扰主流程）。
+      if (view === null || Object.keys(recordOf(view.credit)).length > 0) return;
+      if (ports.loadCredit === undefined) return;
+      ports
+        .loadCredit(id)
+        .then((summary) => {
+          if (bundle.selected.value === row) bundle.credit.value = summary;
+        })
+        .catch(() => {
+          if (bundle.selected.value === row) bundle.credit.value = undefined;
+        });
     })
     .catch((error: unknown) => {
       fail(error, bundle, '客户 360 加载失败');
@@ -464,12 +437,7 @@ function loadDetail(
 
 const fail = (
   error: unknown,
-  bundle: {
-    selected: Signal<CustomerRow | null>;
-    activeForm: Signal<CustomerFormKind>;
-    submitError: Signal<string>;
-    loadError: Signal<string>;
-  },
+  bundle: Pick<CustomerBundle, 'selected' | 'activeForm' | 'submitError' | 'loadError'>,
   fallback: string,
 ): void => {
   const message = error instanceof Error ? error.message : fallback;
@@ -478,15 +446,82 @@ const fail = (
   else bundle.loadError.value = message;
 };
 
+/** 提交成功后重取 360：抽屉仍是同一客户才落位，随后收起对应表单。 */
+const reload360 = async (
+  bundle: CustomerBundle,
+  ports: CustomerConsolePorts,
+  form: 'contactForm' | 'activityForm',
+): Promise<void> => {
+  const customer = bundle.selected.value;
+  if (!customer) return;
+  const fresh = await ports.load360(ports.textValue(customer.id, ''));
+  if (fresh !== null && bundle.selected.value === customer) bundle.view360.value = fresh;
+  bundle[form].value = false;
+  bundle.submitError.value = '';
+};
+
 // 表单未填的可选字段初值是空串而非 undefined：空串必须归一为 null，否则服务端会对 ''
-// 做联系方式格式校验并拒绝（"Contact phone is malformed"），导致只填邮箱或只填电话的联系人无法保存。
+// 做联系方式格式校验并拒绝（"Contact phone is malformed"）。
 const blankToNull = (value: string | undefined): string | null =>
   value === undefined || value === '' ? null : value;
 
+const addActivity = async (
+  bundle: CustomerBundle,
+  ports: CustomerConsolePorts,
+  values: Readonly<Record<string, string>>,
+): Promise<void> => {
+  const customer = bundle.selected.value;
+  if (!customer) return;
+  bundle.loading.value = true;
+  bundle.submitError.value = '';
+  try {
+    await ports.createActivity(ports.textValue(customer.id, ''), {
+      leadId: null,
+      type: values.activityType ?? '拜访',
+      occurredAt: values.occurredAt
+        ? new Date(`${values.occurredAt}T00:00:00`).toISOString()
+        : new Date().toISOString(),
+      summary: values.summary ?? '',
+      details: {},
+    });
+    await reload360(bundle, ports, 'activityForm');
+  } catch (error: unknown) {
+    fail(error, bundle, '活动创建失败');
+  } finally {
+    bundle.loading.value = false;
+  }
+};
+
+const addContact = async (
+  bundle: CustomerBundle,
+  ports: CustomerConsolePorts,
+  values: Readonly<Record<string, string>>,
+): Promise<void> => {
+  const customer = bundle.selected.value;
+  if (!customer) return;
+  bundle.loading.value = true;
+  bundle.submitError.value = '';
+  try {
+    await ports.createContact(ports.textValue(customer.id, ''), {
+      name: values.name ?? '',
+      // TD-CRM-004：表单未填的可选字段初值是空串，须归一为 null（服务端对 '' 做格式校验并拒绝）。
+      title: blankToNull(values.title),
+      email: blankToNull(values.email),
+      phone: blankToNull(values.phone),
+      primary: values.primary === 'true',
+    });
+    await reload360(bundle, ports, 'contactForm');
+  } catch (error: unknown) {
+    fail(error, bundle, '联系人创建失败');
+  } finally {
+    bundle.loading.value = false;
+  }
+};
+
 export function CustomerConsolePage(ports: CustomerConsolePorts) {
-  const bundle = {
+  const bundle: CustomerBundle = {
     customers: signal<readonly CustomerRow[]>([...ports.initialCustomers]),
-    statusFilter: signal<'ALL' | 'PROSPECT' | 'ACTIVE' | 'INACTIVE'>('ALL'),
+    statusFilter: signal<CustomerStatusFilter>('ALL'),
     search: signal(''),
     loadError: signal(''),
     submitError: signal(''),
@@ -497,11 +532,16 @@ export function CustomerConsolePage(ports: CustomerConsolePorts) {
     contactForm: signal(false),
     activityForm: signal(false),
     activityTypeFilter: signal(''),
+    contactsVisible: signal(false),
+    highlight: signal(''),
+    credit: signal<CustomerCreditSummary | null | undefined>(undefined),
     shownCount: signal(20),
   };
-
   const closeForm = (): void => {
     bundle.activeForm.value = null;
+    bundle.submitError.value = '';
+  };
+  const resetSubmitError = (): void => {
     bundle.submitError.value = '';
   };
 
@@ -542,117 +582,110 @@ export function CustomerConsolePage(ports: CustomerConsolePorts) {
     }
   };
 
-  const runAddActivity = async (values: Readonly<Record<string, string>>): Promise<void> => {
-    const customer = bundle.selected.value;
-    if (!customer) return;
-    bundle.loading.value = true;
-    bundle.submitError.value = '';
-    try {
-      await ports.createActivity(ports.textValue(customer.id, ''), {
-        leadId: null,
-        type: values.activityType ?? '拜访',
-        occurredAt: values.occurredAt
-          ? new Date(`${values.occurredAt}T00:00:00`).toISOString()
-          : new Date().toISOString(),
-        summary: values.summary ?? '',
-        details: {},
-      });
-      const fresh = await ports.load360(ports.textValue(customer.id, ''));
-      if (fresh && bundle.selected.value === customer) bundle.view360.value = fresh;
-      bundle.activityForm.value = false;
-      bundle.submitError.value = '';
-    } catch (error: unknown) {
-      fail(error, bundle, '活动创建失败');
-    } finally {
-      bundle.loading.value = false;
-    }
+  const runAddActivity = (values: Readonly<Record<string, string>>): Promise<void> =>
+    addActivity(bundle, ports, values);
+  const runAddContact = (values: Readonly<Record<string, string>>): Promise<void> =>
+    addContact(bundle, ports, values);
+  const clearHighlight = (): void => {
+    bundle.highlight.value = '';
   };
 
-  const runAddContact = async (values: Readonly<Record<string, string>>): Promise<void> => {
-    const customer = bundle.selected.value;
-    if (!customer) return;
-    bundle.loading.value = true;
-    bundle.submitError.value = '';
-    try {
-      await ports.createContact(ports.textValue(customer.id, ''), {
-        name: values.name ?? '',
-        title: blankToNull(values.title),
-        email: blankToNull(values.email),
-        phone: blankToNull(values.phone),
-        primary: values.primary === 'true',
-      });
-      const fresh = await ports.load360(ports.textValue(customer.id, ''));
-      if (fresh && bundle.selected.value === customer) bundle.view360.value = fresh;
-      bundle.contactForm.value = false;
-      bundle.submitError.value = '';
-    } catch (error: unknown) {
-      fail(error, bundle, '联系人创建失败');
-    } finally {
-      bundle.loading.value = false;
-    }
+  const state = (): CustomerPageState => {
+    const customers = bundle.customers.value;
+    const now = ports.now?.() ?? Date.now();
+    return {
+      customers,
+      stats: customerStatsOf(customers, now),
+      highValue:
+        ports.highValue === undefined
+          ? null
+          : {
+              label: ports.highValue.label,
+              hint: ports.highValue.hint,
+              count: ports.highValue.count(customers),
+            },
+      shownCount: bundle.shownCount.value,
+      statusFilter: bundle.statusFilter.value,
+      search: bundle.search.value,
+      loadError: bundle.loadError.value,
+      submitError: bundle.submitError.value,
+      loading: bundle.loading.value,
+      selected: bundle.selected.value,
+      view360: bundle.view360.value,
+      activeForm: bundle.activeForm.value,
+      permissions: ports.permissions,
+      ports,
+      view: bundle.view360.value ?? {},
+      now,
+      contactsVisible: bundle.contactsVisible.value,
+      setContactsVisible: (next) => {
+        bundle.contactsVisible.value = next;
+      },
+      typeFilter: bundle.activityTypeFilter.value,
+      onTypeFilter: (next) => {
+        bundle.activityTypeFilter.value = next;
+      },
+      highlight: bundle.highlight.value,
+      jumpTo: (targetId) => {
+        bundle.highlight.value = targetId;
+      },
+      clearHighlight,
+      canReadOpportunities: ports.permissions.has('opportunity:read'),
+      canReadLeads: ports.permissions.has('lead:read'),
+      credit: bundle.credit.value,
+      open: (row) => {
+        bundle.selected.value = row;
+        bundle.activeForm.value = null;
+        bundle.submitError.value = '';
+        bundle.activityTypeFilter.value = '';
+        // 切换客户时清空上一份 360 与表单：避免新数据到达前闪现上一客户的详情。
+        bundle.view360.value = null;
+        bundle.contactForm.value = false;
+        bundle.activityForm.value = false;
+        // 隐私默认：每次打开（或切换客户）联系方式回到遮蔽态。
+        bundle.contactsVisible.value = false;
+        if (row !== null) loadDetail(bundle, ports, row);
+      },
+      openForm: (kind) => {
+        bundle.activeForm.value = kind;
+        bundle.submitError.value = '';
+      },
+      contactForm: bundle.contactForm.value,
+      openContactForm: () => {
+        bundle.contactForm.value = true;
+        bundle.activityForm.value = false;
+        resetSubmitError();
+      },
+      closeContactForm: () => {
+        bundle.contactForm.value = false;
+        resetSubmitError();
+      },
+      runAddContact,
+      activityForm: bundle.activityForm.value,
+      openActivityForm: () => {
+        bundle.activityForm.value = true;
+        bundle.contactForm.value = false;
+        resetSubmitError();
+      },
+      closeActivityForm: () => {
+        bundle.activityForm.value = false;
+        resetSubmitError();
+      },
+      runAddActivity,
+      closeForm,
+      setStatusFilter: (next) => {
+        bundle.statusFilter.value = next;
+      },
+      setSearch: (next) => {
+        bundle.search.value = next;
+      },
+      showMore: () => {
+        bundle.shownCount.value = bundle.shownCount.value + 20;
+      },
+      runRefresh,
+      runCreate,
+    };
   };
-
-  const state = (): CustomerPageState => ({
-    customers: bundle.customers.value,
-    shownCount: bundle.shownCount.value,
-    statusFilter: bundle.statusFilter.value,
-    search: bundle.search.value,
-    loadError: bundle.loadError.value,
-    submitError: bundle.submitError.value,
-    loading: bundle.loading.value,
-    selected: bundle.selected.value,
-    view360: bundle.view360.value,
-    activeForm: bundle.activeForm.value,
-    permissions: ports.permissions,
-    ports,
-    open: (row) => {
-      bundle.selected.value = row;
-      bundle.activeForm.value = null;
-      bundle.submitError.value = '';
-      bundle.activityTypeFilter.value = '';
-      if (row !== null) loadDetail(bundle, ports, row);
-    },
-    openForm: (kind) => {
-      bundle.activeForm.value = kind;
-      bundle.submitError.value = '';
-    },
-    contactForm: bundle.contactForm.value,
-    openContactForm: () => {
-      bundle.contactForm.value = true;
-      bundle.submitError.value = '';
-    },
-    closeContactForm: () => {
-      bundle.contactForm.value = false;
-      bundle.submitError.value = '';
-    },
-    activityForm: bundle.activityForm.value,
-    openActivityForm: () => {
-      bundle.activityForm.value = true;
-      bundle.submitError.value = '';
-    },
-    closeActivityForm: () => {
-      bundle.activityForm.value = false;
-      bundle.submitError.value = '';
-    },
-    runAddActivity,
-    activityTypeFilter: bundle.activityTypeFilter.value,
-    setActivityTypeFilter: (next) => {
-      bundle.activityTypeFilter.value = next;
-    },
-    closeForm,
-    setStatusFilter: (next) => {
-      bundle.statusFilter.value = next;
-    },
-    setSearch: (next) => {
-      bundle.search.value = next;
-    },
-    showMore: () => {
-      bundle.shownCount.value = bundle.shownCount.value + 20;
-    },
-    runRefresh,
-    runCreate,
-    runAddContact,
-  });
 
   const Page = () => CustomerView(state());
   return Page;

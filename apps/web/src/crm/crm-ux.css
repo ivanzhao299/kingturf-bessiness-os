@@ -19,6 +19,14 @@
   width: min(640px, 94vw);
 }
 
+/* 360 内容根：不沿用 .console-summary（其 `p { display:flex }` 会波及时间线与卡片内的段落）。 */
+.crm-360 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kt-space-3);
+  margin: 0 0 var(--kt-space-3);
+}
+
 .crm-tag {
   padding: 0 var(--kt-space-2);
   border-radius: var(--kt-radius-pill);
@@ -420,6 +428,7 @@
   align-items: baseline;
   justify-content: space-between;
   gap: var(--kt-space-3);
+  margin: 0;
   font-size: var(--kt-font-size-body);
 }
 
@@ -459,6 +468,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--kt-space-2);
+  margin: 0;
   color: var(--kt-color-text-muted);
   font-size: var(--kt-font-size-caption);
 }

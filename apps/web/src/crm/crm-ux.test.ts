@@ -4,9 +4,14 @@ import {
   activityIconOf,
   amountsLabel,
   closedOpportunitiesOf,
+  creditDecisionLabel,
+  creditDecisionTone,
+  creditSummaryOf,
+  creditUsageOf,
   customerStatsOf,
   CUSTOMER_LIST_CAP,
   customerStatusLabel,
+  customerStatusTone,
   dateTimeLabelOf,
   dayKeyOf,
   dayLabelOf,
@@ -14,13 +19,16 @@ import {
   funnelOf,
   groupByDay,
   initialOf,
+  isCreditSummaryEmpty,
   isPoolLead,
   isStale,
   leadSourceIconOf,
   leadStatusLabel,
+  leadStatusTone,
   maskEmail,
   maskPhone,
   opportunityStageLabel,
+  opportunityStageTone,
   recordOf,
   relativeTimeOf,
   relatedOf,
@@ -312,5 +320,76 @@ describe('CRM-UX 活动关联与分组', () => {
       ['2026-11-21', ['b']],
       [UNKNOWN_DAY, ['d']],
     ]);
+  });
+});
+
+describe('CRM-UX 信用概要', () => {
+  const summary = {
+    limit: { currency: 'CNY', amount: 1_000_000 },
+    exposure: { currency: 'CNY', amount: 750_000 },
+    decision: { status: 'APPROVED', decidedAt: '2026-11-20T09:00:00.000Z' },
+  };
+  const EMPTY = { limit: null, exposure: null, decision: null };
+
+  it('creditSummaryOf：解析端口/内嵌记录，非对象或金额非法时该项为 null', () => {
+    expect(creditSummaryOf(summary)).toEqual(summary);
+    expect(creditSummaryOf({ limit: { currency: 'CNY', amount: 'abc' }, decision: {} })).toEqual(
+      EMPTY,
+    );
+    expect(creditSummaryOf(null)).toBeNull();
+    expect(creditSummaryOf('x')).toBeNull();
+    expect(creditSummaryOf({ exposure: { amount: 5 } })).toEqual({
+      limit: null,
+      exposure: { currency: 'CNY', amount: 5 },
+      decision: null,
+    });
+    expect(isCreditSummaryEmpty(creditSummaryOf({ limit: { amount: 1 } }) ?? EMPTY)).toBe(false);
+    expect(isCreditSummaryEmpty(creditSummaryOf({}) ?? EMPTY)).toBe(true);
+  });
+
+  it('creditUsageOf：同币种敞口/额度；≥90% 告急、≥70% 预警；缺项或异币种不可计算', () => {
+    expect(creditUsageOf(creditSummaryOf(summary) ?? EMPTY)).toEqual({
+      ratio: 0.75,
+      level: 'warning',
+    });
+    const of = (exposure: number, limit = 1_000_000) =>
+      creditUsageOf({
+        limit: { currency: 'CNY', amount: limit },
+        exposure: { currency: 'CNY', amount: exposure },
+        decision: null,
+      });
+    expect(of(500_000).level).toBe('ok');
+    expect(of(950_000)).toEqual({ ratio: 0.95, level: 'danger' });
+    expect(of(1_200_000)).toEqual({ ratio: 1.2, level: 'danger' });
+    expect(of(10_000, 0)).toEqual({ ratio: null, level: 'danger' });
+    expect(of(0, 0)).toEqual({ ratio: null, level: 'ok' });
+    expect(
+      creditUsageOf({
+        limit: { currency: 'CNY', amount: 100 },
+        exposure: { currency: 'USD', amount: 50 },
+        decision: null,
+      }),
+    ).toEqual({ ratio: null, level: 'ok' });
+    expect(creditUsageOf(EMPTY)).toEqual({ ratio: null, level: 'ok' });
+  });
+
+  it('信用决定文案与色调：等待审批/批准/拒绝/过期，未知原样', () => {
+    expect(creditDecisionLabel('PENDING_APPROVAL')).toBe('等待信用审批');
+    expect(creditDecisionLabel('EXPIRED')).toBe('信用已过期');
+    expect(creditDecisionLabel('WHATEVER')).toBe('WHATEVER');
+    expect(creditDecisionTone('APPROVED')).toBe('success');
+    expect(creditDecisionTone('REJECTED')).toBe('danger');
+    expect(creditDecisionTone('PENDING_APPROVAL')).toBe('warning');
+    expect(creditDecisionTone('EXPIRED')).toBe('neutral');
+  });
+
+  it('阶段与状态色调：赢单成功、输单危险、在途信息色', () => {
+    expect(opportunityStageTone('WON')).toBe('success');
+    expect(opportunityStageTone('LOST')).toBe('danger');
+    expect(opportunityStageTone('PROPOSAL')).toBe('info');
+    expect(opportunityStageTone('OPEN')).toBe('neutral');
+    expect(leadStatusTone('CLAIMED')).toBe('info');
+    expect(customerStatusTone('ACTIVE')).toBe('success');
+    expect(customerStatusTone('PROSPECT')).toBe('info');
   });
 });

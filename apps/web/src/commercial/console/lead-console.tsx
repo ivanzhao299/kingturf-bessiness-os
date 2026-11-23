@@ -8,7 +8,6 @@ import {
   StatusBadge,
   type DataTableColumn,
   type FormSectionField,
-  type StatusTone,
 } from '@kingturf/ui';
 import type { LeadConsolePorts, LeadRow } from './lead-ports';
 import {
@@ -21,7 +20,13 @@ import {
   type LeadCardContext,
 } from './lead-console-cards';
 import { Avatar } from '../../crm/crm-ux-parts';
-import { dateTimeLabelOf, isPoolLead, leadStatusLabel, type LeadTab } from '../../crm/crm-ux';
+import {
+  dateTimeLabelOf,
+  isPoolLead,
+  leadStatusLabel,
+  leadStatusTone,
+  type LeadTab,
+} from '../../crm/crm-ux';
 
 // U3-CRM-1（ADR-0014 分域重写）：线索控制台——原 vanilla lead-records 能力面等价迁移
 // （新建/认领/变更状态/分配改派/释放公海；列表/搜索/分页/详情抽屉）。
@@ -58,13 +63,6 @@ type LeadPageState = Readonly<{
   runState: (row: LeadRow, body: Record<string, unknown>) => Promise<void>;
   showMore: () => void;
 }>;
-
-const statusTone = (status: unknown): StatusTone => {
-  if (status === 'QUALIFIED' || status === 'CONVERTED') return 'success';
-  if (status === 'DISQUALIFIED') return 'danger';
-  if (status === 'CLAIMED') return 'info';
-  return 'neutral';
-};
 
 const TAB_LABELS: Readonly<Record<LeadTab, string>> = { POOL: '公海', PRIVATE: '私海' };
 const TAB_TEST_IDS: Readonly<Record<LeadTab, string>> = {
@@ -140,7 +138,7 @@ const columns = (state: LeadPageState): readonly DataTableColumn<LeadRow>[] => [
     field: (row) => state.ports.textValue(row.status, 'POOL'),
     render: (row) => {
       const status = state.ports.textValue(row.status, 'POOL');
-      return <StatusBadge tone={statusTone(status)}>{leadStatusLabel(status)}</StatusBadge>;
+      return <StatusBadge tone={leadStatusTone(status)}>{leadStatusLabel(status)}</StatusBadge>;
     },
   },
   {
@@ -248,7 +246,7 @@ const LeadDetail = ({ state }: Readonly<{ state: LeadPageState }>) => {
     <div class="console-summary" data-testid="kt-lead-detail">
       <p>
         <span class="console-label">状态</span>
-        <StatusBadge tone={statusTone(lead.status)}>
+        <StatusBadge tone={leadStatusTone(lead.status)}>
           {leadStatusLabel(ports.textValue(lead.status, 'POOL'))}
         </StatusBadge>
         <span class="console-label">来源</span>
