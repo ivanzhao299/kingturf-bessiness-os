@@ -8,7 +8,9 @@ KingTurf 业务操作系统：面向草坪行业外贸业务的 ERP（CRM→报�
 
 ## 如何开始（渐进式披露：先地图，再细节）
 
-**U3-CRM 客户域全栈迁移收官（2026-11-21）**：客户域四子批（线索/客户/联系人/活动，U3-CRM-1..4）已迁移至 Preact 控制台 + Fastify 端点（a1279b5→1e8b4b6 共 10 提交，registry 累计 42 端点/12 文件），经主协调逐批复核通过。线索 vanilla 视图已退役；数据面 /api/v1/customers\* 生产已走 Fastify 桥；**客户路由 Preact 控制台（含 CRM-3 联系人表单/CRM-4 活动时间线增强）已交付待挂载接线（TD-UI-002，现路由仍渲染 vanilla 视图，接线待主协调另批授权）**。每子批 e2e P1 11/11 零 500、ci:local EXIT=0。各子批证据见 `docs/evidence/u3-crm-{1..4}-*.md`，收官段见 `docs/exec-plans/tech-debt-tracker.md` 顶部与 `docs/index.md`。U3-PROC 供应链域待续。
+**U3-PROC 供应链域全栈迁移收官（2026-11-23）**：供应链域四子批（供应商/询价/采购单/收货，U3-PROC-1..4）已迁移至 Preact 控制台 + Fastify 端点（82be13f→0e76bac 共 8 提交，registry 累计 57 端点/16 文件），经主协调逐批复核通过并已推送。供应商/询价/采购单/收货四控制台全部挂载（procurement-workbench 面板内）；supplier 卡片/RFQ 卡片+新建询价表单/PO 卡片+创建签发表单+采购合同文档工作流/收货卡片+登记收货表单均已退役（裁定 17 语义）；新增写路径仅 closeRfq/cancelPurchaseOrder/close 三处（指令明授，R2 登记）。vanilla 残余如实登记：sourcing-register 报价卡片+登记报价表单（supplier-quotes 域未迁移）、inventory-register 库存只读呈现——不在迁移范围待后续裁定；TD-PROC-001（部分收货触发器冲突）/002（供应商停用写路径缺失）/003（独立审批层缺失）已登记。每子批 ci:local EXIT=0；e2e P1 口令不可得未实跑（文案契约逐子批静态核对）。各子批证据见 `docs/evidence/u3-proc-{1..4}-*.md`，收官段见 `docs/exec-plans/tech-debt-tracker.md` 顶部与 `docs/index.md`。U3 生产域（manufacturing+production）待续。
+
+**U3-CRM 客户域全栈迁移收官（2026-11-21）**：客户域四子批（线索/客户/联系人/活动，U3-CRM-1..4）已迁移至 Preact 控制台 + Fastify 端点（a1279b5→1e8b4b6 共 10 提交，registry 累计 42 端点/12 文件），经主协调逐批复核通过。线索 vanilla 视图已退役；数据面 /api/v1/customers\* 生产已走 Fastify 桥；**客户路由 Preact 控制台（含 CRM-3 联系人表单/CRM-4 活动时间线增强）已交付待挂载接线（TD-UI-002，现路由仍渲染 vanilla 视图，接线待主协调另批授权）**。每子批 e2e P1 11/11 零 500、ci:local EXIT=0。各子批证据见 `docs/evidence/u3-crm-{1..4}-*.md`，收官段见 `docs/exec-plans/tech-debt-tracker.md` 顶部与 `docs/index.md`。
 
 **U3-COM 商机域全栈迁移收官（2026-11-21）**：commercial 域七个业务视图（商机/方案/报价/成本矩阵/技术需求/销售政策/信用审查）已迁移至 Preact 控制台 + Fastify 端点（U3-COM-1..7，0ff66bd→3cd897b 共 17 提交，registry 27 路径，已上生产 3cd897b run 44870441719）。七个 vanilla workbench 退役约 1,700 行；行为守恒 parity/契约全绿；e2e P1 11/11 零 500。各子批证据见 `docs/evidence/u3-com-{1..7}-*.md`，收官段见 `docs/exec-plans/tech-debt-tracker.md` 顶部与 `docs/index.md`。
 
