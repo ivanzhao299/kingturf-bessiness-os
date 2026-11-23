@@ -9,10 +9,15 @@ import {
   type FormSectionField,
 } from '@kingturf/ui';
 import { recordOf, textOf, type ConsolePorts } from './ports';
+import { VersionCompare } from './version-compare';
+import { createVersionCompare } from './version-compare-state';
+import type { VersionSpec } from './version-model';
 
 // UI-M2b：六配置页（master-data/numbering/rules/workflow/notifications/system）通用
 // 控制台——配置页解剖=结构化表单（FormSection 弹层）+ 版本侧栏（选中行只读摘要）。
 // 动作端点/权限/敏感词语义自 *-actions.ts 守恒迁移（resolve 描述符）。
+// GOV-UX ④：版本侧栏内增加「版本对比」（上一版本 vs 当前版本并排差异高亮）；
+// 页面 spec 声明 versions 来源，未声明的页面（通知/业务对象）不出现该区。
 type Row = Readonly<Record<string, unknown>>;
 
 export type ConfigActionSubmit = Readonly<{
@@ -55,6 +60,8 @@ export type ConfigPageSpec = Readonly<{
   extraEntities?: readonly ConfigEntitySpec[];
   actions: readonly ConfigActionSpec[];
   appendix?: (ports: ConsolePorts) => preact.ComponentType;
+  /** 版本对比来源（缺省=该页不提供版本对比）。 */
+  versions?: VersionSpec;
 }>;
 
 const jsonParseField = (value: string | undefined, label: string): Record<string, unknown> => {
@@ -95,6 +102,7 @@ export function ConfigConsolePage(spec: ConfigPageSpec) {
     const actionError = signal('');
     const refreshQueue = signal(0);
     const selectedId = signal<string | null>(null);
+    const compare = createVersionCompare(spec.versions, ports);
 
     const cache = new Map<string, readonly Row[]>();
     const rowsOf = (path: string): readonly Row[] => {
@@ -154,6 +162,7 @@ export function ConfigConsolePage(spec: ConfigPageSpec) {
       const rows = rowsOf(spec.entity.path);
       const selected = rows.find((row) => spec.entity.rowId(row) === selectedId.value) ?? null;
       const action = activeAction.value;
+      const comparison = compare.current();
       const allowed = spec.actions.filter((item) => ports.permissions.has(item.permission));
       return (
         <div class="console-page" data-testid={spec.pageTestId}>
@@ -171,6 +180,7 @@ export function ConfigConsolePage(spec: ConfigPageSpec) {
               ...spec.entity.columns,
               openColumn((row) => {
                 selectedId.value = spec.entity.rowId(row);
+                compare.open(row);
               }),
             ]}
             rows={rows}
@@ -184,6 +194,7 @@ export function ConfigConsolePage(spec: ConfigPageSpec) {
               title={`${spec.title} · 当前版本`}
               onClose={() => {
                 selectedId.value = null;
+                compare.clear();
               }}
             >
               <div class="console-summary" data-testid="kt-cfg-version-sidebar">
@@ -197,6 +208,7 @@ export function ConfigConsolePage(spec: ConfigPageSpec) {
                   {typeof selected.version === 'number' ? `v${String(selected.version)}` : '—'}
                 </p>
               </div>
+              {comparison ? <VersionCompare view={comparison} /> : null}
             </DetailDrawer>
           ) : null}
           {action ? (

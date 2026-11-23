@@ -1,0 +1,489 @@
+/* GOV-UX（治理域交互体验优化）：域内增量样式。
+ * 取值一律来自 tokens（ADR-0014），不写死颜色/间距；共享 CSS 与 packages/ui 不改——
+ * 需要覆盖组件默认值时用更具体的域内选择器（.gov-* / .drawer-root:has(...)）。 */
+
+/* ===== 视图切换（审计：时间线/表格；矩阵：按角色/按权限点） ===== */
+.console-view-switch {
+  display: inline-flex;
+  border: 1px solid var(--kt-color-border);
+  border-radius: var(--kt-radius-md);
+  overflow: hidden;
+}
+.console-view-switch button {
+  min-height: 30px;
+  padding: 0 var(--kt-space-3);
+  border: 0;
+  background: var(--kt-color-surface);
+  color: var(--kt-color-text-muted);
+  font-size: var(--kt-font-size-caption);
+  font-weight: var(--kt-font-weight-medium);
+  cursor: pointer;
+}
+.console-view-switch button + button {
+  border-left: 1px solid var(--kt-color-border);
+}
+.console-view-switch button[aria-pressed='true'] {
+  background: var(--kt-color-brand-soft);
+  color: var(--kt-color-brand-strong);
+}
+.console-view-switch button:focus-visible {
+  outline: 2px solid var(--kt-color-info);
+  outline-offset: -2px;
+}
+
+/* ===== ③ 审计时间线（按日分组事件流） ===== */
+.audit-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kt-space-4);
+}
+.audit-timeline-day {
+  border: 1px solid var(--kt-color-border);
+  border-radius: var(--kt-radius-md);
+  background: var(--kt-color-surface);
+  overflow: hidden;
+}
+.audit-timeline-day-label {
+  display: flex;
+  align-items: center;
+  gap: var(--kt-space-2);
+  margin: 0;
+  padding: var(--kt-space-2) var(--kt-space-3);
+  background: var(--kt-color-surface-muted);
+  color: var(--kt-color-text);
+  font-size: var(--kt-font-size-lead);
+  font-weight: var(--kt-font-weight-semibold);
+}
+.audit-timeline-count {
+  color: var(--kt-color-text-muted);
+  font-size: var(--kt-font-size-caption);
+  font-weight: var(--kt-font-weight-regular);
+}
+.audit-timeline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.audit-timeline-item {
+  display: grid;
+  grid-template-columns: 72px auto minmax(140px, max-content) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--kt-space-3);
+  padding: var(--kt-space-2) var(--kt-space-3);
+  border-left: 3px solid transparent;
+  border-bottom: 1px solid var(--kt-color-border);
+  font-size: var(--kt-font-size-body);
+}
+.audit-timeline-item:last-child {
+  border-bottom: 0;
+}
+.audit-timeline-item[data-outcome='FAILURE'] {
+  border-left-color: var(--kt-color-danger);
+  background: var(--kt-color-danger-soft);
+}
+.audit-timeline-time {
+  color: var(--kt-color-text-muted);
+  font-size: var(--kt-font-size-caption);
+  font-variant-numeric: tabular-nums;
+}
+.audit-timeline-action {
+  color: var(--kt-color-text);
+  font-weight: var(--kt-font-weight-medium);
+}
+.audit-timeline-target,
+.audit-timeline-meta {
+  color: var(--kt-color-text-muted);
+  font-size: var(--kt-font-size-caption);
+  overflow-wrap: anywhere;
+}
+@media (max-width: 640px) {
+  .audit-timeline-item {
+    grid-template-columns: 64px auto minmax(0, 1fr);
+  }
+  .audit-timeline-meta {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ===== ② 组织架构图（可视化树 + 人数统计徽章） ===== */
+.org-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.org-chart-group {
+  list-style: none;
+  margin: 0 0 0 var(--kt-space-2);
+  padding-left: var(--kt-space-3);
+  border-left: 1px solid var(--kt-color-border);
+}
+.org-chart-row {
+  display: flex;
+  align-items: center;
+  gap: var(--kt-space-1);
+  border-radius: var(--kt-radius-sm);
+}
+.org-chart-row:hover {
+  background: var(--kt-color-surface);
+}
+.org-chart-row[data-selected='true'],
+.org-chart-row[data-selected='true']:hover {
+  background: var(--kt-color-brand-soft);
+}
+.org-chart-toggle {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--kt-color-text-muted);
+  cursor: pointer;
+}
+.org-chart-toggle.is-leaf {
+  color: var(--kt-color-border-strong);
+  cursor: default;
+}
+.org-chart-label {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: baseline;
+  gap: var(--kt-space-2);
+  min-width: 0;
+  padding: var(--kt-space-1) var(--kt-space-2);
+  border: 0;
+  border-radius: var(--kt-radius-sm);
+  background: none;
+  color: var(--kt-color-text);
+  font-size: var(--kt-font-size-body);
+  text-align: left;
+  cursor: pointer;
+}
+.org-chart-label:hover {
+  color: var(--kt-color-brand-strong);
+}
+.org-chart-label:focus-visible,
+.org-chart-toggle:focus-visible,
+.org-chart-all:focus-visible {
+  outline: 2px solid var(--kt-color-info);
+  outline-offset: 1px;
+}
+.org-chart-code {
+  color: var(--kt-color-text-muted);
+  font-size: var(--kt-font-size-caption);
+  font-weight: var(--kt-font-weight-semibold);
+}
+.org-chart-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.org-chart-badge {
+  flex: none;
+  padding: 0 var(--kt-space-2);
+  border-radius: var(--kt-radius-pill);
+  background: var(--kt-color-neutral-soft);
+  color: var(--kt-color-text);
+  font-size: var(--kt-font-size-caption);
+  font-variant-numeric: tabular-nums;
+}
+.org-chart-badge.is-total {
+  background: var(--kt-color-info-soft);
+  color: var(--kt-color-info);
+}
+.org-chart-badge.is-empty {
+  color: var(--kt-color-text-muted);
+}
+.org-chart-all {
+  min-height: 30px;
+  padding: 0 var(--kt-space-2);
+  border: 1px solid var(--kt-color-border);
+  border-radius: var(--kt-radius-sm);
+  background: var(--kt-color-surface);
+  color: var(--kt-color-text);
+  font-size: var(--kt-font-size-body);
+  text-align: left;
+  cursor: pointer;
+}
+.org-chart-all[aria-pressed='true'] {
+  border-color: var(--kt-color-brand);
+  background: var(--kt-color-brand-soft);
+  color: var(--kt-color-brand-strong);
+}
+
+/* ===== ① 角色矩阵（用户 360 抽屉内；含矩阵时抽屉加宽） ===== */
+.drawer-root:has(.gov-matrix-block) .detail-drawer {
+  width: min(1120px, 96vw);
+}
+.gov-matrix-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kt-space-3);
+  margin: 0 0 var(--kt-space-4);
+}
+.gov-matrix-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--kt-space-2);
+}
+.gov-matrix-bar h3 {
+  margin: 0 auto 0 0;
+  color: var(--kt-color-text);
+  font-size: var(--kt-font-size-lead);
+  font-weight: var(--kt-font-weight-semibold);
+}
+.gov-matrix-bar input[type='search'] {
+  min-width: 180px;
+  padding: var(--kt-space-1) var(--kt-space-2);
+  border: 1px solid var(--kt-color-border);
+  border-radius: var(--kt-radius-sm);
+  background: var(--kt-color-surface);
+  color: var(--kt-color-text);
+  font-size: var(--kt-font-size-body);
+}
+.gov-matrix-focus {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--kt-space-1);
+  color: var(--kt-color-text-muted);
+  font-size: var(--kt-font-size-caption);
+}
+.gov-matrix-scroll {
+  max-width: 100%;
+  max-height: 60vh;
+  border: 1px solid var(--kt-color-border);
+  border-radius: var(--kt-radius-md);
+  overflow: auto;
+}
+.gov-matrix {
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--kt-font-size-caption);
+}
+.gov-matrix th,
+.gov-matrix td {
+  padding: var(--kt-space-1) var(--kt-space-2);
+  border-right: 1px solid var(--kt-color-border);
+  border-bottom: 1px solid var(--kt-color-border);
+  background: var(--kt-color-surface);
+  text-align: center;
+  white-space: nowrap;
+}
+.gov-matrix thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--kt-color-surface-muted);
+  color: var(--kt-color-text);
+  font-weight: var(--kt-font-weight-semibold);
+}
+.gov-matrix .gov-matrix-sticky {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 140px;
+  text-align: left;
+}
+.gov-matrix thead .gov-matrix-sticky {
+  z-index: 3;
+}
+.gov-matrix tbody tr.is-current th,
+.gov-matrix tbody tr.is-current td {
+  background: var(--kt-color-brand-soft);
+}
+.gov-matrix .gov-matrix-group th {
+  background: var(--kt-color-info-soft);
+  color: var(--kt-color-info);
+}
+.gov-matrix-mark {
+  color: var(--kt-color-border-strong);
+}
+.gov-matrix-mark[data-state='on'] {
+  color: var(--kt-color-success);
+  font-weight: var(--kt-font-weight-semibold);
+}
+.gov-matrix-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--kt-space-2);
+  padding: var(--kt-space-2) var(--kt-space-3);
+  border: 1px solid var(--kt-color-danger);
+  border-radius: var(--kt-radius-md);
+  background: var(--kt-color-danger-soft);
+  color: var(--kt-color-danger);
+  font-size: var(--kt-font-size-body);
+}
+
+/* ===== ④ 版本对比（上一版本 vs 当前版本并排差异高亮） ===== */
+.gov-version-compare {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kt-space-2);
+  margin: 0 0 var(--kt-space-4);
+}
+.gov-version-compare h3 {
+  margin: 0;
+  color: var(--kt-color-text);
+  font-size: var(--kt-font-size-lead);
+  font-weight: var(--kt-font-weight-semibold);
+}
+.gov-version-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--kt-space-2);
+  color: var(--kt-color-text-muted);
+  font-size: var(--kt-font-size-caption);
+}
+.gov-version-bar label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--kt-space-1);
+  margin-left: auto;
+}
+.gov-version-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--kt-font-size-caption);
+  table-layout: fixed;
+}
+.gov-version-table th,
+.gov-version-table td {
+  padding: var(--kt-space-1) var(--kt-space-2);
+  border: 1px solid var(--kt-color-border);
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.gov-version-table th {
+  background: var(--kt-color-surface-muted);
+  color: var(--kt-color-text);
+  font-weight: var(--kt-font-weight-semibold);
+}
+.gov-version-table col.gov-version-field {
+  width: 32%;
+}
+.gov-version-table td[data-diff='changed'] {
+  background: var(--kt-color-warning-soft);
+}
+.gov-version-table td[data-diff='added'] {
+  background: var(--kt-color-success-soft);
+}
+.gov-version-table td[data-diff='removed'] {
+  background: var(--kt-color-danger-soft);
+  color: var(--kt-color-text-muted);
+}
+.gov-version-table pre {
+  margin: 0;
+  font-family: var(--kt-font-family);
+  font-size: var(--kt-font-size-caption);
+  white-space: pre-wrap;
+}
+.gov-version-empty {
+  margin: 0;
+  color: var(--kt-color-text-muted);
+  font-size: var(--kt-font-size-body);
+}
+
+/* ===== ⑤ 概览仪表盘（卡片钻取 + 异常计数醒目提示 + 指标卡） ===== */
+.governance-card {
+  position: relative;
+}
+.gov-card-link {
+  color: var(--kt-color-brand-strong);
+  font-size: var(--kt-font-size-caption);
+  font-weight: var(--kt-font-weight-semibold);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.gov-card-link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+.gov-card-link:focus-visible::after {
+  outline: 2px solid var(--kt-color-info);
+  outline-offset: 2px;
+}
+.governance-card:has(.gov-card-link:hover) {
+  border-color: var(--kt-color-brand);
+}
+.governance-card .governance-actions,
+.governance-card .governance-source {
+  position: relative;
+  z-index: 1;
+}
+.gov-anomaly {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--kt-space-2);
+  border-radius: var(--kt-radius-pill);
+  background: var(--kt-color-danger-soft);
+  color: var(--kt-color-danger);
+  font-size: var(--kt-font-size-caption);
+  font-weight: var(--kt-font-weight-semibold);
+  white-space: nowrap;
+}
+.gov-alerts {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--kt-space-2);
+  padding: var(--kt-space-2) var(--kt-space-3);
+  border: 1px solid var(--kt-color-danger);
+  border-radius: var(--kt-radius-md);
+  background: var(--kt-color-danger-soft);
+  color: var(--kt-color-danger);
+  font-size: var(--kt-font-size-body);
+  font-weight: var(--kt-font-weight-semibold);
+}
+.gov-alerts.is-clear {
+  border-color: var(--kt-color-border);
+  background: var(--kt-color-success-soft);
+  color: var(--kt-color-success);
+  font-weight: var(--kt-font-weight-medium);
+}
+.gov-alerts a {
+  padding: 0 var(--kt-space-2);
+  border: 1px solid currentColor;
+  border-radius: var(--kt-radius-pill);
+  color: inherit;
+  font-weight: var(--kt-font-weight-semibold);
+  text-decoration: none;
+}
+.gov-alerts a:hover,
+.gov-alerts a:focus-visible {
+  background: var(--kt-color-surface);
+}
+a.metric {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+a.metric:hover {
+  border-color: var(--kt-color-brand);
+  box-shadow: var(--kt-shadow-raised);
+}
+a.metric:focus-visible {
+  outline: 2px solid var(--kt-color-info);
+  outline-offset: 2px;
+}
+.metric[data-tone='danger'] {
+  border-color: var(--kt-color-danger);
+}
+.metric[data-tone='warning'] {
+  border-color: var(--kt-color-warning);
+}
+.gov-kpi-note {
+  display: block;
+  margin-top: var(--kt-space-1);
+  color: var(--kt-color-text-muted);
+  font-size: var(--kt-font-size-caption);
+}

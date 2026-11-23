@@ -39,7 +39,9 @@ const portsFor = (
     'audit:read',
     ...extraPermissions,
   ]),
+  views: () => [],
   loaded: (path) => path in views,
+  viewError: () => undefined,
   initialView: (path) => {
     const value = views[path];
     if (Array.isArray(value)) return { items: value, nextCursor: null };
@@ -48,6 +50,7 @@ const portsFor = (
     return { items: [], nextCursor: null };
   },
   fetchPage: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
+  fetchRecord: vi.fn().mockResolvedValue({}),
   submit: vi.fn().mockResolvedValue(undefined),
   ...overrides,
 });
@@ -117,34 +120,8 @@ describe('UI-M2 身份与授权控制台', () => {
     expect(host.querySelector('[data-testid="kt-identity-action-assign"]')).toBeNull();
   });
 
-  it('授权角色 2 步流：查看→分配→提交即 POST /api/v1/assignments（原 5 步）', async () => {
-    const ports = portsFor(
-      'governance/identity',
-      {
-        '/api/v1/user-access-profiles': [profileRow],
-        '/api/v1/roles': [{ id: 'r-2', code: 'KT_OPS', name: '运营' }],
-      },
-      ['role-assignment:manage'],
-    );
-    const host = mount(IdentityConsolePage, ports);
-    element(host.querySelector('[data-testid="kt-identity-open"]')).click();
-    await flush();
-    element(host.querySelector('[data-testid="kt-identity-action-assign"]')).click();
-    await flush();
-    const select = element(host.querySelector('[data-testid="kt-identity-form-assign"] select'));
-    select.value = 'r-2';
-    select.dispatchEvent(new Event('input', { bubbles: true }));
-    await flush();
-    element(
-      host.querySelector('[data-testid="kt-identity-form-assign"] button[type="submit"]'),
-    ).click();
-    await flush();
-    expect(ports.submit).toHaveBeenCalledExactlyOnceWith(
-      '/api/v1/assignments',
-      { employeeId: 'e-1', roleId: 'r-2' },
-      'POST',
-    );
-  });
+  // GOV-UX ①：授权/撤销角色的行为断言（矩阵勾选即分配、取消勾选经内联确认后 DELETE）
+  // 随「逐个弹窗表单退役」迁至 gov-ux.test.tsx 角色矩阵用例族。
 
   it('启停表单提交文案含「停用」→ 敏感词确认勾选出现（B3 语义）', async () => {
     const ports = portsFor(
@@ -164,48 +141,18 @@ describe('UI-M2 身份与授权控制台', () => {
     ).not.toBeNull();
   });
 
-  it('撤销角色走 DELETE 且带确认；配置账号提示首登强制改密', async () => {
+  it('配置账号表单提示首登强制改密（B1 语义保留）', async () => {
     const ports = portsFor(
       'governance/identity',
       {
         '/api/v1/user-access-profiles': [profileRow],
         '/api/v1/roles': [{ id: 'r-1', code: 'KT_SALES', name: '销售' }],
       },
-      ['identity:manage', 'role-assignment:manage'],
-    );
-    // 撤销成功后 refresh 仍返回该用户（抽屉保持打开，供配置账号动作续验）。
-    (ports.fetchPage as ReturnType<typeof vi.fn>).mockImplementation((path: string) =>
-      Promise.resolve(
-        path === '/api/v1/user-access-profiles'
-          ? { items: [profileRow], nextCursor: null }
-          : { items: [], nextCursor: null },
-      ),
+      ['identity:manage'],
     );
     const host = mount(IdentityConsolePage, ports);
     element(host.querySelector('[data-testid="kt-identity-open"]')).click();
     await flush();
-    element(host.querySelector('[data-testid="kt-identity-action-revoke"]')).click();
-    await flush();
-    expect(
-      host.querySelector('[data-testid="kt-identity-form-revoke"] [data-confirmation]'),
-    ).not.toBeNull();
-    const select = element(host.querySelector('[data-testid="kt-identity-form-revoke"] select'));
-    select.value = 'r-1';
-    select.dispatchEvent(new Event('input', { bubbles: true }));
-    await flush();
-    element(
-      host.querySelector('[data-testid="kt-identity-form-revoke"] [data-confirmation]'),
-    ).click();
-    await flush();
-    element(
-      host.querySelector('[data-testid="kt-identity-form-revoke"] button[type="submit"]'),
-    ).click();
-    await flush();
-    expect(ports.submit).toHaveBeenCalledExactlyOnceWith(
-      '/api/v1/assignments',
-      { employeeId: 'e-1', roleId: 'r-1' },
-      'DELETE',
-    );
     element(host.querySelector('[data-testid="kt-identity-action-provision"]')).click();
     await flush();
     expect(host.textContent).toContain('首次登录将被强制修改密码');
@@ -236,9 +183,13 @@ describe('UI-M2 组织与员工控制台', () => {
     const host = mount(OrganizationConsolePage, ports);
     expect(host.querySelector('[data-testid="kt-org-tree"]')).not.toBeNull();
     expect(host.textContent).toContain('张三');
-    element(host.querySelector('.tree-select-trigger')).click();
-    await flush();
-    element(host.querySelector('[role="option"][data-id="org-2"]')).click();
+    // GOV-UX ②：TreeSelect 升级为常显组织架构图——直接点节点即选中（无需先展开下拉）。
+    expect(host.querySelector('[role="tree"]')).not.toBeNull();
+    element(
+      host.querySelector(
+        '[data-testid="kt-org-node"][data-id="org-2"] [data-testid="kt-org-select"]',
+      ),
+    ).click();
     await flush();
     expect(ports.fetchPage).toHaveBeenCalledWith('/api/v1/employees', { organization: 'org-2' });
   });

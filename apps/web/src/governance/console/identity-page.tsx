@@ -9,6 +9,8 @@ import {
   type DataTableColumn,
   type FormSectionField,
 } from '@kingturf/ui';
+import { IdentityMatrix, type MatrixView } from './identity-matrix';
+import { createMatrixState, type MatrixLens, type MatrixState } from './identity-matrix-state';
 import {
   mayManageAssignments,
   mayManageIdentity,
@@ -18,9 +20,11 @@ import {
 } from './ports';
 
 // UI-M2 身份与授权页：主列表（用户访问档案）+ 行级「查看」开用户 360 抽屉；
-// 抽屉内聚合身份状态/角色/能力/数据范围/活跃会话，并提供启停、配置账号、
-// 分配/撤销角色四类行级操作（端点与 identity-*-buttons/identity-state 既有流一致）。
-// 授权角色度量：列表点行（查看）→ 抽屉内提交 = 2 步。
+// 抽屉内聚合身份状态/角色/能力/数据范围/活跃会话，并提供启停、配置账号两类行级操作
+//（端点与 identity-*-buttons/identity-state 既有流一致）。
+// GOV-UX ①：原「分配角色/撤销角色」逐个弹窗表单由抽屉内「角色矩阵」替代——勾选即分配、
+// 取消勾选经内联确认撤销，仍是同一条 /api/v1/assignments 写路径；授权角色度量降为
+// 列表点行（查看）→ 勾选 = 2 步（少一次表单提交）。
 type ProfileRow = Readonly<Record<string, unknown>>;
 
 // UI-M2（G5 拆分）：列定义与渲染视图为纯展示职责，独立于状态工厂。
@@ -30,13 +34,11 @@ type IdentityState = Readonly<{
   loadError: string;
   rows: readonly ProfileRow[];
   selected: ProfileRow | null;
-  activeForm: 'state' | 'provision' | 'assign' | 'revoke' | null;
+  activeForm: 'state' | 'provision' | null;
   identityManage: boolean;
-  assignmentManage: boolean;
-  roles: readonly ProfileRow[];
-  rolesHint: string | undefined;
+  matrix: MatrixView;
   open: (employeeId: string | null) => void;
-  openForm: (form: 'state' | 'provision' | 'assign' | 'revoke') => void;
+  openForm: (form: 'state' | 'provision') => void;
   close: () => void;
   loadMore: () => void;
   runAction: (
@@ -140,59 +142,21 @@ const IdentityView = (state: IdentityState) => (
                 配置登录账号
               </button>
             ) : null}
-            {state.assignmentManage ? (
-              <button
-                type="button"
-                class="secondary"
-                data-testid="kt-identity-action-assign"
-                onClick={() => {
-                  state.openForm('assign');
-                }}
-              >
-                分配角色
-              </button>
-            ) : null}
-            {state.assignmentManage ? (
-              <button
-                type="button"
-                class="secondary"
-                data-testid="kt-identity-action-revoke"
-                onClick={() => {
-                  state.openForm('revoke');
-                }}
-              >
-                撤销角色
-              </button>
-            ) : null}
           </ActionBar>
         }
       >
         <IdentitySummary row={state.selected} />
+        <IdentityMatrix {...state.matrix} />
         {state.activeForm === 'state' && typeof state.selected.identityId === 'string' ? (
           <IdentityStateForm row={state.selected} onSubmit={state.runAction} />
         ) : null}
         {state.activeForm === 'provision' ? (
           <ProvisionForm row={state.selected} onSubmit={state.runAction} />
         ) : null}
-        {state.activeForm === 'assign' ? (
-          <AssignRoleForm
-            row={state.selected}
-            roles={state.roles}
-            hint={state.rolesHint}
-            onSubmit={state.runAction}
-          />
-        ) : null}
-        {state.activeForm === 'revoke' ? (
-          <RevokeRoleForm
-            row={state.selected}
-            roles={state.selected.roles}
-            onSubmit={state.runAction}
-          />
-        ) : null}
         {!state.activeForm &&
         Array.isArray(state.selected.roles) &&
         state.selected.roles.length === 0 ? (
-          <EmptyState title="该用户暂无角色" description="在抽屉操作中分配角色后即可获得能力" />
+          <EmptyState title="该用户暂无角色" description="在上方角色矩阵勾选角色后即可获得能力" />
         ) : null}
       </DetailDrawer>
     ) : null}
@@ -208,18 +172,45 @@ const mergeRoles = (current: ProfileRow[], incoming: readonly unknown[]): void =
   }
 };
 
+// 矩阵视图Props：信号当前值 + 事件转发（视图保持纯展示）。
+const matrixView = (
+  matrix: MatrixState,
+  mayManage: boolean,
+  currentId: string | null,
+): MatrixView => ({
+  model: matrix.model(),
+  lens: matrix.lens.value,
+  onLens: (lens: MatrixLens) => {
+    matrix.lens.value = lens;
+  },
+  query: matrix.query.value,
+  onQuery: (value) => {
+    matrix.query.value = value;
+  },
+  focusOnly: matrix.focusOnly.value,
+  onFocusOnly: (value) => {
+    matrix.focusOnly.value = value;
+  },
+  currentId,
+  mayManage,
+  busy: matrix.busy.value,
+  pending: matrix.pending.value,
+  onConfirm: matrix.confirmRevoke,
+  onCancel: matrix.cancelRevoke,
+  error: matrix.error.value,
+  hint: matrix.hint.value,
+  onToggleRole: matrix.toggleRole,
+  onTogglePermission: matrix.togglePermission,
+});
+
 export function IdentityConsolePage(ports: ConsolePorts) {
   const initialProfiles = ports.initialView('/api/v1/user-access-profiles');
-  const rolesLoaded = ports.loaded('/api/v1/roles');
   const roles = ports.initialView('/api/v1/roles').items.map(recordOf);
   const profiles = signal({ items: initialProfiles.items, nextCursor: initialProfiles.nextCursor });
   const loadingMore = signal(false);
   const loadError = signal('');
   const selectedId = signal<string | null>(null);
-  const activeForm = signal<null | 'state' | 'provision' | 'assign' | 'revoke'>(null);
-  const rolesHint = rolesLoaded
-    ? undefined
-    : '需要 role:read 权限才能选择角色（请向权限管理员申请）';
+  const activeForm = signal<null | 'state' | 'provision'>(null);
 
   const identityManage = mayManageIdentity(ports.permissions);
   const assignmentManage = mayManageAssignments(ports.permissions);
@@ -240,6 +231,7 @@ export function IdentityConsolePage(ports: ConsolePorts) {
       loadError.value = error instanceof Error ? error.message : '用户访问档案加载失败';
     }
   };
+  const matrix = createMatrixState(ports, rows, () => roles, refresh);
 
   const loadMore = (): void => {
     const cursor = profiles.value.nextCursor;
@@ -280,9 +272,7 @@ export function IdentityConsolePage(ports: ConsolePorts) {
       selected: selected(),
       activeForm: activeForm.value,
       identityManage,
-      assignmentManage,
-      roles,
-      rolesHint,
+      matrix: matrixView(matrix, assignmentManage, selectedId.value),
       open: (employeeId) => {
         selectedId.value = employeeId;
         activeForm.value = null;
@@ -409,87 +399,6 @@ const ProvisionForm = ({
             `/api/v1/employees/${String(row.employeeId)}/identity`,
             { login: values.login, password: values.password },
             'PUT',
-          )
-        }
-      />
-    </div>
-  );
-};
-
-const AssignRoleForm = ({
-  row,
-  roles,
-  hint,
-  onSubmit,
-}: Readonly<{
-  row: ProfileRow;
-  roles: readonly ProfileRow[];
-  hint: string | undefined;
-  onSubmit: ActionSubmit;
-}>) => {
-  const fields: readonly FormSectionField[] = [
-    {
-      name: 'roleId',
-      label: '角色',
-      type: 'select',
-      required: true,
-      ...(hint ? { hint } : {}),
-      options: roles.map((role) => ({
-        value: String(role.id),
-        label: `${textOf(role.code)} · ${textOf(role.name)}`,
-      })),
-    },
-  ];
-  return (
-    <div data-testid="kt-identity-form-assign">
-      <FormSection
-        title="分配角色"
-        description="分配后立即生效；职责冲突（SoD）由服务端原子校验拒绝。"
-        fields={fields}
-        submitLabel="分配角色"
-        onSubmit={(values) =>
-          onSubmit(
-            '/api/v1/assignments',
-            { employeeId: row.employeeId, roleId: values.roleId },
-            'POST',
-          )
-        }
-      />
-    </div>
-  );
-};
-
-const RevokeRoleForm = ({
-  row,
-  roles,
-  onSubmit,
-}: Readonly<{ row: ProfileRow; roles: unknown; onSubmit: ActionSubmit }>) => {
-  const current = (Array.isArray(roles) ? roles : []).map(recordOf);
-  const fields: readonly FormSectionField[] = [
-    {
-      name: 'roleId',
-      label: '角色',
-      type: 'select',
-      required: true,
-      ...(current.length === 0 ? { hint: '该用户当前没有可撤销的角色' } : {}),
-      options: current.map((role) => ({
-        value: String(role.id),
-        label: `${textOf(role.code)} · ${textOf(role.name)}`,
-      })),
-    },
-  ];
-  return (
-    <div data-testid="kt-identity-form-revoke">
-      <FormSection
-        title="撤销角色"
-        description="撤销后员工会立即失去该角色能力；当前会话仍由服务器逐次校验有效状态。"
-        fields={fields}
-        submitLabel="撤销角色"
-        onSubmit={(values) =>
-          onSubmit(
-            '/api/v1/assignments',
-            { employeeId: row.employeeId, roleId: values.roleId },
-            'DELETE',
           )
         }
       />

@@ -17,6 +17,7 @@ import { appendGovernanceWorkflowActions } from './workflow-actions';
 import { appendGovernanceTaskActions } from './workflow-task-actions';
 import { appendGovernanceNotificationActions } from './notification-actions';
 import { appendGovernanceRegistryActions } from './registry-actions';
+import { upgradeGovernanceDashboard } from './dashboard-upgrade';
 export function createGovernanceWorkspace(ports: WorkspaceAssemblyPorts) {
   const { replaceRouteView } = ports;
   function governanceWorkspace(controller: GovernanceController): HTMLElement {
@@ -49,6 +50,8 @@ export function createGovernanceWorkspace(ports: WorkspaceAssemblyPorts) {
       grid.append(panel);
     }
     workspace.append(grid);
+    // GOV-UX ⑤：真实浏览器中把指标区升级为组件化仪表盘（异常提示条 + 可钻取指标卡）。
+    upgradeGovernanceDashboard(workspace, controller);
     return workspace;
   }
   return governanceWorkspace;

@@ -1,9 +1,8 @@
 import { el } from '../dom';
-import { recordValue } from '../shared/business-format';
-import { recordText } from '../shared/business-format';
 import { visibleGovernanceSurfaces } from './surfaces';
-import { governanceItems } from './presentation';
+import { dashboardMetrics, dashboardModel } from './dashboard-model';
 import type { GovernanceActionContext } from './workspace-types';
+
 export function createGovernanceHeading(
   context: Pick<GovernanceActionContext, 'permissions' | 'views'>,
 ) {
@@ -19,28 +18,10 @@ export function createGovernanceHeading(
   workspace.append(header);
   const summary = el('section', 'governance-metrics');
   const visible = visibleGovernanceSurfaces(permissions);
-  const failed = views.filter((view) => view.error !== undefined).length;
-  const totalRecords = views.reduce(
-    (sum, view) => sum + (view.error ? 0 : governanceItems(view.value).length),
-    0,
-  );
-  const pendingWorkflowTasks = governanceItems(
-    views.find((view) => view.path === '/api/v1/workflow-tasks')?.value,
-  ).filter((item) => {
-    const state = recordText(recordValue(item), 'state', 'status');
-    return !['APPROVED', 'REJECTED', 'COMPLETED', 'CANCELLED'].includes(state);
-  }).length;
-  const unreadView = views.find((view) => view.path === '/api/v1/notifications/unread-count');
-  const unreadRecord = recordValue(unreadView?.value);
-  const unreadNotifications = Number(
-    unreadRecord.unreadCount ?? unreadRecord.count ?? unreadRecord.unread ?? 0,
-  );
-  for (const [label, value] of [
-    ['治理模块', String(visible.length)],
-    ['业务记录', String(totalRecords)],
-    ['待审批任务', String(pendingWorkflowTasks)],
-    ['未读 / 异常', `${String(unreadNotifications)} / ${String(failed)}`],
-  ] as const) {
+  // GOV-UX ⑤：指标口径收敛到 dashboard-model（与 Preact 仪表盘组件同源）。本段是
+  // 同步渲染的 vanilla 基线；真实浏览器中由 upgradeGovernanceDashboard 以组件化
+  // 仪表盘（异常提示条 + 可钻取指标卡）替换本区内容。
+  for (const { label, value } of dashboardMetrics(dashboardModel(views, visible))) {
     const metric = el('article', 'metric');
     metric.append(el('span', '', label), el('strong', '', value));
     summary.append(metric);

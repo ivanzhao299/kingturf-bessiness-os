@@ -5,33 +5,26 @@ import {
   EmptyState,
   FormSection,
   StatusBadge,
-  TreeSelect,
   type DataTableColumn,
   type FormSectionField,
 } from '@kingturf/ui';
 import { recordOf, textOf, type ConsolePorts } from './ports';
+import { OrgChart } from './org-chart';
+import {
+  buildOrgTree,
+  headcountOf,
+  orgHeadcountLoading,
+  type OrgHeadcount,
+  type OrgNode,
+} from './org-chart-model';
+import { loadPagedSource } from './paged-source';
 
 // UI-M2 组织与员工页：左树（organizations）右表（employees）；选中组织经
 // GET /api/v1/employees?organization=<uuid> 服务端过滤（UI-M2 批 1 加性契约）。
 // 行级/工具条操作保留 B1 员工流：新建（POST /api/v1/employees）与更新
 //（PATCH 带 version 乐观锁，版本未知提示刷新——与 employee-actions 同语义）。
+// GOV-UX ②：左侧 TreeSelect 升级为常显组织架构图（展开/收起 + 直属/含下级人数徽章）。
 type Row = Readonly<Record<string, unknown>>;
-
-type OrgNode = Readonly<{ id: string; label: string; children?: readonly OrgNode[] }>;
-
-const buildTree = (rows: readonly Row[], parentId: string | null = null): readonly OrgNode[] =>
-  rows
-    .filter((row) => {
-      const parent = row.parentId;
-      return parentId === null
-        ? parent === null || parent === undefined || parent === ''
-        : parent === parentId;
-    })
-    .map((row) => ({
-      id: String(row.id),
-      label: textOf(row.name, textOf(row.code, '未命名组织')),
-      children: buildTree(rows, String(row.id)),
-    }));
 
 // UI-M2（G5 拆分）：列定义与渲染视图为纯展示职责，独立于状态工厂。
 type OrgState = Readonly<{
@@ -47,7 +40,10 @@ type OrgState = Readonly<{
   mayCreate: boolean;
   mayUpdate: boolean;
   orgHint: string | undefined;
-  selectOrg: (id: string) => void;
+  headcount: OrgHeadcount;
+  collapsed: ReadonlySet<string>;
+  collapseNode: (id: string, collapsed: boolean) => void;
+  selectOrg: (id: string | undefined) => void;
   openCreate: () => void;
   openUpdate: (row: Row) => void;
   loadMore: () => void;
@@ -146,14 +142,18 @@ const OrgView = (state: OrgState) => {
     <div class="console-page console-split" data-testid="kt-org-page">
       <aside class="console-split-tree" data-testid="kt-org-tree">
         <h3>组织架构</h3>
-        <TreeSelect
-          label="所属组织"
+        <OrgChart
           tree={state.tree}
-          {...(state.selectedOrg ? { value: state.selectedOrg } : {})}
-          onSelect={(id) => {
-            state.selectOrg(id);
-          }}
+          counts={state.headcount.byOrg}
+          total={state.headcount.total}
+          selected={state.selectedOrg}
+          collapsed={state.collapsed}
+          onCollapse={state.collapseNode}
+          onSelect={state.selectOrg}
         />
+        <p class="console-hint" data-testid="kt-org-count-hint">
+          {state.headcount.hint}
+        </p>
         <p class="console-hint">
           {state.selectedOrg === undefined
             ? '未选择组织时展示全部有权限的员工'
@@ -255,12 +255,25 @@ export function OrganizationConsolePage(ports: ConsolePorts) {
   const action = signal<null | 'create' | 'update'>(null);
   const actionError = signal('');
   const updateTarget = signal<Row | null>(null);
-  const tree = buildTree(organizations);
+  const collapsed = signal<ReadonlySet<string>>(new Set());
+  const headcount = signal<OrgHeadcount>(orgHeadcountLoading());
+  const tree = buildOrgTree(organizations);
   const mayCreate = ports.permissions.has('employee:create');
   const mayUpdate = ports.permissions.has('employee:update');
   const orgHint = organizations.length
     ? undefined
     : '需要 organization:read 权限才能选择组织（请向权限管理员申请）';
+
+  // GOV-UX ②：人数徽章按 cursor 分页读尽可见员工后统计（首屏已拉的第一页直接复用）。
+  void loadPagedSource(ports.fetchPage, '/api/v1/employees', employees.value).then((source) => {
+    headcount.value = headcountOf(tree, source);
+  });
+  const collapseNode = (id: string, next: boolean): void => {
+    const current = new Set(collapsed.value);
+    if (next) current.add(id);
+    else current.delete(id);
+    collapsed.value = current;
+  };
 
   const fetchByOrg = (organization: string | undefined): void => {
     selectedOrg.value = organization;
@@ -339,6 +352,9 @@ export function OrganizationConsolePage(ports: ConsolePorts) {
       mayCreate,
       mayUpdate,
       orgHint,
+      headcount: headcount.value,
+      collapsed: collapsed.value,
+      collapseNode,
       selectOrg: (id) => {
         fetchByOrg(id);
       },

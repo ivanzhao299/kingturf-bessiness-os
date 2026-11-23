@@ -2,6 +2,12 @@ import type { DataTableColumn, FormSectionField } from '@kingturf/ui';
 import { StatusBadge } from '@kingturf/ui';
 import { ConfigConsolePage, type ConfigActionSpec, type ConfigPageSpec } from './config-console';
 import { TenantSettingsAppendix } from './tenant-settings-appendix';
+import {
+  NUMBERING_VERSION_FIELDS,
+  RULE_VERSION_FIELDS,
+  WORKFLOW_VERSION_FIELDS,
+  MASTER_ENTRY_VERSION_SPEC,
+} from './config-versions';
 import { textOf } from './ports';
 
 // UI-M2b：六配置页 spec——动作端点/字段/权限/敏感词自 *-actions.ts 逐项守恒迁移
@@ -496,6 +502,8 @@ export const MASTER_DATA_PAGE: ConfigPageSpec = {
     },
   ],
   actions: masterDataActions,
+  // GOV-UX ④：主数据条目按生效时点读上一版本。
+  versions: MASTER_ENTRY_VERSION_SPEC,
 };
 
 export const NUMBERING_PAGE: ConfigPageSpec = {
@@ -515,6 +523,7 @@ export const NUMBERING_PAGE: ConfigPageSpec = {
     summaryKeys: ['code', 'prefix'],
   },
   actions: numberingActions,
+  versions: { fields: NUMBERING_VERSION_FIELDS },
 };
 
 export const RULES_PAGE: ConfigPageSpec = {
@@ -533,6 +542,7 @@ export const RULES_PAGE: ConfigPageSpec = {
     summaryKeys: ['code', 'status'],
   },
   actions: ruleActions,
+  versions: { fields: RULE_VERSION_FIELDS },
 };
 
 export const WORKFLOW_PAGE: ConfigPageSpec = {
@@ -564,6 +574,7 @@ export const WORKFLOW_PAGE: ConfigPageSpec = {
     },
   ],
   actions: workflowActions,
+  versions: { fields: WORKFLOW_VERSION_FIELDS },
 };
 
 export const NOTIFICATIONS_PAGE: ConfigPageSpec = {

@@ -7,6 +7,9 @@
 import '@kingturf/ui/tokens.css';
 import '@kingturf/ui/components.css';
 import './console/console.css';
+// GOV-UX：治理域交互体验优化样式——同裁定10 口径并入宿主静态图（含概览卡片钻取，
+// 其宿主 workspace.ts 不经 mount chunk）。
+import './governance-gov-ux.css';
 import type { AppRoute } from '../shared/navigation';
 import type { GovernanceController } from './controller';
 import { createGovernanceConsoleHost } from './console/host';
