@@ -216,6 +216,24 @@ describe('U3-CRM-1 线索控制台', () => {
     expect(host.textContent).toContain('网站线索');
   });
 
+  it('继续加载按已显示条数递增（25 条先显示 20 条，点击后全部显示）', async () => {
+    const leads = Array.from({ length: 25 }, (_, index) => ({
+      ...poolLead,
+      id: `lead-${String(index)}`,
+      title: `线索${String(index)}`,
+    }));
+    const host = mount(portsFor(leads));
+    expect(host.querySelectorAll('[data-testid="kt-lead-open"]')).toHaveLength(20);
+    const more = host.querySelectorAll('button').find((node) => node.textContent === '继续加载');
+    if (!more) throw new Error('load-more button missing');
+    element(more).click();
+    await flush();
+    expect(host.querySelectorAll('[data-testid="kt-lead-open"]')).toHaveLength(25);
+    expect(host.querySelectorAll('button').some((node) => node.textContent === '继续加载')).toBe(
+      false,
+    );
+  });
+
   it('刷新失败时错误经 DataTable error 面暴露', async () => {
     const ports = portsFor([], [], {
       refresh: vi.fn().mockRejectedValue(new Error('线索加载失败')),

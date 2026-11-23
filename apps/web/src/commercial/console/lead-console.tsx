@@ -17,6 +17,7 @@ type LeadFormKind = 'create' | 'transition' | 'assign' | null;
 
 type LeadPageState = Readonly<{
   leads: readonly LeadRow[];
+  shownCount: number;
   statusFilter: 'ALL' | 'POOL' | 'CLAIMED' | 'QUALIFIED' | 'DISQUALIFIED' | 'CONVERTED';
   search: string;
   loadError: string;
@@ -326,7 +327,7 @@ const CreateDrawer = ({ state }: Readonly<{ state: LeadPageState }>) => (
 
 const LeadView = (state: LeadPageState) => {
   const visible = filteredLeads(state);
-  const shown = visible.slice(0, 20);
+  const shown = visible.slice(0, state.shownCount);
   const mayCreate = state.permissions.has('lead:create');
   return (
     <div class="commercial-console-page" data-testid="kt-lead-page">
@@ -494,6 +495,7 @@ export function LeadConsolePage(ports: LeadConsolePorts) {
 
   const state = (): LeadPageState => ({
     leads: bundle.leads.value,
+    shownCount: bundle.shownCount.value,
     statusFilter: bundle.statusFilter.value,
     search: bundle.search.value,
     loadError: bundle.loadError.value,

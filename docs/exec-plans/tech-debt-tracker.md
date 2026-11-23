@@ -1,5 +1,11 @@
 # 技术债台账（tech-debt-tracker）
 
+## 2026-11-23 CRM-UX 客户域交互增强（施工中；授权链：项目所有者第 4-7 次人裁 + 主协调全权）
+
+本批编号前缀 `TD-CRM-00x`（与并行会话的 TD-UI-00x 错开，避免撞号）。R2 行为变更逐项登记如下；证据文档在收口提交时落盘并登记 index。
+
+- **TD-CRM-001（已修）线索列表「继续加载」失效**：`lead-console.tsx` 的 `showMore` 只递增 `shownCount`，而列表切片写死常量 20，点击后没有任何新行出现（客户控制台同逻辑正确）。纯展示缺陷、零业务写路径；真红→还原绿（新增用例：25 条先显 20 后显 25），单独提交。
+
 ## 2026-11-23 U3-PROC 供应链域全栈迁移收官（TD-UI-001 进展；U3-PROC-4 已复核通过并推送 74743a9/0e76bac）
 
 供应链域四子批（U3-PROC-1..4：供应商/询价/采购单/收货）代码/测试/文档全部完成并经主协调逐批复核通过：提交链 82be13f→0e76bac 共 **8 提交**（PROC-1 82be13f feat＋f796e20 receipt；PROC-2 75425ff feat＋0adf7c1 receipt；PROC-3 d4c5677 feat＋c244fa6 receipt；PROC-4 74743a9 feat＋0e76bac receipt）。**Fastify 现代化**：registry 认领累计 **57 端点/16 文件**（COM 27＋CRM 15＋PROC 15；suppliers 4/rfqs 4/purchase-orders 4/goods-receipts 3+），生产桥挂 app.ts dispatch 同前两域口径。**呈现面与退役（如实记录）**：供应商/询价/采购单/收货四控制台全部挂载于 procurement-workbench 面板内（宿主不带 data-route-view——suppliers/rfqs/purchase-orders/goods-receipts 均非独立 AppRoute，procurement 路由可见性随父面板治理）；supplier-register（128 行）/sourcing-register RFQ 区/purchase-order-cards+purchase-documents（采购合同文档工作流整链迁移控制台）/purchase-register+purchase-actions（收货卡片+登记收货表单）全部退役（裁定 17 语义，引用清零即删）。**vanilla 残余（不在迁移范围，待后续裁定）**：sourcing-register 报价卡片+登记报价表单（supplier-quotes 域端点未迁移未认领）；inventory-register 批次库存只读呈现。**新增写路径（指令明授，R2 登记）**：closeRfq（DRAFT/ISSUED→CANCELLED+rfq.closed）/cancelPurchaseOrder（DRAFT/ISSUED→CANCELLED+purchase-order.cancelled）/PUT qualification 统一动作映射（APPROVED/CONDITIONAL/REJECTED，legacy qualifySupplier 同链零新语义）——其余全部为 legacy 同链复用（含 receive() 部分收货/超收守护零新路径）。**能力缺口登记**：TD-PROC-002（供应商停用写路径缺失）/TD-PROC-003（采购订单独立审批层缺失，签发即审批动作）；TD-PROC-001（重复部分收货触发器冲突，真实 PG 确证未修）属 legacy receive() 同链固有行为，桥轨守恒继承、收口后仍为已知风险。**结构门禁驱动拆分（G1/G5 不豁免）**：procurement-read-repositories.ts（additive 只读仓储，主类继承）/po-detail.tsx+po-console-actions.tsx（采购单详情子组件+动作工厂）。**验证**：每子批 ci:local EXIT=0 全链（API 17871→17890→17895 递进、Web 510→517→525→530 递进）；e2e P1 口令不可得未实跑（同 U3-PROC-1 已知悉缺口，文案契约逐子批静态核对兼容、挂载覆盖由 bootstrap.test 宿主断言补偿）；f3 冻结场景六处（suppliers/procurement-rfqs/purchase-orders/goods-receipts 各 GET+POST）按 U3-COM-7/U3-CRM-1 已批 re-pin 先例适配（响应+终止仓储调用逐字段相等）；procurement-route-contract（legacy 轨）1767 无改动全绿。各子批证据见 docs/evidence/u3-proc-{1..4}-\*.md 与 docs/index.md。**TD-UI-001 状态更新**：U1 基座＋U2 governance 九页＋U3-COM 商机域＋U3-CRM 客户域＋U3-PROC 供应链域完成；U3 生产域（manufacturing+production）待续。
