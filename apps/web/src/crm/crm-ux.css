@@ -1,0 +1,741 @@
+/* CRM-UX 客户域控制台交互增强样式：独立成表，仅线索/客户两页引用；取值全部来自
+   kt tokens（packages/ui tokens.css，ADR-0014），不写死颜色/间距（图标尺寸除外）。
+   命名空间 crm-<特性>-*：tabs（公海/私海）/ stat（统计卡）/ entity（线索卡）/
+   section（360 分区）/ funnel（商机漏斗）/ credit（信用概要）/ contact（联系人）/
+   timeline（活动时间线）/ related（关联商机与线索）。 */
+
+/* ===== 通用 ===== */
+.crm-ux {
+  min-width: 0;
+}
+
+.crm-ux :focus-visible {
+  outline: 2px solid var(--kt-color-brand);
+  outline-offset: 2px;
+}
+
+/* 承载 360 的抽屉加宽：时间线 + 分区卡片在 480px 下过窄；仅在含 .crm-360 时生效。 */
+.drawer-root:has(.crm-360) .detail-drawer {
+  width: min(640px, 94vw);
+}
+
+.crm-tag {
+  padding: 0 var(--kt-space-2);
+  border-radius: var(--kt-radius-pill);
+  background: var(--kt-color-brand-soft);
+  color: var(--kt-color-brand-strong);
+  font-size: var(--kt-font-size-caption);
+  font-weight: var(--kt-font-weight-medium);
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.crm-empty {
+  margin: 0;
+  padding: var(--kt-space-4) var(--kt-space-2);
+  border: 1px dashed var(--kt-color-border-strong);
+  border-radius: var(--kt-radius-md);
+  color: var(--kt-color-text-muted);
+  font-size: var(--kt-font-size-caption);
+  text-align: center;
+}
+
+.crm-select {
+  min-height: 30px;
+  padding: 0 var(--kt-space-2);
+  border: 1px solid var(--kt-color-border);
+  border-radius: var(--kt-radius-sm);
+  background: var(--kt-color-surface);
+  color: var(--kt-color-text);
+  font: inherit;
+  font-size: var(--kt-font-size-caption);
+}
+
+/* ===== 公海/私海分栏 ===== */
+.crm-tabs {
+  display: inline-flex;
+  gap: var(--kt-space-1);
+  padding: var(--kt-space-1);
+  border: 1px solid var(--kt-color-border);
+  border-radius: var(--kt-radius-lg);
+  background: var(--kt-color-surface-muted);
+}
+
+.crm-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--kt-space-2);
+  min-height: 34px;
+  padding: 0 var(--kt-space-4);
+  border: 0;
+  border-radius: var(--kt-radius-md);
+  background: transparent;
+  color: var(--kt-color-text-muted);
+  font: inherit;
+  font-size: var(--kt-font-size-body);
+  font-weight: var(--kt-font-weight-medium);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.crm-tab:hover {
+  color: var(--kt-color-text);
+}
+
+.crm-tab[aria-selected='true'] {
+  background: var(--kt-color-surface);
+  color: var(--kt-color-brand-strong);
+  box-shadow: var(--kt-shadow-flat);
+}
+
+.crm-tab-count,
+.crm-count {
+  min-width: var(--kt-space-5);
+  padding: 0 var(--kt-space-2);
+  border-radius: var(--kt-radius-pill);
+  background: var(--kt-color-neutral-soft);
+  color: var(--kt-color-text-muted);
+  font-size: var(--kt-font-size-caption);
+  font-weight: var(--kt-font-weight-medium);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.crm-tab[aria-selected='true'] .crm-tab-count {
+  background: var(--kt-color-brand-soft);
+  color: var(--kt-color-brand-strong);
+}
+
+/* ===== 筛选工具条 ===== */
+.crm-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--kt-space-2);
+}
+
+.crm-toolbar input[type='search'] {
+  flex: 1 1 240px;
+  min-width: 0;
+  min-height: 30px;
+  padding: 0 var(--kt-space-3);
+  border: 1px solid var(--kt-color-border);
+  border-radius: var(--kt-radius-sm);
+  background: var(--kt-color-surface);
+  color: var(--kt-color-text);
+  font: inherit;
+  font-size: var(--kt-font-size-body);
+}
+
+.crm-toolbar input[type='search']::placeholder {
+  color: var(--kt-color-text-muted);
+}
+
+.crm-filter[aria-pressed='true'] {
+  border-color: var(--kt-color-brand);
+  background: var(--kt-color-brand-soft);
+  color: var(--kt-color-brand-strong);
+}
+
+/* ===== 客户统计卡 ===== */
+.crm-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  gap: var(--kt-space-3);
+}
+
+.crm-stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kt-space-1);
+  padding: var(--kt-space-3) var(--kt-space-4);
+  border: 1px solid var(--kt-color-border);
+  border-radius: var(--kt-radius-lg);
+  background: var(--kt-color-surface);
+}
+
+.crm-stat-label {
+  color: var(--kt-color-text-muted);
+  font-size: var(--kt-font-size-caption);
+}
+
+.crm-stat-value {
+  color: var(--kt-color-text);
+  font-size: var(--kt-font-size-title);
+  font-weight: var(--kt-font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.crm-stat-hint {
+  color: var(--kt-color-text-muted);
+  font-size: var(--kt-font-size-caption);
+}
+
+/* ===== 线索卡（列表单元格） ===== */
+.crm-entity {
+  display: flex;
+  align-items: center;
+  gap: var(--kt-space-3);
+  min-width: 0;
+}
+
+.crm-entity-icon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--kt-radius-md);
+  background: var(--kt-color-neutral-soft);
+  color: var(--kt-color-brand-strong);
+}
+
+.crm-entity-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.crm-entity-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* 卡片标题即「查看」入口：原生 button 复位为文本外观（键盘可达、名称可解析）。 */
+.crm-entity-title {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--kt-color-text);
+  font: inherit;
+  font-size: var(--kt-font-size-body);
+  font-weight: var(--kt-font-weight-semibold);
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.crm-entity-title:hover {
+  color: var(--kt-color-brand);
+  text-decoration: underline;
+}
+
+.crm-entity-meta {
+  color: var(--kt-color-text-muted);
+  font-size: var(--kt-font-size-caption);
+}
+
+.crm-avatar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--kt-color-brand-soft);
+  color: var(--kt-color-brand-strong);
+  font-size: var(--kt-font-size-caption);
+  font-weight: var(--kt-font-weight-semibold);
+  line-height: 1;
+}
+
+.crm-avatar svg {
+  width: 15px;
+  height: 15px;
+}
+
+.crm-avatar[data-tone='empty'] {
+  border: 1px dashed var(--kt-color-border-strong);
+  background: var(--kt-color-surface);
+  color: var(--kt-color-text-muted);
+}
+
+.crm-avatar-lg {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--kt-radius-md);
+  font-size: var(--kt-font-size-lead);
+}
+
+.crm-avatar-lg svg {
+  width: 20px;
+  height: 20px;
+}
+
+.crm-owner {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--kt-space-2);
+  white-space: nowrap;
+}
+
+.crm-owner[data-tone='empty'] {
+  color: var(--kt-color-text-muted);
+}
+
+.crm-recency {
+  color: var(--kt-color-text);
+  font-size: var(--kt-font-size-caption);
+  white-space: nowrap;
+}
+
+.crm-recency[data-stale='true'] {
+  color: var(--kt-color-warning);
+  font-weight: var(--kt-font-weight-medium);
+}
+
+/* ===== 360 分区 ===== */
+.crm-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kt-space-2);
+  padding: var(--kt-space-4);
+  border: 1px solid var(--kt-color-border);
+  border-radius: var(--kt-radius-lg);
+  background: var(--kt-color-surface);
+}
+
+.crm-section + .crm-section {
+  margin-top: var(--kt-space-3);
+}
+
+.crm-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--kt-space-2);
+}
+
+.crm-section-title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--kt-space-2);
+  margin: 0;
+  color: var(--kt-color-text);
+  font-size: var(--kt-font-size-body);
+  font-weight: var(--kt-font-weight-semibold);
+}
+
+.crm-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kt-space-1) var(--kt-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.crm-facts li {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--kt-space-1);
+  color: var(--kt-color-text);
+  font-size: var(--kt-font-size-caption);
+}
+
+.crm-facts li > span {
+  color: var(--kt-color-text-muted);
+}
+
+.crm-facts strong {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ===== 商机漏斗 ===== */
+.crm-funnel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kt-space-2);
+}
+
+.crm-funnel-row {
+  display: grid;
+  grid-template-columns: 5rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--kt-space-2);
+}
+
+.crm-funnel-stage {
+  color: var(--kt-color-text);
+  font-size: var(--kt-font-size-caption);
+}
+
+.crm-funnel-track {
+  height: 10px;
+  border-radius: var(--kt-radius-pill);
+  background: var(--kt-color-neutral-soft);
+  overflow: hidden;
+}
+
+/* 在途阶段为信息蓝，赢单以成功绿收口——不以颜色为唯一信号（另有阶段名与计数）。 */
+.crm-funnel-bar {
+  height: 100%;
+  border-radius: var(--kt-radius-pill);
+  background: var(--kt-color-info);
+  transition: width 300ms ease;
+}
+
+.crm-funnel-row[data-stage='WON'] .crm-funnel-bar {
+  background: var(--kt-color-success);
+}
+
+.crm-funnel-figure {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  color: var(--kt-color-text);
+  font-size: var(--kt-font-size-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.crm-funnel-figure strong {
+  font-size: var(--kt-font-size-body);
+}
+
+.crm-funnel-amount,
+.crm-funnel-closed {
+  color: var(--kt-color-text-muted);
+  font-size: var(--kt-font-size-caption);
+}
+
+.crm-funnel-closed {
+  margin: 0;
+}
+
+/* ===== 信用概要 ===== */
+.crm-credit-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kt-space-1);
+}
+
+.crm-credit-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--kt-space-3);
+  font-size: var(--kt-font-size-body);
+}
+
+.crm-credit-row > span {
+  color: var(--kt-color-text-muted);
+  font-size: var(--kt-font-size-caption);
+}
+
+.crm-credit-row strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.crm-meter {
+  height: 8px;
+  margin: var(--kt-space-2) 0;
+  border-radius: var(--kt-radius-pill);
+  background: var(--kt-color-neutral-soft);
+  overflow: hidden;
+}
+
+.crm-meter-fill {
+  height: 100%;
+  border-radius: var(--kt-radius-pill);
+  background: var(--kt-color-brand);
+}
+
+.crm-meter[data-level='warning'] .crm-meter-fill {
+  background: var(--kt-color-warning);
+}
+
+.crm-meter[data-level='danger'] .crm-meter-fill {
+  background: var(--kt-color-danger);
+}
+
+.crm-credit-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--kt-space-2);
+  color: var(--kt-color-text-muted);
+  font-size: var(--kt-font-size-caption);
+}
+
+/* ===== 联系人卡片 ===== */
+.crm-contact {
+  display: flex;
+  gap: var(--kt-space-3);
+  padding: var(--kt-space-3);
+  border: 1px solid var(--kt-color-border);
+  border-radius: var(--kt-radius-md);
+  background: var(--kt-color-surface-muted);
+}
+
+.crm-contact-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kt-space-1);
+  min-width: 0;
+}
+
+.crm-contact-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--kt-space-2);
+  margin: 0;
+  color: var(--kt-color-text);
+}
+
+.crm-contact-title {
+  margin: 0;
+  color: var(--kt-color-text-muted);
+  font-size: var(--kt-font-size-caption);
+}
+
+.crm-contact-channels {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--kt-color-text);
+  font-size: var(--kt-font-size-caption);
+  overflow-wrap: anywhere;
+}
+
+.crm-contact-channels li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--kt-space-1);
+}
+
+.crm-contact-channels svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--kt-color-text-muted);
+}
+
+.crm-contact-channels [data-restricted='true'] {
+  color: var(--kt-color-text-muted);
+}
+
+.crm-visibility {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--kt-space-1);
+  padding: var(--kt-space-1) var(--kt-space-2);
+  border: 0;
+  border-radius: var(--kt-radius-sm);
+  background: none;
+  color: var(--kt-color-brand-strong);
+  font: inherit;
+  font-size: var(--kt-font-size-caption);
+  font-weight: var(--kt-font-weight-medium);
+  cursor: pointer;
+}
+
+.crm-visibility:hover {
+  background: var(--kt-color-brand-soft);
+}
+
+.crm-visibility svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ===== 活动时间线 ===== */
+.crm-timeline-day + .crm-timeline-day {
+  margin-top: var(--kt-space-3);
+}
+
+.crm-timeline-date {
+  margin: 0 0 var(--kt-space-1);
+  color: var(--kt-color-text-muted);
+  font-size: var(--kt-font-size-caption);
+  font-weight: var(--kt-font-weight-semibold);
+}
+
+.crm-timeline-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: var(--kt-space-2);
+  padding-bottom: var(--kt-space-3);
+}
+
+.crm-timeline-item:last-child {
+  padding-bottom: 0;
+}
+
+/* 竖向连接线把同一日内的活动串成一条线；末项不画。 */
+.crm-timeline-item::before {
+  content: '';
+  position: absolute;
+  top: 28px;
+  bottom: 0;
+  left: 13px;
+  width: 2px;
+  background: var(--kt-color-border);
+}
+
+.crm-timeline-item:last-child::before {
+  content: none;
+}
+
+.crm-timeline-icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--kt-color-neutral-soft);
+  color: var(--kt-color-brand-strong);
+}
+
+.crm-timeline-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.crm-timeline-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding-top: 3px;
+}
+
+.crm-timeline-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--kt-space-2);
+  margin: 0;
+}
+
+.crm-timeline-head strong {
+  color: var(--kt-color-text);
+  font-size: var(--kt-font-size-body);
+  font-weight: var(--kt-font-weight-medium);
+}
+
+.crm-timeline-head time {
+  color: var(--kt-color-text-muted);
+  font-size: var(--kt-font-size-caption);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.crm-timeline-summary {
+  margin: 0;
+  color: var(--kt-color-text);
+  font-size: var(--kt-font-size-caption);
+  overflow-wrap: anywhere;
+}
+
+.crm-timeline-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kt-space-1);
+  margin: var(--kt-space-1) 0 0;
+}
+
+/* 内联链接：点击定位到同屏「关联商机 / 关联线索」卡片。 */
+.crm-link-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--kt-space-1);
+  max-width: 100%;
+  padding: 1px var(--kt-space-2);
+  border: 0;
+  border-radius: var(--kt-radius-pill);
+  background: var(--kt-color-info-soft);
+  color: var(--kt-color-info);
+  font: inherit;
+  font-size: var(--kt-font-size-caption);
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.crm-link-chip:hover {
+  text-decoration: underline;
+}
+
+.crm-link-chip svg {
+  flex: none;
+  width: 13px;
+  height: 13px;
+}
+
+.crm-link-chip[data-kind='lead'] {
+  background: var(--kt-color-neutral-soft);
+  color: var(--kt-color-text);
+}
+
+/* ===== 关联商机 / 关联线索 ===== */
+.crm-related {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  gap: var(--kt-space-2);
+}
+
+.crm-related-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kt-space-1);
+  padding: var(--kt-space-3);
+  border: 1px solid var(--kt-color-border);
+  border-radius: var(--kt-radius-md);
+  background: var(--kt-color-surface);
+  scroll-margin-top: var(--kt-space-4);
+}
+
+.crm-related-card[data-highlighted='true'] {
+  animation: crm-highlight 1.8s ease-out;
+}
+
+.crm-related-name {
+  margin: 0;
+  color: var(--kt-color-text);
+  font-size: var(--kt-font-size-body);
+  font-weight: var(--kt-font-weight-medium);
+  overflow-wrap: anywhere;
+}
+
+.crm-related-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--kt-space-2);
+  margin: 0;
+  color: var(--kt-color-text-muted);
+  font-size: var(--kt-font-size-caption);
+}
+
+@keyframes crm-highlight {
+  from {
+    background: var(--kt-color-brand-soft);
+    border-color: var(--kt-color-brand);
+  }
+
+  to {
+    background: var(--kt-color-surface);
+    border-color: var(--kt-color-border);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crm-related-card[data-highlighted='true'],
+  .crm-funnel-bar {
+    animation: none;
+    transition: none;
+  }
+}

@@ -23,6 +23,14 @@ export function visibleCrmSections(permissions: ReadonlySet<CrmPermission>) {
   } as const;
 }
 
+// CRM-UX：线索控制台经宿主端口（initialLeads/refresh）只能取得 controller.leads；
+// 公海/私海分栏需要公海行，故 leads 收敛为「公海 ∪ 已分配」按 id 去重的可见视图
+//（与 visibleLeads 同序：公海在前）。pool 仍单独保留给 vanilla 视图。
+const mergeLeads = (pool: readonly Lead[], leads: readonly Lead[]): readonly Lead[] =>
+  [...pool, ...leads].filter(
+    (lead, index, all) => all.findIndex((candidate) => candidate.id === lead.id) === index,
+  );
+
 export class CrmController {
   public employees: readonly Employee[] = [];
   public customers: readonly Customer[] = [];
@@ -43,16 +51,23 @@ export class CrmController {
   ) {}
   public async load(): Promise<void> {
     const sections = visibleCrmSections(this.permissions);
-    const [customers, pool, leads, employees] = await Promise.all([
+    const [customers, leads, employees] = await Promise.all([
       sections.customers ? this.api.listCustomers() : Promise.resolve([]),
-      this.permissions.has('lead-pool:read') ? this.api.listPool() : Promise.resolve([]),
-      this.permissions.has('lead:read') ? this.api.listLeads() : Promise.resolve([]),
+      this.loadLeads(),
       this.permissions.has('employee:read') ? this.api.listEmployees() : Promise.resolve([]),
     ]);
     this.customers = customers;
-    this.pool = pool;
     this.leads = leads;
     this.employees = employees.filter((employee) => employee.active !== false);
+  }
+  // 线索读面单一入口：按权限各读一次，写入 pool 并返回去重后的可见线索全集。
+  private async loadLeads(): Promise<readonly Lead[]> {
+    const [pool, leads] = await Promise.all([
+      this.permissions.has('lead-pool:read') ? this.api.listPool() : Promise.resolve([]),
+      this.permissions.has('lead:read') ? this.api.listLeads() : Promise.resolve([]),
+    ]);
+    this.pool = pool;
+    return mergeLeads(pool, leads);
   }
   public visibleCustomers(): readonly Customer[] {
     const query = this.customerQuery.trim().toLocaleLowerCase('zh-CN');
@@ -136,12 +151,12 @@ export class CrmController {
   public async createLead(input: LeadInput): Promise<void> {
     if (!this.permissions.has('lead:create')) return;
     await this.api.createLead(input);
-    if (this.permissions.has('lead-pool:read')) this.pool = await this.api.listPool();
+    this.leads = await this.loadLeads();
   }
   public async claim(lead: Lead): Promise<void> {
     if (!visibleCrmSections(this.permissions).leadClaim) return;
     await this.api.claimLead(lead);
-    this.pool = await this.api.listPool();
+    this.leads = await this.loadLeads();
   }
   public async mutateLead(
     lead: Lead,
@@ -161,8 +176,7 @@ export class CrmController {
     else if (action === 'release' && this.permissions.has('lead-pool:release'))
       await this.api.releaseLead(lead, reason);
     else return;
-    if (this.permissions.has('lead-pool:read')) this.pool = await this.api.listPool();
-    if (this.permissions.has('lead:read')) this.leads = await this.api.listLeads();
+    this.leads = await this.loadLeads();
   }
   public async mutateSelected(
     action: 'contact' | 'activity' | 'lifecycle' | 'ownership',

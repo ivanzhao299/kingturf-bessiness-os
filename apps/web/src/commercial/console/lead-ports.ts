@@ -14,4 +14,6 @@ export type LeadConsolePorts = Readonly<{
     method?: 'POST' | 'PATCH' | 'PUT',
   ) => Promise<Readonly<Record<string, unknown>> | null>;
   refresh: () => Promise<readonly LeadRow[]>;
+  // CRM-UX（可选，宿主未注入时取系统时钟）：卡片「最近更新」相对时间的基准，单测注入固定值。
+  now?: () => number;
 }>;

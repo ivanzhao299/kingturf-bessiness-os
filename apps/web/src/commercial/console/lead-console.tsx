@@ -1,4 +1,5 @@
 import { signal } from '@preact/signals';
+import type { TargetedKeyboardEvent } from 'preact';
 import {
   DataTable,
   DetailDrawer,
@@ -10,43 +11,53 @@ import {
   type StatusTone,
 } from '@kingturf/ui';
 import type { LeadConsolePorts, LeadRow } from './lead-ports';
+import {
+  LeadOwnerCell,
+  LeadTitleCell,
+  LeadUpdatedCell,
+  leadOwnerName,
+  leadOwnerText,
+  leadUnassignedLabel,
+  type LeadCardContext,
+} from './lead-console-cards';
+import { Avatar } from '../../crm/crm-ux-parts';
+import { dateTimeLabelOf, isPoolLead, leadStatusLabel, type LeadTab } from '../../crm/crm-ux';
 
 // U3-CRM-1（ADR-0014 分域重写）：线索控制台——原 vanilla lead-records 能力面等价迁移
 // （新建/认领/变更状态/分配改派/释放公海；列表/搜索/分页/详情抽屉）。
+// CRM-UX：公海/私海分栏 + 线索卡富化（来源图标/负责人头像/最近更新）。写路径、载荷
+// 与权限门不变；分栏只是同一份可见线索（CrmController.leads = 公海 ∪ 已分配）的两种视图。
 type LeadFormKind = 'create' | 'transition' | 'assign' | null;
+type LeadStatusFilter = 'ALL' | 'CLAIMED' | 'QUALIFIED' | 'DISQUALIFIED' | 'CONVERTED';
 
 type LeadPageState = Readonly<{
   leads: readonly LeadRow[];
   shownCount: number;
-  statusFilter: 'ALL' | 'POOL' | 'CLAIMED' | 'QUALIFIED' | 'DISQUALIFIED' | 'CONVERTED';
+  /** 当前生效分栏（不在可用分栏内时回落到首个可用分栏）。 */
+  tab: LeadTab;
+  tabs: readonly LeadTab[];
+  statusFilter: LeadStatusFilter;
   search: string;
   loadError: string;
   submitError: string;
   loading: boolean;
   selected: LeadRow | null;
   activeForm: LeadFormKind;
+  /** 相对时间基准（宿主注入；缺省系统时钟）。 */
+  now: number;
   permissions: ReadonlySet<string>;
   ports: LeadConsolePorts;
   open: (row: LeadRow | null) => void;
   openForm: (kind: LeadFormKind) => void;
   closeForm: () => void;
-  setStatusFilter: (
-    next: 'ALL' | 'POOL' | 'CLAIMED' | 'QUALIFIED' | 'DISQUALIFIED' | 'CONVERTED',
-  ) => void;
+  setTab: (next: LeadTab) => void;
+  setStatusFilter: (next: LeadStatusFilter) => void;
   setSearch: (next: string) => void;
   runRefresh: () => Promise<void>;
   runCreate: (values: Readonly<Record<string, string>>) => Promise<void>;
   runState: (row: LeadRow, body: Record<string, unknown>) => Promise<void>;
   showMore: () => void;
 }>;
-
-const STATUS_LABELS: Readonly<Record<string, string>> = {
-  POOL: '公海',
-  CLAIMED: '已认领',
-  QUALIFIED: '已确认',
-  DISQUALIFIED: '无效线索',
-  CONVERTED: '已转化',
-};
 
 const statusTone = (status: unknown): StatusTone => {
   if (status === 'QUALIFIED' || status === 'CONVERTED') return 'success';
@@ -55,16 +66,73 @@ const statusTone = (status: unknown): StatusTone => {
   return 'neutral';
 };
 
+const TAB_LABELS: Readonly<Record<LeadTab, string>> = { POOL: '公海', PRIVATE: '私海' };
+const TAB_TEST_IDS: Readonly<Record<LeadTab, string>> = {
+  POOL: 'kt-lead-tab-pool',
+  PRIVATE: 'kt-lead-tab-private',
+};
+const PRIVATE_STATUS_FILTERS: readonly LeadStatusFilter[] = [
+  'ALL',
+  'CLAIMED',
+  'QUALIFIED',
+  'DISQUALIFIED',
+  'CONVERTED',
+];
+
+/**
+ * 可用分栏：有读权限即常显（空态照常呈现）；无权限但当前可见数据里已有该类线索时也显示
+ *（如仅 lead:read 的角色在 COMPANY 范围下仍能看到公海行），保证没有任何可见线索因分栏而丢失。
+ */
+const leadTabs = (
+  permissions: ReadonlySet<string>,
+  leads: readonly LeadRow[],
+): readonly LeadTab[] => {
+  const hasPool = permissions.has('lead-pool:read') || leads.some(isPoolLead);
+  const hasPrivate = permissions.has('lead:read') || leads.some((row) => !isPoolLead(row));
+  return [...(hasPool ? ['POOL' as const] : []), ...(hasPrivate ? ['PRIVATE' as const] : [])];
+};
+
+const tabRows = (state: LeadPageState): readonly LeadRow[] =>
+  state.leads.filter((row) => isPoolLead(row) === (state.tab === 'POOL'));
+
+const filteredLeads = (state: LeadPageState): readonly LeadRow[] =>
+  tabRows(state).filter((row) => {
+    if (
+      state.tab === 'PRIVATE' &&
+      state.statusFilter !== 'ALL' &&
+      row.status !== state.statusFilter
+    )
+      return false;
+    if (state.search === '') return true;
+    const haystack =
+      `${state.ports.textValue(row.title, '')}${state.ports.textValue(row.source, '')}${state.ports.textValue(row.status, '')}${leadStatusLabel(row.status)}`.toLowerCase();
+    return haystack.includes(state.search.toLowerCase());
+  });
+
+const emptyCopy = (
+  state: LeadPageState,
+  tabCount: number,
+): Readonly<{ title: string; description: string }> => {
+  if (tabCount > 0) return { title: '没有匹配的线索', description: '换个关键词或状态筛选试试' };
+  return state.tab === 'POOL'
+    ? { title: '公海暂无线索', description: '新线索默认进入公海，具备权限的同事可以直接认领' }
+    : { title: '暂无已认领线索', description: '认领公海线索后会出现在这里' };
+};
+
+const cardContext = (state: LeadPageState): LeadCardContext => ({
+  employeeChoices: state.ports.employeeChoices,
+  now: state.now,
+  open: (row) => {
+    state.open(row);
+  },
+});
+
 const columns = (state: LeadPageState): readonly DataTableColumn<LeadRow>[] => [
   {
     key: 'title',
     header: '线索标题',
     field: (row) => state.ports.textValue(row.title, '线索'),
-    render: (row) => (
-      <span>
-        {state.ports.textValue(row.title, '线索')} · {state.ports.textValue(row.source, '—')}
-      </span>
-    ),
+    render: (row) => <LeadTitleCell row={row} context={cardContext(state)} />,
   },
   {
     key: 'status',
@@ -72,14 +140,20 @@ const columns = (state: LeadPageState): readonly DataTableColumn<LeadRow>[] => [
     field: (row) => state.ports.textValue(row.status, 'POOL'),
     render: (row) => {
       const status = state.ports.textValue(row.status, 'POOL');
-      return <StatusBadge tone={statusTone(status)}>{STATUS_LABELS[status] ?? status}</StatusBadge>;
+      return <StatusBadge tone={statusTone(status)}>{leadStatusLabel(status)}</StatusBadge>;
     },
   },
   {
     key: 'owner',
     header: '负责人',
-    field: (row) => state.ports.textValue(row.ownerId, '—'),
-    render: (row) => state.ports.textValue(row.ownerId, '未分配').slice(0, 8),
+    field: (row) => leadOwnerText(row, state.ports.employeeChoices),
+    render: (row) => <LeadOwnerCell row={row} context={cardContext(state)} />,
+  },
+  {
+    key: 'updatedAt',
+    header: '最近更新',
+    field: (row) => state.ports.textValue(row.updatedAt, ''),
+    render: (row) => <LeadUpdatedCell row={row} context={cardContext(state)} />,
   },
   {
     key: 'createdAt',
@@ -106,36 +180,92 @@ const columns = (state: LeadPageState): readonly DataTableColumn<LeadRow>[] => [
   },
 ];
 
-const filteredLeads = (state: LeadPageState): readonly LeadRow[] =>
-  state.leads.filter((row) => {
-    if (state.statusFilter !== 'ALL' && row.status !== state.statusFilter) return false;
-    if (state.search === '') return true;
-    const haystack =
-      `${state.ports.textValue(row.title, '')}${state.ports.textValue(row.source, '')}${state.ports.textValue(row.status, '')}`.toLowerCase();
-    return haystack.includes(state.search.toLowerCase());
-  });
+const neighborTab = (
+  key: string,
+  tabs: readonly LeadTab[],
+  current: LeadTab,
+): LeadTab | undefined => {
+  const index = tabs.indexOf(current);
+  if (key === 'ArrowRight') return tabs[index + 1];
+  if (key === 'ArrowLeft') return tabs[index - 1];
+  if (key === 'Home') return tabs[0];
+  if (key === 'End') return tabs[tabs.length - 1];
+  return undefined;
+};
+
+/** 公海/私海分栏（WAI-ARIA tabs：方向键/Home/End 切换并跟随焦点）。仅一个分栏可用时不渲染。 */
+const LeadTabs = ({ state }: Readonly<{ state: LeadPageState }>) => {
+  if (state.tabs.length < 2) return null;
+  const counts: Readonly<Record<LeadTab, number>> = {
+    POOL: state.leads.filter(isPoolLead).length,
+    PRIVATE: state.leads.length - state.leads.filter(isPoolLead).length,
+  };
+  const onKeyDown = (event: TargetedKeyboardEvent<HTMLButtonElement>, current: LeadTab): void => {
+    const next = neighborTab(event.key, state.tabs, current);
+    if (next === undefined) return;
+    event.preventDefault();
+    state.setTab(next);
+    const host = event.currentTarget as HTMLElement;
+    host.parentElement?.querySelector<HTMLButtonElement>(`[data-tab="${next}"]`)?.focus();
+  };
+  return (
+    <div class="crm-tabs" role="tablist" aria-label="线索分栏" data-testid="kt-lead-tabs">
+      {state.tabs.map((tab) => (
+        <button
+          key={tab}
+          type="button"
+          role="tab"
+          class="crm-tab"
+          id={TAB_TEST_IDS[tab]}
+          data-tab={tab}
+          aria-selected={state.tab === tab}
+          aria-controls="kt-lead-panel"
+          tabIndex={state.tab === tab ? 0 : -1}
+          data-testid={TAB_TEST_IDS[tab]}
+          onClick={() => {
+            state.setTab(tab);
+          }}
+          onKeyDown={(event) => {
+            onKeyDown(event, tab);
+          }}
+        >
+          {TAB_LABELS[tab]}
+          <span class="crm-tab-count">{String(counts[tab])}</span>
+        </button>
+      ))}
+    </div>
+  );
+};
 
 const LeadDetail = ({ state }: Readonly<{ state: LeadPageState }>) => {
   const lead = state.selected;
   if (!lead) return null;
   const { ports } = state;
+  const ownerName = leadOwnerName(lead, ports.employeeChoices);
+  const ownerText = leadOwnerText(lead, ports.employeeChoices);
+  const updated = dateTimeLabelOf(lead.updatedAt);
   return (
     <div class="console-summary" data-testid="kt-lead-detail">
       <p>
         <span class="console-label">状态</span>
         <StatusBadge tone={statusTone(lead.status)}>
-          {STATUS_LABELS[ports.textValue(lead.status, 'POOL')] ?? '—'}
+          {leadStatusLabel(ports.textValue(lead.status, 'POOL'))}
         </StatusBadge>
         <span class="console-label">来源</span>
         {ports.textValue(lead.source, '—')}
         <span class="console-label">负责人</span>
-        {ports.textValue(lead.ownerId, '未分配').slice(0, 8)}
+        <span class="crm-owner" data-tone={ownerText === '' ? 'empty' : 'named'}>
+          <Avatar name={ownerName} />
+          {ownerText === '' ? leadUnassignedLabel(lead) : ownerText}
+        </span>
       </p>
       <p>
         <span class="console-label">关联客户</span>
         {ports.textValue(lead.customerId, '—').slice(0, 8)}
         <span class="console-label">创建</span>
         {ports.textValue(lead.createdAt, '—').slice(0, 10)}
+        <span class="console-label">最近更新</span>
+        {updated === '' ? '—' : updated}
       </p>
     </div>
   );
@@ -325,15 +455,25 @@ const CreateDrawer = ({ state }: Readonly<{ state: LeadPageState }>) => (
   </DetailDrawer>
 );
 
+const PAGE_COPY: Readonly<Record<LeadTab, Readonly<{ title: string; description: string }>>> = {
+  POOL: { title: '线索公海', description: '尚未被认领的线索，具备权限的销售人员可以直接认领' },
+  PRIVATE: {
+    title: '销售线索',
+    description: '已认领的线索在这里按状态推进；可认领的线索见「公海」',
+  },
+};
+
 const LeadView = (state: LeadPageState) => {
   const visible = filteredLeads(state);
   const shown = visible.slice(0, state.shownCount);
   const mayCreate = state.permissions.has('lead:create');
+  const pool = state.tab === 'POOL';
+  const empty = emptyCopy(state, tabRows(state).length);
   return (
-    <div class="commercial-console-page" data-testid="kt-lead-page">
+    <div class="commercial-console-page crm-ux" data-testid="kt-lead-page">
       <PageHeader
-        title={state.ports.poolMode ? '线索公海' : '销售线索'}
-        description="线索默认进入公海，具备权限的销售人员可以认领"
+        title={PAGE_COPY[state.tab].title}
+        description={PAGE_COPY[state.tab].description}
         actions={
           <>
             <button
@@ -361,24 +501,24 @@ const LeadView = (state: LeadPageState) => {
           </>
         }
       />
-      <div class="commercial-console-filters">
-        {(['ALL', 'POOL', 'CLAIMED', 'QUALIFIED', 'DISQUALIFIED', 'CONVERTED'] as const).map(
-          (option) => (
-            <button
-              key={option}
-              type="button"
-              class={
-                state.statusFilter === option ? 'secondary compact active' : 'secondary compact'
-              }
-              data-testid={`kt-lead-filter-${option.toLowerCase()}`}
-              onClick={() => {
-                state.setStatusFilter(option);
-              }}
-            >
-              {option === 'ALL' ? '全部' : (STATUS_LABELS[option] ?? option)}
-            </button>
-          ),
-        )}
+      <div class="crm-toolbar commercial-console-filters">
+        <LeadTabs state={state} />
+        {pool
+          ? null
+          : PRIVATE_STATUS_FILTERS.map((option) => (
+              <button
+                key={option}
+                type="button"
+                class="secondary compact crm-filter"
+                aria-pressed={state.statusFilter === option}
+                data-testid={`kt-lead-filter-${option.toLowerCase()}`}
+                onClick={() => {
+                  state.setStatusFilter(option);
+                }}
+              >
+                {option === 'ALL' ? '全部' : leadStatusLabel(option)}
+              </button>
+            ))}
         <input
           type="search"
           placeholder="搜索线索标题、来源或状态"
@@ -394,24 +534,28 @@ const LeadView = (state: LeadPageState) => {
           {state.loadError}
         </p>
       ) : null}
-      <DataTable
-        columns={columns(state)}
-        rows={shown}
-        rowId={(row) => state.ports.textValue(row.id ?? row.title, 'row')}
-        caption="线索主列表（状态、来源与负责人）"
-        loading={state.loading}
-        pagination={{
-          loadedCount: shown.length,
-          hasMore: visible.length > shown.length,
-          loading: false,
-          onLoadMore: () => {
-            state.showMore();
-          },
-        }}
-        {...(state.loadError === '' ? {} : { error: state.loadError })}
-        emptyTitle="暂无线索"
-        emptyDescription="新建线索后会出现在这里"
-      />
+      <div role="tabpanel" id="kt-lead-panel" aria-labelledby={TAB_TEST_IDS[state.tab]}>
+        <DataTable
+          columns={columns(state)}
+          rows={shown}
+          rowId={(row) => state.ports.textValue(row.id ?? row.title, 'row')}
+          caption={
+            pool ? '公海线索列表（来源、负责人与最近更新）' : '销售线索主列表（状态、来源与负责人）'
+          }
+          loading={state.loading}
+          pagination={{
+            loadedCount: shown.length,
+            hasMore: visible.length > shown.length,
+            loading: false,
+            onLoadMore: () => {
+              state.showMore();
+            },
+          }}
+          {...(state.loadError === '' ? {} : { error: state.loadError })}
+          emptyTitle={empty.title}
+          emptyDescription={empty.description}
+        />
+      </div>
       {state.selected ? <LeadDrawer state={state} /> : null}
       {state.activeForm === 'create' ? <CreateDrawer state={state} /> : null}
     </div>
@@ -419,11 +563,12 @@ const LeadView = (state: LeadPageState) => {
 };
 
 export function LeadConsolePage(ports: LeadConsolePorts) {
+  const defaultTab: LeadTab =
+    ports.poolMode || !ports.permissions.has('lead:read') ? 'POOL' : 'PRIVATE';
   const bundle = {
     leads: signal<readonly LeadRow[]>([...ports.initialLeads]),
-    statusFilter: signal<'ALL' | 'POOL' | 'CLAIMED' | 'QUALIFIED' | 'DISQUALIFIED' | 'CONVERTED'>(
-      'ALL',
-    ),
+    tab: signal<LeadTab>(defaultTab),
+    statusFilter: signal<LeadStatusFilter>('ALL'),
     search: signal(''),
     loadError: signal(''),
     submitError: signal(''),
@@ -444,11 +589,22 @@ export function LeadConsolePage(ports: LeadConsolePorts) {
     bundle.submitError.value = '';
   };
 
+  // 刷新后抽屉同步到最新行对象（认领/释放后状态与可用操作随之变化）；记录已不在
+  // 可见范围（如释放后无公海权限）则关闭抽屉，避免停留在过期对象上继续操作。
+  const syncSelected = (): void => {
+    const current = bundle.selected.value;
+    if (current === null || ports.textValue(current.id, '') === '') return;
+    const id = ports.textValue(current.id, '');
+    bundle.selected.value =
+      bundle.leads.value.find((row) => ports.textValue(row.id, '') === id) ?? null;
+  };
+
   const runRefresh = async (): Promise<void> => {
     bundle.loading.value = true;
     try {
       bundle.leads.value = await ports.refresh();
       bundle.loadError.value = '';
+      syncSelected();
     } catch (error: unknown) {
       fail(error, '线索加载失败');
     } finally {
@@ -467,6 +623,9 @@ export function LeadConsolePage(ports: LeadConsolePorts) {
         pool: true,
       });
       bundle.leads.value = await ports.refresh();
+      // 新线索进入公海：切到公海分栏让结果可见（无公海视图时保持当前分栏）。
+      if (leadTabs(ports.permissions, bundle.leads.value).includes('POOL'))
+        bundle.tab.value = 'POOL';
       closeForm();
     } catch (error: unknown) {
       fail(error, '线索创建失败');
@@ -485,6 +644,7 @@ export function LeadConsolePage(ports: LeadConsolePorts) {
         'PUT',
       );
       bundle.leads.value = await ports.refresh();
+      syncSelected();
       closeForm();
     } catch (error: unknown) {
       fail(error, '线索状态流转失败');
@@ -493,41 +653,50 @@ export function LeadConsolePage(ports: LeadConsolePorts) {
     }
   };
 
-  const state = (): LeadPageState => ({
-    leads: bundle.leads.value,
-    shownCount: bundle.shownCount.value,
-    statusFilter: bundle.statusFilter.value,
-    search: bundle.search.value,
-    loadError: bundle.loadError.value,
-    submitError: bundle.submitError.value,
-    loading: bundle.loading.value,
-    selected: bundle.selected.value,
-    activeForm: bundle.activeForm.value,
-    permissions: ports.permissions,
-    ports,
-    open: (row) => {
-      bundle.selected.value = row;
-      bundle.activeForm.value = null;
-      bundle.submitError.value = '';
-    },
-    openForm: (kind) => {
-      bundle.activeForm.value = kind;
-      bundle.submitError.value = '';
-    },
-    closeForm,
-    setStatusFilter: (next) => {
-      bundle.statusFilter.value = next;
-    },
-    setSearch: (next) => {
-      bundle.search.value = next;
-    },
-    showMore: () => {
-      bundle.shownCount.value = bundle.shownCount.value + 20;
-    },
-    runRefresh,
-    runCreate,
-    runState,
-  });
+  const state = (): LeadPageState => {
+    const tabs = leadTabs(ports.permissions, bundle.leads.value);
+    return {
+      leads: bundle.leads.value,
+      shownCount: bundle.shownCount.value,
+      tab: tabs.includes(bundle.tab.value) ? bundle.tab.value : (tabs[0] ?? bundle.tab.value),
+      tabs,
+      statusFilter: bundle.statusFilter.value,
+      search: bundle.search.value,
+      loadError: bundle.loadError.value,
+      submitError: bundle.submitError.value,
+      loading: bundle.loading.value,
+      selected: bundle.selected.value,
+      activeForm: bundle.activeForm.value,
+      now: ports.now?.() ?? Date.now(),
+      permissions: ports.permissions,
+      ports,
+      open: (row) => {
+        bundle.selected.value = row;
+        bundle.activeForm.value = null;
+        bundle.submitError.value = '';
+      },
+      openForm: (kind) => {
+        bundle.activeForm.value = kind;
+        bundle.submitError.value = '';
+      },
+      closeForm,
+      setTab: (next) => {
+        bundle.tab.value = next;
+      },
+      setStatusFilter: (next) => {
+        bundle.statusFilter.value = next;
+      },
+      setSearch: (next) => {
+        bundle.search.value = next;
+      },
+      showMore: () => {
+        bundle.shownCount.value = bundle.shownCount.value + 20;
+      },
+      runRefresh,
+      runCreate,
+      runState,
+    };
+  };
 
   const Page = () => LeadView(state());
   return Page;
