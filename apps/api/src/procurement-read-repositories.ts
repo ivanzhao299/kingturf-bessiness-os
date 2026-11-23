@@ -41,6 +41,10 @@ export type RfqListFilter = Readonly<{
   status?: 'DRAFT' | 'ISSUED' | 'PARTIALLY_RECEIVED' | 'RECEIVED' | 'CANCELLED';
 }>;
 
+// U3-PROC-4：收货单行投影（to_jsonb 蛇形键 + poNumber + lines 批次/库位聚合）——
+// list 与 additive 只读共用同一片段（字节一致，行为守恒）。
+export const GOODS_RECEIPT_ITEM_PROJECTION = `to_jsonb(g)||jsonb_build_object('poNumber',p.po_number,'lines',coalesce((SELECT jsonb_agg(to_jsonb(l)||jsonb_build_object('lotNumber',lot.lot_number,'locationCode',loc.code,'sku',i.sku) ORDER BY l.id) FROM goods_receipt_lines l JOIN inventory_lots lot ON lot.id=l.lot_id AND lot.tenant_id=l.tenant_id JOIN inventory_locations loc ON loc.id=l.location_id AND loc.tenant_id=l.tenant_id JOIN purchase_order_lines pol ON pol.id=l.purchase_order_line_id AND pol.tenant_id=l.tenant_id JOIN manufacturing_item_versions v ON v.id=pol.item_version_id AND v.tenant_id=pol.tenant_id JOIN manufacturing_items i ON i.id=v.item_id AND i.tenant_id=v.tenant_id WHERE l.goods_receipt_id=g.id AND l.tenant_id=g.tenant_id),'[]'::jsonb))`;
+
 // U3-PROC-3：采购单行投影（to_jsonb 蛇形键 + supplierName + lines 含 receivedQuantity
 // 聚合）——list 与 additive 只读共用同一片段（字节一致，行为守恒）。
 export const PURCHASE_ORDER_ITEM_PROJECTION = `to_jsonb(p)||jsonb_build_object('supplierName',s.name,'lines',coalesce((SELECT jsonb_agg(to_jsonb(l)||jsonb_build_object('sku',i.sku,'itemName',i.name,'receivedQuantity',coalesce((SELECT sum(grl.quantity) FROM goods_receipt_lines grl WHERE grl.purchase_order_line_id=l.id AND grl.tenant_id=l.tenant_id),0)) ORDER BY l.line_number) FROM purchase_order_lines l JOIN manufacturing_item_versions v ON v.id=l.item_version_id AND v.tenant_id=l.tenant_id JOIN manufacturing_items i ON i.id=v.item_id AND i.tenant_id=v.tenant_id WHERE l.purchase_order_id=p.id AND l.tenant_id=p.tenant_id),'[]'::jsonb))`;
@@ -175,6 +179,40 @@ export class PostgresProcurementReadRepository {
           ||jsonb_build_object('supplierName',s.name,'lines',coalesce((SELECT jsonb_agg(to_jsonb(l)||jsonb_build_object('sku',i.sku,'itemName',i.name,'receivedQuantity',coalesce((SELECT sum(grl.quantity) FROM goods_receipt_lines grl WHERE grl.purchase_order_line_id=l.id AND grl.tenant_id=l.tenant_id),0)) ORDER BY l.line_number) FROM purchase_order_lines l JOIN manufacturing_item_versions v ON v.id=l.item_version_id AND v.tenant_id=l.tenant_id JOIN manufacturing_items i ON i.id=v.item_id AND i.tenant_id=v.tenant_id WHERE l.purchase_order_id=p.id AND l.tenant_id=p.tenant_id),'[]'::jsonb))
           ||jsonb_build_object('receipts',coalesce((SELECT jsonb_agg(to_jsonb(g)||jsonb_build_object('lines',coalesce((SELECT jsonb_agg(to_jsonb(l)||jsonb_build_object('lotNumber',lot.lot_number,'locationCode',loc.code,'sku',i.sku) ORDER BY l.id) FROM goods_receipt_lines l JOIN inventory_lots lot ON lot.id=l.lot_id AND lot.tenant_id=l.tenant_id JOIN inventory_locations loc ON loc.id=l.location_id AND loc.tenant_id=l.tenant_id JOIN manufacturing_item_versions v ON v.id=l.item_version_id AND l.tenant_id=v.tenant_id JOIN manufacturing_items i ON i.id=v.item_id AND i.tenant_id=v.tenant_id WHERE l.goods_receipt_id=g.id AND l.tenant_id=g.tenant_id),'[]'::jsonb)) ORDER BY g.received_at) FROM goods_receipts g WHERE g.purchase_order_id=p.id AND g.tenant_id=p.tenant_id),'[]'::jsonb)) item
         FROM purchase_orders p JOIN suppliers s ON s.id=p.supplier_id AND s.tenant_id=p.tenant_id WHERE p.tenant_id=$1 AND p.id=$2`,
+        [context.actor.companyId, id],
+      )
+    ).rows[0];
+    return row?.item ?? null;
+  }
+
+  // U3-PROC-4（ADR-0015）：收货单列表只读（additive）——投影/排序键（received_at DESC）
+  // 与 list('receipts') 一致，页对象形态（收货单不可变事实，无筛选/分页窗口）。
+  public async listGoodsReceipts(
+    context: Context,
+  ): Promise<Readonly<{ items: readonly JsonObject[]; nextCursor: null }>> {
+    company(context);
+    return {
+      items: (
+        await this.db.query<{ item: JsonObject }>(
+          `SELECT ${GOODS_RECEIPT_ITEM_PROJECTION} item FROM goods_receipts g JOIN purchase_orders p ON p.id=g.purchase_order_id AND p.tenant_id=g.tenant_id WHERE g.tenant_id=$1 ORDER BY g.received_at DESC`,
+          [context.actor.companyId],
+        )
+      ).rows.map((row) => row.item),
+      nextCursor: null,
+    };
+  }
+
+  // U3-PROC-4（ADR-0015）：收货单详情只读（additive）——根行（list 同投影字段）+
+  // 批次行项（lot/location/sku/quantity）+ 关联采购单数量核对（poNumber/status/
+  // 行项 quantity vs receivedQuantity）。
+  public async findGoodsReceipt(id: string, context: Context): Promise<JsonObject | null> {
+    company(context);
+    const row = (
+      await this.db.query<{ item: JsonObject }>(
+        `SELECT to_jsonb(g)
+          ||jsonb_build_object('poNumber',p.po_number,'poStatus',p.status,'lines',coalesce((SELECT jsonb_agg(to_jsonb(l)||jsonb_build_object('lotNumber',lot.lot_number,'locationCode',loc.code,'sku',i.sku) ORDER BY l.id) FROM goods_receipt_lines l JOIN inventory_lots lot ON lot.id=l.lot_id AND lot.tenant_id=l.tenant_id JOIN inventory_locations loc ON loc.id=l.location_id AND loc.tenant_id=l.tenant_id JOIN purchase_order_lines pol ON pol.id=l.purchase_order_line_id AND pol.tenant_id=l.tenant_id JOIN manufacturing_item_versions v ON v.id=pol.item_version_id AND v.tenant_id=pol.tenant_id JOIN manufacturing_items i ON i.id=v.item_id AND i.tenant_id=v.tenant_id WHERE l.goods_receipt_id=g.id AND l.tenant_id=g.tenant_id),'[]'::jsonb))
+          ||jsonb_build_object('purchaseOrder',jsonb_build_object('id',p.id,'poNumber',p.po_number,'status',p.status,'lines',coalesce((SELECT jsonb_agg(to_jsonb(pol)||jsonb_build_object('sku',i.sku,'itemName',i.name,'quantity',pol.quantity,'receivedQuantity',coalesce((SELECT sum(grl.quantity) FROM goods_receipt_lines grl WHERE grl.purchase_order_line_id=pol.id AND grl.tenant_id=pol.tenant_id),0)) ORDER BY pol.line_number) FROM purchase_order_lines pol JOIN manufacturing_item_versions v ON v.id=pol.item_version_id AND v.tenant_id=pol.tenant_id JOIN manufacturing_items i ON i.id=v.item_id AND i.tenant_id=v.tenant_id WHERE pol.purchase_order_id=p.id AND pol.tenant_id=p.tenant_id),'[]'::jsonb))) item
+        FROM goods_receipts g JOIN purchase_orders p ON p.id=g.purchase_order_id AND p.tenant_id=g.tenant_id WHERE g.tenant_id=$1 AND g.id=$2`,
         [context.actor.companyId, id],
       )
     ).rows[0];

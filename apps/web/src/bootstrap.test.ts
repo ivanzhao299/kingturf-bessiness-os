@@ -379,10 +379,8 @@ it('captures artificial-turf project handoff fields without test-channel evidenc
     ),
     readBoundSource('./commercial/manufacturing-forms.ts', 'export function openItemVersionForm'),
     readBoundSource('./commercial/sourcing-register.ts', 'export function createSourcingPanel'),
-    readBoundSource('./commercial/purchase-register.ts', 'export function createOrderPanel'),
     readBoundSource('./commercial/inventory-register.ts', 'export function createInventoryPanel'),
     readBoundSource('./commercial/procurement-view.ts', 'export function appendProcurementView'),
-    readBoundSource('./commercial/purchase-actions.ts', 'export function appendReceiveGoodsAction'),
     readBoundSource('./commercial/mrp-view.ts', 'export function appendMrpView'),
     readBoundSource('./commercial/mrp-actions.ts', 'export function appendMrpActions'),
     readBoundSource('./commercial/mrp-run.ts', 'export function appendMrpRun'),
@@ -2001,10 +1999,10 @@ describe('web bootstrap', () => {
       controller,
     ) as unknown as RenderedElement;
     expect(workspace.findByClass('procurement-workbench')).toHaveLength(1);
-    // U3-PROC-1/2/3：供应商/询价/采购单三区迁移至 Preact 控制台宿主（vanilla
-    // procurement-column 剩 sourcing（报价区）/order（收货区）/inventory 三区；
-    // 供应商/询价/采购单行渲染由各自控制台行为测试覆盖）。
-    expect(workspace.findByClass('procurement-column')).toHaveLength(3);
+    // U3-PROC-1..4：供应商/询价/采购单/收货四区迁移至 Preact 控制台宿主（vanilla
+    // procurement-column 剩 sourcing（报价区）/inventory 两区；供应商/询价/采购单/
+    // 收货行渲染由各自控制台行为测试覆盖）。
+    expect(workspace.findByClass('procurement-column')).toHaveLength(2);
     // 宿主必须挂载于 procurement-workbench 面板内（路由可见性随父面板治理——
     // e2e 的 .procurement-workbench 定位器作用域同时依赖该包含关系）。
     const workbench = workspace.findByClass('procurement-workbench')[0];
@@ -2017,10 +2015,11 @@ describe('web bootstrap', () => {
     const poHost = workbench?.findByClass('purchase-orders-console')[0];
     expect(poHost?.getAttribute('data-testid')).toBe('kt-proc-purchase-orders');
     expect(poHost?.getAttribute('data-route-view')).toBe(null);
-    // sourcing 报价卡片与 order 收货卡片保持 vanilla（supplier-quotes/goods-receipts
-    // 域待 U3-PROC-4/5）。
+    const grHost = workbench?.findByClass('goods-receipts-console')[0];
+    expect(grHost?.getAttribute('data-testid')).toBe('kt-proc-goods-receipts');
+    expect(grHost?.getAttribute('data-route-view')).toBe(null);
+    // sourcing 报价卡片保持 vanilla（supplier-quotes 域端点未迁移）。
     expect(workspace.textContent).toContain('报价 SQ-1');
-    expect(workspace.textContent).toContain('收货 GR-1 · PO-1 · 1 批');
     expect(workspace.textContent).toContain('LOT-1');
     expect(workspace.textContent).toContain('结存 5000');
     expect(inventoryLocationOption({ id: 'loc-1', code: 'RAW-A01', name: '原料一区' })).toEqual({

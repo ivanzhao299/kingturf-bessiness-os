@@ -24,6 +24,7 @@ import type { CustomerConsolePorts } from './console/customer-ports';
 import type { SupplierConsolePorts } from './console/supplier-ports';
 import type { RfqConsolePorts } from './console/rfq-ports';
 import type { PurchaseOrderConsolePorts } from './console/po-ports';
+import type { GoodsReceiptConsolePorts } from './console/gr-ports';
 import type { OperationsViewContext } from './operations-view-ports';
 import { setAppRoute } from '../shared/navigation';
 import type { ConsoleMountPorts } from './console/mount';
@@ -591,5 +592,67 @@ export function appendPurchaseOrderConsole(
   void import('./console/mount').then(({ mountCommercialConsole }) => {
     if (section.isConnected && typeof globalThis.document === 'object')
       mountCommercialConsole(section, { kind: 'purchase-orders', ports });
+  });
+}
+
+// U3-PROC-4：收货控制台宿主——收货区迁移至 Preact（同前三宿主口径：挂
+// procurement-workbench 面板内、不带 data-route-view；详情经桥轨 additive
+// GET /api/v1/goods-receipts/:id，失败回退列表行；可续收订单行/库位选项与原
+// vanilla 登记收货表单同源同公式）。
+export function appendGoodsReceiptConsole(
+  context: OperationsViewContext,
+  target: HTMLElement,
+): void {
+  const { controller, permissions } = context;
+  const recordText = context.ports.recordText;
+  // 可续收订单行选项：ISSUED/PARTIALLY_RECEIVED 行（未收数量标签，vanilla 同公式）。
+  const openOrderLineChoices = (controller.views.get('/api/v1/purchase-orders') ?? []).flatMap(
+    (order) =>
+      ['ISSUED', 'PARTIALLY_RECEIVED'].includes(recordText(order, 'status', 'status'))
+        ? (Array.isArray(order.lines) ? order.lines : []).map((line) => {
+            const recordLine = context.ports.recordValue(line);
+            return {
+              value: `${recordText(order, 'id', 'id')}|${recordText(recordLine, 'id', 'id')}`,
+              label: `${recordText(order, 'poNumber', 'po_number')} · ${recordText(recordLine, 'sku', 'sku')} · 未收 ${context.ports.decimalValue(Number(recordLine.quantity ?? 0) - Number(recordLine.receivedQuantity ?? 0))}`,
+            };
+          })
+        : [],
+  );
+  // 活动库位选项：label 同 inventoryLocationOption、value=code（vanilla 同源）。
+  const locationChoices = (controller.views.get('/api/v1/inventory-locations') ?? []).map(
+    (item) => ({
+      ...context.ports.inventoryLocationOption(item),
+      value: recordText(item, 'code', 'code'),
+    }),
+  );
+  const ports: GoodsReceiptConsolePorts = {
+    permissions,
+    initialReceipts: controller.views.get('/api/v1/goods-receipts') ?? [],
+    openOrderLineChoices,
+    locationChoices,
+    recordText: (record, camel, snake, fallback) => recordText(record, camel, snake, fallback),
+    textValue: (value, fallback = '') =>
+      typeof value === 'string' || typeof value === 'number' ? String(value) : fallback,
+    decimalValue: (value) => context.ports.decimalValue(value),
+    submit: async (path, payload, method) => {
+      await controller.submit(path, payload, method);
+      return null;
+    },
+    loadDetail: async (receiptId) => {
+      const read = controller.api.get;
+      if (!read) return null;
+      return await read(`/api/v1/goods-receipts/${receiptId}`);
+    },
+    refresh: async () => {
+      await controller.load();
+      return controller.views.get('/api/v1/goods-receipts') ?? [];
+    },
+  };
+  const section = el('section', 'commercial-console goods-receipts-console');
+  section.setAttribute('data-testid', 'kt-proc-goods-receipts');
+  target.append(section);
+  void import('./console/mount').then(({ mountCommercialConsole }) => {
+    if (section.isConnected && typeof globalThis.document === 'object')
+      mountCommercialConsole(section, { kind: 'goods-receipts', ports });
   });
 }

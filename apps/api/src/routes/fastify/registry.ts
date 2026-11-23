@@ -31,6 +31,7 @@ import { registerActivityRoutes } from './activities.ts';
 import { registerSupplierRoutes } from './suppliers.ts';
 import { registerRfqRoutes } from './rfqs.ts';
 import { registerPurchaseOrderRoutes } from './purchase-orders.ts';
+import { registerGoodsReceiptRoutes } from './goods-receipts.ts';
 
 export type FastifyRouteScope = Readonly<{
   authorization: AuthorizationContext;
@@ -95,6 +96,9 @@ const CLAIMED_FASTIFY_ROUTES: readonly (readonly [method: string, pattern: RegEx
   ['GET', /^\/api\/v1\/purchase-orders\/[0-9a-f-]+$/u],
   ['POST', /^\/api\/v1\/purchase-orders$/u],
   ['PUT', /^\/api\/v1\/purchase-orders\/[0-9a-f-]+\/state$/u],
+  ['GET', /^\/api\/v1\/goods-receipts$/u],
+  ['GET', /^\/api\/v1\/goods-receipts\/[0-9a-f-]+$/u],
+  ['POST', /^\/api\/v1\/goods-receipts$/u],
 ];
 
 // legacy catch 层的同款 DomainError 状态映射（行为守恒）。
@@ -148,6 +152,7 @@ const buildRouteGroupApp = (scope: FastifyRouteScope) => {
   registerSupplierRoutes(app, scope);
   registerRfqRoutes(app, scope);
   registerPurchaseOrderRoutes(app, scope);
+  registerGoodsReceiptRoutes(app, scope);
   return app;
 };
 

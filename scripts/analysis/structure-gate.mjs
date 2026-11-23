@@ -211,6 +211,10 @@ const SQL_ENUM_NAMES = new Set([
   // 提取为模块常量供两处复用（list/listRfqs），SQL 字节与提取前逐字一致；status
   // 筛选值一律经 values.push 参数化。
   'RFQ_ITEM_PROJECTION',
+  // U3-PROC-4（供应链域迁移，同 RFQ 先例）：收货单行投影（to_jsonb+poNumber+
+  // lines 批次/库位聚合）提取为模块常量供两处复用（list/listGoodsReceipts），
+  // SQL 字节与提取前逐字一致；收货单不可变事实无筛选。
+  'GOODS_RECEIPT_ITEM_PROJECTION',
   // U3-PROC-3（供应链域迁移，同 RFQ 先例）：采购单行投影（to_jsonb+supplierName+
   // lines 含 receivedQuantity 聚合）提取为模块常量供两处复用（list/
   // listPurchaseOrders），SQL 字节与提取前逐字一致；status 筛选值经 values.push

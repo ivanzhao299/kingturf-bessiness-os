@@ -117,6 +117,10 @@ describe('Batch4 app extraction against fixed f3 complete request traces', () =>
     // list('orders') 换为 additive listPurchaseOrders（同投影/排序，页对象形态）。
     'GET /api/v1/purchase-orders',
     'POST /api/v1/purchase-orders',
+    // U3-PROC-4（同批）：收货单路径场景经生产桥——同口径；GET 终止调用由
+    // list('receipts') 换为 additive listGoodsReceipts（同投影/排序，页对象形态）。
+    'GET /api/v1/goods-receipts',
+    'POST /api/v1/goods-receipts',
   ]);
   const preserveWithStrip = (result: {
     name: string;
@@ -183,7 +187,8 @@ describe('Batch4 app extraction against fixed f3 complete request traces', () =>
         if (
           row.name === 'GET /api/v1/suppliers' ||
           row.name === 'GET /api/v1/procurement-rfqs' ||
-          row.name === 'GET /api/v1/purchase-orders'
+          row.name === 'GET /api/v1/purchase-orders' ||
+          row.name === 'GET /api/v1/goods-receipts'
         ) {
           expect(pinnedCurrent.response).toEqual(pinnedBaseline.response);
           const listMethod =
@@ -191,24 +196,35 @@ describe('Batch4 app extraction against fixed f3 complete request traces', () =>
               ? 'listSupplierPage'
               : row.name === 'GET /api/v1/procurement-rfqs'
                 ? 'listRfqs'
-                : 'listPurchaseOrders';
-          expect(terminalCalls(pinnedCurrent)).toEqual([
-            [
-              'call',
-              'procurement',
-              listMethod,
-              [
-                {
-                  actor: {
-                    employeeId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-                    companyId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+                : row.name === 'GET /api/v1/purchase-orders'
+                  ? 'listPurchaseOrders'
+                  : 'listGoodsReceipts';
+          // 收货单不可变事实无筛选窗口——listGoodsReceipts 仅收作用域上下文单参。
+          const listArgs =
+            row.name === 'GET /api/v1/goods-receipts'
+              ? [
+                  {
+                    actor: {
+                      employeeId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+                      companyId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+                    },
+                    scopes: ['COMPANY'],
+                    anchors: [],
                   },
-                  scopes: ['COMPANY'],
-                  anchors: [],
-                },
-                {},
-              ],
-            ],
+                ]
+              : [
+                  {
+                    actor: {
+                      employeeId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+                      companyId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+                    },
+                    scopes: ['COMPANY'],
+                    anchors: [],
+                  },
+                  {},
+                ];
+          expect(terminalCalls(pinnedCurrent)).toEqual([
+            ['call', 'procurement', listMethod, listArgs],
           ]);
           return;
         }

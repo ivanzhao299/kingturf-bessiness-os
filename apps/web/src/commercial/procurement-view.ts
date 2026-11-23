@@ -4,9 +4,9 @@ import {
   appendSupplierConsole,
   appendRfqConsole,
   appendPurchaseOrderConsole,
+  appendGoodsReceiptConsole,
 } from './console-entry';
 import { createSourcingPanel } from './sourcing-register';
-import { createOrderPanel } from './purchase-register';
 import { createInventoryPanel } from './inventory-register';
 
 export function appendProcurementView(context: OperationsViewContext): void {
@@ -23,7 +23,6 @@ export function appendProcurementView(context: OperationsViewContext): void {
     rfqs = controller.views.get('/api/v1/procurement-rfqs') ?? [],
     supplierQuotes = controller.views.get('/api/v1/supplier-quotes') ?? [],
     purchaseOrders = controller.views.get('/api/v1/purchase-orders') ?? [],
-    receipts = controller.views.get('/api/v1/goods-receipts') ?? [],
     locations = controller.views.get('/api/v1/inventory-locations') ?? [],
     balances = controller.views.get('/api/v1/inventory-balances') ?? [];
   const refresh = async () => {
@@ -54,19 +53,18 @@ export function appendProcurementView(context: OperationsViewContext): void {
     ),
   );
   panel.append(procurementSummary);
-  // U3-PROC-1/2/3：供应商/询价/采购单三区迁移至 Preact 控制台（挂
+  // U3-PROC-1..4：供应商/询价/采购单/收货四区全部迁移至 Preact 控制台（挂
   // procurement-workbench 面板内——路由可见性随父面板；原 vanilla supplier 卡片、
-  // RFQ 卡片与新建询价表单、PO 卡片与创建签发表单及合同文档工作流退役，裁定 17
-  // 语义；报价登记/批次收货两 forms 属 supplier-quotes/goods-receipts 域保留
-  // vanilla 待 U3-PROC-4/5；inventory 区保持 vanilla）。
+  // RFQ 卡片与新建询价表单、PO 卡片与创建签发表单及合同文档工作流、收货卡片与
+  // 登记收货表单全部退役，裁定 17 语义；inventory 区保持 vanilla）。
   appendSupplierConsole(context, panel);
   appendRfqConsole(context, panel);
   appendPurchaseOrderConsole(context, panel);
+  appendGoodsReceiptConsole(context, panel);
   const grid = el('div', 'procurement-grid');
   const sourcingPanel = createSourcingPanel(context, rfqs, supplierQuotes, suppliers, refresh);
-  const orderPanel = createOrderPanel(context, purchaseOrders, receipts, locations, refresh);
   const inventoryPanel = createInventoryPanel(context, balances, locations, refresh);
-  grid.append(sourcingPanel, orderPanel, inventoryPanel);
+  grid.append(sourcingPanel, inventoryPanel);
   panel.append(grid);
   workspace.append(panel);
 }
