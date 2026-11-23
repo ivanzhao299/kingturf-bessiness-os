@@ -11,10 +11,14 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / 'tests/operations'))
+import psql_helper  # noqa: E402
+
 spec = importlib.util.spec_from_file_location('release_orchestrator', ROOT / 'scripts/release_orchestrator.py')
 ro = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(ro)
@@ -22,13 +26,23 @@ MIGRATIONS = ROOT / 'packages/database/migrations'
 REAL_FILES = sorted(MIGRATIONS.glob('[0-9][0-9][0-9][0-9]*.sql'))
 assert len(REAL_FILES) == 75, 'candidate migration set must have exactly 75 files'
 
-CONTAINER = 'kingturf-business-os-postgres-1'
-PG_USER = 'kingturf'
+# Drills without a host psql client reach PostgreSQL through `docker exec`. The
+# container follows DATABASE_URL so the Python side and the Node reference migrator
+# always talk to the same instance (None = no container for that port, drills skip).
+CONTAINER = psql_helper.container_for(os.environ.get('DATABASE_URL'))
+PG_USER = psql_helper.user_for(os.environ.get('DATABASE_URL'))
 ENV_URL = os.environ.get('DATABASE_URL')
 URL_PREFIX = re.sub(r'/[^/?]*(\?[^/]*)?$', '/', ENV_URL) if ENV_URL else 'postgresql://kingturf:local-development-only@localhost:5432/'
 HAS_PSQL = bool(shutil.which('psql'))
-HAS_DOCKER = shutil.which('docker') is not None and subprocess.run(
-    ['docker', 'inspect', CONTAINER], capture_output=True).returncode == 0 if shutil.which('docker') else False
+
+
+def _docker_available():
+    if shutil.which('docker') is None or CONTAINER is None:
+        return False
+    return subprocess.run(['docker', 'inspect', CONTAINER], capture_output=True).returncode == 0
+
+
+HAS_DOCKER = _docker_available()
 RELEASE_SHA = '8' * 40
 # Written into the per-run temp directory so the repository gains no .mjs artifact.
 REFERENCE_MIGRATOR = (
