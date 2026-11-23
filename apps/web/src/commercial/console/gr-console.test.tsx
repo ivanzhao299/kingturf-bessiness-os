@@ -392,7 +392,7 @@ describe('U3-PROC-4 收货控制台', () => {
     expect(stockIn.getAttribute('data-state')).toBe('REJECTED');
     expect(stockIn.textContent).toContain('已拒收');
     expect(stockIn.textContent).toContain('拒收不入库 · Tensile strength below limit');
-    // REJECTED 以语义红呈现（danger 徽章；components.css 缺规则时的 token 内联回退）。
+    // REJECTED 以语义红呈现（danger 徽章；规则在 packages/ui components.css）。
     const badge = element(stockIn.querySelector('.status-badge'));
     expect(badge.getAttribute('data-tone')).toBe('danger');
   });

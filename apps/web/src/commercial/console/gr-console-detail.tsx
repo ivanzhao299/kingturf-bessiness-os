@@ -74,19 +74,6 @@ export const QuantityCheck = ({ state }: Readonly<{ state: GrDetailState }>) => 
 
 // ---- 批次追踪时间线 ----
 
-// 语义红徽章：与 @kingturf/ui StatusBadge 同形（class/data-tone='danger'）；danger 追加 token
-// 内联回退——components.css 仅有 data-tone='error' 规则、无 'danger'（落回 neutral 灰），
-// 登记 TD-PROC-004；packages/ui 补规则后本回退可删。
-const DANGER_BADGE_STYLE = {
-  background: 'var(--kt-color-danger-soft)',
-  color: 'var(--kt-color-danger)',
-} as const;
-const RedBadge = ({ children }: Readonly<{ children: string }>) => (
-  <span class="status-badge" data-tone="danger" style={DANGER_BADGE_STYLE}>
-    {children}
-  </span>
-);
-
 type NodeKey = 'receipt' | 'inspection' | 'stockIn';
 type TraceAccess = Readonly<{ inspection: boolean; disposition: boolean; inventory: boolean }>;
 type TraceNode = Readonly<{
@@ -396,11 +383,7 @@ const TraceNodeItem = ({ view }: Readonly<{ view: NodeView }>) => (
   <article class="timeline-item" data-testid={NODE_TESTIDS[view.key]} data-state={view.state}>
     <p>
       <strong>{view.title}</strong>
-      {view.tone === 'danger' ? (
-        <RedBadge>{view.stateLabel}</RedBadge>
-      ) : (
-        <StatusBadge tone={view.tone}>{view.stateLabel}</StatusBadge>
-      )}
+      <StatusBadge tone={view.tone}>{view.stateLabel}</StatusBadge>
       {view.result === '' ? null : <span>{view.result}</span>}
     </p>
     <p>

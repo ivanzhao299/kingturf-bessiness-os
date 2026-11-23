@@ -26,26 +26,6 @@ export const QUALIFICATION_LABELS: Readonly<Record<string, string>> = {
   REJECTED: '已驳回',
 };
 
-// 语义红徽章：与 @kingturf/ui StatusBadge 同形（class/data-tone='danger'）；danger 追加 token
-// 内联回退——components.css 仅有 data-tone='error' 规则、无 'danger'（落回 neutral 灰，与
-// PENDING 撞色），登记 TD-PROC-004；packages/ui 补规则后本回退可删。
-const DANGER_BADGE_STYLE = {
-  background: 'var(--kt-color-danger-soft)',
-  color: 'var(--kt-color-danger)',
-} as const;
-const RedBadge = ({ children }: Readonly<{ children: string }>) => (
-  <span class="status-badge" data-tone="danger" style={DANGER_BADGE_STYLE}>
-    {children}
-  </span>
-);
-
-const ToneBadge = ({ tone, children }: Readonly<{ tone: StatusTone; children: string }>) =>
-  tone === 'danger' ? (
-    <RedBadge>{children}</RedBadge>
-  ) : (
-    <StatusBadge tone={tone}>{children}</StatusBadge>
-  );
-
 export const qualificationRecords = (row: SupplierRow | null): readonly Record<string, unknown>[] =>
   list(row?.qualifications);
 
@@ -72,9 +52,9 @@ export const QualificationList = ({ state }: Readonly<{ state: SupplierDetailSta
         const status = state.ports.textValue(item.status, '');
         return (
           <li key={state.ports.textValue(item.id, String(index))}>
-            <ToneBadge tone={qualificationTone(status)}>
+            <StatusBadge tone={qualificationTone(status)}>
               {QUALIFICATION_LABELS[status] ?? status}
-            </ToneBadge>
+            </StatusBadge>
             {` ${state.ports.textValue(item.sku, '—')} · ${state.ports.textValue(item.itemName, '—')} · v${state.ports.textValue(item.itemVersion, '—')} · 有效期 ${state.ports.textValue(item.validFrom ?? item.valid_from, '—')} ~ ${state.ports.textValue(item.validTo ?? item.valid_to, '长期')}`}
           </li>
         );
@@ -155,7 +135,7 @@ export const QualificationBadges = ({
       ) : (
         visible.map(([key, label, tone, hint]) => (
           <span key={key} title={hint} data-qualification={key} data-count={counts[key]}>
-            <ToneBadge tone={tone}>{`${label} ${String(counts[key])}`}</ToneBadge>
+            <StatusBadge tone={tone}>{`${label} ${String(counts[key])}`}</StatusBadge>
           </span>
         ))
       )}

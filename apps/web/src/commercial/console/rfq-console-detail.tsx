@@ -44,19 +44,11 @@ export const RfqLines = ({ state }: Readonly<{ state: RfqDetailState }>) => {
 
 // ---- 截止倒计时 ----
 
-// 语义红徽章：与 @kingturf/ui StatusBadge 同形（class/data-tone='danger'）；danger 追加 token
-// 内联回退——components.css 仅有 data-tone='error' 规则、无 'danger'（落回 neutral 灰），
-// 登记 TD-PROC-004；packages/ui 补规则后本回退可删。
-const DANGER_BADGE_STYLE = {
-  background: 'var(--kt-color-danger-soft)',
-  color: 'var(--kt-color-danger)',
-} as const;
-
 export type Countdown = Readonly<{
   kind: 'remaining' | 'today' | 'overdue';
   days: number;
   label: string;
-  tone: StatusTone | 'danger';
+  tone: StatusTone;
 }>;
 
 const pad = (value: number): string => String(value).padStart(2, '0');
@@ -101,7 +93,6 @@ export const CountdownBadge = ({ countdown }: Readonly<{ countdown: Countdown }>
     data-testid="kt-rfq-countdown"
     data-kind={countdown.kind}
     data-tone={countdown.tone}
-    style={countdown.tone === 'danger' ? DANGER_BADGE_STYLE : undefined}
     title="距报价截止的日历天数（已签发询价单）"
   >
     {countdown.label}
