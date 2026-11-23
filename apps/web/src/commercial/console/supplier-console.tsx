@@ -9,12 +9,22 @@ import {
   type FormSectionField,
   type StatusTone,
 } from '@kingturf/ui';
+import {
+  PendingQualifications,
+  QualificationBadges,
+  QualificationList,
+  QuoteComparison,
+  QuoteHistory,
+  qualificationCounts,
+} from './supplier-console-detail';
 import type { SupplierConsolePorts, SupplierRow } from './supplier-ports';
 
 // U3-PROC-1（ADR-0014 分域重写）：供应商控制台——原 vanilla supplier-register 能力面
 // 等价迁移（新建供应商/物料准入审核（扩展 approve|conditional|reject）/列表/状态筛选/
 // 检索/详情抽屉（资质+联系信息+报价历史））。供应商停用写路径 legacy 不存在
 // （suppliers.status 无任何迁移端点），行为守恒不新增——状态仅读侧展示。
+// PROC-UX：资质状态四色徽章（列表列 + 抽屉）与报价历史对比（同一物料多供应商并排）；
+// 详情子组件见 supplier-console-detail.tsx。
 type SupplierFormKind = 'create' | 'qualify' | null;
 
 type SupplierPageState = Readonly<{
@@ -29,6 +39,8 @@ type SupplierPageState = Readonly<{
   activeForm: SupplierFormKind;
   permissions: ReadonlySet<string>;
   ports: SupplierConsolePorts;
+  // 当前时间源（报价有效期判定；测试可注入固定时钟）。
+  now: () => Date;
   open: (row: SupplierRow | null) => void;
   openForm: (kind: SupplierFormKind) => void;
   closeForm: () => void;
@@ -50,23 +62,11 @@ const STATUS_LABELS: Readonly<Record<string, string>> = {
   ACTIVE: '已启用',
   INACTIVE: '已停用',
 };
-const QUALIFICATION_LABELS: Readonly<Record<string, string>> = {
-  APPROVED: '已批准',
-  CONDITIONAL: '有条件批准',
-  REJECTED: '已驳回',
-};
 
 const statusTone = (status: unknown): StatusTone => {
   if (status === 'ACTIVE') return 'success';
   if (status === 'INACTIVE') return 'danger';
   if (status === 'ON_HOLD') return 'warning';
-  return 'neutral';
-};
-
-const qualificationTone = (status: unknown): StatusTone => {
-  if (status === 'APPROVED') return 'success';
-  if (status === 'CONDITIONAL') return 'info';
-  if (status === 'REJECTED') return 'danger';
   return 'neutral';
 };
 
@@ -79,16 +79,8 @@ const recordText = (
 ) => ports.recordText(row, camel, snake, fallback);
 
 // 已准入计数：legacy 卡片口径（status==='APPROVED' 的资质数）。
-const approvedCount = (row: SupplierRow): number => {
-  const qualifications = row.qualifications;
-  if (!Array.isArray(qualifications)) return 0;
-  return qualifications.filter(
-    (item) =>
-      typeof item === 'object' &&
-      item !== null &&
-      (item as Record<string, unknown>).status === 'APPROVED',
-  ).length;
-};
+const approvedCount = (state: SupplierPageState, row: SupplierRow): number =>
+  qualificationCounts(state.ports, row).APPROVED;
 
 const contactText = (ports: SupplierConsolePorts, row: SupplierRow, key: string): string => {
   const contact = row.contact;
@@ -120,8 +112,10 @@ const columns = (state: SupplierPageState): readonly DataTableColumn<SupplierRow
   {
     key: 'qualifications',
     header: '物料准入',
-    field: (row) => approvedCount(row),
-    render: (row) => `已准入 ${String(approvedCount(row))} 项`,
+    field: (row) => approvedCount(state, row),
+    render: (row) => (
+      <QualificationBadges state={state} row={row} testId="kt-supplier-qualifications-cell" />
+    ),
   },
   {
     key: 'paymentTerms',
@@ -159,57 +153,6 @@ const filteredSuppliers = (state: SupplierPageState): readonly SupplierRow[] =>
       `${recordText(state.ports, row, 'supplierNumber', 'supplier_number')}${recordText(state.ports, row, 'name', 'name')}${status}`.toLowerCase();
     return haystack.includes(state.search.toLowerCase());
   });
-
-const QualificationList = ({ state }: Readonly<{ state: SupplierPageState }>) => {
-  const row = state.selected;
-  if (!row) return null;
-  const qualifications = Array.isArray(row.qualifications) ? row.qualifications : [];
-  if (qualifications.length === 0)
-    return (
-      <p class="console-label" data-testid="kt-supplier-qualifications-empty">
-        尚无物料准入记录
-      </p>
-    );
-  return (
-    <ul class="console-summary" data-testid="kt-supplier-qualifications">
-      {qualifications.map((item, index) => {
-        if (typeof item !== 'object' || item === null) return null;
-        const qualification = item as Record<string, unknown>;
-        const status = state.ports.textValue(qualification.status, '');
-        return (
-          <li key={state.ports.textValue(qualification.id, String(index))}>
-            <StatusBadge tone={qualificationTone(status)}>
-              {QUALIFICATION_LABELS[status] ?? status}
-            </StatusBadge>
-            {` ${state.ports.textValue(qualification.sku, '—')} · ${state.ports.textValue(qualification.itemName, '—')} · v${state.ports.textValue(qualification.itemVersion, '—')} · 有效期 ${state.ports.textValue(qualification.validFrom ?? qualification.valid_from, '—')} ~ ${state.ports.textValue(qualification.validTo ?? qualification.valid_to, '长期')}`}
-          </li>
-        );
-      })}
-    </ul>
-  );
-};
-
-const QuoteHistory = ({ state }: Readonly<{ state: SupplierPageState }>) => {
-  const row = state.selected;
-  if (!row) return null;
-  const supplierId = state.ports.textValue(row.id, '');
-  const quotes = state.quotes.filter(
-    (item) => state.ports.textValue(item.supplierId ?? item.supplier_id, '') === supplierId,
-  );
-  if (quotes.length === 0) return null;
-  return (
-    <div class="console-summary" data-testid="kt-supplier-quotes">
-      <p class="console-label">报价历史</p>
-      <ul>
-        {quotes.map((quote, index) => (
-          <li key={state.ports.textValue(quote.id, String(index))}>
-            {`${state.ports.textValue(quote.quoteReference ?? quote.quote_reference, '—')} · 收于 ${state.ports.textValue(quote.receivedAt ?? quote.received_at, '—').slice(0, 10)} · 有效至 ${state.ports.textValue(quote.validUntil ?? quote.valid_until, '—')}`}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-};
 
 const SupplierDrawer = ({ state }: Readonly<{ state: SupplierPageState }>) => {
   const row = state.selected;
@@ -249,6 +192,10 @@ const SupplierDrawer = ({ state }: Readonly<{ state: SupplierPageState }>) => {
           <span class="console-label">联系电话</span>
           {contactText(ports, row, 'phone')}
         </p>
+        <p>
+          <span class="console-label">资质状态</span>
+          <QualificationBadges state={state} row={row} testId="kt-supplier-qualification-badges" />
+        </p>
       </div>
       {state.submitError !== '' ? (
         <p class="console-error" role="alert" data-testid="kt-supplier-submit-error">
@@ -273,7 +220,9 @@ const SupplierDrawer = ({ state }: Readonly<{ state: SupplierPageState }>) => {
       ) : null}
       <p class="console-label">资质记录</p>
       <QualificationList state={state} />
+      <PendingQualifications state={state} />
       <QuoteHistory state={state} />
+      <QuoteComparison state={state} />
       {state.activeForm === 'qualify' ? (
         <FormSection
           title="供应商物料准入审核"
@@ -564,6 +513,7 @@ export function SupplierConsolePage(ports: SupplierConsolePorts) {
     activeForm: bundle.activeForm.value,
     permissions: ports.permissions,
     ports,
+    now: () => ports.now?.() ?? new Date(),
     open: (row) => {
       bundle.selected.value = row;
       bundle.activeForm.value = null;

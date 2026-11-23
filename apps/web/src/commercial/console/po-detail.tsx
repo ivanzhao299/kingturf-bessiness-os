@@ -1,6 +1,10 @@
 // U3-PROC-3：采购单控制台详情子组件（自 po-console 拆分——G1/G5 ≤800/≤200 行
 // 纪律）：行项收货状态/收货记录/合同文档工作流区。只依赖状态最小面，结构与
 // po-console 的 PoPageState 兼容（结构化子集，无循环依赖）。
+// PROC-UX：收货进度条（receivedQuantity/orderedQuantity，列表列 + 抽屉逐行/整单）与
+// 状态流转图（DRAFT→ISSUED→PARTIALLY_RECEIVED→RECEIVED，CANCELLED 终止）。几何样式取
+// kt tokens 内联（无既有原语类；本批不新增 CSS 文件——文件边界）。
+import { Fragment } from 'preact';
 import type { FormSectionField } from '@kingturf/ui';
 import type { ContractDocumentRow, PurchaseOrderConsolePorts, PurchaseOrderRow } from './po-ports';
 
@@ -74,6 +78,241 @@ export const ReceiptProgress = ({ state }: Readonly<{ state: PoDetailState }>) =
           </li>
         ))}
       </ul>
+    </div>
+  );
+};
+
+// ---- 收货进度与状态流转（PROC-UX）----
+
+// businessStateLabel 同口径（procurement_document_status 五值均有标签）。
+export const STATUS_LABELS: Readonly<Record<string, string>> = {
+  DRAFT: '草稿',
+  ISSUED: '已签发',
+  PARTIALLY_RECEIVED: '部分收货',
+  RECEIVED: '已收货',
+  CANCELLED: '已取消',
+};
+
+const numberOf = (value: unknown): number => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+export type ReceiptProgressValue = Readonly<{
+  ordered: number;
+  received: number;
+  percent: number;
+}>;
+
+// 收货进度：Σ已收 / Σ订购（行项 receivedQuantity 为收货行数量聚合；超收时条封顶 100%，
+// 文本保留真实百分比）。
+export const receiptProgressOf = (
+  lines: readonly Record<string, unknown>[],
+): ReceiptProgressValue => {
+  const ordered = lines.reduce((sum, line) => sum + numberOf(line.quantity), 0);
+  const received = lines.reduce(
+    (sum, line) => sum + numberOf(line.receivedQuantity ?? line.received_quantity),
+    0,
+  );
+  return { ordered, received, percent: ordered <= 0 ? 0 : Math.round((received / ordered) * 100) };
+};
+
+const PROGRESS_TRACK_STYLE = {
+  height: '6px',
+  minWidth: '72px',
+  borderRadius: 'var(--kt-radius-pill)',
+  background: 'var(--kt-surface-soft)',
+  overflow: 'hidden',
+} as const;
+const PROGRESS_FILL_STYLE = {
+  height: '100%',
+  background: 'var(--kt-primary)',
+} as const;
+
+export const ProgressBar = ({
+  value,
+  label,
+  testId,
+}: Readonly<{ value: number; label: string; testId?: string }>) => {
+  const percent = Math.max(0, Math.min(100, value));
+  return (
+    <div
+      role="progressbar"
+      aria-label={label}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={percent}
+      data-testid={testId}
+      data-percent={percent}
+      style={PROGRESS_TRACK_STYLE}
+    >
+      <div style={{ ...PROGRESS_FILL_STYLE, width: `${String(percent)}%` }} />
+    </div>
+  );
+};
+
+const ProgressLine = ({
+  state,
+  label,
+  progress,
+  testId,
+}: Readonly<{
+  state: PoDetailState;
+  label: string;
+  progress: ReceiptProgressValue;
+  testId?: string;
+}>) => {
+  const quantity = state.ports.decimalValue;
+  return (
+    <p data-testid={testId === undefined ? undefined : `${testId}-line`}>
+      <span class="console-label">{label}</span>
+      <ProgressBar
+        value={progress.percent}
+        label={`${label}收货进度`}
+        {...(testId === undefined ? {} : { testId })}
+      />
+      <span>{`已收 ${quantity(progress.received)} / ${quantity(progress.ordered)}（${String(progress.percent)}%）`}</span>
+    </p>
+  );
+};
+
+// 抽屉收货进度：整单 + 逐行（草稿未签发不呈进度条）。
+export const ReceiptProgressBars = ({ state }: Readonly<{ state: PoDetailState }>) => {
+  const row = state.selected;
+  if (!row) return null;
+  const lines = linesOf(row);
+  const { ports } = state;
+  return (
+    <div class="console-summary" data-testid="kt-po-progress">
+      {ports.recordText(row, 'status', 'status') === 'DRAFT' ? (
+        <p>
+          <span class="console-label">收货进度</span>
+          <span class="console-label">未签发，暂无收货</span>
+        </p>
+      ) : (
+        <>
+          <ProgressLine
+            state={state}
+            label="整单"
+            progress={receiptProgressOf(lines)}
+            testId="kt-po-progress-total"
+          />
+          {lines.map((line, index) => (
+            <ProgressLine
+              key={ports.textValue(line.id, String(index))}
+              state={state}
+              label={ports.textValue(line.sku, '—')}
+              progress={receiptProgressOf([line])}
+            />
+          ))}
+        </>
+      )}
+    </div>
+  );
+};
+
+const FLOW_STEPS = ['DRAFT', 'ISSUED', 'PARTIALLY_RECEIVED', 'RECEIVED'] as const;
+type FlowStepState = 'done' | 'current' | 'skipped' | 'upcoming';
+
+// 流转位态：已过节点 done；当前节点 current；整单一次收齐直达 RECEIVED 时
+// PARTIALLY_RECEIVED 标 skipped（未曾处于该态）；CANCELLED/未知态全部 upcoming。
+const flowStepStates = (status: string): readonly FlowStepState[] => {
+  const current = FLOW_STEPS.findIndex((step) => step === status);
+  return FLOW_STEPS.map((step, position) => {
+    if (current === -1 || position > current) return 'upcoming';
+    if (position < current) return step === 'PARTIALLY_RECEIVED' ? 'skipped' : 'done';
+    return 'current';
+  });
+};
+
+const FLOW_NODE_STYLE = {
+  display: 'inline-grid',
+  placeItems: 'center',
+  flexShrink: 0,
+  width: '24px',
+  height: '24px',
+  borderRadius: '50%',
+  border: '1px solid var(--kt-border)',
+  background: 'var(--kt-surface)',
+  color: 'var(--kt-muted)',
+  fontSize: '12px',
+  lineHeight: 1,
+} as const;
+const FLOW_NODE_ACTIVE_STYLE = {
+  borderColor: 'var(--kt-primary)',
+  background: 'var(--kt-primary)',
+  color: 'var(--kt-color-text-inverse)',
+} as const;
+const FLOW_NODE_SKIPPED_STYLE = { borderStyle: 'dashed' } as const;
+const FLOW_LABEL_STYLE = { fontSize: 'var(--kt-font-size-caption)' } as const;
+const FLOW_GLYPHS: Readonly<Record<FlowStepState, string>> = {
+  done: '✓',
+  current: '●',
+  skipped: '–',
+  upcoming: '○',
+};
+
+const flowNodeStyle = (stepState: FlowStepState) => {
+  if (stepState === 'done' || stepState === 'current')
+    return { ...FLOW_NODE_STYLE, ...FLOW_NODE_ACTIVE_STYLE };
+  if (stepState === 'skipped') return { ...FLOW_NODE_STYLE, ...FLOW_NODE_SKIPPED_STYLE };
+  return FLOW_NODE_STYLE;
+};
+
+// 状态流转图：四节点横向步进（已完成实心 ✓、当前实心 ●、跳过虚线 –、未到空心 ○）。
+export const StatusFlow = ({ state }: Readonly<{ state: PoDetailState }>) => {
+  const row = state.selected;
+  if (!row) return null;
+  const status = state.ports.recordText(row, 'status', 'status');
+  const steps = flowStepStates(status);
+  return (
+    <div class="console-summary" data-testid="kt-po-flow" data-status={status}>
+      <p>
+        <span class="console-label">状态流转</span>
+        <span class="console-label">{`当前：${STATUS_LABELS[status] ?? status}`}</span>
+      </p>
+      <div role="list" aria-label="采购订单状态流转">
+        {/* 左右各留半个标签列宽，使节点圆心对齐下方等宽标签列。 */}
+        <div style={{ display: 'flex', alignItems: 'center', padding: '0 12.5%' }}>
+          {steps.map((stepState, index) => (
+            <Fragment key={FLOW_STEPS[index]}>
+              {index > 0 ? (
+                <span
+                  aria-hidden="true"
+                  data-connector={stepState === 'upcoming' ? 'pending' : 'reached'}
+                  style={{
+                    flex: '1 1 0',
+                    height: '2px',
+                    background: stepState === 'upcoming' ? 'var(--kt-border)' : 'var(--kt-primary)',
+                  }}
+                />
+              ) : null}
+              <span
+                role="listitem"
+                aria-current={stepState === 'current' ? 'step' : undefined}
+                data-step={FLOW_STEPS[index]}
+                data-state={stepState}
+                style={flowNodeStyle(stepState)}
+              >
+                {FLOW_GLYPHS[stepState]}
+              </span>
+            </Fragment>
+          ))}
+        </div>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: `repeat(${String(FLOW_STEPS.length)}, 1fr)`,
+            textAlign: 'center',
+          }}
+        >
+          {FLOW_STEPS.map((step) => (
+            <span key={step} data-step-label={step} style={FLOW_LABEL_STYLE}>
+              {STATUS_LABELS[step] ?? step}
+            </span>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };

@@ -7,12 +7,23 @@ import {
   type DataTableColumn,
   type FormSectionField,
 } from '@kingturf/ui';
-import type { GoodsReceiptConsolePorts, GoodsReceiptRow } from './gr-ports';
+import {
+  BatchTimeline,
+  QuantityCheck,
+  ReceiptLines,
+  buildLotTrace,
+  linesOf,
+} from './gr-console-detail';
+import type { GoodsReceiptConsolePorts, GoodsReceiptRow, TraceSources } from './gr-ports';
 
 // U3-PROC-4（ADR-0014 分域重写）：收货控制台——原 vanilla 收货卡片与「登记批次
 // 收货」表单能力面等价迁移（登记载荷与 vanilla 逐字节一致：receivedAt 当前时刻、
 // expiresAt null、manufacturedAt 必填日期）。部分收货/超收守护全在后端 legacy
 // receive() 同链（前端不重复实现）；收货单不可变（无状态流转行级操作）。
+// PROC-UX：详情抽屉新增批次追踪时间线（收货→质检→入库）——打开抽屉时经
+// loadTraceSources 并行读取质检查询/追溯/库存事实面（403/失败 → null → 该面
+// 不可见），客户端组合（buildLotTrace）；跨仓服务端编排属 service-boundary S3
+// 禁区（TD-PROC-006）。详情子组件见 gr-console-detail.tsx。
 type GrFormKind = 'create' | null;
 
 type GrPageState = Readonly<{
@@ -23,6 +34,7 @@ type GrPageState = Readonly<{
   loading: boolean;
   selected: GoodsReceiptRow | null;
   detailLoading: boolean;
+  trace: ReturnType<typeof buildLotTrace>;
   activeForm: GrFormKind;
   permissions: ReadonlySet<string>;
   ports: GoodsReceiptConsolePorts;
@@ -43,14 +55,6 @@ const text = (
   snake: string,
   fallback = '',
 ) => ports.recordText(row, camel, snake, fallback);
-
-const linesOf = (row: GoodsReceiptRow | null): readonly Record<string, unknown>[] =>
-  row && Array.isArray(row.lines) ? (row.lines as Record<string, unknown>[]) : [];
-
-const poOf = (row: GoodsReceiptRow | null): Record<string, unknown> | null => {
-  const po = row?.purchaseOrder;
-  return typeof po === 'object' && po !== null ? (po as Record<string, unknown>) : null;
-};
 
 const columns = (state: GrPageState): readonly DataTableColumn<GoodsReceiptRow>[] => [
   {
@@ -108,50 +112,6 @@ const filteredReceipts = (state: GrPageState): readonly GoodsReceiptRow[] =>
     return haystack.includes(state.search.toLowerCase());
   });
 
-const ReceiptLines = ({ state }: Readonly<{ state: GrPageState }>) => {
-  const row = state.selected;
-  if (!row) return null;
-  const lines = linesOf(row);
-  if (lines.length === 0)
-    return (
-      <p class="console-label" data-testid="kt-gr-lines-empty">
-        尚无收货行项
-      </p>
-    );
-  return (
-    <ul class="console-summary" data-testid="kt-gr-lines">
-      {lines.map((line, index) => (
-        <li key={state.ports.textValue(line.id, String(index))}>
-          {`${state.ports.textValue(line.sku, '—')} · 批次 ${state.ports.textValue(line.lotNumber ?? line.lot_number, '—')} · 库位 ${state.ports.textValue(line.locationCode ?? line.location_code, '—')} · 实收 ${state.ports.textValue(line.quantity, '—')}`}
-        </li>
-      ))}
-    </ul>
-  );
-};
-
-// 数量核对：关联采购单行项 订购数量 vs 已收数量（additive 详情 purchaseOrder 区）。
-const QuantityCheck = ({ state }: Readonly<{ state: GrPageState }>) => {
-  const row = state.selected;
-  if (!row) return null;
-  const po = poOf(row);
-  if (!po) return null;
-  const lines = Array.isArray(po.lines) ? (po.lines as Record<string, unknown>[]) : [];
-  return (
-    <div class="console-summary" data-testid="kt-gr-quantity-check">
-      <p class="console-label">
-        {`数量核对 · ${state.ports.textValue(po.poNumber ?? po.po_number, '—')} · ${state.ports.textValue(po.status, '—')}`}
-      </p>
-      <ul>
-        {lines.map((line, index) => (
-          <li key={state.ports.textValue(line.id, String(index))}>
-            {`${state.ports.textValue(line.sku, '—')} · 订购 ${state.ports.textValue(line.quantity, '—')} · 已收 ${state.ports.textValue(line.receivedQuantity ?? line.received_quantity, '0')}`}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-};
-
 const GrDrawer = ({ state }: Readonly<{ state: GrPageState }>) => {
   const row = state.selected;
   if (!row) return null;
@@ -182,6 +142,7 @@ const GrDrawer = ({ state }: Readonly<{ state: GrPageState }>) => {
       <p class="console-label">批次行项</p>
       <ReceiptLines state={state} />
       <QuantityCheck state={state} />
+      <BatchTimeline state={state} />
     </DetailDrawer>
   );
 };
@@ -315,6 +276,7 @@ export function GoodsReceiptConsolePage(ports: GoodsReceiptConsolePorts) {
     loading: signal(false),
     selected: signal<GoodsReceiptRow | null>(null),
     detailLoading: signal(false),
+    traceSources: signal<TraceSources | null>(null),
     activeForm: signal<GrFormKind>(null),
     shownCount: signal(20),
   };
@@ -382,6 +344,7 @@ export function GoodsReceiptConsolePage(ports: GoodsReceiptConsolePorts) {
     loading: bundle.loading.value,
     selected: bundle.selected.value,
     detailLoading: bundle.detailLoading.value,
+    trace: buildLotTrace(bundle.selected.value, bundle.traceSources.value),
     activeForm: bundle.activeForm.value,
     permissions: ports.permissions,
     ports,
@@ -392,6 +355,8 @@ export function GoodsReceiptConsolePage(ports: GoodsReceiptConsolePorts) {
       if (!row) return;
       // 详情读取失败静默回退列表行（批次行项按列表行数据呈现）。
       bundle.detailLoading.value = true;
+      // PROC-UX：批次追踪事实面并行读取（端口缺省/读取失败 → null → 时间线不渲染
+      // 或按可见面降级），不拖垮收货详情。
       void ports
         .loadDetail(ports.textValue(row.id, ''))
         .then((detail) => {
@@ -400,6 +365,16 @@ export function GoodsReceiptConsolePage(ports: GoodsReceiptConsolePorts) {
         .catch(() => undefined)
         .finally(() => {
           bundle.detailLoading.value = false;
+        });
+      if (ports.loadTraceSources === undefined) return;
+      bundle.traceSources.value = null;
+      void ports
+        .loadTraceSources()
+        .then((sources) => {
+          bundle.traceSources.value = sources;
+        })
+        .catch(() => {
+          bundle.traceSources.value = null;
         });
     },
     openForm: (kind) => {

@@ -16,5 +16,7 @@ export type RfqConsolePorts = Readonly<{
   ) => Promise<Readonly<Record<string, unknown>> | null>;
   // 详情读取（additive findRfq：根行+行项+报价对比）；读取失败回退列表行。
   loadDetail: (rfqId: string) => Promise<RfqRow | null>;
+  // PROC-UX：当前时间源（截止倒计时/报价有效期判定）；缺省取系统时间。
+  now?: () => Date;
   refresh: () => Promise<readonly RfqRow[]>;
 }>;

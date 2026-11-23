@@ -79,6 +79,56 @@ const document: PurchaseOrderRow = {
   extractedFields: { contractNumber: 'CT-1', supplier: '青岛金特夫', amount: '62500' },
 };
 
+// PROC-UX：收货进度/状态流转夹具——部分收货（行 2000/5000 + 1000/1000 → 整单 3000/6000）。
+const partialOrder: PurchaseOrderRow = {
+  ...issuedOrder,
+  id: 'po-3',
+  po_number: 'PO-KT-YARN-2026-003',
+  status: 'PARTIALLY_RECEIVED',
+  lines: [
+    {
+      id: 'line-1',
+      sku: 'RM-YARN',
+      itemName: '草纱',
+      quantity: '5000',
+      unit_price: '12.5',
+      required_at: '2026-12-10',
+      receivedQuantity: 2000,
+    },
+    {
+      id: 'line-2',
+      sku: 'RM-LATEX',
+      itemName: '乳胶',
+      quantity: '1000',
+      unit_price: '9',
+      required_at: '2026-12-10',
+      receivedQuantity: 1000,
+    },
+  ],
+};
+const cancelledOrder: PurchaseOrderRow = {
+  ...order,
+  id: 'po-4',
+  po_number: 'PO-KT-YARN-2026-004',
+  status: 'CANCELLED',
+};
+// 整单一次收齐：行项已收 = 订购、PO 态 RECEIVED（部分收货节点被跳过）。
+const receivedDetail: PurchaseOrderRow = {
+  ...poDetail,
+  status: 'RECEIVED',
+  lines: [
+    {
+      id: 'line-1',
+      sku: 'RM-YARN',
+      itemName: '草纱',
+      quantity: '5000',
+      unit_price: '12.5',
+      required_at: '2026-12-10',
+      receivedQuantity: 5000,
+    },
+  ],
+};
+
 const ALL_PERMISSIONS = [
   'procurement:read',
   'procurement:manage',
@@ -146,6 +196,22 @@ const submitDrawer = async (host: TestElement): Promise<void> => {
     element(host.querySelector('.detail-drawer')).querySelector('button[type="submit"]'),
   ).click();
   await flush();
+};
+
+// PROC-UX：详情打开与状态流转位态读取助手。
+const FLOW_STEPS = ['DRAFT', 'ISSUED', 'PARTIALLY_RECEIVED', 'RECEIVED'] as const;
+const openDetail = async (ports: PurchaseOrderConsolePorts): Promise<TestElement> => {
+  const host = mount(ports);
+  element(host.querySelector('[data-testid="kt-po-open"]')).click();
+  await flush();
+  await flush();
+  return host;
+};
+const flowStatesOf = (host: TestElement): readonly (string | null)[] => {
+  const flow = element(host.querySelector('[data-testid="kt-po-flow"]'));
+  return FLOW_STEPS.map((step) =>
+    element(flow.querySelector(`[data-step="${step}"]`)).getAttribute('data-state'),
+  );
 };
 
 const CREATE_FORM: readonly (readonly [string, string])[] = [
@@ -302,5 +368,85 @@ describe('U3-PROC-3 采购单控制台', () => {
     await flush();
     expect(host.querySelector('.data-table-error')).not.toBeNull();
     expect(host.textContent).toContain('采购订单加载失败');
+  });
+
+  it('列表收货进度列：草稿显示未签发；其余按 Σ已收/Σ订购 呈百分比进度条', () => {
+    const ports = portsFor([order, partialOrder, cancelledOrder]);
+    const host = mount(ports);
+    const cells = host.querySelectorAll('[data-testid="kt-po-progress-cell"]').map(element);
+    // 草稿（未签发）无进度单元；部分收货 3000/6000；已取消仍呈已收比例（0%）。
+    expect(cells).toHaveLength(2);
+    expect(cells[0]?.textContent).toBe('50%');
+    expect(cells[0]?.getAttribute('data-percent')).toBe('50');
+    expect(cells[1]?.getAttribute('data-percent')).toBe('0');
+    const partialRow = host.querySelectorAll('tbody tr')[1];
+    const bar = element(partialRow?.querySelector('[role="progressbar"]'));
+    expect(bar.getAttribute('aria-valuenow')).toBe('50');
+    expect(bar.getAttribute('aria-valuemin')).toBe('0');
+    expect(bar.getAttribute('aria-valuemax')).toBe('100');
+    expect(bar.getAttribute('aria-label')).toBe('PO-KT-YARN-2026-003收货进度');
+    const row = host.querySelectorAll('tbody tr')[0];
+    expect(element(row?.querySelector('[data-column="progress"]')).textContent).toBe('未签发');
+    expect(row?.querySelector('[role="progressbar"]')).toBe(null);
+  });
+
+  it('详情抽屉状态流转图：整单一次收齐（RECEIVED）时部分收货节点为 skipped', async () => {
+    const host = await openDetail(
+      portsFor([issuedOrder], [], { loadDetail: vi.fn().mockResolvedValue(receivedDetail) }),
+    );
+    const flow = element(host.querySelector('[data-testid="kt-po-flow"]'));
+    expect(flow.getAttribute('data-status')).toBe('RECEIVED');
+    expect(flow.textContent).toContain('当前：已收货');
+    expect(flowStatesOf(host)).toEqual(['done', 'done', 'skipped', 'current']);
+    expect(element(flow.querySelector('[data-step="RECEIVED"]')).getAttribute('aria-current')).toBe(
+      'step',
+    );
+    for (const step of ['草稿', '已签发', '部分收货', '已收货'])
+      expect(flow.textContent).toContain(step);
+    const progress = element(host.querySelector('[data-testid="kt-po-progress"]'));
+    expect(
+      element(progress.querySelector('[data-testid="kt-po-progress-total"]')).getAttribute(
+        'data-percent',
+      ),
+    ).toBe('100');
+    expect(progress.textContent).toContain('已收 5000.00 / 5000.00（100%）');
+  });
+
+  it('详情抽屉：部分收货——流转至部分收货节点，整单与逐行进度条各自计量', async () => {
+    const host = await openDetail(
+      portsFor([partialOrder], [], { loadDetail: vi.fn().mockResolvedValue(partialOrder) }),
+    );
+    const flow = element(host.querySelector('[data-testid="kt-po-flow"]'));
+    expect(flowStatesOf(host)).toEqual(['done', 'done', 'current', 'upcoming']);
+    // 已到达节点的连接线为已流转色，未到达为待流转。
+    expect(flow.querySelectorAll('[data-connector="reached"]')).toHaveLength(2);
+    expect(flow.querySelectorAll('[data-connector="pending"]')).toHaveLength(1);
+    const progress = element(host.querySelector('[data-testid="kt-po-progress"]'));
+    expect(progress.textContent).toContain('整单');
+    expect(progress.textContent).toContain('已收 3000.00 / 6000.00（50%）');
+    expect(progress.textContent).toContain('RM-YARN');
+    expect(progress.textContent).toContain('已收 2000.00 / 5000.00（40%）');
+    expect(progress.textContent).toContain('已收 1000.00 / 1000.00（100%）');
+    expect(progress.querySelectorAll('[role="progressbar"]')).toHaveLength(3);
+  });
+
+  it('详情抽屉：已取消订单流转图全部未到达；草稿订单进度区显示未签发', async () => {
+    const cancelledHost = await openDetail(
+      portsFor([cancelledOrder], [], {
+        loadDetail: vi.fn().mockResolvedValue(cancelledOrder),
+      }),
+    );
+    const cancelledFlow = element(cancelledHost.querySelector('[data-testid="kt-po-flow"]'));
+    expect(cancelledFlow.getAttribute('data-status')).toBe('CANCELLED');
+    expect(cancelledFlow.textContent).toContain('当前：已取消');
+    expect(cancelledFlow.querySelectorAll('[data-state="upcoming"]')).toHaveLength(4);
+    expect(cancelledFlow.querySelectorAll('[data-connector="reached"]')).toHaveLength(0);
+    const draftHost = await openDetail(
+      portsFor([order], [], { loadDetail: vi.fn().mockResolvedValue(order) }),
+    );
+    expect(flowStatesOf(draftHost)).toEqual(['current', 'upcoming', 'upcoming', 'upcoming']);
+    const draftProgress = element(draftHost.querySelector('[data-testid="kt-po-progress"]'));
+    expect(draftProgress.textContent).toContain('未签发，暂无收货');
+    expect(draftProgress.querySelector('[role="progressbar"]')).toBe(null);
   });
 });

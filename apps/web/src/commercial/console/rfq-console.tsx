@@ -9,12 +9,21 @@ import {
   type FormSectionField,
   type StatusTone,
 } from '@kingturf/ui';
+import {
+  CountdownBadge,
+  QuoteComparison,
+  RfqLines,
+  activeCountdown,
+  linesOf,
+} from './rfq-console-detail';
 import type { RfqConsolePorts, RfqRow } from './rfq-ports';
 
 // U3-PROC-2（ADR-0014 分域重写）：询价控制台——原 vanilla sourcing-register RFQ 能力面
 // 等价迁移（新建并发出询价单载荷逐字节一致；报价登记表单属 supplier-quotes 域，保留
 // vanilla 至 U3-PROC-3）。新增行级发布/关闭（PUT state 统一动作端点；close 为主协调
 // U3-PROC-2 指令明授的新写路径）；详情抽屉含行项与报价对比（additive findRfq）。
+// PROC-UX：报价对比升级为行项×供应商矩阵（推荐项标记）；已签发询价单呈截止倒计时徽章。
+// 详情子组件见 rfq-console-detail.tsx。
 type RfqFormKind = 'create' | null;
 
 type RfqPageState = Readonly<{
@@ -29,6 +38,8 @@ type RfqPageState = Readonly<{
   activeForm: RfqFormKind;
   permissions: ReadonlySet<string>;
   ports: RfqConsolePorts;
+  // 当前时间源（截止倒计时；测试可注入固定时钟）。
+  now: () => Date;
   open: (row: RfqRow | null) => void;
   openForm: (kind: RfqFormKind) => void;
   closeForm: () => void;
@@ -62,11 +73,16 @@ const statusTone = (status: unknown): StatusTone => {
 const text = (ports: RfqConsolePorts, row: RfqRow, camel: string, snake: string, fallback = '') =>
   ports.recordText(row, camel, snake, fallback);
 
-const linesOf = (row: RfqRow | null): readonly Record<string, unknown>[] =>
-  row && Array.isArray(row.lines) ? (row.lines as Record<string, unknown>[]) : [];
-
-const quotesOf = (row: RfqRow | null): readonly Record<string, unknown>[] =>
-  row && Array.isArray(row.quotes) ? (row.quotes as Record<string, unknown>[]) : [];
+// 报价截止单元：日期（ISO 前 10 位）· 币种 + 已签发询价单的截止倒计时徽章。
+const DueCell = ({ state, row }: Readonly<{ state: RfqPageState; row: RfqRow }>) => {
+  const countdown = activeCountdown(state, row);
+  return (
+    <span>
+      {`${text(state.ports, row, 'responseDueAt', 'response_due_at', '—').slice(0, 10)} · ${text(state.ports, row, 'currency', 'currency', '—')}`}
+      {countdown === null ? null : <CountdownBadge countdown={countdown} />}
+    </span>
+  );
+};
 
 const columns = (state: RfqPageState): readonly DataTableColumn<RfqRow>[] => [
   {
@@ -100,8 +116,7 @@ const columns = (state: RfqPageState): readonly DataTableColumn<RfqRow>[] => [
     key: 'due',
     header: '报价截止',
     field: (row) => text(state.ports, row, 'responseDueAt', 'response_due_at'),
-    render: (row) =>
-      `${text(state.ports, row, 'responseDueAt', 'response_due_at', '—').slice(0, 10)} · ${text(state.ports, row, 'currency', 'currency', '—')}`,
+    render: (row) => <DueCell state={state} row={row} />,
   },
   {
     key: 'actions',
@@ -131,55 +146,6 @@ const filteredRfqs = (state: RfqPageState): readonly RfqRow[] =>
     return haystack.includes(state.search.toLowerCase());
   });
 
-const RfqLines = ({ state }: Readonly<{ state: RfqPageState }>) => {
-  const row = state.selected;
-  if (!row) return null;
-  const lines = linesOf(row);
-  if (lines.length === 0)
-    return (
-      <p class="console-label" data-testid="kt-rfq-lines-empty">
-        尚无询价行项
-      </p>
-    );
-  return (
-    <ul class="console-summary" data-testid="kt-rfq-lines">
-      {lines.map((line, index) => (
-        <li key={state.ports.textValue(line.id, String(index))}>
-          {`${state.ports.textValue(line.sku, '—')} · ${state.ports.textValue(line.itemName, '—')} · 数量 ${state.ports.textValue(line.quantity, '—')} · 要求到货 ${state.ports.textValue(line.requiredAt ?? line.required_at, '—')}`}
-        </li>
-      ))}
-    </ul>
-  );
-};
-
-const QuoteComparison = ({ state }: Readonly<{ state: RfqPageState }>) => {
-  const row = state.selected;
-  if (!row) return null;
-  const quotes = quotesOf(row);
-  if (quotes.length === 0) return null;
-  return (
-    <div class="console-summary" data-testid="kt-rfq-quotes">
-      <p class="console-label">报价对比</p>
-      <ul>
-        {quotes.map((quote, index) => (
-          <li key={state.ports.textValue(quote.id, String(index))}>
-            {`${state.ports.textValue(quote.supplierName ?? quote.supplier_name, '—')} · ${state.ports.textValue(quote.quoteReference ?? quote.quote_reference, '—')} · 收于 ${state.ports.textValue(quote.receivedAt ?? quote.received_at, '—').slice(0, 10)} · 有效至 ${state.ports.textValue(quote.validUntil ?? quote.valid_until, '—')}`}
-            <ul>
-              {(Array.isArray(quote.lines) ? (quote.lines as Record<string, unknown>[]) : []).map(
-                (line, lineIndex) => (
-                  <li key={state.ports.textValue(line.id, String(lineIndex))}>
-                    {`行 ${state.ports.textValue(line.lineNumber ?? line.line_number, String(lineIndex + 1))} · ${state.ports.textValue(line.sku, '—')} · 单价 ${state.ports.textValue(line.unitPrice ?? line.unit_price, '—')} · 承诺 ${state.ports.textValue(line.promisedAt ?? line.promised_at, '—')} · MOQ ${state.ports.textValue(line.minimumOrderQuantity ?? line.minimum_order_quantity, '—')}`}
-                  </li>
-                ),
-              )}
-            </ul>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-};
-
 const RfqDrawer = ({ state }: Readonly<{ state: RfqPageState }>) => {
   const row = state.selected;
   if (!row) return null;
@@ -188,6 +154,7 @@ const RfqDrawer = ({ state }: Readonly<{ state: RfqPageState }>) => {
   const mayManage = permissions.has('procurement:manage');
   const mayIssue = mayManage && status === 'DRAFT';
   const mayClose = mayManage && (status === 'DRAFT' || status === 'ISSUED');
+  const countdown = activeCountdown(state, row);
   return (
     <DetailDrawer
       title={`询价单详情 · ${text(ports, row, 'rfqNumber', 'rfq_number')}`}
@@ -203,6 +170,7 @@ const RfqDrawer = ({ state }: Readonly<{ state: RfqPageState }>) => {
           {text(ports, row, 'currency', 'currency', '—')}
           <span class="console-label">截止</span>
           {text(ports, row, 'responseDueAt', 'response_due_at', '—').slice(0, 10)}
+          {countdown === null ? null : <CountdownBadge countdown={countdown} />}
         </p>
       </div>
       {state.submitError !== '' ? (
@@ -349,7 +317,7 @@ const RfqView = (state: RfqPageState) => {
         columns={columns(state)}
         rows={shown}
         rowId={(row) => state.ports.textValue(row.id ?? row.rfq_number, 'row')}
-        caption="询价单主列表（状态、行项与报价截止）"
+        caption="询价单主列表（状态、行项、报价截止与倒计时）"
         loading={state.loading}
         pagination={{
           loadedCount: shown.length,
@@ -467,6 +435,7 @@ export function RfqConsolePage(ports: RfqConsolePorts) {
     activeForm: bundle.activeForm.value,
     permissions: ports.permissions,
     ports,
+    now: () => ports.now?.() ?? new Date(),
     open: (row) => {
       bundle.selected.value = row;
       bundle.activeForm.value = null;

@@ -2,6 +2,8 @@
 // 原 vanilla「登记批次收货」表单载荷 oracle 逐条等价迁移——receivedAt 当前时刻/
 // expiresAt null/订单行拆分、权限门、检索、批次行项与数量核对呈现、刷新错误面；
 // 部分收货/超收守护全在后端 legacy receive() 同链，前端不重复实现）。
+// PROC-UX：批次追踪时间线（收货→质检→入库）呈现——loadTraceSources 事实面组合：
+// 三节点齐全/三面全不可见/仅库存状态/进行中与拒收/未开检与读取失败降级。
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { h, render } from 'preact';
 import type { ComponentType } from 'preact';
@@ -49,6 +51,63 @@ const grDetail: GoodsReceiptRow = {
   },
 };
 
+// PROC-UX：批次追踪事实面（loadTraceSources → quality-inspections/lot-traceability/
+// inventory-balances 视图行）夹具。详情行项含 lot_id 供批次匹配。
+const tracedDetail: GoodsReceiptRow = {
+  ...grDetail,
+  lines: [{ ...(receipt.lines as Record<string, unknown>[])[0], lot_id: 'lot-1' }],
+};
+const inspectionSource: Record<string, unknown> = {
+  id: 'qi-1',
+  lot_id: 'lot-1',
+  inspection_number: 'QI-KT-YARN-2026-001',
+  state: 'DISPOSITIONED',
+  events: [
+    {
+      sequence: 1,
+      state: 'OPEN',
+      actor_id: 'e-inspector',
+      created_at: '2026-11-09T01:00:00.000Z',
+      evidence: {},
+    },
+    {
+      sequence: 2,
+      state: 'DISPOSITIONED',
+      actor_id: 'e-qm',
+      created_at: '2026-11-10T02:00:00.000Z',
+      reason: 'Incoming inspection passed',
+      evidence: { state: 'RELEASED' },
+    },
+  ],
+  results: [{ passed: true }, { passed: true }, { passed: false }],
+};
+const lotSource: Record<string, unknown> = {
+  lotId: 'lot-1',
+  lotNumber: 'LOT-KT-YARN-A',
+  qualityStatus: 'RELEASED',
+  qualityEvents: [
+    {
+      sequence: 1,
+      state: 'QUARANTINE',
+      actor_id: 'e-inspector',
+      created_at: '2026-11-09T01:00:00.000Z',
+      reason: 'Inspection opened',
+    },
+    {
+      sequence: 2,
+      state: 'RELEASED',
+      actor_id: 'e-qm',
+      created_at: '2026-11-10T02:00:00.000Z',
+      reason: 'Incoming inspection passed',
+    },
+  ],
+};
+const fullSources = {
+  inspections: [inspectionSource],
+  lots: [lotSource],
+  balances: null,
+};
+
 const portsFor = (
   receipts: readonly GoodsReceiptRow[] = [receipt],
   extraPermissions: readonly string[] = [],
@@ -69,6 +128,7 @@ const portsFor = (
   decimalValue: (value) => value.toFixed(2),
   submit: vi.fn().mockResolvedValue(null),
   loadDetail: vi.fn().mockResolvedValue(null),
+  // PROC-UX：事实面缺省（undefined）= 时间线端口未接线；用例按需覆盖。
   refresh: vi.fn().mockResolvedValue(receipts),
   ...overrides,
 });
@@ -191,6 +251,181 @@ describe('U3-PROC-4 收货控制台', () => {
     expect(check.textContent).toContain('PO-KT-YARN-2026-001');
     expect(check.textContent).toContain('订购 5000');
     expect(check.textContent).toContain('已收 5000');
+    // 事实面未接线/未返回时不渲染时间线。
+    expect(host.querySelector('[data-testid="kt-gr-trace"]')).toBe(null);
+  });
+
+  it('批次追踪时间线：三节点齐全（状态/时间/结果，loadTraceSources 事实面组合）', async () => {
+    const ports = portsFor([receipt], [], {
+      loadDetail: vi.fn().mockResolvedValue(tracedDetail),
+      loadTraceSources: vi.fn().mockResolvedValue(fullSources),
+    });
+    const host = mount(ports);
+    element(host.querySelector('[data-testid="kt-gr-open"]')).click();
+    await flush();
+    await flush();
+    // Web 端无员工目录视图：操作人以「—」呈现（显示名解析属服务端方案 TD-PROC-006）。
+    const trace = element(host.querySelector('[data-testid="kt-gr-trace"]'));
+    expect(trace.textContent).toContain('批次 LOT-KT-YARN-A');
+    expect(trace.textContent).toContain('RM-YARN · 实收 5000 @ RAW-A01');
+    expect(trace.textContent).not.toContain('收货员张三');
+    const lot = element(host.querySelector('[data-testid="kt-gr-trace-lot"]'));
+    expect(lot.getAttribute('data-access')).toBe('full');
+    const receiptNode = element(host.querySelector('[data-testid="kt-gr-trace-receipt"]'));
+    expect(receiptNode.getAttribute('data-state')).toBe('DONE');
+    expect(receiptNode.textContent).toContain('已完成');
+    expect(receiptNode.textContent).toContain('实收 5000 @ RAW-A01 · 送货单 delivery-001');
+    expect(receiptNode.textContent).toContain('操作人 —');
+    // 时间：本地时区「YYYY-MM-DD HH:mm」呈现 + datetime 保留原始 ISO（时区无关断言）。
+    expect(element(receiptNode.querySelector('time')).getAttribute('datetime')).toBe(
+      '2026-11-08T00:00:00.000Z',
+    );
+    expect(element(receiptNode.querySelector('time')).textContent).toMatch(
+      /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/u,
+    );
+    const inspection = element(host.querySelector('[data-testid="kt-gr-trace-inspection"]'));
+    expect(inspection.textContent).toContain('已完成');
+    expect(inspection.textContent).toContain('QI-KT-YARN-2026-001 · 合格 2/3 项');
+    expect(element(inspection.querySelector('time')).getAttribute('datetime')).toBe(
+      '2026-11-10T02:00:00.000Z',
+    );
+    const stockIn = element(host.querySelector('[data-testid="kt-gr-trace-stock-in"]'));
+    expect(stockIn.getAttribute('data-state')).toBe('DONE');
+    expect(stockIn.textContent).toContain('已放行入库');
+  });
+
+  it('批次追踪时间线：三事实面全部不可见（403）时质检与入库节点呈无查看权限（收货节点保留）', async () => {
+    const host = mount(
+      portsFor([receipt], [], {
+        loadDetail: vi.fn().mockResolvedValue(tracedDetail),
+        loadTraceSources: vi.fn().mockResolvedValue({
+          inspections: null,
+          lots: null,
+          balances: null,
+        }),
+      }),
+    );
+    element(host.querySelector('[data-testid="kt-gr-open"]')).click();
+    await flush();
+    await flush();
+    expect(
+      element(host.querySelector('[data-testid="kt-gr-trace-lot"]')).getAttribute('data-access'),
+    ).toBe('receipt');
+    for (const testid of ['kt-gr-trace-inspection', 'kt-gr-trace-stock-in']) {
+      const node = element(host.querySelector(`[data-testid="${testid}"]`));
+      expect(node.getAttribute('data-state')).toBe('UNAVAILABLE');
+      expect(node.textContent).toContain('无查看权限');
+      expect(node.textContent).toContain('需质检查看权限');
+      expect(node.querySelector('time')).toBe(null);
+    }
+    expect(
+      element(host.querySelector('[data-testid="kt-gr-trace-receipt"]')).textContent,
+    ).toContain('已完成');
+  });
+
+  it('批次追踪时间线：仅库存可见时按状态呈现并提示时间/操作人不可见', async () => {
+    const host = mount(
+      portsFor([receipt], [], {
+        loadDetail: vi.fn().mockResolvedValue(tracedDetail),
+        loadTraceSources: vi.fn().mockResolvedValue({
+          inspections: null,
+          lots: null,
+          balances: [{ lotId: 'lot-1', qualityStatus: 'QUARANTINE' }],
+        }),
+      }),
+    );
+    element(host.querySelector('[data-testid="kt-gr-open"]')).click();
+    await flush();
+    await flush();
+    expect(
+      element(host.querySelector('[data-testid="kt-gr-trace-lot"]')).getAttribute('data-access'),
+    ).toBe('status');
+    const inspection = element(host.querySelector('[data-testid="kt-gr-trace-inspection"]'));
+    expect(inspection.getAttribute('data-state')).toBe('PENDING');
+    expect(inspection.textContent).toContain('进行中');
+    expect(inspection.textContent).toContain('时间与操作人需质检查看权限');
+    const stockIn = element(host.querySelector('[data-testid="kt-gr-trace-stock-in"]'));
+    expect(stockIn.textContent).toContain('待放行');
+    expect(stockIn.textContent).toContain('待质检放行后入库');
+  });
+
+  it('批次追踪时间线：检验进行中与拒收批次（进行中/已拒收 + 原因 + danger 徽章）', async () => {
+    const host = mount(
+      portsFor([receipt], [], {
+        loadDetail: vi.fn().mockResolvedValue(tracedDetail),
+        loadTraceSources: vi.fn().mockResolvedValue({
+          inspections: [
+            {
+              ...inspectionSource,
+              state: 'SAMPLED',
+              events: (inspectionSource.events as Record<string, unknown>[]).slice(0, 1),
+              results: [],
+            },
+          ],
+          lots: [
+            {
+              ...lotSource,
+              qualityStatus: 'REJECTED',
+              qualityEvents: [
+                (lotSource.qualityEvents as Record<string, unknown>[])[0],
+                {
+                  sequence: 2,
+                  state: 'REJECTED',
+                  actor_id: 'e-qm',
+                  created_at: '2026-11-12T02:00:00.000Z',
+                  reason: 'Tensile strength below limit',
+                },
+              ],
+            },
+          ],
+          balances: null,
+        }),
+      }),
+    );
+    element(host.querySelector('[data-testid="kt-gr-open"]')).click();
+    await flush();
+    await flush();
+    const inspection = element(host.querySelector('[data-testid="kt-gr-trace-inspection"]'));
+    expect(inspection.getAttribute('data-state')).toBe('PENDING');
+    expect(inspection.textContent).toContain('QI-KT-YARN-2026-001 · 已抽样');
+    const stockIn = element(host.querySelector('[data-testid="kt-gr-trace-stock-in"]'));
+    expect(stockIn.getAttribute('data-state')).toBe('REJECTED');
+    expect(stockIn.textContent).toContain('已拒收');
+    expect(stockIn.textContent).toContain('拒收不入库 · Tensile strength below limit');
+    // REJECTED 以语义红呈现（danger 徽章；components.css 缺规则时的 token 内联回退）。
+    const badge = element(stockIn.querySelector('.status-badge'));
+    expect(badge.getAttribute('data-tone')).toBe('danger');
+  });
+
+  it('批次追踪时间线：未开检批次（NONE）与事实面读取失败降级（时间线不渲染）', async () => {
+    const noneHost = mount(
+      portsFor([receipt], [], {
+        loadDetail: vi.fn().mockResolvedValue(tracedDetail),
+        loadTraceSources: vi.fn().mockResolvedValue({
+          inspections: [],
+          lots: [{ ...lotSource, qualityStatus: 'QUARANTINE', qualityEvents: [] }],
+          balances: null,
+        }),
+      }),
+    );
+    element(noneHost.querySelector('[data-testid="kt-gr-open"]')).click();
+    await flush();
+    await flush();
+    const inspection = element(noneHost.querySelector('[data-testid="kt-gr-trace-inspection"]'));
+    expect(inspection.textContent).toContain('未开检');
+    expect(inspection.textContent).toContain('尚无检验单');
+    // 读取拒绝 → sources null → 时间线整段不渲染（不拖垮收货详情）。
+    const failedHost = mount(
+      portsFor([receipt], [], {
+        loadDetail: vi.fn().mockResolvedValue(tracedDetail),
+        loadTraceSources: vi.fn().mockRejectedValue(new Error('sources unavailable')),
+      }),
+    );
+    element(failedHost.querySelector('[data-testid="kt-gr-open"]')).click();
+    await flush();
+    await flush();
+    expect(failedHost.querySelector('[data-testid="kt-gr-trace"]')).toBe(null);
+    expect(failedHost.querySelector('[data-testid="kt-gr-detail"]')).not.toBeNull();
   });
 
   it('刷新失败时错误经 DataTable error 面暴露', async () => {

@@ -30,7 +30,14 @@ const supplier: SupplierRow = {
   quality_rating_basis_points: 9200,
   contact: { name: '王经理', phone: '13800000000' },
   qualifications: [
-    { id: 'q-1', status: 'APPROVED', sku: 'RM-YARN', itemName: '草纱', itemVersion: 1 },
+    {
+      id: 'q-1',
+      status: 'APPROVED',
+      sku: 'RM-YARN',
+      itemName: '草纱',
+      itemVersion: 1,
+      item_version_id: 'item-v1',
+    },
   ],
 };
 
@@ -51,6 +58,101 @@ const quote: SupplierRow = {
   valid_until: '2026-12-31',
 };
 
+// PROC-UX：固定时钟（2026-11-23 10:00Z）与资质四色/报价历史对比夹具。
+const NOW = new Date('2026-11-23T10:00:00.000Z');
+const qualification = (
+  id: string,
+  status: string,
+  sku: string,
+  itemName: string,
+  itemVersionId: string,
+): Record<string, unknown> => ({
+  id,
+  status,
+  sku,
+  itemName,
+  itemVersion: 1,
+  item_version_id: itemVersionId,
+});
+const richSupplier: SupplierRow = {
+  ...supplier,
+  qualifications: [
+    qualification('q-1', 'APPROVED', 'RM-YARN', '草纱', 'item-v1'),
+    qualification('q-2', 'CONDITIONAL', 'RM-LATEX', '乳胶', 'item-v2'),
+    qualification('q-3', 'REJECTED', 'RM-BACKING', '底布', 'item-v3'),
+  ],
+};
+const itemChoices = [
+  'RM-YARN · 草纱',
+  'RM-LATEX · 乳胶',
+  'RM-BACKING · 底布',
+  'RM-GLUE · 胶水',
+  'RM-FOIL · 草膜',
+];
+const pricedQuote = (
+  id: string,
+  supplierId: string,
+  supplierName: string,
+  reference: string,
+  receivedAt: string,
+  validUntil: string,
+  line: Record<string, unknown>,
+): SupplierRow => ({
+  id,
+  supplier_id: supplierId,
+  supplierName,
+  quote_reference: reference,
+  received_at: receivedAt,
+  valid_until: validUntil,
+  lines: [{ id: `${id}-l1`, lineNumber: 1, ...line }],
+});
+const yarnLine = (unitPrice: string, moq: string, promisedAt: string): Record<string, unknown> => ({
+  itemVersionId: 'item-v1',
+  unit_price: unitPrice,
+  minimum_order_quantity: moq,
+  promised_at: promisedAt,
+});
+// item-v1（草纱）四条报价：本供应商现价 12.5（有效）与历史 13.2（失效）、背胶供应商 11.8（有效最低）、
+// 宁波草纱三厂 10.0（失效低价——不参与最优）。
+const pricedQuotes: readonly SupplierRow[] = [
+  pricedQuote(
+    'quote-1',
+    'supplier-1',
+    '草纱供应商',
+    'SQ-1',
+    '2026-11-01T00:00:00.000Z',
+    '2026-12-31',
+    yarnLine('12.500000', '1000.000000', '2026-12-10'),
+  ),
+  pricedQuote(
+    'quote-2',
+    'supplier-2',
+    '背胶供应商',
+    'SQ-2',
+    '2026-11-05T00:00:00.000Z',
+    '2026-12-31',
+    yarnLine('11.800000', '2000', '2026-12-08'),
+  ),
+  pricedQuote(
+    'quote-3',
+    'supplier-3',
+    '宁波草纱三厂',
+    'SQ-3',
+    '2026-10-01T00:00:00.000Z',
+    '2026-11-01',
+    yarnLine('10.000000', '500', '2026-12-01'),
+  ),
+  pricedQuote(
+    'quote-4',
+    'supplier-1',
+    '草纱供应商',
+    'SQ-0',
+    '2026-09-01T00:00:00.000Z',
+    '2026-10-31',
+    yarnLine('13.200000', '1000', '2026-12-01'),
+  ),
+];
+
 const portsFor = (
   suppliers: readonly SupplierRow[] = [supplier],
   extraPermissions: readonly string[] = [],
@@ -67,6 +169,8 @@ const portsFor = (
   textValue: (value, fallback = '') =>
     typeof value === 'string' || typeof value === 'number' ? String(value) : fallback,
   submit: vi.fn().mockResolvedValue(null),
+  // PROC-UX：固定时钟（报价有效期判定的确定性）。
+  now: () => NOW,
   refresh: vi.fn().mockResolvedValue({ suppliers, quotes: [quote] }),
   ...overrides,
 });
@@ -237,6 +341,182 @@ describe('U3-PROC-1 供应商控制台', () => {
     const quotes = element(host.querySelector('[data-testid="kt-supplier-quotes"]'));
     expect(quotes.textContent).toContain('SQ-1');
     expect(quotes.textContent).toContain('2026-12-31');
+  });
+
+  it('资质状态四色徽章：列表列与抽屉按 已批准/有条件批准/已驳回/待准入 呈非零计数', async () => {
+    const ports = portsFor([richSupplier, onHoldSupplier], [], {
+      itemVersionChoices: itemChoices.map((label, index) => ({
+        value: `item-v${String(index + 1)}`,
+        label,
+      })),
+    });
+    const host = mount(ports);
+    const cells = host
+      .querySelectorAll('[data-testid="kt-supplier-qualifications-cell"]')
+      .map(element);
+    expect(cells).toHaveLength(2);
+    // 四色徽章固定顺序、仅呈非零计数；REJECTED 以语义红区别于 PENDING 的灰。
+    expect(cells[0]?.textContent).toBe('已批准 1有条件批准 1已驳回 1待准入 2');
+    expect(cells[0]?.getAttribute('data-pending')).toBe('2');
+    expect(
+      cells[0]
+        ?.querySelectorAll('.status-badge')
+        .map((badge) => (badge as TestElement).getAttribute('data-tone')),
+    ).toEqual(['success', 'info', 'danger', 'neutral']);
+    // 无准入记录的供应商仅呈待准入（= 已发布物料数）。
+    expect(cells[1]?.textContent).toBe(`待准入 ${String(itemChoices.length)}`);
+    element(host.querySelectorAll('[data-testid="kt-supplier-open"]')[0]).click();
+    await flush();
+    const badges = element(host.querySelector('[data-testid="kt-supplier-qualification-badges"]'));
+    expect(badges.textContent).toBe('已批准 1有条件批准 1已驳回 1待准入 2');
+    const pending = element(host.querySelector('[data-testid="kt-supplier-pending"]'));
+    expect(pending.textContent).toContain('待准入物料 2 项');
+    expect(pending.textContent).toContain('RM-GLUE · 胶水');
+    expect(pending.textContent).toContain('RM-FOIL · 草膜');
+    // 报价无可比行时不呈对比区。
+    expect(host.querySelector('[data-testid="kt-supplier-compare"]')).toBe(null);
+  });
+
+  it('资质状态徽章：无已发布物料且无记录时呈 —；已驳回记录以语义红呈现', async () => {
+    const bareHost = mount(
+      portsFor([{ ...onHoldSupplier, qualifications: [] }], [], { itemVersionChoices: [] }),
+    );
+    expect(
+      element(bareHost.querySelector('[data-testid="kt-supplier-qualifications-cell"]'))
+        .textContent,
+    ).toBe('—');
+    const rejectedHost = mount(
+      portsFor([
+        {
+          ...supplier,
+          qualifications: [qualification('q-9', 'REJECTED', 'RM-YARN', '草纱', 'item-v1')],
+        },
+      ]),
+    );
+    const cell = element(
+      rejectedHost.querySelector('[data-testid="kt-supplier-qualifications-cell"]'),
+    );
+    expect(cell.textContent).toBe('已驳回 1');
+    expect(element(cell.querySelector('.status-badge')).getAttribute('data-tone')).toBe('danger');
+    element(rejectedHost.querySelector('[data-testid="kt-supplier-open"]')).click();
+    await flush();
+    const record = element(
+      rejectedHost.querySelector('[data-testid="kt-supplier-qualifications"]'),
+    );
+    expect(record.textContent).toContain('RM-YARN · 草纱');
+    expect(element(record.querySelector('.status-badge')).getAttribute('data-tone')).toBe('danger');
+  });
+
+  it('资质状态徽章：待准入物料超过 8 项时截断并提示未列出数', async () => {
+    const many = Array.from({ length: 10 }, (_, index) => ({
+      value: `item-v${String(index + 1)}`,
+      label: `RM-${String(index + 1)} · 物料${String(index + 1)}`,
+    }));
+    const host = mount(portsFor([onHoldSupplier], [], { itemVersionChoices: many }));
+    element(host.querySelector('[data-testid="kt-supplier-open"]')).click();
+    await flush();
+    const pending = element(host.querySelector('[data-testid="kt-supplier-pending"]'));
+    expect(pending.textContent).toContain('待准入物料 10 项');
+    expect(pending.querySelectorAll('li')).toHaveLength(8);
+    expect(pending.textContent).toContain('另有 2 项未列出');
+  });
+
+  it('报价历史对比：同一物料多供应商单价并排，有效最低价高亮最优，本供应商与失效报价标记', async () => {
+    const ports = portsFor([supplier], [], {
+      itemVersionChoices: [{ value: 'item-v1', label: 'RM-YARN · 草纱' }],
+      initialQuotes: pricedQuotes,
+    });
+    const host = mount(ports);
+    element(host.querySelector('[data-testid="kt-supplier-open"]')).click();
+    await flush();
+    const compare = element(host.querySelector('[data-testid="kt-supplier-compare"]'));
+    expect(compare.querySelectorAll('[data-testid="kt-supplier-compare-item"]')).toHaveLength(1);
+    expect(compare.textContent).toContain('RM-YARN · 草纱');
+    expect(compare.textContent).toContain('单价（CNY）');
+    const prices = compare
+      .querySelectorAll('[data-testid="kt-supplier-compare-price"]')
+      .map(element);
+    // 有效报价按单价升序在前；已失效报价按收价时间降序在后，不参与最优。
+    expect(prices.map((price) => price.textContent)).toEqual(['11.8最优', '12.5', '10', '13.2']);
+    expect(prices.map((price) => price.getAttribute('data-best'))).toEqual([
+      'true',
+      'false',
+      'false',
+      'false',
+    ]);
+    expect(compare.textContent).toContain('SQ-2 · 2026-11-05 · 2026-12-31');
+    expect(compare.textContent).toContain('MOQ 1000 · 2026-12-10');
+    expect(compare.textContent).toContain('MOQ 2000 · 2026-12-08');
+    const badgesOf = (label: string): number =>
+      compare.querySelectorAll('.status-badge').filter((badge) => badge.textContent === label)
+        .length;
+    expect(badgesOf('本供应商')).toBe(2);
+    expect(badgesOf('已失效')).toBe(2);
+    expect(badgesOf('最优')).toBe(1);
+    // 报价历史列表守恒（仍按 supplierId 过滤）。
+    const history = element(host.querySelector('[data-testid="kt-supplier-quotes"]'));
+    expect(history.textContent).toContain('SQ-1');
+    expect(history.textContent).toContain('SQ-0');
+    expect(history.textContent).not.toContain('SQ-2');
+  });
+
+  it('报价历史对比：并列有效最低价同标最优；物料超过 6 项时截断提示', async () => {
+    const tie = [
+      pricedQuote(
+        'quote-1',
+        'supplier-1',
+        '草纱供应商',
+        'SQ-1',
+        '2026-11-01T00:00:00.000Z',
+        '2026-12-31',
+        yarnLine('12.500000', '1000', '2026-12-10'),
+      ),
+      pricedQuote(
+        'quote-2',
+        'supplier-2',
+        '背胶供应商',
+        'SQ-2',
+        '2026-11-05T00:00:00.000Z',
+        '2026-12-31',
+        yarnLine('12.500000', '1000', '2026-12-09'),
+      ),
+    ];
+    const openCompare = async (overrides: Partial<SupplierConsolePorts>): Promise<TestElement> => {
+      const host = mount(portsFor([supplier], [], overrides));
+      element(host.querySelector('[data-testid="kt-supplier-open"]')).click();
+      await flush();
+      return host;
+    };
+    const tieHost = await openCompare({
+      itemVersionChoices: [{ value: 'item-v1', label: 'RM-YARN · 草纱' }],
+      initialQuotes: tie,
+    });
+    expect(
+      tieHost
+        .querySelectorAll('[data-testid="kt-supplier-compare-price"]')
+        .map((price) => (price as TestElement).getAttribute('data-best')),
+    ).toEqual(['true', 'true']);
+    const many = Array.from({ length: 8 }, (_, index) => ({
+      value: `item-v${String(index + 1)}`,
+      label: `RM-${String(index + 1)} · 物料${String(index + 1)}`,
+    }));
+    const manyHost = await openCompare({
+      itemVersionChoices: many,
+      initialQuotes: many.map((choice, index) =>
+        pricedQuote(
+          `quote-m${String(index)}`,
+          'supplier-1',
+          '草纱供应商',
+          `SQ-M${String(index)}`,
+          '2026-11-01T00:00:00.000Z',
+          '2026-12-31',
+          { ...yarnLine('12.5', '1000', '2026-12-10'), itemVersionId: choice.value },
+        ),
+      ),
+    });
+    const compare = element(manyHost.querySelector('[data-testid="kt-supplier-compare"]'));
+    expect(compare.querySelectorAll('[data-testid="kt-supplier-compare-item"]')).toHaveLength(6);
+    expect(compare.textContent).toContain('另有 2 项物料未列出');
   });
 
   it('刷新失败时错误经 DataTable error 面暴露', async () => {

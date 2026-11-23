@@ -29,6 +29,7 @@ const rfq: RfqRow = {
   lines: [
     {
       id: 'line-1',
+      line_number: 1,
       sku: 'RM-YARN',
       itemName: '草纱',
       quantity: '6000',
@@ -67,6 +68,48 @@ const rfqDetail: RfqRow = {
   ],
 };
 
+// PROC-UX：固定时钟（2026-11-23 10:00Z）与截止倒计时/报价对比矩阵夹具。
+const NOW = new Date('2026-11-23T10:00:00.000Z');
+const issuedAt = (id: string, number: string, dueAt: string): RfqRow => ({
+  ...issuedRfq,
+  id,
+  rfq_number: number,
+  response_due_at: dueAt,
+});
+const dueSoonRfq = issuedAt('rfq-3', 'RFQ-KT-YARN-2026-003', '2026-11-25T23:59:59.000Z');
+const closingTodayRfq = issuedAt('rfq-4', 'RFQ-KT-YARN-2026-004', '2026-11-23T23:59:59.000Z');
+const overdueRfq = issuedAt('rfq-5', 'RFQ-KT-YARN-2026-005', '2026-11-20T23:59:59.000Z');
+const badDueRfq = issuedAt('rfq-6', 'RFQ-KT-YARN-2026-006', 'not-a-date');
+const quoteOf = (
+  id: string,
+  supplierName: string,
+  unitPrice: string,
+  validUntil: string,
+): Record<string, unknown> => ({
+  id,
+  quote_reference: `SQ-${id}`,
+  supplierName,
+  received_at: '2026-11-10T00:00:00.000Z',
+  valid_until: validUntil,
+  lines: [
+    {
+      id: `ql-${id}`,
+      lineNumber: 1,
+      sku: 'RM-YARN',
+      unit_price: unitPrice,
+      promised_at: '2026-12-10',
+      minimum_order_quantity: '1000.000000',
+    },
+  ],
+});
+const matrixDetail: RfqRow = {
+  ...issuedRfq,
+  quotes: [
+    quoteOf('q-1', '青岛金特夫草纱战略供应商', '12.500000', '2026-12-31'),
+    quoteOf('q-2', '江苏草纱二厂', '11.800000', '2026-11-30'),
+  ],
+};
+
 const portsFor = (
   rfqs: readonly RfqRow[] = [rfq],
   extraPermissions: readonly string[] = [],
@@ -83,6 +126,8 @@ const portsFor = (
     typeof value === 'string' || typeof value === 'number' ? String(value) : fallback,
   submit: vi.fn().mockResolvedValue(null),
   loadDetail: vi.fn().mockResolvedValue(null),
+  // PROC-UX：固定时钟（截止倒计时/报价有效期判定的确定性）。
+  now: () => NOW,
   refresh: vi.fn().mockResolvedValue(rfqs),
   ...overrides,
 });
@@ -242,5 +287,126 @@ describe('U3-PROC-2 询价控制台', () => {
     await flush();
     expect(host.querySelector('.data-table-error')).not.toBeNull();
     expect(host.textContent).toContain('询价单加载失败');
+  });
+
+  it('截止倒计时徽章：仅已签发询价单呈示（剩余/临期/今日/逾期分级色调）', () => {
+    const host = mount(
+      portsFor([rfq, issuedRfq, dueSoonRfq, closingTodayRfq, overdueRfq, badDueRfq]),
+    );
+    const rows = host.querySelectorAll('tbody tr');
+    const badges = rows.map((row) => row.querySelector('[data-testid="kt-rfq-countdown"]'));
+    // 草稿未发出不计时；不可解析的截止时间不呈徽章。
+    expect(badges[0]).toBe(null);
+    expect(badges[5]).toBe(null);
+    expect(badges.slice(1, 5).map((badge) => badge?.textContent)).toEqual([
+      '剩 8 天',
+      '剩 2 天',
+      '今日截止',
+      '已逾期 3 天',
+    ]);
+    expect(
+      badges.slice(1, 5).map((badge) => (badge as TestElement).getAttribute('data-tone')),
+    ).toEqual(['info', 'warning', 'warning', 'danger']);
+    // 截止日期文本守恒（ISO 前 10 位 · 币种）。
+    expect(rows[1]?.querySelector('[data-column="due"]')?.textContent).toContain(
+      '2026-12-01 · CNY',
+    );
+  });
+
+  it('详情抽屉：已签发询价单呈截止倒计时，草稿不呈', async () => {
+    const issuedHost = mount(portsFor([issuedRfq]));
+    element(issuedHost.querySelector('[data-testid="kt-rfq-open"]')).click();
+    await flush();
+    expect(
+      element(issuedHost.querySelector('[data-testid="kt-rfq-detail"]')).textContent,
+    ).toContain('剩 8 天');
+    const draftHost = mount(portsFor([rfq]));
+    element(draftHost.querySelector('[data-testid="kt-rfq-open"]')).click();
+    await flush();
+    expect(draftHost.querySelector('[data-testid="kt-rfq-countdown"]')).toBe(null);
+  });
+
+  it('报价对比矩阵：行项×供应商并排，有效报价中单价最低者标记推荐', async () => {
+    const host = mount(
+      portsFor([issuedRfq], [], { loadDetail: vi.fn().mockResolvedValue(matrixDetail) }),
+    );
+    element(host.querySelector('[data-testid="kt-rfq-open"]')).click();
+    await flush();
+    await flush();
+    const matrix = element(host.querySelector('[data-testid="kt-rfq-quotes"]'));
+    expect(matrix.textContent).toContain('青岛金特夫草纱战略供应商');
+    expect(matrix.textContent).toContain('江苏草纱二厂');
+    expect(matrix.textContent).toContain('行 1 · RM-YARN · 草纱 · 数量 6000');
+    const cells = matrix.querySelectorAll('[data-testid="kt-rfq-matrix-cell"]').map(element);
+    expect(cells.map((cell) => cell.getAttribute('data-quote'))).toEqual(['q-1', 'q-2']);
+    expect(cells.map((cell) => cell.getAttribute('data-recommended'))).toEqual(['false', 'true']);
+    expect(cells[0]?.textContent).toContain('单价 12.5');
+    expect(cells[0]?.textContent).toContain('MOQ 1000 · 交期 2026-12-10');
+    expect(cells[1]?.textContent).toContain('单价 11.8');
+    expect(
+      matrix.querySelectorAll('.status-badge').filter((badge) => badge.textContent === '推荐'),
+    ).toHaveLength(1);
+    // 报价单图例（供应商 · 报价单 · 收于 · 有效至）。
+    expect(matrix.textContent).toContain(
+      '江苏草纱二厂 · SQ-q-2 · 收于 2026-11-10 · 有效至 2026-11-30',
+    );
+  });
+
+  it('报价对比矩阵：已失效的低价报价不参与推荐并标记；缺行报价呈 —', async () => {
+    const detail: RfqRow = {
+      ...issuedRfq,
+      quotes: [
+        quoteOf('q-1', '青岛金特夫草纱战略供应商', '12.500000', '2026-12-31'),
+        quoteOf('q-2', '江苏草纱二厂', '11.800000', '2026-11-01'),
+        { ...quoteOf('q-3', '宁波背胶厂', '9.900000', '2026-12-31'), lines: [] },
+      ],
+    };
+    const host = mount(
+      portsFor([issuedRfq], [], { loadDetail: vi.fn().mockResolvedValue(detail) }),
+    );
+    element(host.querySelector('[data-testid="kt-rfq-open"]')).click();
+    await flush();
+    await flush();
+    const matrix = element(host.querySelector('[data-testid="kt-rfq-quotes"]'));
+    const cells = matrix.querySelectorAll('[data-testid="kt-rfq-matrix-cell"]').map(element);
+    expect(cells.map((cell) => cell.getAttribute('data-recommended'))).toEqual([
+      'true',
+      'false',
+      'false',
+    ]);
+    expect(cells[1]?.textContent).toContain('已失效');
+    expect(cells[1]?.textContent).toContain('单价 11.8');
+    expect(cells[2]?.textContent).toContain('单价 —');
+    expect(cells[2]?.textContent).toContain('MOQ — · 交期 —');
+  });
+
+  it('报价对比矩阵：并列最低价同标推荐；全部失效则无推荐', async () => {
+    const recommendedOf = async (
+      quotes: readonly Record<string, unknown>[],
+    ): Promise<(string | null)[]> => {
+      const host = mount(
+        portsFor([issuedRfq], [], {
+          loadDetail: vi.fn().mockResolvedValue({ ...issuedRfq, quotes }),
+        }),
+      );
+      element(host.querySelector('[data-testid="kt-rfq-open"]')).click();
+      await flush();
+      await flush();
+      return element(host.querySelector('[data-testid="kt-rfq-quotes"]'))
+        .querySelectorAll('[data-testid="kt-rfq-matrix-cell"]')
+        .map((cell) => (cell as TestElement).getAttribute('data-recommended'));
+    };
+    expect(
+      await recommendedOf([
+        quoteOf('q-1', '青岛金特夫草纱战略供应商', '12.500000', '2026-12-31'),
+        quoteOf('q-2', '江苏草纱二厂', '12.500000', '2026-12-31'),
+      ]),
+    ).toEqual(['true', 'true']);
+    expect(
+      await recommendedOf([
+        quoteOf('q-1', '青岛金特夫草纱战略供应商', '12.500000', '2026-10-31'),
+        quoteOf('q-2', '江苏草纱二厂', '11.800000', '2026-10-31'),
+      ]),
+    ).toEqual(['false', 'false']);
   });
 });

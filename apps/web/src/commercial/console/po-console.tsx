@@ -12,8 +12,13 @@ import {
 import {
   PoLines,
   PurchaseDocuments,
+  ProgressBar,
   ReceiptProgress,
+  ReceiptProgressBars,
+  STATUS_LABELS,
+  StatusFlow,
   documentFormFields,
+  receiptProgressOf,
   type DocumentFormKind,
 } from './po-detail';
 import { createPurchaseOrderActions } from './po-console-actions';
@@ -24,6 +29,7 @@ import type { ContractDocumentRow, PurchaseOrderConsolePorts, PurchaseOrderRow }
 // 保留 vanilla 至 U3-PROC-4；采购合同文档工作流（上传/OCR/复核/送签）自 PO 卡片迁移
 // 至详情抽屉）。行级签发/取消（PUT state 统一动作端点；cancel 为主协调 U3-PROC-3
 // 指令授权的合法迁移；独立审批层缺失登记 TD-PROC-003）。
+// PROC-UX：列表新增收货进度列；详情抽屉新增状态流转图与逐行/整单收货进度条。
 type PoFormKind = 'create' | null;
 type PoPageState = Readonly<{
   orders: readonly PurchaseOrderRow[];
@@ -61,15 +67,6 @@ type PoPageState = Readonly<{
   showMore: () => void;
 }>;
 
-// businessStateLabel 同口径（procurement_document_status 五值均有标签）。
-const STATUS_LABELS: Readonly<Record<string, string>> = {
-  DRAFT: '草稿',
-  ISSUED: '已签发',
-  PARTIALLY_RECEIVED: '部分收货',
-  RECEIVED: '已收货',
-  CANCELLED: '已取消',
-};
-
 const statusTone = (status: unknown): StatusTone => {
   if (status === 'ISSUED' || status === 'RECEIVED') return 'success';
   if (status === 'CANCELLED') return 'danger';
@@ -96,6 +93,32 @@ const orderTotal = (ports: PurchaseOrderConsolePorts, row: PurchaseOrderRow): st
     0,
   );
   return ports.decimalValue(total);
+};
+
+// 列表收货进度单元：草稿未签发不呈进度条；其余按 Σ已收/Σ订购 呈百分比条。
+const ProgressCell = ({ state, row }: Readonly<{ state: PoPageState; row: PurchaseOrderRow }>) => {
+  if (text(state.ports, row, 'status', 'status') === 'DRAFT')
+    return <span class="console-label">未签发</span>;
+  const progress = receiptProgressOf(linesOf(row));
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 'var(--kt-space-2)',
+        width: '100%',
+        minWidth: '140px',
+      }}
+    >
+      <ProgressBar
+        value={progress.percent}
+        label={`${text(state.ports, row, 'poNumber', 'po_number')}收货进度`}
+      />
+      <span data-testid="kt-po-progress-cell" data-percent={progress.percent}>
+        {`${String(progress.percent)}%`}
+      </span>
+    </span>
+  );
 };
 
 const columns = (state: PoPageState): readonly DataTableColumn<PurchaseOrderRow>[] => [
@@ -138,6 +161,13 @@ const columns = (state: PoPageState): readonly DataTableColumn<PurchaseOrderRow>
     header: '行项',
     field: (row) => linesOf(row).length,
     render: (row) => `${String(linesOf(row).length)} 项`,
+  },
+  {
+    key: 'progress',
+    header: '收货进度',
+    sortable: true,
+    field: (row) => receiptProgressOf(linesOf(row)).percent,
+    render: (row) => <ProgressCell state={state} row={row} />,
   },
   {
     key: 'actions',
@@ -204,6 +234,7 @@ const PoDrawer = ({ state }: Readonly<{ state: PoPageState }>) => {
           {orderTotal(ports, row)}
         </p>
       </div>
+      <StatusFlow state={state} />
       {state.submitError !== '' ? (
         <p class="console-error" role="alert" data-testid="kt-po-submit-error">
           {state.submitError}
@@ -240,6 +271,7 @@ const PoDrawer = ({ state }: Readonly<{ state: PoPageState }>) => {
       {state.detailLoading ? <p class="console-label">详情加载中…</p> : null}
       <p class="console-label">订单行项</p>
       <PoLines state={state} />
+      <ReceiptProgressBars state={state} />
       <ReceiptProgress state={state} />
       <PurchaseDocuments state={state} />
       {state.activeDocumentForm && activeDocument ? (
@@ -395,7 +427,7 @@ const PoView = (state: PoPageState) => {
         columns={columns(state)}
         rows={shown}
         rowId={(row) => state.ports.textValue(row.id ?? row.po_number, 'row')}
-        caption="采购订单主列表（状态、供应商与金额）"
+        caption="采购订单主列表（状态、供应商、金额与收货进度）"
         loading={state.loading}
         pagination={{
           loadedCount: shown.length,
