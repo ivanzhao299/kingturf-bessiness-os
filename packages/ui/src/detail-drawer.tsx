@@ -16,13 +16,16 @@ let drawerTitleSeq = 0;
 type Focusable = Readonly<{ focus: () => void; disabled?: boolean; tabIndex?: number }>;
 
 // 结构化宿主接口：浏览器 HTMLElement 与测试 DOM double 通用，并避开 lib.dom 弃用重载。
-type QueryHost = Readonly<{ querySelectorAll: (selector: string) => readonly unknown[] }>;
+// 浏览器返回 NodeList（可迭代但无数组方法），测试 double 返回数组——统一经 Array.from 取数组。
+type QueryHost = Readonly<{
+  querySelectorAll: (selector: string) => NodeList | readonly unknown[];
+}>;
 
 const focusableIn = (root: HTMLElement | null): readonly Focusable[] => {
   if (!root) return [];
   const finder = root as unknown as QueryHost;
   if (typeof finder.querySelectorAll !== 'function') return [];
-  const nodes = finder.querySelectorAll(FOCUSABLE_SELECTOR) as readonly Focusable[];
+  const nodes = Array.from(finder.querySelectorAll(FOCUSABLE_SELECTOR)) as readonly Focusable[];
   return nodes.filter(
     (node) => typeof node.focus === 'function' && node.disabled !== true && node.tabIndex !== -1,
   );
