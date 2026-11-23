@@ -207,12 +207,20 @@ const SQL_ENUM_NAMES = new Set([
   // 聚合）提取为模块常量供三处复用（list/listSupplierPage/findSupplier），SQL 字节
   // 与提取前逐字一致；请求值（cursor/status/limit）一律经 values.push 参数化。
   'SUPPLIER_ITEM_PROJECTION',
+  // U3-PROC-2（供应链域迁移，同 SUPPLIER 先例）：RFQ 行投影（to_jsonb+lines 聚合）
+  // 提取为模块常量供两处复用（list/listRfqs），SQL 字节与提取前逐字一致；status
+  // 筛选值一律经 values.push 参数化。
+  'RFQ_ITEM_PROJECTION',
   // B2（TD-API-003）分页 keyset 游标片段：cursor 值一律经 values.push 参数化（$N），
   // 变量本体只含代码内表/列名与占位符；2026-11-18 随 18 端点分页批次登记。
   'keyset',
   // UI-M2（governance 左树右表）employees.list 可选组织过滤片段：组织 uuid 一律经
   // values.push 参数化（$N::uuid），变量本体为空串或参数化占位符；2026-11-19 登记。
   'orgFilter',
+  // U3-PROC-2（供应链域迁移，同 orgFilter 先例）：RFQ 列表可选状态过滤片段：
+  // 状态枚举值经 values.push 参数化（$N），变量本体为空串或 ' AND r.status=$2'
+  // 参数化占位符；2026-11-23 登记。
+  'statusClause',
   'alias',
   'anchor.scope',
   'a.scope',

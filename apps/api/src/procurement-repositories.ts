@@ -31,6 +31,16 @@ export type SupplierPageFilter = Readonly<{
 }>;
 export type SupplierPage = Readonly<{ items: readonly JsonObject[]; nextCursor: string | null }>;
 
+// U3-PROC-2：RFQ 行投影（to_jsonb 蛇形键 + lines 聚合）——list 与 additive 只读
+// 共用同一片段（字节一致，行为守恒）。
+const RFQ_ITEM_PROJECTION = `to_jsonb(r)||jsonb_build_object('lines',coalesce((SELECT jsonb_agg(to_jsonb(l)||jsonb_build_object('sku',i.sku,'itemName',i.name) ORDER BY l.line_number) FROM procurement_rfq_lines l JOIN manufacturing_item_versions v ON v.id=l.item_version_id AND v.tenant_id=l.tenant_id JOIN manufacturing_items i ON i.id=v.item_id AND i.tenant_id=v.tenant_id WHERE l.rfq_id=r.id AND l.tenant_id=r.tenant_id),'[]'::jsonb))`;
+
+// U3-PROC-2（ADR-0015）：RFQ 列表过滤器——status 枚举同 procurement_document_status；
+// legacy 列表无 LIMIT/筛选，全量语义保持（filter 为空时与 list('rfqs') 逐字节一致）。
+export type RfqListFilter = Readonly<{
+  status?: 'DRAFT' | 'ISSUED' | 'PARTIALLY_RECEIVED' | 'RECEIVED' | 'CANCELLED';
+}>;
+
 export class PostgresProcurementRepository {
   public constructor(private readonly db: Db) {}
 
@@ -41,7 +51,7 @@ export class PostgresProcurementRepository {
     company(context);
     const queries = {
       suppliers: `SELECT ${SUPPLIER_ITEM_PROJECTION} item FROM suppliers s WHERE s.tenant_id=$1 ORDER BY s.supplier_number`,
-      rfqs: `SELECT to_jsonb(r)||jsonb_build_object('lines',coalesce((SELECT jsonb_agg(to_jsonb(l)||jsonb_build_object('sku',i.sku,'itemName',i.name) ORDER BY l.line_number) FROM procurement_rfq_lines l JOIN manufacturing_item_versions v ON v.id=l.item_version_id AND v.tenant_id=l.tenant_id JOIN manufacturing_items i ON i.id=v.item_id AND i.tenant_id=v.tenant_id WHERE l.rfq_id=r.id AND l.tenant_id=r.tenant_id),'[]'::jsonb)) item FROM procurement_rfqs r WHERE r.tenant_id=$1 ORDER BY r.created_at DESC`,
+      rfqs: `SELECT ${RFQ_ITEM_PROJECTION} item FROM procurement_rfqs r WHERE r.tenant_id=$1 ORDER BY r.created_at DESC`,
       quotes: `SELECT to_jsonb(q)||jsonb_build_object('supplierName',s.name,'rfqNumber',r.rfq_number,'lines',coalesce((SELECT jsonb_agg(to_jsonb(l)||jsonb_build_object('lineNumber',rl.line_number,'itemVersionId',rl.item_version_id) ORDER BY rl.line_number) FROM supplier_quote_lines l JOIN procurement_rfq_lines rl ON rl.id=l.rfq_line_id AND rl.tenant_id=l.tenant_id WHERE l.supplier_quote_id=q.id AND l.tenant_id=q.tenant_id),'[]'::jsonb)) item FROM supplier_quotes q JOIN suppliers s ON s.id=q.supplier_id AND s.tenant_id=q.tenant_id JOIN procurement_rfqs r ON r.id=q.rfq_id AND r.tenant_id=q.tenant_id WHERE q.tenant_id=$1 ORDER BY q.received_at DESC`,
       orders: `SELECT to_jsonb(p)||jsonb_build_object('supplierName',s.name,'lines',coalesce((SELECT jsonb_agg(to_jsonb(l)||jsonb_build_object('sku',i.sku,'itemName',i.name,'receivedQuantity',coalesce((SELECT sum(grl.quantity) FROM goods_receipt_lines grl WHERE grl.purchase_order_line_id=l.id AND grl.tenant_id=l.tenant_id),0)) ORDER BY l.line_number) FROM purchase_order_lines l JOIN manufacturing_item_versions v ON v.id=l.item_version_id AND v.tenant_id=l.tenant_id JOIN manufacturing_items i ON i.id=v.item_id AND i.tenant_id=v.tenant_id WHERE l.purchase_order_id=p.id AND l.tenant_id=p.tenant_id),'[]'::jsonb)) item FROM purchase_orders p JOIN suppliers s ON s.id=p.supplier_id AND s.tenant_id=p.tenant_id WHERE p.tenant_id=$1 ORDER BY p.created_at DESC`,
       receipts: `SELECT to_jsonb(g)||jsonb_build_object('poNumber',p.po_number,'lines',coalesce((SELECT jsonb_agg(to_jsonb(l)||jsonb_build_object('lotNumber',lot.lot_number,'locationCode',loc.code,'sku',i.sku) ORDER BY l.id) FROM goods_receipt_lines l JOIN inventory_lots lot ON lot.id=l.lot_id AND lot.tenant_id=l.tenant_id JOIN inventory_locations loc ON loc.id=l.location_id AND loc.tenant_id=l.tenant_id JOIN purchase_order_lines pol ON pol.id=l.purchase_order_line_id AND pol.tenant_id=l.tenant_id JOIN manufacturing_item_versions v ON v.id=pol.item_version_id AND v.tenant_id=pol.tenant_id JOIN manufacturing_items i ON i.id=v.item_id AND i.tenant_id=v.tenant_id WHERE l.goods_receipt_id=g.id AND l.tenant_id=g.tenant_id),'[]'::jsonb)) item FROM goods_receipts g JOIN purchase_orders p ON p.id=g.purchase_order_id AND p.tenant_id=g.tenant_id WHERE g.tenant_id=$1 ORDER BY g.received_at DESC`,
@@ -101,6 +111,67 @@ export class PostgresProcurementRepository {
       )
     ).rows[0];
     return row?.item ?? null;
+  }
+
+  // U3-PROC-2（ADR-0015）：RFQ 列表只读（additive）——投影/排序键（created_at DESC）
+  // 与 list('rfqs') 一致；filter 为空时 items 与 legacy 全量逐字节一致，status 筛选
+  // 参数化；页对象形态（nextCursor 恒 null——legacy 无 LIMIT，无分页窗口）。
+  public async listRfqs(
+    context: Context,
+    filter: RfqListFilter,
+  ): Promise<Readonly<{ items: readonly JsonObject[]; nextCursor: null }>> {
+    company(context);
+    const values: unknown[] = [context.actor.companyId];
+    let statusClause = '';
+    if (filter.status !== undefined) {
+      values.push(filter.status);
+      statusClause = ` AND r.status=$2`;
+    }
+    return {
+      items: (
+        await this.db.query<{ item: JsonObject }>(
+          `SELECT ${RFQ_ITEM_PROJECTION} item FROM procurement_rfqs r WHERE r.tenant_id=$1${statusClause} ORDER BY r.created_at DESC`,
+          values,
+        )
+      ).rows.map((row) => row.item),
+      nextCursor: null,
+    };
+  }
+
+  // U3-PROC-2（ADR-0015）：RFQ 详情只读（additive）——根行（list 同投影字段）+
+  // 行项（同 lines 聚合）+ 报价对比（quotes：报价头 + 逐行单价/承诺日/MOQ，
+  // 供比价呈现；supplier_quote_lines.unit_price 经 additive 只读暴露）。
+  public async findRfq(id: string, context: Context): Promise<JsonObject | null> {
+    company(context);
+    const row = (
+      await this.db.query<{ item: JsonObject }>(
+        `SELECT to_jsonb(r)
+          ||jsonb_build_object('lines',coalesce((SELECT jsonb_agg(to_jsonb(l)||jsonb_build_object('sku',i.sku,'itemName',i.name) ORDER BY l.line_number) FROM procurement_rfq_lines l JOIN manufacturing_item_versions v ON v.id=l.item_version_id AND v.tenant_id=l.tenant_id JOIN manufacturing_items i ON i.id=v.item_id AND i.tenant_id=v.tenant_id WHERE l.rfq_id=r.id AND l.tenant_id=r.tenant_id),'[]'::jsonb))
+          ||jsonb_build_object('quotes',coalesce((SELECT jsonb_agg(to_jsonb(q)||jsonb_build_object('supplierName',s.name,'lines',coalesce((SELECT jsonb_agg(to_jsonb(l)||jsonb_build_object('lineNumber',rl.line_number,'sku',i.sku) ORDER BY l.id) FROM supplier_quote_lines l JOIN procurement_rfq_lines rl ON rl.id=l.rfq_line_id AND rl.tenant_id=l.tenant_id JOIN manufacturing_item_versions v ON v.id=rl.item_version_id AND v.tenant_id=rl.tenant_id JOIN manufacturing_items i ON i.id=v.item_id AND i.tenant_id=v.tenant_id WHERE l.supplier_quote_id=q.id AND l.tenant_id=q.tenant_id),'[]'::jsonb)) ORDER BY q.received_at) FROM supplier_quotes q JOIN suppliers s ON s.id=q.supplier_id AND s.tenant_id=q.tenant_id WHERE q.rfq_id=r.id AND q.tenant_id=r.tenant_id),'[]'::jsonb)) item
+        FROM procurement_rfqs r WHERE r.tenant_id=$1 AND r.id=$2`,
+        [context.actor.companyId, id],
+      )
+    ).rows[0];
+    return row?.item ?? null;
+  }
+
+  // U3-PROC-2（ADR-0015）：RFQ 关闭写路径（additive；主协调 U3-PROC-2 指令明授
+  // 「发布/关闭」状态流转）——DRAFT/ISSUED → CANCELLED；PARTIALLY_RECEIVED/RECEIVED
+  // 属采购单收货状态机，不开放关闭。证据事件 rfq.closed 与 rfq.created/issued 同构。
+  public closeRfq(id: string, context: Context, correlationId: string) {
+    return this.db.transaction(async (tx) => {
+      company(context);
+      const row = (
+        await tx.query<{ id: string }>(
+          `UPDATE procurement_rfqs SET status='CANCELLED' WHERE id=$1 AND tenant_id=$2 AND status IN('DRAFT','ISSUED') RETURNING id`,
+          [id, context.actor.companyId],
+        )
+      ).rows[0];
+      if (!row) throw new DomainError('not_found', 'Open RFQ not found');
+      const result = json({ id, status: 'CANCELLED' });
+      await evidence(tx, 'rfq.closed', 'rfq', id, context, correlationId, result);
+      return result;
+    });
   }
 
   public createSupplier(

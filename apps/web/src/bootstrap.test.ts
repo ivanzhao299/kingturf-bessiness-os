@@ -2009,8 +2009,9 @@ describe('web bootstrap', () => {
       controller,
     ) as unknown as RenderedElement;
     expect(workspace.findByClass('procurement-workbench')).toHaveLength(1);
-    // U3-PROC-1：供应商区迁移至 Preact 控制台宿主（vanilla procurement-column 剩
-    // sourcing/order/inventory 三区；供应商行渲染由 supplier-console 行为测试覆盖）。
+    // U3-PROC-1/2：供应商区与询价区迁移至 Preact 控制台宿主（vanilla
+    // procurement-column 剩 sourcing（报价区）/order/inventory 三区；供应商行与
+    // 询价行渲染由各自控制台行为测试覆盖）。
     expect(workspace.findByClass('procurement-column')).toHaveLength(3);
     // 宿主必须挂载于 procurement-workbench 面板内（路由可见性随父面板治理——
     // e2e 的 .procurement-workbench 定位器作用域同时依赖该包含关系）。
@@ -2018,6 +2019,11 @@ describe('web bootstrap', () => {
     const supplierHost = workbench?.findByClass('suppliers-console')[0];
     expect(supplierHost?.getAttribute('data-testid')).toBe('kt-proc-suppliers');
     expect(supplierHost?.getAttribute('data-route-view')).toBe(null);
+    const rfqHost = workbench?.findByClass('rfqs-console')[0];
+    expect(rfqHost?.getAttribute('data-testid')).toBe('kt-proc-rfqs');
+    expect(rfqHost?.getAttribute('data-route-view')).toBe(null);
+    // sourcing 区报价卡片保持 vanilla（supplier-quotes 域待 U3-PROC-3）。
+    expect(workspace.textContent).toContain('报价 SQ-1');
     expect(workspace.textContent).toContain('PO-1 · 已收货');
     expect(workspace.textContent).toContain('LOT-1');
     expect(workspace.textContent).toContain('结存 5000');

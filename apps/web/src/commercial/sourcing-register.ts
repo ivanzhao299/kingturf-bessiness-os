@@ -2,26 +2,20 @@ import { el } from '../dom';
 import { openForm } from '../shared/forms';
 import type { OperationsViewContext } from './operations-view-ports';
 
+// U3-PROC-2：RFQ 区退役——询价卡片与「新建并发出询价单」表单迁移至 Preact 询价
+// 控制台（裁定 17 语义）；供应商报价卡片与登记表单属 supplier-quotes 域（尚未
+// 迁移），保留 vanilla 待 U3-PROC-3 承接。
 export function createSourcingPanel(
   context: OperationsViewContext,
   rfqs: readonly Record<string, unknown>[],
   supplierQuotes: readonly Record<string, unknown>[],
   suppliers: readonly Record<string, unknown>[],
-  manufacturingItems: readonly Record<string, unknown>[],
   refresh: () => Promise<void>,
 ): HTMLElement {
   const { workspace, controller, permissions } = context;
-  const { recordValue, recordText, businessStateLabel } = context.ports;
+  const { recordValue, recordText } = context.ports;
   const sourcingPanel = el('article', 'procurement-column sourcing-register');
-  sourcingPanel.append(el('h3', '', '询价与报价'));
-  for (const rfq of rfqs)
-    sourcingPanel.append(
-      el(
-        'div',
-        'procurement-card',
-        `${recordText(rfq, 'rfqNumber', 'rfq_number')} · ${businessStateLabel(recordText(rfq, 'status', 'status'))} · ${String(Array.isArray(rfq.lines) ? rfq.lines.length : 0)} 项`,
-      ),
-    );
+  sourcingPanel.append(el('h3', '', '供应商报价'));
   for (const quote of supplierQuotes)
     sourcingPanel.append(
       el(
@@ -31,51 +25,6 @@ export function createSourcingPanel(
       ),
     );
   if (permissions.has('procurement:manage')) {
-    const publishedItemOptions = manufacturingItems
-      .filter((item) => recordText(item, 'status', 'status') === 'PUBLISHED')
-      .map((item) => ({
-        value: String(item.id),
-        label: `${recordText(item, 'sku', 'sku')} · ${recordText(item, 'name', 'name')}`,
-      }));
-    const createRfq = el('button', 'secondary', '＋ 新建并发出询价单');
-    createRfq.addEventListener('click', () => {
-      openForm(
-        workspace,
-        '创建采购询价',
-        '选择已发布物料版本并明确数量、交期和报价截止时间。',
-        [
-          { name: 'rfqNumber', label: '询价单编号', required: true },
-          {
-            name: 'itemVersionId',
-            label: '采购物料',
-            type: 'select',
-            required: true,
-            options: publishedItemOptions,
-          },
-          { name: 'quantity', label: '询价数量', type: 'number', required: true },
-          { name: 'requiredAt', label: '要求到货日', type: 'date', required: true },
-          { name: 'responseDue', label: '报价截止日', type: 'date', required: true },
-        ],
-        '发出询价单',
-        async (values) => {
-          await controller.submit('/api/v1/procurement-rfqs', {
-            rfqNumber: values.rfqNumber,
-            responseDueAt: `${values.responseDue ?? ''}T23:59:59.000Z`,
-            currency: 'CNY',
-            issue: true,
-            lines: [
-              {
-                itemVersionId: values.itemVersionId,
-                quantity: values.quantity,
-                requiredAt: values.requiredAt,
-              },
-            ],
-          });
-          await refresh();
-        },
-      );
-    });
-    sourcingPanel.append(createRfq);
     const rfqLineOptions = rfqs.flatMap((rfq) =>
       (Array.isArray(rfq.lines) ? rfq.lines.map(recordValue) : []).map((line) => ({
         value: `${String(rfq.id)}|${String(line.id)}`,

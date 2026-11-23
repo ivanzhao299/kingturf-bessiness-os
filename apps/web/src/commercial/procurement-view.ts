@@ -1,6 +1,6 @@
 import { el } from '../dom';
 import type { OperationsViewContext } from './operations-view-ports';
-import { appendSupplierConsole } from './console-entry';
+import { appendSupplierConsole, appendRfqConsole } from './console-entry';
 import { createSourcingPanel } from './sourcing-register';
 import { createOrderPanel } from './purchase-register';
 import { createInventoryPanel } from './inventory-register';
@@ -51,19 +51,14 @@ export function appendProcurementView(context: OperationsViewContext): void {
     ),
   );
   panel.append(procurementSummary);
-  // U3-PROC-1：供应商区迁移至 Preact 供应商控制台（挂 procurement-workbench 面板内
-  // ——路由可见性随父面板；原 vanilla supplier-register 卡片退役，裁定 17 语义；
-  // sourcing/order/inventory 三区保持 vanilla）。
+  // U3-PROC-1/2：供应商区与询价区迁移至 Preact 控制台（挂 procurement-workbench
+  // 面板内——路由可见性随父面板；原 vanilla supplier-register 卡片与 RFQ 卡片/
+  // 新建询价表单退役，裁定 17 语义；报价登记等 supplier-quotes 域保留 vanilla
+  // 待 U3-PROC-3；order/inventory 两区保持 vanilla）。
   appendSupplierConsole(context, panel);
+  appendRfqConsole(context, panel);
   const grid = el('div', 'procurement-grid');
-  const sourcingPanel = createSourcingPanel(
-    context,
-    rfqs,
-    supplierQuotes,
-    suppliers,
-    manufacturingItems,
-    refresh,
-  );
+  const sourcingPanel = createSourcingPanel(context, rfqs, supplierQuotes, suppliers, refresh);
   const orderPanel = createOrderPanel(
     context,
     purchaseOrders,
