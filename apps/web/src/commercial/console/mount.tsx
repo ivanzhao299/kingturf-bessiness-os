@@ -28,6 +28,8 @@ import { GoodsReceiptConsolePage } from './gr-console';
 import type { GoodsReceiptConsolePorts } from './gr-ports';
 import { ItemConsolePage } from './item-console';
 import type { ItemConsolePorts } from './item-ports';
+import { BomConsolePage } from './bom-console';
+import type { BomConsolePorts } from './bom-ports';
 
 // U3-COM-1..7：commercial 控制台挂载体（经宿主动态 import 独立 chunk，登录入口
 // 预算不受影响）；按宿主路由选择页面，页面工厂闭包持有各自 signal 状态。
@@ -45,7 +47,8 @@ type ConsoleMountPorts =
   | Readonly<{ kind: 'rfqs'; ports: RfqConsolePorts }>
   | Readonly<{ kind: 'purchase-orders'; ports: PurchaseOrderConsolePorts }>
   | Readonly<{ kind: 'goods-receipts'; ports: GoodsReceiptConsolePorts }>
-  | Readonly<{ kind: 'manufacturing-items'; ports: ItemConsolePorts }>;
+  | Readonly<{ kind: 'manufacturing-items'; ports: ItemConsolePorts }>
+  | Readonly<{ kind: 'manufacturing-boms'; ports: BomConsolePorts }>;
 
 const PAGE_BY_KIND: Readonly<Record<ConsoleMountPorts['kind'], (ports: never) => ComponentType>> = {
   opportunities: OpportunityListPage as (ports: never) => ComponentType,
@@ -62,6 +65,7 @@ const PAGE_BY_KIND: Readonly<Record<ConsoleMountPorts['kind'], (ports: never) =>
   'purchase-orders': PurchaseOrderConsolePage as (ports: never) => ComponentType,
   'goods-receipts': GoodsReceiptConsolePage as (ports: never) => ComponentType,
   'manufacturing-items': ItemConsolePage as (ports: never) => ComponentType,
+  'manufacturing-boms': BomConsolePage as (ports: never) => ComponentType,
 };
 
 export function mountCommercialConsole(host: HTMLElement, mount: ConsoleMountPorts): void {

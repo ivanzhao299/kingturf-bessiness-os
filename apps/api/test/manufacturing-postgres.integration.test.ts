@@ -660,3 +660,237 @@ describe('U3-MFG-1 manufacturing item page and detail real PostgreSQL contracts'
     ).rejects.toMatchObject({ code: 'forbidden' });
   });
 });
+
+// U3-MFG-2（ADR-0015）：BOM 分页/详情 additive 只读仓储的真实 PG 契约——独立 owned
+// schema；覆盖组件层级树（半成品子 BOM 展开）、替代料换算系数、多版本、环守卫与
+// 租户隔离。
+describe('U3-MFG-2 manufacturing bom page and detail real PostgreSQL contracts', () => {
+  let fixture: Awaited<ReturnType<typeof ownedPostgres>> | undefined;
+  let repository: PostgresManufacturingRepository;
+  const state = () => {
+    if (!fixture) throw new Error('Owned fixture not initialized');
+    return fixture;
+  };
+  const item = async (
+    sku: string,
+    itemType: string,
+    publish = true,
+    context = state().context,
+  ): Promise<JsonObject> =>
+    repository.createItem(
+      {
+        sku,
+        name: sku,
+        itemType,
+        baseUnitCode: 'KG',
+        specification: {},
+        effectiveAt: '2026-01-01T00:00:00Z',
+        publish,
+      },
+      context,
+      randomUUID(),
+    );
+  const id = (value: JsonObject, key = 'id'): string => {
+    const found = value[key];
+    if (typeof found !== 'string') throw new Error('Fixture identifier missing');
+    return found;
+  };
+  const textOf = (value: unknown): string =>
+    typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+  // 夹具行查找（显式守卫，替代非空断言）。
+  const bomByCode = (code: string, version?: number): JsonObject => {
+    const row = bomPage.items.find(
+      (candidate) =>
+        id(candidate, 'code') === code && (version === undefined || candidate.version === version),
+    );
+    if (!row) throw new Error(`fixture BOM missing: ${code}`);
+    return row;
+  };
+  const bom = async (
+    code: string,
+    product: JsonObject,
+    lines: readonly Record<string, unknown>[],
+    publish = true,
+    context = state().context,
+  ): Promise<JsonObject> =>
+    repository.createBom(
+      {
+        code,
+        name: code,
+        productItemId: id(product, 'itemId'),
+        productItemVersionId: id(product),
+        outputQuantity: '1',
+        effectiveAt: '2026-01-01T00:00:00Z',
+        publish,
+        lines: lines as never,
+      },
+      context,
+      randomUUID(),
+    );
+  const line = (
+    component: JsonObject,
+    quantity: string,
+    substitutes: readonly Record<string, unknown>[] = [],
+  ) => ({
+    componentItemVersionId: id(component),
+    quantity,
+    scrapBasisPoints: 100,
+    substitutes,
+  });
+  const sub = (itemVersion: JsonObject) => ({
+    itemVersionId: id(itemVersion),
+    priority: 1,
+    conversionFactor: '1.05',
+  });
+  let bomPage: { items: readonly JsonObject[]; nextCursor: string | null };
+
+  beforeAll(async () => {
+    fixture = await ownedPostgres('manufacturing_boms_pg');
+    repository = new PostgresManufacturingRepository(fixture.db);
+    const rawMat = await item('BM-RAW', 'RAW_MATERIAL');
+    const altMat = await item('BM-ALT', 'RAW_MATERIAL');
+    const semi = await item('BM-SEMI', 'SEMI_FINISHED');
+    const finished = await item('BM-FG', 'FINISHED_GOOD');
+    await bom('BM-B-SEMI', semi, [line(rawMat, '0.5')]);
+    await bom('BM-B-FG', finished, [
+      line(semi, '2'),
+      { ...line(rawMat, '1.25'), substitutes: [sub(altMat)] },
+    ]);
+    // 同码第二版无法经 createBom 建立（(tenant,code) 唯一 + createItem 恒建 v1——
+    // TD-MFG-001 缺口的域级证明）；草稿以独立编码建立。
+    await bom('BM-B-FGD', finished, [line(rawMat, '9')], false);
+    const cycleA = await item('BM-CY-A', 'RAW_MATERIAL');
+    const cycleB = await item('BM-CY-B', 'RAW_MATERIAL');
+    await bom('BM-B-CY-A', cycleA, [line(cycleB, '1')]);
+    await bom('BM-B-CY-B', cycleB, [line(cycleA, '1')]);
+    const foreignRaw = await item('BM-FGN-RAW', 'RAW_MATERIAL', true, fixture.otherContext);
+    await bom(
+      'BM-B-FOREIGN',
+      await item('BM-FGN', 'FINISHED_GOOD', true, fixture.otherContext),
+      [line(foreignRaw, '1')],
+      true,
+      fixture.otherContext,
+    );
+    bomPage = await repository.listBomPage(state().context, {});
+  }, 60_000);
+  afterAll(async () => {
+    await fixture?.close();
+  });
+
+  it('listBomPage with no filter is byte-identical to the legacy list and emits no cursor', async () => {
+    const { context } = state();
+    expect(bomPage).toEqual({ items: await repository.list('boms', context), nextCursor: null });
+    expect(bomPage.items.map((row) => `${id(row, 'code')}.${textOf(row.version)}`)).toEqual([
+      'BM-B-CY-A.1',
+      'BM-B-CY-B.1',
+      'BM-B-FG.1',
+      'BM-B-FGD.1',
+      'BM-B-SEMI.1',
+    ]);
+    // 视图轨行保持 legacy 形态：组件 {sku,name,version} + 替代料含 snake 全列。
+    const fg = bomPage.items.find((row) => id(row, 'code') === 'BM-B-FG' && row.version === 1);
+    const lines = fg?.lines as JsonObject[];
+    // 第 1 行为半成品（无替代料）；替代料在第 2 行（BM-RAW）。
+    expect(lines[0]?.substitutes).toEqual([]);
+    expect(lines[1]?.substitutes).toMatchObject([
+      { priority: 1, conversion_factor: 1.05, sku: 'BM-ALT' },
+    ]);
+  });
+
+  it('listBomPage filters by status, literal keyword and product type; keyset walks once', async () => {
+    const { context } = state();
+    const codes = (page: { items: readonly JsonObject[] }) =>
+      page.items.map((row) => `${id(row, 'code')}.${textOf(row.version)}`);
+    expect(codes(await repository.listBomPage(context, { status: 'DRAFT' }))).toEqual([
+      'BM-B-FGD.1',
+    ]);
+    expect(codes(await repository.listBomPage(context, { query: 'CY' }))).toEqual([
+      'BM-B-CY-A.1',
+      'BM-B-CY-B.1',
+    ]);
+    expect(codes(await repository.listBomPage(context, { productType: 'SEMI_FINISHED' }))).toEqual([
+      'BM-B-SEMI.1',
+    ]);
+    expect(codes(await repository.listBomPage(context, { productType: 'FINISHED_GOOD' }))).toEqual([
+      'BM-B-FG.1',
+      'BM-B-FGD.1',
+    ]);
+    const walked: string[] = [];
+    let cursor: string | undefined;
+    for (;;) {
+      const page = await repository.listBomPage(context, {
+        limit: 2,
+        ...(cursor ? { cursor } : {}),
+      });
+      walked.push(...page.items.map((row) => `${id(row, 'code')}.${textOf(row.version)}`));
+      if (page.nextCursor === null) break;
+      expect(page.items).toHaveLength(2);
+      cursor = page.nextCursor;
+    }
+    expect(walked).toEqual(bomPage.items.map((row) => `${id(row, 'code')}.${textOf(row.version)}`));
+    await expect(repository.listBomPage(context, { cursor: 'bad' })).rejects.toMatchObject({
+      code: 'invalid_request',
+    });
+    await expect(
+      repository.listBomPage({ ...context, scopes: ['TEAM'] }, {}),
+    ).rejects.toMatchObject({ code: 'forbidden' });
+  });
+
+  it('findBom returns root, product, per-version lines with component units and substitute factors', async () => {
+    const { context } = state();
+    const detail = await repository.findBom(id(bomByCode('BM-B-FG', 1), 'bomId'), context);
+    expect(detail).toMatchObject({
+      code: 'BM-B-FG',
+      product: { sku: 'BM-FG', itemType: 'FINISHED_GOOD', baseUnitCode: 'KG' },
+    });
+    const versions = (detail?.versions ?? []) as JsonObject[];
+    expect(versions.map((version) => version.version)).toEqual([1]);
+    const published = versions[0];
+    if (!published) throw new Error('fixture version missing');
+    const lines = published.lines as JsonObject[];
+    const semiLine = lines.find(
+      (candidate) => (candidate.component as JsonObject).sku === 'BM-SEMI',
+    );
+    expect(semiLine).toMatchObject({
+      lineNumber: 1,
+      quantity: 2,
+      scrapBasisPoints: 100,
+      component: { version: 1, itemType: 'SEMI_FINISHED', baseUnitCode: 'KG' },
+    });
+    const rawLine = lines.find((candidate) => (candidate.component as JsonObject).sku === 'BM-RAW');
+    expect(rawLine?.substitutes).toMatchObject([{ conversionFactor: 1.05, sku: 'BM-ALT' }]);
+  });
+
+  it('findBom expands the latest published child BOM tree with substitutes and cycle guard', async () => {
+    const { context } = state();
+    const detail = await repository.findBom(id(bomByCode('BM-B-FG', 1), 'bomId'), context);
+    const root = (detail?.tree as JsonObject[])[0] ?? {};
+    expect(root).toMatchObject({ code: 'BM-B-FG', version: 1, status: 'PUBLISHED' });
+    const rootLines = root.lines as JsonObject[];
+    const semiNode = rootLines.find(
+      (candidate) => (candidate.component as JsonObject).sku === 'BM-SEMI',
+    );
+    const child = semiNode?.bom as JsonObject | null;
+    expect(child).toMatchObject({ code: 'BM-B-SEMI', version: 1, status: 'PUBLISHED' });
+    expect(((child?.lines as JsonObject[])[0]?.component as JsonObject).sku).toBe('BM-RAW');
+    expect((child?.lines as JsonObject[])[0]?.bom).toBeNull();
+    const rawLine = rootLines.find(
+      (candidate) => (candidate.component as JsonObject).sku === 'BM-RAW',
+    );
+    expect(rawLine?.bom).toBeNull();
+    // 环：CY-A → CY-B → CY-A，第二层被已访问集合截断。
+    const cycle = await repository.findBom(id(bomByCode('BM-B-CY-A'), 'bomId'), context);
+    const cycleRoot = (cycle?.tree as JsonObject[])[0] ?? {};
+    const cycleChild = ((cycleRoot.lines as JsonObject[])[0]?.bom ?? null) as JsonObject | null;
+    expect(cycleChild).toMatchObject({ code: 'BM-B-CY-B' });
+    expect((cycleChild?.lines as JsonObject[])[0]?.bom ?? null).toBeNull();
+  });
+
+  it('findBom hides other tenants and unknown ids', async () => {
+    const { context, otherContext } = state();
+    expect(await repository.findBom(randomUUID(), context)).toBeNull();
+    expect(await repository.findBom(id(bomByCode('BM-B-FG', 1), 'bomId'), otherContext)).toBeNull();
+    const foreign = await repository.listBomPage(otherContext, {});
+    expect(foreign.items.map((row) => id(row, 'code'))).toEqual(['BM-B-FOREIGN']);
+  });
+});

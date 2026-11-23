@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { openForm } from './shared/forms';
-import { openBomVersionForm, openRoutingVersionForm } from './commercial/manufacturing-forms';
+import { openRoutingVersionForm } from './commercial/manufacturing-forms';
 import { operationsContext } from '../test/fixtures/operations-context';
 vi.mock('./shared/forms', () => ({ openForm: vi.fn() }));
 const form = vi.mocked(openForm);
@@ -26,77 +26,7 @@ afterEach(() => vi.useRealTimers());
 
 describe('manufacturing form fixed draft payloads', () => {
   // 物料版本表单用例随 U3-MFG-1 迁入 item-console.test.tsx（创建载荷 oracle 同批改写）。
-  it.each([
-    [
-      'substitute-version',
-      [{ itemVersionId: 'substitute-version', priority: 1, conversionFactor: '1' }],
-    ],
-    ['', []],
-  ] as const)(
-    'binds BOM root and version, decimals and optional substitute %s',
-    async (substitute, substitutes) => {
-      const f = operationsContext(),
-        finish = vi.fn<(payload: Record<string, unknown>) => Promise<void>>(() =>
-          Promise.resolve(),
-        );
-      openBomVersionForm(f.context, items, options, finish);
-      const current = opened();
-      expect(current.fields.find((field) => field.name === 'product')?.options).toBe(options);
-      expect(current.fields.find((field) => field.name === 'substitute')?.options?.[0]).toEqual({
-        value: '',
-        label: '无替代料',
-      });
-      let finishNow: () => void = () => {
-        throw new Error('Not initialized');
-      };
-      finish.mockImplementationOnce(
-        () =>
-          new Promise<void>((resolve) => {
-            finishNow = resolve;
-          }),
-      );
-      let settled = false;
-      const pending = current
-        .run({
-          code: 'BOM-1',
-          name: '标准BOM',
-          product: 'product-version',
-          component: 'component-version',
-          quantity: '2.125',
-          scrap: '500',
-          substitute,
-          effectiveAt: '2026-10-18',
-        })
-        .then(() => {
-          settled = true;
-        });
-      await Promise.resolve();
-      expect(settled).toBe(false);
-      finishNow();
-      await pending;
-      expect(settled).toBe(true);
-      expect(finish).toHaveBeenCalledExactlyOnceWith({
-        code: 'BOM-1',
-        name: '标准BOM',
-        productItemId: 'product-root',
-        productItemVersionId: 'product-version',
-        outputQuantity: '1',
-        effectiveAt: '2026-10-18T00:00:00.000Z',
-        lines: [
-          {
-            componentItemVersionId: 'component-version',
-            quantity: '2.125',
-            scrapBasisPoints: 500,
-            substitutes,
-          },
-        ],
-        publish: false,
-      });
-      finish.mockRejectedValueOnce(new Error('BOM finish rejected'));
-      await expect(current.run({})).rejects.toThrow('BOM finish rejected');
-    },
-  );
-
+  // BOM 版本表单用例随 U3-MFG-2 迁入 bom-console.test.tsx（创建载荷 oracle 同批改写）。
   it('creates ordered fixed routing operations and propagates finish rejection', async () => {
     const f = operationsContext(),
       finish = vi.fn<(payload: Record<string, unknown>) => Promise<void>>(() => Promise.resolve());

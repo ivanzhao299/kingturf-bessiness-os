@@ -108,3 +108,128 @@
 .manufacturing-items-console + .manufacturing-grid {
   margin-top: var(--kt-space-5);
 }
+
+/* U3-MFG-2 BOM 控制台增量：组件层级树、替代料标记与版本对比三类差异（kt tokens 取值）。 */
+.bom-tree {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--kt-space-1);
+}
+
+.bom-tree-line {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kt-space-1);
+  padding: var(--kt-space-1) 0;
+}
+
+.bom-tree-main {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--kt-space-2);
+  font-size: var(--kt-font-size-body);
+}
+
+.bom-tree-toggle {
+  border: 0;
+  background: transparent;
+  color: var(--kt-color-text-muted);
+  cursor: pointer;
+  padding: 0 var(--kt-space-1);
+  font: inherit;
+  line-height: 1;
+}
+
+.bom-tree-toggle:hover {
+  color: var(--kt-color-text);
+}
+
+.bom-tree-leaf {
+  color: var(--kt-color-border-strong);
+  padding: 0 var(--kt-space-2);
+}
+
+.bom-tree-child {
+  margin-left: var(--kt-space-5);
+  border-left: 1px solid var(--kt-color-border);
+  padding-left: var(--kt-space-3);
+}
+
+.bom-child-head {
+  margin: 0 0 var(--kt-space-1);
+  font-size: var(--kt-font-size-caption);
+}
+
+.bom-qty {
+  font-weight: var(--kt-font-weight-semibold);
+}
+
+.bom-substitute {
+  border-color: var(--kt-color-warning);
+  color: var(--kt-color-warning);
+  background: var(--kt-color-warning-soft);
+}
+
+.bom-compare-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--kt-space-2);
+}
+
+.bom-compare-picker select {
+  border: 1px solid var(--kt-color-border);
+  border-radius: var(--kt-radius-sm);
+  padding: var(--kt-space-1) var(--kt-space-2);
+  font-size: var(--kt-font-size-caption);
+  background: var(--kt-color-surface);
+  color: var(--kt-color-text);
+}
+
+.bom-diff-list {
+  list-style: none;
+  margin: var(--kt-space-2) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--kt-space-1);
+}
+
+.bom-diff-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--kt-space-2);
+  border-radius: var(--kt-radius-sm);
+  padding: var(--kt-space-1) var(--kt-space-2);
+  font-size: var(--kt-font-size-caption);
+}
+
+.bom-diff-kind {
+  font-weight: var(--kt-font-weight-semibold);
+}
+
+.bom-diff-added {
+  background: var(--kt-color-success-soft);
+  color: var(--kt-color-success);
+}
+
+.bom-diff-removed {
+  background: var(--kt-color-danger-soft);
+  color: var(--kt-color-danger);
+}
+
+.bom-diff-changed {
+  background: var(--kt-color-warning-soft);
+  color: var(--kt-color-warning);
+}
+
+.bom-diff-fields {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--kt-space-2);
+}

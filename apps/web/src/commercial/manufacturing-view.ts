@@ -1,7 +1,7 @@
 import { el } from '../dom';
 import type { OperationsViewContext } from './operations-view-ports';
 import { createManufacturingCard } from './manufacturing-cards';
-import { appendManufacturingItemConsole } from './console-entry';
+import { appendManufacturingBomConsole, appendManufacturingItemConsole } from './console-entry';
 
 export function appendManufacturingView(context: OperationsViewContext, panel: HTMLElement): void {
   const { workspace, permissions } = context;
@@ -16,31 +16,10 @@ export function appendManufacturingView(context: OperationsViewContext, panel: H
   if (permissions.has('manufacturing-item:read')) appendManufacturingItemConsole(context, panel);
   const grid = el('div', 'manufacturing-grid');
   // BOM/工艺路线两区保持 vanilla（U3-MFG-2/3 迁移）。
+  // U3-MFG-2：BOM 区迁移至 Preact 控制台（版本对比/组件层级树/草稿发布）；原
+  // vanilla「BOM 与替代料」卡片与「创建标准 BOM」表单退役（裁定 17 语义）。
+  if (permissions.has('bom:read')) appendManufacturingBomConsole(context, panel);
   const definitions = [
-    {
-      title: 'BOM 与替代料',
-      path: '/api/v1/manufacturing-boms',
-      read: 'bom:read',
-      manage: 'bom:manage',
-      publish: 'manufacturing-bom',
-      example: {
-        code: 'BOM-KT-PRO-50',
-        name: '50mm 标准 BOM',
-        productItemId: '产品主编号',
-        productItemVersionId: '产品版本编号',
-        outputQuantity: '1',
-        effectiveAt: new Date().toISOString(),
-        lines: [
-          {
-            componentItemVersionId: '组件版本编号',
-            quantity: '1.25',
-            scrapBasisPoints: 300,
-            substitutes: [],
-          },
-        ],
-        publish: false,
-      },
-    },
     {
       title: '工艺路线与工序',
       path: '/api/v1/manufacturing-routings',

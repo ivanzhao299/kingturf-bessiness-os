@@ -1,6 +1,6 @@
 import { el } from '../dom';
 import type { OperationsViewContext, ManufacturingDefinition } from './operations-view-ports';
-import { openBomVersionForm, openRoutingVersionForm } from './manufacturing-forms';
+import { openRoutingVersionForm } from './manufacturing-forms';
 
 export function createManufacturingCard(
   context: OperationsViewContext,
@@ -78,8 +78,6 @@ function openManufacturingCreate(
     await controller.load();
     status.textContent = controller.message;
   };
-  // 物料版本表单已随 U3-MFG-1 迁入物料控制台；此处仅剩 BOM/工艺路线。
-  if (definition.path === '/api/v1/manufacturing-boms')
-    openBomVersionForm(context, publishedItems, itemOptions, finish);
-  else openRoutingVersionForm(context, publishedItems, itemOptions, finish);
+  // 物料/BOM 表单已随 U3-MFG-1/2 迁入各自控制台；此处仅剩工艺路线。
+  openRoutingVersionForm(context, publishedItems, itemOptions, finish);
 }

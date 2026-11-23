@@ -125,6 +125,10 @@ describe('Batch4 app extraction against fixed f3 complete request traces', () =>
     // 调用由 list('items') 换为 additive listItemPage（同投影/排序，页对象形态）。
     'GET /api/v1/manufacturing-items',
     'POST /api/v1/manufacturing-items',
+    // U3-MFG-2（同批）：manufacturing-boms 路径场景经生产桥——同口径；GET 终止
+    // 调用由 list('boms') 换为 additive listBomPage（同投影/排序，页对象形态）。
+    'GET /api/v1/manufacturing-boms',
+    'POST /api/v1/manufacturing-boms',
   ]);
   const preserveWithStrip = (result: {
     name: string;
@@ -235,13 +239,16 @@ describe('Batch4 app extraction against fixed f3 complete request traces', () =>
         // U3-MFG-1：manufacturing-items GET 经生产桥——响应与 legacy 逐字段一致
         // （200 {items:[]}）；终止调用钉定桥轨形态（listItemPage：company 作用域
         // 上下文 + 默认空过滤=legacy 全量语义）。
-        if (row.name === 'GET /api/v1/manufacturing-items') {
+        if (
+          row.name === 'GET /api/v1/manufacturing-items' ||
+          row.name === 'GET /api/v1/manufacturing-boms'
+        ) {
           expect(pinnedCurrent.response).toEqual(pinnedBaseline.response);
           expect(terminalCalls(pinnedCurrent)).toEqual([
             [
               'call',
               'manufacturing',
-              'listItemPage',
+              row.name.endsWith('items') ? 'listItemPage' : 'listBomPage',
               [
                 {
                   actor: {
