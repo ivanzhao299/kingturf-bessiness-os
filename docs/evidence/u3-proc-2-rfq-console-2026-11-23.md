@@ -59,15 +59,15 @@ DRAFT/ISSUED，未命中 `not_found 'Open RFQ not found'`。
 
 ## 4. 门禁回执
 
-| 门禁                                         | 结果                                                                                                                                                                                |
-| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| API typecheck / lint / prettier              | 0 / 0 / 通过（改动文件）                                                                                                                                                            |
-| API 全量测试（kingturf_test，NODE_ENV=test） | **17881/17881**（新增 rfqs inject 10 + f3 re-pin 两场景；procurement 契约 1767 无改动全绿）                                                                                         |
-| Web typecheck / lint / prettier              | 0 / 0 / 通过（改动文件）                                                                                                                                                            |
-| Web 测试                                     | **517/517**（新增 rfq-console 7）                                                                                                                                                   |
-| structure-gate                               | 强制违规 0（RFQ_ITEM_PROJECTION 按 SUPPLIER 先例登记 G3 白名单）                                                                                                                    |
-| e2e P1（黑盒）                               | **未执行——KINGTURF_ADMIN_PASSWORD 仍不可得**（同 U3-PROC-1，主协调已知悉该缺口并以 bootstrap.test 挂载覆盖补偿）；控制台首列文案 `RFQ-… · 已签发` 与 e2e 断言正则逐字兼容已静态核对 |
-| pnpm ci:local                                | 见提交回执（本批最终 HEAD 全链）                                                                                                                                                    |
+| 门禁                                         | 结果                                                                                                                                                                                                                                                                                        |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| API typecheck / lint / prettier              | 0 / 0 / 通过（改动文件）                                                                                                                                                                                                                                                                    |
+| API 全量测试（kingturf_test，NODE_ENV=test） | **17881/17881**（新增 rfqs inject 10 + f3 re-pin 两场景；procurement 契约 1767 无改动全绿）                                                                                                                                                                                                 |
+| Web typecheck / lint / prettier              | 0 / 0 / 通过（改动文件）                                                                                                                                                                                                                                                                    |
+| Web 测试                                     | **517/517**（新增 rfq-console 7）                                                                                                                                                                                                                                                           |
+| structure-gate                               | 强制违规 0（RFQ_ITEM_PROJECTION 与 statusClause 按 SUPPLIER/orgFilter 先例登记 G3 白名单）                                                                                                                                                                                                  |
+| e2e P1（黑盒）                               | **未执行——KINGTURF_ADMIN_PASSWORD 仍不可得**（同 U3-PROC-1，主协调已知悉该缺口并以 bootstrap.test 挂载覆盖补偿）；控制台首列文案 `RFQ-… · 已签发` 与 e2e 断言正则逐字兼容已静态核对                                                                                                         |
+| pnpm ci:local                                | **EXIT=0 全链**（干净提交快照 **75425ff**，NODE_ENV=test + kingturf_test 十四步：install/format/doc-lint/structure/service/frontend-caps/db-guard/migrate/status/lint/typecheck/test:coverage/build 含登录预算与 console-css 守卫/audit:scan/security:check；API 17881/17881、Web 517/517） |
 
 ## 5. 边界与后续
 
