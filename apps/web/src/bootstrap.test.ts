@@ -378,7 +378,6 @@ it('captures artificial-turf project handoff fields without test-channel evidenc
       'export function createManufacturingCard',
     ),
     readBoundSource('./commercial/manufacturing-forms.ts', 'export function openItemVersionForm'),
-    readBoundSource('./commercial/supplier-register.ts', 'export function createSupplierPanel'),
     readBoundSource('./commercial/sourcing-register.ts', 'export function createSourcingPanel'),
     readBoundSource('./commercial/purchase-register.ts', 'export function createOrderPanel'),
     readBoundSource('./commercial/inventory-register.ts', 'export function createInventoryPanel'),
@@ -2010,8 +2009,15 @@ describe('web bootstrap', () => {
       controller,
     ) as unknown as RenderedElement;
     expect(workspace.findByClass('procurement-workbench')).toHaveLength(1);
-    expect(workspace.findByClass('procurement-column')).toHaveLength(4);
-    expect(workspace.textContent).toContain('SUP-1');
+    // U3-PROC-1：供应商区迁移至 Preact 控制台宿主（vanilla procurement-column 剩
+    // sourcing/order/inventory 三区；供应商行渲染由 supplier-console 行为测试覆盖）。
+    expect(workspace.findByClass('procurement-column')).toHaveLength(3);
+    // 宿主必须挂载于 procurement-workbench 面板内（路由可见性随父面板治理——
+    // e2e 的 .procurement-workbench 定位器作用域同时依赖该包含关系）。
+    const workbench = workspace.findByClass('procurement-workbench')[0];
+    const supplierHost = workbench?.findByClass('suppliers-console')[0];
+    expect(supplierHost?.getAttribute('data-testid')).toBe('kt-proc-suppliers');
+    expect(supplierHost?.getAttribute('data-route-view')).toBe(null);
     expect(workspace.textContent).toContain('PO-1 · 已收货');
     expect(workspace.textContent).toContain('LOT-1');
     expect(workspace.textContent).toContain('结存 5000');

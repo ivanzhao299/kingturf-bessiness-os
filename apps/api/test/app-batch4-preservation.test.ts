@@ -104,6 +104,11 @@ describe('Batch4 app extraction against fixed f3 complete request traces', () =>
     'GET /api/v1/leads/pool',
     'POST /api/v1/leads',
     'PUT /api/v1/leads',
+    // U3-PROC-1（ADR-0015 接线，同批）：suppliers 路径场景经生产桥——桥组注册引入
+    // 依赖/授权访问序变化（多组 root/grant 行），响应与终止仓储调用逐字段守恒；
+    // GET 终止调用由 list('suppliers') 换为 additive listSupplierPage（同投影/排序）。
+    'GET /api/v1/suppliers',
+    'POST /api/v1/suppliers',
   ]);
   const preserveWithStrip = (result: {
     name: string;
@@ -159,6 +164,31 @@ describe('Batch4 app extraction against fixed f3 complete request traces', () =>
                 ['COMPANY'],
                 [],
                 { limit: 100, pool: row.name.endsWith('pool') },
+              ],
+            ],
+          ]);
+          return;
+        }
+        // U3-PROC-1：suppliers GET 经生产桥——响应与 legacy 逐字段一致（200
+        // {items:[]}）；终止调用钉定桥轨形态（listSupplierPage：company 作用域
+        // 上下文 + 默认空过滤=legacy 全量语义）。
+        if (row.name === 'GET /api/v1/suppliers') {
+          expect(pinnedCurrent.response).toEqual(pinnedBaseline.response);
+          expect(terminalCalls(pinnedCurrent)).toEqual([
+            [
+              'call',
+              'procurement',
+              'listSupplierPage',
+              [
+                {
+                  actor: {
+                    employeeId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+                    companyId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+                  },
+                  scopes: ['COMPANY'],
+                  anchors: [],
+                },
+                {},
               ],
             ],
           ]);

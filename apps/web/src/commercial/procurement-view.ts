@@ -1,6 +1,6 @@
 import { el } from '../dom';
 import type { OperationsViewContext } from './operations-view-ports';
-import { createSupplierPanel } from './supplier-register';
+import { appendSupplierConsole } from './console-entry';
 import { createSourcingPanel } from './sourcing-register';
 import { createOrderPanel } from './purchase-register';
 import { createInventoryPanel } from './inventory-register';
@@ -51,8 +51,11 @@ export function appendProcurementView(context: OperationsViewContext): void {
     ),
   );
   panel.append(procurementSummary);
+  // U3-PROC-1：供应商区迁移至 Preact 供应商控制台（挂 procurement-workbench 面板内
+  // ——路由可见性随父面板；原 vanilla supplier-register 卡片退役，裁定 17 语义；
+  // sourcing/order/inventory 三区保持 vanilla）。
+  appendSupplierConsole(context, panel);
   const grid = el('div', 'procurement-grid');
-  const supplierPanel = createSupplierPanel(context, suppliers, manufacturingItems, refresh);
   const sourcingPanel = createSourcingPanel(
     context,
     rfqs,
@@ -71,7 +74,7 @@ export function appendProcurementView(context: OperationsViewContext): void {
     refresh,
   );
   const inventoryPanel = createInventoryPanel(context, balances, locations, refresh);
-  grid.append(supplierPanel, sourcingPanel, orderPanel, inventoryPanel);
+  grid.append(sourcingPanel, orderPanel, inventoryPanel);
   panel.append(grid);
   workspace.append(panel);
 }
