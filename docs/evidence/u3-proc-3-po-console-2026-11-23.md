@@ -73,15 +73,15 @@
 
 ## 4. 门禁回执
 
-| 门禁                                         | 结果                                                                                                                   |
-| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| API typecheck / lint / prettier              | 0 / 0 / 通过（改动文件）                                                                                               |
-| API 全量测试（kingturf_test，NODE_ENV=test） | **17890/17890**（新增 purchase-orders inject 9 + f3 re-pin 两场景；procurement 契约 1767 无改动全绿）                  |
-| Web typecheck / lint / prettier              | 0 / 0 / 通过（改动文件）                                                                                               |
-| Web 测试                                     | **525/525**（新增 po-console 8）                                                                                       |
-| structure-gate                               | 强制违规 0（PURCHASE_ORDER_ITEM_PROJECTION 按 RFQ/SUPPLIER 先例登记；statusClause 复用已登记片段）                     |
-| e2e P1（黑盒）                               | **未执行——KINGTURF_ADMIN_PASSWORD 仍不可得**（同前两子批已知悉缺口）；`PO-… · 已收货`/`收货 GR-…` 文案契约静态核对兼容 |
-| pnpm ci:local                                | 见提交回执（本批最终 HEAD 全链）                                                                                       |
+| 门禁                                         | 结果                                                                                                                                                                                                                                                                                        |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| API typecheck / lint / prettier              | 0 / 0 / 通过（改动文件）                                                                                                                                                                                                                                                                    |
+| API 全量测试（kingturf_test，NODE_ENV=test） | **17890/17890**（新增 purchase-orders inject 9 + f3 re-pin 两场景；procurement 契约 1767 无改动全绿）                                                                                                                                                                                       |
+| Web typecheck / lint / prettier              | 0 / 0 / 通过（改动文件）                                                                                                                                                                                                                                                                    |
+| Web 测试                                     | **525/525**（新增 po-console 8）                                                                                                                                                                                                                                                            |
+| structure-gate                               | 强制违规 0（PURCHASE_ORDER_ITEM_PROJECTION 按 RFQ/SUPPLIER 先例登记；statusClause 复用已登记片段）                                                                                                                                                                                          |
+| e2e P1（黑盒）                               | **未执行——KINGTURF_ADMIN_PASSWORD 仍不可得**（同前两子批已知悉缺口）；`PO-… · 已收货`/`收货 GR-…` 文案契约静态核对兼容                                                                                                                                                                      |
+| pnpm ci:local                                | **EXIT=0 全链**（干净提交快照 **d4c5677**，NODE_ENV=test + kingturf_test 十四步：install/format/doc-lint/structure/service/frontend-caps/db-guard/migrate/status/lint/typecheck/test:coverage/build 含登录预算与 console-css 守卫/audit:scan/security:check；API 17890/17890、Web 525/525） |
 
 ## 5. 边界与后续
 
