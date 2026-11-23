@@ -113,6 +113,10 @@ describe('Batch4 app extraction against fixed f3 complete request traces', () =>
     // 由 list('rfqs') 换为 additive listRfqs（同投影/排序，页对象形态）。
     'GET /api/v1/procurement-rfqs',
     'POST /api/v1/procurement-rfqs',
+    // U3-PROC-3（同批）：采购单路径场景经生产桥——同口径；GET 终止调用由
+    // list('orders') 换为 additive listPurchaseOrders（同投影/排序，页对象形态）。
+    'GET /api/v1/purchase-orders',
+    'POST /api/v1/purchase-orders',
   ]);
   const preserveWithStrip = (result: {
     name: string;
@@ -176,13 +180,23 @@ describe('Batch4 app extraction against fixed f3 complete request traces', () =>
         // U3-PROC-1：suppliers GET 经生产桥——响应与 legacy 逐字段一致（200
         // {items:[]}）；终止调用钉定桥轨形态（listSupplierPage：company 作用域
         // 上下文 + 默认空过滤=legacy 全量语义）。
-        if (row.name === 'GET /api/v1/suppliers' || row.name === 'GET /api/v1/procurement-rfqs') {
+        if (
+          row.name === 'GET /api/v1/suppliers' ||
+          row.name === 'GET /api/v1/procurement-rfqs' ||
+          row.name === 'GET /api/v1/purchase-orders'
+        ) {
           expect(pinnedCurrent.response).toEqual(pinnedBaseline.response);
+          const listMethod =
+            row.name === 'GET /api/v1/suppliers'
+              ? 'listSupplierPage'
+              : row.name === 'GET /api/v1/procurement-rfqs'
+                ? 'listRfqs'
+                : 'listPurchaseOrders';
           expect(terminalCalls(pinnedCurrent)).toEqual([
             [
               'call',
               'procurement',
-              row.name === 'GET /api/v1/suppliers' ? 'listSupplierPage' : 'listRfqs',
+              listMethod,
               [
                 {
                   actor: {
