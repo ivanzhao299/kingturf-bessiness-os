@@ -135,6 +135,23 @@ describe('real form orchestration through explicit DOM/native ports', () => {
     expect(f.progress.getAttribute('aria-live')).toBe('polite');
   });
 
+  // 回归（TD-UI-009，写流程真浏览器冒烟发现）：数字输入框不写 step 时浏览器按步长 1 做原生校验，
+  // 小数被拦下且 submit 事件根本不触发。替身 DOM 不算原生校验，只能在属性层面守。
+  it('lets number inputs take decimals unless a step is given', () => {
+    const f = setup('保存', [
+      { name: 'unitPrice', label: '单价', type: 'number', required: true },
+      { name: 'sequence', label: '序号', type: 'number', step: 10 },
+      { name: 'due', label: '交期', type: 'date' },
+      { name: 'note', label: '说明' },
+    ]);
+    const attribute = (name: string): string | null | undefined =>
+      findElement(f.form, (node) => node.getAttribute('name') === name).getAttribute('step');
+    expect(attribute('unitPrice')).toBe('any');
+    expect(attribute('sequence')).toBe('10');
+    expect(attribute('due')).toBeNull();
+    expect(attribute('note')).toBeNull();
+  });
+
   it.each(['password', 'email', 'tel', 'number', 'date', 'datetime-local'] as const)(
     'preserves current input type mapping for %s',
     (type) => {

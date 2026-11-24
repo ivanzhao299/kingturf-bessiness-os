@@ -107,7 +107,10 @@ export function openForm(
     if (field.maxLength !== undefined) control.setAttribute('maxlength', String(field.maxLength));
     if (field.min !== undefined) control.setAttribute('min', String(field.min));
     if (field.max !== undefined) control.setAttribute('max', String(field.max));
+    // TD-UI-009：浏览器对未写 step 的数字输入按步长 1 做原生校验，小数被拦下且 submit 不触发；
+    // 未指定 step 即接受任意小数（整数口径由服务端校验）。与 @kingturf/ui FormSection 同口径。
     if (field.step !== undefined) control.setAttribute('step', String(field.step));
+    else if (field.type === 'number') control.setAttribute('step', 'any');
     if (control instanceof HTMLInputElement)
       control.type = ['password', 'email', 'tel', 'number', 'date'].includes(field.type ?? '')
         ? (field.type as 'password' | 'email' | 'tel' | 'number' | 'date')

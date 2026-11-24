@@ -400,8 +400,9 @@ export class TestElement extends TestNode {
     return this.text('step');
   }
 
-  public set step(value: string) {
-    this.expando.set('step', value);
+  // 同真实 DOM：step 是 DOMString，赋数字即转成字符串（Preact 对 number 类型的 step 传数字）。
+  public set step(value: string | number) {
+    this.expando.set('step', String(value));
   }
 
   private numberExpando(key: string): number {

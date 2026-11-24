@@ -135,7 +135,10 @@ export const FormSection = (props: FormSectionProps) => {
         if (field.maxLength !== undefined) constraints.maxLength = field.maxLength;
         if (field.min !== undefined) constraints.min = field.min;
         if (field.max !== undefined) constraints.max = field.max;
+        // TD-UI-009：浏览器对未写 step 的数字输入按步长 1 做原生校验，小数被拦下且 submit 事件不触发；
+        // 上面的手写校验不限步长，二者据此对齐——未指定 step 即接受任意小数（整数口径由服务端校验）。
         if (field.step !== undefined) constraints.step = field.step;
+        else if (field.type === 'number') constraints.step = 'any';
         if (Tag === 'input' && field.type !== undefined && field.type !== 'textarea')
           constraints.type = field.type;
         return (

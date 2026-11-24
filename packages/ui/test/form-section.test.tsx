@@ -112,6 +112,31 @@ describe('FormSection（兼容 shared/forms.ts 校验语义）', () => {
     expect(quota.getAttribute('aria-invalid')).toBe('true');
   });
 
+  // 回归（TD-UI-009，写流程真浏览器冒烟发现）：数字输入框不写 step 时浏览器按步长 1 做原生校验，
+  // 小数被拦下且 submit 事件根本不触发（工艺路线「单件工时」默认值 0.8 自己就过不了）。
+  // 未指定 step 即 step="any"，指定的照常输出，非数字字段不输出（按真实 DOM 的 step 属性读取）。
+  it('lets number fields take decimals unless a step is given（原生校验与手写校验同口径）', () => {
+    const host = mountDom();
+    mount(
+      <FormSection
+        title="工序"
+        submitLabel="保存"
+        fields={[
+          { name: 'run', label: '单件工时（分钟）', type: 'number', value: '0.8' },
+          { name: 'sequence', label: '序号', type: 'number', step: 10 },
+          { name: 'due', label: '交期', type: 'date' },
+          { name: 'note', label: '说明' },
+        ]}
+        onSubmit={() => undefined}
+      />,
+      host,
+    );
+    expect(fieldControl(host, 'run').step).toBe('any');
+    expect(fieldControl(host, 'sequence').step).toBe('10');
+    expect(fieldControl(host, 'due').step).toBe('');
+    expect(fieldControl(host, 'note').step).toBe('');
+  });
+
   it('submits collected values only when every field is valid', async () => {
     const host = mountDom();
     const received: Readonly<Record<string, string>>[] = [];
