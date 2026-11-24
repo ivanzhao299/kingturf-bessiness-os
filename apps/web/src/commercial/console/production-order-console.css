@@ -1,0 +1,308 @@
+/* U3-MFG-4 工单管理控制台样式：全部取值来自 kt tokens（ADR-0014），不写死颜色/间距。
+   进度条与竖向步骤复用 commercial-ux.css 的 .com-meter* / .com-flow-*（本文件只加工单域
+   增量）；列表/抽屉/表单复用 @kingturf/ui components.css 原语。 */
+
+/* 顶部状态汇总卡（兼作状态筛选）。窄屏 6 → 3 → 2 列。 */
+.po-summary-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kt-space-2);
+  min-width: 0;
+}
+
+.po-summary {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--kt-space-3);
+}
+
+.po-summary-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kt-space-1);
+  min-width: 0;
+  border: 1px solid var(--kt-color-border);
+  border-radius: var(--kt-radius-md);
+  background: var(--kt-color-surface);
+  padding: var(--kt-space-3);
+  font: inherit;
+  color: var(--kt-color-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.po-summary-card:hover {
+  border-color: var(--kt-color-brand);
+}
+
+.po-summary-card.active {
+  border-color: var(--kt-color-brand);
+  background: var(--kt-color-brand-soft);
+}
+
+.po-summary-label {
+  font-size: var(--kt-font-size-caption);
+  color: var(--kt-color-text-muted);
+}
+
+.po-summary-count {
+  font-size: var(--kt-font-size-lead);
+  font-weight: var(--kt-font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.po-summary-hint {
+  font-size: var(--kt-font-size-caption);
+  color: var(--kt-color-text-muted);
+}
+
+.po-summary-card[data-tone='info'] .po-summary-count {
+  color: var(--kt-color-info);
+}
+
+.po-summary-card[data-tone='success'] .po-summary-count {
+  color: var(--kt-color-success);
+}
+
+.po-summary-card[data-tone='warning'] .po-summary-count {
+  color: var(--kt-color-warning);
+}
+
+.po-summary-card[data-tone='danger'] .po-summary-count {
+  color: var(--kt-color-danger);
+}
+
+.po-search {
+  margin-bottom: var(--kt-space-2);
+}
+
+/* 主表单元格：主文本 + 次要说明两行。 */
+.po-cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kt-space-1);
+  min-width: 8rem;
+  overflow-wrap: anywhere;
+}
+
+.po-muted {
+  color: var(--kt-color-text-muted);
+  font-size: var(--kt-font-size-caption);
+}
+
+/* 完工进度单元格：数值不折行，进度条有最小宽度。 */
+.po-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kt-space-1);
+  min-width: 7.5rem;
+}
+
+.po-progress-text {
+  font-size: var(--kt-font-size-caption);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* 进度条取语义色（commercial-ux 的品牌色规则只作用于 .com-usage）。 */
+.po-meter-track {
+  min-width: 4rem;
+}
+
+.po-meter-track .com-meter-fill[data-tone='brand'] {
+  background: var(--kt-color-brand);
+}
+
+.po-row-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--kt-space-2);
+}
+
+/* 详情抽屉分区。 */
+.po-section {
+  margin: 0 0 var(--kt-space-4);
+}
+
+.po-section > h3 {
+  margin: 0 0 var(--kt-space-2);
+  font-size: var(--kt-font-size-lead);
+  font-weight: var(--kt-font-weight-semibold);
+  color: var(--kt-color-text);
+}
+
+.po-progress-caption {
+  margin: 0 0 var(--kt-space-2);
+  font-size: var(--kt-font-size-caption);
+  color: var(--kt-color-text-muted);
+}
+
+/* 状态轨迹：横向节点，已到达 / 当前 / 未到达三态。 */
+.po-state-track {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kt-space-1) var(--kt-space-2);
+  margin: 0 0 var(--kt-space-4);
+  padding: 0;
+  list-style: none;
+}
+
+.po-state-node {
+  border: 1px solid var(--kt-color-border);
+  border-radius: var(--kt-radius-pill);
+  background: var(--kt-color-surface-muted);
+  padding: var(--kt-space-1) var(--kt-space-3);
+  font-size: var(--kt-font-size-caption);
+  color: var(--kt-color-text-muted);
+}
+
+.po-state-node + .po-state-node::before {
+  content: '→';
+  margin-right: var(--kt-space-2);
+  color: var(--kt-color-border-strong);
+}
+
+.po-state-node[data-state='done'] {
+  border-color: var(--kt-color-success);
+  background: var(--kt-color-success-soft);
+  color: var(--kt-color-success);
+}
+
+.po-state-node[data-state='current'] {
+  border-color: var(--kt-color-brand);
+  background: var(--kt-color-brand-soft);
+  color: var(--kt-color-brand-strong);
+  font-weight: var(--kt-font-weight-semibold);
+}
+
+.po-state-node[data-state='cancelled'] {
+  border-color: var(--kt-color-danger);
+  background: var(--kt-color-danger-soft);
+  color: var(--kt-color-danger);
+}
+
+/* 工序步骤：未开始的节点用中性标记（com-flow 默认是完成态绿标）。 */
+.po-steps {
+  margin-top: var(--kt-space-3);
+  margin-bottom: 0;
+}
+
+.po-step-label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--kt-space-2);
+  overflow-wrap: anywhere;
+}
+
+.po-steps .com-flow-step[data-state='pending'] .com-flow-marker {
+  border-color: var(--kt-color-border-strong);
+  background: var(--kt-color-surface);
+  color: var(--kt-color-text-muted);
+}
+
+.po-steps .com-flow-body .com-meter-track {
+  margin-top: var(--kt-space-1);
+}
+
+/* 列表行（物料需求 / 台账 / 成品序列）：数量与徽章随行换行。 */
+.po-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--kt-space-2);
+}
+
+.po-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--kt-space-1) var(--kt-space-3);
+  padding: var(--kt-space-2) var(--kt-space-3);
+  border: 1px solid var(--kt-color-border);
+  border-radius: var(--kt-radius-md);
+  background: var(--kt-color-surface);
+  overflow-wrap: anywhere;
+}
+
+.po-qty {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 时间线（报工记录 / 事件台账）。 */
+.po-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 var(--kt-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--kt-space-3);
+  border-left: 2px solid var(--kt-color-border);
+}
+
+.po-timeline-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--kt-space-1);
+}
+
+.po-timeline-item::before {
+  content: '';
+  position: absolute;
+  top: var(--kt-space-2);
+  left: calc(var(--kt-space-4) * -1 - 5px);
+  width: var(--kt-space-2);
+  height: var(--kt-space-2);
+  border: 2px solid var(--kt-color-surface);
+  border-radius: 50%;
+  background: var(--kt-color-brand);
+}
+
+.po-timeline-head {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--kt-space-2);
+  overflow-wrap: anywhere;
+}
+
+.po-timeline-meta {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kt-space-1) var(--kt-space-3);
+  font-size: var(--kt-font-size-caption);
+  color: var(--kt-color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.po-timeline-note {
+  margin: 0;
+  font-size: var(--kt-font-size-caption);
+  overflow-wrap: anywhere;
+}
+
+/* 车间执行入口：沿用既有 .production-actions（vanilla 按钮行）。 */
+.po-execution:empty {
+  display: none;
+}
+
+@media (max-width: 1200px) {
+  .po-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .po-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .po-cell {
+    min-width: 0;
+  }
+}
