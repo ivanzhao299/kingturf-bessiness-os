@@ -3,7 +3,7 @@
 // 成品序列与事件台账。详情数据来自 additive findProductionOrder，未到达前回退列表行
 // 就地推算。车间执行入口（工序报工 / 领退料 / 成品卷入库）的表单仍为 vanilla（MFG-5
 // 报工入库范围），由宿主把既有按钮挂进本抽屉。分区各自成组件（G5 ≤200 行）。
-import { useEffect, useRef } from 'preact/hooks';
+import { useMemo, useRef } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import { DetailDrawer, StatusBadge, type StatusTone } from '@kingturf/ui';
 import { dateTimeLabelOf } from '../../crm/crm-ux';
@@ -257,30 +257,40 @@ const StateTrack = ({ state, row }: DetailProps & Readonly<{ row: ProductionOrde
   );
 };
 
-// 车间执行入口：vanilla 按钮由宿主挂进容器；行对象每次刷新后都是新引用，effect 随之
-// 重挂，按钮拿到最新的报工/物料数据（与 legacy 整卡重渲染等价）。
+// 车间执行入口：vanilla 按钮由宿主挂进容器。挂载走 ref 回调（挂载/卸载由 Preact 提交
+// 时机驱动，测试 DOM 与浏览器一致）；容器以「行 id + 证据计数」为 key——行刷新后证据
+// 计数变化即重挂，按钮拿到最新的报工/物料数据（与 legacy 整卡重渲染等价）。
 const ExecutionMount = ({ state }: DetailProps) => {
   const row = state.selected;
-  const container = useRef<HTMLElement | null>(null);
-  const execution = state;
-  useEffect(() => {
-    const node = container.current;
-    if (!node || !row) return;
-    const dispose = execution.mountExecution(node, row, () => execution.runRefresh());
-    return () => {
-      dispose();
-    };
-  }, [row, execution]);
-  if (!row) return null;
-  return (
-    <div
-      class="po-execution"
-      ref={(node) => {
-        container.current = node;
-      }}
-      data-testid="kt-po-execution"
-    />
+  const mounted = useRef<{ row: ProductionOrderRow; dispose: () => void } | null>(null);
+  const latest = useRef(state);
+  latest.current = state;
+  const attach = useMemo(
+    () =>
+      (node: HTMLElement | null): void => {
+        if (node === null) {
+          mounted.current?.dispose();
+          mounted.current = null;
+          return;
+        }
+        const current = latest.current;
+        const active = current.selected;
+        if (!active || mounted.current?.row === active) return;
+        mounted.current?.dispose();
+        mounted.current = {
+          row: active,
+          dispose: current.mountExecution(node, active, () => current.runRefresh()),
+        };
+      },
+    [],
   );
+  if (!row) return null;
+  const version = [
+    String(records(row.reports).length),
+    String(records(row.materials).length),
+    String(records(row.rolls).length),
+  ].join(':');
+  return <div key={version} class="po-execution" ref={attach} data-testid="kt-po-execution" />;
 };
 
 const ProgressSection = ({

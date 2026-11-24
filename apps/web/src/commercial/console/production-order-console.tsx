@@ -19,6 +19,7 @@ import {
   type ProductionOrderBundle,
 } from './production-order-actions';
 import {
+  byLegacyPriority,
   formatQuantity,
   nextActionOf,
   progressOf,
@@ -34,7 +35,10 @@ import './production-order-console.css';
 
 const createBundle = (ports: ProductionOrderConsolePorts): ProductionOrderBundle => ({
   snapshot: signal<readonly ProductionOrderRow[]>([...ports.initialOrders]),
-  orders: signal<readonly ProductionOrderRow[]>([...ports.initialOrders]),
+  // 默认视图沿用 legacy 卡片的作业队列排序（进行中 → 已放行 → 已完成 → 草稿 → 已关闭）。
+  orders: signal<readonly ProductionOrderRow[]>(
+    byLegacyPriority([...ports.initialOrders], (row) => ports.recordText(row, 'state', 'state')),
+  ),
   nextCursor: signal<string | null>(null),
   statusFilter: signal<ProductionOrderStatusFilter>('ALL'),
   search: signal(''),

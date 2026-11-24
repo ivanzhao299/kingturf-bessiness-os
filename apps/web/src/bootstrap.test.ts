@@ -419,13 +419,15 @@ it('captures artificial-turf project handoff fields without test-channel evidenc
     ),
     readBoundSource('./commercial/quality-traceability.ts', 'export function appendTraceability'),
     readBoundSource('./commercial/permissions.ts', 'export function isCommercialPermission'),
+    // U3-MFG-4：工单卡随控制台迁移退役（production-orders-view 删除；流转表单迁入
+    // 控制台），绑定锚改钉工单控制台页与其独立宿主（断言强度不降：仍逐文件唯一实现锚）。
     readBoundSource(
-      './commercial/production-orders-view.ts',
-      'export function appendProductionOrdersView',
+      './commercial/console/production-order-console.tsx',
+      'export function ProductionOrderConsolePage',
     ),
     readBoundSource(
-      './commercial/production-actions.ts',
-      'export function appendProductionTransition',
+      './commercial/console/production-order-host.ts',
+      'export function appendProductionOrderConsole',
     ),
     readBoundSource(
       './commercial/production-cost-view.ts',
@@ -2415,14 +2417,17 @@ describe('web bootstrap', () => {
       false,
       controller,
     ) as unknown as RenderedElement;
+    // U3-MFG-4：工单区改挂 Preact 控制台宿主（面板与其 data-testid、路由标记保持；
+    // 控制台行内容经动态 chunk 挂载，静态文本不含种子数据——证据断言迁组件测试与 e2e）。
     expect(workspace.findByClass('production-workbench')).toHaveLength(1);
-    expect(workspace.findByClass('production-operation')).toHaveLength(3);
-    expect(workspace.findByClass('production-operation done')).toHaveLength(0);
-    expect(workspace.findByClass('done')).toHaveLength(3);
-    expect(workspace.textContent).toContain('WO-KT-2026-001 · FG-KT-PRO-50');
-    expect(workspace.textContent).toContain('领料 1287.5');
-    expect(workspace.textContent).toContain('ROLL-KT-2026-001 · 1000 · 待检隔离');
-    expect(workspace.textContent).toContain('草稿 → 已放行 → 进行中 → 已完成 → 已关闭');
+    expect(workspace.textContent).toContain('生产工单与车间执行');
+    const orderHost = workspace.findByClass('production-orders-console')[0];
+    expect(orderHost?.getAttribute('data-testid')).toBe('kt-production-orders');
+    expect(orderHost?.getAttribute('data-route-view')).toBe(null);
+    expect(workspace.findByClass('production-workbench')[0]?.getAttribute('data-route-view')).toBe(
+      'production-orders',
+    );
+    expect(workspace.textContent).not.toContain('WO-KT-2026-001');
   });
 
   it('drives commercial loading, submission, revision approval, and issue state through APIs', async () => {
