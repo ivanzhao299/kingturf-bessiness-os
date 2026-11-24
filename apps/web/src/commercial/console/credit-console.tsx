@@ -9,6 +9,7 @@ import {
   type StatusTone,
 } from '@kingturf/ui';
 import type { CreditConsolePorts, CreditRow } from './credit-ports';
+import { failureMessage } from '../../shared/api-error-message';
 import { CreditFlow, DecisionFlow, STATUS_LABELS } from './credit-console-flow';
 
 // U3-COM-7（ADR-0014 分域重写）：信用审查控制台——原 vanilla credit workbench 能力面
@@ -188,10 +189,14 @@ const CreditDrawer = ({ state }: Readonly<{ state: CreditPageState }>) => {
           description="审批决定将永久保留并影响订单释放资格。"
           fields={[{ name: 'reason', label: '审批理由', type: 'textarea', required: true }]}
           submitLabel={`确认${state.decision === 'APPROVED' ? '批准' : '拒绝'}`}
-          onSubmit={(values) => {
-            if (state.decision !== null)
-              void state.runDecision(decision, state.decision, values.reason ?? '');
-          }}
+          // 把 Promise 交还给 FormSection：提交期间它据此置灰按钮并拦下重复提交（TD-WF-004）；
+          // 批准与拒绝都是不可逆动作。
+          onSubmit={(values) =>
+            state.decision !== null
+              ? state.runDecision(decision, state.decision, values.reason ?? '')
+              : undefined
+          }
+          error={state.submitError}
         />
       ) : null}
     </DetailDrawer>
@@ -231,6 +236,7 @@ const LimitDrawer = ({ state }: Readonly<{ state: CreditPageState }>) => {
           { name: 'expiresAt', label: '失效日期', type: 'date', required: true },
         ]}
         submitLabel="保存额度"
+        error={state.submitError}
         onSubmit={(values) => state.runSetLimit(values)}
       />
     </DetailDrawer>
@@ -269,6 +275,7 @@ const EvaluateDrawer = ({ state }: Readonly<{ state: CreditPageState }>) => {
           { name: 'validUntil', label: '信用决定有效期至', type: 'date', required: true },
         ]}
         submitLabel="执行信用评估"
+        error={state.submitError}
         onSubmit={(values) => state.runEvaluate(values)}
       />
     </DetailDrawer>
@@ -389,7 +396,8 @@ export function CreditConsolePage(ports: CreditConsolePorts) {
   };
 
   const fail = (error: unknown, fallback: string): void => {
-    const message = error instanceof Error ? error.message : fallback;
+    // TD-WF-006：服务端的常见拒绝原因转成中文再显示（此前直接显示英文原文）。
+    const message = failureMessage(error, fallback);
     if (bundle.selected.value !== null || bundle.activeForm.value !== null)
       bundle.submitError.value = message;
     else bundle.loadError.value = message;
