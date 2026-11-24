@@ -3283,15 +3283,20 @@ button {
   max-height: 0;
   overflow: hidden;
   opacity: 0;
+  transform: translateY(-4px);
+  /* TD-UI-006：不做高度过渡。高度过渡期间子项逐个露出、同一坐标下先后是不同的条目，
+     展开后 20–200ms 内点击有约三成会打开别的页面。布局即时到位，只淡入并下移 4px
+     （远小于 37px 的条目高度，不会点到相邻条目）。 */
   transition:
-    max-height 220ms ease,
-    opacity 160ms ease;
+    opacity 160ms ease,
+    transform 160ms ease;
 }
 /* 不设高度上限（TD-UI-007）：此前封顶 360px，而「系统管理」分组有 11 项共 429px，
    最后两项在侧栏里不可见也点不到。侧栏自身可滚动，超长由它承接。 */
 .nav-group.open > .nav-children {
   max-height: none;
   opacity: 1;
+  transform: none;
 }
 .nav-children > .nav-item {
   min-height: 37px;
