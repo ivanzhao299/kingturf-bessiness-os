@@ -20,6 +20,7 @@ import {
   stageTargets,
   stageTone,
 } from './opportunity-list-pipeline';
+import { failureMessage } from '../../shared/api-error-message';
 
 // U3-COM-1（ADR-0014 分域重写）：商机列表页 Preact 控制台——原 vanilla pipeline-board
 // 的能力面等价迁移（看板概要/新建/阶段推进/逾期标记），端口层收敛为最小 Props 面
@@ -407,8 +408,8 @@ export function OpportunityListPage(ports: OpportunityListPorts) {
   // 把手按下才允许拖动（非响应式标记：只在事件间传递，不触发渲染）。
   const dragArm = { id: '' };
 
-  const messageOf = (error: unknown, fallback: string): string =>
-    error instanceof Error ? error.message : fallback;
+  // 失败文案统一经 failureMessage：接口的常见英文消息转成中文，其余原样（TD-WF-006）。
+  const messageOf = failureMessage;
   const applyItems = (next: readonly Opportunity[]): void => {
     items.value = next;
     loadError.value = '';

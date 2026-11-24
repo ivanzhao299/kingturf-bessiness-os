@@ -27,6 +27,7 @@ import {
   leadStatusTone,
   type LeadTab,
 } from '../../crm/crm-ux';
+import { failureMessage } from '../../shared/api-error-message';
 
 // U3-CRM-1（ADR-0014 分域重写）：线索控制台——原 vanilla lead-records 能力面等价迁移
 // （新建/认领/变更状态/分配改派/释放公海；列表/搜索/分页/详情抽屉）。
@@ -577,7 +578,7 @@ export function LeadConsolePage(ports: LeadConsolePorts) {
   };
 
   const fail = (error: unknown, fallback: string): void => {
-    const message = error instanceof Error ? error.message : fallback;
+    const message = failureMessage(error, fallback);
     if (bundle.selected.value !== null || bundle.activeForm.value !== null)
       bundle.submitError.value = message;
     else bundle.loadError.value = message;

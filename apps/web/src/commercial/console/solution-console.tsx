@@ -24,6 +24,7 @@ import {
   sortVersions,
   versionNumber,
 } from './solution-console-diff';
+import { failureMessage } from '../../shared/api-error-message';
 
 // U3-COM-2（ADR-0014 分域重写）：技术方案 Preact 控制台——原 vanilla solution
 // workbench 能力面等价迁移（新建/修订/定稿、规格与上一版差异标记），列表页
@@ -522,7 +523,7 @@ export function SolutionConsolePage(ports: SolutionConsolePorts) {
       solutions.value = fresh.solutions;
       loadError.value = '';
     } catch (error: unknown) {
-      loadError.value = error instanceof Error ? error.message : '技术方案加载失败';
+      loadError.value = failureMessage(error, '技术方案加载失败');
     } finally {
       loading.value = false;
     }
@@ -546,7 +547,7 @@ export function SolutionConsolePage(ports: SolutionConsolePorts) {
       baselineId.value = '';
       loadError.value = '';
     } catch (error: unknown) {
-      loadError.value = error instanceof Error ? error.message : '方案修订保存失败';
+      loadError.value = failureMessage(error, '方案修订保存失败');
     } finally {
       loading.value = false;
     }
@@ -572,7 +573,7 @@ export function SolutionConsolePage(ports: SolutionConsolePorts) {
       creating.value = false;
       loadError.value = '';
     } catch (error: unknown) {
-      loadError.value = error instanceof Error ? error.message : '技术方案创建失败';
+      loadError.value = failureMessage(error, '技术方案创建失败');
     } finally {
       loading.value = false;
     }

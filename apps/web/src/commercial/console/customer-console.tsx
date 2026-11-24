@@ -18,6 +18,7 @@ import {
   type CustomerCreditSummary,
   type CustomerStats,
 } from '../../crm/crm-ux';
+import { failureMessage } from '../../shared/api-error-message';
 
 // U3-CRM-2（ADR-0014 分域重写）：客户控制台——原 vanilla customer-records 能力面
 // 等价迁移（新建/客户 360 详情/联系人/活动时间线/商机关联/归属历史）。
@@ -440,7 +441,7 @@ const fail = (
   bundle: Pick<CustomerBundle, 'selected' | 'activeForm' | 'submitError' | 'loadError'>,
   fallback: string,
 ): void => {
-  const message = error instanceof Error ? error.message : fallback;
+  const message = failureMessage(error, fallback);
   if (bundle.selected.value !== null || bundle.activeForm.value !== null)
     bundle.submitError.value = message;
   else bundle.loadError.value = message;

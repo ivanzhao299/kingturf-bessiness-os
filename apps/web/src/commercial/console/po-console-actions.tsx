@@ -3,6 +3,7 @@
 import type { Signal } from '@preact/signals';
 import type { ContractDocumentRow, PurchaseOrderConsolePorts, PurchaseOrderRow } from './po-ports';
 import type { DocumentFormKind } from './po-detail';
+import { failureMessage } from '../../shared/api-error-message';
 
 export type PoFormActionKind = 'create' | null;
 
@@ -27,7 +28,7 @@ export function createPurchaseOrderActions(ports: PurchaseOrderConsolePorts, bun
   };
 
   const fail = (error: unknown, fallback: string): void => {
-    const message = error instanceof Error ? error.message : fallback;
+    const message = failureMessage(error, fallback);
     if (bundle.selected.value !== null || bundle.activeForm.value !== null)
       bundle.submitError.value = message;
     else bundle.loadError.value = message;
@@ -162,7 +163,7 @@ export function createPurchaseOrderActions(ports: PurchaseOrderConsolePorts, bun
       applySnapshot(await ports.refresh());
       bundle.activeDocumentForm.value = null;
     } catch (error: unknown) {
-      bundle.submitError.value = error instanceof Error ? error.message : '合同文档操作失败';
+      bundle.submitError.value = failureMessage(error, '合同文档操作失败');
     } finally {
       bundle.loading.value = false;
     }

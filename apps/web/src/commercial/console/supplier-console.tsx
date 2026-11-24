@@ -18,6 +18,7 @@ import {
   qualificationCounts,
 } from './supplier-console-detail';
 import type { SupplierConsolePorts, SupplierRow } from './supplier-ports';
+import { failureMessage } from '../../shared/api-error-message';
 
 // U3-PROC-1（ADR-0014 分域重写）：供应商控制台——原 vanilla supplier-register 能力面
 // 等价迁移（新建供应商/物料准入审核（扩展 approve|conditional|reject）/列表/状态筛选/
@@ -419,7 +420,7 @@ export function SupplierConsolePage(ports: SupplierConsolePorts) {
   };
 
   const fail = (error: unknown, fallback: string): void => {
-    const message = error instanceof Error ? error.message : fallback;
+    const message = failureMessage(error, fallback);
     if (bundle.selected.value !== null || bundle.activeForm.value !== null)
       bundle.submitError.value = message;
     else bundle.loadError.value = message;

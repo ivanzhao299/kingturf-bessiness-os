@@ -17,6 +17,7 @@ import {
   quoteThresholds,
   statusTone,
 } from './quote-console-timeline';
+import { failureMessage } from '../../shared/api-error-message';
 
 // U3-COM-3（ADR-0014 分域重写）：报价控制台——原 vanilla quote workbench 能力面
 // 等价迁移（新建含政策预校验、修订、批准、签发、打印；列表/筛选/客户端分页）。
@@ -380,7 +381,7 @@ const closeForm = (bundle: QuoteSignalBundle): void => {
   bundle.submitError.value = '';
 };
 const fail = (error: unknown, bundle: QuoteSignalBundle, fallback: string): void => {
-  const message = error instanceof Error ? error.message : fallback;
+  const message = failureMessage(error, fallback);
   if (bundle.activeForm.value === null) bundle.loadError.value = message;
   else bundle.submitError.value = message;
 };

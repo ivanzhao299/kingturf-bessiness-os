@@ -17,6 +17,7 @@ import {
   type CompareModel,
 } from './cost-matrix-console-compare';
 import { CreateDrawer, FactorForm } from './cost-matrix-console-forms';
+import { failureMessage } from '../../shared/api-error-message';
 
 // U3-COM-4（ADR-0014 分域重写）：规格成本矩阵控制台——原 vanilla ledger/detail 能力面
 // 等价迁移（summaries 服务端分页与筛选、矩阵详情、因子增改、重算、报价成本决策 handoff）。
@@ -482,7 +483,7 @@ const closeForm = (bundle: MatrixSignalBundle): void => {
   bundle.submitError.value = '';
 };
 const fail = (error: unknown, bundle: MatrixSignalBundle, fallback: string): void => {
-  const message = error instanceof Error ? error.message : fallback;
+  const message = failureMessage(error, fallback);
   // 抽屉打开（含行级动作失败）就地呈现；列表级失败走表格错误面。
   if (bundle.selected.value !== null || bundle.activeForm.value !== null)
     bundle.submitError.value = message;
@@ -665,7 +666,7 @@ const comparisonActions = (ports: CostMatrixConsolePorts, bundle: MatrixSignalBu
           return {
             ...headerOf(id),
             factors: [],
-            error: error instanceof Error ? error.message : '矩阵详情加载失败',
+            error: failureMessage(error, '矩阵详情加载失败'),
           };
         }
       }),

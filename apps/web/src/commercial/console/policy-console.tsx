@@ -10,6 +10,7 @@ import {
   type StatusTone,
 } from '@kingturf/ui';
 import type { PolicyConsolePorts, PolicyRow } from './policy-ports';
+import { failureMessage } from '../../shared/api-error-message';
 
 // U3-COM-6（ADR-0014 分域重写）：销售政策控制台——原 vanilla policy workbench 能力面
 // 等价迁移（新建/版本发布/政策评估；列表/筛选/详情抽屉含版本与毛利规则）。
@@ -445,7 +446,7 @@ export function PolicyConsolePage(ports: PolicyConsolePorts) {
   };
 
   const fail = (error: unknown, fallback: string): void => {
-    const message = error instanceof Error ? error.message : fallback;
+    const message = failureMessage(error, fallback);
     if (bundle.selected.value !== null || bundle.activeForm.value !== null)
       bundle.submitError.value = message;
     else bundle.loadError.value = message;

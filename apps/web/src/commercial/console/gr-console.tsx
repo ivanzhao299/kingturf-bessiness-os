@@ -15,6 +15,7 @@ import {
   linesOf,
 } from './gr-console-detail';
 import type { GoodsReceiptConsolePorts, GoodsReceiptRow, TraceSources } from './gr-ports';
+import { failureMessage } from '../../shared/api-error-message';
 
 // U3-PROC-4（ADR-0014 分域重写）：收货控制台——原 vanilla 收货卡片与「登记批次
 // 收货」表单能力面等价迁移（登记载荷与 vanilla 逐字节一致：receivedAt 当前时刻、
@@ -282,7 +283,7 @@ export function GoodsReceiptConsolePage(ports: GoodsReceiptConsolePorts) {
   };
 
   const fail = (error: unknown, fallback: string): void => {
-    const message = error instanceof Error ? error.message : fallback;
+    const message = failureMessage(error, fallback);
     if (bundle.selected.value !== null || bundle.activeForm.value !== null)
       bundle.submitError.value = message;
     else bundle.loadError.value = message;

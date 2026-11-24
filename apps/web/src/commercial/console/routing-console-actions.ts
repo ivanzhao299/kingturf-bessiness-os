@@ -10,6 +10,7 @@ import {
   type RoutingStatusFilter,
 } from './routing-state';
 import type { RoutingConsolePorts, RoutingPageQuery, RoutingRow } from './routing-ports';
+import { failureMessage } from '../../shared/api-error-message';
 
 export type RoutingBundle = Readonly<{
   snapshot: Signal<readonly RoutingRow[]>;
@@ -48,8 +49,8 @@ export function createRoutingActions(ports: RoutingConsolePorts, bundle: Routing
     limit: ROUTING_PAGE_SIZE,
     ...(cursor ? { cursor } : {}),
   });
-  const messageOf = (error: unknown, fallback: string): string =>
-    error instanceof Error ? error.message : fallback;
+  // 失败文案统一经 failureMessage：接口的常见英文消息转成中文，其余原样（TD-WF-006）。
+  const messageOf = failureMessage;
   const loadFailed = (error: unknown, fallback: string): void => {
     bundle.loadError.value = messageOf(error, fallback);
   };
