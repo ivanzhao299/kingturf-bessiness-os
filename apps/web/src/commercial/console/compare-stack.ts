@@ -16,7 +16,8 @@ export const COMPARE_TOKEN_MAX_CODE_LENGTH = 20;
 
 /** 不折行的最小语义单元：日期、编码、金额 / 数量，以及紧贴其前的单词标签（MOQ 1000、
  *  单价 12.5、交期 2026-12-10、行 1）。断在它们内部会读错（2026-12- / 10），把标签与值拆到
- *  两行同样读错（行尾一个孤零零的「MOQ」）。标签后的空格不再是换行点；单元之间在「 · 」处折行。
+ *  两行同样读错（行尾一个孤零零的「MOQ」）。标签后的空格不再是换行点；单元之间在「 · 」处
+ *  折行（分隔符跟随前一单元，见 splitCompareTokens）。
  *  单元不得紧贴字母、数字或连字符（左边界）：长编码内部不会被截出一段后缀当成 token，
  *  形如日期的片段（SQ-KT-2026-11-25-001 里的 2026-11-25）也不会被单独切出来。 */
 const TOKEN_PATTERN = new RegExp(
@@ -30,16 +31,24 @@ const TOKEN_PATTERN = new RegExp(
 
 export type CompareTextPart = Readonly<{ text: string; token: boolean }>;
 
+/** 紧跟在单元后面的分隔符（「·」或「~」及其前的一个空格）：并入该单元。 */
+const TRAILING_SEPARATOR = /^ ?[·~]/u;
+
 // 把一段文字切成「token / 其余」交替的片段；拼接回来与原文逐字相同。其余片段（分隔符、
 // 空白、名称、超长编码）保留原有的换行点。
+// 单元后面紧跟的分隔符并入单元：断行只发生在分隔符之后，行首不会出现孤零零的「·」
+// （手机卡片里曾折成「… · 2026-11-15」/「· 2026-12-31」）。
 export const splitCompareTokens = (text: string): readonly CompareTextPart[] => {
   const parts: CompareTextPart[] = [];
   let cursor = 0;
   for (const match of text.matchAll(TOKEN_PATTERN)) {
     const at = match.index;
     if (at > cursor) parts.push({ text: text.slice(cursor, at), token: false });
-    parts.push({ text: match[0], token: true });
-    cursor = at + match[0].length;
+    let end = at + match[0].length;
+    const separator = TRAILING_SEPARATOR.exec(text.slice(end));
+    if (separator) end += separator[0].length;
+    parts.push({ text: text.slice(at, end), token: true });
+    cursor = end;
   }
   if (cursor < text.length) parts.push({ text: text.slice(cursor), token: false });
   return parts;

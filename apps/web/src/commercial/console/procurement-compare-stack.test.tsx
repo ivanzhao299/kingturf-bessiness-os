@@ -457,9 +457,9 @@ describe('采购域详情抽屉 · 宽度', () => {
 // mini-DOM 不算样式；这里守两件能在 DOM 层面确定的事——切分规则本身，以及矩阵确实把 token
 // 标了出来、且没有改动单元格文本。真实折行见 PROC-3 证据文档的真浏览器量测。
 describe('对比矩阵 · 短 token 不折行', () => {
-  // 一个 token = 可选的单词标签 + （日期 | 编码 | 金额）。
+  // 一个 token = 可选的单词标签 + （日期 | 编码 | 金额）+ 可选的尾随分隔符（ · 或 ~）。
   const TOKEN =
-    /^(?:[\u4e00-\u9fffA-Z]{1,4} )?(?:\d{4}-\d{2}-\d{2}|[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+|\d+(?:\.\d+)?)$/u;
+    /^(?:[\u4e00-\u9fffA-Z]{1,4} )?(?:\d{4}-\d{2}-\d{2}|[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+|\d+(?:\.\d+)?)(?: ?[·~])?$/u;
 
   it('切分出的 token 是「标签 + 日期 / 编码 / 金额」；拼回来与原文逐字相同', () => {
     const cases: readonly string[] = [
@@ -478,12 +478,30 @@ describe('对比矩阵 · 短 token 不折行', () => {
       for (const part of parts.filter((entry) => entry.token))
         expect(part.text, text).toMatch(TOKEN);
     }
-    // 标签与它的值是一个单元：标签后的空格不是换行点；单元之间在「 · 」处折行。
+    // 标签与它的值是一个单元：标签后的空格不是换行点。
     expect(splitCompareTokens('单价 12.5')).toEqual([{ text: '单价 12.5', token: true }]);
+    // 单元后面紧跟的分隔符并入该单元：断行只发生在分隔符之后。
     expect(splitCompareTokens('MOQ 1200 · 交期 2026-12-18')).toEqual([
-      { text: 'MOQ 1200', token: true },
-      { text: ' · ', token: false },
+      { text: 'MOQ 1200 ·', token: true },
+      { text: ' ', token: false },
       { text: '交期 2026-12-18', token: true },
+    ]);
+    expect(splitCompareTokens('SQ-1 · 2026-11-01 · 2026-12-31')).toEqual([
+      { text: 'SQ-1 ·', token: true },
+      { text: ' ', token: false },
+      { text: '2026-11-01 ·', token: true },
+      { text: ' ', token: false },
+      { text: '2026-12-31', token: true },
+    ]);
+    expect(splitCompareTokens('有效期 2026-01-01 ~ 2099-12-31')).toEqual([
+      { text: '有效期 2026-01-01 ~', token: true },
+      { text: ' ', token: false },
+      { text: '2099-12-31', token: true },
+    ]);
+    // 普通文字后面的分隔符不并入（名称仍可在任意字之间折行）。
+    expect(splitCompareTokens('PP 复合底布 · 数量 1500')).toEqual([
+      { text: 'PP 复合底布 · ', token: false },
+      { text: '数量 1500', token: true },
     ]);
     // 物料名称里的「11000D」是数字 + 字母，不是 token：不单独成 token，也不把后面的名称并进来。
     expect(splitCompareTokens('11000D 替代草纱 · 数量 2000')).toEqual([
@@ -540,8 +558,8 @@ describe('对比矩阵 · 短 token 不折行', () => {
     // 询价单元格带中文标签：标签与值是一个 token（交期 2026-12-10、单价 12.5）。
     expect(tokens).toContain('交期 2026-12-10');
     expect(tokens).toContain('单价 12.5');
-    expect(tokens).toContain('MOQ 1000');
-    expect(tokens).toContain('行 1');
+    expect(tokens).toContain('MOQ 1000 ·');
+    expect(tokens).toContain('行 1 ·');
     expect(tokens).toContain('数量 6000');
     // 夹具里的未报价行与失效报价同此：单元格文本与此前逐字相同。
     const firstLine = matrix.querySelector('tbody td[data-column="line"]');
@@ -559,10 +577,10 @@ describe('对比矩阵 · 短 token 不折行', () => {
       .querySelectorAll('.proc-token')
       .map((node) => element(node).textContent);
     for (const text of tokens) expect(text).toMatch(TOKEN);
-    expect(tokens).toContain('SQ-1');
-    // 供应商矩阵的条款不带标签：日期自身是一个 token；「MOQ 1000」是另一个。
+    expect(tokens).toContain('SQ-1 ·');
+    // 供应商矩阵的条款不带标签：日期自身是一个 token；「MOQ 1000 ·」是另一个。
     expect(tokens).toContain('2026-12-10');
-    expect(tokens).toContain('MOQ 1000');
+    expect(tokens).toContain('MOQ 1000 ·');
     // 单元格标识与文本守恒：最优价格、条款、报价单三格。
     const prices = cellsOf(compare, 'kt-supplier-compare-price').map((cell) => cell.textContent);
     expect(prices).toEqual(['11.8最优', '12.5', '10', '13.2']);
@@ -620,14 +638,14 @@ describe('对比矩阵 · 短 token 不折行', () => {
     );
     // 供应商名是中文、不是 token；编号与两个「标签 + 日期」是 token。
     expect(tokensIn(legend)).toEqual([
-      'SQ-KT-YARN-2026-001',
-      '收于 2026-11-10',
+      'SQ-KT-YARN-2026-001 ·',
+      '收于 2026-11-10 ·',
       '有效至 2026-12-31',
-      'SQ-KT-YARN-2026-002',
-      '收于 2026-11-11',
+      'SQ-KT-YARN-2026-002 ·',
+      '收于 2026-11-11 ·',
       '有效至 2026-12-31',
-      'SQ-KT-YARN-2026-003',
-      '收于 2026-11-01',
+      'SQ-KT-YARN-2026-003 ·',
+      '收于 2026-11-01 ·',
       '有效至 2026-11-12',
     ]);
     // 卡片元信息（手机堆叠形态）：同一份报价在卡片头部的元信息里。
@@ -636,8 +654,8 @@ describe('对比矩阵 · 短 token 不折行', () => {
     );
     expect(cardMeta.textContent).toBe('SQ-KT-YARN-2026-001 · 收于 2026-11-10 · 有效至 2026-12-31');
     expect(tokensIn(cardMeta)).toEqual([
-      'SQ-KT-YARN-2026-001',
-      '收于 2026-11-10',
+      'SQ-KT-YARN-2026-001 ·',
+      '收于 2026-11-10 ·',
       '有效至 2026-12-31',
     ]);
 
@@ -652,11 +670,11 @@ describe('对比矩阵 · 短 token 不折行', () => {
       'SQ-0 · 收于 2026-09-01 · 有效至 2026-10-31',
     ]);
     expect(tokensIn(history)).toEqual([
-      'SQ-1',
-      '收于 2026-11-01',
+      'SQ-1 ·',
+      '收于 2026-11-01 ·',
       '有效至 2026-12-31',
-      'SQ-0',
-      '收于 2026-09-01',
+      'SQ-0 ·',
+      '收于 2026-09-01 ·',
       '有效至 2026-10-31',
     ]);
   });
@@ -669,8 +687,8 @@ describe('对比矩阵 · 短 token 不折行', () => {
       'RM-YARN · 草纱 · 数量 6000 · 要求到货 —',
       'RM-BACKING · 底布 · 数量 800 · 要求到货 —',
     ]);
-    // 编号与「数量 + 值」是 token；「要求到货 —」是占位，不是 token。
-    expect(tokensIn(lines)).toEqual(['RM-YARN', '数量 6000', 'RM-BACKING', '数量 800']);
+    // 编号与「数量 + 值」是 token（各带尾随的分隔符）；「要求到货 —」是占位，不是 token。
+    expect(tokensIn(lines)).toEqual(['RM-YARN ·', '数量 6000 ·', 'RM-BACKING ·', '数量 800 ·']);
 
     // 资质记录：徽章之后紧跟「 编号 · 名称 · v版本 · 有效期 起 ~ 止」。
     const qualified: SupplierRow = {
@@ -702,7 +720,7 @@ describe('对比矩阵 · 短 token 不折行', () => {
       '已批准 RM-YARN · 草纱 · v1 · 有效期 2026-01-01 ~ 2099-12-31',
     );
     // v1 不是 token（版本号紧贴字母）；有效期两端各自是 token。
-    expect(tokensIn(qualifications)).toEqual(['RM-YARN', '有效期 2026-01-01', '2099-12-31']);
+    expect(tokensIn(qualifications)).toEqual(['RM-YARN ·', '有效期 2026-01-01 ~', '2099-12-31']);
   });
 });
 
