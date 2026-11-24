@@ -3287,8 +3287,10 @@ button {
     max-height 220ms ease,
     opacity 160ms ease;
 }
+/* 不设高度上限（TD-UI-007）：此前封顶 360px，而「系统管理」分组有 11 项共 429px，
+   最后两项在侧栏里不可见也点不到。侧栏自身可滚动，超长由它承接。 */
 .nav-group.open > .nav-children {
-  max-height: 360px;
+  max-height: none;
   opacity: 1;
 }
 .nav-children > .nav-item {

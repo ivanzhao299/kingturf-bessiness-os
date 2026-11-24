@@ -583,6 +583,9 @@ it('uses a smooth two-level sidebar with an icon-only collapse control', () => {
   expect(styles).toContain('KT-UI-PROD-05: two-level operational navigation');
   expect(styles).toContain('.nav-parent-chevron');
   expect(styles).toContain('.sidebar-collapsed .nav-children');
+  // TD-UI-007（真浏览器量测发现；mini-DOM 不算样式）：展开态不设高度上限——封顶 360px 时
+  // 「系统管理」11 项的最后两项不可见也点不到。
+  expect(styles).toMatch(/\.nav-group\.open > \.nav-children\s*\{[^}]*max-height:\s*none/u);
   expect(source).toContain("const utilityLeading = el('div', 'utility-leading')");
   expect(source).toContain('utilityLeading.append(sidebarToggle, utilityContext)');
   expect(styles).toContain('Jinhu-informed application chrome');
