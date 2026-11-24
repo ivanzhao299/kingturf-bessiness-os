@@ -5,7 +5,8 @@
 // 与否由 manufacturing-view 按该路由可见性决定）。默认视图沿用路由加载的全量快照；筛选态
 // 经 controller.api.get 走桥轨分页；详情经 additive
 // GET /api/v1/manufacturing-routings/:routingId，失败回退列表行。产品类型计数经 items
-// 视图 itemId→itemType 预聚（productTypeOf）。
+// 视图 itemId→itemType 预聚（productTypeOf）。onRefreshed：refresh 端口在 controller.load
+// 重读完成后调用（概览汇总卡据此重算——路由视图只构建一次，面板不会随控制台的写操作重建）。
 import type { OperationsViewContext } from '../operations-view-ports';
 import { el } from '../../dom';
 import type { RoutingConsolePorts } from './routing-ports';
@@ -13,6 +14,7 @@ import type { RoutingConsolePorts } from './routing-ports';
 export function appendManufacturingRoutingConsole(
   context: OperationsViewContext,
   workspace: HTMLElement,
+  onRefreshed?: () => void,
 ): void {
   const { controller, permissions } = context;
   const routingPath = '/api/v1/manufacturing-routings';
@@ -73,6 +75,7 @@ export function appendManufacturingRoutingConsole(
     },
     refresh: async () => {
       await controller.load();
+      onRefreshed?.();
       return controller.views.get(routingPath) ?? [];
     },
   };

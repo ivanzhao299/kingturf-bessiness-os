@@ -1,6 +1,9 @@
 import { sessionFixture } from './test-fixtures/session';
 import { scopeGrantChoiceLabeler } from './governance/identity-scopes';
 import { createFetchCommercialApi } from './shared/commercial-http';
+import { appendManufacturingSummary } from './commercial/manufacturing-summary';
+import { recordText } from './shared/business-format';
+import { el } from './dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { createUiKitSection } from './ui-kit/view';
@@ -2175,6 +2178,88 @@ describe('web bootstrap', () => {
     const manageOnly = await manufacturingWorkspace(['bom:manage']);
     expect(manageOnly.findByClass('manufacturing-workbench')).toHaveLength(0);
     expect(manageOnly.findByClass('manufacturing-summary')).toHaveLength(0);
+  });
+
+  it('recomputes the overview cards from the current snapshot without replacing them (MFG-3B)', () => {
+    // 路由视图只构建一次：控制台新建 / 发布 / 刷新后 controller.views 已是新快照，而概览面板
+    // 不会重建，汇总卡靠重算函数更新文字（真浏览器量测里抓到过：子路由新建草稿后回到概览，
+    // 草稿数仍是旧值）。
+    const published = { id: 'item-v1', sku: 'FG-A', version: 1, status: 'PUBLISHED' };
+    const draft = { id: 'item-v2', sku: 'FG-B', version: 1, status: 'DRAFT' };
+    type Rows = readonly Record<string, unknown>[];
+    let snapshot: Readonly<{ items: Rows; boms: Rows; routings: Rows }> = {
+      items: [published],
+      boms: [],
+      routings: [],
+    };
+    const target = el('section', 'summary-target');
+    const rendered = target as unknown as RenderedElement;
+    const refresh = appendManufacturingSummary(
+      target,
+      () => snapshot,
+      recordText,
+      new Set<string>(['manufacturing/items']),
+    );
+    const cards = (): readonly RenderedElement[] => rendered.findByClass('metric-card');
+    expect(cards().map((card) => [card.tagName, card.textContent])).toEqual([
+      ['a', '物料\n已发布 1 / 草稿 0'],
+      ['div', 'BOM\n已发布 — / 草稿 —'],
+      ['div', '工艺路线\n已发布 — / 草稿 —'],
+    ]);
+    const [firstItems] = cards();
+    if (!firstItems) throw new Error('items summary card missing');
+    // 新建一条物料草稿后的新快照：只有文字变。节点是同一实例（锚点、标识不变），不追加卡片；
+    // 读不到的两张卡保持纯指标与「—」。
+    snapshot = { items: [published, draft], boms: [], routings: [] };
+    refresh();
+    expect(cards()).toHaveLength(3);
+    expect(cards()[0]).toBe(firstItems);
+    expect(firstItems.tagName).toBe('a');
+    expect(firstItems.getAttribute('data-testid')).toBe('manufacturing-summary-items');
+    expect((firstItems as unknown as { href?: string }).href).toBe('#/manufacturing/items');
+    expect(cards().map((card) => card.textContent)).toEqual([
+      '物料\n已发布 1 / 草稿 1',
+      'BOM\n已发布 — / 草稿 —',
+      '工艺路线\n已发布 — / 草稿 —',
+    ]);
+  });
+
+  it('has every console host recompute the overview cards after its reload (MFG-3B)', () => {
+    // 单测替身没有 isConnected，控制台在单测里不真正挂载，宿主的 refresh 端口调不到；接线用
+    // 源码锚守住，行为由真浏览器量测覆盖（子路由新建草稿后回到概览，草稿数 +1）。
+    const view = readBoundSource(
+      './commercial/manufacturing-view.ts',
+      'export function appendManufacturingView',
+    );
+    expect(view).toContain('CONSOLE_HOSTS[surface.id](context, workspace, refreshSummary)');
+    const hosts = [
+      [
+        './commercial/console/item-host.ts',
+        'export function appendManufacturingItemConsole',
+        'itemPath',
+      ],
+      [
+        './commercial/console/bom-host.ts',
+        'export function appendManufacturingBomConsole',
+        'bomPath',
+      ],
+      [
+        './commercial/console/routing-host.ts',
+        'export function appendManufacturingRoutingConsole',
+        'routingPath',
+      ],
+    ] as const;
+    for (const [file, anchor, path] of hosts) {
+      const source = readBoundSource(file, anchor);
+      expect(source, file).toContain('onRefreshed?: () => void');
+      // 顺序：先等 controller.load 重读完成，再通知重算，最后返回该清单的最新快照。
+      expect(source, file).toMatch(
+        new RegExp(
+          `await controller\\.load\\(\\);\\s*onRefreshed\\?\\.\\(\\);\\s*return controller\\.views\\.get\\(${path}\\) \\?\\? \\[\\];`,
+          'u',
+        ),
+      );
+    }
   });
 
   it('styles the manufacturing overview summary as three columns with linkable cards (MFG-3B)', () => {
