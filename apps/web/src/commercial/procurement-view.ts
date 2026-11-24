@@ -2,12 +2,11 @@ import { el } from '../dom';
 // PROC-2：采购域控制台样式并入宿主静态图（裁定15：cssCodeSplit:false 后随主 CSS 包静态加载）。
 import './console/procurement-console.css';
 import type { OperationsViewContext } from './operations-view-ports';
-import {
-  appendSupplierConsole,
-  appendRfqConsole,
-  appendPurchaseOrderConsole,
-  appendGoodsReceiptConsole,
-} from './console-entry';
+// PROC-2：四个控制台宿主自 console-entry 拆出为独立宿主文件（TD-PROC-005，同 bom-host.ts 范式）。
+import { appendSupplierConsole } from './console/supplier-host';
+import { appendRfqConsole } from './console/rfq-host';
+import { appendPurchaseOrderConsole } from './console/po-host';
+import { appendGoodsReceiptConsole } from './console/gr-host';
 import { createSourcingPanel } from './sourcing-register';
 import { createInventoryPanel } from './inventory-register';
 
