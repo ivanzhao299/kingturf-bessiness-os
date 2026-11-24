@@ -1,11 +1,16 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { ComponentChild } from 'preact';
 
+/** 抽屉尺寸：default 为既有宽度；wide 用于内容本来就多的详情（资质、报价历史、对比表）。 */
+export type DetailDrawerSize = 'default' | 'wide';
+
 export type DetailDrawerProps = Readonly<{
   title: string;
   onClose: () => void;
   footer?: ComponentChild;
   children?: ComponentChild;
+  // 缺省 default：不传时宽度与此前一致，既有调用无需改动。
+  size?: DetailDrawerSize;
 }>;
 
 const FOCUSABLE_SELECTOR = 'button, input, select, textarea, a, [tabindex]';
@@ -85,6 +90,7 @@ export const DetailDrawer = (props: DetailDrawerProps) => {
         aria-modal="true"
         aria-labelledby={titleId}
         class="detail-drawer"
+        data-size={props.size ?? 'default'}
         onKeyDown={onKeyDown}
       >
         <header class="drawer-header">

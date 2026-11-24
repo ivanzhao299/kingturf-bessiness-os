@@ -253,6 +253,11 @@ dialog .dialog-actions {
   animation: drawer-slide-in 0.2s ease-out;
   border-radius: 12px 0 0 12px;
 }
+/* 宽抽屉（size="wide"）：承载资质、报价历史、对比表这类内容本来就多的详情。
+   按尺寸属性限定，缺省抽屉的宽度规则不变；窄视口下仍以视口宽度为上限。 */
+.detail-drawer[data-size='wide'] {
+  width: min(760px, 92vw);
+}
 @keyframes drawer-slide-in {
   from {
     transform: translateX(100%);

@@ -166,7 +166,9 @@ const SupplierDrawer = ({ state }: Readonly<{ state: SupplierPageState }>) => {
   const ratingText = Number.isFinite(rating) && rating >= 0 ? `${String(rating / 100)} / 100` : '—';
   const mayQualify = permissions.has('supplier:manage');
   return (
+    // 宽抽屉：资质记录、报价历史与多供应商对比表在缺省宽度里读不了（TD-PROC-008 残余，PROC-3）。
     <DetailDrawer
+      size="wide"
       title={`供应商详情 · ${recordText(ports, row, 'name', 'name')}`}
       onClose={() => {
         state.open(null);

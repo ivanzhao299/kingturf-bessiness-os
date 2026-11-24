@@ -167,3 +167,44 @@ describe('components.css 的变量引用（静态）', () => {
     expect([...new Set(undefinedUses)]).toEqual([]);
   });
 });
+
+// PROC-3（TD-PROC-008）：宽抽屉 size="wide"。DetailDrawer 是全站基座——缺省抽屉的宽度规则不得被
+// 改动，宽版只按 data-size 属性限定，且只改变宽度这一项。mini-DOM 不算样式，只能在样式表层面守。
+describe('DetailDrawer 样式（静态）', () => {
+  const sizeSource = readFileSync(new URL('../src/detail-drawer.tsx', import.meta.url), 'utf8');
+  const sizeUnion = /export type DetailDrawerSize = ([^;]+);/u.exec(sizeSource)?.[1];
+  if (sizeUnion === undefined) throw new Error('DetailDrawerSize union not found');
+  const sizes = sizeUnion.split('|').map((member) => member.trim().replace(/^['"]|['"]$/gu, ''));
+  const definedProperties = new Set(
+    [...`${tokenSheet}\n${stylesheet}\n${appSheet}`.matchAll(/(--[a-z0-9-]+)\s*:/gu)].map(
+      (match) => match[1],
+    ),
+  );
+  const rule = (selector: string): string => {
+    const start = stylesheet.indexOf(`${selector} {`);
+    if (start < 0) throw new Error(`components.css has no rule for ${selector}`);
+    return stylesheet.slice(start, stylesheet.indexOf('}', start));
+  };
+  const undefinedVars = (text: string): readonly string[] =>
+    [...text.matchAll(/var\(\s*(--[a-z0-9-]+)\s*\)/gu)].flatMap((match) => {
+      const name = match[1];
+      return name !== undefined && !definedProperties.has(name) ? [name] : [];
+    });
+
+  it('ships a rule for every non-default size, scoped by the data-size attribute', () => {
+    expect(sizes).toContain('default');
+    for (const size of sizes.filter((member) => member !== 'default')) {
+      expect(rule(`.detail-drawer[data-size='${size}']`)).toContain('width:');
+    }
+  });
+
+  it('leaves the default drawer width untouched and widens only through the wide variant', () => {
+    expect(rule('.detail-drawer')).toContain('width: min(480px, 90vw);');
+    const wide = rule(".detail-drawer[data-size='wide']");
+    expect(wide).toContain('width: min(760px, 92vw);');
+    // 宽版与缺省版的差别只有宽度：规则里恰好一条声明。
+    expect(wide.match(/;/gu)).toHaveLength(1);
+    // 宽度规则里没有未定义且无回退值的变量（本规则不引用任何变量）。
+    expect(undefinedVars(wide)).toEqual([]);
+  });
+});

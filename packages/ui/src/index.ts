@@ -7,7 +7,7 @@ export {
   type DataTableProps,
   type DataTableSelection,
 } from './data-table';
-export { DetailDrawer, type DetailDrawerProps } from './detail-drawer';
+export { DetailDrawer, type DetailDrawerProps, type DetailDrawerSize } from './detail-drawer';
 export { EmptyState, type EmptyStateProps } from './empty-state';
 export {
   FormSection,

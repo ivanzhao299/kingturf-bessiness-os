@@ -124,6 +124,58 @@ describe('DetailDrawer（主从/抽屉）', () => {
     expect(footer.querySelector('button')?.textContent).toBe('保存授权');
   });
 
+  // PROC-3：size 落成对话框上的 data-size（样式按该属性限定宽度）；缺省即 default。
+  it('marks a drawer without size as the default size', () => {
+    const host = mountDom();
+    mount(
+      <DetailDrawer title="用户详情" onClose={() => undefined}>
+        内容
+      </DetailDrawer>,
+      host,
+    );
+    const dialog = asElement(host.container.querySelector('[role="dialog"]'));
+    expect(dialog.getAttribute('data-size')).toBe('default');
+  });
+
+  it('reflects size="wide" as a data attribute', () => {
+    const host = mountDom();
+    mount(
+      <DetailDrawer title="报价历史对比" onClose={() => undefined} size="wide">
+        内容
+      </DetailDrawer>,
+      host,
+    );
+    const dialog = asElement(host.container.querySelector('[role="dialog"]'));
+    expect(dialog.getAttribute('data-size')).toBe('wide');
+    expect(dialog.getAttribute('aria-modal')).toBe('true');
+    expect(dialog.getAttribute('aria-labelledby')).toBeTruthy();
+  });
+
+  it('keeps the modal behaviours of a wide drawer（初焦进入、Esc 关闭、关闭还焦）', async () => {
+    const host = mountDom();
+    const outside = host.document.createElement('button');
+    host.container.appendChild(outside);
+    outside.focus();
+    const closed: string[] = [];
+    const open = signal(false);
+    const App = () =>
+      open.value ? (
+        <DetailDrawer title="报价历史对比" size="wide" onClose={() => closed.push('esc')}>
+          <button type="button">保存</button>
+        </DetailDrawer>
+      ) : null;
+    mount(<App />, host);
+    open.value = true;
+    await flush();
+    const closeButton = asElement(host.container.querySelector('[role="dialog"] .drawer-close'));
+    expect(host.document.activeElement).toBe(closeButton);
+    closeButton.dispatchEvent(new TestEvent('keydown', { key: 'Escape' }));
+    expect(closed).toEqual(['esc']);
+    open.value = false;
+    await flush();
+    expect(host.document.activeElement).toBe(outside);
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
   });
