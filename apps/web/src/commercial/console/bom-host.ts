@@ -1,16 +1,20 @@
-// U3-MFG-2：BOM 控制台宿主——原 vanilla「BOM 与替代料」卡片迁移至 Preact（同 MFG-1
-// 宿主口径：挂 manufacturing-workbench 面板内、不带 data-route-view——自 console-entry
-// 拆出以守住其 G1 ≤800 行（TD-PROC-005 增长点）。默认视图沿用路由加载的全量快照；
-// 筛选态经 controller.api.get 走桥轨分页；详情经 additive
-// GET /api/v1/manufacturing-boms/:bomId，失败回退列表行。产品类型计数经 items 视图
-// itemId→itemType 预聚（productTypeOf），不对 BOM 快照做类型推断。
+// U3-MFG-2 / MFG-3B：BOM 控制台宿主——原 vanilla「BOM 与替代料」卡片迁移至 Preact
+// （U3-MFG-2）；独立成文件（自 console-entry 拆出以守住其 G1 ≤800 行，TD-PROC-005 增长点），
+// 并随制造主数据子路由化（MFG-3B）成为 #/manufacturing/boms 的路由视图：节段自身携带
+// data-route-view、直接挂工作区根（与其它商业控制台宿主同口径；挂载与否由
+// manufacturing-view 按该路由可见性决定）。默认视图沿用路由加载的全量快照；筛选态经
+// controller.api.get 走桥轨分页；详情经 additive GET /api/v1/manufacturing-boms/:bomId，
+// 失败回退列表行。产品类型计数经 items 视图 itemId→itemType 预聚（productTypeOf），
+// 不对 BOM 快照做类型推断。onRefreshed：refresh 端口在 controller.load 重读完成后调用
+// （概览汇总卡据此重算——路由视图只构建一次，面板不会随控制台的写操作重建）。
 import type { OperationsViewContext } from '../operations-view-ports';
 import { el } from '../../dom';
 import type { BomConsolePorts } from './bom-ports';
 
 export function appendManufacturingBomConsole(
   context: OperationsViewContext,
-  target: HTMLElement,
+  workspace: HTMLElement,
+  onRefreshed?: () => void,
 ): void {
   const { controller, permissions } = context;
   const bomPath = '/api/v1/manufacturing-boms';
@@ -71,12 +75,14 @@ export function appendManufacturingBomConsole(
     },
     refresh: async () => {
       await controller.load();
+      onRefreshed?.();
       return controller.views.get(bomPath) ?? [];
     },
   };
   const section = el('section', 'commercial-console manufacturing-boms-console');
   section.setAttribute('data-testid', 'kt-mfg-boms');
-  target.append(section);
+  section.setAttribute('data-route-view', 'manufacturing/boms');
+  workspace.append(section);
   void import('./mount').then(({ mountCommercialConsole }) => {
     if (section.isConnected && typeof globalThis.document === 'object')
       mountCommercialConsole(section, { kind: 'manufacturing-boms', ports });

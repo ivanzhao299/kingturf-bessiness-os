@@ -247,16 +247,29 @@ test('shows published manufacturing versions, BOM substitute evidence, and order
   page,
 }, testInfo) => {
   await openAuthenticatedWorkspace(page);
-  await openRoute(page, 'manufacturing-master');
-  const workbench = page.locator('.manufacturing-workbench');
-  await expect(workbench).toBeVisible();
-  await expect(workbench.getByText('FG-KT-PRO-50', { exact: true })).toBeVisible();
-  await expect(workbench.getByText('BOM-KT-PRO-50', { exact: true })).toBeVisible();
-  await expect(workbench.getByText('RT-KT-PRO-50', { exact: true })).toBeVisible();
-  await expect(workbench.getByText('已发布 · 第 1 版')).toHaveCount(6);
-  await expect(workbench.getByText('发布版本')).toHaveCount(0);
-  await testInfo.attach('manufacturing-master-data-desktop', {
-    body: await workbench.screenshot(),
+  // MFG-3B：物料 / BOM / 工艺路线三个控制台各自成为一条制造主数据子路由——逐条进入，各断言
+  // 自己的那段编码可见。「已发布 · 第 1 版」与「发布版本」两条断言原样保留（同样的匹配、同样
+  // 自动重试），作用域由原来的 .manufacturing-workbench 改为三个控制台宿主的并集（宿主在登录
+  // 时已全部挂载，不在当前路由的也计入）。合计口径守恒：物料 4（演示种子的四个物料版本均为
+  // 已发布）+ BOM 1 + 工艺路线 1 = 6。
+  const consoles = page.locator(
+    '[data-testid="kt-mfg-items"], [data-testid="kt-mfg-boms"], [data-testid="kt-mfg-routings"]',
+  );
+  await openRoute(page, 'manufacturing/items');
+  await expect(
+    page.locator('[data-testid="kt-mfg-items"]').getByText('FG-KT-PRO-50', { exact: true }),
+  ).toBeVisible();
+  await openRoute(page, 'manufacturing/boms');
+  await expect(
+    page.locator('[data-testid="kt-mfg-boms"]').getByText('BOM-KT-PRO-50', { exact: true }),
+  ).toBeVisible();
+  await openRoute(page, 'manufacturing/routings');
+  const routings = page.locator('[data-testid="kt-mfg-routings"]');
+  await expect(routings.getByText('RT-KT-PRO-50', { exact: true })).toBeVisible();
+  await expect(consoles.getByText('已发布 · 第 1 版')).toHaveCount(6);
+  await expect(consoles.getByText('发布版本')).toHaveCount(0);
+  await testInfo.attach('manufacturing-routings-desktop', {
+    body: await routings.screenshot(),
     contentType: 'image/png',
   });
 });

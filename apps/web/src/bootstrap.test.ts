@@ -1,6 +1,9 @@
 import { sessionFixture } from './test-fixtures/session';
 import { scopeGrantChoiceLabeler } from './governance/identity-scopes';
 import { createFetchCommercialApi } from './shared/commercial-http';
+import { appendManufacturingSummary } from './commercial/manufacturing-summary';
+import { recordText } from './shared/business-format';
+import { el } from './dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { createUiKitSection } from './ui-kit/view';
@@ -387,6 +390,24 @@ it('captures artificial-turf project handoff fields without test-channel evidenc
     readBoundSource(
       './commercial/console/routing-host.ts',
       'export function appendManufacturingRoutingConsole',
+    ),
+    // MFG-3B：物料宿主自 console-entry 迁出为独立文件；子路由注册表与概览汇总卡同列（逐文件
+    // 唯一实现锚，断言强度不降）。
+    readBoundSource(
+      './commercial/console/item-host.ts',
+      'export function appendManufacturingItemConsole',
+    ),
+    readBoundSource(
+      './commercial/console/bom-host.ts',
+      'export function appendManufacturingBomConsole',
+    ),
+    readBoundSource(
+      './commercial/manufacturing-surfaces.ts',
+      'export const MANUFACTURING_SURFACES',
+    ),
+    readBoundSource(
+      './commercial/manufacturing-summary.ts',
+      'export function appendManufacturingSummary',
     ),
     readBoundSource('./commercial/sourcing-register.ts', 'export function createSourcingPanel'),
     readBoundSource('./commercial/inventory-register.ts', 'export function createInventoryPanel'),
@@ -1963,22 +1984,28 @@ describe('web bootstrap', () => {
     // U3-MFG-1/2/3：物料/BOM/工艺路线区全部迁移至 Preact 控制台——vanilla 卡片墙
     // 退役；三区行渲染由各自控制台行为测试覆盖。
     expect(workspace.findByClass('manufacturing-card')).toHaveLength(0);
-    // 宿主必须挂载于 manufacturing-workbench 面板内且不带 data-route-view（路由可见性
-    // 随父面板治理——e2e 的 .manufacturing-workbench 定位器作用域依赖该包含关系）。
+    // MFG-3B（TD-MFG-003）：三个控制台宿主自 manufacturing-workbench 面板迁出——各自成为
+    // 制造主数据子路由的路由视图，直接挂工作区根并携带 data-route-view（与其它商业控制台
+    // 宿主同口径；可见性由 visibleAppRoutes 按各控制台的读权限注册）。概览面板内不再含控制台。
     const workbench = workspace.findByClass('manufacturing-workbench')[0];
-    const itemHost = workbench?.findByClass('manufacturing-items-console')[0];
-    expect(itemHost?.getAttribute('data-testid')).toBe('kt-mfg-items');
-    expect(itemHost?.getAttribute('data-route-view')).toBe(null);
-    const bomHost = workbench?.findByClass('manufacturing-boms-console')[0];
-    expect(bomHost?.getAttribute('data-testid')).toBe('kt-mfg-boms');
-    expect(bomHost?.getAttribute('data-route-view')).toBe(null);
-    const routingHost = workbench?.findByClass('manufacturing-routings-console')[0];
-    expect(routingHost?.getAttribute('data-testid')).toBe('kt-mfg-routings');
-    expect(routingHost?.getAttribute('data-route-view')).toBe(null);
-    // 控制台行内容不经宿主静态渲染（动态 chunk 挂载后才有）——工作台文本不含种子编码。
+    const host = (className: string, testId: string, route: string): void => {
+      const nodes = workspace.findByClass(className);
+      expect(nodes).toHaveLength(1);
+      expect(nodes[0]?.getAttribute('data-testid')).toBe(testId);
+      expect(nodes[0]?.getAttribute('data-route-view')).toBe(route);
+      expect(workbench?.findByClass(className)).toHaveLength(0);
+    };
+    host('manufacturing-items-console', 'kt-mfg-items', 'manufacturing/items');
+    host('manufacturing-boms-console', 'kt-mfg-boms', 'manufacturing/boms');
+    host('manufacturing-routings-console', 'kt-mfg-routings', 'manufacturing/routings');
+    // 控制台行内容不经宿主静态渲染（动态 chunk 挂载后才有）——工作台文本不含种子编码
+    //（宿主迁到工作区根后，工作区整体文本同样不含）。
     expect(workbench?.textContent).not.toContain('FG-KT-PRO-50');
     expect(workbench?.textContent).not.toContain('BOM-KT-PRO-50');
     expect(workbench?.textContent).not.toContain('RT-KT-PRO-50');
+    expect(workspace.textContent).not.toContain('FG-KT-PRO-50');
+    expect(workspace.textContent).not.toContain('BOM-KT-PRO-50');
+    expect(workspace.textContent).not.toContain('RT-KT-PRO-50');
   });
 
   it('omits the manufacturing item console without manufacturing-item:read', async () => {
@@ -1998,6 +2025,333 @@ describe('web bootstrap', () => {
     ) as unknown as RenderedElement;
     const workbench = workspace.findByClass('manufacturing-workbench')[0];
     expect(workbench?.findByClass('manufacturing-items-console')).toHaveLength(0);
+    // MFG-3B：宿主不再挂在面板内而是工作区根——原断言保留，并加严为整个工作区都没有物料与
+    // 工艺路线宿主（只有 bom:read 时 #/manufacturing/items、#/manufacturing/routings 不可见，
+    // 宿主不得挂载）；BOM 宿主照常挂载。
+    expect(workspace.findByClass('manufacturing-items-console')).toHaveLength(0);
+    expect(workspace.findByClass('manufacturing-routings-console')).toHaveLength(0);
+    expect(workspace.findByClass('manufacturing-boms-console')).toHaveLength(1);
+  });
+
+  // MFG-3B（TD-MFG-003）：制造主数据子路由——可见性、宿主装配、概览汇总卡、样式与侧栏分组。
+  const manufacturingApi = () => ({
+    listOpportunities: vi.fn().mockResolvedValue([]),
+    list: vi.fn().mockImplementation((path: string) => {
+      const values: Record<string, readonly Record<string, unknown>[]> = {
+        '/api/v1/manufacturing-items': [
+          { id: 'item-v1', sku: 'FG-A', version: 1, status: 'PUBLISHED' },
+          { id: 'item-v2', sku: 'FG-B', version: 1, status: 'DRAFT' },
+          { id: 'item-v3', sku: 'FG-C', version: 1, status: 'RETIRED' },
+        ],
+        '/api/v1/manufacturing-boms': [
+          { id: 'bom-v1', code: 'BOM-A', version: 1, status: 'DRAFT' },
+          { id: 'bom-v2', code: 'BOM-B', version: 1, status: 'DRAFT' },
+        ],
+        '/api/v1/manufacturing-routings': [
+          { id: 'routing-v1', code: 'RT-A', version: 1, status: 'PUBLISHED' },
+        ],
+      };
+      return Promise.resolve(values[path] ?? []);
+    }),
+    submit: vi.fn().mockResolvedValue({}),
+    uploadCtrAttachment: vi.fn().mockResolvedValue({}),
+    command: vi.fn().mockResolvedValue({}),
+  });
+  const manufacturingWorkspace = async (
+    permissions: readonly string[],
+  ): Promise<RenderedElement> => {
+    const controller = new CommercialController(
+      manufacturingApi(),
+      new Set(permissions.filter(isCommercialPermission)),
+    );
+    await controller.load();
+    return commercialWorkspaceStructure('desktop', false, controller) as unknown as RenderedElement;
+  };
+  const MANUFACTURING_READS = ['manufacturing-item:read', 'bom:read', 'routing:read'];
+  const MANUFACTURING_CONSOLE_CLASSES = [
+    'manufacturing-items-console',
+    'manufacturing-boms-console',
+    'manufacturing-routings-console',
+  ] as const;
+
+  it('registers manufacturing sub-routes from each console read permission (MFG-3B)', () => {
+    const routesOf = (permissions: readonly string[]): readonly string[] =>
+      [...visibleAppRoutes(new Set<string>(permissions))].filter((route) =>
+        route.startsWith('manufacturing'),
+      );
+    // 概览沿用前缀规则；子路由只随各自控制台主数据源的读权限注册，不随概览一并放行。
+    expect(routesOf(['manufacturing-item:read'])).toEqual([
+      'manufacturing-master',
+      'manufacturing/items',
+    ]);
+    expect(routesOf(['bom:read'])).toEqual(['manufacturing-master', 'manufacturing/boms']);
+    expect(routesOf(['routing:read'])).toEqual(['manufacturing-master', 'manufacturing/routings']);
+    expect(routesOf(['manufacturing-item:read', 'routing:read'])).toEqual([
+      'manufacturing-master',
+      'manufacturing/items',
+      'manufacturing/routings',
+    ]);
+    expect(routesOf(MANUFACTURING_READS)).toEqual([
+      'manufacturing-master',
+      'manufacturing/items',
+      'manufacturing/boms',
+      'manufacturing/routings',
+    ]);
+    // 只有管理权限、没有读权限：看得到概览，看不到任何子路由。
+    expect(routesOf(['bom:manage'])).toEqual(['manufacturing-master']);
+    expect(routesOf(['manufacturing-item:manage', 'routing:manage'])).toEqual([
+      'manufacturing-master',
+    ]);
+    expect(routesOf(['customer:read'])).toEqual([]);
+    // 路由器整段字符串匹配：多段 hash 直接成为合法 AppRoute，未知段回落 overview。
+    for (const route of ['manufacturing/items', 'manufacturing/boms', 'manufacturing/routings'])
+      expect(appRouteFromHash(`#/${route}`)).toBe(route);
+    expect(appRouteFromHash('#/manufacturing/unknown')).toBe('overview');
+    // 旧书签 #/manufacturing-master 仍解析为概览，标签改为「制造概览」。
+    expect(appRouteFromHash('#/manufacturing-master')).toBe('manufacturing-master');
+    expect(APP_ROUTE_LABELS['manufacturing-master']).toBe('制造概览');
+    expect(APP_ROUTE_LABELS['manufacturing/items']).toBe('物料管理');
+    expect(APP_ROUTE_LABELS['manufacturing/boms']).toBe('BOM 管理');
+    expect(APP_ROUTE_LABELS['manufacturing/routings']).toBe('工艺路线');
+  });
+
+  it('mounts each manufacturing console as its own sub-route view, only when its list is readable (MFG-3B)', async () => {
+    const routesByConsole = (workspace: RenderedElement): readonly (string | null)[] =>
+      MANUFACTURING_CONSOLE_CLASSES.map(
+        (className) => workspace.findByClass(className)[0]?.getAttribute('data-route-view') ?? null,
+      );
+    expect(routesByConsole(await manufacturingWorkspace(['bom:read']))).toEqual([
+      null,
+      'manufacturing/boms',
+      null,
+    ]);
+    expect(
+      routesByConsole(await manufacturingWorkspace(['manufacturing-item:read', 'routing:read'])),
+    ).toEqual(['manufacturing/items', null, 'manufacturing/routings']);
+    expect(routesByConsole(await manufacturingWorkspace(MANUFACTURING_READS))).toEqual([
+      'manufacturing/items',
+      'manufacturing/boms',
+      'manufacturing/routings',
+    ]);
+    // 宿主是工作区根的直接子节点（与其它商业控制台宿主同口径），不在概览面板内。
+    const workspace = await manufacturingWorkspace(MANUFACTURING_READS);
+    const directChildren = new Set<RenderedElement>(workspace.children);
+    const hosted = MANUFACTURING_CONSOLE_CLASSES.flatMap((className) => {
+      const hosts = workspace.findByClass(className);
+      expect(hosts).toHaveLength(1);
+      return hosts;
+    });
+    expect(hosted.length).toBe(MANUFACTURING_CONSOLE_CLASSES.length);
+    for (const host of hosted) expect(directChildren.has(host)).toBe(true);
+  });
+
+  it('counts published and draft versions per console and links each overview card only to a visible sub-route (MFG-3B)', async () => {
+    const summaryCards = (workspace: RenderedElement): readonly RenderedElement[] => {
+      const overview = workspace.findByClass('manufacturing-workbench')[0];
+      if (!overview) throw new Error('manufacturing overview panel missing');
+      return overview.findByClass('metric-card');
+    };
+    const linkOf = (card: RenderedElement): string | undefined =>
+      (card as unknown as { href?: string }).href;
+    // 全读权限：三张卡都是锚点。口径 = 列表（版本行）的 status 字段，与控制台状态列同源；
+    // 已退役行既不是已发布也不是草稿，不计入两者。
+    const all = summaryCards(await manufacturingWorkspace(MANUFACTURING_READS));
+    expect(all.map((card) => [card.getAttribute('data-testid'), card.textContent])).toEqual([
+      ['manufacturing-summary-items', '物料\n已发布 1 / 草稿 1'],
+      ['manufacturing-summary-boms', 'BOM\n已发布 0 / 草稿 2'],
+      ['manufacturing-summary-routings', '工艺路线\n已发布 1 / 草稿 0'],
+    ]);
+    expect(all.map((card) => [card.tagName, linkOf(card)])).toEqual([
+      ['a', '#/manufacturing/items'],
+      ['a', '#/manufacturing/boms'],
+      ['a', '#/manufacturing/routings'],
+    ]);
+    // 只有 BOM 读权限：BOM 卡可点入；物料与工艺路线清单读不到——保持纯指标卡，且数字无从
+    // 得出，显示「—」而不是编一个 0（否则点入会被导航兜底弹回首个可用路由）。
+    const bomOnly = summaryCards(await manufacturingWorkspace(['bom:read']));
+    expect(bomOnly.map((card) => [card.tagName, linkOf(card), card.textContent])).toEqual([
+      ['div', undefined, '物料\n已发布 — / 草稿 —'],
+      ['a', '#/manufacturing/boms', 'BOM\n已发布 0 / 草稿 2'],
+      ['div', undefined, '工艺路线\n已发布 — / 草稿 —'],
+    ]);
+    // 只有管理权限：面板不挂载（既有口径不变），更没有汇总卡。
+    const manageOnly = await manufacturingWorkspace(['bom:manage']);
+    expect(manageOnly.findByClass('manufacturing-workbench')).toHaveLength(0);
+    expect(manageOnly.findByClass('manufacturing-summary')).toHaveLength(0);
+  });
+
+  it('recomputes the overview cards from the current snapshot without replacing them (MFG-3B)', () => {
+    // 路由视图只构建一次：控制台新建 / 发布 / 刷新后 controller.views 已是新快照，而概览面板
+    // 不会重建，汇总卡靠重算函数更新文字（真浏览器量测里抓到过：子路由新建草稿后回到概览，
+    // 草稿数仍是旧值）。
+    const published = { id: 'item-v1', sku: 'FG-A', version: 1, status: 'PUBLISHED' };
+    const draft = { id: 'item-v2', sku: 'FG-B', version: 1, status: 'DRAFT' };
+    type Rows = readonly Record<string, unknown>[];
+    let snapshot: Readonly<{ items: Rows; boms: Rows; routings: Rows }> = {
+      items: [published],
+      boms: [],
+      routings: [],
+    };
+    const target = el('section', 'summary-target');
+    const rendered = target as unknown as RenderedElement;
+    const refresh = appendManufacturingSummary(
+      target,
+      () => snapshot,
+      recordText,
+      new Set<string>(['manufacturing/items']),
+    );
+    const cards = (): readonly RenderedElement[] => rendered.findByClass('metric-card');
+    expect(cards().map((card) => [card.tagName, card.textContent])).toEqual([
+      ['a', '物料\n已发布 1 / 草稿 0'],
+      ['div', 'BOM\n已发布 — / 草稿 —'],
+      ['div', '工艺路线\n已发布 — / 草稿 —'],
+    ]);
+    const [firstItems] = cards();
+    if (!firstItems) throw new Error('items summary card missing');
+    // 新建一条物料草稿后的新快照：只有文字变。节点是同一实例（锚点、标识不变），不追加卡片；
+    // 读不到的两张卡保持纯指标与「—」。
+    snapshot = { items: [published, draft], boms: [], routings: [] };
+    refresh();
+    expect(cards()).toHaveLength(3);
+    expect(cards()[0]).toBe(firstItems);
+    expect(firstItems.tagName).toBe('a');
+    expect(firstItems.getAttribute('data-testid')).toBe('manufacturing-summary-items');
+    expect((firstItems as unknown as { href?: string }).href).toBe('#/manufacturing/items');
+    expect(cards().map((card) => card.textContent)).toEqual([
+      '物料\n已发布 1 / 草稿 1',
+      'BOM\n已发布 — / 草稿 —',
+      '工艺路线\n已发布 — / 草稿 —',
+    ]);
+  });
+
+  it('has every console host recompute the overview cards after its reload (MFG-3B)', () => {
+    // 单测替身没有 isConnected，控制台在单测里不真正挂载，宿主的 refresh 端口调不到；接线用
+    // 源码锚守住，行为由真浏览器量测覆盖（子路由新建草稿后回到概览，草稿数 +1）。
+    const view = readBoundSource(
+      './commercial/manufacturing-view.ts',
+      'export function appendManufacturingView',
+    );
+    expect(view).toContain('CONSOLE_HOSTS[surface.id](context, workspace, refreshSummary)');
+    const hosts = [
+      [
+        './commercial/console/item-host.ts',
+        'export function appendManufacturingItemConsole',
+        'itemPath',
+      ],
+      [
+        './commercial/console/bom-host.ts',
+        'export function appendManufacturingBomConsole',
+        'bomPath',
+      ],
+      [
+        './commercial/console/routing-host.ts',
+        'export function appendManufacturingRoutingConsole',
+        'routingPath',
+      ],
+    ] as const;
+    for (const [file, anchor, path] of hosts) {
+      const source = readBoundSource(file, anchor);
+      expect(source, file).toContain('onRefreshed?: () => void');
+      // 顺序：先等 controller.load 重读完成，再通知重算，最后返回该清单的最新快照。
+      expect(source, file).toMatch(
+        new RegExp(
+          `await controller\\.load\\(\\);\\s*onRefreshed\\?\\.\\(\\);\\s*return controller\\.views\\.get\\(${path}\\) \\?\\? \\[\\];`,
+          'u',
+        ),
+      );
+    }
+  });
+
+  it('styles the manufacturing overview summary as three columns with linkable cards (MFG-3B)', () => {
+    const styles = readFileSync(
+      new URL('./commercial/console/manufacturing-console.css', import.meta.url),
+      'utf8',
+    );
+    // 三列写在两层类名上：不依赖样式打包顺序也盖得过 .production-summary 的四列与其窄屏断点。
+    expect(styles).toMatch(
+      /\.production-summary\.manufacturing-summary\s*\{[^}]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/u,
+    );
+    expect(styles).toMatch(
+      /@media \(max-width: 900px\)\s*\{\s*\.production-summary\.manufacturing-summary\s*\{[^}]*repeat\(2,/u,
+    );
+    expect(styles).toMatch(
+      /@media \(max-width: 640px\)\s*\{\s*\.production-summary\.manufacturing-summary\s*\{[^}]*minmax\(0,\s*1fr\)/u,
+    );
+    // 可点汇总卡：锚点去掉链接默认样式，悬停与键盘焦点反馈取 kt tokens；域样式表不写死颜色。
+    expect(styles).toContain('a.manufacturing-summary-link {');
+    expect(styles).toContain('a.manufacturing-summary-link:hover {');
+    expect(styles).toContain('a.manufacturing-summary-link:focus-visible {');
+    expect(styles).toContain('color: var(--kt-color-brand-strong)');
+    expect(styles).toContain('outline: 2px solid var(--kt-color-info)');
+    expect(styles).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(/iu);
+  });
+
+  it('groups manufacturing navigation as one expandable domain with the overview and its readable sub-routes (MFG-3B)', () => {
+    const shellOf = (permissions: readonly string[]): RenderedElement =>
+      createCrmShell(
+        new CrmController(new Set(['customer:read']), api().transport),
+        1280,
+        new Set(permissions),
+      ) as unknown as RenderedElement;
+    const manufacturingItems = (permissions: readonly string[]): readonly (string | null)[][] =>
+      shellOf(permissions)
+        .findByClass('nav-item')
+        .filter((item) => (item.getAttribute('data-app-route') ?? '').startsWith('manufacturing'))
+        .map((item) => [item.getAttribute('data-app-route'), item.textContent]);
+    expect(manufacturingItems(MANUFACTURING_READS)).toEqual([
+      ['manufacturing-master', '制造概览'],
+      ['manufacturing/items', '物料管理'],
+      ['manufacturing/boms', 'BOM 管理'],
+      ['manufacturing/routings', '工艺路线'],
+    ]);
+    expect(manufacturingItems(['bom:read'])).toEqual([
+      ['manufacturing-master', '制造概览'],
+      ['manufacturing/boms', 'BOM 管理'],
+    ]);
+    expect(manufacturingItems(['bom:manage'])).toEqual([['manufacturing-master', '制造概览']]);
+    expect(manufacturingItems(['customer:read'])).toEqual([]);
+    // 「制造主数据」只出现在一个分组里（e2e 的 openRoute 以 data-nav-routes 定位分组父按钮）。
+    const operationsPermissions = [
+      ...MANUFACTURING_READS,
+      'ar:read',
+      'mrp:read',
+      'production:read',
+      'supplier:read',
+      'procurement:read',
+      'inventory:read',
+    ];
+    const parents = shellOf(operationsPermissions).findByClass('nav-parent');
+    const routesOf = (parent: RenderedElement): readonly string[] =>
+      (parent.getAttribute('data-nav-routes') ?? '').split(' ');
+    const manufacturingParents = parents.filter((parent) =>
+      routesOf(parent).includes('manufacturing-master'),
+    );
+    expect(manufacturingParents).toHaveLength(1);
+    expect(manufacturingParents.map(routesOf)).toEqual([
+      [
+        'manufacturing-master',
+        'manufacturing/items',
+        'manufacturing/boms',
+        'manufacturing/routings',
+      ],
+    ]);
+    expect(manufacturingParents[0]?.textContent).toContain('制造主数据');
+    // 「供应链与生产」不再含概览路由。
+    expect(
+      parents
+        .filter((parent) => routesOf(parent).includes('material-planning'))
+        .map((parent) => routesOf(parent)),
+    ).toEqual([['material-planning', 'production-orders']]);
+    // 分组位置：紧跟在「财务与风控」之后、「供应链与生产」之前——即原「制造主数据」条目在侧栏中的位置。
+    const titles = parents.map((parent) => parent.textContent);
+    const at = (title: string): number => {
+      const index = titles.findIndex((text) => text.startsWith(title));
+      expect(index, `nav group ${title} must exist`).toBeGreaterThanOrEqual(0);
+      return index;
+    };
+    expect(at('制造主数据')).toBe(at('财务与风控') + 1);
+    expect(at('供应链与生产')).toBe(at('制造主数据') + 1);
+    expect(at('采购管理')).toBe(at('供应链与生产') + 1);
   });
 
   it('renders supplier, sourcing, purchase, receipt, and immutable lot-balance evidence', async () => {

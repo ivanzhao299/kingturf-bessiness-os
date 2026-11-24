@@ -759,7 +759,8 @@ export async function manufacturingFlow(t) {
       .evaluateAll((nodes) => nodes.map((node) => (node.textContent ?? '').trim()));
 
   await t.probe(DEFECTS.unlocalizedError, 'SKU 填小写时，界面应显示中文的失败原因', async (e) => {
-    await openRoute(page, 'manufacturing-master');
+    // MFG-3B：三个控制台各占一条制造主数据子路由，物料段在 #/manufacturing/items。
+    await openRoute(page, 'manufacturing/items');
     await click(page, 'kt-item-create');
     await fillItem(sku.toLowerCase());
     const response = await t.write(saveItem());
@@ -806,6 +807,12 @@ export async function manufacturingFlow(t) {
       (await row(page, 'kt-item-open', sku).locator('[data-testid="kt-item-publish"]').count()) > 0;
     return response?.ok === true && (e.row ?? '').includes(sku) && !e.publishButtonLeft;
   });
+
+  // MFG-3B：BOM 段在 #/manufacturing/boms（与物料、工艺路线不同页）。下面三个检查项与「新建 BOM
+  // 草稿」共用同一个表单，靠「抽屉是否开着」衔接，所以进路由放在它们之前；进路由只隐藏旧路由的
+  // 宿主、不会关掉其中的抽屉，而 kit 的抽屉定位只认可见的，先把上一段留下的抽屉关掉再切。
+  await closeDrawer(page);
+  await openRoute(page, 'manufacturing/boms');
 
   await t.probe(
     DEFECTS.mountTimeChoices,
@@ -908,6 +915,10 @@ export async function manufacturingFlow(t) {
       );
     },
   );
+
+  // MFG-3B：工艺路线段在 #/manufacturing/routings。切法与上面的 BOM 段相同。
+  await closeDrawer(page);
+  await openRoute(page, 'manufacturing/routings');
 
   await t.probe(
     DEFECTS.integerOnlyNumbers,

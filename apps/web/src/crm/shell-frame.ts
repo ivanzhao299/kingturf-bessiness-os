@@ -22,6 +22,83 @@ type ShellFramePorts = Readonly<{
   bootstrapView: (shell: HTMLElement, controller: CrmController) => void;
 }>;
 
+type NavGroupBuilder = (
+  title: string,
+  domainIcon: NavIconName,
+  items: readonly [NavIconName, string, AppRoute][],
+) => void;
+
+// 侧栏分组清单（自上而下）。MFG-3B：自 createShellSidebar 原样搬出为独立函数——该函数的完整行数
+// 受 G5（≤200 行）约束，「制造主数据」独立成组后超限。只搬移，顺序、标题、图标与条目不变。
+function appendNavGroups(navGroup: NavGroupBuilder): void {
+  navGroup('经营管理', 'overview', [['overview', '经营总览', 'overview']]);
+  navGroup('业务文档', 'operations', [['operations', '业务文档库', 'document-templates']]);
+  navGroup('客户与商机', 'sales', [
+    ['opportunities', '销售线索', 'leads'],
+    ['customers', '客户管理', 'customers'],
+    ['opportunities', '销售商机', 'opportunities'],
+  ]);
+  navGroup('技术与报价', 'cost', [
+    ['opportunities', '技术需求', 'technical-requirements'],
+    ['operations', '技术方案', 'technical-solutions'],
+    ['cost', '成本核算', 'costing'],
+    ['cost', '销售政策', 'sales-policies'],
+    ['contracts', '销售报价', 'quotes'],
+  ]);
+  navGroup('合同与订单', 'contracts', [
+    ['receivables', '信用审查', 'credit-review'],
+    ['contracts', '合同管理', 'contracts'],
+    ['contracts', '销售订单', 'sales-orders'],
+    ['overview', '订单全景', 'order-360'],
+  ]);
+  navGroup('财务与风控', 'receivables', [
+    ['receivables', '应收账款', 'receivables'],
+    ['receivables', '催收与法务', 'collections'],
+    ['receivables', '收款与核销', 'payments'],
+    ['cost', '销售佣金', 'commissions'],
+    ['quality', '业务风险', 'business-risks'],
+  ]);
+  // MFG-3B：制造主数据域子路由化（同采购 / governance 分组做法）——概览 + 物料 / BOM /
+  // 工艺路线；子项按各自读权限显隐（见 commercial/manufacturing-surfaces.ts）。分组留在原
+  // 「制造主数据」条目在侧栏中的位置，沿用其图标。
+  navGroup('制造主数据', 'operations', [
+    ['operations', '制造概览', 'manufacturing-master'],
+    ['operations', '物料管理', 'manufacturing/items'],
+    ['production', 'BOM 管理', 'manufacturing/boms'],
+    ['production', '工艺路线', 'manufacturing/routings'],
+  ]);
+  navGroup('供应链与生产', 'production', [
+    ['production', '物料计划', 'material-planning'],
+    ['production', '生产执行', 'production-orders'],
+  ]);
+  // PROC-2：采购域子路由化（同 governance 分组做法）——概览 + 供应商 / 询价 / 采购订单 / 收货；
+  // 子项按各自读权限显隐（见 commercial/procurement-surfaces.ts），概览沿用原「采购管理」图标。
+  navGroup('采购管理', 'delivery', [
+    ['delivery', '采购概览', 'procurement'],
+    ['customers', '供应商与准入', 'procurement/suppliers'],
+    ['cost', '询价管理', 'procurement/rfqs'],
+    ['contracts', '采购订单', 'procurement/purchase-orders'],
+    ['delivery', '收货管理', 'procurement/goods-receipts'],
+  ]);
+  navGroup('质量与交付', 'quality', [
+    ['quality', '质量检验', 'quality-inspection'],
+    ['delivery', '发货与签收', 'shipments'],
+  ]);
+  navGroup('系统管理', 'governance', [
+    ['governance', '治理概览', 'governance'],
+    ['governance', '身份与授权', 'governance/identity'],
+    ['governance', '组织与员工', 'governance/organization'],
+    ['governance', '审计中心', 'governance/audit'],
+    ['operations', '主数据', 'governance/master-data'],
+    ['operations', '编号规则', 'governance/numbering'],
+    ['operations', '业务规则', 'governance/rules'],
+    ['operations', '工作流与待办', 'governance/workflow'],
+    ['governance', '通知中心', 'governance/notifications'],
+    ['operations', '业务对象与事件', 'governance/system'],
+    ['operations', 'UI 组件基座', 'ui-kit'],
+  ]);
+}
+
 export function createShellSidebar(
   controller: CrmController,
   width: number,
@@ -156,64 +233,7 @@ export function createShellSidebar(
     group.append(parent, children);
     nav.append(group);
   };
-  navGroup('经营管理', 'overview', [['overview', '经营总览', 'overview']]);
-  navGroup('业务文档', 'operations', [['operations', '业务文档库', 'document-templates']]);
-  navGroup('客户与商机', 'sales', [
-    ['opportunities', '销售线索', 'leads'],
-    ['customers', '客户管理', 'customers'],
-    ['opportunities', '销售商机', 'opportunities'],
-  ]);
-  navGroup('技术与报价', 'cost', [
-    ['opportunities', '技术需求', 'technical-requirements'],
-    ['operations', '技术方案', 'technical-solutions'],
-    ['cost', '成本核算', 'costing'],
-    ['cost', '销售政策', 'sales-policies'],
-    ['contracts', '销售报价', 'quotes'],
-  ]);
-  navGroup('合同与订单', 'contracts', [
-    ['receivables', '信用审查', 'credit-review'],
-    ['contracts', '合同管理', 'contracts'],
-    ['contracts', '销售订单', 'sales-orders'],
-    ['overview', '订单全景', 'order-360'],
-  ]);
-  navGroup('财务与风控', 'receivables', [
-    ['receivables', '应收账款', 'receivables'],
-    ['receivables', '催收与法务', 'collections'],
-    ['receivables', '收款与核销', 'payments'],
-    ['cost', '销售佣金', 'commissions'],
-    ['quality', '业务风险', 'business-risks'],
-  ]);
-  navGroup('供应链与生产', 'production', [
-    ['operations', '制造主数据', 'manufacturing-master'],
-    ['production', '物料计划', 'material-planning'],
-    ['production', '生产执行', 'production-orders'],
-  ]);
-  // PROC-2：采购域子路由化（同 governance 分组做法）——概览 + 供应商 / 询价 / 采购订单 / 收货；
-  // 子项按各自读权限显隐（见 commercial/procurement-surfaces.ts），概览沿用原「采购管理」图标。
-  navGroup('采购管理', 'delivery', [
-    ['delivery', '采购概览', 'procurement'],
-    ['customers', '供应商与准入', 'procurement/suppliers'],
-    ['cost', '询价管理', 'procurement/rfqs'],
-    ['contracts', '采购订单', 'procurement/purchase-orders'],
-    ['delivery', '收货管理', 'procurement/goods-receipts'],
-  ]);
-  navGroup('质量与交付', 'quality', [
-    ['quality', '质量检验', 'quality-inspection'],
-    ['delivery', '发货与签收', 'shipments'],
-  ]);
-  navGroup('系统管理', 'governance', [
-    ['governance', '治理概览', 'governance'],
-    ['governance', '身份与授权', 'governance/identity'],
-    ['governance', '组织与员工', 'governance/organization'],
-    ['governance', '审计中心', 'governance/audit'],
-    ['operations', '主数据', 'governance/master-data'],
-    ['operations', '编号规则', 'governance/numbering'],
-    ['operations', '业务规则', 'governance/rules'],
-    ['operations', '工作流与待办', 'governance/workflow'],
-    ['governance', '通知中心', 'governance/notifications'],
-    ['operations', '业务对象与事件', 'governance/system'],
-    ['operations', 'UI 组件基座', 'ui-kit'],
-  ]);
+  appendNavGroups(navGroup);
   aside.append(nav);
   return { shell, aside, sidebarToggle, sections, visibleRoutes, roleProfile, currentRoute };
 }

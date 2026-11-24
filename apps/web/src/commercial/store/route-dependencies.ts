@@ -25,6 +25,11 @@ const routeSources: Readonly<Partial<Record<AppRoute, readonly string[]>>> = {
   commissions: ['commissions', 'commission-policies', 'sales-orders'],
   'business-risks': ['risk-evaluations', 'risk-policies', 'sales-orders'],
   'manufacturing-master': ['manufacturing-items', 'manufacturing-boms', 'manufacturing-routings'],
+  // MFG-3B：制造主数据子路由各自只拉所用控制台的数据源（均为上面 manufacturing-master
+  // 概览闭包的子集）。BOM / 工艺路线控制台的产品类型树与版本下拉取自物料版本视图。
+  'manufacturing/items': ['manufacturing-items'],
+  'manufacturing/boms': ['manufacturing-items', 'manufacturing-boms'],
+  'manufacturing/routings': ['manufacturing-items', 'manufacturing-routings'],
   procurement: [
     'suppliers',
     'procurement-rfqs',

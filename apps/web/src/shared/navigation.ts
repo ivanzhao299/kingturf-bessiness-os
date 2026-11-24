@@ -19,6 +19,9 @@ export type AppRoute =
   | 'commissions'
   | 'business-risks'
   | 'manufacturing-master'
+  | 'manufacturing/items'
+  | 'manufacturing/boms'
+  | 'manufacturing/routings'
   | 'procurement'
   | 'procurement/suppliers'
   | 'procurement/rfqs'
@@ -60,7 +63,10 @@ export const APP_ROUTE_LABELS: Readonly<Record<AppRoute, string>> = {
   payments: '收款与核销',
   commissions: '销售佣金',
   'business-risks': '业务风险',
-  'manufacturing-master': '制造主数据',
+  'manufacturing-master': '制造概览',
+  'manufacturing/items': '物料管理',
+  'manufacturing/boms': 'BOM 管理',
+  'manufacturing/routings': '工艺路线',
   procurement: '采购概览',
   'procurement/suppliers': '供应商与准入',
   'procurement/rfqs': '询价管理',
@@ -102,7 +108,10 @@ const APP_ROUTE_DESCRIPTIONS: Readonly<Record<AppRoute, string>> = {
   payments: '银行收款、认领与核销',
   commissions: '佣金计提、释放与支付',
   'business-risks': '风险评价、责任与处置',
-  'manufacturing-master': '物料、BOM 与工艺路线',
+  'manufacturing-master': '物料、BOM 与工艺路线版本状态汇总',
+  'manufacturing/items': '物料版本、规格参数与草稿发布',
+  'manufacturing/boms': 'BOM 版本、组件层级与替代料',
+  'manufacturing/routings': '工艺路线版本与顺序工序',
   procurement: '采购待办汇总、供应商报价与批次库存台账',
   'procurement/suppliers': '供应商准入、资质审核与联系信息',
   'procurement/rfqs': '询价单创建、发布与关闭，行项与报价对比',
