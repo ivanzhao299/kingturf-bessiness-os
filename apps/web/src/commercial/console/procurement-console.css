@@ -70,6 +70,13 @@
   white-space: normal;
   text-wrap: balance;
 }
+/* 询价矩阵的表头与单元格横向内边距相同（收窄一档）：12 个汉字的供应商名在表头里
+   一行放得下，更长的名称才折成均匀的两行。 */
+.proc-compare-matrix th[data-sort-key='line'],
+.proc-compare-matrix th[data-sort-key^='quote-'] {
+  padding-left: var(--kt-space-2);
+  padding-right: var(--kt-space-2);
+}
 
 /* ===== ① 对比表 · 窄容器堆叠卡片 ===== */
 /* 卡片纵向堆叠、宽度不超过所在容器（抽屉体），不产生横向滚动。 */

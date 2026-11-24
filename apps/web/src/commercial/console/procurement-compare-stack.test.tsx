@@ -798,6 +798,16 @@ describe('采购域样式表（静态守卫）', () => {
     expect(header).toContain('text-wrap: balance');
     // 供应商名称在列宽不足时同样两行均匀分配。
     expect(rule('.proc-supplier-name')).toContain('text-wrap: balance');
+    // 询价矩阵的表头与单元格横向内边距相同：12 个汉字的供应商名在表头里一行放得下。
+    const cellPadding = rule(
+      ".proc-compare-matrix td[data-column='line'],\n.proc-compare-matrix td[data-column^='quote-']",
+    );
+    const headerPadding = rule(
+      ".proc-compare-matrix th[data-sort-key='line'],\n.proc-compare-matrix th[data-sort-key^='quote-']",
+    );
+    expect(headerPadding.slice(headerPadding.indexOf('{'))).toBe(
+      cellPadding.slice(cellPadding.indexOf('{')),
+    );
     // 组件确实把作用域类加在两张矩阵上。
     const rfq = readFileSync(new URL('./rfq-console-detail.tsx', import.meta.url), 'utf8');
     expect(rfq).toContain('class="proc-compare-matrix"');
