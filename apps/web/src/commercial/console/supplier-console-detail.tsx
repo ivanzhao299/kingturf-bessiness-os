@@ -297,12 +297,13 @@ const currentSupplierId = (state: SupplierDetailState): string =>
 // 以下四个单元格为矩阵列与堆叠卡片共用（DOM 与文案同源）。
 // PROC-3：日期 / 编码 / 金额这类短 token 各自包进 .proc-token（不折行）；分隔符仍是裸文本节点，
 // 单元格 textContent 与此前逐字相同，token 之间照常在分隔符处折行。
+// 供应商名自成一段（.proc-supplier-name）：名称长于列宽时两行均匀分配。
 const SupplierCell = ({
   state,
   row,
 }: Readonly<{ state: SupplierDetailState; row: QuoteLineRow }>) => (
   <span style={INLINE_STYLE}>
-    {row.supplierName}
+    <span class="proc-supplier-name">{row.supplierName}</span>
     {row.supplierId === currentSupplierId(state) ? (
       <StatusBadge tone="neutral">本供应商</StatusBadge>
     ) : null}

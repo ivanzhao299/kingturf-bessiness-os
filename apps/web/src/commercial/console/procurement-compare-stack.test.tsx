@@ -569,6 +569,19 @@ describe('对比矩阵 · 短 token 不折行', () => {
     expect(element(matrices[0]).querySelector('td[data-column="quote"]')?.textContent).toBe(
       'SQ-2 · 2026-11-05 · 2026-12-31',
     );
+    // 供应商名自成一段 .proc-supplier-name（列宽不足时两行均匀分配）；单元格文本逐字不变。
+    const nameCells = element(matrices[0]).querySelectorAll('td[data-column="supplier"]');
+    expect(nameCells.map((cell) => element(cell).textContent)).toEqual([
+      '背胶供应商',
+      '草纱供应商本供应商',
+      '宁波草纱三厂',
+      '草纱供应商本供应商',
+    ]);
+    expect(
+      nameCells.flatMap((cell) =>
+        cell.querySelectorAll('.proc-supplier-name').map((node) => element(node).textContent),
+      ),
+    ).toEqual(['背胶供应商', '草纱供应商', '宁波草纱三厂', '草纱供应商']);
   });
 
   it('堆叠卡片复用同一批单元格：卡片里同样带 .proc-token，矩阵的作用域类不出现', async () => {
@@ -695,10 +708,11 @@ describe('对比矩阵 · 短 token 不折行', () => {
 
 describe('采购域样式表（静态守卫）', () => {
   const stylesheet = readFileSync(new URL('./procurement-console.css', import.meta.url), 'utf8');
-  const rule = (selector: string): string => {
-    const start = stylesheet.indexOf(`${selector} {`);
-    if (start < 0) throw new Error(`procurement-console.css has no rule for ${selector}`);
-    return stylesheet.slice(start, stylesheet.indexOf('}', start));
+  // 取一条规则的正文；缺省读本域样式表，也可指定别的样式表（如基座的 components.css）。
+  const rule = (selector: string, source: string = stylesheet): string => {
+    const start = source.indexOf(`${selector} {`);
+    if (start < 0) throw new Error(`stylesheet has no rule for ${selector}`);
+    return source.slice(start, source.indexOf('}', start));
   };
 
   it('堆叠卡片纵向堆叠且不超出所在容器', () => {
@@ -753,15 +767,14 @@ describe('采购域样式表（静态守卫）', () => {
   });
 
   it('列最小宽度只作用于对比矩阵的作用域类，不碰 DataTable 的通用规则', () => {
-    // 以长度计的 min-width（列最小宽度）只能出现在 .proc-compare-matrix 之下。堆叠卡片规则里的
-    // `min-width: 0` 是 flex 收缩所需，不是列宽，不在其列。
+    // 以长度计的 min-width（列最小宽度：数字 + 单位，或 calc(…)）只能出现在 .proc-compare-matrix
+    // 之下。堆叠卡片规则里的 `min-width: 0` 是 flex 收缩所需，不是列宽，不在其列——负向断言
+    // 必须紧跟冒号并自己吃掉空白，放在 \s* 之后会在空格处判断而永远成立。
     const withoutComments = stylesheet.replace(/\/\*[\s\S]*?\*\//gu, '');
     const columnWidthRules = [
-      ...withoutComments.matchAll(
-        /([^{}]+)\{([^{}]*min-width:\s*[\d.]+(?:ch|px|rem|em)[^{}]*)\}/gu,
-      ),
+      ...withoutComments.matchAll(/([^{}]+)\{([^{}]*min-width:(?!\s*0[\s;])[^{}]*)\}/gu),
     ];
-    expect(columnWidthRules.length).toBeGreaterThanOrEqual(6);
+    expect(columnWidthRules).toHaveLength(6);
     for (const [, selector] of columnWidthRules)
       expect(selector?.trim(), selector).toMatch(/^\.proc-compare-matrix\s/u);
     // 两张矩阵的每一列都有最小宽度：供应商四列、询价行项列与每家供应商列。
@@ -773,12 +786,18 @@ describe('采购域样式表（静态守卫）', () => {
       ".proc-compare-matrix td[data-column='line']",
       ".proc-compare-matrix td[data-column^='quote-']",
     ]) {
-      expect(rule(selector), selector).toMatch(/min-width:\s*\d+ch;/u);
+      expect(rule(selector), selector).toMatch(
+        /min-width:\s*calc\(var\(--kt-font-size-body\) \* \d+(?:\.\d+)?\);/u,
+      );
     }
-    // 询价矩阵的表头是供应商名：允许折行，否则列宽被名称的整行宽度撑开。
-    expect(rule(".proc-compare-matrix th[data-sort-key^='quote-']")).toContain(
-      'white-space: normal',
-    );
+    // 列宽只随字号缩放，不随字体的字形宽度缩放（ch 会）。
+    expect(withoutComments).not.toMatch(/[\d.]+ch\b/u);
+    // 询价矩阵的表头是供应商名：允许折行且两行均匀分配，否则列宽被名称的整行宽度撑开。
+    const header = rule(".proc-compare-matrix th[data-sort-key^='quote-']");
+    expect(header).toContain('white-space: normal');
+    expect(header).toContain('text-wrap: balance');
+    // 供应商名称在列宽不足时同样两行均匀分配。
+    expect(rule('.proc-supplier-name')).toContain('text-wrap: balance');
     // 组件确实把作用域类加在两张矩阵上。
     const rfq = readFileSync(new URL('./rfq-console-detail.tsx', import.meta.url), 'utf8');
     expect(rfq).toContain('class="proc-compare-matrix"');
@@ -787,6 +806,45 @@ describe('采购域样式表（静态守卫）', () => {
       'utf8',
     );
     expect(supplier).toContain('class="proc-compare-matrix"');
+    expect(supplier).toContain('class="proc-supplier-name"');
+  });
+
+  // 设计意图：宽抽屉里，四列的供应商矩阵与「行项 + 三家供应商」的询价矩阵整张放得下、不滚动；
+  // 五家供应商放不下，在表格自己的滚动容器内横向滚动。数值全部从样式表与令牌表读出来算——
+  // 改了宽抽屉宽度、抽屉体内边距令牌或任一列宽而破坏这个平衡，这里会红。
+  it('列最小宽度之和：供应商矩阵与三家供应商的询价矩阵不超过宽抽屉体内容宽，五家超过', () => {
+    const read = (file: string): string => readFileSync(new URL(file, import.meta.url), 'utf8');
+    const number = (text: string, pattern: RegExp): number => {
+      const value = pattern.exec(text)?.[1];
+      if (value === undefined) throw new Error(`pattern ${String(pattern)} not found`);
+      return Number(value);
+    };
+    const tokens = read('../../../../../packages/ui/src/tokens.css');
+    const components = read('../../../../../packages/ui/src/components.css');
+    const fontSize = number(tokens, /--kt-font-size-body:\s*(\d+(?:\.\d+)?)px/u);
+    // 抽屉体内边距：基座规则是 var(--kt-space-5, 20px)，令牌表里 --kt-space-5 = 24px。
+    const bodyPadding = number(tokens, /--kt-space-5:\s*(\d+(?:\.\d+)?)px/u);
+    expect(rule('.detail-drawer .drawer-body', components)).toContain(
+      'padding: var(--kt-space-5, 20px)',
+    );
+    const wideWidth = number(
+      components,
+      /\.detail-drawer\[data-size='wide'\]\s*\{\s*width:\s*min\((\d+(?:\.\d+)?)px/u,
+    );
+    const bodyContent = wideWidth - 2 * bodyPadding;
+    const floor = (selector: string): number =>
+      number(rule(selector), /min-width:\s*calc\(var\(--kt-font-size-body\) \* (\d+(?:\.\d+)?)\)/u);
+    const supplierColumns = [
+      ".proc-compare-matrix td[data-column='supplier']",
+      ".proc-compare-matrix td[data-column='price']",
+      ".proc-compare-matrix td[data-column='terms']",
+      ".proc-compare-matrix td[data-column='quote']",
+    ].reduce((sum, selector) => sum + floor(selector), 0);
+    const line = floor(".proc-compare-matrix td[data-column='line']");
+    const quote = floor(".proc-compare-matrix td[data-column^='quote-']");
+    expect(supplierColumns * fontSize).toBeLessThanOrEqual(bodyContent);
+    expect((line + 3 * quote) * fontSize).toBeLessThanOrEqual(bodyContent);
+    expect((line + 5 * quote) * fontSize).toBeGreaterThan(bodyContent);
   });
 
   it('样式表经采购域宿主静态图并入主 CSS 包（裁定15）', () => {

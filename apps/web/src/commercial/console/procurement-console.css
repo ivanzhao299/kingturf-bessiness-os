@@ -7,42 +7,51 @@
 /* ===== ③ 对比矩阵 · 列最小宽度与 token 不折行（PROC-3） ===== */
 /* 作用域类 .proc-compare-matrix 只加在两张对比矩阵上，不动 DataTable 的通用规则（全站基座）。
    基座给每个单元格的最小列宽是 6rem，低于这里内容的实际宽度：日期在连字符处断成两行、
-   供应商名每行约 5 个字。列宽以 ch 计（相对单元格 14px 字号，1ch ≈ 8.4px，即一个数字的宽度），
-   数值由真浏览器实测确定（PROC-3 证据文档 §5）：列最小宽度之和不超过宽抽屉体内容宽（720px）
-   时不滚动，超过时在表格自己的滚动容器内横向滚动，而不是把列压碎。 */
+   供应商名每行约 5 个字。
+
+   列宽写成「正文字号令牌 × 倍数」（等价于以单元格字号的 em 计），只随字号缩放、不随字体的
+   字形宽度缩放——在哪种字体下都是确定的像素值。倍数由真浏览器实测的字宽确定
+   （PROC-3 证据文档 §5）：列最小宽度之和不超过对比区宽度（宽抽屉里 712px）时不滚动，
+   超过时在表格自己的滚动容器内横向滚动，而不是把列压碎。 */
 
 /* 日期、编码、金额 / 数量：整段不折行。 */
 .proc-token {
   white-space: nowrap;
 }
 
-/* 供应商「报价历史对比」：四列。 */
+/* 供应商「报价历史对比」：四列，合计 49 倍正文宽（686px）。 */
+/* 供应商名：一行放得下 12 个汉字（168px）；更长的名称折行，两行均匀分配，
+   不出现「12 字 + 1 字」的孤行。 */
 .proc-compare-matrix td[data-column='supplier'] {
-  min-width: 15ch;
+  min-width: calc(var(--kt-font-size-body) * 14);
+}
+.proc-supplier-name {
+  text-wrap: balance;
 }
 .proc-compare-matrix td[data-column='price'] {
-  min-width: 12ch;
+  min-width: calc(var(--kt-font-size-body) * 7);
 }
-/* MOQ 与交期日期两个 token 一行放得下。 */
+/* MOQ 与交期日期两个 token 一行放得下（MOQ 1200 · 2026-12-18，163px）。 */
 .proc-compare-matrix td[data-column='terms'] {
-  min-width: 24ch;
+  min-width: calc(var(--kt-font-size-body) * 13.5);
 }
-/* 报价单编号是最宽的 token（如 SQ-PROC3-JSHF-2026-002，21 字符）；收于 / 有效至在「 · 」处折行。 */
+/* 报价单编号（不超过 20 字符，约 175px）后面跟着分隔符占满第一行；
+   收于 / 有效至两个日期在「 · 」处折到第二行（170px）。 */
 .proc-compare-matrix td[data-column='quote'] {
-  min-width: 25ch;
+  min-width: calc(var(--kt-font-size-body) * 14.5);
 }
 
 /* 询价「报价对比矩阵」：行项列 + 每家供应商一列。
-   宽抽屉体内容宽 720px，对比区实测 712px。行项 18ch + 三家各 22ch = 705px：三家供应商的
-   对比整张放得下、不滚动；五家（1074px）在表格自己的滚动容器内横向滚动。
+   行项 10.5 倍 + 三家各 13 倍 = 49.5 倍正文宽（693px），对比区 712px：三家供应商的对比
+   整张放得下、不滚动；五家（1057px）在表格自己的滚动容器内横向滚动。
    行项列以最宽的 SKU token（RM-KT-YARN-12000，124px）为下限；供应商列以条款单行为准
-   （MOQ 600 · 交期 2026-12-24 ≈ 160px）。 */
+   （MOQ 600 · 交期 2026-12-24，160px）。 */
 .proc-compare-matrix td[data-column='line'] {
-  min-width: 18ch;
+  min-width: calc(var(--kt-font-size-body) * 10.5);
 }
 /* 供应商列以列键 quote-<报价 id> 命名：按前缀选中每一家的列。 */
 .proc-compare-matrix td[data-column^='quote-'] {
-  min-width: 22ch;
+  min-width: calc(var(--kt-font-size-body) * 13);
 }
 /* 询价单元格是「单价 / 条款 / 徽章」的纵向堆叠：条款行独占一行，基座给行内标签的左边距
    在这里只是白占一列宽（12px，恰好是条款单行所缺的），去掉；横向内边距同步收窄一档，
@@ -56,9 +65,10 @@
   margin-left: 0;
 }
 /* 表头是供应商名：基座的 nowrap 会把列撑到名称的整行宽度（五家时要滚到 1170px），
-   改为允许在名称内折行，列宽由上面的小 token 决定。 */
+   改为允许在名称内折行且两行均匀分配，列宽由上面的小 token 决定。 */
 .proc-compare-matrix th[data-sort-key^='quote-'] {
   white-space: normal;
+  text-wrap: balance;
 }
 
 /* ===== ① 对比表 · 窄容器堆叠卡片 ===== */
