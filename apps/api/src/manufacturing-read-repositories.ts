@@ -62,6 +62,13 @@ const textOf = (value: unknown): string => (typeof value === 'string' ? value : 
 const numOr = (value: unknown, fallback = 0): number =>
   typeof value === 'number' ? value : fallback;
 
+// TD-WF-011：组件层级树以哪个版本为根。版本行按 version DESC 排列（findBom 的 ORDER BY）。
+// 有已发布版本时取其中最新的一个——与 TD-WF-011 之前逐字节一致；没有任何已发布版本时
+// 取最新草稿。全部版本都不是这两种状态，或没有版本，则不出树（undefined）。
+const treeRootVersion = (versions: readonly JsonObject[]): JsonObject | undefined =>
+  versions.find((version) => version.status === 'PUBLISHED') ??
+  versions.find((version) => version.status === 'DRAFT');
+
 // U3-MFG-2：BOM 分页只读过滤器——limit 缺省=全量（legacy list 无 LIMIT，行为守恒）；
 // cursor=(code,version) 复合键集（排序键 ORDER BY b.code,v.version DESC 与 list 一致；
 // (tenant_id,code) 与 (tenant_id,bom_id,version) 唯一约束保证键集不重不漏）；
@@ -307,9 +314,11 @@ export class PostgresManufacturingReadRepository {
   }
 
   // U3-MFG-2（ADR-0015）：BOM 详情只读（additive）——根行 + 产品信息 + 全部版本
-  // （每版本行项：组件含物料根/类型/基本单位 + 替代料含换算系数）+ 最新已发布版本的
-  // 组件层级树（深度 ≤ BOM_TREE_DEPTH、按组件物料 id 环守卫；叶节点无子 BOM 时
-  // line.bom 为 null）。不存在或跨租户返回 null。
+  // （每版本行项：组件含物料根/类型/基本单位 + 替代料含换算系数）+ 组件层级树
+  // （深度 ≤ BOM_TREE_DEPTH、按组件物料 id 环守卫；叶节点无子 BOM 时 line.bom 为 null）。
+  // 不存在或跨租户返回 null。
+  // TD-WF-011（WF-A）：树根取「最新已发布版本」；BOM 还没有任何已发布版本（纯草稿）时，
+  // 取最新草稿版本——此前这种情况 tree 恒为空，发布前无法核对行项。见 treeRootVersion。
   public async findBom(bomId: string, context: Context): Promise<JsonObject | null> {
     company(context);
     const scope: readonly unknown[] = [context.actor.companyId, bomId];
@@ -333,25 +342,24 @@ export class PostgresManufacturingReadRepository {
       ...version,
       lines: linesByVersion.get(textOf(version.id)) ?? [],
     }));
-    const published = enriched.filter((version) => version.status === 'PUBLISHED');
-    const latestPublished = published[0];
+    const treeRoot = treeRootVersion(enriched);
     const tree =
-      latestPublished !== undefined
-        ? [
+      treeRoot === undefined
+        ? []
+        : [
             await this.bomNode(
               context.actor.companyId,
               {
-                id: textOf(latestPublished.id),
+                id: textOf(treeRoot.id),
                 code: textOf(root.code),
                 name: textOf(root.name),
-                version: numOr(latestPublished.version),
-                status: textOf(latestPublished.status),
+                version: numOr(treeRoot.version),
+                status: textOf(treeRoot.status),
               },
               new Set([textOf(root.productItemId)]),
               0,
             ),
-          ]
-        : [];
+          ];
     return { ...root, versions: enriched, tree };
   }
 
