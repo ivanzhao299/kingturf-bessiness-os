@@ -390,8 +390,6 @@ test('shows closed production execution with routing, material, reports, and ser
   await expect(drawer.getByTestId('kt-po-operation-step')).toHaveCount(3);
   await expect(drawer.locator('.com-flow-step[data-state="done"]')).toHaveCount(3);
   await expect(drawer.getByText('领料 1287.5')).toBeVisible();
-  await expect(drawer.getByText('领料 10')).toBeVisible();
-  await expect(drawer.getByText('退料 2')).toBeVisible();
   await expect(drawer.getByTestId('kt-po-roll')).toHaveText(/ROLL-KT-2026-001 · 1000.*待检隔离/u);
   const track = drawer.getByTestId('kt-po-state-track');
   await expect(track.locator('.po-state-node')).toHaveCount(5);
@@ -400,4 +398,14 @@ test('shows closed production execution with routing, material, reports, and ser
     body: await drawer.screenshot(),
     contentType: 'image/png',
   });
+  await page.keyboard.press('Escape');
+  await expect(drawer).toBeHidden();
+  // 领退料演示数据在另一张进行中工单上（WO-KT-2026-RETURN-DEMO：领料 10、退料 2）——
+  // 旧断言作用域是整张工作台（多卡并存），现按工单拆分到各自的详情抽屉。
+  const returnRow = workbench.locator('tbody tr').filter({ hasText: 'WO-KT-2026-RETURN-DEMO' });
+  await returnRow.getByTestId('kt-po-open').click();
+  const returnDrawer = page.locator('.detail-drawer');
+  await expect(returnDrawer).toBeVisible();
+  await expect(returnDrawer.getByText('领料 10')).toBeVisible();
+  await expect(returnDrawer.getByText('退料 2')).toBeVisible();
 });
