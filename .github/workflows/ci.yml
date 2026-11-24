@@ -12,7 +12,10 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # TD-GATE-004: the API suite alone takes ~10 minutes on this runner and the whole
+    # chain 16–17 minutes; at 15 the run for d1dc0f3 was stopped about a minute after
+    # every API and web test had passed. The release pipeline allows 45 for the same chain.
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:17.7-alpine3.23
