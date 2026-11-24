@@ -468,6 +468,32 @@ export async function runWalk(context, options = {}, args = []) {
   return walked.code;
 }
 
+/** 在容器内跑写流程冒烟；参数原样传给 write-smoke.mjs。KINGTURF_API_URL 供信用流程里明确标注的
+ *  接口前置数据使用（令牌登录，与 seed 同款）。 */
+export async function runWriteSmoke(context, options = {}, args = []) {
+  const settings = {
+    KINGTURF_BASE_URL: `http://127.0.0.1:${context.webPort}`,
+    KINGTURF_API_URL: `http://127.0.0.1:${context.apiPort}`,
+    KINGTURF_CREDS_FILE: context.credsFile,
+    E2E_LOCAL_OUT: context.out,
+  };
+  const smoked = await docker(
+    [
+      'exec',
+      '--workdir',
+      context.root,
+      ...Object.keys(settings).flatMap((name) => ['-e', name]),
+      context.container,
+      'node',
+      `${HARNESS}/write-smoke.mjs`,
+      ...args,
+    ],
+    { ...options, env: { ...process.env, ...settings } },
+  );
+  await restoreOwnership(context, options);
+  return smoked.code;
+}
+
 export const assertStackRunning = async (context, options = {}) => {
   ownedName(context.container);
   assert(
