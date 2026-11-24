@@ -2,7 +2,7 @@
 // 询价行项（U3-PROC-2 等价迁移）+ 报价对比矩阵（行项×供应商）+ 截止倒计时徽章。
 // 只依赖状态最小面，结构与 rfq-console 的 RfqPageState 兼容（结构化子集，无循环依赖）。
 import { DataTable, StatusBadge, type DataTableColumn, type StatusTone } from '@kingturf/ui';
-import { useStackedCompare } from './compare-stack';
+import { TokenText, useStackedCompare } from './compare-stack';
 import type { RfqConsolePorts, RfqRow } from './rfq-ports';
 
 export type RfqDetailState = Readonly<{
@@ -190,8 +190,13 @@ const QuoteCell = ({
       data-recommended={recommended ? 'true' : 'false'}
       style={CELL_STYLE}
     >
-      <span>{`单价 ${priceText(ports, linePrice(quote, lineNumberOf(line)))}`}</span>
-      <span class="console-label">{terms}</span>
+      {/* PROC-3：单价与日期是短 token，不折行（.proc-token）；标签与分隔符照常可折。 */}
+      <span>
+        <TokenText text={`单价 ${priceText(ports, linePrice(quote, lineNumberOf(line)))}`} />
+      </span>
+      <span class="console-label">
+        <TokenText text={terms} />
+      </span>
       {quote.expired ? <StatusBadge tone="warning">已失效</StatusBadge> : null}
       {recommended ? <StatusBadge tone="success">推荐</StatusBadge> : null}
     </span>
@@ -210,7 +215,12 @@ const matrixColumns = (
     key: 'line',
     header: '行项',
     field: (line) => state.ports.textValue(line.sku, ''),
-    render: (line) => <span>{lineText(state.ports, line)}</span>,
+    // 行号、SKU、数量是 token；在「 · 」处折行。外层 span 与此前一致（td 下单一行内容器）。
+    render: (line) => (
+      <span>
+        <TokenText text={lineText(state.ports, line)} />
+      </span>
+    ),
   },
   ...quotes.map(
     (quote, index): DataTableColumn<Record<string, unknown>> => ({
@@ -302,8 +312,9 @@ export const QuoteComparison = ({ state }: Readonly<{ state: RfqDetailState }>) 
       {stacked ? (
         <SupplierQuoteCards state={state} quotes={quotes} lines={lines} />
       ) : (
-        /* 供应商列较多时在抽屉内横向滚动。 */
-        <div style={{ overflowX: 'auto' }}>
+        /* 供应商列较多时在抽屉内横向滚动。作用域类 .proc-compare-matrix：列最小宽度与
+           token 不折行只作用于本表（PROC-3）。 */
+        <div class="proc-compare-matrix" style={{ overflowX: 'auto' }}>
           <DataTable
             columns={matrixColumns(state, quotes)}
             rows={lines}

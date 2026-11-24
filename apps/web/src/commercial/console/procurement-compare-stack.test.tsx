@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 import { h, render } from 'preact';
 import type { ComponentType } from 'preact';
 import { installGlobalTestDom, type TestElement } from '../../../test/fixtures/preact-dom';
-import { STACKED_COMPARE_WIDTH } from './compare-stack';
+import { STACKED_COMPARE_WIDTH, splitCompareTokens } from './compare-stack';
 import { RfqConsolePage } from './rfq-console';
 import type { RfqConsolePorts, RfqRow } from './rfq-ports';
 import { SupplierConsolePage } from './supplier-console';
@@ -449,6 +449,105 @@ describe('采购域详情抽屉 · 宽度', () => {
   });
 });
 
+// PROC-3（TD-PROC-008 残余）：对比矩阵里每个日期 / 编码 / 金额 token 各自不折行。
+// mini-DOM 不算样式；这里守两件能在 DOM 层面确定的事——切分规则本身，以及矩阵确实把 token
+// 标了出来、且没有改动单元格文本。真实折行见 PROC-3 证据文档的真浏览器量测。
+describe('对比矩阵 · 短 token 不折行', () => {
+  // 一个 token = 可选的单词标签 + （日期 | 编码 | 金额）。
+  const TOKEN =
+    /^(?:[\u4e00-\u9fffA-Z]{1,4} )?(?:\d{4}-\d{2}-\d{2}|[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+|\d+(?:\.\d+)?)$/u;
+
+  it('切分出的 token 是「标签 + 日期 / 编码 / 金额」；拼回来与原文逐字相同', () => {
+    const cases: readonly string[] = [
+      'SQ-PROC3-JSHF-2026-002 · 2026-11-15 · 2026-12-31',
+      'MOQ 1200 · 交期 2026-12-18',
+      '单价 12.5',
+      '行 1 · RM-KT-YARN-12000 · 12000D 直丝草纱 · 数量 5000',
+      '青岛金特夫草纱战略供应商 · SQ-KT-YARN-2026-001 · 收于 2026-11-10 · 有效至 2026-12-31',
+      '2026-10-01',
+      '12.500000',
+      '',
+    ];
+    for (const text of cases) {
+      const parts = splitCompareTokens(text);
+      expect(parts.map((part) => part.text).join(''), text).toBe(text);
+      for (const part of parts.filter((entry) => entry.token))
+        expect(part.text, text).toMatch(TOKEN);
+    }
+    // 标签与它的值是一个单元：标签后的空格不是换行点；单元之间在「 · 」处折行。
+    expect(splitCompareTokens('单价 12.5')).toEqual([{ text: '单价 12.5', token: true }]);
+    expect(splitCompareTokens('MOQ 1200 · 交期 2026-12-18')).toEqual([
+      { text: 'MOQ 1200', token: true },
+      { text: ' · ', token: false },
+      { text: '交期 2026-12-18', token: true },
+    ]);
+    // 物料名称里的「11000D」是数字 + 字母，不是 token：不单独成 token，也不把后面的名称并进来。
+    expect(splitCompareTokens('11000D 替代草纱 · 数量 2000')).toEqual([
+      { text: '11000D 替代草纱 · ', token: false },
+      { text: '数量 2000', token: true },
+    ]);
+    // 未报价的占位（—）不是数字：整段是普通文本，照常可折。
+    expect(splitCompareTokens('MOQ — · 交期 —')).toEqual([
+      { text: 'MOQ — · 交期 —', token: false },
+    ]);
+    // 编码里的连字符段不会被当成减号拆开，小数不被切成两段。
+    expect(splitCompareTokens('SQ-KT-YARN-2026-001')).toEqual([
+      { text: 'SQ-KT-YARN-2026-001', token: true },
+    ]);
+    expect(splitCompareTokens('12.500000')).toEqual([{ text: '12.500000', token: true }]);
+  });
+
+  it('询价矩阵：单元格文本不变，日期 / SKU / 金额落在 .proc-token 里，矩阵带作用域类', async () => {
+    const compare = await openRfqCompare();
+    const matrix = element(compare.querySelector('.proc-compare-matrix'));
+    expect(matrix.querySelector('table')).not.toBe(null);
+    const tokens = matrix.querySelectorAll('.proc-token').map((node) => element(node).textContent);
+    for (const text of tokens) expect(text).toMatch(TOKEN);
+    // 询价单元格带中文标签：标签与值是一个 token（交期 2026-12-10、单价 12.5）。
+    expect(tokens).toContain('交期 2026-12-10');
+    expect(tokens).toContain('单价 12.5');
+    expect(tokens).toContain('MOQ 1000');
+    expect(tokens).toContain('行 1');
+    expect(tokens).toContain('数量 6000');
+    // 夹具里的未报价行与失效报价同此：单元格文本与此前逐字相同。
+    const firstLine = matrix.querySelector('tbody td[data-column="line"]');
+    expect(firstLine?.textContent).toBe('行 1 · RM-YARN · 草纱 · 数量 6000');
+    expect(matrix.querySelector('td[data-column="quote-q-3"]')?.textContent).toBe(
+      '单价 9.9MOQ 1000 · 交期 2026-12-10已失效',
+    );
+  });
+
+  it('供应商矩阵：单元格文本不变，报价单 / 日期 / 单价落在 .proc-token 里，矩阵带作用域类', async () => {
+    const compare = await openSupplierCompare();
+    const matrices = compare.querySelectorAll('.proc-compare-matrix');
+    expect(matrices.length).toBe(1);
+    const tokens = element(matrices[0])
+      .querySelectorAll('.proc-token')
+      .map((node) => element(node).textContent);
+    for (const text of tokens) expect(text).toMatch(TOKEN);
+    expect(tokens).toContain('SQ-1');
+    // 供应商矩阵的条款不带标签：日期自身是一个 token；「MOQ 1000」是另一个。
+    expect(tokens).toContain('2026-12-10');
+    expect(tokens).toContain('MOQ 1000');
+    // 单元格标识与文本守恒：最优价格、条款、报价单三格。
+    const prices = cellsOf(compare, 'kt-supplier-compare-price').map((cell) => cell.textContent);
+    expect(prices).toEqual(['11.8最优', '12.5', '10', '13.2']);
+    expect(element(matrices[0]).querySelector('td[data-column="quote"]')?.textContent).toBe(
+      'SQ-2 · 2026-11-05 · 2026-12-31',
+    );
+  });
+
+  it('堆叠卡片复用同一批单元格：卡片里同样带 .proc-token，矩阵的作用域类不出现', async () => {
+    vi.stubGlobal('ResizeObserver', FakeResizeObserver);
+    containerWidth(PHONE_DRAWER_WIDTH);
+    const compare = await openRfqCompare();
+    expect(compare.querySelector('.proc-compare-matrix')).toBe(null);
+    const tokens = compare.querySelectorAll('.proc-token').map((node) => element(node).textContent);
+    for (const text of tokens) expect(text).toMatch(TOKEN);
+    expect(tokens).toContain('交期 2026-12-10');
+  });
+});
+
 describe('采购域样式表（静态守卫）', () => {
   const stylesheet = readFileSync(new URL('./procurement-console.css', import.meta.url), 'utf8');
   const rule = (selector: string): string => {
@@ -500,6 +599,49 @@ describe('采购域样式表（静态守卫）', () => {
     const start = source.indexOf('const INLINE_STYLE = {');
     if (start < 0) throw new Error('supplier-console-detail.tsx has no INLINE_STYLE');
     expect(source.slice(start, source.indexOf('}', start))).toContain("flexWrap: 'wrap'");
+  });
+
+  // PROC-3：对比矩阵的列最小宽度与 token 不折行。DataTable 是全站基座，列宽只能落在对比表
+  // 自己的作用域类下；真实折行与滚动见 PROC-3 证据文档的真浏览器量测。
+  it('短 token 不折行', () => {
+    expect(rule('.proc-token')).toContain('white-space: nowrap');
+  });
+
+  it('列最小宽度只作用于对比矩阵的作用域类，不碰 DataTable 的通用规则', () => {
+    // 以长度计的 min-width（列最小宽度）只能出现在 .proc-compare-matrix 之下。堆叠卡片规则里的
+    // `min-width: 0` 是 flex 收缩所需，不是列宽，不在其列。
+    const withoutComments = stylesheet.replace(/\/\*[\s\S]*?\*\//gu, '');
+    const columnWidthRules = [
+      ...withoutComments.matchAll(
+        /([^{}]+)\{([^{}]*min-width:\s*[\d.]+(?:ch|px|rem|em)[^{}]*)\}/gu,
+      ),
+    ];
+    expect(columnWidthRules.length).toBeGreaterThanOrEqual(6);
+    for (const [, selector] of columnWidthRules)
+      expect(selector?.trim(), selector).toMatch(/^\.proc-compare-matrix\s/u);
+    // 两张矩阵的每一列都有最小宽度：供应商四列、询价行项列与每家供应商列。
+    for (const selector of [
+      ".proc-compare-matrix td[data-column='supplier']",
+      ".proc-compare-matrix td[data-column='price']",
+      ".proc-compare-matrix td[data-column='terms']",
+      ".proc-compare-matrix td[data-column='quote']",
+      ".proc-compare-matrix td[data-column='line']",
+      ".proc-compare-matrix td[data-column^='quote-']",
+    ]) {
+      expect(rule(selector), selector).toMatch(/min-width:\s*\d+ch;/u);
+    }
+    // 询价矩阵的表头是供应商名：允许折行，否则列宽被名称的整行宽度撑开。
+    expect(rule(".proc-compare-matrix th[data-sort-key^='quote-']")).toContain(
+      'white-space: normal',
+    );
+    // 组件确实把作用域类加在两张矩阵上。
+    const rfq = readFileSync(new URL('./rfq-console-detail.tsx', import.meta.url), 'utf8');
+    expect(rfq).toContain('class="proc-compare-matrix"');
+    const supplier = readFileSync(
+      new URL('./supplier-console-detail.tsx', import.meta.url),
+      'utf8',
+    );
+    expect(supplier).toContain('class="proc-compare-matrix"');
   });
 
   it('样式表经采购域宿主静态图并入主 CSS 包（裁定15）', () => {

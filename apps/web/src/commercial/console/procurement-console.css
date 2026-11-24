@@ -1,7 +1,50 @@
 /* U3-PROC / PROC-2 采购域控制台样式：全部取值来自 kt tokens（ADR-0014），不写死颜色/间距。
    列表/抽屉/表格复用 @kingturf/ui components.css 原语，本文件只承载采购域增量：
    ① 详情抽屉内对比表在窄容器下改按供应商堆叠的卡片（TD-PROC-008）；
-   ② 采购概览可点入子路由的汇总卡（TD-PROC-010）。 */
+   ② 采购概览可点入子路由的汇总卡（TD-PROC-010）；
+   ③ 对比矩阵（宽抽屉）：列最小宽度与短 token 不折行（TD-PROC-008 残余，PROC-3）。 */
+
+/* ===== ③ 对比矩阵 · 列最小宽度与 token 不折行（PROC-3） ===== */
+/* 作用域类 .proc-compare-matrix 只加在两张对比矩阵上，不动 DataTable 的通用规则（全站基座）。
+   基座给每个单元格的最小列宽是 6rem，低于这里内容的实际宽度：日期在连字符处断成两行、
+   供应商名每行约 5 个字。列宽以 ch 计（相对单元格 14px 字号，1ch ≈ 8.4px，即一个数字的宽度），
+   数值由真浏览器实测确定（PROC-3 证据文档 §5）：列最小宽度之和不超过宽抽屉体内容宽（720px）
+   时不滚动，超过时在表格自己的滚动容器内横向滚动，而不是把列压碎。 */
+
+/* 日期、编码、金额 / 数量：整段不折行。 */
+.proc-token {
+  white-space: nowrap;
+}
+
+/* 供应商「报价历史对比」：四列。 */
+.proc-compare-matrix td[data-column='supplier'] {
+  min-width: 15ch;
+}
+.proc-compare-matrix td[data-column='price'] {
+  min-width: 12ch;
+}
+/* MOQ 与交期日期两个 token 一行放得下。 */
+.proc-compare-matrix td[data-column='terms'] {
+  min-width: 24ch;
+}
+/* 报价单编号是最宽的 token（如 SQ-PROC3-JSHF-2026-002，21 字符）；收于 / 有效至在「 · 」处折行。 */
+.proc-compare-matrix td[data-column='quote'] {
+  min-width: 25ch;
+}
+
+/* 询价「报价对比矩阵」：行项列 + 每家供应商一列。 */
+.proc-compare-matrix td[data-column='line'] {
+  min-width: 19ch;
+}
+/* 供应商列以列键 quote-<报价 id> 命名：按前缀选中每一家的列。 */
+.proc-compare-matrix td[data-column^='quote-'] {
+  min-width: 22ch;
+}
+/* 表头是供应商名：基座的 nowrap 会把列撑到名称的整行宽度（五家时要滚到 1170px），
+   改为允许在名称内折行，列宽由上面的小 token 决定。 */
+.proc-compare-matrix th[data-sort-key^='quote-'] {
+  white-space: normal;
+}
 
 /* ===== ① 对比表 · 窄容器堆叠卡片 ===== */
 /* 卡片纵向堆叠、宽度不超过所在容器（抽屉体），不产生横向滚动。 */

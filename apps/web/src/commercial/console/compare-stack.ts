@@ -1,10 +1,46 @@
 // PROC-2（TD-PROC-008）：详情抽屉内对比表的「矩阵 / 堆叠卡片」切换。
-// 抽屉宽 min(480px, 90vw)，手机视口下抽屉体内容宽不足 420px，行项×供应商的矩阵读不了；
+// 手机视口下抽屉体内容宽不足 420px，行项×供应商的矩阵读不了；
 // 容器实测宽度不超过阈值时改按供应商堆叠的卡片，其余情况保持矩阵（可横向滚动）。
+// PROC-3：另提供对比表里「日期 / 编码 / 金额」短 token 的切分（不折行的最小语义单元）。
+import type { ComponentChildren } from 'preact';
 import { useCallback, useRef, useState } from 'preact/hooks';
+import { h } from 'preact';
 
 /** 对比表改堆叠卡片的容器宽度阈值（px，含）。 */
 export const STACKED_COMPARE_WIDTH = 420;
+
+/** 不折行的最小语义单元：日期、编码、金额 / 数量，以及紧贴其前的单词标签（MOQ 1000、
+ *  单价 12.5、交期 2026-12-10、行 1）。断在它们内部会读错（2026-12- / 10），把标签与值拆到
+ *  两行同样读错（行尾一个孤零零的「MOQ」）。标签后的空格不再是换行点；单元之间在「 · 」处折行。 */
+const TOKEN_PATTERN =
+  /(?:[\u4e00-\u9fffA-Z]{1,4} )?(?:\d{4}-\d{2}-\d{2}|[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+|(?<![\w-])\d+(?:\.\d+)?(?![\w-]))/gu;
+
+export type CompareTextPart = Readonly<{ text: string; token: boolean }>;
+
+// 把一段文字切成「token / 其余」交替的片段；拼接回来与原文逐字相同。其余片段（分隔符、
+// 空白、名称）保留原有的换行点。
+export const splitCompareTokens = (text: string): readonly CompareTextPart[] => {
+  const parts: CompareTextPart[] = [];
+  let cursor = 0;
+  for (const match of text.matchAll(TOKEN_PATTERN)) {
+    const at = match.index;
+    // 前面的非 token 文本以「 · 」结尾时，把标签留在行尾更自然——不把分隔符后的空格并进 token。
+    if (at > cursor) parts.push({ text: text.slice(cursor, at), token: false });
+    parts.push({ text: match[0], token: true });
+    cursor = at + match[0].length;
+  }
+  if (cursor < text.length) parts.push({ text: text.slice(cursor), token: false });
+  return parts;
+};
+
+// 渲染一段带 token 的文字：token 落成 <span class="proc-token">（样式表里不折行），其余为裸
+// 文本节点，token 之间在分隔符的空格处照常折行。textContent 与入参逐字相同。
+// 注意：返回的是片段序列，调用方若把它放进 flex 容器，需自己再包一层行内容器——否则相邻
+// 文本会被并成一个匿名 flex 子项，与 token 之间失去换行点。
+export const TokenText = ({ text }: Readonly<{ text: string }>): ComponentChildren =>
+  splitCompareTokens(text).map((part, index) =>
+    part.token ? h('span', { key: String(index), class: 'proc-token' }, part.text) : part.text,
+  );
 
 type ObservedSize = Readonly<{ contentRect: Readonly<{ width: number }> }>;
 type ResizeObserverLike = new (callback: (entries: readonly ObservedSize[]) => void) => {

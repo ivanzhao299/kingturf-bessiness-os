@@ -3,7 +3,7 @@
 // CONDITIONAL/REJECTED）+ 报价历史对比（同一物料多供应商单价并排，最优高亮）。
 // 只依赖状态最小面，结构与 supplier-console 的 SupplierPageState 兼容（结构化子集）。
 import { DataTable, StatusBadge, type DataTableColumn, type StatusTone } from '@kingturf/ui';
-import { useStackedCompare } from './compare-stack';
+import { TokenText, useStackedCompare } from './compare-stack';
 import type { SupplierConsolePorts, SupplierRow } from './supplier-ports';
 
 export type SupplierDetailState = Readonly<{
@@ -291,6 +291,8 @@ const currentSupplierId = (state: SupplierDetailState): string =>
   state.ports.textValue(state.selected?.id, '');
 
 // 以下四个单元格为矩阵列与堆叠卡片共用（DOM 与文案同源）。
+// PROC-3：日期 / 编码 / 金额这类短 token 各自包进 .proc-token（不折行）；分隔符仍是裸文本节点，
+// 单元格 textContent 与此前逐字相同，token 之间照常在分隔符处折行。
 const SupplierCell = ({
   state,
   row,
@@ -314,9 +316,9 @@ const PriceCell = ({
     data-best={best.has(row.key) ? 'true' : 'false'}
   >
     {best.has(row.key) ? (
-      <strong>{decimalText(state.ports, row.unitPrice)}</strong>
+      <strong class="proc-token">{decimalText(state.ports, row.unitPrice)}</strong>
     ) : (
-      decimalText(state.ports, row.unitPrice)
+      <span class="proc-token">{decimalText(state.ports, row.unitPrice)}</span>
     )}
     {best.has(row.key) ? <StatusBadge tone="success">最优</StatusBadge> : null}
   </span>
@@ -325,9 +327,23 @@ const PriceCell = ({
 const termsText = (state: SupplierDetailState, row: QuoteLineRow): string =>
   `MOQ ${decimalText(state.ports, row.minimumOrderQuantity)} · ${row.promisedAt}`;
 
+// 条款：「MOQ 1200」与交期日期是两个 token，在「 · 」处折行，token 自身不断开。
+const TermsCell = ({ state, row }: Readonly<{ state: SupplierDetailState; row: QuoteLineRow }>) => (
+  <span>
+    <TokenText text={termsText(state, row)} />
+  </span>
+);
+
+const quoteText = (row: QuoteLineRow): string =>
+  `${row.reference} · ${row.receivedAt.slice(0, 10)} · ${row.validUntil || '—'}`;
+
+// 报价单：编号、收于、有效至各是一个 token，在「 · 」处折行。外层是 inline-flex（徽章折到
+// 下一行），所以文字包成一个行内容器，token 之间才有换行点。
 const QuoteCell = ({ row }: Readonly<{ row: QuoteLineRow }>) => (
   <span style={INLINE_STYLE}>
-    {`${row.reference} · ${row.receivedAt.slice(0, 10)} · ${row.validUntil || '—'}`}
+    <span>
+      <TokenText text={quoteText(row)} />
+    </span>
     {row.expired ? <StatusBadge tone="warning">已失效</StatusBadge> : null}
   </span>
 );
@@ -353,7 +369,7 @@ const comparisonColumns = (
   {
     key: 'terms',
     header: 'MOQ · 交期',
-    render: (row) => termsText(state, row),
+    render: (row) => <TermsCell state={state} row={row} />,
   },
   {
     key: 'quote',
@@ -445,12 +461,15 @@ export const QuoteComparison = ({ state }: Readonly<{ state: SupplierDetailState
           {stacked ? (
             <SupplierCompareCards state={state} item={item} />
           ) : (
-            <DataTable
-              columns={comparisonColumns(state, item, currency)}
-              rows={item.rows}
-              rowId={(quote) => quote.key}
-              caption="同一物料多供应商报价对比"
-            />
+            /* 作用域类 .proc-compare-matrix：列最小宽度与 token 不折行只作用于本表（PROC-3）。 */
+            <div class="proc-compare-matrix">
+              <DataTable
+                columns={comparisonColumns(state, item, currency)}
+                rows={item.rows}
+                rowId={(quote) => quote.key}
+                caption="同一物料多供应商报价对比"
+              />
+            </div>
           )}
         </div>
       ))}
