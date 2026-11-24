@@ -34,6 +34,20 @@ describe('apiErrorMessage（接口错误文案转中文）', () => {
     expect(apiErrorMessage('Route not found')).toBe('请求的功能不存在，请刷新页面后重试');
   });
 
+  // 采购域仓储层的准入 / 超量守卫：写流程冒烟实测会遇到（未准入供应商下订单、超量收货），
+  // 各控制台已把失败显示在表单里，这两句也须是中文。
+  it('translates the procurement guard messages seen in the write-flow smoke', () => {
+    expect(apiErrorMessage('Purchase item requires a valid supplier qualification')).toBe(
+      '该物料尚未准入给此供应商，请先完成物料准入审核',
+    );
+    expect(apiErrorMessage('Quoted item requires a valid supplier qualification')).toBe(
+      '该物料尚未准入给此供应商，请先完成物料准入审核',
+    );
+    expect(apiErrorMessage('Receipt quantity exceeds open purchase order quantity')).toBe(
+      '收货数量超过采购订单的未收数量',
+    );
+  });
+
   // 带字段名的消息出自服务端的通用入参解析器：字段名与数值原样带进中文文案。
   it.each([
     ['customerId is required', '缺少必填项：customerId'],

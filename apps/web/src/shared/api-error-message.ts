@@ -20,6 +20,16 @@ const EXACT: ReadonlyMap<string, string> = new Map([
   ['A bounded idempotency key is required', IDEMPOTENCY_MISSING],
   // 500 的响应信封不含内部细节，这句话本身没有可转述的信息；细节在服务端日志里。
   ['Internal server error', '服务器处理请求时出错，请稍后重试'],
+  // 采购域仓储层的准入 / 超量守卫（写流程冒烟实测会遇到：未准入供应商下订单、超量收货）。
+  [
+    'Purchase item requires a valid supplier qualification',
+    '该物料尚未准入给此供应商，请先完成物料准入审核',
+  ],
+  [
+    'Quoted item requires a valid supplier qualification',
+    '该物料尚未准入给此供应商，请先完成物料准入审核',
+  ],
+  ['Receipt quantity exceeds open purchase order quantity', '收货数量超过采购订单的未收数量'],
   ['Request validation failed', '提交的内容不符合要求，请检查后重试'],
   ['A JSON object body is required', '请求内容无效，请刷新页面后重试'],
   ['Route not found', '请求的功能不存在，请刷新页面后重试'],
