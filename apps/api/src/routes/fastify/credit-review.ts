@@ -4,6 +4,9 @@
 // POST 设定额度 / POST 评估 = legacy qtc-credit-writes 同解析链（导出校验链复用，
 // frozen 契约消息逐字节一致）；PUT 审批决定 = legacy POST /approve 的现代化动词别名
 //（同 approveCredit 仓储调用与消息）。全部响应仓储直通 + mutationDto（credit:read）。
+// TD-WF-013（WF-A）：PUT 审批遇到「评估人审批自己发起的信用决定」（职责分离触发器拒绝）
+// 时映射成 403 + 中文说明（此前是 500）；映射只做在这个端点上，规则与 legacy
+// POST /approve 轨共用（write-rejection-mapping.ts），两条轨提示一致。
 import { authorizeQuery } from '../../policy.ts';
 import {
   allow,
@@ -15,6 +18,7 @@ import {
   timestamp,
   uuid,
 } from '../../app-values.ts';
+import { asSelfApproval } from '../../write-rejection-mapping.ts';
 import type { FastifyRouteGroupApp, FastifyRouteScope } from './registry.ts';
 import type { ApiDependencies, ApiRequest } from '../../app.ts';
 import type { AuthorizationContext } from '@kingturf/domain';
@@ -157,6 +161,7 @@ export function registerCreditReviewRoutes(
   });
 
   // PUT 审批决定：legacy POST /approve 的现代化动词别名（同 approveCredit 与消息）。
+  // TD-WF-013：评估人自批（触发器 P0001）→ 403 + 中文说明（见 asSelfApproval）。
   app.put('/api/v1/credit-decisions/:decisionId/state', async (request, reply) => {
     const body = objectBody(request.body);
     allow(body, ['decision', 'reason']);
@@ -169,14 +174,20 @@ export function registerCreditReviewRoutes(
     );
     const reason = string(body.reason, 'reason');
     const key = idempotency(request as unknown as ApiRequest);
-    const result = await requireQtc(qtc).approveCredit(
-      creditDecisionId,
-      decision,
-      reason,
-      key,
-      scopeContext('credit:approve'),
-      scope.correlationId,
-    );
+    const qtcRepository = requireQtc(qtc);
+    let result: Record<string, unknown>;
+    try {
+      result = await qtcRepository.approveCredit(
+        creditDecisionId,
+        decision,
+        reason,
+        key,
+        scopeContext('credit:approve'),
+        scope.correlationId,
+      );
+    } catch (error) {
+      throw asSelfApproval(error);
+    }
     void reply.code(200);
     return mutation(result, scope.authorization, 'credit:read');
   });

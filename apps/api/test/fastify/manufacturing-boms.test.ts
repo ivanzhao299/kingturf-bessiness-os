@@ -314,6 +314,56 @@ describe('manufacturing-boms fastify bridge track', () => {
     expect(response?.body).toEqual({ id: bomId, code: detail.code, versions: detail.versions });
   });
 
+  // TD-WF-011（WF-A）：纯草稿 BOM 的详情现在也带组件层级树（仓储 findBom 的改动）。端点
+  // 本身没改；这里钉住 HTTP 形状——草稿树原样透传、根与行项的状态是 DRAFT、替代料标记
+  // 在、字段裁剪行为与已发布详情一致。真库行为见 manufacturing-postgres.integration。
+  it('TD-WF-011：纯草稿 BOM 的详情透传以草稿版本为根的层级树（含替代料），裁剪规则不变', async () => {
+    const draftLine = { ...line, lineNumber: 2, quantity: 9 };
+    const draftDetail = {
+      ...detail,
+      versions: [
+        {
+          id: detail.versions[0]?.id,
+          version: 1,
+          status: 'DRAFT',
+          outputQuantity: 1,
+          effective_at: '2026-01-01T00:00:00+00:00',
+          published_at: null,
+          lines: [line, draftLine],
+        },
+      ],
+      tree: [
+        {
+          bomVersionId: detail.tree[0]?.bomVersionId,
+          code: 'BOM-KT-PRO-50',
+          name: '50mm 景观草标准 BOM',
+          version: 1,
+          status: 'DRAFT',
+          lines: [
+            { ...line, bom: null },
+            { ...draftLine, substitutes: [], bom: null },
+          ],
+        },
+      ],
+    };
+    const full = await dispatchFastifyRouteGroup(
+      requestFor({ pathname: `/api/v1/manufacturing-boms/${bomId}` }),
+      scopeFor(repository({ findBom: vi.fn().mockResolvedValue(draftDetail) })),
+    );
+    expect(full?.statusCode).toBe(200);
+    expect(full?.body).toEqual(draftDetail);
+    const tree = (full?.body as { tree: { status: unknown; lines: unknown[] }[] }).tree;
+    expect(tree).toHaveLength(1);
+    expect(tree[0]?.status).toBe('DRAFT');
+    expect(tree[0]?.lines).toHaveLength(2);
+    expect((tree[0]?.lines[0] as { substitutes: unknown[] }).substitutes).toEqual(line.substitutes);
+    const cropped = await dispatchFastifyRouteGroup(
+      requestFor({ pathname: `/api/v1/manufacturing-boms/${bomId}` }),
+      scopeFor(repository({ findBom: vi.fn().mockResolvedValue(draftDetail) }), ['code', 'tree']),
+    );
+    expect(cropped?.body).toEqual({ id: bomId, code: draftDetail.code, tree: draftDetail.tree });
+  });
+
   it('POST 创建走 legacy 同解析链（trim/stableCode/lines 行四字段/替代料三字段/hasOwn 默认）→ 201', async () => {
     const response = await dispatchFastifyRouteGroup(
       requestFor({

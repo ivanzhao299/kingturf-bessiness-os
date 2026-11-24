@@ -112,8 +112,8 @@ def precheck(bundle):
     auth = authorize(bundle, approval)
     expected = json.loads((bundle / 'migrations.json').read_bytes())
     # Migration count must track each migration batch; keep in sync with
-    # prepare_release_bundle.sh (bumped 74->75 with 0075_login_lockout).
-    images.require(hashlib.sha256((bundle / 'migrations.json').read_bytes()).hexdigest() == approval['migration_manifest_sha256'] and len(expected) == 75, 'Candidate migration manifest binding invalid')
+    # prepare_release_bundle.sh (bumped 75->76 with 0076_rfq_close_transition).
+    images.require(hashlib.sha256((bundle / 'migrations.json').read_bytes()).hexdigest() == approval['migration_manifest_sha256'] and len(expected) == 76, 'Candidate migration manifest binding invalid')
     spec = importlib.util.spec_from_file_location('preflight', Path(__file__).with_name('production_preflight.py'))
     gate = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(gate)

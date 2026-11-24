@@ -743,6 +743,8 @@ describe('U3-MFG-2 manufacturing bom page and detail real PostgreSQL contracts',
     conversionFactor: '1.05',
   });
   let bomPage: { items: readonly JsonObject[]; nextCursor: string | null };
+  // TD-WF-011 用例要用的夹具物料（版本行；id 即 componentItemVersionId）。
+  let rawVersion: JsonObject, altVersion: JsonObject, semiVersion: JsonObject;
 
   beforeAll(async () => {
     fixture = await ownedPostgres('manufacturing_boms_pg');
@@ -751,6 +753,9 @@ describe('U3-MFG-2 manufacturing bom page and detail real PostgreSQL contracts',
     const altMat = await item('BM-ALT', 'RAW_MATERIAL');
     const semi = await item('BM-SEMI', 'SEMI_FINISHED');
     const finished = await item('BM-FG', 'FINISHED_GOOD');
+    rawVersion = rawMat;
+    altVersion = altMat;
+    semiVersion = semi;
     await bom('BM-B-SEMI', semi, [line(rawMat, '0.5')]);
     await bom('BM-B-FG', finished, [
       line(semi, '2'),
@@ -892,6 +897,80 @@ describe('U3-MFG-2 manufacturing bom page and detail real PostgreSQL contracts',
     expect(await repository.findBom(id(bomByCode('BM-B-FG', 1), 'bomId'), otherContext)).toBeNull();
     const foreign = await repository.listBomPage(otherContext, {});
     expect(foreign.items.map((row) => id(row, 'code'))).toEqual(['BM-B-FOREIGN']);
+  });
+
+  // TD-WF-011（WF-A）：此前树根只取「最新已发布版本」，纯草稿 BOM 的 tree 恒为 []，
+  // 发布前无法在详情抽屉核对行项。现在没有任何已发布版本时以最新草稿版本为根。
+  it('TD-WF-011: findBom builds the tree from the latest draft when nothing is published yet', async () => {
+    const { context } = state();
+    const draft = await bom(
+      'BM-B-WFA-DRAFT',
+      await item('BM-WFA-FG', 'FINISHED_GOOD'),
+      [line(semiVersion, '2'), { ...line(rawVersion, '1.25'), substitutes: [sub(altVersion)] }],
+      false,
+    );
+    const detail = await repository.findBom(id(draft, 'bomId'), context);
+    const versions = (detail?.versions ?? []) as JsonObject[];
+    expect(versions.map((version) => [version.version, version.status])).toEqual([[1, 'DRAFT']]);
+    const tree = detail?.tree as JsonObject[];
+    expect(tree).toHaveLength(1);
+    expect(tree[0]).toMatchObject({ code: 'BM-B-WFA-DRAFT', version: 1, status: 'DRAFT' });
+    const lines = tree[0]?.lines as JsonObject[];
+    expect(lines).toHaveLength(2);
+    expect(lines.map((line) => (line.component as JsonObject).sku)).toEqual(['BM-SEMI', 'BM-RAW']);
+    // 行项来自与 versions[0].lines 同一批数据：树的每行只多一个 bom 键（子节点或 null）。
+    const versionLines = (versions[0]?.lines ?? []) as JsonObject[];
+    expect(
+      lines.map((line, index) =>
+        Object.fromEntries(Object.keys(versionLines[index] ?? {}).map((key) => [key, line[key]])),
+      ),
+    ).toEqual(versionLines);
+    // 多出来的确实只有 bom 一个键。
+    for (const [index, line] of lines.entries())
+      expect(Object.keys(line).filter((key) => !(key in (versionLines[index] ?? {})))).toEqual([
+        'bom',
+      ]);
+    const rawLine = lines.find((candidate) => (candidate.component as JsonObject).sku === 'BM-RAW');
+    expect(rawLine?.substitutes).toMatchObject([
+      { priority: 1, conversionFactor: 1.05, sku: 'BM-ALT' },
+    ]);
+    expect(lines[0]?.substitutes).toEqual([]);
+    // 下层只展开「已发布」的子 BOM（与已发布根的规则一致）；半成品 BM-SEMI 有已发布
+    // 的 BM-B-SEMI，所以草稿树的这一行照样展开一层。
+    expect(lines[0]?.bom).toMatchObject({ code: 'BM-B-SEMI', version: 1, status: 'PUBLISHED' });
+    expect(rawLine?.bom).toBeNull();
+    // 夹具里原有的单行草稿也出树。
+    const single = await repository.findBom(id(bomByCode('BM-B-FGD', 1), 'bomId'), context);
+    expect((single?.tree as JsonObject[])[0]?.lines as JsonObject[]).toMatchObject([
+      { lineNumber: 1, quantity: 9, component: { sku: 'BM-RAW' }, bom: null },
+    ]);
+  });
+
+  it('TD-WF-011: once a draft BOM is published its tree root reports PUBLISHED with the same lines', async () => {
+    const { context } = state();
+    const draft = await bom(
+      'BM-B-WFA-PUB',
+      await item('BM-WFA-FG2', 'FINISHED_GOOD'),
+      [line(rawVersion, '3')],
+      false,
+    );
+    const rootOf = (detail: JsonObject | null) => (detail?.tree as JsonObject[])[0] ?? {};
+    const before = await repository.findBom(id(draft, 'bomId'), context);
+    expect(rootOf(before)).toMatchObject({ status: 'DRAFT' });
+    // publish 的第二个参数是「BOM 版本行」的 id（UPDATE manufacturing_bom_versions）。
+    const draftVersion = ((before?.versions ?? []) as JsonObject[]).find(
+      (version) => version.status === 'DRAFT',
+    );
+    if (!draftVersion) throw new Error('Draft BOM version missing');
+    await repository.publish('bom', id(draftVersion), context, randomUUID());
+    const after = await repository.findBom(id(draft, 'bomId'), context);
+    expect(rootOf(after)).toMatchObject({ code: 'BM-B-WFA-PUB', version: 1, status: 'PUBLISHED' });
+    // 除 status 外逐字节一致：发布只改树根的状态。
+    const { status: statusBefore, ...restBefore } = rootOf(before);
+    const { status: statusAfter, ...restAfter } = rootOf(after);
+    expect(restAfter).toEqual(restBefore);
+    expect(statusBefore).toBe('DRAFT');
+    expect(statusAfter).toBe('PUBLISHED');
   });
 });
 

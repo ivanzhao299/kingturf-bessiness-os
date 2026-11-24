@@ -5,9 +5,12 @@
 // projectCustomer360Result + readCustomer360SectionGrant，双授权与 sensitive 门
 // 逐字节一致）；POST 创建 = legacy 同解析链（frozen 契约消息一致）。
 // 全部响应仓储直通 + Date 归一化（COM 同款守恒口径）。
+// TD-WF-013（WF-A）：POST 创建遇到重复客户编号 / 重复客户名称（两个唯一约束拒绝）时映射成
+// 409 + 中文提示（此前是 500）；映射只做在这个端点上，规则见 write-rejection-mapping.ts。
 import { z } from 'zod';
 import { authorizeQuery } from '../../policy.ts';
 import { allow, objectBody, permittedDto, strings, string, uuid } from '../../app-values.ts';
+import { asCustomerConflict } from '../../write-rejection-mapping.ts';
 import type { FastifyRouteGroupApp, FastifyRouteScope } from './registry.ts';
 import type { ApiDependencies } from '../../app.ts';
 import { projectCustomer360Result } from '../customer-360.ts';
@@ -199,7 +202,7 @@ export function registerCustomerRoutes(app: FastifyRouteGroupApp, scope: Fastify
   });
 
   // POST 创建：legacy customer-base 同解析链（customer:create + allow 三字段）→ 201
-  // + mutationDto(customer:read)。
+  // + mutationDto(customer:read)。TD-WF-013：重复客户编号 / 名称 → 409 + 中文提示。
   app.post('/api/v1/customers', async (request, reply) => {
     const repo = requireRepository();
     authorizeQuery(scope.authorization, 'customer:create', ['name', 'customerNumber', 'tags']);
@@ -210,11 +213,12 @@ export function registerCustomerRoutes(app: FastifyRouteGroupApp, scope: Fastify
       customerNumber: string(body.customerNumber, 'customerNumber'),
       tags: body.tags === undefined ? [] : strings(body.tags, 'tags'),
     };
-    const created = await repo.createCustomer(
-      input,
-      scope.authorization.actor,
-      scope.correlationId,
-    );
+    let created: Awaited<ReturnType<CustomerRepository['createCustomer']>>;
+    try {
+      created = await repo.createCustomer(input, scope.authorization.actor, scope.correlationId);
+    } catch (error) {
+      throw asCustomerConflict(error);
+    }
     void reply.code(201);
     return mutation(created, scope.authorization, 'customer:read');
   });
