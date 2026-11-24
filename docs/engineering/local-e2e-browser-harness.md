@@ -93,6 +93,25 @@ node scripts/e2e-local/e2e-local.mjs down                    # 停容器、删�
 
 产物在 `E2E_LOCAL_OUT/walk/<视口>/`：`shots/` 是截图，`report.json` 是逐路由结果。`summarize.mjs` 把报告压成一张表，并单独列出未到达的路由、≥400 响应、控制台异常与抽屉焦点问题。
 
+## 4.5 写流程冒烟（TD-TEST-024）
+
+`write-smoke.mjs` 在同一套栈上从浏览器界面完成写操作：新建、发布、状态流转，并断言界面上可见的结果。与走查互补——那边只读，这边只写。与 `tests/e2e/p1-demo.spec.ts` 的分工：spec 断言固定的演示数据端态（含只读断言），本工具断言「新建的对象在界面上出现、状态按预期变化」。
+
+```sh
+E2E_LOCAL_ADMIN_DATABASE_URL=… node scripts/e2e-local/e2e-local.mjs up
+node scripts/e2e-local/e2e-local.mjs write-smoke                          # 全部六条
+node scripts/e2e-local/e2e-local.mjs write-smoke --flows lead,quote       # 只跑指定的
+node scripts/e2e-local/e2e-local.mjs down
+```
+
+六条流程：`lead`（线索：新建 → 列表 → 认领 → 变更状态 → 改派）、`customer`（客户：新建 → 添加联系人 → 添加活动）、`procurement`（供应商含准入审核 → 询价 → 采购订单 → 登记收货，走采购子路由）、`manufacturing`（物料 / BOM / 工艺路线 新建草稿 → 发布）、`credit`（信用审查：设置额度 → 发起评估 → 审批人批准 / 拒绝）、`quote`（报价：新建过销售政策 → 批准 → 签发）。流程由 `write-smoke-flows.mjs` 定义，全部写操作经界面触发；接口只用于只读佐证和信用流程里明确标注的前置数据（令牌登录，与 seed 同款）。
+
+- **账号**：主流程用 `admin`；信用审批用第二个合成账号 `credit.approver`（数据库触发器拒绝评估人自批，职责分离）。
+- **报告**：产物在 `E2E_LOCAL_OUT/write-smoke/<时间戳>-<pid>/`（`report.json` 与 `shots/`）。步骤分三类——`must`（流程自身结果，失败即流程失败）、`probe`（缺陷检查项）、`fixture`（接口前置数据）。报告开头打印页面里量得的视口（TD-TEST-026 的教训：视口键写错时这行会暴露），并逐条缺陷附截图。
+- **缺陷目录**：`write-smoke-catalog.mjs` 里每条目录项对应一个检查项，断言「正确行为」，不成立即记为已复现并留截图。已在其它提交修复的条目（TD-UI-009 等）保留作回归检查并在摘要里单列一组；修复落地后对应检查项自动转绿。运行不带修复的旧提交时它们会照常「已复现」——这是特性，不是噪音。
+- **写后的数据**：跑过 `write-smoke` 的专用库不要再跑 `p1-demo.spec`（它断言信用决定恰为 3 行）。要跑 e2e 就 `down` 之后重新 `up`（拿全新库）。
+- **退出码**：流程失败或 P1/P2 复现即为 1。当前在 3ba2e9e 上退出码是 1（信用两条写路径在界面不可用），属预期，缺陷修复后下降。
+
 ## 5. 为什么浏览器、预览、API 必须在同一个容器
 
 预览代理对每个响应都回 `Connection: close`，登录后首屏约 70 个请求各需一条新 TCP 连接。若浏览器在容器里经中转去访问宿主机上的预览与 API，这批连接经过 Docker 的地址转换时个别握手包会丢，要等重传才成功，卡住的请求建连可达 15 秒，而服务端 42 毫秒就已答完。表现为 `p1-demo.spec.ts` 随机失败 1 到 2 例，失败用例每轮不同，页面停在「登录成功，正在并行加载业务数据…」。
@@ -101,8 +120,9 @@ node scripts/e2e-local/e2e-local.mjs down                    # 停容器、删�
 
 ## 6. 已知限制
 
-- **只覆盖读路径。** 新建、发布、状态流转等写操作没有在浏览器里点过（TD-TEST-024）。
-- **只有一个全权限账号。** 按权限隐藏或裁剪的呈现形态没有覆盖。
+- ~~**只覆盖读路径。** 新建、发布、状态流转等写操作没有在浏览器里点过（TD-TEST-024）。~~ 写流程冒烟（4.5 节）已补上读写两条路径的浏览器级验证；权限裁剪形态等缺口见下。
+- **写冒烟只覆盖六个域的六条主链。** 生产执行（工单流转、报工、领料、入库）、发货签收、催收法务、收款核销、佣金、风险处置等写路径不在其中；领料选错批次的 500 已另行登记（TD-MFG-010）。
+- **只有一个全权限账号（外加一个信用审批账号）。** 按权限隐藏或裁剪的呈现形态没有覆盖。
 - **只有 Chromium，只有预设的两种视口。** 没有 Firefox、WebKit，没有平板宽度。
 - **布局检查是启发式的。** 能稳定抓到第 4 节列出的几类；重叠、对齐、配色、间距这类观感问题要靠人看截图。
 - **e2e 只在合成账号与演示数据上跑。**
@@ -119,16 +139,20 @@ node scripts/e2e-local/e2e-local.mjs down                    # 停容器、删�
 
 ## 8. 文件清单
 
-| 文件                                          | 职责                                                                 |
-| --------------------------------------------- | -------------------------------------------------------------------- |
-| `e2e-local.mjs`                               | 命令入口：`run` / `up` / `e2e` / `walk` / `seed` / `down`            |
-| `db-target.mjs`                               | 数据库目标守卫：库名硬闸、维护连接、专用库连接串                     |
-| `db-target.test.mjs`                          | 守卫的单元测试（`node --test`，不连数据库）                          |
-| `database.mjs`                                | 专用库生命周期：`create` / `drop` / `migrate` / `status`             |
-| `bootstrap.mjs`                               | 自举合成全权限账号，写 0600 的 `creds.json`                          |
-| `stack.mjs`                                   | 同容器栈：起容器、起 API 与预览、等就绪、灌数据、跑 e2e 与走查、拆栈 |
-| `exec.mjs`、`redact.mjs`                      | 子进程封装与输出脱敏；按名转发的环境变量缺失时直接报错               |
-| `exec.test.mjs`                               | docker 参数解析的单元测试（不启动 docker）                           |
-| `vite.preview.config.mjs`                     | 预览配置：与 `apps/web/vite.config.ts` 的 preview 段同款，端口可配置 |
-| `pw.config.ts`                                | Playwright 包装配置：改用自带 Chromium，产物指向仓库之外             |
-| `walk.mjs`、`walk-audit.mjs`、`summarize.mjs` | 全站走查、页内审计、报告汇总                                         |
+| 文件                                          | 职责                                                                      |
+| --------------------------------------------- | ------------------------------------------------------------------------- |
+| `e2e-local.mjs`                               | 命令入口：`run` / `up` / `e2e` / `walk` / `write-smoke` / `seed` / `down` |
+| `db-target.mjs`                               | 数据库目标守卫：库名硬闸、维护连接、专用库连接串                          |
+| `db-target.test.mjs`                          | 守卫的单元测试（`node --test`，不连数据库）                               |
+| `database.mjs`                                | 专用库生命周期：`create` / `drop` / `migrate` / `status`                  |
+| `bootstrap.mjs`                               | 自举合成全权限账号，写 0600 的 `creds.json`                               |
+| `stack.mjs`                                   | 同容器栈：起容器、起 API 与预览、等就绪、灌数据、跑 e2e 与走查、拆栈      |
+| `exec.mjs`、`redact.mjs`                      | 子进程封装与输出脱敏；按名转发的环境变量缺失时直接报错                    |
+| `exec.test.mjs`                               | docker 参数解析的单元测试（不启动 docker）                                |
+| `vite.preview.config.mjs`                     | 预览配置：与 `apps/web/vite.config.ts` 的 preview 段同款，端口可配置      |
+| `pw.config.ts`                                | Playwright 包装配置：改用自带 Chromium，产物指向仓库之外                  |
+| `walk.mjs`、`walk-audit.mjs`、`summarize.mjs` | 全站走查、页内审计、报告汇总                                              |
+| `write-smoke.mjs`                             | 写流程冒烟入口：登录、逐流程执行、证据收集、缺陷汇总（4.5 节）            |
+| `write-smoke-flows.mjs`                       | 六条写流程的步骤定义                                                      |
+| `write-smoke-kit.mjs`                         | 浏览器操作封装：导航、抽屉、表单、提交并等待写响应、列表行、佐证读取      |
+| `write-smoke-catalog.mjs`                     | 缺陷目录：每条对应一个检查项，修复落地后检查项转绿                        |
