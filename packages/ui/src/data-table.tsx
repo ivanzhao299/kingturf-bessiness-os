@@ -40,6 +40,14 @@ export type DataTableProps<T> = Readonly<{
 
 type SortState = Readonly<{ key: string; direction: 'asc' | 'desc' }>;
 
+// 单元格内容是由可打印 ASCII 组成、长度不超过 20 的字符串（日期、编码、金额；取字段或 render 直接
+// 返回字符串皆算）时整段不折行。自动表格布局在空间紧张时会把列压到最小列宽，低于这类内容的实际
+// 宽度，2026-01-01 就会在连字符处断成两行；设为不折行后，列的最小宽度即内容宽度。中文文案照常折行
+// （最小列宽已保证不会一字一行）；render 输出元素的复合单元格不在此列，仍按自身样式排布。
+const NOWRAP_MAX_LENGTH = 20;
+const isPlainToken = (text: string): boolean =>
+  text !== '' && text.length <= NOWRAP_MAX_LENGTH && /^[\x21-\x7e]+$/u.test(text);
+
 const compareCells = (left: string | number, right: string | number): number => {
   if (typeof left === 'number' && typeof right === 'number') return left - right;
   const leftText = String(left);
@@ -190,13 +198,25 @@ export const DataTable = <T,>(props: DataTableProps<T>) => {
                         />
                       </td>
                     ) : null}
-                    {props.columns.map((column) => (
-                      <td key={column.key} data-column={column.key}>
-                        {column.render !== undefined
+                    {props.columns.map((column) => {
+                      const content =
+                        column.render !== undefined
                           ? column.render(row)
-                          : String(column.field?.(row) ?? '')}
-                      </td>
-                    ))}
+                          : String(column.field?.(row) ?? '');
+                      return (
+                        <td
+                          key={column.key}
+                          data-column={column.key}
+                          class={
+                            typeof content === 'string' && isPlainToken(content)
+                              ? 'data-table-nowrap'
+                              : undefined
+                          }
+                        >
+                          {content}
+                        </td>
+                      );
+                    })}
                   </tr>
                 );
               })

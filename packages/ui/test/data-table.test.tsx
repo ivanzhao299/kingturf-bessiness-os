@@ -195,6 +195,67 @@ describe('DataTable', () => {
     expect(host.container.querySelectorAll('tbody tr').length).toBe(0);
   });
 
+  // 回归（真浏览器量测）：自动表格布局把「生效日期」列压到最小列宽，2026-01-01 在连字符处断成两行。
+  it('keeps short unbroken plain tokens such as dates and codes on one line', () => {
+    type Doc = Readonly<{
+      id: string;
+      date: string;
+      code: string;
+      amount: string;
+      name: string;
+      status: string;
+      blank: string;
+    }>;
+    const docs: readonly Doc[] = [
+      {
+        id: 'd1',
+        date: '2026-01-01',
+        code: 'PO-KT-YARN-2026-001',
+        amount: '62,500.00',
+        name: '青岛金特夫草纱战略供应商有限公司',
+        status: '已发布 · 第 1 版',
+        blank: '',
+      },
+    ];
+    const columns: readonly DataTableColumn<Doc>[] = [
+      { key: 'date', header: '生效日期', field: (row) => row.date },
+      {
+        key: 'renderedDate',
+        header: '生效日期（render 输出字符串）',
+        field: (row) => row.date,
+        // 控制台里常见的写法：render 截取日期前 10 位后返回字符串。
+        render: (row) => row.date.slice(0, 10),
+      },
+      { key: 'code', header: '编码', field: (row) => row.code },
+      { key: 'amount', header: '金额', field: (row) => row.amount },
+      { key: 'name', header: '名称', field: (row) => row.name },
+      { key: 'status', header: '状态', field: (row) => row.status },
+      { key: 'blank', header: '空', field: (row) => row.blank },
+    ];
+    const host = mountDom();
+    mount(<DataTable columns={columns} rows={docs} rowId={(row) => row.id} />, host);
+    const nowrap = (column: string): boolean =>
+      (
+        asElement(host.container.querySelector(`tbody td[data-column="${column}"]`)).getAttribute(
+          'class',
+        ) ?? ''
+      )
+        .split(/\s+/u)
+        .includes('data-table-nowrap');
+    expect(nowrap('date')).toBe(true);
+    expect(nowrap('renderedDate')).toBe(true);
+    expect(nowrap('code')).toBe(true);
+    expect(nowrap('amount')).toBe(true);
+    // 中文文案、含空白的文案仍可折行；空单元格不加类。
+    expect(nowrap('name')).toBe(false);
+    expect(nowrap('status')).toBe(false);
+    expect(nowrap('blank')).toBe(false);
+    // 文本内容不受影响。
+    expect(
+      asElement(host.container.querySelector('tbody td[data-column="date"]')).textContent,
+    ).toBe('2026-01-01');
+  });
+
   it('announces the loading state with aria-busy', () => {
     const host = mountDom();
     mount(

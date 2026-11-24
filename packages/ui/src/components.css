@@ -143,6 +143,10 @@ dialog .dialog-actions {
 .data-table td:not(.data-table-select) {
   min-width: 6rem;
 }
+/* 日期、编码、金额等 ASCII 短文本整段不折行（由 DataTable 按内容判定并加类）。 */
+.data-table td.data-table-nowrap {
+  white-space: nowrap;
+}
 .data-table thead th {
   text-align: left;
   padding: var(--kt-space-2) var(--kt-space-3);
