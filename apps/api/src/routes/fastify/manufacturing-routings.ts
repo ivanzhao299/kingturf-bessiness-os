@@ -24,7 +24,7 @@ import {
   timestamp,
   uuid,
 } from '../../app-values.ts';
-import type { RoutingPageFilter } from '../../manufacturing-repositories.ts';
+import type { RoutingPageFilter } from '../../manufacturing-read-repositories.ts';
 import { authorizeQuery } from '../../policy.ts';
 import type { FastifyRouteGroupApp, FastifyRouteScope } from './registry.ts';
 
