@@ -24,7 +24,7 @@ import type {
   ItemDetailParts,
   ItemPageFilter,
   ManufacturingItemType,
-} from '../../manufacturing-repositories.ts';
+} from '../../manufacturing-read-repositories.ts';
 import { authorizeQuery } from '../../policy.ts';
 import type { FastifyRouteGroupApp, FastifyRouteScope } from './registry.ts';
 

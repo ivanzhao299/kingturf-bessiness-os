@@ -10,6 +10,34 @@
 
 UX 波次（GOV-UX / COM-UX / CRM-UX / PROC-UX / U3-MFG-1·2）与主协调的三处基座修复（`27e9224` DetailDrawer 焦点、`d387f25` StatusBadge danger tone、`12e4a07` 去内联回退）此前都只在不同基线的隔离快照上各自验证过。主协调在独立 worktree + 一次性 PG 容器上把它们**首次放在同一条链里跑**：第一轮（`4e0ae4a`）EXIT=1，红在 `test:release-guardrails` 的发布演练（1 错 4 败，PostgreSQL `FATAL 3D000` 库不存在）；根因是演练测试把 `docker exec` 的容器名写死为 compose 服务，与 `DATABASE_URL` 指向的实例混用——登记 **TD-TEST-021**，由 `14d8e74` 修复；第二轮（**`14d8e74`**）**EXIT=0 / 649s**，15 步全过：API 17935/17935、Web 711/711、UI 包 46/46、Python 发布演练 145 例 OK、coverage overall 55014/68122·domain 630/672·repositoryLines 10630/12805·deficits 空、登录预算 JS 11752B、structure-gate 与 service-boundary 0 违规、audit 无已知漏洞（日志 `/tmp/coord-release/ci-2.log`，coverage-result head 字段记录 `14d8e74…`）。**`b24f146..14d8e74` 区间 13 个提交（含此前标 `[未测试]` 的 `d45cd3f`、`27e9224`、`d387f25`、`12e4a07`、`16c3a59`、`4e0ae4a`、`14d8e74`）以该回执为准**；提交标题不改写。**多会话隔离工作协议**（自 MFG-3 / PROC-2 批起强制，取代共享工作树）：每个会话在独立 git worktree 分支上工作，自起一次性 PostgreSQL 容器（`postgres:17.7-alpine3.23`，端口独占，库名含 test 段），ci:local 可真正并行；台账/索引/证据随分支提交，主协调复核后合并。此前共享工作树 + 共享暂存区造成的纰漏与「并发 CI 互相删演练库」自此在机制上消除。真浏览器验收（UX-VERIFY 批次）另行出具，部署以其缺陷清单处置完成为前提。
 
+## 2026-11-24 U3-MFG-3 工艺路线管理子批（TD-UI-001 进展；隔离工作协议首批）
+
+生产域第三子批完成（**本批起隔离工作协议**：独立 worktree 分支 `mfg/mfg-3-routings`
+@4e0ae4a + 专用一次性 PG 容器 127.0.0.1:5436/kingturf_test_mfg3，不触主工作树）：
+manufacturing-routings 域 Fastify 端点组（GET 列表视图轨迁移 `listRoutingPage`
+（additive (code,version) 复合键集；status/query/productType 筛选；**limit 不设默认值
+——无查询参数时响应与 legacy 全量 `{items}` 逐字节一致**）、GET 详情 `findRouting`
+（additive：根行+产品+全部版本（**工序按 sequence 升序**——顺序步骤视图数据源））、
+POST 创建 legacy 同解析链（负例逐字一致）、PUT /:id/publish 分派 legacy publish('routing')
+同链——发布写路径已存在（勘探确证），**零新写语义**），registry 认领 +4 累计 **68 路径
+/18 文件（不含 registry）**；`ROUTING_VERSION_PROJECTION` 常量（与提取前 **303 字节机械
+验证相等**，G3 白名单同先例）。Preact 工艺路线控制台（左产品类型树/右 DataTable；详情
+抽屉**顺序步骤视图**竖向步进条；新建抽屉**工序编辑器**（增删/上移下移/行序重排
+sequence 10/20/30…；工序行字段一律带行前缀——首行 name 与路线级字段同名会被
+FormSection 按名存状态互相覆盖，载荷形状不受影响）；行级发布列表/抽屉双入口）挂
+manufacturing-workbench 面板内；vanilla「工艺路线与工序」卡片+openRoutingVersionForm
+退役（裁定 17）——**manufacturing-cards.ts/manufacturing-forms.ts/manufacturing-forms-
+behavior.test.ts 三文件删除**，`style.css` 移除全部 manufacturing vanilla 规则（规则 4
+例外）；宿主独立 `console/routing-host.ts`（bom-host 范式，console-entry.ts 未追加）。
+验证：API inject 14/14（含 parity）、PG 集成 +4（21/21：插入乱序 30/10/20 投影后升序/
+游标走查/租户隔离）、Web 组件 13/13＋bootstrap 96/96＋全量 723/723、f3 冻结 GET/POST
+manufacturing-routings 按已批先例 re-pin（311/311）、structure-gate 强制违规 0（首版即
+拆 actions 文件未经红）；ci:local 于干净提交快照隔离 worktree 实跑（专用 PG，回执见证据
+文档）；e2e P1 口令不可得未实跑（文案契约逐条静态核对——三编码独占元素/徽章 4+1+1=6
+处/无草稿无「发布版本」，见证据文档 §5）。**packages/ui 提案（未改动）**：FormSection
+以 field.name 为表单状态键，重名字段互相覆盖——建议告警或 path 键，另批裁定。证据见
+[u3-mfg-3-routing-console-2026-11-24](../evidence/u3-mfg-3-routing-console-2026-11-24.md)。
+
 ## 2026-11-23 U3-MFG-2 BOM 管理子批（TD-UI-001 进展；MFG-1-CP 已复核通过后开工）
 
 生产域第二子批完成：manufacturing-boms 域 Fastify 端点组（GET 列表视图轨迁移 `listBomPage`（additive (code,version) 复合键集，排序键与 list('boms') 一致；status/query/productType 筛选 additive——productType 按产品物料类型过滤供左树「成品/半成品」；**limit 不设默认值——无查询参数时响应与 legacy 全量 `{items}` 逐字节一致**）、GET 详情 `findBom`（additive：根行+产品信息+全部版本行项（组件含物料根/类型/基本单位+替代料含换算系数）+**最新已发布版本组件层级树**（深度 ≤3、按组件物料 id 已访问集合环守卫；每个组件取其编码最小者的最新已发布版本展开））、POST 创建 legacy manufacturingBomCreateRoutes 同解析链（负例消息逐字一致）、PUT /:id/publish 统一动作端点分派 legacy publish('bom') 同链——**零新写路径语义**），registry 认领 +4 累计 **64 路径/17 文件（不含 registry）**；`BOM_VERSION_PROJECTION`（list/listBomPage 复用，与提取前 **982 字节机械验证相等**）/`BOM_LINE_DETAIL_PROJECTION` 常量（G3 白名单同 ITEM 先例）。Preact BOM 控制台（治理同款主从布局：左产品类型树（计数按 BOM 根去重、类型经宿主 productTypeOf 从 items 视图预聚）/右 DataTable；行级查看+草稿发布（列表/抽屉双入口 PUT publish）；详情抽屉**组件层级树可折叠展开**（替代料 warning 徽章标记）+**版本对比视图**（默认最新已发布 vs 上一版本；选择器联动+同版本守卫；新增/删除/变化三类差异高亮——变化含字段级 `用量/损耗率/替代料：old → new`，前端基于详情 versions 行项计算、不新增读端点）；新建抽屉多组件行（首行裸字段名+追加行 `rN:` 前缀——**单行无替代料载荷与 vanilla 表单逐字节一致**，多行为同端点形状的 additive 能力））挂 manufacturing-workbench 面板内；vanilla「BOM 与替代料」卡片+openBomVersionForm 退役（裁定 17），vanilla 网格仅余工艺路线一卡（style.css 列数 2→1，规则 4 例外）。**结构门禁驱动拆分（G1/G5 不豁免，首轮快照 282aeb4 抓出后修复）**：b6e20a1——BOM 宿主迁 `console/bom-host.ts`（console-entry.ts 恢复 747 行，TD-PROC-005 增长点缓解）、动作工厂拆 `createBomActions`+`createBomMutations`（io 注入）。验证：API inject 14/14（含新旧轨 parity）、PG 集成 +5（17/17：游标走查/层级树展开/环 BOM 截断/租户隔离；夹具如实记录同码第二版无法经 createBom 建立——TD-MFG-001 的域级证明）、Web 组件 13/13＋bootstrap 96/96＋全量 711/711、f3 冻结 GET/POST manufacturing-boms 按已批先例 re-pin（311/311）、structure-gate 强制违规 0；ci:local 于干净提交快照 **b6e20a1** 隔离 worktree 实跑 **EXIT=0**（API 17935/17935、Web 711/711、coverage overall 55056/68149·domain 630/672·仓储 10630/12805·deficits 空、登录预算 JS 11751B——归属机械确证：reflog 15:32:19 后无移动+coverage-result head 字段，见证据文档 §4）；e2e P1 口令不可得未实跑（前十六子批同款缺口，文案契约静态钉定）。证据见 [u3-mfg-2-bom-console-2026-11-23](../evidence/u3-mfg-2-bom-console-2026-11-23.md)。

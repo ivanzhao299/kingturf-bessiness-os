@@ -373,18 +373,19 @@ it('captures artificial-turf project handoff fields without test-channel evidenc
       './commercial/manufacturing-view.ts',
       'export function appendManufacturingView',
     ),
-    readBoundSource(
-      './commercial/manufacturing-cards.ts',
-      'export function createManufacturingCard',
-    ),
-    // U3-MFG-1/2：物料/BOM 表单随 vanilla 卡片退役，绑定锚改钉工艺路线表单；
-    // 物料/BOM 区改由控制台页承载。
-    readBoundSource(
-      './commercial/manufacturing-forms.ts',
-      'export function openRoutingVersionForm',
-    ),
+    // U3-MFG-1/2/3：物料/BOM/工艺路线三卡随控制台迁移整体退役
+    //（manufacturing-cards/manufacturing-forms 删除）；绑定锚改钉三控制台页与其
+    // 独立宿主（断言强度不降：仍逐文件唯一实现锚）。
     readBoundSource('./commercial/console/item-console.tsx', 'export function ItemConsolePage'),
     readBoundSource('./commercial/console/bom-console.tsx', 'export function BomConsolePage'),
+    readBoundSource(
+      './commercial/console/routing-console.tsx',
+      'export function RoutingConsolePage',
+    ),
+    readBoundSource(
+      './commercial/console/routing-host.ts',
+      'export function appendManufacturingRoutingConsole',
+    ),
     readBoundSource('./commercial/sourcing-register.ts', 'export function createSourcingPanel'),
     readBoundSource('./commercial/inventory-register.ts', 'export function createInventoryPanel'),
     readBoundSource('./commercial/procurement-view.ts', 'export function appendProcurementView'),
@@ -1927,9 +1928,9 @@ describe('web bootstrap', () => {
       controller,
     ) as unknown as RenderedElement;
     expect(workspace.findByClass('manufacturing-workbench')).toHaveLength(1);
-    // U3-MFG-1/2：物料/BOM 区迁移至 Preact 控制台——vanilla 仅余工艺路线一卡
-    //（U3-MFG-3 迁移）；物料/BOM 行渲染由各自控制台行为测试覆盖。
-    expect(workspace.findByClass('manufacturing-card')).toHaveLength(1);
+    // U3-MFG-1/2/3：物料/BOM/工艺路线区全部迁移至 Preact 控制台——vanilla 卡片墙
+    // 退役；三区行渲染由各自控制台行为测试覆盖。
+    expect(workspace.findByClass('manufacturing-card')).toHaveLength(0);
     // 宿主必须挂载于 manufacturing-workbench 面板内且不带 data-route-view（路由可见性
     // 随父面板治理——e2e 的 .manufacturing-workbench 定位器作用域依赖该包含关系）。
     const workbench = workspace.findByClass('manufacturing-workbench')[0];
@@ -1939,8 +1940,13 @@ describe('web bootstrap', () => {
     const bomHost = workbench?.findByClass('manufacturing-boms-console')[0];
     expect(bomHost?.getAttribute('data-testid')).toBe('kt-mfg-boms');
     expect(bomHost?.getAttribute('data-route-view')).toBe(null);
+    const routingHost = workbench?.findByClass('manufacturing-routings-console')[0];
+    expect(routingHost?.getAttribute('data-testid')).toBe('kt-mfg-routings');
+    expect(routingHost?.getAttribute('data-route-view')).toBe(null);
+    // 控制台行内容不经宿主静态渲染（动态 chunk 挂载后才有）——工作台文本不含种子编码。
     expect(workbench?.textContent).not.toContain('FG-KT-PRO-50');
     expect(workbench?.textContent).not.toContain('BOM-KT-PRO-50');
+    expect(workbench?.textContent).not.toContain('RT-KT-PRO-50');
   });
 
   it('omits the manufacturing item console without manufacturing-item:read', async () => {
