@@ -2,68 +2,11 @@ import { el } from '../dom';
 import { openForm } from '../shared/forms';
 import type { FulfillmentViewContext } from './fulfillment-view-ports';
 
-// U3-MFG-4：工单状态流转（原 appendProductionTransition）已迁入 Preact 控制台（PUT /:id/state 统一动作端点）。本文件余下三张表单属 MFG-5「报工入库」范围，仍为 vanilla，由 console/production-order-host.ts 挂进工单详情抽屉——函数体逐字节未动。
-export function appendProductionReport(
-  context: FulfillmentViewContext,
-  order: Record<string, unknown>,
-  state: string,
-  operations: readonly Record<string, unknown>[],
-  actions: HTMLElement,
-  refresh: () => Promise<void>,
-): void {
-  const { workspace, controller, permissions } = context;
-  const { recordText } = context.ports;
-  if (permissions.has('production:report') && state === 'IN_PROGRESS') {
-    const report = el('button', 'secondary', '＋ 工序报工');
-    report.addEventListener('click', () => {
-      openForm(
-        workspace,
-        '登记工序报工',
-        '每次报工使用唯一幂等键；累计良品不能超过工单计划数量。',
-        [
-          {
-            name: 'operationId',
-            label: '工序',
-            type: 'select',
-            required: true,
-            options: operations.map((item) => ({
-              value: String(item.id),
-              label: `${recordText(item, 'sequence', 'sequence')} · ${recordText(item, 'name', 'name')}`,
-            })),
-          },
-          { name: 'goodQuantity', label: '良品数量', type: 'number', required: true },
-          {
-            name: 'scrapQuantity',
-            label: '废品数量',
-            type: 'number',
-            required: true,
-            value: '0',
-          },
-          { name: 'laborMinutes', label: '人工分钟', type: 'number', required: true },
-          { name: 'machineMinutes', label: '设备分钟', type: 'number', required: true },
-          { name: 'startedAt', label: '开始时间', type: 'datetime-local', required: true },
-          { name: 'completedAt', label: '完成时间', type: 'datetime-local', required: true },
-          { name: 'notes', label: '班组记录', type: 'textarea' },
-          { name: 'idempotencyKey', label: '报工唯一键', required: true },
-        ],
-        '提交报工',
-        async (values) => {
-          await controller.submit(
-            `/api/v1/production-orders/${String(order.id)}/operation-reports`,
-            {
-              ...values,
-              startedAt: new Date(values.startedAt ?? '').toISOString(),
-              completedAt: new Date(values.completedAt ?? '').toISOString(),
-            },
-          );
-          await refresh();
-        },
-      );
-    });
-    actions.append(report);
-  }
-}
-
+// U3-MFG-4：工单状态流转（原 appendProductionTransition）已迁入 Preact 控制台（PUT /:id/state 统一动作端点）。
+// U3-MFG-5：工序报工（原 appendProductionReport）已迁入 Preact 控制台抽屉（载荷 oracle 见
+// console/production-order-console.test.tsx）。本文件余下两张表单（领退料 / 成品卷入库）随后
+// 两步迁入，届时本文件删除；迁入前由 console/production-order-host.ts 挂进工单详情抽屉，
+// 函数体逐字节未动。
 export function appendProductionMaterial(
   context: FulfillmentViewContext,
   order: Record<string, unknown>,

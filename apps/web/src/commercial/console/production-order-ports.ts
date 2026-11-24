@@ -1,5 +1,8 @@
 // U3-MFG-4：工单控制台端口层——视图数据/提交经最小面（页面不依赖
-// CommercialController，行为测试注入 double）。
+// CommercialController，行为测试注入 double）。U3-MFG-5：车间执行的幂等键生成也经端口
+// 注入（时间与随机属 IO）。
+import type { ExecutionKeyKind } from './production-order-keys';
+
 export type ProductionOrderRow = Readonly<Record<string, unknown>>;
 
 export type ProductionOrderPage = Readonly<{
@@ -46,9 +49,11 @@ export type ProductionOrderConsolePorts = Readonly<{
     method?: 'POST' | 'PATCH' | 'PUT',
   ) => Promise<Readonly<Record<string, unknown>> | null>;
   refresh: () => Promise<readonly ProductionOrderRow[]>;
-  // 车间执行入口（工序报工 / 领退料 / 成品卷入库）：表单仍为 vanilla（MFG-5 报工入库
-  // 范围），宿主把既有按钮挂进容器并返回卸载函数；载荷与端点逐字节不变。committed 在
-  // 表单提交成功后被调用（legacy 卡片此处的 refresh），由控制台同步最新快照。
+  // 车间执行幂等键——前端生成，不再让用户手填（形状见 production-order-keys.ts）。
+  nextIdempotencyKey: (orderNumber: string, kind: ExecutionKeyKind) => string;
+  // 尚未迁入控制台的执行入口（领退料 / 成品卷入库）：宿主把既有 vanilla 按钮挂进容器并
+  // 返回卸载函数；载荷与端点逐字节不变。committed 在表单提交成功后被调用（legacy 卡片此处
+  // 的 refresh），由控制台同步最新快照。
   mountExecution: (
     container: HTMLElement,
     row: ProductionOrderRow,

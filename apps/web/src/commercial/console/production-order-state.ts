@@ -1,5 +1,5 @@
 // U3-MFG-4：工单控制台共享展示契约——状态词表、行级下一步动作表、legacy 默认排序、
-// 完工进度推算与视图状态类型。
+// 完工进度推算与视图状态类型。U3-MFG-5：车间执行表单草稿与执行入口的出现条件。
 import type { StatusTone } from '@kingturf/ui';
 import type { ProductionOrderConsolePorts, ProductionOrderRow } from './production-order-ports';
 
@@ -14,7 +14,38 @@ export type ProductionOrderStatusFilter = 'ALL' | ProductionOrderStatus;
 // 行级状态流转动作（PUT /api/v1/production-orders/:id/state 的 action）。与 vanilla 卡片
 // 的四个按钮逐一对应；legacy 另有 cancel 写路径，vanilla 从未暴露，本批不新增入口。
 export type ProductionOrderAction = 'release' | 'start' | 'complete' | 'close';
-export type ProductionOrderForm = 'create' | 'transition';
+// 车间执行表单（已迁入控制台抽屉的种类）。
+export type ProductionOrderExecution = 'report';
+export type ProductionOrderForm = 'create' | 'transition' | ProductionOrderExecution;
+// 一次打开的执行表单草稿：幂等键在打开时生成一次（提交失败后重试沿用同一把键）。
+export type ExecutionDraft = Readonly<{
+  kind: ProductionOrderExecution;
+  idempotencyKey: string;
+}>;
+// 车间执行入口及其出现条件——与 legacy appendProductionReport / Material / Output 逐条一致：
+// 工序报工 = production:report 且进行中；领料/退料 = production:material 且已放行或进行中；
+// 成品卷入库 = production:report 且进行中且已有报工。顺序同 legacy（报工、领退料、成品卷入库）。
+export type ExecutionKind = 'report' | 'material' | 'output';
+export type ExecutionEntry = Readonly<{ kind: ExecutionKind; label: string }>;
+export const EXECUTION_ENTRIES: Readonly<Record<ExecutionKind, ExecutionEntry>> = {
+  report: { kind: 'report', label: '＋ 工序报工' },
+  material: { kind: 'material', label: '＋ 领料/退料' },
+  output: { kind: 'output', label: '＋ 成品卷入库' },
+};
+export const availableExecutions = (
+  permissions: ReadonlySet<string>,
+  status: string,
+  reportCount: number,
+): readonly ExecutionEntry[] => {
+  const running = status === 'IN_PROGRESS';
+  const entries: ExecutionEntry[] = [];
+  if (permissions.has('production:report') && running) entries.push(EXECUTION_ENTRIES.report);
+  if (permissions.has('production:material') && (status === 'RELEASED' || running))
+    entries.push(EXECUTION_ENTRIES.material);
+  if (permissions.has('production:report') && running && reportCount > 0)
+    entries.push(EXECUTION_ENTRIES.output);
+  return entries;
+};
 
 // 汇总卡与筛选条按作业队列顺序排列（与 legacy 默认视图排序一致）。
 export const STATUS_FILTERS: readonly ProductionOrderStatusFilter[] = [
@@ -187,6 +218,11 @@ export type ProductionOrderViewState = Readonly<{
   closeForm: () => void;
   runTransition: (values: Readonly<Record<string, string>>) => Promise<void>;
   runCreate: (values: Readonly<Record<string, string>>) => Promise<void>;
+  // 当前打开的执行表单草稿（activeForm 为执行表单种类时非空）。
+  execution: ExecutionDraft | null;
+  openExecution: (kind: ProductionOrderExecution) => void;
+  runExecution: (values: Readonly<Record<string, string>>) => Promise<void>;
+  // 尚未迁入控制台的执行入口：宿主把既有 vanilla 按钮挂进容器并返回卸载函数。
   mountExecution: (
     container: HTMLElement,
     row: ProductionOrderRow,

@@ -141,6 +141,8 @@ const portsFor = (
   submit: vi.fn().mockResolvedValue(null),
   refresh: vi.fn().mockResolvedValue(orders),
   mountExecution: vi.fn(() => vi.fn()),
+  // 幂等键端口固定返回一把已生成的键（生成器自身的形状见 production-order-keys.test.ts）。
+  nextIdempotencyKey: vi.fn(() => 'WO-KT-2026-001-RPT-20261124090000-A1B2'),
   ...overrides,
 });
 
@@ -185,6 +187,24 @@ const submitDrawer = async (host: TestElement): Promise<void> => {
 };
 
 const drawerOf = (host: TestElement): TestElement => element(host.querySelector('.detail-drawer'));
+
+// 抽屉里表单控件的 name（文档顺序）。
+const fieldNamesOf = (host: TestElement): readonly string[] =>
+  drawerOf(host)
+    .querySelectorAll('input,textarea,select')
+    .map((node) => (node as TestElement).getAttribute('name') ?? '');
+
+// 某个容器里指定 select 的选项（[{ value, label }]，文档顺序）。
+const optionsOf = (scope: TestElement, name: string): readonly unknown[] =>
+  scope
+    .querySelectorAll('select')
+    .filter((node) => (node as TestElement).getAttribute('name') === name)
+    .flatMap((node) =>
+      node.querySelectorAll('option').map((option) => ({
+        value: (option as TestElement).value,
+        label: option.textContent,
+      })),
+    );
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -502,5 +522,296 @@ describe('U3-MFG-4 纯助手', () => {
         (item) => String(item.state),
       ).map((item) => item.state),
     ).toEqual(['IN_PROGRESS', 'DRAFT', 'CLOSED']);
+  });
+});
+
+// U3-MFG-5 车间执行：工序报工。载荷 oracle 迁自 fulfillment-actions-behavior.test.ts 里随
+// appendProductionReport 一起退役的两条用例；幂等键改为前端生成是有意的差别。
+describe('U3-MFG-5 工单控制台：工序报工', () => {
+  const KEY = 'WO-KT-2026-001-RPT-20261124090000-A1B2';
+  // 第二道工序的详情聚合：已报良品与报工次数按用例给定（夹具 detailRow 里两道工序都是 1000）。
+  const COAT = (good: number, count: number) => ({
+    id: 'op-2',
+    sequence: 20,
+    operationCode: 'COAT',
+    operationName: '背胶',
+    workCenter: 'WC-COAT-01',
+    plannedQuantity: 1000,
+    reportedGoodQuantity: good,
+    reportedScrapQuantity: 0,
+    reportCount: count,
+    laborMinutes: 540,
+    machineMinutes: 800,
+    completed: good >= 1000,
+  });
+  const TUFT = {
+    id: 'op-1',
+    sequence: 10,
+    operationCode: 'TUFT',
+    operationName: '簇绒',
+    workCenter: 'WC-TUFT-01',
+    plannedQuantity: 1000,
+    reportedGoodQuantity: 1000,
+    reportedScrapQuantity: 12.5,
+    reportCount: 1,
+    laborMinutes: 60,
+    machineMinutes: 55,
+    completed: true,
+  };
+  const detailAt = (good: number, count: number): ProductionOrderRow =>
+    detailRow({ operationProgress: [TUFT, COAT(good, count)] });
+  const openReport = async (host: TestElement): Promise<void> => {
+    byTestId(host, 'kt-wo-open').click();
+    await flush();
+    await flush();
+    byTestId(host, 'kt-wo-report-open').click();
+    await flush();
+  };
+  // 迁自 legacy 用例的输入：小数原样、带空白的文本、ISO 时间。
+  const typed = {
+    operationId: 'op-2',
+    goodQuantity: ' 10.25 ',
+    scrapQuantity: '0',
+    laborMinutes: '12.5',
+    machineMinutes: '20',
+    startedAt: '2026-10-17T01:00:00Z',
+    completedAt: '2026-10-17T02:00:00Z',
+    notes: ' fixed ',
+  };
+  const fillReport = async (host: TestElement, values: Record<string, string> = typed) => {
+    for (const [name, value] of Object.entries(values)) await type(host, name, value);
+  };
+
+  it('出现条件与 legacy 逐条一致：production:report 且进行中才有「工序报工」', async () => {
+    const cases = [
+      { state: 'IN_PROGRESS', permissions: ['production:report'], shown: true },
+      { state: 'IN_PROGRESS', permissions: ['production:material'], shown: false },
+      { state: 'RELEASED', permissions: ['production:report'], shown: false },
+      { state: 'DRAFT', permissions: ['production:report'], shown: false },
+      { state: 'COMPLETED', permissions: ['production:report'], shown: false },
+      { state: 'CLOSED', permissions: ['production:report'], shown: false },
+      { state: 'CANCELLED', permissions: ['production:report'], shown: false },
+    ] as const;
+    for (const item of cases) {
+      const label = `${item.state} / ${item.permissions.join(',')}`;
+      const host = mount(
+        portsFor([order({ id: 'wo-x', state: item.state })], [...item.permissions]),
+      );
+      expect(optional(host, 'kt-wo-report-open'), label).toBeNull();
+      byTestId(host, 'kt-wo-open').click();
+      await flush();
+      await flush();
+      const button = optional(host, 'kt-wo-report-open');
+      if (item.shown) {
+        expect(button?.textContent, label).toBe('＋ 工序报工');
+        expect(button?.className, label).toBe('secondary');
+      } else expect(button, label).toBeNull();
+    }
+  });
+
+  it('点击入口打开报工抽屉：详情抽屉让位、八个字段与 legacy 同名同序、不再有手填的幂等键', async () => {
+    const loadDetail = vi.fn().mockResolvedValue(detailAt(400, 1));
+    const host = mount(
+      portsFor([order({ state: 'IN_PROGRESS' })], ['production:report'], { loadDetail }),
+    );
+    await openReport(host);
+    const drawer = drawerOf(host);
+    expect(host.querySelectorAll('.detail-drawer')).toHaveLength(1);
+    expect(element(drawer.querySelector('h2')).textContent).toBe('登记工序报工 · WO-KT-2026-001');
+    expect(byTestId(drawer, 'kt-wo-report-summary').textContent).toContain('计划数量1000');
+    expect(fieldNamesOf(host)).toEqual([
+      'operationId',
+      'goodQuantity',
+      'scrapQuantity',
+      'laborMinutes',
+      'machineMinutes',
+      'startedAt',
+      'completedAt',
+      'notes',
+    ]);
+    // 幂等键由系统生成并写在说明里（可按它追溯），表单里没有可编辑的幂等键字段。
+    expect(drawer.textContent).toContain(`本次唯一键由系统生成：${KEY}。`);
+    expect(drawer.textContent).toContain('每次报工使用唯一幂等键；累计良品不能超过工单计划数量。');
+    const form = byTestId(drawer, 'kt-wo-report-form');
+    expect(element(form.querySelector('button[type="submit"]')).textContent).toBe('提交报工');
+    // 工序选项：value 是工序 id；label 在 legacy 的「工序号 · 名称」后附已报良品。
+    expect(optionsOf(form, 'operationId')).toEqual([
+      { value: 'op-1', label: '10 · 簇绒 · 已报良品 1000 / 计划 1000' },
+      { value: 'op-2', label: '20 · 背胶 · 已报良品 400 / 计划 1000' },
+    ]);
+    const scrap = form
+      .querySelectorAll('input')
+      .find((node) => (node as TestElement).getAttribute('name') === 'scrapQuantity');
+    expect((scrap as TestElement).value).toBe('0');
+    // 数字字段不写 step 的浏览器默认步长 1 会拦下小数（TD-UI-009）——FormSection 输出 step=any
+    //（测试替身里 step 是属性而不是内容特性）。
+    for (const control of form.querySelectorAll('input[type="number"]'))
+      expect((control as unknown as { step?: string }).step, 'number step').toBe('any');
+  });
+
+  it('详情未到达时按列表行推算工序与已报良品（与详情抽屉同一回退）', async () => {
+    const host = mount(
+      portsFor([order({ state: 'IN_PROGRESS' })], ['production:report'], {
+        loadDetail: vi.fn().mockRejectedValue(new Error('detail down')),
+      }),
+    );
+    await openReport(host);
+    expect(optionsOf(byTestId(host, 'kt-wo-report-form'), 'operationId')).toEqual([
+      { value: 'op-1', label: '10 · 簇绒 · 已报良品 1000 / 计划 1000' },
+      { value: 'op-2', label: '20 · 背胶 · 已报良品 0 / 计划 1000' },
+    ]);
+  });
+
+  it('载荷与 legacy 报工表单同形同键序（小数原样、文本 trim、时间转 ISO），幂等键取前端生成的键', async () => {
+    const submit = vi.fn().mockResolvedValue(null);
+    const refresh = vi.fn().mockResolvedValue([order({ state: 'IN_PROGRESS' })]);
+    const ports = portsFor([order({ state: 'IN_PROGRESS' })], ['production:report'], {
+      submit,
+      refresh,
+    });
+    const host = mount(ports);
+    await openReport(host);
+    await fillReport(host);
+    await submitDrawer(host);
+    await flush();
+    expect(ports.nextIdempotencyKey).toHaveBeenCalledExactlyOnceWith('WO-KT-2026-001', 'RPT');
+    expect(submit).toHaveBeenCalledExactlyOnceWith(
+      '/api/v1/production-orders/wo-1/operation-reports',
+      {
+        operationId: 'op-2',
+        goodQuantity: '10.25',
+        scrapQuantity: '0',
+        laborMinutes: '12.5',
+        machineMinutes: '20',
+        startedAt: '2026-10-17T01:00:00.000Z',
+        completedAt: '2026-10-17T02:00:00.000Z',
+        notes: 'fixed',
+        idempotencyKey: KEY,
+      },
+    );
+    // 上线路径（JSON）与同一组输入下的 legacy 载荷逐字节相同——幂等键的值不同，位置相同。
+    expect(JSON.stringify(submit.mock.calls[0]?.[1])).toBe(
+      JSON.stringify({
+        operationId: 'op-2',
+        goodQuantity: '10.25',
+        scrapQuantity: '0',
+        laborMinutes: '12.5',
+        machineMinutes: '20',
+        startedAt: '2026-10-17T01:00:00.000Z',
+        completedAt: '2026-10-17T02:00:00.000Z',
+        notes: 'fixed',
+        idempotencyKey: KEY,
+      }),
+    );
+    // 提交成功：表单关闭、回到详情抽屉，整站刷新一次并重读详情。
+    expect(submit.mock.calls[0]).toHaveLength(2);
+    expect(optional(host, 'kt-wo-report-form')).toBeNull();
+    expect(optional(host, 'kt-wo-report-open')).not.toBeNull();
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(ports.loadDetail).toHaveBeenCalledTimes(2);
+  });
+
+  it('提交后就地刷新：抽屉里的工序进度随重读的详情更新，而不只是列表行', async () => {
+    const before = detailAt(400, 1);
+    const after = detailAt(410.25, 2);
+    const loadDetail = vi.fn().mockResolvedValueOnce(before).mockResolvedValue(after);
+    const refresh = vi.fn().mockResolvedValue([order({ state: 'IN_PROGRESS' })]);
+    const host = mount(
+      portsFor([order({ state: 'IN_PROGRESS' })], ['production:report'], { loadDetail, refresh }),
+    );
+    await openReport(host);
+    expect(drawerOf(host).textContent).toContain('良品 400 / 计划 1000');
+    await fillReport(host);
+    await submitDrawer(host);
+    await flush();
+    await flush();
+    const drawer = drawerOf(host);
+    expect(element(drawer.querySelector('h2')).textContent).toBe('工单详情 · WO-KT-2026-001');
+    expect(loadDetail).toHaveBeenCalledTimes(2);
+    expect(drawer.textContent).toContain('良品 410.25 / 计划 1000');
+    expect(drawer.textContent).toContain('报工 2 次');
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('无效日期在提交前拦下：不触达服务端、不刷新、抽屉留着并给出中文提示', async () => {
+    const submit = vi.fn().mockResolvedValue(null);
+    const refresh = vi.fn().mockResolvedValue([]);
+    const host = mount(
+      portsFor([order({ state: 'IN_PROGRESS' })], ['production:report'], { submit, refresh }),
+    );
+    await openReport(host);
+    await fillReport(host, { ...typed, startedAt: 'invalid' });
+    await submitDrawer(host);
+    await flush();
+    expect(submit).not.toHaveBeenCalled();
+    expect(refresh).not.toHaveBeenCalled();
+    expect(byTestId(host, 'kt-wo-report-error').textContent).toBe('开始时间格式不正确，请重新选择');
+    await fillReport(host, { startedAt: '2026-10-17T01:00:00Z', completedAt: 'not-a-date' });
+    await submitDrawer(host);
+    await flush();
+    expect(byTestId(host, 'kt-wo-report-error').textContent).toBe('完成时间格式不正确，请重新选择');
+    expect(submit).not.toHaveBeenCalled();
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it('服务端拒绝：抽屉留着并就近显示接口消息、不刷新；重试沿用同一把幂等键，成功后才刷新一次', async () => {
+    const submit = vi
+      .fn()
+      .mockRejectedValueOnce(
+        new Error('reported good quantity exceeds planned production quantity'),
+      )
+      .mockResolvedValue(null);
+    const refresh = vi.fn().mockResolvedValue([]);
+    const ports = portsFor([order({ state: 'IN_PROGRESS' })], ['production:report'], {
+      submit,
+      refresh,
+    });
+    const host = mount(ports);
+    await openReport(host);
+    await fillReport(host);
+    await submitDrawer(host);
+    await flush();
+    expect(byTestId(host, 'kt-wo-report-error').textContent).toBe(
+      'reported good quantity exceeds planned production quantity',
+    );
+    expect(optional(host, 'kt-wo-report-form')).not.toBeNull();
+    expect(refresh).not.toHaveBeenCalled();
+    await submitDrawer(host);
+    await flush();
+    expect(submit).toHaveBeenCalledTimes(2);
+    expect(submit.mock.calls[1]?.[1]).toEqual(submit.mock.calls[0]?.[1]);
+    expect(ports.nextIdempotencyKey).toHaveBeenCalledTimes(1);
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(optional(host, 'kt-wo-report-form')).toBeNull();
+  });
+
+  it('必填由表单自己把关：班组记录留空不提交（服务端同样要求非空）', async () => {
+    const submit = vi.fn().mockResolvedValue(null);
+    const host = mount(
+      portsFor([order({ state: 'IN_PROGRESS' })], ['production:report'], { submit }),
+    );
+    await openReport(host);
+    await fillReport(host, { ...typed, notes: '   ' });
+    await submitDrawer(host);
+    await flush();
+    expect(submit).not.toHaveBeenCalled();
+    const messages = byTestId(host, 'kt-wo-report-form')
+      .querySelectorAll('[role="alert"]')
+      .map((node) => node.textContent);
+    expect(messages).toContain('请填写班组记录');
+  });
+
+  it('关闭抽屉：Esc 或关闭按钮回到详情抽屉，不提交；再次打开重新生成幂等键', async () => {
+    const submit = vi.fn().mockResolvedValue(null);
+    const ports = portsFor([order({ state: 'IN_PROGRESS' })], ['production:report'], { submit });
+    const host = mount(ports);
+    await openReport(host);
+    element(drawerOf(host).querySelector('.drawer-close')).click();
+    await flush();
+    expect(optional(host, 'kt-wo-report-form')).toBeNull();
+    expect(optional(host, 'kt-wo-report-open')).not.toBeNull();
+    expect(submit).not.toHaveBeenCalled();
+    await openReport(host);
+    expect(ports.nextIdempotencyKey).toHaveBeenCalledTimes(2);
   });
 });

@@ -1,10 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { openForm } from './shared/forms';
-import {
-  appendProductionMaterial,
-  appendProductionOutput,
-  appendProductionReport,
-} from './commercial/production-actions';
+import { appendProductionMaterial, appendProductionOutput } from './commercial/production-actions';
 import { appendShipmentDelivery, appendShipmentDispatch } from './commercial/shipment-actions';
 import type { FulfillmentViewContext } from './commercial/fulfillment-view-ports';
 import type { CommercialPermission } from './commercial/permissions';
@@ -86,63 +82,12 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 // U3-MFG-4：工单状态流转（原 appendProductionTransition）已迁入 Preact 控制台，载荷 oracle 见
-// console/production-order-console.test.tsx；余下三张表单（报工/领退料/成品卷入库）属 MFG-5 范围，
-// 函数体与测试逐字节未动。
+// console/production-order-console.test.tsx。
+// U3-MFG-5：工序报工（原 appendProductionReport）已迁入 Preact 控制台抽屉——函数随迁移删除，
+// 其载荷 oracle（小数原样、日期转 ISO、无效日期不提交、失败不刷新、出现条件）迁往同一组件
+// 测试；幂等键改为前端生成是有意的差别。余下两张表单（领退料 / 成品卷入库）随后两步迁入，
+// 届时本组用例随之退役。
 describe('production action callback contracts', () => {
-  // U3-MFG-4：工单状态流转（原 appendProductionTransition）已迁入 Preact 控制台，其载荷
-  // oracle 见 console/production-order-console.test.tsx；本文件余下三张表单属 MFG-5 范围。
-  it('does not offer non-running reports', () => {
-    const f = setup(['production:report']);
-    appendProductionReport(f.context, order, 'RELEASED', [], f.target, f.refresh);
-    appendProductionReport(setup().context, order, 'IN_PROGRESS', [], f.target, f.refresh);
-    expect(f.actions.children).toHaveLength(0);
-    expect(form).not.toHaveBeenCalled();
-  });
-
-  it('preserves report decimals and key, converts dates, and rejects bad dates before submission', async () => {
-    const f = setup(['production:report']);
-    appendProductionReport(
-      f.context,
-      order,
-      'IN_PROGRESS',
-      [{ id: 'op-1', sequence: 2, name: '织造' }],
-      f.target,
-      f.refresh,
-    );
-    const opened = f.click();
-    expect(opened.fields.find((field) => field.name === 'operationId')?.options).toEqual([
-      { value: 'op-1', label: '2 · 织造' },
-    ]);
-    expect(opened.fields.find((field) => field.name === 'scrapQuantity')?.value).toBe('0');
-    const values = {
-      operationId: 'op-1',
-      goodQuantity: '10.25',
-      scrapQuantity: '0',
-      laborMinutes: '12.5',
-      machineMinutes: '20',
-      startedAt: '2026-10-17T01:00:00Z',
-      completedAt: '2026-10-17T02:00:00Z',
-      notes: 'fixed',
-      idempotencyKey: 'REPORT-1',
-    };
-    await opened.run(values);
-    expect(f.submit).toHaveBeenCalledExactlyOnceWith(
-      '/api/v1/production-orders/production-1/operation-reports',
-      {
-        ...values,
-        startedAt: '2026-10-17T01:00:00.000Z',
-        completedAt: '2026-10-17T02:00:00.000Z',
-      },
-    );
-    expect(f.refresh).toHaveBeenCalledTimes(1);
-    await expect(opened.run({ ...values, startedAt: 'invalid' })).rejects.toThrow(RangeError);
-    expect(f.submit).toHaveBeenCalledTimes(1);
-    expect(f.refresh).toHaveBeenCalledTimes(1);
-    f.submit.mockRejectedValueOnce(new Error('report rejected'));
-    await expect(opened.run(values)).rejects.toThrow('report rejected');
-    expect(f.refresh).toHaveBeenCalledTimes(1);
-  });
-
   it.each(['RELEASED', 'IN_PROGRESS'])(
     'uses append-time inventory snapshot for %s material and rejects invalid choices',
     async (state) => {
