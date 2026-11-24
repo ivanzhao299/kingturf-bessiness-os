@@ -322,6 +322,38 @@ describe('purchase-orders fastify bridge track', () => {
     expect(call?.args[0]).toBe(order.id);
   });
 
+  // TD-API-004：未预期异常此前被错误处理器直接丢弃（5xx 无任何可诊断记录）。
+  it('未预期异常：500 internal_error 信封不含细节，异常本身记入 http.request.failed', async () => {
+    const write = vi.fn();
+    const base = scopeFor();
+    const response = await dispatchFastifyRouteGroup(requestFor({ query: { status: 'ISSUED' } }), {
+      ...base,
+      dependencies: {
+        ...(base.dependencies as object),
+        procurement: repository({
+          listPurchaseOrders: vi.fn().mockRejectedValue(new Error('relation is gone')),
+        }),
+        logger: { write },
+      } as unknown as ApiDependencies,
+      correlationId: 'corr-7',
+    });
+    expect(response?.statusCode).toBe(500);
+    expect(response?.body).toEqual({
+      error: { code: 'internal_error', message: 'Internal server error', correlationId: 'corr-7' },
+    });
+    expect(write).toHaveBeenCalledTimes(1);
+    expect(write.mock.calls[0]?.[0]).toMatchObject({
+      level: 'error',
+      event: 'http.request.failed',
+      correlationId: 'corr-7',
+      statusCode: 500,
+      method: 'GET',
+      // 查询串不进日志路径。
+      pathname: '/api/v1/purchase-orders',
+      error: { name: 'Error', message: 'relation is gone' },
+    });
+  });
+
   it('PUT state 负例：未知 action 400、无 procurement:manage 403', async () => {
     const unknownAction = await dispatchFastifyRouteGroup(
       requestFor({

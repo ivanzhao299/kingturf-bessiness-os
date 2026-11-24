@@ -40,7 +40,7 @@ const defaultEntries: readonly (readonly [PermissionKey, Grant])[] = [
   ['lead:read', read],
   ['lead-pool:read', read],
 ];
-function fixture(entries = defaultEntries, available = true) {
+function fixture(entries = defaultEntries, available = true, logger?: ApiDependencies['logger']) {
   const context: AuthorizationContext = {
     actor,
     permissions: new Map(entries),
@@ -72,6 +72,7 @@ function fixture(entries = defaultEntries, available = true) {
     employees: {} as ApiDependencies['employees'],
     organizations: organizations as unknown as ApiDependencies['organizations'],
     ...(available ? { crm: repository as unknown as Crm } : {}),
+    ...(logger === undefined ? {} : { logger }),
   });
   const dispatch = (
     pathname: string,
@@ -407,6 +408,33 @@ describe('inline lead command independent projections and error envelopes', () =
         );
         expectCall(f, row);
       }
+    },
+  );
+  // TD-API-004：未预期异常此前被 catch 直接丢弃——响应是 500，服务端却没有任何可诊断记录。
+  it.each(actions)(
+    '$action: an unexpected failure is logged with its cause and not returned',
+    async (row) => {
+      const write = vi.fn();
+      const f = fixture(defaultEntries, true, { write });
+      if (row.action === 'assign' || row.action === 'reassign')
+        f.repository.assign.mockRejectedValue(new Error('private error'));
+      else f.repository.transitionLead.mockRejectedValue(new Error('private error'));
+      const failed = await f.dispatch(path(row.action), body(row.action));
+      expect(failed.statusCode).toBe(500);
+      expect(JSON.stringify(failed.body)).not.toContain('private error');
+      const entries = write.mock.calls.map((call) => call[0] as { event: string });
+      expect(entries.map((entry) => entry.event)).toEqual([
+        'http.request.failed',
+        'http.request.completed',
+      ]);
+      expect(entries[0]).toMatchObject({
+        level: 'error',
+        correlationId,
+        statusCode: 500,
+        method: 'POST',
+        pathname: path(row.action),
+        error: { name: 'Error', message: 'private error' },
+      });
     },
   );
 });

@@ -57,6 +57,7 @@ import type {
   PostgresWorkflowRepository,
 } from './platform-repositories.ts';
 import { authorizeQuery } from './policy.ts';
+import { recordRequestFailure } from './request-failure.ts';
 import type { PostgresProcurementRepository } from './procurement-repositories.ts';
 import type { PostgresProductionCostRepository } from './production-cost-repositories.ts';
 import type { PostgresProductionRepository } from './production-repositories.ts';
@@ -293,6 +294,7 @@ export function buildApp(
                   : 400;
           return error(status, cause.code, cause.message, correlationId);
         }
+        recordRequestFailure(dependencies?.logger, request, correlationId, 500, cause);
         return error(500, 'internal_error', 'Internal server error', correlationId);
       }
     },

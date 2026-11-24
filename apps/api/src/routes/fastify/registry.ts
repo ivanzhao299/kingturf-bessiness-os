@@ -17,6 +17,7 @@ import type { ApiRequest, ApiResponse } from '../../api-types.ts';
 import type { JsonObject } from '@kingturf/types';
 import type { ApiDependencies } from '../../app.ts';
 import type { AuthorizationContext } from '@kingturf/domain';
+import { recordRequestFailure } from '../../request-failure.ts';
 import { registerCommercialOpportunitiesRoutes } from './commercial-opportunities.ts';
 import { registerTechnicalSolutionRoutes } from './technical-solutions.ts';
 import { registerQuoteRoutes } from './quotes.ts';
@@ -123,7 +124,7 @@ const buildRouteGroupApp = (scope: FastifyRouteScope) => {
 
   app.setSerializerCompiler(serializerCompiler);
   app.setValidatorCompiler(validatorCompiler);
-  app.setErrorHandler((cause, _request, reply) => {
+  app.setErrorHandler((cause, request, reply) => {
     const errorBody = (
       code: DomainError['code'] | 'invalid_request' | 'internal_error',
       message: string,
@@ -141,10 +142,22 @@ const buildRouteGroupApp = (scope: FastifyRouteScope) => {
       void reply.code(400).send(errorBody('invalid_request', message));
       return;
     }
+    // 5xx：响应信封不含内部细节，异常本身记入服务端日志（TD-API-004）。
+    const failed = (status: number): void => {
+      recordRequestFailure(
+        scope.dependencies.logger,
+        { method: request.method, pathname: request.url.split('?')[0] ?? request.url },
+        scope.correlationId,
+        status,
+        cause,
+      );
+    };
     if (typeof statusCode === 'number' && statusCode >= 500) {
+      failed(statusCode);
       void reply.code(statusCode).send(errorBody('internal_error', message));
       return;
     }
+    failed(500);
     void reply.code(500).send(errorBody('internal_error', 'Internal server error'));
   });
   registerCommercialOpportunitiesRoutes(app, scope);
