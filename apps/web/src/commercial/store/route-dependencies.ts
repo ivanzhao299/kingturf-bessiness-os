@@ -36,6 +36,16 @@ const routeSources: Readonly<Partial<Record<AppRoute, readonly string[]>>> = {
     'manufacturing-items',
     'contract-documents',
   ],
+  // PROC-2：采购子路由各自只拉所用控制台的数据源（均为上面 procurement 概览闭包的子集）。
+  'procurement/suppliers': ['suppliers', 'supplier-quotes', 'manufacturing-items'],
+  'procurement/rfqs': ['procurement-rfqs', 'manufacturing-items'],
+  'procurement/purchase-orders': [
+    'purchase-orders',
+    'manufacturing-items',
+    'suppliers',
+    'contract-documents',
+  ],
+  'procurement/goods-receipts': ['goods-receipts', 'purchase-orders', 'inventory-locations'],
   'material-planning': ['mrp-policies', 'mrp-demands', 'mrp-runs', 'manufacturing-items'],
   'production-orders': [
     'production-orders',

@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { createUiKitSection } from './ui-kit/view';
 import {
+  APP_ROUTE_LABELS,
   BOOTSTRAP_TITLE,
   businessEventDetailLabel,
   businessEventLabel,
@@ -2047,25 +2048,24 @@ describe('web bootstrap', () => {
       controller,
     ) as unknown as RenderedElement;
     expect(workspace.findByClass('procurement-workbench')).toHaveLength(1);
-    // U3-PROC-1..4：供应商/询价/采购单/收货四区迁移至 Preact 控制台宿主（vanilla
-    // procurement-column 剩 sourcing（报价区）/inventory 两区；供应商/询价/采购单/
-    // 收货行渲染由各自控制台行为测试覆盖）。
+    // vanilla procurement-column 剩 sourcing（报价区）/inventory 两区；供应商/询价/采购单/
+    // 收货行渲染由各自控制台行为测试覆盖。
     expect(workspace.findByClass('procurement-column')).toHaveLength(2);
-    // 宿主必须挂载于 procurement-workbench 面板内（路由可见性随父面板治理——
-    // e2e 的 .procurement-workbench 定位器作用域同时依赖该包含关系）。
+    // PROC-2（TD-PROC-010）：四区控制台宿主自 procurement-workbench 面板迁出——各自成为
+    // 采购子路由的路由视图，直接挂工作区根并携带 data-route-view（与其它商业控制台宿主
+    // 同口径；可见性由 visibleAppRoutes 按各控制台的读权限注册）。概览面板内不再含控制台。
     const workbench = workspace.findByClass('procurement-workbench')[0];
-    const supplierHost = workbench?.findByClass('suppliers-console')[0];
-    expect(supplierHost?.getAttribute('data-testid')).toBe('kt-proc-suppliers');
-    expect(supplierHost?.getAttribute('data-route-view')).toBe(null);
-    const rfqHost = workbench?.findByClass('rfqs-console')[0];
-    expect(rfqHost?.getAttribute('data-testid')).toBe('kt-proc-rfqs');
-    expect(rfqHost?.getAttribute('data-route-view')).toBe(null);
-    const poHost = workbench?.findByClass('purchase-orders-console')[0];
-    expect(poHost?.getAttribute('data-testid')).toBe('kt-proc-purchase-orders');
-    expect(poHost?.getAttribute('data-route-view')).toBe(null);
-    const grHost = workbench?.findByClass('goods-receipts-console')[0];
-    expect(grHost?.getAttribute('data-testid')).toBe('kt-proc-goods-receipts');
-    expect(grHost?.getAttribute('data-route-view')).toBe(null);
+    const host = (className: string, testId: string, route: string): void => {
+      const nodes = workspace.findByClass(className);
+      expect(nodes).toHaveLength(1);
+      expect(nodes[0]?.getAttribute('data-testid')).toBe(testId);
+      expect(nodes[0]?.getAttribute('data-route-view')).toBe(route);
+      expect(workbench?.findByClass(className)).toHaveLength(0);
+    };
+    host('suppliers-console', 'kt-proc-suppliers', 'procurement/suppliers');
+    host('rfqs-console', 'kt-proc-rfqs', 'procurement/rfqs');
+    host('purchase-orders-console', 'kt-proc-purchase-orders', 'procurement/purchase-orders');
+    host('goods-receipts-console', 'kt-proc-goods-receipts', 'procurement/goods-receipts');
     // sourcing 报价卡片保持 vanilla（supplier-quotes 域端点未迁移）。
     expect(workspace.textContent).toContain('报价 SQ-1');
     expect(workspace.textContent).toContain('LOT-1');
@@ -2074,6 +2074,192 @@ describe('web bootstrap', () => {
       value: 'loc-1',
       label: 'RAW-A01 · 原料一区',
     });
+  });
+
+  // PROC-2（TD-PROC-010）：采购域子路由——可见性、宿主装配、概览汇总卡与侧栏分组。
+  const procurementApi = () => ({
+    listOpportunities: vi.fn().mockResolvedValue([]),
+    list: vi.fn().mockImplementation((path: string) => {
+      const values: Record<string, readonly Record<string, unknown>[]> = {
+        '/api/v1/suppliers': [
+          { id: 'supplier-1', supplier_number: 'SUP-1', name: '草纱供应商', status: 'ACTIVE' },
+        ],
+        '/api/v1/procurement-rfqs': [
+          { id: 'rfq-1', rfq_number: 'RFQ-1', status: 'ISSUED', lines: [{}] },
+        ],
+        '/api/v1/purchase-orders': [
+          {
+            id: 'po-1',
+            po_number: 'PO-1',
+            status: 'ISSUED',
+            supplierName: '草纱供应商',
+            lines: [{ quantity: '5000', unit_price: '12.5' }],
+          },
+        ],
+        '/api/v1/goods-receipts': [
+          { id: 'gr-1', receipt_number: 'GR-1', poNumber: 'PO-1', lines: [{}] },
+        ],
+        '/api/v1/inventory-locations': [{ id: 'loc-1', code: 'RAW-A01', name: '原料一区' }],
+        '/api/v1/inventory-balances': [
+          {
+            sku: 'RM-YARN',
+            lotNumber: 'LOT-1',
+            locationCode: 'RAW-A01',
+            quantity: '5000',
+            qualityStatus: 'QUARANTINE',
+            movements: [{}],
+          },
+        ],
+      };
+      return Promise.resolve(values[path] ?? []);
+    }),
+    submit: vi.fn().mockResolvedValue({}),
+    uploadCtrAttachment: vi.fn().mockResolvedValue({}),
+    command: vi.fn().mockResolvedValue({}),
+  });
+  const procurementWorkspace = async (permissions: readonly string[]): Promise<RenderedElement> => {
+    const controller = new CommercialController(
+      procurementApi(),
+      new Set(permissions.filter(isCommercialPermission)),
+    );
+    await controller.load();
+    return commercialWorkspaceStructure('desktop', false, controller) as unknown as RenderedElement;
+  };
+  const CONSOLE_CLASSES = [
+    'suppliers-console',
+    'rfqs-console',
+    'purchase-orders-console',
+    'goods-receipts-console',
+  ] as const;
+
+  it('registers procurement sub-routes from each console read permission (PROC-2)', () => {
+    const routesOf = (permissions: readonly string[]): readonly string[] =>
+      [...visibleAppRoutes(new Set<string>(permissions))].filter((route) =>
+        route.startsWith('procurement'),
+      );
+    // 概览沿用前缀规则；子路由只随各自控制台主数据源的读权限注册，不随概览一并放行。
+    expect(routesOf(['supplier:read'])).toEqual(['procurement', 'procurement/suppliers']);
+    expect(routesOf(['procurement:read'])).toEqual([
+      'procurement',
+      'procurement/rfqs',
+      'procurement/purchase-orders',
+      'procurement/goods-receipts',
+    ]);
+    expect(routesOf(['inventory:read'])).toEqual(['procurement']);
+    expect(routesOf(['supplier:manage'])).toEqual(['procurement']);
+    expect(routesOf(['procurement:manage'])).toEqual(['procurement']);
+    expect(routesOf(['customer:read'])).toEqual([]);
+    // 路由器整段字符串匹配：多段 hash 直接成为合法 AppRoute，未知段回落 overview。
+    for (const route of [
+      'procurement/suppliers',
+      'procurement/rfqs',
+      'procurement/purchase-orders',
+      'procurement/goods-receipts',
+    ])
+      expect(appRouteFromHash(`#/${route}`)).toBe(route);
+    expect(appRouteFromHash('#/procurement/unknown')).toBe('overview');
+    // 旧书签 #/procurement 仍解析为概览。
+    expect(appRouteFromHash('#/procurement')).toBe('procurement');
+    expect(APP_ROUTE_LABELS.procurement).toBe('采购概览');
+  });
+
+  it('mounts each procurement console as its own sub-route view, only when its list is readable (PROC-2)', async () => {
+    const routesByConsole = (workspace: RenderedElement): readonly (string | null)[] =>
+      CONSOLE_CLASSES.map(
+        (className) => workspace.findByClass(className)[0]?.getAttribute('data-route-view') ?? null,
+      );
+    expect(routesByConsole(await procurementWorkspace(['procurement:read']))).toEqual([
+      null,
+      'procurement/rfqs',
+      'procurement/purchase-orders',
+      'procurement/goods-receipts',
+    ]);
+    expect(routesByConsole(await procurementWorkspace(['supplier:read']))).toEqual([
+      'procurement/suppliers',
+      null,
+      null,
+      null,
+    ]);
+    // 只有库存权限的岗位（如库存控制员）：概览与其台账仍在，不挂任何控制台。
+    const inventoryOnly = await procurementWorkspace(['inventory:read']);
+    expect(inventoryOnly.findByClass('procurement-workbench')).toHaveLength(1);
+    expect(inventoryOnly.findByClass('procurement-column')).toHaveLength(2);
+    expect(inventoryOnly.findByClass('commercial-console')).toHaveLength(0);
+  });
+
+  it('keeps the procurement overview summary copy and links each card only to a visible sub-route (PROC-2)', async () => {
+    const summaryCards = (workspace: RenderedElement): readonly RenderedElement[] => {
+      const overview = workspace.findByClass('procurement-workbench')[0];
+      if (!overview) throw new Error('procurement overview panel missing');
+      return overview.findByClass('metric-card');
+    };
+    const linkOf = (card: RenderedElement): string | undefined =>
+      (card as unknown as { href?: string }).href;
+    // 口径与文案沿用原面板（采购专员口径的权限：供应商、采购与库存可读）。
+    const buyer = summaryCards(
+      await procurementWorkspace(['supplier:read', 'procurement:read', 'inventory:read']),
+    );
+    expect(buyer.map((card) => card.textContent)).toEqual([
+      '待准入供应商\n1 家',
+      '询价进行中\n1 单',
+      '待收采购单\n1 单',
+      '待检库存\n1 批',
+    ]);
+    expect(buyer.map((card) => [card.tagName, linkOf(card)])).toEqual([
+      ['a', '#/procurement/suppliers'],
+      ['a', '#/procurement/rfqs'],
+      ['a', '#/procurement/purchase-orders'],
+      ['a', '#/procurement/goods-receipts'],
+    ]);
+    // 读不到供应商清单：该卡不可点（否则点入会被导航兜底弹回首个可用路由），其余照常。
+    const buyerWithoutSuppliers = summaryCards(
+      await procurementWorkspace(['procurement:read', 'inventory:read']),
+    );
+    expect(buyerWithoutSuppliers.map((card) => [card.tagName, linkOf(card)])).toEqual([
+      ['div', undefined],
+      ['a', '#/procurement/rfqs'],
+      ['a', '#/procurement/purchase-orders'],
+      ['a', '#/procurement/goods-receipts'],
+    ]);
+    const inventoryOnly = summaryCards(await procurementWorkspace(['inventory:read']));
+    expect(inventoryOnly.map((card) => card.tagName)).toEqual(['div', 'div', 'div', 'div']);
+  });
+
+  it('groups procurement navigation as one expandable domain with the overview and its readable sub-routes (PROC-2)', () => {
+    const shellOf = (permissions: readonly string[]): RenderedElement =>
+      createCrmShell(
+        new CrmController(new Set(['customer:read']), api().transport),
+        1280,
+        new Set(permissions),
+      ) as unknown as RenderedElement;
+    const procurementItems = (permissions: readonly string[]): readonly (string | null)[][] =>
+      shellOf(permissions)
+        .findByClass('nav-item')
+        .filter((item) => (item.getAttribute('data-app-route') ?? '').startsWith('procurement'))
+        .map((item) => [item.getAttribute('data-app-route'), item.textContent]);
+    expect(procurementItems(['supplier:read', 'procurement:read'])).toEqual([
+      ['procurement', '采购概览'],
+      ['procurement/suppliers', '供应商与准入'],
+      ['procurement/rfqs', '询价管理'],
+      ['procurement/purchase-orders', '采购订单'],
+      ['procurement/goods-receipts', '收货管理'],
+    ]);
+    expect(procurementItems(['supplier:read'])).toEqual([
+      ['procurement', '采购概览'],
+      ['procurement/suppliers', '供应商与准入'],
+    ]);
+    expect(procurementItems(['inventory:read'])).toEqual([['procurement', '采购概览']]);
+    // 「采购管理」只出现在一个分组里（e2e 的 openRoute 以 data-nav-routes 定位分组父按钮）。
+    const procurementParents = shellOf(['supplier:read', 'procurement:read'])
+      .findByClass('nav-parent')
+      .filter((parent) =>
+        (parent.getAttribute('data-nav-routes') ?? '').split(' ').includes('procurement'),
+      );
+    expect(procurementParents).toHaveLength(1);
+    expect(procurementParents[0]?.getAttribute('data-nav-routes')).toBe(
+      'procurement procurement/suppliers procurement/rfqs procurement/purchase-orders procurement/goods-receipts',
+    );
+    expect(procurementParents[0]?.textContent).toContain('采购管理');
   });
 
   it('renders explainable MRP calculations, frozen warnings, and approval history', async () => {

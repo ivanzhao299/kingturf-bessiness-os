@@ -98,6 +98,14 @@ const matrix: readonly (readonly [AppRoute, readonly string[]])[] = [
       'contract-documents',
     ],
   ],
+  // PROC-2：采购子路由各自只拉所用控制台的数据源（均为 procurement 概览闭包的子集）。
+  ['procurement/suppliers', ['suppliers', 'supplier-quotes', 'manufacturing-items']],
+  ['procurement/rfqs', ['procurement-rfqs', 'manufacturing-items']],
+  [
+    'procurement/purchase-orders',
+    ['purchase-orders', 'manufacturing-items', 'suppliers', 'contract-documents'],
+  ],
+  ['procurement/goods-receipts', ['goods-receipts', 'purchase-orders', 'inventory-locations']],
   ['material-planning', ['mrp-policies', 'mrp-demands', 'mrp-runs', 'manufacturing-items']],
   [
     'production-orders',
@@ -139,6 +147,58 @@ it('keeps overview full-domain dependencies and never promotes missing read perm
     path('quotes'),
   ]);
   expect(commercialRoutePlan(controller, 'customers').paths).toEqual([]);
+});
+
+// PROC-2：采购子路由的数据闭包——概览闭包的子集、不越权、深链只拉所需、概览加载后即就绪。
+const PROCUREMENT_SUBROUTES: readonly AppRoute[] = [
+  'procurement/suppliers',
+  'procurement/rfqs',
+  'procurement/purchase-orders',
+  'procurement/goods-receipts',
+];
+
+it.each(PROCUREMENT_SUBROUTES)(
+  'keeps the %s closure inside the procurement overview closure',
+  (route) => {
+    const { controller } = setup(allPermissions);
+    const overview = new Set(commercialRoutePlan(controller, 'procurement').paths);
+    const closure = commercialRoutePlan(controller, route).paths;
+    expect(closure.length).toBeGreaterThan(0);
+    for (const dependency of closure) expect(overview.has(dependency)).toBe(true);
+  },
+);
+
+it('never promotes missing read permissions into procurement sub-route closures', () => {
+  // 只读得到采购数据：供应商清单、物料版本、合同文档、库位各自需要自己的读权限，不得被连带拉取
+  // （路径顺序与 readableCommercialSources 一致）。
+  const buyer = setup(['procurement:read']).controller;
+  expect(commercialRoutePlan(buyer, 'procurement/purchase-orders').paths).toEqual([
+    path('purchase-orders'),
+  ]);
+  expect(commercialRoutePlan(buyer, 'procurement/goods-receipts').paths).toEqual([
+    path('purchase-orders'),
+    path('goods-receipts'),
+  ]);
+  expect(commercialRoutePlan(buyer, 'procurement/rfqs').paths).toEqual([path('procurement-rfqs')]);
+  expect(commercialRoutePlan(buyer, 'procurement/suppliers').paths).toEqual([
+    path('supplier-quotes'),
+  ]);
+  expect(
+    commercialRoutePlan(setup(['inventory:read']).controller, 'procurement/goods-receipts').paths,
+  ).toEqual([path('inventory-locations')]);
+});
+
+it('loads only the sub-route closure on a deep link and marks every sub-route ready after the overview', async () => {
+  const { api, state } = setup(['supplier:read']);
+  expect((await state.load('procurement/suppliers', () => true)).state).toBe('ready');
+  expect(api.list.mock.calls).toEqual([[path('suppliers')]]);
+  const full = setup(allPermissions);
+  expect((await full.state.load('procurement', () => true)).state).toBe('ready');
+  for (const route of PROCUREMENT_SUBROUTES) expect(full.state.readyRoutes().has(route)).toBe(true);
+  // 行为守恒：概览仍只按其原有闭包各读一次，拆分子路由没有带来额外出站请求。
+  expect(full.api.list.mock.calls.map(([url]) => url).sort()).toEqual(
+    commercialRoutePlan(full.controller, 'procurement').paths.sort(),
+  );
 });
 
 it('loads only missing authorized sources and reuses visited/shared snapshots without return GETs', async () => {

@@ -185,9 +185,17 @@ export function createShellSidebar(
   ]);
   navGroup('供应链与生产', 'production', [
     ['operations', '制造主数据', 'manufacturing-master'],
-    ['delivery', '采购管理', 'procurement'],
     ['production', '物料计划', 'material-planning'],
     ['production', '生产执行', 'production-orders'],
+  ]);
+  // PROC-2：采购域子路由化（同 governance 分组做法）——概览 + 供应商 / 询价 / 采购订单 / 收货；
+  // 子项按各自读权限显隐（见 commercial/procurement-surfaces.ts），概览沿用原「采购管理」图标。
+  navGroup('采购管理', 'delivery', [
+    ['delivery', '采购概览', 'procurement'],
+    ['customers', '供应商与准入', 'procurement/suppliers'],
+    ['cost', '询价管理', 'procurement/rfqs'],
+    ['contracts', '采购订单', 'procurement/purchase-orders'],
+    ['delivery', '收货管理', 'procurement/goods-receipts'],
   ]);
   navGroup('质量与交付', 'quality', [
     ['quality', '质量检验', 'quality-inspection'],

@@ -1,23 +1,43 @@
 import { el } from '../dom';
+// PROC-2：采购域控制台样式并入宿主静态图（裁定15：cssCodeSplit:false 后随主 CSS 包静态加载）。
+import './console/procurement-console.css';
 import type { OperationsViewContext } from './operations-view-ports';
 import {
-  appendSupplierConsole,
-  appendRfqConsole,
-  appendPurchaseOrderConsole,
-  appendGoodsReceiptConsole,
-} from './console-entry';
+  procurementSubRoutes,
+  visibleProcurementSurfaces,
+  type ProcurementConsoleId,
+} from './procurement-surfaces';
+import { appendProcurementSummary } from './procurement-summary';
+import { appendSupplierConsole } from './console/supplier-host';
+import { appendRfqConsole } from './console/rfq-host';
+import { appendPurchaseOrderConsole } from './console/po-host';
+import { appendGoodsReceiptConsole } from './console/gr-host';
 import { createSourcingPanel } from './sourcing-register';
 import { createInventoryPanel } from './inventory-register';
 
+// PROC-2（TD-PROC-010）：采购域子路由化。子路由 → 控制台宿主；宿主节段自身即路由视图
+// （携带 data-route-view，直接挂工作区根，与其它商业控制台同口径）。
+const CONSOLE_HOSTS: Readonly<
+  Record<ProcurementConsoleId, (context: OperationsViewContext, workspace: HTMLElement) => void>
+> = {
+  suppliers: appendSupplierConsole,
+  rfqs: appendRfqConsole,
+  'purchase-orders': appendPurchaseOrderConsole,
+  'goods-receipts': appendGoodsReceiptConsole,
+};
+
 export function appendProcurementView(context: OperationsViewContext): void {
-  const { workspace, status, controller } = context;
+  const { workspace, status, controller, permissions } = context;
   const { recordText } = context.ports;
+  // PROC-2：概览页（#/procurement）——顶部四张汇总卡（口径与文案沿用）可点入对应子路由；
+  // 下方保留 vanilla「供应商报价」「批次库存台账」两块台账（supplier-quotes 域与库存区
+  // 未迁移，内容不改——原 U3-PROC-1..4 四控制台自此各迁一条子路由，见下方装配）。
   const panel = el('section', 'procurement-workbench');
   panel.setAttribute('data-testid', 'procurement-workbench');
   panel.append(
     el('p', 'eyebrow', '采购到入库'),
     el('h2', '', '供应商、采购与批次库存'),
-    el('p', 'commercial-help', '供应商、询报价、采购与批次收货'),
+    el('p', 'commercial-help', '采购待办汇总；下方为供应商报价与批次库存台账'),
   );
   const suppliers = controller.views.get('/api/v1/suppliers') ?? [],
     rfqs = controller.views.get('/api/v1/procurement-rfqs') ?? [],
@@ -29,42 +49,19 @@ export function appendProcurementView(context: OperationsViewContext): void {
     await controller.load();
     status.textContent = controller.message;
   };
-  const procurementSummary = el('div', 'production-summary');
-  procurementSummary.append(
-    el(
-      'div',
-      'metric-card',
-      `待准入供应商\n${String(suppliers.filter((item) => recordText(item, 'status', 'status') !== 'APPROVED').length)} 家`,
-    ),
-    el(
-      'div',
-      'metric-card',
-      `询价进行中\n${String(rfqs.filter((item) => !['CLOSED', 'CANCELLED'].includes(recordText(item, 'status', 'status'))).length)} 单`,
-    ),
-    el(
-      'div',
-      'metric-card',
-      `待收采购单\n${String(purchaseOrders.filter((item) => ['ISSUED', 'PARTIALLY_RECEIVED'].includes(recordText(item, 'status', 'status'))).length)} 单`,
-    ),
-    el(
-      'div',
-      'metric-card',
-      `待检库存\n${String(balances.filter((item) => recordText(item, 'qualityStatus', 'qualityStatus') === 'QUARANTINE').length)} 批`,
-    ),
+  appendProcurementSummary(
+    panel,
+    { suppliers, rfqs, purchaseOrders, balances },
+    recordText,
+    new Set<string>(procurementSubRoutes(permissions)),
   );
-  panel.append(procurementSummary);
-  // U3-PROC-1..4：供应商/询价/采购单/收货四区全部迁移至 Preact 控制台（挂
-  // procurement-workbench 面板内——路由可见性随父面板；原 vanilla supplier 卡片、
-  // RFQ 卡片与新建询价表单、PO 卡片与创建签发表单及合同文档工作流、收货卡片与
-  // 登记收货表单全部退役，裁定 17 语义；inventory 区保持 vanilla）。
-  appendSupplierConsole(context, panel);
-  appendRfqConsole(context, panel);
-  appendPurchaseOrderConsole(context, panel);
-  appendGoodsReceiptConsole(context, panel);
   const grid = el('div', 'procurement-grid');
   const sourcingPanel = createSourcingPanel(context, rfqs, supplierQuotes, suppliers, refresh);
   const inventoryPanel = createInventoryPanel(context, balances, locations, refresh);
   grid.append(sourcingPanel, inventoryPanel);
   panel.append(grid);
   workspace.append(panel);
+  // 子路由页：每个控制台独占一条路由，只在该路由对当前账号可见时挂载（可见性与菜单同源）。
+  for (const surface of visibleProcurementSurfaces(permissions))
+    CONSOLE_HOSTS[surface.id](context, workspace);
 }
