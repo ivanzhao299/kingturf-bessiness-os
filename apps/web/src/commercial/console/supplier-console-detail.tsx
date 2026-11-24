@@ -3,6 +3,7 @@
 // CONDITIONAL/REJECTED）+ 报价历史对比（同一物料多供应商单价并排，最优高亮）。
 // 只依赖状态最小面，结构与 supplier-console 的 SupplierPageState 兼容（结构化子集）。
 import { DataTable, StatusBadge, type DataTableColumn, type StatusTone } from '@kingturf/ui';
+import { useStackedCompare } from './compare-stack';
 import type { SupplierConsolePorts, SupplierRow } from './supplier-ports';
 
 export type SupplierDetailState = Readonly<{
@@ -283,6 +284,51 @@ const INLINE_STYLE = {
   gap: '6px',
 } as const;
 
+const currentSupplierId = (state: SupplierDetailState): string =>
+  state.ports.textValue(state.selected?.id, '');
+
+// 以下四个单元格为矩阵列与堆叠卡片共用（DOM 与文案同源）。
+const SupplierCell = ({
+  state,
+  row,
+}: Readonly<{ state: SupplierDetailState; row: QuoteLineRow }>) => (
+  <span style={INLINE_STYLE}>
+    {row.supplierName}
+    {row.supplierId === currentSupplierId(state) ? (
+      <StatusBadge tone="neutral">本供应商</StatusBadge>
+    ) : null}
+  </span>
+);
+
+const PriceCell = ({
+  state,
+  best,
+  row,
+}: Readonly<{ state: SupplierDetailState; best: ReadonlySet<string>; row: QuoteLineRow }>) => (
+  <span
+    style={INLINE_STYLE}
+    data-testid="kt-supplier-compare-price"
+    data-best={best.has(row.key) ? 'true' : 'false'}
+  >
+    {best.has(row.key) ? (
+      <strong>{decimalText(state.ports, row.unitPrice)}</strong>
+    ) : (
+      decimalText(state.ports, row.unitPrice)
+    )}
+    {best.has(row.key) ? <StatusBadge tone="success">最优</StatusBadge> : null}
+  </span>
+);
+
+const termsText = (state: SupplierDetailState, row: QuoteLineRow): string =>
+  `MOQ ${decimalText(state.ports, row.minimumOrderQuantity)} · ${row.promisedAt}`;
+
+const QuoteCell = ({ row }: Readonly<{ row: QuoteLineRow }>) => (
+  <span style={INLINE_STYLE}>
+    {`${row.reference} · ${row.receivedAt.slice(0, 10)} · ${row.validUntil || '—'}`}
+    {row.expired ? <StatusBadge tone="warning">已失效</StatusBadge> : null}
+  </span>
+);
+
 const comparisonColumns = (
   state: SupplierDetailState,
   item: ComparisonItem,
@@ -292,57 +338,87 @@ const comparisonColumns = (
     key: 'supplier',
     header: '供应商',
     field: (row) => row.supplierName,
-    render: (row) => (
-      <span style={INLINE_STYLE}>
-        {row.supplierName}
-        {row.supplierId === state.ports.textValue(state.selected?.id, '') ? (
-          <StatusBadge tone="neutral">本供应商</StatusBadge>
-        ) : null}
-      </span>
-    ),
+    render: (row) => <SupplierCell state={state} row={row} />,
   },
   {
     key: 'price',
     header: `单价${currency === '' ? '' : `（${currency}）`}`,
     sortable: true,
     field: (row) => row.unitPrice,
-    render: (row) => (
-      <span
-        style={INLINE_STYLE}
-        data-testid="kt-supplier-compare-price"
-        data-best={item.best.has(row.key) ? 'true' : 'false'}
-      >
-        {item.best.has(row.key) ? (
-          <strong>{decimalText(state.ports, row.unitPrice)}</strong>
-        ) : (
-          decimalText(state.ports, row.unitPrice)
-        )}
-        {item.best.has(row.key) ? <StatusBadge tone="success">最优</StatusBadge> : null}
-      </span>
-    ),
+    render: (row) => <PriceCell state={state} best={item.best} row={row} />,
   },
   {
     key: 'terms',
     header: 'MOQ · 交期',
-    render: (row) =>
-      `MOQ ${decimalText(state.ports, row.minimumOrderQuantity)} · ${row.promisedAt}`,
+    render: (row) => termsText(state, row),
   },
   {
     key: 'quote',
     header: '报价单 · 收于 · 有效至',
-    render: (row) => (
-      <span style={INLINE_STYLE}>
-        {`${row.reference} · ${row.receivedAt.slice(0, 10)} · ${row.validUntil || '—'}`}
-        {row.expired ? <StatusBadge tone="warning">已失效</StatusBadge> : null}
-      </span>
-    ),
+    render: (row) => <QuoteCell row={row} />,
   },
 ];
 
 const MAX_COMPARISON_ITEMS = 6;
 
+// 按供应商归并：组内保持既有排序（有效报价单价升序在前、失效报价在后），组序取各组首行次序。
+const supplierGroupKey = (row: QuoteLineRow): string =>
+  row.supplierId === '' ? row.supplierName : row.supplierId;
+const supplierGroups = (rows: readonly QuoteLineRow[]): readonly (readonly QuoteLineRow[])[] => {
+  const groups = new Map<string, QuoteLineRow[]>();
+  for (const row of rows) {
+    const key = supplierGroupKey(row);
+    groups.set(key, [...(groups.get(key) ?? []), row]);
+  }
+  return [...groups.values()];
+};
+
+// 窄容器下的对比替身：同一物料下每家供应商一张卡，卡内列出该供应商的报价行（价格、
+// 条款、报价单与最优/失效标记同矩阵单元格）。
+export const SupplierCompareCards = ({
+  state,
+  item,
+}: Readonly<{ state: SupplierDetailState; item: ComparisonItem }>) => {
+  const current = currentSupplierId(state);
+  return (
+    <div class="proc-compare-cards" data-testid="kt-supplier-compare-cards">
+      {supplierGroups(item.rows).map((rows) => {
+        const head = rows[0];
+        if (head === undefined) return null;
+        return (
+          <article
+            key={supplierGroupKey(head)}
+            class="proc-quote-card"
+            data-testid="kt-supplier-compare-card"
+            data-supplier={head.supplierId}
+          >
+            <header class="proc-quote-card-head">
+              <strong>{head.supplierName}</strong>
+              {head.supplierId === current ? (
+                <StatusBadge tone="neutral">本供应商</StatusBadge>
+              ) : null}
+            </header>
+            <ul class="proc-quote-lines">
+              {rows.map((row) => (
+                <li key={row.key} class="proc-quote-line" data-testid="kt-supplier-compare-line">
+                  <PriceCell state={state} best={item.best} row={row} />
+                  <span class="proc-quote-card-meta">{termsText(state, row)}</span>
+                  <QuoteCell row={row} />
+                </li>
+              ))}
+            </ul>
+          </article>
+        );
+      })}
+    </div>
+  );
+};
+
 // 报价历史对比：每个物料一张表（按单价升序），有效报价中单价最低者高亮「最优」。
+// 容器窄（手机抽屉）时改按供应商堆叠的卡片（TD-PROC-008）。
 export const QuoteComparison = ({ state }: Readonly<{ state: SupplierDetailState }>) => {
+  // hooks 须先于任何早退：本组件经 JSX 渲染，调用顺序必须稳定。
+  const [measure, stacked] = useStackedCompare();
   const row = state.selected;
   if (!row) return null;
   const { ports } = state;
@@ -351,7 +427,7 @@ export const QuoteComparison = ({ state }: Readonly<{ state: SupplierDetailState
   const shown = items.slice(0, MAX_COMPARISON_ITEMS);
   const currency = ports.recordText(row, 'currency', 'currency', '');
   return (
-    <div class="console-summary" data-testid="kt-supplier-compare">
+    <div class="console-summary" data-testid="kt-supplier-compare" ref={measure}>
       <p class="console-label">报价历史对比（同一物料 · 多供应商单价，最优高亮）</p>
       {shown.map((item) => (
         <div
@@ -363,12 +439,16 @@ export const QuoteComparison = ({ state }: Readonly<{ state: SupplierDetailState
             {ports.itemVersionChoices.find((choice) => choice.value === item.itemVersionId)
               ?.label ?? item.itemVersionId}
           </p>
-          <DataTable
-            columns={comparisonColumns(state, item, currency)}
-            rows={item.rows}
-            rowId={(quote) => quote.key}
-            caption="同一物料多供应商报价对比"
-          />
+          {stacked ? (
+            <SupplierCompareCards state={state} item={item} />
+          ) : (
+            <DataTable
+              columns={comparisonColumns(state, item, currency)}
+              rows={item.rows}
+              rowId={(quote) => quote.key}
+              caption="同一物料多供应商报价对比"
+            />
+          )}
         </div>
       ))}
       {items.length > shown.length ? (

@@ -1,4 +1,6 @@
 import { el } from '../dom';
+// PROC-2：采购域控制台样式并入宿主静态图（裁定15：cssCodeSplit:false 后随主 CSS 包静态加载）。
+import './console/procurement-console.css';
 import type { OperationsViewContext } from './operations-view-ports';
 import {
   appendSupplierConsole,

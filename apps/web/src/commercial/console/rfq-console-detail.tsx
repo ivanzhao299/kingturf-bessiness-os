@@ -2,6 +2,7 @@
 // 询价行项（U3-PROC-2 等价迁移）+ 报价对比矩阵（行项×供应商）+ 截止倒计时徽章。
 // 只依赖状态最小面，结构与 rfq-console 的 RfqPageState 兼容（结构化子集，无循环依赖）。
 import { DataTable, StatusBadge, type DataTableColumn, type StatusTone } from '@kingturf/ui';
+import { useStackedCompare } from './compare-stack';
 import type { RfqConsolePorts, RfqRow } from './rfq-ports';
 
 export type RfqDetailState = Readonly<{
@@ -197,6 +198,10 @@ const QuoteCell = ({
   );
 };
 
+// 行项描述：矩阵首列与堆叠卡片同一文案。
+const lineText = (ports: RfqConsolePorts, line: Record<string, unknown>): string =>
+  `行 ${ports.textValue(line.lineNumber ?? line.line_number, '—')} · ${ports.textValue(line.sku, '—')} · ${ports.textValue(line.itemName, '—')} · 数量 ${ports.textValue(line.quantity, '—')}`;
+
 const matrixColumns = (
   state: RfqDetailState,
   quotes: readonly MatrixQuote[],
@@ -205,9 +210,7 @@ const matrixColumns = (
     key: 'line',
     header: '行项',
     field: (line) => state.ports.textValue(line.sku, ''),
-    render: (line) => (
-      <span>{`行 ${state.ports.textValue(line.lineNumber ?? line.line_number, '—')} · ${state.ports.textValue(line.sku, '—')} · ${state.ports.textValue(line.itemName, '—')} · 数量 ${state.ports.textValue(line.quantity, '—')}`}</span>
-    ),
+    render: (line) => <span>{lineText(state.ports, line)}</span>,
   },
   ...quotes.map(
     (quote, index): DataTableColumn<Record<string, unknown>> => ({
@@ -227,15 +230,64 @@ const matrixColumns = (
   ),
 ];
 
+// 窄容器下的矩阵替身：每家供应商一张卡，卡内列出行项（单元格复用 QuoteCell——单价/MOQ/
+// 交期与推荐、失效标记同矩阵）。卡片顺序、行项顺序与矩阵的列序、行序一致。
+export const SupplierQuoteCards = ({
+  state,
+  quotes,
+  lines,
+}: Readonly<{
+  state: RfqDetailState;
+  quotes: readonly MatrixQuote[];
+  lines: readonly Record<string, unknown>[];
+}>) => (
+  <div class="proc-compare-cards" data-testid="kt-rfq-quote-cards">
+    {quotes.map((quote, index) => (
+      <article
+        key={quote.id}
+        class="proc-quote-card"
+        data-testid="kt-rfq-quote-card"
+        data-quote={quote.id}
+      >
+        <header class="proc-quote-card-head">
+          <strong>{quote.supplierName}</strong>
+        </header>
+        <p class="proc-quote-card-meta">{`${quote.reference} · 收于 ${quote.receivedAt.slice(0, 10)} · 有效至 ${quote.validUntil || '—'}`}</p>
+        <ul class="proc-quote-lines">
+          {lines.map((line) => (
+            <li
+              key={state.ports.textValue(line.id, String(lineNumberOf(line)))}
+              class="proc-quote-line"
+              data-testid="kt-rfq-card-line"
+            >
+              <span class="proc-quote-line-item">{lineText(state.ports, line)}</span>
+              <QuoteCell
+                state={state}
+                quote={quote}
+                line={line}
+                recommended={recommendedOf(quotes, lineNumberOf(line)).includes(index)}
+              />
+            </li>
+          ))}
+        </ul>
+      </article>
+    ))}
+  </div>
+);
+
 // 报价对比矩阵：行 = 询价行项，列 = 供应商报价；单元格呈单价/MOQ/交期，推荐项标记。
+// 容器窄（手机抽屉）时矩阵读不了，改按供应商堆叠的卡片（TD-PROC-008）。
 export const QuoteComparison = ({ state }: Readonly<{ state: RfqDetailState }>) => {
+  // hooks 须先于任何早退：本组件经 JSX 渲染，调用顺序必须稳定。
+  const [measure, stacked] = useStackedCompare();
   const row = state.selected;
   if (!row) return null;
   const { ports } = state;
   const quotes = matrixQuotes(ports, quotesOf(row), state.now());
   if (quotes.length === 0) return null;
+  const lines = linesOf(row);
   return (
-    <div class="console-summary" data-testid="kt-rfq-quotes">
+    <div class="console-summary" data-testid="kt-rfq-quotes" ref={measure}>
       <p class="console-label">报价对比（行项 × 供应商）</p>
       <ul data-testid="kt-rfq-quote-legend">
         {quotes.map((quote) => (
@@ -247,15 +299,19 @@ export const QuoteComparison = ({ state }: Readonly<{ state: RfqDetailState }>) 
       <p>
         <span class="console-label">推荐 = 有效报价中单价最低（并列同标）</span>
       </p>
-      {/* 供应商列较多时在抽屉内横向滚动。 */}
-      <div style={{ overflowX: 'auto' }}>
-        <DataTable
-          columns={matrixColumns(state, quotes)}
-          rows={linesOf(row)}
-          rowId={(line) => ports.textValue(line.id, String(lineNumberOf(line)))}
-          caption="报价对比矩阵（单价 / MOQ / 交期）"
-        />
-      </div>
+      {stacked ? (
+        <SupplierQuoteCards state={state} quotes={quotes} lines={lines} />
+      ) : (
+        /* 供应商列较多时在抽屉内横向滚动。 */
+        <div style={{ overflowX: 'auto' }}>
+          <DataTable
+            columns={matrixColumns(state, quotes)}
+            rows={lines}
+            rowId={(line) => ports.textValue(line.id, String(lineNumberOf(line)))}
+            caption="报价对比矩阵（单价 / MOQ / 交期）"
+          />
+        </div>
+      )}
     </div>
   );
 };
