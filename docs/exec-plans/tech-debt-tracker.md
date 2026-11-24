@@ -1,5 +1,47 @@
 # 技术债台账（tech-debt-tracker）
 
+## 2026-11-24 U3-MFG-4 工单管理子批（TD-UI-001 进展；隔离工作协议；rebase @4c2a7ca）
+
+生产域第四子批完成：production-orders 域 Fastify 端点组（GET 列表视图轨迁移
+`listProductionOrderPage`（additive (created_at,id) 键集；state 筛选 + query 关键字；
+**无查询参数时与 legacy list 同一条 SQL、解析后逐键一致、无 nextCursor 键**）、GET
+详情 `findProductionOrder`（additive：根行+**工序进度**（完成口径同完工门禁 0042）+
+**报工时间线**+**物料需求与分配四态**（公式同制造成本模块；bom:read 门控未授权不查询））、
+POST 创建 legacy 同解析链（负例逐字一致）、PUT /:id/state 统一动作端点分派 legacy
+transition 同链（五动作与 legacy commands 表逐一对应——**零新写语义**；指令 B 段
+「分配/异常上报」legacy 不存在，未发明），registry 认领 +4 累计 **72 路径/19 文件
+（不含 registry）**；`PRODUCTION_ORDER_PROJECTION`（legacy list/分页/详情三处复用，
+与提取前 **1407 字节机械验证相等**，G3 白名单同 ITEM/BOM/ROUTING 先例）。**读方法落
+新建 production-read-repositories.ts**（生产仓储继承——工单依赖是
+dependencies.production，放制造仓储会迫使路由跨两仓编排，S3）。Preact 工单控制台
+（顶部状态汇总卡兼筛选/主表：工单号独占元素+**完工进度条**（aria progressbar，完成数
+=各工序累计良品最小值——additive 呈现口径）+状态徽章+行级下一步动作；详情抽屉：状态
+轨迹五节点/工序进度竖向步骤/物料需求分配徽章（仅在响应带键时渲染）/物料台账/报工
+时间线/成品序列/事件台账/车间执行入口；新建与流转抽屉载荷与 vanilla 表单逐字节一致）
+挂 production-workbench 面板内；vanilla 工单卡片退役（裁定 17）——
+production-orders-view.ts 删除、production-actions.ts 移除已迁移流转函数、style.css
+移除三组孤儿规则；**工序报工/领退料/成品卷入库三张表单属 MFG-5 报工入库范围，保留
+vanilla 原函数（180 行逐字节机械比对相等）经宿主挂进详情抽屉**，提交后整站重载收敛
+为一次。验证：API inject 25/25（含 parity：五流转与 legacy POST /:id/<command> 逐字节
+对拍）、真库集成 9/9（加性 SQL 全在真库执行；**真库首跑纠偏：legacy 投影数量列是
+JSON 数字，首版 z.string() 替身全绿真库即红——TD-TEST-022 教训兑现**；含真实仓储直通
+真实路由的 schema/写路径证明；**桥轨 wire 键序与 legacy 不同属既有性质**（zod 按
+schema 键序输出），解析后逐键一致，同法核验 manufacturing-routings 亦然——此前各批
+「逐字节一致」的成立层面相同）、f3 冻结 GET/POST production-orders re-pin（311/311）、
+组件 13/13、bootstrap 100/100（锚重钉：工单控制台页+独立宿主）、web 全量 759/759、
+API 全量 18003/18003；structure-gate 强制违规 0（详情抽屉首版 G5 209 行经门禁抓出后
+拆分区组件，未经红提交）；ci:local 干净提交快照 **6335c28** 隔离 worktree 实跑
+**EXIT=0**（API 18003/18003、Web 759/759、Python 演练 145 OK、coverage overall
+57911/70817·deficits 空、登录预算 JS 11751B——coverage head 字段机械确证，回执见证据
+文档 §6）；**e2e P1 本批实跑 11/11**（e2e-local 配方同容器栈；首轮 10/11 抓出 spec
+作用域错并领退料演示数据归属工单，拆分后全过）。**真浏览器走查抓出并修复 walk.mjs
+视口缺陷（3067496）**：newContext 缺 viewport 键静默回落 1280×720——**该配方入库以来
+桌面 1440 与移动 390 两档从未真正生效**，修复后两轮全站走查在真实视口下 40/40 全过
+（列表/抽屉四张截图经人工目检）。遗留如实登记：scripts/e2e-cdp/probes.mjs 两处选择器
+指向已退役卡片 DOM（手动 CDP 工具、不在 CI 门禁内，R4 登记不修）；MFG-5（报工入库）
+待指令。证据见
+[u3-mfg-4-production-orders-console-2026-11-24](../evidence/u3-mfg-4-production-orders-console-2026-11-24.md)。
+
 ## 2026-11-24 PROC-2 供应链域 UX 第二批：采购域子路由化与抽屉对比表堆叠卡片（TD-UI-001 进展；隔离工作协议；主协调复核后合并 `1bed454`）
 
 **范围 B（TD-PROC-010，行为变更：路由结构）**：`#/procurement` 由「四控制台竖排 + 两块 vanilla 台账」改为该域的**概览页**——顶部四张汇总卡（待准入供应商 / 询价进行中 / 待收采购单 / 待检库存，口径与文案逐字沿用）在目标子路由对当前账号可见时整卡是指向该路由的锚点，不可见时保持纯指标卡；「供应商报价」「批次库存台账」两块 vanilla 面板原样保留在下方。新增四条 AppRoute：`procurement/suppliers`（供应商与准入）、`procurement/rfqs`（询价管理）、`procurement/purchase-orders`（采购订单）、`procurement/goods-receipts`（收货管理），各承载一个控制台；侧栏「采购管理」升为独立分组（概览 + 四项）。**可见性按各控制台主数据源的读权限**注册（suppliers ← `supplier:read`，其余三条 ← `procurement:read`，与 readableCommercialSources 同口径），概览保留原前缀规则但不再连带放行子路由——库存控制员（仅 inventory:\*）只见概览、汇总卡不可点，直接访问子路由被导航兜底带回首页（真浏览器实证）。子路由各自的数据闭包均为概览闭包的子集，概览闭包与出站请求未变。四个控制台宿主自 console-entry.ts 迁出为 `console/<域>-host.ts`（TD-PROC-005；console-entry.ts 745→503 行，纯删 242 行），宿主节段自身成为路由视图。采购模板面板（「采购概览常用模板」）留在概览路由，没有扩散到子路由（待裁）。**范围 A（TD-PROC-008）**：询价「报价对比矩阵」与供应商「报价历史对比」在容器内容宽不超过 420px（手机抽屉）时改按供应商堆叠的卡片——每家供应商一张卡、卡内列出行项；宽度经 ResizeObserver 实测，测不到时保持矩阵（DOM 与此前逐字节一致，两份既有控制台测试零改动）。另：真浏览器对照 main 发现桌面 480px 抽屉里供应商对比表第一列仍是一字一行（「名称 + 徽章」横排不换行，`7be91d9` 管不到），已在域内做最小修复（徽章折行，单独提交，可单独丢弃）；桌面列宽偏挤为残余，是否设列最小宽度待裁。**零 API / 仓储 / 域层改动、零新写路径、零 packages/ui 改动；登录入口 JS 11751B 不变。** 提交（基线 `e0babf3`，经两次无冲突 rebase）：`35da63e` fix / `9af788f` refactor 纯搬移 / `6902b9e` feat / `5f1f73b` fix，共 21 文件 +1510/−355。web 749 条（本批新增 26，基线 723）；结构门禁强制违规 0、service-boundary 0。**真浏览器自测**（浏览器容器接入本会话 PG 容器的网络命名空间，Chromium，1440px 与 390px，全权限与库存权限两个合成账号；非主协调复验）：定向量测 30/30——侧栏分组、汇总卡口径与跳转、四子路由路由隔离、写后停留在子路由、桌面矩阵 / 手机卡片 / 抽屉开着活尺寸切换、库存权限不越权，三段流程零控制台报错零失败请求；e2e P1 以仓库原配置实跑三轮 11/11（32.2s / 32.1s / 31.8s）。e2e 契约：`p1-demo.spec.ts` 采购用例改按子路由逐条进入再断言（7 段文案正则未改），导航巡检两行未动。被修改的单测断言 2 处（均因结构变更，改后更严，无删除无弱化），改前改后见证据 §5。**台账**：TD-PROC-010 已修复待复核；TD-PROC-008 更新（窄屏已修，桌面列宽残余待裁）；TD-PROC-005 更新；新登记 TD-PROC-012（概览「待准入供应商」口径）、TD-TEST-025（CDP 探针采购分支过时）。**更正**：`inventory-register` 并非「库存只读呈现」——两块 vanilla 面板各带既有写表单（「＋ 登记供应商报价」「领用 / 调整」），本批按要求原样保留、代码未改。**ci:local**：`2c4d283`（基线 `e0babf3` + 本批五提交）在隔离 worktree 与专用 PG 上 **EXIT=0 / 710s**（12:16:29→12:28:19）——API 17969/17969、Web 749/749、UI 包 71/71、Python 发布演练 145 例 OK、coverage overall 56564/69416·domain 630/672·repositoryLines 10957/12878·deficits 空（head 记录 `2c4d283`）、登录预算 JS 11752B、structure-gate 强制违规 0（白名单 30）、service-boundary 0 违规、audit 无已知漏洞（日志 `/tmp/proc2-ci-1.log`）。**在最新 main 上的复测**：main 其后前进到 `cbb2fca`（`752119b` 表格字号修复、`8b3f24d` ASCII 单元格不折行）；在「main `cbb2fca` + 本批四个代码提交」的临时 worktree 上重跑，定向量测 30/30、e2e P1 三轮 11/11；最新 main 本身该供应商名仍是 12 行×1 字（`8b3f24d` 不覆盖返回元素的单元格）。**rebase 状态**：四个代码提交 rebase 到 `cbb2fca` 零冲突；文档提交在本文件一处冲突——main 的 `cbb2fca` 新增了更长的行，本表被 prettier 改为紧凑格式，与我在旧格式上的行改动相撞。按「rebase 出现冲突，停下报告，不要自行解决」未自行处理，分支停在基线 `e0babf3`；解法为以 main 的表为准并重新应用五处行改动，待主协调裁定。证据见 [proc-2-anatomy-layout-2026-11-24](../evidence/proc-2-anatomy-layout-2026-11-24.md)。
