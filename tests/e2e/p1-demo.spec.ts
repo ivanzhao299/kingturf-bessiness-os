@@ -391,6 +391,8 @@ test('shows closed production execution with routing, material, reports, and ser
   await expect(drawer.locator('.com-flow-step[data-state="done"]')).toHaveCount(3);
   await expect(drawer.getByText('领料 1287.5')).toBeVisible();
   await expect(drawer.getByTestId('kt-wo-roll')).toHaveText(/ROLL-KT-2026-001 · 1000.*待检隔离/u);
+  // U3-MFG-5：已关闭的工单没有任何车间执行入口（出现条件与 legacy 逐条一致）。
+  await expect(drawer.getByTestId('kt-wo-execution')).toHaveCount(0);
   const track = drawer.getByTestId('kt-wo-state-track');
   await expect(track.locator('.po-state-node')).toHaveCount(5);
   await expect(track.locator('[data-state="current"]')).toHaveText('已关闭');
@@ -408,4 +410,9 @@ test('shows closed production execution with routing, material, reports, and ser
   await expect(returnDrawer).toBeVisible();
   await expect(returnDrawer.getByText('领料 10')).toBeVisible();
   await expect(returnDrawer.getByText('退料 2')).toBeVisible();
+  // U3-MFG-5（只读）：进行中且已有领退料的工单出现「工序报工」「领料/退料」入口；没有报工
+  // 记录，所以「成品卷入库」不出现（legacy 出现条件逐条一致；表单已迁入控制台抽屉）。
+  await expect(returnDrawer.getByTestId('kt-wo-report-open')).toBeVisible();
+  await expect(returnDrawer.getByTestId('kt-wo-material-open')).toBeVisible();
+  await expect(returnDrawer.getByTestId('kt-wo-output-open')).toHaveCount(0);
 });
