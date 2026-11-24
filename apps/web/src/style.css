@@ -3944,40 +3944,8 @@ button {
   border-radius: 20px;
   background: linear-gradient(145deg, #f8fbf9, #eef5f1);
 }
-/* U3-MFG-2：物料/BOM 卡退役后 vanilla 网格仅余工艺路线一卡（U3-MFG-3 迁移）。 */
-.manufacturing-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
-}
-.manufacturing-card {
-  padding: 18px;
-  border-radius: 16px;
-  background: #fff;
-  box-shadow: 0 8px 24px rgb(33 82 60 / 8%);
-}
-.manufacturing-version {
-  display: grid;
-  gap: 6px;
-  padding: 12px 0;
-  border-bottom: 1px solid #e5ece8;
-}
-.manufacturing-form {
-  display: grid;
-  gap: 10px;
-  margin-top: 14px;
-}
-.manufacturing-form textarea {
-  min-height: 230px;
-  width: 100%;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 12px;
-}
-@media (max-width: 900px) {
-  .manufacturing-grid {
-    grid-template-columns: 1fr;
-  }
-}
+/* U3-MFG-3：物料/BOM/工艺路线卡全部退役（U3-MFG-1/2/3），vanilla 网格与其专用
+   规则一并移除；制造主数据区由三个 Preact 控制台承载（manufacturing-console.css）。 */
 .procurement-workbench {
   margin-top: 24px;
   padding: 24px;

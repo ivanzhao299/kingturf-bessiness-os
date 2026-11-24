@@ -233,6 +233,11 @@ const SQL_ENUM_NAMES = new Set([
   // U3-MFG-2（同 ITEM 先例）：BOM 详情行项投影（组件含物料根/类型/单位 + 替代料含
   // 换算系数），版本行项与层级树共用；行项键集经 ANY($N::uuid[]) 参数化。
   'BOM_LINE_DETAIL_PROJECTION',
+  // U3-MFG-3（生产域迁移，同 ITEM/BOM 先例）：工艺路线版本行投影（to_jsonb 版本列 +
+  // 路线头列 + operations 聚合按 sequence 升序）提取为模块常量供三处复用（list/
+  // listRoutingPage/findRouting），SQL 字节与提取前逐字一致；请求值（status/query/
+  // productType/cursor/limit）一律经 values.push 参数化。
+  'ROUTING_VERSION_PROJECTION',
   // B2（TD-API-003）分页 keyset 游标片段：cursor 值一律经 values.push 参数化（$N），
   // 变量本体只含代码内表/列名与占位符；2026-11-18 随 18 端点分页批次登记。
   'keyset',

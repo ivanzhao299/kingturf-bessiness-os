@@ -894,3 +894,196 @@ describe('U3-MFG-2 manufacturing bom page and detail real PostgreSQL contracts',
     expect(foreign.items.map((row) => id(row, 'code'))).toEqual(['BM-B-FOREIGN']);
   });
 });
+
+// U3-MFG-3（ADR-0015）：工艺路线分页/详情 additive 只读仓储的真实 PG 契约——独立
+// owned schema；覆盖工序 sequence 升序、多工序、多版本、筛选与键集游标、租户隔离。
+describe('U3-MFG-3 manufacturing routing page and detail real PostgreSQL contracts', () => {
+  let fixture: Awaited<ReturnType<typeof ownedPostgres>> | undefined;
+  let repository: PostgresManufacturingRepository;
+  const state = () => {
+    if (!fixture) throw new Error('Owned fixture not initialized');
+    return fixture;
+  };
+  const item = async (
+    sku: string,
+    itemType: string,
+    context = state().context,
+  ): Promise<JsonObject> =>
+    repository.createItem(
+      {
+        sku,
+        name: sku,
+        itemType,
+        baseUnitCode: 'KG',
+        specification: {},
+        effectiveAt: '2026-01-01T00:00:00Z',
+        publish: true,
+      },
+      context,
+      randomUUID(),
+    );
+  const id = (value: JsonObject, key = 'id'): string => {
+    const found = value[key];
+    if (typeof found !== 'string') throw new Error('Fixture identifier missing');
+    return found;
+  };
+  const textOf = (value: unknown): string =>
+    typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+  const routingByCode = (code: string, version?: number): JsonObject => {
+    const row = routingPage.items.find(
+      (candidate) =>
+        id(candidate, 'code') === code && (version === undefined || candidate.version === version),
+    );
+    if (!row) throw new Error(`fixture routing missing: ${code}`);
+    return row;
+  };
+  const routing = async (
+    code: string,
+    product: JsonObject,
+    operations: readonly Record<string, unknown>[],
+    publish = true,
+    context = state().context,
+  ): Promise<JsonObject> =>
+    repository.createRouting(
+      {
+        code,
+        name: code,
+        productItemId: id(product, 'itemId'),
+        productItemVersionId: id(product),
+        effectiveAt: '2026-01-01T00:00:00Z',
+        publish,
+        operations: operations as never,
+      },
+      context,
+      randomUUID(),
+    );
+  const op = (sequence: number, operationCode: string, run: string) => ({
+    operationCode,
+    name: operationCode,
+    workCenterCode: `WC-${operationCode}`,
+    sequence,
+    setupMinutes: '10',
+    runMinutesPerUnit: run,
+    instructions: { station: sequence },
+  });
+  let routingPage: { items: readonly JsonObject[]; nextCursor: string | null };
+
+  beforeAll(async () => {
+    fixture = await ownedPostgres('manufacturing_routings_pg');
+    repository = new PostgresManufacturingRepository(fixture.db);
+    const finished = await item('RT-FG', 'FINISHED_GOOD');
+    const semi = await item('RT-SEMI', 'SEMI_FINISHED');
+    await routing('RT-R-MAIN', finished, [
+      op(30, 'PACK', '0.2'),
+      op(10, 'TUFT', '0.8'),
+      op(20, 'COAT', '0.5'),
+    ]);
+    await routing('RT-R-SEMI', semi, [op(10, 'TUFT', '0.4')]);
+    await routing('RT-R-DRAFT', finished, [op(10, 'TUFT', '0.9')], false);
+    await routing(
+      'RT-R-FOREIGN',
+      await item('RT-FGN', 'FINISHED_GOOD', fixture.otherContext),
+      [op(10, 'PACK', '0.1')],
+      true,
+      fixture.otherContext,
+    );
+    routingPage = await repository.listRoutingPage(state().context, {});
+  }, 60_000);
+  afterAll(async () => {
+    await fixture?.close();
+  });
+
+  it('listRoutingPage with no filter is byte-identical to the legacy list and emits no cursor', async () => {
+    const { context } = state();
+    expect(routingPage).toEqual({
+      items: await repository.list('routings', context),
+      nextCursor: null,
+    });
+    expect(routingPage.items.map((row) => `${id(row, 'code')}.${textOf(row.version)}`)).toEqual([
+      'RT-R-DRAFT.1',
+      'RT-R-MAIN.1',
+      'RT-R-SEMI.1',
+    ]);
+    // 视图轨行保持 legacy 形态：operations 按 sequence 升序（插入序 30/10/20 → 10/20/30）。
+    const main = routingByCode('RT-R-MAIN');
+    expect((main.operations as JsonObject[]).map((operation) => operation.sequence)).toEqual([
+      10, 20, 30,
+    ]);
+  });
+
+  it('listRoutingPage filters by status, literal keyword and product type; keyset walks once', async () => {
+    const { context } = state();
+    const codes = (page: { items: readonly JsonObject[] }) =>
+      page.items.map((row) => `${id(row, 'code')}.${textOf(row.version)}`);
+    expect(codes(await repository.listRoutingPage(context, { status: 'DRAFT' }))).toEqual([
+      'RT-R-DRAFT.1',
+    ]);
+    expect(codes(await repository.listRoutingPage(context, { query: 'semi' }))).toEqual([
+      'RT-R-SEMI.1',
+    ]);
+    expect(
+      codes(await repository.listRoutingPage(context, { productType: 'SEMI_FINISHED' })),
+    ).toEqual(['RT-R-SEMI.1']);
+    expect(
+      codes(await repository.listRoutingPage(context, { productType: 'FINISHED_GOOD' })),
+    ).toEqual(['RT-R-DRAFT.1', 'RT-R-MAIN.1']);
+    const walked: string[] = [];
+    let cursor: string | undefined;
+    for (;;) {
+      const page = await repository.listRoutingPage(context, {
+        limit: 2,
+        ...(cursor ? { cursor } : {}),
+      });
+      walked.push(...page.items.map((row) => `${id(row, 'code')}.${textOf(row.version)}`));
+      if (page.nextCursor === null) break;
+      expect(page.items).toHaveLength(2);
+      cursor = page.nextCursor;
+    }
+    expect(walked).toEqual(
+      routingPage.items.map((row) => `${id(row, 'code')}.${textOf(row.version)}`),
+    );
+    await expect(repository.listRoutingPage(context, { cursor: 'bad' })).rejects.toMatchObject({
+      code: 'invalid_request',
+    });
+    await expect(
+      repository.listRoutingPage({ ...context, scopes: ['TEAM'] }, {}),
+    ).rejects.toMatchObject({ code: 'forbidden' });
+  });
+
+  it('findRouting returns root, product and every version with sequence-ordered operations', async () => {
+    const { context } = state();
+    const detail = await repository.findRouting(
+      id(routingByCode('RT-R-MAIN'), 'routingId'),
+      context,
+    );
+    expect(detail).toMatchObject({
+      code: 'RT-R-MAIN',
+      product: { sku: 'RT-FG', itemType: 'FINISHED_GOOD', baseUnitCode: 'KG' },
+    });
+    const versions = (detail?.versions ?? []) as JsonObject[];
+    expect(versions.map((version) => version.version)).toEqual([1]);
+    const operations = versions[0]?.operations as JsonObject[];
+    expect(operations.map((operation) => textOf(operation.operation_code))).toEqual([
+      'TUFT',
+      'COAT',
+      'PACK',
+    ]);
+    expect(operations[0]).toMatchObject({
+      sequence: 10,
+      work_center_code: 'WC-TUFT',
+      setup_minutes: 10,
+      run_minutes_per_unit: 0.8,
+      instructions: { station: 10 },
+    });
+  });
+
+  it('findRouting hides other tenants and unknown ids', async () => {
+    const { context, otherContext } = state();
+    expect(await repository.findRouting(randomUUID(), context)).toBeNull();
+    expect(
+      await repository.findRouting(id(routingByCode('RT-R-MAIN'), 'routingId'), otherContext),
+    ).toBeNull();
+    const foreign = await repository.listRoutingPage(otherContext, {});
+    expect(foreign.items.map((row) => id(row, 'code'))).toEqual(['RT-R-FOREIGN']);
+  });
+});

@@ -85,6 +85,33 @@ export const parseBomCursor = (cursor: string): readonly [string, number] => {
     throw new DomainError('invalid_request', 'cursor must be an opaque pagination token');
   return [match[1] ?? '', Number(match[2])];
 };
+// U3-MFG-3（ADR-0015）：工艺路线版本行投影（to_jsonb 版本列 + 路线头列 + operations
+// 聚合按 sequence 升序）——list 与 additive 分页/详情共用同一片段（SQL 字节与提取前
+// 逐字一致，行为守恒）。
+export const ROUTING_VERSION_PROJECTION = `to_jsonb(v)||jsonb_build_object('routingId',r.id,'code',r.code,'name',r.name,'productItemId',r.product_item_id,'operations',coalesce((SELECT jsonb_agg(to_jsonb(op) ORDER BY op.sequence) FROM manufacturing_routing_operations op WHERE op.routing_version_id=v.id AND op.tenant_id=v.tenant_id),'[]'::jsonb))`;
+
+// U3-MFG-3：工艺路线分页只读过滤器——limit 缺省=全量（legacy list 无 LIMIT，行为
+// 守恒）；cursor=(code,version) 复合键集（排序键 ORDER BY r.code,v.version DESC 与
+// list 一致）；productType 按产品物料类型过滤（左树「成品/半成品」）。
+export type RoutingPageFilter = Readonly<{
+  limit?: number;
+  cursor?: string;
+  status?: ManufacturingVersionStatus;
+  query?: string;
+  productType?: BomProductType;
+}>;
+export type RoutingPage = Readonly<{ items: readonly JsonObject[]; nextCursor: string | null }>;
+
+// (code,version) 键集令牌（code 经 assertStableCode 不含点）；工艺路线游标独立构造
+// 以保持各域自包含。
+export const routingCursor = (code: string, version: number): string =>
+  `${code}.${String(version)}`;
+export const parseRoutingCursor = (cursor: string): readonly [string, number] => {
+  const match = /^(.+)\.(\d{1,9})$/u.exec(cursor);
+  if (!match || !Number.isSafeInteger(Number(match[2])))
+    throw new DomainError('invalid_request', 'cursor must be an opaque pagination token');
+  return [match[1] ?? '', Number(match[2])];
+};
 
 // (sku,version) 键集令牌：<sku>.<version>（sku 经 assertStableCode 不含点，末位点即分隔）。
 export const itemCursor = (sku: string, version: number): string => `${sku}.${String(version)}`;
@@ -102,7 +129,7 @@ export class PostgresManufacturingRepository {
     const queries = {
       items: `SELECT ${ITEM_VERSION_PROJECTION} item FROM manufacturing_item_versions v JOIN manufacturing_items i ON i.id=v.item_id AND i.tenant_id=v.tenant_id WHERE v.tenant_id=$1 ORDER BY i.sku,v.version DESC`,
       boms: `SELECT ${BOM_VERSION_PROJECTION} item FROM manufacturing_bom_versions v JOIN manufacturing_boms b ON b.id=v.bom_id AND b.tenant_id=v.tenant_id WHERE v.tenant_id=$1 ORDER BY b.code,v.version DESC`,
-      routings: `SELECT to_jsonb(v)||jsonb_build_object('routingId',r.id,'code',r.code,'name',r.name,'productItemId',r.product_item_id,'operations',coalesce((SELECT jsonb_agg(to_jsonb(op) ORDER BY op.sequence) FROM manufacturing_routing_operations op WHERE op.routing_version_id=v.id AND op.tenant_id=v.tenant_id),'[]'::jsonb)) item FROM manufacturing_routing_versions v JOIN manufacturing_routings r ON r.id=v.routing_id AND r.tenant_id=v.tenant_id WHERE v.tenant_id=$1 ORDER BY r.code,v.version DESC`,
+      routings: `SELECT ${ROUTING_VERSION_PROJECTION} item FROM manufacturing_routing_versions v JOIN manufacturing_routings r ON r.id=v.routing_id AND r.tenant_id=v.tenant_id WHERE v.tenant_id=$1 ORDER BY r.code,v.version DESC`,
     } as const;
     return (
       await this.db.query<{ item: JsonObject }>(queries[view], [context.actor.companyId])
@@ -438,6 +465,76 @@ export class PostgresManufacturingRepository {
       )
     ).rows;
     return rows.map((row) => row.item);
+  }
+
+  // U3-MFG-3（ADR-0015）：工艺路线 keyset cursor 分页只读（additive）——投影与排序键
+  // （code, version DESC）与 list('routings') 一致；无 limit 时全量（nextCursor 恒
+  // null——默认路径与 legacy 逐字节一致），显式 limit 才启用分页窗口。筛选值与游标键
+  // 一律经 values.push 参数化（$N）。
+  public async listRoutingPage(context: Context, filter: RoutingPageFilter): Promise<RoutingPage> {
+    company(context);
+    const values: unknown[] = [context.actor.companyId];
+    const add = (value: unknown): string => {
+      values.push(value);
+      return `$${String(values.length)}`;
+    };
+    const clauses: string[] = [];
+    if (filter.status !== undefined) clauses.push(`v.status=${add(filter.status)}`);
+    // 关键字：路线编码/名称大小写不敏感子串（strpos 无通配符语义）。
+    if (filter.query !== undefined)
+      clauses.push(`strpos(lower(r.code||' '||r.name),lower(${add(filter.query)}))>0`);
+    // 左树「成品/半成品」按产品物料类型过滤。
+    if (filter.productType !== undefined) clauses.push(`pi.item_type=${add(filter.productType)}`);
+    let keyset = '';
+    if (filter.cursor !== undefined) {
+      const [code, version] = parseRoutingCursor(filter.cursor);
+      values.push(code);
+      values.push(version);
+      keyset = ` AND (r.code>$${String(values.length - 1)} OR (r.code=$${String(values.length - 1)} AND v.version<$${String(values.length)}))`;
+    }
+    let limitClause = '';
+    let limit: number | null = null;
+    if (filter.limit !== undefined) {
+      limit = Math.min(Math.max(filter.limit, 1), 100);
+      values.push(limit + 1);
+      limitClause = ` LIMIT $${String(values.length)}`;
+    }
+    const rows = (
+      await this.db.query<{ item: JsonObject }>(
+        `SELECT ${ROUTING_VERSION_PROJECTION} item FROM manufacturing_routing_versions v JOIN manufacturing_routings r ON r.id=v.routing_id AND r.tenant_id=v.tenant_id JOIN manufacturing_items pi ON pi.id=r.product_item_id AND pi.tenant_id=r.tenant_id WHERE v.tenant_id=$1${clauses.length > 0 ? ` AND ${clauses.join(' AND ')}` : ''}${keyset} ORDER BY r.code,v.version DESC${limitClause}`,
+        values,
+      )
+    ).rows;
+    const items = (limit === null ? rows : rows.slice(0, limit)).map((row) => row.item);
+    const last = limit !== null && rows.length > limit ? items[limit - 1] : null;
+    return {
+      items,
+      nextCursor:
+        typeof last?.code === 'string' && typeof last.version === 'number'
+          ? routingCursor(last.code, last.version)
+          : null,
+    };
+  }
+
+  // U3-MFG-3（ADR-0015）：工艺路线详情只读（additive）——根行 + 产品信息 + 全部版本
+  //（每版本工序按 sequence 升序，list 同投影）。不存在或跨租户返回 null。
+  public async findRouting(routingId: string, context: Context): Promise<JsonObject | null> {
+    company(context);
+    const scope: readonly unknown[] = [context.actor.companyId, routingId];
+    const root = (
+      await this.db.query<{ item: JsonObject }>(
+        `SELECT jsonb_build_object('id',r.id,'code',r.code,'name',r.name,'productItemId',r.product_item_id,'created_at',r.created_at,'product',jsonb_build_object('itemId',pi.id,'sku',pi.sku,'name',pi.name,'itemType',pi.item_type,'baseUnitCode',pi.base_unit_code)) item FROM manufacturing_routings r JOIN manufacturing_items pi ON pi.id=r.product_item_id AND pi.tenant_id=r.tenant_id WHERE r.tenant_id=$1 AND r.id=$2`,
+        scope,
+      )
+    ).rows[0]?.item;
+    if (!root) return null;
+    const versions = (
+      await this.db.query<{ item: JsonObject }>(
+        `SELECT ${ROUTING_VERSION_PROJECTION} item FROM manufacturing_routing_versions v JOIN manufacturing_routings r ON r.id=v.routing_id AND r.tenant_id=v.tenant_id WHERE v.tenant_id=$1 AND v.routing_id=$2 ORDER BY v.version DESC`,
+        scope,
+      )
+    ).rows.map((row) => row.item);
+    return { ...root, versions };
   }
 
   public createItem(
