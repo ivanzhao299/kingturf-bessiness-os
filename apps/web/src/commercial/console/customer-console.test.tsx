@@ -656,3 +656,65 @@ describe('CRM-UX 抽屉操作区', () => {
     expect(section(host, 'kt-customer-360').textContent).not.toContain('Buyer Zhang');
   });
 });
+// 回归（TD-WF-004 的调用侧，WF-B 接入时发现）：添加联系人 / 添加活动两个表单此前把 Promise
+// 用 void 丢掉，FormSection 拿不到它——提交期间既不置灰也不拦重入。
+describe('客户行内表单与防重复提交（FormSection 要拿到 onSubmit 的 Promise）', () => {
+  const submitButtonOf = (host: TestElement): TestElement =>
+    element(element(host.querySelector('.detail-drawer')).querySelector('button[type="submit"]'));
+
+  it.each([
+    [
+      'customer:update',
+      'kt-customer-add-contact',
+      'createContact',
+      '添加联系人',
+      (host: TestElement) => {
+        fillField(host, 'name', '张工');
+        fillField(host, 'email', 'zhang@example.test');
+        fillSelect(host, 'primary', 'false');
+      },
+    ],
+    [
+      'customer-activity:create',
+      'kt-customer-add-activity',
+      'createActivity',
+      '添加活动',
+      (host: TestElement) => {
+        fillSelect(host, 'activityType', '电话');
+        fillField(host, 'summary', '电话回访');
+      },
+    ],
+  ] as const)(
+    '$3：保存未返回前再次点击提交只提交一次；失败后可重试',
+    async (permission, openTestid, portName, _label, fill) => {
+      let fail: (reason: Error) => void = () => undefined;
+      const port = vi.fn(
+        () =>
+          new Promise<null>((_resolve, reject) => {
+            fail = reject;
+          }),
+      );
+      const host = mount(portsFor([permission], { [portName]: port }));
+      await openFirst(host);
+      element(host.querySelector(`[data-testid="${openTestid}"]`)).click();
+      await flush();
+      fill(host);
+      await flush();
+      const submit = submitButtonOf(host);
+      // 双击：两次点击之间不让出事件循环（重渲染尚未发生，disabled 还没来得及生效）。
+      submit.click();
+      submit.click();
+      await flush();
+      expect(port).toHaveBeenCalledTimes(1);
+      expect(submit.disabled).toBe(true);
+      fail(new Error('网络错误'));
+      await flush();
+      await flush();
+      // 失败后表单留在原处，按钮恢复可点，可以再试。
+      expect(submit.disabled).toBe(false);
+      submit.click();
+      await flush();
+      expect(port).toHaveBeenCalledTimes(2);
+    },
+  );
+});

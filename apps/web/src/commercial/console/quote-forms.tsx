@@ -33,9 +33,11 @@ const ApproveForm = ({ state }: Readonly<{ state: QuotePageState }>) => (
     description="审批决定和理由将进入不可变证据链。"
     fields={[{ name: 'reason', label: '审批意见', type: 'textarea', required: true }]}
     submitLabel="确认批准"
-    onSubmit={(values) => {
-      if (state.selected) void state.runCommand(state.selected, 'approve', values);
-    }}
+    // 把 Promise 交还给 FormSection：提交期间它据此置灰按钮并拦下重复提交（TD-WF-004）；
+    // 批准与签发都是不可逆动作。
+    onSubmit={(values) =>
+      state.selected ? state.runCommand(state.selected, 'approve', values) : undefined
+    }
   />
 );
 
@@ -45,9 +47,10 @@ const IssueForm = ({ state }: Readonly<{ state: QuotePageState }>) => (
     description="签发后将生成只读快照，后续合同只能引用该快照。"
     fields={[]}
     submitLabel="确认签发"
-    onSubmit={(values) => {
-      if (state.selected) void state.runCommand(state.selected, 'issue', values);
-    }}
+    // 同上：把 Promise 交还给 FormSection。
+    onSubmit={(values) =>
+      state.selected ? state.runCommand(state.selected, 'issue', values) : undefined
+    }
   />
 );
 

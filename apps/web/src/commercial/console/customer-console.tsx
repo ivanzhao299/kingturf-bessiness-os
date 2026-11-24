@@ -258,9 +258,8 @@ const CustomerDrawer = ({ state }: Readonly<{ state: CustomerPageState }>) => {
             } satisfies FormSectionField,
           ]}
           submitLabel="保存联系人"
-          onSubmit={(values) => {
-            void state.runAddContact(values);
-          }}
+          // 把 Promise 交还给 FormSection：提交期间它据此置灰按钮并拦下重复提交（TD-WF-004）。
+          onSubmit={(values) => state.runAddContact(values)}
         />
       ) : null}
       {state.activityForm ? (
@@ -286,9 +285,8 @@ const CustomerDrawer = ({ state }: Readonly<{ state: CustomerPageState }>) => {
             ] satisfies readonly FormSectionField[]
           }
           submitLabel="保存活动"
-          onSubmit={(values) => {
-            void state.runAddActivity(values);
-          }}
+          // 同上：把 Promise 交还给 FormSection。
+          onSubmit={(values) => state.runAddActivity(values)}
         />
       ) : null}
       {state.view360 ? (
