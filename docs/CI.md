@@ -65,13 +65,15 @@ Harness 施工已归档；本项目是纯 Web monorepo，非 Tauri，不生成�
 2026-11-20，A-F3a 供应链加固（审计 A3/A4）：全部 7 个 workflow 的第三方 action（pnpm/action-setup v6.1.1、docker/setup-buildx-action v3.12.0、docker/login-action v3.7.0、docker/build-push-action v6.19.2、webfactory/ssh-agent v0.10.0）从 tag 改钉 full-length commit SHA；一方 `actions/*` 前缀按 GitHub 官方建议保留移动主版本 tag。静态断言 `tests/workflows/actions-sha-pinning.test.mjs` 接入 ci.yml quality job（先于 ci:local 执行），防止钉扎退化回 tag。
 
 2026-10-16，2e护栏先行：ci:local在structure:check后新增service:check，test:release-guardrails新增Service边界真实CLI自测。无workflow改动，无业务迁移；范围与限制见[Service边界护栏](engineering/service-boundary-guard.md)。旧CI审计记录是历史快照，当前执行顺序以package.json为准（14步）。
+2026-11-24，多会话隔离运行（主协调，TD-TEST-021）：本地 `pnpm ci:local` 可在独立 git worktree + 一次性 PostgreSQL 容器上并行运行。此前发布演练测试在无本机 psql 客户端时把 `docker exec` 的容器名写死为 compose 服务，`DATABASE_URL` 指向其他实例即跨实例混用（`FATAL 3D000`），并发运行的演练库也都落在同一主容器里。`14d8e74` 改为按 `DATABASE_URL` 端口解析容器：5432 端口（GitHub CI 的服务容器端口）行为不变，其他端口找不到容器时演练显式跳过。配方：`git worktree add <dir> <sha>` 后在其中 `pnpm install --frozen-lockfile`；`docker run -d --name <name> -e POSTGRES_DB=<含 test 段的库名> -e POSTGRES_USER=kingturf -e POSTGRES_PASSWORD=<口令> -p 127.0.0.1:<独占端口>:5432 postgres:17.7-alpine3.23`；`NODE_ENV=test DATABASE_URL=postgresql://…@localhost:<独占端口>/<库名> pnpm ci:local`。首次合跑 UX 波次的集成 回执：`14d8e74` EXIT=0 / 649s（15 步全过），见台账 TD-TEST-021 所在段。workflow 零改动。
 
-| 日期       | 变更                                                                | 原因                                                                                      |
-| ---------- | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| 2026-11-20 | A-F3c：release-images 加 trivy HIGH+ 拦截、SBOM/provenance=max      | 审计 A3 P1-4：发布镜像无 CVE 扫描/SBOM/provenance attestation                             |
-| 2026-11-20 | A-F3b：新增 codeql.yml SAST（TS+actions 双语言矩阵）                | 审计 A3 P1-3：无 SAST；public repo CodeQL 免费可用                                        |
-| 2026-11-20 | A-F3a：第三方 workflow action 全量钉 commit SHA + ci.yml 静态断言   | 审计 A3/A4 供应链风险：移动 tag 可被上游重指，SHA 钉扎不可变                              |
-| 2026-11-19 | 前端引入组件层框架（§1「运行时依赖仅 pg」自 U1 起为历史时点）       | [ADR-0014](adr/0014-frontend-component-layer-and-framework.md)：pg+preact+@preact/signals |
-| 2026-10-12 | 建档：落盘框架判定（其他类型/非 Tauri）与现有 CI 审计结论           | Harness 改造阶段 1 产出物（规则 §5 阶段 1 / §3.4）                                        |
-| 2026-10-12 | 修正 §4 表述：「tag/dispatch」改为「仅 workflow_dispatch 指定 SHA」 | 人工审核 P2：实际 workflow 无 tag 触发，原表述会误导后续会话补出不存在的 tag 发布链路     |
-| 2026-10-12 | 阶段 3 门禁经 ci:local 脚本链接入（workflow 零改动）                | 规则 §5 阶段 3；门禁清单见 docs/GATES.md                                                  |
+| 日期       | 变更                                                                                                        | 原因                                                                                      |
+| ---------- | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| 2026-11-24 | 本地 ci:local 支持独立 worktree + 一次性 PG 容器并行运行；发布演练按 DATABASE_URL 端口解析容器（`14d8e74`） | 并发 CI 的演练库互相删除、`DATABASE_URL` 与演练容器跨实例混用（TD-TEST-021）              |
+| 2026-11-20 | A-F3c：release-images 加 trivy HIGH+ 拦截、SBOM/provenance=max                                              | 审计 A3 P1-4：发布镜像无 CVE 扫描/SBOM/provenance attestation                             |
+| 2026-11-20 | A-F3b：新增 codeql.yml SAST（TS+actions 双语言矩阵）                                                        | 审计 A3 P1-3：无 SAST；public repo CodeQL 免费可用                                        |
+| 2026-11-20 | A-F3a：第三方 workflow action 全量钉 commit SHA + ci.yml 静态断言                                           | 审计 A3/A4 供应链风险：移动 tag 可被上游重指，SHA 钉扎不可变                              |
+| 2026-11-19 | 前端引入组件层框架（§1「运行时依赖仅 pg」自 U1 起为历史时点）                                               | [ADR-0014](adr/0014-frontend-component-layer-and-framework.md)：pg+preact+@preact/signals |
+| 2026-10-12 | 建档：落盘框架判定（其他类型/非 Tauri）与现有 CI 审计结论                                                   | Harness 改造阶段 1 产出物（规则 §5 阶段 1 / §3.4）                                        |
+| 2026-10-12 | 修正 §4 表述：「tag/dispatch」改为「仅 workflow_dispatch 指定 SHA」                                         | 人工审核 P2：实际 workflow 无 tag 触发，原表述会误导后续会话补出不存在的 tag 发布链路     |
+| 2026-10-12 | 阶段 3 门禁经 ci:local 脚本链接入（workflow 零改动）                                                        | 规则 §5 阶段 3；门禁清单见 docs/GATES.md                                                  |
