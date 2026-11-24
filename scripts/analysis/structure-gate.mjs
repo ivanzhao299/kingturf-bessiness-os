@@ -40,6 +40,10 @@ const NESTING_EXTRA = new Map(
     'commission-repositories.ts',
     'contract-document-repositories.ts',
     'manufacturing-repositories.ts',
+    // U3-MFG-3（隔离协议批）：制造域 additive 只读仓储自 manufacturing-repositories
+    // 按 G1 拆分迁出（方法体/投影 SQL 逐字节迁移，行为守恒）——继承父条目的存量
+    // 嵌套热点豁免；同到期批次（分域 handler 化时与父文件一并压平）。
+    'manufacturing-read-repositories.ts',
     'mrp-repositories.ts',
     'order-360-repositories.ts',
     'procurement-repositories.ts',
