@@ -248,7 +248,8 @@ describe('TD-WF-013 correctable input errors reach 4xx against real PostgreSQL',
     expect(await approvalCount()).toBe(before + 1);
   });
 
-  it('the legacy POST /approve track is untouched: the same self-approval there is still 500 (out of scope, tracked separately)', async () => {
+  // TD-WF-013 相邻情形（主协调裁定一并映射）：legacy 审批轨与桥轨 PUT state 提示一致。
+  it('the legacy POST /approve track maps the same self-approval to 403 with the same explanation; nothing is written', async () => {
     const evaluator = await session(state().context.actor.employeeId);
     const decisionId = await evaluateAsOwner(evaluator);
     const before = await approvalCount();
@@ -259,13 +260,18 @@ describe('TD-WF-013 correctable input errors reach 4xx against real PostgreSQL',
       key: randomUUID(),
       body: { decision: 'APPROVED', reason: 'Trying to approve my own evaluation' },
     });
-    expect(response.statusCode).toBe(500);
-    expectError(response, { code: 'internal_error', message: 'Internal server error' });
-    // 数据库照样拒绝（职责分离没有被绕过），只是这条轨没有映射成 4xx。
+    expect(response.statusCode).toBe(403);
+    expectError(response, {
+      code: 'forbidden',
+      message: '职责分离：发起信用评估的人不能审批这条信用决定，请由另一位审批人处理',
+    });
+    expect(JSON.stringify(response.body)).not.toMatch(/credit evaluator|PL\/pgSQL|RAISE/u);
+    // 数据库照样拒绝（职责分离没有被绕过），只是现在翻译成了带说明的 403。
     expect(await approvalCount()).toBe(before);
   });
 
-  it('a different unique violation on the same endpoint (same normalized name) is still 500 — out of scope, tracked separately', async () => {
+  // TD-WF-013 相邻情形（主协调裁定一并映射）：同一端点上的另一个唯一约束。
+  it('a duplicate customer name (normalized-name unique index) → 409「客户名称已存在」; nothing is written', async () => {
     const { db, context } = state();
     const existing = (
       await db.query<{ name: string }>('SELECT name FROM customers WHERE id=$1 AND tenant_id=$2', [
@@ -274,15 +280,21 @@ describe('TD-WF-013 correctable input errors reach 4xx against real PostgreSQL',
       ])
     ).rows[0];
     if (!existing) throw new Error('Fixture customer missing');
+    const before = await customerCount();
     const token = await session(context.actor.employeeId);
+    // 名称两侧加空白、换一个全新的客户编号：规范化后与已有客户同名。
     const response = await dispatch({
       token,
       method: 'POST',
       pathname: '/api/v1/customers',
       body: { name: `  ${existing.name}  `, customerNumber: 'CUST-WFA-NEW-NUMBER' },
     });
-    expect(response.statusCode).toBe(500);
-    expectError(response, { code: 'internal_error', message: 'Internal server error' });
+    expect(response.statusCode).toBe(409);
+    expectError(response, { code: 'conflict', message: '客户名称已存在' });
+    expect(JSON.stringify(response.body)).not.toMatch(
+      /duplicate key|Key \(tenant_id|normalized_name|already exists/u,
+    );
+    expect(await customerCount()).toBe(before);
     const written = await db.query(
       "SELECT 1 FROM customers WHERE tenant_id=$1 AND customer_number='CUST-WFA-NEW-NUMBER'",
       [context.actor.companyId],

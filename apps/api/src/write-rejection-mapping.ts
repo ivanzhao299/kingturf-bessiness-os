@@ -1,0 +1,37 @@
+// WF-A（TD-WF-013）：客户创建与信用审批里「数据库拒绝」→「带说明的业务错误」的映射。
+// 这是业务知识（哪个约束、哪条守卫对应哪句提示、哪个状态码），供两条 HTTP 轨共用：
+//   - POST /api/v1/customers                桥轨 routes/fastify/customers.ts；
+//   - POST /api/v1/credit-decisions/:id/approve  legacy 轨 routes/qtc-credit-approval.ts；
+//   - PUT  /api/v1/credit-decisions/:id/state    桥轨 routes/fastify/credit-review.ts。
+// 只被上面三个端点在调用点就地使用，不进任何全局错误处理器（主协调裁定：不做全局映射）。
+// 识别规则在 pg-rejections.ts（按约束名 / 按守卫消息精确匹配，不回显数据库原始消息）。
+import { DomainError } from '@kingturf/domain';
+import { guardRejection, isUniqueViolation } from './pg-rejections.ts';
+
+// 客户表（迁移 0017）上两个会让「新建客户」失败的唯一约束，按约束名分派提示。
+const CUSTOMER_UNIQUE_HINTS = {
+  // UNIQUE(tenant_id, customer_number)
+  customers_tenant_id_customer_number_key: '客户编号已存在',
+  // 部分唯一索引：tenant_id + normalized_name，WHERE deleted_at IS NULL
+  customers_identity_active_unique: '客户名称已存在',
+} as const;
+
+/** 新建客户时的唯一约束冲突 → 409；其余异常原样返回。 */
+export const asCustomerConflict = (error: unknown): unknown => {
+  for (const [constraint, hint] of Object.entries(CUSTOMER_UNIQUE_HINTS))
+    if (isUniqueViolation(error, constraint)) return new DomainError('conflict', hint);
+  return error;
+};
+
+// 职责分离由触发器 enforce_credit_approval_separation（迁移 0026）强制：评估人审批自己
+// 发起的信用决定时它 RAISE EXCEPTION。
+const SELF_APPROVAL_MESSAGE =
+  '职责分离：发起信用评估的人不能审批这条信用决定，请由另一位审批人处理';
+
+/** 信用审批时评估人自批（触发器拒绝）→ 403；其余异常原样返回。 */
+export const asSelfApproval = (error: unknown): unknown => {
+  const hint = guardRejection(error, {
+    'credit evaluator cannot approve own decision': SELF_APPROVAL_MESSAGE,
+  });
+  return hint === null ? error : new DomainError('forbidden', hint);
+};

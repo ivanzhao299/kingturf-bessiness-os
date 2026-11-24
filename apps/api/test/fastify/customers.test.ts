@@ -4,8 +4,10 @@ import type { ApiDependencies } from '../../src/app.ts';
 import { dispatchFastifyRouteGroup } from '../../src/routes/fastify/registry.ts';
 
 // WF-A（TD-WF-013）：customers Fastify 组的 POST 创建在仓储拒绝时的契约。
-// 重复客户编号（唯一约束 customers_tenant_id_customer_number_key）→ 409「客户编号已存在」
-//（此前是 500）；映射只做在这个端点、只认这一个约束，其余异常仍 500 且不回显原始消息。
+// 客户表上两个唯一约束冲突 → 409 + 中文提示（此前是 500；主协调裁定两个一并映射）：
+//   - 重复客户编号 customers_tenant_id_customer_number_key →「客户编号已存在」；
+//   - 重复客户名称 customers_identity_active_unique       →「客户名称已存在」。
+// 映射只做在这个端点、只认这两个约束，其余异常仍 500 且不回显原始消息。
 // 解析链与 201 路径本身由 customer-base-route-contract / app 测试覆盖，这里只钉调用实参。
 const tenant = '11111111-1111-4111-8111-111111111111';
 const actor = { companyId: tenant, employeeId: 'e-1' };
@@ -21,17 +23,23 @@ const customer = {
   updatedAt: '2026-11-24T00:00:00.000Z',
 };
 type Grant = { scopes: string[]; fields: readonly string[] | null };
+// pg 对唯一约束冲突给出的错误形状（消息带约束名，detail 带请求值）。
+const uniqueViolation = (constraint: string, detail: string) =>
+  Object.assign(new Error(`duplicate key value violates unique constraint "${constraint}"`), {
+    code: '23505',
+    constraint,
+    // pg 的原始错误带请求值；响应里绝不能出现它。
+    detail,
+  });
 const duplicateNumber = () =>
-  Object.assign(
-    new Error(
-      'duplicate key value violates unique constraint "customers_tenant_id_customer_number_key"',
-    ),
-    {
-      code: '23505',
-      constraint: 'customers_tenant_id_customer_number_key',
-      // pg 的原始错误带请求值；响应里绝不能出现它。
-      detail: `Key (tenant_id, customer_number)=(${tenant}, CUST-001) already exists.`,
-    },
+  uniqueViolation(
+    'customers_tenant_id_customer_number_key',
+    `Key (tenant_id, customer_number)=(${tenant}, CUST-001) already exists.`,
+  );
+const duplicateName = () =>
+  uniqueViolation(
+    'customers_identity_active_unique',
+    `Key (tenant_id, normalized_name)=(${tenant}, synthetic customer) already exists.`,
   );
 const scopeFor = (
   createCustomer: ReturnType<typeof vi.fn>,
@@ -68,7 +76,7 @@ const recordOf = (value: unknown): Record<string, unknown> => {
 };
 const errorOf = (response: { body: unknown } | null) => recordOf(recordOf(response?.body).error);
 
-describe('customers fastify bridge track: duplicate customer number (TD-WF-013)', () => {
+describe('customers fastify bridge track: duplicate customer number / name (TD-WF-013)', () => {
   it('POST 创建：重复客户编号 → 409，提示「客户编号已存在」，不回显数据库原始消息', async () => {
     const response = await create(scopeFor(vi.fn().mockRejectedValue(duplicateNumber())));
     expect(response?.statusCode).toBe(409);
@@ -78,6 +86,19 @@ describe('customers fastify bridge track: duplicate customer number (TD-WF-013)'
       correlationId: 'corr-1',
     });
     expect(JSON.stringify(response?.body)).not.toMatch(/duplicate key|Key \(tenant_id|CUST-001/u);
+  });
+
+  it('POST 创建：重复客户名称（规范化名称唯一索引）→ 409，提示「客户名称已存在」，不回显数据库原始消息', async () => {
+    const response = await create(scopeFor(vi.fn().mockRejectedValue(duplicateName())));
+    expect(response?.statusCode).toBe(409);
+    expect(errorOf(response)).toEqual({
+      code: 'conflict',
+      message: '客户名称已存在',
+      correlationId: 'corr-1',
+    });
+    expect(JSON.stringify(response?.body)).not.toMatch(
+      /duplicate key|Key \(tenant_id|normalized_name|synthetic customer/u,
+    );
   });
 
   it('POST 创建：成功路径不受影响——调用实参正确，201 + 载荷', async () => {
@@ -104,12 +125,10 @@ describe('customers fastify bridge track: duplicate customer number (TD-WF-013)'
   });
 
   it('POST 创建：其它数据库错误保持 500 且响应不含原始消息（不做全局映射）', async () => {
-    // 同一张表上的另一个唯一约束（规范化名称）不在本次映射范围内。
-    const sameName = Object.assign(
-      new Error(
-        'duplicate key value violates unique constraint "customers_identity_active_unique"',
-      ),
-      { code: '23505', constraint: 'customers_identity_active_unique' },
+    // 客户表主键/唯一键（id 与 tenant_id）与本次两个业务唯一约束不同名：不映射。
+    const idKey = Object.assign(
+      new Error('duplicate key value violates unique constraint "customers_id_tenant_id_key"'),
+      { code: '23505', constraint: 'customers_id_tenant_id_key' },
     );
     const notNull = Object.assign(
       new Error('null value in column "name" violates not-null constraint'),
@@ -120,7 +139,7 @@ describe('customers fastify bridge track: duplicate customer number (TD-WF-013)'
     const missingTable = Object.assign(new Error('relation "customers" does not exist'), {
       code: '42P01',
     });
-    for (const failure of [sameName, notNull, missingTable]) {
+    for (const failure of [idKey, notNull, missingTable]) {
       const response = await create(scopeFor(vi.fn().mockRejectedValue(failure)));
       expect(response?.statusCode).toBe(500);
       expect(response?.body).toEqual({

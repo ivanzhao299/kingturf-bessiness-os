@@ -1,6 +1,7 @@
 import { DomainError, type AuthorizationContext } from '@kingturf/domain';
 import type { PermissionKey } from '@kingturf/types';
 import type { ApiDependencies, ApiRequest } from '../app.ts';
+import { asSelfApproval } from '../write-rejection-mapping.ts';
 import { defineRoute, type RouteDefinition } from './types.ts';
 
 type Qtc = NonNullable<ApiDependencies['quoteToCash']>;
@@ -58,15 +59,24 @@ export function qtcCreditApprovalRoutes(context: Context): readonly RouteDefinit
         return { repository, approveCredit, id, decision, reason, key, scopeContext };
       },
       handler: async (_request, _match, validated) => {
-        const result = await validated.approveCredit.call(
-          validated.repository,
-          validated.id,
-          validated.decision,
-          validated.reason,
-          validated.key,
-          validated.scopeContext,
-          context.correlationId,
-        );
+        // TD-WF-013（WF-A，主协调裁定）：评估人自批由职责分离触发器拒绝（迁移 0026），
+        // 这里映射成 403 + 中文说明，与桥轨 PUT /state 的提示一致（此前两条轨都是 500）。
+        // 映射落在本路由自己的处理链上：仓储方法 approveCredit 是两条轨共用的，不动它；
+        // 也不改桥的认领清单。只包住这一次调用，不新增对依赖/授权/仓储的任何访问。
+        let result: Awaited<ReturnType<ApproveCredit>>;
+        try {
+          result = await validated.approveCredit.call(
+            validated.repository,
+            validated.id,
+            validated.decision,
+            validated.reason,
+            validated.key,
+            validated.scopeContext,
+            context.correlationId,
+          );
+        } catch (error) {
+          throw asSelfApproval(error);
+        }
         return {
           statusCode: 200,
           body: context.mutationDto(result, context.authorization, 'credit:read'),

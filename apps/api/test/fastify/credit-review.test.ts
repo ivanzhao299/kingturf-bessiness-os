@@ -229,7 +229,9 @@ describe('credit-review fastify bridge track: self-approval (TD-WF-013)', () => 
     expect(approveCredit).not.toHaveBeenCalled();
   });
 
-  it('映射只做在 PUT state：POST 评估遇到同一条触发器消息仍是 500', async () => {
+  // 自批的映射只落在两个「审批」端点上（本桥轨 PUT state 与 legacy POST /approve）；评估
+  // 端点不在其中——即便仓储在评估时抛出同一条触发器消息，也仍是 500（不做全局映射）。
+  it('映射不在 POST 评估端点：评估遇到同一条触发器消息仍是 500', async () => {
     const evaluateCredit = vi.fn().mockRejectedValue(selfApproval());
     const response = await dispatchFastifyRouteGroup(
       {

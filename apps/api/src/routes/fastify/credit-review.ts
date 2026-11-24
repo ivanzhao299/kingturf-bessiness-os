@@ -5,8 +5,8 @@
 // frozen 契约消息逐字节一致）；PUT 审批决定 = legacy POST /approve 的现代化动词别名
 //（同 approveCredit 仓储调用与消息）。全部响应仓储直通 + mutationDto（credit:read）。
 // TD-WF-013（WF-A）：PUT 审批遇到「评估人审批自己发起的信用决定」（职责分离触发器拒绝）
-// 时映射成 403 + 中文说明（此前是 500）；映射只做在这个端点上。
-import { DomainError } from '@kingturf/domain';
+// 时映射成 403 + 中文说明（此前是 500）；映射只做在这个端点上，规则与 legacy
+// POST /approve 轨共用（write-rejection-mapping.ts），两条轨提示一致。
 import { authorizeQuery } from '../../policy.ts';
 import {
   allow,
@@ -18,7 +18,7 @@ import {
   timestamp,
   uuid,
 } from '../../app-values.ts';
-import { guardRejection } from '../../pg-rejections.ts';
+import { asSelfApproval } from '../../write-rejection-mapping.ts';
 import type { FastifyRouteGroupApp, FastifyRouteScope } from './registry.ts';
 import type { ApiDependencies, ApiRequest } from '../../app.ts';
 import type { AuthorizationContext } from '@kingturf/domain';
@@ -39,17 +39,6 @@ function requireQtc(qtc: CreditQtc | null): CreditQtc {
   if (!qtc) throw new Error('QuoteToCash dependency unavailable');
   return qtc;
 }
-
-// TD-WF-013：职责分离由数据库触发器 enforce_credit_approval_separation（迁移 0026）强制
-// ——评估人审批自己发起的信用决定时它 RAISE EXCEPTION。只认这一条消息；其余异常原样
-// 抛出（不做全局映射，也不回显数据库原始消息）。
-const asSelfApproval = (error: unknown): unknown => {
-  const hint = guardRejection(error, {
-    'credit evaluator cannot approve own decision':
-      '职责分离：发起信用评估的人不能审批这条信用决定，请由另一位审批人处理',
-  });
-  return hint === null ? error : new DomainError('forbidden', hint);
-};
 
 export function registerCreditReviewRoutes(
   app: FastifyRouteGroupApp,
