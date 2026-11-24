@@ -242,6 +242,11 @@ const SQL_ENUM_NAMES = new Set([
   // listRoutingPage/findRouting），SQL 字节与提取前逐字一致；请求值（status/query/
   // productType/cursor/limit）一律经 values.push 参数化。
   'ROUTING_VERSION_PROJECTION',
+  // U3-MFG-4（生产域迁移，同 ITEM/BOM/ROUTING 先例）：工单行投影（to_jsonb 工单列
+  // + sku/itemName/生效状态 + 工序/物料/报工/成品卷/事件五聚合）提取为模块常量供
+  // legacy list、additive 分页与详情根行三处复用，SQL 字节与提取前逐字一致；请求值
+  // （state/query/cursor/limit）一律经 values.push 参数化。
+  'PRODUCTION_ORDER_PROJECTION',
   // B2（TD-API-003）分页 keyset 游标片段：cursor 值一律经 values.push 参数化（$N），
   // 变量本体只含代码内表/列名与占位符；2026-11-18 随 18 端点分页批次登记。
   'keyset',

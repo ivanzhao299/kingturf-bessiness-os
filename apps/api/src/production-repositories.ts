@@ -3,6 +3,10 @@ import { canonicalize, DomainError, type Actor, type ScopeAnchor } from '@kingtu
 import type { Database, SqlClient } from '@kingturf/database';
 import type { DataScope, JsonObject } from '@kingturf/types';
 import { writeProductionNextVersionEvidence as evidence } from './audit-outbox.ts';
+import {
+  PostgresProductionReadRepository,
+  PRODUCTION_ORDER_PROJECTION,
+} from './production-read-repositories.ts';
 
 type Db = SqlClient & Pick<Database, 'transaction'>;
 type Context = Readonly<{
@@ -17,19 +21,19 @@ const company = (context: Context) => {
     throw new DomainError('forbidden', 'Production execution requires company scope');
 };
 
-export class PostgresProductionRepository {
-  public constructor(private readonly db: Db) {}
+// U3-MFG-4：写路径（create/transition/transactMaterial/reportOperation/createOutput）
+// 与 legacy list——投影常量与 additive 只读方法（listProductionOrderPage/
+// findProductionOrder）见 production-read-repositories.ts，本类继承。
+export class PostgresProductionRepository extends PostgresProductionReadRepository {
+  public constructor(db: Db) {
+    super(db);
+  }
 
   public async list(context: Context) {
     company(context);
     return (
       await this.db.query<{ item: JsonObject }>(
-        `SELECT to_jsonb(o)||jsonb_build_object('sku',i.sku,'itemName',i.name,'state',s.state,'stateSequence',s.sequence,
-      'operations',coalesce((SELECT jsonb_agg(to_jsonb(x) ORDER BY x.sequence) FROM production_order_operations x WHERE x.tenant_id=o.tenant_id AND x.production_order_id=o.id),'[]'::jsonb),
-      'materials',coalesce((SELECT jsonb_agg(to_jsonb(x) ORDER BY x.occurred_at) FROM production_material_transactions x WHERE x.tenant_id=o.tenant_id AND x.production_order_id=o.id),'[]'::jsonb),
-      'reports',coalesce((SELECT jsonb_agg(to_jsonb(x) ORDER BY x.completed_at) FROM production_operation_reports x WHERE x.tenant_id=o.tenant_id AND x.production_order_id=o.id),'[]'::jsonb),
-      'rolls',coalesce((SELECT jsonb_agg(to_jsonb(x) ORDER BY x.roll_number) FROM production_rolls x WHERE x.tenant_id=o.tenant_id AND x.production_order_id=o.id),'[]'::jsonb),
-      'events',coalesce((SELECT jsonb_agg(to_jsonb(x) ORDER BY x.sequence) FROM production_order_events x WHERE x.tenant_id=o.tenant_id AND x.production_order_id=o.id),'[]'::jsonb)) item
+        `SELECT ${PRODUCTION_ORDER_PROJECTION} item
       FROM production_orders o JOIN production_order_effective_states s ON s.tenant_id=o.tenant_id AND s.production_order_id=o.id
       JOIN manufacturing_item_versions v ON v.tenant_id=o.tenant_id AND v.id=o.item_version_id JOIN manufacturing_items i ON i.tenant_id=v.tenant_id AND i.id=v.item_id
       WHERE o.tenant_id=$1 ORDER BY o.created_at DESC`,
