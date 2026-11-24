@@ -274,6 +274,32 @@ describe('procurement and inventory repository real PostgreSQL contracts', () =>
     }
   });
 
+  // TD-PROC-011：详情 SQL 此前只被仓储替身覆盖，收货单子查询把别名 l 绑到收货行后仍按
+  // l.item_version_id 连接（该表无此列），对任何采购单都报 42703。本例让它在真实 schema 上执行。
+  it('TD-PROC-011: findPurchaseOrder returns lines and receipts of a received order', async () => {
+    const { context } = state();
+    const receipt = await record('goods-receipt.posted', 'goods-receipt', (correlation) =>
+      repository.receive(receiptInput('GR-1'), context, correlation),
+    );
+    const found = await repository.findPurchaseOrder(identifier(order), context);
+    expect(found).toMatchObject({
+      id: identifier(order),
+      po_number: 'PO-1',
+      status: 'RECEIVED',
+      supplierName: 'Dedicated PG supplier',
+      lines: [
+        { line_number: 1, sku: 'RAW-1', itemName: 'RAW-1', quantity: 10, receivedQuantity: 10 },
+      ],
+      receipts: [
+        {
+          id: identifier(receipt),
+          receipt_number: 'GR-1',
+          lines: [{ lotNumber: 'LOT-GR-1', locationCode: 'RECV', sku: 'RAW-1', quantity: 10 }],
+        },
+      ],
+    });
+  });
+
   it('requires a same-tenant, same-supplier quote from an issued RFQ', async () => {
     const { context, otherContext, db } = state();
 
