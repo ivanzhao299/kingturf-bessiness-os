@@ -72,6 +72,13 @@ const stripApprovedBridgeAccess = (rows: unknown[]): unknown[] => {
   );
   return index === -1 ? rows : rows.filter((_, at) => at !== index);
 };
+// TD-API-004（主协调已批，行为变更）：未预期异常此前被 catch 丢弃，现新增一条
+// ["log","error","http.request.failed",5xx] 记录。仅对 current 侧比对前移除该已批日志行
+//（基线侧没有这一行），仓储抛错的 37 个场景其余 trace 逐字段等于冻结基线。
+const stripApprovedFailureLog = (rows: unknown[]): unknown[] =>
+  rows.filter(
+    (row) => !(Array.isArray(row) && row[0] === 'log' && row[2] === 'http.request.failed'),
+  );
 const preserve = (result: { name: string; [key: string]: unknown }) => ({
   ...result,
   ...(Array.isArray(result.trace)
@@ -136,7 +143,10 @@ describe('Batch4 app extraction against fixed f3 complete request traces', () =>
   }): { name: string; [key: string]: unknown } => {
     const normalized = preserve(result);
     return Array.isArray(normalized.trace)
-      ? { ...normalized, trace: stripApprovedBridgeAccess(normalized.trace) }
+      ? {
+          ...normalized,
+          trace: stripApprovedFailureLog(stripApprovedBridgeAccess(normalized.trace)),
+        }
       : normalized;
   };
   for (const [index, row] of baseline.results.entries())

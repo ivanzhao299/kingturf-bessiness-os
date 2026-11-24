@@ -358,12 +358,21 @@ it('root authentication, errors, lifecycle, completion and acceptance modes inve
       node.thenStatement.getText(current).includes('dispatchFastifyRouteGroup'),
   );
   if (!fastifyMount) throw new Error('Approved U3-COM-2 fastify mount missing');
+  // TD-API-004（主协调已批，行为变更）：catch 内新增未预期异常日志语句——此前 catch 直接
+  // 丢弃 cause，生产上的 500 无任何可诊断记录。比对前同样从展开文本中删除该已批语句，
+  // 其余逐 token 等于冻结 f3。只允许这一条：catch 的响应信封与状态码映射保持冻结原样。
+  const failureLog = findAll(fn, ts.isExpressionStatement).find(
+    (node): node is ts.ExpressionStatement =>
+      ts.isExpressionStatement(node) && node.getText(current).startsWith('recordRequestFailure('),
+  );
+  if (!failureLog) throw new Error('Approved TD-API-004 failure log missing');
   const expanded = fn.body
     ?.getText(current)
     .replace(loop.getText(current), middle)
     .replace(tail.getText(current), completionBody)
     .replace(gate.getText(current), '')
-    .replace(fastifyMount.getText(current), '');
+    .replace(fastifyMount.getText(current), '')
+    .replace(failureLog.getText(current), '');
   expect(
     firstDifference(tokens(expanded ?? ''), tokens(original.body?.getText(old) ?? '')),
   ).toBeNull();
