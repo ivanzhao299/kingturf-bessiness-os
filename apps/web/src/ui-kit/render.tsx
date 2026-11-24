@@ -34,7 +34,7 @@ const demoColumns: readonly DataTableColumn<DemoRow>[] = [
     field: (row) => row.state,
     render: (row) => (
       <StatusBadge tone={row.state === 'active' ? 'success' : 'neutral'}>
-        {row.state === 'active' ? '在職' : '停用'}
+        {row.state === 'active' ? '在职' : '停用'}
       </StatusBadge>
     ),
   },
@@ -59,7 +59,7 @@ const formFields: readonly FormSectionField[] = [
 
 const BadgeRow = () => (
   <div class="ui-kit-row">
-    <StatusBadge tone="success">在職</StatusBadge>
+    <StatusBadge tone="success">在职</StatusBadge>
     <StatusBadge tone="info">草稿</StatusBadge>
     <StatusBadge tone="warning">待复核</StatusBadge>
     <StatusBadge tone="danger">已停用</StatusBadge>

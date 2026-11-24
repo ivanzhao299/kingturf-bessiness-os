@@ -63,7 +63,7 @@ const identityColumns = (state: IdentityState): readonly DataTableColumn<Profile
     render: (row) =>
       row.identityId ? (
         <StatusBadge tone={row.identityActive === true ? 'success' : 'neutral'}>
-          {row.identityActive === true ? '在職' : '已停用'}
+          {row.identityActive === true ? '在职' : '已停用'}
         </StatusBadge>
       ) : (
         <StatusBadge tone="info">未开通</StatusBadge>
@@ -295,7 +295,7 @@ const IdentitySummary = ({ row }: Readonly<{ row: ProfileRow }>) => (
       <span class="console-label">登录名</span> {textOf(row.loginName, '—')}
       <span class="console-label">员工状态</span>
       <StatusBadge tone={row.employeeActive === true ? 'success' : 'neutral'}>
-        {row.employeeActive === true ? '在職' : '离职'}
+        {row.employeeActive === true ? '在职' : '离职'}
       </StatusBadge>
     </p>
     <p>

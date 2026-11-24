@@ -18,7 +18,7 @@ const columns: readonly DataTableColumn<Row>[] = [
     key: 'state',
     header: '状态',
     field: (row) => row.state,
-    render: (row) => <span class="status-badge">{row.state === 'active' ? '在職' : '停用'}</span>,
+    render: (row) => <span class="status-badge">{row.state === 'active' ? '在职' : '停用'}</span>,
   },
 ];
 
@@ -38,7 +38,7 @@ describe('DataTable', () => {
     expect(cellTexts(host, 'name')).toEqual(['王二', '张一', '李三']);
     expect(
       host.container.querySelectorAll('tbody .status-badge').map((b) => b.textContent),
-    ).toEqual(['在職', '在職', '停用']);
+    ).toEqual(['在职', '在职', '停用']);
   });
 
   it('sorts asc/desc through sortable headers with aria-sort', async () => {

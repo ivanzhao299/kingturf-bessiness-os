@@ -77,10 +77,10 @@ describe('ActionBar', () => {
 describe('StatusBadge', () => {
   it('renders tone as data attribute with text content', () => {
     const host = mountDom();
-    mount(<StatusBadge tone="success">在職</StatusBadge>, host);
+    mount(<StatusBadge tone="success">在职</StatusBadge>, host);
     const badge = asElement(host.container.querySelector('.status-badge'));
     expect(badge.getAttribute('data-tone')).toBe('success');
-    expect(badge.textContent).toBe('在職');
+    expect(badge.textContent).toBe('在职');
   });
 
   it('defaults to neutral tone', () => {

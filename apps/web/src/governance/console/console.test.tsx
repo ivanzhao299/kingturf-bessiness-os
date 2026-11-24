@@ -85,7 +85,7 @@ describe('UI-M2 身份与授权控制台', () => {
     );
     expect(host.textContent).toContain('王小明');
     expect(host.textContent).toContain('wang');
-    expect(host.textContent).toContain('在職');
+    expect(host.textContent).toContain('在职');
     expect(host.textContent).toContain('2');
     expect(host.querySelector('.data-table table')).not.toBeNull();
     expect(host.textContent).not.toContain('组织架构');

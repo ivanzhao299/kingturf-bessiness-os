@@ -74,7 +74,7 @@ const orgColumns = (state: OrgState): readonly DataTableColumn<Row>[] => [
     field: (row) => (row.active === true ? 'active' : 'inactive'),
     render: (row) => (
       <StatusBadge tone={row.active === true ? 'success' : 'neutral'}>
-        {row.active === true ? '在職' : '停用'}
+        {row.active === true ? '在职' : '停用'}
       </StatusBadge>
     ),
   },
