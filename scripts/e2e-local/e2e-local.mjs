@@ -16,6 +16,7 @@ import {
   resolveContext,
   runPlaywright,
   runWalk,
+  runWriteSmoke,
   seedDemoData,
   tearDown,
 } from './stack.mjs';
@@ -32,6 +33,9 @@ const USAGE = `usage: node ${HARNESS}/e2e-local.mjs <command>
       对运行中的栈跑 Playwright（在容器内执行）。
   walk [--viewport desktop|mobile|宽x高[@倍率]] [--routes a,b] [--out 目录]
       对运行中的栈跑全站走查，输出逐路由结果与截图。
+  write-smoke [--flows lead,customer,procurement,manufacturing,credit,quote]
+      对运行中的栈跑写流程冒烟：从界面完成新建 / 发布 / 状态流转并断言结果。会写入数据，
+      跑过之后同一专用库不要再跑 p1-demo.spec（它断言信用决定恰为 3 行）。
   seed
       对运行中的栈重灌 P1 演示数据（幂等，可重复执行）。
   down [--keep-database]
@@ -69,7 +73,7 @@ async function main(argv, signal) {
     return 0;
   }
   assert(
-    ['run', 'up', 'e2e', 'walk', 'seed', 'down'].includes(command),
+    ['run', 'up', 'e2e', 'walk', 'write-smoke', 'seed', 'down'].includes(command),
     `unknown command ${command}\n\n${USAGE}`,
   );
   const context = resolveContext();
@@ -97,6 +101,7 @@ async function main(argv, signal) {
         `stack up: container ${context.container}, database ${process.env.E2E_LOCAL_DATABASE}\n` +
           `  e2e:     node ${HARNESS}/e2e-local.mjs e2e -- tests/e2e/p1-demo.spec.ts\n` +
           `  walk:    node ${HARNESS}/e2e-local.mjs walk --viewport desktop\n` +
+          `  write-smoke: node ${HARNESS}/e2e-local.mjs write-smoke   （会写入数据）\n` +
           `  down:    node ${HARNESS}/e2e-local.mjs down\n` +
           `  (synthetic logins: ${Object.values(credentials)
             .map((account) => account.login)
@@ -155,6 +160,7 @@ async function main(argv, signal) {
         rest.length > 0 ? rest : [DEFAULT_SPEC],
       )) ?? 1
     );
+  if (command === 'write-smoke') return (await runWriteSmoke(context, running, rest)) ?? 1;
   return (await runWalk(context, running, rest)) ?? 1;
 }
 
