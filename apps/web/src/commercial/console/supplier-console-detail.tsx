@@ -182,7 +182,9 @@ export const QuoteHistory = ({ state }: Readonly<{ state: SupplierDetailState }>
       <ul>
         {quotes.map((quote, index) => (
           <li key={state.ports.textValue(quote.id, String(index))}>
-            {`${state.ports.textValue(quote.quoteReference ?? quote.quote_reference, '—')} · 收于 ${state.ports.textValue(quote.receivedAt ?? quote.received_at, '—').slice(0, 10)} · 有效至 ${state.ports.textValue(quote.validUntil ?? quote.valid_until, '—')}`}
+            <TokenText
+              text={`${state.ports.textValue(quote.quoteReference ?? quote.quote_reference, '—')} · 收于 ${state.ports.textValue(quote.receivedAt ?? quote.received_at, '—').slice(0, 10)} · 有效至 ${state.ports.textValue(quote.validUntil ?? quote.valid_until, '—')}`}
+            />
           </li>
         ))}
       </ul>

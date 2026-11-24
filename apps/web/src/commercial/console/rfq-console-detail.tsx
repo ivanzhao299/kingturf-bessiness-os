@@ -262,7 +262,11 @@ export const SupplierQuoteCards = ({
         <header class="proc-quote-card-head">
           <strong>{quote.supplierName}</strong>
         </header>
-        <p class="proc-quote-card-meta">{`${quote.reference} · 收于 ${quote.receivedAt.slice(0, 10)} · 有效至 ${quote.validUntil || '—'}`}</p>
+        <p class="proc-quote-card-meta">
+          <TokenText
+            text={`${quote.reference} · 收于 ${quote.receivedAt.slice(0, 10)} · 有效至 ${quote.validUntil || '—'}`}
+          />
+        </p>
         <ul class="proc-quote-lines">
           {lines.map((line) => (
             <li
@@ -302,7 +306,9 @@ export const QuoteComparison = ({ state }: Readonly<{ state: RfqDetailState }>) 
       <ul data-testid="kt-rfq-quote-legend">
         {quotes.map((quote) => (
           <li key={quote.id}>
-            {`${quote.supplierName} · ${quote.reference} · 收于 ${quote.receivedAt.slice(0, 10)} · 有效至 ${quote.validUntil || '—'}`}
+            <TokenText
+              text={`${quote.supplierName} · ${quote.reference} · 收于 ${quote.receivedAt.slice(0, 10)} · 有效至 ${quote.validUntil || '—'}`}
+            />
           </li>
         ))}
       </ul>

@@ -546,6 +546,73 @@ describe('对比矩阵 · 短 token 不折行', () => {
     for (const text of tokens) expect(text).toMatch(TOKEN);
     expect(tokens).toContain('交期 2026-12-10');
   });
+
+  // 图例、卡片元信息与「报价历史」列表是矩阵之外的普通文本：此前日期在连字符处断行
+  // （2026-12- / 31），手机上尤其明显（PROC-2 证据 §12.6）。文本逐字不变，只是 token 不再折行。
+  it('图例、卡片元信息与报价历史列表：日期与编号是 token，文本逐字不变', async () => {
+    // 渲染控制台并点开一条详情，返回宿主根（图例与「报价历史」是对比区的兄弟节点，
+    // 要从根上查；mini-DOM 没有 closest）。
+    const openHost = async (page: ComponentType, opener: string): Promise<TestElement> => {
+      const host = installGlobalTestDom().document.createElement('div');
+      render(h(page, {}), host);
+      element(host.querySelector(`[data-testid="${opener}"]`)).click();
+      await settle();
+      return host;
+    };
+    const tokensIn = (scope: TestElement | null): readonly string[] =>
+      scope === null
+        ? []
+        : scope.querySelectorAll('.proc-token').map((node) => element(node).textContent);
+
+    vi.stubGlobal('ResizeObserver', FakeResizeObserver);
+    containerWidth(PHONE_DRAWER_WIDTH);
+    const rfqHost = await openHost(RfqConsolePage(rfqPorts) as ComponentType, 'kt-rfq-open');
+    const legend = element(rfqHost.querySelector('[data-testid="kt-rfq-quote-legend"]'));
+    expect(legend.querySelector('li')?.textContent).toBe(
+      '青岛金特夫草纱战略供应商 · SQ-KT-YARN-2026-001 · 收于 2026-11-10 · 有效至 2026-12-31',
+    );
+    // 供应商名是中文、不是 token；编号与两个「标签 + 日期」是 token。
+    expect(tokensIn(legend)).toEqual([
+      'SQ-KT-YARN-2026-001',
+      '收于 2026-11-10',
+      '有效至 2026-12-31',
+      'SQ-KT-YARN-2026-002',
+      '收于 2026-11-11',
+      '有效至 2026-12-31',
+      'SQ-KT-YARN-2026-003',
+      '收于 2026-11-01',
+      '有效至 2026-11-12',
+    ]);
+    // 卡片元信息（手机堆叠形态）：同一份报价在卡片头部的元信息里。
+    const cardMeta = element(
+      cellsOf(rfqHost, 'kt-rfq-quote-card')[0]?.querySelector('.proc-quote-card-meta'),
+    );
+    expect(cardMeta.textContent).toBe('SQ-KT-YARN-2026-001 · 收于 2026-11-10 · 有效至 2026-12-31');
+    expect(tokensIn(cardMeta)).toEqual([
+      'SQ-KT-YARN-2026-001',
+      '收于 2026-11-10',
+      '有效至 2026-12-31',
+    ]);
+
+    // 供应商抽屉的「报价历史」列表：与询价图例同一种写法（编号 · 收于 … · 有效至 …）。
+    const supplierHost = await openHost(
+      SupplierConsolePage(supplierPorts) as ComponentType,
+      'kt-supplier-open',
+    );
+    const history = element(supplierHost.querySelector('[data-testid="kt-supplier-quotes"]'));
+    expect(history.querySelectorAll('li').map((node) => element(node).textContent)).toEqual([
+      'SQ-1 · 收于 2026-11-01 · 有效至 2026-12-31',
+      'SQ-0 · 收于 2026-09-01 · 有效至 2026-10-31',
+    ]);
+    expect(tokensIn(history)).toEqual([
+      'SQ-1',
+      '收于 2026-11-01',
+      '有效至 2026-12-31',
+      'SQ-0',
+      '收于 2026-09-01',
+      '有效至 2026-10-31',
+    ]);
+  });
 });
 
 describe('采购域样式表（静态守卫）', () => {
