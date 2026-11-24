@@ -732,3 +732,306 @@ describe('fastify bridge 行为守恒（finished-rolls 对比 legacy）', () => 
     ]);
   });
 });
+
+describe('production order execution fastify bridge track: materials', () => {
+  const path = `/api/v1/production-orders/${orderId}/materials`;
+  const lotId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+  const locationId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+  const body = {
+    transactionType: ' ISSUE ',
+    itemVersionId: ` ${operationId.toUpperCase()} `,
+    lotId,
+    locationId: ` ${locationId.toUpperCase()} `,
+    quantity: ' 2.250000 ',
+    reason: ' 领退料原因 ',
+    occurredAt: '2026-11-24T08:00:00+08:00',
+    idempotencyKey: ' WO-KT-2026-001-MAT-20261124080000-C3D4 ',
+  };
+  const input = {
+    transactionType: 'ISSUE',
+    itemVersionId: operationId,
+    lotId,
+    locationId,
+    quantity: '2.25',
+    reason: '领退料原因',
+    occurredAt: '2026-11-24T00:00:00.000Z',
+    idempotencyKey: 'WO-KT-2026-001-MAT-20261124080000-C3D4',
+  };
+  const posted = {
+    id: 'material-1',
+    version: 2,
+    productionOrderId: orderId,
+    inventoryMovementId: lotId,
+    ...input,
+  };
+  const post = (payload: unknown = body, scope = scopeFor()) =>
+    bridged(requestFor({ method: 'POST', pathname: path, body: payload }), scope);
+  const productionWith = () => {
+    const transactMaterial = vi.fn<Repository['transactMaterial']>().mockResolvedValue(posted);
+    return { production: productionOf({ transactMaterial }), transactMaterial };
+  };
+
+  it.each(['ISSUE', 'RETURN'] as const)(
+    'POST 领退料（%s）走 legacy 同解析链（trim / UUID 归一小写 / decimal 去尾零 / 时间归一 UTC / stableCode）→ 201 + mutation 投影',
+    async (transactionType) => {
+      const { production, transactMaterial } = productionWith();
+      const payload = { ...body, transactionType: ` ${transactionType} ` };
+      const response = await post(payload, scopeFor(production));
+      expect(response?.statusCode).toBe(201);
+      // 替身仓储对两种业务类型返回同一行；请求类型体现在仓储实参上。
+      expect(response?.body).toEqual(posted);
+      expect(transactMaterial.mock.calls).toEqual([
+        [orderId, { ...input, transactionType }, scopeContext, correlationId],
+      ]);
+      expect(transactMaterial.mock.calls[0]).toHaveLength(4);
+      expect(transactMaterial.mock.contexts).toEqual([production]);
+      expect(Object.keys(transactMaterial.mock.calls[0]?.[1] as object)).toEqual([
+        'transactionType',
+        'itemVersionId',
+        'lotId',
+        'locationId',
+        'quantity',
+        'reason',
+        'occurredAt',
+        'idempotencyKey',
+      ]);
+    },
+  );
+
+  it('POST 领退料负例沿用 legacy 消息（请求体形状/未知字段/缺字段/业务类型/UUID/数值/时间/原因/编码/工单 UUID）', async () => {
+    for (const [payload, message] of [
+      [null, 'A JSON object body is required'],
+      [[], 'A JSON object body is required'],
+      [{ ...body, unexpected: 1 }, 'Unsupported fields: unexpected'],
+      [{ ...body, quantity: undefined }, 'quantity is required'],
+      [{ ...body, transactionType: '' }, 'transactionType is required'],
+      [{ ...body, transactionType: 'issue' }, 'transactionType is unsupported'],
+      [{ ...body, transactionType: 'TRANSFER' }, 'transactionType is unsupported'],
+      [{ ...body, lotId: 'not-a-uuid' }, 'lotId must be a UUID'],
+      [{ ...body, quantity: '-1' }, 'quantity must be non-negative'],
+      [{ ...body, occurredAt: '2026-13-01' }, 'occurredAt must be a valid timestamp'],
+      [{ ...body, reason: null }, 'reason is required'],
+      [
+        { ...body, idempotencyKey: 'material key' },
+        'Code must be 1-64 uppercase letters, digits, underscore, or hyphen',
+      ],
+    ] as const) {
+      const { production, transactMaterial } = productionWith();
+      const response = await post(payload, scopeFor(production));
+      expect(response?.statusCode, message).toBe(400);
+      expect(errorOf(response), message).toEqual({
+        code: 'invalid_request',
+        message,
+        correlationId,
+      });
+      expect(transactMaterial, message).not.toHaveBeenCalled();
+    }
+    const { production, transactMaterial } = productionWith();
+    const malformed = await bridged(
+      requestFor({ method: 'POST', pathname: '/api/v1/production-orders/a/materials', body }),
+      scopeFor(production),
+    );
+    expect(errorOf(malformed).message).toBe('productionOrderId must be a UUID');
+    expect(transactMaterial).not.toHaveBeenCalled();
+  });
+
+  it('POST 领退料鉴权先于业务类型枚举：无 production:material → 403；字段授权不足 → Field permission denied；依赖缺失 503', async () => {
+    const denied = productionWith();
+    // 业务类型非法也先由授权拒绝（legacy：authorizeQuery 先于 transactionType 枚举）。
+    const forbidden = await post(
+      { ...body, transactionType: 'BAD' },
+      scopeFor(denied.production, { without: ['production:material'] }),
+    );
+    expect(errorOf(forbidden)).toEqual({
+      code: 'forbidden',
+      message: 'Permission denied',
+      correlationId,
+    });
+    const narrow = productionWith();
+    const fieldDenied = await post(
+      body,
+      scopeFor(narrow.production, { writeFields: ['transactionType'] }),
+    );
+    expect(errorOf(fieldDenied).message).toBe('Field permission denied');
+    // 报工能力键不能代替领料能力键。
+    const reportOnly = productionWith();
+    const swapped = await post(
+      body,
+      scopeFor(reportOnly.production, { without: ['production:material'] }),
+    );
+    expect(errorOf(swapped).message).toBe('Permission denied');
+    const granted = productionWith();
+    expect(
+      (await post(body, scopeFor(granted.production, { writeFields: Object.keys(body) })))
+        ?.statusCode,
+    ).toBe(201);
+    expect((await post(body, scopeFor(null)))?.statusCode).toBe(503);
+    for (const stub of [
+      denied.transactMaterial,
+      narrow.transactMaterial,
+      reportOnly.transactMaterial,
+    ])
+      expect(stub).not.toHaveBeenCalled();
+    expect(granted.transactMaterial).toHaveBeenCalledTimes(1);
+  });
+
+  it('POST 领退料幂等键只取请求体：同一请求每次都转发仓储，请求头被忽略；缺键回 400', async () => {
+    const { production, transactMaterial } = productionWith();
+    const scope = scopeFor(production);
+    const headers = { 'idempotency-key': 'HEADER-KEY', 'x-correlation-id': correlationId };
+    const request = requestFor({ method: 'POST', pathname: path, body, headers });
+    expect((await bridged(request, scope))?.statusCode).toBe(201);
+    expect((await bridged(request, scope))?.statusCode).toBe(201);
+    expect(
+      (
+        await bridged(
+          requestFor({
+            method: 'POST',
+            pathname: path,
+            body: { ...body, transactionType: 'RETURN', quantity: '0.5' },
+            headers,
+          }),
+          scope,
+        )
+      )?.statusCode,
+    ).toBe(201);
+    expect(transactMaterial).toHaveBeenCalledTimes(3);
+    expect(transactMaterial.mock.calls.map((call) => call[1].idempotencyKey)).toEqual([
+      input.idempotencyKey,
+      input.idempotencyKey,
+      input.idempotencyKey,
+    ]);
+    expect(transactMaterial.mock.calls[2]?.[1]).toMatchObject({
+      transactionType: 'RETURN',
+      quantity: '0.5',
+    });
+    const missing = await bridged(
+      requestFor({
+        method: 'POST',
+        pathname: path,
+        body: { ...body, idempotencyKey: undefined },
+        headers,
+      }),
+      scope,
+    );
+    expect(errorOf(missing).message).toBe('idempotencyKey is required');
+    expect(transactMaterial).toHaveBeenCalledTimes(3);
+  });
+
+  it('POST 领退料响应按 production:read 字段投影；无读权限时回退 id/version', async () => {
+    const masked = productionWith();
+    const limited = await post(
+      body,
+      scopeFor(masked.production, { readFields: ['transactionType', 'quantity'] }),
+    );
+    expect(limited?.body).toEqual({
+      id: 'material-1',
+      transactionType: 'ISSUE',
+      quantity: '2.25',
+    });
+    const bare = productionWith();
+    expect(
+      (await post(body, scopeFor(bare.production, { without: ['production:read'] })))?.body,
+    ).toEqual({ id: 'material-1', version: 2 });
+  });
+
+  it('POST 领退料仓储异常映射同报工端点（DomainError 409 / 其它 500 不外泄）；未认领路径落回 null', async () => {
+    const conflict = vi
+      .fn<Repository['transactMaterial']>()
+      .mockRejectedValue(new DomainError('conflict', '该批次物料不属于工单 BOM'));
+    const response = await post(body, scopeFor(productionOf({ transactMaterial: conflict })));
+    expect(response?.statusCode).toBe(409);
+    expect(errorOf(response).message).toBe('该批次物料不属于工单 BOM');
+    const leaked = vi
+      .fn<Repository['transactMaterial']>()
+      .mockRejectedValue(new Error('insert into inventory_movements'));
+    expect(
+      errorOf(await post(body, scopeFor(productionOf({ transactMaterial: leaked })))).message,
+    ).toBe('Internal server error');
+    const scope = scopeFor(productionWith().production);
+    for (const request of [
+      requestFor({ method: 'GET', pathname: path }),
+      requestFor({ method: 'PUT', pathname: path, body }),
+      requestFor({ method: 'POST', pathname: `${path}/` }),
+      requestFor({ method: 'POST', pathname: path.replace('materials', 'Materials') }),
+      requestFor({
+        method: 'POST',
+        pathname: `/api/v1/production-orders/ABCDABCD-1234-4ABC-8ABC-ABCDEFABCDEF/materials`,
+        body,
+      }),
+    ])
+      expect(await bridged(request, scope)).toBeNull();
+  });
+});
+
+describe('fastify bridge 行为守恒（materials 对比 legacy）', () => {
+  const path = `/api/v1/production-orders/${orderId}/materials`;
+  const valid = {
+    transactionType: ' ISSUE ',
+    itemVersionId: ` ${operationId.toUpperCase()} `,
+    lotId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+    locationId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    quantity: ' 2.250000 ',
+    reason: ' 领退料原因 ',
+    occurredAt: '2026-11-24T08:00:00+08:00',
+    idempotencyKey: ' WO-KT-2026-001-MAT-20261124080000-C3D4 ',
+  };
+  const posted = {
+    id: 'material-1',
+    version: 2,
+    productionOrderId: orderId,
+    transactionType: 'ISSUE',
+    itemVersionId: operationId,
+    lotId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+    locationId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    quantity: '2.25',
+    reason: '领退料原因',
+    occurredAt: '2026-11-24T00:00:00.000Z',
+    idempotencyKey: 'WO-KT-2026-001-MAT-20261124080000-C3D4',
+  };
+  const cases: readonly { name: string; body: unknown }[] = [
+    { name: '规范输入（领料）', body: valid },
+    { name: '规范输入（退料）', body: { ...valid, transactionType: 'RETURN' } },
+    { name: '业务类型小写', body: { ...valid, transactionType: 'issue' } },
+    { name: '缺字段', body: { ...valid, reason: undefined } },
+    { name: '非对象请求体', body: [] },
+    { name: '非法 UUID', body: { ...valid, lotId: 'not-a-uuid' } },
+    { name: '负数', body: { ...valid, quantity: '-1' } },
+    { name: '非法时间', body: { ...valid, occurredAt: '2026-13-01' } },
+    { name: '非法幂等键', body: { ...valid, idempotencyKey: 'material key' } },
+  ];
+
+  it('POST /api/v1/production-orders/:id/materials：新旧轨状态码、响应与仓储实参逐字节一致（含读写字段遮蔽与负例）', async () => {
+    const outcomes: Tracked[] = [];
+    for (const readFields of [null, ['transactionType', 'quantity']] as const) {
+      for (const writeFields of [null, ['transactionType']] as const) {
+        for (const item of cases) {
+          const label = `${item.name} / read=${String(readFields)} / write=${String(writeFields)}`;
+          outcomes.push(
+            expectParity(
+              await parityOf(
+                requestFor({ method: 'POST', pathname: path, body: item.body }),
+                'transactMaterial',
+                posted,
+                { readFields, writeFields },
+              ),
+              label,
+            ),
+          );
+        }
+      }
+    }
+    // 2 种读遮蔽 × 2 种写授权 × 9 个用例 = 36 个请求：两个规范输入各成功 2 次 → 4；写授权
+    // 只放行 transactionType 时，其余七个字段一并被字段授权拒绝（授权先于枚举）→ 8 个
+    // 用例 × 2 = 16；其余 16 为解析拒绝。
+    expectOutcomeMix(outcomes, [4, 16, 16]);
+    const full = Object.keys(posted).sort();
+    const masked = ['id', 'quantity', 'transactionType'];
+    expect(outcomes.filter((outcome) => outcome.statusCode === 201).map(sortedKeys)).toEqual([
+      full,
+      full,
+      masked,
+      masked,
+    ]);
+  });
+});

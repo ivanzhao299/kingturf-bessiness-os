@@ -122,6 +122,7 @@ const CLAIMED_FASTIFY_ROUTES: readonly (readonly [method: string, pattern: RegEx
   ['PUT', /^\/api\/v1\/production-orders\/[0-9a-f-]+\/state$/u],
   ['POST', /^\/api\/v1\/production-orders\/[0-9a-f-]+\/operation-reports$/u],
   ['POST', /^\/api\/v1\/production-orders\/[0-9a-f-]+\/finished-rolls$/u],
+  ['POST', /^\/api\/v1\/production-orders\/[0-9a-f-]+\/materials$/u],
 ];
 
 // legacy catch 层的同款 DomainError 状态映射（行为守恒）。
