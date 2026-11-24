@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FormSection, type FormSectionField } from '../src/form-section';
 import { asElement, flush, mount, mountDom } from './render';
+import { TestEvent } from './dom';
 import type { TestElement } from './dom';
 
 const fields: readonly FormSectionField[] = [
@@ -135,6 +136,80 @@ describe('FormSection（兼容 shared/forms.ts 校验语义）', () => {
     expect(fieldControl(host, 'sequence').step).toBe('10');
     expect(fieldControl(host, 'due').step).toBe('');
     expect(fieldControl(host, 'note').step).toBe('');
+  });
+
+  // 回归（TD-WF-004，写流程真浏览器冒烟发现）：双击「创建线索」写入两条。提交未结算期间再次
+  // 触发 submit（双击、回车、慢网下的重复点击）必须被同步拦下——不能只靠按钮置灰，因为 submit
+  // 事件也可以由回车触发，且替身与真实浏览器一样不会因 disabled 自动吞掉事件。
+  it('submits once while the previous submit is still pending（防重复提交）', async () => {
+    const host = mountDom();
+    let calls = 0;
+    let release: () => void = () => undefined;
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    mount(
+      <FormSection
+        title="创建线索"
+        fields={[{ name: 'company', label: '公司名称', required: true, value: '金特夫' }]}
+        submitLabel="创建线索"
+        onSubmit={() => {
+          calls += 1;
+          return pending;
+        }}
+      />,
+      host,
+    );
+    const form = host.container.querySelector('form');
+    if (!form) throw new Error('form not rendered');
+    const button = submitButton(host);
+    const submit = (): void => {
+      form.dispatchEvent(new TestEvent('submit'));
+    };
+    submit();
+    submit();
+    submit();
+    // 结算前：按钮置灰并声明忙碌，再次触发不再调用 onSubmit。
+    await flush();
+    expect(calls).toBe(1);
+    expect(button.disabled).toBe(true);
+    expect(button.getAttribute('aria-busy')).toBe('true');
+    submit();
+    expect(calls).toBe(1);
+    release();
+    // 结算发生在 Promise 的回调里：第一轮刷新让回调执行，第二轮让结算后的渲染落地。
+    await flush();
+    await flush();
+    // 结算后：按钮恢复可点，之后的提交照常进行。
+    expect(button.disabled).toBe(false);
+    // Preact 对值为 false 的 ARIA 属性写入 "false" 而不是移除（对辅助技术是合法取值）。
+    expect(button.getAttribute('aria-busy')).not.toBe('true');
+    submit();
+    expect(calls).toBe(2);
+  });
+
+  it('lets the form be submitted again after a failed submit（失败后可重试）', async () => {
+    const host = mountDom();
+    let calls = 0;
+    mount(
+      <FormSection
+        title="创建线索"
+        fields={[{ name: 'company', label: '公司名称', required: true, value: '金特夫' }]}
+        submitLabel="创建线索"
+        onSubmit={() => {
+          calls += 1;
+          return Promise.reject(new Error('网络错误'));
+        }}
+      />,
+      host,
+    );
+    submitButton(host).click();
+    await flush();
+    expect(calls).toBe(1);
+    expect(submitButton(host).disabled).toBe(false);
+    submitButton(host).click();
+    await flush();
+    expect(calls).toBe(2);
   });
 
   it('submits collected values only when every field is valid', async () => {

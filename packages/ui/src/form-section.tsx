@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks';
+import { useRef, useState } from 'preact/hooks';
 
 export type FormSectionFieldType =
   | 'text'
@@ -76,6 +76,11 @@ export const FormSection = (props: FormSectionProps) => {
   const [invalid, setInvalid] = useState<ReadonlySet<string>>(new Set());
   const [error, setError] = useState('');
   const [confirmed, setConfirmed] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  // TD-WF-004：重入标志必须是同步的 ref。双击的两次 submit 事件在同一轮事件循环里先后到达，
+  // 上一次的状态更新此时还没渲染，只靠 submitting 拦不住第二次；submit 事件也可以由回车触发，
+  // 所以不能只靠提交按钮置灰。
+  const inFlight = useRef(false);
   const sensitive = SENSITIVE_SUBMIT.test(props.submitLabel);
 
   const onInput = (field: FormSectionField, value: string): void => {
@@ -91,6 +96,7 @@ export const FormSection = (props: FormSectionProps) => {
 
   const onSubmit = (event: Event): void => {
     event.preventDefault();
+    if (inFlight.current) return;
     const nextInvalid = new Set<string>();
     let firstMessage = '';
     for (const field of props.fields) {
@@ -110,7 +116,22 @@ export const FormSection = (props: FormSectionProps) => {
       return;
     }
     setError('');
-    void props.onSubmit(values);
+    inFlight.current = true;
+    setSubmitting(true);
+    // 提交失败的 Promise 必须在这里接住：此前是 void 掉，被拒绝时成为未处理的拒绝（浏览器里
+    // 是一条未捕获错误），表单也没有任何提示。各控制台的 onSubmit 自己捕获业务错误并写进
+    // 状态，这里只是不让漏出来的拒绝逃逸。
+    const settle = (): void => {
+      inFlight.current = false;
+      setSubmitting(false);
+    };
+    try {
+      const result = props.onSubmit(values);
+      if (result instanceof Promise) void result.then(settle, settle);
+      else settle();
+    } catch {
+      settle();
+    }
   };
 
   return (
@@ -189,8 +210,8 @@ export const FormSection = (props: FormSectionProps) => {
       <p class="form-error" role="alert">
         {error}
       </p>
-      <button type="submit" class="primary">
-        {props.submitLabel}
+      <button type="submit" class="primary" disabled={submitting} aria-busy={submitting}>
+        {submitting ? '提交中…' : props.submitLabel}
       </button>
     </form>
   );
