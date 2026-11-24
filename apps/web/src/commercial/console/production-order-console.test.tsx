@@ -141,8 +141,12 @@ const portsFor = (
   submit: vi.fn().mockResolvedValue(null),
   refresh: vi.fn().mockResolvedValue(orders),
   mountExecution: vi.fn(() => vi.fn()),
-  // 幂等键端口固定返回一把已生成的键（生成器自身的形状见 production-order-keys.test.ts）。
-  nextIdempotencyKey: vi.fn(() => 'WO-KT-2026-001-RPT-20261124090000-A1B2'),
+  // 账号没有库存读权限时库存视图为空（legacy 表单同源：不另发请求）。
+  inventoryBalances: vi.fn(() => []),
+  // 幂等键端口按表单种类返回一把已生成的键（生成器自身的形状见 production-order-keys.test.ts）。
+  nextIdempotencyKey: vi.fn(
+    (_orderNumber: string, kind: string) => `WO-KT-2026-001-${kind}-20261124090000-A1B2`,
+  ),
   ...overrides,
 });
 
@@ -813,5 +817,393 @@ describe('U3-MFG-5 工单控制台：工序报工', () => {
     expect(submit).not.toHaveBeenCalled();
     await openReport(host);
     expect(ports.nextIdempotencyKey).toHaveBeenCalledTimes(2);
+  });
+});
+
+// U3-MFG-5 车间执行：领退料。载荷 oracle 迁自 fulfillment-actions-behavior.test.ts 里随
+// appendProductionMaterial 一起退役的两条用例；幂等键改为前端生成、批次库位只列属于工单
+// BOM 的批次（TD-MFG-010）是有意的差别。
+describe('U3-MFG-5 工单控制台：领退料', () => {
+  const KEY = 'WO-KT-2026-001-MAT-20261124090000-A1B2';
+  // 库存批次：成品批次排第一（主协调复现 TD-MFG-010 时选到的就是这一类）。
+  const finishedBalance = {
+    itemVersionId: 'v-1',
+    lotId: 'lot-fg',
+    locationId: 'loc-1',
+    sku: 'FG-KT-PRO-50',
+    lotNumber: 'LOT-FG',
+    locationCode: 'L1',
+    quantity: '800',
+  };
+  const yarnBalance = {
+    itemVersionId: 'raw-1',
+    lotId: 'lot-1',
+    locationId: 'loc-1',
+    sku: 'RAW',
+    lotNumber: 'LOT',
+    locationCode: 'L1',
+    quantity: '9.5',
+  };
+  const backingBalance = {
+    itemVersionId: 'raw-9',
+    lotId: 'lot-9',
+    locationId: 'loc-1',
+    sku: 'BACKING',
+    lotNumber: 'LOT-9',
+    locationCode: 'L1',
+    quantity: '30',
+  };
+  const balances = [finishedBalance, yarnBalance, backingBalance];
+  const ALL_OPTIONS = [
+    { value: '0', label: 'FG-KT-PRO-50 · LOT-FG · L1 · 可用 800' },
+    { value: '1', label: 'RAW · LOT · L1 · 可用 9.5' },
+    { value: '2', label: 'BACKING · LOT-9 · L1 · 可用 30' },
+  ];
+  const UNKNOWN_NOTE =
+    '当前读不到本工单的 BOM（账号没有 BOM 查看权限，或工单详情尚未加载），批次库位列出全部库存批次；不属于本工单 BOM 的批次领料会被拒绝。退料请选本工单此前领出的批次。';
+  // 账号有 bom:read：详情带物料需求（夹具 detailRow 里只有一个组件 raw-1）。
+  const bomAware = () => ({
+    inventoryBalances: vi.fn(() => balances),
+    loadDetail: vi.fn().mockResolvedValue(detailRow()),
+  });
+  const running = () => order({ state: 'IN_PROGRESS' });
+  const openMaterial = async (host: TestElement): Promise<void> => {
+    byTestId(host, 'kt-wo-open').click();
+    await flush();
+    await flush();
+    byTestId(host, 'kt-wo-material-open').click();
+    await flush();
+  };
+  const balanceOptions = (host: TestElement): readonly unknown[] =>
+    optionsOf(byTestId(host, 'kt-wo-material-form'), 'balance');
+  // 迁自 legacy 用例的输入：退料、小数、带空白的原因、ISO 时间；value 是候选序号。
+  const typed = {
+    transactionType: 'RETURN',
+    balance: '0',
+    quantity: '2.25',
+    reason: ' unused ',
+    occurredAt: '2026-10-17T03:00:00Z',
+  };
+  const fillMaterial = async (host: TestElement, values: Record<string, string> = typed) => {
+    for (const [name, value] of Object.entries(values)) await type(host, name, value);
+  };
+
+  it('出现条件与 legacy 逐条一致：production:material 且已放行或进行中才有「领料/退料」', async () => {
+    const cases = [
+      { state: 'IN_PROGRESS', permissions: ['production:material'], shown: true },
+      { state: 'RELEASED', permissions: ['production:material'], shown: true },
+      { state: 'IN_PROGRESS', permissions: ['production:report'], shown: false },
+      { state: 'DRAFT', permissions: ['production:material'], shown: false },
+      { state: 'COMPLETED', permissions: ['production:material'], shown: false },
+      { state: 'CLOSED', permissions: ['production:material'], shown: false },
+      { state: 'CANCELLED', permissions: ['production:material'], shown: false },
+    ] as const;
+    for (const item of cases) {
+      const label = `${item.state} / ${item.permissions.join(',')}`;
+      const host = mount(
+        portsFor([order({ id: 'wo-x', state: item.state })], [...item.permissions]),
+      );
+      byTestId(host, 'kt-wo-open').click();
+      await flush();
+      await flush();
+      const button = optional(host, 'kt-wo-material-open');
+      if (item.shown) {
+        expect(button?.textContent, label).toBe('＋ 领料/退料');
+        expect(button?.className, label).toBe('secondary');
+      } else expect(button, label).toBeNull();
+    }
+  });
+
+  it('打开领退料抽屉：五个字段与 legacy 同名同序、没有手填的幂等键；说明里给出系统生成的键', async () => {
+    const host = mount(portsFor([running()], ['production:material'], bomAware()));
+    await openMaterial(host);
+    const drawer = drawerOf(host);
+    expect(host.querySelectorAll('.detail-drawer')).toHaveLength(1);
+    expect(element(drawer.querySelector('h2')).textContent).toBe('登记生产物料 · WO-KT-2026-001');
+    expect(fieldNamesOf(host)).toEqual([
+      'transactionType',
+      'balance',
+      'quantity',
+      'reason',
+      'occurredAt',
+    ]);
+    const form = byTestId(drawer, 'kt-wo-material-form');
+    expect(element(form.querySelector('button[type="submit"]')).textContent).toBe('确认过账');
+    expect(optionsOf(form, 'transactionType')).toEqual([
+      { value: 'ISSUE', label: '领料' },
+      { value: 'RETURN', label: '退料' },
+    ]);
+    expect(drawer.textContent).toContain(
+      '领料同步写入不可变库存移动；只能领用已放行且属于工单 BOM 的批次物料。',
+    );
+    expect(drawer.textContent).toContain(`本次唯一键由系统生成：${KEY}。`);
+    for (const control of form.querySelectorAll('input[type="number"]'))
+      expect((control as unknown as { step?: string }).step, 'number step').toBe('any');
+  });
+
+  it('批次库位只列属于工单 BOM 的批次（TD-MFG-010）：成品批次与不在 BOM 里的物料不出现', async () => {
+    const host = mount(portsFor([running()], ['production:material'], bomAware()));
+    await openMaterial(host);
+    // 详情夹具的物料需求只有一个组件 raw-1；候选只有草纱批次，序号从 0 起。
+    expect(balanceOptions(host)).toEqual([{ value: '0', label: 'RAW · LOT · L1 · 可用 9.5' }]);
+    expect(byTestId(host, 'kt-wo-material-scope').textContent).toBe(
+      '批次库位只列出属于本工单 BOM 的库存批次。',
+    );
+  });
+
+  it('详情带多个物料需求时逐个匹配批次，候选顺序沿用库存视图', async () => {
+    const host = mount(
+      portsFor([running()], ['production:material'], {
+        inventoryBalances: vi.fn(() => balances),
+        loadDetail: vi.fn().mockResolvedValue(
+          detailRow({
+            materialRequirements: [
+              {
+                lineNumber: 1,
+                componentItemVersionId: 'raw-1',
+                sku: 'RM-YARN',
+                plannedQuantity: 1287.5,
+              },
+              {
+                lineNumber: 2,
+                componentItemVersionId: 'raw-9',
+                sku: 'BACKING',
+                plannedQuantity: 30,
+              },
+            ],
+          }),
+        ),
+      }),
+    );
+    await openMaterial(host);
+    expect(balanceOptions(host)).toEqual([
+      { value: '0', label: 'RAW · LOT · L1 · 可用 9.5' },
+      { value: '1', label: 'BACKING · LOT-9 · L1 · 可用 30' },
+    ]);
+  });
+
+  it('读不到工单 BOM（详情响应不带 materialRequirements 键，如账号没有 bom:read）：列出全部并说明可能被拒绝', async () => {
+    const host = mount(
+      portsFor([running()], ['production:material'], {
+        inventoryBalances: vi.fn(() => balances),
+        loadDetail: vi.fn().mockResolvedValue(detailRow({ materialRequirements: undefined })),
+      }),
+    );
+    await openMaterial(host);
+    expect(balanceOptions(host)).toEqual(ALL_OPTIONS);
+    expect(byTestId(host, 'kt-wo-material-scope').textContent).toBe(UNKNOWN_NOTE);
+  });
+
+  it('工单详情读取失败：同样列出全部并说明可能被拒绝', async () => {
+    const host = mount(
+      portsFor([running()], ['production:material'], {
+        inventoryBalances: vi.fn(() => balances),
+        loadDetail: vi.fn().mockRejectedValue(new Error('detail down')),
+      }),
+    );
+    await openMaterial(host);
+    expect(balanceOptions(host)).toEqual(ALL_OPTIONS);
+    expect(byTestId(host, 'kt-wo-material-scope').textContent).toBe(UNKNOWN_NOTE);
+  });
+
+  it('工单成品没有已发布 BOM（materialRequirements 为空数组）：没有可领批次并如实说明', async () => {
+    const host = mount(
+      portsFor([running()], ['production:material'], {
+        inventoryBalances: vi.fn(() => balances),
+        loadDetail: vi.fn().mockResolvedValue(detailRow({ materialRequirements: [] })),
+      }),
+    );
+    await openMaterial(host);
+    expect(balanceOptions(host)).toEqual([]);
+    expect(byTestId(host, 'kt-wo-material-scope').textContent).toBe(
+      '该成品没有已发布的 BOM，没有可领的批次；领料会被拒绝。',
+    );
+  });
+
+  it('BOM 内的物料没有库存批次（如账号没有库存读权限）：候选为空并说明；不另发请求', async () => {
+    const fetchPage = vi.fn().mockResolvedValue({ items: [], nextCursor: null });
+    const submit = vi.fn().mockResolvedValue(null);
+    const host = mount(
+      portsFor([running()], ['production:material'], {
+        inventoryBalances: vi.fn(() => []),
+        loadDetail: vi.fn().mockResolvedValue(detailRow()),
+        fetchPage,
+        submit,
+      }),
+    );
+    await openMaterial(host);
+    expect(balanceOptions(host)).toEqual([]);
+    expect(byTestId(host, 'kt-wo-material-scope').textContent).toBe(
+      '本工单 BOM 内的物料当前没有库存批次，暂时无法领料。',
+    );
+    expect(fetchPage).not.toHaveBeenCalled();
+    expect(submit).not.toHaveBeenCalled();
+  });
+
+  it('载荷与 legacy 领退料表单同形同键序（小数原样、原因 trim、时间转 ISO），幂等键取前端生成的键', async () => {
+    const submit = vi.fn().mockResolvedValue(null);
+    const refresh = vi.fn().mockResolvedValue([running()]);
+    const ports = portsFor([running()], ['production:material'], {
+      ...bomAware(),
+      submit,
+      refresh,
+    });
+    const host = mount(ports);
+    await openMaterial(host);
+    await fillMaterial(host);
+    await submitDrawer(host);
+    await flush();
+    expect(ports.nextIdempotencyKey).toHaveBeenCalledExactlyOnceWith('WO-KT-2026-001', 'MAT');
+    expect(submit).toHaveBeenCalledExactlyOnceWith('/api/v1/production-orders/wo-1/materials', {
+      transactionType: 'RETURN',
+      itemVersionId: 'raw-1',
+      lotId: 'lot-1',
+      locationId: 'loc-1',
+      quantity: '2.25',
+      reason: 'unused',
+      occurredAt: '2026-10-17T03:00:00.000Z',
+      idempotencyKey: KEY,
+    });
+    // 上线路径（JSON）与同一组输入下的 legacy 载荷逐字节相同——幂等键的值不同，位置相同。
+    expect(JSON.stringify(submit.mock.calls[0]?.[1])).toBe(
+      JSON.stringify({
+        transactionType: 'RETURN',
+        itemVersionId: 'raw-1',
+        lotId: 'lot-1',
+        locationId: 'loc-1',
+        quantity: '2.25',
+        reason: 'unused',
+        occurredAt: '2026-10-17T03:00:00.000Z',
+        idempotencyKey: KEY,
+      }),
+    );
+    expect(submit.mock.calls[0]).toHaveLength(2);
+    // 提交成功：表单关闭、回到详情抽屉，整站刷新一次并重读详情。
+    expect(optional(host, 'kt-wo-material-form')).toBeNull();
+    expect(optional(host, 'kt-wo-material-open')).not.toBeNull();
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(ports.loadDetail).toHaveBeenCalledTimes(2);
+  });
+
+  it('候选在打开表单时定下：之后库存视图变了，下拉与提交仍用打开时的那份（legacy 同式的快照语义）', async () => {
+    const submit = vi.fn().mockResolvedValue(null);
+    // 第一次读取（打开表单）得到全部库存；之后的读取换成了另一份数据。
+    const inventoryBalances = vi
+      .fn()
+      .mockReturnValueOnce(balances)
+      .mockReturnValue([{ itemVersionId: 'wrong-later-snapshot' }]);
+    const host = mount(
+      portsFor([running()], ['production:material'], {
+        inventoryBalances,
+        loadDetail: vi.fn().mockResolvedValue(detailRow()),
+        submit,
+      }),
+    );
+    await openMaterial(host);
+    expect(balanceOptions(host)).toEqual([{ value: '0', label: 'RAW · LOT · L1 · 可用 9.5' }]);
+    await fillMaterial(host);
+    await submitDrawer(host);
+    await flush();
+    expect(submit.mock.calls[0]?.[1]).toMatchObject({
+      itemVersionId: 'raw-1',
+      lotId: 'lot-1',
+      locationId: 'loc-1',
+    });
+  });
+
+  it('无效的批次选择在提交前拦下（越界 / 空 / 非整数 / 负数）：不提交、不刷新', async () => {
+    const submit = vi.fn().mockResolvedValue(null);
+    const refresh = vi.fn().mockResolvedValue([]);
+    const host = mount(
+      portsFor([running()], ['production:material'], { ...bomAware(), submit, refresh }),
+    );
+    await openMaterial(host);
+    for (const balance of ['99', '', '1.5', '-1']) {
+      await fillMaterial(host, { ...typed, balance });
+      await submitDrawer(host);
+      await flush();
+    }
+    expect(submit).not.toHaveBeenCalled();
+    expect(refresh).not.toHaveBeenCalled();
+    expect(byTestId(host, 'kt-wo-material-error').textContent).toBe('请选择有效批次库位');
+  });
+
+  it('无效日期在提交前拦下：不提交、不刷新、给出中文提示', async () => {
+    const submit = vi.fn().mockResolvedValue(null);
+    const refresh = vi.fn().mockResolvedValue([]);
+    const host = mount(
+      portsFor([running()], ['production:material'], { ...bomAware(), submit, refresh }),
+    );
+    await openMaterial(host);
+    await fillMaterial(host, { ...typed, occurredAt: 'invalid' });
+    await submitDrawer(host);
+    await flush();
+    expect(submit).not.toHaveBeenCalled();
+    expect(refresh).not.toHaveBeenCalled();
+    expect(byTestId(host, 'kt-wo-material-error').textContent).toBe(
+      '发生时间格式不正确，请重新选择',
+    );
+  });
+
+  it('服务端拒绝（如该批次物料不属于工单 BOM）：抽屉留着、就近显示接口消息、不刷新；重试沿用同一把键', async () => {
+    const submit = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('该批次物料不属于工单 BOM'))
+      .mockResolvedValue(null);
+    const refresh = vi.fn().mockResolvedValue([]);
+    const ports = portsFor([running()], ['production:material'], {
+      ...bomAware(),
+      submit,
+      refresh,
+    });
+    const host = mount(ports);
+    await openMaterial(host);
+    await fillMaterial(host);
+    await submitDrawer(host);
+    await flush();
+    expect(byTestId(host, 'kt-wo-material-error').textContent).toBe('该批次物料不属于工单 BOM');
+    expect(optional(host, 'kt-wo-material-form')).not.toBeNull();
+    expect(refresh).not.toHaveBeenCalled();
+    await submitDrawer(host);
+    await flush();
+    expect(submit).toHaveBeenCalledTimes(2);
+    expect(submit.mock.calls[1]?.[1]).toEqual(submit.mock.calls[0]?.[1]);
+    expect(ports.nextIdempotencyKey).toHaveBeenCalledTimes(1);
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('提交后就地刷新：物料台账随重读的详情增加一条', async () => {
+    const before = running();
+    const after = order({
+      state: 'IN_PROGRESS',
+      materials: [
+        ...(before.materials as ProductionOrderRow[]),
+        { id: 'm-2', transaction_type: 'ISSUE', quantity: 12.5 },
+      ],
+    });
+    const refresh = vi.fn().mockResolvedValue([after]);
+    const loadDetail = vi.fn().mockResolvedValueOnce(null).mockResolvedValue(after);
+    const host = mount(
+      portsFor([before], ['production:material'], {
+        inventoryBalances: vi.fn(() => [yarnBalance]),
+        refresh,
+        loadDetail,
+      }),
+    );
+    const ledger = () => drawerOf(host).querySelectorAll('[data-testid="kt-wo-material-entry"]');
+    byTestId(host, 'kt-wo-open').click();
+    await flush();
+    await flush();
+    expect(ledger()).toHaveLength(1);
+    byTestId(host, 'kt-wo-material-open').click();
+    await flush();
+    await fillMaterial(host, { ...typed, transactionType: 'ISSUE', quantity: '12.5' });
+    await submitDrawer(host);
+    await flush();
+    await flush();
+    expect(loadDetail).toHaveBeenCalledTimes(2);
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(ledger()).toHaveLength(2);
+    expect(drawerOf(host).textContent).toContain('领料 12.5');
   });
 });

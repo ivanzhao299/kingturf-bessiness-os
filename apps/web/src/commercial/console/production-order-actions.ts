@@ -2,12 +2,13 @@
 // 装载/筛选/分页/详情闭包（createProductionOrderLoaders）与变更闭包
 //（createProductionOrderMutations：创建载荷 / 状态流转 / 车间执行）分离；bundle 为页面
 // signal 束的最小面，请求序号守卫丢弃过期响应。
-// U3-MFG-5：车间执行表单（已迁入：工序报工）的打开与提交——载荷与 legacy 表单同形（字段、
-// 类型、日期转换），幂等键由前端生成；提交成功后整站刷新一次并重读详情。
+// U3-MFG-5：车间执行表单（已迁入：工序报工 / 领退料）的打开与提交——载荷与 legacy 表单同形
+//（字段、类型、日期转换），幂等键由前端生成；提交成功后整站刷新一次并重读详情。
 import type { Signal } from '@preact/signals';
 import {
   ALL_STATUSES,
   byLegacyPriority,
+  materialBatchesOf,
   PRODUCTION_ORDER_PAGE_SIZE,
   type ExecutionDraft,
   type ProductionOrderAction,
@@ -166,7 +167,8 @@ export function createProductionOrderLoaders(
       if (row === null) detailSequence += 1;
       else void reloadDetail();
     },
-    // 打开车间执行表单：幂等键在此时生成一次（提交失败后重试沿用同一把键）。
+    // 打开车间执行表单：幂等键在此时生成一次（提交失败后重试沿用同一把键）；领退料的批次
+    // 候选也在此刻定下（下拉 value 是候选序号，提交时按同一份候选取批次）。
     openExecution: (kind: ProductionOrderExecution): void => {
       const row = bundle.selected.value;
       if (!row) return;
@@ -177,8 +179,9 @@ export function createProductionOrderLoaders(
         kind,
         idempotencyKey: ports.nextIdempotencyKey(
           ports.recordText(row, 'orderNumber', 'order_number'),
-          'RPT',
+          kind === 'report' ? 'RPT' : 'MAT',
         ),
+        material: materialBatchesOf(bundle.detail.value, ports.inventoryBalances()),
       };
     },
     openCreate: (): void => {
@@ -205,8 +208,8 @@ export function createProductionOrderLoaders(
 }
 
 // 变更动作工厂：创建（载荷与 vanilla「建立生产工单」表单逐字节一致）、状态流转（载荷与
-// vanilla 流转表单逐字节一致，经现代化统一动作端点 PUT /:id/state）、车间执行（工序报工：
-// 载荷与 vanilla 表单同形，幂等键由前端生成）。装载侧 io 经注入。
+// vanilla 流转表单逐字节一致，经现代化统一动作端点 PUT /:id/state）、车间执行（工序报工 /
+// 领退料：载荷与 vanilla 表单同形，幂等键由前端生成）。装载侧 io 经注入。
 export function createProductionOrderMutations(
   ports: ProductionOrderConsolePorts,
   bundle: ProductionOrderBundle,
@@ -244,8 +247,8 @@ export function createProductionOrderMutations(
     await io.sync();
   };
 
-  // 提交成功后的收尾：关表单 → 整站刷新一次 → 详情抽屉仍开着就重读详情（工序进度、
-  // 报工记录随之就地更新）。
+  // 提交成功后的收尾：关表单 → 整站刷新一次 → 详情抽屉仍开着就重读详情（工序进度、物料
+  // 台账、报工记录随之就地更新）。
   const committed = async (): Promise<void> => {
     closeForm();
     await io.sync();
@@ -292,8 +295,11 @@ export function createProductionOrderMutations(
     await committed();
   };
 
-  // 工序报工提交。载荷与 legacy 表单同形、键序相同：表单八字段（值 trim）+ 两个时间转
-  // ISO + 幂等键（前端生成，取代旧表单里手填的「报工唯一键」）。
+  // 车间执行提交。载荷与 legacy 表单同形、键序相同：
+  // - 工序报工 = 表单八字段（值 trim）+ 两个时间转 ISO + 幂等键（前端生成，取代旧表单里
+  //   手填的「报工唯一键」）；
+  // - 领退料 = 业务类型 + 所选批次的物料版本 / 批次 / 库位 + 数量 + 原因 + 时间 + 幂等键
+  //  （前端生成，取代手填的「业务唯一键」）；批次取自打开表单时定下的候选。
   const runExecution = async (values: Readonly<Record<string, string>>): Promise<void> => {
     const row = bundle.selected.value;
     const draft = bundle.execution.value;
@@ -304,18 +310,44 @@ export function createProductionOrderMutations(
     bundle.actionError.value = '';
     const input = trimmed(values);
     const orderId = ports.textValue(row.id, '');
+    const path = `/api/v1/production-orders/${orderId}`;
     try {
-      await ports.submit(`/api/v1/production-orders/${orderId}/operation-reports`, {
-        ...input,
-        startedAt: timestampOf(input.startedAt ?? '', '开始时间'),
-        completedAt: timestampOf(input.completedAt ?? '', '完成时间'),
-        idempotencyKey: draft.idempotencyKey,
-      });
+      if (draft.kind === 'report')
+        await ports.submit(`${path}/operation-reports`, {
+          ...input,
+          startedAt: timestampOf(input.startedAt ?? '', '开始时间'),
+          completedAt: timestampOf(input.completedAt ?? '', '完成时间'),
+          idempotencyKey: draft.idempotencyKey,
+        });
+      else await postMaterial(input, draft, path);
     } catch (error: unknown) {
-      io.actionFailed(error, '工序报工失败');
+      io.actionFailed(error, draft.kind === 'report' ? '工序报工失败' : '领料/退料失败');
       return;
     }
     await committed();
+  };
+  // legacy 同式的无效选择守卫：候选序号不是非负整数或超出候选范围时报「请选择有效批次库位」。
+  const postMaterial = async (
+    input: Readonly<Record<string, string>>,
+    draft: ExecutionDraft,
+    path: string,
+  ): Promise<void> => {
+    const index = Number(input.balance);
+    const balance =
+      input.balance === undefined || input.balance === '' || !Number.isInteger(index)
+        ? undefined
+        : draft.material.balances[index];
+    if (!balance) throw new Error('请选择有效批次库位');
+    await ports.submit(`${path}/materials`, {
+      transactionType: input.transactionType ?? '',
+      itemVersionId: balance.itemVersionId,
+      lotId: balance.lotId,
+      locationId: balance.locationId,
+      quantity: input.quantity ?? '',
+      reason: input.reason ?? '',
+      occurredAt: timestampOf(input.occurredAt ?? '', '发生时间'),
+      idempotencyKey: draft.idempotencyKey,
+    });
   };
 
   return { closeForm, runCreate, runTransition, runExecution };

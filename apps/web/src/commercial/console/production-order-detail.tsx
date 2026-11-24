@@ -2,9 +2,9 @@
 // 每道工序的良品/废品/工时与完成徽章）、物料需求与分配状态、物料台账、报工记录时间线、
 // 成品序列与事件台账。详情数据来自 additive findProductionOrder，未到达前回退列表行
 // 就地推算。分区各自成组件（G5 ≤200 行）。
-// U3-MFG-5：车间执行入口逐张迁入——已迁入的表单（本步：工序报工）是本抽屉内的 Preact
-// 按钮，点击打开表单抽屉（production-order-execution-forms.tsx）；尚未迁入的入口（领退料 /
-// 成品卷入库）仍由宿主把既有 vanilla 按钮挂进本抽屉。
+// U3-MFG-5：车间执行入口逐张迁入——已迁入的表单（工序报工 / 领退料）是本抽屉内的 Preact
+// 按钮，点击打开表单抽屉（production-order-execution-forms.tsx）；尚未迁入的入口（成品卷
+// 入库）仍由宿主把既有 vanilla 按钮挂进本抽屉。
 import { useMemo, useRef } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import { DetailDrawer, StatusBadge, type StatusTone } from '@kingturf/ui';
@@ -263,7 +263,7 @@ const StateTrack = ({ state, row }: DetailProps & Readonly<{ row: ProductionOrde
 
 // 已迁入控制台抽屉的执行入口（出现条件见 availableExecutions，与 legacy 逐条一致；数据取
 // 列表行——提交后整站刷新会换成最新行）。
-const MIGRATED_EXECUTIONS: readonly ProductionOrderExecution[] = ['report'];
+const MIGRATED_EXECUTIONS: readonly ProductionOrderExecution[] = ['report', 'material'];
 const ExecutionEntries = ({ state, row }: DetailProps & Readonly<{ row: ProductionOrderRow }>) => {
   const entries = availableExecutions(
     state.permissions,
@@ -574,7 +574,7 @@ export const ProductionOrderDetailDrawer = ({ state }: DetailProps) => {
       </Section>
       <Section title="车间执行" testId="kt-wo-execution-section">
         <p class="console-hint">
-          工序报工在此登记；领退料与成品卷入库沿用既有登记表单，可登记的项目随工单状态与 权限变化。
+          工序报工与领退料在此登记；成品卷入库沿用既有登记表单，可登记的项目随工单状态与权限变化。
         </p>
         <ExecutionEntries state={state} row={row} />
         <ExecutionMount state={state} />

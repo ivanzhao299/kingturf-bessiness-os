@@ -3,75 +3,10 @@ import { openForm } from '../shared/forms';
 import type { FulfillmentViewContext } from './fulfillment-view-ports';
 
 // U3-MFG-4：工单状态流转（原 appendProductionTransition）已迁入 Preact 控制台（PUT /:id/state 统一动作端点）。
-// U3-MFG-5：工序报工（原 appendProductionReport）已迁入 Preact 控制台抽屉（载荷 oracle 见
-// console/production-order-console.test.tsx）。本文件余下两张表单（领退料 / 成品卷入库）随后
-// 两步迁入，届时本文件删除；迁入前由 console/production-order-host.ts 挂进工单详情抽屉，
-// 函数体逐字节未动。
-export function appendProductionMaterial(
-  context: FulfillmentViewContext,
-  order: Record<string, unknown>,
-  state: string,
-  actions: HTMLElement,
-  refresh: () => Promise<void>,
-): void {
-  const { workspace, controller, permissions } = context;
-  const { recordText } = context.ports;
-  if (permissions.has('production:material') && (state === 'RELEASED' || state === 'IN_PROGRESS')) {
-    const balances = controller.views.get('/api/v1/inventory-balances') ?? [];
-    const material = el('button', 'secondary', '＋ 领料/退料');
-    material.addEventListener('click', () => {
-      openForm(
-        workspace,
-        '登记生产物料',
-        '领料同步写入不可变库存移动；只能领用已放行且属于工单 BOM 的批次物料。',
-        [
-          {
-            name: 'transactionType',
-            label: '业务类型',
-            type: 'select',
-            required: true,
-            options: [
-              { value: 'ISSUE', label: '领料' },
-              { value: 'RETURN', label: '退料' },
-            ],
-          },
-          {
-            name: 'balance',
-            label: '批次库位',
-            type: 'select',
-            required: true,
-            options: balances.map((item, index) => ({
-              value: String(index),
-              label: `${recordText(item, 'sku', 'sku')} · ${recordText(item, 'lotNumber', 'lotNumber')} · ${recordText(item, 'locationCode', 'locationCode')} · 可用 ${recordText(item, 'quantity', 'quantity')}`,
-            })),
-          },
-          { name: 'quantity', label: '数量', type: 'number', required: true },
-          { name: 'reason', label: '领退料原因', type: 'textarea', required: true },
-          { name: 'occurredAt', label: '发生时间', type: 'datetime-local', required: true },
-          { name: 'idempotencyKey', label: '业务唯一键', required: true },
-        ],
-        '确认过账',
-        async (values) => {
-          const balance = balances[Number(values.balance)];
-          if (!balance) throw new Error('请选择有效批次库位');
-          await controller.submit(`/api/v1/production-orders/${String(order.id)}/materials`, {
-            transactionType: values.transactionType,
-            itemVersionId: balance.itemVersionId,
-            lotId: balance.lotId,
-            locationId: balance.locationId,
-            quantity: values.quantity,
-            reason: values.reason,
-            occurredAt: new Date(values.occurredAt ?? '').toISOString(),
-            idempotencyKey: values.idempotencyKey,
-          });
-          await refresh();
-        },
-      );
-    });
-    actions.append(material);
-  }
-}
-
+// U3-MFG-5：工序报工与领退料（原 appendProductionReport / appendProductionMaterial）已迁入
+// Preact 控制台抽屉（载荷 oracle 见 console/production-order-console.test.tsx）。本文件余下的
+// 成品卷入库随后一步迁入，届时本文件删除；迁入前由 console/production-order-host.ts 挂进
+// 工单详情抽屉，函数体逐字节未动。
 export function appendProductionOutput(
   context: FulfillmentViewContext,
   order: Record<string, unknown>,

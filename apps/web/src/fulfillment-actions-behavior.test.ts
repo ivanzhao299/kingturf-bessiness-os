@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { openForm } from './shared/forms';
-import { appendProductionMaterial, appendProductionOutput } from './commercial/production-actions';
+import { appendProductionOutput } from './commercial/production-actions';
 import { appendShipmentDelivery, appendShipmentDispatch } from './commercial/shipment-actions';
 import type { FulfillmentViewContext } from './commercial/fulfillment-view-ports';
 import type { CommercialPermission } from './commercial/permissions';
@@ -83,70 +83,17 @@ afterEach(() => vi.unstubAllGlobals());
 
 // U3-MFG-4：工单状态流转（原 appendProductionTransition）已迁入 Preact 控制台，载荷 oracle 见
 // console/production-order-console.test.tsx。
-// U3-MFG-5：工序报工（原 appendProductionReport）已迁入 Preact 控制台抽屉——函数随迁移删除，
-// 其载荷 oracle（小数原样、日期转 ISO、无效日期不提交、失败不刷新、出现条件）迁往同一组件
-// 测试；幂等键改为前端生成是有意的差别。余下两张表单（领退料 / 成品卷入库）随后两步迁入，
-// 届时本组用例随之退役。
+// U3-MFG-5：工序报工与领退料（原 appendProductionReport / appendProductionMaterial）已迁入
+// Preact 控制台抽屉——函数随迁移删除，其载荷 oracle（小数原样、日期转 ISO、无效日期不提交、
+// 无效批次不提交、失败不刷新、出现条件、批次候选）迁往同一组件测试
+// console/production-order-console.test.tsx；幂等键改为前端生成、批次库位只列工单 BOM 的批次
+// 是有意的差别。原「gates material/output…」用例里的成品卷入库部分保留为下一条；领退料部分
+// 随函数退役。余下的成品卷入库随后一步迁入，届时本组用例随之退役。
 describe('production action callback contracts', () => {
-  it.each(['RELEASED', 'IN_PROGRESS'])(
-    'uses append-time inventory snapshot for %s material and rejects invalid choices',
-    async (state) => {
-      const f = setup(['production:material']);
-      f.views.set('/api/v1/inventory-balances', [
-        {
-          itemVersionId: 'raw-1',
-          lotId: 'lot-1',
-          locationId: 'loc-1',
-          sku: 'RAW',
-          lotNumber: 'LOT',
-          locationCode: 'L1',
-          quantity: '9.5',
-        },
-      ]);
-      appendProductionMaterial(f.context, order, state, f.target, f.refresh);
-      f.views.set('/api/v1/inventory-balances', [{ itemVersionId: 'wrong-later-snapshot' }]);
-      const opened = f.click();
-      expect(opened.fields.find((field) => field.name === 'balance')?.options).toEqual([
-        { value: '0', label: 'RAW · LOT · L1 · 可用 9.5' },
-      ]);
-      const values = {
-        balance: '0',
-        transactionType: 'RETURN',
-        quantity: '2.25',
-        reason: 'unused',
-        occurredAt: '2026-10-17T03:00:00Z',
-        idempotencyKey: 'MAT-1',
-      };
-      await opened.run(values);
-      expect(f.submit).toHaveBeenCalledExactlyOnceWith(
-        '/api/v1/production-orders/production-1/materials',
-        {
-          transactionType: 'RETURN',
-          itemVersionId: 'raw-1',
-          lotId: 'lot-1',
-          locationId: 'loc-1',
-          quantity: '2.25',
-          reason: 'unused',
-          occurredAt: '2026-10-17T03:00:00.000Z',
-          idempotencyKey: 'MAT-1',
-        },
-      );
-      await expect(opened.run({ ...values, balance: '99' })).rejects.toThrow('请选择有效批次库位');
-      await expect(opened.run({ ...values, occurredAt: 'invalid' })).rejects.toThrow(RangeError);
-      expect(f.submit).toHaveBeenCalledTimes(1);
-      expect(f.refresh).toHaveBeenCalledTimes(1);
-      f.submit.mockRejectedValueOnce(new Error('material rejected'));
-      await expect(opened.run(values)).rejects.toThrow('material rejected');
-      expect(f.refresh).toHaveBeenCalledTimes(1);
-    },
-  );
-
-  it('gates material/output and handles absent inventory with no invented API lookup', async () => {
+  it('gates output by state, permission and existing report', () => {
     const f = setup(['production:material', 'production:report']);
-    appendProductionMaterial(f.context, order, 'DRAFT', f.target, f.refresh);
     appendProductionOutput(f.context, order, 'RELEASED', [{ id: 'report-1' }], f.target, f.refresh);
     appendProductionOutput(f.context, order, 'IN_PROGRESS', [], f.target, f.refresh);
-    appendProductionMaterial(setup().context, order, 'RELEASED', f.target, f.refresh);
     appendProductionOutput(
       setup().context,
       order,
@@ -156,12 +103,7 @@ describe('production action callback contracts', () => {
       f.refresh,
     );
     expect(f.actions.children).toHaveLength(0);
-    appendProductionMaterial(f.context, order, 'RELEASED', f.target, f.refresh);
-    const opened = f.click();
-    expect(opened.fields.find((field) => field.name === 'balance')?.options).toEqual([]);
-    await expect(opened.run({ balance: '0' })).rejects.toThrow('请选择有效批次库位');
-    expect(f.submit).not.toHaveBeenCalled();
-    expect(f.refresh).not.toHaveBeenCalled();
+    expect(form).not.toHaveBeenCalled();
   });
 
   it('binds output to order item version and fixed report/location options', async () => {

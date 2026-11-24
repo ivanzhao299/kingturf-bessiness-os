@@ -1,5 +1,6 @@
 // U3-MFG-4：工单控制台共享展示契约——状态词表、行级下一步动作表、legacy 默认排序、
-// 完工进度推算与视图状态类型。U3-MFG-5：车间执行表单草稿与执行入口的出现条件。
+// 完工进度推算与视图状态类型。U3-MFG-5：车间执行表单草稿、执行入口的出现条件，以及领退料
+// 「批次库位」的候选范围（TD-MFG-010：只列属于工单 BOM 的批次）。
 import type { StatusTone } from '@kingturf/ui';
 import type { ProductionOrderConsolePorts, ProductionOrderRow } from './production-order-ports';
 
@@ -15,13 +16,35 @@ export type ProductionOrderStatusFilter = 'ALL' | ProductionOrderStatus;
 // 的四个按钮逐一对应；legacy 另有 cancel 写路径，vanilla 从未暴露，本批不新增入口。
 export type ProductionOrderAction = 'release' | 'start' | 'complete' | 'close';
 // 车间执行表单（已迁入控制台抽屉的种类）。
-export type ProductionOrderExecution = 'report';
+export type ProductionOrderExecution = 'report' | 'material';
 export type ProductionOrderForm = 'create' | 'transition' | ProductionOrderExecution;
-// 一次打开的执行表单草稿：幂等键在打开时生成一次（提交失败后重试沿用同一把键）。
+// 一次打开的执行表单草稿：幂等键在打开时生成一次（提交失败后重试沿用同一把键）；领退料的
+// 批次候选在打开时定下（下拉的 value 是候选序号，提交时按同一份候选取批次）。
 export type ExecutionDraft = Readonly<{
   kind: ProductionOrderExecution;
   idempotencyKey: string;
+  material: MaterialBatchScope;
 }>;
+// 领退料「批次库位」候选及其依据：bom = 按工单物料需求过滤；no-bom = 工单成品没有已发布
+// BOM（没有可领的批次）；unknown = 详情响应不带 materialRequirements（账号没有 bom:read，
+// 或详情未到达 / 读取失败），列出全部并由表单说明可能被拒绝。
+export type MaterialBatchScope = Readonly<{
+  balances: readonly ProductionOrderRow[];
+  basis: 'bom' | 'no-bom' | 'unknown';
+}>;
+export const materialBatchesOf = (
+  detail: ProductionOrderRow | null,
+  balances: readonly ProductionOrderRow[],
+): MaterialBatchScope => {
+  if (!Array.isArray(detail?.materialRequirements)) return { balances, basis: 'unknown' };
+  const components = new Set(
+    records(detail.materialRequirements).map((item) => idOf(item.componentItemVersionId)),
+  );
+  return {
+    balances: balances.filter((item) => components.has(idOf(item.itemVersionId))),
+    basis: components.size > 0 ? 'bom' : 'no-bom',
+  };
+};
 // 车间执行入口及其出现条件——与 legacy appendProductionReport / Material / Output 逐条一致：
 // 工序报工 = production:report 且进行中；领料/退料 = production:material 且已放行或进行中；
 // 成品卷入库 = production:report 且进行中且已有报工。顺序同 legacy（报工、领退料、成品卷入库）。
@@ -222,7 +245,7 @@ export type ProductionOrderViewState = Readonly<{
   execution: ExecutionDraft | null;
   openExecution: (kind: ProductionOrderExecution) => void;
   runExecution: (values: Readonly<Record<string, string>>) => Promise<void>;
-  // 尚未迁入控制台的执行入口：宿主把既有 vanilla 按钮挂进容器并返回卸载函数。
+  // 尚未迁入控制台的执行入口（成品卷入库）：宿主把既有 vanilla 按钮挂进容器并返回卸载函数。
   mountExecution: (
     container: HTMLElement,
     row: ProductionOrderRow,

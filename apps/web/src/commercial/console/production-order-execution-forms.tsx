@@ -1,7 +1,9 @@
 // U3-MFG-5（ADR-0014 分域重写）：车间执行表单抽屉。字段、提交载荷与 legacy openForm 表单
-// 同形（字段、类型、日期转换）。一处有意的差别：幂等键由前端生成（不再让用户手填），在
-// 表单说明里给出以便追溯。
-// 已迁入：工序报工（领退料 / 成品卷入库随后两步迁入）。
+// 同形（字段、类型、日期转换）。两处有意的差别：
+// 1) 幂等键由前端生成（不再让用户手填），在表单说明里给出以便追溯；
+// 2) 领退料的「批次库位」只列属于工单 BOM 的批次（TD-MFG-010）；详情读不到工单 BOM 时列出
+//    全部并在表单里说明可能被拒绝。
+// 已迁入：工序报工 / 领退料（成品卷入库随后一步迁入）。
 import { DetailDrawer, FormSection, StatusBadge, type FormSectionField } from '@kingturf/ui';
 import {
   formatQuantity,
@@ -25,6 +27,12 @@ const COPY = {
     section: '工序报工',
     description: '每次报工使用唯一幂等键；累计良品不能超过工单计划数量。',
     submit: '提交报工',
+  },
+  material: {
+    heading: '登记生产物料',
+    section: '领料 / 退料',
+    description: '领料同步写入不可变库存移动；只能领用已放行且属于工单 BOM 的批次物料。',
+    submit: '确认过账',
   },
 } as const;
 
@@ -124,6 +132,45 @@ const reportFields = (
   { name: 'notes', label: '班组记录', type: 'textarea', required: true },
 ];
 
+// 领退料「批次库位」候选范围的说明（依据见 materialBatchesOf）。
+const materialScopeNote = (state: ProductionOrderViewState): string => {
+  const scope = state.execution?.material;
+  if (!scope) return '';
+  if (scope.basis === 'bom')
+    return scope.balances.length > 0
+      ? '批次库位只列出属于本工单 BOM 的库存批次。'
+      : '本工单 BOM 内的物料当前没有库存批次，暂时无法领料。';
+  if (scope.basis === 'no-bom') return '该成品没有已发布的 BOM，没有可领的批次；领料会被拒绝。';
+  return '当前读不到本工单的 BOM（账号没有 BOM 查看权限，或工单详情尚未加载），批次库位列出全部库存批次；不属于本工单 BOM 的批次领料会被拒绝。退料请选本工单此前领出的批次。';
+};
+
+const materialFields = (state: ProductionOrderViewState): readonly FormSectionField[] => [
+  {
+    name: 'transactionType',
+    label: '业务类型',
+    type: 'select',
+    required: true,
+    options: [
+      { value: 'ISSUE', label: '领料' },
+      { value: 'RETURN', label: '退料' },
+    ],
+  },
+  {
+    name: 'balance',
+    label: '批次库位',
+    type: 'select',
+    required: true,
+    // value 是候选序号（legacy 同式），提交时按同一份候选取物料版本 / 批次 / 库位。
+    options: (state.execution?.material.balances ?? []).map((item, index) => ({
+      value: String(index),
+      label: `${state.ports.recordText(item, 'sku', 'sku')} · ${state.ports.recordText(item, 'lotNumber', 'lotNumber')} · ${state.ports.recordText(item, 'locationCode', 'locationCode')} · 可用 ${state.ports.recordText(item, 'quantity', 'quantity')}`,
+    })),
+  },
+  { name: 'quantity', label: '数量', type: 'number', required: true },
+  { name: 'reason', label: '领退料原因', type: 'textarea', required: true },
+  { name: 'occurredAt', label: '发生时间', type: 'datetime-local', required: true },
+];
+
 export const ProductionOrderExecutionDrawer = ({ state }: FormProps) => {
   const draft = state.execution;
   const row = state.selected;
@@ -131,6 +178,7 @@ export const ProductionOrderExecutionDrawer = ({ state }: FormProps) => {
   const { ports } = state;
   const copy = COPY[draft.kind];
   const orderNumber = ports.recordText(row, 'orderNumber', 'order_number');
+  const prefix = `kt-wo-${draft.kind}`;
   return (
     <DetailDrawer
       title={`${copy.heading} · ${orderNumber}`}
@@ -138,14 +186,19 @@ export const ProductionOrderExecutionDrawer = ({ state }: FormProps) => {
         state.closeForm();
       }}
     >
-      <Summary state={state} row={row} testId="kt-wo-report-summary" />
-      {submitError(state, 'kt-wo-report-error')}
-      <div data-testid="kt-wo-report-form">
+      <Summary state={state} row={row} testId={`${prefix}-summary`} />
+      {submitError(state, `${prefix}-error`)}
+      {draft.kind === 'material' ? (
+        <p class="console-hint" data-testid="kt-wo-material-scope">
+          {materialScopeNote(state)}
+        </p>
+      ) : null}
+      <div data-testid={`${prefix}-form`}>
         <FormSection
           title={copy.section}
           // 幂等键由系统生成：写进说明以便按它追溯服务端记录，用户无需填写。
           description={`${copy.description}本次唯一键由系统生成：${draft.idempotencyKey}。`}
-          fields={reportFields(state.detail, row)}
+          fields={draft.kind === 'report' ? reportFields(state.detail, row) : materialFields(state)}
           submitLabel={copy.submit}
           onSubmit={(values) => state.runExecution(values)}
         />
