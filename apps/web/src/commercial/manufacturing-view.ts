@@ -1,6 +1,6 @@
 import { el } from '../dom';
 import type { OperationsViewContext } from './operations-view-ports';
-import { appendManufacturingItemConsole } from './console-entry';
+import { appendManufacturingItemConsole } from './console/item-host';
 import { appendManufacturingBomConsole } from './console/bom-host';
 import { appendManufacturingRoutingConsole } from './console/routing-host';
 
