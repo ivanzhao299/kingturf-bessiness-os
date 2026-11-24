@@ -300,6 +300,59 @@ describe('procurement and inventory repository real PostgreSQL contracts', () =>
     });
   });
 
+  // TD-TEST-022：U3-PROC-1..4 的加性只读方法此前只被仓储替身执行过。与上一例一起，让八个方法
+  //（含筛选变体）全部在真实 schema 上执行——列名错误在语句规划阶段就会暴露，与数据多少无关。
+  it('TD-TEST-022: every additive procurement read executes against the real schema', async () => {
+    const { context } = state();
+    const receipt = await record('goods-receipt.posted', 'goods-receipt', (correlation) =>
+      repository.receive(receiptInput('GR-1'), context, correlation),
+    );
+    expect(await repository.listSupplierPage(context, { limit: 1 })).toMatchObject({
+      items: [{ id: identifier(supplier) }],
+      nextCursor: null,
+    });
+    for (const status of ['ACTIVE', 'ON_HOLD', 'INACTIVE'] as const)
+      expect(await repository.listSupplierPage(context, { status })).toMatchObject({
+        nextCursor: null,
+      });
+    expect(await repository.findSupplier(identifier(supplier), context)).toMatchObject({
+      id: identifier(supplier),
+      supplier_number: 'SUP-1',
+    });
+    for (const status of [
+      'DRAFT',
+      'ISSUED',
+      'PARTIALLY_RECEIVED',
+      'RECEIVED',
+      'CANCELLED',
+    ] as const)
+      await repository.listRfqs(context, { status });
+    expect(await repository.findRfq(identifier(rfq), context)).toMatchObject({
+      id: identifier(rfq),
+      status: 'ISSUED',
+    });
+    for (const status of [
+      'DRAFT',
+      'ISSUED',
+      'PARTIALLY_RECEIVED',
+      'RECEIVED',
+      'CANCELLED',
+    ] as const)
+      await repository.listPurchaseOrders(context, { status });
+    expect(await repository.findPurchaseOrder(identifier(order), context)).toMatchObject({
+      id: identifier(order),
+      status: 'RECEIVED',
+    });
+    expect(await repository.listGoodsReceipts(context)).toMatchObject({
+      items: [{ id: identifier(receipt) }],
+      nextCursor: null,
+    });
+    expect(await repository.findGoodsReceipt(identifier(receipt), context)).toMatchObject({
+      id: identifier(receipt),
+      poNumber: 'PO-1',
+    });
+  });
+
   it('requires a same-tenant, same-supplier quote from an issued RFQ', async () => {
     const { context, otherContext, db } = state();
 
