@@ -348,6 +348,9 @@ test('shows recursive MRP explanations, frozen overrides, and released proposal 
   });
 });
 
+// U3-MFG-4：工单区改为主从控制台——列表行（工单号独占元素/完工进度/状态徽章）+
+// 详情抽屉（状态轨迹、工序进度、物料台账、成品序列）。证据从卡片视图迁入抽屉：
+// 打开已关闭工单逐项核对；附列表与抽屉两张截图。
 test('shows closed production execution with routing, material, reports, and serialized output', async ({
   page,
 }, testInfo) => {
@@ -355,15 +358,54 @@ test('shows closed production execution with routing, material, reports, and ser
   await openRoute(page, 'production-orders');
   const workbench = page.getByTestId('production-workbench');
   await expect(workbench).toBeVisible();
-  await expect(workbench.getByText(/WO-KT-2026-001 · FG-KT-PRO-50/u)).toBeVisible();
-  await expect(workbench.locator('.production-operation.done')).toHaveCount(3);
-  await expect(workbench.getByText(/领料 1287.5/u)).toBeVisible();
-  await expect(workbench.getByText(/领料 10/u)).toBeVisible();
-  await expect(workbench.getByText(/退料 2/u)).toBeVisible();
-  await expect(workbench.getByText(/ROLL-KT-2026-001 · 1000.*待检隔离/u)).toBeVisible();
-  await expect(workbench.getByText(/草稿 → 已放行 → 进行中 → 已完成 → 已关闭/u)).toBeVisible();
-  await testInfo.attach('production-execution-desktop', {
+  const row = workbench.locator('tbody tr').filter({ hasText: 'WO-KT-2026-001' });
+  await expect(row).toHaveCount(1);
+  await expect(row.getByTestId('kt-po-number')).toHaveText('WO-KT-2026-001');
+  await expect(row).toContainText('FG-KT-PRO-50');
+  await expect(row).toContainText('已关闭');
+  await expect(row).toContainText('1000 / 1000');
+  await testInfo.attach('production-orders-desktop', {
     body: await workbench.screenshot(),
     contentType: 'image/png',
   });
+  // TD-UI-009：新建工单的计划数量接受小数（原生 step 校验不拦）；只读核对，不提交。
+  await workbench.getByRole('button', { name: '＋ 新建生产工单' }).click();
+  const createForm = page
+    .locator('form.form-section')
+    .filter({ has: page.locator('input[name="orderNumber"]') });
+  await createForm.locator('input[name="plannedQuantity"]').fill('2.5');
+  expect(
+    await createForm
+      .locator('input[type="number"]')
+      .evaluateAll((inputs) =>
+        inputs.map((input) => (input as HTMLInputElement).validity.stepMismatch),
+      ),
+  ).toEqual([false]);
+  await page.keyboard.press('Escape');
+  await expect(createForm).toBeHidden();
+  // 详情抽屉：工序进度（三道工序全部完成）、物料台账、成品序列与状态轨迹。
+  await row.getByTestId('kt-po-open').click();
+  const drawer = page.locator('.detail-drawer');
+  await expect(drawer).toBeVisible();
+  await expect(drawer.getByTestId('kt-po-operation-step')).toHaveCount(3);
+  await expect(drawer.locator('.com-flow-step[data-state="done"]')).toHaveCount(3);
+  await expect(drawer.getByText('领料 1287.5')).toBeVisible();
+  await expect(drawer.getByTestId('kt-po-roll')).toHaveText(/ROLL-KT-2026-001 · 1000.*待检隔离/u);
+  const track = drawer.getByTestId('kt-po-state-track');
+  await expect(track.locator('.po-state-node')).toHaveCount(5);
+  await expect(track.locator('[data-state="current"]')).toHaveText('已关闭');
+  await testInfo.attach('production-execution-drawer', {
+    body: await drawer.screenshot(),
+    contentType: 'image/png',
+  });
+  await page.keyboard.press('Escape');
+  await expect(drawer).toBeHidden();
+  // 领退料演示数据在另一张进行中工单上（WO-KT-2026-RETURN-DEMO：领料 10、退料 2）——
+  // 旧断言作用域是整张工作台（多卡并存），现按工单拆分到各自的详情抽屉。
+  const returnRow = workbench.locator('tbody tr').filter({ hasText: 'WO-KT-2026-RETURN-DEMO' });
+  await returnRow.getByTestId('kt-po-open').click();
+  const returnDrawer = page.locator('.detail-drawer');
+  await expect(returnDrawer).toBeVisible();
+  await expect(returnDrawer.getByText('领料 10')).toBeVisible();
+  await expect(returnDrawer.getByText('退料 2')).toBeVisible();
 });

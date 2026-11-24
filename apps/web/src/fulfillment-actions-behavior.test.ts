@@ -4,7 +4,6 @@ import {
   appendProductionMaterial,
   appendProductionOutput,
   appendProductionReport,
-  appendProductionTransition,
 } from './commercial/production-actions';
 import { appendShipmentDelivery, appendShipmentDispatch } from './commercial/shipment-actions';
 import type { FulfillmentViewContext } from './commercial/fulfillment-view-ports';
@@ -86,58 +85,14 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 
+// U3-MFG-4：工单状态流转（原 appendProductionTransition）已迁入 Preact 控制台，载荷 oracle 见
+// console/production-order-console.test.tsx；余下三张表单（报工/领退料/成品卷入库）属 MFG-5 范围，
+// 函数体与测试逐字节未动。
 describe('production action callback contracts', () => {
-  it.each([
-    ['DRAFT', 'production:plan', 'release', '下达工单'],
-    ['RELEASED', 'production:report', 'start', '开始生产'],
-    ['IN_PROGRESS', 'production:close', 'complete', '完工确认'],
-    ['COMPLETED', 'production:close', 'close', '关闭工单'],
-  ] as const)(
-    'gates %s and submits fixed %s transition before refresh',
-    async (state, permission, action, title) => {
-      const denied = setup();
-      appendProductionTransition(denied.context, order, state, denied.target, denied.refresh);
-      expect(denied.actions.children).toHaveLength(0);
-      const f = setup([permission]);
-      appendProductionTransition(f.context, order, state, f.target, f.refresh);
-      expect(f.actions.children[0]?.textContent).toBe(title);
-      const opened = f.click();
-      expect(opened.title).toBe(title);
-      expect(opened.fields.map((field) => [field.name, field.required])).toEqual([
-        ['reason', true],
-        ['evidenceReference', true],
-      ]);
-      let complete: () => void = unused;
-      f.submit.mockImplementationOnce(
-        () =>
-          new Promise<void>((resolve) => {
-            complete = resolve;
-          }),
-      );
-      const pending = opened.run({ reason: 'fixed reason', evidenceReference: 'EV-1' });
-      expect(f.submit).toHaveBeenCalledExactlyOnceWith(
-        `/api/v1/production-orders/production-1/${action}`,
-        {
-          reason: 'fixed reason',
-          evidence: { reference: 'EV-1' },
-          idempotencyKey: `MO-1-${action.toUpperCase()}-EV-1`,
-        },
-      );
-      expect(f.refresh).not.toHaveBeenCalled();
-      complete();
-      await pending;
-      expect(f.refresh).toHaveBeenCalledTimes(1);
-      f.submit.mockRejectedValueOnce(new Error('command rejected'));
-      await expect(
-        opened.run({ reason: 'fixed reason', evidenceReference: 'EV-2' }),
-      ).rejects.toThrow('command rejected');
-      expect(f.refresh).toHaveBeenCalledTimes(1);
-    },
-  );
-
-  it('does not offer terminal transitions or non-running reports', () => {
-    const f = setup(['production:plan', 'production:report', 'production:close']);
-    appendProductionTransition(f.context, order, 'CLOSED', f.target, f.refresh);
+  // U3-MFG-4：工单状态流转（原 appendProductionTransition）已迁入 Preact 控制台，其载荷
+  // oracle 见 console/production-order-console.test.tsx；本文件余下三张表单属 MFG-5 范围。
+  it('does not offer non-running reports', () => {
+    const f = setup(['production:report']);
     appendProductionReport(f.context, order, 'RELEASED', [], f.target, f.refresh);
     appendProductionReport(setup().context, order, 'IN_PROGRESS', [], f.target, f.refresh);
     expect(f.actions.children).toHaveLength(0);

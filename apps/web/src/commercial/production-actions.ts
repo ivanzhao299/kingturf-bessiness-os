@@ -1,53 +1,8 @@
 import { el } from '../dom';
 import { openForm } from '../shared/forms';
 import type { FulfillmentViewContext } from './fulfillment-view-ports';
-import type { CommercialPermission } from './permissions';
 
-export function appendProductionTransition(
-  context: FulfillmentViewContext,
-  order: Record<string, unknown>,
-  state: string,
-  actions: HTMLElement,
-  refresh: () => Promise<void>,
-): void {
-  const { workspace, controller, permissions } = context;
-  const { recordText } = context.ports;
-  const transitions: Record<string, readonly [string, string, CommercialPermission]> = {
-    DRAFT: ['release', '下达工单', 'production:plan'],
-    RELEASED: ['start', '开始生产', 'production:report'],
-    IN_PROGRESS: ['complete', '完工确认', 'production:close'],
-    COMPLETED: ['close', '关闭工单', 'production:close'],
-  };
-  const transition = transitions[state];
-  if (transition && permissions.has(transition[2])) {
-    const button = el('button', 'primary', transition[1]);
-    button.addEventListener('click', () => {
-      openForm(
-        workspace,
-        transition[1],
-        '状态决定会追加到不可变工单事件台账，并执行完整性门禁。',
-        [
-          { name: 'reason', label: '操作理由', type: 'textarea', required: true },
-          { name: 'evidenceReference', label: '证据编号', required: true },
-        ],
-        '确认执行',
-        async (values) => {
-          await controller.submit(
-            `/api/v1/production-orders/${String(order.id)}/${transition[0]}`,
-            {
-              reason: values.reason,
-              evidence: { reference: values.evidenceReference },
-              idempotencyKey: `${recordText(order, 'orderNumber', 'order_number')}-${transition[0].toUpperCase()}-${String(values.evidenceReference)}`,
-            },
-          );
-          await refresh();
-        },
-      );
-    });
-    actions.append(button);
-  }
-}
-
+// U3-MFG-4：工单状态流转（原 appendProductionTransition）已迁入 Preact 控制台（PUT /:id/state 统一动作端点）。本文件余下三张表单属 MFG-5「报工入库」范围，仍为 vanilla，由 console/production-order-host.ts 挂进工单详情抽屉——函数体逐字节未动。
 export function appendProductionReport(
   context: FulfillmentViewContext,
   order: Record<string, unknown>,

@@ -177,7 +177,15 @@ async function main() {
   const require = createRequire(new URL('../../package.json', import.meta.url));
   const { chromium } = require('@playwright/test');
   const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext(preset.viewport);
+  // 2026-11-24 修复：viewport 必须落在 newContext 的 viewport 键里——直接把
+  // {width,height} 当选项传会被 Playwright 忽略并静默回落默认 1280x720（此前桌面
+  // 1440 与移动 390 两档均未生效，截图与 innerWidth 量测都曾是默认视口）。
+  const context = await browser.newContext({
+    viewport: { width: preset.viewport.width, height: preset.viewport.height },
+    ...(preset.deviceScaleFactor !== undefined
+      ? { deviceScaleFactor: preset.deviceScaleFactor }
+      : {}),
+  });
   const page = await context.newPage();
   let errors = [];
   let net = [];
