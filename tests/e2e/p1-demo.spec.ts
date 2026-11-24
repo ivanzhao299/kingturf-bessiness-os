@@ -247,16 +247,42 @@ test('shows published manufacturing versions, BOM substitute evidence, and order
   page,
 }, testInfo) => {
   await openAuthenticatedWorkspace(page);
-  await openRoute(page, 'manufacturing-master');
-  const workbench = page.locator('.manufacturing-workbench');
-  await expect(workbench).toBeVisible();
-  await expect(workbench.getByText('FG-KT-PRO-50', { exact: true })).toBeVisible();
-  await expect(workbench.getByText('BOM-KT-PRO-50', { exact: true })).toBeVisible();
-  await expect(workbench.getByText('RT-KT-PRO-50', { exact: true })).toBeVisible();
-  await expect(workbench.getByText('已发布 · 第 1 版')).toHaveCount(6);
-  await expect(workbench.getByText('发布版本')).toHaveCount(0);
-  await testInfo.attach('manufacturing-master-data-desktop', {
-    body: await workbench.screenshot(),
+  // MFG-3B：物料 / BOM / 工艺路线三个控制台各自成为一条制造主数据子路由——逐条进入，在各自
+  // 控制台宿主内断言。三段编码与两段文案（「已发布 · 第 1 版」「发布版本」）的正则与改前逐字
+  // 相同；合计口径守恒：改前在 .manufacturing-workbench 内「已发布 · 第 1 版」共 6 处 =
+  // 物料 4（演示种子的四个物料版本均为已发布）+ BOM 1 + 工艺路线 1，这里按宿主分开数再相加，
+  // 「发布版本」改前 0 处 = 三个宿主各 0 处。
+  const published = '已发布 · 第 1 版';
+  const items = page.locator('[data-testid="kt-mfg-items"]');
+  const boms = page.locator('[data-testid="kt-mfg-boms"]');
+  const routings = page.locator('[data-testid="kt-mfg-routings"]');
+  const hostCounts = async (
+    host: ReturnType<typeof page.locator>,
+    code: string,
+  ): Promise<{ published: number; publishButtons: number }> => {
+    await expect(host.getByText(code, { exact: true })).toBeVisible();
+    return {
+      published: await host.getByText(published).count(),
+      publishButtons: await host.getByText('发布版本').count(),
+    };
+  };
+  await openRoute(page, 'manufacturing/items');
+  const itemCounts = await hostCounts(items, 'FG-KT-PRO-50');
+  await openRoute(page, 'manufacturing/boms');
+  const bomCounts = await hostCounts(boms, 'BOM-KT-PRO-50');
+  await openRoute(page, 'manufacturing/routings');
+  const routingCounts = await hostCounts(routings, 'RT-KT-PRO-50');
+  // 每个宿主恰好承载自己的那一段编码，不串到别的宿主里。
+  expect([itemCounts.published, bomCounts.published, routingCounts.published]).toEqual([4, 1, 1]);
+  expect(itemCounts.published + bomCounts.published + routingCounts.published).toBe(6);
+  expect(
+    [itemCounts.publishButtons, bomCounts.publishButtons, routingCounts.publishButtons].reduce(
+      (total, count) => total + count,
+      0,
+    ),
+  ).toBe(0);
+  await testInfo.attach('manufacturing-routings-desktop', {
+    body: await routings.screenshot(),
     contentType: 'image/png',
   });
 });

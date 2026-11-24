@@ -1,6 +1,7 @@
 /* U3-MFG-1 物料管理控制台样式：全部取值来自 kt tokens（ADR-0014），不写死颜色/间距。
    主从布局复用 governance console-split（左分类树 / 右主表），列表/抽屉/表单复用
-   @kingturf/ui components.css 原语；本文件仅承载物料域增量。 */
+   @kingturf/ui components.css 原语；本文件仅承载物料域增量（MFG-2 BOM、MFG-3 工艺路线
+   增量与 MFG-3B 制造概览汇总卡也在此）。 */
 .mfg-item-split .console-split-tree h3:not(:first-child) {
   margin-top: var(--kt-space-2);
 }
@@ -291,4 +292,41 @@
 .routing-muted {
   color: var(--kt-color-text-muted);
   font-size: var(--kt-font-size-caption);
+}
+
+/* ===== MFG-3B 制造概览 · 汇总卡 ===== */
+/* 三张汇总卡按位对应三条子路由（物料 / BOM / 工艺路线）。列数写在 .production-summary.
+   manufacturing-summary 上（两层类名），不依赖样式打包顺序也能盖过 .production-summary
+   的四列；窄屏沿用同一断点（≤900px 两列，≤640px 单列）。 */
+.production-summary.manufacturing-summary {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* 可点入子路由的汇总卡是指向该路由的锚点：沿用指标卡的外观与文案，只去掉链接默认样式，
+   并给出悬停与键盘焦点反馈（同采购概览与治理域概览的可点指标卡）。 */
+a.manufacturing-summary-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+a.manufacturing-summary-link:hover {
+  color: var(--kt-color-brand-strong);
+}
+
+a.manufacturing-summary-link:focus-visible {
+  outline: 2px solid var(--kt-color-info);
+  outline-offset: 2px;
+}
+
+@media (max-width: 900px) {
+  .production-summary.manufacturing-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .production-summary.manufacturing-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

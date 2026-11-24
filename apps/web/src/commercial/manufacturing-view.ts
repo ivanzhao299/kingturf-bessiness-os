@@ -1,26 +1,51 @@
 import { el } from '../dom';
 import type { OperationsViewContext } from './operations-view-ports';
+import {
+  manufacturingSubRoutes,
+  visibleManufacturingSurfaces,
+  type ManufacturingConsoleId,
+} from './manufacturing-surfaces';
+import { appendManufacturingSummary } from './manufacturing-summary';
 import { appendManufacturingItemConsole } from './console/item-host';
 import { appendManufacturingBomConsole } from './console/bom-host';
 import { appendManufacturingRoutingConsole } from './console/routing-host';
 
+// MFG-3B（TD-MFG-003）：制造主数据子路由化。子路由 → 控制台宿主；宿主节段自身即路由视图
+// （携带 data-route-view，直接挂工作区根，与其它商业控制台宿主同口径）。
+const CONSOLE_HOSTS: Readonly<
+  Record<ManufacturingConsoleId, (context: OperationsViewContext, workspace: HTMLElement) => void>
+> = {
+  items: appendManufacturingItemConsole,
+  boms: appendManufacturingBomConsole,
+  routings: appendManufacturingRoutingConsole,
+};
+
 export function appendManufacturingView(context: OperationsViewContext, panel: HTMLElement): void {
-  const { workspace, permissions } = context;
+  const { workspace, permissions, controller } = context;
+  const { recordText } = context.ports;
+  // MFG-3B：概览页（#/manufacturing-master）——顶部三张汇总卡（物料 / BOM / 工艺路线各显示
+  // 已发布与草稿的版本行数），目标子路由可见时可点入。原 U3-MFG-1/2/3 三个控制台（分类
+  // 导航 + 主表 + 详情/新建抽屉、版本对比/组件层级树/草稿发布、顺序步骤视图/工序编辑器/
+  // 草稿发布）自此各迁一条子路由（物料管理 / BOM 管理 / 工艺路线），见下方装配。面板的
+  // class 与 data-testid 原样保留（旧书签与导航巡检依赖）。
   panel.setAttribute('data-testid', 'manufacturing-workbench');
   panel.append(
     el('p', 'eyebrow', '制造主数据'),
-    el('h2', '', '制造主数据工作台'),
-    el('p', 'commercial-help', '物料、BOM 与工艺路线版本'),
+    el('h2', '', '制造主数据概览'),
+    el('p', 'commercial-help', '物料、BOM 与工艺路线版本状态汇总；各控制台见子页'),
   );
-  // U3-MFG-1：物料区迁移至 Preact 控制台（分类导航 + 主表 + 详情/新建抽屉）；原
-  // vanilla「物料与规格版本」卡片与「创建物料版本」表单退役（裁定 17 语义）。
-  if (permissions.has('manufacturing-item:read')) appendManufacturingItemConsole(context, panel);
-  // U3-MFG-2：BOM 区迁移至 Preact 控制台（版本对比/组件层级树/草稿发布）；原
-  // vanilla「BOM 与替代料」卡片与「创建标准 BOM」表单退役（裁定 17 语义）。
-  if (permissions.has('bom:read')) appendManufacturingBomConsole(context, panel);
-  // U3-MFG-3：工艺路线区迁移至 Preact 控制台（顺序步骤视图/工序编辑器/草稿发布）；
-  // 原 vanilla「工艺路线与工序」卡片与「创建标准工艺路线」表单退役（裁定 17 语义，
-  // manufacturing-cards/manufacturing-forms 随最后一张卡片退役整体删除）。
-  if (permissions.has('routing:read')) appendManufacturingRoutingConsole(context, panel);
+  appendManufacturingSummary(
+    panel,
+    {
+      items: controller.views.get('/api/v1/manufacturing-items') ?? [],
+      boms: controller.views.get('/api/v1/manufacturing-boms') ?? [],
+      routings: controller.views.get('/api/v1/manufacturing-routings') ?? [],
+    },
+    recordText,
+    new Set<string>(manufacturingSubRoutes(permissions)),
+  );
   workspace.append(panel);
+  // 子路由页：每个控制台独占一条路由，只在该路由对当前账号可见时挂载（可见性与菜单同源）。
+  for (const surface of visibleManufacturingSurfaces(permissions))
+    CONSOLE_HOSTS[surface.id](context, workspace);
 }

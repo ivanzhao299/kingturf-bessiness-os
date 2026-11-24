@@ -84,6 +84,11 @@ const matrix: readonly (readonly [AppRoute, readonly string[]])[] = [
   ['commissions', ['commissions', 'commission-policies', 'sales-orders']],
   ['business-risks', ['risk-evaluations', 'risk-policies', 'sales-orders']],
   ['manufacturing-master', ['manufacturing-items', 'manufacturing-boms', 'manufacturing-routings']],
+  // MFG-3B：制造主数据子路由各自只拉所用控制台的数据源（均为 manufacturing-master 概览闭包
+  // 的子集）。BOM / 工艺路线控制台的产品类型树与版本下拉取自物料版本视图。
+  ['manufacturing/items', ['manufacturing-items']],
+  ['manufacturing/boms', ['manufacturing-items', 'manufacturing-boms']],
+  ['manufacturing/routings', ['manufacturing-items', 'manufacturing-routings']],
   [
     'procurement',
     [
@@ -198,6 +203,63 @@ it('loads only the sub-route closure on a deep link and marks every sub-route re
   // 行为守恒：概览仍只按其原有闭包各读一次，拆分子路由没有带来额外出站请求。
   expect(full.api.list.mock.calls.map(([url]) => url).sort()).toEqual(
     commercialRoutePlan(full.controller, 'procurement').paths.sort(),
+  );
+});
+
+// MFG-3B：制造主数据子路由的数据闭包——概览闭包的子集、不越权、深链只拉所需、概览加载后即就绪。
+const MANUFACTURING_SUBROUTES: readonly AppRoute[] = [
+  'manufacturing/items',
+  'manufacturing/boms',
+  'manufacturing/routings',
+];
+
+it.each(MANUFACTURING_SUBROUTES)(
+  'keeps the %s closure inside the manufacturing overview closure',
+  (route) => {
+    const { controller } = setup(allPermissions);
+    const overview = new Set(commercialRoutePlan(controller, 'manufacturing-master').paths);
+    const closure = commercialRoutePlan(controller, route).paths;
+    expect(closure.length).toBeGreaterThan(0);
+    for (const dependency of closure) expect(overview.has(dependency)).toBe(true);
+  },
+);
+
+it('never promotes missing read permissions into manufacturing sub-route closures', () => {
+  // 只有 BOM 读权限：BOM 子路由只拉 BOM 清单，不连带拉取物料版本（产品类型树需要
+  // manufacturing-item:read）。物料读权限本身不连带拉取 BOM / 工艺路线。
+  const bomReader = setup(['bom:read']).controller;
+  expect(commercialRoutePlan(bomReader, 'manufacturing/boms').paths).toEqual([
+    path('manufacturing-boms'),
+  ]);
+  expect(commercialRoutePlan(bomReader, 'manufacturing/items').paths).toEqual([]);
+  expect(commercialRoutePlan(bomReader, 'manufacturing/routings').paths).toEqual([]);
+  const routingReader = setup(['routing:read']).controller;
+  expect(commercialRoutePlan(routingReader, 'manufacturing/routings').paths).toEqual([
+    path('manufacturing-routings'),
+  ]);
+  expect(
+    commercialRoutePlan(setup(['manufacturing-item:read']).controller, 'manufacturing/items').paths,
+  ).toEqual([path('manufacturing-items')]);
+  expect(commercialRoutePlan(setup(['bom:manage']).controller, 'manufacturing/boms').paths).toEqual(
+    [],
+  );
+});
+
+it('loads only the manufacturing sub-route closure on a deep link and marks every sub-route ready after the overview', async () => {
+  // 深链 #/manufacturing/routings：只拉该控制台的两个数据源，不拉 BOM。
+  const deep = setup(['manufacturing-item:read', 'routing:read']);
+  expect((await deep.state.load('manufacturing/routings', () => true)).state).toBe('ready');
+  expect(deep.api.list.mock.calls).toEqual([
+    [path('manufacturing-items')],
+    [path('manufacturing-routings')],
+  ]);
+  const full = setup(allPermissions);
+  expect((await full.state.load('manufacturing-master', () => true)).state).toBe('ready');
+  for (const route of MANUFACTURING_SUBROUTES)
+    expect(full.state.readyRoutes().has(route)).toBe(true);
+  // 行为守恒：概览仍只按其原有闭包各读一次，拆分子路由没有带来额外出站请求。
+  expect(full.api.list.mock.calls.map(([url]) => url).sort()).toEqual(
+    commercialRoutePlan(full.controller, 'manufacturing-master').paths.sort(),
   );
 });
 

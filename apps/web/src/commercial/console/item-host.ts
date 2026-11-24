@@ -1,17 +1,17 @@
-// MFG-3B：物料控制台宿主——自 console-entry.ts 拆出为独立宿主文件（bom-host.ts /
-// routing-host.ts 范式；纯搬移，行为不变：函数体与原实现逐行一致，仅调整相对 import）。
+// U3-MFG-1 / MFG-3B：物料控制台宿主——原 vanilla「物料与规格版本」卡片区迁移至 Preact
+// （U3-MFG-1）；MFG-3B 自 console-entry 拆出为独立宿主文件（bom-host.ts / routing-host.ts
+// 范式），并随制造主数据子路由化成为 #/manufacturing/items 的路由视图：节段自身携带
+// data-route-view、直接挂工作区根（与其它商业控制台宿主同口径；挂载与否由
+// manufacturing-view 按该路由可见性决定）。默认视图沿用路由加载的全量快照；筛选态经
+// controller.api.get 走桥轨分页；详情经 additive GET /api/v1/manufacturing-items/:itemId，
+// 失败回退列表行。
 import type { OperationsViewContext } from '../operations-view-ports';
 import { el } from '../../dom';
 import type { ItemConsolePorts } from './item-ports';
 
-// U3-MFG-1：物料控制台宿主——原 vanilla「物料与规格版本」卡片区迁移至 Preact（同
-// 供应链域宿主口径：挂 manufacturing-workbench 面板内、不带 data-route-view——
-// manufacturing-master 路由可见性随父面板治理）。默认视图沿用路由加载的全量快照；
-// 筛选态经 controller.api.get 走桥轨分页；详情经 additive
-// GET /api/v1/manufacturing-items/:itemId，失败回退列表行。
 export function appendManufacturingItemConsole(
   context: OperationsViewContext,
-  target: HTMLElement,
+  workspace: HTMLElement,
 ): void {
   const { controller, permissions } = context;
   const itemPath = '/api/v1/manufacturing-items';
@@ -61,7 +61,8 @@ export function appendManufacturingItemConsole(
   };
   const section = el('section', 'commercial-console manufacturing-items-console');
   section.setAttribute('data-testid', 'kt-mfg-items');
-  target.append(section);
+  section.setAttribute('data-route-view', 'manufacturing/items');
+  workspace.append(section);
   void import('./mount').then(({ mountCommercialConsole }) => {
     if (section.isConnected && typeof globalThis.document === 'object')
       mountCommercialConsole(section, { kind: 'manufacturing-items', ports });

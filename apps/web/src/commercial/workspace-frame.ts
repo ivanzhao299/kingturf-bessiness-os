@@ -23,7 +23,7 @@ export function createCommercialWorkspaceFrame(
   status.setAttribute('role', 'status');
   status.setAttribute(
     'data-route-view',
-    'opportunities technical-requirements technical-solutions costing sales-policies quotes credit-review contracts sales-orders order-360 receivables collections payments commissions business-risks manufacturing-master procurement procurement/suppliers procurement/rfqs procurement/purchase-orders procurement/goods-receipts material-planning production-orders quality-inspection shipments',
+    'opportunities technical-requirements technical-solutions costing sales-policies quotes credit-review contracts sales-orders order-360 receivables collections payments commissions business-risks manufacturing-master manufacturing/items manufacturing/boms manufacturing/routings procurement procurement/suppliers procurement/rfqs procurement/purchase-orders procurement/goods-receipts material-planning production-orders quality-inspection shipments',
   );
   return { workspace, status };
 }
