@@ -2205,11 +2205,12 @@ describe('web bootstrap', () => {
       '待收采购单\n1 单',
       '待检库存\n1 批',
     ]);
+    // 「待检库存」不做链接：它的明细是本页下方的「批次库存台账」，收货管理页只列收货单。
     expect(buyer.map((card) => [card.tagName, linkOf(card)])).toEqual([
       ['a', '#/procurement/suppliers'],
       ['a', '#/procurement/rfqs'],
       ['a', '#/procurement/purchase-orders'],
-      ['a', '#/procurement/goods-receipts'],
+      ['div', undefined],
     ]);
     // 读不到供应商清单：该卡不可点（否则点入会被导航兜底弹回首个可用路由），其余照常。
     const buyerWithoutSuppliers = summaryCards(
@@ -2219,7 +2220,7 @@ describe('web bootstrap', () => {
       ['div', undefined],
       ['a', '#/procurement/rfqs'],
       ['a', '#/procurement/purchase-orders'],
-      ['a', '#/procurement/goods-receipts'],
+      ['div', undefined],
     ]);
     const inventoryOnly = summaryCards(await procurementWorkspace(['inventory:read']));
     expect(inventoryOnly.map((card) => card.tagName)).toEqual(['div', 'div', 'div', 'div']);
