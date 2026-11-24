@@ -8,7 +8,7 @@ KingTurf 业务操作系统：面向草坪行业外贸业务的 ERP（CRM→报�
 
 ## 如何开始（渐进式披露：先地图，再细节）
 
-**UX 波次真浏览器验收（2026-11-24，部署前门禁）**：五域 UX 波次首次在真实浏览器（Docker Playwright）全站走查，36 路由×桌面/移动。修复后零控制台报错、零失败请求、零页面溢出；e2e P1 以合成账号 11/11（浏览器/代理/API 同容器，仓库原配置三轮稳定）。抓出并修复：采购订单详情接口 500（P1，已随 0e76bac 上线；TD-PROC-011）、API 不记录未预期异常（TD-API-004）、表格/排序表头/主从布局等基座样式缺口（TD-UI-003）、供应链与客户域 16 条加性 SQL 无真库测试（TD-TEST-022）。只覆盖读路径与单一全权限账号（TD-TEST-024）；本地 e2e 配方入库待办（TD-TEST-023）。证据 `docs/evidence/ux-real-browser-verification-2026-11-24.md`。
+**UX 波次真浏览器验收（2026-11-24，部署前门禁）**：五域 UX 波次首次在真实浏览器（Docker Playwright）全站走查，36 路由×桌面/移动。修复后零控制台报错、零失败请求、零页面溢出；e2e P1 以合成账号 11/11（浏览器/代理/API 同容器，仓库原配置三轮稳定）。抓出并修复：采购订单详情接口 500（P1，已随 0e76bac 上线；TD-PROC-011）、API 不记录未预期异常（TD-API-004）、表格/排序表头/主从布局等基座样式缺口（TD-UI-003）、供应链与客户域 16 条加性 SQL 无真库测试（TD-TEST-022）。只覆盖读路径与单一全权限账号（TD-TEST-024）；本地 e2e 配方入库待办（TD-TEST-023）。证据 `docs/evidence/ux-real-browser-verification-2026-11-24.md`。**已发布**：生产 `d1dc0f3`（run 45306198023，2026-11-24），线上核对见 `docs/evidence/ux-wave-release-2026-11-24.md`；推送 CI 的 15 分钟上限已低于套件耗时，提到 30 分钟（TD-GATE-004）。
 
 **U3-MFG-2 BOM 管理子批完成（2026-11-23）**：manufacturing-boms 域四端点（GET 列表 additive 复合键集分页+筛选（默认无参=legacy 全量逐字节一致）/GET 详情 additive（产品+版本行项+**组件层级树**——深度 3、环守卫、替代料换算系数）/POST 创建 legacy 同链/PUT publish 分派 legacy publish('bom') 同链——零新写路径语义，registry 累计 64 路径/17 文件）+ BOM Preact 控制台（治理同款主从布局：左产品类型树（成品/半成品，经 productTypeOf 预聚）/右 DataTable、行级查看+草稿发布、详情抽屉**组件层级树折叠+替代料标记+版本对比三类差异高亮**（前端基于详情行项计算，不新增读端点）、新建抽屉多组件行——单行载荷与 vanilla 逐字节一致）挂 manufacturing-workbench 面板内；vanilla BOM 卡+创建标准 BOM 表单退役（裁定 17），工艺路线一卡保留待 MFG-3；结构修复 b6e20a1（BOM 宿主/动作工厂拆分，G1/G5 不豁免）；TD-MFG-001 域级证明（同码第二版无法经 createBom 建立）入 PG 集成；ci:local 干净快照 b6e20a1 隔离 worktree 实跑 EXIT=0（归属机械确证：reflog+coverage head）；e2e P1 口令不可得未实跑（文案契约静态钉定）。证据 `docs/evidence/u3-mfg-2-bom-console-2026-11-23.md`。
 
