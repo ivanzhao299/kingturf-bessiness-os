@@ -429,9 +429,9 @@ E1先行固定证据：[authorization守恒候选/773例旧新探针](evidence/e
 | [FEISHU_CODEX_THREAD_SYNC](deployment/FEISHU_CODEX_THREAD_SYNC.md) | 常驻 |
 | [PRODUCTION_PARK_HOST](deployment/PRODUCTION_PARK_HOST.md)         | 常驻 |
 
-## docs/engineering（工程规格，22 篇：常驻 13 + 已归档 9）
+## docs/engineering（工程规格，23 篇：常驻 14 + 已归档 9）
 
-> D4 裁决：活跃规格（蓝图/总计划/角色目录/身份授权/基座运营/能力矩阵/成本闭环/业务文档/L19-L20 规格/回归预防等 13 篇）常驻；KT-UI-PROD 系列（9 篇，编号无 04/05）为前端产品化完成记录，已归档-只读（README 仍引用 08/09，原位保留保证链接可达）。
+> D4 裁决：活跃规格（蓝图/总计划/角色目录/身份授权/基座运营/能力矩阵/成本闭环/业务文档/L19-L20 规格/回归预防等 13 篇）常驻，另有本地真浏览器 e2e 配方说明 1 篇同为常驻；KT-UI-PROD 系列（9 篇，编号无 04/05）为前端产品化完成记录，已归档-只读（README 仍引用 08/09，原位保留保证链接可达）。
 
 | 文档                                                                                                                  | 状态                    |
 | --------------------------------------------------------------------------------------------------------------------- | ----------------------- |
@@ -457,6 +457,7 @@ E1先行固定证据：[authorization守恒候选/773例旧新探针](evidence/e
 | [OPERATING_MODEL_AND_ROLE_CATALOG](engineering/OPERATING_MODEL_AND_ROLE_CATALOG.md)                                   | 常驻                    |
 | [PRODUCT_BLUEPRINT](engineering/PRODUCT_BLUEPRINT.md)                                                                 | 常驻                    |
 | [REGRESSION_PREVENTION](engineering/REGRESSION_PREVENTION.md)                                                         | 常驻                    |
+| [local-e2e-browser-harness](engineering/local-e2e-browser-harness.md)                                                 | 常驻                    |
 
 ## docs/evidence（验收证据，23 篇）
 
