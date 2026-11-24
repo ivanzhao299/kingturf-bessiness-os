@@ -6,6 +6,10 @@
 //   业务类型枚举 → 工单 UUID → 逐字段解析 → 201 + mutationDto）；
 // - POST /:id/finished-rolls ↔ production-output.ts（allow 七字段 → production:report 授权 →
 //   工单 UUID → 逐字段解析 → 201 + mutationDto）。
+// TD-MFG-010：数据库触发器的业务拒绝（RAISE EXCEPTION → SQLSTATE P0001，例如累计良品超过计划
+// 数量、工单状态不允许、卷数量超过报工良品、退料超过累计领用量）在这三个端点上映射为业务
+// 冲突——409 加触发器的提示文字，不再落成 500。范围只限这三个端点：其余 SQLSTATE（唯一约束、
+// 外键、CHECK 约束）与其余端点的行为不变，legacy 三条路由也不变；数据库触发器仍是权威。
 import { assertStableCode, DomainError } from '@kingturf/domain';
 import type { ApiDependencies } from '../../app.ts';
 import {
@@ -34,6 +38,28 @@ type OutputInput = Readonly<Parameters<Output>[1]>;
 
 const orderIdOf = (request: { params: unknown }): string =>
   uuid((request.params as { productionOrderId: string }).productionOrderId, 'productionOrderId');
+
+// pg 的错误对象带 SQLSTATE code 与 message（RAISE EXCEPTION 的提示文字）。
+const TRIGGER_REJECTION = 'P0001';
+const triggerMessageOf = (error: unknown): string | null => {
+  if (typeof error !== 'object' || error === null) return null;
+  const failure = error as { code?: unknown; message?: unknown };
+  return failure.code === TRIGGER_REJECTION &&
+    typeof failure.message === 'string' &&
+    failure.message !== ''
+    ? failure.message
+    : null;
+};
+// 只包住仓储调用的结果（调用本身仍是处理器里的直接调用）：触发器拒绝 → conflict，其余原样抛出。
+const settled = async <T>(pending: Promise<T>): Promise<T> => {
+  try {
+    return await pending;
+  } catch (error: unknown) {
+    const message = triggerMessageOf(error);
+    if (message === null) throw error;
+    throw new DomainError('conflict', message);
+  }
+};
 
 export function registerProductionOrderExecutionRoutes(
   app: FastifyRouteGroupApp,
@@ -78,7 +104,9 @@ export function registerProductionOrderExecutionRoutes(
         notes: string(body.notes ?? '', 'notes'),
         idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
       };
-      const reported = await repo.reportOperation(orderId, input, context, scope.correlationId);
+      const reported = await settled(
+        repo.reportOperation(orderId, input, context, scope.correlationId),
+      );
       void reply.code(201);
       return mutation(reported, scope.authorization);
     },
@@ -114,7 +142,9 @@ export function registerProductionOrderExecutionRoutes(
       occurredAt: timestamp(body.occurredAt, 'occurredAt'),
       idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
     };
-    const posted = await repo.transactMaterial(orderId, input, context, scope.correlationId);
+    const posted = await settled(
+      repo.transactMaterial(orderId, input, context, scope.correlationId),
+    );
     void reply.code(201);
     return mutation(posted, scope.authorization);
   });
@@ -146,7 +176,9 @@ export function registerProductionOrderExecutionRoutes(
         quantity: decimal(body.quantity, 'quantity'),
         manufacturedAt: calendarDate(body.manufacturedAt, 'manufacturedAt'),
       };
-      const received = await repo.createOutput(orderId, input, context, scope.correlationId);
+      const received = await settled(
+        repo.createOutput(orderId, input, context, scope.correlationId),
+      );
       void reply.code(201);
       return mutation(received, scope.authorization);
     },

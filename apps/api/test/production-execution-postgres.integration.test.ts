@@ -431,4 +431,182 @@ describe('MFG-5 shop floor writes against real PostgreSQL', () => {
       ).rejects.toThrow('Production execution requires company scope');
     });
   });
+
+  // TD-MFG-010：三个执行端点把数据库触发器的业务拒绝（RAISE EXCEPTION → P0001）映射为
+  // 409 + 触发器提示文字。这里用真实库让真实触发器拒绝：领料一侧已在上文覆盖（409 / 201 /
+  // 触发器仍权威），本组补报工与成品卷入库——合法提交 201、超计划报工与超报工良品入库
+  // 得到带触发器文字的 409，且被拒绝的关联 ID 下什么都没写入。
+  describe('trigger rejections surfaced as business conflicts on the bridge', () => {
+    const reportsPath = () => `/api/v1/production-orders/${identifier(order)}/operation-reports`;
+    const rollsPath = () => `/api/v1/production-orders/${identifier(order)}/finished-rolls`;
+    const operation = (sequence: number): string => {
+      const found = (order.operations as JsonObject[]).find((item) => item.sequence === sequence);
+      if (!found) throw new Error(`Operation ${String(sequence)} missing`);
+      return identifier(found);
+    };
+    const reportBody = (sequence: number, good: string, key: string): JsonObject => ({
+      operationId: operation(sequence),
+      goodQuantity: good,
+      scrapQuantity: '0',
+      laborMinutes: '12.5',
+      machineMinutes: '20',
+      startedAt: '2026-11-24T01:00:00Z',
+      completedAt: '2026-11-24T02:30:00Z',
+      notes: 'MFG-5 trigger mapping',
+      idempotencyKey: key,
+    });
+
+    it('legal report returns 201 and the rejected over-plan report returns 409 with the trigger text', async () => {
+      const correlation = randomUUID();
+      const legal = await send(
+        { method: 'POST', pathname: reportsPath(), body: reportBody(10, '10.25', 'WO-MFG5-RPT-1') },
+        undefined,
+        correlation,
+      );
+      expect(legal.statusCode).toBe(201);
+      expect(legal.body).toMatchObject({
+        productionOrderId: identifier(order),
+        operationId: operation(10),
+        goodQuantity: '10.25',
+        laborMinutes: '12.5',
+        idempotencyKey: 'WO-MFG5-RPT-1',
+      });
+      expect(await written(correlation)).toEqual({ movements: 0, audit: 1, outbox: 1 });
+      // 工单计划 1000：再报 1000 使累计 1010.25 超过计划——触发器拒绝。
+      const rejected = await send(
+        { method: 'POST', pathname: reportsPath(), body: reportBody(10, '1000', 'WO-MFG5-RPT-2') },
+        undefined,
+        correlation,
+      );
+      expect(rejected.statusCode).toBe(409);
+      expect(rejected.body).toEqual({
+        error: {
+          code: 'conflict',
+          message: 'reported good quantity exceeds planned production quantity',
+          correlationId: correlation,
+        },
+      });
+      // 被拒绝的这一笔什么都没写入（成功那一笔的 audit/outbox 各一条已在上面断言）。
+      expect(await written(correlation)).toEqual({ movements: 0, audit: 1, outbox: 1 });
+      // 工序累计良品仍是 10.25（直接查台账，不经过被测的聚合代码）。
+      const reported = await state().db.query<{ good: string }>(
+        'SELECT coalesce(sum(good_quantity),0)::text good FROM production_operation_reports WHERE tenant_id=$1 AND production_order_operation_id=$2',
+        [state().company, operation(10)],
+      );
+      // numeric(24,6) 定标返回 10.250000。
+      expect(reported.rows[0]?.good).toBe('10.250000');
+    });
+
+    it('legal finished roll returns 201; a roll beyond the reported good returns 409 with the trigger text', async () => {
+      const report = await send({
+        method: 'POST',
+        pathname: reportsPath(),
+        body: reportBody(20, '8', 'WO-MFG5-RPT-3'),
+      });
+      expect(report.statusCode).toBe(201);
+      const reportId = identifier(report.body);
+      const correlation = randomUUID();
+      const rollsBefore = (await reload()).rolls as JsonObject[];
+      const legal = await send(
+        {
+          method: 'POST',
+          pathname: rollsPath(),
+          body: {
+            operationReportId: reportId,
+            itemVersionId: identifier(finished),
+            rollNumber: 'ROLL-MFG5-A',
+            lotNumber: 'LOT-MFG5-ROLL-A',
+            locationId: location,
+            quantity: '8',
+            manufacturedAt: '2026-11-24',
+          },
+        },
+        undefined,
+        correlation,
+      );
+      expect(legal.statusCode).toBe(201);
+      expect(legal.body).toMatchObject({
+        productionOrderId: identifier(order),
+        operationReportId: reportId,
+        rollNumber: 'ROLL-MFG5-A',
+        lotNumber: 'LOT-MFG5-ROLL-A',
+        quantity: '8',
+        qualityStatus: 'QUARANTINE',
+      });
+      expect(typeof legal.body.lotId).toBe('string');
+      expect(typeof legal.body.inventoryMovementId).toBe('string');
+      const rollsAfter = (await reload()).rolls as JsonObject[];
+      expect(rollsAfter).toHaveLength(rollsBefore.length + 1);
+      // 该报工良品 8、已入卷 8：再入 0.5 即超——触发器拒绝。
+      const rejected = await send(
+        {
+          method: 'POST',
+          pathname: rollsPath(),
+          body: {
+            operationReportId: reportId,
+            itemVersionId: identifier(finished),
+            rollNumber: 'ROLL-MFG5-B',
+            lotNumber: 'LOT-MFG5-ROLL-B',
+            locationId: location,
+            quantity: '0.5',
+            manufacturedAt: '2026-11-24',
+          },
+        },
+        undefined,
+        correlation,
+      );
+      expect(rejected.statusCode).toBe(409);
+      expect(rejected.body).toEqual({
+        error: {
+          code: 'conflict',
+          message: 'finished roll must match order, report, item, lot, and reported quantity',
+          correlationId: correlation,
+        },
+      });
+      expect((await reload()).rolls as JsonObject[]).toHaveLength(rollsBefore.length + 1);
+    });
+
+    it('status-gated trigger refusals surface with their own text (report on a draft order)', async () => {
+      const draft = await repository.create(
+        {
+          orderNumber: 'WO-MFG5-DRAFT-2',
+          itemVersionId: identifier(finished),
+          routingVersionId: identifier(routing),
+          plannedQuantity: '10',
+          plannedStartAt: '2026-09-01',
+          plannedDueAt: '2026-09-08',
+          sourceReference: 'MFG5-REAL-PG-DRAFT-2',
+        },
+        context(),
+        randomUUID(),
+      );
+      const draftOperation = (
+        (await repository.list(context())).find((row) => row.id === draft.id)
+          ?.operations as JsonObject[]
+      )[0];
+      const response = await send({
+        method: 'POST',
+        pathname: `/api/v1/production-orders/${identifier(draft)}/operation-reports`,
+        body: {
+          operationId: identifier(draftOperation ?? {}),
+          goodQuantity: '1',
+          scrapQuantity: '0',
+          laborMinutes: '1',
+          machineMinutes: '1',
+          startedAt: '2026-11-24T01:00:00Z',
+          completedAt: '2026-11-24T01:30:00Z',
+          notes: 'draft gate',
+          idempotencyKey: 'WO-MFG5-DRAFT-2-RPT-1',
+        },
+      });
+      expect(response.statusCode).toBe(409);
+      expect(response.body).toEqual({
+        error: {
+          code: 'conflict',
+          message: 'operation reporting requires an active order',
+          correlationId: expect.any(String) as string,
+        },
+      });
+    });
+  });
 });

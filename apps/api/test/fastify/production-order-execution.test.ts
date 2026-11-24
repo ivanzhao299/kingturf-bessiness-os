@@ -1035,3 +1035,159 @@ describe('fastify bridge 行为守恒（materials 对比 legacy）', () => {
     ]);
   });
 });
+
+// TD-MFG-010：数据库触发器的业务拒绝（RAISE EXCEPTION → SQLSTATE P0001）在这三个端点上映射为
+// 409 加触发器提示文字；其余 SQLSTATE、其余异常与同组其它端点的行为不变。
+describe('execution endpoints map database trigger rejections to a business conflict', () => {
+  const trigger = (message: string): Error =>
+    Object.assign(new Error(message), {
+      code: 'P0001',
+      where: 'PL/pgSQL function validate_production_execution_entry',
+    });
+  const cases = [
+    { method: 'reportOperation', path: 'operation-reports', capability: 'production:report' },
+    { method: 'transactMaterial', path: 'materials', capability: 'production:material' },
+    { method: 'createOutput', path: 'finished-rolls', capability: 'production:report' },
+  ] as const;
+  const paths: Readonly<Record<(typeof cases)[number]['method'], string>> = {
+    reportOperation: `/api/v1/production-orders/${orderId}/operation-reports`,
+    transactMaterial: `/api/v1/production-orders/${orderId}/materials`,
+    createOutput: `/api/v1/production-orders/${orderId}/finished-rolls`,
+  };
+  const bodies: Readonly<Record<(typeof cases)[number]['method'], object>> = {
+    reportOperation: {
+      operationId,
+      goodQuantity: '1000',
+      scrapQuantity: '0',
+      laborMinutes: '60',
+      machineMinutes: '55',
+      startedAt: '2026-11-24T01:00:00Z',
+      completedAt: '2026-11-24T02:00:00Z',
+      notes: 'shift',
+      idempotencyKey: 'WO-1-RPT-20261124010000-A1B2',
+    },
+    transactMaterial: {
+      transactionType: 'ISSUE',
+      itemVersionId: operationId,
+      lotId: operationId,
+      locationId: operationId,
+      quantity: '10',
+      reason: 'issue',
+      occurredAt: '2026-11-24T01:00:00Z',
+      idempotencyKey: 'WO-1-MAT-20261124010000-A1B2',
+    },
+    createOutput: {
+      operationReportId: operationId,
+      itemVersionId: operationId,
+      rollNumber: 'ROLL-1',
+      lotNumber: 'LOT-1',
+      locationId: operationId,
+      quantity: '10',
+      manufacturedAt: '2026-11-24',
+    },
+  };
+
+  it.each(cases)(
+    '$method：触发器拒绝（P0001）→ 409 conflict，带上触发器提示文字与关联 ID',
+    async ({ method }) => {
+      const stub = vi
+        .fn<Repository[typeof method]>()
+        .mockRejectedValue(trigger('reported good quantity exceeds planned production quantity'));
+      const response = await bridged(
+        requestFor({ method: 'POST', pathname: paths[method], body: bodies[method] }),
+        scopeFor(productionOf({ [method]: stub })),
+      );
+      expect(response?.statusCode).toBe(409);
+      expect(errorOf(response)).toEqual({
+        code: 'conflict',
+        message: 'reported good quantity exceeds planned production quantity',
+        correlationId,
+      });
+    },
+  );
+
+  it.each(cases)(
+    '$method：不是触发器拒绝的一律原样处理（其它 SQLSTATE 500、业务错误照其码）',
+    async ({ method }) => {
+      for (const [failure, expected] of [
+        // 唯一约束（如幂等键重放、卷号重复）与 CHECK 约束不在映射范围内：仍是 500，不外泄细节。
+        [
+          Object.assign(new Error('duplicate key value violates unique constraint'), {
+            code: '23505',
+          }),
+          500,
+        ],
+        [Object.assign(new Error('check constraint is violated'), { code: '23514' }), 500],
+        [
+          Object.assign(new Error('insert or update on table violates foreign key'), {
+            code: '23503',
+          }),
+          500,
+        ],
+        [new Error('connection terminated unexpectedly'), 500],
+        // P0001 但没有提示文字：无从给用户看，不映射。
+        [Object.assign(new Error('x'), { code: 'P0001', message: '' }), 500],
+        [Object.assign(new Error('x'), { code: 'P0001', message: undefined }), 500],
+        [trigger('production return exceeds cumulative issue for material resource'), 409],
+        [new DomainError('forbidden', 'Production execution requires company scope'), 403],
+      ] as const) {
+        const stub = vi.fn<Repository[typeof method]>().mockRejectedValue(failure);
+        const response = await bridged(
+          requestFor({ method: 'POST', pathname: paths[method], body: bodies[method] }),
+          scopeFor(productionOf({ [method]: stub })),
+        );
+        expect(response?.statusCode, `${method}: ${failure.message}`).toBe(expected);
+        if (expected === 409)
+          expect(errorOf(response)).toEqual({
+            code: 'conflict',
+            message: 'production return exceeds cumulative issue for material resource',
+            correlationId,
+          });
+        else if (expected === 500) expect(errorOf(response).message).toBe('Internal server error');
+      }
+    },
+  );
+
+  it('映射范围只限这三个端点：同一端点组里的状态流转与创建遇到触发器拒绝仍是 500', async () => {
+    const transition = vi
+      .fn<Repository['transition']>()
+      .mockRejectedValue(
+        trigger('production completion requires planned good quantity at every operation'),
+      );
+    const state = await bridged(
+      requestFor({
+        method: 'PUT',
+        pathname: `/api/v1/production-orders/${orderId}/state`,
+        body: { action: 'complete', reason: 'done', evidence: {}, idempotencyKey: 'WO-1-COMPLETE' },
+      }),
+      scopeFor(productionOf({ transition })),
+    );
+    expect(state?.statusCode).toBe(500);
+    expect(errorOf(state)).toEqual({
+      code: 'internal_error',
+      message: 'Internal server error',
+      correlationId,
+    });
+    const create = vi
+      .fn<Repository['create']>()
+      .mockRejectedValue(trigger('synthetic trigger rejection'));
+    const created = await bridged(
+      requestFor({
+        method: 'POST',
+        pathname: '/api/v1/production-orders',
+        body: {
+          orderNumber: 'WO-KT-2026-042',
+          itemVersionId: operationId,
+          routingVersionId: orderId,
+          plannedQuantity: '10',
+          plannedStartAt: '2026-09-01',
+          plannedDueAt: '2026-09-08',
+          sourceReference: 'SO-KT-2026-042',
+        },
+      }),
+      scopeFor(productionOf({ create })),
+    );
+    expect(created?.statusCode).toBe(500);
+    expect(errorOf(created).message).toBe('Internal server error');
+  });
+});
