@@ -474,7 +474,15 @@ describe('U3-MFG-3 工艺路线控制台：新建工艺路线（工序编辑器�
     await type(host, '.detail-drawer', 'o1:runMinutesPerUnit', '0.8');
     await type(host, '.detail-drawer', 'effectiveAt', '2026-11-25');
     await submitDrawer(host);
-    expect(byTestId(host, 'kt-routing-create-error').textContent).toContain('产品版本不存在');
+    // TD-WF-005 / TD-WF-012：创建失败的原因改显示在表单自己的提示区（紧挨提交按钮）；
+    // 抽屉顶部那个错误位（kt-routing-create-error）已撤。
+    expect(
+      element(
+        element(host.querySelector('.detail-drawer form.form-section')).querySelector(
+          '[role="alert"]',
+        ),
+      ).textContent,
+    ).toContain('产品版本不存在');
     expect(host.querySelector('.detail-drawer')).not.toBeNull();
     expect(ports.refresh).not.toHaveBeenCalled();
   });

@@ -138,16 +138,14 @@ const SpecToolbar = ({ state }: CreateProps) => (
 export const ItemCreateDrawer = ({ state }: CreateProps) => (
   <DetailDrawer title="新建物料" onClose={state.closeForm}>
     <SpecToolbar state={state} />
-    {state.submitError !== '' ? (
-      <p class="console-error" role="alert" data-testid="kt-item-create-error">
-        {state.submitError}
-      </p>
-    ) : null}
+    {/* 提交失败的原因显示在表单自己的提示区（FormSection 的 error）：此前它在抽屉顶部，
+        规格行多的时候，滚到提交按钮时已经在视口上方（TD-WF-012）。 */}
     <FormSection
       title="新建物料"
       description="建立稳定 SKU 和规格版本；保存后为草稿，确认后可发布并冻结历史。"
       fields={[...baseFields(), ...specFields(state)]}
       submitLabel="保存草稿"
+      error={state.submitError}
       onSubmit={(values) => state.runCreate(values)}
     />
   </DetailDrawer>

@@ -27,6 +27,15 @@ const element = (node: unknown): TestElement => {
 const byTestId = (host: TestElement, id: string): TestElement =>
   element(host.querySelector(`[data-testid="${id}"]`));
 
+/** 页面上显示出来的错误文字（抽屉顶部的错误位或表单自己的提示区），与写流程冒烟的 visibleError 同口径。
+ *  这个文件只管文案；错误显示在哪个位置由 console-form-error.test.tsx 守。 */
+const shownError = (host: TestElement): string =>
+  host
+    .querySelectorAll('.console-error, .form-error, [role="alert"]')
+    .map((node) => node.textContent.trim())
+    .filter((text) => text !== '')
+    .join(' | ');
+
 const textValue = (value: unknown, fallback = ''): string =>
   typeof value === 'string' || typeof value === 'number' ? String(value) : fallback;
 
@@ -160,9 +169,7 @@ describe('控制台错误文案（TD-WF-006：接口英文消息写进状态之�
     await fill(host, 'primary', 'false');
     await submitDrawer(host);
     expect(ports.createContact).toHaveBeenCalledTimes(1);
-    expect(byTestId(host, 'kt-customer-submit-error').textContent).toBe(
-      '联系人的邮箱和电话至少填一项',
-    );
+    expect(shownError(host)).toBe('联系人的邮箱和电话至少填一项');
     expect(host.textContent).not.toContain('Contact email or phone is required');
   });
 
@@ -177,9 +184,7 @@ describe('控制台错误文案（TD-WF-006：接口英文消息写进状态之�
     await fill(host, 'primary', 'false');
     await fill(host, 'phone', 'not-a-phone');
     await submitDrawer(host);
-    expect(byTestId(host, 'kt-customer-submit-error').textContent).toBe(
-      'Contact phone is malformed',
-    );
+    expect(shownError(host)).toBe('Contact phone is malformed');
   });
 
   it('物料 · SKU 填小写：「Code must be 1-64 …」显示为中文', async () => {
@@ -196,9 +201,7 @@ describe('控制台错误文案（TD-WF-006：接口英文消息写进状态之�
     await fill(host, 'name', '小写 SKU 物料');
     await submitDrawer(host);
     expect(ports.submit).toHaveBeenCalledTimes(1);
-    expect(byTestId(host, 'kt-item-create-error').textContent).toBe(
-      '编码必须是 1 到 64 位大写字母、数字、下划线或连字符',
-    );
+    expect(shownError(host)).toBe('编码必须是 1 到 64 位大写字母、数字、下划线或连字符');
     expect(host.textContent).not.toContain('Code must be 1-64');
   });
 
@@ -210,9 +213,7 @@ describe('控制台错误文案（TD-WF-006：接口英文消息写进状态之�
     await click(host, 'kt-rfq-open');
     await click(host, 'kt-rfq-close');
     expect(ports.submit).toHaveBeenCalledTimes(1);
-    expect(byTestId(host, 'kt-rfq-submit-error').textContent).toBe(
-      '服务器处理请求时出错，请稍后重试',
-    );
+    expect(shownError(host)).toBe('服务器处理请求时出错，请稍后重试');
     expect(host.textContent).not.toContain('Internal server error');
   });
 });

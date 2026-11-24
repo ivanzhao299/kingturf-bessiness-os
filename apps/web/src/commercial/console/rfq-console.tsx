@@ -240,6 +240,7 @@ const CreateDrawer = ({ state }: Readonly<{ state: RfqPageState }>) => (
         { name: 'responseDue', label: '报价截止日', type: 'date', required: true },
       ]}
       submitLabel="发出询价单"
+      error={state.submitError}
       onSubmit={(values) => state.runCreate(values)}
     />
   </DetailDrawer>

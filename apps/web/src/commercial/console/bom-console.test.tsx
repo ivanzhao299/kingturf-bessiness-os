@@ -502,7 +502,15 @@ describe('U3-MFG-2 BOM 控制台：新建 BOM', () => {
         },
       ],
     });
-    expect(byTestId(host, 'kt-bom-create-error').textContent).toContain('组件版本不存在');
+    // TD-WF-005 / TD-WF-012：创建失败的原因改显示在表单自己的提示区（紧挨提交按钮）；
+    // 抽屉顶部那个错误位（kt-bom-create-error）已撤。
+    expect(
+      element(
+        element(host.querySelector('.detail-drawer form.form-section')).querySelector(
+          '[role="alert"]',
+        ),
+      ).textContent,
+    ).toContain('组件版本不存在');
     expect(host.querySelector('.detail-drawer')).not.toBeNull();
   });
 

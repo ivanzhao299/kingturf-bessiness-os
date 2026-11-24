@@ -192,7 +192,9 @@ const MatrixDrawer = ({ state }: Readonly<{ state: MatrixPageState }>) => {
       }}
     >
       <MatrixDetail state={state} />
-      {state.submitError !== '' ? (
+      {/* TD-WF-005 / TD-WF-012：行内表单开着时，提交失败显示在该表单自己的提示区（FormSection 的
+          error，紧挨提交按钮）；这里的错误位只留给不经表单的动作。 */}
+      {state.activeForm === null && state.submitError !== '' ? (
         <p class="console-error" role="alert" data-testid="kt-matrix-submit-error">
           {state.submitError}
         </p>

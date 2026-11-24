@@ -187,6 +187,7 @@ const CreateDrawer = ({ state }: Readonly<{ state: GrPageState }>) => (
         { name: 'manufacturedAt', label: '生产日期', type: 'date', required: true },
       ]}
       submitLabel="过账收货"
+      error={state.submitError}
       onSubmit={(values) => state.runCreate(values)}
     />
   </DetailDrawer>

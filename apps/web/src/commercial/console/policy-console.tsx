@@ -228,7 +228,9 @@ const PolicyDrawer = ({ state }: Readonly<{ state: PolicyPageState }>) => {
       }}
     >
       <PolicyDetail state={state} />
-      {state.submitError !== '' ? (
+      {/* TD-WF-005 / TD-WF-012：行内表单开着时，提交失败显示在该表单自己的提示区（FormSection 的
+          error，紧挨提交按钮）；这里的错误位只留给不经表单的动作。 */}
+      {state.activeForm === null && state.submitError !== '' ? (
         <p class="console-error" role="alert" data-testid="kt-policy-submit-error">
           {state.submitError}
         </p>
@@ -253,6 +255,7 @@ const PolicyDrawer = ({ state }: Readonly<{ state: PolicyPageState }>) => {
           description="新版本只影响后续评估，历史政策决策保持原版本引用。"
           fields={MARGIN_FIELDS}
           submitLabel="发布新版本"
+          error={state.submitError}
           onSubmit={(values) => state.runVersion(policy, values)}
         />
       ) : null}
@@ -271,6 +274,7 @@ const CreateDrawer = ({ state }: Readonly<{ state: PolicyPageState }>) => (
         ...MARGIN_FIELDS,
       ]}
       submitLabel="发布政策"
+      error={state.submitError}
       onSubmit={(values) => state.runCreate(values)}
     />
   </DetailDrawer>

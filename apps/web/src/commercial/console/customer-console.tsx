@@ -232,7 +232,9 @@ const CustomerDrawer = ({ state }: Readonly<{ state: CustomerPageState }>) => {
           </button>
         ) : null}
       </div>
-      {state.submitError !== '' ? (
+      {/* TD-WF-005 / TD-WF-012：行内表单开着时，提交失败显示在该表单自己的提示区（FormSection 的
+          error，紧挨提交按钮）；这里的错误位只留给不经表单的动作。 */}
+      {!state.contactForm && !state.activityForm && state.submitError !== '' ? (
         <p class="console-error" role="alert" data-testid="kt-customer-submit-error">
           {state.submitError}
         </p>
@@ -258,6 +260,7 @@ const CustomerDrawer = ({ state }: Readonly<{ state: CustomerPageState }>) => {
             } satisfies FormSectionField,
           ]}
           submitLabel="保存联系人"
+          error={state.submitError}
           // 把 Promise 交还给 FormSection：提交期间它据此置灰按钮并拦下重复提交（TD-WF-004）。
           onSubmit={(values) => state.runAddContact(values)}
         />
@@ -285,6 +288,7 @@ const CustomerDrawer = ({ state }: Readonly<{ state: CustomerPageState }>) => {
             ] satisfies readonly FormSectionField[]
           }
           submitLabel="保存活动"
+          error={state.submitError}
           // 同上：把 Promise 交还给 FormSection。
           onSubmit={(values) => state.runAddActivity(values)}
         />
@@ -311,6 +315,7 @@ const CreateDrawer = ({ state }: Readonly<{ state: CustomerPageState }>) => (
         ] satisfies readonly FormSectionField[]
       }
       submitLabel="创建客户"
+      error={state.submitError}
       onSubmit={(values) => state.runCreate(values)}
     />
   </DetailDrawer>

@@ -60,6 +60,8 @@ export type OpportunityPageState = Readonly<{
   loadError: string;
   selected: Opportunity | null;
   creating: boolean;
+  /** 新建表单的提交错误（TD-WF-005）：显示在该表单的提示区，不进 loadError。 */
+  createError: string;
   permissions: ReadonlySet<string>;
   today: string;
   customers: readonly OpportunityCreator[];
@@ -269,6 +271,7 @@ const CreateDrawer = ({ state }: Readonly<{ state: OpportunityPageState }>) => (
       description="建立销售机会并设置初始金额、赢率与预计成交日期。"
       fields={createFields(state.customers)}
       submitLabel="创建商机"
+      error={state.createError}
       onSubmit={(values) =>
         state.runCreate({
           // 与原 openForm 提交载荷逐字段同构（customerId null 化、概率 % → 基点）。
@@ -398,6 +401,7 @@ export function OpportunityListPage(ports: OpportunityListPorts) {
   const loadError = signal('');
   const selected = signal<Opportunity | null>(null);
   const creating = signal(false);
+  const createError = signal('');
   const view = signal<OpportunityViewMode>('pipeline');
   const pendingMove = signal<PendingMove | null>(null);
   const moveError = signal('');
@@ -449,11 +453,14 @@ export function OpportunityListPage(ports: OpportunityListPorts) {
 
   const runCreate = async (payload: Record<string, unknown>): Promise<void> => {
     loading.value = true;
+    // 提交失败的原因只给新建表单（TD-WF-005）。此前它走 fail → loadError：管道视图下整个看板被
+    // 一条错误替换，而创建抽屉还开着挡在前面，用户看到的是「点了没反应」。
+    createError.value = '';
     try {
       applyItems(await ports.createOpportunity(payload));
       creating.value = false;
     } catch (error: unknown) {
-      fail(error, '商机创建失败');
+      createError.value = messageOf(error, '商机创建失败');
     } finally {
       loading.value = false;
     }
@@ -492,6 +499,7 @@ export function OpportunityListPage(ports: OpportunityListPorts) {
     loadError: loadError.value,
     selected: selected.value,
     creating: creating.value,
+    createError: createError.value,
     permissions: ports.permissions,
     today: ports.today,
     customers: ports.customers,
@@ -546,9 +554,11 @@ export function OpportunityListPage(ports: OpportunityListPorts) {
     },
     openCreate: () => {
       creating.value = true;
+      createError.value = '';
     },
     closeCreate: () => {
       creating.value = false;
+      createError.value = '';
     },
     runTransition,
     runCreate,

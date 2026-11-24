@@ -378,7 +378,9 @@ const CtrDrawer = ({ state }: Readonly<{ state: CtrPageState }>) => {
       }}
     >
       <CtrDetail state={state} />
-      {state.submitError !== '' ? (
+      {/* TD-WF-005 / TD-WF-012：行内表单开着时，提交失败显示在该表单自己的提示区（FormSection 的
+          error，紧挨提交按钮）；这里的错误位只留给不经表单的动作。 */}
+      {state.decision === null && state.activeForm === null && state.submitError !== '' ? (
         <p class="console-error" role="alert" data-testid="kt-ctr-submit-error">
           {state.submitError}
         </p>
@@ -457,6 +459,7 @@ const CtrDrawer = ({ state }: Readonly<{ state: CtrPageState }>) => {
           description="审批决定和理由将永久保留。"
           fields={[{ name: 'reason', label: '审批意见', type: 'textarea', required: true }]}
           submitLabel={`确认${state.decision === 'APPROVED' ? '批准' : '驳回'}`}
+          error={state.submitError}
           onSubmit={(values) =>
             state.runState(row, {
               action: 'decide',
@@ -480,6 +483,7 @@ const CtrDrawer = ({ state }: Readonly<{ state: CtrPageState }>) => {
             ...REQUIREMENT_FIELDS(requirements, ports.displayRequirement),
           ]}
           submitLabel="创建修订草稿"
+          error={state.submitError}
           onSubmit={(values) => state.runRevise(row, values)}
         />
       ) : null}
@@ -515,6 +519,7 @@ const CreateDrawer = ({ state }: Readonly<{ state: CtrPageState }>) => {
           ...REQUIREMENT_FIELDS({}, ports.displayRequirement),
         ]}
         submitLabel="创建技术需求"
+        error={state.submitError}
         onSubmit={(values) => state.runCreate(values)}
       />
     </DetailDrawer>

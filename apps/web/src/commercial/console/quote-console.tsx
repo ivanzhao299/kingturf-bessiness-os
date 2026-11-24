@@ -261,7 +261,9 @@ const QuoteDrawer = ({ state }: Readonly<{ state: QuotePageState }>) => {
       }}
     >
       <QuoteDetail state={state} />
-      {state.submitError !== '' ? (
+      {/* TD-WF-005 / TD-WF-012：行内表单开着时，提交失败显示在该表单自己的提示区（FormSection 的
+          error，紧挨提交按钮）；这里的错误位只留给不经表单的动作。 */}
+      {state.activeForm === null && state.submitError !== '' ? (
         <p class="console-error" role="alert" data-testid="kt-quote-submit-error">
           {state.submitError}
         </p>
@@ -342,11 +344,8 @@ const revisableLines = (ports: QuoteConsolePorts, quote: QuoteRow) =>
 
 const CreateDrawer = ({ state }: Readonly<{ state: QuotePageState }>) => (
   <DetailDrawer title="新建销售报价" onClose={state.closeCreate}>
-    {state.submitError !== '' ? (
-      <p class="console-error" role="alert" data-testid="kt-quote-submit-error">
-        {state.submitError}
-      </p>
-    ) : null}
+    {/* 提交失败的原因显示在表单自己的提示区（CreateForm 的 error）：此前它渲染在抽屉顶部，
+        长表单下滚到提交按钮时已经在视口上方（TD-WF-012）。 */}
     <CreateForm state={state} />
   </DetailDrawer>
 );
