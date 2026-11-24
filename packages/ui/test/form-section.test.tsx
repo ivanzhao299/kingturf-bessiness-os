@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { FormSection, type FormSectionField } from '../src/form-section';
 import { asElement, flush, mount, mountDom } from './render';
 import { TestEvent } from './dom';
@@ -338,5 +338,102 @@ describe('FormSection（兼容 shared/forms.ts 校验语义）', () => {
     submitButton(host).click();
     await flush();
     expect(submitted).toEqual(['done']);
+  });
+  // 回归（TD-WF-012，写流程真浏览器冒烟发现）：提示出现时既不滚动也不聚焦，长表单提交失败后提示
+  // 在视口外，用户看到的是「点了没反应」。提示留下时把它滚进可视区并把键盘焦点移过去
+  // （tabindex="-1"，可程序聚焦但不进入 Tab 序列）。触发条件是「这次提交留下了提示」而不是
+  // 「文案变了」：用户可能把焦点移回表单顶部再次按回车，提示文案没变但仍在视口外。
+  /** 给提示区挂上 scrollIntoView 的探针（测试 DOM 没有这个方法）。 */
+  const watchScroll = (alert: TestElement): ReturnType<typeof vi.fn> => {
+    const scroll = vi.fn();
+    Object.defineProperty(alert, 'scrollIntoView', { value: scroll, configurable: true });
+    return scroll;
+  };
+  const blankCompany: readonly FormSectionField[] = [
+    { name: 'company', label: '公司名称', required: true },
+  ];
+
+  it('scrolls the alert into view and moves focus to it when a validation message appears（TD-WF-012）', async () => {
+    const host = mountDom();
+    mount(
+      <FormSection
+        title="创建线索"
+        fields={blankCompany}
+        submitLabel="创建线索"
+        onSubmit={() => undefined}
+      />,
+      host,
+    );
+    const alert = alertOf(host);
+    // 提示区可被程序聚焦，但不在 Tab 序列里（连按 Tab 不会被它截住）。
+    expect(alert.tabIndex).toBe(-1);
+    const scroll = watchScroll(alert);
+    expect(host.document.activeElement).not.toBe(alert);
+    submitButton(host).click();
+    await flush();
+    expect(alertOf(host).textContent).toBe('请填写公司名称');
+    // 已经完全可见时「nearest」不滚动，否则做最小滚动——相对所有可滚动祖先（抽屉体也算）。
+    expect(scroll).toHaveBeenCalledExactlyOnceWith({ block: 'nearest' });
+    expect(host.document.activeElement).toBe(alert);
+  });
+
+  it('does it again when a later submit leaves the very same message（同一条提示再次出现）', async () => {
+    const host = mountDom();
+    mount(
+      <FormSection
+        title="创建线索"
+        fields={blankCompany}
+        submitLabel="创建线索"
+        onSubmit={() => undefined}
+      />,
+      host,
+    );
+    const alert = alertOf(host);
+    const scroll = watchScroll(alert);
+    submitButton(host).click();
+    await flush();
+    // 用户把焦点移回输入框（或输入框本来就在视口上方）后再次提交，校验提示一字不差。
+    fieldControl(host, 'company').focus();
+    submitButton(host).click();
+    await flush();
+    expect(alertOf(host).textContent).toBe('请填写公司名称');
+    expect(scroll).toHaveBeenCalledTimes(2);
+    expect(host.document.activeElement).toBe(alert);
+  });
+
+  it('moves focus and scrolls for an external error as well, and does neither while no message is shown', async () => {
+    const host = mountDom();
+    mount(<ExternalErrorHarness error="" />, host);
+    await flush();
+    const alert = alertOf(host);
+    const scroll = watchScroll(alert);
+    expect(scroll).not.toHaveBeenCalled();
+    mount(<ExternalErrorHarness error="服务器处理请求时出错，请稍后重试" />, host);
+    await flush();
+    expect(scroll).toHaveBeenCalledExactlyOnceWith({ block: 'nearest' });
+    expect(host.document.activeElement).toBe(alert);
+  });
+
+  it('leaves focus and the scroll position alone when the submit goes through', async () => {
+    const host = mountDom();
+    const submitted: string[] = [];
+    mount(
+      <FormSection
+        title="创建线索"
+        fields={harnessFields}
+        submitLabel="创建线索"
+        onSubmit={() => {
+          submitted.push('done');
+        }}
+      />,
+      host,
+    );
+    const scroll = watchScroll(alertOf(host));
+    submitButton(host).click();
+    await flush();
+    expect(submitted).toEqual(['done']);
+    expect(alertOf(host).textContent).toBe('');
+    expect(scroll).not.toHaveBeenCalled();
+    expect(host.document.activeElement).not.toBe(alertOf(host));
   });
 });

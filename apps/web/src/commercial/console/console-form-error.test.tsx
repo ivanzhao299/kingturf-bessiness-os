@@ -7,7 +7,11 @@ import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { h, render } from 'preact';
 import type { ComponentType } from 'preact';
-import { installGlobalTestDom, type TestElement } from '../../../test/fixtures/preact-dom';
+import {
+  installGlobalTestDom,
+  TestDocument,
+  type TestElement,
+} from '../../../test/fixtures/preact-dom';
 import { CustomerConsolePage } from './customer-console';
 import type { CustomerConsolePorts } from './customer-ports';
 import { GoodsReceiptConsolePage } from './gr-console';
@@ -109,10 +113,12 @@ const expectNoLeakedComment = (host: TestElement): void => {
   for (const marker of ['/*', '*/', 'TD-WF-']) expect(host.textContent).not.toContain(marker);
 };
 
-/** 新建表单被拒后的共同断言：原因只出现在表单提示区这一处，抽屉仍然开着。 */
+/** 新建表单被拒后的共同断言：原因只出现在表单提示区这一处，抽屉仍然开着，并且键盘焦点在提示区上
+ *  （TD-WF-012：FormSection 在提示出现时把它滚进可视区并聚焦）。 */
 const expectShownInFormOnly = (host: TestElement, message: string): void => {
   expect(host.querySelector('.detail-drawer')).not.toBeNull();
   expect(formAlert(host).textContent).toBe(message);
+  expect(TestDocument.current.activeElement).toBe(formAlert(host));
   const shown = errorNodes(host);
   expect(shown).toHaveLength(1);
   expect(shown[0]).toBe(formAlert(host));
