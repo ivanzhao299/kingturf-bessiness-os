@@ -231,6 +231,19 @@ vulnerabilities found`。未出现 `inventory-migration-postgres.integration.tes
 而新建抽屉不渲染错误（`visibleError: ""`，TD-WF-005 / 006，表单基座范围）。目录汇总里
 WS-P2-11 显示「未复现」是两个子情形的合并结果。这一子情形要等表单基座修复落地才会真正转绿。
 
+### 5.4 最终 HEAD 的 ci:local 复跑（文档提交后）
+
+| 被测快照                                                | EXIT  | 耗时  |
+| ------------------------------------------------------- | ----- | ----- |
+| `fce432b`（四个代码提交 + 文档提交，rebase @`5610673`） | **0** | 938 s |
+
+干净已提交快照，跑前跑后工作区均干净。数字与 §5.1 一致：API 185 文件 / 18034 例；
+Web 50 / 761；database 4 / 76；config 71；domain 20；types 5；ui 53；Python 演练 145 例
+OK（`"migrations": 76`、`"final_count": 76`、`"FULLY_MATCHED"`）；覆盖率整体 58124 /
+70901、domain 630 / 672、仓储 11080 / 12987、`deficits: []`；structure 强制违规 0；
+service-boundary 0 违规；`No known vulnerabilities found`；
+`inventory-migration-postgres.integration.test.ts` 3 例通过（10.3 s，无超时假失败）。
+
 任务书列的四项冒烟期望：供应链「关闭询价」成功 ✓；制造流程草稿 BOM 组件层级有行 ✓；
 客户流程重复客户编号得到带中文提示的 409 ✓（服务端）；信用流程「执行信用评估」请求发出并
 被服务端接受 ✓（主协调的 `551952a`；信用流程 4 / 4，审批一步也已通过）。
