@@ -212,6 +212,67 @@ describe('FormSection（兼容 shared/forms.ts 校验语义）', () => {
     expect(calls).toBe(2);
   });
 
+  // 回归（TD-WF-005，写流程真浏览器冒烟发现）：新建抽屉里服务端拒绝后没有任何提示——错误只写进
+  // 调用方的状态，而新建抽屉没有错误位。调用方把提交错误经 error 传进来，它显示在表单自己的
+  // 提示区（与校验提示同一个 role="alert"），不另开第二处。
+  const harnessFields: readonly FormSectionField[] = [
+    { name: 'company', label: '公司名称', required: true, value: '金特夫' },
+  ];
+  const ExternalErrorHarness = (props: Readonly<{ error: string }>) => (
+    <FormSection
+      title="创建线索"
+      fields={harnessFields}
+      submitLabel="创建线索"
+      error={props.error}
+      onSubmit={() => undefined}
+    />
+  );
+  const alertOf = (host: ReturnType<typeof mountDom>): TestElement =>
+    asElement(host.container.querySelector('form.form-section [role="alert"]'));
+
+  it('shows an external submit error in the existing alert and nothing when there is none', async () => {
+    const host = mountDom();
+    mount(
+      <FormSection
+        title="创建线索"
+        fields={harnessFields}
+        submitLabel="创建线索"
+        onSubmit={() => undefined}
+      />,
+      host,
+    );
+    expect(alertOf(host).textContent).toBe('');
+    const message = '服务器处理请求时出错，请稍后重试';
+    mount(<ExternalErrorHarness error={message} />, host);
+    await flush();
+    const alert = alertOf(host);
+    expect(alert.textContent).toBe(message);
+    // 仍是表单里唯一的一处提示，位置在提交按钮正上方（长表单下不必回滚就能看到）。
+    expect(host.container.querySelectorAll('form.form-section [role="alert"]')).toHaveLength(1);
+    expect(alert.nextSibling).toBe(submitButton(host));
+    expect(alert.classList.contains('form-error')).toBe(true);
+    // 调用方清空（重新提交、关闭或再次打开表单）后提示随之消失。
+    mount(<ExternalErrorHarness error="" />, host);
+    await flush();
+    expect(alertOf(host).textContent).toBe('');
+  });
+
+  it("keeps the form's own validation message ahead of the external error", async () => {
+    const host = mountDom();
+    mount(<ExternalErrorHarness error="上一次提交被服务器拒绝" />, host);
+    await flush();
+    expect(alertOf(host).textContent).toBe('上一次提交被服务器拒绝');
+    const company = fieldControl(host, 'company');
+    company.value = '';
+    company.dispatchEvent(new Event('input', { bubbles: true }));
+    await flush();
+    submitButton(host).click();
+    await flush();
+    // 这次没通过表单校验、请求根本没有发出：显示的是校验提示，不是上一次的外部错误。
+    expect(alertOf(host).textContent).toBe('请填写公司名称');
+    expect(fieldControl(host, 'company').getAttribute('aria-invalid')).toBe('true');
+  });
+
   it('submits collected values only when every field is valid', async () => {
     const host = mountDom();
     const received: Readonly<Record<string, string>>[] = [];

@@ -35,6 +35,12 @@ export type FormSectionProps = Readonly<{
   description?: string;
   fields: readonly FormSectionField[];
   submitLabel: string;
+  /**
+   * 外部提交错误（TD-WF-005）：调用方在 onSubmit 失败后写进来的原因，显示在表单自己的提示区
+   * （与校验提示同一个 role="alert"，紧挨提交按钮）。空串或缺省表示没有；表单自身的校验提示
+   * 优先。调用方在打开与关闭表单时把它清空。
+   */
+  error?: string;
   onSubmit: (values: Readonly<Record<string, string>>) => Promise<void> | void;
 }>;
 
@@ -82,6 +88,8 @@ export const FormSection = (props: FormSectionProps) => {
   // 所以不能只靠提交按钮置灰。
   const inFlight = useRef(false);
   const sensitive = SENSITIVE_SUBMIT.test(props.submitLabel);
+  // 提示区显示的内容：表单自己的校验提示优先，其次是调用方传入的外部提交错误。
+  const shownError = error !== '' ? error : (props.error ?? '');
 
   const onInput = (field: FormSectionField, value: string): void => {
     setValues((current) => ({ ...current, [field.name]: value }));
@@ -208,7 +216,7 @@ export const FormSection = (props: FormSectionProps) => {
         </label>
       ) : null}
       <p class="form-error" role="alert">
-        {error}
+        {shownError}
       </p>
       <button type="submit" class="primary" disabled={submitting} aria-busy={submitting}>
         {submitting ? '提交中…' : props.submitLabel}
