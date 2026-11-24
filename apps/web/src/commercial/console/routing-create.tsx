@@ -96,11 +96,8 @@ const OperationToolbar = ({ state }: CreateProps) => (
 export const RoutingCreateDrawer = ({ state }: CreateProps) => (
   <DetailDrawer title="新建工艺路线" onClose={state.closeForm}>
     <OperationToolbar state={state} />
-    {state.submitError !== '' ? (
-      <p class="console-error" role="alert" data-testid="kt-routing-create-error">
-        {state.submitError}
-      </p>
-    ) : null}
+    {/* 提交失败的原因显示在表单自己的提示区（FormSection 的 error）：此前它在抽屉顶部，
+        工序行多的时候，滚到提交按钮时已经在视口上方（TD-WF-012）。 */}
     <FormSection
       title="创建标准工艺路线"
       description="定义成品的标准工序及节拍；保存后为草稿，确认后可发布并冻结历史。"
@@ -124,6 +121,7 @@ export const RoutingCreateDrawer = ({ state }: CreateProps) => (
         },
       ]}
       submitLabel="保存路线草稿"
+      error={state.submitError}
       onSubmit={(values) => state.runCreate(values)}
     />
   </DetailDrawer>

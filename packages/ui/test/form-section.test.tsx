@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { FormSection, type FormSectionField } from '../src/form-section';
 import { asElement, flush, mount, mountDom } from './render';
 import { TestEvent } from './dom';
@@ -212,6 +212,67 @@ describe('FormSection（兼容 shared/forms.ts 校验语义）', () => {
     expect(calls).toBe(2);
   });
 
+  // 回归（TD-WF-005，写流程真浏览器冒烟发现）：新建抽屉里服务端拒绝后没有任何提示——错误只写进
+  // 调用方的状态，而新建抽屉没有错误位。调用方把提交错误经 error 传进来，它显示在表单自己的
+  // 提示区（与校验提示同一个 role="alert"），不另开第二处。
+  const harnessFields: readonly FormSectionField[] = [
+    { name: 'company', label: '公司名称', required: true, value: '金特夫' },
+  ];
+  const ExternalErrorHarness = (props: Readonly<{ error: string }>) => (
+    <FormSection
+      title="创建线索"
+      fields={harnessFields}
+      submitLabel="创建线索"
+      error={props.error}
+      onSubmit={() => undefined}
+    />
+  );
+  const alertOf = (host: ReturnType<typeof mountDom>): TestElement =>
+    asElement(host.container.querySelector('form.form-section [role="alert"]'));
+
+  it('shows an external submit error in the existing alert and nothing when there is none', async () => {
+    const host = mountDom();
+    mount(
+      <FormSection
+        title="创建线索"
+        fields={harnessFields}
+        submitLabel="创建线索"
+        onSubmit={() => undefined}
+      />,
+      host,
+    );
+    expect(alertOf(host).textContent).toBe('');
+    const message = '服务器处理请求时出错，请稍后重试';
+    mount(<ExternalErrorHarness error={message} />, host);
+    await flush();
+    const alert = alertOf(host);
+    expect(alert.textContent).toBe(message);
+    // 仍是表单里唯一的一处提示，位置在提交按钮正上方（长表单下不必回滚就能看到）。
+    expect(host.container.querySelectorAll('form.form-section [role="alert"]')).toHaveLength(1);
+    expect(alert.nextSibling).toBe(submitButton(host));
+    expect(alert.classList.contains('form-error')).toBe(true);
+    // 调用方清空（重新提交、关闭或再次打开表单）后提示随之消失。
+    mount(<ExternalErrorHarness error="" />, host);
+    await flush();
+    expect(alertOf(host).textContent).toBe('');
+  });
+
+  it("keeps the form's own validation message ahead of the external error", async () => {
+    const host = mountDom();
+    mount(<ExternalErrorHarness error="上一次提交被服务器拒绝" />, host);
+    await flush();
+    expect(alertOf(host).textContent).toBe('上一次提交被服务器拒绝');
+    const company = fieldControl(host, 'company');
+    company.value = '';
+    company.dispatchEvent(new Event('input', { bubbles: true }));
+    await flush();
+    submitButton(host).click();
+    await flush();
+    // 这次没通过表单校验、请求根本没有发出：显示的是校验提示，不是上一次的外部错误。
+    expect(alertOf(host).textContent).toBe('请填写公司名称');
+    expect(fieldControl(host, 'company').getAttribute('aria-invalid')).toBe('true');
+  });
+
   it('submits collected values only when every field is valid', async () => {
     const host = mountDom();
     const received: Readonly<Record<string, string>>[] = [];
@@ -277,5 +338,191 @@ describe('FormSection（兼容 shared/forms.ts 校验语义）', () => {
     submitButton(host).click();
     await flush();
     expect(submitted).toEqual(['done']);
+  });
+  // 回归（TD-WF-012，写流程真浏览器冒烟发现）：提示出现时既不滚动也不聚焦，长表单提交失败后提示
+  // 在视口外，用户看到的是「点了没反应」。提示留下时把它滚进可视区并把键盘焦点移过去
+  // （tabindex="-1"，可程序聚焦但不进入 Tab 序列）。触发条件是「这次提交留下了提示」而不是
+  // 「文案变了」：用户可能把焦点移回表单顶部再次按回车，提示文案没变但仍在视口外。
+  /** 给提示区挂上 scrollIntoView 的探针（测试 DOM 没有这个方法）。 */
+  const watchScroll = (alert: TestElement): ReturnType<typeof vi.fn> => {
+    const scroll = vi.fn();
+    Object.defineProperty(alert, 'scrollIntoView', { value: scroll, configurable: true });
+    return scroll;
+  };
+  const blankCompany: readonly FormSectionField[] = [
+    { name: 'company', label: '公司名称', required: true },
+  ];
+
+  it('scrolls the alert into view and moves focus to it when a validation message appears（TD-WF-012）', async () => {
+    const host = mountDom();
+    mount(
+      <FormSection
+        title="创建线索"
+        fields={blankCompany}
+        submitLabel="创建线索"
+        onSubmit={() => undefined}
+      />,
+      host,
+    );
+    const alert = alertOf(host);
+    // 提示区可被程序聚焦，但不在 Tab 序列里（连按 Tab 不会被它截住）。
+    expect(alert.tabIndex).toBe(-1);
+    const scroll = watchScroll(alert);
+    expect(host.document.activeElement).not.toBe(alert);
+    submitButton(host).click();
+    await flush();
+    expect(alertOf(host).textContent).toBe('请填写公司名称');
+    // 已经完全可见时「nearest」不滚动，否则做最小滚动——相对所有可滚动祖先（抽屉体也算）。
+    expect(scroll).toHaveBeenCalledExactlyOnceWith({ block: 'nearest' });
+    expect(host.document.activeElement).toBe(alert);
+  });
+
+  it('does it again when a later submit leaves the very same message（同一条提示再次出现）', async () => {
+    const host = mountDom();
+    mount(
+      <FormSection
+        title="创建线索"
+        fields={blankCompany}
+        submitLabel="创建线索"
+        onSubmit={() => undefined}
+      />,
+      host,
+    );
+    const alert = alertOf(host);
+    const scroll = watchScroll(alert);
+    submitButton(host).click();
+    await flush();
+    // 用户把焦点移回输入框（或输入框本来就在视口上方）后再次提交，校验提示一字不差。
+    fieldControl(host, 'company').focus();
+    submitButton(host).click();
+    await flush();
+    expect(alertOf(host).textContent).toBe('请填写公司名称');
+    expect(scroll).toHaveBeenCalledTimes(2);
+    expect(host.document.activeElement).toBe(alert);
+  });
+
+  it('moves focus and scrolls for an external error as well, and does neither while no message is shown', async () => {
+    const host = mountDom();
+    mount(<ExternalErrorHarness error="" />, host);
+    await flush();
+    const alert = alertOf(host);
+    const scroll = watchScroll(alert);
+    expect(scroll).not.toHaveBeenCalled();
+    mount(<ExternalErrorHarness error="服务器处理请求时出错，请稍后重试" />, host);
+    await flush();
+    expect(scroll).toHaveBeenCalledExactlyOnceWith({ block: 'nearest' });
+    expect(host.document.activeElement).toBe(alert);
+  });
+
+  it('leaves focus and the scroll position alone when the submit goes through', async () => {
+    const host = mountDom();
+    const submitted: string[] = [];
+    mount(
+      <FormSection
+        title="创建线索"
+        fields={harnessFields}
+        submitLabel="创建线索"
+        onSubmit={() => {
+          submitted.push('done');
+        }}
+      />,
+      host,
+    );
+    const scroll = watchScroll(alertOf(host));
+    submitButton(host).click();
+    await flush();
+    expect(submitted).toEqual(['done']);
+    expect(alertOf(host).textContent).toBe('');
+    expect(scroll).not.toHaveBeenCalled();
+    expect(host.document.activeElement).not.toBe(alertOf(host));
+  });
+  // 回归（TD-WF-009，写流程真浏览器冒烟发现）：必填下拉默认是空选，提交被浏览器原生校验拦下，
+  // 提示语言随浏览器（本环境为英文 "Please select an item in the list."），submit 事件根本不触发。
+  // 现在必填下拉不带原生 required（保留 aria-required），由表单自己的校验给中文提示。
+  const colourFields: readonly FormSectionField[] = [
+    {
+      name: 'colour',
+      label: '颜色',
+      type: 'select',
+      required: true,
+      options: [
+        { value: 'green', label: '绿' },
+        { value: 'blue', label: '蓝' },
+      ],
+    },
+    {
+      name: 'finish',
+      label: '表面处理',
+      type: 'select',
+      options: [{ value: 'smooth', label: '平' }],
+    },
+    { name: 'batch', label: '批次号', required: true },
+  ];
+
+  it('drops the native required from a required select and keeps aria-required（必填下拉）', () => {
+    const host = mountDom();
+    mount(
+      <FormSection
+        title="规格"
+        fields={colourFields}
+        submitLabel="保存"
+        onSubmit={() => undefined}
+      />,
+      host,
+    );
+    const colour = fieldControl(host, 'colour');
+    // 原生 required 一在，浏览器就先于表单拦下提交并弹出随浏览器语言的提示。
+    expect(colour.hasAttribute('required')).toBe(false);
+    expect(colour.getAttribute('aria-required')).toBe('true');
+    expect(asElement(colour.parentNode).querySelector('.required-mark')?.textContent).toBe('必填');
+    // 其它类型的必填字段不动：仍带原生 required。
+    expect(fieldControl(host, 'batch').hasAttribute('required')).toBe(true);
+    expect(fieldControl(host, 'batch').getAttribute('aria-required')).toBe('true');
+    // 非必填下拉两者都不带。
+    const finish = fieldControl(host, 'finish');
+    expect(finish.hasAttribute('required')).toBe(false);
+    expect(finish.hasAttribute('aria-required')).toBe(false);
+  });
+
+  it('gives a Chinese message for an untouched required select instead of the browser bubble', async () => {
+    const host = mountDom();
+    const submitted: Readonly<Record<string, string>>[] = [];
+    mount(
+      <FormSection
+        title="规格"
+        fields={colourFields}
+        submitLabel="保存"
+        onSubmit={(values) => {
+          submitted.push(values);
+        }}
+      />,
+      host,
+    );
+    const colour = fieldControl(host, 'colour');
+    colour.focus();
+    const scroll = vi.fn();
+    Object.defineProperty(colour, 'scrollIntoView', { value: scroll, configurable: true });
+    submitButton(host).click();
+    await flush();
+    expect(submitted).toEqual([]);
+    const alert = asElement(host.container.querySelector('[role="alert"]'));
+    expect(alert.textContent).toBe('请选择颜色');
+    expect(colour.getAttribute('aria-invalid')).toBe('true');
+    expect(asElement(colour.parentNode).classList.contains('invalid')).toBe(true);
+    // 第一个出错的字段是下拉：提示里说的是「选择」而不是「填写」。
+    expect(host.document.activeElement).toBe(alert);
+    // 选好之后再提交：提示消失，请求带上下拉选项的 value。
+    colour.value = 'green';
+    colour.dispatchEvent(new Event('input', { bubbles: true }));
+    await flush();
+    expect(colour.hasAttribute('aria-invalid')).toBe(false);
+    const batch = fieldControl(host, 'batch');
+    batch.value = 'B-001';
+    batch.dispatchEvent(new Event('input', { bubbles: true }));
+    await flush();
+    submitButton(host).click();
+    await flush();
+    expect(submitted).toEqual([{ colour: 'green', finish: '', batch: 'B-001' }]);
+    expect(alert.textContent).toBe('');
   });
 });

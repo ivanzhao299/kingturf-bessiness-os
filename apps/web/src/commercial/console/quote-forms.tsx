@@ -22,6 +22,7 @@ const ReviseForm = ({ state }: Readonly<{ state: QuotePageState }>) => {
         { name: 'validUntil', label: '新有效期至', type: 'date', required: true },
       ]}
       submitLabel="校验并创建修订"
+      error={state.submitError}
       onSubmit={(values) => state.runRevise(quote, values)}
     />
   );
@@ -33,9 +34,12 @@ const ApproveForm = ({ state }: Readonly<{ state: QuotePageState }>) => (
     description="审批决定和理由将进入不可变证据链。"
     fields={[{ name: 'reason', label: '审批意见', type: 'textarea', required: true }]}
     submitLabel="确认批准"
-    onSubmit={(values) => {
-      if (state.selected) void state.runCommand(state.selected, 'approve', values);
-    }}
+    error={state.submitError}
+    // 把 Promise 交还给 FormSection：提交期间它据此置灰按钮并拦下重复提交（TD-WF-004）；
+    // 批准与签发都是不可逆动作。
+    onSubmit={(values) =>
+      state.selected ? state.runCommand(state.selected, 'approve', values) : undefined
+    }
   />
 );
 
@@ -45,9 +49,11 @@ const IssueForm = ({ state }: Readonly<{ state: QuotePageState }>) => (
     description="签发后将生成只读快照，后续合同只能引用该快照。"
     fields={[]}
     submitLabel="确认签发"
-    onSubmit={(values) => {
-      if (state.selected) void state.runCommand(state.selected, 'issue', values);
-    }}
+    error={state.submitError}
+    // 同上：把 Promise 交还给 FormSection。
+    onSubmit={(values) =>
+      state.selected ? state.runCommand(state.selected, 'issue', values) : undefined
+    }
   />
 );
 
@@ -129,6 +135,7 @@ const CreateForm = ({ state }: Readonly<{ state: QuotePageState }>) => {
       description="系统先校验销售政策，再由服务器重算每一行、折扣与毛利。"
       fields={fields}
       submitLabel="校验并创建报价"
+      error={state.submitError}
       onSubmit={(values) => state.runCreate(values)}
     />
   );

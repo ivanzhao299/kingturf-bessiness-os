@@ -27,6 +27,7 @@ import {
   type ItemViewState,
   type SpecRowDraft,
 } from './item-state';
+import { failureMessage } from '../../shared/api-error-message';
 
 type ItemBundle = Readonly<{
   // 全量快照（默认视图行与分类计数来源）。
@@ -89,8 +90,8 @@ function createItemActions(ports: ItemConsolePorts, bundle: ItemBundle) {
     limit: ITEM_PAGE_SIZE,
     ...(cursor ? { cursor } : {}),
   });
-  const messageOf = (error: unknown, fallback: string): string =>
-    error instanceof Error ? error.message : fallback;
+  // 失败文案统一经 failureMessage：接口的常见英文消息转成中文，其余原样（TD-WF-006）。
+  const messageOf = failureMessage;
   // 装载失败：DataTable 错态（空/错/载三态）。
   const loadFailed = (error: unknown, fallback: string): void => {
     bundle.loadError.value = messageOf(error, fallback);

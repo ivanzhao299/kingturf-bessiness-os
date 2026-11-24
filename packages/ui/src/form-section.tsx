@@ -1,4 +1,4 @@
-import { useRef, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 
 export type FormSectionFieldType =
   | 'text'
@@ -35,6 +35,12 @@ export type FormSectionProps = Readonly<{
   description?: string;
   fields: readonly FormSectionField[];
   submitLabel: string;
+  /**
+   * 外部提交错误（TD-WF-005）：调用方在 onSubmit 失败后写进来的原因，显示在表单自己的提示区
+   * （与校验提示同一个 role="alert"，紧挨提交按钮）。空串或缺省表示没有；表单自身的校验提示
+   * 优先。调用方在打开与关闭表单时把它清空。
+   */
+  error?: string;
   onSubmit: (values: Readonly<Record<string, string>>) => Promise<void> | void;
 }>;
 
@@ -48,9 +54,18 @@ const controlTag = (field: FormSectionField): 'input' | 'textarea' | 'select' =>
   return 'input';
 };
 
+// 提示区节点：浏览器 HTMLElement 与测试 DOM double 通用（不用 instanceof）；double 没有 scrollIntoView。
+type AlertNode = Readonly<{
+  scrollIntoView?: (options?: ScrollIntoViewOptions) => void;
+  focus: (options?: { preventScroll?: boolean }) => void;
+}>;
+
 // 手写镜像 openForm 的原生约束校验语义（测试 DOM 无原生 checkValidity，语义保持一致）。
 const validateField = (field: FormSectionField, value: string): string | null => {
-  if (field.required === true && value.trim() === '') return `请填写${field.label}`;
+  // TD-WF-009：必填下拉空选时说「请选择」——它不是填不填的问题。下拉不再带原生 required，
+  // 这条提示是用户看到的唯一一条（此前是浏览器自己的、语言随浏览器的气泡）。
+  if (field.required === true && value.trim() === '')
+    return field.type === 'select' ? `请选择${field.label}` : `请填写${field.label}`;
   if (value === '') return null;
   if (field.type === 'email' && !EMAIL_PATTERN.test(value)) return `${field.label}格式不正确`;
   if (field.maxLength !== undefined && value.length > field.maxLength)
@@ -82,6 +97,22 @@ export const FormSection = (props: FormSectionProps) => {
   // 所以不能只靠提交按钮置灰。
   const inFlight = useRef(false);
   const sensitive = SENSITIVE_SUBMIT.test(props.submitLabel);
+  // 提示区显示的内容：表单自己的校验提示优先，其次是调用方传入的外部提交错误。
+  const shownError = error !== '' ? error : (props.error ?? '');
+  // TD-WF-012：提示出现时既不滚动也不聚焦，长表单提交失败后它在视口外（抽屉顶部的错误位在
+  // 抽屉体已滚到提交按钮时位于视口上方），用户看到的是「点了没反应」。每次处理 submit 记一笔，
+  // 只要这次提交留下了提示，就把提示滚进可视区并把键盘焦点移过去。按「这次提交」而不是按
+  // 「文案变了」触发：用户可能把焦点移回表单顶部再次按回车，提示一字不差但仍在视口外。
+  const alertRef = useRef<HTMLParagraphElement | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    if (shownError === '') return;
+    const node = alertRef.current as unknown as AlertNode | null;
+    if (node === null) return;
+    // 已经完全可见时「nearest」不滚动，否则做最小滚动——相对所有可滚动祖先（抽屉体也算）。
+    node.scrollIntoView?.({ block: 'nearest' });
+    node.focus({ preventScroll: true });
+  }, [attempt, shownError]);
 
   const onInput = (field: FormSectionField, value: string): void => {
     setValues((current) => ({ ...current, [field.name]: value }));
@@ -97,6 +128,7 @@ export const FormSection = (props: FormSectionProps) => {
   const onSubmit = (event: Event): void => {
     event.preventDefault();
     if (inFlight.current) return;
+    setAttempt((current) => current + 1);
     const nextInvalid = new Set<string>();
     let firstMessage = '';
     for (const field of props.fields) {
@@ -147,7 +179,10 @@ export const FormSection = (props: FormSectionProps) => {
         const isInvalid = invalid.has(field.name);
         const constraints: Record<string, string | number | boolean> = {};
         if (field.required === true) {
-          constraints.required = true;
+          // TD-WF-009：必填下拉不带原生 required（保留 aria-required）。带了的话，空选提交会先被
+          // 浏览器拦下并弹出语言随浏览器的提示，表单的 submit 事件根本不触发；现在由上面 validateField
+          // 给出中文提示并指到这个字段。其它类型的必填字段不动。
+          if (field.type !== 'select') constraints.required = true;
           constraints['aria-required'] = 'true';
         }
         if (isInvalid) constraints['aria-invalid'] = 'true';
@@ -207,8 +242,9 @@ export const FormSection = (props: FormSectionProps) => {
           {`我确认要${props.submitLabel}`}
         </label>
       ) : null}
-      <p class="form-error" role="alert">
-        {error}
+      {/* tabIndex=-1：可被程序聚焦（提示出现时焦点移到这里），但不进入 Tab 序列。 */}
+      <p ref={alertRef} class="form-error" role="alert" tabIndex={-1}>
+        {shownError}
       </p>
       <button type="submit" class="primary" disabled={submitting} aria-busy={submitting}>
         {submitting ? '提交中…' : props.submitLabel}

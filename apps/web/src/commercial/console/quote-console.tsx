@@ -17,6 +17,7 @@ import {
   quoteThresholds,
   statusTone,
 } from './quote-console-timeline';
+import { failureMessage } from '../../shared/api-error-message';
 
 // U3-COM-3（ADR-0014 分域重写）：报价控制台——原 vanilla quote workbench 能力面
 // 等价迁移（新建含政策预校验、修订、批准、签发、打印；列表/筛选/客户端分页）。
@@ -260,7 +261,9 @@ const QuoteDrawer = ({ state }: Readonly<{ state: QuotePageState }>) => {
       }}
     >
       <QuoteDetail state={state} />
-      {state.submitError !== '' ? (
+      {/* TD-WF-005 / TD-WF-012：行内表单开着时，提交失败显示在该表单自己的提示区（FormSection 的
+          error，紧挨提交按钮）；这里的错误位只留给不经表单的动作。 */}
+      {state.activeForm === null && state.submitError !== '' ? (
         <p class="console-error" role="alert" data-testid="kt-quote-submit-error">
           {state.submitError}
         </p>
@@ -341,11 +344,8 @@ const revisableLines = (ports: QuoteConsolePorts, quote: QuoteRow) =>
 
 const CreateDrawer = ({ state }: Readonly<{ state: QuotePageState }>) => (
   <DetailDrawer title="新建销售报价" onClose={state.closeCreate}>
-    {state.submitError !== '' ? (
-      <p class="console-error" role="alert" data-testid="kt-quote-submit-error">
-        {state.submitError}
-      </p>
-    ) : null}
+    {/* 提交失败的原因显示在表单自己的提示区（CreateForm 的 error）：此前它渲染在抽屉顶部，
+        长表单下滚到提交按钮时已经在视口上方（TD-WF-012）。 */}
     <CreateForm state={state} />
   </DetailDrawer>
 );
@@ -380,7 +380,7 @@ const closeForm = (bundle: QuoteSignalBundle): void => {
   bundle.submitError.value = '';
 };
 const fail = (error: unknown, bundle: QuoteSignalBundle, fallback: string): void => {
-  const message = error instanceof Error ? error.message : fallback;
+  const message = failureMessage(error, fallback);
   if (bundle.activeForm.value === null) bundle.loadError.value = message;
   else bundle.submitError.value = message;
 };

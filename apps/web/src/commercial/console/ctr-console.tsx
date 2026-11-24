@@ -22,6 +22,7 @@ import {
   sortVersions,
   versionNumber,
 } from './solution-console-diff';
+import { failureMessage } from '../../shared/api-error-message';
 
 // U3-COM-5（ADR-0014 分域重写）：技术需求单控制台——原 vanilla ctr workbench 能力面
 // 等价迁移（新建/修订/提交评审/批准驳回/上传附件；列表/筛选/详情抽屉含版本差异）。
@@ -377,7 +378,9 @@ const CtrDrawer = ({ state }: Readonly<{ state: CtrPageState }>) => {
       }}
     >
       <CtrDetail state={state} />
-      {state.submitError !== '' ? (
+      {/* TD-WF-005 / TD-WF-012：行内表单开着时，提交失败显示在该表单自己的提示区（FormSection 的
+          error，紧挨提交按钮）；这里的错误位只留给不经表单的动作。 */}
+      {state.decision === null && state.activeForm === null && state.submitError !== '' ? (
         <p class="console-error" role="alert" data-testid="kt-ctr-submit-error">
           {state.submitError}
         </p>
@@ -456,6 +459,7 @@ const CtrDrawer = ({ state }: Readonly<{ state: CtrPageState }>) => {
           description="审批决定和理由将永久保留。"
           fields={[{ name: 'reason', label: '审批意见', type: 'textarea', required: true }]}
           submitLabel={`确认${state.decision === 'APPROVED' ? '批准' : '驳回'}`}
+          error={state.submitError}
           onSubmit={(values) =>
             state.runState(row, {
               action: 'decide',
@@ -479,6 +483,7 @@ const CtrDrawer = ({ state }: Readonly<{ state: CtrPageState }>) => {
             ...REQUIREMENT_FIELDS(requirements, ports.displayRequirement),
           ]}
           submitLabel="创建修订草稿"
+          error={state.submitError}
           onSubmit={(values) => state.runRevise(row, values)}
         />
       ) : null}
@@ -514,6 +519,7 @@ const CreateDrawer = ({ state }: Readonly<{ state: CtrPageState }>) => {
           ...REQUIREMENT_FIELDS({}, ports.displayRequirement),
         ]}
         submitLabel="创建技术需求"
+        error={state.submitError}
         onSubmit={(values) => state.runCreate(values)}
       />
     </DetailDrawer>
@@ -616,7 +622,7 @@ export function CtrConsolePage(ports: CtrConsolePorts) {
   };
 
   const fail = (error: unknown, fallback: string): void => {
-    const message = error instanceof Error ? error.message : fallback;
+    const message = failureMessage(error, fallback);
     if (bundle.selected.value !== null || bundle.activeForm.value !== null)
       bundle.submitError.value = message;
     else bundle.loadError.value = message;

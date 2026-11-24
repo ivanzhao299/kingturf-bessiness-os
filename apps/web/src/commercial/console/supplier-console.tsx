@@ -18,6 +18,7 @@ import {
   qualificationCounts,
 } from './supplier-console-detail';
 import type { SupplierConsolePorts, SupplierRow } from './supplier-ports';
+import { failureMessage } from '../../shared/api-error-message';
 
 // U3-PROC-1（ADR-0014 分域重写）：供应商控制台——原 vanilla supplier-register 能力面
 // 等价迁移（新建供应商/物料准入审核（扩展 approve|conditional|reject）/列表/状态筛选/
@@ -197,7 +198,9 @@ const SupplierDrawer = ({ state }: Readonly<{ state: SupplierPageState }>) => {
           <QualificationBadges state={state} row={row} testId="kt-supplier-qualification-badges" />
         </p>
       </div>
-      {state.submitError !== '' ? (
+      {/* TD-WF-005 / TD-WF-012：行内表单开着时，提交失败显示在该表单自己的提示区（FormSection 的
+          error，紧挨提交按钮）；这里的错误位只留给不经表单的动作。 */}
+      {state.activeForm === null && state.submitError !== '' ? (
         <p class="console-error" role="alert" data-testid="kt-supplier-submit-error">
           {state.submitError}
         </p>
@@ -269,6 +272,7 @@ const SupplierDrawer = ({ state }: Readonly<{ state: SupplierPageState }>) => {
             { name: 'evidenceReference', label: '审核证据编号', required: true },
           ]}
           submitLabel="提交审核"
+          error={state.submitError}
           onSubmit={(values) =>
             state.runQualify(
               row,
@@ -310,6 +314,7 @@ const CreateDrawer = ({ state }: Readonly<{ state: SupplierPageState }>) => (
         { name: 'contactPhone', label: '联系电话', type: 'tel', required: true },
       ]}
       submitLabel="保存供应商"
+      error={state.submitError}
       onSubmit={(values) => state.runCreate(values)}
     />
   </DetailDrawer>
@@ -419,7 +424,7 @@ export function SupplierConsolePage(ports: SupplierConsolePorts) {
   };
 
   const fail = (error: unknown, fallback: string): void => {
-    const message = error instanceof Error ? error.message : fallback;
+    const message = failureMessage(error, fallback);
     if (bundle.selected.value !== null || bundle.activeForm.value !== null)
       bundle.submitError.value = message;
     else bundle.loadError.value = message;

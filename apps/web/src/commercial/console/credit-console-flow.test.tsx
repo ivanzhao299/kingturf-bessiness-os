@@ -3,7 +3,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import { h, render } from 'preact';
 import type { ComponentType } from 'preact';
-import { installGlobalTestDom, type TestElement } from '../../../test/fixtures/preact-dom';
+import {
+  installGlobalTestDom,
+  TestEvent,
+  type TestElement,
+} from '../../../test/fixtures/preact-dom';
 import { CreditConsolePage } from './credit-console';
 import type { CreditConsolePorts, CreditRow } from './credit-ports';
 import { creditUtilization, decisionSteps } from './credit-console-flow';
@@ -264,5 +268,75 @@ describe('COM-UX 信用审批流程图', () => {
     });
     expect(ports.refresh).toHaveBeenCalled();
     expect(host.textContent).not.toContain('报价未关联有效客户');
+  });
+
+  // 回归（TD-WF-004 在信用控制台上的第五处同形，WF-B 交接给主协调）：审批表单此前用 void 丢弃了
+  // onSubmit 的 Promise，FormSection 的防重复提交拿不到「提交中」这个事实——批准 / 拒绝都不可逆。
+  it('信用决定表单：提交未结算期间再次提交只调用一次，失败后可重试', async () => {
+    let calls = 0;
+    let reject: (error: Error) => void = () => undefined;
+    const gate = new Promise<void>((_resolve, decline) => {
+      reject = decline;
+    });
+    const submit = vi.fn().mockImplementation(() => {
+      calls += 1;
+      return gate;
+    });
+    const ports = portsFor([pending], ['credit:approve'], { submit });
+    const host = mount(ports);
+    await openRow(host, 0);
+    element(host.querySelector('[data-testid="kt-credit-approve"]')).click();
+    await flush();
+    const fill = (): void => {
+      const form = element(host.querySelector('.form-section'));
+      const reason = element(form.querySelector('textarea'));
+      reason.value = '额度充足，予以批准';
+      reason.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+    const submitEvent = (): void => {
+      element(host.querySelector('.form-section')).dispatchEvent(new TestEvent('submit'));
+    };
+    fill();
+    await flush();
+    submitEvent();
+    submitEvent();
+    submitEvent();
+    await flush();
+    // 结算前：再次提交被拦下，按钮置灰。
+    expect(calls).toBe(1);
+    const button = element(host.querySelector('.form-section button[type="submit"]'));
+    expect(button.disabled).toBe(true);
+    // 请求失败：表单留着、按钮恢复、可以重试（成功路径会关闭表单，那是另一回事）。
+    reject(new Error('网络错误'));
+    await flush();
+    await flush();
+    expect(host.querySelector('.form-section')).not.toBeNull();
+    const again = element(host.querySelector('.form-section button[type="submit"]'));
+    expect(again.disabled).toBe(false);
+    fill();
+    await flush();
+    submitEvent();
+    expect(calls).toBe(2);
+  });
+
+  // 回归（TD-WF-006 在信用控制台上的接入，WF-B 交接给主协调）：服务端拒绝原因经映射后再显示。
+  it('信用审批被服务端拒绝：提示是映射后的中文，不再是英文原文', async () => {
+    const submit = vi.fn().mockRejectedValue(new Error('Internal server error'));
+    const ports = portsFor([pending], ['credit:approve'], { submit });
+    const host = mount(ports);
+    await openRow(host, 0);
+    element(host.querySelector('[data-testid="kt-credit-approve"]')).click();
+    await flush();
+    const form = element(host.querySelector('.form-section'));
+    const reason = element(form.querySelector('textarea'));
+    reason.value = '额度充足，予以批准';
+    reason.dispatchEvent(new Event('input', { bubbles: true }));
+    await flush();
+    element(form.querySelector('button[type="submit"]')).click();
+    await flush();
+    expect(submit).toHaveBeenCalledOnce();
+    const shown = element(host.querySelector('[data-testid="kt-credit-submit-error"]')).textContent;
+    expect(shown).not.toContain('Internal server error');
+    expect(shown).not.toBe('');
   });
 });

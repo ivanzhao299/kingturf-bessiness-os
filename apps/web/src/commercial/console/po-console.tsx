@@ -235,7 +235,9 @@ const PoDrawer = ({ state }: Readonly<{ state: PoPageState }>) => {
         </p>
       </div>
       <StatusFlow state={state} />
-      {state.submitError !== '' ? (
+      {/* TD-WF-005 / TD-WF-012：行内表单开着时，提交失败显示在该表单自己的提示区（FormSection 的
+          error，紧挨提交按钮）；这里的错误位只留给不经表单的动作。 */}
+      {state.activeDocumentForm === null && state.submitError !== '' ? (
         <p class="console-error" role="alert" data-testid="kt-po-submit-error">
           {state.submitError}
         </p>
@@ -298,6 +300,7 @@ const PoDrawer = ({ state }: Readonly<{ state: PoPageState }>) => {
                 ? '确认可送签'
                 : '确认发起'
           }
+          error={state.submitError}
           onSubmit={(values) =>
             state.runDocumentAction(
               state.activeDocumentForm?.documentId ?? '',
@@ -349,6 +352,7 @@ const CreateDrawer = ({ state }: Readonly<{ state: PoPageState }>) => (
         { name: 'requiredAt', label: '要求到货日', type: 'date', required: true },
       ]}
       submitLabel="签发采购订单"
+      error={state.submitError}
       onSubmit={(values) => state.runCreate(values)}
     />
   </DetailDrawer>

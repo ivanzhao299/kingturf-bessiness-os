@@ -35,6 +35,7 @@ const FactorForm = ({ state }: Readonly<{ state: MatrixPageState }>) => {
       }
       fields={fields}
       submitLabel={editing ? '保存因子' : '添加因子'}
+      error={state.submitError}
       onSubmit={(values) => (editing ? state.runUpdateFactor(values) : state.runAddFactor(values))}
     />
   );
@@ -76,6 +77,7 @@ const CreateDrawer = ({ state }: Readonly<{ state: MatrixPageState }>) => {
           },
         ]}
         submitLabel="创建规格模型"
+        error={state.submitError}
         onSubmit={(values) => state.runCreate(values)}
       />
     </DetailDrawer>

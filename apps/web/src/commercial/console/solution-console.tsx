@@ -24,6 +24,7 @@ import {
   sortVersions,
   versionNumber,
 } from './solution-console-diff';
+import { failureMessage } from '../../shared/api-error-message';
 
 // U3-COM-2（ADR-0014 分域重写）：技术方案 Preact 控制台——原 vanilla solution
 // workbench 能力面等价迁移（新建/修订/定稿、规格与上一版差异标记），列表页
@@ -35,6 +36,8 @@ export type SolutionPageState = Readonly<{
   statusFilter: 'ALL' | 'DRAFT' | 'FINAL';
   search: string;
   loadError: string;
+  /** 行内表单（新建 / 修订 / 定稿）的提交错误（TD-WF-005）：显示在该表单的提示区，不进 loadError。 */
+  formError: string;
   loading: boolean;
   selected: SolutionRow | null;
   activeForm: 'edit' | 'publish' | null;
@@ -317,6 +320,7 @@ const SolutionDrawer = ({ state }: Readonly<{ state: SolutionPageState }>) => {
           }
           fields={solutionFormFields(state, solution)}
           submitLabel={state.activeForm === 'publish' ? '保存并定稿' : '保存新修订'}
+          error={state.formError}
           onSubmit={(values) =>
             state.runRevise(solution, solutionPayload(values, state.activeForm === 'publish'))
           }
@@ -333,6 +337,7 @@ const CreateDrawer = ({ state }: Readonly<{ state: SolutionPageState }>) => (
       description="方案的每项规格都将关联到选定的已批准技术需求版本。"
       fields={solutionFormFields(state, null)}
       submitLabel="保存技术方案"
+      error={state.formError}
       onSubmit={(values) => state.runCreate(values)}
     />
   </DetailDrawer>
@@ -509,6 +514,8 @@ export function SolutionConsolePage(ports: SolutionConsolePorts) {
   const statusFilter = signal<'ALL' | 'DRAFT' | 'FINAL'>('ALL');
   const search = signal('');
   const loadError = signal('');
+  // 行内表单（新建 / 修订 / 定稿）的提交错误：只给发起它的那个表单（TD-WF-005）。
+  const formError = signal('');
   const loading = signal(false);
   const selected = signal<SolutionRow | null>(null);
   const activeForm = signal<'edit' | 'publish' | null>(null);
@@ -522,7 +529,7 @@ export function SolutionConsolePage(ports: SolutionConsolePorts) {
       solutions.value = fresh.solutions;
       loadError.value = '';
     } catch (error: unknown) {
-      loadError.value = error instanceof Error ? error.message : '技术方案加载失败';
+      loadError.value = failureMessage(error, '技术方案加载失败');
     } finally {
       loading.value = false;
     }
@@ -533,6 +540,7 @@ export function SolutionConsolePage(ports: SolutionConsolePorts) {
     payload: Record<string, unknown>,
   ): Promise<void> => {
     loading.value = true;
+    formError.value = '';
     try {
       await ports.submit(
         `/api/v1/technical-solutions/${ports.textValue(solution.technicalSolutionId, '')}`,
@@ -546,7 +554,8 @@ export function SolutionConsolePage(ports: SolutionConsolePorts) {
       baselineId.value = '';
       loadError.value = '';
     } catch (error: unknown) {
-      loadError.value = error instanceof Error ? error.message : '方案修订保存失败';
+      // 此前写进 loadError：显示在被抽屉遮住的表格错误面里，抽屉里什么也看不到（TD-WF-005）。
+      formError.value = failureMessage(error, '方案修订保存失败');
     } finally {
       loading.value = false;
     }
@@ -554,6 +563,7 @@ export function SolutionConsolePage(ports: SolutionConsolePorts) {
 
   const runCreate = async (values: Readonly<Record<string, string>>): Promise<void> => {
     loading.value = true;
+    formError.value = '';
     try {
       await ports.submit(
         '/api/v1/technical-solutions',
@@ -572,7 +582,8 @@ export function SolutionConsolePage(ports: SolutionConsolePorts) {
       creating.value = false;
       loadError.value = '';
     } catch (error: unknown) {
-      loadError.value = error instanceof Error ? error.message : '技术方案创建失败';
+      // 同上：此前写进 loadError，显示在被创建抽屉遮住的表格错误面里（TD-WF-005）。
+      formError.value = failureMessage(error, '技术方案创建失败');
     } finally {
       loading.value = false;
     }
@@ -584,25 +595,31 @@ export function SolutionConsolePage(ports: SolutionConsolePorts) {
     statusFilter: statusFilter.value,
     search: search.value,
     loadError: loadError.value,
+    formError: formError.value,
     loading: loading.value,
     selected: selected.value,
     activeForm: activeForm.value,
     creating: creating.value,
     permissions: ports.permissions,
     ports,
+    // 打开与关闭表单时清掉上一次的提交错误（TD-WF-005）。
     open: (solution) => {
       selected.value = solution;
       activeForm.value = null;
       baselineId.value = '';
+      formError.value = '';
     },
     openForm: (form) => {
       activeForm.value = form;
+      formError.value = '';
     },
     openCreate: () => {
       creating.value = true;
+      formError.value = '';
     },
     closeCreate: () => {
       creating.value = false;
+      formError.value = '';
     },
     setStatusFilter: (next) => {
       statusFilter.value = next;

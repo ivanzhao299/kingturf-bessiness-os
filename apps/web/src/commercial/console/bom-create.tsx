@@ -72,11 +72,8 @@ export const BomCreateDrawer = ({ state }: CreateProps) => {
           </button>
         </div>
       </div>
-      {state.submitError !== '' ? (
-        <p class="console-error" role="alert" data-testid="kt-bom-create-error">
-          {state.submitError}
-        </p>
-      ) : null}
+      {/* 提交失败的原因显示在表单自己的提示区（FormSection 的 error）：此前它在抽屉顶部，
+          组件行多的时候，滚到提交按钮时已经在视口上方（TD-WF-012）。 */}
       <FormSection
         title="新建标准 BOM"
         description="从已发布物料版本选择成品、组件和可选替代料。"
@@ -100,6 +97,7 @@ export const BomCreateDrawer = ({ state }: CreateProps) => {
           },
         ]}
         submitLabel="保存 BOM 草稿"
+        error={state.submitError}
         onSubmit={(values) => state.runCreate(values)}
       />
     </DetailDrawer>

@@ -222,7 +222,9 @@ describe('COM-UX 商机管道视图', () => {
     await flush();
     await submitReason(host, '客户确认需求清单');
     const form = element(moveForm(host));
-    expect(form.textContent).toContain('Opportunity version conflict');
+    // TD-WF-006：接口的这条英文消息经 api-error-message 转成中文后再呈现，原文不再直接显示。
+    expect(form.textContent).toContain('这条记录已在别处被修改，请刷新后重试');
+    expect(form.textContent).not.toContain('Opportunity version conflict');
     expect(element(form.querySelector('textarea')).value).toBe('客户确认需求清单');
   });
 

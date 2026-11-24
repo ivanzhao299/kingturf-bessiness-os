@@ -307,3 +307,54 @@ describe('U3-COM-3 报价控制台', () => {
     expect(host.querySelector('[data-testid="kt-quote-print"]')).toBeNull();
   });
 });
+// 回归（TD-WF-004 的调用侧，WF-B 接入时发现）：批准 / 签发两个表单此前把 runCommand 的 Promise
+// 用 void 丢掉，FormSection 拿不到它——提交期间既不置灰也不拦重入，双击会发出两次不可逆的命令。
+describe('报价行内表单与防重复提交（FormSection 要拿到 onSubmit 的 Promise）', () => {
+  const submitButtonOf = (host: TestElement): TestElement =>
+    element(element(host.querySelector('.detail-drawer')).querySelector('button[type="submit"]'));
+
+  it.each([
+    ['quote:approve', 'kt-quote-approve', 'DRAFT', 'approve'],
+    ['quote:issue', 'kt-quote-issue', 'APPROVED', 'issue'],
+  ] as const)(
+    '「%s」：请求未返回前再次点击提交，只发出一次 command；失败后可重试',
+    async (permission, openTestid, status, action) => {
+      // 每次调用都挂起，由测试决定是失败还是成功。
+      let fail: (reason: Error) => void = () => undefined;
+      const command = vi.fn(
+        () =>
+          new Promise<void>((_resolve, reject) => {
+            fail = reject;
+          }),
+      );
+      const ports = portsFor([permission], {
+        command,
+        initialSnapshot: { ...snapshot(), quotes: [quote({ status })] },
+      });
+      const host = mount(ports);
+      element(host.querySelector('[data-testid="kt-quote-open"]')).click();
+      await flush();
+      element(host.querySelector(`[data-testid="${openTestid}"]`)).click();
+      await flush();
+      if (action === 'approve') {
+        fillField(host, 'reason', '报价口径已复核');
+        await flush();
+      }
+      const submit = submitButtonOf(host);
+      // 双击：两次点击之间不让出事件循环（重渲染尚未发生，disabled 还没来得及生效）。
+      submit.click();
+      submit.click();
+      await flush();
+      expect(command).toHaveBeenCalledTimes(1);
+      expect(submit.disabled).toBe(true);
+      fail(new Error('网络错误'));
+      await flush();
+      await flush();
+      // 失败后表单留在原处，按钮恢复可点，可以再试。
+      expect(submit.disabled).toBe(false);
+      submit.click();
+      await flush();
+      expect(command).toHaveBeenCalledTimes(2);
+    },
+  );
+});

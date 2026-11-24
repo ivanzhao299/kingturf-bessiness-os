@@ -17,6 +17,7 @@ import {
   linesOf,
 } from './rfq-console-detail';
 import type { RfqConsolePorts, RfqRow } from './rfq-ports';
+import { failureMessage } from '../../shared/api-error-message';
 
 // U3-PROC-2（ADR-0014 分域重写）：询价控制台——原 vanilla sourcing-register RFQ 能力面
 // 等价迁移（新建并发出询价单载荷逐字节一致；报价登记表单属 supplier-quotes 域，保留
@@ -239,6 +240,7 @@ const CreateDrawer = ({ state }: Readonly<{ state: RfqPageState }>) => (
         { name: 'responseDue', label: '报价截止日', type: 'date', required: true },
       ]}
       submitLabel="发出询价单"
+      error={state.submitError}
       onSubmit={(values) => state.runCreate(values)}
     />
   </DetailDrawer>
@@ -354,7 +356,7 @@ export function RfqConsolePage(ports: RfqConsolePorts) {
   };
 
   const fail = (error: unknown, fallback: string): void => {
-    const message = error instanceof Error ? error.message : fallback;
+    const message = failureMessage(error, fallback);
     if (bundle.selected.value !== null || bundle.activeForm.value !== null)
       bundle.submitError.value = message;
     else bundle.loadError.value = message;

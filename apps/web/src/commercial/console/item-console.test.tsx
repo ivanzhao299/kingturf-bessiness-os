@@ -433,7 +433,15 @@ describe('U3-MFG-1 物料控制台：新建物料', () => {
     expect(vi.mocked(ports.submit).mock.calls[0]?.[1]).toMatchObject({
       specification: { secondKey: 2 },
     });
-    expect(byTestId(host, 'kt-item-create-error').textContent).toContain('sku 已存在');
+    // TD-WF-005 / TD-WF-012：创建失败的原因改显示在表单自己的提示区（紧挨提交按钮）；
+    // 抽屉顶部那个错误位（kt-item-create-error）已撤。
+    expect(
+      element(
+        element(host.querySelector('.detail-drawer form.form-section')).querySelector(
+          '[role="alert"]',
+        ),
+      ).textContent,
+    ).toContain('sku 已存在');
     expect(host.querySelector('.detail-drawer')).not.toBeNull();
     expect(ports.refresh).not.toHaveBeenCalled();
   });

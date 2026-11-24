@@ -27,6 +27,7 @@ import {
   leadStatusTone,
   type LeadTab,
 } from '../../crm/crm-ux';
+import { failureMessage } from '../../shared/api-error-message';
 
 // U3-CRM-1（ADR-0014 分域重写）：线索控制台——原 vanilla lead-records 能力面等价迁移
 // （新建/认领/变更状态/分配改派/释放公海；列表/搜索/分页/详情抽屉）。
@@ -295,7 +296,9 @@ const LeadDrawer = ({ state }: Readonly<{ state: LeadPageState }>) => {
       }}
     >
       <LeadDetail state={state} />
-      {state.submitError !== '' ? (
+      {/* TD-WF-005 / TD-WF-012：行内表单开着时，提交失败显示在该表单自己的提示区（FormSection 的
+          error，紧挨提交按钮）；这里的错误位只留给不经表单的动作。 */}
+      {state.activeForm === null && state.submitError !== '' ? (
         <p class="console-error" role="alert" data-testid="kt-lead-submit-error">
           {state.submitError}
         </p>
@@ -375,6 +378,7 @@ const LeadDrawer = ({ state }: Readonly<{ state: LeadPageState }>) => {
             { name: 'reason', label: '变更原因', type: 'textarea', required: true },
           ]}
           submitLabel="确认变更"
+          error={state.submitError}
           onSubmit={(values) =>
             state.runState(lead, {
               action: 'transition',
@@ -406,6 +410,7 @@ const LeadDrawer = ({ state }: Readonly<{ state: LeadPageState }>) => {
             { name: 'reason', label: '分配原因', type: 'textarea', required: true },
           ]}
           submitLabel="确认分配"
+          error={state.submitError}
           onSubmit={(values) =>
             state.runState(lead, {
               action: owner === null ? 'assign' : 'reassign',
@@ -448,6 +453,7 @@ const CreateDrawer = ({ state }: Readonly<{ state: LeadPageState }>) => (
         },
       ]}
       submitLabel="创建线索"
+      error={state.submitError}
       onSubmit={(values) => state.runCreate(values)}
     />
   </DetailDrawer>
@@ -577,7 +583,7 @@ export function LeadConsolePage(ports: LeadConsolePorts) {
   };
 
   const fail = (error: unknown, fallback: string): void => {
-    const message = error instanceof Error ? error.message : fallback;
+    const message = failureMessage(error, fallback);
     if (bundle.selected.value !== null || bundle.activeForm.value !== null)
       bundle.submitError.value = message;
     else bundle.loadError.value = message;
