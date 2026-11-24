@@ -5,9 +5,13 @@
 // projectCustomer360Result + readCustomer360SectionGrant，双授权与 sensitive 门
 // 逐字节一致）；POST 创建 = legacy 同解析链（frozen 契约消息一致）。
 // 全部响应仓储直通 + Date 归一化（COM 同款守恒口径）。
+// TD-WF-013（WF-A）：POST 创建遇到重复客户编号（唯一约束拒绝）时映射成 409 + 中文提示
+//（此前是 500）；映射只做在这个端点上。
 import { z } from 'zod';
+import { DomainError } from '@kingturf/domain';
 import { authorizeQuery } from '../../policy.ts';
 import { allow, objectBody, permittedDto, strings, string, uuid } from '../../app-values.ts';
+import { isUniqueViolation } from '../../pg-rejections.ts';
 import type { FastifyRouteGroupApp, FastifyRouteScope } from './registry.ts';
 import type { ApiDependencies } from '../../app.ts';
 import { projectCustomer360Result } from '../customer-360.ts';
@@ -18,6 +22,14 @@ export type CustomerRepository = Pick<
   NonNullable<ApiDependencies['crm']>,
   'listCustomers' | 'findCustomer' | 'createCustomer' | 'customer360'
 >;
+
+// TD-WF-013：客户编号的唯一约束（迁移 0017，UNIQUE(tenant_id, customer_number)）。只认这
+// 一个约束；其余异常原样抛出（不做全局映射，也不回显数据库原始消息——唯一约束的消息
+// 带请求值）。
+const asDuplicateCustomerNumber = (error: unknown): unknown =>
+  isUniqueViolation(error, 'customers_tenant_id_customer_number_key')
+    ? new DomainError('conflict', '客户编号已存在')
+    : error;
 
 const CUSTOMER_ROW_SCHEMA = z
   .looseObject({
@@ -199,7 +211,7 @@ export function registerCustomerRoutes(app: FastifyRouteGroupApp, scope: Fastify
   });
 
   // POST 创建：legacy customer-base 同解析链（customer:create + allow 三字段）→ 201
-  // + mutationDto(customer:read)。
+  // + mutationDto(customer:read)。TD-WF-013：重复客户编号 → 409「客户编号已存在」。
   app.post('/api/v1/customers', async (request, reply) => {
     const repo = requireRepository();
     authorizeQuery(scope.authorization, 'customer:create', ['name', 'customerNumber', 'tags']);
@@ -210,11 +222,12 @@ export function registerCustomerRoutes(app: FastifyRouteGroupApp, scope: Fastify
       customerNumber: string(body.customerNumber, 'customerNumber'),
       tags: body.tags === undefined ? [] : strings(body.tags, 'tags'),
     };
-    const created = await repo.createCustomer(
-      input,
-      scope.authorization.actor,
-      scope.correlationId,
-    );
+    let created: Awaited<ReturnType<CustomerRepository['createCustomer']>>;
+    try {
+      created = await repo.createCustomer(input, scope.authorization.actor, scope.correlationId);
+    } catch (error) {
+      throw asDuplicateCustomerNumber(error);
+    }
     void reply.code(201);
     return mutation(created, scope.authorization, 'customer:read');
   });

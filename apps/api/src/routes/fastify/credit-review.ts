@@ -4,6 +4,9 @@
 // POST 设定额度 / POST 评估 = legacy qtc-credit-writes 同解析链（导出校验链复用，
 // frozen 契约消息逐字节一致）；PUT 审批决定 = legacy POST /approve 的现代化动词别名
 //（同 approveCredit 仓储调用与消息）。全部响应仓储直通 + mutationDto（credit:read）。
+// TD-WF-013（WF-A）：PUT 审批遇到「评估人审批自己发起的信用决定」（职责分离触发器拒绝）
+// 时映射成 403 + 中文说明（此前是 500）；映射只做在这个端点上。
+import { DomainError } from '@kingturf/domain';
 import { authorizeQuery } from '../../policy.ts';
 import {
   allow,
@@ -15,6 +18,7 @@ import {
   timestamp,
   uuid,
 } from '../../app-values.ts';
+import { guardRejection } from '../../pg-rejections.ts';
 import type { FastifyRouteGroupApp, FastifyRouteScope } from './registry.ts';
 import type { ApiDependencies, ApiRequest } from '../../app.ts';
 import type { AuthorizationContext } from '@kingturf/domain';
@@ -35,6 +39,17 @@ function requireQtc(qtc: CreditQtc | null): CreditQtc {
   if (!qtc) throw new Error('QuoteToCash dependency unavailable');
   return qtc;
 }
+
+// TD-WF-013：职责分离由数据库触发器 enforce_credit_approval_separation（迁移 0026）强制
+// ——评估人审批自己发起的信用决定时它 RAISE EXCEPTION。只认这一条消息；其余异常原样
+// 抛出（不做全局映射，也不回显数据库原始消息）。
+const asSelfApproval = (error: unknown): unknown => {
+  const hint = guardRejection(error, {
+    'credit evaluator cannot approve own decision':
+      '职责分离：发起信用评估的人不能审批这条信用决定，请由另一位审批人处理',
+  });
+  return hint === null ? error : new DomainError('forbidden', hint);
+};
 
 export function registerCreditReviewRoutes(
   app: FastifyRouteGroupApp,
@@ -157,6 +172,7 @@ export function registerCreditReviewRoutes(
   });
 
   // PUT 审批决定：legacy POST /approve 的现代化动词别名（同 approveCredit 与消息）。
+  // TD-WF-013：评估人自批（触发器 P0001）→ 403 + 中文说明（见 asSelfApproval）。
   app.put('/api/v1/credit-decisions/:decisionId/state', async (request, reply) => {
     const body = objectBody(request.body);
     allow(body, ['decision', 'reason']);
@@ -169,14 +185,20 @@ export function registerCreditReviewRoutes(
     );
     const reason = string(body.reason, 'reason');
     const key = idempotency(request as unknown as ApiRequest);
-    const result = await requireQtc(qtc).approveCredit(
-      creditDecisionId,
-      decision,
-      reason,
-      key,
-      scopeContext('credit:approve'),
-      scope.correlationId,
-    );
+    const qtcRepository = requireQtc(qtc);
+    let result: Record<string, unknown>;
+    try {
+      result = await qtcRepository.approveCredit(
+        creditDecisionId,
+        decision,
+        reason,
+        key,
+        scopeContext('credit:approve'),
+        scope.correlationId,
+      );
+    } catch (error) {
+      throw asSelfApproval(error);
+    }
     void reply.code(200);
     return mutation(result, scope.authorization, 'credit:read');
   });
