@@ -49,6 +49,10 @@ export class PostgresProcurementRepository extends PostgresProcurementReadReposi
   // U3-PROC-2（ADR-0015）：RFQ 关闭写路径（additive；主协调 U3-PROC-2 指令明授
   // 「发布/关闭」状态流转）——DRAFT/ISSUED → CANCELLED；PARTIALLY_RECEIVED/RECEIVED
   // 属采购单收货状态机，不开放关闭。证据事件 rfq.closed 与 rfq.created/issued 同构。
+  // TD-WF-003（WF-A）：这条 UPDATE 对已签发询价单自 PROC-2 起一直被迁移 0038 的守卫
+  // 拒绝（接口 500）；迁移 0076 放宽 guard_rfq_update 后才第一次在真库上成功——已签发
+  // 询价单只改 status 即可取消，issued_at 必须保持原值。语句与载荷不变；真库回归见
+  // test/rfq-close-postgres.integration.test.ts，守卫拒绝在端点映射为 409。
   public closeRfq(id: string, context: Context, correlationId: string) {
     return this.db.transaction(async (tx) => {
       company(context);

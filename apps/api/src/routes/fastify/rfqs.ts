@@ -6,9 +6,14 @@
 // 同解析链；PUT state = 现代化统一动作端点（action issue 分派 legacy issueRfq 同链；
 // action close 走 additive closeRfq——主协调 U3-PROC-2 指令明授的新写路径）。
 // legacy POST /:id/issue 轨逐字不动（双轨并行）。
+// TD-WF-003（WF-A）：PUT state 的状态迁移被数据库守卫拒绝时映射成 409 并给出中文提示
+//（此前是 500）——「关闭询价」对已签发询价单的 UPDATE 自 PROC-2 起必然撞上迁移 0038 的
+// 守卫；迁移 0076 放宽守卫后正常路径不再被拒，这里的映射覆盖内容被改、已取消的单子再改、
+// 以及迁移 0076 尚未执行这几种情形。
 import { z } from 'zod';
-import { assertStableCode } from '@kingturf/domain';
+import { assertStableCode, DomainError } from '@kingturf/domain';
 import { authorizeQuery } from '../../policy.ts';
+import { guardRejection } from '../../pg-rejections.ts';
 import {
   allow,
   array,
@@ -25,7 +30,7 @@ import {
 import type { RfqListFilter } from '../../procurement-repositories.ts';
 import type { FastifyRouteGroupApp, FastifyRouteScope } from './registry.ts';
 import type { ApiDependencies } from '../../app.ts';
-import type { PermissionKey } from '@kingturf/types';
+import type { JsonObject, PermissionKey } from '@kingturf/types';
 
 export type { RfqListFilter };
 
@@ -88,6 +93,25 @@ function permitted(row: Record<string, unknown>, fields: readonly string[] | nul
   const visible = new Set(['id', ...fields]);
   return Object.fromEntries(Object.entries(row).filter(([key]) => visible.has(key)));
 }
+
+// TD-WF-003：守卫触发器 guard_rfq_update 里写死的拒绝消息 → 中文提示。第一条是迁移 0038
+// 旧守卫的消息，只在迁移 0076 尚未执行时才会出现；其余七条来自 0076，其中草稿分支的三条
+// 与 0038 逐字相同。只认这些消息；其它异常原样抛出（不做全局映射，也不回显数据库原始
+// 消息）。
+const RFQ_GUARD_HINTS = {
+  'issued RFQ is immutable': '已签发的询价单暂时不能关闭：数据库尚未升级到支持关闭询价的版本',
+  'issued RFQ can only be cancelled': '已签发的询价单只能取消，不能改为其它状态',
+  'issued RFQ content is immutable': '已签发询价单的内容不可变更，只能取消',
+  'cancelled RFQ is immutable': '已取消的询价单不可再变更',
+  'RFQ is immutable outside draft and issued statuses': '询价单当前状态不可再变更',
+  'draft RFQ can only be issued or cancelled': '草稿询价单只能签发或取消',
+  'RFQ issue cannot alter content': '签发询价单时不能变更内容',
+  'RFQ issue requires timestamp and lines': '询价单没有行项，不能签发',
+} as const;
+const asGuardConflict = (error: unknown): unknown => {
+  const hint = guardRejection(error, RFQ_GUARD_HINTS);
+  return hint === null ? error : new DomainError('conflict', hint);
+};
 
 export function registerRfqRoutes(app: FastifyRouteGroupApp, scope: FastifyRouteScope): void {
   const repository: RfqRepository | null = scope.dependencies.procurement ?? null;
@@ -195,6 +219,7 @@ export function registerRfqRoutes(app: FastifyRouteGroupApp, scope: FastifyRoute
   // PUT 状态流转：现代化统一动作端点——action issue 分派 legacy issueRfq 同链
   // （DRAFT→ISSUED）；action close 走 additive closeRfq（DRAFT/ISSUED→CANCELLED，
   // 主协调 U3-PROC-2 指令明授）。legacy POST /:id/issue 轨保留并行。
+  // TD-WF-003：守卫触发器拒绝（SQLSTATE P0001）→ 409 + 中文提示（见 RFQ_GUARD_HINTS）。
   app.put('/api/v1/procurement-rfqs/:rfqId/state', async (request, reply) => {
     const repo = requireRepository();
     const rfqId = uuid((request.params as { rfqId: string }).rfqId, 'rfqId');
@@ -208,10 +233,14 @@ export function registerRfqRoutes(app: FastifyRouteGroupApp, scope: FastifyRoute
       scopes: grant.scopes,
       anchors: grant.anchors,
     };
-    const result =
-      action === 'issue'
-        ? await repo.issueRfq(rfqId, scopeContext, scope.correlationId)
-        : await repo.closeRfq(rfqId, scopeContext, scope.correlationId);
+    let result: JsonObject;
+    try {
+      result = await (action === 'issue'
+        ? repo.issueRfq(rfqId, scopeContext, scope.correlationId)
+        : repo.closeRfq(rfqId, scopeContext, scope.correlationId));
+    } catch (error) {
+      throw asGuardConflict(error);
+    }
     void reply.code(200);
     return mutation(result, scope.authorization, 'procurement:read');
   });

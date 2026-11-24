@@ -337,6 +337,122 @@ describe('procurement-rfqs fastify bridge track', () => {
     expect(call?.args[0]).toBe(rfq.id);
   });
 
+  // TD-WF-003（WF-A，主协调裁定口径）：草稿与已签发两种前态关闭后的结果状态都是
+  // CANCELLED。仓储替身按前态给出结果；两种前态在真库上的行为（含 issued_at 不变）见
+  // rfq-close-postgres.integration.test.ts。
+  it('PUT state：close 对草稿与已签发两种前态都返回 200 + CANCELLED，调用实参与关联 ID 正确', async () => {
+    const CLOSED_FROM = { DRAFT: 'CANCELLED', ISSUED: 'CANCELLED' } as const;
+    for (const prior of ['DRAFT', 'ISSUED'] as const) {
+      const closeRfq = vi.fn(() => ({ id: rfq.id, status: CLOSED_FROM[prior] }));
+      const response = await dispatchFastifyRouteGroup(
+        requestFor({
+          method: 'PUT',
+          pathname: `/api/v1/procurement-rfqs/${rfq.id}/state`,
+          body: { action: 'close' },
+        }),
+        scopeFor(repository({ closeRfq })),
+      );
+      expect(response?.statusCode).toBe(200);
+      expect(response?.body).toEqual({ id: rfq.id, status: 'CANCELLED' });
+      expect(closeRfq).toHaveBeenCalledTimes(1);
+      expect(closeRfq.mock.calls[0]).toEqual([
+        rfq.id,
+        {
+          actor: { companyId: '11111111-1111-4111-8111-111111111111', employeeId: 'e-1' },
+          scopes: ['COMPANY'],
+          anchors: [],
+        },
+        'corr-1',
+      ]);
+    }
+  });
+
+  // TD-WF-003（WF-A）：守卫触发器拒绝（RAISE EXCEPTION → SQLSTATE P0001）映射 409 + 中文
+  // 提示，此前是 500。第一条是迁移 0038 旧守卫的消息（迁移 0076 尚未执行时才会出现），
+  // 其余七条来自 0076 的 guard_rfq_update。
+  it('PUT state：守卫触发器拒绝映射 409，带中文提示（八条已知消息 × issue/close 逐条）', async () => {
+    const HINTS = [
+      ['issued RFQ is immutable', '已签发的询价单暂时不能关闭：数据库尚未升级到支持关闭询价的版本'],
+      ['issued RFQ can only be cancelled', '已签发的询价单只能取消，不能改为其它状态'],
+      ['issued RFQ content is immutable', '已签发询价单的内容不可变更，只能取消'],
+      ['cancelled RFQ is immutable', '已取消的询价单不可再变更'],
+      ['RFQ is immutable outside draft and issued statuses', '询价单当前状态不可再变更'],
+      ['draft RFQ can only be issued or cancelled', '草稿询价单只能签发或取消'],
+      ['RFQ issue cannot alter content', '签发询价单时不能变更内容'],
+      ['RFQ issue requires timestamp and lines', '询价单没有行项，不能签发'],
+    ] as const;
+    for (const [message, hint] of HINTS) {
+      const guard = Object.assign(new Error(message), { code: 'P0001' });
+      for (const action of ['issue', 'close'] as const) {
+        const response = await dispatchFastifyRouteGroup(
+          requestFor({
+            method: 'PUT',
+            pathname: `/api/v1/procurement-rfqs/${rfq.id}/state`,
+            body: { action },
+          }),
+          scopeFor(
+            repository({
+              issueRfq: vi.fn().mockRejectedValue(guard),
+              closeRfq: vi.fn().mockRejectedValue(guard),
+            }),
+          ),
+        );
+        expect(response?.statusCode).toBe(409);
+        expect((response?.body as { error: unknown }).error).toEqual({
+          code: 'conflict',
+          message: hint,
+          correlationId: 'corr-1',
+        });
+      }
+    }
+  });
+
+  it('PUT state：未登记的数据库错误保持 500 且不回显原始消息；GET 列表遇到同类错误仍是 500（不做全局映射）', async () => {
+    const failures = [
+      Object.assign(new Error('some other guard rejected this'), { code: 'P0001' }),
+      Object.assign(new Error('duplicate key value violates unique constraint "x"'), {
+        code: '23505',
+        constraint: 'x',
+      }),
+      Object.assign(new Error('null value in column violates not-null constraint'), {
+        code: '23502',
+      }),
+    ];
+    for (const failure of failures) {
+      const response = await dispatchFastifyRouteGroup(
+        requestFor({
+          method: 'PUT',
+          pathname: `/api/v1/procurement-rfqs/${rfq.id}/state`,
+          body: { action: 'close' },
+        }),
+        scopeFor(repository({ closeRfq: vi.fn().mockRejectedValue(failure) })),
+      );
+      expect(response?.statusCode).toBe(500);
+      expect(response?.body).toEqual({
+        error: {
+          code: 'internal_error',
+          message: 'Internal server error',
+          correlationId: 'corr-1',
+        },
+      });
+    }
+    // 即使消息在白名单里，映射也只做在 PUT state：GET 列表原样 500。
+    const listed = await dispatchFastifyRouteGroup(
+      requestFor(),
+      scopeFor(
+        repository({
+          listRfqs: vi
+            .fn()
+            .mockRejectedValue(
+              Object.assign(new Error('issued RFQ content is immutable'), { code: 'P0001' }),
+            ),
+        }),
+      ),
+    );
+    expect(listed?.statusCode).toBe(500);
+    expect((listed?.body as { error: { code: string } }).error.code).toBe('internal_error');
+  });
+
   it('PUT state 负例：未知 action 400、无 procurement:manage 403', async () => {
     const unknownAction = await dispatchFastifyRouteGroup(
       requestFor({

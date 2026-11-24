@@ -40,6 +40,45 @@ describe('identity and authorization migration', () => {
     expect(sql).not.toMatch(/DROP|UPDATE |DELETE |ALTER COLUMN|CREATE (TABLE|INDEX)/iu);
   });
 
+  // TD-WF-003（WF-A）：迁移 0076 只重定义询价单更新守卫。静态钉定语句形状——不改类型、
+  // 表、触发器与数据；草稿分支三项检查与 0038 逐字一致（真库行为见
+  // apps/api/test/rfq-close-postgres.integration.test.ts）。
+  it('0076 only redefines the RFQ update guard so an issued RFQ can be cancelled (TD-WF-003)', async () => {
+    const sql = await readFile(
+      join(process.cwd(), 'migrations/0076_rfq_close_transition.sql'),
+      'utf8',
+    );
+    const statements = sql
+      .split('\n')
+      .filter((line) => !line.trimStart().startsWith('--'))
+      .join('\n')
+      .trimStart();
+    expect(statements).toMatch(/^CREATE OR REPLACE FUNCTION guard_rfq_update\(\)/u);
+    expect(statements).toContain(
+      "(to_jsonb(NEW)-'status') IS DISTINCT FROM (to_jsonb(OLD)-'status')",
+    );
+    expect(statements).toContain(
+      "IF NEW.status<>'CANCELLED' THEN RAISE EXCEPTION 'issued RFQ can only be cancelled'",
+    );
+    expect(statements).toContain("RAISE EXCEPTION 'cancelled RFQ is immutable'");
+    const legacy = await readFile(
+      join(process.cwd(), 'migrations/0038_procurement_inventory_integrity.sql'),
+      'utf8',
+    );
+    for (const invariant of [
+      "IF NEW.status NOT IN('ISSUED','CANCELLED') THEN RAISE EXCEPTION 'draft RFQ can only be issued or cancelled'; END IF;",
+      "IF (to_jsonb(NEW)-'status'-'issued_at') IS DISTINCT FROM (to_jsonb(OLD)-'status'-'issued_at') THEN RAISE EXCEPTION 'RFQ issue cannot alter content'; END IF;",
+      "RAISE EXCEPTION 'RFQ issue requires timestamp and lines';",
+    ]) {
+      expect(statements).toContain(invariant);
+      expect(legacy).toContain(invariant);
+    }
+    expect(statements).not.toMatch(
+      /ALTER\s+TYPE|ADD\s+VALUE|CREATE\s+TYPE|DROP\s|ALTER\s+TABLE|UPDATE\s|DELETE\s|CREATE\s+TRIGGER/iu,
+    );
+    expect(statements).not.toContain('CLOSED');
+  });
+
   it('0073 adds only the must-change flag column (A1)', async () => {
     const sql = await readFile(
       join(process.cwd(), 'migrations/0073_credential_must_change.sql'),
@@ -52,7 +91,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0075_login_lockout.sql');
+    expect(ordered.at(-1)).toBe('0076_rfq_close_transition.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
