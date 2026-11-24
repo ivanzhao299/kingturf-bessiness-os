@@ -90,6 +90,7 @@ dialog .dialog-actions {
 /* ===== PageHeader ===== */
 .page-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
   gap: var(--kt-space-4);
@@ -340,6 +341,12 @@ dialog .dialog-actions {
   font-size: var(--kt-text-xs);
   color: var(--kt-muted);
   margin-right: auto;
+}
+/* 相邻按钮之间没有空白字符时，行内盒子没有换行点，整排按钮不会折行；改为可换行的 flex。 */
+.action-bar .action-bar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kt-space-2);
 }
 
 /* ===== StatusBadge ===== */
