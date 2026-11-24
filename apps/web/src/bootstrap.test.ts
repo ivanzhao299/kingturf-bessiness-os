@@ -1,5 +1,6 @@
 import { sessionFixture } from './test-fixtures/session';
 import { scopeGrantChoiceLabeler } from './governance/identity-scopes';
+import { createFetchCommercialApi } from './shared/commercial-http';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { createUiKitSection } from './ui-kit/view';
@@ -1056,6 +1057,29 @@ it('binds the governance request adapter to the captured session context', async
   const headers = new Headers((fetcher.mock.calls[0]?.[1] as RequestInit).headers);
   expect(headers.has('authorization')).toBe(false);
   expect(headers.get('x-kingturf-session-generation')).toBe(context.generation);
+});
+
+// 回归（TD-WF-002，写流程真浏览器冒烟发现）：商业写请求此前只有 POST 附带 idempotency-key，
+// 而信用审批等走 PUT 且服务端强制要求该请求头——信用「批准 / 拒绝」因此不可用。
+it('sends an idempotency key on every commercial write, not only on POST', async () => {
+  const context = sessionFixture();
+  // 每次调用给一个新的 Response：响应体只能读一次。
+  const fetcher = vi.fn().mockImplementation(() => Promise.resolve(new Response('{}')));
+  vi.stubGlobal('fetch', fetcher);
+  const api = createFetchCommercialApi(context);
+  for (const method of ['POST', 'PUT', 'PATCH'] as const)
+    await api.submit('/api/v1/credit-decisions/x/decision', { decision: 'APPROVED' }, method);
+  const sent = fetcher.mock.calls.map(
+    (call) =>
+      [
+        (call[1] as RequestInit).method,
+        new Headers((call[1] as RequestInit).headers).get('idempotency-key') ?? null,
+      ] as const,
+  );
+  expect(sent.map(([method]) => method)).toEqual(['POST', 'PUT', 'PATCH']);
+  for (const [, key] of sent) expect(key).toMatch(/^[0-9a-f-]{36}$/u);
+  // 每次写请求各用一个新键：重试与重复提交才不会被服务端的幂等记录误判为同一次。
+  expect(new Set(sent.map(([, key]) => key)).size).toBe(3);
 });
 
 it('exposes governed identity provisioning, role assignment, and role removal together', () => {

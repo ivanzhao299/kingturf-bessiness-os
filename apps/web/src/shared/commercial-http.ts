@@ -66,7 +66,9 @@ export const createFetchCommercialApi = (context: SessionContext): CommercialApi
       context,
       {
         method,
-        ...(method === 'POST' ? { headers: { 'idempotency-key': requestId() } } : {}),
+        // TD-WF-002：每一次写请求（POST / PUT / PATCH）都带 idempotency-key。此前只有 POST 带，
+        // 而信用审批等走 PUT 且服务端强制要求该请求头，批准 / 拒绝因此被 400 挡住。
+        headers: { 'idempotency-key': requestId() },
         body: JSON.stringify(payload),
       },
       parseResponseRecord,
