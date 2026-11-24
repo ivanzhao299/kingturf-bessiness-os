@@ -440,6 +440,15 @@ describe('采购域样式表（静态守卫）', () => {
     expect(stylesheet).toMatch(/a\.procurement-summary-link:focus-visible\s*\{\s*outline:/u);
   });
 
+  it('供应商对比单元格允许徽章折行（不折行时徽章先占满列宽，名称被挤成一字一行）', () => {
+    // mini-DOM 不计算样式，只能在源码层面守；行为证据见 PROC-2 证据文档的真浏览器量测
+    // （桌面抽屉内「青岛金特夫草纱战略供应商」由 12 行每行 1 字恢复为正常折行）。
+    const source = readFileSync(new URL('./supplier-console-detail.tsx', import.meta.url), 'utf8');
+    const start = source.indexOf('const INLINE_STYLE = {');
+    if (start < 0) throw new Error('supplier-console-detail.tsx has no INLINE_STYLE');
+    expect(source.slice(start, source.indexOf('}', start))).toContain("flexWrap: 'wrap'");
+  });
+
   it('样式表经采购域宿主静态图并入主 CSS 包（裁定15）', () => {
     const host = readFileSync(new URL('../procurement-view.ts', import.meta.url), 'utf8');
     expect(host).toContain("import './console/procurement-console.css';");

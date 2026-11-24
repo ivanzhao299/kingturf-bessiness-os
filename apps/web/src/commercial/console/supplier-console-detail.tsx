@@ -278,8 +278,11 @@ const decimalText = (ports: SupplierConsolePorts, value: unknown, fallback = '�
   return raw.replace(/(\.\d*?)0+$/u, '$1').replace(/\.$/u, '');
 };
 
+// 文字与徽章同排放不下时徽章折到下一行：不折行的话徽章（white-space: nowrap）先占满列宽，
+// 抽屉内列宽有限时供应商名被挤成一字一行（TD-PROC-008；真浏览器实测）。
 const INLINE_STYLE = {
   display: 'inline-flex',
+  flexWrap: 'wrap',
   alignItems: 'center',
   gap: '6px',
 } as const;
