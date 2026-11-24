@@ -116,3 +116,34 @@ describe('EmptyState', () => {
     expect(empty.querySelector('.empty-state-action button')?.textContent).toBe('开通身份');
   });
 });
+
+// 回归（真浏览器验收发现；mini-DOM 不算样式，只能在样式表层面守）：外层容器此前不滚动，
+// 宽表把整页撑宽、列被压成一字一行；可排序表头按钮此前保留浏览器默认的立体外观。
+describe('DataTable 样式（静态）', () => {
+  const rule = (selector: string): string => {
+    const start = stylesheet.indexOf(`${selector} {`);
+    if (start < 0) throw new Error(`components.css has no rule for ${selector}`);
+    return stylesheet.slice(start, stylesheet.indexOf('}', start));
+  };
+
+  it('scrolls wide tables inside its wrapper instead of widening the page', () => {
+    const wrapper = rule('.data-table');
+    expect(wrapper).toContain('overflow-x: auto');
+    expect(wrapper).toContain('max-width: 100%');
+    expect(stylesheet).toMatch(
+      /\.data-table th:not\(\.data-table-select\),\s*\.data-table td:not\(\.data-table-select\)\s*\{\s*min-width:/u,
+    );
+  });
+
+  it('styles the sortable header as header text, not a push button', () => {
+    const sort = rule('.data-table .data-table-sort');
+    for (const declaration of [
+      'appearance: none',
+      'border: none',
+      'background: none',
+      'font: inherit',
+      'color: inherit',
+    ])
+      expect(sort).toContain(declaration);
+  });
+});

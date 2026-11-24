@@ -124,8 +124,11 @@ dialog .dialog-actions {
 }
 
 /* ===== DataTable ===== */
+/* 外层是滚动容器：宽表在自己的容器内横向滚动，不把页面撑宽（窄屏与抽屉内尤其如此）。 */
 .data-table {
   width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
   border-collapse: collapse;
   font-size: var(--kt-text-sm);
   color: var(--kt-ink);
@@ -133,6 +136,11 @@ dialog .dialog-actions {
 .data-table table {
   width: 100%;
   border-collapse: collapse;
+}
+/* 列不窄于约 6 个汉字：容器放不下时滚动，而不是把文字压成一字一行。 */
+.data-table th:not(.data-table-select),
+.data-table td:not(.data-table-select) {
+  min-width: 6rem;
 }
 .data-table thead th {
   text-align: left;
@@ -161,7 +169,17 @@ dialog .dialog-actions {
   width: 36px;
   text-align: center;
 }
+/* 可排序表头是「表头文字 + 排序符号」，不是按钮：重置浏览器默认外观，字体跟随 th。 */
 .data-table .data-table-sort {
+  appearance: none;
+  border: none;
+  background: none;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
