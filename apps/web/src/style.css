@@ -4478,21 +4478,14 @@ button:not(:disabled):active {
 }
 
 /* U3-MFG-4：vanilla 工单卡片的工序流（.production-flow/.production-operation）与证据
-   网格（.production-evidence-grid）随卡片退役移除；.production-actions 保留——车间执行
-   （报工/领退料/成品卷入库）的 vanilla 按钮行由工单控制台宿主挂载。 */
+   网格（.production-evidence-grid）随卡片退役移除。U3-MFG-5：车间执行（报工/领退料/成品卷
+   入库）的 vanilla 按钮行（.production-actions）随三张表单迁入控制台抽屉一并移除。 */
 .evidence-card {
   padding: 0.7rem;
   border-radius: 0.7rem;
   background: #f4f5f2;
   white-space: pre-line;
   font-size: 0.82rem;
-}
-
-.production-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.55rem;
-  margin-top: 0.8rem;
 }
 
 @media (max-width: 900px) {

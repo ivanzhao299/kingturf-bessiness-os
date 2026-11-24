@@ -15,11 +15,12 @@ export type ProductionOrderStatusFilter = 'ALL' | ProductionOrderStatus;
 // 行级状态流转动作（PUT /api/v1/production-orders/:id/state 的 action）。与 vanilla 卡片
 // 的四个按钮逐一对应；legacy 另有 cancel 写路径，vanilla 从未暴露，本批不新增入口。
 export type ProductionOrderAction = 'release' | 'start' | 'complete' | 'close';
-// 车间执行表单（已迁入控制台抽屉的种类）。
-export type ProductionOrderExecution = 'report' | 'material';
+// 车间执行表单：工序报工 / 领料退料 / 成品卷入库。
+export type ProductionOrderExecution = 'report' | 'material' | 'output';
 export type ProductionOrderForm = 'create' | 'transition' | ProductionOrderExecution;
 // 一次打开的执行表单草稿：幂等键在打开时生成一次（提交失败后重试沿用同一把键）；领退料的
-// 批次候选在打开时定下（下拉的 value 是候选序号，提交时按同一份候选取批次）。
+// 批次候选在打开时定下（下拉的 value 是候选序号，提交时按同一份候选取批次）。成品卷入库
+// 端点没有幂等键（唯一性由卷号 / 批次号约束），其草稿的 idempotencyKey 为空串。
 export type ExecutionDraft = Readonly<{
   kind: ProductionOrderExecution;
   idempotencyKey: string;
@@ -48,9 +49,8 @@ export const materialBatchesOf = (
 // 车间执行入口及其出现条件——与 legacy appendProductionReport / Material / Output 逐条一致：
 // 工序报工 = production:report 且进行中；领料/退料 = production:material 且已放行或进行中；
 // 成品卷入库 = production:report 且进行中且已有报工。顺序同 legacy（报工、领退料、成品卷入库）。
-export type ExecutionKind = 'report' | 'material' | 'output';
-export type ExecutionEntry = Readonly<{ kind: ExecutionKind; label: string }>;
-export const EXECUTION_ENTRIES: Readonly<Record<ExecutionKind, ExecutionEntry>> = {
+export type ExecutionEntry = Readonly<{ kind: ProductionOrderExecution; label: string }>;
+export const EXECUTION_ENTRIES: Readonly<Record<ProductionOrderExecution, ExecutionEntry>> = {
   report: { kind: 'report', label: '＋ 工序报工' },
   material: { kind: 'material', label: '＋ 领料/退料' },
   output: { kind: 'output', label: '＋ 成品卷入库' },
@@ -245,10 +245,4 @@ export type ProductionOrderViewState = Readonly<{
   execution: ExecutionDraft | null;
   openExecution: (kind: ProductionOrderExecution) => void;
   runExecution: (values: Readonly<Record<string, string>>) => Promise<void>;
-  // 尚未迁入控制台的执行入口（成品卷入库）：宿主把既有 vanilla 按钮挂进容器并返回卸载函数。
-  mountExecution: (
-    container: HTMLElement,
-    row: ProductionOrderRow,
-    committed: () => Promise<void>,
-  ) => () => void;
 }>;

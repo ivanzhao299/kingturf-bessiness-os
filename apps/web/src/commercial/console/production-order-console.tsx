@@ -3,9 +3,9 @@
 // 汇总卡（兼作筛选）/ 主表（状态徽章 + 完工进度条 + 行级下一步动作）/ 详情抽屉（工序
 // 进度、物料分配、报工时间线）/ 新建与流转抽屉）。默认视图沿用路由加载的全量快照并按
 // legacy 卡片的作业队列排序；状态或关键字生效时切换为服务端分页（工单 id keyset）。
-// U3-MFG-5：详情抽屉的「车间执行」区里，已迁入的表单（工序报工 / 领退料）是与新建、流转
-// 同款的抽屉（打开期间详情抽屉不渲染，两个模态抽屉不同时存在），提交成功后回到详情抽屉并
-// 就地更新；尚未迁入的入口（成品卷入库）仍由宿主挂 legacy 按钮。
+// U3-MFG-5：详情抽屉的「车间执行」区给出工序报工 / 领退料 / 成品卷入库三个入口，表单是与
+// 新建、流转同款的抽屉（打开期间详情抽屉不渲染，两个模态抽屉不同时存在）；提交成功后回到
+// 详情抽屉并就地更新。
 // e2e 契约：工单号独占文本元素（kt-wo-number）；详情证据（物料台账/成品序列/事件）在
 // 详情抽屉内，各条目独占一个文本元素。
 import { signal } from '@preact/signals';
@@ -40,7 +40,7 @@ import {
 import './commercial-ux.css';
 
 // 车间执行表单（其余表单种类是新建与流转）。
-const EXECUTION_FORMS: readonly ProductionOrderExecution[] = ['report', 'material'];
+const EXECUTION_FORMS: readonly ProductionOrderExecution[] = ['report', 'material', 'output'];
 const executionFormOf = (form: ProductionOrderForm | null): ProductionOrderExecution | null =>
   form !== null && (EXECUTION_FORMS as readonly string[]).includes(form)
     ? (form as ProductionOrderExecution)
@@ -401,7 +401,6 @@ export function ProductionOrderConsolePage(ports: ProductionOrderConsolePorts) {
     execution: bundle.execution.value,
     openExecution: actions.openExecution,
     runExecution: actions.runExecution,
-    mountExecution: ports.mountExecution,
   });
 
   const Page = () => ProductionOrderView(state());

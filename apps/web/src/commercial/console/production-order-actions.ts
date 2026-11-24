@@ -2,8 +2,8 @@
 // 装载/筛选/分页/详情闭包（createProductionOrderLoaders）与变更闭包
 //（createProductionOrderMutations：创建载荷 / 状态流转 / 车间执行）分离；bundle 为页面
 // signal 束的最小面，请求序号守卫丢弃过期响应。
-// U3-MFG-5：车间执行表单（已迁入：工序报工 / 领退料）的打开与提交——载荷与 legacy 表单同形
-//（字段、类型、日期转换），幂等键由前端生成；提交成功后整站刷新一次并重读详情。
+// U3-MFG-5：车间执行三张表单（工序报工 / 领退料 / 成品卷入库）的打开与提交——载荷与 legacy
+// 表单同形（字段、类型、日期转换），幂等键由前端生成；提交成功后整站刷新一次并重读详情。
 import type { Signal } from '@preact/signals';
 import {
   ALL_STATUSES,
@@ -177,10 +177,14 @@ export function createProductionOrderLoaders(
       bundle.submitError.value = '';
       bundle.execution.value = {
         kind,
-        idempotencyKey: ports.nextIdempotencyKey(
-          ports.recordText(row, 'orderNumber', 'order_number'),
-          kind === 'report' ? 'RPT' : 'MAT',
-        ),
+        // 成品卷入库端点没有幂等键；报工与领退料的键在此时生成一次。
+        idempotencyKey:
+          kind === 'output'
+            ? ''
+            : ports.nextIdempotencyKey(
+                ports.recordText(row, 'orderNumber', 'order_number'),
+                kind === 'report' ? 'RPT' : 'MAT',
+              ),
         material: materialBatchesOf(bundle.detail.value, ports.inventoryBalances()),
       };
     },
@@ -209,7 +213,7 @@ export function createProductionOrderLoaders(
 
 // 变更动作工厂：创建（载荷与 vanilla「建立生产工单」表单逐字节一致）、状态流转（载荷与
 // vanilla 流转表单逐字节一致，经现代化统一动作端点 PUT /:id/state）、车间执行（工序报工 /
-// 领退料：载荷与 vanilla 表单同形，幂等键由前端生成）。装载侧 io 经注入。
+// 领退料 / 成品卷入库：载荷与 vanilla 表单同形，幂等键由前端生成）。装载侧 io 经注入。
 export function createProductionOrderMutations(
   ports: ProductionOrderConsolePorts,
   bundle: ProductionOrderBundle,
@@ -224,6 +228,12 @@ export function createProductionOrderMutations(
     bundle.pending.value = null;
     bundle.execution.value = null;
     bundle.submitError.value = '';
+  };
+  // 非 Error 拒绝（拿不到消息）时的兜底提示。
+  const FALLBACK_OF: Readonly<Record<ProductionOrderExecution, string>> = {
+    report: '工序报工失败',
+    material: '领料/退料失败',
+    output: '成品卷入库失败',
   };
   // vanilla openForm 提交前对每个值 trim；FormSection 不 trim，这里补齐以保持载荷一致。
   const trimmed = (values: Readonly<Record<string, string>>): Readonly<Record<string, string>> =>
@@ -248,7 +258,7 @@ export function createProductionOrderMutations(
   };
 
   // 提交成功后的收尾：关表单 → 整站刷新一次 → 详情抽屉仍开着就重读详情（工序进度、物料
-  // 台账、报工记录随之就地更新）。
+  // 台账、报工记录、成品序列随之就地更新）。
   const committed = async (): Promise<void> => {
     closeForm();
     await io.sync();
@@ -299,7 +309,8 @@ export function createProductionOrderMutations(
   // - 工序报工 = 表单八字段（值 trim）+ 两个时间转 ISO + 幂等键（前端生成，取代旧表单里
   //   手填的「报工唯一键」）；
   // - 领退料 = 业务类型 + 所选批次的物料版本 / 批次 / 库位 + 数量 + 原因 + 时间 + 幂等键
-  //  （前端生成，取代手填的「业务唯一键」）；批次取自打开表单时定下的候选。
+  //  （前端生成，取代手填的「业务唯一键」）；批次取自打开表单时定下的候选；
+  // - 成品卷入库 = 表单六字段（值 trim）+ 工单成品版本（该端点没有幂等键）。
   const runExecution = async (values: Readonly<Record<string, string>>): Promise<void> => {
     const row = bundle.selected.value;
     const draft = bundle.execution.value;
@@ -319,9 +330,14 @@ export function createProductionOrderMutations(
           completedAt: timestampOf(input.completedAt ?? '', '完成时间'),
           idempotencyKey: draft.idempotencyKey,
         });
-      else await postMaterial(input, draft, path);
+      else if (draft.kind === 'material') await postMaterial(input, draft, path);
+      else
+        await ports.submit(`${path}/finished-rolls`, {
+          ...input,
+          itemVersionId: ports.recordText(row, 'itemVersionId', 'item_version_id'),
+        });
     } catch (error: unknown) {
-      io.actionFailed(error, draft.kind === 'report' ? '工序报工失败' : '领料/退料失败');
+      io.actionFailed(error, FALLBACK_OF[draft.kind]);
       return;
     }
     await committed();

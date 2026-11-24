@@ -286,14 +286,9 @@
   overflow-wrap: anywhere;
 }
 
-/* 车间执行入口：已迁入的入口是 Preact 按钮行（复用 .po-row-actions 的排列）；尚未迁入的
-   入口沿用既有 .production-actions（vanilla 按钮行），由宿主挂进 .po-execution 容器。 */
+/* 车间执行入口：报工 / 领退料 / 成品卷入库三个按钮一行（复用 .po-row-actions 的排列）。 */
 .po-execution {
   margin-top: var(--kt-space-2);
-}
-
-.po-execution:empty {
-  display: none;
 }
 
 @media (max-width: 1200px) {

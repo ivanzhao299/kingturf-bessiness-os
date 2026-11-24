@@ -140,7 +140,8 @@ const portsFor = (
   loadDetail: vi.fn().mockResolvedValue(null),
   submit: vi.fn().mockResolvedValue(null),
   refresh: vi.fn().mockResolvedValue(orders),
-  mountExecution: vi.fn(() => vi.fn()),
+  // 账号没有库存读权限时库位选项为空（legacy 表单同源：不另发请求）。
+  inventoryLocationChoices: vi.fn(() => []),
   // 账号没有库存读权限时库存视图为空（legacy 表单同源：不另发请求）。
   inventoryBalances: vi.fn(() => []),
   // 幂等键端口按表单种类返回一把已生成的键（生成器自身的形状见 production-order-keys.test.ts）。
@@ -399,19 +400,22 @@ describe('U3-MFG-4 工单控制台：详情抽屉', () => {
     expect(optional(drawer, 'kt-wo-transition')).toBeNull();
   });
 
-  it('车间执行入口经宿主挂载；关闭抽屉卸载', async () => {
-    const dispose = vi.fn();
-    const mountExecution = vi.fn<ProductionOrderConsolePorts['mountExecution']>(() => dispose);
+  it('车间执行入口由控制台自己渲染：打开详情出现（顺序同 legacy），关闭抽屉即卸载', async () => {
     const row = order({ state: 'IN_PROGRESS' });
-    const host = mount(portsFor([row], ['production:report'], { mountExecution }));
+    const host = mount(portsFor([row], ['production:report', 'production:material']));
+    expect(host.querySelector('[data-testid="kt-wo-execution"]')).toBeNull();
     byTestId(host, 'kt-wo-open').click();
     await flush();
     await flush();
-    expect(mountExecution).toHaveBeenCalledTimes(1);
-    expect(mountExecution.mock.calls[0]?.[1]).toBe(row);
+    // 顺序同 legacy：报工、领退料、成品卷入库（夹具行已有一笔报工，所以三个入口都在）。
+    expect(
+      byTestId(host, 'kt-wo-execution')
+        .querySelectorAll('button')
+        .map((node) => (node as TestElement).getAttribute('data-testid')),
+    ).toEqual(['kt-wo-report-open', 'kt-wo-material-open', 'kt-wo-output-open']);
     element(drawerOf(host).querySelector('.drawer-close')).click();
     await flush();
-    expect(dispose).toHaveBeenCalledTimes(1);
+    expect(host.querySelector('[data-testid="kt-wo-execution"]')).toBeNull();
   });
 });
 
@@ -1205,5 +1209,253 @@ describe('U3-MFG-5 工单控制台：领退料', () => {
     expect(refresh).toHaveBeenCalledTimes(1);
     expect(ledger()).toHaveLength(2);
     expect(drawerOf(host).textContent).toContain('领料 12.5');
+  });
+});
+
+// U3-MFG-5 车间执行：成品卷入库。载荷 oracle 迁自 fulfillment-actions-behavior.test.ts 里随
+// appendProductionOutput 一起退役的两条用例。该端点没有幂等键，表单与 legacy 一样没有这个字段。
+describe('U3-MFG-5 工单控制台：成品卷入库', () => {
+  // 迁自 legacy 用例的工单行：列表行的报工是蛇形命名（completed_at / good_quantity）。
+  const reported = () =>
+    order({
+      state: 'IN_PROGRESS',
+      reports: [{ id: 'report-1', completed_at: 'finished', good_quantity: '10.25' }],
+    });
+  const locations = [{ value: 'loc-1', label: 'L1' }];
+  const openOutput = async (host: TestElement): Promise<void> => {
+    byTestId(host, 'kt-wo-open').click();
+    await flush();
+    await flush();
+    byTestId(host, 'kt-wo-output-open').click();
+    await flush();
+  };
+  // 迁自 legacy 用例的输入。
+  const typed = {
+    operationReportId: 'report-1',
+    rollNumber: ' ROLL-1 ',
+    lotNumber: ' FIN-1 ',
+    locationId: 'loc-1',
+    quantity: '10.25',
+    manufacturedAt: '2026-10-17',
+  };
+  const fillOutput = async (host: TestElement, values: Record<string, string> = typed) => {
+    for (const [name, value] of Object.entries(values)) await type(host, name, value);
+  };
+
+  it('出现条件与 legacy 逐条一致：production:report、进行中且已有报工才有「成品卷入库」', async () => {
+    const cases = [
+      { state: 'IN_PROGRESS', permissions: ['production:report'], reports: 1, shown: true },
+      { state: 'IN_PROGRESS', permissions: ['production:report'], reports: 0, shown: false },
+      { state: 'RELEASED', permissions: ['production:report'], reports: 1, shown: false },
+      { state: 'IN_PROGRESS', permissions: ['production:material'], reports: 1, shown: false },
+      { state: 'COMPLETED', permissions: ['production:report'], reports: 1, shown: false },
+      { state: 'CLOSED', permissions: ['production:report'], reports: 1, shown: false },
+    ] as const;
+    for (const item of cases) {
+      const label = `${item.state} / ${item.permissions.join(',')} / 报工 ${String(item.reports)}`;
+      const host = mount(
+        portsFor(
+          [
+            order({
+              id: 'wo-x',
+              state: item.state,
+              reports: (order().reports as ProductionOrderRow[]).slice(0, item.reports),
+            }),
+          ],
+          [...item.permissions],
+        ),
+      );
+      byTestId(host, 'kt-wo-open').click();
+      await flush();
+      await flush();
+      const button = optional(host, 'kt-wo-output-open');
+      if (item.shown) {
+        expect(button?.textContent, label).toBe('＋ 成品卷入库');
+        expect(button?.className, label).toBe('secondary');
+      } else expect(button, label).toBeNull();
+    }
+  });
+
+  it('打开成品卷入库抽屉：六个字段与 legacy 同名同序、没有幂等键字段也不显示键；报工与库位选项同 legacy', async () => {
+    const host = mount(
+      portsFor([reported()], ['production:report'], {
+        inventoryLocationChoices: vi.fn(() => locations),
+      }),
+    );
+    await openOutput(host);
+    const drawer = drawerOf(host);
+    expect(host.querySelectorAll('.detail-drawer')).toHaveLength(1);
+    expect(element(drawer.querySelector('h2')).textContent).toBe(
+      '登记成品卷与待检批次 · WO-KT-2026-001',
+    );
+    expect(fieldNamesOf(host)).toEqual([
+      'operationReportId',
+      'rollNumber',
+      'lotNumber',
+      'locationId',
+      'quantity',
+      'manufacturedAt',
+    ]);
+    const form = byTestId(drawer, 'kt-wo-output-form');
+    expect(element(form.querySelector('button[type="submit"]')).textContent).toBe('生成卷号并入库');
+    expect(optionsOf(form, 'operationReportId')).toEqual([
+      { value: 'report-1', label: 'finished · 良品 10.25' },
+    ]);
+    expect(optionsOf(form, 'locationId')).toEqual([{ value: 'loc-1', label: 'L1' }]);
+    expect(drawer.textContent).toContain(
+      '卷号、成品批次和正向库存收货在同一事务内生成，初始质量状态为待检。',
+    );
+    // 该端点没有幂等键：表单不显示键，也不向前端生成器要键。
+    expect(drawer.textContent).not.toContain('本次唯一键由系统生成');
+    for (const control of form.querySelectorAll('input[type="number"]'))
+      expect((control as unknown as { step?: string }).step, 'number step').toBe('any');
+  });
+
+  it('载荷与 legacy 成品卷入库表单同形同键序（编码 trim、小数与日期原文），另加工单成品版本；不生成幂等键', async () => {
+    const submit = vi.fn().mockResolvedValue(null);
+    const refresh = vi.fn().mockResolvedValue([reported()]);
+    const ports = portsFor([reported()], ['production:report'], {
+      inventoryLocationChoices: vi.fn(() => locations),
+      submit,
+      refresh,
+    });
+    const host = mount(ports);
+    await openOutput(host);
+    await fillOutput(host);
+    await submitDrawer(host);
+    await flush();
+    expect(ports.nextIdempotencyKey).not.toHaveBeenCalled();
+    expect(submit).toHaveBeenCalledExactlyOnceWith(
+      '/api/v1/production-orders/wo-1/finished-rolls',
+      {
+        operationReportId: 'report-1',
+        rollNumber: 'ROLL-1',
+        lotNumber: 'FIN-1',
+        locationId: 'loc-1',
+        quantity: '10.25',
+        manufacturedAt: '2026-10-17',
+        itemVersionId: 'v-1',
+      },
+    );
+    expect(JSON.stringify(submit.mock.calls[0]?.[1])).toBe(
+      JSON.stringify({
+        operationReportId: 'report-1',
+        rollNumber: 'ROLL-1',
+        lotNumber: 'FIN-1',
+        locationId: 'loc-1',
+        quantity: '10.25',
+        manufacturedAt: '2026-10-17',
+        itemVersionId: 'v-1',
+      }),
+    );
+    expect(submit.mock.calls[0]).toHaveLength(2);
+    expect(optional(host, 'kt-wo-output-form')).toBeNull();
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(ports.loadDetail).toHaveBeenCalledTimes(2);
+  });
+
+  it('库位选项取当前视图（legacy 取挂载时的快照）；账号没有库存读权限时候选为空且不另发请求', async () => {
+    const fetchPage = vi.fn().mockResolvedValue({ items: [], nextCursor: null });
+    const submit = vi.fn().mockResolvedValue(null);
+    const host = mount(portsFor([reported()], ['production:report'], { fetchPage, submit }));
+    await openOutput(host);
+    expect(optionsOf(byTestId(host, 'kt-wo-output-form'), 'locationId')).toEqual([]);
+    expect(fetchPage).not.toHaveBeenCalled();
+    expect(submit).not.toHaveBeenCalled();
+  });
+
+  it('服务端拒绝（如卷数量超过报工良品）：抽屉留着、就近显示接口消息、不刷新', async () => {
+    const submit = vi
+      .fn()
+      .mockRejectedValueOnce(
+        new Error('finished roll must match order, report, item, lot, and reported quantity'),
+      )
+      .mockResolvedValue(null);
+    const refresh = vi.fn().mockResolvedValue([]);
+    const host = mount(
+      portsFor([reported()], ['production:report'], {
+        inventoryLocationChoices: vi.fn(() => locations),
+        submit,
+        refresh,
+      }),
+    );
+    await openOutput(host);
+    await fillOutput(host);
+    await submitDrawer(host);
+    await flush();
+    expect(byTestId(host, 'kt-wo-output-error').textContent).toBe(
+      'finished roll must match order, report, item, lot, and reported quantity',
+    );
+    expect(optional(host, 'kt-wo-output-form')).not.toBeNull();
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it('提交后就地刷新：成品序列随重读的详情增加一条', async () => {
+    const after = order({
+      state: 'IN_PROGRESS',
+      reports: reported().reports,
+      rolls: [
+        ...(order().rolls as ProductionOrderRow[]),
+        { id: 'roll-2', roll_number: 'ROLL-1', quantity: '10.25', status: 'QUARANTINE' },
+      ],
+    });
+    const refresh = vi.fn().mockResolvedValue([after]);
+    const loadDetail = vi.fn().mockResolvedValueOnce(null).mockResolvedValue(after);
+    const host = mount(
+      portsFor([{ ...reported(), rolls: [] }], ['production:report'], {
+        inventoryLocationChoices: vi.fn(() => locations),
+        refresh,
+        loadDetail,
+      }),
+    );
+    const rolls = () => drawerOf(host).querySelectorAll('[data-testid="kt-wo-roll"]');
+    byTestId(host, 'kt-wo-open').click();
+    await flush();
+    await flush();
+    expect(rolls()).toHaveLength(0);
+    expect(drawerOf(host).textContent).toContain('尚未入库');
+    byTestId(host, 'kt-wo-output-open').click();
+    await flush();
+    await fillOutput(host);
+    await submitDrawer(host);
+    await flush();
+    await flush();
+    expect(loadDetail).toHaveBeenCalledTimes(2);
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(rolls()).toHaveLength(2);
+  });
+
+  it('第一笔报工提交后，「成品卷入库」入口随刷新后的行出现', async () => {
+    const before = order({ state: 'IN_PROGRESS', reports: [] });
+    const after = { ...before, reports: [{ id: 'report-1', good_quantity: '6.5' }] };
+    const refresh = vi.fn().mockResolvedValue([after]);
+    const host = mount(
+      portsFor([before], ['production:report'], {
+        refresh,
+        loadDetail: vi.fn().mockResolvedValue(null),
+      }),
+    );
+    byTestId(host, 'kt-wo-open').click();
+    await flush();
+    await flush();
+    expect(optional(host, 'kt-wo-output-open')).toBeNull();
+    byTestId(host, 'kt-wo-report-open').click();
+    await flush();
+    for (const [name, value] of Object.entries({
+      operationId: 'op-1',
+      goodQuantity: '6.5',
+      scrapQuantity: '0',
+      laborMinutes: '12.5',
+      machineMinutes: '20.5',
+      startedAt: '2026-11-24T08:00',
+      completedAt: '2026-11-24T09:30',
+      notes: '首班',
+    }))
+      await type(host, name, value);
+    await submitDrawer(host);
+    await flush();
+    await flush();
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(optional(host, 'kt-wo-output-open')).not.toBeNull();
   });
 });

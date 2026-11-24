@@ -2,20 +2,16 @@
 // production-workbench 面板内；面板与其 data-testid=production-workbench、路由标记保持
 // 不变）。默认视图沿用路由加载的全量快照；筛选态经 controller.api.get 走桥轨分页；详情经
 // additive GET /api/v1/production-orders/:id，失败回退列表行。
-// U3-MFG-5：车间执行表单逐张迁入控制台抽屉。已迁入的工序报工 / 领退料由控制台自己承载
-//（幂等键经端口由前端生成；库存批次取 controller.views 的当前视图——与 legacy 表单同源，
-// 账号没有库存读权限时为空，不另发请求）；尚未迁入的成品卷入库仍把既有 vanilla 按钮原样
-// 挂进详情抽屉，按钮、表单、载荷与端点逐字节不变，提交成功后沿用 legacy 卡片的整站重载，
-// 再通知控制台重新同步。
+// U3-MFG-5：车间执行表单（工序报工 / 领退料 / 成品卷入库）迁入控制台抽屉，legacy 三张
+// openForm 表单（production-actions.ts）退役。库存批次与库位选项取 controller.views 的当前
+// 视图（与 legacy 表单同源：账号没有库存读权限时为空，不另发请求）；幂等键由前端生成。
 import { el } from '../../dom';
 import type { FulfillmentViewContext } from '../fulfillment-view-ports';
-import { appendProductionOutput } from '../production-actions';
 import type { CommercialApi } from '../types';
 import { executionIdempotencyKey } from './production-order-keys';
 import type {
   ProductionOrderConsolePorts,
   ProductionOrderPageQuery,
-  ProductionOrderRow,
 } from './production-order-ports';
 
 // 桥轨分页与详情读取需要 controller.api.get——FulfillmentViewContext 的 controller 最小面
@@ -32,6 +28,7 @@ export type ProductionOrderHostContext = Readonly<{
 
 const ORDERS_PATH = '/api/v1/production-orders';
 const BALANCES_PATH = '/api/v1/inventory-balances';
+const LOCATIONS_PATH = '/api/v1/inventory-locations';
 
 const pageUrl = (params: Readonly<Record<string, string | number>>): string => {
   const query = new URLSearchParams(
@@ -40,32 +37,13 @@ const pageUrl = (params: Readonly<Record<string, string | number>>): string => {
   return query ? `${ORDERS_PATH}?${query}` : ORDERS_PATH;
 };
 
-// 尚未迁入的 vanilla 执行按钮挂进容器；返回卸载函数。门控（权限 × 状态）仍由 vanilla 函数判定。
-const mountExecution = (
-  context: ProductionOrderHostContext,
-  container: HTMLElement,
-  row: ProductionOrderRow,
-  committed: () => Promise<void>,
-): (() => void) => {
-  const { recordValue } = context.ports;
-  const state = context.ports.recordText(row, 'state', 'state');
-  const reports = Array.isArray(row.reports) ? row.reports.map(recordValue) : [];
-  // 提交成功后的 refresh 交给控制台（committed → sync → ports.refresh：整站重载 + 状态行，
-  // 与 legacy 卡片同式，且只重载一次）。
-  const actions = el('div', 'production-actions');
-  appendProductionOutput(context, row, state, reports, actions, committed);
-  container.append(actions);
-  return () => {
-    actions.remove();
-  };
-};
-
 export function appendProductionOrderConsole(
   context: ProductionOrderHostContext,
   panel: HTMLElement,
 ): void {
   const { controller, permissions, status } = context;
-  const { recordText, businessStateLabel, operationsNextAction } = context.ports;
+  const { recordText, businessStateLabel, operationsNextAction, inventoryLocationOption } =
+    context.ports;
   const read = controller.api.get;
   const items = controller.views.get('/api/v1/manufacturing-items') ?? [];
   const routings = controller.views.get('/api/v1/manufacturing-routings') ?? [];
@@ -122,8 +100,8 @@ export function appendProductionOrderConsole(
     nextIdempotencyKey: (orderNumber, kind) => executionIdempotencyKey(orderNumber, kind),
     // 库存批次的当前视图：每次取值都读 controller.views，整站刷新后即是最新数据。
     inventoryBalances: () => controller.views.get(BALANCES_PATH) ?? [],
-    mountExecution: (container, row, committed) =>
-      mountExecution(context, container, row, committed),
+    inventoryLocationChoices: () =>
+      (controller.views.get(LOCATIONS_PATH) ?? []).map((item) => inventoryLocationOption(item)),
   };
   const section = el('section', 'commercial-console production-orders-console');
   section.setAttribute('data-testid', 'kt-production-orders');

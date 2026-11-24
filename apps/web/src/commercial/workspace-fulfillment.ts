@@ -23,8 +23,8 @@ export function appendWorkspaceFulfillment(
       el('p', 'commercial-help', '生产工单、报工、用料与成品入库'),
     );
     // U3-MFG-4：工单卡片迁移至 Preact 控制台（状态汇总 / 主表 / 详情与流转抽屉）；原
-    // vanilla 卡片视图退役（裁定 17 语义）。工序报工 / 领退料 / 成品卷入库表单仍为
-    // vanilla（MFG-5 报工入库范围），经宿主挂进控制台详情抽屉。
+    // vanilla 卡片视图退役（裁定 17 语义）。U3-MFG-5：工序报工 / 领退料 / 成品卷入库三张
+    // 表单迁入控制台抽屉，vanilla 表单（production-actions.ts）随之退役。
     appendProductionOrderConsole(
       { workspace, status, controller, permissions, ports: fulfillmentViewPorts },
       panel,

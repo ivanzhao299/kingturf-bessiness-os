@@ -1,9 +1,9 @@
-// U3-MFG-5（ADR-0014 分域重写）：车间执行表单抽屉。字段、提交载荷与 legacy openForm 表单
-// 同形（字段、类型、日期转换）。两处有意的差别：
-// 1) 幂等键由前端生成（不再让用户手填），在表单说明里给出以便追溯；
+// U3-MFG-5（ADR-0014 分域重写）：车间执行表单抽屉——工序报工 / 领料退料 / 成品卷入库。
+// 字段、提交载荷与 legacy openForm 三张表单同形（字段、类型、日期转换）。两处有意的差别：
+// 1) 幂等键由前端生成（不再让用户手填），在表单说明里给出以便追溯；成品卷入库端点本就没有
+//    幂等键。
 // 2) 领退料的「批次库位」只列属于工单 BOM 的批次（TD-MFG-010）；详情读不到工单 BOM 时列出
 //    全部并在表单里说明可能被拒绝。
-// 已迁入：工序报工 / 领退料（成品卷入库随后一步迁入）。
 import { DetailDrawer, FormSection, StatusBadge, type FormSectionField } from '@kingturf/ui';
 import {
   formatQuantity,
@@ -33,6 +33,12 @@ const COPY = {
     section: '领料 / 退料',
     description: '领料同步写入不可变库存移动；只能领用已放行且属于工单 BOM 的批次物料。',
     submit: '确认过账',
+  },
+  output: {
+    heading: '登记成品卷与待检批次',
+    section: '成品卷入库',
+    description: '卷号、成品批次和正向库存收货在同一事务内生成，初始质量状态为待检。',
+    submit: '生成卷号并入库',
   },
 } as const;
 
@@ -171,6 +177,37 @@ const materialFields = (state: ProductionOrderViewState): readonly FormSectionFi
   { name: 'occurredAt', label: '发生时间', type: 'datetime-local', required: true },
 ];
 
+const CODE_HINT = '大写字母开头，其后为大写字母、数字、下划线或连字符，不超过 64 个字符';
+const outputFields = (state: ProductionOrderViewState): readonly FormSectionField[] => [
+  {
+    name: 'operationReportId',
+    label: '末工序报工',
+    type: 'select',
+    required: true,
+    options: records(state.selected?.reports).map((item) => ({
+      value: String(item.id),
+      label: `${state.ports.recordText(item, 'completedAt', 'completed_at')} · 良品 ${state.ports.recordText(item, 'goodQuantity', 'good_quantity')}`,
+    })),
+  },
+  { name: 'rollNumber', label: '成品卷号', required: true, hint: CODE_HINT },
+  { name: 'lotNumber', label: '成品批次号', required: true, hint: CODE_HINT },
+  {
+    name: 'locationId',
+    label: '入库库位',
+    type: 'select',
+    required: true,
+    options: state.ports.inventoryLocationChoices(),
+  },
+  {
+    name: 'quantity',
+    label: '卷数量',
+    type: 'number',
+    required: true,
+    hint: '可填小数；不能超过所选报工的良品数量',
+  },
+  { name: 'manufacturedAt', label: '生产日期', type: 'date', required: true },
+];
+
 export const ProductionOrderExecutionDrawer = ({ state }: FormProps) => {
   const draft = state.execution;
   const row = state.selected;
@@ -196,9 +233,19 @@ export const ProductionOrderExecutionDrawer = ({ state }: FormProps) => {
       <div data-testid={`${prefix}-form`}>
         <FormSection
           title={copy.section}
-          // 幂等键由系统生成：写进说明以便按它追溯服务端记录，用户无需填写。
-          description={`${copy.description}本次唯一键由系统生成：${draft.idempotencyKey}。`}
-          fields={draft.kind === 'report' ? reportFields(state.detail, row) : materialFields(state)}
+          // 成品卷入库端点没有幂等键，不显示键；报工与领退料的键写进说明以便按它追溯。
+          description={
+            draft.kind === 'output'
+              ? copy.description
+              : `${copy.description}本次唯一键由系统生成：${draft.idempotencyKey}。`
+          }
+          fields={
+            draft.kind === 'report'
+              ? reportFields(state.detail, row)
+              : draft.kind === 'material'
+                ? materialFields(state)
+                : outputFields(state)
+          }
           submitLabel={copy.submit}
           onSubmit={(values) => state.runExecution(values)}
         />

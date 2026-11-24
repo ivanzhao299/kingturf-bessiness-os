@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { openForm } from './shared/forms';
-import { appendProductionOutput } from './commercial/production-actions';
 import { appendShipmentDelivery, appendShipmentDispatch } from './commercial/shipment-actions';
 import type { FulfillmentViewContext } from './commercial/fulfillment-view-ports';
 import type { CommercialPermission } from './commercial/permissions';
@@ -12,7 +11,6 @@ const form = vi.mocked(openForm);
 const unused = (): never => {
   throw new Error('Unexpected fulfillment port');
 };
-const order = { id: 'production-1', order_number: 'MO-1', item_version_id: 'finished-1' };
 const setup = (permissions: readonly CommercialPermission[] = []) => {
   const workspace = createBehaviorElement('main');
   const status = createBehaviorElement('p');
@@ -20,7 +18,6 @@ const setup = (permissions: readonly CommercialPermission[] = []) => {
   const actions = createBehaviorElement('section');
   const submit = vi.fn<FulfillmentViewContext['controller']['submit']>(() => Promise.resolve());
   const load = vi.fn(() => Promise.resolve());
-  const refresh = vi.fn(() => Promise.resolve());
   const views = new Map<string, readonly Record<string, unknown>[]>();
   const context: FulfillmentViewContext = {
     workspace: htmlElement(workspace),
@@ -69,7 +66,6 @@ const setup = (permissions: readonly CommercialPermission[] = []) => {
     status,
     submit,
     load,
-    refresh,
     views,
     click,
   };
@@ -83,67 +79,12 @@ afterEach(() => vi.unstubAllGlobals());
 
 // U3-MFG-4：工单状态流转（原 appendProductionTransition）已迁入 Preact 控制台，载荷 oracle 见
 // console/production-order-console.test.tsx。
-// U3-MFG-5：工序报工与领退料（原 appendProductionReport / appendProductionMaterial）已迁入
-// Preact 控制台抽屉——函数随迁移删除，其载荷 oracle（小数原样、日期转 ISO、无效日期不提交、
-// 无效批次不提交、失败不刷新、出现条件、批次候选）迁往同一组件测试
-// console/production-order-console.test.tsx；幂等键改为前端生成、批次库位只列工单 BOM 的批次
-// 是有意的差别。原「gates material/output…」用例里的成品卷入库部分保留为下一条；领退料部分
-// 随函数退役。余下的成品卷入库随后一步迁入，届时本组用例随之退役。
-describe('production action callback contracts', () => {
-  it('gates output by state, permission and existing report', () => {
-    const f = setup(['production:material', 'production:report']);
-    appendProductionOutput(f.context, order, 'RELEASED', [{ id: 'report-1' }], f.target, f.refresh);
-    appendProductionOutput(f.context, order, 'IN_PROGRESS', [], f.target, f.refresh);
-    appendProductionOutput(
-      setup().context,
-      order,
-      'IN_PROGRESS',
-      [{ id: 'report-1' }],
-      f.target,
-      f.refresh,
-    );
-    expect(f.actions.children).toHaveLength(0);
-    expect(form).not.toHaveBeenCalled();
-  });
-
-  it('binds output to order item version and fixed report/location options', async () => {
-    const f = setup(['production:report']);
-    f.views.set('/api/v1/inventory-locations', [{ id: 'loc-1', code: 'L1' }]);
-    appendProductionOutput(
-      f.context,
-      order,
-      'IN_PROGRESS',
-      [{ id: 'report-1', completed_at: 'finished', good_quantity: '10.25' }],
-      f.target,
-      f.refresh,
-    );
-    f.views.set('/api/v1/inventory-locations', []);
-    const opened = f.click();
-    expect(opened.fields.find((field) => field.name === 'operationReportId')?.options).toEqual([
-      { value: 'report-1', label: 'finished · 良品 10.25' },
-    ]);
-    expect(opened.fields.find((field) => field.name === 'locationId')?.options).toEqual([
-      { value: 'loc-1', label: 'L1' },
-    ]);
-    const values = {
-      operationReportId: 'report-1',
-      rollNumber: 'ROLL-1',
-      lotNumber: 'FIN-1',
-      locationId: 'loc-1',
-      quantity: '10.25',
-      manufacturedAt: '2026-10-17',
-    };
-    await opened.run(values);
-    expect(f.submit).toHaveBeenCalledExactlyOnceWith(
-      '/api/v1/production-orders/production-1/finished-rolls',
-      { ...values, itemVersionId: 'finished-1' },
-    );
-    expect(f.refresh).toHaveBeenCalledTimes(1);
-    f.submit.mockRejectedValueOnce(new Error('output rejected'));
-    await expect(opened.run(values)).rejects.toThrow('output rejected');
-    expect(f.refresh).toHaveBeenCalledTimes(1);
-  });
-});
+// U3-MFG-5：工序报工 / 领退料 / 成品卷入库三张表单（原 appendProductionReport / appendProduction
+// Material / appendProductionOutput）迁入 Preact 控制台抽屉，production-actions.ts 随之删除。原
+// 「production action callback contracts」一组的用例随函数退役，载荷 oracle（小数原样、日期转
+// ISO、无效日期 / 无效批次不提交、失败不刷新、出现条件、批次候选、报工与库位选项、绑定工单
+// 成品版本）迁往同一组件测试；幂等键改为前端生成、批次库位只列工单 BOM 的批次是有意的差别。
+// 本文件余下发货两组用例不在该批范围，逐字未动。
 
 describe('shipment action callback contracts', () => {
   it('gates dispatch by state, permission and existing shipment', () => {
