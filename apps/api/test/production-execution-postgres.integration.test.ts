@@ -343,10 +343,16 @@ describe('MFG-5 shop floor writes against real PostgreSQL', () => {
           idempotencyKey: key,
         });
         expect(typeof response.body.inventoryMovementId).toBe('string');
+        // 台账按 occurred_at 排序，两次领料的发生时间相同，先后不确定——按 id 找出新增的那一条。
         const after = (await reload()).materials as JsonObject[];
         expect(after).toHaveLength(before.length + 1);
-        expect(after.at(-1)).toMatchObject({
+        const known = new Set(before.map((entry) => identifier(entry)));
+        const added = after.filter((entry) => !known.has(identifier(entry)));
+        expect(added).toHaveLength(1);
+        expect(added[0]).toMatchObject({
           transaction_type: 'ISSUE',
+          item_version_id: identifier({ yarn, backing }[item]),
+          lot_id: { yarnLot, backingLot }[lot],
           quantity: Number(quantity),
         });
       },
