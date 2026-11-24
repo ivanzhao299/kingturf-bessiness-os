@@ -369,6 +369,7 @@ describe('MFG-5 shop floor writes against real PostgreSQL', () => {
         ),
       ).rejects.toMatchObject({
         code: 'P0001',
+        // 仓储层直接抛出数据库的原始拒绝；中文提示只在 HTTP 端点这一层映射。
         message: 'production return exceeds cumulative issue for material resource',
       });
       // 工单不存在：维持原有路径（库存移动先写入，再由触发器拒绝，事务整体回滚）。
@@ -456,7 +457,7 @@ describe('MFG-5 shop floor writes against real PostgreSQL', () => {
       idempotencyKey: key,
     });
 
-    it('legal report returns 201 and the rejected over-plan report returns 409 with the trigger text', async () => {
+    it('legal report returns 201 and the rejected over-plan report returns 409 with a Chinese hint', async () => {
       const correlation = randomUUID();
       const legal = await send(
         { method: 'POST', pathname: reportsPath(), body: reportBody(10, '10.25', 'WO-MFG5-RPT-1') },
@@ -482,7 +483,7 @@ describe('MFG-5 shop floor writes against real PostgreSQL', () => {
       expect(rejected.body).toEqual({
         error: {
           code: 'conflict',
-          message: 'reported good quantity exceeds planned production quantity',
+          message: '累计良品数量超过工单的计划数量，请核对本次报工的良品数',
           correlationId: correlation,
         },
       });
@@ -497,7 +498,7 @@ describe('MFG-5 shop floor writes against real PostgreSQL', () => {
       expect(reported.rows[0]?.good).toBe('10.250000');
     });
 
-    it('legal finished roll returns 201; a roll beyond the reported good returns 409 with the trigger text', async () => {
+    it('legal finished roll returns 201; a roll beyond the reported good returns 409 with a Chinese hint', async () => {
       const report = await send({
         method: 'POST',
         pathname: reportsPath(),
@@ -559,14 +560,14 @@ describe('MFG-5 shop floor writes against real PostgreSQL', () => {
       expect(rejected.body).toEqual({
         error: {
           code: 'conflict',
-          message: 'finished roll must match order, report, item, lot, and reported quantity',
+          message: '成品卷与工单、报工或批次不匹配，请核对后重试',
           correlationId: correlation,
         },
       });
       expect((await reload()).rolls as JsonObject[]).toHaveLength(rollsBefore.length + 1);
     });
 
-    it('status-gated trigger refusals surface with their own text (report on a draft order)', async () => {
+    it('status-gated trigger refusals surface with a Chinese hint (report on a draft order)', async () => {
       const draft = await repository.create(
         {
           orderNumber: 'WO-MFG5-DRAFT-2',
@@ -603,7 +604,7 @@ describe('MFG-5 shop floor writes against real PostgreSQL', () => {
       expect(response.body).toEqual({
         error: {
           code: 'conflict',
-          message: 'operation reporting requires an active order',
+          message: '工单尚未开工，不能报工',
           correlationId: expect.any(String) as string,
         },
       });

@@ -11,6 +11,7 @@
 // 冲突——409 加触发器的提示文字，不再落成 500。范围只限这三个端点：其余 SQLSTATE（唯一约束、
 // 外键、CHECK 约束）与其余端点的行为不变，legacy 三条路由也不变；数据库触发器仍是权威。
 import { assertStableCode, DomainError } from '@kingturf/domain';
+import { guardRejection } from '../../pg-rejections.ts';
 import type { ApiDependencies } from '../../app.ts';
 import {
   allow,
@@ -39,25 +40,33 @@ type OutputInput = Readonly<Parameters<Output>[1]>;
 const orderIdOf = (request: { params: unknown }): string =>
   uuid((request.params as { productionOrderId: string }).productionOrderId, 'productionOrderId');
 
-// pg 的错误对象带 SQLSTATE code 与 message（RAISE EXCEPTION 的提示文字）。
-const TRIGGER_REJECTION = 'P0001';
-const triggerMessageOf = (error: unknown): string | null => {
-  if (typeof error !== 'object' || error === null) return null;
-  const failure = error as { code?: unknown; message?: unknown };
-  return failure.code === TRIGGER_REJECTION &&
-    typeof failure.message === 'string' &&
-    failure.message !== ''
-    ? failure.message
-    : null;
-};
+// TD-MFG-010：数据库触发器的业务拒绝（RAISE EXCEPTION → SQLSTATE P0001）→ 409 + 中文提示。
+// 与询价 / 客户 / 信用端点同一口径（WF-A）：只认守卫触发器里写死的消息，映射成中文；不回显
+// 数据库原始消息，未列入下方白名单的拒绝原样抛出（仍是 500，照常留诊断日志）。识别规则在
+// pg-rejections.ts（guardRejection：SQLSTATE 精确为 P0001 且消息精确等于某个键）。
+// 这里只列工单执行三条写路径上用户可纠正的拒绝；消息文字来自迁移里的触发器函数。
+const EXECUTION_GUARD_HINTS = {
+  'reported good quantity exceeds planned production quantity':
+    '累计良品数量超过工单的计划数量，请核对本次报工的良品数',
+  'production return exceeds cumulative issue for material resource':
+    '退料数量超过该物料在本工单的累计领用量，请核对退料数量',
+  'operation reporting requires an active order': '工单尚未开工，不能报工',
+  'material posting requires a released or active order': '工单尚未下达，不能领料或退料',
+  'production issue requires released BOM material': '该批次物料不属于工单的 BOM，不能领用',
+  'inventory movement cannot create negative lot balance': '该批次库存不足，请核对领料数量',
+  'operation report must belong to the production order': '报工记录与工单不匹配，请刷新后重试',
+  'finished roll must match its report': '成品卷与报工记录不匹配，请核对卷数量',
+  'finished roll must match order, report, item, lot, and reported quantity':
+    '成品卷与工单、报工或批次不匹配，请核对后重试',
+} as const;
 // 只包住仓储调用的结果（调用本身仍是处理器里的直接调用）：触发器拒绝 → conflict，其余原样抛出。
 const settled = async <T>(pending: Promise<T>): Promise<T> => {
   try {
     return await pending;
   } catch (error: unknown) {
-    const message = triggerMessageOf(error);
-    if (message === null) throw error;
-    throw new DomainError('conflict', message);
+    const hint = guardRejection(error, EXECUTION_GUARD_HINTS);
+    if (hint === null) throw error;
+    throw new DomainError('conflict', hint);
   }
 };
 

@@ -1088,7 +1088,7 @@ describe('execution endpoints map database trigger rejections to a business conf
   };
 
   it.each(cases)(
-    '$method：触发器拒绝（P0001）→ 409 conflict，带上触发器提示文字与关联 ID',
+    '$method：触发器拒绝（P0001）→ 409 conflict，带上中文提示与关联 ID',
     async ({ method }) => {
       const stub = vi
         .fn<Repository[typeof method]>()
@@ -1098,9 +1098,10 @@ describe('execution endpoints map database trigger rejections to a business conf
         scopeFor(productionOf({ [method]: stub })),
       );
       expect(response?.statusCode).toBe(409);
+      // 不回显触发器的英文原文：只给白名单里的中文提示。
       expect(errorOf(response)).toEqual({
         code: 'conflict',
-        message: 'reported good quantity exceeds planned production quantity',
+        message: '累计良品数量超过工单的计划数量，请核对本次报工的良品数',
         correlationId,
       });
     },
@@ -1126,6 +1127,8 @@ describe('execution endpoints map database trigger rejections to a business conf
         ],
         [new Error('connection terminated unexpectedly'), 500],
         // P0001 但没有提示文字：无从给用户看，不映射。
+        // P0001 且消息不在白名单里（主协调裁定：与 WF-A 同口径，不回显数据库原文）：不映射。
+        [trigger('some guard message nobody listed'), 500],
         [Object.assign(new Error('x'), { code: 'P0001', message: '' }), 500],
         [Object.assign(new Error('x'), { code: 'P0001', message: undefined }), 500],
         [trigger('production return exceeds cumulative issue for material resource'), 409],
@@ -1140,7 +1143,7 @@ describe('execution endpoints map database trigger rejections to a business conf
         if (expected === 409)
           expect(errorOf(response)).toEqual({
             code: 'conflict',
-            message: 'production return exceeds cumulative issue for material resource',
+            message: '退料数量超过该物料在本工单的累计领用量，请核对退料数量',
             correlationId,
           });
         else if (expected === 500) expect(errorOf(response).message).toBe('Internal server error');
