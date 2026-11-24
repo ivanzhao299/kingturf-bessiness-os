@@ -368,6 +368,58 @@ describe('production order execution fastify bridge track: operation reports', (
   });
 });
 
+// 守恒组通用跑法：同一请求分别经 legacy app.dispatch 与桥轨，两轨各挂各的仓储替身。
+type ExecutionMethod = 'reportOperation' | 'createOutput' | 'transactMaterial';
+const stubOf = (method: ExecutionMethod, result: unknown) => {
+  const mock = vi.fn(() => Promise.resolve(result));
+  return { mock, production: productionOf({ [method]: mock }) };
+};
+const parityOf = async (
+  request: ApiRequest,
+  method: ExecutionMethod,
+  result: unknown,
+  options: ScopeOptions,
+) => {
+  const legacy = stubOf(method, result);
+  const bridge = stubOf(method, result);
+  const legacyScope = scopeFor(legacy.production, options);
+  const [legacyResponse, bridgeResponse] = await Promise.all([
+    legacyDispatch(request, legacyScope.authorization, legacy.production),
+    bridged(request, { ...legacyScope, dependencies: dependencyScope(bridge.production) }),
+  ]);
+  return { legacy, bridge, legacyResponse, bridgeResponse };
+};
+const expectParity = (
+  run: Awaited<ReturnType<typeof parityOf>>,
+  label: string,
+): { statusCode: number; body: unknown } => {
+  // 旧轨经 app.dispatch 返回的对象在 HTTP 层还要过一次 JSON；桥轨的响应体已是解析后的 JSON。
+  expect(run.bridgeResponse, label).toEqual(JSON.parse(JSON.stringify(run.legacyResponse)));
+  expect(run.bridge.mock.mock.calls, label).toEqual(run.legacy.mock.mock.calls);
+  // 两轨的接收者都是各自的仓储对象（legacy .call(repository, …) ↔ 桥轨方法调用）。
+  expect(run.legacy.mock.mock.contexts, label).toEqual(
+    run.legacy.mock.mock.calls.length > 0 ? [run.legacy.production] : [],
+  );
+  expect(run.bridge.mock.mock.contexts, label).toEqual(
+    run.bridge.mock.mock.calls.length > 0 ? [run.bridge.production] : [],
+  );
+  return run.legacyResponse;
+};
+const expectOutcomeMix = (
+  outcomes: readonly Tracked[],
+  expected: readonly [created: number, fieldDenied: number, rejected: number],
+): void => {
+  const count = (status: number): number =>
+    outcomes.filter((outcome) => outcome.statusCode === status).length;
+  // 元断言：成功 201、字段授权拒绝 403、解析拒绝 400 三类结果都真的出现过。
+  expect([count(201), count(403), count(400), outcomes.length]).toEqual([
+    ...expected,
+    expected.reduce((sum, value) => sum + value, 0),
+  ]);
+};
+const sortedKeys = (outcome: { body: unknown }): readonly string[] =>
+  Object.keys(outcome.body as object).sort();
+
 describe('fastify bridge 行为守恒（operation-reports 对比 legacy）', () => {
   const path = `/api/v1/production-orders/${orderId}/operation-reports`;
   const valid = {
@@ -417,48 +469,265 @@ describe('fastify bridge 行为守恒（operation-reports 对比 legacy）', () 
       for (const writeFields of [null, ['operationId', 'notes']] as const) {
         for (const item of cases) {
           const label = `${item.name} / read=${String(readFields)} / write=${String(writeFields)}`;
-          const request = requestFor({ method: 'POST', pathname: path, body: item.body });
-          const legacyOperation = vi
-            .fn<Repository['reportOperation']>()
-            .mockResolvedValue(reported);
-          const legacyProduction = productionOf({ reportOperation: legacyOperation });
-          const bridgedOperation = vi
-            .fn<Repository['reportOperation']>()
-            .mockResolvedValue(reported);
-          const bridgedProduction = productionOf({ reportOperation: bridgedOperation });
-          const legacyScope = scopeFor(legacyProduction, { readFields, writeFields });
-          const [legacy, bridge] = await Promise.all([
-            legacyDispatch(request, legacyScope.authorization, legacyProduction),
-            bridged(request, { ...legacyScope, dependencies: dependencyScope(bridgedProduction) }),
-          ]);
-          outcomes.push(legacy);
-          // 旧轨经 app.dispatch 返回的对象在 HTTP 层还要过一次 JSON；桥轨的响应体已是解析后的 JSON。
-          expect(bridge, label).toEqual(JSON.parse(JSON.stringify(legacy)));
-          expect(bridgedOperation.mock.calls, label).toEqual(legacyOperation.mock.calls);
-          // 两轨的接收者都是各自的仓储对象（legacy .call(repository, …) ↔ 桥轨方法调用）。
-          expect(legacyOperation.mock.contexts, label).toEqual(
-            legacyOperation.mock.calls.length > 0 ? [legacyProduction] : [],
-          );
-          expect(bridgedOperation.mock.contexts, label).toEqual(
-            bridgedOperation.mock.calls.length > 0 ? [bridgedProduction] : [],
+          outcomes.push(
+            expectParity(
+              await parityOf(
+                requestFor({ method: 'POST', pathname: path, body: item.body }),
+                'reportOperation',
+                reported,
+                { readFields, writeFields },
+              ),
+              label,
+            ),
           );
         }
       }
     }
-    // 元断言（2 种读遮蔽 × 2 种写授权 × 10 个用例 = 40 个请求）：成功 4、字段授权拒绝 16、
-    // 解析拒绝 20——三类结果都真的出现过；其中读遮蔽生效的 2 次成功确实被裁成了更小的响应体。
-    const count = (status: number): number =>
-      outcomes.filter((outcome) => outcome.statusCode === status).length;
-    expect([count(201), count(403), count(400), outcomes.length]).toEqual([4, 16, 20, 40]);
-    const keysOf = (outcome: { body: unknown }): readonly string[] =>
-      Object.keys(outcome.body as object).sort();
+    // 2 种读遮蔽 × 2 种写授权 × 10 个用例 = 40 个请求。
+    expectOutcomeMix(outcomes, [4, 16, 20]);
+    // 读遮蔽生效的两次成功确实被裁成了更小的响应体（外层循环先走读字段不限的两次）。
     const full = Object.keys(reported).sort();
     const masked = ['goodQuantity', 'id', 'productionOrderId'];
-    // 外层循环先走读字段不限的两次成功，再走读遮蔽生效的两次。
-    expect(outcomes.filter((outcome) => outcome.statusCode === 201).map(keysOf)).toEqual([
+    expect(outcomes.filter((outcome) => outcome.statusCode === 201).map(sortedKeys)).toEqual([
       full,
       full,
       masked,
+      masked,
+    ]);
+  });
+});
+
+describe('production order execution fastify bridge track: finished rolls', () => {
+  const path = `/api/v1/production-orders/${orderId}/finished-rolls`;
+  const reportId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+  const body = {
+    operationReportId: ` ${reportId.toUpperCase()} `,
+    itemVersionId: ` ${operationId.toUpperCase()} `,
+    rollNumber: ' ROLL-1 ',
+    lotNumber: ' LOT-1 ',
+    locationId: ' bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb ',
+    quantity: ' 1.230000 ',
+    manufacturedAt: ' 2026-10-14 ',
+  };
+  const input = {
+    operationReportId: reportId,
+    itemVersionId: operationId,
+    rollNumber: 'ROLL-1',
+    lotNumber: 'LOT-1',
+    locationId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    quantity: '1.23',
+    manufacturedAt: '2026-10-14',
+  };
+  const received = {
+    id: 'roll-1',
+    version: 5,
+    productionOrderId: orderId,
+    qualityStatus: 'QUARANTINE',
+    ...input,
+  };
+  const post = (payload: unknown = body, scope = scopeFor()) =>
+    bridged(requestFor({ method: 'POST', pathname: path, body: payload }), scope);
+  const productionWith = () => {
+    const createOutput = vi.fn<Repository['createOutput']>().mockResolvedValue(received);
+    return { production: productionOf({ createOutput }), createOutput };
+  };
+
+  it('POST 成品卷入库走 legacy 同解析链（trim / UUID 归一小写 / stableCode / decimal 去尾零 / 日历日期原文）→ 201 + mutation 投影', async () => {
+    const { production, createOutput } = productionWith();
+    const response = await post(body, scopeFor(production));
+    expect(response?.statusCode).toBe(201);
+    expect(response?.body).toEqual(received);
+    expect(createOutput.mock.calls).toEqual([[orderId, input, scopeContext, correlationId]]);
+    expect(createOutput.mock.calls[0]).toHaveLength(4);
+    expect(createOutput.mock.contexts).toEqual([production]);
+    expect(Object.keys(createOutput.mock.calls[0]?.[1] as object)).toEqual([
+      'operationReportId',
+      'itemVersionId',
+      'rollNumber',
+      'lotNumber',
+      'locationId',
+      'quantity',
+      'manufacturedAt',
+    ]);
+  });
+
+  it('POST 成品卷入库负例沿用 legacy 消息（请求体形状/未知字段含幂等键/缺字段/UUID/编码/数值/日历日期/工单 UUID）', async () => {
+    for (const [payload, message] of [
+      [null, 'A JSON object body is required'],
+      [[], 'A JSON object body is required'],
+      [{ ...body, idempotencyKey: 'KEY' }, 'Unsupported fields: idempotencyKey'],
+      [{ ...body, quantity: undefined }, 'quantity is required'],
+      [{ ...body, operationReportId: 'not-a-uuid' }, 'operationReportId must be a UUID'],
+      [
+        { ...body, rollNumber: 'roll-1' },
+        'Code must be 1-64 uppercase letters, digits, underscore, or hyphen',
+      ],
+      [
+        { ...body, lotNumber: 'LOT 1' },
+        'Code must be 1-64 uppercase letters, digits, underscore, or hyphen',
+      ],
+      [{ ...body, quantity: '-1' }, 'quantity must be non-negative'],
+      [{ ...body, manufacturedAt: '2026-02-30' }, 'manufacturedAt must be a valid YYYY-MM-DD date'],
+      [
+        { ...body, manufacturedAt: '2026-10-14T00:00:00Z' },
+        'manufacturedAt must be a valid YYYY-MM-DD date',
+      ],
+    ] as const) {
+      const { production, createOutput } = productionWith();
+      const response = await post(payload, scopeFor(production));
+      expect(response?.statusCode, message).toBe(400);
+      expect(errorOf(response), message).toEqual({
+        code: 'invalid_request',
+        message,
+        correlationId,
+      });
+      expect(createOutput, message).not.toHaveBeenCalled();
+    }
+    const { production, createOutput } = productionWith();
+    const malformed = await post(
+      body,
+      scopeFor(production, { writeFields: ['operationReportId'] }),
+    );
+    expect(errorOf(malformed).message).toBe('Field permission denied');
+    expect(createOutput).not.toHaveBeenCalled();
+  });
+
+  it('POST 成品卷入库没有幂等键字段：请求头 idempotency-key 被忽略，同一请求每次都转发仓储', async () => {
+    const { production, createOutput } = productionWith();
+    const scope = scopeFor(production);
+    const request = requestFor({
+      method: 'POST',
+      pathname: path,
+      body,
+      headers: { 'idempotency-key': 'HEADER-KEY', 'x-correlation-id': correlationId },
+    });
+    expect((await bridged(request, scope))?.statusCode).toBe(201);
+    expect((await bridged(request, scope))?.statusCode).toBe(201);
+    expect(createOutput).toHaveBeenCalledTimes(2);
+    expect(Object.hasOwn(createOutput.mock.calls[0]?.[1] as object, 'idempotencyKey')).toBe(false);
+    expect(createOutput.mock.calls[1]).toEqual(createOutput.mock.calls[0]);
+  });
+
+  it('POST 成品卷入库响应按 production:read 字段投影；无读权限时回退 id/version；鉴权与依赖缺失同报工端点', async () => {
+    const masked = productionWith();
+    const limited = await post(
+      body,
+      scopeFor(masked.production, { readFields: ['rollNumber', 'quantity'] }),
+    );
+    expect(limited?.body).toEqual({ id: 'roll-1', rollNumber: 'ROLL-1', quantity: '1.23' });
+    const bare = productionWith();
+    const unreadable = await post(
+      body,
+      scopeFor(bare.production, { without: ['production:read'] }),
+    );
+    expect(unreadable?.body).toEqual({ id: 'roll-1', version: 5 });
+    const denied = productionWith();
+    const forbidden = await post(
+      body,
+      scopeFor(denied.production, { without: ['production:report'] }),
+    );
+    expect(errorOf(forbidden)).toEqual({
+      code: 'forbidden',
+      message: 'Permission denied',
+      correlationId,
+    });
+    expect((await post(body, scopeFor(null)))?.statusCode).toBe(503);
+    // 成功的两次各调用一次；被拒绝的那次不触碰仓储。
+    expect(masked.createOutput).toHaveBeenCalledTimes(1);
+    expect(bare.createOutput).toHaveBeenCalledTimes(1);
+    expect(denied.createOutput).not.toHaveBeenCalled();
+  });
+
+  it('POST 成品卷入库仓储异常映射同报工端点（DomainError 409 / 其它 500 不外泄）；未认领路径落回 null', async () => {
+    const conflict = vi
+      .fn<Repository['createOutput']>()
+      .mockRejectedValue(new DomainError('conflict', 'finished roll must match its report'));
+    const response = await post(body, scopeFor(productionOf({ createOutput: conflict })));
+    expect(response?.statusCode).toBe(409);
+    expect(errorOf(response).message).toBe('finished roll must match its report');
+    const leaked = vi
+      .fn<Repository['createOutput']>()
+      .mockRejectedValue(new Error('insert into inventory_lots'));
+    expect(
+      errorOf(await post(body, scopeFor(productionOf({ createOutput: leaked })))).message,
+    ).toBe('Internal server error');
+    const scope = scopeFor(productionWith().production);
+    for (const request of [
+      requestFor({ method: 'GET', pathname: path }),
+      requestFor({ method: 'PUT', pathname: path, body }),
+      requestFor({ method: 'POST', pathname: `${path}/` }),
+      requestFor({ method: 'POST', pathname: path.replace('finished-rolls', 'Finished-rolls') }),
+      requestFor({
+        method: 'POST',
+        pathname: `/api/v1/production-orders/ABCDABCD-1234-4ABC-8ABC-ABCDEFABCDEF/finished-rolls`,
+        body,
+      }),
+    ])
+      expect(await bridged(request, scope)).toBeNull();
+  });
+});
+
+describe('fastify bridge 行为守恒（finished-rolls 对比 legacy）', () => {
+  const path = `/api/v1/production-orders/${orderId}/finished-rolls`;
+  const valid = {
+    operationReportId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+    itemVersionId: ` ${operationId.toUpperCase()} `,
+    rollNumber: ' ROLL-1 ',
+    lotNumber: ' LOT-1 ',
+    locationId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    quantity: ' 1.230000 ',
+    manufacturedAt: ' 2024-02-29 ',
+  };
+  const received = {
+    id: 'roll-1',
+    version: 5,
+    productionOrderId: orderId,
+    operationReportId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+    itemVersionId: operationId,
+    rollNumber: 'ROLL-1',
+    lotNumber: 'LOT-1',
+    locationId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    quantity: '1.23',
+    manufacturedAt: '2024-02-29',
+  };
+  const cases: readonly { name: string; body: unknown }[] = [
+    { name: '规范输入（闰日）', body: valid },
+    { name: '未知字段（幂等键）', body: { ...valid, idempotencyKey: 'KEY' } },
+    { name: '缺字段', body: { ...valid, quantity: undefined } },
+    { name: '非对象请求体', body: [] },
+    { name: '非法 UUID', body: { ...valid, itemVersionId: 'not-a-uuid' } },
+    { name: '小写卷号', body: { ...valid, rollNumber: 'roll-1' } },
+    { name: '溢出日期', body: { ...valid, manufacturedAt: '2026-02-30' } },
+    { name: '负数', body: { ...valid, quantity: '-1' } },
+  ];
+
+  it('POST /api/v1/production-orders/:id/finished-rolls：新旧轨状态码、响应与仓储实参逐字节一致（含读写字段遮蔽与负例）', async () => {
+    const outcomes: Tracked[] = [];
+    for (const readFields of [null, ['rollNumber', 'quantity']] as const) {
+      for (const writeFields of [null, ['rollNumber']] as const) {
+        for (const item of cases) {
+          const label = `${item.name} / read=${String(readFields)} / write=${String(writeFields)}`;
+          outcomes.push(
+            expectParity(
+              await parityOf(
+                requestFor({ method: 'POST', pathname: path, body: item.body }),
+                'createOutput',
+                received,
+                { readFields, writeFields },
+              ),
+              label,
+            ),
+          );
+        }
+      }
+    }
+    // 2 种读遮蔽 × 2 种写授权 × 8 个用例 = 32 个请求；只有「规范输入」在写授权不限时成功，
+    // 所以成功 2、字段授权拒绝 12、解析拒绝 18。
+    expectOutcomeMix(outcomes, [2, 12, 18]);
+    const full = Object.keys(received).sort();
+    const masked = ['id', 'quantity', 'rollNumber'];
+    expect(outcomes.filter((outcome) => outcome.statusCode === 201).map(sortedKeys)).toEqual([
+      full,
       masked,
     ]);
   });
