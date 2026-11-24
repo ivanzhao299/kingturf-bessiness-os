@@ -84,8 +84,8 @@ export type OperationalLogger = {
       /** 仅 http.request.failed 记录：请求方法与路径（不含查询串）。 */
       method?: string;
       pathname?: string;
-      /** 仅 http.request.failed 记录：未预期异常的诊断信息。只进服务端日志，不进响应。 */
-      error?: Readonly<{ name: string; message: string; stack?: string }>;
+      /** 仅 http.request.failed 记录：未预期异常的类型、系统错误码与栈帧。不含异常消息（可能回显请求数据）。只进服务端日志，不进响应。 */
+      error?: Readonly<{ name: string; code?: string; frames: readonly string[] }>;
     }>,
   ): void;
 };

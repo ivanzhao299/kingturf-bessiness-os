@@ -422,6 +422,7 @@ describe('inline lead command independent projections and error envelopes', () =
       const failed = await f.dispatch(path(row.action), body(row.action));
       expect(failed.statusCode).toBe(500);
       expect(JSON.stringify(failed.body)).not.toContain('private error');
+      expect(JSON.stringify(write.mock.calls)).not.toContain('private error');
       const entries = write.mock.calls.map((call) => call[0] as { event: string });
       expect(entries.map((entry) => entry.event)).toEqual([
         'http.request.failed',
@@ -433,7 +434,8 @@ describe('inline lead command independent projections and error envelopes', () =
         statusCode: 500,
         method: 'POST',
         pathname: path(row.action),
-        error: { name: 'Error', message: 'private error' },
+        // 类型与栈帧可定位失败点；异常消息不进日志（可能回显请求数据）。
+        error: { name: 'Error' },
       });
     },
   );

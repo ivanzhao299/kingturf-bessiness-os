@@ -342,6 +342,8 @@ describe('purchase-orders fastify bridge track', () => {
       error: { code: 'internal_error', message: 'Internal server error', correlationId: 'corr-7' },
     });
     expect(write).toHaveBeenCalledTimes(1);
+    // 异常消息不进日志（可能回显请求数据）。
+    expect(JSON.stringify(write.mock.calls)).not.toContain('relation is gone');
     expect(write.mock.calls[0]?.[0]).toMatchObject({
       level: 'error',
       event: 'http.request.failed',
@@ -350,7 +352,7 @@ describe('purchase-orders fastify bridge track', () => {
       method: 'GET',
       // 查询串不进日志路径。
       pathname: '/api/v1/purchase-orders',
-      error: { name: 'Error', message: 'relation is gone' },
+      error: { name: 'Error' },
     });
   });
 
