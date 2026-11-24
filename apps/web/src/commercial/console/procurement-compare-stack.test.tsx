@@ -8,7 +8,11 @@ import { readFileSync } from 'node:fs';
 import { h, render } from 'preact';
 import type { ComponentType } from 'preact';
 import { installGlobalTestDom, type TestElement } from '../../../test/fixtures/preact-dom';
-import { STACKED_COMPARE_WIDTH, splitCompareTokens } from './compare-stack';
+import {
+  COMPARE_TOKEN_MAX_CODE_LENGTH,
+  STACKED_COMPARE_WIDTH,
+  splitCompareTokens,
+} from './compare-stack';
 import { RfqConsolePage } from './rfq-console';
 import type { RfqConsolePorts, RfqRow } from './rfq-ports';
 import { SupplierConsolePage } from './supplier-console';
@@ -495,6 +499,36 @@ describe('对比矩阵 · 短 token 不折行', () => {
       { text: 'SQ-KT-YARN-2026-001', token: true },
     ]);
     expect(splitCompareTokens('12.500000')).toEqual([{ text: '12.500000', token: true }]);
+  });
+
+  // 不折行的 token 必须有长度上限：一个 40 字符的报价单号在手机上比卡片内容还宽，nowrap 会压过
+  // 卡片原有的 overflow-wrap，把「断成两行」变成「溢出卡片」。阈值与 DataTable 对字符串单元格的
+  // NOWRAP_MAX_LENGTH 同值；两处不得各自漂移。
+  it('超过 20 个字符的编码不包 token、照常可折；长编码内部不被截出片段', () => {
+    const dataTable = readFileSync(
+      new URL('../../../../../packages/ui/src/data-table.tsx', import.meta.url),
+      'utf8',
+    );
+    expect(dataTable).toContain(
+      `const NOWRAP_MAX_LENGTH = ${String(COMPARE_TOKEN_MAX_CODE_LENGTH)};`,
+    );
+    // 恰好 20 个字符：包。
+    expect(splitCompareTokens('SQ-KT-YARN-2026-0001')).toEqual([
+      { text: 'SQ-KT-YARN-2026-0001', token: true },
+    ]);
+    // 第 21 个字符起：不包；紧随其后的日期照常是 token。
+    expect(splitCompareTokens('SQ-PROC3-JSHF-2026-002 · 2026-11-15')).toEqual([
+      { text: 'SQ-PROC3-JSHF-2026-002 · ', token: false },
+      { text: '2026-11-15', token: true },
+    ]);
+    // 长编码内部：不截出后缀，形如日期的片段也不单独切出。
+    expect(splitCompareTokens('SQ-KT-YARN-2026-11-25-REV-001')).toEqual([
+      { text: 'SQ-KT-YARN-2026-11-25-REV-001', token: false },
+    ]);
+    // 短编码里形如日期的片段：整个编码是一个 token。
+    expect(splitCompareTokens('SQ-2026-11-25')).toEqual([{ text: 'SQ-2026-11-25', token: true }]);
+    // 紧贴字母或数字的片段不是 token。
+    expect(splitCompareTokens('X1200 个')).toEqual([{ text: 'X1200 个', token: false }]);
   });
 
   it('询价矩阵：单元格文本不变，日期 / SKU / 金额落在 .proc-token 里，矩阵带作用域类', async () => {
