@@ -62,7 +62,10 @@ type AlertNode = Readonly<{
 
 // 手写镜像 openForm 的原生约束校验语义（测试 DOM 无原生 checkValidity，语义保持一致）。
 const validateField = (field: FormSectionField, value: string): string | null => {
-  if (field.required === true && value.trim() === '') return `请填写${field.label}`;
+  // TD-WF-009：必填下拉空选时说「请选择」——它不是填不填的问题。下拉不再带原生 required，
+  // 这条提示是用户看到的唯一一条（此前是浏览器自己的、语言随浏览器的气泡）。
+  if (field.required === true && value.trim() === '')
+    return field.type === 'select' ? `请选择${field.label}` : `请填写${field.label}`;
   if (value === '') return null;
   if (field.type === 'email' && !EMAIL_PATTERN.test(value)) return `${field.label}格式不正确`;
   if (field.maxLength !== undefined && value.length > field.maxLength)
@@ -176,7 +179,10 @@ export const FormSection = (props: FormSectionProps) => {
         const isInvalid = invalid.has(field.name);
         const constraints: Record<string, string | number | boolean> = {};
         if (field.required === true) {
-          constraints.required = true;
+          // TD-WF-009：必填下拉不带原生 required（保留 aria-required）。带了的话，空选提交会先被
+          // 浏览器拦下并弹出语言随浏览器的提示，表单的 submit 事件根本不触发；现在由上面 validateField
+          // 给出中文提示并指到这个字段。其它类型的必填字段不动。
+          if (field.type !== 'select') constraints.required = true;
           constraints['aria-required'] = 'true';
         }
         if (isInvalid) constraints['aria-invalid'] = 'true';

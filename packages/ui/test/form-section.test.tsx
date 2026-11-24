@@ -436,4 +436,93 @@ describe('FormSection（兼容 shared/forms.ts 校验语义）', () => {
     expect(scroll).not.toHaveBeenCalled();
     expect(host.document.activeElement).not.toBe(alertOf(host));
   });
+  // 回归（TD-WF-009，写流程真浏览器冒烟发现）：必填下拉默认是空选，提交被浏览器原生校验拦下，
+  // 提示语言随浏览器（本环境为英文 "Please select an item in the list."），submit 事件根本不触发。
+  // 现在必填下拉不带原生 required（保留 aria-required），由表单自己的校验给中文提示。
+  const colourFields: readonly FormSectionField[] = [
+    {
+      name: 'colour',
+      label: '颜色',
+      type: 'select',
+      required: true,
+      options: [
+        { value: 'green', label: '绿' },
+        { value: 'blue', label: '蓝' },
+      ],
+    },
+    {
+      name: 'finish',
+      label: '表面处理',
+      type: 'select',
+      options: [{ value: 'smooth', label: '平' }],
+    },
+    { name: 'batch', label: '批次号', required: true },
+  ];
+
+  it('drops the native required from a required select and keeps aria-required（必填下拉）', () => {
+    const host = mountDom();
+    mount(
+      <FormSection
+        title="规格"
+        fields={colourFields}
+        submitLabel="保存"
+        onSubmit={() => undefined}
+      />,
+      host,
+    );
+    const colour = fieldControl(host, 'colour');
+    // 原生 required 一在，浏览器就先于表单拦下提交并弹出随浏览器语言的提示。
+    expect(colour.hasAttribute('required')).toBe(false);
+    expect(colour.getAttribute('aria-required')).toBe('true');
+    expect(asElement(colour.parentNode).querySelector('.required-mark')?.textContent).toBe('必填');
+    // 其它类型的必填字段不动：仍带原生 required。
+    expect(fieldControl(host, 'batch').hasAttribute('required')).toBe(true);
+    expect(fieldControl(host, 'batch').getAttribute('aria-required')).toBe('true');
+    // 非必填下拉两者都不带。
+    const finish = fieldControl(host, 'finish');
+    expect(finish.hasAttribute('required')).toBe(false);
+    expect(finish.hasAttribute('aria-required')).toBe(false);
+  });
+
+  it('gives a Chinese message for an untouched required select instead of the browser bubble', async () => {
+    const host = mountDom();
+    const submitted: Readonly<Record<string, string>>[] = [];
+    mount(
+      <FormSection
+        title="规格"
+        fields={colourFields}
+        submitLabel="保存"
+        onSubmit={(values) => {
+          submitted.push(values);
+        }}
+      />,
+      host,
+    );
+    const colour = fieldControl(host, 'colour');
+    colour.focus();
+    const scroll = vi.fn();
+    Object.defineProperty(colour, 'scrollIntoView', { value: scroll, configurable: true });
+    submitButton(host).click();
+    await flush();
+    expect(submitted).toEqual([]);
+    const alert = asElement(host.container.querySelector('[role="alert"]'));
+    expect(alert.textContent).toBe('请选择颜色');
+    expect(colour.getAttribute('aria-invalid')).toBe('true');
+    expect(asElement(colour.parentNode).classList.contains('invalid')).toBe(true);
+    // 第一个出错的字段是下拉：提示里说的是「选择」而不是「填写」。
+    expect(host.document.activeElement).toBe(alert);
+    // 选好之后再提交：提示消失，请求带上下拉选项的 value。
+    colour.value = 'green';
+    colour.dispatchEvent(new Event('input', { bubbles: true }));
+    await flush();
+    expect(colour.hasAttribute('aria-invalid')).toBe(false);
+    const batch = fieldControl(host, 'batch');
+    batch.value = 'B-001';
+    batch.dispatchEvent(new Event('input', { bubbles: true }));
+    await flush();
+    submitButton(host).click();
+    await flush();
+    expect(submitted).toEqual([{ colour: 'green', finish: '', batch: 'B-001' }]);
+    expect(alert.textContent).toBe('');
+  });
 });
