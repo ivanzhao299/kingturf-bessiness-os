@@ -421,12 +421,23 @@ describe('采购域样式表（静态守卫）', () => {
   it('取值全部来自 kt tokens，不写死颜色与间距', () => {
     expect(stylesheet).not.toMatch(/#[0-9a-f]{3,8}\b/iu);
     expect(stylesheet).not.toMatch(/\brgba?\(/u);
-    // 发丝线边框宽度（1px solid）是 token 样式表的通行写法（同 manufacturing-console.css），
+    // 发丝线边框宽度（1px solid）与键盘焦点环宽度（2px）是 token 样式表的通行写法
+    // （同 manufacturing-console.css、governance-gov-ux.css 的 a.metric），token 表无对应变量；
     // 其余间距/尺寸不得出现字面量。
-    const withoutHairlines = stylesheet.replace(/border[^:;{}]*:\s*1px solid/gu, '');
-    expect(withoutHairlines).not.toMatch(/:\s*-?\d+(\.\d+)?(px|rem|em)\b/u);
+    const withoutStrokeWidths = stylesheet
+      .replace(/border[^:;{}]*:\s*1px solid/gu, '')
+      .replace(/outline(-offset)?:\s*2px/gu, '');
+    expect(withoutStrokeWidths).not.toMatch(/:\s*-?\d+(\.\d+)?(px|rem|em)\b/u);
     for (const token of ['--kt-space-3', '--kt-color-border', '--kt-radius-md'])
       expect(stylesheet).toContain(`var(${token})`);
+  });
+
+  it('可点汇总卡沿用指标卡外观：去掉链接默认样式并保留键盘焦点环', () => {
+    const link = rule('a.procurement-summary-link');
+    for (const declaration of ['display: block', 'color: inherit', 'text-decoration: none'])
+      expect(link).toContain(declaration);
+    // 焦点环不是颜色唯一信号之外的可选项：键盘用户必须看得到焦点落在哪张卡上。
+    expect(stylesheet).toMatch(/a\.procurement-summary-link:focus-visible\s*\{\s*outline:/u);
   });
 
   it('样式表经采购域宿主静态图并入主 CSS 包（裁定15）', () => {

@@ -20,6 +20,10 @@ export type AppRoute =
   | 'business-risks'
   | 'manufacturing-master'
   | 'procurement'
+  | 'procurement/suppliers'
+  | 'procurement/rfqs'
+  | 'procurement/purchase-orders'
+  | 'procurement/goods-receipts'
   | 'material-planning'
   | 'production-orders'
   | 'quality-inspection'
@@ -57,7 +61,11 @@ export const APP_ROUTE_LABELS: Readonly<Record<AppRoute, string>> = {
   commissions: '销售佣金',
   'business-risks': '业务风险',
   'manufacturing-master': '制造主数据',
-  procurement: '采购管理',
+  procurement: '采购概览',
+  'procurement/suppliers': '供应商与准入',
+  'procurement/rfqs': '询价管理',
+  'procurement/purchase-orders': '采购订单',
+  'procurement/goods-receipts': '收货管理',
   'material-planning': '物料计划',
   'production-orders': '生产执行',
   'quality-inspection': '质量检验',
@@ -95,7 +103,11 @@ const APP_ROUTE_DESCRIPTIONS: Readonly<Record<AppRoute, string>> = {
   commissions: '佣金计提、释放与支付',
   'business-risks': '风险评价、责任与处置',
   'manufacturing-master': '物料、BOM 与工艺路线',
-  procurement: '供应商、询价、采购与收货',
+  procurement: '采购待办汇总、供应商报价与批次库存台账',
+  'procurement/suppliers': '供应商准入、资质审核与联系信息',
+  'procurement/rfqs': '询价单创建、发布与关闭，行项与报价对比',
+  'procurement/purchase-orders': '采购订单签发、取消与收货进度，采购合同文件工作流',
+  'procurement/goods-receipts': '批次收货登记与数量核对（收货单不可变）',
   'material-planning': '需求运算、库存抵扣与建议',
   'production-orders': '工单、用料、报工与入库',
   'quality-inspection': '检验、处置与批次追溯',

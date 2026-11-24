@@ -1,16 +1,17 @@
-// U3-PROC-4：收货控制台宿主——收货区迁移至 Preact（同前三宿主口径：挂
-// procurement-workbench 面板内、不带 data-route-view；详情经桥轨 additive
-// GET /api/v1/goods-receipts/:id，失败回退列表行；可续收订单行/库位选项与原
-// vanilla 登记收货表单同源同公式）。PROC-UX：批次追踪事实面经既有质检查询/
-// 追溯/库存视图端点并行读取（403/失败 → null → 该面不可见），客户端组合时间线。
-// PROC-2：自 console-entry 拆出（TD-PROC-005 增长点，同 bom-host.ts 范式）；行为不变。
+// U3-PROC-4 / PROC-2：收货控制台宿主——收货区迁移至 Preact（U3-PROC-4）；PROC-2 自
+// console-entry 拆出（TD-PROC-005 增长点，同 bom-host.ts 范式），并随采购域子路由化成为
+// #/procurement/goods-receipts 的路由视图：节段自身携带 data-route-view、直接挂工作区根
+// （与其它商业控制台宿主同口径；挂载与否由 procurement-view 按该路由可见性决定）。详情经
+// 桥轨 additive GET /api/v1/goods-receipts/:id，失败回退列表行；可续收订单行/库位选项与原
+// vanilla 登记收货表单同源同公式。PROC-UX：批次追踪事实面经既有质检查询/追溯/库存视图端点
+// 并行读取（403/失败 → null → 该面不可见），客户端组合时间线。
 import type { OperationsViewContext } from '../operations-view-ports';
 import { el } from '../../dom';
 import type { GoodsReceiptConsolePorts } from './gr-ports';
 
 export function appendGoodsReceiptConsole(
   context: OperationsViewContext,
-  target: HTMLElement,
+  workspace: HTMLElement,
 ): void {
   const { controller, permissions } = context;
   const recordText = context.ports.recordText;
@@ -79,7 +80,8 @@ export function appendGoodsReceiptConsole(
   };
   const section = el('section', 'commercial-console goods-receipts-console');
   section.setAttribute('data-testid', 'kt-proc-goods-receipts');
-  target.append(section);
+  section.setAttribute('data-route-view', 'procurement/goods-receipts');
+  workspace.append(section);
   void import('./mount').then(({ mountCommercialConsole }) => {
     if (section.isConnected && typeof globalThis.document === 'object')
       mountCommercialConsole(section, { kind: 'goods-receipts', ports });

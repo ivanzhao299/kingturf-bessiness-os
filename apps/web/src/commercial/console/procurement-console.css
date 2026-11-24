@@ -1,6 +1,7 @@
 /* U3-PROC / PROC-2 采购域控制台样式：全部取值来自 kt tokens（ADR-0014），不写死颜色/间距。
    列表/抽屉/表格复用 @kingturf/ui components.css 原语，本文件只承载采购域增量：
-   ① 详情抽屉内对比表在窄容器下改按供应商堆叠的卡片（TD-PROC-008）。 */
+   ① 详情抽屉内对比表在窄容器下改按供应商堆叠的卡片（TD-PROC-008）；
+   ② 采购概览可点入子路由的汇总卡（TD-PROC-010）。 */
 
 /* ===== ① 对比表 · 窄容器堆叠卡片 ===== */
 /* 卡片纵向堆叠、宽度不超过所在容器（抽屉体），不产生横向滚动。 */
@@ -69,4 +70,22 @@
 .proc-quote-line:first-child {
   padding-top: 0;
   border-top: 0;
+}
+
+/* ===== ② 采购概览 · 可点汇总卡 ===== */
+/* 可点入子路由的汇总卡是指向该路由的锚点：沿用指标卡的外观与文案，只去掉链接默认样式，
+   并给出悬停与键盘焦点反馈（同治理域概览的 a.metric）。 */
+a.procurement-summary-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+a.procurement-summary-link:hover {
+  color: var(--kt-color-brand-strong);
+}
+
+a.procurement-summary-link:focus-visible {
+  outline: 2px solid var(--kt-color-info);
+  outline-offset: 2px;
 }

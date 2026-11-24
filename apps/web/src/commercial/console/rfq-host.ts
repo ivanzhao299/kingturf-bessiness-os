@@ -1,12 +1,13 @@
-// U3-PROC-2：询价控制台宿主——RFQ 区迁移至 Preact（同供应商宿主口径：挂
-// procurement-workbench 面板内、不带 data-route-view；详情经桥轨 additive
-// GET /api/v1/procurement-rfqs/:id，失败回退列表行）。
-// PROC-2：自 console-entry 拆出（TD-PROC-005 增长点，同 bom-host.ts 范式）；行为不变。
+// U3-PROC-2 / PROC-2：询价控制台宿主——RFQ 区迁移至 Preact（U3-PROC-2）；PROC-2 自
+// console-entry 拆出（TD-PROC-005 增长点，同 bom-host.ts 范式），并随采购域子路由化成为
+// #/procurement/rfqs 的路由视图：节段自身携带 data-route-view、直接挂工作区根（与其它商业
+// 控制台宿主同口径；挂载与否由 procurement-view 按该路由可见性决定）。详情经桥轨 additive
+// GET /api/v1/procurement-rfqs/:id，失败回退列表行。
 import type { OperationsViewContext } from '../operations-view-ports';
 import { el } from '../../dom';
 import type { RfqConsolePorts } from './rfq-ports';
 
-export function appendRfqConsole(context: OperationsViewContext, target: HTMLElement): void {
+export function appendRfqConsole(context: OperationsViewContext, workspace: HTMLElement): void {
   const { controller, permissions } = context;
   const recordText = context.ports.recordText;
   // 物料版本选项与原 vanilla 采购询价表单同源（已发布制造物料版本行）。
@@ -39,7 +40,8 @@ export function appendRfqConsole(context: OperationsViewContext, target: HTMLEle
   };
   const section = el('section', 'commercial-console rfqs-console');
   section.setAttribute('data-testid', 'kt-proc-rfqs');
-  target.append(section);
+  section.setAttribute('data-route-view', 'procurement/rfqs');
+  workspace.append(section);
   void import('./mount').then(({ mountCommercialConsole }) => {
     if (section.isConnected && typeof globalThis.document === 'object')
       mountCommercialConsole(section, { kind: 'rfqs', ports });

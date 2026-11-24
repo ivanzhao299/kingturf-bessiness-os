@@ -1,16 +1,17 @@
-// U3-PROC-3：采购单控制台宿主——PO 区迁移至 Preact（同供应商/询价宿主口径：挂
-// procurement-workbench 面板内、不带 data-route-view；详情经桥轨 additive
-// GET /api/v1/purchase-orders/:id，失败回退列表行；采购合同文档工作流随控制台
-// 迁移——PURCHASE 主体文档在 vanilla 仅挂 PO 卡片，PO 卡片退役则文档链唯一
-// 挂载点消失，故等价迁移至详情抽屉）。
-// PROC-2：自 console-entry 拆出（TD-PROC-005 增长点，同 bom-host.ts 范式）；行为不变。
+// U3-PROC-3 / PROC-2：采购单控制台宿主——PO 区迁移至 Preact（U3-PROC-3）；PROC-2 自
+// console-entry 拆出（TD-PROC-005 增长点，同 bom-host.ts 范式），并随采购域子路由化成为
+// #/procurement/purchase-orders 的路由视图：节段自身携带 data-route-view、直接挂工作区根
+// （与其它商业控制台宿主同口径；挂载与否由 procurement-view 按该路由可见性决定）。详情经
+// 桥轨 additive GET /api/v1/purchase-orders/:id，失败回退列表行；采购合同文档工作流随控制台
+// 迁移——PURCHASE 主体文档在 vanilla 仅挂 PO 卡片，PO 卡片退役则文档链唯一挂载点消失，
+// 故等价迁移至详情抽屉。
 import type { OperationsViewContext } from '../operations-view-ports';
 import { el } from '../../dom';
 import type { PurchaseOrderConsolePorts } from './po-ports';
 
 export function appendPurchaseOrderConsole(
   context: OperationsViewContext,
-  target: HTMLElement,
+  workspace: HTMLElement,
 ): void {
   const { controller, permissions } = context;
   const recordText = context.ports.recordText;
@@ -65,7 +66,8 @@ export function appendPurchaseOrderConsole(
   };
   const section = el('section', 'commercial-console purchase-orders-console');
   section.setAttribute('data-testid', 'kt-proc-purchase-orders');
-  target.append(section);
+  section.setAttribute('data-route-view', 'procurement/purchase-orders');
+  workspace.append(section);
   void import('./mount').then(({ mountCommercialConsole }) => {
     if (section.isConnected && typeof globalThis.document === 'object')
       mountCommercialConsole(section, { kind: 'purchase-orders', ports });

@@ -1,12 +1,16 @@
-// U3-PROC-1：供应商控制台宿主——供应商区迁移至 Preact。suppliers 非独立 AppRoute，
-// 宿主挂载于 procurement-workbench 面板内且刻意不携带 data-route-view（父面板的
-// procurement 路由可见性统一治理——挂工作区根会在其它路由下常显，属接线缺陷）。
-// PROC-2：自 console-entry 拆出（TD-PROC-005 增长点，同 bom-host.ts 范式）；行为不变。
+// U3-PROC-1 / PROC-2：供应商控制台宿主——供应商区迁移至 Preact（U3-PROC-1）；PROC-2 自
+// console-entry 拆出（TD-PROC-005 增长点，同 bom-host.ts 范式），并随采购域子路由化成为
+// #/procurement/suppliers 的路由视图：节段自身携带 data-route-view、直接挂工作区根（与其它
+// 商业控制台宿主同口径；挂载与否由 procurement-view 按该路由可见性决定）。详情只读列表快照；
+// 新建经 legacy POST 同链。
 import type { OperationsViewContext } from '../operations-view-ports';
 import { el } from '../../dom';
 import type { SupplierConsolePorts } from './supplier-ports';
 
-export function appendSupplierConsole(context: OperationsViewContext, target: HTMLElement): void {
+export function appendSupplierConsole(
+  context: OperationsViewContext,
+  workspace: HTMLElement,
+): void {
   const { controller, permissions } = context;
   const recordText = context.ports.recordText;
   // 物料版本选项与原 vanilla 物料准入表单同源（已发布制造物料版本行）。
@@ -39,7 +43,8 @@ export function appendSupplierConsole(context: OperationsViewContext, target: HT
   };
   const section = el('section', 'commercial-console suppliers-console');
   section.setAttribute('data-testid', 'kt-proc-suppliers');
-  target.append(section);
+  section.setAttribute('data-route-view', 'procurement/suppliers');
+  workspace.append(section);
   void import('./mount').then(({ mountCommercialConsole }) => {
     if (section.isConnected && typeof globalThis.document === 'object')
       mountCommercialConsole(section, { kind: 'suppliers', ports });

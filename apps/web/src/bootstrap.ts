@@ -132,6 +132,7 @@ import { appendWorkspaceFinance } from './commercial/workspace-finance';
 import { appendWorkspaceOperations } from './commercial/workspace-operations';
 import { assignCommercialRouteViews, assignLegacyRouteViews } from './commercial/workspace-routes';
 import { appendLegacyCommercialPanels } from './commercial/workspace-legacy-panels';
+import { procurementSubRoutes } from './commercial/procurement-surfaces';
 import type { Viewport, RoleWorkspaceProfile } from './shared/shell-types';
 export type { Viewport, RoleWorkspaceProfile } from './shared/shell-types';
 import { requestId } from './http';
@@ -173,6 +174,8 @@ export function visibleAppRoutes(permissions: ReadonlySet<string>): ReadonlySet<
   addWhen('business-risks', ['risk:', 'risk-policy:']);
   addWhen('manufacturing-master', ['manufacturing-item:', 'bom:', 'routing:']);
   addWhen('procurement', ['supplier:', 'procurement:', 'inventory:']);
+  // PROC-2：采购子路由各按其控制台主数据源的读权限注册（概览的前缀规则不连带放行子路由）。
+  for (const route of procurementSubRoutes(permissions)) routes.add(route);
   addWhen('material-planning', ['mrp:', 'mrp-policy:']);
   addWhen('production-orders', ['production:', 'manufacturing-cost:']);
   addWhen('quality-inspection', [

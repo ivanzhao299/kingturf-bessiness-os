@@ -265,14 +265,24 @@ test('shows supplier qualification, received purchase order, receipt, and derive
   page,
 }, testInfo) => {
   await openAuthenticatedWorkspace(page);
+  // PROC-2：供应商 / 询价 / 采购订单 / 收货四个控制台各自成为一条采购子路由——逐条进入，
+  // 在该路由的控制台宿主内断言；供应商报价与批次库存两块台账留在概览页（#/procurement）。
+  await openRoute(page, 'procurement/suppliers');
+  const suppliers = page.locator('[data-testid="kt-proc-suppliers"]');
+  await expect(suppliers.getByText(/SUP-KT-YARN-001 · 青岛金特夫草纱战略供应商/u)).toBeVisible();
+  await openRoute(page, 'procurement/rfqs');
+  const rfqs = page.locator('[data-testid="kt-proc-rfqs"]');
+  await expect(rfqs.getByText(/RFQ-KT-YARN-2026-001 · 已签发/u)).toBeVisible();
+  await openRoute(page, 'procurement/purchase-orders');
+  const purchaseOrders = page.locator('[data-testid="kt-proc-purchase-orders"]');
+  await expect(purchaseOrders.getByText(/PO-KT-YARN-2026-001 · 已收货/u)).toBeVisible();
+  await openRoute(page, 'procurement/goods-receipts');
+  const receipts = page.locator('[data-testid="kt-proc-goods-receipts"]');
+  await expect(receipts.getByText(/收货 GR-KT-YARN-2026-001/u)).toBeVisible();
   await openRoute(page, 'procurement');
   const workbench = page.locator('.procurement-workbench');
   await expect(workbench).toBeVisible();
-  await expect(workbench.getByText(/SUP-KT-YARN-001 · 青岛金特夫草纱战略供应商/u)).toBeVisible();
-  await expect(workbench.getByText(/RFQ-KT-YARN-2026-001 · 已签发/u)).toBeVisible();
   await expect(workbench.getByText(/报价 SQ-KT-YARN-2026-001/u)).toBeVisible();
-  await expect(workbench.getByText(/PO-KT-YARN-2026-001 · 已收货/u)).toBeVisible();
-  await expect(workbench.getByText(/收货 GR-KT-YARN-2026-001/u)).toBeVisible();
   await expect(workbench.getByText(/批次 LOT-KT-YARN-20260920-A/u)).toBeVisible();
   await expect(workbench.getByText(/RAW-A01 · 结存 3704.5/u)).toBeVisible();
   await testInfo.attach('procurement-inventory-desktop', {
