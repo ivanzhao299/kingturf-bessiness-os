@@ -12,6 +12,13 @@
   align-items: start;
 }
 
+/* 窄屏：主从两列折为单列。固定 280px 的左栏在手机上会把表格区挤到几十像素宽。 */
+@media (max-width: 900px) {
+  .console-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .console-split-tree {
   border: 1px solid var(--kt-color-border);
   border-radius: var(--kt-radius-md);
