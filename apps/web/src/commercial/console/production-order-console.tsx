@@ -3,7 +3,7 @@
 // 汇总卡（兼作筛选）/ 主表（状态徽章 + 完工进度条 + 行级下一步动作）/ 详情抽屉（工序
 // 进度、物料分配、报工时间线）/ 新建与流转抽屉）。默认视图沿用路由加载的全量快照并按
 // legacy 卡片的作业队列排序；状态或关键字生效时切换为服务端分页（工单 id keyset）。
-// e2e 契约：工单号独占文本元素（kt-po-number）；详情证据（物料台账/成品序列/事件）在
+// e2e 契约：工单号独占文本元素（kt-wo-number）；详情证据（物料台账/成品序列/事件）在
 // 详情抽屉内，各条目独占一个文本元素。
 import { signal } from '@preact/signals';
 import { DataTable, PageHeader, StatusBadge, type DataTableColumn } from '@kingturf/ui';
@@ -76,7 +76,7 @@ const columns = (
     field: (row) => text(state, row, 'orderNumber', 'order_number'),
     render: (row) => (
       <span class="po-cell">
-        <strong data-testid="kt-po-number">
+        <strong data-testid="kt-wo-number">
           {text(state, row, 'orderNumber', 'order_number', '—')}
         </strong>
         <small class="po-muted">{text(state, row, 'sourceReference', 'source_reference')}</small>
@@ -110,7 +110,7 @@ const columns = (
     render: (row) => {
       const progress = progressOf(row);
       return (
-        <span class="po-progress" data-testid="kt-po-progress">
+        <span class="po-progress" data-testid="kt-wo-progress">
           <span class="po-progress-text">
             {`${formatQuantity(progress.completed)} / ${formatQuantity(progress.planned)}`}
           </span>
@@ -151,7 +151,7 @@ const columns = (
           <button
             type="button"
             class="secondary compact"
-            data-testid="kt-po-open"
+            data-testid="kt-wo-open"
             onClick={() => {
               state.open(row);
             }}
@@ -162,7 +162,7 @@ const columns = (
             <button
               type="button"
               class="secondary compact"
-              data-testid="kt-po-next-action"
+              data-testid="kt-wo-next-action"
               disabled={state.loading}
               onClick={() => {
                 state.openTransition(row, next.action);
@@ -193,7 +193,7 @@ const SummaryCards = ({ state }: Readonly<{ state: ProductionOrderViewState }>) 
   const reported = state.snapshot.reduce((sum, row) => sum + records(row.reports).length, 0);
   const rolled = state.snapshot.reduce((sum, row) => sum + records(row.rolls).length, 0);
   return (
-    <div class="po-summary-wrap" data-testid="kt-po-summary">
+    <div class="po-summary-wrap" data-testid="kt-wo-summary">
       <div class="po-summary" role="group" aria-label="工单状态汇总">
         {STATUS_FILTERS.filter((status) => status !== 'ALL').map((status) => {
           const active = state.statusFilter === status;
@@ -204,7 +204,7 @@ const SummaryCards = ({ state }: Readonly<{ state: ProductionOrderViewState }>) 
               class={active ? 'po-summary-card active' : 'po-summary-card'}
               data-tone={statusTone(status)}
               aria-pressed={active ? 'true' : 'false'}
-              data-testid={`kt-po-status-${status.toLowerCase()}`}
+              data-testid={`kt-wo-status-${status.toLowerCase()}`}
               onClick={() => {
                 state.setStatusFilter(active ? 'ALL' : status);
               }}
@@ -216,7 +216,7 @@ const SummaryCards = ({ state }: Readonly<{ state: ProductionOrderViewState }>) 
           );
         })}
       </div>
-      <p class="console-hint" data-testid="kt-po-summary-total">
+      <p class="console-hint" data-testid="kt-wo-summary-total">
         {`共 ${String(state.snapshot.length)} 张工单 · 累计报工 ${String(reported)} 条 · 成品卷 ${String(rolled)} 卷`}
       </p>
     </div>
@@ -226,7 +226,7 @@ const SummaryCards = ({ state }: Readonly<{ state: ProductionOrderViewState }>) 
 const SearchBar = ({ state }: Readonly<{ state: ProductionOrderViewState }>) => (
   <form
     class="console-filters po-search"
-    data-testid="kt-po-search-form"
+    data-testid="kt-wo-search-form"
     onSubmit={(event) => {
       event.preventDefault();
       state.applySearch();
@@ -235,20 +235,20 @@ const SearchBar = ({ state }: Readonly<{ state: ProductionOrderViewState }>) => 
     <input
       type="search"
       placeholder="搜索工单号、产品 SKU 或名称（回车搜索）"
-      data-testid="kt-po-search"
+      data-testid="kt-wo-search"
       value={state.search}
       onInput={(event) => {
         state.setSearch((event.target as { value?: string }).value ?? '');
       }}
     />
-    <button type="submit" class="secondary compact" data-testid="kt-po-search-submit">
+    <button type="submit" class="secondary compact" data-testid="kt-wo-search-submit">
       搜索
     </button>
     {state.search !== '' || state.appliedQuery !== '' ? (
       <button
         type="button"
         class="secondary compact"
-        data-testid="kt-po-search-clear"
+        data-testid="kt-wo-search-clear"
         onClick={state.clearSearch}
       >
         清除
@@ -258,7 +258,7 @@ const SearchBar = ({ state }: Readonly<{ state: ProductionOrderViewState }>) => 
 );
 
 const ProductionOrderView = (state: ProductionOrderViewState) => (
-  <div class="commercial-console-page" data-testid="kt-po-page">
+  <div class="commercial-console-page" data-testid="kt-wo-page">
     <PageHeader
       title="工单管理"
       description="按状态跟踪生产工单；行级下达、开工、完工与关闭，详情聚合工序进度、物料分配与报工记录"
@@ -267,7 +267,7 @@ const ProductionOrderView = (state: ProductionOrderViewState) => (
           <button
             type="button"
             class="secondary"
-            data-testid="kt-po-refresh"
+            data-testid="kt-wo-refresh"
             disabled={state.loading}
             onClick={() => {
               void state.runRefresh();
@@ -279,7 +279,7 @@ const ProductionOrderView = (state: ProductionOrderViewState) => (
             <button
               type="button"
               class="primary"
-              data-testid="kt-po-create"
+              data-testid="kt-wo-create"
               onClick={state.openCreate}
             >
               ＋ 新建生产工单
@@ -291,12 +291,12 @@ const ProductionOrderView = (state: ProductionOrderViewState) => (
     <SummaryCards state={state} />
     <SearchBar state={state} />
     {state.loadError !== '' ? (
-      <p class="console-error" role="alert" data-testid="kt-po-load-error">
+      <p class="console-error" role="alert" data-testid="kt-wo-load-error">
         {state.loadError}
       </p>
     ) : null}
     {state.actionError !== '' ? (
-      <p class="console-error" role="alert" data-testid="kt-po-action-error">
+      <p class="console-error" role="alert" data-testid="kt-wo-action-error">
         {state.actionError}
       </p>
     ) : null}

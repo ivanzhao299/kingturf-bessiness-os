@@ -201,7 +201,7 @@ export const ProgressBar = ({
 };
 
 const OperationSteps = ({ steps }: Readonly<{ steps: readonly StepView[] }>) => (
-  <ol class="com-flow-steps po-steps" data-testid="kt-po-operation-steps" aria-label="工序进度">
+  <ol class="com-flow-steps po-steps" data-testid="kt-wo-operation-steps" aria-label="工序进度">
     {steps.map((step, index) => {
       const badge = stepBadgeOf(step);
       return (
@@ -210,7 +210,7 @@ const OperationSteps = ({ steps }: Readonly<{ steps: readonly StepView[] }>) => 
           class="com-flow-step"
           data-step={String(step.sequence)}
           data-state={stepStateOf(step)}
-          data-testid="kt-po-operation-step"
+          data-testid="kt-wo-operation-step"
         >
           <span class="com-flow-marker" aria-hidden="true">
             {step.completed ? '✓' : String(index + 1)}
@@ -242,7 +242,7 @@ const StateTrack = ({ state, row }: DetailProps & Readonly<{ row: ProductionOrde
   const labelOf: Labeler = (value) =>
     STATUS_LABELS[String(value)] ?? state.ports.businessStateLabel(value);
   return (
-    <ol class="po-state-track" data-testid="kt-po-state-track" aria-label="工单状态轨迹">
+    <ol class="po-state-track" data-testid="kt-wo-state-track" aria-label="工单状态轨迹">
       {STATE_TRACK.map((status, at) => (
         <li key={status} class="po-state-node" data-state={nodeStateOf(index, at)}>
           {labelOf(status)}
@@ -290,15 +290,15 @@ const ExecutionMount = ({ state }: DetailProps) => {
     String(records(row.materials).length),
     String(records(row.rolls).length),
   ].join(':');
-  return <div key={version} class="po-execution" ref={attach} data-testid="kt-po-execution" />;
+  return <div key={version} class="po-execution" ref={attach} data-testid="kt-wo-execution" />;
 };
 
 const ProgressSection = ({
   progress,
   steps,
 }: Readonly<{ progress: OrderProgress; steps: readonly StepView[] }>) => (
-  <Section title="工序进度" testId="kt-po-progress-section">
-    <p class="po-progress-caption" data-testid="kt-po-progress-caption">
+  <Section title="工序进度" testId="kt-wo-progress-section">
+    <p class="po-progress-caption" data-testid="kt-wo-progress-caption">
       {`完工进度 ${formatQuantity(progress.completed)} / ${formatQuantity(progress.planned)}（各工序累计良品的最小值）`}
     </p>
     <ProgressBar ratio={progress.ratio} label="工单完工进度" />
@@ -315,7 +315,7 @@ const ProgressSection = ({
 const RequirementSection = ({
   requirements,
 }: Readonly<{ requirements: readonly ProductionOrderRow[] }>) => (
-  <Section title="物料需求与分配" testId="kt-po-requirements-section">
+  <Section title="物料需求与分配" testId="kt-wo-requirements-section">
     {requirements.length > 0 ? (
       <ul class="po-list">
         {requirements.map((item) => {
@@ -324,7 +324,7 @@ const RequirementSection = ({
             <li
               key={`${idOf(item.componentItemVersionId)}-${String(item.lineNumber)}`}
               class="po-line"
-              data-testid="kt-po-requirement"
+              data-testid="kt-wo-requirement"
             >
               <strong>{textOf(item.sku)}</strong>
               <span>{textOf(item.itemName)}</span>
@@ -394,7 +394,7 @@ const rollItems = (state: ProductionOrderViewState, row: ProductionOrderRow): re
   records(row.rolls).map((item, index) => ({
     key: idOf(item.id) || String(index),
     body: (
-      <span data-testid="kt-po-roll">
+      <span data-testid="kt-wo-roll">
         {`${state.ports.recordText(item, 'rollNumber', 'roll_number')} · ${state.ports.recordText(item, 'quantity', 'quantity')} · ${state.ports.businessStateLabel(item.status)}`}
       </span>
     ),
@@ -451,7 +451,7 @@ const DrawerFooter = ({ state, row }: DetailProps & Readonly<{ row: ProductionOr
       <button
         type="button"
         class="primary"
-        data-testid="kt-po-transition"
+        data-testid="kt-wo-transition"
         onClick={() => {
           state.openTransition(row, next.action);
         }}
@@ -483,7 +483,7 @@ export const ProductionOrderDetailDrawer = ({ state }: DetailProps) => {
       }}
       footer={<DrawerFooter state={state} row={row} />}
     >
-      <div class="console-summary" data-testid="kt-po-detail-summary">
+      <div class="console-summary" data-testid="kt-wo-detail-summary">
         <p>
           <StatusBadge tone={statusTone(status)}>{labelOf(status)}</StatusBadge>
           <span class="console-label">产品</span>
@@ -504,41 +504,41 @@ export const ProductionOrderDetailDrawer = ({ state }: DetailProps) => {
       </div>
       <StateTrack state={state} row={row} />
       {state.detailLoading ? (
-        <p class="console-label" data-testid="kt-po-detail-loading">
+        <p class="console-label" data-testid="kt-wo-detail-loading">
           详情加载中…
         </p>
       ) : null}
       {state.submitError !== '' ? (
-        <p class="console-error" role="alert" data-testid="kt-po-submit-error">
+        <p class="console-error" role="alert" data-testid="kt-wo-submit-error">
           {state.submitError}
         </p>
       ) : null}
       <ProgressSection progress={progressOf(detail ?? row)} steps={stepsOf(detail, row)} />
       {requirements === null ? null : <RequirementSection requirements={requirements} />}
-      <Section title="物料台账" testId="kt-po-ledger-section">
+      <Section title="物料台账" testId="kt-wo-ledger-section">
         <ItemList
           empty="尚未领料"
           items={ledgerItems(state, row)}
-          itemTestId="kt-po-material-entry"
+          itemTestId="kt-wo-material-entry"
         />
       </Section>
-      <Section title="报工记录" testId="kt-po-reports-section">
+      <Section title="报工记录" testId="kt-wo-reports-section">
         <Timeline
           empty="暂无报工记录"
           items={reportsOf(detail, row).map((item) => ({
             key: item.id || String(item.sequence),
             body: reportBody(item),
           }))}
-          itemTestId="kt-po-report"
+          itemTestId="kt-wo-report"
         />
       </Section>
-      <Section title="成品序列" testId="kt-po-rolls-section">
-        <ItemList empty="尚未入库" items={rollItems(state, row)} itemTestId="kt-po-roll-line" />
+      <Section title="成品序列" testId="kt-wo-rolls-section">
+        <ItemList empty="尚未入库" items={rollItems(state, row)} itemTestId="kt-wo-roll-line" />
       </Section>
-      <Section title="事件台账" testId="kt-po-events-section">
-        <Timeline empty="暂无事件记录" items={eventItems(state, row)} itemTestId="kt-po-event" />
+      <Section title="事件台账" testId="kt-wo-events-section">
+        <Timeline empty="暂无事件记录" items={eventItems(state, row)} itemTestId="kt-wo-event" />
       </Section>
-      <Section title="车间执行" testId="kt-po-execution-section">
+      <Section title="车间执行" testId="kt-wo-execution-section">
         <p class="console-hint">工序报工、领退料与成品卷入库沿用既有登记表单。</p>
         <ExecutionMount state={state} />
       </Section>

@@ -360,7 +360,7 @@ test('shows closed production execution with routing, material, reports, and ser
   await expect(workbench).toBeVisible();
   const row = workbench.locator('tbody tr').filter({ hasText: 'WO-KT-2026-001' });
   await expect(row).toHaveCount(1);
-  await expect(row.getByTestId('kt-po-number')).toHaveText('WO-KT-2026-001');
+  await expect(row.getByTestId('kt-wo-number')).toHaveText('WO-KT-2026-001');
   await expect(row).toContainText('FG-KT-PRO-50');
   await expect(row).toContainText('已关闭');
   await expect(row).toContainText('1000 / 1000');
@@ -384,14 +384,14 @@ test('shows closed production execution with routing, material, reports, and ser
   await page.keyboard.press('Escape');
   await expect(createForm).toBeHidden();
   // 详情抽屉：工序进度（三道工序全部完成）、物料台账、成品序列与状态轨迹。
-  await row.getByTestId('kt-po-open').click();
+  await row.getByTestId('kt-wo-open').click();
   const drawer = page.locator('.detail-drawer');
   await expect(drawer).toBeVisible();
-  await expect(drawer.getByTestId('kt-po-operation-step')).toHaveCount(3);
+  await expect(drawer.getByTestId('kt-wo-operation-step')).toHaveCount(3);
   await expect(drawer.locator('.com-flow-step[data-state="done"]')).toHaveCount(3);
   await expect(drawer.getByText('领料 1287.5')).toBeVisible();
-  await expect(drawer.getByTestId('kt-po-roll')).toHaveText(/ROLL-KT-2026-001 · 1000.*待检隔离/u);
-  const track = drawer.getByTestId('kt-po-state-track');
+  await expect(drawer.getByTestId('kt-wo-roll')).toHaveText(/ROLL-KT-2026-001 · 1000.*待检隔离/u);
+  const track = drawer.getByTestId('kt-wo-state-track');
   await expect(track.locator('.po-state-node')).toHaveCount(5);
   await expect(track.locator('[data-state="current"]')).toHaveText('已关闭');
   await testInfo.attach('production-execution-drawer', {
@@ -403,7 +403,7 @@ test('shows closed production execution with routing, material, reports, and ser
   // 领退料演示数据在另一张进行中工单上（WO-KT-2026-RETURN-DEMO：领料 10、退料 2）——
   // 旧断言作用域是整张工作台（多卡并存），现按工单拆分到各自的详情抽屉。
   const returnRow = workbench.locator('tbody tr').filter({ hasText: 'WO-KT-2026-RETURN-DEMO' });
-  await returnRow.getByTestId('kt-po-open').click();
+  await returnRow.getByTestId('kt-wo-open').click();
   const returnDrawer = page.locator('.detail-drawer');
   await expect(returnDrawer).toBeVisible();
   await expect(returnDrawer.getByText('领料 10')).toBeVisible();

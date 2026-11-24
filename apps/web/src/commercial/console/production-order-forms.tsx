@@ -55,7 +55,7 @@ const submitError = (state: ProductionOrderViewState, testId: string) =>
 
 export const ProductionOrderCreateDrawer = ({ state }: FormProps) => (
   <DetailDrawer title="新建生产工单" onClose={state.closeForm}>
-    {submitError(state, 'kt-po-create-error')}
+    {submitError(state, 'kt-wo-create-error')}
     <FormSection
       title="建立生产工单"
       description="工单引用已发布物料和工艺版本；保存时固定全部标准工序快照。"
@@ -78,7 +78,7 @@ export const ProductionOrderTransitionDrawer = ({ state }: FormProps) => {
     STATUS_LABELS[String(value)] ?? ports.businessStateLabel(value);
   return (
     <DetailDrawer title={`${label} · ${orderNumber}`} onClose={state.closeForm}>
-      <div class="console-summary" data-testid="kt-po-transition-summary">
+      <div class="console-summary" data-testid="kt-wo-transition-summary">
         <p>
           <span class="console-label">工单</span>
           {orderNumber}
@@ -92,7 +92,7 @@ export const ProductionOrderTransitionDrawer = ({ state }: FormProps) => {
           <StatusBadge tone="success">{stateLabel(TARGET_STATE[pending.action])}</StatusBadge>
         </p>
       </div>
-      {submitError(state, 'kt-po-transition-error')}
+      {submitError(state, 'kt-wo-transition-error')}
       <FormSection
         title={label}
         description="状态决定会追加到不可变工单事件台账，并执行完整性门禁。"

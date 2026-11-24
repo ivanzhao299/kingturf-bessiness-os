@@ -64,7 +64,7 @@ wire 文本的 JSON 键序与 legacy 不同（zod 序列化器按 schema 键序�
   commercial-ux.css 的 .com-meter*/.com-flow*）。
 - **顶部状态汇总卡（兼作筛选）**：六状态计数卡（点选即按状态过滤、再点回全部）+
   「共 N 张工单 · 累计报工 N 条 · 成品卷 N 卷」总览行。
-- **主表 DataTable**：工单号（独占元素 kt-po-number + 来源编号次行）/ 产品（SKU +
+- **主表 DataTable**：工单号（独占元素 kt-wo-number + 来源编号次行）/ 产品（SKU +
   名称）/ 计划数量 / **完工进度**（已完成数 / 计划数 + aria progressbar 进度条；
   完成数 = 各工序累计良品（封顶计划数量）的最小值——与 DB 完工门禁的数量条件同口径）
   / 状态徽章 / 交期 / 行级操作（查看 + 下一步动作：下达工单/开始生产/完工确认/
@@ -90,8 +90,8 @@ wire 文本的 JSON 键序与 legacy 不同（zod 序列化器按 schema 键序�
 - 默认视图沿用路由加载的全量快照并按 **legacy 卡片的作业队列排序**（进行中 →
   已放行 → 已完成 → 草稿 → 已关闭）；状态/关键字生效时切换为服务端分页（工单 id
   keyset，页窗口 50）。
-- e2e 契约：工单号独占文本元素（kt-po-number）；详情证据各条目独占文本元素
-  （kt-po-material-entry / kt-po-report / kt-po-roll / kt-po-event）。
+- e2e 契约：工单号独占文本元素（kt-wo-number）；详情证据各条目独占文本元素
+  （kt-wo-material-entry / kt-wo-report / kt-wo-roll / kt-wo-event）。
 
 ## 3. 退役（裁定 17 语义）
 
@@ -136,10 +136,10 @@ evidence-grid` 规则；`.production-actions`（执行按钮行）、`.productio
 | 断言（改前）                                        | 改后                                                                                                                    | 理由                                       |
 | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
 | `production-workbench` 可见（移动用例 L124）        | 不变                                                                                                                    | 面板与 data-testid 保持                    |
-| `WO-KT-2026-001 · FG-KT-PRO-50` 同一文本可见        | 行内 `kt-po-number` 独占 `WO-KT-2026-001` + 行包含 `FG-KT-PRO-50`（两元素）                                             | 卡片标题合并文本 → 列表两列                |
+| `WO-KT-2026-001 · FG-KT-PRO-50` 同一文本可见        | 行内 `kt-wo-number` 独占 `WO-KT-2026-001` + 行包含 `FG-KT-PRO-50`（两元素）                                             | 卡片标题合并文本 → 列表两列                |
 | `.production-operation.done` 计 3                   | 详情抽屉 `.com-flow-step[data-state="done"]` 计 3（先点行级查看）                                                       | 工序流从卡片迁入抽屉步骤视图               |
 | `领料 1287.5` / `领料 10` / `退料 2` 可见           | 不变文案，定位器改为抽屉内                                                                                              | 物料台账迁入抽屉                           |
-| `ROLL-KT-2026-001 · 1000.*待检隔离` 可见            | 不变文案，定位器 `kt-po-roll`（抽屉）                                                                                   | 成品序列迁入抽屉                           |
+| `ROLL-KT-2026-001 · 1000.*待检隔离` 可见            | 不变文案，定位器 `kt-wo-roll`（抽屉）                                                                                   | 成品序列迁入抽屉                           |
 | `草稿 → 已放行 → 进行中 → 已完成 → 已关闭` 一段文本 | 状态轨迹 5 节点，`[data-state="current"]` 文本 = `已关闭`                                                               | 箭头改为 CSS ::before，不再是 DOM 文本     |
 | （新增）                                            | 列表行包含 `1000 / 1000`（完工进度）与 `已关闭` 徽章；截图 production-orders-desktop + production-execution-drawer 两张 | 进度条为本批 additive 呈现；截图随结构更新 |
 | （新增）                                            | 新建抽屉 plannedQuantity 填 2.5 → 原生 validity.stepMismatch 全 false（TD-UI-009 同款守卫）                             | 数字字段小数可提交                         |

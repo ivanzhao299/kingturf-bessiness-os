@@ -160,7 +160,7 @@ const optional = (host: TestElement, id: string): TestElement | null =>
 
 // 搜索框无 name 语义（data-testid 定位）；表单字段按 name 定位。
 const typeSearch = async (host: TestElement, value: string): Promise<void> => {
-  const control = byTestId(host, 'kt-po-search');
+  const control = byTestId(host, 'kt-wo-search');
   control.value = value;
   control.dispatchEvent(new Event('input', { bubbles: true }));
   await flush();
@@ -201,7 +201,7 @@ describe('U3-MFG-4 工单控制台：默认视图与 e2e 文案契约', () => {
     const ports = portsFor(rows);
     const host = mount(ports);
     const numbers = host
-      .querySelectorAll('[data-testid="kt-po-number"]')
+      .querySelectorAll('[data-testid="kt-wo-number"]')
       .map((node) => (node as TestElement).textContent);
     expect(numbers).toEqual(['WO-ACTIVE', 'WO-REL', 'WO-KT-2026-001', 'WO-CLOSED']);
     expect(ports.fetchPage).not.toHaveBeenCalled();
@@ -220,18 +220,18 @@ describe('U3-MFG-4 工单控制台：默认视图与 e2e 文案契约', () => {
       nextCursor: null,
     });
     const host = mount(portsFor(rows, [], { fetchPage }));
-    expect(byTestId(host, 'kt-po-summary-total').textContent).toContain('共 3 张工单');
-    expect(byTestId(host, 'kt-po-status-draft').textContent).toContain('2');
-    expect(byTestId(host, 'kt-po-status-in_progress').textContent).toContain('0');
-    byTestId(host, 'kt-po-status-draft').click();
+    expect(byTestId(host, 'kt-wo-summary-total').textContent).toContain('共 3 张工单');
+    expect(byTestId(host, 'kt-wo-status-draft').textContent).toContain('2');
+    expect(byTestId(host, 'kt-wo-status-in_progress').textContent).toContain('0');
+    byTestId(host, 'kt-wo-status-draft').click();
     await flush();
     expect(fetchPage).toHaveBeenCalledExactlyOnceWith({ state: 'DRAFT', limit: 50 });
     expect(
       host
-        .querySelectorAll('[data-testid="kt-po-number"]')
+        .querySelectorAll('[data-testid="kt-wo-number"]')
         .map((node) => (node as TestElement).textContent),
     ).toEqual(['WO-PAGE']);
-    byTestId(host, 'kt-po-status-draft').click();
+    byTestId(host, 'kt-wo-status-draft').click();
     await flush();
     expect(host.textContent).toContain('WO-3');
   });
@@ -247,16 +247,16 @@ describe('U3-MFG-4 工单控制台：默认视图与 e2e 文案契约', () => {
     const host = mount(
       portsFor(rows, ['production:plan', 'production:report', 'production:close']),
     );
-    expect(optional(host, 'kt-po-create')).not.toBeNull();
+    expect(optional(host, 'kt-wo-create')).not.toBeNull();
     const readonly = mount(portsFor(rows));
-    expect(optional(readonly, 'kt-po-create')).toBeNull();
+    expect(optional(readonly, 'kt-wo-create')).toBeNull();
     // 行序为 legacy 作业队列（进行中 → 已放行 → 已完成 → 草稿 → 已关闭）。
     const labels = host
-      .querySelectorAll('[data-testid="kt-po-next-action"]')
+      .querySelectorAll('[data-testid="kt-wo-next-action"]')
       .map((node) => (node as TestElement).textContent);
     expect(labels).toEqual(['完工确认', '开始生产', '关闭工单', '下达工单']);
     const readonlyLabels = readonly
-      .querySelectorAll('[data-testid="kt-po-next-action"]')
+      .querySelectorAll('[data-testid="kt-wo-next-action"]')
       .map((node) => (node as TestElement).textContent);
     expect(readonlyLabels).toEqual([]);
   });
@@ -267,11 +267,11 @@ describe('U3-MFG-4 工单控制台：默认视图与 e2e 文案契约', () => {
       .mockResolvedValue({ items: [], nextCursor: null });
     const host = mount(portsFor([order()], [], { fetchPage }));
     await typeSearch(host, ' KT-2026 ');
-    byTestId(host, 'kt-po-search-submit').click();
+    byTestId(host, 'kt-wo-search-submit').click();
     await flush();
     expect(fetchPage).toHaveBeenCalledExactlyOnceWith({ query: 'KT-2026', limit: 50 });
     expect(host.textContent).toContain('没有符合条件的生产工单');
-    byTestId(host, 'kt-po-search-clear').click();
+    byTestId(host, 'kt-wo-search-clear').click();
     await flush();
     expect(host.textContent).toContain('WO-KT-2026-001');
     const failing = portsFor([order()], [], {
@@ -279,9 +279,9 @@ describe('U3-MFG-4 工单控制台：默认视图与 e2e 文案契约', () => {
     });
     const broken = mount(failing);
     await typeSearch(broken, 'x');
-    byTestId(broken, 'kt-po-search-submit').click();
+    byTestId(broken, 'kt-wo-search-submit').click();
     await flush();
-    expect(byTestId(broken, 'kt-po-load-error').textContent).toBe('bridge down');
+    expect(byTestId(broken, 'kt-wo-load-error').textContent).toBe('bridge down');
   });
 
   it('筛选态继续加载按游标追加', async () => {
@@ -294,7 +294,7 @@ describe('U3-MFG-4 工单控制台：默认视图与 e2e 文案契约', () => {
       });
     const host = mount(portsFor([order()], [], { fetchPage }));
     await typeSearch(host, 'KT');
-    byTestId(host, 'kt-po-search-submit').click();
+    byTestId(host, 'kt-wo-search-submit').click();
     await flush();
     expect(host.textContent).toContain('已加载 1 条记录');
     const loadMore = host
@@ -306,7 +306,7 @@ describe('U3-MFG-4 工单控制台：默认视图与 e2e 文案契约', () => {
     expect(fetchPage).toHaveBeenLastCalledWith({ query: 'KT', limit: 50, cursor: 'cursor-1' });
     expect(
       host
-        .querySelectorAll('[data-testid="kt-po-number"]')
+        .querySelectorAll('[data-testid="kt-wo-number"]')
         .map((node) => (node as TestElement).textContent),
     ).toEqual(['WO-KT-2026-001', 'WO-2']);
   });
@@ -317,12 +317,12 @@ describe('U3-MFG-4 工单控制台：详情抽屉', () => {
     const row = order({ state: 'IN_PROGRESS' });
     const loadDetail = vi.fn().mockResolvedValue(detailRow());
     const host = mount(portsFor([row], [], { loadDetail }));
-    byTestId(host, 'kt-po-open').click();
+    byTestId(host, 'kt-wo-open').click();
     await flush();
     await flush();
     expect(loadDetail).toHaveBeenCalledExactlyOnceWith('wo-1');
     const drawer = drawerOf(host);
-    const steps = drawer.querySelectorAll('[data-testid="kt-po-operation-step"]');
+    const steps = drawer.querySelectorAll('[data-testid="kt-wo-operation-step"]');
     expect(steps).toHaveLength(2);
     expect(at(steps, 0).getAttribute('data-state')).toBe('done');
     expect(at(steps, 1).getAttribute('data-state')).toBe('current');
@@ -333,7 +333,7 @@ describe('U3-MFG-4 工单控制台：详情抽屉', () => {
     expect(drawer.textContent).toContain('良品 1000 / 计划 1000');
     expect(drawer.textContent).toContain('人工 60 分钟 · 设备 55 分钟');
     expect(drawer.querySelector('[role="progressbar"]')).not.toBeNull();
-    const requirement = byTestId(drawer, 'kt-po-requirement');
+    const requirement = byTestId(drawer, 'kt-wo-requirement');
     expect(requirement.textContent).toContain('RM-YARN');
     expect(requirement.textContent).toContain('需求 1287.5 KG');
     expect(requirement.textContent).toContain('已领 1285.5');
@@ -341,7 +341,7 @@ describe('U3-MFG-4 工单控制台：详情抽屉', () => {
     expect(drawer.textContent).toContain('簇绒完成');
     // 报工时间线的绝对时间经 dateTimeLabelOf 本地化——此处只钉文本存在，不钉时区。
     expect(drawer.textContent).toContain('→');
-    const track = byTestId(drawer, 'kt-po-state-track');
+    const track = byTestId(drawer, 'kt-wo-state-track');
     expect(
       track.querySelectorAll('.po-state-node').map((node) => (node as TestElement).textContent),
     ).toEqual(['草稿', '已放行', '进行中', '已完成', '已关闭']);
@@ -351,14 +351,14 @@ describe('U3-MFG-4 工单控制台：详情抽屉', () => {
   it('详情失败回退列表行就地推算（无服务端聚合也有步骤与台账）', async () => {
     const loadDetail = vi.fn().mockRejectedValue(new Error('detail down'));
     const host = mount(portsFor([order({ state: 'IN_PROGRESS' })], [], { loadDetail }));
-    byTestId(host, 'kt-po-open').click();
+    byTestId(host, 'kt-wo-open').click();
     await flush();
     await flush();
     const drawer = drawerOf(host);
-    expect(drawer.querySelectorAll('[data-testid="kt-po-operation-step"]')).toHaveLength(2);
+    expect(drawer.querySelectorAll('[data-testid="kt-wo-operation-step"]')).toHaveLength(2);
     expect(drawer.textContent).toContain('良品 1000 / 计划 1000');
     expect(drawer.textContent).toContain('领料 1287.5');
-    expect(optional(drawer, 'kt-po-requirement')).toBeNull();
+    expect(optional(drawer, 'kt-wo-requirement')).toBeNull();
   });
 
   it('物料需求区块仅在响应带键时渲染；关闭工单无下一步动作', async () => {
@@ -366,13 +366,13 @@ describe('U3-MFG-4 工单控制台：详情抽屉', () => {
       .fn()
       .mockResolvedValue(detailRow({ state: 'CLOSED', materialRequirements: [] }));
     const host = mount(portsFor([order({ state: 'CLOSED' })], [], { loadDetail }));
-    byTestId(host, 'kt-po-open').click();
+    byTestId(host, 'kt-wo-open').click();
     await flush();
     await flush();
     const drawer = drawerOf(host);
-    expect(optional(drawer, 'kt-po-requirements-section')).not.toBeNull();
+    expect(optional(drawer, 'kt-wo-requirements-section')).not.toBeNull();
     expect(drawer.textContent).toContain('该成品暂无已发布 BOM');
-    expect(optional(drawer, 'kt-po-transition')).toBeNull();
+    expect(optional(drawer, 'kt-wo-transition')).toBeNull();
   });
 
   it('车间执行入口经宿主挂载；关闭抽屉卸载', async () => {
@@ -380,7 +380,7 @@ describe('U3-MFG-4 工单控制台：详情抽屉', () => {
     const mountExecution = vi.fn<ProductionOrderConsolePorts['mountExecution']>(() => dispose);
     const row = order({ state: 'IN_PROGRESS' });
     const host = mount(portsFor([row], ['production:report'], { mountExecution }));
-    byTestId(host, 'kt-po-open').click();
+    byTestId(host, 'kt-wo-open').click();
     await flush();
     await flush();
     expect(mountExecution).toHaveBeenCalledTimes(1);
@@ -396,7 +396,7 @@ describe('U3-MFG-4 工单控制台：载荷 oracle', () => {
     const submit = vi.fn().mockResolvedValue(null);
     const refresh = vi.fn().mockResolvedValue([order()]);
     const host = mount(portsFor([order()], ['production:plan'], { submit, refresh }));
-    byTestId(host, 'kt-po-create').click();
+    byTestId(host, 'kt-wo-create').click();
     await flush();
     await type(host, 'orderNumber', ' WO-9 ');
     await type(host, 'itemVersionId', 'v-1');
@@ -436,7 +436,7 @@ describe('U3-MFG-4 工单控制台：载荷 oracle', () => {
     const submit = vi.fn().mockResolvedValue(null);
     const refresh = vi.fn().mockResolvedValue([order({ state: 'RELEASED' })]);
     const host = mount(portsFor([order()], ['production:plan'], { submit, refresh }));
-    at(host.querySelectorAll('[data-testid="kt-po-next-action"]')).click();
+    at(host.querySelectorAll('[data-testid="kt-wo-next-action"]')).click();
     await flush();
     const drawer = drawerOf(host);
     expect(drawer.textContent).toContain('下达工单 · WO-KT-2026-001');
@@ -461,13 +461,13 @@ describe('U3-MFG-4 工单控制台：载荷 oracle', () => {
   it('提交失败保留抽屉并就近显示错误；动作错误与装载错误分离', async () => {
     const submit = vi.fn().mockRejectedValue(new Error('command rejected'));
     const host = mount(portsFor([order()], ['production:plan'], { submit }));
-    at(host.querySelectorAll('[data-testid="kt-po-next-action"]')).click();
+    at(host.querySelectorAll('[data-testid="kt-wo-next-action"]')).click();
     await flush();
     await type(drawerOf(host), 'reason', 'r');
     await type(drawerOf(host), 'evidenceReference', 'EV-2');
     await submitDrawer(host);
     await flush();
-    expect(byTestId(drawerOf(host), 'kt-po-transition-error').textContent).toBe('command rejected');
+    expect(byTestId(drawerOf(host), 'kt-wo-transition-error').textContent).toBe('command rejected');
     // 抽屉未关闭：再次提交仍走同一动作。
     await submitDrawer(host);
     await flush();
