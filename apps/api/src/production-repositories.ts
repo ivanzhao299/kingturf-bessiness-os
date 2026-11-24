@@ -158,6 +158,35 @@ export class PostgresProductionRepository extends PostgresProductionReadReposito
     });
   }
 
+  // TD-MFG-010（MFG-5）：领料前置校验——批次物料必须属于工单 BOM。判定与迁移 0072 触发器
+  // validate_production_execution_entry 里的 bom_component 同一口径（工单成品版本的任一已发布
+  // BOM 版本，其行组件含该物料版本）；此前只有触发器把关，抛出的 P0001 到接口是 500，现在回
+  // 带业务提示的 409。只接管触发器因 BOM 原因拒绝的这一种情形，其余一律维持原有路径：
+  // - 退料由触发器按累计领用量把关（BOM 改版后退回此前领出的旧组件仍是合法写入）；
+  // - 工单在本租户内不存在、跨租户、或尚未放行 / 已完成时不做判断——触发器先查工单状态，
+  //   那些情形的主因提示仍由触发器给出；
+  // - 判定结果形状意外时不拦，数据库触发器是权威，会再次把关。
+  // 全部参数化，不拼接输入。
+  private async assertIssueComponent(
+    tx: SqlClient,
+    orderId: string,
+    itemVersionId: string,
+    companyId: string,
+  ): Promise<void> {
+    const state = (
+      await tx.query<{ active: boolean | null; component: boolean | null }>(
+        `SELECT EXISTS(SELECT 1 FROM production_orders o JOIN production_order_effective_states s ON s.tenant_id=o.tenant_id AND s.production_order_id=o.id WHERE o.tenant_id=$1 AND o.id=$2 AND s.state IN('RELEASED','IN_PROGRESS')) active,
+        EXISTS(SELECT 1 FROM production_orders o
+        JOIN manufacturing_bom_versions b ON b.tenant_id=o.tenant_id AND b.product_item_version_id=o.item_version_id AND b.status='PUBLISHED'
+        JOIN manufacturing_bom_lines l ON l.tenant_id=b.tenant_id AND l.bom_version_id=b.id
+        WHERE o.tenant_id=$1 AND o.id=$2 AND l.component_item_version_id=$3) component`,
+        [companyId, orderId, itemVersionId],
+      )
+    ).rows[0];
+    if (state?.active === true && state.component === false)
+      throw new DomainError('conflict', '该批次物料不属于工单 BOM');
+  }
+
   public transactMaterial(
     id: string,
     input: {
@@ -175,6 +204,8 @@ export class PostgresProductionRepository extends PostgresProductionReadReposito
   ) {
     return this.db.transaction(async (tx) => {
       company(context);
+      if (input.transactionType === 'ISSUE')
+        await this.assertIssueComponent(tx, id, input.itemVersionId, context.actor.companyId);
       const movementType = input.transactionType;
       const delta = input.transactionType === 'ISSUE' ? `-${input.quantity}` : input.quantity;
       const movement = (

@@ -1,14 +1,16 @@
 // U3-MFG-4（ADR-0014 分域重写）：工单详情抽屉——概要、状态轨迹、工序进度（竖向步骤：
 // 每道工序的良品/废品/工时与完成徽章）、物料需求与分配状态、物料台账、报工记录时间线、
 // 成品序列与事件台账。详情数据来自 additive findProductionOrder，未到达前回退列表行
-// 就地推算。车间执行入口（工序报工 / 领退料 / 成品卷入库）的表单仍为 vanilla（MFG-5
-// 报工入库范围），由宿主把既有按钮挂进本抽屉。分区各自成组件（G5 ≤200 行）。
-import { useMemo, useRef } from 'preact/hooks';
+// 就地推算。分区各自成组件（G5 ≤200 行）。
+// U3-MFG-5：车间执行入口（工序报工 / 领退料 / 成品卷入库）是本抽屉内的 Preact 按钮，点击
+// 打开对应的表单抽屉（production-order-execution-forms.tsx）；出现条件与 legacy 逐条一致。
+// 提交成功后页面重读详情，各分区随之更新。
 import type { ComponentChildren } from 'preact';
 import { DetailDrawer, StatusBadge, type StatusTone } from '@kingturf/ui';
 import { dateTimeLabelOf } from '../../crm/crm-ux';
 import type { ProductionOrderRow } from './production-order-ports';
 import {
+  availableExecutions,
   formatQuantity,
   idOf,
   nextActionOf,
@@ -257,40 +259,41 @@ const StateTrack = ({ state, row }: DetailProps & Readonly<{ row: ProductionOrde
   );
 };
 
-// 车间执行入口：vanilla 按钮由宿主挂进容器。挂载走 ref 回调（挂载/卸载由 Preact 提交
-// 时机驱动，测试 DOM 与浏览器一致）；容器以「行 id + 证据计数」为 key——行刷新后证据
-// 计数变化即重挂，按钮拿到最新的报工/物料数据（与 legacy 整卡重渲染等价）。
-const ExecutionMount = ({ state }: DetailProps) => {
-  const row = state.selected;
-  const mounted = useRef<{ row: ProductionOrderRow; dispose: () => void } | null>(null);
-  const latest = useRef(state);
-  latest.current = state;
-  const attach = useMemo(
-    () =>
-      (node: HTMLElement | null): void => {
-        if (node === null) {
-          mounted.current?.dispose();
-          mounted.current = null;
-          return;
-        }
-        const current = latest.current;
-        const active = current.selected;
-        if (!active || mounted.current?.row === active) return;
-        mounted.current?.dispose();
-        mounted.current = {
-          row: active,
-          dispose: current.mountExecution(node, active, () => current.runRefresh()),
-        };
-      },
-    [],
+// 车间执行入口：报工 / 领退料 / 成品卷入库，出现条件见 availableExecutions（与 legacy 逐条
+// 一致）。数据取列表行（提交后整站刷新会换成最新行），所以有了第一笔报工，成品卷入库按钮
+// 随之出现。
+const ExecutionSection = ({ state, row }: DetailProps & Readonly<{ row: ProductionOrderRow }>) => {
+  const entries = availableExecutions(
+    state.permissions,
+    state.ports.recordText(row, 'state', 'state'),
+    records(row.reports).length,
   );
-  if (!row) return null;
-  const version = [
-    String(records(row.reports).length),
-    String(records(row.materials).length),
-    String(records(row.rolls).length),
-  ].join(':');
-  return <div key={version} class="po-execution" ref={attach} data-testid="kt-wo-execution" />;
+  return (
+    <Section title="车间执行" testId="kt-wo-execution-section">
+      <p class="console-hint">
+        {entries.length > 0
+          ? '工序报工、领退料与成品卷入库在此登记；可登记的项目随工单状态与权限变化。'
+          : '当前工单状态或权限下没有可登记的执行项。'}
+      </p>
+      {entries.length > 0 ? (
+        <span class="po-row-actions po-execution" data-testid="kt-wo-execution">
+          {entries.map((entry) => (
+            <button
+              key={entry.kind}
+              type="button"
+              class="secondary"
+              data-testid={`kt-wo-${entry.kind}-open`}
+              onClick={() => {
+                state.openExecution(entry.kind);
+              }}
+            >
+              {entry.label}
+            </button>
+          ))}
+        </span>
+      ) : null}
+    </Section>
+  );
 };
 
 const ProgressSection = ({
@@ -538,10 +541,7 @@ export const ProductionOrderDetailDrawer = ({ state }: DetailProps) => {
       <Section title="事件台账" testId="kt-wo-events-section">
         <Timeline empty="暂无事件记录" items={eventItems(state, row)} itemTestId="kt-wo-event" />
       </Section>
-      <Section title="车间执行" testId="kt-wo-execution-section">
-        <p class="console-hint">工序报工、领退料与成品卷入库沿用既有登记表单。</p>
-        <ExecutionMount state={state} />
-      </Section>
+      <ExecutionSection state={state} row={row} />
     </DetailDrawer>
   );
 };

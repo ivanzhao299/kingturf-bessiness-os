@@ -286,9 +286,9 @@
   overflow-wrap: anywhere;
 }
 
-/* 车间执行入口：沿用既有 .production-actions（vanilla 按钮行）。 */
-.po-execution:empty {
-  display: none;
+/* 车间执行入口：报工 / 领退料 / 成品卷入库三个按钮一行（复用 .po-row-actions 的排列）。 */
+.po-execution {
+  margin-top: var(--kt-space-2);
 }
 
 @media (max-width: 1200px) {

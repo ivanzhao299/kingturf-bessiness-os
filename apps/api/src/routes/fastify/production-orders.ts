@@ -167,13 +167,21 @@ const notFoundSchema = z.object({
 });
 
 // 与 legacy mutationDto(production:read) 同口径（按读权限字段裁剪写响应）。
-function mutation(
+export function mutation(
   value: Record<string, unknown>,
   authorization: FastifyRouteScope['authorization'],
 ): Record<string, unknown> {
   const read = authorization.permissions.get('production:read');
   return permittedDto(value, read ? read.fields : ['version']);
 }
+
+// 能力键 → 作用域上下文（legacy 各路由的 scopeContext 同式：actor + grant.scopes +
+// grant.anchors）。本端点组与车间执行端点组（production-order-execution.ts）共用同一实现。
+export const scopedContextBy =
+  (scope: FastifyRouteScope) => (capability: PermissionKey, keys?: readonly string[]) => {
+    const grant = authorizeQuery(scope.authorization, capability, keys);
+    return { actor: scope.authorization.actor, scopes: grant.scopes, anchors: grant.anchors };
+  };
 
 export function registerProductionOrderRoutes(
   app: FastifyRouteGroupApp,
@@ -186,10 +194,7 @@ export function registerProductionOrderRoutes(
       throw Object.assign(new Error('Production dependency unavailable'), { statusCode: 503 });
     return repository;
   };
-  const scoped = (capability: PermissionKey, keys?: readonly string[]) => {
-    const grant = authorizeQuery(scope.authorization, capability, keys);
-    return { actor: scope.authorization.actor, scopes: grant.scopes, anchors: grant.anchors };
-  };
+  const scoped = scopedContextBy(scope);
 
   // GET 列表：视图轨迁移——无查询参数时与 legacy { items } 逐字节一致；显式 limit 时附
   // nextCursor（末行工单 id）。

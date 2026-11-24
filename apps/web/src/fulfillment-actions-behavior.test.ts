@@ -1,10 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { openForm } from './shared/forms';
-import {
-  appendProductionMaterial,
-  appendProductionOutput,
-  appendProductionReport,
-} from './commercial/production-actions';
 import { appendShipmentDelivery, appendShipmentDispatch } from './commercial/shipment-actions';
 import type { FulfillmentViewContext } from './commercial/fulfillment-view-ports';
 import type { CommercialPermission } from './commercial/permissions';
@@ -16,7 +11,6 @@ const form = vi.mocked(openForm);
 const unused = (): never => {
   throw new Error('Unexpected fulfillment port');
 };
-const order = { id: 'production-1', order_number: 'MO-1', item_version_id: 'finished-1' };
 const setup = (permissions: readonly CommercialPermission[] = []) => {
   const workspace = createBehaviorElement('main');
   const status = createBehaviorElement('p');
@@ -24,7 +18,6 @@ const setup = (permissions: readonly CommercialPermission[] = []) => {
   const actions = createBehaviorElement('section');
   const submit = vi.fn<FulfillmentViewContext['controller']['submit']>(() => Promise.resolve());
   const load = vi.fn(() => Promise.resolve());
-  const refresh = vi.fn(() => Promise.resolve());
   const views = new Map<string, readonly Record<string, unknown>[]>();
   const context: FulfillmentViewContext = {
     workspace: htmlElement(workspace),
@@ -73,7 +66,6 @@ const setup = (permissions: readonly CommercialPermission[] = []) => {
     status,
     submit,
     load,
-    refresh,
     views,
     click,
   };
@@ -86,177 +78,13 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 // U3-MFG-4：工单状态流转（原 appendProductionTransition）已迁入 Preact 控制台，载荷 oracle 见
-// console/production-order-console.test.tsx；余下三张表单（报工/领退料/成品卷入库）属 MFG-5 范围，
-// 函数体与测试逐字节未动。
-describe('production action callback contracts', () => {
-  // U3-MFG-4：工单状态流转（原 appendProductionTransition）已迁入 Preact 控制台，其载荷
-  // oracle 见 console/production-order-console.test.tsx；本文件余下三张表单属 MFG-5 范围。
-  it('does not offer non-running reports', () => {
-    const f = setup(['production:report']);
-    appendProductionReport(f.context, order, 'RELEASED', [], f.target, f.refresh);
-    appendProductionReport(setup().context, order, 'IN_PROGRESS', [], f.target, f.refresh);
-    expect(f.actions.children).toHaveLength(0);
-    expect(form).not.toHaveBeenCalled();
-  });
-
-  it('preserves report decimals and key, converts dates, and rejects bad dates before submission', async () => {
-    const f = setup(['production:report']);
-    appendProductionReport(
-      f.context,
-      order,
-      'IN_PROGRESS',
-      [{ id: 'op-1', sequence: 2, name: '织造' }],
-      f.target,
-      f.refresh,
-    );
-    const opened = f.click();
-    expect(opened.fields.find((field) => field.name === 'operationId')?.options).toEqual([
-      { value: 'op-1', label: '2 · 织造' },
-    ]);
-    expect(opened.fields.find((field) => field.name === 'scrapQuantity')?.value).toBe('0');
-    const values = {
-      operationId: 'op-1',
-      goodQuantity: '10.25',
-      scrapQuantity: '0',
-      laborMinutes: '12.5',
-      machineMinutes: '20',
-      startedAt: '2026-10-17T01:00:00Z',
-      completedAt: '2026-10-17T02:00:00Z',
-      notes: 'fixed',
-      idempotencyKey: 'REPORT-1',
-    };
-    await opened.run(values);
-    expect(f.submit).toHaveBeenCalledExactlyOnceWith(
-      '/api/v1/production-orders/production-1/operation-reports',
-      {
-        ...values,
-        startedAt: '2026-10-17T01:00:00.000Z',
-        completedAt: '2026-10-17T02:00:00.000Z',
-      },
-    );
-    expect(f.refresh).toHaveBeenCalledTimes(1);
-    await expect(opened.run({ ...values, startedAt: 'invalid' })).rejects.toThrow(RangeError);
-    expect(f.submit).toHaveBeenCalledTimes(1);
-    expect(f.refresh).toHaveBeenCalledTimes(1);
-    f.submit.mockRejectedValueOnce(new Error('report rejected'));
-    await expect(opened.run(values)).rejects.toThrow('report rejected');
-    expect(f.refresh).toHaveBeenCalledTimes(1);
-  });
-
-  it.each(['RELEASED', 'IN_PROGRESS'])(
-    'uses append-time inventory snapshot for %s material and rejects invalid choices',
-    async (state) => {
-      const f = setup(['production:material']);
-      f.views.set('/api/v1/inventory-balances', [
-        {
-          itemVersionId: 'raw-1',
-          lotId: 'lot-1',
-          locationId: 'loc-1',
-          sku: 'RAW',
-          lotNumber: 'LOT',
-          locationCode: 'L1',
-          quantity: '9.5',
-        },
-      ]);
-      appendProductionMaterial(f.context, order, state, f.target, f.refresh);
-      f.views.set('/api/v1/inventory-balances', [{ itemVersionId: 'wrong-later-snapshot' }]);
-      const opened = f.click();
-      expect(opened.fields.find((field) => field.name === 'balance')?.options).toEqual([
-        { value: '0', label: 'RAW · LOT · L1 · 可用 9.5' },
-      ]);
-      const values = {
-        balance: '0',
-        transactionType: 'RETURN',
-        quantity: '2.25',
-        reason: 'unused',
-        occurredAt: '2026-10-17T03:00:00Z',
-        idempotencyKey: 'MAT-1',
-      };
-      await opened.run(values);
-      expect(f.submit).toHaveBeenCalledExactlyOnceWith(
-        '/api/v1/production-orders/production-1/materials',
-        {
-          transactionType: 'RETURN',
-          itemVersionId: 'raw-1',
-          lotId: 'lot-1',
-          locationId: 'loc-1',
-          quantity: '2.25',
-          reason: 'unused',
-          occurredAt: '2026-10-17T03:00:00.000Z',
-          idempotencyKey: 'MAT-1',
-        },
-      );
-      await expect(opened.run({ ...values, balance: '99' })).rejects.toThrow('请选择有效批次库位');
-      await expect(opened.run({ ...values, occurredAt: 'invalid' })).rejects.toThrow(RangeError);
-      expect(f.submit).toHaveBeenCalledTimes(1);
-      expect(f.refresh).toHaveBeenCalledTimes(1);
-      f.submit.mockRejectedValueOnce(new Error('material rejected'));
-      await expect(opened.run(values)).rejects.toThrow('material rejected');
-      expect(f.refresh).toHaveBeenCalledTimes(1);
-    },
-  );
-
-  it('gates material/output and handles absent inventory with no invented API lookup', async () => {
-    const f = setup(['production:material', 'production:report']);
-    appendProductionMaterial(f.context, order, 'DRAFT', f.target, f.refresh);
-    appendProductionOutput(f.context, order, 'RELEASED', [{ id: 'report-1' }], f.target, f.refresh);
-    appendProductionOutput(f.context, order, 'IN_PROGRESS', [], f.target, f.refresh);
-    appendProductionMaterial(setup().context, order, 'RELEASED', f.target, f.refresh);
-    appendProductionOutput(
-      setup().context,
-      order,
-      'IN_PROGRESS',
-      [{ id: 'report-1' }],
-      f.target,
-      f.refresh,
-    );
-    expect(f.actions.children).toHaveLength(0);
-    appendProductionMaterial(f.context, order, 'RELEASED', f.target, f.refresh);
-    const opened = f.click();
-    expect(opened.fields.find((field) => field.name === 'balance')?.options).toEqual([]);
-    await expect(opened.run({ balance: '0' })).rejects.toThrow('请选择有效批次库位');
-    expect(f.submit).not.toHaveBeenCalled();
-    expect(f.refresh).not.toHaveBeenCalled();
-  });
-
-  it('binds output to order item version and fixed report/location options', async () => {
-    const f = setup(['production:report']);
-    f.views.set('/api/v1/inventory-locations', [{ id: 'loc-1', code: 'L1' }]);
-    appendProductionOutput(
-      f.context,
-      order,
-      'IN_PROGRESS',
-      [{ id: 'report-1', completed_at: 'finished', good_quantity: '10.25' }],
-      f.target,
-      f.refresh,
-    );
-    f.views.set('/api/v1/inventory-locations', []);
-    const opened = f.click();
-    expect(opened.fields.find((field) => field.name === 'operationReportId')?.options).toEqual([
-      { value: 'report-1', label: 'finished · 良品 10.25' },
-    ]);
-    expect(opened.fields.find((field) => field.name === 'locationId')?.options).toEqual([
-      { value: 'loc-1', label: 'L1' },
-    ]);
-    const values = {
-      operationReportId: 'report-1',
-      rollNumber: 'ROLL-1',
-      lotNumber: 'FIN-1',
-      locationId: 'loc-1',
-      quantity: '10.25',
-      manufacturedAt: '2026-10-17',
-    };
-    await opened.run(values);
-    expect(f.submit).toHaveBeenCalledExactlyOnceWith(
-      '/api/v1/production-orders/production-1/finished-rolls',
-      { ...values, itemVersionId: 'finished-1' },
-    );
-    expect(f.refresh).toHaveBeenCalledTimes(1);
-    f.submit.mockRejectedValueOnce(new Error('output rejected'));
-    await expect(opened.run(values)).rejects.toThrow('output rejected');
-    expect(f.refresh).toHaveBeenCalledTimes(1);
-  });
-});
+// console/production-order-console.test.tsx。
+// U3-MFG-5：工序报工 / 领退料 / 成品卷入库三张表单（原 appendProductionReport / appendProduction
+// Material / appendProductionOutput）迁入 Preact 控制台抽屉，production-actions.ts 随之删除。原
+// 「production action callback contracts」一组的用例随函数退役，载荷 oracle（小数原样、日期转
+// ISO、无效日期 / 无效批次不提交、失败不刷新、出现条件、批次候选、报工与库位选项、绑定工单
+// 成品版本）迁往同一组件测试；幂等键改为前端生成、批次库位只列工单 BOM 的批次是有意的差别。
+// 本文件余下发货两组用例不在该批范围，逐字未动。
 
 describe('shipment action callback contracts', () => {
   it('gates dispatch by state, permission and existing shipment', () => {
