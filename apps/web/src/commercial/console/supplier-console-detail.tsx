@@ -56,7 +56,9 @@ export const QualificationList = ({ state }: Readonly<{ state: SupplierDetailSta
             <StatusBadge tone={qualificationTone(status)}>
               {QUALIFICATION_LABELS[status] ?? status}
             </StatusBadge>
-            {` ${state.ports.textValue(item.sku, '—')} · ${state.ports.textValue(item.itemName, '—')} · v${state.ports.textValue(item.itemVersion, '—')} · 有效期 ${state.ports.textValue(item.validFrom ?? item.valid_from, '—')} ~ ${state.ports.textValue(item.validTo ?? item.valid_to, '长期')}`}
+            <TokenText
+              text={` ${state.ports.textValue(item.sku, '—')} · ${state.ports.textValue(item.itemName, '—')} · v${state.ports.textValue(item.itemVersion, '—')} · 有效期 ${state.ports.textValue(item.validFrom ?? item.valid_from, '—')} ~ ${state.ports.textValue(item.validTo ?? item.valid_to, '长期')}`}
+            />
           </li>
         );
       })}

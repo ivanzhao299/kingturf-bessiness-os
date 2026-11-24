@@ -36,7 +36,9 @@ export const RfqLines = ({ state }: Readonly<{ state: RfqDetailState }>) => {
     <ul class="console-summary" data-testid="kt-rfq-lines">
       {lines.map((line, index) => (
         <li key={state.ports.textValue(line.id, String(index))}>
-          {`${state.ports.textValue(line.sku, '—')} · ${state.ports.textValue(line.itemName, '—')} · 数量 ${state.ports.textValue(line.quantity, '—')} · 要求到货 ${state.ports.textValue(line.requiredAt ?? line.required_at, '—')}`}
+          <TokenText
+            text={`${state.ports.textValue(line.sku, '—')} · ${state.ports.textValue(line.itemName, '—')} · 数量 ${state.ports.textValue(line.quantity, '—')} · 要求到货 ${state.ports.textValue(line.requiredAt ?? line.required_at, '—')}`}
+          />
         </li>
       ))}
     </ul>

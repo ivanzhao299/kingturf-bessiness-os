@@ -581,23 +581,23 @@ describe('对比矩阵 · 短 token 不折行', () => {
     expect(tokens).toContain('交期 2026-12-10');
   });
 
-  // 图例、卡片元信息与「报价历史」列表是矩阵之外的普通文本：此前日期在连字符处断行
-  // （2026-12- / 31），手机上尤其明显（PROC-2 证据 §12.6）。文本逐字不变，只是 token 不再折行。
-  it('图例、卡片元信息与报价历史列表：日期与编号是 token，文本逐字不变', async () => {
-    // 渲染控制台并点开一条详情，返回宿主根（图例与「报价历史」是对比区的兄弟节点，
-    // 要从根上查；mini-DOM 没有 closest）。
-    const openHost = async (page: ComponentType, opener: string): Promise<TestElement> => {
-      const host = installGlobalTestDom().document.createElement('div');
-      render(h(page, {}), host);
-      element(host.querySelector(`[data-testid="${opener}"]`)).click();
-      await settle();
-      return host;
-    };
-    const tokensIn = (scope: TestElement | null): readonly string[] =>
-      scope === null
-        ? []
-        : scope.querySelectorAll('.proc-token').map((node) => element(node).textContent);
+  // 矩阵之外的普通文本（图例、行项 / 资质 / 报价历史列表、卡片元信息）：此前日期在连字符处
+  // 断行（2026-12- / 31），手机上尤其明显（PROC-2 证据 §12.6）。文本逐字不变，只是 token 不再折行。
+  // 渲染控制台并点开一条详情，返回宿主根（这些列表是对比区的兄弟节点，要从根上查；
+  // mini-DOM 没有 closest）。
+  const openHost = async (page: ComponentType, opener: string): Promise<TestElement> => {
+    const host = installGlobalTestDom().document.createElement('div');
+    render(h(page, {}), host);
+    element(host.querySelector(`[data-testid="${opener}"]`)).click();
+    await settle();
+    return host;
+  };
+  const tokensIn = (scope: TestElement | null): readonly string[] =>
+    scope === null
+      ? []
+      : scope.querySelectorAll('.proc-token').map((node) => element(node).textContent);
 
+  it('图例、卡片元信息与报价历史列表：日期与编号是 token，文本逐字不变', async () => {
     vi.stubGlobal('ResizeObserver', FakeResizeObserver);
     containerWidth(PHONE_DRAWER_WIDTH);
     const rfqHost = await openHost(RfqConsolePage(rfqPorts) as ComponentType, 'kt-rfq-open');
@@ -646,6 +646,50 @@ describe('对比矩阵 · 短 token 不折行', () => {
       '收于 2026-09-01',
       '有效至 2026-10-31',
     ]);
+  });
+
+  it('询价行项列表与资质记录列表：编号 / 数量 / 有效期是 token，文本逐字不变', async () => {
+    vi.stubGlobal('ResizeObserver', FakeResizeObserver);
+    const rfqHost = await openHost(RfqConsolePage(rfqPorts) as ComponentType, 'kt-rfq-open');
+    const lines = element(rfqHost.querySelector('[data-testid="kt-rfq-lines"]'));
+    expect(lines.querySelectorAll('li').map((node) => element(node).textContent)).toEqual([
+      'RM-YARN · 草纱 · 数量 6000 · 要求到货 —',
+      'RM-BACKING · 底布 · 数量 800 · 要求到货 —',
+    ]);
+    // 编号与「数量 + 值」是 token；「要求到货 —」是占位，不是 token。
+    expect(tokensIn(lines)).toEqual(['RM-YARN', '数量 6000', 'RM-BACKING', '数量 800']);
+
+    // 资质记录：徽章之后紧跟「 编号 · 名称 · v版本 · 有效期 起 ~ 止」。
+    const qualified: SupplierRow = {
+      ...supplier,
+      qualifications: [
+        {
+          id: 'qual-1',
+          status: 'APPROVED',
+          sku: 'RM-YARN',
+          itemName: '草纱',
+          itemVersion: '1',
+          valid_from: '2026-01-01',
+          valid_to: '2099-12-31',
+        },
+      ],
+    };
+    const qualifiedPorts: SupplierConsolePorts = {
+      ...supplierPorts,
+      initialSuppliers: [qualified],
+    };
+    const supplierHost = await openHost(
+      SupplierConsolePage(qualifiedPorts) as ComponentType,
+      'kt-supplier-open',
+    );
+    const qualifications = element(
+      supplierHost.querySelector('[data-testid="kt-supplier-qualifications"]'),
+    );
+    expect(qualifications.querySelector('li')?.textContent).toBe(
+      '已批准 RM-YARN · 草纱 · v1 · 有效期 2026-01-01 ~ 2099-12-31',
+    );
+    // v1 不是 token（版本号紧贴字母）；有效期两端各自是 token。
+    expect(tokensIn(qualifications)).toEqual(['RM-YARN', '有效期 2026-01-01', '2099-12-31']);
   });
 });
 
