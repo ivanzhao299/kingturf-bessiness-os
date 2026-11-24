@@ -389,5 +389,8 @@ test('真实CLI routes覆盖G1/G2/G3/G4，合法深格式通过，清理后全�
   }
   const clean = run();
   assert.equal(clean.status, 0, clean.stderr);
-  assert.match(clean.stdout, /白名单豁免 29 条/u);
+  // U3-MFG-3（隔离协议批）：NESTING_EXTRA 新增 manufacturing-read-repositories.ts
+  //（自 manufacturing-repositories.ts 按 G1 拆分迁出的存量嵌套方法，继承父条目理由
+  // 与到期批次；台账本批段落登记）——白名单 29→30 条。
+  assert.match(clean.stdout, /白名单豁免 30 条/u);
 });
