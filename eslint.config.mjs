@@ -29,6 +29,7 @@ export default tseslint.config(
       'scripts/analysis/proofs/*.mjs',
       'scripts/e2e-cdp/*.mjs',
       'scripts/e2e-docker/*.mjs',
+      'scripts/e2e-local/*.mjs',
       'tests/e2e/runtime-local.spec.mjs',
       'tests/workflows/*.mjs',
     ],
