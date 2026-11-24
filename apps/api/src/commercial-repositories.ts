@@ -117,7 +117,9 @@ const retainCommand = (
 
 // U3-COM-3（ADR-0015）：报价视图 SELECT 提取为共享常量——listCommercialView('quotes')
 // / listQuotePage / findQuoteRevision 三处复用，SQL 字节与提取前逐字一致。
-const QUOTES_VIEW_SELECT = `SELECT r.id,q.id AS "quoteId",q.opportunity_id AS "opportunityId",q.quote_number AS "quoteNumber",r.revision,r.status,r.opportunity_version AS "opportunityVersion",r.opportunity_snapshot_id AS "opportunitySnapshotId",r.ctr_version_id AS "ctrVersionId",r.technical_solution_revision_id AS "technicalSolutionRevisionId",r.cost_decision_id AS "costDecisionId",r.sales_policy_version_id AS "policyVersionId",r.sales_policy_evaluation_id AS "policyEvaluationId",r.currency,r.subtotal,r.discount,r.total,r.cost_total AS "costTotal",r.margin,r.margin_basis_points AS "marginBasisPoints",r.valid_until AS "validUntil",r.issued_at AS "issuedAt",
+// TD-WF-001：加选 o.customer_id（报价 → 商机 → 客户）。信用评估的创建要求 customerId，而此前视图
+// 不带客户字段，控制台「执行信用评估」拿不到客户、请求发不出去。视图本就 JOIN opportunities，行数不变。
+const QUOTES_VIEW_SELECT = `SELECT r.id,q.id AS "quoteId",q.opportunity_id AS "opportunityId",o.customer_id AS "customerId",q.quote_number AS "quoteNumber",r.revision,r.status,r.opportunity_version AS "opportunityVersion",r.opportunity_snapshot_id AS "opportunitySnapshotId",r.ctr_version_id AS "ctrVersionId",r.technical_solution_revision_id AS "technicalSolutionRevisionId",r.cost_decision_id AS "costDecisionId",r.sales_policy_version_id AS "policyVersionId",r.sales_policy_evaluation_id AS "policyEvaluationId",r.currency,r.subtotal,r.discount,r.total,r.cost_total AS "costTotal",r.margin,r.margin_basis_points AS "marginBasisPoints",r.valid_until AS "validUntil",r.issued_at AS "issuedAt",
         (SELECT coalesce(jsonb_agg(to_jsonb(l) ORDER BY l.line_number),'[]'::jsonb) FROM quote_lines l WHERE l.tenant_id=r.tenant_id AND l.quote_revision_id=r.id) lines,
         (SELECT coalesce(jsonb_agg(to_jsonb(a) ORDER BY a.decided_at),'[]'::jsonb) FROM quote_approvals a WHERE a.tenant_id=r.tenant_id AND a.quote_revision_id=r.id) approvals,
         (SELECT s.id FROM quote_issued_snapshots s WHERE s.tenant_id=r.tenant_id AND s.quote_revision_id=r.id) AS "issuedSnapshotId",

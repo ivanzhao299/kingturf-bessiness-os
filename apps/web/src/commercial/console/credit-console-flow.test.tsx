@@ -207,4 +207,62 @@ describe('COM-UX 信用审批流程图', () => {
     );
     expect(ports.refresh).toHaveBeenCalled();
   });
+
+  // 回归（TD-WF-001，写流程真浏览器冒烟发现）：评估表单要求已签发报价行带 customerId，而报价列表
+  // 投影此前不带客户字段——「执行信用评估」拿不到客户，请求发不出去，错误只写进不渲染的位置。
+  // 服务端已在报价行补上 customerId；这里钉住控制台一侧：取到客户并以正确的载荷提交。
+  it('发起评估流：选已签发报价、额度与有效期后经 POST credit-decisions 提交，载荷带报价所属客户', async () => {
+    const submit = vi.fn().mockResolvedValue({});
+    const ports = portsFor([], ['credit:evaluate'], {
+      issuedQuotes: [
+        {
+          id: 'quote-rev-issued',
+          quoteNumber: 'Q-2026-007',
+          revision: 3,
+          status: 'ISSUED',
+          currency: 'CNY',
+          total: '950000',
+          customerId: 'customer-1',
+          issuedSnapshotId: 'snapshot-1',
+        },
+      ],
+      submit,
+    });
+    const host = mount(ports);
+    element(host.querySelector('[data-testid="kt-credit-evaluate"]')).click();
+    await flush();
+    const form = element(host.querySelector('.form-section'));
+    // 测试 DOM 没有 select 的选项联动（与其它控制台测试同法）：直接赋值并派发 input 事件。
+    // 选项本身在渲染时由已签发报价与额度生成，这里顺带钉住两者各给出一项。
+    // 两个下拉各由一条已签发报价与一条额度生成选项。
+    const options = form.querySelectorAll('option') as TestElement[];
+    expect(options).toHaveLength(2);
+    const selects = form.querySelectorAll('select') as TestElement[];
+    expect(selects.map((item) => item.getAttribute('name'))).toEqual([
+      'quoteRevisionId',
+      'creditLimitId',
+    ]);
+    const pick = (select: TestElement | undefined, value: string): void => {
+      if (!select) throw new Error(`select for ${value} not found`);
+      select.value = value;
+      select.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+    pick(selects[0], 'quote-rev-issued');
+    pick(selects[1], 'limit-1');
+    const date = element(form.querySelector('input[type="date"]'));
+    date.value = '2027-03-31';
+    date.dispatchEvent(new Event('input', { bubbles: true }));
+    await flush();
+    element(form.querySelector('button[type="submit"]')).click();
+    await flush();
+    expect(submit).toHaveBeenCalledExactlyOnceWith('/api/v1/credit-decisions', {
+      customerId: 'customer-1',
+      quoteRevisionId: 'quote-rev-issued',
+      quoteSnapshotId: 'snapshot-1',
+      creditLimitId: 'limit-1',
+      validUntil: '2027-03-31T23:59:59.000Z',
+    });
+    expect(ports.refresh).toHaveBeenCalled();
+    expect(host.textContent).not.toContain('报价未关联有效客户');
+  });
 });

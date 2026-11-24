@@ -601,6 +601,17 @@ describe('JTF-P1-E05..E10 PostgreSQL acceptance', () => {
       randomUUID(),
     );
     expect(quote2).toMatchObject({ quoteId: quote.quoteId, revision: 2, status: 'DRAFT' });
+    // TD-WF-001（写流程真浏览器冒烟发现）：报价视图此前不带客户字段，信用评估的创建要求
+    // customerId，「执行信用评估」因此拿不到客户、请求发不出去。真库上钉住：每个报价版本行都带
+    // customerId，等于报价所属商机上的客户，且不新增别的键以外的变化（与旧投影逐键相同，只多这一键）。
+    const quoteView = await commercial.listCommercialView('quotes', actor, ['COMPANY'], []);
+    const quoteRows = quoteView.filter((row) => row.opportunityId === opportunity.id);
+    expect(quoteRows).toHaveLength(2);
+    for (const row of quoteRows) {
+      expect(row.customerId).toBe(customer);
+      expect(row).not.toHaveProperty('customer_id');
+    }
+    expect(quoteRows.map((row) => row.id).sort()).toEqual([quote.id, quote2.id].sort());
     await expect(
       commercial.issueQuote(
         identifier(quote.id),
