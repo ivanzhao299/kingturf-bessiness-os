@@ -12,6 +12,10 @@ const toneUnion = /export type StatusTone = ([^;]+);/u.exec(toneSource)?.[1];
 if (toneUnion === undefined) throw new Error('StatusTone union not found in status-badge.tsx');
 const tones = toneUnion.split('|').map((member) => member.trim().replace(/^['"]|['"]$/gu, ''));
 const stylesheet = readFileSync(new URL('../src/components.css', import.meta.url), 'utf8');
+const tokenSheet = readFileSync(new URL('../src/tokens.css', import.meta.url), 'utf8');
+// 组件库样式表还消费应用调色板（--kt-primary / --kt-ink / --kt-border 等 8 个名字，两套取值），
+// 由 apps/web/src/style.css 定义：这是既有的跨层约定，startup.css 与各控制台样式同样在用。
+const appSheet = readFileSync(new URL('../../../apps/web/src/style.css', import.meta.url), 'utf8');
 const styledTones = [...stylesheet.matchAll(/\.status-badge\[data-tone='([a-z]+)'\]/gu)].map(
   (match) => match[1],
 );
@@ -145,5 +149,21 @@ describe('DataTable 样式（静态）', () => {
       'color: inherit',
     ])
       expect(sort).toContain(declaration);
+  });
+});
+
+// 回归（真浏览器量测发现）：样式表曾引用 6 个不存在的变量且没有回退值，那些声明静默失效——
+// 表格与表头文字按浏览器默认的 16px 渲染、日期和编码被折成两行，空态没有内边距。
+describe('components.css 的变量引用（静态）', () => {
+  it('uses no custom property without a fallback unless a loaded stylesheet defines it', () => {
+    const defined = new Set(
+      [...`${tokenSheet}\n${stylesheet}\n${appSheet}`.matchAll(/(--[a-z0-9-]+)\s*:/gu)].map(
+        (match) => match[1],
+      ),
+    );
+    const undefinedUses = [...stylesheet.matchAll(/var\(\s*(--[a-z0-9-]+)\s*\)/gu)]
+      .map((match) => match[1])
+      .filter((name) => !defined.has(name));
+    expect([...new Set(undefinedUses)]).toEqual([]);
   });
 });
