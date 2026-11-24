@@ -196,21 +196,35 @@ const pricedQuotes: readonly SupplierRow[] = [
   ),
 ];
 
+// 两个控制台各自的端口夹具（下面几处渲染共用；mini-DOM 没有 closest，取抽屉要从宿主根上查）。
+const rfqPorts: RfqConsolePorts = {
+  permissions: new Set(['procurement:read']),
+  initialRfqs: [issuedRfq],
+  itemVersionChoices: [{ value: 'item-v1', label: 'RM-YARN · 草纱' }],
+  recordText: (record, camel, snake, fallback = '') =>
+    asText(textOf(record, camel, snake), fallback),
+  textValue: asText,
+  submit: vi.fn().mockResolvedValue(null),
+  loadDetail: vi.fn().mockResolvedValue({ ...issuedRfq, quotes: rfqQuotes }),
+  now: () => NOW,
+  refresh: vi.fn().mockResolvedValue([issuedRfq]),
+};
+const supplierPorts: SupplierConsolePorts = {
+  permissions: new Set(['supplier:read']),
+  initialSuppliers: [supplier],
+  itemVersionChoices: [{ value: 'item-v1', label: 'RM-YARN · 草纱' }],
+  initialQuotes: pricedQuotes,
+  recordText: (record, camel, snake, fallback = '') =>
+    asText(textOf(record, camel, snake), fallback),
+  textValue: asText,
+  submit: vi.fn().mockResolvedValue(null),
+  now: () => NOW,
+  refresh: vi.fn().mockResolvedValue({ suppliers: [supplier], quotes: pricedQuotes }),
+};
+
 const openRfqCompare = async (): Promise<TestElement> => {
   const host = installGlobalTestDom().document.createElement('div');
-  const ports: RfqConsolePorts = {
-    permissions: new Set(['procurement:read']),
-    initialRfqs: [issuedRfq],
-    itemVersionChoices: [{ value: 'item-v1', label: 'RM-YARN · 草纱' }],
-    recordText: (record, camel, snake, fallback = '') =>
-      asText(textOf(record, camel, snake), fallback),
-    textValue: asText,
-    submit: vi.fn().mockResolvedValue(null),
-    loadDetail: vi.fn().mockResolvedValue({ ...issuedRfq, quotes: rfqQuotes }),
-    now: () => NOW,
-    refresh: vi.fn().mockResolvedValue([issuedRfq]),
-  };
-  render(h(RfqConsolePage(ports) as ComponentType, {}), host);
+  render(h(RfqConsolePage(rfqPorts) as ComponentType, {}), host);
   element(host.querySelector('[data-testid="kt-rfq-open"]')).click();
   await settle();
   return element(host.querySelector('[data-testid="kt-rfq-quotes"]'));
@@ -218,19 +232,7 @@ const openRfqCompare = async (): Promise<TestElement> => {
 
 const openSupplierCompare = async (): Promise<TestElement> => {
   const host = installGlobalTestDom().document.createElement('div');
-  const ports: SupplierConsolePorts = {
-    permissions: new Set(['supplier:read']),
-    initialSuppliers: [supplier],
-    itemVersionChoices: [{ value: 'item-v1', label: 'RM-YARN · 草纱' }],
-    initialQuotes: pricedQuotes,
-    recordText: (record, camel, snake, fallback = '') =>
-      asText(textOf(record, camel, snake), fallback),
-    textValue: asText,
-    submit: vi.fn().mockResolvedValue(null),
-    now: () => NOW,
-    refresh: vi.fn().mockResolvedValue({ suppliers: [supplier], quotes: pricedQuotes }),
-  };
-  render(h(SupplierConsolePage(ports) as ComponentType, {}), host);
+  render(h(SupplierConsolePage(supplierPorts) as ComponentType, {}), host);
   element(host.querySelector('[data-testid="kt-supplier-open"]')).click();
   await settle();
   return element(host.querySelector('[data-testid="kt-supplier-compare"]'));
@@ -393,6 +395,57 @@ describe('供应商报价历史对比 · 窄容器堆叠卡片', () => {
     expect(badgesOf(compare, '本供应商')).toBe(2);
     expect(badgesOf(compare, '已失效')).toBe(2);
     expect(badgesOf(compare, '最优')).toBe(1);
+  });
+});
+
+// PROC-3（TD-PROC-008 残余）：两个详情抽屉用宽抽屉。对比矩阵在缺省的 480px 里四列并排，
+// 日期在连字符处断行、供应商名每行约 5 字；加宽后矩阵在桌面上放得下。
+describe('采购域详情抽屉 · 宽度', () => {
+  // 渲染控制台、点开一条详情，取抽屉的 data-size（mini-DOM 没有 closest，所以从宿主根上查）。
+  const drawerSizeAfterOpen = async (
+    page: ComponentType,
+    opener: string,
+  ): Promise<string | null> => {
+    const host = installGlobalTestDom().document.createElement('div');
+    render(h(page, {}), host);
+    element(host.querySelector(`[data-testid="${opener}"]`)).click();
+    await settle();
+    return element(host.querySelector('.detail-drawer')).getAttribute('data-size');
+  };
+
+  it('询价与供应商两个详情抽屉带 data-size="wide"', async () => {
+    expect(
+      await drawerSizeAfterOpen(RfqConsolePage(rfqPorts) as ComponentType, 'kt-rfq-open'),
+    ).toBe('wide');
+    expect(
+      await drawerSizeAfterOpen(
+        SupplierConsolePage(supplierPorts) as ComponentType,
+        'kt-supplier-open',
+      ),
+    ).toBe('wide');
+  });
+
+  it('只有这两个详情抽屉加宽：同一批控制台里的新建类抽屉保持缺省尺寸', () => {
+    // 新建抽屉经 openForm 打开；这里从源码守，避免为一个属性去驱动整条表单流程。
+    // 两个文件里 size="wide" 恰好各出现一次，且紧邻「详情」标题；新建抽屉不带 size。
+    const read = (file: string): string => readFileSync(new URL(file, import.meta.url), 'utf8');
+    for (const [file, detailTitle] of [
+      ['./rfq-console.tsx', '询价单详情'],
+      ['./supplier-console.tsx', '供应商详情'],
+    ] as const) {
+      const source = read(file);
+      const wide = [...source.matchAll(/size="wide"/gu)];
+      expect(wide, `${file} 里 size="wide" 的次数`).toHaveLength(1);
+      // 唯一一处在详情抽屉上：其后 200 字符内就是详情标题。
+      const at = wide[0]?.index ?? -1;
+      expect(at).toBeGreaterThanOrEqual(0);
+      expect(source.slice(at, at + 200)).toContain(detailTitle);
+      // 其余 DetailDrawer（新建类）不带 size。
+      const drawers = [...source.matchAll(/<DetailDrawer\b[^>]*>/gsu)];
+      expect(drawers.length, `${file} 里 DetailDrawer 的个数`).toBeGreaterThan(1);
+      const sized = drawers.filter((match) => /\bsize=/u.test(match[0]));
+      expect(sized).toHaveLength(1);
+    }
   });
 });
 

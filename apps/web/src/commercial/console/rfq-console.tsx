@@ -156,7 +156,9 @@ const RfqDrawer = ({ state }: Readonly<{ state: RfqPageState }>) => {
   const mayClose = mayManage && (status === 'DRAFT' || status === 'ISSUED');
   const countdown = activeCountdown(state, row);
   return (
+    // 宽抽屉：询价行项与「行项 × 供应商」报价对比矩阵在缺省宽度里读不了（TD-PROC-008 残余，PROC-3）。
     <DetailDrawer
+      size="wide"
       title={`询价单详情 · ${text(ports, row, 'rfqNumber', 'rfq_number')}`}
       onClose={() => {
         state.open(null);
