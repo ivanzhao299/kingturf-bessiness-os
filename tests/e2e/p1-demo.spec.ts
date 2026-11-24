@@ -276,6 +276,26 @@ test('shows supplier qualification, received purchase order, receipt, and derive
   await openRoute(page, 'procurement/purchase-orders');
   const purchaseOrders = page.locator('[data-testid="kt-proc-purchase-orders"]');
   await expect(purchaseOrders.getByText(/PO-KT-YARN-2026-001 · 已收货/u)).toBeVisible();
+  // TD-UI-009：数字输入框不写 step 时浏览器按步长 1 做原生校验，小数提交不了；单测替身算不了
+  // 原生校验，只有真浏览器守得住。只读核对——填入小数后原生校验须通过，不提交。
+  await purchaseOrders.getByRole('button', { name: '＋ 创建并签发采购订单' }).click();
+  const orderForm = page
+    .locator('form.form-section')
+    .filter({ has: page.locator('input[name="poNumber"]') });
+  for (const [name, value] of [
+    ['quantity', '2.5'],
+    ['unitPrice', '12.68'],
+  ] as const)
+    await orderForm.locator(`input[name="${name}"]`).fill(value);
+  expect(
+    await orderForm
+      .locator('input[type="number"]')
+      .evaluateAll((inputs) =>
+        inputs.map((input) => (input as HTMLInputElement).validity.stepMismatch),
+      ),
+  ).toEqual([false, false]);
+  await page.keyboard.press('Escape');
+  await expect(orderForm).toBeHidden();
   await openRoute(page, 'procurement/goods-receipts');
   const receipts = page.locator('[data-testid="kt-proc-goods-receipts"]');
   await expect(receipts.getByText(/收货 GR-KT-YARN-2026-001/u)).toBeVisible();
@@ -285,6 +305,18 @@ test('shows supplier qualification, received purchase order, receipt, and derive
   await expect(workbench.getByText(/报价 SQ-KT-YARN-2026-001/u)).toBeVisible();
   await expect(workbench.getByText(/批次 LOT-KT-YARN-20260920-A/u)).toBeVisible();
   await expect(workbench.getByText(/RAW-A01 · 结存 3704.5/u)).toBeVisible();
+  // 同一缺陷的旧版表单载体（openForm）：登记供应商报价的单价。直接赋值不触发 input，不算脏表单。
+  await page.getByRole('button', { name: '＋ 登记供应商报价' }).click();
+  const quotePrice = page.locator('dialog.form-dialog input[name="unitPrice"]');
+  await expect(quotePrice).toBeVisible();
+  await quotePrice.evaluate((input: HTMLInputElement) => {
+    input.value = '12.68';
+  });
+  expect(await quotePrice.evaluate((input: HTMLInputElement) => input.validity.stepMismatch)).toBe(
+    false,
+  );
+  await page.keyboard.press('Escape');
+  await expect(quotePrice).toBeHidden();
   await testInfo.attach('procurement-inventory-desktop', {
     body: await workbench.screenshot(),
     contentType: 'image/png',
