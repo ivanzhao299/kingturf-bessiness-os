@@ -34,7 +34,7 @@ import type { FastifyRouteGroupApp, FastifyRouteScope } from './registry.ts';
 // 仓储端口自真实依赖派生（S4：禁止结构重注解抹掉 provenance）。
 export type ArRepository = Pick<
   NonNullable<ApiDependencies['quoteToCash']>,
-  'listOperationalPage' | 'listArPage' | 'findArOpenItem' | 'postAr'
+  'listOperationalPage' | 'listArPage' | 'summarizeAr' | 'findArOpenItem' | 'postAr'
 >;
 type Post = ArRepository['postAr'];
 type PostInput = Readonly<Parameters<Post>[0]>;
@@ -69,9 +69,24 @@ const AR_ROW_SCHEMA = z
     agingState: z.string(),
   })
   .partial();
+const AR_SUMMARY_SCHEMA = z
+  .looseObject({
+    currency: z.string(),
+    openCount: z.number(),
+    outstandingAmount: z.string(),
+    overdueCount: z.number(),
+    overdueAmount: z.string(),
+    due7Count: z.number(),
+    due7Amount: z.string(),
+    due30Count: z.number(),
+    due30Amount: z.string(),
+  })
+  .partial();
 const listResponseSchema = z.object({
   items: z.array(AR_ROW_SCHEMA),
   nextCursor: z.string().nullable().optional(),
+  // 加性：按币种的应收汇总（仅 summary 参数生效时附带；与筛选、分页无关）。
+  summary: z.array(AR_SUMMARY_SCHEMA).optional(),
 });
 const detailSchema = AR_ROW_SCHEMA.extend({
   order: z
@@ -111,6 +126,8 @@ type ArListQuery = Readonly<{
   window: Omit<ArPageFilter, 'state' | 'search'>;
   state: ArListState | null;
   search: string;
+  // summary 参数生效：附带按币种汇总，并走 additive 行投影。
+  summary: boolean;
 }>;
 
 // legacy 查询参数解析：与 qtc-operational-reads.ts 同解析链、同校验顺序、同消息（state 多接受
@@ -126,9 +143,13 @@ const parseListQuery = (query: Readonly<Record<string, unknown>>): ArListQuery =
   const search = typeof query.search === 'string' ? query.search.trim() : '';
   if (search.length > SEARCH_MAX)
     throw new DomainError('invalid_request', `search exceeds ${String(SEARCH_MAX)} characters`);
+  const rawSummary = query.summary;
+  if (rawSummary !== undefined && rawSummary !== '' && rawSummary !== '1' && rawSummary !== 'true')
+    throw new DomainError('invalid_request', 'summary is unsupported');
   return {
     state: state ? (state as ArListState) : null,
     search,
+    summary: rawSummary === '1' || rawSummary === 'true',
     window: {
       limit: query.limit ? integer(Number(query.limit), 'limit', 1, 100) : 50,
       ...(query.cursor ? { cursor: uuid(query.cursor, 'cursor') } : {}),
@@ -172,13 +193,19 @@ export function registerArOpenItemRoutes(
       const context = scoped('ar:read');
       const query = parseListQuery((request.query ?? {}) as Readonly<Record<string, unknown>>);
       const repo = requireRepository();
-      if (query.search !== '' || query.state === ADDITIVE_STATE) {
-        const page = await repo.listArPage(context, {
-          ...query.window,
-          ...(query.state === null ? {} : { state: query.state }),
-          ...(query.search === '' ? {} : { search: query.search }),
-        });
-        return envelope(page, readFields ?? null);
+      if (query.search !== '' || query.state === ADDITIVE_STATE || query.summary) {
+        const [page, summary] = await Promise.all([
+          repo.listArPage(context, {
+            ...query.window,
+            ...(query.state === null ? {} : { state: query.state }),
+            ...(query.search === '' ? {} : { search: query.search }),
+          }),
+          query.summary ? repo.summarizeAr(context) : Promise.resolve(null),
+        ]);
+        return {
+          ...envelope(page, readFields ?? null),
+          ...(summary === null ? {} : { summary }),
+        };
       }
       // 加性参数未生效：旧轨同链。此处 state 只可能是 legacy 三取值之一。
       const state: OperationalListFilter['state'] =

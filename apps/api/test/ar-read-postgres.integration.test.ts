@@ -619,4 +619,78 @@ describe('FIN-1 AR open item page and detail real PostgreSQL contracts', () => {
       correlationId,
     });
   });
+
+  it('summary=1：按币种汇总与独立 SQL 对拍；金额为精确十进制（超出双精度、亚分级小数都不丢）', async () => {
+    const authz = authorization(['COMPANY']);
+    // 精度样本（新币种 EUR，不影响前面用例的期望）：2^53+1 与 1 微单位——浮点相加会得到 …992 / 丢掉微单位。
+    await invoice(state().graph.customerId, 'INV-EUR-HUGE', '9007199254740993.000001', 5, 'EUR');
+    await invoice(customerB, 'INV-EUR-TINY', '0.000001', 40, 'EUR');
+    const response = await bridge(request({ query: { summary: '1', state: 'CLEARED' } }), authz);
+    expect(response?.statusCode).toBe(200);
+    const byCurrency = Object.fromEntries(
+      rowsOf(bodyOf(response).summary).map((row) => [text(row, 'currency'), row]),
+    );
+    // 独立 SQL（CASE WHEN 写法，不经被测语句）。
+    const expected = (
+      await state().db.query<{ currency: string; open: number; outstanding: string }>(
+        `SELECT b.currency::text currency,sum(CASE WHEN b.remaining_amount>0 THEN 1 ELSE 0 END)::int open,sum(CASE WHEN b.remaining_amount>0 THEN b.remaining_amount ELSE 0 END)::text outstanding FROM ar_open_item_balances b JOIN ar_documents d ON d.id=b.ar_document_id AND d.tenant_id=b.tenant_id JOIN customers c ON c.id=b.customer_id AND c.tenant_id=b.tenant_id WHERE b.tenant_id=$1 GROUP BY b.currency ORDER BY b.currency`,
+        [state().context.actor.companyId],
+      )
+    ).rows;
+    expect(Object.keys(byCurrency).sort()).toEqual(expected.map((row) => row.currency));
+    for (const row of expected) {
+      const actual = byCurrency[row.currency];
+      expect(text(actual ?? {}, 'openCount')).toBe(String(row.open));
+      expect(text(actual ?? {}, 'outstandingAmount')).toBe(row.outstanding);
+    }
+    expect(byCurrency.EUR).toEqual({
+      currency: 'EUR',
+      openCount: 2,
+      outstandingAmount: '9007199254740993.000002',
+      overdueCount: 0,
+      overdueAmount: '0.000000',
+      due7Count: 1,
+      due7Amount: '9007199254740993.000001',
+      due30Count: 1,
+      due30Amount: '9007199254740993.000001',
+    });
+    expect(text(byCurrency.EUR ?? {}, 'outstandingAmount')).not.toBe(
+      String(Number('9007199254740993.000001') + Number('0.000001')),
+    );
+    // 已逾期 = 未核销且到期时间早于当前时刻；7 天桶含于 30 天桶（笔数与金额都不大于）。
+    for (const row of rowsOf(bodyOf(response).summary)) {
+      expect(Number(text(row, 'overdueCount'))).toBeLessThanOrEqual(Number(text(row, 'openCount')));
+      expect(Number(text(row, 'due30Count'))).toBeLessThanOrEqual(
+        Number(text(row, 'openCount')) - Number(text(row, 'overdueCount')),
+      );
+      expect(Number(text(row, 'due7Count'))).toBeLessThanOrEqual(Number(text(row, 'due30Count')));
+      expect(text(row, 'openCount')).not.toBe('0');
+    }
+    // 汇总与列表口径对得上：未核销笔数 = OPEN 行数；已逾期笔数 = OVERDUE 行数。
+    const open = itemsOf(
+      await bridge(request({ query: { state: 'OPEN', limit: '100', summary: '1' } }), authz),
+    );
+    expect(open.filter((row) => text(row, 'currency') === 'CNY')).toHaveLength(
+      Number(text(byCurrency.CNY ?? {}, 'openCount')),
+    );
+    expect(
+      open.filter(
+        (row) => text(row, 'currency') === 'CNY' && text(row, 'agingState') === 'OVERDUE',
+      ),
+    ).toHaveLength(Number(text(byCurrency.CNY ?? {}, 'overdueCount')));
+    // 数据范围：SELF 只汇总自己负责客户的应收（乙方与外租户的不计入）。
+    const self = bodyOf(
+      await bridge(request({ query: { summary: '1' } }), authorization(['SELF'])),
+    );
+    const selfCny = rowsOf(self.summary).find((row) => text(row, 'currency') === 'CNY');
+    expect(text(selfCny ?? {}, 'openCount')).toBe(
+      String(
+        open.filter(
+          (row) =>
+            text(row, 'currency') === 'CNY' &&
+            !['财务测试客户乙', 'Other tenant customer'].includes(text(row, 'customerName')),
+        ).length,
+      ),
+    );
+  });
 });

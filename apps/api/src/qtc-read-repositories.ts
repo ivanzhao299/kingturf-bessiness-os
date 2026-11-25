@@ -43,6 +43,21 @@ export type ArPageFilter = Readonly<{
   cursor?: string;
   limit?: number;
 }>;
+// 应收汇总（按币种，互不相加；金额为 numeric(24,6) 的十进制文本，由 SQL 精确聚合）。口径：
+//   未核销余额 = 未核销余额 > 0 的应收单的余额合计；已逾期 = 其中到期时间早于当前时刻；
+//   7 天 / 30 天内到期 = 未逾期且到期时间落在当前时刻起 N 天之内（30 天含 7 天）。
+export type ArCurrencySummary = Readonly<{
+  currency: string;
+  openCount: number;
+  outstandingAmount: string;
+  overdueCount: number;
+  overdueAmount: string;
+  due7Count: number;
+  due7Amount: string;
+  due30Count: number;
+  due30Amount: string;
+}>;
+
 export type ArDetailParts = Readonly<{
   // 关联销售订单摘要（sales-order:read 门控）：未授权不查询。
   order: boolean;
@@ -99,6 +114,28 @@ export class PostgresQuoteToCashReadRepository {
       items: rows.rows.slice(0, limit).map((row) => row.item),
       nextCursor: rows.rows.length > limit ? (rows.rows[limit - 1]?.id ?? null) : null,
     };
+  }
+
+  // 应收汇总（additive 只读）：数据范围与列表同一条客户记录作用域谓词；与筛选、分页无关。
+  public async summarizeAr(context: Context): Promise<readonly ArCurrencySummary[]> {
+    const secured = recordScopeSql(context.scopes, context.anchors, context.actor, 'c', 2);
+    // 整条语句是静态 SQL：除作用域谓词片段外不做任何拼接（G3）。
+    return (
+      await this.db.query<ArCurrencySummary>(
+        `SELECT b.currency::text currency,
+      count(*) FILTER (WHERE b.remaining_amount>0)::int "openCount",
+      coalesce(sum(b.remaining_amount) FILTER (WHERE b.remaining_amount>0),0)::numeric(24,6)::text "outstandingAmount",
+      count(*) FILTER (WHERE b.remaining_amount>0 AND b.due_at<now())::int "overdueCount",
+      coalesce(sum(b.remaining_amount) FILTER (WHERE b.remaining_amount>0 AND b.due_at<now()),0)::numeric(24,6)::text "overdueAmount",
+      count(*) FILTER (WHERE b.remaining_amount>0 AND b.due_at>=now() AND b.due_at<now()+interval '7 days')::int "due7Count",
+      coalesce(sum(b.remaining_amount) FILTER (WHERE b.remaining_amount>0 AND b.due_at>=now() AND b.due_at<now()+interval '7 days'),0)::numeric(24,6)::text "due7Amount",
+      count(*) FILTER (WHERE b.remaining_amount>0 AND b.due_at>=now() AND b.due_at<now()+interval '30 days')::int "due30Count",
+      coalesce(sum(b.remaining_amount) FILTER (WHERE b.remaining_amount>0 AND b.due_at>=now() AND b.due_at<now()+interval '30 days'),0)::numeric(24,6)::text "due30Amount"
+      FROM ar_open_item_balances b JOIN ar_documents d ON d.id=b.ar_document_id AND d.tenant_id=b.tenant_id JOIN customers c ON c.id=b.customer_id AND c.tenant_id=b.tenant_id
+      WHERE b.tenant_id=$1 AND ${secured.sql} GROUP BY b.currency ORDER BY b.currency`,
+        [context.actor.companyId, ...secured.values],
+      )
+    ).rows;
   }
 
   // 应收详情（additive 只读）：根行（同投影）+ 关联销售订单摘要 + 核销分配记录。

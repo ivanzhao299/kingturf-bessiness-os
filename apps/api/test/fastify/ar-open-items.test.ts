@@ -88,6 +88,19 @@ const detail = {
     },
   ],
 };
+const summary = [
+  {
+    currency: 'CNY',
+    openCount: 3,
+    outstandingAmount: '850000.500000',
+    overdueCount: 1,
+    overdueAmount: '950000.000000',
+    due7Count: 1,
+    due7Amount: '1000.500000',
+    due30Count: 2,
+    due30Amount: '3000.500000',
+  },
+];
 const posted = {
   id: itemId,
   arDocumentId: row.ar_document_id,
@@ -116,6 +129,7 @@ const repository = (
   overrides: {
     listOperationalPage?: ReturnType<typeof vi.fn>;
     listArPage?: ReturnType<typeof vi.fn>;
+    summarizeAr?: ReturnType<typeof vi.fn>;
     findArOpenItem?: ReturnType<typeof vi.fn>;
     postAr?: ReturnType<typeof vi.fn>;
   } = {},
@@ -127,6 +141,7 @@ const repository = (
       tracked('listOperationalPage', { items: [row], nextCursor: null }),
     listArPage:
       overrides.listArPage ?? tracked('listArPage', { items: [additiveRow], nextCursor: null }),
+    summarizeAr: overrides.summarizeAr ?? tracked('summarizeAr', summary),
     findArOpenItem: overrides.findArOpenItem ?? tracked('findArOpenItem', detail),
     postAr: overrides.postAr ?? tracked('postAr', posted),
   }) as unknown as Qtc;
@@ -504,6 +519,49 @@ describe('ar-open-items fastify bridge track', () => {
     );
     expect(tooLong?.statusCode).toBe(400);
     expect(errorOf(tooLong).message).toBe('search exceeds 100 characters');
+    expect(calls).toEqual([]);
+  });
+
+  it('GET summary=1：走 additive 行投影并附带按币种汇总（汇总不随筛选与分页变化）', async () => {
+    const response = await dispatchFastifyRouteGroup(
+      requestFor({ query: { summary: '1', state: 'OVERDUE', limit: '2' } }),
+      scopeFor(repository()),
+    );
+    expect(response?.statusCode).toBe(200);
+    expect(response?.body).toEqual({ items: [additiveRow], nextCursor: null, summary });
+    expect(calls).toEqual([
+      { method: 'listArPage', args: [scopeContext, { limit: 2, state: 'OVERDUE' }] },
+      { method: 'summarizeAr', args: [scopeContext] },
+    ]);
+    // 'true' 与 '1' 同义。
+    calls.length = 0;
+    const truthy = await dispatchFastifyRouteGroup(
+      requestFor({ query: { summary: 'true' } }),
+      scopeFor(repository()),
+    );
+    expect(truthy?.body).toEqual({ items: [additiveRow], nextCursor: null, summary });
+    expect(calls.map((call) => call.method)).toEqual(['listArPage', 'summarizeAr']);
+  });
+
+  it('GET summary 缺省或为空串：不加汇总、仍走旧轨同链；取值不合法 400 且不触达仓储', async () => {
+    for (const query of [{}, { summary: '' }]) {
+      calls.length = 0;
+      const response = await dispatchFastifyRouteGroup(
+        requestFor({ query }),
+        scopeFor(repository()),
+      );
+      expect(Object.keys(response?.body ?? {})).toEqual(['items', 'nextCursor']);
+      expect(calls.map((call) => call.method)).toEqual(['listOperationalPage']);
+    }
+    for (const value of ['0', 'false', 'yes', '2']) {
+      calls.length = 0;
+      const response = await dispatchFastifyRouteGroup(
+        requestFor({ query: { summary: value } }),
+        scopeFor(repository()),
+      );
+      expect(response?.statusCode).toBe(400);
+      expect(errorOf(response).message).toBe('summary is unsupported');
+    }
     expect(calls).toEqual([]);
   });
 
