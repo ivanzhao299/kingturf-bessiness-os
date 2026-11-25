@@ -18,6 +18,7 @@ import {
   statusTone,
 } from './quote-console-timeline';
 import { failureMessage } from '../../shared/api-error-message';
+import { FocusAnchor } from './focus-anchor';
 
 // U3-COM-3（ADR-0014 分域重写）：报价控制台——原 vanilla quote workbench 能力面
 // 等价迁移（新建含政策预校验、修订、批准、签发、打印；列表/筛选/客户端分页）。
@@ -326,6 +327,8 @@ const QuoteDrawer = ({ state }: Readonly<{ state: QuotePageState }>) => {
       {state.activeForm === 'revise' ? <ReviseForm state={state} /> : null}
       {state.activeForm === 'approve' ? <ApproveForm state={state} /> : null}
       {state.activeForm === 'issue' ? <IssueForm state={state} /> : null}
+      {/* TD-WF-014④：行内表单开合、状态变化让原来的按钮消失后，把键盘焦点带回抽屉。 */}
+      <FocusAnchor token={`${String(state.activeForm)}|${status}`} />
     </DetailDrawer>
   );
 };

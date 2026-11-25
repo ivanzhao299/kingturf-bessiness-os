@@ -29,6 +29,7 @@ import {
 } from './item-state';
 import { failureMessage } from '../../shared/api-error-message';
 import { ConsoleConfirmDialog, createConfirm, type ConfirmSignal } from './console-confirm';
+import { FocusAnchor } from './focus-anchor';
 
 type ItemBundle = Readonly<{
   // 全量快照（默认视图行与分类计数来源）。
@@ -368,6 +369,8 @@ const columns = (state: ItemViewState): readonly DataTableColumn<ItemRow>[] => [
             发布版本
           </button>
         ) : null}
+        {/* TD-WF-014④：行内发布后「发布版本」按钮消失，焦点回到本行的「查看」。 */}
+        <FocusAnchor token={text(state, row, 'status', 'status')} />
       </span>
     ),
   },

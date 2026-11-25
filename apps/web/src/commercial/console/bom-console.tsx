@@ -11,6 +11,7 @@ import { DataTable, PageHeader, StatusBadge, type DataTableColumn } from '@kingt
 import { BomCreateDrawer } from './bom-create';
 import { BomDetailDrawer, confirmPublish } from './bom-detail';
 import { ConsoleConfirmDialog, createConfirm } from './console-confirm';
+import { FocusAnchor } from './focus-anchor';
 import type { BomConsolePorts, BomRow } from './bom-ports';
 import {
   ALL_PRODUCTS,
@@ -136,6 +137,8 @@ const columns = (state: BomViewState): readonly DataTableColumn<BomRow>[] => [
             发布版本
           </button>
         ) : null}
+        {/* TD-WF-014④：行内发布后「发布版本」按钮消失，焦点回到本行的「查看」。 */}
+        <FocusAnchor token={text(state, row, 'status', 'status')} />
       </span>
     ),
   },

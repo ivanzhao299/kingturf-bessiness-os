@@ -29,6 +29,7 @@ import {
   type ConfirmSignal,
 } from './console-confirm';
 import type { ContractDocumentRow, PurchaseOrderConsolePorts, PurchaseOrderRow } from './po-ports';
+import { FocusAnchor } from './focus-anchor';
 
 // U3-PROC-3（ADR-0014 分域重写）：采购单控制台——原 vanilla purchase-register PO 能力
 // 面等价迁移（创建并签发载荷逐字节一致；收货卡片/登记收货表单属 goods-receipts 域，
@@ -333,6 +334,10 @@ const PoDrawer = ({ state }: Readonly<{ state: PoPageState }>) => {
           }
         />
       ) : null}
+      {/* TD-WF-014④：行内表单开合、签发 / 取消后按钮变化时，把键盘焦点带回抽屉。 */}
+      <FocusAnchor
+        token={`${String(state.activeForm)}|${state.activeDocumentForm?.kind ?? ''}|${status}`}
+      />
     </DetailDrawer>
   );
 };

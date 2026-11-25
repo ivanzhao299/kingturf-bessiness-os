@@ -3,6 +3,7 @@
 //（草稿行内发布）。详情数据来自 additive findRouting（versions 工序 sequence 升序）。
 import { DetailDrawer, StatusBadge } from '@kingturf/ui';
 import { askPublishVersion } from './console-confirm';
+import { FocusAnchor } from './focus-anchor';
 import type { RoutingRow } from './routing-ports';
 import {
   routingOperations,
@@ -67,6 +68,10 @@ export const RoutingDetailDrawer = ({ state }: DetailProps) => {
   if (!row) return null;
   const detail = state.detail ?? row;
   const versions = routingRecords(detail.versions);
+  // TD-WF-014④：草稿版本带「发布」按钮；发布后它消失，焦点锚点据此把键盘焦点带回抽屉。
+  const focusToken = (versions.length > 0 ? versions : [row])
+    .map((version) => state.ports.textValue(version.status, ''))
+    .join(',');
   const latest = versions[0];
   const operations = latest ? routingOperations(latest) : routingOperations(row);
   return (
@@ -139,6 +144,7 @@ export const RoutingDetailDrawer = ({ state }: DetailProps) => {
           <p class="routing-muted">该版本暂无工序</p>
         )}
       </div>
+      <FocusAnchor token={focusToken} />
     </DetailDrawer>
   );
 };

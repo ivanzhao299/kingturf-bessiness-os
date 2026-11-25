@@ -18,6 +18,7 @@ import {
   qualificationCounts,
 } from './supplier-console-detail';
 import type { SupplierConsolePorts, SupplierRow } from './supplier-ports';
+import { FocusAnchor } from './focus-anchor';
 import { failureMessage } from '../../shared/api-error-message';
 
 // U3-PROC-1（ADR-0014 分域重写）：供应商控制台——原 vanilla supplier-register 能力面
@@ -288,6 +289,8 @@ const SupplierDrawer = ({ state }: Readonly<{ state: SupplierPageState }>) => {
           }
         />
       ) : null}
+      {/* TD-WF-014④：准入审核表单开合后，把键盘焦点带回抽屉。 */}
+      <FocusAnchor token={`${String(state.activeForm)}|${status}`} />
     </DetailDrawer>
   );
 };

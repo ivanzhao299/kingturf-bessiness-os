@@ -19,6 +19,7 @@ import {
   type CustomerStats,
 } from '../../crm/crm-ux';
 import { failureMessage } from '../../shared/api-error-message';
+import { FocusAnchor } from './focus-anchor';
 
 // U3-CRM-2（ADR-0014 分域重写）：客户控制台——原 vanilla customer-records 能力面
 // 等价迁移（新建/客户 360 详情/联系人/活动时间线/商机关联/归属历史）。
@@ -298,6 +299,8 @@ const CustomerDrawer = ({ state }: Readonly<{ state: CustomerPageState }>) => {
       ) : (
         <p class="console-hint">客户 360 加载中…</p>
       )}
+      {/* TD-WF-014④：添加联系人 / 活动的行内表单开合后，把键盘焦点带回抽屉。 */}
+      <FocusAnchor token={`${String(state.contactForm)}|${String(state.activityForm)}`} />
     </DetailDrawer>
   );
 };

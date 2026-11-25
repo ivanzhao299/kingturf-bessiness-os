@@ -11,6 +11,7 @@ import {
 } from '@kingturf/ui';
 import type { PolicyConsolePorts, PolicyRow } from './policy-ports';
 import { failureMessage } from '../../shared/api-error-message';
+import { FocusAnchor } from './focus-anchor';
 
 // U3-COM-6（ADR-0014 分域重写）：销售政策控制台——原 vanilla policy workbench 能力面
 // 等价迁移（新建/版本发布/政策评估；列表/筛选/详情抽屉含版本与毛利规则）。
@@ -259,6 +260,8 @@ const PolicyDrawer = ({ state }: Readonly<{ state: PolicyPageState }>) => {
           onSubmit={(values) => state.runVersion(policy, values)}
         />
       ) : null}
+      {/* TD-WF-014④：新版本表单开合后，把键盘焦点带回抽屉。 */}
+      <FocusAnchor token={String(state.activeForm)} />
     </DetailDrawer>
   );
 };

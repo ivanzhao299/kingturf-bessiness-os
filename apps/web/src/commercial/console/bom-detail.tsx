@@ -4,6 +4,7 @@
 // 由前端基于 versions 行项计算（bom-state diffVersions 纯函数），不新增写路径。
 import { DetailDrawer } from '@kingturf/ui';
 import { askPublishVersion } from './console-confirm';
+import { FocusAnchor } from './focus-anchor';
 import type { BomRow } from './bom-ports';
 import {
   bomVersions,
@@ -212,6 +213,10 @@ export const BomDetailDrawer = ({ state }: DetailProps) => {
   if (!row) return null;
   const detail = state.detail ?? row;
   const versions = bomVersions(state.detail);
+  // TD-WF-014④：草稿版本带「发布」按钮；发布后它消失，焦点锚点据此把键盘焦点带回抽屉。
+  const focusToken = (versions.length > 0 ? versions : [row])
+    .map((version) => state.ports.textValue(version.status, ''))
+    .join(',');
   const tree = recordsOf(detail.tree);
   const lines = tree.length > 0 ? recordsOf(recordOf(tree[0]).lines) : recordsOf(detail.lines);
   return (
@@ -277,6 +282,7 @@ export const BomDetailDrawer = ({ state }: DetailProps) => {
         <TreeLines state={state} lines={lines} depth={0} />
       </div>
       <CompareView state={state} />
+      <FocusAnchor token={focusToken} />
     </DetailDrawer>
   );
 };

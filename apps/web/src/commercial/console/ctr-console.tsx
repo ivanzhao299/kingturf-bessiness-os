@@ -23,6 +23,7 @@ import {
   versionNumber,
 } from './solution-console-diff';
 import { failureMessage } from '../../shared/api-error-message';
+import { FocusAnchor } from './focus-anchor';
 
 // U3-COM-5（ADR-0014 分域重写）：技术需求单控制台——原 vanilla ctr workbench 能力面
 // 等价迁移（新建/修订/提交评审/批准驳回/上传附件；列表/筛选/详情抽屉含版本差异）。
@@ -487,6 +488,8 @@ const CtrDrawer = ({ state }: Readonly<{ state: CtrPageState }>) => {
           onSubmit={(values) => state.runRevise(row, values)}
         />
       ) : null}
+      {/* TD-WF-014④：审批 / 驳回、修订的行内表单开合后，把键盘焦点带回抽屉。 */}
+      <FocusAnchor token={`${String(state.activeForm)}|${String(state.decision)}`} />
     </DetailDrawer>
   );
 };

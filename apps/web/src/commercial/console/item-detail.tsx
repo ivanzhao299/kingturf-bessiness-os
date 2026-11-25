@@ -5,6 +5,7 @@
 import type { ComponentChild } from 'preact';
 import { DetailDrawer, StatusBadge } from '@kingturf/ui';
 import { askPublishVersion } from './console-confirm';
+import { FocusAnchor } from './focus-anchor';
 import type { ItemRow } from './item-ports';
 import {
   categoryLabel,
@@ -175,6 +176,12 @@ export const ItemDetailDrawer = ({ state }: DetailProps) => {
   const current = recordsOf(state.detail?.versions).find(
     (version) => text(state, version, 'id', 'id') === text(state, row, 'id', 'id'),
   );
+  // TD-WF-014④：版本历史里每个草稿版本带一个「发布版本」按钮；发布后它消失，焦点锚点据此把键盘焦点
+  // 带回抽屉。
+  const historyVersions = recordsOf(state.detail?.versions);
+  const focusToken = (historyVersions.length > 0 ? historyVersions : [row])
+    .map((version) => text(state, version, 'status', 'status'))
+    .join(',');
   return (
     <DetailDrawer
       title={`物料详情 · ${sku}`}
@@ -251,6 +258,7 @@ export const ItemDetailDrawer = ({ state }: DetailProps) => {
         title="最近工单"
         line={(order) => <OrderLine state={state} row={order} />}
       />
+      <FocusAnchor token={focusToken} />
     </DetailDrawer>
   );
 };

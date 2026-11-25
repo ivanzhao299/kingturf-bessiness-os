@@ -28,6 +28,7 @@ import {
   type LeadTab,
 } from '../../crm/crm-ux';
 import { failureMessage } from '../../shared/api-error-message';
+import { FocusAnchor } from './focus-anchor';
 
 // U3-CRM-1（ADR-0014 分域重写）：线索控制台——原 vanilla lead-records 能力面等价迁移
 // （新建/认领/变更状态/分配改派/释放公海；列表/搜索/分页/详情抽屉）。
@@ -421,6 +422,10 @@ const LeadDrawer = ({ state }: Readonly<{ state: LeadPageState }>) => {
           }
         />
       ) : null}
+      {/* TD-WF-014④：行内表单开合、认领 / 释放后按钮变化时，把键盘焦点带回抽屉。 */}
+      <FocusAnchor
+        token={`${String(state.activeForm)}|${status}|${ports.textValue(lead.ownerId, '')}`}
+      />
     </DetailDrawer>
   );
 };

@@ -10,6 +10,7 @@ import {
 } from '@kingturf/ui';
 import type { CreditConsolePorts, CreditRow } from './credit-ports';
 import { failureMessage } from '../../shared/api-error-message';
+import { FocusAnchor } from './focus-anchor';
 import { CreditFlow, DecisionFlow, STATUS_LABELS } from './credit-console-flow';
 
 // U3-COM-7（ADR-0014 分域重写）：信用审查控制台——原 vanilla credit workbench 能力面
@@ -202,6 +203,8 @@ const CreditDrawer = ({ state }: Readonly<{ state: CreditPageState }>) => {
           error={state.submitError}
         />
       ) : null}
+      {/* TD-WF-014④：审批表单开合、决定后审批按钮消失时，把键盘焦点带回抽屉。 */}
+      <FocusAnchor token={`${String(state.decision)}|${decisionStatus(ports, decision)}`} />
     </DetailDrawer>
   );
 };

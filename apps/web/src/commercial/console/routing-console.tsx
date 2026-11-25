@@ -10,6 +10,7 @@ import { DataTable, PageHeader, StatusBadge, type DataTableColumn } from '@kingt
 import { RoutingCreateDrawer } from './routing-create';
 import { RoutingDetailDrawer, confirmPublish } from './routing-detail';
 import { ConsoleConfirmDialog, createConfirm } from './console-confirm';
+import { FocusAnchor } from './focus-anchor';
 import type { RoutingConsolePorts, RoutingRow } from './routing-ports';
 import {
   ALL_PRODUCTS,
@@ -137,6 +138,8 @@ const columns = (state: RoutingViewState): readonly DataTableColumn<RoutingRow>[
             发布版本
           </button>
         ) : null}
+        {/* TD-WF-014④：行内发布后「发布版本」按钮消失，焦点回到本行的「查看」。 */}
+        <FocusAnchor token={text(state, row, 'status', 'status')} />
       </span>
     ),
   },

@@ -25,6 +25,7 @@ import {
   versionNumber,
 } from './solution-console-diff';
 import { failureMessage } from '../../shared/api-error-message';
+import { FocusAnchor } from './focus-anchor';
 
 // U3-COM-2（ADR-0014 分域重写）：技术方案 Preact 控制台——原 vanilla solution
 // workbench 能力面等价迁移（新建/修订/定稿、规格与上一版差异标记），列表页
@@ -326,6 +327,8 @@ const SolutionDrawer = ({ state }: Readonly<{ state: SolutionPageState }>) => {
           }
         />
       ) : null}
+      {/* TD-WF-014④：编辑 / 定稿发布的行内表单开合后，把键盘焦点带回抽屉。 */}
+      <FocusAnchor token={String(state.activeForm)} />
     </DetailDrawer>
   );
 };

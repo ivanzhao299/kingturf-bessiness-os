@@ -3,7 +3,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import { h, render } from 'preact';
 import type { ComponentType } from 'preact';
-import { installGlobalTestDom, type TestElement } from '../../../test/fixtures/preact-dom';
+import {
+  installGlobalTestDom,
+  TestDocument,
+  TestEvent,
+  type TestElement,
+} from '../../../test/fixtures/preact-dom';
 import { QuoteConsolePage } from './quote-console';
 import type { QuoteConsolePorts, QuoteSnapshot } from './quote-ports';
 
@@ -88,6 +93,20 @@ const portsFor = (
   refresh: vi.fn().mockResolvedValue(snapshot()),
   ...overrides,
 });
+
+const active = (): TestElement | null => TestDocument.current.activeElement as TestElement | null;
+
+// DetailDrawer 的初焦在「绘制之后」才落到关闭按钮。下面的焦点用例先等它到位再开始；断言本身是同步的
+// （FocusAnchor 在提交阶段把焦点带回抽屉），不与那个 effect 赛跑。
+const eventually = async (condition: () => boolean, what: string): Promise<void> => {
+  const deadline = Date.now() + 5000;
+  while (!condition()) {
+    if (Date.now() > deadline) throw new Error(`timed out waiting for ${what}`);
+    await new Promise((resolve) => {
+      setTimeout(resolve, 10);
+    });
+  }
+};
 
 const mount = (ports: QuoteConsolePorts): TestElement => {
   const host = installGlobalTestDom().document.createElement('div');
@@ -357,4 +376,24 @@ describe('报价行内表单与防重复提交（FormSection 要拿到 onSubmit 
       expect(command).toHaveBeenCalledTimes(2);
     },
   );
+
+  // TD-WF-014④（写流程冒烟 WS-P3-04）：点「创建报价修订」后这个按钮被行内表单替换，键盘焦点原先掉到
+  // 页面主体，Esc 到不了抽屉。现在焦点进入表单，Esc 照旧关闭抽屉。
+  it('打开行内表单后焦点进入表单首个字段，Esc 仍能关闭抽屉', async () => {
+    const host = mount(portsFor(['quote:update']));
+    element(host.querySelectorAll('[data-testid="kt-quote-open"]')[1] ?? null).click();
+    await flush();
+    const closeButton = element(host.querySelector('.detail-drawer .drawer-close'));
+    await eventually(() => active() === closeButton, 'the drawer initial focus');
+    const revise = element(host.querySelector('[data-testid="kt-quote-revise"]'));
+    revise.focus();
+    revise.click();
+    await flush();
+    const field = element(host.querySelector('.detail-drawer form.form-section input'));
+    expect(host.querySelector('[data-testid="kt-quote-revise"]')).toBeNull();
+    expect(active()).toBe(field);
+    field.dispatchEvent(new TestEvent('keydown', { key: 'Escape' }));
+    await flush();
+    expect(host.querySelector('.detail-drawer')).toBeNull();
+  });
 });

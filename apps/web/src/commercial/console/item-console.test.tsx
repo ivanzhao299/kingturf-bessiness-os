@@ -558,6 +558,26 @@ describe('U3-MFG-1 物料控制台：详情抽屉', () => {
     expect(TestDocument.current.activeElement).toBe(trigger);
     expect(host.querySelectorAll('[data-testid="kt-item-publish"]')).toHaveLength(1);
   });
+
+  // TD-WF-014④：确认发布后「发布版本」按钮从行里消失；行内的焦点锚点把键盘焦点带回这一行的「查看」。
+  it('确认发布后该行的「发布版本」按钮消失：焦点回到该行的「查看」', async () => {
+    const ports = portsFor([published, draft], ['manufacturing-item:manage'], {
+      refresh: vi.fn().mockResolvedValue([published, version({ ...draft, status: 'PUBLISHED' })]),
+    });
+    const host = mount(ports);
+    byTestId(host, 'kt-item-publish').focus();
+    byTestId(host, 'kt-item-publish').click();
+    await flush();
+    await confirmAction(host, '发布版本', '确认发布');
+    await flush();
+    await flush();
+    expect(ports.submit).toHaveBeenCalledTimes(1);
+    expect(host.querySelectorAll('[data-testid="kt-item-publish"]')).toHaveLength(0);
+    expect(host.textContent).toContain('已发布 · 第 2 版');
+    expect(TestDocument.current.activeElement).toBe(
+      host.querySelectorAll('[data-testid="kt-item-open"]')[1],
+    );
+  });
 });
 
 describe('U3-MFG-1 物料控制台：失败路径与竞态', () => {

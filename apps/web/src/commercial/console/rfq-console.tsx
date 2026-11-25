@@ -17,6 +17,7 @@ import {
   linesOf,
 } from './rfq-console-detail';
 import type { RfqConsolePorts, RfqRow } from './rfq-ports';
+import { FocusAnchor } from './focus-anchor';
 import { failureMessage } from '../../shared/api-error-message';
 import {
   askConfirm,
@@ -243,6 +244,8 @@ const RfqDrawer = ({ state }: Readonly<{ state: RfqPageState }>) => {
       <p class="console-label">询价行项</p>
       <RfqLines state={state} />
       <QuoteComparison state={state} />
+      {/* TD-WF-014④：发布 / 关闭后按钮变化时，把键盘焦点带回抽屉。 */}
+      <FocusAnchor token={status} />
     </DetailDrawer>
   );
 };
