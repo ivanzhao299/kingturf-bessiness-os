@@ -139,7 +139,7 @@ const SupplierStateActions = ({
             title: `${label}供应商`,
             message:
               status === 'ACTIVE'
-                ? `恢复后，可为「${name}」登记报价和新建采购订单。`
+                ? `恢复后，可为「${name}」登记报价和新建采购订单。相关物料仍需满足准入要求。`
                 : `${label}后，「${name}」不能登记新报价或新建采购订单。已有采购单仍可按原流程处理。`,
             confirmLabel: `确认${label}`,
             destructive: status !== 'ACTIVE',
@@ -618,8 +618,10 @@ export function SupplierConsolePage(ports: SupplierConsolePorts) {
     bundle.submitError.value = '';
     bundle.notice.value = '';
     const id = ports.textValue(row.id, '');
+    let statusSaved = false;
     try {
       await ports.submit(`/api/v1/suppliers/${id}/state`, { status }, 'PUT');
+      statusSaved = true;
       // 先同步已成功的状态，随后刷新快照，带回服务端时间戳与其它变化。
       applySnapshot({
         suppliers: bundle.suppliers.value.map((supplier) =>
@@ -628,9 +630,9 @@ export function SupplierConsolePage(ports: SupplierConsolePorts) {
         quotes: bundle.quotes.value,
       });
       bundle.notice.value = `${STATE_ACTIONS[status].result}供应商 ${recordText(ports, row, 'supplierNumber', 'supplier_number')}`;
-      applySnapshot(await ports.refresh());
+      applySnapshot(await ports.refresh('suppliers'));
     } catch (error: unknown) {
-      const fallback = bundle.notice.value ? '供应商状态已变更，刷新失败' : '供应商状态变更失败';
+      const fallback = statusSaved ? '供应商状态已变更，刷新失败' : '供应商状态变更失败';
       bundle.submitError.value = failureMessage(error, fallback);
     } finally {
       bundle.loading.value = false;

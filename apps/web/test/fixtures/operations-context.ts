@@ -19,6 +19,7 @@ export const operationsContext = () => {
       message: '',
       submit,
       load: unused,
+      refreshViews: unused,
       employees: [
         { id: 'employee-1', displayName: '员工甲' },
         { id: 'employee-2', employeeNumber: 'E-2' },

@@ -13,6 +13,7 @@ export type OperationsViewContext = Readonly<{
   status: HTMLElement;
   controller: Pick<SalesViewController, 'customers' | 'views' | 'message' | 'submit' | 'load'> & {
     employees: readonly Employee[];
+    refreshViews(paths: readonly string[]): Promise<void>;
     api: Pick<CommercialApi, 'get' | 'uploadContractDocument'>;
   };
   permissions: ReadonlySet<CommercialPermission>;

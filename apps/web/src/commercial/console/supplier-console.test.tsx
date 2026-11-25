@@ -374,7 +374,7 @@ describe('U3-PROC-1 供应商控制台', () => {
       { status: 'ON_HOLD' },
       'PUT',
     );
-    expect(ports.refresh).toHaveBeenCalledTimes(1);
+    expect(ports.refresh).toHaveBeenCalledExactlyOnceWith('suppliers');
     expect(noticeOf(host)).toEqual({ text: '已暂停供应商 SUP-1', inDrawer: false });
     expect(
       element(host.querySelector('[data-testid="kt-supplier-state-count-on_hold"]')).textContent,
@@ -426,6 +426,33 @@ describe('U3-PROC-1 供应商控制台', () => {
     );
     expect(drawer.querySelector('.status-badge')?.textContent).toBe('已启用');
     expect(noticeOf(host)).toEqual({ text: '已恢复供应商 SUP-2', inDrawer: true });
+  });
+
+  it('状态写入成功但供应商重读失败时保留新状态与筛选计数，并说明刷新失败', async () => {
+    const ports = portsFor([supplier], ['supplier:manage'], {
+      refresh: vi.fn().mockRejectedValue(new Error('读取供应商失败，请刷新重试')),
+    });
+    const host = mount(ports);
+    element(host.querySelector('[data-testid="kt-supplier-open"]')).click();
+    await flush();
+    const drawer = element(host.querySelector('.detail-drawer'));
+    element(drawer.querySelector('[data-testid="kt-supplier-state-drawer-pause"]')).click();
+    await confirmAction(host, '暂停供应商', '确认暂停', { destructive: true });
+    expect(ports.submit).toHaveBeenCalledExactlyOnceWith(
+      '/api/v1/suppliers/supplier-1/state',
+      { status: 'ON_HOLD' },
+      'PUT',
+    );
+    expect(ports.refresh).toHaveBeenCalledExactlyOnceWith('suppliers');
+    expect(drawer.querySelector('.status-badge')?.textContent).toBe('暂停');
+    expect(drawer.querySelector('[role="alert"]')?.textContent).toBe('读取供应商失败，请刷新重试');
+    expect(noticeOf(host)).toEqual({ text: '已暂停供应商 SUP-1', inDrawer: true });
+    expect(host.querySelector('[data-testid="kt-supplier-state-count-active"]')?.textContent).toBe(
+      '0',
+    );
+    expect(host.querySelector('[data-testid="kt-supplier-state-count-on_hold"]')?.textContent).toBe(
+      '1',
+    );
   });
 
   it('详情抽屉展示资质记录与按 supplierId 过滤的报价历史', async () => {
