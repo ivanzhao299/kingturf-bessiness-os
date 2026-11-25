@@ -40,6 +40,7 @@ import { registerProductionOrderRoutes } from './production-orders.ts';
 import { registerProductionOrderExecutionRoutes } from './production-order-execution.ts';
 import { registerArOpenItemRoutes } from './ar-open-items.ts';
 import { registerBankPaymentRoutes } from './bank-payments.ts';
+import { registerCollectionCaseRoutes } from './collection-cases.ts';
 
 export type FastifyRouteScope = Readonly<{
   authorization: AuthorizationContext;
@@ -134,6 +135,12 @@ const CLAIMED_FASTIFY_ROUTES: readonly (readonly [method: string, pattern: RegEx
   ['GET', /^\/api\/v1\/reconciliation-runs$/u],
   ['GET', /^\/api\/v1\/reconciliation-runs\/[0-9a-f-]+$/u],
   ['POST', /^\/api\/v1\/reconciliation-runs$/u],
+  ['GET', /^\/api\/v1\/collection-cases$/u],
+  ['GET', /^\/api\/v1\/collection-cases\/[0-9a-f-]+$/u],
+  ['POST', /^\/api\/v1\/collection-cases$/u],
+  ['POST', /^\/api\/v1\/collection-cases\/[0-9a-f-]+\/(?:followups|promises|legal-handoffs)$/u],
+  ['POST', /^\/api\/v1\/collection-promises\/[0-9a-f-]+\/break$/u],
+  ['POST', /^\/api\/v1\/legal-handoffs\/[0-9a-f-]+\/(?:accept|evidence-packages)$/u],
 ];
 
 // legacy catch 层的同款 DomainError 状态映射（行为守恒）。
@@ -207,6 +214,7 @@ const buildRouteGroupApp = (scope: FastifyRouteScope) => {
   registerProductionOrderExecutionRoutes(app, scope);
   registerArOpenItemRoutes(app, scope);
   registerBankPaymentRoutes(app, scope);
+  registerCollectionCaseRoutes(app, scope);
   return app;
 };
 

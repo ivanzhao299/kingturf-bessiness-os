@@ -59,3 +59,21 @@ export const asAllocationGuard = (error: unknown): unknown => {
   });
   return hint === null ? error : new DomainError('conflict', hint);
 };
+
+/** Exact stock ledger rejections from the collection and legal triggers. */
+export const asCollectionGuard = (error: unknown): unknown => {
+  const hint = guardRejection(error, {
+    'collection case requires overdue positive balance': '应收单须已逾期且有剩余余额才能建案',
+    'case state does not allow a payment promise': '当前案件阶段不能登记付款承诺',
+    'payment promise exceeds or mismatches receivable balance': '承诺金额超过应收余额或币种不一致',
+    'payment promise is terminal after decision': '该付款承诺已有处理结果，请刷新后核对',
+    'payment promise cannot be broken before due date': '承诺期限未到，暂不能确认违约',
+    'legal handoff requires contacting or broken promise state':
+      '只有正在催收或承诺违约的案件可以移交法务',
+    'collection case already has an active legal handoff': '案件已有进行中的法务移交',
+    'legal handoff requester cannot decide own request': '法务移交需由申请人之外的人员受理',
+    'illegal legal handoff transition': '法务移交状态已变化，请刷新后核对',
+    'debt evidence package requires accepted legal handoff': '法务移交受理后才能生成证据包',
+  });
+  return hint === null ? error : new DomainError('conflict', hint);
+};

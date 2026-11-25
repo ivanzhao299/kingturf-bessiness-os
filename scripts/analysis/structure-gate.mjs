@@ -260,6 +260,12 @@ const SQL_ENUM_NAMES = new Set([
   'PAYMENT_FROM',
   'RUN_PROJECTION',
   'RUN_FROM',
+  // FIN-3: immutable SQL projections, priority expression and joins.
+  'COLLECTION_EVIDENCE',
+  'COLLECTION_FROM',
+  'COLLECTION_CURRENT',
+  'COLLECTION_CURRENT_JOIN',
+  'COLLECTION_PRIORITY',
   // B2（TD-API-003）分页 keyset 游标片段：cursor 值一律经 values.push 参数化（$N），
   // 变量本体只含代码内表/列名与占位符；2026-11-18 随 18 端点分页批次登记。
   'keyset',
