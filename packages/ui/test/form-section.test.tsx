@@ -510,8 +510,9 @@ describe('FormSection（兼容 shared/forms.ts 校验语义）', () => {
     expect(alert.textContent).toBe('请选择颜色');
     expect(colour.getAttribute('aria-invalid')).toBe('true');
     expect(asElement(colour.parentNode).classList.contains('invalid')).toBe(true);
-    // 第一个出错的字段是下拉：提示里说的是「选择」而不是「填写」。
-    expect(host.document.activeElement).toBe(alert);
+    // 第一个出错的字段是下拉：提示里说的是「选择」而不是「填写」，焦点也在这个下拉上
+    // （与文本类输入同一规则；此前落在提示区）。
+    expect(host.document.activeElement).toBe(colour);
     // 选好之后再提交：提示消失，请求带上下拉选项的 value。
     colour.value = 'green';
     colour.dispatchEvent(new Event('input', { bubbles: true }));
@@ -608,6 +609,33 @@ describe('FormSection：必填的文本类输入（TD-UI-013）', () => {
     await flush();
     expect(alertOf(host).textContent).toBe('请填写草坪销售单价（元/㎡）');
     expect(host.document.activeElement).toBe(fieldControl(host, 'turfPrice'));
+  });
+
+  it('moves focus to a required select when it is the first missing field, even if a later text field is empty too', async () => {
+    const host = mountDom();
+    mount(
+      <FormSection
+        title="规格"
+        fields={[
+          {
+            name: 'colour',
+            label: '颜色',
+            type: 'select',
+            required: true,
+            options: [{ value: 'green', label: '绿' }],
+          },
+          { name: 'batch', label: '批次号', required: true },
+        ]}
+        submitLabel="保存"
+        onSubmit={() => undefined}
+      />,
+      host,
+    );
+    submitButton(host).click();
+    await flush();
+    // 提示与焦点说的是同一个字段：第一个出错的下拉。
+    expect(alertOf(host).textContent).toBe('请选择颜色');
+    expect(host.document.activeElement).toBe(fieldControl(host, 'colour'));
   });
 
   // 字段在视口外（长表单滚到了底部的提交按钮）：以字段为准，让浏览器把它滚进来——与原生气泡一致。

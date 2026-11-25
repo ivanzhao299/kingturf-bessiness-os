@@ -87,8 +87,9 @@ const focusMissingField = (field: ControlNode): void => {
   if (!inViewport(field)) field.focus();
 };
 
-// 提交被表单校验拦下时要聚焦的字段：只有第一个出错的字段是「必填且为空」时才把焦点交给它；
-// 格式不合法等其它提示仍由提示区承载并获焦。按字段顺序取第一个，与提示区显示的是同一条。
+// 提交被表单校验拦下时要聚焦的字段：只有第一个出错的字段是「必填且为空」时才把焦点交给它
+// （下拉与文本类输入同一规则）；格式不合法等其它提示仍由提示区承载并获焦。按字段顺序取第一个，
+// 与提示区显示的是同一条。
 const focusTargetOf = (
   fields: readonly FormSectionField[],
   values: Readonly<Record<string, string>>,
@@ -96,9 +97,7 @@ const focusTargetOf = (
   for (const field of fields) {
     const value = values[field.name] ?? '';
     if (validateField(field, value) === null) continue;
-    return field.required === true && field.type !== 'select' && value.trim() === ''
-      ? field.name
-      : null;
+    return field.required === true && value.trim() === '' ? field.name : null;
   }
   return null;
 };
