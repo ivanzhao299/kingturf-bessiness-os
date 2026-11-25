@@ -11,6 +11,7 @@ import { PostgresProcurementRepository } from '../src/procurement-repositories.j
 import { PostgresShipmentRepository } from '../src/shipment-repositories.js';
 import { PostgresOrder360Repository } from '../src/order-360-repositories.js';
 import { ownedCommercialGraph } from './fixtures/owned-commercial-graph.js';
+import { ownedHttpApi } from './fixtures/owned-http-api.js';
 
 const id = (value: JsonObject, key = 'id'): string => {
   const result = value[key];
@@ -265,6 +266,58 @@ describe('shipment exception release and Order360 shipment source on real Postgr
       }),
     ).toMatchObject({ statusCode: 404 });
   });
+
+  it('submits the legacy POD payload over the real HTTP listener', async () => {
+    const fixture = owned();
+    const request = await release();
+    const dispatched = await shipment.dispatch(
+      request.id,
+      dispatchInput(),
+      fixture.context,
+      randomUUID(),
+    );
+    const shipmentId = id(dispatched);
+    const receiver = randomUUID();
+    await fixture.db.query(
+      "INSERT INTO employees(id,company_id,organization_id,employee_number,display_name,normalized_email) VALUES($1,$2,$3,'RECEIVER','Synthetic receiver','receiver@owned.test')",
+      [receiver, fixture.context.actor.companyId, fixture.teamId],
+    );
+    const http = await ownedHttpApi(fixture);
+    try {
+      const user = await http.user(receiver, fixture.context.actor.companyId);
+      await user.grant(['shipment:track', 'shipment:read'], ['COMPANY']);
+      const path = `/api/v1/shipments/${shipmentId}/deliver`;
+      for (const key of [`POD-${randomUUID()}`, 'bad-key']) {
+        const invalid = await user.request(path, 'POST', trackingInput(key));
+        expect(invalid.status).toBe(400);
+        expect(await invalid.json()).toMatchObject({
+          error: { message: 'Code must be 1-64 uppercase letters, digits, underscore, or hyphen' },
+        });
+      }
+      const transit = await user.request(
+        `/api/v1/shipments/${shipmentId}/in-transit`,
+        'POST',
+        trackingInput(`POD-${shipmentId}`),
+      );
+      expect(transit.status).toBe(400);
+      const normal = await user.request(
+        `/api/v1/shipments/${shipmentId}/in-transit`,
+        'POST',
+        trackingInput('TRACKING-1'),
+      );
+      expect(normal.status).toBe(201);
+      const result = await user.request(path, 'POST', trackingInput(`POD-${shipmentId}`));
+      expect(result.status).toBe(201);
+      expect(await result.json()).toMatchObject({ state: 'DELIVERED' });
+      const stored = await fixture.db.query<{ idempotency_key: string }>(
+        "SELECT idempotency_key FROM shipment_events WHERE tenant_id=$1 AND shipment_id=$2 AND state='DELIVERED'",
+        [fixture.context.actor.companyId, shipmentId],
+      );
+      expect(stored.rows).toEqual([{ idempotency_key: `POD-${shipmentId}` }]);
+    } finally {
+      await http.close();
+    }
+  }, 20_000);
 
   it('evaluates independent failed gates and writes exactly an audit-only request', async () => {
     const { context, db } = owned(),

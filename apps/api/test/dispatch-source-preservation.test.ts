@@ -231,9 +231,19 @@ describe('dispatch group inverse source preservation against fixed f3', () => {
         let source = readFileSync(new URL(rawPath, import.meta.url), 'utf8');
         for (const node of added) source = source.slice(0, node.pos) + source.slice(node.end);
         const current = ts.createSourceFile(rawPath, source, ts.ScriptTarget.Latest, true);
-        const expanded = expand(current, group.symbol, bindings)
+        let expanded = expand(current, group.symbol, bindings)
           .replace(ORGANIZATION_ARG, '')
           .replace(PAGE_FILTER_ARG, '');
+        if (group.file === 'shipments.ts') {
+          // ops1-5: only the exact POD key produced by the legacy receipt form is accepted.
+          const trackingKey =
+            /shipmentTrackingKey\(\s*string\(body\.idempotencyKey, 'idempotencyKey'\),\s*trackCommand\[1\],\s*trackCommand\[2\],?\s*\)/gu;
+          expect([...expanded.matchAll(trackingKey)]).toHaveLength(1);
+          expanded = expanded.replace(
+            trackingKey,
+            "assertStableCode(string(body.idempotencyKey, 'idempotencyKey'))",
+          );
+        }
         expect(firstDifference(tokens(expanded), tokens(originalText))).toBeNull();
         expect(bindings).toHaveLength(0);
       },
