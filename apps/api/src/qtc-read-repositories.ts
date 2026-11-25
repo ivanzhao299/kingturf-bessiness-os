@@ -13,6 +13,7 @@
 import type { Actor, ScopeAnchor } from '@kingturf/domain';
 import type { Database, SqlClient } from '@kingturf/database';
 import type { DataScope, JsonObject, Page } from '@kingturf/types';
+import { permittedDto } from './app-values.ts';
 import { recordScopeSql } from './scope-sql.ts';
 
 type Db = SqlClient & Pick<Database, 'transaction'>;
@@ -43,7 +44,16 @@ export type ArPageFilter = Readonly<{
   cursor?: string;
   limit?: number;
 }>;
-// 应收汇总（按币种，互不相加；金额为 numeric(24,6) 的十进制文本，由 SQL 精确聚合）。口径：
+type RelatedRead = Context & Readonly<{ fields: readonly string[] | null }>;
+export type ArRelatedRead = Readonly<{ order: RelatedRead | null; payment: RelatedRead | null }>;
+export type ArListRead = Readonly<{
+  order: RelatedRead | null;
+  fields: readonly string[] | null;
+}>;
+
+export const canReadFinField = (fields: readonly string[] | null, ...names: string[]): boolean =>
+  fields === null || names.some((name) => fields.includes(name));
+// 应收汇总（按币种，互不相加；金额为不限整数位数的十进制文本，由 SQL 精确聚合）。口径：
 //   未核销余额 = 未核销余额 > 0 的应收单的余额合计；已逾期 = 其中到期时间早于当前时刻；
 //   7 天 / 30 天内到期 = 未逾期且到期时间落在当前时刻起 N 天之内（30 天含 7 天）。
 export type ArCurrencySummary = Readonly<{
@@ -58,15 +68,8 @@ export type ArCurrencySummary = Readonly<{
   due30Amount: string;
 }>;
 
-export type ArDetailParts = Readonly<{
-  // 关联销售订单摘要（sales-order:read 门控）：未授权不查询。
-  order: boolean;
-  // 核销分配里的收款侧字段（bank-payment:read 门控）：未授权不关联 bank_payments。
-  payment: boolean;
-}>;
-
 const PAGE_LIMIT_MAX = 100;
-const AR_JOINS = ` FROM ar_open_item_balances b JOIN ar_documents d ON d.id=b.ar_document_id AND d.tenant_id=b.tenant_id JOIN customers c ON c.id=b.customer_id AND c.tenant_id=b.tenant_id LEFT JOIN sales_orders o ON o.tenant_id=d.tenant_id AND o.id=d.sales_order_id`;
+const AR_JOINS = ` FROM ar_open_item_balances b JOIN ar_documents d ON d.id=b.ar_document_id AND d.tenant_id=b.tenant_id JOIN customers c ON c.id=b.customer_id AND c.tenant_id=b.tenant_id`;
 
 export class PostgresQuoteToCashReadRepository {
   public constructor(protected readonly db: Db) {}
@@ -74,9 +77,19 @@ export class PostgresQuoteToCashReadRepository {
   // 应收加性分页：legacy listOperationalPage('ar') 的同一组过滤子句（query / from / to /
   // minAmount / maxAmount / 三种 state / 键集游标，逐字同式）+ 加性 state=NOT_DUE 与 search。
   // 过滤值、关键字、游标、limit 全部 values.push 参数化。
-  public async listArPage(context: Context, filter: ArPageFilter): Promise<Page<JsonObject>> {
+  public async listArPage(
+    context: Context,
+    filter: ArPageFilter,
+    read: ArListRead = { order: null, fields: null },
+  ): Promise<Page<JsonObject>> {
     const secured = recordScopeSql(context.scopes, context.anchors, context.actor, 'c', 2);
-    const values: unknown[] = [context.actor.companyId, ...secured.values];
+    const order =
+      read.order && canReadFinField(read.order.fields, 'order_number') ? read.order : null;
+    // The AR document guard binds the sales order to the same customer as the AR open item.
+    const orderScope = order
+      ? recordScopeSql(order.scopes, order.anchors, order.actor, 'c', 2 + secured.values.length)
+      : { sql: 'FALSE', values: [] };
+    const values: unknown[] = [context.actor.companyId, ...secured.values, ...orderScope.values];
     const add = (value: unknown): string => {
       values.push(value);
       return `$${String(values.length)}`;
@@ -85,7 +98,7 @@ export class PostgresQuoteToCashReadRepository {
     if (filter.search) {
       const parameter = add(filter.search.toLowerCase());
       clauses.push(
-        `strpos(lower(d.document_number||' '||c.name||' '||coalesce(o.order_number,'')),${parameter})>0`,
+        `strpos(lower(concat_ws(' ',CASE WHEN ${add(canReadFinField(read.fields, 'documentNumber'))} THEN d.document_number END,CASE WHEN ${add(canReadFinField(read.fields, 'customerName'))} THEN c.name END,CASE WHEN ${add(canReadFinField(read.fields, 'orderNumber'))} THEN o.order_number END)),${parameter})>0`,
       );
     }
     if (filter.query) {
@@ -108,7 +121,7 @@ export class PostgresQuoteToCashReadRepository {
     }
     const limit = Math.min(Math.max(filter.limit ?? 50, 1), PAGE_LIMIT_MAX);
     values.push(limit + 1);
-    const select = `SELECT b.id,${AR_ROW_PROJECTION} AS item${AR_JOINS} WHERE ${clauses.join(' AND ')} ORDER BY b.due_at,b.id LIMIT $${String(values.length)}`;
+    const select = `SELECT b.id,${AR_ROW_PROJECTION} AS item${AR_JOINS} LEFT JOIN sales_orders o ON o.tenant_id=d.tenant_id AND o.id=d.sales_order_id AND ${orderScope.sql} WHERE ${clauses.join(' AND ')} ORDER BY b.due_at,b.id LIMIT $${String(values.length)}`;
     const rows = await this.db.query<{ id: string; item: JsonObject }>(select, values);
     return {
       items: rows.rows.slice(0, limit).map((row) => row.item),
@@ -124,13 +137,13 @@ export class PostgresQuoteToCashReadRepository {
       await this.db.query<ArCurrencySummary>(
         `SELECT b.currency::text currency,
       count(*) FILTER (WHERE b.remaining_amount>0)::int "openCount",
-      coalesce(sum(b.remaining_amount) FILTER (WHERE b.remaining_amount>0),0)::numeric(24,6)::text "outstandingAmount",
+      coalesce(sum(b.remaining_amount) FILTER (WHERE b.remaining_amount>0),0.000000)::text "outstandingAmount",
       count(*) FILTER (WHERE b.remaining_amount>0 AND b.due_at<now())::int "overdueCount",
-      coalesce(sum(b.remaining_amount) FILTER (WHERE b.remaining_amount>0 AND b.due_at<now()),0)::numeric(24,6)::text "overdueAmount",
+      coalesce(sum(b.remaining_amount) FILTER (WHERE b.remaining_amount>0 AND b.due_at<now()),0.000000)::text "overdueAmount",
       count(*) FILTER (WHERE b.remaining_amount>0 AND b.due_at>=now() AND b.due_at<now()+interval '7 days')::int "due7Count",
-      coalesce(sum(b.remaining_amount) FILTER (WHERE b.remaining_amount>0 AND b.due_at>=now() AND b.due_at<now()+interval '7 days'),0)::numeric(24,6)::text "due7Amount",
+      coalesce(sum(b.remaining_amount) FILTER (WHERE b.remaining_amount>0 AND b.due_at>=now() AND b.due_at<now()+interval '7 days'),0.000000)::text "due7Amount",
       count(*) FILTER (WHERE b.remaining_amount>0 AND b.due_at>=now() AND b.due_at<now()+interval '30 days')::int "due30Count",
-      coalesce(sum(b.remaining_amount) FILTER (WHERE b.remaining_amount>0 AND b.due_at>=now() AND b.due_at<now()+interval '30 days'),0)::numeric(24,6)::text "due30Amount"
+      coalesce(sum(b.remaining_amount) FILTER (WHERE b.remaining_amount>0 AND b.due_at>=now() AND b.due_at<now()+interval '30 days'),0.000000)::text "due30Amount"
       FROM ar_open_item_balances b JOIN ar_documents d ON d.id=b.ar_document_id AND d.tenant_id=b.tenant_id JOIN customers c ON c.id=b.customer_id AND c.tenant_id=b.tenant_id
       WHERE b.tenant_id=$1 AND ${secured.sql} GROUP BY b.currency ORDER BY b.currency`,
         [context.actor.companyId, ...secured.values],
@@ -143,52 +156,79 @@ export class PostgresQuoteToCashReadRepository {
   public async findArOpenItem(
     arOpenItemId: string,
     context: Context,
-    parts: ArDetailParts = { order: false, payment: false },
+    parts: ArRelatedRead = { order: null, payment: null },
   ): Promise<JsonObject | null> {
     const secured = recordScopeSql(context.scopes, context.anchors, context.actor, 'c', 3);
     const key: unknown[] = [context.actor.companyId, arOpenItemId];
+    const order =
+      parts.order && canReadFinField(parts.order.fields, 'order_number') ? parts.order : null;
+    const orderScope = order
+      ? recordScopeSql(order.scopes, order.anchors, order.actor, 'c', 3 + secured.values.length)
+      : { sql: 'FALSE', values: [] };
     const root = (
       await this.db.query<{ item: JsonObject }>(
-        `SELECT ${AR_ROW_PROJECTION} AS item${AR_JOINS} WHERE b.tenant_id=$1 AND b.id=$2 AND ${secured.sql}`,
-        [...key, ...secured.values],
+        `SELECT ${AR_ROW_PROJECTION} AS item${AR_JOINS} LEFT JOIN sales_orders o ON o.tenant_id=d.tenant_id AND o.id=d.sales_order_id AND ${orderScope.sql} WHERE b.tenant_id=$1 AND b.id=$2 AND ${secured.sql}`,
+        [...key, ...secured.values, ...orderScope.values],
       )
     ).rows[0]?.item;
     if (!root) return null;
     const salesOrderId = root.salesOrderId;
-    const [order, allocations] = await Promise.all([
+    const [orderSummary, allocations] = await Promise.all([
       parts.order && typeof salesOrderId === 'string'
-        ? this.arOrderSummary([context.actor.companyId, salesOrderId])
+        ? this.arOrderSummary(salesOrderId, parts.order)
         : Promise.resolve(null),
-      this.arAllocations(key, parts),
+      this.arAllocations(key, parts.payment),
     ]);
     return {
       ...root,
-      ...(order === null ? {} : { order }),
+      ...(orderSummary === null ? {} : { order: orderSummary }),
       allocations,
     };
   }
 
-  // 关联销售订单摘要（金额以十进制文本给出）。
-  private async arOrderSummary(scope: readonly unknown[]): Promise<JsonObject | null> {
-    return (
-      (
-        await this.db.query<{ item: JsonObject }>(
-          `SELECT jsonb_build_object('id',o.id,'orderNumber',o.order_number,'status',o.status,'currency',o.currency,'total',o.total::text,'createdAt',o.created_at) item FROM sales_orders o WHERE o.tenant_id=$1 AND o.id=$2`,
-          scope,
-        )
-      ).rows[0]?.item ?? null
-    );
+  private async arOrderSummary(id: string, read: RelatedRead): Promise<JsonObject | null> {
+    const secured = recordScopeSql(read.scopes, read.anchors, read.actor, 'c', 3);
+    const row = (
+      await this.db.query<{ item: JsonObject }>(
+        `SELECT jsonb_build_object('id',o.id,'order_number',o.order_number,'status',o.status,'currency',o.currency,'total',o.total::text,'created_at',o.created_at) item FROM sales_orders o JOIN customers c ON c.id=o.customer_id AND c.tenant_id=o.tenant_id WHERE o.tenant_id=$1 AND o.id=$2 AND ${secured.sql}`,
+        [read.actor.companyId, id, ...secured.values],
+      )
+    ).rows[0]?.item;
+    if (!row) return null;
+    const visible = permittedDto(row, read.fields);
+    const { order_number: orderNumber, created_at: createdAt, ...rest } = visible;
+    return {
+      ...rest,
+      ...(orderNumber === undefined ? {} : { orderNumber }),
+      ...(createdAt === undefined ? {} : { createdAt }),
+    };
   }
 
-  // 核销分配记录：按分配次序升序。收款侧字段（银行流水号 / 到账时间）仅在 bank-payment:read
-  // 授权时关联 bank_payments 取出——未授权不触碰收款表。
+  // A customer-scoped LEFT JOIN keeps allocation rows even when payment fields are out of scope.
   private async arAllocations(
-    scope: readonly unknown[],
-    parts: ArDetailParts,
+    key: readonly unknown[],
+    read: RelatedRead | null,
   ): Promise<readonly JsonObject[]> {
-    const select = parts.payment
-      ? `SELECT jsonb_build_object('id',a.id,'amount',a.amount::text,'currency',a.currency,'allocationOrder',a.allocation_order,'createdAt',a.created_at,'reconciliationRunId',a.reconciliation_run_id,'bankPaymentId',a.bank_payment_id,'bankReference',p.bank_reference,'paymentReceivedAt',p.received_at) item FROM allocation_entries a JOIN bank_payments p ON p.tenant_id=a.tenant_id AND p.id=a.bank_payment_id WHERE a.tenant_id=$1 AND a.ar_open_item_id=$2 ORDER BY a.allocation_order,a.created_at,a.id`
-      : `SELECT jsonb_build_object('id',a.id,'amount',a.amount::text,'currency',a.currency,'allocationOrder',a.allocation_order,'createdAt',a.created_at,'reconciliationRunId',a.reconciliation_run_id,'bankPaymentId',a.bank_payment_id) item FROM allocation_entries a WHERE a.tenant_id=$1 AND a.ar_open_item_id=$2 ORDER BY a.allocation_order,a.created_at,a.id`;
-    return (await this.db.query<{ item: JsonObject }>(select, scope)).rows.map((row) => row.item);
+    const secured = read ? recordScopeSql(read.scopes, read.anchors, read.actor, 'c', 3) : null;
+    const result = secured
+      ? await this.db.query<{ item: JsonObject }>(
+          `SELECT jsonb_build_object('id',a.id,'amount',a.amount::text,'currency',a.currency,'allocationOrder',a.allocation_order,'createdAt',a.created_at,'reconciliationRunId',a.reconciliation_run_id,'bankPaymentId',a.bank_payment_id,'bank_reference',p.bank_reference,'received_at',p.received_at) item FROM allocation_entries a LEFT JOIN (bank_payments p JOIN customers c ON c.tenant_id=p.tenant_id AND c.id=p.customer_id) ON p.tenant_id=a.tenant_id AND p.id=a.bank_payment_id AND ${secured.sql} WHERE a.tenant_id=$1 AND a.ar_open_item_id=$2 ORDER BY a.allocation_order,a.created_at,a.id`,
+          [...key, ...secured.values],
+        )
+      : await this.db.query<{ item: JsonObject }>(
+          `SELECT jsonb_build_object('id',a.id,'amount',a.amount::text,'currency',a.currency,'allocationOrder',a.allocation_order,'createdAt',a.created_at,'reconciliationRunId',a.reconciliation_run_id,'bankPaymentId',a.bank_payment_id) item FROM allocation_entries a WHERE a.tenant_id=$1 AND a.ar_open_item_id=$2 ORDER BY a.allocation_order,a.created_at,a.id`,
+          key,
+        );
+    return result.rows.map(({ item: { bank_reference, received_at, ...item } }) => ({
+      ...item,
+      ...(typeof bank_reference === 'string' &&
+      read &&
+      canReadFinField(read.fields, 'bank_reference')
+        ? { bankReference: bank_reference }
+        : {}),
+      ...(typeof received_at === 'string' && read && canReadFinField(read.fields, 'received_at')
+        ? { paymentReceivedAt: received_at }
+        : {}),
+    }));
   }
 }

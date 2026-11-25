@@ -125,6 +125,7 @@ describe('FIN-1 AR open item page and detail real PostgreSQL contracts', () => {
     options: Readonly<{
       fields?: readonly string[] | null;
       without?: readonly PermissionKey[];
+      related?: Partial<Record<'sales-order:read' | 'bank-payment:read', Grant>>;
     }> = {},
   ): AuthorizationContext => {
     const capabilities: readonly PermissionKey[] = [
@@ -139,6 +140,9 @@ describe('FIN-1 AR open item page and detail real PostgreSQL contracts', () => {
       permissions.set(capability, {
         scopes: [...scopes],
         fields: capability === 'ar:read' ? (options.fields ?? null) : null,
+        ...(capability === 'sales-order:read' || capability === 'bank-payment:read'
+          ? options.related?.[capability]
+          : {}),
       });
     }
     return {
@@ -512,6 +516,49 @@ describe('FIN-1 AR open item page and detail real PostgreSQL contracts', () => {
       await detailOf(id, authorization(['COMPANY'], { fields: ['documentNumber'] })),
     );
     expect(trimmed).toEqual({ id, documentNumber: documents.graph });
+  });
+
+  it('独立关联授权：订单号搜索与订单摘要、银行引用遵守各自范围和字段授权', async () => {
+    const restricted = authorization(['COMPANY'], {
+      related: {
+        'sales-order:read': { scopes: [], fields: null },
+        'bank-payment:read': { scopes: ['COMPANY'], fields: ['received_at'] },
+      },
+    });
+    expect(itemsOf(await bridge(request({ query: { search: 'AUTH-ORDER' } }), restricted))).toEqual(
+      [],
+    );
+    const [row] = itemsOf(
+      await bridge(request({ query: { search: documents.graph } }), restricted),
+    );
+    if (!row) throw new Error('Row missing');
+    expect(row.orderNumber).toBeNull();
+    const id = text(row, 'id');
+    const body = bodyOf(await detailOf(id, restricted));
+    expect(body.order).toBeUndefined();
+    expect(rowsOf(body.allocations)[0]).toHaveProperty('paymentReceivedAt');
+    expect(rowsOf(body.allocations)[0]).not.toHaveProperty('bankReference');
+
+    const fieldsOnly = authorization(['COMPANY'], {
+      related: {
+        'sales-order:read': { scopes: ['COMPANY'], fields: ['status'] },
+        'bank-payment:read': { scopes: [], fields: null },
+      },
+    });
+    const fieldsBody = bodyOf(await detailOf(id, fieldsOnly));
+    expect(fieldsBody.order).toEqual({ id: state().graph.orderId, status: 'RELEASED' });
+    expect(rowsOf(fieldsBody.allocations)[0]).not.toHaveProperty('paymentReceivedAt');
+    expect(rowsOf(fieldsBody.allocations)[0]).not.toHaveProperty('bankReference');
+  });
+
+  it('汇总与搜索不会披露应收字段白名单之外的信息', async () => {
+    const restricted = authorization(['COMPANY'], { fields: ['documentNumber'] });
+    const listed = bodyOf(await bridge(request({ query: { summary: '1' } }), restricted));
+    expect(listed).not.toHaveProperty('summary');
+    expect(rowsOf(listed.items)[0]).not.toHaveProperty('remainingAmount');
+    expect(itemsOf(await bridge(request({ query: { search: 'AUTH-ORDER' } }), restricted))).toEqual(
+      [],
+    );
   });
 
   it('数据范围：外租户、无作用域、SELF 作用域下不可见的应收一律 404；SELF 只见自己负责客户的应收', async () => {

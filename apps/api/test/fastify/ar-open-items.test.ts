@@ -440,6 +440,9 @@ describe('ar-open-items fastify bridge track', () => {
     },
   );
 
+  const relatedRead = { ...scopeContext, fields: null };
+  const listRead = { order: relatedRead, fields: null };
+
   it('GET 加性筛选 state=NOT_DUE 走 listArPage（旧轨方法不被调用）', async () => {
     const response = await dispatchFastifyRouteGroup(
       requestFor({ query: { state: 'NOT_DUE', limit: '3' } }),
@@ -448,7 +451,7 @@ describe('ar-open-items fastify bridge track', () => {
     expect(response?.statusCode).toBe(200);
     expect(response?.body).toEqual({ items: [additiveRow], nextCursor: null });
     expect(calls).toEqual([
-      { method: 'listArPage', args: [scopeContext, { limit: 3, state: 'NOT_DUE' }] },
+      { method: 'listArPage', args: [scopeContext, { limit: 3, state: 'NOT_DUE' }, listRead] },
     ]);
   });
 
@@ -461,7 +464,7 @@ describe('ar-open-items fastify bridge track', () => {
     expect(calls).toEqual([
       {
         method: 'listArPage',
-        args: [scopeContext, { limit: 50, state: 'OVERDUE', search: 'INV-KT' }],
+        args: [scopeContext, { limit: 50, state: 'OVERDUE', search: 'INV-KT' }, listRead],
       },
     ]);
     calls.length = 0;
@@ -509,6 +512,7 @@ describe('ar-open-items fastify bridge track', () => {
             state: 'CLEARED',
             search: 'demo',
           },
+          listRead,
         ],
       },
     ]);
@@ -530,7 +534,7 @@ describe('ar-open-items fastify bridge track', () => {
     expect(response?.statusCode).toBe(200);
     expect(response?.body).toEqual({ items: [additiveRow], nextCursor: null, summary });
     expect(calls).toEqual([
-      { method: 'listArPage', args: [scopeContext, { limit: 2, state: 'OVERDUE' }] },
+      { method: 'listArPage', args: [scopeContext, { limit: 2, state: 'OVERDUE' }, listRead] },
       { method: 'summarizeAr', args: [scopeContext] },
     ]);
     // 'true' 与 '1' 同义。
@@ -584,7 +588,10 @@ describe('ar-open-items fastify bridge track', () => {
     expect(found?.statusCode).toBe(200);
     expect(found?.body).toEqual(detail);
     expect(calls).toEqual([
-      { method: 'findArOpenItem', args: [itemId, scopeContext, { order: true, payment: true }] },
+      {
+        method: 'findArOpenItem',
+        args: [itemId, scopeContext, { order: relatedRead, payment: relatedRead }],
+      },
     ]);
     const missing = await dispatchFastifyRouteGroup(
       requestFor({ pathname: `/api/v1/ar-open-items/44444444-4444-4444-8444-444444444440` }),
@@ -612,7 +619,7 @@ describe('ar-open-items fastify bridge track', () => {
     );
     expect(response?.statusCode).toBe(200);
     expect(calls).toEqual([
-      { method: 'findArOpenItem', args: [itemId, scopeContext, { order: false, payment: false }] },
+      { method: 'findArOpenItem', args: [itemId, scopeContext, { order: null, payment: null }] },
     ]);
   });
 

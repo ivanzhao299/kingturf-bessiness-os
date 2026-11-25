@@ -254,6 +254,7 @@ const SQL_ENUM_NAMES = new Set([
   // values.push 参数化；片段本体只含代码内表/列名。
   'AR_ROW_PROJECTION',
   'AR_JOINS',
+  'orderScope.sql', // FIN-1: recordScopeSql for the independently authorized sales-order join.
   // B2（TD-API-003）分页 keyset 游标片段：cursor 值一律经 values.push 参数化（$N），
   // 变量本体只含代码内表/列名与占位符；2026-11-18 随 18 端点分页批次登记。
   'keyset',

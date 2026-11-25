@@ -27,7 +27,12 @@ import {
   uuid,
 } from '../../app-values.ts';
 import { authorizeQuery } from '../../policy.ts';
-import type { ArDetailParts, ArListState, ArPageFilter } from '../../qtc-read-repositories.ts';
+import {
+  canReadFinField,
+  type ArRelatedRead,
+  type ArListState,
+  type ArPageFilter,
+} from '../../qtc-read-repositories.ts';
 import { asArDocumentGuard } from '../../write-rejection-mapping.ts';
 import type { FastifyRouteGroupApp, FastifyRouteScope } from './registry.ts';
 
@@ -172,7 +177,7 @@ export function registerArOpenItemRoutes(
   scope: FastifyRouteScope,
 ): void {
   const repository: ArRepository | null = scope.dependencies.quoteToCash ?? null;
-  const readFields = scope.authorization.permissions.get('ar:read')?.fields;
+  const readFields = scope.authorization.permissions.get('ar:read')?.fields ?? null;
   const requireRepository = (): ArRepository => {
     if (!repository)
       throw Object.assign(new Error('QuoteToCash dependency unavailable'), { statusCode: 503 });
@@ -183,6 +188,22 @@ export function registerArOpenItemRoutes(
     const grant = authorizeQuery(scope.authorization, capability, keys);
     return { actor: scope.authorization.actor, scopes: grant.scopes, anchors: grant.anchors };
   };
+
+  const relatedRead = (capability: 'sales-order:read' | 'bank-payment:read') => {
+    const grant = scope.authorization.permissions.get(capability);
+    return grant
+      ? {
+          actor: scope.authorization.actor,
+          scopes: grant.scopes,
+          anchors: scope.authorization.scopeAnchors?.get(capability) ?? [],
+          fields: grant.fields,
+        }
+      : null;
+  };
+  const canSummarize =
+    canReadFinField(readFields, 'currency') &&
+    canReadFinField(readFields, 'remaining_amount', 'remainingAmount') &&
+    canReadFinField(readFields, 'due_at');
 
   // GET 列表：未带加性参数时与 legacy GET 同链（listOperationalPage('ar', filter, scope)）。
   app.get(
@@ -195,15 +216,19 @@ export function registerArOpenItemRoutes(
       const repo = requireRepository();
       if (query.search !== '' || query.state === ADDITIVE_STATE || query.summary) {
         const [page, summary] = await Promise.all([
-          repo.listArPage(context, {
-            ...query.window,
-            ...(query.state === null ? {} : { state: query.state }),
-            ...(query.search === '' ? {} : { search: query.search }),
-          }),
-          query.summary ? repo.summarizeAr(context) : Promise.resolve(null),
+          repo.listArPage(
+            context,
+            {
+              ...query.window,
+              ...(query.state === null ? {} : { state: query.state }),
+              ...(query.search === '' ? {} : { search: query.search }),
+            },
+            { order: relatedRead('sales-order:read'), fields: readFields },
+          ),
+          query.summary && canSummarize ? repo.summarizeAr(context) : Promise.resolve(null),
         ]);
         return {
-          ...envelope(page, readFields ?? null),
+          ...envelope(page, readFields),
           ...(summary === null ? {} : { summary }),
         };
       }
@@ -217,7 +242,7 @@ export function registerArOpenItemRoutes(
         { ...query.window, ...(state === undefined ? {} : { state }) },
         context,
       );
-      return envelope(page, readFields ?? null);
+      return envelope(page, readFields);
     },
   );
 
@@ -231,9 +256,9 @@ export function registerArOpenItemRoutes(
         (request.params as { arOpenItemId: string }).arOpenItemId,
         'arOpenItemId',
       );
-      const parts: ArDetailParts = {
-        order: scope.authorization.permissions.has('sales-order:read'),
-        payment: scope.authorization.permissions.has('bank-payment:read'),
+      const parts: ArRelatedRead = {
+        order: relatedRead('sales-order:read'),
+        payment: relatedRead('bank-payment:read'),
       };
       const found = await requireRepository().findArOpenItem(arOpenItemId, context, parts);
       if (!found) {
@@ -246,7 +271,7 @@ export function registerArOpenItemRoutes(
         });
         return;
       }
-      return permittedDto(found, readFields ?? null);
+      return permittedDto(found, readFields);
     },
   );
 
