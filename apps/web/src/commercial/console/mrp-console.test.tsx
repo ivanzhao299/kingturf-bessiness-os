@@ -269,6 +269,25 @@ describe('MRP console', () => {
     expect(element(host, '.console-notice').textContent).toContain('已批准');
   });
 
+  it('disables entry actions while the list refresh is in progress', async () => {
+    let complete: (value: MrpSnapshot) => void = () => undefined;
+    const refresh = vi.fn<MrpConsolePorts['refresh']>(
+      () =>
+        new Promise((resolve) => {
+          complete = resolve;
+        }),
+    );
+    const { host } = setup({ refresh });
+    await flush();
+    await open(host, 'refresh');
+    for (const id of ['create-policy', 'create-demand', 'run'])
+      expect(byId(host, id).disabled).toBe(true);
+    complete(snapshot());
+    await flush();
+    await open(host, 'create-demand');
+    expect(element(host, '.detail-drawer').textContent).toContain('登记独立需求');
+  });
+
   it('avoids unavailable proposal requests and hides write actions for policy readers', async () => {
     const { host, fetchProposals } = setup({
       permissions: new Set(['mrp-policy:read']),

@@ -202,6 +202,7 @@ const MrpConsoleView = (state: MrpViewState) => {
                 type="button"
                 class="secondary"
                 data-testid="kt-mrp-create-policy"
+                disabled={state.refreshing}
                 onClick={() => {
                   state.openForm('policy');
                 }}
@@ -215,6 +216,7 @@ const MrpConsoleView = (state: MrpViewState) => {
                   type="button"
                   class="secondary"
                   data-testid="kt-mrp-create-demand"
+                  disabled={state.refreshing}
                   onClick={() => {
                     state.openForm('demand');
                   }}
@@ -225,6 +227,7 @@ const MrpConsoleView = (state: MrpViewState) => {
                   type="button"
                   class="primary"
                   data-testid="kt-mrp-run"
+                  disabled={state.refreshing}
                   onClick={() => {
                     state.openForm('run');
                   }}
