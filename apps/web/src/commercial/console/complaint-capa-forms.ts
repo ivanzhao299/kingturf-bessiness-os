@@ -1,16 +1,16 @@
-import { openForm } from '../shared/forms';
-import type { OperationsViewContext } from './operations-view-ports';
+import type { OperationsViewContext } from '../operations-view-ports';
+import { type FinRow } from './fin-kit';
+import { opsForm } from './ops-form';
+import type { FormSectionField } from '@kingturf/ui';
 
-export function openCapaCreate(
-  context: OperationsViewContext,
-  complaint: Record<string, unknown>,
-  ncrId: string,
-  refresh: () => Promise<void>,
-): void {
-  const { workspace, controller } = context;
-  const { recordText, requestId } = context.ports;
-  openForm(
-    workspace,
+type ComplaintContext = Pick<OperationsViewContext, 'controller' | 'ports' | 'permissions'>;
+
+export function capaCreate(context: ComplaintContext, complaint: FinRow, ncrId: string) {
+  const {
+    controller,
+    ports: { recordText, requestId },
+  } = context;
+  return opsForm(
     '建立纠正预防措施',
     '指定整改责任人、目标日期和根因快照。',
     [
@@ -35,8 +35,9 @@ export function openCapaCreate(
       { name: 'evidenceReference', label: '处置证据编号', required: true },
     ],
     '确认建立',
-    async (values) => {
-      await controller.submit(`/api/v1/ncrs/${ncrId}/capas`, {
+    (values) => [
+      `/api/v1/ncrs/${ncrId}/capas`,
+      {
         capaNumber: values.capaNumber,
         ownerId: values.ownerId,
         targetAt: values.targetAt,
@@ -45,22 +46,17 @@ export function openCapaCreate(
         complaintExpectedVersion: complaint.version,
         evidence: { reference: values.evidenceReference },
         idempotencyKey: requestId(),
-      });
-      await refresh();
-    },
+      },
+    ],
   );
 }
 
-export function openCapaAction(
-  context: OperationsViewContext,
-  capaId: string,
-  capaVersion: number,
-  refresh: () => Promise<void>,
-): void {
-  const { workspace, controller } = context;
-  const { requestId } = context.ports;
-  openForm(
-    workspace,
+export function capaAction(context: ComplaintContext, capaId: string, capaVersion: number) {
+  const {
+    controller,
+    ports: { requestId },
+  } = context;
+  return opsForm(
     '新增整改措施',
     '措施必须有明确责任人和完成期限。',
     [
@@ -88,57 +84,44 @@ export function openCapaAction(
       { name: 'dueAt', label: '完成期限', type: 'datetime-local', required: true },
     ],
     '确认新增',
-    async (values) => {
-      await controller.submit(`/api/v1/capas/${capaId}/actions`, {
+    (values) => [
+      `/api/v1/capas/${capaId}/actions`,
+      {
         ...values,
         expectedVersion: capaVersion,
         idempotencyKey: requestId(),
-      });
-      await refresh();
-    },
+      },
+    ],
   );
 }
 
-export function openCapaComplete(
-  context: OperationsViewContext,
-  incomplete: Record<string, unknown>,
-  capaVersion: number,
-  refresh: () => Promise<void>,
-): void {
-  const { workspace, controller } = context;
+export function capaComplete(context: ComplaintContext, incomplete: FinRow, capaVersion: number) {
   const { recordText, requestId } = context.ports;
-  openForm(
-    workspace,
+  return opsForm(
     '完成整改措施',
     recordText(incomplete, 'description', 'description'),
     [{ name: 'evidenceReference', label: '完成证据编号', required: true }],
     '确认完成',
-    async (values) => {
-      await controller.submit(
-        `/api/v1/capa-actions/${recordText(incomplete, 'id', 'id')}/complete`,
-        {
-          completedAt: new Date().toISOString(),
-          evidence: { reference: values.evidenceReference },
-          expectedCapaVersion: capaVersion,
-          idempotencyKey: requestId(),
-        },
-      );
-      await refresh();
-    },
+    (values) => [
+      `/api/v1/capa-actions/${recordText(incomplete, 'id', 'id')}/complete`,
+      {
+        completedAt: new Date().toISOString(),
+        evidence: { reference: values.evidenceReference },
+        expectedCapaVersion: capaVersion,
+        idempotencyKey: requestId(),
+      },
+    ],
   );
 }
 
-export function openCapaVerify(
-  context: OperationsViewContext,
-  complaint: Record<string, unknown>,
+export function capaVerify(
+  context: ComplaintContext,
+  complaint: FinRow,
   capaId: string,
   capaVersion: number,
-  refresh: () => Promise<void>,
-): void {
-  const { workspace, controller } = context;
+) {
   const { requestId } = context.ports;
-  openForm(
-    workspace,
+  return opsForm(
     '验证整改效果',
     '验证人必须独立于整改责任人。',
     [
@@ -163,8 +146,9 @@ export function openCapaVerify(
       { name: 'evidenceReference', label: '验证报告编号', required: true },
     ],
     '提交验证',
-    async (values) => {
-      await controller.submit(`/api/v1/capas/${capaId}/verify`, {
+    (values) => [
+      `/api/v1/capas/${capaId}/verify`,
+      {
         verifiedAt: new Date().toISOString(),
         standard: values.standard,
         sampleScope: values.sampleScope,
@@ -174,35 +158,32 @@ export function openCapaVerify(
         expectedVersion: capaVersion,
         complaintExpectedVersion: complaint.version,
         idempotencyKey: requestId(),
-      });
-      await refresh();
-    },
+      },
+    ],
   );
 }
 
-export function openCapaClose(
-  context: OperationsViewContext,
+export function capaClose(
+  context: ComplaintContext,
   capaId: string,
   capaVersion: number,
-  evidenceFields: Parameters<typeof openForm>[3],
-  refresh: () => Promise<void>,
-): void {
-  const { workspace, controller } = context;
+  evidenceFields: readonly FormSectionField[],
+) {
   const { requestId } = context.ports;
-  openForm(
-    workspace,
+  return opsForm(
     '关闭整改单',
     '整改验证通过后归档整改单。',
     evidenceFields,
     '确认关闭',
-    async (values) => {
-      await controller.submit(`/api/v1/capas/${capaId}/close`, {
+    (values) => [
+      `/api/v1/capas/${capaId}/close`,
+      {
         expectedVersion: capaVersion,
         reason: values.reason,
         evidence: { reference: values.evidenceReference },
         idempotencyKey: requestId(),
-      });
-      await refresh();
-    },
+      },
+    ],
+    '关闭后整改单归档。',
   );
 }
