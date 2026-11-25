@@ -86,6 +86,13 @@ export function forwardedEnvNames(args) {
   return names;
 }
 
+/** 去掉参数开头的「--」。它是写给 shell 的分隔符（`e2e -- tests/e2e/x.spec.ts`），不是 Playwright 的参数：
+ *  原样传过去，Playwright 会装载整个 testDir，在缺构建产物的文件上报错（TD-TEST-027）。只看第一个参数，
+ *  选项后面的「--」属于调用方自己的写法，不动。 */
+export function dropSeparator(args) {
+  return args[0] === '--' ? args.slice(1) : args;
+}
+
 /** docker CLI 封装。`-e NAME`（不带值）表示从本进程环境取值转发进容器；环境里没有该变量时直接报错，
  *  否则容器内会拿到 undefined 且毫无提示（就绪探测曾因此永远失败）。 */
 export function docker(args, options = {}) {

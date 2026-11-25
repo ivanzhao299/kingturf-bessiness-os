@@ -10,7 +10,7 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSy
 import { dirname, join, relative, resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
-import { docker, run } from './exec.mjs';
+import { docker, dropSeparator, run } from './exec.mjs';
 import { ADMIN_DATABASE_URL, dedicatedDatabaseName, dedicatedUrl } from './db-target.mjs';
 import { createDatabase, dropDatabase, migrateDatabase } from './database.mjs';
 import { redactText } from './redact.mjs';
@@ -436,7 +436,8 @@ export async function runPlaywright(context, credentials, options = {}, args = [
       'test',
       ...config,
       ...reporter,
-      ...args,
+      // 起栈横幅提示的写法是 `e2e -- tests/e2e/p1-demo.spec.ts`；「--」到不了 Playwright（TD-TEST-027）。
+      ...dropSeparator(args),
     ],
     { ...options, env: { ...process.env, ...settings } },
   );
