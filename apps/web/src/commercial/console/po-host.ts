@@ -7,25 +7,33 @@
 // 故等价迁移至详情抽屉。
 import type { OperationsViewContext } from '../operations-view-ports';
 import { el } from '../../dom';
+import {
+  itemVersionChoicesOf,
+  ITEM_VERSIONS_PATH,
+  perView,
+  type Choice,
+  type ItemVersionChoice,
+} from './console-choices';
 import type { PurchaseOrderConsolePorts } from './po-ports';
 
 export function appendPurchaseOrderConsole(
   context: OperationsViewContext,
   workspace: HTMLElement,
+  onRefreshed?: () => void,
 ): void {
   const { controller, permissions } = context;
   const recordText = context.ports.recordText;
-  // 物料版本/供应商选项与原 vanilla 采购订单表单同源。
-  const itemVersionChoices = (controller.views.get('/api/v1/manufacturing-items') ?? [])
-    .filter((item) => recordText(item, 'status', 'status') === 'PUBLISHED')
-    .map((item) => ({
+  // 物料版本/供应商选项与原 vanilla 采购订单表单同源。TD-WF-007：按最新视图计算，不再是挂载时的快照——
+  // 在「供应商与准入」页新建的供应商，回到这里打开表单就能选到。
+  const readItemVersionChoices = perView(controller.views, ITEM_VERSIONS_PATH, (rows) =>
+    itemVersionChoicesOf(rows, recordText),
+  );
+  const readSupplierChoices = perView(controller.views, '/api/v1/suppliers', (rows) =>
+    rows.map((item) => ({
       value: recordText(item, 'id', 'id'),
-      label: `${recordText(item, 'sku', 'sku')} · ${recordText(item, 'name', 'name')}`,
-    }));
-  const supplierChoices = (controller.views.get('/api/v1/suppliers') ?? []).map((item) => ({
-    value: recordText(item, 'id', 'id'),
-    label: `${recordText(item, 'supplierNumber', 'supplier_number')} · ${recordText(item, 'name', 'name')}`,
-  }));
+      label: `${recordText(item, 'supplierNumber', 'supplier_number')} · ${recordText(item, 'name', 'name')}`,
+    })),
+  );
   const snapshot = () => ({
     orders: controller.views.get('/api/v1/purchase-orders') ?? [],
     documents: controller.views.get('/api/v1/contract-documents') ?? [],
@@ -33,8 +41,12 @@ export function appendPurchaseOrderConsole(
   const ports: PurchaseOrderConsolePorts = {
     permissions,
     initialOrders: snapshot().orders,
-    itemVersionChoices,
-    supplierChoices,
+    get itemVersionChoices(): readonly ItemVersionChoice[] {
+      return readItemVersionChoices();
+    },
+    get supplierChoices(): readonly Choice[] {
+      return readSupplierChoices();
+    },
     initialDocuments: snapshot().documents,
     recordText: (record, camel, snake, fallback) => recordText(record, camel, snake, fallback),
     textValue: (value, fallback = '') =>
@@ -61,6 +73,7 @@ export function appendPurchaseOrderConsole(
     },
     refresh: async () => {
       await controller.load();
+      onRefreshed?.();
       return snapshot();
     },
   };

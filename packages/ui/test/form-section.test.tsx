@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { signal } from '@preact/signals';
 import { FormSection, type FormSectionField } from '../src/form-section';
 import { asElement, flush, mount, mountDom } from './render';
 import { TestEvent } from './dom';
@@ -524,5 +525,99 @@ describe('FormSection（兼容 shared/forms.ts 校验语义）', () => {
     await flush();
     expect(submitted).toEqual([{ colour: 'green', finish: '', batch: 'B-001' }]);
     expect(alert.textContent).toBe('');
+  });
+});
+
+// TD-WF-014⑥（写流程冒烟 WS-P3-06）：表单值的状态只在挂载那一刻初始化。新建 BOM / 工艺路线里
+// 「添加组件行 / 工序」是在挂载之后追加字段，这些字段在状态里没有条目，此前渲染成空、提交也是空——
+// 第 1 行有默认值 1 / 0，第 2 行起没有。现在状态里没有的字段取字段配置的默认值。
+describe('FormSection：挂载之后才出现的字段', () => {
+  const firstRow: readonly FormSectionField[] = [
+    { name: 'quantity', label: '单位用量', type: 'number', required: true, value: '1' },
+    { name: 'scrap', label: '损耗（基点）', type: 'number', required: true, value: '0' },
+  ];
+  const secondRow: readonly FormSectionField[] = [
+    { name: 'r2:quantity', label: '单位用量', type: 'number', required: true, value: '1' },
+    { name: 'r2:scrap', label: '损耗（基点）', type: 'number', required: true, value: '0' },
+  ];
+  const mountRows = (
+    host: ReturnType<typeof mountDom>,
+    extra: readonly FormSectionField[] = [],
+  ): Readonly<{
+    rows: ReturnType<typeof signal<number>>;
+    submitted: Readonly<Record<string, string>>[];
+  }> => {
+    const rows = signal(1);
+    const submitted: Readonly<Record<string, string>>[] = [];
+    const App = () => (
+      <FormSection
+        title="新建标准 BOM"
+        fields={[...firstRow, ...extra, ...(rows.value === 1 ? [] : secondRow)]}
+        submitLabel="保存"
+        onSubmit={(values) => {
+          submitted.push(values);
+        }}
+      />
+    );
+    mount(<App />, host);
+    return { rows, submitted };
+  };
+
+  it('a field added after mount shows its configured default, the same as the first row, and submits it', async () => {
+    const host = mountDom();
+    const { rows, submitted } = mountRows(host);
+    expect(fieldControl(host, 'quantity').value).toBe('1');
+    rows.value = 2;
+    await flush();
+    // 第 2 行与首行同样的默认值。
+    expect(fieldControl(host, 'r2:quantity').value).toBe(fieldControl(host, 'quantity').value);
+    expect(fieldControl(host, 'r2:scrap').value).toBe(fieldControl(host, 'scrap').value);
+    expect(fieldControl(host, 'r2:quantity').value).toBe('1');
+    expect(fieldControl(host, 'r2:scrap').value).toBe('0');
+    submitButton(host).click();
+    await flush();
+    expect(submitted).toEqual([{ quantity: '1', scrap: '0', 'r2:quantity': '1', 'r2:scrap': '0' }]);
+  });
+
+  it('a late field can be edited, and the edited value is the one submitted', async () => {
+    const host = mountDom();
+    const { rows, submitted } = mountRows(host);
+    rows.value = 2;
+    await flush();
+    const late = fieldControl(host, 'r2:quantity');
+    late.value = '2.5';
+    late.dispatchEvent(new Event('input', { bubbles: true }));
+    await flush();
+    // 首行不受影响。
+    expect(fieldControl(host, 'quantity').value).toBe('1');
+    submitButton(host).click();
+    await flush();
+    expect(submitted).toEqual([
+      { quantity: '1', scrap: '0', 'r2:quantity': '2.5', 'r2:scrap': '0' },
+    ]);
+  });
+
+  // 行为守恒：挂载时就在的字段，其值仍是挂载那一刻的快照——配置的默认值之后变了也不跟着变。
+  it('a field present at mount keeps its mount-time value when its configured default changes later', async () => {
+    const host = mountDom();
+    const defaultOf = signal('1');
+    const submitted: Readonly<Record<string, string>>[] = [];
+    const App = () => (
+      <FormSection
+        title="新建标准 BOM"
+        fields={[{ name: 'quantity', label: '单位用量', value: defaultOf.value }]}
+        submitLabel="保存"
+        onSubmit={(values) => {
+          submitted.push(values);
+        }}
+      />
+    );
+    mount(<App />, host);
+    defaultOf.value = '9';
+    await flush();
+    expect(fieldControl(host, 'quantity').value).toBe('1');
+    submitButton(host).click();
+    await flush();
+    expect(submitted).toEqual([{ quantity: '1' }]);
   });
 });

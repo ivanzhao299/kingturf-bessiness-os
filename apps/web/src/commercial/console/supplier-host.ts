@@ -5,21 +5,26 @@
 // 新建经 legacy POST 同链。
 import type { OperationsViewContext } from '../operations-view-ports';
 import { el } from '../../dom';
+import {
+  itemVersionChoicesOf,
+  ITEM_VERSIONS_PATH,
+  perView,
+  type ItemVersionChoice,
+} from './console-choices';
 import type { SupplierConsolePorts } from './supplier-ports';
 
 export function appendSupplierConsole(
   context: OperationsViewContext,
   workspace: HTMLElement,
+  onRefreshed?: () => void,
 ): void {
   const { controller, permissions } = context;
   const recordText = context.ports.recordText;
-  // 物料版本选项与原 vanilla 物料准入表单同源（已发布制造物料版本行）。
-  const itemVersionChoices = (controller.views.get('/api/v1/manufacturing-items') ?? [])
-    .filter((item) => recordText(item, 'status', 'status') === 'PUBLISHED')
-    .map((item) => ({
-      value: recordText(item, 'id', 'id'),
-      label: `${recordText(item, 'sku', 'sku')} · ${recordText(item, 'name', 'name')}`,
-    }));
+  // 物料版本选项与原 vanilla 物料准入表单同源（已发布制造物料版本行）。TD-WF-007：按最新视图计算，
+  // 不再是挂载时的快照——别处刚发布的物料，这里打开表单就能选到。
+  const readItemVersionChoices = perView(controller.views, ITEM_VERSIONS_PATH, (rows) =>
+    itemVersionChoicesOf(rows, recordText),
+  );
   const snapshot = () => ({
     suppliers: controller.views.get('/api/v1/suppliers') ?? [],
     quotes: controller.views.get('/api/v1/supplier-quotes') ?? [],
@@ -27,7 +32,9 @@ export function appendSupplierConsole(
   const ports: SupplierConsolePorts = {
     permissions,
     initialSuppliers: snapshot().suppliers,
-    itemVersionChoices,
+    get itemVersionChoices(): readonly ItemVersionChoice[] {
+      return readItemVersionChoices();
+    },
     initialQuotes: snapshot().quotes,
     recordText: (record, camel, snake, fallback) => recordText(record, camel, snake, fallback),
     textValue: (value, fallback = '') =>
@@ -38,6 +45,7 @@ export function appendSupplierConsole(
     },
     refresh: async () => {
       await controller.load();
+      onRefreshed?.();
       return snapshot();
     },
   };

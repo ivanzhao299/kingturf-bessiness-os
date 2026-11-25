@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { h, render } from 'preact';
 import type { ComponentType } from 'preact';
 import { installGlobalTestDom, type TestElement } from '../../../test/fixtures/preact-dom';
+import { confirmAction } from '../../../test/fixtures/confirm-dialog';
 import { CustomerConsolePage } from './customer-console';
 import type { CustomerConsolePorts } from './customer-ports';
 import { ItemConsolePage } from './item-console';
@@ -212,6 +213,10 @@ describe('控制台错误文案（TD-WF-006：接口英文消息写进状态之�
     const host = mount(RfqConsolePage, ports);
     await click(host, 'kt-rfq-open');
     await click(host, 'kt-rfq-close');
+    // TD-WF-014②：关闭询价先出确认框（破坏性动作：初焦在「取消」上），确认后才发请求。
+    expect(ports.submit).not.toHaveBeenCalled();
+    await confirmAction(host, '关闭询价', '确认关闭', { destructive: true });
+    await flush();
     expect(ports.submit).toHaveBeenCalledTimes(1);
     expect(shownError(host)).toBe('服务器处理请求时出错，请稍后重试');
     expect(host.textContent).not.toContain('Internal server error');

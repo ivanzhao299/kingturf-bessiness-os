@@ -7,6 +7,7 @@ import { h, render } from 'preact';
 import type { ComponentType } from 'preact';
 import { installGlobalTestDom, type TestElement } from '../../../test/fixtures/preact-dom';
 import { CustomerConsolePage } from './customer-console';
+import { noticeOf } from '../../../test/fixtures/console-notice';
 import type { CustomerConsolePorts, CustomerRow } from './customer-ports';
 import type { CustomerCreditSummary } from '../../crm/crm-ux';
 
@@ -717,4 +718,17 @@ describe('客户行内表单与防重复提交（FormSection 要拿到 onSubmit 
       expect(port).toHaveBeenCalledTimes(2);
     },
   );
+});
+
+describe('U3-CRM-2 客户控制台：写成功后的提示（TD-WF-014①）', () => {
+  it('新建成功：页头下方出现「已创建客户 …」', async () => {
+    const ports = portsFor(['customer:create']);
+    const host = mount(ports);
+    element(host.querySelector('[data-testid="kt-customer-create"]')).click();
+    await flush();
+    for (const [name, value] of CREATE_FORM) fillField(host, name, value);
+    await flush();
+    await submitDrawer(host);
+    expect(noticeOf(host)).toEqual({ text: '已创建客户 国际学校', inDrawer: false });
+  });
 });

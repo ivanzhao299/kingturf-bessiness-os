@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { h, render } from 'preact';
 import type { ComponentType } from 'preact';
 import { installGlobalTestDom, type TestElement } from '../../../test/fixtures/preact-dom';
+import { confirmAction } from '../../../test/fixtures/confirm-dialog';
 import { BomConsolePage } from './bom-console';
 import type { BomConsolePorts, BomPage, BomRow } from './bom-ports';
 import { diffVersions } from './bom-state';
@@ -132,6 +133,9 @@ const portsFor = (
     { value: 'yarnv-1', label: 'RM-KT-YARN-12000 · 12000D 直丝草纱', itemId: 'yarn-root' },
   ],
   productTypeOf: (productItemId) => (productItemId === 'item-root' ? 'FINISHED_GOOD' : ''),
+  // TD-WF-010：「产品」列经宿主解析成「SKU · 名称」；解析不到（未知产品）返回空串。
+  productLabelOf: (productItemId) =>
+    productItemId === 'item-root' ? 'FG-KT-PRO-50 · 金特夫 50mm 景观草' : '',
   recordText: (record, camel, snake, fallback = '') => {
     const value = record[camel] ?? record[snake] ?? fallback;
     return typeof value === 'string' || typeof value === 'number' ? String(value) : fallback;
@@ -200,8 +204,58 @@ describe('U3-MFG-2 BOM 控制台：默认视图与 e2e 文案契约', () => {
       .map((node) => node.textContent.replace(/\s+/gu, ' '));
     expect(badges).toEqual(['已发布 · 第 1 版']);
     // 产品 SKU 并入复合文本、不独占成元素（不与物料控制台 exact 定位撞 strict mode）。
-    expect(host.textContent).toContain('产品 item-root');
+    // TD-WF-010：此前这里是裸 UUID「产品 item-root」；现在显示产品的 SKU 与名称。
+    expect(host.textContent).toContain('产品 FG-KT-PRO-50 · 金特夫 50mm 景观草');
+    expect(host.textContent).not.toContain('产品 item-root');
     expect(ports.fetchPage).not.toHaveBeenCalled();
+  });
+
+  // TD-WF-010（写流程冒烟 WS-P2-08）：「产品」列此前显示裸 UUID。
+  it('「产品」列显示产品 SKU 与名称；解析不到时退回显示 id；排序按显示的文字', async () => {
+    const host = mount(
+      portsFor(
+        [
+          bomRow({ id: 'bomv-z', code: 'BOM-Z', productItemId: 'item-z' }),
+          bomRow({ id: 'bomv-a', code: 'BOM-A', productItemId: 'item-a' }),
+          bomRow({ id: 'bomv-?', code: 'BOM-?', productItemId: 'item-unknown' }),
+        ],
+        [],
+        {
+          productTypeOf: () => 'FINISHED_GOOD',
+          productLabelOf: (productItemId) =>
+            productItemId === 'item-z'
+              ? 'ZZ-STRAW · 乙物料'
+              : productItemId === 'item-a'
+                ? 'AA-YARN · 甲物料'
+                : '',
+        },
+      ),
+    );
+    const products = (): readonly string[] =>
+      host
+        .querySelectorAll('tbody tr')
+        .map(
+          (row) =>
+            row.querySelectorAll('td')[1]?.querySelector('.bom-muted')?.textContent.trim() ?? '',
+        );
+    expect(products()).toEqual([
+      '产品 ZZ-STRAW · 乙物料',
+      '产品 AA-YARN · 甲物料',
+      '产品 item-unknown',
+    ]);
+    // 点「产品」表头按显示文字升序（按码位：大写字母 < 小写字母）：甲（AA）、乙（ZZ）、解析不到的排最后。
+    const header = host
+      .querySelectorAll('th')
+      .find((cell) => cell.textContent.includes('产品'))
+      ?.querySelector('button');
+    expect(header).toBeDefined();
+    header?.click();
+    await flush();
+    expect(products()).toEqual([
+      '产品 AA-YARN · 甲物料',
+      '产品 ZZ-STRAW · 乙物料',
+      '产品 item-unknown',
+    ]);
   });
 
   it('左树计数按 BOM 根去重并经 productTypeOf 归类；持 manage 权限时草稿行有行级发布', () => {
@@ -319,7 +373,10 @@ describe('U3-MFG-2 BOM 控制台：筛选 / 检索 / 分页一体化', () => {
     });
     const failedPublish = mount(publishFailing);
     at(failedPublish.querySelectorAll('[data-testid="kt-bom-publish"]')).click();
+    // TD-WF-014②：发布不可逆，单击先出确认框，确认后才发请求。
     await flush();
+    expect(publishFailing.submit).not.toHaveBeenCalled();
+    await confirmAction(failedPublish, '发布版本', '确认发布');
     await flush();
     expect(byTestId(failedPublish, 'kt-bom-action-error').textContent).toContain(
       'publish rejected',
@@ -393,7 +450,10 @@ describe('U3-MFG-2 BOM 控制台：详情抽屉（层级树/替代料/对比）'
     expect(host.querySelectorAll('[data-testid="kt-bom-version"]')).toHaveLength(1);
     const drawer = element(host.querySelector('.detail-drawer'));
     byTestId(drawer, 'kt-bom-publish-version').click();
+    // TD-WF-014②：发布不可逆，单击先出确认框，确认后才发请求。
     await flush();
+    expect(ports.submit).not.toHaveBeenCalled();
+    await confirmAction(host, '发布版本', '确认发布');
     await flush();
     expect(ports.submit).toHaveBeenCalledExactlyOnceWith(
       '/api/v1/manufacturing-boms/bomv-d/publish',
@@ -405,6 +465,52 @@ describe('U3-MFG-2 BOM 控制台：详情抽屉（层级树/替代料/对比）'
 });
 
 describe('U3-MFG-2 BOM 控制台：新建 BOM', () => {
+  // TD-WF-014⑥（写流程冒烟 WS-P3-06）：组件行是挂载之后追加的字段，第 2 行起此前没有默认值。
+  it('追加的组件行与首行有同样的默认值（单位用量 1、损耗 0），提交时原样带上', async () => {
+    const ports = portsFor([listRow], ['bom:manage']);
+    const host = mount(ports);
+    byTestId(host, 'kt-bom-create').click();
+    await flush();
+    const valueOf = (name: string): string =>
+      element(
+        element(host.querySelector('.detail-drawer'))
+          .querySelectorAll('input,select')
+          .find((item) => (item as TestElement).getAttribute('name') === name),
+      ).value;
+    expect(valueOf('quantity')).toBe('1');
+    expect(valueOf('scrap')).toBe('0');
+    byTestId(host, 'kt-bom-row-add').click();
+    await flush();
+    byTestId(host, 'kt-bom-row-add').click();
+    await flush();
+    for (const prefix of ['r2:', 'r3:']) {
+      expect(valueOf(`${prefix}quantity`)).toBe(valueOf('quantity'));
+      expect(valueOf(`${prefix}scrap`)).toBe(valueOf('scrap'));
+    }
+    expect(valueOf('r2:quantity')).toBe('1');
+    expect(valueOf('r2:scrap')).toBe('0');
+    await type(host, '.detail-drawer', 'code', 'BOM-KT-PRO-52');
+    await type(host, '.detail-drawer', 'name', 'BOM');
+    await type(host, '.detail-drawer', 'effectiveAt', '2026-11-24');
+    const drawer = element(host.querySelector('.detail-drawer'));
+    for (const name of ['product', 'component', 'r2:component', 'r3:component']) {
+      const select = drawer
+        .querySelectorAll('select')
+        .find((item) => (item as TestElement).getAttribute('name') === name) as TestElement;
+      select.value = name === 'product' ? 'prodv-1' : 'yarnv-1';
+      select.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    await flush();
+    await submitDrawer(host);
+    expect(vi.mocked(ports.submit).mock.calls[0]?.[1]).toMatchObject({
+      lines: [
+        { componentItemVersionId: 'yarnv-1', quantity: '1', scrapBasisPoints: 0 },
+        { componentItemVersionId: 'yarnv-1', quantity: '1', scrapBasisPoints: 0 },
+        { componentItemVersionId: 'yarnv-1', quantity: '1', scrapBasisPoints: 0 },
+      ],
+    });
+  });
+
   it('单行无替代料的创建载荷与 vanilla 表单逐字节一致（publish false / outputQuantity 1）', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-11-23T12:00:00Z'));

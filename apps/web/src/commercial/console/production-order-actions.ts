@@ -21,6 +21,7 @@ import type {
   ProductionOrderPageQuery,
   ProductionOrderRow,
 } from './production-order-ports';
+import { failureMessage } from '../../shared/api-error-message';
 
 export type ProductionOrderBundle = Readonly<{
   snapshot: Signal<readonly ProductionOrderRow[]>;
@@ -60,8 +61,9 @@ export function createProductionOrderLoaders(
     limit: PRODUCTION_ORDER_PAGE_SIZE,
     ...(cursor ? { cursor } : {}),
   });
-  const messageOf = (error: unknown, fallback: string): string =>
-    error instanceof Error ? error.message : fallback;
+  // 失败文案统一经 failureMessage：接口的常见英文消息转成中文，其余原样（TD-WF-006；MFG-3B 同款）。
+  // 控制台自己抛出的中文提示（「开始时间格式不正确」等）不动。
+  const messageOf = failureMessage;
   const loadFailed = (error: unknown, fallback: string): void => {
     bundle.loadError.value = messageOf(error, fallback);
   };

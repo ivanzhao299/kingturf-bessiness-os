@@ -119,7 +119,7 @@ import type { CrmPermission } from './crm/types';
 export type { Customer, Lead, Employee, Customer360, CrmApi, CrmPermission } from './crm/types';
 import { createShellSidebar, createShellOverview } from './crm/shell-frame';
 import { appendDocumentLibrary } from './shared/document-library';
-import { appendContextualDocuments } from './shared/contextual-documents';
+import { appendContextualDocuments, keepDocumentsLast } from './shared/contextual-documents';
 import type { CommercialPermission } from './commercial/permissions';
 import { isCommercialPermission } from './commercial/permissions';
 export { isCommercialPermission } from './commercial/permissions';
@@ -595,6 +595,7 @@ export function createCrmShell(
   const { shell, aside } = frame;
   const content = createShellOverview(frame, controller, allPermissions, profileLabel, framePorts);
   appendDocumentLibrary(content, allPermissions, { renderDocumentConnectors, onlineDocumentApi });
+  content.append(createCrmRecords(shell, controller));
   appendContextualDocuments(content, allPermissions, {
     visibleAppRoutes,
     BUSINESS_DOCUMENT_TEMPLATES,
@@ -608,7 +609,6 @@ export function createCrmShell(
     onlineDocumentRead,
     openOnlineDocumentEditor,
   });
-  content.append(createCrmRecords(shell, controller));
   const placeholder = el(
     'p',
     'route-placeholder',
@@ -757,7 +757,7 @@ export async function mountWorkspace(
       context.owner.onDispose(dispose);
     },
   });
-  localizeEnterpriseCopy(shell);
+  localizeEnterpriseCopy(keepDocumentsLast(shell)); // TD-UI-010：业务文件面板排到工作区之后
   const commercialWorkspace = shell.querySelector<HTMLElement>('.commercial-workspace');
   if (commercialWorkspace && commercialData)
     markCommercialDataVisibility(commercialWorkspace, commercialData.readyRoutes());

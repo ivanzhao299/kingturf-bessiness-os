@@ -3,6 +3,9 @@
 // 三类差异高亮）。详情数据来自 additive findBom（versions 行项 + tree 层级）；对比
 // 由前端基于 versions 行项计算（bom-state diffVersions 纯函数），不新增写路径。
 import { DetailDrawer } from '@kingturf/ui';
+import { askPublishVersion } from './console-confirm';
+import { FocusAnchor } from './focus-anchor';
+import { ConsoleNotice } from './console-notice';
 import type { BomRow } from './bom-ports';
 import {
   bomVersions,
@@ -24,6 +27,16 @@ const recordsOf = (value: unknown): readonly BomRow[] =>
 
 export const versionLabel = (state: BomViewState, status: unknown): string =>
   STATUS_LABELS[String(status)] ?? state.ports.businessStateLabel(status);
+
+// 发布不可逆：行内与详情里的发布按钮都先确认（TD-WF-014②）。详情里的版本行不带编码时取抽屉当前行的。
+export const confirmPublish = (state: BomViewState, row: BomRow): void => {
+  askPublishVersion(
+    state.confirm,
+    `${state.ports.textValue(row.code, '') || state.ports.textValue(state.selected?.code, '—')} 第 ${state.ports.textValue(row.version, '?')} 版`,
+    '组件与替代料',
+    () => state.runPublish(row),
+  );
+};
 
 // 组件层级树：单节点渲染，子 BOM 经 line.bom 递归（折叠集合按子 BOM 版本行 id）。
 const TreeLines = ({
@@ -201,6 +214,10 @@ export const BomDetailDrawer = ({ state }: DetailProps) => {
   if (!row) return null;
   const detail = state.detail ?? row;
   const versions = bomVersions(state.detail);
+  // TD-WF-014④：草稿版本带「发布」按钮；发布后它消失，焦点锚点据此把键盘焦点带回抽屉。
+  const focusToken = (versions.length > 0 ? versions : [row])
+    .map((version) => state.ports.textValue(version.status, ''))
+    .join(',');
   const tree = recordsOf(detail.tree);
   const lines = tree.length > 0 ? recordsOf(recordOf(tree[0]).lines) : recordsOf(detail.lines);
   return (
@@ -209,6 +226,8 @@ export const BomDetailDrawer = ({ state }: DetailProps) => {
       onClose={() => {
         state.open(null);
       }}
+      // TD-WF-014①：写成功的提示放在抽屉底部，不随抽屉体滚走。
+      footer={state.notice === '' ? undefined : <ConsoleNotice message={state.notice} />}
     >
       <div class="console-summary" data-testid="kt-bom-detail-summary">
         <p>
@@ -251,7 +270,7 @@ export const BomDetailDrawer = ({ state }: DetailProps) => {
                   class="mfg-chip-remove"
                   data-testid="kt-bom-publish-version"
                   onClick={() => {
-                    void state.runPublish(version);
+                    confirmPublish(state, version);
                   }}
                 >
                   发布
@@ -266,6 +285,7 @@ export const BomDetailDrawer = ({ state }: DetailProps) => {
         <TreeLines state={state} lines={lines} depth={0} />
       </div>
       <CompareView state={state} />
+      <FocusAnchor token={focusToken} />
     </DetailDrawer>
   );
 };

@@ -85,9 +85,16 @@ const validateField = (field: FormSectionField, value: string): string | null =>
 
 // 配置页/抽屉内结构化表单区（解剖模板「结构化表单」）：兼容既有表单校验/敏感词语义。
 export const FormSection = (props: FormSectionProps) => {
-  const initial: Record<string, string> = {};
-  for (const field of props.fields) initial[field.name] = field.value ?? '';
-  const [values, setValues] = useState<Readonly<Record<string, string>>>(initial);
+  // 字段配置的默认值，按当前字段在每次渲染时重新计算。
+  const defaults: Record<string, string> = {};
+  for (const field of props.fields) defaults[field.name] = field.value ?? '';
+  // 用户输入过的值。状态只在挂载那一刻按当时的字段初始化一次，之后只在输入时追加条目。
+  const [entered, setValues] = useState<Readonly<Record<string, string>>>(defaults);
+  // 渲染、校验与提交用的值：输入过的字段取状态，其余取字段配置的默认值。
+  // TD-WF-014⑥：挂载之后才出现的字段（新建 BOM / 工艺路线里追加的组件行、工序行）在状态里没有条目，
+  // 此前因此渲染成空、提交也是空——这些行从第 2 行起就没有默认值。合并是纯计算，不触发重渲染，
+  // 也不依赖 effect 的时序；挂载时就在的字段行为不变（它们的条目一直在状态里）。
+  const values: Readonly<Record<string, string>> = { ...defaults, ...entered };
   const [invalid, setInvalid] = useState<ReadonlySet<string>>(new Set());
   const [error, setError] = useState('');
   const [confirmed, setConfirmed] = useState(false);

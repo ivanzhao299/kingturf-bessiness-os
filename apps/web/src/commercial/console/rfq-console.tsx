@@ -17,7 +17,16 @@ import {
   linesOf,
 } from './rfq-console-detail';
 import type { RfqConsolePorts, RfqRow } from './rfq-ports';
+import { FocusAnchor } from './focus-anchor';
+import { reloadSelectedDetail, syncSelected } from './selected-sync';
+import { ConsoleNotice } from './console-notice';
 import { failureMessage } from '../../shared/api-error-message';
+import {
+  askConfirm,
+  ConsoleConfirmDialog,
+  createConfirm,
+  type ConfirmSignal,
+} from './console-confirm';
 
 // U3-PROC-2（ADR-0014 分域重写）：询价控制台——原 vanilla sourcing-register RFQ 能力面
 // 等价迁移（新建并发出询价单载荷逐字节一致；报价登记表单属 supplier-quotes 域，保留
@@ -33,6 +42,8 @@ type RfqPageState = Readonly<{
   search: string;
   loadError: string;
   submitError: string;
+  // TD-WF-014①：最近一次写操作的成功提示。
+  notice: string;
   loading: boolean;
   selected: RfqRow | null;
   detailLoading: boolean;
@@ -41,6 +52,8 @@ type RfqPageState = Readonly<{
   ports: RfqConsolePorts;
   // 当前时间源（截止倒计时；测试可注入固定时钟）。
   now: () => Date;
+  // TD-WF-014②：等待确认的不可逆动作（发布 / 关闭询价）；null 表示没有确认框。
+  confirm: ConfirmSignal;
   open: (row: RfqRow | null) => void;
   openForm: (kind: RfqFormKind) => void;
   closeForm: () => void;
@@ -74,13 +87,20 @@ const statusTone = (status: unknown): StatusTone => {
 const text = (ports: RfqConsolePorts, row: RfqRow, camel: string, snake: string, fallback = '') =>
   ports.recordText(row, camel, snake, fallback);
 
-// 报价截止单元：日期（ISO 前 10 位）· 币种 + 已签发询价单的截止倒计时徽章。
+// 报价截止单元：日期（ISO 前 10 位）· 币种，其后是已签发询价单的截止倒计时徽章。
+// TD-WF-014⑦：徽章紧跟在币种文字后面、中间没有任何分隔，读起来是「CNY剩 14 天」——
+// 币种与倒计时连成了一句。两者以「 · 」分开，各自成段。
 const DueCell = ({ state, row }: Readonly<{ state: RfqPageState; row: RfqRow }>) => {
   const countdown = activeCountdown(state, row);
   return (
     <span>
       {`${text(state.ports, row, 'responseDueAt', 'response_due_at', '—').slice(0, 10)} · ${text(state.ports, row, 'currency', 'currency', '—')}`}
-      {countdown === null ? null : <CountdownBadge countdown={countdown} />}
+      {countdown === null ? null : (
+        <>
+          {' · '}
+          <CountdownBadge countdown={countdown} />
+        </>
+      )}
     </span>
   );
 };
@@ -164,6 +184,8 @@ const RfqDrawer = ({ state }: Readonly<{ state: RfqPageState }>) => {
       onClose={() => {
         state.open(null);
       }}
+      // TD-WF-014①：写成功的提示放在抽屉底部，不随抽屉体滚走。
+      footer={state.notice === '' ? undefined : <ConsoleNotice message={state.notice} />}
     >
       <div class="console-summary" data-testid="kt-rfq-detail">
         <p>
@@ -189,7 +211,14 @@ const RfqDrawer = ({ state }: Readonly<{ state: RfqPageState }>) => {
               class="primary"
               data-testid="kt-rfq-issue"
               onClick={() => {
-                void state.runState(row, 'issue');
+                // TD-WF-014②：发布后询价单进入询价，先确认。
+                const number = text(ports, row, 'rfqNumber', 'rfq_number');
+                askConfirm(state.confirm, {
+                  title: '发布询价',
+                  message: `发布后询价单 ${number} 进入询价，供应商可以提交报价。`,
+                  confirmLabel: '确认发布',
+                  run: () => state.runState(row, 'issue'),
+                });
               }}
             >
               发布询价
@@ -201,7 +230,15 @@ const RfqDrawer = ({ state }: Readonly<{ state: RfqPageState }>) => {
               class="secondary"
               data-testid="kt-rfq-close"
               onClick={() => {
-                void state.runState(row, 'close');
+                // TD-WF-014②：关闭后不再接收报价，先确认（破坏性动作：初焦在「取消」上）。
+                const number = text(ports, row, 'rfqNumber', 'rfq_number');
+                askConfirm(state.confirm, {
+                  title: '关闭询价',
+                  message: `关闭后询价单 ${number} 不再接收报价。`,
+                  confirmLabel: '确认关闭',
+                  destructive: true,
+                  run: () => state.runState(row, 'close'),
+                });
               }}
             >
               关闭询价
@@ -213,6 +250,8 @@ const RfqDrawer = ({ state }: Readonly<{ state: RfqPageState }>) => {
       <p class="console-label">询价行项</p>
       <RfqLines state={state} />
       <QuoteComparison state={state} />
+      {/* TD-WF-014④：发布 / 关闭后按钮变化时，把键盘焦点带回抽屉。 */}
+      <FocusAnchor token={status} />
     </DetailDrawer>
   );
 };
@@ -284,6 +323,8 @@ const RfqView = (state: RfqPageState) => {
           </>
         }
       />
+      {/* TD-WF-014①：详情抽屉没开着时，写成功的提示显示在页头下方。 */}
+      {state.selected ? null : <ConsoleNotice message={state.notice} />}
       <div class="commercial-console-filters">
         {(['ALL', 'DRAFT', 'ISSUED', 'PARTIALLY_RECEIVED', 'RECEIVED', 'CANCELLED'] as const).map(
           (option) => (
@@ -337,6 +378,7 @@ const RfqView = (state: RfqPageState) => {
       />
       {state.selected ? <RfqDrawer state={state} /> : null}
       {state.activeForm === 'create' ? <CreateDrawer state={state} /> : null}
+      <ConsoleConfirmDialog pending={state.confirm} />
     </div>
   );
 };
@@ -350,11 +392,13 @@ export function RfqConsolePage(ports: RfqConsolePorts) {
     search: signal(''),
     loadError: signal(''),
     submitError: signal(''),
+    notice: signal(''),
     loading: signal(false),
     selected: signal<RfqRow | null>(null),
     detailLoading: signal(false),
     activeForm: signal<RfqFormKind>(null),
     shownCount: signal(20),
+    confirm: createConfirm(),
   };
 
   const fail = (error: unknown, fallback: string): void => {
@@ -368,10 +412,22 @@ export function RfqConsolePage(ports: RfqConsolePorts) {
     bundle.submitError.value = '';
   };
 
+  // 抽屉里开着的那条：换成刷新后的行（已不在列表里则关闭抽屉），并重读详情（TD-WF-008）。
+  const selection = () => ({
+    selected: bundle.selected,
+    rows: bundle.rfqs.value,
+    idOf: (row: RfqRow) => ports.textValue(row.id, ''),
+    loadDetail: ports.loadDetail,
+  });
+  const applyRefreshed = (rfqs: readonly RfqRow[]): void => {
+    bundle.rfqs.value = rfqs;
+    if (syncSelected(selection())) void reloadSelectedDetail(selection());
+  };
+
   const runRefresh = async (): Promise<void> => {
     bundle.loading.value = true;
     try {
-      bundle.rfqs.value = await ports.refresh();
+      applyRefreshed(await ports.refresh());
       bundle.loadError.value = '';
     } catch (error: unknown) {
       fail(error, '询价单加载失败');
@@ -399,8 +455,9 @@ export function RfqConsolePage(ports: RfqConsolePorts) {
           },
         ],
       });
-      bundle.rfqs.value = await ports.refresh();
+      applyRefreshed(await ports.refresh());
       closeForm();
+      bundle.notice.value = `已发出询价单 ${values.rfqNumber ?? ''}`;
     } catch (error: unknown) {
       fail(error, '询价单创建失败');
     } finally {
@@ -418,8 +475,9 @@ export function RfqConsolePage(ports: RfqConsolePorts) {
         { action },
         'PUT',
       );
-      bundle.rfqs.value = await ports.refresh();
+      applyRefreshed(await ports.refresh());
       closeForm();
+      bundle.notice.value = `${action === 'issue' ? '已发布' : '已关闭'}询价单 ${text(ports, row, 'rfqNumber', 'rfq_number')}`;
     } catch (error: unknown) {
       fail(error, '询价单状态流转失败');
     } finally {
@@ -433,6 +491,7 @@ export function RfqConsolePage(ports: RfqConsolePorts) {
     search: bundle.search.value,
     loadError: bundle.loadError.value,
     submitError: bundle.submitError.value,
+    notice: bundle.notice.value,
     loading: bundle.loading.value,
     selected: bundle.selected.value,
     detailLoading: bundle.detailLoading.value,
@@ -440,26 +499,25 @@ export function RfqConsolePage(ports: RfqConsolePorts) {
     permissions: ports.permissions,
     ports,
     now: () => ports.now?.() ?? new Date(),
+    confirm: bundle.confirm,
+    // 开始下一个动作时清掉上一次的成功提示（与 submitError 同一处）。
     open: (row) => {
       bundle.selected.value = row;
       bundle.activeForm.value = null;
       bundle.submitError.value = '';
+      bundle.notice.value = '';
       if (!row) return;
-      // 详情读取失败静默回退列表行（行项/报价对比区按列表行数据呈现）。
+      // 详情读取失败静默回退列表行（行项/报价对比区按列表行数据呈现）。迟到的详情只在抽屉仍开着、
+      // 且还是这一条时才替换。
       bundle.detailLoading.value = true;
-      void ports
-        .loadDetail(ports.textValue(row.id, ''))
-        .then((detail) => {
-          if (detail) bundle.selected.value = detail;
-        })
-        .catch(() => undefined)
-        .finally(() => {
-          bundle.detailLoading.value = false;
-        });
+      void reloadSelectedDetail(selection()).finally(() => {
+        bundle.detailLoading.value = false;
+      });
     },
     openForm: (kind) => {
       bundle.activeForm.value = kind;
       bundle.submitError.value = '';
+      bundle.notice.value = '';
     },
     closeForm,
     setStatusFilter: (next) => {

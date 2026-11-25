@@ -5,22 +5,31 @@
 // GET /api/v1/procurement-rfqs/:id，失败回退列表行。
 import type { OperationsViewContext } from '../operations-view-ports';
 import { el } from '../../dom';
+import {
+  itemVersionChoicesOf,
+  ITEM_VERSIONS_PATH,
+  perView,
+  type ItemVersionChoice,
+} from './console-choices';
 import type { RfqConsolePorts } from './rfq-ports';
 
-export function appendRfqConsole(context: OperationsViewContext, workspace: HTMLElement): void {
+export function appendRfqConsole(
+  context: OperationsViewContext,
+  workspace: HTMLElement,
+  onRefreshed?: () => void,
+): void {
   const { controller, permissions } = context;
   const recordText = context.ports.recordText;
-  // 物料版本选项与原 vanilla 采购询价表单同源（已发布制造物料版本行）。
-  const itemVersionChoices = (controller.views.get('/api/v1/manufacturing-items') ?? [])
-    .filter((item) => recordText(item, 'status', 'status') === 'PUBLISHED')
-    .map((item) => ({
-      value: recordText(item, 'id', 'id'),
-      label: `${recordText(item, 'sku', 'sku')} · ${recordText(item, 'name', 'name')}`,
-    }));
+  // 物料版本选项与原 vanilla 采购询价表单同源（已发布制造物料版本行）。TD-WF-007：按最新视图计算。
+  const readItemVersionChoices = perView(controller.views, ITEM_VERSIONS_PATH, (rows) =>
+    itemVersionChoicesOf(rows, recordText),
+  );
   const ports: RfqConsolePorts = {
     permissions,
     initialRfqs: controller.views.get('/api/v1/procurement-rfqs') ?? [],
-    itemVersionChoices,
+    get itemVersionChoices(): readonly ItemVersionChoice[] {
+      return readItemVersionChoices();
+    },
     recordText: (record, camel, snake, fallback) => recordText(record, camel, snake, fallback),
     textValue: (value, fallback = '') =>
       typeof value === 'string' || typeof value === 'number' ? String(value) : fallback,
@@ -35,6 +44,7 @@ export function appendRfqConsole(context: OperationsViewContext, workspace: HTML
     },
     refresh: async () => {
       await controller.load();
+      onRefreshed?.();
       return controller.views.get('/api/v1/procurement-rfqs') ?? [];
     },
   };

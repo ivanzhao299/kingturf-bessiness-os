@@ -46,21 +46,17 @@ const createFields = (state: ProductionOrderViewState): readonly FormSectionFiel
   { name: 'sourceReference', label: '来源唯一编号', required: true },
 ];
 
-const submitError = (state: ProductionOrderViewState, testId: string) =>
-  state.submitError !== '' ? (
-    <p class="console-error" role="alert" data-testid={testId}>
-      {state.submitError}
-    </p>
-  ) : null;
-
+// MFG5-3（TD-WF-005 / TD-WF-012 同款）：提交失败的原因显示在表单自己的提示区（FormSection 的 error，
+// 紧挨提交按钮，出现时滚进可视区并获焦），不再渲染在抽屉顶部——长表单下滚到提交按钮时抽屉顶部
+// 已在视口上方。三个表单抽屉（新建 / 流转 / 车间执行）都没有不经表单的写动作，抽屉顶部不再留错误位。
 export const ProductionOrderCreateDrawer = ({ state }: FormProps) => (
   <DetailDrawer title="新建生产工单" onClose={state.closeForm}>
-    {submitError(state, 'kt-wo-create-error')}
     <FormSection
       title="建立生产工单"
       description="工单引用已发布物料和工艺版本；保存时固定全部标准工序快照。"
       fields={createFields(state)}
       submitLabel="保存工单"
+      error={state.submitError}
       onSubmit={(values) => state.runCreate(values)}
     />
   </DetailDrawer>
@@ -92,7 +88,6 @@ export const ProductionOrderTransitionDrawer = ({ state }: FormProps) => {
           <StatusBadge tone="success">{stateLabel(TARGET_STATE[pending.action])}</StatusBadge>
         </p>
       </div>
-      {submitError(state, 'kt-wo-transition-error')}
       <FormSection
         title={label}
         description="状态决定会追加到不可变工单事件台账，并执行完整性门禁。"
@@ -101,6 +96,7 @@ export const ProductionOrderTransitionDrawer = ({ state }: FormProps) => {
           { name: 'evidenceReference', label: '证据编号', required: true },
         ]}
         submitLabel="确认执行"
+        error={state.submitError}
         onSubmit={(values) => state.runTransition(values)}
       />
     </DetailDrawer>

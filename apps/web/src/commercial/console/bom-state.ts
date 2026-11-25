@@ -2,6 +2,7 @@
 // 变化三类差异）、层级树展平助手与视图状态类型（页面工厂、详情抽屉、新建抽屉共用；
 // 不持有运行时状态）。
 import type { StatusTone } from '@kingturf/ui';
+import type { ConfirmSignal } from './console-confirm';
 import type { BomConsolePorts, BomRow } from './bom-ports';
 
 export type BomProductFilter = 'ALL' | 'FINISHED_GOOD' | 'SEMI_FINISHED';
@@ -54,7 +55,11 @@ export type BomViewState = Readonly<{
   compareVersions: readonly [string, string] | null;
   // 组件层级树折叠集合（bomVersionId）；默认全展开。
   collapsed: ReadonlySet<string>;
+  // TD-WF-014①：最近一次写操作的成功提示。
+  notice: string;
   mayManage: boolean;
+  // TD-WF-014②：等待确认的不可逆动作（发布版本）；null 表示没有确认框。
+  confirm: ConfirmSignal;
   selectProduct: (next: BomProductFilter) => void;
   setStatusFilter: (next: BomStatusFilter) => void;
   setSearch: (next: string) => void;

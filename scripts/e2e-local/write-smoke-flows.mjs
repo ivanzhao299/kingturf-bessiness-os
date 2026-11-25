@@ -833,6 +833,10 @@ export async function manufacturingFlow(t) {
     async (e) => {
       await click(page, 'kt-bom-create');
       await t.observeBlankSelects('新建标准 BOM');
+      // 「与首行一致的默认值」指首行打开时的默认值（1 / 0），要在填表之前读：下面的 fillBom 会把首行改成
+      // 5 / 100，之后再拿首行的当前值去比，量到的是「新行有没有照抄上一行填过的数」，不是默认值——
+      // 第二行已经带上 1 / 0 时仍会被判成复现（WF-C 在真浏览器上实测到这一点）。
+      e.defaults = { quantity: await value(page, 'quantity'), scrap: await value(page, 'scrap') };
       await fillBom(bom.decimal);
       await click(page, 'kt-bom-row-add');
       const second = await need(componentRows);
@@ -841,7 +845,12 @@ export async function manufacturingFlow(t) {
         quantity: await value(page, `${second}quantity`),
         scrap: await value(page, `${second}scrap`),
       };
-      return e.row1.quantity === e.row2.quantity && e.row1.scrap === e.row2.scrap;
+      return (
+        e.defaults.quantity !== '' &&
+        e.defaults.scrap !== '' &&
+        e.row2.quantity === e.defaults.quantity &&
+        e.row2.scrap === e.defaults.scrap
+      );
     },
   );
 
@@ -1213,7 +1222,9 @@ export async function creditFlow(t) {
         await fill(approverPage, 'reason', 'E2E 写流程冒烟：审批人拒绝');
         const confirmation = drawer(approverPage).locator('[data-confirmation="true"]');
         if ((await confirmation.count()) > 0) await confirmation.check();
-        const response = await t.write(submit(approverPage, '确认拒绝', state), {
+        // 拒绝表单的提交按钮自 TD-WF-014⑤ 起叫「拒绝这条信用决定」（原「确认拒绝」，勾选项会读作
+        // 「我确认要确认拒绝」）。这里只是定位提交按钮的文字，断言不变。
+        const response = await t.write(submit(approverPage, '拒绝这条信用决定', state), {
           irreversible: true,
         });
         e.request = brief(response);

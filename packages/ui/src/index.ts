@@ -1,5 +1,6 @@
 // @kingturf/ui 组件基座（ADR-0014/U1）：tokens + 原语 + cursor 分页契约共享面。
 export { ActionBar, type ActionBarProps } from './action-bar';
+export { ConfirmDialog, type ConfirmDialogProps } from './confirm-dialog';
 export {
   DataTable,
   type DataTableColumn,

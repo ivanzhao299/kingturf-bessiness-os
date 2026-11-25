@@ -4,6 +4,7 @@ import type { Signal } from '@preact/signals';
 import type { ContractDocumentRow, PurchaseOrderConsolePorts, PurchaseOrderRow } from './po-ports';
 import type { DocumentFormKind } from './po-detail';
 import { failureMessage } from '../../shared/api-error-message';
+import { reloadSelectedDetail, syncSelected } from './selected-sync';
 
 export type PoFormActionKind = 'create' | null;
 
@@ -16,15 +17,26 @@ export type PoBundle = Readonly<{
   selected: Signal<PurchaseOrderRow | null>;
   activeForm: Signal<PoFormActionKind>;
   activeDocumentForm: Signal<Readonly<{ documentId: string; kind: DocumentFormKind }> | null>;
+  // TD-WF-014①：最近一次写操作的成功提示（空串 = 没有）。
+  notice: Signal<string>;
 }>;
 
 export function createPurchaseOrderActions(ports: PurchaseOrderConsolePorts, bundle: PoBundle) {
+  // 抽屉里开着的那条：换成刷新后的行（已不在列表里则关闭抽屉），并重读详情（TD-WF-008）。
+  const selection = () => ({
+    selected: bundle.selected,
+    rows: bundle.orders.value,
+    idOf: (row: PurchaseOrderRow) => ports.textValue(row.id, ''),
+    loadDetail: ports.loadDetail,
+  });
+
   const applySnapshot = (snapshot: {
     orders: readonly PurchaseOrderRow[];
     documents: readonly ContractDocumentRow[];
   }): void => {
     bundle.orders.value = snapshot.orders;
     bundle.documents.value = snapshot.documents;
+    if (syncSelected(selection())) void reloadSelectedDetail(selection());
   };
 
   const fail = (error: unknown, fallback: string): void => {
@@ -37,6 +49,8 @@ export function createPurchaseOrderActions(ports: PurchaseOrderConsolePorts, bun
     bundle.activeForm.value = null;
     bundle.submitError.value = '';
   };
+  const orderNumber = (row: PurchaseOrderRow): string =>
+    ports.textValue(row.poNumber ?? row.po_number, '');
 
   const runRefresh = async (): Promise<void> => {
     bundle.loading.value = true;
@@ -73,6 +87,7 @@ export function createPurchaseOrderActions(ports: PurchaseOrderConsolePorts, bun
       });
       applySnapshot(await ports.refresh());
       closeForm();
+      bundle.notice.value = `已创建并签发采购订单 ${values.poNumber ?? ''}`;
     } catch (error: unknown) {
       fail(error, '采购订单创建失败');
     } finally {
@@ -93,6 +108,7 @@ export function createPurchaseOrderActions(ports: PurchaseOrderConsolePorts, bun
       );
       applySnapshot(await ports.refresh());
       closeForm();
+      bundle.notice.value = `${action === 'issue' ? '已签发' : '已取消'}采购订单 ${orderNumber(row)}`;
     } catch (error: unknown) {
       fail(error, '采购订单状态流转失败');
     } finally {
@@ -105,6 +121,7 @@ export function createPurchaseOrderActions(ports: PurchaseOrderConsolePorts, bun
     try {
       await ports.uploadContractDocument('PURCHASE', 'purchase-order', orderId, file);
       applySnapshot(await ports.refresh());
+      bundle.notice.value = '采购合同已上传';
     } catch (error: unknown) {
       fail(error, '采购合同上传失败');
     } finally {
@@ -162,6 +179,12 @@ export function createPurchaseOrderActions(ports: PurchaseOrderConsolePorts, bun
         });
       applySnapshot(await ports.refresh());
       bundle.activeDocumentForm.value = null;
+      bundle.notice.value =
+        kind === 'ocr'
+          ? '已保存识别结果'
+          : kind === 'review'
+            ? '已确认可送签'
+            : '已发起采购合同电子签署';
     } catch (error: unknown) {
       bundle.submitError.value = failureMessage(error, '合同文档操作失败');
     } finally {

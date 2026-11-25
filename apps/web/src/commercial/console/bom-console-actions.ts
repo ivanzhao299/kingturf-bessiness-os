@@ -11,6 +11,7 @@ import {
 } from './bom-state';
 import type { BomConsolePorts, BomPageQuery, BomRow } from './bom-ports';
 import { failureMessage } from '../../shared/api-error-message';
+import type { ConfirmSignal } from './console-confirm';
 
 export type BomBundle = Readonly<{
   snapshot: Signal<readonly BomRow[]>;
@@ -25,6 +26,8 @@ export type BomBundle = Readonly<{
   loadError: Signal<string>;
   actionError: Signal<string>;
   submitError: Signal<string>;
+  // TD-WF-014①：最近一次写操作的成功提示。
+  notice: Signal<string>;
   selected: Signal<BomRow | null>;
   detail: Signal<BomRow | null>;
   detailLoading: Signal<boolean>;
@@ -32,6 +35,7 @@ export type BomBundle = Readonly<{
   componentRows: Signal<readonly string[]>;
   compareVersions: Signal<readonly [string, string] | null>;
   collapsed: Signal<ReadonlySet<string>>;
+  confirm: ConfirmSignal;
 }>;
 
 // 装载/筛选/分页/详情闭包（变更动作经 createBomMutations 注入 sync/reloadDetail）。
@@ -141,10 +145,12 @@ export function createBomActions(ports: BomConsolePorts, bundle: BomBundle) {
     loadMore,
     reloadDetail,
     actionFailed,
+    // 开始下一个动作时清掉上一次的成功提示（与 submitError 同一处）。
     open: (row: BomRow | null): void => {
       bundle.selected.value = row;
       bundle.activeForm.value = null;
       bundle.submitError.value = '';
+      bundle.notice.value = '';
       bundle.detail.value = null;
       if (row === null) detailSequence += 1;
       void reloadDetail();
@@ -152,6 +158,7 @@ export function createBomActions(ports: BomConsolePorts, bundle: BomBundle) {
     openCreate: (): void => {
       bundle.activeForm.value = 'create';
       bundle.submitError.value = '';
+      bundle.notice.value = '';
     },
     toggleNode: (bomVersionId: string): void => {
       const next = new Set(bundle.collapsed.value);
@@ -200,6 +207,7 @@ export function createBomMutations(
         'PUT',
       );
       await io.sync();
+      bundle.notice.value = `已发布 BOM ${ports.textValue(row.code, '')}`;
       const opened = bundle.selected.value;
       if (opened) {
         const openedId = ports.textValue(opened.bomId ?? opened.id, '');
@@ -252,6 +260,7 @@ export function createBomMutations(
     }
     closeForm();
     await io.sync();
+    bundle.notice.value = `已保存 BOM 草稿 ${values.code ?? ''}`;
   };
 
   return {

@@ -18,6 +18,7 @@ import {
 } from './cost-matrix-console-compare';
 import { CreateDrawer, FactorForm } from './cost-matrix-console-forms';
 import { failureMessage } from '../../shared/api-error-message';
+import { FocusAnchor } from './focus-anchor';
 
 // U3-COM-4（ADR-0014 分域重写）：规格成本矩阵控制台——原 vanilla ledger/detail 能力面
 // 等价迁移（summaries 服务端分页与筛选、矩阵详情、因子增改、重算、报价成本决策 handoff）。
@@ -280,6 +281,8 @@ const MatrixDrawer = ({ state }: Readonly<{ state: MatrixPageState }>) => {
       {state.activeForm === 'addFactor' || state.activeForm === 'editFactor' ? (
         <FactorForm state={state} />
       ) : null}
+      {/* TD-WF-014④：因子表单开合后，把键盘焦点带回抽屉。 */}
+      <FocusAnchor token={String(state.activeForm)} />
     </DetailDrawer>
   );
 };

@@ -9,6 +9,7 @@ import {
   type TestElement,
 } from '../../../test/fixtures/preact-dom';
 import { CreditConsolePage } from './credit-console';
+import { noticeOf } from '../../../test/fixtures/console-notice';
 import type { CreditConsolePorts, CreditRow } from './credit-ports';
 import { creditUtilization, decisionSteps } from './credit-console-flow';
 
@@ -212,6 +213,32 @@ describe('COM-UX 信用审批流程图', () => {
     expect(ports.refresh).toHaveBeenCalled();
   });
 
+  // TD-WF-014⑤（写流程冒烟 WS-P3-05）：拒绝表单的提交按钮原来叫「确认拒绝」，敏感词勾选项由
+  // FormSection 拼成「我确认要」+ 按钮文字，读作「我确认要确认拒绝」。批准不是敏感词，没有勾选项。
+  it('拒绝表单的确认勾选读作一句通顺的话；批准表单没有勾选项', async () => {
+    const ports = portsFor([pending], ['credit:approve']);
+    const host = mount(ports);
+    await openRow(host, 0);
+    element(host.querySelector('[data-testid="kt-credit-reject"]')).click();
+    await flush();
+    const confirmation = element(host.querySelector('.operation-confirmation'));
+    expect(confirmation.textContent.trim()).toBe('我确认要拒绝这条信用决定');
+    expect(
+      element(host.querySelector('.form-section button[type="submit"]')).textContent.trim(),
+    ).toBe('拒绝这条信用决定');
+    expect(host.textContent).not.toContain('确认要确认');
+    expect(ports.submit).not.toHaveBeenCalled();
+    // 批准不含敏感词：表单里没有勾选项。
+    const approveHost = mount(portsFor([pending], ['credit:approve']));
+    await openRow(approveHost, 0);
+    element(approveHost.querySelector('[data-testid="kt-credit-approve"]')).click();
+    await flush();
+    expect(approveHost.querySelector('.operation-confirmation')).toBeNull();
+    expect(
+      element(approveHost.querySelector('.form-section button[type="submit"]')).textContent.trim(),
+    ).toBe('确认批准');
+  });
+
   // 回归（TD-WF-001，写流程真浏览器冒烟发现）：评估表单要求已签发报价行带 customerId，而报价列表
   // 投影此前不带客户字段——「执行信用评估」拿不到客户，请求发不出去，错误只写进不渲染的位置。
   // 服务端已在报价行补上 customerId；这里钉住控制台一侧：取到客户并以正确的载荷提交。
@@ -338,5 +365,143 @@ describe('COM-UX 信用审批流程图', () => {
     const shown = element(host.querySelector('[data-testid="kt-credit-submit-error"]')).textContent;
     expect(shown).not.toContain('Internal server error');
     expect(shown).not.toBe('');
+  });
+});
+
+// TD-WF-008：审批后列表里这条决定已是「信用已批准」，开着的抽屉却仍是「等待信用审批」、
+// 批准 / 拒绝按钮也还在。
+describe('信用审查：详情抽屉随写操作刷新', () => {
+  it('批准后，开着的抽屉显示「信用已批准」，不再有批准 / 拒绝按钮', async () => {
+    const decided = decision({ id: 'decision-pending', effective_status: 'APPROVED' });
+    const ports = portsFor([pending], ['credit:approve'], {
+      refresh: vi.fn().mockResolvedValue({ limits, decisions: [decided] }),
+    });
+    const host = mount(ports);
+    await openRow(host, 0);
+    const badgeOf = (): string =>
+      element(
+        host.querySelector('[data-testid="kt-credit-detail"] .status-badge'),
+      ).textContent.trim();
+    expect(badgeOf()).toBe('等待信用审批');
+    expect(host.querySelector('[data-testid="kt-credit-approve"]')).not.toBeNull();
+    element(host.querySelector('[data-testid="kt-credit-approve"]')).click();
+    await flush();
+    const textarea = element(host.querySelector('.form-section textarea'));
+    textarea.value = '额度充足，予以批准';
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    await flush();
+    element(host.querySelector('.form-section button[type="submit"]')).click();
+    await flush();
+    await flush();
+    expect(ports.submit).toHaveBeenCalledTimes(1);
+    expect(host.querySelector('[data-testid="kt-credit-detail"]')).not.toBeNull();
+    expect(badgeOf()).toBe('信用已批准');
+    expect(host.querySelector('[data-testid="kt-credit-approve"]')).toBeNull();
+    expect(host.querySelector('[data-testid="kt-credit-reject"]')).toBeNull();
+  });
+});
+
+// TD-WF-014⑧（写流程冒烟 WS-P3-08）：信用决定此前只用报价版本 ID 的前 8 位标识——列表「关联报价」列与
+// 详情抽屉标题都是「quote-re」这样的片段，认不出是哪个客户、哪份报价。
+describe('信用审查：信用决定以客户与报价编号标识', () => {
+  const issuedQuotes: readonly CreditRow[] = [
+    {
+      id: 'quote-rev-1',
+      quoteNumber: 'Q-KT-P1-DEMO',
+      revision: 2,
+      status: 'ISSUED',
+      issuedSnapshotId: 'snap-1',
+      customerId: 'customer-1',
+    },
+  ];
+
+  it('列表「关联报价」列与抽屉标题都显示「客户 · 报价 编号 · 第 N 版」，不再出现 ID 片段', async () => {
+    const host = mount(portsFor([pending], [], { issuedQuotes }));
+    expect(rows(host)[0]?.textContent).toContain('Acme Turf · 报价 Q-KT-P1-DEMO · 第 2 版');
+    expect(host.textContent).not.toContain('quote-re');
+    await openRow(host, 0);
+    const title = element(host.querySelector('.detail-drawer h2')).textContent;
+    expect(title).toBe('信用决定详情 · Acme Turf · 报价 Q-KT-P1-DEMO · 第 2 版');
+  });
+
+  it('检索：按报价编号或客户名称能搜到；按报价版本 ID 仍能搜到', async () => {
+    const other = decision({
+      id: 'decision-2',
+      customer_id: 'customer-2',
+      quote_revision_id: 'quote-rev-2',
+    });
+    const ports = portsFor([pending, other], [], {
+      issuedQuotes: [
+        ...issuedQuotes,
+        { ...issuedQuotes[0], id: 'quote-rev-2', quoteNumber: 'Q-KT-OTHER', revision: 1 },
+      ],
+      customers: [
+        { id: 'customer-1', name: 'Acme Turf' },
+        { id: 'customer-2', name: '宁波草纱三厂' },
+      ],
+    });
+    const host = mount(ports);
+    const search = element(host.querySelector('[data-testid="kt-credit-search"]'));
+    const type = async (text: string): Promise<void> => {
+      search.value = text;
+      search.dispatchEvent(new Event('input', { bubbles: true }));
+      await flush();
+    };
+    expect(rows(host)).toHaveLength(2);
+    await type('Q-KT-OTHER');
+    expect(rows(host)).toHaveLength(1);
+    expect(rows(host)[0]?.textContent).toContain('宁波草纱三厂');
+    await type('Acme');
+    expect(rows(host)).toHaveLength(1);
+    expect(rows(host)[0]?.textContent).toContain('Q-KT-P1-DEMO');
+    await type('quote-rev-2');
+    expect(rows(host)).toHaveLength(1);
+    expect(rows(host)[0]?.textContent).toContain('宁波草纱三厂');
+  });
+
+  it('报价或客户解析不到时不编造：缺的那一项不显示；两样都没有才退回 ID 片段', async () => {
+    // 没有报价读权限：issuedQuotes 为空——只剩客户名。
+    const quoteHidden = mount(portsFor([pending]));
+    expect(rows(quoteHidden)[0]?.textContent).toContain('Acme Turf');
+    expect(rows(quoteHidden)[0]?.textContent).not.toContain('报价 ');
+    await openRow(quoteHidden, 0);
+    expect(element(quoteHidden.querySelector('.detail-drawer h2')).textContent).toBe(
+      '信用决定详情 · Acme Turf',
+    );
+    // 客户也解析不到：退回报价版本 ID 的前 8 位。
+    const unknown = decision({
+      id: 'decision-x',
+      customer_id: 'customer-?',
+      quote_revision_id: 'quote-rev-9',
+    });
+    const bare = mount(portsFor([unknown]));
+    expect(rows(bare)[0]?.textContent).toContain('报价版本 quote-re');
+    await openRow(bare, 0);
+    expect(element(bare.querySelector('.detail-drawer h2')).textContent).toBe(
+      '信用决定详情 · 报价版本 quote-re',
+    );
+  });
+});
+
+describe('信用审查：写成功后的提示（TD-WF-014①）', () => {
+  it('批准成功：提示在开着的详情抽屉底部', async () => {
+    const ports = portsFor([pending], ['credit:approve'], {
+      refresh: vi.fn().mockResolvedValue({
+        limits,
+        decisions: [decision({ id: 'decision-pending', effective_status: 'APPROVED' })],
+      }),
+    });
+    const host = mount(ports);
+    await openRow(host, 0);
+    element(host.querySelector('[data-testid="kt-credit-approve"]')).click();
+    await flush();
+    const textarea = element(host.querySelector('.form-section textarea'));
+    textarea.value = '额度充足，予以批准';
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    await flush();
+    element(host.querySelector('.form-section button[type="submit"]')).click();
+    await flush();
+    await flush();
+    expect(noticeOf(host)).toEqual({ text: '已批准信用', inDrawer: true });
   });
 });

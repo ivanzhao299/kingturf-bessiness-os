@@ -8,7 +8,10 @@
 import { signal } from '@preact/signals';
 import { DataTable, PageHeader, StatusBadge, type DataTableColumn } from '@kingturf/ui';
 import { RoutingCreateDrawer } from './routing-create';
-import { RoutingDetailDrawer } from './routing-detail';
+import { RoutingDetailDrawer, confirmPublish } from './routing-detail';
+import { ConsoleConfirmDialog, createConfirm } from './console-confirm';
+import { FocusAnchor } from './focus-anchor';
+import { ConsoleNotice } from './console-notice';
 import type { RoutingConsolePorts, RoutingRow } from './routing-ports';
 import {
   ALL_PRODUCTS,
@@ -39,11 +42,13 @@ const createBundle = (ports: RoutingConsolePorts): RoutingBundle => ({
   loadError: signal(''),
   actionError: signal(''),
   submitError: signal(''),
+  notice: signal(''),
   selected: signal<RoutingRow | null>(null),
   detail: signal<RoutingRow | null>(null),
   detailLoading: signal(false),
   activeForm: signal<'create' | null>(null),
   operationRows: signal<readonly string[]>(['o1']),
+  confirm: createConfirm(),
 });
 
 const text = (
@@ -53,6 +58,15 @@ const text = (
   snake: string,
   fallback = '',
 ): string => state.ports.recordText(row, camel, snake, fallback);
+
+// TD-WF-010：「产品」列此前直接显示 productItemId——一个 UUID。现在经宿主解析成「SKU · 名称」；
+// 解析不到（物料清单读不到、或这个产品不在清单里）才退回显示 id。「产品」前缀保留：产品 SKU 并入
+// 复合文本、不独占成元素（e2e 契约）。
+const productText = (state: RoutingViewState, row: RoutingRow): string => {
+  const id = text(state, row, 'productItemId', 'product_item_id', '—');
+  const label = state.ports.productLabelOf(id);
+  return `产品 ${label !== '' ? label : id}`;
+};
 
 const columns = (state: RoutingViewState): readonly DataTableColumn<RoutingRow>[] => [
   {
@@ -70,11 +84,9 @@ const columns = (state: RoutingViewState): readonly DataTableColumn<RoutingRow>[
   {
     key: 'product',
     header: '产品',
-    field: (row) => text(state, row, 'productItemId', 'product_item_id'),
-    // 产品 SKU 并入复合文本（不与物料控制台的 SKU 独占元素撞 exact 定位）。
-    render: (row) => (
-      <span class="routing-muted">{`产品 ${text(state, row, 'productItemId', 'product_item_id', '—')}`}</span>
-    ),
+    // 产品 SKU 并入复合文本（不与物料控制台的 SKU 独占元素撞 exact 定位）。排序按显示的文字。
+    field: (row) => productText(state, row),
+    render: (row) => <span class="routing-muted">{productText(state, row)}</span>,
   },
   {
     key: 'operations',
@@ -129,12 +141,14 @@ const columns = (state: RoutingViewState): readonly DataTableColumn<RoutingRow>[
             data-testid="kt-routing-publish"
             disabled={state.loading}
             onClick={() => {
-              void state.runPublish(row);
+              confirmPublish(state, row);
             }}
           >
             发布版本
           </button>
         ) : null}
+        {/* TD-WF-014④：行内发布后「发布版本」按钮消失，焦点回到本行的「查看」。 */}
+        <FocusAnchor token={text(state, row, 'status', 'status')} />
       </span>
     ),
   },
@@ -275,6 +289,8 @@ const RoutingView = (state: RoutingViewState) => (
         </>
       }
     />
+    {/* TD-WF-014①：详情抽屉没开着时，写成功的提示显示在页头下方。 */}
+    {state.selected ? null : <ConsoleNotice message={state.notice} />}
     <div class="console-split mfg-item-split">
       <ProductTree state={state} />
       <div class="console-split-main">
@@ -313,6 +329,7 @@ const RoutingView = (state: RoutingViewState) => (
     </div>
     {state.selected ? <RoutingDetailDrawer state={state} /> : null}
     {state.activeForm === 'create' ? <RoutingCreateDrawer state={state} /> : null}
+    <ConsoleConfirmDialog pending={state.confirm} />
   </div>
 );
 
@@ -343,12 +360,14 @@ export function RoutingConsolePage(ports: RoutingConsolePorts) {
     loadError: bundle.loadError.value,
     actionError: bundle.actionError.value,
     submitError: bundle.submitError.value,
+    notice: bundle.notice.value,
     selected: bundle.selected.value,
     detail: bundle.detail.value,
     detailLoading: bundle.detailLoading.value,
     activeForm: bundle.activeForm.value,
     operationRows: bundle.operationRows.value,
     mayManage,
+    confirm: bundle.confirm,
     selectProduct: (next) => {
       bundle.productFilter.value = next;
       actions.settle();

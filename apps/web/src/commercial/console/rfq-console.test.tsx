@@ -5,7 +5,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { h, render } from 'preact';
 import type { ComponentType } from 'preact';
-import { installGlobalTestDom, type TestElement } from '../../../test/fixtures/preact-dom';
+import {
+  installGlobalTestDom,
+  TestDocument,
+  TestEvent,
+  type TestElement,
+} from '../../../test/fixtures/preact-dom';
+import { confirmAction } from '../../../test/fixtures/confirm-dialog';
 import { RfqConsolePage } from './rfq-console';
 import type { RfqConsolePorts, RfqRow } from './rfq-ports';
 
@@ -206,7 +212,10 @@ describe('U3-PROC-2 询价控制台', () => {
     element(host.querySelector('[data-testid="kt-rfq-open"]')).click();
     await flush();
     element(host.querySelector('[data-testid="kt-rfq-issue"]')).click();
+    // TD-WF-014②：发布不可逆，单击先出确认框，确认后才发请求。
     await flush();
+    expect(ports.submit).not.toHaveBeenCalled();
+    await confirmAction(host, '发布询价', '确认发布');
     expect(ports.submit).toHaveBeenCalledExactlyOnceWith(
       '/api/v1/procurement-rfqs/rfq-1/state',
       { action: 'issue' },
@@ -222,12 +231,46 @@ describe('U3-PROC-2 询价控制台', () => {
     await flush();
     expect(host.querySelector('[data-testid="kt-rfq-issue"]')).toBe(null);
     element(host.querySelector('[data-testid="kt-rfq-close"]')).click();
+    // TD-WF-014②：关闭是破坏性动作，确认框的初焦落在「取消」（即不执行）上。
     await flush();
+    expect(ports.submit).not.toHaveBeenCalled();
+    await confirmAction(host, '关闭询价', '确认关闭', { destructive: true });
     expect(ports.submit).toHaveBeenCalledExactlyOnceWith(
       '/api/v1/procurement-rfqs/rfq-2/state',
       { action: 'close' },
       'PUT',
     );
+  });
+
+  // TD-WF-014②：确认框里不确认（取消按钮 / Esc）就不发请求，确认框关掉后焦点回到触发按钮。
+  it('关闭询价的确认框：不确认就不发请求，焦点回到「关闭询价」', async () => {
+    const ports = portsFor([issuedRfq], ['procurement:manage']);
+    const host = mount(ports);
+    element(host.querySelector('[data-testid="kt-rfq-open"]')).click();
+    await flush();
+    const trigger = element(host.querySelector('[data-testid="kt-rfq-close"]'));
+    trigger.focus();
+    trigger.click();
+    await flush();
+    const dialog = element(host.querySelector('[role="alertdialog"]'));
+    expect(dialog.textContent).toContain('关闭询价');
+    const buttons = dialog.querySelectorAll('button');
+    expect(TestDocument.current.activeElement).toBe(buttons[0]);
+    element(buttons[0]).click();
+    await flush();
+    expect(host.querySelector('[role="alertdialog"]')).toBe(null);
+    expect(ports.submit).not.toHaveBeenCalled();
+    expect(TestDocument.current.activeElement).toBe(trigger);
+
+    trigger.click();
+    await flush();
+    element(host.querySelector('[role="alertdialog"]'))
+      .querySelectorAll('button')[0]
+      ?.dispatchEvent(new TestEvent('keydown', { key: 'Escape' }));
+    await flush();
+    expect(host.querySelector('[role="alertdialog"]')).toBe(null);
+    expect(ports.submit).not.toHaveBeenCalled();
+    expect(TestDocument.current.activeElement).toBe(trigger);
   });
 
   it('权限门：无 procurement:manage 时不出现新建按钮与发布/关闭入口', async () => {
@@ -311,6 +354,20 @@ describe('U3-PROC-2 询价控制台', () => {
     expect(rows[1]?.querySelector('[data-column="due"]')?.textContent).toContain(
       '2026-12-01 · CNY',
     );
+  });
+
+  // TD-WF-014⑦：倒计时徽章此前紧贴币种文字，读作「CNY剩 8 天」「CNY已逾期 3 天」。
+  it('截止列：币种与倒计时分开显示，不连写成一句', () => {
+    const host = mount(portsFor([issuedRfq, closingTodayRfq, overdueRfq]));
+    const cells = host
+      .querySelectorAll('tbody tr')
+      .map((row) => row.querySelector('[data-column="due"]')?.textContent ?? '');
+    expect(cells).toEqual([
+      '2026-12-01 · CNY · 剩 8 天',
+      '2026-11-23 · CNY · 今日截止',
+      '2026-11-20 · CNY · 已逾期 3 天',
+    ]);
+    for (const cell of cells) expect(cell).not.toMatch(/CNY(剩|已逾期|今日)/u);
   });
 
   it('详情抽屉：已签发询价单呈截止倒计时，草稿不呈', async () => {
@@ -408,5 +465,36 @@ describe('U3-PROC-2 询价控制台', () => {
         quoteOf('q-2', '江苏草纱二厂', '11.800000', '2026-10-31'),
       ]),
     ).toEqual(['false', 'false']);
+  });
+});
+
+// TD-WF-008（写流程冒烟 WS-P2-05）：关闭询价后列表行已是「已取消」，开着的抽屉却仍是「已签发」。
+describe('U3-PROC-2 询价控制台：详情抽屉随写操作刷新', () => {
+  it('关闭询价后，开着的抽屉显示「已取消」，发布 / 关闭按钮都不在了', async () => {
+    const cancelled: RfqRow = { ...issuedRfq, status: 'CANCELLED' };
+    const loadDetail = vi
+      .fn()
+      .mockResolvedValueOnce({ ...issuedRfq, quotes: [] })
+      .mockResolvedValue({ ...cancelled, quotes: [] });
+    const ports = portsFor([issuedRfq], ['procurement:manage'], {
+      refresh: vi.fn().mockResolvedValue([cancelled]),
+      loadDetail,
+    });
+    const host = mount(ports);
+    element(host.querySelector('[data-testid="kt-rfq-open"]')).click();
+    await flush();
+    await flush();
+    const badgeOf = (): string =>
+      element(host.querySelector('[data-testid="kt-rfq-detail"] .status-badge')).textContent.trim();
+    expect(badgeOf()).toBe('已签发');
+    element(host.querySelector('[data-testid="kt-rfq-close"]')).click();
+    await confirmAction(host, '关闭询价', '确认关闭', { destructive: true });
+    await flush();
+    await flush();
+    expect(host.querySelector('[data-testid="kt-rfq-detail"]')).not.toBeNull();
+    expect(badgeOf()).toBe('已取消');
+    expect(host.querySelector('[data-testid="kt-rfq-close"]')).toBeNull();
+    expect(host.querySelector('[data-testid="kt-rfq-issue"]')).toBeNull();
+    expect(loadDetail).toHaveBeenCalledTimes(2);
   });
 });

@@ -30,6 +30,8 @@ export type BomConsolePorts = Readonly<{
   // 产品物料类型解析（宿主经 items 视图 itemId→itemType 预聚；未知返回空串——
   // BOM 版本行不带产品类型，左树计数经此解析、不对快照做类型推断）。
   productTypeOf: (productItemId: string) => string;
+  // 产品根 id → 「SKU · 名称」（列表「产品」列；解析不到返回空串，列里退回显示 id）。
+  productLabelOf: (productItemId: string) => string;
   recordText: (record: BomRow, camel: string, snake: string, fallback?: string) => string;
   textValue: (value: unknown, fallback?: string) => string;
   businessStateLabel: (value: unknown, fallback?: string) => string;

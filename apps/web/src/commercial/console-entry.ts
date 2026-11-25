@@ -19,7 +19,7 @@ import type { QuoteConsolePorts, QuoteSnapshot } from './console/quote-ports';
 import type { CostMatrixConsolePorts } from './console/cost-matrix-ports';
 import type { CtrConsolePorts } from './console/ctr-ports';
 import type { PolicyConsolePorts } from './console/policy-ports';
-import type { CreditConsolePorts } from './console/credit-ports';
+import type { CreditConsolePorts, CreditRow } from './console/credit-ports';
 import type { LeadConsolePorts } from './console/lead-ports';
 import type { CustomerConsolePorts } from './console/customer-ports';
 import { setAppRoute } from '../shared/navigation';
@@ -295,9 +295,12 @@ export function appendCreditConsole(context: CreditContractViewContext): void {
     permissions,
     initialLimits: snapshot().limits,
     initialDecisions: snapshot().decisions,
-    issuedQuotes: (controller.views.get('/api/v1/quotes') ?? []).filter(
-      (item) => item.status === 'ISSUED' && typeof item.issuedSnapshotId === 'string',
-    ),
+    // TD-WF-007：已签发报价按最新视图计算，不再是挂载时的快照（别处刚签发的报价这里能选到）。
+    get issuedQuotes(): readonly CreditRow[] {
+      return (controller.views.get('/api/v1/quotes') ?? []).filter(
+        (item) => item.status === 'ISSUED' && typeof item.issuedSnapshotId === 'string',
+      );
+    },
     customers: controller.customers,
     textValue: (value, fallback = '') => creditContractViewPorts.textValue(value, fallback),
     recordText: (record: unknown, camel: string, snake: string, fallback?: string) =>

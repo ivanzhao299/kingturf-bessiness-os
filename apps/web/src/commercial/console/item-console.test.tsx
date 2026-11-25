@@ -8,10 +8,17 @@ import { h, render } from 'preact';
 import type { ComponentType } from 'preact';
 import {
   installGlobalTestDom,
+  TestDocument,
   TestNode,
   type TestElement,
 } from '../../../test/fixtures/preact-dom';
+import {
+  confirmAction,
+  confirmDialogOf,
+  dismissConfirm,
+} from '../../../test/fixtures/confirm-dialog';
 import { ItemConsolePage } from './item-console';
+import { noticeOf } from '../../../test/fixtures/console-notice';
 import type { ItemConsolePorts, ItemPage, ItemRow } from './item-ports';
 import { countAllItems, countByCategory, specEntries, specificationOf } from './item-state';
 
@@ -316,7 +323,10 @@ describe('U3-MFG-1 物料控制台：行级动作', () => {
     });
     const host = mount(ports);
     byTestId(host, 'kt-item-publish').click();
+    // TD-WF-014②：发布不可逆，单击先出确认框，确认后才发请求。
     await flush();
+    expect(ports.submit).not.toHaveBeenCalled();
+    await confirmAction(host, '发布版本', '确认发布');
     await flush();
     expect(ports.submit).toHaveBeenCalledExactlyOnceWith(
       '/api/v1/manufacturing-item-versions/item-v2/publish',
@@ -333,7 +343,10 @@ describe('U3-MFG-1 物料控制台：行级动作', () => {
     });
     const host = mount(ports);
     byTestId(host, 'kt-item-publish').click();
+    // TD-WF-014②：发布不可逆，单击先出确认框，确认后才发请求。
     await flush();
+    expect(ports.submit).not.toHaveBeenCalled();
+    await confirmAction(host, '发布版本', '确认发布');
     await flush();
     expect(byTestId(host, 'kt-item-action-error').textContent).toContain('publish rejected');
     // 动作错误不隐藏列表：行与发布按钮保留，DataTable 不进入错态。
@@ -515,13 +528,56 @@ describe('U3-MFG-1 物料控制台：详情抽屉', () => {
     await flush();
     expect(host.querySelectorAll('[data-testid="kt-item-version"]')).toHaveLength(2);
     byTestId(host, 'kt-item-publish-version').click();
+    // TD-WF-014②：发布不可逆，单击先出确认框，确认后才发请求。
     await flush();
+    expect(ports.submit).not.toHaveBeenCalled();
+    await confirmAction(host, '发布版本', '确认发布');
     await flush();
     expect(ports.submit).toHaveBeenCalledExactlyOnceWith(
       '/api/v1/manufacturing-item-versions/item-v2/publish',
       {},
     );
     expect(loadDetail).toHaveBeenCalledTimes(3);
+  });
+
+  // TD-WF-014②：确认框里不确认就不发请求；关掉后焦点回到触发它的「发布版本」按钮。
+  it('行内「发布版本」的确认框：写明是哪一版；不确认就不发请求，焦点回到该行的发布按钮', async () => {
+    const ports = portsFor([published, draft], ['manufacturing-item:manage']);
+    const host = mount(ports);
+    const trigger = byTestId(host, 'kt-item-publish');
+    trigger.focus();
+    trigger.click();
+    await flush();
+    const dialog = confirmDialogOf(host);
+    expect(dialog.textContent).toContain('发布版本');
+    expect(dialog.textContent).toContain(
+      `发布后 ${String(draft.sku)} 第 ${String(draft.version)} 版 随即冻结`,
+    );
+    expect(TestDocument.current.activeElement).toBe(dialog.querySelectorAll('button')[1]);
+    await dismissConfirm(host);
+    expect(ports.submit).not.toHaveBeenCalled();
+    expect(TestDocument.current.activeElement).toBe(trigger);
+    expect(host.querySelectorAll('[data-testid="kt-item-publish"]')).toHaveLength(1);
+  });
+
+  // TD-WF-014④：确认发布后「发布版本」按钮从行里消失；行内的焦点锚点把键盘焦点带回这一行的「查看」。
+  it('确认发布后该行的「发布版本」按钮消失：焦点回到该行的「查看」', async () => {
+    const ports = portsFor([published, draft], ['manufacturing-item:manage'], {
+      refresh: vi.fn().mockResolvedValue([published, version({ ...draft, status: 'PUBLISHED' })]),
+    });
+    const host = mount(ports);
+    byTestId(host, 'kt-item-publish').focus();
+    byTestId(host, 'kt-item-publish').click();
+    await flush();
+    await confirmAction(host, '发布版本', '确认发布');
+    await flush();
+    await flush();
+    expect(ports.submit).toHaveBeenCalledTimes(1);
+    expect(host.querySelectorAll('[data-testid="kt-item-publish"]')).toHaveLength(0);
+    expect(host.textContent).toContain('已发布 · 第 2 版');
+    expect(TestDocument.current.activeElement).toBe(
+      host.querySelectorAll('[data-testid="kt-item-open"]')[1],
+    );
   });
 });
 
@@ -609,5 +665,21 @@ describe('U3-MFG-1 物料控制台：纯展示助手', () => {
       ['c', 'x'],
       ['d', '2'],
     ]);
+  });
+});
+
+describe('U3-MFG-1 物料控制台：写成功后的提示（TD-WF-014①）', () => {
+  it('行内发布成功：页头下方出现「已发布物料 …」——在「草稿」筛选下那一行会从列表消失，提示是唯一的反馈', async () => {
+    const ports = portsFor([draft], ['manufacturing-item:manage'], {
+      refresh: vi.fn().mockResolvedValue([version({ ...draft, status: 'PUBLISHED' })]),
+    });
+    const host = mount(ports);
+    byTestId(host, 'kt-item-publish').click();
+    await flush();
+    await confirmAction(host, '发布版本', '确认发布');
+    await flush();
+    await flush();
+    expect(noticeOf(host)).toEqual({ text: '已发布物料 FG-KT-PRO-50', inDrawer: false });
+    expect(byTestId(host, 'console-notice').getAttribute('role')).toBe('status');
   });
 });

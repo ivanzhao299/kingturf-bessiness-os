@@ -3,8 +3,14 @@
 import { describe, expect, it, vi } from 'vitest';
 import { h, render } from 'preact';
 import type { ComponentType } from 'preact';
-import { installGlobalTestDom, type TestElement } from '../../../test/fixtures/preact-dom';
+import {
+  installGlobalTestDom,
+  TestDocument,
+  TestEvent,
+  type TestElement,
+} from '../../../test/fixtures/preact-dom';
 import { QuoteConsolePage } from './quote-console';
+import { noticeOf } from '../../../test/fixtures/console-notice';
 import type { QuoteConsolePorts, QuoteSnapshot } from './quote-ports';
 
 const flush = (): Promise<void> =>
@@ -88,6 +94,20 @@ const portsFor = (
   refresh: vi.fn().mockResolvedValue(snapshot()),
   ...overrides,
 });
+
+const active = (): TestElement | null => TestDocument.current.activeElement as TestElement | null;
+
+// DetailDrawer 的初焦在「绘制之后」才落到关闭按钮。下面的焦点用例先等它到位再开始；断言本身是同步的
+// （FocusAnchor 在提交阶段把焦点带回抽屉），不与那个 effect 赛跑。
+const eventually = async (condition: () => boolean, what: string): Promise<void> => {
+  const deadline = Date.now() + 5000;
+  while (!condition()) {
+    if (Date.now() > deadline) throw new Error(`timed out waiting for ${what}`);
+    await new Promise((resolve) => {
+      setTimeout(resolve, 10);
+    });
+  }
+};
 
 const mount = (ports: QuoteConsolePorts): TestElement => {
   const host = installGlobalTestDom().document.createElement('div');
@@ -357,4 +377,113 @@ describe('报价行内表单与防重复提交（FormSection 要拿到 onSubmit 
       expect(command).toHaveBeenCalledTimes(2);
     },
   );
+
+  // TD-WF-014④（写流程冒烟 WS-P3-04）：点「创建报价修订」后这个按钮被行内表单替换，键盘焦点原先掉到
+  // 页面主体，Esc 到不了抽屉。现在焦点进入表单，Esc 照旧关闭抽屉。
+  it('打开行内表单后焦点进入表单首个字段，Esc 仍能关闭抽屉', async () => {
+    const host = mount(portsFor(['quote:update']));
+    element(host.querySelectorAll('[data-testid="kt-quote-open"]')[1] ?? null).click();
+    await flush();
+    const closeButton = element(host.querySelector('.detail-drawer .drawer-close'));
+    await eventually(() => active() === closeButton, 'the drawer initial focus');
+    const revise = element(host.querySelector('[data-testid="kt-quote-revise"]'));
+    revise.focus();
+    revise.click();
+    await flush();
+    const field = element(host.querySelector('.detail-drawer form.form-section input'));
+    expect(host.querySelector('[data-testid="kt-quote-revise"]')).toBeNull();
+    expect(active()).toBe(field);
+    field.dispatchEvent(new TestEvent('keydown', { key: 'Escape' }));
+    await flush();
+    expect(host.querySelector('.detail-drawer')).toBeNull();
+  });
+});
+
+// TD-WF-008（写流程冒烟 WS-P2-05）：批准、签发后列表刷新了，开着的抽屉顶部却还是旧状态，
+// 「批准报价」按钮也还在。
+describe('U3-COM-3 报价控制台：详情抽屉随写操作刷新', () => {
+  const submitInline = async (host: TestElement): Promise<void> => {
+    element(
+      element(host.querySelector('.detail-drawer')).querySelector('button[type="submit"]'),
+    ).click();
+    await flush();
+    await flush();
+  };
+  const drawerBadge = (host: TestElement): string =>
+    element(host.querySelector('.detail-drawer .status-badge')).textContent.trim();
+
+  it('批准、签发后抽屉还开着，徽章与按钮随状态变化', async () => {
+    const ports = portsFor(['quote:approve', 'quote:issue'], {
+      initialSnapshot: { ...snapshot(), quotes: [quote({ status: 'DRAFT' })] },
+      refresh: vi
+        .fn()
+        .mockResolvedValueOnce({ ...snapshot(), quotes: [quote({ status: 'APPROVED' })] })
+        .mockResolvedValue({ ...snapshot(), quotes: [quote({ status: 'ISSUED' })] }),
+    });
+    const host = mount(ports);
+    element(host.querySelector('[data-testid="kt-quote-open"]')).click();
+    await flush();
+    expect(drawerBadge(host)).toBe('草稿');
+    expect(host.querySelector('[data-testid="kt-quote-approve"]')).not.toBeNull();
+
+    element(host.querySelector('[data-testid="kt-quote-approve"]')).click();
+    await flush();
+    fillField(host, 'reason', '报价口径已复核');
+    await flush();
+    await submitInline(host);
+    expect(ports.command).toHaveBeenLastCalledWith('quote-r2', 'approve', {
+      decision: 'APPROVED',
+      reason: '报价口径已复核',
+    });
+    expect(host.querySelector('.detail-drawer')).not.toBeNull();
+    expect(drawerBadge(host)).toBe('已批准');
+    expect(host.querySelector('[data-testid="kt-quote-approve"]')).toBeNull();
+    expect(host.querySelector('[data-testid="kt-quote-issue"]')).not.toBeNull();
+
+    element(host.querySelector('[data-testid="kt-quote-issue"]')).click();
+    await flush();
+    await submitInline(host);
+    expect(ports.command).toHaveBeenLastCalledWith('quote-r2', 'issue', undefined);
+    expect(host.querySelector('.detail-drawer')).not.toBeNull();
+    expect(drawerBadge(host)).toBe('已签发');
+    expect(host.querySelector('[data-testid="kt-quote-issue"]')).toBeNull();
+  });
+
+  it('刷新后这条报价已不在列表里：抽屉关闭', async () => {
+    const ports = portsFor(['quote:approve'], {
+      initialSnapshot: { ...snapshot(), quotes: [quote({ status: 'DRAFT' })] },
+      refresh: vi.fn().mockResolvedValue({ ...snapshot(), quotes: [] }),
+    });
+    const host = mount(ports);
+    element(host.querySelector('[data-testid="kt-quote-open"]')).click();
+    await flush();
+    element(host.querySelector('[data-testid="kt-quote-refresh"]')).click();
+    await flush();
+    await flush();
+    expect(host.querySelector('.detail-drawer')).toBeNull();
+  });
+});
+
+describe('U3-COM-3 报价控制台：写成功后的提示（TD-WF-014①）', () => {
+  it('批准成功：提示在开着的详情抽屉底部', async () => {
+    const ports = portsFor(['quote:approve'], {
+      initialSnapshot: { ...snapshot(), quotes: [quote({ status: 'DRAFT' })] },
+      refresh: vi
+        .fn()
+        .mockResolvedValue({ ...snapshot(), quotes: [quote({ status: 'APPROVED' })] }),
+    });
+    const host = mount(ports);
+    element(host.querySelector('[data-testid="kt-quote-open"]')).click();
+    await flush();
+    element(host.querySelector('[data-testid="kt-quote-approve"]')).click();
+    await flush();
+    fillField(host, 'reason', '报价口径已复核');
+    await flush();
+    element(
+      element(host.querySelector('.detail-drawer')).querySelector('button[type="submit"]'),
+    ).click();
+    await flush();
+    await flush();
+    expect(noticeOf(host)).toEqual({ text: '已批准报价 Q-2026-001', inDrawer: true });
+  });
 });

@@ -7,6 +7,7 @@ import { h, render } from 'preact';
 import type { ComponentType } from 'preact';
 import { installGlobalTestDom, type TestElement } from '../../../test/fixtures/preact-dom';
 import { SupplierConsolePage } from './supplier-console';
+import { noticeOf } from '../../../test/fixtures/console-notice';
 import type { SupplierConsolePorts, SupplierRow } from './supplier-ports';
 
 const flush = (): Promise<void> =>
@@ -325,6 +326,25 @@ describe('U3-PROC-1 供应商控制台', () => {
     expect(host.textContent).not.toContain('SUP-2');
   });
 
+  // TD-WF-014③：ON_HOLD 此前没有中文标签，筛选按钮与状态徽章直接显示枚举原文。
+  it('状态标签：ON_HOLD 显示「暂停」，筛选按钮与状态徽章都不出现枚举原文', () => {
+    const host = mount(portsFor([supplier, onHoldSupplier]));
+    // 测试 DOM 的选择器引擎不支持 ^=，这里按属性前缀在 JS 侧筛。
+    const labels = host
+      .querySelectorAll('[data-testid]')
+      .map((node) => element(node))
+      .filter((node) => (node.getAttribute('data-testid') ?? '').startsWith('kt-supplier-filter-'))
+      .map((node) => node.textContent.trim());
+    expect(labels).toEqual(['全部', '已启用', '暂停', '已停用']);
+    expect(labels.join(' ')).not.toMatch(/[A-Z_]{2,}/u);
+    // 状态列是第 2 列（物料准入列的资质徽章也是 .status-badge，不在此列）。
+    const badges = host
+      .querySelectorAll('tbody tr')
+      .map((row) => row.querySelectorAll('td')[1]?.querySelector('.status-badge'))
+      .map((node) => node?.textContent.trim());
+    expect(badges).toEqual(['已启用', '暂停']);
+  });
+
   it('详情抽屉展示资质记录与按 supplierId 过滤的报价历史', async () => {
     const ports = portsFor([supplier]);
     const host = mount(ports);
@@ -529,5 +549,74 @@ describe('U3-PROC-1 供应商控制台', () => {
     await flush();
     expect(host.querySelector('.data-table-error')).not.toBeNull();
     expect(host.textContent).toContain('供应商加载失败');
+  });
+});
+
+// TD-WF-008（写流程冒烟 WS-P2-05）：准入审核后列表里该供应商已是「已批准 1」，开着的抽屉却仍写
+// 「尚无物料准入记录」。
+describe('U3-PROC-1 供应商控制台：详情抽屉随写操作刷新', () => {
+  it('物料准入审核后，开着的抽屉显示刚批准的资质记录', async () => {
+    const bare: SupplierRow = { ...supplier, qualifications: [] };
+    const qualified: SupplierRow = {
+      ...supplier,
+      qualifications: [qualification('q-9', 'APPROVED', 'RM-YARN', '草纱', 'item-v1')],
+    };
+    const ports = portsFor([bare], ['supplier:manage'], {
+      refresh: vi.fn().mockResolvedValue({ suppliers: [qualified], quotes: [quote] }),
+    });
+    const host = mount(ports);
+    element(host.querySelector('[data-testid="kt-supplier-open"]')).click();
+    await flush();
+    const drawerText = (): string => element(host.querySelector('.detail-drawer')).textContent;
+    expect(drawerText()).toContain('尚无物料准入记录');
+    element(host.querySelector('[data-testid="kt-supplier-qualify"]')).click();
+    await flush();
+    for (const [name, value] of QUALIFY_FORM) fillField(host, name, value);
+    await flush();
+    await submitDrawer(host);
+    expect(ports.submit).toHaveBeenCalledTimes(1);
+    // 抽屉还开着，资质记录已是刷新后的。
+    expect(host.querySelector('.detail-drawer')).not.toBeNull();
+    expect(drawerText()).not.toContain('尚无物料准入记录');
+    expect(drawerText()).toContain('已批准');
+    expect(
+      host.querySelector('[data-testid="kt-supplier-qualifications"]')?.textContent ?? '',
+    ).toContain('RM-YARN');
+    // 行内表单已收起，操作区回来了。
+    expect(host.querySelector('[data-testid="kt-supplier-qualify"]')).not.toBeNull();
+  });
+});
+
+// TD-WF-014①（写流程冒烟 WS-P3-01）：写操作此前没有任何成功提示。
+describe('U3-PROC-1 供应商控制台：写成功后的提示', () => {
+  it('新建成功：页头下方出现「已创建供应商 …」，不在抽屉里', async () => {
+    const ports = portsFor([], ['supplier:manage']);
+    const host = mount(ports);
+    element(host.querySelector('[data-testid="kt-supplier-create"]')).click();
+    await flush();
+    expect(noticeOf(host).text).toBe('');
+    for (const [name, value] of CREATE_FORM) fillField(host, name, value);
+    await flush();
+    await submitDrawer(host);
+    expect(host.querySelector('.detail-drawer')).toBeNull();
+    expect(noticeOf(host)).toEqual({ text: '已创建供应商 SUP-KT-YARN-002', inDrawer: false });
+  });
+
+  it('准入审核成功：提示在开着的详情抽屉底部；打开另一条记录时清空', async () => {
+    const ports = portsFor([supplier], ['supplier:manage']);
+    const host = mount(ports);
+    element(host.querySelector('[data-testid="kt-supplier-open"]')).click();
+    await flush();
+    element(host.querySelector('[data-testid="kt-supplier-qualify"]')).click();
+    await flush();
+    for (const [name, value] of QUALIFY_FORM) fillField(host, name, value);
+    await flush();
+    await submitDrawer(host);
+    expect(noticeOf(host)).toEqual({ text: '已提交物料准入审核：批准', inDrawer: true });
+    element(element(host.querySelector('.detail-drawer')).querySelector('.drawer-close')).click();
+    await flush();
+    element(host.querySelector('[data-testid="kt-supplier-open"]')).click();
+    await flush();
+    expect(noticeOf(host).text).toBe('');
   });
 });

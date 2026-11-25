@@ -4,6 +4,9 @@
 // ——不以「暂无」冒充「无权限」。详情读取失败时回退列表行数据。
 import type { ComponentChild } from 'preact';
 import { DetailDrawer, StatusBadge } from '@kingturf/ui';
+import { askPublishVersion } from './console-confirm';
+import { FocusAnchor } from './focus-anchor';
+import { ConsoleNotice } from './console-notice';
 import type { ItemRow } from './item-ports';
 import {
   categoryLabel,
@@ -36,6 +39,19 @@ const versionText = (state: ItemViewState, row: ItemRow): string =>
   `${statusLabel(state, text(state, row, 'status', 'status'))} · 第 ${text(state, row, 'version', 'version', '1')} 版`;
 
 const day = (value: string): string => (value === '' ? '—' : value.slice(0, 10));
+
+// 发布不可逆：行内与详情里的「发布版本」都先确认（TD-WF-014②）。详情里的版本行不一定带 SKU，取抽屉当前行的。
+export const confirmPublish = (state: ItemViewState, row: ItemRow): void => {
+  askPublishVersion(
+    state.confirm,
+    `${
+      text(state, row, 'sku', 'sku') ||
+      (state.selected ? text(state, state.selected, 'sku', 'sku', '—') : '—')
+    } 第 ${text(state, row, 'version', 'version', '?')} 版`,
+    '规格',
+    () => state.runPublish(row),
+  );
+};
 
 export const SpecChips = ({
   specification,
@@ -89,7 +105,7 @@ const VersionHistory = ({ state }: DetailProps) => {
                   data-testid="kt-item-publish-version"
                   disabled={state.loading}
                   onClick={() => {
-                    void state.runPublish(version);
+                    confirmPublish(state, version);
                   }}
                 >
                   发布版本
@@ -161,12 +177,20 @@ export const ItemDetailDrawer = ({ state }: DetailProps) => {
   const current = recordsOf(state.detail?.versions).find(
     (version) => text(state, version, 'id', 'id') === text(state, row, 'id', 'id'),
   );
+  // TD-WF-014④：版本历史里每个草稿版本带一个「发布版本」按钮；发布后它消失，焦点锚点据此把键盘焦点
+  // 带回抽屉。
+  const historyVersions = recordsOf(state.detail?.versions);
+  const focusToken = (historyVersions.length > 0 ? historyVersions : [row])
+    .map((version) => text(state, version, 'status', 'status'))
+    .join(',');
   return (
     <DetailDrawer
       title={`物料详情 · ${sku}`}
       onClose={() => {
         state.open(null);
       }}
+      // TD-WF-014①：写成功的提示放在抽屉底部，不随抽屉体滚走。
+      footer={state.notice === '' ? undefined : <ConsoleNotice message={state.notice} />}
     >
       <div class="console-summary" data-testid="kt-item-detail-summary">
         <p>
@@ -237,6 +261,7 @@ export const ItemDetailDrawer = ({ state }: DetailProps) => {
         title="最近工单"
         line={(order) => <OrderLine state={state} row={order} />}
       />
+      <FocusAnchor token={focusToken} />
     </DetailDrawer>
   );
 };

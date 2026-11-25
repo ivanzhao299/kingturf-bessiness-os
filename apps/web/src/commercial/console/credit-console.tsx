@@ -10,6 +10,9 @@ import {
 } from '@kingturf/ui';
 import type { CreditConsolePorts, CreditRow } from './credit-ports';
 import { failureMessage } from '../../shared/api-error-message';
+import { FocusAnchor } from './focus-anchor';
+import { ConsoleNotice } from './console-notice';
+import { syncSelected } from './selected-sync';
 import { CreditFlow, DecisionFlow, STATUS_LABELS } from './credit-console-flow';
 
 // U3-COM-7（ADR-0014 分域重写）：信用审查控制台——原 vanilla credit workbench 能力面
@@ -25,6 +28,8 @@ export type CreditPageState = Readonly<{
   search: string;
   loadError: string;
   submitError: string;
+  // TD-WF-014①：最近一次写操作的成功提示。
+  notice: string;
   loading: boolean;
   selected: CreditRow | null;
   activeForm: CreditFormKind;
@@ -56,6 +61,37 @@ const statusTone = (status: unknown): StatusTone => {
 
 const decisionStatus = (ports: CreditConsolePorts, decision: CreditRow): string =>
   ports.recordText(decision, 'effectiveStatus', 'effective_status', 'PENDING_APPROVAL');
+
+const decisionQuoteRevisionId = (ports: CreditConsolePorts, decision: CreditRow): string =>
+  ports.recordText(decision, 'quoteRevisionId', 'quote_revision_id');
+
+// TD-WF-014⑧（写流程冒烟 WS-P3-08）：信用决定此前只用报价版本 ID 的前 8 位标识——列表「关联报价」列与
+// 详情抽屉标题都是「5e93c116」这样的片段，认不出是哪个客户、哪份报价。决定行带客户与报价版本，
+// 报价清单里有报价编号，客户清单里有名称：标出「客户 · 报价 编号 · 第 N 版」。
+// 两样都解析不到（没有报价 / 客户的读权限，或清单里找不到）才退回 ID 片段。
+export const decisionQuoteLabel = (ports: CreditConsolePorts, decision: CreditRow): string => {
+  const revisionId = decisionQuoteRevisionId(ports, decision);
+  const quote = ports.issuedQuotes.find((item) => ports.textValue(item.id, '') === revisionId);
+  const number = quote ? ports.textValue(quote.quoteNumber, '') : '';
+  if (number === '') return '';
+  const revision = ports.textValue(quote?.revision, '');
+  return `报价 ${number}${revision === '' ? '' : ` · 第 ${revision} 版`}`;
+};
+
+export const decisionCustomerLabel = (ports: CreditConsolePorts, decision: CreditRow): string => {
+  const customerId = ports.recordText(decision, 'customerId', 'customer_id');
+  return ports.customers.find((customer) => customer.id === customerId)?.name ?? '';
+};
+
+export const decisionLabel = (ports: CreditConsolePorts, decision: CreditRow): string => {
+  const parts = [
+    decisionCustomerLabel(ports, decision),
+    decisionQuoteLabel(ports, decision),
+  ].filter((part) => part !== '');
+  return parts.length > 0
+    ? parts.join(' · ')
+    : `报价版本 ${decisionQuoteRevisionId(ports, decision).slice(0, 8)}`;
+};
 
 const columns = (state: CreditPageState): readonly DataTableColumn<CreditRow>[] => [
   {
@@ -90,10 +126,8 @@ const columns = (state: CreditPageState): readonly DataTableColumn<CreditRow>[] 
   {
     key: 'quote',
     header: '关联报价',
-    field: (row) => state.ports.recordText(row, 'quoteRevisionId', 'quote_revision_id'),
-    render: (row) => (
-      <span>{state.ports.recordText(row, 'quoteRevisionId', 'quote_revision_id').slice(0, 8)}</span>
-    ),
+    field: (row) => decisionLabel(state.ports, row),
+    render: (row) => <span>{decisionLabel(state.ports, row)}</span>,
   },
   {
     key: 'actions',
@@ -119,10 +153,9 @@ const filteredDecisions = (state: CreditPageState): readonly CreditRow[] =>
     const status = decisionStatus(state.ports, row);
     if (state.statusFilter !== 'ALL' && status !== state.statusFilter) return false;
     if (state.search === '') return true;
-    return state.ports
-      .recordText(row, 'quoteRevisionId', 'quote_revision_id')
-      .toLowerCase()
-      .includes(state.search.toLowerCase());
+    // 按报价编号或客户名称检索；报价版本 ID 仍可检索（此前只能按它检索，而界面上并不显示它）。
+    const haystack = `${decisionLabel(state.ports, row)}${decisionQuoteRevisionId(state.ports, row)}`;
+    return haystack.toLowerCase().includes(state.search.toLowerCase());
   });
 
 const CreditDetail = ({ state }: Readonly<{ state: CreditPageState }>) => {
@@ -171,10 +204,12 @@ const CreditDrawer = ({ state }: Readonly<{ state: CreditPageState }>) => {
   const { ports } = state;
   return (
     <DetailDrawer
-      title={`信用决定详情 · ${ports.recordText(decision, 'quoteRevisionId', 'quote_revision_id').slice(0, 8)}`}
+      title={`信用决定详情 · ${decisionLabel(ports, decision)}`}
       onClose={() => {
         state.open(null);
       }}
+      // TD-WF-014①：写成功的提示放在抽屉底部，不随抽屉体滚走。
+      footer={state.notice === '' ? undefined : <ConsoleNotice message={state.notice} />}
     >
       <CreditDetail state={state} />
       {state.submitError !== '' ? (
@@ -188,7 +223,10 @@ const CreditDrawer = ({ state }: Readonly<{ state: CreditPageState }>) => {
           title={state.decision === 'APPROVED' ? '批准信用' : '拒绝信用'}
           description="审批决定将永久保留并影响订单释放资格。"
           fields={[{ name: 'reason', label: '审批理由', type: 'textarea', required: true }]}
-          submitLabel={`确认${state.decision === 'APPROVED' ? '批准' : '拒绝'}`}
+          // TD-WF-014⑤：提交按钮文字含敏感词时，FormSection 会在它上方渲染勾选项「我确认要」+ 按钮文字。
+          // 拒绝的按钮原来叫「确认拒绝」，勾选项因此读作「我确认要确认拒绝」。按钮直接说出要做的事，
+          // 勾选项就是一句通顺的话：「我确认要拒绝这条信用决定」。批准不含敏感词，没有勾选项。
+          submitLabel={state.decision === 'APPROVED' ? '确认批准' : '拒绝这条信用决定'}
           // 把 Promise 交还给 FormSection：提交期间它据此置灰按钮并拦下重复提交（TD-WF-004）；
           // 批准与拒绝都是不可逆动作。
           onSubmit={(values) =>
@@ -199,6 +237,8 @@ const CreditDrawer = ({ state }: Readonly<{ state: CreditPageState }>) => {
           error={state.submitError}
         />
       ) : null}
+      {/* TD-WF-014④：审批表单开合、决定后审批按钮消失时，把键盘焦点带回抽屉。 */}
+      <FocusAnchor token={`${String(state.decision)}|${decisionStatus(ports, decision)}`} />
     </DetailDrawer>
   );
 };
@@ -324,6 +364,8 @@ const CreditView = (state: CreditPageState) => {
           </>
         }
       />
+      {/* TD-WF-014①：详情抽屉没开着时，写成功的提示显示在页头下方。 */}
+      {state.selected ? null : <ConsoleNotice message={state.notice} />}
       <CreditFlow state={state} />
       <div class="commercial-console-filters">
         {(['ALL', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'EXPIRED'] as const).map((option) => (
@@ -388,6 +430,7 @@ export function CreditConsolePage(ports: CreditConsolePorts) {
     search: signal(''),
     loadError: signal(''),
     submitError: signal(''),
+    notice: signal(''),
     loading: signal(false),
     selected: signal<CreditRow | null>(null),
     activeForm: signal<CreditFormKind>(null),
@@ -413,6 +456,12 @@ export function CreditConsolePage(ports: CreditConsolePorts) {
     try {
       const fresh = await ports.refresh();
       bundle.decisions.value = fresh.decisions;
+      // TD-WF-008：审批后抽屉里那条仍是「等待信用审批」、批准 / 拒绝按钮还在——换成刷新后的行。
+      syncSelected({
+        selected: bundle.selected,
+        rows: fresh.decisions,
+        idOf: (row) => ports.recordText(row, 'id', 'id'),
+      });
       bundle.limits.value = fresh.limits;
       bundle.loadError.value = '';
     } catch (error: unknown) {
@@ -435,8 +484,15 @@ export function CreditConsolePage(ports: CreditConsolePorts) {
       });
       const fresh = await ports.refresh();
       bundle.decisions.value = fresh.decisions;
+      // TD-WF-008：审批后抽屉里那条仍是「等待信用审批」、批准 / 拒绝按钮还在——换成刷新后的行。
+      syncSelected({
+        selected: bundle.selected,
+        rows: fresh.decisions,
+        idOf: (row) => ports.recordText(row, 'id', 'id'),
+      });
       bundle.limits.value = fresh.limits;
       closeForm();
+      bundle.notice.value = '已保存信用额度';
     } catch (error: unknown) {
       fail(error, '额度保存失败');
     } finally {
@@ -460,7 +516,14 @@ export function CreditConsolePage(ports: CreditConsolePorts) {
       });
       const fresh = await ports.refresh();
       bundle.decisions.value = fresh.decisions;
+      // TD-WF-008：审批后抽屉里那条仍是「等待信用审批」、批准 / 拒绝按钮还在——换成刷新后的行。
+      syncSelected({
+        selected: bundle.selected,
+        rows: fresh.decisions,
+        idOf: (row) => ports.recordText(row, 'id', 'id'),
+      });
       closeForm();
+      bundle.notice.value = '已发起信用评估';
     } catch (error: unknown) {
       fail(error, '信用评估失败');
     } finally {
@@ -483,7 +546,14 @@ export function CreditConsolePage(ports: CreditConsolePorts) {
       );
       const fresh = await ports.refresh();
       bundle.decisions.value = fresh.decisions;
+      // TD-WF-008：审批后抽屉里那条仍是「等待信用审批」、批准 / 拒绝按钮还在——换成刷新后的行。
+      syncSelected({
+        selected: bundle.selected,
+        rows: fresh.decisions,
+        idOf: (row) => ports.recordText(row, 'id', 'id'),
+      });
       closeForm();
+      bundle.notice.value = decision === 'APPROVED' ? '已批准信用' : '已拒绝信用';
     } catch (error: unknown) {
       fail(error, '信用决定失败');
     } finally {
@@ -498,24 +568,29 @@ export function CreditConsolePage(ports: CreditConsolePorts) {
     search: bundle.search.value,
     loadError: bundle.loadError.value,
     submitError: bundle.submitError.value,
+    notice: bundle.notice.value,
     loading: bundle.loading.value,
     selected: bundle.selected.value,
     activeForm: bundle.activeForm.value,
     decision: bundle.decision.value,
     permissions: ports.permissions,
     ports,
+    // 开始下一个动作时清掉上一次的成功提示（与 submitError 同一处）。
     open: (row) => {
       bundle.selected.value = row;
       bundle.activeForm.value = null;
       bundle.decision.value = null;
       bundle.submitError.value = '';
+      bundle.notice.value = '';
     },
     openForm: (kind) => {
       bundle.activeForm.value = kind;
       bundle.submitError.value = '';
+      bundle.notice.value = '';
     },
     openDecision: (decision) => {
       bundle.decision.value = decision;
+      bundle.notice.value = '';
     },
     closeForm,
     setStatusFilter: (next) => {

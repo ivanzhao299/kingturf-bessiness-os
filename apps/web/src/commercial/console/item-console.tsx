@@ -6,7 +6,7 @@
 import { signal, type Signal } from '@preact/signals';
 import { DataTable, PageHeader, StatusBadge, type DataTableColumn } from '@kingturf/ui';
 import { ItemCreateDrawer } from './item-create';
-import { SpecChips, ItemDetailDrawer } from './item-detail';
+import { SpecChips, ItemDetailDrawer, confirmPublish } from './item-detail';
 import type { ItemConsolePorts, ItemPageQuery, ItemRow } from './item-ports';
 import {
   ALL_CATEGORIES,
@@ -28,6 +28,9 @@ import {
   type SpecRowDraft,
 } from './item-state';
 import { failureMessage } from '../../shared/api-error-message';
+import { ConsoleConfirmDialog, createConfirm, type ConfirmSignal } from './console-confirm';
+import { ConsoleNotice } from './console-notice';
+import { FocusAnchor } from './focus-anchor';
 
 type ItemBundle = Readonly<{
   // 全量快照（默认视图行与分类计数来源）。
@@ -45,12 +48,15 @@ type ItemBundle = Readonly<{
   // 列表上下文（抽屉/表单未打开）的动作错误——独立于装载错误，不隐藏列表。
   actionError: Signal<string>;
   submitError: Signal<string>;
+  // TD-WF-014①：最近一次写操作的成功提示。
+  notice: Signal<string>;
   selected: Signal<ItemRow | null>;
   detail: Signal<ItemRow | null>;
   detailLoading: Signal<boolean>;
   activeForm: Signal<'create' | null>;
   createType: Signal<ItemCategory>;
   specRows: Signal<readonly SpecRowDraft[]>;
+  confirm: ConfirmSignal;
 }>;
 
 const createBundle = (ports: ItemConsolePorts): ItemBundle => ({
@@ -66,13 +72,53 @@ const createBundle = (ports: ItemConsolePorts): ItemBundle => ({
   loadError: signal(''),
   actionError: signal(''),
   submitError: signal(''),
+  notice: signal(''),
   selected: signal<ItemRow | null>(null),
   detail: signal<ItemRow | null>(null),
   detailLoading: signal(false),
   activeForm: signal<'create' | null>(null),
   createType: signal<ItemCategory>('RAW_MATERIAL'),
   specRows: signal<readonly SpecRowDraft[]>([]),
+  confirm: createConfirm(),
 });
+
+// 草稿发布（行内与详情内共用）。自 createItemActions 拆出：装载闭包与变更闭包分离，也守住 G5 的单函数
+// 200 行。io 经注入（sync / reloadDetail / actionFailed），避免闭包互相穿透。
+function createItemPublish(
+  ports: ItemConsolePorts,
+  bundle: ItemBundle,
+  io: Readonly<{
+    sync: () => Promise<void>;
+    reloadDetail: () => Promise<void>;
+    actionFailed: (error: unknown, fallback: string) => void;
+  }>,
+): (row: ItemRow) => Promise<void> {
+  return async (row: ItemRow): Promise<void> => {
+    bundle.submitError.value = '';
+    bundle.actionError.value = '';
+    try {
+      await ports.submit(
+        `/api/v1/manufacturing-item-versions/${ports.textValue(row.id, '')}/publish`,
+        {},
+      );
+      await io.sync();
+      bundle.notice.value = `已发布物料 ${ports.recordText(row, 'sku', 'sku', '')}`;
+      // 抽屉上下文保持为用户打开的那一版（以刷新后的行替换），随后重取详情。
+      const opened = bundle.selected.value;
+      if (opened) {
+        const openedId = ports.textValue(opened.id, '');
+        bundle.selected.value =
+          bundle.snapshot.value.find(
+            (candidate) => ports.textValue(candidate.id, '') === openedId,
+          ) ?? opened;
+        bundle.detail.value = null;
+        await io.reloadDetail();
+      }
+    } catch (error: unknown) {
+      io.actionFailed(error, '版本发布失败');
+    }
+  };
+}
 
 // 数据装载与行级动作闭包（页面 signal 束的最小面）。请求序号守卫丢弃过期响应。
 function createItemActions(ports: ItemConsolePorts, bundle: ItemBundle) {
@@ -183,31 +229,8 @@ function createItemActions(ports: ItemConsolePorts, bundle: ItemBundle) {
     else showAll();
   };
 
-  // 草稿发布走 legacy publish 端点（vanilla 卡片同链：提交后全量重读）。
-  const runPublish = async (row: ItemRow): Promise<void> => {
-    bundle.submitError.value = '';
-    bundle.actionError.value = '';
-    try {
-      await ports.submit(
-        `/api/v1/manufacturing-item-versions/${ports.textValue(row.id, '')}/publish`,
-        {},
-      );
-      await sync();
-      // 抽屉上下文保持为用户打开的那一版（以刷新后的行替换），随后重取详情。
-      const opened = bundle.selected.value;
-      if (opened) {
-        const openedId = ports.textValue(opened.id, '');
-        bundle.selected.value =
-          bundle.snapshot.value.find(
-            (candidate) => ports.textValue(candidate.id, '') === openedId,
-          ) ?? opened;
-        bundle.detail.value = null;
-        await reloadDetail();
-      }
-    } catch (error: unknown) {
-      actionFailed(error, '版本发布失败');
-    }
-  };
+  // 草稿发布走 legacy publish 端点（vanilla 卡片同链：提交后全量重读），见 createItemPublish。
+  const runPublish = createItemPublish(ports, bundle, { sync, reloadDetail, actionFailed });
 
   // 创建载荷与原 vanilla「创建物料版本」表单逐字节一致（publish 恒 false；规格参数
   // 经 specificationOf 归一——预设数值键与十进制字面量转数值）。
@@ -231,6 +254,7 @@ function createItemActions(ports: ItemConsolePorts, bundle: ItemBundle) {
     // 提交成功即关闭表单（避免重复提交）；随后的全量刷新失败只报列表装载错误。
     closeForm();
     await sync();
+    bundle.notice.value = `已保存物料草稿 ${values.sku ?? ''}`;
   };
 
   return {
@@ -241,10 +265,12 @@ function createItemActions(ports: ItemConsolePorts, bundle: ItemBundle) {
     closeForm,
     runPublish,
     runCreate,
+    // 开始下一个动作时清掉上一次的成功提示（与 submitError 同一处）。
     open: (row: ItemRow | null): void => {
       bundle.selected.value = row;
       bundle.activeForm.value = null;
       bundle.submitError.value = '';
+      bundle.notice.value = '';
       bundle.detail.value = null;
       if (row === null) detailSequence += 1;
       void reloadDetail();
@@ -252,6 +278,7 @@ function createItemActions(ports: ItemConsolePorts, bundle: ItemBundle) {
     openCreate: (): void => {
       bundle.activeForm.value = 'create';
       bundle.submitError.value = '';
+      bundle.notice.value = '';
     },
     addSpecRow: (preset: string): void => {
       specSequence += 1;
@@ -359,12 +386,14 @@ const columns = (state: ItemViewState): readonly DataTableColumn<ItemRow>[] => [
             data-testid="kt-item-publish"
             disabled={state.loading}
             onClick={() => {
-              void state.runPublish(row);
+              confirmPublish(state, row);
             }}
           >
             发布版本
           </button>
         ) : null}
+        {/* TD-WF-014④：行内发布后「发布版本」按钮消失，焦点回到本行的「查看」。 */}
+        <FocusAnchor token={text(state, row, 'status', 'status')} />
       </span>
     ),
   },
@@ -494,6 +523,8 @@ const ItemView = (state: ItemViewState) => (
         </>
       }
     />
+    {/* TD-WF-014①：详情抽屉没开着时，写成功的提示显示在页头下方。 */}
+    {state.selected ? null : <ConsoleNotice message={state.notice} />}
     <div class="console-split mfg-item-split">
       <CategoryTree state={state} />
       <div class="console-split-main">
@@ -532,6 +563,7 @@ const ItemView = (state: ItemViewState) => (
     </div>
     {state.selected ? <ItemDetailDrawer state={state} /> : null}
     {state.activeForm === 'create' ? <ItemCreateDrawer state={state} /> : null}
+    <ConsoleConfirmDialog pending={state.confirm} />
   </div>
 );
 
@@ -556,6 +588,7 @@ export function ItemConsolePage(ports: ItemConsolePorts) {
     loadError: bundle.loadError.value,
     actionError: bundle.actionError.value,
     submitError: bundle.submitError.value,
+    notice: bundle.notice.value,
     selected: bundle.selected.value,
     detail: bundle.detail.value,
     detailLoading: bundle.detailLoading.value,
@@ -563,6 +596,7 @@ export function ItemConsolePage(ports: ItemConsolePorts) {
     createType: bundle.createType.value,
     specRows: bundle.specRows.value,
     mayManage,
+    confirm: bundle.confirm,
     selectCategory: (next) => {
       bundle.category.value = next;
       actions.settle();

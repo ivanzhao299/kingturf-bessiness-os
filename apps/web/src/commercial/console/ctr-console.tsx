@@ -23,6 +23,8 @@ import {
   versionNumber,
 } from './solution-console-diff';
 import { failureMessage } from '../../shared/api-error-message';
+import { syncSelected } from './selected-sync';
+import { FocusAnchor } from './focus-anchor';
 
 // U3-COM-5（ADR-0014 分域重写）：技术需求单控制台——原 vanilla ctr workbench 能力面
 // 等价迁移（新建/修订/提交评审/批准驳回/上传附件；列表/筛选/详情抽屉含版本差异）。
@@ -487,6 +489,8 @@ const CtrDrawer = ({ state }: Readonly<{ state: CtrPageState }>) => {
           onSubmit={(values) => state.runRevise(row, values)}
         />
       ) : null}
+      {/* TD-WF-014④：审批 / 驳回、修订的行内表单开合后，把键盘焦点带回抽屉。 */}
+      <FocusAnchor token={`${String(state.activeForm)}|${String(state.decision)}`} />
     </DetailDrawer>
   );
 };
@@ -633,11 +637,21 @@ export function CtrConsolePage(ports: CtrConsolePorts) {
     bundle.submitError.value = '';
   };
 
+  // TD-WF-008：列表换新的之后，抽屉里开着的那条也换成刷新后的行（已不在列表里则关闭抽屉）。
+  const applyCtrs = (ctrs: readonly CtrRow[]): void => {
+    bundle.ctrs.value = ctrs;
+    syncSelected({
+      selected: bundle.selected,
+      rows: ctrs,
+      idOf: (row) => ports.textValue(row.id, ''),
+    });
+  };
+
   const runRefresh = async (): Promise<void> => {
     bundle.loading.value = true;
     try {
       const fresh = await ports.refresh();
-      bundle.ctrs.value = fresh.ctrs;
+      applyCtrs(fresh.ctrs);
       bundle.solutions.value = fresh.solutions;
       bundle.loadError.value = '';
     } catch (error: unknown) {
@@ -658,7 +672,7 @@ export function CtrConsolePage(ports: CtrConsolePorts) {
         requirements: requirementsPayload(values),
       });
       const fresh = await ports.refresh();
-      bundle.ctrs.value = fresh.ctrs;
+      applyCtrs(fresh.ctrs);
       closeForm();
     } catch (error: unknown) {
       fail(error, '技术需求创建失败');
@@ -679,7 +693,7 @@ export function CtrConsolePage(ports: CtrConsolePorts) {
         requirements: requirementsPayload(values),
       });
       const fresh = await ports.refresh();
-      bundle.ctrs.value = fresh.ctrs;
+      applyCtrs(fresh.ctrs);
       closeForm();
     } catch (error: unknown) {
       fail(error, '修订创建失败');
@@ -694,7 +708,7 @@ export function CtrConsolePage(ports: CtrConsolePorts) {
     try {
       await ports.submit(`/api/v1/ctr-versions/${ports.textValue(row.id, '')}/state`, body, 'PUT');
       const fresh = await ports.refresh();
-      bundle.ctrs.value = fresh.ctrs;
+      applyCtrs(fresh.ctrs);
       closeForm();
     } catch (error: unknown) {
       fail(error, '技术需求状态流转失败');
@@ -709,7 +723,7 @@ export function CtrConsolePage(ports: CtrConsolePorts) {
     try {
       await ports.uploadAttachment(ports.textValue(row.id, ''), file);
       const fresh = await ports.refresh();
-      bundle.ctrs.value = fresh.ctrs;
+      applyCtrs(fresh.ctrs);
     } catch (error: unknown) {
       fail(error, '附件上传失败');
     } finally {

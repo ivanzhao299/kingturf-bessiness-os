@@ -2,6 +2,9 @@
 // 工序号 → 工序名称/编码 → 工作中心 → 准备工时/单件工时 → 说明）、版本历史 chips
 //（草稿行内发布）。详情数据来自 additive findRouting（versions 工序 sequence 升序）。
 import { DetailDrawer, StatusBadge } from '@kingturf/ui';
+import { askPublishVersion } from './console-confirm';
+import { FocusAnchor } from './focus-anchor';
+import { ConsoleNotice } from './console-notice';
 import type { RoutingRow } from './routing-ports';
 import {
   routingOperations,
@@ -18,6 +21,16 @@ const recordOf = (value: unknown): RoutingRow =>
 
 export const versionLabel = (state: RoutingViewState, status: unknown): string =>
   STATUS_LABELS[String(status)] ?? state.ports.businessStateLabel(status);
+
+// 发布不可逆：行内与详情里的发布按钮都先确认（TD-WF-014②）。详情里的版本行不带编码时取抽屉当前行的。
+export const confirmPublish = (state: RoutingViewState, row: RoutingRow): void => {
+  askPublishVersion(
+    state.confirm,
+    `${state.ports.textValue(row.code, '') || state.ports.textValue(state.selected?.code, '—')} 第 ${state.ports.textValue(row.version, '?')} 版`,
+    '工序',
+    () => state.runPublish(row),
+  );
+};
 
 // 顺序步骤视图：单版本工序竖排（步骤号 = 行序；工序号为业务 sequence）。
 export const StepList = ({
@@ -56,6 +69,10 @@ export const RoutingDetailDrawer = ({ state }: DetailProps) => {
   if (!row) return null;
   const detail = state.detail ?? row;
   const versions = routingRecords(detail.versions);
+  // TD-WF-014④：草稿版本带「发布」按钮；发布后它消失，焦点锚点据此把键盘焦点带回抽屉。
+  const focusToken = (versions.length > 0 ? versions : [row])
+    .map((version) => state.ports.textValue(version.status, ''))
+    .join(',');
   const latest = versions[0];
   const operations = latest ? routingOperations(latest) : routingOperations(row);
   return (
@@ -64,6 +81,8 @@ export const RoutingDetailDrawer = ({ state }: DetailProps) => {
       onClose={() => {
         state.open(null);
       }}
+      // TD-WF-014①：写成功的提示放在抽屉底部，不随抽屉体滚走。
+      footer={state.notice === '' ? undefined : <ConsoleNotice message={state.notice} />}
     >
       <div class="console-summary" data-testid="kt-routing-detail-summary">
         <p>
@@ -108,7 +127,7 @@ export const RoutingDetailDrawer = ({ state }: DetailProps) => {
                   class="mfg-chip-remove"
                   data-testid="kt-routing-publish-version"
                   onClick={() => {
-                    void state.runPublish(version);
+                    confirmPublish(state, version);
                   }}
                 >
                   发布
@@ -128,6 +147,7 @@ export const RoutingDetailDrawer = ({ state }: DetailProps) => {
           <p class="routing-muted">该版本暂无工序</p>
         )}
       </div>
+      <FocusAnchor token={focusToken} />
     </DetailDrawer>
   );
 };

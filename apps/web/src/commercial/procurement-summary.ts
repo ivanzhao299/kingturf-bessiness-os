@@ -70,23 +70,38 @@ const SUMMARY_CARDS: readonly SummaryCard[] = [
   },
 ];
 
+/** 渲染四张汇总卡并返回重算函数（TD-PROC-013）：按 input() 的当前值更新各卡文字，不新增、不替换节点。
+ *  数据经取数回调读取而不是渲染那一刻的数组——路由视图只构建一次，子路由上新建供应商 / 发出询价 /
+ *  签发订单之后回到概览，面板不会重建；四个采购宿主的 refresh 端口在 controller.load 重读完成后调用它。 */
 export function appendProcurementSummary(
   target: HTMLElement,
-  input: ProcurementSummaryInput,
+  input: () => ProcurementSummaryInput,
   recordText: RecordText,
   visibleRoutes: ReadonlySet<string>,
-): void {
+): () => void {
   const summary = el('div', 'production-summary procurement-summary');
-  for (const card of SUMMARY_CARDS) {
-    const text = `${card.label}\n${String(card.count(input, recordText))}${card.unit}`;
-    const link =
-      card.route !== null && visibleRoutes.has(card.route)
-        ? el('a', 'metric-card procurement-summary-link', text)
-        : null;
-    if (link) link.href = `#/${String(card.route)}`;
-    const node: HTMLElement = link ?? el('div', 'metric-card', text);
-    node.setAttribute('data-testid', `procurement-summary-${card.id}`);
-    summary.append(node);
-  }
+  const nodes: (HTMLElement | undefined)[] = [];
+  const render = (): void => {
+    const current = input();
+    SUMMARY_CARDS.forEach((card, index) => {
+      const text = `${card.label}\n${String(card.count(current, recordText))}${card.unit}`;
+      const existing = nodes[index];
+      if (existing) {
+        existing.textContent = text;
+        return;
+      }
+      const link =
+        card.route !== null && visibleRoutes.has(card.route)
+          ? el('a', 'metric-card procurement-summary-link', text)
+          : null;
+      if (link) link.href = `#/${String(card.route)}`;
+      const node: HTMLElement = link ?? el('div', 'metric-card', text);
+      node.setAttribute('data-testid', `procurement-summary-${card.id}`);
+      nodes[index] = node;
+      summary.append(node);
+    });
+  };
+  render();
   target.append(summary);
+  return render;
 }

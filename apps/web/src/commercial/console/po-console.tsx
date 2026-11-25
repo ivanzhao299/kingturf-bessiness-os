@@ -22,7 +22,16 @@ import {
   type DocumentFormKind,
 } from './po-detail';
 import { createPurchaseOrderActions } from './po-console-actions';
+import {
+  askConfirm,
+  ConsoleConfirmDialog,
+  createConfirm,
+  type ConfirmSignal,
+} from './console-confirm';
 import type { ContractDocumentRow, PurchaseOrderConsolePorts, PurchaseOrderRow } from './po-ports';
+import { FocusAnchor } from './focus-anchor';
+import { ConsoleNotice } from './console-notice';
+import { reloadSelectedDetail } from './selected-sync';
 
 // U3-PROC-3（ADR-0014 分域重写）：采购单控制台——原 vanilla purchase-register PO 能力
 // 面等价迁移（创建并签发载荷逐字节一致；收货卡片/登记收货表单属 goods-receipts 域，
@@ -45,6 +54,10 @@ type PoPageState = Readonly<{
   activeDocumentForm: Readonly<{ documentId: string; kind: DocumentFormKind }> | null;
   permissions: ReadonlySet<string>;
   ports: PurchaseOrderConsolePorts;
+  // TD-WF-014②：等待确认的不可逆动作（签发 / 取消订单）；null 表示没有确认框。
+  confirm: ConfirmSignal;
+  // TD-WF-014①：最近一次写操作的成功提示。
+  notice: string;
   open: (row: PurchaseOrderRow | null) => void;
   openForm: (kind: PoFormKind) => void;
   closeForm: () => void;
@@ -217,6 +230,8 @@ const PoDrawer = ({ state }: Readonly<{ state: PoPageState }>) => {
       onClose={() => {
         state.open(null);
       }}
+      // TD-WF-014①：写成功的提示放在抽屉底部，不随抽屉体滚走。
+      footer={state.notice === '' ? undefined : <ConsoleNotice message={state.notice} />}
     >
       <div class="console-summary" data-testid="kt-po-detail">
         <p>
@@ -250,7 +265,14 @@ const PoDrawer = ({ state }: Readonly<{ state: PoPageState }>) => {
               class="primary"
               data-testid="kt-po-issue"
               onClick={() => {
-                void state.runState(row, 'issue');
+                // TD-WF-014②：签发不可逆，先确认。
+                const number = text(ports, row, 'poNumber', 'po_number');
+                askConfirm(state.confirm, {
+                  title: '签发采购订单',
+                  message: `签发后订单 ${number} 进入执行，供应商开始备货。`,
+                  confirmLabel: '确认签发',
+                  run: () => state.runState(row, 'issue'),
+                });
               }}
             >
               签发订单
@@ -262,7 +284,15 @@ const PoDrawer = ({ state }: Readonly<{ state: PoPageState }>) => {
               class="secondary"
               data-testid="kt-po-cancel"
               onClick={() => {
-                void state.runState(row, 'cancel');
+                // TD-WF-014②：取消不可逆，先确认（破坏性动作：初焦在「取消」上）。
+                const number = text(ports, row, 'poNumber', 'po_number');
+                askConfirm(state.confirm, {
+                  title: '取消采购订单',
+                  message: `取消后订单 ${number} 不可恢复。`,
+                  confirmLabel: '确认取消',
+                  destructive: true,
+                  run: () => state.runState(row, 'cancel'),
+                });
               }}
             >
               取消订单
@@ -310,6 +340,10 @@ const PoDrawer = ({ state }: Readonly<{ state: PoPageState }>) => {
           }
         />
       ) : null}
+      {/* TD-WF-014④：行内表单开合、签发 / 取消后按钮变化时，把键盘焦点带回抽屉。 */}
+      <FocusAnchor
+        token={`${String(state.activeForm)}|${state.activeDocumentForm?.kind ?? ''}|${status}`}
+      />
     </DetailDrawer>
   );
 };
@@ -394,6 +428,8 @@ const PoView = (state: PoPageState) => {
           </>
         }
       />
+      {/* TD-WF-014①：详情抽屉没开着时，写成功的提示显示在页头下方。 */}
+      {state.selected ? null : <ConsoleNotice message={state.notice} />}
       <div class="commercial-console-filters">
         {(['ALL', 'DRAFT', 'ISSUED', 'PARTIALLY_RECEIVED', 'RECEIVED', 'CANCELLED'] as const).map(
           (option) => (
@@ -447,6 +483,7 @@ const PoView = (state: PoPageState) => {
       />
       {state.selected ? <PoDrawer state={state} /> : null}
       {state.activeForm === 'create' ? <CreateDrawer state={state} /> : null}
+      <ConsoleConfirmDialog pending={state.confirm} />
     </div>
   );
 };
@@ -469,6 +506,8 @@ export function PurchaseOrderConsolePage(ports: PurchaseOrderConsolePorts) {
       null,
     ),
     shownCount: signal(20),
+    confirm: createConfirm(),
+    notice: signal(''),
   };
 
   const { closeForm, runRefresh, runCreate, runState, runUpload, runDocumentAction } =
@@ -488,32 +527,38 @@ export function PurchaseOrderConsolePage(ports: PurchaseOrderConsolePorts) {
     activeDocumentForm: bundle.activeDocumentForm.value,
     permissions: ports.permissions,
     ports,
+    confirm: bundle.confirm,
+    notice: bundle.notice.value,
+    // 开始下一个动作时清掉上一次的成功提示（与 submitError 同一处）。
     open: (row) => {
       bundle.selected.value = row;
       bundle.activeForm.value = null;
       bundle.activeDocumentForm.value = null;
       bundle.submitError.value = '';
+      bundle.notice.value = '';
       if (!row) return;
-      // 详情读取失败静默回退列表行（行项收货状态/收货记录按列表行数据呈现）。
+      // 详情读取失败静默回退列表行（行项收货状态/收货记录按列表行数据呈现）。迟到的详情只在抽屉仍
+      // 开着、且还是这一条时才替换——不会把抽屉换成别的记录，也不会把关掉的抽屉重新打开。
       bundle.detailLoading.value = true;
-      void ports
-        .loadDetail(ports.textValue(row.id, ''))
-        .then((detail) => {
-          if (detail) bundle.selected.value = detail;
-        })
-        .catch(() => undefined)
-        .finally(() => {
-          bundle.detailLoading.value = false;
-        });
+      void reloadSelectedDetail({
+        selected: bundle.selected,
+        rows: bundle.orders.value,
+        idOf: (candidate) => ports.textValue(candidate.id, ''),
+        loadDetail: ports.loadDetail,
+      }).finally(() => {
+        bundle.detailLoading.value = false;
+      });
     },
     openForm: (kind) => {
       bundle.activeForm.value = kind;
       bundle.submitError.value = '';
+      bundle.notice.value = '';
     },
     closeForm,
     openDocumentForm: (documentId, kind) => {
       bundle.activeDocumentForm.value = { documentId, kind };
       bundle.submitError.value = '';
+      bundle.notice.value = '';
     },
     closeDocumentForm: () => {
       bundle.activeDocumentForm.value = null;

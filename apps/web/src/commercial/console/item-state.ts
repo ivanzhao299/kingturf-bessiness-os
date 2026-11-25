@@ -1,6 +1,7 @@
 // U3-MFG-1：物料控制台共享展示契约——分类/版本状态词表、规格参数预设、纯展示助手
 // 与视图状态类型（页面工厂、详情抽屉、新建抽屉共用；不持有运行时状态）。
 import type { StatusTone } from '@kingturf/ui';
+import type { ConfirmSignal } from './console-confirm';
 import type { ItemConsolePorts, ItemRow } from './item-ports';
 
 export type ItemCategory = 'RAW_MATERIAL' | 'SEMI_FINISHED' | 'FINISHED_GOOD' | 'PACKAGING';
@@ -83,7 +84,11 @@ export type ItemViewState = Readonly<{
   activeForm: 'create' | null;
   createType: ItemCategory;
   specRows: readonly SpecRowDraft[];
+  // TD-WF-014①：最近一次写操作的成功提示。
+  notice: string;
   mayManage: boolean;
+  // TD-WF-014②：等待确认的不可逆动作（发布版本）；null 表示没有确认框。
+  confirm: ConfirmSignal;
   selectCategory: (next: ItemCategoryFilter) => void;
   setStatusFilter: (next: ItemStatusFilter) => void;
   setSearch: (next: string) => void;
