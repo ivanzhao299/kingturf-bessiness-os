@@ -11,7 +11,7 @@ import { assertTestDatabaseTarget } from '@kingturf/database';
 import { PasswordHasher } from '../../src/security.js';
 import type { ownedCommercialGraph } from './owned-commercial-graph.js';
 
-type Graph = Awaited<ReturnType<typeof ownedCommercialGraph>>;
+type Graph = Pick<Awaited<ReturnType<typeof ownedCommercialGraph>>, 'db' | 'schema'>;
 const hasher = new PasswordHasher({
   saltBytes: 16,
   keyLength: 32,

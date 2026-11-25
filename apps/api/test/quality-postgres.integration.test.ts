@@ -7,6 +7,7 @@ import { dispatchFastifyRouteGroup } from '../src/routes/fastify/registry.ts';
 import { PostgresManufacturingRepository } from '../src/manufacturing-repositories.js';
 import { PostgresQualityRepository } from '../src/quality-repositories.js';
 import { ownedPostgres } from './fixtures/owned-postgres.js';
+import { ownedHttpApi } from './fixtures/owned-http-api.js';
 
 const id = (value: JsonObject): string => {
   if (typeof value.id !== 'string') throw new Error('Fixture ID missing');
@@ -248,6 +249,59 @@ describe('quality repository and immutable ledgers on real PostgreSQL', () => {
       )?.body,
     ).toMatchObject({ summary: { quarantine: '1' } });
   });
+
+  it('submits the original plan form payload over the real HTTP listener', async () => {
+    const fixture = owned();
+    const http = await ownedHttpApi(fixture);
+    try {
+      const user = await http.user(fixture.employee, fixture.company);
+      await user.grant(['quality-plan:manage', 'quality-plan:read'], ['COMPANY']);
+      const input = {
+        code: 'QUALITY-HTTP',
+        name: 'Original form',
+        itemVersionId: itemId,
+        inspectionStage: 'INCOMING',
+        samplingMethod: '全检',
+        acceptanceRule: { description: '全部必检项通过' },
+        effectiveAt: '2026-01-01T00:00:00.000Z',
+        characteristics: [
+          {
+            code: 'LENGTH',
+            name: 'Length',
+            dataType: 'NUMERIC',
+            lowerLimit: '10',
+            upperLimit: '12',
+            required: true,
+            instructions: '',
+          },
+        ],
+        publish: true,
+      };
+      const response = await user.request('/api/v1/quality-plans', 'POST', input);
+      expect(response.status).toBe(201);
+      expect(await response.json()).toMatchObject({
+        status: 'PUBLISHED',
+        characteristics: [{ instructions: '' }],
+      });
+      const plans = await quality.list('plans', fixture.context);
+      expect(plans).toMatchObject([
+        { code: 'QUALITY-HTTP', characteristics: [{ instructions: '' }] },
+      ]);
+      for (const instructions of [' ', null, 3]) {
+        const invalid = await user.request('/api/v1/quality-plans', 'POST', {
+          ...input,
+          code: 'INVALID-INSTRUCTIONS',
+          characteristics: [{ ...input.characteristics[0], instructions }],
+        });
+        expect(invalid.status).toBe(400);
+        expect(await invalid.json()).toMatchObject({
+          error: { message: 'instructions is required' },
+        });
+      }
+    } finally {
+      await http.close();
+    }
+  }, 20_000);
 
   it.each(['10', '12'])(
     'pins published plan, typed results and inclusive boundary %s through release',
