@@ -38,6 +38,7 @@ import { registerManufacturingBomRoutes } from './manufacturing-boms.ts';
 import { registerManufacturingRoutingRoutes } from './manufacturing-routings.ts';
 import { registerProductionOrderRoutes } from './production-orders.ts';
 import { registerProductionOrderExecutionRoutes } from './production-order-execution.ts';
+import { registerMrpReadRoutes, registerMrpWriteRoutes } from './mrp.ts';
 
 export type FastifyRouteScope = Readonly<{
   authorization: AuthorizationContext;
@@ -123,6 +124,15 @@ const CLAIMED_FASTIFY_ROUTES: readonly (readonly [method: string, pattern: RegEx
   ['POST', /^\/api\/v1\/production-orders\/[0-9a-f-]+\/operation-reports$/u],
   ['POST', /^\/api\/v1\/production-orders\/[0-9a-f-]+\/finished-rolls$/u],
   ['POST', /^\/api\/v1\/production-orders\/[0-9a-f-]+\/materials$/u],
+  ['GET', /^\/api\/v1\/mrp-policies$/u],
+  ['GET', /^\/api\/v1\/mrp-demands$/u],
+  ['GET', /^\/api\/v1\/mrp-runs$/u],
+  ['GET', /^\/api\/v1\/mrp-runs\/[0-9a-f-]+$/u],
+  ['GET', /^\/api\/v1\/mrp-proposals$/u],
+  ['POST', /^\/api\/v1\/mrp-policies$/u],
+  ['POST', /^\/api\/v1\/mrp-demands$/u],
+  ['POST', /^\/api\/v1\/mrp-runs$/u],
+  ['POST', /^\/api\/v1\/mrp-proposals\/[0-9a-f-]+\/(approve|reject|release|cancel)$/u],
 ];
 
 // legacy catch 层的同款 DomainError 状态映射（行为守恒）。
@@ -194,6 +204,8 @@ const buildRouteGroupApp = (scope: FastifyRouteScope) => {
   registerManufacturingRoutingRoutes(app, scope);
   registerProductionOrderRoutes(app, scope);
   registerProductionOrderExecutionRoutes(app, scope);
+  registerMrpReadRoutes(app, scope);
+  registerMrpWriteRoutes(app, scope);
   return app;
 };
 
