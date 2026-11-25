@@ -184,12 +184,13 @@ function createMrpRefresh(
   loadProposals: () => Promise<void>,
   reloadDetail: () => Promise<void>,
 ) {
-  // 选中的批次不在最新快照里时回到最新批次。
-  const settleRun = (): void => {
+  const settleRun = (switchToLatest: boolean): void => {
     const runs = bundle.snapshot.value.runs;
-    if (!runs) return;
-    if (!runs.some((run) => idOf(run) === bundle.runId.value))
-      bundle.runId.value = latestRunId(bundle.snapshot.value);
+    if (!runs || (!switchToLatest && runs.some((run) => idOf(run) === bundle.runId.value))) return;
+    const runId = latestRunId(bundle.snapshot.value);
+    if (runId === bundle.runId.value) return;
+    bundle.proposals.value = [];
+    bundle.runId.value = runId;
   };
   const allProposals = (): readonly MrpRow[] =>
     (bundle.snapshot.value.runs ?? []).flatMap((run) => records(run.proposals));
@@ -203,8 +204,7 @@ function createMrpRefresh(
       try {
         bundle.snapshot.value = await ports.refresh();
         snapshotFresh = true;
-        if (switchToLatest) bundle.runId.value = latestRunId(bundle.snapshot.value);
-        else settleRun();
+        settleRun(switchToLatest);
       } catch (error: unknown) {
         bundle.refreshError.value = failureMessage(error, '物料计划刷新失败');
       }

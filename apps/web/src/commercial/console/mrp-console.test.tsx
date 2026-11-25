@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { installGlobalTestDom, type TestElement } from '../../../test/fixtures/preact-dom';
 import { MrpConsolePage } from './mrp-console';
 import { explanationOf } from './mrp-explanation';
-import type { MrpConsolePorts, MrpRow, MrpSnapshot } from './mrp-ports';
+import type { MrpConsolePorts, MrpPage, MrpRow, MrpSnapshot } from './mrp-ports';
 import { textOf } from './mrp-state';
 
 const flush = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
@@ -286,6 +286,35 @@ describe('MRP console', () => {
     await flush();
     await open(host, 'create-demand');
     expect(element(host, '.detail-drawer').textContent).toContain('登记独立需求');
+  });
+
+  it('clears the old batch rows while recommendations for a new run load', async () => {
+    let finish: (page: MrpPage) => void = () => undefined;
+    const fetchProposals = vi
+      .fn<MrpConsolePorts['fetchProposals']>()
+      .mockResolvedValueOnce({ items: [row()], nextCursor: null })
+      .mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          }),
+      );
+    const before = snapshot();
+    const created = { id: 'new', run_number: 'RUN-3', status: 'COMPUTED' };
+    const refresh = vi
+      .fn<MrpConsolePorts['refresh']>()
+      .mockResolvedValue({ ...before, runs: [created, ...(before.runs ?? [])] });
+    const { host } = setup({ fetchProposals, refresh });
+    await flush();
+    await open(host, 'run');
+    await formValues(host, { runNumber: 'RUN-3', asOf: '2026-12-01', horizonEnd: '2026-12-01' });
+    await submitForm(host);
+    await confirm(host, '确认运行');
+    expect(byId(host, 'run-heading').textContent).toBe('RUN-3 · 已计算');
+    expect(host.querySelectorAll('[data-testid="kt-mrp-open"]')).toHaveLength(0);
+    finish({ items: [{ ...row(), id: 'proposal-2', mrp_run_id: 'new' }], nextCursor: null });
+    await flush();
+    expect(host.querySelectorAll('[data-testid="kt-mrp-open"]')).toHaveLength(1);
   });
 
   it('avoids unavailable proposal requests and hides write actions for policy readers', async () => {
