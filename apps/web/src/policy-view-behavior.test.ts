@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { h, render } from 'preact';
 import type { ComponentType } from 'preact';
 import { installGlobalTestDom, type TestElement } from '../test/fixtures/preact-dom';
+import { noticeOf } from '../test/fixtures/console-notice';
 import { PolicyConsolePage } from './commercial/console/policy-console';
 import type { PolicyConsolePorts, PolicyRow } from './commercial/console/policy-ports';
 
@@ -131,8 +132,11 @@ const CREATE_FORM: readonly (readonly [string, string])[] = [
   ['maximumDiscount', '10.256'],
 ];
 
-afterEach(() => {
+// Preact 的 useEffect 在本测试环境里要等约 35 毫秒之后才执行，而测试 DOM 的 focus() 记到「最近安装的文档」
+// 上：上一个用例遗留的 effect 会改写下一个用例的焦点。每个用例结束时把这个窗口等过去（同 ctr-view-behavior）。
+afterEach(async () => {
   vi.restoreAllMocks();
+  await new Promise((resolve) => setTimeout(resolve, 60));
 });
 
 describe('sales policy console real callback contracts (U3-COM-6)', () => {
@@ -269,5 +273,131 @@ describe('sales policy console real callback contracts (U3-COM-6)', () => {
     expect(host.textContent).toContain('最低毛利率 20.55% · 最大折扣 10.26%');
     expect(host.textContent).toContain('固定理由');
     expect(host.textContent).toContain('hash-fixed');
+  });
+
+  // WFD 补齐（TD-WF-014① 在本控制台的缺口；页面级评估表单的失败呈现，原 WFB-2）。
+  describe('写反馈：状态行与评估表单里的失败原因（WFD）', () => {
+    const evaluateForm = (host: TestElement): TestElement =>
+      element(
+        host
+          .querySelectorAll('form')
+          .find((candidate) => (candidate as TestElement).textContent.includes('执行政策评估')),
+      );
+    const fillEvaluate = async (host: TestElement): Promise<TestElement> => {
+      const form = evaluateForm(host);
+      const selects = form.querySelectorAll('select');
+      const policySelect = element(selects[0]);
+      policySelect.value = 'policy-v2';
+      policySelect.dispatchEvent(new Event('input', { bubbles: true }));
+      const costSelect = element(selects[1]);
+      costSelect.value = 'cost-123456789';
+      costSelect.dispatchEvent(new Event('input', { bubbles: true }));
+      await flush();
+      return form;
+    };
+    const views = {
+      '/api/v1/sales-policies': [published],
+      '/api/v1/cost-evaluations': [{ id: 'cost-123456789', currency: 'CNY', total: '125.50' }],
+    };
+
+    it('发布政策（新建表单）成功：状态行在页头下方', async () => {
+      const ports = portsFor(['sales-policy:manage'], {});
+      const host = mount(ports);
+      element(host.querySelector('[data-testid="kt-policy-create"]')).click();
+      await flush();
+      for (const [name, value] of CREATE_FORM) fillField(host, name, value);
+      await flush();
+      await submitDrawer(host);
+      await flush();
+      await flush();
+      expect(noticeOf(host)).toEqual({ text: '已发布销售政策 SP-NEW', inDrawer: false });
+    });
+
+    it('发布新版本（抽屉里的行内表单）成功：状态行在抽屉底部；打开下一条记录时清空', async () => {
+      const other: PolicyRow = {
+        ...published,
+        id: 'policy-x',
+        definitionId: 'definition-2',
+        code: 'SP-2',
+      };
+      const ports = portsFor(
+        ['sales-policy:manage'],
+        { '/api/v1/sales-policies': [published, other] },
+        {
+          refresh: vi.fn().mockResolvedValue({
+            policies: [
+              { ...published, id: 'policy-v3', version: 3 },
+              { ...published, id: 'policy-v2', version: 2, status: 'RETIRED' },
+              other,
+            ],
+            costs: [],
+            evaluations: [],
+          }),
+        },
+      );
+      const host = mount(ports);
+      element(host.querySelectorAll('[data-testid="kt-policy-open"]')[0]).click();
+      await flush();
+      element(host.querySelector('[data-testid="kt-policy-new-version"]')).click();
+      await flush();
+      fillField(host, 'minimumMargin', '20.55');
+      fillField(host, 'maximumDiscount', '10.256');
+      await flush();
+      await submitDrawer(host);
+      await flush();
+      await flush();
+      expect(noticeOf(host)).toEqual({ text: '已为销售政策 SP-1 发布新版本', inDrawer: true });
+      // 抽屉仍开着，显示的是最新一版，不再提供「新建政策版本」以外的旧入口；关掉再开另一条时提示清空。
+      element(host.querySelector('.detail-drawer .drawer-close')).click();
+      await flush();
+      element(host.querySelectorAll('[data-testid="kt-policy-open"]')[1]).click();
+      await flush();
+      expect(noticeOf(host).text).toBe('');
+    });
+
+    it('执行政策评估成功：状态行在页头下方', async () => {
+      const ports = portsFor(['sales-policy:evaluate'], views);
+      const host = mount(ports);
+      const form = await fillEvaluate(host);
+      element(form.querySelector('button[type="submit"]')).click();
+      await flush();
+      await flush();
+      expect(ports.submit).toHaveBeenCalledTimes(1);
+      expect(noticeOf(host)).toEqual({ text: '已完成一次政策评估', inDrawer: false });
+      expect(evaluateForm(host).querySelector('[role="alert"]')?.textContent).toBe('');
+    });
+
+    it('执行政策评估失败：原因（中文）在评估表单自己的提示区，不在页面顶部与表格的错误面', async () => {
+      const ports = portsFor(['sales-policy:evaluate'], views, {
+        submit: vi.fn().mockRejectedValue(new Error('Internal server error')),
+      });
+      const host = mount(ports);
+      const form = await fillEvaluate(host);
+      const scroll = vi.fn();
+      Object.defineProperty(form.querySelector('[role="alert"]'), 'scrollIntoView', {
+        value: scroll,
+        configurable: true,
+      });
+      element(form.querySelector('button[type="submit"]')).click();
+      await flush();
+      await flush();
+      expect(ports.submit).toHaveBeenCalledTimes(1);
+      // 此前这条错误走 loadError：显示在页面顶部的错误位与表格错误面，评估表单在页面底部，两处都看不到。
+      expect(host.querySelectorAll('.console-error')).toHaveLength(0);
+      expect(host.querySelectorAll('.data-table-error')).toHaveLength(0);
+      expect(element(form.querySelector('[role="alert"]')).textContent).toBe(
+        '服务器处理请求时出错，请稍后重试',
+      );
+      // 提示出现时滚进可视区（TD-WF-012）。
+      expect(scroll).toHaveBeenCalled();
+      expect(noticeOf(host).text).toBe('');
+      // 再评估成功：提示消失，换成状态行。
+      vi.mocked(ports.submit).mockResolvedValue({ passed: true });
+      element(form.querySelector('button[type="submit"]')).click();
+      await flush();
+      await flush();
+      expect(element(evaluateForm(host).querySelector('[role="alert"]')).textContent).toBe('');
+      expect(noticeOf(host)).toEqual({ text: '已完成一次政策评估', inDrawer: false });
+    });
   });
 });
