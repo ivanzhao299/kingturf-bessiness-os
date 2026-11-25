@@ -8,6 +8,8 @@
 // GET /:id = additive 只读详情：根行（同投影）+ 关联销售订单摘要（sales-order:read 门控）+
 // 核销分配记录（收款侧字段按 bank-payment:read 门控，未授权不触碰收款表）。
 // POST = legacy qtcArPostRoutes 同解析链（负例消息逐字一致）；legacy 轨逐字保留（双轨并行）。
+// 守卫触发器拒绝（SQLSTATE P0001）按白名单映射为 409 + 中文（write-rejection-mapping.ts；
+// 未列入的保持 500 并留诊断日志，不回显数据库原文）。
 import { z } from 'zod';
 import { DomainError } from '@kingturf/domain';
 import type { JsonObject, OperationalListFilter, Page, PermissionKey } from '@kingturf/types';
@@ -26,6 +28,7 @@ import {
 } from '../../app-values.ts';
 import { authorizeQuery } from '../../policy.ts';
 import type { ArDetailParts, ArListState, ArPageFilter } from '../../qtc-read-repositories.ts';
+import { asArDocumentGuard } from '../../write-rejection-mapping.ts';
 import type { FastifyRouteGroupApp, FastifyRouteScope } from './registry.ts';
 
 // 仓储端口自真实依赖派生（S4：禁止结构重注解抹掉 provenance）。
@@ -249,7 +252,12 @@ export function registerArOpenItemRoutes(
     };
     const key = idempotency(request as unknown as ApiRequest);
     const context = scoped('ar:post', Object.keys(body));
-    const result = await repo.postAr(input, key, context, scope.correlationId);
+    let result: Record<string, unknown>;
+    try {
+      result = await repo.postAr(input, key, context, scope.correlationId);
+    } catch (error: unknown) {
+      throw asArDocumentGuard(error);
+    }
     void reply.code(201);
     return mutation(result, scope.authorization);
   });

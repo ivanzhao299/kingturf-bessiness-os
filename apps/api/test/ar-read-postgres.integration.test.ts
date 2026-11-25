@@ -17,7 +17,7 @@ import { ownedCommercialGraph } from './fixtures/owned-commercial-graph.js';
 //   · legacy 过滤参数：桥轨与旧轨在真库上逐键一致，并与独立 SQL 对拍；
 //   · 加性 state=NOT_DUE / search：与独立 SQL 对拍（search 无通配符语义）；
 //   · 详情：根行 + 销售订单摘要（门控）+ 核销分配（收款侧字段门控），与独立 SQL 对拍；
-//   · 桥轨 POST 走真实仓储：未列入白名单的唯一约束 → 仍 500。
+//   · 桥轨 POST 走真实仓储：守卫触发器拒绝 → 409 + 中文；未列入白名单的唯一约束 → 仍 500。
 const DAY = 86_400_000;
 const daysFromNow = (days: number): string => new Date(Date.now() + days * DAY).toISOString();
 const isRecord = (value: unknown): value is JsonObject =>
@@ -549,7 +549,7 @@ describe('FIN-1 AR open item page and detail real PostgreSQL contracts', () => {
     ]);
   });
 
-  it('桥轨 POST 走真实仓储：过账后 201 并可读回；唯一约束仍 500', async () => {
+  it('桥轨 POST 走真实仓储：过账后 201 并可读回；守卫拒绝 409 + 中文；唯一约束仍 500', async () => {
     const authz = authorization(['COMPANY']);
     const customerA = state().graph.customerId;
     const post = (body: JsonObject) =>
@@ -586,6 +586,22 @@ describe('FIN-1 AR open item page and detail real PostgreSQL contracts', () => {
         agingState: 'OPEN',
       },
     ]);
+    // 守卫触发器 ar_document_governed_graph：单据客户与订单客户不一致。
+    const mismatched = await post({
+      customerId: customerB,
+      salesOrderId: state().graph.orderId,
+      documentNumber: `INV-FIN-${randomUUID().slice(0, 8)}`,
+      documentType: 'INVOICE',
+      currency: 'CNY',
+      amount: '1',
+      dueAt: daysFromNow(2),
+    });
+    expect(mismatched?.statusCode).toBe(409);
+    expect(bodyOf(mismatched).error).toEqual({
+      code: 'conflict',
+      message: '应收单据与关联销售订单的客户或币种不一致，请核对后重试',
+      correlationId,
+    });
     // 未列入白名单：重复单据号（唯一约束）仍是 500，信封不含数据库原文。
     const duplicate = await post({
       customerId: customerA,

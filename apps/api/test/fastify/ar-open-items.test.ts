@@ -25,7 +25,8 @@ import { dispatchFastifyRouteGroup } from '../../src/routes/fastify/registry.ts'
 //   GET 列表：未带加性参数时与 legacy qtcOperationalReadRoutes('ar') 的响应、仓储方法与实参
 //            逐字节一致（同一条链）；带加性参数（state=NOT_DUE / search）时走 additive listArPage；
 //   GET 详情：additive 只读（根行 + 销售订单摘要 + 核销分配，两个门控）、404 信封、非 uuid 400；
-//   POST：legacy qtcArPostRoutes 同解析链（入参与负例消息逐字一致）；
+//   POST：legacy qtcArPostRoutes 同解析链（入参与负例消息逐字一致）；守卫触发器拒绝（P0001）
+//        按白名单映射 409 + 中文，未列入的仍 500 并留诊断日志；
 //   依赖缺失 503、未认领方法落回 null。
 const tenant = '11111111-1111-4111-8111-111111111111';
 const itemId = '44444444-4444-4444-8444-444444444444';
@@ -684,6 +685,44 @@ describe('ar-open-items fastify bridge track', () => {
       expect(calls).toEqual([]);
     },
   );
+
+  it('POST 守卫触发器拒绝（P0001，单据与销售订单不一致）映射为 409 + 中文，不回显数据库原文', async () => {
+    const rejection = Object.assign(new Error('AR document is inconsistent with its sales order'), {
+      code: 'P0001',
+    });
+    const response = await dispatchFastifyRouteGroup(
+      requestFor({ method: 'POST', body: postBody, headers: postHeaders }),
+      scopeFor(repository({ postAr: vi.fn().mockRejectedValue(rejection) })),
+    );
+    expect(response?.statusCode).toBe(409);
+    expect(errorOf(response)).toEqual({
+      code: 'conflict',
+      message: '应收单据与关联销售订单的客户或币种不一致，请核对后重试',
+      correlationId,
+    });
+  });
+
+  it('POST 未列入白名单的数据库拒绝仍是 500（信封不含原始消息）并留诊断日志', async () => {
+    const logger = { write: vi.fn() };
+    const rejection = Object.assign(new Error('duplicate key value violates unique constraint'), {
+      code: '23505',
+    });
+    const response = await dispatchFastifyRouteGroup(
+      requestFor({ method: 'POST', body: postBody, headers: postHeaders }),
+      scopeFor(repository({ postAr: vi.fn().mockRejectedValue(rejection) }), { logger }),
+    );
+    expect(response?.statusCode).toBe(500);
+    expect(errorOf(response)).toEqual({
+      code: 'internal_error',
+      message: 'Internal server error',
+      correlationId,
+    });
+    expect(logger.write).toHaveBeenCalledTimes(1);
+    const entry = logger.write.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(entry.event).toBe('http.request.failed');
+    expect(entry.statusCode).toBe(500);
+    expect(entry.pathname).toBe('/api/v1/ar-open-items');
+  });
 
   it('POST 写字段按 ar:post 字段授权校验（未授权的写键 403，与 legacy 同消息）', async () => {
     const authz = scopeFor(repository(), { writeFields: ['customerId'] }).authorization;
