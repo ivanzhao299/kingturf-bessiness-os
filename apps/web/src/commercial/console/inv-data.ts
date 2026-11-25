@@ -42,6 +42,9 @@ export const locationFields: readonly FormSectionField[] = [
     options: locationOptions,
   },
 ];
+export const locationPayload = (values: Readonly<Record<string, string>>) =>
+  Object.fromEntries(Object.entries(values).map(([key, value]) => [key, value.trim()]));
+
 export const movementFields: readonly FormSectionField[] = [
   {
     name: 'movementType',

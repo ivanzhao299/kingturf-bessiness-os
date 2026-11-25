@@ -6,6 +6,7 @@ import { createFinList, type FinPage, type FinQuery, type FinRow } from './fin-k
 import {
   balanceId,
   LOCATIONS,
+  locationPayload,
   MOVEMENTS,
   movementOptions,
   movementPayload,
@@ -129,10 +130,7 @@ export function createInventoryState(ports: InventoryPorts) {
   const createLocation = async (values: Readonly<Record<string, string>>) => {
     error.value = '';
     try {
-      const payload = Object.fromEntries(
-        Object.entries(values).map(([key, value]) => [key, value.trim()]),
-      );
-      await ports.submit(LOCATIONS, payload);
+      await ports.submit(LOCATIONS, locationPayload(values));
     } catch (failure: unknown) {
       error.value = failureMessage(failure, '新建库位失败');
       return;

@@ -1,25 +1,18 @@
 import { h, render } from 'preact';
 import { useEffect } from 'preact/hooks';
-import {
-  DataTable,
-  DetailDrawer,
-  FormSection,
-  StatusBadge,
-  SummaryCards,
-  type DataTableColumn,
-} from '@kingturf/ui';
+import { DataTable, StatusBadge, SummaryCards, type DataTableColumn } from '@kingturf/ui';
 import { ConsoleConfirmDialog } from './console-confirm';
 import { ConsoleNotice } from './console-notice';
 import { finText, finWhen, type FinRow } from './fin-kit';
 import {
   balanceId,
   inventoryCounts,
-  locationFields,
   locationOptions,
   optionLabel,
   qualityOptions,
 } from './inv-data';
 import { InventoryDetail } from './inv-detail';
+import { InventoryLocationDrawer } from './inv-location-form';
 import { createInventoryState, type InventoryPorts } from './inv-state';
 import './procurement-ledger.css';
 
@@ -290,20 +283,13 @@ function InventoryView({ state }: Readonly<{ state: State }>) {
         />
       ) : null}
       {state.locationForm.value && canWrite ? (
-        <DetailDrawer
-          title="新建库存库位"
-          onClose={() => {
+        <InventoryLocationDrawer
+          close={() => {
             state.locationForm.value = false;
           }}
-        >
-          <FormSection
-            title="库位信息"
-            fields={locationFields}
-            error={state.error.value}
-            submitLabel="保存库位"
-            onSubmit={state.createLocation}
-          />
-        </DetailDrawer>
+          error={state.error.value}
+          submit={state.createLocation}
+        />
       ) : null}
       <ConsoleConfirmDialog pending={state.pending} />
     </div>
