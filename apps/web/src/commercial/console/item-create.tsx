@@ -1,6 +1,7 @@
 // U3-MFG-1（ADR-0014 分域重写）：新建物料抽屉——载荷与原 vanilla「创建物料版本」
 // 表单逐字节一致（publish 恒 false：保存为草稿，发布为独立的行级动作）；规格参数
 // 按物料类型动态预设，自定义键值行始终可加。
+import { VersionSourceHint, versionDay } from './manufacturing-version-ui';
 import { DetailDrawer, FormSection, type FormSectionField } from '@kingturf/ui';
 import {
   CATEGORY_LABELS,
@@ -48,6 +49,7 @@ const specFields = (state: ItemViewState): readonly FormSectionField[] =>
           type: preset.numeric ? 'number' : 'text',
           required: true,
           hint: `参数键 ${preset.key}`,
+          ...(row.original ? { value: row.original.text } : {}),
         },
       ];
     return [
@@ -56,34 +58,42 @@ const specFields = (state: ItemViewState): readonly FormSectionField[] =>
         label: '自定义参数名',
         required: true,
         placeholder: '如 pileHeightMm',
+        ...(row.original ? { value: row.original.key } : {}),
       },
-      { name: `spec:${row.id}:value`, label: '自定义参数值', required: true },
+      {
+        name: `spec:${row.id}:value`,
+        label: '自定义参数值',
+        required: !row.original || typeof row.original.value !== 'string',
+        ...(row.original ? { value: row.original.text } : {}),
+      },
     ];
   });
 
 const SpecToolbar = ({ state }: CreateProps) => (
   <div class="mfg-create-options" data-testid="kt-item-spec-toolbar">
-    <label class="form-field">
-      <span>
-        物料类型
-        <em class="required-mark">必填</em>
-      </span>
-      <select
-        data-testid="kt-item-create-type"
-        value={state.createType}
-        onInput={(event) => {
-          const next = (event.target as { value?: string }).value ?? '';
-          if ((ITEM_CATEGORIES as readonly string[]).includes(next))
-            state.setCreateType(next as ItemCategory);
-        }}
-      >
-        {ITEM_CATEGORIES.map((category) => (
-          <option key={category} value={category}>
-            {CATEGORY_LABELS[category]}
-          </option>
-        ))}
-      </select>
-    </label>
+    {!state.versionSource ? (
+      <label class="form-field">
+        <span>
+          物料类型
+          <em class="required-mark">必填</em>
+        </span>
+        <select
+          data-testid="kt-item-create-type"
+          value={state.createType}
+          onInput={(event) => {
+            const next = (event.target as { value?: string }).value ?? '';
+            if ((ITEM_CATEGORIES as readonly string[]).includes(next))
+              state.setCreateType(next as ItemCategory);
+          }}
+        >
+          {ITEM_CATEGORIES.map((category) => (
+            <option key={category} value={category}>
+              {CATEGORY_LABELS[category]}
+            </option>
+          ))}
+        </select>
+      </label>
+    ) : null}
     <div data-testid="kt-item-spec-presets">
       <p class="console-label">规格参数（可选，按物料类型给出）</p>
       <div class="console-chips">
@@ -136,14 +146,28 @@ const SpecToolbar = ({ state }: CreateProps) => (
 );
 
 export const ItemCreateDrawer = ({ state }: CreateProps) => (
-  <DetailDrawer title="新建物料" onClose={state.closeForm}>
+  <DetailDrawer title={state.versionSource ? '新建物料版本' : '新建物料'} onClose={state.closeForm}>
+    {state.versionSource ? <VersionSourceHint source={state.versionSource} /> : null}
     <SpecToolbar state={state} />
     {/* 提交失败的原因显示在表单自己的提示区（FormSection 的 error）：此前它在抽屉顶部，
         规格行多的时候，滚到提交按钮时已经在视口上方（TD-WF-012）。 */}
     <FormSection
-      title="新建物料"
+      title={state.versionSource ? '编辑草稿内容' : '新建物料'}
       description="建立稳定 SKU 和规格版本；保存后为草稿，确认后可发布并冻结历史。"
-      fields={[...baseFields(), ...specFields(state)]}
+      fields={[
+        ...(state.versionSource
+          ? [
+              {
+                name: 'effectiveAt',
+                label: '生效日期',
+                type: 'date' as const,
+                required: true,
+                value: versionDay(state.versionSource),
+              },
+            ]
+          : baseFields()),
+        ...specFields(state),
+      ]}
       submitLabel="保存草稿"
       error={state.submitError}
       onSubmit={(values) => state.runCreate(values)}

@@ -53,6 +53,8 @@ export function appendManufacturingItemConsole(
       return await read(`${itemPath}/${encodeURIComponent(itemId)}`);
     },
     submit: async (path, payload, method) => {
+      if (controller.submitReturningRecord)
+        return controller.submitReturningRecord(path, payload, method);
       await controller.submit(path, payload, method);
       return null;
     },

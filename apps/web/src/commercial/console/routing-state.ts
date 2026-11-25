@@ -55,6 +55,8 @@ export type RoutingViewState = Readonly<{
   detail: RoutingRow | null;
   detailLoading: boolean;
   activeForm: 'create' | null;
+  versionSource: RoutingRow | null;
+  openVersion: (row: RoutingRow) => void;
   operationRows: readonly OperationRowId[];
   // TD-WF-014①：最近一次写操作的成功提示。
   notice: string;

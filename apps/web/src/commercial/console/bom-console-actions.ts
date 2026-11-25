@@ -2,6 +2,13 @@
 // po-console-actions 先例）。装载/筛选分页闭包（createBomLoaders）与变更闭包
 // （createBomMutations：行级发布/创建载荷）分离；bundle 为页面 signal 束的最小面，
 // 请求序号守卫丢弃过期响应。
+import {
+  effectiveDatePatch,
+  sameVersionContent,
+  saveManufacturingVersion,
+  versionRecords,
+  versionText,
+} from './manufacturing-version-ui';
 import type { Signal } from '@preact/signals';
 import {
   ALL_PRODUCTS,
@@ -32,7 +39,9 @@ export type BomBundle = Readonly<{
   detail: Signal<BomRow | null>;
   detailLoading: Signal<boolean>;
   activeForm: Signal<'create' | null>;
+  versionSource: Signal<BomRow | null>;
   componentRows: Signal<readonly string[]>;
+  substituteRows: Signal<Readonly<Record<string, readonly string[]>>>;
   compareVersions: Signal<readonly [string, string] | null>;
   collapsed: Signal<ReadonlySet<string>>;
   confirm: ConfirmSignal;
@@ -148,6 +157,7 @@ export function createBomActions(ports: BomConsolePorts, bundle: BomBundle) {
     // 开始下一个动作时清掉上一次的成功提示（与 submitError 同一处）。
     open: (row: BomRow | null): void => {
       bundle.selected.value = row;
+      bundle.versionSource.value = null;
       bundle.activeForm.value = null;
       bundle.submitError.value = '';
       bundle.notice.value = '';
@@ -189,9 +199,12 @@ export function createBomMutations(
     actionFailed: (error: unknown, fallback: string) => void;
   }>,
 ) {
-  let rowSequence = 0;
+  let rowSequence = 1;
+  let substituteSequence = 0;
   const closeForm = (): void => {
     bundle.activeForm.value = null;
+    bundle.versionSource.value = null;
+    bundle.substituteRows.value = {};
     bundle.submitError.value = '';
     bundle.componentRows.value = ['r1'];
   };
@@ -223,12 +236,71 @@ export function createBomMutations(
     }
   };
 
+  const sourceLines = (source: BomRow) =>
+    versionRecords(source.lines).map((line) => ({
+      componentItemVersionId: versionText(line.componentItemVersionId),
+      quantity: versionText(line.quantityText ?? line.quantity),
+      scrapBasisPoints: Number(line.scrapBasisPoints),
+      substitutes: versionRecords(line.substitutes).map((substitute) => ({
+        itemVersionId: versionText(substitute.itemVersionId),
+        priority: Number(substitute.priority),
+        conversionFactor: versionText(
+          substitute.conversionFactorText ?? substitute.conversionFactor,
+        ),
+      })),
+    }));
+
+  const saveVersion = (source: BomRow, values: Readonly<Record<string, string>>): Promise<void> => {
+    const lines = bundle.componentRows.value.map((row) => {
+      const field = (name: string): string => values[row === 'r1' ? name : `${row}:${name}`] ?? '';
+      return {
+        componentItemVersionId: field('component'),
+        quantity: field('quantity'),
+        scrapBasisPoints: Number(field('scrap') || '0'),
+        substitutes: (bundle.substituteRows.value[row] ?? []).map((sub) => ({
+          itemVersionId: values[`${row}:${sub}:item`] ?? '',
+          priority: Number(values[`${row}:${sub}:priority`] ?? ''),
+          conversionFactor: values[`${row}:${sub}:factor`] ?? '',
+        })),
+      };
+    });
+    const productItemVersionId = values.product ?? '';
+    const outputQuantity = values.outputQuantity ?? '';
+    return saveManufacturingVersion(
+      {
+        ...bundle,
+        path: '/api/v1/manufacturing-boms',
+        rootKey: 'bomId',
+        label: 'BOM ',
+        error: bundle.submitError,
+        submit: ports.submit,
+        closeForm,
+        sync: io.sync,
+        reloadDetail: io.reloadDetail,
+      },
+      source,
+      {
+        ...effectiveDatePatch(source, values.effectiveAt ?? ''),
+        ...(productItemVersionId ===
+        versionText(source.product_item_version_id ?? source.productItemVersionId)
+          ? {}
+          : { productItemVersionId }),
+        ...(outputQuantity ===
+        versionText(source.outputQuantityText ?? source.outputQuantity ?? source.output_quantity)
+          ? {}
+          : { outputQuantity }),
+        ...(sameVersionContent(lines, sourceLines(source)) ? {} : { lines }),
+      },
+    );
+  };
+
   // 创建载荷与原 vanilla「创建标准 BOM」表单逐字节一致（productItemId 取所选版本行
   // 的 itemId、outputQuantity '1'、publish 恒 false；首行字段裸名与 legacy 对齐，
   // 追加行带前缀；替代料 priority 1 / conversionFactor '1'）。
   const runCreate = async (values: Readonly<Record<string, string>>): Promise<void> => {
     bundle.submitError.value = '';
     bundle.actionError.value = '';
+    if (bundle.versionSource.value) return saveVersion(bundle.versionSource.value, values);
     const choiceOf = (versionId: string): string =>
       ports.itemVersionChoices.find((choice) => choice.value === versionId)?.itemId ?? '';
     const field = (row: string, name: string): string =>
@@ -267,9 +339,42 @@ export function createBomMutations(
     closeForm,
     runPublish,
     runCreate,
+    openVersion: (row: BomRow): void => {
+      const lines = versionRecords(row.lines);
+      rowSequence = lines.length;
+      substituteSequence = Math.max(
+        0,
+        ...lines.map((line) => versionRecords(line.substitutes).length),
+      );
+      bundle.componentRows.value = lines.map((_, index) => `r${String(index + 1)}`);
+      bundle.substituteRows.value = Object.fromEntries(
+        lines.map((line, index) => [
+          `r${String(index + 1)}`,
+          versionRecords(line.substitutes).map((_, i) => `s${String(i + 1)}`),
+        ]),
+      );
+      bundle.versionSource.value = row;
+      bundle.activeForm.value = 'create';
+      bundle.submitError.value = '';
+      bundle.notice.value = '';
+    },
+    addSubstitute: (row: string): void => {
+      const all = bundle.substituteRows.value;
+      bundle.substituteRows.value = {
+        ...all,
+        [row]: [...(all[row] ?? []), `s${String(++substituteSequence)}`],
+      };
+    },
+    removeSubstitute: (row: string, substitute: string): void => {
+      const all = bundle.substituteRows.value;
+      bundle.substituteRows.value = {
+        ...all,
+        [row]: (all[row] ?? []).filter((id) => id !== substitute),
+      };
+    },
     addComponentRow: (): void => {
       rowSequence += 1;
-      bundle.componentRows.value = [...bundle.componentRows.value, `r${String(rowSequence + 1)}`];
+      bundle.componentRows.value = [...bundle.componentRows.value, `r${String(rowSequence)}`];
     },
     removeComponentRow: (rowId: string): void => {
       bundle.componentRows.value = bundle.componentRows.value.filter((row) => row !== rowId);

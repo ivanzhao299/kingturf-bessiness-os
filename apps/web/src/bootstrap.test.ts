@@ -1,3 +1,4 @@
+import { installGlobalTestDom, type TestElement, isTestElement } from '../test/fixtures/preact-dom';
 import { sessionFixture } from './test-fixtures/session';
 import { scopeGrantChoiceLabeler } from './governance/identity-scopes';
 import { createFetchCommercialApi } from './shared/commercial-http';
@@ -1938,6 +1939,7 @@ describe('web bootstrap', () => {
   });
 
   it('renders versioned manufacturing items, BOMs, routings, and publish controls', async () => {
+    installGlobalTestDom();
     const api = {
       listOpportunities: vi.fn().mockResolvedValue([]),
       list: vi.fn().mockImplementation((path: string) =>
@@ -1993,21 +1995,23 @@ describe('web bootstrap', () => {
       'desktop',
       false,
       controller,
-    ) as unknown as RenderedElement;
-    expect(workspace.findByClass('manufacturing-workbench')).toHaveLength(1);
+    ) as unknown as TestElement;
+    expect(
+      workspace.querySelectorAll('.manufacturing-workbench').filter(isTestElement),
+    ).toHaveLength(1);
     // U3-MFG-1/2/3：物料/BOM/工艺路线区全部迁移至 Preact 控制台——vanilla 卡片墙
     // 退役；三区行渲染由各自控制台行为测试覆盖。
-    expect(workspace.findByClass('manufacturing-card')).toHaveLength(0);
+    expect(workspace.querySelectorAll('.manufacturing-card').filter(isTestElement)).toHaveLength(0);
     // MFG-3B（TD-MFG-003）：三个控制台宿主自 manufacturing-workbench 面板迁出——各自成为
     // 制造主数据子路由的路由视图，直接挂工作区根并携带 data-route-view（与其它商业控制台
     // 宿主同口径；可见性由 visibleAppRoutes 按各控制台的读权限注册）。概览面板内不再含控制台。
-    const workbench = workspace.findByClass('manufacturing-workbench')[0];
+    const workbench = workspace.querySelectorAll('.manufacturing-workbench').find(isTestElement);
     const host = (className: string, testId: string, route: string): void => {
-      const nodes = workspace.findByClass(className);
+      const nodes = workspace.querySelectorAll(`.${className}`).filter(isTestElement);
       expect(nodes).toHaveLength(1);
       expect(nodes[0]?.getAttribute('data-testid')).toBe(testId);
       expect(nodes[0]?.getAttribute('data-route-view')).toBe(route);
-      expect(workbench?.findByClass(className)).toHaveLength(0);
+      expect(workbench?.querySelectorAll(`.${className}`).filter(isTestElement)).toHaveLength(0);
     };
     host('manufacturing-items-console', 'kt-mfg-items', 'manufacturing/items');
     host('manufacturing-boms-console', 'kt-mfg-boms', 'manufacturing/boms');
@@ -2023,6 +2027,7 @@ describe('web bootstrap', () => {
   });
 
   it('omits the manufacturing item console without manufacturing-item:read', async () => {
+    installGlobalTestDom();
     const api = {
       listOpportunities: vi.fn().mockResolvedValue([]),
       list: vi.fn().mockResolvedValue([]),
@@ -2036,15 +2041,23 @@ describe('web bootstrap', () => {
       'desktop',
       false,
       controller,
-    ) as unknown as RenderedElement;
-    const workbench = workspace.findByClass('manufacturing-workbench')[0];
-    expect(workbench?.findByClass('manufacturing-items-console')).toHaveLength(0);
+    ) as unknown as TestElement;
+    const workbench = workspace.querySelectorAll('.manufacturing-workbench').find(isTestElement);
+    expect(
+      workbench?.querySelectorAll('.manufacturing-items-console').filter(isTestElement),
+    ).toHaveLength(0);
     // MFG-3B：宿主不再挂在面板内而是工作区根——原断言保留，并加严为整个工作区都没有物料与
     // 工艺路线宿主（只有 bom:read 时 #/manufacturing/items、#/manufacturing/routings 不可见，
     // 宿主不得挂载）；BOM 宿主照常挂载。
-    expect(workspace.findByClass('manufacturing-items-console')).toHaveLength(0);
-    expect(workspace.findByClass('manufacturing-routings-console')).toHaveLength(0);
-    expect(workspace.findByClass('manufacturing-boms-console')).toHaveLength(1);
+    expect(
+      workspace.querySelectorAll('.manufacturing-items-console').filter(isTestElement),
+    ).toHaveLength(0);
+    expect(
+      workspace.querySelectorAll('.manufacturing-routings-console').filter(isTestElement),
+    ).toHaveLength(0);
+    expect(
+      workspace.querySelectorAll('.manufacturing-boms-console').filter(isTestElement),
+    ).toHaveLength(1);
   });
 
   // MFG-3B（TD-MFG-003）：制造主数据子路由——可见性、宿主装配、概览汇总卡、样式与侧栏分组。
@@ -2071,15 +2084,14 @@ describe('web bootstrap', () => {
     uploadCtrAttachment: vi.fn().mockResolvedValue({}),
     command: vi.fn().mockResolvedValue({}),
   });
-  const manufacturingWorkspace = async (
-    permissions: readonly string[],
-  ): Promise<RenderedElement> => {
+  const manufacturingWorkspace = async (permissions: readonly string[]): Promise<TestElement> => {
+    installGlobalTestDom();
     const controller = new CommercialController(
       manufacturingApi(),
       new Set(permissions.filter(isCommercialPermission)),
     );
     await controller.load();
-    return commercialWorkspaceStructure('desktop', false, controller) as unknown as RenderedElement;
+    return commercialWorkspaceStructure('desktop', false, controller) as unknown as TestElement;
   };
   const MANUFACTURING_READS = ['manufacturing-item:read', 'bom:read', 'routing:read'];
   const MANUFACTURING_CONSOLE_CLASSES = [
@@ -2130,9 +2142,13 @@ describe('web bootstrap', () => {
   });
 
   it('mounts each manufacturing console as its own sub-route view, only when its list is readable (MFG-3B)', async () => {
-    const routesByConsole = (workspace: RenderedElement): readonly (string | null)[] =>
+    const routesByConsole = (workspace: TestElement): readonly (string | null)[] =>
       MANUFACTURING_CONSOLE_CLASSES.map(
-        (className) => workspace.findByClass(className)[0]?.getAttribute('data-route-view') ?? null,
+        (className) =>
+          workspace
+            .querySelectorAll(`.${className}`)
+            .find(isTestElement)
+            ?.getAttribute('data-route-view') ?? null,
       );
     expect(routesByConsole(await manufacturingWorkspace(['bom:read']))).toEqual([
       null,
@@ -2149,9 +2165,9 @@ describe('web bootstrap', () => {
     ]);
     // 宿主是工作区根的直接子节点（与其它商业控制台宿主同口径），不在概览面板内。
     const workspace = await manufacturingWorkspace(MANUFACTURING_READS);
-    const directChildren = new Set<RenderedElement>(workspace.children);
+    const directChildren = new Set(workspace.childNodes);
     const hosted = MANUFACTURING_CONSOLE_CLASSES.flatMap((className) => {
-      const hosts = workspace.findByClass(className);
+      const hosts = workspace.querySelectorAll(`.${className}`).filter(isTestElement);
       expect(hosts).toHaveLength(1);
       return hosts;
     });
@@ -2160,20 +2176,19 @@ describe('web bootstrap', () => {
   });
 
   it('counts published and draft versions per console and links each overview card only to a visible sub-route (MFG-3B)', async () => {
-    const summaryCards = (workspace: RenderedElement): readonly RenderedElement[] => {
-      const overview = workspace.findByClass('manufacturing-workbench')[0];
+    const summaryCards = (workspace: TestElement): TestElement[] => {
+      const overview = workspace.querySelectorAll('.manufacturing-workbench').find(isTestElement);
       if (!overview) throw new Error('manufacturing overview panel missing');
-      return overview.findByClass('metric-card');
+      return overview.querySelectorAll('.stat-card').filter(isTestElement);
     };
-    const linkOf = (card: RenderedElement): string | undefined =>
-      (card as unknown as { href?: string }).href;
+    const linkOf = (card: TestElement): string | null => card.getAttribute('href');
     // 全读权限：三张卡都是锚点。口径 = 列表（版本行）的 status 字段，与控制台状态列同源；
     // 已退役行既不是已发布也不是草稿，不计入两者。
     const all = summaryCards(await manufacturingWorkspace(MANUFACTURING_READS));
     expect(all.map((card) => [card.getAttribute('data-testid'), card.textContent])).toEqual([
-      ['manufacturing-summary-items', '物料\n已发布 1 / 草稿 1'],
-      ['manufacturing-summary-boms', 'BOM\n已发布 0 / 草稿 2'],
-      ['manufacturing-summary-routings', '工艺路线\n已发布 1 / 草稿 0'],
+      ['manufacturing-summary-items', '物料 · 已发布版本1草稿 1'],
+      ['manufacturing-summary-boms', 'BOM · 已发布版本0草稿 2'],
+      ['manufacturing-summary-routings', '工艺路线 · 已发布版本1草稿 0'],
     ]);
     expect(all.map((card) => [card.tagName, linkOf(card)])).toEqual([
       ['a', '#/manufacturing/items'],
@@ -2184,14 +2199,18 @@ describe('web bootstrap', () => {
     // 得出，显示「—」而不是编一个 0（否则点入会被导航兜底弹回首个可用路由）。
     const bomOnly = summaryCards(await manufacturingWorkspace(['bom:read']));
     expect(bomOnly.map((card) => [card.tagName, linkOf(card), card.textContent])).toEqual([
-      ['div', undefined, '物料\n已发布 — / 草稿 —'],
-      ['a', '#/manufacturing/boms', 'BOM\n已发布 0 / 草稿 2'],
-      ['div', undefined, '工艺路线\n已发布 — / 草稿 —'],
+      ['div', null, '物料 · 已发布版本—草稿 —'],
+      ['a', '#/manufacturing/boms', 'BOM · 已发布版本0草稿 2'],
+      ['div', null, '工艺路线 · 已发布版本—草稿 —'],
     ]);
     // 只有管理权限：面板不挂载（既有口径不变），更没有汇总卡。
     const manageOnly = await manufacturingWorkspace(['bom:manage']);
-    expect(manageOnly.findByClass('manufacturing-workbench')).toHaveLength(0);
-    expect(manageOnly.findByClass('manufacturing-summary')).toHaveLength(0);
+    expect(
+      manageOnly.querySelectorAll('.manufacturing-workbench').filter(isTestElement),
+    ).toHaveLength(0);
+    expect(
+      manageOnly.querySelectorAll('.manufacturing-summary').filter(isTestElement),
+    ).toHaveLength(0);
   });
 
   it('recomputes the overview cards from the current snapshot without replacing them (MFG-3B)', () => {
@@ -2206,19 +2225,21 @@ describe('web bootstrap', () => {
       boms: [],
       routings: [],
     };
+    installGlobalTestDom();
     const target = el('section', 'summary-target');
-    const rendered = target as unknown as RenderedElement;
+    const rendered = target as unknown as TestElement;
     const refresh = appendManufacturingSummary(
       target,
       () => snapshot,
       recordText,
       new Set<string>(['manufacturing/items']),
     );
-    const cards = (): readonly RenderedElement[] => rendered.findByClass('metric-card');
+    const cards = (): TestElement[] =>
+      rendered.querySelectorAll('.stat-card').filter(isTestElement);
     expect(cards().map((card) => [card.tagName, card.textContent])).toEqual([
-      ['a', '物料\n已发布 1 / 草稿 0'],
-      ['div', 'BOM\n已发布 — / 草稿 —'],
-      ['div', '工艺路线\n已发布 — / 草稿 —'],
+      ['a', '物料 · 已发布版本1草稿 0'],
+      ['div', 'BOM · 已发布版本—草稿 —'],
+      ['div', '工艺路线 · 已发布版本—草稿 —'],
     ]);
     const [firstItems] = cards();
     if (!firstItems) throw new Error('items summary card missing');
@@ -2230,11 +2251,11 @@ describe('web bootstrap', () => {
     expect(cards()[0]).toBe(firstItems);
     expect(firstItems.tagName).toBe('a');
     expect(firstItems.getAttribute('data-testid')).toBe('manufacturing-summary-items');
-    expect((firstItems as unknown as { href?: string }).href).toBe('#/manufacturing/items');
+    expect(firstItems.getAttribute('href')).toBe('#/manufacturing/items');
     expect(cards().map((card) => card.textContent)).toEqual([
-      '物料\n已发布 1 / 草稿 1',
-      'BOM\n已发布 — / 草稿 —',
-      '工艺路线\n已发布 — / 草稿 —',
+      '物料 · 已发布版本1草稿 1',
+      'BOM · 已发布版本—草稿 —',
+      '工艺路线 · 已发布版本—草稿 —',
     ]);
   });
 
@@ -2413,22 +2434,27 @@ describe('web bootstrap', () => {
       new URL('./commercial/console/manufacturing-console.css', import.meta.url),
       'utf8',
     );
-    // 三列写在两层类名上：不依赖样式打包顺序也盖得过 .production-summary 的四列与其窄屏断点。
+    // 制造概览保留三 / 二 / 一列，卡片的交互样式来自共享组件。
     expect(styles).toMatch(
-      /\.production-summary\.manufacturing-summary\s*\{[^}]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/u,
+      /\.manufacturing-summary \.stat-cards\s*\{[^}]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/u,
     );
     expect(styles).toMatch(
-      /@media \(max-width: 900px\)\s*\{\s*\.production-summary\.manufacturing-summary\s*\{[^}]*repeat\(2,/u,
+      /@media \(max-width: 900px\)\s*\{\s*\.manufacturing-summary \.stat-cards\s*\{[^}]*repeat\(2,/u,
     );
     expect(styles).toMatch(
-      /@media \(max-width: 640px\)\s*\{\s*\.production-summary\.manufacturing-summary\s*\{[^}]*minmax\(0,\s*1fr\)/u,
+      /@media \(max-width: 640px\)\s*\{\s*\.manufacturing-summary \.stat-cards\s*\{[^}]*minmax\(0,\s*1fr\)/u,
     );
-    // 可点汇总卡：锚点去掉链接默认样式，悬停与键盘焦点反馈取 kt tokens；域样式表不写死颜色。
-    expect(styles).toContain('a.manufacturing-summary-link {');
-    expect(styles).toContain('a.manufacturing-summary-link:hover {');
-    expect(styles).toContain('a.manufacturing-summary-link:focus-visible {');
-    expect(styles).toContain('color: var(--kt-color-brand-strong)');
-    expect(styles).toContain('outline: 2px solid var(--kt-color-info)');
+    const sharedStyles = readFileSync(
+      new URL('../../../packages/ui/src/components.css', import.meta.url),
+      'utf8',
+    );
+    expect(sharedStyles).toMatch(/\.stat-card\s*\{[^}]*text-decoration: none/u);
+    expect(sharedStyles).toMatch(
+      /\.stat-card\[href\]:hover,[^{]*\{[^}]*border-color: var\(--kt-color-brand\)/u,
+    );
+    expect(sharedStyles).toMatch(
+      /\.stat-card\[href\]:focus-visible,[^{]*\{[^}]*outline: 2px solid var\(--kt-color-brand\)/u,
+    );
     expect(styles).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(/iu);
   });
 
@@ -2790,6 +2816,7 @@ describe('web bootstrap', () => {
   });
 
   it('mounts the MRP console host on the material-planning panel', async () => {
+    installGlobalTestDom();
     const api = {
       listOpportunities: vi.fn().mockResolvedValue([]),
       list: vi.fn().mockImplementation((path: string) => {
@@ -2862,21 +2889,21 @@ describe('web bootstrap', () => {
       'desktop',
       false,
       controller,
-    ) as unknown as RenderedElement;
+    ) as unknown as TestElement;
     // MFG-6：物料需求计划改挂 Preact 控制台宿主（面板与其 data-testid、路由标记保持；控制台行
     // 内容经动态 chunk 挂载，静态文本不含种子数据——批次标题、冻结提示、净需求算式与取整证据
     // 断言迁组件测试 mrp-console.test.tsx 与 e2e 第 10 例）。
-    expect(workspace.findByClass('mrp-workbench')).toHaveLength(1);
-    const panel = workspace.findByClass('mrp-workbench')[0];
+    expect(workspace.querySelectorAll('.mrp-workbench').filter(isTestElement)).toHaveLength(1);
+    const panel = workspace.querySelectorAll('.mrp-workbench').find(isTestElement);
     expect(panel?.getAttribute('data-testid')).toBe('mrp-workbench');
     expect(panel?.getAttribute('data-route-view')).toBe('material-planning');
-    const host = workspace.findByClass('mrp-console')[0];
+    const host = workspace.querySelectorAll('.mrp-console').find(isTestElement);
     expect(host?.getAttribute('data-testid')).toBe('kt-mrp-console');
     expect(host?.getAttribute('data-route-view')).toBe(null);
     // 宿主节是面板的直接子节点。
-    expect(host === undefined ? [] : panel?.children).toContain(host);
+    expect(host === undefined ? [] : panel?.childNodes).toContain(host);
     expect(workspace.textContent).not.toContain('MRP-KT-2026-001');
-    expect(workspace.findByClass('mrp-proposal-card')).toHaveLength(0);
+    expect(workspace.querySelectorAll('.mrp-proposal-card').filter(isTestElement)).toHaveLength(0);
   });
 
   it('renders production routing progress, material evidence, reports, rolls, and state ledger', async () => {

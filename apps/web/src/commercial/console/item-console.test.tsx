@@ -683,3 +683,44 @@ describe('U3-MFG-1 物料控制台：写成功后的提示（TD-WF-014①）', (
     expect(byTestId(host, 'console-notice').getAttribute('role')).toBe('status');
   });
 });
+
+it('continues the chosen item revision with editable, typed specification values', async () => {
+  const source = {
+    ...published,
+    specification: { serial: '001', config: { offset: 1 }, empty: '' },
+  };
+  const created = {
+    ...source,
+    id: 'item-v3',
+    version: 3,
+    status: 'DRAFT',
+    specification: { ...source.specification, config: { offset: 1.25 } },
+  };
+  const submit = vi.fn().mockResolvedValue(created);
+  const host = mount(
+    portsFor([source], ['manufacturing-item:manage'], {
+      loadDetail: vi
+        .fn()
+        .mockResolvedValueOnce({ ...detail, versions: [source] })
+        .mockResolvedValue({ ...detail, versions: [created, source] }),
+      refresh: vi.fn().mockResolvedValue([created, source]),
+      submit,
+    }),
+  );
+  byTestId(host, 'kt-item-open').click();
+  await flush();
+  byTestId(host, 'kt-item-new-version').click();
+  await flush();
+  const drawer = element(host.querySelector('.detail-drawer'));
+  expect(drawer.textContent).toContain('以第 1 版为底稿');
+  expect(element(drawer.querySelector('[name="spec:source-0:value"]')).value).toBe('001');
+  expect(element(drawer.querySelector('[name="spec:source-1:value"]')).value).toBe('{"offset":1}');
+  await type(host, '.detail-drawer', 'spec:source-1:value', '{"offset":1.25}');
+  await submitDrawer(host);
+  expect(submit).toHaveBeenCalledExactlyOnceWith('/api/v1/manufacturing-items/item-root/versions', {
+    copyFromVersionId: published.id,
+    specification: created.specification,
+  });
+  expect(byTestId(host, 'kt-item-detail-spec').textContent).toContain('config {"offset":1.25}');
+  expect(element(host.querySelector('.drawer-footer')).textContent).toContain('第 3 版草稿');
+});

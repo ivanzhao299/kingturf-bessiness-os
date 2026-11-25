@@ -3,6 +3,12 @@
 // 右主表；行级查看与草稿发布；服务端筛选分页；详情抽屉聚合版本历史与关联对象）。
 // 默认视图沿用路由加载的全量快照（legacy 列表语义）；分类/状态/关键字任一生效时
 // 切换为服务端分页（显式 limit + (sku,version) keyset cursor）。
+import {
+  effectiveDatePatch,
+  newVersionSource,
+  sameVersionContent,
+  saveManufacturingVersion,
+} from './manufacturing-version-ui';
 import { signal, type Signal } from '@preact/signals';
 import { DataTable, PageHeader, StatusBadge, type DataTableColumn } from '@kingturf/ui';
 import { ItemCreateDrawer } from './item-create';
@@ -19,6 +25,8 @@ import {
   countAllItems,
   countByCategory,
   specificationOf,
+  versionSpecificationOf,
+  versionSpecRows,
   specEntries,
   statusTone,
   type ItemCategory,
@@ -54,6 +62,7 @@ type ItemBundle = Readonly<{
   detail: Signal<ItemRow | null>;
   detailLoading: Signal<boolean>;
   activeForm: Signal<'create' | null>;
+  versionSource: ReturnType<typeof newVersionSource>;
   createType: Signal<ItemCategory>;
   specRows: Signal<readonly SpecRowDraft[]>;
   confirm: ConfirmSignal;
@@ -77,6 +86,7 @@ const createBundle = (ports: ItemConsolePorts): ItemBundle => ({
   detail: signal<ItemRow | null>(null),
   detailLoading: signal(false),
   activeForm: signal<'create' | null>(null),
+  versionSource: newVersionSource(),
   createType: signal<ItemCategory>('RAW_MATERIAL'),
   specRows: signal<readonly SpecRowDraft[]>([]),
   confirm: createConfirm(),
@@ -121,6 +131,43 @@ function createItemPublish(
 }
 
 // 数据装载与行级动作闭包（页面 signal 束的最小面）。请求序号守卫丢弃过期响应。
+function createItemVersionSave(
+  ports: ItemConsolePorts,
+  bundle: ItemBundle,
+  closeForm: () => void,
+  io: Readonly<{
+    sync: () => Promise<void>;
+    reloadDetail: () => Promise<void>;
+    actionFailed: (error: unknown, fallback: string) => void;
+  }>,
+) {
+  return async (source: ItemRow, values: Readonly<Record<string, string>>): Promise<void> => {
+    try {
+      const specification = versionSpecificationOf(bundle.specRows.value, values);
+      await saveManufacturingVersion(
+        {
+          ...bundle,
+          path: '/api/v1/manufacturing-items',
+          rootKey: 'itemId',
+          label: '物料',
+          error: bundle.submitError,
+          submit: ports.submit,
+          closeForm,
+          sync: io.sync,
+          reloadDetail: io.reloadDetail,
+        },
+        source,
+        {
+          ...effectiveDatePatch(source, values.effectiveAt ?? ''),
+          ...(sameVersionContent(specification, source.specification) ? {} : { specification }),
+        },
+      );
+    } catch (error: unknown) {
+      io.actionFailed(error, '新建物料版本失败');
+    }
+  };
+}
+
 function createItemActions(ports: ItemConsolePorts, bundle: ItemBundle) {
   let requestSequence = 0;
   let detailSequence = 0;
@@ -221,6 +268,7 @@ function createItemActions(ports: ItemConsolePorts, bundle: ItemBundle) {
   };
   const closeForm = (): void => {
     bundle.activeForm.value = null;
+    bundle.versionSource.value = null;
     bundle.submitError.value = '';
     bundle.specRows.value = [];
   };
@@ -234,9 +282,15 @@ function createItemActions(ports: ItemConsolePorts, bundle: ItemBundle) {
 
   // 创建载荷与原 vanilla「创建物料版本」表单逐字节一致（publish 恒 false；规格参数
   // 经 specificationOf 归一——预设数值键与十进制字面量转数值）。
+  const saveVersion = createItemVersionSave(ports, bundle, closeForm, {
+    sync,
+    reloadDetail,
+    actionFailed,
+  });
   const runCreate = async (values: Readonly<Record<string, string>>): Promise<void> => {
     bundle.submitError.value = '';
     bundle.actionError.value = '';
+    if (bundle.versionSource.value) return saveVersion(bundle.versionSource.value, values);
     try {
       await ports.submit('/api/v1/manufacturing-items', {
         sku: values.sku ?? '',
@@ -268,12 +322,23 @@ function createItemActions(ports: ItemConsolePorts, bundle: ItemBundle) {
     // 开始下一个动作时清掉上一次的成功提示（与 submitError 同一处）。
     open: (row: ItemRow | null): void => {
       bundle.selected.value = row;
+      bundle.versionSource.value = null;
       bundle.activeForm.value = null;
       bundle.submitError.value = '';
       bundle.notice.value = '';
       bundle.detail.value = null;
       if (row === null) detailSequence += 1;
       void reloadDetail();
+    },
+    openVersion: (row: ItemRow): void => {
+      bundle.versionSource.value = row;
+      bundle.specRows.value = versionSpecRows(row.specification);
+      bundle.createType.value =
+        ITEM_CATEGORIES.find((category) => category === (bundle.selected.value ?? row).itemType) ??
+        'RAW_MATERIAL';
+      bundle.activeForm.value = 'create';
+      bundle.submitError.value = '';
+      bundle.notice.value = '';
     },
     openCreate: (): void => {
       bundle.activeForm.value = 'create';
@@ -561,7 +626,7 @@ const ItemView = (state: ItemViewState) => (
         />
       </div>
     </div>
-    {state.selected ? <ItemDetailDrawer state={state} /> : null}
+    {state.selected && !state.versionSource ? <ItemDetailDrawer state={state} /> : null}
     {state.activeForm === 'create' ? <ItemCreateDrawer state={state} /> : null}
     <ConsoleConfirmDialog pending={state.confirm} />
   </div>
@@ -593,6 +658,8 @@ export function ItemConsolePage(ports: ItemConsolePorts) {
     detail: bundle.detail.value,
     detailLoading: bundle.detailLoading.value,
     activeForm: bundle.activeForm.value,
+    versionSource: bundle.versionSource.value,
+    openVersion: actions.openVersion,
     createType: bundle.createType.value,
     specRows: bundle.specRows.value,
     mayManage,

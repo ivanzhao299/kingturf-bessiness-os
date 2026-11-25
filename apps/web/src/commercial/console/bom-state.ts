@@ -50,7 +50,12 @@ export type BomViewState = Readonly<{
   detail: BomRow | null;
   detailLoading: boolean;
   activeForm: 'create' | null;
+  versionSource: BomRow | null;
+  openVersion: (row: BomRow) => void;
   // 组件行标识（'r1' 恒为首个组件行；追加行 'r2'…——字段名 r1 用裸名，后续行带前缀）。
+  substituteRows: Readonly<Record<string, readonly string[]>>;
+  addSubstitute: (row: string) => void;
+  removeSubstitute: (row: string, substitute: string) => void;
   componentRows: readonly string[];
   compareVersions: readonly [string, string] | null;
   // 组件层级树折叠集合（bomVersionId）；默认全展开。

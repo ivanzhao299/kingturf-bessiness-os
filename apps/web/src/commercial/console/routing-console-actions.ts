@@ -2,6 +2,13 @@
 // 沿 bom-console-actions 先例）。装载/筛选分页闭包（createRoutingLoaders）与变更
 // 闭包（createRoutingMutations：行级发布/创建载荷/工序编辑器）分离；bundle 为页面
 // signal 束的最小面，请求序号守卫丢弃过期响应。
+import {
+  effectiveDatePatch,
+  sameVersionContent,
+  saveManufacturingVersion,
+  versionRecords,
+  versionText,
+} from './manufacturing-version-ui';
 import type { Signal } from '@preact/signals';
 import {
   ALL_PRODUCTS,
@@ -32,6 +39,7 @@ export type RoutingBundle = Readonly<{
   detail: Signal<RoutingRow | null>;
   detailLoading: Signal<boolean>;
   activeForm: Signal<'create' | null>;
+  versionSource: Signal<RoutingRow | null>;
   operationRows: Signal<readonly string[]>;
   confirm: ConfirmSignal;
 }>;
@@ -144,6 +152,7 @@ export function createRoutingActions(ports: RoutingConsolePorts, bundle: Routing
     // 开始下一个动作时清掉上一次的成功提示（与 submitError 同一处）。
     open: (row: RoutingRow | null): void => {
       bundle.selected.value = row;
+      bundle.versionSource.value = null;
       bundle.activeForm.value = null;
       bundle.submitError.value = '';
       bundle.notice.value = '';
@@ -179,9 +188,10 @@ export function createRoutingMutations(
     actionFailed: (error: unknown, fallback: string) => void;
   }>,
 ) {
-  let rowSequence = 0;
+  let rowSequence = 1;
   const closeForm = (): void => {
     bundle.activeForm.value = null;
+    bundle.versionSource.value = null;
     bundle.submitError.value = '';
     bundle.operationRows.value = ['o1'];
   };
@@ -213,6 +223,80 @@ export function createRoutingMutations(
     }
   };
 
+  const sourceOperations = (source: RoutingRow) =>
+    versionRecords(source.operations).map((operation) => ({
+      operationCode: operation.operation_code ?? operation.operationCode,
+      name: operation.name,
+      workCenterCode: operation.work_center_code ?? operation.workCenterCode,
+      sequence: Number(operation.sequence),
+      setupMinutes: versionText(
+        operation.setupMinutesText ?? operation.setup_minutes ?? operation.setupMinutes,
+      ),
+      runMinutesPerUnit: versionText(
+        operation.runMinutesPerUnitText ??
+          operation.run_minutes_per_unit ??
+          operation.runMinutesPerUnit,
+      ),
+      instructions: operation.instructions ?? {},
+    }));
+
+  const saveVersion = async (
+    source: RoutingRow,
+    values: Readonly<Record<string, string>>,
+  ): Promise<void> => {
+    const original = versionRecords(source.operations);
+    const ids = bundle.operationRows.value;
+    const sameOrder =
+      ids.length === original.length && ids.every((id, index) => id === `o${String(index + 1)}`);
+    try {
+      const operations = ids.map((row, index) => {
+        const field = (name: string): string => values[`${row}:${name}`] ?? '';
+        const raw = field('instructions') || '{}';
+        const instructions: unknown = JSON.parse(raw);
+        if (
+          typeof instructions !== 'object' ||
+          instructions === null ||
+          Array.isArray(instructions)
+        )
+          throw new Error('工序指令必须是 JSON 对象');
+        return {
+          operationCode: field('operationCode'),
+          name: field('name'),
+          workCenterCode: field('workCenterCode'),
+          sequence: sameOrder ? Number(versionText(original[index]?.sequence)) : (index + 1) * 10,
+          setupMinutes: field('setupMinutes'),
+          runMinutesPerUnit: field('runMinutesPerUnit'),
+          instructions,
+        };
+      });
+      const productItemVersionId = values.product ?? '';
+      await saveManufacturingVersion(
+        {
+          ...bundle,
+          path: '/api/v1/manufacturing-routings',
+          rootKey: 'routingId',
+          label: '工艺路线',
+          error: bundle.submitError,
+          submit: ports.submit,
+          closeForm,
+          sync: io.sync,
+          reloadDetail: io.reloadDetail,
+        },
+        source,
+        {
+          ...effectiveDatePatch(source, values.effectiveAt ?? ''),
+          ...(productItemVersionId ===
+          versionText(source.product_item_version_id ?? source.productItemVersionId)
+            ? {}
+            : { productItemVersionId }),
+          ...(sameVersionContent(operations, sourceOperations(source)) ? {} : { operations }),
+        },
+      );
+    } catch (error: unknown) {
+      io.actionFailed(error, '工序指令必须是 JSON 对象');
+    }
+  };
+
   // 创建载荷与原 vanilla「创建标准工艺路线」表单逐字节一致（单工序 TUFT 场景：
   // productItemId 取所选版本行的 itemId、publish 恒 false、effectiveAt 归一、
   // sequence 10、instructions {}）；多工序为同端点形状的 additive 能力（sequence
@@ -221,6 +305,7 @@ export function createRoutingMutations(
   const runCreate = async (values: Readonly<Record<string, string>>): Promise<void> => {
     bundle.submitError.value = '';
     bundle.actionError.value = '';
+    if (bundle.versionSource.value) return saveVersion(bundle.versionSource.value, values);
     const choiceOf = (versionId: string): string =>
       ports.itemVersionChoices.find((choice) => choice.value === versionId)?.itemId ?? '';
     const field = (row: string, name: string): string => values[`${row}:${name}`] ?? '';
@@ -255,9 +340,18 @@ export function createRoutingMutations(
     closeForm,
     runPublish,
     runCreate,
+    openVersion: (row: RoutingRow): void => {
+      const original = versionRecords(row.operations);
+      rowSequence = original.length;
+      bundle.operationRows.value = original.map((_, index) => `o${String(index + 1)}`);
+      bundle.versionSource.value = row;
+      bundle.activeForm.value = 'create';
+      bundle.submitError.value = '';
+      bundle.notice.value = '';
+    },
     addOperationRow: (): void => {
       rowSequence += 1;
-      bundle.operationRows.value = [...bundle.operationRows.value, `o${String(rowSequence + 1)}`];
+      bundle.operationRows.value = [...bundle.operationRows.value, `o${String(rowSequence)}`];
     },
     removeOperationRow: (rowId: string): void => {
       bundle.operationRows.value = bundle.operationRows.value.filter((row) => row !== rowId);

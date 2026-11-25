@@ -4,6 +4,7 @@
 import { DetailDrawer, StatusBadge } from '@kingturf/ui';
 import { askPublishVersion } from './console-confirm';
 import { FocusAnchor } from './focus-anchor';
+import { VersionHistoryAction, publishedVersionId } from './manufacturing-version-ui';
 import { ConsoleNotice } from './console-notice';
 import type { RoutingRow } from './routing-ports';
 import {
@@ -69,12 +70,13 @@ export const RoutingDetailDrawer = ({ state }: DetailProps) => {
   if (!row) return null;
   const detail = state.detail ?? row;
   const versions = routingRecords(detail.versions);
+  const currentId = publishedVersionId(versions);
   // TD-WF-014④：草稿版本带「发布」按钮；发布后它消失，焦点锚点据此把键盘焦点带回抽屉。
   const focusToken = (versions.length > 0 ? versions : [row])
     .map((version) => state.ports.textValue(version.status, ''))
     .join(',');
-  const latest = versions[0];
-  const operations = latest ? routingOperations(latest) : routingOperations(row);
+  const selected = versions.find((version) => version.id === row.id) ?? versions[0] ?? row;
+  const operations = routingOperations(selected);
   return (
     <DetailDrawer
       title={`工艺路线详情 · ${state.ports.recordText(row, 'code', 'code')}`}
@@ -133,12 +135,24 @@ export const RoutingDetailDrawer = ({ state }: DetailProps) => {
                   发布
                 </button>
               ) : null}
+              <VersionHistoryAction
+                testId="kt-routing"
+                row={version}
+                currentId={currentId}
+                start={state.openVersion}
+                enabled={
+                  state.mayManage &&
+                  !state.detailLoading &&
+                  versions.length > 0 &&
+                  Object.hasOwn(version, 'operations')
+                }
+              />
             </span>
           );
         })}
       </div>
       <p class="console-label">
-        {`顺序步骤（${latest ? versionLabel(state, latest.status) + ' · 第 ' + state.ports.textValue(latest.version, '?') + ' 版' : '当前行'}）`}
+        {`顺序步骤（${versionLabel(state, selected.status) + ' · 第 ' + state.ports.textValue(selected.version, '?') + ' 版'}）`}
       </p>
       <div data-testid="kt-routing-steps-wrap">
         {operations.length > 0 ? (

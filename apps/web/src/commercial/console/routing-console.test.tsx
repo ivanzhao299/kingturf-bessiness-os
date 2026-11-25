@@ -317,7 +317,9 @@ describe('U3-MFG-3 工艺路线控制台：筛选 / 检索 / 分页一体化', (
 
 describe('U3-MFG-3 工艺路线控制台：详情抽屉（顺序步骤视图）', () => {
   it('查看行经 loadDetail 聚合产品/版本历史与工序升序步骤视图', async () => {
-    const ports = portsFor(undefined, ['routing:manage'], {
+    const selectedDraft = (detail.versions as readonly RoutingRow[])[0];
+    if (!selectedDraft) throw new Error('missing routing draft');
+    const ports = portsFor([selectedDraft], ['routing:manage'], {
       loadDetail: vi.fn().mockResolvedValue(detail),
     });
     const host = mount(ports);
@@ -596,4 +598,60 @@ describe('U3-MFG-3 纯展示助手：operationsOf 行序编号', () => {
     });
     expect(operations[1]?.operationCode).toBe('COAT');
   });
+});
+
+it('prefills exact routing work times and submits edited instructions in source order', async () => {
+  const original = {
+    ...operation(8, 'TUFT', '0.8'),
+    runMinutesPerUnitText: '0.800000',
+    instructions: { gate: 'original' },
+  };
+  const source = routingRow({ product_item_version_id: 'prodv-1', operations: [original] });
+  const created = routingRow({
+    id: 'routingv-3',
+    version: 3,
+    status: 'DRAFT',
+    operations: [{ ...original, instructions: { gate: 'edited' } }],
+  });
+  const submit = vi.fn().mockResolvedValue(created);
+  const host = mount(
+    portsFor([source], ['routing:manage'], {
+      loadDetail: vi
+        .fn()
+        .mockResolvedValueOnce({ ...detail, versions: [source] })
+        .mockResolvedValue({ ...detail, versions: [created, source] }),
+      submit,
+    }),
+  );
+  byTestId(host, 'kt-routing-open').click();
+  await flush();
+  byTestId(host, 'kt-routing-new-version').click();
+  await flush();
+  const drawer = element(host.querySelector('.detail-drawer'));
+  expect(drawer.textContent).toContain('以第 1 版为底稿');
+  expect(element(drawer.querySelector('[name="o1:runMinutesPerUnit"]')).value).toBe('0.800000');
+  expect(element(drawer.querySelector('[name="o1:instructions"]')).value).toBe(
+    '{"gate":"original"}',
+  );
+  await type(host, '.detail-drawer', 'o1:instructions', '{"gate":"edited"}');
+  await submitDrawer(host);
+  expect(submit).toHaveBeenCalledExactlyOnceWith(
+    '/api/v1/manufacturing-routings/routing-root/versions',
+    {
+      copyFromVersionId: source.id,
+      operations: [
+        {
+          operationCode: 'TUFT',
+          name: '簇绒',
+          workCenterCode: 'WC-TUFT-01',
+          sequence: 8,
+          setupMinutes: '60',
+          runMinutesPerUnit: '0.800000',
+          instructions: { gate: 'edited' },
+        },
+      ],
+    },
+  );
+  expect(byTestId(host, 'kt-routing-steps-wrap').textContent).toContain('簇绒');
+  expect(element(host.querySelector('.drawer-footer')).textContent).toContain('第 3 版草稿');
 });
