@@ -57,10 +57,10 @@ export function appendProcurementView(context: OperationsViewContext): void {
   const refreshSummary = appendProcurementSummary(
     panel,
     () => ({
-      suppliers: controller.views.get('/api/v1/suppliers') ?? [],
-      rfqs: controller.views.get('/api/v1/procurement-rfqs') ?? [],
-      purchaseOrders: controller.views.get('/api/v1/purchase-orders') ?? [],
-      balances: controller.views.get('/api/v1/inventory-balances') ?? [],
+      suppliers: controller.views.get('/api/v1/suppliers'),
+      rfqs: controller.views.get('/api/v1/procurement-rfqs'),
+      purchaseOrders: controller.views.get('/api/v1/purchase-orders'),
+      balances: controller.views.get('/api/v1/inventory-balances'),
     }),
     recordText,
     new Set<string>(procurementSubRoutes(permissions)),

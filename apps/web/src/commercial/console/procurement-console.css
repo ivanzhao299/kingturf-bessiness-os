@@ -146,21 +146,3 @@
   padding-top: 0;
   border-top: 0;
 }
-
-/* ===== ② 采购概览 · 可点汇总卡 ===== */
-/* 可点入子路由的汇总卡是指向该路由的锚点：沿用指标卡的外观与文案，只去掉链接默认样式，
-   并给出悬停与键盘焦点反馈（同治理域概览的 a.metric）。 */
-a.procurement-summary-link {
-  display: block;
-  color: inherit;
-  text-decoration: none;
-}
-
-a.procurement-summary-link:hover {
-  color: var(--kt-color-brand-strong);
-}
-
-a.procurement-summary-link:focus-visible {
-  outline: 2px solid var(--kt-color-info);
-  outline-offset: 2px;
-}

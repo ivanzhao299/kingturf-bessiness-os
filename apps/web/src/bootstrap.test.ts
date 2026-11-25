@@ -2349,7 +2349,7 @@ describe('web bootstrap', () => {
 
   // TD-PROC-013：采购概览汇总卡与修复前的制造汇总卡同款「渲染一次」——在子路由新建供应商、发出询价、
   // 签发订单之后回到概览，卡片仍是首渲染的数字。
-  it('recomputes the procurement overview cards from the current views without replacing them (TD-PROC-013)', () => {
+  it('recomputes the procurement overview cards from the current views without replacing them (TD-PROC-013)', async () => {
     type Rows = readonly Record<string, unknown>[];
     let snapshot: Readonly<{
       suppliers: Rows;
@@ -2370,14 +2370,15 @@ describe('web bootstrap', () => {
       recordText,
       new Set<string>(['procurement/suppliers', 'procurement/rfqs', 'procurement/purchase-orders']),
     );
-    const cards = (): readonly RenderedElement[] => rendered.findByClass('metric-card');
-    expect(cards().map((card) => [card.tagName, card.textContent])).toEqual([
-      ['a', '待准入供应商\n1 家'],
-      ['a', '询价进行中\n1 单'],
-      ['a', '待收采购单\n1 单'],
-      ['div', '待检库存\n0 批'],
+    const cards = (): readonly RenderedElement[] => rendered.findByClass('stat-card');
+    expect(cards().map((card) => [card.tagName, ...summaryContent(card)])).toEqual([
+      ['a', '待准入供应商', '1', '家'],
+      ['a', '询价进行中', '1', '单'],
+      ['a', '待收采购单', '1', '单'],
+      ['div', '待检库存', '0', '批'],
     ]);
-    const [firstSuppliers] = cards();
+    const originalCards = cards();
+    const [firstSuppliers] = originalCards;
     if (!firstSuppliers) throw new Error('suppliers summary card missing');
     // 在子路由新建一条供应商、关闭询价、订单收齐、多出一批待检库存之后的新快照：只有文字变。
     // 节点是同一实例（锚点、标识不变），不追加卡片；「待检库存」没有对应子路由，保持纯指标。
@@ -2391,16 +2392,51 @@ describe('web bootstrap', () => {
       balances: [{ id: 'b-1', qualityStatus: 'QUARANTINE' }],
     };
     refresh();
+    await vi.waitFor(() => {
+      expect(cards().map(summaryContent)).toEqual([
+        ['待准入供应商', '2', '家'],
+        ['询价进行中', '0', '单'],
+        ['待收采购单', '0', '单'],
+        ['待检库存', '1', '批'],
+      ]);
+    });
     expect(cards()).toHaveLength(4);
-    expect(cards()[0]).toBe(firstSuppliers);
+    originalCards.forEach((original, index) => {
+      expect(cards()[index]).toBe(original);
+    });
     expect(firstSuppliers.tagName).toBe('a');
-    expect(firstSuppliers.getAttribute('data-testid')).toBe('procurement-summary-suppliers');
-    expect(cards().map((card) => card.textContent)).toEqual([
-      '待准入供应商\n2 家',
-      '询价进行中\n0 单',
-      '待收采购单\n0 单',
-      '待检库存\n1 批',
+    expect(cards().map((card) => card.getAttribute('data-testid'))).toEqual([
+      'procurement-summary-suppliers',
+      'procurement-summary-rfqs',
+      'procurement-summary-purchase-orders',
+      'procurement-summary-inventory',
     ]);
+  });
+
+  it('distinguishes unavailable procurement lists from readable empty lists', async () => {
+    type Rows = readonly Record<string, unknown>[];
+    let balances: Rows | undefined = undefined;
+    const target = el('section', 'summary-target');
+    const rendered = target as unknown as RenderedElement;
+    const refresh = appendProcurementSummary(
+      target,
+      () => ({ suppliers: undefined, rfqs: [], purchaseOrders: [], balances }),
+      recordText,
+      new Set(['procurement/suppliers']),
+    );
+    const [suppliers, rfqs, , inventory] = rendered.findByClass('stat-card');
+    if (!suppliers || !rfqs || !inventory) throw new Error('procurement summary cards missing');
+    expect(suppliers.getAttribute('href')).toBe('#/procurement/suppliers');
+    expect(summaryContent(suppliers)).toEqual(['待准入供应商', '—', '读不到清单']);
+    expect(summaryContent(rfqs)).toEqual(['询价进行中', '0', '单']);
+    expect(summaryContent(inventory)).toEqual(['待检库存', '—', '读不到清单']);
+    expect(inventory.tagName).toBe('div');
+    balances = [];
+    refresh();
+    await vi.waitFor(() => {
+      expect(summaryContent(inventory)).toEqual(['待检库存', '0', '批']);
+    });
+    expect(rendered.findByClass('stat-card')[3]).toBe(inventory);
   });
 
   // TD-PROC-012：「待准入供应商」按物料准入记录算——没有任何已批准或可有条件批准（APPROVED / CONDITIONAL）
@@ -2433,11 +2469,11 @@ describe('web bootstrap', () => {
       new Set<string>(),
     );
     const rendered = target as unknown as RenderedElement;
-    expect(rendered.findByClass('metric-card').map((card) => card.textContent)).toEqual([
-      '待准入供应商\n3 家',
-      '询价进行中\n0 单',
-      '待收采购单\n0 单',
-      '待检库存\n0 批',
+    expect(rendered.findByClass('stat-card').map(summaryContent)).toEqual([
+      ['待准入供应商', '3', '家'],
+      ['询价进行中', '0', '单'],
+      ['待收采购单', '0', '单'],
+      ['待检库存', '0', '批'],
     ]);
   });
 
@@ -2787,19 +2823,19 @@ describe('web bootstrap', () => {
     const summaryCards = (workspace: RenderedElement): readonly RenderedElement[] => {
       const overview = workspace.findByClass('procurement-workbench')[0];
       if (!overview) throw new Error('procurement overview panel missing');
-      return overview.findByClass('metric-card');
+      return overview.findByClass('stat-card');
     };
     const linkOf = (card: RenderedElement): string | undefined =>
-      (card as unknown as { href?: string }).href;
+      card.getAttribute('href') ?? undefined;
     // 口径与文案沿用原面板（采购专员口径的权限：供应商、采购与库存可读）。
     const buyer = summaryCards(
       await procurementWorkspace(['supplier:read', 'procurement:read', 'inventory:read']),
     );
-    expect(buyer.map((card) => card.textContent)).toEqual([
-      '待准入供应商\n1 家',
-      '询价进行中\n1 单',
-      '待收采购单\n1 单',
-      '待检库存\n1 批',
+    expect(buyer.map(summaryContent)).toEqual([
+      ['待准入供应商', '1', '家'],
+      ['询价进行中', '1', '单'],
+      ['待收采购单', '1', '单'],
+      ['待检库存', '1', '批'],
     ]);
     // 「待检库存」不做链接：它的明细是本页下方的「批次库存台账」，收货管理页只列收货单。
     expect(buyer.map((card) => [card.tagName, linkOf(card)])).toEqual([
@@ -2818,8 +2854,19 @@ describe('web bootstrap', () => {
       ['a', '#/procurement/purchase-orders'],
       ['div', undefined],
     ]);
+    expect(buyerWithoutSuppliers[0] && summaryContent(buyerWithoutSuppliers[0])).toEqual([
+      '待准入供应商',
+      '—',
+      '读不到清单',
+    ]);
     const inventoryOnly = summaryCards(await procurementWorkspace(['inventory:read']));
     expect(inventoryOnly.map((card) => card.tagName)).toEqual(['div', 'div', 'div', 'div']);
+    expect(inventoryOnly.map(summaryContent)).toEqual([
+      ['待准入供应商', '—', '读不到清单'],
+      ['询价进行中', '—', '读不到清单'],
+      ['待收采购单', '—', '读不到清单'],
+      ['待检库存', '1', '批'],
+    ]);
   });
 
   it('groups procurement navigation as one expandable domain with the overview and its readable sub-routes (PROC-2)', () => {
