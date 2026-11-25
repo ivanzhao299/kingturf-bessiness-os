@@ -638,8 +638,7 @@ describe('FormSection：必填的文本类输入（TD-UI-013）', () => {
     expect(host.document.activeElement).toBe(fieldControl(host, 'colour'));
   });
 
-  // 字段在视口外（长表单滚到了底部的提交按钮）：以字段为准，让浏览器把它滚进来——与原生气泡一致。
-  it('lets the browser scroll the missing field into view when it is outside the viewport', async () => {
+  it('scrolls the missing field into view even when focus alone does not scroll the drawer', async () => {
     const host = mountDom();
     mount(
       <FormSection
@@ -652,24 +651,12 @@ describe('FormSection：必填的文本类输入（TD-UI-013）', () => {
     );
     const control = fieldControl(host, 'title');
     const focus = vi.spyOn(control, 'focus');
-    // 测试 DOM 没有布局：给这一个用例补上最小的位置信息（字段在视口上方 500px，视口高 900px）。
-    const scope = globalThis as unknown as { window: { innerHeight?: number } };
-    const previousHeight = scope.window.innerHeight;
-    scope.window.innerHeight = 900;
-    Object.defineProperty(control, 'getBoundingClientRect', {
-      value: () => ({ top: -500, bottom: -470 }),
-      configurable: true,
-    });
-    try {
-      submitButton(host).click();
-      await flush();
-    } finally {
-      // 测试环境本来没有 innerHeight：还原成「没有」，而不是留下一个 undefined 值。
-      if (previousHeight === undefined) delete scope.window.innerHeight;
-      else scope.window.innerHeight = previousHeight;
-    }
-    // 第一次聚焦不带动滚动（提示区已先滚进视口）；发现字段仍在视口外，再聚焦一次由浏览器滚进来。
-    expect(focus.mock.calls).toEqual([[{ preventScroll: true }], []]);
+    const scroll = vi.fn();
+    Object.defineProperty(control, 'scrollIntoView', { value: scroll, configurable: true });
+    submitButton(host).click();
+    await flush();
+    expect(scroll).toHaveBeenCalledExactlyOnceWith({ block: 'nearest' });
+    expect(focus).toHaveBeenCalledExactlyOnceWith({ preventScroll: true });
     expect(host.document.activeElement).toBe(control);
   });
 

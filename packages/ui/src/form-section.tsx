@@ -60,32 +60,7 @@ type AlertNode = Readonly<{
   focus: (options?: { preventScroll?: boolean }) => void;
 }>;
 
-// 表单控件上本组件用到的最小面（input / select / textarea，浏览器与测试 DOM double 通用）。
-type ControlNode = Readonly<{
-  focus: (options?: { preventScroll?: boolean }) => void;
-  getBoundingClientRect?: () => { top: number; bottom: number };
-}>;
-
-// 控件是否完整落在视口内。量不到位置时（测试 DOM double 没有 getBoundingClientRect / innerHeight）
-// 视为在视口内：不做第二次聚焦。
-const inViewport = (node: ControlNode): boolean => {
-  const view = globalThis.window as unknown as { innerHeight?: number } | undefined;
-  if (typeof node.getBoundingClientRect !== 'function' || typeof view?.innerHeight !== 'number')
-    return true;
-  const rect = node.getBoundingClientRect();
-  const height: number = view.innerHeight;
-  return rect.top >= 0 && rect.bottom <= height;
-};
-
-/**
- * 把键盘焦点交给缺填的字段，不让这一步自己产生滚动（提示区已先按「nearest」滚进视口）：字段本来就在
- * 视口内时提示和字段都看得见；长表单里字段在视口外时以字段为准——让浏览器把它滚进来，与原生气泡把
- * 焦点放到这个字段上是同一种行为（否则焦点落在一个看不见的输入框上，输进去的字也看不见）。
- */
-const focusMissingField = (field: ControlNode): void => {
-  field.focus({ preventScroll: true });
-  if (!inViewport(field)) field.focus();
-};
+type ControlNode = AlertNode;
 
 // 提交被表单校验拦下时要聚焦的字段：只有第一个出错的字段是「必填且为空」时才把焦点交给它
 // （下拉与文本类输入同一规则）；格式不合法等其它提示仍由提示区承载并获焦。按字段顺序取第一个，
@@ -167,8 +142,11 @@ export const FormSection = (props: FormSectionProps) => {
     // TD-UI-013：必填字段为空时焦点交给第一个缺填的字段（见 focusMissingField）；其它情况
     // （未勾选确认、外部错误）焦点仍在提示区。
     const field = missing === null ? undefined : controls.current[missing];
-    if (field !== undefined && field !== null) focusMissingField(field);
-    else node.focus({ preventScroll: true });
+    if (field !== undefined && field !== null) {
+      // nearest 按各滚动容器裁切判断。字段已获焦时，再调用 focus 不一定会滚动它。
+      field.scrollIntoView?.({ block: 'nearest' });
+      field.focus({ preventScroll: true });
+    } else node.focus({ preventScroll: true });
   }, [attempt, shownError, missing]);
 
   const onInput = (field: FormSectionField, value: string): void => {
