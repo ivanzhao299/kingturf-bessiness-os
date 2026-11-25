@@ -5,7 +5,7 @@ import { opsForm } from './ops-form';
 type ComplaintContext = Pick<OperationsViewContext, 'controller' | 'ports' | 'permissions'>;
 
 import type { FormSectionField } from '@kingturf/ui';
-import { complaintTransition } from './complaint-forms';
+import { complaintCommandKey, complaintTransition } from './complaint-forms';
 import {
   capaCreate,
   capaAction,
@@ -54,7 +54,7 @@ export function complaintClosure(context: ComplaintContext, complaint: FinRow, d
               }
             : {}),
           ...(action === 'disposition' ? { disposition: values.disposition } : {}),
-          idempotencyKey: requestId(),
+          idempotencyKey: complaintCommandKey(requestId),
         },
       ],
       action === 'disposition' || action === 'close'

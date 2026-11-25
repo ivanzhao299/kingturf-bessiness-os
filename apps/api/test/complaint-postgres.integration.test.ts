@@ -6,6 +6,7 @@ import type { ApiDependencies } from '../src/app.ts';
 import { complaintsAttempts } from '../src/routes/dispatch/complaints.ts';
 import { dispatchFastifyRouteGroup } from '../src/routes/fastify/registry.ts';
 import type { AuthorizationContext } from '@kingturf/domain';
+import { ownedHttpApi } from './fixtures/owned-http-api.js';
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString)
@@ -558,4 +559,72 @@ describe('KT-L20 PostgreSQL complaint, NCR, and CAPA integrity', () => {
       ).rows[0],
     ).toEqual({ n: 1 });
   });
+  it('submits complaint registration, batch triage and investigation with a stable opaque command key over HTTP', async () => {
+    const http = await ownedHttpApi({ db, schema });
+    try {
+      const user = await http.user(reporter, company);
+      await user.grant(
+        ['complaint:create', 'complaint:read', 'complaint:triage', 'complaint:assign'],
+        ['COMPANY'],
+      );
+      const write = async (
+        path: string,
+        payload: Record<string, unknown>,
+        keyName: 'idempotencyKey' | 'batchKey' = 'idempotencyKey',
+      ) => {
+        const uuid = randomUUID();
+        const rejected = await user.request(path, 'POST', { ...payload, [keyName]: uuid });
+        expect(rejected.status).toBe(400);
+        expect(await rejected.json()).toMatchObject({
+          error: { message: 'Code must be 1-64 uppercase letters, digits, underscore, or hyphen' },
+        });
+        return user.request(path, 'POST', { ...payload, [keyName]: `CMP-${uuid.toUpperCase()}` });
+      };
+      const created = await write('/api/v1/complaints', {
+        complaintNumber: 'CMP-HTTP',
+        customerId: customer,
+        slaPolicyVersionId: policy,
+        channel: 'EMAIL',
+        defectCategory: 'OTHER',
+        severity: 'MAJOR',
+        occurredAt: '2026-08-01T00:00:00.000Z',
+        reportedAt: '2026-08-02T00:00:00.000Z',
+        description: 'Customer reports quality variance',
+        customerRequest: 'Investigate',
+        initialSnapshot: { customerReference: 'E-CMP' },
+      });
+      expect(created.status).toBe(201);
+      const createdRow = (await created.json()) as { id: string; state: string };
+      expect(createdRow).toMatchObject({ state: 'REPORTED' });
+      const detail = await user.request(`/api/v1/complaints/${createdRow.id}`);
+      expect(detail.status).toBe(200);
+      const row = (await detail.json()) as { id: string; version: number; state: string };
+      expect(row).toMatchObject({ id: createdRow.id, version: 1, state: 'REPORTED' });
+      const assigned = await write(
+        '/api/v1/complaints/batch-triage',
+        {
+          items: [
+            {
+              id: row.id,
+              expectedVersion: row.version,
+              assignedTo: investigator,
+              reason: 'Assign real investigation',
+            },
+          ],
+        },
+        'batchKey',
+      );
+      expect(assigned.status).toBe(200);
+      expect(await assigned.json()).toMatchObject({ succeeded: 1 });
+      const updated = await write(`/api/v1/complaints/${row.id}/investigate`, {
+        expectedVersion: 2,
+        reason: 'Investigation started',
+        evidence: { reference: 'E-INVESTIGATE' },
+      });
+      expect(updated.status).toBe(201);
+      expect(await updated.json()).toMatchObject({ state: 'INVESTIGATING', version: 3 });
+    } finally {
+      await http.close();
+    }
+  }, 20_000);
 });

@@ -40,7 +40,7 @@ const cases: readonly Case[] = [
       rootCauseSnapshot: { conclusion: 'fixed root cause' },
       complaintExpectedVersion: 7,
       evidence: { reference: 'CREATE-EVIDENCE' },
-      idempotencyKey: 'fixed-command-key',
+      idempotencyKey: 'CMP-FIXED-COMMAND-KEY',
     },
   },
   {
@@ -59,7 +59,7 @@ const cases: readonly Case[] = [
       ownerId: 'employee-2',
       dueAt: '2026-10-21T12:00',
       expectedVersion: 8,
-      idempotencyKey: 'fixed-command-key',
+      idempotencyKey: 'CMP-FIXED-COMMAND-KEY',
     },
   },
   {
@@ -71,7 +71,7 @@ const cases: readonly Case[] = [
       completedAt: '2026-10-17T12:34:56.000Z',
       evidence: { reference: 'COMPLETE-EVIDENCE' },
       expectedCapaVersion: 9,
-      idempotencyKey: 'fixed-command-key',
+      idempotencyKey: 'CMP-FIXED-COMMAND-KEY',
     },
   },
   {
@@ -94,7 +94,7 @@ const cases: readonly Case[] = [
       evidence: { reference: 'VERIFY-EVIDENCE' },
       expectedVersion: 11,
       complaintExpectedVersion: 10,
-      idempotencyKey: 'fixed-command-key',
+      idempotencyKey: 'CMP-FIXED-COMMAND-KEY',
     },
   },
   {
@@ -106,7 +106,7 @@ const cases: readonly Case[] = [
       expectedVersion: 12,
       reason: 'fixed closure reason',
       evidence: { reference: 'CLOSE-EVIDENCE' },
-      idempotencyKey: 'fixed-command-key',
+      idempotencyKey: 'CMP-FIXED-COMMAND-KEY',
     },
   },
 ];
@@ -171,7 +171,7 @@ describe('CAPA forms preserve concurrency versions and immutable evidence payloa
       expect(f.requestId).toHaveBeenCalledTimes(2);
       expect(f.submit.mock.calls[1]).toEqual([
         entry.path,
-        { ...entry.payload, idempotencyKey: 'second-command-key' },
+        { ...entry.payload, idempotencyKey: 'CMP-SECOND-COMMAND-KEY' },
       ]);
       refresh.mockRejectedValueOnce(new Error('refresh rejected'));
       await write();

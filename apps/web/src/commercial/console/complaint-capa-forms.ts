@@ -1,6 +1,7 @@
 import type { OperationsViewContext } from '../operations-view-ports';
 import { type FinRow } from './fin-kit';
 import { opsForm } from './ops-form';
+import { complaintCommandKey } from './complaint-forms';
 import type { FormSectionField } from '@kingturf/ui';
 
 type ComplaintContext = Pick<OperationsViewContext, 'controller' | 'ports' | 'permissions'>;
@@ -45,7 +46,7 @@ export function capaCreate(context: ComplaintContext, complaint: FinRow, ncrId: 
         rootCauseSnapshot: { conclusion: values.rootCause },
         complaintExpectedVersion: complaint.version,
         evidence: { reference: values.evidenceReference },
-        idempotencyKey: requestId(),
+        idempotencyKey: complaintCommandKey(requestId),
       },
     ],
   );
@@ -89,7 +90,7 @@ export function capaAction(context: ComplaintContext, capaId: string, capaVersio
       {
         ...values,
         expectedVersion: capaVersion,
-        idempotencyKey: requestId(),
+        idempotencyKey: complaintCommandKey(requestId),
       },
     ],
   );
@@ -108,7 +109,7 @@ export function capaComplete(context: ComplaintContext, incomplete: FinRow, capa
         completedAt: new Date().toISOString(),
         evidence: { reference: values.evidenceReference },
         expectedCapaVersion: capaVersion,
-        idempotencyKey: requestId(),
+        idempotencyKey: complaintCommandKey(requestId),
       },
     ],
   );
@@ -157,7 +158,7 @@ export function capaVerify(
         evidence: { reference: values.evidenceReference },
         expectedVersion: capaVersion,
         complaintExpectedVersion: complaint.version,
-        idempotencyKey: requestId(),
+        idempotencyKey: complaintCommandKey(requestId),
       },
     ],
   );
@@ -181,7 +182,7 @@ export function capaClose(
         expectedVersion: capaVersion,
         reason: values.reason,
         evidence: { reference: values.evidenceReference },
-        idempotencyKey: requestId(),
+        idempotencyKey: complaintCommandKey(requestId),
       },
     ],
     '关闭后整改单归档。',

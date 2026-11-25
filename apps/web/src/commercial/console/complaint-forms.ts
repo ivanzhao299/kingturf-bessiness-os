@@ -4,6 +4,10 @@ import { opsForm } from './ops-form';
 
 type ComplaintContext = Pick<OperationsViewContext, 'controller' | 'ports' | 'permissions'>;
 
+// Complaint command validators require a stable code; the random UUID remains opaque.
+export const complaintCommandKey = (requestId: () => string): string =>
+  `CMP-${requestId().toUpperCase()}`;
+
 export function complaintCreate(context: ComplaintContext, slaPolicies: readonly FinRow[]) {
   const { controller } = context;
   const { recordText, COMPLAINT_SEVERITY_LABELS, requestId } = context.ports;
@@ -71,7 +75,7 @@ export function complaintCreate(context: ComplaintContext, slaPolicies: readonly
           description: values.description,
           customerRequest: values.customerRequest,
           initialSnapshot: { customerReference: values.customerReference },
-          idempotencyKey: requestId(),
+          idempotencyKey: complaintCommandKey(requestId),
         },
       ];
     },
@@ -149,7 +153,7 @@ export function complaintBatch(context: ComplaintContext, selected: ReadonlyMap<
     (values) => [
       '/api/v1/complaints/batch-triage',
       {
-        batchKey: requestId(),
+        batchKey: complaintCommandKey(requestId),
         items: [...selected.values()].map((item) => ({
           id: item.id,
           expectedVersion: item.version,
@@ -184,9 +188,10 @@ export function complaintTransition(
         expectedVersion: complaint.version,
         reason: values.reason,
         evidence: { reference: values.evidenceReference },
-        idempotencyKey: requestId(),
+        idempotencyKey: complaintCommandKey(requestId),
       },
     ],
+    action === 'close' ? '确认后将归档投诉及其质量闭环记录。' : undefined,
   );
 }
 
@@ -232,7 +237,7 @@ export function complaintNcr(context: ComplaintContext, complaint: FinRow, id: s
         temporaryContainment: values.temporaryContainment ?? '',
         complaintExpectedVersion: complaint.version,
         evidence: { reference: values.evidenceReference },
-        idempotencyKey: requestId(),
+        idempotencyKey: complaintCommandKey(requestId),
       },
     ],
   );
