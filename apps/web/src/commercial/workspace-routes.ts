@@ -14,7 +14,6 @@ export function assignCommercialRouteViews(
     'contract-workbench': 'contracts',
     'order-workbench': 'sales-orders',
     'order-360-workbench': 'order-360',
-    'ar-workbench': 'receivables',
     'collection-workbench': 'collections',
     'payment-workbench': 'payments',
     'commission-workbench': 'commissions',
@@ -49,7 +48,6 @@ export function assignLegacyRouteViews(
     'credit-review': 'credit-review',
     'contract-evidence': 'contracts',
     'order-release': 'sales-orders',
-    'ar-aging': 'receivables',
     'payment-intake': 'payments',
     reconciliation: 'payments',
   };

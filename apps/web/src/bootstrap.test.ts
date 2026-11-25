@@ -338,7 +338,7 @@ it('captures artificial-turf project handoff fields without test-channel evidenc
     readBoundSource('./commercial/console/policy-console.tsx', 'export function PolicyConsolePage'),
     readBoundSource('./commercial/console/quote-console.tsx', 'export function QuoteConsolePage'),
     readBoundSource('./commercial/console/credit-console.tsx', 'export function CreditConsolePage'),
-    readBoundSource('./commercial/receivables-view.ts', 'export function appendReceivablesView'),
+    readBoundSource('./commercial/console/ar-host.ts', 'export function appendArConsole'),
     readBoundSource('./commercial/collections-view.ts', 'export function appendCollectionsView'),
     readBoundSource(
       './commercial/collection-actions.ts',
@@ -932,7 +932,6 @@ it('binds each major business workbench to one process-stage route', () => {
     ['quote-workbench', 'quotes'],
     ['contract-workbench', 'contracts'],
     ['order-workbench', 'sales-orders'],
-    ['ar-workbench', 'receivables'],
     ['payment-workbench', 'payments'],
     ['production-workbench', 'production-orders'],
     ['quality-workbench', 'quality-inspection'],
@@ -940,7 +939,9 @@ it('binds each major business workbench to one process-stage route', () => {
   ] as const)
     expect(source).toContain(`'${workbench}': '${route}'`);
   expect(source).not.toContain("'pipeline-board': 'sales-workspace");
-  expect(source).not.toContain("'ar-workbench': 'sales-workspace ar-payment");
+  expect(
+    readBoundSource('./commercial/console/ar-host.ts', 'export function appendArConsole'),
+  ).toContain("finHostSection('ar-console', 'kt-ar-console', 'receivables')");
 });
 
 it.each([
@@ -1919,8 +1920,8 @@ describe('web bootstrap', () => {
     const workspace = commercialWorkspaceStructure('mobile', true) as unknown as RenderedElement;
     expect(workspace.className).toContain('mobile');
     expect(workspace.className).toContain('immutable');
-    expect(workspace.findByClass('commercial-form')).toHaveLength(12);
-    expect(workspace.findByClass('decision-evidence')).toHaveLength(12);
+    expect(workspace.findByClass('commercial-form')).toHaveLength(11);
+    expect(workspace.findByClass('decision-evidence')).toHaveLength(11);
     expect(workspace.textContent).toContain('已签发（只读）');
   });
 
@@ -3517,11 +3518,9 @@ describe('web bootstrap', () => {
       controller,
     ) as unknown as RenderedElement;
     expect(workspace.findByClass('order-workbench')).toHaveLength(1);
-    expect(workspace.findByClass('ar-workbench')).toHaveLength(1);
+    expect(workspace.findByClass('ar-console')).toHaveLength(1);
     expect(workspace.findByClass('payment-workbench')).toHaveLength(1);
     expect(workspace.textContent).toContain('SO-001');
-    expect(workspace.textContent).toContain('未核销 ¥400');
-    expect(workspace.textContent).toContain('已核销 600');
     expect(workspace.textContent).toContain('最近核销 1234567890ab');
     expect(workspace.textContent).not.toContain('JSON 请求');
   });

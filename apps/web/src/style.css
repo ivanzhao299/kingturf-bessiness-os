@@ -3093,20 +3093,6 @@ button {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
 }
-.qtc-card.overdue {
-  border-color: rgb(178 57 57 / 24%);
-  box-shadow: inset 3px 0 #b94a45;
-}
-.qtc-card .opportunity-alert {
-  display: inline-flex;
-  width: fit-content;
-  border-radius: 999px;
-  padding: 3px 7px;
-  background: #fff0ef;
-  color: #9a302f;
-  font-size: 9px;
-  font-weight: 760;
-}
 .readiness-heading {
   display: flex;
   align-items: baseline;

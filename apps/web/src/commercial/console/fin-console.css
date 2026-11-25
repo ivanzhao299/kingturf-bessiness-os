@@ -1,0 +1,114 @@
+/* FIN（财务域迁移）：应收 / 收款与核销 / 催收三个控制台的样式。取值全部来自 kt tokens
+   （ADR-0014），不写死颜色 / 间距。汇总卡用 @kingturf/ui 的 SummaryCards（stat-card*），
+   表格 / 抽屉 / 表单复用 @kingturf/ui components.css 原语，这里只加财务域的增量。 */
+
+/* 页面根：作为网格项允许收缩到容器宽度（宽表格在 .data-table 自己的滚动容器里滚）。 */
+.fin-page {
+  min-width: 0;
+}
+
+.fin-filters {
+  margin-bottom: var(--kt-space-2);
+}
+
+.fin-search {
+  display: flex;
+  flex: 1 1 16rem;
+  flex-wrap: wrap;
+  gap: var(--kt-space-2);
+  align-items: center;
+  min-width: 0;
+}
+
+.fin-search input[type='search'] {
+  flex: 1 1 10rem;
+  min-width: 0;
+}
+
+.fin-muted {
+  color: var(--kt-color-text-muted);
+  font-size: var(--kt-font-size-caption);
+  overflow-wrap: anywhere;
+}
+
+.fin-token,
+.fin-money {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* 页面里的分区（收款页的两张表）。 */
+.fin-section > h3 {
+  margin: 0 0 var(--kt-space-2);
+  font-size: var(--kt-font-size-lead);
+  font-weight: var(--kt-font-weight-semibold);
+  color: var(--kt-color-text);
+}
+
+/* 详情抽屉里的一节。 */
+.fin-section {
+  margin: 0 0 var(--kt-space-4);
+}
+
+.fin-section > .fin-muted {
+  margin: 0 0 var(--kt-space-2);
+}
+
+/* 字段清单：标签 / 值两列；值里的长文本（哈希、编号、名称）自动折行，不撑破抽屉。 */
+.fin-facts {
+  display: grid;
+  grid-template-columns: minmax(5rem, max-content) minmax(0, 1fr);
+  gap: var(--kt-space-1) var(--kt-space-3);
+  margin: 0;
+}
+
+.fin-facts > div {
+  display: contents;
+}
+
+.fin-facts dt {
+  color: var(--kt-color-text-muted);
+  font-size: var(--kt-font-size-caption);
+}
+
+.fin-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* 行项表（核销分配 / 处置时间线）：容器可横向滚动。 */
+.fin-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.fin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--kt-font-size-body);
+}
+
+.fin-table th,
+.fin-table td {
+  padding: var(--kt-space-1) var(--kt-space-2);
+  border-bottom: 1px solid var(--kt-color-border);
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.fin-table th {
+  color: var(--kt-color-text-muted);
+  font-size: var(--kt-font-size-caption);
+  font-weight: var(--kt-font-weight-semibold);
+  white-space: nowrap;
+}
+
+a.fin-link {
+  color: var(--kt-color-brand);
+}
+
+a.fin-link:focus-visible {
+  outline: 2px solid var(--kt-color-info);
+  outline-offset: 2px;
+}

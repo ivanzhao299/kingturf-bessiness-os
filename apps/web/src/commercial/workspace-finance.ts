@@ -1,24 +1,28 @@
+import type { AppRoute } from '../shared/navigation';
 import type { WorkspaceAssemblyContext } from './workspace-assembly-ports';
 import type { FinanceRiskViewContext } from './finance-risk-view-ports';
-import { appendReceivablesView } from './receivables-view';
+import { appendArConsole } from './console/ar-host';
+import type { FinHostController } from './console/fin-host-kit';
 import { appendCollectionsView } from './collections-view';
 import { appendPaymentsView } from './payments-view';
 import { appendCommissionView } from './commission-view';
 import { appendRiskView } from './risk-view';
 
 export function appendWorkspaceFinance(
-  context: WorkspaceAssemblyContext<FinanceRiskViewContext['controller']>,
+  context: WorkspaceAssemblyContext<FinHostController>,
   financeRiskViewPorts: FinanceRiskViewContext['ports'],
   riskPolicyControls: HTMLElement | null,
+  appRoutes: ReadonlySet<AppRoute>,
 ): void {
   const { workspace, status, controller, permissions } = context;
   if (controller && permissions.has('ar:read')) {
-    appendReceivablesView({
+    appendArConsole({
       workspace,
       status,
       controller,
       permissions,
       ports: financeRiskViewPorts,
+      appRoutes,
     });
   }
   if (controller && permissions.has('collection:read')) {

@@ -64,7 +64,7 @@ test('shows the released order, partial AR, payment, and reconciliation evidence
   await openAuthenticatedWorkspace(page);
   await openRoute(page, 'sales-orders');
   const order = page.locator('.order-workbench');
-  const ar = page.locator('.ar-workbench');
+  const ar = page.getByTestId('kt-ar-console');
   const payment = page.locator('.payment-workbench');
   await expect(order.getByText('SO-KT-P1-DEMO', { exact: true })).toBeVisible();
   await expect(order.getByText('¥950,000', { exact: true })).toBeVisible();
@@ -73,8 +73,11 @@ test('shows the released order, partial AR, payment, and reconciliation evidence
     contentType: 'image/png',
   });
   await openRoute(page, 'receivables');
-  await expect(ar.getByText('INV-KT-P1-DEMO', { exact: true })).toBeVisible();
-  await expect(ar.getByText('未核销 ¥0', { exact: true })).toBeVisible();
+  const seededAr = ar.getByRole('row').filter({
+    has: page.getByTestId('kt-ar-number').getByText('INV-KT-P1-DEMO', { exact: true }),
+  });
+  await expect(seededAr.getByTestId('kt-ar-number')).toBeVisible();
+  await expect(seededAr.getByTestId('kt-ar-remaining')).toHaveText('¥0');
   await testInfo.attach('receivable-desktop', {
     body: await ar.screenshot(),
     contentType: 'image/png',
@@ -103,7 +106,7 @@ test('keeps the P1 evidence usable on a mobile viewport', async ({ page }, testI
   await openRoute(page, 'sales-orders');
   await expect(page.locator('.order-workbench')).toBeVisible();
   await openRoute(page, 'receivables');
-  await expect(page.locator('.ar-workbench')).toBeVisible();
+  await expect(page.getByTestId('kt-ar-page')).toBeVisible();
   await openRoute(page, 'payments');
   await expect(page.locator('.payment-workbench')).toBeVisible();
   await openRoute(page, 'commissions');
