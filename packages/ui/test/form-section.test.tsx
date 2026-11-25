@@ -537,6 +537,7 @@ describe('FormSection（兼容 shared/forms.ts 校验语义）', () => {
 describe('FormSection：必填的文本类输入（TD-UI-013）', () => {
   const textTypes: readonly (readonly [string, FormSectionField['type']])[] = [
     ['单行文本（缺省类型）', undefined],
+    ['单行文本（显式类型）', 'text'],
     ['密码', 'password'],
     ['邮箱', 'email'],
     ['电话', 'tel'],
