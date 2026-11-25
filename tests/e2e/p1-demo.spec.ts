@@ -323,8 +323,12 @@ test('shows supplier qualification, received purchase order, receipt, and derive
   await openRoute(page, 'procurement');
   const workbench = page.locator('.procurement-workbench');
   await expect(workbench).toBeVisible();
-  await expect(workbench.getByText(/批次 LOT-KT-YARN-20260920-A/u)).toBeVisible();
-  await expect(workbench.getByText(/RAW-A01 · 结存 3704.5/u)).toBeVisible();
+  await openRoute(page, 'procurement/inventory');
+  const inventory = page.getByTestId('kt-inv-host');
+  const lot = inventory.getByRole('row').filter({ hasText: 'LOT-KT-YARN-20260920-A' });
+  await expect(lot.locator('[data-column="lot"]')).toHaveText('LOT-KT-YARN-20260920-A');
+  await expect(lot.locator('[data-column="location"]')).toHaveText('RAW-A01');
+  await expect(lot.locator('[data-column="quantity"]')).toHaveText('3704.5');
   await openRoute(page, 'procurement/supplier-quotes');
   const supplierQuotes = page.getByTestId('kt-sq-host');
   await expect(supplierQuotes.getByText(/报价 SQ-KT-YARN-2026-001/u)).toBeVisible();
@@ -340,9 +344,9 @@ test('shows supplier qualification, received purchase order, receipt, and derive
   );
   await page.keyboard.press('Escape');
   await expect(quotePrice).toBeHidden();
-  await openRoute(page, 'procurement');
+  await openRoute(page, 'procurement/inventory');
   await testInfo.attach('procurement-inventory-desktop', {
-    body: await workbench.screenshot(),
+    body: await inventory.screenshot(),
     contentType: 'image/png',
   });
 });

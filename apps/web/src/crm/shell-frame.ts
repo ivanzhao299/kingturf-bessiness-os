@@ -80,6 +80,7 @@ function appendNavGroups(navGroup: NavGroupBuilder): void {
     ['contracts', '采购订单', 'procurement/purchase-orders'],
     ['delivery', '收货管理', 'procurement/goods-receipts'],
     ['delivery', '供应商报价', 'procurement/supplier-quotes'],
+    ['delivery', '批次库存', 'procurement/inventory'],
   ]);
   navGroup('质量与交付', 'quality', [
     ['quality', '质量检验', 'quality-inspection'],

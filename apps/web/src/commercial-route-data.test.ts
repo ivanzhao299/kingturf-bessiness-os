@@ -112,6 +112,7 @@ const matrix: readonly (readonly [AppRoute, readonly string[]])[] = [
   ],
   ['procurement/goods-receipts', ['goods-receipts', 'purchase-orders', 'inventory-locations']],
   ['procurement/supplier-quotes', ['suppliers', 'procurement-rfqs', 'supplier-quotes']],
+  ['procurement/inventory', ['inventory-balances', 'inventory-locations', 'production-orders']],
   ['material-planning', ['mrp-policies', 'mrp-demands', 'mrp-runs', 'manufacturing-items']],
   [
     'production-orders',
@@ -186,6 +187,9 @@ it('never promotes missing read permissions into procurement sub-route closures'
     path('purchase-orders'),
     path('goods-receipts'),
   ]);
+  expect(
+    commercialRoutePlan(setup(['inventory:read']).controller, 'procurement/inventory').paths,
+  ).toEqual([path('inventory-locations'), path('inventory-balances')]);
   expect(commercialRoutePlan(buyer, 'procurement/supplier-quotes').paths).toEqual([
     path('procurement-rfqs'),
     path('supplier-quotes'),

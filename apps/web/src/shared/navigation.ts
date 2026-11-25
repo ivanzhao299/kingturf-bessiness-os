@@ -28,6 +28,7 @@ export type AppRoute =
   | 'procurement/purchase-orders'
   | 'procurement/goods-receipts'
   | 'procurement/supplier-quotes'
+  | 'procurement/inventory'
   | 'material-planning'
   | 'production-orders'
   | 'quality-inspection'
@@ -74,6 +75,7 @@ export const APP_ROUTE_LABELS: Readonly<Record<AppRoute, string>> = {
   'procurement/purchase-orders': '采购订单',
   'procurement/goods-receipts': '收货管理',
   'procurement/supplier-quotes': '供应商报价',
+  'procurement/inventory': '批次库存',
   'material-planning': '物料计划',
   'production-orders': '生产执行',
   'quality-inspection': '质量检验',
@@ -120,6 +122,7 @@ const APP_ROUTE_DESCRIPTIONS: Readonly<Record<AppRoute, string>> = {
   'procurement/purchase-orders': '采购订单签发、取消与收货进度，采购合同文件工作流',
   'procurement/goods-receipts': '批次收货登记与数量核对（收货单不可变）',
   'procurement/supplier-quotes': '供应商报价登记、有效期与询价明细对比',
+  'procurement/inventory': '批次结存、库存移动流水与库位管理',
   'material-planning': '需求运算、库存抵扣与建议',
   'production-orders': '工单、用料、报工与入库',
   'quality-inspection': '检验、处置与批次追溯',
@@ -144,7 +147,9 @@ const APP_ROUTES = new Set<AppRoute>(Object.keys(APP_ROUTE_LABELS) as AppRoute[]
 export function appRouteFromHash(hash: string): AppRoute {
   const fragment = hash.replace(/^#\/?/u, '');
   const candidate = (
-    fragment.startsWith('procurement/rfqs?') ? 'procurement/rfqs' : fragment
+    ['procurement/rfqs?', 'procurement/inventory?'].some((prefix) => fragment.startsWith(prefix))
+      ? fragment.split('?')[0]
+      : fragment
   ) as AppRoute;
   return APP_ROUTES.has(candidate) ? candidate : 'overview';
 }

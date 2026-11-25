@@ -9,7 +9,8 @@ export type ProcurementConsoleId =
   | 'rfqs'
   | 'purchase-orders'
   | 'goods-receipts'
-  | 'supplier-quotes';
+  | 'supplier-quotes'
+  | 'inventory';
 
 export type ProcurementSurface = Readonly<{
   id: ProcurementConsoleId;
@@ -31,6 +32,7 @@ export const PROCUREMENT_SURFACES: readonly ProcurementSurface[] = [
     route: 'procurement/supplier-quotes',
     readPermission: 'procurement:read',
   },
+  { id: 'inventory', route: 'procurement/inventory', readPermission: 'inventory:read' },
 ];
 
 export const visibleProcurementSurfaces = (
