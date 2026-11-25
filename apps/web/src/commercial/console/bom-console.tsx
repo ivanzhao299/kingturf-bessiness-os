@@ -12,6 +12,7 @@ import { BomCreateDrawer } from './bom-create';
 import { BomDetailDrawer, confirmPublish } from './bom-detail';
 import { ConsoleConfirmDialog, createConfirm } from './console-confirm';
 import { FocusAnchor } from './focus-anchor';
+import { ConsoleNotice } from './console-notice';
 import type { BomConsolePorts, BomRow } from './bom-ports';
 import {
   ALL_PRODUCTS,
@@ -38,6 +39,7 @@ const createBundle = (ports: BomConsolePorts): BomBundle => ({
   loadError: signal(''),
   actionError: signal(''),
   submitError: signal(''),
+  notice: signal(''),
   selected: signal<BomRow | null>(null),
   detail: signal<BomRow | null>(null),
   detailLoading: signal(false),
@@ -291,6 +293,8 @@ const BomView = (state: BomViewState) => (
         </>
       }
     />
+    {/* TD-WF-014①：详情抽屉没开着时，写成功的提示显示在页头下方。 */}
+    {state.selected ? null : <ConsoleNotice message={state.notice} />}
     <div class="console-split mfg-item-split">
       <ProductTree state={state} />
       <div class="console-split-main">
@@ -369,6 +373,7 @@ export function BomConsolePage(ports: BomConsolePorts) {
     loadError: bundle.loadError.value,
     actionError: bundle.actionError.value,
     submitError: bundle.submitError.value,
+    notice: bundle.notice.value,
     selected: bundle.selected.value,
     detail: bundle.detail.value,
     detailLoading: bundle.detailLoading.value,

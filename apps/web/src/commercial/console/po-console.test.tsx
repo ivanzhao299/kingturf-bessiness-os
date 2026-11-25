@@ -14,6 +14,7 @@ import {
 } from '../../../test/fixtures/preact-dom';
 import { confirmAction } from '../../../test/fixtures/confirm-dialog';
 import { PurchaseOrderConsolePage } from './po-console';
+import { noticeOf } from '../../../test/fixtures/console-notice';
 import type { PurchaseOrderConsolePorts, PurchaseOrderRow } from './po-ports';
 
 const flush = (): Promise<void> =>
@@ -584,5 +585,27 @@ describe('U3-PROC-3 采购单控制台', () => {
     const draftProgress = element(draftHost.querySelector('[data-testid="kt-po-progress"]'));
     expect(draftProgress.textContent).toContain('未签发，暂无收货');
     expect(draftProgress.querySelector('[role="progressbar"]')).toBe(null);
+  });
+});
+
+describe('U3-PROC-3 采购单控制台：写成功后的提示（TD-WF-014①）', () => {
+  it('取消订单成功：提示在开着的详情抽屉底部', async () => {
+    const ports = portsFor([issuedOrder], ALL_PERMISSIONS, {
+      refresh: vi.fn().mockResolvedValue({
+        orders: [{ ...issuedOrder, status: 'CANCELLED' }],
+        documents: [],
+      }),
+    });
+    const host = mount(ports);
+    element(host.querySelector('[data-testid="kt-po-open"]')).click();
+    await flush();
+    element(host.querySelector('[data-testid="kt-po-cancel"]')).click();
+    await confirmAction(host, '取消采购订单', '确认取消', { destructive: true });
+    await flush();
+    await flush();
+    expect(noticeOf(host)).toEqual({
+      text: '已取消采购订单 PO-KT-YARN-2026-002',
+      inDrawer: true,
+    });
   });
 });

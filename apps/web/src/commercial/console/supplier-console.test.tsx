@@ -7,6 +7,7 @@ import { h, render } from 'preact';
 import type { ComponentType } from 'preact';
 import { installGlobalTestDom, type TestElement } from '../../../test/fixtures/preact-dom';
 import { SupplierConsolePage } from './supplier-console';
+import { noticeOf } from '../../../test/fixtures/console-notice';
 import type { SupplierConsolePorts, SupplierRow } from './supplier-ports';
 
 const flush = (): Promise<void> =>
@@ -583,5 +584,39 @@ describe('U3-PROC-1 供应商控制台：详情抽屉随写操作刷新', () => 
     ).toContain('RM-YARN');
     // 行内表单已收起，操作区回来了。
     expect(host.querySelector('[data-testid="kt-supplier-qualify"]')).not.toBeNull();
+  });
+});
+
+// TD-WF-014①（写流程冒烟 WS-P3-01）：写操作此前没有任何成功提示。
+describe('U3-PROC-1 供应商控制台：写成功后的提示', () => {
+  it('新建成功：页头下方出现「已创建供应商 …」，不在抽屉里', async () => {
+    const ports = portsFor([], ['supplier:manage']);
+    const host = mount(ports);
+    element(host.querySelector('[data-testid="kt-supplier-create"]')).click();
+    await flush();
+    expect(noticeOf(host).text).toBe('');
+    for (const [name, value] of CREATE_FORM) fillField(host, name, value);
+    await flush();
+    await submitDrawer(host);
+    expect(host.querySelector('.detail-drawer')).toBeNull();
+    expect(noticeOf(host)).toEqual({ text: '已创建供应商 SUP-KT-YARN-002', inDrawer: false });
+  });
+
+  it('准入审核成功：提示在开着的详情抽屉底部；打开另一条记录时清空', async () => {
+    const ports = portsFor([supplier], ['supplier:manage']);
+    const host = mount(ports);
+    element(host.querySelector('[data-testid="kt-supplier-open"]')).click();
+    await flush();
+    element(host.querySelector('[data-testid="kt-supplier-qualify"]')).click();
+    await flush();
+    for (const [name, value] of QUALIFY_FORM) fillField(host, name, value);
+    await flush();
+    await submitDrawer(host);
+    expect(noticeOf(host)).toEqual({ text: '已提交物料准入审核：批准', inDrawer: true });
+    element(element(host.querySelector('.detail-drawer')).querySelector('.drawer-close')).click();
+    await flush();
+    element(host.querySelector('[data-testid="kt-supplier-open"]')).click();
+    await flush();
+    expect(noticeOf(host).text).toBe('');
   });
 });

@@ -11,6 +11,7 @@ import {
 import type { CreditConsolePorts, CreditRow } from './credit-ports';
 import { failureMessage } from '../../shared/api-error-message';
 import { FocusAnchor } from './focus-anchor';
+import { ConsoleNotice } from './console-notice';
 import { syncSelected } from './selected-sync';
 import { CreditFlow, DecisionFlow, STATUS_LABELS } from './credit-console-flow';
 
@@ -27,6 +28,8 @@ export type CreditPageState = Readonly<{
   search: string;
   loadError: string;
   submitError: string;
+  // TD-WF-014①：最近一次写操作的成功提示。
+  notice: string;
   loading: boolean;
   selected: CreditRow | null;
   activeForm: CreditFormKind;
@@ -205,6 +208,8 @@ const CreditDrawer = ({ state }: Readonly<{ state: CreditPageState }>) => {
       onClose={() => {
         state.open(null);
       }}
+      // TD-WF-014①：写成功的提示放在抽屉底部，不随抽屉体滚走。
+      footer={state.notice === '' ? undefined : <ConsoleNotice message={state.notice} />}
     >
       <CreditDetail state={state} />
       {state.submitError !== '' ? (
@@ -359,6 +364,8 @@ const CreditView = (state: CreditPageState) => {
           </>
         }
       />
+      {/* TD-WF-014①：详情抽屉没开着时，写成功的提示显示在页头下方。 */}
+      {state.selected ? null : <ConsoleNotice message={state.notice} />}
       <CreditFlow state={state} />
       <div class="commercial-console-filters">
         {(['ALL', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'EXPIRED'] as const).map((option) => (
@@ -423,6 +430,7 @@ export function CreditConsolePage(ports: CreditConsolePorts) {
     search: signal(''),
     loadError: signal(''),
     submitError: signal(''),
+    notice: signal(''),
     loading: signal(false),
     selected: signal<CreditRow | null>(null),
     activeForm: signal<CreditFormKind>(null),
@@ -484,6 +492,7 @@ export function CreditConsolePage(ports: CreditConsolePorts) {
       });
       bundle.limits.value = fresh.limits;
       closeForm();
+      bundle.notice.value = '已保存信用额度';
     } catch (error: unknown) {
       fail(error, '额度保存失败');
     } finally {
@@ -514,6 +523,7 @@ export function CreditConsolePage(ports: CreditConsolePorts) {
         idOf: (row) => ports.recordText(row, 'id', 'id'),
       });
       closeForm();
+      bundle.notice.value = '已发起信用评估';
     } catch (error: unknown) {
       fail(error, '信用评估失败');
     } finally {
@@ -543,6 +553,7 @@ export function CreditConsolePage(ports: CreditConsolePorts) {
         idOf: (row) => ports.recordText(row, 'id', 'id'),
       });
       closeForm();
+      bundle.notice.value = decision === 'APPROVED' ? '已批准信用' : '已拒绝信用';
     } catch (error: unknown) {
       fail(error, '信用决定失败');
     } finally {
@@ -557,24 +568,29 @@ export function CreditConsolePage(ports: CreditConsolePorts) {
     search: bundle.search.value,
     loadError: bundle.loadError.value,
     submitError: bundle.submitError.value,
+    notice: bundle.notice.value,
     loading: bundle.loading.value,
     selected: bundle.selected.value,
     activeForm: bundle.activeForm.value,
     decision: bundle.decision.value,
     permissions: ports.permissions,
     ports,
+    // 开始下一个动作时清掉上一次的成功提示（与 submitError 同一处）。
     open: (row) => {
       bundle.selected.value = row;
       bundle.activeForm.value = null;
       bundle.decision.value = null;
       bundle.submitError.value = '';
+      bundle.notice.value = '';
     },
     openForm: (kind) => {
       bundle.activeForm.value = kind;
       bundle.submitError.value = '';
+      bundle.notice.value = '';
     },
     openDecision: (decision) => {
       bundle.decision.value = decision;
+      bundle.notice.value = '';
     },
     closeForm,
     setStatusFilter: (next) => {

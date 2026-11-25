@@ -19,6 +19,7 @@ import {
 import type { RfqConsolePorts, RfqRow } from './rfq-ports';
 import { FocusAnchor } from './focus-anchor';
 import { reloadSelectedDetail, syncSelected } from './selected-sync';
+import { ConsoleNotice } from './console-notice';
 import { failureMessage } from '../../shared/api-error-message';
 import {
   askConfirm,
@@ -41,6 +42,8 @@ type RfqPageState = Readonly<{
   search: string;
   loadError: string;
   submitError: string;
+  // TD-WF-014①：最近一次写操作的成功提示。
+  notice: string;
   loading: boolean;
   selected: RfqRow | null;
   detailLoading: boolean;
@@ -181,6 +184,8 @@ const RfqDrawer = ({ state }: Readonly<{ state: RfqPageState }>) => {
       onClose={() => {
         state.open(null);
       }}
+      // TD-WF-014①：写成功的提示放在抽屉底部，不随抽屉体滚走。
+      footer={state.notice === '' ? undefined : <ConsoleNotice message={state.notice} />}
     >
       <div class="console-summary" data-testid="kt-rfq-detail">
         <p>
@@ -318,6 +323,8 @@ const RfqView = (state: RfqPageState) => {
           </>
         }
       />
+      {/* TD-WF-014①：详情抽屉没开着时，写成功的提示显示在页头下方。 */}
+      {state.selected ? null : <ConsoleNotice message={state.notice} />}
       <div class="commercial-console-filters">
         {(['ALL', 'DRAFT', 'ISSUED', 'PARTIALLY_RECEIVED', 'RECEIVED', 'CANCELLED'] as const).map(
           (option) => (
@@ -385,6 +392,7 @@ export function RfqConsolePage(ports: RfqConsolePorts) {
     search: signal(''),
     loadError: signal(''),
     submitError: signal(''),
+    notice: signal(''),
     loading: signal(false),
     selected: signal<RfqRow | null>(null),
     detailLoading: signal(false),
@@ -449,6 +457,7 @@ export function RfqConsolePage(ports: RfqConsolePorts) {
       });
       applyRefreshed(await ports.refresh());
       closeForm();
+      bundle.notice.value = `已发出询价单 ${values.rfqNumber ?? ''}`;
     } catch (error: unknown) {
       fail(error, '询价单创建失败');
     } finally {
@@ -468,6 +477,7 @@ export function RfqConsolePage(ports: RfqConsolePorts) {
       );
       applyRefreshed(await ports.refresh());
       closeForm();
+      bundle.notice.value = `${action === 'issue' ? '已发布' : '已关闭'}询价单 ${text(ports, row, 'rfqNumber', 'rfq_number')}`;
     } catch (error: unknown) {
       fail(error, '询价单状态流转失败');
     } finally {
@@ -481,6 +491,7 @@ export function RfqConsolePage(ports: RfqConsolePorts) {
     search: bundle.search.value,
     loadError: bundle.loadError.value,
     submitError: bundle.submitError.value,
+    notice: bundle.notice.value,
     loading: bundle.loading.value,
     selected: bundle.selected.value,
     detailLoading: bundle.detailLoading.value,
@@ -489,10 +500,12 @@ export function RfqConsolePage(ports: RfqConsolePorts) {
     ports,
     now: () => ports.now?.() ?? new Date(),
     confirm: bundle.confirm,
+    // 开始下一个动作时清掉上一次的成功提示（与 submitError 同一处）。
     open: (row) => {
       bundle.selected.value = row;
       bundle.activeForm.value = null;
       bundle.submitError.value = '';
+      bundle.notice.value = '';
       if (!row) return;
       // 详情读取失败静默回退列表行（行项/报价对比区按列表行数据呈现）。迟到的详情只在抽屉仍开着、
       // 且还是这一条时才替换。
@@ -504,6 +517,7 @@ export function RfqConsolePage(ports: RfqConsolePorts) {
     openForm: (kind) => {
       bundle.activeForm.value = kind;
       bundle.submitError.value = '';
+      bundle.notice.value = '';
     },
     closeForm,
     setStatusFilter: (next) => {

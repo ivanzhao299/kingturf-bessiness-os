@@ -26,6 +26,8 @@ export type BomBundle = Readonly<{
   loadError: Signal<string>;
   actionError: Signal<string>;
   submitError: Signal<string>;
+  // TD-WF-014①：最近一次写操作的成功提示。
+  notice: Signal<string>;
   selected: Signal<BomRow | null>;
   detail: Signal<BomRow | null>;
   detailLoading: Signal<boolean>;
@@ -143,10 +145,12 @@ export function createBomActions(ports: BomConsolePorts, bundle: BomBundle) {
     loadMore,
     reloadDetail,
     actionFailed,
+    // 开始下一个动作时清掉上一次的成功提示（与 submitError 同一处）。
     open: (row: BomRow | null): void => {
       bundle.selected.value = row;
       bundle.activeForm.value = null;
       bundle.submitError.value = '';
+      bundle.notice.value = '';
       bundle.detail.value = null;
       if (row === null) detailSequence += 1;
       void reloadDetail();
@@ -154,6 +158,7 @@ export function createBomActions(ports: BomConsolePorts, bundle: BomBundle) {
     openCreate: (): void => {
       bundle.activeForm.value = 'create';
       bundle.submitError.value = '';
+      bundle.notice.value = '';
     },
     toggleNode: (bomVersionId: string): void => {
       const next = new Set(bundle.collapsed.value);
@@ -202,6 +207,7 @@ export function createBomMutations(
         'PUT',
       );
       await io.sync();
+      bundle.notice.value = `已发布 BOM ${ports.textValue(row.code, '')}`;
       const opened = bundle.selected.value;
       if (opened) {
         const openedId = ports.textValue(opened.bomId ?? opened.id, '');
@@ -254,6 +260,7 @@ export function createBomMutations(
     }
     closeForm();
     await io.sync();
+    bundle.notice.value = `已保存 BOM 草稿 ${values.code ?? ''}`;
   };
 
   return {

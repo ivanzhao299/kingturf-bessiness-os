@@ -11,6 +11,7 @@ import { RoutingCreateDrawer } from './routing-create';
 import { RoutingDetailDrawer, confirmPublish } from './routing-detail';
 import { ConsoleConfirmDialog, createConfirm } from './console-confirm';
 import { FocusAnchor } from './focus-anchor';
+import { ConsoleNotice } from './console-notice';
 import type { RoutingConsolePorts, RoutingRow } from './routing-ports';
 import {
   ALL_PRODUCTS,
@@ -41,6 +42,7 @@ const createBundle = (ports: RoutingConsolePorts): RoutingBundle => ({
   loadError: signal(''),
   actionError: signal(''),
   submitError: signal(''),
+  notice: signal(''),
   selected: signal<RoutingRow | null>(null),
   detail: signal<RoutingRow | null>(null),
   detailLoading: signal(false),
@@ -287,6 +289,8 @@ const RoutingView = (state: RoutingViewState) => (
         </>
       }
     />
+    {/* TD-WF-014①：详情抽屉没开着时，写成功的提示显示在页头下方。 */}
+    {state.selected ? null : <ConsoleNotice message={state.notice} />}
     <div class="console-split mfg-item-split">
       <ProductTree state={state} />
       <div class="console-split-main">
@@ -356,6 +360,7 @@ export function RoutingConsolePage(ports: RoutingConsolePorts) {
     loadError: bundle.loadError.value,
     actionError: bundle.actionError.value,
     submitError: bundle.submitError.value,
+    notice: bundle.notice.value,
     selected: bundle.selected.value,
     detail: bundle.detail.value,
     detailLoading: bundle.detailLoading.value,

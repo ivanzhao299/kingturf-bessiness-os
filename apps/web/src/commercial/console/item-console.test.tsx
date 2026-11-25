@@ -18,6 +18,7 @@ import {
   dismissConfirm,
 } from '../../../test/fixtures/confirm-dialog';
 import { ItemConsolePage } from './item-console';
+import { noticeOf } from '../../../test/fixtures/console-notice';
 import type { ItemConsolePorts, ItemPage, ItemRow } from './item-ports';
 import { countAllItems, countByCategory, specEntries, specificationOf } from './item-state';
 
@@ -664,5 +665,21 @@ describe('U3-MFG-1 物料控制台：纯展示助手', () => {
       ['c', 'x'],
       ['d', '2'],
     ]);
+  });
+});
+
+describe('U3-MFG-1 物料控制台：写成功后的提示（TD-WF-014①）', () => {
+  it('行内发布成功：页头下方出现「已发布物料 …」——在「草稿」筛选下那一行会从列表消失，提示是唯一的反馈', async () => {
+    const ports = portsFor([draft], ['manufacturing-item:manage'], {
+      refresh: vi.fn().mockResolvedValue([version({ ...draft, status: 'PUBLISHED' })]),
+    });
+    const host = mount(ports);
+    byTestId(host, 'kt-item-publish').click();
+    await flush();
+    await confirmAction(host, '发布版本', '确认发布');
+    await flush();
+    await flush();
+    expect(noticeOf(host)).toEqual({ text: '已发布物料 FG-KT-PRO-50', inDrawer: false });
+    expect(byTestId(host, 'console-notice').getAttribute('role')).toBe('status');
   });
 });

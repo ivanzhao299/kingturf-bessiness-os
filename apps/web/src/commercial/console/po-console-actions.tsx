@@ -17,6 +17,8 @@ export type PoBundle = Readonly<{
   selected: Signal<PurchaseOrderRow | null>;
   activeForm: Signal<PoFormActionKind>;
   activeDocumentForm: Signal<Readonly<{ documentId: string; kind: DocumentFormKind }> | null>;
+  // TD-WF-014①：最近一次写操作的成功提示（空串 = 没有）。
+  notice: Signal<string>;
 }>;
 
 export function createPurchaseOrderActions(ports: PurchaseOrderConsolePorts, bundle: PoBundle) {
@@ -47,6 +49,8 @@ export function createPurchaseOrderActions(ports: PurchaseOrderConsolePorts, bun
     bundle.activeForm.value = null;
     bundle.submitError.value = '';
   };
+  const orderNumber = (row: PurchaseOrderRow): string =>
+    ports.textValue(row.poNumber ?? row.po_number, '');
 
   const runRefresh = async (): Promise<void> => {
     bundle.loading.value = true;
@@ -83,6 +87,7 @@ export function createPurchaseOrderActions(ports: PurchaseOrderConsolePorts, bun
       });
       applySnapshot(await ports.refresh());
       closeForm();
+      bundle.notice.value = `已创建并签发采购订单 ${values.poNumber ?? ''}`;
     } catch (error: unknown) {
       fail(error, '采购订单创建失败');
     } finally {
@@ -103,6 +108,7 @@ export function createPurchaseOrderActions(ports: PurchaseOrderConsolePorts, bun
       );
       applySnapshot(await ports.refresh());
       closeForm();
+      bundle.notice.value = `${action === 'issue' ? '已签发' : '已取消'}采购订单 ${orderNumber(row)}`;
     } catch (error: unknown) {
       fail(error, '采购订单状态流转失败');
     } finally {
@@ -115,6 +121,7 @@ export function createPurchaseOrderActions(ports: PurchaseOrderConsolePorts, bun
     try {
       await ports.uploadContractDocument('PURCHASE', 'purchase-order', orderId, file);
       applySnapshot(await ports.refresh());
+      bundle.notice.value = '采购合同已上传';
     } catch (error: unknown) {
       fail(error, '采购合同上传失败');
     } finally {
@@ -172,6 +179,12 @@ export function createPurchaseOrderActions(ports: PurchaseOrderConsolePorts, bun
         });
       applySnapshot(await ports.refresh());
       bundle.activeDocumentForm.value = null;
+      bundle.notice.value =
+        kind === 'ocr'
+          ? '已保存识别结果'
+          : kind === 'review'
+            ? '已确认可送签'
+            : '已发起采购合同电子签署';
     } catch (error: unknown) {
       bundle.submitError.value = failureMessage(error, '合同文档操作失败');
     } finally {

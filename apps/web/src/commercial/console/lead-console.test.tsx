@@ -12,6 +12,7 @@ import {
   type TestElement,
 } from '../../../test/fixtures/preact-dom';
 import { LeadConsolePage } from './lead-console';
+import { noticeOf } from '../../../test/fixtures/console-notice';
 import type { LeadConsolePorts, LeadRow } from './lead-ports';
 
 const flush = (): Promise<void> =>
@@ -491,5 +492,22 @@ describe('CRM-UX 入口一致性', () => {
     expect(element(host.querySelector('.detail-drawer h2')).textContent).toBe(
       '线索详情 · 网站线索',
     );
+  });
+});
+
+describe('CRM-2 线索控制台：写成功后的提示（TD-WF-014①）', () => {
+  it('认领成功：提示在开着的详情抽屉底部', async () => {
+    const claimed: LeadRow = { ...poolLead, status: 'CLAIMED', ownerId: 'employee-1', version: 2 };
+    const ports = portsFor([poolLead], ['lead-pool:claim', 'lead-pool:read'], {
+      refresh: vi.fn().mockResolvedValue([claimed]),
+    });
+    const host = mount(ports);
+    await openPool(host);
+    element(host.querySelector('[data-testid="kt-lead-open"]')).click();
+    await flush();
+    element(host.querySelector('[data-testid="kt-lead-claim"]')).click();
+    await flush();
+    await flush();
+    expect(noticeOf(host)).toEqual({ text: '已认领线索', inDrawer: true });
   });
 });

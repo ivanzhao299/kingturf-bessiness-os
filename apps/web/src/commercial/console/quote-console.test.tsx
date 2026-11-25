@@ -10,6 +10,7 @@ import {
   type TestElement,
 } from '../../../test/fixtures/preact-dom';
 import { QuoteConsolePage } from './quote-console';
+import { noticeOf } from '../../../test/fixtures/console-notice';
 import type { QuoteConsolePorts, QuoteSnapshot } from './quote-ports';
 
 const flush = (): Promise<void> =>
@@ -460,5 +461,29 @@ describe('U3-COM-3 报价控制台：详情抽屉随写操作刷新', () => {
     await flush();
     await flush();
     expect(host.querySelector('.detail-drawer')).toBeNull();
+  });
+});
+
+describe('U3-COM-3 报价控制台：写成功后的提示（TD-WF-014①）', () => {
+  it('批准成功：提示在开着的详情抽屉底部', async () => {
+    const ports = portsFor(['quote:approve'], {
+      initialSnapshot: { ...snapshot(), quotes: [quote({ status: 'DRAFT' })] },
+      refresh: vi
+        .fn()
+        .mockResolvedValue({ ...snapshot(), quotes: [quote({ status: 'APPROVED' })] }),
+    });
+    const host = mount(ports);
+    element(host.querySelector('[data-testid="kt-quote-open"]')).click();
+    await flush();
+    element(host.querySelector('[data-testid="kt-quote-approve"]')).click();
+    await flush();
+    fillField(host, 'reason', '报价口径已复核');
+    await flush();
+    element(
+      element(host.querySelector('.detail-drawer')).querySelector('button[type="submit"]'),
+    ).click();
+    await flush();
+    await flush();
+    expect(noticeOf(host)).toEqual({ text: '已批准报价 Q-2026-001', inDrawer: true });
   });
 });

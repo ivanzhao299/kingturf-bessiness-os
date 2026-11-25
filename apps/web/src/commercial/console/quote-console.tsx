@@ -19,6 +19,7 @@ import {
 } from './quote-console-timeline';
 import { failureMessage } from '../../shared/api-error-message';
 import { FocusAnchor } from './focus-anchor';
+import { ConsoleNotice } from './console-notice';
 import { syncSelected } from './selected-sync';
 
 // U3-COM-3（ADR-0014 分域重写）：报价控制台——原 vanilla quote workbench 能力面
@@ -35,6 +36,8 @@ export type QuotePageState = Readonly<{
   search: string;
   loadError: string;
   submitError: string;
+  // TD-WF-014①：最近一次写操作的成功提示。
+  notice: string;
   loading: boolean;
   selected: QuoteRow | null;
   activeForm: QuoteFormKind | null;
@@ -261,6 +264,8 @@ const QuoteDrawer = ({ state }: Readonly<{ state: QuotePageState }>) => {
       onClose={() => {
         state.open(null);
       }}
+      // TD-WF-014①：写成功的提示放在抽屉底部，不随抽屉体滚走。
+      footer={state.notice === '' ? undefined : <ConsoleNotice message={state.notice} />}
     >
       <QuoteDetail state={state} />
       {/* TD-WF-005 / TD-WF-012：行内表单开着时，提交失败显示在该表单自己的提示区（FormSection 的
@@ -359,6 +364,8 @@ type QuoteSignalBundle = Readonly<{
   snapshot: Signal<QuoteSnapshot>;
   loadError: Signal<string>;
   submitError: Signal<string>;
+  // TD-WF-014①：最近一次写操作的成功提示。
+  notice: Signal<string>;
   loading: Signal<boolean>;
   selected: Signal<QuoteRow | null>;
   activeForm: Signal<QuoteFormKind | null>;
@@ -469,6 +476,7 @@ const quoteActions = (ports: QuoteConsolePorts, bundle: QuoteSignalBundle): Quot
       ports.clearPreferredCostDecisionId();
       applySnapshot(ports, bundle, await ports.refresh());
       closeForm(bundle);
+      bundle.notice.value = `已创建报价 ${values.quoteNumber ?? ''}`;
     } catch (error: unknown) {
       fail(error, bundle, '报价创建失败');
     } finally {
@@ -526,6 +534,7 @@ const quoteActions = (ports: QuoteConsolePorts, bundle: QuoteSignalBundle): Quot
       );
       applySnapshot(ports, bundle, await ports.refresh());
       closeForm(bundle);
+      bundle.notice.value = `已创建报价修订 ${ports.textValue(quote.quoteNumber, '')}`;
     } catch (error: unknown) {
       fail(error, bundle, '报价修订保存失败');
     } finally {
@@ -548,6 +557,7 @@ const quoteActions = (ports: QuoteConsolePorts, bundle: QuoteSignalBundle): Quot
       );
       applySnapshot(ports, bundle, await ports.refresh());
       closeForm(bundle);
+      bundle.notice.value = `${kind === 'approve' ? '已批准' : '已签发'}报价 ${ports.textValue(quote.quoteNumber, '')}`;
     } catch (error: unknown) {
       fail(error, bundle, kind === 'approve' ? '报价批准失败' : '报价签发失败');
     } finally {
@@ -597,6 +607,8 @@ const QuoteView = (state: QuotePageState) => {
           </>
         }
       />
+      {/* TD-WF-014①：详情抽屉没开着时，写成功的提示显示在页头下方。 */}
+      {state.selected ? null : <ConsoleNotice message={state.notice} />}
       <div class="commercial-console-filters">
         {(['ALL', 'DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'ISSUED'] as const).map((option) => (
           <button
@@ -656,6 +668,7 @@ export function QuoteConsolePage(ports: QuoteConsolePorts) {
     snapshot: signal<QuoteSnapshot>(ports.initialSnapshot),
     loadError: signal(''),
     submitError: signal(''),
+    notice: signal(''),
     loading: signal(false),
     selected: signal<QuoteRow | null>(null),
     activeForm: signal<QuoteFormKind | null>(null),
@@ -671,23 +684,28 @@ export function QuoteConsolePage(ports: QuoteConsolePorts) {
     search: search.value,
     loadError: bundle.loadError.value,
     submitError: bundle.submitError.value,
+    notice: bundle.notice.value,
     loading: bundle.loading.value,
     selected: bundle.selected.value,
     activeForm: bundle.activeForm.value,
     permissions: ports.permissions,
     ports,
+    // 开始下一个动作时清掉上一次的成功提示（与 submitError 同一处）。
     open: (quote) => {
       bundle.selected.value = quote;
       bundle.activeForm.value = null;
       bundle.submitError.value = '';
+      bundle.notice.value = '';
     },
     openForm: (kind) => {
       bundle.activeForm.value = kind;
       bundle.submitError.value = '';
+      bundle.notice.value = '';
     },
     closeCreate: () => {
       bundle.activeForm.value = null;
       bundle.submitError.value = '';
+      bundle.notice.value = '';
     },
     setStatusFilter: (next) => {
       statusFilter.value = next;

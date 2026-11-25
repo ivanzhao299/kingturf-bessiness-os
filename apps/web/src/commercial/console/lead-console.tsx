@@ -29,6 +29,7 @@ import {
 } from '../../crm/crm-ux';
 import { failureMessage } from '../../shared/api-error-message';
 import { FocusAnchor } from './focus-anchor';
+import { ConsoleNotice } from './console-notice';
 
 // U3-CRM-1（ADR-0014 分域重写）：线索控制台——原 vanilla lead-records 能力面等价迁移
 // （新建/认领/变更状态/分配改派/释放公海；列表/搜索/分页/详情抽屉）。
@@ -47,6 +48,8 @@ type LeadPageState = Readonly<{
   search: string;
   loadError: string;
   submitError: string;
+  // TD-WF-014①：最近一次写操作的成功提示。
+  notice: string;
   loading: boolean;
   selected: LeadRow | null;
   activeForm: LeadFormKind;
@@ -295,6 +298,8 @@ const LeadDrawer = ({ state }: Readonly<{ state: LeadPageState }>) => {
       onClose={() => {
         state.open(null);
       }}
+      // TD-WF-014①：写成功的提示放在抽屉底部，不随抽屉体滚走。
+      footer={state.notice === '' ? undefined : <ConsoleNotice message={state.notice} />}
     >
       <LeadDetail state={state} />
       {/* TD-WF-005 / TD-WF-012：行内表单开着时，提交失败显示在该表单自己的提示区（FormSection 的
@@ -510,6 +515,8 @@ const LeadView = (state: LeadPageState) => {
           </>
         }
       />
+      {/* TD-WF-014①：详情抽屉没开着时，写成功的提示显示在页头下方。 */}
+      {state.selected ? null : <ConsoleNotice message={state.notice} />}
       <div class="crm-toolbar commercial-console-filters">
         <LeadTabs state={state} />
         {pool
@@ -581,6 +588,7 @@ export function LeadConsolePage(ports: LeadConsolePorts) {
     search: signal(''),
     loadError: signal(''),
     submitError: signal(''),
+    notice: signal(''),
     loading: signal(false),
     selected: signal<LeadRow | null>(null),
     activeForm: signal<LeadFormKind>(null),
@@ -596,6 +604,15 @@ export function LeadConsolePage(ports: LeadConsolePorts) {
   const closeForm = (): void => {
     bundle.activeForm.value = null;
     bundle.submitError.value = '';
+  };
+
+  // 写成功后的提示文案（TD-WF-014①）：认领 / 释放 / 变更状态 / 改派。
+  const stateNoticeOf = (body: Readonly<Record<string, unknown>>): string => {
+    if (body.action === 'claim') return '已认领线索';
+    if (body.action === 'release') return '已将线索释放至公海';
+    if (body.action === 'transition')
+      return `已将线索状态变更为${leadStatusLabel(String(body.status))}`;
+    return '已改派线索';
   };
 
   // 刷新后抽屉同步到最新行对象（认领/释放后状态与可用操作随之变化）；记录已不在
@@ -636,6 +653,7 @@ export function LeadConsolePage(ports: LeadConsolePorts) {
       if (leadTabs(ports.permissions, bundle.leads.value).includes('POOL'))
         bundle.tab.value = 'POOL';
       closeForm();
+      bundle.notice.value = `已创建线索「${values.title ?? ''}」`;
     } catch (error: unknown) {
       fail(error, '线索创建失败');
     } finally {
@@ -655,6 +673,7 @@ export function LeadConsolePage(ports: LeadConsolePorts) {
       bundle.leads.value = await ports.refresh();
       syncSelected();
       closeForm();
+      bundle.notice.value = stateNoticeOf(body);
     } catch (error: unknown) {
       fail(error, '线索状态流转失败');
     } finally {
@@ -673,20 +692,24 @@ export function LeadConsolePage(ports: LeadConsolePorts) {
       search: bundle.search.value,
       loadError: bundle.loadError.value,
       submitError: bundle.submitError.value,
+      notice: bundle.notice.value,
       loading: bundle.loading.value,
       selected: bundle.selected.value,
       activeForm: bundle.activeForm.value,
       now: ports.now?.() ?? Date.now(),
       permissions: ports.permissions,
       ports,
+      // 开始下一个动作时清掉上一次的成功提示（与 submitError 同一处）。
       open: (row) => {
         bundle.selected.value = row;
         bundle.activeForm.value = null;
         bundle.submitError.value = '';
+        bundle.notice.value = '';
       },
       openForm: (kind) => {
         bundle.activeForm.value = kind;
         bundle.submitError.value = '';
+        bundle.notice.value = '';
       },
       closeForm,
       setTab: (next) => {

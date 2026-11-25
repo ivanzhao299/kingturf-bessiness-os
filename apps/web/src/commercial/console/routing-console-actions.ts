@@ -26,6 +26,8 @@ export type RoutingBundle = Readonly<{
   loadError: Signal<string>;
   actionError: Signal<string>;
   submitError: Signal<string>;
+  // TD-WF-014①：最近一次写操作的成功提示。
+  notice: Signal<string>;
   selected: Signal<RoutingRow | null>;
   detail: Signal<RoutingRow | null>;
   detailLoading: Signal<boolean>;
@@ -139,10 +141,12 @@ export function createRoutingActions(ports: RoutingConsolePorts, bundle: Routing
     loadMore,
     reloadDetail,
     actionFailed,
+    // 开始下一个动作时清掉上一次的成功提示（与 submitError 同一处）。
     open: (row: RoutingRow | null): void => {
       bundle.selected.value = row;
       bundle.activeForm.value = null;
       bundle.submitError.value = '';
+      bundle.notice.value = '';
       bundle.detail.value = null;
       if (row === null) detailSequence += 1;
       void reloadDetail();
@@ -150,6 +154,7 @@ export function createRoutingActions(ports: RoutingConsolePorts, bundle: Routing
     openCreate: (): void => {
       bundle.activeForm.value = 'create';
       bundle.submitError.value = '';
+      bundle.notice.value = '';
     },
     applySearch: (): void => {
       bundle.appliedQuery.value = bundle.search.value.trim();
@@ -192,6 +197,7 @@ export function createRoutingMutations(
         'PUT',
       );
       await io.sync();
+      bundle.notice.value = `已发布工艺路线 ${ports.textValue(row.code, '')}`;
       const opened = bundle.selected.value;
       if (opened) {
         const openedId = ports.textValue(opened.routingId ?? opened.id, '');
@@ -242,6 +248,7 @@ export function createRoutingMutations(
     }
     closeForm();
     await io.sync();
+    bundle.notice.value = `已保存工艺路线草稿 ${values.code ?? ''}`;
   };
 
   return {

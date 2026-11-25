@@ -9,6 +9,7 @@ import {
   type TestElement,
 } from '../../../test/fixtures/preact-dom';
 import { CreditConsolePage } from './credit-console';
+import { noticeOf } from '../../../test/fixtures/console-notice';
 import type { CreditConsolePorts, CreditRow } from './credit-ports';
 import { creditUtilization, decisionSteps } from './credit-console-flow';
 
@@ -479,5 +480,28 @@ describe('信用审查：信用决定以客户与报价编号标识', () => {
     expect(element(bare.querySelector('.detail-drawer h2')).textContent).toBe(
       '信用决定详情 · 报价版本 quote-re',
     );
+  });
+});
+
+describe('信用审查：写成功后的提示（TD-WF-014①）', () => {
+  it('批准成功：提示在开着的详情抽屉底部', async () => {
+    const ports = portsFor([pending], ['credit:approve'], {
+      refresh: vi.fn().mockResolvedValue({
+        limits,
+        decisions: [decision({ id: 'decision-pending', effective_status: 'APPROVED' })],
+      }),
+    });
+    const host = mount(ports);
+    await openRow(host, 0);
+    element(host.querySelector('[data-testid="kt-credit-approve"]')).click();
+    await flush();
+    const textarea = element(host.querySelector('.form-section textarea'));
+    textarea.value = '额度充足，予以批准';
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    await flush();
+    element(host.querySelector('.form-section button[type="submit"]')).click();
+    await flush();
+    await flush();
+    expect(noticeOf(host)).toEqual({ text: '已批准信用', inDrawer: true });
   });
 });

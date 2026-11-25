@@ -55,6 +55,8 @@ export type BomViewState = Readonly<{
   compareVersions: readonly [string, string] | null;
   // 组件层级树折叠集合（bomVersionId）；默认全展开。
   collapsed: ReadonlySet<string>;
+  // TD-WF-014①：最近一次写操作的成功提示。
+  notice: string;
   mayManage: boolean;
   // TD-WF-014②：等待确认的不可逆动作（发布版本）；null 表示没有确认框。
   confirm: ConfirmSignal;

@@ -4,6 +4,7 @@
 import { DetailDrawer, StatusBadge } from '@kingturf/ui';
 import { askPublishVersion } from './console-confirm';
 import { FocusAnchor } from './focus-anchor';
+import { ConsoleNotice } from './console-notice';
 import type { RoutingRow } from './routing-ports';
 import {
   routingOperations,
@@ -80,6 +81,8 @@ export const RoutingDetailDrawer = ({ state }: DetailProps) => {
       onClose={() => {
         state.open(null);
       }}
+      // TD-WF-014①：写成功的提示放在抽屉底部，不随抽屉体滚走。
+      footer={state.notice === '' ? undefined : <ConsoleNotice message={state.notice} />}
     >
       <div class="console-summary" data-testid="kt-routing-detail-summary">
         <p>

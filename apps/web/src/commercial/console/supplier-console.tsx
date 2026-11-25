@@ -20,6 +20,7 @@ import {
 import type { SupplierConsolePorts, SupplierRow } from './supplier-ports';
 import { FocusAnchor } from './focus-anchor';
 import { syncSelected } from './selected-sync';
+import { ConsoleNotice } from './console-notice';
 import { failureMessage } from '../../shared/api-error-message';
 
 // U3-PROC-1（ADR-0014 分域重写）：供应商控制台——原 vanilla supplier-register 能力面
@@ -37,6 +38,8 @@ type SupplierPageState = Readonly<{
   search: string;
   loadError: string;
   submitError: string;
+  // TD-WF-014①：最近一次写操作的成功提示。
+  notice: string;
   loading: boolean;
   selected: SupplierRow | null;
   activeForm: SupplierFormKind;
@@ -177,6 +180,8 @@ const SupplierDrawer = ({ state }: Readonly<{ state: SupplierPageState }>) => {
       onClose={() => {
         state.open(null);
       }}
+      // TD-WF-014①：写成功的提示放在抽屉底部，不随抽屉体滚走。
+      footer={state.notice === '' ? undefined : <ConsoleNotice message={state.notice} />}
     >
       <div class="console-summary" data-testid="kt-supplier-detail">
         <p>
@@ -364,6 +369,8 @@ const SupplierView = (state: SupplierPageState) => {
           </>
         }
       />
+      {/* TD-WF-014①：详情抽屉没开着时，写成功的提示显示在页头下方。 */}
+      {state.selected ? null : <ConsoleNotice message={state.notice} />}
       <div class="commercial-console-filters">
         {(['ALL', 'ACTIVE', 'ON_HOLD', 'INACTIVE'] as const).map((option) => (
           <button
@@ -425,6 +432,7 @@ export function SupplierConsolePage(ports: SupplierConsolePorts) {
     search: signal(''),
     loadError: signal(''),
     submitError: signal(''),
+    notice: signal(''),
     loading: signal(false),
     selected: signal<SupplierRow | null>(null),
     activeForm: signal<SupplierFormKind>(null),
@@ -484,6 +492,7 @@ export function SupplierConsolePage(ports: SupplierConsolePorts) {
       });
       applySnapshot(await ports.refresh());
       closeForm();
+      bundle.notice.value = `已创建供应商 ${values.supplierNumber ?? ''}`;
     } catch (error: unknown) {
       fail(error, '供应商创建失败');
     } finally {
@@ -516,6 +525,9 @@ export function SupplierConsolePage(ports: SupplierConsolePorts) {
       );
       applySnapshot(await ports.refresh());
       closeForm();
+      bundle.notice.value = `已提交物料准入审核：${
+        action === 'approve' ? '批准' : action === 'conditional' ? '有条件批准' : '驳回'
+      }`;
     } catch (error: unknown) {
       fail(error, '物料准入审核失败');
     } finally {
@@ -530,20 +542,24 @@ export function SupplierConsolePage(ports: SupplierConsolePorts) {
     search: bundle.search.value,
     loadError: bundle.loadError.value,
     submitError: bundle.submitError.value,
+    notice: bundle.notice.value,
     loading: bundle.loading.value,
     selected: bundle.selected.value,
     activeForm: bundle.activeForm.value,
     permissions: ports.permissions,
     ports,
     now: () => ports.now?.() ?? new Date(),
+    // 开始下一个动作时清掉上一次的成功提示（与 submitError 同一处）。
     open: (row) => {
       bundle.selected.value = row;
       bundle.activeForm.value = null;
       bundle.submitError.value = '';
+      bundle.notice.value = '';
     },
     openForm: (kind) => {
       bundle.activeForm.value = kind;
       bundle.submitError.value = '';
+      bundle.notice.value = '';
     },
     closeForm,
     setStatusFilter: (next) => {

@@ -30,6 +30,7 @@ import {
 } from './console-confirm';
 import type { ContractDocumentRow, PurchaseOrderConsolePorts, PurchaseOrderRow } from './po-ports';
 import { FocusAnchor } from './focus-anchor';
+import { ConsoleNotice } from './console-notice';
 import { reloadSelectedDetail } from './selected-sync';
 
 // U3-PROC-3（ADR-0014 分域重写）：采购单控制台——原 vanilla purchase-register PO 能力
@@ -55,6 +56,8 @@ type PoPageState = Readonly<{
   ports: PurchaseOrderConsolePorts;
   // TD-WF-014②：等待确认的不可逆动作（签发 / 取消订单）；null 表示没有确认框。
   confirm: ConfirmSignal;
+  // TD-WF-014①：最近一次写操作的成功提示。
+  notice: string;
   open: (row: PurchaseOrderRow | null) => void;
   openForm: (kind: PoFormKind) => void;
   closeForm: () => void;
@@ -227,6 +230,8 @@ const PoDrawer = ({ state }: Readonly<{ state: PoPageState }>) => {
       onClose={() => {
         state.open(null);
       }}
+      // TD-WF-014①：写成功的提示放在抽屉底部，不随抽屉体滚走。
+      footer={state.notice === '' ? undefined : <ConsoleNotice message={state.notice} />}
     >
       <div class="console-summary" data-testid="kt-po-detail">
         <p>
@@ -423,6 +428,8 @@ const PoView = (state: PoPageState) => {
           </>
         }
       />
+      {/* TD-WF-014①：详情抽屉没开着时，写成功的提示显示在页头下方。 */}
+      {state.selected ? null : <ConsoleNotice message={state.notice} />}
       <div class="commercial-console-filters">
         {(['ALL', 'DRAFT', 'ISSUED', 'PARTIALLY_RECEIVED', 'RECEIVED', 'CANCELLED'] as const).map(
           (option) => (
@@ -500,6 +507,7 @@ export function PurchaseOrderConsolePage(ports: PurchaseOrderConsolePorts) {
     ),
     shownCount: signal(20),
     confirm: createConfirm(),
+    notice: signal(''),
   };
 
   const { closeForm, runRefresh, runCreate, runState, runUpload, runDocumentAction } =
@@ -520,11 +528,14 @@ export function PurchaseOrderConsolePage(ports: PurchaseOrderConsolePorts) {
     permissions: ports.permissions,
     ports,
     confirm: bundle.confirm,
+    notice: bundle.notice.value,
+    // 开始下一个动作时清掉上一次的成功提示（与 submitError 同一处）。
     open: (row) => {
       bundle.selected.value = row;
       bundle.activeForm.value = null;
       bundle.activeDocumentForm.value = null;
       bundle.submitError.value = '';
+      bundle.notice.value = '';
       if (!row) return;
       // 详情读取失败静默回退列表行（行项收货状态/收货记录按列表行数据呈现）。迟到的详情只在抽屉仍
       // 开着、且还是这一条时才替换——不会把抽屉换成别的记录，也不会把关掉的抽屉重新打开。
@@ -541,11 +552,13 @@ export function PurchaseOrderConsolePage(ports: PurchaseOrderConsolePorts) {
     openForm: (kind) => {
       bundle.activeForm.value = kind;
       bundle.submitError.value = '';
+      bundle.notice.value = '';
     },
     closeForm,
     openDocumentForm: (documentId, kind) => {
       bundle.activeDocumentForm.value = { documentId, kind };
       bundle.submitError.value = '';
+      bundle.notice.value = '';
     },
     closeDocumentForm: () => {
       bundle.activeDocumentForm.value = null;

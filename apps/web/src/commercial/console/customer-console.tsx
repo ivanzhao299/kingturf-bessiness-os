@@ -20,6 +20,7 @@ import {
 } from '../../crm/crm-ux';
 import { failureMessage } from '../../shared/api-error-message';
 import { FocusAnchor } from './focus-anchor';
+import { ConsoleNotice } from './console-notice';
 
 // U3-CRM-2（ADR-0014 分域重写）：客户控制台——原 vanilla customer-records 能力面
 // 等价迁移（新建/客户 360 详情/联系人/活动时间线/商机关联/归属历史）。
@@ -35,6 +36,8 @@ type CustomerBundle = Readonly<{
   search: Signal<string>;
   loadError: Signal<string>;
   submitError: Signal<string>;
+  // TD-WF-014①：最近一次写操作的成功提示。
+  notice: Signal<string>;
   loading: Signal<boolean>;
   selected: Signal<CustomerRow | null>;
   view360: Signal<Readonly<Record<string, unknown>> | null>;
@@ -59,6 +62,8 @@ type CustomerPageState = Customer360State &
     search: string;
     loadError: string;
     submitError: string;
+    // TD-WF-014①：最近一次写操作的成功提示。
+    notice: string;
     loading: boolean;
     selected: CustomerRow | null;
     view360: Readonly<Record<string, unknown>> | null;
@@ -202,6 +207,8 @@ const CustomerDrawer = ({ state }: Readonly<{ state: CustomerPageState }>) => {
       onClose={() => {
         state.open(null);
       }}
+      // TD-WF-014①：写成功的提示放在抽屉底部，不随抽屉体滚走。
+      footer={state.notice === '' ? undefined : <ConsoleNotice message={state.notice} />}
     >
       {/* 操作区置顶：打开抽屉即可记录联系人/活动，无需滚过 360 内容。 */}
       <div class="console-actions" data-testid="kt-customer-actions">
@@ -361,6 +368,8 @@ const CustomerView = (state: CustomerPageState) => {
           </>
         }
       />
+      {/* TD-WF-014①：详情抽屉没开着时，写成功的提示显示在页头下方。 */}
+      {state.selected ? null : <ConsoleNotice message={state.notice} />}
       <StatsBar state={state} />
       <div class="crm-toolbar commercial-console-filters">
         {STATUS_FILTERS.map((option) => (
@@ -492,6 +501,7 @@ const addActivity = async (
       details: {},
     });
     await reload360(bundle, ports, 'activityForm');
+    bundle.notice.value = '已保存活动';
   } catch (error: unknown) {
     fail(error, bundle, '活动创建失败');
   } finally {
@@ -518,6 +528,7 @@ const addContact = async (
       primary: values.primary === 'true',
     });
     await reload360(bundle, ports, 'contactForm');
+    bundle.notice.value = `已保存联系人 ${values.name ?? ''}`;
   } catch (error: unknown) {
     fail(error, bundle, '联系人创建失败');
   } finally {
@@ -532,6 +543,7 @@ export function CustomerConsolePage(ports: CustomerConsolePorts) {
     search: signal(''),
     loadError: signal(''),
     submitError: signal(''),
+    notice: signal(''),
     loading: signal(false),
     selected: signal<CustomerRow | null>(null),
     view360: signal<Readonly<Record<string, unknown>> | null>(null),
@@ -582,6 +594,7 @@ export function CustomerConsolePage(ports: CustomerConsolePorts) {
       });
       bundle.customers.value = await ports.refresh();
       closeForm();
+      bundle.notice.value = `已创建客户 ${values.name ?? ''}`;
     } catch (error: unknown) {
       fail(error, bundle, '客户创建失败');
     } finally {
@@ -616,6 +629,7 @@ export function CustomerConsolePage(ports: CustomerConsolePorts) {
       search: bundle.search.value,
       loadError: bundle.loadError.value,
       submitError: bundle.submitError.value,
+      notice: bundle.notice.value,
       loading: bundle.loading.value,
       selected: bundle.selected.value,
       view360: bundle.view360.value,
@@ -640,10 +654,12 @@ export function CustomerConsolePage(ports: CustomerConsolePorts) {
       canReadOpportunities: ports.permissions.has('opportunity:read'),
       canReadLeads: ports.permissions.has('lead:read'),
       credit: bundle.credit.value,
+      // 开始下一个动作时清掉上一次的成功提示（与 submitError 同一处）。
       open: (row) => {
         bundle.selected.value = row;
         bundle.activeForm.value = null;
         bundle.submitError.value = '';
+        bundle.notice.value = '';
         bundle.activityTypeFilter.value = '';
         // 切换客户时清空上一份 360 与表单：避免新数据到达前闪现上一客户的详情。
         bundle.view360.value = null;
@@ -656,12 +672,14 @@ export function CustomerConsolePage(ports: CustomerConsolePorts) {
       openForm: (kind) => {
         bundle.activeForm.value = kind;
         bundle.submitError.value = '';
+        bundle.notice.value = '';
       },
       contactForm: bundle.contactForm.value,
       openContactForm: () => {
         bundle.contactForm.value = true;
         bundle.activityForm.value = false;
         resetSubmitError();
+        bundle.notice.value = '';
       },
       closeContactForm: () => {
         bundle.contactForm.value = false;
@@ -673,6 +691,7 @@ export function CustomerConsolePage(ports: CustomerConsolePorts) {
         bundle.activityForm.value = true;
         bundle.contactForm.value = false;
         resetSubmitError();
+        bundle.notice.value = '';
       },
       closeActivityForm: () => {
         bundle.activityForm.value = false;
