@@ -247,6 +247,17 @@ const SQL_ENUM_NAMES = new Set([
   // legacy list、additive 分页与详情根行三处复用，SQL 字节与提取前逐字一致；请求值
   // （state/query/cursor/limit）一律经 values.push 参数化。
   'PRODUCTION_ORDER_PROJECTION',
+  // MFG-6（生产域迁移，同 PRODUCTION_ORDER 先例）：MRP 行投影（计划政策 / 需求信号 / 计算批次
+  // 含 calculations、proposals 两个聚合 / 建议）提取为模块常量，供 legacy list（MRP_LIST_QUERIES
+  // 三条查询）与 additive 分页共用，SQL 字节与提取前逐字一致；请求值（query/枚举筛选/cursor/
+  // limit）一律经 values.push 参数化。
+  'MRP_POLICY_PROJECTION',
+  'MRP_DEMAND_PROJECTION',
+  'MRP_RUN_PROJECTION',
+  'MRP_PROPOSAL_PROJECTION',
+  // MFG-6（同批）：批次详情里需求快照查询的 FROM 片段（三条表的连接，代码内常量）——带与不带
+  // 销售订单来源的两条固定语句共用；语句里只有 $1/$2 占位符，没有任何请求值。
+  'DEMAND_SNAPSHOT_FROM',
   // B2（TD-API-003）分页 keyset 游标片段：cursor 值一律经 values.push 参数化（$N），
   // 变量本体只含代码内表/列名与占位符；2026-11-18 随 18 端点分页批次登记。
   'keyset',

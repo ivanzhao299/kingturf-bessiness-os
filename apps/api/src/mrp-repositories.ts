@@ -3,6 +3,7 @@ import { canonicalize, DomainError, type Actor, type ScopeAnchor } from '@kingtu
 import type { Database, SqlClient } from '@kingturf/database';
 import type { DataScope, JsonObject } from '@kingturf/types';
 import { writeFixedVersionOneEvidence as evidence } from './audit-outbox.ts';
+import { MRP_LIST_QUERIES, PostgresMrpReadRepository } from './mrp-read-repositories.ts';
 
 type Db = SqlClient & Pick<Database, 'transaction'>;
 type Context = Readonly<{
@@ -19,31 +20,18 @@ const company = (context: Context) => {
     throw new DomainError('forbidden', 'MRP planning requires company scope');
 };
 
-export class PostgresMrpRepository {
-  public constructor(private readonly db: Db) {}
+// MFG-6：additive 只读方法（列表分页 / 批次详情）在 PostgresMrpReadRepository，本类只保留
+// legacy list 与写路径；仓储实例仍是 server.ts 里那一个。
+export class PostgresMrpRepository extends PostgresMrpReadRepository {
+  public constructor(db: Db) {
+    super(db);
+  }
 
   public async list(view: 'policies' | 'demands' | 'runs', context: Context) {
     company(context);
-    const queries = {
-      policies: `SELECT to_jsonb(p)||jsonb_build_object('sku',i.sku,'itemName',i.name,'itemVersion',v.version) item
-        FROM mrp_planning_policies p JOIN manufacturing_item_versions v ON v.id=p.item_version_id AND v.tenant_id=p.tenant_id
-        JOIN manufacturing_items i ON i.id=v.item_id AND i.tenant_id=v.tenant_id WHERE p.tenant_id=$1 ORDER BY i.sku,p.effective_at DESC`,
-      demands: `SELECT to_jsonb(d)||jsonb_build_object('sku',i.sku,'itemName',i.name,'itemVersion',v.version) item
-        FROM mrp_demand_signals d JOIN manufacturing_item_versions v ON v.id=d.item_version_id AND v.tenant_id=d.tenant_id
-        JOIN manufacturing_items i ON i.id=v.item_id AND i.tenant_id=v.tenant_id WHERE d.tenant_id=$1 ORDER BY d.required_at,d.priority,i.sku`,
-      runs: `SELECT to_jsonb(r)||jsonb_build_object(
-        'calculations',coalesce((SELECT jsonb_agg(to_jsonb(c)||jsonb_build_object('sku',i.sku,'itemName',i.name) ORDER BY c.required_at,i.sku)
-          FROM mrp_item_calculations c JOIN manufacturing_item_versions v ON v.id=c.item_version_id AND v.tenant_id=c.tenant_id
-          JOIN manufacturing_items i ON i.id=v.item_id AND i.tenant_id=v.tenant_id WHERE c.mrp_run_id=r.id AND c.tenant_id=r.tenant_id),'[]'::jsonb),
-        'proposals',coalesce((SELECT jsonb_agg(to_jsonb(p)||jsonb_build_object('sku',i.sku,'itemName',i.name,'effectiveState',s.state,'events',
-          coalesce((SELECT jsonb_agg(to_jsonb(e) ORDER BY e.sequence) FROM mrp_proposal_events e WHERE e.proposal_id=p.id AND e.tenant_id=p.tenant_id),'[]'::jsonb)) ORDER BY p.due_at,i.sku)
-          FROM mrp_proposals p JOIN manufacturing_item_versions v ON v.id=p.item_version_id AND v.tenant_id=p.tenant_id
-          JOIN manufacturing_items i ON i.id=v.item_id AND i.tenant_id=v.tenant_id JOIN mrp_proposal_effective_states s ON s.proposal_id=p.id AND s.tenant_id=p.tenant_id
-          WHERE p.mrp_run_id=r.id AND p.tenant_id=r.tenant_id),'[]'::jsonb)) item
-        FROM mrp_runs r WHERE r.tenant_id=$1 ORDER BY r.created_at DESC`,
-    } as const;
+    // MFG-6：三条列表查询与 additive 分页共用同一段 SQL（MRP_LIST_QUERIES，提取前后逐字节相等）。
     return (
-      await this.db.query<{ item: JsonObject }>(queries[view], [context.actor.companyId])
+      await this.db.query<{ item: JsonObject }>(MRP_LIST_QUERIES[view], [context.actor.companyId])
     ).rows.map((row) => row.item);
   }
 

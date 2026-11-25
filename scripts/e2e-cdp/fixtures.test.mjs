@@ -259,25 +259,35 @@ test('dashboard opt-in binds its actual yearly query, one read grant and nonempt
   );
 });
 
-test('operations opt-in binds seventeen exact read routes and twelve read permissions only', async () => {
+test('operations opt-in binds nineteen exact read routes and twelve read permissions only', async () => {
   const original = createStubRouter();
   const operations = createStubRouter({ operationsViews: true });
-  assert.equal(operationsRoutes.length, 17);
+  assert.equal(operationsRoutes.length, 19);
   assert.equal(operationsPermissions.length, 12);
   assert.equal(
     operationsPermissions.every((permission) => permission.endsWith(':read')),
     true,
   );
   for (const [path] of operationsRoutes) {
-    const query = new URLSearchParams(path.endsWith('/complaints') ? 'limit=100' : '');
+    const query = new URLSearchParams(
+      {
+        '/api/v1/complaints': 'limit=100',
+        '/api/v1/mrp-proposals': 'runId=cdp-mrp-run-a&limit=50',
+      }[path] ?? '',
+    );
     await assert.rejects(original.respond(path, 'GET', query), /unmapped synthetic API request/u);
     await assert.rejects(
       operations.respond(path, 'POST', query),
       /unmapped synthetic API request/u,
     );
     const response = await operations.respond(path, 'GET', query);
-    assert.equal(response.value.items.length, 1);
-    assert.equal(response.value.nextCursor, null);
+    if (path === '/api/v1/mrp-runs/cdp-mrp-run-a') {
+      assert.equal(response.value.id, 'cdp-mrp-run-a');
+      assert.equal(response.value.proposals[0].id, 'cdp-proposal-a');
+    } else {
+      assert.equal(response.value.items.length, 1);
+      assert.equal(response.value.nextCursor, null);
+    }
     await assert.rejects(
       operations.respond(path, 'GET', new URLSearchParams('unknown=1')),
       /unmapped synthetic API request/u,

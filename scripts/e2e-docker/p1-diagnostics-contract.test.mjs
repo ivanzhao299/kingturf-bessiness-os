@@ -153,6 +153,11 @@ test('fixed 6000 observation matches exact numeric paragraph containers, not who
       fixedMrp6000Matches(`建议 ${number} · fixed-date`, `固定公式；按批量取整为 ${number}`),
       { quantity6000Matches: false, rounded6000Matches: false },
     );
+  assert.deepEqual(fixedMrp6000Matches('采购建议 6000', '按批量取整为 6000'), {
+    quantity6000Matches: true,
+    rounded6000Matches: true,
+  });
+  assert.equal(fixedMrp6000Matches('采购建议 60001', '').quantity6000Matches, false);
   assert.equal(fixedMrp6000Matches(null, null).rounded6000Matches, false);
   assert.equal(fixedMrp6000Matches('', '按批量取整为 6000下一步').rounded6000Matches, false);
 });

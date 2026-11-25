@@ -59,12 +59,6 @@ export const registerProfile = (list: HTMLElement): RegisterProfile => {
       headers: ['工单与产品', '生产状态与数量', '计划与车间', '操作'],
       detailLabels: ['工单信息', '生产状态', '计划数量与日期', '工序与物料证据'],
     };
-  if (list.classList.contains('mrp-proposal-grid'))
-    return {
-      label: '物料建议台账',
-      headers: ['物料与建议类型', '建议状态与数量', '需求日期与依据', '操作'],
-      detailLabels: ['物料建议', '建议状态', '数量与日期', '净需求计算依据'],
-    };
   return {
     label: '业务决策台账',
     headers: ['业务事项', '状态与结果', '依据与责任', '操作'],

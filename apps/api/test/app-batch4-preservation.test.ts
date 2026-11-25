@@ -144,6 +144,15 @@ describe('Batch4 app extraction against fixed f3 complete request traces', () =>
     // list 换为 additive listProductionOrderPage（同投影/排序，页对象形态）。
     'GET /api/v1/production-orders',
     'POST /api/v1/production-orders',
+    // MFG-6（同批）：MRP 路径场景经生产桥——同口径；GET 终止调用由 list 换为 additive 分页
+    // 方法（缺省空过滤 = legacy list 同一条 SQL，页对象形态）；POST 场景的空请求体在两轨上都
+    // 止于解析拒绝（不触达仓储），走下方通用比对（响应 + 终止调用）。
+    'GET /api/v1/mrp-policies',
+    'POST /api/v1/mrp-policies',
+    'GET /api/v1/mrp-demands',
+    'POST /api/v1/mrp-demands',
+    'GET /api/v1/mrp-runs',
+    'POST /api/v1/mrp-runs',
   ]);
   const preserveWithStrip = (result: {
     name: string;
@@ -297,6 +306,39 @@ describe('Batch4 app extraction against fixed f3 complete request traces', () =>
               'call',
               'production',
               'listProductionOrderPage',
+              [
+                {
+                  actor: {
+                    employeeId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+                    companyId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+                  },
+                  scopes: ['COMPANY'],
+                  anchors: [],
+                },
+                {},
+              ],
+            ],
+          ]);
+          return;
+        }
+        // MFG-6：mrp GET 经生产桥——响应与 legacy 逐字段一致（200 {items:[]}）；终止调用钉定
+        // 桥轨形态（缺省空过滤 = legacy list 同一条 SQL）。
+        if (
+          row.name.startsWith('GET /api/v1/mrp-') &&
+          (row.name.endsWith('/mrp-policies') ||
+            row.name.endsWith('/mrp-demands') ||
+            row.name.endsWith('/mrp-runs'))
+        ) {
+          expect(pinnedCurrent.response).toEqual(pinnedBaseline.response);
+          expect(terminalCalls(pinnedCurrent)).toEqual([
+            [
+              'call',
+              'mrp',
+              row.name.endsWith('policies')
+                ? 'listPolicyPage'
+                : row.name.endsWith('demands')
+                  ? 'listDemandPage'
+                  : 'listRunPage',
               [
                 {
                   actor: {
