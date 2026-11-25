@@ -123,6 +123,8 @@ const submitDrawer = async (host: TestElement): Promise<void> => {
     element(host.querySelector('.detail-drawer')).querySelector('button[type="submit"]'),
   ).click();
   await flush();
+  element(host.querySelector('[role="alertdialog"] button.primary')).click();
+  await flush();
 };
 
 const CREATE_FORM: readonly (readonly [string, string])[] = [

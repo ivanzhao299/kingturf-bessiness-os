@@ -14,6 +14,7 @@ import { failureMessage } from '../../shared/api-error-message';
 import { syncSelected } from './selected-sync';
 import { FocusAnchor } from './focus-anchor';
 import { ConsoleNotice } from './console-notice';
+import { confirmFormWrite, ConsoleConfirmDialog, createConfirm } from './console-confirm';
 
 // U3-COM-6（ADR-0014 分域重写）：销售政策控制台——原 vanilla policy workbench 能力面
 // 等价迁移（新建/版本发布/政策评估；列表/筛选/详情抽屉含版本与毛利规则）。
@@ -505,7 +506,15 @@ export function PolicyConsolePage(ports: PolicyConsolePorts) {
     }
   };
 
+  const confirmation = createConfirm();
+  const confirmPublication = (code: string): Promise<boolean> =>
+    confirmFormWrite(confirmation, {
+      title: `发布销售政策 · ${code}`,
+      message: '发布后此版本规则冻结，后续调整须发布新版本。',
+      confirmLabel: '确认发布',
+    });
   const runCreate = async (values: Readonly<Record<string, string>>): Promise<void> => {
+    if (!(await confirmPublication(values.code ?? ''))) return;
     bundle.loading.value = true;
     bundle.submitError.value = '';
     try {
@@ -529,6 +538,7 @@ export function PolicyConsolePage(ports: PolicyConsolePorts) {
     policy: PolicyRow,
     values: Readonly<Record<string, string>>,
   ): Promise<void> => {
+    if (!(await confirmPublication(ports.textValue(policy.code, '政策')))) return;
     bundle.loading.value = true;
     bundle.submitError.value = '';
     try {
@@ -616,6 +626,11 @@ export function PolicyConsolePage(ports: PolicyConsolePorts) {
     runEvaluate,
   });
 
-  const Page = () => PolicyView(state());
+  const Page = () => (
+    <>
+      {PolicyView(state())}
+      <ConsoleConfirmDialog pending={confirmation} />
+    </>
+  );
   return Page;
 }

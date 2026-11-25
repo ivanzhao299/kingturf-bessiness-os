@@ -27,6 +27,7 @@ import {
 import { failureMessage } from '../../shared/api-error-message';
 import { FocusAnchor } from './focus-anchor';
 import { ConsoleNotice } from './console-notice';
+import { confirmFormWrite, ConsoleConfirmDialog, createConfirm } from './console-confirm';
 
 // U3-COM-2（ADR-0014 分域重写）：技术方案 Preact 控制台——原 vanilla solution
 // workbench 能力面等价迁移（新建/修订/定稿、规格与上一版差异标记），列表页
@@ -547,10 +548,19 @@ export function SolutionConsolePage(ports: SolutionConsolePorts) {
     }
   };
 
+  const confirmation = createConfirm();
+  const confirmFinal = (code: string): Promise<boolean> =>
+    confirmFormWrite(confirmation, {
+      title: `定稿技术方案 · ${code}`,
+      message: '定稿后此修订冻结，后续修改需保存为新修订。',
+      confirmLabel: '确认定稿',
+    });
   const runRevise = async (
     solution: SolutionRow,
     payload: Record<string, unknown>,
   ): Promise<void> => {
+    if (payload.final === true && !(await confirmFinal(ports.textValue(solution.code, '方案'))))
+      return;
     loading.value = true;
     formError.value = '';
     try {
@@ -577,6 +587,7 @@ export function SolutionConsolePage(ports: SolutionConsolePorts) {
   };
 
   const runCreate = async (values: Readonly<Record<string, string>>): Promise<void> => {
+    if (values.state === 'FINAL' && !(await confirmFinal(values.code ?? ''))) return;
     loading.value = true;
     formError.value = '';
     try {
@@ -660,6 +671,11 @@ export function SolutionConsolePage(ports: SolutionConsolePorts) {
     runCreate,
   });
 
-  const Page = () => SolutionView(state());
+  const Page = () => (
+    <>
+      {SolutionView(state())}
+      <ConsoleConfirmDialog pending={confirmation} />
+    </>
+  );
   return Page;
 }

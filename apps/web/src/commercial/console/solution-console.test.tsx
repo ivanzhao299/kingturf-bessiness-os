@@ -215,6 +215,9 @@ describe('U3-COM-2 技术方案控制台', () => {
       element(host.querySelector('.detail-drawer')).querySelector('button[type="submit"]'),
     ).click();
     await flush();
+    expect(ports.submit).not.toHaveBeenCalled();
+    element(host.querySelector('[role="alertdialog"] button.primary')).click();
+    await flush();
     expect(ports.submit).toHaveBeenCalledExactlyOnceWith(
       '/api/v1/technical-solutions/solution-1',
       expect.objectContaining({ final: true, ctrVersionId: 'ctr-v1' }),
@@ -309,6 +312,9 @@ describe('U3-COM-2 技术方案控制台', () => {
       for (const [name, value] of FULL_FORM) fillField(host, name, value);
       await flush();
       await submitDrawer(host);
+      expect(ports.submit).not.toHaveBeenCalled();
+      element(host.querySelector('[role="alertdialog"] button.primary')).click();
+      await flush();
       expect(noticeOf(host)).toEqual({ text: '已定稿技术方案 TS-1', inDrawer: false });
     });
 

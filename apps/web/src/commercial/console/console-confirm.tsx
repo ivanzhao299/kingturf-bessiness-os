@@ -14,6 +14,7 @@ export type ConfirmRequest = Readonly<{
   destructive?: boolean;
   // 用户确认后执行的动作。动作自己负责错误呈现（各控制台既有的 submitError / actionError）。
   run: () => Promise<void> | void;
+  cancel?: () => void;
 }>;
 
 // 当前等待确认的动作；null 表示没有确认框。每个控制台页面一个。
@@ -25,6 +26,23 @@ export const createConfirm = (): ConfirmSignal => signal<ConfirmRequest | null>(
 export const askConfirm = (pending: ConfirmSignal, request: ConfirmRequest): void => {
   pending.value = request;
 };
+
+// 表单等待用户选择，提交 Promise 覆盖确认和实际写入。
+export const confirmFormWrite = (
+  pending: ConfirmSignal,
+  request: Omit<ConfirmRequest, 'run' | 'cancel'>,
+): Promise<boolean> =>
+  new Promise((settle) => {
+    askConfirm(pending, {
+      ...request,
+      run: () => {
+        settle(true);
+      },
+      cancel: () => {
+        settle(false);
+      },
+    });
+  });
 
 // 制造主数据三个控制台（物料 / BOM / 工艺路线）共用的「发布版本」确认：行内与详情里的发布按钮同一句话。
 // target 是版本的身份（如「FG-KT-PRO-50 第 1 版」），what 是这一版冻结后不能再改的东西。
@@ -54,7 +72,10 @@ export const ConsoleConfirmDialog = ({ pending }: Readonly<{ pending: ConfirmSig
       message={request.message}
       confirmLabel={request.confirmLabel}
       destructive={request.destructive === true}
-      onCancel={settle}
+      onCancel={() => {
+        settle();
+        request.cancel?.();
+      }}
       onConfirm={() => {
         // 先关框再执行：关框时焦点还回触发按钮；动作随后按各控制台既有的方式呈现结果。
         settle();

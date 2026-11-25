@@ -272,11 +272,16 @@ describe('U3-COM-3 报价控制台', () => {
     const host = mount(ports);
     element(host.querySelector('[data-testid="kt-quote-open"]')).click();
     await flush();
-    element(host.querySelector('[data-testid="kt-quote-issue"]')).click();
+    const trigger = element(host.querySelector('[data-testid="kt-quote-issue"]'));
+    trigger.click();
     await flush();
-    element(
-      element(host.querySelector('.detail-drawer')).querySelector('button[type="submit"]'),
-    ).click();
+    expect(ports.command).not.toHaveBeenCalled();
+    element(host.querySelector('[role="alertdialog"] button.secondary')).click();
+    await flush();
+    expect(ports.command).not.toHaveBeenCalled();
+    trigger.click();
+    await flush();
+    element(host.querySelector('[role="alertdialog"] button.primary')).click();
     await flush();
     expect(ports.command).toHaveBeenCalledExactlyOnceWith('quote-r2', 'issue', undefined);
   });
@@ -360,19 +365,32 @@ describe('报价行内表单与防重复提交（FormSection 要拿到 onSubmit 
         fillField(host, 'reason', '报价口径已复核');
         await flush();
       }
-      const submit = submitButtonOf(host);
+      const submit =
+        action === 'issue'
+          ? element(host.querySelector('[role="alertdialog"] button.primary'))
+          : submitButtonOf(host);
       // 双击：两次点击之间不让出事件循环（重渲染尚未发生，disabled 还没来得及生效）。
       submit.click();
       submit.click();
       await flush();
       expect(command).toHaveBeenCalledTimes(1);
-      expect(submit.disabled).toBe(true);
+      const retry =
+        action === 'issue' ? element(host.querySelector('[data-testid="kt-quote-issue"]')) : submit;
+      expect(retry.disabled).toBe(true);
       fail(new Error('网络错误'));
       await flush();
       await flush();
-      // 失败后表单留在原处，按钮恢复可点，可以再试。
-      expect(submit.disabled).toBe(false);
-      submit.click();
+      expect(retry.disabled).toBe(false);
+      if (action === 'issue') {
+        expect(host.querySelector('[data-testid="kt-quote-submit-error"]')?.textContent).toBe(
+          '网络错误',
+        );
+      }
+      retry.click();
+      if (action === 'issue') {
+        await flush();
+        element(host.querySelector('[role="alertdialog"] button.primary')).click();
+      }
       await flush();
       expect(command).toHaveBeenCalledTimes(2);
     },
@@ -442,7 +460,9 @@ describe('U3-COM-3 报价控制台：详情抽屉随写操作刷新', () => {
 
     element(host.querySelector('[data-testid="kt-quote-issue"]')).click();
     await flush();
-    await submitInline(host);
+    element(host.querySelector('[role="alertdialog"] button.primary')).click();
+    await flush();
+    await flush();
     expect(ports.command).toHaveBeenLastCalledWith('quote-r2', 'issue', undefined);
     expect(host.querySelector('.detail-drawer')).not.toBeNull();
     expect(drawerBadge(host)).toBe('已签发');

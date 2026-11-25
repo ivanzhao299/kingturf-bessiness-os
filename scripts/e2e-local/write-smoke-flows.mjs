@@ -1343,9 +1343,8 @@ export async function quoteFlow(t) {
 
   await t.must('签发报价：列表状态变为「已签发」', async (e) => {
     await openRow(page, 'kt-quote-open', quote.number);
-    await click(page, 'kt-quote-issue');
     const response = await t.write(
-      submit(page, '确认签发', post(/\/api\/v1\/quote-revisions\/[^/]+\/issue$/u)),
+      act(page, 'kt-quote-issue', post(/\/api\/v1\/quote-revisions\/[^/]+\/issue$/u)),
       { irreversible: true },
     );
     e.request = brief(response);
