@@ -4442,6 +4442,30 @@ button:not(:disabled):active {
   background: linear-gradient(145deg, #f7fbf4, #fff);
 }
 
+/* 经营驾驶舱的明细随面板宽度排列，与指标卡分别阅读。 */
+.dashboard-drilldowns,
+.dashboard-sources dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: var(--kt-space-3);
+}
+.dashboard-drilldowns,
+.dashboard-sources {
+  margin-top: var(--kt-space-4);
+}
+.dashboard-list,
+.dashboard-sources dl > div {
+  min-width: 0;
+  padding: var(--kt-space-3);
+  border: 1px solid var(--kt-color-border);
+  border-radius: var(--kt-radius-md);
+  overflow-wrap: anywhere;
+}
+.dashboard-sources dd {
+  margin: 0;
+  color: var(--kt-color-text-muted);
+}
+
 .production-summary,
 .production-order-grid {
   display: grid;

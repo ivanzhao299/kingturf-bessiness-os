@@ -762,11 +762,20 @@ describe('采购域样式表（静态守卫）', () => {
   });
 
   it('可点汇总卡沿用指标卡外观：去掉链接默认样式并保留键盘焦点环', () => {
-    const link = rule('a.procurement-summary-link');
-    for (const declaration of ['display: block', 'color: inherit', 'text-decoration: none'])
-      expect(link).toContain(declaration);
-    // 焦点环不是颜色唯一信号之外的可选项：键盘用户必须看得到焦点落在哪张卡上。
-    expect(stylesheet).toMatch(/a\.procurement-summary-link:focus-visible\s*\{\s*outline:/u);
+    const shared = readFileSync(
+      new URL('../../../../../packages/ui/src/components.css', import.meta.url),
+      'utf8',
+    );
+    const card = /\.stat-card\s*\{([^}]+)\}/u.exec(shared)?.[1];
+    for (const declaration of [
+      'display: flex',
+      'color: var(--kt-color-text)',
+      'text-decoration: none',
+    ])
+      expect(card).toContain(declaration);
+    // 键盘用户必须看得到焦点落在哪张卡上。
+    expect(shared).toMatch(/\.stat-card\[href\]:focus-visible,[^{]+\{\s*outline:/u);
+    expect(stylesheet).not.toContain('procurement-summary-link');
   });
 
   it('供应商对比单元格允许徽章折行（不折行时徽章先占满列宽，名称被挤成一字一行）', () => {

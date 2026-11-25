@@ -1,23 +1,24 @@
-// PROC-2（TD-PROC-010）：采购概览汇总卡。口径与文案沿用原 #/procurement 面板顶部的四张
-// metric-card；目标子路由对当前账号可见时整卡为指向该路由的锚点（hash 导航，同治理域概览的
-// a.metric 做法，不依赖点击处理器），不可见时保持纯指标卡——否则点入会被导航兜底弹回首个
-// 可用路由。
-import { el } from '../dom';
 import type { AppRoute } from '../shared/navigation';
+import { appendOverviewCards } from '../shared/overview-summary-cards';
 import type { OperationsViewContext } from './operations-view-ports';
 
 type Rows = readonly Record<string, unknown>[];
 type RecordText = OperationsViewContext['ports']['recordText'];
 
-export type ProcurementSummaryInput = Readonly<{
+type ProcurementSummaryInput = Readonly<{
   suppliers: Rows;
   rfqs: Rows;
   purchaseOrders: Rows;
   balances: Rows;
 }>;
 
+type ProcurementSummarySnapshot = {
+  [Source in keyof ProcurementSummaryInput]: Rows | undefined;
+};
+
 type SummaryCard = Readonly<{
   id: string;
+  source: keyof ProcurementSummaryInput;
   label: string;
   unit: string;
   // 承载该指标明细的子路由；没有这样的子路由时为 null，卡片保持纯指标。
@@ -48,6 +49,7 @@ const isAdmitted = (supplier: Rows[number], recordText: RecordText): boolean => 
 const SUMMARY_CARDS: readonly SummaryCard[] = [
   {
     id: 'suppliers',
+    source: 'suppliers',
     label: '待准入供应商',
     unit: ' 家',
     route: 'procurement/suppliers',
@@ -56,6 +58,7 @@ const SUMMARY_CARDS: readonly SummaryCard[] = [
   },
   {
     id: 'rfqs',
+    source: 'rfqs',
     label: '询价进行中',
     unit: ' 单',
     route: 'procurement/rfqs',
@@ -66,6 +69,7 @@ const SUMMARY_CARDS: readonly SummaryCard[] = [
   },
   {
     id: 'purchase-orders',
+    source: 'purchaseOrders',
     label: '待收采购单',
     unit: ' 单',
     route: 'procurement/purchase-orders',
@@ -76,6 +80,7 @@ const SUMMARY_CARDS: readonly SummaryCard[] = [
   },
   {
     id: 'inventory',
+    source: 'balances',
     label: '待检库存',
     unit: ' 批',
     route: null,
@@ -91,33 +96,33 @@ const SUMMARY_CARDS: readonly SummaryCard[] = [
  *  签发订单之后回到概览，面板不会重建；四个采购宿主的 refresh 端口在 controller.load 重读完成后调用它。 */
 export function appendProcurementSummary(
   target: HTMLElement,
-  input: () => ProcurementSummaryInput,
+  input: () => ProcurementSummarySnapshot,
   recordText: RecordText,
   visibleRoutes: ReadonlySet<string>,
 ): () => void {
-  const summary = el('div', 'production-summary procurement-summary');
-  const nodes: (HTMLElement | undefined)[] = [];
-  const render = (): void => {
-    const current = input();
-    SUMMARY_CARDS.forEach((card, index) => {
-      const text = `${card.label}\n${String(card.count(current, recordText))}${card.unit}`;
-      const existing = nodes[index];
-      if (existing) {
-        existing.textContent = text;
-        return;
-      }
-      const link =
-        card.route !== null && visibleRoutes.has(card.route)
-          ? el('a', 'metric-card procurement-summary-link', text)
-          : null;
-      if (link) link.href = `#/${String(card.route)}`;
-      const node: HTMLElement = link ?? el('div', 'metric-card', text);
-      node.setAttribute('data-testid', `procurement-summary-${card.id}`);
-      nodes[index] = node;
-      summary.append(node);
-    });
-  };
-  render();
-  target.append(summary);
-  return render;
+  return appendOverviewCards(
+    target,
+    input,
+    (snapshot) => {
+      const rows = {
+        suppliers: snapshot.suppliers ?? [],
+        rfqs: snapshot.rfqs ?? [],
+        purchaseOrders: snapshot.purchaseOrders ?? [],
+        balances: snapshot.balances ?? [],
+      };
+      return SUMMARY_CARDS.map((card) => {
+        const readable = snapshot[card.source] !== undefined;
+        return {
+          id: card.id,
+          label: card.label,
+          value: readable ? String(card.count(rows, recordText)) : '—',
+          hint: readable ? card.unit.trim() : '读不到清单',
+          href:
+            card.route !== null && visibleRoutes.has(card.route) ? `#/${card.route}` : undefined,
+        };
+      });
+    },
+    '采购待办汇总',
+    'procurement-summary',
+  );
 }

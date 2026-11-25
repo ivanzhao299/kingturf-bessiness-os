@@ -248,12 +248,19 @@ describe('U3-MFG-4 工单控制台：默认视图与 e2e 文案契约', () => {
       nextCursor: null,
     });
     const host = mount(portsFor(rows, [], { fetchPage }));
+    const draft = byTestId(host, 'kt-wo-status-draft');
+    expect(byTestId(host, 'kt-wo-summary').getAttribute('aria-label')).toBe('工单状态汇总');
+    expect(draft.tagName.toLowerCase()).toBe('button');
+    expect(draft.getAttribute('aria-pressed')).toBe('false');
+    expect(draft.getAttribute('data-tone')).toBe('warning');
     expect(byTestId(host, 'kt-wo-summary-total').textContent).toContain('共 3 张工单');
     expect(byTestId(host, 'kt-wo-status-draft').textContent).toContain('2');
     expect(byTestId(host, 'kt-wo-status-in_progress').textContent).toContain('0');
     byTestId(host, 'kt-wo-status-draft').click();
     await flush();
     expect(fetchPage).toHaveBeenCalledExactlyOnceWith({ state: 'DRAFT', limit: 50 });
+    expect(byTestId(host, 'kt-wo-status-draft')).toBe(draft);
+    expect(draft.getAttribute('aria-pressed')).toBe('true');
     expect(
       host
         .querySelectorAll('[data-testid="kt-wo-number"]')
@@ -262,6 +269,7 @@ describe('U3-MFG-4 工单控制台：默认视图与 e2e 文案契约', () => {
     byTestId(host, 'kt-wo-status-draft').click();
     await flush();
     expect(host.textContent).toContain('WO-3');
+    expect(draft.getAttribute('aria-pressed')).toBe('false');
   });
 
   it('权限门：无 production:plan 无新建；行级下一步按各能力键显示对应文案', () => {

@@ -9,7 +9,13 @@
 // e2e 契约：工单号独占文本元素（kt-wo-number）；详情证据（物料台账/成品序列/事件）在
 // 详情抽屉内，各条目独占一个文本元素。
 import { signal } from '@preact/signals';
-import { DataTable, PageHeader, StatusBadge, type DataTableColumn } from '@kingturf/ui';
+import {
+  DataTable,
+  PageHeader,
+  StatusBadge,
+  SummaryCards,
+  type DataTableColumn,
+} from '@kingturf/ui';
 import {
   ProductionOrderCreateDrawer,
   ProductionOrderTransitionDrawer,
@@ -204,35 +210,29 @@ const STATUS_HINTS: Readonly<Record<string, string>> = {
   CANCELLED: '不再执行',
 };
 
-const SummaryCards = ({ state }: Readonly<{ state: ProductionOrderViewState }>) => {
+const WorkOrderSummary = ({ state }: Readonly<{ state: ProductionOrderViewState }>) => {
   const countOf = (status: string): number =>
     state.snapshot.filter((row) => text(state, row, 'state', 'state') === status).length;
   const reported = state.snapshot.reduce((sum, row) => sum + records(row.reports).length, 0);
   const rolled = state.snapshot.reduce((sum, row) => sum + records(row.rolls).length, 0);
   return (
-    <div class="po-summary-wrap" data-testid="kt-wo-summary">
-      <div class="po-summary" role="group" aria-label="工单状态汇总">
-        {STATUS_FILTERS.filter((status) => status !== 'ALL').map((status) => {
-          const active = state.statusFilter === status;
-          return (
-            <button
-              key={status}
-              type="button"
-              class={active ? 'po-summary-card active' : 'po-summary-card'}
-              data-tone={statusTone(status)}
-              aria-pressed={active ? 'true' : 'false'}
-              data-testid={`kt-wo-status-${status.toLowerCase()}`}
-              onClick={() => {
-                state.setStatusFilter(active ? 'ALL' : status);
-              }}
-            >
-              <span class="po-summary-label">{STATUS_LABELS[status] ?? status}</span>
-              <strong class="po-summary-count">{String(countOf(status))}</strong>
-              <small class="po-summary-hint">{STATUS_HINTS[status] ?? ''}</small>
-            </button>
-          );
-        })}
-      </div>
+    <div>
+      <SummaryCards
+        label="工单状态汇总"
+        testId="kt-wo-summary"
+        itemTestId={(id) => `kt-wo-status-${id.toLowerCase()}`}
+        items={STATUS_FILTERS.filter((status) => status !== 'ALL').map((status) => ({
+          id: status,
+          label: STATUS_LABELS[status] ?? status,
+          value: String(countOf(status)),
+          hint: STATUS_HINTS[status] ?? '',
+          tone: statusTone(status),
+          active: state.statusFilter === status,
+          onSelect: () => {
+            state.setStatusFilter(state.statusFilter === status ? 'ALL' : status);
+          },
+        }))}
+      />
       <p class="console-hint" data-testid="kt-wo-summary-total">
         {`共 ${String(state.snapshot.length)} 张工单 · 累计报工 ${String(reported)} 条 · 成品卷 ${String(rolled)} 卷`}
       </p>
@@ -306,7 +306,7 @@ const ProductionOrderView = (state: ProductionOrderViewState) => (
       }
     />
     {state.selected === null ? <ConsoleNotice message={state.notice} /> : null}
-    <SummaryCards state={state} />
+    <WorkOrderSummary state={state} />
     <SearchBar state={state} />
     {state.loadError !== '' ? (
       <p class="console-error" role="alert" data-testid="kt-wo-load-error">

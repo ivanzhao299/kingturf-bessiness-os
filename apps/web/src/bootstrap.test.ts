@@ -1374,6 +1374,7 @@ class RenderedElement {
   };
   public children: RenderedElement[] = [];
   public privateText = '';
+  public parentNode: RenderedElement | null = null;
   public disabled = false;
   public hidden = false;
   public value = '';
@@ -1382,7 +1383,26 @@ class RenderedElement {
   public readonly dataset: Record<string, string> = {};
   public readonly attributes = new Map<string, string>();
   private readonly listeners = new Map<string, (() => void)[]>();
-  public constructor(public readonly tagName: string) {}
+  public constructor(
+    public readonly tagName: string,
+    public readonly nodeType = 1,
+  ) {}
+  public get childNodes(): RenderedElement[] {
+    return this.children;
+  }
+  public get firstChild(): RenderedElement | null {
+    return this.children[0] ?? null;
+  }
+  public get nextSibling(): RenderedElement | null {
+    const siblings = this.parentNode?.children;
+    return siblings?.[siblings.indexOf(this) + 1] ?? null;
+  }
+  public get data(): string {
+    return this.privateText;
+  }
+  public set data(text: string) {
+    this.privateText = text;
+  }
   public set textContent(text: string) {
     this.privateText = text;
   }
@@ -1393,15 +1413,29 @@ class RenderedElement {
     return this.children.length;
   }
   public append(...children: RenderedElement[]): void {
-    this.children.push(...children);
+    for (const child of children) this.insertBefore(child, null);
+  }
+  public insertBefore(child: RenderedElement, reference: RenderedElement | null): void {
+    if (child === reference) return;
+    child.remove();
+    const index = reference === null ? this.children.length : this.children.indexOf(reference);
+    if (index < 0) throw new Error('Reference node is not a child');
+    this.children.splice(index, 0, child);
+    child.parentNode = this;
+  }
+  public appendChild(child: RenderedElement): void {
+    this.insertBefore(child, null);
   }
   public replaceChildren(...children: RenderedElement[]): void {
-    this.children = [...children];
+    for (const child of this.children) child.parentNode = null;
+    this.children = [];
+    this.append(...children);
   }
   public addEventListener(type: string, listener: () => void): void {
     this.listeners.set(type, [...(this.listeners.get(type) ?? []), listener]);
   }
   public setAttribute(name: string, value: string): void {
+    if (name === 'class') this.className = value;
     this.attributes.set(name, value);
   }
   public getAttribute(name: string): string | null {
@@ -1415,7 +1449,10 @@ class RenderedElement {
     this.open = false;
   }
   public remove(): void {
-    return undefined;
+    if (this.parentNode === null) return;
+    const siblings = this.parentNode.children;
+    siblings.splice(siblings.indexOf(this), 1);
+    this.parentNode = null;
   }
   public replaceWith(): void {
     return undefined;
@@ -1435,8 +1472,9 @@ class RenderedElement {
   public focus(): void {
     return undefined;
   }
-  public removeAttribute(): void {
-    return undefined;
+  public removeAttribute(name: string): void {
+    if (name === 'class') this.className = '';
+    this.attributes.delete(name);
   }
   public dispatchEvent(event: Readonly<{ type: string; preventDefault?: () => void }>): boolean {
     for (const listener of this.listeners.get(event.type) ?? [])
@@ -1463,8 +1501,17 @@ afterEach(() => {
 beforeEach(() => {
   vi.stubGlobal('document', {
     createElement: (tagName: string) => new RenderedElement(tagName),
+    createElementNS: (_namespace: string, tagName: string) => new RenderedElement(tagName),
+    createTextNode: (text: string) => {
+      const node = new RenderedElement('#text', 3);
+      node.data = text;
+      return node;
+    },
   });
 });
+
+const summaryContent = (card: RenderedElement | TestElement): readonly (string | undefined)[] =>
+  ['label', 'value', 'hint'].map((part) => card.querySelector(`.stat-card-${part}`)?.textContent);
 
 const customer: Customer = {
   id: 'customer-1',
@@ -2185,10 +2232,10 @@ describe('web bootstrap', () => {
     // 全读权限：三张卡都是锚点。口径 = 列表（版本行）的 status 字段，与控制台状态列同源；
     // 已退役行既不是已发布也不是草稿，不计入两者。
     const all = summaryCards(await manufacturingWorkspace(MANUFACTURING_READS));
-    expect(all.map((card) => [card.getAttribute('data-testid'), card.textContent])).toEqual([
-      ['manufacturing-summary-items', '物料 · 已发布版本1草稿 1'],
-      ['manufacturing-summary-boms', 'BOM · 已发布版本0草稿 2'],
-      ['manufacturing-summary-routings', '工艺路线 · 已发布版本1草稿 0'],
+    expect(all.map((card) => [card.getAttribute('data-testid'), ...summaryContent(card)])).toEqual([
+      ['manufacturing-summary-items', '物料 · 已发布版本', '1', '草稿 1'],
+      ['manufacturing-summary-boms', 'BOM · 已发布版本', '0', '草稿 2'],
+      ['manufacturing-summary-routings', '工艺路线 · 已发布版本', '1', '草稿 0'],
     ]);
     expect(all.map((card) => [card.tagName, linkOf(card)])).toEqual([
       ['a', '#/manufacturing/items'],
@@ -2198,22 +2245,18 @@ describe('web bootstrap', () => {
     // 只有 BOM 读权限：BOM 卡可点入；物料与工艺路线清单读不到——保持纯指标卡，且数字无从
     // 得出，显示「—」而不是编一个 0（否则点入会被导航兜底弹回首个可用路由）。
     const bomOnly = summaryCards(await manufacturingWorkspace(['bom:read']));
-    expect(bomOnly.map((card) => [card.tagName, linkOf(card), card.textContent])).toEqual([
-      ['div', null, '物料 · 已发布版本—草稿 —'],
-      ['a', '#/manufacturing/boms', 'BOM · 已发布版本0草稿 2'],
-      ['div', null, '工艺路线 · 已发布版本—草稿 —'],
+    expect(bomOnly.map((card) => [card.tagName, linkOf(card), ...summaryContent(card)])).toEqual([
+      ['div', null, '物料 · 已发布版本', '—', '读不到清单'],
+      ['a', '#/manufacturing/boms', 'BOM · 已发布版本', '0', '草稿 2'],
+      ['div', null, '工艺路线 · 已发布版本', '—', '读不到清单'],
     ]);
     // 只有管理权限：面板不挂载（既有口径不变），更没有汇总卡。
     const manageOnly = await manufacturingWorkspace(['bom:manage']);
-    expect(
-      manageOnly.querySelectorAll('.manufacturing-workbench').filter(isTestElement),
-    ).toHaveLength(0);
-    expect(
-      manageOnly.querySelectorAll('.manufacturing-summary').filter(isTestElement),
-    ).toHaveLength(0);
+    expect(manageOnly.querySelectorAll('.manufacturing-workbench')).toHaveLength(0);
+    expect(manageOnly.querySelectorAll('.stat-card')).toHaveLength(0);
   });
 
-  it('recomputes the overview cards from the current snapshot without replacing them (MFG-3B)', () => {
+  it('recomputes the overview cards from the current snapshot without replacing them (MFG-3B)', async () => {
     // 路由视图只构建一次：控制台新建 / 发布 / 刷新后 controller.views 已是新快照，而概览面板
     // 不会重建，汇总卡靠重算函数更新文字（真浏览器量测里抓到过：子路由新建草稿后回到概览，
     // 草稿数仍是旧值）。
@@ -2236,10 +2279,10 @@ describe('web bootstrap', () => {
     );
     const cards = (): TestElement[] =>
       rendered.querySelectorAll('.stat-card').filter(isTestElement);
-    expect(cards().map((card) => [card.tagName, card.textContent])).toEqual([
-      ['a', '物料 · 已发布版本1草稿 0'],
-      ['div', 'BOM · 已发布版本—草稿 —'],
-      ['div', '工艺路线 · 已发布版本—草稿 —'],
+    expect(cards().map((card) => [card.tagName, ...summaryContent(card)])).toEqual([
+      ['a', '物料 · 已发布版本', '1', '草稿 0'],
+      ['div', 'BOM · 已发布版本', '—', '读不到清单'],
+      ['div', '工艺路线 · 已发布版本', '—', '读不到清单'],
     ]);
     const [firstItems] = cards();
     if (!firstItems) throw new Error('items summary card missing');
@@ -2247,16 +2290,41 @@ describe('web bootstrap', () => {
     // 读不到的两张卡保持纯指标与「—」。
     snapshot = { items: [published, draft], boms: [], routings: [] };
     refresh();
+    await vi.waitFor(() => {
+      expect(summaryContent(firstItems)).toEqual(['物料 · 已发布版本', '1', '草稿 1']);
+    });
     expect(cards()).toHaveLength(3);
     expect(cards()[0]).toBe(firstItems);
     expect(firstItems.tagName).toBe('a');
     expect(firstItems.getAttribute('data-testid')).toBe('manufacturing-summary-items');
     expect(firstItems.getAttribute('href')).toBe('#/manufacturing/items');
-    expect(cards().map((card) => card.textContent)).toEqual([
-      '物料 · 已发布版本1草稿 1',
-      'BOM · 已发布版本—草稿 —',
-      '工艺路线 · 已发布版本—草稿 —',
+    expect(cards().map(summaryContent)).toEqual([
+      ['物料 · 已发布版本', '1', '草稿 1'],
+      ['BOM · 已发布版本', '—', '读不到清单'],
+      ['工艺路线 · 已发布版本', '—', '读不到清单'],
     ]);
+  });
+
+  it('distinguishes an unread manufacturing list from a readable empty list at the same link', async () => {
+    let items: readonly Record<string, unknown>[] | undefined = undefined;
+    const target = el('section');
+    const refresh = appendManufacturingSummary(
+      target,
+      () => ({ items, boms: [], routings: [] }),
+      recordText,
+      new Set(['manufacturing/items']),
+    );
+    const cards = () => (target as unknown as RenderedElement).findByClass('stat-card');
+    const card = cards()[0];
+    if (!card) throw new Error('items summary card missing');
+    expect(summaryContent(card)).toEqual(['物料 · 已发布版本', '—', '读不到清单']);
+    expect(card.getAttribute('href')).toBe('#/manufacturing/items');
+    items = [];
+    refresh();
+    await vi.waitFor(() => {
+      expect(summaryContent(card)).toEqual(['物料 · 已发布版本', '0', '草稿 0']);
+    });
+    expect(cards()[0]).toBe(card);
   });
 
   it('has every console host recompute the overview cards after its reload (MFG-3B)', () => {
@@ -2299,7 +2367,7 @@ describe('web bootstrap', () => {
 
   // TD-PROC-013：采购概览汇总卡与修复前的制造汇总卡同款「渲染一次」——在子路由新建供应商、发出询价、
   // 签发订单之后回到概览，卡片仍是首渲染的数字。
-  it('recomputes the procurement overview cards from the current views without replacing them (TD-PROC-013)', () => {
+  it('recomputes the procurement overview cards from the current views without replacing them (TD-PROC-013)', async () => {
     type Rows = readonly Record<string, unknown>[];
     let snapshot: Readonly<{
       suppliers: Rows;
@@ -2320,14 +2388,15 @@ describe('web bootstrap', () => {
       recordText,
       new Set<string>(['procurement/suppliers', 'procurement/rfqs', 'procurement/purchase-orders']),
     );
-    const cards = (): readonly RenderedElement[] => rendered.findByClass('metric-card');
-    expect(cards().map((card) => [card.tagName, card.textContent])).toEqual([
-      ['a', '待准入供应商\n1 家'],
-      ['a', '询价进行中\n1 单'],
-      ['a', '待收采购单\n1 单'],
-      ['div', '待检库存\n0 批'],
+    const cards = (): readonly RenderedElement[] => rendered.findByClass('stat-card');
+    expect(cards().map((card) => [card.tagName, ...summaryContent(card)])).toEqual([
+      ['a', '待准入供应商', '1', '家'],
+      ['a', '询价进行中', '1', '单'],
+      ['a', '待收采购单', '1', '单'],
+      ['div', '待检库存', '0', '批'],
     ]);
-    const [firstSuppliers] = cards();
+    const originalCards = cards();
+    const [firstSuppliers] = originalCards;
     if (!firstSuppliers) throw new Error('suppliers summary card missing');
     // 在子路由新建一条供应商、关闭询价、订单收齐、多出一批待检库存之后的新快照：只有文字变。
     // 节点是同一实例（锚点、标识不变），不追加卡片；「待检库存」没有对应子路由，保持纯指标。
@@ -2341,16 +2410,51 @@ describe('web bootstrap', () => {
       balances: [{ id: 'b-1', qualityStatus: 'QUARANTINE' }],
     };
     refresh();
+    await vi.waitFor(() => {
+      expect(cards().map(summaryContent)).toEqual([
+        ['待准入供应商', '2', '家'],
+        ['询价进行中', '0', '单'],
+        ['待收采购单', '0', '单'],
+        ['待检库存', '1', '批'],
+      ]);
+    });
     expect(cards()).toHaveLength(4);
-    expect(cards()[0]).toBe(firstSuppliers);
+    originalCards.forEach((original, index) => {
+      expect(cards()[index]).toBe(original);
+    });
     expect(firstSuppliers.tagName).toBe('a');
-    expect(firstSuppliers.getAttribute('data-testid')).toBe('procurement-summary-suppliers');
-    expect(cards().map((card) => card.textContent)).toEqual([
-      '待准入供应商\n2 家',
-      '询价进行中\n0 单',
-      '待收采购单\n0 单',
-      '待检库存\n1 批',
+    expect(cards().map((card) => card.getAttribute('data-testid'))).toEqual([
+      'procurement-summary-suppliers',
+      'procurement-summary-rfqs',
+      'procurement-summary-purchase-orders',
+      'procurement-summary-inventory',
     ]);
+  });
+
+  it('distinguishes unavailable procurement lists from readable empty lists', async () => {
+    type Rows = readonly Record<string, unknown>[];
+    let balances: Rows | undefined = undefined;
+    const target = el('section', 'summary-target');
+    const rendered = target as unknown as RenderedElement;
+    const refresh = appendProcurementSummary(
+      target,
+      () => ({ suppliers: undefined, rfqs: [], purchaseOrders: [], balances }),
+      recordText,
+      new Set(['procurement/suppliers']),
+    );
+    const [suppliers, rfqs, , inventory] = rendered.findByClass('stat-card');
+    if (!suppliers || !rfqs || !inventory) throw new Error('procurement summary cards missing');
+    expect(suppliers.getAttribute('href')).toBe('#/procurement/suppliers');
+    expect(summaryContent(suppliers)).toEqual(['待准入供应商', '—', '读不到清单']);
+    expect(summaryContent(rfqs)).toEqual(['询价进行中', '0', '单']);
+    expect(summaryContent(inventory)).toEqual(['待检库存', '—', '读不到清单']);
+    expect(inventory.tagName).toBe('div');
+    balances = [];
+    refresh();
+    await vi.waitFor(() => {
+      expect(summaryContent(inventory)).toEqual(['待检库存', '0', '批']);
+    });
+    expect(rendered.findByClass('stat-card')[3]).toBe(inventory);
   });
 
   // TD-PROC-012：「待准入供应商」按物料准入记录算——没有任何已批准或可有条件批准（APPROVED / CONDITIONAL）
@@ -2383,11 +2487,11 @@ describe('web bootstrap', () => {
       new Set<string>(),
     );
     const rendered = target as unknown as RenderedElement;
-    expect(rendered.findByClass('metric-card').map((card) => card.textContent)).toEqual([
-      '待准入供应商\n3 家',
-      '询价进行中\n0 单',
-      '待收采购单\n0 单',
-      '待检库存\n0 批',
+    expect(rendered.findByClass('stat-card').map(summaryContent)).toEqual([
+      ['待准入供应商', '3', '家'],
+      ['询价进行中', '0', '单'],
+      ['待收采购单', '0', '单'],
+      ['待检库存', '0', '批'],
     ]);
   });
 
@@ -2429,33 +2533,27 @@ describe('web bootstrap', () => {
     expect(moved).toBeGreaterThan(mount.indexOf('mountGovernanceViews('));
     expect(mount.indexOf('installRouteSectionNavigation(shell);', moved)).toBeGreaterThan(moved);
   });
-  it('styles the manufacturing overview summary as three columns with linkable cards (MFG-3B)', () => {
+  it('uses the responsive shared overview card layout and keyboard-visible links (UI-2)', () => {
     const styles = readFileSync(
-      new URL('./commercial/console/manufacturing-console.css', import.meta.url),
-      'utf8',
-    );
-    // 制造概览保留三 / 二 / 一列，卡片的交互样式来自共享组件。
-    expect(styles).toMatch(
-      /\.manufacturing-summary \.stat-cards\s*\{[^}]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/u,
-    );
-    expect(styles).toMatch(
-      /@media \(max-width: 900px\)\s*\{\s*\.manufacturing-summary \.stat-cards\s*\{[^}]*repeat\(2,/u,
-    );
-    expect(styles).toMatch(
-      /@media \(max-width: 640px\)\s*\{\s*\.manufacturing-summary \.stat-cards\s*\{[^}]*minmax\(0,\s*1fr\)/u,
-    );
-    const sharedStyles = readFileSync(
       new URL('../../../packages/ui/src/components.css', import.meta.url),
       'utf8',
     );
-    expect(sharedStyles).toMatch(/\.stat-card\s*\{[^}]*text-decoration: none/u);
-    expect(sharedStyles).toMatch(
-      /\.stat-card\[href\]:hover,[^{]*\{[^}]*border-color: var\(--kt-color-brand\)/u,
+    const legacy = readFileSync(
+      new URL('./commercial/console/manufacturing-console.css', import.meta.url),
+      'utf8',
     );
-    expect(sharedStyles).toMatch(
-      /\.stat-card\[href\]:focus-visible,[^{]*\{[^}]*outline: 2px solid var\(--kt-color-brand\)/u,
+    expect(styles).toMatch(
+      /\.stat-cards\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(8\.5rem,\s*1fr\)\)/u,
     );
-    expect(styles).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(/iu);
+    expect(styles).toMatch(
+      /\.stat-card\[href\]:hover,[^}]*border-color:\s*var\(--kt-color-brand\)/u,
+    );
+    expect(styles).toMatch(
+      /\.stat-card\[href\]:focus-visible,[^}]*outline:\s*2px solid var\(--kt-color-brand\)/u,
+    );
+    expect(legacy).not.toContain('.production-summary.manufacturing-summary');
+    expect(legacy).not.toContain('a.manufacturing-summary-link');
+    expect(legacy).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(/iu);
   });
 
   it('groups manufacturing navigation as one expandable domain with the overview and its readable sub-routes (MFG-3B)', () => {
@@ -2743,19 +2841,19 @@ describe('web bootstrap', () => {
     const summaryCards = (workspace: RenderedElement): readonly RenderedElement[] => {
       const overview = workspace.findByClass('procurement-workbench')[0];
       if (!overview) throw new Error('procurement overview panel missing');
-      return overview.findByClass('metric-card');
+      return overview.findByClass('stat-card');
     };
     const linkOf = (card: RenderedElement): string | undefined =>
-      (card as unknown as { href?: string }).href;
+      card.getAttribute('href') ?? undefined;
     // 口径与文案沿用原面板（采购专员口径的权限：供应商、采购与库存可读）。
     const buyer = summaryCards(
       await procurementWorkspace(['supplier:read', 'procurement:read', 'inventory:read']),
     );
-    expect(buyer.map((card) => card.textContent)).toEqual([
-      '待准入供应商\n1 家',
-      '询价进行中\n1 单',
-      '待收采购单\n1 单',
-      '待检库存\n1 批',
+    expect(buyer.map(summaryContent)).toEqual([
+      ['待准入供应商', '1', '家'],
+      ['询价进行中', '1', '单'],
+      ['待收采购单', '1', '单'],
+      ['待检库存', '1', '批'],
     ]);
     // 「待检库存」不做链接：它的明细是本页下方的「批次库存台账」，收货管理页只列收货单。
     expect(buyer.map((card) => [card.tagName, linkOf(card)])).toEqual([
@@ -2774,8 +2872,19 @@ describe('web bootstrap', () => {
       ['a', '#/procurement/purchase-orders'],
       ['div', undefined],
     ]);
+    expect(buyerWithoutSuppliers[0] && summaryContent(buyerWithoutSuppliers[0])).toEqual([
+      '待准入供应商',
+      '—',
+      '读不到清单',
+    ]);
     const inventoryOnly = summaryCards(await procurementWorkspace(['inventory:read']));
     expect(inventoryOnly.map((card) => card.tagName)).toEqual(['div', 'div', 'div', 'div']);
+    expect(inventoryOnly.map(summaryContent)).toEqual([
+      ['待准入供应商', '—', '读不到清单'],
+      ['询价进行中', '—', '读不到清单'],
+      ['待收采购单', '—', '读不到清单'],
+      ['待检库存', '1', '批'],
+    ]);
   });
 
   it('groups procurement navigation as one expandable domain with the overview and its readable sub-routes (PROC-2)', () => {

@@ -293,20 +293,3 @@
   color: var(--kt-color-text-muted);
   font-size: var(--kt-font-size-caption);
 }
-
-/* Keep the manufacturing overview at three, two, and one columns. */
-.manufacturing-summary .stat-cards {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-@media (max-width: 900px) {
-  .manufacturing-summary .stat-cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 640px) {
-  .manufacturing-summary .stat-cards {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
