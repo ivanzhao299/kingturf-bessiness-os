@@ -151,6 +151,7 @@ export const costMatrixActions = (
     const matrix = bundle.selected.value;
     if (!matrix) return;
     bundle.loading.value = true;
+    bundle.notice.value = '';
     bundle.submitError.value = '';
     try {
       await ports.submit(`/api/v1/cost-matrices/${ports.textValue(matrix.id, '')}/calculate`, {
@@ -173,6 +174,7 @@ export const costMatrixActions = (
     const latest = calculations.length > 0 ? ports.recordValue(calculations[0]) : null;
     if (!latest || typeof latest.id !== 'string') return;
     bundle.loading.value = true;
+    bundle.notice.value = '';
     bundle.submitError.value = '';
     try {
       const result = ports.recordValue(

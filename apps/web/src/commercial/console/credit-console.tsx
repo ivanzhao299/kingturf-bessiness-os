@@ -212,7 +212,7 @@ const CreditDrawer = ({ state }: Readonly<{ state: CreditPageState }>) => {
       footer={state.notice === '' ? undefined : <ConsoleNotice message={state.notice} />}
     >
       <CreditDetail state={state} />
-      {state.submitError !== '' ? (
+      {state.decision === null && state.submitError !== '' ? (
         <p class="console-error" role="alert" data-testid="kt-credit-submit-error">
           {state.submitError}
         </p>

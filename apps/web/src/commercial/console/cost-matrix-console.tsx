@@ -341,6 +341,7 @@ const MatrixView = (state: MatrixPageState) => {
           <strong>{String(recalculateOnPage)}</strong>
         </article>
       </div>
+      {state.selected ? null : <ConsoleNotice message={state.notice} />}
       <div class="commercial-console-filters">
         <input
           type="search"
@@ -456,7 +457,6 @@ const MatrixView = (state: MatrixPageState) => {
       {state.selected ? <MatrixDrawer state={state} /> : null}
       {state.activeForm === 'create' ? <CreateDrawer state={state} /> : null}
       {/* TD-WF-014①：详情抽屉没开着时，写成功的提示显示在页头下方。 */}
-      {state.selected ? null : <ConsoleNotice message={state.notice} />}
     </div>
   );
 };

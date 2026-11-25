@@ -464,6 +464,7 @@ const SolutionView = (state: SolutionPageState) => {
           </>
         }
       />
+      {state.selected ? null : <ConsoleNotice message={state.notice} />}
       <div class="commercial-console-filters">
         {(['ALL', 'DRAFT', 'FINAL'] as const).map((option) => (
           <button
@@ -508,7 +509,6 @@ const SolutionView = (state: SolutionPageState) => {
         emptyDescription="请先批准技术需求，再建立结构化方案。"
       />
       {/* TD-WF-014①：详情抽屉没开着时，写成功的提示显示在页头下方。 */}
-      {state.selected ? null : <ConsoleNotice message={state.notice} />}
       {state.selected ? <SolutionDrawer state={state} /> : null}
       {state.creating ? <CreateDrawer state={state} /> : null}
       {state.selected === null && state.solutions.length === 0 && state.loadError === '' ? (
