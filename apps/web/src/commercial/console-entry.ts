@@ -11,7 +11,7 @@ import type { SalesViewController, SalesViewPorts } from './sales-view-ports';
 import type { PricingViewController, PricingViewPorts } from './pricing-view-ports';
 import type { CreditContractViewContext } from './credit-contract-view-ports';
 import type { CrmController } from '../crm/controller';
-import type { Lead } from '../crm/types';
+import type { Employee, Lead } from '../crm/types';
 import { itemVersionOptions } from './cost-factor-form';
 import type { OpportunityListPorts } from './console/opportunity-list';
 import type { SolutionConsolePorts } from './console/solution-ports';
@@ -301,7 +301,11 @@ export function appendCreditConsole(context: CreditContractViewContext): void {
         (item) => item.status === 'ISSUED' && typeof item.issuedSnapshotId === 'string',
       );
     },
-    customers: controller.customers,
+    // WFC-1（TD-WF-007 同类）：客户清单同样按最新数据计算。商业控制器的 customers 读取时取 CRM 控制器的
+    // 当前值（此前是 bootstrap 的一次性数组拷贝），这里再在读取时转交给表单——本会话新建的客户能选到。
+    get customers(): CreditConsolePorts['customers'] {
+      return controller.customers;
+    },
     textValue: (value, fallback = '') => creditContractViewPorts.textValue(value, fallback),
     recordText: (record: unknown, camel: string, snake: string, fallback?: string) =>
       creditContractViewPorts.recordText(
@@ -330,17 +334,26 @@ export function appendCreditConsole(context: CreditContractViewContext): void {
 }
 
 export function appendLeadConsole(workspace: HTMLElement, controller: CrmController): void {
-  const employeeChoices = controller.employees
-    .filter((item: { active?: boolean }) => item.active !== false)
-    .map((item: { id: string; displayName?: string }) => ({
-      value: item.id,
-      label: item.displayName ?? item.id,
-    }));
+  // WFC-1（TD-WF-007 同类）：负责人下拉按最新数据计算。此前是挂载时从 controller.employees 算好的一份，
+  // 之后不再更新。CRM 控制器每次 load() 都换成新数组，所以按数组身份缓存：数组换了才重算，不新增请求。
+  let seenEmployees: readonly Employee[] | undefined;
+  let cachedChoices: readonly LeadConsolePorts['employeeChoices'][number][] = [];
+  const employeeChoices = (): LeadConsolePorts['employeeChoices'] => {
+    if (seenEmployees !== controller.employees) {
+      seenEmployees = controller.employees;
+      cachedChoices = controller.employees
+        .filter((item) => item.active !== false)
+        .map((item) => ({ value: item.id, label: item.displayName ?? item.id }));
+    }
+    return cachedChoices;
+  };
   const ports: LeadConsolePorts = {
     permissions: controller.permissions,
     initialLeads: controller.leads,
     poolMode: false,
-    employeeChoices,
+    get employeeChoices(): LeadConsolePorts['employeeChoices'] {
+      return employeeChoices();
+    },
     textValue: (value, fallback = '') =>
       typeof value === 'string' || typeof value === 'number' ? String(value) : fallback,
     submit: async (_path, payload, method) => {
