@@ -34,6 +34,7 @@ const repository = (
     findSupplier?: ReturnType<typeof vi.fn>;
     createSupplier?: ReturnType<typeof vi.fn>;
     qualifySupplier?: ReturnType<typeof vi.fn>;
+    setSupplierStatus?: ReturnType<typeof vi.fn>;
   } = {},
 ) =>
   ({
@@ -60,6 +61,12 @@ const repository = (
       vi.fn((...args: unknown[]) => {
         repositoryCalls.push({ method: 'qualifySupplier', args });
         return Promise.resolve({ id: 'q-2', supplierId: supplier.id, status: 'APPROVED' });
+      }),
+    setSupplierStatus:
+      overrides.setSupplierStatus ??
+      vi.fn((...args: unknown[]) => {
+        repositoryCalls.push({ method: 'setSupplierStatus', args });
+        return Promise.resolve({ id: supplier.id, status: args[1] });
       }),
   }) as unknown as NonNullable<ApiDependencies['procurement']>;
 
@@ -379,5 +386,164 @@ describe('suppliers fastify bridge track', () => {
     expect((conflict?.body as { error: { code: string } }).error.code).toBe('conflict');
     const unavailable = await dispatchFastifyRouteGroup(requestFor(), scopeFor(null));
     expect(unavailable?.statusCode).toBe(503);
+  });
+
+  // PROC-5（TD-PROC-002）：供应商状态写端点。合法迁移、幂等重放与并发的行为在真库测试
+  //（supplier-state-postgres.integration.test.ts）；这里钉住 HTTP 形状：请求怎么解析、仓储怎么被
+  // 调用、响应怎么裁剪、哪些请求在到达仓储之前就被拒。
+  const ACTOR = { companyId: '11111111-1111-4111-8111-111111111111', employeeId: 'e-1' };
+  type Grant = Readonly<{ scopes: readonly string[]; fields: readonly string[] | null }>;
+  // 权限可定制的授权上下文（scopeFor 只有一种固定组合）。
+  const scopeWith = (
+    repo: NonNullable<ApiDependencies['procurement']>,
+    grants: [string, Grant][],
+  ) => ({
+    authorization: {
+      actor: ACTOR,
+      permissions: new Map(grants),
+    } as unknown as AuthorizationContext,
+    dependencies: {
+      procurement: repo,
+      commercial: repository(),
+    } as unknown as ApiDependencies,
+    correlationId: 'corr-1',
+  });
+  const stateRequest = (
+    request: {
+      body?: unknown;
+      key?: string | null;
+      pathname?: string;
+    } = {},
+  ): ApiRequest => ({
+    method: 'PUT',
+    pathname: request.pathname ?? `/api/v1/suppliers/${supplier.id}/state`,
+    headers: {
+      'x-correlation-id': 'corr-1',
+      ...(request.key === null ? {} : { 'idempotency-key': request.key ?? 'state-key-1' }),
+    },
+    ...(request.body === undefined ? { body: { status: 'ON_HOLD' } } : { body: request.body }),
+  });
+  const errorOf = (response: { body: unknown } | null): { code: string; message: string } => {
+    if (!response) throw new Error('Expected a bridge response');
+    const error = (response.body as { error?: unknown }).error;
+    if (typeof error !== 'object' || error === null) throw new Error('Expected an error envelope');
+    return error as { code: string; message: string };
+  };
+
+  it('PUT state：三个目标状态各自分派 setSupplierStatus（供应商、状态、幂等键、作用域、关联 ID）→ 200 + { id, status }', async () => {
+    for (const status of ['ON_HOLD', 'INACTIVE', 'ACTIVE'] as const) {
+      repositoryCalls.length = 0;
+      const response = await dispatchFastifyRouteGroup(
+        stateRequest({ body: { status }, key: `state-key-${status}` }),
+        scopeFor(),
+      );
+      // 桥轨认领了这个路径（认领之前这里得到 null，请求落回 legacy 轨）。
+      expect(response).not.toBeNull();
+      expect(response?.statusCode).toBe(200);
+      expect(response?.body).toEqual({ id: supplier.id, status });
+      expect(repositoryCalls).toHaveLength(1);
+      expect(repositoryCalls[0]?.method).toBe('setSupplierStatus');
+      expect(repositoryCalls[0]?.args).toEqual([
+        supplier.id,
+        status,
+        `state-key-${status}`,
+        { actor: ACTOR, scopes: ['COMPANY'], anchors: [] },
+        'corr-1',
+      ]);
+    }
+  });
+
+  it('PUT state 负例：未知字段、未知或缺失的状态、非对象请求体、缺幂等键、幂等键超长 → 400，仓储不被调用', async () => {
+    for (const [request, message] of [
+      [stateRequest({ body: { status: 'ON_HOLD', reason: 'x' } }), 'Unsupported fields: reason'],
+      [stateRequest({ body: { status: 'PAUSED' } }), 'status must be ON_HOLD, INACTIVE or ACTIVE'],
+      [stateRequest({ body: { status: 'on_hold' } }), 'status must be ON_HOLD, INACTIVE or ACTIVE'],
+      [stateRequest({ body: {} }), 'status is required'],
+      [stateRequest({ body: [] }), 'A JSON object body is required'],
+      [stateRequest({ key: null }), 'Idempotency-Key is required'],
+      [stateRequest({ key: 'k'.repeat(129) }), 'Idempotency-Key is required'],
+    ] as const) {
+      const response = await dispatchFastifyRouteGroup(request, scopeFor());
+      expect(response?.statusCode).toBe(400);
+      expect(errorOf(response).message).toBe(message);
+    }
+    expect(repositoryCalls).toHaveLength(0);
+    // 路径参数不是 uuid：同样到不了仓储。
+    const badId = await dispatchFastifyRouteGroup(
+      stateRequest({ pathname: '/api/v1/suppliers/99999999-9999-9999-9999-999999999999/state' }),
+      scopeFor(),
+    );
+    expect(badId?.statusCode).toBe(400);
+    expect(errorOf(badId).message).toBe('supplierId must be a UUID');
+    expect(repositoryCalls).toHaveLength(0);
+  });
+
+  it('PUT state：没有 supplier:manage、或该权限的字段白名单不含 status → 403，仓储不被调用', async () => {
+    const read: [string, Grant] = ['supplier:read', { scopes: ['COMPANY'], fields: null }];
+    for (const grants of [
+      [read],
+      [read, ['supplier:manage', { scopes: ['COMPANY'], fields: ['name'] }]] as [string, Grant][],
+    ]) {
+      const response = await dispatchFastifyRouteGroup(
+        stateRequest(),
+        scopeWith(repository(), grants),
+      );
+      expect(response?.statusCode).toBe(403);
+      expect(errorOf(response).code).toBe('forbidden');
+    }
+    expect(repositoryCalls).toHaveLength(0);
+  });
+
+  it('PUT state：仓储的非法迁移 conflict → 409 + 中文原样；供应商不存在 not_found → 404 信封', async () => {
+    const message = '供应商当前为「已停用」，不能变更为「已停用」';
+    const illegal = await dispatchFastifyRouteGroup(
+      stateRequest({ body: { status: 'INACTIVE' } }),
+      scopeFor(
+        repository({
+          setSupplierStatus: vi.fn().mockRejectedValue(new DomainError('conflict', message)),
+        }),
+      ),
+    );
+    expect(illegal?.statusCode).toBe(409);
+    expect(illegal?.body).toEqual({
+      error: { code: 'conflict', message, correlationId: 'corr-1' },
+    });
+    const missing = await dispatchFastifyRouteGroup(
+      stateRequest(),
+      scopeFor(
+        repository({
+          setSupplierStatus: vi
+            .fn()
+            .mockRejectedValue(new DomainError('not_found', 'Supplier not found')),
+        }),
+      ),
+    );
+    expect(missing?.statusCode).toBe(404);
+    expect(missing?.body).toEqual({
+      error: { code: 'not_found', message: 'Supplier not found', correlationId: 'corr-1' },
+    });
+  });
+
+  it('PUT state：响应按 supplier:read 裁剪——没有读权限、或字段白名单不含 status 时只剩 id', async () => {
+    const manage: [string, Grant] = ['supplier:manage', { scopes: ['COMPANY'], fields: null }];
+    for (const grants of [
+      [manage],
+      [manage, ['supplier:read', { scopes: ['COMPANY'], fields: ['name'] }]] as [string, Grant][],
+    ]) {
+      const response = await dispatchFastifyRouteGroup(
+        stateRequest(),
+        scopeWith(repository(), grants),
+      );
+      expect(response?.statusCode).toBe(200);
+      expect(response?.body).toEqual({ id: supplier.id });
+    }
+    const partial = await dispatchFastifyRouteGroup(
+      stateRequest(),
+      scopeWith(repository(), [
+        manage,
+        ['supplier:read', { scopes: ['COMPANY'], fields: ['status'] }],
+      ]),
+    );
+    expect(partial?.body).toEqual({ id: supplier.id, status: 'ON_HOLD' });
   });
 });

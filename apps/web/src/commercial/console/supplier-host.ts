@@ -13,6 +13,8 @@ import {
 } from './console-choices';
 import type { SupplierConsolePorts } from './supplier-ports';
 
+const SUPPLIERS_PATH = '/api/v1/suppliers';
+
 export function appendSupplierConsole(
   context: OperationsViewContext,
   workspace: HTMLElement,
@@ -26,7 +28,7 @@ export function appendSupplierConsole(
     itemVersionChoicesOf(rows, recordText),
   );
   const snapshot = () => ({
-    suppliers: controller.views.get('/api/v1/suppliers') ?? [],
+    suppliers: controller.views.get(SUPPLIERS_PATH) ?? [],
     quotes: controller.views.get('/api/v1/supplier-quotes') ?? [],
   });
   const ports: SupplierConsolePorts = {
@@ -43,8 +45,10 @@ export function appendSupplierConsole(
       await controller.submit(path, payload, method);
       return null;
     },
-    refresh: async () => {
-      await controller.load();
+    refresh: async (source) => {
+      // 状态已写入后只重读供应商，读取失败须传给控制台，避免用旧缓存覆盖已确认的状态。
+      if (source === 'suppliers') await controller.refreshViews([SUPPLIERS_PATH]);
+      else await controller.load();
       onRefreshed?.();
       return snapshot();
     },

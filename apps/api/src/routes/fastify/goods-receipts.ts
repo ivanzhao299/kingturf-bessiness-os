@@ -7,9 +7,11 @@
 // procurementReceiptCreateRoutes 同解析链（部分收货/超收守护全在 legacy receive()
 // 同链——ISSUED/PARTIALLY_RECEIVED 可续收、within_remaining 超收拒绝、批次/移动/
 // 状态迁移逐字段守恒）。收货单不可变（无状态流转端点）；legacy 轨逐字不动。
+// PROC-5（TD-PROC-001）：POST 创建上的守卫拒绝映射（见 RECEIPT_GUARD_HINTS）。
 import { z } from 'zod';
-import { assertStableCode } from '@kingturf/domain';
+import { assertStableCode, DomainError } from '@kingturf/domain';
 import { authorizeQuery } from '../../policy.ts';
+import { guardRejection } from '../../pg-rejections.ts';
 import {
   allow,
   array,
@@ -82,6 +84,32 @@ function permitted(row: Record<string, unknown>, fields: readonly string[] | nul
   const visible = new Set(['id', ...fields]);
   return Object.fromEntries(Object.entries(row).filter(([key]) => visible.has(key)));
 }
+
+// PROC-5（TD-PROC-001）：登记收货的最后一步是把采购单状态更新为 PARTIALLY_RECEIVED 或
+// RECEIVED；迁移 0038 的守卫 guard_purchase_order_update 若拒绝这次状态迁移，会以 SQLSTATE
+// P0001 抛出，此前一律落成 500。这里只认这个守卫里与「状态迁移」有关的三条消息（文字来自
+// 迁移里的触发器函数），映射成 409 + 中文提示。同一个守卫里关于内容与签发的三条，以及收货行、
+// 库存移动两个完整性触发器的消息不在白名单内：它们在收货路径上本不该出现，出现即缺陷，照旧
+// 500 并留诊断日志。不回显数据库原始消息；识别规则在 pg-rejections.ts（guardRejection：
+// SQLSTATE 精确为 P0001 且消息精确等于某个键）。
+const RECEIPT_GUARD_HINTS = {
+  'partially received purchase order has invalid transition':
+    '采购单处于部分收货状态，只能继续收货、收齐或取消，不能改为其它状态；请刷新后查看采购单的最新状态',
+  'issued purchase order has invalid transition':
+    '已签发的采购单只能转为收货中、已收货或已取消，不能改为其它状态；请刷新后查看采购单的最新状态',
+  'closed purchase order is immutable': '采购单已收货完成或已取消，不能再登记收货或修改',
+} as const;
+
+// 只包住仓储调用的结果（调用本身仍是处理器里的直接调用）：守卫拒绝 → conflict，其余原样抛出。
+const settled = async <T>(pending: Promise<T>): Promise<T> => {
+  try {
+    return await pending;
+  } catch (error: unknown) {
+    const hint = guardRejection(error, RECEIPT_GUARD_HINTS);
+    if (hint === null) throw error;
+    throw new DomainError('conflict', hint);
+  }
+};
 
 export function registerGoodsReceiptRoutes(
   app: FastifyRouteGroupApp,
@@ -192,10 +220,12 @@ export function registerGoodsReceiptRoutes(
       sourceReference: string(body.sourceReference, 'sourceReference'),
       lines,
     };
-    const created = await repo.receive(
-      input,
-      { actor: scope.authorization.actor, scopes: grant.scopes, anchors: grant.anchors },
-      scope.correlationId,
+    const created = await settled(
+      repo.receive(
+        input,
+        { actor: scope.authorization.actor, scopes: grant.scopes, anchors: grant.anchors },
+        scope.correlationId,
+      ),
     );
     void reply.code(201);
     return mutation(created, scope.authorization, 'procurement:read');

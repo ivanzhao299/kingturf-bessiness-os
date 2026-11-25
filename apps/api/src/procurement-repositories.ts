@@ -2,6 +2,12 @@ import { createHash } from 'node:crypto';
 import { canonicalize, DomainError } from '@kingturf/domain';
 import type { JsonObject } from '@kingturf/types';
 import { writeFixedVersionOneEvidence as evidence } from './audit-outbox.ts';
+import { writeNextVersionEvidence } from './audit-outbox.ts';
+import {
+  lockCommercialCommand,
+  replayCommercialCommandAfterLock,
+  retainCommercialCommand,
+} from './command-results.ts';
 import {
   PostgresProcurementReadRepository,
   company,
@@ -15,6 +21,23 @@ import {
 } from './procurement-read-repositories.ts';
 
 const hash = (value: unknown) => createHash('sha256').update(canonicalize(value)).digest('hex');
+
+// PROC-5（TD-PROC-002）：供应商状态与合法迁移。三个状态之间，目标状态不同于当前状态即可
+// 迁移——ACTIVE → ON_HOLD / INACTIVE，ON_HOLD → ACTIVE / INACTIVE，INACTIVE → ACTIVE /
+// ON_HOLD；目标与当前相同的（ACTIVE → ACTIVE 等三条）拒绝。表约束（迁移 0037）只有这三个值。
+export type SupplierStatus = 'ACTIVE' | 'ON_HOLD' | 'INACTIVE';
+const SUPPLIER_STATUS_TRANSITIONS: Readonly<Record<string, readonly SupplierStatus[]>> = {
+  ACTIVE: ['ON_HOLD', 'INACTIVE'],
+  ON_HOLD: ['ACTIVE', 'INACTIVE'],
+  INACTIVE: ['ACTIVE', 'ON_HOLD'],
+};
+// 键放宽为 string：库读回的状态列就是 string（表约束保证只会是这三个值之一）。
+const SUPPLIER_STATUS_LABELS: Readonly<Record<string, string>> = {
+  ACTIVE: '已启用',
+  ON_HOLD: '暂停',
+  INACTIVE: '已停用',
+};
+const SUPPLIER_STATUS_EVENT = 'supplier.status-changed';
 
 export type {
   RfqListFilter,
@@ -179,6 +202,67 @@ export class PostgresProcurementRepository extends PostgresProcurementReadReposi
         correlationId,
         result,
       );
+      return result;
+    });
+  }
+
+  // PROC-5（TD-PROC-002）：供应商状态写路径（此前 suppliers.status 没有任何写端点）。迁移规则见
+  // SUPPLIER_STATUS_TRANSITIONS。幂等与并发语义沿用既有命令写路径（qtc / commercial 的 command）：
+  // 事务级咨询锁串行化同一幂等键；同键同命令重放留存的结果、不再执行；同键异命令 409。
+  // 供应商行先 FOR UPDATE 再读状态：并发的两次变更按行锁排队，后到的基于最新状态判定。
+  // 证据（审计 + outbox）按供应商递增版本——同一供应商可以反复暂停 / 恢复，固定版本 1 会撞
+  // outbox 的 (tenant_id, event_type, aggregate_id, aggregate_version) 唯一约束；版本号在行锁
+  // 内取 max+1，所以同一供应商的事件版本连续且不重复。
+  public setSupplierStatus(
+    supplierId: string,
+    status: SupplierStatus,
+    key: string,
+    context: Context,
+    correlationId: string,
+  ) {
+    return this.db.transaction(async (tx) => {
+      company(context);
+      const identity = {
+        type: SUPPLIER_STATUS_EVENT,
+        subjectId: supplierId,
+        actorId: context.actor.employeeId,
+        requestHash: hash({ status }),
+      };
+      await lockCommercialCommand(tx, context.actor.companyId, key);
+      const prior = await replayCommercialCommandAfterLock<JsonObject>(
+        tx,
+        context.actor.companyId,
+        key,
+        identity,
+      );
+      if (prior) return prior;
+      const current = (
+        await tx.query<{ status: string }>(
+          'SELECT status FROM suppliers WHERE id=$1 AND tenant_id=$2 FOR UPDATE',
+          [supplierId, context.actor.companyId],
+        )
+      ).rows[0];
+      if (!current) throw new DomainError('not_found', 'Supplier not found');
+      if (!SUPPLIER_STATUS_TRANSITIONS[current.status]?.includes(status))
+        throw new DomainError(
+          'conflict',
+          `供应商当前为「${SUPPLIER_STATUS_LABELS[current.status] ?? current.status}」，不能变更为「${SUPPLIER_STATUS_LABELS[status] ?? status}」`,
+        );
+      await tx.query(
+        'UPDATE suppliers SET status=$3,updated_at=now() WHERE id=$1 AND tenant_id=$2',
+        [supplierId, context.actor.companyId, status],
+      );
+      const result = json({ id: supplierId, status });
+      await writeNextVersionEvidence(
+        tx,
+        'supplier',
+        SUPPLIER_STATUS_EVENT,
+        supplierId,
+        context,
+        correlationId,
+        result,
+      );
+      await retainCommercialCommand(tx, context.actor.companyId, key, identity, result);
       return result;
     });
   }

@@ -16,9 +16,9 @@ export type SupplierConsolePorts = Readonly<{
     payload: Record<string, unknown>,
     method?: 'POST' | 'PATCH' | 'PUT',
   ) => Promise<Readonly<Record<string, unknown>> | null>;
-  refresh: () => Promise<
-    Readonly<{ suppliers: readonly SupplierRow[]; quotes: readonly SupplierRow[] }>
-  >;
+  refresh: (
+    source?: 'suppliers',
+  ) => Promise<Readonly<{ suppliers: readonly SupplierRow[]; quotes: readonly SupplierRow[] }>>;
   // PROC-UX：当前时间源（报价有效期判定）；缺省取系统时间。
   now?: () => Date;
 }>;

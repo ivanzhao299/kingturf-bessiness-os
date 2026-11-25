@@ -5,15 +5,17 @@
 // Date 归一化（COM 同款守恒口径））；GET 详情 = additive 只读（findSupplier）；
 // POST 创建 = legacy procurementSupplierCreateRoutes 同解析链；PUT qualification =
 // 现代化统一动作端点（action approve|conditional|reject 分派 legacy qualifySupplier
-// 同链；legacy POST /qualifications 轨逐字不动）。
+// 同链；legacy POST /qualifications 轨逐字不动）；PUT state = PROC-5（TD-PROC-002）新增的
+// 供应商状态写端点（ON_HOLD / INACTIVE / ACTIVE 之间迁移；要求 supplier:manage 与幂等键）。
 import { z } from 'zod';
-import { assertStableCode } from '@kingturf/domain';
+import { assertStableCode, DomainError } from '@kingturf/domain';
 import { authorizeQuery } from '../../policy.ts';
 import {
   allow,
   calendarDate,
   currency,
   decimal,
+  idempotency,
   integer,
   jsonObject,
   objectBody,
@@ -21,7 +23,8 @@ import {
   string,
   uuid,
 } from '../../app-values.ts';
-import type { SupplierPageFilter } from '../../procurement-repositories.ts';
+import type { ApiRequest } from '../../api-types.ts';
+import type { SupplierPageFilter, SupplierStatus } from '../../procurement-repositories.ts';
 import type { FastifyRouteGroupApp, FastifyRouteScope } from './registry.ts';
 import type { ApiDependencies } from '../../app.ts';
 import type { PermissionKey } from '@kingturf/types';
@@ -31,8 +34,11 @@ export type { SupplierPageFilter };
 // 仓储端口自真实依赖派生（S4：禁止结构重注解抹掉 provenance）。
 export type SupplierRepository = Pick<
   NonNullable<ApiDependencies['procurement']>,
-  'listSupplierPage' | 'findSupplier' | 'createSupplier' | 'qualifySupplier'
+  'listSupplierPage' | 'findSupplier' | 'createSupplier' | 'qualifySupplier' | 'setSupplierStatus'
 >;
+
+// PROC-5：供应商状态端点接受的目标状态（迁移规则本身在仓储，见 SUPPLIER_STATUS_TRANSITIONS）。
+const SUPPLIER_STATUSES: readonly SupplierStatus[] = ['ON_HOLD', 'INACTIVE', 'ACTIVE'];
 
 // 行键为 pg to_jsonb 蛇形命名（legacy 同形态）；looseObject 透传 + .partial() 守恒口径。
 const SUPPLIER_ROW_SCHEMA = z
@@ -253,6 +259,35 @@ export function registerSupplierRoutes(app: FastifyRouteGroupApp, scope: Fastify
     const result = await repo.qualifySupplier(
       supplierId,
       input,
+      {
+        actor: scope.authorization.actor,
+        scopes: grant.scopes,
+        anchors: grant.anchors,
+      },
+      scope.correlationId,
+    );
+    void reply.code(200);
+    return mutation(result, scope.authorization, 'supplier:read');
+  });
+
+  // PROC-5（TD-PROC-002）：供应商状态写端点。请求体只有 status（ON_HOLD | INACTIVE |
+  // ACTIVE）；要求 supplier:manage（按请求字段）与 Idempotency-Key 请求头。合法迁移、幂等
+  // 重放与并发串行化都在仓储 setSupplierStatus：非法迁移 → 409 + 中文，供应商不存在或不在
+  // 本租户 → 404。响应 { id, status }，按 supplier:read 做字段裁剪（mutationDto 同口径）。
+  app.put('/api/v1/suppliers/:supplierId/state', async (request, reply) => {
+    const repo = requireRepository();
+    const supplierId = uuid((request.params as { supplierId: string }).supplierId, 'supplierId');
+    const body = objectBody(request.body);
+    allow(body, ['status']);
+    const grant = authorizeQuery(scope.authorization, 'supplier:manage', ['status']);
+    const status = string(body.status, 'status');
+    if (!(SUPPLIER_STATUSES as readonly string[]).includes(status))
+      throw new DomainError('invalid_request', 'status must be ON_HOLD, INACTIVE or ACTIVE');
+    const key = idempotency(request as unknown as ApiRequest);
+    const result = await repo.setSupplierStatus(
+      supplierId,
+      status as SupplierStatus,
+      key,
       {
         actor: scope.authorization.actor,
         scopes: grant.scopes,

@@ -15,6 +15,7 @@ import { appendPurchaseOrderConsole } from './po-host';
 import { appendRfqConsole } from './rfq-host';
 import { appendManufacturingRoutingConsole } from './routing-host';
 import { appendSupplierConsole } from './supplier-host';
+import type { SupplierConsolePorts } from './supplier-ports';
 import { installGlobalTestDom, type TestElement } from '../../../test/fixtures/preact-dom';
 
 vi.mock('./mount', () => ({ mountCommercialConsole: vi.fn() }));
@@ -67,6 +68,10 @@ const contextFor = (views: Views) => {
     }),
     businessStateLabel: (value: unknown) => String(value),
   };
+  const load = vi.fn<OperationsViewContext['controller']['load']>().mockResolvedValue(undefined);
+  const refreshViews = vi
+    .fn<OperationsViewContext['controller']['refreshViews']>()
+    .mockResolvedValue(undefined);
   const context = {
     workspace,
     status: scope.document.createElement('p'),
@@ -78,12 +83,13 @@ const contextFor = (views: Views) => {
       message: '',
       api: {},
       submit: () => Promise.resolve(),
-      load: () => Promise.resolve(),
+      load,
+      refreshViews,
     },
     permissions: new Set<string>(),
     ports,
   } as unknown as OperationsViewContext;
-  return { context, workspace };
+  return { context, workspace, load, refreshViews };
 };
 
 /** 取回宿主交给 mount 的 ports：宿主先挂 section 再动态 import，section 连在文档上才会挂载。 */
@@ -167,6 +173,30 @@ describe('宿主的表单选项随视图更新（TD-WF-007）', () => {
         'RM-E2EWS-NEW · RM-E2EWS-NEW-名称',
       ]);
     }
+  });
+
+  it('供应商状态刷新仅重读供应商，并将读取失败传给控制台', async () => {
+    const path = '/api/v1/suppliers';
+    const views: Views = new Map([[path, [{ id: 'supplier-1', status: 'ACTIVE' }]]]);
+    const { context, workspace, load, refreshViews } = contextFor(views);
+    const onRefreshed = vi.fn();
+    refreshViews.mockRejectedValueOnce(new Error('重读供应商失败'));
+    appendSupplierConsole(context, workspace, onRefreshed);
+    const refresh = (await portsOf(workspace)).refresh as SupplierConsolePorts['refresh'];
+    await expect(refresh('suppliers')).rejects.toThrow('重读供应商失败');
+    expect(refreshViews).toHaveBeenCalledExactlyOnceWith([path]);
+    expect(load).not.toHaveBeenCalled();
+    expect(onRefreshed).not.toHaveBeenCalled();
+
+    const suppliers = [{ id: 'supplier-1', status: 'ON_HOLD' }];
+    refreshViews.mockImplementationOnce(async () => {
+      views.set(path, suppliers);
+      await Promise.resolve();
+    });
+    await expect(refresh('suppliers')).resolves.toEqual({ suppliers, quotes: [] });
+    expect(onRefreshed).toHaveBeenCalledTimes(1);
+    await refresh();
+    expect(load).toHaveBeenCalledTimes(1);
   });
 
   it('采购订单宿主：在供应商页新建的供应商出现在供应商下拉里', async () => {
