@@ -7,11 +7,6 @@ const pending = new WeakMap<HTMLElement, Request>();
 const destinations = new WeakMap<HTMLElement, Map<RelatedRoute, Destination>>();
 
 export function revealRelatedRecord(workspace: HTMLElement, route: RelatedRoute, id: string): void {
-  const target = destinations.get(workspace)?.get(route);
-  if (target?.host.isConnected) {
-    target.receive(id);
-    return;
-  }
   pending.set(workspace, { route, id });
 }
 
@@ -24,8 +19,15 @@ export function registerRelatedRecord(
   const map = destinations.get(workspace) ?? new Map<RelatedRoute, Destination>();
   map.set(route, { host, receive });
   destinations.set(workspace, map);
+  if (globalThis.location.hash === `#/${route}`) flushRelatedRecord(workspace, route);
+}
+
+export function flushRelatedRecord(workspace: HTMLElement, route: string): void {
   const request = pending.get(workspace);
   if (request?.route !== route) return;
+  const target = destinations.get(workspace)?.get(request.route);
+  if (!target?.host.isConnected) return;
+  if (target.host.closest('[hidden], [inert], [data-commercial-data-state="unloaded"]')) return;
   pending.delete(workspace);
-  receive(request.id);
+  target.receive(request.id);
 }

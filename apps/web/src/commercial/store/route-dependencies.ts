@@ -62,6 +62,7 @@ const routeSources: Readonly<Partial<Record<AppRoute, readonly string[]>>> = {
     'production-cost-runs',
   ],
   'quality-inspection': [
+    'manufacturing-items',
     'quality-plans',
     'quality-inspections',
     'lot-traceability',
