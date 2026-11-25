@@ -59,13 +59,29 @@ export const itemLabelByIdOf = (
   return labels;
 };
 
-/** 已发布物料版本选项：value = 版本行 id，label = `SKU · 名称`。 */
+/** 已发布物料版本选项。制造编辑器按需区分同一 SKU 的多版。 */
 export const itemVersionChoicesOf = (
   rows: readonly Row[],
   recordText: RecordText,
-): readonly ItemVersionChoice[] =>
-  publishedItemRows(rows, recordText).map((row) => ({
-    value: recordText(row, 'id', 'id'),
-    label: `${recordText(row, 'sku', 'sku')} · ${recordText(row, 'name', 'name')}`,
-    itemId: recordText(row, 'itemId', 'itemId'),
-  }));
+  distinguishVersions = false,
+): readonly ItemVersionChoice[] => {
+  const published = publishedItemRows(rows, recordText);
+  const versionsByItem = new Map<string, number>();
+  if (distinguishVersions) {
+    for (const row of published) {
+      const itemId = recordText(row, 'itemId', 'itemId');
+      versionsByItem.set(itemId, (versionsByItem.get(itemId) ?? 0) + 1);
+    }
+  }
+  return published.map((row) => {
+    const label = `${recordText(row, 'sku', 'sku')} · ${recordText(row, 'name', 'name')}`;
+    const itemId = recordText(row, 'itemId', 'itemId');
+    const version =
+      (versionsByItem.get(itemId) ?? 0) > 1 ? recordText(row, 'version', 'version') : '';
+    return {
+      value: recordText(row, 'id', 'id'),
+      label: version === '' ? label : `第 ${version} 版 · ${label}`,
+      itemId,
+    };
+  });
+};

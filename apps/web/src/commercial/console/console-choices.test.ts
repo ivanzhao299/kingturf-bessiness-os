@@ -258,6 +258,16 @@ describe('宿主的表单选项随视图更新（TD-WF-007）', () => {
         'RM-E2EWS-NEW · RM-E2EWS-NEW-名称',
       ]);
       expect(productTypeOf('root-RM-E2EWS-NEW')).toBe('FINISHED_GOOD');
+      views.set(ITEM_VERSIONS_PATH, [
+        ...PUBLISHED,
+        item('v-new', 'RM-E2EWS-NEW', 'PUBLISHED', 'FINISHED_GOOD'),
+        { ...item('v-next', 'RM-E2EWS-NEW', 'PUBLISHED', 'FINISHED_GOOD'), version: 2 },
+      ]);
+      expect(labels(ports.itemVersionChoices)).toEqual([
+        'RM-KT-YARN-12000 · RM-KT-YARN-12000-名称',
+        '第 1 版 · RM-E2EWS-NEW · RM-E2EWS-NEW-名称',
+        '第 2 版 · RM-E2EWS-NEW · RM-E2EWS-NEW-名称',
+      ]);
     }
   });
 
