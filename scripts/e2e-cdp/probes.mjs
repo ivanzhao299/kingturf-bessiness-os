@@ -284,7 +284,7 @@ export async function runProbes({ send, router, runId, report, expectDialog }) {
           '[data-testid="production-workbench"] .production-order-card',
           'CDP-PROD-A',
         ],
-        ['shipments', '发货与签收', '.shipment-workbench .production-order-card', 'CDP-SHIP-A'],
+        ['shipments', '发货与签收', '[data-testid="kt-shipment-number"]', 'CDP-SHIP-A'],
       ])
         await check(`fulfillment-view-${route}-desktop-mobile`, async () => {
           for (const metrics of [

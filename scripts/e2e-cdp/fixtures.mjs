@@ -206,6 +206,11 @@ export function createStubRouter({
         if (parameters.toString() !== expected && parameters.toString() !== consolePages[key])
           throw new Error('unmapped synthetic API request query');
       }
+      if (
+        key === 'shipmentReleases' &&
+        !['', 'limit=25&summary=true'].includes(parameters.toString())
+      )
+        throw new Error('unmapped synthetic API request query');
       counts.set(key, (counts.get(key) ?? 0) + 1);
       const candidate = holds.get(key);
       const hold =

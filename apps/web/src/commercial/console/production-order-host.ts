@@ -6,6 +6,7 @@
 // openForm 表单（production-actions.ts）退役。库存批次与库位选项取 controller.views 的当前
 // 视图（与 legacy 表单同源：账号没有库存读权限时为空，不另发请求）；幂等键由前端生成。
 import { el } from '../../dom';
+import { registerRelatedRecord } from '../related-record';
 import type { FulfillmentViewContext } from '../fulfillment-view-ports';
 import type { CommercialApi } from '../types';
 import { executionIdempotencyKey } from './production-order-keys';
@@ -47,7 +48,11 @@ export function appendProductionOrderConsole(
   const read = controller.api.get;
   const items = controller.views.get('/api/v1/manufacturing-items') ?? [];
   const routings = controller.views.get('/api/v1/manufacturing-routings') ?? [];
+  const section = el('section', 'commercial-console production-orders-console');
   const ports: ProductionOrderConsolePorts = {
+    onRelatedRecord: (reveal) => {
+      registerRelatedRecord(context.workspace, section, 'production-orders', reveal);
+    },
     permissions,
     initialOrders: controller.views.get(ORDERS_PATH) ?? [],
     // 选项与 legacy「建立生产工单」表单同源同公式（成品限已发布；工艺版本沿用全部路线）。
@@ -103,7 +108,6 @@ export function appendProductionOrderConsole(
     inventoryLocationChoices: () =>
       (controller.views.get(LOCATIONS_PATH) ?? []).map((item) => inventoryLocationOption(item)),
   };
-  const section = el('section', 'commercial-console production-orders-console');
   section.setAttribute('data-testid', 'kt-production-orders');
   panel.append(section);
   void import('./mount').then(({ mountCommercialConsole }) => {

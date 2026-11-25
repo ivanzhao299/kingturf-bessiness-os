@@ -1,7 +1,10 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { canonicalize } from '@kingturf/domain';
-import type { JsonObject } from '@kingturf/types';
+import type { JsonObject, PermissionKey } from '@kingturf/types';
+import type { ApiDependencies, ApiRequest } from '../src/app.ts';
+import { shipmentsAttempts } from '../src/routes/dispatch/shipments.ts';
+import { dispatchFastifyRouteGroup } from '../src/routes/fastify/registry.ts';
 import { PostgresManufacturingRepository } from '../src/manufacturing-repositories.js';
 import { PostgresProductionRepository } from '../src/production-repositories.js';
 import { PostgresProcurementRepository } from '../src/procurement-repositories.js';
@@ -199,6 +202,68 @@ describe('shipment exception release and Order360 shipment source on real Postgr
   afterEach(async () => {
     await fixture?.close();
     fixture = undefined;
+  });
+
+  it('preserves legacy release lists and adds tenant-bounded details, keyset paging and counts', async () => {
+    const fixture = owned();
+    const firstRelease = await release();
+    const secondRelease = await shipment.request(
+      { ...requestInput(), requestNumber: 'RELEASE-2', idempotencyKey: 'REQUEST-2' },
+      fixture.context,
+      randomUUID(),
+    );
+    const scope = {
+      authorization: {
+        actor: fixture.context.actor,
+        permissions: new Map<PermissionKey, { scopes: readonly ['COMPANY']; fields: null }>([
+          ['shipment:read', { scopes: ['COMPANY'], fields: null }],
+        ]),
+      },
+      correlationId: randomUUID(),
+      dependencies: { shipments: shipment, commercial: {} } as unknown as ApiDependencies,
+    };
+    const method = 'GET';
+    const pathname = '/api/v1/shipment-releases';
+    const request = { method, pathname };
+    const [attempt] = shipmentsAttempts({ ...scope, context: scope.authorization, request });
+    if (attempt?.kind !== 'pending') throw new Error('Missing legacy shipment attempt');
+    const legacy = attempt.project(await attempt.pending);
+    const bridge = (next: ApiRequest) => dispatchFastifyRouteGroup(next, scope);
+    expect(await bridge(request)).toEqual(legacy);
+    const first = await bridge({
+      method,
+      pathname,
+      query: { limit: '1', query: 'release', summary: 'true' },
+    });
+    expect(first?.body).toMatchObject({
+      items: [{ id: secondRelease.id }],
+      nextCursor: secondRelease.id,
+      summary: { requests: '2', exceptions: '1', released: '1', delivered: '0' },
+    });
+    expect(
+      (
+        await bridge({
+          method,
+          pathname,
+          query: { limit: '1', cursor: secondRelease.id, state: 'RELEASED' },
+        })
+      )?.body,
+    ).toMatchObject({ items: [{ id: firstRelease.id, state: 'RELEASED' }], nextCursor: null });
+    const detail = { method, pathname: `${pathname}/${firstRelease.id}` };
+    expect(await bridge(detail)).toMatchObject({
+      statusCode: 200,
+      body: {
+        id: firstRelease.id,
+        lotNumber: 'SHIP-LOT',
+        productionOrderNumber: 'SHIP-PRODUCTION',
+      },
+    });
+    expect(
+      await dispatchFastifyRouteGroup(detail, {
+        ...scope,
+        authorization: { ...scope.authorization, actor: fixture.otherContext.actor },
+      }),
+    ).toMatchObject({ statusCode: 404 });
   });
 
   it('evaluates independent failed gates and writes exactly an audit-only request', async () => {

@@ -456,8 +456,11 @@ it('captures artificial-turf project handoff fields without test-channel evidenc
       './commercial/production-cost-policy.ts',
       'export function createProductionCostPolicyButton',
     ),
-    readBoundSource('./commercial/shipments-view.ts', 'export function appendShipmentsView'),
-    readBoundSource('./commercial/shipment-actions.ts', 'export function appendShipmentDispatch'),
+    readBoundSource(
+      './commercial/console/shipment-host.ts',
+      'export function appendShipmentConsole',
+    ),
+    readBoundSource('./commercial/console/shipment-forms.ts', 'export function shipmentDispatch'),
     readBoundSource('./commercial/sales-orders-view.ts', 'export function appendSalesOrdersView'),
     readBoundSource('./commercial/order360-view.ts', 'export function appendOrder360Content'),
     readBoundSource(

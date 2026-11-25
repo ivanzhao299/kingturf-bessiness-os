@@ -1,6 +1,7 @@
 import { signal } from '@preact/signals';
 import { DetailDrawer, PageHeader, SummaryCards, type DataTableColumn } from '@kingturf/ui';
 import { render } from 'preact';
+import { registerRelatedRecord } from '../related-record';
 import type { OperationsViewContext } from '../operations-view-ports';
 import { ITEM_VERSIONS_PATH, itemVersionChoicesOf, perView } from './console-choices';
 import { ConsoleConfirmDialog } from './console-confirm';
@@ -532,5 +533,11 @@ export function mountQualityConsole(host: HTMLElement, context: OperationsViewCo
     );
   };
   render(<Page />, host);
+  if (model.visible.includes('lots'))
+    registerRelatedRecord(context.workspace, host, 'quality-inspection', (id) => {
+      model.close();
+      model.active.value = 'lots';
+      void model.open({ lotId: id });
+    });
   void model.reload();
 }

@@ -4,10 +4,10 @@ import type { FulfillmentViewContext } from './fulfillment-view-ports';
 import { appendProductionOrderConsole } from './console/production-order-host';
 import type { ProductionOrderHostContext } from './console/production-order-host';
 import { appendProductionCostView } from './production-cost-view';
-import { appendShipmentsView } from './shipments-view';
+import { appendShipmentConsole } from './console/shipment-host';
 
 // 工单区已迁 Preact 控制台（U3-MFG-4），其宿主需要 controller.api.get 走桥轨分页与详情；
-// 成本与发货两区仍是 vanilla 视图，controller 最小面不变。
+// 发货控制台共用该读取端口，成本区仍沿用原工作区。
 export function appendWorkspaceFulfillment(
   context: WorkspaceAssemblyContext<ProductionOrderHostContext['controller']>,
   fulfillmentViewPorts: FulfillmentViewContext['ports'],
@@ -41,7 +41,7 @@ export function appendWorkspaceFulfillment(
     });
   }
   if (controller && permissions.has('shipment:read')) {
-    appendShipmentsView({
+    appendShipmentConsole({
       workspace,
       status,
       controller,

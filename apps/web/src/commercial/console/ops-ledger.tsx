@@ -47,7 +47,7 @@ export const opsColumn = (header: string, ...keys: readonly string[]): DataTable
 type Props = Readonly<{
   prefix: string;
   label: string;
-  states: Readonly<Record<string, string>>;
+  states: Readonly<Partial<Record<string, string>>>;
   columns: readonly DataTableColumn<FinRow>[];
   model: ReturnType<typeof createOpsList>;
 }>;
@@ -58,7 +58,7 @@ export const OpsLedger = ({ prefix, label, states, columns, model }: Props) => (
       testPrefix={prefix}
       chips={[
         { key: '', label: '全部' },
-        ...Object.entries(states).map(([key, name]) => ({ key, label: name })),
+        ...Object.entries(states).map(([key, name]) => ({ key, label: name ?? key })),
       ]}
       active={model.state.value}
       onSelect={(state) => {

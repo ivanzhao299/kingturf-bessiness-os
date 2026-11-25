@@ -44,6 +44,7 @@ import { registerBankPaymentRoutes } from './bank-payments.ts';
 import { registerCollectionCaseRoutes } from './collection-cases.ts';
 import { registerQualityRoutes } from './quality.ts';
 import { registerComplaintRoutes } from './complaints.ts';
+import { registerShipmentRoutes } from './shipments.ts';
 
 export type FastifyRouteScope = Readonly<{
   authorization: AuthorizationContext;
@@ -168,6 +169,12 @@ const CLAIMED_FASTIFY_ROUTES: readonly (readonly [method: string, pattern: RegEx
   ['POST', /^\/api\/v1\/ncrs\/[0-9a-f-]+\/(?:contain|root-cause|disposition|close|capas)$/u],
   ['POST', /^\/api\/v1\/capas\/[0-9a-f-]+\/(?:actions|verify|close)$/u],
   ['POST', /^\/api\/v1\/capa-actions\/[0-9a-f-]+\/complete$/u],
+  ['GET', /^\/api\/v1\/shipment-releases(?:\/[0-9a-f-]+)?$/u],
+  [
+    'POST',
+    /^\/api\/v1\/shipment-releases(?:\/[0-9a-f-]+\/(?:approve-exception|reject-exception|release|dispatch))?$/u,
+  ],
+  ['POST', /^\/api\/v1\/shipments\/[0-9a-f-]+\/(?:in-transit|deliver)$/u],
 ];
 
 // legacy catch 层的同款 DomainError 状态映射（行为守恒）。
@@ -246,6 +253,7 @@ const buildRouteGroupApp = (scope: FastifyRouteScope) => {
   registerCollectionCaseRoutes(app, scope);
   registerQualityRoutes(app, scope);
   registerComplaintRoutes(app, scope);
+  registerShipmentRoutes(app, scope);
   return app;
 };
 
