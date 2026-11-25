@@ -412,6 +412,52 @@ describe('U3-MFG-2 BOM 控制台：详情抽屉（层级树/替代料/对比）'
 });
 
 describe('U3-MFG-2 BOM 控制台：新建 BOM', () => {
+  // TD-WF-014⑥（写流程冒烟 WS-P3-06）：组件行是挂载之后追加的字段，第 2 行起此前没有默认值。
+  it('追加的组件行与首行有同样的默认值（单位用量 1、损耗 0），提交时原样带上', async () => {
+    const ports = portsFor([listRow], ['bom:manage']);
+    const host = mount(ports);
+    byTestId(host, 'kt-bom-create').click();
+    await flush();
+    const valueOf = (name: string): string =>
+      element(
+        element(host.querySelector('.detail-drawer'))
+          .querySelectorAll('input,select')
+          .find((item) => (item as TestElement).getAttribute('name') === name),
+      ).value;
+    expect(valueOf('quantity')).toBe('1');
+    expect(valueOf('scrap')).toBe('0');
+    byTestId(host, 'kt-bom-row-add').click();
+    await flush();
+    byTestId(host, 'kt-bom-row-add').click();
+    await flush();
+    for (const prefix of ['r2:', 'r3:']) {
+      expect(valueOf(`${prefix}quantity`)).toBe(valueOf('quantity'));
+      expect(valueOf(`${prefix}scrap`)).toBe(valueOf('scrap'));
+    }
+    expect(valueOf('r2:quantity')).toBe('1');
+    expect(valueOf('r2:scrap')).toBe('0');
+    await type(host, '.detail-drawer', 'code', 'BOM-KT-PRO-52');
+    await type(host, '.detail-drawer', 'name', 'BOM');
+    await type(host, '.detail-drawer', 'effectiveAt', '2026-11-24');
+    const drawer = element(host.querySelector('.detail-drawer'));
+    for (const name of ['product', 'component', 'r2:component', 'r3:component']) {
+      const select = drawer
+        .querySelectorAll('select')
+        .find((item) => (item as TestElement).getAttribute('name') === name) as TestElement;
+      select.value = name === 'product' ? 'prodv-1' : 'yarnv-1';
+      select.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    await flush();
+    await submitDrawer(host);
+    expect(vi.mocked(ports.submit).mock.calls[0]?.[1]).toMatchObject({
+      lines: [
+        { componentItemVersionId: 'yarnv-1', quantity: '1', scrapBasisPoints: 0 },
+        { componentItemVersionId: 'yarnv-1', quantity: '1', scrapBasisPoints: 0 },
+        { componentItemVersionId: 'yarnv-1', quantity: '1', scrapBasisPoints: 0 },
+      ],
+    });
+  });
+
   it('单行无替代料的创建载荷与 vanilla 表单逐字节一致（publish false / outputQuantity 1）', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-11-23T12:00:00Z'));

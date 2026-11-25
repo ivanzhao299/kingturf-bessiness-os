@@ -355,6 +355,29 @@ describe('U3-MFG-3 工艺路线控制台：详情抽屉（顺序步骤视图）'
 });
 
 describe('U3-MFG-3 工艺路线控制台：新建工艺路线（工序编辑器）', () => {
+  // TD-WF-014⑥（写流程冒烟 WS-P3-06）：工序行是挂载之后追加的字段，第 2 行起此前没有默认值。
+  it('追加的工序行与首行有同样的默认值（准备工时 60、单件工时 0.8）', async () => {
+    const host = mount(portsFor([routingRow()], ['routing:manage']));
+    byTestId(host, 'kt-routing-create').click();
+    await flush();
+    const valueOf = (name: string): string =>
+      element(
+        element(host.querySelector('.detail-drawer'))
+          .querySelectorAll('input,select')
+          .find((item) => (item as TestElement).getAttribute('name') === name),
+      ).value;
+    expect(valueOf('o1:setupMinutes')).toBe('60');
+    expect(valueOf('o1:runMinutesPerUnit')).toBe('0.8');
+    byTestId(host, 'kt-routing-op-add').click();
+    await flush();
+    byTestId(host, 'kt-routing-op-add').click();
+    await flush();
+    for (const prefix of ['o2:', 'o3:']) {
+      expect(valueOf(`${prefix}setupMinutes`)).toBe('60');
+      expect(valueOf(`${prefix}runMinutesPerUnit`)).toBe('0.8');
+    }
+  });
+
   it('单工序 TUFT 载荷与 vanilla 表单逐字节一致（publish false / sequence 10）', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-11-24T12:00:00Z'));
