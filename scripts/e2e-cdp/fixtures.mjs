@@ -169,7 +169,11 @@ export function createStubRouter({
       if (key === 'dashboard' && parameters.toString() !== dashboardQuery.toString())
         throw new Error('unmapped synthetic API request query');
       if (key.startsWith('operations:')) {
-        const expected = key === 'operations:complaints' ? 'limit=100' : '';
+        const expected =
+          {
+            'operations:complaints': 'limit=100',
+            'operations:mrp-proposals': 'runId=cdp-mrp-run-a&limit=50',
+          }[key] ?? '';
         if (parameters.toString() !== expected)
           throw new Error('unmapped synthetic API request query');
       }

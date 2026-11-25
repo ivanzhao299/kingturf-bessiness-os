@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 export function fixedMrp6000Matches(quantityText, formulaText) {
   return {
     quantity6000Matches:
-      typeof quantityText === 'string' && /^建议 6000(?:\.0+)? ·/u.test(quantityText.trim()),
+      typeof quantityText === 'string' &&
+      /^(?:采购|生产)?建议 6000(?:\.0+)?(?: ·|$)/u.test(quantityText.trim()),
     rounded6000Matches:
       typeof formulaText === 'string' && /按批量取整为 6000(?:\.0+)?$/u.test(formulaText.trim()),
   };

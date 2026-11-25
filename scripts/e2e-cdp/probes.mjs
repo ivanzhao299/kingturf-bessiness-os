@@ -369,15 +369,7 @@ export async function runProbes({ send, router, runId, report, expectDialog }) {
             ['.inventory-balance-card', 'CDP-LOT-A'],
           ],
         ],
-        [
-          'material-planning',
-          '物料计划',
-          [
-            ['.mrp-policy-card', 'CDP-FG-A'],
-            ['.mrp-run-card h3', 'CDP-MRP-A'],
-            ['.mrp-proposal-card', 'CDP-FG-A'],
-          ],
-        ],
+        ['material-planning', '物料计划', []],
         [
           'quality-inspection',
           '质量检验',
@@ -421,6 +413,17 @@ export async function runProbes({ send, router, runId, report, expectDialog }) {
               throw error;
             }
             await page.text('[data-route-context] h1', title);
+            if (route === 'material-planning') {
+              await page.click('[data-testid="kt-mrp-tab-policies"]');
+              await page.text('[data-testid="kt-mrp-policy-sku"]', 'CDP-FG-A');
+              await page.click('[data-testid="kt-mrp-tab-proposals"]');
+              await page.text('[data-testid="kt-mrp-run-heading"]', 'CDP-MRP-A');
+              await page.text('[data-testid="kt-mrp-proposal-sku"]', 'CDP-FG-A');
+              await page.click('[data-testid="kt-mrp-open"]');
+              await page.text('[data-testid="kt-mrp-formula"]', '净需求 50');
+              await page.noOverflow();
+              await page.click('.detail-drawer button[aria-label="关闭详情"]');
+            }
             for (const [selector, record] of cards) await page.text(selector, record);
             await page.noOverflow();
           }

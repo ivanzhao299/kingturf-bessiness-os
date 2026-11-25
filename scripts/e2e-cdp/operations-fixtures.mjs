@@ -14,6 +14,26 @@ export const operationsPermissions = [
   'complaint:read',
 ];
 
+const mrpProposal = {
+  id: 'cdp-proposal-a',
+  mrp_run_id: 'cdp-mrp-run-a',
+  sku: 'CDP-FG-A',
+  proposal_type: 'PURCHASE',
+  effectiveState: 'PROPOSED',
+  quantity: '50',
+  start_at: '2026-10-01',
+  due_at: '2026-10-15',
+  frozen: false,
+  explanation: {
+    grossDemand: '140',
+    safetyStock: '10',
+    onHand: '100',
+    scheduledReceipts: '0',
+    netRequirement: '50',
+    plannedQuantity: '50',
+  },
+};
+
 const records = [
   [
     'manufacturing-items',
@@ -96,28 +116,10 @@ const records = [
       asOf: '2026-10-01',
       freezeUntil: '2026-10-07',
       inputHash: 'cdp-mrp-input-hash',
-      proposals: [
-        {
-          id: 'cdp-proposal-a',
-          sku: 'CDP-FG-A',
-          proposalType: 'BUY',
-          effectiveState: 'PROPOSED',
-          quantity: '50',
-          startAt: '2026-10-01',
-          dueAt: '2026-10-15',
-          frozen: false,
-          explanation: {
-            grossDemand: '140',
-            safetyStock: '10',
-            onHand: '100',
-            scheduledReceipts: '0',
-            netRequirement: '50',
-            plannedQuantity: '50',
-          },
-        },
-      ],
+      proposals: [mrpProposal],
     },
   ],
+  ['mrp-proposals', mrpProposal],
   [
     'quality-plans',
     {
@@ -170,10 +172,22 @@ const records = [
   ],
 ];
 
-export const operationsRoutes = records.map(([route]) => [
-  `/api/v1/${route}`,
-  `operations:${route}`,
-]);
-export const operationsValues = Object.fromEntries(
-  records.map(([route, record]) => [`operations:${route}`, { items: [record], nextCursor: null }]),
-);
+const runDetailPath = '/api/v1/mrp-runs/cdp-mrp-run-a';
+export const operationsRoutes = [
+  ...records.map(([route]) => [`/api/v1/${route}`, `operations:${route}`]),
+  [runDetailPath, 'operations:mrp-run-detail'],
+];
+export const operationsValues = {
+  ...Object.fromEntries(
+    records.map(([route, record]) => [
+      `operations:${route}`,
+      { items: [record], nextCursor: null },
+    ]),
+  ),
+  'operations:mrp-run-detail': {
+    id: 'cdp-mrp-run-a',
+    proposals: [mrpProposal],
+    demandSnapshots: [],
+    bomEdges: [],
+  },
+};

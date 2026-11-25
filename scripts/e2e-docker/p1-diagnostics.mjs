@@ -227,25 +227,53 @@ export async function runP1Diagnostics(command, signal, report) {
     });
 
     await openRoute('material-planning');
-    const mrp = page.locator('.mrp-workbench');
-    const longRangeYarn = mrp
-      .locator('.mrp-proposal-card', { hasText: 'RM-KT-YARN-12000' })
+    const mrp = page.getByTestId('kt-mrp-proposal-table');
+    await page.getByTestId('kt-mrp-run-heading').waitFor();
+    const rows = mrp.locator('tbody tr');
+    await rows.first().waitFor();
+    const longRangeYarn = rows
+      .filter({ hasText: 'RM-KT-YARN-12000' })
       .filter({ hasText: '2026-11-15' });
     const longRangeYarnCards = await longRangeYarn.count();
+    const frozenRows = rows.filter({ has: page.getByTestId('kt-mrp-frozen') });
+    const drawer = page.getByRole('dialog');
+    let quantityText = null;
+    let formulaText = null;
+    if (longRangeYarnCards === 1) {
+      quantityText = await longRangeYarn
+        .locator('td[data-column="proposal"] .po-cell > span')
+        .textContent();
+      await longRangeYarn.getByTestId('kt-mrp-open').click();
+      formulaText = await drawer.getByTestId('kt-mrp-formula').textContent();
+      await drawer.getByRole('button', { name: '关闭详情' }).click();
+    }
+    let frozenExplanationNotes = 0;
+    for (const row of await frozenRows.all()) {
+      await row.getByTestId('kt-mrp-open').click();
+      if (
+        await contains(
+          drawer.getByTestId('kt-mrp-freeze-warning'),
+          '冻结窗口内：批准必须提供覆盖审批证据',
+        )
+      )
+        frozenExplanationNotes += 1;
+      await drawer.getByRole('button', { name: '关闭详情' }).click();
+    }
+    const releasedLabels = await page
+      .getByTestId('kt-mrp-proposals')
+      .getByText('已下达', { exact: true })
+      .count();
+    const releasedLabelsInsideCards = await rows.getByText('已下达', { exact: true }).count();
     emit('mrp', {
-      proposalCards: await mrp.locator('.mrp-proposal-card').count(),
-      frozenCards: await mrp.locator('.mrp-proposal-card.frozen').count(),
-      releasedLabels: await mrp.getByText('已放行', { exact: true }).count(),
+      proposalCards: await rows.count(),
+      frozenCards: await frozenRows.count(),
+      releasedLabels,
       longRangeYarnCards,
-      quantity10000Matches:
-        longRangeYarnCards === 1 && (await contains(longRangeYarn, '建议 10000')),
-      grossDemand10300Matches:
-        longRangeYarnCards === 1 && (await contains(longRangeYarn, '毛需求 10300')),
-      safetyStock500Matches:
-        longRangeYarnCards === 1 && (await contains(longRangeYarn, '安全库存 500')),
-      rounded10000Matches:
-        longRangeYarnCards === 1 && (await contains(longRangeYarn, '按批量取整为 10000')),
-      frozenExplanationNotes: await mrp.getByText(/冻结窗口内：批准必须提供覆盖审批证据/u).count(),
+      quantity10000Matches: quantityText?.includes('建议 10000') === true,
+      grossDemand10300Matches: formulaText?.includes('毛需求 10300') === true,
+      safetyStock500Matches: formulaText?.includes('安全库存 500') === true,
+      rounded10000Matches: formulaText?.includes('按批量取整为 10000') === true,
+      frozenExplanationNotes,
     });
     signal.throwIfAborted();
     assertTestDatabaseTarget(command.connection, 'test');
@@ -258,19 +286,7 @@ export async function runP1Diagnostics(command, signal, report) {
     } finally {
       await database.close();
     }
-    const releasedLabels = await mrp.getByText('已放行', { exact: true }).count();
-    const releasedLabelsInsideCards = await mrp
-      .locator('.mrp-proposal-card')
-      .getByText('已放行', { exact: true })
-      .count();
-    // Match the individual text node containers, not concatenated card text.
-    const quantityMatches =
-      longRangeYarnCards === 1
-        ? fixedMrp6000Matches(
-            await longRangeYarn.locator(':scope > p').first().textContent(),
-            await longRangeYarn.locator('.mrp-formula').textContent(),
-          )
-        : fixedMrp6000Matches(null, null);
+    const quantityMatches = fixedMrp6000Matches(quantityText, formulaText);
     emit('mrpInputs', {
       ...inputMatches,
       ...quantityMatches,
