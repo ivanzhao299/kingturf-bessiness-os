@@ -1,4 +1,5 @@
 import { installGlobalTestDom, type TestElement, isTestElement } from '../test/fixtures/preact-dom';
+import { act } from 'preact/test-utils';
 import { sessionFixture } from './test-fixtures/session';
 import { scopeGrantChoiceLabeler } from './governance/identity-scopes';
 import { createFetchCommercialApi } from './shared/commercial-http';
@@ -2856,6 +2857,85 @@ describe('web bootstrap', () => {
       null,
       'procurement/inventory',
     ]);
+  });
+
+  it('restores first-location creation on procurement overview for inventory:move only (TD-PROC-020)', async () => {
+    installGlobalTestDom();
+    const api = { ...procurementApi(), get: vi.fn().mockResolvedValue(null) };
+    api.list.mockResolvedValue([]);
+    const permissions = new Set(['inventory:move'] as const);
+    const controller = new CommercialController(api, permissions);
+    await controller.load();
+    const workspace = commercialWorkspaceStructure(
+      'desktop',
+      false,
+      controller,
+    ) as unknown as TestElement;
+    const overview = workspace.querySelector('[data-testid="procurement-workbench"]');
+    if (!overview) throw new Error('procurement overview is missing');
+    expect(visibleAppRoutes(permissions).has('procurement/inventory')).toBe(false);
+    expect(workspace.querySelector('[data-testid="kt-inv-host"]')).toBeNull();
+    expect(api.list.mock.calls).toEqual([['/api/v1/inventory-locations']]);
+    const entry = '[data-testid="kt-inv-create-first-location"]';
+    const button = overview.querySelector(entry);
+    expect(
+      button,
+      'the move-only account must have the first-location action on the overview',
+    ).toBeTruthy();
+    if (!button || !isTestElement(button)) throw new Error('first-location action is missing');
+    await act(() => {
+      button.click();
+    });
+    await vi.waitFor(() => {
+      expect(overview.querySelector('form')).not.toBeNull();
+    });
+    for (const [key, value] of [
+      ['code', ' RAW-A01 '],
+      ['name', ' 原料一区 '],
+      ['locationType', 'STORAGE'],
+    ] as const) {
+      const field = overview.querySelector(`[name="${key}"]`);
+      if (!field || !isTestElement(field)) throw new Error(`Missing location field ${key}`);
+      await act(() => {
+        field.value = value;
+        field.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+    }
+    const submit = overview.querySelector('form button[type="submit"]');
+    if (!submit || !isTestElement(submit)) throw new Error('missing location submit button');
+    await act(() => {
+      submit.click();
+    });
+    expect(api.submit.mock.calls).toEqual([
+      [
+        '/api/v1/inventory-locations',
+        { code: 'RAW-A01', name: '原料一区', locationType: 'STORAGE' },
+        'POST',
+      ],
+    ]);
+    expect(api.list.mock.calls).toEqual([['/api/v1/inventory-locations']]);
+    expect(api.get).not.toHaveBeenCalled();
+    await vi.waitFor(() => {
+      expect(overview.querySelector(entry)).toBeNull();
+      expect(overview.querySelector('[data-testid="console-notice"]')?.textContent).toBe(
+        '已建立库位 RAW-A01',
+      );
+    });
+    expect(
+      commercialWorkspaceStructure('desktop', false, controller).querySelector(entry),
+    ).toBeNull();
+    for (const keys of [
+      ['inventory:read'],
+      ['supplier:read'],
+      ['inventory:read', 'inventory:move'],
+    ] as const) {
+      const restricted = new CommercialController(api, new Set(keys));
+      restricted.views.set('/api/v1/inventory-locations', []);
+      expect(
+        commercialWorkspaceStructure('desktop', false, restricted).querySelector(entry),
+      ).toBeNull();
+    }
+    expect((await procurementWorkspace(['inventory:move'])).querySelector(entry)).toBeNull();
   });
 
   it('keeps the procurement overview summary copy and links each card only to a visible sub-route (PROC-2)', async () => {
