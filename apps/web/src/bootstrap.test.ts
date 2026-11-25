@@ -1826,12 +1826,17 @@ describe('web bootstrap', () => {
   });
 
   it('matrix calculate flows move to the console (coverage in cost-matrix-console.test.tsx)', () => {
-    const source = readBoundSource(
+    const view = readBoundSource(
       './commercial/console/cost-matrix-console.tsx',
       'export function CostMatrixConsolePage',
     );
-    expect(source).toContain('/calculate');
-    expect(source).toContain('pricingMode');
+    expect(view).toContain('costMatrixActions(ports, bundle)');
+    const actions = readBoundSource(
+      './commercial/console/cost-matrix-console-actions.ts',
+      'export const costMatrixActions',
+    );
+    expect(actions).toContain('/calculate');
+    expect(actions).toContain('pricingMode');
   });
 
   it('loads cost matrix summaries separately from the selected model detail', async () => {

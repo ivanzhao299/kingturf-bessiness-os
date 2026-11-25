@@ -362,9 +362,10 @@ describe('COM-UX 信用审批流程图', () => {
     element(form.querySelector('button[type="submit"]')).click();
     await flush();
     expect(submit).toHaveBeenCalledOnce();
-    const shown = element(host.querySelector('[data-testid="kt-credit-submit-error"]')).textContent;
+    const shown = element(form.querySelector('[role="alert"]')).textContent;
+    expect(shown).toBe('服务器处理请求时出错，请稍后重试');
     expect(shown).not.toContain('Internal server error');
-    expect(shown).not.toBe('');
+    expect(host.querySelector('[data-testid="kt-credit-submit-error"]')).toBeNull();
   });
 });
 
