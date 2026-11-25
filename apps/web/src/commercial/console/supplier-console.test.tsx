@@ -4,8 +4,13 @@
 // 权限门、状态筛选/检索、报价历史、刷新错误面）。
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { h, render } from 'preact';
+import { act } from 'preact/test-utils';
 import type { ComponentType } from 'preact';
-import { installGlobalTestDom, type TestElement } from '../../../test/fixtures/preact-dom';
+import {
+  installGlobalTestDom,
+  TestDocument,
+  type TestElement,
+} from '../../../test/fixtures/preact-dom';
 import { SupplierConsolePage } from './supplier-console';
 import { noticeOf } from '../../../test/fixtures/console-notice';
 import {
@@ -181,10 +186,22 @@ const portsFor = (
   ...overrides,
 });
 
+const mountedHosts = new Set<TestElement>();
 const mount = (ports: SupplierConsolePorts): TestElement => {
   const host = installGlobalTestDom().document.createElement('div');
   render(h(SupplierConsolePage(ports) as ComponentType, {}), host);
+  mountedHosts.add(host);
   return host;
+};
+
+const openSupplierDrawer = async (host: TestElement): Promise<TestElement> => {
+  // 先完成详情抽屉的初焦 effect，再触发抽屉里的确认框。
+  await act(() => {
+    element(host.querySelector('[data-testid="kt-supplier-open"]')).click();
+  });
+  const drawer = element(host.querySelector('.detail-drawer'));
+  expect(TestDocument.current.activeElement).toBe(element(drawer.querySelector('.drawer-close')));
+  return drawer;
 };
 
 const fillField = (host: TestElement, name: string, value: string): void => {
@@ -232,6 +249,9 @@ const QUALIFY_FORM: readonly (readonly [string, string])[] = [
 ];
 
 afterEach(() => {
+  // 卸载上一个用例的抽屉，避免其延迟焦点 effect 落到下一个测试 DOM。
+  for (const host of mountedHosts) render(null, host);
+  mountedHosts.clear();
   vi.restoreAllMocks();
 });
 
@@ -402,9 +422,7 @@ describe('U3-PROC-1 供应商控制台', () => {
         }),
     });
     const host = mount(ports);
-    element(host.querySelector('[data-testid="kt-supplier-open"]')).click();
-    await flush();
-    const drawer = element(host.querySelector('.detail-drawer'));
+    const drawer = await openSupplierDrawer(host);
     element(drawer.querySelector('[data-testid="kt-supplier-state-drawer-deactivate"]')).click();
     expect(ports.submit).not.toHaveBeenCalled();
     await confirmAction(host, '停用供应商', '确认停用', { destructive: true });
@@ -433,9 +451,7 @@ describe('U3-PROC-1 供应商控制台', () => {
       refresh: vi.fn().mockRejectedValue(new Error('读取供应商失败，请刷新重试')),
     });
     const host = mount(ports);
-    element(host.querySelector('[data-testid="kt-supplier-open"]')).click();
-    await flush();
-    const drawer = element(host.querySelector('.detail-drawer'));
+    const drawer = await openSupplierDrawer(host);
     element(drawer.querySelector('[data-testid="kt-supplier-state-drawer-pause"]')).click();
     await confirmAction(host, '暂停供应商', '确认暂停', { destructive: true });
     expect(ports.submit).toHaveBeenCalledExactlyOnceWith(
