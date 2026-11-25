@@ -344,7 +344,7 @@ it('captures artificial-turf project handoff fields without test-channel evidenc
       './commercial/collection-actions.ts',
       'export function appendCollectionFollowups',
     ),
-    readBoundSource('./commercial/payments-view.ts', 'export function appendPaymentsView'),
+    readBoundSource('./commercial/console/payment-host.ts', 'export function appendPaymentConsole'),
     readBoundSource('./commercial/commission-view.ts', 'export function appendCommissionView'),
     readBoundSource('./commercial/commission-policy.ts', 'export function appendCommissionHeading'),
     readBoundSource('./commercial/commission-ledger.ts', 'export function createCommissionCard'),
@@ -932,7 +932,6 @@ it('binds each major business workbench to one process-stage route', () => {
     ['quote-workbench', 'quotes'],
     ['contract-workbench', 'contracts'],
     ['order-workbench', 'sales-orders'],
-    ['payment-workbench', 'payments'],
     ['production-workbench', 'production-orders'],
     ['quality-workbench', 'quality-inspection'],
     ['shipment-workbench', 'shipments'],
@@ -942,6 +941,9 @@ it('binds each major business workbench to one process-stage route', () => {
   expect(
     readBoundSource('./commercial/console/ar-host.ts', 'export function appendArConsole'),
   ).toContain("finHostSection('ar-console', 'kt-ar-console', 'receivables')");
+  expect(
+    readBoundSource('./commercial/console/payment-host.ts', 'export function appendPaymentConsole'),
+  ).toContain("finHostSection('payment-console', 'kt-payment-console', 'payments')");
 });
 
 it.each([
@@ -1920,8 +1922,8 @@ describe('web bootstrap', () => {
     const workspace = commercialWorkspaceStructure('mobile', true) as unknown as RenderedElement;
     expect(workspace.className).toContain('mobile');
     expect(workspace.className).toContain('immutable');
-    expect(workspace.findByClass('commercial-form')).toHaveLength(11);
-    expect(workspace.findByClass('decision-evidence')).toHaveLength(11);
+    expect(workspace.findByClass('commercial-form')).toHaveLength(9);
+    expect(workspace.findByClass('decision-evidence')).toHaveLength(9);
     expect(workspace.textContent).toContain('已签发（只读）');
   });
 
@@ -3519,9 +3521,8 @@ describe('web bootstrap', () => {
     ) as unknown as RenderedElement;
     expect(workspace.findByClass('order-workbench')).toHaveLength(1);
     expect(workspace.findByClass('ar-console')).toHaveLength(1);
-    expect(workspace.findByClass('payment-workbench')).toHaveLength(1);
+    expect(workspace.findByClass('payment-console')).toHaveLength(1);
     expect(workspace.textContent).toContain('SO-001');
-    expect(workspace.textContent).toContain('最近核销 1234567890ab');
     expect(workspace.textContent).not.toContain('JSON 请求');
   });
 

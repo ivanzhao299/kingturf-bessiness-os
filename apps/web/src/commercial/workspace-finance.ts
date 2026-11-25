@@ -4,7 +4,7 @@ import type { FinanceRiskViewContext } from './finance-risk-view-ports';
 import { appendArConsole } from './console/ar-host';
 import type { FinHostController } from './console/fin-host-kit';
 import { appendCollectionsView } from './collections-view';
-import { appendPaymentsView } from './payments-view';
+import { appendPaymentConsole } from './console/payment-host';
 import { appendCommissionView } from './commission-view';
 import { appendRiskView } from './risk-view';
 
@@ -35,7 +35,14 @@ export function appendWorkspaceFinance(
     });
   }
   if (controller && permissions.has('bank-payment:read')) {
-    appendPaymentsView({ workspace, status, controller, permissions, ports: financeRiskViewPorts });
+    appendPaymentConsole({
+      workspace,
+      status,
+      controller,
+      permissions,
+      ports: financeRiskViewPorts,
+      appRoutes,
+    });
   }
   if (
     controller &&

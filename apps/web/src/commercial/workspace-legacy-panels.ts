@@ -159,8 +159,6 @@ const permittedPaths = new Map<string, readonly [CommercialPermission, Commercia
   ['/api/v1/credit-decisions', ['credit:read', 'credit:evaluate']],
   ['/api/v1/contracts', ['contract:read', 'contract:revise']],
   ['/api/v1/sales-orders', ['sales-order:read', 'sales-order:create']],
-  ['/api/v1/bank-payments', ['bank-payment:read', 'bank-payment:intake']],
-  ['/api/v1/reconciliation-runs', ['reconciliation:read', 'reconciliation:run']],
   ['/api/v1/commission-policies', ['commission-policy:read', 'commission-policy:manage']],
   ['/api/v1/commissions', ['commission:read', 'commission:accrue']],
   ['/api/v1/risk-policies', ['risk-policy:read', 'risk-policy:manage']],
@@ -247,22 +245,6 @@ export function appendLegacyCommercialPanels(
       '释放订单',
       '/api/v1/sales-orders',
     ],
-    [
-      'payment-intake',
-      '收款登记',
-      '原始银行载荷、引用与哈希只读且不可删除',
-      ['客户', '银行引用', '金额', '原始载荷'],
-      '登记收款',
-      '/api/v1/bank-payments',
-    ],
-    [
-      'reconciliation',
-      '核销',
-      '按稳定顺序展示匹配解释、分配次序与剩余余额',
-      ['收款余额', '开放项余额', '规范结果哈希'],
-      '运行核销',
-      '/api/v1/reconciliation-runs',
-    ],
   ] as const) {
     if (
       controller &&
@@ -276,8 +258,6 @@ export function appendLegacyCommercialPanels(
         '/api/v1/credit-decisions',
         '/api/v1/contracts',
         '/api/v1/sales-orders',
-        '/api/v1/bank-payments',
-        '/api/v1/reconciliation-runs',
       ].includes(path)
     )
       continue;

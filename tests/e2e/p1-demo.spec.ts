@@ -65,7 +65,7 @@ test('shows the released order, partial AR, payment, and reconciliation evidence
   await openRoute(page, 'sales-orders');
   const order = page.locator('.order-workbench');
   const ar = page.getByTestId('kt-ar-console');
-  const payment = page.locator('.payment-workbench');
+  const payment = page.getByTestId('kt-payment-console');
   await expect(order.getByText('SO-KT-P1-DEMO', { exact: true })).toBeVisible();
   await expect(order.getByText('¥950,000', { exact: true })).toBeVisible();
   await testInfo.attach('order-desktop', {
@@ -83,12 +83,17 @@ test('shows the released order, partial AR, payment, and reconciliation evidence
     contentType: 'image/png',
   });
   await openRoute(page, 'payments');
-  const seededPayment = payment
-    .locator('.qtc-card')
-    .filter({ hasText: /BANK-KT-P1-DEMO(?!-FINAL)/u });
-  await expect(seededPayment).toBeVisible();
-  await expect(seededPayment.getByText(/待核销 0/)).toBeVisible();
-  await expect(payment.getByText(/最近核销 [0-9a-f]{12}/)).toBeVisible();
+  const seededPayment = payment.getByRole('row').filter({
+    has: page.getByTestId('kt-payment-reference').getByText('BANK-KT-P1-DEMO', { exact: true }),
+  });
+  await expect(seededPayment.getByTestId('kt-payment-reference')).toBeVisible();
+  await expect(seededPayment.getByTestId('kt-payment-remaining')).toHaveText('¥0');
+  const latestRun = payment
+    .getByTestId('kt-payment-runs')
+    .getByTestId('kt-payment-run-hash')
+    .first();
+  await expect(latestRun).toBeVisible();
+  await expect(latestRun).toHaveText(/^[0-9a-f]{12}$/u);
   await testInfo.attach('payment-reconciliation-desktop', {
     body: await payment.screenshot(),
     contentType: 'image/png',
@@ -108,7 +113,7 @@ test('keeps the P1 evidence usable on a mobile viewport', async ({ page }, testI
   await openRoute(page, 'receivables');
   await expect(page.getByTestId('kt-ar-page')).toBeVisible();
   await openRoute(page, 'payments');
-  await expect(page.locator('.payment-workbench')).toBeVisible();
+  await expect(page.getByTestId('kt-payment-page')).toBeVisible();
   await openRoute(page, 'commissions');
   await expect(page.locator('.commission-workbench')).toBeVisible();
   await openRoute(page, 'order-360');

@@ -35,6 +35,8 @@ import type { RoutingConsolePorts } from './routing-ports';
 import { ProductionOrderConsolePage } from './production-order-console';
 import type { ProductionOrderConsolePorts } from './production-order-ports';
 import { ArConsolePage } from './ar-console';
+import { PaymentConsolePage } from './payment-console';
+import type { PaymentPorts } from './payment-ports';
 import type { ArConsolePorts } from './ar-ports';
 
 // U3-COM-1..7：commercial 控制台挂载体（经宿主动态 import 独立 chunk，登录入口
@@ -58,7 +60,8 @@ type ConsoleMountPorts =
   | Readonly<{ kind: 'manufacturing-routings'; ports: RoutingConsolePorts }>
   | Readonly<{ kind: 'production-orders'; ports: ProductionOrderConsolePorts }>
   // FIN：财务域三个控制台（应收 / 收款与核销 / 催收）。
-  | Readonly<{ kind: 'receivables'; ports: ArConsolePorts }>;
+  | Readonly<{ kind: 'receivables'; ports: ArConsolePorts }>
+  | Readonly<{ kind: 'payments'; ports: PaymentPorts }>;
 
 const PAGE_BY_KIND: Readonly<Record<ConsoleMountPorts['kind'], (ports: never) => ComponentType>> = {
   opportunities: OpportunityListPage as (ports: never) => ComponentType,
@@ -79,6 +82,7 @@ const PAGE_BY_KIND: Readonly<Record<ConsoleMountPorts['kind'], (ports: never) =>
   'manufacturing-routings': RoutingConsolePage as (ports: never) => ComponentType,
   'production-orders': ProductionOrderConsolePage as (ports: never) => ComponentType,
   receivables: ArConsolePage as (ports: never) => ComponentType,
+  payments: PaymentConsolePage as (ports: never) => ComponentType,
 };
 
 export function mountCommercialConsole(host: HTMLElement, mount: ConsoleMountPorts): void {
