@@ -187,7 +187,8 @@ export function createStubRouter({
         ].includes(key)
       ) {
         const expected = ['receivables', 'bankPayments'].includes(key) ? 'limit=100' : '';
-        if (parameters.toString() !== expected)
+        const arPage = key === 'receivables' && parameters.toString() === 'summary=1&limit=50';
+        if (parameters.toString() !== expected && !arPage)
           throw new Error('unmapped synthetic API request query');
       }
       counts.set(key, (counts.get(key) ?? 0) + 1);
@@ -284,6 +285,7 @@ export function createStubRouter({
               documentNumber: 'CDP-AR-A',
               currency: 'CNY',
               originalAmount: '1000',
+              appliedAmount: '500',
               remainingAmount: '500',
               dueAt: '2020-01-01T23:59:59.000Z',
             },
