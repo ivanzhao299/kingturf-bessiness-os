@@ -42,12 +42,8 @@ const COPY = {
   },
 } as const;
 
-const submitError = (state: ProductionOrderViewState, testId: string) =>
-  state.submitError !== '' ? (
-    <p class="console-error" role="alert" data-testid={testId}>
-      {state.submitError}
-    </p>
-  ) : null;
+// MFG5-3：提交失败的原因显示在表单自己的提示区（FormSection 的 error），不再渲染在抽屉顶部
+// （见 production-order-forms.tsx 的同一处说明）。
 
 // 抽屉顶部的工单概要：报工要看计划数量与成品。
 const Summary = ({
@@ -224,7 +220,6 @@ export const ProductionOrderExecutionDrawer = ({ state }: FormProps) => {
       }}
     >
       <Summary state={state} row={row} testId={`${prefix}-summary`} />
-      {submitError(state, `${prefix}-error`)}
       {draft.kind === 'material' ? (
         <p class="console-hint" data-testid="kt-wo-material-scope">
           {materialScopeNote(state)}
@@ -247,6 +242,7 @@ export const ProductionOrderExecutionDrawer = ({ state }: FormProps) => {
                 : outputFields(state)
           }
           submitLabel={copy.submit}
+          error={state.submitError}
           onSubmit={(values) => state.runExecution(values)}
         />
       </div>

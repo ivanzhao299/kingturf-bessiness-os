@@ -162,6 +162,9 @@ const byTestId = (host: TestElement, id: string): TestElement => {
   if (!found) throw new Error(`missing ${id}`);
   return element(found);
 };
+// MFG5-3：提交失败的原因显示在表单自己的提示区（FormSection 的 role="alert"，紧挨提交按钮）。
+const formAlert = (scope: TestElement): TestElement =>
+  element(scope.querySelector('form.form-section [role="alert"]'));
 const optional = (host: TestElement, id: string): TestElement | null =>
   (host.querySelector(`[data-testid="${id}"]`) as TestElement | null) ?? null;
 
@@ -486,6 +489,52 @@ describe('U3-MFG-4 工单控制台：载荷 oracle', () => {
     expect(refresh).toHaveBeenCalledTimes(1);
   });
 
+  // MFG5-3：五个表单抽屉（新建 / 流转 / 报工 / 领退料 / 成品卷入库）接 FormSection 的 error 与 failureMessage。
+  it('新建失败：接口的英文消息显示为中文，原因在表单提示区（紧挨提交按钮），抽屉留着', async () => {
+    const submit = vi.fn().mockRejectedValue(new Error('Internal server error'));
+    const host = mount(portsFor([order()], ['production:plan'], { submit }));
+    byTestId(host, 'kt-wo-create').click();
+    await flush();
+    await type(host, 'orderNumber', 'WO-9');
+    await type(host, 'itemVersionId', 'v-1');
+    await type(host, 'routingVersionId', 'r-1');
+    await type(host, 'plannedQuantity', '500');
+    await type(host, 'plannedStartAt', '2026-09-01');
+    await type(host, 'plannedDueAt', '2026-09-08');
+    await type(host, 'sourceReference', 'SO-9');
+    await submitDrawer(host);
+    await flush();
+    expect(submit).toHaveBeenCalledTimes(1);
+    expect(formAlert(drawerOf(host)).textContent).toBe('服务器处理请求时出错，请稍后重试');
+    expect(host.textContent).not.toContain('Internal server error');
+    // 提示区在表单里、提交按钮之前：长表单下滚到提交按钮时它仍在视野内（出现时还会滚入并获焦）。
+    const form = element(host.querySelector('form.form-section'));
+    expect(form.contains(formAlert(drawerOf(host)))).toBe(true);
+    const buttonTypes = form
+      .querySelectorAll('button')
+      .map((node) => (node as TestElement).getAttribute('type'));
+    expect(buttonTypes.at(-1)).toBe('submit');
+  });
+
+  it('从详情抽屉发起流转失败：原因只出现在表单提示区一处，详情抽屉顶部的错误位让位', async () => {
+    const submit = vi.fn().mockRejectedValue(new Error('Internal server error'));
+    const host = mount(portsFor([order()], ['production:plan'], { submit }));
+    byTestId(host, 'kt-wo-open').click();
+    await flush();
+    byTestId(host, 'kt-wo-transition').click();
+    await flush();
+    await type(drawerOf(host), 'reason', 'r');
+    await type(drawerOf(host), 'evidenceReference', 'EV-2');
+    await submitDrawer(host);
+    await flush();
+    const shown = host
+      .querySelectorAll('.console-error, [role="alert"]')
+      .map((node) => node.textContent.trim())
+      .filter((text) => text !== '');
+    expect(shown).toEqual(['服务器处理请求时出错，请稍后重试']);
+    expect(optional(host, 'kt-wo-submit-error')).toBeNull();
+  });
+
   it('提交失败保留抽屉并就近显示错误；动作错误与装载错误分离', async () => {
     const submit = vi.fn().mockRejectedValue(new Error('command rejected'));
     const host = mount(portsFor([order()], ['production:plan'], { submit }));
@@ -495,7 +544,7 @@ describe('U3-MFG-4 工单控制台：载荷 oracle', () => {
     await type(drawerOf(host), 'evidenceReference', 'EV-2');
     await submitDrawer(host);
     await flush();
-    expect(byTestId(drawerOf(host), 'kt-wo-transition-error').textContent).toBe('command rejected');
+    expect(formAlert(drawerOf(host)).textContent).toBe('command rejected');
     // 抽屉未关闭：再次提交仍走同一动作。
     await submitDrawer(host);
     await flush();
@@ -753,11 +802,11 @@ describe('U3-MFG-5 工单控制台：工序报工', () => {
     await flush();
     expect(submit).not.toHaveBeenCalled();
     expect(refresh).not.toHaveBeenCalled();
-    expect(byTestId(host, 'kt-wo-report-error').textContent).toBe('开始时间格式不正确，请重新选择');
+    expect(formAlert(host).textContent).toBe('开始时间格式不正确，请重新选择');
     await fillReport(host, { startedAt: '2026-10-17T01:00:00Z', completedAt: 'not-a-date' });
     await submitDrawer(host);
     await flush();
-    expect(byTestId(host, 'kt-wo-report-error').textContent).toBe('完成时间格式不正确，请重新选择');
+    expect(formAlert(host).textContent).toBe('完成时间格式不正确，请重新选择');
     expect(submit).not.toHaveBeenCalled();
     expect(refresh).not.toHaveBeenCalled();
   });
@@ -779,7 +828,7 @@ describe('U3-MFG-5 工单控制台：工序报工', () => {
     await fillReport(host);
     await submitDrawer(host);
     await flush();
-    expect(byTestId(host, 'kt-wo-report-error').textContent).toBe(
+    expect(formAlert(host).textContent).toBe(
       'reported good quantity exceeds planned production quantity',
     );
     expect(optional(host, 'kt-wo-report-form')).not.toBeNull();
@@ -1129,7 +1178,7 @@ describe('U3-MFG-5 工单控制台：领退料', () => {
     }
     expect(submit).not.toHaveBeenCalled();
     expect(refresh).not.toHaveBeenCalled();
-    expect(byTestId(host, 'kt-wo-material-error').textContent).toBe('请选择有效批次库位');
+    expect(formAlert(host).textContent).toBe('请选择有效批次库位');
   });
 
   it('无效日期在提交前拦下：不提交、不刷新、给出中文提示', async () => {
@@ -1144,9 +1193,7 @@ describe('U3-MFG-5 工单控制台：领退料', () => {
     await flush();
     expect(submit).not.toHaveBeenCalled();
     expect(refresh).not.toHaveBeenCalled();
-    expect(byTestId(host, 'kt-wo-material-error').textContent).toBe(
-      '发生时间格式不正确，请重新选择',
-    );
+    expect(formAlert(host).textContent).toBe('发生时间格式不正确，请重新选择');
   });
 
   it('服务端拒绝（如该批次物料不属于工单 BOM）：抽屉留着、就近显示接口消息、不刷新；重试沿用同一把键', async () => {
@@ -1165,7 +1212,7 @@ describe('U3-MFG-5 工单控制台：领退料', () => {
     await fillMaterial(host);
     await submitDrawer(host);
     await flush();
-    expect(byTestId(host, 'kt-wo-material-error').textContent).toBe('该批次物料不属于工单 BOM');
+    expect(formAlert(host).textContent).toBe('该批次物料不属于工单 BOM');
     expect(optional(host, 'kt-wo-material-form')).not.toBeNull();
     expect(refresh).not.toHaveBeenCalled();
     await submitDrawer(host);
@@ -1383,7 +1430,7 @@ describe('U3-MFG-5 工单控制台：成品卷入库', () => {
     await fillOutput(host);
     await submitDrawer(host);
     await flush();
-    expect(byTestId(host, 'kt-wo-output-error').textContent).toBe(
+    expect(formAlert(host).textContent).toBe(
       'finished roll must match order, report, item, lot, and reported quantity',
     );
     expect(optional(host, 'kt-wo-output-form')).not.toBeNull();

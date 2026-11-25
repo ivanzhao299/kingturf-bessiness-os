@@ -511,7 +511,9 @@ export const ProductionOrderDetailDrawer = ({ state }: DetailProps) => {
           详情加载中…
         </p>
       ) : null}
-      {state.submitError !== '' ? (
+      {/* MFG5-3：流转 / 报工 / 领退料 / 入库都是经各自的表单抽屉提交的，失败原因显示在那张表单的
+          提示区里；表单抽屉开着时这里的错误位让位，同一条错误不显示两处。它只留给不经表单的动作。 */}
+      {state.activeForm === null && state.submitError !== '' ? (
         <p class="console-error" role="alert" data-testid="kt-wo-submit-error">
           {state.submitError}
         </p>
