@@ -1283,6 +1283,12 @@ export async function quoteFlow(t) {
       const response = await t.write(createQuote());
       e.request = brief(response);
       e.blocked = response?.blocked;
+      // 创建响应早于列表刷新和抽屉关闭。下一步需要新表单，等这次成功创建的表单卸载。
+      if (response?.ok === true) {
+        await page
+          .getByRole('dialog', { name: '新建销售报价', exact: true })
+          .waitFor({ state: 'detached', timeout: 8000 });
+      }
       return response?.sent === true;
     },
   );
