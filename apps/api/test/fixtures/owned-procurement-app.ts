@@ -128,18 +128,23 @@ export async function ownedProcurementApp(prefix: string) {
       }
       return token;
     };
+    // 与 server.ts 同一做法：查询串单独解析成 query（hasQuery 表示 URL 带「?」）。
     const dispatch = (
       request: Readonly<{
         token: string;
         method: 'GET' | 'POST' | 'PUT';
         pathname: string;
+        query?: Readonly<Record<string, string>>;
         body?: Record<string, unknown>;
         key?: string;
       }>,
-    ): Promise<ApiResponse> =>
-      app.dispatch({
+    ): Promise<ApiResponse> => {
+      const url = new URL(request.pathname, 'http://owned.test');
+      return app.dispatch({
         method: request.method,
-        pathname: request.pathname,
+        pathname: url.pathname,
+        query: { ...Object.fromEntries(url.searchParams), ...(request.query ?? {}) },
+        hasQuery: url.search !== '',
         headers: {
           authorization: `Bearer ${request.token}`,
           'content-type': 'application/json',
@@ -148,6 +153,7 @@ export async function ownedProcurementApp(prefix: string) {
         },
         ...(request.body === undefined ? {} : { body: request.body }),
       });
+    };
     return {
       db: appDatabase,
       schema: owned.schema,

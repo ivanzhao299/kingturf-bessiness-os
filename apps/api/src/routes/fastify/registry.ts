@@ -94,6 +94,7 @@ const CLAIMED_FASTIFY_ROUTES: readonly (readonly [method: string, pattern: RegEx
   ['GET', /^\/api\/v1\/suppliers\/[0-9a-f-]+$/u],
   ['POST', /^\/api\/v1\/suppliers$/u],
   ['PUT', /^\/api\/v1\/suppliers\/[0-9a-f-]+\/qualification$/u],
+  ['PUT', /^\/api\/v1\/suppliers\/[0-9a-f-]+\/state$/u],
   ['GET', /^\/api\/v1\/procurement-rfqs$/u],
   ['GET', /^\/api\/v1\/procurement-rfqs\/[0-9a-f-]+$/u],
   ['POST', /^\/api\/v1\/procurement-rfqs$/u],
