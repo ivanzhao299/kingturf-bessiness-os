@@ -3,6 +3,7 @@ import { COLLECTION_PATH } from './collection-ports';
 import {
   finDetailUrl,
   finHostSection,
+  finLedgerUpdates,
   finMount,
   finReadPage,
   type FinHostContext,
@@ -21,6 +22,7 @@ export function appendCollectionConsole({
   finMount(section, {
     kind: 'collections',
     ports: {
+      ledgerUpdates: finLedgerUpdates(workspace, section),
       permissions,
       get receivables() {
         return (controller.views.get(AR_LIST_PATH) ?? [])

@@ -141,3 +141,32 @@ it('filters and follows a cursor while formatting and sorting ledger amounts exa
     host.querySelectorAll('[data-testid="kt-ar-remaining"]').map((node) => node.textContent),
   ).toEqual(['¥9,007,199,254,740,993.000001', '¥9,007,199,254,740,993.000002']);
 });
+
+it('reloads a mounted AR list when a sibling ledger console writes', async () => {
+  let refresh: (() => Promise<void>) | undefined;
+  const fetchPage = vi
+    .fn()
+    .mockResolvedValueOnce({ items: [invoice], nextCursor: null })
+    .mockResolvedValueOnce({
+      items: [{ ...invoice, remainingAmount: '90.000000' }],
+      nextCursor: null,
+    });
+  const host = await mount(
+    portsFor({
+      fetchPage,
+      ledgerUpdates: {
+        subscribe: (reload) => {
+          refresh = reload;
+          return vi.fn();
+        },
+        publish: vi.fn(),
+      },
+    }),
+  );
+  expect(byId(host, 'kt-ar-remaining').textContent).toBe('¥400');
+  if (!refresh) throw new Error('Missing ledger listener');
+  await refresh();
+  await vi.waitFor(() => {
+    expect(byId(host, 'kt-ar-remaining').textContent).toBe('¥90');
+  });
+});

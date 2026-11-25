@@ -88,7 +88,10 @@ it('posts the precise legacy intake bytes including trim, noon and raw payload',
 });
 
 it('retains the run hash prefix and sends the legacy reconciliation body only after confirmation', async () => {
-  const { host, ports } = await renderPage();
+  const publish = vi.fn();
+  const { host, ports } = await renderPage({
+    ledgerUpdates: { publish, subscribe: () => vi.fn() },
+  });
   expect(byId(host, 'kt-payment-run-hash').textContent).toBe('1234567890ab');
   await click(byId(host, 'kt-payment-open'));
   await click(byId(host, 'kt-payment-run'));
@@ -101,6 +104,7 @@ it('retains the run hash prefix and sends the legacy reconciliation body only af
     vi.mocked(ports.submit).mock.calls.map(([path, payload]) => [path, JSON.stringify(payload)]),
   ).toEqual([['/api/v1/reconciliation-runs', '{"paymentId":"payment-1"}']]);
   expect(ports.refresh).toHaveBeenCalledOnce();
+  expect(publish).toHaveBeenCalledOnce();
   expect(host.textContent).toContain('已完成核销运行 BANK-001');
 });
 

@@ -1,3 +1,4 @@
+import type { FinLedgerUpdates } from './fin-host-kit';
 import type { FinChoice } from './ar-ports';
 import type { FinPage, FinQuery, FinRow } from './fin-kit';
 
@@ -6,6 +7,7 @@ export const RECONCILIATION_PATH = '/api/v1/reconciliation-runs';
 export type PaymentTab = 'payments' | 'reconciliations';
 
 export type PaymentPorts = Readonly<{
+  ledgerUpdates?: FinLedgerUpdates;
   permissions: ReadonlySet<string>;
   customers: readonly FinChoice[];
   fetchPage: (tab: PaymentTab, query: FinQuery) => Promise<FinPage>;

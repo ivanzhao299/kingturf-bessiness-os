@@ -46,7 +46,8 @@ for (const mode of ['denied', 'authorized', 'masked'] as const) {
       location.hash = 'collections';
     });
     const collection = page.getByTestId('kt-collection-console');
-    await expect(collection.getByTestId('kt-collection-number')).toHaveText('AUTH-COLLECTION');
+    const expectedNumber = mode === 'masked' ? '—' : 'AUTH-COLLECTION';
+    await expect(collection.getByTestId('kt-collection-number')).toHaveText(expectedNumber);
     const detailResponse = page.waitForResponse((response) =>
       /\/collection-cases\/[^/]+$/u.test(new URL(response.url()).pathname),
     );

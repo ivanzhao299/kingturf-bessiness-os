@@ -1,6 +1,7 @@
 import {
   finDetailUrl,
   finHostSection,
+  finLedgerUpdates,
   finMount,
   finReadPage,
   type FinHostContext,
@@ -17,6 +18,7 @@ export function appendPaymentConsole({ workspace, controller, permissions }: Fin
   finMount(section, {
     kind: 'payments',
     ports: {
+      ledgerUpdates: finLedgerUpdates(workspace, section),
       permissions,
       get customers() {
         return controller.customers.map((customer) => ({

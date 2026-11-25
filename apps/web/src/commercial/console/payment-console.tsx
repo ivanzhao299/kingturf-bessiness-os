@@ -199,17 +199,20 @@ function createPaymentState(ports: PaymentPorts) {
       paymentPage.reload(paymentQuery()),
       ...(canReadRuns ? [runPage.reload(runQuery)] : []),
     ]);
+  const reloadLedger = async (): Promise<void> => {
+    await reloadAll();
+    const latest = selection();
+    const currentList = tab.value === 'payments' ? payments : runs;
+    if (currentList.loadError.value === '' && syncSelected(latest))
+      await reloadSelectedDetail(latest);
+  };
   const refresh = async (): Promise<void> => {
     try {
       await ports.refresh();
     } catch (cause: unknown) {
       payments.loadError.value = failureMessage(cause, '业务数据刷新失败');
     }
-    await reloadAll();
-    const latest = selection();
-    const currentList = tab.value === 'payments' ? payments : runs;
-    if (currentList.loadError.value === '' && syncSelected(latest))
-      await reloadSelectedDetail(latest);
+    await reloadLedger();
   };
   const close = () => {
     selected.value = null;
@@ -229,6 +232,7 @@ function createPaymentState(ports: PaymentPorts) {
     else close();
     notice.value = message;
     await refresh();
+    ports.ledgerUpdates?.publish();
   };
   const intake = async (values: Readonly<Record<string, string>>): Promise<void> => {
     error.value = '';
@@ -280,6 +284,7 @@ function createPaymentState(ports: PaymentPorts) {
     busy,
     confirmation,
     reloadAll,
+    reloadLedger,
     refresh,
     close,
     open,
@@ -331,6 +336,7 @@ export function PaymentConsolePage(ports: PaymentPorts) {
   return function PaymentPage() {
     useEffect(() => {
       void model.reloadAll();
+      return ports.ledgerUpdates?.subscribe(model.reloadLedger);
     }, []);
     const selected = model.selected.value;
     const tab = model.tab.value;

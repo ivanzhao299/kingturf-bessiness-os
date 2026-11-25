@@ -236,6 +236,7 @@ export function ArConsolePage(ports: ArConsolePorts) {
     // 首屏：取第一页与汇总（每页 AR_PAGE_SIZE 行，之后「继续加载」沿游标续取）。
     useEffect(() => {
       void actions.reload();
+      return ports.ledgerUpdates?.subscribe(actions.reloadLedger);
     }, []);
     return ArView(state());
   };
