@@ -2341,6 +2341,22 @@ describe('web bootstrap', () => {
     expect(view).toContain('appendProcurementSummary(');
     expect(view).toContain('CONSOLE_HOSTS[surface.id](context, workspace, refreshSummary)');
   });
+  // TD-UI-010：「业务文件 / 常用模板」面板排到业务工作区之后。行为见
+  // shared/contextual-documents-order.test.ts；这里守住外壳与挂载流程里的接线。
+  it('places the business documents panel after the work areas (TD-UI-010)', () => {
+    const shell = readBoundSource('./bootstrap.ts', 'export function createCrmShell');
+    // 外壳里：面板排在客户记录区之后（此前在它之前）。
+    const records = shell.indexOf('content.append(createCrmRecords(shell, controller));');
+    const documents = shell.indexOf('appendContextualDocuments(content, allPermissions, {');
+    expect(records).toBeGreaterThan(0);
+    expect(documents).toBeGreaterThan(records);
+    // 商业与治理工作区是外壳建好之后追加进内容区的：都挂上之后把面板挪到末尾，再装页内导航
+    // （导航按 DOM 序生成，顺序因此是「工作区在前、业务文件在后」）。
+    const mount = readBoundSource('./bootstrap.ts', 'export async function mountWorkspace');
+    const moved = mount.indexOf('localizeEnterpriseCopy(keepDocumentsLast(shell));');
+    expect(moved).toBeGreaterThan(mount.indexOf('mountGovernanceViews('));
+    expect(mount.indexOf('installRouteSectionNavigation(shell);', moved)).toBeGreaterThan(moved);
+  });
   it('styles the manufacturing overview summary as three columns with linkable cards (MFG-3B)', () => {
     const styles = readFileSync(
       new URL('./commercial/console/manufacturing-console.css', import.meta.url),

@@ -459,3 +459,18 @@ export function appendContextualDocuments(
     content.append(contextualDocuments);
   }
 }
+
+// TD-UI-010：各路由的「业务文件 / 常用模板」面板此前排在业务工作区之前，整块占住首屏（制造概览实测面板
+// top=274px、高 514px，工作区从 y≈813 起，汇总卡不在首屏）。外壳建好之后，商业与治理工作区是随后追加进
+// 内容区的，所以在它们都挂上之后把面板挪到内容区末尾：只是移动既有节点（监听器与状态原样保留），面板的
+// class 与 data-route-view 不变。页内「本页导航」按 DOM 序生成，顺序随之变成「工作区在前、业务文件在后」。
+// 返回同一个 shell，调用方可以把它与后续处理串成一条语句（bootstrap.ts 贴着 800 行的文件上限）。
+export function keepDocumentsLast(shell: HTMLElement): HTMLElement {
+  const content = shell.querySelector<HTMLElement>('.workspace');
+  if (content) {
+    // querySelectorAll 返回静态快照，边挪边迭代是安全的。
+    for (const panel of content.querySelectorAll<HTMLElement>('.contextual-documents'))
+      content.append(panel);
+  }
+  return shell;
+}
