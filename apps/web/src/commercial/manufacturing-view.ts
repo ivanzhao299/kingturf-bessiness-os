@@ -41,9 +41,9 @@ export function appendManufacturingView(context: OperationsViewContext, panel: H
   const refreshSummary = appendManufacturingSummary(
     panel,
     () => ({
-      items: controller.views.get('/api/v1/manufacturing-items') ?? [],
-      boms: controller.views.get('/api/v1/manufacturing-boms') ?? [],
-      routings: controller.views.get('/api/v1/manufacturing-routings') ?? [],
+      items: controller.views.get('/api/v1/manufacturing-items'),
+      boms: controller.views.get('/api/v1/manufacturing-boms'),
+      routings: controller.views.get('/api/v1/manufacturing-routings'),
     }),
     recordText,
     new Set<string>(manufacturingSubRoutes(permissions)),

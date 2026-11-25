@@ -8,7 +8,8 @@
 // 数据经取数回调读取而不是渲染那一刻的数组：路由视图只构建一次，三个控制台新建 / 发布 /
 // 刷新后（宿主 refresh 端口 controller.load 重读）由返回的重算函数更新卡片文字，已挂载的
 // 节点（锚点、标识、可见性）保持同一实例。
-import { el } from '../dom';
+import type { SummaryCardItem } from '@kingturf/ui';
+import { appendOverviewCards } from '../shared/overview-summary-cards';
 import type { AppRoute } from '../shared/navigation';
 import type { OperationsViewContext } from './operations-view-ports';
 
@@ -16,20 +17,20 @@ type Rows = readonly Record<string, unknown>[];
 type RecordText = OperationsViewContext['ports']['recordText'];
 
 export type ManufacturingSummaryInput = Readonly<{
-  items: Rows;
-  boms: Rows;
-  routings: Rows;
+  items: Rows | undefined;
+  boms: Rows | undefined;
+  routings: Rows | undefined;
 }>;
 
 type SummaryCard = Readonly<{
   id: 'items' | 'boms' | 'routings';
   label: string;
-  // 该卡对应的子路由；子路由不可见（列表读不到）时卡片保持纯指标。
+  // 链接按路由可见性判断，数字按清单是否已读取判断。
   route: AppRoute;
-  rows: (input: ManufacturingSummaryInput) => Rows;
+  rows: (input: ManufacturingSummaryInput) => Rows | undefined;
 }>;
 
-export const MANUFACTURING_SUMMARY_CARDS: readonly SummaryCard[] = [
+const MANUFACTURING_SUMMARY_CARDS: readonly SummaryCard[] = [
   { id: 'items', label: '物料', route: 'manufacturing/items', rows: (input) => input.items },
   { id: 'boms', label: 'BOM', route: 'manufacturing/boms', rows: (input) => input.boms },
   {
@@ -40,47 +41,39 @@ export const MANUFACTURING_SUMMARY_CARDS: readonly SummaryCard[] = [
   },
 ];
 
-export const countByStatus = (rows: Rows, status: string, recordText: RecordText): number =>
+const countByStatus = (rows: Rows, status: string, recordText: RecordText): number =>
   rows.filter((row) => recordText(row, 'status', 'status') === status).length;
 
-export const manufacturingSummaryText = (
+function itemOf(
   card: SummaryCard,
-  rows: Rows,
-  readable: boolean,
+  snapshot: ManufacturingSummaryInput,
   recordText: RecordText,
-): string =>
-  readable
-    ? `${card.label}\n已发布 ${String(countByStatus(rows, 'PUBLISHED', recordText))} / 草稿 ${String(countByStatus(rows, 'DRAFT', recordText))}`
-    : `${card.label}\n已发布 — / 草稿 —`;
+  visibleRoutes: ReadonlySet<string>,
+): SummaryCardItem {
+  const visible = visibleRoutes.has(card.route);
+  const rows = visible ? card.rows(snapshot) : undefined;
+  return {
+    id: card.id,
+    label: `${card.label}已发布`,
+    value: rows ? String(countByStatus(rows, 'PUBLISHED', recordText)) : '—',
+    hint: rows ? `草稿 ${String(countByStatus(rows, 'DRAFT', recordText))}` : '读不到清单',
+    href: visible ? `#/${card.route}` : undefined,
+  };
+}
 
-/** 渲染三张汇总卡并返回重算函数：按 input() 的当前值更新各卡文字，不新增、不替换节点。 */
+/** 子控制台读取新快照后只更新 signal，已挂载的卡片继续使用原来的节点。 */
 export function appendManufacturingSummary(
   target: HTMLElement,
   input: () => ManufacturingSummaryInput,
   recordText: RecordText,
   visibleRoutes: ReadonlySet<string>,
 ): () => void {
-  const summary = el('div', 'production-summary manufacturing-summary');
-  const nodes: (HTMLElement | undefined)[] = [];
-  const render = (): void => {
-    const current = input();
-    MANUFACTURING_SUMMARY_CARDS.forEach((card, index) => {
-      const readable = visibleRoutes.has(card.route);
-      const text = manufacturingSummaryText(card, card.rows(current), readable, recordText);
-      const existing = nodes[index];
-      if (existing) {
-        existing.textContent = text;
-        return;
-      }
-      const link = readable ? el('a', 'metric-card manufacturing-summary-link', text) : null;
-      if (link) link.href = `#/${card.route}`;
-      const node: HTMLElement = link ?? el('div', 'metric-card', text);
-      node.setAttribute('data-testid', `manufacturing-summary-${card.id}`);
-      nodes[index] = node;
-      summary.append(node);
-    });
-  };
-  render();
-  target.append(summary);
-  return render;
+  return appendOverviewCards(
+    target,
+    input,
+    (snapshot) =>
+      MANUFACTURING_SUMMARY_CARDS.map((card) => itemOf(card, snapshot, recordText, visibleRoutes)),
+    '制造主数据汇总',
+    'manufacturing-summary',
+  );
 }

@@ -1373,6 +1373,7 @@ class RenderedElement {
   };
   public children: RenderedElement[] = [];
   public privateText = '';
+  public parentNode: RenderedElement | null = null;
   public disabled = false;
   public hidden = false;
   public value = '';
@@ -1381,7 +1382,26 @@ class RenderedElement {
   public readonly dataset: Record<string, string> = {};
   public readonly attributes = new Map<string, string>();
   private readonly listeners = new Map<string, (() => void)[]>();
-  public constructor(public readonly tagName: string) {}
+  public constructor(
+    public readonly tagName: string,
+    public readonly nodeType = 1,
+  ) {}
+  public get childNodes(): RenderedElement[] {
+    return this.children;
+  }
+  public get firstChild(): RenderedElement | null {
+    return this.children[0] ?? null;
+  }
+  public get nextSibling(): RenderedElement | null {
+    const siblings = this.parentNode?.children;
+    return siblings?.[siblings.indexOf(this) + 1] ?? null;
+  }
+  public get data(): string {
+    return this.privateText;
+  }
+  public set data(text: string) {
+    this.privateText = text;
+  }
   public set textContent(text: string) {
     this.privateText = text;
   }
@@ -1392,15 +1412,29 @@ class RenderedElement {
     return this.children.length;
   }
   public append(...children: RenderedElement[]): void {
-    this.children.push(...children);
+    for (const child of children) this.insertBefore(child, null);
+  }
+  public insertBefore(child: RenderedElement, reference: RenderedElement | null): void {
+    if (child === reference) return;
+    child.remove();
+    const index = reference === null ? this.children.length : this.children.indexOf(reference);
+    if (index < 0) throw new Error('Reference node is not a child');
+    this.children.splice(index, 0, child);
+    child.parentNode = this;
+  }
+  public appendChild(child: RenderedElement): void {
+    this.insertBefore(child, null);
   }
   public replaceChildren(...children: RenderedElement[]): void {
-    this.children = [...children];
+    for (const child of this.children) child.parentNode = null;
+    this.children = [];
+    this.append(...children);
   }
   public addEventListener(type: string, listener: () => void): void {
     this.listeners.set(type, [...(this.listeners.get(type) ?? []), listener]);
   }
   public setAttribute(name: string, value: string): void {
+    if (name === 'class') this.className = value;
     this.attributes.set(name, value);
   }
   public getAttribute(name: string): string | null {
@@ -1414,7 +1448,10 @@ class RenderedElement {
     this.open = false;
   }
   public remove(): void {
-    return undefined;
+    if (this.parentNode === null) return;
+    const siblings = this.parentNode.children;
+    siblings.splice(siblings.indexOf(this), 1);
+    this.parentNode = null;
   }
   public replaceWith(): void {
     return undefined;
@@ -1434,8 +1471,9 @@ class RenderedElement {
   public focus(): void {
     return undefined;
   }
-  public removeAttribute(): void {
-    return undefined;
+  public removeAttribute(name: string): void {
+    if (name === 'class') this.className = '';
+    this.attributes.delete(name);
   }
   public dispatchEvent(event: Readonly<{ type: string; preventDefault?: () => void }>): boolean {
     for (const listener of this.listeners.get(event.type) ?? [])
@@ -1462,8 +1500,17 @@ afterEach(() => {
 beforeEach(() => {
   vi.stubGlobal('document', {
     createElement: (tagName: string) => new RenderedElement(tagName),
+    createElementNS: (_namespace: string, tagName: string) => new RenderedElement(tagName),
+    createTextNode: (text: string) => {
+      const node = new RenderedElement('#text', 3);
+      node.data = text;
+      return node;
+    },
   });
 });
+
+const summaryContent = (card: RenderedElement): readonly (string | undefined)[] =>
+  ['label', 'value', 'hint'].map((part) => card.findByClass(`stat-card-${part}`)[0]?.textContent);
 
 const customer: Customer = {
   id: 'customer-1',
@@ -2163,17 +2210,16 @@ describe('web bootstrap', () => {
     const summaryCards = (workspace: RenderedElement): readonly RenderedElement[] => {
       const overview = workspace.findByClass('manufacturing-workbench')[0];
       if (!overview) throw new Error('manufacturing overview panel missing');
-      return overview.findByClass('metric-card');
+      return overview.findByClass('stat-card');
     };
-    const linkOf = (card: RenderedElement): string | undefined =>
-      (card as unknown as { href?: string }).href;
+    const linkOf = (card: RenderedElement): string | null => card.getAttribute('href');
     // 全读权限：三张卡都是锚点。口径 = 列表（版本行）的 status 字段，与控制台状态列同源；
     // 已退役行既不是已发布也不是草稿，不计入两者。
     const all = summaryCards(await manufacturingWorkspace(MANUFACTURING_READS));
-    expect(all.map((card) => [card.getAttribute('data-testid'), card.textContent])).toEqual([
-      ['manufacturing-summary-items', '物料\n已发布 1 / 草稿 1'],
-      ['manufacturing-summary-boms', 'BOM\n已发布 0 / 草稿 2'],
-      ['manufacturing-summary-routings', '工艺路线\n已发布 1 / 草稿 0'],
+    expect(all.map((card) => [card.getAttribute('data-testid'), ...summaryContent(card)])).toEqual([
+      ['manufacturing-summary-items', '物料已发布', '1', '草稿 1'],
+      ['manufacturing-summary-boms', 'BOM已发布', '0', '草稿 2'],
+      ['manufacturing-summary-routings', '工艺路线已发布', '1', '草稿 0'],
     ]);
     expect(all.map((card) => [card.tagName, linkOf(card)])).toEqual([
       ['a', '#/manufacturing/items'],
@@ -2183,18 +2229,18 @@ describe('web bootstrap', () => {
     // 只有 BOM 读权限：BOM 卡可点入；物料与工艺路线清单读不到——保持纯指标卡，且数字无从
     // 得出，显示「—」而不是编一个 0（否则点入会被导航兜底弹回首个可用路由）。
     const bomOnly = summaryCards(await manufacturingWorkspace(['bom:read']));
-    expect(bomOnly.map((card) => [card.tagName, linkOf(card), card.textContent])).toEqual([
-      ['div', undefined, '物料\n已发布 — / 草稿 —'],
-      ['a', '#/manufacturing/boms', 'BOM\n已发布 0 / 草稿 2'],
-      ['div', undefined, '工艺路线\n已发布 — / 草稿 —'],
+    expect(bomOnly.map((card) => [card.tagName, linkOf(card), ...summaryContent(card)])).toEqual([
+      ['div', null, '物料已发布', '—', '读不到清单'],
+      ['a', '#/manufacturing/boms', 'BOM已发布', '0', '草稿 2'],
+      ['div', null, '工艺路线已发布', '—', '读不到清单'],
     ]);
     // 只有管理权限：面板不挂载（既有口径不变），更没有汇总卡。
     const manageOnly = await manufacturingWorkspace(['bom:manage']);
     expect(manageOnly.findByClass('manufacturing-workbench')).toHaveLength(0);
-    expect(manageOnly.findByClass('manufacturing-summary')).toHaveLength(0);
+    expect(manageOnly.findByClass('stat-card')).toHaveLength(0);
   });
 
-  it('recomputes the overview cards from the current snapshot without replacing them (MFG-3B)', () => {
+  it('recomputes the overview cards from the current snapshot without replacing them (MFG-3B)', async () => {
     // 路由视图只构建一次：控制台新建 / 发布 / 刷新后 controller.views 已是新快照，而概览面板
     // 不会重建，汇总卡靠重算函数更新文字（真浏览器量测里抓到过：子路由新建草稿后回到概览，
     // 草稿数仍是旧值）。
@@ -2214,11 +2260,11 @@ describe('web bootstrap', () => {
       recordText,
       new Set<string>(['manufacturing/items']),
     );
-    const cards = (): readonly RenderedElement[] => rendered.findByClass('metric-card');
-    expect(cards().map((card) => [card.tagName, card.textContent])).toEqual([
-      ['a', '物料\n已发布 1 / 草稿 0'],
-      ['div', 'BOM\n已发布 — / 草稿 —'],
-      ['div', '工艺路线\n已发布 — / 草稿 —'],
+    const cards = (): readonly RenderedElement[] => rendered.findByClass('stat-card');
+    expect(cards().map((card) => [card.tagName, ...summaryContent(card)])).toEqual([
+      ['a', '物料已发布', '1', '草稿 0'],
+      ['div', 'BOM已发布', '—', '读不到清单'],
+      ['div', '工艺路线已发布', '—', '读不到清单'],
     ]);
     const [firstItems] = cards();
     if (!firstItems) throw new Error('items summary card missing');
@@ -2226,16 +2272,41 @@ describe('web bootstrap', () => {
     // 读不到的两张卡保持纯指标与「—」。
     snapshot = { items: [published, draft], boms: [], routings: [] };
     refresh();
+    await vi.waitFor(() => {
+      expect(summaryContent(firstItems)).toEqual(['物料已发布', '1', '草稿 1']);
+    });
     expect(cards()).toHaveLength(3);
     expect(cards()[0]).toBe(firstItems);
     expect(firstItems.tagName).toBe('a');
     expect(firstItems.getAttribute('data-testid')).toBe('manufacturing-summary-items');
-    expect((firstItems as unknown as { href?: string }).href).toBe('#/manufacturing/items');
-    expect(cards().map((card) => card.textContent)).toEqual([
-      '物料\n已发布 1 / 草稿 1',
-      'BOM\n已发布 — / 草稿 —',
-      '工艺路线\n已发布 — / 草稿 —',
+    expect(firstItems.getAttribute('href')).toBe('#/manufacturing/items');
+    expect(cards().map(summaryContent)).toEqual([
+      ['物料已发布', '1', '草稿 1'],
+      ['BOM已发布', '—', '读不到清单'],
+      ['工艺路线已发布', '—', '读不到清单'],
     ]);
+  });
+
+  it('distinguishes an unread manufacturing list from a readable empty list at the same link', async () => {
+    let items: readonly Record<string, unknown>[] | undefined = undefined;
+    const target = el('section');
+    const refresh = appendManufacturingSummary(
+      target,
+      () => ({ items, boms: [], routings: [] }),
+      recordText,
+      new Set(['manufacturing/items']),
+    );
+    const cards = () => (target as unknown as RenderedElement).findByClass('stat-card');
+    const card = cards()[0];
+    if (!card) throw new Error('items summary card missing');
+    expect(summaryContent(card)).toEqual(['物料已发布', '—', '读不到清单']);
+    expect(card.getAttribute('href')).toBe('#/manufacturing/items');
+    items = [];
+    refresh();
+    await vi.waitFor(() => {
+      expect(summaryContent(card)).toEqual(['物料已发布', '0', '草稿 0']);
+    });
+    expect(cards()[0]).toBe(card);
   });
 
   it('has every console host recompute the overview cards after its reload (MFG-3B)', () => {
@@ -2408,28 +2479,27 @@ describe('web bootstrap', () => {
     expect(moved).toBeGreaterThan(mount.indexOf('mountGovernanceViews('));
     expect(mount.indexOf('installRouteSectionNavigation(shell);', moved)).toBeGreaterThan(moved);
   });
-  it('styles the manufacturing overview summary as three columns with linkable cards (MFG-3B)', () => {
+  it('uses the responsive shared overview card layout and keyboard-visible links (UI-2)', () => {
     const styles = readFileSync(
+      new URL('../../../packages/ui/src/components.css', import.meta.url),
+      'utf8',
+    );
+    const legacy = readFileSync(
       new URL('./commercial/console/manufacturing-console.css', import.meta.url),
       'utf8',
     );
-    // 三列写在两层类名上：不依赖样式打包顺序也盖得过 .production-summary 的四列与其窄屏断点。
     expect(styles).toMatch(
-      /\.production-summary\.manufacturing-summary\s*\{[^}]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/u,
+      /\.stat-cards\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(8\.5rem,\s*1fr\)\)/u,
     );
     expect(styles).toMatch(
-      /@media \(max-width: 900px\)\s*\{\s*\.production-summary\.manufacturing-summary\s*\{[^}]*repeat\(2,/u,
+      /\.stat-card\[href\]:hover,[^}]*border-color:\s*var\(--kt-color-brand\)/u,
     );
     expect(styles).toMatch(
-      /@media \(max-width: 640px\)\s*\{\s*\.production-summary\.manufacturing-summary\s*\{[^}]*minmax\(0,\s*1fr\)/u,
+      /\.stat-card\[href\]:focus-visible,[^}]*outline:\s*2px solid var\(--kt-color-brand\)/u,
     );
-    // 可点汇总卡：锚点去掉链接默认样式，悬停与键盘焦点反馈取 kt tokens；域样式表不写死颜色。
-    expect(styles).toContain('a.manufacturing-summary-link {');
-    expect(styles).toContain('a.manufacturing-summary-link:hover {');
-    expect(styles).toContain('a.manufacturing-summary-link:focus-visible {');
-    expect(styles).toContain('color: var(--kt-color-brand-strong)');
-    expect(styles).toContain('outline: 2px solid var(--kt-color-info)');
-    expect(styles).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(/iu);
+    expect(legacy).not.toContain('.production-summary.manufacturing-summary');
+    expect(legacy).not.toContain('a.manufacturing-summary-link');
+    expect(legacy).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(/iu);
   });
 
   it('groups manufacturing navigation as one expandable domain with the overview and its readable sub-routes (MFG-3B)', () => {
