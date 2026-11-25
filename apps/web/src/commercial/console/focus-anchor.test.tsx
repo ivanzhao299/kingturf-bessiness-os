@@ -143,9 +143,15 @@ describe('FocusAnchor（抽屉里的行内表单打开后焦点不掉到页面�
   });
 
   // 表格行里的行级动作同理：发布后该行的「发布版本」按钮消失，焦点回到这一行的「查看」。
+  // 行里的锚点不在抽屉里，向上找抽屉会一路走到文档节点——真实浏览器里 html 的父节点就是 document，
+  // 它没有 classList；测试 DOM double 缺这一环，这里补上，否则这类错误只有真浏览器才暴露
+  // （写流程冒烟的制造流程曾抓到一次 TypeError: reading 'contains'）。
   it('表格行里：行级按钮被移除后焦点回到该行的首个按钮', async () => {
     const scope = installGlobalTestDom();
     const host = scope.document.createElement('div');
+    (scope.document.documentElement as unknown as { parentNode: unknown }).parentNode =
+      scope.document;
+    scope.document.documentElement.appendChild(host);
     const published = signal(false);
     const Row = () => (
       <tr>

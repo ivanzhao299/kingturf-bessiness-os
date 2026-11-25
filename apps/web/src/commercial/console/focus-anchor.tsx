@@ -34,11 +34,12 @@ const topmost = (node: HTMLElement): HTMLElement => {
 const isAttached = (node: HTMLElement, anchor: HTMLElement): boolean =>
   typeof node.isConnected === 'boolean' ? node.isConnected : topmost(node) === topmost(anchor);
 
-// 向上找第一个带某个 class 的祖先（不用 closest：测试 DOM double 没有它）。
+// 向上找第一个带某个 class 的祖先（不用 closest：测试 DOM double 没有它）。真实浏览器里父链的末端是
+// 文档节点——它不是元素、没有 classList，走到那里就停（表格行里的锚点不在抽屉里，会一路走到顶）。
 const ancestorWithClass = (node: HTMLElement, token: string): HTMLElement | null => {
   for (
     let current: HTMLElement | null = node;
-    current;
+    current !== null && current.nodeType === 1;
     current = (current as unknown as ParentLink).parentNode ?? null
   )
     if (current.classList.contains(token)) return current;
