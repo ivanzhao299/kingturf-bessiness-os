@@ -4,7 +4,6 @@ import {
   DataTable,
   DetailDrawer,
   FormSection,
-  PageHeader,
   StatusBadge,
   SummaryCards,
   type DataTableColumn,
@@ -195,37 +194,31 @@ function InventoryView({ state }: Readonly<{ state: State }>) {
   const selected = state.selected.value;
   return (
     <div class="commercial-console-page" data-testid="kt-inv-page">
-      <PageHeader
-        title="批次库存"
-        description="查询批次结存、移动流水与库存库位"
-        actions={
-          <>
-            <button
-              type="button"
-              class="secondary"
-              onClick={() => {
-                void state.refresh();
-              }}
-            >
-              刷新
-            </button>
-            {canWrite ? (
-              <button
-                type="button"
-                class="primary"
-                data-testid="kt-inv-create-location"
-                onClick={() => {
-                  state.locationForm.value = true;
-                  state.notice.value = '';
-                  state.error.value = '';
-                }}
-              >
-                ＋ 新建库位
-              </button>
-            ) : null}
-          </>
-        }
-      />
+      <div class="procurement-ledger-actions">
+        <button
+          type="button"
+          class="secondary"
+          onClick={() => {
+            void state.refresh();
+          }}
+        >
+          刷新
+        </button>
+        {canWrite ? (
+          <button
+            type="button"
+            class="primary"
+            data-testid="kt-inv-create-location"
+            onClick={() => {
+              state.locationForm.value = true;
+              state.notice.value = '';
+              state.error.value = '';
+            }}
+          >
+            ＋ 新建库位
+          </button>
+        ) : null}
+      </div>
       {selected ? null : <ConsoleNotice message={state.notice.value} />}
       <SummaryCards
         label="批次库存质量状态汇总"

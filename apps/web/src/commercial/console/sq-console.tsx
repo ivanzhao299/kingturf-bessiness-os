@@ -3,7 +3,6 @@ import {
   DataTable,
   DetailDrawer,
   FormSection,
-  PageHeader,
   StatusBadge,
   SummaryCards,
   type DataTableColumn,
@@ -329,37 +328,31 @@ function SupplierQuoteView({
   const canWrite = state.ports.permissions.has('procurement:manage');
   return (
     <div class="commercial-console-page" data-testid="kt-sq-page">
-      <PageHeader
-        title="供应商报价"
-        description="按询价明细查看和对比供应商报价"
-        actions={
-          <>
-            <button
-              type="button"
-              class="secondary"
-              onClick={() => {
-                void state.refresh(false);
-              }}
-            >
-              刷新
-            </button>
-            {canWrite ? (
-              <button
-                type="button"
-                class="primary"
-                data-testid="kt-sq-create"
-                onClick={() => {
-                  state.form.value = true;
-                  state.submitError.value = '';
-                  state.notice.value = '';
-                }}
-              >
-                ＋ 登记供应商报价
-              </button>
-            ) : null}
-          </>
-        }
-      />
+      <div class="procurement-ledger-actions">
+        <button
+          type="button"
+          class="secondary"
+          onClick={() => {
+            void state.refresh(false);
+          }}
+        >
+          刷新
+        </button>
+        {canWrite ? (
+          <button
+            type="button"
+            class="primary"
+            data-testid="kt-sq-create"
+            onClick={() => {
+              state.form.value = true;
+              state.submitError.value = '';
+              state.notice.value = '';
+            }}
+          >
+            ＋ 登记供应商报价
+          </button>
+        ) : null}
+      </div>
       <ConsoleNotice message={state.notice.value} />
       <SummaryCards
         label="供应商报价汇总"
