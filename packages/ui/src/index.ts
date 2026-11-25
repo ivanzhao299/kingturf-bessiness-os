@@ -17,6 +17,7 @@ export {
   type FormSectionProps,
 } from './form-section';
 export { PageHeader, type PageHeaderProps } from './page-header';
+export { SummaryCards, type SummaryCardItem, type SummaryCardsProps } from './summary-cards';
 export { StatusBadge, type StatusBadgeProps, type StatusTone } from './status-badge';
 export { TreeSelect, type TreeSelectNode, type TreeSelectProps } from './tree-select';
 export { PAGE_LIMIT, normalizePage, type CursorPage } from './pagination';

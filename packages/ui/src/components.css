@@ -598,3 +598,71 @@ select.form-section .form-section-input,
   width: 20px;
   flex-shrink: 0;
 }
+
+/* ===== SummaryCards ===== */
+/* 列数随容器宽度自适应：每列至少 8.5rem（手机上容器约 312px，恰好排得下两列）。卡片是筛选（按钮）、跳转（链接）或只读块，
+   三者同一外观；可点的只在悬停与键盘焦点时变色。主数字用等宽数字（tabular-nums），便于逐卡比较。 */
+.stat-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: var(--kt-space-3);
+  min-width: 0;
+}
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kt-space-1);
+  min-width: 0;
+  border: 1px solid var(--kt-color-border);
+  border-radius: var(--kt-radius-md);
+  background: var(--kt-color-surface);
+  padding: var(--kt-space-3);
+  font: inherit;
+  color: var(--kt-color-text);
+  text-align: left;
+  text-decoration: none;
+}
+.stat-card[href],
+.stat-card[type='button'] {
+  cursor: pointer;
+}
+.stat-card[href]:hover,
+.stat-card[type='button']:hover {
+  border-color: var(--kt-color-brand);
+}
+.stat-card[aria-pressed='true'] {
+  border-color: var(--kt-color-brand);
+  background: var(--kt-color-brand-soft);
+}
+.stat-card[href]:focus-visible,
+.stat-card[type='button']:focus-visible {
+  outline: 2px solid var(--kt-color-brand);
+  outline-offset: -2px;
+}
+.stat-card-label {
+  font-size: var(--kt-font-size-caption);
+  color: var(--kt-color-text-muted);
+}
+.stat-card-value {
+  font-size: var(--kt-font-size-title);
+  font-weight: var(--kt-font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.stat-card-hint {
+  font-size: var(--kt-font-size-caption);
+  color: var(--kt-color-text-muted);
+}
+/* tone 取值同 StatusBadge；只给主数字着色，neutral 不着色。 */
+.stat-card[data-tone='info'] .stat-card-value {
+  color: var(--kt-color-info);
+}
+.stat-card[data-tone='success'] .stat-card-value {
+  color: var(--kt-color-success);
+}
+.stat-card[data-tone='warning'] .stat-card-value {
+  color: var(--kt-color-warning);
+}
+.stat-card[data-tone='danger'] .stat-card-value {
+  color: var(--kt-color-danger);
+}
