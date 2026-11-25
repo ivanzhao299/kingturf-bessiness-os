@@ -111,6 +111,8 @@ const matrix: readonly (readonly [AppRoute, readonly string[]])[] = [
     ['purchase-orders', 'manufacturing-items', 'suppliers', 'contract-documents'],
   ],
   ['procurement/goods-receipts', ['goods-receipts', 'purchase-orders', 'inventory-locations']],
+  ['procurement/supplier-quotes', ['suppliers', 'procurement-rfqs', 'supplier-quotes']],
+  ['procurement/inventory', ['inventory-balances', 'inventory-locations', 'production-orders']],
   ['material-planning', ['mrp-policies', 'mrp-demands', 'mrp-runs', 'manufacturing-items']],
   [
     'production-orders',
@@ -161,6 +163,7 @@ const PROCUREMENT_SUBROUTES: readonly AppRoute[] = [
   'procurement/rfqs',
   'procurement/purchase-orders',
   'procurement/goods-receipts',
+  'procurement/supplier-quotes',
 ];
 
 it.each(PROCUREMENT_SUBROUTES)(
@@ -184,6 +187,13 @@ it('never promotes missing read permissions into procurement sub-route closures'
   expect(commercialRoutePlan(buyer, 'procurement/goods-receipts').paths).toEqual([
     path('purchase-orders'),
     path('goods-receipts'),
+  ]);
+  expect(
+    commercialRoutePlan(setup(['inventory:read']).controller, 'procurement/inventory').paths,
+  ).toEqual([path('inventory-locations'), path('inventory-balances')]);
+  expect(commercialRoutePlan(buyer, 'procurement/supplier-quotes').paths).toEqual([
+    path('procurement-rfqs'),
+    path('supplier-quotes'),
   ]);
   expect(commercialRoutePlan(buyer, 'procurement/rfqs').paths).toEqual([path('procurement-rfqs')]);
   expect(commercialRoutePlan(buyer, 'procurement/suppliers').paths).toEqual([

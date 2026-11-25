@@ -23,6 +23,7 @@ type SummaryCard = Readonly<{
   unit: string;
   // 承载该指标明细的子路由；没有这样的子路由时为 null，卡片保持纯指标。
   route: AppRoute | null;
+  query?: string;
   count: (input: ProcurementSummaryInput, recordText: RecordText) => number;
 }>;
 
@@ -44,8 +45,7 @@ const isAdmitted = (supplier: Rows[number], recordText: RecordText): boolean => 
 
 // 四张卡的口径：没有任何已批准 / 可有条件批准准入记录的供应商（见上）、未关闭未取消的询价单、
 // 已签发与部分收货的采购单、待检隔离的库存批次（后三张与原面板逐条一致）。前三张对应三条子路由；
-// 「待检库存」的明细是本页下方的「批次库存台账」（逐批带质检状态），收货管理页只列收货单、点开详情
-// 才看得到批次质检状态，跳过去找不到与这个数字对应的清单，所以不做链接。
+// 「待检库存」打开批次库存的待检隔离筛选。
 const SUMMARY_CARDS: readonly SummaryCard[] = [
   {
     id: 'suppliers',
@@ -83,7 +83,8 @@ const SUMMARY_CARDS: readonly SummaryCard[] = [
     source: 'balances',
     label: '待检库存',
     unit: ' 批',
-    route: null,
+    route: 'procurement/inventory',
+    query: 'quality=QUARANTINE',
     count: (input, recordText) =>
       input.balances.filter(
         (item) => recordText(item, 'qualityStatus', 'qualityStatus') === 'QUARANTINE',
@@ -118,7 +119,9 @@ export function appendProcurementSummary(
           value: readable ? String(card.count(rows, recordText)) : '—',
           hint: readable ? card.unit.trim() : '读不到清单',
           href:
-            card.route !== null && visibleRoutes.has(card.route) ? `#/${card.route}` : undefined,
+            card.route !== null && visibleRoutes.has(card.route)
+              ? `#/${card.route}${card.query ? `?${card.query}` : ''}`
+              : undefined,
         };
       });
     },

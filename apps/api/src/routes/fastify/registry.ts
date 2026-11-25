@@ -33,6 +33,8 @@ import { registerSupplierRoutes } from './suppliers.ts';
 import { registerRfqRoutes } from './rfqs.ts';
 import { registerPurchaseOrderRoutes } from './purchase-orders.ts';
 import { registerGoodsReceiptRoutes } from './goods-receipts.ts';
+import { registerSupplierQuoteRoutes } from './supplier-quotes.ts';
+import { registerInventoryLedgerRoutes } from './inventory-ledger.ts';
 import { registerManufacturingItemRoutes } from './manufacturing-items.ts';
 import { registerManufacturingBomRoutes } from './manufacturing-boms.ts';
 import { registerManufacturingRoutingRoutes } from './manufacturing-routings.ts';
@@ -114,6 +116,11 @@ const CLAIMED_FASTIFY_ROUTES: readonly (readonly [method: string, pattern: RegEx
   ['GET', /^\/api\/v1\/goods-receipts$/u],
   ['GET', /^\/api\/v1\/goods-receipts\/[0-9a-f-]+$/u],
   ['POST', /^\/api\/v1\/goods-receipts$/u],
+  ['GET', /^\/api\/v1\/supplier-quotes$/u],
+  ['GET', /^\/api\/v1\/supplier-quotes\/[0-9a-f-]+$/u],
+  ['GET', /^\/api\/v1\/inventory-balances$/u],
+  ['GET', /^\/api\/v1\/inventory-balances\/[0-9a-f-]+\/[0-9a-f-]+$/u],
+  ['POST', /^\/api\/v1\/inventory-movements$/u],
   ['GET', /^\/api\/v1\/manufacturing-items$/u],
   ['GET', /^\/api\/v1\/manufacturing-items\/[0-9a-f-]+$/u],
   ['POST', /^\/api\/v1\/manufacturing-items$/u],
@@ -245,6 +252,8 @@ const buildRouteGroupApp = (scope: FastifyRouteScope) => {
   registerRfqRoutes(app, scope);
   registerPurchaseOrderRoutes(app, scope);
   registerGoodsReceiptRoutes(app, scope);
+  registerSupplierQuoteRoutes(app, scope);
+  registerInventoryLedgerRoutes(app, scope);
   registerManufacturingItemRoutes(app, scope);
   registerManufacturingBomRoutes(app, scope);
   registerManufacturingRoutingRoutes(app, scope);

@@ -211,6 +211,11 @@ const SQL_ENUM_NAMES = new Set([
   // 聚合）提取为模块常量供三处复用（list/listSupplierPage/findSupplier），SQL 字节
   // 与提取前逐字一致；请求值（cursor/status/limit）一律经 values.push 参数化。
   'SUPPLIER_ITEM_PROJECTION',
+  // PROC-6A: fixed supplier-quote projection shared with the unchanged legacy list SQL.
+  'SUPPLIER_QUOTE_PROJECTION',
+  // PROC-6B: fixed inventory ledger columns and tenant-bound joins shared with legacy reads.
+  'INVENTORY_LEDGER_PROJECTION',
+  'INVENTORY_LEDGER_FROM',
   // U3-PROC-2（供应链域迁移，同 SUPPLIER 先例）：RFQ 行投影（to_jsonb+lines 聚合）
   // 提取为模块常量供两处复用（list/listRfqs），SQL 字节与提取前逐字一致；status
   // 筛选值一律经 values.push 参数化。

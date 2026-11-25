@@ -51,6 +51,8 @@ const routeSources: Readonly<Partial<Record<AppRoute, readonly string[]>>> = {
     'contract-documents',
   ],
   'procurement/goods-receipts': ['goods-receipts', 'purchase-orders', 'inventory-locations'],
+  'procurement/supplier-quotes': ['suppliers', 'procurement-rfqs', 'supplier-quotes'],
+  'procurement/inventory': ['inventory-balances', 'inventory-locations', 'production-orders'],
   'material-planning': ['mrp-policies', 'mrp-demands', 'mrp-runs', 'manufacturing-items'],
   'production-orders': [
     'production-orders',

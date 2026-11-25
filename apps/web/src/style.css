@@ -1455,9 +1455,7 @@ button {
   min-width: 0;
 }
 .production-order-card,
-.evidence-card,
-.procurement-column,
-.procurement-card {
+.evidence-card {
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -3902,31 +3900,6 @@ button {
   background: #f4f7f2;
   border: 1px solid #d8e2d8;
 }
-.procurement-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
-}
-.procurement-column {
-  min-width: 0;
-  padding: 16px;
-  border-radius: 16px;
-  background: #fff;
-  box-shadow: 0 8px 22px rgb(45 75 48 / 7%);
-}
-.procurement-column h3 {
-  margin-top: 0;
-}
-.procurement-card {
-  margin: 10px 0;
-  padding: 12px;
-  border-left: 3px solid #3f7d56;
-  border-radius: 10px;
-  background: #f8fbf8;
-  white-space: pre-line;
-  line-height: 1.55;
-}
-
 .contract-document-panel {
   display: grid;
   gap: 0.65rem;
@@ -3956,20 +3929,6 @@ button {
   padding: 0.35rem 0.7rem;
   font-size: 0.82rem;
 }
-.inventory-balance-card {
-  border-left-color: #b17b2c;
-}
-@media (max-width: 1100px) {
-  .procurement-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-@media (max-width: 640px) {
-  .procurement-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
 /* KT-UI-ENTERPRISE-01: denser, task-oriented product shell. */
 :root {
   --kt-canvas: #f3f6f4;

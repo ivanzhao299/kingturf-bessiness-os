@@ -1,0 +1,54 @@
+.procurement-ledger-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--kt-space-2);
+}
+
+.sq-filter-controls,
+.sq-rfq-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kt-space-2);
+  align-items: end;
+  min-width: 0;
+}
+
+.sq-filter-controls label,
+.sq-rfq-fields label {
+  display: grid;
+  gap: var(--kt-space-1);
+  min-width: 0;
+}
+
+.sq-filter-controls select,
+.sq-rfq-fields select {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.sq-rfq-fields > label {
+  flex: 1 1 12rem;
+}
+
+.supplier-quote-console .fin-table {
+  table-layout: auto;
+}
+
+.supplier-quote-console .fin-table td {
+  overflow-wrap: normal;
+}
+
+.supplier-quote-console [data-testid^='kt-sq-comparison-table-'] {
+  min-width: 38rem;
+}
+
+.supplier-quote-console .fin-table td:nth-last-child(-n + 2),
+.inventory-ledger-console [data-testid='kt-inv-movements'] td:nth-child(-n + 3) {
+  white-space: nowrap;
+}
+
+.inventory-ledger-console [data-testid='kt-inv-movements'] {
+  min-width: 35rem;
+  table-layout: auto;
+}

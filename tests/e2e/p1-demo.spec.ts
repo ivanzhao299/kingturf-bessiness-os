@@ -293,7 +293,7 @@ test('shows supplier qualification, received purchase order, receipt, and derive
 }, testInfo) => {
   await openAuthenticatedWorkspace(page);
   // PROC-2：供应商 / 询价 / 采购订单 / 收货四个控制台各自成为一条采购子路由——逐条进入，
-  // 在该路由的控制台宿主内断言；供应商报价与批次库存两块台账留在概览页（#/procurement）。
+  // 在对应子路由的控制台宿主内断言；PROC-6A 的供应商报价也有独立子路由。
   await openRoute(page, 'procurement/suppliers');
   const suppliers = page.locator('[data-testid="kt-proc-suppliers"]');
   await expect(suppliers.getByText(/SUP-KT-YARN-001 · 青岛金特夫草纱战略供应商/u)).toBeVisible();
@@ -329,12 +329,18 @@ test('shows supplier qualification, received purchase order, receipt, and derive
   await openRoute(page, 'procurement');
   const workbench = page.locator('.procurement-workbench');
   await expect(workbench).toBeVisible();
-  await expect(workbench.getByText(/报价 SQ-KT-YARN-2026-001/u)).toBeVisible();
-  await expect(workbench.getByText(/批次 LOT-KT-YARN-20260920-A/u)).toBeVisible();
-  await expect(workbench.getByText(/RAW-A01 · 结存 3704.5/u)).toBeVisible();
-  // 同一缺陷的旧版表单载体（openForm）：登记供应商报价的单价。直接赋值不触发 input，不算脏表单。
-  await page.getByRole('button', { name: '＋ 登记供应商报价' }).click();
-  const quotePrice = page.locator('dialog.form-dialog input[name="unitPrice"]');
+  await openRoute(page, 'procurement/inventory');
+  const inventory = page.getByTestId('kt-inv-host');
+  const lot = inventory.getByRole('row').filter({ hasText: 'LOT-KT-YARN-20260920-A' });
+  await expect(lot.locator('[data-column="lot"]')).toHaveText('LOT-KT-YARN-20260920-A');
+  await expect(lot.locator('[data-column="location"]')).toHaveText('RAW-A01');
+  await expect(lot.locator('[data-column="quantity"]')).toHaveText('3704.5');
+  await openRoute(page, 'procurement/supplier-quotes');
+  const supplierQuotes = page.getByTestId('kt-sq-host');
+  await expect(supplierQuotes.getByText(/报价 SQ-KT-YARN-2026-001/u)).toBeVisible();
+  // 新表单保留同一小数原生校验判据。直接赋值不触发 input。
+  await supplierQuotes.getByRole('button', { name: '＋ 登记供应商报价' }).click();
+  const quotePrice = supplierQuotes.locator('form.form-section input[name="unitPrice"]');
   await expect(quotePrice).toBeVisible();
   await quotePrice.evaluate((input: HTMLInputElement) => {
     input.value = '12.68';
@@ -344,8 +350,9 @@ test('shows supplier qualification, received purchase order, receipt, and derive
   );
   await page.keyboard.press('Escape');
   await expect(quotePrice).toBeHidden();
+  await openRoute(page, 'procurement/inventory');
   await testInfo.attach('procurement-inventory-desktop', {
-    body: await workbench.screenshot(),
+    body: await inventory.screenshot(),
     contentType: 'image/png',
   });
 });

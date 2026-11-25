@@ -128,6 +128,11 @@ describe('Batch4 app extraction against fixed f3 complete request traces', () =>
     // list('receipts') 换为 additive listGoodsReceipts（同投影/排序，页对象形态）。
     'GET /api/v1/goods-receipts',
     'POST /api/v1/goods-receipts',
+    // PROC-6A: the default quote list retains list('quotes') and its response; only bridge access changes.
+    'GET /api/v1/supplier-quotes',
+    // PROC-6B: default balance list and movement parsing use their existing legacy commands.
+    'GET /api/v1/inventory-balances',
+    'POST /api/v1/inventory-movements',
     // U3-MFG-1（同批）：manufacturing-items 路径场景经生产桥——同口径；GET 终止
     // 调用由 list('items') 换为 additive listItemPage（同投影/排序，页对象形态）。
     'GET /api/v1/manufacturing-items',
