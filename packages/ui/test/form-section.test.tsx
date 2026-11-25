@@ -18,6 +18,10 @@ const submitButton = (host: ReturnType<typeof mountDom>): TestElement =>
 const fieldControl = (host: ReturnType<typeof mountDom>, name: string): TestElement =>
   asElement(host.container.querySelector(`[name="${name}"]`));
 
+/** 表单自己的提示区（role=alert，紧挨提交按钮）。 */
+const alertOf = (host: ReturnType<typeof mountDom>): TestElement =>
+  asElement(host.container.querySelector('form.form-section [role="alert"]'));
+
 describe('FormSection（兼容 shared/forms.ts 校验语义）', () => {
   it('renders labels, required marks, hints and control metadata', () => {
     const host = mountDom();
@@ -228,8 +232,6 @@ describe('FormSection（兼容 shared/forms.ts 校验语义）', () => {
       onSubmit={() => undefined}
     />
   );
-  const alertOf = (host: ReturnType<typeof mountDom>): TestElement =>
-    asElement(host.container.querySelector('form.form-section [role="alert"]'));
 
   it('shows an external submit error in the existing alert and nothing when there is none', async () => {
     const host = mountDom();
@@ -350,21 +352,27 @@ describe('FormSection（兼容 shared/forms.ts 校验语义）', () => {
     Object.defineProperty(alert, 'scrollIntoView', { value: scroll, configurable: true });
     return scroll;
   };
-  const blankCompany: readonly FormSectionField[] = [
-    { name: 'company', label: '公司名称', required: true },
+  // TD-UI-013 起必填字段为空时焦点交给缺填的字段（见下方「必填的文本类输入」一组）；这两条守的是
+  // TD-WF-012 的另一半：不是缺填造成的提示（这里是未勾选敏感词确认）仍把提示滚进可视区并获焦。
+  const unconfirmedCompany: readonly FormSectionField[] = [
+    { name: 'company', label: '公司名称', required: true, value: '金特夫' },
   ];
-
-  it('scrolls the alert into view and moves focus to it when a validation message appears（TD-WF-012）', async () => {
-    const host = mountDom();
+  const UNCONFIRMED_MESSAGE = '请先勾选确认，再停用条目';
+  const mountUnconfirmed = (host: ReturnType<typeof mountDom>): void => {
     mount(
       <FormSection
-        title="创建线索"
-        fields={blankCompany}
-        submitLabel="创建线索"
+        title="停用条目"
+        fields={unconfirmedCompany}
+        submitLabel="停用条目"
         onSubmit={() => undefined}
       />,
       host,
     );
+  };
+
+  it('scrolls the alert into view and moves focus to it when a validation message appears（TD-WF-012）', async () => {
+    const host = mountDom();
+    mountUnconfirmed(host);
     const alert = alertOf(host);
     // 提示区可被程序聚焦，但不在 Tab 序列里（连按 Tab 不会被它截住）。
     expect(alert.tabIndex).toBe(-1);
@@ -372,7 +380,7 @@ describe('FormSection（兼容 shared/forms.ts 校验语义）', () => {
     expect(host.document.activeElement).not.toBe(alert);
     submitButton(host).click();
     await flush();
-    expect(alertOf(host).textContent).toBe('请填写公司名称');
+    expect(alertOf(host).textContent).toBe(UNCONFIRMED_MESSAGE);
     // 已经完全可见时「nearest」不滚动，否则做最小滚动——相对所有可滚动祖先（抽屉体也算）。
     expect(scroll).toHaveBeenCalledExactlyOnceWith({ block: 'nearest' });
     expect(host.document.activeElement).toBe(alert);
@@ -380,24 +388,16 @@ describe('FormSection（兼容 shared/forms.ts 校验语义）', () => {
 
   it('does it again when a later submit leaves the very same message（同一条提示再次出现）', async () => {
     const host = mountDom();
-    mount(
-      <FormSection
-        title="创建线索"
-        fields={blankCompany}
-        submitLabel="创建线索"
-        onSubmit={() => undefined}
-      />,
-      host,
-    );
+    mountUnconfirmed(host);
     const alert = alertOf(host);
     const scroll = watchScroll(alert);
     submitButton(host).click();
     await flush();
-    // 用户把焦点移回输入框（或输入框本来就在视口上方）后再次提交，校验提示一字不差。
+    // 用户把焦点移回输入框（或输入框本来就在视口上方）后再次提交，提示一字不差。
     fieldControl(host, 'company').focus();
     submitButton(host).click();
     await flush();
-    expect(alertOf(host).textContent).toBe('请填写公司名称');
+    expect(alertOf(host).textContent).toBe(UNCONFIRMED_MESSAGE);
     expect(scroll).toHaveBeenCalledTimes(2);
     expect(host.document.activeElement).toBe(alert);
   });
@@ -476,8 +476,8 @@ describe('FormSection（兼容 shared/forms.ts 校验语义）', () => {
     expect(colour.hasAttribute('required')).toBe(false);
     expect(colour.getAttribute('aria-required')).toBe('true');
     expect(asElement(colour.parentNode).querySelector('.required-mark')?.textContent).toBe('必填');
-    // 其它类型的必填字段不动：仍带原生 required。
-    expect(fieldControl(host, 'batch').hasAttribute('required')).toBe(true);
+    // TD-UI-013（TD-WF-009 的延伸）：其它类型的必填字段同样不带原生 required（保留 aria-required）。
+    expect(fieldControl(host, 'batch').hasAttribute('required')).toBe(false);
     expect(fieldControl(host, 'batch').getAttribute('aria-required')).toBe('true');
     // 非必填下拉两者都不带。
     const finish = fieldControl(host, 'finish');
@@ -525,6 +525,177 @@ describe('FormSection（兼容 shared/forms.ts 校验语义）', () => {
     await flush();
     expect(submitted).toEqual([{ colour: 'green', finish: '', batch: 'B-001' }]);
     expect(alert.textContent).toBe('');
+  });
+});
+
+// TD-UI-013（TD-WF-009 的延伸，原 WFB-3）：必填的文本类输入此前仍带原生 required，空值提交先被浏览器拦下
+// 并弹出语言随浏览器的提示（本环境为英文 "Please fill out this field."），表单的 submit 事件根本不触发，
+// 连下拉的中文提示也看不到。现在所有必填字段都不带原生 required（保留 aria-required）：由表单给出中文
+// 「请填写{标签}」，提示区滚进可视区，键盘焦点交给第一个缺填的字段（原生气泡也是把焦点放到这个控件上）。
+// 格式校验（type=email、min / max 等）这一批不动，仍由浏览器做。
+describe('FormSection：必填的文本类输入（TD-UI-013）', () => {
+  const textTypes: readonly (readonly [string, FormSectionField['type']])[] = [
+    ['单行文本（缺省类型）', undefined],
+    ['密码', 'password'],
+    ['邮箱', 'email'],
+    ['电话', 'tel'],
+    ['数字', 'number'],
+    ['日期', 'date'],
+    ['日期时间', 'datetime-local'],
+    ['多行文本', 'textarea'],
+  ];
+
+  it.each(textTypes)(
+    '%s：空值提交不带原生 required，给出中文提示并把焦点交给该字段',
+    async (kind, type) => {
+      const host = mountDom();
+      const submitted: Readonly<Record<string, string>>[] = [];
+      const label = `${kind}字段`;
+      mount(
+        <FormSection
+          title="创建线索"
+          // 缺省类型不传 type 键（与各控制台的文本字段写法一致）。
+          fields={[
+            { name: 'value', label, required: true, ...(type === undefined ? {} : { type }) },
+          ]}
+          submitLabel="创建线索"
+          onSubmit={(values) => {
+            submitted.push(values);
+          }}
+        />,
+        host,
+      );
+      const control = fieldControl(host, 'value');
+      // 原生 required 一在，浏览器就先于表单拦下提交并弹出随浏览器语言的提示。
+      expect(control.hasAttribute('required')).toBe(false);
+      expect(control.getAttribute('aria-required')).toBe('true');
+      expect(asElement(control.parentNode).querySelector('.required-mark')?.textContent).toBe(
+        '必填',
+      );
+      const alert = alertOf(host);
+      const scroll = vi.fn();
+      Object.defineProperty(alert, 'scrollIntoView', { value: scroll, configurable: true });
+      expect(host.document.activeElement).not.toBe(control);
+      submitButton(host).click();
+      await flush();
+      // 请求没有发出：提示是表单自己给的中文，字段标为无效，焦点在这个字段上。
+      expect(submitted).toEqual([]);
+      expect(alertOf(host).textContent).toBe(`请填写${label}`);
+      expect(control.getAttribute('aria-invalid')).toBe('true');
+      expect(asElement(control.parentNode).classList.contains('invalid')).toBe(true);
+      expect(scroll).toHaveBeenCalledExactlyOnceWith({ block: 'nearest' });
+      expect(host.document.activeElement).toBe(control);
+    },
+  );
+
+  // 焦点落在字段顺序里第一个缺填的字段上，与提示区说的是同一个字段。
+  it('moves focus to the first missing field in field order', async () => {
+    const host = mountDom();
+    mount(
+      <FormSection
+        title="新建销售报价"
+        fields={[
+          { name: 'quoteNumber', label: '报价编号', required: true, value: 'Q-2026-001' },
+          { name: 'turfPrice', label: '草坪销售单价（元/㎡）', type: 'number', required: true },
+          { name: 'validUntil', label: '报价有效期至', type: 'date', required: true },
+        ]}
+        submitLabel="校验并创建报价"
+        onSubmit={() => undefined}
+      />,
+      host,
+    );
+    submitButton(host).click();
+    await flush();
+    expect(alertOf(host).textContent).toBe('请填写草坪销售单价（元/㎡）');
+    expect(host.document.activeElement).toBe(fieldControl(host, 'turfPrice'));
+  });
+
+  // 字段在视口外（长表单滚到了底部的提交按钮）：以字段为准，让浏览器把它滚进来——与原生气泡一致。
+  it('lets the browser scroll the missing field into view when it is outside the viewport', async () => {
+    const host = mountDom();
+    mount(
+      <FormSection
+        title="新建线索"
+        fields={[{ name: 'title', label: '线索标题', required: true }]}
+        submitLabel="创建线索"
+        onSubmit={() => undefined}
+      />,
+      host,
+    );
+    const control = fieldControl(host, 'title');
+    const focus = vi.spyOn(control, 'focus');
+    // 测试 DOM 没有布局：给这一个用例补上最小的位置信息（字段在视口上方 500px，视口高 900px）。
+    const scope = globalThis as unknown as { window: { innerHeight?: number } };
+    const previousHeight = scope.window.innerHeight;
+    scope.window.innerHeight = 900;
+    Object.defineProperty(control, 'getBoundingClientRect', {
+      value: () => ({ top: -500, bottom: -470 }),
+      configurable: true,
+    });
+    try {
+      submitButton(host).click();
+      await flush();
+    } finally {
+      // 测试环境本来没有 innerHeight：还原成「没有」，而不是留下一个 undefined 值。
+      if (previousHeight === undefined) delete scope.window.innerHeight;
+      else scope.window.innerHeight = previousHeight;
+    }
+    // 第一次聚焦不带动滚动（提示区已先滚进视口）；发现字段仍在视口外，再聚焦一次由浏览器滚进来。
+    expect(focus.mock.calls).toEqual([[{ preventScroll: true }], []]);
+    expect(host.document.activeElement).toBe(control);
+  });
+
+  // 不是缺填造成的提示：焦点仍在提示区。
+  it('keeps the focus on the alert when the first failing field is a format error', async () => {
+    const host = mountDom();
+    mount(
+      <FormSection
+        title="开通身份"
+        fields={[
+          {
+            name: 'loginEmail',
+            label: '登录邮箱',
+            type: 'email',
+            required: true,
+            value: 'not-an-email',
+          },
+          { name: 'quota', label: '配额', type: 'number', required: true },
+        ]}
+        submitLabel="开通"
+        onSubmit={() => undefined}
+      />,
+      host,
+    );
+    submitButton(host).click();
+    await flush();
+    expect(alertOf(host).textContent).toBe('登录邮箱格式不正确');
+    expect(host.document.activeElement).toBe(alertOf(host));
+  });
+
+  it('gives the focus back to the alert once the missing field is filled and a later submit fails elsewhere', async () => {
+    const host = mountDom();
+    mount(
+      <FormSection
+        title="停用条目"
+        fields={[{ name: 'reason', label: '停用原因', type: 'textarea', required: true }]}
+        submitLabel="停用条目"
+        onSubmit={() => undefined}
+      />,
+      host,
+    );
+    submitButton(host).click();
+    await flush();
+    expect(alertOf(host).textContent).toBe('请填写停用原因');
+    expect(host.document.activeElement).toBe(fieldControl(host, 'reason'));
+    const reason = fieldControl(host, 'reason');
+    reason.value = '不再合作';
+    reason.dispatchEvent(new Event('input', { bubbles: true }));
+    await flush();
+    submitButton(host).click();
+    await flush();
+    // 缺填补上之后卡在敏感词确认上：这条提示不是缺填造成的，焦点回到提示区。
+    expect(alertOf(host).textContent).toBe('请先勾选确认，再停用条目');
+    expect(host.document.activeElement).toBe(alertOf(host));
   });
 });
 
