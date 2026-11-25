@@ -73,11 +73,11 @@ export const movementPayload = (
   sourceId: string,
   now: Date,
 ) => ({
-  movementType: values.movementType,
+  movementType: values.movementType?.trim(),
   itemVersionId: balance.itemVersionId,
   lotId: balance.lotId,
   locationId: balance.locationId,
-  quantity: values.quantity,
+  quantity: values.quantity?.trim(),
   occurredAt: now.toISOString(),
   sourceType,
   sourceId,

@@ -129,13 +129,16 @@ export function createInventoryState(ports: InventoryPorts) {
   const createLocation = async (values: Readonly<Record<string, string>>) => {
     error.value = '';
     try {
-      await ports.submit(LOCATIONS, values);
+      const payload = Object.fromEntries(
+        Object.entries(values).map(([key, value]) => [key, value.trim()]),
+      );
+      await ports.submit(LOCATIONS, payload);
     } catch (failure: unknown) {
       error.value = failureMessage(failure, '新建库位失败');
       return;
     }
     locationForm.value = false;
-    notice.value = `已建立库位 ${values.code ?? ''}`;
+    notice.value = `已建立库位 ${values.code?.trim() ?? ''}`;
     await refresh(true);
   };
   const selectStatus = (value: string) => {

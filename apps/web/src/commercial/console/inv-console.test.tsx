@@ -145,8 +145,8 @@ it('creates another location with the legacy payload and hides write actions fro
   const panel = mount(io);
   expect(byId(panel, 'kt-inv-locations').textContent).toContain('RAW-A01');
   await click(byId(panel, 'kt-inv-create-location'));
-  await enter(panel, 'code', 'RAW-A02');
-  await enter(panel, 'name', '库区二');
+  await enter(panel, 'code', ' RAW-A02 ');
+  await enter(panel, 'name', ' 库区二 ');
   await enter(panel, 'locationType', 'STORAGE');
   await submit(panel);
   expect(JSON.stringify(io.submit.mock.calls)).toBe(

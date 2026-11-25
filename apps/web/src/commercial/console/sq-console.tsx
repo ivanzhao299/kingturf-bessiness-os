@@ -266,7 +266,7 @@ function createSupplierQuoteState(ports: SupplierQuotePorts) {
     if (
       !(await confirmFormWrite(pending, {
         title: '登记供应商报价',
-        message: `报价 ${values.quoteReference ?? ''} 保存后不可修改。`,
+        message: `报价 ${values.quoteReference?.trim() ?? ''} 保存后不可修改。`,
         confirmLabel: '确认登记',
         destructive: true,
       }))
@@ -279,7 +279,7 @@ function createSupplierQuoteState(ports: SupplierQuotePorts) {
       return;
     }
     form.value = false;
-    notice.value = `已登记供应商报价 ${values.quoteReference ?? ''}`;
+    notice.value = `已登记供应商报价 ${values.quoteReference?.trim() ?? ''}`;
     await refresh(true);
   };
   const open = (row: FinRow) => {

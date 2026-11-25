@@ -64,17 +64,17 @@ export const supplierQuotePayload = (
   now: Date,
 ) => ({
   rfqId,
-  supplierId: values.supplierId,
-  quoteReference: values.quoteReference,
+  supplierId: values.supplierId?.trim(),
+  quoteReference: values.quoteReference?.trim(),
   receivedAt: now.toISOString(),
-  validUntil: values.validUntil,
+  validUntil: values.validUntil?.trim(),
   terms: { currency: 'CNY' },
   lines: [
     {
       rfqLineId,
-      unitPrice: values.unitPrice,
-      promisedAt: values.promisedAt,
-      minimumOrderQuantity: values.minimumOrderQuantity,
+      unitPrice: values.unitPrice?.trim(),
+      promisedAt: values.promisedAt?.trim(),
+      minimumOrderQuantity: values.minimumOrderQuantity?.trim(),
     },
   ],
 });

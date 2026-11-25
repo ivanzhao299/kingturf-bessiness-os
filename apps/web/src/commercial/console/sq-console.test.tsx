@@ -79,7 +79,7 @@ const fill = async (host: TestElement) => {
   await enter(host, 'rfqLineId', 'line-1', 'change');
   for (const [name, value] of Object.entries({
     supplierId: 'supplier',
-    quoteReference: 'SQ-NEW',
+    quoteReference: '  SQ-NEW  ',
     unitPrice: '12.68',
     promisedAt: '2026-12-01',
     validUntil: '2026-11-30',
