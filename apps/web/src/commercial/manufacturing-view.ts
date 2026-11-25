@@ -1,4 +1,5 @@
 import { el } from '../dom';
+import { refreshWorkspaceOverview } from '../shared/overview-summary-cards';
 import type { OperationsViewContext } from './operations-view-ports';
 import {
   manufacturingSubRoutes,
@@ -38,7 +39,7 @@ export function appendManufacturingView(context: OperationsViewContext, panel: H
     el('h2', '', '制造主数据概览'),
     el('p', 'commercial-help', '物料、BOM 与工艺路线版本状态汇总；各控制台见子页'),
   );
-  const refreshSummary = appendManufacturingSummary(
+  appendManufacturingSummary(
     panel,
     () => ({
       items: controller.views.get('/api/v1/manufacturing-items'),
@@ -49,9 +50,10 @@ export function appendManufacturingView(context: OperationsViewContext, panel: H
     new Set<string>(manufacturingSubRoutes(permissions)),
   );
   workspace.append(panel);
-  // 子路由页：每个控制台独占一条路由，只在该路由对当前账号可见时挂载（可见性与菜单同源）。
-  // 路由视图只构建一次：控制台新建 / 发布 / 刷新后数据已是新快照而概览面板不会重建，所以把
-  // 汇总卡的重算函数交给宿主，由其 refresh 端口在重读完成后调用。
+  const refreshSummary = () => {
+    refreshWorkspaceOverview(workspace, 'manufacturing-workbench');
+  };
+  // 子路由页只在对当前账号可见时挂载，宿主在重读完成后更新工作区保留的汇总卡。
   for (const surface of visibleManufacturingSurfaces(permissions))
     CONSOLE_HOSTS[surface.id](context, workspace, refreshSummary);
 }
