@@ -6,7 +6,6 @@
     { "path": "packages/config" },
     { "path": "packages/database" },
     { "path": "packages/ui" },
-    { "path": "packages/testing" },
     { "path": "apps/api" },
     { "path": "apps/web" }
   ]
