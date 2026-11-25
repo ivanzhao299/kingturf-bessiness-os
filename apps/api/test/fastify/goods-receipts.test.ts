@@ -117,6 +117,22 @@ afterEach(() => {
   repositoryCalls.length = 0;
 });
 
+// PROC-5：映射用例共用的一份合法登记收货请求。
+const validReceipt = {
+  receiptNumber: 'GR-KT-YARN-2026-002',
+  purchaseOrderId: receipt.purchase_order_id,
+  receivedAt: '2026-11-20T08:00:00.000Z',
+  sourceReference: 'delivery-002',
+  lines: [
+    {
+      purchaseOrderLineId: '99999999-9999-4999-8999-999999999991',
+      lotNumber: 'LOT-KT-YARN-B',
+      locationCode: 'RAW-A01',
+      quantity: '2000',
+    },
+  ],
+};
+
 describe('goods-receipts fastify bridge track', () => {
   it('GET 列表：响应与 legacy { items } 逐字节一致（无多余键）；字段裁剪生效', async () => {
     const response = await dispatchFastifyRouteGroup(requestFor(), scopeFor());
@@ -290,5 +306,101 @@ describe('goods-receipts fastify bridge track', () => {
     });
     const unavailable = await dispatchFastifyRouteGroup(requestFor(), scopeFor(null));
     expect(unavailable?.statusCode).toBe(503);
+  });
+
+  // PROC-5（TD-PROC-001）：守卫触发器拒绝（RAISE EXCEPTION → SQLSTATE P0001）映射 409 + 中文
+  // 提示，此前是 500。白名单只有采购单状态迁移的三条，文字来自迁移里的
+  // guard_purchase_order_update。
+  it('POST：守卫触发器的状态迁移拒绝映射 409，带中文提示（三条已知消息逐条）', async () => {
+    const HINTS = [
+      [
+        'partially received purchase order has invalid transition',
+        '采购单处于部分收货状态，只能继续收货、收齐或取消，不能改为其它状态；请刷新后查看采购单的最新状态',
+      ],
+      [
+        'issued purchase order has invalid transition',
+        '已签发的采购单只能转为收货中、已收货或已取消，不能改为其它状态；请刷新后查看采购单的最新状态',
+      ],
+      ['closed purchase order is immutable', '采购单已收货完成或已取消，不能再登记收货或修改'],
+    ] as const;
+    for (const [message, hint] of HINTS) {
+      const response = await dispatchFastifyRouteGroup(
+        requestFor({ method: 'POST', body: validReceipt }),
+        scopeFor(
+          repository({
+            receive: vi
+              .fn()
+              .mockRejectedValue(Object.assign(new Error(message), { code: 'P0001' })),
+          }),
+        ),
+      );
+      expect(response?.statusCode).toBe(409);
+      expect(response?.body).toEqual({
+        error: { code: 'conflict', message: hint, correlationId: 'corr-1' },
+      });
+    }
+  });
+
+  it('POST：未列入白名单的数据库拒绝保持 500，信封固定且不回显原始消息', async () => {
+    const failures = [
+      // 同一个守卫里与收货无关的三条：内容不可变、草稿规则、签发要求。
+      Object.assign(new Error('purchase order content is immutable'), { code: 'P0001' }),
+      Object.assign(new Error('draft purchase order can only be issued or cancelled'), {
+        code: 'P0001',
+      }),
+      Object.assign(new Error('purchase order issue requires timestamp and lines'), {
+        code: 'P0001',
+      }),
+      // 收货行与库存移动两个完整性触发器：在收货路径上出现即缺陷。
+      Object.assign(new Error('receipt line must match purchase order item, lot, and order'), {
+        code: 'P0001',
+      }),
+      Object.assign(new Error('inventory movement cannot create negative lot balance'), {
+        code: 'P0001',
+      }),
+      // 唯一约束与 CHECK 约束照旧。
+      Object.assign(
+        new Error(
+          'duplicate key value violates unique constraint "goods_receipts_tenant_id_receipt_number_key"',
+        ),
+        { code: '23505', constraint: 'goods_receipts_tenant_id_receipt_number_key' },
+      ),
+      Object.assign(new Error('new row violates check constraint'), { code: '23514' }),
+    ];
+    for (const failure of failures) {
+      const response = await dispatchFastifyRouteGroup(
+        requestFor({ method: 'POST', body: validReceipt }),
+        scopeFor(repository({ receive: vi.fn().mockRejectedValue(failure) })),
+      );
+      expect(response?.statusCode).toBe(500);
+      expect(response?.body).toEqual({
+        error: {
+          code: 'internal_error',
+          message: 'Internal server error',
+          correlationId: 'corr-1',
+        },
+      });
+    }
+  });
+
+  it('POST：映射只做在登记收货——GET 列表遇到白名单里的消息仍是 500（不做全局映射）', async () => {
+    const listed = await dispatchFastifyRouteGroup(
+      requestFor(),
+      scopeFor(
+        repository({
+          listGoodsReceipts: vi.fn().mockRejectedValue(
+            Object.assign(new Error('partially received purchase order has invalid transition'), {
+              code: 'P0001',
+            }),
+          ),
+        }),
+      ),
+    );
+    expect(listed?.statusCode).toBe(500);
+    expect((listed?.body as { error: { code: string; message: string } }).error).toEqual({
+      code: 'internal_error',
+      message: 'Internal server error',
+      correlationId: 'corr-1',
+    });
   });
 });
