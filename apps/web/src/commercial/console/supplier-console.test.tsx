@@ -325,6 +325,25 @@ describe('U3-PROC-1 供应商控制台', () => {
     expect(host.textContent).not.toContain('SUP-2');
   });
 
+  // TD-WF-014③：ON_HOLD 此前没有中文标签，筛选按钮与状态徽章直接显示枚举原文。
+  it('状态标签：ON_HOLD 显示「暂停」，筛选按钮与状态徽章都不出现枚举原文', () => {
+    const host = mount(portsFor([supplier, onHoldSupplier]));
+    // 测试 DOM 的选择器引擎不支持 ^=，这里按属性前缀在 JS 侧筛。
+    const labels = host
+      .querySelectorAll('[data-testid]')
+      .map((node) => element(node))
+      .filter((node) => (node.getAttribute('data-testid') ?? '').startsWith('kt-supplier-filter-'))
+      .map((node) => node.textContent.trim());
+    expect(labels).toEqual(['全部', '已启用', '暂停', '已停用']);
+    expect(labels.join(' ')).not.toMatch(/[A-Z_]{2,}/u);
+    // 状态列是第 2 列（物料准入列的资质徽章也是 .status-badge，不在此列）。
+    const badges = host
+      .querySelectorAll('tbody tr')
+      .map((row) => row.querySelectorAll('td')[1]?.querySelector('.status-badge'))
+      .map((node) => node?.textContent.trim());
+    expect(badges).toEqual(['已启用', '暂停']);
+  });
+
   it('详情抽屉展示资质记录与按 supplierId 过滤的报价历史', async () => {
     const ports = portsFor([supplier]);
     const host = mount(ports);

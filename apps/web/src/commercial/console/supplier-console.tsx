@@ -58,9 +58,11 @@ type SupplierPageState = Readonly<{
   showMore: () => void;
 }>;
 
-// businessStateLabel 同口径（ACTIVE/INACTIVE 有标签，ON_HOLD 回退原码）。
+// businessStateLabel 同口径的中文标签。ON_HOLD 此前没有标签，筛选按钮与状态徽章直接显示枚举原文
+// （TD-WF-014③）；它与「已停用」是两个状态（INACTIVE 才是停用），所以译作「暂停」。
 const STATUS_LABELS: Readonly<Record<string, string>> = {
   ACTIVE: '已启用',
+  ON_HOLD: '暂停',
   INACTIVE: '已停用',
 };
 
