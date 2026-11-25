@@ -149,6 +149,11 @@ describe('Batch4 app extraction against fixed f3 complete request traces', () =>
     // legacy qtcArPostRoutes 同解析链；响应与终止仓储调用均与冻结基线逐字段守恒。
     'GET /api/v1/ar-open-items',
     'POST /api/v1/ar-open-items',
+    // FIN-2: default lists and both legacy writes retain their terminal calls and responses.
+    'GET /api/v1/bank-payments',
+    'POST /api/v1/bank-payments',
+    'GET /api/v1/reconciliation-runs',
+    'POST /api/v1/reconciliation-runs',
   ]);
   const preserveWithStrip = (result: {
     name: string;

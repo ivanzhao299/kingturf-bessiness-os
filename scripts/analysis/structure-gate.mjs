@@ -255,6 +255,11 @@ const SQL_ENUM_NAMES = new Set([
   'AR_ROW_PROJECTION',
   'AR_JOINS',
   'orderScope.sql', // FIN-1: recordScopeSql for the independently authorized sales-order join.
+  // FIN-2: static row projections and joins for payment and reconciliation reads.
+  'PAYMENT_PROJECTION',
+  'PAYMENT_FROM',
+  'RUN_PROJECTION',
+  'RUN_FROM',
   // B2（TD-API-003）分页 keyset 游标片段：cursor 值一律经 values.push 参数化（$N），
   // 变量本体只含代码内表/列名与占位符；2026-11-18 随 18 端点分页批次登记。
   'keyset',

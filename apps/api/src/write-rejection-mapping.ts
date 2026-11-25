@@ -50,3 +50,12 @@ export const asArDocumentGuard = (error: unknown): unknown => {
   });
   return hint === null ? error : new DomainError('conflict', hint);
 };
+
+/** 核销分配：只映射台账触发器拒绝（迁移 0026）。 */
+export const asAllocationGuard = (error: unknown): unknown => {
+  const hint = guardRejection(error, {
+    'allocation currency mismatch': '分配币种与收款或应收单的币种不一致',
+    'allocation exceeds remaining balance': '分配金额超过剩余余额，请刷新后重试',
+  });
+  return hint === null ? error : new DomainError('conflict', hint);
+};

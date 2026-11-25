@@ -39,6 +39,7 @@ import { registerManufacturingRoutingRoutes } from './manufacturing-routings.ts'
 import { registerProductionOrderRoutes } from './production-orders.ts';
 import { registerProductionOrderExecutionRoutes } from './production-order-execution.ts';
 import { registerArOpenItemRoutes } from './ar-open-items.ts';
+import { registerBankPaymentRoutes } from './bank-payments.ts';
 
 export type FastifyRouteScope = Readonly<{
   authorization: AuthorizationContext;
@@ -127,6 +128,12 @@ const CLAIMED_FASTIFY_ROUTES: readonly (readonly [method: string, pattern: RegEx
   ['GET', /^\/api\/v1\/ar-open-items$/u],
   ['GET', /^\/api\/v1\/ar-open-items\/[0-9a-f-]+$/u],
   ['POST', /^\/api\/v1\/ar-open-items$/u],
+  ['GET', /^\/api\/v1\/bank-payments$/u],
+  ['GET', /^\/api\/v1\/bank-payments\/[0-9a-f-]+$/u],
+  ['POST', /^\/api\/v1\/bank-payments$/u],
+  ['GET', /^\/api\/v1\/reconciliation-runs$/u],
+  ['GET', /^\/api\/v1\/reconciliation-runs\/[0-9a-f-]+$/u],
+  ['POST', /^\/api\/v1\/reconciliation-runs$/u],
 ];
 
 // legacy catch 层的同款 DomainError 状态映射（行为守恒）。
@@ -199,6 +206,7 @@ const buildRouteGroupApp = (scope: FastifyRouteScope) => {
   registerProductionOrderRoutes(app, scope);
   registerProductionOrderExecutionRoutes(app, scope);
   registerArOpenItemRoutes(app, scope);
+  registerBankPaymentRoutes(app, scope);
   return app;
 };
 

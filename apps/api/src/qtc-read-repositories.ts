@@ -17,7 +17,7 @@ import { permittedDto } from './app-values.ts';
 import { recordScopeSql } from './scope-sql.ts';
 
 type Db = SqlClient & Pick<Database, 'transaction'>;
-type Context = Readonly<{
+export type FinancialReadContext = Readonly<{
   actor: Actor;
   scopes: readonly DataScope[];
   anchors: readonly ScopeAnchor[];
@@ -44,10 +44,14 @@ export type ArPageFilter = Readonly<{
   cursor?: string;
   limit?: number;
 }>;
-type RelatedRead = Context & Readonly<{ fields: readonly string[] | null }>;
-export type ArRelatedRead = Readonly<{ order: RelatedRead | null; payment: RelatedRead | null }>;
+export type FinancialRelatedRead = FinancialReadContext &
+  Readonly<{ fields: readonly string[] | null }>;
+export type ArRelatedRead = Readonly<{
+  order: FinancialRelatedRead | null;
+  payment: FinancialRelatedRead | null;
+}>;
 export type ArListRead = Readonly<{
-  order: RelatedRead | null;
+  order: FinancialRelatedRead | null;
   fields: readonly string[] | null;
 }>;
 
@@ -78,7 +82,7 @@ export class PostgresQuoteToCashReadRepository {
   // minAmount / maxAmount / 三种 state / 键集游标，逐字同式）+ 加性 state=NOT_DUE 与 search。
   // 过滤值、关键字、游标、limit 全部 values.push 参数化。
   public async listArPage(
-    context: Context,
+    context: FinancialReadContext,
     filter: ArPageFilter,
     read: ArListRead = { order: null, fields: null },
   ): Promise<Page<JsonObject>> {
@@ -130,7 +134,7 @@ export class PostgresQuoteToCashReadRepository {
   }
 
   // 应收汇总（additive 只读）：数据范围与列表同一条客户记录作用域谓词；与筛选、分页无关。
-  public async summarizeAr(context: Context): Promise<readonly ArCurrencySummary[]> {
+  public async summarizeAr(context: FinancialReadContext): Promise<readonly ArCurrencySummary[]> {
     const secured = recordScopeSql(context.scopes, context.anchors, context.actor, 'c', 2);
     // 整条语句是静态 SQL：除作用域谓词片段外不做任何拼接（G3）。
     return (
@@ -155,7 +159,7 @@ export class PostgresQuoteToCashReadRepository {
   // 不存在或不在数据范围内返回 null。
   public async findArOpenItem(
     arOpenItemId: string,
-    context: Context,
+    context: FinancialReadContext,
     parts: ArRelatedRead = { order: null, payment: null },
   ): Promise<JsonObject | null> {
     const secured = recordScopeSql(context.scopes, context.anchors, context.actor, 'c', 3);
@@ -186,7 +190,7 @@ export class PostgresQuoteToCashReadRepository {
     };
   }
 
-  private async arOrderSummary(id: string, read: RelatedRead): Promise<JsonObject | null> {
+  private async arOrderSummary(id: string, read: FinancialRelatedRead): Promise<JsonObject | null> {
     const secured = recordScopeSql(read.scopes, read.anchors, read.actor, 'c', 3);
     const row = (
       await this.db.query<{ item: JsonObject }>(
@@ -207,7 +211,7 @@ export class PostgresQuoteToCashReadRepository {
   // A customer-scoped LEFT JOIN keeps allocation rows even when payment fields are out of scope.
   private async arAllocations(
     key: readonly unknown[],
-    read: RelatedRead | null,
+    read: FinancialRelatedRead | null,
   ): Promise<readonly JsonObject[]> {
     const secured = read ? recordScopeSql(read.scopes, read.anchors, read.actor, 'c', 3) : null;
     const result = secured
