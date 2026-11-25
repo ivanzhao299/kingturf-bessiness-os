@@ -1,6 +1,6 @@
 // U3-COM-5：技术需求控制台的动作工厂（WFD 拆分，G1 ≤800 行纪律；沿 quote / routing / bom 的
-// console-actions 先例）。创建 / 修订 / 状态流转 / 附件上传四个写动作与写后刷新从这里出，
-// 函数体与拆分前逐字节相同（只有 fail 多了一个 bundle 参数）；视图与状态面留在 ctr-console.tsx。
+// console-actions 先例）。创建 / 修订 / 状态流转 / 附件上传四个写动作与写后刷新从这里出；
+// 视图与状态面留在 ctr-console.tsx。
 import type { Signal } from '@preact/signals';
 import type { CtrConsolePorts, CtrRow } from './ctr-ports';
 import type { CtrFormKind } from './ctr-console';
@@ -20,6 +20,8 @@ export type CtrSignalBundle = Readonly<{
   decision: Signal<'APPROVED' | 'REJECTED' | null>;
   shownCount: Signal<number>;
   baselineId: Signal<string>;
+  // TD-WF-014①（WFD 补齐）：最近一次写操作的成功提示。
+  notice: Signal<string>;
 }>;
 
 export type CtrActions = Readonly<{
@@ -60,6 +62,21 @@ export const withLatestVersion = (ctrs: readonly CtrRow[]): readonly CtrRow[] =>
       Number(item.version ?? 0) ===
       latestVersionByCtr.get(typeof item.ctrId === 'string' ? item.ctrId : ''),
   }));
+};
+
+// 写成功后的提示文案（TD-WF-014①）：新建 / 修订 / 提交评审 / 批准驳回 / 上传附件。
+const CREATED_NOTICE = '已创建技术需求';
+const REVISE_NOTICE = '已创建修订草稿';
+const stateNoticeOf = (
+  ports: CtrConsolePorts,
+  row: CtrRow,
+  body: Record<string, unknown>,
+): string => {
+  const code = ports.textValue(row.code, '技术需求单');
+  if (body.action === 'submit') return `已提交评审：${code}`;
+  if (body.action === 'decide')
+    return body.decision === 'APPROVED' ? `已批准技术需求 ${code}` : `已驳回技术需求 ${code}`;
+  return `已更新技术需求 ${code} 的状态`;
 };
 
 const fail = (error: unknown, bundle: CtrSignalBundle, fallback: string): void => {
@@ -115,6 +132,7 @@ export const ctrActions = (ports: CtrConsolePorts, bundle: CtrSignalBundle): Ctr
       const fresh = await ports.refresh();
       applyCtrs(fresh.ctrs);
       closeForm();
+      bundle.notice.value = `${CREATED_NOTICE} ${values.code ?? ''}`;
     } catch (error: unknown) {
       fail(error, bundle, '技术需求创建失败');
     } finally {
@@ -136,6 +154,7 @@ export const ctrActions = (ports: CtrConsolePorts, bundle: CtrSignalBundle): Ctr
       const fresh = await ports.refresh();
       applyCtrs(fresh.ctrs);
       closeForm();
+      bundle.notice.value = `${REVISE_NOTICE} ${ports.textValue(row.code, '')}`;
     } catch (error: unknown) {
       fail(error, bundle, '修订创建失败');
     } finally {
@@ -151,6 +170,7 @@ export const ctrActions = (ports: CtrConsolePorts, bundle: CtrSignalBundle): Ctr
       const fresh = await ports.refresh();
       applyCtrs(fresh.ctrs);
       closeForm();
+      bundle.notice.value = stateNoticeOf(ports, row, body);
     } catch (error: unknown) {
       fail(error, bundle, '技术需求状态流转失败');
     } finally {
@@ -165,6 +185,7 @@ export const ctrActions = (ports: CtrConsolePorts, bundle: CtrSignalBundle): Ctr
       await ports.uploadAttachment(ports.textValue(row.id, ''), file);
       const fresh = await ports.refresh();
       applyCtrs(fresh.ctrs);
+      bundle.notice.value = `已上传附件 ${file.name}`;
     } catch (error: unknown) {
       fail(error, bundle, '附件上传失败');
     } finally {

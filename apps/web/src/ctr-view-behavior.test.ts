@@ -1,7 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { h, render } from 'preact';
 import type { ComponentType } from 'preact';
-import { installGlobalTestDom, type TestElement } from '../test/fixtures/preact-dom';
+import {
+  installGlobalTestDom,
+  TestDocument,
+  TestEvent,
+  type TestElement,
+} from '../test/fixtures/preact-dom';
+import { confirmAction, dismissConfirm } from '../test/fixtures/confirm-dialog';
+import { noticeOf } from '../test/fixtures/console-notice';
 import { CtrConsolePage } from './commercial/console/ctr-console';
 import type { CtrConsolePorts, CtrRow } from './commercial/console/ctr-ports';
 
@@ -115,8 +122,14 @@ const CREATE_FORM: readonly (readonly [string, string])[] = [
   ...Object.entries(requirementInput),
 ];
 
-afterEach(() => {
+// Preact 的 useEffect 在本测试环境里没有 requestAnimationFrame，要等约 35 毫秒（hooks 的 RAF_TIMEOUT）之后才执行；
+// 测试 DOM 的 focus() 写的是「最近安装的文档」，与节点属于哪个文档无关。于是上一个用例打开抽屉时排下的 effect
+// （把焦点移进抽屉）可能在本用例进行到一半时才执行，改写本用例的焦点——确认框「初焦在确认按钮」这类断言会时过时
+// 不过（单跑通过、整文件跑不稳）。每个用例结束时把这个窗口等过去，遗留的 effect 就落在本用例里。
+// 夹具本身的这个缺陷（focus 不按节点所属的文档记录）另行登记，留给主协调裁定是否从根上修。
+afterEach(async () => {
   vi.restoreAllMocks();
+  await new Promise((resolve) => setTimeout(resolve, 60));
 });
 
 describe('technical requirement console real callback contracts (U3-COM-5)', () => {
@@ -235,7 +248,10 @@ describe('technical requirement console real callback contracts (U3-COM-5)', () 
     element(host.querySelector('[data-testid="kt-ctr-open"]')).click();
     await flush();
     element(host.querySelector('[data-testid="kt-ctr-submit"]')).click();
+    // WFD（TD-WF-014② 的规则）：提交评审是单击即生效、随后冻结的动作，先出确认框，确认后才发请求。
     await flush();
+    expect(ports.submit).not.toHaveBeenCalled();
+    await confirmAction(host, '提交评审', '确认提交');
     expect(ports.submit).toHaveBeenCalledExactlyOnceWith(
       '/api/v1/ctr-versions/version-1/state',
       { action: 'submit', expectedVersion: 1 },
@@ -248,6 +264,8 @@ describe('technical requirement console real callback contracts (U3-COM-5)', () 
     element(failingHost.querySelector('[data-testid="kt-ctr-open"]')).click();
     await flush();
     element(failingHost.querySelector('[data-testid="kt-ctr-submit"]')).click();
+    await flush();
+    await confirmAction(failingHost, '提交评审', '确认提交');
     await flush();
     expect(
       element(failingHost.querySelector('[data-testid="kt-ctr-submit-error"]')).textContent,
@@ -318,6 +336,7 @@ describe('technical requirement console real callback contracts (U3-COM-5)', () 
       expect(host.textContent).toContain('草稿');
       element(host.querySelector('[data-testid="kt-ctr-submit"]')).click();
       await flush();
+      await confirmAction(host, '提交评审', '确认提交');
       await flush();
       // 表格那一行。
       const row = rowTexts(host)[0] ?? '';
@@ -350,6 +369,199 @@ describe('technical requirement console real callback contracts (U3-COM-5)', () 
       element(host.querySelectorAll('[data-testid="kt-ctr-open"]')[0]).click();
       await flush();
       expect(host.querySelector('[data-testid="kt-ctr-revise"]')).toBeNull();
+    });
+  });
+
+  // WFD 补齐（TD-WF-014① / ② 在本控制台的缺口）：写成功有状态行；提交评审先确认；失败原因显示在触发的
+  // 表单 / 动作区并转成中文。
+  describe('写反馈：确认框、状态行、失败原因（WFD）', () => {
+    it('提交评审的确认框：不确认就不发请求，焦点回到「提交评审」；Esc 同样取消', async () => {
+      const ports = portsFor([draft], ['ctr:submit']);
+      const host = mount(ports);
+      element(host.querySelector('[data-testid="kt-ctr-open"]')).click();
+      await flush();
+      const trigger = element(host.querySelector('[data-testid="kt-ctr-submit"]'));
+      trigger.focus();
+      trigger.click();
+      await flush();
+      const dialog = element(host.querySelector('[role="alertdialog"]'));
+      // 说明写清对象与后果；提交不是破坏性动作，初焦落在「确认提交」上。
+      expect(dialog.textContent).toContain('提交评审');
+      expect(dialog.textContent).toContain('CTR-1 · 第 1 版');
+      expect(dialog.textContent).toContain('冻结为不可变快照');
+      const buttons = dialog.querySelectorAll('button');
+      expect(buttons.map((button) => button.textContent.trim())).toEqual(['取消', '确认提交']);
+      expect(TestDocument.current.activeElement).toBe(buttons[1]);
+      await dismissConfirm(host);
+      expect(host.querySelector('[role="alertdialog"]')).toBe(null);
+      expect(ports.submit).not.toHaveBeenCalled();
+      expect(TestDocument.current.activeElement).toBe(trigger);
+
+      trigger.click();
+      await flush();
+      element(host.querySelector('[role="alertdialog"]'))
+        .querySelectorAll('button')[0]
+        ?.dispatchEvent(new TestEvent('keydown', { key: 'Escape' }));
+      await flush();
+      expect(host.querySelector('[role="alertdialog"]')).toBe(null);
+      expect(ports.submit).not.toHaveBeenCalled();
+      expect(TestDocument.current.activeElement).toBe(trigger);
+    });
+
+    it('提交评审成功：抽屉里出现状态行「已提交评审」，初焦进入的确认框关闭后请求才发出', async () => {
+      const submitted: CtrRow = { ...draft, status: 'SUBMITTED' };
+      const ports = portsFor([draft], ['ctr:submit', 'ctr:approve'], {
+        refresh: vi.fn().mockResolvedValue({ ctrs: [submitted], solutions: [] }),
+      });
+      const host = mount(ports);
+      element(host.querySelector('[data-testid="kt-ctr-open"]')).click();
+      await flush();
+      expect(noticeOf(host).text).toBe('');
+      element(host.querySelector('[data-testid="kt-ctr-submit"]')).click();
+      await flush();
+      expect(ports.submit).not.toHaveBeenCalled();
+      await confirmAction(host, '提交评审', '确认提交');
+      await flush();
+      await flush();
+      expect(ports.submit).toHaveBeenCalledTimes(1);
+      // 抽屉开着：状态行在抽屉底部。
+      expect(noticeOf(host)).toEqual({ text: '已提交评审：CTR-1', inDrawer: true });
+      // 按钮被换成批准 / 驳回之后焦点仍在抽屉里（关闭按钮），没有掉到页面主体。
+      const active = TestDocument.current.activeElement as TestElement | null;
+      expect(active?.classList.contains('drawer-close')).toBe(true);
+    });
+
+    it('新建成功：页头下方出现状态行；打开下一条记录时清空', async () => {
+      const created: CtrRow = { ...draft, id: 'version-new', ctrId: 'ctr-new', code: 'CTR-NEW' };
+      const ports = portsFor([draft], ['ctr:create'], {
+        refresh: vi.fn().mockResolvedValue({ ctrs: [draft, created], solutions: [] }),
+      });
+      const host = mount(ports);
+      element(host.querySelector('[data-testid="kt-ctr-create"]')).click();
+      await flush();
+      for (const [name, value] of CREATE_FORM) fillField(host, name, value);
+      await flush();
+      await submitDrawer(host);
+      await flush();
+      await flush();
+      expect(noticeOf(host)).toEqual({ text: '已创建技术需求 CTR-NEW', inDrawer: false });
+      element(host.querySelectorAll('[data-testid="kt-ctr-open"]')[0]).click();
+      await flush();
+      expect(noticeOf(host).text).toBe('');
+    });
+
+    it.each([
+      ['批准', 'APPROVED', 'kt-ctr-approve', '已批准技术需求 CTR-1'],
+      ['驳回', 'REJECTED', 'kt-ctr-reject', '已驳回技术需求 CTR-1'],
+    ] as const)(
+      '%s：经表单（理由必填）直接提交，成功后状态行在抽屉底部',
+      async (_l, decision, testId, text) => {
+        const decided: CtrRow = { ...draft, status: decision };
+        const ports = portsFor([{ ...draft, status: 'SUBMITTED' }], ['ctr:approve'], {
+          refresh: vi.fn().mockResolvedValue({ ctrs: [decided], solutions: [] }),
+        });
+        const host = mount(ports);
+        element(host.querySelector('[data-testid="kt-ctr-open"]')).click();
+        await flush();
+        element(host.querySelector(`[data-testid="${testId}"]`)).click();
+        await flush();
+        // 表单已经写明动作并要求填理由：不再出确认框。
+        expect(host.querySelector('[role="alertdialog"]')).toBe(null);
+        fillField(host, 'reason', 'fixed decision evidence');
+        await flush();
+        const confirmation = host.querySelector('[data-confirmation="true"]');
+        if (confirmation) {
+          (confirmation as { click(): void }).click();
+          await flush();
+        }
+        await submitDrawer(host);
+        await flush();
+        await flush();
+        expect(ports.submit).toHaveBeenCalledTimes(1);
+        expect(noticeOf(host)).toEqual({ text, inDrawer: true });
+      },
+    );
+
+    it('新建修订与上传附件成功后各有一条状态行', async () => {
+      const second: CtrRow = { ...draft, id: 'version-2', version: 2, status: 'DRAFT' };
+      const firstApproved: CtrRow = { ...draft, status: 'APPROVED' };
+      const revise = portsFor([firstApproved], ['ctr:update'], {
+        refresh: vi.fn().mockResolvedValue({ ctrs: [firstApproved, second], solutions: [] }),
+      });
+      const reviseHost = mount(revise);
+      element(reviseHost.querySelector('[data-testid="kt-ctr-open"]')).click();
+      await flush();
+      element(reviseHost.querySelector('[data-testid="kt-ctr-revise"]')).click();
+      await flush();
+      for (const [name, value] of Object.entries(requirementInput))
+        fillField(reviseHost, name, value);
+      await flush();
+      await submitDrawer(reviseHost);
+      await flush();
+      await flush();
+      expect(noticeOf(reviseHost)).toEqual({ text: '已创建修订草稿 CTR-1', inDrawer: true });
+
+      const upload = portsFor([draft], ['ctr:update', 'attachment:manage']);
+      const uploadHost = mount(upload);
+      element(uploadHost.querySelector('[data-testid="kt-ctr-open"]')).click();
+      await flush();
+      const input = element(
+        element(uploadHost.querySelector('[data-testid="kt-ctr-upload"]')).querySelector(
+          'input[type="file"]',
+        ),
+      );
+      Object.defineProperty(input, 'files', { value: [new File(['fixed'], 'fixed.pdf')] });
+      input.dispatchEvent(new Event('change'));
+      await flush();
+      await flush();
+      expect(noticeOf(uploadHost)).toEqual({ text: '已上传附件 fixed.pdf', inDrawer: true });
+    });
+
+    it('失败原因显示在触发它的位置并转成中文：提交评审在动作区，批准 / 新建在表单提示区', async () => {
+      const rejected = { submit: vi.fn().mockRejectedValue(new Error('Internal server error')) };
+      // 提交评审（不经表单的单击动作）：抽屉顶部的错误位。
+      const review = portsFor([draft], ['ctr:submit'], rejected);
+      const reviewHost = mount(review);
+      element(reviewHost.querySelector('[data-testid="kt-ctr-open"]')).click();
+      await flush();
+      element(reviewHost.querySelector('[data-testid="kt-ctr-submit"]')).click();
+      await flush();
+      await confirmAction(reviewHost, '提交评审', '确认提交');
+      await flush();
+      expect(
+        element(reviewHost.querySelector('[data-testid="kt-ctr-submit-error"]')).textContent,
+      ).toBe('服务器处理请求时出错，请稍后重试');
+      expect(noticeOf(reviewHost).text).toBe('');
+      // 批准（行内表单）：表单自己的提示区，抽屉顶部的错误位让位。
+      const approve = portsFor([{ ...draft, status: 'SUBMITTED' }], ['ctr:approve'], rejected);
+      const approveHost = mount(approve);
+      element(approveHost.querySelector('[data-testid="kt-ctr-open"]')).click();
+      await flush();
+      element(approveHost.querySelector('[data-testid="kt-ctr-approve"]')).click();
+      await flush();
+      fillField(approveHost, 'reason', 'fixed decision evidence');
+      await flush();
+      await submitDrawer(approveHost);
+      await flush();
+      const formAlert = element(
+        approveHost.querySelector('.detail-drawer form.form-section [role="alert"]'),
+      );
+      expect(formAlert.textContent).toBe('服务器处理请求时出错，请稍后重试');
+      expect(approveHost.querySelector('[data-testid="kt-ctr-submit-error"]')).toBe(null);
+      // 新建（新建抽屉的表单）：表单提示区。
+      const create = portsFor([draft], ['ctr:create'], rejected);
+      const createHost = mount(create);
+      element(createHost.querySelector('[data-testid="kt-ctr-create"]')).click();
+      await flush();
+      for (const [name, value] of CREATE_FORM) fillField(createHost, name, value);
+      await flush();
+      await submitDrawer(createHost);
+      await flush();
+      expect(
+        element(createHost.querySelector('.detail-drawer form.form-section [role="alert"]'))
+          .textContent,
+      ).toBe('服务器处理请求时出错，请稍后重试');
+      expect(noticeOf(createHost).text).toBe('');
     });
   });
 });

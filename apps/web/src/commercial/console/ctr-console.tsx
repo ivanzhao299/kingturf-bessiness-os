@@ -23,6 +23,13 @@ import {
   versionNumber,
 } from './solution-console-diff';
 import { FocusAnchor } from './focus-anchor';
+import { ConsoleNotice } from './console-notice';
+import {
+  askConfirm,
+  ConsoleConfirmDialog,
+  createConfirm,
+  type ConfirmSignal,
+} from './console-confirm';
 import { ctrActions, withLatestVersion, type CtrSignalBundle } from './ctr-console-actions';
 
 // U3-COM-5（ADR-0014 分域重写）：技术需求单控制台——原 vanilla ctr workbench 能力面
@@ -37,6 +44,10 @@ export type CtrPageState = Readonly<{
   search: string;
   loadError: string;
   submitError: string;
+  // TD-WF-014①（WFD 补齐）：最近一次写操作的成功提示。
+  notice: string;
+  // 待确认的单击动作（提交评审）；null 表示没有确认框。
+  confirm: ConfirmSignal;
   loading: boolean;
   selected: CtrRow | null;
   activeForm: CtrFormKind;
@@ -363,6 +374,8 @@ const CtrDrawer = ({ state }: Readonly<{ state: CtrPageState }>) => {
       onClose={() => {
         state.open(null);
       }}
+      // TD-WF-014①：写成功的提示放在抽屉底部，不随抽屉体滚走。
+      footer={state.notice === '' ? undefined : <ConsoleNotice message={state.notice} />}
     >
       <CtrDetail state={state} />
       {/* TD-WF-005 / TD-WF-012：行内表单开着时，提交失败显示在该表单自己的提示区（FormSection 的
@@ -393,9 +406,16 @@ const CtrDrawer = ({ state }: Readonly<{ state: CtrPageState }>) => {
               class="primary"
               data-testid="kt-ctr-submit"
               onClick={() => {
-                void state.runState(row, {
-                  action: 'submit',
-                  expectedVersion: version,
+                // WFD（TD-WF-014② 的规则）：提交评审是单击即生效、提交后这一版随即冻结的动作，先确认。
+                askConfirm(state.confirm, {
+                  title: '提交评审',
+                  message: `提交后「${ports.textValue(row.code, '技术需求单')} · 第 ${ports.textValue(row.version, '1')} 版」随即冻结为不可变快照，评审通过前不能再修改内容。`,
+                  confirmLabel: '确认提交',
+                  run: () =>
+                    state.runState(row, {
+                      action: 'submit',
+                      expectedVersion: version,
+                    }),
                 });
               }}
             >
@@ -475,7 +495,9 @@ const CtrDrawer = ({ state }: Readonly<{ state: CtrPageState }>) => {
         />
       ) : null}
       {/* TD-WF-014④：审批 / 驳回、修订的行内表单开合后，把键盘焦点带回抽屉。 */}
-      <FocusAnchor token={`${String(state.activeForm)}|${String(state.decision)}`} />
+      {/* TD-WF-014④：审批 / 驳回、修订的行内表单开合后，把键盘焦点带回抽屉；提交评审、审批之后
+          原来的按钮被换掉（状态变了），同样带回来。 */}
+      <FocusAnchor token={`${String(state.activeForm)}|${String(state.decision)}|${status}`} />
     </DetailDrawer>
   );
 };
@@ -539,6 +561,8 @@ const CtrView = (state: CtrPageState) => {
           ) : null
         }
       />
+      {/* TD-WF-014①：详情抽屉没开着时，写成功的提示显示在页头下方。 */}
+      {state.selected ? null : <ConsoleNotice message={state.notice} />}
       <div class="commercial-console-filters">
         {(['ALL', 'DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED'] as const).map((option) => (
           <button
@@ -589,6 +613,7 @@ const CtrView = (state: CtrPageState) => {
       />
       {state.selected ? <CtrDrawer state={state} /> : null}
       {state.activeForm === 'create' ? <CreateDrawer state={state} /> : null}
+      <ConsoleConfirmDialog pending={state.confirm} />
     </div>
   );
 };
@@ -608,8 +633,10 @@ export function CtrConsolePage(ports: CtrConsolePorts) {
     decision: signal<'APPROVED' | 'REJECTED' | null>(null),
     shownCount: signal(20),
     baselineId: signal(''),
+    notice: signal(''),
   };
   const actions = ctrActions(ports, bundle);
+  const confirm = createConfirm();
 
   // WFD-1：「是否最新版」按列表数组的身份缓存——数组换了（写操作之后的刷新）才重算，同一份快照内
   // 每次渲染返回同一个数组。此前这份带标记的列表只在页面创建时算了一次，之后写操作刷新了数据，
@@ -630,23 +657,28 @@ export function CtrConsolePage(ports: CtrConsolePorts) {
     search: bundle.search.value,
     loadError: bundle.loadError.value,
     submitError: bundle.submitError.value,
+    notice: bundle.notice.value,
+    confirm,
     loading: bundle.loading.value,
     selected: bundle.selected.value,
     activeForm: bundle.activeForm.value,
     decision: bundle.decision.value,
     permissions: ports.permissions,
     ports,
+    // 开始下一个动作时清掉上一次的成功提示（与 submitError 同一处）。
     open: (row) => {
       bundle.selected.value = row;
       bundle.activeForm.value = null;
       bundle.decision.value = null;
       bundle.baselineId.value = '';
       bundle.submitError.value = '';
+      bundle.notice.value = '';
     },
     openForm: (kind) => {
       bundle.activeForm.value = kind;
       bundle.decision.value = null;
       bundle.submitError.value = '';
+      bundle.notice.value = '';
     },
     baselineId: bundle.baselineId.value,
     setBaseline: (id) => {
@@ -664,6 +696,7 @@ export function CtrConsolePage(ports: CtrConsolePorts) {
     ...actions,
     openDecision: (decision) => {
       bundle.decision.value = decision;
+      bundle.notice.value = '';
     },
   });
 
