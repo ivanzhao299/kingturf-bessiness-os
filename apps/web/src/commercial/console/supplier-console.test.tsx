@@ -8,6 +8,11 @@ import type { ComponentType } from 'preact';
 import { installGlobalTestDom, type TestElement } from '../../../test/fixtures/preact-dom';
 import { SupplierConsolePage } from './supplier-console';
 import { noticeOf } from '../../../test/fixtures/console-notice';
+import {
+  confirmAction,
+  confirmDialogOf,
+  dismissConfirm,
+} from '../../../test/fixtures/confirm-dialog';
 import type { SupplierConsolePorts, SupplierRow } from './supplier-ports';
 
 const flush = (): Promise<void> =>
@@ -307,6 +312,8 @@ describe('U3-PROC-1 供应商控制台', () => {
     await flush();
     expect(host.querySelector('[data-testid="kt-supplier-qualify"]')).toBe(null);
     expect(ports.submit).not.toHaveBeenCalled();
+    expect(host.querySelector('[data-testid="kt-supplier-state-row-pause"]')).toBeNull();
+    expect(host.querySelector('[data-testid="kt-supplier-state-drawer-pause"]')).toBeNull();
   });
 
   it('状态筛选与检索：ON_HOLD 过滤 + 编号检索命中', async () => {
@@ -335,7 +342,7 @@ describe('U3-PROC-1 供应商控制台', () => {
       .map((node) => element(node))
       .filter((node) => (node.getAttribute('data-testid') ?? '').startsWith('kt-supplier-filter-'))
       .map((node) => node.textContent.trim());
-    expect(labels).toEqual(['全部', '已启用', '暂停', '已停用']);
+    expect(labels).toEqual(['全部 2', '已启用 1', '暂停 1', '已停用 0']);
     expect(labels.join(' ')).not.toMatch(/[A-Z_]{2,}/u);
     // 状态列是第 2 列（物料准入列的资质徽章也是 .status-badge，不在此列）。
     const badges = host
@@ -343,6 +350,82 @@ describe('U3-PROC-1 供应商控制台', () => {
       .map((row) => row.querySelectorAll('td')[1]?.querySelector('.status-badge'))
       .map((node) => node?.textContent.trim());
     expect(badges).toEqual(['已启用', '暂停']);
+  });
+
+  it('行内暂停先确认，取消时不发送，确认后刷新列表和状态筛选计数', async () => {
+    const ports = portsFor([supplier], ['supplier:manage'], {
+      refresh: vi
+        .fn()
+        .mockResolvedValue({ suppliers: [{ ...supplier, status: 'ON_HOLD' }], quotes: [quote] }),
+    });
+    const host = mount(ports);
+    const pause = element(host.querySelector('[data-testid="kt-supplier-state-row-pause"]'));
+    pause.click();
+    await flush();
+    expect(confirmDialogOf(host).textContent).toContain('不能登记新报价或新建采购订单');
+    expect(ports.submit).not.toHaveBeenCalled();
+    await dismissConfirm(host);
+    expect(ports.submit).not.toHaveBeenCalled();
+    expect(ports.refresh).not.toHaveBeenCalled();
+    pause.click();
+    await confirmAction(host, '暂停供应商', '确认暂停', { destructive: true });
+    expect(ports.submit).toHaveBeenCalledExactlyOnceWith(
+      '/api/v1/suppliers/supplier-1/state',
+      { status: 'ON_HOLD' },
+      'PUT',
+    );
+    expect(ports.refresh).toHaveBeenCalledTimes(1);
+    expect(noticeOf(host)).toEqual({ text: '已暂停供应商 SUP-1', inDrawer: false });
+    expect(
+      element(host.querySelector('[data-testid="kt-supplier-state-count-on_hold"]')).textContent,
+    ).toBe('1');
+    expect(
+      element(host.querySelector('[data-testid="kt-supplier-state-count-active"]')).textContent,
+    ).toBe('0');
+    element(host.querySelector('[data-testid="kt-supplier-filter-on_hold"]')).click();
+    await flush();
+    expect(host.querySelectorAll('tbody tr')).toHaveLength(1);
+    expect(host.querySelector('[data-testid="kt-supplier-state-row-restore"]')).not.toBeNull();
+  });
+
+  it('抽屉内停用和恢复先确认，状态徽章与成功提示在原抽屉里更新', async () => {
+    const ports = portsFor([onHoldSupplier], ['supplier:manage'], {
+      refresh: vi
+        .fn()
+        .mockResolvedValueOnce({
+          suppliers: [{ ...onHoldSupplier, status: 'INACTIVE' }],
+          quotes: [],
+        })
+        .mockResolvedValueOnce({
+          suppliers: [{ ...onHoldSupplier, status: 'ACTIVE' }],
+          quotes: [],
+        }),
+    });
+    const host = mount(ports);
+    element(host.querySelector('[data-testid="kt-supplier-open"]')).click();
+    await flush();
+    const drawer = element(host.querySelector('.detail-drawer'));
+    element(drawer.querySelector('[data-testid="kt-supplier-state-drawer-deactivate"]')).click();
+    expect(ports.submit).not.toHaveBeenCalled();
+    await confirmAction(host, '停用供应商', '确认停用', { destructive: true });
+    expect(drawer.querySelector('.status-badge')?.textContent).toBe('已停用');
+    expect(noticeOf(host)).toEqual({ text: '已停用供应商 SUP-2', inDrawer: true });
+    element(drawer.querySelector('[data-testid="kt-supplier-state-drawer-restore"]')).click();
+    await confirmAction(host, '恢复供应商', '确认恢复');
+    expect(ports.submit).toHaveBeenNthCalledWith(
+      1,
+      '/api/v1/suppliers/supplier-2/state',
+      { status: 'INACTIVE' },
+      'PUT',
+    );
+    expect(ports.submit).toHaveBeenNthCalledWith(
+      2,
+      '/api/v1/suppliers/supplier-2/state',
+      { status: 'ACTIVE' },
+      'PUT',
+    );
+    expect(drawer.querySelector('.status-badge')?.textContent).toBe('已启用');
+    expect(noticeOf(host)).toEqual({ text: '已恢复供应商 SUP-2', inDrawer: true });
   });
 
   it('详情抽屉展示资质记录与按 supplierId 过滤的报价历史', async () => {

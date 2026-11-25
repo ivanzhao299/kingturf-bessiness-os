@@ -21,20 +21,27 @@ import type { SupplierConsolePorts, SupplierRow } from './supplier-ports';
 import { FocusAnchor } from './focus-anchor';
 import { syncSelected } from './selected-sync';
 import { ConsoleNotice } from './console-notice';
+import {
+  askConfirm,
+  ConsoleConfirmDialog,
+  createConfirm,
+  type ConfirmSignal,
+} from './console-confirm';
 import { failureMessage } from '../../shared/api-error-message';
 
 // U3-PROC-1（ADR-0014 分域重写）：供应商控制台——原 vanilla supplier-register 能力面
 // 等价迁移（新建供应商/物料准入审核（扩展 approve|conditional|reject）/列表/状态筛选/
-// 检索/详情抽屉（资质+联系信息+报价历史））。供应商停用写路径 legacy 不存在
-// （suppliers.status 无任何迁移端点），行为守恒不新增——状态仅读侧展示。
+// 检索/详情抽屉（资质+联系信息+报价历史））。PROC-5 新增供应商状态流转。
 // PROC-UX：资质状态四色徽章（列表列 + 抽屉）与报价历史对比（同一物料多供应商并排）；
 // 详情子组件见 supplier-console-detail.tsx。
 type SupplierFormKind = 'create' | 'qualify' | null;
+const SUPPLIER_STATUSES = ['ACTIVE', 'ON_HOLD', 'INACTIVE'] as const;
+type SupplierStatus = (typeof SUPPLIER_STATUSES)[number];
 
 type SupplierPageState = Readonly<{
   suppliers: readonly SupplierRow[];
   quotes: readonly SupplierRow[];
-  statusFilter: 'ALL' | 'ACTIVE' | 'ON_HOLD' | 'INACTIVE';
+  statusFilter: 'ALL' | SupplierStatus;
   search: string;
   loadError: string;
   submitError: string;
@@ -50,7 +57,7 @@ type SupplierPageState = Readonly<{
   open: (row: SupplierRow | null) => void;
   openForm: (kind: SupplierFormKind) => void;
   closeForm: () => void;
-  setStatusFilter: (next: 'ALL' | 'ACTIVE' | 'ON_HOLD' | 'INACTIVE') => void;
+  setStatusFilter: (next: 'ALL' | SupplierStatus) => void;
   setSearch: (next: string) => void;
   runRefresh: () => Promise<void>;
   runCreate: (values: Readonly<Record<string, string>>) => Promise<void>;
@@ -59,6 +66,8 @@ type SupplierPageState = Readonly<{
     action: 'approve' | 'conditional' | 'reject',
     values: Readonly<Record<string, string>>,
   ) => Promise<void>;
+  confirm: ConfirmSignal;
+  runState: (row: SupplierRow, status: SupplierStatus) => Promise<void>;
   shownCount: number;
   showMore: () => void;
 }>;
@@ -94,6 +103,54 @@ const contactText = (ports: SupplierConsolePorts, row: SupplierRow, key: string)
   const contact = row.contact;
   if (typeof contact !== 'object' || contact === null || Array.isArray(contact)) return '—';
   return ports.textValue((contact as Record<string, unknown>)[key], '—');
+};
+
+const STATE_ACTIONS = {
+  ON_HOLD: { id: 'pause', label: '暂停', result: '已暂停' },
+  INACTIVE: { id: 'deactivate', label: '停用', result: '已停用' },
+  ACTIVE: { id: 'restore', label: '恢复', result: '已恢复' },
+} as const;
+
+const SupplierStateActions = ({
+  state,
+  row,
+  location,
+}: Readonly<{ state: SupplierPageState; row: SupplierRow; location: 'row' | 'drawer' }>) => {
+  const current = recordText(state.ports, row, 'status', 'status');
+  const supplierId = state.ports.textValue(row.id, '');
+  if (
+    !state.permissions.has('supplier:manage') ||
+    !supplierId ||
+    !Object.hasOwn(STATE_ACTIONS, current)
+  )
+    return null;
+  const name = recordText(state.ports, row, 'name', 'name');
+  return SUPPLIER_STATUSES.filter((status) => status !== current).map((status) => {
+    const { id, label } = STATE_ACTIONS[status];
+    return (
+      <button
+        key={status}
+        type="button"
+        class="secondary compact"
+        data-testid={`kt-supplier-state-${location}-${id}`}
+        disabled={state.loading}
+        onClick={() => {
+          askConfirm(state.confirm, {
+            title: `${label}供应商`,
+            message:
+              status === 'ACTIVE'
+                ? `恢复后，可为「${name}」登记报价和新建采购订单。`
+                : `${label}后，「${name}」不能登记新报价或新建采购订单。已有采购单仍可按原流程处理。`,
+            confirmLabel: `确认${label}`,
+            destructive: status !== 'ACTIVE',
+            run: () => state.runState(row, status),
+          });
+        }}
+      >
+        {label}
+      </button>
+    );
+  });
 };
 
 const columns = (state: SupplierPageState): readonly DataTableColumn<SupplierRow>[] => [
@@ -138,16 +195,19 @@ const columns = (state: SupplierPageState): readonly DataTableColumn<SupplierRow
     header: '操作',
     field: () => '查看',
     render: (row) => (
-      <button
-        type="button"
-        class="secondary compact"
-        data-testid="kt-supplier-open"
-        onClick={() => {
-          state.open(row);
-        }}
-      >
-        查看
-      </button>
+      <>
+        <button
+          type="button"
+          class="secondary compact"
+          data-testid="kt-supplier-open"
+          onClick={() => {
+            state.open(row);
+          }}
+        >
+          查看
+        </button>
+        <SupplierStateActions state={state} row={row} location="row" />
+      </>
     ),
   },
 ];
@@ -230,6 +290,7 @@ const SupplierDrawer = ({ state }: Readonly<{ state: SupplierPageState }>) => {
               物料准入审核
             </button>
           ) : null}
+          <SupplierStateActions state={state} row={row} location="drawer" />
         </div>
       ) : null}
       <p class="console-label">资质记录</p>
@@ -337,6 +398,11 @@ const SupplierView = (state: SupplierPageState) => {
   const visible = filteredSuppliers(state);
   const shown = visible.slice(0, state.shownCount);
   const mayCreate = state.permissions.has('supplier:manage');
+  const counts = { ALL: state.suppliers.length, ACTIVE: 0, ON_HOLD: 0, INACTIVE: 0 };
+  for (const row of state.suppliers) {
+    const status = SUPPLIER_STATUSES.find((value) => value === row.status);
+    if (status) counts[status]++;
+  }
   return (
     <div class="commercial-console-page" data-testid="kt-supplier-page">
       <PageHeader
@@ -372,17 +438,21 @@ const SupplierView = (state: SupplierPageState) => {
       {/* TD-WF-014①：详情抽屉没开着时，写成功的提示显示在页头下方。 */}
       {state.selected ? null : <ConsoleNotice message={state.notice} />}
       <div class="commercial-console-filters">
-        {(['ALL', 'ACTIVE', 'ON_HOLD', 'INACTIVE'] as const).map((option) => (
+        {(['ALL', ...SUPPLIER_STATUSES] as const).map((option) => (
           <button
             key={option}
             type="button"
             class={state.statusFilter === option ? 'secondary compact active' : 'secondary compact'}
             data-testid={`kt-supplier-filter-${option.toLowerCase()}`}
+            aria-pressed={state.statusFilter === option}
             onClick={() => {
               state.setStatusFilter(option);
             }}
           >
-            {option === 'ALL' ? '全部' : (STATUS_LABELS[option] ?? option)}
+            <span>{option === 'ALL' ? '全部' : STATUS_LABELS[option]}</span>{' '}
+            <span data-testid={`kt-supplier-state-count-${option.toLowerCase()}`}>
+              {counts[option]}
+            </span>
           </button>
         ))}
         <input
@@ -395,6 +465,11 @@ const SupplierView = (state: SupplierPageState) => {
           }}
         />
       </div>
+      {state.selected === null && state.activeForm === null && state.submitError !== '' ? (
+        <p class="console-error" role="alert">
+          {state.submitError}
+        </p>
+      ) : null}
       {state.loadError !== '' ? (
         <p class="console-error" role="alert">
           {state.loadError}
@@ -420,6 +495,7 @@ const SupplierView = (state: SupplierPageState) => {
       />
       {state.selected ? <SupplierDrawer state={state} /> : null}
       {state.activeForm === 'create' ? <CreateDrawer state={state} /> : null}
+      <ConsoleConfirmDialog pending={state.confirm} />
     </div>
   );
 };
@@ -428,7 +504,7 @@ export function SupplierConsolePage(ports: SupplierConsolePorts) {
   const bundle = {
     suppliers: signal<readonly SupplierRow[]>([...ports.initialSuppliers]),
     quotes: signal<readonly SupplierRow[]>([...ports.initialQuotes]),
-    statusFilter: signal<'ALL' | 'ACTIVE' | 'ON_HOLD' | 'INACTIVE'>('ALL'),
+    statusFilter: signal<'ALL' | SupplierStatus>('ALL'),
     search: signal(''),
     loadError: signal(''),
     submitError: signal(''),
@@ -437,6 +513,7 @@ export function SupplierConsolePage(ports: SupplierConsolePorts) {
     selected: signal<SupplierRow | null>(null),
     activeForm: signal<SupplierFormKind>(null),
     shownCount: signal(20),
+    confirm: createConfirm(),
   };
 
   const fail = (error: unknown, fallback: string): void => {
@@ -535,6 +612,31 @@ export function SupplierConsolePage(ports: SupplierConsolePorts) {
     }
   };
 
+  const runState = async (row: SupplierRow, status: SupplierStatus): Promise<void> => {
+    if (bundle.loading.value) return;
+    bundle.loading.value = true;
+    bundle.submitError.value = '';
+    bundle.notice.value = '';
+    const id = ports.textValue(row.id, '');
+    try {
+      await ports.submit(`/api/v1/suppliers/${id}/state`, { status }, 'PUT');
+      // 先同步已成功的状态，随后刷新快照，带回服务端时间戳与其它变化。
+      applySnapshot({
+        suppliers: bundle.suppliers.value.map((supplier) =>
+          supplier.id === id ? { ...supplier, status } : supplier,
+        ),
+        quotes: bundle.quotes.value,
+      });
+      bundle.notice.value = `${STATE_ACTIONS[status].result}供应商 ${recordText(ports, row, 'supplierNumber', 'supplier_number')}`;
+      applySnapshot(await ports.refresh());
+    } catch (error: unknown) {
+      const fallback = bundle.notice.value ? '供应商状态已变更，刷新失败' : '供应商状态变更失败';
+      bundle.submitError.value = failureMessage(error, fallback);
+    } finally {
+      bundle.loading.value = false;
+    }
+  };
+
   const state = (): SupplierPageState => ({
     suppliers: bundle.suppliers.value,
     quotes: bundle.quotes.value,
@@ -575,6 +677,8 @@ export function SupplierConsolePage(ports: SupplierConsolePorts) {
     runRefresh,
     runCreate,
     runQualify,
+    confirm: bundle.confirm,
+    runState,
   });
 
   const Page = () => SupplierView(state());
