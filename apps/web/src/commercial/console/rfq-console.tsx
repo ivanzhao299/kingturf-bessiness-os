@@ -74,13 +74,20 @@ const statusTone = (status: unknown): StatusTone => {
 const text = (ports: RfqConsolePorts, row: RfqRow, camel: string, snake: string, fallback = '') =>
   ports.recordText(row, camel, snake, fallback);
 
-// 报价截止单元：日期（ISO 前 10 位）· 币种 + 已签发询价单的截止倒计时徽章。
+// 报价截止单元：日期（ISO 前 10 位）· 币种，其后是已签发询价单的截止倒计时徽章。
+// TD-WF-014⑦：徽章紧跟在币种文字后面、中间没有任何分隔，读起来是「CNY剩 14 天」——
+// 币种与倒计时连成了一句。两者以「 · 」分开，各自成段。
 const DueCell = ({ state, row }: Readonly<{ state: RfqPageState; row: RfqRow }>) => {
   const countdown = activeCountdown(state, row);
   return (
     <span>
       {`${text(state.ports, row, 'responseDueAt', 'response_due_at', '—').slice(0, 10)} · ${text(state.ports, row, 'currency', 'currency', '—')}`}
-      {countdown === null ? null : <CountdownBadge countdown={countdown} />}
+      {countdown === null ? null : (
+        <>
+          {' · '}
+          <CountdownBadge countdown={countdown} />
+        </>
+      )}
     </span>
   );
 };

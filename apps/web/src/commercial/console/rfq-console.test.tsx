@@ -313,6 +313,20 @@ describe('U3-PROC-2 询价控制台', () => {
     );
   });
 
+  // TD-WF-014⑦：倒计时徽章此前紧贴币种文字，读作「CNY剩 8 天」「CNY已逾期 3 天」。
+  it('截止列：币种与倒计时分开显示，不连写成一句', () => {
+    const host = mount(portsFor([issuedRfq, closingTodayRfq, overdueRfq]));
+    const cells = host
+      .querySelectorAll('tbody tr')
+      .map((row) => row.querySelector('[data-column="due"]')?.textContent ?? '');
+    expect(cells).toEqual([
+      '2026-12-01 · CNY · 剩 8 天',
+      '2026-11-23 · CNY · 今日截止',
+      '2026-11-20 · CNY · 已逾期 3 天',
+    ]);
+    for (const cell of cells) expect(cell).not.toMatch(/CNY(剩|已逾期|今日)/u);
+  });
+
   it('详情抽屉：已签发询价单呈截止倒计时，草稿不呈', async () => {
     const issuedHost = mount(portsFor([issuedRfq]));
     element(issuedHost.querySelector('[data-testid="kt-rfq-open"]')).click();
