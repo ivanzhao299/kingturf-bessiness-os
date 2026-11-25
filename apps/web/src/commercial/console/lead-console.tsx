@@ -30,6 +30,7 @@ import {
 import { failureMessage } from '../../shared/api-error-message';
 import { FocusAnchor } from './focus-anchor';
 import { ConsoleNotice } from './console-notice';
+import { askConfirm, ConsoleConfirmDialog, createConfirm } from './console-confirm';
 
 // U3-CRM-1（ADR-0014 分域重写）：线索控制台——原 vanilla lead-records 能力面等价迁移
 // （新建/认领/变更状态/分配改派/释放公海；列表/搜索/分页/详情抽屉）。
@@ -65,6 +66,7 @@ type LeadPageState = Readonly<{
   setSearch: (next: string) => void;
   runRefresh: () => Promise<void>;
   runCreate: (values: Readonly<Record<string, string>>) => Promise<void>;
+  confirmRelease: (row: LeadRow, version: number) => void;
   runState: (row: LeadRow, body: Record<string, unknown>) => Promise<void>;
   showMore: () => void;
 }>;
@@ -353,11 +355,7 @@ const LeadDrawer = ({ state }: Readonly<{ state: LeadPageState }>) => {
               class="secondary"
               data-testid="kt-lead-release"
               onClick={() => {
-                void state.runState(lead, {
-                  action: 'release',
-                  expectedVersion: version,
-                  reason: '释放至线索公海',
-                });
+                state.confirmRelease(lead, version);
               }}
             >
               释放公海
@@ -579,6 +577,7 @@ const LeadView = (state: LeadPageState) => {
 };
 
 export function LeadConsolePage(ports: LeadConsolePorts) {
+  const confirmation = createConfirm();
   const defaultTab: LeadTab =
     ports.poolMode || !ports.permissions.has('lead:read') ? 'POOL' : 'PRIVATE';
   const bundle = {
@@ -664,6 +663,7 @@ export function LeadConsolePage(ports: LeadConsolePorts) {
   const runState = async (row: LeadRow, body: Record<string, unknown>): Promise<void> => {
     bundle.loading.value = true;
     bundle.submitError.value = '';
+    bundle.notice.value = '';
     try {
       await ports.submit(
         `/api/v1/leads/${ports.textValue(row.id, '')}/state`,
@@ -679,6 +679,19 @@ export function LeadConsolePage(ports: LeadConsolePorts) {
     } finally {
       bundle.loading.value = false;
     }
+  };
+
+  const confirmRelease = (row: LeadRow, version: number): void => {
+    bundle.notice.value = '';
+    bundle.submitError.value = '';
+    askConfirm(confirmation, {
+      title: '释放公海',
+      message: `线索「${ports.textValue(row.title, '当前线索')}」将解除现有负责人，可由其他销售认领。`,
+      confirmLabel: '确认释放',
+      destructive: true,
+      run: () =>
+        runState(row, { action: 'release', expectedVersion: version, reason: '释放至线索公海' }),
+    });
   };
 
   const state = (): LeadPageState => {
@@ -726,10 +739,16 @@ export function LeadConsolePage(ports: LeadConsolePorts) {
       },
       runRefresh,
       runCreate,
+      confirmRelease,
       runState,
     };
   };
 
-  const Page = () => LeadView(state());
+  const Page = () => (
+    <>
+      {LeadView(state())}
+      <ConsoleConfirmDialog pending={confirmation} />
+    </>
+  );
   return Page;
 }

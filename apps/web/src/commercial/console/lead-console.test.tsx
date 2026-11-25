@@ -215,6 +215,14 @@ describe('U3-CRM-1 线索控制台', () => {
     expect(release).not.toBeNull();
     element(release).click();
     await flush();
+    expect(reassignPorts.submit).not.toHaveBeenCalled();
+    element(reassignHost.querySelector('[role="alertdialog"] button.secondary')).click();
+    await flush();
+    expect(reassignPorts.submit).not.toHaveBeenCalled();
+    element(release).click();
+    await flush();
+    element(reassignHost.querySelector('[role="alertdialog"] button.primary')).click();
+    await flush();
     expect(reassignPorts.submit).toHaveBeenCalledExactlyOnceWith(
       '/api/v1/leads/lead-2/state',
       {
@@ -456,6 +464,8 @@ describe('CRM-UX 抽屉随刷新同步', () => {
     element(host.querySelector('[data-testid="kt-lead-open"]')).click();
     await flush();
     element(host.querySelector('[data-testid="kt-lead-release"]')).click();
+    await flush();
+    element(host.querySelector('[role="alertdialog"] button.primary')).click();
     await flush();
     expect(host.querySelector('[data-testid="kt-lead-detail"]')).toBeNull();
   });
