@@ -223,6 +223,7 @@ export type ProductionOrderViewState = Readonly<{
   loadError: string;
   actionError: string;
   submitError: string;
+  notice: string;
   selected: ProductionOrderRow | null;
   detail: ProductionOrderRow | null;
   detailLoading: boolean;

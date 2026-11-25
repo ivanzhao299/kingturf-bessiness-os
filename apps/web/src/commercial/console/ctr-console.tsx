@@ -22,15 +22,21 @@ import {
   sortVersions,
   versionNumber,
 } from './solution-console-diff';
-import { failureMessage } from '../../shared/api-error-message';
-import { syncSelected } from './selected-sync';
 import { FocusAnchor } from './focus-anchor';
+import { ConsoleNotice } from './console-notice';
+import {
+  askConfirm,
+  ConsoleConfirmDialog,
+  createConfirm,
+  type ConfirmSignal,
+} from './console-confirm';
+import { ctrActions, withLatestVersion, type CtrSignalBundle } from './ctr-console-actions';
 
 // U3-COM-5（ADR-0014 分域重写）：技术需求单控制台——原 vanilla ctr workbench 能力面
 // 等价迁移（新建/修订/提交评审/批准驳回/上传附件；列表/筛选/详情抽屉含版本差异）。
 // COM-UX：版本差异升级为字段级红绿标记（需求字段 + 标题，可改选更早版本作基准），
 // 列表新增「较上一版」列；差异原语与方案页共用 solution-console-diff。
-type CtrFormKind = 'create' | 'revise' | null;
+export type CtrFormKind = 'create' | 'revise' | null;
 
 export type CtrPageState = Readonly<{
   ctrs: readonly CtrRow[];
@@ -38,6 +44,10 @@ export type CtrPageState = Readonly<{
   search: string;
   loadError: string;
   submitError: string;
+  // TD-WF-014①（WFD 补齐）：最近一次写操作的成功提示。
+  notice: string;
+  // 待确认的单击动作（提交评审）；null 表示没有确认框。
+  confirm: ConfirmSignal;
   loading: boolean;
   selected: CtrRow | null;
   activeForm: CtrFormKind;
@@ -171,20 +181,6 @@ const REQUIREMENT_FIELDS = (
     value: display(requirements.delivery),
   },
 ];
-
-const requirementsPayload = (values: Readonly<Record<string, string>>) => ({
-  application: values.application ?? '',
-  projectRegion: values.projectRegion ?? '',
-  performanceStandard: values.performanceStandard ?? '',
-  pileHeightMm: Number(values.pileHeight ?? 0),
-  quantitySquareMeters: Number(values.quantity ?? 0),
-  color: values.color ?? '',
-  baseCondition: values.baseCondition ?? '',
-  drainageRequirement: values.drainageRequirement ?? '',
-  fireRating: values.fireRating ?? '',
-  warrantyYears: Number(values.warrantyYears ?? 0),
-  delivery: values.delivery ?? '',
-});
 
 // 参与版本比对的字段：需求标题 + 全部需求字段。
 const DIFF_FIELDS: readonly (readonly [string, string])[] = [
@@ -378,6 +374,8 @@ const CtrDrawer = ({ state }: Readonly<{ state: CtrPageState }>) => {
       onClose={() => {
         state.open(null);
       }}
+      // TD-WF-014①：写成功的提示放在抽屉底部，不随抽屉体滚走。
+      footer={state.notice === '' ? undefined : <ConsoleNotice message={state.notice} />}
     >
       <CtrDetail state={state} />
       {/* TD-WF-005 / TD-WF-012：行内表单开着时，提交失败显示在该表单自己的提示区（FormSection 的
@@ -408,9 +406,16 @@ const CtrDrawer = ({ state }: Readonly<{ state: CtrPageState }>) => {
               class="primary"
               data-testid="kt-ctr-submit"
               onClick={() => {
-                void state.runState(row, {
-                  action: 'submit',
-                  expectedVersion: version,
+                // WFD（TD-WF-014② 的规则）：提交评审是单击即生效、提交后这一版随即冻结的动作，先确认。
+                askConfirm(state.confirm, {
+                  title: '提交评审',
+                  message: `提交后「${ports.textValue(row.code, '技术需求单')} · 第 ${ports.textValue(row.version, '1')} 版」随即冻结为不可变快照，评审通过前不能再修改内容。`,
+                  confirmLabel: '确认提交',
+                  run: () =>
+                    state.runState(row, {
+                      action: 'submit',
+                      expectedVersion: version,
+                    }),
                 });
               }}
             >
@@ -490,7 +495,9 @@ const CtrDrawer = ({ state }: Readonly<{ state: CtrPageState }>) => {
         />
       ) : null}
       {/* TD-WF-014④：审批 / 驳回、修订的行内表单开合后，把键盘焦点带回抽屉。 */}
-      <FocusAnchor token={`${String(state.activeForm)}|${String(state.decision)}`} />
+      {/* TD-WF-014④：审批 / 驳回、修订的行内表单开合后，把键盘焦点带回抽屉；提交评审、审批之后
+          原来的按钮被换掉（状态变了），同样带回来。 */}
+      <FocusAnchor token={`${String(state.activeForm)}|${String(state.decision)}|${status}`} />
     </DetailDrawer>
   );
 };
@@ -554,6 +561,8 @@ const CtrView = (state: CtrPageState) => {
           ) : null
         }
       />
+      {/* TD-WF-014①：详情抽屉没开着时，写成功的提示显示在页头下方。 */}
+      {state.selected ? null : <ConsoleNotice message={state.notice} />}
       <div class="commercial-console-filters">
         {(['ALL', 'DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED'] as const).map((option) => (
           <button
@@ -604,13 +613,14 @@ const CtrView = (state: CtrPageState) => {
       />
       {state.selected ? <CtrDrawer state={state} /> : null}
       {state.activeForm === 'create' ? <CreateDrawer state={state} /> : null}
+      <ConsoleConfirmDialog pending={state.confirm} />
     </div>
   );
 };
 
 export function CtrConsolePage(ports: CtrConsolePorts) {
-  // G5 拆分：动作工厂独立于状态工厂。
-  const bundle = {
+  // G5 拆分：状态面与动作工厂（ctr-console-actions.ts）分开。
+  const bundle: CtrSignalBundle = {
     ctrs: signal<readonly CtrRow[]>([...ports.initialCtrs]),
     solutions: signal<readonly CtrRow[]>([...ports.initialSolutions]),
     statusFilter: signal<'ALL' | 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED'>('ALL'),
@@ -623,152 +633,53 @@ export function CtrConsolePage(ports: CtrConsolePorts) {
     decision: signal<'APPROVED' | 'REJECTED' | null>(null),
     shownCount: signal(20),
     baselineId: signal(''),
+    notice: signal(''),
   };
+  const actions = ctrActions(ports, bundle);
+  const confirm = createConfirm();
 
-  const fail = (error: unknown, fallback: string): void => {
-    const message = failureMessage(error, fallback);
-    if (bundle.selected.value !== null || bundle.activeForm.value !== null)
-      bundle.submitError.value = message;
-    else bundle.loadError.value = message;
-  };
-  const closeForm = (): void => {
-    bundle.activeForm.value = null;
-    bundle.decision.value = null;
-    bundle.submitError.value = '';
-  };
-
-  // TD-WF-008：列表换新的之后，抽屉里开着的那条也换成刷新后的行（已不在列表里则关闭抽屉）。
-  const applyCtrs = (ctrs: readonly CtrRow[]): void => {
-    bundle.ctrs.value = ctrs;
-    syncSelected({
-      selected: bundle.selected,
-      rows: ctrs,
-      idOf: (row) => ports.textValue(row.id, ''),
-    });
-  };
-
-  const runRefresh = async (): Promise<void> => {
-    bundle.loading.value = true;
-    try {
-      const fresh = await ports.refresh();
-      applyCtrs(fresh.ctrs);
-      bundle.solutions.value = fresh.solutions;
-      bundle.loadError.value = '';
-    } catch (error: unknown) {
-      fail(error, '技术需求加载失败');
-    } finally {
-      bundle.loading.value = false;
+  // WFD-1：「是否最新版」按列表数组的身份缓存——数组换了（写操作之后的刷新）才重算，同一份快照内
+  // 每次渲染返回同一个数组。此前这份带标记的列表只在页面创建时算了一次，之后写操作刷新了数据，
+  // 表格却一直是打开页面那一刻的内容：新建的需求单不出现，提交评审后那一行仍显示「草稿」。
+  let latestSource: readonly CtrRow[] | null = null;
+  let latestRows: readonly CtrRow[] = [];
+  const ctrsOf = (): readonly CtrRow[] => {
+    if (latestSource !== bundle.ctrs.value) {
+      latestSource = bundle.ctrs.value;
+      latestRows = withLatestVersion(latestSource);
     }
+    return latestRows;
   };
-
-  const runCreate = async (values: Readonly<Record<string, string>>): Promise<void> => {
-    bundle.loading.value = true;
-    bundle.submitError.value = '';
-    try {
-      await ports.submit('/api/v1/ctrs', {
-        opportunityId: values.opportunityId ?? '',
-        code: values.code ?? '',
-        title: values.title ?? '',
-        requirements: requirementsPayload(values),
-      });
-      const fresh = await ports.refresh();
-      applyCtrs(fresh.ctrs);
-      closeForm();
-    } catch (error: unknown) {
-      fail(error, '技术需求创建失败');
-    } finally {
-      bundle.loading.value = false;
-    }
-  };
-
-  const runRevise = async (
-    row: CtrRow,
-    values: Readonly<Record<string, string>>,
-  ): Promise<void> => {
-    bundle.loading.value = true;
-    bundle.submitError.value = '';
-    try {
-      await ports.submit(`/api/v1/ctrs/${ports.textValue(row.ctrId, '')}/versions`, {
-        title: values.title ?? '',
-        requirements: requirementsPayload(values),
-      });
-      const fresh = await ports.refresh();
-      applyCtrs(fresh.ctrs);
-      closeForm();
-    } catch (error: unknown) {
-      fail(error, '修订创建失败');
-    } finally {
-      bundle.loading.value = false;
-    }
-  };
-
-  const runState = async (row: CtrRow, body: Record<string, unknown>): Promise<void> => {
-    bundle.loading.value = true;
-    bundle.submitError.value = '';
-    try {
-      await ports.submit(`/api/v1/ctr-versions/${ports.textValue(row.id, '')}/state`, body, 'PUT');
-      const fresh = await ports.refresh();
-      applyCtrs(fresh.ctrs);
-      closeForm();
-    } catch (error: unknown) {
-      fail(error, '技术需求状态流转失败');
-    } finally {
-      bundle.loading.value = false;
-    }
-  };
-
-  const runUpload = async (row: CtrRow, file: File): Promise<void> => {
-    bundle.loading.value = true;
-    bundle.submitError.value = '';
-    try {
-      await ports.uploadAttachment(ports.textValue(row.id, ''), file);
-      const fresh = await ports.refresh();
-      applyCtrs(fresh.ctrs);
-    } catch (error: unknown) {
-      fail(error, '附件上传失败');
-    } finally {
-      bundle.loading.value = false;
-    }
-  };
-
-  const latestVersionByCtr = new Map<string, number>();
-  for (const item of bundle.ctrs.value) {
-    const rootId = typeof item.ctrId === 'string' ? item.ctrId : '';
-    const revision = typeof item.version === 'number' ? item.version : 0;
-    latestVersionByCtr.set(rootId, Math.max(latestVersionByCtr.get(rootId) ?? 0, revision));
-  }
-  const withLatest = bundle.ctrs.value.map((item) => ({
-    ...item,
-    isLatestVersion:
-      Number(item.version ?? 0) ===
-      latestVersionByCtr.get(typeof item.ctrId === 'string' ? item.ctrId : ''),
-  }));
 
   const state = (): CtrPageState => ({
-    ctrs: withLatest,
+    ctrs: ctrsOf(),
     statusFilter: bundle.statusFilter.value,
     search: bundle.search.value,
     loadError: bundle.loadError.value,
     submitError: bundle.submitError.value,
+    notice: bundle.notice.value,
+    confirm,
     loading: bundle.loading.value,
     selected: bundle.selected.value,
     activeForm: bundle.activeForm.value,
     decision: bundle.decision.value,
     permissions: ports.permissions,
     ports,
+    // 开始下一个动作时清掉上一次的成功提示（与 submitError 同一处）。
     open: (row) => {
       bundle.selected.value = row;
       bundle.activeForm.value = null;
       bundle.decision.value = null;
       bundle.baselineId.value = '';
       bundle.submitError.value = '';
+      bundle.notice.value = '';
     },
     openForm: (kind) => {
       bundle.activeForm.value = kind;
       bundle.decision.value = null;
       bundle.submitError.value = '';
+      bundle.notice.value = '';
     },
-    closeForm,
     baselineId: bundle.baselineId.value,
     setBaseline: (id) => {
       bundle.baselineId.value = id;
@@ -782,13 +693,10 @@ export function CtrConsolePage(ports: CtrConsolePorts) {
     showMore: () => {
       bundle.shownCount.value = bundle.shownCount.value + 20;
     },
-    runRefresh,
-    runCreate,
-    runRevise,
-    runState,
-    runUpload,
+    ...actions,
     openDecision: (decision) => {
       bundle.decision.value = decision;
+      bundle.notice.value = '';
     },
   });
 

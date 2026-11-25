@@ -2,7 +2,7 @@ import { FormSection, type FormSectionField } from '@kingturf/ui';
 import type { QuotePageState } from './quote-console';
 
 // U3-COM-3（G1 拆分）：报价表单子组件（新建/修订/批准/签发），与主列表页共享状态面。
-export { ReviseForm, ApproveForm, IssueForm, CreateForm };
+export { ReviseForm, ApproveForm, CreateForm };
 
 const ReviseForm = ({ state }: Readonly<{ state: QuotePageState }>) => {
   const quote = state.selected;
@@ -39,20 +39,6 @@ const ApproveForm = ({ state }: Readonly<{ state: QuotePageState }>) => (
     // 批准与签发都是不可逆动作。
     onSubmit={(values) =>
       state.selected ? state.runCommand(state.selected, 'approve', values) : undefined
-    }
-  />
-);
-
-const IssueForm = ({ state }: Readonly<{ state: QuotePageState }>) => (
-  <FormSection
-    title="签发报价"
-    description="签发后将生成只读快照，后续合同只能引用该快照。"
-    fields={[]}
-    submitLabel="确认签发"
-    error={state.submitError}
-    // 同上：把 Promise 交还给 FormSection。
-    onSubmit={(values) =>
-      state.selected ? state.runCommand(state.selected, 'issue', values) : undefined
     }
   />
 );

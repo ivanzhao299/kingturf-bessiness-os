@@ -630,9 +630,13 @@ export async function procurementFlow(t) {
         { irreversible: true },
       );
       e.request = brief(response);
-      e.drawerBadge = await badge(page, '[data-testid="kt-po-detail"] .status-badge');
+      const statusBadge = '[data-testid="kt-po-detail"] .status-badge';
+      if (response?.ok === true) {
+        e.listRow = await waitRowMatch(page, 'kt-po-open', order.spare, /已取消/u);
+        await waitBadge(page, statusBadge, '已取消');
+      }
+      e.drawerBadge = await badge(page, statusBadge);
       e.cancelButtonLeft = (await drawer(page).locator('[data-testid="kt-po-cancel"]').count()) > 0;
-      e.listRow = await waitRow(page, 'kt-po-open', '已取消');
       return closeAfter(
         t,
         response?.ok === true &&
@@ -1107,13 +1111,20 @@ export async function creditFlow(t) {
         submit(page, '执行信用评估', post(/^\/api\/v1\/credit-decisions$/u)),
       );
       e.request = brief(response);
+      if (response?.ok === true) {
+        // 界面先刷新决定列表再自动关闭。不要手动关闭成功提交的表单来替代这个等待。
+        world.credit.pending.push(response.body?.id);
+        await page
+          .getByRole('dialog', { name: '发起信用评估', exact: true })
+          .waitFor({ state: 'detached', timeout: 8000 })
+          .catch(() => undefined);
+      }
       e.visibleError = await visibleError(page);
       e.drawerStillOpen = (await drawer(page).count()) > 0;
-      if (response?.ok !== true) await t.shot();
-      await closeDrawer(page);
-      if (response?.ok === true) world.credit.pending.push(response.body?.id);
+      if (response?.ok !== true || e.drawerStillOpen) await t.shot();
+      if (e.drawerStillOpen) await closeDrawer(page);
       e.pendingAfter = await pendingCount();
-      return response?.ok === true && e.pendingAfter === e.pendingBefore + 1;
+      return response?.ok === true && !e.drawerStillOpen && e.pendingAfter === e.pendingBefore + 1;
     },
     { defect: DEFECTS.creditEvaluateUnusable },
   );
@@ -1283,6 +1294,12 @@ export async function quoteFlow(t) {
       const response = await t.write(createQuote());
       e.request = brief(response);
       e.blocked = response?.blocked;
+      // 创建响应早于列表刷新和抽屉关闭。下一步需要新表单，等这次成功创建的表单卸载。
+      if (response?.ok === true) {
+        await page
+          .getByRole('dialog', { name: '新建销售报价', exact: true })
+          .waitFor({ state: 'detached', timeout: 8000 });
+      }
       return response?.sent === true;
     },
   );
@@ -1337,9 +1354,8 @@ export async function quoteFlow(t) {
 
   await t.must('签发报价：列表状态变为「已签发」', async (e) => {
     await openRow(page, 'kt-quote-open', quote.number);
-    await click(page, 'kt-quote-issue');
     const response = await t.write(
-      submit(page, '确认签发', post(/\/api\/v1\/quote-revisions\/[^/]+\/issue$/u)),
+      act(page, 'kt-quote-issue', post(/\/api\/v1\/quote-revisions\/[^/]+\/issue$/u)),
       { irreversible: true },
     );
     e.request = brief(response);

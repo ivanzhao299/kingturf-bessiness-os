@@ -412,6 +412,14 @@ button {
 .contextual-documents-head {
   align-items: flex-start;
 }
+/* 头部右侧的「全部模板」是一个短链接：文案块很宽时 flex 收缩会把它挤到不足四个字的宽度，
+   而中日韩文字在任意两字之间都能断行，390 视口下它折成两行。链接不收缩、不折行，宽度让给
+   文案块自己去换行。这条规则只作用于模板面板的头部（.contextual-documents-head 仅此一处使用），
+   不改各面板共用的 .panel-head 与 .text-button。 */
+.contextual-documents-head > .text-button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
 .contextual-document-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));

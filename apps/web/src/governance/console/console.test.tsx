@@ -61,6 +61,18 @@ const mount = (page: (ports: ConsolePorts) => ComponentType, ports: ConsolePorts
   return host;
 };
 
+const fill = (scope: TestElement, name: string, value: string): void => {
+  const field = element(scope.querySelector(`[name="${name}"]`));
+  field.value = value;
+  field.dispatchEvent(new Event('input', { bubbles: true }));
+};
+
+const submitForm = async (scope: TestElement): Promise<void> => {
+  await flush();
+  element(scope.querySelector('button[type="submit"]')).click();
+  await flush();
+};
+
 const profileRow = {
   employeeId: 'e-1',
   employeeNumber: 'E001',
@@ -158,6 +170,51 @@ describe('UI-M2 身份与授权控制台', () => {
     expect(host.textContent).toContain('首次登录将被强制修改密码');
   });
 
+  it('配置账号拒绝留在表单中，重试成功后刷新当前档案并在抽屉底部提示', async () => {
+    const ports = portsFor(
+      'governance/identity',
+      {
+        '/api/v1/user-access-profiles': [profileRow],
+      },
+      ['identity:manage'],
+      {
+        submit: vi
+          .fn()
+          .mockRejectedValueOnce(new Error('Internal server error'))
+          .mockResolvedValue(undefined),
+        fetchPage: vi.fn().mockResolvedValue({
+          items: [{ ...profileRow, loginName: 'new-login' }],
+          nextCursor: null,
+        }),
+      },
+    );
+    const host = mount(IdentityConsolePage, ports);
+    element(host.querySelector('[data-testid="kt-identity-open"]')).click();
+    await flush();
+    element(host.querySelector('[data-testid="kt-identity-action-provision"]')).click();
+    await flush();
+    const form = element(host.querySelector('[data-testid="kt-identity-form-provision"]'));
+    fill(form, 'login', 'new-login');
+    fill(form, 'password', 'a-local-test-password');
+    await submitForm(form);
+    expect(form.querySelector('[role="alert"]')?.textContent).toBe(
+      '服务器处理请求时出错，请稍后重试',
+    );
+    expect(ports.fetchPage).not.toHaveBeenCalled();
+    await submitForm(form);
+    expect(ports.submit).toHaveBeenLastCalledWith(
+      '/api/v1/employees/e-1/identity',
+      { login: 'new-login', password: 'a-local-test-password' },
+      'PUT',
+    );
+    expect(host.querySelector('[data-testid="kt-identity-summary"]')?.textContent).toContain(
+      'new-login',
+    );
+    expect(host.querySelector('.drawer-footer [role="status"]')?.textContent).toBe(
+      '已开通登录账号',
+    );
+  });
+
   it('继续加载携带 cursor（分页契约）', async () => {
     const ports = portsFor('governance/identity', {
       '/api/v1/user-access-profiles': { items: [profileRow], nextCursor: 'c-1' },
@@ -170,6 +227,52 @@ describe('UI-M2 身份与授权控制台', () => {
 });
 
 describe('UI-M2 组织与员工控制台', () => {
+  it('新建员工拒绝留在表单，成功后刷新员工和组织人数', async () => {
+    const employee = {
+      id: 'e-wfd',
+      employeeNumber: 'WF-01',
+      displayName: '验证员工',
+      organizationId: 'org-1',
+      active: true,
+    };
+    const ports = portsFor(
+      'governance/organization',
+      {
+        '/api/v1/organizations': [{ id: 'org-1', code: 'HQ', name: '总部' }],
+        '/api/v1/employees': [],
+      },
+      ['employee:create'],
+      {
+        submit: vi
+          .fn()
+          .mockRejectedValueOnce(new Error('Request validation failed'))
+          .mockResolvedValue(undefined),
+        fetchPage: vi.fn().mockResolvedValue({ items: [employee], nextCursor: null }),
+      },
+    );
+    const host = mount(OrganizationConsolePage, ports);
+    element(host.querySelector('[data-testid="kt-org-create"]')).click();
+    await flush();
+    const form = element(host.querySelector('[data-testid="kt-org-form-create"]'));
+    fill(form, 'organizationId', 'org-1');
+    fill(form, 'employeeNumber', 'WF-01');
+    fill(form, 'displayName', '验证员工');
+    fill(form, 'email', 'employee@example.test');
+    await submitForm(form);
+    expect(form.querySelector('[role="alert"]')?.textContent).toBe(
+      '提交的内容不符合要求，请检查后重试',
+    );
+    await submitForm(form);
+    expect(host.querySelector('[data-testid="kt-org-form-create"]')).toBeNull();
+    expect(host.querySelector('[data-testid="console-notice"]')?.textContent).toBe(
+      '已创建员工「验证员工」',
+    );
+    expect(host.querySelector('table')?.textContent).toContain('验证员工');
+    expect(element(host.querySelector('[data-testid="kt-org-count"]')).getAttribute('title')).toBe(
+      '直属 1 人',
+    );
+  });
+
   it('左树右表；选中组织触发 organization 服务端过滤', async () => {
     const ports = portsFor('governance/organization', {
       '/api/v1/organizations': [
@@ -303,6 +406,29 @@ describe('UI-M2b 配置页控制台（六页通用面）', () => {
     return mount((ports) => spec(ports), cfgPorts(route, views, extra));
   };
 
+  it('配置提交被拒绝时保留表单并在提交按钮旁显示中文原因', async () => {
+    const spec = configConsoleFor('governance/numbering');
+    if (!spec) throw new Error('numbering spec');
+    const ports = cfgPorts('governance/numbering', {}, ['number:create']);
+    vi.mocked(ports.submit).mockRejectedValueOnce(new Error('Request validation failed'));
+    const host = mount(spec, ports);
+    element(host.querySelector('[data-testid="kt-cfg-action-create"]')).click();
+    await flush();
+    const form = element(host.querySelector('[data-testid="kt-cfg-form-create"]'));
+    for (const [name, value] of [
+      ['code', 'WF-D'],
+      ['padding', '4'],
+      ['startingValue', '1'],
+      ['increment', '1'],
+    ] as const)
+      fill(form, name, value);
+    await submitForm(form);
+    expect(form.querySelector('form [role="alert"]')?.textContent).toBe(
+      '提交的内容不符合要求，请检查后重试',
+    );
+    expect(ports.fetchPage).not.toHaveBeenCalled();
+  });
+
   it('六页宿主 spec 全部注册（master-data/numbering/rules/workflow/notifications/system）', () => {
     for (const route of [
       'governance/master-data',
@@ -385,6 +511,12 @@ describe('UI-M2b 配置页控制台（六页通用面）', () => {
       host.querySelector('[data-testid="kt-cfg-form-publish"] button[type="submit"]'),
     ).click();
     await flush();
+    expect(ports.submit).not.toHaveBeenCalled();
+    element(host.querySelector('[role="alertdialog"] button.primary')).click();
+    await flush();
+    expect(host.querySelector('[data-testid="console-notice"]')?.textContent).toBe(
+      '发布业务规则成功',
+    );
     expect(ports.submit).toHaveBeenCalledExactlyOnceWith(
       '/api/v1/rules/ru-1/publish',
       { version: 2 },
@@ -427,6 +559,44 @@ describe('UI-M2b 配置页控制台（六页通用面）', () => {
     expect(host.querySelector('[data-testid="kt-tenant-setting-edit"]')).not.toBeNull();
     expect(host.querySelector('[data-testid="kt-tenant-setting-publish"]')).not.toBeNull();
     expect(host.textContent).toContain('发布于 2026-11-18');
+    const appendix = element(host.querySelector('[data-testid="kt-tenant-settings"]'));
+    element(appendix.querySelector('[data-testid="kt-tenant-setting-edit"]')).click();
+    await flush();
+    fill(appendix, 'value', '14');
+    await submitForm(appendix);
+    expect(ports.submit).toHaveBeenCalledExactlyOnceWith(
+      '/api/v1/tenant-settings',
+      { key: tenantItem.key, value: 14 },
+      'PUT',
+    );
+    expect(appendix.querySelector('[role="status"]')?.textContent).toBe(
+      '已保存「密码最小长度」草稿',
+    );
+    element(appendix.querySelector('[data-testid="kt-tenant-setting-publish"]')).click();
+    await flush();
+    expect(ports.submit).toHaveBeenCalledTimes(1);
+    const cancel = element(appendix.querySelector('[role="alertdialog"] button.secondary'));
+    cancel.click();
+    await flush();
+    expect(ports.submit).toHaveBeenCalledTimes(1);
+    element(appendix.querySelector('[data-testid="kt-tenant-setting-publish"]')).click();
+    await flush();
+    vi.mocked(ports.submit).mockRejectedValueOnce(new Error('Request validation failed'));
+    element(appendix.querySelector('[role="alertdialog"] button.primary')).click();
+    await flush();
+    expect(appendix.querySelector('.console-chip [role="alert"]')?.textContent).toBe(
+      '提交的内容不符合要求，请检查后重试',
+    );
+    element(appendix.querySelector('[data-testid="kt-tenant-setting-publish"]')).click();
+    await flush();
+    element(appendix.querySelector('[role="alertdialog"] button.primary')).click();
+    await flush();
+    expect(ports.submit).toHaveBeenLastCalledWith(
+      '/api/v1/tenant-settings/publish',
+      { key: tenantItem.key },
+      'POST',
+    );
+    expect(appendix.querySelector('[role="status"]')?.textContent).toBe('已发布「密码最小长度」');
   });
 
   it('权限门：无对应 manage 权限时动作按钮不出现', () => {

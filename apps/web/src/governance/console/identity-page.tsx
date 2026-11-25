@@ -1,6 +1,7 @@
 import { signal } from '@preact/signals';
 import {
   ActionBar,
+  ConfirmDialog,
   DataTable,
   DetailDrawer,
   EmptyState,
@@ -9,6 +10,9 @@ import {
   type DataTableColumn,
   type FormSectionField,
 } from '@kingturf/ui';
+import { failureMessage } from '../../shared/api-error-message';
+import { ConsoleNotice } from '../../shared/console-notice';
+import { FocusAnchor } from '../../shared/focus-anchor';
 import { IdentityMatrix, type MatrixView } from './identity-matrix';
 import { createMatrixState, type MatrixLens, type MatrixState } from './identity-matrix-state';
 import {
@@ -35,6 +39,9 @@ type IdentityState = Readonly<{
   rows: readonly ProfileRow[];
   selected: ProfileRow | null;
   activeForm: 'state' | 'provision' | null;
+  actionError: string;
+  notice: string;
+  stateConfirm: Readonly<{ settle: (accepted: boolean) => void }> | null;
   identityManage: boolean;
   matrix: MatrixView;
   open: (employeeId: string | null) => void;
@@ -112,6 +119,7 @@ const IdentityView = (state: IdentityState) => (
       emptyTitle="暂无用户档案"
       emptyDescription="开通身份后用户会出现在这里"
     />
+    {state.selected === null ? <ConsoleNotice message={state.notice} /> : null}
     {state.selected ? (
       <DetailDrawer
         title={`用户 360 · ${textOf(state.selected.displayName, textOf(state.selected.employeeNumber, ''))}`}
@@ -142,16 +150,36 @@ const IdentityView = (state: IdentityState) => (
                 配置登录账号
               </button>
             ) : null}
+            <ConsoleNotice message={state.notice} />
           </ActionBar>
         }
       >
         <IdentitySummary row={state.selected} />
         <IdentityMatrix {...state.matrix} />
         {state.activeForm === 'state' && typeof state.selected.identityId === 'string' ? (
-          <IdentityStateForm row={state.selected} onSubmit={state.runAction} />
+          <IdentityStateForm
+            row={state.selected}
+            onSubmit={state.runAction}
+            error={state.actionError}
+          />
         ) : null}
         {state.activeForm === 'provision' ? (
-          <ProvisionForm row={state.selected} onSubmit={state.runAction} />
+          <ProvisionForm
+            row={state.selected}
+            onSubmit={state.runAction}
+            error={state.actionError}
+          />
+        ) : null}
+        <FocusAnchor token={state.activeForm ?? ''} />
+        {state.stateConfirm ? (
+          <ConfirmDialog
+            title={`确认账号操作 · ${textOf(state.selected.displayName)}`}
+            message="此操作将强制撤销活动会话，被下线的用户必须重新登录。"
+            confirmLabel="确认执行"
+            destructive
+            onCancel={() => state.stateConfirm?.settle(false)}
+            onConfirm={() => state.stateConfirm?.settle(true)}
+          />
         ) : null}
         {!state.activeForm &&
         Array.isArray(state.selected.roles) &&
@@ -211,6 +239,9 @@ export function IdentityConsolePage(ports: ConsolePorts) {
   const loadError = signal('');
   const selectedId = signal<string | null>(null);
   const activeForm = signal<null | 'state' | 'provision'>(null);
+  const actionError = signal('');
+  const notice = signal('');
+  const stateConfirm = signal<IdentityState['stateConfirm']>(null);
 
   const identityManage = mayManageIdentity(ports.permissions);
   const assignmentManage = mayManageAssignments(ports.permissions);
@@ -231,7 +262,7 @@ export function IdentityConsolePage(ports: ConsolePorts) {
       loadError.value = error instanceof Error ? error.message : '用户访问档案加载失败';
     }
   };
-  const matrix = createMatrixState(ports, rows, () => roles, refresh);
+  const matrix = createMatrixState(ports, rows, () => roles, refresh, notice);
 
   const loadMore = (): void => {
     const cursor = profiles.value.nextCursor;
@@ -253,15 +284,30 @@ export function IdentityConsolePage(ports: ConsolePorts) {
       });
   };
 
-  const runAction = (
-    path: string,
-    payload: Record<string, unknown>,
-    method: 'POST' | 'PUT' | 'PATCH' | 'DELETE',
-  ): Promise<void> =>
-    ports.submit(path, payload, method).then(() => {
-      activeForm.value = null;
-      return refresh();
-    });
+  const runAction: ActionSubmit = async (path, payload, method) => {
+    const form = activeForm.value;
+    const employeeId = selectedId.value;
+    actionError.value = '';
+    notice.value = '';
+    if (form === 'state' && (payload.active === false || payload.revokeSessions === true)) {
+      const accepted = await new Promise<boolean>((settle) => {
+        stateConfirm.value = { settle };
+      });
+      stateConfirm.value = null;
+      if (!accepted) return;
+    }
+    const failure = form === 'state' ? '账号状态更新失败' : '开通登录账号失败';
+    try {
+      await ports.submit(path, payload, method);
+    } catch (error) {
+      if (activeForm.value === form && selectedId.value === employeeId)
+        actionError.value = failureMessage(error, failure);
+      return;
+    }
+    if (activeForm.value === form && selectedId.value === employeeId) activeForm.value = null;
+    notice.value = form === 'state' ? '已更新账号状态' : '已开通登录账号';
+    await refresh();
+  };
 
   const Page = () =>
     IdentityView({
@@ -271,14 +317,24 @@ export function IdentityConsolePage(ports: ConsolePorts) {
       rows: rows(),
       selected: selected(),
       activeForm: activeForm.value,
+      actionError: actionError.value,
+      notice: notice.value,
+      stateConfirm: stateConfirm.value,
       identityManage,
       matrix: matrixView(matrix, assignmentManage, selectedId.value),
       open: (employeeId) => {
         selectedId.value = employeeId;
         activeForm.value = null;
+        actionError.value = '';
+        notice.value = '';
+        matrix.error.value = '';
+        matrix.cancelRevoke();
       },
       openForm: (form) => {
         activeForm.value = form;
+        actionError.value = '';
+        notice.value = '';
+        matrix.error.value = '';
       },
       close: () => {
         selectedId.value = null;
@@ -327,7 +383,8 @@ type ActionSubmit = (
 const IdentityStateForm = ({
   row,
   onSubmit,
-}: Readonly<{ row: ProfileRow; onSubmit: ActionSubmit }>) => {
+  error,
+}: Readonly<{ row: ProfileRow; onSubmit: ActionSubmit; error: string }>) => {
   const fields: readonly FormSectionField[] = [
     {
       name: 'active',
@@ -357,6 +414,7 @@ const IdentityStateForm = ({
         description="停用账号会立即撤销全部活动会话；启用账号不会恢复旧会话。"
         fields={fields}
         submitLabel="停用或启用账号"
+        error={error}
         onSubmit={(values) =>
           onSubmit(
             `/api/v1/identities/${String(row.identityId)}/state`,
@@ -375,7 +433,8 @@ const IdentityStateForm = ({
 const ProvisionForm = ({
   row,
   onSubmit,
-}: Readonly<{ row: ProfileRow; onSubmit: ActionSubmit }>) => {
+  error,
+}: Readonly<{ row: ProfileRow; onSubmit: ActionSubmit; error: string }>) => {
   const fields: readonly FormSectionField[] = [
     { name: 'login', label: '登录名', required: true, minLength: 3, maxLength: 120 },
     {
@@ -394,6 +453,7 @@ const ProvisionForm = ({
         description="登录名必须唯一；密码只在本次提交中发送，不会在页面回显。"
         fields={fields}
         submitLabel="开通登录账号"
+        error={error}
         onSubmit={(values) =>
           onSubmit(
             `/api/v1/employees/${String(row.employeeId)}/identity`,

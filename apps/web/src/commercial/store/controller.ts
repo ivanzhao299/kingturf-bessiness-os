@@ -12,10 +12,28 @@ import {
   noteCommercialSourceRead,
 } from './read-owner';
 import { commercialDashboardQuery } from './dashboard-query';
+
+// 客户与员工清单的权威来源（CRM 控制器的结构面）：只读两个数组。
+export type CrmRecordsSource = Readonly<{
+  customers: readonly Customer[];
+  employees: readonly Employee[];
+}>;
 export class CommercialController {
   public opportunities: readonly Opportunity[] = [];
-  public customers: readonly Customer[] = [];
-  public employees: readonly Employee[] = [];
+  // WFC-1：客户与员工清单以 CRM 控制器为准——它在新建客户与每次 load() 之后换成新数组。此前 bootstrap
+  // 在构建工作台时把当时的数组引用一次性拷贝到这里，之后 CRM 侧换新数组、这里仍是旧的：信用额度的
+  // 客户下拉里选不到本会话新建的客户。现在读取时取 CRM 控制器的当前值（followCrmRecords 由 bootstrap
+  // 调用一次），不新增请求；没有接入来源时与此前一样是空清单。
+  private crmRecords: CrmRecordsSource | null = null;
+  public get customers(): readonly Customer[] {
+    return this.crmRecords?.customers ?? [];
+  }
+  public get employees(): readonly Employee[] {
+    return this.crmRecords?.employees ?? [];
+  }
+  public followCrmRecords(source: CrmRecordsSource): void {
+    this.crmRecords = source;
+  }
   public loading = false;
   public message = '';
   public revisionState: Record<string, unknown> | null = null;

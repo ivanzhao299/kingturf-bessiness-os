@@ -4,7 +4,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import { h, render } from 'preact';
 import type { ComponentType } from 'preact';
-import { installGlobalTestDom, type TestElement } from '../../../test/fixtures/preact-dom';
+import {
+  installGlobalTestDom,
+  TestDocument,
+  type TestElement,
+} from '../../../test/fixtures/preact-dom';
 import { AuditConsolePage } from './audit-page';
 import { OrganizationConsolePage } from './organization-page';
 import { configConsoleFor } from './config-specs';
@@ -653,23 +657,29 @@ describe('GOV-UX ① 用户 360 抽屉角色矩阵（按角色）', () => {
     expect(q(host, '[data-testid="kt-identity-action-revoke"]')).toBeNull();
     expect(q(host, '[data-testid="kt-identity-summary"]')).not.toBeNull();
     expect(q(host, '[data-testid="kt-identity-matrix"]')).not.toBeNull();
+    expect(q(host, '.drawer-footer [role="status"]')?.textContent).toBe(
+      '已为 王小明 分配角色 KT_OPS',
+    );
   });
 
-  it('取消勾选不直接撤销：内联确认列出连带失去的权限，确认后 DELETE，取消则不发请求', async () => {
+  it('取消勾选不直接撤销：确认框列出连带失去的权限，确认后 DELETE，取消则不发请求', async () => {
     const { host, ports } = await openMatrix();
     cell(host, { 'data-employee': 'e-1', 'data-role': 'r-1' })?.click();
     await flush();
     expect(ports.submit).not.toHaveBeenCalled();
-    const confirm = q(host, '[data-testid="kt-matrix-confirm"]');
+    const confirm = q(host, '[role="alertdialog"]');
     expect(confirm?.textContent).toContain('KT_SALES');
     expect(confirm?.textContent).toContain('quote:read');
-    element(q(host, '[data-testid="kt-matrix-confirm-cancel"]')).click();
+    expect(TestDocument.current.activeElement).toBe(
+      q(host, '[role="alertdialog"] button.secondary'),
+    );
+    element(q(host, '[role="alertdialog"] button.secondary')).click();
     await flush();
-    expect(q(host, '[data-testid="kt-matrix-confirm"]')).toBeNull();
+    expect(q(host, '[role="alertdialog"]')).toBeNull();
     expect(ports.submit).not.toHaveBeenCalled();
     cell(host, { 'data-employee': 'e-1', 'data-role': 'r-1' })?.click();
     await flush();
-    element(q(host, '[data-testid="kt-matrix-confirm-ok"]')).click();
+    element(q(host, '[role="alertdialog"] button.primary')).click();
     await flush();
     expect(ports.submit).toHaveBeenCalledExactlyOnceWith(
       '/api/v1/assignments',
@@ -686,8 +696,8 @@ describe('GOV-UX ① 用户 360 抽屉角色矩阵（按角色）', () => {
     });
     cell(host, { 'data-employee': 'e-3', 'data-role': 'r-2' })?.click();
     await flush();
-    expect(q(host, '[data-testid="kt-matrix-error"]')?.textContent).toContain(
-      'segregation of duties',
+    expect(q(host, '[data-testid="kt-matrix-error"]')?.textContent).toBe(
+      '分配该角色会违反职责分离规则',
     );
     expect(
       cell(host, { 'data-employee': 'e-3', 'data-role': 'r-2' })?.getAttribute('aria-checked'),
@@ -751,7 +761,7 @@ describe('GOV-UX ① 用户 360 抽屉角色矩阵（按权限点）', () => {
     );
   });
 
-  it('多角色来源处如实只读并说明原因；撤销仍走内联确认并列出连带权限', async () => {
+  it('多角色来源处如实只读并说明原因；撤销仍走确认框并列出连带权限', async () => {
     const { host, ports } = await openMatrix();
     element(q(host, '[data-testid="kt-matrix-lens-permission"]')).click();
     await flush();
@@ -762,8 +772,8 @@ describe('GOV-UX ① 用户 360 抽屉角色矩阵（按权限点）', () => {
     expect(ports.submit).not.toHaveBeenCalled();
     cell(host, { 'data-employee': 'e-1', 'data-capability': 'customer:read' })?.click();
     await flush();
-    expect(q(host, '[data-testid="kt-matrix-confirm"]')?.textContent).toContain('quote:read');
-    element(q(host, '[data-testid="kt-matrix-confirm-ok"]')).click();
+    expect(q(host, '[role="alertdialog"]')?.textContent).toContain('quote:read');
+    element(q(host, '[role="alertdialog"] button.primary')).click();
     await flush();
     expect(ports.submit).toHaveBeenCalledExactlyOnceWith(
       '/api/v1/assignments',

@@ -1,5 +1,6 @@
 import { signal, type Signal } from '@preact/signals';
 import {
+  ConfirmDialog,
   DataTable,
   DetailDrawer,
   PageHeader,
@@ -7,7 +8,7 @@ import {
   type DataTableColumn,
 } from '@kingturf/ui';
 import type { QuoteConsolePorts, QuoteRow, QuoteSnapshot } from './quote-ports';
-import { CreateForm, IssueForm, ApproveForm, ReviseForm } from './quote-forms';
+import { CreateForm, ApproveForm, ReviseForm } from './quote-forms';
 import {
   MarginMeter,
   QuoteTimeline,
@@ -268,15 +269,19 @@ const QuoteDrawer = ({ state }: Readonly<{ state: QuotePageState }>) => {
       footer={state.notice === '' ? undefined : <ConsoleNotice message={state.notice} />}
     >
       <QuoteDetail state={state} />
-      {/* TD-WF-005 / TD-WF-012：行内表单开着时，提交失败显示在该表单自己的提示区（FormSection 的
-          error，紧挨提交按钮）；这里的错误位只留给不经表单的动作。 */}
-      {state.activeForm === null && state.submitError !== '' ? (
-        <p class="console-error" role="alert" data-testid="kt-quote-submit-error">
-          {state.submitError}
-        </p>
-      ) : null}
-      {state.activeForm === null ? (
+      {state.activeForm === null || state.activeForm === 'issue' ? (
         <div class="console-actions" data-testid="kt-quote-actions">
+          {state.submitError !== '' ? (
+            <p
+              class="console-error"
+              role="alert"
+              tabIndex={-1}
+              data-testid="kt-quote-submit-error"
+              ref={(node) => node?.focus()}
+            >
+              {state.submitError}
+            </p>
+          ) : null}
           {mayRevise ? (
             <button
               type="button"
@@ -306,6 +311,7 @@ const QuoteDrawer = ({ state }: Readonly<{ state: QuotePageState }>) => {
               type="button"
               class="primary"
               data-testid="kt-quote-issue"
+              disabled={state.loading}
               onClick={() => {
                 state.openForm('issue');
               }}
@@ -332,7 +338,18 @@ const QuoteDrawer = ({ state }: Readonly<{ state: QuotePageState }>) => {
       ) : null}
       {state.activeForm === 'revise' ? <ReviseForm state={state} /> : null}
       {state.activeForm === 'approve' ? <ApproveForm state={state} /> : null}
-      {state.activeForm === 'issue' ? <IssueForm state={state} /> : null}
+      {state.activeForm === 'issue' ? (
+        <ConfirmDialog
+          title={`签发报价 · ${ports.textValue(quote.quoteNumber, '')}`}
+          message="签发后将生成只读快照，后续合同只能引用该快照。"
+          confirmLabel="确认签发"
+          onCancel={state.closeCreate}
+          onConfirm={() => {
+            state.closeCreate();
+            void state.runCommand(quote, 'issue', {});
+          }}
+        />
+      ) : null}
       {/* TD-WF-014④：行内表单开合、状态变化让原来的按钮消失后，把键盘焦点带回抽屉。 */}
       <FocusAnchor token={`${String(state.activeForm)}|${status}`} />
     </DetailDrawer>
@@ -547,6 +564,7 @@ const quoteActions = (ports: QuoteConsolePorts, bundle: QuoteSignalBundle): Quot
     kind: 'approve' | 'issue',
     values: Readonly<Record<string, string>>,
   ): Promise<void> => {
+    if (bundle.loading.value) return;
     bundle.loading.value = true;
     bundle.submitError.value = '';
     try {
@@ -559,7 +577,10 @@ const quoteActions = (ports: QuoteConsolePorts, bundle: QuoteSignalBundle): Quot
       closeForm(bundle);
       bundle.notice.value = `${kind === 'approve' ? '已批准' : '已签发'}报价 ${ports.textValue(quote.quoteNumber, '')}`;
     } catch (error: unknown) {
-      fail(error, bundle, kind === 'approve' ? '报价批准失败' : '报价签发失败');
+      bundle.submitError.value = failureMessage(
+        error,
+        kind === 'approve' ? '报价批准失败' : '报价签发失败',
+      );
     } finally {
       bundle.loading.value = false;
     }

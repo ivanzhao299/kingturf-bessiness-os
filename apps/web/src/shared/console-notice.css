@@ -1,0 +1,23 @@
+/* 写操作成功后的状态行（TD-WF-014①）：轻量的一条，不做会自动消失的浮层；没有内容时不占位。 */
+.console-notice {
+  margin: 0;
+  padding: var(--kt-space-2) var(--kt-space-3);
+  border: 1px solid var(--kt-color-success-soft);
+  border-radius: var(--kt-radius-md);
+  background: var(--kt-color-success-soft);
+  color: var(--kt-color-success);
+  font-size: var(--kt-font-size-body);
+  line-height: 1.5;
+}
+/* 空状态行保留在无障碍树中，加入文案时才能通过 role=status 播报。 */
+.console-notice:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}

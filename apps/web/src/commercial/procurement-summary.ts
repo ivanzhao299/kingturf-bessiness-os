@@ -25,10 +25,26 @@ type SummaryCard = Readonly<{
   count: (input: ProcurementSummaryInput, recordText: RecordText) => number;
 }>;
 
-// 四张卡的口径（与原面板逐条一致）：状态非 APPROVED 的供应商、未关闭未取消的询价单、
-// 已签发与部分收货的采购单、待检隔离的库存批次。前三张对应三条子路由；「待检库存」的明细
-// 是本页下方的「批次库存台账」（逐批带质检状态），收货管理页只列收货单、点开详情才看得到
-// 批次质检状态，跳过去找不到与这个数字对应的清单，所以不做链接。
+// TD-PROC-012（2026-11-24 裁定）：待准入供应商 = 没有任何已批准或可有条件批准的物料准入记录的供应商
+// （APPROVED / CONDITIONAL 都算已准入）。原口径按 suppliers.status 过滤，而供应商状态只有
+// ACTIVE / ON_HOLD / INACTIVE，没有 APPROVED——这张卡恒等于供应商总数。供应商列表每行自带
+// qualifications 聚合（supplier_item_qualifications，状态 APPROVED | CONDITIONAL | REJECTED），
+// 所以不必新增请求；按裁定只看准入状态，不看准入记录的有效期。
+const ADMITTED_QUALIFICATIONS: readonly string[] = ['APPROVED', 'CONDITIONAL'];
+const isAdmitted = (supplier: Rows[number], recordText: RecordText): boolean => {
+  const raw = supplier.qualifications;
+  const qualifications: readonly unknown[] = Array.isArray(raw) ? raw : [];
+  return qualifications.some((item) =>
+    ADMITTED_QUALIFICATIONS.includes(
+      recordText(item as Record<string, unknown>, 'status', 'status'),
+    ),
+  );
+};
+
+// 四张卡的口径：没有任何已批准 / 可有条件批准准入记录的供应商（见上）、未关闭未取消的询价单、
+// 已签发与部分收货的采购单、待检隔离的库存批次（后三张与原面板逐条一致）。前三张对应三条子路由；
+// 「待检库存」的明细是本页下方的「批次库存台账」（逐批带质检状态），收货管理页只列收货单、点开详情
+// 才看得到批次质检状态，跳过去找不到与这个数字对应的清单，所以不做链接。
 const SUMMARY_CARDS: readonly SummaryCard[] = [
   {
     id: 'suppliers',
@@ -36,7 +52,7 @@ const SUMMARY_CARDS: readonly SummaryCard[] = [
     unit: ' 家',
     route: 'procurement/suppliers',
     count: (input, recordText) =>
-      input.suppliers.filter((item) => recordText(item, 'status', 'status') !== 'APPROVED').length,
+      input.suppliers.filter((item) => !isAdmitted(item, recordText)).length,
   },
   {
     id: 'rfqs',

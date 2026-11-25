@@ -1,5 +1,8 @@
 import { signal } from '@preact/signals';
-import { FormSection, StatusBadge, type FormSectionField } from '@kingturf/ui';
+import { ConfirmDialog, FormSection, StatusBadge, type FormSectionField } from '@kingturf/ui';
+import { failureMessage } from '../../shared/api-error-message';
+import { ConsoleNotice } from '../../shared/console-notice';
+import { FocusAnchor } from '../../shared/focus-anchor';
 import { recordOf, type ConsolePorts } from './ports';
 
 // D5（ADR-0013）系统参数区——Preact 迁移版（原 vanilla createTenantSettingsSection
@@ -57,10 +60,15 @@ export function TenantSettingsAppendix(ports: ConsolePorts): preact.ComponentTyp
   const error = signal('');
   const busy = signal(false);
   const editKey = signal<string | null>(null);
+  const pending = signal<SettingItem | null>(null);
+  const publishing = signal(false);
+  const draftError = signal('');
+  const publishError = signal<{ key: string; message: string } | null>(null);
+  const notice = signal('');
 
-  const reload = (): void => {
+  const reload = async (): Promise<void> => {
     busy.value = true;
-    void ports
+    await ports
       .fetchPage('/api/v1/tenant-settings')
       .then((page) => {
         items.value = page.items.map((item) => recordOf(item) as unknown as SettingItem);
@@ -76,32 +84,43 @@ export function TenantSettingsAppendix(ports: ConsolePorts): preact.ComponentTyp
 
   const MayManage = ports.permissions.has('tenant-setting:manage');
 
-  const saveDraft = (item: SettingItem, raw: string): Promise<void> =>
-    ports
-      .submit(
+  const saveDraft = async (item: SettingItem, raw: string): Promise<void> => {
+    draftError.value = '';
+    try {
+      await ports.submit(
         '/api/v1/tenant-settings',
-        {
-          key: item.key,
-          value: item.valueType === 'integer' ? Number(raw) : raw,
-        },
+        { key: item.key, value: item.valueType === 'integer' ? Number(raw) : raw },
         'PUT',
-      )
-      .then(() => {
-        editKey.value = null;
-        reload();
-      });
+      );
+    } catch (error) {
+      if (editKey.value === item.key) draftError.value = failureMessage(error, '参数草稿保存失败');
+      return;
+    }
+    if (editKey.value === item.key) editKey.value = null;
+    notice.value = `已保存「${item.label}」草稿`;
+    await reload();
+  };
 
-  const publishItem = (key: string): void => {
-    void ports.submit('/api/v1/tenant-settings/publish', { key }, 'POST').then(() => {
+  const publishItem = async (item: SettingItem): Promise<void> => {
+    pending.value = null;
+    publishing.value = true;
+    try {
+      await ports.submit('/api/v1/tenant-settings/publish', { key: item.key }, 'POST');
       editKey.value = null;
-      reload();
-    });
+      notice.value = `已发布「${item.label}」`;
+      await reload();
+    } catch (error) {
+      publishError.value = { key: item.key, message: failureMessage(error, '参数发布失败') };
+    } finally {
+      publishing.value = false;
+    }
   };
 
   const Appendix = () => (
     <section class="console-split-tree" data-testid="kt-tenant-settings">
       <h3>系统参数</h3>
       <StatusBadge tone="success">配置管理</StatusBadge>
+      <ConsoleNotice message={notice.value} />
       {error.value !== '' ? (
         <p class="console-error" role="alert">
           {error.value}
@@ -130,6 +149,9 @@ export function TenantSettingsAppendix(ports: ConsolePorts): preact.ComponentTyp
                 data-testid="kt-tenant-setting-edit"
                 onClick={() => {
                   editKey.value = item.key;
+                  draftError.value = '';
+                  publishError.value = null;
+                  notice.value = '';
                 }}
               >
                 修改参数
@@ -138,12 +160,21 @@ export function TenantSettingsAppendix(ports: ConsolePorts): preact.ComponentTyp
                 type="button"
                 class="secondary compact"
                 data-testid="kt-tenant-setting-publish"
+                disabled={publishing.value}
                 onClick={() => {
-                  publishItem(item.key);
+                  publishError.value = null;
+                  notice.value = '';
+                  pending.value = item;
                 }}
               >
                 发布该参数
               </button>
+              <FocusAnchor token={String(editKey.value === item.key)} />
+              {publishError.value?.key === item.key ? (
+                <p class="console-error" role="alert">
+                  {publishError.value.message}
+                </p>
+              ) : null}
             </div>
           ) : null}
           {editKey.value === item.key ? (
@@ -152,6 +183,7 @@ export function TenantSettingsAppendix(ports: ConsolePorts): preact.ComponentTyp
               description="保存仅创建新草稿；发布后立即生效且不可撤回，纠错需发布新版本。"
               fields={[settingField(item)]}
               submitLabel="保存草稿"
+              error={draftError.value}
               onSubmit={(values) => saveDraft(item, values.value ?? '')}
             />
           ) : null}
@@ -168,16 +200,48 @@ export function TenantSettingsAppendix(ports: ConsolePorts): preact.ComponentTyp
           </details>
         </div>
       ))}
+      {pending.value ? (
+        <PublishConfirm
+          item={pending.value}
+          onConfirm={publishItem}
+          onCancel={() => {
+            pending.value = null;
+          }}
+        />
+      ) : null}
       <button
         type="button"
         class="secondary compact"
         data-testid="kt-tenant-setting-reload"
-        onClick={reload}
+        onClick={() => {
+          void reload();
+        }}
       >
         重新读取
       </button>
     </section>
   );
-  reload();
+  void reload();
   return Appendix;
 }
+
+const PublishConfirm = ({
+  item,
+  onConfirm,
+  onCancel,
+}: Readonly<{
+  item: SettingItem;
+  onConfirm: (item: SettingItem) => Promise<void>;
+  onCancel: () => void;
+}>) => (
+  <ConfirmDialog
+    title={`发布参数 · ${item.label}`}
+    message="发布后立即生效，无法撤回。需要纠正时请发布新版本。"
+    confirmLabel="确认发布"
+    destructive
+    onCancel={onCancel}
+    onConfirm={() => {
+      void onConfirm(item);
+    }}
+  />
+);

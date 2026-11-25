@@ -183,3 +183,33 @@ it('preserves write receiver, response identity and path-specific reload boundar
   expect(reload).toHaveBeenCalledTimes(1);
   expect(controller.loading).toBe(false);
 });
+
+// WFC-1（写流程冒烟 WS-P2-04 的残余）：客户与员工清单的权威来源是 CRM 控制器，它在新建客户与每次
+// load() 之后换成新数组。此前 bootstrap 在构建工作台时把当时的数组引用一次性拷贝到商业控制器，之后
+// CRM 侧换新数组、这里仍是旧的——信用额度的客户下拉里选不到本会话新建的客户。现在读取时取 CRM 控制器
+// 的当前值；清单不从 API 读，load() 不因此多发请求。
+it('reads the customer and employee lists from the CRM records at access time (WFC-1)', async () => {
+  const api = apiStub();
+  const controller = new CommercialController(api, new Set(['opportunity:read']));
+  // 没有接入 CRM 记录时与此前相同：空清单。
+  expect(controller.customers).toEqual([]);
+  expect(controller.employees).toEqual([]);
+  const crm = {
+    customers: [{ id: 'customer-1', name: '国际学校' }],
+    employees: [{ id: 'employee-1', displayName: '销售甲' }],
+  };
+  controller.followCrmRecords(crm);
+  expect(controller.customers.map((item) => item.id)).toEqual(['customer-1']);
+  expect(controller.employees.map((item) => item.id)).toEqual(['employee-1']);
+  // 客户控制台新建客户、线索控制台刷新之后：CRM 控制器换成新数组，商业控制器读到的随之更新。
+  crm.customers = [...crm.customers, { id: 'customer-2', name: '本会话新建的客户' }];
+  crm.employees = [...crm.employees, { id: 'employee-2', displayName: '新入职销售' }];
+  expect(controller.customers.map((item) => item.id)).toEqual(['customer-1', 'customer-2']);
+  expect(controller.employees.map((item) => item.id)).toEqual(['employee-1', 'employee-2']);
+  // 不新增请求：load() 读的视图里没有客户与员工清单，清单只来自 CRM 记录。
+  await controller.load();
+  const requested = api.list.mock.calls.map((call: readonly unknown[]) => String(call[0]));
+  expect(requested).not.toContain('/api/v1/customers');
+  expect(requested).not.toContain('/api/v1/employees');
+  expect(controller.customers.map((item) => item.id)).toEqual(['customer-1', 'customer-2']);
+});

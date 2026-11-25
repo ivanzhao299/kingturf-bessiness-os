@@ -13,6 +13,8 @@ import type { PolicyConsolePorts, PolicyRow } from './policy-ports';
 import { failureMessage } from '../../shared/api-error-message';
 import { syncSelected } from './selected-sync';
 import { FocusAnchor } from './focus-anchor';
+import { ConsoleNotice } from './console-notice';
+import { confirmFormWrite, ConsoleConfirmDialog, createConfirm } from './console-confirm';
 
 // U3-COM-6（ADR-0014 分域重写）：销售政策控制台——原 vanilla policy workbench 能力面
 // 等价迁移（新建/版本发布/政策评估；列表/筛选/详情抽屉含版本与毛利规则）。
@@ -25,6 +27,10 @@ type PolicyPageState = Readonly<{
   search: string;
   loadError: string;
   submitError: string;
+  // TD-WF-014①（WFD 补齐）：最近一次写操作的成功提示。
+  notice: string;
+  /** 页面级「执行政策评估」表单的提交错误（WFD）：显示在该表单的提示区，不进 loadError。 */
+  evaluateError: string;
   loading: boolean;
   selected: PolicyRow | null;
   activeForm: PolicyFormKind;
@@ -228,6 +234,8 @@ const PolicyDrawer = ({ state }: Readonly<{ state: PolicyPageState }>) => {
       onClose={() => {
         state.open(null);
       }}
+      // TD-WF-014①：写成功的提示放在抽屉底部，不随抽屉体滚走。
+      footer={state.notice === '' ? undefined : <ConsoleNotice message={state.notice} />}
     >
       <PolicyDetail state={state} />
       {/* TD-WF-005 / TD-WF-012：行内表单开着时，提交失败显示在该表单自己的提示区（FormSection 的
@@ -318,6 +326,9 @@ const EvaluateForm = ({ state }: Readonly<{ state: PolicyPageState }>) => {
         { name: 'discount', label: '拟定折扣（%）', type: 'number', required: true, value: '0' },
       ]}
       submitLabel="执行政策评估"
+      // WFD：失败原因显示在这张表单自己的提示区（紧挨提交按钮，出现时滚进可视区）。此前它走 loadError，
+      // 显示在页面顶部与表格的错误面里——评估表单在页面底部，两处都在视口之外。
+      error={state.evaluateError}
       onSubmit={(values) => state.runEvaluate(values)}
     />
   );
@@ -383,6 +394,8 @@ const PolicyView = (state: PolicyPageState) => {
           ) : null
         }
       />
+      {/* TD-WF-014①：详情抽屉没开着时，写成功的提示显示在页头下方。 */}
+      {state.selected ? null : <ConsoleNotice message={state.notice} />}
       <div class="commercial-console-filters">
         {(['ALL', 'PUBLISHED', 'DRAFT', 'RETIRED'] as const).map((option) => (
           <button
@@ -451,6 +464,10 @@ export function PolicyConsolePage(ports: PolicyConsolePorts) {
     selected: signal<PolicyRow | null>(null),
     activeForm: signal<PolicyFormKind>(null),
     shownCount: signal(20),
+    // TD-WF-014①：最近一次写操作的成功提示。
+    notice: signal(''),
+    // WFD：页面级评估表单自己的提交错误。
+    evaluateError: signal(''),
   };
 
   const fail = (error: unknown, fallback: string): void => {
@@ -489,7 +506,15 @@ export function PolicyConsolePage(ports: PolicyConsolePorts) {
     }
   };
 
+  const confirmation = createConfirm();
+  const confirmPublication = (code: string): Promise<boolean> =>
+    confirmFormWrite(confirmation, {
+      title: `发布销售政策 · ${code}`,
+      message: '发布后此版本规则冻结，后续调整须发布新版本。',
+      confirmLabel: '确认发布',
+    });
   const runCreate = async (values: Readonly<Record<string, string>>): Promise<void> => {
+    if (!(await confirmPublication(values.code ?? ''))) return;
     bundle.loading.value = true;
     bundle.submitError.value = '';
     try {
@@ -501,6 +526,7 @@ export function PolicyConsolePage(ports: PolicyConsolePorts) {
       const fresh = await ports.refresh();
       applyPolicies(fresh.policies);
       closeForm();
+      bundle.notice.value = `已发布销售政策 ${values.code ?? ''}`;
     } catch (error: unknown) {
       fail(error, '销售政策创建失败');
     } finally {
@@ -512,6 +538,7 @@ export function PolicyConsolePage(ports: PolicyConsolePorts) {
     policy: PolicyRow,
     values: Readonly<Record<string, string>>,
   ): Promise<void> => {
+    if (!(await confirmPublication(ports.textValue(policy.code, '政策')))) return;
     bundle.loading.value = true;
     bundle.submitError.value = '';
     try {
@@ -523,6 +550,7 @@ export function PolicyConsolePage(ports: PolicyConsolePorts) {
       const fresh = await ports.refresh();
       applyPolicies(fresh.policies);
       closeForm();
+      bundle.notice.value = `已为销售政策 ${ports.textValue(policy.code, '政策')} 发布新版本`;
     } catch (error: unknown) {
       fail(error, '政策版本发布失败');
     } finally {
@@ -533,6 +561,7 @@ export function PolicyConsolePage(ports: PolicyConsolePorts) {
   const runEvaluate = async (values: Readonly<Record<string, string>>): Promise<void> => {
     bundle.loading.value = true;
     bundle.submitError.value = '';
+    bundle.evaluateError.value = '';
     try {
       await ports.submit('/api/v1/sales-policy-evaluations', {
         policyVersionId: values.policyVersionId ?? '',
@@ -545,8 +574,11 @@ export function PolicyConsolePage(ports: PolicyConsolePorts) {
       const fresh = await ports.refresh();
       bundle.evaluations.value = fresh.evaluations;
       bundle.loadError.value = '';
+      bundle.notice.value = '已完成一次政策评估';
     } catch (error: unknown) {
-      fail(error, '政策评估失败');
+      // WFD：评估表单是页面级的（不在抽屉里），失败原因只写进它自己的提示区——此前走 fail → loadError，
+      // 显示在页面顶部与表格的错误面里，而评估表单在页面底部，用户看到的是「点了没反应」。
+      bundle.evaluateError.value = failureMessage(error, '政策评估失败');
     } finally {
       bundle.loading.value = false;
     }
@@ -558,20 +590,25 @@ export function PolicyConsolePage(ports: PolicyConsolePorts) {
     search: bundle.search.value,
     loadError: bundle.loadError.value,
     submitError: bundle.submitError.value,
+    notice: bundle.notice.value,
+    evaluateError: bundle.evaluateError.value,
     loading: bundle.loading.value,
     selected: bundle.selected.value,
     activeForm: bundle.activeForm.value,
     evaluations: bundle.evaluations.value,
     permissions: ports.permissions,
     ports,
+    // 开始下一个动作时清掉上一次的成功提示（与 submitError 同一处）。
     open: (row) => {
       bundle.selected.value = row;
       bundle.activeForm.value = null;
       bundle.submitError.value = '';
+      bundle.notice.value = '';
     },
     openForm: (kind) => {
       bundle.activeForm.value = kind;
       bundle.submitError.value = '';
+      bundle.notice.value = '';
     },
     closeForm,
     setStatusFilter: (next) => {
@@ -589,6 +626,11 @@ export function PolicyConsolePage(ports: PolicyConsolePorts) {
     runEvaluate,
   });
 
-  const Page = () => PolicyView(state());
+  const Page = () => (
+    <>
+      {PolicyView(state())}
+      <ConsoleConfirmDialog pending={confirmation} />
+    </>
+  );
   return Page;
 }

@@ -60,10 +60,27 @@ type AlertNode = Readonly<{
   focus: (options?: { preventScroll?: boolean }) => void;
 }>;
 
+type ControlNode = AlertNode;
+
+// 提交被表单校验拦下时要聚焦的字段：只有第一个出错的字段是「必填且为空」时才把焦点交给它
+// （下拉与文本类输入同一规则）；格式不合法等其它提示仍由提示区承载并获焦。按字段顺序取第一个，
+// 与提示区显示的是同一条。
+const focusTargetOf = (
+  fields: readonly FormSectionField[],
+  values: Readonly<Record<string, string>>,
+): string | null => {
+  for (const field of fields) {
+    const value = values[field.name] ?? '';
+    if (validateField(field, value) === null) continue;
+    return field.required === true && value.trim() === '' ? field.name : null;
+  }
+  return null;
+};
+
 // 手写镜像 openForm 的原生约束校验语义（测试 DOM 无原生 checkValidity，语义保持一致）。
 const validateField = (field: FormSectionField, value: string): string | null => {
-  // TD-WF-009：必填下拉空选时说「请选择」——它不是填不填的问题。下拉不再带原生 required，
-  // 这条提示是用户看到的唯一一条（此前是浏览器自己的、语言随浏览器的气泡）。
+  // 必填字段为空时说「请选择」（下拉）或「请填写」（其余）。必填字段一律不带原生 required（见下方的
+  // 约束输出），这条提示是用户看到的唯一一条——此前是浏览器自己的、语言随浏览器的气泡。
   if (field.required === true && value.trim() === '')
     return field.type === 'select' ? `请选择${field.label}` : `请填写${field.label}`;
   if (value === '') return null;
@@ -112,14 +129,25 @@ export const FormSection = (props: FormSectionProps) => {
   // 「文案变了」触发：用户可能把焦点移回表单顶部再次按回车，提示一字不差但仍在视口外。
   const alertRef = useRef<HTMLParagraphElement | null>(null);
   const [attempt, setAttempt] = useState(0);
+  // TD-UI-013：这次提交因为必填字段为空被拦下时，要聚焦的第一个缺填字段；null 表示提示区自己拿焦点。
+  const [missing, setMissing] = useState<string | null>(null);
+  // 各字段的控件节点（按字段名），聚焦缺填字段时用。
+  const controls = useRef<Record<string, ControlNode | null>>({});
   useEffect(() => {
     if (shownError === '') return;
     const node = alertRef.current as unknown as AlertNode | null;
     if (node === null) return;
     // 已经完全可见时「nearest」不滚动，否则做最小滚动——相对所有可滚动祖先（抽屉体也算）。
     node.scrollIntoView?.({ block: 'nearest' });
-    node.focus({ preventScroll: true });
-  }, [attempt, shownError]);
+    // TD-UI-013：必填字段为空时焦点交给第一个缺填的字段（见 focusMissingField）；其它情况
+    // （未勾选确认、外部错误）焦点仍在提示区。
+    const field = missing === null ? undefined : controls.current[missing];
+    if (field !== undefined && field !== null) {
+      // nearest 按各滚动容器裁切判断。字段已获焦时，再调用 focus 不一定会滚动它。
+      field.scrollIntoView?.({ block: 'nearest' });
+      field.focus({ preventScroll: true });
+    } else node.focus({ preventScroll: true });
+  }, [attempt, shownError, missing]);
 
   const onInput = (field: FormSectionField, value: string): void => {
     setValues((current) => ({ ...current, [field.name]: value }));
@@ -148,13 +176,16 @@ export const FormSection = (props: FormSectionProps) => {
     if (nextInvalid.size > 0) {
       setInvalid(nextInvalid);
       setError(firstMessage);
+      setMissing(focusTargetOf(props.fields, values));
       return;
     }
     if (sensitive && !confirmed) {
       setError(`请先勾选确认，再${props.submitLabel}`);
+      setMissing(null);
       return;
     }
     setError('');
+    setMissing(null);
     inFlight.current = true;
     setSubmitting(true);
     // 提交失败的 Promise 必须在这里接住：此前是 void 掉，被拒绝时成为未处理的拒绝（浏览器里
@@ -186,10 +217,10 @@ export const FormSection = (props: FormSectionProps) => {
         const isInvalid = invalid.has(field.name);
         const constraints: Record<string, string | number | boolean> = {};
         if (field.required === true) {
-          // TD-WF-009：必填下拉不带原生 required（保留 aria-required）。带了的话，空选提交会先被
-          // 浏览器拦下并弹出语言随浏览器的提示，表单的 submit 事件根本不触发；现在由上面 validateField
-          // 给出中文提示并指到这个字段。其它类型的必填字段不动。
-          if (field.type !== 'select') constraints.required = true;
+          // TD-WF-009 / TD-UI-013：必填字段不带原生 required（保留 aria-required）。带了的话，空值提交会先被
+          // 浏览器拦下并弹出语言随浏览器的提示，表单的 submit 事件根本不触发；现在由 validateField 给出
+          // 中文提示，并把焦点移到第一个缺填的字段（原生气泡也是把焦点放到这个控件上）。格式校验
+          // （type=email、min / max 等）不动，仍由浏览器做。
           constraints['aria-required'] = 'true';
         }
         if (isInvalid) constraints['aria-invalid'] = 'true';
@@ -217,6 +248,9 @@ export const FormSection = (props: FormSectionProps) => {
               name={field.name}
               {...constraints}
               value={values[field.name] ?? ''}
+              ref={(node: unknown) => {
+                controls.current[field.name] = node as ControlNode | null;
+              }}
               onInput={(event: Event) => {
                 const target = event.target as unknown as { value: string };
                 onInput(field, target.value);

@@ -1,6 +1,7 @@
 import { signal } from '@preact/signals';
 import {
   ActionBar,
+  ConfirmDialog,
   DataTable,
   EmptyState,
   FormSection,
@@ -8,6 +9,9 @@ import {
   type DataTableColumn,
   type FormSectionField,
 } from '@kingturf/ui';
+import { failureMessage } from '../../shared/api-error-message';
+import { ConsoleNotice } from '../../shared/console-notice';
+import { FocusAnchor } from '../../shared/focus-anchor';
 import { recordOf, textOf, type ConsolePorts } from './ports';
 import { OrgChart } from './org-chart';
 import {
@@ -36,6 +40,8 @@ type OrgState = Readonly<{
   loadError: string;
   action: 'create' | 'update' | null;
   actionError: string;
+  notice: string;
+  disableConfirm: Readonly<{ settle: (accepted: boolean) => void }> | null;
   updateTarget: Row | null;
   mayCreate: boolean;
   mayUpdate: boolean;
@@ -85,16 +91,21 @@ const orgColumns = (state: OrgState): readonly DataTableColumn<Row>[] => [
           header: '操作',
           field: () => '更新',
           render: (row: Row) => (
-            <button
-              type="button"
-              class="secondary compact"
-              data-testid="kt-org-update"
-              onClick={() => {
-                state.openUpdate(row);
-              }}
-            >
-              更新
-            </button>
+            <>
+              <button
+                type="button"
+                class="secondary compact"
+                data-testid="kt-org-update"
+                onClick={() => {
+                  state.openUpdate(row);
+                }}
+              >
+                更新
+              </button>
+              <FocusAnchor
+                token={String(state.action === 'update' && state.updateTarget?.id === row.id)}
+              />
+            </>
           ),
         } as DataTableColumn<Row>,
       ]
@@ -161,6 +172,7 @@ const OrgView = (state: OrgState) => {
         </p>
       </aside>
       <div class="console-split-main">
+        <ConsoleNotice message={state.notice} />
         {state.mayCreate ? (
           <ActionBar label="员工操作">
             <button
@@ -171,6 +183,7 @@ const OrgView = (state: OrgState) => {
             >
               新建员工
             </button>
+            <FocusAnchor token={String(state.action === 'create')} />
           </ActionBar>
         ) : null}
         {state.organizations.length === 0 ? (
@@ -201,6 +214,7 @@ const OrgView = (state: OrgState) => {
               description="员工必须归属当前公司下的有效组织；账号和角色在后续授权步骤配置。"
               fields={createFields}
               submitLabel="创建员工"
+              error={state.actionError}
               onSubmit={(values) =>
                 state.createSubmit(
                   '/api/v1/employees',
@@ -223,6 +237,7 @@ const OrgView = (state: OrgState) => {
               description="更新显示名称或有效状态；字段权限和数据范围仍由服务器强制执行。"
               fields={updateFields}
               submitLabel="保存员工变更"
+              error={state.actionError}
               onSubmit={(values) =>
                 state.updateSubmit(
                   `/api/v1/employees/${String(target.id)}`,
@@ -234,12 +249,17 @@ const OrgView = (state: OrgState) => {
                 )
               }
             />
-            {state.actionError !== '' ? (
-              <p class="console-error" role="alert" data-testid="kt-org-form-error">
-                {state.actionError}
-              </p>
-            ) : null}
           </div>
+        ) : null}
+        {state.disableConfirm ? (
+          <ConfirmDialog
+            title={`停用员工 · ${textOf(target?.displayName)}`}
+            message="员工状态将变为停用。"
+            confirmLabel="确认停用"
+            destructive
+            onCancel={() => state.disableConfirm?.settle(false)}
+            onConfirm={() => state.disableConfirm?.settle(true)}
+          />
         ) : null}
       </div>
     </div>
@@ -254,6 +274,8 @@ export function OrganizationConsolePage(ports: ConsolePorts) {
   const loadError = signal('');
   const action = signal<null | 'create' | 'update'>(null);
   const actionError = signal('');
+  const notice = signal('');
+  const disableConfirm = signal<OrgState['disableConfirm']>(null);
   const updateTarget = signal<Row | null>(null);
   const collapsed = signal<ReadonlySet<string>>(new Set());
   const headcount = signal<OrgHeadcount>(orgHeadcountLoading());
@@ -265,9 +287,13 @@ export function OrganizationConsolePage(ports: ConsolePorts) {
     : '需要 organization:read 权限才能选择组织（请向权限管理员申请）';
 
   // GOV-UX ②：人数徽章按 cursor 分页读尽可见员工后统计（首屏已拉的第一页直接复用）。
-  void loadPagedSource(ports.fetchPage, '/api/v1/employees', employees.value).then((source) => {
-    headcount.value = headcountOf(tree, source);
-  });
+  let countRequest = 0;
+  const refreshHeadcount = async (firstPage: typeof employees.value): Promise<void> => {
+    const request = ++countRequest;
+    const source = await loadPagedSource(ports.fetchPage, '/api/v1/employees', firstPage);
+    if (request === countRequest) headcount.value = headcountOf(tree, source);
+  };
+  void refreshHeadcount(employees.value);
   const collapseNode = (id: string, next: boolean): void => {
     const current = new Set(collapsed.value);
     if (next) current.add(id);
@@ -275,17 +301,21 @@ export function OrganizationConsolePage(ports: ConsolePorts) {
     collapsed.value = current;
   };
 
-  const fetchByOrg = (organization: string | undefined): void => {
+  let listRequest = 0;
+  const fetchByOrg = async (organization: string | undefined): Promise<void> => {
     selectedOrg.value = organization;
-    void ports
-      .fetchPage('/api/v1/employees', organization ? { organization } : {})
-      .then((fetched) => {
-        employees.value = fetched;
-        loadError.value = '';
-      })
-      .catch((error: unknown) => {
-        loadError.value = error instanceof Error ? error.message : '员工清单加载失败';
-      });
+    const request = ++listRequest;
+    try {
+      const fetched = await ports.fetchPage(
+        '/api/v1/employees',
+        organization ? { organization } : {},
+      );
+      if (request !== listRequest) return;
+      employees.value = fetched;
+      loadError.value = '';
+    } catch (error) {
+      if (request === listRequest) loadError.value = failureMessage(error, '员工清单加载失败');
+    }
   };
 
   const loadMore = (): void => {
@@ -308,24 +338,38 @@ export function OrganizationConsolePage(ports: ConsolePorts) {
       });
   };
 
-  const runEmployeeAction = (
+  const runEmployeeAction = async (
     path: string,
     payload: Record<string, unknown>,
     method: 'POST' | 'PATCH',
-  ): Promise<void> =>
-    ports.submit(path, payload, method).then(() => {
-      action.value = null;
-      return ports
-        .fetchPage(
-          '/api/v1/employees',
-          selectedOrg.value ? { organization: selectedOrg.value } : {},
-        )
-        .then((fetched) => {
-          employees.value = fetched;
-        });
-    });
+  ): Promise<void> => {
+    const current = action.value;
+    const target = updateTarget.value;
+    actionError.value = '';
+    try {
+      await ports.submit(path, payload, method);
+    } catch (error) {
+      if (action.value === current && updateTarget.value === target)
+        actionError.value = failureMessage(error, '员工资料保存失败');
+      return;
+    }
+    if (action.value === current && updateTarget.value === target) action.value = null;
+    const name = textOf(payload.displayName);
+    notice.value = method === 'POST' ? `已创建员工「${name}」` : `已更新员工「${name}」`;
+    const organization = selectedOrg.value;
+    await fetchByOrg(organization);
+    try {
+      const firstPage =
+        organization === undefined && loadError.value === '' && selectedOrg.value === undefined
+          ? employees.value
+          : await ports.fetchPage('/api/v1/employees');
+      await refreshHeadcount(firstPage);
+    } catch (error) {
+      loadError.value = failureMessage(error, '员工人数刷新失败');
+    }
+  };
 
-  const updateSubmit = (
+  const updateSubmit = async (
     path: string,
     payload: Record<string, unknown>,
     method: 'POST' | 'PATCH',
@@ -333,9 +377,16 @@ export function OrganizationConsolePage(ports: ConsolePorts) {
     const version = updateTarget.value?.version;
     if (typeof version !== 'number') {
       actionError.value = '记录版本未知，请刷新后重试';
-      return Promise.resolve();
+      return;
     }
-    return runEmployeeAction(path, { ...payload, version }, method);
+    if (payload.active === false && updateTarget.value?.active !== false) {
+      const accepted = await new Promise<boolean>((settle) => {
+        disableConfirm.value = { settle };
+      });
+      disableConfirm.value = null;
+      if (!accepted) return;
+    }
+    await runEmployeeAction(path, { ...payload, version }, method);
   };
 
   const Page = () =>
@@ -348,6 +399,8 @@ export function OrganizationConsolePage(ports: ConsolePorts) {
       loadError: loadError.value,
       action: action.value,
       actionError: actionError.value,
+      notice: notice.value,
+      disableConfirm: disableConfirm.value,
       updateTarget: updateTarget.value,
       mayCreate,
       mayUpdate,
@@ -356,16 +409,19 @@ export function OrganizationConsolePage(ports: ConsolePorts) {
       collapsed: collapsed.value,
       collapseNode,
       selectOrg: (id) => {
-        fetchByOrg(id);
+        void fetchByOrg(id);
       },
       openCreate: () => {
+        updateTarget.value = null;
         action.value = 'create';
         actionError.value = '';
+        notice.value = '';
       },
       openUpdate: (row) => {
         updateTarget.value = row;
         action.value = 'update';
         actionError.value = '';
+        notice.value = '';
       },
       loadMore,
       createSubmit: (path, payload, method) => runEmployeeAction(path, payload, method),

@@ -6,7 +6,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { CreditContractViewContext } from '../credit-contract-view-ports';
 import type { OperationsViewContext } from '../operations-view-ports';
-import { appendCreditConsole } from '../console-entry';
+import { appendCreditConsole, appendLeadConsole } from '../console-entry';
+import { CrmController } from '../../crm/controller';
+import type { CrmApi, Employee } from '../../crm/types';
+import { CommercialController } from '../store/controller';
+import type { CommercialApi } from '../types';
 import { appendManufacturingBomConsole } from './bom-host';
 import { itemVersionChoicesOf, ITEM_VERSIONS_PATH, perView } from './console-choices';
 import { appendGoodsReceiptConsole } from './gr-host';
@@ -300,5 +304,52 @@ describe('宿主的表单选项随视图更新（TD-WF-007）', () => {
     };
     views.set(quotes, [issued, { ...issued, id: 'qr-2', status: 'DRAFT', issuedSnapshotId: null }]);
     expect(ports.issuedQuotes).toEqual([issued]);
+  });
+
+  // WFC-1（写流程冒烟 WS-P2-04 的残余）：客户与员工清单的权威来源是 CRM 控制器，它在新建客户与每次
+  // load() 之后换成新数组。此前商业控制器拿到的是 bootstrap 构建工作台时的一次性数组引用拷贝，
+  // 信用额度的客户下拉、线索的负责人下拉又在挂载时把它截进 ports——本会话新建的客户 / 员工选不到。
+  it('信用宿主：CRM 控制器换上新客户清单后，额度表单的客户下拉读得到新客户', async () => {
+    const { context, workspace } = contextFor(new Map());
+    const crmRecords = {
+      customers: [{ id: 'customer-1', name: '国际学校' }],
+      employees: [] as readonly Employee[],
+    };
+    const controller = new CommercialController({} as unknown as CommercialApi);
+    controller.followCrmRecords(crmRecords);
+    appendCreditConsole({ ...context, controller } as unknown as CreditContractViewContext);
+    const ports = await portsOf(workspace);
+    const customerIds = (): readonly string[] =>
+      (ports.customers as readonly Readonly<{ id: string }>[]).map((item) => item.id);
+    expect(customerIds()).toEqual(['customer-1']);
+    // 客户控制台新建客户之后：CRM 控制器换成新数组，没有新增任何请求。
+    crmRecords.customers = [
+      ...crmRecords.customers,
+      { id: 'customer-2', name: '本会话新建的客户' },
+    ];
+    expect(customerIds()).toEqual(['customer-1', 'customer-2']);
+  });
+
+  it('线索宿主：员工清单换新数组后，负责人下拉给出新员工；同一份数组不重算', async () => {
+    const scope = installGlobalTestDom();
+    const workspace = scope.document.createElement('div') as unknown as HTMLElement;
+    const crm = new CrmController(new Set(['lead:read', 'lead:reassign']), {} as unknown as CrmApi);
+    const first: readonly Employee[] = [
+      { id: 'employee-1', displayName: '销售一号', active: true },
+    ];
+    crm.employees = first;
+    appendLeadConsole(workspace, crm);
+    const ports = await portsOf(workspace);
+    const labelsOf = (): readonly string[] =>
+      (ports.employeeChoices as readonly Readonly<{ label: string }>[]).map((item) => item.label);
+    expect(labelsOf()).toEqual(['销售一号']);
+    // 同一份清单只算一次（按数组身份缓存）；清单换了才重算，停用的员工不进下拉。
+    expect(ports.employeeChoices).toBe(ports.employeeChoices);
+    crm.employees = [
+      ...first,
+      { id: 'employee-2', displayName: '新入职销售', active: true },
+      { id: 'employee-3', displayName: '已停用', active: false },
+    ];
+    expect(labelsOf()).toEqual(['销售一号', '新入职销售']);
   });
 });

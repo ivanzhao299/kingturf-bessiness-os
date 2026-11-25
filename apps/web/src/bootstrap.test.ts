@@ -1826,12 +1826,17 @@ describe('web bootstrap', () => {
   });
 
   it('matrix calculate flows move to the console (coverage in cost-matrix-console.test.tsx)', () => {
-    const source = readBoundSource(
+    const view = readBoundSource(
       './commercial/console/cost-matrix-console.tsx',
       'export function CostMatrixConsolePage',
     );
-    expect(source).toContain('/calculate');
-    expect(source).toContain('pricingMode');
+    expect(view).toContain('costMatrixActions(ports, bundle)');
+    const actions = readBoundSource(
+      './commercial/console/cost-matrix-console-actions.ts',
+      'export const costMatrixActions',
+    );
+    expect(actions).toContain('/calculate');
+    expect(actions).toContain('pricingMode');
   });
 
   it('loads cost matrix summaries separately from the selected model detail', async () => {
@@ -2316,6 +2321,44 @@ describe('web bootstrap', () => {
       '询价进行中\n0 单',
       '待收采购单\n0 单',
       '待检库存\n1 批',
+    ]);
+  });
+
+  // TD-PROC-012：「待准入供应商」按物料准入记录算——没有任何已批准或可有条件批准（APPROVED / CONDITIONAL）
+  // 准入记录的供应商才算待准入。原口径按 suppliers.status 过滤，而供应商状态里没有 APPROVED，卡片恒等于
+  // 供应商总数（修复前本用例的六家全部计入，得「6 家」）。
+  it('counts a supplier as pending admission only when it has no approved or conditional qualification (TD-PROC-012)', () => {
+    type Rows = readonly Record<string, unknown>[];
+    const qualification = (status: string): Record<string, unknown> => ({
+      id: `q-${status}`,
+      status,
+    });
+    const suppliers: Rows = [
+      { id: 'approved', status: 'ACTIVE', qualifications: [qualification('APPROVED')] },
+      { id: 'conditional', status: 'ON_HOLD', qualifications: [qualification('CONDITIONAL')] },
+      {
+        id: 'mixed',
+        status: 'ACTIVE',
+        qualifications: [qualification('REJECTED'), qualification('APPROVED')],
+      },
+      { id: 'rejected-only', status: 'ACTIVE', qualifications: [qualification('REJECTED')] },
+      { id: 'none', status: 'ACTIVE', qualifications: [] },
+      // 旧形状的行（没有 qualifications 键）：同样算待准入。
+      { id: 'legacy-row', status: 'ACTIVE' },
+    ];
+    const target = el('section', 'summary-target');
+    appendProcurementSummary(
+      target,
+      () => ({ suppliers, rfqs: [], purchaseOrders: [], balances: [] }),
+      recordText,
+      new Set<string>(),
+    );
+    const rendered = target as unknown as RenderedElement;
+    expect(rendered.findByClass('metric-card').map((card) => card.textContent)).toEqual([
+      '待准入供应商\n3 家',
+      '询价进行中\n0 单',
+      '待收采购单\n0 单',
+      '待检库存\n0 批',
     ]);
   });
 
@@ -3320,7 +3363,10 @@ describe('web bootstrap', () => {
         'contract:sign',
       ]),
     );
-    controller.customers = [{ id: 'customer-1', name: '国际学校' }];
+    controller.followCrmRecords({
+      customers: [{ id: 'customer-1', name: '国际学校' }],
+      employees: [],
+    });
     await controller.load();
     const workspace = commercialWorkspaceStructure(
       'desktop',
@@ -3591,7 +3637,10 @@ describe('web bootstrap', () => {
         'commission:pay',
       ]),
     );
-    controller.employees = [{ id: 'employee-1', displayName: '销售甲', active: true }];
+    controller.followCrmRecords({
+      customers: [],
+      employees: [{ id: 'employee-1', displayName: '销售甲', active: true }],
+    });
     await controller.load();
     const workspace = commercialWorkspaceStructure(
       'desktop',
@@ -3638,7 +3687,10 @@ describe('web bootstrap', () => {
       commercialApi,
       new Set(['collection:read', 'collection:manage', 'collection:escalate']),
     );
-    controller.employees = [{ id: 'employee-1', displayName: '催收甲', active: true }];
+    controller.followCrmRecords({
+      customers: [],
+      employees: [{ id: 'employee-1', displayName: '催收甲', active: true }],
+    });
     await controller.load();
     const workspace = commercialWorkspaceStructure(
       'desktop',
@@ -3684,9 +3736,12 @@ describe('web bootstrap', () => {
       commercialApi,
       new Set(['complaint:read', 'complaint:triage', 'complaint:assign']),
     );
-    controller.employees = [
-      { id: 'employee-1', employeeNumber: 'Q-001', displayName: '质量调查员', active: true },
-    ];
+    controller.followCrmRecords({
+      customers: [],
+      employees: [
+        { id: 'employee-1', employeeNumber: 'Q-001', displayName: '质量调查员', active: true },
+      ],
+    });
     await controller.load();
     const workspace = commercialWorkspaceStructure(
       'desktop',

@@ -693,6 +693,13 @@ describe('抽屉顶部的错误位：八处都带着「行内表单打开时让�
 
   it.each(SLOTS)('%s：%s 只在没有行内表单打开时显示', (file, testid) => {
     const source = readFileSync(new URL(`./${file}`, import.meta.url), 'utf8');
+    if (testid === 'kt-quote-submit-error') {
+      // 签发确认框没有行内表单。报价动作区作为整体让位，签发失败才显示在这组动作内。
+      expect(source).toMatch(
+        /\{state\.activeForm === null \|\| state\.activeForm === 'issue' \? \(\s*<div class="console-actions" data-testid="kt-quote-actions">\s*\{state\.submitError !== '' \? \(\s*<p[^>]*data-testid="kt-quote-submit-error"/u,
+      );
+      return;
+    }
     const slot = new RegExp(
       `\\{([^{}\\n]*?)state\\.submitError !== '' \\? \\(\\n\\s*<p class="console-error" role="alert" data-testid="${testid}">`,
       'u',
