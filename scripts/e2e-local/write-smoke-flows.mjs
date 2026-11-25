@@ -833,6 +833,10 @@ export async function manufacturingFlow(t) {
     async (e) => {
       await click(page, 'kt-bom-create');
       await t.observeBlankSelects('新建标准 BOM');
+      // 「与首行一致的默认值」指首行打开时的默认值（1 / 0），要在填表之前读：下面的 fillBom 会把首行改成
+      // 5 / 100，之后再拿首行的当前值去比，量到的是「新行有没有照抄上一行填过的数」，不是默认值——
+      // 第二行已经带上 1 / 0 时仍会被判成复现（WF-C 在真浏览器上实测到这一点）。
+      e.defaults = { quantity: await value(page, 'quantity'), scrap: await value(page, 'scrap') };
       await fillBom(bom.decimal);
       await click(page, 'kt-bom-row-add');
       const second = await need(componentRows);
@@ -841,7 +845,12 @@ export async function manufacturingFlow(t) {
         quantity: await value(page, `${second}quantity`),
         scrap: await value(page, `${second}scrap`),
       };
-      return e.row1.quantity === e.row2.quantity && e.row1.scrap === e.row2.scrap;
+      return (
+        e.defaults.quantity !== '' &&
+        e.defaults.scrap !== '' &&
+        e.row2.quantity === e.defaults.quantity &&
+        e.row2.scrap === e.defaults.scrap
+      );
     },
   );
 
