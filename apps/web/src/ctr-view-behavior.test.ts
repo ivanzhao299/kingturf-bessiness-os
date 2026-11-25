@@ -282,4 +282,74 @@ describe('technical requirement console real callback contracts (U3-COM-5)', () 
       void label;
     },
   );
+
+  // WFD-1（写流程真浏览器量测发现）：写操作之后表格不更新。带「是否最新版」标记的列表只在页面创建时算了一次。
+  describe('写操作之后列表与抽屉跟着刷新（WFD-1）', () => {
+    const created: CtrRow = { ...draft, id: 'version-new', ctrId: 'ctr-new', code: 'CTR-NEW' };
+    const rowTexts = (host: TestElement): readonly string[] =>
+      host
+        .querySelectorAll('[data-testid="kt-ctr-open"]')
+        .map((button) =>
+          (button.parentNode?.parentNode?.textContent ?? '').replace(/\s+/gu, ' ').trim(),
+        );
+
+    it('新建之后表格里出现新的需求单', async () => {
+      const ports = portsFor([draft], ['ctr:create'], {
+        refresh: vi.fn().mockResolvedValue({ ctrs: [draft, created], solutions: [] }),
+      });
+      const host = mount(ports);
+      element(host.querySelector('[data-testid="kt-ctr-create"]')).click();
+      await flush();
+      for (const [name, value] of CREATE_FORM) fillField(host, name, value);
+      await flush();
+      await submitDrawer(host);
+      await flush();
+      expect(rowTexts(host).some((text) => text.includes('CTR-NEW'))).toBe(true);
+    });
+
+    it('提交评审之后表格那一行的状态变为「已提交」，抽屉里换成批准 / 驳回', async () => {
+      const submitted: CtrRow = { ...draft, status: 'SUBMITTED' };
+      const ports = portsFor([draft], ['ctr:submit', 'ctr:approve'], {
+        refresh: vi.fn().mockResolvedValue({ ctrs: [submitted], solutions: [] }),
+      });
+      const host = mount(ports);
+      element(host.querySelector('[data-testid="kt-ctr-open"]')).click();
+      await flush();
+      expect(host.textContent).toContain('草稿');
+      element(host.querySelector('[data-testid="kt-ctr-submit"]')).click();
+      await flush();
+      await flush();
+      // 表格那一行。
+      const row = rowTexts(host)[0] ?? '';
+      expect(row).toContain('已提交');
+      expect(row).not.toContain('草稿');
+      // 仍然开着的抽屉。
+      const drawer = element(host.querySelector('.detail-drawer'));
+      expect(drawer.querySelector('[data-testid="kt-ctr-submit"]')).toBeNull();
+      expect(drawer.querySelector('[data-testid="kt-ctr-approve"]')).not.toBeNull();
+    });
+
+    it('新建修订之后表格里出现新的一版，旧的一版不再提供「新建修订」', async () => {
+      const second: CtrRow = { ...draft, id: 'version-2', version: 2, status: 'DRAFT' };
+      const firstApproved: CtrRow = { ...draft, status: 'APPROVED' };
+      const ports = portsFor([firstApproved], ['ctr:update'], {
+        refresh: vi.fn().mockResolvedValue({ ctrs: [firstApproved, second], solutions: [] }),
+      });
+      const host = mount(ports);
+      element(host.querySelector('[data-testid="kt-ctr-open"]')).click();
+      await flush();
+      element(host.querySelector('[data-testid="kt-ctr-revise"]')).click();
+      await flush();
+      for (const [name, value] of Object.entries(requirementInput)) fillField(host, name, value);
+      await flush();
+      await submitDrawer(host);
+      await flush();
+      expect(rowTexts(host).filter((text) => text.includes('CTR-1'))).toHaveLength(2);
+      expect(rowTexts(host).some((text) => text.includes('第 2 版'))).toBe(true);
+      // 再打开旧的一版（已不是最新版）：没有「新建修订」。
+      element(host.querySelectorAll('[data-testid="kt-ctr-open"]')[0]).click();
+      await flush();
+      expect(host.querySelector('[data-testid="kt-ctr-revise"]')).toBeNull();
+    });
+  });
 });

@@ -46,6 +46,22 @@ const requirementsPayload = (values: Readonly<Record<string, string>>) => ({
   delivery: values.delivery ?? '',
 });
 
+// 给每个版本行标上「是否本需求单的最新版」：只有最新版能新建修订（新建修订之后标记随刷新移动）。
+export const withLatestVersion = (ctrs: readonly CtrRow[]): readonly CtrRow[] => {
+  const latestVersionByCtr = new Map<string, number>();
+  for (const item of ctrs) {
+    const rootId = typeof item.ctrId === 'string' ? item.ctrId : '';
+    const revision = typeof item.version === 'number' ? item.version : 0;
+    latestVersionByCtr.set(rootId, Math.max(latestVersionByCtr.get(rootId) ?? 0, revision));
+  }
+  return ctrs.map((item) => ({
+    ...item,
+    isLatestVersion:
+      Number(item.version ?? 0) ===
+      latestVersionByCtr.get(typeof item.ctrId === 'string' ? item.ctrId : ''),
+  }));
+};
+
 const fail = (error: unknown, bundle: CtrSignalBundle, fallback: string): void => {
   const message = failureMessage(error, fallback);
   if (bundle.selected.value !== null || bundle.activeForm.value !== null)
@@ -65,7 +81,9 @@ export const ctrActions = (ports: CtrConsolePorts, bundle: CtrSignalBundle): Ctr
     bundle.ctrs.value = ctrs;
     syncSelected({
       selected: bundle.selected,
-      rows: ctrs,
+      // WFD-1：换进抽屉的行同样带「是否最新版」标记——此前抽屉里的行没有它，提交评审之后认不出
+      // 这一版还能不能新建修订。
+      rows: withLatestVersion(ctrs),
       idOf: (row) => ports.textValue(row.id, ''),
     });
   };

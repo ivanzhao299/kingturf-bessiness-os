@@ -23,7 +23,7 @@ import {
   versionNumber,
 } from './solution-console-diff';
 import { FocusAnchor } from './focus-anchor';
-import { ctrActions, type CtrSignalBundle } from './ctr-console-actions';
+import { ctrActions, withLatestVersion, type CtrSignalBundle } from './ctr-console-actions';
 
 // U3-COM-5（ADR-0014 分域重写）：技术需求单控制台——原 vanilla ctr workbench 能力面
 // 等价迁移（新建/修订/提交评审/批准驳回/上传附件；列表/筛选/详情抽屉含版本差异）。
@@ -611,21 +611,21 @@ export function CtrConsolePage(ports: CtrConsolePorts) {
   };
   const actions = ctrActions(ports, bundle);
 
-  const latestVersionByCtr = new Map<string, number>();
-  for (const item of bundle.ctrs.value) {
-    const rootId = typeof item.ctrId === 'string' ? item.ctrId : '';
-    const revision = typeof item.version === 'number' ? item.version : 0;
-    latestVersionByCtr.set(rootId, Math.max(latestVersionByCtr.get(rootId) ?? 0, revision));
-  }
-  const withLatest = bundle.ctrs.value.map((item) => ({
-    ...item,
-    isLatestVersion:
-      Number(item.version ?? 0) ===
-      latestVersionByCtr.get(typeof item.ctrId === 'string' ? item.ctrId : ''),
-  }));
+  // WFD-1：「是否最新版」按列表数组的身份缓存——数组换了（写操作之后的刷新）才重算，同一份快照内
+  // 每次渲染返回同一个数组。此前这份带标记的列表只在页面创建时算了一次，之后写操作刷新了数据，
+  // 表格却一直是打开页面那一刻的内容：新建的需求单不出现，提交评审后那一行仍显示「草稿」。
+  let latestSource: readonly CtrRow[] | null = null;
+  let latestRows: readonly CtrRow[] = [];
+  const ctrsOf = (): readonly CtrRow[] => {
+    if (latestSource !== bundle.ctrs.value) {
+      latestSource = bundle.ctrs.value;
+      latestRows = withLatestVersion(latestSource);
+    }
+    return latestRows;
+  };
 
   const state = (): CtrPageState => ({
-    ctrs: withLatest,
+    ctrs: ctrsOf(),
     statusFilter: bundle.statusFilter.value,
     search: bundle.search.value,
     loadError: bundle.loadError.value,
