@@ -6,6 +6,7 @@ import type { ComponentChild } from 'preact';
 import { DetailDrawer, StatusBadge } from '@kingturf/ui';
 import { askPublishVersion } from './console-confirm';
 import { FocusAnchor } from './focus-anchor';
+import { VersionHistoryAction, publishedVersionId } from './manufacturing-version-ui';
 import { ConsoleNotice } from './console-notice';
 import type { ItemRow } from './item-ports';
 import {
@@ -88,6 +89,7 @@ const VersionHistory = ({ state }: DetailProps) => {
   if (!selected) return null;
   const source = state.detail?.versions;
   const versions = Array.isArray(source) && source.length > 0 ? recordsOf(source) : [selected];
+  const currentId = publishedVersionId(recordsOf(source));
   return (
     <section data-testid="kt-item-versions">
       <p class="console-label">版本历史</p>
@@ -111,6 +113,18 @@ const VersionHistory = ({ state }: DetailProps) => {
                   发布版本
                 </button>
               ) : null}
+              <VersionHistoryAction
+                testId="kt-item"
+                row={version}
+                currentId={currentId}
+                start={state.openVersion}
+                enabled={
+                  state.mayManage &&
+                  !state.detailLoading &&
+                  Array.isArray(source) &&
+                  Object.hasOwn(version, 'specification')
+                }
+              />
             </li>
           );
         })}

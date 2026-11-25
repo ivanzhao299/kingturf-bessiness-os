@@ -27,11 +27,11 @@ export function appendManufacturingBomConsole(
   const bomPath = '/api/v1/manufacturing-boms';
   const read = controller.api.get;
   const recordText = context.ports.recordText;
-  // 已发布物料版本选项与 legacy 物料卡片 BOM 表单同源同公式（label = `SKU · 名称`）。
+  // 沿用已发布物料版本来源，在下拉中加版本号以区分同一物料的多版。
   // TD-WF-007：选项与产品类型索引都按最新视图计算（视图数组身份一变才重算），不再是挂载时的快照——
   // 在「物料管理」刚发布的物料，这里打开「新建 BOM」就能选到；左树的产品类型也认得它。
   const readItemVersionChoices = perView(controller.views, ITEM_VERSIONS_PATH, (rows) =>
-    itemVersionChoicesOf(rows, recordText),
+    itemVersionChoicesOf(rows, recordText, true),
   );
   const readProductTypeByItemId = perView(
     controller.views,
@@ -87,6 +87,8 @@ export function appendManufacturingBomConsole(
       return await read(`${bomPath}/${encodeURIComponent(bomId)}`);
     },
     submit: async (path, payload, method) => {
+      if (controller.submitReturningRecord)
+        return controller.submitReturningRecord(path, payload, method);
       await controller.submit(path, payload, method);
       return null;
     },

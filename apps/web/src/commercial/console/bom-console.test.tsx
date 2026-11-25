@@ -672,3 +672,53 @@ describe('U3-MFG-2 纯展示助手：diffVersions 三类差异', () => {
     expect(diffVersions(base, versionRow({ id: 'v1', lines: base.lines }))).toEqual([]);
   });
 });
+
+it('prefills all BOM substitutions and sends only the edited version field', async () => {
+  const source = versionRow({
+    product_item_version_id: 'prodv-1',
+    outputQuantityText: '1.000000',
+    lines: [
+      {
+        ...lineOf(yarn, 1.25, 300),
+        componentItemVersionId: 'yarnv-1',
+        quantityText: '1.250000',
+        substitutes: [
+          { itemVersionId: 'altv-1', priority: 5, conversionFactorText: '0.875123' },
+          { itemVersionId: 'altv-2', priority: 9, conversionFactorText: '1.345678' },
+        ],
+      },
+    ],
+  });
+  const created = {
+    ...source,
+    id: 'bomv-3',
+    version: 3,
+    status: 'DRAFT',
+    outputQuantityText: '2.5',
+  };
+  const submit = vi.fn().mockResolvedValue(created);
+  const host = mount(
+    portsFor([listRow], ['bom:manage'], {
+      loadDetail: vi
+        .fn()
+        .mockResolvedValueOnce({ ...detail, versions: [source] })
+        .mockResolvedValue({ ...detail, versions: [created, source] }),
+      submit,
+    }),
+  );
+  byTestId(host, 'kt-bom-open').click();
+  await flush();
+  byTestId(host, 'kt-bom-new-version').click();
+  await flush();
+  const drawer = element(host.querySelector('.detail-drawer'));
+  expect(drawer.textContent).toContain('以第 1 版为底稿');
+  expect(element(drawer.querySelector('[name="r1:s1:factor"]')).value).toBe('0.875123');
+  expect(element(drawer.querySelector('[name="r1:s2:factor"]')).value).toBe('1.345678');
+  await type(host, '.detail-drawer', 'outputQuantity', '2.5');
+  await submitDrawer(host);
+  expect(submit).toHaveBeenCalledExactlyOnceWith('/api/v1/manufacturing-boms/bom-root/versions', {
+    copyFromVersionId: source.id,
+    outputQuantity: '2.5',
+  });
+  expect(byTestId(host, 'kt-bom-draft-preview').textContent).toContain('第 3 版草稿行项');
+});

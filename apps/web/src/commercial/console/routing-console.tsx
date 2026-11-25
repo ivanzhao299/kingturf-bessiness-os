@@ -5,6 +5,7 @@
 // 语义）；状态/关键字/产品类型任一生效时切换为服务端分页（(code,version) keyset）。
 // e2e 契约：路线编码独占文本元素（kt-routing-code）；产品 SKU 并入复合文本；状态
 // 徽章 `已发布 · 第 N 版`（种子 1 条 → 与物料 4 + BOM 1 合计恰 6 处）。
+import { newVersionSource } from './manufacturing-version-ui';
 import { signal } from '@preact/signals';
 import { DataTable, PageHeader, StatusBadge, type DataTableColumn } from '@kingturf/ui';
 import { RoutingCreateDrawer } from './routing-create';
@@ -47,6 +48,7 @@ const createBundle = (ports: RoutingConsolePorts): RoutingBundle => ({
   detail: signal<RoutingRow | null>(null),
   detailLoading: signal(false),
   activeForm: signal<'create' | null>(null),
+  versionSource: newVersionSource(),
   operationRows: signal<readonly string[]>(['o1']),
   confirm: createConfirm(),
 });
@@ -327,7 +329,7 @@ const RoutingView = (state: RoutingViewState) => (
         />
       </div>
     </div>
-    {state.selected ? <RoutingDetailDrawer state={state} /> : null}
+    {state.selected && !state.versionSource ? <RoutingDetailDrawer state={state} /> : null}
     {state.activeForm === 'create' ? <RoutingCreateDrawer state={state} /> : null}
     <ConsoleConfirmDialog pending={state.confirm} />
   </div>
@@ -365,6 +367,8 @@ export function RoutingConsolePage(ports: RoutingConsolePorts) {
     detail: bundle.detail.value,
     detailLoading: bundle.detailLoading.value,
     activeForm: bundle.activeForm.value,
+    versionSource: bundle.versionSource.value,
+    openVersion: actions.openVersion,
     operationRows: bundle.operationRows.value,
     mayManage,
     confirm: bundle.confirm,

@@ -4,6 +4,7 @@
 // 分页；详情抽屉聚合版本历史、组件层级树（折叠/替代料标记）与版本对比三类差异）。
 // 默认视图沿用路由加载的全量快照（legacy 列表语义）；状态/关键字/产品类型任一生效时
 // 切换为服务端分页（显式 limit + (code,version) keyset cursor）。
+import { newVersionSource } from './manufacturing-version-ui';
 import { signal } from '@preact/signals';
 import { createBomActions, createBomMutations } from './bom-console-actions';
 import type { BomBundle } from './bom-console-actions';
@@ -44,6 +45,8 @@ const createBundle = (ports: BomConsolePorts): BomBundle => ({
   detail: signal<BomRow | null>(null),
   detailLoading: signal(false),
   activeForm: signal<'create' | null>(null),
+  versionSource: newVersionSource(),
+  substituteRows: signal<Readonly<Record<string, readonly string[]>>>({}),
   componentRows: signal<readonly string[]>(['r1']),
   compareVersions: signal<readonly [string, string] | null>(null),
   collapsed: signal<ReadonlySet<string>>(new Set()),
@@ -331,7 +334,7 @@ const BomView = (state: BomViewState) => (
         />
       </div>
     </div>
-    {state.selected ? <BomDetailDrawer state={state} /> : null}
+    {state.selected && !state.versionSource ? <BomDetailDrawer state={state} /> : null}
     {state.activeForm === 'create' ? <BomCreateDrawer state={state} /> : null}
     <ConsoleConfirmDialog pending={state.confirm} />
   </div>
@@ -345,16 +348,7 @@ export function BomConsolePage(ports: BomConsolePorts) {
     reloadDetail: loaders.reloadDetail,
     actionFailed: loaders.actionFailed,
   });
-  const actions = {
-    ...loaders,
-    ...mutations,
-    ...loaders,
-    ...createBomMutations(ports, bundle, {
-      sync: loaders.sync,
-      reloadDetail: loaders.reloadDetail,
-      actionFailed: loaders.actionFailed,
-    }),
-  };
+  const actions = { ...loaders, ...mutations };
   const mayManage = ports.permissions.has('bom:manage');
 
   const state = (): BomViewState => ({
@@ -378,7 +372,12 @@ export function BomConsolePage(ports: BomConsolePorts) {
     detail: bundle.detail.value,
     detailLoading: bundle.detailLoading.value,
     activeForm: bundle.activeForm.value,
+    versionSource: bundle.versionSource.value,
+    openVersion: actions.openVersion,
     componentRows: bundle.componentRows.value,
+    substituteRows: bundle.substituteRows.value,
+    addSubstitute: actions.addSubstitute,
+    removeSubstitute: actions.removeSubstitute,
     compareVersions: bundle.compareVersions.value,
     collapsed: bundle.collapsed.value,
     mayManage,

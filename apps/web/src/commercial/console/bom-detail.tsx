@@ -5,6 +5,7 @@
 import { DetailDrawer } from '@kingturf/ui';
 import { askPublishVersion } from './console-confirm';
 import { FocusAnchor } from './focus-anchor';
+import { VersionHistoryAction, publishedVersionId } from './manufacturing-version-ui';
 import { ConsoleNotice } from './console-notice';
 import type { BomRow } from './bom-ports';
 import {
@@ -214,11 +215,17 @@ export const BomDetailDrawer = ({ state }: DetailProps) => {
   if (!row) return null;
   const detail = state.detail ?? row;
   const versions = bomVersions(state.detail);
+  const currentId = publishedVersionId(versions);
   // TD-WF-014④：草稿版本带「发布」按钮；发布后它消失，焦点锚点据此把键盘焦点带回抽屉。
   const focusToken = (versions.length > 0 ? versions : [row])
     .map((version) => state.ports.textValue(version.status, ''))
     .join(',');
+  const selectedVersion = versions.find((version) => version.id === row.id) ?? row;
   const tree = recordsOf(detail.tree);
+  const draftPreview =
+    selectedVersion.status === 'DRAFT' && tree[0]?.status === 'PUBLISHED'
+      ? recordsOf(selectedVersion.lines)
+      : [];
   const lines = tree.length > 0 ? recordsOf(recordOf(tree[0]).lines) : recordsOf(detail.lines);
   return (
     <DetailDrawer
@@ -276,10 +283,28 @@ export const BomDetailDrawer = ({ state }: DetailProps) => {
                   发布
                 </button>
               ) : null}
+              <VersionHistoryAction
+                testId="kt-bom"
+                row={version}
+                currentId={currentId}
+                start={state.openVersion}
+                enabled={
+                  state.mayManage &&
+                  !state.detailLoading &&
+                  versions.length > 0 &&
+                  Object.hasOwn(version, 'lines')
+                }
+              />
             </span>
           );
         })}
       </div>
+      {draftPreview.length > 0 ? (
+        <section data-testid="kt-bom-draft-preview">
+          <p class="console-label">第 {String(selectedVersion.version)} 版草稿行项</p>
+          <TreeLines state={state} lines={draftPreview} depth={0} />
+        </section>
+      ) : null}
       <p class="console-label">组件层级</p>
       <div data-testid="kt-bom-tree">
         <TreeLines state={state} lines={lines} depth={0} />

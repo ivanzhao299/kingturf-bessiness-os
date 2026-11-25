@@ -198,11 +198,20 @@ export class CommercialController {
     payload: Record<string, unknown>,
     method: 'POST' | 'PATCH' | 'PUT' = 'POST',
   ): Promise<void> {
+    await this.submitReturningRecord(path, payload, method);
+  }
+  public async submitReturningRecord(
+    path: string,
+    payload: Record<string, unknown>,
+    method: 'POST' | 'PATCH' | 'PUT' = 'POST',
+  ): Promise<Record<string, unknown>> {
     this.loading = true;
     try {
-      this.revisionState = await this.api.submit(path, payload, method);
+      const result = await this.api.submit(path, payload, method);
+      this.revisionState = result;
       this.message = '已保存；版本与决策引用已由服务器返回';
       if (path === '/api/v1/opportunities') await this.load();
+      return result;
     } finally {
       this.loading = false;
     }

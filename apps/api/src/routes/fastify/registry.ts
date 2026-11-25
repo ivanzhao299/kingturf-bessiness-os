@@ -36,6 +36,7 @@ import { registerGoodsReceiptRoutes } from './goods-receipts.ts';
 import { registerManufacturingItemRoutes } from './manufacturing-items.ts';
 import { registerManufacturingBomRoutes } from './manufacturing-boms.ts';
 import { registerManufacturingRoutingRoutes } from './manufacturing-routings.ts';
+import { registerManufacturingVersionRoutes } from './manufacturing-versions.ts';
 import { registerProductionOrderRoutes } from './production-orders.ts';
 import { registerProductionOrderExecutionRoutes } from './production-order-execution.ts';
 import { registerMrpReadRoutes, registerMrpWriteRoutes } from './mrp.ts';
@@ -121,6 +122,9 @@ const CLAIMED_FASTIFY_ROUTES: readonly (readonly [method: string, pattern: RegEx
   ['GET', /^\/api\/v1\/manufacturing-routings\/[0-9a-f-]+$/u],
   ['POST', /^\/api\/v1\/manufacturing-routings$/u],
   ['PUT', /^\/api\/v1\/manufacturing-routings\/[0-9a-f-]+\/publish$/u],
+  ['POST', /^\/api\/v1\/manufacturing-items\/[0-9a-f-]+\/versions$/u],
+  ['POST', /^\/api\/v1\/manufacturing-boms\/[0-9a-f-]+\/versions$/u],
+  ['POST', /^\/api\/v1\/manufacturing-routings\/[0-9a-f-]+\/versions$/u],
   ['GET', /^\/api\/v1\/production-orders$/u],
   ['GET', /^\/api\/v1\/production-orders\/[0-9a-f-]+$/u],
   ['POST', /^\/api\/v1\/production-orders$/u],
@@ -221,6 +225,7 @@ const buildRouteGroupApp = (scope: FastifyRouteScope) => {
   registerManufacturingItemRoutes(app, scope);
   registerManufacturingBomRoutes(app, scope);
   registerManufacturingRoutingRoutes(app, scope);
+  registerManufacturingVersionRoutes(app, scope);
   registerProductionOrderRoutes(app, scope);
   registerProductionOrderExecutionRoutes(app, scope);
   registerMrpReadRoutes(app, scope);
