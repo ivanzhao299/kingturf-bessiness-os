@@ -308,6 +308,74 @@ dialog .dialog-actions {
   flex-shrink: 0;
 }
 
+/* ===== ConfirmDialog ===== */
+/* 不可逆动作的确认框。模态：遮罩盖住整页，层级高于抽屉（.drawer-root 1000 / .detail-drawer 1001）；
+   焦点进入对话框、Esc 取消、Tab 留在框内、关闭后焦点还回触发元素（行为见 confirm-dialog.tsx）。 */
+.confirm-root {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  pointer-events: none;
+}
+.confirm-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 45%);
+  pointer-events: auto;
+}
+.confirm-dialog {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--kt-space-3, 12px);
+  width: min(440px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  padding: var(--kt-space-5, 24px);
+  border-radius: var(--kt-radius-lg, 12px);
+  background: var(--kt-surface, #fff);
+  box-shadow: var(--kt-shadow-overlay, 0 12px 32px rgb(31 42 36 / 20%));
+  pointer-events: auto;
+}
+.confirm-dialog .confirm-title {
+  margin: 0;
+  font-size: var(--kt-font-size-title, 20px);
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--kt-ink, #235441);
+}
+.confirm-dialog .confirm-message {
+  margin: 0;
+  font-size: var(--kt-font-size-body, 14px);
+  line-height: 1.6;
+  color: var(--kt-color-text-muted, #5d6b62);
+}
+.confirm-dialog .confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--kt-space-2, 8px);
+  padding-top: var(--kt-space-2, 8px);
+}
+.confirm-dialog .confirm-actions button {
+  min-width: 88px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .confirm-dialog {
+    animation: confirm-fade-in 0.14s ease-out;
+  }
+}
+@keyframes confirm-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 /* ===== 表格行内操作列 ===== */
 .data-table td button + button {
   margin-left: 4px;
