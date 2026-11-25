@@ -1,0 +1,253 @@
+/* MFG-6 物料需求计划控制台：取值全部来自 kt tokens（ADR-0014）。列表 / 抽屉 / 表单 / 汇总卡复用
+   @kingturf/ui 的原语与既有 .po-* / .console-* 类；这里只有页签、批次标题、解释树、台账与提示条。 */
+
+/* ===== 页内页签（建议 / 计算批次 / 需求信号 / 计划政策） ===== */
+.mrp-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kt-space-1);
+  padding: var(--kt-space-1);
+  border: 1px solid var(--kt-color-border);
+  border-radius: var(--kt-radius-lg);
+  background: var(--kt-color-surface-muted);
+}
+
+.mrp-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--kt-space-2);
+  min-height: 34px;
+  padding: 0 var(--kt-space-4);
+  border: 0;
+  border-radius: var(--kt-radius-md);
+  background: transparent;
+  color: var(--kt-color-text-muted);
+  font: inherit;
+  font-size: var(--kt-font-size-body);
+  font-weight: var(--kt-font-weight-medium);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.mrp-tab:hover {
+  color: var(--kt-color-text);
+}
+
+.mrp-tab[aria-selected='true'] {
+  background: var(--kt-color-surface);
+  color: var(--kt-color-brand-strong);
+  box-shadow: var(--kt-shadow-flat);
+}
+
+.mrp-tab-count {
+  min-width: var(--kt-space-5);
+  padding: 0 var(--kt-space-2);
+  border-radius: var(--kt-radius-pill);
+  background: var(--kt-color-neutral-soft);
+  color: var(--kt-color-text-muted);
+  font-size: var(--kt-font-size-caption);
+  font-weight: var(--kt-font-weight-medium);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.mrp-tab[aria-selected='true'] .mrp-tab-count {
+  background: var(--kt-color-brand-soft);
+  color: var(--kt-color-brand-strong);
+}
+
+/* ===== 页签内容 ===== */
+.mrp-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kt-space-3);
+  min-width: 0;
+}
+
+.mrp-field {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--kt-space-2);
+  max-width: 100%;
+  min-width: 0;
+  color: var(--kt-color-text-muted);
+  font-size: var(--kt-font-size-caption);
+}
+
+.mrp-field select,
+.mrp-toolbar input,
+.mrp-search input {
+  min-height: 34px;
+  padding: 0 var(--kt-space-3);
+  border: 1px solid var(--kt-color-border);
+  border-radius: var(--kt-radius-md);
+  background: var(--kt-color-surface);
+  color: var(--kt-color-text);
+  font: inherit;
+  font-size: var(--kt-font-size-body);
+}
+
+.mrp-field > span {
+  white-space: nowrap;
+}
+
+.mrp-field select {
+  min-width: 0;
+}
+
+.mrp-search {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--kt-space-2);
+  min-width: 0;
+}
+
+.mrp-search input,
+.mrp-toolbar input {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+.mrp-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--kt-space-2);
+  margin: 0;
+}
+
+/* 批次标题：运行编号 · 状态，后随基准日 / 冻结截止日 / 输入哈希（legacy 批次卡片的文字）。 */
+.mrp-run-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--kt-space-1) var(--kt-space-3);
+  margin: 0;
+}
+
+.mrp-run-heading {
+  font-size: var(--kt-font-size-lead);
+}
+
+.mrp-run-meta,
+.mrp-muted {
+  color: var(--kt-color-text-muted);
+  font-size: var(--kt-font-size-caption);
+}
+
+.mrp-badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--kt-space-1);
+}
+
+/* ===== 详情抽屉：算式、口径明细、解释树、台账、提示 ===== */
+.mrp-formula {
+  margin: 0 0 var(--kt-space-2);
+  padding: var(--kt-space-2) var(--kt-space-3);
+  border-radius: var(--kt-radius-md);
+  background: var(--kt-color-surface-muted);
+  font-size: var(--kt-font-size-body);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.mrp-facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kt-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--kt-font-size-body);
+  line-height: 1.5;
+}
+
+.mrp-facts .console-label {
+  margin-right: var(--kt-space-2);
+}
+
+.mrp-line {
+  margin: 0 0 var(--kt-space-2);
+}
+
+.mrp-line .console-label {
+  margin-right: var(--kt-space-2);
+}
+
+.mrp-tree,
+.mrp-tree ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kt-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mrp-tree ul {
+  margin-top: var(--kt-space-2);
+  margin-left: var(--kt-space-3);
+  padding-left: var(--kt-space-3);
+  border-left: 1px solid var(--kt-color-border);
+}
+
+.mrp-tree-node {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--kt-space-1) var(--kt-space-2);
+  padding: var(--kt-space-2) var(--kt-space-3);
+  border: 1px solid var(--kt-color-border);
+  border-radius: var(--kt-radius-md);
+  background: var(--kt-color-surface);
+  font-size: var(--kt-font-size-body);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.mrp-tree li[data-target='true'] > .mrp-tree-node {
+  border-color: var(--kt-color-brand);
+  background: var(--kt-color-brand-soft);
+}
+
+.mrp-ledger {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kt-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mrp-ledger li {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kt-space-1);
+  padding: var(--kt-space-2) var(--kt-space-3);
+  border: 1px solid var(--kt-color-border);
+  border-radius: var(--kt-radius-md);
+  font-size: var(--kt-font-size-body);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+/* 冻结窗口提示（legacy 卡片的 warning-note 同一句）。 */
+.mrp-warning {
+  margin: 0 0 var(--kt-space-2);
+  padding: var(--kt-space-2) var(--kt-space-3);
+  border-radius: var(--kt-radius-md);
+  background: var(--kt-color-warning-soft);
+  color: var(--kt-color-warning);
+  font-size: var(--kt-font-size-body);
+  line-height: 1.5;
+}
+
+@media (max-width: 600px) {
+  .mrp-tree ul {
+    margin-left: 0;
+    padding-left: var(--kt-space-1);
+  }
+}

@@ -39,7 +39,7 @@ export function installRoleTaskInsights(shell: HTMLElement): void {
       (total, scope) =>
         total +
         scope.querySelectorAll(
-          '.solution-list > *, .decision-list > *, .quote-list > *, .qtc-list > *, .order-360-list > *, .risk-list > *, .production-order-grid > *, .mrp-proposal-grid > *, .shipment-grid > *, .queue-list > *, article',
+          '.solution-list > *, .decision-list > *, .quote-list > *, .qtc-list > *, .order-360-list > *, .risk-list > *, .production-order-grid > *, .shipment-grid > *, .queue-list > *, article',
         ).length,
       0,
     );

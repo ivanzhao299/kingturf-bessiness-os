@@ -413,10 +413,10 @@ it('captures artificial-turf project handoff fields without test-channel evidenc
     readBoundSource('./commercial/sourcing-register.ts', 'export function createSourcingPanel'),
     readBoundSource('./commercial/inventory-register.ts', 'export function createInventoryPanel'),
     readBoundSource('./commercial/procurement-view.ts', 'export function appendProcurementView'),
-    readBoundSource('./commercial/mrp-view.ts', 'export function appendMrpView'),
-    readBoundSource('./commercial/mrp-actions.ts', 'export function appendMrpActions'),
-    readBoundSource('./commercial/mrp-run.ts', 'export function appendMrpRun'),
-    readBoundSource('./commercial/mrp-proposals.ts', 'export function createMrpProposalCard'),
+    // MFG-6：物料需求计划页随控制台迁移退役（mrp-view / mrp-actions / mrp-run / mrp-proposals
+    // 删除），绑定锚改钉物料计划控制台页与其独立宿主（断言强度不降：仍逐文件唯一实现锚）。
+    readBoundSource('./commercial/console/mrp-console.tsx', 'export function MrpConsolePage'),
+    readBoundSource('./commercial/console/mrp-host.ts', 'export function appendMrpConsole'),
     readBoundSource('./commercial/quality-view.ts', 'export function appendQualityView'),
     readBoundSource('./commercial/complaints-view.ts', 'export function appendComplaints'),
     readBoundSource('./commercial/complaint-actions.ts', 'export function appendComplaintActions'),
@@ -2738,7 +2738,7 @@ describe('web bootstrap', () => {
     expect(procurementParents[0]?.textContent).toContain('采购管理');
   });
 
-  it('renders explainable MRP calculations, frozen warnings, and approval history', async () => {
+  it('mounts the MRP console host on the material-planning panel', async () => {
     const api = {
       listOpportunities: vi.fn().mockResolvedValue([]),
       list: vi.fn().mockImplementation((path: string) => {
@@ -2812,12 +2812,20 @@ describe('web bootstrap', () => {
       false,
       controller,
     ) as unknown as RenderedElement;
+    // MFG-6：物料需求计划改挂 Preact 控制台宿主（面板与其 data-testid、路由标记保持；控制台行
+    // 内容经动态 chunk 挂载，静态文本不含种子数据——批次标题、冻结提示、净需求算式与取整证据
+    // 断言迁组件测试 mrp-console.test.tsx 与 e2e 第 10 例）。
     expect(workspace.findByClass('mrp-workbench')).toHaveLength(1);
-    expect(workspace.findByClass('mrp-proposal-card')).toHaveLength(1);
-    expect(workspace.textContent).toContain('MRP-KT-2026-001 · 已计算');
-    expect(workspace.textContent).toContain('冻结窗口内');
-    expect(workspace.textContent).toContain('净需求 628.75');
-    expect(workspace.textContent).toContain('按批量取整为 1000');
+    const panel = workspace.findByClass('mrp-workbench')[0];
+    expect(panel?.getAttribute('data-testid')).toBe('mrp-workbench');
+    expect(panel?.getAttribute('data-route-view')).toBe('material-planning');
+    const host = workspace.findByClass('mrp-console')[0];
+    expect(host?.getAttribute('data-testid')).toBe('kt-mrp-console');
+    expect(host?.getAttribute('data-route-view')).toBe(null);
+    // 宿主节是面板的直接子节点。
+    expect(host === undefined ? [] : panel?.children).toContain(host);
+    expect(workspace.textContent).not.toContain('MRP-KT-2026-001');
+    expect(workspace.findByClass('mrp-proposal-card')).toHaveLength(0);
   });
 
   it('renders production routing progress, material evidence, reports, rolls, and state ledger', async () => {

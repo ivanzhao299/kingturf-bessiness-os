@@ -26,7 +26,6 @@ export function installWorkspaceListTools(
     '.order-360-list',
     '.risk-list',
     '.production-order-grid',
-    '.mrp-proposal-grid',
     '.shipment-grid',
   ].join(',');
   for (const list of Array.from(shell.querySelectorAll<HTMLElement>(selectors))) {

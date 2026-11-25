@@ -343,22 +343,41 @@ test('shows recursive MRP explanations, frozen overrides, and released proposal 
   await openRoute(page, 'material-planning');
   const workbench = page.locator('.mrp-workbench');
   await expect(workbench).toBeVisible();
-  await expect(workbench.getByText(/MRP-KT-2026-001 · 已计算/u)).toBeVisible();
-  await expect(workbench.locator('.mrp-proposal-card')).toHaveCount(5);
-  await expect(workbench.locator('.mrp-proposal-card.frozen')).toHaveCount(2);
-  await expect(workbench.getByText('已放行', { exact: true })).toHaveCount(6);
-  const longRangeYarn = workbench
-    .locator('.mrp-proposal-card', { hasText: 'RM-KT-YARN-12000' })
-    .filter({ hasText: '2026-11-15' });
-  await expect(longRangeYarn).toContainText('建议 6000');
-  await expect(longRangeYarn).toContainText('毛需求 10300');
-  await expect(longRangeYarn).toContainText('安全库存 500');
-  await expect(longRangeYarn).toContainText('按批量取整为 6000');
-  await expect(workbench.getByText(/冻结窗口内：批准必须提供覆盖审批证据/u)).toHaveCount(2);
+  await expect(workbench.getByTestId('kt-mrp-run-heading')).toHaveText('MRP-KT-2026-001 · 已计算');
+  const table = workbench.getByTestId('kt-mrp-proposal-table');
+  await expect(table.getByTestId('kt-mrp-proposal-sku')).toHaveCount(5);
+  await expect(table.getByTestId('kt-mrp-frozen')).toHaveCount(2);
+  await expect(table.getByText('已下达', { exact: true })).toHaveCount(5);
+  const longRangeYarn = table.getByRole('row', { name: /RM-KT-YARN-12000.*2026-11-15/u });
+  await expect(longRangeYarn).toContainText('采购建议 6000');
+  await longRangeYarn.getByTestId('kt-mrp-open').click();
+  const drawer = page.getByRole('dialog');
+  const formula = drawer.getByTestId('kt-mrp-formula');
+  await expect(formula).toContainText('毛需求 10300');
+  await expect(formula).toContainText('安全库存 500');
+  await expect(formula).toContainText('按批量取整为 6000');
+  const tree = drawer.getByTestId('kt-mrp-tree');
+  await expect(tree.locator('[data-target="true"][data-level="1"]')).toContainText(
+    'RM-KT-YARN-12000',
+  );
+  await expect(tree.locator('[data-level="0"]')).toContainText('销售订单 SO-KT-P1-DEMO');
+  await expect(tree).toContainText('毛需求贡献 10300');
+  await expect(drawer.getByTestId('kt-mrp-events')).toContainText('已下达');
+  await expect(drawer.getByTestId('kt-mrp-events')).toContainText('MRP-KT-2026-001');
   await testInfo.attach('mrp-explainable-planning-desktop', {
-    body: await workbench.screenshot(),
+    body: await drawer.screenshot(),
     contentType: 'image/png',
   });
+  await page.keyboard.press('Escape');
+  const frozenRows = table.getByRole('row').filter({ has: table.getByTestId('kt-mrp-frozen') });
+  for (const row of await frozenRows.all()) {
+    await row.getByTestId('kt-mrp-open').click();
+    await expect(drawer.getByTestId('kt-mrp-freeze-warning')).toHaveText(
+      '冻结窗口内：批准必须提供覆盖审批证据',
+    );
+    await expect(drawer.getByTestId('kt-mrp-freeze')).toContainText('FREEZE-OVERRIDE-KT-2026-001');
+    await page.keyboard.press('Escape');
+  }
 });
 
 // U3-MFG-4：工单区改为主从控制台——列表行（工单号独占元素/完工进度/状态徽章）+

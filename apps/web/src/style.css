@@ -1497,10 +1497,7 @@ button {
 .production-order-card,
 .evidence-card,
 .procurement-column,
-.procurement-card,
-.mrp-run-card,
-.mrp-policy-card,
-.mrp-proposal-card {
+.procurement-card {
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -4407,10 +4404,7 @@ button:not(:disabled):active {
 .info-card,
 .commercial-panel,
 .quality-section,
-.production-order-card,
-.mrp-policy-card,
-.mrp-proposal-card,
-.mrp-run-card {
+.production-order-card {
   border-color: var(--kt-border);
   background: rgb(255 255 255 / 94%);
   box-shadow: var(--kt-shadow-sm);
@@ -4498,56 +4492,6 @@ button:not(:disabled):active {
 @media (max-width: 640px) {
   .production-summary,
   .production-order-grid {
-    grid-template-columns: 1fr;
-  }
-}
-.mrp-summary,
-.mrp-policy-grid,
-.mrp-proposal-grid {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-.mrp-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin: 16px 0;
-}
-.mrp-policy-card,
-.mrp-proposal-card,
-.mrp-run-card {
-  padding: 15px;
-  border-radius: 14px;
-  background: #fff;
-  box-shadow: 0 7px 20px rgb(40 77 44 / 7%);
-  white-space: pre-line;
-}
-.mrp-run-card {
-  margin-top: 16px;
-}
-.mrp-proposal-card {
-  border-top: 3px solid #3e7e58;
-}
-.mrp-proposal-card.frozen {
-  border-top-color: #c8872b;
-}
-.mrp-formula {
-  font-size: 12px;
-  color: #50645a;
-  line-height: 1.55;
-}
-@media (max-width: 1000px) {
-  .mrp-summary,
-  .mrp-policy-grid,
-  .mrp-proposal-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-@media (max-width: 640px) {
-  .mrp-summary,
-  .mrp-policy-grid,
-  .mrp-proposal-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -4852,7 +4796,6 @@ button:not(:disabled):active {
 .qtc-list,
 .order-360-list,
 .production-order-grid,
-.mrp-proposal-grid,
 .risk-list {
   grid-template-columns: minmax(0, 1fr);
   gap: 0;
@@ -4875,7 +4818,6 @@ button:not(:disabled):active {
 .qtc-card,
 .order-360-card,
 .production-order-card,
-.mrp-proposal-card,
 .risk-card {
   margin: 0;
   border: 0;
@@ -4890,7 +4832,6 @@ button:not(:disabled):active {
 .qtc-list > :last-child,
 .order-360-list > :last-child,
 .production-order-grid > :last-child,
-.mrp-proposal-grid > :last-child,
 .risk-list > :last-child {
   border-bottom: 0;
 }
@@ -4923,7 +4864,6 @@ button:not(:disabled):active {
   .qtc-card,
   .order-360-card,
   .production-order-card,
-  .mrp-proposal-card,
   .risk-card {
     padding: 14px;
   }
