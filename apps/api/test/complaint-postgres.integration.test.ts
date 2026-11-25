@@ -2,6 +2,10 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Database, migrate, type SqlClient } from '@kingturf/database';
 import { PostgresComplaintRepository } from '../src/complaint-repositories.js';
+import type { ApiDependencies } from '../src/app.ts';
+import { complaintsAttempts } from '../src/routes/dispatch/complaints.ts';
+import { dispatchFastifyRouteGroup } from '../src/routes/fastify/registry.ts';
+import type { AuthorizationContext } from '@kingturf/domain';
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString)
@@ -120,6 +124,52 @@ describe('KT-L20 PostgreSQL complaint, NCR, and CAPA integrity', () => {
       [company, complaintId, sequence, state, actor, sequence - 1, randomUUID(), key, hash],
     );
   }
+
+  it('preserves existing complaint paging and SLA access on the production bridge', async () => {
+    const complaint = await createComplaint('CMP-BRIDGE', 'bridge-complaint');
+    await addComplaintEvent(complaint, 1, 'REPORTED', reporter, 'bridge-reported');
+    const authorization: AuthorizationContext = {
+      actor: { companyId: company, employeeId: reporter },
+      permissions: new Map([
+        ['complaint:read', { scopes: ['COMPANY'], fields: null }],
+        ['complaint-sla:read', { scopes: ['COMPANY'], fields: null }],
+      ]),
+    };
+    const scope = {
+      authorization,
+      dependencies: { complaints: repository, commercial: {} } as unknown as ApiDependencies,
+      correlationId: randomUUID(),
+    };
+    for (const pathname of [
+      '/api/v1/complaints',
+      `/api/v1/complaints/${complaint}`,
+      '/api/v1/complaint-sla-policies',
+    ]) {
+      const request = { method: 'GET', pathname };
+      let legacy;
+      for (const attempt of complaintsAttempts({ ...scope, context: authorization, request })) {
+        if (attempt.kind !== 'pending') throw new Error('Unexpected complaint route attempt');
+        legacy = attempt.project(await attempt.pending);
+        if (legacy) break;
+      }
+      expect(legacy?.statusCode).toBe(200);
+      expect(await dispatchFastifyRouteGroup(request, scope)).toEqual(
+        JSON.parse(JSON.stringify(legacy)),
+      );
+    }
+    expect(
+      (
+        await dispatchFastifyRouteGroup(
+          {
+            method: 'GET',
+            pathname: '/api/v1/complaints',
+            query: { limit: '1', query: 'CMP-BRIDGE' },
+          },
+          scope,
+        )
+      )?.body,
+    ).toMatchObject({ items: [{ id: complaint }], nextCursor: null });
+  });
 
   it('enforces tenant relationships, command identity, versions, and complaint state gates', async () => {
     await expect(

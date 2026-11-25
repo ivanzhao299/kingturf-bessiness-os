@@ -1,35 +1,21 @@
 import { createHash } from 'node:crypto';
-import { canonicalize, DomainError, type Actor, type ScopeAnchor } from '@kingturf/domain';
+import { canonicalize, DomainError } from '@kingturf/domain';
 import type { Database, SqlClient } from '@kingturf/database';
-import type { DataScope, JsonObject } from '@kingturf/types';
+import type { JsonObject } from '@kingturf/types';
 import { writeQualityNextVersionEvidence as evidence } from './audit-outbox.ts';
+import {
+  PostgresQualityReadRepository,
+  requireQualityCompany as company,
+  type QualityReadContext as Context,
+} from './quality-read-repositories.ts';
 
 type Db = SqlClient & Pick<Database, 'transaction'>;
-type Context = Readonly<{
-  actor: Actor;
-  scopes: readonly DataScope[];
-  anchors: readonly ScopeAnchor[];
-}>;
 const hash = (value: unknown) => createHash('sha256').update(canonicalize(value)).digest('hex');
 const json = (value: unknown) => value as JsonObject;
-const company = (context: Context) => {
-  if (!context.scopes.includes('COMPANY') && !context.scopes.includes('GROUP'))
-    throw new DomainError('forbidden', 'Quality operations require company scope');
-};
 
-export class PostgresQualityRepository {
-  public constructor(private readonly db: Db) {}
-
-  public async list(view: 'plans' | 'inspections' | 'lots', context: Context) {
-    company(context);
-    const queries = {
-      plans: `SELECT to_jsonb(v)||jsonb_build_object('planId',p.id,'code',p.code,'name',p.name,'inspectionStage',p.inspection_stage,'sku',i.sku,'itemName',i.name,'characteristics',coalesce((SELECT jsonb_agg(to_jsonb(c) ORDER BY c.sequence) FROM quality_plan_characteristics c WHERE c.tenant_id=v.tenant_id AND c.inspection_plan_version_id=v.id),'[]'::jsonb)) item FROM quality_inspection_plan_versions v JOIN quality_inspection_plans p ON p.tenant_id=v.tenant_id AND p.id=v.inspection_plan_id JOIN manufacturing_item_versions iv ON iv.tenant_id=p.tenant_id AND iv.id=p.item_version_id JOIN manufacturing_items i ON i.tenant_id=iv.tenant_id AND i.id=iv.item_id WHERE v.tenant_id=$1 ORDER BY p.code,v.version DESC`,
-      inspections: `SELECT to_jsonb(q)||jsonb_build_object('state',s.state,'stateSequence',s.sequence,'planCode',p.code,'lotNumber',l.lot_number,'sku',i.sku,'results',coalesce((SELECT jsonb_agg(to_jsonb(r)||jsonb_build_object('characteristicCode',c.code,'characteristicName',c.name,'unitCode',c.unit_code) ORDER BY c.sequence) FROM quality_inspection_results r JOIN quality_plan_characteristics c ON c.tenant_id=r.tenant_id AND c.id=r.characteristic_id WHERE r.tenant_id=q.tenant_id AND r.inspection_id=q.id),'[]'::jsonb),'events',coalesce((SELECT jsonb_agg(to_jsonb(e) ORDER BY e.sequence) FROM quality_inspection_events e WHERE e.tenant_id=q.tenant_id AND e.inspection_id=q.id),'[]'::jsonb)) item FROM quality_inspections q JOIN quality_inspection_effective_states s ON s.tenant_id=q.tenant_id AND s.inspection_id=q.id JOIN quality_inspection_plan_versions v ON v.tenant_id=q.tenant_id AND v.id=q.inspection_plan_version_id JOIN quality_inspection_plans p ON p.tenant_id=v.tenant_id AND p.id=v.inspection_plan_id JOIN inventory_lots l ON l.tenant_id=q.tenant_id AND l.id=q.lot_id JOIN manufacturing_item_versions iv ON iv.tenant_id=l.tenant_id AND iv.id=l.item_version_id JOIN manufacturing_items i ON i.tenant_id=iv.tenant_id AND i.id=iv.item_id WHERE q.tenant_id=$1 ORDER BY q.opened_at DESC`,
-      lots: `SELECT jsonb_build_object('lotId',l.id,'lotNumber',l.lot_number,'itemVersionId',l.item_version_id,'sku',i.sku,'itemName',i.name,'qualityStatus',q.quality_status,'inspectionId',q.inspection_id,'reason',q.reason,'evidence',q.evidence,'movements',coalesce((SELECT jsonb_agg(to_jsonb(m) ORDER BY m.sequence) FROM inventory_movements m WHERE m.tenant_id=l.tenant_id AND m.lot_id=l.id),'[]'::jsonb),'usedByOrders',coalesce((SELECT jsonb_agg(jsonb_build_object('orderId',o.id,'orderNumber',o.order_number,'quantity',t.quantity,'transactionType',t.transaction_type) ORDER BY t.occurred_at) FROM production_material_transactions t JOIN production_orders o ON o.tenant_id=t.tenant_id AND o.id=t.production_order_id WHERE t.tenant_id=l.tenant_id AND t.lot_id=l.id),'[]'::jsonb),'producedRolls',coalesce((SELECT jsonb_agg(jsonb_build_object('orderId',o.id,'orderNumber',o.order_number,'rollNumber',r.roll_number,'quantity',r.quantity)) FROM production_rolls r JOIN production_orders o ON o.tenant_id=r.tenant_id AND o.id=r.production_order_id WHERE r.tenant_id=l.tenant_id AND r.lot_id=l.id),'[]'::jsonb),'qualityEvents',coalesce((SELECT jsonb_agg(to_jsonb(e) ORDER BY e.sequence) FROM inventory_lot_quality_events e WHERE e.tenant_id=l.tenant_id AND e.lot_id=l.id),'[]'::jsonb)) item FROM inventory_lots l JOIN inventory_lot_effective_quality q ON q.tenant_id=l.tenant_id AND q.lot_id=l.id JOIN manufacturing_item_versions iv ON iv.tenant_id=l.tenant_id AND iv.id=l.item_version_id JOIN manufacturing_items i ON i.tenant_id=iv.tenant_id AND i.id=iv.item_id WHERE l.tenant_id=$1 ORDER BY l.created_at DESC`,
-    } as const;
-    return (
-      await this.db.query<{ item: JsonObject }>(queries[view], [context.actor.companyId])
-    ).rows.map((row) => row.item);
+export class PostgresQualityRepository extends PostgresQualityReadRepository {
+  public constructor(private readonly db: Db) {
+    super(db);
   }
 
   public createPlan(

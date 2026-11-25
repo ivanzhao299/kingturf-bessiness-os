@@ -163,6 +163,11 @@ describe('Batch4 app extraction against fixed f3 complete request traces', () =>
     'POST /api/v1/bank-payments',
     'GET /api/v1/reconciliation-runs',
     'POST /api/v1/reconciliation-runs',
+    // OPS-1：桥接仍分派原列表 SQL 和原写命令；冻结响应及终止仓储实参逐键比对。
+    'GET /api/v1/quality-plans',
+    'GET /api/v1/quality-inspections',
+    'POST /api/v1/quality-plans',
+    'POST /api/v1/quality-inspections',
   ]);
   const preserveWithStrip = (result: {
     name: string;
