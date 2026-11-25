@@ -963,7 +963,11 @@ describe('fixed old quality characteristic map and observable getter reads', () 
           item: Record<string, unknown> = characteristic();
         item[field.name] = value;
         f.body.characteristics = [item];
-        invalid(await f.dispatch());
+        const response = await f.dispatch();
+        if (field.name === 'instructions' && value === '') {
+          expect(response.statusCode).toBe(201);
+          expect(record((input(f, r).characteristics as unknown[])[0]).instructions).toBe('');
+        } else invalid(response);
       });
     });
   for (const dataType of ['NUMERIC', 'BOOLEAN', 'TEXT', 'NUMERIC_X', 'numeric', null, undefined])

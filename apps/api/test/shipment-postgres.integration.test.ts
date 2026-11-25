@@ -1,13 +1,17 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { canonicalize } from '@kingturf/domain';
-import type { JsonObject } from '@kingturf/types';
+import type { JsonObject, PermissionKey } from '@kingturf/types';
+import type { ApiDependencies, ApiRequest } from '../src/app.ts';
+import { shipmentsAttempts } from '../src/routes/dispatch/shipments.ts';
+import { dispatchFastifyRouteGroup } from '../src/routes/fastify/registry.ts';
 import { PostgresManufacturingRepository } from '../src/manufacturing-repositories.js';
 import { PostgresProductionRepository } from '../src/production-repositories.js';
 import { PostgresProcurementRepository } from '../src/procurement-repositories.js';
 import { PostgresShipmentRepository } from '../src/shipment-repositories.js';
 import { PostgresOrder360Repository } from '../src/order-360-repositories.js';
 import { ownedCommercialGraph } from './fixtures/owned-commercial-graph.js';
+import { ownedHttpApi } from './fixtures/owned-http-api.js';
 
 const id = (value: JsonObject, key = 'id'): string => {
   const result = value[key];
@@ -200,6 +204,120 @@ describe('shipment exception release and Order360 shipment source on real Postgr
     await fixture?.close();
     fixture = undefined;
   });
+
+  it('preserves legacy release lists and adds tenant-bounded details, keyset paging and counts', async () => {
+    const fixture = owned();
+    const firstRelease = await release();
+    const secondRelease = await shipment.request(
+      { ...requestInput(), requestNumber: 'RELEASE-2', idempotencyKey: 'REQUEST-2' },
+      fixture.context,
+      randomUUID(),
+    );
+    const scope = {
+      authorization: {
+        actor: fixture.context.actor,
+        permissions: new Map<PermissionKey, { scopes: readonly ['COMPANY']; fields: null }>([
+          ['shipment:read', { scopes: ['COMPANY'], fields: null }],
+        ]),
+      },
+      correlationId: randomUUID(),
+      dependencies: { shipments: shipment, commercial: {} } as unknown as ApiDependencies,
+    };
+    const method = 'GET';
+    const pathname = '/api/v1/shipment-releases';
+    const request = { method, pathname };
+    const [attempt] = shipmentsAttempts({ ...scope, context: scope.authorization, request });
+    if (attempt?.kind !== 'pending') throw new Error('Missing legacy shipment attempt');
+    const legacy = attempt.project(await attempt.pending);
+    const bridge = (next: ApiRequest) => dispatchFastifyRouteGroup(next, scope);
+    expect(await bridge(request)).toEqual(legacy);
+    const first = await bridge({
+      method,
+      pathname,
+      query: { limit: '1', query: 'release', summary: 'true' },
+    });
+    expect(first?.body).toMatchObject({
+      items: [{ id: secondRelease.id }],
+      nextCursor: secondRelease.id,
+      summary: { requests: '2', exceptions: '1', released: '1', delivered: '0' },
+    });
+    expect(
+      (
+        await bridge({
+          method,
+          pathname,
+          query: { limit: '1', cursor: secondRelease.id, state: 'RELEASED' },
+        })
+      )?.body,
+    ).toMatchObject({ items: [{ id: firstRelease.id, state: 'RELEASED' }], nextCursor: null });
+    const detail = { method, pathname: `${pathname}/${firstRelease.id}` };
+    expect(await bridge(detail)).toMatchObject({
+      statusCode: 200,
+      body: {
+        id: firstRelease.id,
+        lotNumber: 'SHIP-LOT',
+        productionOrderNumber: 'SHIP-PRODUCTION',
+      },
+    });
+    expect(
+      await dispatchFastifyRouteGroup(detail, {
+        ...scope,
+        authorization: { ...scope.authorization, actor: fixture.otherContext.actor },
+      }),
+    ).toMatchObject({ statusCode: 404 });
+  });
+
+  it('submits the legacy POD payload over the real HTTP listener', async () => {
+    const fixture = owned();
+    const request = await release();
+    const dispatched = await shipment.dispatch(
+      request.id,
+      dispatchInput(),
+      fixture.context,
+      randomUUID(),
+    );
+    const shipmentId = id(dispatched);
+    const receiver = randomUUID();
+    await fixture.db.query(
+      "INSERT INTO employees(id,company_id,organization_id,employee_number,display_name,normalized_email) VALUES($1,$2,$3,'RECEIVER','Synthetic receiver','receiver@owned.test')",
+      [receiver, fixture.context.actor.companyId, fixture.teamId],
+    );
+    const http = await ownedHttpApi(fixture);
+    try {
+      const user = await http.user(receiver, fixture.context.actor.companyId);
+      await user.grant(['shipment:track', 'shipment:read'], ['COMPANY']);
+      const path = `/api/v1/shipments/${shipmentId}/deliver`;
+      for (const key of [`POD-${randomUUID()}`, 'bad-key']) {
+        const invalid = await user.request(path, 'POST', trackingInput(key));
+        expect(invalid.status).toBe(400);
+        expect(await invalid.json()).toMatchObject({
+          error: { message: 'Code must be 1-64 uppercase letters, digits, underscore, or hyphen' },
+        });
+      }
+      const transit = await user.request(
+        `/api/v1/shipments/${shipmentId}/in-transit`,
+        'POST',
+        trackingInput(`POD-${shipmentId}`),
+      );
+      expect(transit.status).toBe(400);
+      const normal = await user.request(
+        `/api/v1/shipments/${shipmentId}/in-transit`,
+        'POST',
+        trackingInput('TRACKING-1'),
+      );
+      expect(normal.status).toBe(201);
+      const result = await user.request(path, 'POST', trackingInput(`POD-${shipmentId}`));
+      expect(result.status).toBe(201);
+      expect(await result.json()).toMatchObject({ state: 'DELIVERED' });
+      const stored = await fixture.db.query<{ idempotency_key: string }>(
+        "SELECT idempotency_key FROM shipment_events WHERE tenant_id=$1 AND shipment_id=$2 AND state='DELIVERED'",
+        [fixture.context.actor.companyId, shipmentId],
+      );
+      expect(stored.rows).toEqual([{ idempotency_key: `POD-${shipmentId}` }]);
+    } finally {
+      await http.close();
+    }
+  }, 20_000);
 
   it('evaluates independent failed gates and writes exactly an audit-only request', async () => {
     const { context, db } = owned(),

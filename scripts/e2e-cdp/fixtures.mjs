@@ -174,7 +174,13 @@ export function createStubRouter({
             'operations:complaints': 'limit=100',
             'operations:mrp-proposals': 'runId=cdp-mrp-run-a&limit=50',
           }[key] ?? '';
-        if (parameters.toString() !== expected)
+        const qualityPages = {
+          'operations:quality-plans': 'limit=25',
+          'operations:quality-inspections': 'limit=25&summary=true',
+          'operations:complaints': 'limit=25',
+          'operations:lot-traceability': 'limit=25&summary=true',
+        };
+        if (parameters.toString() !== expected && parameters.toString() !== qualityPages[key])
           throw new Error('unmapped synthetic API request query');
       }
       if (
@@ -200,6 +206,11 @@ export function createStubRouter({
         if (parameters.toString() !== expected && parameters.toString() !== consolePages[key])
           throw new Error('unmapped synthetic API request query');
       }
+      if (
+        key === 'shipmentReleases' &&
+        !['', 'limit=25&summary=true'].includes(parameters.toString())
+      )
+        throw new Error('unmapped synthetic API request query');
       counts.set(key, (counts.get(key) ?? 0) + 1);
       const candidate = holds.get(key);
       const hold =

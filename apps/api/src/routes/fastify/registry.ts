@@ -43,6 +43,9 @@ import { registerMrpReadRoutes, registerMrpWriteRoutes } from './mrp.ts';
 import { registerArOpenItemRoutes } from './ar-open-items.ts';
 import { registerBankPaymentRoutes } from './bank-payments.ts';
 import { registerCollectionCaseRoutes } from './collection-cases.ts';
+import { registerQualityRoutes } from './quality.ts';
+import { registerComplaintRoutes } from './complaints.ts';
+import { registerShipmentRoutes } from './shipments.ts';
 
 export type FastifyRouteScope = Readonly<{
   authorization: AuthorizationContext;
@@ -156,6 +159,26 @@ const CLAIMED_FASTIFY_ROUTES: readonly (readonly [method: string, pattern: RegEx
   ['POST', /^\/api\/v1\/collection-cases\/[0-9a-f-]+\/(?:followups|promises|legal-handoffs)$/u],
   ['POST', /^\/api\/v1\/collection-promises\/[0-9a-f-]+\/break$/u],
   ['POST', /^\/api\/v1\/legal-handoffs\/[0-9a-f-]+\/(?:accept|evidence-packages)$/u],
+  ['GET', /^\/api\/v1\/(?:quality-plans|quality-inspections|lot-traceability)(?:\/[0-9a-f-]+)?$/u],
+  ['POST', /^\/api\/v1\/quality-plans(?:\/[0-9a-f-]+\/publish)?$/u],
+  [
+    'POST',
+    /^\/api\/v1\/quality-inspections(?:\/[0-9a-f-]+\/(?:sample|complete|cancel|results|release|reject))?$/u,
+  ],
+  ['GET', /^\/api\/v1\/(?:complaints(?:\/[0-9a-f-]+)?|complaint-sla-policies)$/u],
+  [
+    'POST',
+    /^\/api\/v1\/(?:complaints(?:\/batch-triage|\/[0-9a-f-]+\/(?:triage|investigate|reject|close|ncrs))?|complaint-sla-policies)$/u,
+  ],
+  ['POST', /^\/api\/v1\/ncrs\/[0-9a-f-]+\/(?:contain|root-cause|disposition|close|capas)$/u],
+  ['POST', /^\/api\/v1\/capas\/[0-9a-f-]+\/(?:actions|verify|close)$/u],
+  ['POST', /^\/api\/v1\/capa-actions\/[0-9a-f-]+\/complete$/u],
+  ['GET', /^\/api\/v1\/shipment-releases(?:\/[0-9a-f-]+)?$/u],
+  [
+    'POST',
+    /^\/api\/v1\/shipment-releases(?:\/[0-9a-f-]+\/(?:approve-exception|reject-exception|release|dispatch))?$/u,
+  ],
+  ['POST', /^\/api\/v1\/shipments\/[0-9a-f-]+\/(?:in-transit|deliver)$/u],
 ];
 
 // legacy catch 层的同款 DomainError 状态映射（行为守恒）。
@@ -233,6 +256,9 @@ const buildRouteGroupApp = (scope: FastifyRouteScope) => {
   registerArOpenItemRoutes(app, scope);
   registerBankPaymentRoutes(app, scope);
   registerCollectionCaseRoutes(app, scope);
+  registerQualityRoutes(app, scope);
+  registerComplaintRoutes(app, scope);
+  registerShipmentRoutes(app, scope);
   return app;
 };
 

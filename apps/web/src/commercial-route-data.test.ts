@@ -127,6 +127,7 @@ const matrix: readonly (readonly [AppRoute, readonly string[]])[] = [
   [
     'quality-inspection',
     [
+      'manufacturing-items',
       'quality-plans',
       'quality-inspections',
       'lot-traceability',

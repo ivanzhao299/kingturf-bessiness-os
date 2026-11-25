@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[OPS-1／OPS-2 质量与交付迁移](evidence/ops1-2026-11-25.md) 记录质检、投诉和发货放行控制台的读写保真、双视口与上线前验证。
+
 [A系列资产审计总录](audits/2026-11-19-asset-audit-summary.md)：第七次人裁配套只读审计（ASVS/NIST/SLSA基准）；代码层零P0、唯一P0=GitHub平台配置，A-F0..A-F4修复批次规划与两项过期TD复核。
 
 [A1 SQL/DataScope仓储审计](audits/a1-sql-datascope-repositories.md)：注入防护达行业水准之上，零字符串值拼接、动态片段全封闭。

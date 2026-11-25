@@ -251,6 +251,13 @@ const SQL_ENUM_NAMES = new Set([
   // legacy list、additive 分页与详情根行三处复用，SQL 字节与提取前逐字一致；请求值
   // （state/query/cursor/limit）一律经 values.push 参数化。
   'PRODUCTION_ORDER_PROJECTION',
+  // OPS-1: fixed legacy quality SELECT/FROM/tenant clause shared by default, detail, and
+  // keyset reads. State, search, cursor and limit remain bound parameters.
+  'QUALITY_PLANS_SELECT',
+  'QUALITY_INSPECTIONS_SELECT',
+  'QUALITY_LOTS_SELECT',
+  // OPS-2: fixed shipment ledger projection, joins and tenant clause. Filters are bound.
+  'SHIPMENT_RELEASE_SELECT',
   // MFG-6（生产域迁移，同 PRODUCTION_ORDER 先例）：MRP 行投影（计划政策 / 需求信号 / 计算批次
   // 含 calculations、proposals 两个聚合 / 建议）提取为模块常量，供 legacy list（MRP_LIST_QUERIES
   // 三条查询）与 additive 分页共用，SQL 字节与提取前逐字一致；请求值（query/枚举筛选/cursor/

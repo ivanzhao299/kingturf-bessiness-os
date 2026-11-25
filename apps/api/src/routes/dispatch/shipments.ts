@@ -12,6 +12,17 @@ import {
 } from '../../app-values.ts';
 import { authorizeQuery } from '../../policy.ts';
 import { projectedReply, type RouteAttempts, type RouteDispatchContext } from './context.ts';
+
+function shipmentTrackingKey(
+  value: string,
+  shipmentId: string | undefined,
+  action: string | undefined,
+): string {
+  if (action === 'deliver' && shipmentId !== undefined && value === `POD-${shipmentId}`)
+    return value;
+  return assertStableCode(value);
+}
+
 export function* shipmentsAttempts(scope: RouteDispatchContext): RouteAttempts {
   const { request, dependencies, context, correlationId } = scope;
   if (dependencies.shipments) {
@@ -151,7 +162,11 @@ export function* shipmentsAttempts(scope: RouteDispatchContext): RouteAttempts {
             occurredAt: timestamp(body.occurredAt, 'occurredAt'),
             location: string(body.location, 'location'),
             evidence: jsonObject(body.evidence ?? {}, 'evidence'),
-            idempotencyKey: assertStableCode(string(body.idempotencyKey, 'idempotencyKey')),
+            idempotencyKey: shipmentTrackingKey(
+              string(body.idempotencyKey, 'idempotencyKey'),
+              trackCommand[1],
+              trackCommand[2],
+            ),
           },
           { actor: context.actor, scopes: grant.scopes, anchors: grant.anchors },
           correlationId,

@@ -284,7 +284,7 @@ export async function runProbes({ send, router, runId, report, expectDialog }) {
           '[data-testid="production-workbench"] .production-order-card',
           'CDP-PROD-A',
         ],
-        ['shipments', '发货与签收', '.shipment-workbench .production-order-card', 'CDP-SHIP-A'],
+        ['shipments', '发货与签收', '[data-testid="kt-shipment-number"]', 'CDP-SHIP-A'],
       ])
         await check(`fulfillment-view-${route}-desktop-mobile`, async () => {
           for (const metrics of [
@@ -375,17 +375,7 @@ export async function runProbes({ send, router, runId, report, expectDialog }) {
           ],
         ],
         ['material-planning', '物料计划', []],
-        [
-          'quality-inspection',
-          '质量检验',
-          [
-            ['.quality-plan-card', 'CDP-QP-A'],
-            ['.quality-plan-card', '最终检验'],
-            ['.quality-inspection-card', 'CDP-QI-A'],
-            ['.traceability-card', 'CDP-LOT-A'],
-            ['.complaint-ledger tbody tr', 'CDP-COMPLAINT-A'],
-          ],
-        ],
+        ['quality-inspection', '质量检验', []],
       ])
         await check(`operations-view-${route}-desktop-mobile`, async () => {
           for (const metrics of [
@@ -428,6 +418,19 @@ export async function runProbes({ send, router, runId, report, expectDialog }) {
               await page.text('[data-testid="kt-mrp-formula"]', '净需求 50');
               await page.noOverflow();
               await page.click('.detail-drawer button[aria-label="关闭详情"]');
+            }
+            if (route === 'quality-inspection') {
+              for (const [tab, records] of [
+                ['plans', ['CDP-QP-A', '最终检验']],
+                ['inspections', ['CDP-QI-A']],
+                ['lots', ['CDP-LOT-A']],
+                ['complaints', ['CDP-COMPLAINT-A']],
+              ]) {
+                await page.click(`[data-testid="kt-qi-tab-${tab}"]`);
+                for (const record of records)
+                  await page.text(`[data-testid="kt-qi-${tab}-table"]`, record);
+                await page.noOverflow();
+              }
             }
             for (const [selector, record] of cards) await page.text(selector, record);
             await page.noOverflow();

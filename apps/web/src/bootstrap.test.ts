@@ -417,30 +417,27 @@ it('captures artificial-turf project handoff fields without test-channel evidenc
     // 删除），绑定锚改钉物料计划控制台页与其独立宿主（断言强度不降：仍逐文件唯一实现锚）。
     readBoundSource('./commercial/console/mrp-console.tsx', 'export function MrpConsolePage'),
     readBoundSource('./commercial/console/mrp-host.ts', 'export function appendMrpConsole'),
-    readBoundSource('./commercial/quality-view.ts', 'export function appendQualityView'),
-    readBoundSource('./commercial/complaints-view.ts', 'export function appendComplaints'),
-    readBoundSource('./commercial/complaint-actions.ts', 'export function appendComplaintActions'),
+    readBoundSource('./commercial/console/quality-host.ts', 'export function appendQualityConsole'),
     readBoundSource(
-      './commercial/complaint-assignment.ts',
-      'export function appendComplaintSlaAction',
+      './commercial/console/quality-console.tsx',
+      'export function mountQualityConsole',
     ),
-    readBoundSource('./commercial/complaint-rows.ts', 'export function createComplaintRow'),
-    readBoundSource('./commercial/complaint-ncr.ts', 'export function appendComplaintNcrAction'),
+    readBoundSource('./commercial/console/complaint-forms.ts', 'export function complaintCreate'),
+    readBoundSource('./commercial/console/complaint-forms.ts', 'export function complaintSla'),
     readBoundSource(
-      './commercial/complaint-workflow.ts',
-      'export async function runComplaintWorkflow',
+      './commercial/console/complaint-forms.ts',
+      'export function complaintTransition',
     ),
-    readBoundSource('./commercial/capa-forms.ts', 'export function openCapaCreate'),
-    readBoundSource('./commercial/quality-plans.ts', 'export function appendQualityPlans'),
+    readBoundSource('./commercial/console/complaint-forms.ts', 'export function complaintNcr'),
     readBoundSource(
-      './commercial/quality-inspections.ts',
-      'export function appendQualityInspections',
+      './commercial/console/complaint-closure.ts',
+      'export function complaintClosure',
     ),
-    readBoundSource(
-      './commercial/quality-inspection-cards.ts',
-      'export function createInspectionCard',
-    ),
-    readBoundSource('./commercial/quality-traceability.ts', 'export function appendTraceability'),
+    readBoundSource('./commercial/console/complaint-capa-forms.ts', 'export function capaCreate'),
+    readBoundSource('./commercial/console/quality-forms.ts', 'export const newQualityPlan'),
+    readBoundSource('./commercial/console/quality-forms.ts', 'export const newQualityInspection'),
+    readBoundSource('./commercial/console/quality-forms.ts', 'export function inspectionForms'),
+    readBoundSource('./commercial/console/quality-detail.tsx', 'export const LotDetail'),
     readBoundSource('./commercial/permissions.ts', 'export function isCommercialPermission'),
     // U3-MFG-4：工单卡随控制台迁移退役（production-orders-view 删除；流转表单迁入
     // 控制台），绑定锚改钉工单控制台页与其独立宿主（断言强度不降：仍逐文件唯一实现锚）。
@@ -460,8 +457,11 @@ it('captures artificial-turf project handoff fields without test-channel evidenc
       './commercial/production-cost-policy.ts',
       'export function createProductionCostPolicyButton',
     ),
-    readBoundSource('./commercial/shipments-view.ts', 'export function appendShipmentsView'),
-    readBoundSource('./commercial/shipment-actions.ts', 'export function appendShipmentDispatch'),
+    readBoundSource(
+      './commercial/console/shipment-host.ts',
+      'export function appendShipmentConsole',
+    ),
+    readBoundSource('./commercial/console/shipment-forms.ts', 'export function shipmentDispatch'),
     readBoundSource('./commercial/sales-orders-view.ts', 'export function appendSalesOrdersView'),
     readBoundSource('./commercial/order360-view.ts', 'export function appendOrder360Content'),
     readBoundSource(
@@ -3841,7 +3841,7 @@ describe('web bootstrap', () => {
     expect(workspace.findByClass('collection-console')).toHaveLength(1);
   });
 
-  it('renders the complaint queue as a Chinese business ledger with governed batch triage', async () => {
+  it('mounts the quality route for a complaint-only account', async () => {
     const commercialApi = {
       listOpportunities: vi.fn().mockResolvedValue([]),
       list: vi.fn().mockImplementation((path: string) =>
@@ -3882,14 +3882,9 @@ describe('web bootstrap', () => {
       false,
       controller,
     ) as unknown as RenderedElement;
-    expect(workspace.findByClass('complaint-ledger')).toHaveLength(1);
-    expect(workspace.textContent).toContain('客户投诉与整改闭环');
-    expect(workspace.textContent).toContain('CMP-2026-001');
-    expect(workspace.textContent).toContain('重大');
-    expect(workspace.textContent).toContain('待分诊');
-    expect(workspace.textContent).toContain('批量分派');
-    expect(workspace.textContent).not.toContain('MAJOR');
-    expect(workspace.textContent).not.toContain('REPORTED');
+    const [host] = workspace.findByClass('quality-workbench');
+    expect(host?.getAttribute('data-testid')).toBe('kt-qi-console');
+    expect(host?.getAttribute('data-route-view')).toBe('quality-inspection');
   });
 });
 

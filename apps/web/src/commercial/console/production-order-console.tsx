@@ -359,6 +359,19 @@ export function ProductionOrderConsolePage(ports: ProductionOrderConsolePorts) {
     actionFailed: loaders.actionFailed,
   });
   const actions = { ...loaders, ...mutations };
+  ports.onRelatedRecord?.((id) => {
+    const order = bundle.snapshot.peek().find((row) => row.id === id);
+    if (order) actions.open(order);
+    else
+      void ports
+        .loadDetail(id)
+        .then((detail) => {
+          if (detail) actions.open(detail);
+        })
+        .catch((error: unknown) => {
+          loaders.actionFailed(error, '工单加载失败');
+        });
+  });
   const mayCreate = ports.permissions.has('production:plan');
 
   const state = (): ProductionOrderViewState => ({

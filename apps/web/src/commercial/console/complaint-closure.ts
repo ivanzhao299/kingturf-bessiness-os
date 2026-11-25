@@ -1,31 +1,31 @@
-import { openForm } from '../shared/forms';
-import type { OperationsViewContext } from './operations-view-ports';
-import {
-  openCapaCreate,
-  openCapaAction,
-  openCapaComplete,
-  openCapaVerify,
-  openCapaClose,
-} from './capa-forms';
+import type { OperationsViewContext } from '../operations-view-ports';
+import { finText, finRecord, finRows, type FinRow } from './fin-kit';
+import { opsForm } from './ops-form';
 
-export async function runComplaintWorkflow(
-  context: OperationsViewContext,
-  complaint: Record<string, unknown>,
-  id: string,
-  command: (action: 'investigate' | 'close', label: string, description: string) => void,
-  refresh: () => Promise<void>,
-): Promise<void> {
-  const { workspace, controller, permissions } = context;
-  const { recordValue, recordText, requestId } = context.ports;
-  const detail = await controller.api.get?.(`/api/v1/complaints/${id}`);
-  if (!detail) return;
-  const ncr = recordValue(detail.ncr);
-  const capa = recordValue(ncr.capa);
-  const ncrId = recordText(ncr, 'id', 'id');
-  const ncrState = recordText(ncr, 'state', 'state');
+type ComplaintContext = Pick<OperationsViewContext, 'controller' | 'ports' | 'permissions'>;
+
+import type { FormSectionField } from '@kingturf/ui';
+import { complaintCommandKey, complaintTransition } from './complaint-forms';
+import {
+  capaCreate,
+  capaAction,
+  capaComplete,
+  capaVerify,
+  capaClose,
+} from './complaint-capa-forms';
+
+export function complaintClosure(context: ComplaintContext, complaint: FinRow, detail: FinRow) {
+  const {
+    permissions,
+    ports: { requestId },
+  } = context;
+  const ncr = finRecord(detail.ncr);
+  const capa = finRecord(ncr.capa);
+  const ncrId = finText(ncr, 'id');
+  const ncrState = finText(ncr, 'state');
   const ncrVersion = Number(ncr.version ?? 0);
-  const capaId = recordText(capa, 'id', 'id');
-  const capaState = recordText(capa, 'state', 'state');
+  const capaId = finText(capa, 'id');
+  const capaState = finText(capa, 'state');
   const capaVersion = Number(capa.version ?? 0);
   const evidenceFields = [
     { name: 'reason', label: '处理说明', type: 'textarea' as const, required: true },
@@ -34,16 +34,16 @@ export async function runComplaintWorkflow(
   const transitionNcr = (
     action: 'contain' | 'root-cause' | 'disposition' | 'close',
     title: string,
-    extra: Parameters<typeof openForm>[3] = [],
+    extra: readonly FormSectionField[] = [],
   ) => {
-    openForm(
-      workspace,
+    return opsForm(
       title,
       '填写业务结论和可追溯证据后提交。',
       [...extra, ...evidenceFields],
       `确认${title}`,
-      async (values) => {
-        await controller.submit(`/api/v1/ncrs/${ncrId}/${action}`, {
+      (values) => [
+        `/api/v1/ncrs/${ncrId}/${action}`,
+        {
           expectedVersion: ncrVersion,
           reason: values.reason,
           evidence: { reference: values.evidenceReference },
@@ -54,18 +54,19 @@ export async function runComplaintWorkflow(
               }
             : {}),
           ...(action === 'disposition' ? { disposition: values.disposition } : {}),
-          idempotencyKey: requestId(),
-        });
-        await refresh();
-      },
+          idempotencyKey: complaintCommandKey(requestId),
+        },
+      ],
+      action === 'disposition' || action === 'close'
+        ? '确认后将追加不可撤回的质量处理记录。'
+        : undefined,
     );
   };
   if (ncrState === 'OPEN' && permissions.has('ncr:manage')) {
-    transitionNcr('contain', '确认临时遏制');
-    return;
+    return transitionNcr('contain', '确认临时遏制');
   }
   if (ncrState === 'CONTAINED' && permissions.has('ncr:manage')) {
-    transitionNcr('root-cause', '确认根本原因', [
+    return transitionNcr('root-cause', '确认根本原因', [
       {
         name: 'rootCauseMethod',
         label: '分析方法',
@@ -80,10 +81,9 @@ export async function runComplaintWorkflow(
       },
       { name: 'rootCause', label: '根本原因结论', type: 'textarea', required: true },
     ]);
-    return;
   }
   if (ncrState === 'ROOT_CAUSE_CONFIRMED' && permissions.has('ncr:disposition')) {
-    transitionNcr('disposition', '批准处置方案', [
+    return transitionNcr('disposition', '批准处置方案', [
       {
         name: 'disposition',
         label: '处置方式',
@@ -99,13 +99,11 @@ export async function runComplaintWorkflow(
         ],
       },
     ]);
-    return;
   }
   if (ncrState === 'DISPOSITIONED' && !capaId && permissions.has('capa:manage')) {
-    openCapaCreate(context, complaint, ncrId, refresh);
-    return;
+    return capaCreate(context, complaint, ncrId);
   }
-  const actions = Array.isArray(capa.actions) ? capa.actions.map(recordValue) : [];
+  const actions = finRows(capa.actions);
   const incomplete = actions.find((item) => !item.completion);
   if (
     capaId &&
@@ -113,25 +111,28 @@ export async function runComplaintWorkflow(
     permissions.has('capa:manage') &&
     !actions.length
   ) {
-    openCapaAction(context, capaId, capaVersion, refresh);
-    return;
+    return capaAction(context, capaId, capaVersion);
   }
   if (incomplete && permissions.has('capa:manage')) {
-    openCapaComplete(context, incomplete, capaVersion, refresh);
-    return;
+    return capaComplete(context, incomplete, capaVersion);
   }
   if (capaState === 'READY_FOR_VERIFICATION' && permissions.has('capa:verify')) {
-    openCapaVerify(context, complaint, capaId, capaVersion, refresh);
-    return;
+    return capaVerify(context, complaint, capaId, capaVersion);
   }
   if (capaState === 'VERIFIED' && permissions.has('capa:manage')) {
-    openCapaClose(context, capaId, capaVersion, evidenceFields, refresh);
-    return;
+    return capaClose(context, capaId, capaVersion, evidenceFields);
   }
   if (capaState === 'CLOSED' && ncrState === 'DISPOSITIONED' && permissions.has('ncr:close')) {
-    transitionNcr('close', '关闭不合格报告');
-    return;
+    return transitionNcr('close', '关闭不合格报告');
   }
   if (ncrState === 'CLOSED' && capaState === 'CLOSED' && permissions.has('complaint:close'))
-    command('close', '关闭投诉', '确认整改单和不合格报告均已归档。');
+    return complaintTransition(
+      context,
+      complaint,
+      finText(complaint, 'id'),
+      'close',
+      '关闭投诉',
+      '确认整改单和不合格报告均已归档。',
+    );
+  return null;
 }

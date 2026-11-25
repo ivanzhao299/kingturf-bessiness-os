@@ -5,7 +5,7 @@ import type { OperationsViewContext } from './operations-view-ports';
 import { appendManufacturingView } from './manufacturing-view';
 import { appendProcurementView } from './procurement-view';
 import { appendMrpConsole } from './console/mrp-host';
-import { appendQualityView } from './quality-view';
+import { appendQualityConsole } from './console/quality-host';
 
 export function appendWorkspaceOperations(
   context: WorkspaceAssemblyContext<
@@ -65,6 +65,12 @@ export function appendWorkspaceOperations(
       permissions.has('traceability:read') ||
       permissions.has('complaint:read'))
   ) {
-    appendQualityView({ workspace, status, controller, permissions, ports: operationsViewPorts });
+    appendQualityConsole({
+      workspace,
+      status,
+      controller,
+      permissions,
+      ports: operationsViewPorts,
+    });
   }
 }

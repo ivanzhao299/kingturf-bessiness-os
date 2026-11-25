@@ -22,6 +22,7 @@ export type ProductionOrderPageQuery = Readonly<{
 export type ProductionOrderChoice = Readonly<{ value: string; label: string }>;
 
 export type ProductionOrderConsolePorts = Readonly<{
+  onRelatedRecord?: (reveal: (id: string) => void) => void;
   permissions: ReadonlySet<string>;
   // 路由加载的工单行全量快照（controller.views 同源；行含工序/物料/报工/成品卷/事件）。
   initialOrders: readonly ProductionOrderRow[];

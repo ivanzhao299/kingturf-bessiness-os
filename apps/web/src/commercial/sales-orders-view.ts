@@ -1,5 +1,6 @@
 import { el } from '../dom';
 import { openForm } from '../shared/forms';
+import { registerRelatedRecord } from './related-record';
 import type { FulfillmentViewContext } from './fulfillment-view-ports';
 
 export function appendSalesOrdersView(context: FulfillmentViewContext): void {
@@ -142,8 +143,10 @@ export function appendSalesOrdersView(context: FulfillmentViewContext): void {
   } else heading.append(copy);
   panel.append(heading);
   const list = el('div', 'qtc-list');
+  const related = new Map<string, HTMLElement>();
   for (const order of controller.views.get('/api/v1/sales-orders') ?? []) {
     const card = el('article', 'qtc-card');
+    if (typeof order.id === 'string') related.set(order.id, card);
     card.append(
       el('p', 'eyebrow', recordText(order, 'orderNumber', 'order_number', '销售订单')),
       el(
@@ -166,4 +169,16 @@ export function appendSalesOrdersView(context: FulfillmentViewContext): void {
   if (!list.childElementCount) list.append(el('p', 'pipeline-empty', '暂无已释放订单。'));
   panel.append(list);
   workspace.append(panel);
+  queueMicrotask(() => {
+    if (!panel.isConnected) return;
+    registerRelatedRecord(workspace, panel, 'sales-orders', (id) => {
+      const card = related.get(id);
+      if (!card) return;
+      globalThis.requestAnimationFrame(() => {
+        card.setAttribute('tabindex', '-1');
+        card.focus();
+        card.scrollIntoView({ block: 'center' });
+      });
+    });
+  });
 }

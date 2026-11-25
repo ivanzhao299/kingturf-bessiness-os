@@ -1,112 +1,58 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { openForm } from './shared/forms';
-import { appendShipmentDelivery, appendShipmentDispatch } from './commercial/shipment-actions';
-import type { FulfillmentViewContext } from './commercial/fulfillment-view-ports';
+import { describe, expect, it, vi } from 'vitest';
+import { createOpsWriter, trimOpsValues, type OpsForm } from './commercial/console/ops-form';
+import {
+  shipmentForms,
+  shipmentDecision,
+  shipmentRequest,
+} from './commercial/console/shipment-forms';
 import type { CommercialPermission } from './commercial/permissions';
-import { createBehaviorElement, htmlElement } from '../test/fixtures/behavior-dom';
 
-// The real action callback is exercised; form orchestration has its own tests.
-vi.mock('./shared/forms', () => ({ openForm: vi.fn() }));
-const form = vi.mocked(openForm);
 const unused = (): never => {
-  throw new Error('Unexpected fulfillment port');
+  throw new Error('Unexpected port');
 };
-const setup = (permissions: readonly CommercialPermission[] = []) => {
-  const workspace = createBehaviorElement('main');
-  const status = createBehaviorElement('p');
-  status.textContent = 'before';
-  const actions = createBehaviorElement('section');
-  const submit = vi.fn<FulfillmentViewContext['controller']['submit']>(() => Promise.resolve());
+const setup = () => {
+  const submit = vi.fn<(path: string, body: Record<string, unknown>) => Promise<void>>(() =>
+    Promise.resolve(),
+  );
   const load = vi.fn(() => Promise.resolve());
-  const views = new Map<string, readonly Record<string, unknown>[]>();
-  const context: FulfillmentViewContext = {
-    workspace: htmlElement(workspace),
-    status: htmlElement(status),
-    permissions: new Set(permissions),
-    controller: {
-      opportunities: [],
-      views,
-      message: 'loaded',
-      submit,
-      load,
-      employees: [],
-      loadOrder360: unused,
+  const writer = createOpsWriter(submit, load);
+  const choose = (form: OpsForm) => ({
+    fields: form.fields,
+    run: (values: Readonly<Record<string, string>>) => {
+      writer.open(form);
+      const pending = writer.write(values);
+      void writer.confirmation.peek()?.run();
+      return pending;
     },
-    ports: {
-      recordValue: unused,
-      recordText: (record, camel, snake, fallback = '') => {
-        const value = record[camel] ?? record[snake];
-        if (typeof value === 'string') return value;
-        return typeof value === 'number' ? String(value) : fallback;
-      },
-      inventoryLocationOption: (item) => ({ value: String(item.id), label: String(item.code) }),
-      textValue: unused,
-      displayMoney: unused,
-      decimalValue: unused,
-      businessStateLabel: unused,
-      operationsNextAction: unused,
-      shipmentGateLabel: unused,
-      businessEventLabel: unused,
-      businessEventDetailLabel: unused,
-    },
-  };
-  const click = (index = 0) => {
-    const button = actions.children[index];
-    if (!button) throw new Error('Action missing');
-    button.click();
-    const call = form.mock.calls.at(-1);
-    if (!call) throw new Error('Form missing');
-    expect(call[0]).toBe(context.workspace);
-    return { fields: call[3], title: call[1], run: call[5] };
-  };
-  return {
-    context,
-    actions,
-    target: htmlElement(actions),
-    status,
-    submit,
-    load,
-    views,
-    click,
-  };
+  });
+  return { submit, load, writer, choose };
 };
-
-beforeEach(() => {
-  form.mockClear();
-  vi.stubGlobal('document', { createElement: createBehaviorElement });
-});
-afterEach(() => vi.unstubAllGlobals());
-
-// U3-MFG-4：工单状态流转（原 appendProductionTransition）已迁入 Preact 控制台，载荷 oracle 见
-// console/production-order-console.test.tsx。
-// U3-MFG-5：工序报工 / 领退料 / 成品卷入库三张表单（原 appendProductionReport / appendProduction
-// Material / appendProductionOutput）迁入 Preact 控制台抽屉，production-actions.ts 随之删除。原
-// 「production action callback contracts」一组的用例随函数退役，载荷 oracle（小数原样、日期转
-// ISO、无效日期 / 无效批次不提交、失败不刷新、出现条件、批次候选、报工与库位选项、绑定工单
-// 成品版本）迁往同一组件测试；幂等键改为前端生成、批次库位只列工单 BOM 的批次是有意的差别。
-// 本文件余下发货两组用例不在该批范围，逐字未动。
+const grants = (...values: CommercialPermission[]) => new Set(values);
 
 describe('shipment action callback contracts', () => {
   it('gates dispatch by state, permission and existing shipment', () => {
-    const f = setup(['shipment:dispatch']);
-    appendShipmentDispatch(f.context, { id: 'release-1', shipments: [{}] }, 'RELEASED', f.target);
-    appendShipmentDispatch(f.context, { id: 'release-1', shipments: [] }, 'DRAFT', f.target);
-    appendShipmentDispatch(
-      setup().context,
-      { id: 'release-1', shipments: [] },
-      'RELEASED',
-      f.target,
-    );
-    expect(f.actions.children).toHaveLength(0);
-    expect(form).not.toHaveBeenCalled();
+    const permissions = grants('shipment:dispatch');
+    expect(
+      shipmentForms({ id: 'release-1', state: 'RELEASED', shipments: [{}] }, permissions),
+    ).toHaveLength(0);
+    expect(
+      shipmentForms({ id: 'release-1', state: 'DRAFT', shipments: [] }, permissions),
+    ).toHaveLength(0);
+    expect(
+      shipmentForms({ id: 'release-1', state: 'RELEASED', shipments: [] }, grants()),
+    ).toHaveLength(0);
   });
 
   it.each([[], undefined, 'legacy-non-array'])(
     'preserves current eligible shipments shape %j and dispatch evidence',
     async (shipments) => {
-      const f = setup(['shipment:dispatch']);
-      appendShipmentDispatch(f.context, { id: 'release-1', shipments }, 'RELEASED', f.target);
-      const opened = f.click();
+      const f = setup();
+      const [action] = shipmentForms(
+        { id: 'release-1', shipments, state: 'RELEASED' },
+        grants('shipment:dispatch'),
+      );
+      if (!action) throw new Error('Dispatch missing');
+      const opened = f.choose(action.form);
       expect(opened.fields.every((field) => field.required)).toBe(true);
       const values = {
         shipmentNumber: 'SHIP-1',
@@ -131,6 +77,7 @@ describe('shipment action callback contracts', () => {
           }),
       );
       const pending = opened.run(values);
+      await Promise.resolve();
       expect(f.submit).toHaveBeenCalledExactlyOnceWith(
         '/api/v1/shipment-releases/release-1/dispatch',
         {
@@ -143,24 +90,27 @@ describe('shipment action callback contracts', () => {
           idempotencyKey: 'SHIP-1',
         },
       );
+      expect(JSON.stringify(f.submit.mock.calls[0]?.[1])).toBe(
+        '{"shipmentNumber":"SHIP-1","carrierName":"Carrier","trackingNumber":"TRACK-1","dispatchedAt":"2026-10-17T03:00:00Z","location":"Gate","evidence":{"sealReference":"SEAL-1"},"idempotencyKey":"SHIP-1"}',
+      );
       expect(f.load).not.toHaveBeenCalled();
-      expect(f.status.textContent).toBe('before');
+      expect(f.writer.notice.peek()).not.toContain('失败');
       complete();
       await Promise.resolve();
       expect(f.load).toHaveBeenCalledTimes(1);
-      expect(f.status.textContent).toBe('before');
+      expect(f.writer.notice.peek()).not.toContain('失败');
       loaded();
       await pending;
       expect(f.load).toHaveBeenCalledTimes(1);
-      expect(f.status.textContent).toBe('loaded');
-      f.status.textContent = 'unchanged';
+      expect(f.writer.notice.peek()).toContain('成功');
       f.submit.mockRejectedValueOnce(new Error('dispatch rejected'));
-      await expect(opened.run(values)).rejects.toThrow('dispatch rejected');
+      await opened.run(values);
+      expect(f.writer.error.peek()).toContain('dispatch rejected');
       expect(f.load).toHaveBeenCalledTimes(1);
-      expect(f.status.textContent).toBe('unchanged');
+
       f.load.mockRejectedValueOnce(new Error('reload rejected'));
-      await expect(opened.run(values)).rejects.toThrow('reload rejected');
-      expect(f.status.textContent).toBe('unchanged');
+      await opened.run(values);
+      expect(f.writer.notice.peek()).toContain('reload rejected');
     },
   );
 
@@ -170,20 +120,14 @@ describe('shipment action callback contracts', () => {
       { id: 'shipment-1', state: 'DISPATCHED', tracking_number: 'TRACK-1' },
       { id: 'shipment-2', state: 'IN_TRANSIT', trackingNumber: 'TRACK-2' },
     ];
-    const f = setup(['shipment:track']);
-    const release = { id: 'release-1' };
-    const shipmentRecords = vi.fn<(value: Record<string, unknown>) => typeof records>(
-      () => records,
-    );
-    appendShipmentDelivery(setup().context, release, shipmentRecords, f.target);
-    expect(f.actions.children).toHaveLength(0);
-    appendShipmentDelivery(f.context, release, shipmentRecords, f.target);
-    expect(shipmentRecords.mock.calls[1]?.[0]).toBe(release);
-    expect(f.actions.children.map((node) => node.textContent)).toEqual([
-      '登记签收 TRACK-1',
-      '登记签收 TRACK-2',
-    ]);
-    const opened = f.click(1);
+    const f = setup();
+    const release = { id: 'release-1', shipments: records };
+    expect(shipmentForms(release, grants())).toHaveLength(0);
+    const actions = shipmentForms(release, grants('shipment:track'));
+    expect(actions.map(({ label }) => label)).toEqual(['登记签收 TRACK-1', '登记签收 TRACK-2']);
+    const action = actions[1];
+    if (!action) throw new Error('Delivery missing');
+    const opened = f.choose(action.form);
     const values = {
       receiverName: 'Receiver',
       receivedAt: '2026-10-17T04:00:00Z',
@@ -201,12 +145,36 @@ describe('shipment action callback contracts', () => {
       },
       idempotencyKey: 'POD-shipment-2',
     });
+    expect(JSON.stringify(f.submit.mock.calls[0]?.[1])).toBe(
+      '{"occurredAt":"2026-10-17T04:00:00Z","location":"Customer gate","evidence":{"receiverName":"Receiver","receivedAt":"2026-10-17T04:00:00Z","proofReference":"POD-REF"},"idempotencyKey":"POD-shipment-2"}',
+    );
     expect(f.load).toHaveBeenCalledTimes(1);
-    expect(f.status.textContent).toBe('loaded');
-    f.status.textContent = 'unchanged';
+    expect(f.writer.notice.peek()).toContain('成功');
     f.submit.mockRejectedValueOnce(new Error('delivery rejected'));
-    await expect(opened.run(values)).rejects.toThrow('delivery rejected');
+    await opened.run(values);
+    expect(f.writer.error.peek()).toContain('delivery rejected');
     expect(f.load).toHaveBeenCalledTimes(1);
-    expect(f.status.textContent).toBe('unchanged');
   });
+});
+
+it('preserves shipment request and release decision bytes', () => {
+  const create = shipmentRequest([], [], []);
+  const payload = trimOpsValues({
+    requestNumber: ' REL-1 ',
+    salesOrderId: 'SO',
+    productionOrderId: 'WO',
+    finishedLotId: 'LOT',
+    requestedQuantity: '2.5',
+    requiredPaymentAmount: '0',
+    reason: '订单交付',
+  });
+  expect(JSON.stringify(create.payload(payload))).toBe(
+    '["/api/v1/shipment-releases",{"requestNumber":"REL-1","salesOrderId":"SO","productionOrderId":"WO","finishedLotId":"LOT","requestedQuantity":"2.5","requiredPaymentAmount":"0","reason":"订单交付","idempotencyKey":"REL-1"}]',
+  );
+  for (const action of ['approve-exception', 'release'] as const) {
+    const form = shipmentDecision({ id: 'release-1', request_number: 'REL-1' }, action);
+    expect(JSON.stringify(form.payload({ reason: '已核对', evidenceReference: 'E-1' }))).toBe(
+      `["/api/v1/shipment-releases/release-1/${action}",{"reason":"已核对","evidence":{"reference":"E-1"},"idempotencyKey":"REL-1-E-1"}]`,
+    );
+  }
 });

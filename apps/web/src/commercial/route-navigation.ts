@@ -1,5 +1,6 @@
 import { appRouteFromHash, type AppRoute } from '../shared/navigation';
 import type { CommercialRouteState } from './store/route-state';
+import { flushRelatedRecord } from './related-record';
 import { commercialDataRoutes } from './store/route-dependencies';
 import {
   markCommercialDataVisibility,
@@ -98,6 +99,7 @@ export function installCommercialRouteNavigation(
         });
     } finally {
       release();
+      if (current()) flushRelatedRecord(workspace, route);
     }
   };
   const apply = () => {

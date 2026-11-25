@@ -1,9 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { JsonObject } from '@kingturf/types';
+import type { JsonObject, PermissionKey } from '@kingturf/types';
+import type { ApiDependencies, ApiRequest } from '../src/app.ts';
+import { qualityAttempts } from '../src/routes/dispatch/quality.ts';
+import { dispatchFastifyRouteGroup } from '../src/routes/fastify/registry.ts';
 import { PostgresManufacturingRepository } from '../src/manufacturing-repositories.js';
 import { PostgresQualityRepository } from '../src/quality-repositories.js';
 import { ownedPostgres } from './fixtures/owned-postgres.js';
+import { ownedHttpApi } from './fixtures/owned-http-api.js';
 
 const id = (value: JsonObject): string => {
   if (typeof value.id !== 'string') throw new Error('Fixture ID missing');
@@ -145,6 +149,159 @@ describe('quality repository and immutable ledgers on real PostgreSQL', () => {
     await fixture?.close();
     fixture = undefined;
   });
+
+  const routeScope = (actor = owned().context.actor, fields: readonly string[] | null = null) => ({
+    authorization: {
+      actor,
+      permissions: new Map(
+        (
+          ['quality-plan:read', 'quality:read', 'traceability:read', 'quality:inspect'] as const
+        ).map((key: PermissionKey) => [key, { scopes: ['COMPANY'] as const, fields }]),
+      ),
+    },
+    correlationId: randomUUID(),
+    dependencies: { quality, commercial: {} } as unknown as ApiDependencies,
+  });
+  const bridge = (request: ApiRequest, scope = routeScope()) =>
+    dispatchFastifyRouteGroup(request, scope);
+
+  it('preserves each default quality list and adds scoped detail, filters and keyset pages', async () => {
+    await open();
+    await quality.createPlan({ ...planInput(), code: 'QUALITY-2' }, owned().context, randomUUID());
+    for (const [path, key] of [
+      ['/api/v1/quality-plans', 'id'],
+      ['/api/v1/quality-inspections', 'id'],
+      ['/api/v1/lot-traceability', 'lotId'],
+    ] as const) {
+      const request = { method: 'GET', pathname: path };
+      const scope = routeScope();
+      const [attempt] = qualityAttempts({ ...scope, context: scope.authorization, request });
+      if (attempt?.kind !== 'pending') throw new Error('Missing legacy quality attempt');
+      const legacy = attempt.project(await attempt.pending);
+      expect(await bridge(request, scope)).toEqual(legacy);
+      expect(legacy?.statusCode).toBe(200);
+      const list = legacy?.body as { items: JsonObject[] };
+      expect(list.items).toHaveLength(path.endsWith('plans') ? 2 : 1);
+      const rowId = list.items[0]?.[key];
+      if (typeof rowId !== 'string') throw new Error('Fixture row missing ID');
+      const detail = { method: 'GET', pathname: `${path}/${rowId}` };
+      expect(await bridge(detail, scope)).toEqual({ statusCode: 200, body: list.items[0] });
+      expect(await bridge(detail, routeScope(owned().otherContext.actor))).toMatchObject({
+        statusCode: 404,
+      });
+      expect(await bridge(detail, routeScope(owned().context.actor, []))).toMatchObject({
+        statusCode: 200,
+        body: key === 'id' ? { id: list.items[0]?.id } : {},
+      });
+    }
+    const pathname = '/api/v1/quality-plans';
+    const method = 'GET';
+    const first = await bridge({ method, pathname, query: { query: 'quality-', limit: '1' } });
+    expect(first?.body).toMatchObject({
+      items: [{ code: 'QUALITY-1' }],
+    });
+    const cursor = (first?.body as { nextCursor: string }).nextCursor;
+    expect(typeof cursor).toBe('string');
+    expect((await bridge({ method, pathname, query: { limit: '1', cursor } }))?.body).toMatchObject(
+      { items: [{ code: 'QUALITY-2' }], nextCursor: null },
+    );
+    expect((await bridge({ method, pathname, query: { state: 'DRAFT' } }))?.body).toMatchObject({
+      items: [{ code: 'QUALITY-2' }],
+    });
+    expect(
+      await bridge(
+        { method, pathname, query: { query: 'quality' } },
+        routeScope(owned().context.actor, []),
+      ),
+    ).toMatchObject({ statusCode: 403 });
+  });
+
+  it('delegates quality writes and maps only allowlisted guard failures while recomputing totals', async () => {
+    const { inspection } = await open();
+    const pathname = '/api/v1/quality-inspections';
+    const summary = { method: 'GET', pathname, query: { state: 'CANCELLED', summary: 'true' } };
+    expect((await bridge(summary))?.body).toMatchObject({
+      items: [],
+      summary: { open: '1', sampled: '0', completed: '0' },
+    });
+    const post = (action: string) =>
+      bridge({
+        method: 'POST',
+        pathname: `${pathname}/${id(inspection)}/${action}`,
+        body: event(action.toUpperCase()),
+      });
+    expect(await post('sample')).toMatchObject({ statusCode: 201 });
+    expect((await bridge(summary))?.body).toMatchObject({
+      items: [],
+      summary: { open: '0', sampled: '1', completed: '0' },
+    });
+    expect(await post('complete')).toMatchObject({
+      statusCode: 409,
+      body: { error: { message: '请登记全部必检项目的结果后再完成检验。' } },
+    });
+    expect(
+      (
+        await bridge({
+          method: 'GET',
+          pathname: '/api/v1/lot-traceability',
+          query: { summary: 'true' },
+        })
+      )?.body,
+    ).toMatchObject({ summary: { quarantine: '1' } });
+  });
+
+  it('submits the original plan form payload over the real HTTP listener', async () => {
+    const fixture = owned();
+    const http = await ownedHttpApi(fixture);
+    try {
+      const user = await http.user(fixture.employee, fixture.company);
+      await user.grant(['quality-plan:manage', 'quality-plan:read'], ['COMPANY']);
+      const input = {
+        code: 'QUALITY-HTTP',
+        name: 'Original form',
+        itemVersionId: itemId,
+        inspectionStage: 'INCOMING',
+        samplingMethod: '全检',
+        acceptanceRule: { description: '全部必检项通过' },
+        effectiveAt: '2026-01-01T00:00:00.000Z',
+        characteristics: [
+          {
+            code: 'LENGTH',
+            name: 'Length',
+            dataType: 'NUMERIC',
+            lowerLimit: '10',
+            upperLimit: '12',
+            required: true,
+            instructions: '',
+          },
+        ],
+        publish: true,
+      };
+      const response = await user.request('/api/v1/quality-plans', 'POST', input);
+      expect(response.status).toBe(201);
+      expect(await response.json()).toMatchObject({
+        status: 'PUBLISHED',
+        characteristics: [{ instructions: '' }],
+      });
+      const plans = await quality.list('plans', fixture.context);
+      expect(plans).toMatchObject([
+        { code: 'QUALITY-HTTP', characteristics: [{ instructions: '' }] },
+      ]);
+      for (const instructions of [' ', null, 3]) {
+        const invalid = await user.request('/api/v1/quality-plans', 'POST', {
+          ...input,
+          code: 'INVALID-INSTRUCTIONS',
+          characteristics: [{ ...input.characteristics[0], instructions }],
+        });
+        expect(invalid.status).toBe(400);
+        expect(await invalid.json()).toMatchObject({
+          error: { message: 'instructions is required' },
+        });
+      }
+    } finally {
+      await http.close();
+    }
+  }, 20_000);
 
   it.each(['10', '12'])(
     'pins published plan, typed results and inclusive boundary %s through release',

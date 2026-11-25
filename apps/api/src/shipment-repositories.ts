@@ -1,37 +1,20 @@
 import { createHash } from 'node:crypto';
-import { canonicalize, DomainError, type Actor, type ScopeAnchor } from '@kingturf/domain';
+import { canonicalize, DomainError } from '@kingturf/domain';
 import type { Database, SqlClient } from '@kingturf/database';
-import type { DataScope, JsonObject } from '@kingturf/types';
+import type { JsonObject } from '@kingturf/types';
 import { writeShipmentReleaseAudit } from './audit-outbox.ts';
+import {
+  PostgresShipmentReadRepository,
+  requireShipmentCompany as company,
+  type ShipmentReadContext as Context,
+} from './shipment-read-repositories.ts';
 
 type Db = SqlClient & Pick<Database, 'transaction'>;
-type Context = Readonly<{
-  actor: Actor;
-  scopes: readonly DataScope[];
-  anchors: readonly ScopeAnchor[];
-}>;
 const digest = (value: unknown) => createHash('sha256').update(canonicalize(value)).digest('hex');
-const company = (context: Context) => {
-  if (!context.scopes.includes('COMPANY') && !context.scopes.includes('GROUP'))
-    throw new DomainError('forbidden', 'Shipment operations require company scope');
-};
 
-export class PostgresShipmentRepository {
-  public constructor(private readonly db: Db) {}
-
-  public async list(context: Context) {
-    company(context);
-    return (
-      await this.db.query<{ item: JsonObject }>(
-        `SELECT to_jsonb(r)||jsonb_build_object('state',s.state,'orderNumber',o.order_number,'productionOrderNumber',p.order_number,'lotNumber',l.lot_number,
-        'events',coalesce((SELECT jsonb_agg(to_jsonb(e) ORDER BY e.sequence) FROM shipment_release_events e WHERE e.tenant_id=r.tenant_id AND e.release_request_id=r.id),'[]'::jsonb),
-        'shipments',coalesce((SELECT jsonb_agg(to_jsonb(sh)||jsonb_build_object('state',ss.state,'events',coalesce((SELECT jsonb_agg(to_jsonb(se) ORDER BY se.sequence) FROM shipment_events se WHERE se.tenant_id=sh.tenant_id AND se.shipment_id=sh.id),'[]'::jsonb)) ORDER BY sh.created_at) FROM shipments sh JOIN shipment_effective_states ss ON ss.tenant_id=sh.tenant_id AND ss.shipment_id=sh.id WHERE sh.tenant_id=r.tenant_id AND sh.release_request_id=r.id),'[]'::jsonb)) item
-        FROM shipment_release_requests r JOIN shipment_release_effective_states s ON s.tenant_id=r.tenant_id AND s.release_request_id=r.id
-        JOIN sales_orders o ON o.tenant_id=r.tenant_id AND o.id=r.sales_order_id JOIN production_orders p ON p.tenant_id=r.tenant_id AND p.id=r.production_order_id
-        JOIN inventory_lots l ON l.tenant_id=r.tenant_id AND l.id=r.finished_lot_id WHERE r.tenant_id=$1 ORDER BY r.created_at DESC`,
-        [context.actor.companyId],
-      )
-    ).rows.map((x) => x.item);
+export class PostgresShipmentRepository extends PostgresShipmentReadRepository {
+  public constructor(private readonly db: Db) {
+    super(db);
   }
 
   public request(

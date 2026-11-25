@@ -163,6 +163,19 @@ describe('Batch4 app extraction against fixed f3 complete request traces', () =>
     'POST /api/v1/bank-payments',
     'GET /api/v1/reconciliation-runs',
     'POST /api/v1/reconciliation-runs',
+    // OPS-1：桥接仍分派原列表 SQL 和原写命令；冻结响应及终止仓储实参逐键比对。
+    'GET /api/v1/quality-plans',
+    'GET /api/v1/quality-inspections',
+    'POST /api/v1/quality-plans',
+    'POST /api/v1/quality-inspections',
+    // OPS-2：原发货列表与写命令经生产桥，响应和完整终止仓储调用维持冻结对拍。
+    'GET /api/v1/shipment-releases',
+    'POST /api/v1/shipment-releases',
+    ...['list', 'request', 'transition', 'dispatch', 'track'].flatMap((method) =>
+      ['ok', 'sync-throw', 'reject', 'scope-change'].map(
+        (outcome) => `legacy shipments.${method} ${outcome}`,
+      ),
+    ),
   ]);
   const preserveWithStrip = (result: {
     name: string;

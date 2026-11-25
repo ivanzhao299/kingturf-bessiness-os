@@ -40,6 +40,9 @@ type Context = Readonly<{
   ) => Partial<T>;
 }>;
 
+const parseInstructions = (value: unknown, parsers: Context['parsers']): string =>
+  value === '' ? '' : parsers.string(value, 'instructions');
+
 function parseCharacteristic(
   entry: unknown,
   index: number,
@@ -73,7 +76,7 @@ function parseCharacteristic(
       ? {}
       : { upperLimit: parsers.decimal(item.upperLimit, 'upperLimit', false) }),
     required: item.required,
-    instructions: parsers.string(item.instructions, 'instructions'),
+    instructions: parseInstructions(item.instructions, parsers),
   };
 }
 
