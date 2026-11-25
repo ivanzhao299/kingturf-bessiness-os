@@ -79,6 +79,40 @@ describe('identity and authorization migration', () => {
     expect(statements).not.toContain('CLOSED');
   });
 
+  // TD-PROC-001（PROC-5）：迁移 0077 只重定义采购单更新守卫，而且恰好只放开一条规则。这里做
+  // 机械比对：去掉注释后的 0077 全文 = 0038 里 guard_purchase_order_update 的原定义，把
+  // 「CREATE FUNCTION」换成「CREATE OR REPLACE FUNCTION」、给 PARTIALLY_RECEIVED 那一条的
+  // 目标列表加上 PARTIALLY_RECEIVED 之后的结果——其余每个字节都相同（真库行为见
+  // apps/api/test/po-partial-receipt-postgres.integration.test.ts）。
+  it('0077 is the 0038 purchase order guard with exactly one relaxed rule (TD-PROC-001)', async () => {
+    const read = (name: string) => readFile(join(process.cwd(), 'migrations', name), 'utf8');
+    const statements = (await read('0077_po_partial_receipt_transition.sql'))
+      .split('\n')
+      .filter((line) => !line.trimStart().startsWith('--'))
+      .join('\n')
+      .trim();
+    const legacy = await read('0038_procurement_inventory_integrity.sql');
+    const definition = /CREATE FUNCTION guard_purchase_order_update\(\)[\s\S]*?END \$\$;/u.exec(
+      legacy,
+    )?.[0];
+    if (!definition) throw new Error('0038 guard_purchase_order_update definition not found');
+    const relaxed =
+      "IF OLD.status='PARTIALLY_RECEIVED' AND NEW.status NOT IN('PARTIALLY_RECEIVED','RECEIVED','CANCELLED') THEN RAISE EXCEPTION 'partially received purchase order has invalid transition'; END IF;";
+    const original = relaxed.replace("'PARTIALLY_RECEIVED','RECEIVED'", "'RECEIVED'");
+    // 被放开的那一条在 0038 的原定义里恰好出现一次（替换不会落空，也不会多改）。
+    expect(definition.split(original)).toHaveLength(2);
+    expect(statements).toBe(
+      definition
+        .replace('CREATE FUNCTION', 'CREATE OR REPLACE FUNCTION')
+        .replace(original, relaxed),
+    );
+    // 没有别的语句：不改类型、表、触发器与数据。
+    expect(statements.match(/CREATE OR REPLACE FUNCTION/gu)).toHaveLength(1);
+    expect(statements).not.toMatch(
+      /ALTER\s+TYPE|ADD\s+VALUE|CREATE\s+TYPE|DROP\s|ALTER\s+TABLE|UPDATE\s|DELETE\s|CREATE\s+TRIGGER/iu,
+    );
+  });
+
   it('0073 adds only the must-change flag column (A1)', async () => {
     const sql = await readFile(
       join(process.cwd(), 'migrations/0073_credential_must_change.sql'),
@@ -91,7 +125,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0076_rfq_close_transition.sql');
+    expect(ordered.at(-1)).toBe('0077_po_partial_receipt_transition.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
