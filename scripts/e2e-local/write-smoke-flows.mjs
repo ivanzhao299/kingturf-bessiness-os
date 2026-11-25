@@ -1213,7 +1213,9 @@ export async function creditFlow(t) {
         await fill(approverPage, 'reason', 'E2E 写流程冒烟：审批人拒绝');
         const confirmation = drawer(approverPage).locator('[data-confirmation="true"]');
         if ((await confirmation.count()) > 0) await confirmation.check();
-        const response = await t.write(submit(approverPage, '确认拒绝', state), {
+        // 拒绝表单的提交按钮自 TD-WF-014⑤ 起叫「拒绝这条信用决定」（原「确认拒绝」，勾选项会读作
+        // 「我确认要确认拒绝」）。这里只是定位提交按钮的文字，断言不变。
+        const response = await t.write(submit(approverPage, '拒绝这条信用决定', state), {
           irreversible: true,
         });
         e.request = brief(response);

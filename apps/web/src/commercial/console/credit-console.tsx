@@ -188,7 +188,10 @@ const CreditDrawer = ({ state }: Readonly<{ state: CreditPageState }>) => {
           title={state.decision === 'APPROVED' ? '批准信用' : '拒绝信用'}
           description="审批决定将永久保留并影响订单释放资格。"
           fields={[{ name: 'reason', label: '审批理由', type: 'textarea', required: true }]}
-          submitLabel={`确认${state.decision === 'APPROVED' ? '批准' : '拒绝'}`}
+          // TD-WF-014⑤：提交按钮文字含敏感词时，FormSection 会在它上方渲染勾选项「我确认要」+ 按钮文字。
+          // 拒绝的按钮原来叫「确认拒绝」，勾选项因此读作「我确认要确认拒绝」。按钮直接说出要做的事，
+          // 勾选项就是一句通顺的话：「我确认要拒绝这条信用决定」。批准不含敏感词，没有勾选项。
+          submitLabel={state.decision === 'APPROVED' ? '确认批准' : '拒绝这条信用决定'}
           // 把 Promise 交还给 FormSection：提交期间它据此置灰按钮并拦下重复提交（TD-WF-004）；
           // 批准与拒绝都是不可逆动作。
           onSubmit={(values) =>

@@ -212,6 +212,32 @@ describe('COM-UX 信用审批流程图', () => {
     expect(ports.refresh).toHaveBeenCalled();
   });
 
+  // TD-WF-014⑤（写流程冒烟 WS-P3-05）：拒绝表单的提交按钮原来叫「确认拒绝」，敏感词勾选项由
+  // FormSection 拼成「我确认要」+ 按钮文字，读作「我确认要确认拒绝」。批准不是敏感词，没有勾选项。
+  it('拒绝表单的确认勾选读作一句通顺的话；批准表单没有勾选项', async () => {
+    const ports = portsFor([pending], ['credit:approve']);
+    const host = mount(ports);
+    await openRow(host, 0);
+    element(host.querySelector('[data-testid="kt-credit-reject"]')).click();
+    await flush();
+    const confirmation = element(host.querySelector('.operation-confirmation'));
+    expect(confirmation.textContent.trim()).toBe('我确认要拒绝这条信用决定');
+    expect(
+      element(host.querySelector('.form-section button[type="submit"]')).textContent.trim(),
+    ).toBe('拒绝这条信用决定');
+    expect(host.textContent).not.toContain('确认要确认');
+    expect(ports.submit).not.toHaveBeenCalled();
+    // 批准不含敏感词：表单里没有勾选项。
+    const approveHost = mount(portsFor([pending], ['credit:approve']));
+    await openRow(approveHost, 0);
+    element(approveHost.querySelector('[data-testid="kt-credit-approve"]')).click();
+    await flush();
+    expect(approveHost.querySelector('.operation-confirmation')).toBeNull();
+    expect(
+      element(approveHost.querySelector('.form-section button[type="submit"]')).textContent.trim(),
+    ).toBe('确认批准');
+  });
+
   // 回归（TD-WF-001，写流程真浏览器冒烟发现）：评估表单要求已签发报价行带 customerId，而报价列表
   // 投影此前不带客户字段——「执行信用评估」拿不到客户，请求发不出去，错误只写进不渲染的位置。
   // 服务端已在报价行补上 customerId；这里钉住控制台一侧：取到客户并以正确的载荷提交。
