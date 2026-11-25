@@ -5,8 +5,7 @@ import { integer, permittedDto, uuid } from '../../app-values.ts';
 import { authorizeQuery } from '../../policy.ts';
 import { canReadFinField } from '../../qtc-read-repositories.ts';
 import { asCollectionGuard } from '../../write-rejection-mapping.ts';
-import { configuredCollectionRoutes } from '../dispatch/collections.ts';
-import { dispatchRoutes } from '../types.ts';
+import { collectionsAttempts } from '../dispatch/collections.ts';
 import type { FastifyRouteGroupApp, FastifyRouteScope } from './registry.ts';
 
 const cases = '/api/v1/collection-cases';
@@ -135,12 +134,16 @@ export function registerCollectionCaseRoutes(
 }
 
 async function legacy(scope: FastifyRouteScope, request: ApiRequest) {
-  const routes = configuredCollectionRoutes(
-    requireRepository(scope),
-    scope.authorization,
-    scope.correlationId,
-  );
-  const result = await dispatchRoutes(routes, request);
-  if (!result) throw new DomainError('not_found', 'Collection route not found');
-  return result;
+  requireRepository(scope);
+  const [attempt] = collectionsAttempts({
+    request,
+    context: scope.authorization,
+    dependencies: scope.dependencies,
+    correlationId: scope.correlationId,
+  });
+  if (attempt?.kind === 'pending') {
+    const result = attempt.project(await attempt.pending);
+    if (result) return result;
+  }
+  throw new DomainError('not_found', 'Collection route not found');
 }
