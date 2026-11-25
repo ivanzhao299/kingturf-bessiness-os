@@ -33,6 +33,23 @@ type CollectionContext = Readonly<{
     stableCode: (value: string) => string;
   }>;
 }>;
+// The legacy browser forms send an action prefix followed by Date.now().toString(36).
+// Preserve those opaque keys byte for byte. Business numbers and other requests retain stable-code validation.
+function collectionKey(
+  parsers: CollectionContext['parsers'],
+  raw: unknown,
+  prefix: string | undefined,
+): string {
+  const value = parsers.string(raw, 'idempotencyKey');
+  if (
+    prefix &&
+    value.startsWith(`${prefix}-`) &&
+    /^[a-z0-9]{8,9}$/u.test(value.slice(prefix.length + 1))
+  )
+    return value;
+  return parsers.stableCode(value);
+}
+
 const literal =
   (pathname: string) =>
   (candidate: string): RouteMatch | null =>
@@ -121,7 +138,7 @@ function caseRoutes(context: CollectionContext): readonly RouteDefinition[] {
             assignedTo: p.uuid(body.assignedTo, 'assignedTo'),
             priority: priority as 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL',
             reason: p.string(body.reason, 'reason'),
-            idempotencyKey: p.stableCode(p.string(body.idempotencyKey, 'idempotencyKey')),
+            idempotencyKey: collectionKey(p, body.idempotencyKey, 'COL'),
           },
         };
       },
@@ -165,7 +182,7 @@ function caseRoutes(context: CollectionContext): readonly RouteDefinition[] {
               ? { nextActionAt: p.timestamp(body.nextActionAt, 'nextActionAt') }
               : {}),
             evidence: p.jsonObject(body.evidence ?? {}, 'evidence'),
-            idempotencyKey: p.stableCode(p.string(body.idempotencyKey, 'idempotencyKey')),
+            idempotencyKey: collectionKey(p, body.idempotencyKey, 'FOLLOW'),
           },
         };
       },
@@ -252,7 +269,7 @@ function promiseRoutes(context: CollectionContext): readonly RouteDefinition[] {
             dueAt: p.timestamp(body.dueAt, 'dueAt'),
             debtorContact: p.string(body.debtorContact, 'debtorContact'),
             evidence: p.jsonObject(body.evidence ?? {}, 'evidence'),
-            idempotencyKey: p.stableCode(p.string(body.idempotencyKey, 'idempotencyKey')),
+            idempotencyKey: collectionKey(p, body.idempotencyKey, 'PROMISE'),
           },
         };
       },
@@ -292,7 +309,11 @@ function promiseRoutes(context: CollectionContext): readonly RouteDefinition[] {
               .strings(body.allocationEntryIds ?? [], 'allocationEntryIds')
               .map((id) => p.uuid(id, 'allocationEntryId')),
             evidence: p.jsonObject(body.evidence ?? {}, 'evidence'),
-            idempotencyKey: p.stableCode(p.string(body.idempotencyKey, 'idempotencyKey')),
+            idempotencyKey: collectionKey(
+              p,
+              body.idempotencyKey,
+              action === 'break' ? 'BROKEN' : undefined,
+            ),
           },
         };
       },
@@ -332,7 +353,7 @@ function legalRoutes(context: CollectionContext): readonly RouteDefinition[] {
           input: {
             handoffNumber: p.stableCode(p.string(body.handoffNumber, 'handoffNumber')),
             reason: p.string(body.reason, 'reason'),
-            idempotencyKey: p.stableCode(p.string(body.idempotencyKey, 'idempotencyKey')),
+            idempotencyKey: collectionKey(p, body.idempotencyKey, 'LEGAL'),
           },
         };
       },
@@ -368,7 +389,11 @@ function legalRoutes(context: CollectionContext): readonly RouteDefinition[] {
           input: {
             reason: p.string(body.reason, 'reason'),
             evidence: p.jsonObject(body.evidence ?? {}, 'evidence'),
-            idempotencyKey: p.stableCode(p.string(body.idempotencyKey, 'idempotencyKey')),
+            idempotencyKey: collectionKey(
+              p,
+              body.idempotencyKey,
+              state === 'ACCEPTED' ? 'LEGAL-ACCEPT' : undefined,
+            ),
           },
         };
       },
@@ -400,7 +425,7 @@ function legalRoutes(context: CollectionContext): readonly RouteDefinition[] {
           legalHandoffId: p.uuid(match.params[0], 'legalHandoffId'),
           input: {
             packageNumber: p.stableCode(p.string(body.packageNumber, 'packageNumber')),
-            idempotencyKey: p.stableCode(p.string(body.idempotencyKey, 'idempotencyKey')),
+            idempotencyKey: collectionKey(p, body.idempotencyKey, 'DEBT'),
           },
         };
       },

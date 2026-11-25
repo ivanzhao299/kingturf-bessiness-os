@@ -3,6 +3,7 @@ import type { AuthorizationContext } from '@kingturf/domain';
 import type { DataScope, JsonObject, PermissionKey } from '@kingturf/types';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import type { ApiDependencies, ApiRequest } from '../src/app.ts';
+import { PostgresQuoteToCashRepository } from '../src/qtc-repositories.ts';
 import { PostgresCollectionRepository } from '../src/collection-repositories.ts';
 import { configuredCollectionRoutes } from '../src/routes/dispatch/collections.ts';
 import { dispatchFastifyRouteGroup } from '../src/routes/fastify/registry.ts';
@@ -116,4 +117,57 @@ it('filters additive rows and summarizes exact amounts within the visible compan
     authorization([['collection:read', { scopes: ['COMPANY'], fields: ['case_number'] }]]),
   );
   expect(masked?.body).toEqual({ items: [], nextCursor: null });
+});
+
+it('accepts the legacy console timestamp key without changing its bytes or accepting it as a case number', async () => {
+  const qtc = new PostgresQuoteToCashRepository(graph.db);
+  const ar = await qtc.postAr(
+    {
+      customerId: graph.graph.customerId,
+      salesOrderId: null,
+      currency: 'CNY',
+      documentType: 'INVOICE',
+      documentNumber: 'FIN3-TIMESTAMP-AR',
+      amount: '12.5',
+      dueAt: '2026-01-01T23:59:59.000Z',
+    },
+    randomUUID(),
+    graph.context,
+    randomUUID(),
+  );
+  const auth = authorization([['collection:manage', company]]);
+  const fields = {
+    arOpenItemId: ar.id,
+    assignedTo: graph.context.actor.employeeId,
+    priority: 'HIGH',
+    reason: 'Legacy form',
+    idempotencyKey: 'COL-mj3rw6w0',
+  };
+  const malformed = await bridge(
+    {
+      method: 'POST',
+      pathname: path,
+      body: { ...fields, caseNumber: 'FIN3-TIMESTAMP-CASE', idempotencyKey: 'FOLLOW-mj3rw6w0' },
+    },
+    auth,
+  );
+  expect(malformed?.statusCode).toBe(400);
+  expect(
+    (
+      await bridge(
+        { method: 'POST', pathname: path, body: { ...fields, caseNumber: 'fin3-timestamp' } },
+        auth,
+      )
+    )?.statusCode,
+  ).toBe(400);
+  const created = await bridge(
+    { method: 'POST', pathname: path, body: { ...fields, caseNumber: 'FIN3-TIMESTAMP-CASE' } },
+    auth,
+  );
+  expect(created?.statusCode).toBe(201);
+  const stored = await graph.db.query<{ idempotency_key: string }>(
+    'SELECT idempotency_key FROM collection_cases WHERE tenant_id=$1 AND case_number=$2',
+    [graph.context.actor.companyId, 'FIN3-TIMESTAMP-CASE'],
+  );
+  expect(stored.rows[0]?.idempotency_key).toBe(fields.idempotencyKey);
 });
