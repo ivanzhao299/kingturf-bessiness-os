@@ -5,9 +5,8 @@ import { afterAll, beforeAll, expect, it } from 'vitest';
 import type { ApiDependencies, ApiRequest } from '../src/app.ts';
 import { PostgresQuoteToCashRepository } from '../src/qtc-repositories.ts';
 import { PostgresCollectionRepository } from '../src/collection-repositories.ts';
-import { configuredCollectionRoutes } from '../src/routes/dispatch/collections.ts';
+import { collectionsAttempts } from '../src/routes/dispatch/collections.ts';
 import { dispatchFastifyRouteGroup } from '../src/routes/fastify/registry.ts';
-import { dispatchRoutes } from '../src/routes/types.ts';
 import { ownedCommercialGraph } from './fixtures/owned-commercial-graph.js';
 
 const path = '/api/v1/collection-cases';
@@ -47,10 +46,14 @@ afterAll(async () => {
 it('preserves the default collection list from the legacy query and projection', async () => {
   for (const auth of [authorization(), authorization([['legal-case:read', company]])]) {
     const request = get();
-    const legacy = await dispatchRoutes(
-      configuredCollectionRoutes(repo, auth, randomUUID()),
+    const [attempt] = collectionsAttempts({
       request,
-    );
+      context: auth,
+      dependencies: { collections: repo } as ApiDependencies,
+      correlationId: randomUUID(),
+    });
+    if (attempt?.kind !== 'pending') throw new Error('Missing legacy collection attempt');
+    const legacy = attempt.project(await attempt.pending);
     const current = await bridge(request, auth);
     expect(current?.statusCode).toBe(200);
     expect(current).toEqual(legacy);
