@@ -38,6 +38,7 @@ import { registerManufacturingBomRoutes } from './manufacturing-boms.ts';
 import { registerManufacturingRoutingRoutes } from './manufacturing-routings.ts';
 import { registerProductionOrderRoutes } from './production-orders.ts';
 import { registerProductionOrderExecutionRoutes } from './production-order-execution.ts';
+import { registerArOpenItemRoutes } from './ar-open-items.ts';
 
 export type FastifyRouteScope = Readonly<{
   authorization: AuthorizationContext;
@@ -123,6 +124,9 @@ const CLAIMED_FASTIFY_ROUTES: readonly (readonly [method: string, pattern: RegEx
   ['POST', /^\/api\/v1\/production-orders\/[0-9a-f-]+\/operation-reports$/u],
   ['POST', /^\/api\/v1\/production-orders\/[0-9a-f-]+\/finished-rolls$/u],
   ['POST', /^\/api\/v1\/production-orders\/[0-9a-f-]+\/materials$/u],
+  ['GET', /^\/api\/v1\/ar-open-items$/u],
+  ['GET', /^\/api\/v1\/ar-open-items\/[0-9a-f-]+$/u],
+  ['POST', /^\/api\/v1\/ar-open-items$/u],
 ];
 
 // legacy catch 层的同款 DomainError 状态映射（行为守恒）。
@@ -194,6 +198,7 @@ const buildRouteGroupApp = (scope: FastifyRouteScope) => {
   registerManufacturingRoutingRoutes(app, scope);
   registerProductionOrderRoutes(app, scope);
   registerProductionOrderExecutionRoutes(app, scope);
+  registerArOpenItemRoutes(app, scope);
   return app;
 };
 

@@ -247,6 +247,13 @@ const SQL_ENUM_NAMES = new Set([
   // legacy list、additive 分页与详情根行三处复用，SQL 字节与提取前逐字一致；请求值
   // （state/query/cursor/limit）一律经 values.push 参数化。
   'PRODUCTION_ORDER_PROJECTION',
+  // FIN-1（财务域迁移，同 PRODUCTION_ORDER 先例）：应收行投影（legacy listOperationalPage
+  // ('ar') 的 to_jsonb + 三键，同式，加 camelCase 加性键）与 FROM/JOIN 片段提取为模块常量，
+  // 供 additive 分页（listArPage）与详情根行（findArOpenItem）复用；legacy listOperationalPage
+  // 不动。请求值（state/search/query/from/to/minAmount/maxAmount/cursor/limit）一律经
+  // values.push 参数化；片段本体只含代码内表/列名。
+  'AR_ROW_PROJECTION',
+  'AR_JOINS',
   // B2（TD-API-003）分页 keyset 游标片段：cursor 值一律经 values.push 参数化（$N），
   // 变量本体只含代码内表/列名与占位符；2026-11-18 随 18 端点分页批次登记。
   'keyset',
