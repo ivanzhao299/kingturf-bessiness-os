@@ -9,6 +9,12 @@
 // （概览汇总卡据此重算——路由视图只构建一次，面板不会随控制台的写操作重建）。
 import type { OperationsViewContext } from '../operations-view-ports';
 import { el } from '../../dom';
+import {
+  itemVersionChoicesOf,
+  ITEM_VERSIONS_PATH,
+  perView,
+  type ItemVersionChoice,
+} from './console-choices';
 import type { BomConsolePorts } from './bom-ports';
 
 export function appendManufacturingBomConsole(
@@ -21,18 +27,21 @@ export function appendManufacturingBomConsole(
   const read = controller.api.get;
   const recordText = context.ports.recordText;
   // 已发布物料版本选项与 legacy 物料卡片 BOM 表单同源同公式（label = `SKU · 名称`）。
-  const itemVersionChoices = (controller.views.get('/api/v1/manufacturing-items') ?? [])
-    .filter((item) => recordText(item, 'status', 'status') === 'PUBLISHED')
-    .map((item) => ({
-      value: recordText(item, 'id', 'id'),
-      label: `${recordText(item, 'sku', 'sku')} · ${recordText(item, 'name', 'name')}`,
-      itemId: recordText(item, 'itemId', 'itemId'),
-    }));
-  const productTypeByItemId = new Map(
-    (controller.views.get('/api/v1/manufacturing-items') ?? []).map((item) => [
-      recordText(item, 'itemId', 'itemId'),
-      recordText(item, 'itemType', 'itemType'),
-    ]),
+  // TD-WF-007：选项与产品类型索引都按最新视图计算（视图数组身份一变才重算），不再是挂载时的快照——
+  // 在「物料管理」刚发布的物料，这里打开「新建 BOM」就能选到；左树的产品类型也认得它。
+  const readItemVersionChoices = perView(controller.views, ITEM_VERSIONS_PATH, (rows) =>
+    itemVersionChoicesOf(rows, recordText),
+  );
+  const readProductTypeByItemId = perView(
+    controller.views,
+    ITEM_VERSIONS_PATH,
+    (rows) =>
+      new Map(
+        rows.map((item) => [
+          recordText(item, 'itemId', 'itemId'),
+          recordText(item, 'itemType', 'itemType'),
+        ]),
+      ),
   );
   const pageUrl = (params: Readonly<Record<string, string | number>>): string => {
     const query = new URLSearchParams(
@@ -43,8 +52,10 @@ export function appendManufacturingBomConsole(
   const ports: BomConsolePorts = {
     permissions,
     initialBoms: controller.views.get(bomPath) ?? [],
-    itemVersionChoices,
-    productTypeOf: (productItemId) => productTypeByItemId.get(productItemId) ?? '',
+    get itemVersionChoices(): readonly ItemVersionChoice[] {
+      return readItemVersionChoices();
+    },
+    productTypeOf: (productItemId) => readProductTypeByItemId().get(productItemId) ?? '',
     recordText: (record, camel, snake, fallback) => recordText(record, camel, snake, fallback),
     textValue: (value, fallback = '') =>
       typeof value === 'string' || typeof value === 'number' ? String(value) : fallback,

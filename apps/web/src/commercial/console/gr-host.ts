@@ -7,6 +7,7 @@
 // 并行读取（403/失败 → null → 该面不可见），客户端组合时间线。
 import type { OperationsViewContext } from '../operations-view-ports';
 import { el } from '../../dom';
+import { perView, type Choice } from './console-choices';
 import type { GoodsReceiptConsolePorts } from './gr-ports';
 
 export function appendGoodsReceiptConsole(
@@ -15,9 +16,10 @@ export function appendGoodsReceiptConsole(
 ): void {
   const { controller, permissions } = context;
   const recordText = context.ports.recordText;
-  // 可续收订单行选项：ISSUED/PARTIALLY_RECEIVED 行（未收数量标签，vanilla 同公式）。
-  const openOrderLineChoices = (controller.views.get('/api/v1/purchase-orders') ?? []).flatMap(
-    (order) =>
+  // 可续收订单行选项：ISSUED/PARTIALLY_RECEIVED 行（未收数量标签，vanilla 同公式）。TD-WF-007：按最新
+  // 视图计算——在采购订单页刚签发的订单，回到这里登记收货时就能选到。
+  const readOpenOrderLineChoices = perView(controller.views, '/api/v1/purchase-orders', (orders) =>
+    orders.flatMap((order) =>
       ['ISSUED', 'PARTIALLY_RECEIVED'].includes(recordText(order, 'status', 'status'))
         ? (Array.isArray(order.lines) ? order.lines : []).map((line) => {
             const recordLine = context.ports.recordValue(line);
@@ -27,19 +29,24 @@ export function appendGoodsReceiptConsole(
             };
           })
         : [],
+    ),
   );
   // 活动库位选项：label 同 inventoryLocationOption、value=code（vanilla 同源）。
-  const locationChoices = (controller.views.get('/api/v1/inventory-locations') ?? []).map(
-    (item) => ({
+  const readLocationChoices = perView(controller.views, '/api/v1/inventory-locations', (rows) =>
+    rows.map((item) => ({
       ...context.ports.inventoryLocationOption(item),
       value: recordText(item, 'code', 'code'),
-    }),
+    })),
   );
   const ports: GoodsReceiptConsolePorts = {
     permissions,
     initialReceipts: controller.views.get('/api/v1/goods-receipts') ?? [],
-    openOrderLineChoices,
-    locationChoices,
+    get openOrderLineChoices(): readonly Choice[] {
+      return readOpenOrderLineChoices();
+    },
+    get locationChoices(): readonly Choice[] {
+      return readLocationChoices();
+    },
     recordText: (record, camel, snake, fallback) => recordText(record, camel, snake, fallback),
     textValue: (value, fallback = '') =>
       typeof value === 'string' || typeof value === 'number' ? String(value) : fallback,
