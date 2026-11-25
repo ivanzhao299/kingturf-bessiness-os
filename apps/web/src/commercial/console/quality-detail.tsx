@@ -8,6 +8,7 @@ import {
   finWhen,
   type FinRow,
 } from './fin-kit';
+import { OpsTimeline } from './ops-ledger';
 
 export type QualityView = 'plans' | 'inspections' | 'complaints' | 'lots';
 type DetailProps = Readonly<{ row: FinRow; label: (value: string) => string }>;
@@ -19,14 +20,6 @@ const evidence = (value: unknown): string => {
     (Object.keys(data).length ? JSON.stringify(data) : '—')
   );
 };
-
-const events = (rows: unknown, label: DetailProps['label']) =>
-  finRows(rows).map((event) => [
-    finWhen(event, 'occurredAt', 'occurred_at', 'created_at'),
-    label(finText(event, 'state')),
-    finText(event, 'reason') || '—',
-    evidence(event.evidence),
-  ]);
 
 export const QualityPlanDetail = ({ row }: DetailProps) => (
   <>
@@ -90,11 +83,11 @@ export const QualityInspectionDetail = ({ row, label }: DetailProps) => (
       />
     </FinSection>
     <FinSection title="状态与处置记录" testId="kt-qi-disposition">
-      <FinTable
+      <OpsTimeline
         testId="kt-qi-disposition-grid"
-        head={['时间', '状态', '说明', '证据']}
         empty="暂无状态记录"
-        rows={events(row.events, label)}
+        value={row.events}
+        stateLabel={(value) => label(typeof value === 'string' ? value : '')}
       />
     </FinSection>
   </>
@@ -129,11 +122,11 @@ export const ComplaintDetail = ({ row, label }: DetailProps) => (
       />
     </FinSection>
     <FinSection title="投诉时间线" testId="kt-qi-complaint-timeline">
-      <FinTable
+      <OpsTimeline
         testId="kt-qi-complaint-events"
-        head={['时间', '状态', '说明', '证据']}
         empty="暂无投诉记录"
-        rows={events(row.events, label)}
+        value={row.events}
+        stateLabel={(value) => label(typeof value === 'string' ? value : '')}
       />
     </FinSection>
   </>
@@ -164,8 +157,8 @@ const lotGroups = [
     text: (item: FinRow) => [
       finWhen(item, 'occurred_at', 'created_at'),
       finText(item, 'movement_type'),
-      finText(item, 'quantity'),
-      finText(item, 'reference_type'),
+      finText(item, 'quantity_delta', 'quantity'),
+      finText(item, 'source_type', 'reference_type'),
     ],
   },
 ] as const;
@@ -201,11 +194,11 @@ export const LotDetail = ({ row, label }: DetailProps) => (
       })}
     </FinSection>
     <FinSection title="批次质量记录" testId="kt-qi-lot-quality">
-      <FinTable
+      <OpsTimeline
         testId="kt-qi-lot-events"
-        head={['时间', '状态', '说明', '证据']}
         empty="暂无质量记录"
-        rows={events(row.qualityEvents, label)}
+        value={row.qualityEvents}
+        stateLabel={(value) => label(typeof value === 'string' ? value : '')}
       />
     </FinSection>
   </>

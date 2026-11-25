@@ -10,6 +10,7 @@ import {
   finWhen,
   type FinRow,
 } from './fin-kit';
+import { OpsTimeline } from './ops-ledger';
 
 const related = [
   {
@@ -46,11 +47,6 @@ const gateChecks = [
   ['cost', 'cost_ok'],
   ['inventory', 'quantityOk'],
 ] as const;
-
-function shipmentEvidence(value: unknown): string {
-  const evidence = finRecord(value);
-  return Object.keys(evidence).length ? JSON.stringify(evidence) : '—';
-}
 
 function RelatedBasis({
   row,
@@ -125,16 +121,11 @@ export function ShipmentDetail({
       <RelatedBasis row={row} context={context} close={close} />
       <ShipmentGate row={row} context={context} />
       <FinSection title="放行与审批记录" testId="kt-shipment-release-events">
-        <FinTable
+        <OpsTimeline
           testId="kt-shipment-approval-table"
-          head={['时间', '状态', '理由', '证据']}
+          value={row.events}
+          stateLabel={label}
           empty="暂无放行记录"
-          rows={finRows(row.events).map((event) => [
-            finWhen(event, 'occurred_at', 'created_at'),
-            label(event.state),
-            finText(event, 'reason') || '—',
-            shipmentEvidence(event.evidence),
-          ])}
         />
       </FinSection>
       <FinSection title="发运与签收" testId="kt-shipment-tracking">
@@ -149,16 +140,11 @@ export function ShipmentDetail({
                 ['状态', label(shipment.state)],
               ]}
             />
-            <FinTable
+            <OpsTimeline
               testId="kt-shipment-events"
-              head={['时间', '状态', '地点', '凭证']}
+              value={shipment.events}
+              stateLabel={label}
               empty="暂无物流事件"
-              rows={finRows(shipment.events).map((event) => [
-                finWhen(event, 'occurred_at', 'created_at'),
-                label(event.state),
-                finText(event, 'location') || '—',
-                shipmentEvidence(event.evidence),
-              ])}
             />
           </section>
         ))}

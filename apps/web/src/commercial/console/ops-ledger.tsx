@@ -3,6 +3,10 @@ import { DataTable, type DataTableColumn } from '@kingturf/ui';
 import {
   createFinList,
   FinFilters,
+  FinFacts,
+  finRecord,
+  finRows,
+  finWhen,
   type FinPage,
   type FinQuery,
   type FinRow,
@@ -106,3 +110,71 @@ export const OpsLedger = ({ prefix, label, states, columns, model }: Props) => (
     </div>
   </section>
 );
+
+const evidenceLabels = {
+  reference: '证据编号',
+  sealReference: '封车凭证',
+  receiverName: '签收人',
+  receivedAt: '签收时间',
+  proofReference: '回单编号',
+} as const;
+
+function OpsEvidence({ value }: Readonly<{ value: unknown }>) {
+  const source = finRecord(value);
+  const facts = Object.entries(evidenceLabels).flatMap(([key, label]) => {
+    const text = key === 'receivedAt' && source[key] ? finWhen(source, key) : finText(source, key);
+    return text ? [[label, text] as const] : [];
+  });
+  return (
+    <>
+      {facts.length ? <FinFacts items={facts} /> : null}
+      {Object.keys(source).length > facts.length ? (
+        <details>
+          <summary>查看原始证据</summary>
+          <code>{JSON.stringify(source)}</code>
+        </details>
+      ) : null}
+    </>
+  );
+}
+
+export function OpsTimeline({
+  value,
+  stateLabel,
+  empty,
+  testId,
+}: Readonly<{
+  value: unknown;
+  stateLabel: (state: unknown) => string;
+  empty: string;
+  testId: string;
+}>) {
+  const events = finRows(value);
+  return (
+    <div data-testid={testId}>
+      {events.length === 0 ? (
+        <p class="fin-muted">{empty}</p>
+      ) : (
+        <ol class="fin-timeline">
+          {events.map((event, index) => {
+            const reason = finText(event, 'reason');
+            const location = finText(event, 'location');
+            return (
+              <li key={finText(event, 'id') || String(index)}>
+                <strong>{stateLabel(event.state)}</strong>
+                <span class="fin-muted">
+                  {finWhen(event, 'occurredAt', 'occurred_at', 'created_at')}
+                </span>
+                {reason ? (
+                  <span>{reason === 'Inspection opened' ? '开立检验' : reason}</span>
+                ) : null}
+                {location ? <FinFacts items={[['地点', location]]} /> : null}
+                <OpsEvidence value={event.evidence} />
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </div>
+  );
+}
