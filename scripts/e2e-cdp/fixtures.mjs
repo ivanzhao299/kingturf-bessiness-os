@@ -189,6 +189,7 @@ export function createStubRouter({
         const expected = ['receivables', 'bankPayments'].includes(key) ? 'limit=100' : '';
         const consolePages = {
           receivables: 'summary=1&limit=50',
+          collections: 'limit=50&summary=1',
           bankPayments: 'limit=50&summary=1',
           reconciliationRuns: 'limit=50',
         };

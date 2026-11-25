@@ -339,10 +339,9 @@ it('captures artificial-turf project handoff fields without test-channel evidenc
     readBoundSource('./commercial/console/quote-console.tsx', 'export function QuoteConsolePage'),
     readBoundSource('./commercial/console/credit-console.tsx', 'export function CreditConsolePage'),
     readBoundSource('./commercial/console/ar-host.ts', 'export function appendArConsole'),
-    readBoundSource('./commercial/collections-view.ts', 'export function appendCollectionsView'),
     readBoundSource(
-      './commercial/collection-actions.ts',
-      'export function appendCollectionFollowups',
+      './commercial/console/collection-host.ts',
+      'export function appendCollectionConsole',
     ),
     readBoundSource('./commercial/console/payment-host.ts', 'export function appendPaymentConsole'),
     readBoundSource('./commercial/commission-view.ts', 'export function appendCommissionView'),
@@ -944,6 +943,12 @@ it('binds each major business workbench to one process-stage route', () => {
   expect(
     readBoundSource('./commercial/console/payment-host.ts', 'export function appendPaymentConsole'),
   ).toContain("finHostSection('payment-console', 'kt-payment-console', 'payments')");
+  expect(
+    readBoundSource(
+      './commercial/console/collection-host.ts',
+      'export function appendCollectionConsole',
+    ),
+  ).toContain("finHostSection('collection-console', 'kt-collection-console', 'collections')");
 });
 
 it.each([
@@ -3637,14 +3642,7 @@ describe('web bootstrap', () => {
       false,
       controller,
     ) as unknown as RenderedElement;
-    expect(workspace.findByClass('collection-workbench')).toHaveLength(1);
-    expect(workspace.textContent).toContain('催收与法务证据');
-    expect(workspace.textContent).toContain('逾期客户');
-    expect(workspace.textContent).toContain('逾期 45 天');
-    expect(workspace.textContent).toContain('确认承诺违约');
-    expect(workspace.textContent).toContain('申请法务移交');
-    expect(workspace.textContent).not.toContain('受理法务移交');
-    expect(workspace.textContent).not.toContain('生成债权证据包');
+    expect(workspace.findByClass('collection-console')).toHaveLength(1);
   });
 
   it('renders the complaint queue as a Chinese business ledger with governed batch triage', async () => {

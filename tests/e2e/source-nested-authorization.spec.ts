@@ -21,6 +21,12 @@ for (const mode of ['denied', 'authorized', 'masked'] as const) {
     await page.route('**/api/v1/**', (route) => {
       const path = new URL(route.request().url()).pathname;
       if (path.endsWith('/collection-cases')) return route.fulfill({ json: collectionPayload });
+      if (path.includes('/collection-cases/')) {
+        const items = collectionPayload.items as readonly Readonly<{ id: string }>[];
+        const id = path.split('/').at(-1);
+        const detail = items.find((item) => item.id === id);
+        return detail ? route.fulfill({ json: detail }) : route.fulfill({ status: 404, json: {} });
+      }
       if (path.endsWith('/sales-orders'))
         return route.fulfill({ json: { items: [aggregate.order] } });
       if (path.endsWith('/360')) return route.fulfill({ json: aggregate });
@@ -39,10 +45,21 @@ for (const mode of ['denied', 'authorized', 'masked'] as const) {
     await page.evaluate(() => {
       location.hash = 'collections';
     });
-    await expect(page.locator('.collection-case-card')).toBeVisible();
+    const collection = page.getByTestId('kt-collection-console');
+    await expect(collection.getByTestId('kt-collection-number')).toHaveText('AUTH-COLLECTION');
+    const detailResponse = page.waitForResponse((response) =>
+      /\/collection-cases\/[^/]+$/u.test(new URL(response.url()).pathname),
+    );
+    await collection.getByTestId('kt-collection-open').click();
+    expect((await detailResponse).ok()).toBeTruthy();
+    await expect(page.getByRole('dialog', { name: /催收案件/u })).toBeVisible();
+    // Wait until the detail fetch settles for both the positive and negative assertions.
+    await expect(page.getByTestId('kt-collection-timeline')).toBeVisible();
+    const drawer = page.getByRole('dialog', { name: /催收案件/u });
     if (legal)
-      await expect(page.locator('.collection-case-card')).toContainText('SENSITIVE-PACKAGE');
-    else await expect(page.locator('.collection-case-card')).not.toContainText('SENSITIVE-PACKAGE');
+      await expect(drawer.getByTestId('kt-collection-package')).toContainText('SENSITIVE-PACKAGE');
+    else await expect(drawer).not.toContainText('SENSITIVE-PACKAGE');
+    await drawer.getByRole('button', { name: '关闭详情' }).click();
     await page.evaluate(() => {
       location.hash = 'order-360';
     });

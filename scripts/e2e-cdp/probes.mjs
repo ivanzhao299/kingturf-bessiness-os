@@ -319,7 +319,7 @@ export async function runProbes({ send, router, runId, report, expectDialog }) {
           '[data-testid="kt-ar-console"] [data-testid="kt-ar-number"]',
           'CDP-AR-A',
         ],
-        ['collections', '催收与法务', '.collection-case-card', 'CDP-COL-A'],
+        ['collections', '催收与法务', '[data-testid="kt-collection-number"]', 'CDP-COL-A'],
         ['payments', '收款与核销', '[data-testid="kt-payment-reference"]', 'CDP-BANK-A'],
         ['commissions', '销售佣金', '.commission-card', 'CDP-SO-A'],
         ['business-risks', '业务风险', '.risk-card', 'CDP-SO-A'],

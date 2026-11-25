@@ -14,7 +14,6 @@ export function assignCommercialRouteViews(
     'contract-workbench': 'contracts',
     'order-workbench': 'sales-orders',
     'order-360-workbench': 'order-360',
-    'collection-workbench': 'collections',
     'commission-workbench': 'commissions',
     'risk-workbench': 'business-risks',
     'manufacturing-workbench': 'manufacturing-master',

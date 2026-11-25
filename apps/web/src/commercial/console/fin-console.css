@@ -112,3 +112,21 @@ a.fin-link:focus-visible {
   outline: 2px solid var(--kt-color-info);
   outline-offset: 2px;
 }
+
+.fin-case-actions {
+  margin-bottom: var(--kt-space-3);
+}
+
+.fin-timeline {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fin-timeline > li {
+  display: grid;
+  gap: var(--kt-space-1);
+  padding: 0 0 var(--kt-space-3) var(--kt-space-3);
+  border-left: 2px solid var(--kt-color-border);
+  overflow-wrap: anywhere;
+}

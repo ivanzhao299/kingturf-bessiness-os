@@ -36,6 +36,8 @@ import { ProductionOrderConsolePage } from './production-order-console';
 import type { ProductionOrderConsolePorts } from './production-order-ports';
 import { ArConsolePage } from './ar-console';
 import { PaymentConsolePage } from './payment-console';
+import { CollectionConsolePage } from './collection-console';
+import type { CollectionPorts } from './collection-ports';
 import type { PaymentPorts } from './payment-ports';
 import type { ArConsolePorts } from './ar-ports';
 
@@ -61,7 +63,8 @@ type ConsoleMountPorts =
   | Readonly<{ kind: 'production-orders'; ports: ProductionOrderConsolePorts }>
   // FIN：财务域三个控制台（应收 / 收款与核销 / 催收）。
   | Readonly<{ kind: 'receivables'; ports: ArConsolePorts }>
-  | Readonly<{ kind: 'payments'; ports: PaymentPorts }>;
+  | Readonly<{ kind: 'payments'; ports: PaymentPorts }>
+  | Readonly<{ kind: 'collections'; ports: CollectionPorts }>;
 
 const PAGE_BY_KIND: Readonly<Record<ConsoleMountPorts['kind'], (ports: never) => ComponentType>> = {
   opportunities: OpportunityListPage as (ports: never) => ComponentType,
@@ -83,6 +86,7 @@ const PAGE_BY_KIND: Readonly<Record<ConsoleMountPorts['kind'], (ports: never) =>
   'production-orders': ProductionOrderConsolePage as (ports: never) => ComponentType,
   receivables: ArConsolePage as (ports: never) => ComponentType,
   payments: PaymentConsolePage as (ports: never) => ComponentType,
+  collections: CollectionConsolePage as (ports: never) => ComponentType,
 };
 
 export function mountCommercialConsole(host: HTMLElement, mount: ConsoleMountPorts): void {

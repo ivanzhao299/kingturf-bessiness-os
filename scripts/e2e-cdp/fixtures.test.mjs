@@ -334,6 +334,12 @@ test('finance/risk opt-in binds eight read routes, exact pagination and no write
   assert.equal(arPage.value.items[0].documentNumber, 'CDP-AR-A');
   assert.equal(arPage.value.items[0].appliedAmount, '500');
   assert.equal(arPage.value.nextCursor, null);
+  const collectionPage = await finance.respond(
+    '/api/v1/collection-cases',
+    'GET',
+    new URLSearchParams('limit=50&summary=1'),
+  );
+  assert.equal(collectionPage.value.items[0].caseNumber, 'CDP-COL-A');
   const paymentPage = await finance.respond(
     '/api/v1/bank-payments',
     'GET',

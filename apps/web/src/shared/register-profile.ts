@@ -29,12 +29,6 @@ export const registerProfile = (list: HTMLElement): RegisterProfile => {
       headers: ['订单与客户', '履约状态与金额', '交付与责任', '操作'],
       detailLabels: ['订单信息', '履约状态', '金额与信用', '交付与责任'],
     };
-  if (list.classList.contains('collection-case-list'))
-    return {
-      label: '催收案件台账',
-      headers: ['案件与客户', '催收状态与逾期', '责任人与节点', '操作'],
-      detailLabels: ['案件信息', '催收状态', '逾期与金额', '责任与下一节点'],
-    };
   if (list.classList.contains('commission-list'))
     return {
       label: '佣金台账',
