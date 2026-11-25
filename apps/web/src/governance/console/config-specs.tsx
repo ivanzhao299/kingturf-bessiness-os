@@ -148,6 +148,7 @@ const masterDataActions: readonly ConfigActionSpec[] = [
     title: '停用主数据条目',
     description: '停用属于受控逻辑删除，历史版本和审计记录继续保留。',
     submitLabel: '停用条目',
+    confirmation: 'destructive',
     fields: (ctx) => [
       chooser('entryId', '条目')(
         '/api/v1/master-data/entries',
@@ -203,6 +204,7 @@ const numberingActions: readonly ConfigActionSpec[] = [
     title: '发布编号版本',
     description: '发布后的编号格式不可修改；后续调整必须创建新版本。',
     submitLabel: '发布编号版本',
+    confirmation: true,
     fields: (ctx) => [
       chooser('definitionId', '编号规则')(
         '/api/v1/number-definitions',
@@ -270,6 +272,7 @@ const ruleActions: readonly ConfigActionSpec[] = [
     title: '发布业务规则',
     description: '已发布规则不可修改，试算和业务执行始终引用冻结版本。',
     submitLabel: '发布业务规则',
+    confirmation: true,
     fields: (ctx) => [
       chooser('ruleId', '业务规则')(
         '/api/v1/rules',
@@ -330,6 +333,7 @@ const workflowActions: readonly ConfigActionSpec[] = [
     title: '发布工作流',
     description: '发布后启动的实例固定引用该流程版本。',
     submitLabel: '发布工作流',
+    confirmation: true,
     fields: (ctx) => [
       chooser('workflowId', '工作流')(
         '/api/v1/workflows',
@@ -371,6 +375,7 @@ const workflowActions: readonly ConfigActionSpec[] = [
     title: '处理工作流待办',
     description: '审批人、法定人数和申请人隔离由服务器校验。',
     submitLabel: '提交审批决定',
+    confirmation: 'destructive',
     fields: (ctx) => [
       chooser('taskId', '待办任务')(
         '/api/v1/workflow-tasks',

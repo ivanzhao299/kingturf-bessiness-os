@@ -1,6 +1,7 @@
 import { signal } from '@preact/signals';
 import {
   ActionBar,
+  ConfirmDialog,
   DataTable,
   DetailDrawer,
   EmptyState,
@@ -8,6 +9,9 @@ import {
   type DataTableColumn,
   type FormSectionField,
 } from '@kingturf/ui';
+import { failureMessage } from '../../shared/api-error-message';
+import { ConsoleNotice } from '../../shared/console-notice';
+import { FocusAnchor } from '../../shared/focus-anchor';
 import { recordOf, textOf, type ConsolePorts } from './ports';
 import { VersionCompare } from './version-compare';
 import { createVersionCompare } from './version-compare-state';
@@ -40,6 +44,7 @@ export type ConfigActionSpec = Readonly<{
   title: string;
   description: string;
   submitLabel: string;
+  confirmation?: true | 'destructive';
   fields: (ctx: ConfigActionCtx) => readonly FormSectionField[];
   resolve: (values: Readonly<Record<string, string>>, ctx: ConfigActionCtx) => ConfigActionSubmit;
 }>;
@@ -77,6 +82,7 @@ const jsonParseField = (value: string | undefined, label: string): Record<string
 const ConfigActionBar = (
   props: Readonly<{
     allowed: readonly ConfigActionSpec[];
+    active: string;
     onOpen: (item: ConfigActionSpec) => void;
   }>,
 ): preact.VNode => (
@@ -93,6 +99,7 @@ const ConfigActionBar = (
         {item.label}
       </button>
     ))}
+    <FocusAnchor token={props.active} />
   </ActionBar>
 );
 
@@ -100,9 +107,15 @@ export function ConfigConsolePage(spec: ConfigPageSpec) {
   return (ports: ConsolePorts): preact.ComponentType => {
     const activeAction = signal<ConfigActionSpec | null>(null);
     const actionError = signal('');
+    const readError = signal('');
+    const notice = signal('');
+    const confirm = signal<{ action: ConfigActionSpec; settle: (answer: boolean) => void } | null>(
+      null,
+    );
     const refreshQueue = signal(0);
     const selectedId = signal<string | null>(null);
     const compare = createVersionCompare(spec.versions, ports);
+    const Appendix = spec.appendix?.(ports);
 
     const cache = new Map<string, readonly Row[]>();
     const rowsOf = (path: string): readonly Row[] => {
@@ -134,27 +147,43 @@ export function ConfigConsolePage(spec: ConfigPageSpec) {
       refreshQueue.value += 1;
     };
 
-    const runAction = (
+    const runAction = async (
       action: ConfigActionSpec,
       values: Readonly<Record<string, string>>,
     ): Promise<void> => {
+      actionError.value = '';
       let submit: ConfigActionSubmit;
       try {
         submit = action.resolve(values, ctx);
       } catch (error) {
-        actionError.value = error instanceof Error ? error.message : '输入无法解析';
-        return Promise.resolve();
+        actionError.value = failureMessage(error, '输入无法解析');
+        return;
       }
-      return ports
-        .submit(submit.path, submit.payload, submit.method)
-        .then(() => {
-          activeAction.value = null;
-          actionError.value = '';
-          return refresh();
-        })
-        .catch((error: unknown) => {
-          actionError.value = error instanceof Error ? error.message : '操作失败';
+      if (action.confirmation) {
+        const accepted = await new Promise<boolean>((settle) => {
+          confirm.value = { action, settle };
         });
+        if (!accepted) return;
+      }
+      try {
+        await ports.submit(submit.path, submit.payload, submit.method);
+      } catch (error) {
+        actionError.value = failureMessage(error, '配置操作失败');
+        return;
+      }
+      if (activeAction.value === action) activeAction.value = null;
+      notice.value = `${action.submitLabel}成功`;
+      try {
+        await refresh();
+        readError.value = '';
+      } catch (error) {
+        readError.value = failureMessage(error, '已提交，配置列表刷新失败');
+      }
+    };
+    const settleConfirm = (answer: boolean): void => {
+      const request = confirm.value;
+      confirm.value = null;
+      request?.settle(answer);
     };
 
     const View = () => {
@@ -162,16 +191,25 @@ export function ConfigConsolePage(spec: ConfigPageSpec) {
       const rows = rowsOf(spec.entity.path);
       const selected = rows.find((row) => spec.entity.rowId(row) === selectedId.value) ?? null;
       const action = activeAction.value;
+      const confirmation = confirm.value;
       const comparison = compare.current();
       const allowed = spec.actions.filter((item) => ports.permissions.has(item.permission));
       return (
         <div class="console-page" data-testid={spec.pageTestId}>
+          {selected === null ? <ConsoleNotice message={notice.value} /> : null}
+          {readError.value !== '' ? (
+            <p class="console-error" role="alert">
+              {readError.value}
+            </p>
+          ) : null}
           {allowed.length > 0 ? (
             <ConfigActionBar
               allowed={allowed}
+              active={action?.id ?? ''}
               onOpen={(item) => {
                 activeAction.value = item;
                 actionError.value = '';
+                notice.value = '';
               }}
             />
           ) : null}
@@ -180,6 +218,7 @@ export function ConfigConsolePage(spec: ConfigPageSpec) {
               ...spec.entity.columns,
               openColumn((row) => {
                 selectedId.value = spec.entity.rowId(row);
+                notice.value = '';
                 compare.open(row);
               }),
             ]}
@@ -192,6 +231,7 @@ export function ConfigConsolePage(spec: ConfigPageSpec) {
           {selected ? (
             <DetailDrawer
               title={`${spec.title} · 当前版本`}
+              footer={<ConsoleNotice message={notice.value} />}
               onClose={() => {
                 selectedId.value = null;
                 compare.clear();
@@ -218,14 +258,24 @@ export function ConfigConsolePage(spec: ConfigPageSpec) {
                 description={action.description}
                 fields={action.fields(ctx)}
                 submitLabel={action.submitLabel}
+                error={actionError.value}
                 onSubmit={(values) => runAction(action, values)}
               />
-              {actionError.value !== '' ? (
-                <p class="console-error" role="alert" data-testid="kt-cfg-form-error">
-                  {actionError.value}
-                </p>
-              ) : null}
             </div>
+          ) : null}
+          {confirmation ? (
+            <ConfirmDialog
+              title={confirmation.action.title}
+              message={confirmation.action.description}
+              confirmLabel={confirmation.action.submitLabel}
+              destructive={confirmation.action.confirmation === 'destructive'}
+              onCancel={() => {
+                settleConfirm(false);
+              }}
+              onConfirm={() => {
+                settleConfirm(true);
+              }}
+            />
           ) : null}
           {(spec.extraEntities ?? []).map((entity) => (
             <DataTable
@@ -237,12 +287,7 @@ export function ConfigConsolePage(spec: ConfigPageSpec) {
               emptyDescription=""
             />
           ))}
-          {spec.appendix
-            ? (() => {
-                const Appendix = spec.appendix(ports);
-                return <Appendix />;
-              })()
-            : null}
+          {Appendix ? <Appendix /> : null}
           {rows.length === 0 && allowed.length === 0 ? (
             <EmptyState title={`暂无${spec.title}`} description="当前账号无管理权限时仅可查看" />
           ) : null}

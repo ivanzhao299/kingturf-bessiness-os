@@ -32,6 +32,7 @@ const EXACT: ReadonlyMap<string, string> = new Map([
   ['Receipt quantity exceeds open purchase order quantity', '收货数量超过采购订单的未收数量'],
   ['Request validation failed', '提交的内容不符合要求，请检查后重试'],
   ['A JSON object body is required', '请求内容无效，请刷新页面后重试'],
+  ['Role assignment violates segregation of duties', '分配该角色会违反职责分离规则'],
   ['Route not found', '请求的功能不存在，请刷新页面后重试'],
 ]);
 

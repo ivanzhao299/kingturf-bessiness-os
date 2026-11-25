@@ -1,3 +1,4 @@
+import { ConfirmDialog } from '@kingturf/ui';
 import {
   permissionPlan,
   scopeModel,
@@ -225,30 +226,18 @@ const RevokeConfirm = ({
   onConfirm,
   onCancel,
 }: Readonly<{ pending: PendingRevoke; onConfirm: () => void; onCancel: () => void }>) => (
-  <p
-    class="gov-matrix-confirm"
-    role="group"
-    aria-label="确认撤销角色"
-    data-testid="kt-matrix-confirm"
-  >
-    <span>
-      确认撤销 {pending.userName} 的角色 <strong>{pending.roleCode}</strong>？
-      {pending.collateral.length > 0
-        ? `将同时失去该角色授予的其它权限：${pending.collateral.join('、')}`
-        : '撤销后立即生效。'}
-    </span>
-    <button type="button" class="danger" data-testid="kt-matrix-confirm-ok" onClick={onConfirm}>
-      确认撤销
-    </button>
-    <button
-      type="button"
-      class="secondary compact"
-      data-testid="kt-matrix-confirm-cancel"
-      onClick={onCancel}
-    >
-      取消
-    </button>
-  </p>
+  <ConfirmDialog
+    title={`撤销 ${pending.userName} 的角色 ${pending.roleCode}`}
+    message={
+      pending.collateral.length > 0
+        ? `撤销后立即生效。将同时失去该角色授予的其它权限：${pending.collateral.join('、')}`
+        : '撤销后立即生效。'
+    }
+    confirmLabel="确认撤销"
+    destructive
+    onConfirm={onConfirm}
+    onCancel={onCancel}
+  />
 );
 
 export const IdentityMatrix = (view: MatrixView) => (
@@ -305,7 +294,13 @@ export const IdentityMatrix = (view: MatrixView) => (
       </p>
     ) : null}
     {view.error !== '' ? (
-      <p class="console-error" role="alert" data-testid="kt-matrix-error">
+      <p
+        class="console-error"
+        role="alert"
+        tabIndex={-1}
+        data-testid="kt-matrix-error"
+        ref={(node) => node?.focus()}
+      >
         {view.error}
       </p>
     ) : null}
