@@ -88,6 +88,9 @@ async function checkDrawer(page, route, index, tag, { tabs, shot }) {
     const rect = drawer.getBoundingClientRect();
     return {
       position: globalThis.getComputedStyle(drawer).position,
+      // 宽度档位（DetailDrawer 的 data-size：default / wide）。只看宽度数值分不清「宽抽屉在窄屏被压窄」
+      // 与「默认抽屉」（TD-TEST-028）。
+      size: drawer.getAttribute('data-size'),
       top: Math.round(rect.top),
       rightGap: Math.round(globalThis.window.innerWidth - rect.right),
       width: Math.round(rect.width),
