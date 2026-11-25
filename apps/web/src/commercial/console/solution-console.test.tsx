@@ -1,9 +1,10 @@
 // U3-COM-2 技术方案控制台白盒行为测试（Preact 分域重写后的行为面；
 // 测试 DOM=零依赖 double（test/fixtures/preact-dom.ts，与 opportunity console 同源）。
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { h, render } from 'preact';
 import type { ComponentType } from 'preact';
 import { installGlobalTestDom, type TestElement } from '../../../test/fixtures/preact-dom';
+import { noticeOf } from '../../../test/fixtures/console-notice';
 import { technicalSolutionOpportunityId } from '../ctr-fields';
 import { SolutionConsolePage } from './solution-console';
 import type { SolutionConsolePorts, SolutionRow } from './solution-ports';
@@ -104,6 +105,13 @@ const FULL_FORM: readonly (readonly [string, string])[] = [
   ['warrantyYears', '8'],
   ['assumptions', '满足足球场日常训练\n排水坡度 ≥ 0.5%'],
 ];
+
+// Preact 的 useEffect 在本测试环境里要等约 35 毫秒之后才执行，而测试 DOM 的 focus() 记到「最近安装的文档」
+// 上：上一个用例遗留的 effect 会改写下一个用例的焦点。每个用例结束时把这个窗口等过去（同 ctr-view-behavior）。
+afterEach(async () => {
+  vi.restoreAllMocks();
+  await new Promise((resolve) => setTimeout(resolve, 60));
+});
 
 describe('U3-COM-2 技术方案控制台', () => {
   it('渲染页头与主列表（方案·版本/状态/技术需求版本/创建时间）', () => {
@@ -264,5 +272,62 @@ describe('U3-COM-2 技术方案控制台', () => {
     await flush();
     expect(host.querySelector('.data-table-error')).not.toBeNull();
     expect(host.textContent).toContain('技术方案加载失败');
+  });
+
+  // WFD 补齐（TD-WF-014① 在本控制台的缺口）：三个写动作各有一条成功状态行。
+  describe('写成功后的状态行（WFD）', () => {
+    const submitDrawer = async (host: TestElement): Promise<void> => {
+      element(
+        element(host.querySelector('.detail-drawer')).querySelector('button[type="submit"]'),
+      ).click();
+      await flush();
+      await flush();
+    };
+
+    it('保存新修订：抽屉关闭，状态行在页头下方', async () => {
+      const ports = portsFor([solution()], ['technical-solution:update']);
+      const host = mount(ports);
+      element(host.querySelector('[data-testid="kt-solution-open"]')).click();
+      await flush();
+      element(host.querySelector('[data-testid="kt-solution-edit"]')).click();
+      await flush();
+      // 开始填写时没有提示。
+      expect(noticeOf(host).text).toBe('');
+      for (const [name, value] of FULL_FORM) fillField(host, name, value);
+      await flush();
+      await submitDrawer(host);
+      expect(noticeOf(host)).toEqual({ text: '已保存技术方案 TS-1 的新修订', inDrawer: false });
+    });
+
+    it('定稿发布：状态行在页头下方，写明「已定稿」', async () => {
+      const ports = portsFor([solution()], ['technical-solution:update']);
+      const host = mount(ports);
+      element(host.querySelector('[data-testid="kt-solution-open"]')).click();
+      await flush();
+      element(host.querySelector('[data-testid="kt-solution-publish"]')).click();
+      await flush();
+      for (const [name, value] of FULL_FORM) fillField(host, name, value);
+      await flush();
+      await submitDrawer(host);
+      expect(noticeOf(host)).toEqual({ text: '已定稿技术方案 TS-1', inDrawer: false });
+    });
+
+    it('新建：状态行在页头下方；打开下一条记录时清空', async () => {
+      const created = solution({ id: 's-new', code: 'TS-NEW', revision: 1 });
+      const ports = portsFor([solution()], ['technical-solution:create'], {
+        refresh: vi.fn().mockResolvedValue({ solutions: [solution(), created], ctrs }),
+      });
+      const host = mount(ports);
+      element(host.querySelector('[data-testid="kt-solution-create"]')).click();
+      await flush();
+      for (const [name, value] of [...FULL_FORM, ['code', 'TS-NEW'], ['state', 'DRAFT']])
+        fillField(host, name, value);
+      await flush();
+      await submitDrawer(host);
+      expect(noticeOf(host)).toEqual({ text: '已创建技术方案 TS-NEW', inDrawer: false });
+      element(host.querySelector('[data-testid="kt-solution-open"]')).click();
+      await flush();
+      expect(noticeOf(host).text).toBe('');
+    });
   });
 });

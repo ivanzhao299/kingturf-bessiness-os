@@ -26,6 +26,7 @@ import {
 } from './solution-console-diff';
 import { failureMessage } from '../../shared/api-error-message';
 import { FocusAnchor } from './focus-anchor';
+import { ConsoleNotice } from './console-notice';
 
 // U3-COM-2（ADR-0014 分域重写）：技术方案 Preact 控制台——原 vanilla solution
 // workbench 能力面等价迁移（新建/修订/定稿、规格与上一版差异标记），列表页
@@ -39,6 +40,8 @@ export type SolutionPageState = Readonly<{
   loadError: string;
   /** 行内表单（新建 / 修订 / 定稿）的提交错误（TD-WF-005）：显示在该表单的提示区，不进 loadError。 */
   formError: string;
+  /** TD-WF-014①（WFD 补齐）：最近一次写操作的成功提示。 */
+  notice: string;
   loading: boolean;
   selected: SolutionRow | null;
   activeForm: 'edit' | 'publish' | null;
@@ -285,6 +288,8 @@ const SolutionDrawer = ({ state }: Readonly<{ state: SolutionPageState }>) => {
       onClose={() => {
         state.open(null);
       }}
+      // TD-WF-014①：写成功的提示放在抽屉底部，不随抽屉体滚走。
+      footer={state.notice === '' ? undefined : <ConsoleNotice message={state.notice} />}
     >
       <SolutionSummary state={state} />
       {mayRevise && state.activeForm === null ? (
@@ -502,6 +507,8 @@ const SolutionView = (state: SolutionPageState) => {
         emptyTitle="暂无技术方案"
         emptyDescription="请先批准技术需求，再建立结构化方案。"
       />
+      {/* TD-WF-014①：详情抽屉没开着时，写成功的提示显示在页头下方。 */}
+      {state.selected ? null : <ConsoleNotice message={state.notice} />}
       {state.selected ? <SolutionDrawer state={state} /> : null}
       {state.creating ? <CreateDrawer state={state} /> : null}
       {state.selected === null && state.solutions.length === 0 && state.loadError === '' ? (
@@ -519,6 +526,8 @@ export function SolutionConsolePage(ports: SolutionConsolePorts) {
   const loadError = signal('');
   // 行内表单（新建 / 修订 / 定稿）的提交错误：只给发起它的那个表单（TD-WF-005）。
   const formError = signal('');
+  // TD-WF-014①：最近一次写操作的成功提示。
+  const notice = signal('');
   const loading = signal(false);
   const selected = signal<SolutionRow | null>(null);
   const activeForm = signal<'edit' | 'publish' | null>(null);
@@ -556,6 +565,9 @@ export function SolutionConsolePage(ports: SolutionConsolePorts) {
       activeForm.value = null;
       baselineId.value = '';
       loadError.value = '';
+      notice.value = payload.final
+        ? `已定稿技术方案 ${ports.textValue(solution.code, '方案')}`
+        : `已保存技术方案 ${ports.textValue(solution.code, '方案')} 的新修订`;
     } catch (error: unknown) {
       // 此前写进 loadError：显示在被抽屉遮住的表格错误面里，抽屉里什么也看不到（TD-WF-005）。
       formError.value = failureMessage(error, '方案修订保存失败');
@@ -584,6 +596,7 @@ export function SolutionConsolePage(ports: SolutionConsolePorts) {
       solutions.value = fresh.solutions;
       creating.value = false;
       loadError.value = '';
+      notice.value = `已创建技术方案 ${values.code ?? ''}`;
     } catch (error: unknown) {
       // 同上：此前写进 loadError，显示在被创建抽屉遮住的表格错误面里（TD-WF-005）。
       formError.value = failureMessage(error, '技术方案创建失败');
@@ -599,6 +612,7 @@ export function SolutionConsolePage(ports: SolutionConsolePorts) {
     search: search.value,
     loadError: loadError.value,
     formError: formError.value,
+    notice: notice.value,
     loading: loading.value,
     selected: selected.value,
     activeForm: activeForm.value,
@@ -606,19 +620,23 @@ export function SolutionConsolePage(ports: SolutionConsolePorts) {
     permissions: ports.permissions,
     ports,
     // 打开与关闭表单时清掉上一次的提交错误（TD-WF-005）。
+    // 开始下一个动作时清掉上一次的成功提示（与 formError 同一处）。
     open: (solution) => {
       selected.value = solution;
       activeForm.value = null;
       baselineId.value = '';
       formError.value = '';
+      notice.value = '';
     },
     openForm: (form) => {
       activeForm.value = form;
       formError.value = '';
+      notice.value = '';
     },
     openCreate: () => {
       creating.value = true;
       formError.value = '';
+      notice.value = '';
     },
     closeCreate: () => {
       creating.value = false;
