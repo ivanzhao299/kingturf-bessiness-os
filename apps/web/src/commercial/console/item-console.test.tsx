@@ -8,9 +8,15 @@ import { h, render } from 'preact';
 import type { ComponentType } from 'preact';
 import {
   installGlobalTestDom,
+  TestDocument,
   TestNode,
   type TestElement,
 } from '../../../test/fixtures/preact-dom';
+import {
+  confirmAction,
+  confirmDialogOf,
+  dismissConfirm,
+} from '../../../test/fixtures/confirm-dialog';
 import { ItemConsolePage } from './item-console';
 import type { ItemConsolePorts, ItemPage, ItemRow } from './item-ports';
 import { countAllItems, countByCategory, specEntries, specificationOf } from './item-state';
@@ -316,7 +322,10 @@ describe('U3-MFG-1 物料控制台：行级动作', () => {
     });
     const host = mount(ports);
     byTestId(host, 'kt-item-publish').click();
+    // TD-WF-014②：发布不可逆，单击先出确认框，确认后才发请求。
     await flush();
+    expect(ports.submit).not.toHaveBeenCalled();
+    await confirmAction(host, '发布版本', '确认发布');
     await flush();
     expect(ports.submit).toHaveBeenCalledExactlyOnceWith(
       '/api/v1/manufacturing-item-versions/item-v2/publish',
@@ -333,7 +342,10 @@ describe('U3-MFG-1 物料控制台：行级动作', () => {
     });
     const host = mount(ports);
     byTestId(host, 'kt-item-publish').click();
+    // TD-WF-014②：发布不可逆，单击先出确认框，确认后才发请求。
     await flush();
+    expect(ports.submit).not.toHaveBeenCalled();
+    await confirmAction(host, '发布版本', '确认发布');
     await flush();
     expect(byTestId(host, 'kt-item-action-error').textContent).toContain('publish rejected');
     // 动作错误不隐藏列表：行与发布按钮保留，DataTable 不进入错态。
@@ -515,13 +527,36 @@ describe('U3-MFG-1 物料控制台：详情抽屉', () => {
     await flush();
     expect(host.querySelectorAll('[data-testid="kt-item-version"]')).toHaveLength(2);
     byTestId(host, 'kt-item-publish-version').click();
+    // TD-WF-014②：发布不可逆，单击先出确认框，确认后才发请求。
     await flush();
+    expect(ports.submit).not.toHaveBeenCalled();
+    await confirmAction(host, '发布版本', '确认发布');
     await flush();
     expect(ports.submit).toHaveBeenCalledExactlyOnceWith(
       '/api/v1/manufacturing-item-versions/item-v2/publish',
       {},
     );
     expect(loadDetail).toHaveBeenCalledTimes(3);
+  });
+
+  // TD-WF-014②：确认框里不确认就不发请求；关掉后焦点回到触发它的「发布版本」按钮。
+  it('行内「发布版本」的确认框：写明是哪一版；不确认就不发请求，焦点回到该行的发布按钮', async () => {
+    const ports = portsFor([published, draft], ['manufacturing-item:manage']);
+    const host = mount(ports);
+    const trigger = byTestId(host, 'kt-item-publish');
+    trigger.focus();
+    trigger.click();
+    await flush();
+    const dialog = confirmDialogOf(host);
+    expect(dialog.textContent).toContain('发布版本');
+    expect(dialog.textContent).toContain(
+      `发布后 ${String(draft.sku)} 第 ${String(draft.version)} 版 随即冻结`,
+    );
+    expect(TestDocument.current.activeElement).toBe(dialog.querySelectorAll('button')[1]);
+    await dismissConfirm(host);
+    expect(ports.submit).not.toHaveBeenCalled();
+    expect(TestDocument.current.activeElement).toBe(trigger);
+    expect(host.querySelectorAll('[data-testid="kt-item-publish"]')).toHaveLength(1);
   });
 });
 

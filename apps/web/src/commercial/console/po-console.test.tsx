@@ -6,7 +6,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { h, render } from 'preact';
 import type { ComponentType } from 'preact';
-import { installGlobalTestDom, type TestElement } from '../../../test/fixtures/preact-dom';
+import {
+  installGlobalTestDom,
+  TestDocument,
+  TestEvent,
+  type TestElement,
+} from '../../../test/fixtures/preact-dom';
+import { confirmAction } from '../../../test/fixtures/confirm-dialog';
 import { PurchaseOrderConsolePage } from './po-console';
 import type { PurchaseOrderConsolePorts, PurchaseOrderRow } from './po-ports';
 
@@ -260,7 +266,10 @@ describe('U3-PROC-3 采购单控制台', () => {
     element(host.querySelector('[data-testid="kt-po-open"]')).click();
     await flush();
     element(host.querySelector('[data-testid="kt-po-issue"]')).click();
+    // TD-WF-014②：签发不可逆，单击先出确认框，确认后才发请求。
     await flush();
+    expect(ports.submit).not.toHaveBeenCalled();
+    await confirmAction(host, '签发采购订单', '确认签发');
     expect(ports.submit).toHaveBeenCalledExactlyOnceWith(
       '/api/v1/purchase-orders/po-1/state',
       { action: 'issue' },
@@ -276,12 +285,51 @@ describe('U3-PROC-3 采购单控制台', () => {
     await flush();
     expect(host.querySelector('[data-testid="kt-po-issue"]')).toBe(null);
     element(host.querySelector('[data-testid="kt-po-cancel"]')).click();
+    // TD-WF-014②：取消是破坏性动作，确认框的初焦落在「取消」（即不执行）上。
     await flush();
+    expect(ports.submit).not.toHaveBeenCalled();
+    await confirmAction(host, '取消采购订单', '确认取消', { destructive: true });
     expect(ports.submit).toHaveBeenCalledExactlyOnceWith(
       '/api/v1/purchase-orders/po-2/state',
       { action: 'cancel' },
       'PUT',
     );
+  });
+
+  // TD-WF-014②：确认框里点「取消」或按 Esc 都不执行动作，焦点回到触发按钮，抽屉不受影响。
+  it('签发的确认框：不确认就不发请求（取消按钮 / Esc），确认框关掉后焦点回到「签发订单」', async () => {
+    const ports = portsFor([order], ALL_PERMISSIONS);
+    const host = mount(ports);
+    element(host.querySelector('[data-testid="kt-po-open"]')).click();
+    await flush();
+    const trigger = element(host.querySelector('[data-testid="kt-po-issue"]'));
+    trigger.focus();
+    trigger.click();
+    await flush();
+    const dialog = element(host.querySelector('[role="alertdialog"]'));
+    expect(dialog.textContent).toContain('签发采购订单');
+    expect(dialog.textContent).toContain('PO-KT-YARN-2026-001');
+    const buttons = dialog.querySelectorAll('button');
+    // 初焦进入确认框（缺省在确认按钮上）。
+    expect(TestDocument.current.activeElement).toBe(buttons[1]);
+    element(buttons[0]).click();
+    await flush();
+    expect(host.querySelector('[role="alertdialog"]')).toBe(null);
+    expect(ports.submit).not.toHaveBeenCalled();
+    expect(TestDocument.current.activeElement).toBe(trigger);
+    expect(host.querySelector('[data-testid="kt-po-detail"]')).not.toBeNull();
+
+    trigger.click();
+    await flush();
+    const reopened = element(host.querySelector('[role="alertdialog"]'));
+    reopened
+      .querySelectorAll('button')[1]
+      ?.dispatchEvent(new TestEvent('keydown', { key: 'Escape' }));
+    await flush();
+    expect(host.querySelector('[role="alertdialog"]')).toBe(null);
+    expect(ports.submit).not.toHaveBeenCalled();
+    expect(TestDocument.current.activeElement).toBe(trigger);
+    expect(host.querySelector('[data-testid="kt-po-detail"]')).not.toBeNull();
   });
 
   it('详情抽屉展示行项收货状态与收货记录（loadDetail 详情优先）', async () => {

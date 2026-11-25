@@ -18,6 +18,12 @@ import {
 } from './rfq-console-detail';
 import type { RfqConsolePorts, RfqRow } from './rfq-ports';
 import { failureMessage } from '../../shared/api-error-message';
+import {
+  askConfirm,
+  ConsoleConfirmDialog,
+  createConfirm,
+  type ConfirmSignal,
+} from './console-confirm';
 
 // U3-PROC-2（ADR-0014 分域重写）：询价控制台——原 vanilla sourcing-register RFQ 能力面
 // 等价迁移（新建并发出询价单载荷逐字节一致；报价登记表单属 supplier-quotes 域，保留
@@ -41,6 +47,8 @@ type RfqPageState = Readonly<{
   ports: RfqConsolePorts;
   // 当前时间源（截止倒计时；测试可注入固定时钟）。
   now: () => Date;
+  // TD-WF-014②：等待确认的不可逆动作（发布 / 关闭询价）；null 表示没有确认框。
+  confirm: ConfirmSignal;
   open: (row: RfqRow | null) => void;
   openForm: (kind: RfqFormKind) => void;
   closeForm: () => void;
@@ -196,7 +204,14 @@ const RfqDrawer = ({ state }: Readonly<{ state: RfqPageState }>) => {
               class="primary"
               data-testid="kt-rfq-issue"
               onClick={() => {
-                void state.runState(row, 'issue');
+                // TD-WF-014②：发布后询价单进入询价，先确认。
+                const number = text(ports, row, 'rfqNumber', 'rfq_number');
+                askConfirm(state.confirm, {
+                  title: '发布询价',
+                  message: `发布后询价单 ${number} 进入询价，供应商可以提交报价。`,
+                  confirmLabel: '确认发布',
+                  run: () => state.runState(row, 'issue'),
+                });
               }}
             >
               发布询价
@@ -208,7 +223,15 @@ const RfqDrawer = ({ state }: Readonly<{ state: RfqPageState }>) => {
               class="secondary"
               data-testid="kt-rfq-close"
               onClick={() => {
-                void state.runState(row, 'close');
+                // TD-WF-014②：关闭后不再接收报价，先确认（破坏性动作：初焦在「取消」上）。
+                const number = text(ports, row, 'rfqNumber', 'rfq_number');
+                askConfirm(state.confirm, {
+                  title: '关闭询价',
+                  message: `关闭后询价单 ${number} 不再接收报价。`,
+                  confirmLabel: '确认关闭',
+                  destructive: true,
+                  run: () => state.runState(row, 'close'),
+                });
               }}
             >
               关闭询价
@@ -344,6 +367,7 @@ const RfqView = (state: RfqPageState) => {
       />
       {state.selected ? <RfqDrawer state={state} /> : null}
       {state.activeForm === 'create' ? <CreateDrawer state={state} /> : null}
+      <ConsoleConfirmDialog pending={state.confirm} />
     </div>
   );
 };
@@ -362,6 +386,7 @@ export function RfqConsolePage(ports: RfqConsolePorts) {
     detailLoading: signal(false),
     activeForm: signal<RfqFormKind>(null),
     shownCount: signal(20),
+    confirm: createConfirm(),
   };
 
   const fail = (error: unknown, fallback: string): void => {
@@ -447,6 +472,7 @@ export function RfqConsolePage(ports: RfqConsolePorts) {
     permissions: ports.permissions,
     ports,
     now: () => ports.now?.() ?? new Date(),
+    confirm: bundle.confirm,
     open: (row) => {
       bundle.selected.value = row;
       bundle.activeForm.value = null;

@@ -6,7 +6,7 @@
 import { signal, type Signal } from '@preact/signals';
 import { DataTable, PageHeader, StatusBadge, type DataTableColumn } from '@kingturf/ui';
 import { ItemCreateDrawer } from './item-create';
-import { SpecChips, ItemDetailDrawer } from './item-detail';
+import { SpecChips, ItemDetailDrawer, confirmPublish } from './item-detail';
 import type { ItemConsolePorts, ItemPageQuery, ItemRow } from './item-ports';
 import {
   ALL_CATEGORIES,
@@ -28,6 +28,7 @@ import {
   type SpecRowDraft,
 } from './item-state';
 import { failureMessage } from '../../shared/api-error-message';
+import { ConsoleConfirmDialog, createConfirm, type ConfirmSignal } from './console-confirm';
 
 type ItemBundle = Readonly<{
   // 全量快照（默认视图行与分类计数来源）。
@@ -51,6 +52,7 @@ type ItemBundle = Readonly<{
   activeForm: Signal<'create' | null>;
   createType: Signal<ItemCategory>;
   specRows: Signal<readonly SpecRowDraft[]>;
+  confirm: ConfirmSignal;
 }>;
 
 const createBundle = (ports: ItemConsolePorts): ItemBundle => ({
@@ -72,6 +74,7 @@ const createBundle = (ports: ItemConsolePorts): ItemBundle => ({
   activeForm: signal<'create' | null>(null),
   createType: signal<ItemCategory>('RAW_MATERIAL'),
   specRows: signal<readonly SpecRowDraft[]>([]),
+  confirm: createConfirm(),
 });
 
 // 数据装载与行级动作闭包（页面 signal 束的最小面）。请求序号守卫丢弃过期响应。
@@ -359,7 +362,7 @@ const columns = (state: ItemViewState): readonly DataTableColumn<ItemRow>[] => [
             data-testid="kt-item-publish"
             disabled={state.loading}
             onClick={() => {
-              void state.runPublish(row);
+              confirmPublish(state, row);
             }}
           >
             发布版本
@@ -532,6 +535,7 @@ const ItemView = (state: ItemViewState) => (
     </div>
     {state.selected ? <ItemDetailDrawer state={state} /> : null}
     {state.activeForm === 'create' ? <ItemCreateDrawer state={state} /> : null}
+    <ConsoleConfirmDialog pending={state.confirm} />
   </div>
 );
 
@@ -563,6 +567,7 @@ export function ItemConsolePage(ports: ItemConsolePorts) {
     createType: bundle.createType.value,
     specRows: bundle.specRows.value,
     mayManage,
+    confirm: bundle.confirm,
     selectCategory: (next) => {
       bundle.category.value = next;
       actions.settle();

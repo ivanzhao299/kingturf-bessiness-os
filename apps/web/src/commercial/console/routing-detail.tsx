@@ -2,6 +2,7 @@
 // 工序号 → 工序名称/编码 → 工作中心 → 准备工时/单件工时 → 说明）、版本历史 chips
 //（草稿行内发布）。详情数据来自 additive findRouting（versions 工序 sequence 升序）。
 import { DetailDrawer, StatusBadge } from '@kingturf/ui';
+import { askPublishVersion } from './console-confirm';
 import type { RoutingRow } from './routing-ports';
 import {
   routingOperations,
@@ -18,6 +19,16 @@ const recordOf = (value: unknown): RoutingRow =>
 
 export const versionLabel = (state: RoutingViewState, status: unknown): string =>
   STATUS_LABELS[String(status)] ?? state.ports.businessStateLabel(status);
+
+// 发布不可逆：行内与详情里的发布按钮都先确认（TD-WF-014②）。详情里的版本行不带编码时取抽屉当前行的。
+export const confirmPublish = (state: RoutingViewState, row: RoutingRow): void => {
+  askPublishVersion(
+    state.confirm,
+    `${state.ports.textValue(row.code, '') || state.ports.textValue(state.selected?.code, '—')} 第 ${state.ports.textValue(row.version, '?')} 版`,
+    '工序',
+    () => state.runPublish(row),
+  );
+};
 
 // 顺序步骤视图：单版本工序竖排（步骤号 = 行序；工序号为业务 sequence）。
 export const StepList = ({
@@ -108,7 +119,7 @@ export const RoutingDetailDrawer = ({ state }: DetailProps) => {
                   class="mfg-chip-remove"
                   data-testid="kt-routing-publish-version"
                   onClick={() => {
-                    void state.runPublish(version);
+                    confirmPublish(state, version);
                   }}
                 >
                   发布

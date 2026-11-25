@@ -11,6 +11,7 @@ import {
 } from './routing-state';
 import type { RoutingConsolePorts, RoutingPageQuery, RoutingRow } from './routing-ports';
 import { failureMessage } from '../../shared/api-error-message';
+import type { ConfirmSignal } from './console-confirm';
 
 export type RoutingBundle = Readonly<{
   snapshot: Signal<readonly RoutingRow[]>;
@@ -30,6 +31,7 @@ export type RoutingBundle = Readonly<{
   detailLoading: Signal<boolean>;
   activeForm: Signal<'create' | null>;
   operationRows: Signal<readonly string[]>;
+  confirm: ConfirmSignal;
 }>;
 
 // 装载/筛选/分页/详情闭包（变更动作经 createRoutingMutations 注入 io）。

@@ -7,6 +7,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { h, render } from 'preact';
 import type { ComponentType } from 'preact';
 import { installGlobalTestDom, type TestElement } from '../../../test/fixtures/preact-dom';
+import {
+  confirmAction,
+  confirmDialogOf,
+  dismissConfirm,
+} from '../../../test/fixtures/confirm-dialog';
 import { RoutingConsolePage } from './routing-console';
 import type { RoutingConsolePorts, RoutingPage, RoutingRow } from './routing-ports';
 import { operationsOf } from './routing-state';
@@ -267,7 +272,10 @@ describe('U3-MFG-3 工艺路线控制台：筛选 / 检索 / 分页一体化', (
     );
     const failedPublish = mount(publishFailing);
     at(failedPublish.querySelectorAll('[data-testid="kt-routing-publish"]')).click();
+    // TD-WF-014②：发布不可逆，单击先出确认框，确认后才发请求。
     await flush();
+    expect(publishFailing.submit).not.toHaveBeenCalled();
+    await confirmAction(failedPublish, '发布版本', '确认发布');
     await flush();
     expect(byTestId(failedPublish, 'kt-routing-action-error').textContent).toContain(
       'publish rejected',
@@ -314,7 +322,10 @@ describe('U3-MFG-3 工艺路线控制台：详情抽屉（顺序步骤视图）'
     expect(host.querySelector('.detail-drawer')).not.toBeNull();
     expect(host.querySelectorAll('[data-testid="kt-routing-version"]')).toHaveLength(1);
     byTestId(element(host.querySelector('.detail-drawer')), 'kt-routing-publish-version').click();
+    // TD-WF-014②：发布不可逆，单击先出确认框，确认后才发请求。
     await flush();
+    expect(ports.submit).not.toHaveBeenCalled();
+    await confirmAction(host, '发布版本', '确认发布');
     await flush();
     expect(ports.submit).toHaveBeenCalledExactlyOnceWith(
       '/api/v1/manufacturing-routings/routingv-d/publish',
@@ -322,6 +333,24 @@ describe('U3-MFG-3 工艺路线控制台：详情抽屉（顺序步骤视图）'
       'PUT',
     );
     expect(loadDetail).toHaveBeenCalledTimes(2);
+  });
+
+  // TD-WF-014②：确认框写明是哪一条路线的哪一版；不确认就不发请求，抽屉照旧开着。
+  it('行内「发布版本」的确认框：不确认就不发请求，抽屉与列表都不受影响', async () => {
+    const draft = routingRow({ id: 'routingv-d', status: 'DRAFT', code: 'RT-KT-DRAFT' });
+    const ports = portsFor([draft], ['routing:manage']);
+    const host = mount(ports);
+    at(host.querySelectorAll('[data-testid="kt-routing-open"]')).click();
+    await flush();
+    at(host.querySelectorAll('[data-testid="kt-routing-publish"]')).click();
+    await flush();
+    const dialog = confirmDialogOf(host);
+    expect(dialog.textContent).toContain('发布版本');
+    expect(dialog.textContent).toContain('发布后 RT-KT-DRAFT 第 1 版 随即冻结，工序不可再修改。');
+    await dismissConfirm(host);
+    expect(ports.submit).not.toHaveBeenCalled();
+    expect(host.querySelector('.detail-drawer')).not.toBeNull();
+    expect(host.querySelectorAll('[data-testid="kt-routing-publish"]')).toHaveLength(1);
   });
 });
 

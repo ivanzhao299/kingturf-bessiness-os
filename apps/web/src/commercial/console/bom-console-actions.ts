@@ -11,6 +11,7 @@ import {
 } from './bom-state';
 import type { BomConsolePorts, BomPageQuery, BomRow } from './bom-ports';
 import { failureMessage } from '../../shared/api-error-message';
+import type { ConfirmSignal } from './console-confirm';
 
 export type BomBundle = Readonly<{
   snapshot: Signal<readonly BomRow[]>;
@@ -32,6 +33,7 @@ export type BomBundle = Readonly<{
   componentRows: Signal<readonly string[]>;
   compareVersions: Signal<readonly [string, string] | null>;
   collapsed: Signal<ReadonlySet<string>>;
+  confirm: ConfirmSignal;
 }>;
 
 // 装载/筛选/分页/详情闭包（变更动作经 createBomMutations 注入 sync/reloadDetail）。

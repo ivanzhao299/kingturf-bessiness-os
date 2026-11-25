@@ -8,7 +8,8 @@
 import { signal } from '@preact/signals';
 import { DataTable, PageHeader, StatusBadge, type DataTableColumn } from '@kingturf/ui';
 import { RoutingCreateDrawer } from './routing-create';
-import { RoutingDetailDrawer } from './routing-detail';
+import { RoutingDetailDrawer, confirmPublish } from './routing-detail';
+import { ConsoleConfirmDialog, createConfirm } from './console-confirm';
 import type { RoutingConsolePorts, RoutingRow } from './routing-ports';
 import {
   ALL_PRODUCTS,
@@ -44,6 +45,7 @@ const createBundle = (ports: RoutingConsolePorts): RoutingBundle => ({
   detailLoading: signal(false),
   activeForm: signal<'create' | null>(null),
   operationRows: signal<readonly string[]>(['o1']),
+  confirm: createConfirm(),
 });
 
 const text = (
@@ -129,7 +131,7 @@ const columns = (state: RoutingViewState): readonly DataTableColumn<RoutingRow>[
             data-testid="kt-routing-publish"
             disabled={state.loading}
             onClick={() => {
-              void state.runPublish(row);
+              confirmPublish(state, row);
             }}
           >
             发布版本
@@ -313,6 +315,7 @@ const RoutingView = (state: RoutingViewState) => (
     </div>
     {state.selected ? <RoutingDetailDrawer state={state} /> : null}
     {state.activeForm === 'create' ? <RoutingCreateDrawer state={state} /> : null}
+    <ConsoleConfirmDialog pending={state.confirm} />
   </div>
 );
 
@@ -349,6 +352,7 @@ export function RoutingConsolePage(ports: RoutingConsolePorts) {
     activeForm: bundle.activeForm.value,
     operationRows: bundle.operationRows.value,
     mayManage,
+    confirm: bundle.confirm,
     selectProduct: (next) => {
       bundle.productFilter.value = next;
       actions.settle();

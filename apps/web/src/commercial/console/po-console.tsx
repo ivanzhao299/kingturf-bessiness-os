@@ -22,6 +22,12 @@ import {
   type DocumentFormKind,
 } from './po-detail';
 import { createPurchaseOrderActions } from './po-console-actions';
+import {
+  askConfirm,
+  ConsoleConfirmDialog,
+  createConfirm,
+  type ConfirmSignal,
+} from './console-confirm';
 import type { ContractDocumentRow, PurchaseOrderConsolePorts, PurchaseOrderRow } from './po-ports';
 
 // U3-PROC-3（ADR-0014 分域重写）：采购单控制台——原 vanilla purchase-register PO 能力
@@ -45,6 +51,8 @@ type PoPageState = Readonly<{
   activeDocumentForm: Readonly<{ documentId: string; kind: DocumentFormKind }> | null;
   permissions: ReadonlySet<string>;
   ports: PurchaseOrderConsolePorts;
+  // TD-WF-014②：等待确认的不可逆动作（签发 / 取消订单）；null 表示没有确认框。
+  confirm: ConfirmSignal;
   open: (row: PurchaseOrderRow | null) => void;
   openForm: (kind: PoFormKind) => void;
   closeForm: () => void;
@@ -250,7 +258,14 @@ const PoDrawer = ({ state }: Readonly<{ state: PoPageState }>) => {
               class="primary"
               data-testid="kt-po-issue"
               onClick={() => {
-                void state.runState(row, 'issue');
+                // TD-WF-014②：签发不可逆，先确认。
+                const number = text(ports, row, 'poNumber', 'po_number');
+                askConfirm(state.confirm, {
+                  title: '签发采购订单',
+                  message: `签发后订单 ${number} 进入执行，供应商开始备货。`,
+                  confirmLabel: '确认签发',
+                  run: () => state.runState(row, 'issue'),
+                });
               }}
             >
               签发订单
@@ -262,7 +277,15 @@ const PoDrawer = ({ state }: Readonly<{ state: PoPageState }>) => {
               class="secondary"
               data-testid="kt-po-cancel"
               onClick={() => {
-                void state.runState(row, 'cancel');
+                // TD-WF-014②：取消不可逆，先确认（破坏性动作：初焦在「取消」上）。
+                const number = text(ports, row, 'poNumber', 'po_number');
+                askConfirm(state.confirm, {
+                  title: '取消采购订单',
+                  message: `取消后订单 ${number} 不可恢复。`,
+                  confirmLabel: '确认取消',
+                  destructive: true,
+                  run: () => state.runState(row, 'cancel'),
+                });
               }}
             >
               取消订单
@@ -447,6 +470,7 @@ const PoView = (state: PoPageState) => {
       />
       {state.selected ? <PoDrawer state={state} /> : null}
       {state.activeForm === 'create' ? <CreateDrawer state={state} /> : null}
+      <ConsoleConfirmDialog pending={state.confirm} />
     </div>
   );
 };
@@ -469,6 +493,7 @@ export function PurchaseOrderConsolePage(ports: PurchaseOrderConsolePorts) {
       null,
     ),
     shownCount: signal(20),
+    confirm: createConfirm(),
   };
 
   const { closeForm, runRefresh, runCreate, runState, runUpload, runDocumentAction } =
@@ -488,6 +513,7 @@ export function PurchaseOrderConsolePage(ports: PurchaseOrderConsolePorts) {
     activeDocumentForm: bundle.activeDocumentForm.value,
     permissions: ports.permissions,
     ports,
+    confirm: bundle.confirm,
     open: (row) => {
       bundle.selected.value = row;
       bundle.activeForm.value = null;

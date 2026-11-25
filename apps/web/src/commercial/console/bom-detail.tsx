@@ -3,6 +3,7 @@
 // 三类差异高亮）。详情数据来自 additive findBom（versions 行项 + tree 层级）；对比
 // 由前端基于 versions 行项计算（bom-state diffVersions 纯函数），不新增写路径。
 import { DetailDrawer } from '@kingturf/ui';
+import { askPublishVersion } from './console-confirm';
 import type { BomRow } from './bom-ports';
 import {
   bomVersions,
@@ -24,6 +25,16 @@ const recordsOf = (value: unknown): readonly BomRow[] =>
 
 export const versionLabel = (state: BomViewState, status: unknown): string =>
   STATUS_LABELS[String(status)] ?? state.ports.businessStateLabel(status);
+
+// 发布不可逆：行内与详情里的发布按钮都先确认（TD-WF-014②）。详情里的版本行不带编码时取抽屉当前行的。
+export const confirmPublish = (state: BomViewState, row: BomRow): void => {
+  askPublishVersion(
+    state.confirm,
+    `${state.ports.textValue(row.code, '') || state.ports.textValue(state.selected?.code, '—')} 第 ${state.ports.textValue(row.version, '?')} 版`,
+    '组件与替代料',
+    () => state.runPublish(row),
+  );
+};
 
 // 组件层级树：单节点渲染，子 BOM 经 line.bom 递归（折叠集合按子 BOM 版本行 id）。
 const TreeLines = ({
@@ -251,7 +262,7 @@ export const BomDetailDrawer = ({ state }: DetailProps) => {
                   class="mfg-chip-remove"
                   data-testid="kt-bom-publish-version"
                   onClick={() => {
-                    void state.runPublish(version);
+                    confirmPublish(state, version);
                   }}
                 >
                   发布

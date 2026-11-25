@@ -1,6 +1,7 @@
 // U3-MFG-3：工艺路线控制台共享展示契约——产品类型词表（复用 BOM 口径）、状态词表、
 // 工序编辑器行模型、纯展示助手与视图状态类型。
 import type { StatusTone } from '@kingturf/ui';
+import type { ConfirmSignal } from './console-confirm';
 import type { RoutingConsolePorts, RoutingRow } from './routing-ports';
 
 export type RoutingProductFilter = 'ALL' | 'FINISHED_GOOD' | 'SEMI_FINISHED';
@@ -56,6 +57,8 @@ export type RoutingViewState = Readonly<{
   activeForm: 'create' | null;
   operationRows: readonly OperationRowId[];
   mayManage: boolean;
+  // TD-WF-014②：等待确认的不可逆动作（发布版本）；null 表示没有确认框。
+  confirm: ConfirmSignal;
   selectProduct: (next: RoutingProductFilter) => void;
   setStatusFilter: (next: RoutingStatusFilter) => void;
   setSearch: (next: string) => void;

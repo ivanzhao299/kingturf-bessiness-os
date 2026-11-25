@@ -9,7 +9,8 @@ import { createBomActions, createBomMutations } from './bom-console-actions';
 import type { BomBundle } from './bom-console-actions';
 import { DataTable, PageHeader, StatusBadge, type DataTableColumn } from '@kingturf/ui';
 import { BomCreateDrawer } from './bom-create';
-import { BomDetailDrawer } from './bom-detail';
+import { BomDetailDrawer, confirmPublish } from './bom-detail';
+import { ConsoleConfirmDialog, createConfirm } from './console-confirm';
 import type { BomConsolePorts, BomRow } from './bom-ports';
 import {
   ALL_PRODUCTS,
@@ -43,6 +44,7 @@ const createBundle = (ports: BomConsolePorts): BomBundle => ({
   componentRows: signal<readonly string[]>(['r1']),
   compareVersions: signal<readonly [string, string] | null>(null),
   collapsed: signal<ReadonlySet<string>>(new Set()),
+  confirm: createConfirm(),
 });
 
 const text = (
@@ -128,7 +130,7 @@ const columns = (state: BomViewState): readonly DataTableColumn<BomRow>[] => [
             data-testid="kt-bom-publish"
             disabled={state.loading}
             onClick={() => {
-              void state.runPublish(row);
+              confirmPublish(state, row);
             }}
           >
             发布版本
@@ -317,6 +319,7 @@ const BomView = (state: BomViewState) => (
     </div>
     {state.selected ? <BomDetailDrawer state={state} /> : null}
     {state.activeForm === 'create' ? <BomCreateDrawer state={state} /> : null}
+    <ConsoleConfirmDialog pending={state.confirm} />
   </div>
 );
 
@@ -364,6 +367,7 @@ export function BomConsolePage(ports: BomConsolePorts) {
     compareVersions: bundle.compareVersions.value,
     collapsed: bundle.collapsed.value,
     mayManage,
+    confirm: bundle.confirm,
     selectProduct: (next) => {
       bundle.productFilter.value = next;
       actions.settle();

@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { h, render } from 'preact';
 import type { ComponentType } from 'preact';
 import { installGlobalTestDom, type TestElement } from '../../../test/fixtures/preact-dom';
+import { confirmAction } from '../../../test/fixtures/confirm-dialog';
 import { BomConsolePage } from './bom-console';
 import type { BomConsolePorts, BomPage, BomRow } from './bom-ports';
 import { diffVersions } from './bom-state';
@@ -319,7 +320,10 @@ describe('U3-MFG-2 BOM 控制台：筛选 / 检索 / 分页一体化', () => {
     });
     const failedPublish = mount(publishFailing);
     at(failedPublish.querySelectorAll('[data-testid="kt-bom-publish"]')).click();
+    // TD-WF-014②：发布不可逆，单击先出确认框，确认后才发请求。
     await flush();
+    expect(publishFailing.submit).not.toHaveBeenCalled();
+    await confirmAction(failedPublish, '发布版本', '确认发布');
     await flush();
     expect(byTestId(failedPublish, 'kt-bom-action-error').textContent).toContain(
       'publish rejected',
@@ -393,7 +397,10 @@ describe('U3-MFG-2 BOM 控制台：详情抽屉（层级树/替代料/对比）'
     expect(host.querySelectorAll('[data-testid="kt-bom-version"]')).toHaveLength(1);
     const drawer = element(host.querySelector('.detail-drawer'));
     byTestId(drawer, 'kt-bom-publish-version').click();
+    // TD-WF-014②：发布不可逆，单击先出确认框，确认后才发请求。
     await flush();
+    expect(ports.submit).not.toHaveBeenCalled();
+    await confirmAction(host, '发布版本', '确认发布');
     await flush();
     expect(ports.submit).toHaveBeenCalledExactlyOnceWith(
       '/api/v1/manufacturing-boms/bomv-d/publish',
