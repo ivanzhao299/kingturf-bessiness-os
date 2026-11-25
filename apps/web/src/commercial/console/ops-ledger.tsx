@@ -128,7 +128,7 @@ function OpsEvidence({ value }: Readonly<{ value: unknown }>) {
   return (
     <>
       {facts.length ? <FinFacts items={facts} /> : null}
-      {Object.keys(source).length > facts.length ? (
+      {Object.keys(source).length > 0 ? (
         <details>
           <summary>查看原始证据</summary>
           <code>{JSON.stringify(source)}</code>
