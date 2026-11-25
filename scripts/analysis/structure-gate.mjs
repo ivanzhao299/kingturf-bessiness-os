@@ -237,11 +237,15 @@ const SQL_ENUM_NAMES = new Set([
   // U3-MFG-2（同 ITEM 先例）：BOM 详情行项投影（组件含物料根/类型/单位 + 替代料含
   // 换算系数），版本行项与层级树共用；行项键集经 ANY($N::uuid[]) 参数化。
   'BOM_LINE_DETAIL_PROJECTION',
+  // TD-MFG-001: fixed item_id / bom_id / routing_id from the manufacturing version map.
+  'manufacturingVersionRootColumn',
   // U3-MFG-3（生产域迁移，同 ITEM/BOM 先例）：工艺路线版本行投影（to_jsonb 版本列 +
   // 路线头列 + operations 聚合按 sequence 升序）提取为模块常量供三处复用（list/
   // listRoutingPage/findRouting），SQL 字节与提取前逐字一致；请求值（status/query/
   // productType/cursor/limit）一律经 values.push 参数化。
   'ROUTING_VERSION_PROJECTION',
+  // Detail-only exact decimal text for manufacturing version continuation.
+  'ROUTING_VERSION_DETAIL_PROJECTION',
   // U3-MFG-4（生产域迁移，同 ITEM/BOM/ROUTING 先例）：工单行投影（to_jsonb 工单列
   // + sku/itemName/生效状态 + 工序/物料/报工/成品卷/事件五聚合）提取为模块常量供
   // legacy list、additive 分页与详情根行三处复用，SQL 字节与提取前逐字一致；请求值

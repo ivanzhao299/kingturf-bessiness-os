@@ -52,7 +52,7 @@ export type ItemDetailParts = Readonly<{
 // 排序）——list 与 additive 分页共用同一片段（SQL 字节与提取前逐字一致，行为守恒）。
 export const BOM_VERSION_PROJECTION = `to_jsonb(v)||jsonb_build_object('bomId',b.id,'code',b.code,'name',b.name,'productItemId',b.product_item_id,'lines',coalesce((SELECT jsonb_agg(to_jsonb(l)||jsonb_build_object('component',(SELECT jsonb_build_object('sku',i.sku,'name',i.name,'version',iv.version) FROM manufacturing_item_versions iv JOIN manufacturing_items i ON i.id=iv.item_id AND i.tenant_id=iv.tenant_id WHERE iv.id=l.component_item_version_id AND iv.tenant_id=l.tenant_id),'substitutes',coalesce((SELECT jsonb_agg(to_jsonb(s)||jsonb_build_object('sku',si.sku,'version',sv.version) ORDER BY s.priority) FROM manufacturing_bom_substitutes s JOIN manufacturing_item_versions sv ON sv.id=s.substitute_item_version_id AND sv.tenant_id=s.tenant_id JOIN manufacturing_items si ON si.id=sv.item_id AND si.tenant_id=sv.tenant_id WHERE s.bom_line_id=l.id AND s.tenant_id=l.tenant_id),'[]'::jsonb)) ORDER BY l.line_number) FROM manufacturing_bom_lines l WHERE l.bom_version_id=v.id AND l.tenant_id=v.tenant_id),'[]'::jsonb))`;
 // 详情行项投影（additive 专用）：组件含物料根/类型/基本单位，替代料含换算系数。
-export const BOM_LINE_DETAIL_PROJECTION = `jsonb_build_object('lineNumber',l.line_number,'quantity',l.quantity,'scrapBasisPoints',l.scrap_basis_points,'component',jsonb_build_object('itemId',i.id,'sku',i.sku,'name',i.name,'version',iv.version,'itemType',i.item_type,'baseUnitCode',i.base_unit_code),'substitutes',coalesce((SELECT jsonb_agg(jsonb_build_object('itemVersionId',s.substitute_item_version_id,'priority',s.priority,'conversionFactor',s.conversion_factor,'sku',si.sku,'name',si.name,'version',sv.version) ORDER BY s.priority) FROM manufacturing_bom_substitutes s JOIN manufacturing_item_versions sv ON sv.id=s.substitute_item_version_id AND sv.tenant_id=s.tenant_id JOIN manufacturing_items si ON si.id=sv.item_id AND si.tenant_id=sv.tenant_id WHERE s.bom_line_id=l.id AND s.tenant_id=l.tenant_id),'[]'::jsonb))`;
+export const BOM_LINE_DETAIL_PROJECTION = `jsonb_build_object('lineNumber',l.line_number,'componentItemVersionId',l.component_item_version_id,'quantity',l.quantity,'quantityText',l.quantity::text,'scrapBasisPoints',l.scrap_basis_points,'component',jsonb_build_object('itemId',i.id,'sku',i.sku,'name',i.name,'version',iv.version,'itemType',i.item_type,'baseUnitCode',i.base_unit_code),'substitutes',coalesce((SELECT jsonb_agg(jsonb_build_object('itemVersionId',s.substitute_item_version_id,'priority',s.priority,'conversionFactor',s.conversion_factor,'conversionFactorText',s.conversion_factor::text,'sku',si.sku,'name',si.name,'version',sv.version) ORDER BY s.priority) FROM manufacturing_bom_substitutes s JOIN manufacturing_item_versions sv ON sv.id=s.substitute_item_version_id AND sv.tenant_id=s.tenant_id JOIN manufacturing_items si ON si.id=sv.item_id AND si.tenant_id=sv.tenant_id WHERE s.bom_line_id=l.id AND s.tenant_id=l.tenant_id),'[]'::jsonb))`;
 // 组件层级树展开深度上限（防深链与环；环另经已访问物料集合截断）。
 const BOM_TREE_DEPTH = 3;
 
@@ -95,6 +95,11 @@ export const parseBomCursor = (cursor: string): readonly [string, number] => {
 // 聚合按 sequence 升序）——list 与 additive 分页/详情共用同一片段（SQL 字节与提取前
 // 逐字一致，行为守恒）。
 export const ROUTING_VERSION_PROJECTION = `to_jsonb(v)||jsonb_build_object('routingId',r.id,'code',r.code,'name',r.name,'productItemId',r.product_item_id,'operations',coalesce((SELECT jsonb_agg(to_jsonb(op) ORDER BY op.sequence) FROM manufacturing_routing_operations op WHERE op.routing_version_id=v.id AND op.tenant_id=v.tenant_id),'[]'::jsonb))`;
+// Keep exact decimal inputs in the editor while preserving the legacy list projection.
+export const ROUTING_VERSION_DETAIL_PROJECTION = ROUTING_VERSION_PROJECTION.replace(
+  'to_jsonb(op)',
+  "(to_jsonb(op)||jsonb_build_object('setupMinutesText',op.setup_minutes::text,'runMinutesPerUnitText',op.run_minutes_per_unit::text))",
+);
 
 // U3-MFG-3：工艺路线分页只读过滤器——limit 缺省=全量（legacy list 无 LIMIT，行为
 // 守恒）；cursor=(code,version) 复合键集（排序键 ORDER BY r.code,v.version DESC 与
@@ -331,7 +336,7 @@ export class PostgresManufacturingReadRepository {
     if (!root) return null;
     const versions = (
       await this.db.query<{ item: JsonObject }>(
-        `SELECT to_jsonb(v)||jsonb_build_object('outputQuantity',v.output_quantity) item FROM manufacturing_bom_versions v WHERE v.tenant_id=$1 AND v.bom_id=$2 ORDER BY v.version DESC`,
+        `SELECT to_jsonb(v)||jsonb_build_object('outputQuantity',v.output_quantity,'outputQuantityText',v.output_quantity::text) item FROM manufacturing_bom_versions v WHERE v.tenant_id=$1 AND v.bom_id=$2 ORDER BY v.version DESC`,
         scope,
       )
     ).rows.map((row) => row.item);
@@ -511,7 +516,7 @@ export class PostgresManufacturingReadRepository {
   }
 
   // U3-MFG-3（ADR-0015）：工艺路线详情只读（additive）——根行 + 产品信息 + 全部版本
-  //（每版本工序按 sequence 升序，list 同投影）。不存在或跨租户返回 null。
+  //（每版本工序按 sequence 升序，另附精确工时文本供续写编辑）。不存在或跨租户返回 null。
   public async findRouting(routingId: string, context: Context): Promise<JsonObject | null> {
     company(context);
     const scope: readonly unknown[] = [context.actor.companyId, routingId];
@@ -524,7 +529,7 @@ export class PostgresManufacturingReadRepository {
     if (!root) return null;
     const versions = (
       await this.db.query<{ item: JsonObject }>(
-        `SELECT ${ROUTING_VERSION_PROJECTION} item FROM manufacturing_routing_versions v JOIN manufacturing_routings r ON r.id=v.routing_id AND r.tenant_id=v.tenant_id WHERE v.tenant_id=$1 AND v.routing_id=$2 ORDER BY v.version DESC`,
+        `SELECT ${ROUTING_VERSION_DETAIL_PROJECTION} item FROM manufacturing_routing_versions v JOIN manufacturing_routings r ON r.id=v.routing_id AND r.tenant_id=v.tenant_id WHERE v.tenant_id=$1 AND v.routing_id=$2 ORDER BY v.version DESC`,
         scope,
       )
     ).rows.map((row) => row.item);

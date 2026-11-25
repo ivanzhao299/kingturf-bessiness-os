@@ -6,17 +6,19 @@ import {
   BOM_VERSION_PROJECTION,
   ITEM_VERSION_PROJECTION,
   ROUTING_VERSION_PROJECTION,
-  PostgresManufacturingReadRepository,
   company,
   json,
   type Context,
 } from './manufacturing-read-repositories.ts';
 
+import { PostgresManufacturingVersionRepository } from './manufacturing-version-repository.ts';
+import { insertBomLines, insertRoutingOperations } from './manufacturing-version-contents.ts';
+
 const hash = (value: unknown) => createHash('sha256').update(canonicalize(value)).digest('hex');
 
 // U3-MFG-1/2/3：写路径（list/createItem/createBom/createRouting/publish）——投影
 // 常量与 additive 只读方法见 manufacturing-read-repositories.ts（G1 拆分，本类继承）。
-export class PostgresManufacturingRepository extends PostgresManufacturingReadRepository {
+export class PostgresManufacturingRepository extends PostgresManufacturingVersionRepository {
   public async list(view: 'items' | 'boms' | 'routings', context: Context) {
     company(context);
     const queries = {
@@ -163,33 +165,7 @@ export class PostgresManufacturingRepository extends PostgresManufacturingReadRe
         )
       ).rows[0];
       if (!version) throw new Error('BOM version insert failed');
-      for (const [index, line] of input.lines.entries()) {
-        const inserted = (
-          await tx.query<{ id: string }>(
-            'INSERT INTO manufacturing_bom_lines(tenant_id,bom_version_id,line_number,component_item_version_id,quantity,scrap_basis_points) VALUES($1,$2,$3,$4,$5,$6) RETURNING id',
-            [
-              context.actor.companyId,
-              version.id,
-              index + 1,
-              line.componentItemVersionId,
-              line.quantity,
-              line.scrapBasisPoints,
-            ],
-          )
-        ).rows[0];
-        if (!inserted) throw new Error('BOM line insert failed');
-        for (const substitute of line.substitutes)
-          await tx.query(
-            'INSERT INTO manufacturing_bom_substitutes(tenant_id,bom_line_id,substitute_item_version_id,priority,conversion_factor) VALUES($1,$2,$3,$4,$5)',
-            [
-              context.actor.companyId,
-              inserted.id,
-              substitute.itemVersionId,
-              substitute.priority,
-              substitute.conversionFactor,
-            ],
-          );
-      }
+      await insertBomLines(tx, context.actor.companyId, version.id, input.lines);
       if (input.publish)
         await tx.query(
           "UPDATE manufacturing_bom_versions SET status='PUBLISHED',published_at=now() WHERE id=$1 AND tenant_id=$2",
@@ -266,21 +242,7 @@ export class PostgresManufacturingRepository extends PostgresManufacturingReadRe
         )
       ).rows[0];
       if (!version) throw new Error('Routing version insert failed');
-      for (const op of input.operations)
-        await tx.query(
-          'INSERT INTO manufacturing_routing_operations(tenant_id,routing_version_id,sequence,operation_code,name,work_center_code,setup_minutes,run_minutes_per_unit,instructions) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)',
-          [
-            context.actor.companyId,
-            version.id,
-            op.sequence,
-            op.operationCode,
-            op.name,
-            op.workCenterCode,
-            op.setupMinutes,
-            op.runMinutesPerUnit,
-            op.instructions,
-          ],
-        );
+      await insertRoutingOperations(tx, context.actor.companyId, version.id, input.operations);
       if (input.publish)
         await tx.query(
           "UPDATE manufacturing_routing_versions SET status='PUBLISHED',published_at=now() WHERE id=$1 AND tenant_id=$2",
