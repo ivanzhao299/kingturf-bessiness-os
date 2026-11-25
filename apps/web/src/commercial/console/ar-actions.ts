@@ -71,6 +71,13 @@ export function createArActions(ports: ArConsolePorts, bundle: ArBundle) {
     idOf: (row: ArRow) => ports.textValue(row.id, ''),
     loadDetail: ports.loadDetail,
   });
+  const reloadLedger = async (): Promise<void> => {
+    await reload();
+    if (bundle.loadError.value === '') {
+      const latest = selection();
+      if (syncSelected(latest)) await reloadSelectedDetail(latest);
+    }
+  };
   // 整站重读（与旧版页面写后刷新同式）后重取第一页与汇总；开着的抽屉重读详情。
   const refresh = async (): Promise<void> => {
     bundle.loading.value = true;
@@ -81,16 +88,13 @@ export function createArActions(ports: ArConsolePorts, bundle: ArBundle) {
       bundle.loading.value = false;
       return;
     }
-    await reload();
-    if (bundle.loadError.value === '') {
-      const latest = selection();
-      if (syncSelected(latest)) await reloadSelectedDetail(latest);
-    }
+    await reloadLedger();
   };
   let detailSequence = 0;
 
   return {
     reload,
+    reloadLedger,
     setFilter: (next: ArFilter): void => {
       bundle.filter.value = next;
       void reload();
@@ -160,6 +164,7 @@ export function createArActions(ports: ArConsolePorts, bundle: ArBundle) {
       bundle.submitError.value = '';
       bundle.notice.value = `已过账应收单据 ${String(payload.documentNumber)}`;
       await refresh();
+      ports.ledgerUpdates?.publish();
     },
   };
 }

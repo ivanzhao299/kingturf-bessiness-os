@@ -1,9 +1,11 @@
+import type { FinLedgerUpdates } from './fin-host-kit';
 import type { FinChoice } from './ar-ports';
 import type { FinPage, FinQuery, FinRow } from './fin-kit';
 
 export const COLLECTION_PATH = '/api/v1/collection-cases';
 
 export type CollectionPorts = Readonly<{
+  ledgerUpdates?: FinLedgerUpdates;
   permissions: ReadonlySet<string>;
   receivables: readonly FinChoice[];
   employees: readonly FinChoice[];

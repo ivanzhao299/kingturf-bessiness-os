@@ -1,3 +1,4 @@
+import type { FinLedgerUpdates } from './fin-host-kit';
 // FIN-1：应收控制台端口层——页面不依赖 CommercialController，行为测试注入替身。
 import type { FinPage, FinQuery, FinRow } from './fin-kit';
 
@@ -12,6 +13,7 @@ export type ArPage = FinPage & Readonly<{ summary?: readonly ArSummaryRow[] }>;
 export type FinChoice = Readonly<{ value: string; label: string }>;
 
 export type ArConsolePorts = Readonly<{
+  ledgerUpdates?: FinLedgerUpdates;
   permissions: ReadonlySet<string>;
   textValue: (value: unknown, fallback?: string) => string;
   recordText: (record: FinRow, camel: string, snake: string, fallback?: string) => string;

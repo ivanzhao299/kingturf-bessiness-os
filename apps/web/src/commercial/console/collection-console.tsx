@@ -184,6 +184,11 @@ function createCollectionState(ports: CollectionPorts) {
     await reloadSelectedDetail(selection());
     if (finText(selected.peek() ?? {}, 'id') === idOf(row)) detailLoading.value = false;
   };
+  const reloadLedger = async (): Promise<void> => {
+    await reload();
+    const current = selection();
+    if (list.loadError.value === '' && syncSelected(current)) await reloadSelectedDetail(current);
+  };
   const refresh = async (): Promise<void> => {
     let refreshError = '';
     try {
@@ -191,9 +196,7 @@ function createCollectionState(ports: CollectionPorts) {
     } catch (cause: unknown) {
       refreshError = failureMessage(cause, '关联业务数据刷新失败');
     }
-    await reload();
-    const current = selection();
-    if (list.loadError.value === '' && syncSelected(current)) await reloadSelectedDetail(current);
+    await reloadLedger();
     if (list.loadError.value === '' && refreshError !== '') list.loadError.value = refreshError;
   };
   const submit = async (
@@ -209,6 +212,7 @@ function createCollectionState(ports: CollectionPorts) {
       closeForm();
       notice.value = collectionForms[current.action].success;
       await refresh();
+      ports.ledgerUpdates?.publish();
     } catch (cause: unknown) {
       error.value = failureMessage(cause, '催收操作失败');
     } finally {
@@ -248,6 +252,7 @@ function createCollectionState(ports: CollectionPorts) {
     prepare,
     refresh,
     reload,
+    reloadLedger,
     loadMore: () => {
       void page.loadMore(query());
     },
@@ -278,6 +283,7 @@ export function CollectionConsolePage(ports: CollectionPorts) {
   return function CollectionPage() {
     useEffect(() => {
       void model.reload();
+      return ports.ledgerUpdates?.subscribe(model.reloadLedger);
     }, []);
     const form = model.form.value;
     const selected = model.selected.value;

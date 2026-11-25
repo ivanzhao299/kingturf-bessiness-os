@@ -81,3 +81,30 @@ export const finMount = (section: HTMLElement, mount: ConsoleMountPorts): void =
       mountCommercialConsole(section, mount);
   });
 };
+
+export type FinLedgerUpdates = Readonly<{
+  subscribe: (reload: () => Promise<void>) => () => void;
+  publish: () => void;
+}>;
+
+const ledgerReaders = new WeakMap<HTMLElement, Map<HTMLElement, () => Promise<void>>>();
+
+/** Keep already-mounted sibling finance consoles in step after a ledger write. */
+export function finLedgerUpdates(workspace: HTMLElement, section: HTMLElement): FinLedgerUpdates {
+  const readers = ledgerReaders.get(workspace) ?? new Map<HTMLElement, () => Promise<void>>();
+  ledgerReaders.set(workspace, readers);
+  return {
+    subscribe: (reload) => {
+      readers.set(section, reload);
+      return () => {
+        readers.delete(section);
+      };
+    },
+    publish: () => {
+      for (const [host, reload] of readers) {
+        if (!host.isConnected) readers.delete(host);
+        else if (host !== section) void reload();
+      }
+    },
+  };
+}

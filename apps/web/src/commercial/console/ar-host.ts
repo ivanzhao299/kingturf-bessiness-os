@@ -7,6 +7,7 @@ import { perView } from './console-choices';
 import {
   finDetailUrl,
   finHostSection,
+  finLedgerUpdates,
   finMount,
   finReadPage,
   finRecord,
@@ -28,7 +29,9 @@ export function appendArConsole(context: FinHostContext): void {
       label: `${viewPorts.recordText(item, 'orderNumber', 'order_number')} · ${viewPorts.recordText(item, 'currency', 'currency')} ${viewPorts.recordText(item, 'total', 'total')}`,
     })),
   );
+  const section = finHostSection('ar-console', 'kt-ar-console', 'receivables');
   const ports: ArConsolePorts = {
+    ledgerUpdates: finLedgerUpdates(workspace, section),
     permissions,
     textValue: (value, fallback = '') => finTextOf(value, fallback),
     recordText: (record, camel, snake, fallback) =>
@@ -62,7 +65,6 @@ export function appendArConsole(context: FinHostContext): void {
     },
     routeVisible: (route) => appRoutes.has(route),
   };
-  const section = finHostSection('ar-console', 'kt-ar-console', 'receivables');
   workspace.append(section);
   finMount(section, { kind: 'receivables', ports });
 }
