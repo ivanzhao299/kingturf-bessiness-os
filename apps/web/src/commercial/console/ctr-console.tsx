@@ -22,15 +22,14 @@ import {
   sortVersions,
   versionNumber,
 } from './solution-console-diff';
-import { failureMessage } from '../../shared/api-error-message';
-import { syncSelected } from './selected-sync';
 import { FocusAnchor } from './focus-anchor';
+import { ctrActions, type CtrSignalBundle } from './ctr-console-actions';
 
 // U3-COM-5（ADR-0014 分域重写）：技术需求单控制台——原 vanilla ctr workbench 能力面
 // 等价迁移（新建/修订/提交评审/批准驳回/上传附件；列表/筛选/详情抽屉含版本差异）。
 // COM-UX：版本差异升级为字段级红绿标记（需求字段 + 标题，可改选更早版本作基准），
 // 列表新增「较上一版」列；差异原语与方案页共用 solution-console-diff。
-type CtrFormKind = 'create' | 'revise' | null;
+export type CtrFormKind = 'create' | 'revise' | null;
 
 export type CtrPageState = Readonly<{
   ctrs: readonly CtrRow[];
@@ -171,20 +170,6 @@ const REQUIREMENT_FIELDS = (
     value: display(requirements.delivery),
   },
 ];
-
-const requirementsPayload = (values: Readonly<Record<string, string>>) => ({
-  application: values.application ?? '',
-  projectRegion: values.projectRegion ?? '',
-  performanceStandard: values.performanceStandard ?? '',
-  pileHeightMm: Number(values.pileHeight ?? 0),
-  quantitySquareMeters: Number(values.quantity ?? 0),
-  color: values.color ?? '',
-  baseCondition: values.baseCondition ?? '',
-  drainageRequirement: values.drainageRequirement ?? '',
-  fireRating: values.fireRating ?? '',
-  warrantyYears: Number(values.warrantyYears ?? 0),
-  delivery: values.delivery ?? '',
-});
 
 // 参与版本比对的字段：需求标题 + 全部需求字段。
 const DIFF_FIELDS: readonly (readonly [string, string])[] = [
@@ -609,8 +594,8 @@ const CtrView = (state: CtrPageState) => {
 };
 
 export function CtrConsolePage(ports: CtrConsolePorts) {
-  // G5 拆分：动作工厂独立于状态工厂。
-  const bundle = {
+  // G5 拆分：状态面与动作工厂（ctr-console-actions.ts）分开。
+  const bundle: CtrSignalBundle = {
     ctrs: signal<readonly CtrRow[]>([...ports.initialCtrs]),
     solutions: signal<readonly CtrRow[]>([...ports.initialSolutions]),
     statusFilter: signal<'ALL' | 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED'>('ALL'),
@@ -624,112 +609,7 @@ export function CtrConsolePage(ports: CtrConsolePorts) {
     shownCount: signal(20),
     baselineId: signal(''),
   };
-
-  const fail = (error: unknown, fallback: string): void => {
-    const message = failureMessage(error, fallback);
-    if (bundle.selected.value !== null || bundle.activeForm.value !== null)
-      bundle.submitError.value = message;
-    else bundle.loadError.value = message;
-  };
-  const closeForm = (): void => {
-    bundle.activeForm.value = null;
-    bundle.decision.value = null;
-    bundle.submitError.value = '';
-  };
-
-  // TD-WF-008：列表换新的之后，抽屉里开着的那条也换成刷新后的行（已不在列表里则关闭抽屉）。
-  const applyCtrs = (ctrs: readonly CtrRow[]): void => {
-    bundle.ctrs.value = ctrs;
-    syncSelected({
-      selected: bundle.selected,
-      rows: ctrs,
-      idOf: (row) => ports.textValue(row.id, ''),
-    });
-  };
-
-  const runRefresh = async (): Promise<void> => {
-    bundle.loading.value = true;
-    try {
-      const fresh = await ports.refresh();
-      applyCtrs(fresh.ctrs);
-      bundle.solutions.value = fresh.solutions;
-      bundle.loadError.value = '';
-    } catch (error: unknown) {
-      fail(error, '技术需求加载失败');
-    } finally {
-      bundle.loading.value = false;
-    }
-  };
-
-  const runCreate = async (values: Readonly<Record<string, string>>): Promise<void> => {
-    bundle.loading.value = true;
-    bundle.submitError.value = '';
-    try {
-      await ports.submit('/api/v1/ctrs', {
-        opportunityId: values.opportunityId ?? '',
-        code: values.code ?? '',
-        title: values.title ?? '',
-        requirements: requirementsPayload(values),
-      });
-      const fresh = await ports.refresh();
-      applyCtrs(fresh.ctrs);
-      closeForm();
-    } catch (error: unknown) {
-      fail(error, '技术需求创建失败');
-    } finally {
-      bundle.loading.value = false;
-    }
-  };
-
-  const runRevise = async (
-    row: CtrRow,
-    values: Readonly<Record<string, string>>,
-  ): Promise<void> => {
-    bundle.loading.value = true;
-    bundle.submitError.value = '';
-    try {
-      await ports.submit(`/api/v1/ctrs/${ports.textValue(row.ctrId, '')}/versions`, {
-        title: values.title ?? '',
-        requirements: requirementsPayload(values),
-      });
-      const fresh = await ports.refresh();
-      applyCtrs(fresh.ctrs);
-      closeForm();
-    } catch (error: unknown) {
-      fail(error, '修订创建失败');
-    } finally {
-      bundle.loading.value = false;
-    }
-  };
-
-  const runState = async (row: CtrRow, body: Record<string, unknown>): Promise<void> => {
-    bundle.loading.value = true;
-    bundle.submitError.value = '';
-    try {
-      await ports.submit(`/api/v1/ctr-versions/${ports.textValue(row.id, '')}/state`, body, 'PUT');
-      const fresh = await ports.refresh();
-      applyCtrs(fresh.ctrs);
-      closeForm();
-    } catch (error: unknown) {
-      fail(error, '技术需求状态流转失败');
-    } finally {
-      bundle.loading.value = false;
-    }
-  };
-
-  const runUpload = async (row: CtrRow, file: File): Promise<void> => {
-    bundle.loading.value = true;
-    bundle.submitError.value = '';
-    try {
-      await ports.uploadAttachment(ports.textValue(row.id, ''), file);
-      const fresh = await ports.refresh();
-      applyCtrs(fresh.ctrs);
-    } catch (error: unknown) {
-      fail(error, '附件上传失败');
-    } finally {
-      bundle.loading.value = false;
-    }
-  };
+  const actions = ctrActions(ports, bundle);
 
   const latestVersionByCtr = new Map<string, number>();
   for (const item of bundle.ctrs.value) {
@@ -768,7 +648,6 @@ export function CtrConsolePage(ports: CtrConsolePorts) {
       bundle.decision.value = null;
       bundle.submitError.value = '';
     },
-    closeForm,
     baselineId: bundle.baselineId.value,
     setBaseline: (id) => {
       bundle.baselineId.value = id;
@@ -782,11 +661,7 @@ export function CtrConsolePage(ports: CtrConsolePorts) {
     showMore: () => {
       bundle.shownCount.value = bundle.shownCount.value + 20;
     },
-    runRefresh,
-    runCreate,
-    runRevise,
-    runState,
-    runUpload,
+    ...actions,
     openDecision: (decision) => {
       bundle.decision.value = decision;
     },
