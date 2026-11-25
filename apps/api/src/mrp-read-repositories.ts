@@ -84,6 +84,7 @@ export type MrpProposalPageFilter = Readonly<{
   runId?: string;
   state?: MrpProposalState;
   frozen?: boolean;
+  freezeOverride?: boolean;
   proposalType?: MrpProposalType;
   // 物料 SKU / 名称关键字。
   query?: string;
@@ -302,6 +303,12 @@ export class PostgresMrpReadRepository {
     if (filter.runId !== undefined) clauses.push(`p.mrp_run_id=${add(filter.runId)}`);
     if (filter.state !== undefined) clauses.push(`s.state=${add(filter.state)}`);
     if (filter.frozen !== undefined) clauses.push(`p.frozen=${add(filter.frozen)}`);
+    if (filter.freezeOverride !== undefined) {
+      values.push(filter.freezeOverride);
+      clauses.push(
+        `EXISTS(SELECT 1 FROM mrp_proposal_events e WHERE e.proposal_id=p.id AND e.tenant_id=p.tenant_id AND e.state='APPROVED' AND NULLIF(btrim(e.evidence->>'freezeOverrideApproval'),'') IS NOT NULL)=$${String(values.length)}`,
+      );
+    }
     if (filter.proposalType !== undefined)
       clauses.push(`p.proposal_type=${add(filter.proposalType)}`);
     if (filter.query !== undefined)

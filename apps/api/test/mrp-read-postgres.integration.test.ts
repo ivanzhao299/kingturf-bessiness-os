@@ -608,6 +608,16 @@ describe('MRP additive reads and bridged writes on real PostgreSQL (MFG-6)', () 
       context,
       randomUUID(),
     );
+    const filter = { runId: identifier(run), freezeOverride: true, limit: 1 };
+    const withOverride = await mrp.listProposalPage(context, filter);
+    expect(withOverride.items.map((item) => item.id)).toEqual([proposal.id]);
+    expect(withOverride.nextCursor).toBeNull();
+    const withoutOverride = await mrp.listProposalPage(context, {
+      ...filter,
+      freezeOverride: false,
+    });
+    expect(withoutOverride.items).toHaveLength(1);
+    expect(withoutOverride.items[0]?.id).not.toBe(proposal.id);
     const order = await production.create(
       {
         orderNumber: 'WO-MRP-1',

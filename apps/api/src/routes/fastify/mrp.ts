@@ -313,6 +313,7 @@ const proposalQuerySchema = z.object({
   runId: z.string().trim().min(1).max(64).optional(),
   state: z.enum(PROPOSAL_STATES).optional(),
   frozen: z.enum(['true', 'false']).optional(),
+  freezeOverride: z.enum(['true', 'false']).optional(),
   type: z.enum(PROPOSAL_TYPES).optional(),
   query: keyword,
   ...paging,
@@ -471,6 +472,9 @@ export function registerMrpReadRoutes(app: FastifyRouteGroupApp, scope: FastifyR
         ...(query.runId === undefined ? {} : { runId: uuid(query.runId, 'runId') }),
         ...(query.state === undefined ? {} : { state: query.state }),
         ...(query.frozen === undefined ? {} : { frozen: query.frozen === 'true' }),
+        ...(query.freezeOverride === undefined
+          ? {}
+          : { freezeOverride: query.freezeOverride === 'true' }),
         ...(query.type === undefined ? {} : { proposalType: query.type }),
         ...(query.query === undefined ? {} : { query: query.query }),
         ...(query.limit === undefined ? {} : { limit: query.limit }),
@@ -486,7 +490,15 @@ export function registerMrpReadRoutes(app: FastifyRouteGroupApp, scope: FastifyR
     { schema: { response: { 200: runDetailSchema, 404: notFoundSchema } } },
     async (request, reply) => {
       const runId = uuid((request.params as { runId: string }).runId, 'runId');
-      const may = (capability: PermissionKey) => scope.authorization.permissions.has(capability);
+      // These auxiliary projections include company-wide rows. A narrower scope or field grant
+      // continues to use its own domain endpoint, where its restrictions can be applied.
+      const may = (capability: PermissionKey): boolean => {
+        const grant = scope.authorization.permissions.get(capability);
+        return (
+          grant?.fields === null &&
+          (grant.scopes.includes('COMPANY') || grant.scopes.includes('GROUP'))
+        );
+      };
       const found = await requireRepository().findRun(runId, scoped('mrp:read'), {
         orderSources: may('sales-order:read'),
         bom: may('bom:read'),

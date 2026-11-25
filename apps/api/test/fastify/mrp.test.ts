@@ -418,6 +418,7 @@ describe('mrp fastify bridge track: lists', () => {
             runId,
             state: 'APPROVED',
             frozen: 'true',
+            freezeOverride: 'true',
             type: 'PURCHASE',
             query: ' RM-KT ',
             cursor: proposalCursor,
@@ -429,6 +430,7 @@ describe('mrp fastify bridge track: lists', () => {
           runId,
           state: 'APPROVED',
           frozen: true,
+          freezeOverride: true,
           proposalType: 'PURCHASE',
           query: 'RM-KT',
           limit: 20,
@@ -539,6 +541,19 @@ describe('mrp fastify bridge track: run detail', () => {
     );
     expect(partial?.statusCode).toBe(200);
     expect(argsOf(0)[2]).toEqual({ ...ALL_PARTS, bom: false, executions: false });
+  });
+
+  it('GET 详情不读取带字段裁剪或窄范围的其它领域数据', async () => {
+    const scope = scopeFor();
+    const permissions = new Map(scope.authorization.permissions);
+    permissions.set('sales-order:read', { scopes: ['SELF'], fields: null });
+    permissions.set('production:read', { scopes: ['COMPANY'], fields: ['id'] });
+    const response = await dispatchFastifyRouteGroup(detailRequest(), {
+      ...scope,
+      authorization: { ...scope.authorization, permissions },
+    });
+    expect(response?.statusCode).toBe(200);
+    expect(argsOf(0)[2]).toEqual({ ...ALL_PARTS, orderSources: false, executions: false });
   });
 
   it('GET 详情：行项键随 mrp:read 顶层字段清单一并裁剪；404 信封；非法 id', async () => {
