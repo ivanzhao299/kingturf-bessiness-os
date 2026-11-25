@@ -13,7 +13,11 @@ import {
 } from './console-choices';
 import type { RfqConsolePorts } from './rfq-ports';
 
-export function appendRfqConsole(context: OperationsViewContext, workspace: HTMLElement): void {
+export function appendRfqConsole(
+  context: OperationsViewContext,
+  workspace: HTMLElement,
+  onRefreshed?: () => void,
+): void {
   const { controller, permissions } = context;
   const recordText = context.ports.recordText;
   // 物料版本选项与原 vanilla 采购询价表单同源（已发布制造物料版本行）。TD-WF-007：按最新视图计算。
@@ -40,6 +44,7 @@ export function appendRfqConsole(context: OperationsViewContext, workspace: HTML
     },
     refresh: async () => {
       await controller.load();
+      onRefreshed?.();
       return controller.views.get('/api/v1/procurement-rfqs') ?? [];
     },
   };

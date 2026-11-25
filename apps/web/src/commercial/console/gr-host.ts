@@ -13,6 +13,7 @@ import type { GoodsReceiptConsolePorts } from './gr-ports';
 export function appendGoodsReceiptConsole(
   context: OperationsViewContext,
   workspace: HTMLElement,
+  onRefreshed?: () => void,
 ): void {
   const { controller, permissions } = context;
   const recordText = context.ports.recordText;
@@ -82,6 +83,7 @@ export function appendGoodsReceiptConsole(
     },
     refresh: async () => {
       await controller.load();
+      onRefreshed?.();
       return controller.views.get('/api/v1/goods-receipts') ?? [];
     },
   };

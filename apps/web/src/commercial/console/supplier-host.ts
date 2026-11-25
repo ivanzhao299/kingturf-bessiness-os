@@ -16,6 +16,7 @@ import type { SupplierConsolePorts } from './supplier-ports';
 export function appendSupplierConsole(
   context: OperationsViewContext,
   workspace: HTMLElement,
+  onRefreshed?: () => void,
 ): void {
   const { controller, permissions } = context;
   const recordText = context.ports.recordText;
@@ -44,6 +45,7 @@ export function appendSupplierConsole(
     },
     refresh: async () => {
       await controller.load();
+      onRefreshed?.();
       return snapshot();
     },
   };

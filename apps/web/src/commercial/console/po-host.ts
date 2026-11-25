@@ -19,6 +19,7 @@ import type { PurchaseOrderConsolePorts } from './po-ports';
 export function appendPurchaseOrderConsole(
   context: OperationsViewContext,
   workspace: HTMLElement,
+  onRefreshed?: () => void,
 ): void {
   const { controller, permissions } = context;
   const recordText = context.ports.recordText;
@@ -72,6 +73,7 @@ export function appendPurchaseOrderConsole(
     },
     refresh: async () => {
       await controller.load();
+      onRefreshed?.();
       return snapshot();
     },
   };

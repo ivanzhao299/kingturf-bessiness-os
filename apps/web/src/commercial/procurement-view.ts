@@ -16,9 +16,13 @@ import { createSourcingPanel } from './sourcing-register';
 import { createInventoryPanel } from './inventory-register';
 
 // PROC-2（TD-PROC-010）：采购域子路由化。子路由 → 控制台宿主；宿主节段自身即路由视图
-// （携带 data-route-view，直接挂工作区根，与其它商业控制台同口径）。
+// （携带 data-route-view，直接挂工作区根，与其它商业控制台同口径）。第三个参数：宿主的 refresh 端口在
+// controller.load 重读完成后调用它（概览汇总卡据此重算，见下）。
 const CONSOLE_HOSTS: Readonly<
-  Record<ProcurementConsoleId, (context: OperationsViewContext, workspace: HTMLElement) => void>
+  Record<
+    ProcurementConsoleId,
+    (context: OperationsViewContext, workspace: HTMLElement, onRefreshed?: () => void) => void
+  >
 > = {
   suppliers: appendSupplierConsole,
   rfqs: appendRfqConsole,
@@ -42,16 +46,22 @@ export function appendProcurementView(context: OperationsViewContext): void {
   const suppliers = controller.views.get('/api/v1/suppliers') ?? [],
     rfqs = controller.views.get('/api/v1/procurement-rfqs') ?? [],
     supplierQuotes = controller.views.get('/api/v1/supplier-quotes') ?? [],
-    purchaseOrders = controller.views.get('/api/v1/purchase-orders') ?? [],
     locations = controller.views.get('/api/v1/inventory-locations') ?? [],
     balances = controller.views.get('/api/v1/inventory-balances') ?? [];
   const refresh = async () => {
     await controller.load();
     status.textContent = controller.message;
   };
-  appendProcurementSummary(
+  // TD-PROC-013：汇总卡经取数回调读当前视图，并返回重算函数。路由视图只构建一次：在子路由新建供应商、
+  // 发出询价、签发订单之后回到概览，面板不会重建，卡片靠重算函数更新文字。
+  const refreshSummary = appendProcurementSummary(
     panel,
-    { suppliers, rfqs, purchaseOrders, balances },
+    () => ({
+      suppliers: controller.views.get('/api/v1/suppliers') ?? [],
+      rfqs: controller.views.get('/api/v1/procurement-rfqs') ?? [],
+      purchaseOrders: controller.views.get('/api/v1/purchase-orders') ?? [],
+      balances: controller.views.get('/api/v1/inventory-balances') ?? [],
+    }),
     recordText,
     new Set<string>(procurementSubRoutes(permissions)),
   );
@@ -63,5 +73,5 @@ export function appendProcurementView(context: OperationsViewContext): void {
   workspace.append(panel);
   // 子路由页：每个控制台独占一条路由，只在该路由对当前账号可见时挂载（可见性与菜单同源）。
   for (const surface of visibleProcurementSurfaces(permissions))
-    CONSOLE_HOSTS[surface.id](context, workspace);
+    CONSOLE_HOSTS[surface.id](context, workspace, refreshSummary);
 }

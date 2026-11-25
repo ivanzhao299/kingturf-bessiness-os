@@ -2,6 +2,7 @@ import { sessionFixture } from './test-fixtures/session';
 import { scopeGrantChoiceLabeler } from './governance/identity-scopes';
 import { createFetchCommercialApi } from './shared/commercial-http';
 import { appendManufacturingSummary } from './commercial/manufacturing-summary';
+import { appendProcurementSummary } from './commercial/procurement-summary';
 import { recordText } from './shared/business-format';
 import { el } from './dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -2262,6 +2263,84 @@ describe('web bootstrap', () => {
     }
   });
 
+  // TD-PROC-013：采购概览汇总卡与修复前的制造汇总卡同款「渲染一次」——在子路由新建供应商、发出询价、
+  // 签发订单之后回到概览，卡片仍是首渲染的数字。
+  it('recomputes the procurement overview cards from the current views without replacing them (TD-PROC-013)', () => {
+    type Rows = readonly Record<string, unknown>[];
+    let snapshot: Readonly<{
+      suppliers: Rows;
+      rfqs: Rows;
+      purchaseOrders: Rows;
+      balances: Rows;
+    }> = {
+      suppliers: [{ id: 's-1', status: 'ACTIVE' }],
+      rfqs: [{ id: 'r-1', status: 'ISSUED' }],
+      purchaseOrders: [{ id: 'po-1', status: 'ISSUED' }],
+      balances: [],
+    };
+    const target = el('section', 'summary-target');
+    const rendered = target as unknown as RenderedElement;
+    const refresh = appendProcurementSummary(
+      target,
+      () => snapshot,
+      recordText,
+      new Set<string>(['procurement/suppliers', 'procurement/rfqs', 'procurement/purchase-orders']),
+    );
+    const cards = (): readonly RenderedElement[] => rendered.findByClass('metric-card');
+    expect(cards().map((card) => [card.tagName, card.textContent])).toEqual([
+      ['a', '待准入供应商\n1 家'],
+      ['a', '询价进行中\n1 单'],
+      ['a', '待收采购单\n1 单'],
+      ['div', '待检库存\n0 批'],
+    ]);
+    const [firstSuppliers] = cards();
+    if (!firstSuppliers) throw new Error('suppliers summary card missing');
+    // 在子路由新建一条供应商、关闭询价、订单收齐、多出一批待检库存之后的新快照：只有文字变。
+    // 节点是同一实例（锚点、标识不变），不追加卡片；「待检库存」没有对应子路由，保持纯指标。
+    snapshot = {
+      suppliers: [
+        { id: 's-1', status: 'ACTIVE' },
+        { id: 's-2', status: 'ACTIVE' },
+      ],
+      rfqs: [],
+      purchaseOrders: [{ id: 'po-1', status: 'RECEIVED' }],
+      balances: [{ id: 'b-1', qualityStatus: 'QUARANTINE' }],
+    };
+    refresh();
+    expect(cards()).toHaveLength(4);
+    expect(cards()[0]).toBe(firstSuppliers);
+    expect(firstSuppliers.tagName).toBe('a');
+    expect(firstSuppliers.getAttribute('data-testid')).toBe('procurement-summary-suppliers');
+    expect(cards().map((card) => card.textContent)).toEqual([
+      '待准入供应商\n2 家',
+      '询价进行中\n0 单',
+      '待收采购单\n0 单',
+      '待检库存\n1 批',
+    ]);
+  });
+
+  it('has every procurement console host recompute the overview cards after its reload (TD-PROC-013)', () => {
+    // 单测替身没有 isConnected，控制台在单测里不真正挂载，宿主的 refresh 端口调不到；接线用源码锚守住
+    // （与制造三宿主的同款守卫一致）。
+    const hosts = [
+      ['./commercial/console/supplier-host.ts', 'export function appendSupplierConsole'],
+      ['./commercial/console/rfq-host.ts', 'export function appendRfqConsole'],
+      ['./commercial/console/po-host.ts', 'export function appendPurchaseOrderConsole'],
+      ['./commercial/console/gr-host.ts', 'export function appendGoodsReceiptConsole'],
+    ] as const;
+    for (const [file, anchor] of hosts) {
+      const source = readBoundSource(file, anchor);
+      expect(source, file).toContain('onRefreshed?: () => void');
+      // 顺序：先等 controller.load 重读完成，再通知重算，最后返回该清单的最新快照。
+      expect(source, file).toMatch(/await controller\.load\(\);\s*onRefreshed\?\.\(\);\s*return /u);
+    }
+    const view = readBoundSource(
+      './commercial/procurement-view.ts',
+      'export function appendProcurementView',
+    );
+    expect(view).toContain('appendProcurementSummary(');
+    expect(view).toContain('CONSOLE_HOSTS[surface.id](context, workspace, refreshSummary)');
+  });
   it('styles the manufacturing overview summary as three columns with linkable cards (MFG-3B)', () => {
     const styles = readFileSync(
       new URL('./commercial/console/manufacturing-console.css', import.meta.url),
