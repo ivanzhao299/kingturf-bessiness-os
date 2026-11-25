@@ -35,6 +35,7 @@ export type ProductionOrderBundle = Readonly<{
   loadError: Signal<string>;
   actionError: Signal<string>;
   submitError: Signal<string>;
+  notice: Signal<string>;
   selected: Signal<ProductionOrderRow | null>;
   detail: Signal<ProductionOrderRow | null>;
   detailLoading: Signal<boolean>;
@@ -161,6 +162,7 @@ export function createProductionOrderLoaders(
     actionFailed,
     open: (row: ProductionOrderRow | null): void => {
       bundle.selected.value = row;
+      if (row !== null) bundle.notice.value = '';
       bundle.activeForm.value = null;
       bundle.pending.value = null;
       bundle.execution.value = null;
@@ -174,6 +176,7 @@ export function createProductionOrderLoaders(
     openExecution: (kind: ProductionOrderExecution): void => {
       const row = bundle.selected.value;
       if (!row) return;
+      bundle.notice.value = '';
       bundle.activeForm.value = kind;
       bundle.pending.value = null;
       bundle.submitError.value = '';
@@ -191,12 +194,14 @@ export function createProductionOrderLoaders(
       };
     },
     openCreate: (): void => {
+      bundle.notice.value = '';
       bundle.activeForm.value = 'create';
       bundle.pending.value = null;
       bundle.submitError.value = '';
     },
     openTransition: (row: ProductionOrderRow, action: ProductionOrderAction): void => {
       // 流转抽屉独立于详情抽屉：不置 selected，两个抽屉不会同时渲染。
+      bundle.notice.value = '';
       bundle.activeForm.value = 'transition';
       bundle.pending.value = { row, action };
       bundle.submitError.value = '';
@@ -257,17 +262,19 @@ export function createProductionOrderMutations(
     }
     closeForm();
     await io.sync();
+    bundle.notice.value = `已创建工单 ${input.orderNumber ?? ''}`;
   };
 
   // 提交成功后的收尾：关表单 → 整站刷新一次 → 详情抽屉仍开着就重读详情（工序进度、物料
   // 台账、报工记录、成品序列随之就地更新）。
-  const committed = async (): Promise<void> => {
+  const committed = async (notice: string): Promise<void> => {
     closeForm();
     await io.sync();
     if (bundle.selected.value) {
       bundle.detail.value = null;
       await io.reloadDetail();
     }
+    bundle.notice.value = notice;
   };
   // 日期时间输入按本地时间解析后转 UTC ISO（与 legacy 表单的 new Date(value).toISOString()
   // 同式）；无效值在提交前拦下——不触达服务端、不刷新。
@@ -275,6 +282,12 @@ export function createProductionOrderMutations(
     const parsed = new Date(value);
     if (!Number.isFinite(parsed.getTime())) throw new Error(`${label}格式不正确，请重新选择`);
     return parsed.toISOString();
+  };
+  const transitionMessage = {
+    release: '已下达',
+    start: '已开始生产',
+    complete: '已完工',
+    close: '已关闭',
   };
   const runTransition = async (values: Readonly<Record<string, string>>): Promise<void> => {
     const pending = bundle.pending.value;
@@ -304,7 +317,7 @@ export function createProductionOrderMutations(
       return;
     }
     // 详情抽屉仍开着（抽屉内发起的流转）：sync 已把行换成刷新后的对象，再重读详情。
-    await committed();
+    await committed(`工单 ${orderNumber} ${transitionMessage[action]}`);
   };
 
   // 车间执行提交。载荷与 legacy 表单同形、键序相同：
@@ -342,7 +355,12 @@ export function createProductionOrderMutations(
       io.actionFailed(error, FALLBACK_OF[draft.kind]);
       return;
     }
-    await committed();
+    const materialNotice = input.transactionType === 'RETURN' ? '已登记退料' : '已登记领料';
+    await committed(
+      { report: '已登记工序报工', material: materialNotice, output: '已登记成品卷入库' }[
+        draft.kind
+      ],
+    );
   };
   // legacy 同式的无效选择守卫：候选序号不是非负整数或超出候选范围时报「请选择有效批次库位」。
   const postMaterial = async (

@@ -461,6 +461,9 @@ describe('U3-MFG-4 工单控制台：载荷 oracle', () => {
       }),
     );
     expect(refresh).toHaveBeenCalledTimes(1);
+    expect(host.querySelector('[data-testid="console-notice"]')?.textContent).toBe(
+      '已创建工单 WO-9',
+    );
   });
 
   it('流转载荷与 vanilla 流转表单同形（reason/evidence/idempotencyKey），经 PUT state 统一端点', async () => {
@@ -487,6 +490,9 @@ describe('U3-MFG-4 工单控制台：载荷 oracle', () => {
       'PUT',
     );
     expect(refresh).toHaveBeenCalledTimes(1);
+    expect(host.querySelector('[data-testid="console-notice"]')?.textContent).toBe(
+      '工单 WO-KT-2026-001 已下达',
+    );
   });
 
   // MFG5-3：五个表单抽屉（新建 / 流转 / 报工 / 领退料 / 成品卷入库）接 FormSection 的 error 与 failureMessage。
@@ -787,6 +793,9 @@ describe('U3-MFG-5 工单控制台：工序报工', () => {
     expect(loadDetail).toHaveBeenCalledTimes(2);
     expect(drawer.textContent).toContain('良品 410.25 / 计划 1000');
     expect(drawer.textContent).toContain('报工 2 次');
+    expect(drawer.querySelector('.drawer-footer [role="status"]')?.textContent).toBe(
+      '已登记工序报工',
+    );
     expect(refresh).toHaveBeenCalledTimes(1);
   });
 
@@ -1256,6 +1265,9 @@ describe('U3-MFG-5 工单控制台：领退料', () => {
     expect(refresh).toHaveBeenCalledTimes(1);
     expect(ledger()).toHaveLength(2);
     expect(drawerOf(host).textContent).toContain('领料 12.5');
+    expect(drawerOf(host).querySelector('.drawer-footer [role="status"]')?.textContent).toBe(
+      '已登记领料',
+    );
   });
 });
 
@@ -1470,6 +1482,9 @@ describe('U3-MFG-5 工单控制台：成品卷入库', () => {
     expect(loadDetail).toHaveBeenCalledTimes(2);
     expect(refresh).toHaveBeenCalledTimes(1);
     expect(rolls()).toHaveLength(2);
+    expect(drawerOf(host).querySelector('.drawer-footer [role="status"]')?.textContent).toBe(
+      '已登记成品卷入库',
+    );
   });
 
   it('第一笔报工提交后，「成品卷入库」入口随刷新后的行出现', async () => {

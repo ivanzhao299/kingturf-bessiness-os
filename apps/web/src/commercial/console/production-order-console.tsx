@@ -37,6 +37,7 @@ import {
   type ProductionOrderStatusFilter,
   type ProductionOrderViewState,
 } from './production-order-state';
+import { ConsoleNotice } from './console-notice';
 import './commercial-ux.css';
 
 // 车间执行表单（其余表单种类是新建与流转）。
@@ -62,6 +63,7 @@ const createBundle = (ports: ProductionOrderConsolePorts): ProductionOrderBundle
   loadError: signal(''),
   actionError: signal(''),
   submitError: signal(''),
+  notice: signal(''),
   selected: signal<ProductionOrderRow | null>(null),
   detail: signal<ProductionOrderRow | null>(null),
   detailLoading: signal(false),
@@ -303,6 +305,7 @@ const ProductionOrderView = (state: ProductionOrderViewState) => (
         </>
       }
     />
+    {state.selected === null ? <ConsoleNotice message={state.notice} /> : null}
     <SummaryCards state={state} />
     <SearchBar state={state} />
     {state.loadError !== '' ? (
@@ -373,6 +376,7 @@ export function ProductionOrderConsolePage(ports: ProductionOrderConsolePorts) {
     loadError: bundle.loadError.value,
     actionError: bundle.actionError.value,
     submitError: bundle.submitError.value,
+    notice: bundle.notice.value,
     selected: bundle.selected.value,
     detail: bundle.detail.value,
     detailLoading: bundle.detailLoading.value,

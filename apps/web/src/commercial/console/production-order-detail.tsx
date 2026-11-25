@@ -23,6 +23,7 @@ import {
   type OrderProgress,
   type ProductionOrderViewState,
 } from './production-order-state';
+import { ConsoleNotice } from './console-notice';
 import './commercial-ux.css';
 import './production-order-console.css';
 
@@ -484,7 +485,12 @@ export const ProductionOrderDetailDrawer = ({ state }: DetailProps) => {
       onClose={() => {
         state.open(null);
       }}
-      footer={<DrawerFooter state={state} row={row} />}
+      footer={
+        <>
+          <ConsoleNotice message={state.notice} />
+          <DrawerFooter state={state} row={row} />
+        </>
+      }
     >
       <div class="console-summary" data-testid="kt-wo-detail-summary">
         <p>
