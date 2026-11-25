@@ -15,6 +15,7 @@ import { appendPurchaseOrderConsole } from './console/po-host';
 import { appendGoodsReceiptConsole } from './console/gr-host';
 import { appendSupplierQuoteConsole } from './console/sq-host';
 import { appendInventoryConsole } from './console/inv-host';
+import { appendFirstInventoryLocation } from './console/inv-location-form';
 
 // PROC-2（TD-PROC-010）：采购域子路由化。子路由 → 控制台宿主；宿主节段自身即路由视图
 // （携带 data-route-view，直接挂工作区根，与其它商业控制台同口径）。第三个参数：宿主的 refresh 端口在
@@ -56,6 +57,7 @@ export function appendProcurementView(context: OperationsViewContext): void {
     recordText,
     new Set<string>(procurementSubRoutes(permissions)),
   );
+  appendFirstInventoryLocation(context, panel);
   workspace.append(panel);
   const refreshSummary = () => {
     refreshWorkspaceOverview(workspace, 'procurement-workbench');
