@@ -464,3 +464,7 @@ verify 任务先断言检出的提交号等于发布号，再跑 `pnpm ci:local`
 - `main` 自 `08725ba` 快进至 `5dc88e5`。发布运行 `45609177419` 的五个阶段全部通过，UTC 11:57:20 → 12:12:47。`verify` 历时 11 分 51 秒，独立推送 CI `45609159427` 通过。 [发布运行](https://github.com/ivanzhao299/kingturf-bessiness-os/actions/runs/45609177419) · [推送 CI](https://github.com/ivanzhao299/kingturf-bessiness-os/actions/runs/45609159427)
 - 生产注册表 77 条 `FULLY_MATCHED`，计划跳过迁移。`application-recovery-evidence` 的 `deployment.json` 确认 `PASS`、`NOT_INVOKED`，原恢复镜像已保留。
 - `/version` 返回完整发布 SHA、环境 `production` 和 `builtAt=application-45609177419-1`。`/health` 与 `/ready` 均正常。由生产入口核对引用并下载全部 20 个 JS/CSS 文件，SHA-256 与浏览器验收构建一致。认证写入证据来自隔离合成账号，生产核对使用公开探针和发布回执。
+
+### 16.4 重启后复核（2026-11-26）
+
+主协调机器重启后 `/tmp` 被清空，浏览器验收构建、原始日志与临时工作树均已丢失，本节所引 `/tmp` 路径为当时位置。收尾文档提交 `cdc406c` 与 `c51dc75` 的 GitHub CI（45611903514、45612237251，同为 `pnpm ci:local`）通过；`c51dc75` 的本地完整 CI 在测试阶段被重启中断，没有结果。以发布构建任务输出的 Web 镜像摘要 `sha256:500db64d…` 为参照重新核对：线上 `/version`、`/health`、`/ready` 正常，入口引用与 20 个 JS/CSS 的 SHA-256 和镜像逐字节一致。
