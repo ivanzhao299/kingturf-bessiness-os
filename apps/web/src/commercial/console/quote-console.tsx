@@ -19,6 +19,7 @@ import {
 } from './quote-console-timeline';
 import { failureMessage } from '../../shared/api-error-message';
 import { FocusAnchor } from './focus-anchor';
+import { syncSelected } from './selected-sync';
 
 // U3-COM-3（ADR-0014 分域重写）：报价控制台——原 vanilla quote workbench 能力面
 // 等价迁移（新建含政策预校验、修订、批准、签发、打印；列表/筛选/客户端分页）。
@@ -374,9 +375,20 @@ type QuoteActions = Readonly<{
   ) => Promise<void>;
 }>;
 
-const applySnapshot = (bundle: QuoteSignalBundle, next: QuoteSnapshot): void => {
+// TD-WF-008：列表换新的之后，抽屉里开着的那条也换成刷新后的行（已不在列表里则关闭抽屉）——此前批准、
+// 签发后抽屉顶部还是旧状态，「批准报价」按钮也还在。
+const applySnapshot = (
+  ports: QuoteConsolePorts,
+  bundle: QuoteSignalBundle,
+  next: QuoteSnapshot,
+): void => {
   bundle.snapshot.value = next;
   bundle.loadError.value = '';
+  syncSelected({
+    selected: bundle.selected,
+    rows: next.quotes,
+    idOf: (row) => ports.textValue(row.id ?? row.quoteId, ''),
+  });
 };
 const closeForm = (bundle: QuoteSignalBundle): void => {
   bundle.activeForm.value = null;
@@ -392,7 +404,7 @@ const quoteActions = (ports: QuoteConsolePorts, bundle: QuoteSignalBundle): Quot
   const runRefresh = async (): Promise<void> => {
     bundle.loading.value = true;
     try {
-      applySnapshot(bundle, await ports.refresh());
+      applySnapshot(ports, bundle, await ports.refresh());
     } catch (error: unknown) {
       fail(error, bundle, '报价加载失败');
     } finally {
@@ -455,7 +467,7 @@ const quoteActions = (ports: QuoteConsolePorts, bundle: QuoteSignalBundle): Quot
         lines,
       });
       ports.clearPreferredCostDecisionId();
-      applySnapshot(bundle, await ports.refresh());
+      applySnapshot(ports, bundle, await ports.refresh());
       closeForm(bundle);
     } catch (error: unknown) {
       fail(error, bundle, '报价创建失败');
@@ -512,7 +524,7 @@ const quoteActions = (ports: QuoteConsolePorts, bundle: QuoteSignalBundle): Quot
         },
         'PUT',
       );
-      applySnapshot(bundle, await ports.refresh());
+      applySnapshot(ports, bundle, await ports.refresh());
       closeForm(bundle);
     } catch (error: unknown) {
       fail(error, bundle, '报价修订保存失败');
@@ -534,7 +546,7 @@ const quoteActions = (ports: QuoteConsolePorts, bundle: QuoteSignalBundle): Quot
         kind,
         kind === 'approve' ? { decision: 'APPROVED', reason: values.reason ?? '' } : undefined,
       );
-      applySnapshot(bundle, await ports.refresh());
+      applySnapshot(ports, bundle, await ports.refresh());
       closeForm(bundle);
     } catch (error: unknown) {
       fail(error, bundle, kind === 'approve' ? '报价批准失败' : '报价签发失败');

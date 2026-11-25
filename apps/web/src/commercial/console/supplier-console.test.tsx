@@ -550,3 +550,38 @@ describe('U3-PROC-1 供应商控制台', () => {
     expect(host.textContent).toContain('供应商加载失败');
   });
 });
+
+// TD-WF-008（写流程冒烟 WS-P2-05）：准入审核后列表里该供应商已是「已批准 1」，开着的抽屉却仍写
+// 「尚无物料准入记录」。
+describe('U3-PROC-1 供应商控制台：详情抽屉随写操作刷新', () => {
+  it('物料准入审核后，开着的抽屉显示刚批准的资质记录', async () => {
+    const bare: SupplierRow = { ...supplier, qualifications: [] };
+    const qualified: SupplierRow = {
+      ...supplier,
+      qualifications: [qualification('q-9', 'APPROVED', 'RM-YARN', '草纱', 'item-v1')],
+    };
+    const ports = portsFor([bare], ['supplier:manage'], {
+      refresh: vi.fn().mockResolvedValue({ suppliers: [qualified], quotes: [quote] }),
+    });
+    const host = mount(ports);
+    element(host.querySelector('[data-testid="kt-supplier-open"]')).click();
+    await flush();
+    const drawerText = (): string => element(host.querySelector('.detail-drawer')).textContent;
+    expect(drawerText()).toContain('尚无物料准入记录');
+    element(host.querySelector('[data-testid="kt-supplier-qualify"]')).click();
+    await flush();
+    for (const [name, value] of QUALIFY_FORM) fillField(host, name, value);
+    await flush();
+    await submitDrawer(host);
+    expect(ports.submit).toHaveBeenCalledTimes(1);
+    // 抽屉还开着，资质记录已是刷新后的。
+    expect(host.querySelector('.detail-drawer')).not.toBeNull();
+    expect(drawerText()).not.toContain('尚无物料准入记录');
+    expect(drawerText()).toContain('已批准');
+    expect(
+      host.querySelector('[data-testid="kt-supplier-qualifications"]')?.textContent ?? '',
+    ).toContain('RM-YARN');
+    // 行内表单已收起，操作区回来了。
+    expect(host.querySelector('[data-testid="kt-supplier-qualify"]')).not.toBeNull();
+  });
+});

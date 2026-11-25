@@ -467,3 +467,34 @@ describe('U3-PROC-2 询价控制台', () => {
     ).toEqual(['false', 'false']);
   });
 });
+
+// TD-WF-008（写流程冒烟 WS-P2-05）：关闭询价后列表行已是「已取消」，开着的抽屉却仍是「已签发」。
+describe('U3-PROC-2 询价控制台：详情抽屉随写操作刷新', () => {
+  it('关闭询价后，开着的抽屉显示「已取消」，发布 / 关闭按钮都不在了', async () => {
+    const cancelled: RfqRow = { ...issuedRfq, status: 'CANCELLED' };
+    const loadDetail = vi
+      .fn()
+      .mockResolvedValueOnce({ ...issuedRfq, quotes: [] })
+      .mockResolvedValue({ ...cancelled, quotes: [] });
+    const ports = portsFor([issuedRfq], ['procurement:manage'], {
+      refresh: vi.fn().mockResolvedValue([cancelled]),
+      loadDetail,
+    });
+    const host = mount(ports);
+    element(host.querySelector('[data-testid="kt-rfq-open"]')).click();
+    await flush();
+    await flush();
+    const badgeOf = (): string =>
+      element(host.querySelector('[data-testid="kt-rfq-detail"] .status-badge')).textContent.trim();
+    expect(badgeOf()).toBe('已签发');
+    element(host.querySelector('[data-testid="kt-rfq-close"]')).click();
+    await confirmAction(host, '关闭询价', '确认关闭', { destructive: true });
+    await flush();
+    await flush();
+    expect(host.querySelector('[data-testid="kt-rfq-detail"]')).not.toBeNull();
+    expect(badgeOf()).toBe('已取消');
+    expect(host.querySelector('[data-testid="kt-rfq-close"]')).toBeNull();
+    expect(host.querySelector('[data-testid="kt-rfq-issue"]')).toBeNull();
+    expect(loadDetail).toHaveBeenCalledTimes(2);
+  });
+});

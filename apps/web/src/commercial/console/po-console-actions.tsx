@@ -4,6 +4,7 @@ import type { Signal } from '@preact/signals';
 import type { ContractDocumentRow, PurchaseOrderConsolePorts, PurchaseOrderRow } from './po-ports';
 import type { DocumentFormKind } from './po-detail';
 import { failureMessage } from '../../shared/api-error-message';
+import { reloadSelectedDetail, syncSelected } from './selected-sync';
 
 export type PoFormActionKind = 'create' | null;
 
@@ -19,12 +20,21 @@ export type PoBundle = Readonly<{
 }>;
 
 export function createPurchaseOrderActions(ports: PurchaseOrderConsolePorts, bundle: PoBundle) {
+  // 抽屉里开着的那条：换成刷新后的行（已不在列表里则关闭抽屉），并重读详情（TD-WF-008）。
+  const selection = () => ({
+    selected: bundle.selected,
+    rows: bundle.orders.value,
+    idOf: (row: PurchaseOrderRow) => ports.textValue(row.id, ''),
+    loadDetail: ports.loadDetail,
+  });
+
   const applySnapshot = (snapshot: {
     orders: readonly PurchaseOrderRow[];
     documents: readonly ContractDocumentRow[];
   }): void => {
     bundle.orders.value = snapshot.orders;
     bundle.documents.value = snapshot.documents;
+    if (syncSelected(selection())) void reloadSelectedDetail(selection());
   };
 
   const fail = (error: unknown, fallback: string): void => {

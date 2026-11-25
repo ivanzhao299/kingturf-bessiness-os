@@ -18,6 +18,7 @@ import {
 } from './rfq-console-detail';
 import type { RfqConsolePorts, RfqRow } from './rfq-ports';
 import { FocusAnchor } from './focus-anchor';
+import { reloadSelectedDetail, syncSelected } from './selected-sync';
 import { failureMessage } from '../../shared/api-error-message';
 import {
   askConfirm,
@@ -403,10 +404,22 @@ export function RfqConsolePage(ports: RfqConsolePorts) {
     bundle.submitError.value = '';
   };
 
+  // 抽屉里开着的那条：换成刷新后的行（已不在列表里则关闭抽屉），并重读详情（TD-WF-008）。
+  const selection = () => ({
+    selected: bundle.selected,
+    rows: bundle.rfqs.value,
+    idOf: (row: RfqRow) => ports.textValue(row.id, ''),
+    loadDetail: ports.loadDetail,
+  });
+  const applyRefreshed = (rfqs: readonly RfqRow[]): void => {
+    bundle.rfqs.value = rfqs;
+    if (syncSelected(selection())) void reloadSelectedDetail(selection());
+  };
+
   const runRefresh = async (): Promise<void> => {
     bundle.loading.value = true;
     try {
-      bundle.rfqs.value = await ports.refresh();
+      applyRefreshed(await ports.refresh());
       bundle.loadError.value = '';
     } catch (error: unknown) {
       fail(error, '询价单加载失败');
@@ -434,7 +447,7 @@ export function RfqConsolePage(ports: RfqConsolePorts) {
           },
         ],
       });
-      bundle.rfqs.value = await ports.refresh();
+      applyRefreshed(await ports.refresh());
       closeForm();
     } catch (error: unknown) {
       fail(error, '询价单创建失败');
@@ -453,7 +466,7 @@ export function RfqConsolePage(ports: RfqConsolePorts) {
         { action },
         'PUT',
       );
-      bundle.rfqs.value = await ports.refresh();
+      applyRefreshed(await ports.refresh());
       closeForm();
     } catch (error: unknown) {
       fail(error, '询价单状态流转失败');
@@ -481,17 +494,12 @@ export function RfqConsolePage(ports: RfqConsolePorts) {
       bundle.activeForm.value = null;
       bundle.submitError.value = '';
       if (!row) return;
-      // 详情读取失败静默回退列表行（行项/报价对比区按列表行数据呈现）。
+      // 详情读取失败静默回退列表行（行项/报价对比区按列表行数据呈现）。迟到的详情只在抽屉仍开着、
+      // 且还是这一条时才替换。
       bundle.detailLoading.value = true;
-      void ports
-        .loadDetail(ports.textValue(row.id, ''))
-        .then((detail) => {
-          if (detail) bundle.selected.value = detail;
-        })
-        .catch(() => undefined)
-        .finally(() => {
-          bundle.detailLoading.value = false;
-        });
+      void reloadSelectedDetail(selection()).finally(() => {
+        bundle.detailLoading.value = false;
+      });
     },
     openForm: (kind) => {
       bundle.activeForm.value = kind;

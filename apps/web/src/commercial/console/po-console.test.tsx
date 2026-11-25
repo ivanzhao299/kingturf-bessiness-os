@@ -296,6 +296,94 @@ describe('U3-PROC-3 采购单控制台', () => {
     );
   });
 
+  // TD-WF-008（写流程冒烟 WS-P2-05）：取消订单后列表刷新了，开着的抽屉却还是「已签发」、
+  // 「取消订单」按钮也还在——再点一次就是 404。
+  it('取消订单后，开着的详情抽屉跟上刷新：「已取消」且不再有「取消订单」按钮，详情重读一次', async () => {
+    const loadDetail = vi
+      .fn()
+      .mockResolvedValueOnce(poDetail)
+      .mockResolvedValue({ ...poDetail, status: 'CANCELLED' });
+    const ports = portsFor([issuedOrder], ALL_PERMISSIONS, {
+      refresh: vi
+        .fn()
+        .mockResolvedValue({ orders: [{ ...issuedOrder, status: 'CANCELLED' }], documents: [] }),
+      loadDetail,
+    });
+    const host = mount(ports);
+    element(host.querySelector('[data-testid="kt-po-open"]')).click();
+    await flush();
+    await flush();
+    const badgeOf = (): string =>
+      element(host.querySelector('[data-testid="kt-po-detail"] .status-badge')).textContent.trim();
+    expect(badgeOf()).toBe('已签发');
+    element(host.querySelector('[data-testid="kt-po-cancel"]')).click();
+    await confirmAction(host, '取消采购订单', '确认取消', { destructive: true });
+    await flush();
+    await flush();
+    expect(ports.submit).toHaveBeenCalledTimes(1);
+    // 抽屉还开着，内容是刷新后的：状态徽章、按钮都跟着变。
+    expect(host.querySelector('[data-testid="kt-po-detail"]')).not.toBeNull();
+    expect(badgeOf()).toBe('已取消');
+    expect(host.querySelector('[data-testid="kt-po-cancel"]')).toBeNull();
+    expect(host.querySelector('[data-testid="kt-po-issue"]')).toBeNull();
+    // 打开时读一次，写操作后重读一次。
+    expect(loadDetail).toHaveBeenCalledTimes(2);
+    expect(loadDetail).toHaveBeenLastCalledWith('po-2');
+  });
+
+  it('写操作后记录已不在列表里：抽屉关闭，不停留在过期对象上', async () => {
+    const loadDetail = vi.fn().mockResolvedValue(poDetail);
+    const ports = portsFor([issuedOrder], ALL_PERMISSIONS, {
+      refresh: vi.fn().mockResolvedValue({ orders: [], documents: [] }),
+      loadDetail,
+    });
+    const host = mount(ports);
+    element(host.querySelector('[data-testid="kt-po-open"]')).click();
+    await flush();
+    await flush();
+    element(host.querySelector('[data-testid="kt-po-cancel"]')).click();
+    await confirmAction(host, '取消采购订单', '确认取消', { destructive: true });
+    await flush();
+    await flush();
+    expect(host.querySelector('.detail-drawer')).toBeNull();
+  });
+
+  // 迟到的详情响应：期间抽屉已关掉、或已换成另一条——不替换。
+  it('迟到的详情不会把关掉的抽屉重新打开，也不会把抽屉换成别的记录', async () => {
+    let resolveFirst: (detail: PurchaseOrderRow) => void = () => undefined;
+    const loadDetail = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<PurchaseOrderRow>((resolve) => {
+            resolveFirst = resolve;
+          }),
+      )
+      .mockResolvedValue({ ...poDetail, ...cancelledOrder });
+    const ports = portsFor([issuedOrder, cancelledOrder], ALL_PERMISSIONS, { loadDetail });
+    const host = mount(ports);
+    const open = (index: number): void => {
+      element(host.querySelectorAll('[data-testid="kt-po-open"]')[index] ?? null).click();
+    };
+    open(0);
+    await flush();
+    open(1);
+    await flush();
+    await flush();
+    // 第二条的详情已到；第一条的详情此刻才到。
+    expect(
+      element(host.querySelector('[data-testid="kt-po-detail"] .status-badge')).textContent.trim(),
+    ).toBe('已取消');
+    resolveFirst(poDetail);
+    await flush();
+    expect(
+      element(host.querySelector('[data-testid="kt-po-detail"] .status-badge')).textContent.trim(),
+    ).toBe('已取消');
+    element(element(host.querySelector('.detail-drawer')).querySelector('.drawer-close')).click();
+    await flush();
+    expect(host.querySelector('.detail-drawer')).toBeNull();
+  });
+
   // TD-WF-014②：确认框里点「取消」或按 Esc 都不执行动作，焦点回到触发按钮，抽屉不受影响。
   it('签发的确认框：不确认就不发请求（取消按钮 / Esc），确认框关掉后焦点回到「签发订单」', async () => {
     const ports = portsFor([order], ALL_PERMISSIONS);

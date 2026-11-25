@@ -11,6 +11,7 @@ import {
 } from '@kingturf/ui';
 import type { PolicyConsolePorts, PolicyRow } from './policy-ports';
 import { failureMessage } from '../../shared/api-error-message';
+import { syncSelected } from './selected-sync';
 import { FocusAnchor } from './focus-anchor';
 
 // U3-COM-6（ADR-0014 分域重写）：销售政策控制台——原 vanilla policy workbench 能力面
@@ -463,11 +464,21 @@ export function PolicyConsolePage(ports: PolicyConsolePorts) {
     bundle.submitError.value = '';
   };
 
+  // TD-WF-008：列表换新的之后，抽屉里开着的那条也换成刷新后的行（已不在列表里则关闭抽屉）。
+  const applyPolicies = (policies: readonly PolicyRow[]): void => {
+    bundle.policies.value = policies;
+    syncSelected({
+      selected: bundle.selected,
+      rows: policies,
+      idOf: (row) => ports.textValue(row.id ?? row.code, ''),
+    });
+  };
+
   const runRefresh = async (): Promise<void> => {
     bundle.loading.value = true;
     try {
       const fresh = await ports.refresh();
-      bundle.policies.value = fresh.policies;
+      applyPolicies(fresh.policies);
       bundle.costs.value = fresh.costs;
       bundle.evaluations.value = fresh.evaluations;
       bundle.loadError.value = '';
@@ -488,7 +499,7 @@ export function PolicyConsolePage(ports: PolicyConsolePorts) {
         ...policyRules(values),
       });
       const fresh = await ports.refresh();
-      bundle.policies.value = fresh.policies;
+      applyPolicies(fresh.policies);
       closeForm();
     } catch (error: unknown) {
       fail(error, '销售政策创建失败');
@@ -510,7 +521,7 @@ export function PolicyConsolePage(ports: PolicyConsolePorts) {
         'PUT',
       );
       const fresh = await ports.refresh();
-      bundle.policies.value = fresh.policies;
+      applyPolicies(fresh.policies);
       closeForm();
     } catch (error: unknown) {
       fail(error, '政策版本发布失败');

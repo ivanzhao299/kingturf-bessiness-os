@@ -366,3 +366,36 @@ describe('COM-UX 信用审批流程图', () => {
     expect(shown).not.toBe('');
   });
 });
+
+// TD-WF-008：审批后列表里这条决定已是「信用已批准」，开着的抽屉却仍是「等待信用审批」、
+// 批准 / 拒绝按钮也还在。
+describe('信用审查：详情抽屉随写操作刷新', () => {
+  it('批准后，开着的抽屉显示「信用已批准」，不再有批准 / 拒绝按钮', async () => {
+    const decided = decision({ id: 'decision-pending', effective_status: 'APPROVED' });
+    const ports = portsFor([pending], ['credit:approve'], {
+      refresh: vi.fn().mockResolvedValue({ limits, decisions: [decided] }),
+    });
+    const host = mount(ports);
+    await openRow(host, 0);
+    const badgeOf = (): string =>
+      element(
+        host.querySelector('[data-testid="kt-credit-detail"] .status-badge'),
+      ).textContent.trim();
+    expect(badgeOf()).toBe('等待信用审批');
+    expect(host.querySelector('[data-testid="kt-credit-approve"]')).not.toBeNull();
+    element(host.querySelector('[data-testid="kt-credit-approve"]')).click();
+    await flush();
+    const textarea = element(host.querySelector('.form-section textarea'));
+    textarea.value = '额度充足，予以批准';
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    await flush();
+    element(host.querySelector('.form-section button[type="submit"]')).click();
+    await flush();
+    await flush();
+    expect(ports.submit).toHaveBeenCalledTimes(1);
+    expect(host.querySelector('[data-testid="kt-credit-detail"]')).not.toBeNull();
+    expect(badgeOf()).toBe('信用已批准');
+    expect(host.querySelector('[data-testid="kt-credit-approve"]')).toBeNull();
+    expect(host.querySelector('[data-testid="kt-credit-reject"]')).toBeNull();
+  });
+});

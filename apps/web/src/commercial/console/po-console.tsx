@@ -30,6 +30,7 @@ import {
 } from './console-confirm';
 import type { ContractDocumentRow, PurchaseOrderConsolePorts, PurchaseOrderRow } from './po-ports';
 import { FocusAnchor } from './focus-anchor';
+import { reloadSelectedDetail } from './selected-sync';
 
 // U3-PROC-3（ADR-0014 分域重写）：采购单控制台——原 vanilla purchase-register PO 能力
 // 面等价迁移（创建并签发载荷逐字节一致；收货卡片/登记收货表单属 goods-receipts 域，
@@ -525,17 +526,17 @@ export function PurchaseOrderConsolePage(ports: PurchaseOrderConsolePorts) {
       bundle.activeDocumentForm.value = null;
       bundle.submitError.value = '';
       if (!row) return;
-      // 详情读取失败静默回退列表行（行项收货状态/收货记录按列表行数据呈现）。
+      // 详情读取失败静默回退列表行（行项收货状态/收货记录按列表行数据呈现）。迟到的详情只在抽屉仍
+      // 开着、且还是这一条时才替换——不会把抽屉换成别的记录，也不会把关掉的抽屉重新打开。
       bundle.detailLoading.value = true;
-      void ports
-        .loadDetail(ports.textValue(row.id, ''))
-        .then((detail) => {
-          if (detail) bundle.selected.value = detail;
-        })
-        .catch(() => undefined)
-        .finally(() => {
-          bundle.detailLoading.value = false;
-        });
+      void reloadSelectedDetail({
+        selected: bundle.selected,
+        rows: bundle.orders.value,
+        idOf: (candidate) => ports.textValue(candidate.id, ''),
+        loadDetail: ports.loadDetail,
+      }).finally(() => {
+        bundle.detailLoading.value = false;
+      });
     },
     openForm: (kind) => {
       bundle.activeForm.value = kind;

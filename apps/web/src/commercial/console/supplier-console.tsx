@@ -19,6 +19,7 @@ import {
 } from './supplier-console-detail';
 import type { SupplierConsolePorts, SupplierRow } from './supplier-ports';
 import { FocusAnchor } from './focus-anchor';
+import { syncSelected } from './selected-sync';
 import { failureMessage } from '../../shared/api-error-message';
 
 // U3-PROC-1（ADR-0014 分域重写）：供应商控制台——原 vanilla supplier-register 能力面
@@ -441,12 +442,25 @@ export function SupplierConsolePage(ports: SupplierConsolePorts) {
     bundle.submitError.value = '';
   };
 
+  // 刷新结果落进状态；抽屉里开着的那条换成刷新后的行（已不在列表里则关闭抽屉）——TD-WF-008：
+  // 此前准入审核后抽屉仍写「尚无物料准入记录」。
+  const applySnapshot = (snapshot: {
+    suppliers: readonly SupplierRow[];
+    quotes: readonly SupplierRow[];
+  }): void => {
+    bundle.suppliers.value = snapshot.suppliers;
+    bundle.quotes.value = snapshot.quotes;
+    syncSelected({
+      selected: bundle.selected,
+      rows: snapshot.suppliers,
+      idOf: (row) => ports.textValue(row.id, ''),
+    });
+  };
+
   const runRefresh = async (): Promise<void> => {
     bundle.loading.value = true;
     try {
-      const snapshot = await ports.refresh();
-      bundle.suppliers.value = snapshot.suppliers;
-      bundle.quotes.value = snapshot.quotes;
+      applySnapshot(await ports.refresh());
       bundle.loadError.value = '';
     } catch (error: unknown) {
       fail(error, '供应商加载失败');
@@ -468,9 +482,7 @@ export function SupplierConsolePage(ports: SupplierConsolePorts) {
         qualityRatingBasisPoints: Number(values.qualityRating ?? '0') * 100,
         contact: { name: values.contactName ?? '', phone: values.contactPhone ?? '' },
       });
-      const snapshot = await ports.refresh();
-      bundle.suppliers.value = snapshot.suppliers;
-      bundle.quotes.value = snapshot.quotes;
+      applySnapshot(await ports.refresh());
       closeForm();
     } catch (error: unknown) {
       fail(error, '供应商创建失败');
@@ -502,9 +514,7 @@ export function SupplierConsolePage(ports: SupplierConsolePorts) {
         },
         'PUT',
       );
-      const snapshot = await ports.refresh();
-      bundle.suppliers.value = snapshot.suppliers;
-      bundle.quotes.value = snapshot.quotes;
+      applySnapshot(await ports.refresh());
       closeForm();
     } catch (error: unknown) {
       fail(error, '物料准入审核失败');

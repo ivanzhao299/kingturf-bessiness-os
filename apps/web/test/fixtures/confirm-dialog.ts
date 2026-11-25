@@ -25,6 +25,8 @@ export const confirmAction = async (
   confirmLabel: string,
   { destructive = false }: Readonly<{ destructive?: boolean }> = {},
 ): Promise<void> => {
+  // 触发按钮点下去之后确认框在下一拍渲染出来。
+  await flush();
   const dialog = confirmDialogOf(host);
   expect(dialog.textContent).toContain(title);
   const buttons = dialog.querySelectorAll('button');
@@ -37,6 +39,7 @@ export const confirmAction = async (
 
 /** 不确认：点确认框里的「取消」。 */
 export const dismissConfirm = async (host: TestElement): Promise<void> => {
+  await flush();
   element(confirmDialogOf(host).querySelectorAll('button')[0]).click();
   await flush();
   expect(host.querySelector('[role="alertdialog"]')).toBe(null);

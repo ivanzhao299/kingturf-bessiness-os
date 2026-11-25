@@ -397,3 +397,68 @@ describe('报价行内表单与防重复提交（FormSection 要拿到 onSubmit 
     expect(host.querySelector('.detail-drawer')).toBeNull();
   });
 });
+
+// TD-WF-008（写流程冒烟 WS-P2-05）：批准、签发后列表刷新了，开着的抽屉顶部却还是旧状态，
+// 「批准报价」按钮也还在。
+describe('U3-COM-3 报价控制台：详情抽屉随写操作刷新', () => {
+  const submitInline = async (host: TestElement): Promise<void> => {
+    element(
+      element(host.querySelector('.detail-drawer')).querySelector('button[type="submit"]'),
+    ).click();
+    await flush();
+    await flush();
+  };
+  const drawerBadge = (host: TestElement): string =>
+    element(host.querySelector('.detail-drawer .status-badge')).textContent.trim();
+
+  it('批准、签发后抽屉还开着，徽章与按钮随状态变化', async () => {
+    const ports = portsFor(['quote:approve', 'quote:issue'], {
+      initialSnapshot: { ...snapshot(), quotes: [quote({ status: 'DRAFT' })] },
+      refresh: vi
+        .fn()
+        .mockResolvedValueOnce({ ...snapshot(), quotes: [quote({ status: 'APPROVED' })] })
+        .mockResolvedValue({ ...snapshot(), quotes: [quote({ status: 'ISSUED' })] }),
+    });
+    const host = mount(ports);
+    element(host.querySelector('[data-testid="kt-quote-open"]')).click();
+    await flush();
+    expect(drawerBadge(host)).toBe('草稿');
+    expect(host.querySelector('[data-testid="kt-quote-approve"]')).not.toBeNull();
+
+    element(host.querySelector('[data-testid="kt-quote-approve"]')).click();
+    await flush();
+    fillField(host, 'reason', '报价口径已复核');
+    await flush();
+    await submitInline(host);
+    expect(ports.command).toHaveBeenLastCalledWith('quote-r2', 'approve', {
+      decision: 'APPROVED',
+      reason: '报价口径已复核',
+    });
+    expect(host.querySelector('.detail-drawer')).not.toBeNull();
+    expect(drawerBadge(host)).toBe('已批准');
+    expect(host.querySelector('[data-testid="kt-quote-approve"]')).toBeNull();
+    expect(host.querySelector('[data-testid="kt-quote-issue"]')).not.toBeNull();
+
+    element(host.querySelector('[data-testid="kt-quote-issue"]')).click();
+    await flush();
+    await submitInline(host);
+    expect(ports.command).toHaveBeenLastCalledWith('quote-r2', 'issue', undefined);
+    expect(host.querySelector('.detail-drawer')).not.toBeNull();
+    expect(drawerBadge(host)).toBe('已签发');
+    expect(host.querySelector('[data-testid="kt-quote-issue"]')).toBeNull();
+  });
+
+  it('刷新后这条报价已不在列表里：抽屉关闭', async () => {
+    const ports = portsFor(['quote:approve'], {
+      initialSnapshot: { ...snapshot(), quotes: [quote({ status: 'DRAFT' })] },
+      refresh: vi.fn().mockResolvedValue({ ...snapshot(), quotes: [] }),
+    });
+    const host = mount(ports);
+    element(host.querySelector('[data-testid="kt-quote-open"]')).click();
+    await flush();
+    element(host.querySelector('[data-testid="kt-quote-refresh"]')).click();
+    await flush();
+    await flush();
+    expect(host.querySelector('.detail-drawer')).toBeNull();
+  });
+});

@@ -11,6 +11,7 @@ import {
 import type { CreditConsolePorts, CreditRow } from './credit-ports';
 import { failureMessage } from '../../shared/api-error-message';
 import { FocusAnchor } from './focus-anchor';
+import { syncSelected } from './selected-sync';
 import { CreditFlow, DecisionFlow, STATUS_LABELS } from './credit-console-flow';
 
 // U3-COM-7（ADR-0014 分域重写）：信用审查控制台——原 vanilla credit workbench 能力面
@@ -419,6 +420,12 @@ export function CreditConsolePage(ports: CreditConsolePorts) {
     try {
       const fresh = await ports.refresh();
       bundle.decisions.value = fresh.decisions;
+      // TD-WF-008：审批后抽屉里那条仍是「等待信用审批」、批准 / 拒绝按钮还在——换成刷新后的行。
+      syncSelected({
+        selected: bundle.selected,
+        rows: fresh.decisions,
+        idOf: (row) => ports.recordText(row, 'id', 'id'),
+      });
       bundle.limits.value = fresh.limits;
       bundle.loadError.value = '';
     } catch (error: unknown) {
@@ -441,6 +448,12 @@ export function CreditConsolePage(ports: CreditConsolePorts) {
       });
       const fresh = await ports.refresh();
       bundle.decisions.value = fresh.decisions;
+      // TD-WF-008：审批后抽屉里那条仍是「等待信用审批」、批准 / 拒绝按钮还在——换成刷新后的行。
+      syncSelected({
+        selected: bundle.selected,
+        rows: fresh.decisions,
+        idOf: (row) => ports.recordText(row, 'id', 'id'),
+      });
       bundle.limits.value = fresh.limits;
       closeForm();
     } catch (error: unknown) {
@@ -466,6 +479,12 @@ export function CreditConsolePage(ports: CreditConsolePorts) {
       });
       const fresh = await ports.refresh();
       bundle.decisions.value = fresh.decisions;
+      // TD-WF-008：审批后抽屉里那条仍是「等待信用审批」、批准 / 拒绝按钮还在——换成刷新后的行。
+      syncSelected({
+        selected: bundle.selected,
+        rows: fresh.decisions,
+        idOf: (row) => ports.recordText(row, 'id', 'id'),
+      });
       closeForm();
     } catch (error: unknown) {
       fail(error, '信用评估失败');
@@ -489,6 +508,12 @@ export function CreditConsolePage(ports: CreditConsolePorts) {
       );
       const fresh = await ports.refresh();
       bundle.decisions.value = fresh.decisions;
+      // TD-WF-008：审批后抽屉里那条仍是「等待信用审批」、批准 / 拒绝按钮还在——换成刷新后的行。
+      syncSelected({
+        selected: bundle.selected,
+        rows: fresh.decisions,
+        idOf: (row) => ports.recordText(row, 'id', 'id'),
+      });
       closeForm();
     } catch (error: unknown) {
       fail(error, '信用决定失败');
