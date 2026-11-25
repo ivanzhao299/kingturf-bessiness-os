@@ -38,7 +38,9 @@ export function MovementForm({
 }>) {
   const [type, setType] = useState('WORK-ORDER');
   const [sourceId, setSource] = useState('');
-  const choices = type === 'WORK-ORDER' ? orders : movementSourceChoices(balance, type);
+  const choices = ['WORK-ORDER', 'PRODUCTION_ORDER'].includes(type)
+    ? orders
+    : movementSourceChoices(balance, type);
   return (
     <div>
       <div class="sq-rfq-fields">

@@ -36,6 +36,12 @@
   min-width: 38rem;
 }
 
-.supplier-quote-console .fin-table td:nth-last-child(-n + 2) {
+.supplier-quote-console .fin-table td:nth-last-child(-n + 2),
+.inventory-ledger-console [data-testid='kt-inv-movements'] td:nth-child(-n + 3) {
   white-space: nowrap;
+}
+
+.inventory-ledger-console [data-testid='kt-inv-movements'] {
+  min-width: 35rem;
+  table-layout: auto;
 }

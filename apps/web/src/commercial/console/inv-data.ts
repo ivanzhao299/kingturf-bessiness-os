@@ -26,6 +26,7 @@ export const locationOptions = [
 ];
 export const sourceTypeOptions = [
   { value: 'WORK-ORDER', label: '生产工单' },
+  { value: 'PRODUCTION_ORDER', label: '生产工单（生产台账）' },
   { value: 'GOODS_RECEIPT_LINE', label: '收货明细' },
   { value: 'PRODUCTION_ROLL', label: '生产入库' },
   { value: 'MANUAL', label: '已有手工来源' },
