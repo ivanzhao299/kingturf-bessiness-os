@@ -3350,7 +3350,10 @@ describe('web bootstrap', () => {
         'contract:sign',
       ]),
     );
-    controller.customers = [{ id: 'customer-1', name: '国际学校' }];
+    controller.followCrmRecords({
+      customers: [{ id: 'customer-1', name: '国际学校' }],
+      employees: [],
+    });
     await controller.load();
     const workspace = commercialWorkspaceStructure(
       'desktop',
@@ -3621,7 +3624,10 @@ describe('web bootstrap', () => {
         'commission:pay',
       ]),
     );
-    controller.employees = [{ id: 'employee-1', displayName: '销售甲', active: true }];
+    controller.followCrmRecords({
+      customers: [],
+      employees: [{ id: 'employee-1', displayName: '销售甲', active: true }],
+    });
     await controller.load();
     const workspace = commercialWorkspaceStructure(
       'desktop',
@@ -3668,7 +3674,10 @@ describe('web bootstrap', () => {
       commercialApi,
       new Set(['collection:read', 'collection:manage', 'collection:escalate']),
     );
-    controller.employees = [{ id: 'employee-1', displayName: '催收甲', active: true }];
+    controller.followCrmRecords({
+      customers: [],
+      employees: [{ id: 'employee-1', displayName: '催收甲', active: true }],
+    });
     await controller.load();
     const workspace = commercialWorkspaceStructure(
       'desktop',
@@ -3714,9 +3723,12 @@ describe('web bootstrap', () => {
       commercialApi,
       new Set(['complaint:read', 'complaint:triage', 'complaint:assign']),
     );
-    controller.employees = [
-      { id: 'employee-1', employeeNumber: 'Q-001', displayName: '质量调查员', active: true },
-    ];
+    controller.followCrmRecords({
+      customers: [],
+      employees: [
+        { id: 'employee-1', employeeNumber: 'Q-001', displayName: '质量调查员', active: true },
+      ],
+    });
     await controller.load();
     const workspace = commercialWorkspaceStructure(
       'desktop',

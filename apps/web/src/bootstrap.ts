@@ -737,8 +737,8 @@ export async function mountWorkspace(
     documents,
   );
   if (commercialController) {
-    commercialController.customers = controller.customers;
-    commercialController.employees = controller.employees;
+    // WFC-1：客户 / 员工清单读取时取 CRM 控制器的当前值（此前是这里的一次性数组拷贝）。
+    commercialController.followCrmRecords(controller);
     shell
       .querySelector<HTMLElement>('.workspace')
       ?.append(
