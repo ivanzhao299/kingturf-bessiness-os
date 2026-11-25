@@ -409,7 +409,10 @@ it('captures artificial-turf project handoff fields without test-channel evidenc
       './commercial/manufacturing-summary.ts',
       'export function appendManufacturingSummary',
     ),
-    readBoundSource('./commercial/sourcing-register.ts', 'export function createSourcingPanel'),
+    readBoundSource(
+      './commercial/console/sq-host.ts',
+      'export function appendSupplierQuoteConsole',
+    ),
     readBoundSource('./commercial/inventory-register.ts', 'export function createInventoryPanel'),
     readBoundSource('./commercial/procurement-view.ts', 'export function appendProcurementView'),
     // MFG-6：物料需求计划页随控制台迁移退役（mrp-view / mrp-actions / mrp-run / mrp-proposals
@@ -2574,9 +2577,8 @@ describe('web bootstrap', () => {
       controller,
     ) as unknown as RenderedElement;
     expect(workspace.findByClass('procurement-workbench')).toHaveLength(1);
-    // vanilla procurement-column 剩 sourcing（报价区）/inventory 两区；供应商/询价/采购单/
-    // 收货行渲染由各自控制台行为测试覆盖。
-    expect(workspace.findByClass('procurement-column')).toHaveLength(2);
+    // 供应商报价移入子路由；采购概览只保留旧批次库存台账直到 PROC-6B。
+    expect(workspace.findByClass('procurement-column')).toHaveLength(1);
     // PROC-2（TD-PROC-010）：四区控制台宿主自 procurement-workbench 面板迁出——各自成为
     // 采购子路由的路由视图，直接挂工作区根并携带 data-route-view（与其它商业控制台宿主
     // 同口径；可见性由 visibleAppRoutes 按各控制台的读权限注册）。概览面板内不再含控制台。
@@ -2592,8 +2594,8 @@ describe('web bootstrap', () => {
     host('rfqs-console', 'kt-proc-rfqs', 'procurement/rfqs');
     host('purchase-orders-console', 'kt-proc-purchase-orders', 'procurement/purchase-orders');
     host('goods-receipts-console', 'kt-proc-goods-receipts', 'procurement/goods-receipts');
-    // sourcing 报价卡片保持 vanilla（supplier-quotes 域端点未迁移）。
-    expect(workspace.textContent).toContain('报价 SQ-1');
+    host('supplier-quote-console', 'kt-sq-host', 'procurement/supplier-quotes');
+    expect(workbench?.textContent).not.toContain('报价 SQ-1');
     expect(workspace.textContent).toContain('LOT-1');
     expect(workspace.textContent).toContain('结存 5000');
     expect(inventoryLocationOption({ id: 'loc-1', code: 'RAW-A01', name: '原料一区' })).toEqual({
@@ -2656,6 +2658,7 @@ describe('web bootstrap', () => {
     'rfqs-console',
     'purchase-orders-console',
     'goods-receipts-console',
+    'supplier-quote-console',
   ] as const;
 
   it('registers procurement sub-routes from each console read permission (PROC-2)', () => {
@@ -2670,6 +2673,7 @@ describe('web bootstrap', () => {
       'procurement/rfqs',
       'procurement/purchase-orders',
       'procurement/goods-receipts',
+      'procurement/supplier-quotes',
     ]);
     expect(routesOf(['inventory:read'])).toEqual(['procurement']);
     expect(routesOf(['supplier:manage'])).toEqual(['procurement']);
@@ -2681,9 +2685,11 @@ describe('web bootstrap', () => {
       'procurement/rfqs',
       'procurement/purchase-orders',
       'procurement/goods-receipts',
+      'procurement/supplier-quotes',
     ])
       expect(appRouteFromHash(`#/${route}`)).toBe(route);
     expect(appRouteFromHash('#/procurement/unknown')).toBe('overview');
+    expect(appRouteFromHash('#/procurement/rfqs?rfq=rfq-1')).toBe('procurement/rfqs');
     // 旧书签 #/procurement 仍解析为概览。
     expect(appRouteFromHash('#/procurement')).toBe('procurement');
     expect(APP_ROUTE_LABELS.procurement).toBe('采购概览');
@@ -2699,9 +2705,11 @@ describe('web bootstrap', () => {
       'procurement/rfqs',
       'procurement/purchase-orders',
       'procurement/goods-receipts',
+      'procurement/supplier-quotes',
     ]);
     expect(routesByConsole(await procurementWorkspace(['supplier:read']))).toEqual([
       'procurement/suppliers',
+      null,
       null,
       null,
       null,
@@ -2709,7 +2717,7 @@ describe('web bootstrap', () => {
     // 只有库存权限的岗位（如库存控制员）：概览与其台账仍在，不挂任何控制台。
     const inventoryOnly = await procurementWorkspace(['inventory:read']);
     expect(inventoryOnly.findByClass('procurement-workbench')).toHaveLength(1);
-    expect(inventoryOnly.findByClass('procurement-column')).toHaveLength(2);
+    expect(inventoryOnly.findByClass('procurement-column')).toHaveLength(1);
     expect(inventoryOnly.findByClass('commercial-console')).toHaveLength(0);
   });
 
@@ -2770,6 +2778,7 @@ describe('web bootstrap', () => {
       ['procurement/rfqs', '询价管理'],
       ['procurement/purchase-orders', '采购订单'],
       ['procurement/goods-receipts', '收货管理'],
+      ['procurement/supplier-quotes', '供应商报价'],
     ]);
     expect(procurementItems(['supplier:read'])).toEqual([
       ['procurement', '采购概览'],
@@ -2784,7 +2793,7 @@ describe('web bootstrap', () => {
       );
     expect(procurementParents).toHaveLength(1);
     expect(procurementParents[0]?.getAttribute('data-nav-routes')).toBe(
-      'procurement procurement/suppliers procurement/rfqs procurement/purchase-orders procurement/goods-receipts',
+      'procurement procurement/suppliers procurement/rfqs procurement/purchase-orders procurement/goods-receipts procurement/supplier-quotes',
     );
     expect(procurementParents[0]?.textContent).toContain('采购管理');
   });

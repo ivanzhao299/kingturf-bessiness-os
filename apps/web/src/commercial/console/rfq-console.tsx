@@ -1,4 +1,5 @@
 import { signal } from '@preact/signals';
+import { useEffect } from 'preact/hooks';
 import {
   DataTable,
   DetailDrawer,
@@ -535,6 +536,24 @@ export function RfqConsolePage(ports: RfqConsolePorts) {
     runState,
   });
 
-  const Page = () => RfqView(state());
+  const Page = () => {
+    useEffect(() => {
+      if (typeof globalThis.addEventListener !== 'function') return;
+      const events = new AbortController();
+      const openLinkedRfq = () => {
+        const hash = globalThis.location.hash;
+        if (!hash.startsWith('#/procurement/rfqs?')) return;
+        const id = new URLSearchParams(hash.slice(hash.indexOf('?') + 1)).get('rfq');
+        const row = bundle.rfqs.peek().find((entry) => entry.id === id);
+        if (row) state().open(row);
+      };
+      globalThis.addEventListener('hashchange', openLinkedRfq, { signal: events.signal });
+      openLinkedRfq();
+      return () => {
+        events.abort();
+      };
+    }, []);
+    return RfqView(state());
+  };
   return Page;
 }

@@ -4,7 +4,12 @@
 // 不随概览路由的前缀规则一并放行。做法同 governance/surfaces.ts（surface → route → readPermission）。
 import type { AppRoute } from '../shared/navigation';
 
-export type ProcurementConsoleId = 'suppliers' | 'rfqs' | 'purchase-orders' | 'goods-receipts';
+export type ProcurementConsoleId =
+  | 'suppliers'
+  | 'rfqs'
+  | 'purchase-orders'
+  | 'goods-receipts'
+  | 'supplier-quotes';
 
 export type ProcurementSurface = Readonly<{
   id: ProcurementConsoleId;
@@ -21,6 +26,11 @@ export const PROCUREMENT_SURFACES: readonly ProcurementSurface[] = [
     readPermission: 'procurement:read',
   },
   { id: 'goods-receipts', route: 'procurement/goods-receipts', readPermission: 'procurement:read' },
+  {
+    id: 'supplier-quotes',
+    route: 'procurement/supplier-quotes',
+    readPermission: 'procurement:read',
+  },
 ];
 
 export const visibleProcurementSurfaces = (
