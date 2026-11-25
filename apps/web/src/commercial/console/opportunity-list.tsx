@@ -21,6 +21,7 @@ import {
   stageTone,
 } from './opportunity-list-pipeline';
 import { failureMessage } from '../../shared/api-error-message';
+import { ConsoleNotice } from './console-notice';
 
 // U3-COM-1（ADR-0014 分域重写）：商机列表页 Preact 控制台——原 vanilla pipeline-board
 // 的能力面等价迁移（看板概要/新建/阶段推进/逾期标记），端口层收敛为最小 Props 面
@@ -62,6 +63,10 @@ export type OpportunityPageState = Readonly<{
   creating: boolean;
   /** 新建表单的提交错误（TD-WF-005）：显示在该表单的提示区，不进 loadError。 */
   createError: string;
+  /** 详情抽屉里「推进商机阶段」表单的提交错误（WFD）：显示在该表单的提示区，不进 loadError。 */
+  drawerError: string;
+  /** TD-WF-014①（WFD 补齐）：最近一次写操作的成功提示（同时是读屏播报的内容）。 */
+  notice: string;
   permissions: ReadonlySet<string>;
   today: string;
   customers: readonly OpportunityCreator[];
@@ -70,7 +75,6 @@ export type OpportunityPageState = Readonly<{
   setView: (next: OpportunityViewMode) => void;
   pendingMove: PendingMove | null;
   moveError: string;
-  notice: string;
   focusTarget: string;
   /** 正在拖拽的商机 id 与其下方的目标列（空串 = 无）。 */
   dragging: string;
@@ -218,6 +222,9 @@ const OpportunityDrawer = ({ state }: Readonly<{ state: OpportunityPageState }>)
             description={`从「${stageLabel(opportunity.status)}」推进至「${stageLabel(nextStage)}」。`}
             fields={[{ name: 'reason', label: '推进依据', type: 'textarea', required: true }]}
             submitLabel="确认推进"
+            // WFD：失败原因显示在这张表单自己的提示区。此前它走 loadError——管道视图下整个看板被一条
+            // 错误替换，而抽屉还开着挡在前面，用户在抽屉里什么也看不到。
+            error={state.drawerError}
             onSubmit={(values) => state.runTransition(opportunity, nextStage, values.reason ?? '')}
           />
         </div>
@@ -384,11 +391,8 @@ const OpportunityView = (state: OpportunityPageState) => (
         </>
       }
     />
+    <ConsoleNotice message={state.notice} />
     <OpportunitySummary state={state} />
-    {/* 容器先于内容存在，移动结果才能被读屏播报（live region 不与内容同时挂载）。 */}
-    <p class="com-visually-hidden" role="status" data-testid="kt-opportunity-notice">
-      {state.notice}
-    </p>
     {OpportunityBody(state)}
     {state.selected ? <OpportunityDrawer state={state} /> : null}
     {state.creating ? <CreateDrawer state={state} /> : null}
@@ -402,6 +406,8 @@ export function OpportunityListPage(ports: OpportunityListPorts) {
   const selected = signal<Opportunity | null>(null);
   const creating = signal(false);
   const createError = signal('');
+  // WFD：详情抽屉里推进表单的提交错误。
+  const drawerError = signal('');
   const view = signal<OpportunityViewMode>('pipeline');
   const pendingMove = signal<PendingMove | null>(null);
   const moveError = signal('');
@@ -431,6 +437,8 @@ export function OpportunityListPage(ports: OpportunityListPorts) {
     reason: string,
   ): Promise<void> => {
     loading.value = true;
+    drawerError.value = '';
+    moveError.value = '';
     try {
       applyItems(await ports.transitionOpportunity(opportunity, status, reason));
       selected.value = null;
@@ -442,10 +450,10 @@ export function OpportunityListPage(ports: OpportunityListPorts) {
         focusTarget.value = opportunity.id;
       }
     } catch (error: unknown) {
-      // 卡片流失败就地呈现并保留已输入依据；抽屉流失败走列表/看板级错误面。
+      // 卡片流失败就地呈现并保留已输入依据；抽屉流失败（WFD）同样显示在抽屉里那张表单的提示区。
       if (pendingMove.value?.opportunity.id === opportunity.id)
         moveError.value = messageOf(error, '商机阶段推进失败');
-      else fail(error, '商机阶段推进失败');
+      else drawerError.value = messageOf(error, '商机阶段推进失败');
     } finally {
       loading.value = false;
     }
@@ -459,6 +467,8 @@ export function OpportunityListPage(ports: OpportunityListPorts) {
     try {
       applyItems(await ports.createOpportunity(payload));
       creating.value = false;
+      notice.value =
+        typeof payload.name === 'string' ? `已创建商机「${payload.name}」` : '已创建商机';
     } catch (error: unknown) {
       createError.value = messageOf(error, '商机创建失败');
     } finally {
@@ -500,6 +510,8 @@ export function OpportunityListPage(ports: OpportunityListPorts) {
     selected: selected.value,
     creating: creating.value,
     createError: createError.value,
+    drawerError: drawerError.value,
+    notice: notice.value,
     permissions: ports.permissions,
     today: ports.today,
     customers: ports.customers,
@@ -510,7 +522,6 @@ export function OpportunityListPage(ports: OpportunityListPorts) {
     },
     pendingMove: pendingMove.value,
     moveError: moveError.value,
-    notice: notice.value,
     focusTarget: focusTarget.value,
     dragging: dragging.value,
     over: over.value,
@@ -549,16 +560,21 @@ export function OpportunityListPage(ports: OpportunityListPorts) {
     clearFocusTarget: () => {
       focusTarget.value = '';
     },
+    // 开始下一个动作时清掉上一次的成功提示（与 createError / drawerError 同一处）。
     open: (opportunity) => {
       selected.value = opportunity;
+      drawerError.value = '';
+      notice.value = '';
     },
     openCreate: () => {
       creating.value = true;
       createError.value = '';
+      notice.value = '';
     },
     closeCreate: () => {
       creating.value = false;
       createError.value = '';
+      notice.value = '';
     },
     runTransition,
     runCreate,

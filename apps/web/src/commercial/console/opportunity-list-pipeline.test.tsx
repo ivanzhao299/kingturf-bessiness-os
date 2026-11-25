@@ -307,10 +307,12 @@ describe('COM-UX 商机管道视图', () => {
     expect(moveForm(host)).toBeNull();
     expect(column(host, 'QUALIFIED').getAttribute('data-count')).toBe('1');
     expect(column(host, 'OPEN').getAttribute('data-count')).toBe('0');
-    const notice = element(host.querySelector('[data-testid="kt-opportunity-notice"]'));
+    // WFD：移动结果的状态行改用各控制台共用的 ConsoleNotice（此前是一条只给读屏的隐藏播报）；
+    // role=status 与文案不变，现在页面上也看得见。
+    const notice = element(host.querySelector('[data-testid="console-notice"]'));
     expect(notice.getAttribute('role')).toBe('status');
-    expect(notice.textContent).toContain('国际学校足球场');
-    expect(notice.textContent).toContain('需求确认');
+    expect(notice.textContent).toBe('已将「国际学校足球场」移动到「需求确认」');
+    expect(host.querySelector('.com-visually-hidden[role="status"]')).toBeNull();
     const active = TestDocument.current.activeElement as TestElement | null;
     expect(active?.getAttribute('data-testid')).toBe('kt-opportunity-open');
     expect(active?.textContent).toContain('国际学校足球场');

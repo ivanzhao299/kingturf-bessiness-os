@@ -152,6 +152,10 @@ describe('U3-COM-1 商机列表控制台', () => {
       probabilityBasisPoints: 4000,
       expectedCloseDate: '2026-11-30',
     });
+    expect(host.querySelector('.detail-drawer')).toBeNull();
+    expect(host.querySelector('[data-testid="console-notice"]')?.textContent).toBe(
+      '已创建商机「俱乐部球场」',
+    );
   });
 
   it('lifecycle 流：查看→推进→提交即 transition（2 步度量，原推进语义保持）', async () => {
@@ -174,6 +178,28 @@ describe('U3-COM-1 商机列表控制台', () => {
       'QUALIFIED',
       '客户确认需求清单',
     );
+  });
+
+  it('推进被拒绝时在触发表单显示中文原因，保留依据和看板', async () => {
+    const ports = portsFor([opportunity()], ['opportunity:lifecycle'], {
+      transitionOpportunity: vi.fn().mockRejectedValue(new Error('Opportunity version conflict')),
+    });
+    const host = mount(ports);
+    element(host.querySelector('[data-testid="kt-opportunity-open"]')).click();
+    await flush();
+    const form = element(host.querySelector('[data-testid="kt-opportunity-transition"]'));
+    const textarea = element(form.querySelector('textarea'));
+    textarea.value = '客户确认需求清单';
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    await flush();
+    element(form.querySelector('button[type="submit"]')).click();
+    await flush();
+    expect(form.querySelector('[role="alert"]')?.textContent).toBe(
+      '这条记录已在别处被修改，请刷新后重试',
+    );
+    expect(textarea.value).toBe('客户确认需求清单');
+    expect(host.querySelector('[data-testid="kt-opportunity-pipeline"]')).not.toBeNull();
+    expect(host.querySelector('[data-testid="console-notice"]')?.textContent).toBe('');
   });
 
   it('无 lifecycle 权限时抽屉不出现推进表单（空态替代）', async () => {
