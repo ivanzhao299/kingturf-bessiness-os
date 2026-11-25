@@ -306,17 +306,15 @@
   color: var(--kt-color-success);
   font-weight: var(--kt-font-weight-semibold);
 }
-.gov-matrix-confirm {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--kt-space-2);
-  padding: var(--kt-space-2) var(--kt-space-3);
-  border: 1px solid var(--kt-color-danger);
-  border-radius: var(--kt-radius-md);
-  background: var(--kt-color-danger-soft);
-  color: var(--kt-color-danger);
-  font-size: var(--kt-font-size-body);
+/* 权限较多时只滚动说明，确认对象和取消/确认按钮仍在视口内。 */
+.gov-matrix-block .confirm-message {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  overflow-wrap: anywhere;
+}
+.gov-matrix-block :is(.confirm-title, .confirm-actions) {
+  flex-shrink: 0;
 }
 
 /* ===== ④ 版本对比（上一版本 vs 当前版本并排差异高亮） ===== */
