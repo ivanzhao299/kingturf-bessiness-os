@@ -426,8 +426,9 @@ def main():
                      '-e', 'POSTGRES_DB=verification', '-e', 'POSTGRES_HOST_AUTH_METHOD=trust', pg_image])
             try:
                 for attempt in range(30):
-                    probe = subprocess.run(['docker', 'exec', scratch, 'pg_isready', '-U', 'verify',
-                                            '-d', 'verification'], capture_output=True)
+                    # The image's temporary init server listens only on a Unix socket.
+                    probe = subprocess.run(['docker', 'exec', scratch, 'pg_isready', '-h', '127.0.0.1',
+                                            '-U', 'verify', '-d', 'verification'], capture_output=True)
                     if probe.returncode == 0:
                         break
                     time.sleep(1)
