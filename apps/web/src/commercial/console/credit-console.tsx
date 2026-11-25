@@ -59,6 +59,37 @@ const statusTone = (status: unknown): StatusTone => {
 const decisionStatus = (ports: CreditConsolePorts, decision: CreditRow): string =>
   ports.recordText(decision, 'effectiveStatus', 'effective_status', 'PENDING_APPROVAL');
 
+const decisionQuoteRevisionId = (ports: CreditConsolePorts, decision: CreditRow): string =>
+  ports.recordText(decision, 'quoteRevisionId', 'quote_revision_id');
+
+// TD-WF-014⑧（写流程冒烟 WS-P3-08）：信用决定此前只用报价版本 ID 的前 8 位标识——列表「关联报价」列与
+// 详情抽屉标题都是「5e93c116」这样的片段，认不出是哪个客户、哪份报价。决定行带客户与报价版本，
+// 报价清单里有报价编号，客户清单里有名称：标出「客户 · 报价 编号 · 第 N 版」。
+// 两样都解析不到（没有报价 / 客户的读权限，或清单里找不到）才退回 ID 片段。
+export const decisionQuoteLabel = (ports: CreditConsolePorts, decision: CreditRow): string => {
+  const revisionId = decisionQuoteRevisionId(ports, decision);
+  const quote = ports.issuedQuotes.find((item) => ports.textValue(item.id, '') === revisionId);
+  const number = quote ? ports.textValue(quote.quoteNumber, '') : '';
+  if (number === '') return '';
+  const revision = ports.textValue(quote?.revision, '');
+  return `报价 ${number}${revision === '' ? '' : ` · 第 ${revision} 版`}`;
+};
+
+export const decisionCustomerLabel = (ports: CreditConsolePorts, decision: CreditRow): string => {
+  const customerId = ports.recordText(decision, 'customerId', 'customer_id');
+  return ports.customers.find((customer) => customer.id === customerId)?.name ?? '';
+};
+
+export const decisionLabel = (ports: CreditConsolePorts, decision: CreditRow): string => {
+  const parts = [
+    decisionCustomerLabel(ports, decision),
+    decisionQuoteLabel(ports, decision),
+  ].filter((part) => part !== '');
+  return parts.length > 0
+    ? parts.join(' · ')
+    : `报价版本 ${decisionQuoteRevisionId(ports, decision).slice(0, 8)}`;
+};
+
 const columns = (state: CreditPageState): readonly DataTableColumn<CreditRow>[] => [
   {
     key: 'status',
@@ -92,10 +123,8 @@ const columns = (state: CreditPageState): readonly DataTableColumn<CreditRow>[] 
   {
     key: 'quote',
     header: '关联报价',
-    field: (row) => state.ports.recordText(row, 'quoteRevisionId', 'quote_revision_id'),
-    render: (row) => (
-      <span>{state.ports.recordText(row, 'quoteRevisionId', 'quote_revision_id').slice(0, 8)}</span>
-    ),
+    field: (row) => decisionLabel(state.ports, row),
+    render: (row) => <span>{decisionLabel(state.ports, row)}</span>,
   },
   {
     key: 'actions',
@@ -121,10 +150,9 @@ const filteredDecisions = (state: CreditPageState): readonly CreditRow[] =>
     const status = decisionStatus(state.ports, row);
     if (state.statusFilter !== 'ALL' && status !== state.statusFilter) return false;
     if (state.search === '') return true;
-    return state.ports
-      .recordText(row, 'quoteRevisionId', 'quote_revision_id')
-      .toLowerCase()
-      .includes(state.search.toLowerCase());
+    // 按报价编号或客户名称检索；报价版本 ID 仍可检索（此前只能按它检索，而界面上并不显示它）。
+    const haystack = `${decisionLabel(state.ports, row)}${decisionQuoteRevisionId(state.ports, row)}`;
+    return haystack.toLowerCase().includes(state.search.toLowerCase());
   });
 
 const CreditDetail = ({ state }: Readonly<{ state: CreditPageState }>) => {
@@ -173,7 +201,7 @@ const CreditDrawer = ({ state }: Readonly<{ state: CreditPageState }>) => {
   const { ports } = state;
   return (
     <DetailDrawer
-      title={`信用决定详情 · ${ports.recordText(decision, 'quoteRevisionId', 'quote_revision_id').slice(0, 8)}`}
+      title={`信用决定详情 · ${decisionLabel(ports, decision)}`}
       onClose={() => {
         state.open(null);
       }}

@@ -399,3 +399,85 @@ describe('信用审查：详情抽屉随写操作刷新', () => {
     expect(host.querySelector('[data-testid="kt-credit-reject"]')).toBeNull();
   });
 });
+
+// TD-WF-014⑧（写流程冒烟 WS-P3-08）：信用决定此前只用报价版本 ID 的前 8 位标识——列表「关联报价」列与
+// 详情抽屉标题都是「quote-re」这样的片段，认不出是哪个客户、哪份报价。
+describe('信用审查：信用决定以客户与报价编号标识', () => {
+  const issuedQuotes: readonly CreditRow[] = [
+    {
+      id: 'quote-rev-1',
+      quoteNumber: 'Q-KT-P1-DEMO',
+      revision: 2,
+      status: 'ISSUED',
+      issuedSnapshotId: 'snap-1',
+      customerId: 'customer-1',
+    },
+  ];
+
+  it('列表「关联报价」列与抽屉标题都显示「客户 · 报价 编号 · 第 N 版」，不再出现 ID 片段', async () => {
+    const host = mount(portsFor([pending], [], { issuedQuotes }));
+    expect(rows(host)[0]?.textContent).toContain('Acme Turf · 报价 Q-KT-P1-DEMO · 第 2 版');
+    expect(host.textContent).not.toContain('quote-re');
+    await openRow(host, 0);
+    const title = element(host.querySelector('.detail-drawer h2')).textContent;
+    expect(title).toBe('信用决定详情 · Acme Turf · 报价 Q-KT-P1-DEMO · 第 2 版');
+  });
+
+  it('检索：按报价编号或客户名称能搜到；按报价版本 ID 仍能搜到', async () => {
+    const other = decision({
+      id: 'decision-2',
+      customer_id: 'customer-2',
+      quote_revision_id: 'quote-rev-2',
+    });
+    const ports = portsFor([pending, other], [], {
+      issuedQuotes: [
+        ...issuedQuotes,
+        { ...issuedQuotes[0], id: 'quote-rev-2', quoteNumber: 'Q-KT-OTHER', revision: 1 },
+      ],
+      customers: [
+        { id: 'customer-1', name: 'Acme Turf' },
+        { id: 'customer-2', name: '宁波草纱三厂' },
+      ],
+    });
+    const host = mount(ports);
+    const search = element(host.querySelector('[data-testid="kt-credit-search"]'));
+    const type = async (text: string): Promise<void> => {
+      search.value = text;
+      search.dispatchEvent(new Event('input', { bubbles: true }));
+      await flush();
+    };
+    expect(rows(host)).toHaveLength(2);
+    await type('Q-KT-OTHER');
+    expect(rows(host)).toHaveLength(1);
+    expect(rows(host)[0]?.textContent).toContain('宁波草纱三厂');
+    await type('Acme');
+    expect(rows(host)).toHaveLength(1);
+    expect(rows(host)[0]?.textContent).toContain('Q-KT-P1-DEMO');
+    await type('quote-rev-2');
+    expect(rows(host)).toHaveLength(1);
+    expect(rows(host)[0]?.textContent).toContain('宁波草纱三厂');
+  });
+
+  it('报价或客户解析不到时不编造：缺的那一项不显示；两样都没有才退回 ID 片段', async () => {
+    // 没有报价读权限：issuedQuotes 为空——只剩客户名。
+    const quoteHidden = mount(portsFor([pending]));
+    expect(rows(quoteHidden)[0]?.textContent).toContain('Acme Turf');
+    expect(rows(quoteHidden)[0]?.textContent).not.toContain('报价 ');
+    await openRow(quoteHidden, 0);
+    expect(element(quoteHidden.querySelector('.detail-drawer h2')).textContent).toBe(
+      '信用决定详情 · Acme Turf',
+    );
+    // 客户也解析不到：退回报价版本 ID 的前 8 位。
+    const unknown = decision({
+      id: 'decision-x',
+      customer_id: 'customer-?',
+      quote_revision_id: 'quote-rev-9',
+    });
+    const bare = mount(portsFor([unknown]));
+    expect(rows(bare)[0]?.textContent).toContain('报价版本 quote-re');
+    await openRow(bare, 0);
+    expect(element(bare.querySelector('.detail-drawer h2')).textContent).toBe(
+      '信用决定详情 · 报价版本 quote-re',
+    );
+  });
+});
