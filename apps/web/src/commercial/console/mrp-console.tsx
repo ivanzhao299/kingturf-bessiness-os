@@ -190,7 +190,7 @@ const MrpConsoleView = (state: MrpViewState) => {
               type="button"
               class="secondary"
               data-testid="kt-mrp-refresh"
-              disabled={state.loading}
+              disabled={state.loading || state.refreshing}
               onClick={() => {
                 void state.runRefresh();
               }}
@@ -245,6 +245,11 @@ const MrpConsoleView = (state: MrpViewState) => {
           {state.loadError}
         </p>
       ) : null}
+      {!drawerOpen && state.refreshError !== '' ? (
+        <p class="console-error" role="alert" data-testid="kt-mrp-refresh-error">
+          {state.refreshError}
+        </p>
+      ) : null}
       {state.actionError !== '' ? (
         <p class="console-error" role="alert" data-testid="kt-mrp-action-error">
           {state.actionError}
@@ -273,7 +278,6 @@ export function MrpConsolePage(ports: MrpConsolePorts) {
   const loaders = createMrpLoaders(ports, bundle);
   const mutations = createMrpMutations(ports, bundle, {
     sync: loaders.sync,
-    loadProposals: loaders.loadProposals,
     actionFailed: loaders.actionFailed,
   });
   // 建议主表走桥轨列表（筛选 / 搜索 / 键集分页）；默认看最新批次。
@@ -295,6 +299,8 @@ export function MrpConsolePage(ports: MrpConsolePorts) {
     loading: bundle.loading.value,
     loadingMore: bundle.loadingMore.value,
     loadError: bundle.loadError.value,
+    refreshError: bundle.refreshError.value,
+    refreshing: bundle.refreshing.value,
     actionError: bundle.actionError.value,
     submitError: bundle.submitError.value,
     selected: bundle.selected.value,

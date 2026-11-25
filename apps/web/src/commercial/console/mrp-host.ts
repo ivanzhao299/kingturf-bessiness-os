@@ -1,9 +1,10 @@
 // MFG-6：物料需求计划控制台宿主——原 vanilla「物料需求与建议审批」页面（mrp-view / mrp-actions /
 // mrp-run / mrp-proposals）迁移至 Preact；面板 .mrp-workbench 及其 data-testid、路由标记保持不变。
-// 三个列表沿用路由加载的全量快照（controller.views 同源），写后经 controller.load 重读——汇总卡与
+// 三个列表沿用路由加载的全量快照（controller.views 同源），写后按来源重读——汇总卡与
 // 页签按取数回调读最新快照；建议主表与批次详情走桥轨 additive 端点（GET /api/v1/mrp-proposals、
 // GET /api/v1/mrp-runs/:id）。物料下拉按最新视图计算（console-choices），不再是挂载时的快照。
 import { el } from '../../dom';
+import type { CommercialController } from '../store/controller';
 import type { OperationsViewContext } from '../operations-view-ports';
 import { ITEM_VERSIONS_PATH, itemVersionChoicesOf, perView } from './console-choices';
 import type {
@@ -26,7 +27,10 @@ const pageUrl = (query: MrpProposalQuery): string => {
   return params ? `${PROPOSALS_PATH}?${params}` : PROPOSALS_PATH;
 };
 
-export function appendMrpConsole(context: OperationsViewContext, panel: HTMLElement): void {
+export function appendMrpConsole(
+  context: OperationsViewContext & { controller: Pick<CommercialController, 'refreshViews'> },
+  panel: HTMLElement,
+): void {
   const { controller, permissions, status } = context;
   const { recordText, businessStateLabel, operationsNextAction } = context.ports;
   const read = controller.api.get;
@@ -71,9 +75,16 @@ export function appendMrpConsole(context: OperationsViewContext, panel: HTMLElem
       await controller.submit(path, payload, method);
       return null;
     },
-    // 与 legacy 页面的 refresh 同式：整站重载后把状态行换成 controller.message。
     refresh: async () => {
-      await controller.load();
+      const sources = [
+        ['mrp-policy:read', POLICIES_PATH],
+        ['mrp:read', DEMANDS_PATH],
+        ['mrp:read', RUNS_PATH],
+        ['manufacturing-item:read', ITEM_VERSIONS_PATH],
+      ] as const;
+      await controller.refreshViews(
+        sources.filter(([capability]) => permissions.has(capability)).map(([, path]) => path),
+      );
       status.textContent = controller.message;
       return snapshot();
     },

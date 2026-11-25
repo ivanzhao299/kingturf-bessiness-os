@@ -1,5 +1,6 @@
 import { el } from '../dom';
 import type { WorkspaceAssemblyContext } from './workspace-assembly-ports';
+import type { CommercialController } from './store/controller';
 import type { OperationsViewContext } from './operations-view-ports';
 import { appendManufacturingView } from './manufacturing-view';
 import { appendProcurementView } from './procurement-view';
@@ -7,7 +8,9 @@ import { appendMrpConsole } from './console/mrp-host';
 import { appendQualityView } from './quality-view';
 
 export function appendWorkspaceOperations(
-  context: WorkspaceAssemblyContext<OperationsViewContext['controller']>,
+  context: WorkspaceAssemblyContext<
+    OperationsViewContext['controller'] & Pick<CommercialController, 'refreshViews'>
+  >,
   operationsViewPorts: OperationsViewContext['ports'],
 ): void {
   const { workspace, status, controller, permissions } = context;

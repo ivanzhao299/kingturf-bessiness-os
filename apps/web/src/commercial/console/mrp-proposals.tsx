@@ -99,7 +99,7 @@ const columns = (state: MrpViewState): readonly DataTableColumn<MrpRow>[] => [
                 type="button"
                 class="secondary compact"
                 data-testid={`kt-mrp-${action.form}`}
-                disabled={state.loading}
+                disabled={state.loading || state.refreshing}
                 onClick={() => {
                   state.openForm(action.form, row);
                 }}

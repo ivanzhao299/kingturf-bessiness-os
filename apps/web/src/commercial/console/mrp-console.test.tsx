@@ -241,6 +241,34 @@ describe('MRP console', () => {
     expect(byId(host, 'detail').textContent).toContain('已审批');
   });
 
+  it('keeps a saved approval when the batch list fails to refresh', async () => {
+    const approved = row('APPROVED');
+    const refresh = vi
+      .fn<MrpConsolePorts['refresh']>()
+      .mockRejectedValue(new Error('批次列表刷新失败'));
+    const loadRunDetail = vi
+      .fn<MrpConsolePorts['loadRunDetail']>()
+      .mockResolvedValueOnce({ proposals: [row()] })
+      .mockResolvedValue({ proposals: [approved] });
+    const fetchProposals = vi
+      .fn<MrpConsolePorts['fetchProposals']>()
+      .mockResolvedValueOnce({ items: [row()], nextCursor: null })
+      .mockResolvedValue({ items: [approved], nextCursor: null });
+    const { host, submit } = setup({ refresh, loadRunDetail, fetchProposals });
+    await flush();
+    await open(host, 'open');
+    await open(host, 'detail-approve');
+    await formValues(host, { reason: '核对', approval: 'EV', freezeOverrideApproval: 'FREEZE' });
+    await submitForm(host);
+    await confirm(host, '确认批准');
+    expect(submit).toHaveBeenCalledTimes(1);
+    expect(byId(host, 'detail').textContent).toContain('已审批');
+    expect(byId(host, 'detail-release').textContent).toBe('下达');
+    expect(host.querySelector('[data-testid="kt-mrp-detail-approve"]')).toBeNull();
+    expect(byId(host, 'refresh-error').textContent).toContain('批次列表刷新失败');
+    expect(element(host, '.console-notice').textContent).toContain('已批准');
+  });
+
   it('avoids unavailable proposal requests and hides write actions for policy readers', async () => {
     const { host, fetchProposals } = setup({
       permissions: new Set(['mrp-policy:read']),

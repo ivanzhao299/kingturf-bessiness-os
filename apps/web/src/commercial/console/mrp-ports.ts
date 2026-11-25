@@ -39,6 +39,6 @@ export type MrpConsolePorts = Readonly<{
     payload: Record<string, unknown>,
     method?: 'POST' | 'PATCH' | 'PUT',
   ) => Promise<Readonly<Record<string, unknown>> | null>;
-  // 整站重读（controller.load）之后，按取数回调取三个列表的最新快照——汇总卡与各页签据此重算。
+  // 刷新 MRP 相关数据源后取三个列表的最新快照。有来源失败时抛出，建议与详情仍可独立刷新。
   refresh: () => Promise<MrpSnapshot>;
 }>;

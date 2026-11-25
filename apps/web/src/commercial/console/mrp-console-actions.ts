@@ -45,6 +45,8 @@ export type MrpBundle = Readonly<{
   loading: Signal<boolean>;
   loadingMore: Signal<boolean>;
   loadError: Signal<string>;
+  refreshError: Signal<string>;
+  refreshing: Signal<boolean>;
   actionError: Signal<string>;
   submitError: Signal<string>;
   selected: Signal<MrpRow | null>;
@@ -88,6 +90,8 @@ export type MrpViewState = Readonly<{
   loading: boolean;
   loadingMore: boolean;
   loadError: string;
+  refreshError: string;
+  refreshing: boolean;
   actionError: string;
   submitError: string;
   selected: MrpRow | null;
@@ -141,6 +145,8 @@ export const createMrpBundle = (initial: MrpSnapshot): MrpBundle => ({
   loading: signal(false),
   loadingMore: signal(false),
   loadError: signal(''),
+  refreshError: signal(''),
+  refreshing: signal(false),
   actionError: signal(''),
   submitError: signal(''),
   selected: signal<MrpRow | null>(null),
@@ -171,6 +177,60 @@ export const decisionActions = (
   if (status === 'APPROVED' && state.mayRelease) return [{ form: 'release', label: '下达' }];
   return [];
 };
+
+function createMrpRefresh(
+  ports: MrpConsolePorts,
+  bundle: MrpBundle,
+  loadProposals: () => Promise<void>,
+  reloadDetail: () => Promise<void>,
+) {
+  // 选中的批次不在最新快照里时回到最新批次。
+  const settleRun = (): void => {
+    const runs = bundle.snapshot.value.runs;
+    if (!runs) return;
+    if (!runs.some((run) => idOf(run) === bundle.runId.value))
+      bundle.runId.value = latestRunId(bundle.snapshot.value);
+  };
+  const allProposals = (): readonly MrpRow[] =>
+    (bundle.snapshot.value.runs ?? []).flatMap((run) => records(run.proposals));
+
+  return async (switchToLatest = false): Promise<void> => {
+    if (bundle.refreshing.value || bundle.submitting.value) return;
+    bundle.refreshing.value = true;
+    bundle.refreshError.value = '';
+    try {
+      let snapshotFresh = false;
+      try {
+        bundle.snapshot.value = await ports.refresh();
+        snapshotFresh = true;
+        if (switchToLatest) bundle.runId.value = latestRunId(bundle.snapshot.value);
+        else settleRun();
+      } catch (error: unknown) {
+        bundle.refreshError.value = failureMessage(error, '物料计划刷新失败');
+      }
+      await loadProposals();
+      if (!bundle.selected.value) return;
+      const freshRows = snapshotFresh
+        ? [...bundle.proposals.value, ...allProposals()]
+        : bundle.proposals.value;
+      const current = bundle.selected.value;
+      if (freshRows.some((row) => idOf(row) === idOf(current))) {
+        syncSelected({ selected: bundle.selected, rows: freshRows, idOf });
+        await reloadDetail();
+      } else {
+        await reloadDetail();
+        if (bundle.selected.value === current)
+          syncSelected({
+            selected: bundle.selected,
+            rows: records(bundle.detail.value?.proposals),
+            idOf,
+          });
+      }
+    } finally {
+      bundle.refreshing.value = false;
+    }
+  };
+}
 
 // 装载 / 筛选 / 详情闭包（变更动作经 createMrpMutations 注入 io）。
 export function createMrpLoaders(ports: MrpConsolePorts, bundle: MrpBundle) {
@@ -260,30 +320,7 @@ export function createMrpLoaders(ports: MrpConsolePorts, bundle: MrpBundle) {
       if (sequence === detailSequence) bundle.detailLoading.value = false;
     }
   };
-  // 选中的批次不在最新快照里时回到最新批次。
-  const settleRun = (): void => {
-    const runs = bundle.snapshot.value.runs;
-    if (!runs) return;
-    if (!runs.some((run) => idOf(run) === bundle.runId.value))
-      bundle.runId.value = latestRunId(bundle.snapshot.value);
-  };
-  const allProposals = (): readonly MrpRow[] =>
-    (bundle.snapshot.value.runs ?? []).flatMap((run) => records(run.proposals));
-
-  const sync = async (): Promise<void> => {
-    bundle.loading.value = true;
-    try {
-      bundle.snapshot.value = await ports.refresh();
-      settleRun();
-      await loadProposals();
-      // 详情抽屉开着：换成刷新后的行并重读详情（状态、按钮、流转记录随之更新）。
-      if (syncSelected({ selected: bundle.selected, rows: allProposals(), idOf }))
-        await reloadDetail();
-    } catch (error: unknown) {
-      loadFailed(error, '物料计划刷新失败');
-      bundle.loading.value = false;
-    }
-  };
+  const sync = createMrpRefresh(ports, bundle, loadProposals, reloadDetail);
   // 用户开始下一个动作（打开别的记录或表单、切换筛选）时清掉上一次的成功提示与错误。
   const resetFeedback = (): void => {
     bundle.submitError.value = '';
@@ -310,7 +347,7 @@ export function createMrpLoaders(ports: MrpConsolePorts, bundle: MrpBundle) {
       } else void reloadDetail();
     },
     openForm: (form: MrpForm, target: MrpRow | null = null): void => {
-      if (bundle.submitting.value) return;
+      if (bundle.submitting.value || bundle.refreshing.value) return;
       resetFeedback();
       bundle.activeForm.value = form;
       bundle.target.value = target;
@@ -373,8 +410,7 @@ export function createMrpMutations(
   ports: MrpConsolePorts,
   bundle: MrpBundle,
   io: Readonly<{
-    sync: () => Promise<void>;
-    loadProposals: () => Promise<void>;
+    sync: (switchToLatest?: boolean) => Promise<void>;
     actionFailed: (error: unknown, fallback: string) => void;
   }>,
 ) {
@@ -416,11 +452,7 @@ export function createMrpMutations(
     }
     closeForm();
     bundle.notice.value = notice;
-    await io.sync();
-    if (switchToLatest && bundle.runId.value !== latestRunId(bundle.snapshot.value)) {
-      bundle.runId.value = latestRunId(bundle.snapshot.value);
-      await io.loadProposals();
-    }
+    await io.sync(switchToLatest);
   };
 
   return {

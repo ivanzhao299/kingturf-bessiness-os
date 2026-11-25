@@ -317,7 +317,7 @@ export const MrpProposalDrawer = ({ state }: Props) => {
                   action.form === 'approve' || action.form === 'release' ? 'primary' : 'secondary'
                 }
                 data-testid={`kt-mrp-detail-${action.form}`}
-                disabled={state.loading}
+                disabled={state.loading || state.refreshing}
                 onClick={() => {
                   state.openForm(action.form, current);
                 }}
@@ -327,6 +327,11 @@ export const MrpProposalDrawer = ({ state }: Props) => {
             ))}
           </span>
           {state.notice === '' ? undefined : <ConsoleNotice message={state.notice} />}
+          {state.refreshError !== '' ? (
+            <p class="console-error" role="alert" data-testid="kt-mrp-refresh-error">
+              {state.refreshError}
+            </p>
+          ) : null}
         </>
       }
     >
