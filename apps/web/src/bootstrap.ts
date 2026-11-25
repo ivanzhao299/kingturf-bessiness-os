@@ -366,6 +366,7 @@ export function commercialWorkspaceStructure(
   immutable = false,
   controller?: CommercialController,
   existingWorkspace?: HTMLElement,
+  appRoutes = visibleAppRoutes(controller?.permissions ?? new Set()),
 ): HTMLElement {
   const existingChildren = existingWorkspace ? new Set(existingWorkspace.children) : undefined;
   const { workspace, status } = createCommercialWorkspaceFrame(
@@ -377,26 +378,7 @@ export function commercialWorkspaceStructure(
   status.textContent = statusMessage.startsWith('已加载') ? '' : statusMessage;
   if (!existingWorkspace) workspace.append(status);
   let riskPolicyControls: HTMLElement | null = null;
-  const permissions = controller?.permissions ?? new Set<CommercialPermission>(),
-    permittedPaths = new Map<string, readonly [CommercialPermission, CommercialPermission]>([
-      ['/api/v1/opportunities', ['opportunity:read', 'opportunity:create']],
-      ['/api/v1/ctrs', ['ctr:read', 'ctr:create']],
-      ['/api/v1/technical-solutions', ['technical-solution:read', 'technical-solution:create']],
-      ['/api/v1/cost-evaluations', ['cost:read', 'cost:evaluate']],
-      ['/api/v1/sales-policy-evaluations', ['sales-policy:read', 'sales-policy:evaluate']],
-      ['/api/v1/quotes', ['quote:read', 'quote:create']],
-      ['/api/v1/credit-decisions', ['credit:read', 'credit:evaluate']],
-      ['/api/v1/contracts', ['contract:read', 'contract:revise']],
-      ['/api/v1/sales-orders', ['sales-order:read', 'sales-order:create']],
-      ['/api/v1/ar-open-items', ['ar:read', 'ar:post']],
-      ['/api/v1/bank-payments', ['bank-payment:read', 'bank-payment:intake']],
-      ['/api/v1/reconciliation-runs', ['reconciliation:read', 'reconciliation:run']],
-      ['/api/v1/commission-policies', ['commission-policy:read', 'commission-policy:manage']],
-      ['/api/v1/commissions', ['commission:read', 'commission:accrue']],
-      ['/api/v1/risk-policies', ['risk-policy:read', 'risk-policy:manage']],
-      ['/api/v1/risk-evaluations', ['risk:read', 'risk:evaluate']],
-      ['/api/v1/collection-cases', ['collection:read', 'collection:manage']],
-    ]);
+  const permissions = controller?.permissions ?? new Set<CommercialPermission>();
   const assemblyContext = { workspace, status, controller, permissions };
   appendWorkspaceReadiness(assemblyContext, {
     recordValue,
@@ -511,7 +493,7 @@ export function commercialWorkspaceStructure(
     commissionNextAction,
     riskRuleLabel,
   };
-  appendWorkspaceFinance(assemblyContext, financeRiskViewPorts, riskPolicyControls);
+  appendWorkspaceFinance(assemblyContext, financeRiskViewPorts, riskPolicyControls, appRoutes);
   const operationsViewPorts = {
     recordValue,
     recordText,
@@ -528,7 +510,7 @@ export function commercialWorkspaceStructure(
   };
   appendWorkspaceOperations(assemblyContext, operationsViewPorts);
   assignCommercialRouteViews(workspace, existingChildren);
-  appendLegacyCommercialPanels(assemblyContext, immutable, permittedPaths, commercialRevisionPath);
+  appendLegacyCommercialPanels(assemblyContext, immutable, commercialRevisionPath);
   assignLegacyRouteViews(workspace, existingChildren);
   if (!existingWorkspace) rememberCommercialWorkspace(workspace, controller);
   return workspace;
@@ -736,6 +718,7 @@ export async function mountWorkspace(
     profileLabel,
     documents,
   );
+  const appRoutes = visibleAppRoutes(allPermissions);
   if (commercialController) {
     // WFC-1：客户 / 员工清单读取时取 CRM 控制器的当前值（此前是这里的一次性数组拷贝）。
     commercialController.followCrmRecords(controller);
@@ -746,6 +729,8 @@ export async function mountWorkspace(
           viewportFor(globalThis.innerWidth || 1280),
           false,
           commercialController,
+          undefined,
+          appRoutes,
         ),
       );
   }
@@ -787,6 +772,7 @@ export async function mountWorkspace(
           false,
           commercialController,
           existing,
+          appRoutes,
         ),
       () => {
         localizeEnterpriseCopy(shell);

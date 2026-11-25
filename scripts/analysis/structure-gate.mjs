@@ -258,6 +258,25 @@ const SQL_ENUM_NAMES = new Set([
   // MFG-6（同批）：批次详情里需求快照查询的 FROM 片段（三条表的连接，代码内常量）——带与不带
   // 销售订单来源的两条固定语句共用；语句里只有 $1/$2 占位符，没有任何请求值。
   'DEMAND_SNAPSHOT_FROM',
+  // FIN-1（财务域迁移，同 PRODUCTION_ORDER 先例）：应收行投影（legacy listOperationalPage
+  // ('ar') 的 to_jsonb + 三键，同式，加 camelCase 加性键）与 FROM/JOIN 片段提取为模块常量，
+  // 供 additive 分页（listArPage）与详情根行（findArOpenItem）复用；legacy listOperationalPage
+  // 不动。请求值（state/search/query/from/to/minAmount/maxAmount/cursor/limit）一律经
+  // values.push 参数化；片段本体只含代码内表/列名。
+  'AR_ROW_PROJECTION',
+  'AR_JOINS',
+  'orderScope.sql', // FIN-1: recordScopeSql for the independently authorized sales-order join.
+  // FIN-2: static row projections and joins for payment and reconciliation reads.
+  'PAYMENT_PROJECTION',
+  'PAYMENT_FROM',
+  'RUN_PROJECTION',
+  'RUN_FROM',
+  // FIN-3: immutable SQL projections, priority expression and joins.
+  'COLLECTION_EVIDENCE',
+  'COLLECTION_FROM',
+  'COLLECTION_CURRENT',
+  'COLLECTION_CURRENT_JOIN',
+  'COLLECTION_PRIORITY',
   // B2（TD-API-003）分页 keyset 游标片段：cursor 值一律经 values.push 参数化（$N），
   // 变量本体只含代码内表/列名与占位符；2026-11-18 随 18 端点分页批次登记。
   'keyset',

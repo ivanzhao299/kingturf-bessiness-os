@@ -14,9 +14,6 @@ export function assignCommercialRouteViews(
     'contract-workbench': 'contracts',
     'order-workbench': 'sales-orders',
     'order-360-workbench': 'order-360',
-    'ar-workbench': 'receivables',
-    'collection-workbench': 'collections',
-    'payment-workbench': 'payments',
     'commission-workbench': 'commissions',
     'risk-workbench': 'business-risks',
     'manufacturing-workbench': 'manufacturing-master',
@@ -49,9 +46,6 @@ export function assignLegacyRouteViews(
     'credit-review': 'credit-review',
     'contract-evidence': 'contracts',
     'order-release': 'sales-orders',
-    'ar-aging': 'receivables',
-    'payment-intake': 'payments',
-    reconciliation: 'payments',
   };
   for (const child of Array.from(workspace.children)) {
     if (existingChildren?.has(child)) continue;

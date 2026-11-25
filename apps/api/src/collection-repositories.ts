@@ -6,6 +6,12 @@ import {
 import { createHash } from 'node:crypto';
 import { canonicalize, DomainError, type Actor, type ScopeAnchor } from '@kingturf/domain';
 import type { Database, SqlClient } from '@kingturf/database';
+import {
+  COLLECTION_EVIDENCE,
+  COLLECTION_FROM,
+  collectionCompany as company,
+  PostgresCollectionReadRepository,
+} from './collection-read-repositories.ts';
 import type { DataScope, JsonObject } from '@kingturf/types';
 import { writeCollectionAudit as audit } from './audit-outbox.ts';
 
@@ -25,32 +31,16 @@ type CaseState =
   | 'RESOLVED'
   | 'CLOSED';
 const digest = (value: unknown) => createHash('sha256').update(canonicalize(value)).digest('hex');
-const company = (context: Context) => {
-  if (!context.scopes.includes('COMPANY') && !context.scopes.includes('GROUP'))
-    throw new DomainError('forbidden', 'Collection and legal operations require company scope');
-};
-
-export class PostgresCollectionRepository {
-  public constructor(private readonly db: Db) {}
+export class PostgresCollectionRepository extends PostgresCollectionReadRepository {
+  public constructor(db: Db) {
+    super(db);
+  }
 
   public async list(context: Context & Readonly<{ legalRead?: SourceReadGrant | undefined }>) {
     company(context);
     return (
       await this.db.query<{ item: JsonObject }>(
-        `SELECT to_jsonb(c)||jsonb_build_object(
-          'state',s.state,'remainingAmount',b.remaining_amount,'currency',b.currency,
-          'documentNumber',d.document_number,'customerName',cu.name,'orderNumber',o.order_number,
-          'overdueDays',greatest(0,floor(extract(epoch FROM(now()-b.due_at))/86400)),
-          'events',coalesce((SELECT jsonb_agg(to_jsonb(e) ORDER BY e.sequence) FROM collection_case_events e WHERE e.tenant_id=c.tenant_id AND e.collection_case_id=c.id AND ($2::boolean OR e.event_type NOT LIKE 'LEGAL_%')),'[]'::jsonb),
-          'followups',coalesce((SELECT jsonb_agg(to_jsonb(f) ORDER BY f.occurred_at,f.id) FROM collection_followups f WHERE f.tenant_id=c.tenant_id AND f.collection_case_id=c.id),'[]'::jsonb),
-          'promises',coalesce((SELECT jsonb_agg(to_jsonb(p)||jsonb_build_object('state',ps.state,'events',coalesce((SELECT jsonb_agg(to_jsonb(pe) ORDER BY pe.sequence) FROM collection_promise_events pe WHERE pe.tenant_id=p.tenant_id AND pe.promise_id=p.id),'[]'::jsonb)) ORDER BY p.created_at) FROM collection_promises p JOIN collection_promise_effective_states ps ON ps.tenant_id=p.tenant_id AND ps.promise_id=p.id WHERE p.tenant_id=c.tenant_id AND p.collection_case_id=c.id),'[]'::jsonb),
-          'legalHandoffs',coalesce((SELECT jsonb_agg(to_jsonb(h)||jsonb_build_object('state',hs.state,'events',coalesce((SELECT jsonb_agg(to_jsonb(he) ORDER BY he.sequence) FROM legal_handoff_events he WHERE he.tenant_id=h.tenant_id AND he.legal_handoff_id=h.id),'[]'::jsonb),'packages',coalesce((SELECT jsonb_agg(to_jsonb(p) ORDER BY p.version) FROM debt_evidence_packages p WHERE p.tenant_id=h.tenant_id AND p.legal_handoff_id=h.id),'[]'::jsonb)) ORDER BY h.created_at) FROM legal_handoffs h JOIN legal_handoff_effective_states hs ON hs.tenant_id=h.tenant_id AND hs.legal_handoff_id=h.id WHERE h.tenant_id=c.tenant_id AND h.collection_case_id=c.id AND $2::boolean),'[]'::jsonb)
-        ) item
-        FROM collection_cases c JOIN collection_case_effective_states s ON s.tenant_id=c.tenant_id AND s.collection_case_id=c.id
-        JOIN ar_open_item_balances b ON b.tenant_id=c.tenant_id AND b.id=c.ar_open_item_id
-        JOIN ar_documents d ON d.tenant_id=b.tenant_id AND d.id=b.ar_document_id
-        JOIN customers cu ON cu.tenant_id=b.tenant_id AND cu.id=b.customer_id
-        LEFT JOIN sales_orders o ON o.tenant_id=d.tenant_id AND o.id=d.sales_order_id
+        `SELECT ${COLLECTION_EVIDENCE} item${COLLECTION_FROM}
         WHERE c.tenant_id=$1 ORDER BY CASE c.priority WHEN 'CRITICAL' THEN 1 WHEN 'HIGH' THEN 2 WHEN 'MEDIUM' THEN 3 ELSE 4 END,b.due_at,c.opened_at`,
         [context.actor.companyId, companyReadAllowed(context.legalRead)],
       )

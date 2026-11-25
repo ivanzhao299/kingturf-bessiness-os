@@ -10,6 +10,7 @@ import {
   retainCommercialCommand,
 } from './command-results.ts';
 import type { DataScope, JsonObject, OperationalListFilter, Page } from '@kingturf/types';
+import { PostgresPaymentReadRepository } from './payment-read-repositories.ts';
 
 type Db = SqlClient & Pick<Database, 'transaction'>;
 type Context = Readonly<{
@@ -62,8 +63,12 @@ const command = async <T extends JsonObject>(
   return result;
 };
 
-export class PostgresQuoteToCashRepository {
-  public constructor(private readonly db: Db) {}
+// FIN-1：additive 只读方法（listArPage / findArOpenItem）见 qtc-read-repositories.ts，本类继承；
+// 写路径与 legacy list / listOperationalPage 留在此处。
+export class PostgresQuoteToCashRepository extends PostgresPaymentReadRepository {
+  public constructor(db: Db) {
+    super(db);
+  }
 
   public setCreditLimit(
     input: {

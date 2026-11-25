@@ -149,10 +149,26 @@ function createLegacyCommercialPanel(
   return panel;
 }
 
+const permittedPaths = new Map<string, readonly [CommercialPermission, CommercialPermission]>([
+  ['/api/v1/opportunities', ['opportunity:read', 'opportunity:create']],
+  ['/api/v1/ctrs', ['ctr:read', 'ctr:create']],
+  ['/api/v1/technical-solutions', ['technical-solution:read', 'technical-solution:create']],
+  ['/api/v1/cost-evaluations', ['cost:read', 'cost:evaluate']],
+  ['/api/v1/sales-policy-evaluations', ['sales-policy:read', 'sales-policy:evaluate']],
+  ['/api/v1/quotes', ['quote:read', 'quote:create']],
+  ['/api/v1/credit-decisions', ['credit:read', 'credit:evaluate']],
+  ['/api/v1/contracts', ['contract:read', 'contract:revise']],
+  ['/api/v1/sales-orders', ['sales-order:read', 'sales-order:create']],
+  ['/api/v1/commission-policies', ['commission-policy:read', 'commission-policy:manage']],
+  ['/api/v1/commissions', ['commission:read', 'commission:accrue']],
+  ['/api/v1/risk-policies', ['risk-policy:read', 'risk-policy:manage']],
+  ['/api/v1/risk-evaluations', ['risk:read', 'risk:evaluate']],
+  ['/api/v1/collection-cases', ['collection:read', 'collection:manage']],
+]);
+
 export function appendLegacyCommercialPanels(
   context: WorkspaceAssemblyContext<LegacyAssemblyController>,
   immutable: boolean,
-  permittedPaths: ReadonlyMap<string, readonly [CommercialPermission, CommercialPermission]>,
   commercialRevisionPath: CommercialRevisionPath,
 ): void {
   const { workspace, controller, permissions } = context;
@@ -229,30 +245,6 @@ export function appendLegacyCommercialPanels(
       '释放订单',
       '/api/v1/sales-orders',
     ],
-    [
-      'ar-aging',
-      '应收与账龄',
-      '余额由过账与分配推导，不提供人工覆盖',
-      ['客户', '原始金额', '到期日', '剩余余额'],
-      '过账应收',
-      '/api/v1/ar-open-items',
-    ],
-    [
-      'payment-intake',
-      '收款登记',
-      '原始银行载荷、引用与哈希只读且不可删除',
-      ['客户', '银行引用', '金额', '原始载荷'],
-      '登记收款',
-      '/api/v1/bank-payments',
-    ],
-    [
-      'reconciliation',
-      '核销',
-      '按稳定顺序展示匹配解释、分配次序与剩余余额',
-      ['收款余额', '开放项余额', '规范结果哈希'],
-      '运行核销',
-      '/api/v1/reconciliation-runs',
-    ],
   ] as const) {
     if (
       controller &&
@@ -266,9 +258,6 @@ export function appendLegacyCommercialPanels(
         '/api/v1/credit-decisions',
         '/api/v1/contracts',
         '/api/v1/sales-orders',
-        '/api/v1/ar-open-items',
-        '/api/v1/bank-payments',
-        '/api/v1/reconciliation-runs',
       ].includes(path)
     )
       continue;

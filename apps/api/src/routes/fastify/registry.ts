@@ -39,6 +39,9 @@ import { registerManufacturingRoutingRoutes } from './manufacturing-routings.ts'
 import { registerProductionOrderRoutes } from './production-orders.ts';
 import { registerProductionOrderExecutionRoutes } from './production-order-execution.ts';
 import { registerMrpReadRoutes, registerMrpWriteRoutes } from './mrp.ts';
+import { registerArOpenItemRoutes } from './ar-open-items.ts';
+import { registerBankPaymentRoutes } from './bank-payments.ts';
+import { registerCollectionCaseRoutes } from './collection-cases.ts';
 
 export type FastifyRouteScope = Readonly<{
   authorization: AuthorizationContext;
@@ -134,6 +137,21 @@ const CLAIMED_FASTIFY_ROUTES: readonly (readonly [method: string, pattern: RegEx
   ['POST', /^\/api\/v1\/mrp-demands$/u],
   ['POST', /^\/api\/v1\/mrp-runs$/u],
   ['POST', /^\/api\/v1\/mrp-proposals\/[0-9a-f-]+\/(approve|reject|release|cancel)$/u],
+  ['GET', /^\/api\/v1\/ar-open-items$/u],
+  ['GET', /^\/api\/v1\/ar-open-items\/[0-9a-f-]+$/u],
+  ['POST', /^\/api\/v1\/ar-open-items$/u],
+  ['GET', /^\/api\/v1\/bank-payments$/u],
+  ['GET', /^\/api\/v1\/bank-payments\/[0-9a-f-]+$/u],
+  ['POST', /^\/api\/v1\/bank-payments$/u],
+  ['GET', /^\/api\/v1\/reconciliation-runs$/u],
+  ['GET', /^\/api\/v1\/reconciliation-runs\/[0-9a-f-]+$/u],
+  ['POST', /^\/api\/v1\/reconciliation-runs$/u],
+  ['GET', /^\/api\/v1\/collection-cases$/u],
+  ['GET', /^\/api\/v1\/collection-cases\/[0-9a-f-]+$/u],
+  ['POST', /^\/api\/v1\/collection-cases$/u],
+  ['POST', /^\/api\/v1\/collection-cases\/[0-9a-f-]+\/(?:followups|promises|legal-handoffs)$/u],
+  ['POST', /^\/api\/v1\/collection-promises\/[0-9a-f-]+\/break$/u],
+  ['POST', /^\/api\/v1\/legal-handoffs\/[0-9a-f-]+\/(?:accept|evidence-packages)$/u],
 ];
 
 // legacy catch 层的同款 DomainError 状态映射（行为守恒）。
@@ -207,6 +225,9 @@ const buildRouteGroupApp = (scope: FastifyRouteScope) => {
   registerProductionOrderExecutionRoutes(app, scope);
   registerMrpReadRoutes(app, scope);
   registerMrpWriteRoutes(app, scope);
+  registerArOpenItemRoutes(app, scope);
+  registerBankPaymentRoutes(app, scope);
+  registerCollectionCaseRoutes(app, scope);
   return app;
 };
 

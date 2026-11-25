@@ -313,9 +313,14 @@ export async function runProbes({ send, router, runId, report, expectDialog }) {
     }
     if (process.argv.includes('--finance-risk-views')) {
       for (const [route, title, selector, record] of [
-        ['receivables', '应收账款', '.ar-workbench .qtc-card', 'CDP-AR-A'],
-        ['collections', '催收与法务', '.collection-case-card', 'CDP-COL-A'],
-        ['payments', '收款与核销', '.payment-workbench .qtc-card', 'CDP-BANK-A'],
+        [
+          'receivables',
+          '应收账款',
+          '[data-testid="kt-ar-console"] [data-testid="kt-ar-number"]',
+          'CDP-AR-A',
+        ],
+        ['collections', '催收与法务', '[data-testid="kt-collection-number"]', 'CDP-COL-A'],
+        ['payments', '收款与核销', '[data-testid="kt-payment-reference"]', 'CDP-BANK-A'],
         ['commissions', '销售佣金', '.commission-card', 'CDP-SO-A'],
         ['business-risks', '业务风险', '.risk-card', 'CDP-SO-A'],
       ])
@@ -329,7 +334,7 @@ export async function runProbes({ send, router, runId, report, expectDialog }) {
             await page.text('[data-route-context] h1', title);
             await page.text(selector, record);
             if (route === 'payments')
-              await page.text('.payment-workbench > .version-pin', 'CDP-RECON-A');
+              await page.text('[data-testid="kt-payment-run-hash"]', 'CDP-RECON-A');
             if (route === 'commissions') {
               await page.text('.commission-policy-card', 'CDP-COM-POLICY-A');
               await page.text('.commission-ledger li', 'CDP计提证据');

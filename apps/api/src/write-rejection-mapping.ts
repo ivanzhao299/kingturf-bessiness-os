@@ -3,7 +3,8 @@
 //   - POST /api/v1/customers                桥轨 routes/fastify/customers.ts；
 //   - POST /api/v1/credit-decisions/:id/approve  legacy 轨 routes/qtc-credit-approval.ts；
 //   - PUT  /api/v1/credit-decisions/:id/state    桥轨 routes/fastify/credit-review.ts。
-// 只被上面三个端点在调用点就地使用，不进任何全局错误处理器（主协调裁定：不做全局映射）。
+// 财务域（FIN）的守卫映射见文件后半（只被财务域桥轨写端点在调用点使用）。
+// 只在端点调用点就地使用，不进任何全局错误处理器（主协调裁定：不做全局映射）。
 // 识别规则在 pg-rejections.ts（按约束名 / 按守卫消息精确匹配，不回显数据库原始消息）。
 import { DomainError } from '@kingturf/domain';
 import { guardRejection, isUniqueViolation } from './pg-rejections.ts';
@@ -34,4 +35,45 @@ export const asSelfApproval = (error: unknown): unknown => {
     'credit evaluator cannot approve own decision': SELF_APPROVAL_MESSAGE,
   });
   return hint === null ? error : new DomainError('forbidden', hint);
+};
+
+// FIN（财务域控制台）：应收过账 / 收款核销 / 催收法务的桥轨写端点（routes/fastify/
+// ar-open-items.ts、bank-payments.ts、collection-cases.ts）。legacy 轨不变（双轨并行）。
+// 只认守卫触发器里写死的消息，映射成中文；不回显数据库原始消息；未列入的拒绝原样抛出
+//（仍是 500，照常留诊断日志）。
+
+/** 应收过账：单据与关联销售订单不一致（触发器 ar_document_governed_graph，迁移 0027）→ 409。 */
+export const asArDocumentGuard = (error: unknown): unknown => {
+  const hint = guardRejection(error, {
+    'AR document is inconsistent with its sales order':
+      '应收单据与关联销售订单的客户或币种不一致，请核对后重试',
+  });
+  return hint === null ? error : new DomainError('conflict', hint);
+};
+
+/** 核销分配：只映射台账触发器拒绝（迁移 0026）。 */
+export const asAllocationGuard = (error: unknown): unknown => {
+  const hint = guardRejection(error, {
+    'allocation currency mismatch': '分配币种与收款或应收单的币种不一致',
+    'allocation exceeds remaining balance': '分配金额超过剩余余额，请刷新后重试',
+  });
+  return hint === null ? error : new DomainError('conflict', hint);
+};
+
+/** Exact stock ledger rejections from the collection and legal triggers. */
+export const asCollectionGuard = (error: unknown): unknown => {
+  const hint = guardRejection(error, {
+    'collection case requires overdue positive balance': '应收单须已逾期且有剩余余额才能建案',
+    'case state does not allow a payment promise': '当前案件阶段不能登记付款承诺',
+    'payment promise exceeds or mismatches receivable balance': '承诺金额超过应收余额或币种不一致',
+    'payment promise is terminal after decision': '该付款承诺已有处理结果，请刷新后核对',
+    'payment promise cannot be broken before due date': '承诺期限未到，暂不能确认违约',
+    'legal handoff requires contacting or broken promise state':
+      '只有正在催收或承诺违约的案件可以移交法务',
+    'collection case already has an active legal handoff': '案件已有进行中的法务移交',
+    'legal handoff requester cannot decide own request': '法务移交需由申请人之外的人员受理',
+    'illegal legal handoff transition': '法务移交状态已变化，请刷新后核对',
+    'debt evidence package requires accepted legal handoff': '法务移交受理后才能生成证据包',
+  });
+  return hint === null ? error : new DomainError('conflict', hint);
 };

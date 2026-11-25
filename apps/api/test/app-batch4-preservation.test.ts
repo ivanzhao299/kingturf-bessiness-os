@@ -153,6 +153,16 @@ describe('Batch4 app extraction against fixed f3 complete request traces', () =>
     'POST /api/v1/mrp-demands',
     'GET /api/v1/mrp-runs',
     'POST /api/v1/mrp-runs',
+    // FIN-1（ADR-0015 接线，同批）：ar-open-items 的 GET / POST 场景经生产桥——同口径；
+    // GET 未带加性参数时分派 legacy listOperationalPage（同一条 SQL、同一实参），POST 走
+    // legacy qtcArPostRoutes 同解析链；响应与终止仓储调用均与冻结基线逐字段守恒。
+    'GET /api/v1/ar-open-items',
+    'POST /api/v1/ar-open-items',
+    // FIN-2: default lists and both legacy writes retain their terminal calls and responses.
+    'GET /api/v1/bank-payments',
+    'POST /api/v1/bank-payments',
+    'GET /api/v1/reconciliation-runs',
+    'POST /api/v1/reconciliation-runs',
   ]);
   const preserveWithStrip = (result: {
     name: string;
@@ -352,6 +362,38 @@ describe('Batch4 app extraction against fixed f3 complete request traces', () =>
               ],
             ],
           ]);
+          return;
+        }
+        // FIN-1：ar-open-items GET 经生产桥——响应与冻结基线逐字段一致（200 {items:[]}）；
+        // 终止调用仍是 legacy listOperationalPage('ar', { limit: 50 }, 作用域上下文)（旧轨同链，
+        // 未带加性参数时不触达加性方法），与冻结基线的终止调用逐字段相等。POST 走同解析链，
+        // 空对象请求在 documentType 处被 400 拒绝，不触达仓储（终止调用为空）。
+        if (row.name === 'GET /api/v1/ar-open-items' || row.name === 'POST /api/v1/ar-open-items') {
+          expect(pinnedCurrent.response).toEqual(pinnedBaseline.response);
+          expect(terminalCalls(pinnedCurrent)).toEqual(terminalCalls(pinnedBaseline));
+          expect(terminalCalls(pinnedCurrent)).toEqual(
+            row.name === 'GET /api/v1/ar-open-items'
+              ? [
+                  [
+                    'call',
+                    'quoteToCash',
+                    'listOperationalPage',
+                    [
+                      'ar',
+                      { limit: 50 },
+                      {
+                        actor: {
+                          employeeId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+                          companyId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+                        },
+                        scopes: ['COMPANY'],
+                        anchors: [],
+                      },
+                    ],
+                  ],
+                ]
+              : [],
+          );
           return;
         }
         expect(pinnedCurrent.response).toEqual(pinnedBaseline.response);
