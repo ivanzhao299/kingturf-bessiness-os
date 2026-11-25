@@ -10,6 +10,7 @@
 import type { OperationsViewContext } from '../operations-view-ports';
 import { el } from '../../dom';
 import {
+  itemLabelByIdOf,
   itemVersionChoicesOf,
   ITEM_VERSIONS_PATH,
   perView,
@@ -43,6 +44,9 @@ export function appendManufacturingRoutingConsole(
         ]),
       ),
   );
+  const readProductLabels = perView(controller.views, ITEM_VERSIONS_PATH, (rows) =>
+    itemLabelByIdOf(rows, recordText),
+  );
   const pageUrl = (params: Readonly<Record<string, string | number>>): string => {
     const query = new URLSearchParams(
       Object.entries(params).map(([key, value]) => [key, String(value)]),
@@ -56,6 +60,8 @@ export function appendManufacturingRoutingConsole(
       return readItemVersionChoices();
     },
     productTypeOf: (productItemId) => readProductTypeByItemId().get(productItemId) ?? '',
+    // TD-WF-010：列表「产品」列把 productItemId 解析成「SKU · 名称」（同样按最新视图计算）。
+    productLabelOf: (productItemId) => readProductLabels().get(productItemId) ?? '',
     recordText: (record, camel, snake, fallback) => recordText(record, camel, snake, fallback),
     textValue: (value, fallback = '') =>
       typeof value === 'string' || typeof value === 'number' ? String(value) : fallback,

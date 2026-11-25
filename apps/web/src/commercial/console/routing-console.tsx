@@ -57,6 +57,15 @@ const text = (
   fallback = '',
 ): string => state.ports.recordText(row, camel, snake, fallback);
 
+// TD-WF-010：「产品」列此前直接显示 productItemId——一个 UUID。现在经宿主解析成「SKU · 名称」；
+// 解析不到（物料清单读不到、或这个产品不在清单里）才退回显示 id。「产品」前缀保留：产品 SKU 并入
+// 复合文本、不独占成元素（e2e 契约）。
+const productText = (state: RoutingViewState, row: RoutingRow): string => {
+  const id = text(state, row, 'productItemId', 'product_item_id', '—');
+  const label = state.ports.productLabelOf(id);
+  return `产品 ${label !== '' ? label : id}`;
+};
+
 const columns = (state: RoutingViewState): readonly DataTableColumn<RoutingRow>[] => [
   {
     key: 'code',
@@ -73,11 +82,9 @@ const columns = (state: RoutingViewState): readonly DataTableColumn<RoutingRow>[
   {
     key: 'product',
     header: '产品',
-    field: (row) => text(state, row, 'productItemId', 'product_item_id'),
-    // 产品 SKU 并入复合文本（不与物料控制台的 SKU 独占元素撞 exact 定位）。
-    render: (row) => (
-      <span class="routing-muted">{`产品 ${text(state, row, 'productItemId', 'product_item_id', '—')}`}</span>
-    ),
+    // 产品 SKU 并入复合文本（不与物料控制台的 SKU 独占元素撞 exact 定位）。排序按显示的文字。
+    field: (row) => productText(state, row),
+    render: (row) => <span class="routing-muted">{productText(state, row)}</span>,
   },
   {
     key: 'operations',

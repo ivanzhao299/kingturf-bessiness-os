@@ -41,6 +41,24 @@ export function perView<T>(
 export const publishedItemRows = (rows: readonly Row[], recordText: RecordText): readonly Row[] =>
   rows.filter((row) => recordText(row, 'status', 'status') === 'PUBLISHED');
 
+/**
+ * 物料根 id → 「SKU · 名称」（TD-WF-010：BOM / 工艺路线列表的「产品」列此前直接显示 productItemId，
+ * 一个 UUID）。清单一行是一个版本，同一物料有多个版本行：优先取已发布的那一版，没有则取第一行。
+ */
+export const itemLabelByIdOf = (
+  rows: readonly Row[],
+  recordText: RecordText,
+): ReadonlyMap<string, string> => {
+  const labels = new Map<string, string>();
+  for (const row of rows) {
+    const itemId = recordText(row, 'itemId', 'itemId');
+    if (itemId === '') continue;
+    if (!labels.has(itemId) || recordText(row, 'status', 'status') === 'PUBLISHED')
+      labels.set(itemId, `${recordText(row, 'sku', 'sku')} · ${recordText(row, 'name', 'name')}`);
+  }
+  return labels;
+};
+
 /** 已发布物料版本选项：value = 版本行 id，label = `SKU · 名称`。 */
 export const itemVersionChoicesOf = (
   rows: readonly Row[],

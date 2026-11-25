@@ -133,6 +133,9 @@ const portsFor = (
     { value: 'yarnv-1', label: 'RM-KT-YARN-12000 · 12000D 直丝草纱', itemId: 'yarn-root' },
   ],
   productTypeOf: (productItemId) => (productItemId === 'item-root' ? 'FINISHED_GOOD' : ''),
+  // TD-WF-010：「产品」列经宿主解析成「SKU · 名称」；解析不到（未知产品）返回空串。
+  productLabelOf: (productItemId) =>
+    productItemId === 'item-root' ? 'FG-KT-PRO-50 · 金特夫 50mm 景观草' : '',
   recordText: (record, camel, snake, fallback = '') => {
     const value = record[camel] ?? record[snake] ?? fallback;
     return typeof value === 'string' || typeof value === 'number' ? String(value) : fallback;
@@ -201,8 +204,58 @@ describe('U3-MFG-2 BOM 控制台：默认视图与 e2e 文案契约', () => {
       .map((node) => node.textContent.replace(/\s+/gu, ' '));
     expect(badges).toEqual(['已发布 · 第 1 版']);
     // 产品 SKU 并入复合文本、不独占成元素（不与物料控制台 exact 定位撞 strict mode）。
-    expect(host.textContent).toContain('产品 item-root');
+    // TD-WF-010：此前这里是裸 UUID「产品 item-root」；现在显示产品的 SKU 与名称。
+    expect(host.textContent).toContain('产品 FG-KT-PRO-50 · 金特夫 50mm 景观草');
+    expect(host.textContent).not.toContain('产品 item-root');
     expect(ports.fetchPage).not.toHaveBeenCalled();
+  });
+
+  // TD-WF-010（写流程冒烟 WS-P2-08）：「产品」列此前显示裸 UUID。
+  it('「产品」列显示产品 SKU 与名称；解析不到时退回显示 id；排序按显示的文字', async () => {
+    const host = mount(
+      portsFor(
+        [
+          bomRow({ id: 'bomv-z', code: 'BOM-Z', productItemId: 'item-z' }),
+          bomRow({ id: 'bomv-a', code: 'BOM-A', productItemId: 'item-a' }),
+          bomRow({ id: 'bomv-?', code: 'BOM-?', productItemId: 'item-unknown' }),
+        ],
+        [],
+        {
+          productTypeOf: () => 'FINISHED_GOOD',
+          productLabelOf: (productItemId) =>
+            productItemId === 'item-z'
+              ? 'ZZ-STRAW · 乙物料'
+              : productItemId === 'item-a'
+                ? 'AA-YARN · 甲物料'
+                : '',
+        },
+      ),
+    );
+    const products = (): readonly string[] =>
+      host
+        .querySelectorAll('tbody tr')
+        .map(
+          (row) =>
+            row.querySelectorAll('td')[1]?.querySelector('.bom-muted')?.textContent.trim() ?? '',
+        );
+    expect(products()).toEqual([
+      '产品 ZZ-STRAW · 乙物料',
+      '产品 AA-YARN · 甲物料',
+      '产品 item-unknown',
+    ]);
+    // 点「产品」表头按显示文字升序（按码位：大写字母 < 小写字母）：甲（AA）、乙（ZZ）、解析不到的排最后。
+    const header = host
+      .querySelectorAll('th')
+      .find((cell) => cell.textContent.includes('产品'))
+      ?.querySelector('button');
+    expect(header).toBeDefined();
+    header?.click();
+    await flush();
+    expect(products()).toEqual([
+      '产品 AA-YARN · 甲物料',
+      '产品 ZZ-STRAW · 乙物料',
+      '产品 item-unknown',
+    ]);
   });
 
   it('左树计数按 BOM 根去重并经 productTypeOf 归类；持 manage 权限时草稿行有行级发布', () => {

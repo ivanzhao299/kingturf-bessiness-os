@@ -92,6 +92,9 @@ const portsFor = (
     { value: 'prodv-1', label: 'FG-KT-PRO-50 · 金特夫 50mm 景观草', itemId: 'item-root' },
   ],
   productTypeOf: (productItemId) => (productItemId === 'item-root' ? 'FINISHED_GOOD' : ''),
+  // TD-WF-010：「产品」列经宿主解析成「SKU · 名称」；解析不到（未知产品）返回空串。
+  productLabelOf: (productItemId) =>
+    productItemId === 'item-root' ? 'FG-KT-PRO-50 · 金特夫 50mm 景观草' : '',
   recordText: (record, camel, snake, fallback = '') => {
     const value = record[camel] ?? record[snake] ?? fallback;
     return typeof value === 'string' || typeof value === 'number' ? String(value) : fallback;
@@ -162,8 +165,35 @@ describe('U3-MFG-3 工艺路线控制台：默认视图与 e2e 文案契约', ()
       .querySelectorAll('.status-badge')
       .map((node) => node.textContent.replace(/\s+/gu, ' '));
     expect(badges).toEqual(['已发布 · 第 1 版']);
-    expect(host.textContent).toContain('产品 item-root');
+    // TD-WF-010：此前这里是裸 UUID「产品 item-root」；现在显示产品的 SKU 与名称。
+    expect(host.textContent).toContain('产品 FG-KT-PRO-50 · 金特夫 50mm 景观草');
+    expect(host.textContent).not.toContain('产品 item-root');
     expect(ports.fetchPage).not.toHaveBeenCalled();
+  });
+
+  // TD-WF-010（写流程冒烟 WS-P2-08）：「产品」列此前显示裸 UUID。
+  it('「产品」列显示产品 SKU 与名称；解析不到时退回显示 id', () => {
+    const host = mount(
+      portsFor(
+        [
+          routingRow({ id: 'routingv-1', code: 'RT-A' }),
+          routingRow({ id: 'routingv-2', code: 'RT-?', productItemId: 'item-unknown' }),
+        ],
+        [],
+        {
+          productTypeOf: () => 'FINISHED_GOOD',
+          productLabelOf: (productItemId) =>
+            productItemId === 'item-root' ? 'FG-KT-PRO-50 · 金特夫 50mm 景观草' : '',
+        },
+      ),
+    );
+    expect(
+      host
+        .querySelectorAll('tbody tr')
+        .map((row) =>
+          row.querySelectorAll('td')[1]?.querySelector('.routing-muted')?.textContent.trim(),
+        ),
+    ).toEqual(['产品 FG-KT-PRO-50 · 金特夫 50mm 景观草', '产品 item-unknown']);
   });
 
   it('左树计数按路线根去重并经 productTypeOf 归类；权限门（manage/只读）', () => {

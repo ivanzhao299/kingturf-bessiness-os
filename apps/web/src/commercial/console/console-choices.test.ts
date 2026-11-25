@@ -227,6 +227,34 @@ describe('宿主的表单选项随视图更新（TD-WF-007）', () => {
     }
   });
 
+  // TD-WF-010：列表「产品」列把 productItemId 解析成「SKU · 名称」；同一物料多个版本行时取已发布的那一版。
+  it('BOM 与工艺路线宿主：产品根 id 解析成「SKU · 名称」，随视图更新', async () => {
+    for (const append of [appendManufacturingBomConsole, appendManufacturingRoutingConsole]) {
+      vi.mocked(mountCommercialConsole).mockReset();
+      const views: Views = new Map([
+        [
+          ITEM_VERSIONS_PATH,
+          [
+            item('v1', 'FG-KT-PRO-50', 'RETIRED', 'FINISHED_GOOD'),
+            item('v2', 'FG-KT-PRO-50', 'PUBLISHED', 'FINISHED_GOOD'),
+          ],
+        ],
+      ]);
+      const { context, workspace } = contextFor(views);
+      append(context, workspace, undefined);
+      const ports = await portsOf(workspace);
+      const productLabelOf = ports.productLabelOf as (id: string) => string;
+      expect(productLabelOf('root-FG-KT-PRO-50')).toBe('FG-KT-PRO-50 · FG-KT-PRO-50-名称');
+      expect(productLabelOf('root-NOT-HERE')).toBe('');
+      views.set(ITEM_VERSIONS_PATH, [
+        item('v1', 'FG-KT-PRO-50', 'RETIRED', 'FINISHED_GOOD'),
+        item('v2', 'FG-KT-PRO-50', 'PUBLISHED', 'FINISHED_GOOD'),
+        item('v-new', 'RM-E2EWS-NEW', 'DRAFT'),
+      ]);
+      expect(productLabelOf('root-RM-E2EWS-NEW')).toBe('RM-E2EWS-NEW · RM-E2EWS-NEW-名称');
+    }
+  });
+
   it('信用宿主：别处刚签发的报价出现在「已签发报价」下拉里', async () => {
     const quotes = '/api/v1/quotes';
     const views: Views = new Map([[quotes, []]]);
