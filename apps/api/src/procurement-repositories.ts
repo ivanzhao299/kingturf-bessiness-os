@@ -19,6 +19,12 @@ import {
   type Context,
   type Db,
 } from './procurement-read-repositories.ts';
+import {
+  readSupplierQuote,
+  readSupplierQuotePage,
+  SUPPLIER_QUOTE_LIST_SQL,
+  type SupplierQuoteFilter,
+} from './supplier-quote-read-repository.ts';
 
 const hash = (value: unknown) => createHash('sha256').update(canonicalize(value)).digest('hex');
 
@@ -58,7 +64,7 @@ export class PostgresProcurementRepository extends PostgresProcurementReadReposi
     const queries = {
       suppliers: `SELECT ${SUPPLIER_ITEM_PROJECTION} item FROM suppliers s WHERE s.tenant_id=$1 ORDER BY s.supplier_number`,
       rfqs: `SELECT ${RFQ_ITEM_PROJECTION} item FROM procurement_rfqs r WHERE r.tenant_id=$1 ORDER BY r.created_at DESC`,
-      quotes: `SELECT to_jsonb(q)||jsonb_build_object('supplierName',s.name,'rfqNumber',r.rfq_number,'lines',coalesce((SELECT jsonb_agg(to_jsonb(l)||jsonb_build_object('lineNumber',rl.line_number,'itemVersionId',rl.item_version_id) ORDER BY rl.line_number) FROM supplier_quote_lines l JOIN procurement_rfq_lines rl ON rl.id=l.rfq_line_id AND rl.tenant_id=l.tenant_id WHERE l.supplier_quote_id=q.id AND l.tenant_id=q.tenant_id),'[]'::jsonb)) item FROM supplier_quotes q JOIN suppliers s ON s.id=q.supplier_id AND s.tenant_id=q.tenant_id JOIN procurement_rfqs r ON r.id=q.rfq_id AND r.tenant_id=q.tenant_id WHERE q.tenant_id=$1 ORDER BY q.received_at DESC`,
+      quotes: SUPPLIER_QUOTE_LIST_SQL,
       orders: `SELECT ${PURCHASE_ORDER_ITEM_PROJECTION} item FROM purchase_orders p JOIN suppliers s ON s.id=p.supplier_id AND s.tenant_id=p.tenant_id WHERE p.tenant_id=$1 ORDER BY p.created_at DESC`,
       receipts: `SELECT ${GOODS_RECEIPT_ITEM_PROJECTION} item FROM goods_receipts g JOIN purchase_orders p ON p.id=g.purchase_order_id AND p.tenant_id=g.tenant_id WHERE g.tenant_id=$1 ORDER BY g.received_at DESC`,
       locations: `SELECT to_jsonb(l) item FROM inventory_locations l WHERE l.tenant_id=$1 ORDER BY l.code`,
@@ -67,6 +73,14 @@ export class PostgresProcurementRepository extends PostgresProcurementReadReposi
     return (
       await this.db.query<{ item: JsonObject }>(queries[view], [context.actor.companyId])
     ).rows.map((row) => row.item);
+  }
+
+  public listSupplierQuotePage(context: Context, filter: SupplierQuoteFilter) {
+    return readSupplierQuotePage(this.db, context, filter);
+  }
+
+  public findSupplierQuote(id: string, context: Context) {
+    return readSupplierQuote(this.db, id, context);
   }
 
   // U3-PROC-2（ADR-0015）：RFQ 关闭写路径（additive；主协调 U3-PROC-2 指令明授
