@@ -74,6 +74,9 @@ export const costMatrixActions = (
   ports: CostMatrixConsolePorts,
   bundle: MatrixSignalBundle,
 ): MatrixActions => {
+  // WFD-2：抽屉里的详情与页面上的列表是各自读取的。添加 / 更新因子、重算之后此前只重读了抽屉里的
+  // 详情，列表（状态、因子数、「本页待重新核算」计数）仍是写入之前的；按当前查询条件把列表重查一次。
+  const reloadPage = (): Promise<void> => runQueryFor(ports, bundle, bundle.query.value);
   const runCreate = async (values: Readonly<Record<string, string>>): Promise<void> => {
     bundle.loading.value = true;
     bundle.submitError.value = '';
@@ -109,6 +112,7 @@ export const costMatrixActions = (
       if (fresh) bundle.selected.value = fresh;
       bundle.submitError.value = '';
       bundle.activeForm.value = null;
+      await reloadPage();
     } catch (error: unknown) {
       fail(error, bundle, '因子添加失败');
     } finally {
@@ -130,6 +134,7 @@ export const costMatrixActions = (
       const fresh = await ports.loadMatrix(ports.textValue(matrix.id, ''));
       if (fresh) bundle.selected.value = fresh;
       closeForm(bundle);
+      await reloadPage();
     } catch (error: unknown) {
       fail(error, bundle, '因子保存失败');
     } finally {
@@ -147,6 +152,7 @@ export const costMatrixActions = (
       });
       const fresh = await ports.loadMatrix(ports.textValue(matrix.id, ''));
       if (fresh) bundle.selected.value = fresh;
+      await reloadPage();
     } catch (error: unknown) {
       fail(error, bundle, '矩阵重算失败');
     } finally {

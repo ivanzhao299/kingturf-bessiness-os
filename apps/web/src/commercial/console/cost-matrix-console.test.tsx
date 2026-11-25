@@ -93,8 +93,11 @@ const fillField = (host: TestElement, name: string, value: string): void => {
   input.dispatchEvent(new Event('input', { bubbles: true }));
 };
 
-afterEach(() => {
+// Preact 的 useEffect 在本测试环境里要等约 35 毫秒之后才执行，而测试 DOM 的 focus() 记到「最近安装的文档」
+// 上：上一个用例遗留的 effect 会改写下一个用例的焦点。每个用例结束时把这个窗口等过去（同 ctr-view-behavior）。
+afterEach(async () => {
   vi.restoreAllMocks();
+  await new Promise((resolve) => setTimeout(resolve, 60));
 });
 
 describe('U3-COM-4 成本矩阵控制台', () => {
@@ -223,5 +226,104 @@ describe('U3-COM-4 成本矩阵控制台', () => {
     await flush();
     expect(host.querySelector('[data-testid="kt-matrix-add-factor"]')).toBeNull();
     expect(host.querySelector('[data-testid="kt-matrix-factor-list"]')).toBeNull();
+  });
+
+  // WFD-2（本批盘点发现）：抽屉里的详情与页面上的列表各自读取。添加 / 更新因子、重算之后此前只重读了
+  // 抽屉里的详情，列表（状态、因子数、「本页待重新核算」计数）仍是写入之前的。
+  describe('写操作之后列表跟着重查（WFD-2）', () => {
+    const pending: CostMatrixRow = {
+      ...matrixRow,
+      attention: 'NEEDS_CALCULATION',
+      needsRecalculation: true,
+    };
+    const recalculated: CostMatrixRow = {
+      ...matrixRow,
+      attention: 'READY_FOR_QUOTE',
+      needsRecalculation: false,
+      factors: [
+        { id: 'factor-1', factorCode: 'YARN-PE', factorName: 'PE 草丝' },
+        { id: 'factor-2', factorCode: 'BACKING', factorName: '底布' },
+      ],
+    };
+    const portsForPending = (permissions: readonly string[]) =>
+      portsFor(permissions, {
+        initialPage: { items: [pending], total: 1, page: 1, pageSize: 20 },
+        querySummaries: vi
+          .fn()
+          .mockResolvedValue({ items: [recalculated], total: 1, page: 1, pageSize: 20 }),
+      });
+    // editing=true 对应「更新因子」表单（没有「因子编号」字段）。
+    const fillFactor = async (host: TestElement, { editing = false } = {}): Promise<void> => {
+      for (const [name, value] of [
+        ['factorCode', 'BACKING'],
+        ['factorName', '底布'],
+        ['category', 'DIRECT_MATERIAL'],
+        ['sourceType', 'MANUAL'],
+        ['quantity', '1'],
+        ['unitCode', 'M2'],
+        ['manualUnitPriceTaxInclusive', '10'],
+        ['taxRate', '0.13'],
+        ['priceSourceName', '基准'],
+      ] as const) {
+        if (editing && name === 'factorCode') continue;
+        fillField(host, name, value);
+      }
+      await flush();
+    };
+
+    it('重算之后按当前查询条件重查列表：「本页待重新核算」从 1 变 0，那一行的状态变为「可报价」', async () => {
+      const ports = portsForPending(['cost-matrix:calculate']);
+      const host = mount(ports);
+      expect(
+        element(host.querySelector('[data-testid="kt-matrix-summary"]')).textContent,
+      ).toContain('1');
+      element(host.querySelector('[data-testid="kt-matrix-open"]')).click();
+      await flush();
+      element(host.querySelector('[data-testid="kt-matrix-calculate"]')).click();
+      await flush();
+      await flush();
+      expect(ports.querySummaries).toHaveBeenCalledExactlyOnceWith(ports.initialQuery);
+      expect(
+        element(host.querySelector('[data-testid="kt-matrix-summary"]')).textContent,
+      ).toContain('0');
+      expect(host.querySelector('.data-table')?.textContent).toContain('可报价');
+      // 抽屉仍然开着。
+      expect(host.querySelector('[data-testid="kt-matrix-detail"]')).not.toBeNull();
+    });
+
+    it('添加因子之后列表里那一行的因子数变为 2', async () => {
+      const ports = portsForPending(['cost-matrix:manage']);
+      const host = mount(ports);
+      element(host.querySelector('[data-testid="kt-matrix-open"]')).click();
+      await flush();
+      element(host.querySelector('[data-testid="kt-matrix-add-factor"]')).click();
+      await flush();
+      await fillFactor(host);
+      element(
+        element(host.querySelector('.detail-drawer')).querySelector('button[type="submit"]'),
+      ).click();
+      await flush();
+      await flush();
+      expect(ports.querySummaries).toHaveBeenCalledExactlyOnceWith(ports.initialQuery);
+      const row = element(host.querySelector('.data-table tbody tr'));
+      expect(row.textContent).toContain('2');
+    });
+
+    it('更新因子之后同样重查列表', async () => {
+      const ports = portsForPending(['cost-matrix:manage']);
+      const host = mount(ports);
+      element(host.querySelector('[data-testid="kt-matrix-open"]')).click();
+      await flush();
+      element(host.querySelector('[data-testid="kt-matrix-edit-factor"]')).click();
+      await flush();
+      await fillFactor(host, { editing: true });
+      element(
+        element(host.querySelector('.detail-drawer')).querySelector('button[type="submit"]'),
+      ).click();
+      await flush();
+      await flush();
+      expect(ports.submit).toHaveBeenCalledTimes(1);
+      expect(ports.querySummaries).toHaveBeenCalledExactlyOnceWith(ports.initialQuery);
+    });
   });
 });
