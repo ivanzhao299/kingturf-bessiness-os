@@ -235,13 +235,19 @@ test('shows server-calculated executive KPIs with source and responsibility dril
   const dashboard = page.locator('.executive-dashboard');
   await expect(dashboard).toBeVisible();
   await expect(dashboard.getByRole('heading', { name: '管理驾驶舱' })).toBeVisible();
-  await expect(dashboard.locator('.metric-bookedRevenue')).toContainText('CNY 950000');
-  await expect(dashboard.locator('.metric-grossMargin')).toContainText('CNY 229000');
-  await expect(dashboard.locator('.metric-cashCollected')).toContainText('CNY 950000');
-  await expect(dashboard.locator('.metric-openReceivable')).toContainText('CNY 0');
-  await expect(dashboard.locator('.metric-activeRisks')).toContainText('cases 0');
+  const metric = (name: string) => dashboard.getByTestId(`dashboard-metric-${name}`);
+  for (const [key, unit, value] of [
+    ['bookedRevenue', 'CNY', '950000'],
+    ['grossMargin', 'CNY', '229000'],
+    ['cashCollected', 'CNY', '950000'],
+    ['openReceivable', 'CNY', '0'],
+    ['activeRisks', 'cases', '0'],
+  ] as const) {
+    await expect(metric(key).locator('.stat-card-value')).toHaveText(value);
+    await expect(metric(key).locator('.stat-card-hint')).toHaveText(unit);
+  }
   await expect(
-    dashboard.locator('.metric-bookedRevenue').getByText(/来源 sales_orders/u),
+    dashboard.getByTestId('dashboard-source-bookedRevenue').getByText(/来源 sales_orders/u),
   ).toBeVisible();
   await expect(dashboard.getByText(/SO-KT-P1-DEMO/u)).toBeVisible();
   await expect(dashboard.getByText(/高 \/ 45 分 · 已关闭/u)).toBeVisible();

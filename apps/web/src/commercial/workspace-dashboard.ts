@@ -1,3 +1,5 @@
+import { SummaryCards } from '@kingturf/ui';
+import { h, render } from 'preact';
 import { el } from '../dom';
 import type { WorkspaceAssemblyContext, WorkspaceDashboardPorts } from './workspace-assembly-ports';
 
@@ -38,25 +40,25 @@ export function appendWorkspaceDashboard(
       criticalRisks: '严重风险',
       commissionAccrued: '佣金计提',
     };
-    const grid = el('div', 'metric-grid executive-metrics');
-    for (const [key, raw] of Object.entries(metrics)) {
-      const metric = recordValue(raw),
-        card = el('article', `metric-card metric-${key}`);
-      card.append(
-        el('span', 'metric-label', labels[key] ?? key),
-        el(
-          'strong',
-          'metric-value',
-          `${recordText(metric, 'unit', 'unit')} ${recordText(metric, 'value', 'value', '0')}`,
-        ),
-        el(
-          'p',
-          'muted',
-          `${recordText(metric, 'basis', 'basis')} · 来源 ${recordText(metric, 'source', 'source')}`,
-        ),
-      );
-      grid.append(card);
-    }
+    const entries = Object.entries(metrics).map(([id, raw]) => ({
+      id,
+      label: labels[id] ?? id,
+      metric: recordValue(raw),
+    }));
+    const grid = el('div', 'executive-metrics');
+    render(
+      h(SummaryCards, {
+        label: '经营指标汇总',
+        testId: 'dashboard-metric',
+        items: entries.map(({ id, label, metric }) => ({
+          id,
+          label,
+          value: recordText(metric, 'value', 'value', '—'),
+          hint: recordText(metric, 'unit', 'unit'),
+        })),
+      }),
+      grid,
+    );
     panel.append(grid);
     const orders = Array.isArray(drilldowns.orders) ? drilldowns.orders.map(recordValue) : [],
       risks = Array.isArray(drilldowns.risks) ? drilldowns.risks.map(recordValue) : [];
@@ -84,6 +86,25 @@ export function appendWorkspaceDashboard(
     if (!risks.length) riskList.append(el('p', 'success-note', '当前无风险评价。'));
     details.append(orderList, riskList);
     panel.append(details);
+    if (entries.length > 0) {
+      const sources = el('section', 'dashboard-sources');
+      const definitions = el('dl');
+      for (const { id, label, metric } of entries) {
+        const entry = el('div');
+        entry.setAttribute('data-testid', `dashboard-source-${id}`);
+        entry.append(
+          el('dt', '', label),
+          el(
+            'dd',
+            '',
+            `${recordText(metric, 'basis', 'basis')} · 来源 ${recordText(metric, 'source', 'source')}`,
+          ),
+        );
+        definitions.append(entry);
+      }
+      sources.append(el('h3', '', '指标口径与来源'), definitions);
+      panel.append(sources);
+    }
     workspace.append(panel);
   }
 }
