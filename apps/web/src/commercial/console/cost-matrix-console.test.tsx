@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { h, render } from 'preact';
 import type { ComponentType } from 'preact';
 import { installGlobalTestDom, type TestElement } from '../../../test/fixtures/preact-dom';
+import { noticeOf } from '../../../test/fixtures/console-notice';
 import { CostMatrixConsolePage } from './cost-matrix-console';
 import type { CostMatrixConsolePorts, CostMatrixRow } from './cost-matrix-ports';
 
@@ -324,6 +325,121 @@ describe('U3-COM-4 成本矩阵控制台', () => {
       await flush();
       expect(ports.submit).toHaveBeenCalledTimes(1);
       expect(ports.querySummaries).toHaveBeenCalledExactlyOnceWith(ports.initialQuery);
+    });
+  });
+
+  // WFD 补齐（TD-WF-014① 在本控制台的缺口）：六个写动作各有一条成功状态行。
+  describe('写成功后的状态行（WFD）', () => {
+    const openDetail = async (ports: CostMatrixConsolePorts): Promise<TestElement> => {
+      const host = mount(ports);
+      element(host.querySelector('[data-testid="kt-matrix-open"]')).click();
+      await flush();
+      return host;
+    };
+
+    it('新建规格成本模型：状态行在页头下方', async () => {
+      const ports = portsFor(['cost-matrix:manage']);
+      const host = mount(ports);
+      element(host.querySelector('[data-testid="kt-matrix-create"]')).click();
+      await flush();
+      fillField(host, 'code', 'KT-60');
+      fillField(host, 'name', '60mm 景观');
+      fillField(host, 'currency', 'CNY');
+      fillField(host, 'defaultTaxRate', '0.13');
+      await flush();
+      element(
+        element(host.querySelector('.detail-drawer')).querySelector('button[type="submit"]'),
+      ).click();
+      await flush();
+      await flush();
+      expect(noticeOf(host)).toEqual({ text: '已创建规格成本模型 KT-60', inDrawer: false });
+    });
+
+    it.each([
+      ['kt-matrix-calculate', '已重新核算（含税成本）'],
+      ['kt-matrix-calculate-exclusive', '已重新核算（未税成本）'],
+    ] as const)('重算（%s）：状态行在抽屉底部', async (testId, text) => {
+      const ports = portsFor(['cost-matrix:calculate']);
+      const host = await openDetail(ports);
+      expect(noticeOf(host).text).toBe('');
+      element(host.querySelector(`[data-testid="${testId}"]`)).click();
+      await flush();
+      await flush();
+      expect(noticeOf(host)).toEqual({ text, inDrawer: true });
+      // 打开下一个动作（因子表单）时清空。
+      expect(host.querySelector('[data-testid="kt-matrix-add-factor"]')).toBeNull();
+    });
+
+    it('重算失败：不留下状态行，原因在抽屉的动作区', async () => {
+      const ports = portsFor(['cost-matrix:calculate'], {
+        submit: vi.fn().mockRejectedValue(new Error('Internal server error')),
+      });
+      const host = await openDetail(ports);
+      element(host.querySelector('[data-testid="kt-matrix-calculate"]')).click();
+      await flush();
+      await flush();
+      expect(noticeOf(host).text).toBe('');
+      expect(
+        element(host.querySelector('[data-testid="kt-matrix-submit-error"]')).textContent,
+      ).toBe('服务器处理请求时出错，请稍后重试');
+    });
+
+    it('添加因子、更新因子：状态行在抽屉底部；开始填写因子时上一条清空', async () => {
+      const ports = portsFor(['cost-matrix:manage']);
+      const host = await openDetail(ports);
+      element(host.querySelector('[data-testid="kt-matrix-add-factor"]')).click();
+      await flush();
+      const fill = async (editing: boolean): Promise<void> => {
+        for (const [name, value] of [
+          ['factorCode', 'BACKING'],
+          ['factorName', editing ? 'PE 草丝（更新）' : '底布'],
+          ['category', 'DIRECT_MATERIAL'],
+          ['sourceType', 'MANUAL'],
+          ['quantity', '1'],
+          ['unitCode', 'M2'],
+          ['manualUnitPriceTaxInclusive', '10'],
+          ['taxRate', '0.13'],
+          ['priceSourceName', '基准'],
+        ] as const) {
+          if (editing && name === 'factorCode') continue;
+          fillField(host, name, value);
+        }
+        await flush();
+      };
+      await fill(false);
+      expect(noticeOf(host).text).toBe('');
+      element(
+        element(host.querySelector('.detail-drawer')).querySelector('button[type="submit"]'),
+      ).click();
+      await flush();
+      await flush();
+      expect(noticeOf(host)).toEqual({ text: '已添加因子 底布', inDrawer: true });
+      // 开始下一个动作：打开「更新因子」表单时上一次的提示清空。
+      element(host.querySelector('[data-testid="kt-matrix-edit-factor"]')).click();
+      await flush();
+      expect(noticeOf(host).text).toBe('');
+      await fill(true);
+      element(
+        element(host.querySelector('.detail-drawer')).querySelector('button[type="submit"]'),
+      ).click();
+      await flush();
+      await flush();
+      expect(noticeOf(host)).toEqual({ text: '已更新因子 PE 草丝（更新）', inDrawer: true });
+    });
+
+    it('生成报价成本决策：留下状态行并转到报价页', async () => {
+      const ports = portsFor(['cost:evaluate'], {
+        submit: vi.fn().mockResolvedValue({ costDecisionId: 'decision-1' }),
+      });
+      const host = await openDetail(ports);
+      element(host.querySelector('[data-testid="kt-matrix-quote-decision"]')).click();
+      await flush();
+      await flush();
+      expect(ports.navigateToQuotes).toHaveBeenCalledTimes(1);
+      expect(noticeOf(host)).toEqual({
+        text: '已生成报价成本决策，请到「销售报价」选用',
+        inDrawer: true,
+      });
     });
   });
 });

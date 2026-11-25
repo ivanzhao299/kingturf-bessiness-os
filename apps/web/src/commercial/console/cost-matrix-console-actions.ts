@@ -27,6 +27,8 @@ export type MatrixSignalBundle = Readonly<{
   selectedIds: Signal<ReadonlySet<string>>;
   compareLimitNotice: Signal<boolean>;
   comparison: Signal<ComparisonState | null>;
+  // TD-WF-014①（WFD 补齐）：最近一次写操作的成功提示。
+  notice: Signal<string>;
 }>;
 
 export type MatrixActions = Readonly<{
@@ -93,6 +95,7 @@ export const costMatrixActions = (
       });
       applyPage(bundle, await ports.refresh());
       closeForm(bundle);
+      bundle.notice.value = `已创建规格成本模型 ${values.code ?? ''}`;
     } catch (error: unknown) {
       fail(error, bundle, '规格模型创建失败');
     } finally {
@@ -113,6 +116,7 @@ export const costMatrixActions = (
       bundle.submitError.value = '';
       bundle.activeForm.value = null;
       await reloadPage();
+      bundle.notice.value = `已添加因子 ${values.factorName ?? values.factorCode ?? ''}`;
     } catch (error: unknown) {
       fail(error, bundle, '因子添加失败');
     } finally {
@@ -135,6 +139,8 @@ export const costMatrixActions = (
       if (fresh) bundle.selected.value = fresh;
       closeForm(bundle);
       await reloadPage();
+      // 说用户刚保存的名称（因子可能被改名），没有才退回原来的名称 / 编号。
+      bundle.notice.value = `已更新因子 ${values.factorName ?? ports.textValue(factor.factorName ?? factor.factorCode, '')}`;
     } catch (error: unknown) {
       fail(error, bundle, '因子保存失败');
     } finally {
@@ -153,6 +159,7 @@ export const costMatrixActions = (
       const fresh = await ports.loadMatrix(ports.textValue(matrix.id, ''));
       if (fresh) bundle.selected.value = fresh;
       await reloadPage();
+      bundle.notice.value = `已重新核算（${mode === 'TAX_INCLUSIVE' ? '含税' : '未税'}成本）`;
     } catch (error: unknown) {
       fail(error, bundle, '矩阵重算失败');
     } finally {
@@ -180,6 +187,8 @@ export const costMatrixActions = (
           },
         ),
       );
+      // 成功后的去向是报价页（那里会预选这个成本决策）；状态行留在本页，回到本页时看得到。
+      bundle.notice.value = '已生成报价成本决策，请到「销售报价」选用';
       if (typeof result.costDecisionId === 'string') ports.navigateToQuotes();
     } catch (error: unknown) {
       fail(error, bundle, '报价成本决策创建失败');

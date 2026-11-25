@@ -12,6 +12,7 @@ import type { CostMatrixConsolePorts, CostMatrixRow } from './cost-matrix-ports'
 import { CompareBar, ComparePanel, type ComparisonState } from './cost-matrix-console-compare';
 import { CreateDrawer, FactorForm } from './cost-matrix-console-forms';
 import { FocusAnchor } from './focus-anchor';
+import { ConsoleNotice } from './console-notice';
 import {
   closeForm,
   comparisonActions,
@@ -34,6 +35,8 @@ export type MatrixPageState = Readonly<{
   productFamily: string;
   loadError: string;
   submitError: string;
+  // TD-WF-014①（WFD 补齐）：最近一次写操作的成功提示。
+  notice: string;
   loading: boolean;
   selected: CostMatrixRow | null;
   activeForm: MatrixFormKind;
@@ -192,6 +195,8 @@ const MatrixDrawer = ({ state }: Readonly<{ state: MatrixPageState }>) => {
       onClose={() => {
         state.open(null);
       }}
+      // TD-WF-014①：写成功的提示放在抽屉底部，不随抽屉体滚走。
+      footer={state.notice === '' ? undefined : <ConsoleNotice message={state.notice} />}
     >
       <MatrixDetail state={state} />
       {/* TD-WF-005 / TD-WF-012：行内表单开着时，提交失败显示在该表单自己的提示区（FormSection 的
@@ -450,6 +455,8 @@ const MatrixView = (state: MatrixPageState) => {
       </div>
       {state.selected ? <MatrixDrawer state={state} /> : null}
       {state.activeForm === 'create' ? <CreateDrawer state={state} /> : null}
+      {/* TD-WF-014①：详情抽屉没开着时，写成功的提示显示在页头下方。 */}
+      {state.selected ? null : <ConsoleNotice message={state.notice} />}
     </div>
   );
 };
@@ -469,6 +476,7 @@ export function CostMatrixConsolePage(ports: CostMatrixConsolePorts) {
     selectedIds: signal<ReadonlySet<string>>(new Set()),
     compareLimitNotice: signal(false),
     comparison: signal<ComparisonState | null>(null),
+    notice: signal(''),
   };
 
   const runQuery = async (next: CostMatrixQuery): Promise<void> => {
@@ -482,23 +490,27 @@ export function CostMatrixConsolePage(ports: CostMatrixConsolePorts) {
     productFamily: bundle.productFamily.value,
     loadError: bundle.loadError.value,
     submitError: bundle.submitError.value,
+    notice: bundle.notice.value,
     loading: bundle.loading.value,
     selected: bundle.selected.value,
     activeForm: bundle.activeForm.value,
     editingFactor: bundle.editingFactor.value,
     permissions: ports.permissions,
     ports,
+    // 开始下一个动作时清掉上一次的成功提示（与 submitError 同一处）。
     open: (matrix) => {
       bundle.selected.value = matrix;
       bundle.activeForm.value = null;
       bundle.editingFactor.value = null;
       bundle.submitError.value = '';
+      bundle.notice.value = '';
     },
     openAsync: async (matrix) => {
       bundle.selected.value = matrix;
       bundle.activeForm.value = null;
       bundle.editingFactor.value = null;
       bundle.submitError.value = '';
+      bundle.notice.value = '';
       try {
         const fresh = await ports.loadMatrix(ports.textValue(matrix.id ?? matrix.code, ''));
         if (fresh && bundle.selected.value === matrix) bundle.selected.value = fresh;
@@ -510,6 +522,7 @@ export function CostMatrixConsolePage(ports: CostMatrixConsolePorts) {
       bundle.activeForm.value = kind;
       bundle.editingFactor.value = factor ?? null;
       bundle.submitError.value = '';
+      bundle.notice.value = '';
     },
     closeForm: () => {
       closeForm(bundle);
