@@ -230,6 +230,45 @@ class PureLogicTest(unittest.TestCase):
             am.require_zero(pending, inflight, 'background queues have in-flight work')
 
 
+class OrchestratorIsolationTest(unittest.TestCase):
+    def test_real_child_receives_isolated_flag_and_the_original_cli_arguments(self):
+        import sys
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as temp:
+            staged = Path(temp)
+            completed = mock.Mock(returncode=0, stdout='{"verdict":"COMPLETED"}', stderr='')
+            with mock.patch.object(am.subprocess, 'run', return_value=completed) as run:
+                self.assertEqual(am.run_orchestrator(staged, 'execute', 'plan with spaces.json', '--strict'), {'verdict': 'COMPLETED'})
+            self.assertEqual(run.call_args.args[0], [sys.executable, '-I', str(staged / 'release_orchestrator.py'), 'execute', 'plan with spaces.json', '--strict'])
+            self.assertEqual(run.call_args.kwargs, {'capture_output': True, 'text': True, 'timeout': 1800})
+
+    def test_real_child_ignores_poisoned_pythonpath_and_staging_imports(self):
+        import os
+        from unittest import mock
+        for location in ('environment', 'script directory'):
+            with self.subTest(poison=location), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                staged, poison = root / 'staged', root / 'poison'
+                staged.mkdir()
+                poison.mkdir()
+                target = poison if location == 'environment' else staged
+                (target / 'decimal.py').write_text("raise RuntimeError('untrusted decimal import executed')\n")
+                (staged / 'release_orchestrator.py').write_text(
+                    "import decimal,json,sys\n"
+                    "print(json.dumps({'isolated':sys.flags.isolated,'ignore_environment':sys.flags.ignore_environment,'no_user_site':sys.flags.no_user_site,'decimal':str(decimal.Decimal('1.25')),'argv':sys.argv[1:]}))\n")
+                with mock.patch.dict(os.environ, PYTHONPATH=str(poison)):
+                    result = am.run_orchestrator(staged, 'plan', 'input with spaces.json')
+                self.assertEqual(result, {'isolated': 1, 'ignore_environment': 1, 'no_user_site': 1,
+                                          'decimal': '1.25', 'argv': ['plan', 'input with spaces.json']})
+
+    def test_real_child_nonzero_exit_is_still_a_failed_orchestrator(self):
+        with tempfile.TemporaryDirectory() as temp:
+            staged = Path(temp)
+            (staged / 'release_orchestrator.py').write_text('import sys\nsys.exit(7)\n')
+            with self.assertRaisesRegex(RuntimeError, 'orchestrator failed'):
+                am.run_orchestrator(staged, 'execute', 'plan.json')
+
+
 class ApiStopBindingTest(unittest.TestCase):
     """TD-REL-013: execute the real host flow up to drain with controlled Docker."""
 

@@ -231,7 +231,7 @@ def restore_api_on_failure(prod_root):
 
 def run_orchestrator(staged, *cli):
     """Delegate a gated step to the staged orchestrator CLI (single source of truth)."""
-    argv = [sys.executable, str(Path(staged) / 'release_orchestrator.py'), *cli]
+    argv = [sys.executable, '-I', str(Path(staged) / 'release_orchestrator.py'), *cli]
     result = subprocess.run(argv, capture_output=True, text=True, timeout=1800)
     require(result.returncode == 0,
             'orchestrator failed: ' + result.stderr.strip()[-400:])
