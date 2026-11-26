@@ -61,6 +61,7 @@ class ForwardRecoveryTest(unittest.TestCase):
             self.containers[service] = {'Id': digit*64, 'Name': '/'+ar.PROJECT+'-'+service+'-1', 'Image': 'sha256:'+digit*64, 'RestartCount': 3 if service == 'api' else 0, 'Config': {'Image': 'retained/'+service+'@sha256:'+digit*64, 'Labels': {'com.docker.compose.project': ar.PROJECT, 'com.docker.compose.service': service}, 'Env': ['KINGTURF_RELEASE_SHA='+self.old, 'KINGTURF_WRITE_FENCE=disabled', 'PRIVATE_TEST_VALUE=not-public']}, 'State': {'Status': 'restarting' if service == 'api' else 'running', 'Running': True, 'Restarting': service == 'api', 'ExitCode': 1 if service == 'api' else 0, 'StartedAt': (now-timedelta(seconds=30)).isoformat(), 'FinishedAt': now.isoformat(), 'OOMKilled': False, 'Health': {'Status': 'healthy' if service == 'postgres' else 'unhealthy'}}, 'Mounts': mounts}
         self.logs = 'Error: Migration compatibility check failed: 0077_fixture.sql:drifted\nPRIVATE_TEST_VALUE=not-public'
         self.events = []
+        self.retired = {}
         self.active_connections = 0
         self.stop_still_restarting = False
         self.fail_probe_fence = None
@@ -76,6 +77,8 @@ class ForwardRecoveryTest(unittest.TestCase):
         return {}, self.rows, classification, pending
 
     def lookup(self, key):
+        if key in self.retired:
+            return self.retired[key]
         return next(c for s, c in self.containers.items() if key in (s, c['Id'], ar.PROJECT+'-'+s+'-1'))
 
     def read_command(self, argv, **kwargs):
@@ -97,6 +100,12 @@ class ForwardRecoveryTest(unittest.TestCase):
             return json.dumps([self.lookup(k) for k in argv[2:]]).encode()
         if argv[1:3] == ['image', 'inspect']:
             return b'[]'
+        if argv[1] == 'stop':
+            target = self.lookup(argv[-1])
+            self.events.append(('stopped-id', target['Id']))
+            if not self.stop_still_restarting:
+                target['State'].update(Status='exited', Running=False, Restarting=False)
+            return (target['Id']+'\n').encode()
         if argv[1] == 'exec':
             self.assertIn('BEGIN READ ONLY', kwargs['data'].decode())
             if 'pg_stat_activity' in kwargs['data'].decode():
@@ -107,13 +116,20 @@ class ForwardRecoveryTest(unittest.TestCase):
     def compose(self, *args, env=None):
         self.events.append(('compose', args, self.fence()))
         api = self.containers['api']
-        if args[0] == 'stop' and not self.stop_still_restarting:
-            api['State'].update(Status='exited', Running=False, Restarting=False)
+        if args[0] == 'stop':
+            self.events.append(('stopped-id', api['Id']))
+            if not self.stop_still_restarting:
+                api['State'].update(Status='exited', Running=False, Restarting=False)
         if args[0] == 'up':
             self.assertNotIn('build', args)
             self.assertEqual(env['KINGTURF_RELEASE_SHA'], self.sha)
+            self.retired[api['Id']] = copy.deepcopy(api)
+            api = copy.deepcopy(api)
+            api.update(Id=('6' if api['Id'] != '6'*64 else '7')*64, Image='sha256:'+'6'*64)
+            api['Config']['Image'] = self.identities['api']['local_ref']
             api['State'].update(Status='running', Running=True, Restarting=False, ExitCode=0, Health={'Status': 'healthy'})
             api['Config']['Env'] = ['KINGTURF_RELEASE_SHA='+self.sha, 'KINGTURF_WRITE_FENCE='+env['KINGTURF_WRITE_FENCE']]
+            self.containers['api'] = api
         return b''
 
     def fence(self):
@@ -142,13 +158,54 @@ class ForwardRecoveryTest(unittest.TestCase):
         return ar.prepare_forward_recovery(self.bundle, self.save_source())
 
     def stops(self):
-        return [e for e in self.events if e[0] == 'compose' and e[1][0] == 'stop']
+        return [e for e in self.events if e[0] == 'stopped-id']
+
+    def replace_api(self):
+        previous = self.containers['api']
+        self.retired[previous['Id']] = copy.deepcopy(previous)
+        replacement = copy.deepcopy(previous)
+        replacement['Id'] = '9'*64
+        replacement['State'].update(Status='running', Running=True, Restarting=False, ExitCode=0, Health={'Status': 'healthy'})
+        self.containers['api'] = replacement
 
     def switch_cli(self):
         before = {'registry': ar.registry_snapshot(), 'migration_state_hashes': ar.state_hashes(), 'recovery_images': [], 'isolated_restore': 'PASS', 'backup': {}}
         (self.bundle / 'before.json').write_text(json.dumps(before))
         with mock.patch.object(sys, 'argv', ['application_release.py', 'switch', str(self.bundle)]), contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
             ar.main()
+
+    def test_prepare_replacement_after_last_check_never_receives_stop_permission(self):
+        original = ar.verify_forward_unchanged
+        calls = []
+        def replace_after_check(bundle):
+            result = original(bundle)
+            calls.append(True)
+            if len(calls) == 1:
+                self.replace_api()
+            return result
+        with mock.patch.object(ar, 'verify_forward_unchanged', side_effect=replace_after_check):
+            with self.assertRaises(RuntimeError):
+                self.prepare()
+        self.assertNotIn(('stopped-id', '9'*64), self.stops())
+        self.assertIn(('stopped-id', '3'*64), self.stops())
+        self.assertTrue(self.containers['api']['State']['Running'])
+        self.assertEqual(self.fence(), 'enabled')
+        self.assertEqual(json.loads((self.bundle/'forward-preparation.json').read_bytes())['phase'], 'FAILED')
+
+    def test_failure_cleanup_replacement_after_inspection_never_receives_stop_permission(self):
+        self.prepare()
+        self.events.clear()
+        original = ar.set_forward_fence
+        def replace_after_fence(bundle, enabled):
+            original(bundle, enabled)
+            self.replace_api()
+        with mock.patch.object(ar, 'set_forward_fence', side_effect=replace_after_fence):
+            with self.assertRaises(RuntimeError):
+                ar.retain_forward_fence(self.bundle)
+        self.assertNotIn(('stopped-id', '9'*64), self.stops())
+        self.assertIn(('stopped-id', '3'*64), self.stops())
+        self.assertTrue(self.containers['api']['State']['Running'])
+        self.assertEqual(self.fence(), 'enabled')
 
     def test_source_binds_identity_schema_marker_and_time_without_log_or_secret_contents(self):
         source = self.source()

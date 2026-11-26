@@ -269,6 +269,17 @@ def same_failed_api(container, source):
     images.require(container['Id'] == source['api_container_id'] and container['Image'] == source['api_image_id'] and container['Config']['Image'] == source['api_image_ref'] and releases == [source['old_release_sha']] and state == source['state'] and container.get('RestartCount') == source['restart_count'], 'Failed API source changed before preparation')
 
 
+def stop_bound_api(container_id, image_id):
+    # Service-name resolution is mutable: the authorization belongs to this exact
+    # inspected container, even if another API appears between check and stop.
+    images.require(isinstance(container_id, str) and re.fullmatch(r'[0-9a-f]{64}', container_id), 'Forward recovery stop requires a full bound container ID')
+    command(['docker', 'stop', '-t', '30', container_id])
+    stopped = json.loads(command(['docker', 'inspect', container_id]))[0]
+    canonical = json.loads(command(['docker', 'inspect', PROJECT+'-api-1']))[0]
+    images.require(stopped['Id'] == container_id and stopped['Image'] == image_id and canonical['Id'] == container_id and canonical['Image'] == image_id, 'Forward recovery canonical API changed after stopping bound source')
+    images.require(stopped['State'].get('Running') is False and stopped['State'].get('Restarting') is False and canonical['State'].get('Running') is False and canonical['State'].get('Restarting') is False, 'Forward recovery API is not truly stopped')
+
+
 def prepare_forward_recovery(bundle, source_sha256):
     approval, identities, _ = images.load_bundle(bundle)
     authorize(bundle, approval)
@@ -304,9 +315,7 @@ def prepare_forward_recovery(bundle, source_sha256):
         gate.validate_forward_source(source, expected, approval['release_sha'])
         same_failed_api(json.loads(command(['docker', 'inspect', PROJECT+'-api-1']))[0], source)
         verify_forward_unchanged(bundle)
-        compose('stop', '-t', '30', 'api')
-        stopped = json.loads(command(['docker', 'inspect', PROJECT+'-api-1']))[0]
-        images.require(stopped['Id'] == source['api_container_id'] and stopped['Image'] == source['api_image_id'] and stopped['State'].get('Running') is False and stopped['State'].get('Restarting') is False, 'Forward recovery API is not truly stopped')
+        stop_bound_api(source['api_container_id'], source['api_image_id'])
         forward_checkpoint(bundle, 'STOPPED', api_stopped=True)
         assert_drained()
         verify_forward_unchanged(bundle)
@@ -328,8 +337,8 @@ def retain_forward_fence(bundle):
     candidate = current['Config']['Image'] == identities['api']['local_ref'] and 'KINGTURF_RELEASE_SHA='+approval['release_sha'] in current['Config']['Env']
     images.require(old_source or candidate, 'Forward failure source changed; refusing to stop an unrelated API')
     set_forward_fence(bundle, True)
-    compose('stop', '-t', '30', 'api')
     forward_checkpoint(bundle, 'FAILED', fence_enabled=True)
+    stop_bound_api(current['Id'], current['Image'])
 
 
 def recover_previous_application(bundle):
