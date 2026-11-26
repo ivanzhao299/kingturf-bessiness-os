@@ -194,6 +194,12 @@ const mount = (ports: SupplierConsolePorts): TestElement => {
   return host;
 };
 
+// TD-TEST-035：抽屉初焦是 passive effect——node（无 requestAnimationFrame）下 preact hooks 经
+// setTimeout(35ms)+再一拍调度，flush()（setTimeout 0）等不到它。凡依赖「抽屉初焦已完成」的步骤
+// （往抽屉里点确认、或对焦点做断言）都必须经 act 同步跑掉该 effect，并断言初焦落位；否则残留的
+// 悬挂初焦 effect 链（上一用例未卸载的抽屉，或共享定时器链冲进的本用例挂起 effect）会在断言
+// 窗口把焦点抢到关闭按钮（根因与红/绿探针见 docs/evidence/drawer-focus-stability-2026-11-26.md）。
+// 所以打开抽屉只有这一条路径。
 const openSupplierDrawer = async (host: TestElement): Promise<TestElement> => {
   // 先完成详情抽屉的初焦 effect，再触发抽屉里的确认框。
   await act(() => {
@@ -202,6 +208,16 @@ const openSupplierDrawer = async (host: TestElement): Promise<TestElement> => {
   const drawer = element(host.querySelector('.detail-drawer'));
   expect(TestDocument.current.activeElement).toBe(element(drawer.querySelector('.drawer-close')));
   return drawer;
+};
+
+// 新建抽屉同样有初焦 effect：act 同步跑掉并断言初焦，不留悬挂定时器。
+const openCreateDrawer = async (host: TestElement): Promise<void> => {
+  await act(() => {
+    element(host.querySelector('[data-testid="kt-supplier-create"]')).click();
+  });
+  expect(TestDocument.current.activeElement).toBe(
+    element(element(host.querySelector('.detail-drawer')).querySelector('.drawer-close')),
+  );
 };
 
 const fillField = (host: TestElement, name: string, value: string): void => {
@@ -249,7 +265,9 @@ const QUALIFY_FORM: readonly (readonly [string, string])[] = [
 ];
 
 afterEach(() => {
-  // 卸载上一个用例的抽屉，避免其延迟焦点 effect 落到下一个测试 DOM。
+  // 卸载用例挂载的组件树：被卸载组件尚待执行的 effect 随之丢弃，不会把焦点操作
+  // 落到下一个用例的测试 DOM 上（open/create 路径已全部经 act 消除悬挂初焦，
+  // 这里对其它残余 effect 兜底）。
   for (const host of mountedHosts) render(null, host);
   mountedHosts.clear();
   vi.restoreAllMocks();
@@ -259,8 +277,7 @@ describe('U3-PROC-1 供应商控制台', () => {
   it('创建供应商使用 vanilla 同款固定载荷（CNY/评分×100/contact 对象）并在刷新后收起抽屉', async () => {
     const ports = portsFor([], ['supplier:manage']);
     const host = mount(ports);
-    element(host.querySelector('[data-testid="kt-supplier-create"]')).click();
-    await flush();
+    await openCreateDrawer(host);
     for (const [name, value] of CREATE_FORM) fillField(host, name, value);
     await flush();
     await submitDrawer(host);
@@ -278,8 +295,7 @@ describe('U3-PROC-1 供应商控制台', () => {
   it('物料准入审核：approve 走 PUT qualification 统一动作端点并保留 evidence 结构', async () => {
     const ports = portsFor([supplier], ['supplier:manage']);
     const host = mount(ports);
-    element(host.querySelector('[data-testid="kt-supplier-open"]')).click();
-    await flush();
+    await openSupplierDrawer(host);
     element(host.querySelector('[data-testid="kt-supplier-qualify"]')).click();
     await flush();
     for (const [name, value] of QUALIFY_FORM) fillField(host, name, value);
@@ -304,8 +320,7 @@ describe('U3-PROC-1 供应商控制台', () => {
   it('驳回（reject）经同一端点映射 action=reject', async () => {
     const ports = portsFor([supplier], ['supplier:manage']);
     const host = mount(ports);
-    element(host.querySelector('[data-testid="kt-supplier-open"]')).click();
-    await flush();
+    await openSupplierDrawer(host);
     element(host.querySelector('[data-testid="kt-supplier-qualify"]')).click();
     await flush();
     fillField(host, 'action', 'reject');
@@ -328,8 +343,7 @@ describe('U3-PROC-1 供应商控制台', () => {
     const ports = portsFor([supplier]);
     const host = mount(ports);
     expect(host.querySelector('[data-testid="kt-supplier-create"]')).toBe(null);
-    element(host.querySelector('[data-testid="kt-supplier-open"]')).click();
-    await flush();
+    await openSupplierDrawer(host);
     expect(host.querySelector('[data-testid="kt-supplier-qualify"]')).toBe(null);
     expect(ports.submit).not.toHaveBeenCalled();
     expect(host.querySelector('[data-testid="kt-supplier-state-row-pause"]')).toBeNull();
@@ -474,8 +488,7 @@ describe('U3-PROC-1 供应商控制台', () => {
   it('详情抽屉展示资质记录与按 supplierId 过滤的报价历史', async () => {
     const ports = portsFor([supplier]);
     const host = mount(ports);
-    element(host.querySelector('[data-testid="kt-supplier-open"]')).click();
-    await flush();
+    await openSupplierDrawer(host);
     const detail = element(host.querySelector('[data-testid="kt-supplier-detail"]'));
     expect(detail.textContent).toContain('SUP-1');
     expect(detail.textContent).toContain('王经理');
@@ -511,8 +524,7 @@ describe('U3-PROC-1 供应商控制台', () => {
     ).toEqual(['success', 'info', 'danger', 'neutral']);
     // 无准入记录的供应商仅呈待准入（= 已发布物料数）。
     expect(cells[1]?.textContent).toBe(`待准入 ${String(itemChoices.length)}`);
-    element(host.querySelectorAll('[data-testid="kt-supplier-open"]')[0]).click();
-    await flush();
+    await openSupplierDrawer(host);
     const badges = element(host.querySelector('[data-testid="kt-supplier-qualification-badges"]'));
     expect(badges.textContent).toBe('已批准 1有条件批准 1已驳回 1待准入 2');
     const pending = element(host.querySelector('[data-testid="kt-supplier-pending"]'));
@@ -544,8 +556,7 @@ describe('U3-PROC-1 供应商控制台', () => {
     );
     expect(cell.textContent).toBe('已驳回 1');
     expect(element(cell.querySelector('.status-badge')).getAttribute('data-tone')).toBe('danger');
-    element(rejectedHost.querySelector('[data-testid="kt-supplier-open"]')).click();
-    await flush();
+    await openSupplierDrawer(rejectedHost);
     const record = element(
       rejectedHost.querySelector('[data-testid="kt-supplier-qualifications"]'),
     );
@@ -559,8 +570,7 @@ describe('U3-PROC-1 供应商控制台', () => {
       label: `RM-${String(index + 1)} · 物料${String(index + 1)}`,
     }));
     const host = mount(portsFor([onHoldSupplier], [], { itemVersionChoices: many }));
-    element(host.querySelector('[data-testid="kt-supplier-open"]')).click();
-    await flush();
+    await openSupplierDrawer(host);
     const pending = element(host.querySelector('[data-testid="kt-supplier-pending"]'));
     expect(pending.textContent).toContain('待准入物料 10 项');
     expect(pending.querySelectorAll('li')).toHaveLength(8);
@@ -573,8 +583,7 @@ describe('U3-PROC-1 供应商控制台', () => {
       initialQuotes: pricedQuotes,
     });
     const host = mount(ports);
-    element(host.querySelector('[data-testid="kt-supplier-open"]')).click();
-    await flush();
+    await openSupplierDrawer(host);
     const compare = element(host.querySelector('[data-testid="kt-supplier-compare"]'));
     expect(compare.querySelectorAll('[data-testid="kt-supplier-compare-item"]')).toHaveLength(1);
     expect(compare.textContent).toContain('RM-YARN · 草纱');
@@ -629,8 +638,7 @@ describe('U3-PROC-1 供应商控制台', () => {
     ];
     const openCompare = async (overrides: Partial<SupplierConsolePorts>): Promise<TestElement> => {
       const host = mount(portsFor([supplier], [], overrides));
-      element(host.querySelector('[data-testid="kt-supplier-open"]')).click();
-      await flush();
+      await openSupplierDrawer(host);
       return host;
     };
     const tieHost = await openCompare({
@@ -691,8 +699,7 @@ describe('U3-PROC-1 供应商控制台：详情抽屉随写操作刷新', () => 
       refresh: vi.fn().mockResolvedValue({ suppliers: [qualified], quotes: [quote] }),
     });
     const host = mount(ports);
-    element(host.querySelector('[data-testid="kt-supplier-open"]')).click();
-    await flush();
+    await openSupplierDrawer(host);
     const drawerText = (): string => element(host.querySelector('.detail-drawer')).textContent;
     expect(drawerText()).toContain('尚无物料准入记录');
     element(host.querySelector('[data-testid="kt-supplier-qualify"]')).click();
@@ -718,8 +725,7 @@ describe('U3-PROC-1 供应商控制台：写成功后的提示', () => {
   it('新建成功：页头下方出现「已创建供应商 …」，不在抽屉里', async () => {
     const ports = portsFor([], ['supplier:manage']);
     const host = mount(ports);
-    element(host.querySelector('[data-testid="kt-supplier-create"]')).click();
-    await flush();
+    await openCreateDrawer(host);
     expect(noticeOf(host).text).toBe('');
     for (const [name, value] of CREATE_FORM) fillField(host, name, value);
     await flush();
@@ -731,8 +737,7 @@ describe('U3-PROC-1 供应商控制台：写成功后的提示', () => {
   it('准入审核成功：提示在开着的详情抽屉底部；打开另一条记录时清空', async () => {
     const ports = portsFor([supplier], ['supplier:manage']);
     const host = mount(ports);
-    element(host.querySelector('[data-testid="kt-supplier-open"]')).click();
-    await flush();
+    await openSupplierDrawer(host);
     element(host.querySelector('[data-testid="kt-supplier-qualify"]')).click();
     await flush();
     for (const [name, value] of QUALIFY_FORM) fillField(host, name, value);
@@ -741,8 +746,7 @@ describe('U3-PROC-1 供应商控制台：写成功后的提示', () => {
     expect(noticeOf(host)).toEqual({ text: '已提交物料准入审核：批准', inDrawer: true });
     element(element(host.querySelector('.detail-drawer')).querySelector('.drawer-close')).click();
     await flush();
-    element(host.querySelector('[data-testid="kt-supplier-open"]')).click();
-    await flush();
+    await openSupplierDrawer(host);
     expect(noticeOf(host).text).toBe('');
   });
 });
