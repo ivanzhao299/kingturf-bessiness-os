@@ -168,3 +168,36 @@ P1 三轮先执行，写流程最后执行，避免信用写数据改变 P1 固�
 指定工作流的TD-TEST-029已经完成开发、确定性门禁及GLM-5.4审查并提交：工具 `f54d72f86e075e36e4f91b38df18c7e1e4c9081a`、证据 `aa1160445957b92125cee9019037354267994848`。主协调只读复核完整代码差异和四轮审查记录后，合入 `a5ff13b1b5fc314c3dd3698c2be38af68887f7bf`；保留两边工具测试、发布摘要／预算守卫及production构建，所有者裁定仍为台账第一节，既有TD-WEB-016盘查状态不被旧分支覆盖。没有修改仍在执行的供应商初焦任务，开发模型和审查模型保持用户指定配置。
 
 同一干净合并快照的根 `test:session-network-tools` **115/115、零skip、退出0**，前后HEAD和受跟踪树不变；完整检出的fixing-commit探针核对24条、23条完整SHA祖先全部成立、1条无单独修复提交、核对失败0。回执在 `integration-artifacts/catalog-a5ff13b/`，工具日志SHA-256为 `4c423f4e1dd8e50c72df5893edf6bfe7db88d38bb9eb8fea3be5f343b4df0299`。这是合并后定向回执，不能拿第7节c3的完整CI替代新增源码后的最终完整CI；浏览器四轮、浅克隆和Node24.1兼容等分支证据详见[目录批证据](smoke-catalog-fixed-in-2026-11-26.md)。
+
+## 9. 导出修复集成后的完整 CI 与成功 R 流水线
+
+TD-REL-016 经独立复核后整支合入 **`1f6f3de8b5bbd79fb1c2a6bb6ccc82963099aa66`**，树 `e4fb09e5f70c4c94c802f66638c5d4dd158a9a0a`。两份准备脚本／测试与交付分支原字节一致，保留目录批、严格走查、发布守卫和 production 构建；台账所有者裁定首节原字节不变。
+
+主协调在独立干净工作树，经 heavy 于 **2026-11-26 12:00:30–12:16:34 UTC** 实跑完整 `pnpm ci:local`，**退出0，耗时964.16秒**。API **18,387/18,387（212文件）**、Web **1,064/1,064（67文件）**、config71、database79、domain26、types5、UI101、operations **264/264、零skip**；81条迁移 FULLY_MATCHED。完整链全部通过，前后HEAD相同且受跟踪树干净。登录 gzip 为 JS **11,752 B**／CSS **25,640 B**；全部49个production文件与第5节保留映射逐键相同，规范摘要仍为 `459128338786c7181818d4c230130d79c7ed2c19062bf5c10b16322961375e9d`。原始回执／日志位于 `integration-artifacts/ci-1f6f3de/`，日志SHA-256 `a33919c6ab9901606115b99b6954cf82319b1a9c0472ed8d70cfd4876e2c2b78`。
+
+**12:19:59 UTC**，再次核对远端和主检出仍为c3、受跟踪树干净、c3与新R均为本检查点祖先后，已将1f6f3de推送main并将主检出快进至同一SHA；独立远端核对与本地clean均通过，见 `integration-artifacts/publish-1f6f3de.json`。这是已测技术检查点，最终业务B尚未固定。
+
+**12:30:13 UTC** 通过原 `release-images.yml`、ref main，再次明确输入相同R **`32e705a9a835e577b528fd6ff6d72c06b449ca35`**，导出控制固定为1f6f3de。[run 45820243736，attempt1](https://github.com/ivanzhao299/kingturf-bessiness-os/actions/runs/45820243736) **整体success**，publish job **139910346270**，watch退出0；构建、双HIGH/CRITICAL扫描、原物料导出与artifact留存完成。首次admission后列表暂未出现新run，只做唯一运行reconciliation，没有重复dispatch。完整调度、run/job JSON、watch及原job日志保留于 `integration-artifacts/image-builds-32e705a-control-1f6f3de/`。
+
+本节记录流水线成功；原artifact下载与逐字节核对见下节，不能以整体success替代两层真实恢复、R认证写、最终B的标准smoke及production浏览器验收。旧失败run45811774272和两个扫描失败run原样保留，不作成功来源。
+
+### 9.1 成功原 artifact 的字节与离线来源核对
+
+原 artifact **15118360718**，名称 `compatible-recovery-material-32e705a9a835e577b528fd6ff6d72c06b449ca35`。下载器再次通过GitHub API核对canonical仓库、workflow_dispatch/main、completed/success、attempt1、固定控制1f与未过期artifact身份；实际ZIP的SHA-256与服务端digest相同。ZIP恰包含五个普通文件，无目录、链接、额外或重复条目，分别安全写入新的私有目录；解释器从可信脚本目录以`-I`运行。
+
+| 原始字节或身份          | 实际值                                                                    |
+| ----------------------- | ------------------------------------------------------------------------- |
+| ZIP SHA-256             | `4eb7f078ea6553b0bb518f924cf828f7383a1a3be4b7adda629b5dad1ec548b7`        |
+| recovery.tar.gz SHA-256 | `5fe1c083ca1a4f6ea8928b83656c0163c5a1fd271956ecab835372e59ee3f199`        |
+| source.bundle SHA-256   | `8cbcbad8f4ca809fcf9657c02611df97cc660b811c100867c70f3608b741f474`        |
+| provenance.json SHA-256 | `067ca1e2fe9661ed7b0c05e438279a6f4e67d8f3bcdac0132915f15c4dea4db3`        |
+| API 根 digest           | `sha256:c8b35723e5f440980180355d438302e20018eb76a85f84700eeb205f8aea69be` |
+| Web 根 digest           | `sha256:be20680d1f0d91ec93bb7025dcfc53ffb92c4deae591518ddf4a905290f09c8a` |
+| 原导出main快照M／控制E  | 均为 `1f6f3de8b5bbd79fb1c2a6bb6ccc82963099aa66`                           |
+| 81清单规范SHA-256       | `7fc59f4afbab4ac65e5240fc8ee14d5482f115710adc9880c441a1470ef57994`        |
+
+五文件原字节均与provenance逐键一致。另将原tar严格按普通文件／目录拆至新的数据目录，保留原tar不重打包，内部release/migrations与原导出件原字节相同；执行固定控制的原OCI verifier，全部可达OCI descriptor/blob（含attestation）摘要和平台／config／layer结构通过。source.bundle在新的bare数据仓库中验证为自包含且恰为main=M、recovery=R两refs，hooks／全局配置／交互认证均关闭；L≤R≤M，R真实Git对象的81 SQL重算全等，API/Web及既定运行包源码与L相同，没有执行bundle中的源码。
+
+下载于 **12:32:48 UTC** 完成，离线核对于 **12:35:29 UTC** 完成。证据均在上述流水线产物根的 `R-original/`：`download-result.json`、`run.json`、`artifact.json`、`transport-source.json`、`archive/export.zip`、`export/`原五件，以及 `offline-verification/result.json`、`oci-verify.log`、`source-verify.log`。两离线日志摘要分别为 `40e85a24ed24c28d775b98cdc607ad6ef68bfe88551695ea9eac98d20c016b3f`、`556ffa85e95a050ffc295957933ba34c94f4a2d5b82cd44aed0f35a483691b9d`。
+
+TD-REL-016的实际导出阻断已解除，成功原始来源已取得；尚未生成演练PASS、迁移批准或B/C应用授权。后继标准smoke须另有独立81-schema数据库；原helper只继承DATABASE_URL，不负责建库／迁移。R预验与最终B smoke分别记账，现有L/77环境继续留给真实恢复，两层恢复和最终发布仍须实际执行。

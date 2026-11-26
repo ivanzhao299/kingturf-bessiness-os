@@ -427,4 +427,12 @@ API 原保存 `image/image.tar` SHA-256 为 `0f08d814184d44bc8767729035ac358f597
 
 原源码快照 `baseline/control-and-tests.tar`、冻结源码快照 `fixed-control-and-tests.tar` 分别 SHA-256 `b125745313f7a7a24eb068f3f909e8cdc30e2b2f100e5f98d7a0c7011da7d8d5`、`4b3e80585b80a58371aeb6ec2a4553a5351b233f0d2822b4bc919374f9cc8c2a`。bash 语法、doc-lint、三文档 Prettier 和 git diff 检查通过。最后单独文档提交不改冻结代码，完整 `ci:local` 留主协调最终集成串行执行。
 
-TD-REL-016 为**本机修复与验证完成，待主协调复核和成功新 GHR 原物料**；P1 发布阻断保留。原失败 `45811774272` 永不消费为 approved artifact；成功固定 C workflow、实际 R/B 两层恢复与生产放行均由主协调后继验收。本批不 push/dispatch，不碰主检出、integration、其他树或旧失效登记，不执行生产或真实恢复。
+TD-REL-016 在本独立批交付时为**本机修复与验证完成，待主协调复核和成功新 GHR 原物料**；当时P1发布阻断保留。原失败 `45811774272` 永不消费为 approved artifact。本独立批不 push/dispatch，不碰主检出、integration、其他树或旧失效登记，不执行生产或真实恢复；主协调后继验收如下。
+
+### 14.6 主协调集成、完整 CI 与真实 GHR 导出通过
+
+独立复核确认可合并后，整支交付合入 **`1f6f3de8b5bbd79fb1c2a6bb6ccc82963099aa66`**；prepare与transport测试原字节等于交付分支。主协调在该干净提交于2026-11-26 12:00:30–12:16:34 UTC，经heavy实际运行完整 `pnpm ci:local`，**退出0／964.16秒**，其中API18,387、Web1,064、UI101、operations264零skip；81迁移FULLY_MATCHED，前后HEAD与clean不变，49个production文件与既有受控映射全等。完整日志／回执为 `integration-artifacts/ci-1f6f3de/`，日志SHA-256 `a33919c6ab9901606115b99b6954cf82319b1a9c0472ed8d70cfd4876e2c2b78`。12:19:59 UTC已推main并同步主检出。
+
+以该提交固定导出控制，再调度相同R32：[run45820243736／attempt1](https://github.com/ivanzhao299/kingturf-bessiness-os/actions/runs/45820243736)，publish job139910346270，**整体success**。真实双HIGH/CRITICAL扫描、原OCI导出和artifact留存完成。artifact15118360718已实际下载，ZIP服务端digest与原字节相同；恰五份普通文件与provenance的R/M/E/run/attempt及四原件hash全等。固定原OCI verifier通过全部可达blob；源bundle严格两refs，L≤R≤M且R真实81 SQL与清单原字节全等。精确tar/source/ZIP摘要、双镜像digest与原始回执见[集成验收§9.1](ux-wave-integration-2026-11-26.md#91-成功原-artifact-的字节与离线来源核对)。证据根 `integration-artifacts/image-builds-32e705a-control-1f6f3de/`，原失败目录保持不变。
+
+**导出阻断已解除**，本机旧红新绿与真实GHR后继均有回执。成功原始来源仍须进入后继严格材料门；尚无两层真实恢复、R认证写、最终B标准smoke／production浏览器或生产发布回执，不据本项通过解除其余门禁。
