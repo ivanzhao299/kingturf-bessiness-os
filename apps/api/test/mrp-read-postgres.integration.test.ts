@@ -773,6 +773,7 @@ describe('MRP additive reads and bridged writes on real PostgreSQL (MFG-6)', () 
           'inventoryOffsets',
           'scheduledReceipts',
           'executions',
+          'purchaseOrders',
         ].sort(),
       );
       expect(rows((response.body as { bomEdges?: unknown }).bomEdges)).toHaveLength(3);

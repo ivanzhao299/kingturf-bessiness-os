@@ -5,6 +5,7 @@ import { buildApp } from '../../src/app.js';
 import { PostgresCommercialRepository } from '../../src/commercial-repositories.js';
 import { PostgresManufacturingRepository } from '../../src/manufacturing-repositories.js';
 import { PostgresProcurementRepository } from '../../src/procurement-repositories.js';
+import { PostgresMrpRepository } from '../../src/mrp-repositories.js';
 import {
   PostgresAuthorizationRepository,
   PostgresEmployeeRepository,
@@ -64,6 +65,7 @@ export async function ownedProcurementApp(prefix: string) {
       // registry 全组注册要求 commercial 非空（生产装配恒有）。
       commercial: new PostgresCommercialRepository(appDatabase),
       procurement: new PostgresProcurementRepository(appDatabase),
+      mrp: new PostgresMrpRepository(appDatabase),
     });
     // 同一家公司（夹具主公司）里再建一名员工，给「权限不足」的会话用。
     const addEmployee = async (): Promise<string> => {

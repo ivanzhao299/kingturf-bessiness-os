@@ -7,6 +7,21 @@ import type { SqlClient } from '@kingturf/database';
 import { writeFixedVersionOneEvidence as evidence } from './audit-outbox.ts';
 import { company, json, type Context, type Db } from './procurement-read-repositories.ts';
 
+// TD-MFG-013：沿用工单建单时写建议引用的机制；新增引用只接受本租户的采购类建议。
+export async function assertPurchaseProposal(
+  tx: SqlClient,
+  id: string | undefined,
+  context: Context,
+) {
+  if (id === undefined) return;
+  const found = await tx.query(
+    "SELECT id FROM mrp_proposals WHERE id=$1 AND tenant_id=$2 AND proposal_type='PURCHASE'",
+    [id, context.actor.companyId],
+  );
+  if (!found.rowCount)
+    throw new DomainError('conflict', '来源建议必须是本公司的采购类物料需求建议');
+}
+
 const SUPPLIER_LABELS: Readonly<Record<string, string>> = {
   ACTIVE: '已启用',
   ON_HOLD: '暂停',

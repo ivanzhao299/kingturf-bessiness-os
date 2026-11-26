@@ -50,6 +50,7 @@ export function procurementPurchaseOrderCreateRoutes(context: Context): readonly
           'poNumber',
           'supplierId',
           'supplierQuoteId',
+          'mrpProposalId',
           'currency',
           'lines',
           'issue',
@@ -79,6 +80,9 @@ export function procurementPurchaseOrderCreateRoutes(context: Context): readonly
             body.supplierQuoteId === null || body.supplierQuoteId === undefined
               ? null
               : context.parsers.uuid(body.supplierQuoteId, 'supplierQuoteId'),
+          ...(body.mrpProposalId === undefined
+            ? {}
+            : { mrpProposalId: context.parsers.uuid(body.mrpProposalId, 'mrpProposalId') }),
           currency: context.parsers.currency(body.currency),
           lines,
           issue: body.issue === true,

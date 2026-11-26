@@ -1,3 +1,5 @@
+import { useState } from 'preact/hooks';
+import { MrpPurchaseOrderDrawer } from './mrp-purchase-order';
 // MFG-6：建议详情抽屉——概要、净需求怎么算（算式原文 + 政策口径 + 扣了哪些库存 + 在途采购）、需求从
 // 哪来（解释树：需求信号及其来源单据 → 经哪些 BOM 层级）、冻结覆盖、流转记录、执行工单。解释树的
 // 数据由前端基于批次详情的行项计算（mrp-explanation.ts），不为呈现新增读端点；详情未到达时回退
@@ -279,6 +281,7 @@ const ExecutionSection = ({
 };
 
 export const MrpProposalDrawer = ({ state }: Props) => {
+  const [creatingPurchase, setCreatingPurchase] = useState(false);
   const row = state.selected;
   if (!row) return null;
   const { ports } = state;
@@ -296,6 +299,20 @@ export const MrpProposalDrawer = ({ state }: Props) => {
     (candidate) => idOf(candidate) === textOf(current.mrp_run_id),
   );
   const actions = decisionActions(state, current);
+  if (
+    creatingPurchase &&
+    current.proposal_type === 'PURCHASE' &&
+    state.permissions.has('procurement:manage')
+  )
+    return (
+      <MrpPurchaseOrderDrawer
+        state={state}
+        origin={current}
+        close={() => {
+          setCreatingPurchase(false);
+        }}
+      />
+    );
   return (
     <DetailDrawer
       title={`物料需求建议 · ${text('sku', 'sku', '—')}`}
@@ -309,6 +326,18 @@ export const MrpProposalDrawer = ({ state }: Props) => {
             {`下一步：${ports.operationsNextAction(status)}`}
           </p>
           <span class="po-row-actions">
+            {current.proposal_type === 'PURCHASE' && state.permissions.has('procurement:manage') ? (
+              <button
+                type="button"
+                class="primary"
+                data-testid="kt-mrp-create-purchase"
+                onClick={() => {
+                  setCreatingPurchase(true);
+                }}
+              >
+                建立采购订单
+              </button>
+            ) : null}
             {actions.map((action) => (
               <button
                 key={action.form}
@@ -367,6 +396,24 @@ export const MrpProposalDrawer = ({ state }: Props) => {
       <FreezeSection current={current} />
       <LedgerSection current={current} label={label} />
       <ExecutionSection current={current} detail={detail} label={label} />
+      {current.proposal_type === 'PURCHASE' ? (
+        <Section title="执行（引用这条建议的采购订单）" testId="kt-mrp-purchases">
+          {detail?.purchaseOrders === undefined ? (
+            <p class="mrp-muted">当前权限范围未提供采购订单明细</p>
+          ) : (
+            <ul class="mrp-ledger">
+              {records(detail.purchaseOrders)
+                .filter((order) => order.proposalId === idOf(current))
+                .map((order) => (
+                  <li key={textOf(order.orderId)} data-testid="kt-mrp-purchase">
+                    <strong>{textOf(order.poNumber)}</strong>
+                    <span>{label(order.status)}</span>
+                  </li>
+                ))}
+            </ul>
+          )}
+        </Section>
+      ) : null}
       {/* 建议决定之后按钮变化时，把键盘焦点带回抽屉。 */}
       <FocusAnchor token={`${status}|${String(actions.length)}`} />
     </DetailDrawer>

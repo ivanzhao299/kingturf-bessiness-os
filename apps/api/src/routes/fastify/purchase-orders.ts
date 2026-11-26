@@ -35,6 +35,7 @@ export type PurchaseOrderRepository = Pick<
   NonNullable<ApiDependencies['procurement']>,
   | 'listPurchaseOrders'
   | 'findPurchaseOrder'
+  | 'withMrpOrigins'
   | 'createPurchaseOrder'
   | 'issuePurchaseOrder'
   | 'cancelPurchaseOrder'
@@ -50,6 +51,9 @@ const PURCHASE_ORDER_ROW_SCHEMA = z
     currency: z.string(),
     supplierName: z.string(),
     ordered_at: z.string().nullable(),
+    mrp_proposal_id: z.string().nullable(),
+    mrpProposalNumber: z.string().optional(),
+    mrp_run_id: z.string().optional(),
     lines: z.array(z.unknown()),
     created_at: z.string(),
   })
@@ -128,6 +132,24 @@ export function registerPurchaseOrderRoutes(
     return repository;
   };
 
+  const originsOf = async (
+    repo: PurchaseOrderRepository,
+    items: readonly import('@kingturf/types').JsonObject[],
+  ) => {
+    const grant = scope.authorization.permissions.get('mrp:read');
+    if (
+      items.length === 0 ||
+      grant?.fields !== null ||
+      (!grant.scopes.includes('COMPANY') && !grant.scopes.includes('GROUP'))
+    )
+      return items;
+    return repo.withMrpOrigins(items, {
+      actor: scope.authorization.actor,
+      scopes: grant.scopes,
+      anchors: scope.authorization.scopeAnchors?.get('mrp:read') ?? [],
+    });
+  };
+
   // GET 列表：视图轨迁移——无查询参数时与 legacy { items } 逐字节一致；status 筛选
   // 为 additive 能力（procurement:read 授权同轨）。
   app.get(
@@ -143,7 +165,7 @@ export function registerPurchaseOrderRoutes(
         filter,
       );
       return {
-        items: result.items.map((item) =>
+        items: (await originsOf(repo, result.items)).map((item) =>
           permittedDto(
             normalizeTimestamps(item as unknown as Record<string, unknown>),
             readFields ?? null,
@@ -177,7 +199,9 @@ export function registerPurchaseOrderRoutes(
         return;
       }
       return permittedDto(
-        normalizeTimestamps(found as unknown as Record<string, unknown>),
+        normalizeTimestamps(
+          (await originsOf(repo, [found]))[0] as unknown as Record<string, unknown>,
+        ),
         readFields ?? null,
       );
     },
@@ -190,7 +214,15 @@ export function registerPurchaseOrderRoutes(
   app.post('/api/v1/purchase-orders', async (request, reply) => {
     const repo = requireRepository();
     const body = objectBody(request.body);
-    allow(body, ['poNumber', 'supplierId', 'supplierQuoteId', 'currency', 'lines', 'issue']);
+    allow(body, [
+      'poNumber',
+      'supplierId',
+      'supplierQuoteId',
+      'mrpProposalId',
+      'currency',
+      'lines',
+      'issue',
+    ]);
     const grant = authorizeQuery(scope.authorization, 'procurement:manage', Object.keys(body));
     const lines = array(body.lines, 'lines').map((entry, index) => {
       const line = jsonObject(entry, `lines[${String(index)}]`);
@@ -211,6 +243,9 @@ export function registerPurchaseOrderRoutes(
         body.supplierQuoteId === null || body.supplierQuoteId === undefined
           ? null
           : uuid(body.supplierQuoteId, 'supplierQuoteId'),
+      ...(body.mrpProposalId === undefined
+        ? {}
+        : { mrpProposalId: uuid(body.mrpProposalId, 'mrpProposalId') }),
       currency: currency(body.currency),
       lines,
       issue: body.issue === true,

@@ -635,3 +635,26 @@ describe('U3-PROC-3 采购单控制台：写成功后的提示（TD-WF-014①）
     });
   });
 });
+
+it('TD-MFG-013 shows the stored source on list and detail, and only links when MRP origin metadata is readable', async () => {
+  for (const mayRead of [true, false]) {
+    const source = {
+      ...order,
+      mrp_proposal_id: 'proposal-1',
+      ...(mayRead ? { mrp_run_id: 'run-1' } : {}),
+    };
+    const host = mount(portsFor([source], mayRead ? ['mrp:read'] : []));
+    expect(host.textContent).toContain('来源建议');
+    expect(host.textContent).toContain('proposal-1');
+    if (mayRead)
+      expect(
+        element(host.querySelector('[data-testid="kt-po-source-link"]')).getAttribute('href'),
+      ).toBe('#/material-planning?run=run-1&proposal=proposal-1');
+    else expect(host.querySelector('[data-testid="kt-po-source-link"]')).toBeNull();
+    element(host.querySelector('[data-testid="kt-po-open"]')).click();
+    await flush();
+    expect(element(host.querySelector('.detail-drawer')).textContent).toContain('来源建议');
+    expect(element(host.querySelector('.detail-drawer')).textContent).toContain('proposal-1');
+    render(null, host);
+  }
+});

@@ -105,6 +105,7 @@ export type MrpRunDetailParts = Readonly<{
   receipts: boolean;
   // 由本批次建议建立的生产工单（production:read）。
   executions: boolean;
+  purchaseOrders?: boolean;
 }>;
 
 // 需求快照查询（两条固定语句）。快照表没有优先级列，排序取自它引用的需求信号（不可变台账）。
@@ -262,11 +263,12 @@ export class PostgresMrpReadRepository {
     const calculations = await this.calculationsOf(scope);
     const proposals = await this.proposalsOf(context, { runId });
     const snapshots = await this.demandSnapshotsOf(scope, parts.orderSources);
-    const [bom, inventory, receipts, executions] = await Promise.all([
+    const [bom, inventory, receipts, executions, purchaseOrders] = await Promise.all([
       parts.bom ? this.bomEdgesOf(scope, asOf) : Promise.resolve(null),
       parts.inventory ? this.inventoryOffsetsOf(scope) : Promise.resolve(null),
       parts.receipts ? this.scheduledReceiptsOf(scope) : Promise.resolve(null),
       parts.executions ? this.executionsOf(scope) : Promise.resolve(null),
+      parts.purchaseOrders ? this.purchaseOrdersOf(scope) : Promise.resolve(null),
     ]);
     return {
       ...root,
@@ -277,6 +279,7 @@ export class PostgresMrpReadRepository {
       ...(inventory === null ? {} : { inventoryOffsets: inventory }),
       ...(receipts === null ? {} : { scheduledReceipts: receipts }),
       ...(executions === null ? {} : { executions }),
+      ...(purchaseOrders === null ? {} : { purchaseOrders }),
     };
   }
 
@@ -395,6 +398,18 @@ export class PostgresMrpReadRepository {
         JOIN manufacturing_item_versions v ON v.id=pol.item_version_id AND v.tenant_id=pol.tenant_id JOIN manufacturing_items i ON i.id=v.item_id AND i.tenant_id=v.tenant_id
         WHERE pol.tenant_id=$1 AND p.status IN('ISSUED','PARTIALLY_RECEIVED') AND pol.item_version_id IN(SELECT c.item_version_id FROM mrp_item_calculations c WHERE c.tenant_id=$1 AND c.mrp_run_id=$2)
         ORDER BY i.sku,p.po_number,pol.line_number`,
+        scope,
+      )
+    ).rows.map((row) => row.item);
+  }
+
+  // TD-MFG-013：由本批次采购建议建立的采购单（加性只读，procurement:read 门控）。
+  private async purchaseOrdersOf(scope: readonly unknown[]): Promise<JsonObject[]> {
+    return (
+      await this.db.query<{ item: JsonObject }>(
+        `SELECT jsonb_build_object('proposalId',p.mrp_proposal_id,'orderId',p.id,'poNumber',p.po_number,'status',p.status) item
+       FROM purchase_orders p JOIN mrp_proposals m ON m.id=p.mrp_proposal_id AND m.tenant_id=p.tenant_id
+       WHERE p.tenant_id=$1 AND m.mrp_run_id=$2 ORDER BY p.created_at,p.id`,
         scope,
       )
     ).rows.map((row) => row.item);

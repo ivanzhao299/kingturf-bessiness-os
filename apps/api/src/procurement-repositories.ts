@@ -20,6 +20,7 @@ import {
   type Db,
 } from './procurement-read-repositories.ts';
 import {
+  assertPurchaseProposal,
   cancelOpenPurchaseOrder,
   issueDraftPurchaseOrder,
   lockActivePurchaseSupplier,
@@ -421,6 +422,7 @@ export class PostgresProcurementRepository extends PostgresProcurementReadReposi
       poNumber: string;
       supplierId: string;
       supplierQuoteId: string | null;
+      mrpProposalId?: string;
       currency: string;
       lines: { itemVersionId: string; quantity: string; unitPrice: string; requiredAt: string }[];
       issue: boolean;
@@ -430,11 +432,12 @@ export class PostgresProcurementRepository extends PostgresProcurementReadReposi
   ) {
     return this.db.transaction(async (tx) => {
       company(context);
+      await assertPurchaseProposal(tx, input.mrpProposalId, context);
       const content = { ...input };
       const row = (
         await tx.query<{ id: string }>(
-          `INSERT INTO purchase_orders(tenant_id,po_number,supplier_id,supplier_quote_id,currency,canonical_hash,created_by)
-           SELECT $1,$2,s.id,$4,$5,$6,$7
+          `INSERT INTO purchase_orders(tenant_id,po_number,supplier_id,supplier_quote_id,currency,canonical_hash,created_by,mrp_proposal_id)
+           SELECT $1,$2,s.id,$4,$5,$6,$7,$8
            FROM suppliers s
            LEFT JOIN supplier_quotes q
              ON q.id=$4::uuid
@@ -455,6 +458,7 @@ export class PostgresProcurementRepository extends PostgresProcurementReadReposi
             input.currency,
             hash(content),
             context.actor.employeeId,
+            input.mrpProposalId ?? null,
           ],
         )
       ).rows[0];

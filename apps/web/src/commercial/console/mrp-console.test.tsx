@@ -111,6 +111,76 @@ const setup = (overrides: Partial<MrpConsolePorts> = {}, proposal = row()) => {
   return { host, submit, refresh, fetchProposals, loadRunDetail };
 };
 
+it('TD-MFG-013 opens the shared purchase form with a fixed proposal reference and preserves it in the payload', async () => {
+  const { host, submit, refresh } = setup({
+    permissions: new Set(['mrp:read', 'procurement:manage']),
+    loadPurchaseSuppliers: () => Promise.resolve([{ value: 'supplier', label: '供应商' }]),
+  });
+  await flush();
+  await open(host, 'open');
+  await flush();
+  await open(host, 'create-purchase');
+  await flush();
+  const fixed = element(host, '[data-testid="kt-po-source-fixed"] input');
+  expect(fixed.value).toBe('proposal-1');
+  expect(fixed.getAttribute('aria-readonly')).toBe('true');
+  expect(element(host, '[name="quantity"]').value).toBe('10');
+  expect(element(host, '[name="requiredAt"]').value).toBe('2026-12-01');
+  await formValues(host, {
+    poNumber: 'PO-SUGGESTION',
+    supplierId: 'supplier',
+    itemVersionId: 'component',
+    unitPrice: '2',
+    mrpProposalId: 'other-proposal',
+  });
+  await submitForm(host);
+  expect(submit).toHaveBeenCalledExactlyOnceWith('/api/v1/purchase-orders', {
+    poNumber: 'PO-SUGGESTION',
+    supplierId: 'supplier',
+    supplierQuoteId: null,
+    currency: 'CNY',
+    issue: true,
+    lines: [
+      { itemVersionId: 'component', quantity: '10', unitPrice: '2', requiredAt: '2026-12-01' },
+    ],
+    mrpProposalId: 'proposal-1',
+  });
+  expect(refresh).toHaveBeenCalledTimes(1);
+  render(null, host);
+});
+
+it('TD-MFG-013 purchase creation requires the procurement write permission and a purchase proposal', async () => {
+  for (const [permissions, proposal] of [
+    [new Set(['mrp:read']), row()],
+    [new Set(['mrp:read', 'procurement:manage']), { ...row(), proposal_type: 'PRODUCTION' }],
+  ] as const) {
+    const { host } = setup({ permissions }, proposal);
+    await flush();
+    await open(host, 'open');
+    expect(host.querySelector('[data-testid="kt-mrp-create-purchase"]')).toBeNull();
+    render(null, host);
+  }
+});
+
+it('TD-MFG-013 lists purchase orders linked to the selected proposal', async () => {
+  const { host } = setup({
+    loadRunDetail: () =>
+      Promise.resolve({
+        proposals: [row()],
+        purchaseOrders: [
+          { proposalId: 'proposal-1', orderId: 'po-1', poNumber: 'PO-LINKED', status: 'DRAFT' },
+          { proposalId: 'other', orderId: 'po-2', poNumber: 'PO-OTHER', status: 'DRAFT' },
+        ],
+      }),
+  });
+  await flush();
+  await open(host, 'open');
+  await flush();
+  expect(byId(host, 'purchases').textContent).toContain('PO-LINKED');
+  expect(byId(host, 'purchases').textContent).not.toContain('PO-OTHER');
+  render(null, host);
+});
+
 const writeCases = [
   {
     id: 'create-policy',

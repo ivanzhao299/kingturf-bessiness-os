@@ -281,6 +281,16 @@ const runDetailSchema = RUN_ROOT_SCHEMA.extend({
   inventoryOffsets: z.array(INVENTORY_OFFSET_SCHEMA).optional(),
   scheduledReceipts: z.array(SCHEDULED_RECEIPT_SCHEMA).optional(),
   executions: z.array(EXECUTION_SCHEMA).optional(),
+  purchaseOrders: z
+    .array(
+      z.object({
+        proposalId: z.string(),
+        orderId: z.string(),
+        poNumber: z.string(),
+        status: z.string(),
+      }),
+    )
+    .optional(),
 }).partial();
 const notFoundSchema = z.object({
   error: z.object({ code: z.string(), message: z.string(), correlationId: z.string() }),
@@ -505,6 +515,7 @@ export function registerMrpReadRoutes(app: FastifyRouteGroupApp, scope: FastifyR
         inventory: may('inventory:read'),
         receipts: may('procurement:read'),
         executions: may('production:read'),
+        purchaseOrders: may('procurement:read'),
       });
       if (!found) {
         void reply.code(404).send({

@@ -28,7 +28,7 @@ am = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(am)
 
 CONTAINER = drill.CONTAINER
-APPROVED = ('0073_credential_must_change.sql', '0074_tenant_settings.sql', '0075_login_lockout.sql', '0076_rfq_close_transition.sql', '0077_po_partial_receipt_transition.sql', '0080_po_draft_cancel.sql')
+APPROVED = ('0073_credential_must_change.sql', '0074_tenant_settings.sql', '0075_login_lockout.sql', '0076_rfq_close_transition.sql', '0077_po_partial_receipt_transition.sql', '0080_po_draft_cancel.sql', '0081_po_mrp_proposal_reference.sql')
 
 
 def stamp():
@@ -101,7 +101,7 @@ class HostFlowRehearsal(unittest.TestCase):
                 '--prod-root', str(self.prod),
                 '--attachments-dir', str(self.prod / 'attachments'),
                 '--postgres-container', CONTAINER,
-                '--expected-before', '72', '--expected-after', '78']
+                '--expected-before', '72', '--expected-after', '79']
 
     def run_main(self, url, orchestrator_stub, version_ok=True):
         seen = {'compose': [], 'orchestrator': []}
@@ -153,7 +153,7 @@ class HostFlowRehearsal(unittest.TestCase):
         self.assertEqual(fence['api_release_sha'], '01ef0e1fd34c724b21cfd470a41161687020ec5c')
         drain = json.loads((self.prod / '.release-migration-evidence/task_drain.json').read_text())
         self.assertEqual(drain['in_flight'], 0)
-        self.assertEqual(int(psql_helper.query(url, 'SELECT count(*) FROM schema_migrations;')), 78)
+        self.assertEqual(int(psql_helper.query(url, 'SELECT count(*) FROM schema_migrations;')), 79)
 
     def test_drain_blocked_restores_api_and_fails_closed(self):
         url, _ = self.prepare_database()

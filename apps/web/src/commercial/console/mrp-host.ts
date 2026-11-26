@@ -4,6 +4,7 @@
 // 页签按取数回调读最新快照；建议主表与批次详情走桥轨 additive 端点（GET /api/v1/mrp-proposals、
 // GET /api/v1/mrp-runs/:id）。物料下拉按最新视图计算（console-choices），不再是挂载时的快照。
 import { el } from '../../dom';
+import { records } from './mrp-state';
 import type { CommercialController } from '../store/controller';
 import type { OperationsViewContext } from '../operations-view-ports';
 import { ITEM_VERSIONS_PATH, itemVersionChoicesOf, perView } from './console-choices';
@@ -53,6 +54,14 @@ export function appendMrpConsole(
     get itemVersionChoices(): readonly MrpChoice[] {
       return readItemVersionChoices();
     },
+    loadPurchaseSuppliers: async () => {
+      if (!read || !permissions.has('supplier:read')) return [];
+      const page = await read('/api/v1/suppliers');
+      return records(page.items).map((row) => ({
+        value: recordText(row, 'id', 'id'),
+        label: recordText(row, 'name', 'name'),
+      }));
+    },
     recordText: (record, camel, snake, fallback) => recordText(record, camel, snake, fallback),
     textValue: (value, fallback = '') =>
       typeof value === 'string' || typeof value === 'number' ? String(value) : fallback,
@@ -81,6 +90,7 @@ export function appendMrpConsole(
         ['mrp:read', DEMANDS_PATH],
         ['mrp:read', RUNS_PATH],
         ['manufacturing-item:read', ITEM_VERSIONS_PATH],
+        ['procurement:read', '/api/v1/purchase-orders'],
       ] as const;
       await controller.refreshViews(
         sources.filter(([capability]) => permissions.has(capability)).map(([, path]) => path),

@@ -52,6 +52,31 @@ export const PURCHASE_ORDER_ITEM_PROJECTION = `to_jsonb(p)||jsonb_build_object('
 export class PostgresProcurementReadRepository {
   public constructor(protected readonly db: Db) {}
 
+  // TD-MFG-013：MRP 派生信息只在路由取得 mrp:read 的公司级、未裁字段授权后查询。
+  // 引用自身属于采购单；建议编号沿既有工单表单口径为 UUID，不生成新的业务编号。
+  public async withMrpOrigins(
+    items: readonly JsonObject[],
+    context: Context,
+  ): Promise<readonly JsonObject[]> {
+    company(context);
+    const ids = items
+      .map((item) => item.mrp_proposal_id)
+      .filter((id): id is string => typeof id === 'string');
+    if (!ids.length) return items;
+    const origins = await this.db.query<{ id: string; mrp_run_id: string }>(
+      'SELECT id,mrp_run_id FROM mrp_proposals WHERE tenant_id=$1 AND id=ANY($2::uuid[])',
+      [context.actor.companyId, ids],
+    );
+    const byId = new Map(origins.rows.map((row) => [row.id, row]));
+    return items.map((item) => {
+      const origin =
+        typeof item.mrp_proposal_id === 'string' ? byId.get(item.mrp_proposal_id) : undefined;
+      return origin
+        ? { ...item, mrpProposalNumber: origin.id, mrp_run_id: origin.mrp_run_id }
+        : item;
+    });
+  }
+
   // U3-PROC-1（ADR-0015）：供应商 keyset cursor 分页只读（additive）——投影与排序
   // 键（supplier_number）与 list('suppliers') 一致；无 limit 时全量（nextCursor
   // 恒 null——默认路径与 legacy 逐字节一致），显式 limit 才启用分页窗口。
