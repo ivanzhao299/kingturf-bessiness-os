@@ -135,7 +135,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir "$RUNNER_TEMP/recovery-bundle/controls"
-          cp .release-control/scripts/{oci_image_transport,application_release,production_preflight}.py "$RUNNER_TEMP/recovery-bundle/controls/"
+          cp .release-control/scripts/{oci_image_transport,application_release,production_preflight,release_orchestrator}.py "$RUNNER_TEMP/recovery-bundle/controls/"
           cp "$RUNNER_TEMP/image-publication.json" "$RUNNER_TEMP/recovery-bundle/"
           python3 - <<'PYTHON'
           import datetime,json,os,pathlib
@@ -192,7 +192,7 @@ jobs:
           mkdir extracted
           tar -xzf recovery-bundle.tar.gz -C extracted
           cd "$GITHUB_WORKSPACE"
-          for script in oci_image_transport application_release production_preflight; do
+          for script in oci_image_transport application_release production_preflight release_orchestrator; do
             cmp "scripts/$script.py" "$RUNNER_TEMP/approved-bundle/extracted/controls/$script.py"
           done
           python3 scripts/oci_image_transport.py verify "$RUNNER_TEMP/approved-bundle/extracted"
