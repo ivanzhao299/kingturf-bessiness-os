@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[TD-REL-011 受控前滚恢复](evidence/forward-recovery-2026-11-26.md)记录失败 API 来源绑定、停服留闸及原严格部署接线、显式 compatible_recovery 实测物料门、负例与未执行的真实 81 清单镜像恢复边界。
+
 [发布步骤摘要修复（TD-GATE-006）](evidence/gate-006-release-summary-2026-11-26.md) 记录两处无引号 heredoc 摘要改 printf、静态守卫与 `test:release-guardrails` 接线，以及旧写法缺陷的 bash 对照复现；线上效果待下一次发布验证。
 
 [第十次发布与集成复核 §16](evidence/ux-wave-release-2026-11-24.md#16-第十次发布-5dc88e52026-11-25) 汇总制造版本续写、质量与发货、报价与库存、共享汇总卡，以及两项集成回归的双视口实测。

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Read-only production inventory gate; never print rendered configuration or credentials."""
 import base64
+from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 import os
@@ -25,7 +26,10 @@ def require(condition, message):
 def command(args, *, text=None):
     result = subprocess.run(args, input=text, capture_output=True, text=True, timeout=30)
     require(result.returncode == 0, 'Required read-only inventory command failed')
-    return result.stdout.strip()
+    # Docker sends the application's stderr to docker-logs stderr as well.
+    output = result.stdout + ('\n' + result.stderr if args[:2] == ['docker', 'logs'] else '')
+    require(args[:2] != ['docker', 'logs'] or len(output) <= 65536, 'Failed startup log excerpt exceeds the bounded inspection limit')
+    return output.strip()
 
 
 NAME_PATTERN = re.compile(r'[0-9]{4}[0-9a-z_]*\.sql')
@@ -97,7 +101,8 @@ def handover_state(classification, marker, candidate_sha, api_stopped):
     return candidate_sha is not None and classification == 'FULLY_MATCHED' and marker != candidate_sha and api_stopped
 
 
-def preflight(root, expected, *, require_full=False, allow_stopped_api=False, candidate_sha=None):
+def inventory(root, expected):
+    """Shared read-only storage/config/registry checks, in their original order."""
     require(Path(root) == RELEASE, 'Unexpected release directory')
     require(isinstance(expected, dict) and expected and all(isinstance(k, str) and isinstance(v, str) and re.fullmatch(r'[0-9]{4}.*\.sql', k) and re.fullmatch(r'[0-9a-f]{64}', v) for k, v in expected.items()), 'Invalid candidate migration manifest')
     require(command(['findmnt', '-n', '-T', '/data', '-o', 'TARGET']) == '/data', '/data must be an actual mounted filesystem')
@@ -117,6 +122,96 @@ def preflight(root, expected, *, require_full=False, allow_stopped_api=False, ca
     sql = "BEGIN READ ONLY; SET LOCAL statement_timeout='5s'; SELECT coalesce(jsonb_agg(jsonb_build_object('name',name,'checksum',checksum) ORDER BY name),'[]'::jsonb) FROM schema_migrations; COMMIT;\n"
     rows = json.loads(command(compose + ['exec', '-T', 'postgres', 'sh', '-c', 'exec psql -X -qAt -v ON_ERROR_STOP=1 --username="$POSTGRES_USER" --dbname="$POSTGRES_DB"'], text=sql))
     classification, pending = classify_registry(rows, expected)
+    return config, rows, classification, pending
+
+
+FORWARD_SOURCE_TTL = 300
+
+
+def json_digest(value):
+    return hashlib.sha256(json.dumps(value, sort_keys=True).encode()).hexdigest()
+
+
+def forward_source_identity(source):
+    return {k: v for k, v in source.items() if k not in ('observed_at_utc', 'expires_at_utc')}
+
+
+def validate_forward_source(source, expected, candidate_sha, now=None):
+    require(isinstance(source, dict) and source.get('kind') == 'failed_api_forward_recovery_v1', 'Invalid forward recovery source record')
+    require(source.get('candidate_sha') == candidate_sha and source.get('manifest_sha256') == json_digest(expected), 'Forward recovery candidate or manifest mismatch')
+    now = now or datetime.now(timezone.utc)
+    start, end = [datetime.fromisoformat(source[k].replace('Z', '+00:00')) for k in ('observed_at_utc', 'expires_at_utc')]
+    require(all(t.tzinfo is not None and t.utcoffset().total_seconds() == 0 for t in (start, end)), 'Forward recovery source timestamps must be UTC')
+    require(start <= now < end and 0 < (end-start).total_seconds() <= FORWARD_SOURCE_TTL, 'Forward recovery source record expired or invalid')
+
+
+def failed_startup_proof(container, expected):
+    """Require an actual failed startup, never authorize stop from unhealthy alone.
+
+    Logs stay in memory. Only the matched migration names and a line digest leave
+    this function; arbitrary runtime log contents must never enter public evidence.
+    """
+    state = container['State']
+    status = state.get('Status')
+    require(status in ('restarting', 'exited') and type(state.get('ExitCode')) is int and state['ExitCode'] != 0, 'Forward recovery requires a failed API startup')
+    require(state.get('Restarting') is (status == 'restarting') and (status != 'exited' or state.get('Running') is False), 'Forward recovery API state is inconsistent')
+    require(not state.get('Paused') and not state.get('Dead') and state.get('Health', {}).get('Status') != 'healthy', 'Healthy or ambiguous API cannot enter forward recovery')
+    started = state.get('StartedAt')
+    require(isinstance(started, str) and re.fullmatch(r'[0-9T:.Z+\-]+', started), 'Failed startup timestamp missing')
+    logs = command(['docker', 'logs', '--tail', '100', '--since', started, container['Id']])
+    for line in logs.splitlines():
+        match = re.search(r'Migration compatibility check failed: ([0-9a-z_.:, ]+)', line)
+        if match:
+            entries = match[1].strip().split(', ')
+            names = [entry.removesuffix(':drifted') for entry in entries]
+            if entries and all(entry.endswith(':drifted') and name in expected for entry, name in zip(entries, names)):
+                return {'reason': 'startup_migration_compatibility', 'migrations': names, 'line_sha256': hashlib.sha256(match[0].encode()).hexdigest()}
+    raise RuntimeError('Failed API has no matching migration startup failure proof')
+
+
+def inspect_forward_recovery(root, expected, candidate_sha):
+    """Inspection ONLY: this result is not a deployment preflight PASS."""
+    require(isinstance(candidate_sha, str) and re.fullmatch(r'[0-9a-f]{40}', candidate_sha), 'Forward recovery candidate sha required')
+    _, rows, classification, pending = inventory(root, expected)
+    require(classification == 'FULLY_MATCHED' and not pending, 'Forward recovery requires FULLY_MATCHED with zero pending')
+    marker = (RELEASE / '.release-sha').read_text().strip()
+    require(re.fullmatch(r'[0-9a-f]{40}', marker) and marker != candidate_sha, 'Forward recovery requires a different valid previous marker')
+    containers = {}
+    for service, target, source in (('postgres', '/var/lib/postgresql/data', POSTGRES), ('api', '/var/lib/kingturf/attachments', ATTACHMENTS), ('web', None, None)):
+        ids = command(['docker', 'container', 'ls', '-aq', '--filter', f'label=com.docker.compose.project={PROJECT}', '--filter', f'label=com.docker.compose.service={service}']).splitlines()
+        require(len(ids) == 1, 'Expected exactly one existing container per production service')
+        container = json.loads(command(['docker', 'inspect', ids[0]]))[0]
+        labels = container['Config']['Labels']
+        require(labels.get('com.docker.compose.project') == PROJECT and labels.get('com.docker.compose.service') == service, 'Forward recovery container project/service mismatch')
+        if target:
+            mounts = [m for m in container['Mounts'] if m['Destination'] == target]
+            require(len(mounts) == 1 and mounts[0]['Type'] == 'bind' and Path(mounts[0]['Source']) == source, 'Live persistent mount disagrees with approved configuration')
+        if service != 'api':
+            require(container['State'].get('Running') and not container['State'].get('Restarting'), 'Forward recovery requires running postgres and web')
+        if service == 'postgres':
+            require(container['State'].get('Health', {}).get('Status') == 'healthy', 'Forward recovery requires healthy postgres')
+        containers[service] = container
+    api = containers['api']
+    release_values = [v.partition('=')[2] for v in api['Config']['Env'] if v.startswith('KINGTURF_RELEASE_SHA=')]
+    require(release_values == [marker], 'Failed API old release disagrees with marker')
+    require(re.fullmatch(r'[0-9a-f]{64}', api['Id']) and re.fullmatch(r'sha256:[0-9a-f]{64}', api['Image']), 'Forward recovery API identity malformed')
+    proof = failed_startup_proof(api, expected)
+    command(['docker', 'image', 'inspect', api['Image']])
+    now = datetime.now(timezone.utc)
+    state = api['State']
+    return {
+        'kind': 'failed_api_forward_recovery_v1', 'candidate_sha': candidate_sha,
+        'manifest_sha256': json_digest(expected), 'registry_sha256': json_digest(rows),
+        'marker': marker, 'old_release_sha': release_values[0],
+        'api_container_id': api['Id'], 'api_image_id': api['Image'], 'api_image_ref': api['Config']['Image'],
+        'state': {k: state.get(k) for k in ('Status', 'Running', 'Restarting', 'ExitCode', 'StartedAt', 'FinishedAt', 'OOMKilled')},
+        'restart_count': api.get('RestartCount'), 'failure': proof,
+        'observed_at_utc': now.isoformat(), 'expires_at_utc': (now + timedelta(seconds=FORWARD_SOURCE_TTL)).isoformat(),
+    }
+
+
+def preflight(root, expected, *, require_full=False, allow_stopped_api=False, candidate_sha=None):
+    config, rows, classification, pending = inventory(root, expected)
     marker = (RELEASE / '.release-sha').read_text().strip()
     require(re.fullmatch(r'[0-9a-f]{40}', marker), 'Previous release marker is missing or invalid')
     # Migration->application handover: registry already matches the candidate manifest
@@ -178,10 +273,14 @@ def main():
     elif len(sys.argv) >= 3 and sys.argv[1] != '--manifest':
         expected = json.loads(base64.b64decode(sys.argv[2], validate=True))
         flags = sys.argv[3:]
-        require(all(flag in ('--require-full', '--allow-stopped-api') or flag.startswith('--candidate-sha=') for flag in flags), 'unknown preflight flag')
+        require(all(flag in ('--require-full', '--allow-stopped-api', '--inspect-forward-recovery') or flag.startswith('--candidate-sha=') for flag in flags), 'unknown preflight flag')
         candidate_sha = next((flag.split('=', 1)[1] for flag in flags if flag.startswith('--candidate-sha=')), None)
         require(candidate_sha is None or re.fullmatch(r'[0-9a-f]{40}', candidate_sha), 'candidate sha must be 40 lowercase hex')
-        preflight(sys.argv[1], expected, require_full='--require-full' in flags, allow_stopped_api='--allow-stopped-api' in flags, candidate_sha=candidate_sha)
+        if '--inspect-forward-recovery' in flags:
+            require('--require-full' in flags and '--allow-stopped-api' not in flags, 'Forward inspection requires full matching and cannot relax startup checks')
+            print(json.dumps(inspect_forward_recovery(sys.argv[1], expected, candidate_sha), sort_keys=True))
+        else:
+            preflight(sys.argv[1], expected, require_full='--require-full' in flags, allow_stopped_api='--allow-stopped-api' in flags, candidate_sha=candidate_sha)
     elif len(sys.argv) == 3:
         expected = json.loads(base64.b64decode(sys.argv[2], validate=True))
         preflight(sys.argv[1], expected)

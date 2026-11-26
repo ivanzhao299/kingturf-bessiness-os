@@ -165,7 +165,7 @@ class ApplicationRecoveryTest(unittest.TestCase):
         (bundle/'bundle.tar.gz').write_bytes(b'bundle-bytes')
         evidence=self.root/'.release-migration-evidence';evidence.mkdir()
         (evidence/'image_compatibility.json').write_text(json.dumps({'images_built_at':'a'*40}))
-        approval={'release_sha':'c'*40}
+        approval={'release_sha':'c'*40,'migration_manifest_sha256':'e'*64}
         identities={'api':{'approved_digest':'sha256:api'},'web':{'approved_digest':'sha256:web'}}
         import hashlib
         expected_bundle=hashlib.sha256(b'bundle-bytes').hexdigest()
@@ -179,8 +179,14 @@ class ApplicationRecoveryTest(unittest.TestCase):
         self.assertEqual(body['images_built_at'],'c'*40)
         self.assertEqual(body['api_digest'],'sha256:api')
         self.assertEqual(body['web_digest'],'sha256:web')
-        self.assertTrue(body['old_app_on_new_schema']['verified'])
-        self.assertEqual(body['old_app_on_new_schema']['evidence'],'runner isolation smoke images_run_id=44284158221 bundle=sha256:'+expected_bundle)
+        self.assertNotIn('old_app_on_new_schema',body)
+        self.assertTrue(body['candidate_app_on_schema']['verified'])
+        self.assertEqual(body['candidate_app_on_schema']['release_sha'],approval['release_sha'])
+        self.assertEqual(body['candidate_app_on_schema']['migration_manifest_sha256'],approval['migration_manifest_sha256'])
+        self.assertEqual(body['candidate_app_on_schema']['evidence'],'runner isolation smoke images_run_id=44284158221 bundle=sha256:'+expected_bundle)
+        ar.verify_image_evidence(self.root,approval,identities,{'smoke':'PASS'})
+        with self.assertRaisesRegex(RuntimeError,'candidate schema compatibility binding'):
+            ar.verify_image_evidence(self.root,approval|{'migration_manifest_sha256':'f'*64},identities,{'smoke':'PASS'})
         self.assertEqual(path.stat().st_mode & 0o777,0o600)
         (bundle/'bundle.tar.gz').unlink()
         with self.assertRaisesRegex(RuntimeError,'Recovery bundle archive missing'):

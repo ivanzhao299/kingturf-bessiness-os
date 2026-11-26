@@ -28,5 +28,26 @@ class ApplicationWorkflowContract(unittest.TestCase):
         self.assertIn("RELEASE_CONTROL_SHA='$RELEASE_CONTROL_SHA'",text)
         self.assertNotIn('--delete',text.replace('# A unique run directory is retained on failure; no --delete and no source rsync.',''))
 
+    def test_forward_source_branch_imports_before_preparing_then_repeats_strict_gate(self):
+        text=(ROOT/'scripts/recover_application_images.sh').read_text()
+        self.assertIn('--inspect-forward-recovery',text)
+        self.assertNotIn('--allow-stopped-api',text)
+        branch=text.split('if "$forward_recovery"; then',1)[1].split('\nfi',1)[0]
+        self.assertLess(branch.index(" import '$remote'"),branch.index(' prepare-forward-recovery '))
+        self.assertLess(branch.index(' prepare-forward-recovery '),branch.index(' --require-full'))
+        self.assertIn('--source-sha256',branch)
+        normal=text.split('if ! "$forward_recovery"; then',1)[1].split('\nfi',1)[0]
+        self.assertIn(" import '$remote'",normal)
+        self.assertLess(text.index(" precheck '$remote'"),text.index('if ! "$forward_recovery"; then'))
+        self.assertLess(text.index('if ! "$forward_recovery"; then'),text.index(" backup '$remote'"))
+
+    def test_forward_recovery_never_changes_workflow_input_or_lock_contract(self):
+        import yaml
+        workflow=yaml.safe_load((ROOT/'.github/workflows/recover-application-images.yml').read_text())
+        self.assertEqual(list(workflow[True]['workflow_dispatch']['inputs']),['commit_sha','api_digest','web_digest','images_run_id'])
+        self.assertEqual(list(workflow['jobs']),['validate','verify','deploy'])
+        self.assertEqual(workflow['jobs']['deploy']['environment'],'production')
+        self.assertEqual(workflow['jobs']['deploy']['concurrency'],{'group':'kingturf-erp-production','cancel-in-progress':False})
+
 
 if __name__=='__main__':unittest.main()
