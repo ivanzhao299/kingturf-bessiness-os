@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[TD-COMX-003 已取消的商机不算逾期](evidence/comx-003-cancelled-overdue-2026-11-26.md) 记录商机逾期口径收敛到共享判定（CANCELLED 与 WON/LOST 同口径）、先红后绿的测试对照、Web 全量 1025/1025 与双视口走查及定向截图实测。
+
 [标准smoke的隔离执行边界](evidence/ux-wave-integration-2026-11-26.md#12-标准-smoke-的隔离夹具与执行裁定)与[恢复证据§15](evidence/forward-recovery-2026-11-26.md#15-标准-smoke-外部夹具的执行边界)记录C0原helper、独立81测试PG与L77分离、初稿74712ee8静态阻断、真实完整ID清理代理／Python隔离约束及R真实输入seal；新入口待最终复核后实跑，当前没有R/B smoke或恢复PASS。
 
 [供应商初焦批集成复验](evidence/ux-wave-integration-2026-11-26.md#10-供应商初焦批集成与定向复验)：GLM交付3882d01合入acbdf0f，产品代码零改，合并后目标测试20/20轮、每轮19例；所有者首节与交付测试／证据原字节保持。独立既有随机碰撞间歇登记TD-TEST-041、未顺手修。[远端与生产公开基线](evidence/ux-wave-integration-2026-11-26.md#11-远端检查与生产公开基线)记录1f远端CI／CodeQL success及公开三端点200、生产仍为L；后继最终CI／真实恢复／发布继续另验。
