@@ -598,3 +598,30 @@ C1远端推送CI run45864422228及CodeQL run45864422016均success，head_sha均5
 随后逐文件公开GET完整50项，包含manifest、模板、资产及50x，均200且identity编码原字节全等；总2,277,874 B。前后三端点再次守住B身份，拒绝重定向、压缩和SPA fallback冒充文件，未改Nginx或跳过不可读路径。18:23:23.824030 UTC真实结果VERIFIED_PUBLIC_BYTES_MATCH_FORMAL_WEB_AND_ACCEPTED_B，result SHA为52b574e8ccafba54618731f1bdee329f7e9ff04302e9063959c4dff0e7e9dda6；原字节、有限非敏感headers及每文件SHA保留在production-public-static-45871553369。HTTP覆盖完整镜像清单，但不能据此枚举服务器未公开索引的额外文件。
 
 正式发布及独立公开验收至此通过；生产登录态和直接数据库核验没有执行。既有浏览器的三轮P1各11/11、双视口各45路由／23真抽屉／3筛选、六写流程32必须／32探针，继续仅代表隔离合成账号；最终148图保留，实际独立抽样14图，不改写为逐张目检。TD-COMX-004、TD-TEST-041/042及UI023/024等登记项、TD-MFG-016/CRM-008后继范围保持原去向。
+
+## 28. 证据提交复验与自有演练运行环境退役
+
+七份发布文档经独立暂存审查及三文档窄更正后，以171d294f3eba01232d792104e02c32eb92433427提交（tree3402a3bafa2529bed6aa11a9c4271145bbb78c55）。49应用对浏览器映射、50x对基础页、线上全50对正式镜像分别表述；R保留指恢复OCI物料，未推导生产daemon已经import R。该干净SHA于18:51:11–19:06:47 UTC实际完整ci:local退出0／936.15秒，API18,387、Web1,065、UI101、operations264零skip；HEAD／tracked clean保持，49项摘要仍2f51…、与正式产物全等。原result SHA-256为004125b9336ff2c13ffc38cfaed9f0f77ecaf081ecec11e5fd89113e6912823a，ci.log为4df74dea03fbc757e2626c5212e3ca25ddbbd59dd4b67c224ac923a8c6dd1db2，持久目录integration-artifacts/ci-171d294。
+
+静态原件随后另经独立只读复核：完整50份html、线上50份responses及metadata、前后6份端点原件逐项重算；49项与B/C1/browser映射和保留dist原字节全等，50x497 B单独匹配，50项均严格整数HTTP200、identity字节，隐藏manifest也匹配，无缺失／额外项／跳过。7551…与52b5…两result及完整归档布局相符；复核不重做HTTP／Docker／SQL，也不能枚举未索引线上额外文件。
+
+退役前先对遗留manual3 CLI完整CID65117fc3…做只读归属：31个原记录／副本未找到直接CID创建收据，daemon历史窗口也未保留事件；实际Created/Started/Finished与原16:32:48–49 receipt窗口、R镜像ID/ref、完整命令／cwd／网络及退出0均吻合，174 B Docker原日志又与manual3原日志逐字节相同、SHA a9e2c12f…。据此作主协调技术归属，未将仅有名称当充分证明，未冒称找到了创建收据。两份归属JSON原件保留在recovery-rehearsal-artifacts/cleanup-inventory。
+
+退役工具初稿在执行前修正合法删除引起的目录size/nlink比较：仅四秘密及PG目录的五个直接父目录允许该结构字段变化，其他目录身份和全部普通文件集合／大小／字节／SHA严比。e42版本27项纯测通过后，真实preflight1于18:55:40 UTC在PG命令绑定处拒绝，状态PREFLIGHT_FAILED_NO_RETIREMENT、原receipt SHA c831cdd659cc5df1d4900b56ff92976c4762634ed09aa41d105c3bacbb393a02，动作仅读取，没有stop／signal／删除。只读复核原fixture、现场及manual3三份compose同为1bfb83dc4cfb28c19d4f5c6ea2f0d43aafbca39d2322814e997f9df0931849c9，原PG明确以postgres -c timezone=UTC启动，镜像默认仅postgres。
+
+保留e42源码／测试及原失败后，新da45d129028736c1c9dc736e8d1e422debc3a67a887afc16b9b7bc3ed285d4ae只对固定PG role／CID／镜像钉定原命令、Path/Args和创建／启动时刻，另核三compose原字节；整个Retire动作类、main及其他既有守卫AST不变。31项纯合成测试含旧PG fixture真红→新精确绑定绿、其他时区／参数／路径／时刻仍拒绝；父及独立复核均31/31零skip。preflight2实际退出0，原receipt SHA 1e33645c1cc36d749298e4c60f13b31c5cae27130b1454540f4c5428fffb2008，仍明确只读、未退役。默认／help无现场访问，四秘密只stat、不读取或内容哈希。
+
+171d294完整CI结束后，19:09:41–19:10:22 UTC经heavy串行实际执行退役，入口0，状态OWNED_RUNTIME_RETIRED_DAEMON_CONTENT_RETAINED。每步重新核完整outer／三bind／inner daemon、四CID／镜像／role／网络／CLI原日志，按API→Web→PG受控stop，分别保留停止前后原日志；代理只对PID298699／ticks6059346经pidfd发TERM，核argv／cwd／脚本／FD对象并确认退出及IPv4 443可bind，旧6632未再次signal。实际代理最终日志6923 B、SHA 9e6bae5afd1861d158868e4f6652235b9cc199d81a5a863d8fc4f0c310a69694，未声称早期整日志不可追加。
+
+保全范围为1524项源文件／目录、普通文件总2,171,520,259 B，额外完整tar为2,174,228,480 B；逐成员／manifest／原77 PGDMP dump验真，source前后仅上述合法目录字段变化。归档排除四秘密、活动PG datadir及daemon；原报告、旧失败、日志、状态／计划、数据库dump和附件仍留原位，并另有该完整副本。随后四完整CID移除及其config.v2.json不存在均确认，四秘密按device/inode/mode/UID精确unlink、活动PG目录在原dump保全且PG移除后精确删除；空项目network d43357e5…移除，最后inner零容器／零volume，保留outer本地日志后移除完整outer16752e89…并确认不存在。
+
+| 实际退役原件                  | SHA-256                                                          |
+| ----------------------------- | ---------------------------------------------------------------- |
+| receipt.json                  | 600d8e913dc8c0cfa6161c706a09d4769d507dca8bb3f76f17978cae922ca271 |
+| preserved-source.tar          | 6c24c7637c1fd005576bb908651f8f60e224eb1b882dae7ab0bcbf9fb115634d |
+| 保全manifest                  | aca1d5786d2ba8c0a42e7a242160665f2ca31637cf63ee0c4e877e00b8be85fc |
+| 原quiesced77.dump（保全前后） | d8338c4ebb1af896c79e98600af02856c9a7ef8e90ca0874d7997da5313c70b5 |
+
+原执行目录为integration-artifacts/retire-execute-45841385764-1，含10份容器／outer前后原日志、动作journal、前后manifest、保全checkpoint和私有tar（目录0700、文件0600）；调用回执在closeout-120d6fc-control-5ab1cea/retirement-invocation.json。daemon绑定目录及镜像缓存保留，其余存储未检查或擦除可恢复秘密残余，full_session_erasure_claimed=false；运行环境退役不冒称整盘擦除。没有global prune／pkill、未知对象删除、生产访问、SQL或迁移，主检出.env及既有工作树未触碰。
+
+本节记录19:10:22的执行时点。最终文档SHA另跑完整ci:local；专用CI库5438／完整CID12c10e6d…保留到最后检查结束，再单独精确退役。最后SHA、实际门禁与该库清理结果由持久closeout-120d6fc-control-5ab1cea/final-verification.json后继回执记录，先前失败、C1固定控制及正式B身份保持原样。
