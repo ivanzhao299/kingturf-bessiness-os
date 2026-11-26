@@ -602,3 +602,9 @@ G3 首次队列在旧 heavy 脚本里固定等 slot-1，其他槽释放也不前
 - **G5-N1（待核实，未修）**：`scripts/e2e-local/walk.mjs:27–28` 的自定义 `宽x高@倍率` 把 `deviceScaleFactor` 放在 `preset.viewport` 内，而 `:188–189` 读取 `preset.deviceScaleFactor`，因此自定义倍率未传入浏览器 context。静态路径已确认，未做专项倍率实验。本批手机使用既有 `mobile` 预设（正确放在外层、倍率 2），平板 1024×768 为倍率 1，三档 CSS 视口没有受到该问题影响。按任务书限制只报告，不改工具或其他台账行。
 
 原工作树执行 `node scripts/e2e-local/e2e-local.mjs down`，使用原有 `E2E_LOCAL_CONTAINER=e2e-harness-gate005`、`E2E_LOCAL_DATABASE=w1_gate005_test_e2e` 与本批输出目录，退出 0。`A/logs/e2e-down.log` 记录自有容器已删除、专用 e2e 数据库已删除；随后容器列表与数据库名查询独立复核相同。专用 PostgreSQL 容器 `w1-gate-005-pg` 继续运行，CI 库 `w1_gate_005_test` 保留；分支、工作树与全部原始日志／截图保留。没有删除其他容器或工作树，没有创建待拆除的临时基线工作树。
+
+## 10. 主协调集成复验（发布前检查点）
+
+主协调合入全部六组清理、CRM 旧视图删除与计量修复后，在集成快照 `21c108f1813d4aee9029b765ab144d1e3eaa8520` 实跑两组门禁自测 15/15（计量 13、发布摘要 2）及 Web build，均退出 0。实际登录关键路径为 **JS 11,752 B、CSS 25,483 B（gzip）**，分别满足 12,000／27,000 B；HTML 静态样式为 `assets/style-V3eb7FOp.css`，入口 manifest CSS 集合为空，证实旧漏计场景已按静态链接纳入。
+
+原始日志、源码 SHA、退出码与资源清单保存在 `/home/jinhuit/Kingturf/kingturf-coord/integration-artifacts/css-measurement-merged/`（`result.json`、`budget-tests.log`、`web-build.log`、`measurement.json`）。该检查点尚未叠加采购新增控件样式及恢复控制，不能作为最终完整 `ci:local` 或最终发布载荷的回执；完整集成后仍按同一真实预算复验。
