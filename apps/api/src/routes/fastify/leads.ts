@@ -107,9 +107,11 @@ export function registerLeadRoutes(app: FastifyRouteGroupApp, scope: FastifyRout
   };
 
   // TD-CRM-003：最近一次活动按来源域读权限门控（项目所有者 2026-11-26 确认）——
-  // customer-activity:read 存在且作用域非空才聚合（assertPermission 同口径，U3-MFG-1
-  // 关联聚合先例）；线索读权限不放宽客户活动的可见面，未授权时字段恒为 null。
+  // lead:read 与 customer-activity:read 均存在且作用域非空才聚合（assertPermission 同口径，
+  // U3-MFG-1 关联聚合先例）。公海列表仍只需 lead-pool:read 可读，缺少 lead:read 时只隐藏跟进时间。
   const activityGrant = (): LeadActivityGrant | null => {
+    const leadRead = scope.authorization.permissions.get('lead:read');
+    if (leadRead === undefined || leadRead.scopes.length === 0) return null;
     const grant = scope.authorization.permissions.get('customer-activity:read');
     return grant !== undefined && grant.scopes.length > 0
       ? {

@@ -184,6 +184,31 @@ describe('leads fastify bridge track — lastActivityAt additive key (TD-CRM-003
     });
   }
 
+  it.each([false, true])(
+    '公海与活动可读、lead:read 缺失或作用域为空（emptyScope=%s）：仍返回 200，但跟进时间为 null',
+    async (emptyScope) => {
+      const { repo, listLeadPage } = double();
+      listLeadPage.mockImplementation((_actor, _scopes, _anchors, _filter, activity) =>
+        Promise.resolve({
+          items: [{ ...row, lastActivityAt: activity === null ? null : row.lastActivityAt }],
+          nextCursor: null,
+        } as Awaited<ReturnType<Listing>>),
+      );
+      const scope = scopeFor(repo, { activity: company });
+      const permissions = new Map(scope.authorization.permissions);
+      if (emptyScope) permissions.set('lead:read', { scopes: [], fields: null });
+      else permissions.delete('lead:read');
+      const response = await dispatchFastifyRouteGroup(list('/api/v1/leads/pool'), {
+        ...scope,
+        authorization: { ...scope.authorization, permissions },
+      });
+      expect(response?.statusCode).toBe(200);
+      expect(listLeadPage).toHaveBeenCalledTimes(1);
+      expect(listLeadPage.mock.calls[0]?.[4]).toBeNull();
+      expect(itemsOf(response)).toEqual([{ ...row, lastActivityAt: null }]);
+    },
+  );
+
   it('没有线索读权限：403 先于任何仓储调用（门控不改变授权顺序）', async () => {
     const { repo, listLeadPage } = double();
     const denied = await dispatchFastifyRouteGroup(
