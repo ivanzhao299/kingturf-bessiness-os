@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { StatusTone } from '@kingturf/ui';
+import { isOpportunityOverdue } from '../opportunity-overdue';
 import type { Opportunity } from '../types';
 import type { OpportunityPageState, PendingMove } from './opportunity-list';
 import './commercial-ux.css';
@@ -62,11 +63,8 @@ export const stageTone = (status: unknown): StatusTone => {
   return 'neutral';
 };
 
-// 与 opportunityPipelineSummary/readiness 相同的逾期规则（原卡片 overdue 语义保持）。
-export const isOpportunityOverdue = (opportunity: Opportunity, today: string): boolean =>
-  !['WON', 'LOST'].includes(opportunity.status ?? 'OPEN') &&
-  Boolean(opportunity.expectedCloseDate) &&
-  String(opportunity.expectedCloseDate).slice(0, 10) < today;
+// 逾期口径收敛到 ../opportunity-overdue（TD-COMX-003：已取消不算逾期）；再导出保持原导入面。
+export { isOpportunityOverdue };
 
 export const stageTargets = (status: unknown): readonly string[] =>
   STAGE_TRANSITIONS[statusKey(status)] ?? [];

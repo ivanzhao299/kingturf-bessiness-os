@@ -59,7 +59,8 @@ const portsFor = (
     overdue: items.filter(
       (item) =>
         Boolean(item.expectedCloseDate) &&
-        !['WON', 'LOST'].includes(item.status ?? 'OPEN') &&
+        // TD-COMX-003：与 readiness.opportunityPipelineSummary 同口径，已取消不算逾期。
+        !['WON', 'LOST', 'CANCELLED'].includes(item.status ?? 'OPEN') &&
         String(item.expectedCloseDate).slice(0, 10) < today,
     ).length,
     closingSoon: 0,
