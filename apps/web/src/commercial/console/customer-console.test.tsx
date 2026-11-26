@@ -565,10 +565,36 @@ describe('CRM-UX 信用概要（可选端口）', () => {
     const credit = section(host, 'kt-customer-credit');
     expect(section(host, 'kt-customer-credit-limit').textContent).toContain('1,000,000');
     expect(section(host, 'kt-customer-credit-exposure').textContent).toContain('750,000');
-    expect(section(host, 'kt-customer-credit-usage').textContent).toBe('额度使用率 75%');
+    expect(section(host, 'kt-customer-credit-usage').textContent).toBe('参考使用率 75%');
     expect(credit.textContent).toContain('信用已批准');
+    expect(credit.textContent).toContain('最新生效额度');
+    expect(credit.textContent).toContain('最近评估敞口');
+    expect(credit.textContent).toContain('额度取最新生效记录；敞口为最近一次评估时的金额。');
+    expect(element(credit.querySelector('[role="progressbar"]')).getAttribute('aria-label')).toBe(
+      '参考使用率',
+    );
     expect(meterLevel(credit)).toBe('warning');
     expect(credit.textContent).not.toContain('暂无信用记录');
+  });
+
+  it('额度与敞口币种不同：保留各自币种，不合计，参考使用率显示 —', async () => {
+    const host = mount(
+      portsFor([], {
+        loadCredit: vi.fn().mockResolvedValue({
+          ...summary,
+          limit: { currency: 'USD', amount: 50_000 },
+        }),
+      }),
+    );
+    await openFirst(host);
+    await flush();
+    const limit = section(host, 'kt-customer-credit-limit').textContent;
+    const exposure = section(host, 'kt-customer-credit-exposure').textContent;
+    expect(limit).toContain('50,000');
+    expect(limit).toContain('$');
+    expect(exposure).toContain('750,000');
+    expect(exposure).toContain('¥');
+    expect(section(host, 'kt-customer-credit-usage').textContent).toBe('参考使用率 —');
   });
 
   it('端口返回空时呈现空态', async () => {
@@ -597,7 +623,7 @@ describe('CRM-UX 信用概要（可选端口）', () => {
     await flush();
     expect(loadCredit).toHaveBeenCalledTimes(2);
     expect(host.querySelector('[data-testid="kt-customer-credit-error"]')).toBeNull();
-    expect(section(host, 'kt-customer-credit-usage').textContent).toBe('额度使用率 75%');
+    expect(section(host, 'kt-customer-credit-usage').textContent).toBe('参考使用率 75%');
   });
 
   it('360 响应内嵌 credit 分区时优先于端口', async () => {
@@ -614,7 +640,7 @@ describe('CRM-UX 信用概要（可选端口）', () => {
     await openFirst(host);
     await flush();
     expect(loadCredit).not.toHaveBeenCalled();
-    expect(section(host, 'kt-customer-credit-usage').textContent).toBe('额度使用率 95%');
+    expect(section(host, 'kt-customer-credit-usage').textContent).toBe('参考使用率 95%');
     expect(meterLevel(section(host, 'kt-customer-credit'))).toBe('danger');
   });
 });

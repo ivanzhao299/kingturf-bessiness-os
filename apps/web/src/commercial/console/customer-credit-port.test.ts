@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CrmController } from '../../crm/controller';
 import { creditSummaryFromLedgers, creditUsageOf } from '../../crm/crm-ux';
 import type { CrmApi, CrmPermission } from '../../crm/types';
@@ -11,6 +11,13 @@ import { creditPortFor } from './customer-credit-port';
 // customer-console.test.tsx（端口替身拒绝 → 卡内原因 + 重试）。
 const NOW = Date.parse('2026-11-26T00:00:00Z');
 const at = (day: string): string => `${day}T00:00:00+00:00`;
+
+beforeEach(() => {
+  vi.spyOn(Date, 'now').mockReturnValue(NOW);
+});
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 const limits = [
   {
@@ -113,6 +120,37 @@ describe('creditSummaryFromLedgers（台账 → 概要口径）', () => {
     expect(pending).toEqual({
       limit: null,
       exposure: null,
+      decision: { status: 'PENDING_APPROVAL', decidedAt: '' },
+    });
+  });
+
+  it('沿用端点顺序取行：跳过未生效额度，最近决定按创建顺序取首条，不按审批时间重排', () => {
+    const summary = creditSummaryFromLedgers(
+      'c1',
+      [{ ...limits[0], effective_at: at('2026-12-01') }, ...limits],
+      [
+        {
+          customer_id: 'c1',
+          created_at: at('2026-11-25'),
+          effective_status: 'PENDING_APPROVAL',
+          decided_at: null,
+          currency: 'USD',
+          exposureAmount: '12000.000000',
+        },
+        {
+          customer_id: 'c1',
+          created_at: at('2026-11-24'),
+          effective_status: 'APPROVED',
+          decided_at: at('2026-11-26'),
+          currency: 'CNY',
+          exposureAmount: '750000.000000',
+        },
+      ],
+      NOW,
+    );
+    expect(summary).toEqual({
+      limit: { currency: 'USD', amount: 50_000 },
+      exposure: { currency: 'USD', amount: 12_000 },
       decision: { status: 'PENDING_APPROVAL', decidedAt: '' },
     });
   });

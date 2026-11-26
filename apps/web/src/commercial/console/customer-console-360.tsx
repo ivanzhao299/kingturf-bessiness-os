@@ -493,18 +493,18 @@ const CreditSection = ({
     <SectionCard title="信用概要" testId="kt-customer-credit">
       <div class="crm-credit-rows">
         <p class="crm-credit-row">
-          <span>信用额度</span>
+          <span>最新生效额度</span>
           <strong data-testid="kt-customer-credit-limit">{moneyOf(credit.limit)}</strong>
         </p>
         <p class="crm-credit-row">
-          <span>已用敞口</span>
+          <span>最近评估敞口</span>
           <strong data-testid="kt-customer-credit-exposure">{moneyOf(credit.exposure)}</strong>
         </p>
       </div>
       <div
         class="crm-meter"
         role="progressbar"
-        aria-label="额度使用率"
+        aria-label="参考使用率"
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={bar}
@@ -514,7 +514,7 @@ const CreditSection = ({
       </div>
       <p class="crm-credit-foot">
         <span data-testid="kt-customer-credit-usage">
-          额度使用率 {percent === null ? '—' : `${String(percent)}%`}
+          参考使用率 {percent === null ? '—' : `${String(percent)}%`}
         </span>
         {credit.decision === null ? null : (
           <span>
@@ -526,6 +526,7 @@ const CreditSection = ({
           </span>
         )}
       </p>
+      <p class="console-hint">额度取最新生效记录；敞口为最近一次评估时的金额。</p>
     </SectionCard>
   );
 };
