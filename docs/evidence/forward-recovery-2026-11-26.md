@@ -176,7 +176,7 @@ R tar 的 release SHA、API/Web 来源与根 digest、完整迁移映射必须�
 
 `94b909a` 为首个控制检查点（全套 185 项通过）；`e47843c` 提供严格材料 CLI（随后全套 189 项通过，26.273 秒）。独立复核发现，两处 forward 停服在检查来源后仍按 `compose stop api` 动态解析服务名，检查和停止之间的容器替换可能把停止权限转给新 API。
 
-新增两个受控替换用例在未修代码上恰好 2 失败、其余 16 通过：准备路径确实停到了新 ID，失败清理路径也未识别替换。修复后只调用 `docker stop -t 30 <已核验完整ID>`，随后分别 inspect 该 ID 与 canonical API，必须仍指向同一来源且真正停止；替换时拒绝、留闸和现场，从不把停止授权交给新 ID。18 个控制用例通过。测试的 L 与候选现在使用不同容器 ID、image ID 和 Config.Image，失败清理不再靠保留旧身份的替身冒充候选身份。正常路径的 compose 停服不改。
+新增两个受控替换用例在未修代码上恰好 2 失败、其余 16 通过：准备路径确实停到了新 ID，失败清理路径也未识别替换。修复后只调用 `docker stop -t 30 <已核验完整ID>`，随后分别 inspect 该 ID 与 canonical API，必须仍指向同一来源且真正停止；替换时拒绝、留闸和现场，从不把停止授权交给新 ID。18 个控制用例通过。测试的 L 与候选现在使用不同容器 ID、image ID 和 Config.Image，失败清理不再靠保留旧身份的替身冒充候选身份。当时正常路径的 compose 停服未改；本文件第 12 节记录 TD-REL-013 的后继修复。
 
 原始红绿日志为 `stop-race-red.log`、`stop-race-green.log`。该复核还指出普通 B bundle 的失败链尚未消费独立 R 目标；仅有手工前滚准备不能证明普通 B fail→R 已完成。后继收口见第 7 节，真实镜像演练仍由主协调执行。
 
@@ -229,3 +229,53 @@ R 作为实际健康原应用进行下一次零 pending 的 B 重试时，不消
 独立测试修正 `4803bb450ba52545622b2ff97fab8a5a82e0e0dc` 将 0079 原 SQL 复制到该用例已建立的 0078 私有目录，再明确以该目录执行 migrate/status，精确检验所声明的 0078→0079 历史升级。原末位 0079、全部已应用、状态/时间/hash/完整行项全等及升级后同结构草稿被拒绝的断言逐字保留；其余真库用例继续默认使用完整 81 清单。生产门禁、业务代码、迁移字节和注册表均未修改。
 
 主协调在该干净提交上经 heavy 复跑整份 BOM 真库测试：**10/10 通过，退出 0，7.41 秒**，前后 HEAD 不变、受跟踪工作树干净。结果与日志在 `/home/jinhuit/Kingturf/kingturf-coord/integration-artifacts/bom-upgrade-4803bb4/`；制造侧证据同步记录。后继干净提交仍须完整 `pnpm ci:local`，不能把本次定向绿态替代该门禁。
+
+## 12. TD-REL-013/014：常规停止身份与子解释器隔离
+
+### 12.1 授权、独立提交与边界
+
+项目所有者采纳驱动独立静态复核的第 4、7 项，授权在 `wave4/control-stop-ids`、分支 `fix/w4-control-stop-ids` 实施。基线 `514d8f4e2948dc2c51bf8dfd73f5f4c62eaa792e` 的完整 CI 已由主协调报告退出 0；本批没有重复该完整门禁，也不把基线回执算成本批回执。R 与 integration 树均未改。
+
+提交按单一职责保留：`72b462a` 先登记 TD-REL-013/014；`a2b4919` 修常规 backup/apply 的停止；`0ed25ed` 将原 HTTPS-before-stop 静态契约同步到 immutable stop；`0bce8ef` 单独修真正子解释器的 `-I`；主协调技术复核后的 `b7c6bac` 收敛纯共享 scope 与完整环境守恒；`1a4f086` 仅补正测试替身匹配范围；`acfb385` 收住来源漂移后从 backup 停止异常进入原 CLI 旧恢复的出口，同时保留稳定来源普通失败的原恢复对照。全部标 `[未测试]`，表示本树没有跑完整 `pnpm ci:local`。最后的文档提交另见分支日志。
+
+没有修改 workflow、业务、SQL、依赖或最终 81 pin，没有 push、发布、访问生产或执行真实恢复。驱动的其它五项由 W4 作者另行修复；镜像漏洞/工具链问题由主协调另批处理。本批通过不解除真实镜像恢复或发布验收边界。
+
+### 12.2 TD-REL-013 的身份与范围
+
+原 `precheck()` 只在 handover 返回 `container_id`；现在仅把该既有观察字段保留到普通返回中，全部预检判据、顺序和探针 AST 不变。backup 跨 R 目标准备仍核对原容器 ID、image ID/ref；保存私有现场后，在停止前再次检查 canonical API、project/service、固定附件 bind、原 ID/image/ref/env，再调用原 `stop_bound_api`，不再按服务名停止。停止请求本身只带核验所得完整 ID，后置检查仍验证该 ID 与 canonical 未被替换、Running/Restarting 均为 false。健康来源与真正已停 handover 均保留正常通路。
+
+`acfb385` 补充 main 级观察：原 CLI 会在 STOPPING_API 的 backup 停止异常后调用原恢复函数，即使异常来自来源被替换。现在仅在停止核验异常后再次观察并确认 ID/scope/image/ref/env 漂移或身份无法确认时，写 `BACKUP_STOP_UNCONFIRMED` 并恢复本机持久闸，使原 main 的既有分派不进入旧恢复；不操作未知新对象，也不宣称其 live 闸启用。若确认原身份仍一致，仅为普通 stop 命令失败，保持 STOPPING_API 原恢复语义；成功停服后普通 drain 失败仍保持原 API_STOPPED 恢复语义。main 与 recover_previous_application AST 均未改，没有把全部 backup 异常一概禁止恢复。
+
+apply 先观察原来源并绑定 marker/image/ref/完整环境，启闸并由原 Compose 路径合法重建后重新观察实际新 ID；只允许 `KINGTURF_WRITE_FENCE` 改为 enabled，全部其它环境按键值保持，顺序不影响比较，缺失、额外或重复键拒绝。停止前再次核对来源并按新 ID 停止，停止后核 canonical 与原身份。发现身份/范围漂移时保留持久闸，不调用旧失败恢复去重启替换对象；本机持久闸不被冒称为未知运行对象的 live 闸。未漂移的迁移前失败继续原恢复行为，原 `restore_api_on_failure` 函数 AST 未改。
+
+主协调指出初版 app/apply 重复了安全谓词，随后 `b7c6bac` 将 canonical/project/service/附件 bind 的纯检查集中在既有同 C `production_preflight.require_api_scope`，两调用方仅委托，不增加控制文件依赖。该模块移除新增 helper 后的整个 AST 与基线完全相等，所有原函数及相对顺序保持；九类 scope 负例继续覆盖。ID 格式与来源内容属于调用方附加检查。
+
+### 12.3 旧红新绿与原 CLI 守恒
+
+| 回执（相对本批 artifacts）                 | 快照与结果                                                                                                                                     |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `logs/td-rel-013-red.log`                  | 初始 10 方法在原源码上 32 个失败子情形，含误停新 ID；退出 1                                                                                    |
+| `logs/td-rel-013-baseline-final-red.log`   | 该轮 11 个停止测试方法在 Git 对象 `514d8f4` 的原控制源码上运行，33 个失败子情形；退出 1。只替换测试加载的模块，不还原/覆盖工作树、不使用 stash |
+| `logs/td-rel-013-targeted-green.log`       | `a2b4919` 对应源码，相关四模块 72/72，退出 0                                                                                                   |
+| `logs/td-rel-013-static-green.log`         | 原 HTTPS/入口/审批/锁及第四 control 契约 6/6，退出 0；只把停止位置改为 immutable call 并明确禁止 backup compose stop                           |
+| `logs/td-rel-014-red.log`                  | `0bce8ef` 之前源码：argv 断言 1 失败，PYTHONPATH 与 staging 两个实际投毒导入报错；非零子命令对照通过；退出 1                                   |
+| `logs/td-rel-014-green.log`                | `0bce8ef` 对应源码，apply 模块 25/25，退出 0                                                                                                   |
+| `logs/td-rel-013-environment-red.log`      | `0bce8ef` 源码对数据库/会话/额外/缺失/重复环境的 5 个子情形真红，环境顺序正例通过；退出 1                                                      |
+| `logs/td-rel-013-final-targeted-green.log` | `b7c6bac` 对应源码，共享 scope 与环境收口后六模块 114/114，退出 0                                                                              |
+| `logs/targeted-final.log`                  | 中间干净测试快照 `1a4f086` 上相同六模块 114/114，退出 0                                                                                        |
+
+最终 CLI 出口补强另留 `logs/td-rel-013-cli-red.log`（初始两处时机真红）与 `logs/td-rel-013-cli-final-red.log`：`1a4f086` 源码上 3 方法中，同/异镜像新 CID、scope/env 漂移 6 个子情形均触发旧恢复权限，稳定来源普通 stop/drain 失败对照通过。修复后两类拒绝均零 recover/up/停止新对象，后者继续原恢复。`logs/targeted-cli-final.log` 为提交前对应源码的 117/117；最终干净 `acfb385` 上 `logs/targeted-acfb385.log` 为 **117/117、退出 0**，全套另见下节。
+
+TD-REL-014 的生产差异仅为 `run_orchestrator` 真正子进程 argv 增加 `-I`。固定参数、CLI 路径、execute/plan 参数顺序、带空格的数据参数、JSON 返回与非零拒绝语义均保留。导入负例实际启动新解释器，分别在 PYTHONPATH 和 staging 脚本目录放置抛错的 `decimal.py`；修复后使用标准库且 isolated/ignore_environment/no_user_site 均为 1，没有 monkeypatch 生产执行链。原 HostFlow 的 `check-evidence → execute → postcheck` 和 81 注册表计数断言继续保留；原服务名停止断言换成恰停止实际重建的完整 ID，禁止 compose stop。
+
+### 12.4 完整 operations、失败保留与源码稳定
+
+`b7c6bac7cd302fede55d9e0b26026cc0c519e268` 的首轮完整 operations 运行了 258 项，257 项未失败、1 项报错，37.719 秒，退出 1。唯一错误是本批 HostFlow 测试替身拦截所有 `docker inspect`，把真实 PostgreSQL `w2-mfg-db-pg` 误送到模拟 API 的 retired 字典，KeyError，尚未完成 happy-path 的真实备份验证。失败日志 `logs/operations-final.log`、对应 HEAD 与退出码原样保留，不改标为绿。
+
+`1a4f086d20f11186e0d8e6edefd5fe34f3f56f77` 只收窄夹具到已知 API canonical/immutable IDs，真实 PG inspect 继续原 command；三份生产源码与 `b7c6bac` 逐字节相同。在该干净快照经 heavy 执行 `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests/operations -p '*_test.py'`，**258/258、零 skip、36.634 秒、退出 0**；前后 HEAD 相同，受跟踪树干净，见 `logs/operations-round2.log`。使用已准自有回环 `5446/w4_control_stop_ids_test`，口令只从模板指定键经环境传入，不打印、不落盘。现有真实 PG 演练包含在整套中，Docker/API/HTTP 主机动作在对应控制测试中使用明确替身，不能充当真实 R/B 镜像恢复证明。
+
+最后在 **`acfb385beef520393d7588ba6aa8dcb7ae07879e` 干净快照**执行同一完整 operations 命令：**261/261、零 skip、37.646 秒、退出 0**，前后 HEAD 相同，期间未改被测树，日志 `logs/operations-acfb385.log`。为保持该测试快照干净，仅将本批自己的三份待收尾文档保存为树外临时输入，再恢复提交版本；测试结束核对输入摘要后恢复草稿并删除临时输入，没有使用共享 stash。前述 258 项两轮及其源码身份保留，不作为本次 CLI 补强后的回执。
+
+机械证明见 `source-stability-final.json`：应用 `main`、`recover_previous_application`、原 `stop_bound_api` 与 `restore_api_on_failure` AST 全等；预检除返回原 ID 外判据 AST 全等；生产 gate 除新增纯 helper 外整个 AST 全等；orchestrator 函数除显式 `-I` 外 AST 全等；81 SQL 原字节及其原钉定保持，APPROVED 后缀仍为 0073–0081，所有者裁定首节原字节保持。应用控制允许变化的既有函数只有 precheck/backup/纯 scope 适配，apply 只有 main/run_orchestrator，未扩修其它 legacy 路径。
+
+本批 artifacts 为 `/home/jinhuit/Kingturf/kingturf-coord/wave4/control-stop-ids-artifacts`；各轮原始日志、稳定性 JSON 与脱敏结果保留。最终格式、文档链接、结构、边界和差异检查见 `logs/final-checks-acfb385-summary.log`（旧 `final-checks-summary.log` 为 CLI 补强前的检查，不混用）。专用测试库与容器保留供主协调复核；本树完整 CI、两层真实恢复及发布仍由主协调实施。
