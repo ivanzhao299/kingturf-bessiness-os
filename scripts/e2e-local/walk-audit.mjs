@@ -168,11 +168,22 @@ export function audit(target) {
   };
 }
 
-/** 给当前路由视图里可见的「查看」类触发器打上序号，返回去重后的触发器标识（data-e2e-pick）。 */
+/** 记录可见入口的真实身份；重渲染后按 testid/行 ID 重取，不给一次性 DOM 打序号。 */
 export function pickTriggers(route) {
   const visible = (element) => {
     const rect = element.getBoundingClientRect();
     return rect.width > 0 && rect.height > 0;
+  };
+  const describe = (element) => {
+    const testId = element.getAttribute('data-testid') ?? '';
+    const label = (element.textContent ?? '').trim();
+    return {
+      key: testId || `text:${label}`,
+      testId,
+      label,
+      tagName: element.tagName.toLowerCase(),
+      rowId: element.closest('[data-row-id]')?.getAttribute('data-row-id') ?? null,
+    };
   };
   const matches = [...globalThis.document.querySelectorAll(`[data-route-view~="${route}"]`)].filter(
     visible,
@@ -187,18 +198,25 @@ export function pickTriggers(route) {
       '[data-testid*="-open"], [data-testid*="open-"], button, [role="button"], tbody a',
     )) {
       if (!visible(element)) continue;
-      const testId = element.getAttribute('data-testid') ?? '';
-      const label = (element.textContent ?? '').trim();
+      const trigger = describe(element);
       const looksOpener =
-        /-open$/u.test(testId) ||
-        /^open-/u.test(testId) ||
-        /^(查看|详情|查看详情|查看版本|查看对比)$/u.test(label);
-      if (!looksOpener) continue;
-      const key = testId || `text:${label}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      element.setAttribute('data-e2e-pick', String(picked.length));
-      picked.push(key);
+        /-open$/u.test(trigger.testId) ||
+        /^open-/u.test(trigger.testId) ||
+        /^(查看|详情|查看详情|查看版本|查看对比)$/u.test(trigger.label);
+      if (!looksOpener || seen.has(trigger.key)) continue;
+      seen.add(trigger.key);
+      const statusFilter =
+        /-filter-open$/u.test(trigger.testId) && element.hasAttribute('aria-pressed');
+      const reset = statusFilter
+        ? [...element.closest('.fin-filters').querySelectorAll('button')].find(
+            (button) => (button.textContent ?? '').trim() === '全部',
+          )
+        : null;
+      picked.push({
+        ...trigger,
+        kind: statusFilter ? 'status-filter' : 'drawer',
+        ...(reset ? { reset: describe(reset) } : {}),
+      });
     }
   }
   return picked;
