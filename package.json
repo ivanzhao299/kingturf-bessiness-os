@@ -36,7 +36,7 @@
     "e2e:production:roles": "playwright test tests/e2e/production-role-uat.spec.ts",
     "verify:frontend-capabilities": "node scripts/verify_frontend_capability_manifest.mjs",
     "ci:database:guard": "NODE_ENV=test pnpm --filter @kingturf/database exec node --experimental-strip-types src/cli.ts guard-test-target",
-    "ci:local": "NODE_ENV=test sh -c 'pnpm install --frozen-lockfile && pnpm format:check && pnpm doc:lint && pnpm structure:check && pnpm service:check && pnpm verify:frontend-capabilities && pnpm ci:database:guard && pnpm db:migrate && pnpm db:status && pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm build && pnpm audit:scan && pnpm security:check'"
+    "ci:local": "NODE_ENV=test sh -c 'pnpm install --frozen-lockfile && pnpm format:check && pnpm doc:lint && pnpm structure:check && pnpm service:check && pnpm verify:frontend-capabilities && pnpm ci:database:guard && pnpm db:migrate && pnpm db:status && pnpm lint && pnpm typecheck && pnpm test:coverage && NODE_ENV=production pnpm build && pnpm audit:scan && pnpm security:check'"
   },
   "devDependencies": {
     "@eslint/js": "9.39.4",
