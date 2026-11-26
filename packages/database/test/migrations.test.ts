@@ -169,6 +169,44 @@ describe('identity and authorization migration', () => {
     expect(statements.match(/^DROP TRIGGER /gmu)).toHaveLength(3);
   });
 
+  // MG2（TD-MFG-015）：迁移 0079 只重定义发布守卫的 BOM 分支：组件必须全部已发布（与替代料
+  // 一致）。机械比对：去掉注释后的 0079 全文 = 0036 里 validate_manufacturing_publish 的原定义，
+  // 把 CREATE FUNCTION 换成 CREATE OR REPLACE FUNCTION、把「至少一个组件已发布」那一条换成
+  // 「没有组件 / 有未发布的组件」两条之后的结果——其余每个字节都相同（真库行为见
+  // apps/api/test/bom-publish-components-postgres.integration.test.ts）。
+  it('0079 is the 0036 publish guard with only the BOM component rule changed (TD-MFG-015)', async () => {
+    const read = (name: string) => readFile(join(process.cwd(), 'migrations', name), 'utf8');
+    const statements = (await read('0079_bom_requires_published_components.sql'))
+      .split('\n')
+      .filter((line) => !line.trimStart().startsWith('--'))
+      .join('\n')
+      .trim();
+    const legacy = await read('0036_manufacturing_master_data.sql');
+    const definition = /CREATE FUNCTION validate_manufacturing_publish\(\)[\s\S]*?END \$\$;/u.exec(
+      legacy,
+    )?.[0];
+    if (!definition) throw new Error('0036 publish guard definition not found');
+    const previous =
+      "       OR NOT EXISTS(SELECT 1 FROM manufacturing_bom_lines l JOIN manufacturing_item_versions iv ON iv.id=l.component_item_version_id AND iv.tenant_id=l.tenant_id WHERE l.bom_version_id=NEW.id AND l.tenant_id=NEW.tenant_id AND iv.status='PUBLISHED')\n";
+    const current = [
+      '       OR NOT EXISTS(SELECT 1 FROM manufacturing_bom_lines l WHERE l.bom_version_id=NEW.id AND l.tenant_id=NEW.tenant_id)',
+      "       OR EXISTS(SELECT 1 FROM manufacturing_bom_lines l JOIN manufacturing_item_versions iv ON iv.id=l.component_item_version_id AND iv.tenant_id=l.tenant_id WHERE l.bom_version_id=NEW.id AND l.tenant_id=NEW.tenant_id AND iv.status<>'PUBLISHED')",
+      '',
+    ].join('\n');
+    // 被替换的那一条在 0036 的原定义里恰好出现一次（替换不会落空，也不会多改）。
+    expect(definition.split(previous)).toHaveLength(2);
+    expect(statements).toBe(
+      definition
+        .replace('CREATE FUNCTION', 'CREATE OR REPLACE FUNCTION')
+        .replace(previous, current),
+    );
+    // 没有别的语句：不改类型、表、触发器与数据。
+    expect(statements.match(/CREATE OR REPLACE FUNCTION/gu)).toHaveLength(1);
+    expect(statements).not.toMatch(
+      /ALTER\s+TYPE|ADD\s+VALUE|CREATE\s+TYPE|DROP\s|ALTER\s+TABLE|\bUPDATE\s+\w+\s+SET\b|\bDELETE\s+FROM\b|\bINSERT\s+INTO\b|CREATE\s+TRIGGER/iu,
+    );
+  });
+
   it('0073 adds only the must-change flag column (A1)', async () => {
     const sql = await readFile(
       join(process.cwd(), 'migrations/0073_credential_must_change.sql'),
@@ -181,7 +219,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0078_manufacturing_published_child_insert_guard.sql');
+    expect(ordered.at(-1)).toBe('0079_bom_requires_published_components.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
