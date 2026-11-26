@@ -2824,6 +2824,16 @@ describe('web bootstrap', () => {
     expect(APP_ROUTE_LABELS.procurement).toBe('采购概览');
   });
 
+  it('resolves the MRP proposal deep link without accepting queries on other route families (TD-MFG-013)', () => {
+    expect(appRouteFromHash('#/material-planning?run=run-1&proposal=proposal-1')).toBe(
+      'material-planning',
+    );
+    expect(appRouteFromHash('#/material-planning')).toBe('material-planning');
+    expect(appRouteFromHash('#/material-planning-extra?run=run-1')).toBe('overview');
+    expect(appRouteFromHash('#/quotes?run=run-1')).toBe('overview');
+    expect(appRouteFromHash('#/production-orders?proposal=proposal-1')).toBe('overview');
+  });
+
   it('mounts each procurement console as its own sub-route view, only when its list is readable (PROC-2)', async () => {
     const routesByConsole = (workspace: RenderedElement): readonly (string | null)[] =>
       CONSOLE_CLASSES.map(
