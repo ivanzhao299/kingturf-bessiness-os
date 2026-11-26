@@ -2,6 +2,8 @@
 
 [TD-REL-011 受控前滚恢复](evidence/forward-recovery-2026-11-26.md)记录失败 API 来源绑定、停服留闸及原严格部署接线、显式 compatible_recovery 实测物料门、负例与未执行的真实 81 清单镜像恢复边界。
 
+[W4 兼容恢复材料传输与迁移 staging 交付（TD-REL-011／012）](exec-plans/tech-debt-tracker.md) 的对应小节记录固定 C 私有快照、原始 R 材料运输、原子安装、引号与 rsync 接收者所有权独立修复、`8a0deae` 冻结的 37/37 定向回归，以及保留的整轮失败／skip 和最终集成边界；没有真实 gh／SSH／上传或真实 R 镜像演练。
+
 [发布步骤摘要修复（TD-GATE-006）](evidence/gate-006-release-summary-2026-11-26.md) 记录两处无引号 heredoc 摘要改 printf、静态守卫与 `test:release-guardrails` 接线，以及旧写法缺陷的 bash 对照复现；线上效果待下一次发布验证。
 [PG2 采购写路径裁定落地](evidence/proc-guards-2026-11-26.md)：TD-PROC-015/016/021/022 与 TD-MFG-013；0080/0081、同事务供应商守卫、MRP 创建引用及授权双向读、库存最小来源；真实 PG 红绿、双建单死锁补强、311/28、双视口读写与 PG2-N 后续项。主协调已统一 81 条迁移，API 定向 399、数据库 79、合并 Web 1,064 及构建通过；完整集成验收与发布待执行。
 
