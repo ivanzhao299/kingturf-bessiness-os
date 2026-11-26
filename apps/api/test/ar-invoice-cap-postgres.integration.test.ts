@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { AuthorizationContext } from '@kingturf/domain';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import type { SqlClient } from '@kingturf/database';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { PermissionKey } from '@kingturf/types';
 import { buildApp, type ApiDependencies } from '../src/app.js';
 import { PostgresQuoteToCashRepository } from '../src/qtc-repositories.js';
@@ -277,6 +278,90 @@ describe('TD-FIN-003 invoice cap on the real Quote-to-Cash ledger', () => {
           correlationId: correlation,
         },
       });
+    },
+    SLOW,
+  );
+
+  it.each([
+    {
+      label: '聚合缺行',
+      prefix: 'SELECT coalesce(sum(d.amount)',
+      rows: [],
+      error: 'Invoice aggregate query returned an invalid result',
+    },
+    {
+      label: '聚合文本异常',
+      prefix: 'SELECT coalesce(sum(d.amount)',
+      rows: [{ invoiced: 'NaN' }],
+      error: 'Invoice aggregate query returned an invalid result',
+    },
+    {
+      label: '比较缺行',
+      prefix: 'SELECT ($1::numeric+$2::numeric)',
+      rows: [],
+      error: 'Invoice cap comparison returned an invalid result',
+    },
+    {
+      label: '比较布尔异常',
+      prefix: 'SELECT ($1::numeric+$2::numeric)',
+      rows: [
+        { exceeds: 'false', total: '950000', invoiced: '950000', posted: '1', combined: '950001' },
+      ],
+      error: 'Invoice cap comparison returned an invalid result',
+    },
+  ])('$label：内部错误回滚，不能静默放行', async (fault) => {
+    const db = state().db;
+    const guarded = new PostgresQuoteToCashRepository({
+      query: db.query.bind(db),
+      transaction: <T>(work: (tx: SqlClient) => Promise<T>) =>
+        db.transaction(async (tx) => {
+          const original = tx.query.bind(tx);
+          const intercepted = vi
+            .spyOn(tx, 'query')
+            .mockImplementation((sql, values) =>
+              sql.startsWith(fault.prefix)
+                ? Promise.resolve({ rows: fault.rows, rowCount: fault.rows.length })
+                : original(sql, values),
+            );
+          try {
+            return await work(tx);
+          } finally {
+            // PoolClient 会被连接池复用；在归还前恢复 query 的回调重载，避免干扰随后 db.query。
+            intercepted.mockRestore();
+          }
+        }),
+    });
+    const before = await ledger();
+    await expect(
+      guarded.postAr(
+        invoice(order(), `INV-FAULT-${randomUUID()}`, '1'),
+        randomUUID(),
+        state().context,
+        randomUUID(),
+      ),
+    ).rejects.toThrow(fault.error);
+    expect(await ledger()).toEqual(before);
+  });
+
+  it(
+    '异常历史聚合超出 numeric(24,6) 列宽仍可精确求和并以 409 拒绝新开票',
+    async () => {
+      const large = await copyOrder('CAP-ORDER-HUGE');
+      // 构造历史超额状态，直接 SQL 写合成单据；不开新业务入口、不改数据库守卫。
+      for (const number of ['INV-CAP-HUGE-A', 'INV-CAP-HUGE-B'])
+        await state().db.query(
+          "INSERT INTO ar_documents(tenant_id,customer_id,sales_order_id,document_number,document_type,currency,amount,due_at,canonical_input,canonical_hash,actor_id,correlation_id,idempotency_key) SELECT tenant_id,customer_id,$1,$2,'INVOICE',currency,$3,due_at,canonical_input,canonical_hash,actor_id,$4,$5 FROM ar_documents WHERE sales_order_id=$6 AND document_number='SENSITIVE-AR'",
+          [large, number, '999999999999999999.999999', randomUUID(), randomUUID(), order()],
+        );
+      expect(await repository.invoicedOrderAmount(state().db, tenant(), large)).toBe(
+        '1999999999999999999.999998',
+      );
+      const before = await ledger();
+      await expect(post(invoice(large, 'INV-CAP-HUGE-OVER', '0.000001'))).rejects.toMatchObject({
+        code: 'conflict',
+        message: capMessage('1999999999999999999.999998', '0.000001', '1999999999999999999.999999'),
+      });
+      expect(await ledger()).toEqual(before);
     },
     SLOW,
   );

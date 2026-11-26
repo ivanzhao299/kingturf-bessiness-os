@@ -756,7 +756,7 @@ export class PostgresQuoteToCashRepository extends PostgresPaymentReadRepository
   //   ar_document_governed_graph 的同一组条件）：不一致的留给该守卫按原提示拒绝，也保证提示里的
   //   几个金额同币种。
   // - 拒绝发生在任何写入之前：不落应收单据、开放项、审计、事件与命令结果，幂等键不被占用。
-  // 全部参数化，不拼接输入；判定结果形状意外时不拦，交由数据库约束把关。
+  // 全部参数化，不拼接输入；聚合或比较查询缺行/形状异常属于内部错误，必须回滚。
   private async assertInvoiceWithinOrder(
     tx: SqlClient,
     input: Readonly<{
@@ -789,7 +789,14 @@ export class PostgresQuoteToCashRepository extends PostgresPaymentReadRepository
         [invoiced, input.amount, order.total],
       )
     ).rows[0];
-    if (amounts?.exceeds !== true) return;
+    if (
+      typeof amounts?.exceeds !== 'boolean' ||
+      [amounts.total, amounts.invoiced, amounts.posted, amounts.combined].some(
+        (value) => typeof value !== 'string' || !/^\d+(?:\.\d+)?$/u.test(value),
+      )
+    )
+      throw new Error('Invoice cap comparison returned an invalid result');
+    if (!amounts.exceeds) return;
     throw new DomainError(
       'conflict',
       `累计开票金额超过订单金额，已拒绝过账：订单金额 ${order.currency} ${amounts.total}，已开票 ${amounts.invoiced}，本次 ${amounts.posted}，合计 ${amounts.combined}`,
