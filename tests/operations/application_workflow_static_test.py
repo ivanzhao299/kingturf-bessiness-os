@@ -18,7 +18,9 @@ class ApplicationWorkflowContract(unittest.TestCase):
         precheck=text.split('def precheck(bundle):',1)[1].split('def private_write',1)[0]
         self.assertIn("probe('https://erp.kingturf.cn', marker)",precheck)
         backup=text.split('def backup(bundle):',1)[1].split('def verify_unchanged',1)[0]
-        self.assertLess(backup.index('precheck(bundle)'),backup.index("compose('stop'"))
+        self.assertLess(backup.index('precheck(bundle)'),backup.index("stop_bound_api(api['Id'], api['Image'])"))
+        self.assertLess(backup.index('require_api_scope(current)'),backup.index("stop_bound_api(api['Id'], api['Image'])"))
+        self.assertNotIn("compose('stop'",backup)
 
     def test_all_transfer_and_import_failures_precede_api_stop(self):
         text=(ROOT/'scripts/recover_application_images.sh').read_text()
