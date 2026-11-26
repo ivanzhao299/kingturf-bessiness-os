@@ -54,7 +54,7 @@ class ForwardRecoveryTest(unittest.TestCase):
         self.bundle = self.root / '.release-image-recovery/123-1'
         self.bundle.mkdir(parents=True)
         self.old, self.sha, self.control = 'a'*40, 'b'*40, 'c'*40
-        self.expected = {f'{n:04d}_fixture.sql': 'd'*64 for n in range(1, 78)}
+        self.expected = {f'{n:04d}_fixture.sql': 'd'*64 for n in range(1, 82)}
         self.rows = [{'name': n, 'checksum': h} for n, h in self.expected.items()]
         self.gate = ar.load_gate()
         (self.root / '.release-sha').write_text(self.old)

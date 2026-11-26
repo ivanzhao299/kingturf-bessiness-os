@@ -38,15 +38,16 @@ class CompatibleApplicationRecoveryTest(unittest.TestCase):
         directory = repo/'packages/database/migrations'
         directory.mkdir(parents=True)
         self.expected = {}
-        for n in range(1, 78):
+        for n in range(1, 82):
             name, raw = f'{n:04d}_fixture.sql', f'SELECT {n};\n'.encode()
             self.expected[name] = hashlib.sha256(raw).hexdigest()
-            if n < 77:
+            if n <= 77:
                 (directory/name).write_bytes(raw)
         git('add', '.')
         git('commit', '--quiet', '-m', 'L fixture')
         h.old = git('rev-parse', 'HEAD')
-        (directory/'0077_fixture.sql').write_bytes(b'SELECT 77;\n')
+        for n in range(78, 82):
+            (directory/f'{n:04d}_fixture.sql').write_bytes(f'SELECT {n};\n'.encode())
         git('add', '.')
         git('commit', '--quiet', '-m', 'R fixture')
         self.rsha = git('rev-parse', 'HEAD')
@@ -83,7 +84,7 @@ class CompatibleApplicationRecoveryTest(unittest.TestCase):
         report = {'kind': 'compatible_application_recovery_drill_v1', 'isolated': True, 'bindings': binding.copy(), 'tested_at_utc': (now-timedelta(seconds=10)).isoformat(), 'steps': [{'name': n, 'result': 'PASS', 'at_utc': (now-timedelta(seconds=50-i)).isoformat()} for i, n in enumerate(names)], 'runtime': {'release_sha': self.rsha, 'api_digest': binding['api_digest'], 'web_digest': binding['web_digest']}, 'authenticated_write': {'authenticated': True, 'status': 201, 'operation': 'synthetic-only'}, 'registry': {'includes_applied_at': True, 'before': records, 'after': records, 'before_sha256': digest(records), 'after_sha256': digest(records)}, 'migration_state': {'before_files': files, 'after_files': files, 'before_sha256': digest(files), 'after_sha256': digest(files)}}
         (root/'report.json').write_text(json.dumps(report))
         binding['report_sha256'] = hashlib.sha256((root/'report.json').read_bytes()).hexdigest()
-        approved = {'release_sha': h.sha, 'approved_suffix': ['0077_fixture.sql'], 'approver': 'synthetic fixture', 'approved_at_utc': (now-timedelta(seconds=5)).isoformat(), 'window_end_utc': (now+timedelta(hours=2)).isoformat(), 'image_compatibility_mode': 'compatible_recovery', 'compatible_recovery': binding}
+        approved = {'release_sha': h.sha, 'approved_suffix': [f'{n:04d}_fixture.sql' for n in range(78, 82)], 'approver': 'synthetic fixture', 'approved_at_utc': (now-timedelta(seconds=5)).isoformat(), 'window_end_utc': (now+timedelta(hours=2)).isoformat(), 'image_compatibility_mode': 'compatible_recovery', 'compatible_recovery': binding}
         (root/'migration-recovery-approval.json').write_text(json.dumps(approved))
         (root/'compatible_recovery.json').write_text(json.dumps({'kind': 'compatible_application_recovery_v1', 'recovery_bundle_file': archive.name, 'source_bundle_file': source.name, 'report_file': 'report.json'}))
         self.fail_b = True
