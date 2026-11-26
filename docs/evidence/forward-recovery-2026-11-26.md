@@ -221,3 +221,11 @@ R 作为实际健康原应用进行下一次零 pending 的 B 重试时，不消
 在上述干净提交上，主协调以回环 `5438/kingturf_test_coordrel`、`kingturf` 角色经 heavy 串行执行完整 `python3 -m unittest discover -s tests/operations -p '*_test.py'`：**242/242 通过、零 skip，测试耗时 39.125 秒，退出 0**。前后 HEAD 相同、受跟踪工作树干净。原始日志、SHA-256 与结果在 `/home/jinhuit/Kingturf/kingturf-coord/integration-artifacts/operations-93af1e1/`，其中日志摘要为 `a63cad8d5706d1291a5477d4a6eb46e7ba661744020341170e4b47679c2c91f9`。
 
 该回执只证明最终同树运维测试通过。新的完整 CI、R 原镜像物料、两层真实恢复及恢复后认证写仍须分别实跑；没有据此解除 TD-REL-011 的发布阻断。
+
+## 11. 第二轮 CI 与历史 BOM 升级夹具
+
+完整 CI 在干净提交 `da5a1cf4fa14e478b1b6b4a7d011c09bf84dfe6f` 于 2026-11-26 09:13:44–09:28:58 UTC 再跑，退出 1，前后 HEAD 与受跟踪工作树保持不变。运维 242 项通过；API 的 212 文件中 211 通过，**18,387 项中 18,386 通过、1 项失败**。唯一失败是 `bom-publish-components-postgres.integration.test.ts` 的历史升级用例：该用例先造 0078 库、用旧规则发布混合 BOM，却调用默认全量迁移后仍期待末位是 0079；集成清单的实际末位正确为 0081。完整日志和摘要保留于 `/home/jinhuit/Kingturf/kingturf-coord/integration-artifacts/ci-da5a1cf/`。该轮未进入 Web/数据库/UI 覆盖率和后续构建，不算完整通过。
+
+独立测试修正 `4803bb450ba52545622b2ff97fab8a5a82e0e0dc` 将 0079 原 SQL 复制到该用例已建立的 0078 私有目录，再明确以该目录执行 migrate/status，精确检验所声明的 0078→0079 历史升级。原末位 0079、全部已应用、状态/时间/hash/完整行项全等及升级后同结构草稿被拒绝的断言逐字保留；其余真库用例继续默认使用完整 81 清单。生产门禁、业务代码、迁移字节和注册表均未修改。
+
+主协调在该干净提交上经 heavy 复跑整份 BOM 真库测试：**10/10 通过，退出 0，7.41 秒**，前后 HEAD 不变、受跟踪工作树干净。结果与日志在 `/home/jinhuit/Kingturf/kingturf-coord/integration-artifacts/bom-upgrade-4803bb4/`；制造侧证据同步记录。后继干净提交仍须完整 `pnpm ci:local`，不能把本次定向绿态替代该门禁。

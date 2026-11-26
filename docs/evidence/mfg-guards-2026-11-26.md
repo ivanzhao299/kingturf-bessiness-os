@@ -112,6 +112,8 @@ D 项勘探后主协调补充裁定：选择 C，只收敛版本内容指纹 `ca
 
 升级用例先只应用 0001–0078，用旧 UPDATE 发布混合 BOM，记录版本状态、发布时间、内容摘要和完整行项文本；再运行迁移到 0079，逐字段/逐文本比较完全相等，仍为 PUBLISHED 且行项仍是 PUBLISHED + DRAFT。新建同结构草稿则被拒绝。全发布组件照常可发布；先发布组件后再发布 BOM 可以成功；MFG-7 草稿续写→发布用例保持通过。最初新增真库 9/9；加入创建即发布真实 HTTP 用例后为 10/10，BOM 桥轨契约 16/16。
 
+主协调在集成最终 81 清单后，完整 CI `da5a1cf` 发现该历史用例仍调用默认全量 migrate/status，实际到 0081 却期待末位 0079，成为 18,387 项 API 测试中的唯一失败。测试修正 `4803bb4` 明确复用该用例的私有 0078 目录，只追加原字节 0079，并以该目录运行 migrate/status；所有原断言（包括末位 0079 和 BOM 全字段/行项守恒）逐字保留。其余用例继续迁移完整 81 清单。整文件 10/10 再过，前后 HEAD 不变、受跟踪树干净，日志 `/home/jinhuit/Kingturf/kingturf-coord/integration-artifacts/bom-upgrade-4803bb4/`。失败 CI 与后继完整门禁边界见 [集成复验 §11](forward-recovery-2026-11-26.md#11-第二轮-ci-与历史-bom-升级夹具)。
+
 最终补强 `c27e960`：真实独立 Node HTTP listener 使用新代码、专用 schema、合成登录及 `bom:manage/read` 公司权限，以 `fetch` 发送 `POST /api/v1/manufacturing-boms`，载荷含已发布组件、草稿组件、已发布替代料及 `publish:true`。新增断言在 `6b1a418` 源码上真红，实际为 500、期望 409（`logs/b-create-publish-http-red.log`，退出 1）；共用前置校验后返回 409 和上述固定中文消息。请求前后 BOM 根、版本、行项、替代料、audit、outbox 六类计数完全相等。随后全部组件改为已发布，同一路由返回 201/PUBLISHED，六类计数恰增 1/1/2/1/1/1。正负两条都连真实 PostgreSQL，不借用浏览器栈中已加载的旧服务。单例绿回执 `logs/b-create-publish-http-green.log`，最终整文件 10/10 见 `logs/supplement-manufacturing.log`。
 
 双视口界面证据见 §8。发布没有独立输入表单，失败消息通过既有 `kt-bom-submit-error` 显示在当前 BOM 详情抽屉内；新建表单继续使用自己的 `FormSection.error`。本批没有为此更改公共 UI 行为。

@@ -1,6 +1,6 @@
 # docs/index.md（全部文档索引）
 
-[TD-REL-011 受控前滚恢复](evidence/forward-recovery-2026-11-26.md)记录失败 API 来源绑定、停服留闸及原严格部署接线、显式 compatible_recovery 实测物料门、负例与未执行的真实 81 清单镜像恢复边界；§10 保留首轮集成 CI 的 77 夹具失败和修正后同树运维 242/242、零 skip 回执。
+[TD-REL-011 受控前滚恢复](evidence/forward-recovery-2026-11-26.md)记录失败 API 来源绑定、停服留闸及原严格部署接线、显式 compatible_recovery 实测物料门、负例与未执行的真实 81 清单镜像恢复边界；§10–11 保留两轮集成 CI 的迁移夹具失败，以及修正后同树运维 242/242、BOM 真库 10/10 回执，完整门禁继续复跑。
 
 [W4 兼容恢复材料传输与迁移 staging 交付（TD-REL-011／012）](exec-plans/tech-debt-tracker.md) 的对应小节记录固定 C 私有快照、原始 R 材料运输、原子安装、引号与 rsync 接收者所有权独立修复、`8a0deae` 冻结的 37/37 定向回归，以及保留的整轮失败／skip 和最终集成边界；没有真实 gh／SSH／上传或真实 R 镜像演练。
 
