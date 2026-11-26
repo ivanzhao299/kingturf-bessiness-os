@@ -1,6 +1,7 @@
 # docs/index.md（全部文档索引）
 
 [发布步骤摘要修复（TD-GATE-006）](evidence/gate-006-release-summary-2026-11-26.md) 记录两处无引号 heredoc 摘要改 printf、静态守卫与 `test:release-guardrails` 接线，以及旧写法缺陷的 bash 对照复现；线上效果待下一次发布验证。
+[PG2 采购写路径裁定落地](evidence/proc-guards-2026-11-26.md)：TD-PROC-015/016/021/022 与 TD-MFG-013；0080/0081、同事务供应商守卫、MRP 创建引用及授权双向读、库存最小来源；真实 PG 红绿、双建单死锁补强、311/28、双视口读写与 PG2-N 后续项。
 
 [第十次发布与集成复核 §16](evidence/ux-wave-release-2026-11-24.md#16-第十次发布-5dc88e52026-11-25) 汇总制造版本续写、质量与发货、报价与库存、共享汇总卡，以及两项集成回归的双视口实测。
 
