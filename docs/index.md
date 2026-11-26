@@ -1,5 +1,9 @@
 # docs/index.md（全部文档索引）
 
+[演练端点地址表示与driver版本（TD-REL-018）](evidence/forward-recovery-2026-11-26.md#18-端点地址表示与外部-driver-版本修订)：R3 API镜像只读连接0但inet::text带/32被裸IP比较拒绝，资源全清、L77不变；实际PG17只读对照host()保持其他身份字段，标准夹具55回归通过。冻结worker存在同型静态比较，先保存旧四文件、登记后做一行SQL版本修订，生产五controls与B/R原件不变，不冒称旧driver实际失败。
+
+[生产与演练descriptor分别固定（TD-REL-017）](evidence/forward-recovery-2026-11-26.md#17-生产与演练-descriptor-的分别固定)：同目录production report路径与driver的B命名空间／Git原字节门不同，先登记后通过现存material_git_paths显式选择独立演练descriptor；production四selection保留，五controls／四driver不改。报告保留真实manual原字节，未预生成批准或PASS。
+
 [TD-COMX-003 已取消的商机不算逾期](evidence/comx-003-cancelled-overdue-2026-11-26.md) 记录商机逾期口径收敛到共享判定（CANCELLED 与 WON/LOST 同口径）、先红后绿的测试对照、Web 全量 1025/1025 与双视口走查及定向截图实测。
 
 [最终业务候选B与完整CI](evidence/ux-wave-integration-2026-11-26.md#14-glm-四任务集成与最终业务候选-b)：指定GLM四任务全部集成，B固定120d6fc；独立完整CI退出0／981.37秒（API18,387、Web1,065、UI101、operations264零skip），81迁移FULLY_MATCHED、49个production文件摘要已封存，已推main且主检出干净。[B成功原物料与应用包](evidence/ux-wave-integration-2026-11-26.md#15-b-成功原物料与独立演练应用包)记录成功run45841385764／artifact15129005730、原件／OCI／Git／81 SQL验证及本地独立应用tar；原Web镜像全部49应用文件与CI／浏览器字节全等。[最终production字节浏览器](evidence/ux-wave-integration-2026-11-26.md#16-b-production-字节的最终浏览器验收)三轮P1各11/11、双视口45路由／23真抽屉／3筛选、六流程32必须及32探针通过，148图保留、14图抽样目检，UI023/024仍可见。尚未部署；商机双空关联500按源码链登记TD-COMX-004，原HTTP响应未留存，留待另批。

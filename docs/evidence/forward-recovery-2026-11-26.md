@@ -450,3 +450,19 @@ TD-REL-016 在本独立批交付时为**本机修复与验证完成，待主协�
 为满足冻结driver包形状，从B原导出tar新建独立演练应用tar，只加入固定C0四controls，所有原文件字节及原tar不变；新包SHA-256 `8bf6da9a4e2be7a84ef75376913f85e3812d00604695b65beaa7c8cbb1a44310`，不冒称GitHub原application artifact，没有生成授权或PASS。manual与automatic必须复用这同一包及双digest，正式发布包则另核新sidecar和实际digest。来源、全部摘要与格式绑定边界见[集成验收§15](ux-wave-integration-2026-11-26.md#15-b-成功原物料与独立演练应用包)。
 
 标准R实跑第一轮e250在OCI导入后、PG创建前被无reuse端口探针误判TIME_WAIT；同批77c4修正后第二轮已创建独立PG，但Docker实际Mounts为空、唯一tmpfs在HostConfig中，start前的守卫误判。两轮均FAILED，helper／迁移未执行，L77身份及登记不变；首轮与第二轮原回执不覆盖。第二轮未启动PG经完整身份／配置证明后仅按完整CID清理并确认不存在，另有新自有容器的真实created/running/exited三态与实际FS=tmpfs观察，供窄修。失败、诊断、精确清理及独立复核见[集成验收§13](ux-wave-integration-2026-11-26.md#13-r-标准-smoke-首轮失败与端口探针修正)。本节时点没有R/B标准smoke或两层恢复PASS，也未生成C1批准或执行生产部署。
+
+## 17. 生产与演练 descriptor 的分别固定
+
+只读交叉核验发现TD-REL-017：production selection同目录的descriptor须指report.json，transport才会读取并钉定该Git原件；冻结driver要求证据除两根元数据外均在B/下，又要求descriptor与C1选定原件逐字相同，因此须指B/report.json。production stage会canonical重写路径，不能将该输出冒称原selection descriptor字节不变。
+
+主协调选择现存material_git_paths参数入口：保留production目录四selection，并在C1的release-materials/recovery-rehearsal/<B>/compatible_recovery.json另固定演练descriptor，三个相对路径均带完整B前缀；automatic显式选它，approval与report仍选production原件。证据根只含migration-recovery-approval.json和compatible_recovery.json，逐字等于各自所选Git原件，其余原R tar／source.bundle／报告均在B/下。五controls与四driver原字节保持，没有新增项目所有者业务裁定或放宽严格材料门。
+
+报告必须是实际manual原件，control_sha保留实际C0；其他JSON先格式定稿再计算摘要／固定C1，尤其transport-source的格式调整会改变批准绑定的原字节摘要。批准是实际manual及标准smoke成功后的主协调审批，不从夹具生成；既存canonical文件若不同则停止，不覆盖。此处仅登记输入适配与字节约束，真实材料与两层回执仍待执行。tracker先登记TD-REL-017，生产四selection目录之外仅增加上述JSON元数据，不将原tar／source.bundle入Git。该路径适配本身不改driver；独立地址表示缺陷的版本修订见§18。
+
+## 18. 端点地址表示与外部 driver 版本修订
+
+R3实际0567入口在独立PG／API镜像只读连接成功后被地址字符串比较拒绝：原输出server_addr为127.0.0.1/32，夹具要求裸127。PG、CLI和端口全部清理确认，L77前后不变，原helper和迁移未执行，R3仍FAILED。后继真实自有PG17在BEGIN READ ONLY／ROLLBACK执行旧SQL与host(inet_server_addr())新SQL，地址分别带／不带掩码，其余五字段完全相同；实际tmpfs及完整ID删除均确认。原始对照在authoring-v6/actual-pg-read-only-sql-regression.json，不将额外诊断算作smoke。
+
+新夹具只改共享SQL一处表达式，所有其余AST、严格裸IP／端口／实例／库／角色与资源门保持。冻结1ff1802b2fb69ac78c1afc9437663dbdf884cb53821604dde6ba5050886af29f，原37／5／13共55例显式加载全部通过，R/B静态输入门均81 SQL／40 OCI。首次unittest discover对带连字符文件名运行0例，被调用器拒绝；两次真实SQL诊断的嵌套引号语法错误发生在执行前，修正后先compile再调用，原失败说明与清理核账保留。
+
+独立只读核对发现尚未实跑的旧冻结worker也用inet::text，并在第249行与Docker裸IPAddress比较；第248行两SQL端相等不能解除该不一致，原第87行合成夹具直接给裸地址。该结论为静态核对，不能冒称旧driver已经实际失败。主协调先登记TD-REL-018，再保留四份旧冻结源码／摘要、仅修worker共享SQL地址表达式并新建版本冻结；标准夹具仅同步引用该新worker摘要，另做回归与独立复核。五份生产C0 controls、业务、迁移SQL与B/R原物料均保持，所有实跑使用的版本分别记账，不重写旧冻结或旧失败。
