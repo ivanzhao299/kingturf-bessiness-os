@@ -60,6 +60,51 @@ P1 三轮先执行，写流程最后执行，避免信用写数据改变 P1 固�
 
 手机客户信用卡下半及供应商比较卡下部在截图视口之外；库存流水右侧来源列在静态图中截断，未验证横向滚动。写冒烟仅保存一张信用图，其余流程的成功依据是实际 JSON/请求/界面断言，不能说全部写状态均有截图目检。
 
+### 3.2 TD-TEST-040：严格交互判定与 production Web 独立回归
+
+本节为隔离工具批的实际回执，基线 `f2bcf458f8ad5d992f43bd2b85e94aa480ea00fc`，工作树 `/home/jinhuit/Kingturf/kingturf-coord/wave4/walk-drawer-gate`、分支 `fix/w4-walk-drawer-gate`。源码修复为 `c2375ed339606eee684089b6ebcd6249b0912e65`，测试与根命令接线为 `2525704085fefe412061ef48b27e7793bbc48684`，均标 `[未测试]`（未运行完整 `ci:local`）。只改 `walk*.mjs`、必要同目录测试、`test:session-network-tools` 和本批授权文档；应用业务、UI、SQL、权限、固定 GLM 的 TD-TEST-035 均未改。第 3 节旧轮报告和原 10 个错误保持原貌。
+
+**根因与修复。** 三处 `*-filter-open` 实际是 `FinFilters` 的 OPEN 状态按钮，具有 `aria-pressed`，并不打开抽屉；旧 `/-open$/` 将它们误分类。点击后真实 GET 过滤列表，重渲染替换或移除了随后「查看」节点，一次性 `data-e2e-pick` 标记随之失效。最终判定又在捕获 `drawer.error` 后无条件令 `row.ok=true`，只计路由到达，遗漏抽屉错误及原焦点／几何／布局判据。
+
+新工具将状态筛选保留为真实交互：点击 OPEN、检查对应 GET 的 `state=OPEN` 与成功响应、按钮选中、列表结束加载、DOM 行 ID 与响应一致；再点击真实「全部」，等无 state 的 GET 与列表恢复，保存两态截图。详情按 testid、行 ID、文字重新获得当前「查看」，仍实测遮罩、模态语义、固定定位、贴顶靠右和视口内尺寸、初焦、原四次 Tab、Esc 关闭及 1 秒内还焦，另验证末项 Tab 回首项和首项 Shift+Tab 回末项。原布局审计阈值未改。错误清理用的 Esc 不作重试；错误、缺失交互、跳过／未达路由、页面／请求错误及首屏失败都会令共用判定器返回退出 1，`reached` 与 `passed` 分开计数。
+
+**红绿证据。** 将旧 `walk.mjs` 最终决策块原文用于原桌面／手机报告，各有 5 个 `drawer.error`，旧块仍返回 0；要求返回 1 的两例实际均以 `0 !== 1` 失败，决策块 SHA-256 为 `03d71faa30989d88ddc6ff8d3b93666bbff87319cd0235201b5870deed4dd528`。最初辅助探针漏传 `preset` 得到 `ReferenceError`，不算红证据，原失败日志仍保留；补齐探针上下文后的有效红证据另存。随后在自己的初轮同容器栈实跑旧工具三路由，再现 3/3 到达、5 次错误、退出 0；新工具同三路由为 3/3 通过、3 真抽屉与 3 筛选、零错误。该初轮使用工具默认 build，未以显式 production 口径验收；拆栈后才进行下述最终独立轮。
+
+新增 41 例 Node 正负回归，覆盖抽屉错误、几何／遮罩／焦点／Tab 边界／Esc／还焦／布局、真实筛选响应、缺失／重复／未计划交互、页面／请求／首屏错误和发现分类；真实子进程 CLI 的「已到达路由含错误抽屉」必须退出 1。根 `pnpm test:session-network-tools` 实跑 **110/110、零失败／跳过**；冻结源码的 lint、typecheck、structure:check 均退出 0。没有用成功默认值、删断言或调阈值消除失败。
+
+**最终浏览器轮。** 显式经 heavy 执行 `NODE_ENV=production pnpm --filter @kingturf/web build`，保存全部 dist 文件哈希，再建全新专用栈 `up --skip-build`。production 环境只给 Web 构建；API 和数据库仍按原 e2e-local 的 test 模式运行。登录预算实测 JS **11,752 B**、CSS **25,640 B**，本轮没有修改预算或 `ci:local`。该口径独立于第 3 节复用的旧 test 构建，也未把主协调另批的 TD-GATE-007 改动带进本树。
+
+| 项目                           | 桌面 1440×900                    | 手机 390×844、DPR 2 |
+| ------------------------------ | -------------------------------- | ------------------- |
+| 请求／到达／通过路由           | 45／45／45                       | 45／45／45          |
+| 失败／跳过                     | 0／0                             | 0／0                |
+| 真详情抽屉／抽屉错误           | 23／0                            | 23／0               |
+| OPEN 筛选／筛选错误            | 3／0                             | 3／0                |
+| 原逐次 Tab／新增双向边界检查   | 92／46                           | 92／46              |
+| 筛选与恢复的真实 GET           | 6                                | 6                   |
+| 截图                           | 74（45 页+23 抽屉+6 筛选／恢复） | 74（同口径）        |
+| 走查退出码／报告离线复核退出码 | 0／0                             | 0／0                |
+
+三处 OPEN 响应均为 0 行；恢复「全部」后 collections 仍 0 行、payments 为 2 行、quality-inspection 为 1 行。收款／质检真实「查看」在列表恢复后重新定位并实际打开；collections 无数据，未覆盖催收详情。保持原 45 路由，无删路由或跳过。覆盖每个已发现可见入口的一个代表行，未遍历全部记录／非活动页签；不能外推非空 OPEN 结果、受限角色、生产登录态或写链。本树未重跑完整 CI、P1 spec、写流程冒烟，完整集成门禁由主协调串行执行。
+
+**截图目检。** 实际检查本轮 **148/148 原图**：读取 41 张完整分片 contact sheets（桌面 20、手机 21，共 116+168 个连续无缺口分片），另直接读 6 张收款／核销运行／质检详情原 PNG 和 4 张原分辨率局部图。三处筛选／恢复状态、恢复出的收款与质检详情均有图；未把静态图冒称键盘或写链实测。原 TD-UI-021/022/023 的选择框遮挡、审计窄标识符和文件卡「仅下／载」仍可见；选择框同形遮挡在手机合同编号上也可见，已报主协调，未改这些页面。
+
+新恢复的小屏质检详情图 `e2e-production/walk/mobile/shots/quality-inspection--qi-inspections-drawer.png` 中，测量值 `12000` 折成 `1200 / 0`、判定「合格」折成两行；桌面同字段完整单行。此项以 `TD40-VR-01` 报主协调，关联后继登记项 TD-UI-024（P3 呈现），未顺手修产品。旧轮没有该抽屉图，不能判断引入时点；现有 DOM 启发式未报出该数值折行，严格 DOM／交互结果通过不代表目检没有问题。客户信用卡与供应商详情下半仍在抽屉视口之外，横向滚动未目检，不扩大静态图的覆盖结论。
+
+**稳定性与清理。** 全部 **49 个 dist 文件**的 SHA-256 映射在最终双视口运行前后完全相同。六个冻结工具／测试／package 文件与 `2525704` 提交字节一致，API、Web、UI、database、domain、types、config 七个产品目录的 Git tree 与基线相同。初轮 `e2e-harness-w4-walk-drawer-gate`／`kingturf_test_w4_walk_drawer_gate`、最终轮 `e2e-harness-w4-walk-drawer-production`／`kingturf_test_w4_walk_drawer_production` 均 down 退出 0；随后按精确容器名检查不存在，经参数化 `pg_database` 只读查询确认两库均不存在，两输出目录的 creds/state 均不存在。未读认证文件内容或 trace，未操作其它会话资源。
+
+独立产物根为 `/home/jinhuit/Kingturf/kingturf-coord/wave4/walk-drawer-gate-artifacts/`，全部重活经 heavy。可复核材料如下（路径相对该根）：
+
+- 原实现／原报告副本：`legacy/`；有效红证据 `logs/legacy-report-red-verified.log`；首次无效探针 `logs/legacy-report-red.log`。
+- 自有旧三路由：`e2e/walk-legacy/desktop/report.json`；新三路由：`e2e/walk-fixed-probe/desktop/report.json`；初轮 down：`logs/down-probe.log`。
+- 新增 41 例：`logs/walk-unit-first.log`；根 110 例：`logs/session-network-tools-final.log`；源码门禁：`logs/source-final-gates.log` 与同前缀分项日志。
+- 显式构建／起栈：`logs/production-build.log`、`logs/up-production.log`；最终走查：`logs/walk-production-desktop.log`、`logs/walk-production-mobile.log`。
+- 严格原始报告：`e2e-production/walk/desktop/report.json`、`e2e-production/walk/mobile/report.json`，各同级 `shots/`；计数复核 `browser-result.json`。
+- 全 dist 字节映射：`logs/production-dist-before.json`、`logs/production-dist-after.json`；冻结源码映射：`source-stability.json`。
+- 逐图目检／原图 SHA／完整分片索引：`visual-review/review.json`、`visual-review/contact-index.json` 与同目录 PNG；最终 down／独立清理确认：`logs/down-production.log`、`cleanup-result.json`。
+
+回滚工具修复时依次回退测试接线 `2525704`、源码 `c2375ed`；会恢复旧假绿缺陷，不能继续用旧退出 0 声称抽屉验收通过。本节只交付工具修复及独立定向证据，不宣称发布或受控恢复完成。
+
 ## 4. 首轮真实镜像发布的扫描阻断
 
 通过现有 `release-images.yml`、ref main，分别明确选择 R 和 B。两次运行的固定导出控制均为 `514d8f4`，没有把 workflow 的 head SHA 冒称 R 的源码 SHA。

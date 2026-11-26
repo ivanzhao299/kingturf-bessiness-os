@@ -85,13 +85,18 @@ node scripts/e2e-local/e2e-local.mjs down                    # 停容器、删�
 3. 状态码 ≥400 的接口响应（方法、路径、状态码）；
 4. 整页截图；
 5. 基于 DOM 量测的布局检查：表格宽于裁剪祖先且不可滚动、中日韩文字被压成每行一两个字、按钮仍是浏览器默认外观、标题或表头被截断、文字被裁切、页面横向溢出；
-6. 行级「查看」类触发器：抽屉是否以浮层出现、打开时焦点是否进入对话框、连按 Tab 是否留在对话框内、Esc 是否关闭、关闭后焦点是否回到触发器（焦点归还发生在抽屉节点移除之后，实测约 30 毫秒，所以移除后最多再等 1 秒）；抽屉截图与抽屉内的同款布局检查。
+6. 行级「查看」类触发器：按发现时的 testid、行 ID 和文字重新定位当前可见入口，验证抽屉的模态语义、遮罩、固定定位／贴顶靠右／视口内尺寸；保留打开时焦点进入、逐次 Tab 留在抽屉、Esc 关闭和关闭还焦判据，另实测末项 Tab 回首项、首项 Shift+Tab 回末项。关闭还焦仍在节点移除后最多等 1 秒，未回到真实触发器记为失败；记录截图与抽屉布局审计。
+7. `collections`、`payments`、`quality-inspection` 的 `*-filter-open` 是 `OPEN` 状态按钮，按状态筛选交互验证：点击后检查 `aria-pressed`、对应端点的真实 GET／`state=OPEN` 响应、列表 `aria-busy=false` 与响应行 ID；再点击真实「全部」，等无 state 参数的 GET 和列表恢复，并保留筛选／恢复两张图。它们不被排除，也不再被当作抽屉等待。
 
 参数：`--viewport`（`desktop` 为 1440×900，`mobile` 为 390×844 倍率 2，也可写 `宽x高[@倍率]`）、`--routes`（逗号分隔的子集；缺省取应用路由表全集）、`--out`、`--max-drawers`、`--tabs`。
 
-缺省路由全集取自 `apps/web/src/shared/navigation.ts`。账号导航里没有入口的路由记为跳过；用 `--routes` 显式点名而打不开时算失败，退出码为 1。
+缺省路由全集取自 `apps/web/src/shared/navigation.ts`。无法到达或被跳过的请求路由均算失败；受限账号应以 `--routes` 显式选择其可见范围。每个可见入口标识仍取一个代表行，不遍历所有数据行／页签；`--max-drawers` 限制本轮实际交互数，未执行的已发现入口会记为覆盖失败，不能借该参数得到空验收。
 
-产物在 `E2E_LOCAL_OUT/walk/<视口>/`：`shots/` 是截图，`report.json` 是逐路由结果。`summarize.mjs` 把报告压成一张表，并单独列出未到达的路由、≥400 响应、控制台异常与抽屉焦点问题。
+TD-TEST-040 起，路由到达与验收通过分别记录为 `reached` 和 `ok`，报告 `summary` 分列 `reached/passed/failed/skipped` 及抽屉／筛选数量。`drawer.error`、筛选错误、焦点／定位／布局不合规、页面／请求错误及首屏失败都会令命令退出 1；不再只用导航到达决定退出码。异常保留原记录，清理用的 Esc 不构成重试。
+
+产物在 `E2E_LOCAL_OUT/walk/<视口>/`：`shots/` 是截图，`report.json` 是逐路由结果。指定 `--out` 时传基础目录，脚本还会再拼一次视口名。`summarize.mjs` 可列出原有路由／页面／抽屉信息；完整判定与筛选记录以 `report.json` 为准，也可用 `node scripts/e2e-local/walk-verdict.mjs <report.json>` 只读复核退出码。41 例判定／发现回归测试通过根 `pnpm test:session-network-tools` 接入。旧报告保留原貌，不把历史退出 0 改写成全部交互通过。
+
+最终验收显式执行 `NODE_ENV=production pnpm --filter @kingturf/web build` 后再 `up --skip-build`；production 环境只给 Web 构建，合成 API／数据库栈继续沿用工具的 test 模式。保存 dist 全文件哈希并核对浏览器运行前后不变；`ci:local` 的 test 构建不能自动替代该 production Web 口径。
 
 ## 4.5 写流程冒烟（TD-TEST-024）
 
@@ -152,6 +157,8 @@ node scripts/e2e-local/e2e-local.mjs down
 | `vite.preview.config.mjs`                     | 预览配置：与 `apps/web/vite.config.ts` 的 preview 段同款，端口可配置      |
 | `pw.config.ts`                                | Playwright 包装配置：改用自带 Chromium，产物指向仓库之外                  |
 | `walk.mjs`、`walk-audit.mjs`、`summarize.mjs` | 全站走查、页内审计、报告汇总                                              |
+| `walk-interactions.mjs`、`walk-verdict.mjs`   | 稳定入口／筛选和抽屉交互、浏览器与离线共用的严格结果判定                  |
+| `walk.test.mjs`                               | 41 例 Node 回归：错误抽屉、焦点／布局、筛选、缺失覆盖与真实 CLI 退出码    |
 | `write-smoke.mjs`                             | 写流程冒烟入口：登录、逐流程执行、证据收集、缺陷汇总（4.5 节）            |
 | `write-smoke-flows.mjs`                       | 六条写流程的步骤定义                                                      |
 | `write-smoke-kit.mjs`                         | 浏览器操作封装：导航、抽屉、表单、提交并等待写响应、列表行、佐证读取      |
