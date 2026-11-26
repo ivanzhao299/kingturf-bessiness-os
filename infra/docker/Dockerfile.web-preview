@@ -22,7 +22,8 @@ FROM alpine:3.23 AS runtime
 # Keep the APK database and install wget for the existing Compose health command.
 RUN apk upgrade --no-cache \
     && apk add --no-cache nginx ca-certificates wget \
-    && mkdir -p /run/nginx /var/log/nginx \
+    && mkdir -p /run/nginx /var/log/nginx /usr/share/nginx/html \
+    && cp /var/lib/nginx/html/50x.html /usr/share/nginx/html/50x.html \
     && ln -sf /dev/stdout /var/log/nginx/access.log \
     && ln -sf /dev/stderr /var/log/nginx/error.log
 
