@@ -122,8 +122,9 @@ describe('TD-MFG-015 upgrade keeps a mixed BOM that was published before 0079', 
       expect(before.status).toBe('PUBLISHED');
       expect(before.component_statuses).toEqual(['PUBLISHED', 'DRAFT']);
       expect(before.published_at).not.toBeNull();
-      await migrate(owned.db);
-      const status = await migrationStatus(owned.db);
+      await copyFile(join(migrationsDirectory, GUARD_0079), join(directory, GUARD_0079));
+      await migrate(owned.db, directory);
+      const status = await migrationStatus(owned.db, directory);
       expect(status.filter((item) => item.state !== 'applied')).toEqual([]);
       expect(status.at(-1)?.name).toBe(GUARD_0079);
       expect(await snapshot()).toEqual(before);
