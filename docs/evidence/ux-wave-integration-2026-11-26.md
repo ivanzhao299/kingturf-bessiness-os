@@ -145,4 +145,16 @@ P1 三轮先执行，写流程最后执行，避免信用写数据改变 P1 固�
 
 真实 Git 树对比确认：新 R 的 apps/api、apps/web 及 config/database/domain/types/ui 的运行源码与 L 原字节相同，packages/testing、根依赖/lock、Compose、nginx 亦不变。原 L 的77条迁移保持，新 R 的81条映射与原 R 全等，规范 SHA-256 仍为 `7fc59f4afbab4ac65e5240fc8ee14d5482f115710adc9880c441a1470ef57994`。静态回执与映射在 `/home/jinhuit/Kingturf/kingturf-coord/wave4/recovery-runtime-81-artifacts/scope.json`、`migrations.json`。首次内联检查因错误假定存在 packages/testing/src 而中止，随后改为完整 packages/testing 差异及全树精确白名单核验，未修改源码；该工具假设错误保留在回执说明，不当作新 R 运行失败或通过。
 
-新 R 已通过集成提交 `e19dfe1` 纳入集成祖先；此合并没有新的文件差异。驱动已仅把受信 R 常量和对应帮助文案更新为新身份，仍要求完整 SHA 精确相等。原21项纯边界回归21/21，四文件语法与两个 audit-help 均通过；这轮没有读取GHR物料、运行Docker或执行恢复。当前四源码快照、测试前后元数据与原始日志另存于 `/home/jinhuit/Kingturf/kingturf-coord/wave4/recovery-rehearsal-controller-artifacts/r-32e705a9-help-v2/`，旧两代证据不覆盖；本代证据清单 SHA-256 为 `8fba9332d1cdf64a0f7d2a466577a14fe0bf6c454926edc1bbced259de7d4a5a`，受信契约文件 SHA-256 为 `5f559c2e30d69515cb2fb7b02750d550c940c5bd8860535cf10730007546869c`。新 R 的实际镜像构建/扫描、成功原始 artifact、完整集成 CI、两层真实恢复和认证写均待执行，当前还没有据新 R 解除发布门禁。
+新 R 已通过集成提交 `e19dfe1` 纳入集成祖先；此合并没有新的文件差异。驱动已仅把受信 R 常量和对应帮助文案更新为新身份，仍要求完整 SHA 精确相等。原21项纯边界回归21/21，四文件语法与两个 audit-help 均通过；这轮没有读取GHR物料、运行Docker或执行恢复。当前四源码快照、测试前后元数据与原始日志另存于 `/home/jinhuit/Kingturf/kingturf-coord/wave4/recovery-rehearsal-controller-artifacts/r-32e705a9-help-v2/`，旧两代证据不覆盖；本代证据清单 SHA-256 为 `8fba9332d1cdf64a0f7d2a466577a14fe0bf6c454926edc1bbced259de7d4a5a`，受信契约文件 SHA-256 为 `5f559c2e30d69515cb2fb7b02750d550c940c5bd8860535cf10730007546869c`。本段静态冻结时，新 R 的实际镜像构建/扫描、成功原始 artifact、完整集成 CI、两层真实恢复和认证写均待执行；后继检查点与真实流水线结果见第7节，尚未解除发布门禁。
+
+## 7. production 检查点完整 CI 与新 R 首轮导出
+
+主协调在独立、干净的 `c3f1239fd3447dde026cf715fea9bdca6c8eef84`（树 `493d6b2d28158aaec741a3879a2c7accba904cf8`）经 heavy 运行完整 `pnpm ci:local`，2026-11-26 11:15:28–11:32:21 UTC **退出0，耗时1,012.30秒**。前后HEAD相同、受跟踪树干净。API **18,387/18,387（212文件）**、Web **1,064/1,064（67文件）**、config71、database79、domain26、types5、UI101全部通过；operations **261/261**，最终迁移81条 FULLY_MATCHED。格式、文档、结构、边界、能力清单、DB guard、lint、typecheck、覆盖率、production构建和审计的完整链全部通过。
+
+本轮确实执行修正后的 production build，登录 gzip 为 JS **11,752 B**／CSS **25,640 B**，预算保持12,000／27,000 B。回执新增完整49文件SHA-256 map及规范摘要 `459128338786c7181818d4c230130d79c7ed2c19062bf5c10b16322961375e9d`；另与第5节同源production映射逐键核对，49/49相同。该回执可绑定后继浏览器使用的确切字节，不把源码Git树相同当作未跟踪dist也相同。原始日志和结果为 `/home/jinhuit/Kingturf/kingturf-coord/integration-artifacts/ci-c3f1239/`，日志SHA-256 `5b316f99d2ae4f575c92744f2147c07c885eb9456da929512767c354b8c37593`。
+
+11:33 UTC，核对远端仍为514、可快进关系及新R祖先后，主协调已将上述已测检查点推送main，并将主检出快进至同一SHA且保持干净，回执 `integration-artifacts/publish-c3f1239.json`。后继文档合并未改变该检查点源码与测试；最终业务B及其完整CI／production字节浏览器仍须在指定GLM余项完成后固定，当前不是生产发布。
+
+新 R 通过现有 `release-images.yml`、ref main，以完整R SHA明确调度，固定导出控制为c3f1239：[run 45811774272，attempt1](https://github.com/ivanzhao299/kingturf-bessiness-os/actions/runs/45811774272)。本轮真实完成API/Web构建推送、tag与digest核对、双HIGH/CRITICAL扫描、SBOM和不可变digest输出，之后在 **Export original recovery bytes and offline source** 步骤退出1：`GATE_FAILED:recovery_transport: [Errno 1] Operation not permitted: '/tmp/recovery-export-jhfxpy8o/oci/web'`。Retain步骤未执行，整体run为failure，不能消费其已推镜像作为成功approved恢复物料。
+
+本轮观察到的API根摘要为 `sha256:61a7914363f8ab34e5391296cc9209fa6e3a31352089c20dc0fef1167d7f5d20`，Web为 `sha256:be9cff07190d2b4cdb7b2110f365c58937aeccc7b6c37a6396b9991413ea2af0`。调度、run/job最终JSON、完整job原日志和watch回执保留在 `integration-artifacts/image-builds-32e705a/`（job139881174681，错误约R-job.log:2826）。物料导出目录的权限/归属根因仍待独立定位，主协调已授权另批TD-REL-016先登记、后单独修复；不修改R业务源或放宽成功来源门。两层真实恢复、认证写、最终B/C材料与生产发布均未执行。
