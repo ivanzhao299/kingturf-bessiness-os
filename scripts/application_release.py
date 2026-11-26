@@ -263,6 +263,13 @@ def forward_prepared(bundle, approval):
     return True
 
 
+def require_api_scope(container):
+    labels = container.get('Config', {}).get('Labels') or {}
+    images.require(container.get('Name') == '/'+PROJECT+'-api-1' and isinstance(labels, dict) and labels.get('com.docker.compose.project') == PROJECT and labels.get('com.docker.compose.service') == 'api', 'API scope canonical name or Compose project/service mismatch')
+    mounts = [m for m in container.get('Mounts', []) if m.get('Destination') == '/var/lib/kingturf/attachments']
+    images.require(len(mounts) == 1 and mounts[0].get('Type') == 'bind' and mounts[0].get('Source') == str(load_gate().ATTACHMENTS), 'API scope attachment bind mismatch')
+
+
 def same_failed_api(container, source):
     state = {k: container['State'].get(k) for k in source['state']}
     releases = [v.partition('=')[2] for v in container['Config']['Env'] if v.startswith('KINGTURF_RELEASE_SHA=')]
@@ -333,11 +340,12 @@ def retain_forward_fence(bundle):
     approval, identities, _ = images.load_bundle(bundle)
     source = json.loads((bundle / 'forward-before.json').read_bytes())['source']
     current = json.loads(command(['docker', 'inspect', PROJECT+'-api-1']))[0]
+    set_forward_fence(bundle, True)
+    forward_checkpoint(bundle, 'FAILED', fence_enabled=True)
+    require_api_scope(current)
     old_source = current['Id'] == source['api_container_id'] and current['Image'] == source['api_image_id']
     candidate = current['Config']['Image'] == identities['api']['local_ref'] and 'KINGTURF_RELEASE_SHA='+approval['release_sha'] in current['Config']['Env']
     images.require(old_source or candidate, 'Forward failure source changed; refusing to stop an unrelated API')
-    set_forward_fence(bundle, True)
-    forward_checkpoint(bundle, 'FAILED', fence_enabled=True)
     stop_bound_api(current['Id'], current['Image'])
 
 
@@ -422,6 +430,7 @@ def operation_api(bundle, before):
     # Return a current identity only when it is the preserved original, approved B,
     # or independent approved R. The eventual stop still uses this immutable ID.
     current = json.loads(command(['docker', 'inspect', PROJECT+'-api-1']))[0]
+    require_api_scope(current)
     original = next(i for i in before['recovery_images'] if i['name'] == '/'+PROJECT+'-api-1')
     allowed = current['Id'] == original.get('container_id') and current['Image'] == original['id']
     target = before['compatible_recovery']
@@ -435,9 +444,9 @@ def operation_api(bundle, before):
 
 
 def hold_compatible_fence(bundle, before):
-    current = operation_api(bundle, before)
     set_forward_fence(bundle, True)
     checkpoint(bundle, 'COMPATIBLE_RECOVERY_FAILED')
+    current = operation_api(bundle, before)
     stop_bound_api(current['Id'], current['Image'])
 
 
