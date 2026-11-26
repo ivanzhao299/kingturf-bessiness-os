@@ -58,6 +58,8 @@ Harness 施工已归档；本项目是纯 Web monorepo，非 Tauri，不生成�
 
 ## 5. 变更历史
 
+2026-11-26，不可变恢复报告格式口径（TD-GATE-008）：原manual报告与C内report.json必须原字节全等，不能由格式化重写后仅重算批准摘要。独立修复4f934cd仅在.prettierignore排除 `release-materials/compatible-recovery/*/report.json`；真实非报告canonical夹具旧退出1、新退出0，另五类文件仍受检查，六项边界符合预期且原字节不变。完整format:check通过；内容、来源、时序、原件与摘要绑定继续经既有材料门。见[集成验收§9.2](evidence/ux-wave-integration-2026-11-26.md#92-不可变恢复报告的格式门禁冲突)。
+
 2026-11-26，production 构建口径纠正（TD-GATE-007）：`ci:local` 父 shell 继续使用 `NODE_ENV=test`，仅 build 子命令显式设为 `NODE_ENV=production`，与实际发行镜像保持相同编译模式。独立同源控制实验确认原 test 构建注入 JSX 开发元数据，造成 18 个 hash 路径及 index/manifest 字节差异；production 全49发行文件已与实际镜像逐文件 SHA-256 匹配。旧 test 构建浏览器回执保留，最终集成完整 CI 与 production 字节浏览器验收另跑。详见[集成验收 §5](evidence/ux-wave-integration-2026-11-26.md#5-production-构建口径纠正td-gate-007)。
 
 2026-11-26，发布步骤摘要修复（TD-GATE-006）：`release.yml` 与 `release-images.yml` 的「Emit immutable digests」步骤原以无引号 heredoc（`cat >> "$GITHUB_STEP_SUMMARY" <<EOF`）写 Markdown 摘要，反引号包住的镜像摘要被 bash 当作命令替换执行，摘要值为空且日志出现 `command not found`（job 退出码与 `GITHUB_OUTPUT` 不受影响）。两处改照 post 任务「Publish release summary」已有的 printf 写法，步骤名、id、`GITHUB_OUTPUT` 两行、env、needs、job 依赖不变；新增静态守卫 `tests/workflows/step-summary-heredoc.test.mjs` 接入 `test:release-guardrails`（`ci.yml` 未改）。本地 bash 探针验证修复后脚本三行摘要正确、stderr 干净，基线 `4a93003` 旧写法对照复现缺陷；线上效果待下一次发布验证。见[发布步骤摘要修复证据](evidence/gate-006-release-summary-2026-11-26.md)。

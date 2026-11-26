@@ -1,6 +1,6 @@
 # docs/index.md（全部文档索引）
 
-[不可变恢复报告的格式门禁冲突（TD-GATE-008）](evidence/ux-wave-integration-2026-11-26.md#92-不可变恢复报告的格式门禁冲突)：先登记，冻结canonical函数与实际Prettier的外部非报告夹具真实退出1；拟独立限制report.json的格式排除路径，保留原件与automatic字节绑定，其他selection继续格式检查。没有生成演练PASS或批准。
+[不可变恢复报告的格式门禁冲突（TD-GATE-008）](evidence/ux-wave-integration-2026-11-26.md#92-不可变恢复报告的格式门禁冲突)：先登记b61325e，独立fix4f934cd仅排除规定路径的report.json。真实冻结canonical非报告夹具旧退出1、新退出0，其他三selection与错目录／嵌套report五类仍退出1，六项边界符合预期且原字节不变；项目format:check0，保留automatic原件绑定和全部材料门。最终B完整CI与真实恢复另验，没有生成演练PASS或批准。
 
 [2026-11-26 业务波次集成验收](evidence/ux-wave-integration-2026-11-26.md) 记录 `514d8f4` 完整 CI（API 18,387、Web 1,064、UI 101）、test 构建上的 P1 三轮各 11/11、双视口路由各 45/45与写冒烟六流程，保留旧133图目检、每视口五次抽屉探针错误和R/B扫描阻断。§3.2 补 TD-TEST-040：production Web／test API 双视口各45/45、23真抽屉+3筛选、49文件哈希不变、148图目检和精确清理，保留空OPEN／催收详情／受限角色等边界及TD-UI-024观察。§5 记录 TD-GATE-007 同源码构建因果、production全49文件与实际镜像原字节匹配及775445d；§6 记录仅修订两份封装的新 R `32e705a`、L业务源码与81清单保真。§7 记录c3f1239完整CI退出0（API18,387／Web1,064／operations261、49production文件全等）、main快进及新R run45811774272双扫描通过但OCI导出权限失败。§8 记录GLM审查通过的目录批a5ff13b合入、115工具例和23修复SHA祖先核对；§7.1更正轻量文档检查的cwd并保留显式重验回执。§9记录1f6f3de完整CI0（operations264零skip）、49production文件全等、已推main，以及新R run45820243736整体success；§9.1固化原artifact15118360718、ZIP／provenance／tar／source.bundle摘要、双digest和原OCI／81源SQL核对。导出阻断解除；最终B标准smoke／production浏览器、真实双层恢复与生产发布仍待后继证据。
 
