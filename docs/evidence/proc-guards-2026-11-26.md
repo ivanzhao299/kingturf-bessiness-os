@@ -224,3 +224,13 @@ procurement_rfqs 没有 PO 同款状态/签发时间 CHECK，未误报为同一�
 清理已完成，退出码 0（`logs/final-cleanup.log`）：`e2e-harness-procdb` 与配方专用库 `kingturf_test_e2e_270e959e` 已删除，creds.json/state.json 均不存在；日志、报告、截图和仓外探针保留。自建 baseline 工作树及 `w2_proc_db_baseline_test`、`w2_proc_db_empty_test`、`w2_proc_db_final_empty_test` 三个临时库已移除。独立确认 `w2-proc-db-pg` 仍 running，`w2_proc_db_test`、实施树及分支保留；未触碰其他会话容器或工作树。
 
 最终功能探针日志为 `logs/pg2-browser-final4.log`，退出码 0、两档各 6/6；最终报告 `ok=true`、12 步全通过。源码最终三项补强按 `cbfded7 → f6701cf → 0525fbf` 的真实祖先关系全部包含在交付树。文档收尾检查 `doc:lint`、`format:check` 均退出 0。
+
+## 11. 主协调集成复验（发布前检查点）
+
+源码与三项审查补强已全部合入集成分支。主协调在干净快照 `c87fd6091645ce9c1c6d7a3476ef0388fe1ebef6` 的协调库实跑数据库目标守卫、迁移和状态检查、数据库全量、采购 API 定向、Web 全量与构建，全部退出 0。
+
+- 最终清单为 **81 条 applied、0 pending、0 drifted**；0001–0077 与生产源码逐字节相同，81 项名称及 checksum 与兼容恢复候选 `ecb3ded` 全等。规范清单摘要为 `7fc59f4afbab4ac65e5240fc8ee14d5482f115710adc9880c441a1470ef57994`。八处计数、末位 0081 与批准后缀钉定均已统一，制造新增守卫断言保留。
+- API 定向八文件 **399/399**，包含冻结轨迹 311、分派源码保真 28，以及采购新真库／桥轨；没有把分支 401 的不同命令组合冒称同一计数。数据库四文件 **79/79**（含制造两条新增机械守恒断言），合并 Web 67 文件 **1,064/1,064**。
+- 当前登录关键路径实际 gzip 为 **JS 11,751 B、CSS 25,640 B**；静态 CSS 计量已修，满足 12,000／27,000 B。该构建含采购新增控件样式。
+
+原始日志、源码 SHA、退出码、清单核对和资源集合保存在 `/home/jinhuit/Kingturf/kingturf-coord/integration-artifacts/proc-merged/`（`result.json`、`manifest-review.json`、`measurement.json` 及各步骤日志）。五项主表状态由主协调更新为已合入、待完整集成验收及发布；PG2-N1…5 分别登记 TD-DB-001、TD-MFG-024/025/026、TD-WEB-019。上述检查点未含后继恢复控制与传输接线，完整 `ci:local`、最终集成 P1 三轮与全站双视口及写冒烟仍待执行；TD-REL-011／012 未解除，不据此放行生产。
