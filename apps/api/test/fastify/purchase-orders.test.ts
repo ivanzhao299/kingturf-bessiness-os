@@ -322,6 +322,51 @@ describe('purchase-orders fastify bridge track', () => {
     expect(call?.args[0]).toBe(order.id);
   });
 
+  it('TD-PROC-015 maps only known state guards and purchase_orders_check to Chinese 409', async () => {
+    for (const failure of [
+      { code: 'P0001', message: 'closed purchase order is immutable' },
+      { code: '23514', constraint: 'purchase_orders_check', message: 'private database values' },
+    ]) {
+      const response = await dispatchFastifyRouteGroup(
+        requestFor({
+          method: 'PUT',
+          pathname: `/api/v1/purchase-orders/${order.id}/state`,
+          body: { action: 'cancel' },
+        }),
+        scopeFor(repository({ cancelPurchaseOrder: vi.fn().mockRejectedValue(failure) })),
+      );
+      expect(response?.statusCode).toBe(409);
+      expect(JSON.stringify(response?.body)).not.toContain(failure.message);
+      expect((response?.body as { error: { message: string } }).error.message).toMatch(/采购/u);
+    }
+    for (const failure of [
+      { code: 'P0001', message: 'unknown guard' },
+      { code: '23514', constraint: 'another_check' },
+      { code: '23505', constraint: 'purchase_orders_check' },
+    ]) {
+      const response = await dispatchFastifyRouteGroup(
+        requestFor({
+          method: 'PUT',
+          pathname: `/api/v1/purchase-orders/${order.id}/state`,
+          body: { action: 'cancel' },
+        }),
+        scopeFor(repository({ cancelPurchaseOrder: vi.fn().mockRejectedValue(failure) })),
+      );
+      expect(response?.statusCode).toBe(500);
+    }
+    const read = await dispatchFastifyRouteGroup(
+      requestFor(),
+      scopeFor(
+        repository({
+          listPurchaseOrders: vi
+            .fn()
+            .mockRejectedValue({ code: '23514', constraint: 'purchase_orders_check' }),
+        }),
+      ),
+    );
+    expect(read?.statusCode).toBe(500);
+  });
+
   // TD-API-004：未预期异常此前被错误处理器直接丢弃（5xx 无任何可诊断记录）。
   it('未预期异常：500 internal_error 信封不含细节，异常本身记入 http.request.failed', async () => {
     const write = vi.fn();

@@ -8,7 +8,8 @@
 // cancelPurchaseOrder——指令授权的合法迁移；独立审批层缺失登记 TD-PROC-003）。
 // legacy POST /:id/issue 轨逐字不动（双轨并行）。
 import { z } from 'zod';
-import { assertStableCode } from '@kingturf/domain';
+import { assertStableCode, DomainError } from '@kingturf/domain';
+import { guardRejection, isCheckViolation } from '../../pg-rejections.ts';
 import { authorizeQuery } from '../../policy.ts';
 import {
   allow,
@@ -92,6 +93,28 @@ function permitted(row: Record<string, unknown>, fields: readonly string[] | nul
   const visible = new Set(['id', ...fields]);
   return Object.fromEntries(Object.entries(row).filter(([key]) => visible.has(key)));
 }
+
+// TD-PROC-015：只在采购单状态端点映射已知守卫/检查拒绝；原始数据库消息不回显。
+const PURCHASE_ORDER_GUARD_HINTS = {
+  'purchase order content is immutable': '采购订单内容不可变更，只能执行允许的状态动作',
+  'draft purchase order can only be issued or cancelled': '草稿采购订单只能签发或取消',
+  'issued purchase order has invalid transition': '已签发采购订单不能执行此状态动作',
+  'partially received purchase order has invalid transition':
+    '部分收货的采购订单不能执行此状态动作',
+  'closed purchase order is immutable': '已收货或已取消的采购订单不可再变更',
+  'purchase order issue requires timestamp and lines': '采购订单没有行项，不能签发',
+} as const;
+const purchaseOrderStateResult = async <T>(pending: Promise<T>): Promise<T> => {
+  try {
+    return await pending;
+  } catch (error: unknown) {
+    const hint = guardRejection(error, PURCHASE_ORDER_GUARD_HINTS);
+    if (hint !== null) throw new DomainError('conflict', hint);
+    if (isCheckViolation(error, 'purchase_orders_check'))
+      throw new DomainError('conflict', '采购单尚未签发，当前数据库规则不允许取消未签发的采购单');
+    throw error;
+  }
+};
 
 export function registerPurchaseOrderRoutes(
   app: FastifyRouteGroupApp,
@@ -218,10 +241,11 @@ export function registerPurchaseOrderRoutes(
       scopes: grant.scopes,
       anchors: grant.anchors,
     };
-    const result =
+    const result = await purchaseOrderStateResult(
       action === 'issue'
-        ? await repo.issuePurchaseOrder(orderId, scopeContext, scope.correlationId)
-        : await repo.cancelPurchaseOrder(orderId, scopeContext, scope.correlationId);
+        ? repo.issuePurchaseOrder(orderId, scopeContext, scope.correlationId)
+        : repo.cancelPurchaseOrder(orderId, scopeContext, scope.correlationId),
+    );
     void reply.code(200);
     return mutation(result, scope.authorization, 'procurement:read');
   });
