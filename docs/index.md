@@ -125,6 +125,7 @@
 [WF-D 写界面反馈与三项遗留证据](evidence/wf-d-write-feedback-2026-11-25.md)记录 Preact 写面盘点、治理与业务控制台反馈、最新 CRM 下拉、待准入统计、必填提示、窄屏模板链接及报价探针时序对照。
 [UI-2 汇总卡统一证据](evidence/ui-2-summary-cards-2026-11-25.md)记录制造与采购概览、工单状态筛选、经管指标的口径对账、断言对照、双视口量测与写后节点复验。
 [TD-WEB-018 制造与采购概览重算](evidence/rel10-overview-refresh-2026-11-25.md)记录两种路由装配顺序的失败与修复回执，以及汇总卡同节点验证。
+[TD-TEST-029 冒烟目录补修复提交](evidence/smoke-catalog-fixed-in-2026-11-26.md)记录 24 个冒烟目录条目的修复提交考证（23 条补 `fixedIn` 40 位 SHA、cause 改写为修复前/已修复，WS-P2-03 无单独修复提交不补）、报告未复现条目分两组展示与计数、分组单元测试接入 `pnpm test`、浅克隆与 Node 24.1 兼容验收及四轮审查修正。
 [WF-A 服务端写路径修复证据](evidence/wf-a-server-write-paths-2026-11-24.md)：TD-WF-003 / 013 / 011（隔离工作协议；分支 `fix/wf-a-server-write-paths`，一次性 PG @127.0.0.1:5444）。迁移 0076 只重定义 `guard_rfq_update`——已签发询价单允许仅状态迁移到 CANCELLED（主协调裁定：不新增 CLOSED 枚举值），「关闭询价」由 500 变 200，守卫拒绝映射 409；重复客户编号 / 名称 → 409、评估人自批 → 403（桥轨与 legacy 审批轨提示一致，不做全局映射，f3 守恒 311/311 无需 re-pin）；纯草稿 BOM 以最新草稿为组件树根（已发布版本逐字节不变；「已发布 + 更新草稿并存」路径真库未验证，关联 TD-MFG-001）。四个提交 24 文件；迁移钉定 8 处 75→76 逐条列出；每项附「还原到旧代码 → 新断言真红 → 恢复」。ci:local `ff9c1b2` EXIT=0/747s；e2e P1 11/11；写流程冒烟对 main 基线前后对照：24 个检查项中恰好 3 项由已复现变未复现。待登记 WFA-1…6。
 [Wave1生产部署记录](evidence/wave1-deployment-2026-11-18.md)
 [Wave2生产部署终录](evidence/wave2-deployment-2026-11-19.md)
