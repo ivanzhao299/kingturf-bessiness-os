@@ -7,6 +7,8 @@
 
 ## CI 链（`pnpm ci:local`，GitHub Actions `ci.yml` 执行同一命令）
 
+2026-11-26（TD-GATE-007）：测试、数据库 guard 与迁移继续在 `NODE_ENV=test` 下运行；build 子命令显式 `NODE_ENV=production`，与发行镜像编译模式一致。浏览器验收须使用该 production 构建并与实际镜像逐文件原字节对账，不能沿用旧 test 构建结果。因果实验与旧回执边界见[集成验收 §5](evidence/ux-wave-integration-2026-11-26.md#5-production-构建口径纠正td-gate-007)。
+
 阶段5覆盖率接线：原test步骤改为 `test:coverage`（原工具单测＋coverage工具单测＋六包原Vitest串行v8），末尾按整体75/domain90/API仓储70及真实B不下降同时检查；`coverage:measure`仅首测，不是验收绕过。缺报告/旧run/未import漏源/源范围变化均失败，修复指引禁止缩分母。B已真实冻结；278f22a真实check六包测试全绿、计数同B，但三目标未达明确exit1/108680ms。豁免双写scanner已接原DB guard前：真TS注释/台账status与精确path:line/理由日期匹配，Singapore次日到期，15工具项实际过/全仓active0；不缩分母，approval引用不冒充人类真伪自动核证。最终达标/完整CI仍待，不把接线写成验收通过。细节见[首测协议](evidence/harness-stage5-coverage-protocol-2026-10-17.md)。下表旧步骤编号/名称保历史。
 
 | #   | 检查名                                                                                              | 触发时机                                                    | 失败含义                                                                                                                                                                                                                                                                                                                                                            | 修复指引                                                                           |

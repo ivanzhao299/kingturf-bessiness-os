@@ -32,7 +32,7 @@ CSS 计量包含 HTML 静态 stylesheet 与 manifest 入口静态可达 CSS 的�
 
 ## 3. 真浏览器自动验收
 
-复用该 CI 生成的 Web 构建，使用仓库 `scripts/e2e-local/e2e-local.mjs` 启动浏览器、预览和 API 同容器栈。管理连接串只取主检出 `.env` 的 `DATABASE_URL` 行，经环境传递；工具只连接维护库建立专用库，不访问原连接串指向的开发库。合成口令不入库、不出现在命令行。
+复用该 CI 生成的 Web 构建，使用仓库 `scripts/e2e-local/e2e-local.mjs` 启动浏览器、预览和 API 同容器栈。后继 TD-GATE-007 因果实验确认这份构建继承了 `NODE_ENV=test`，因此本节保留为 test 构建上的行为验证；正式 production 字节的浏览器验收须重新执行，不能据本节放行镜像产物。管理连接串只取主检出 `.env` 的 `DATABASE_URL` 行，经环境传递；工具只连接维护库建立专用库，不访问原连接串指向的开发库。合成口令不入库、不出现在命令行。
 
 产物根为 `/home/jinhuit/Kingturf/kingturf-coord/integration-artifacts/browser-514d8f4-20261126T095307Z/`。专属容器 `e2e-harness-integration-514d8f4-20261126t095307z`，专用库 `kingturf_test_integrated_514d8f4_20261126t095307z`。
 
@@ -74,3 +74,20 @@ P1 三轮先执行，写流程最后执行，避免信用写数据改变 P1 固�
 主协调用相同 `aquasec/trivy:0.70.0`，对 B 的真实 API 根摘要 `sha256:702ff8214cd4a41b994f1a0a82a4ca03e605e3b9fdc930f1101509d4f9a1af17` 重新扫描并保留 JSON。严重度仍为 HIGH/CRITICAL、退出阈值仍为 1；该诊断实际退出 1。报告包括 Debian 12.15 的 util-linux、PAM、systemd、gzip、ncurses、perl、zlib 等包，以及镜像中的 pnpm 和其工具链依赖。多个 OS 项没有该发行版的 fixedVersion；项目 `pnpm audit` 通过不能代替镜像扫描。
 
 完整报告、安全摘要和执行记录在上述根的 `local-scan/`。后继运行封装修复另批登记为 TD-REL-015，须真正消除受影响组件并重新构建、扫描、验证生产启动和原迁移 CLI；扫描排除、删除包元数据、降低严重度或伪造 PASS 均不能解除本阻断。新的 R 若有必要调整封装，将使用新的源码 SHA，保留本次失败候选历史，不复用其身份。
+
+## 5. production 构建口径纠正（TD-GATE-007）
+
+运行镜像代理对账时发现，§3 的 49 文件清单与真实 B0 production 镜像不同。主协调先登记 TD-GATE-007，再于同一 `514d8f4` 源码、同一构建目录与 Node v24.19.0 上完成控制实验：离线 frozen 安装后，先 `NODE_ENV=test`、再 `NODE_ENV=production` 执行相同 Web build 命令，唯一实验变量是 `NODE_ENV`。2026-11-26 10:47:40–10:47:45 UTC，两次 build 均退出 0，前后 HEAD 不变、受跟踪树干净；原 CI 产物已另存原字节。
+
+| 测量                              | test 构建   | production 构建 |
+| --------------------------------- | ----------- | --------------- |
+| 全文件数                          | 49          | 49              |
+| JavaScript 原字节合计             | 1,393,307 B | 935,652 B       |
+| JSX `fileName` 开发元数据出现次数 | 2,580       | 0               |
+| 绝对构建目录出现次数              | 2,580       | 0               |
+
+两构建有 18 个 hash 命名路径变化，另 `index.html` 与 `.vite/manifest.json` 同名但原字节不同。production 清单的全部 49 项与真实旧 B0 Web 镜像、运行层修订 `35cc30b` Web 镜像逐文件 SHA-256 相同，缺项与不同字节均为零；旧 B0 镜像另有一份 `50x.html`，不把文件数差异混作 Web 发行产物失配。旧浏览器清单与该 production 清单仍不相同，未覆盖或改写旧回执。
+
+原始实验、三份构建目录和映射位于 `/home/jinhuit/Kingturf/kingturf-coord/integration-artifacts/build-mode-514d8f4/`：`result.json`、`test-map.json`、`production-map.json`、`image-map-comparison.json`、`build-test.log`、`build-production.log`、`original-ci-test-dist/`、`test-dist/`、`production-dist/`。
+
+独立修复提交 `775445d` 将 `ci:local` 中的 build 子命令改为 `NODE_ENV=production pnpm build`；父 shell 的测试、数据库 guard、迁移及后续审计仍为 `NODE_ENV=test`。本次格式与 diff 检查退出 0；该提交尚未跑完整 `ci:local`，最终集成须在 production 构建上重新执行浏览器验收并与实际镜像逐文件对账。没有把镜像改成 test 构建来满足旧清单。

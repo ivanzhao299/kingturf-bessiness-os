@@ -58,6 +58,8 @@ Harness 施工已归档；本项目是纯 Web monorepo，非 Tauri，不生成�
 
 ## 5. 变更历史
 
+2026-11-26，production 构建口径纠正（TD-GATE-007）：`ci:local` 父 shell 继续使用 `NODE_ENV=test`，仅 build 子命令显式设为 `NODE_ENV=production`，与实际发行镜像保持相同编译模式。独立同源控制实验确认原 test 构建注入 JSX 开发元数据，造成 18 个 hash 路径及 index/manifest 字节差异；production 全49发行文件已与实际镜像逐文件 SHA-256 匹配。旧 test 构建浏览器回执保留，最终集成完整 CI 与 production 字节浏览器验收另跑。详见[集成验收 §5](evidence/ux-wave-integration-2026-11-26.md#5-production-构建口径纠正td-gate-007)。
+
 2026-11-26，发布步骤摘要修复（TD-GATE-006）：`release.yml` 与 `release-images.yml` 的「Emit immutable digests」步骤原以无引号 heredoc（`cat >> "$GITHUB_STEP_SUMMARY" <<EOF`）写 Markdown 摘要，反引号包住的镜像摘要被 bash 当作命令替换执行，摘要值为空且日志出现 `command not found`（job 退出码与 `GITHUB_OUTPUT` 不受影响）。两处改照 post 任务「Publish release summary」已有的 printf 写法，步骤名、id、`GITHUB_OUTPUT` 两行、env、needs、job 依赖不变；新增静态守卫 `tests/workflows/step-summary-heredoc.test.mjs` 接入 `test:release-guardrails`（`ci.yml` 未改）。本地 bash 探针验证修复后脚本三行摘要正确、stderr 干净，基线 `4a93003` 旧写法对照复现缺陷；线上效果待下一次发布验证。见[发布步骤摘要修复证据](evidence/gate-006-release-summary-2026-11-26.md)。
 
 2026-11-20，A-F3c 发布镜像扫描与 SBOM（审计 A3 P1-4）：`release-images.yml` 双镜像 build-push 追加 `sbom: true` + `provenance: mode=max`（顶部权限新增 id-token:write + attestations:write）；推送后、digest 输出前以 aquasecurity/trivy-action（v0.36.0 full SHA 钉扎）按 digest 扫 HIGH,CRITICAL（exit 1 断言），并生成 CycloneDX SBOM 与扫描表随 step summary 展示。发布语义不变：扫描失败不回滚已推送构建，但 run 结论置败，recover 通道（要求 release-images conclusion=success）无法消费未过检镜像。tag→digest 由 image index 解析，控制脚本 oci_image_transport.py 原生支持 index 摘要。
