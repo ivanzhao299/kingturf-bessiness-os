@@ -116,7 +116,7 @@ class HostFlowRehearsal(unittest.TestCase):
         retired = {}
         actual_command = am.command
         def host_command(argv, **kwargs):
-            if argv[0:2] == ['docker', 'inspect']:
+            if argv[0:2] == ['docker', 'inspect'] and all(name in ('kingturf-erp-production-api-1', api['Id']) or name in retired for name in argv[2:]):
                 return json.dumps([api if name in ('kingturf-erp-production-api-1', api['Id']) else retired[name] for name in argv[2:]]).encode()
             if argv[0:2] == ['docker', 'stop']:
                 self.assertEqual(argv[-1], api['Id'])
