@@ -5,6 +5,7 @@
 // service-boundary S3 禁区（TD-PROC-006），故不做 API 侧 additive trace。
 // 只依赖状态最小面，结构与 gr-console 的 GrPageState 兼容（结构化子集，无循环依赖）。
 import { StatusBadge, type StatusTone } from '@kingturf/ui';
+import { businessStateLabel } from '../../shared/business-labels';
 import type { GoodsReceiptConsolePorts, GoodsReceiptRow, TraceSources } from './gr-ports';
 
 export type GrDetailState = Readonly<{
@@ -50,6 +51,8 @@ export const ReceiptLines = ({ state }: Readonly<{ state: GrDetailState }>) => {
 };
 
 // 数量核对：关联采购单行项 订购数量 vs 已收数量（additive 详情 purchaseOrder 区）。
+// TD-PROC-017：采购单状态经共享映射 businessStateLabel 转成中文文案（与采购订单控制台同一份
+// 词表，procurement_document_status 五值均有标签）；未知枚举值回退显示原值，不藏信息。
 export const QuantityCheck = ({ state }: Readonly<{ state: GrDetailState }>) => {
   const row = state.selected;
   if (!row) return null;
@@ -59,7 +62,7 @@ export const QuantityCheck = ({ state }: Readonly<{ state: GrDetailState }>) => 
   return (
     <div class="console-summary" data-testid="kt-gr-quantity-check">
       <p class="console-label">
-        {`数量核对 · ${state.ports.textValue(po.poNumber ?? po.po_number, '—')} · ${state.ports.textValue(po.status, '—')}`}
+        {`数量核对 · ${state.ports.textValue(po.poNumber ?? po.po_number, '—')} · ${businessStateLabel(po.status, '—')}`}
       </p>
       <ul>
         {lines.map((line, index) => (

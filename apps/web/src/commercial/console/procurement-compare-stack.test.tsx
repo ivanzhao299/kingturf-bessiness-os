@@ -560,10 +560,12 @@ describe('对比矩阵 · 短 token 不折行', () => {
     expect(tokens).toContain('单价 12.5');
     expect(tokens).toContain('MOQ 1000 ·');
     expect(tokens).toContain('行 1 ·');
-    expect(tokens).toContain('数量 6000');
-    // 夹具里的未报价行与失效报价同此：单元格文本与此前逐字相同。
+    // TD-UI-012：矩阵首列里数量紧跟行号，其后的分隔符并入该 token（单元格文本的次序见下）。
+    expect(tokens).toContain('数量 6000 ·');
+    // 夹具里的未报价行与失效报价同此：单元格文本与 PROC-3 逐字相同。行项首列只被 TD-UI-012 换了
+    // 次序（数量提到行号之后），四个语义单元不增不减。
     const firstLine = matrix.querySelector('tbody td[data-column="line"]');
-    expect(firstLine?.textContent).toBe('行 1 · RM-YARN · 草纱 · 数量 6000');
+    expect(firstLine?.textContent).toBe('行 1 · 数量 6000 · RM-YARN · 草纱');
     expect(matrix.querySelector('td[data-column="quote-q-3"]')?.textContent).toBe(
       '单价 9.9MOQ 1000 · 交期 2026-12-10已失效',
     );
@@ -721,6 +723,50 @@ describe('对比矩阵 · 短 token 不折行', () => {
     );
     // v1 不是 token（版本号紧贴字母）；有效期两端各自是 token。
     expect(tokensIn(qualifications)).toEqual(['RM-YARN ·', '有效期 2026-01-01 ~', '2099-12-31']);
+  });
+});
+
+// TD-UI-012：询价矩阵行项列的首行只剩「行 1 ·」。根因不是空 token——四个语义单元都在——而是
+// 不折行 token 之间的折行：首列内容宽（三家供应商时 150px）只容得下一个 SKU token
+// （RM-KT-YARN-12000 · 约 131px），行号排在最前时 SKU 放不进同一行，整个被挤到下一行。
+// 把行号并入 SKU 会让该 token 宽约 170px，三家供应商时整张表超出对比区约 20px（真浏览器量测，
+// 见 P17 证据文档）。所以矩阵首列改为「行号 · 数量 · SKU · 名称」：行号与数量都短，同一行放得下；
+// 四个语义单元与堆叠卡片相同，只换次序。卡片形态的首行本就是满的，文案不动。
+// mini-DOM 不算样式：这里守文本与 token 结构，真实折行见 P17 证据文档的真浏览器量测。
+describe('询价矩阵行项列 · 首行是「行号 · 数量」（TD-UI-012）', () => {
+  // 单元格外层 span 的内容：token 落成 [文本]，其余为裸文本。
+  const outline = (cell: TestElement): string =>
+    element(cell.querySelector('span'))
+      .childNodes.map((node) => (node.nodeType === 1 ? `[${node.textContent}]` : node.textContent))
+      .join('');
+
+  it('矩阵首列：数量紧跟行号（两个相邻的 token），其后是 SKU 与名称', async () => {
+    const compare = await openRfqCompare();
+    const cells = element(compare.querySelector('.proc-compare-matrix'))
+      .querySelectorAll('tbody td[data-column="line"]')
+      .map(element);
+    expect(cells.map((cell) => cell.textContent)).toEqual([
+      '行 1 · 数量 6000 · RM-YARN · 草纱',
+      '行 2 · 数量 800 · RM-BACKING · 底布',
+    ]);
+    // 行号与数量各自是不折行的 token，二者之间只有一个空格（换行点）。
+    expect(outline(element(cells[0]))).toBe('[行 1 ·] [数量 6000 ·] [RM-YARN ·] 草纱');
+    expect(outline(element(cells[1]))).toBe('[行 2 ·] [数量 800 ·] [RM-BACKING ·] 底布');
+  });
+
+  it('堆叠卡片的行项文案不变（卡片首行本就是满的）', async () => {
+    vi.stubGlobal('ResizeObserver', FakeResizeObserver);
+    containerWidth(PHONE_DRAWER_WIDTH);
+    const compare = await openRfqCompare();
+    const descriptions = cellsOf(compare, 'kt-rfq-card-line').map(
+      (line) => element(line.querySelector('.proc-quote-line-item')).textContent,
+    );
+    expect(descriptions).toEqual(
+      Array.from({ length: 3 }, () => [
+        '行 1 · RM-YARN · 草纱 · 数量 6000',
+        '行 2 · RM-BACKING · 底布 · 数量 800',
+      ]).flat(),
+    );
   });
 });
 

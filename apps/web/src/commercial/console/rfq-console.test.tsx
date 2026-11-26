@@ -393,7 +393,8 @@ describe('U3-PROC-2 询价控制台', () => {
     const matrix = element(host.querySelector('[data-testid="kt-rfq-quotes"]'));
     expect(matrix.textContent).toContain('青岛金特夫草纱战略供应商');
     expect(matrix.textContent).toContain('江苏草纱二厂');
-    expect(matrix.textContent).toContain('行 1 · RM-YARN · 草纱 · 数量 6000');
+    // 行项首列：行号 · 数量 · SKU · 名称（TD-UI-012 把数量提到行号之后，四单元不增不减）。
+    expect(matrix.textContent).toContain('行 1 · 数量 6000 · RM-YARN · 草纱');
     const cells = matrix.querySelectorAll('[data-testid="kt-rfq-matrix-cell"]').map(element);
     expect(cells.map((cell) => cell.getAttribute('data-quote'))).toEqual(['q-1', 'q-2']);
     expect(cells.map((cell) => cell.getAttribute('data-recommended'))).toEqual(['false', 'true']);

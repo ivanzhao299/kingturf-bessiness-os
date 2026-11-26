@@ -10,6 +10,7 @@ import type { ComponentType } from 'preact';
 import { installGlobalTestDom, type TestElement } from '../../../test/fixtures/preact-dom';
 import { GoodsReceiptConsolePage } from './gr-console';
 import type { GoodsReceiptConsolePorts, GoodsReceiptRow } from './gr-ports';
+import { STATUS_LABELS } from './po-detail';
 
 const flush = (): Promise<void> =>
   new Promise((resolve) => {
@@ -253,6 +254,45 @@ describe('U3-PROC-4 收货控制台', () => {
     expect(check.textContent).toContain('已收 5000');
     // 事实面未接线/未返回时不渲染时间线。
     expect(host.querySelector('[data-testid="kt-gr-trace"]')).toBe(null);
+  });
+
+  // TD-PROC-017：「数量核对」里的采购单状态是中文文案，与采购订单控制台同一组文案，不再显示
+  // 枚举原文 PARTIALLY_RECEIVED / RECEIVED。键集合 = procurement_document_status 五值。
+  const PO_STATUS_LABELS: Readonly<Record<string, string>> = {
+    DRAFT: '草稿',
+    ISSUED: '已签发',
+    PARTIALLY_RECEIVED: '部分收货',
+    RECEIVED: '已收货',
+    CANCELLED: '已取消',
+  };
+  // 打开一张收货单详情（关联采购单状态由入参指定），返回「数量核对」的标题行文本。
+  const quantityCheckTitle = async (status: unknown): Promise<string> => {
+    const detail: GoodsReceiptRow = {
+      ...grDetail,
+      purchaseOrder: { ...(grDetail.purchaseOrder as Record<string, unknown>), status },
+    };
+    const host = mount(portsFor([receipt], [], { loadDetail: vi.fn().mockResolvedValue(detail) }));
+    element(host.querySelector('[data-testid="kt-gr-open"]')).click();
+    await flush();
+    await flush();
+    const check = element(host.querySelector('[data-testid="kt-gr-quantity-check"]'));
+    return element(check.querySelector('p')).textContent;
+  };
+
+  it('数量核对：采购单状态显示中文文案（五值全覆盖），与采购订单控制台同一组文案', async () => {
+    // 文案与采购订单控制台的状态词表是同一组键、同一组文字。
+    expect(PO_STATUS_LABELS).toEqual(STATUS_LABELS);
+    for (const [status, label] of Object.entries(PO_STATUS_LABELS))
+      expect(await quantityCheckTitle(status), status).toBe(
+        `数量核对 · PO-KT-YARN-2026-001 · ${label}`,
+      );
+  });
+
+  it('数量核对：未知状态值回退显示原值（不藏信息）；状态缺失显示 —', async () => {
+    expect(await quantityCheckTitle('SOME_FUTURE_STATE')).toBe(
+      '数量核对 · PO-KT-YARN-2026-001 · SOME_FUTURE_STATE',
+    );
+    expect(await quantityCheckTitle(undefined)).toBe('数量核对 · PO-KT-YARN-2026-001 · —');
   });
 
   it('批次追踪时间线：三节点齐全（状态/时间/结果，loadTraceSources 事实面组合）', async () => {

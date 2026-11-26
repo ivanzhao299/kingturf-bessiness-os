@@ -205,9 +205,17 @@ const QuoteCell = ({
   );
 };
 
-// 行项描述：矩阵首列与堆叠卡片同一文案。
+// 行项描述：堆叠卡片的文案（矩阵首列另见 matrixLineText）。
 const lineText = (ports: RfqConsolePorts, line: Record<string, unknown>): string =>
   `行 ${ports.textValue(line.lineNumber ?? line.line_number, '—')} · ${ports.textValue(line.sku, '—')} · ${ports.textValue(line.itemName, '—')} · 数量 ${ports.textValue(line.quantity, '—')}`;
+
+// 矩阵首列的行项描述（TD-UI-012）：与卡片是同一组四个语义单元，只把「数量」提到行号之后。
+// 首列的内容宽（三家供应商时 150px）只容得下一个不折行的 SKU token（RM-KT-YARN-12000 · 约
+// 131px）：行号排在最前时，紧跟的 SKU 放不进同一行，整个被挤到下一行，首行只剩「行 1 ·」。
+// 行号与数量都短，同一行放得下；SKU 与名称随后各占一行。把行号并入 SKU 不可行——该 token 约
+// 170px，三家供应商时整张表超出对比区约 20px（PROC-3 定下的列宽没有余量）。
+const matrixLineText = (ports: RfqConsolePorts, line: Record<string, unknown>): string =>
+  `行 ${ports.textValue(line.lineNumber ?? line.line_number, '—')} · 数量 ${ports.textValue(line.quantity, '—')} · ${ports.textValue(line.sku, '—')} · ${ports.textValue(line.itemName, '—')}`;
 
 const matrixColumns = (
   state: RfqDetailState,
@@ -217,10 +225,10 @@ const matrixColumns = (
     key: 'line',
     header: '行项',
     field: (line) => state.ports.textValue(line.sku, ''),
-    // 行号、SKU、数量是 token；在「 · 」处折行。外层 span 与此前一致（td 下单一行内容器）。
+    // 行号、数量、SKU 是 token；在「 · 」处折行。外层 span 与此前一致（td 下单一行内容器）。
     render: (line) => (
       <span>
-        <TokenText text={lineText(state.ports, line)} />
+        <TokenText text={matrixLineText(state.ports, line)} />
       </span>
     ),
   },
