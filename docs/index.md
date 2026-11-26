@@ -1,5 +1,9 @@
 # docs/index.md（全部文档索引）
 
+[首层真实恢复成功与C1材料准备](evidence/forward-recovery-2026-11-26.md#21-首层真实恢复成功与-c1-材料准备)：manual3实际完成77→81原R CLI、B故障切换、R带闸启动／解闸／认证POST201与GET200，原77含applied_at及恢复前后状态文件保持；原报告06c680ae…与完整77联合快照已核。四production selection＋独立演练descriptor已生成，真实材料门0，报告保留C0原字节。TD-REL-020仅登记探针status键覆盖的记录表示缺口，未修改driver／报告；C1完整CI、第二层及生产发布另验。
+
+[首层第二次尝试的TLS前置停止](evidence/forward-recovery-2026-11-26.md#20-首层第二次尝试的-tls-前置停止)：v3实际进入worker，R/B原物料导入与L77完整预检通过；在启闸／停机／迁移前因已有443监听停止，scene_changed=false、步骤为空。只读核PID6632的ticks／argv／cwd／脚本摘要／socket及初始日志FD，启动约08:13 UTC，早于本轮16:10；不是manual2新代理。原失败与诊断保留，未据CI、标准smoke或路径修复宣称真实恢复通过。
+
 [演练脚本根复制可见性（TD-REL-019）](evidence/forward-recovery-2026-11-26.md#19-可信脚本根归档复制的可见性)：v2及对应R5/B2标准smoke均通过；首层manual1尚未进入worker即被/tmp脚本复制拒绝，exec可见目录但Docker cp不可见。同脚本向新私有/run目录复制0且字节相同；先登记后只同步launcher/worker精确可信根，新attempt再验，旧停止与v2留存。
 
 [演练端点地址表示与driver版本（TD-REL-018）](evidence/forward-recovery-2026-11-26.md#18-端点地址表示与外部-driver-版本修订)：R3 API镜像只读连接0但inet::text带/32被裸IP比较拒绝，资源全清、L77不变；实际PG17只读对照host()保持其他身份字段，标准夹具55回归通过。冻结worker存在同型静态比较，先保存旧四文件、登记后做一行SQL版本修订，生产五controls与B/R原件不变，不冒称旧driver实际失败。

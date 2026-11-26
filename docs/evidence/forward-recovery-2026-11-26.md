@@ -476,3 +476,39 @@ R3实际0567入口在独立PG／API镜像只读连接成功后被地址字符串
 在新自有/run/kt-recovery-copy-probe目录用同源contract脚本、同完整outer ID实际Docker cp退出0，容器内SHA与源5f559c2e…一致；仅可信脚本数据复制，无应用／数据库操作。两种视角、原停止及对照回执在integration-artifacts/rehearsal-invocations/45841385764-1-manual/，原目录保留，不复用该attempt。
 
 主协调先登记TD-REL-019，再仅将launcher的可信根与worker精确根守卫同步移为/run/kt-recovery-controller，保留原v2快照后建立v3；标准夹具的两个摘要引用和调用器对应绑定同步更新，回归、独立复核后新attempt实跑。此为同批测试暂存路径适配，五生产controls、B/R原件、材料／身份／清理门不变；不通过改权限或放宽路径条件凑成功，不把目录探针当恢复报告。
+
+后继v3已经独立复核并promote：launcher为fdbfa071c2556a4b80416fb1b688b128c7a2b901fa5f83081623ede9737b6ad7，worker为e75630b8425c2040163bb8a15c33f06f786b57cf38e725ee4f552e203c82b727，contract／boundary原字节不变；标准夹具v8为94cf393428c9ff3b217462affb39384a0e12c22b9db92623bbee00c44ba26826，仅重绑定两个摘要。显式加载21＋55例均零失败／错误／skip，完整清单、受保护原件及调用器f6efddfe…通过独立复核。最新实际标准smoke仍是v7下R5/B2，本次没有把v8纯回归算作新增标准smoke。
+
+## 20. 首层第二次尝试的 TLS 前置停止
+
+manual2使用新SPEC（SHA-256 eef0d2853d592f6d130306f676824f2a114c932b08c308953809166a78244078），仅attempt改为2，B应用tar仍为8bf6da9a…；C0、R/B双digest及所有原物料不变。2026-11-26 16:10:33–16:10:42 UTC实际进入worker，两份原transport导入完成，真实L预检FULLY_MATCHED／77／零pending／三服务通过；随后STOPPED，scene_changed=false，observed_steps为空。尚未到preserving-real-77，未启闸、停L、创建联合快照或执行迁移，原失败不覆盖，没有manual-report或completion。
+
+只读诊断先定位443监听PID6632／startTicks3064062，并核精确Python -I、harness脚本路径及SHA-256 aacd1994c5d283fb6f3bf7bc7d10c45b754451eccad79aa80e62e2bf249e069a、cwd=/、socket inode8188395。16:27:01 UTC进一步核其FD1/2均指初始/artifacts/logs/https-proxy.log；CLK_TCK=100，按当前uptime与btime分别算得约08:13:18／08:13:17 UTC，明显早于本轮。本轮logs/https-proxy.raw.log、proxy.json和FAULT均不存在，443连接仍成功；结合start_proxy中端口检查先于日志创建／Popen的顺序，停止来源确定为已有TLS监听前置检查，没有认领它为manual2创建的代理。
+
+初始日志只保留08:02:49–08:15:04的九条请求／故障记录（SHA-256 ace970bc7e05e7422da59e070e9fa5dd6f4549ec2b7da7838bcd66f3b819d56f），历史可读工件未找到276／6632的创建身份或清理收据；拒绝276的源码不是清理证明。新进程时间／FD证据另存integration-artifacts/rehearsal-invocations/45841385764-2-manual/proxy-timing-and-log-metadata.json，前次socket诊断原件也保留。该只读诊断时点未发signal或adopt，保留端口冲突守卫。
+
+独立复核随后支持其属于初始fixture阶段，但明确没有找到创建收据，九条日志中早于08:13的记录不能归给6632。主协调在16:32:13 UTC最终重核完整outer／daemon、PID/ticks/argv/cwd、FD1/2对象的dev/ino与原日志inode1010235、原日志与脚本摘要、唯一443 socket及无FAULT后，使用pidfd仅向该进程发送TERM。pidfd确认进程退出，/proc当时残余状态Z（未称已reap），443实际SO_REUSEADDR→bind→listen通过，初始日志原字节不变；没有停业务服务或改库。原执行收据为同目录initial-proxy-retirement.json。第三次manual另存新SPEC，仅attempt改3（SHA-256 e9d33a5fb80e81d365125c05e4e8f87bf95344b620c94e8b74c06b0e54d87218），原包、控制字节及旧失败均保持，后继结果单独记录。清理脚本最终独立意见是在执行后完成，不冒称执行前最终签收；回执SHA-256为5a9236cbe3faee09775ffff8ac2821a5e0832afb443fbdebcbc0b34fe8a70e16。
+
+## 21. 首层真实恢复成功与 C1 材料准备
+
+manual3于16:32:22 UTC进入worker，16:32:33保存真实77现场，16:32:44进入R原迁移CLI，16:32:49开始B失败切换与手工R恢复，16:33:33完成。实际入口退出0、driver/SPEC前后不变，六观察步骤顺序完整；原报告及completion另经主协调逐字节导出、绑定核验，不能仅凭入口退出0放行。
+
+实际R镜像执行原命令node --experimental-transform-types packages/database/src/cli.ts migrate，16:32:48.353095–16:32:49.225796 UTC、严格整数退出0；81名称／checksum与最终清单全等，原77行包含applied_at逐项保持。B公网故障切换后R带闸启动，身份及内外health/ready/version通过，再解闸；真实认证POST /api/v1/leads返回201，GET读回200且标题匹配。恢复前后81登记及两份迁移状态文件原字节／摘要均不变；没有尝试在新schema上重启不兼容旧L。
+
+| 实际原件                    | SHA-256                                                          |
+| --------------------------- | ---------------------------------------------------------------- |
+| manual-report.json          | 06c680aecb938c9bce289b605f642d0312c4e19adf12ecef35b184956cce7e9d |
+| manual-completion.json      | 350e23ad006d239c5147623b290e3a1bbcccb8fc92a3e7bee0ceba064717a53f |
+| explicit-cli-execution.json | 0bbbad70c0171cb3e54f9b5249b31c3ec7617025a5eefeb356f5f61849c083cb |
+| r-migrate.raw.log           | a9e2c12fa9810ae310978db70ccc7db8a2d77f11cdcea051d59d5b26a36c431e |
+| 完整quiesced77.dump         | d8338c4ebb1af896c79e98600af02856c9a7ef8e90ca0874d7997da5313c70b5 |
+| quiesced77.json联合快照     | 238df275968d32badb0a121b77e8e817e5cd26cec2c35b166c459dac67676553 |
+| attachments.tar             | b344ab9a5206c07c04bb54cfb9a8b9cafe8b6ae3574099679d954e42d663143a |
+
+原私有现场留在/artifacts/controller-runs/45841385764-3-manual；公开原件逐字节导出至integration-artifacts/rehearsal-B-120d6fc/manual-3-original-records，未导出秘密environment或数据库／附件内容。新的代理为PID298699／start_ticks6059346，脚本摘要仍aacd1994…，由本轮driver创建并记录，第二层依原身份门交接。
+
+主协调核验器初版误用紧凑JSON摘要，在读取后、导出前拒绝；按冻结canonical()的默认separators纠正，旧版及失败说明保留。另一次拒绝来自对原探针记录status的误读：worker先要求实际HTTP200，随后业务status键覆盖health/ready的数值码，原件分别保存ok／ready，version才保存200。已按精确原格式核验并仅登记TD-REL-020，不改原报告或driver，不冒称六条数值HTTP响应原文均已归档。
+
+按§17方案生成四production selection和独立namespaced descriptor；report.json原字节保持上述06c680ae…，control_sha保留真实C0。先格式定稿source/descriptor，再于16:38:33.827924 UTC由主协调依据既有委托出具实际批准，窗口截至2026-11-27 00:38:33.827924 UTC（8小时）；approved_suffix来自真实plan的0078–0081精确后缀，R的main仍为导出时1f。transport-source原字节与格式定稿后均为f21ac789051ae8233bb35a1640b99f780cabe4a5b0d82c990df3912a7d2b4dd3，绑定成功R run／ZIP／source.bundle／provenance。
+
+使用原release_orchestrator.py check-compatible-recovery实际校验完整原R tar/source.bundle和本次selection，退出0，compatible_recovery=PASS且live_fence_verified=false；此门只验证材料，不代替第二层执行。生产descriptor SHA为0fbce9839de8e00d50b9b497ddfb5a278cb17263f05acdbcf396747aea718576，独立演练descriptor为c57367478c0a78883fc2eb315d4bc5b34a571c2a836e2fff8b3259ed3be378f6，approval为8e089fe15b4e96fc1068c2b86ff7513f1b602b1b7793ac4e07ff68d85d2e9fff。准备回执为C1-material-preparation.json；此时C1尚待固定及完整CI，automatic尚未执行，生产未部署。第二层使用不同数值attempt以避免与manual3的stage同名，并在真实restore77前静态核应用授权全部九项及UTC窗口；同B已有COMPLETED／STOPPED或不同canonical材料不得靠换attempt覆盖。

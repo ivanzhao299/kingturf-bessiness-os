@@ -1,0 +1,6 @@
+{
+  "kind": "compatible_application_recovery_v1",
+  "recovery_bundle_file": "120d6fc55b60496b535dc1beb3ae270709ed3836/recovery.tar.gz",
+  "report_file": "120d6fc55b60496b535dc1beb3ae270709ed3836/report.json",
+  "source_bundle_file": "120d6fc55b60496b535dc1beb3ae270709ed3836/source.bundle"
+}

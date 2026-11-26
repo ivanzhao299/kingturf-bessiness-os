@@ -1,0 +1,6 @@
+{
+  "kind": "compatible_application_recovery_v1",
+  "recovery_bundle_file": "recovery.tar.gz",
+  "report_file": "report.json",
+  "source_bundle_file": "source.bundle"
+}

@@ -1,0 +1,24 @@
+{
+  "approved_at_utc": "2026-11-26T16:38:33.827924+00:00",
+  "approved_suffix": [
+    "0078_manufacturing_published_child_insert_guard.sql",
+    "0079_bom_requires_published_components.sql",
+    "0080_po_draft_cancel.sql",
+    "0081_po_mrp_proposal_reference.sql"
+  ],
+  "approver": "codex (delegated main coordinator)",
+  "compatible_recovery": {
+    "api_digest": "sha256:c8b35723e5f440980180355d438302e20018eb76a85f84700eeb205f8aea69be",
+    "legacy_business_sha": "5dc88e5c922ff731e2cfeb949b28c5cd8c333032",
+    "recovery_bundle_sha256": "5fe1c083ca1a4f6ea8928b83656c0163c5a1fd271956ecab835372e59ee3f199",
+    "recovery_main_sha": "1f6f3de8b5bbd79fb1c2a6bb6ccc82963099aa66",
+    "recovery_release_sha": "32e705a9a835e577b528fd6ff6d72c06b449ca35",
+    "report_sha256": "06c680aecb938c9bce289b605f642d0312c4e19adf12ecef35b184956cce7e9d",
+    "target_manifest_sha256": "7fc59f4afbab4ac65e5240fc8ee14d5482f115710adc9880c441a1470ef57994",
+    "web_digest": "sha256:be20680d1f0d91ec93bb7025dcfc53ffb92c4deae591518ddf4a905290f09c8a"
+  },
+  "image_compatibility_mode": "compatible_recovery",
+  "release_sha": "120d6fc55b60496b535dc1beb3ae270709ed3836",
+  "transport_source_sha256": "f21ac789051ae8233bb35a1640b99f780cabe4a5b0d82c990df3912a7d2b4dd3",
+  "window_end_utc": "2026-11-27T00:38:33.827924+00:00"
+}

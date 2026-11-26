@@ -1,0 +1,14 @@
+{
+  "artifact_id": 15118360718,
+  "artifact_name": "compatible-recovery-material-32e705a9a835e577b528fd6ff6d72c06b449ca35",
+  "artifact_sha256": "4eb7f078ea6553b0bb518f924cf828f7383a1a3be4b7adda629b5dad1ec548b7",
+  "event": "workflow_dispatch",
+  "export_control_sha": "1f6f3de8b5bbd79fb1c2a6bb6ccc82963099aa66",
+  "kind": "compatible_recovery_transport_source_v1",
+  "provenance_sha256": "067ca1e2fe9661ed7b0c05e438279a6f4e67d8f3bcdac0132915f15c4dea4db3",
+  "repository": "ivanzhao299/kingturf-bessiness-os",
+  "run_attempt": 1,
+  "run_id": 45820243736,
+  "source_bundle_sha256": "8cbcbad8f4ca809fcf9657c02611df97cc660b811c100867c70f3608b741f474",
+  "workflow": ".github/workflows/release-images.yml"
+}
