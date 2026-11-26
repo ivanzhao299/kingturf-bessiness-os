@@ -204,6 +204,43 @@ it('keeps source read failures inside the movement form and sends no write', asy
   expect(io.submit).not.toHaveBeenCalled();
 });
 
+it('does not apply a late source failure to a newly selected inventory balance', async () => {
+  const io = ports();
+  const other = { ...balance, lotId: 'lot-other', lotNumber: 'LOT-OTHER' };
+  let rejectFirst!: (error: Error) => void;
+  const first = new Promise<readonly { value: string; label: string }[]>((_resolve, reject) => {
+    rejectFirst = reject;
+  });
+  const load = vi
+    .fn()
+    .mockReturnValueOnce(first)
+    .mockResolvedValue([{ value: 'work-2', label: '新选择工单' }]);
+  const panel = mount({
+    ...io,
+    initialBalances: [balance, other],
+    loadMovementSources: load,
+    loadDetail: (key) => Promise.resolve(key.startsWith('lot-other:') ? other : balance),
+  });
+  await click(panel.querySelectorAll('[data-testid="kt-inv-open"]')[0] as TestElement);
+  await click(byId(panel, 'kt-inv-move'));
+  await click(locate(panel, '.drawer-close'));
+  await click(panel.querySelectorAll('[data-testid="kt-inv-open"]')[1] as TestElement);
+  await click(byId(panel, 'kt-inv-move'));
+  await vi.waitFor(() => {
+    expect(locate(panel, '[name="sourceId"]').textContent).toContain('新选择工单');
+  });
+  // 新选择的表单已就绪后旧请求拒绝，旧错误/空候选不得覆盖新来源。
+  await act(async () => {
+    rejectFirst(new Error('旧批次来源读取失败'));
+    await first.catch(() => undefined);
+  });
+  await vi.waitFor(() => {
+    expect(locate(panel, '[name="sourceId"]').textContent).toContain('新选择工单');
+  });
+  expect(byId(panel, 'kt-inv-detail').textContent).not.toContain('旧批次来源读取失败');
+  expect(io.submit).not.toHaveBeenCalled();
+});
+
 it('deduplicates lot counts and supports only unfinished work orders and explicit quality deep links', () => {
   expect(inventoryCounts([balance, { ...balance, locationId: 'loc-2' }])).toEqual({
     RELEASED: 0,
