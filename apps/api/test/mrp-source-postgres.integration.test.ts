@@ -230,4 +230,49 @@ describe('TD-MRP-002 real sales order source validation', () => {
     );
     expect(await storedType(legacyId)).toBe('SALES-ORDER');
   });
+
+  it('TD-MFG-012: leaves prototype-named and every other non-alias source unchanged', async () => {
+    const { db, context } = state();
+    const item = await new PostgresManufacturingRepository(db).createItem(
+      {
+        sku: 'SOURCE-NON-ALIAS',
+        name: 'Non-alias source',
+        itemType: 'FINISHED_GOOD',
+        baseUnitCode: 'M2',
+        specification: {},
+        effectiveAt: '2025-01-01T00:00:00Z',
+        publish: true,
+      },
+      context,
+      randomUUID(),
+    );
+    const repository = new PostgresMrpRepository(db);
+    // 仓储本来接受任意来源字符串；HTTP 边界的编码校验仍沿用原规则，不扩词表。
+    for (const sourceType of [
+      'toString',
+      'constructor',
+      '__proto__',
+      'hasOwnProperty',
+      'SALES_ORDER_X',
+    ]) {
+      const input = {
+        itemVersionId: item.id as string,
+        sourceType,
+        sourceId: randomUUID(),
+        requiredAt: '2026-04-01',
+        quantity: '1',
+        priority: 100,
+      };
+      const created = await repository.createDemand(input, context, randomUUID());
+      expect(created.sourceType).toBe(sourceType);
+      expect(created.canonicalHash).toBe(
+        createHash('sha256').update(canonicalize(input)).digest('hex'),
+      );
+      const stored = await db.query<{ source_type: string }>(
+        'SELECT source_type FROM mrp_demand_signals WHERE id=$1',
+        [created.id],
+      );
+      expect(stored.rows[0]?.source_type).toBe(sourceType);
+    }
+  });
 });

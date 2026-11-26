@@ -18,9 +18,8 @@ const json = (value: unknown) => value as JsonObject;
 // TD-MFG-012（项目所有者裁定 2026-11-26）：需求来源类型以 SALES_ORDER 为准。SALES-ORDER 是历史
 // 写法（迁移 0051 之前的行与旧词表用过它），作为别名接受并归一存储为 SALES_ORDER——于是它和
 // SALES_ORDER 走同一条销售订单校验。存量行不改（无迁移），读取仍兼容两种写法。
-const DEMAND_SOURCE_ALIASES: Readonly<Record<string, string>> = { 'SALES-ORDER': 'SALES_ORDER' };
 const normalizeDemandSource = (sourceType: string): string =>
-  DEMAND_SOURCE_ALIASES[sourceType] ?? sourceType;
+  sourceType === 'SALES-ORDER' ? 'SALES_ORDER' : sourceType;
 const company = (context: Context) => {
   if (!context.scopes.includes('COMPANY') && !context.scopes.includes('GROUP'))
     throw new DomainError('forbidden', 'MRP planning requires company scope');
