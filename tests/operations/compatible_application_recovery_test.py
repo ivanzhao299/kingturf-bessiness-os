@@ -248,6 +248,42 @@ class CompatibleApplicationRecoveryTest(unittest.TestCase):
         self.assertIn(self.host.containers['api']['Id'], stopped)
         self.assertNotIn('3'*64, stopped)
 
+    def test_preserved_source_with_wrong_api_scope_never_receives_stop_permission(self):
+        before = self.stage()
+        h = self.host
+        original = copy.deepcopy(h.containers['api'])
+        for scope, changed in fixtures.api_scope_variants(original):
+            with self.subTest(scope=scope):
+                h.containers['api'] = changed
+                self.events.clear()
+                with self.assertRaisesRegex(RuntimeError, 'API scope'):
+                    ar.recover_compatible_application(h.bundle, before)
+                self.assertEqual(h.stops(), [])
+                self.assertFalse(any(e[0] == 'up' for e in self.events))
+
+    def test_approved_b_or_r_with_wrong_api_scope_retains_fence_without_stop(self):
+        before = self.stage()
+        h = self.host
+        for sha in (h.sha, self.rsha):
+            self.compose('up', '-d', '--no-deps', '--pull', 'never', 'api', env={'KINGTURF_RELEASE_SHA': sha, 'KINGTURF_WRITE_FENCE': 'disabled'})
+            original = copy.deepcopy(h.containers['api'])
+            for scope, changed in fixtures.api_scope_variants(original):
+                with self.subTest(sha=sha, scope=scope):
+                    h.containers['api'] = changed
+                    ar.set_forward_fence(h.bundle, False)
+                    self.events.clear()
+                    with self.assertRaisesRegex(RuntimeError, 'API scope'):
+                        ar.recover_compatible_application(h.bundle, before)
+                    self.assertEqual(h.stops(), [])
+                    with self.assertRaisesRegex(RuntimeError, 'API scope'):
+                        ar.hold_compatible_fence(h.bundle, before)
+                    self.assertEqual(h.stops(), [])
+                    self.assertEqual(h.fence(), 'enabled')
+                    self.assertTrue(h.containers['api']['State']['Running'])
+                    self.assertIn('KINGTURF_WRITE_FENCE=disabled', h.containers['api']['Config']['Env'])
+                    self.assertFalse(any(e[0] == 'up' for e in self.events))
+            h.containers['api'] = original
+
     def test_missing_real_r_report_prevents_target_import_and_b_switch(self):
         (self.material_root/'report.json').unlink()
         with self.assertRaises(RuntimeError):

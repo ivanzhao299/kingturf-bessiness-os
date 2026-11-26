@@ -24,6 +24,28 @@ ar = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(ar)
 
 
+def api_scope_variants(container):
+    mount = container['Mounts'][0]
+    cases = (
+        ('canonical name', ('Name',), '/unrelated-api-1'),
+        ('project', ('Config', 'Labels', 'com.docker.compose.project'), 'unrelated-project'),
+        ('service', ('Config', 'Labels', 'com.docker.compose.service'), 'worker'),
+        ('missing labels', ('Config', 'Labels'), None),
+        ('attachment source', ('Mounts', 0, 'Source'), '/unrelated/attachments'),
+        ('attachment target', ('Mounts', 0, 'Destination'), '/unrelated/attachments'),
+        ('attachment type', ('Mounts', 0, 'Type'), 'volume'),
+        ('missing attachment', ('Mounts',), []),
+        ('duplicate attachment', ('Mounts',), [mount, mount.copy()]),
+    )
+    for name, path, value in cases:
+        changed = copy.deepcopy(container)
+        target = changed
+        for key in path[:-1]:
+            target = target[key]
+        target[path[-1]] = copy.deepcopy(value)
+        yield name, changed
+
+
 class ForwardRecoveryTest(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -206,6 +228,23 @@ class ForwardRecoveryTest(unittest.TestCase):
         self.assertIn(('stopped-id', '3'*64), self.stops())
         self.assertTrue(self.containers['api']['State']['Running'])
         self.assertEqual(self.fence(), 'enabled')
+
+    def test_cleanup_rejects_wrong_scope_for_bound_source_and_approved_candidate_without_stop(self):
+        self.prepare()
+        source = copy.deepcopy(self.containers['api'])
+        self.compose('up', '-d', '--no-deps', '--pull', 'never', 'api', env={'KINGTURF_RELEASE_SHA': self.sha, 'KINGTURF_WRITE_FENCE': 'disabled'})
+        candidate = copy.deepcopy(self.containers['api'])
+        for kind, original in (('source', source), ('candidate', candidate)):
+            for scope, changed in api_scope_variants(original):
+                with self.subTest(kind=kind, scope=scope):
+                    self.containers['api'] = changed
+                    ar.set_forward_fence(self.bundle, False)
+                    self.events.clear()
+                    with self.assertRaisesRegex(RuntimeError, 'API scope'):
+                        ar.retain_forward_fence(self.bundle)
+                    self.assertEqual(self.stops(), [])
+                    self.assertEqual(self.fence(), 'enabled')
+                    self.assertEqual(self.containers['api']['State'], original['State'])
 
     def test_source_binds_identity_schema_marker_and_time_without_log_or_secret_contents(self):
         source = self.source()
