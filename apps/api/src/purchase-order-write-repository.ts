@@ -30,11 +30,13 @@ const SUPPLIER_LABELS: Readonly<Record<string, string>> = {
 
 // TD-PROC-016：与签发共用同一事务并锁住供应商行。setSupplierStatus 的 FOR UPDATE 与本锁互斥，
 // 所以状态校验到采购单签发提交之间，供应商不能被另一笔事务暂停或停用。
+// 供应商采用 NO KEY UPDATE：与 status 更新互斥，但兼容并发建单外键的 KEY SHARE，避免双建单锁升级死锁。
+// 采购单自身仍用 FOR UPDATE 排他锁；不改查询/写入顺序、载荷或证据。
 export async function lockActivePurchaseSupplier(tx: SqlClient, id: string, context: Context) {
   const supplier = (
     await tx.query<{ status: string }>(
       `SELECT s.status FROM suppliers s JOIN purchase_orders p ON p.supplier_id=s.id AND p.tenant_id=s.tenant_id
-       WHERE p.id=$1 AND p.tenant_id=$2 AND p.status='DRAFT' FOR UPDATE OF s,p`,
+       WHERE p.id=$1 AND p.tenant_id=$2 AND p.status='DRAFT' FOR NO KEY UPDATE OF s FOR UPDATE OF p`,
       [id, context.actor.companyId],
     )
   ).rows[0];
