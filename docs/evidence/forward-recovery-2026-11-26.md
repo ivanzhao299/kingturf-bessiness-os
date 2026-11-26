@@ -383,3 +383,48 @@ API 原保存 `image/image.tar` SHA-256 为 `0f08d814184d44bc8767729035ac358f597
 本轮 API `sha256:61a7914363f8ab34e5391296cc9209fa6e3a31352089c20dc0fef1167d7f5d20`、Web `sha256:be9cff07190d2b4cdb7b2110f365c58937aeccc7b6c37a6396b9991413ea2af0` 仅为诊断身份。失败 run 永不消费为 approved artifact。修复须保留真正原 OCI/source.bundle/81 清单/provenance 与成功 run 门；不放宽 owner／路径／符号链接检查，不 chmod777、不 chown/delete 外来目录、不整段 sudo。范围只限原控制工具与必要测试；不改 workflow 输入/job/审批/锁、业务/SQL/R 源，不 push/dispatch/生产/真实恢复。
 
 本批日志、脚本与源码快照保留在 `/home/jinhuit/Kingturf/kingturf-coord/wave4/recovery-export-owner-artifacts/`，全部重活经 `coord/bin/heavy`。后继应记录同断言旧红新绿、真实 Docker bind 最小复现与替身边界、受影响测试及完整 operations、源码稳定与自有资源清理；成功新固定 C 的 workflow 由主协调独立复核后重跑。
+
+### 14.2 根因与最小修复
+
+登记提交 `2eb8f814fcf13f60e111946e2941b50733904d8a` 先于修复；独立 fix／源码冻结为 `5b9f64bd66a8a174a21f45dec6565ebfb8d55a23`。两者均标 `[未测试]`，含义是本代理没有跑最终完整 `pnpm ci:local`，不否认下列实跑结果。
+
+原 job 命令链为固定控制 export → Git 对象私有快照 prepare → Skopeo copy bind → OCI/hash/81 清单核对 → tar/source.bundle → `TemporaryDirectory.__exit__` → provenance。实际固定镜像 `quay.io/skopeo/stable@sha256:4b440098ada2bc2623308b0f60f5a5454084b98683e9e7dcecd77bba69797c56` 的 Config.User 为空，Docker 默认 UID/GID 0。用该镜像向本批新建私有 bind 实拷贝，API/Web 两次 copy 均退出 0，`oci/api`、`oci/web` 实际为 **0:0／0755**。本机 runner 为 **1000:1000**：cleanup 首先 unlink `oci-layout` 遭 EACCES，Python 的 `_resetperms` 随后尝试 chmod 目录，又在 `oci/web` 遭 EPERM，与原 job 末错误吻合。完整栈见 `logs/02-ownership-legacy-red.log`；owner/mode 与两条实际命令见 `ownership-legacy/result.json`。原 GHR 临时目录已不可读取，本批没有冒称对它做了现场 stat；根因据实际 job 控制链、固定镜像身份及上述真实复现。
+
+生产代码只改 `scripts/prepare_release_bundle.sh`：捕获调用者 `id -u:id -g`，让原 inspect 和 copy 两类 `docker run` 都带 `--user`。仍用原固定镜像、只读 authfile bind、tag→digest 核对、`--all --preserve-digests` 和原 SQL 元数据生成。没有 sudo/chown/chmod777，没有忽略 cleanup 异常；原临时目录仍正常退出清理。`recovery_material_transport.py`、OCI 校验、source.bundle、81 pin、provenance、成功 run 门与 stage 私有 owner/路径/符号链接检查均原字节保持。
+
+测试只扩既有 `tests/operations/recovery_material_transport_test.py`，执行真实准备 shell；Docker/registry I/O 用明确的合成替身，断言四次调用的 UID/GID、私有 auth bind、原 OCI blob/tag 摘要和完整 81 清单；另断言 tag 摘要错配在 copy 前失败、copy 42 不生成成功元数据。该单测不充实际 Docker 证明；实际 Docker 另列如下。
+
+### 14.3 旧红新绿与实际导出对照
+
+下表路径均相对本批外部证据根；所有 Python 启动器显式 `-I`，代码脚本与 OCI 数据目录分开。实际 Docker 只用自有 bind、`e2e-harness-` 名称和 `--network none`，没有 GHCR 下载、镜像启动或业务请求。
+
+| 验证                                   | 旧码                                                                                                         | 修复码                                                              | 原始回执                                                                                    |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| 相同真实 shell UID/GID 断言            | 1 例、四调用子情形全红，缺 `--user`                                                                          | 包含三新增例的完整 transport **32/32**                              | `logs/03-shell-old-code-red.log`、`04-transport-green.log`；旧脚本/新断言快照在 `baseline/` |
+| 实际固定 Skopeo copy 与 Python cleanup | 两 copy 均 0；目录 0:0／0755；cleanup EPERM、退出 1                                                          | 两 copy 均 0；文件与目录均 1000:1000；temp 完全移除、退出 0         | `ownership-legacy/result.json`、`ownership-aligned/result.json`；`logs/02-*`、`05-*`        |
+| 原 export CLI＋实际固定 Skopeo         | 原 `54a95f2` prepare，已生成 tar/source.bundle/81manifest/release，退出清理 EPERM，未生成 provenance、退出 1 | 固定 `5b9f64b` prepare，全部五文件及校验通过、temp 完全移除、退出 0 | `export-legacy/`、`export-aligned/`；`logs/07-*`、`08-*`                                    |
+
+最后一项执行原 export CLI、固定脚本 Git 快照、真实 tar/Git bundle/OCI 验证和实际 Skopeo 容器。唯一 Docker wrapper 将原 GHCR URI 替换成本地只读 OCI，并加禁网络与自有名称；合成 Git/run 环境不能当真实成功 run。空 auth 配置以 0600 放在 0700 私有目录，inspect/copy 都使用原只读 authfile 参数。新码逐项核对每个 OCI blob 原字节摘要、tar 内外 release/migrations 字节全等、恰 81 个原 SQL、source.bundle 恰 main/recovery 两 refs 和 provenance 的四份原文件 hash；所有 tar 文件的 UID/GID 均为 runner。未重打包被批准材料，未构造生产 approval，也未使用失败 run 的两个摘要当 approved 输入。
+
+`export-aligned/result.json` 原字节 SHA-256 为 `c00bd523389b4fbd1014a8990f48ae854e590ddee7bad6dd1e2656c908d0f008`，该次合成 `recovery.tar.gz` 为 `906e196222c998812fde39e232d5142cc3842d74cb7eefa4ea1d9fbd6ce32225`、`source.bundle` 为 `15d11fa251eee3de8a2650eafa5f108caf76679f7db9fdd6b7b7b5203ba3771c`、`provenance.json` 为 `3235c4e599aeca18a3acb9b453be7b609e75f2ba37c4e975b4c2b130267db0dc`。它们只是本机夹具留档，不能替代 GHR 原物料。
+
+### 14.4 完整 operations 与失败保留
+
+冻结 **5b9f64bd66a8a174a21f45dec6565ebfb8d55a23** 上经 heavy 实跑完整 operations：**264/264、零 skip、退出 0**，即原 261＋3 新增例。使用自有 PostgreSQL **17.7-alpine3.23**、kingturf 角色、回环独占宿主端口 45539；既有 PostgreSQL 迁移／演练实际执行，原 Docker/HTTP 主机行为替身仍按原测试声明，不冒称真实恢复。口令仅取主检出 `.env.example` 的 `POSTGRES_PASSWORD` 单键，经环境传入；未读真实 `.env`，未打印或落盘口令。原始 `operations-5b9f64b-explicit-port/unittest.log` 与 `result.json` 保存完整过程，后者 SHA-256 为 `945e037d2bd9c61b0c56afbd105b59d43f0a837503acbf5e247cc130ff3f8b50`。
+
+该轮前后 HEAD 相同、clean 状态为空，五份控制／测试源码 SHA-256 相同，结果 `source_unchanged=true`。测试临时目录最终为空，自有 PG 精确 ID `718ef8fc40cbc8e73026c7f0d1ff9f0782be0db5198f918538566362a9b6356c` 经自身 label 核验后删除，剩余自有容器为空；未创建网络或删除他人资源。
+
+所有不完整／失败回执保留：
+
+- `logs/02-*`、`03-*`、`07-*` 为预期旧码红；旧真实 Skopeo 写出的两组失败 temp 数据保留在各自证据目录，未用 chown/delete 处理，供 owner 链复核。
+- `operations-5b9f64b/`、`logs/06-operations-frozen.log`：首轮测试进程退出 0，但 **260 项、10 skip**，启动器严格标为失败／退出 1，不能报完整通过。
+- `operations-5b9f64b-preflight/`、`logs/09-operations-port-preflight.log`：Docker 自动分配宿主端口 46207，但原 `docker ps --filter publish=46207` 返回空，实际 psql helper 返回 None，前置失败。这轮未执行测试；自有 PG 已清。只将外部启动器改为显式绑定自行探得的空闲端口，原 psql helper／测试／控制源码没有改动；下一轮 preflight 精确识别自有容器后才运行全部测试。两个旧启动器脚本均另存。
+- 初版源码守恒辅助命令对不存在的可选 `release-materials` 目录用了 rev-parse，报 128；最终用 ls-tree 核对其在基线／冻结树均不存在，并核全部 diff 白名单。失败详情在 `source-conservation-5b9f64b.json.initial_helper_failure`；不以可选目录缺失当控制源码变化。
+
+### 14.5 白名单、保真与交付边界
+
+代码白名单恰两份现有文件：`scripts/prepare_release_bundle.sh`、`tests/operations/recovery_material_transport_test.py`；文档白名单恰本证据、tech-debt-tracker、docs/index。`source-conservation-5b9f64b.json`（SHA-256 `e5928495e843b4bc2336fa1cc10819f6e1dfaf0035245167f37f674ae8a2dbab`）机械核对全部变更及 apps/packages/workflow/infra/依赖锁文件/原 export/OCI/stage/orchestrator 的 Git 对象相同。所有者裁定首节仍第一，截取规则为其标题至下一个二级标题前，**4718 B**／SHA-256 `0678a4fc3d93b93f5909c4976d6b1c093282feb696a2e801c42cc1aae097237e` 与本批基线原字节完全相等。
+
+原源码快照 `baseline/control-and-tests.tar`、冻结源码快照 `fixed-control-and-tests.tar` 分别 SHA-256 `b125745313f7a7a24eb068f3f909e8cdc30e2b2f100e5f98d7a0c7011da7d8d5`、`4b3e80585b80a58371aeb6ec2a4553a5351b233f0d2822b4bc919374f9cc8c2a`。bash 语法、doc-lint、三文档 Prettier 和 git diff 检查通过。最后单独文档提交不改冻结代码，完整 `ci:local` 留主协调最终集成串行执行。
+
+TD-REL-016 为**本机修复与验证完成，待主协调复核和成功新 GHR 原物料**；P1 发布阻断保留。原失败 `45811774272` 永不消费为 approved artifact；成功固定 C workflow、实际 R/B 两层恢复与生产放行均由主协调后继验收。本批不 push/dispatch，不碰主检出、integration、其他树或旧失效登记，不执行生产或真实恢复。
