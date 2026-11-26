@@ -19,9 +19,10 @@ RUN pnpm --filter @kingturf/web build
 FROM alpine:3.23 AS runtime
 
 # No image-filter, XSLT, GeoIP, njs or build tooling is needed by the fixed config.
-# Keep the APK database and install wget for the existing Compose health command.
+# Keep the APK database and BusyBox wget's original GET-based health command.
+# GNU wget --spider changes it to HEAD, which the existing API does not accept.
 RUN apk upgrade --no-cache \
-    && apk add --no-cache nginx ca-certificates wget \
+    && apk add --no-cache nginx ca-certificates \
     && mkdir -p /run/nginx /var/log/nginx /usr/share/nginx/html \
     && cp /var/lib/nginx/html/50x.html /usr/share/nginx/html/50x.html \
     && ln -sf /dev/stdout /var/log/nginx/access.log \
