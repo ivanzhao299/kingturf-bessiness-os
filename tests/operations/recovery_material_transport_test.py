@@ -324,6 +324,87 @@ class RecoveryTransportTest(unittest.TestCase):
         self.assertEqual(raw, tm.git(self.repo, 'show', self.control+':'+self.selection.relative_to(self.repo).as_posix()+'/approval.json'))
         self.assertNotEqual(raw, (alternate/'migration-recovery-approval.json').read_bytes())
 
+    def prepare_shell(self, *, mismatch=False, failure=''):
+        """Execute real bash; only Docker/registry I/O uses a synthetic fixture."""
+        case = self.root/'prepare shell'
+        tools = case/'tools'
+        tools.mkdir(parents=True)
+        auth = case/'private auth'
+        auth.mkdir(mode=0o700)
+        (auth/'config.json').write_text('{"auths":{}}')
+        (auth/'config.json').chmod(0o600)
+        source = case/'source'
+        shutil.copytree(self.base/'source/packages/database/migrations', source/'packages/database/migrations')
+        docker = tools/'docker'
+        docker.write_text('#!'+sys.executable+' -I\n'+r'''
+import json, os
+from pathlib import Path
+import shutil, sys
+args = sys.argv[1:]
+with Path(os.environ['TEST_DOCKER_LOG']).open('a') as log:
+    log.write(json.dumps(args)+'\n')
+image = next(i for i, arg in enumerate(args) if arg.startswith('quay.io/skopeo/stable@sha256:'))
+action = args[image+1]
+service = next(s for s in ('api','web') if any(a.startswith('docker://ghcr.io/ivanzhao299/kingturf-erp-'+s) for a in args))
+fixture = Path(os.environ['TEST_DOCKER_FIXTURE'])
+if action == 'inspect':
+    release = json.loads((fixture/'release.json').read_bytes())
+    sha = release['images'][service]['digest'][7:]
+    sys.stdout.buffer.write(b'mismatched manifest' if os.environ['TEST_DOCKER_MISMATCH'] else (fixture/service/'blobs/sha256'/sha).read_bytes())
+elif action == 'copy':
+    if os.environ['TEST_DOCKER_FAILURE'] == service:
+        raise SystemExit(42)
+    mount = next(arg for arg in args if arg.endswith(':/bundle'))
+    shutil.copytree(fixture/service, Path(mount.removesuffix(':/bundle'))/service)
+else:
+    raise AssertionError('unexpected synthetic Docker action')
+''')
+        docker.chmod(0o700)
+        log = case/'docker.jsonl'
+        out = case/'bundle'
+        env = dict(os.environ, PATH=str(tools)+os.pathsep+os.environ['PATH'], DOCKER_CONFIG=str(auth), TEST_DOCKER_LOG=str(log), TEST_DOCKER_FIXTURE=str(self.base/'oci'), TEST_DOCKER_MISMATCH='1' if mismatch else '', TEST_DOCKER_FAILURE=failure)
+        run = subprocess.run(['bash', str(ROOT/'scripts/prepare_release_bundle.sh'), self.recovery, self.images['api']['digest'], self.images['web']['digest'], str(out)], cwd=source, env=env, capture_output=True, text=True, timeout=30)
+        return run, [json.loads(line) for line in log.read_text().splitlines()], out, auth
+
+    def test_prepare_shell_aligns_inspect_and_copy_with_runner_and_private_auth(self):
+        run, calls, out, auth = self.prepare_shell()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(len(calls), 4)
+        for args in calls:
+            with self.subTest(command=args):
+                self.assertIn('--user', args)
+                self.assertEqual(args[args.index('--user')+1], f'{os.getuid()}:{os.getgid()}')
+                self.assertIn(str(auth)+':/auth:ro', args)
+                self.assertEqual(args[args.index('--authfile')+1], '/auth/config.json')
+                if 'copy' in args:
+                    self.assertIn('--all', args)
+                    self.assertIn('--preserve-digests', args)
+        self.assertEqual(json.loads((out/'migrations.json').read_bytes()), self.manifest)
+        release = json.loads((out/'release.json').read_bytes())
+        self.assertEqual(release['release_sha'], self.recovery)
+        self.assertEqual(release['images'], self.images)
+        self.assertEqual(release['migration_manifest_sha256'], tm.digest(out/'migrations.json'))
+        for service in ('api', 'web'):
+            self.assertEqual(tm.digest(out/(service+'-tag.json')), self.images[service]['digest'][7:])
+            self.assertEqual(tm.file_inventory(out/service), tm.file_inventory(self.base/'oci'/service))
+
+    def test_prepare_shell_rejects_tag_digest_mismatch_before_copy(self):
+        run, calls, out, _ = self.prepare_shell(mismatch=True)
+        self.assertNotEqual(run.returncode, 0)
+        self.assertEqual(len(calls), 1)
+        self.assertIn('inspect', calls[0])
+        self.assertFalse((out/'api').exists())
+        self.assertFalse((out/'release.json').exists())
+
+    def test_prepare_shell_copy_failure_does_not_emit_success_metadata(self):
+        run, calls, out, _ = self.prepare_shell(failure='web')
+        self.assertEqual(run.returncode, 42, run.stderr)
+        self.assertEqual(len(calls), 4)
+        self.assertTrue((out/'api').is_dir())
+        self.assertFalse((out/'web').exists())
+        self.assertFalse((out/'migrations.json').exists())
+        self.assertFalse((out/'release.json').exists())
+
     def test_export_invokes_fixed_prepare_once_and_preserves_original_tar_and_two_refs(self):
         local_git(self.repo, 'checkout', '--quiet', '--detach', self.export_control)
         real = tm.command

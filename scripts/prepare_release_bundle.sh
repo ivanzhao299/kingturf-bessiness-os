@@ -9,6 +9,8 @@ bundle=$(realpath -m "$4")
 mkdir -p "$bundle"
 test -z "$(ls -A "$bundle")"
 skopeo_image=quay.io/skopeo/stable@sha256:4b440098ada2bc2623308b0f60f5a5454084b98683e9e7dcecd77bba69797c56
+# OCI bind output must remain owned and removable by the invoking runner.
+skopeo_user="$(id -u):$(id -g)"
 auth_mount=()
 auth_option=()
 if [ -f "${DOCKER_CONFIG:-$HOME/.docker}/config.json" ]; then
@@ -18,10 +20,10 @@ fi
 for service in api web; do
   repo="ghcr.io/ivanzhao299/kingturf-erp-$service"
   case "$service" in api) digest=$api_digest;; web) digest=$web_digest;; esac
-  docker run --rm "${auth_mount[@]}" "$skopeo_image" inspect "${auth_option[@]}" --raw "docker://$repo:$release_sha" > "$bundle/$service-tag.json"
+  docker run --rm --user "$skopeo_user" "${auth_mount[@]}" "$skopeo_image" inspect "${auth_option[@]}" --raw "docker://$repo:$release_sha" > "$bundle/$service-tag.json"
   actual="sha256:$(sha256sum "$bundle/$service-tag.json" | cut -d ' ' -f 1)"
   test "$actual" = "$digest"
-  docker run --rm "${auth_mount[@]}" -v "$bundle:/bundle" "$skopeo_image" copy "${auth_option[@]}" --all --preserve-digests "docker://$repo@$digest" "oci:/bundle/$service:release"
+  docker run --rm --user "$skopeo_user" "${auth_mount[@]}" -v "$bundle:/bundle" "$skopeo_image" copy "${auth_option[@]}" --all --preserve-digests "docker://$repo@$digest" "oci:/bundle/$service:release"
 done
 RELEASE_SHA="$release_sha" API_DIGEST="$api_digest" WEB_DIGEST="$web_digest" BUNDLE="$bundle" python3 - <<'PY'
 import hashlib,json,os,pathlib
