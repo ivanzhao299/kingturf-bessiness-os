@@ -1,6 +1,6 @@
 # docs/index.md（全部文档索引）
 
-[2026-11-26 业务波次集成验收](evidence/ux-wave-integration-2026-11-26.md) 记录 `514d8f4` 完整 CI（API 18,387、Web 1,064、UI 101）、test 构建上的 P1 三轮各 11/11、双视口路由各 45/45、写冒烟六流程与资源清理；保留 133 图目检的三类现象、每视口五次抽屉探针错误和首轮 R/B 镜像扫描阻断。§5 记录 TD-GATE-007 同源码构建因果实验、production 全49文件与实际镜像原字节匹配及775445d修复；正式production浏览器、真实恢复与生产发布仍待后继证据。
+[2026-11-26 业务波次集成验收](evidence/ux-wave-integration-2026-11-26.md) 记录 `514d8f4` 完整 CI（API 18,387、Web 1,064、UI 101）、test 构建上的 P1 三轮各 11/11、双视口路由各 45/45、写冒烟六流程与资源清理；保留 133 图目检的三类现象、每视口五次抽屉探针错误和首轮 R/B 镜像扫描阻断。§5 记录 TD-GATE-007 同源码构建因果实验、production 全49文件与实际镜像原字节匹配及775445d修复；§6 记录仅修订两份运行封装的新 R `32e705a`、L业务源码与81清单原字节核验。正式production浏览器、成功新R物料、真实恢复与生产发布仍待后继证据。
 
 [TD-REL-015 运行镜像扫描阻断登记](exec-plans/tech-debt-tracker.md)记录 R/B 构建的真实 HIGH/CRITICAL 失败、API 运行层 OS／构建工具残留与本批最小封装边界；后续真实镜像实测沿 [forward-recovery 证据](evidence/forward-recovery-2026-11-26.md)追加，旧失败 R 与报告保留。
 

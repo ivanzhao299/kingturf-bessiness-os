@@ -91,3 +91,13 @@ P1 三轮先执行，写流程最后执行，避免信用写数据改变 P1 固�
 原始实验、三份构建目录和映射位于 `/home/jinhuit/Kingturf/kingturf-coord/integration-artifacts/build-mode-514d8f4/`：`result.json`、`test-map.json`、`production-map.json`、`image-map-comparison.json`、`build-test.log`、`build-production.log`、`original-ci-test-dist/`、`test-dist/`、`production-dist/`。
 
 独立修复提交 `775445d` 将 `ci:local` 中的 build 子命令改为 `NODE_ENV=production pnpm build`；父 shell 的测试、数据库 guard、迁移及后续审计仍为 `NODE_ENV=test`。本次格式与 diff 检查退出 0；该提交尚未跑完整 `ci:local`，最终集成须在 production 构建上重新执行浏览器验收并与实际镜像逐文件对账。没有把镜像改成 test 构建来满足旧清单。
+
+## 6. 新 R 的运行封装修订与来源白名单
+
+主协调依据 TD-REL-015 已登记的技术裁定，采纳运行封装最终源码 `158baf69fecb51264063992dbd2601e20c6aa17b`。其本机真实运行验证和独立审查均完成：69b 阶段 GNU wget 把原健康检查变为 HEAD、得到 401/退出6，最终158移除多余包，恢复 BusyBox GET；原 Compose/API/nginx 契约保持。原 CLI、81 SQL、TLS 正负例、两种 UID 的附件读写、写闸、健康检查与停机实测通过。本机运行与扫描回执仍属于该封装验证，不是新 R 的成功 GHR 物料或真实恢复回执；完整分支证据沿 forward-recovery 文档收尾。
+
+在原 R `ecb3ded74dde454725265f0c7ea354a4e80ef9b5` 上仅按原顺序挑入四笔封装修复，得到新的 R **`32e705a9a835e577b528fd6ff6d72c06b449ca35`**，保留旧 R 的扫描失败身份和历史。相对原 R，差异恰为 `infra/docker/Dockerfile.api-preview` 与 `infra/docker/Dockerfile.web-preview`，两文件原字节均等于已审查的158源码；相对 L，完整白名单为原四条 SQL、八处 pin 加两份 Dockerfile，共14文件。
+
+真实 Git 树对比确认：新 R 的 apps/api、apps/web 及 config/database/domain/types/ui 的运行源码与 L 原字节相同，packages/testing、根依赖/lock、Compose、nginx 亦不变。原 L 的77条迁移保持，新 R 的81条映射与原 R 全等，规范 SHA-256 仍为 `7fc59f4afbab4ac65e5240fc8ee14d5482f115710adc9880c441a1470ef57994`。静态回执与映射在 `/home/jinhuit/Kingturf/kingturf-coord/wave4/recovery-runtime-81-artifacts/scope.json`、`migrations.json`。首次内联检查因错误假定存在 packages/testing/src 而中止，随后改为完整 packages/testing 差异及全树精确白名单核验，未修改源码；该工具假设错误保留在回执说明，不当作新 R 运行失败或通过。
+
+新 R 已通过集成提交 `e19dfe1` 纳入集成祖先；此合并没有新的文件差异。驱动只会显式更新受信 R 常量并重新冻结，不放宽成任意 SHA。新 R 的实际镜像构建/扫描、成功原始 artifact、完整集成 CI、两层真实恢复和认证写均待执行，当前还没有据新 R 解除发布门禁。
