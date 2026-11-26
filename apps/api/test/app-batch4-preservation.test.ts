@@ -220,6 +220,10 @@ describe('Batch4 app extraction against fixed f3 complete request traces', () =>
         // U3-CRM-1：f3 冻结的 GET /leads 与 /leads/pool 500 为遗留缺陷——桥轨按
         // 已批迁移语义返回 200 空列表（e2e P1 佐证）；re-pin 钉定新响应形态与
         // 桥轨仓储调用（listLeadPage：actor/COMPANY/空锚/limit=100 默认过滤）。
+        // TD-CRM-003（2026-11-26，项目所有者确认的加性字段，主协调授权重钉）：
+        // listLeadPage 新增第 5 个实参——最近一次活动的可见范围（探针上下文对任何
+        // 能力都返回 COMPANY 授权，故此处为 scopes=['COMPANY']/空锚）。响应形态不变
+        //（{ items: [] }）；前四个实参与改前逐字段相同。
         if (row.name === 'GET /api/v1/leads' || row.name === 'GET /api/v1/leads/pool') {
           expect(pinnedCurrent.response).toEqual({
             statusCode: 200,
@@ -239,6 +243,7 @@ describe('Batch4 app extraction against fixed f3 complete request traces', () =>
                 ['COMPANY'],
                 [],
                 { limit: 100, pool: row.name.endsWith('pool') },
+                { scopes: ['COMPANY'], anchors: [] },
               ],
             ],
           ]);
