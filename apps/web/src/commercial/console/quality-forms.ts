@@ -64,6 +64,7 @@ export const newQualityPlan = (items: readonly Choice[]) =>
             code: values.characteristicCode,
             name: values.characteristicName,
             dataType: 'NUMERIC',
+            // TD-OPS-006（2026-11-26 裁定）：上下限留空时这里发空串，端点当未传处理，落库 NULL。
             lowerLimit: values.lowerLimit ?? undefined,
             upperLimit: values.upperLimit ?? undefined,
             required: true,
@@ -177,6 +178,7 @@ export const qualityResult = (
         characteristicId: values.characteristicId,
         measuredNumeric: values.measuredNumeric ?? undefined,
         passed: values.passed === 'true',
+        // TD-OPS-006（2026-11-26 裁定）：备注留空时发空串，端点原样入库（列是 NOT NULL）。
         notes: values.notes ?? '',
         occurredAt: now().toISOString(),
         idempotencyKey: values.idempotencyKey,

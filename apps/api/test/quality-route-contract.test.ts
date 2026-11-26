@@ -736,8 +736,17 @@ describe('fixed old quality body/parsers and first-error ordering', () => {
         it(r.label + '/' + field.name + '/invalid ' + String(index), async () => {
           const f = fixture(r);
           f.body[field.name] = value;
-          invalid(await f.dispatch());
-          expect(f.call).not.toHaveBeenCalled();
+          const response = await f.dispatch();
+          // TD-OPS-006（2026-11-26 项目所有者裁定）：检验结果备注字符串形式留空 → 存空串
+          //（这两条原断言为 400）。null 与非字符串值仍走下方原断言。
+          if (r.kind === 'result' && field.name === 'notes' && typeof value === 'string') {
+            expect(response.statusCode).toBe(201);
+            expect(input(f, r).notes).toBe('');
+            expect(f.call).toHaveBeenCalledTimes(1);
+          } else {
+            invalid(response);
+            expect(f.call).not.toHaveBeenCalled();
+          }
         });
       });
       if (field.parser === 'uuid')
@@ -839,12 +848,22 @@ describe('fixed old quality body/parsers and first-error ordering', () => {
       if (r.kind === 'result' || r.kind === 'transition' || r.kind === 'dispose')
         expect(input(f, r).idempotencyKey).toBe('BODY_KEY');
     });
-  for (const value of [undefined, null, '', '   '])
-    it('result notes nullish empty still rejected ' + JSON.stringify(value), async () => {
+  for (const value of [undefined, null])
+    it('result notes nullish still rejected ' + JSON.stringify(value), async () => {
       const r = required(result),
         f = fixture(r);
       f.body.notes = value;
       invalid(await f.dispatch(), 'notes is required');
+    });
+  // TD-OPS-006（2026-11-26 项目所有者裁定）：备注字符串形式留空存空串（这两条原断言为
+  // 400 notes is required）；键省略与 null 不算留空，仍由上面的用例钉住。
+  for (const value of ['', '   '])
+    it('result notes blank string stored as empty string ' + JSON.stringify(value), async () => {
+      const r = required(result),
+        f = fixture(r);
+      f.body.notes = value;
+      expect((await f.dispatch()).statusCode).toBe(201);
+      expect(input(f, r).notes).toBe('');
     });
   for (const field of ['passed', 'measuredBoolean'])
     it('result ' + field + ' invalid before missing Q, passed before measuredBoolean', async () => {
@@ -964,9 +983,19 @@ describe('fixed old quality characteristic map and observable getter reads', () 
         item[field.name] = value;
         f.body.characteristics = [item];
         const response = await f.dispatch();
+        // 只有成功响应才有仓储入参可查；被拒的响应不触达仓储。
+        const parsed = () => record((input(f, r).characteristics as unknown[])[0]);
         if (field.name === 'instructions' && value === '') {
           expect(response.statusCode).toBe(201);
-          expect(record((input(f, r).characteristics as unknown[])[0]).instructions).toBe('');
+          expect(parsed().instructions).toBe('');
+        } else if (
+          // TD-OPS-006（2026-11-26 项目所有者裁定）：规格上下限的空串与 null 当未传——键省略，
+          // 仓储存 NULL（四条原断言为 400）。unitCode 不在裁定内，仍走原断言。
+          (field.name === 'lowerLimit' || field.name === 'upperLimit') &&
+          (value === '' || value === null)
+        ) {
+          expect(response.statusCode).toBe(201);
+          expect(parsed()).not.toHaveProperty(field.name);
         } else invalid(response);
       });
     });

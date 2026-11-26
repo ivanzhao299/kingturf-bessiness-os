@@ -53,7 +53,16 @@ export function complaintCreate(context: ComplaintContext, slaPolicies: readonly
       { name: 'defectCategory', label: '问题分类', required: true, value: 'OTHER' },
       { name: 'occurredAt', label: '问题发生时间', type: 'datetime-local', required: true },
       { name: 'reportedAt', label: '客户反馈时间', type: 'datetime-local', required: true },
-      { name: 'description', label: '问题描述', type: 'textarea', required: true },
+      {
+        name: 'description',
+        label: '问题描述',
+        type: 'textarea',
+        required: true,
+        // TD-OPS-007（2026-11-26 项目所有者裁定，沿用现值）：与迁移 0054 的
+        // CHECK(length(trim(description))>=10) 同值；服务端同样前置校验并按码点计数。
+        minLength: 10,
+        hint: '至少 10 个字符，不计首尾空白。',
+      },
       { name: 'customerRequest', label: '客户诉求', type: 'textarea', required: true },
       { name: 'customerReference', label: '客户凭证编号', required: true },
     ],
@@ -234,6 +243,7 @@ export function complaintNcr(context: ComplaintContext, complaint: FinRow, id: s
         affectedScope: values.affectedScope,
         investigatorId: values.investigatorId,
         quarantinedQuantity: values.quarantinedQuantity,
+        // TD-OPS-006（2026-11-26 裁定）：临时遏制说明留空时发空串，端点原样入库（列是 NOT NULL）。
         temporaryContainment: values.temporaryContainment ?? '',
         complaintExpectedVersion: complaint.version,
         evidence: { reference: values.evidenceReference },

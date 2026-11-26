@@ -345,6 +345,26 @@ describe('inline complaint creation route contracts', () => {
       expect(f.repository.createComplaint).toHaveBeenCalledTimes(2);
     },
   );
+  // TD-OPS-007（2026-11-26 项目所有者裁定，沿用迁移 0054 的现值）：投诉描述去首尾空白后至少
+  // 10 个字符，按码点计数（PostgreSQL length() 口径；🌟 是 1 个字符、2 个 UTF-16 码元）。
+  it('description shorter than 10 code points is rejected before the repository', async () => {
+    for (const description of ['x'.repeat(9), `  ${'x'.repeat(9)}  `, '🌟'.repeat(5)]) {
+      const f = fixture();
+      expect(await f.dispatch({ ...body, description })).toEqual(invalid('问题描述至少 10 个字符'));
+      noCalls(f);
+    }
+  });
+  it('description of exactly 10 code points is accepted and trimmed (boundary)', async () => {
+    for (const description of ['x'.repeat(10), `  ${'x'.repeat(10)}  `, '🌟'.repeat(10)]) {
+      const f = fixture();
+      expect(await f.dispatch({ ...body, description })).toEqual(response(201, result));
+      expect(f.repository.createComplaint).toHaveBeenCalledExactlyOnceWith(
+        { ...input, description: description.trim() },
+        repositoryContext,
+        correlationId,
+      );
+    }
+  });
   it.each(['', 'x'.repeat(129), 'bad!?'])(
     'header %j is ignored and never fallback for body key',
     async (key) => {

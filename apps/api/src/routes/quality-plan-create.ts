@@ -1,6 +1,7 @@
 import { DomainError, type AuthorizationContext } from '@kingturf/domain';
 import type { PermissionKey } from '@kingturf/types';
 import type { ApiDependencies } from '../app.ts';
+import { isUnfilledLimit } from '../blank-text.ts';
 import type { authorizeQuery } from '../policy.ts';
 import { defineRoute, type RouteDefinition } from './types.ts';
 
@@ -69,10 +70,12 @@ function parseCharacteristic(
     name: parsers.string(item.name, 'name'),
     dataType: dataType as Characteristic['dataType'],
     ...(item.unitCode === undefined ? {} : { unitCode: parsers.string(item.unitCode, 'unitCode') }),
-    ...(item.lowerLimit === undefined
+    // TD-OPS-006：规格上下限留空即「不适用」。空串、纯空白与 null 按未传处理——键省略，
+    // 仓储沿用 item.lowerLimit ?? null 存 NULL，与未传时的落库值和规范哈希完全一致。
+    ...(isUnfilledLimit(item.lowerLimit)
       ? {}
       : { lowerLimit: parsers.decimal(item.lowerLimit, 'lowerLimit', false) }),
-    ...(item.upperLimit === undefined
+    ...(isUnfilledLimit(item.upperLimit)
       ? {}
       : { upperLimit: parsers.decimal(item.upperLimit, 'upperLimit', false) }),
     required: item.required,

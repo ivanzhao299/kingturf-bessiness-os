@@ -23,6 +23,25 @@ type CreateContext = Readonly<{
   }>;
 }>;
 
+// TD-OPS-007（2026-11-26 项目所有者裁定，沿用现值）：投诉描述去首尾空白后至少 10 个字符，此前置
+// 校验镜像迁移 0054 的 CHECK(length(trim(description))>=10——此前短描述直接命中该约束返回 500。
+// 按码点计数，与 PostgreSQL 的 length() 同口径：星面字符（emoji 等）是 1 个字符、2 个 UTF-16
+// 码元，按码元数会放行数据库仍拒绝的值。string() 已去首尾空白，入库值即计数所用值。
+export const COMPLAINT_DESCRIPTION_MINIMUM = 10;
+
+const complaintDescription = (
+  value: unknown,
+  parse: CreateContext['parsers']['string'],
+): string => {
+  const description = parse(value, 'description');
+  if (Array.from(description).length < COMPLAINT_DESCRIPTION_MINIMUM)
+    throw new DomainError(
+      'invalid_request',
+      `问题描述至少 ${String(COMPLAINT_DESCRIPTION_MINIMUM)} 个字符`,
+    );
+  return description;
+};
+
 function creationInput(context: CreateContext, body: Record<string, unknown>): CreateInput {
   const p = context.parsers;
   const channel = p.string(body.channel, 'channel');
@@ -60,7 +79,7 @@ function creationInput(context: CreateContext, body: Record<string, unknown>): C
     severity,
     occurredAt: p.timestamp(body.occurredAt, 'occurredAt'),
     reportedAt: p.timestamp(body.reportedAt, 'reportedAt'),
-    description: p.string(body.description, 'description'),
+    description: complaintDescription(body.description, p.string),
     customerRequest: p.string(body.customerRequest, 'customerRequest'),
     ...(body.assignedTo ? { assignedTo: p.uuid(body.assignedTo, 'assignedTo') } : {}),
     initialSnapshot: p.jsonObject(body.initialSnapshot, 'initialSnapshot'),
