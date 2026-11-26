@@ -201,3 +201,11 @@ TD-REL-016 经独立复核后整支合入 **`1f6f3de8b5bbd79fb1c2a6bb6ccc8296309
 下载于 **12:32:48 UTC** 完成，离线核对于 **12:35:29 UTC** 完成。证据均在上述流水线产物根的 `R-original/`：`download-result.json`、`run.json`、`artifact.json`、`transport-source.json`、`archive/export.zip`、`export/`原五件，以及 `offline-verification/result.json`、`oci-verify.log`、`source-verify.log`。两离线日志摘要分别为 `40e85a24ed24c28d775b98cdc607ad6ef68bfe88551695ea9eac98d20c016b3f`、`556ffa85e95a050ffc295957933ba34c94f4a2d5b82cd44aed0f35a483691b9d`。
 
 TD-REL-016的实际导出阻断已解除，成功原始来源已取得；尚未生成演练PASS、迁移批准或B/C应用授权。后继标准smoke须另有独立81-schema数据库；原helper只继承DATABASE_URL，不负责建库／迁移。R预验与最终B smoke分别记账，现有L/77环境继续留给真实恢复，两层恢复和最终发布仍须实际执行。
+
+### 9.2 不可变恢复报告的格式门禁冲突
+
+主协调在准备真实报告入库时，经独立只读定位确认：冻结driver的 `canonical()` 使用 `json.dumps(value, sort_keys=True).encode()`，manual按该原字节保存报告，automatic同时要求C中的报告、消费文件与manual原件原字节相同；当前完整CI与pre-commit均调用Prettier，原.prettierignore未排除此路径。对报告重新排版并重算批准hash仍会破坏automatic的原件绑定。
+
+先登记 **TD-GATE-008（P2）**，主协调按既有技术授权拟独立修复格式口径。**2026-11-26 12:46:03 UTC**，以09e518f项目的实际Prettier3.8.1，在外部新私有夹具目录调用真实冻结canonical函数，将 `kind: format_boundary_probe`、`real_recovery_report: false` 的非报告JSON放入规定模式的report.json路径，格式检查真实退出 **1**，fixture原字节不变。该夹具不是恢复报告，不含PASS、认证写或批准字段；完整路径／命令结果／摘要位于 `integration-artifacts/report-format-gate/legacy-red.json`、`legacy-red.log`，夹具SHA-256 `4dc44121fb7a78868e684cb66b994fc53909c1f34808206511448b24bcabb9e7`。
+
+本登记时修复尚未实施。拟仅在既有.prettierignore加入 `release-materials/compatible-recovery/*/report.json`，以保留真实原件字节；批准、descriptor与transport-source继续接受格式检查，实际内容／时序／来源／hash仍经严格材料门。原tar/source.bundle由成功artifact供给，最终C显式核对并暂存四selection JSON。
