@@ -2,7 +2,9 @@
 
 [TD-COMX-003 已取消的商机不算逾期](evidence/comx-003-cancelled-overdue-2026-11-26.md) 记录商机逾期口径收敛到共享判定（CANCELLED 与 WON/LOST 同口径）、先红后绿的测试对照、Web 全量 1025/1025 与双视口走查及定向截图实测。
 
-[标准smoke的隔离执行边界](evidence/ux-wave-integration-2026-11-26.md#12-标准-smoke-的隔离夹具与执行裁定)与[恢复证据§15](evidence/forward-recovery-2026-11-26.md#15-标准-smoke-外部夹具的执行边界)记录C0原helper、独立81测试PG与L77分离、初稿74712ee8静态阻断、真实完整ID清理代理／Python隔离约束及R真实输入seal；新入口待最终复核后实跑，当前没有R/B smoke或恢复PASS。
+[最终业务候选B与完整CI](evidence/ux-wave-integration-2026-11-26.md#14-glm-四任务集成与最终业务候选-b)：指定GLM四任务全部集成，B固定120d6fc；独立完整CI退出0／981.37秒（API18,387、Web1,065、UI101、operations264零skip），81迁移FULLY_MATCHED、49个production文件摘要已封存，已推main且主检出干净。[B成功原物料与应用包](evidence/ux-wave-integration-2026-11-26.md#15-b-成功原物料与独立演练应用包)记录成功run45841385764／artifact15129005730、原件／OCI／Git／81 SQL验证及本地独立应用tar；原Web镜像全部49应用文件与CI／浏览器字节全等。[最终production字节浏览器](evidence/ux-wave-integration-2026-11-26.md#16-b-production-字节的最终浏览器验收)三轮P1各11/11、双视口45路由／23真抽屉／3筛选、六流程32必须及32探针通过，148图保留、14图抽样目检，UI023/024仍可见。尚未部署；商机双空关联500按源码链登记TD-COMX-004，原HTTP响应未留存，留待另批。
+
+[标准smoke的隔离执行边界](evidence/ux-wave-integration-2026-11-26.md#12-标准-smoke-的隔离夹具与执行裁定)与[首轮失败及探针修正](evidence/ux-wave-integration-2026-11-26.md#13-r-标准-smoke-首轮失败与端口探针修正)保留e250真实R首轮FAILED：OCI导入0后、PG创建前端口探针误判TIME_WAIT，未启动迁移／应用，L77未变。主协调真实最小复现后，新夹具77c4以SO_REUSEADDR→bind→listen收口；本机TCP旧五项三红、新5/5绿及原37边界、R静态门通过，独立复核准入第二轮。首轮不覆盖；§13.1保留77c4第二轮FAILED：PG创建后、start前误判空Mounts，原helper／迁移未跑，L77未变；完整ID精确清理及真实三态tmpfs观察独立留档，继续同批修夹具。当前没有R/B smoke或恢复PASS。[恢复证据§15](evidence/forward-recovery-2026-11-26.md#15-标准-smoke-外部夹具的执行边界)保留原C0和L77隔离裁定。
 
 [供应商初焦批集成复验](evidence/ux-wave-integration-2026-11-26.md#10-供应商初焦批集成与定向复验)：GLM交付3882d01合入acbdf0f，产品代码零改，合并后目标测试20/20轮、每轮19例；所有者首节与交付测试／证据原字节保持。独立既有随机碰撞间歇登记TD-TEST-041、未顺手修。[远端与生产公开基线](evidence/ux-wave-integration-2026-11-26.md#11-远端检查与生产公开基线)记录1f远端CI／CodeQL success及公开三端点200、生产仍为L；后继最终CI／真实恢复／发布继续另验。
 

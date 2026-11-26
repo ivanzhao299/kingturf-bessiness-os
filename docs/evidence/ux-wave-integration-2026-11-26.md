@@ -238,4 +238,50 @@ TD-REL-016的实际导出阻断已解除，成功原始来源已取得；尚未�
 
 主协调裁定仅在新夹具中收口：helper进程使用窄的真实Docker策略代理，首次真实run返回的完整CID排他绑定，原按名删除转为经身份核验的该CID操作；未知替换不认领，所有拒绝／未确认独立持久记录并否决成功，不能被原trap的 `|| true` 吞掉。PG按原绑定完整ID实际确认不存在，各资源分开收据且PG进入独立finally；worker的可控SIGTERM进入统一teardown，无法确认送达／强杀不冒称已清理。读取物料的helper子Python经可信启动器使用真实绝对解释器 `-I -B`，工作目录为可信`/`。所有Docker／HTTP／CLI仍须真实执行；原helper、五固定控制和四冻结driver字节保持。此为测试资源与解释器的执行约束，不能用替身结果替代真实R/B smoke。
 
-R的真实输入已单独封存为 `wave4/original-image-smoke-launcher-inputs/R-45820243736.json`，原字节SHA-256 `a8adc07d701f095aff01522503dc0554f229259d0d263fab1ffed7f38d7fc9c9`，绑定第9节成功原物料；seal仅是输入完整性，不是迁移／应用批准。新入口须待最终冻结源码、边界验证与独立复核通过后，由主协调实际运行。当前没有R预验、B标准smoke或两层恢复PASS；最终B使用自己的成功原物料和独立回执。
+R的真实输入已单独封存为 `wave4/original-image-smoke-launcher-inputs/R-45820243736.json`，原字节SHA-256 `a8adc07d701f095aff01522503dc0554f229259d0d263fab1ffed7f38d7fc9c9`，绑定第9节成功原物料；seal仅是输入完整性，不是迁移／应用批准。本节准备时点尚未实跑，后继首轮失败与窄修复核见§13；最终B使用自己的成功原物料和独立回执。
+
+## 13. R 标准 smoke 首轮失败与端口探针修正
+
+外部入口最终v3 `e25056bc92cd73ba6cd8bccd3f3760a227bcc73ae69af8a69ed6f4029e3f9555` 经37项纯边界、实际R静态输入门及独立复核后，由主协调于 **13:56:20–13:56:26 UTC** 使用第12节a8输入实际执行。退出1、公开结果为FAILED，失败阶段为fresh-tmpfs-test-database、error_type为OSError。原OCI importer实际退出0；PG创建尚未尝试，原helper未调用，迁移与应用均未启动。L三服务身份与77登记（含applied_at）前后不变，未创建的PG和CLI有明确收据；端口可用性未确认，因此该轮不能记作成功。首轮原回执与日志保留在 `integration-artifacts/original-smoke-R-45820243736/` 及 `wave4/original-image-smoke-launcher-artifacts/R-45820243736-coordinator-1/`，没有覆盖为绿态。
+
+**14:03:53–14:03:55 UTC**，主协调在同一绑定outer／daemon内用同C0 importer和同R OCI目录做最小真实复现：导入前四端口均可bind；导入退出0后15432仅有两条TCP state06（TIME_WAIT），没有活动监听；旧探针未设SO_REUSEADDR的裸bind返回errno98，而SO_REUSEADDR后实际bind并listen，四端口全部通过。daemon前后相同；未创建PG、启动应用或停止任何服务。该errno来自后继复现，首轮原日志只记录OSError，不能反填为原日志已含errno。回执 `integration-artifacts/original-smoke-R-45820243736/port-reuse-reproduction.json`；实际transport原字节SHA-256 `42c33345d5bc2a18e02078069fe8bd48523563affad7ffb2d15b16a5b5fc1769` 与首轮一致。
+
+同批只修新夹具，两处探针收敛为SO_REUSEADDR→bind→listen，共享检查仍包含15432；不启用SO_REUSEPORT、不忽略异常、不以等待代替判定。新源码冻结 **`77c4d07a5566a3389525105f2ba3008af52e68f6eba292f08a19a00701de5337`**，相同真实本机TCP五项回归在e250上三红、修后5/5绿，覆盖TIME_WAIT、普通／REUSEADDR／REUSEPORT活动监听拒绝和bind后监听竞争；原37项纯边界、静态audit-help和实际R输入门均通过。独立复核确认其他定义AST与原CID绑定、清理否决、取消及解释器隔离门保持，允许进入第二轮实际运行。证据 `wave4/original-image-smoke-launcher-artifacts/authoring-v4/`，清单SHA-256 `c0c031b42afad14040cacd68c357b9b5679d718e5c7f64f71c0bb54cc7e05739`。此处仍未宣称R第二轮、B标准smoke或两层恢复通过；第二轮使用新目录保留首轮失败。
+
+### 13.1 第二轮 created 态 tmpfs 守卫误判
+
+**14:47:23–14:47:27 UTC**，主协调以77c4入口、同a8输入、新目录coordinator-2实际重跑，仍退出1／FAILED。端口检查通过、原OCI导入0；独立PG实际create返回完整ID，但在start前的scope守卫被拒绝，helper／CLI迁移尚未执行。原回执保留owned_pg_cleanup_unconfirmed，不改成成功；L77身份与登记仍未变。原件 `integration-artifacts/original-smoke-R-45820243736-attempt-2/` 与 `wave4/original-image-smoke-launcher-artifacts/R-45820243736-coordinator-2/`。
+
+只读核完整PG ID及原ledger确认：状态created、从未Started，image/name/labels/Cmd/network与唯一HostConfig.Tmpfs全部匹配，无Binds或显式Mounts，但inspect.Mounts为空，原守卫要求恰一tmpfs条目而提前拒绝。主协调经逐项身份／零启动／无其他挂载证明后仅rm该完整ID，后继核完整ID和原名均不存在；独立coordinator-cleanup.json与cleanup-reconciliation.json不改原失败回执。额外清理诊断初次已完成rm，但收据代码对Docker小写`error: no such object`作大小写敏感检查而退出1，已按真实状态重新核账，并非重试按名删除。
+
+**14:52:00–14:52:04 UTC**，主协调用同PG镜像、相同tmpfs参数、network=none的新自有sleep容器做真实生命周期观察：created/running/exited三个阶段Mounts均为空，HostConfig.Tmpfs始终唯一正确；running内实际`stat -f -c %T`返回tmpfs。未运行PG服务、SQL或应用，探针按完整CID清理并核不存在。原始 `tmpfs-lifecycle.json` 供同批守卫窄修与独立复核；不能据此记标准smoke通过。
+
+## 14. GLM 四任务集成与最终业务候选 B
+
+指定Flash开发、5.4高推理审查的工作流 `dwfrun-90756d55-0ac2-4d83-b5a3-6774d655cd3a` 四任务均完成。A发布摘要修复与B目录批已在先前检查点集成；C初焦代码与证据见§10；D `f5962130997ed6f6db8ee703cd55bf32db14e993` 代码合入b525308，`f9c93cc93a11d35f93bf32ea44f5b388837db178` 文档合入120d6fc。文档合并保留所有者首节与其他债务，证据文件与交付原字节一致。D两张定向截图均为桌面，另有双视口路由走查；主协调已读图确认CANCELLED及过期日期可见而无逾期标记。独立商机双空关联缺口按R4后继登记TD-COMX-004，真实HTTP响应未留存，不改本候选。
+
+**14:14:05 UTC**，最终业务候选固定为 **B=`120d6fc55b60496b535dc1beb3ae270709ed3836`**，Git tree=`bba579a2e3c085543cc33e8352549fad15be7bc7`。81迁移清单SHA-256仍为 `7fc59f4afbab4ac65e5240fc8ee14d5482f115710adc9880c441a1470ef57994`，六控制与1f原字节一致；R与1f均为B祖先。冻结回执 `integration-artifacts/frozen-B-120d6fc/freeze.json` 保留其当时pending状态，不重写为事后通过。
+
+**14:14:53–14:31:14 UTC**，独立干净B工作树完整 `pnpm ci:local` 实际退出 **0／981.37秒**：API **18,387／212文件**、Web **1,065／67文件**、config71、database79、domain26、types5、UI101，operations **264／零skip**；81项FULLY_MATCHED。前后HEAD相同、受跟踪树干净。日志SHA-256 `3c588aab59ba05771ebe9db3e18ae495d5ffcffcb062c2542a6c8b620a793975`；本次production构建全部 **49文件** 的规范摘要为 `2f51becb847a366c43e81ee4776b19325fbc29b444b28eec1a9aca1525f9e7b6`。原回执及文件map在 `integration-artifacts/ci-120d6fc/`；不以1f旧构建替代B。
+
+**14:39:58 UTC**，核main与远端仍为1f且干净后，非force推送B并独立核远端完整SHA，主检出ff-only至B且干净。回执 `integration-artifacts/publish-120d6fc.json`。随后仅调度镜像原物料 [run45841385764](https://github.com/ivanzhao299/kingturf-bessiness-os/actions/runs/45841385764)，输入及导出控制均为B；最终production文件浏览器验收并行启动。实际后继结果见§15–16，未执行production部署。
+
+## 15. B 成功原物料与独立演练应用包
+
+B images **run45841385764／attempt1／job139983666702** 整体success，watch退出0，成功原artifact **15129005730** 于14:42:51 UTC取回。ZIP SHA-256 `fae494fb0ab5f71080c84c233f2435b378e2c578772ab229a68cfdb201431603`；原tar `084c42c87f2378bc4722e5ad9220bc8748b9a496f6857861d447dab9688cdbe7`；source.bundle `2431626537e0c00ed6f8475c7a60188cee0af4403992897a072f92b0bce795d4`；release.json `8d7253e2bbf82abaab367e747bd929e7d1b2b9d05554e02959e9b42e203f6d46`；provenance `f626d0422d2e5eea043fa5c72f6484499fe45fc770852e1b8312936e5be3d93a`。81清单仍为7fc59f4a…；M/E/B均为完整120d6fc SHA。双根digest为API **`sha256:5bdc43edb2d21ac4aada95b00930877e05920fbf2e867638535dced84e5527db`**、Web **`sha256:1a1f4336c4c66564c74953c6e09681880c8a819173e3e60d276b5bd319b2fa1b`**。
+
+**14:46:22–14:46:26 UTC**，对五原件重新核hash，安全解包40项、57,499,853B，以C0原OCI verify核全部blob；source.bundle在禁hooks／全局配置的独立bare数据仓库自包含验证、fsck通过，恰main/recovery两ref均指B，L≤B≤M。由真实B Git对象重算81项SQL，与原manifest完全相同，没有执行bundle源码。回执 `integration-artifacts/image-builds-120d6fc/B-original/offline-verification/result.json`；OCI日志SHA-256 `08aeedbf658ee50051d687dcff8b2ede32cf503a9e6d04020037a63cb841a343`，source日志 `59a0e8a763835f88014fd56c74cc01e8e05b6fe67e4a5ac9fe988f8e4b3c11c1`。
+
+**14:59:05 UTC**，由已验证Web OCI的linux/amd64四层实际重建静态根，仅将普通数据文件写入新目录；逐层压缩digest和uncompressed diff_id再次核对，按whiteout规则处理，未执行镜像。完整50文件中49个应用文件与本次B CI／浏览器构建原字节逐项相同，规范摘要仍为2f51becb…，另一个是保留的50x.html。原文件、逐文件map及回执 `integration-artifacts/image-builds-120d6fc/B-static-assets-from-OCI/`。首次尝试误用了不存在的oci/web目录，尚未比较文件即退出；依原load_bundle的root/service契约与真实清单更正为root/web后完成，不把首次路径错误称为镜像差异。
+
+原export tar不含恢复driver要求的四controls，不能直接冒称application包。**14:53:38 UTC**，在独立新目录用固定C0安全解包原tar、确认所有原文件inventory相同，仅加入C0四controls，按原workflow tar步骤制作 **独立本地演练应用包**：`integration-artifacts/rehearsal-B-120d6fc/candidate-application.tar.gz`，SHA-256 **`8bf6da9a4e2be7a84ef75376913f85e3812d00604695b65beaa7c8cbb1a44310`**。原tar摘要不变；没有生成authorization或smoke PASS。manual及automatic必须消费这同一应用tar原件／摘要和上述双digest。实际manual SPEC经冻结纯输入contract校验，SHA-256 `36d5e31bcef5df740a069d18a9ffe8fc29254768d19cc2b25202dedfbe933ef4`，仅表示输入就绪，尚未执行恢复。
+
+正式workflow会另加入实际transport、C1兼容材料与新窗口应用授权再打第三种tar，必须核其新sidecar及实际双digest；同B源码SHA不能代替这些核对。应用authorization本身检查B/C、范围／窗口及真实smoke，不含tar摘要受检字段；演练由SPEC分别绑定包与授权摘要，正式传输由整体tar sidecar及独立controls／OCI门绑定，不能说三种tar是同一原件。
+
+## 16. B production 字节的最终浏览器验收
+
+**14:40:20–14:45:36 UTC**，在干净detached B120d CI工作树运行既有e2e-local，前后完整49文件map与本次CI一致且未变：P1原11例 **三轮各11/11**；1440×900与390×844各 **45/45路由、23真实抽屉、3筛选**，失败／跳过／抽屉和筛选错误均0；六写流程 **6/6、32必须步骤全部通过、32探针全部clean**。所有执行步骤（含down）退出0，HEAD／clean不变，合成creds/state及自有容器均移除。API为此专用本地测试栈，不把它说成production登录或库验证。
+
+原回执、日志及 **148张截图（每视口74张）** 保留于 `integration-artifacts/browser-120d6fc-20261126T144020Z/`。只读独立复核逐Read指定七组场景的桌面／手机 **14张原图**：商机页与商机抽屉、采购单抽屉、BOM抽屉、供应商抽屉、质检抽屉、发货页；主协调另读商机两视口原图。其余134张未在本次逐张人工审阅，自动量测不冒称全图人工验收。
+
+已知 **TD-UI-024仍可见**：手机质检详情的12000拆成1200／0、合格拆行，桌面完整；**TD-UI-023同形态**在桌面发货四模板卡的「仅下载」拆成「仅下／载」。UI021/022不在本次14图样本，保持原台账结论；没有顺手修或记为已清。发货样本为空列表，手机供应商卡片下部未显示，静态图不能证明这些区段交互／有数据时滚动已经验收。首次一项文档lint误从主检出执行，不作集成回执；后继显式cwd=integration的format/doc-lint均退出0，记录在 `integration-artifacts/candidate-ci-documentation/`，所有者首节原字节保持。

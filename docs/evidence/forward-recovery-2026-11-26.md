@@ -441,4 +441,12 @@ TD-REL-016 在本独立批交付时为**本机修复与验证完成，待主协�
 
 原标准helper不建库／迁移，需在既有受控outer／inner daemon内另建独立81-schema测试PG，保留L/77供真实恢复。R与最终B各自消费同一原tar／双digest绑定的成功来源，各有独立smoke回执；不能把manual中的内部B探针或R认证写报告填成B标准smoke。
 
-新外部入口初稿74712ee8经独立静态审查发现按名trap、清理未确认及取消出口阻断，尚未接受或实跑。主协调已裁定通过仅限helper的真实Docker完整ID策略代理与真实Python `-I -B` 启动器收口，并要求拒绝／未确认否决成功、逐资源收据与PG finally；原C0 helper／控制／冻结driver字节保持。精确输入seal、初稿hash、原始静态证据与执行约束见[集成验收§12](ux-wave-integration-2026-11-26.md#12-标准-smoke-的隔离夹具与执行裁定)。此处是执行前边界记录，当前不含R/B smoke或两层恢复PASS。
+新外部入口初稿74712ee8经独立静态审查发现按名trap、清理未确认及取消出口阻断，尚未接受或实跑。主协调已裁定通过仅限helper的真实Docker完整ID策略代理与真实Python `-I -B` 启动器收口，并要求拒绝／未确认否决成功、逐资源收据与PG finally；原C0 helper／控制／冻结driver字节保持。精确输入seal、初稿hash、原始静态证据与执行约束见[集成验收§12](ux-wave-integration-2026-11-26.md#12-标准-smoke-的隔离夹具与执行裁定)。此处是执行前边界记录，后继真实运行见§16。
+
+## 16. 最终 B 原物料与两轮标准 R smoke 失败
+
+最终业务B固定120d6fc（完整SHA／tree见[集成验收§14](ux-wave-integration-2026-11-26.md#14-glm-四任务集成与最终业务候选-b)），完整CI退出0／981.37秒，API18,387、Web1,065、operations264零skip、81 FULLY_MATCHED。成功images run45841385764／artifact15129005730的五原件、OCI、source.bundle及81源SQL均核验；原Web镜像49应用文件与实际CI／production字节浏览器全部相同。最终浏览器P1三轮各11/11、双视口45/45路由与六写流程通过；148原图保留、14图抽样目检，UI023/024仍可见，未据自动量测宣称视觉全零。
+
+为满足冻结driver包形状，从B原导出tar新建独立演练应用tar，只加入固定C0四controls，所有原文件字节及原tar不变；新包SHA-256 `8bf6da9a4e2be7a84ef75376913f85e3812d00604695b65beaa7c8cbb1a44310`，不冒称GitHub原application artifact，没有生成授权或PASS。manual与automatic必须复用这同一包及双digest，正式发布包则另核新sidecar和实际digest。来源、全部摘要与格式绑定边界见[集成验收§15](ux-wave-integration-2026-11-26.md#15-b-成功原物料与独立演练应用包)。
+
+标准R实跑第一轮e250在OCI导入后、PG创建前被无reuse端口探针误判TIME_WAIT；同批77c4修正后第二轮已创建独立PG，但Docker实际Mounts为空、唯一tmpfs在HostConfig中，start前的守卫误判。两轮均FAILED，helper／迁移未执行，L77身份及登记不变；首轮与第二轮原回执不覆盖。第二轮未启动PG经完整身份／配置证明后仅按完整CID清理并确认不存在，另有新自有容器的真实created/running/exited三态与实际FS=tmpfs观察，供窄修。失败、诊断、精确清理及独立复核见[集成验收§13](ux-wave-integration-2026-11-26.md#13-r-标准-smoke-首轮失败与端口探针修正)。本节时点没有R/B标准smoke或两层恢复PASS，也未生成C1批准或执行生产部署。
