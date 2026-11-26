@@ -52,3 +52,58 @@
   min-width: 35rem;
   table-layout: auto;
 }
+
+/* TD-PROC-021：登记供应商报价的供应商候选（单选钮 + 状态徽章）。字号、字重与边框取相邻表单
+   字段（.form-field）的同值，看上去是同一张表单里的一个字段；候选多时在框内滚动。 */
+.sq-supplier-picker {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  margin: 0 0 var(--kt-space-3);
+}
+
+.sq-supplier-picker-label {
+  color: #44564d;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.sq-supplier-candidates {
+  display: grid;
+  gap: var(--kt-space-1);
+  max-height: 13rem;
+  overflow-y: auto;
+  padding: var(--kt-space-2);
+  border: 1px solid #d6dfda;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.sq-supplier-candidate {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--kt-space-2);
+  min-width: 0;
+  min-height: 32px;
+  color: #24362e;
+  cursor: pointer;
+}
+
+.sq-supplier-candidate.blocked {
+  color: #75877f;
+  cursor: not-allowed;
+}
+
+.sq-supplier-candidate input {
+  flex: 0 0 auto;
+  width: auto;
+  min-height: 0;
+  margin: 0;
+}
+
+.sq-supplier-candidate-name {
+  flex: 1 1 8rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

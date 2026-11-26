@@ -19,10 +19,12 @@ export function appendSupplierQuoteConsole(
     initialQuotes: controller.views.get(QUOTES) ?? [],
     rfqs: perView(controller.views, RFQS, (rows) => rows),
     // Legacy options include every readable supplier. Existing write guards enforce eligibility.
+    // TD-PROC-021：候选清单不变，每一家带上状态；暂停 / 已停用的照常列出，但不可被选中。
     suppliers: perView(controller.views, SUPPLIERS, (rows) =>
       rows.map((row) => ({
         value: context.ports.recordText(row, 'id', 'id'),
         label: context.ports.recordText(row, 'name', 'name'),
+        status: context.ports.recordText(row, 'status', 'status'),
       })),
     ),
     fetchPage: (query) => finReadPage(controller.api.get, QUOTES, query),
