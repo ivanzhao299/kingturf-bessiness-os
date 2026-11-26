@@ -325,10 +325,50 @@ jobs:
           STAGED="/data/kingturf-erp/.staging/wave2-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
           sha256sum scripts/apply_migrations.py > "$RUNNER_TEMP/apply-bytes.sha256"
           ssh_transport="ssh -o BatchMode=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -o KexAlgorithms=curve25519-sha256 -p $PROD_SSH_PORT"
-          ssh -o BatchMode=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -o KexAlgorithms=curve25519-sha256 -p $PROD_SSH_PORT "$PROD_SSH_USER@$PROD_SSH_HOST" "set -eu; rm -rf '$STAGED'; mkdir -m 700 -p '$STAGED/migrations''; test "$(stat -c %a '$STAGED')" = 700 && test "$(stat -c %U '$STAGED')" = "$PROD_SSH_USER" && test -z "$(find '$STAGED' -type l)" && printf x '"
+          [[ "$GITHUB_RUN_ID" =~ ^[1-9][0-9]*$ && "$GITHUB_RUN_ATTEMPT" =~ ^[1-9][0-9]*$ ]]
+          [[ "$PROD_SSH_USER" =~ ^[a-z_][a-z0-9_-]*$ ]]
+          ssh -o BatchMode=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o KexAlgorithms=curve25519-sha256 -p "$PROD_SSH_PORT" "$PROD_SSH_USER@$PROD_SSH_HOST" \
+            "bash -s -- '$STAGED' '$PROD_SSH_USER'" <<'REMOTE_STAGE'
+          set -euo pipefail
+          staged=$1
+          expected_owner=$2
+          [[ "$staged" =~ ^/data/kingturf-erp/\.staging/wave2-[1-9][0-9]*-[1-9][0-9]*$ ]]
+          test "$(id -un)" = "$expected_owner"
+          for parent in /data /data/kingturf-erp /data/kingturf-erp/.staging "$staged"; do
+            test ! -L "$parent"
+          done
+          if [ -e "$staged" ]; then
+            test -d "$staged"
+            test "$(stat -c %U "$staged")" = "$expected_owner"
+          fi
+          umask 077
+          rm -rf -- "$staged"
+          mkdir -m 700 -p -- "$staged/migrations"
+          for directory in "$staged" "$staged/migrations"; do
+            test "$(stat -c %a "$directory")" = 700
+            test "$(stat -c %U "$directory")" = "$expected_owner"
+          done
+          test -z "$(find "$staged" -type l -print -quit)"
+          REMOTE_STAGE
           rsync -az --partial -e "$ssh_transport" scripts/apply_migrations.py scripts/release_orchestrator.py scripts/production_preflight.py "$PROD_SSH_USER@$PROD_SSH_HOST:$STAGED/"
           rsync -az --partial -e "$ssh_transport" .candidate/packages/database/migrations/ "$PROD_SSH_USER@$PROD_SSH_HOST:$STAGED/migrations/"
-          ssh -o BatchMode=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -o KexAlgorithms=curve25519-sha256 -p $PROD_SSH_PORT "$PROD_SSH_USER@$PROD_SSH_HOST" "set -eu; cd '$STAGED'; sha256sum apply_migrations.py | grep -q \"$(cat "$RUNNER_TEMP/apply-bytes.sha256" | cut -d' ' -f1)\"; ls migrations/*.sql | wc -l | grep -qx $EXPECTED_AFTER"
+          apply_sha=$(cut -d ' ' -f1 "$RUNNER_TEMP/apply-bytes.sha256")
+          [[ "$apply_sha" =~ ^[0-9a-f]{64}$ && "$EXPECTED_AFTER" =~ ^[1-9][0-9]*$ ]]
+          ssh -o BatchMode=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o KexAlgorithms=curve25519-sha256 -p "$PROD_SSH_PORT" "$PROD_SSH_USER@$PROD_SSH_HOST" \
+            "bash -s -- '$STAGED' '$apply_sha' '$EXPECTED_AFTER'" <<'REMOTE_VERIFY'
+          set -euo pipefail
+          staged=$1
+          expected_sha=$2
+          expected_after=$3
+          chmod 700 "$staged/migrations"
+          test "$(stat -c %a "$staged")" = 700
+          test "$(stat -c %a "$staged/migrations")" = 700
+          test -z "$(find "$staged" -type l -print -quit)"
+          test "$(sha256sum "$staged/apply_migrations.py" | cut -d ' ' -f1)" = "$expected_sha"
+          shopt -s nullglob
+          files=("$staged/migrations/"*.sql)
+          test "${#files[@]}" -eq "$expected_after"
+          REMOTE_VERIFY
       - name: Stage approved recovery material under production lock
         if: steps.plan.outputs.has_pending == 'true'
         run: |
