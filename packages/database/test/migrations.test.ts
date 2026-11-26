@@ -113,6 +113,62 @@ describe('identity and authorization migration', () => {
     );
   });
 
+  // MG2（TD-MFG-014）：迁移 0078 给「已发布版本的子行不可变」守卫加上 INSERT 分支，并把三个
+  // 冻结触发器改成 BEFORE INSERT OR UPDATE OR DELETE。机械比对：去掉注释后的 0078 全文 =
+  // 0036 里 protect_published_manufacturing_child 的原定义（CREATE FUNCTION 换成
+  // CREATE OR REPLACE FUNCTION，并在 BEGIN 之后插入唯一的 INSERT 分支）+ 六条触发器重建
+  // 语句——其余每个字节都相同，UPDATE / DELETE 分支逐字不变（真库行为见
+  // apps/api/test/manufacturing-published-child-postgres.integration.test.ts）。
+  it('0078 is the 0036 child guard with exactly one added INSERT branch (TD-MFG-014)', async () => {
+    const read = (name: string) => readFile(join(process.cwd(), 'migrations', name), 'utf8');
+    const statements = (await read('0078_manufacturing_published_child_insert_guard.sql'))
+      .split('\n')
+      .filter((line) => !line.trimStart().startsWith('--'))
+      .join('\n')
+      .trim();
+    const legacy = await read('0036_manufacturing_master_data.sql');
+    const definition =
+      /CREATE FUNCTION protect_published_manufacturing_child\(\)[\s\S]*?END \$\$;/u.exec(
+        legacy,
+      )?.[0];
+    if (!definition) throw new Error('0036 child guard definition not found');
+    const anchor = 'DECLARE published boolean;\nBEGIN\n';
+    // 锚点在原定义里恰好出现一次（替换不会落空，也不会多改）。
+    expect(definition.split(anchor)).toHaveLength(2);
+    const insertBranch = [
+      "  IF TG_OP='INSERT' THEN",
+      "    IF TG_TABLE_NAME='manufacturing_bom_lines' THEN SELECT v.status='PUBLISHED' INTO published FROM manufacturing_bom_versions v WHERE v.id=NEW.bom_version_id AND v.tenant_id=NEW.tenant_id;",
+      "    ELSIF TG_TABLE_NAME='manufacturing_bom_substitutes' THEN SELECT v.status='PUBLISHED' INTO published FROM manufacturing_bom_lines l JOIN manufacturing_bom_versions v ON v.id=l.bom_version_id AND v.tenant_id=l.tenant_id WHERE l.id=NEW.bom_line_id AND l.tenant_id=NEW.tenant_id;",
+      "    ELSE SELECT v.status='PUBLISHED' INTO published FROM manufacturing_routing_versions v WHERE v.id=NEW.routing_version_id AND v.tenant_id=NEW.tenant_id; END IF;",
+      "    IF published THEN RAISE EXCEPTION 'published manufacturing versions are immutable, child rows cannot be added, continue with a new draft version instead'; END IF;",
+      '    RETURN NEW;',
+      '  END IF;',
+    ].join('\n');
+    const function0078 = definition
+      .replace('CREATE FUNCTION', 'CREATE OR REPLACE FUNCTION')
+      .replace(anchor, `${anchor}${insertBranch}\n`);
+    const triggers = (
+      [
+        ['manufacturing_bom_line_frozen', 'manufacturing_bom_lines'],
+        ['manufacturing_bom_substitute_frozen', 'manufacturing_bom_substitutes'],
+        ['manufacturing_routing_operation_frozen', 'manufacturing_routing_operations'],
+      ] as const
+    )
+      .flatMap(([trigger, table]) => [
+        `DROP TRIGGER ${trigger} ON ${table};`,
+        `CREATE TRIGGER ${trigger} BEFORE INSERT OR UPDATE OR DELETE ON ${table} FOR EACH ROW EXECUTE FUNCTION protect_published_manufacturing_child();`,
+      ])
+      .join('\n');
+    expect(statements).toBe(`${function0078}\n${triggers}`);
+    // 没有别的语句：只重建这三个触发器，不改表、类型、发布守卫与数据。
+    expect(statements.match(/CREATE OR REPLACE FUNCTION/gu)).toHaveLength(1);
+    expect(statements).not.toMatch(
+      /ALTER\s+TYPE|ADD\s+VALUE|CREATE\s+TYPE|DROP\s+TABLE|DROP\s+FUNCTION|DROP\s+TYPE|ALTER\s+TABLE|\bUPDATE\s+\w+\s+SET\b|\bDELETE\s+FROM\b|\bINSERT\s+INTO\b|validate_manufacturing_publish/iu,
+    );
+    expect(statements.match(/^CREATE TRIGGER /gmu)).toHaveLength(3);
+    expect(statements.match(/^DROP TRIGGER /gmu)).toHaveLength(3);
+  });
+
   it('0073 adds only the must-change flag column (A1)', async () => {
     const sql = await readFile(
       join(process.cwd(), 'migrations/0073_credential_must_change.sql'),
@@ -125,7 +181,7 @@ describe('identity and authorization migration', () => {
   it('adds E11-E17 only after 0025 with immutable exact-pin ledgers', async () => {
     const files = (await import('node:fs/promises')).readdir(join(process.cwd(), 'migrations'));
     const ordered = (await files).filter((name) => name.endsWith('.sql')).sort();
-    expect(ordered.at(-1)).toBe('0077_po_partial_receipt_transition.sql');
+    expect(ordered.at(-1)).toBe('0078_manufacturing_published_child_insert_guard.sql');
     const sql = await readFile(
       join(process.cwd(), 'migrations/0026_quote_to_cash_immutable_ledger.sql'),
       'utf8',
