@@ -22,6 +22,8 @@
 
 客户抽屉联系人区新增「添加联系人」入口（customer:update 门）+ 表单（姓名必填、title/email/phone、primary 下拉）——经 `controller.createContact`（新增 additive 方法走 legacy POST 轨 web 面，保持与 360 刷新联动）。**联系人呈现保持 360 抽屉内**（U3-CRM-2 已交付，本批零迁移 DOM 变更）。
 
+> **更正（2026-11-26）**：本批交付的「添加联系人」入口与表单位于 `appendCustomerConsole`，而该函数在提交 `7750b34` 时没有调用点（挂载是 `49ab218`，2026-11-21），所以这项呈现面增强在本批提交时生产不可达，`49ab218` 之后才可见。数据面端点与契约不受影响。依据提交：`7750b34`、`49ab218`；见 [crm-followup-credit-2026-11-26](crm-followup-credit-2026-11-26.md) 第 5 节。
+
 ## 3. 测试
 
 - fastify inject `contacts.test.ts`（7 例：sensitive 门开/关、详情命中+404、POST 归一化载荷、负例四类 legacy 消息、CRM-matcher 门属 legacy 轨说明、DomainError 映射）。
