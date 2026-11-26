@@ -213,11 +213,6 @@ dialog .dialog-actions {
   color: #c0392b;
   font-size: var(--kt-font-size-body);
 }
-.data-table .data-table-empty {
-  padding: var(--kt-space-7) var(--kt-space-4);
-  text-align: center;
-  color: var(--kt-muted);
-}
 .data-table .data-table-loading {
   padding: var(--kt-space-4);
   text-align: center;
@@ -395,17 +390,6 @@ dialog .dialog-actions {
   align-items: center;
   padding: var(--kt-space-2, 8px) 0;
 }
-.console-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--kt-space-2, 8px);
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--kt-space-3, 12px) 0;
-  border-bottom: 1px solid var(--kt-border, #dce6e0);
-  margin-bottom: var(--kt-space-3, 12px);
-}
-
 /* ===== ActionBar ===== */
 .action-bar {
   display: flex;
@@ -469,62 +453,12 @@ dialog .dialog-actions {
   padding: var(--kt-space-7) var(--kt-space-4);
   text-align: center;
 }
-.empty-state .empty-state-icon {
-  font-size: 40px;
-  margin-bottom: var(--kt-space-3);
-  opacity: 0.4;
-}
-.empty-state .empty-state-title {
-  font-size: var(--kt-font-size-lead);
-  color: var(--kt-ink);
-  font-weight: 500;
-  margin: 0 0 var(--kt-space-1);
-}
-.empty-state .empty-state-description {
-  font-size: var(--kt-font-size-body);
-  color: var(--kt-muted);
-  margin: 0 0 var(--kt-space-3);
-  max-width: 320px;
-}
-
 /* ===== FormSection ===== */
 .form-section {
   display: flex;
   flex-direction: column;
   gap: var(--kt-space-3);
 }
-.form-section .form-section-label {
-  font-size: var(--kt-font-size-body);
-  font-weight: 500;
-  color: var(--kt-ink);
-}
-.form-section .form-section-label .required {
-  color: #c0392b;
-  margin-left: 2px;
-}
-.form-section .form-section-input {
-  padding: var(--kt-space-2) var(--kt-space-3);
-  border: 1px solid var(--kt-border);
-  border-radius: var(--kt-radius-md);
-  font-size: var(--kt-font-size-body);
-  color: var(--kt-ink);
-  background: var(--kt-surface);
-  transition:
-    border-color 0.15s,
-    box-shadow 0.15s;
-  outline: none;
-}
-.form-section .form-section-input:focus {
-  border-color: var(--kt-primary);
-  box-shadow: 0 0 0 3px var(--kt-primary-soft);
-}
-.form-section .form-section-input[aria-invalid='true'] {
-  border-color: #c0392b;
-}
-.form-section .form-section-input::placeholder {
-  color: var(--kt-muted);
-}
-select.form-section .form-section-input,
 .form-section select {
   padding: var(--kt-space-2) var(--kt-space-3);
   border: 1px solid var(--kt-border);
@@ -567,38 +501,6 @@ select.form-section .form-section-input,
   max-height: 320px;
   overflow-y: auto;
 }
-.tree-select .tree-select-item {
-  display: flex;
-  align-items: center;
-  gap: var(--kt-space-2);
-  padding: var(--kt-space-2) var(--kt-space-3);
-  cursor: pointer;
-  font-size: var(--kt-font-size-body);
-  color: var(--kt-ink);
-  border-bottom: 1px solid var(--kt-border);
-}
-.tree-select .tree-select-item:last-child {
-  border-bottom: none;
-}
-.tree-select .tree-select-item:hover {
-  background: var(--kt-surface-soft);
-}
-.tree-select .tree-select-item[aria-selected='true'] {
-  background: var(--kt-primary-soft);
-  color: var(--kt-primary-strong);
-  font-weight: 500;
-}
-.tree-select .tree-select-item .tree-select-expand {
-  background: none;
-  border: none;
-  font-size: 12px;
-  color: var(--kt-muted);
-  cursor: pointer;
-  padding: 0 4px;
-  width: 20px;
-  flex-shrink: 0;
-}
-
 /* ===== SummaryCards ===== */
 /* 列数随容器宽度自适应：每列至少 8.5rem（手机上容器约 312px，恰好排得下两列）。卡片是筛选（按钮）、跳转（链接）或只读块，
    三者同一外观；可点的只在悬停与键盘焦点时变色。主数字用等宽数字（tabular-nums），便于逐卡比较。 */
