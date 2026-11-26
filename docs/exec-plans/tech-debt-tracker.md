@@ -29,7 +29,7 @@
 
 G5 隔离分支以 `4a93003` 为基线，六组只删除能证明无生产匹配的规则，实际 CSS gzip 从 28,659 B 降到 25,673 B（减少 2,986 B，10.42%），JS 仍为 11,753 B。客户旧视图专用规则保留归 CRM 批。旧 25,000 B 下仍超 673 B，已按任务书停报并给出瘦身／拆分／预算三类实测方案。
 
-主协调随后在集成提交 `2faef99` 落盘技术裁定：本波保留 `cssCodeSplit: false` 与 HTML 静态样式链接，真实 CSS gzip 预算设为 27,000 B、JS 保持 12,000 B；用户续做指令明确要求完成该裁定。`861ee16` 将 HTML 静态 stylesheet 与 manifest 入口静态可达 CSS 的归一化去重并集纳入计量，阈值与计量在同一修复提交落地，13 例红绿自测接入根 guardrails。定向门禁全 0（Web 1,024、UI 101），根 guardrails 的 Node 257 与 Python 145 例全过；六组均完成三视口浏览器回归。计量修复前后 48 个 dist 文件（含 20 个 JS/CSS）SHA-256 全同，当前真实 CSS 比 27,000 B 预算低 1,327 B。本分支未跑完整 `pnpm ci:local`，待主协调集成、串行全门禁及发布。 [本批证据](../evidence/gate-005-login-css-budget-2026-11-26.md)
+主协调随后在集成提交 `2faef99` 落盘技术裁定：本波保留 `cssCodeSplit: false` 与 HTML 静态样式链接，真实 CSS gzip 预算设为 27,000 B、JS 保持 12,000 B；主协调通过代理消息要求完成该裁定，未新增项目所有者裁定。`861ee16` 将 HTML 静态 stylesheet 与 manifest 入口静态可达 CSS 的归一化去重并集纳入计量，阈值与计量在同一修复提交落地，13 例红绿自测接入根 guardrails。定向门禁全 0（Web 1,024、UI 101），根 guardrails 的 Node 257 与 Python 145 例全过；六组均完成三视口浏览器回归。计量修复前后 48 个 dist 文件（含 20 个 JS/CSS）SHA-256 全同，当前真实 CSS 比 27,000 B 预算低 1,327 B。本分支未跑完整 `pnpm ci:local`，待主协调集成、串行全门禁及发布。 [本批证据](../evidence/gate-005-login-css-budget-2026-11-26.md)
 
 ## 2026-11-26 制造写路径裁定落地（TD-MFG-012、014、015、017）
 
