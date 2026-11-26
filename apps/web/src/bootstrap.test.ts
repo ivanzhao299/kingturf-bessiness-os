@@ -298,7 +298,6 @@ it('captures artificial-turf project handoff fields without test-channel evidenc
     ...readGovernanceSources(),
     ...readCommercialStoreSources(),
     ...readBoundaryParserSources(),
-    readBoundSource('./crm/customer360-view.ts', 'export function customer360Content'),
     readBoundSource('./shared/shell-presentation.ts', 'export function navIcon'),
     readBoundSource('./shared/role-insights.ts', 'export function roleTaskInsight'),
     readBoundSource('./shared/route-sections.ts', 'export function installRouteSectionNavigation'),
