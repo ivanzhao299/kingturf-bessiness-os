@@ -145,4 +145,4 @@ P1 三轮先执行，写流程最后执行，避免信用写数据改变 P1 固�
 
 真实 Git 树对比确认：新 R 的 apps/api、apps/web 及 config/database/domain/types/ui 的运行源码与 L 原字节相同，packages/testing、根依赖/lock、Compose、nginx 亦不变。原 L 的77条迁移保持，新 R 的81条映射与原 R 全等，规范 SHA-256 仍为 `7fc59f4afbab4ac65e5240fc8ee14d5482f115710adc9880c441a1470ef57994`。静态回执与映射在 `/home/jinhuit/Kingturf/kingturf-coord/wave4/recovery-runtime-81-artifacts/scope.json`、`migrations.json`。首次内联检查因错误假定存在 packages/testing/src 而中止，随后改为完整 packages/testing 差异及全树精确白名单核验，未修改源码；该工具假设错误保留在回执说明，不当作新 R 运行失败或通过。
 
-新 R 已通过集成提交 `e19dfe1` 纳入集成祖先；此合并没有新的文件差异。驱动只会显式更新受信 R 常量并重新冻结，不放宽成任意 SHA。新 R 的实际镜像构建/扫描、成功原始 artifact、完整集成 CI、两层真实恢复和认证写均待执行，当前还没有据新 R 解除发布门禁。
+新 R 已通过集成提交 `e19dfe1` 纳入集成祖先；此合并没有新的文件差异。驱动已仅把受信 R 常量和对应帮助文案更新为新身份，仍要求完整 SHA 精确相等。原21项纯边界回归21/21，四文件语法与两个 audit-help 均通过；这轮没有读取GHR物料、运行Docker或执行恢复。当前四源码快照、测试前后元数据与原始日志另存于 `/home/jinhuit/Kingturf/kingturf-coord/wave4/recovery-rehearsal-controller-artifacts/r-32e705a9-help-v2/`，旧两代证据不覆盖；本代证据清单 SHA-256 为 `8fba9332d1cdf64a0f7d2a466577a14fe0bf6c454926edc1bbced259de7d4a5a`，受信契约文件 SHA-256 为 `5f559c2e30d69515cb2fb7b02750d550c940c5bd8860535cf10730007546869c`。新 R 的实际镜像构建/扫描、成功原始 artifact、完整集成 CI、两层真实恢复和认证写均待执行，当前还没有据新 R 解除发布门禁。
