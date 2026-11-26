@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[发布步骤摘要修复（TD-GATE-006）](evidence/gate-006-release-summary-2026-11-26.md) 记录两处无引号 heredoc 摘要改 printf、静态守卫与 `test:release-guardrails` 接线，以及旧写法缺陷的 bash 对照复现；线上效果待下一次发布验证。
+
 [第十次发布与集成复核 §16](evidence/ux-wave-release-2026-11-24.md#16-第十次发布-5dc88e52026-11-25) 汇总制造版本续写、质量与发货、报价与库存、共享汇总卡，以及两项集成回归的双视口实测。
 
 [OPS-1／OPS-2 质量与交付迁移](evidence/ops1-2026-11-25.md) 记录质检、投诉和发货放行控制台的读写保真、双视口与上线前验证。

@@ -117,11 +117,11 @@ jobs:
             echo "api_digest=${{ steps.api.outputs.digest }}"
             echo "web_digest=${{ steps.web.outputs.digest }}"
           } >> "$GITHUB_OUTPUT"
-          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
-          ## Release image digests (${{ needs.validate.outputs.commit_sha }})
-          - API: `${{ steps.api.outputs.digest }}`
-          - Web: `${{ steps.web.outputs.digest }}`
-          EOF
+          {
+            printf '## Release image digests (%s)\n' '${{ needs.validate.outputs.commit_sha }}'
+            printf -- '- API: `%s`\n' '${{ steps.api.outputs.digest }}'
+            printf -- '- Web: `%s`\n' '${{ steps.web.outputs.digest }}'
+          } >> "$GITHUB_STEP_SUMMARY"
 
   verify:
     needs: [validate, build]
