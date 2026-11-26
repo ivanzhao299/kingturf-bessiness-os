@@ -526,3 +526,75 @@ automatic4于17:02:24实际进入worker，原材料门及安装门通过，17:02
 独立静态核对确定TD-REL-021：外部restore77_apply只等待HTTP探针，立即调用要求三容器Docker healthy的原严格preflight，没有等待Docker健康状态。API保留的健康检查17:02:47.306–47.399退出0，Web从启动到停止只有约2.808秒；Web最早健康日志已滚动、bounded events为空，不能将当前状态反推当时具体断言，也不把StartPeriod误作必然等待时间。缺少健康同步是确定的源码问题，auto4具体触发容器尚未由原日志唯一证明；原错误文本未保留，不补造。
 
 主协调先登记TD-REL-021，授权只在外部driver补精确身份下API/Web Docker healthy等待，保持原生产preflight一次严格判据；保存v3、增加旧红新绿边界后建立v4，原五C1控件、B/R镜像／tar、SQL和批准不改。当前是77-schema停机L，不能将它冒作R81直接新attempt；后继隔离对照与真实R CLI复位会另留原件，原manual报告、旧CLI回执与C1材料不覆盖。复位不是automatic通过，不伪造COMPLETED或改schema_migrations。此处仅登记和执行准备，尚未完成复位、新attempt或生产部署。
+
+## 23. 健康等待修订、真实对照与 R81 复位
+
+TD-REL-021先以1476b63登记，随后在外部driver建立v4。只新增wait_restored_legacy_health并在原一次preflight前调用：绑定API/Web完整CID、canonical Name、Compose project/service、原镜像ID/ref，双查完整ID与名称；StartedAt或RestartCount漂移、消失、停止、重启、unhealthy、缺health及错scope均直接拒绝，仅starting最多90轮、89次两秒等待。未捕获重试原preflight，五生产controls及TD-REL-020保持原字节。
+
+原21边界及新增37例共58/58、零skip；同一restore77_apply断言在冻结v3发生HTTP ready／Web starting时提前preflight的一次failure、零error，v4同断言通过。首次新增夹具漏classify_registry导致的错误另留validation-1，不计作缺陷复现。标准wrapper v9只重绑定worker摘要，原37＋5＋13共55/55零skip，原测试文件保持；v4/v9经独立源码、manifest和原件复核后于17:33:14 UTC精确promote。四旧v3文件及旧v8源码均保留。当前worker SHA-256为b5c6fa462a33a576c882e18ac700912254cce659e5c9f1856f6180f9fa08644e，launcher仍fdbfa071c2556a4b80416fb1b688b128c7a2b901fa5f83081623ede9737b6ad7，v9为b2036c23d16ee4b8d9e1e225c7d905da865aad255e301e26036749b137683342；完整promote回执为wave4/recovery-rehearsal-driver-v4-freeze.json。最新真实标准smoke仍是v7下R5/B2，55纯测不计作新增smoke。
+
+复位工具初稿未执行；父复核将唯一已知活动proxy日志从整文件不可变改为同device/inode/mode、长度不缩短且初始2490字节前缀SHA不变，其余历史文件仍要求完整摘要守恒。reset1在宿主前置因误要求两bind拒绝，实际为固定ARTIFACTS→/artifacts、ARTIFACTS/data→/data、ARTIFACTS/daemon→/var/lib/docker三条RW bind；reset2在加载worker前因误要求源码UID0拒绝，实际七份源码／controls保留UID/GID1000且位于root:root 0700私有根，摘要均相同。两次失败均没有执行数据库或服务动作，未chown或放宽目录权限。旧工具三个版本和失败回执保留；纠正为精确三bind及已证源码UID/GID1000后，先只读预检，再执行reset3。
+
+reset3于17:46:15–17:47:22 UTC实际完成，入口0、工具SHA前后同为753195975f377547da34b9074a47804690ebedf457de10dc65b3f36500e027d2。A段先核77与首层完整基线相同，保存auto4旧Web日志，再仅按已核完整ID移除旧Web、原compose启动新L77；实际观察HTTP已通且Web starting时原严格preflight拒绝，同一新API/Web完整CID等Docker healthy后原preflight通过，77登记保持。该新对照不补造auto4未保留的瞬时健康事件。B段核原PG完整身份后，以原R镜像真实CLI执行77→81、整数退出0，带闸启动R、核健康和内外探针后受控解闸，首77及历史计划／状态保持，再原子更新R marker；新CLI完整ID21ceff672496e2713a3355726f7aad3e34163968c878b38f7500ccdfb41e2677已精确移除并确认不存在。
+
+公开原件在integration-artifacts/rehearsal-B-120d6fc/reset-3-original-records：reset-receipt SHA-256 ba8fdc789355fd724037ba0bbc64098bb8c846b01214e8c6d7eebb8181149432、health-contrast cec028147d3b008890fd94a0535ac5dd21b3434648fbf338c0cf0cd9724b15d3、health-observations fd4c3d61bdd564e634bbf3233569c40f3779c5633b63c61f5c0767fe6810a14c、原R CLI receipt 94c08a2335cd3340e80a51bd7159f41270340c99fa33ba6736cbc942abeb7ae5。活动日志同对象由2490增至4110字节，前缀SHA b37d28389bb01ac276a260c64a9baa4db17ce73d913ef42fe0e3abd020d4068f保持，明确whole_log_unchanged_claimed=false。复位回执明确manual_PASS=false、automatic_PASS=false；它只建立新attempt的真实R81初态。
+
+## 24. 第二层第五次尝试的真实自动恢复
+
+automatic5 SPEC SHA-256为976c2b2cacb42a346a427e3a1047bb8c606a426d16c118b58a75189096434c54，仅将实际封印的automatic4 SPEC之attempt改为5；B/R双digest、8bf应用tar、C1材料路径、manual3目录及仍在有效窗口的原应用授权均相同，没有续期或覆盖canonical材料。17:49:14.337886 UTC实际进入worker，17:49:24完整还原77联合快照，原严格L77 preflight通过；17:49:47执行原C1 orchestrator真实77→81，17:50:21执行B切换及故障后的自动R恢复，17:51:03入口退出0。调用器f6efddfe…、四driver及SPEC前后摘要保持，实际控制参数为C1而非文档HEAD1476b63。
+
+原orchestration-state总verdict为COMPLETED，17阶段全部PASS：verify_plan、release_approval、write_fence、task_drain、backup_restore、image_compatibility、data_preconditions、advisory_lock、fence_cross_check、recovery_source_cross_check、quiescence_probe、data_preconditions_live、四项apply:0078–0081精确后缀、postcheck。六恢复步骤failed_candidate_switch→recovery_started_fenced→recovery_identity_health_ready_version→write_fence_disabled→authenticated_write→registry_and_state_unchanged依次PASS。B主CLI严格整数退出1；R自动选择、带闸启动、身份与内外探针、解闸及认证POST201／GET200全部完成。恢复前后81登记完全相同，首77含applied_at与manual3基线全等，state／plan原文件摘要前后不变；四条live观测记录B公网503及R带闸／解闸过程，最终R marker正确、FAULT不存在。
+
+| 实际第二层原件                   | SHA-256                                                          |
+| -------------------------------- | ---------------------------------------------------------------- |
+| automatic-report.json            | 27ca4806ef5a6096a17a7d5036b1dff436057a5667f22fc89b7b8af031e54259 |
+| orchestration-state.json         | 7635fb6f5cb8c2eb43548f54b12861847fa0466dcbf4f76a23b80203092b7b7d |
+| migration-plan.json              | 062b67dab38ed63e7f2e0e04c8913ae4f9b2319553e9bdefaa940db16b90f756 |
+| authenticated-write.json         | 9a1253cc8e65e6cfbcd1af8964dc79573caa8ec74f7a061c022574c21cc4671c |
+| automatic-live-observations.json | bc0214d7baba01cb92365280640467e7ad37d7aa78e6713e147bc8ecdb045912 |
+| verification.json                | fe8fb91daf270d346c62ecc146633752837a8c58d6d572d8a4b28bbfdbe97780 |
+
+公开10份原JSON逐字节导出至integration-artifacts/rehearsal-B-120d6fc/automatic-5-original-records，17:52:14.755629 UTC由固定导出器de31c38b2d231600293678e2740471db3167876b0920f421995f6de48a5794e3核为VERIFIED_ORIGINAL_AUTOMATIC_RECOVERY_SUCCESS_B_FAILED。原稿670e…保留；父修订只使接口接受实际已审worker、组件内嵌套sealed路径、兼容classic Docker的缺省manifest字段并补完整九项历史授权核验，auto4真实失败调用负例在导出前拒绝、没有success目录。导出器未另查PG；81结论来自实际apply及前后原记录，运行身份另做只读现场核。没有automatic-completion文件，终态位于driver-state。
+
+原C1 Git approval pretty JSON摘要8e089fe1…与producer生成的实际release-approval工作副本摘要430c369c656ca4b5c49457951f6df1f78e8db9216aa32c27f9976f0973390f8b字节不同；JSON完全相等，双方canonical摘要均为430c369c…且等于state.approval_sha256。manual3 report仍为原06c680ae…、control_sha保持C0；auto5明确使用C1，五controls两控制SHA Git字节全等。不能将canonical工作副本称作Git原字节。
+
+独立只读复核重算10原件、verification、C1 Git／manual3／实际invocation及driver源码摘要，核17阶段、6步骤、81与首77、四live及最终R双镜像绑定，未发现跨绑定阻断；未重跑Docker／HTTP／SQL，也不将其意见冒作新真人授权。两层真实恢复门禁至此完成；B退出1属于隔离故障注入，不能写成正式B发布失败。生产发布结果另见后继实际流水线。
+
+## 25. 正式发布受理与固定控制
+
+C1远端推送CI run45864422228及CodeQL run45864422016均success，head_sha均5ab1cea、main／push；完整快照在integration-artifacts/remote-checks-5ab1cea/snapshot-1.json。17:53:52 UTC记录正式dispatch intent，17:53:55受理唯一release.yml run[45871553369](https://github.com/ivanzhao299/kingturf-bessiness-os/actions/runs/45871553369)，ref=main，workflow控制C1，唯一输入commit_sha为完整B120d6fc55b60496b535dc1beb3ae270709ed3836。17:57:34 UTC实际validate/build均success，verify正在pnpm ci:local；此时尚无生产迁移或部署结论。原dispatch及后台监督回执留在integration-artifacts/production-release-120d6fc-control-5ab1cea，不重dispatch。
+
+正式流水线会重新生成应用tar及sidecar、真实OCI摘要，须从成功run下载后另核。GitHub原B镜像导出tar084c42c8…、两层演练应用tar8bf6da9a…与正式应用tar分开记账，不能用旧包摘要代替正式原件，也不据受理或本地演练宣称生产成功。
+
+## 26. 正式原包、生产迁移与应用切换
+
+正式run45871553369 attempt1于2026-11-26 17:53:54 UTC创建，validate/build/verify/deploy/post五任务全部success，post于18:17:38完成；后台watch退出0，最终API结论completed/success，未重dispatch。verify为17:55:04–18:14:18，实际完整ci:local、原OCI导入、真实API/Web启动及批准R传输全部通过。API18,387、Web1,065、UI101；正式operations日志为Ran 260 tests、OK (skipped=2)，不冒称远端264零skip，固定C1本机完整CI的264零skip另见§22。残余角色／门控覆盖边界已按R4另登记TD-TEST-042，未修改测试或把静态可能性写成正式失败。
+
+固定且独立审过的下载器57e53d95838be9e5bbd84513edff5da8a39867534610331b71a0256c939cd6e2在新空目录真实下载artifact15143542408，核GitHub服务ZIP digest、恰两原文件、tar sidecar、安全解包、C1四controls及四selection原字节、历史授权和实际双OCI。18:18:19 UTC结果为VERIFIED_DOWNLOAD_AND_OFFLINE_CONTENT。代码／ZIP／解包各分目录，Python -I；只执行从C1 Git导出的2c63…可信OCI校验器，未执行下载脚本、导入镜像或重放授权。正式应用授权为18:14:06.611143–21:14:06.611143 UTC，绑定本run、B/C1；离线核验不产生新的执行权限。
+
+| 正式原件或身份                                           | SHA-256 / digest                                                        |
+| -------------------------------------------------------- | ----------------------------------------------------------------------- |
+| approved-application-image-bundle原ZIP（服务digest匹配） | 9a33ad3093bcc0f1151b198b580bdf2fbe4b60fc8edd7f299b634fc1da0cf4e6        |
+| 正式recovery-bundle.tar.gz（124,939,575 B）              | 9248386420ca8e41d7995bf7cfafc6ead5e494bbb9e99b4082ced814b65f59bf        |
+| 正式recovery-bundle.sha256原文件                         | 1c215d8be5db38bd16b613731a23c993826ca3b9625826c7b469a6447ce1efbc        |
+| 正式API approved digest                                  | sha256:3625a896c1ecb03ec520394d5e12fde2b7809eb65ab71c78d4c3b8ce0e3a1e31 |
+| 正式Web approved digest                                  | sha256:76cd4b1c5ddfd53d98de3acfaadc0c8217c1d6cd123bc2200933f0be0c234eae |
+| 正式81项清单规范摘要                                     | 7fc59f4afbab4ac65e5240fc8ee14d5482f115710adc9880c441a1470ef57994        |
+
+两份生产证据artifact另从同成功run下载，服务ZIP digest均与原字节匹配：migration-evidence15143557767为05376a6a1e605d1aa25d062caacc9f6b22a75c319354a14965daea0cdc417d33，application-recovery-evidence15143812705为dab69dabb661b385553d9f1ba4653af8be60ee39615bdb642cf622dba0fb833b。14条真实host步骤全部PASS：18:15:19原登记77、四pending后缀精确，受控停旧L/API、写探针503、任务排空，真实77备份恢复、三项数据前置零、材料门通过；18:15:38 execute=COMPLETED，18:15:39 postcheck=PASS／FULLY_MATCHED／final_count81，最后保持闸及API停止交给应用阶段。没有将旧归档state的COMPLETED误作本次execute。
+
+应用deployment=PASS，sha为完整B，migration_registry=FULLY_MATCHED、recovery_images=RETAINED。其migration_execution=NOT_INVOKED只表示应用切换阶段不再执行迁移，不能写成本次生产跳过迁移。deployment/postcheck/runtime的双镜像、manifest/config/diff_ids、完整容器ID及transport与正式原包逐项一致；生产使用containerd store，其image ID为approved根摘要，与config digest分别核验。API CID为4078ffd8a5fc95258209eb7a295281d593ab23a80aad0c67f87ea65a99d59430，Web为922f47df27240bc68a8707d0915d5d8c13eeca9b3707411843490a546c93af1d；本段为发布回执时点记录，不冒作后续直接现场查询。
+
+持久原件分别在integration-artifacts/production-application-45871553369与production-evidence-45871553369。父核验verification.json于18:21:50记录VERIFIED_PRODUCTION_MIGRATION_AND_RUNTIME_EVIDENCE；迁移原log SHA为8f1e0db739341cf87fa58f8821ded3e71b47914e380146160d5d52c676b27b07，正式原包result摘要5ab8de963ad344f3f02dae82cea95c644a63e68d861bb38fba725b017ff9f856。主协调没有直接生产库或登录权限，未将流水线SSH取证说成主协调直连数据库。
+
+正式原包及生产回执随后经独立只读复核：直接重算三ZIP、正式tar／sidecar及56落地文件，与GitHub元数据和inventory全等；核四C1 Git控件、14host步骤、实际应用容器／containerd身份、历史窗口及公开三原响应，未发现跨绑定阻断。复核者未重跑网络／Docker／SQL、未改原件；初次审查断言误将release.images当字符串的错误在读取实际digest/source对象后纠正，没有改变原数据。该审的范围不包含下一节的静态对账。
+
+## 27. 生产公开版本与全部静态字节对账
+
+18:19:42–43 UTC经宿主既有网络传输、正常CA独立GET /health、/ready、/version，均200；version返回完整B、environment=production、builtAt=application-45871553369-1。原响应与摘要在integration-artifacts/production-public-45871553369。未禁代理、降证书检查、登录或进行生产写入。
+
+窄静态工具53c3f41d8afedaee7c4e61b1b914d67e64645e988a3b0d18300e9178076f47a2经父源码审及23/23纯内存测试，复用固定OCI校验器2c63…，逐层核实际Web approved digest、可达blob与未压缩diff_id；按OCI whiteout／opaque／同层新增顺序合并，仅保存usr/share/nginx/html普通文件。正式镜像完整集合恰为49应用文件＋基础50x.html；49项与B/C1 CI、production浏览器映射逐键／摘要及原字节全等，规范映射仍2f51becb847a366c43e81ee4776b19325fbc29b444b28eec1a9aca1525f9e7b6。50x另与原基础页497 B、SHA876766b4e80133fd490603e073d3567425b88794828a9292104244c9e40875ed核对。离线result SHA为7551c6d844e8988572857b9e6fa0bb266f2e74803ef1451465d30f9a7e788121，目录production-web-static-45871553369。
+
+随后逐文件公开GET完整50项，包含manifest、模板、资产及50x，均200且identity编码原字节全等；总2,277,874 B。前后三端点再次守住B身份，拒绝重定向、压缩和SPA fallback冒充文件，未改Nginx或跳过不可读路径。18:23:23.824030 UTC真实结果VERIFIED_PUBLIC_BYTES_MATCH_FORMAL_WEB_AND_ACCEPTED_B，result SHA为52b574e8ccafba54618731f1bdee329f7e9ff04302e9063959c4dff0e7e9dda6；原字节、有限非敏感headers及每文件SHA保留在production-public-static-45871553369。HTTP覆盖完整镜像清单，但不能据此枚举服务器未公开索引的额外文件。
+
+正式发布及独立公开验收至此通过；生产登录态和直接数据库核验没有执行。既有浏览器的三轮P1各11/11、双视口各45路由／23真抽屉／3筛选、六写流程32必须／32探针，继续仅代表隔离合成账号；最终148图保留，实际独立抽样14图，不改写为逐张目检。TD-COMX-004、TD-TEST-041/042及UI023/024等登记项、TD-MFG-016/CRM-008后继范围保持原去向。

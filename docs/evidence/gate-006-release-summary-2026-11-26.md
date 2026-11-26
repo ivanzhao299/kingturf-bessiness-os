@@ -49,3 +49,9 @@
 - 未跑 `pnpm ci:local` 全量（其 15 步链含 API/Web 全套件与 PG 集成测试，见 `docs/GATES.md`，不含 e2e）；e2e（`pnpm e2e:p1`）不在 `ci:local` 内，同样未跑。本次验证范围如第 4 节所列，本任务不涉及数据库与浏览器改动。
 - 守卫扫描器的已知边界（主协调合并复核时实测，2026-11-26）：① quoted heredoc 正文里若出现形如 `inner <<INNER` 的行，其后内容会被当作新的无引号 heredoc 正文，其中的反引号会被报出——这一条只会多报、不会因此漏报，简单形态（本仓库现状）无误报；② 有两处会漏报：动态定界符（如 `<<$DELIM`）不会被识别为 heredoc；同一行先加引号、后不加引号的两个 heredoc（如 `cat <<'A' <<B`），扫描器在加引号的那个处跳过，第二个的正文不被检查。两种写法在 bash 里都会执行反引号。现有 workflow 没有这些写法；若日后出现，需先扩展 `HEREDOC_START` 的识别。
 - 台账主表 TD-GATE-006 行仅更新状态格；顶部「2026-11-25 第十次发布与集成复核」小节内登记该缺陷的历史段落按 R5 保留原样。
+
+## 7. 正式流水线后继验证
+
+2026-11-26 UTC正式release.yml run45871553369（北京时间27日，B120d6fc／固定C1控制5ab1cea）五任务全部success。build中的Emit immutable digests、post中的Publish release summary均成功，原构建与post日志没有command not found；实际API/Web摘要与正式原包及部署回执一致。日志持久位于kingturf-coord/integration-artifacts/production-release-120d6fc-control-5ab1cea/completed-job-logs，build SHA-256为8520c16715a57cade9b9fc9d29ea927bb9969e0689e02e23600adff554465ab2，post为b3fd30c269a3f393c85002edcb0ce198fea3b7ba15d50ef97df879193404378b。
+
+本节补足原§6的下一次正式执行证据，不改写独立开发批当时未跑完整CI／生产的历史；主协调B/C1完整本地CI及本次正式verify均已实际通过，详见[第十一次发布](ux-wave-release-2026-11-24.md#17-第十一次发布-120d6fc2026-11-27北京时间)。本次核对原运行日志与输出绑定，未另抓取GitHub步骤摘要的视觉呈现。

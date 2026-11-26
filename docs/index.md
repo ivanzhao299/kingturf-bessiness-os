@@ -1,5 +1,11 @@
 # docs/index.md（全部文档索引）
 
+[第十一次发布120d6fc已上线](evidence/ux-wave-release-2026-11-24.md#17-第十一次发布-120d6fc2026-11-27北京时间)：正式run45871553369、控制C1=5ab1cea，五阶段全success；生产0078–0081四迁移完成、81 FULLY_MATCHED，实际应用双OCI／正式原tar及sidecar与原回执交叉通过。公开B版本及线上50项文件均200、全部原字节与正式镜像一致；其中49应用文件与已验收production构建全等，基础50x另行核对。[正式原包与生产回执](evidence/forward-recovery-2026-11-26.md#26-正式原包生产迁移与应用切换)和[全部静态字节对账](evidence/forward-recovery-2026-11-26.md#27-生产公开版本与全部静态字节对账)保留原摘要、14生产host步骤、权限边界；以下为各历史时点记录。TD-TEST-042仅登记残余角色／回滚负例覆盖边界，本波测试未改。
+
+[第二层真实自动恢复完成](evidence/forward-recovery-2026-11-26.md#24-第二层第五次尝试的真实自动恢复)：automatic5完整还原77后执行原C1 orchestrator，17阶段／四后缀全部PASS；故障B主CLI确实退出1，自动R带闸／解闸／认证POST201与GET200完成，81及首77、state/plan前后保持。10原件、控制／driver／调用链及canonical批准差异经父核验与独立复核，无跨绑定阻断。[健康对照与R81复位](evidence/forward-recovery-2026-11-26.md#23-健康等待修订真实对照与-r81-复位)保留v4/v9、58/55纯测、两次前置拒绝及reset3同CID原严格健康门红→等待绿；reset只计复位，不代替automatic。
+
+[正式发布受理](evidence/forward-recovery-2026-11-26.md#25-正式发布受理与固定控制)：C1远端CI／CodeQL均success，正式release.yml run45871553369固定控制5ab1cea、唯一输入完整B120d6fc；validate/build通过，17:57 UTC verify完整CI运行中，生产及正式包另核。以下未完成表述保留各自历史时点。
+
 [C1完整CI与第二层首次停止](evidence/forward-recovery-2026-11-26.md#22-c1-完整-ci-与第二层首次停止)：固定C1为5ab1cea，完整CI0／943.7秒、49production字节与B相同，已非force推main；automatic4材料门后完整恢复原77，原applied_at全等，L是在77恢复后才启动。进入C apply前停止并留闸／停已绑定API；确定外部driver缺Docker healthy等待（TD-REL-021先登记），具体断言瞬时容器未唯一取证。保留原失败、C1及首层原件，后继对照／R81复位／新attempt另验，生产未部署。
 
 [首层真实恢复成功与C1材料准备](evidence/forward-recovery-2026-11-26.md#21-首层真实恢复成功与-c1-材料准备)：manual3实际完成77→81原R CLI、B故障切换、R带闸启动／解闸／认证POST201与GET200，原77含applied_at及恢复前后状态文件保持；原报告06c680ae…与完整77联合快照已核。四production selection＋独立演练descriptor已生成，真实材料门0，报告保留C0原字节。TD-REL-020仅登记探针status键覆盖的记录表示缺口，未修改driver／报告；C1完整CI、第二层及生产发布另验。

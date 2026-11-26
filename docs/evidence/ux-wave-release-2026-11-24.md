@@ -468,3 +468,34 @@ verify 任务先断言检出的提交号等于发布号，再跑 `pnpm ci:local`
 ### 16.4 重启后复核（2026-11-26）
 
 主协调机器重启后 `/tmp` 被清空，浏览器验收构建、原始日志与临时工作树均已丢失，本节所引 `/tmp` 路径为当时位置。收尾文档提交 `cdc406c` 与 `c51dc75` 的 GitHub CI（45611903514、45612237251，同为 `pnpm ci:local`）通过；`c51dc75` 的本地完整 CI 在测试阶段被重启中断，没有结果。以发布构建任务输出的 Web 镜像摘要 `sha256:500db64d…` 为参照重新核对：线上 `/version`、`/health`、`/ready` 正常，入口引用与 20 个 JS/CSS 的 SHA-256 和镜像逐字节一致。
+
+## 17. 第十一次发布 `120d6fc`（2026-11-27，北京时间）
+
+业务候选B为120d6fc55b60496b535dc1beb3ae270709ed3836，固定发布控制C1为5ab1ceac563fe4922b2e846ec66c2eccb875e188；主检出main在dispatch前已非force快进至C1，文档后继1476b63未被用作控制。正式[run45871553369](https://github.com/ivanzhao299/kingturf-bessiness-os/actions/runs/45871553369) attempt1于2026-11-26 17:53:54 UTC创建，五阶段全部success，post18:17:38完成（北京时间27日01:53:54–02:17:38）。唯一输入是完整B SHA，无tag或GitHub Release。
+
+### 17.1 交付与发布前验证
+
+本波交付制造与采购守卫、MRP采购追溯、客户跟进与信用呈现、质量写入与累计开票边界、佣金小屏排版，以及已取消商机不再计逾期。具体行为、权限及红绿证据见[制造](mfg-guards-2026-11-26.md)、[采购守卫](proc-guards-2026-11-26.md)、[采购呈现](proc-present-2026-11-26.md)、[客户](crm-followup-credit-2026-11-26.md)、[质量](ops-write-guards-2026-11-26.md)、[发票](fin-invoice-cap-2026-11-26.md)、[佣金](comm-mobile-2026-11-26.md)和[商机](comx-003-cancelled-overdue-2026-11-26.md)。登录CSS计量及发布步骤摘要随本版修复；恢复链与运行镜像封装完成独立批次集成。
+
+B干净SHA完整ci:local退出0／981.37秒，C1干净SHA完整ci:local退出0／943.7秒；两者API18,387、Web1,065、UI101、operations264零skip，81迁移FULLY_MATCHED，49个production文件逐键／字节一致。C1推送CI45864422228、CodeQL45864422016均success。正式verify也执行完整ci:local与真实API/Web启动并通过，operations原日志实际为Ran260、skipped=2，不扩大为全部Docker门控用例已跑；覆盖边界见TD-TEST-042。
+
+最终B的production字节浏览器：P1三轮各11/11；1440×900与390×844各45/45路由、23个真抽屉及3个筛选，零错误／失败／跳过。六写流程6/6，32必须步骤与32探针通过；148图保留，本轮独立抽样14图，不称全部逐张目检。登录gzip JS11,751 B／12,000 B、CSS25,640 B／27,000 B，CSS计量包含HTML直连样式。原R/B成功物料与标准smoke、真实manual3和automatic5均完成；第二层原C1 orchestrator17阶段与6恢复步骤通过，B故障退出1后自动R认证POST201／GET200，81及首77、迁移状态文件守恒。完整原件与失败保留见[恢复证据§21–24](forward-recovery-2026-11-26.md#21-首层真实恢复成功与-c1-材料准备)及[最终浏览器](ux-wave-integration-2026-11-26.md#16-b-production-字节的最终浏览器验收)。
+
+### 17.2 生产迁移与正式物料
+
+生产原登记77，实际只执行四项：0078_manufacturing_published_child_insert_guard.sql、0079_bom_requires_published_components.sql、0080_po_draft_cancel.sql、0081_po_mrp_proposal_reference.sql。14条host步骤全PASS，包含受控旧API停机、写探针503、排空、真实77备份恢复及三项数据前置零；18:15:38 UTC execute=COMPLETED，18:15:39 postcheck=PASS／FULLY_MATCHED81。没有直接改schema_migrations、逆迁移或在81上启动旧L。应用阶段deployment=PASS、recovery_images=RETAINED，其NOT_INVOKED表示不重复执行迁移，不能写成本版跳过迁移。
+
+| 原物料或镜像             | 正式SHA-256 / digest                                                    |
+| ------------------------ | ----------------------------------------------------------------------- |
+| artifact15143542408原ZIP | 9a33ad3093bcc0f1151b198b580bdf2fbe4b60fc8edd7f299b634fc1da0cf4e6        |
+| recovery-bundle.tar.gz   | 9248386420ca8e41d7995bf7cfafc6ead5e494bbb9e99b4082ced814b65f59bf        |
+| API                      | sha256:3625a896c1ecb03ec520394d5e12fde2b7809eb65ab71c78d4c3b8ce0e3a1e31 |
+| Web                      | sha256:76cd4b1c5ddfd53d98de3acfaadc0c8217c1d6cd123bc2200933f0be0c234eae |
+
+成功run原ZIP服务digest、tar sidecar、C1四controls／四selection、历史授权、实际OCI的manifest/config/diff_ids均已离线核；正式tar与原B导出084c…、隔离演练包8bf…分别记账。migration-evidence15143557767及application-recovery-evidence15143812705原ZIP服务digest也均核对，生产完整CID及containerd imageID/config语义与正式OCI交叉一致。原件持久保存在kingturf-coord/integration-artifacts/production-application-45871553369及production-evidence-45871553369，详细摘要见[恢复证据§26](forward-recovery-2026-11-26.md#26-正式原包生产迁移与应用切换)。
+
+### 17.3 线上独立验收与边界
+
+18:19:42 UTC后独立公开三端点均200，version为完整B、production、builtAt=application-45871553369-1。正式Web完整50文件集合为49应用文件加单独的基础50x.html；49项先与production浏览器验收原字节逐项核对，50x另与原基础页核对，再对线上全部50项公开GET，全部200且与正式镜像字节一致，总2,277,874 B。18:23:23 UTC对账通过，前后三端点仍为B；49应用映射摘要2f51becb847a366c43e81ee4776b19325fbc29b444b28eec1a9aca1525f9e7b6、线上回执摘要52b574e8ccafba54618731f1bdee329f7e9ff04302e9063959c4dff0e7e9dda6。原响应／headers／每文件摘要保留在production-public-static-45871553369，见[恢复证据§27](forward-recovery-2026-11-26.md#27-生产公开版本与全部静态字节对账)。
+
+主协调没有生产登录凭据或直接数据库权限。认证写验证属于隔离合成库；生产验收依据发布回执、公开三端点及静态原字节，HTTP不枚举未索引的额外服务器文件。TD-COMX-004商机双空关联、TD-TEST-041随机碰撞断言、TD-TEST-042残余测试角色／回滚负例与UI023/024等已登记后续，未混入冻结B；TD-MFG-016冻结BOM与TD-CRM-008活动挂线索仍归后继批次。本版发布与验收通过，证据收尾提交和本会话环境清理另留源SHA／执行回执。
