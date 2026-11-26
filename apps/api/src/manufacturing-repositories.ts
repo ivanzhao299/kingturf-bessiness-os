@@ -1,5 +1,4 @@
-import { createHash } from 'node:crypto';
-import { canonicalize, DomainError } from '@kingturf/domain';
+import { DomainError } from '@kingturf/domain';
 import type { SqlClient } from '@kingturf/database';
 import type { JsonObject } from '@kingturf/types';
 import { writeAuditOutbox as evidence } from './audit-outbox.ts';
@@ -12,10 +11,9 @@ import {
   type Context,
 } from './manufacturing-read-repositories.ts';
 
+import { manufacturingContentHash } from './manufacturing-fingerprint.ts';
 import { PostgresManufacturingVersionRepository } from './manufacturing-version-repository.ts';
 import { insertBomLines, insertRoutingOperations } from './manufacturing-version-contents.ts';
-
-const hash = (value: unknown) => createHash('sha256').update(canonicalize(value)).digest('hex');
 
 /** TD-MFG-015：待发布的草稿 BOM 若含未发布的组件版本，拒绝并列出它们（编码 / 名称）。 */
 async function assertComponentsPublished(
@@ -100,7 +98,7 @@ export class PostgresManufacturingRepository extends PostgresManufacturingVersio
             item.id,
             input.specification,
             input.effectiveAt,
-            hash(canonical),
+            manufacturingContentHash(canonical),
             context.actor.employeeId,
           ],
         )
@@ -117,7 +115,7 @@ export class PostgresManufacturingRepository extends PostgresManufacturingVersio
         version: 1,
         status: input.publish ? 'PUBLISHED' : 'DRAFT',
         ...input,
-        canonicalHash: hash(canonical),
+        canonicalHash: manufacturingContentHash(canonical),
       });
       await evidence(
         tx,
@@ -184,7 +182,7 @@ export class PostgresManufacturingRepository extends PostgresManufacturingVersio
             input.productItemVersionId,
             input.outputQuantity,
             input.effectiveAt,
-            hash(canonical),
+            manufacturingContentHash(canonical),
             context.actor.employeeId,
           ],
         )
@@ -202,7 +200,7 @@ export class PostgresManufacturingRepository extends PostgresManufacturingVersio
         version: 1,
         status: input.publish ? 'PUBLISHED' : 'DRAFT',
         ...input,
-        canonicalHash: hash(canonical),
+        canonicalHash: manufacturingContentHash(canonical),
       });
       await evidence(tx, 'bom.created', 'bom', bom.id, 1, context, correlationId, result);
       return result;
@@ -261,7 +259,7 @@ export class PostgresManufacturingRepository extends PostgresManufacturingVersio
             root.id,
             input.productItemVersionId,
             input.effectiveAt,
-            hash(canonical),
+            manufacturingContentHash(canonical),
             context.actor.employeeId,
           ],
         )
@@ -279,7 +277,7 @@ export class PostgresManufacturingRepository extends PostgresManufacturingVersio
         version: 1,
         status: input.publish ? 'PUBLISHED' : 'DRAFT',
         ...input,
-        canonicalHash: hash(canonical),
+        canonicalHash: manufacturingContentHash(canonical),
       });
       await evidence(tx, 'routing.created', 'routing', root.id, 1, context, correlationId, result);
       return result;

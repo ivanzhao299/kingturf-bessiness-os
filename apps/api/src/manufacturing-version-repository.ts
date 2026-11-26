@@ -3,6 +3,7 @@ import type { SqlClient } from '@kingturf/database';
 import type { JsonObject } from '@kingturf/types';
 import { writeAuditOutbox } from './audit-outbox.ts';
 import { replayCommercialCommand, retainCommercialCommand } from './command-results.ts';
+import { manufacturingContentHash } from './manufacturing-fingerprint.ts';
 import {
   BOM_LINE_DETAIL_PROJECTION,
   ITEM_VERSION_PROJECTION,
@@ -49,8 +50,13 @@ const TABLES = {
   routing: ['manufacturing_routing_versions', 'routing_id'],
 } as const;
 const AGGREGATES = { item: 'manufacturing-item', bom: 'bom', routing: 'routing' } as const;
-async function fingerprint(tx: SqlClient, value: unknown): Promise<string> {
-  // jsonb gives stable object-key order and accepts fractional values inside specification/instructions.
+/**
+ * 幂等请求绑定摘要：把 Idempotency-Key 绑到「同一个请求」上，只用于续版回执的 request_hash。
+ * 它不是内容指纹（内容指纹见 manufacturing-fingerprint.ts）。两者按设计不同、各管一件事：
+ * 这里由 PostgreSQL 对 jsonb 规范文本求 sha256，口径自续版端点上线起未变，已有回执靠它重放，
+ * 所以不要改动，也不要与内容指纹合并（主协调裁定 2026-11-26）。
+ */
+async function requestBinding(tx: SqlClient, value: unknown): Promise<string> {
   const result = await one<{ hash: string }>(
     tx,
     "SELECT encode(sha256(convert_to(($1::jsonb)::text,'UTF8')),'hex') hash",
@@ -175,7 +181,7 @@ async function insertItemDraft(
       source.next_version,
       content.specification,
       content.effectiveAt,
-      await fingerprint(tx, content),
+      manufacturingContentHash(content),
       employeeId,
     ],
   );
@@ -211,7 +217,7 @@ async function insertBomDraft(
       productItemVersionId,
       outputQuantity,
       effectiveAt,
-      await fingerprint(tx, {
+      manufacturingContentHash({
         bomId: rootId,
         productItemVersionId,
         outputQuantity,
@@ -254,7 +260,12 @@ async function insertRoutingDraft(
       source.next_version,
       productItemVersionId,
       effectiveAt,
-      await fingerprint(tx, { routingId: rootId, productItemVersionId, effectiveAt, operations }),
+      manufacturingContentHash({
+        routingId: rootId,
+        productItemVersionId,
+        effectiveAt,
+        operations,
+      }),
       employeeId,
     ],
   );
@@ -285,7 +296,7 @@ export class PostgresManufacturingVersionRepository extends PostgresManufacturin
         type: `${aggregate}.version-created`,
         subjectId: rootId,
         actorId: employeeId,
-        requestHash: await fingerprint(tx, patch),
+        requestHash: await requestBinding(tx, patch),
       };
       const replayed = await replayCommercialCommand(tx, companyId, key, command);
       if (replayed) return replayed;
