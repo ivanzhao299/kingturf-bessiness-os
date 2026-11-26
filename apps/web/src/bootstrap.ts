@@ -662,6 +662,7 @@ export async function mountWorkspace(
     'lead:lifecycle',
     'lead:assign',
     'lead:reassign',
+    'credit:read', // TD-CRM-006：客户 360 信用概要据此判定是否请求（见 appendCustomerConsole）。
   ]);
   onProgress('登录成功，正在并行加载业务数据…');
   const permissions = new Set(

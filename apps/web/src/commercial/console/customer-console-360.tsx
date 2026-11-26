@@ -54,8 +54,11 @@ export type Customer360State = Readonly<{
   /** 新增分区（商机漏斗 / 关联线索）无对应读权限时不渲染：服务端此时恒返回空，呈现「暂无」会误导。 */
   canReadOpportunities: boolean;
   canReadLeads: boolean;
-  /** 信用概要：undefined = 无数据通道或加载失败（不渲染），null = 无信用记录。 */
+  /** 信用概要：undefined = 无数据通道（不渲染），null = 无信用记录。 */
   credit: CustomerCreditSummary | null | undefined;
+  /** TD-CRM-006：信用概要加载失败的原因（空串 = 无失败），只显示在信用概要卡内。 */
+  creditError: string;
+  retryCredit: () => void;
 }>;
 
 type LinkKind = 'opportunity' | 'lead';
@@ -447,8 +450,35 @@ const RelatedSection = ({
   </SectionCard>
 );
 
-/** 信用概要：额度/敞口/使用率进度条 + 最近一次信用决定；无记录时给出空态。 */
-const CreditSection = ({ credit }: Readonly<{ credit: CustomerCreditSummary | null }>) => {
+/**
+ * 信用概要：额度/敞口/使用率进度条 + 最近一次信用决定；无记录时给出空态。
+ * TD-CRM-006：加载失败时卡片内显示简短原因与重试入口（不吞错，也不占用 360 其它分区的错误位）。
+ */
+const CreditSection = ({
+  credit,
+  error,
+  onRetry,
+}: Readonly<{
+  credit: CustomerCreditSummary | null;
+  error: string;
+  onRetry: () => void;
+}>) => {
+  if (error !== '')
+    return (
+      <SectionCard title="信用概要" testId="kt-customer-credit">
+        <p class="console-error" role="alert" data-testid="kt-customer-credit-error">
+          {error}
+        </p>
+        <button
+          type="button"
+          class="secondary compact"
+          data-testid="kt-customer-credit-retry"
+          onClick={onRetry}
+        >
+          重试
+        </button>
+      </SectionCard>
+    );
   if (credit === null || isCreditSummaryEmpty(credit))
     return (
       <SectionCard title="信用概要" testId="kt-customer-credit">
@@ -564,7 +594,14 @@ export const Customer360Detail = (state: Customer360State) => {
           ))}
         </RelatedSection>
       ) : null}
-      {credit === undefined ? null : <CreditSection credit={credit} />}
+      {/* TD-CRM-006：无数据通道时整卡不渲染；加载失败时仍渲染，由卡内显示原因与重试入口。 */}
+      {credit === undefined && state.creditError === '' ? null : (
+        <CreditSection
+          credit={credit ?? null}
+          error={state.creditError}
+          onRetry={state.retryCredit}
+        />
+      )}
     </div>
   );
 };

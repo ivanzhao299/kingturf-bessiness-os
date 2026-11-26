@@ -8,6 +8,7 @@ import type {
   CustomerInput,
   LeadInput,
 } from './types';
+import { creditSummaryFromLedgers, type CustomerCreditSummary } from './crm-ux';
 
 export function visibleCrmSections(permissions: ReadonlySet<CrmPermission>) {
   const customerRead = permissions.has('customer:read');
@@ -48,7 +49,12 @@ export class CrmController {
   public constructor(
     public readonly permissions: ReadonlySet<CrmPermission>,
     private readonly api: CrmApi,
-  ) {}
+  ) {
+    this.hasCreditReads =
+      api.listCreditLimits !== undefined && api.listCreditDecisions !== undefined;
+  }
+  /** TD-CRM-006：HTTP 客户端是否带信用读取方法（旧测试替身不带——宿主据此不注入信用端口）。 */
+  public readonly hasCreditReads: boolean;
   public async load(): Promise<void> {
     const sections = visibleCrmSections(this.permissions);
     const [customers, leads, employees] = await Promise.all([
@@ -147,6 +153,13 @@ export class CrmController {
     if (!this.permissions.has('customer-activity:create')) return;
     await this.api.createActivity(customerId, input);
     if (this.permissions.has('customer-360:read')) await this.selectCustomer(customerId);
+  }
+  // TD-CRM-006：客户 360 信用概要——读既有信用端点（/api/v1/credit-limits、/credit-decisions，
+  // 同一 HTTP 封装）。调用方（宿主）先判 credit:read 再注入端口，这里不做权限判断。
+  public async creditSummary(customerId: string): Promise<CustomerCreditSummary | null> {
+    const limits = await this.api.listCreditLimits?.();
+    const decisions = await this.api.listCreditDecisions?.();
+    return creditSummaryFromLedgers(customerId, limits ?? [], decisions ?? [], Date.now());
   }
   public async createLead(input: LeadInput): Promise<void> {
     if (!this.permissions.has('lead:create')) return;

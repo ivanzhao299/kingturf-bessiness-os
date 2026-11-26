@@ -48,6 +48,8 @@ type CustomerBundle = Readonly<{
   contactsVisible: Signal<boolean>;
   highlight: Signal<string>;
   credit: Signal<CustomerCreditSummary | null | undefined>;
+  /** TD-CRM-006：信用概要加载失败的原因（空串 = 无失败）；只显示在信用概要卡内。 */
+  creditError: Signal<string>;
   shownCount: Signal<number>;
 }>;
 
@@ -425,26 +427,37 @@ const CustomerView = (state: CustomerPageState) => {
   );
 };
 
+// TD-CRM-006：信用概要加载（宿主未注入端口时不请求）。失败不吞——原因显示在信用概要卡内并提供
+// 重试，不写入抽屉的提交错误位，不影响 360 其它分区。
+function loadCredit(bundle: CustomerBundle, ports: CustomerConsolePorts, row: CustomerRow): void {
+  if (ports.loadCredit === undefined) return;
+  bundle.creditError.value = '';
+  const id = ports.textValue(row.id ?? row.customerNumber, '');
+  ports
+    .loadCredit(id)
+    .then((summary) => {
+      if (bundle.selected.value === row) bundle.credit.value = summary;
+    })
+    .catch((error: unknown) => {
+      if (bundle.selected.value !== row) return;
+      bundle.credit.value = undefined;
+      bundle.creditError.value = failureMessage(error, '信用概要加载失败');
+    });
+}
+
 // G2 压平：360 详情加载（选中行变化即异步拉取；失败经提交错误面呈现）。
 function loadDetail(bundle: CustomerBundle, ports: CustomerConsolePorts, row: CustomerRow): void {
   const id = ports.textValue(row.id ?? row.customerNumber, '');
   bundle.credit.value = undefined;
+  bundle.creditError.value = '';
   ports
     .load360(id)
     .then((view) => {
       if (bundle.selected.value !== row) return;
       bundle.view360.value = view;
-      // 360 响应未内嵌信用分区且宿主提供数据通道时，另行加载（辅助信息：失败即隐藏，不打扰主流程）。
+      // 360 响应未内嵌信用分区且宿主提供数据通道时，另行加载信用概要。
       if (view === null || Object.keys(recordOf(view.credit)).length > 0) return;
-      if (ports.loadCredit === undefined) return;
-      ports
-        .loadCredit(id)
-        .then((summary) => {
-          if (bundle.selected.value === row) bundle.credit.value = summary;
-        })
-        .catch(() => {
-          if (bundle.selected.value === row) bundle.credit.value = undefined;
-        });
+      loadCredit(bundle, ports, row);
     })
     .catch((error: unknown) => {
       fail(error, bundle, '客户 360 加载失败');
@@ -554,6 +567,7 @@ export function CustomerConsolePage(ports: CustomerConsolePorts) {
     contactsVisible: signal(false),
     highlight: signal(''),
     credit: signal<CustomerCreditSummary | null | undefined>(undefined),
+    creditError: signal(''),
     shownCount: signal(20),
   };
   const closeForm = (): void => {
@@ -654,6 +668,11 @@ export function CustomerConsolePage(ports: CustomerConsolePorts) {
       canReadOpportunities: ports.permissions.has('opportunity:read'),
       canReadLeads: ports.permissions.has('lead:read'),
       credit: bundle.credit.value,
+      creditError: bundle.creditError.value,
+      retryCredit: () => {
+        const row = bundle.selected.value;
+        if (row !== null) loadCredit(bundle, ports, row);
+      },
       // 开始下一个动作时清掉上一次的成功提示（与 submitError 同一处）。
       open: (row) => {
         bundle.selected.value = row;

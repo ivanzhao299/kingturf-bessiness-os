@@ -378,6 +378,62 @@ export const creditSummaryOf = (value: unknown): CustomerCreditSummary | null =>
 export const isCreditSummaryEmpty = (summary: CustomerCreditSummary): boolean =>
   summary.limit === null && summary.exposure === null && summary.decision === null;
 
+// 台账行的取值键：端点行为 pg 蛇形列名（to_jsonb），个别派生键为驼峰（exposureAmount / creditLimit）。
+const cell = (row: CrmRecord, snake: string, camel: string): unknown => row[snake] ?? row[camel];
+
+/**
+ * TD-CRM-006：由既有信用端点的两份台账合成一个客户的信用概要（纯函数）。
+ * - 额度 limit：该客户**当前生效**的信用额度（effective_at ≤ now < expires_at）中最新生效的一条
+ *  （服务端序 effective_at DESC, id）；没有生效中的额度 → null。
+ * - 已用 exposure：该客户**最近一次信用决定**（服务端序 created_at DESC, id 的首条）的敞口快照
+ *   exposureAmount，币种取该决定的 currency——是评估时点的快照，不是实时敞口；无决定或快照缺值 → null。
+ * - 最近决定 decision：同上一条决定；结论取 effective_status（缺失时回落原始 status，再缺省
+ *   PENDING_APPROVAL，与信用审查控制台同口径）；decidedAt 取审批时间 decided_at，未审批为空串。
+ * - 多币种：卡片是单额度、单敞口形态，各按自身币种显示；两者币种不同则使用率不可计算（creditUsageOf）。
+ * 三项全缺（或客户编号为空）返回 null——端口以此表示「无信用记录」。
+ */
+export const creditSummaryFromLedgers = (
+  customerId: unknown,
+  limits: readonly CrmRecord[],
+  decisions: readonly CrmRecord[],
+  now: number,
+): CustomerCreditSummary | null => {
+  const id = textOf(customerId);
+  if (id === '') return null;
+  const own = (row: CrmRecord): boolean => textOf(cell(row, 'customer_id', 'customerId')) === id;
+  const limitRow = limits.find((row) => {
+    if (!own(row)) return false;
+    const from = timeOf(cell(row, 'effective_at', 'effectiveAt'));
+    const until = timeOf(cell(row, 'expires_at', 'expiresAt'));
+    return from !== null && until !== null && from <= now && now < until;
+  });
+  const decisionRow = decisions.find(own);
+  const summary: CustomerCreditSummary = {
+    limit:
+      limitRow === undefined
+        ? null
+        : creditMoneyOf({ currency: limitRow.currency, amount: limitRow.amount }),
+    exposure:
+      decisionRow === undefined
+        ? null
+        : creditMoneyOf({
+            currency: decisionRow.currency,
+            amount: cell(decisionRow, 'exposure_amount', 'exposureAmount'),
+          }),
+    decision:
+      decisionRow === undefined
+        ? null
+        : {
+            status: textOf(
+              cell(decisionRow, 'effective_status', 'effectiveStatus') ?? decisionRow.status,
+              'PENDING_APPROVAL',
+            ),
+            decidedAt: textOf(cell(decisionRow, 'decided_at', 'decidedAt')),
+          },
+  };
+  return isCreditSummaryEmpty(summary) ? null : summary;
+};
+
 export type CreditLevel = 'ok' | 'warning' | 'danger';
 
 /** 额度使用率 = 敞口 / 额度（同币种）；≥90% 告急、≥70% 预警。缺项或币种不一致时不可计算。 */

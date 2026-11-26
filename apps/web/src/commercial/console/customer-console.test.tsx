@@ -571,15 +571,33 @@ describe('CRM-UX 信用概要（可选端口）', () => {
     expect(credit.textContent).not.toContain('暂无信用记录');
   });
 
-  it('端口返回空、失败时分别呈现空态 / 不渲染', async () => {
+  it('端口返回空时呈现空态', async () => {
     const none = mount(portsFor([], { loadCredit: vi.fn().mockResolvedValue(null) }));
     await openFirst(none);
     await flush();
     expect(section(none, 'kt-customer-credit').textContent).toContain('暂无信用记录');
-    const failed = mount(portsFor([], { loadCredit: vi.fn().mockRejectedValue(new Error('x')) }));
-    await openFirst(failed);
+    expect(none.querySelector('[data-testid="kt-customer-credit-error"]')).toBeNull();
+  });
+
+  // TD-CRM-006：失败不吞——原因与重试入口都在信用概要卡内，不占用抽屉的提交错误位，其它分区照常。
+  it('端口失败：卡片内显示原因与重试入口；重试成功后恢复概要', async () => {
+    const loadCredit = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('网络连接失败'))
+      .mockResolvedValue(summary);
+    const host = mount(portsFor([], { loadCredit }));
+    await openFirst(host);
     await flush();
-    expect(failed.querySelector('[data-testid="kt-customer-credit"]')).toBeNull();
+    const failedCard = section(host, 'kt-customer-credit');
+    expect(section(host, 'kt-customer-credit-error').textContent).toBe('网络连接失败');
+    expect(failedCard.textContent).not.toContain('暂无信用记录');
+    expect(host.querySelector('[data-testid="kt-customer-submit-error"]')).toBeNull();
+    expect(host.querySelector('[data-testid="kt-customer-facts"]')).not.toBeNull();
+    section(host, 'kt-customer-credit-retry').click();
+    await flush();
+    expect(loadCredit).toHaveBeenCalledTimes(2);
+    expect(host.querySelector('[data-testid="kt-customer-credit-error"]')).toBeNull();
+    expect(section(host, 'kt-customer-credit-usage').textContent).toBe('额度使用率 75%');
   });
 
   it('360 响应内嵌 credit 分区时优先于端口', async () => {

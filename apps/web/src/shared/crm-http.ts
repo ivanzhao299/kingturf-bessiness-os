@@ -22,6 +22,27 @@ export function createFetchCrmApi(context: SessionContext): CrmApi {
       decode,
     );
   return {
+    // TD-CRM-006：既有信用端点（同一封装：超时 / 关联 ID / 错误映射沿用）；行形态为 pg 蛇形列名。
+    async listCreditLimits() {
+      return (
+        await json<{ items: Record<string, unknown>[] }>(
+          '/api/v1/credit-limits',
+          context,
+          undefined,
+          parseResponseItems,
+        )
+      ).items;
+    },
+    async listCreditDecisions() {
+      return (
+        await json<{ items: Record<string, unknown>[] }>(
+          '/api/v1/credit-decisions',
+          context,
+          undefined,
+          parseResponseItems,
+        )
+      ).items;
+    },
     async listEmployees() {
       return (
         await json<{ items: Employee[] }>(

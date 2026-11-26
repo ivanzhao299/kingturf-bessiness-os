@@ -15,7 +15,9 @@ export type CrmPermission =
   | 'lead-pool:release'
   | 'lead:lifecycle'
   | 'lead:assign'
-  | 'lead:reassign';
+  | 'lead:reassign'
+  // TD-CRM-006：仅用于判定客户 360 信用概要是否请求既有信用端点（不是 CRM 域的业务权限）。
+  | 'credit:read';
 export type Customer = Readonly<{
   id: string;
   customerNumber?: string;
@@ -82,6 +84,10 @@ type LeadInput = Readonly<{
   pool: boolean;
 }>;
 export type CrmApi = {
+  // TD-CRM-006：客户 360 信用概要的数据通道——既有信用端点（credit:read，由宿主在注入端口前判定）。
+  // 可选：旧测试替身不带这两个方法时宿主不注入端口，卡片不显示（与接线前一致）。
+  listCreditLimits?(): Promise<readonly Record<string, unknown>[]>;
+  listCreditDecisions?(): Promise<readonly Record<string, unknown>[]>;
   listEmployees(): Promise<readonly Employee[]>;
   listCustomers(): Promise<readonly Customer[]>;
   customer360(id: string): Promise<Customer360>;
