@@ -159,3 +159,31 @@ jobs:
             printf -- '- API: `%s`\n' '${{ steps.api.outputs.digest }}'
             printf -- '- Web: `%s`\n' '${{ steps.web.outputs.digest }}'
           } >> "$GITHUB_STEP_SUMMARY"
+      - name: Checkout immutable recovery export control
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .recovery-export-control
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Export original recovery bytes and offline source
+        env:
+          RELEASE_SHA: ${{ inputs.commit_sha }}
+          CONTROL_SHA: ${{ github.workflow_sha }}
+          API_DIGEST: ${{ steps.digests.outputs.api_digest }}
+          WEB_DIGEST: ${{ steps.digests.outputs.web_digest }}
+        run: |
+          set -euo pipefail
+          python3 -I .recovery-export-control/scripts/recovery_material_transport.py export \
+            --control-root .recovery-export-control --control-sha "$CONTROL_SHA" \
+            --source-root "$GITHUB_WORKSPACE" --candidate-sha "$RELEASE_SHA" \
+            --api-digest "$API_DIGEST" --web-digest "$WEB_DIGEST" \
+            --output "$RUNNER_TEMP/compatible-recovery-material"
+      - name: Retain original recovery material
+        uses: actions/upload-artifact@v4
+        with:
+          name: compatible-recovery-material-${{ inputs.commit_sha }}
+          path: ${{ runner.temp }}/compatible-recovery-material/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 90
