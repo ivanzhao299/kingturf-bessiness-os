@@ -424,6 +424,71 @@ describe('CRM-UX 线索卡', () => {
     expect(stale.getAttribute('data-stale')).toBe('true');
   });
 
+  // TD-CRM-003：线索名下有活动时间才显示「最近跟进」；为 null（无活动或无活动读权限）时回退原样。
+  it('有活动时间显示「最近跟进 <相对时间>」，滞留警示按活动时间算', () => {
+    const oldFollowUp: LeadRow = {
+      ...claimedLead,
+      id: 'lead-6a',
+      updatedAt: local(23, 9, 30),
+      lastActivityAt: local(10, 9),
+    };
+    const freshFollowUp: LeadRow = {
+      ...claimedLead,
+      id: 'lead-6b',
+      updatedAt: local(10, 9),
+      lastActivityAt: local(23, 9),
+    };
+    const host = mount(portsFor([oldFollowUp, freshFollowUp]));
+    const old = cell(host, 0, 'kt-lead-updated');
+    expect(old.textContent).toBe('最近跟进 13 天前');
+    expect(old.getAttribute('data-kind')).toBe('activity');
+    expect(old.getAttribute('data-stale')).toBe('true');
+    expect(old.getAttribute('datetime')).toBe(oldFollowUp.lastActivityAt);
+    expect(old.getAttribute('title')).toContain('跟进');
+    const fresh = cell(host, 1, 'kt-lead-updated');
+    expect(fresh.textContent).toBe('最近跟进 1 小时前');
+    expect(fresh.getAttribute('data-stale')).toBe('false');
+  });
+
+  it('没有活动时间（null、缺失或不可解析）回退为原「最近更新」单元格', async () => {
+    const leads: LeadRow[] = [
+      { ...claimedLead, id: 'lead-6c', lastActivityAt: null },
+      { ...claimedLead, id: 'lead-6d' },
+      { ...claimedLead, id: 'lead-6e', lastActivityAt: 'not-a-time' },
+    ];
+    const host = mount(portsFor(leads));
+    leads.forEach((lead, index) => {
+      const current = cell(host, index, 'kt-lead-updated');
+      expect(current.textContent).toBe('13 天前');
+      expect(current.getAttribute('data-kind')).toBeNull();
+      expect(current.getAttribute('datetime')).toBe(lead.updatedAt);
+      expect(current.getAttribute('title')).toContain('更新');
+    });
+    cell(host, 0, 'kt-lead-open-title').click();
+    await flush();
+    expect(element(host.querySelector('[data-testid="kt-lead-detail"]')).textContent).not.toContain(
+      '最近跟进',
+    );
+  });
+
+  it('详情抽屉：有活动时间多显示一格「最近跟进」', async () => {
+    const followed: LeadRow = { ...claimedLead, id: 'lead-6f', lastActivityAt: local(10, 9) };
+    const host = mount(portsFor([followed]));
+    cell(host, 0, 'kt-lead-open-title').click();
+    await flush();
+    const detail = element(host.querySelector('[data-testid="kt-lead-detail"]'));
+    expect(detail.textContent).toContain('最近跟进');
+    expect(detail.querySelectorAll('.console-label').map((node) => node.textContent)).toEqual([
+      '状态',
+      '来源',
+      '负责人',
+      '关联客户',
+      '创建',
+      '最近更新',
+      '最近跟进',
+    ]);
+  });
+
   it('来源为空或未命中图标表时回落通用图标且不报错', () => {
     const host = mount(
       portsFor([

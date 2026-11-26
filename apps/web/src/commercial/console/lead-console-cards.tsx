@@ -9,6 +9,7 @@ import {
   leadSourceIconOf,
   relativeTimeOf,
   textOf,
+  timeOf,
 } from '../../crm/crm-ux';
 
 export type LeadCardContext = Readonly<{
@@ -86,23 +87,31 @@ export const LeadOwnerCell = ({
   );
 };
 
-/** 最近更新单元格：相对时间 + 悬停绝对时间；超过 7 天未更新以警示色提示（不改任何业务状态）。 */
+/**
+ * 最近更新 / 最近跟进单元格（TD-CRM-003）：线索名下有活动时间（lastActivityAt 非空且可解析）时显示
+ * 「最近跟进 <相对时间>」，滞留警示色按活动时间算；没有活动、或账号没有活动读权限（服务端给 null）时
+ * 回退为原「最近更新」单元格——该分支的 DOM 与加字段之前相同，不冒称跟进时间。
+ */
 export const LeadUpdatedCell = ({
   row,
   context,
 }: Readonly<{ row: LeadRow; context: LeadCardContext }>) => {
+  const followed = textOf(row.lastActivityAt);
   const updated = textOf(row.updatedAt);
-  const relative = relativeTimeOf(updated, context.now);
-  const absolute = dateTimeLabelOf(updated);
+  const hasFollowUp = timeOf(followed) !== null;
+  const value = hasFollowUp ? followed : updated;
+  const relative = relativeTimeOf(value, context.now);
+  const absolute = dateTimeLabelOf(value);
   return (
     <time
       class="crm-recency"
       data-testid="kt-lead-updated"
-      {...(updated === '' ? {} : { datetime: updated })}
-      data-stale={isStale(updated, context.now)}
-      {...(absolute === '' ? {} : { title: `${absolute} 更新` })}
+      {...(hasFollowUp ? { 'data-kind': 'activity' } : {})}
+      {...(value === '' ? {} : { datetime: value })}
+      data-stale={isStale(value, context.now)}
+      {...(absolute === '' ? {} : { title: `${absolute} ${hasFollowUp ? '跟进' : '更新'}` })}
     >
-      {relative === '' ? '—' : relative}
+      {relative === '' ? '—' : hasFollowUp ? `最近跟进 ${relative}` : relative}
     </time>
   );
 };

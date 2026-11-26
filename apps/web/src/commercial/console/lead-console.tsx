@@ -249,6 +249,15 @@ const LeadDetail = ({ state }: Readonly<{ state: LeadPageState }>) => {
   const ownerName = leadOwnerName(lead, ports.employeeChoices);
   const ownerText = leadOwnerText(lead, ports.employeeChoices);
   const updated = dateTimeLabelOf(lead.updatedAt);
+  // TD-CRM-003：有活动时间才多显示一格「最近跟进」；为 null（无活动或无活动读权限）时 DOM 与此前相同。
+  const followedAt = dateTimeLabelOf(lead.lastActivityAt);
+  const followUp =
+    followedAt === '' ? null : (
+      <>
+        <span class="console-label">最近跟进</span>
+        {followedAt}
+      </>
+    );
   return (
     <div class="console-summary" data-testid="kt-lead-detail">
       <p>
@@ -271,6 +280,7 @@ const LeadDetail = ({ state }: Readonly<{ state: LeadPageState }>) => {
         {ports.textValue(lead.createdAt, '—').slice(0, 10)}
         <span class="console-label">最近更新</span>
         {updated === '' ? '—' : updated}
+        {followUp}
       </p>
     </div>
   );
