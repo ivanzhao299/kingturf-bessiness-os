@@ -234,7 +234,7 @@ R 作为实际健康原应用进行下一次零 pending 的 B 重试时，不消
 
 ### 12.1 授权、独立提交与边界
 
-项目所有者采纳驱动独立静态复核的第 4、7 项，授权在 `wave4/control-stop-ids`、分支 `fix/w4-control-stop-ids` 实施。基线 `514d8f4e2948dc2c51bf8dfd73f5f4c62eaa792e` 的完整 CI 已由主协调报告退出 0；本批没有重复该完整门禁，也不把基线回执算成本批回执。R 与 integration 树均未改。
+主协调依据项目所有者既有的全权技术审查与发布授权，采纳驱动独立静态复核的第 4、7 项，在 `wave4/control-stop-ids`、分支 `fix/w4-control-stop-ids` 组织独立修复。本项是主协调技术裁定，没有新增项目所有者业务裁定。基线 `514d8f4e2948dc2c51bf8dfd73f5f4c62eaa792e` 的完整 CI 已由主协调报告退出 0；本批没有重复该完整门禁，也不把基线回执算成本批回执。R 与 integration 树均未改。
 
 提交按单一职责保留：`72b462a` 先登记 TD-REL-013/014；`a2b4919` 修常规 backup/apply 的停止；`0ed25ed` 将原 HTTPS-before-stop 静态契约同步到 immutable stop；`0bce8ef` 单独修真正子解释器的 `-I`；主协调技术复核后的 `b7c6bac` 收敛纯共享 scope 与完整环境守恒；`1a4f086` 仅补正测试替身匹配范围；`acfb385` 收住来源漂移后从 backup 停止异常进入原 CLI 旧恢复的出口，同时保留稳定来源普通失败的原恢复对照。全部标 `[未测试]`，表示本树没有跑完整 `pnpm ci:local`。最后的文档提交另见分支日志。
 
@@ -279,3 +279,5 @@ TD-REL-014 的生产差异仅为 `run_orchestrator` 真正子进程 argv 增加 
 机械证明见 `source-stability-final.json`：应用 `main`、`recover_previous_application`、原 `stop_bound_api` 与 `restore_api_on_failure` AST 全等；预检除返回原 ID 外判据 AST 全等；生产 gate 除新增纯 helper 外整个 AST 全等；orchestrator 函数除显式 `-I` 外 AST 全等；81 SQL 原字节及其原钉定保持，APPROVED 后缀仍为 0073–0081，所有者裁定首节原字节保持。应用控制允许变化的既有函数只有 precheck/backup/纯 scope 适配，apply 只有 main/run_orchestrator，未扩修其它 legacy 路径。
 
 本批 artifacts 为 `/home/jinhuit/Kingturf/kingturf-coord/wave4/control-stop-ids-artifacts`；各轮原始日志、稳定性 JSON 与脱敏结果保留。最终格式、文档链接、结构、边界和差异检查见 `logs/final-checks-acfb385-summary.log`（旧 `final-checks-summary.log` 为 CLI 补强前的检查，不混用）。专用测试库与容器保留供主协调复核；本树完整 CI、两层真实恢复及发布仍由主协调实施。
+
+主协调已复核最终源码差异、117/261 回执与稳定性记录，将交付 `09e3e352a72cd380d3e2bfc59585d0bd9c97d5d7` 合入集成提交 `5ddfa9e`；冲突仅在文档索引，已同时保留集成构建证据和本节入口。生产源码与测试取交付分支原字节，合并检查未改动业务或迁移。合并提交标 `[未测试]`，最终集成完整 CI 与真实恢复仍待执行。
