@@ -381,6 +381,12 @@ export const isCreditSummaryEmpty = (summary: CustomerCreditSummary): boolean =>
 // 台账行的取值键：端点行为 pg 蛇形列名（to_jsonb），个别派生键为驼峰（exposureAmount / creditLimit）。
 const cell = (row: CrmRecord, snake: string, camel: string): unknown => row[snake] ?? row[camel];
 
+// 仅供新台账映射：SQL JSON 提取缺键可能给 null，不能让 Number(null) / Number('') 制造零金额。
+const ledgerMoneyOf = (currency: unknown, amount: unknown): CreditMoney | null =>
+  amount === null || amount === undefined || (typeof amount === 'string' && amount.trim() === '')
+    ? null
+    : creditMoneyOf({ currency, amount });
+
 /**
  * TD-CRM-006：由既有信用端点的两份台账合成一个客户的信用概要（纯函数）。
  * - 额度 limit：该客户**当前生效**的信用额度（effective_at ≤ now < expires_at）中最新生效的一条
@@ -409,17 +415,14 @@ export const creditSummaryFromLedgers = (
   });
   const decisionRow = decisions.find(own);
   const summary: CustomerCreditSummary = {
-    limit:
-      limitRow === undefined
-        ? null
-        : creditMoneyOf({ currency: limitRow.currency, amount: limitRow.amount }),
+    limit: limitRow === undefined ? null : ledgerMoneyOf(limitRow.currency, limitRow.amount),
     exposure:
       decisionRow === undefined
         ? null
-        : creditMoneyOf({
-            currency: decisionRow.currency,
-            amount: cell(decisionRow, 'exposure_amount', 'exposureAmount'),
-          }),
+        : ledgerMoneyOf(
+            decisionRow.currency,
+            cell(decisionRow, 'exposure_amount', 'exposureAmount'),
+          ),
     decision:
       decisionRow === undefined
         ? null

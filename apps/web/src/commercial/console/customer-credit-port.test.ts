@@ -155,6 +155,27 @@ describe('creditSummaryFromLedgers（台账 → 概要口径）', () => {
     });
   });
 
+  it.each([null, undefined, '', '   '])('敞口快照缺值 %j 保持 null，不制造零敞口', (value) => {
+    const summary = creditSummaryFromLedgers(
+      'c1',
+      limits,
+      [{ customer_id: 'c1', currency: 'CNY', status: 'PENDING_APPROVAL', exposureAmount: value }],
+      NOW,
+    );
+    expect(summary?.exposure).toBeNull();
+    expect(summary?.decision).toEqual({ status: 'PENDING_APPROVAL', decidedAt: '' });
+  });
+
+  it.each([0, '0', '0.000000'])('真实零敞口 %j 保留为金额 0', (value) => {
+    const summary = creditSummaryFromLedgers(
+      'c1',
+      limits,
+      [{ customer_id: 'c1', currency: 'CNY', status: 'PENDING_APPROVAL', exposureAmount: value }],
+      NOW,
+    );
+    expect(summary?.exposure).toEqual({ currency: 'CNY', amount: 0 });
+  });
+
   it('客户没有信用记录或客户编号为空 → null（卡片空态）', () => {
     expect(creditSummaryFromLedgers('c-none', limits, decisions, NOW)).toBeNull();
     expect(creditSummaryFromLedgers('', limits, decisions, NOW)).toBeNull();

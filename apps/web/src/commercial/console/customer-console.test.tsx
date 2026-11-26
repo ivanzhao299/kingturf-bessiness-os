@@ -597,6 +597,17 @@ describe('CRM-UX 信用概要（可选端口）', () => {
     expect(section(host, 'kt-customer-credit-usage').textContent).toBe('参考使用率 —');
   });
 
+  it('有最近决定但敞口快照缺值：金额显示 —，不显示为零敞口', async () => {
+    const host = mount(
+      portsFor([], { loadCredit: vi.fn().mockResolvedValue({ ...summary, exposure: null }) }),
+    );
+    await openFirst(host);
+    await flush();
+    expect(section(host, 'kt-customer-credit-exposure').textContent).toBe('—');
+    expect(section(host, 'kt-customer-credit-usage').textContent).toBe('参考使用率 —');
+    expect(section(host, 'kt-customer-credit').textContent).toContain('信用已批准');
+  });
+
   it('端口返回空时呈现空态', async () => {
     const none = mount(portsFor([], { loadCredit: vi.fn().mockResolvedValue(null) }));
     await openFirst(none);
