@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[W4 兼容恢复材料传输与迁移 staging 交付（TD-REL-011／012）](exec-plans/tech-debt-tracker.md) 的对应小节记录固定 C 私有快照、原始 R 材料运输、原子安装、引号与 rsync 接收者所有权独立修复、`8a0deae` 冻结的 37/37 定向回归，以及保留的整轮失败／skip 和最终集成边界；没有真实 gh／SSH／上传或真实 R 镜像演练。
+
 [发布步骤摘要修复（TD-GATE-006）](evidence/gate-006-release-summary-2026-11-26.md) 记录两处无引号 heredoc 摘要改 printf、静态守卫与 `test:release-guardrails` 接线，以及旧写法缺陷的 bash 对照复现；线上效果待下一次发布验证。
 
 [第十次发布与集成复核 §16](evidence/ux-wave-release-2026-11-24.md#16-第十次发布-5dc88e52026-11-25) 汇总制造版本续写、质量与发货、报价与库存、共享汇总卡，以及两项集成回归的双视口实测。
