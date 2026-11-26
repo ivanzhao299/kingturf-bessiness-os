@@ -170,7 +170,7 @@ def precheck(bundle):
         probe('http://127.0.0.1:4332', marker)
         # Baseline HTTPS must pass before API shutdown, including certificate validity.
         probe('https://erp.kingturf.cn', marker)
-    return {'write_channels':verify_write_channels(), 'registry': rows, 'migration_state_hashes': state_hashes(), 'previous_sha': marker, 'recovery_images': [{'name':c['Name'],'id':c['Image'],'ref':c['Config']['Image'], **({'container_id': c['Id']} if handover else {})} for c in containers], **({'handover_state': True} if handover else {})}
+    return {'write_channels':verify_write_channels(), 'registry': rows, 'migration_state_hashes': state_hashes(), 'previous_sha': marker, 'recovery_images': [{'name':c['Name'],'id':c['Image'],'ref':c['Config']['Image'], 'container_id': c['Id']} for c in containers], **({'handover_state': True} if handover else {})}
 
 
 def private_write(path, data):
@@ -523,16 +523,21 @@ def backup(bundle):
     # Persist an application-only recovery recipe BEFORE stopping anything. It
     # contains private runtime environment, remains mode 0600 on this host only.
     containers = json.loads(command(['docker','inspect',PROJECT+'-api-1',PROJECT+'-web-1']))
-    if compatible is not None:
-        for container in containers:
-            source = next(i for i in before['recovery_images'] if i['name'] == container['Name'])
-            images.require(container['Id'] == source.get('container_id') and container['Image'] == source['id'], 'Compatible recovery source changed during target import')
+    for container in containers:
+        source = next(i for i in before['recovery_images'] if i['name'] == container['Name'])
+        images.require(container['Id'] == source.get('container_id') and container['Image'] == source['id'] and container['Config']['Image'] == source['ref'], 'Recovery source changed during target import')
     overrides = {'services': {c['Config']['Labels']['com.docker.compose.service']: {'image':c['Image'],'environment':dict(line.split('=',1) for line in c['Config']['Env'])} for c in containers}}
     private_write(bundle/'recovery-compose.json',json.dumps(overrides).encode())
     private_write(bundle/'recovery-env',(ROOT/'.env.production').read_bytes())
     atomic_json(bundle/'before.json',before)
     checkpoint(bundle,'STOPPING_API')
-    compose('stop','-t','30','api')
+    # TD-REL-013: stop permission belongs to the verified snapshot, never the service name.
+    api = next(c for c in containers if c['Name'] == '/'+PROJECT+'-api-1')
+    require_api_scope(api)
+    current = json.loads(command(['docker', 'inspect', PROJECT+'-api-1']))[0]
+    require_api_scope(current)
+    images.require(current['Id'] == api['Id'] and current['Image'] == api['Image'] and current['Config']['Image'] == api['Config']['Image'] and current['Config']['Env'] == api['Config']['Env'], 'Backup API source changed before bound stop')
+    stop_bound_api(api['Id'], api['Image'])
     checkpoint(bundle,'API_STOPPED')
     assert_drained()
     verify_unchanged(bundle)

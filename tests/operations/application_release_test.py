@@ -269,4 +269,124 @@ class ApplicationRecoveryTest(unittest.TestCase):
         self.assertLess(text.index("--candidate-sha='$RELEASE_SHA'"), text.index('.release-image-recovery; mkdir'))
 
 
+class BackupStopIdentityTest(unittest.TestCase):
+    """TD-REL-013: real backup control flow; Docker is a deterministic substitute."""
+
+    def scene(self):
+        import forward_recovery_test as fixtures
+        host = fixtures.ForwardRecoveryTest('runTest')
+        host.setUp()
+        return host
+
+    def run_backup(self, host, *, handover=False, checkpoint_hook=None, stop_hook=None, import_hook=None):
+        import copy
+        import forward_recovery_test as fixtures
+        release = fixtures.ar
+        before = {'previous_sha': host.old, 'registry': release.registry_snapshot(),
+                  'migration_state_hashes': release.state_hashes(),
+                  'recovery_images': [{'name': c['Name'], 'id': c['Image'], 'ref': c['Config']['Image'],
+                                       'container_id': c['Id']}
+                                      for c in (host.containers['api'], host.containers['web'])]}
+        if handover:
+            before['handover_state'] = True
+        host.containers['api']['State'].update(Running=not handover, Restarting=False,
+                                               Status='exited' if handover else 'running')
+        original_command, original_compose = host.app_command, host.compose
+        original_checkpoint = release.checkpoint
+        def checkpoint(bundle, phase):
+            original_checkpoint(bundle, phase)
+            if phase == 'STOPPING_API' and checkpoint_hook:
+                checkpoint_hook()
+        def command(argv, **kwargs):
+            if argv[1] == 'stop' and stop_hook:
+                stop_hook()
+            return original_command(argv, **kwargs)
+        def compose(*args, **kwargs):
+            if args[0] == 'stop' and stop_hook:
+                stop_hook()
+            return original_compose(*args, **kwargs)
+        def prepare(_bundle, _before):
+            if import_hook:
+                import_hook()
+            return None
+        with mock.patch.object(release, 'precheck', return_value=copy.deepcopy(before)), \
+             mock.patch.object(release, 'prepare_compatible_target', side_effect=prepare), \
+             mock.patch.object(release, 'checkpoint', side_effect=checkpoint), \
+             mock.patch.object(release, 'command', side_effect=command), \
+             mock.patch.object(release, 'compose', side_effect=compose), \
+             mock.patch.object(release, 'assert_drained', side_effect=RuntimeError('verified stop boundary')) as drained:
+            with self.assertRaises(RuntimeError):
+                release.backup(host.bundle)
+        return drained.call_count
+
+    def test_normal_backup_preserves_the_precheck_id_across_target_preparation(self):
+        host = self.scene()
+        try:
+            self.run_backup(host, import_hook=host.replace_api)
+            self.assertEqual(host.stops(), [])
+            self.assertTrue(host.containers['api']['State']['Running'])
+        finally:
+            host.doCleanups()
+
+    def test_replacement_after_backup_check_is_rejected_without_stopping_new_api(self):
+        host = self.scene()
+        try:
+            self.run_backup(host, checkpoint_hook=host.replace_api)
+            self.assertEqual(host.stops(), [])
+            self.assertTrue(host.containers['api']['State']['Running'])
+        finally:
+            host.doCleanups()
+
+    def test_replacement_at_stop_dispatch_cannot_redirect_the_stop(self):
+        host = self.scene()
+        try:
+            self.run_backup(host, stop_hook=host.replace_api)
+            self.assertEqual(host.stops(), [('stopped-id', '3'*64)])
+            self.assertNotIn(('stopped-id', '9'*64), host.stops())
+            self.assertTrue(host.containers['api']['State']['Running'])
+        finally:
+            host.doCleanups()
+
+    def test_backup_rechecks_canonical_project_and_mount_immediately_before_stop(self):
+        import copy
+        import forward_recovery_test as fixtures
+        for index in range(9):
+            with self.subTest(scope=index):
+                host = self.scene()
+                try:
+                    _, mutation = list(fixtures.api_scope_variants(copy.deepcopy(host.containers['api'])))[index]
+                    self.run_backup(host, checkpoint_hook=lambda: host.containers.update(api=mutation))
+                    self.assertEqual(host.stops(), [])
+                    self.assertTrue(host.containers['api']['State']['Running'])
+                finally:
+                    host.doCleanups()
+
+    def test_backup_same_id_with_changed_image_or_reference_is_rejected(self):
+        for key in ('Image', 'reference'):
+            with self.subTest(field=key):
+                host = self.scene()
+                try:
+                    def change():
+                        if key == 'Image':
+                            host.containers['api']['Image'] = 'sha256:'+'9'*64
+                        else:
+                            host.containers['api']['Config']['Image'] = 'unrelated@sha256:'+'9'*64
+                    self.run_backup(host, checkpoint_hook=change)
+                    self.assertEqual(host.stops(), [])
+                finally:
+                    host.doCleanups()
+
+    def test_healthy_and_already_stopped_handover_stop_the_verified_full_id(self):
+        for handover in (False, True):
+            with self.subTest(handover=handover):
+                host = self.scene()
+                try:
+                    self.assertEqual(self.run_backup(host, handover=handover), 1)
+                    self.assertEqual(host.stops(), [('stopped-id', '3'*64)])
+                    self.assertFalse(host.containers['api']['State']['Running'])
+                    self.assertFalse(any(e[0] == 'compose' and e[1][0] == 'stop' for e in host.events))
+                finally:
+                    host.doCleanups()
+
+
 if __name__=='__main__':unittest.main()

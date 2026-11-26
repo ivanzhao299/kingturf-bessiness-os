@@ -104,7 +104,34 @@ class HostFlowRehearsal(unittest.TestCase):
                 '--expected-before', '72', '--expected-after', '81']
 
     def run_main(self, url, orchestrator_stub, version_ok=True):
-        seen = {'compose': [], 'orchestrator': []}
+        seen = {'compose': [], 'orchestrator': [], 'stops': []}
+        # Host actions remain explicit substitutes; every PostgreSQL path below stays real.
+        import copy
+        api = {'Id': '3'*64, 'Name': '/kingturf-erp-production-api-1', 'Image': 'sha256:'+'3'*64,
+               'Config': {'Image': 'fixture/api@sha256:'+'3'*64,
+                          'Labels': {'com.docker.compose.project': 'kingturf-erp-production', 'com.docker.compose.service': 'api'},
+                          'Env': ['KINGTURF_RELEASE_SHA=01ef0e1fd34c724b21cfd470a41161687020ec5c', 'KINGTURF_WRITE_FENCE=disabled']},
+               'Mounts': [{'Type': 'bind', 'Source': str(self.prod / 'attachments'), 'Destination': '/var/lib/kingturf/attachments'}],
+               'State': {'Running': True, 'Restarting': False}}
+        retired = {}
+        actual_command = am.command
+        def host_command(argv, **kwargs):
+            if argv[0:2] == ['docker', 'inspect']:
+                return json.dumps([api if name in ('kingturf-erp-production-api-1', api['Id']) else retired[name] for name in argv[2:]]).encode()
+            if argv[0:2] == ['docker', 'stop']:
+                self.assertEqual(argv[-1], api['Id'])
+                self.assertRegex(argv[-1], r'^[0-9a-f]{64}$')
+                seen['stops'].append(argv[-1])
+                api['State'].update(Running=False, Restarting=False)
+                return b''
+            return actual_command(argv, **kwargs)
+        def host_compose(root, *args):
+            seen['compose'].append(args)
+            self.assertEqual(args[0], 'up', 'API stop must use the verified immutable ID')
+            retired[api['Id']] = copy.deepcopy(api)
+            api['Id'] = ('4' if api['Id'] == '3'*64 else '5')*64
+            api['State'].update(Running=True, Restarting=False)
+            api['Config']['Env'][-1] = next(line for line in (root / '.env.production').read_text().splitlines() if line.startswith('KINGTURF_WRITE_FENCE='))
 
         real_sleep = time.sleep
 
@@ -118,7 +145,7 @@ class HostFlowRehearsal(unittest.TestCase):
         env_path.chmod(0o600)  # write_text 不保留模式，重设为门禁要求
         try:
             with mock.patch.object(sys, 'argv', ['apply_migrations.py'] + self.base_argv()):
-                with mock.patch.object(am, 'compose', lambda root, *a: seen['compose'].append(a)):
+                with mock.patch.object(am, 'compose', side_effect=host_compose), mock.patch.object(am, 'command', side_effect=host_command):
                     with mock.patch.object(am, 'run_orchestrator',
                                            lambda staged, *cli: orchestrator_stub(url, seen, cli)):
                         with mock.patch.object(am, 'http_status', lambda path, method='GET':
@@ -147,7 +174,8 @@ class HostFlowRehearsal(unittest.TestCase):
 
         seen = self.run_main(url, stub)
         self.assertEqual(seen['orchestrator'], ['check-evidence', 'execute', 'postcheck'])
-        self.assertIn(('stop', '-t', '30', 'api'), seen['compose'])
+        self.assertEqual(seen['stops'], ['4'*64])
+        self.assertNotIn(('stop', '-t', '30', 'api'), seen['compose'])
         fence = json.loads((self.prod / '.release-migration-evidence/write_fence.json').read_text())
         self.assertEqual(fence['method'], 'controlled_old_api_shutdown')
         self.assertEqual(fence['api_release_sha'], '01ef0e1fd34c724b21cfd470a41161687020ec5c')

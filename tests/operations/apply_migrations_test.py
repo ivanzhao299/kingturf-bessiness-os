@@ -230,5 +230,164 @@ class PureLogicTest(unittest.TestCase):
             am.require_zero(pending, inflight, 'background queues have in-flight work')
 
 
+class ApiStopBindingTest(unittest.TestCase):
+    """TD-REL-013: execute the real host flow up to drain with controlled Docker."""
+
+    def flow(self, *, after_probe=None, after_up=None, replace_at_stop=False):
+        import contextlib
+        import copy
+        import hashlib
+        import io
+        import sys
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            staged = root / 'staged'
+            (staged / 'migrations').mkdir(parents=True)
+            for name in ('0001_base.sql', '0002_next.sql'):
+                (staged / 'migrations' / name).write_text('SELECT 1;')
+            (staged / 'production_preflight.py').write_text('# synthetic layout fixture')
+            (staged / 'release_orchestrator.py').write_text(
+                "class PsqlSession:\n def __init__(self, argv): pass\n def close(self): pass\n"
+                "def read_registry(session): return [{'name':'0001_base.sql','checksum':'a'*64}]\n"
+                "def build_plan(*args): return {'classification':'MATCHED_PREFIX_PENDING','pending':[{'name':'0002_next.sql'}]}\n")
+            prod = root / 'prod'
+            prod.mkdir()
+            attachments = prod / 'attachments'
+            attachments.mkdir()
+            env = prod / '.env.production'
+            env.write_text('POSTGRES_USER=fixture\nPOSTGRES_DB=fixture\nKINGTURF_WRITE_FENCE=disabled\n')
+            env.chmod(0o600)
+            (prod / '.release-sha').write_text('a'*40)
+            initial = {'Id': '3'*64, 'Name': '/kingturf-erp-production-api-1',
+                       'Image': 'sha256:'+'3'*64,
+                       'Config': {'Image': 'fixture/api@sha256:'+'3'*64,
+                                  'Labels': {'com.docker.compose.project': 'kingturf-erp-production', 'com.docker.compose.service': 'api'},
+                                  'Env': ['KINGTURF_RELEASE_SHA='+'a'*40, 'KINGTURF_WRITE_FENCE=disabled']},
+                       'Mounts': [{'Type': 'bind', 'Source': str(attachments), 'Destination': '/var/lib/kingturf/attachments'}],
+                       'State': {'Running': True, 'Restarting': False}}
+            current = copy.deepcopy(initial)
+            retired, stops, compose_calls, observations = {}, [], [], []
+            def replace():
+                retired[current['Id']] = copy.deepcopy(current)
+                current['Id'] = '9'*64
+                current['State'].update(Running=True, Restarting=False)
+            def docker(argv, **kwargs):
+                if argv[1] == 'inspect':
+                    observations.append((current['Id'], tuple(argv[2:])))
+                    values = [current if key in (current['Id'], 'kingturf-erp-production-api-1') else retired[key] for key in argv[2:]]
+                    return json.dumps(values).encode()
+                if argv[1] == 'stop':
+                    if replace_at_stop:
+                        replace()
+                    target = current if argv[-1] == current['Id'] else retired[argv[-1]]
+                    stops.append(target['Id'])
+                    target['State'].update(Running=False, Restarting=False)
+                    return b''
+                raise AssertionError('Unexpected host command in isolated stop fixture')
+            def compose(_root, *args):
+                compose_calls.append(args)
+                if args[0] == 'up':
+                    retired[current['Id']] = copy.deepcopy(current)
+                    current['Id'] = '4'*64
+                    current['Config']['Env'] = ['KINGTURF_RELEASE_SHA='+'a'*40, 'KINGTURF_WRITE_FENCE=enabled']
+                    if after_up:
+                        after_up(current)
+                elif args[0] == 'stop':
+                    if replace_at_stop:
+                        replace()
+                    stops.append(current['Id'])
+                    current['State'].update(Running=False, Restarting=False)
+                return b''
+            def probe(_path, method='GET'):
+                if method == 'POST':
+                    if after_probe:
+                        after_probe(current, replace)
+                    return 503
+                return 200
+            def dump(_container, _user, _db, path):
+                path.write_bytes(b'controlled dump fixture')
+                return hashlib.sha256(path.read_bytes()).hexdigest()
+            def restored(_root):
+                env.write_text(am.disable_fence_text(env.read_text()))
+                return True
+            argv = ['apply_migrations.py', '--candidate-sha', 'f'*40,
+                    '--approved-suffixes', '0002_next.sql', '--staged-root', str(staged),
+                    '--approver', 'fixture', '--prod-root', str(prod),
+                    '--attachments-dir', str(attachments), '--expected-before', '1', '--expected-after', '2']
+            with mock.patch.object(sys, 'argv', argv), \
+                 mock.patch.object(am, 'command', side_effect=docker), \
+                 mock.patch.object(am, 'compose', side_effect=compose), \
+                 mock.patch.object(am, 'dump_database', side_effect=dump), \
+                 mock.patch.object(am, 'http_status', side_effect=probe), \
+                 mock.patch.object(am, 'require_zero', side_effect=RuntimeError('verified stop boundary')), \
+                 mock.patch.object(am, 'restore_api_on_failure', side_effect=restored) as restore, \
+                 mock.patch.object(am.time, 'sleep'), contextlib.redirect_stdout(io.StringIO()):
+                with self.assertRaises(SystemExit) as exit_status:
+                    am.main()
+            self.assertEqual(exit_status.exception.code, 1)
+            return {'stops': stops, 'running': current['State']['Running'], 'id': current['Id'],
+                    'restores': restore.call_count, 'compose': compose_calls,
+                    'observations': observations, 'fence': env.read_text()}
+
+    def test_replacement_after_fenced_probe_is_not_stopped_or_restored(self):
+        result = self.flow(after_probe=lambda current, replace: replace())
+        self.assertEqual(result['stops'], [])
+        self.assertEqual(result['restores'], 0)
+        self.assertEqual(result['id'], '9'*64)
+        self.assertTrue(result['running'])
+        self.assertIn('KINGTURF_WRITE_FENCE=enabled', result['fence'])
+
+    def test_replacement_at_stop_dispatch_cannot_redirect_the_stop(self):
+        result = self.flow(replace_at_stop=True)
+        self.assertEqual(result['stops'], ['4'*64])
+        self.assertNotIn('9'*64, result['stops'])
+        self.assertTrue(result['running'])
+        self.assertEqual(result['restores'], 0)
+        self.assertIn('KINGTURF_WRITE_FENCE=enabled', result['fence'])
+
+    def test_legal_fence_recreation_binds_observed_new_id(self):
+        result = self.flow()
+        self.assertEqual(result['stops'], ['4'*64])
+        self.assertNotIn('3'*64, result['stops'])
+        self.assertTrue(any(identity == '4'*64 for identity, _ in result['observations']))
+        self.assertFalse(any(args[0] == 'stop' for args in result['compose']))
+        self.assertEqual(result['restores'], 1)  # Existing pre-migration drain failure recovery remains.
+
+    def test_scope_or_original_identity_drift_after_probe_retains_fence(self):
+        import forward_recovery_test as fixtures
+        for index in range(12):
+            with self.subTest(variant=index):
+                def changed(current, replace):
+                    if index < 9:
+                        _, mutation = list(fixtures.api_scope_variants(current))[index]
+                        current.clear()
+                        current.update(mutation)
+                    elif index == 9:
+                        current['Image'] = 'sha256:'+'9'*64
+                    elif index == 10:
+                        current['Config']['Image'] = 'unrelated@sha256:'+'9'*64
+                    else:
+                        current['Config']['Env'][0] = 'KINGTURF_RELEASE_SHA='+'9'*40
+                result = self.flow(after_probe=changed)
+                self.assertEqual(result['stops'], [])
+                self.assertEqual(result['restores'], 0)
+                self.assertTrue(result['running'])
+                self.assertIn('KINGTURF_WRITE_FENCE=enabled', result['fence'])
+
+    def test_fence_recreation_must_preserve_the_original_image_and_release(self):
+        for field in ('Image', 'release'):
+            with self.subTest(field=field):
+                def changed(current):
+                    if field == 'Image':
+                        current['Image'] = 'sha256:'+'9'*64
+                    else:
+                        current['Config']['Env'][0] = 'KINGTURF_RELEASE_SHA='+'9'*40
+                result = self.flow(after_up=changed)
+                self.assertEqual(result['stops'], [])
+                self.assertEqual(result['restores'], 0)
+                self.assertTrue(result['running'])
+
+
 if __name__ == '__main__':
     unittest.main()

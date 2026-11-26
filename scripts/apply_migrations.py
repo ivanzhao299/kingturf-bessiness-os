@@ -25,6 +25,7 @@ from datetime import datetime, timedelta, timezone
 SUFFIX_RE = re.compile(r'^[0-9]{4}_[a-z0-9_]+\.sql$')
 SHA_RE = re.compile(r'^[0-9a-f]{40}$')
 HEALTH = 'http://127.0.0.1:4332/health'
+PROJECT = 'kingturf-erp-production'
 DRAIN_INFLIGHT_CUTOFF_DAYS = 7
 
 
@@ -307,6 +308,32 @@ def compose(prod_root, *args):
                    timeout=180)
 
 
+def api_identity(container):
+    return (container['Id'], container['Image'], container['Config']['Image'], tuple(container['Config']['Env']))
+
+
+def observe_api(attachments_dir):
+    values = json.loads(command(['docker', 'inspect', PROJECT+'-api-1']))
+    require(len(values) == 1, 'API source is ambiguous')
+    container = values[0]
+    labels = container.get('Config', {}).get('Labels') or {}
+    require(container.get('Name') == '/'+PROJECT+'-api-1' and isinstance(labels, dict) and labels.get('com.docker.compose.project') == PROJECT and labels.get('com.docker.compose.service') == 'api', 'API scope canonical name or Compose project/service mismatch')
+    mounts = [m for m in container.get('Mounts', []) if m.get('Destination') == '/var/lib/kingturf/attachments']
+    require(len(mounts) == 1 and mounts[0].get('Type') == 'bind' and mounts[0].get('Source') == str(attachments_dir), 'API scope attachment bind mismatch')
+    require(re.fullmatch(r'[0-9a-f]{64}', container['Id']) and re.fullmatch(r'sha256:[0-9a-f]{64}', container['Image']), 'API source requires full immutable container/image IDs')
+    return container
+
+
+def stop_verified_api(attachments_dir, source):
+    # TD-REL-013: a replacement after the final observation cannot redirect this ID.
+    require(api_identity(observe_api(attachments_dir)) == api_identity(source), 'API source changed before bound stop')
+    command(['docker', 'stop', '-t', '30', source['Id']])
+    stopped = json.loads(command(['docker', 'inspect', source['Id']]))[0]
+    canonical = observe_api(attachments_dir)
+    require(api_identity(stopped) == api_identity(canonical) == api_identity(source), 'API source changed during bound stop')
+    require(all(not item['State'].get('Running') and not item['State'].get('Restarting') for item in (stopped, canonical)), 'API is not truly stopped')
+
+
 def http_status(path, method='GET', timeout=15):
     request = urllib.request.Request(HEALTH.replace('/health', path), method=method,
                                      headers={'content-type': 'application/json'},
@@ -344,6 +371,7 @@ def main():
     fence_applied = False
     migration_started = False
     recovery_approval = None
+    api_binding = None
     try:
         validate_candidate_sha(args.candidate_sha)
         suffixes = parse_suffixes(args.approved_suffixes)
@@ -388,19 +416,25 @@ def main():
             recovery_approval = selected_recovery_approval(ro, evidence, plan, (args.prod_root / '.release-sha').read_text().strip(), utcnow(), args.recovery_approval)
 
             step = 'write-fence'
+            api_binding = observe_api(args.attachments_dir)
+            api_sha = (args.prod_root / '.release-sha').read_text().strip()
+            require([v for v in api_binding['Config']['Env'] if v.startswith('KINGTURF_RELEASE_SHA=')] == ['KINGTURF_RELEASE_SHA='+api_sha], 'API source release differs from marker')
             t_fence = iso(utcnow())
             env_path = args.prod_root / '.env.production'
             env_path.write_text(enable_fence_text(env_path.read_text()))
             fence_applied = True
             compose(args.prod_root, 'up', '-d', '--no-deps', '--pull', 'never', 'api')
             time.sleep(8)
+            fenced = observe_api(args.attachments_dir)
+            require(fenced['Image'] == api_binding['Image'] and fenced['Config']['Image'] == api_binding['Config']['Image'] and [v for v in fenced['Config']['Env'] if v.startswith('KINGTURF_RELEASE_SHA=')] == ['KINGTURF_RELEASE_SHA='+api_sha], 'API source changed while enabling fence')
+            require(fenced['State'].get('Running') and not fenced['State'].get('Restarting') and [v for v in fenced['Config']['Env'] if v.startswith('KINGTURF_WRITE_FENCE=')] == ['KINGTURF_WRITE_FENCE=enabled'], 'Actual fenced API observation missing')
+            api_binding = fenced  # Compose may legitimately recreate it: bind the actual new full ID.
             require(http_status('/health') == 200, 'fenced API health probe did not return 200')
             fence_status = http_status('/api/v1/customers', method='POST')
             require(fence_status == 503, f'write probe under fence returned {fence_status}, expected 503')
             t_obs = iso(utcnow())
-            compose(args.prod_root, 'stop', '-t', '30', 'api')
+            stop_verified_api(args.attachments_dir, api_binding)
             t_stop = iso(utcnow())
-            api_sha = (args.prod_root / '.release-sha').read_text().strip()
             fence = build_write_fence(api_sha, t_fence, t_obs, t_stop)
             (evidence / 'write_fence.json').write_text(json.dumps(fence))
             emit('write-fence', {'method': fence['method'], 'api_release_sha': api_sha,
@@ -531,6 +565,11 @@ def main():
     except Exception as failure:  # noqa: BLE001 - single fail-closed report path
         emit(step, {'error': str(failure)[:500]}, status='FAIL')
         if fence_applied:
+            try:
+                require(api_binding is not None and api_identity(observe_api(args.attachments_dir)) == api_identity(api_binding), 'API stop source changed')
+            except Exception:
+                emit('api-source-changed', {'write_fence': 'enabled', 'api_restart': 'NOT_ATTEMPTED'}, status='FAIL')
+                sys.exit(1)
             if recovery_approval is not None and migration_started:
                 emit('compatible-recovery-required', {'api_state': 'stopped', 'write_fence': 'enabled', 'old_image_restart': 'NOT_ATTEMPTED'}, status='FAIL')
                 sys.exit(1)
