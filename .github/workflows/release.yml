@@ -350,8 +350,8 @@ jobs:
           done
           test -z "$(find "$staged" -type l -print -quit)"
           REMOTE_STAGE
-          rsync -az --partial -e "$ssh_transport" scripts/apply_migrations.py scripts/release_orchestrator.py scripts/production_preflight.py "$PROD_SSH_USER@$PROD_SSH_HOST:$STAGED/"
-          rsync -az --partial -e "$ssh_transport" .candidate/packages/database/migrations/ "$PROD_SSH_USER@$PROD_SSH_HOST:$STAGED/migrations/"
+          rsync -az --no-owner --no-group --partial -e "$ssh_transport" scripts/apply_migrations.py scripts/release_orchestrator.py scripts/production_preflight.py "$PROD_SSH_USER@$PROD_SSH_HOST:$STAGED/"
+          rsync -az --no-owner --no-group --partial -e "$ssh_transport" .candidate/packages/database/migrations/ "$PROD_SSH_USER@$PROD_SSH_HOST:$STAGED/migrations/"
           apply_sha=$(cut -d ' ' -f1 "$RUNNER_TEMP/apply-bytes.sha256")
           [[ "$apply_sha" =~ ^[0-9a-f]{64}$ && "$EXPECTED_AFTER" =~ ^[1-9][0-9]*$ ]]
           ssh -o BatchMode=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o KexAlgorithms=curve25519-sha256 -p "$PROD_SSH_PORT" "$PROD_SSH_USER@$PROD_SSH_HOST" \

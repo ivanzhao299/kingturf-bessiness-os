@@ -222,7 +222,7 @@ def stage_material(control, control_sha, bundle, plan, candidate, environ=None):
         checks = '; '.join('test "$(sha256sum '+shlex.quote(staged+'/'+name)+' | cut -d " " -f1)" = '+shlex.quote(controls[name]) for name in ('apply_migrations.py', 'release_orchestrator.py', 'production_preflight.py'))
         create = shlex.join(['python3', '-I', '-c', BOOTSTRAP, 'create', remote, expected])
         transport.command([*ssh, host, 'set -eu; '+checks+'; '+create])
-        transport.command(['rsync', '-az', '--partial', '-e', shlex.join(ssh), str(payload)+'/', host+':'+remote+'/'])
+        transport.command(['rsync', '-az', '--partial', '--no-owner', '--no-group', '-e', shlex.join(ssh), str(payload)+'/', host+':'+remote+'/'])
         verify = shlex.join(['python3', '-I', '-c', BOOTSTRAP, 'verify', remote, expected])
         install = shlex.join(['python3', '-I', remote+'/scripts/stage_recovery_material.py', 'install', '--incoming', remote, '--canonical-root', canonical, '--transfer-sha256', expected, '--candidate-sha', candidate, '--control-sha', control_sha])
         transport.command([*ssh, host, 'set -eu; '+verify+'; '+install])

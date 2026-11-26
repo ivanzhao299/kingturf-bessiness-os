@@ -4,7 +4,9 @@ Only the fixed production root is mapped into this test's owned temporary tree.
 Remote bash, stat, find, mkdir, ownership, modes, checksum and SQL-count checks
 execute for real there. No SSH client, network or production directory is used.
 """
+import ast
 import getpass
+import shlex
 import json
 import os
 from pathlib import Path
@@ -39,8 +41,8 @@ rsync() {
   python3 -I -c '
 import os,pathlib,shutil,sys
 args=sys.argv[1:]; target=pathlib.Path(args[-1].split(":",1)[1])
-# -az --partial -e <transport> precede the actual source arguments.
-for source in args[4:-1]:
+# Sources follow -e <transport>; ownership flags precede that pair.
+for source in args[args.index("-e")+2:-1]:
  p=pathlib.Path(source)
  if p.is_dir(): shutil.copytree(p,target,dirs_exist_ok=True)
  else:
@@ -129,6 +131,24 @@ class MigrationStagingShellTest(unittest.TestCase):
         result = self.execute(EXPECTED_AFTER='3')
         self.assertNotEqual(result.returncode, 0)
         self.assertTrue((self.staged/'migrations/0001_one.sql').is_file())
+
+    def test_all_three_rsync_commands_keep_receiver_ownership_including_root(self):
+        # Cross-UID behavior is independently reproduced by the coordinator in a
+        # root container. This checks actual argv construction, not a same-UID
+        # copy substitute claiming to reproduce rsync's owner preservation.
+        transfers = [shlex.split(line.strip()) for line in staging_body().splitlines() if line.strip().startswith('rsync ')]
+        self.assertEqual(len(transfers), 2)
+        source = ast.parse((ROOT/'scripts/stage_recovery_material.py').read_text())
+        commands = [node for node in ast.walk(source) if isinstance(node, ast.List) and node.elts and isinstance(node.elts[0], ast.Constant) and node.elts[0].value == 'rsync']
+        self.assertEqual(len(commands), 1)
+        transfers.append([node.value for node in commands[0].elts if isinstance(node, ast.Constant)])
+        for argv in transfers:
+            self.assertIn('--no-owner', argv)
+            self.assertIn('--no-group', argv)
+            self.assertNotIn('--chown', argv)
+        helper = (ROOT/'scripts/stage_recovery_material.py').read_text()
+        self.assertIn('st_uid==os.geteuid()', helper)
+        self.assertIn('path.stat().st_uid == os.geteuid()', helper)
 
     def test_staging_remains_before_recovery_material_and_apply_in_existing_job(self):
         text = (ROOT/'.github/workflows/release.yml').read_text()
