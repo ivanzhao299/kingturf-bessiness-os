@@ -26,6 +26,8 @@ import tarfile
 import tempfile
 import zipfile
 
+sys.dont_write_bytecode = True
+
 REPOSITORY = 'ivanzhao299/kingturf-bessiness-os'
 WORKFLOW = '.github/workflows/release-images.yml'
 SHA = re.compile(r'[0-9a-f]{40}')
@@ -126,6 +128,19 @@ def control_identity(root, expected):
         require(file.read_bytes() == git(root, 'show', expected+':scripts/'+name), 'control file differs from fixed commit')
 
 
+def snapshot_controls(control, control_sha, target):
+    scripts = Path(target)/'scripts'
+    scripts.mkdir(parents=True, exist_ok=True, mode=0o700)
+    hashes = {}
+    for name in CONTROL_FILES:
+        raw = git(control, 'show', control_sha+':scripts/'+name)
+        with (scripts/name).open('xb') as stream:
+            stream.write(raw)
+        (scripts/name).chmod(0o600)
+        hashes[name] = hashlib.sha256(raw).hexdigest()
+    return hashes
+
+
 def tree_manifest(root, sha):
     prefix = 'packages/database/migrations/'
     names = git(root, 'ls-tree', '-r', '--name-only', sha, '--', prefix).decode().splitlines()
@@ -222,13 +237,31 @@ def export_material(source, control, control_sha, release_sha, api_digest, web_d
     require(not out.exists(), 'export output must be a new directory')
     out.mkdir(parents=True, mode=0o700)
     prepare = ordinary(control, 'scripts/prepare_release_bundle.sh')
-    require(prepare.read_bytes() == git(control, 'show', control_sha+':scripts/prepare_release_bundle.sh'), 'export script is not fixed control')
+    prepare_raw = git(control, 'show', control_sha+':scripts/prepare_release_bundle.sh')
+    require(prepare.read_bytes() == prepare_raw, 'export script is not fixed control')
     with tempfile.TemporaryDirectory(prefix='recovery-export-') as temp:
+        fixed_control = Path(temp)/'control'
+        snapshot_controls(control, control_sha, fixed_control)
+        prepare = fixed_control/'scripts/prepare_release_bundle.sh'
+        prepare.write_bytes(prepare_raw)
+        prepare.chmod(0o600)
+        # The fixed prepare script uses stdin Python and relative SQL paths.
+        # Give it only immutable R SQL data in a fresh private cwd: an R checkout
+        # may contain json.py or other code that ordinary Python would import.
+        sql_root = Path(temp)/'source'
+        sql_dir = sql_root/'packages/database/migrations'
+        sql_dir.mkdir(parents=True, mode=0o700)
+        for name, expected in manifest.items():
+            raw = git(control, 'show', release_sha+':packages/database/migrations/'+name)
+            require(hashlib.sha256(raw).hexdigest() == expected, 'R Git SQL snapshot differs')
+            with (sql_dir/name).open('xb') as stream:
+                stream.write(raw)
+            (sql_dir/name).chmod(0o600)
         layout = Path(temp)/'oci'
-        command(['bash', str(prepare), release_sha, api_digest, web_digest, str(layout)], cwd=source)
+        command(['bash', str(prepare), release_sha, api_digest, web_digest, str(layout)], cwd=sql_root)
         inventory = file_inventory(layout)
-        require(all(name in ('release.json', 'migrations.json', 'api-tag.json', 'web-tag.json') or name.startswith(('api/', 'web/')) for name in inventory), 'unexpected configuration or credential file in OCI export')
-        check_oci(control, layout, release_sha, manifest, {'api_digest': api_digest, 'web_digest': web_digest})
+        require(all(name in ('release.json', 'migrations.json', 'api-tag.json', 'web-tag.json', 'api/index.json', 'api/oci-layout', 'web/index.json', 'web/oci-layout') or re.fullmatch(r'(api|web)/blobs/sha256/[0-9a-f]{64}', name) for name in inventory), 'unexpected configuration or credential file in OCI export')
+        check_oci(fixed_control, layout, release_sha, manifest, {'api_digest': api_digest, 'web_digest': web_digest})
         # This tar is created exactly once. Every later consumer receives these bytes.
         with tarfile.open(out/'recovery.tar.gz', 'w:gz', dereference=False) as archive:
             for name in inventory:
@@ -260,24 +293,26 @@ def export_material(source, control, control_sha, release_sha, api_digest, web_d
     return {'artifact_name': 'compatible-recovery-material-'+release_sha, 'release_sha': release_sha, 'main_sha': main, 'files': file_inventory(out)}
 
 
-def pinned_file(control, path):
+def pinned_file(control, path, control_sha='HEAD'):
     path = Path(path)
     name = path.relative_to(control).as_posix()
-    require(ordinary(control, name).read_bytes() == git(control, 'show', 'HEAD:'+name), 'selection bytes differ from fixed control C')
-    return path
+    raw = git(control, 'show', control_sha+':'+name)
+    require(ordinary(control, name).read_bytes() == raw, 'selection bytes differ from fixed control C')
+    return raw
 
 
-def approved_selection(control, candidate):
+def approved_selection(control, candidate, control_sha='HEAD'):
     control = Path(control)
     require(isinstance(candidate, str) and SHA.fullmatch(candidate), 'candidate SHA malformed')
     name = 'release-materials/compatible-recovery/'+candidate+'/approval.json'
     selected = ordinary(control, name, missing=True)
     if selected is None:
-        require(not git(control, 'ls-tree', 'HEAD', '--', name), 'C selects material but its approval is missing')
+        require(not git(control, 'ls-tree', control_sha, '--', name), 'C selects material but its approval is missing')
         return None
-    pinned_file(control, selected)
+    raw = pinned_file(control, selected, control_sha)
     base = selected.parent
-    approval = json_file(base, 'approval.json')
+    json_file(base, 'approval.json')  # Reject duplicate keys as well as malformed JSON.
+    approval = json.loads(raw)
     require(approval.get('image_compatibility_mode') == 'compatible_recovery', 'existing selection must explicitly approve compatible_recovery')
     require(approval.get('release_sha') == candidate, 'approval selects another business candidate')
     return base, approval
@@ -324,8 +359,8 @@ def download_approved(source, target):
     return run, artifact
 
 
-def transport_plan(control, candidate_root, candidate, approval, out):
-    orchestrator = module(control, 'release_orchestrator')
+def transport_plan(control, candidate_root, candidate, approval, out, *, fixed_control=None):
+    orchestrator = module(fixed_control or control, 'release_orchestrator')
     manifest = orchestrator.read_manifest(Path(candidate_root)/'packages/database/migrations')
     require(len(manifest) == 81 and manifest == tree_manifest(control, candidate), 'target manifest must equal all 81 B Git SQL files')
     suffix = approval.get('approved_suffix')
@@ -350,6 +385,8 @@ def validate_material(control, root, plan_file):
     require(digest(ordinary(root, 'provenance.json')) == source['provenance_sha256'], 'export provenance bytes differ')
     provenance = json_file(root, 'provenance.json')
     binding = approval['compatible_recovery']
+    refs = git(root, 'bundle', 'list-heads', str(source_bundle)).decode().splitlines()
+    require(len(refs) == 2 and set(refs) == {binding['recovery_main_sha']+' refs/heads/main', binding['recovery_release_sha']+' refs/heads/recovery'}, 'offline source.bundle must have exactly the approved main/recovery refs')
     require(provenance.get('kind') == 'compatible_recovery_export_v1' and provenance.get('repository') == REPOSITORY and provenance.get('workflow') == WORKFLOW and provenance.get('event') == 'workflow_dispatch', 'export provenance context differs')
     for key, expected in {'release_sha': binding['recovery_release_sha'], 'main_sha': binding['recovery_main_sha'], 'control_sha': source['export_control_sha'], 'run_id': source['run_id'], 'run_attempt': source['run_attempt'], 'api_digest': binding['api_digest'], 'web_digest': binding['web_digest'], 'target_manifest_sha256': binding['target_manifest_sha256']}.items():
         require(provenance.get(key) == expected, 'export provenance binding differs: '+key)
@@ -370,30 +407,48 @@ def validate_material(control, root, plan_file):
         check_oci(control, extracted, binding['recovery_release_sha'], plan['manifest'], binding)
         for name in ('release.json', 'migrations.json'):
             require((extracted/name).read_bytes() == ordinary(root, name).read_bytes(), 'standalone metadata differs from original tar')
-    command([sys.executable, '-I', str(ordinary(control, 'scripts/release_orchestrator.py')), 'check-compatible-recovery', str(plan_file), str(ordinary(root, 'migration-recovery-approval.json')), str(root), binding['legacy_business_sha']])
+    command([sys.executable, '-I', '-B', str(ordinary(control, 'scripts/release_orchestrator.py')), 'check-compatible-recovery', str(plan_file), str(ordinary(root, 'migration-recovery-approval.json')), str(root), binding['legacy_business_sha']])
     return approval
 
 
 def prepare_material(control, control_sha, candidate_root, candidate, bundle):
     control = Path(control).absolute()
     control_identity(control, control_sha)
-    selected = approved_selection(control, candidate)
+    selected = approved_selection(control, candidate, control_sha)
     if selected is None:
         return {'mode': 'legacy'}
     require(candidate != control_sha, 'approval control C must be later than business candidate B')
     git(control, 'merge-base', '--is-ancestor', candidate, control_sha)
-    selection, approval = selected
-    source = check_source(selection, approval)
-    pinned_file(control, ordinary(selection, 'transport-source.json'))
-    pinned_file(control, ordinary(selection, 'compatible_recovery.json'))
-    descriptor = json_file(selection, 'compatible_recovery.json')
-    require(descriptor.get('kind') == 'compatible_application_recovery_v1', 'recovery descriptor kind differs')
-    pinned_file(control, ordinary(selection, descriptor.get('report_file')))
+    original_selection, _ = selected
     dest = Path(bundle)/'compatible-recovery'
-    require(not dest.exists(), 'compatible material output already exists')
+    require(not dest.exists() and not dest.is_symlink(), 'compatible material output already exists')
     require(Path(bundle).is_dir() and not Path(bundle).is_symlink(), 'existing application bundle required')
-    dest.mkdir(mode=0o700)
     with tempfile.TemporaryDirectory(prefix='recovery-download-') as temp:
+        # Capture C's ordinary files before network activity. All later copies
+        # read this private snapshot; no post-download worktree reread supplies
+        # approval/source/descriptor/report bytes to the resulting bundle.
+        fixed_control = Path(temp)/'control'
+        snapshot_controls(control, control_sha, fixed_control)
+        selection = Path(temp)/'selection'
+        selection.mkdir(mode=0o700)
+        names = ['approval.json', 'transport-source.json', 'compatible_recovery.json']
+        for name in names:
+            raw = pinned_file(control, ordinary(original_selection, name), control_sha)
+            path = selection/name
+            path.write_bytes(raw)
+            path.chmod(0o600)
+        descriptor = json_file(selection, 'compatible_recovery.json')
+        require(descriptor.get('kind') == 'compatible_application_recovery_v1', 'recovery descriptor kind differs')
+        report_name = str(relative_name(descriptor.get('report_file')))
+        raw = pinned_file(control, ordinary(original_selection, report_name), control_sha)
+        report = selection/report_name
+        report.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        with report.open('xb') as stream:
+            stream.write(raw)
+        report.chmod(0o600)
+        approval = json_file(selection, 'approval.json')
+        source = check_source(selection, approval)
+        dest.mkdir(mode=0o700)
         archive = Path(temp)/'artifact.zip'
         run, artifact = download_approved(source, archive)
         downloaded = Path(temp)/'files'
@@ -413,12 +468,14 @@ def prepare_material(control, control_sha, candidate_root, candidate, bundle):
             path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
             shutil.copyfile(ordinary(selection, name), path)
             path.chmod(0o600)
+            expected = pinned_file(control, ordinary(original_selection, name), control_sha)
+            require(path.read_bytes() == expected, 'final prepared selection differs from C Git object')
         write_json(dest/'run.json', run)
         write_json(dest/'artifact.json', artifact)
-        plan = transport_plan(control, candidate_root, candidate, approval, dest/'validation-plan.json')
+        plan = transport_plan(control, candidate_root, candidate, approval, dest/'validation-plan.json', fixed_control=fixed_control)
         approved_main = approval['compatible_recovery']['recovery_main_sha']
         git(control, 'merge-base', '--is-ancestor', approved_main, 'refs/remotes/origin/main')
-        validate_material(control, dest, dest/'validation-plan.json')
+        validate_material(fixed_control, dest, dest/'validation-plan.json')
     return {'mode': 'compatible_recovery', 'candidate_sha': candidate, 'manifest_sha256': canonical(plan['manifest']), 'files': file_inventory(dest)}
 
 
