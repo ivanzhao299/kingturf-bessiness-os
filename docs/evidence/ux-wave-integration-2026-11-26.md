@@ -211,3 +211,19 @@ TD-REL-016的实际导出阻断已解除，成功原始来源已取得；尚未�
 本登记时修复尚未实施。拟仅在既有.prettierignore加入 `release-materials/compatible-recovery/*/report.json`，以保留真实原件字节；批准、descriptor与transport-source继续接受格式检查，实际内容／时序／来源／hash仍经严格材料门。原tar/source.bundle由成功artifact供给，最终C显式核对并暂存四selection JSON。
 
 登记提交 **`b61325e41ff655558ab678ba64755ec0f58dc5d9`** 后，独立fix **`4f934cd1dee3bf62339c4dc4bdaa7b260b7ab6d3`** 恰改.prettierignore一行。12:49:04 UTC，同一原字节fixture在目标report路径的显式文件检查转 **退出0**；approval.json、compatible_recovery.json、transport-source.json、错目录report.json、该目录更深一层的report.json这五类仍 **退出1**，六项边界全部符合预期。所有fixture的原字节／SHA-256均未变，项目完整format:check退出0。原有五个固定控制脚本与1f原字节完全相同，driver与严格材料门未改；没有生成演练报告／PASS／批准。绿态原始日志、逐项退出码与字节摘要在 `integration-artifacts/report-format-gate/fixed-green.json` 和 `fixed-case-*.log`，fix／控制字节回执为 `fix-commit.json`。最终B完整CI与真实报告入库、manual／automatic仍须后继执行。
+
+## 10. 供应商初焦批集成与定向复验
+
+指定GLM开发／审查流程已交付 **`3882d0114a969836dd151eaf864b5330668e0efd`**，主协调复核完整源码差异后合入 **`acbdf0f11e241b6debe4ec718495d78c48f65aba`**。只改供应商控制台测试：14处残余打开抽屉路径经act helper，同步结清初焦effect并增加焦点落位断言；两个原确认框初焦断言保留。产品组件、API、SQL、权限和写路径均未改。
+
+唯一合并冲突在共享台账的顶部插入位置。依据三方Git原对象，验证交付方对台账恰为增加一个完整新小节后，将它放在现有所有者裁定之后，所有者裁定仍为第一节且原字节相同，既有新债务／状态保持。测试和新增分支证据与3882d01原字节一致，唯一apps/packages变更为此测试文件；文档、格式和diff检查退出0。完整合并回执与日志在 `integration-artifacts/drawer-focus-3882d01/merge-result.json` 及同目录。
+
+**13:14:40–13:15:01 UTC**，在干净合并提交经heavy运行同一个供应商测试命令 **20轮，20/20通过，每轮19/19**；每轮原日志分别保存，任一轮失败即停止，没有重试。前后HEAD相同、受跟踪树干净；源码SHA-256 `050917fb7f669310b8c98b1b2d27c850ebeea3f8c344a3334eca21f5760dc52b`。回执 `merged-test-result.json`，日志 `merged-supplier-01.log`…`20.log`。这是合并后的目标稳定性回执；分支旧基线100/100未复现、隔离探针红绿及分支全量1024的历史与失败均保留在[原证据](drawer-focus-stability-2026-11-26.md)，不冒称合并后的完整CI或production浏览器已经通过。
+
+分支另外发现独立既有概率性测试失败，主协调已读回原日志并核对源码，登记 **TD-TEST-041**：真实Web Crypto四位36进制随机键的200个样本不保证零碰撞，单文件20轮中1轮 `expected 199 to be 200`。原日志 `wave3/drawer-focus-artifacts/prod-order-keys-20.log`，SHA-256 `3e882c24553646d36e63c20004efc1587aa4389778c48d649ccfba2ea8af6ef1`。该生成器与测试均不在TD-TEST-035改动面，本波按R4仅登记，既有失败与重跑绿态分别留档。
+
+## 11. 远端检查与生产公开基线
+
+对已推送检查点1f的GitHub状态只读核对：CI [run45818647493](https://github.com/ivanzhao299/kingturf-bessiness-os/actions/runs/45818647493) 与CodeQL [run45818647511](https://github.com/ivanzhao299/kingturf-bessiness-os/actions/runs/45818647511) 均completed/success。原查询和UTC回执在 `integration-artifacts/remote-checks-1f6f3de/`；不外推为后继新提交的检查结果。
+
+**2026-11-26 12:53:04 UTC**，公开GET `https://erp.kingturf.cn/health`、`/ready`、`/version` 均HTTP200，前两者分别为status=ok、ready；version仍为L `5dc88e5c922ff731e2cfeb949b28c5cd8c333032`、environment=production、builtAt=`application-45609177419-1`。原body及摘要在 `integration-artifacts/public-baseline-20261126T125304Z/`。观察范围仅为未登录公开读取，不能代替生产登录态或数据库／迁移检查，尚未执行生产发布。
