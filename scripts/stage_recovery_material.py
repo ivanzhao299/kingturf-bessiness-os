@@ -8,7 +8,6 @@ last. Existing version directories and archived approvals are never deleted.
 This helper has no fence, application, database, or migration-execution operation.
 """
 import argparse
-import hashlib
 import importlib.util
 import json
 import os
@@ -19,6 +18,8 @@ import shutil
 import stat
 import sys
 import tempfile
+
+sys.dont_write_bytecode = True
 
 _SPEC = importlib.util.spec_from_file_location('fixed_recovery_transport', Path(__file__).with_name('recovery_material_transport.py'))
 transport = importlib.util.module_from_spec(_SPEC)
@@ -73,6 +74,7 @@ def validate_payload(root, expected, candidate, control_sha):
     require(transport.digest(manifest) == expected, 'transfer inventory raw hash differs')
     data = transport.json_file(root, 'transfer.json')
     require(data.get('kind') == 'compatible_recovery_stage_v1' and data.get('candidate_sha') == candidate and data.get('control_sha') == control_sha, 'transfer control/candidate identity differs')
+    require(isinstance(data.get('run'), str) and re.fullmatch(r'[1-9][0-9]*-[1-9][0-9]*', data['run']), 'transfer run identity malformed')
     actual = transport.file_inventory(root)
     del actual['transfer.json']
     require(actual == data.get('files'), 'transfer bytes or file set differs')
@@ -155,7 +157,7 @@ def install_material(incoming, canonical, expected, candidate, control_sha):
         activated[name] = candidate+'/'+str(transport.relative_name(descriptor[name]))
     atomic_file(canonical, 'compatible_recovery.json', json.dumps(activated, sort_keys=True).encode(), data['run'])
     binding = transport.json_file(material, 'migration-recovery-approval.json')['compatible_recovery']
-    transport.command([sys.executable, '-I', str(incoming/'scripts/release_orchestrator.py'), 'check-compatible-recovery', str(incoming/'plan.json'), str(material/'migration-recovery-approval.json'), str(canonical), binding['legacy_business_sha']])
+    transport.command([sys.executable, '-I', '-B', str(incoming/'scripts/release_orchestrator.py'), 'check-compatible-recovery', str(incoming/'plan.json'), str(material/'migration-recovery-approval.json'), str(canonical), binding['legacy_business_sha']])
     # The last atomic replace is the activation point. On interruption, a prior
     # approval and new descriptor cannot validate as a matching authorized pair.
     atomic_file(canonical, 'migration-recovery-approval.json', approval, data['run'])
@@ -179,39 +181,45 @@ def stage_material(control, control_sha, bundle, plan, candidate, environ=None):
     material = bundle/'compatible-recovery'
     # Only the immutable C selection chooses mode; presence of files cannot.
     transport.control_identity(control, control_sha)
-    selected = transport.approved_selection(control, candidate)
+    selected = transport.approved_selection(control, candidate, control_sha)
     if selected is None:
         require(not material.exists() and not material.is_symlink(), 'unselected compatible material in application bundle')
         return {'mode': 'legacy', 'host_writes': False}
     require(material.is_dir() and not material.is_symlink(), 'selected compatible material is missing or redirected')
-    require(transport.ordinary(material, 'migration-recovery-approval.json').read_bytes() == selected[0].joinpath('approval.json').read_bytes(), 'transported approval differs from C')
-    require(transport.json_file(plan.parent, plan.name).get('release_sha') == candidate, 'live deployment plan differs from B')
-    transport.validate_material(control, material, plan)
-    ssh, host = ssh_settings(environ)
-    run_id, attempt = environ.get('GITHUB_RUN_ID', ''), environ.get('GITHUB_RUN_ATTEMPT', '')
-    require(re.fullmatch(r'[1-9][0-9]*', run_id) and re.fullmatch(r'[1-9][0-9]*', attempt), 'unique run identity required')
-    nonce = run_id+'-'+attempt
-    staged = '/data/kingturf-erp/.staging/wave2-'+nonce
-    remote = staged+'/compatible-recovery-'+nonce
-    canonical = '/data/kingturf-erp/.release-migration-evidence'
+    require(candidate != control_sha, 'approval C must be later than B')
+    transport.git(control, 'merge-base', '--is-ancestor', candidate, control_sha)
+    # Read the actual deployment plan once. Validation applies to the final
+    # private copy, never to a mutable source that will be copied afterwards.
+    raw_plan = transport.ordinary(plan.parent, plan.name).read_bytes()
     with tempfile.TemporaryDirectory(prefix='recovery-stage-') as temp:
         payload = Path(temp)/'payload'
         payload.mkdir(mode=0o700)
-        (payload/'scripts').mkdir(mode=0o700)
-        shutil.copytree(material, payload/'material')
+        shutil.copytree(material, payload/'material', symlinks=True)
+        transport.file_inventory(payload/'material')
         for path in (payload/'material').rglob('*'):
             path.chmod(0o700 if path.is_dir() else 0o600)
         (payload/'material').chmod(0o700)
-        shutil.copyfile(plan, payload/'plan.json')
+        (payload/'plan.json').write_bytes(raw_plan)
         (payload/'plan.json').chmod(0o600)
-        controls = {}
-        for name in transport.CONTROL_FILES:
-            # Copy commit objects, not mutable worktree bytes after validation.
-            raw = transport.git(control, 'show', control_sha+':scripts/'+name)
-            path = payload/'scripts'/name
-            path.write_bytes(raw)
-            path.chmod(0o600)
-            controls[name] = hashlib.sha256(raw).hexdigest()
+        controls = transport.snapshot_controls(control, control_sha, payload)
+        prefix = selected[0].relative_to(control).as_posix()+'/'
+        snapshot = payload/'material'
+        descriptor = transport.json_file(snapshot, 'compatible_recovery.json')
+        mapping = {'approval.json': 'migration-recovery-approval.json', 'compatible_recovery.json': 'compatible_recovery.json', 'transport-source.json': 'transport-source.json', str(transport.relative_name(descriptor.get('report_file'))): descriptor.get('report_file')}
+        require(len(mapping) == 4, 'C selection paths collide')
+        for original, copied in mapping.items():
+            expected_raw = transport.git(control, 'show', control_sha+':'+prefix+original)
+            require(transport.ordinary(snapshot, copied).read_bytes() == expected_raw, 'private snapshot selection differs from fixed C Git object: '+original)
+        require(transport.json_file(payload, 'plan.json').get('release_sha') == candidate, 'live deployment plan differs from B')
+        approval = transport.validate_material(payload, snapshot, payload/'plan.json')
+        transport.git(control, 'merge-base', '--is-ancestor', approval['compatible_recovery']['recovery_main_sha'], 'refs/remotes/origin/main')
+        ssh, host = ssh_settings(environ)
+        run_id, attempt = environ.get('GITHUB_RUN_ID', ''), environ.get('GITHUB_RUN_ATTEMPT', '')
+        require(re.fullmatch(r'[1-9][0-9]*', run_id) and re.fullmatch(r'[1-9][0-9]*', attempt), 'unique run identity required')
+        nonce = run_id+'-'+attempt
+        staged = '/data/kingturf-erp/.staging/wave2-'+nonce
+        remote = staged+'/compatible-recovery-'+nonce
+        canonical = '/data/kingturf-erp/.release-migration-evidence'
         manifest = {'kind': 'compatible_recovery_stage_v1', 'candidate_sha': candidate,
                     'control_sha': control_sha, 'run': nonce, 'controls': controls,
                     'files': transport.file_inventory(payload)}
@@ -224,7 +232,7 @@ def stage_material(control, control_sha, bundle, plan, candidate, environ=None):
         transport.command([*ssh, host, 'set -eu; '+checks+'; '+create])
         transport.command(['rsync', '-az', '--partial', '--no-owner', '--no-group', '-e', shlex.join(ssh), str(payload)+'/', host+':'+remote+'/'])
         verify = shlex.join(['python3', '-I', '-c', BOOTSTRAP, 'verify', remote, expected])
-        install = shlex.join(['python3', '-I', remote+'/scripts/stage_recovery_material.py', 'install', '--incoming', remote, '--canonical-root', canonical, '--transfer-sha256', expected, '--candidate-sha', candidate, '--control-sha', control_sha])
+        install = shlex.join(['python3', '-I', '-B', remote+'/scripts/stage_recovery_material.py', 'install', '--incoming', remote, '--canonical-root', canonical, '--transfer-sha256', expected, '--candidate-sha', candidate, '--control-sha', control_sha])
         transport.command([*ssh, host, 'set -eu; '+verify+'; '+install])
     return {'mode': 'compatible_recovery', 'candidate_sha': candidate, 'control_sha': control_sha, 'remote': remote}
 
