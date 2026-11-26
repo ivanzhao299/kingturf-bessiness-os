@@ -20,6 +20,12 @@ import {
   type Db,
 } from './procurement-read-repositories.ts';
 import {
+  assertPurchaseProposal,
+  cancelOpenPurchaseOrder,
+  issueDraftPurchaseOrder,
+  lockActivePurchaseSupplier,
+} from './purchase-order-write-repository.ts';
+import {
   readSupplierQuote,
   readSupplierQuotePage,
   SUPPLIER_QUOTE_LIST_SQL,
@@ -126,32 +132,10 @@ export class PostgresProcurementRepository extends PostgresProcurementReadReposi
     });
   }
 
-  // U3-PROC-3（ADR-0015）：采购单取消写路径（additive；主协调 U3-PROC-3 指令
-  // 「PUT 审批/发布」状态流转授权的合法迁移之一）——DRAFT/ISSUED → CANCELLED；
-  // PARTIALLY_RECEIVED/RECEIVED 已入收货状态机不开放取消；独立审批层缺失登记
-  // TD-PROC-003（schema 无 APPROVED 状态值，如需独立审批须迁移另批）。
+  // U3-PROC-3（ADR-0015）：采购单取消写路径——语句与证据在 purchase-order-write-repository.ts
+  //（cancelOpenPurchaseOrder；PG2 自本文件原样移出，行为守恒），这里只做委托。
   public cancelPurchaseOrder(id: string, context: Context, correlationId: string) {
-    return this.db.transaction(async (tx) => {
-      company(context);
-      const row = (
-        await tx.query<{ id: string }>(
-          `UPDATE purchase_orders SET status='CANCELLED' WHERE id=$1 AND tenant_id=$2 AND status IN('DRAFT','ISSUED') RETURNING id`,
-          [id, context.actor.companyId],
-        )
-      ).rows[0];
-      if (!row) throw new DomainError('not_found', 'Open purchase order not found');
-      const result = json({ id, status: 'CANCELLED' });
-      await evidence(
-        tx,
-        'purchase-order.cancelled',
-        'purchase-order',
-        id,
-        context,
-        correlationId,
-        result,
-      );
-      return result;
-    });
+    return cancelOpenPurchaseOrder(this.db, id, context, correlationId);
   }
 
   public createSupplier(
@@ -438,6 +422,7 @@ export class PostgresProcurementRepository extends PostgresProcurementReadReposi
       poNumber: string;
       supplierId: string;
       supplierQuoteId: string | null;
+      mrpProposalId?: string;
       currency: string;
       lines: { itemVersionId: string; quantity: string; unitPrice: string; requiredAt: string }[];
       issue: boolean;
@@ -447,11 +432,12 @@ export class PostgresProcurementRepository extends PostgresProcurementReadReposi
   ) {
     return this.db.transaction(async (tx) => {
       company(context);
+      await assertPurchaseProposal(tx, input.mrpProposalId, context);
       const content = { ...input };
       const row = (
         await tx.query<{ id: string }>(
-          `INSERT INTO purchase_orders(tenant_id,po_number,supplier_id,supplier_quote_id,currency,canonical_hash,created_by)
-           SELECT $1,$2,s.id,$4,$5,$6,$7
+          `INSERT INTO purchase_orders(tenant_id,po_number,supplier_id,supplier_quote_id,currency,canonical_hash,created_by,mrp_proposal_id)
+           SELECT $1,$2,s.id,$4,$5,$6,$7,$8
            FROM suppliers s
            LEFT JOIN supplier_quotes q
              ON q.id=$4::uuid
@@ -472,6 +458,7 @@ export class PostgresProcurementRepository extends PostgresProcurementReadReposi
             input.currency,
             hash(content),
             context.actor.employeeId,
+            input.mrpProposalId ?? null,
           ],
         )
       ).rows[0];
@@ -505,11 +492,13 @@ export class PostgresProcurementRepository extends PostgresProcurementReadReposi
             'Purchase item requires a valid supplier qualification',
           );
       }
-      if (input.issue)
+      if (input.issue) {
+        await lockActivePurchaseSupplier(tx, row.id, context);
         await tx.query(
           "UPDATE purchase_orders SET status='ISSUED',ordered_at=now() WHERE id=$1 AND tenant_id=$2",
           [row.id, context.actor.companyId],
         );
+      }
       const result = json({
         id: row.id,
         status: input.issue ? 'ISSUED' : 'DRAFT',
@@ -530,7 +519,7 @@ export class PostgresProcurementRepository extends PostgresProcurementReadReposi
   }
 
   public issuePurchaseOrder(id: string, context: Context, correlationId: string) {
-    return this.transition(id, 'purchase-order', context, correlationId);
+    return issueDraftPurchaseOrder(this.db, id, context, correlationId);
   }
 
   private transition(

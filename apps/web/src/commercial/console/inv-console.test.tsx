@@ -85,6 +85,9 @@ const openMovement = async (panel: TestElement, type: string, quantity: string) 
   await click(byId(panel, 'kt-inv-open'));
   expect(byId(panel, 'kt-inv-detail').textContent).toContain('收货单 · GR-P6');
   await click(byId(panel, 'kt-inv-move'));
+  await vi.waitFor(() => {
+    expect(panel.querySelector('[name="movementType"]')).not.toBeNull();
+  });
   await enter(panel, 'movementType', type);
   await enter(panel, 'quantity', quantity);
   await enter(panel, 'sourceId', order.value, 'change');
@@ -162,6 +165,80 @@ it('creates another location with the legacy payload and hides write actions fro
   expect(readOnly.querySelector('[data-testid="kt-inv-create-location"]')).toBeNull();
   await click(byId(readOnly, 'kt-inv-open'));
   expect(readOnly.querySelector('[data-testid="kt-inv-move"]')).toBeNull();
+});
+
+it('loads minimal source candidates for an inventory-only writer and keeps the movement payload', async () => {
+  const io = ports();
+  const load = vi.fn().mockResolvedValue([order]);
+  const panel = mount({ ...io, orders: () => [], loadMovementSources: load });
+  await openMovement(panel, 'ADJUSTMENT_IN', '1.5');
+  expect(load).toHaveBeenCalledTimes(1);
+  expect(locate(panel, '[name="sourceId"]').textContent).toContain('工单一');
+  await submit(panel);
+  await confirmAction(panel, '确认库存移动', '确认登记', { destructive: true });
+  expect(io.submit).toHaveBeenCalledExactlyOnceWith('/api/v1/inventory-movements', {
+    movementType: 'ADJUSTMENT_IN',
+    itemVersionId: 'item',
+    lotId: 'lot',
+    locationId: 'loc',
+    quantity: '1.5',
+    occurredAt: at.toISOString(),
+    sourceType: 'WORK-ORDER',
+    sourceId: 'work-1',
+  });
+});
+
+it('keeps source read failures inside the movement form and sends no write', async () => {
+  const io = ports();
+  const panel = mount({
+    ...io,
+    orders: () => [],
+    loadMovementSources: vi.fn().mockRejectedValue(new Error('来源读取失败')),
+  });
+  await click(byId(panel, 'kt-inv-open'));
+  await click(byId(panel, 'kt-inv-move'));
+  await vi.waitFor(() => {
+    expect(locate(panel, 'form.form-section [role="alert"]').textContent).toBe('来源读取失败');
+  });
+  expect(locate(panel, '[name="sourceId"]').textContent).toContain('暂无可选业务来源');
+  expect(io.submit).not.toHaveBeenCalled();
+});
+
+it('does not apply a late source failure to a newly selected inventory balance', async () => {
+  const io = ports();
+  const other = { ...balance, lotId: 'lot-other', lotNumber: 'LOT-OTHER' };
+  let rejectFirst!: (error: Error) => void;
+  const first = new Promise<readonly { value: string; label: string }[]>((_resolve, reject) => {
+    rejectFirst = reject;
+  });
+  const load = vi
+    .fn()
+    .mockReturnValueOnce(first)
+    .mockResolvedValue([{ value: 'work-2', label: '新选择工单' }]);
+  const panel = mount({
+    ...io,
+    initialBalances: [balance, other],
+    loadMovementSources: load,
+    loadDetail: (key) => Promise.resolve(key.startsWith('lot-other:') ? other : balance),
+  });
+  await click(panel.querySelectorAll('[data-testid="kt-inv-open"]')[0] as TestElement);
+  await click(byId(panel, 'kt-inv-move'));
+  await click(locate(panel, '.drawer-close'));
+  await click(panel.querySelectorAll('[data-testid="kt-inv-open"]')[1] as TestElement);
+  await click(byId(panel, 'kt-inv-move'));
+  await vi.waitFor(() => {
+    expect(locate(panel, '[name="sourceId"]').textContent).toContain('新选择工单');
+  });
+  // 新选择的表单已就绪后旧请求拒绝，旧错误/空候选不得覆盖新来源。
+  await act(async () => {
+    rejectFirst(new Error('旧批次来源读取失败'));
+    await first.catch(() => undefined);
+  });
+  await vi.waitFor(() => {
+    expect(locate(panel, '[name="sourceId"]').textContent).toContain('新选择工单');
+  });
+  expect(byId(panel, 'kt-inv-detail').textContent).not.toContain('旧批次来源读取失败');
+  expect(io.submit).not.toHaveBeenCalled();
 });
 
 it('deduplicates lot counts and supports only unfinished work orders and explicit quality deep links', () => {

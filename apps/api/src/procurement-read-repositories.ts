@@ -52,6 +52,47 @@ export const PURCHASE_ORDER_ITEM_PROJECTION = `to_jsonb(p)||jsonb_build_object('
 export class PostgresProcurementReadRepository {
   public constructor(protected readonly db: Db) {}
 
+  // TD-MFG-013：MRP 派生信息只在路由取得 mrp:read 的公司级、未裁字段授权后查询。
+  // 引用自身属于采购单；建议编号沿既有工单表单口径为 UUID，不生成新的业务编号。
+  public async withMrpOrigins(
+    items: readonly JsonObject[],
+    context: Context,
+  ): Promise<readonly JsonObject[]> {
+    company(context);
+    const ids = items
+      .map((item) => item.mrp_proposal_id)
+      .filter((id): id is string => typeof id === 'string');
+    if (!ids.length) return items;
+    const origins = await this.db.query<{ id: string; mrp_run_id: string }>(
+      'SELECT id,mrp_run_id FROM mrp_proposals WHERE tenant_id=$1 AND id=ANY($2::uuid[])',
+      [context.actor.companyId, ids],
+    );
+    const byId = new Map(origins.rows.map((row) => [row.id, row]));
+    return items.map((item) => {
+      const origin =
+        typeof item.mrp_proposal_id === 'string' ? byId.get(item.mrp_proposal_id) : undefined;
+      return origin
+        ? { ...item, mrpProposalNumber: origin.id, mrp_run_id: origin.mrp_run_id }
+        : item;
+    });
+  }
+
+  // TD-PROC-022：库存来源只需工单 ID/编号；复用库存公司范围门，不读取完整生产聚合。
+  // 候选状态与原 workOrderChoices 一致，排序沿 legacy 工单列表 created_at DESC。
+  public async listInventoryMovementSources(context: Context) {
+    company(context);
+    const result = await this.db.query<{ value: string; label: string }>(
+      `SELECT o.id AS value,o.order_number AS label
+       FROM production_orders o
+       JOIN production_order_effective_states s ON s.tenant_id=o.tenant_id AND s.production_order_id=o.id
+       JOIN manufacturing_item_versions v ON v.tenant_id=o.tenant_id AND v.id=o.item_version_id
+       JOIN manufacturing_items i ON i.tenant_id=v.tenant_id AND i.id=v.item_id
+       WHERE o.tenant_id=$1 AND s.state IN('DRAFT','RELEASED','IN_PROGRESS') ORDER BY o.created_at DESC`,
+      [context.actor.companyId],
+    );
+    return result.rows;
+  }
+
   // U3-PROC-1（ADR-0015）：供应商 keyset cursor 分页只读（additive）——投影与排序
   // 键（supplier_number）与 list('suppliers') 一致；无 limit 时全量（nextCursor
   // 恒 null——默认路径与 legacy 逐字节一致），显式 limit 才启用分页窗口。

@@ -6,7 +6,6 @@ import {
   PageHeader,
   StatusBadge,
   type DataTableColumn,
-  type FormSectionField,
   type StatusTone,
 } from '@kingturf/ui';
 import {
@@ -32,6 +31,9 @@ import type { ContractDocumentRow, PurchaseOrderConsolePorts, PurchaseOrderRow }
 import { FocusAnchor } from './focus-anchor';
 import { ConsoleNotice } from './console-notice';
 import { reloadSelectedDetail } from './selected-sync';
+import { PurchaseOrderIssueForm } from './po-issue-form';
+import { PurchaseOrderCreateDrawer } from './po-create';
+import { PurchaseProposalLink } from './po-proposal-link';
 
 // U3-PROC-3（ADR-0014 分域重写）：采购单控制台——原 vanilla purchase-register PO 能力
 // 面等价迁移（创建并签发载荷逐字节一致；收货卡片/登记收货表单属 goods-receipts 域，
@@ -163,6 +165,12 @@ const columns = (state: PoPageState): readonly DataTableColumn<PurchaseOrderRow>
     render: (row) => text(state.ports, row, 'supplierName', 'supplierName', '—'),
   },
   {
+    key: 'source',
+    header: '来源建议',
+    field: (row) => text(state.ports, row, 'mrpProposalId', 'mrp_proposal_id'),
+    render: (row) => <PurchaseProposalLink row={row} permissions={state.permissions} />,
+  },
+  {
     key: 'total',
     header: '金额',
     field: (row) => orderTotal(state.ports, row),
@@ -249,34 +257,27 @@ const PoDrawer = ({ state }: Readonly<{ state: PoPageState }>) => {
           {orderTotal(ports, row)}
         </p>
       </div>
+      <p class="console-summary">
+        <span class="console-label">来源建议</span>
+        <PurchaseProposalLink row={row} permissions={permissions} />
+      </p>
       <StatusFlow state={state} />
       {/* TD-WF-005 / TD-WF-012：行内表单开着时，提交失败显示在该表单自己的提示区（FormSection 的
           error，紧挨提交按钮）；这里的错误位只留给不经表单的动作。 */}
-      {state.activeDocumentForm === null && state.submitError !== '' ? (
+      {state.activeDocumentForm === null && !mayIssue && state.submitError !== '' ? (
         <p class="console-error" role="alert" data-testid="kt-po-submit-error">
           {state.submitError}
         </p>
       ) : null}
       {state.activeForm === null ? (
         <div class="console-actions" data-testid="kt-po-actions">
-          {mayIssue ? (
-            <button
-              type="button"
-              class="primary"
-              data-testid="kt-po-issue"
-              onClick={() => {
-                // TD-WF-014②：签发不可逆，先确认。
-                const number = text(ports, row, 'poNumber', 'po_number');
-                askConfirm(state.confirm, {
-                  title: '签发采购订单',
-                  message: `签发后订单 ${number} 进入执行，供应商开始备货。`,
-                  confirmLabel: '确认签发',
-                  run: () => state.runState(row, 'issue'),
-                });
-              }}
-            >
-              签发订单
-            </button>
+          {mayIssue && state.activeDocumentForm === null ? (
+            <PurchaseOrderIssueForm
+              number={text(ports, row, 'poNumber', 'po_number')}
+              confirm={state.confirm}
+              error={state.submitError}
+              issue={() => state.runState(row, 'issue')}
+            />
           ) : null}
           {mayCancel ? (
             <button
@@ -347,50 +348,6 @@ const PoDrawer = ({ state }: Readonly<{ state: PoPageState }>) => {
     </DetailDrawer>
   );
 };
-
-const CreateDrawer = ({ state }: Readonly<{ state: PoPageState }>) => (
-  <DetailDrawer title="创建采购订单" onClose={state.closeForm}>
-    <FormSection
-      title="创建采购订单"
-      description="订单只允许选择已准入供应商和已发布物料版本。"
-      fields={[
-        { name: 'poNumber', label: '采购订单号', required: true },
-        state.ports.supplierChoices.length > 0
-          ? ({
-              name: 'supplierId',
-              label: '供应商',
-              type: 'select',
-              required: true,
-              options: state.ports.supplierChoices,
-            } satisfies FormSectionField)
-          : ({
-              name: 'supplierId',
-              label: '供应商编号',
-              required: true,
-            } satisfies FormSectionField),
-        state.ports.itemVersionChoices.length > 0
-          ? ({
-              name: 'itemVersionId',
-              label: '物料',
-              type: 'select',
-              required: true,
-              options: state.ports.itemVersionChoices,
-            } satisfies FormSectionField)
-          : ({
-              name: 'itemVersionId',
-              label: '物料版本编号',
-              required: true,
-            } satisfies FormSectionField),
-        { name: 'quantity', label: '数量', type: 'number', required: true },
-        { name: 'unitPrice', label: '含税单价', type: 'number', required: true },
-        { name: 'requiredAt', label: '要求到货日', type: 'date', required: true },
-      ]}
-      submitLabel="签发采购订单"
-      error={state.submitError}
-      onSubmit={(values) => state.runCreate(values)}
-    />
-  </DetailDrawer>
-);
 
 const PoView = (state: PoPageState) => {
   const visible = filteredOrders(state);
@@ -482,7 +439,14 @@ const PoView = (state: PoPageState) => {
         emptyDescription="创建采购订单后会出现在这里"
       />
       {state.selected ? <PoDrawer state={state} /> : null}
-      {state.activeForm === 'create' ? <CreateDrawer state={state} /> : null}
+      {state.activeForm === 'create' ? (
+        <PurchaseOrderCreateDrawer
+          ports={state.ports}
+          error={state.submitError}
+          close={state.closeForm}
+          submit={state.runCreate}
+        />
+      ) : null}
       <ConsoleConfirmDialog pending={state.confirm} />
     </div>
   );

@@ -60,6 +60,30 @@ export function registerInventoryLedgerRoutes(app: FastifyRouteGroupApp, scope: 
     return { actor: scope.authorization.actor, scopes: grant.scopes, anchors: grant.anchors };
   };
   app.get(
+    '/api/v1/inventory-movement-sources',
+    {
+      schema: {
+        response: {
+          200: z.object({ items: z.array(z.object({ value: z.string(), label: z.string() })) }),
+        },
+      },
+    },
+    async () => {
+      // 与库位候选同一权限选择：优先库存读，无库存读时允许库存移动权限。
+      const capability = scope.authorization.permissions.has('inventory:read')
+        ? 'inventory:read'
+        : 'inventory:move';
+      const grant = authorizeQuery(scope.authorization, capability, ['value', 'label']);
+      return {
+        items: await repository().listInventoryMovementSources({
+          actor: scope.authorization.actor,
+          scopes: grant.scopes,
+          anchors: grant.anchors,
+        }),
+      };
+    },
+  );
+  app.get(
     BALANCES,
     { schema: { querystring: querySchema, response: { 200: list } } },
     async (request) => {

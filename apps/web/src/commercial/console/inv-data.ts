@@ -4,6 +4,7 @@ import { finRows, finText, type FinRow } from './fin-kit';
 export const BALANCES = '/api/v1/inventory-balances';
 export const LOCATIONS = '/api/v1/inventory-locations';
 export const MOVEMENTS = '/api/v1/inventory-movements';
+export const MOVEMENT_SOURCES = '/api/v1/inventory-movement-sources';
 export const ORDERS = '/api/v1/production-orders';
 export const balanceId = (row: FinRow) => `${finText(row, 'lotId')}:${finText(row, 'locationId')}`;
 export const movementOptions = [

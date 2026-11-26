@@ -33,14 +33,16 @@ import {
   quoteLines,
   quoteReference,
   quoteStatus,
+  quoteSupplierBlock,
   quoteValue,
   rfqNumber,
   SQ_PATH,
   supplierName,
+  type SupplierChoice,
   supplierQuoteFields,
   supplierQuotePayload,
 } from './sq-data';
-import type { Choice } from './console-choices';
+import { SupplierPicker } from './sq-supplier-picker';
 import './procurement-ledger.css';
 
 const PAGE_SIZE = 20;
@@ -48,7 +50,8 @@ export type SupplierQuotePorts = Readonly<{
   permissions: ReadonlySet<string>;
   initialQuotes: readonly FinRow[];
   rfqs: () => readonly FinRow[];
-  suppliers: () => readonly Choice[];
+  // TD-PROC-021：候选沿用旧清单（全部可读供应商），每一家带上状态；暂停 / 已停用的列出但不可选。
+  suppliers: () => readonly SupplierChoice[];
   fetchPage: (query: FinQuery) => Promise<FinPage>;
   loadDetail: (id: string) => Promise<FinRow | null>;
   refresh: () => Promise<readonly FinRow[]>;
@@ -70,6 +73,8 @@ export function mountSupplierQuoteConsole(host: HTMLElement, ports: SupplierQuot
 function QuoteForm({ ports, error, onSubmit }: FormProps) {
   const [rfq, setRfq] = useState('');
   const [line, setLine] = useState('');
+  // TD-PROC-021：供应商由候选控件选择（带状态徽章，暂停 / 已停用不可选）。
+  const [supplierId, setSupplierId] = useState('');
   const documents = ports.rfqs();
   const lines = finRows(documents.find((item) => quoteId(item) === rfq)?.lines);
   return (
@@ -117,12 +122,14 @@ function QuoteForm({ ports, error, onSubmit }: FormProps) {
           </select>
         </label>
       </div>
+      <SupplierPicker suppliers={ports.suppliers()} value={supplierId} onChange={setSupplierId} />
       <FormSection
         title="报价内容"
-        fields={supplierQuoteFields(ports.suppliers())}
+        fields={supplierQuoteFields()}
         error={error}
         submitLabel="保存不可变报价"
-        onSubmit={(values) => onSubmit(values, rfq, line)}
+        // 供应商与表单值合并成同一份载荷：键与取值和原下拉字段提交时完全相同。
+        onSubmit={(values) => onSubmit({ ...values, supplierId }, rfq, line)}
       />
     </div>
   );
@@ -260,6 +267,12 @@ function createSupplierQuoteState(ports: SupplierQuotePorts) {
     submitError.value = '';
     if (rfq === '' || line === '') {
       submitError.value = rfq === '' ? '请选择询价单' : '请选择询价明细';
+      return;
+    }
+    // TD-PROC-021：所选供应商处于暂停 / 已停用时在表单里拦下并说明原因，不发请求。
+    const blocked = quoteSupplierBlock(ports.suppliers(), values.supplierId?.trim() ?? '');
+    if (blocked !== null) {
+      submitError.value = blocked;
       return;
     }
     if (

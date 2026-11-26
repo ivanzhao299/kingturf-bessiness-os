@@ -121,6 +121,7 @@ const CLAIMED_FASTIFY_ROUTES: readonly (readonly [method: string, pattern: RegEx
   ['GET', /^\/api\/v1\/inventory-balances$/u],
   ['GET', /^\/api\/v1\/inventory-balances\/[0-9a-f-]+\/[0-9a-f-]+$/u],
   ['POST', /^\/api\/v1\/inventory-movements$/u],
+  ['GET', /^\/api\/v1\/inventory-movement-sources$/u],
   ['GET', /^\/api\/v1\/manufacturing-items$/u],
   ['GET', /^\/api\/v1\/manufacturing-items\/[0-9a-f-]+$/u],
   ['POST', /^\/api\/v1\/manufacturing-items$/u],

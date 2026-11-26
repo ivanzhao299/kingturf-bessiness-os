@@ -147,7 +147,9 @@ const APP_ROUTES = new Set<AppRoute>(Object.keys(APP_ROUTE_LABELS) as AppRoute[]
 export function appRouteFromHash(hash: string): AppRoute {
   const fragment = hash.replace(/^#\/?/u, '');
   const candidate = (
-    ['procurement/rfqs?', 'procurement/inventory?'].some((prefix) => fragment.startsWith(prefix))
+    ['procurement/rfqs?', 'procurement/inventory?', 'material-planning?'].some((prefix) =>
+      fragment.startsWith(prefix),
+    )
       ? fragment.split('?')[0]
       : fragment
   ) as AppRoute;

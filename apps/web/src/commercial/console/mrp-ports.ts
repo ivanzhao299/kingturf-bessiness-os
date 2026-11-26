@@ -26,6 +26,7 @@ export type MrpConsolePorts = Readonly<{
   // 已发布物料版本选项（legacy 表单同源：label = `SKU · 名称`，value = 版本行 id）。宿主把它挂成
   // 按最新视图计算的 getter：写操作之后重读视图，刚发布的物料就能选到（TD-WF-007 同款）。
   itemVersionChoices: readonly MrpChoice[];
+  loadPurchaseSuppliers?: () => Promise<readonly MrpChoice[]>;
   recordText: (record: MrpRow, camel: string, snake: string, fallback?: string) => string;
   textValue: (value: unknown, fallback?: string) => string;
   businessStateLabel: (value: unknown, fallback?: string) => string;

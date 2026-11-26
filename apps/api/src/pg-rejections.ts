@@ -17,6 +17,12 @@ export const isUniqueViolation = (error: unknown, constraint: string): boolean =
   return found?.code === '23505' && found.constraint === constraint;
 };
 
+/** 检查约束拒绝（SQLSTATE 23514），仅精确匹配约束名。 */
+export const isCheckViolation = (error: unknown, constraint: string): boolean => {
+  const found = rejection(error);
+  return found?.code === '23514' && found.constraint === constraint;
+};
+
 /**
  * 守卫触发器的 RAISE EXCEPTION（SQLSTATE P0001）且消息精确等于 hints 的某个键时，返回对应
  * 的说明；其余情况返回 null。

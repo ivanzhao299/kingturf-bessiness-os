@@ -5,6 +5,7 @@ import type { ContractDocumentRow, PurchaseOrderConsolePorts, PurchaseOrderRow }
 import type { DocumentFormKind } from './po-detail';
 import { failureMessage } from '../../shared/api-error-message';
 import { reloadSelectedDetail, syncSelected } from './selected-sync';
+import { purchaseOrderPayload } from './po-create';
 
 export type PoFormActionKind = 'create' | null;
 
@@ -70,21 +71,7 @@ export function createPurchaseOrderActions(ports: PurchaseOrderConsolePorts, bun
     bundle.loading.value = true;
     bundle.submitError.value = '';
     try {
-      await ports.submit('/api/v1/purchase-orders', {
-        poNumber: values.poNumber ?? '',
-        supplierId: values.supplierId ?? '',
-        supplierQuoteId: null,
-        currency: 'CNY',
-        issue: true,
-        lines: [
-          {
-            itemVersionId: values.itemVersionId ?? '',
-            quantity: values.quantity ?? '',
-            unitPrice: values.unitPrice ?? '',
-            requiredAt: values.requiredAt ?? '',
-          },
-        ],
-      });
+      await ports.submit('/api/v1/purchase-orders', purchaseOrderPayload(values));
       applySnapshot(await ports.refresh());
       closeForm();
       bundle.notice.value = `已创建并签发采购订单 ${values.poNumber ?? ''}`;

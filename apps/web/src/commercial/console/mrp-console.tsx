@@ -1,3 +1,5 @@
+import { useEffect } from 'preact/hooks';
+import { watchMrpProposalLink } from './mrp-proposal-link';
 // MFG-6（ADR-0014 分域重写）：物料需求计划控制台——原 vanilla「物料需求与建议审批」页面等价迁移
 //（三张新建表单与建议决定的载荷逐字节一致）+ 治理模块同款形态：汇总卡（口径写在卡上，写后重算）、
 // 页内页签（建议 / 计算批次 / 需求信号 / 计划政策——主协调裁定保持单一路由）、建议主表（服务端
@@ -344,6 +346,24 @@ export function MrpConsolePage(ports: MrpConsolePorts) {
     runDecision: mutations.runDecision,
   });
 
-  const Page = () => MrpConsoleView(state());
+  const Page = () => {
+    useEffect(
+      () =>
+        watchMrpProposalLink(
+          ports,
+          (run, row) => {
+            bundle.runId.value = run;
+            void loaders.loadProposals();
+            loaders.open(row);
+          },
+          () => {
+            bundle.actionError.value = '来源建议读取失败，请确认当前账号的计划读取权限';
+          },
+        ),
+      [],
+    );
+
+    return MrpConsoleView(state());
+  };
   return Page;
 }

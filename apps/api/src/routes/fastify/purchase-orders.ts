@@ -8,7 +8,8 @@
 // cancelPurchaseOrder——指令授权的合法迁移；独立审批层缺失登记 TD-PROC-003）。
 // legacy POST /:id/issue 轨逐字不动（双轨并行）。
 import { z } from 'zod';
-import { assertStableCode } from '@kingturf/domain';
+import { assertStableCode, DomainError } from '@kingturf/domain';
+import { guardRejection, isCheckViolation } from '../../pg-rejections.ts';
 import { authorizeQuery } from '../../policy.ts';
 import {
   allow,
@@ -34,6 +35,7 @@ export type PurchaseOrderRepository = Pick<
   NonNullable<ApiDependencies['procurement']>,
   | 'listPurchaseOrders'
   | 'findPurchaseOrder'
+  | 'withMrpOrigins'
   | 'createPurchaseOrder'
   | 'issuePurchaseOrder'
   | 'cancelPurchaseOrder'
@@ -49,6 +51,9 @@ const PURCHASE_ORDER_ROW_SCHEMA = z
     currency: z.string(),
     supplierName: z.string(),
     ordered_at: z.string().nullable(),
+    mrp_proposal_id: z.string().nullable(),
+    mrpProposalNumber: z.string().optional(),
+    mrp_run_id: z.string().optional(),
     lines: z.array(z.unknown()),
     created_at: z.string(),
   })
@@ -93,6 +98,28 @@ function permitted(row: Record<string, unknown>, fields: readonly string[] | nul
   return Object.fromEntries(Object.entries(row).filter(([key]) => visible.has(key)));
 }
 
+// TD-PROC-015：只在采购单状态端点映射已知守卫/检查拒绝；原始数据库消息不回显。
+const PURCHASE_ORDER_GUARD_HINTS = {
+  'purchase order content is immutable': '采购订单内容不可变更，只能执行允许的状态动作',
+  'draft purchase order can only be issued or cancelled': '草稿采购订单只能签发或取消',
+  'issued purchase order has invalid transition': '已签发采购订单不能执行此状态动作',
+  'partially received purchase order has invalid transition':
+    '部分收货的采购订单不能执行此状态动作',
+  'closed purchase order is immutable': '已收货或已取消的采购订单不可再变更',
+  'purchase order issue requires timestamp and lines': '采购订单没有行项，不能签发',
+} as const;
+const purchaseOrderStateResult = async <T>(pending: Promise<T>): Promise<T> => {
+  try {
+    return await pending;
+  } catch (error: unknown) {
+    const hint = guardRejection(error, PURCHASE_ORDER_GUARD_HINTS);
+    if (hint !== null) throw new DomainError('conflict', hint);
+    if (isCheckViolation(error, 'purchase_orders_check'))
+      throw new DomainError('conflict', '采购单尚未签发，当前数据库规则不允许取消未签发的采购单');
+    throw error;
+  }
+};
+
 export function registerPurchaseOrderRoutes(
   app: FastifyRouteGroupApp,
   scope: FastifyRouteScope,
@@ -103,6 +130,24 @@ export function registerPurchaseOrderRoutes(
     if (!repository)
       throw Object.assign(new Error('Procurement dependency unavailable'), { statusCode: 503 });
     return repository;
+  };
+
+  const originsOf = async (
+    repo: PurchaseOrderRepository,
+    items: readonly import('@kingturf/types').JsonObject[],
+  ) => {
+    const grant = scope.authorization.permissions.get('mrp:read');
+    if (
+      items.length === 0 ||
+      grant?.fields !== null ||
+      (!grant.scopes.includes('COMPANY') && !grant.scopes.includes('GROUP'))
+    )
+      return items;
+    return repo.withMrpOrigins(items, {
+      actor: scope.authorization.actor,
+      scopes: grant.scopes,
+      anchors: scope.authorization.scopeAnchors?.get('mrp:read') ?? [],
+    });
   };
 
   // GET 列表：视图轨迁移——无查询参数时与 legacy { items } 逐字节一致；status 筛选
@@ -120,7 +165,7 @@ export function registerPurchaseOrderRoutes(
         filter,
       );
       return {
-        items: result.items.map((item) =>
+        items: (await originsOf(repo, result.items)).map((item) =>
           permittedDto(
             normalizeTimestamps(item as unknown as Record<string, unknown>),
             readFields ?? null,
@@ -154,7 +199,9 @@ export function registerPurchaseOrderRoutes(
         return;
       }
       return permittedDto(
-        normalizeTimestamps(found as unknown as Record<string, unknown>),
+        normalizeTimestamps(
+          (await originsOf(repo, [found]))[0] as unknown as Record<string, unknown>,
+        ),
         readFields ?? null,
       );
     },
@@ -167,7 +214,15 @@ export function registerPurchaseOrderRoutes(
   app.post('/api/v1/purchase-orders', async (request, reply) => {
     const repo = requireRepository();
     const body = objectBody(request.body);
-    allow(body, ['poNumber', 'supplierId', 'supplierQuoteId', 'currency', 'lines', 'issue']);
+    allow(body, [
+      'poNumber',
+      'supplierId',
+      'supplierQuoteId',
+      'mrpProposalId',
+      'currency',
+      'lines',
+      'issue',
+    ]);
     const grant = authorizeQuery(scope.authorization, 'procurement:manage', Object.keys(body));
     const lines = array(body.lines, 'lines').map((entry, index) => {
       const line = jsonObject(entry, `lines[${String(index)}]`);
@@ -188,6 +243,9 @@ export function registerPurchaseOrderRoutes(
         body.supplierQuoteId === null || body.supplierQuoteId === undefined
           ? null
           : uuid(body.supplierQuoteId, 'supplierQuoteId'),
+      ...(body.mrpProposalId === undefined
+        ? {}
+        : { mrpProposalId: uuid(body.mrpProposalId, 'mrpProposalId') }),
       currency: currency(body.currency),
       lines,
       issue: body.issue === true,
@@ -218,10 +276,11 @@ export function registerPurchaseOrderRoutes(
       scopes: grant.scopes,
       anchors: grant.anchors,
     };
-    const result =
+    const result = await purchaseOrderStateResult(
       action === 'issue'
-        ? await repo.issuePurchaseOrder(orderId, scopeContext, scope.correlationId)
-        : await repo.cancelPurchaseOrder(orderId, scopeContext, scope.correlationId);
+        ? repo.issuePurchaseOrder(orderId, scopeContext, scope.correlationId)
+        : repo.cancelPurchaseOrder(orderId, scopeContext, scope.correlationId),
+    );
     void reply.code(200);
     return mutation(result, scope.authorization, 'procurement:read');
   });

@@ -7,7 +7,6 @@ import {
   StatusBadge,
   type DataTableColumn,
   type FormSectionField,
-  type StatusTone,
 } from '@kingturf/ui';
 import {
   PendingQualifications,
@@ -28,6 +27,7 @@ import {
   type ConfirmSignal,
 } from './console-confirm';
 import { failureMessage } from '../../shared/api-error-message';
+import { SUPPLIER_STATUS_LABELS, supplierStatusTone } from './supplier-status';
 
 // U3-PROC-1（ADR-0014 分域重写）：供应商控制台——原 vanilla supplier-register 能力面
 // 等价迁移（新建供应商/物料准入审核（扩展 approve|conditional|reject）/列表/状态筛选/
@@ -71,21 +71,6 @@ type SupplierPageState = Readonly<{
   shownCount: number;
   showMore: () => void;
 }>;
-
-// businessStateLabel 同口径的中文标签。ON_HOLD 此前没有标签，筛选按钮与状态徽章直接显示枚举原文
-// （TD-WF-014③）；它与「已停用」是两个状态（INACTIVE 才是停用），所以译作「暂停」。
-const STATUS_LABELS: Readonly<Record<string, string>> = {
-  ACTIVE: '已启用',
-  ON_HOLD: '暂停',
-  INACTIVE: '已停用',
-};
-
-const statusTone = (status: unknown): StatusTone => {
-  if (status === 'ACTIVE') return 'success';
-  if (status === 'INACTIVE') return 'danger';
-  if (status === 'ON_HOLD') return 'warning';
-  return 'neutral';
-};
 
 const recordText = (
   ports: SupplierConsolePorts,
@@ -171,7 +156,11 @@ const columns = (state: SupplierPageState): readonly DataTableColumn<SupplierRow
     field: (row) => recordText(state.ports, row, 'status', 'status'),
     render: (row) => {
       const status = recordText(state.ports, row, 'status', 'status');
-      return <StatusBadge tone={statusTone(status)}>{STATUS_LABELS[status] ?? status}</StatusBadge>;
+      return (
+        <StatusBadge tone={supplierStatusTone(status)}>
+          {SUPPLIER_STATUS_LABELS[status] ?? status}
+        </StatusBadge>
+      );
     },
   },
   {
@@ -246,7 +235,9 @@ const SupplierDrawer = ({ state }: Readonly<{ state: SupplierPageState }>) => {
       <div class="console-summary" data-testid="kt-supplier-detail">
         <p>
           <span class="console-label">状态</span>
-          <StatusBadge tone={statusTone(status)}>{STATUS_LABELS[status] ?? status}</StatusBadge>
+          <StatusBadge tone={supplierStatusTone(status)}>
+            {SUPPLIER_STATUS_LABELS[status] ?? status}
+          </StatusBadge>
           <span class="console-label">编号</span>
           {recordText(ports, row, 'supplierNumber', 'supplier_number')}
           <span class="console-label">币种</span>
@@ -449,7 +440,7 @@ const SupplierView = (state: SupplierPageState) => {
               state.setStatusFilter(option);
             }}
           >
-            <span>{option === 'ALL' ? '全部' : STATUS_LABELS[option]}</span>{' '}
+            <span>{option === 'ALL' ? '全部' : SUPPLIER_STATUS_LABELS[option]}</span>{' '}
             <span data-testid={`kt-supplier-state-count-${option.toLowerCase()}`}>
               {counts[option]}
             </span>

@@ -21,6 +21,7 @@ export type InventoryPorts = Readonly<{
   initialLocations: readonly FinRow[];
   initialStatus: string;
   orders: () => readonly Choice[];
+  loadMovementSources?: () => Promise<readonly Choice[]>;
   actors: ReadonlyMap<string, string>;
   fetchPage: (query: FinQuery) => Promise<FinPage>;
   loadDetail: (key: string) => Promise<FinRow | null>;
@@ -45,6 +46,9 @@ export function createInventoryState(ports: InventoryPorts) {
   const loadError = signal('');
   const selected: Signal<FinRow | null> = signal(null);
   const moving = signal(false);
+  const sourcesLoading = signal(false);
+  const movementSources = signal<readonly Choice[]>(ports.orders());
+  let sourceRequest = 0;
   const locationForm = signal(false);
   const error = signal('');
   const notice = signal('');
@@ -77,8 +81,10 @@ export function createInventoryState(ports: InventoryPorts) {
     loadDetail: ports.loadDetail,
   });
   const select = (row: FinRow | null) => {
+    sourceRequest += 1;
     selected.value = row;
     moving.value = false;
+    sourcesLoading.value = false;
     error.value = '';
     notice.value = '';
     if (row) void reloadSelectedDetail(selection());
@@ -92,6 +98,37 @@ export function createInventoryState(ports: InventoryPorts) {
       await reload(query());
     } catch (failure: unknown) {
       loadError.value = failureMessage(failure, saved ? '已保存，库存刷新失败' : '库存刷新失败');
+    }
+  };
+  const startMovement = async () => {
+    const balance = selected.peek();
+    if (!balance || sourcesLoading.peek()) return;
+    const key = balanceId(balance);
+    const request = ++sourceRequest;
+    const currentRequest = () => {
+      const current = selected.peek();
+      return (
+        request === sourceRequest &&
+        current !== null &&
+        balanceId(current) === key &&
+        ports.attached?.() !== false
+      );
+    };
+    moving.value = true;
+    error.value = '';
+    notice.value = '';
+    sourcesLoading.value = true;
+    try {
+      const choices = ports.loadMovementSources
+        ? await ports.loadMovementSources()
+        : ports.orders();
+      if (currentRequest()) movementSources.value = choices;
+    } catch (failure: unknown) {
+      if (!currentRequest()) return;
+      movementSources.value = [];
+      error.value = failureMessage(failure, '读取库存移动来源失败，请重新打开表单重试');
+    } finally {
+      if (currentRequest()) sourcesLoading.value = false;
     }
   };
   const move = async (
@@ -154,6 +191,9 @@ export function createInventoryState(ports: InventoryPorts) {
     loadError,
     selected,
     moving,
+    sourcesLoading,
+    movementSources,
+    startMovement,
     locationForm,
     error,
     notice,

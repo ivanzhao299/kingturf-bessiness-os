@@ -512,6 +512,7 @@ describe('mrp fastify bridge track: run detail', () => {
     inventory: true,
     receipts: true,
     executions: true,
+    purchaseOrders: true,
   };
 
   it('GET 详情：根行 + 两个聚合 + 需求快照，解释行项按读权限全部带上', async () => {
@@ -533,6 +534,7 @@ describe('mrp fastify bridge track: run detail', () => {
       inventory: false,
       receipts: false,
       executions: false,
+      purchaseOrders: false,
     });
     calls.length = 0;
     const partial = await dispatchFastifyRouteGroup(
