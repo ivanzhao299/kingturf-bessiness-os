@@ -690,6 +690,7 @@ export class PostgresQuoteToCashRepository extends PostgresPaymentReadRepository
           await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
             `${context.actor.companyId}:${input.customerId}:credit-ledger`,
           ]);
+          await this.assertInvoiceWithinOrder(tx, input, context.actor.companyId);
           const doc = (
             await tx.query<{ id: string }>(
               'INSERT INTO ar_documents(tenant_id,customer_id,sales_order_id,document_number,document_type,currency,amount,due_at,canonical_input,canonical_hash,actor_id,correlation_id,idempotency_key) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id',
@@ -742,6 +743,63 @@ export class PostgresQuoteToCashRepository extends PostgresPaymentReadRepository
           return result;
         },
       ),
+    );
+  }
+
+  // TD-FIN-003（项目所有者 2026-11-26 裁定）：累计开票不得超过订单金额，超过则拒绝；不设尾差
+  // 容差（PostgreSQL numeric 精确比较）。数据库现有约束不动，仍是最后防线。
+  // - 只管挂了销售订单的 INVOICE：未挂订单的发票没有可比的订单金额；贷项通知不冲减累计开票
+  //   （同一裁定），自身也不设上限。
+  // - 并发：调用点已持有「租户:客户:credit-ledger」事务级 advisory 锁；订单只属于一个客户，同单
+  //   开票因此串行。事务是 READ COMMITTED，逐语句取新快照，这里读到的一定含并发方已提交的发票。
+  // - 只对与订单一致的单据判断（同租户、同客户、同币种，即迁移 0027 守卫
+  //   ar_document_governed_graph 的同一组条件）：不一致的留给该守卫按原提示拒绝，也保证提示里的
+  //   几个金额同币种。
+  // - 拒绝发生在任何写入之前：不落应收单据、开放项、审计、事件与命令结果，幂等键不被占用。
+  // 全部参数化，不拼接输入；聚合或比较查询缺行/形状异常属于内部错误，必须回滚。
+  private async assertInvoiceWithinOrder(
+    tx: SqlClient,
+    input: Readonly<{
+      customerId: string;
+      salesOrderId: string | null;
+      documentType: string;
+      currency: string;
+      amount: string;
+    }>,
+    companyId: string,
+  ): Promise<void> {
+    if (input.documentType !== 'INVOICE' || input.salesOrderId === null) return;
+    const order = (
+      await tx.query<{ total: string; currency: string }>(
+        'SELECT o.total::text total,o.currency::text currency FROM sales_orders o WHERE o.tenant_id=$1 AND o.id=$2 AND o.customer_id=$3 AND o.currency=$4',
+        [companyId, input.salesOrderId, input.customerId, input.currency],
+      )
+    ).rows[0];
+    if (!order) return;
+    const invoiced = await this.invoicedOrderAmount(tx, companyId, input.salesOrderId);
+    const amounts = (
+      await tx.query<{
+        exceeds: boolean;
+        total: string;
+        invoiced: string;
+        posted: string;
+        combined: string;
+      }>(
+        'SELECT ($1::numeric+$2::numeric)>$3::numeric exceeds,trim_scale($3::numeric)::text total,trim_scale($1::numeric)::text invoiced,trim_scale($2::numeric)::text posted,trim_scale($1::numeric+$2::numeric)::text combined',
+        [invoiced, input.amount, order.total],
+      )
+    ).rows[0];
+    if (
+      typeof amounts?.exceeds !== 'boolean' ||
+      [amounts.total, amounts.invoiced, amounts.posted, amounts.combined].some(
+        (value) => typeof value !== 'string' || !/^\d+(?:\.\d+)?$/u.test(value),
+      )
+    )
+      throw new Error('Invoice cap comparison returned an invalid result');
+    if (!amounts.exceeds) return;
+    throw new DomainError(
+      'conflict',
+      `累计开票金额超过订单金额，已拒绝过账：订单金额 ${order.currency} ${amounts.total}，已开票 ${amounts.invoiced}，本次 ${amounts.posted}，合计 ${amounts.combined}`,
     );
   }
 

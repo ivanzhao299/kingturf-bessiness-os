@@ -2,6 +2,7 @@ import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { expect, it, vi } from 'vitest';
 import { installGlobalTestDom, type TestElement } from '../../../test/fixtures/preact-dom';
+import { RequestError } from '../../http-core';
 import { recordText, textValue } from '../../shared/business-format';
 import { ArConsolePage } from './ar-console';
 import type { ArConsolePorts } from './ar-ports';
@@ -110,6 +111,35 @@ it('posts the legacy JSON bytes, shows a rejected attempt in the form, then relo
   expect(ports.fetchPage).toHaveBeenCalledTimes(2);
   expect(host.querySelector('.detail-drawer')).toBeNull();
   expect(host.textContent).toContain('已过账应收单据 INV-2');
+});
+
+// TD-FIN-003：服务端的超额开票拒绝（409 + 中文）经既有错误通道逐字显示在表单提示区，抽屉保持
+// 打开、不触发写后刷新。表单本身不显示已开票 / 剩余可开票金额，数字只来自这句服务端提示。
+it('shows the server invoice-cap rejection verbatim and keeps the form open without reloading', async () => {
+  const rejection =
+    '累计开票金额超过订单金额，已拒绝过账：订单金额 CNY 950000，已开票 950000，本次 12.34，合计 950012.34';
+  const submit = vi
+    .fn<ArConsolePorts['submit']>()
+    .mockRejectedValue(new RequestError(rejection, 409, '9e6b2c9c-3f7e-4b8f-9d2f-6a3f2f8c1a11'));
+  const ports = portsFor({ submit });
+  const host = await mount(ports);
+  await click(byId(host, 'kt-ar-create'));
+  await enter(host, 'salesOrderId', order.id);
+  await enter(host, 'documentNumber', 'INV-CAP-2');
+  await enter(host, 'amount', '12.34');
+  await enter(host, 'dueAt', '2026-12-01');
+  await click(find(host, '.detail-drawer button[type="submit"]'));
+  expect(find(host, '.detail-drawer .form-error').textContent).toBe(rejection);
+  expect(host.textContent).not.toContain('已过账应收单据');
+  expect(ports.refresh).not.toHaveBeenCalled();
+  expect(ports.fetchPage).toHaveBeenCalledTimes(1);
+  expect(submit.mock.calls.map(([path, body]) => [path, JSON.stringify(body)])).toEqual([
+    [
+      '/api/v1/ar-open-items',
+      '{"customerId":"customer-1","salesOrderId":"order-1","documentNumber":"INV-CAP-2","documentType":"INVOICE","currency":"CNY","amount":"12.34","dueAt":"2026-12-01T23:59:59.000Z"}',
+    ],
+  ]);
+  expect(host.querySelector('.detail-drawer')).not.toBeNull();
 });
 
 it('filters and follows a cursor while formatting and sorting ledger amounts exactly', async () => {

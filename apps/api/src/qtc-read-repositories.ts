@@ -190,6 +190,32 @@ export class PostgresQuoteToCashReadRepository {
     };
   }
 
+  // TD-FIN-003：订单的累计开票金额——该订单全部 INVOICE 应收单据的原始金额（ar_documents.amount）
+  // 之和，PostgreSQL numeric 十进制文本（不限制聚合整数位数）。与下列三处同式，任何一处改口径都须同步；真库测试
+  //（ar-invoice-cap-postgres）把它与触发器派生值、与 evaluateCredit 钉在一起。
+  //   · 迁移 0026 derive_credit_exposure（credit_exposure_snapshots.uninvoiced_order_amount）；
+  //   · 迁移 0027 enforce_order_credit_capacity；
+  //   · qtc-repositories.ts evaluateCredit 的 orders 子查询。
+  // 口径要点：只计 INVOICE（贷项通知不冲减累计开票——项目所有者 2026-11-26 裁定）；按原始金额
+  // 而非未核销余额（核销不减少累计开票）；应收单据只追加、不可改删，没有作废或冲销状态。
+  // tx 由调用方给出（postAr 在同一事务、已持有 credit-ledger advisory 锁之后调用）。不带数据范围
+  // 谓词：调用方已完成客户授权（postAr 的 requireCustomer），本方法只做金额求和。
+  public async invoicedOrderAmount(
+    tx: SqlClient,
+    companyId: string,
+    salesOrderId: string,
+  ): Promise<string> {
+    const row = (
+      await tx.query<{ invoiced: string }>(
+        "SELECT coalesce(sum(d.amount),0)::text invoiced FROM ar_documents d WHERE d.tenant_id=$1 AND d.sales_order_id=$2 AND d.document_type='INVOICE'",
+        [companyId, salesOrderId],
+      )
+    ).rows[0];
+    if (typeof row?.invoiced !== 'string' || !/^\d+(?:\.\d+)?$/u.test(row.invoiced))
+      throw new Error('Invoice aggregate query returned an invalid result');
+    return row.invoiced;
+  }
+
   private async arOrderSummary(id: string, read: FinancialRelatedRead): Promise<JsonObject | null> {
     const secured = recordScopeSql(read.scopes, read.anchors, read.actor, 'c', 3);
     const row = (
