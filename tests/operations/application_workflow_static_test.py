@@ -41,6 +41,14 @@ class ApplicationWorkflowContract(unittest.TestCase):
         self.assertLess(text.index(" precheck '$remote'"),text.index('if ! "$forward_recovery"; then'))
         self.assertLess(text.index('if ! "$forward_recovery"; then'),text.index(" backup '$remote'"))
 
+    def test_compatible_r_gate_is_loaded_from_the_fourth_fixed_sibling_control(self):
+        shell=(ROOT/'scripts/recover_application_images.sh').read_text()
+        self.assertIn('for script in oci_image_transport application_release production_preflight release_orchestrator; do',shell)
+        source=(ROOT/'scripts/application_release.py').read_text()
+        self.assertIn("Path(__file__).with_name('release_orchestrator.py')",source)
+        self.assertIn("gate.check_compatible_recovery(descriptor, approved, plan",source)
+        self.assertIn('images.import_bundle(target_root)',source)
+
     def test_forward_recovery_never_changes_workflow_input_or_lock_contract(self):
         import yaml
         workflow=yaml.safe_load((ROOT/'.github/workflows/recover-application-images.yml').read_text())

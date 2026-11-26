@@ -103,8 +103,15 @@ class ApplicationRecoveryTest(unittest.TestCase):
         import ast
         tree=ast.parse((ROOT/'scripts/application_release.py').read_text())
         strings=[n.value for n in ast.walk(tree) if isinstance(n,ast.Constant) and isinstance(n.value,str)]
-        forbidden=('CREATE TABLE','ALTER TABLE','INSERT INTO schema_migrations','release_orchestrator.py','db:migrate')
+        forbidden=('CREATE TABLE','ALTER TABLE','INSERT INTO schema_migrations','db:migrate')
         self.assertFalse([(x,f) for x in strings for f in forbidden if f in x])
+        # The fourth pinned control may supply metadata verification, never its
+        # executor/session. Keep the allowed call surface explicit in the AST.
+        self.assertEqual(strings.count('release_orchestrator.py'),1)
+        prepare=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='prepare_compatible_target')
+        calls={n.func.attr for n in ast.walk(prepare) if isinstance(n,ast.Call) and isinstance(n.func,ast.Attribute) and isinstance(n.func.value,ast.Name) and n.func.value.id=='gate'}
+        self.assertEqual(calls,{'evidence_file','check_approval','check_compatible_recovery','artifact_digest'})
+        self.assertFalse([n for n in ast.walk(tree) if isinstance(n,ast.Call) and isinstance(n.func,ast.Attribute) and n.func.attr in ('run_stages','migrate','PsqlSession')])
         self.assertTrue(ar.REGISTRY_SQL.startswith('BEGIN READ ONLY;'))
 
     def test_archive_is_private_during_writing_even_under_public_parent_and_default_umask(self):

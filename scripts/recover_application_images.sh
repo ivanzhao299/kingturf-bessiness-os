@@ -47,7 +47,7 @@ with tarfile.open('bundle.tar.gz') as t:
 PYTHON
 REMOTE
 # The whole tar is already bound to runner SHA; assert control bytes separately too.
-for script in oci_image_transport application_release production_preflight; do
+for script in oci_image_transport application_release production_preflight release_orchestrator; do
   expected=$(sha256sum "scripts/$script.py" | cut -d ' ' -f 1)
   actual=$(run_ssh "sha256sum '$remote/controls/$script.py'" | cut -d ' ' -f 1)
   test "$expected" = "$actual"
