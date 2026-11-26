@@ -333,6 +333,7 @@ S2门禁适配：新增登录限流固定源唯一真实类声明身份分类及
 | [RELIABILITY.md](RELIABILITY.md)                                                    | 可靠性机制与发布链路 runbook（逐步对应 deploy-production.yml）   | 常驻                    |
 | [QUALITY_SCORE.md](QUALITY_SCORE.md)                                                | 按域质量评分（可复算依据）                                       | 常驻                    |
 | [design-docs/core-beliefs.md](design-docs/core-beliefs.md)                          | 核心信念（争议裁决依据）                                         | 常驻                    |
+| [design-docs/mfg-016-bom-freeze.md](design-docs/mfg-016-bom-freeze.md)              | TD-MFG-016 工单冻结 BOM 版本引用的设计                           | 定稿待实施              |
 | [exec-plans/active/harness-migration.md](exec-plans/completed/harness-migration.md) | 批次4 S1–S3人工验收；S4已授权，先R7/设计docs停协调复核再编码     | 常驻                    |
 | [exec-plans/tech-debt-tracker.md](exec-plans/tech-debt-tracker.md)                  | 技术债现48项含历史，新增TD-HYG-002旧preview Dockerfile引用仅登记 | 常驻                    |
 | [local-acceptance-cleanup.md](local-acceptance-cleanup.md)                          | `.local-acceptance/` 本地产物清理边界与手动脚本说明              | 常驻                    |
