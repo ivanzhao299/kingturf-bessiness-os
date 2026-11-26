@@ -369,3 +369,17 @@ API 原保存 `image/image.tar` SHA-256 为 `0f08d814184d44bc8767729035ac358f597
 新 R 仍由主协调在另树构造，要求业务源码与 L `5dc88e5c922ff731e2cfeb949b28c5cd8c333032` 保真，仅纳入已批准的 81 pin／SQL 与必要封装；本批未改旧 R、批准文件、恢复 driver、工作流或发布锁，未 push／上传／部署。真正 GHR 双镜像原物料、两层恢复、恢复后认证写和最终集成 CI 必须另行实跑；本机运行验证明确 `recovery_drill=false`，不能替代这些材料。
 
 主协调后继已将冻结源码和最终证据分别合入 `208e7af`／`3ef8a2e`；为同时保留第12节控制证据，本节在集成树改编号为13。新 R `32e705a9a835e577b528fd6ff6d72c06b449ca35` 已另树构造并以 `e19dfe1` 纳入集成祖先，相对原 R 恰两份已验收 Dockerfile，L 业务源码与81清单原字节相同；白名单与实际身份见[集成验收 §6](ux-wave-integration-2026-11-26.md#6-新-r-的运行封装修订与来源白名单)。当前新R原物料、真实恢复和最终放行仍待后继验收。
+
+## 14. 原恢复物料导出阻断（TD-REL-016）
+
+### 14.1 先登记与授权边界
+
+主协调依据项目所有者既有的全权技术审查与发布授权，独立授权修复本项技术阻断；没有新增项目所有者裁定，也不属固定 GLM 四任务。工作树 `/home/jinhuit/Kingturf/kingturf-coord/wave4/recovery-export-owner`、分支 `fix/w4-recovery-export-owner`，基线 integration `54a95f2e581c5503c9bdf85d228d21a49e60c7e2`。登记提交先于根因修复，本节此时尚无本批绿态；完整 `ci:local` 留主协调最终集成串行执行。
+
+真实 `release-images` R run `45811774272`、job `139881174681` 输入 R=`32e705a9a835e577b528fd6ff6d72c06b449ca35`，导出控制=`c3f1239fd3447dde026cf715fea9bdca6c8eef84`。构建、tag/digest、双 HIGH/CRITICAL 扫描、SBOM、digest 摘要已成功；`Export original recovery bytes and offline source` 在日志第 2826 行报 `GATE_FAILED:recovery_transport: [Errno 1] Operation not permitted: '/tmp/recovery-export-jhfxpy8o/oci/web'`，Retain 原 artifact 未执行。完整原日志为 `/home/jinhuit/Kingturf/kingturf-coord/integration-artifacts/image-builds-32e705a/R-job.log`，同目录 dispatch／R-final／R-jobs／R-watch.log 保留。
+
+原 job 第 2814–2818 行执行 `python3 -I .recovery-export-control/scripts/recovery_material_transport.py export`，工具将 prepare 和依赖从固定控制 Git 对象复制至私有 temp，再用只有 R SQL 的 cwd 调 `prepare_release_bundle.sh`。该脚本的 Skopeo copy 向 `oci/api`／`oci/web` bind 写入时未指定 UID/GID；**具体归属、出错时点与 cleanup 链待实测，不仅凭 errno 定根因**。
+
+本轮 API `sha256:61a7914363f8ab34e5391296cc9209fa6e3a31352089c20dc0fef1167d7f5d20`、Web `sha256:be9cff07190d2b4cdb7b2110f365c58937aeccc7b6c37a6396b9991413ea2af0` 仅为诊断身份。失败 run 永不消费为 approved artifact。修复须保留真正原 OCI/source.bundle/81 清单/provenance 与成功 run 门；不放宽 owner／路径／符号链接检查，不 chmod777、不 chown/delete 外来目录、不整段 sudo。范围只限原控制工具与必要测试；不改 workflow 输入/job/审批/锁、业务/SQL/R 源，不 push/dispatch/生产/真实恢复。
+
+本批日志、脚本与源码快照保留在 `/home/jinhuit/Kingturf/kingturf-coord/wave4/recovery-export-owner-artifacts/`，全部重活经 `coord/bin/heavy`。后继应记录同断言旧红新绿、真实 Docker bind 最小复现与替身边界、受影响测试及完整 operations、源码稳定与自有资源清理；成功新固定 C 的 workflow 由主协调独立复核后重跑。

@@ -2,6 +2,8 @@
 
 [2026-11-26 业务波次集成验收](evidence/ux-wave-integration-2026-11-26.md) 记录 `514d8f4` 完整 CI（API 18,387、Web 1,064、UI 101）、test 构建上的 P1 三轮各 11/11、双视口路由各 45/45与写冒烟六流程，保留旧133图目检、每视口五次抽屉探针错误和R/B扫描阻断。§3.2 补 TD-TEST-040：production Web／test API 双视口各45/45、23真抽屉+3筛选、49文件哈希不变、148图目检和精确清理，保留空OPEN／催收详情／受限角色等边界及TD-UI-024观察。§5 记录 TD-GATE-007 同源码构建因果、production全49文件与实际镜像原字节匹配及775445d；§6 记录仅修订两份封装的新 R `32e705a`、L业务源码与81清单保真。最终集成production浏览器、成功新R物料、真实恢复与生产发布仍待后继证据。
 
+[TD-REL-016 原恢复物料导出阻断](evidence/forward-recovery-2026-11-26.md#14-原恢复物料导出阻断td-rel-016)：先登记 P1；真实 R run `45811774272`／job `139881174681` 的 export 临时 OCI 目录报权限错误，Retain 未执行，owner 链待实测。主协调依据既有全权技术审查与发布授权组织独立修复；失败 run 不能作为 approved 来源，最终成功新 R 物料与集成验收仍待后继。
+
 [TD-REL-015 运行镜像最小封装](exec-plans/tech-debt-tracker.md)及 [forward-recovery 证据 §13](evidence/forward-recovery-2026-11-26.md#13-运行镜像最小封装td-rel-015)记录先登记后修复的 API／Web 独立提交、原 65／58 项 HIGH+ 阻断、最终完整扫描与 HC 门均 0、`158baf6` 冻结、本机 OCI 摘要与完整报告、production／B0 静态字节全等、原 CLI81／TLS／UID0与1000附件／写闸／PID1／SIGTERM／BusyBox 健康命令实测；保留全部失败和构建工具边界，真实 GHR／恢复与集成验收归主协调。
 
 [TD-REL-011 受控前滚恢复](evidence/forward-recovery-2026-11-26.md)记录失败来源、兼容恢复材料与未执行的真实镜像验收边界；§10–11 保留历史 CI/夹具回执。§12 记录 TD-REL-013/014 的独立登记与修复：常规 backup/apply 按核验完整 ID 停止、共享纯 scope、启闸重建完整环境守恒及真正子解释器 `-I`；旧红新绿、首轮夹具错误与中间 258 项及最终 `acfb385` 干净快照 operations 261/261 均如实保留，legacy AST/81 pin 保持。本树完整 CI、真实 R/B 恢复与发布由主协调最终验收。
