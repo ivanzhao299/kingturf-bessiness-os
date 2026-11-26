@@ -160,6 +160,10 @@ def check_approval(evidence, plan, now):
         for key in ('target_manifest_sha256', 'recovery_bundle_sha256', 'report_sha256'):
             require(isinstance(binding[key], str) and re.fullmatch(r'[0-9a-f]{64}', binding[key]), 'GATE_FAILED:release_approval: recovery artifact digest malformed')
         require(binding['target_manifest_sha256'] == canonical_digest(plan['manifest']), 'GATE_FAILED:release_approval: recovery target manifest differs from plan')
+        ordered = gate.validate_candidate_manifest(plan['manifest'])
+        pending = plan['pending']
+        expected_suffix = ordered[len(ordered)-len(pending):] if pending else []
+        require([p['name'] for p in pending] == expected_suffix and all(p.get('checksum') == plan['manifest'].get(p['name']) for p in pending), 'GATE_FAILED:release_approval: recovery plan pending suffix/checksums inconsistent')
     return hashlib.sha256(json.dumps(evidence, sort_keys=True).encode()).hexdigest()
 
 
@@ -611,6 +615,19 @@ def main():
                 print(json.dumps({'verdict': state['verdict']}))
             finally:
                 session.close()
+        elif len(args) == 5 and args[0] == 'check-compatible-recovery':
+            plan = json.loads(Path(args[1]).read_text())
+            approval = json.loads(Path(args[2]).read_text())
+            evidence_root = Path(args[3])
+            legacy_sha = args[4]
+            require(re.fullmatch(r'[0-9a-f]{40}', legacy_sha), 'GATE_FAILED:compatible_recovery: expected L must be a full SHA')
+            require(approval.get('image_compatibility_mode') == 'compatible_recovery', 'GATE_FAILED:compatible_recovery: explicit approval mode required')
+            check_approval(approval, plan, utcnow())
+            descriptor = evidence_file(evidence_root, 'compatible_recovery.json')
+            evidence = json.loads(descriptor.read_bytes())
+            require(isinstance(evidence, dict), 'GATE_FAILED:compatible_recovery: descriptor must be a JSON object')
+            check_compatible_recovery(evidence, approval, plan, {'api_release_sha': legacy_sha}, evidence_root)
+            print(json.dumps({'compatible_recovery': 'PASS', 'release_sha': plan['release_sha'], 'recovery_release_sha': approval['compatible_recovery']['recovery_release_sha'], 'target_manifest_sha256': approval['compatible_recovery']['target_manifest_sha256'], 'live_fence_verified': False}, sort_keys=True))
         elif len(args) == 3 and args[0] == 'check-evidence':
             plan = json.loads(Path(args[1]).read_text())
             evidence_root = Path(args[2])
@@ -682,12 +699,13 @@ def main():
                                'registry <database-url> [--psql-argv-file file] | '
                                'execute <plan.json> <evidence-dir> <migrations> <state-dir> <database-url|psql-argv via --psql-argv-file> [--new-approval file] | '
                                'check-evidence <plan.json> <evidence-dir> | '
+                               'check-compatible-recovery <plan.json> <approval.json> <evidence-dir> <expected-legacy-sha> | '
                                'verify-images <evidence-dir> <env-file> | '
                                'postcheck <plan.json> <database-url> [--psql-argv-file file]')
     except StopError as error:
         print('orchestration STOPPED: ' + str(error), file=sys.stderr)
         sys.exit(2)
-    except RuntimeError as error:
+    except (RuntimeError, ValueError, OSError, KeyError, TypeError, tarfile.TarError, subprocess.TimeoutExpired) as error:
         print('orchestration refused: ' + str(error), file=sys.stderr)
         sys.exit(1)
 

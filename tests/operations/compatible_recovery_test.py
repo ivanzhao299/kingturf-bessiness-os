@@ -276,6 +276,49 @@ class CompatibleRecoveryEvidenceTest(unittest.TestCase):
         self.assertEqual(session.lock_attempts, 0)
         self.assertEqual(session.applied, [])
 
+    def compatible_cli(self, legacy=None):
+        # Use current UTC for the real subprocess; the report remains a labeled
+        # synthetic fixture, with no API, database or network service involved.
+        now = datetime.now(timezone.utc)
+        self.approval.update(approved_at_utc=(now-timedelta(minutes=5)).isoformat(), window_end_utc=(now+timedelta(hours=1)).isoformat())
+        self.report['tested_at_utc'] = (now-timedelta(minutes=10)).isoformat()
+        for i, step in enumerate(self.report['steps']):
+            step['at_utc'] = (now-timedelta(minutes=20-i)).isoformat()
+        records = self.report['registry']['before']
+        for row in records:
+            row['applied_at'] = (now-timedelta(hours=1)).isoformat()
+        self.report['registry'].update(after=copy.deepcopy(records), before_sha256=ro.canonical_digest(records), after_sha256=ro.canonical_digest(records))
+        self.write_report()
+        plan_path, approval_path = self.base/'cli-plan.json', self.base/'cli-approval.json'
+        plan_path.write_text(json.dumps(self.plan))
+        approval_path.write_text(json.dumps(self.approval))
+        return subprocess.run([sys.executable, '-I', str(ROOT/'scripts/release_orchestrator.py'), 'check-compatible-recovery', str(plan_path), str(approval_path), str(self.evidence), legacy or self.fence['api_release_sha']], capture_output=True, text=True, timeout=60)
+
+    def test_explicit_material_plan_cannot_forge_pending_checksum(self):
+        self.plan['pending'][0]['checksum'] = 'f'*64
+        with self.assertRaisesRegex(RuntimeError, 'pending suffix/checksums inconsistent'):
+            self.check()
+
+    def test_strict_material_cli_checks_real_bytes_and_reports_no_live_fence_claim(self):
+        result = self.compatible_cli()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        output = json.loads(result.stdout)
+        self.assertEqual(output['compatible_recovery'], 'PASS')
+        self.assertEqual(output['recovery_release_sha'], self.binding['recovery_release_sha'])
+        self.assertIs(output['live_fence_verified'], False)
+
+    def test_strict_material_cli_rejects_wrong_l_with_nonzero_gate_error(self):
+        result = self.compatible_cli('f'*40)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('GATE_FAILED:compatible_recovery: L differs', result.stderr)
+        self.assertNotIn('PASS', result.stdout)
+
+    def test_strict_material_cli_never_falls_back_to_legacy_mode(self):
+        self.approval.pop('image_compatibility_mode')
+        result = self.compatible_cli()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('explicit approval mode required', result.stderr)
+
     def test_malformed_approved_tar_stops_before_any_migration_lock(self):
         from release_orchestrator_test import FakeSession
         self.bundle.write_bytes(b'not a tar archive')
