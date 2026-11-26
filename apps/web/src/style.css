@@ -197,14 +197,6 @@ textarea {
   color: #71847c;
   font-size: 13px;
 }
-.lead-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  min-height: 58px;
-  border-top: 1px solid #edf1ef;
-}
 .error {
   color: #9d2929;
 }
@@ -1318,41 +1310,11 @@ button {
   margin-top: 12px;
   border-top: 1px solid #edf0ee;
 }
-.queue-item {
-  display: grid;
-  grid-template-columns: 8px 1fr auto;
-  gap: 10px;
-  align-items: center;
-  min-height: 62px;
-  border-bottom: 1px solid #edf0ee;
-}
 .queue-status {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: #91aa9e;
-}
-.queue-copy {
-  color: #35483f;
-  font-size: 12px;
-  font-weight: 700;
-}
-.queue-item small {
-  grid-column: 2;
-  margin-top: -20px;
-  color: #89968f;
-  font-size: 10px;
-}
-.queue-item b {
-  grid-column: 3;
-  grid-row: 1 / 3;
-  min-width: 24px;
-  padding: 4px 7px;
-  border-radius: 12px;
-  background: #edf3ef;
-  color: #426955;
-  font-size: 10px;
-  text-align: center;
 }
 .commercial-workspace {
   min-width: 0;
@@ -1365,8 +1327,7 @@ button {
   grid-column: 1 / -1;
   min-width: 0;
 }
-.production-order-card,
-.evidence-card {
+.production-order-card {
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -1395,12 +1356,6 @@ button {
   margin: 5px 0 0;
   color: #7d8b84;
   font-size: 11px;
-}
-.pipeline-summary {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-  margin: -4px 0 14px;
 }
 .pipeline-metric {
   display: flex;
@@ -1438,13 +1393,6 @@ button {
 }
 .pipeline-metric.success strong {
   color: #176842;
-}
-.pipeline-columns {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(180px, 1fr));
-  gap: 10px;
-  overflow-x: auto;
-  padding-bottom: 5px;
 }
 .pipeline-column {
   min-height: 220px;
@@ -1488,11 +1436,6 @@ button {
 .opportunity-card .text-button {
   justify-self: end;
   padding: 3px 0;
-}
-@media (max-width: 720px) {
-  .pipeline-summary {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 .pipeline-empty {
   padding: 36px 5px;
@@ -2086,19 +2029,6 @@ button {
   border-top: 1px solid #edf1ef;
   color: #7b8982;
   font-size: 10px;
-}
-.page-button {
-  min-height: 30px;
-  border: 1px solid #dce4df;
-  border-radius: 6px;
-  padding: 0 10px;
-  background: #fff;
-  color: #3e5d4e;
-  font-size: 10px;
-}
-.page-button:disabled {
-  cursor: default;
-  opacity: 0.42;
 }
 .form-dialog {
   width: min(520px, calc(100vw - 28px));
@@ -2864,11 +2794,6 @@ button {
   .mobile .pipeline-heading > * {
     min-width: 0;
   }
-  .mobile .pipeline-columns {
-    width: 100%;
-    min-width: 0;
-    max-width: 100%;
-  }
   .mobile .solution-list,
   .mobile .decision-list,
   .mobile .quote-list,
@@ -3287,10 +3212,6 @@ body {
   color: #52675e;
   font-weight: 650;
 }
-.permission-note {
-  background: #edf6f1;
-  color: #266148;
-}
 .commercial-status:empty {
   display: none;
 }
@@ -3577,14 +3498,6 @@ button:not(:disabled):active {
 /* U3-MFG-4：vanilla 工单卡片的工序流（.production-flow/.production-operation）与证据
    网格（.production-evidence-grid）随卡片退役移除。U3-MFG-5：车间执行（报工/领退料/成品卷
    入库）的 vanilla 按钮行（.production-actions）随三张表单迁入控制台抽屉一并移除。 */
-.evidence-card {
-  padding: 0.7rem;
-  border-radius: 0.7rem;
-  background: #f4f5f2;
-  white-space: pre-line;
-  font-size: 0.82rem;
-}
-
 @media (max-width: 900px) {
   .production-summary,
   .production-order-grid {
@@ -3644,8 +3557,7 @@ button:not(:disabled):active {
   font-size: 17px;
   font-weight: 780;
 }
-.status-badge,
-.permission-note {
+.status-badge {
   display: inline-flex;
   align-items: center;
   width: fit-content;
@@ -3670,18 +3582,13 @@ button:not(:disabled):active {
 .status-badge {
   padding: 5px 9px;
 }
-.status-badge.success,
-.permission-note {
+.status-badge.success {
   background: #e7f5ed;
   color: #176842;
 }
 .status-badge.warning {
   background: #fff3d9;
   color: #8a5a00;
-}
-.permission-note {
-  margin: 14px 0 0;
-  padding: 6px 10px;
 }
 .governance-source {
   margin-top: 10px;
